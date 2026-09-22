@@ -1,0 +1,74 @@
+# =============================================================================
+# Git ignore file for TSA (C++ / CMake / Qt 6 / OpenCASCADE)
+# =============================================================================
+
+# Dossiers de compilation & build
+build/
+bin/
+out/
+dist/
+cmake-build-*/
+
+# Dépendances volumineuses tierces et SDKs binaires
+opencascade-*/
+3rdparty-*/
+
+# Fichiers et dossiers Visual Studio / MSVC
+.vs/
+*.vcxproj.user
+*.vcxproj.filters.user
+*.suo
+*.user
+*.user.*
+*.opendb
+*.db
+
+# Fichiers Qt Creator
+CMakeLists.txt.user*
+*.pro.user*
+
+# Fichiers JetBrains (CLion / Rider / etc.)
+.idea/
+
+# Fichiers VS Code
+.vscode/
+
+# Fichiers temporaires CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+Makefile
+
+# Fichiers compilés C++ / Objets / Bibliothèques / Débogage
+*.obj
+*.o
+*.exe
+*.dll
+*.lib
+*.a
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.d
+*.res
+
+# Fichiers générés par Qt (MOC, UIC, RCC)
+moc_*.cpp
+moc_*.h
+ui_*.h
+qrc_*.cpp
+*.qrc.depends
+
+# Fichiers système
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store
+
+# Fichiers de crash et logs
+*.log
+*.tlog
+*.dump

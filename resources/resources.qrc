@@ -1,0 +1,23 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/icons">
+        <file alias="select.svg">icons/select.svg</file>
+        <file alias="draw_node.svg">icons/draw_node.svg</file>
+        <file alias="draw_beam.svg">icons/draw_beam.svg</file>
+        <file alias="draw_column.svg">icons/draw_column.svg</file>
+        <file alias="draw_slab.svg">icons/draw_slab.svg</file>
+        <file alias="node_add.svg">icons/node_add.svg</file>
+        <file alias="beam_add.svg">icons/beam_add.svg</file>
+        <file alias="column_add.svg">icons/column_add.svg</file>
+        <file alias="slab_add.svg">icons/slab_add.svg</file>
+        <file alias="move.svg">icons/move.svg</file>
+        <file alias="copy.svg">icons/copy.svg</file>
+        <file alias="delete.svg">icons/delete.svg</file>
+        <file alias="fit_all.svg">icons/fit_all.svg</file>
+        <file alias="view_iso.svg">icons/view_iso.svg</file>
+        <file alias="grid_cartesian.svg">icons/grid_cartesian.svg</file>
+        <file alias="grid_cylindrical.svg">icons/grid_cylindrical.svg</file>
+        <file alias="snap.svg">icons/snap.svg</file>
+        <file alias="settings.svg">icons/settings.svg</file>
+    </qresource>
+</RCC>

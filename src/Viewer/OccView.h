@@ -1,0 +1,191 @@
+#pragma once
+
+#include <QWidget>
+#include <QPoint>
+#include <map>
+
+#include "../Model/Model.h"
+
+#include <AIS_InteractiveContext.hxx>
+#include <AIS_Shape.hxx>
+#include <V3d_View.hxx>
+#include <V3d_Viewer.hxx>
+#include <OpenGl_GraphicDriver.hxx>
+#include <Aspect_DisplayConnection.hxx>
+
+#include <gp_Pnt.hxx>
+#include <vector>
+
+namespace TSA::Viewer
+{
+    class SelectionManager;
+}
+
+#include <AIS_RubberBand.hxx>
+
+class OccView : public QWidget, public TSA::Model::IModelObserver
+{
+    Q_OBJECT
+
+public:
+    explicit OccView(QWidget* parent = nullptr);
+    ~OccView() override;
+
+    const Handle(AIS_InteractiveContext)& context() const { return m_context; }
+    const Handle(V3d_View)& view() const { return m_view; }
+    const Handle(V3d_Viewer)& viewer() const { return m_viewer; }
+
+    // Liaison avec le modèle et la sélection
+    void setModel(TSA::Model::Model* model);
+    void setSelectionManager(TSA::Viewer::SelectionManager* selectionManager);
+    void rebuildAllShapes();
+
+    // Gestion des formes 3D
+    void updateNodeShape(int nodeId);
+    void updateBeamShape(int beamId);
+    void updateColumnShape(int columnId);
+    void updateSlabShape(int slabId);
+
+    void removeNodeShape(int nodeId);
+    void removeBeamShape(int beamId);
+    void removeColumnShape(int columnId);
+    void removeSlabShape(int slabId);
+
+    // Mise en surbrillance / Sélection visuelle
+    void highlightNode(int nodeId);
+    void highlightBeam(int beamId);
+    void highlightColumn(int columnId);
+    void highlightSlab(int slabId);
+    void clearHighlight();
+
+    // Actions de vue
+    void fitAll();
+    void resetView();
+
+    // Grille 3D (Cartésienne & Cylindrique)
+    enum class GridType
+    {
+        None,
+        Cartesian,
+        Cylindrical
+    };
+
+    GridType currentGridType() const { return m_currentGridType; }
+    bool isGridVisible() const { return m_currentGridType != GridType::None; }
+
+    void showCartesianGrid(double xStep = 1.0, double yStep = 1.0,
+                           double xSize = 20.0, double ySize = 20.0,
+                           double zOffset = 0.0, bool pointsMode = false);
+
+    void showCylindricalGrid(double radiusStep = 1.0, int divisionNumber = 12,
+                             double maxRadius = 15.0, double zOffset = 0.0,
+                             bool pointsMode = false);
+
+    void setGridVisible(bool visible);
+    void hideGrid();
+
+    bool isSnapToGridEnabled() const { return m_snapToGrid; }
+    void setSnapToGridEnabled(bool enabled) { m_snapToGrid = enabled; }
+
+    // Modes d'interaction (Sélection & Dessin 3D)
+    enum class InteractionMode
+    {
+        Select,
+        DrawNode,
+        DrawBeam,
+        DrawColumn,
+        DrawSlab
+    };
+
+    InteractionMode interactionMode() const { return m_interactionMode; }
+    void setInteractionMode(InteractionMode mode);
+    void cancelCurrentDrawing();
+
+signals:
+    void mouseCoordinatesChanged(double x, double y, double z);
+    void objectHovered(const QString& info);
+    void gridTypeChanged(GridType type);
+    void interactionModeChanged(InteractionMode mode);
+    void drawingPromptChanged(const QString& prompt);
+
+protected:
+    // IModelObserver overrides
+    void onNodeAdded(const TSA::Model::Node& node) override;
+    void onNodeModified(const TSA::Model::Node& node) override;
+    void onNodeRemoved(int nodeId) override;
+
+    void onBeamAdded(const TSA::Model::Beam& beam) override;
+    void onBeamModified(const TSA::Model::Beam& beam) override;
+    void onBeamRemoved(int beamId) override;
+
+    void onColumnAdded(const TSA::Model::Column& column) override;
+    void onColumnModified(const TSA::Model::Column& column) override;
+    void onColumnRemoved(int columnId) override;
+
+    void onSlabAdded(const TSA::Model::Slab& slab) override;
+    void onSlabModified(const TSA::Model::Slab& slab) override;
+    void onSlabRemoved(int slabId) override;
+
+    void onModelCleared() override;
+
+protected:
+    QPaintEngine* paintEngine() const override { return nullptr; }
+    void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+
+private:
+    void initOcc();
+    QPoint convertMousePos(const QPointF& logicalPos) const;
+
+    bool getPointUnderCursor(const QPoint& mousePixelPos, double& x, double& y, double& z, int& detectedNodeId);
+    void updateRubberBand(const gp_Pnt& currentPnt);
+    void clearRubberBand();
+    int getOrCreateNode(double x, double y, double z, int existingNodeId);
+
+private:
+    TSA::Model::Model* m_model = nullptr;
+    TSA::Viewer::SelectionManager* m_selectionManager = nullptr;
+
+    Handle(Aspect_DisplayConnection) m_displayConnection;
+    Handle(OpenGl_GraphicDriver)    m_graphicDriver;
+    Handle(V3d_Viewer)              m_viewer;
+    Handle(V3d_View)                m_view;
+    Handle(AIS_InteractiveContext)  m_context;
+
+    std::map<int, Handle(AIS_Shape)> m_nodeShapes;
+    std::map<int, Handle(AIS_Shape)> m_beamShapes;
+    std::map<int, Handle(AIS_Shape)> m_columnShapes;
+    std::map<int, Handle(AIS_Shape)> m_slabShapes;
+
+    bool m_isInitialized = false;
+
+    enum class CurrentAction
+    {
+        Nothing,
+        Pan,
+        Rotation,
+        WindowSelect
+    };
+
+    CurrentAction m_currentAction = CurrentAction::Nothing;
+    QPoint m_lastMousePos;
+    QPoint m_pressMousePos;
+    QPoint m_dragStartPos;
+
+    GridType m_currentGridType = GridType::Cartesian;
+    bool m_snapToGrid = false;
+    double m_gridZOffset = 0.0;
+
+    InteractionMode m_interactionMode = InteractionMode::Select;
+    std::vector<int> m_drawingNodeIds;
+    std::vector<gp_Pnt> m_drawingPoints;
+    Handle(AIS_Shape) m_rubberBandShape;
+    Handle(AIS_RubberBand) m_selectRubberBand;
+};
