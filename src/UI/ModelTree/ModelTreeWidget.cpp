@@ -1,4 +1,5 @@
 #include "ModelTreeWidget.h"
+#include "../../Grid/GridManager.h"
 #include <QVBoxLayout>
 #include <QHeaderView>
 
@@ -17,7 +18,8 @@ enum ItemType
     TypeNode = 1,
     TypeBeam = 2,
     TypeColumn = 3,
-    TypeSlab = 4
+    TypeSlab = 4,
+    TypeGrid = 5
 };
 
 ModelTreeWidget::ModelTreeWidget(TSA::Model::Model* model, QWidget* parent)
@@ -38,6 +40,20 @@ ModelTreeWidget::~ModelTreeWidget()
     if (m_model)
     {
         m_model->removeObserver(this);
+    }
+}
+
+void ModelTreeWidget::setGridManager(TSA::Grid::GridManager* gridManager)
+{
+    m_gridManager = gridManager;
+    if (m_gridManager)
+    {
+        connect(m_gridManager, &TSA::Grid::GridManager::gridAdded, this, &ModelTreeWidget::refreshGrids);
+        connect(m_gridManager, &TSA::Grid::GridManager::gridRemoved, this, &ModelTreeWidget::refreshGrids);
+        connect(m_gridManager, &TSA::Grid::GridManager::gridModified, this, &ModelTreeWidget::refreshGrids);
+        connect(m_gridManager, &TSA::Grid::GridManager::activeGridChanged, this, &ModelTreeWidget::refreshGrids);
+        connect(m_gridManager, &TSA::Grid::GridManager::gridVisibilityChanged, this, &ModelTreeWidget::refreshGrids);
+        refreshGrids();
     }
 }
 
@@ -63,6 +79,10 @@ void ModelTreeWidget::createRootCategories()
 {
     m_tree->clear();
 
+    m_gridsCategory = new QTreeWidgetItem(m_tree, { tr("Grids"), "" });
+    m_gridsCategory->setData(0, TypeRole, TypeCategory);
+    m_gridsCategory->setExpanded(true);
+
     m_nodesCategory = new QTreeWidgetItem(m_tree, { tr("Nodes"), "" });
     m_nodesCategory->setData(0, TypeRole, TypeCategory);
     m_nodesCategory->setExpanded(true);
@@ -83,9 +103,40 @@ void ModelTreeWidget::createRootCategories()
     m_wallsCategory->setData(0, TypeRole, TypeCategory);
 }
 
+void ModelTreeWidget::refreshGrids()
+{
+    if (!m_gridsCategory)
+        return;
+
+    while (m_gridsCategory->childCount() > 0)
+    {
+        delete m_gridsCategory->takeChild(0);
+    }
+
+    if (!m_gridManager)
+        return;
+
+    for (const auto& grid : m_gridManager->grids())
+    {
+        if (!grid) continue;
+        QString name = QString::fromStdString(grid->name());
+        QString typeStr = (grid->type() == TSA::Grid::GridType::Cartesian) ? tr("Cartésienne") : tr("Cylindrique");
+        QString status = grid->isActive() ? tr("Active") : tr("Secondaire");
+        if (!grid->isVisible()) status += tr(", Masquée");
+        QString details = QString("%1 (%2)").arg(typeStr, status);
+
+        auto* item = new QTreeWidgetItem(m_gridsCategory, { name, details });
+        item->setData(0, TypeRole, TypeGrid);
+        item->setData(0, IdRole, QString::fromStdString(grid->id()));
+    }
+
+    m_gridsCategory->setText(1, QString("[%1]").arg(m_gridsCategory->childCount()));
+}
+
 void ModelTreeWidget::refreshAll()
 {
     createRootCategories();
+    refreshGrids();
 
     if (!m_model)
         return;
@@ -360,6 +411,7 @@ void ModelTreeWidget::onSlabRemoved(int slabId)
 void ModelTreeWidget::onModelCleared()
 {
     createRootCategories();
+    refreshGrids();
 }
 
 void ModelTreeWidget::onItemSelectionChanged()

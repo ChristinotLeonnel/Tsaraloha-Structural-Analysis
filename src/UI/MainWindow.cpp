@@ -2,9 +2,12 @@
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "../Model/Model.h"
+#include "../Grid/GridManager.h"
+#include "../Grid/GridSnapManager.h"
 #include "ModelTree/ModelTreeWidget.h"
 #include "Properties/PropertyPanel.h"
 #include "Dialogs/TransformDialog.h"
+#include "Dialogs/GridDialog.h"
 #include "Dialogs/GridSettingsDialog.h"
 
 #include <QMenuBar>
@@ -23,7 +26,23 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , m_model(std::make_unique<TSA::Model::Model>())
     , m_selectionManager(std::make_unique<TSA::Viewer::SelectionManager>(this))
+    , m_gridManager(std::make_unique<TSA::Grid::GridManager>())
+    , m_gridSnapManager(std::make_unique<TSA::Grid::GridSnapManager>())
 {
+    // Grille 3D initiale par défaut : bâtiment orthogonal (travées 6m en X, 4m en Y, niveaux 0 et 3m)
+    // On retire d'abord la grille générique créée par défaut dans GridManager
+    // afin de ne pas se retrouver avec deux grilles au démarrage du projet.
+    m_gridManager->clearAllGrids();
+
+    TSA::Grid::GridDefinition def("Grille Bâtiment", TSA::Grid::GridType::Cartesian);
+    def.setOrigin(0.0, 0.0, 0.0);
+    def.generateCartesian(3, 6.0, 3, 4.0, 2, 3.0);
+    auto* defaultGrid = m_gridManager->addGrid(def);
+    if (defaultGrid)
+    {
+        m_gridManager->setActiveGridId(defaultGrid->id());
+    }
+
     setupUi();
 
     // Modèle initial 3D complet :
@@ -53,6 +72,25 @@ MainWindow::MainWindow(QWidget* parent)
     m_model->addSlab({ n2, n4, n8, n6 }, 0.20);
 
     m_occView->setModel(m_model.get());
+    m_occView->setGridManager(m_gridManager.get(), m_gridSnapManager.get());
+
+    connect(m_gridManager.get(), &TSA::Grid::GridManager::gridAdded, this, [this]() {
+        m_occView->rebuildGrid();
+    });
+    connect(m_gridManager.get(), &TSA::Grid::GridManager::gridRemoved, this, [this]() {
+        m_occView->rebuildGrid();
+    });
+    connect(m_gridManager.get(), &TSA::Grid::GridManager::gridModified, this, [this]() {
+        m_occView->rebuildGrid();
+    });
+    connect(m_gridManager.get(), &TSA::Grid::GridManager::activeGridChanged, this, [this]() {
+        m_occView->rebuildGrid();
+    });
+    connect(m_gridManager.get(), &TSA::Grid::GridManager::gridVisibilityChanged, this, [this]() {
+        m_occView->rebuildGrid();
+    });
+
+    m_modelTree->setGridManager(m_gridManager.get());
     m_modelTree->refreshAll();
 
     if (m_statusInfo)
@@ -126,40 +164,37 @@ void MainWindow::createMenus()
 
     viewMenu->addSeparator();
 
-    // Sous-menu Grille 3D
-    QMenu* gridMenu = viewMenu->addMenu(tr("&3D Grid"));
-    auto* gridGroup = new QActionGroup(this);
+    // Menu Grille 3D
+    QMenu* gridMenu = menuBar()->addMenu(tr("&Grids"));
 
-    m_actionGridCartesian = gridMenu->addAction(tr("&Cartesian Grid (Rectangular)"), this, &MainWindow::onGridCartesian);
-    m_actionGridCartesian->setIcon(QIcon(":/icons/grid_cartesian.svg"));
-    m_actionGridCartesian->setToolTip(tr("Cartesian Grid (Rectangular)"));
-    m_actionGridCartesian->setCheckable(true);
-    m_actionGridCartesian->setChecked(true);
-    gridGroup->addAction(m_actionGridCartesian);
+    m_actionNewGrid = gridMenu->addAction(tr("&New Grid..."), this, &MainWindow::onNewGrid);
+    m_actionNewGrid->setIcon(QIcon(":/icons/grid_cartesian.svg"));
+    m_actionNewGrid->setToolTip(tr("Define a new parametric 3D grid (Cartesian or Cylindrical)..."));
 
-    m_actionGridCylindrical = gridMenu->addAction(tr("C&ylindrical Grid (Polar / Radial)"), this, &MainWindow::onGridCylindrical);
-    m_actionGridCylindrical->setIcon(QIcon(":/icons/grid_cylindrical.svg"));
-    m_actionGridCylindrical->setToolTip(tr("Cylindrical Grid (Polar / Radial)"));
-    m_actionGridCylindrical->setCheckable(true);
-    gridGroup->addAction(m_actionGridCylindrical);
-
-    m_actionGridHide = gridMenu->addAction(tr("&Hide Grid"), this, &MainWindow::onGridHide);
-    m_actionGridHide->setCheckable(true);
-    gridGroup->addAction(m_actionGridHide);
+    m_actionGridManager = gridMenu->addAction(tr("&Grid Manager..."), this, &MainWindow::onGridManagerDialog);
+    m_actionGridManager->setIcon(QIcon(":/icons/settings.svg"));
+    m_actionGridManager->setToolTip(tr("Manage grids, active workplane, visibility and snapping tolerance..."));
 
     gridMenu->addSeparator();
+
+    m_actionGridVisible = gridMenu->addAction(tr("&Show 3D Grid"), this, &MainWindow::onToggleGridVisible);
+    m_actionGridVisible->setIcon(QIcon(":/icons/grid_cartesian.svg"));
+    m_actionGridVisible->setToolTip(tr("Toggle 3D Grid Visibility (G)"));
+    m_actionGridVisible->setCheckable(true);
+    m_actionGridVisible->setChecked(true);
+    m_actionGridVisible->setShortcut(QKeySequence(Qt::Key_G));
 
     m_actionGridSnap = gridMenu->addAction(tr("&Snap Cursor to Grid"), this, &MainWindow::onToggleGridSnap);
     m_actionGridSnap->setIcon(QIcon(":/icons/snap.svg"));
-    m_actionGridSnap->setToolTip(tr("Snap Cursor to Grid (S)"));
+    m_actionGridSnap->setToolTip(tr("Magnetic Snap to Grid intersections, axes and model nodes (S)"));
     m_actionGridSnap->setCheckable(true);
-    m_actionGridSnap->setChecked(false);
+    m_actionGridSnap->setChecked(true);
     m_actionGridSnap->setShortcut(QKeySequence(Qt::Key_S));
 
-    gridMenu->addSeparator();
-    m_actionGridSettings = gridMenu->addAction(tr("Grid &Settings..."), this, &MainWindow::onGridSettings);
-    m_actionGridSettings->setIcon(QIcon(":/icons/settings.svg"));
-    m_actionGridSettings->setToolTip(tr("Grid Settings..."));
+    m_actionGridLabels = gridMenu->addAction(tr("Show Axis &Labels / Bubbles"), this, &MainWindow::onToggleGridLabels);
+    m_actionGridLabels->setToolTip(tr("Show or hide axis bubbles and label texts in 3D"));
+    m_actionGridLabels->setCheckable(true);
+    m_actionGridLabels->setChecked(true);
 
     // Modes d'interaction / Dessin 3D
     m_drawModeGroup = new QActionGroup(this);
@@ -282,10 +317,10 @@ void MainWindow::createToolBars()
     viewToolBar->addAction(m_actionFitAll);
     viewToolBar->addAction(m_actionResetView);
     viewToolBar->addSeparator();
-    viewToolBar->addAction(m_actionGridCartesian);
-    viewToolBar->addAction(m_actionGridCylindrical);
+    viewToolBar->addAction(m_actionNewGrid);
+    viewToolBar->addAction(m_actionGridManager);
+    viewToolBar->addAction(m_actionGridVisible);
     viewToolBar->addAction(m_actionGridSnap);
-    viewToolBar->addAction(m_actionGridSettings);
 }
 
 void MainWindow::createDockWindows()
@@ -467,19 +502,12 @@ void MainWindow::createStatusBar()
         }
     });
 
-    connect(m_occView, &OccView::gridTypeChanged, this, [this](OccView::GridType type) {
-        if (type == OccView::GridType::Cartesian)
-        {
-            if (m_actionGridCartesian) m_actionGridCartesian->setChecked(true);
-        }
-        else if (type == OccView::GridType::Cylindrical)
-        {
-            if (m_actionGridCylindrical) m_actionGridCylindrical->setChecked(true);
-        }
-        else
-        {
-            if (m_actionGridHide) m_actionGridHide->setChecked(true);
-        }
+    connect(m_occView, &OccView::gridVisibilityChanged, this, [this](bool visible) {
+        if (m_actionGridVisible) m_actionGridVisible->setChecked(visible);
+    });
+
+    connect(m_occView, &OccView::gridSnapChanged, this, [this](bool enabled) {
+        if (m_actionGridSnap) m_actionGridSnap->setChecked(enabled);
     });
 
     connect(m_occView, &OccView::interactionModeChanged, this, [this](OccView::InteractionMode mode) {
@@ -567,38 +595,44 @@ void MainWindow::onResetView()
     }
 }
 
-void MainWindow::onGridCartesian()
+void MainWindow::onNewGrid()
 {
-    if (m_occView)
+    TSA::UI::GridDialog dlg(this);
+    if (dlg.exec() == QDialog::Accepted)
     {
-        m_occView->showCartesianGrid();
-        if (m_statusInfo)
+        TSA::Grid::GridDefinition def = dlg.getDefinition();
+        if (m_gridManager)
         {
-            m_statusInfo->setText(tr("3D Cartesian Grid active"));
+            auto* newGrid = m_gridManager->addGrid(def);
+            if (newGrid)
+            {
+                m_gridManager->setActiveGridId(newGrid->id());
+                if (m_statusInfo)
+                {
+                    m_statusInfo->setText(tr("Grille créée : %1 (Active)").arg(QString::fromStdString(newGrid->name())));
+                }
+            }
         }
     }
 }
 
-void MainWindow::onGridCylindrical()
+void MainWindow::onGridManagerDialog()
 {
-    if (m_occView)
+    if (m_gridManager && m_gridSnapManager && m_occView)
     {
-        m_occView->showCylindricalGrid();
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("3D Cylindrical Grid active"));
-        }
+        TSA::UI::GridSettingsDialog dlg(m_gridManager.get(), m_gridSnapManager.get(), m_occView, this);
+        dlg.exec();
     }
 }
 
-void MainWindow::onGridHide()
+void MainWindow::onToggleGridVisible(bool checked)
 {
     if (m_occView)
     {
-        m_occView->hideGrid();
+        m_occView->setGridVisible(checked);
         if (m_statusInfo)
         {
-            m_statusInfo->setText(tr("Grid hidden"));
+            m_statusInfo->setText(checked ? tr("Grille 3D affichée") : tr("Grille 3D masquée"));
         }
     }
 }
@@ -607,20 +641,23 @@ void MainWindow::onToggleGridSnap(bool checked)
 {
     if (m_occView)
     {
-        m_occView->setSnapToGridEnabled(checked);
+        m_occView->setGridSnapEnabled(checked);
         if (m_statusInfo)
         {
-            m_statusInfo->setText(checked ? tr("Magnetic Grid Snapping enabled") : tr("Grid Snapping disabled"));
+            m_statusInfo->setText(checked ? tr("Accrochage magnétique à la grille activé") : tr("Accrochage désactivé"));
         }
     }
 }
 
-void MainWindow::onGridSettings()
+void MainWindow::onToggleGridLabels(bool checked)
 {
     if (m_occView)
     {
-        TSA::UI::GridSettingsDialog dlg(m_occView, this);
-        dlg.exec();
+        m_occView->setGridLabelsVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Bulles et étiquettes d'axes affichées") : tr("Bulles d'axes masquées"));
+        }
     }
 }
 

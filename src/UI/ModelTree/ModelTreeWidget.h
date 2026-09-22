@@ -4,6 +4,11 @@
 #include <QTreeWidget>
 #include "../../Model/Model.h"
 
+namespace TSA::Grid
+{
+    class GridManager;
+}
+
 namespace TSA::UI
 {
 
@@ -15,7 +20,9 @@ public:
     explicit ModelTreeWidget(TSA::Model::Model* model, QWidget* parent = nullptr);
     ~ModelTreeWidget() override;
 
+    void setGridManager(TSA::Grid::GridManager* gridManager);
     void refreshAll();
+    void refreshGrids();
 
     void selectNodeItem(int nodeId);
     void selectBeamItem(int beamId);
@@ -59,8 +66,10 @@ private:
 
 private:
     TSA::Model::Model* m_model = nullptr;
+    TSA::Grid::GridManager* m_gridManager = nullptr;
     QTreeWidget* m_tree = nullptr;
 
+    QTreeWidgetItem* m_gridsCategory = nullptr;
     QTreeWidgetItem* m_nodesCategory = nullptr;
     QTreeWidgetItem* m_beamsCategory = nullptr;
     QTreeWidgetItem* m_columnsCategory = nullptr;

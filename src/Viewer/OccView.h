@@ -21,6 +21,13 @@ namespace TSA::Viewer
     class SelectionManager;
 }
 
+namespace TSA::Grid
+{
+    class GridManager;
+    class GridSnapManager;
+}
+#include "../Grid/GridRenderer.h"
+
 #include <AIS_RubberBand.hxx>
 
 class OccView : public QWidget, public TSA::Model::IModelObserver
@@ -62,30 +69,18 @@ public:
     void fitAll();
     void resetView();
 
-    // Grille 3D (Cartésienne & Cylindrique)
-    enum class GridType
-    {
-        None,
-        Cartesian,
-        Cylindrical
-    };
-
-    GridType currentGridType() const { return m_currentGridType; }
-    bool isGridVisible() const { return m_currentGridType != GridType::None; }
-
-    void showCartesianGrid(double xStep = 1.0, double yStep = 1.0,
-                           double xSize = 20.0, double ySize = 20.0,
-                           double zOffset = 0.0, bool pointsMode = false);
-
-    void showCylindricalGrid(double radiusStep = 1.0, int divisionNumber = 12,
-                             double maxRadius = 15.0, double zOffset = 0.0,
-                             bool pointsMode = false);
+    // Intégration du système de Grille 3D paramétrique
+    void setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::GridSnapManager* snapManager);
+    void rebuildGrid();
 
     void setGridVisible(bool visible);
-    void hideGrid();
+    bool isGridVisible() const;
 
-    bool isSnapToGridEnabled() const { return m_snapToGrid; }
-    void setSnapToGridEnabled(bool enabled) { m_snapToGrid = enabled; }
+    void setGridSnapEnabled(bool enabled);
+    bool isGridSnapEnabled() const;
+
+    void setGridLabelsVisible(bool visible);
+    bool areGridLabelsVisible() const;
 
     // Modes d'interaction (Sélection & Dessin 3D)
     enum class InteractionMode
@@ -104,7 +99,8 @@ public:
 signals:
     void mouseCoordinatesChanged(double x, double y, double z);
     void objectHovered(const QString& info);
-    void gridTypeChanged(GridType type);
+    void gridVisibilityChanged(bool visible);
+    void gridSnapChanged(bool enabled);
     void interactionModeChanged(InteractionMode mode);
     void drawingPromptChanged(const QString& prompt);
 
@@ -179,8 +175,13 @@ private:
     QPoint m_pressMousePos;
     QPoint m_dragStartPos;
 
-    GridType m_currentGridType = GridType::Cartesian;
-    bool m_snapToGrid = false;
+    TSA::Grid::GridManager* m_gridManager = nullptr;
+    TSA::Grid::GridSnapManager* m_gridSnapManager = nullptr;
+    TSA::Grid::GridRenderer m_gridRenderer;
+
+    bool m_snapToGrid = true;
+    bool m_gridVisible = true;
+    bool m_gridLabelsVisible = true;
     double m_gridZOffset = 0.0;
 
     InteractionMode m_interactionMode = InteractionMode::Select;

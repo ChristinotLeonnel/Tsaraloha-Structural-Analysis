@@ -5,6 +5,11 @@
 
 namespace TSA::Model { class Model; }
 namespace TSA::Viewer { class SelectionManager; }
+namespace TSA::Grid
+{
+    class GridManager;
+    class GridSnapManager;
+}
 namespace TSA::UI
 {
     class ModelTreeWidget;
@@ -28,16 +33,18 @@ public:
     TSA::Model::Model* model() { return m_model.get(); }
     const TSA::Model::Model* model() const { return m_model.get(); }
 
+    TSA::Grid::GridManager* gridManager() { return m_gridManager.get(); }
+
 private slots:
     void onFitAll();
     void onResetView();
 
     // Grille 3D
-    void onGridCartesian();
-    void onGridCylindrical();
-    void onGridHide();
+    void onNewGrid();
+    void onGridManagerDialog();
+    void onToggleGridVisible(bool checked);
     void onToggleGridSnap(bool checked);
-    void onGridSettings();
+    void onToggleGridLabels(bool checked);
 
     // Modes d'interaction (Dessin 3D)
     void onModeSelect();
@@ -67,6 +74,8 @@ private:
 private:
     std::unique_ptr<TSA::Model::Model> m_model;
     std::unique_ptr<TSA::Viewer::SelectionManager> m_selectionManager;
+    std::unique_ptr<TSA::Grid::GridManager> m_gridManager;
+    std::unique_ptr<TSA::Grid::GridSnapManager> m_gridSnapManager;
 
     OccView* m_occView = nullptr;
     TSA::UI::ModelTreeWidget* m_modelTree = nullptr;
@@ -82,11 +91,11 @@ private:
     QAction* m_actionResetView = nullptr;
 
     // Actions Grille
-    QAction* m_actionGridCartesian = nullptr;
-    QAction* m_actionGridCylindrical = nullptr;
-    QAction* m_actionGridHide = nullptr;
+    QAction* m_actionNewGrid = nullptr;
+    QAction* m_actionGridManager = nullptr;
+    QAction* m_actionGridVisible = nullptr;
     QAction* m_actionGridSnap = nullptr;
-    QAction* m_actionGridSettings = nullptr;
+    QAction* m_actionGridLabels = nullptr;
 
     // Actions Modes d'interaction / Dessin 3D
     QActionGroup* m_drawModeGroup = nullptr;

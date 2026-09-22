@@ -3,6 +3,8 @@
 #include "../Model/Model.h"
 #include "../Geometry/BeamGeometry.h"
 #include "../Geometry/SlabGeometry.h"
+#include "../Grid/GridManager.h"
+#include "../Grid/GridSnapManager.h"
 
 #include <QMouseEvent>
 #include <QWheelEvent>
@@ -11,6 +13,10 @@
 #ifdef _WIN32
     #include <windows.h>
     #include <WNT_Window.hxx>
+#elif defined(__APPLE__)
+    #include <Cocoa_Window.hxx>
+#else
+    #include <Xw_Window.hxx>
 #endif
 
 #include <Quantity_Color.hxx>
@@ -116,6 +122,7 @@ void OccView::showEvent(QShowEvent* event)
         initOcc();
         m_isInitialized = true;
         rebuildAllShapes();
+        rebuildGrid();
     }
 }
 
@@ -130,10 +137,6 @@ void OccView::initOcc()
 
     // Plan privilégié horizontal (XY) à Z=0 avec normale dirigée vers +Z
     m_viewer->SetPrivilegedPlane(gp_Ax3(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0), gp_Dir(1.0, 0.0, 0.0)));
-
-    m_viewer->SetRectangularGridValues(0.0, 0.0, 1.0, 1.0, 0.0);
-    m_viewer->SetRectangularGridGraphicValues(20.0, 20.0, 0.0);
-    setGridVisible(true);
 
     m_context = new AIS_InteractiveContext(m_viewer);
     m_context->SetPixelTolerance(8);
@@ -153,9 +156,11 @@ void OccView::initOcc()
     m_view = m_viewer->CreateView();
 
 #ifdef _WIN32
-    Handle(WNT_Window) wind = new WNT_Window(reinterpret_cast<Aspect_Handle>(winId()));
+    Handle(Aspect_Window) wind = new WNT_Window(reinterpret_cast<Aspect_Handle>(winId()));
+#elif defined(__APPLE__)
+    Handle(Aspect_Window) wind = new Cocoa_Window(reinterpret_cast<NSView*>(winId()));
 #else
-    Handle(Aspect_Window) wind = nullptr;
+    Handle(Aspect_Window) wind = new Xw_Window(m_displayConnection, static_cast<Window>(winId()));
 #endif
     m_view->SetWindow(wind);
     if (!wind->IsMapped())
@@ -734,77 +739,30 @@ void OccView::resetView()
     }
 }
 
-void OccView::showCartesianGrid(double xStep, double yStep,
-                                double xSize, double ySize,
-                                double zOffset, bool pointsMode)
+void OccView::setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::GridSnapManager* snapManager)
 {
-    if (m_viewer.IsNull())
-        return;
-
-    m_gridZOffset = zOffset;
-    m_currentGridType = GridType::Cartesian;
-
-    m_viewer->SetPrivilegedPlane(gp_Ax3(gp_Pnt(0.0, 0.0, zOffset), gp_Dir(0.0, 0.0, 1.0), gp_Dir(1.0, 0.0, 0.0)));
-    m_viewer->SetRectangularGridValues(0.0, 0.0, xStep, yStep, 0.0);
-    m_viewer->SetRectangularGridGraphicValues(xSize, ySize, zOffset);
-
-    Aspect_GridDrawMode mode = pointsMode ? Aspect_GDM_Points : Aspect_GDM_Lines;
-    m_viewer->ActivateGrid(Aspect_GT_Rectangular, mode);
-
-    auto grid = m_viewer->Grid(Aspect_GT_Rectangular, true);
-    if (!grid.IsNull())
-    {
-        grid->SetColors(Quantity_NOC_GRAY40, Quantity_NOC_STEELBLUE);
-    }
-
-    emit gridTypeChanged(GridType::Cartesian);
-
-    if (!m_view.IsNull())
-    {
-        m_view->Redraw();
-    }
+    m_gridManager = gridManager;
+    m_gridSnapManager = snapManager;
+    rebuildGrid();
 }
 
-void OccView::showCylindricalGrid(double radiusStep, int divisionNumber,
-                                  double maxRadius, double zOffset,
-                                  bool pointsMode)
+void OccView::rebuildGrid()
 {
-    if (m_viewer.IsNull())
+    if (m_context.IsNull())
         return;
 
-    m_gridZOffset = zOffset;
-    m_currentGridType = GridType::Cylindrical;
+    m_gridRenderer.clearGrid(m_context);
 
-    m_viewer->SetPrivilegedPlane(gp_Ax3(gp_Pnt(0.0, 0.0, zOffset), gp_Dir(0.0, 0.0, 1.0), gp_Dir(1.0, 0.0, 0.0)));
-    m_viewer->SetCircularGridValues(0.0, 0.0, radiusStep, divisionNumber, 0.0);
-    m_viewer->SetCircularGridGraphicValues(maxRadius, zOffset);
-
-    Aspect_GridDrawMode mode = pointsMode ? Aspect_GDM_Points : Aspect_GDM_Lines;
-    m_viewer->ActivateGrid(Aspect_GT_Circular, mode);
-
-    auto grid = m_viewer->Grid(Aspect_GT_Circular, true);
-    if (!grid.IsNull())
+    if (m_gridVisible && m_gridManager)
     {
-        grid->SetColors(Quantity_NOC_GRAY40, Quantity_NOC_CYAN3);
+        for (const auto& grid : m_gridManager->grids())
+        {
+            if (grid && grid->isVisible())
+            {
+                m_gridRenderer.renderGrid(*grid, m_context);
+            }
+        }
     }
-
-    emit gridTypeChanged(GridType::Cylindrical);
-
-    if (!m_view.IsNull())
-    {
-        m_view->Redraw();
-    }
-}
-
-void OccView::hideGrid()
-{
-    if (m_viewer.IsNull())
-        return;
-
-    m_viewer->DeactivateGrid();
-    m_currentGridType = GridType::None;
-
-    emit gridTypeChanged(GridType::None);
 
     if (!m_view.IsNull())
     {
@@ -814,21 +772,61 @@ void OccView::hideGrid()
 
 void OccView::setGridVisible(bool visible)
 {
-    if (visible)
+    m_gridVisible = visible;
+    m_gridRenderer.setGridVisible(visible, m_context);
+    if (!visible)
     {
-        if (m_currentGridType == GridType::Cylindrical)
+        m_gridRenderer.hideSnapMarker(m_context);
+    }
+    emit gridVisibilityChanged(visible);
+
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
+bool OccView::isGridVisible() const
+{
+    return m_gridVisible;
+}
+
+void OccView::setGridSnapEnabled(bool enabled)
+{
+    m_snapToGrid = enabled;
+    if (m_gridSnapManager)
+    {
+        m_gridSnapManager->setSnapEnabled(enabled);
+    }
+    if (!enabled && !m_context.IsNull())
+    {
+        m_gridRenderer.hideSnapMarker(m_context);
+        if (!m_view.IsNull())
         {
-            showCylindricalGrid();
-        }
-        else
-        {
-            showCartesianGrid();
+            m_view->Redraw();
         }
     }
-    else
+    emit gridSnapChanged(enabled);
+}
+
+bool OccView::isGridSnapEnabled() const
+{
+    return m_snapToGrid;
+}
+
+void OccView::setGridLabelsVisible(bool visible)
+{
+    m_gridLabelsVisible = visible;
+    m_gridRenderer.setLabelsVisible(visible, m_context);
+    if (!m_view.IsNull())
     {
-        hideGrid();
+        m_view->Redraw();
     }
+}
+
+bool OccView::areGridLabelsVisible() const
+{
+    return m_gridLabelsVisible;
 }
 
 QPoint OccView::convertMousePos(const QPointF& logicalPos) const
@@ -935,21 +933,36 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
                     y = node->y();
                     z = node->z();
                     detectedNodeId = nId;
+                    if (m_snapToGrid)
+                    {
+                        TSA::Grid::GridSnapResult nodeSnap;
+                        nodeSnap.snapped = true;
+                        nodeSnap.point = gp_Pnt(x, y, z);
+                        nodeSnap.type = TSA::Grid::GridSnapType::Node;
+                        nodeSnap.description = "Noeud N" + std::to_string(nId);
+                        m_gridRenderer.showSnapMarker(nodeSnap, m_context);
+                    }
                     return true;
                 }
             }
         }
     }
 
-    // 2. Si aucun nœud n'est détecté, projection 3D sur le plan de référence de la grille (Z = m_gridZOffset)
+    // 2. Si aucun nœud n'est détecté, projection 3D sur le plan de référence de la grille
+    double zPlane = m_gridZOffset;
+    if (m_gridManager && m_gridManager->activeGrid())
+    {
+        zPlane = m_gridManager->activeGrid()->definition().origin().Z();
+    }
+
     double xEye = 0.0, yEye = 0.0, zEye = 0.0;
     double xDir = 0.0, yDir = 0.0, zDir = 0.0;
     m_view->ConvertWithProj(px, py, xEye, yEye, zEye, xDir, yDir, zDir);
 
-    double wx = 0.0, wy = 0.0, wz = m_gridZOffset;
+    double wx = 0.0, wy = 0.0, wz = zPlane;
     if (std::abs(zDir) > 1e-6)
     {
-        double t = (m_gridZOffset - zEye) / zDir;
+        double t = (zPlane - zEye) / zDir;
         wx = xEye + t * xDir;
         wy = yEye + t * yDir;
     }
@@ -958,17 +971,38 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
         m_view->Convert(px, py, wx, wy, wz);
     }
 
-    // 3. Accrochage magnétique à la grille si activé
-    if (m_snapToGrid && !m_viewer.IsNull() && m_viewer->IsGridActive())
+    // 3. Accrochage magnétique à la grille / nœuds si activé
+    if (m_snapToGrid && m_gridSnapManager)
     {
-        double gx = wx, gy = wy;
-        auto activeGrid = m_viewer->Grid(false);
-        if (!activeGrid.IsNull())
+        gp_Pnt rawPnt(wx, wy, wz);
+        const TSA::Grid::GridSystem* activeGrid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
+        TSA::Grid::GridSnapResult snapRes = m_gridSnapManager->findSnap(rawPnt, activeGrid, m_model);
+        if (snapRes.snapped)
         {
-            activeGrid->Hit(wx, wy, gx, gy);
-            wx = gx;
-            wy = gy;
+            wx = snapRes.point.X();
+            wy = snapRes.point.Y();
+            wz = snapRes.point.Z();
+            if (snapRes.type == TSA::Grid::GridSnapType::Node && m_model)
+            {
+                for (const auto& [nId, n] : m_model->nodes())
+                {
+                    if (std::abs(n.x() - wx) < 1e-4 && std::abs(n.y() - wy) < 1e-4 && std::abs(n.z() - wz) < 1e-4)
+                    {
+                        detectedNodeId = nId;
+                        break;
+                    }
+                }
+            }
+            m_gridRenderer.showSnapMarker(snapRes, m_context);
         }
+        else
+        {
+            m_gridRenderer.hideSnapMarker(m_context);
+        }
+    }
+    else
+    {
+        m_gridRenderer.hideSnapMarker(m_context);
     }
 
     x = wx;
@@ -1522,6 +1556,10 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                 setCursor(Qt::CrossCursor);
                 emit objectHovered(QString());
                 emit mouseCoordinatesChanged(wx, wy, wz);
+                if (m_snapToGrid && !m_view.IsNull())
+                {
+                    m_view->Redraw();
+                }
             }
         }
         break;

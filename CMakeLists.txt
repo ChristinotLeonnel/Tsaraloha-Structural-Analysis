@@ -40,8 +40,27 @@ set(SOURCES
     src/UI/Properties/PropertyPanel.cpp
     src/UI/Dialogs/TransformDialog.h
     src/UI/Dialogs/TransformDialog.cpp
+    src/UI/Dialogs/GridDialog.h
+    src/UI/Dialogs/GridDialog.cpp
     src/UI/Dialogs/GridSettingsDialog.h
     src/UI/Dialogs/GridSettingsDialog.cpp
+    src/Grid/GridType.h
+    src/Grid/GridDefinition.h
+    src/Grid/GridDefinition.cpp
+    src/Grid/CartesianGrid.h
+    src/Grid/CartesianGrid.cpp
+    src/Grid/CylindricalGrid.h
+    src/Grid/CylindricalGrid.cpp
+    src/Grid/GridLabelRenderer.h
+    src/Grid/GridLabelRenderer.cpp
+    src/Grid/GridRenderer.h
+    src/Grid/GridRenderer.cpp
+    src/Grid/GridSnapManager.h
+    src/Grid/GridSnapManager.cpp
+    src/Grid/GridSystem.h
+    src/Grid/GridSystem.cpp
+    src/Grid/GridManager.h
+    src/Grid/GridManager.cpp
     src/Viewer/OccView.h
     src/Viewer/OccView.cpp
     src/Viewer/SelectionManager.h
