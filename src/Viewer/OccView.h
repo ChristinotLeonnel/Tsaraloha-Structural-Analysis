@@ -27,8 +27,10 @@ namespace TSA::Grid
     class GridSnapManager;
 }
 #include "../Grid/GridRenderer.h"
-
+#include <AIS_ViewCube.hxx>
 #include <AIS_RubberBand.hxx>
+#include <Graphic3d_ClipPlane.hxx>
+#include <gp_Ax3.hxx>
 
 class OccView : public QWidget, public TSA::Model::IModelObserver
 {
@@ -82,6 +84,46 @@ public:
     void setGridLabelsVisible(bool visible);
     bool areGridLabelsVisible() const;
 
+    void setGridLevelsVisible(bool visible);
+    bool areGridLevelsVisible() const;
+
+    // Support des règles et projections
+    bool pixelToWorldPlane(int px, int py, double& wx, double& wy, double& wz) const;
+    void worldToPixel(double wx, double wy, double wz, int& px, int& py) const;
+    void setViewOrientation(V3d_TypeOfOrientation orientation);
+    void setCadBlueprintTheme(bool enabled);
+
+    // Vues en Plan & Projections (Robot SA style)
+    enum class ViewPlaneMode
+    {
+        Perspective3D,
+        PlanXY,
+        PlanXZ,
+        PlanYZ
+    };
+    ViewPlaneMode viewPlaneMode() const { return m_viewPlaneMode; }
+    void setViewPlaneMode(ViewPlaneMode mode);
+
+    // Repère Global vs Local
+    bool isLocalCoordinateSystem() const { return m_isLocalCoordinateSystem; }
+    void setLocalCoordinateSystem(bool local);
+
+    // Système de Coupe / Section 3D (Graphic3d_ClipPlane)
+    void setClippingEnabled(bool enabled);
+    bool isClippingEnabled() const { return m_isClippingEnabled; }
+    void setClipPlane(int axisIndex, double position, bool flip = false); // 0=XY, 1=XZ, 2=YZ
+    double clipPosition() const { return m_clipPosition; }
+    int clipAxisIndex() const { return m_clipAxisIndex; }
+    bool isClipFlipped() const { return m_isClipFlipped; }
+
+    // Détection 3D intelligente sous le curseur
+    bool findNearest3DPoint(int px, int py, double& outX, double& outY, double& outZ,
+                            int& outNodeId, QString& outDesc, TSA::Grid::GridSnapType& outType) const;
+
+    // Dessin en hauteur & Niveaux
+    void setActiveLevelElevation(double z);
+    double activeLevelElevation() const { return m_activeLevelZ; }
+
     // Modes d'interaction (Sélection & Dessin 3D)
     enum class InteractionMode
     {
@@ -98,11 +140,16 @@ public:
 
 signals:
     void mouseCoordinatesChanged(double x, double y, double z);
+    void mousePixelPositionChanged(int px, int py);
+    void viewCameraChanged();
     void objectHovered(const QString& info);
     void gridVisibilityChanged(bool visible);
     void gridSnapChanged(bool enabled);
     void interactionModeChanged(InteractionMode mode);
     void drawingPromptChanged(const QString& prompt);
+    void viewPlaneModeChanged(ViewPlaneMode mode);
+    void coordinateSystemChanged(bool isLocal);
+    void clippingChanged(bool enabled, int axisIndex, double position, bool flip);
 
 protected:
     // IModelObserver overrides
@@ -144,6 +191,7 @@ private:
     void updateRubberBand(const gp_Pnt& currentPnt);
     void clearRubberBand();
     int getOrCreateNode(double x, double y, double z, int existingNodeId);
+    void updateClipPlaneEquation();
 
 private:
     TSA::Model::Model* m_model = nullptr;
@@ -183,6 +231,19 @@ private:
     bool m_gridVisible = true;
     bool m_gridLabelsVisible = true;
     double m_gridZOffset = 0.0;
+    double m_activeLevelZ = 0.0;
+
+    ViewPlaneMode m_viewPlaneMode = ViewPlaneMode::Perspective3D;
+    bool m_isLocalCoordinateSystem = false;
+    gp_Ax3 m_localCS;
+
+    bool m_isClippingEnabled = false;
+    int m_clipAxisIndex = 0; // 0=XY, 1=XZ, 2=YZ
+    double m_clipPosition = 0.0;
+    bool m_isClipFlipped = false;
+    Handle(Graphic3d_ClipPlane) m_clipPlane;
+
+    Handle(AIS_ViewCube) m_viewCube;
 
     InteractionMode m_interactionMode = InteractionMode::Select;
     std::vector<int> m_drawingNodeIds;

@@ -56,6 +56,10 @@ public:
     };
 
     const std::vector<LabelAnchor>& labelAnchors() const { return m_labelAnchors; }
+    const std::vector<LabelAnchor>& levelLabelAnchors() const { return m_levelLabelAnchors; }
+    const std::vector<GridLineSegment>& verticalLevelLines() const { return m_verticalLevelLines; }
+    const std::vector<GridLineSegment>& verticalConnectionLines() const { return m_verticalConnectionLines; }
+    const std::vector<GridLineSegment>& levelBoundaryPlanes() const { return m_levelBoundaryPlanes; }
 
     // Limites de la grille
     double minX() const { return m_minX; }
@@ -82,8 +86,12 @@ private:
     std::vector<GridLineSegment> m_xLines;
     std::vector<GridLineSegment> m_yLines;
     std::vector<GridLineSegment> m_allLines;
+    std::vector<GridLineSegment> m_verticalLevelLines;
+    std::vector<GridLineSegment> m_verticalConnectionLines;
+    std::vector<GridLineSegment> m_levelBoundaryPlanes;
     std::vector<GridIntersection> m_intersections;
     std::vector<LabelAnchor> m_labelAnchors;
+    std::vector<LabelAnchor> m_levelLabelAnchors;
 
     double m_minX = 0.0;
     double m_maxX = 0.0;

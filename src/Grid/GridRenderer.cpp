@@ -50,6 +50,26 @@ void GridRenderer::clearGrid(const Handle(AIS_InteractiveContext)& context)
         context->Remove(m_originShape, false);
         m_originShape.Nullify();
     }
+    if (!m_levelAxisShape.IsNull())
+    {
+        context->Remove(m_levelAxisShape, false);
+        m_levelAxisShape.Nullify();
+    }
+    if (!m_levelPlanesShape.IsNull())
+    {
+        context->Remove(m_levelPlanesShape, false);
+        m_levelPlanesShape.Nullify();
+    }
+    if (!m_verticalConnectionsShape.IsNull())
+    {
+        context->Remove(m_verticalConnectionsShape, false);
+        m_verticalConnectionsShape.Nullify();
+    }
+    if (!m_activeLevelPlaneShape.IsNull())
+    {
+        context->Remove(m_activeLevelPlaneShape, false);
+        m_activeLevelPlaneShape.Nullify();
+    }
 }
 
 void GridRenderer::setGridVisible(bool visible, const Handle(AIS_InteractiveContext)& context)
@@ -69,9 +89,13 @@ void GridRenderer::setGridVisible(bool visible, const Handle(AIS_InteractiveCont
     };
 
     updateVis(m_axesShape);
+    updateVis(m_verticalConnectionsShape);
+    updateVis(m_activeLevelPlaneShape);
     updateVis(m_circlesShape);
     updateVis(m_intersectionsShape);
     updateVis(m_originShape);
+    updateVis(m_levelAxisShape);
+    updateVis(m_levelPlanesShape);
 
     m_labelRenderer.setVisible(m_gridVisible && m_labelsVisible, context);
 }
@@ -91,6 +115,29 @@ void GridRenderer::setIntersectionsVisible(bool visible, const Handle(AIS_Intera
             context->Display(m_intersectionsShape, false);
         else
             context->Erase(m_intersectionsShape, false);
+    }
+}
+
+void GridRenderer::setLevelsVisible(bool visible, const Handle(AIS_InteractiveContext)& context)
+{
+    m_levelsVisible = visible;
+    if (context.IsNull())
+        return;
+
+    if (!m_levelAxisShape.IsNull())
+    {
+        if (m_gridVisible && m_levelsVisible)
+            context->Display(m_levelAxisShape, false);
+        else
+            context->Erase(m_levelAxisShape, false);
+    }
+
+    if (!m_levelPlanesShape.IsNull())
+    {
+        if (m_gridVisible && m_levelsVisible)
+            context->Display(m_levelPlanesShape, false);
+        else
+            context->Erase(m_levelPlanesShape, false);
     }
 }
 
@@ -140,9 +187,45 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
     }
 
     m_axesShape = new AIS_Shape(axesCompound);
-    m_axesShape->SetColor(Quantity_Color(0.42, 0.48, 0.58, Quantity_TOC_RGB));
-    m_axesShape->SetWidth(1.2);
+    Handle(Prs3d_LineAspect) dashAspect = new Prs3d_LineAspect(
+        Quantity_Color(0.60, 0.65, 0.72, Quantity_TOC_RGB),
+        Aspect_TOL_DASH,
+        1.0
+    );
+    m_axesShape->Attributes()->SetWireAspect(dashAspect);
+    m_axesShape->Attributes()->SetLineAspect(dashAspect);
+    m_axesShape->SetColor(Quantity_Color(0.60, 0.65, 0.72, Quantity_TOC_RGB));
+    m_axesShape->SetWidth(1.0);
     context->Display(m_axesShape, false);
+
+    // 1b. Lignes de connexion verticales à chaque intersection (X_i, Y_j) reliant tous les étages
+    if (!cartesian->verticalConnectionLines().empty())
+    {
+        TopoDS_Compound connCompound;
+        builder.MakeCompound(connCompound);
+        for (const auto& line : cartesian->verticalConnectionLines())
+        {
+            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+            if (!edge.IsNull())
+            {
+                builder.Add(connCompound, edge);
+            }
+        }
+        m_verticalConnectionsShape = new AIS_Shape(connCompound);
+        Handle(Prs3d_LineAspect) vDashAspect = new Prs3d_LineAspect(
+            Quantity_Color(0.58, 0.62, 0.70, Quantity_TOC_RGB),
+            Aspect_TOL_DASH,
+            1.2
+        );
+        m_verticalConnectionsShape->Attributes()->SetWireAspect(vDashAspect);
+        m_verticalConnectionsShape->Attributes()->SetLineAspect(vDashAspect);
+        m_verticalConnectionsShape->SetColor(Quantity_Color(0.58, 0.62, 0.70, Quantity_TOC_RGB));
+        m_verticalConnectionsShape->SetWidth(1.2);
+        context->Display(m_verticalConnectionsShape, false);
+    }
+
+    // 1c. Mise en surbrillance du plan de l'étage actif
+    updateActiveLevelHighlight(gridSystem, context);
 
     // 2. Intersections (petites sphères discrètes aux nœuds de grille)
     if (gridSystem.showIntersections())
@@ -179,6 +262,106 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
     m_originShape->SetColor(Quantity_NOC_YELLOW);
     m_originShape->SetWidth(3.0);
     context->Display(m_originShape, false);
+
+    // 4. Colonne verticale Z reliant tous les étages (exigence centrale)
+    if (!cartesian->verticalLevelLines().empty())
+    {
+        TopoDS_Compound vertCompound;
+        builder.MakeCompound(vertCompound);
+
+        for (const auto& line : cartesian->verticalLevelLines())
+        {
+            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+            if (!edge.IsNull())
+            {
+                builder.Add(vertCompound, edge);
+            }
+        }
+
+        m_levelAxisShape = new AIS_Shape(vertCompound);
+        m_levelAxisShape->SetColor(Quantity_Color(0.95, 0.75, 0.15, Quantity_TOC_RGB)); // Or structural éclatant
+        m_levelAxisShape->SetWidth(2.6);
+        context->Display(m_levelAxisShape, false);
+    }
+
+    // 5. Cadres de contour des niveaux d'étages
+    if (!cartesian->levelBoundaryPlanes().empty())
+    {
+        TopoDS_Compound planesCompound;
+        builder.MakeCompound(planesCompound);
+
+        for (const auto& line : cartesian->levelBoundaryPlanes())
+        {
+            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+            if (!edge.IsNull())
+            {
+                builder.Add(planesCompound, edge);
+            }
+        }
+
+        m_levelPlanesShape = new AIS_Shape(planesCompound);
+        m_levelPlanesShape->SetColor(Quantity_Color(0.25, 0.50, 0.75, Quantity_TOC_RGB)); // Bleu acier moderne
+        m_levelPlanesShape->SetWidth(1.6);
+        context->Display(m_levelPlanesShape, false);
+    }
+}
+
+void GridRenderer::setActiveLevelElevation(double z, const GridSystem* gridSystem, const Handle(AIS_InteractiveContext)& context)
+{
+    m_activeLevelZ = z;
+    if (gridSystem)
+    {
+        updateActiveLevelHighlight(*gridSystem, context);
+    }
+}
+
+void GridRenderer::updateActiveLevelHighlight(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context)
+{
+    if (context.IsNull())
+        return;
+
+    if (!m_activeLevelPlaneShape.IsNull())
+    {
+        context->Remove(m_activeLevelPlaneShape, false);
+        m_activeLevelPlaneShape.Nullify();
+    }
+
+    if (!m_gridVisible || gridSystem.type() != GridType::Cartesian || !gridSystem.cartesian())
+        return;
+
+    const auto* cartesian = gridSystem.cartesian();
+    BRep_Builder builder;
+    TopoDS_Compound activeCompound;
+    builder.MakeCompound(activeCompound);
+
+    bool hasLines = false;
+    for (const auto& line : cartesian->allLines())
+    {
+        if (std::abs(line.zLevel - m_activeLevelZ) < 1e-4)
+        {
+            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+            if (!edge.IsNull())
+            {
+                builder.Add(activeCompound, edge);
+                hasLines = true;
+            }
+        }
+    }
+
+    if (hasLines)
+    {
+        m_activeLevelPlaneShape = new AIS_Shape(activeCompound);
+        Handle(Prs3d_LineAspect) activeAspect = new Prs3d_LineAspect(
+            Quantity_Color(0.15, 0.40, 0.78, Quantity_TOC_RGB),
+            Aspect_TOL_SOLID,
+            2.0
+        );
+        m_activeLevelPlaneShape->Attributes()->SetWireAspect(activeAspect);
+        m_activeLevelPlaneShape->Attributes()->SetLineAspect(activeAspect);
+        m_activeLevelPlaneShape->SetColor(Quantity_Color(0.15, 0.40, 0.78, Quantity_TOC_RGB));
+        m_activeLevelPlaneShape->SetWidth(2.0);
+        context->Display(m_activeLevelPlaneShape, false);
+    }
 }
 
 void GridRenderer::renderCylindrical(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context)

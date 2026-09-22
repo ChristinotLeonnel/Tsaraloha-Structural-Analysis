@@ -44,6 +44,22 @@ set(SOURCES
     src/UI/Dialogs/GridDialog.cpp
     src/UI/Dialogs/GridSettingsDialog.h
     src/UI/Dialogs/GridSettingsDialog.cpp
+    src/UI/Dialogs/LevelDialog.h
+    src/UI/Dialogs/LevelDialog.cpp
+    src/UI/Dialogs/SectionCutDialog.h
+    src/UI/Dialogs/SectionCutDialog.cpp
+    src/UI/Ruler/ViewportRuler.h
+    src/UI/Ruler/ViewportRuler.cpp
+    src/UI/Ruler/ViewportContainer.h
+    src/UI/Ruler/ViewportContainer.cpp
+    src/Coordinate/Point3D.h
+    src/Coordinate/Level.h
+    src/Coordinate/LevelManager.h
+    src/Coordinate/LevelManager.cpp
+    src/Coordinate/CoordinateSystem.h
+    src/Coordinate/CoordinateSystem.cpp
+    src/Coordinate/CylindricalCoordinates.h
+    src/Coordinate/CylindricalCoordinates.cpp
     src/Grid/GridType.h
     src/Grid/GridDefinition.h
     src/Grid/GridDefinition.cpp
@@ -120,6 +136,53 @@ if(MSVC)
     # Définition pour éviter min/max de windows.h
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 endif()
+
+# -----------------------------------------------------------------------------
+# Tests unitaires
+# -----------------------------------------------------------------------------
+enable_testing()
+
+set(TEST_SOURCES
+    tests/test_coordinates.cpp
+    src/Coordinate/Point3D.h
+    src/Coordinate/Level.h
+    src/Coordinate/LevelManager.h
+    src/Coordinate/LevelManager.cpp
+    src/Coordinate/CoordinateSystem.h
+    src/Coordinate/CoordinateSystem.cpp
+    src/Coordinate/CylindricalCoordinates.h
+    src/Coordinate/CylindricalCoordinates.cpp
+    src/Model/Node.h
+    src/Model/Node.cpp
+    src/Model/Beam.h
+    src/Model/Beam.cpp
+    src/Model/Column.h
+    src/Model/Column.cpp
+    src/Model/Slab.h
+    src/Model/Slab.cpp
+    src/Model/Model.h
+    src/Model/Model.cpp
+    src/Grid/GridType.h
+    src/Grid/GridDefinition.h
+    src/Grid/GridDefinition.cpp
+    src/Grid/CartesianGrid.h
+    src/Grid/CartesianGrid.cpp
+    src/Grid/CylindricalGrid.h
+    src/Grid/CylindricalGrid.cpp
+    src/Grid/GridSystem.h
+    src/Grid/GridSystem.cpp
+    src/Grid/GridSnapManager.h
+    src/Grid/GridSnapManager.cpp
+)
+
+add_executable(TSA_Tests ${TEST_SOURCES})
+target_include_directories(TSA_Tests PRIVATE src ${OpenCASCADE_INCLUDE_DIR})
+target_link_libraries(TSA_Tests PRIVATE Qt6::Core ${OCCT_LIBS})
+if(MSVC)
+    target_compile_options(TSA_Tests PRIVATE /W4 /permissive- /utf-8)
+    target_compile_definitions(TSA_Tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()
+add_test(NAME CoordinatesAndLevelsTest COMMAND TSA_Tests)
 
 # -----------------------------------------------------------------------------
 # Déploiement automatique des DLLs et dépendances dans le dossier de l'exécutable

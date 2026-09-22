@@ -1,8 +1,34 @@
 #include "Model.h"
 #include <algorithm>
+#include <cmath>
 
 namespace TSA::Model
 {
+
+Model::Model()
+    : m_coordinateSystem(std::make_shared<TSA::Coordinate::CoordinateSystem>())
+{
+    m_coordinateSystem->setDefaultBuildingCoordinates();
+
+    if (auto* lm = m_coordinateSystem->levelManager())
+    {
+        QObject::connect(lm, &TSA::Coordinate::LevelManager::levelElevationChanged, [this](const std::string& lvlId, double oldZ, double newZ) {
+            onLevelElevationChanged(lvlId, oldZ, newZ);
+        });
+    }
+}
+
+Model::~Model() = default;
+
+TSA::Coordinate::LevelManager* Model::levelManager()
+{
+    return m_coordinateSystem ? m_coordinateSystem->levelManager() : nullptr;
+}
+
+const TSA::Coordinate::LevelManager* Model::levelManager() const
+{
+    return m_coordinateSystem ? m_coordinateSystem->levelManager() : nullptr;
+}
 
 void Model::addObserver(IModelObserver* observer)
 {
@@ -17,7 +43,7 @@ void Model::removeObserver(IModelObserver* observer)
     m_observers.erase(std::remove(m_observers.begin(), m_observers.end(), observer), m_observers.end());
 }
 
-int Model::addNode(double x, double y, double z)
+int Model::addNode(double x, double y, double z, const std::string& levelId)
 {
     int id = m_nextNodeId++;
     while (m_nodes.find(id) != m_nodes.end())
@@ -25,7 +51,15 @@ int Model::addNode(double x, double y, double z)
         id = m_nextNodeId++;
     }
 
-    Node node(id, x, y, z);
+    std::string actualLvlId = levelId;
+    if (actualLvlId.empty() && levelManager())
+    {
+        const auto* lvl = levelManager()->findLevelAtElevation(z);
+        if (lvl)
+            actualLvlId = lvl->id;
+    }
+
+    Node node(id, x, y, z, actualLvlId);
     auto it = m_nodes.emplace(id, node).first;
 
     for (auto* obs : m_observers)
@@ -36,14 +70,22 @@ int Model::addNode(double x, double y, double z)
     return id;
 }
 
-bool Model::addNodeWithId(int id, double x, double y, double z)
+bool Model::addNodeWithId(int id, double x, double y, double z, const std::string& levelId)
 {
     if (m_nodes.find(id) != m_nodes.end())
     {
         return false;
     }
 
-    Node node(id, x, y, z);
+    std::string actualLvlId = levelId;
+    if (actualLvlId.empty() && levelManager())
+    {
+        const auto* lvl = levelManager()->findLevelAtElevation(z);
+        if (lvl)
+            actualLvlId = lvl->id;
+    }
+
+    Node node(id, x, y, z, actualLvlId);
     auto it = m_nodes.emplace(id, node).first;
     if (id >= m_nextNodeId)
     {
@@ -56,6 +98,110 @@ bool Model::addNodeWithId(int id, double x, double y, double z)
     }
 
     return true;
+}
+
+int Model::addNodeAtGridIntersection(int ix, int iy, int iz)
+{
+    if (!m_coordinateSystem)
+        return -1;
+
+    TSA::Coordinate::Point3D p = m_coordinateSystem->gridPoint(ix, iy, iz);
+    std::string lvlId;
+    if (auto* lm = levelManager())
+    {
+        const auto* lvl = lm->getLevelByIndex(iz);
+        if (lvl)
+            lvlId = lvl->id;
+    }
+    return addNode(p.x, p.y, p.z, lvlId);
+}
+
+int Model::addColumnBetweenLevels(int levelStartIndex, int levelEndIndex, double x, double y, double width, double height)
+{
+    auto* lm = levelManager();
+    if (!lm)
+        return -1;
+
+    const auto* lStart = lm->getLevelByIndex(levelStartIndex);
+    const auto* lEnd = lm->getLevelByIndex(levelEndIndex);
+    if (!lStart || !lEnd)
+        return -1;
+
+    // Rechercher un nœud existant à la base ou le créer
+    int nStart = -1;
+    for (const auto& [nId, n] : m_nodes)
+    {
+        if (std::abs(n.x() - x) < 1e-3 && std::abs(n.y() - y) < 1e-3 && std::abs(n.z() - lStart->elevation) < 1e-3)
+        {
+            nStart = nId;
+            break;
+        }
+    }
+    if (nStart == -1)
+    {
+        nStart = addNode(x, y, lStart->elevation, lStart->id);
+    }
+
+    // Rechercher un nœud existant au sommet ou le créer
+    int nEnd = -1;
+    for (const auto& [nId, n] : m_nodes)
+    {
+        if (std::abs(n.x() - x) < 1e-3 && std::abs(n.y() - y) < 1e-3 && std::abs(n.z() - lEnd->elevation) < 1e-3)
+        {
+            nEnd = nId;
+            break;
+        }
+    }
+    if (nEnd == -1)
+    {
+        nEnd = addNode(x, y, lEnd->elevation, lEnd->id);
+    }
+
+    return addColumn(nStart, nEnd, width, height);
+}
+
+void Model::onLevelElevationChanged(const std::string& levelId, double oldElevation, double newElevation)
+{
+    std::set<int> modifiedNodeIds;
+
+    for (auto& [id, node] : m_nodes)
+    {
+        if (node.levelId() == levelId || (node.levelId().empty() && std::abs(node.z() - oldElevation) < 1e-3))
+        {
+            node.setZ(newElevation);
+            node.setLevelId(levelId);
+            modifiedNodeIds.insert(id);
+            notifyNodeModified(id);
+        }
+    }
+
+    for (const auto& [bId, beam] : m_beams)
+    {
+        if (modifiedNodeIds.count(beam.startNodeId()) || modifiedNodeIds.count(beam.endNodeId()))
+        {
+            notifyBeamModified(bId);
+        }
+    }
+
+    for (const auto& [cId, col] : m_columns)
+    {
+        if (modifiedNodeIds.count(col.startNodeId()) || modifiedNodeIds.count(col.endNodeId()))
+        {
+            notifyColumnModified(cId);
+        }
+    }
+
+    for (const auto& [sId, slab] : m_slabs)
+    {
+        for (int nId : slab.nodeIds())
+        {
+            if (modifiedNodeIds.count(nId))
+            {
+                notifySlabModified(sId);
+                break;
+            }
+        }
+    }
 }
 
 bool Model::removeNode(int nodeId)

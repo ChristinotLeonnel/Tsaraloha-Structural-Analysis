@@ -19,7 +19,8 @@ enum ItemType
     TypeBeam = 2,
     TypeColumn = 3,
     TypeSlab = 4,
-    TypeGrid = 5
+    TypeGrid = 5,
+    TypeLevel = 6
 };
 
 ModelTreeWidget::ModelTreeWidget(TSA::Model::Model* model, QWidget* parent)
@@ -31,6 +32,11 @@ ModelTreeWidget::ModelTreeWidget(TSA::Model::Model* model, QWidget* parent)
     if (m_model)
     {
         m_model->addObserver(this);
+        if (m_model->levelManager())
+        {
+            connect(m_model->levelManager(), &TSA::Coordinate::LevelManager::levelsChanged,
+                    this, &ModelTreeWidget::refreshLevels);
+        }
         refreshAll();
     }
 }
@@ -79,6 +85,10 @@ void ModelTreeWidget::createRootCategories()
 {
     m_tree->clear();
 
+    m_levelsCategory = new QTreeWidgetItem(m_tree, { tr("Levels"), "" });
+    m_levelsCategory->setData(0, TypeRole, TypeCategory);
+    m_levelsCategory->setExpanded(true);
+
     m_gridsCategory = new QTreeWidgetItem(m_tree, { tr("Grids"), "" });
     m_gridsCategory->setData(0, TypeRole, TypeCategory);
     m_gridsCategory->setExpanded(true);
@@ -101,6 +111,34 @@ void ModelTreeWidget::createRootCategories()
 
     m_wallsCategory = new QTreeWidgetItem(m_tree, { tr("Walls"), "" });
     m_wallsCategory->setData(0, TypeRole, TypeCategory);
+}
+
+void ModelTreeWidget::refreshLevels()
+{
+    if (!m_levelsCategory)
+        return;
+
+    while (m_levelsCategory->childCount() > 0)
+    {
+        delete m_levelsCategory->takeChild(0);
+    }
+
+    if (!m_model || !m_model->levelManager())
+        return;
+
+    for (const auto& lvl : m_model->levelManager()->levels())
+    {
+        QString name = QString::fromStdString(lvl.name);
+        QString details = QString("Z = %1 m%2")
+            .arg(lvl.elevation, 0, 'f', 2)
+            .arg(lvl.visible ? "" : tr(" (Masqué)"));
+
+        auto* item = new QTreeWidgetItem(m_levelsCategory, { name, details });
+        item->setData(0, TypeRole, TypeLevel);
+        item->setData(0, IdRole, QString::fromStdString(lvl.id));
+    }
+
+    m_levelsCategory->setText(1, QString("[%1]").arg(m_levelsCategory->childCount()));
 }
 
 void ModelTreeWidget::refreshGrids()
@@ -136,6 +174,7 @@ void ModelTreeWidget::refreshGrids()
 void ModelTreeWidget::refreshAll()
 {
     createRootCategories();
+    refreshLevels();
     refreshGrids();
 
     if (!m_model)
@@ -411,6 +450,7 @@ void ModelTreeWidget::onSlabRemoved(int slabId)
 void ModelTreeWidget::onModelCleared()
 {
     createRootCategories();
+    refreshLevels();
     refreshGrids();
 }
 
@@ -425,22 +465,30 @@ void ModelTreeWidget::onItemSelectionChanged()
 
     QTreeWidgetItem* item = selected.first();
     int type = item->data(0, TypeRole).toInt();
-    int id = item->data(0, IdRole).toInt();
 
-    if (type == TypeNode)
+    if (type == TypeLevel)
     {
+        QString lvlId = item->data(0, IdRole).toString();
+        emit levelSelected(lvlId);
+    }
+    else if (type == TypeNode)
+    {
+        int id = item->data(0, IdRole).toInt();
         emit nodeSelected(id);
     }
     else if (type == TypeBeam)
     {
+        int id = item->data(0, IdRole).toInt();
         emit beamSelected(id);
     }
     else if (type == TypeColumn)
     {
+        int id = item->data(0, IdRole).toInt();
         emit columnSelected(id);
     }
     else if (type == TypeSlab)
     {
+        int id = item->data(0, IdRole).toInt();
         emit slabSelected(id);
     }
     else

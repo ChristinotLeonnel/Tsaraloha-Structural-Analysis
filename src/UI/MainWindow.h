@@ -14,6 +14,8 @@ namespace TSA::UI
 {
     class ModelTreeWidget;
     class PropertyPanel;
+    class ViewportContainer;
+    class SectionCutDialog;
 }
 
 class OccView;
@@ -39,12 +41,15 @@ private slots:
     void onFitAll();
     void onResetView();
 
-    // Grille 3D
+    // Grille 3D & Niveaux
     void onNewGrid();
     void onGridManagerDialog();
+    void onManageLevels();
     void onToggleGridVisible(bool checked);
     void onToggleGridSnap(bool checked);
     void onToggleGridLabels(bool checked);
+    void onToggleLevelsVisible(bool checked);
+    void onToggleRulersVisible(bool checked);
 
     // Modes d'interaction (Dessin 3D)
     void onModeSelect();
@@ -58,6 +63,7 @@ private slots:
     void onActionNewBeam();
     void onActionNewColumn();
     void onActionNewSlab();
+    void onActionAddCube();
     void onActionDeleteSelected();
 
     // Opérations géométriques
@@ -78,6 +84,7 @@ private:
     std::unique_ptr<TSA::Grid::GridSnapManager> m_gridSnapManager;
 
     OccView* m_occView = nullptr;
+    TSA::UI::ViewportContainer* m_viewportContainer = nullptr;
     TSA::UI::ModelTreeWidget* m_modelTree = nullptr;
     TSA::UI::PropertyPanel*   m_propertyPanel = nullptr;
 
@@ -90,12 +97,15 @@ private:
     QAction* m_actionFitAll = nullptr;
     QAction* m_actionResetView = nullptr;
 
-    // Actions Grille
+    // Actions Grille & Règles
     QAction* m_actionNewGrid = nullptr;
     QAction* m_actionGridManager = nullptr;
+    QAction* m_actionManageLevels = nullptr;
     QAction* m_actionGridVisible = nullptr;
     QAction* m_actionGridSnap = nullptr;
     QAction* m_actionGridLabels = nullptr;
+    QAction* m_actionLevelsVisible = nullptr;
+    QAction* m_actionRulersVisible = nullptr;
 
     // Actions Modes d'interaction / Dessin 3D
     QActionGroup* m_drawModeGroup = nullptr;
@@ -109,8 +119,27 @@ private:
     QAction* m_actionNewBeam = nullptr;
     QAction* m_actionNewColumn = nullptr;
     QAction* m_actionNewSlab = nullptr;
+    QAction* m_actionAddCube = nullptr;
     QAction* m_actionDelete = nullptr;
 
     QAction* m_actionMove = nullptr;
     QAction* m_actionCopy = nullptr;
+
+    // Actions Barre "Vue" (Robot SA style)
+    QAction* m_actionViewXY = nullptr;
+    QAction* m_actionViewYZ = nullptr;
+    QAction* m_actionViewXZ = nullptr;
+    QAction* m_actionView3D = nullptr;
+    QAction* m_actionCoordSystem = nullptr;
+    QAction* m_actionSectionCut = nullptr;
+
+    TSA::UI::SectionCutDialog* m_sectionCutDialog = nullptr;
+
+private slots:
+    void onActionViewXY();
+    void onActionViewYZ();
+    void onActionViewXZ();
+    void onActionView3D();
+    void onActionCoordSystem();
+    void onActionSectionCut();
 };

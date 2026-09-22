@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace TSA::Model
 {
 
@@ -29,6 +31,10 @@ public:
     void setDimensions(double width, double height);
 
     double length(const Model& model) const;
+    bool isVertical(const Model& model, double tol = 1e-3) const;
+    double bottomElevation(const Model& model) const;
+    double topElevation(const Model& model) const;
+    std::string direction(const Model& model) const;
 
 private:
     int m_id = 0;

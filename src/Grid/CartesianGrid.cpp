@@ -34,6 +34,7 @@ void CartesianGrid::computeGeometry()
     m_xLines.clear();
     m_yLines.clear();
     m_allLines.clear();
+    m_verticalConnectionLines.clear();
     m_intersections.clear();
     m_labelAnchors.clear();
 
@@ -130,6 +131,83 @@ void CartesianGrid::computeGeometry()
             }
         }
     }
+
+    // 2. Lignes de connexion verticales à chaque intersection (X_i, Y_j) reliant tous les étages
+    for (size_t i = 0; i < xPos.size(); ++i)
+    {
+        double xVal = orig.X() + xPos[i];
+        for (size_t j = 0; j < yPos.size(); ++j)
+        {
+            double yVal = orig.Y() + yPos[j];
+            GridLineSegment vSeg;
+            vSeg.start = gp_Pnt(xVal, yVal, m_minZ);
+            vSeg.end   = gp_Pnt(xVal, yVal, m_maxZ);
+            vSeg.label = m_definition.getXLabel(i) + "-" + m_definition.getYLabel(j);
+            vSeg.index = static_cast<int>(i * yPos.size() + j);
+            vSeg.isXAxis = false;
+            vSeg.zLevel = m_minZ;
+            m_verticalConnectionLines.push_back(vSeg);
+        }
+    }
+
+    // 3. Colonne de repérage vertical Z reliant continûment tous les étages
+    m_verticalLevelLines.clear();
+    m_levelBoundaryPlanes.clear();
+    m_levelLabelAnchors.clear();
+
+    double xDatum = m_minX - m_extension - 0.6;
+    double yDatum = m_minY - m_extension - 0.6;
+    double zBottom = m_minZ - 0.5;
+    double zTop = m_maxZ + 1.2;
+
+    // Ligne verticale maîtresse Z
+    GridLineSegment vertCol;
+    vertCol.start = gp_Pnt(xDatum, yDatum, zBottom);
+    vertCol.end = gp_Pnt(xDatum, yDatum, zTop);
+    vertCol.label = "Axe Vertical Niveaux Z";
+    vertCol.isXAxis = false;
+    m_verticalLevelLines.push_back(vertCol);
+
+    // Flèche au sommet de l'axe vertical Z
+    gp_Pnt arrowTip(xDatum, yDatum, zTop);
+    gp_Pnt arrowLeft(xDatum - 0.15, yDatum, zTop - 0.30);
+    gp_Pnt arrowRight(xDatum + 0.15, yDatum, zTop - 0.30);
+    m_verticalLevelLines.push_back({ arrowLeft, arrowTip, "", -1, false, zTop });
+    m_verticalLevelLines.push_back({ arrowRight, arrowTip, "", -1, false, zTop });
+
+    for (size_t k = 0; k < levels.size(); ++k)
+    {
+        double zVal = orig.Z() + levels[k];
+
+        // Bras horizontal de niveau reliant la colonne Z à la grille
+        gp_Pnt tickStart(xDatum, yDatum, zVal);
+        gp_Pnt tickEnd(xDatum + 0.8, yDatum, zVal);
+        m_verticalLevelLines.push_back({ tickStart, tickEnd, "", static_cast<int>(k), false, zVal });
+
+        // Symbole triangulaire de niveau génie civil au niveau Z_k
+        gp_Pnt triTop(xDatum + 0.3, yDatum, zVal);
+        gp_Pnt triLeft(xDatum + 0.1, yDatum, zVal - 0.2);
+        gp_Pnt triRight(xDatum + 0.5, yDatum, zVal - 0.2);
+        m_verticalLevelLines.push_back({ triLeft, triTop, "", -1, false, zVal });
+        m_verticalLevelLines.push_back({ triTop, triRight, "", -1, false, zVal });
+        m_verticalLevelLines.push_back({ triRight, triLeft, "", -1, false, zVal });
+
+        // Ancrage d'étiquette de niveau (nom + élévation)
+        std::ostringstream ss;
+        ss << m_definition.getZLabel(k) << " [" << std::fixed << std::setprecision(2)
+           << (zVal >= 0 ? "+" : "") << zVal << " m]";
+        m_levelLabelAnchors.push_back({ gp_Pnt(xDatum - 0.3, yDatum, zVal), ss.str(), gp_Dir(0, 0, 1), true });
+
+        // Cadre périmétrique du plancher au niveau Z_k
+        gp_Pnt c1(m_minX, m_minY, zVal);
+        gp_Pnt c2(m_maxX, m_minY, zVal);
+        gp_Pnt c3(m_maxX, m_maxY, zVal);
+        gp_Pnt c4(m_minX, m_maxY, zVal);
+        m_levelBoundaryPlanes.push_back({ c1, c2, "", static_cast<int>(k), false, zVal });
+        m_levelBoundaryPlanes.push_back({ c2, c3, "", static_cast<int>(k), false, zVal });
+        m_levelBoundaryPlanes.push_back({ c3, c4, "", static_cast<int>(k), false, zVal });
+        m_levelBoundaryPlanes.push_back({ c4, c1, "", static_cast<int>(k), false, zVal });
+    }
 }
 
 GridSnapResult CartesianGrid::findClosestSnap(const gp_Pnt& worldPoint, double snapToleranceWorld) const
@@ -203,6 +281,34 @@ GridSnapResult CartesianGrid::findClosestSnap(const gp_Pnt& worldPoint, double s
             oss << "Axe Grille " << (line.isXAxis ? "X: " : "Y: ") << line.label
                 << " (" << std::fixed << std::setprecision(3)
                 << projPoint.X() << ", " << projPoint.Y() << ", " << projPoint.Z() << " m)";
+            bestResult.description = oss.str();
+        }
+    }
+
+    // 4. Accrochage : Colonne d'axe vertical et bras d'étages
+    for (const auto& line : m_verticalLevelLines)
+    {
+        gp_Vec vLine(line.start, line.end);
+        double lenSq = vLine.SquareMagnitude();
+        if (lenSq < 1e-6) continue;
+
+        gp_Vec vPt(line.start, worldPoint);
+        double t = (vPt.Dot(vLine)) / lenSq;
+        t = std::clamp(t, 0.0, 1.0);
+
+        gp_Pnt projPoint = line.start.Translated(vLine * t);
+        double d = worldPoint.Distance(projPoint);
+
+        if (d <= snapToleranceWorld && d < bestResult.distance)
+        {
+            bestResult.snapped = true;
+            bestResult.point = projPoint;
+            bestResult.type = GridSnapType::LevelPlane;
+            bestResult.distance = d;
+
+            std::ostringstream oss;
+            oss << "Axe vertical de niveau Z (" << std::fixed << std::setprecision(3)
+                << projPoint.Z() << " m)";
             bestResult.description = oss.str();
         }
     }

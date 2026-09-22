@@ -6,6 +6,8 @@
 class QLabel;
 class QDoubleSpinBox;
 class QSpinBox;
+class QLineEdit;
+class QCheckBox;
 class QFormLayout;
 class QGroupBox;
 
@@ -21,6 +23,7 @@ public:
     ~PropertyPanel() override = default;
 
 public slots:
+    void showLevelProperties(const QString& levelId);
     void showNodeProperties(int nodeId);
     void showBeamProperties(int beamId);
     void showColumnProperties(int columnId);
@@ -28,6 +31,9 @@ public slots:
     void clearProperties();
 
 private slots:
+    void onLevelNameChanged();
+    void onLevelElevationChanged();
+    void onLevelVisibleChanged(bool checked);
     void onNodeCoordinatesChanged();
     void onBeamDimensionsChanged();
     void onColumnDimensionsChanged();
@@ -39,6 +45,7 @@ private:
 private:
     TSA::Model::Model* m_model = nullptr;
 
+    QString m_currentLevelId;
     int m_currentNodeId = -1;
     int m_currentBeamId = -1;
     int m_currentColumnId = -1;
@@ -48,9 +55,17 @@ private:
     QLabel* m_titleLabel = nullptr;
     QLabel* m_emptyLabel = nullptr;
 
+    // Panneau Niveau / Étage
+    QGroupBox* m_levelGroup = nullptr;
+    QLabel* m_levelIdLabel = nullptr;
+    QLineEdit* m_levelNameEdit = nullptr;
+    QDoubleSpinBox* m_levelElevationSpin = nullptr;
+    QCheckBox* m_levelVisibleCheck = nullptr;
+
     // Panneau Nœud
     QGroupBox* m_nodeGroup = nullptr;
     QLabel* m_nodeIdLabel = nullptr;
+    QLabel* m_nodeLevelLabel = nullptr;
     QDoubleSpinBox* m_nodeXSpin = nullptr;
     QDoubleSpinBox* m_nodeYSpin = nullptr;
     QDoubleSpinBox* m_nodeZSpin = nullptr;
@@ -70,6 +85,8 @@ private:
     QLabel* m_columnStartNodeLabel = nullptr;
     QLabel* m_columnEndNodeLabel = nullptr;
     QLabel* m_columnHeightLabel = nullptr;
+    QLabel* m_columnVerticalLabel = nullptr;
+    QLabel* m_columnElevationRangeLabel = nullptr;
     QDoubleSpinBox* m_columnWidthSpin = nullptr;
     QDoubleSpinBox* m_columnDepthSpin = nullptr;
 

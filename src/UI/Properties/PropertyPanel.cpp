@@ -4,6 +4,8 @@
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QLabel>
+#include <QLineEdit>
+#include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QSpinBox>
 
@@ -37,6 +39,36 @@ void PropertyPanel::setupUi()
     mainLayout->addWidget(m_emptyLabel);
 
     // -------------------------------------------------------------
+    // Groupe Niveau / Étage
+    // -------------------------------------------------------------
+    m_levelGroup = new QGroupBox(tr("Level Information"), this);
+    auto* levelForm = new QFormLayout(m_levelGroup);
+    levelForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+
+    m_levelIdLabel = new QLabel(m_levelGroup);
+    m_levelNameEdit = new QLineEdit(m_levelGroup);
+    m_levelElevationSpin = new QDoubleSpinBox(m_levelGroup);
+    m_levelElevationSpin->setRange(-1000.0, 10000.0);
+    m_levelElevationSpin->setDecimals(3);
+    m_levelElevationSpin->setSingleStep(0.5);
+    m_levelElevationSpin->setSuffix(" m");
+    m_levelElevationSpin->setKeyboardTracking(false);
+
+    m_levelVisibleCheck = new QCheckBox(tr("Visible in 3D"), m_levelGroup);
+    m_levelVisibleCheck->setChecked(true);
+
+    levelForm->addRow(tr("ID:"), m_levelIdLabel);
+    levelForm->addRow(tr("Name:"), m_levelNameEdit);
+    levelForm->addRow(tr("Elevation (Z):"), m_levelElevationSpin);
+    levelForm->addRow(tr("Display:"), m_levelVisibleCheck);
+
+    mainLayout->addWidget(m_levelGroup);
+
+    connect(m_levelNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onLevelNameChanged);
+    connect(m_levelElevationSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onLevelElevationChanged);
+    connect(m_levelVisibleCheck, &QCheckBox::toggled, this, &PropertyPanel::onLevelVisibleChanged);
+
+    // -------------------------------------------------------------
     // Groupe Nœud
     // -------------------------------------------------------------
     m_nodeGroup = new QGroupBox(tr("Node Information"), this);
@@ -44,6 +76,7 @@ void PropertyPanel::setupUi()
     nodeForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
     m_nodeIdLabel = new QLabel(m_nodeGroup);
+    m_nodeLevelLabel = new QLabel(m_nodeGroup);
     m_nodeXSpin = new QDoubleSpinBox(m_nodeGroup);
     m_nodeYSpin = new QDoubleSpinBox(m_nodeGroup);
     m_nodeZSpin = new QDoubleSpinBox(m_nodeGroup);
@@ -58,6 +91,7 @@ void PropertyPanel::setupUi()
     }
 
     nodeForm->addRow(tr("ID:"), m_nodeIdLabel);
+    nodeForm->addRow(tr("Level:"), m_nodeLevelLabel);
     nodeForm->addRow(tr("X:"), m_nodeXSpin);
     nodeForm->addRow(tr("Y:"), m_nodeYSpin);
     nodeForm->addRow(tr("Z:"), m_nodeZSpin);
@@ -115,6 +149,8 @@ void PropertyPanel::setupUi()
     m_columnStartNodeLabel = new QLabel(m_columnGroup);
     m_columnEndNodeLabel = new QLabel(m_columnGroup);
     m_columnHeightLabel = new QLabel(m_columnGroup);
+    m_columnVerticalLabel = new QLabel(m_columnGroup);
+    m_columnElevationRangeLabel = new QLabel(m_columnGroup);
 
     m_columnWidthSpin = new QDoubleSpinBox(m_columnGroup);
     m_columnWidthSpin->setRange(0.01, 10.0);
@@ -131,6 +167,8 @@ void PropertyPanel::setupUi()
     columnForm->addRow(tr("ID:"), m_columnIdLabel);
     columnForm->addRow(tr("Bottom Node:"), m_columnStartNodeLabel);
     columnForm->addRow(tr("Top Node:"), m_columnEndNodeLabel);
+    columnForm->addRow(tr("Orientation:"), m_columnVerticalLabel);
+    columnForm->addRow(tr("Elevations:"), m_columnElevationRangeLabel);
     columnForm->addRow(tr("Height (H):"), m_columnHeightLabel);
     columnForm->addRow(tr("Width (b):"), m_columnWidthSpin);
     columnForm->addRow(tr("Depth (h):"), m_columnDepthSpin);
@@ -171,17 +209,54 @@ void PropertyPanel::setupUi()
 
 void PropertyPanel::clearProperties()
 {
+    m_currentLevelId.clear();
     m_currentNodeId = -1;
     m_currentBeamId = -1;
     m_currentColumnId = -1;
     m_currentSlabId = -1;
 
     m_emptyLabel->show();
+    m_levelGroup->hide();
     m_nodeGroup->hide();
     m_beamGroup->hide();
     m_columnGroup->hide();
     m_slabGroup->hide();
     m_titleLabel->setText(tr("PROPERTIES"));
+}
+
+void PropertyPanel::showLevelProperties(const QString& levelId)
+{
+    if (!m_model || !m_model->levelManager())
+        return;
+
+    const auto* lvl = m_model->levelManager()->getLevel(levelId.toStdString());
+    if (!lvl)
+    {
+        clearProperties();
+        return;
+    }
+
+    m_isUpdating = true;
+    m_currentLevelId = levelId;
+    m_currentNodeId = -1;
+    m_currentBeamId = -1;
+    m_currentColumnId = -1;
+    m_currentSlabId = -1;
+
+    m_titleLabel->setText(QString("LEVEL %1").arg(QString::fromStdString(lvl->name)));
+    m_levelIdLabel->setText(QString::fromStdString(lvl->id));
+    m_levelNameEdit->setText(QString::fromStdString(lvl->name));
+    m_levelElevationSpin->setValue(lvl->elevation);
+    m_levelVisibleCheck->setChecked(lvl->visible);
+
+    m_emptyLabel->hide();
+    m_nodeGroup->hide();
+    m_beamGroup->hide();
+    m_columnGroup->hide();
+    m_slabGroup->hide();
+    m_levelGroup->show();
+
+    m_isUpdating = false;
 }
 
 void PropertyPanel::showNodeProperties(int nodeId)
@@ -198,17 +273,42 @@ void PropertyPanel::showNodeProperties(int nodeId)
 
     m_isUpdating = true;
     m_currentNodeId = nodeId;
+    m_currentLevelId.clear();
     m_currentBeamId = -1;
     m_currentColumnId = -1;
     m_currentSlabId = -1;
 
     m_titleLabel->setText(QString("NODE %1").arg(nodeId));
     m_nodeIdLabel->setText(QString::number(nodeId));
+
+    if (!node->levelId().empty())
+    {
+        if (const auto* lvl = m_model->levelManager() ? m_model->levelManager()->getLevel(node->levelId()) : nullptr)
+            m_nodeLevelLabel->setText(QString::fromStdString(lvl->name));
+        else
+            m_nodeLevelLabel->setText(QString::fromStdString(node->levelId()));
+    }
+    else
+    {
+        if (m_model->levelManager())
+        {
+            if (const auto* lvl = m_model->levelManager()->findLevelAtElevation(node->z()))
+                m_nodeLevelLabel->setText(QString::fromStdString(lvl->name));
+            else
+                m_nodeLevelLabel->setText(tr("None"));
+        }
+        else
+        {
+            m_nodeLevelLabel->setText(tr("None"));
+        }
+    }
+
     m_nodeXSpin->setValue(node->x());
     m_nodeYSpin->setValue(node->y());
     m_nodeZSpin->setValue(node->z());
 
     m_emptyLabel->hide();
+    m_levelGroup->hide();
     m_beamGroup->hide();
     m_columnGroup->hide();
     m_slabGroup->hide();
@@ -231,6 +331,7 @@ void PropertyPanel::showBeamProperties(int beamId)
 
     m_isUpdating = true;
     m_currentBeamId = beamId;
+    m_currentLevelId.clear();
     m_currentNodeId = -1;
     m_currentColumnId = -1;
     m_currentSlabId = -1;
@@ -244,6 +345,7 @@ void PropertyPanel::showBeamProperties(int beamId)
     m_beamHeightSpin->setValue(beam->height());
 
     m_emptyLabel->hide();
+    m_levelGroup->hide();
     m_nodeGroup->hide();
     m_columnGroup->hide();
     m_slabGroup->hide();
@@ -266,6 +368,7 @@ void PropertyPanel::showColumnProperties(int columnId)
 
     m_isUpdating = true;
     m_currentColumnId = columnId;
+    m_currentLevelId.clear();
     m_currentNodeId = -1;
     m_currentBeamId = -1;
     m_currentSlabId = -1;
@@ -274,11 +377,16 @@ void PropertyPanel::showColumnProperties(int columnId)
     m_columnIdLabel->setText(QString::number(columnId));
     m_columnStartNodeLabel->setText(QString("Node %1").arg(col->startNodeId()));
     m_columnEndNodeLabel->setText(QString("Node %1").arg(col->endNodeId()));
+    m_columnVerticalLabel->setText(col->isVertical(*m_model) ? tr("Vertical (along Z)") : tr("Inclined"));
+    m_columnElevationRangeLabel->setText(QString("%1 m -> %2 m")
+        .arg(col->bottomElevation(*m_model), 0, 'f', 2)
+        .arg(col->topElevation(*m_model), 0, 'f', 2));
     m_columnHeightLabel->setText(QString("%1 m").arg(col->length(*m_model), 0, 'f', 3));
     m_columnWidthSpin->setValue(col->width());
     m_columnDepthSpin->setValue(col->height());
 
     m_emptyLabel->hide();
+    m_levelGroup->hide();
     m_nodeGroup->hide();
     m_beamGroup->hide();
     m_slabGroup->hide();
@@ -301,6 +409,7 @@ void PropertyPanel::showSlabProperties(int slabId)
 
     m_isUpdating = true;
     m_currentSlabId = slabId;
+    m_currentLevelId.clear();
     m_currentNodeId = -1;
     m_currentBeamId = -1;
     m_currentColumnId = -1;
@@ -319,12 +428,37 @@ void PropertyPanel::showSlabProperties(int slabId)
     m_slabThicknessSpin->setValue(slab->thickness());
 
     m_emptyLabel->hide();
+    m_levelGroup->hide();
     m_nodeGroup->hide();
     m_beamGroup->hide();
     m_columnGroup->hide();
     m_slabGroup->show();
 
     m_isUpdating = false;
+}
+
+void PropertyPanel::onLevelNameChanged()
+{
+    if (m_isUpdating || !m_model || !m_model->levelManager() || m_currentLevelId.isEmpty())
+        return;
+
+    m_model->levelManager()->setLevelName(m_currentLevelId.toStdString(), m_levelNameEdit->text().toStdString());
+}
+
+void PropertyPanel::onLevelElevationChanged()
+{
+    if (m_isUpdating || !m_model || !m_model->levelManager() || m_currentLevelId.isEmpty())
+        return;
+
+    m_model->levelManager()->setLevelElevation(m_currentLevelId.toStdString(), m_levelElevationSpin->value());
+}
+
+void PropertyPanel::onLevelVisibleChanged(bool checked)
+{
+    if (m_isUpdating || !m_model || !m_model->levelManager() || m_currentLevelId.isEmpty())
+        return;
+
+    m_model->levelManager()->setLevelVisible(m_currentLevelId.toStdString(), checked);
 }
 
 void PropertyPanel::onNodeCoordinatesChanged()

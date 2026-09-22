@@ -4,6 +4,7 @@
 #include "Beam.h"
 #include "Column.h"
 #include "Slab.h"
+#include "../Coordinate/CoordinateSystem.h"
 
 #include <map>
 #include <vector>
@@ -39,20 +40,32 @@ public:
 class Model
 {
 public:
-    Model() = default;
-    ~Model() = default;
+    Model();
+    ~Model();
+
+    // Système de coordonnées et niveaux centralisés
+    TSA::Coordinate::CoordinateSystem* coordinateSystem() { return m_coordinateSystem.get(); }
+    const TSA::Coordinate::CoordinateSystem* coordinateSystem() const { return m_coordinateSystem.get(); }
+
+    TSA::Coordinate::LevelManager* levelManager();
+    const TSA::Coordinate::LevelManager* levelManager() const;
 
     // Observateurs
     void addObserver(IModelObserver* observer);
     void removeObserver(IModelObserver* observer);
 
     // Gestion des nœuds
-    int addNode(double x, double y, double z);
-    bool addNodeWithId(int id, double x, double y, double z);
+    int addNode(double x, double y, double z, const std::string& levelId = "");
+    bool addNodeWithId(int id, double x, double y, double z, const std::string& levelId = "");
+    int addNodeAtGridIntersection(int ix, int iy, int iz);
+    int addColumnBetweenLevels(int levelStartIndex, int levelEndIndex, double x, double y, double width = 0.30, double height = 0.30);
     bool removeNode(int nodeId);
     Node* getNode(int nodeId);
     const Node* getNode(int nodeId) const;
     const std::map<int, Node>& nodes() const { return m_nodes; }
+
+    // Modification d'un niveau d'étage avec propagation instantanée aux objets attachés
+    void onLevelElevationChanged(const std::string& levelId, double oldElevation, double newElevation);
 
     // Gestion des poutres
     int addBeam(int startNodeId, int endNodeId, double width = 0.30, double height = 0.50);
@@ -112,6 +125,8 @@ private:
     std::map<int, Column> m_columns;
     std::map<int, Slab> m_slabs;
     std::vector<IModelObserver*> m_observers;
+
+    std::shared_ptr<TSA::Coordinate::CoordinateSystem> m_coordinateSystem;
 };
 
 } // namespace TSA::Model

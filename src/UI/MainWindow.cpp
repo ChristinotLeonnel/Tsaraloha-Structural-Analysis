@@ -9,6 +9,9 @@
 #include "Dialogs/TransformDialog.h"
 #include "Dialogs/GridDialog.h"
 #include "Dialogs/GridSettingsDialog.h"
+#include "Dialogs/LevelDialog.h"
+#include "Dialogs/SectionCutDialog.h"
+#include "Ruler/ViewportContainer.h"
 
 #include <QMenuBar>
 #include <QToolBar>
@@ -20,7 +23,127 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QIcon>
+#include <QPainter>
+#include <QPen>
+#include <QBrush>
 #include <sstream>
+
+namespace
+{
+static QIcon makePlanIcon(const QColor& planeColor, const QColor& axis1Color, const QColor& axis2Color, const QString& l1, const QString& l2)
+{
+    QPixmap pix(26, 26);
+    pix.fill(Qt::transparent);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Fond du plan coloré style Robot SA
+    p.setPen(QPen(planeColor.darker(150), 1.2));
+    p.setBrush(QBrush(planeColor));
+    p.drawRect(7, 4, 15, 15);
+
+    // Axes
+    p.setPen(QPen(axis1Color, 2.0));
+    p.drawLine(5, 21, 23, 21); // Horizontal
+    p.setPen(QPen(axis2Color, 2.0));
+    p.drawLine(5, 21, 5, 3);   // Vertical
+
+    // Flèches d'axe
+    p.drawLine(23, 21, 20, 19);
+    p.drawLine(23, 21, 20, 23);
+    p.drawLine(5, 3, 3, 6);
+    p.drawLine(5, 3, 7, 6);
+
+    // Libellés d'axes
+    QFont f = p.font();
+    f.setPixelSize(7);
+    f.setBold(true);
+    p.setFont(f);
+    p.setPen(axis1Color);
+    p.drawText(20, 25, l1);
+    p.setPen(axis2Color);
+    p.drawText(0, 8, l2);
+
+    return QIcon(pix);
+}
+
+static QIcon make3DIsoIcon()
+{
+    QPixmap pix(26, 26);
+    pix.fill(Qt::transparent);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Face supérieure (XY)
+    QPolygon topPoly;
+    topPoly << QPoint(13, 3) << QPoint(22, 8) << QPoint(13, 13) << QPoint(4, 8);
+    p.setPen(QPen(QColor(180, 50, 50), 1.0));
+    p.setBrush(QColor(240, 110, 110, 220));
+    p.drawPolygon(topPoly);
+
+    // Face gauche (XZ)
+    QPolygon leftPoly;
+    leftPoly << QPoint(4, 8) << QPoint(13, 13) << QPoint(13, 23) << QPoint(4, 18);
+    p.setPen(QPen(QColor(40, 150, 60), 1.0));
+    p.setBrush(QColor(100, 210, 120, 220));
+    p.drawPolygon(leftPoly);
+
+    // Face droite (YZ)
+    QPolygon rightPoly;
+    rightPoly << QPoint(13, 13) << QPoint(22, 8) << QPoint(22, 18) << QPoint(13, 23);
+    p.setPen(QPen(QColor(40, 80, 200), 1.0));
+    p.setBrush(QColor(100, 140, 240, 220));
+    p.drawPolygon(rightPoly);
+
+    return QIcon(pix);
+}
+
+static QIcon makeCoordSystemIcon()
+{
+    QPixmap pix(26, 26);
+    pix.fill(Qt::transparent);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Poutre inclinée
+    p.setPen(QPen(QColor(50, 60, 80), 2.5));
+    p.drawLine(3, 21, 23, 9);
+
+    // Flèche normale (rouge)
+    p.setPen(QPen(QColor(220, 30, 30), 2.0));
+    p.drawLine(13, 15, 19, 4);
+    p.drawLine(19, 4, 16, 5);
+
+    // Flèche tangentielle (bleue)
+    p.setPen(QPen(QColor(30, 90, 220), 2.0));
+    p.drawLine(13, 15, 23, 9);
+    p.drawLine(23, 9, 20, 9);
+
+    return QIcon(pix);
+}
+
+static QIcon makeSectionCutIcon()
+{
+    QPixmap pix(26, 26);
+    pix.fill(Qt::transparent);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Bâtiment filaire
+    p.setPen(QPen(QColor(90, 105, 125), 1.2, Qt::DashLine));
+    p.drawRect(4, 5, 18, 18);
+    p.drawLine(4, 14, 22, 14);
+
+    // Plan de coupe jaune vif
+    QPolygon cutPoly;
+    cutPoly << QPoint(11, 2) << QPoint(25, 6) << QPoint(15, 25) << QPoint(1, 21);
+    p.setPen(QPen(QColor(220, 160, 10), 2.0));
+    p.setBrush(QColor(255, 225, 40, 150));
+    p.drawPolygon(cutPoly);
+
+    return QIcon(pix);
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -29,47 +152,56 @@ MainWindow::MainWindow(QWidget* parent)
     , m_gridManager(std::make_unique<TSA::Grid::GridManager>())
     , m_gridSnapManager(std::make_unique<TSA::Grid::GridSnapManager>())
 {
-    // Grille 3D initiale par défaut : bâtiment orthogonal (travées 6m en X, 4m en Y, niveaux 0 et 3m)
-    // On retire d'abord la grille générique créée par défaut dans GridManager
-    // afin de ne pas se retrouver avec deux grilles au démarrage du projet.
+    // Grille 3D initiale : synchronisée avec le système de coordonnées et de niveaux unifié
     m_gridManager->clearAllGrids();
 
     TSA::Grid::GridDefinition def("Grille Bâtiment", TSA::Grid::GridType::Cartesian);
     def.setOrigin(0.0, 0.0, 0.0);
-    def.generateCartesian(3, 6.0, 3, 4.0, 2, 3.0);
+    if (m_model && m_model->coordinateSystem())
+    {
+        def.setXPositions(m_model->coordinateSystem()->xPositions());
+        def.setYPositions(m_model->coordinateSystem()->yPositions());
+        if (m_model->levelManager())
+        {
+            def.setZLevels(m_model->levelManager()->elevationList());
+        }
+    }
     auto* defaultGrid = m_gridManager->addGrid(def);
     if (defaultGrid)
     {
         m_gridManager->setActiveGridId(defaultGrid->id());
     }
 
+    if (m_model && m_model->levelManager())
+    {
+        connect(m_model->levelManager(), &TSA::Coordinate::LevelManager::levelsChanged, this, [this]() {
+            if (auto* grid = m_gridManager->activeGrid())
+            {
+                auto gdef = grid->definition();
+                gdef.setZLevels(m_model->levelManager()->elevationList());
+                grid->updateDefinition(gdef);
+                m_occView->rebuildGrid();
+            }
+            if (m_viewportContainer)
+            {
+                m_viewportContainer->updateLevelsList(
+                    m_model->levelManager()->elevationList(),
+                    m_model->levelManager()->levelNames()
+                );
+            }
+            m_modelTree->refreshLevels();
+        });
+    }
+
     setupUi();
 
-    // Modèle initial 3D complet :
-    // Bâtiment structural à 4 poteaux, 4 poutres et 1 dalle supérieure
-    int n1 = m_model->addNode(0.0, 0.0, 0.0);
-    int n2 = m_model->addNode(0.0, 0.0, 3.0);
-    int n3 = m_model->addNode(6.0, 0.0, 0.0);
-    int n4 = m_model->addNode(6.0, 0.0, 3.0);
-    int n5 = m_model->addNode(0.0, 4.0, 0.0);
-    int n6 = m_model->addNode(0.0, 4.0, 3.0);
-    int n7 = m_model->addNode(6.0, 4.0, 0.0);
-    int n8 = m_model->addNode(6.0, 4.0, 3.0);
-
-    // 4 Poteaux verticaux
-    m_model->addColumn(n1, n2, 0.35, 0.35);
-    m_model->addColumn(n3, n4, 0.35, 0.35);
-    m_model->addColumn(n5, n6, 0.35, 0.35);
-    m_model->addColumn(n7, n8, 0.35, 0.35);
-
-    // 4 Poutres horizontales de toiture
-    m_model->addBeam(n2, n4, 0.30, 0.50);
-    m_model->addBeam(n4, n8, 0.30, 0.50);
-    m_model->addBeam(n8, n6, 0.30, 0.50);
-    m_model->addBeam(n6, n2, 0.30, 0.50);
-
-    // 1 Dalle surfacique supérieure reliant les 4 têtes de poteaux
-    m_model->addSlab({ n2, n4, n8, n6 }, 0.20);
+    if (m_model && m_model->levelManager() && m_viewportContainer)
+    {
+        m_viewportContainer->updateLevelsList(
+            m_model->levelManager()->elevationList(),
+            m_model->levelManager()->levelNames()
+        );
+    }
 
     m_occView->setModel(m_model.get());
     m_occView->setGridManager(m_gridManager.get(), m_gridSnapManager.get());
@@ -93,6 +225,15 @@ MainWindow::MainWindow(QWidget* parent)
     m_modelTree->setGridManager(m_gridManager.get());
     m_modelTree->refreshAll();
 
+    m_sectionCutDialog = new TSA::UI::SectionCutDialog(this);
+    connect(m_sectionCutDialog, &TSA::UI::SectionCutDialog::clippingChanged, this, [this](bool enabled, int axis, double pos, bool flip) {
+        if (m_occView)
+        {
+            m_occView->setClippingEnabled(enabled);
+            m_occView->setClipPlane(axis, pos, flip);
+        }
+    });
+
     if (m_statusInfo)
     {
         m_statusInfo->setText(tr("Model: %1 nodes, %2 beams, %3 columns, %4 slabs | Ready")
@@ -112,10 +253,11 @@ void MainWindow::setupUi()
 
     setDockNestingEnabled(true);
 
-    // Widget central : Viewport OpenCASCADE
+    // Widget central : Viewport OpenCASCADE entouré des règles graduées (style Robot)
     m_occView = new OccView(this);
     m_occView->setSelectionManager(m_selectionManager.get());
-    setCentralWidget(m_occView);
+    m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
+    setCentralWidget(m_viewportContainer);
 
     createMenus();
     createToolBars();
@@ -152,6 +294,36 @@ void MainWindow::createMenus()
     // Menu Vue
     QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
 
+    // Projections en plan (Robot SA style)
+    m_actionViewXY = viewMenu->addAction(tr("Plan &XY (Vue d'étage)"), this, &MainWindow::onActionViewXY);
+    m_actionViewXY->setIcon(makePlanIcon(QColor(255, 140, 140), Qt::blue, Qt::darkGreen, "X", "Y"));
+    m_actionViewXY->setToolTip(tr("Vue en Plan XY (Étage actif)"));
+
+    m_actionViewYZ = viewMenu->addAction(tr("Plan &YZ (Coupe latérale / Pignon)"), this, &MainWindow::onActionViewYZ);
+    m_actionViewYZ->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
+    m_actionViewYZ->setToolTip(tr("Vue en Plan YZ (Coupe latérale / Pignon)"));
+
+    m_actionViewXZ = viewMenu->addAction(tr("Plan &XZ (Élévation de face / Portique)"), this, &MainWindow::onActionViewXZ);
+    m_actionViewXZ->setIcon(makePlanIcon(QColor(140, 230, 160), Qt::blue, Qt::red, "X", "Z"));
+    m_actionViewXZ->setToolTip(tr("Vue en Plan XZ (Élévation de face / Portique)"));
+
+    m_actionView3D = viewMenu->addAction(tr("Vue &3D (Axonométrique)"), this, &MainWindow::onActionView3D);
+    m_actionView3D->setIcon(make3DIsoIcon());
+    m_actionView3D->setToolTip(tr("Vue 3D Isométrique"));
+
+    viewMenu->addSeparator();
+
+    m_actionCoordSystem = viewMenu->addAction(tr("Repère &Local / Global"), this, &MainWindow::onActionCoordSystem);
+    m_actionCoordSystem->setIcon(makeCoordSystemIcon());
+    m_actionCoordSystem->setCheckable(true);
+    m_actionCoordSystem->setToolTip(tr("Basculer entre Repère Global (GCS) et Repère Local (LCS)"));
+
+    m_actionSectionCut = viewMenu->addAction(tr("&Coupes de la structure (Section 3D)..."), this, &MainWindow::onActionSectionCut);
+    m_actionSectionCut->setIcon(makeSectionCutIcon());
+    m_actionSectionCut->setToolTip(tr("Définir et activer des plans de coupe 3D (Graphic3d_ClipPlane)"));
+
+    viewMenu->addSeparator();
+
     m_actionFitAll = viewMenu->addAction(tr("&Fit All"), this, &MainWindow::onFitAll);
     m_actionFitAll->setIcon(QIcon(":/icons/fit_all.svg"));
     m_actionFitAll->setToolTip(tr("Fit All (F)"));
@@ -164,8 +336,8 @@ void MainWindow::createMenus()
 
     viewMenu->addSeparator();
 
-    // Menu Grille 3D
-    QMenu* gridMenu = menuBar()->addMenu(tr("&Grids"));
+    // Menu Grille 3D & Niveaux
+    QMenu* gridMenu = menuBar()->addMenu(tr("&Grids && Levels"));
 
     m_actionNewGrid = gridMenu->addAction(tr("&New Grid..."), this, &MainWindow::onNewGrid);
     m_actionNewGrid->setIcon(QIcon(":/icons/grid_cartesian.svg"));
@@ -175,6 +347,11 @@ void MainWindow::createMenus()
     m_actionGridManager->setIcon(QIcon(":/icons/settings.svg"));
     m_actionGridManager->setToolTip(tr("Manage grids, active workplane, visibility and snapping tolerance..."));
 
+    m_actionManageLevels = gridMenu->addAction(tr("Manage &Levels / Stories..."), this, &MainWindow::onManageLevels);
+    m_actionManageLevels->setIcon(QIcon(":/icons/settings.svg"));
+    m_actionManageLevels->setToolTip(tr("Manage project stories, elevations, and vertical connections (Ctrl+L)..."));
+    m_actionManageLevels->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_L));
+
     gridMenu->addSeparator();
 
     m_actionGridVisible = gridMenu->addAction(tr("&Show 3D Grid"), this, &MainWindow::onToggleGridVisible);
@@ -183,6 +360,11 @@ void MainWindow::createMenus()
     m_actionGridVisible->setCheckable(true);
     m_actionGridVisible->setChecked(true);
     m_actionGridVisible->setShortcut(QKeySequence(Qt::Key_G));
+
+    m_actionLevelsVisible = gridMenu->addAction(tr("Show Level &Planes && Markers"), this, &MainWindow::onToggleLevelsVisible);
+    m_actionLevelsVisible->setToolTip(tr("Toggle 3D story planes and vertical level datum markers"));
+    m_actionLevelsVisible->setCheckable(true);
+    m_actionLevelsVisible->setChecked(true);
 
     m_actionGridSnap = gridMenu->addAction(tr("&Snap Cursor to Grid"), this, &MainWindow::onToggleGridSnap);
     m_actionGridSnap->setIcon(QIcon(":/icons/snap.svg"));
@@ -195,6 +377,11 @@ void MainWindow::createMenus()
     m_actionGridLabels->setToolTip(tr("Show or hide axis bubbles and label texts in 3D"));
     m_actionGridLabels->setCheckable(true);
     m_actionGridLabels->setChecked(true);
+
+    m_actionRulersVisible = gridMenu->addAction(tr("Show Viewport &Rulers"), this, &MainWindow::onToggleRulersVisible);
+    m_actionRulersVisible->setToolTip(tr("Afficher ou masquer les règles de projection graduées sur les bords du viewport"));
+    m_actionRulersVisible->setCheckable(true);
+    m_actionRulersVisible->setChecked(true);
 
     // Modes d'interaction / Dessin 3D
     m_drawModeGroup = new QActionGroup(this);
@@ -273,6 +460,11 @@ void MainWindow::createMenus()
     m_actionNewSlab->setIcon(QIcon(":/icons/slab_add.svg"));
     m_actionNewSlab->setToolTip(tr("New Slab (Dialog)..."));
 
+    modelMenu->addSeparator();
+    m_actionAddCube = modelMenu->addAction(tr("Ajouter un &Cube Structurel (3D)..."), this, &MainWindow::onActionAddCube);
+    m_actionAddCube->setIcon(QIcon(":/icons/view_iso.svg"));
+    m_actionAddCube->setToolTip(tr("Générer un cube structurel 3D (8 nœuds, 4 poteaux, 8 poutres, 1 dalle) entre les étages actifs"));
+
     menuBar()->addMenu(tr("&Tools"));
     menuBar()->addMenu(tr("&Help"));
 }
@@ -303,24 +495,34 @@ void MainWindow::createToolBars()
     modelToolBar->addAction(m_actionNewColumn);
     modelToolBar->addAction(m_actionNewSlab);
     modelToolBar->addSeparator();
+    modelToolBar->addAction(m_actionAddCube);
+    modelToolBar->addSeparator();
     modelToolBar->addAction(m_actionMove);
     modelToolBar->addAction(m_actionCopy);
     modelToolBar->addSeparator();
     modelToolBar->addAction(m_actionDelete);
 
-    // Barre d'outils Vue
-    QToolBar* viewToolBar = addToolBar(tr("View"));
+    // Barre d'outils Vue (Conforme à Robot Structural Analysis)
+    QToolBar* viewToolBar = addToolBar(tr("Vue"));
     viewToolBar->setObjectName("ViewToolBar");
-    viewToolBar->setIconSize(QSize(22, 22));
+    viewToolBar->setIconSize(QSize(24, 24));
     viewToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
 
+    viewToolBar->addAction(m_actionViewXY);
+    viewToolBar->addAction(m_actionViewYZ);
+    viewToolBar->addAction(m_actionViewXZ);
+    viewToolBar->addAction(m_actionView3D);
+    viewToolBar->addSeparator();
+    viewToolBar->addAction(m_actionCoordSystem);
+    viewToolBar->addAction(m_actionSectionCut);
+    viewToolBar->addSeparator();
     viewToolBar->addAction(m_actionFitAll);
     viewToolBar->addAction(m_actionResetView);
     viewToolBar->addSeparator();
-    viewToolBar->addAction(m_actionNewGrid);
-    viewToolBar->addAction(m_actionGridManager);
     viewToolBar->addAction(m_actionGridVisible);
     viewToolBar->addAction(m_actionGridSnap);
+    viewToolBar->addAction(m_actionNewGrid);
+    viewToolBar->addAction(m_actionGridManager);
 }
 
 void MainWindow::createDockWindows()
@@ -346,6 +548,12 @@ void MainWindow::createDockWindows()
     addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
 
     // 1. Sélection depuis le MODEL TREE
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::levelSelected, this, [this](const QString& levelId) {
+        m_selectionManager->clearSelection();
+        m_occView->clearHighlight();
+        m_propertyPanel->showLevelProperties(levelId);
+    });
+
     connect(m_modelTree, &TSA::UI::ModelTreeWidget::nodeSelected, this, [this](int nodeId) {
         m_selectionManager->selectNode(nodeId);
         m_occView->highlightNode(nodeId);
@@ -597,22 +805,25 @@ void MainWindow::onResetView()
 
 void MainWindow::onNewGrid()
 {
-    TSA::UI::GridDialog dlg(this);
-    if (dlg.exec() == QDialog::Accepted)
-    {
-        TSA::Grid::GridDefinition def = dlg.getDefinition();
-        if (m_gridManager)
+    TSA::UI::GridDialog dlg(m_gridManager.get(), m_model.get(), this);
+    connect(&dlg, &TSA::UI::GridDialog::gridDefinitionApplied, this, [this](const TSA::Grid::GridDefinition& /*def*/) {
+        m_occView->rebuildGrid();
+        m_modelTree->refreshGrids();
+        m_modelTree->refreshLevels();
+        if (m_viewportContainer)
         {
-            auto* newGrid = m_gridManager->addGrid(def);
-            if (newGrid)
-            {
-                m_gridManager->setActiveGridId(newGrid->id());
-                if (m_statusInfo)
-                {
-                    m_statusInfo->setText(tr("Grille créée : %1 (Active)").arg(QString::fromStdString(newGrid->name())));
-                }
-            }
+            m_viewportContainer->updateRulers();
         }
+    });
+
+    dlg.exec();
+
+    m_occView->rebuildGrid();
+    m_modelTree->refreshGrids();
+    m_modelTree->refreshLevels();
+    if (m_viewportContainer)
+    {
+        m_viewportContainer->updateRulers();
     }
 }
 
@@ -622,6 +833,39 @@ void MainWindow::onGridManagerDialog()
     {
         TSA::UI::GridSettingsDialog dlg(m_gridManager.get(), m_gridSnapManager.get(), m_occView, this);
         dlg.exec();
+    }
+}
+
+void MainWindow::onManageLevels()
+{
+    if (!m_model || !m_model->levelManager())
+        return;
+
+    TSA::UI::LevelDialog dlg(m_model->levelManager(), this);
+    dlg.exec();
+}
+
+void MainWindow::onToggleLevelsVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setGridLevelsVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Plans d'étages et repères de niveaux affichés") : tr("Plans d'étages masqués"));
+        }
+    }
+}
+
+void MainWindow::onToggleRulersVisible(bool checked)
+{
+    if (m_viewportContainer)
+    {
+        m_viewportContainer->setRulersVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Règles de bordure affichées") : tr("Règles de bordure masquées"));
+        }
     }
 }
 
@@ -906,4 +1150,155 @@ void MainWindow::onActionDeleteSelected()
     {
         m_statusInfo->setText(tr("%1 élément(s) supprimé(s)").arg(total));
     }
+}
+
+void MainWindow::onActionAddCube()
+{
+    if (!m_model)
+        return;
+
+    // Déterminer les dimensions et élévations du cube depuis le niveau actif et la grille
+    double x0 = 0.0, x1 = 6.0;
+    double y0 = 0.0, y1 = 4.0;
+    double z0 = 0.0, z1 = 3.0;
+
+    if (m_viewportContainer)
+    {
+        z0 = m_viewportContainer->activeLevelElevation();
+    }
+
+    if (m_model->coordinateSystem())
+    {
+        const auto& xPos = m_model->coordinateSystem()->xPositions();
+        const auto& yPos = m_model->coordinateSystem()->yPositions();
+        if (xPos.size() >= 2)
+        {
+            x0 = xPos[0];
+            x1 = xPos[1];
+        }
+        if (yPos.size() >= 2)
+        {
+            y0 = yPos[0];
+            y1 = yPos[1];
+        }
+    }
+
+    if (m_model->levelManager())
+    {
+        const auto& levels = m_model->levelManager()->elevationList();
+        bool foundNext = false;
+        for (double lz : levels)
+        {
+            if (lz > z0 + 1e-4)
+            {
+                z1 = lz;
+                foundNext = true;
+                break;
+            }
+        }
+        if (!foundNext)
+        {
+            z1 = z0 + 3.0;
+        }
+    }
+
+    // 1. Création des 8 nœuds géométriques du cube
+    // Nœuds de base au niveau z0
+    int n1 = m_model->addNode(x0, y0, z0);
+    int n2 = m_model->addNode(x1, y0, z0);
+    int n3 = m_model->addNode(x1, y1, z0);
+    int n4 = m_model->addNode(x0, y1, z0);
+
+    // Nœuds de sommet au niveau supérieur z1
+    int n5 = m_model->addNode(x0, y0, z1);
+    int n6 = m_model->addNode(x1, y0, z1);
+    int n7 = m_model->addNode(x1, y1, z1);
+    int n8 = m_model->addNode(x0, y1, z1);
+
+    // 2. Création des 4 poteaux verticaux reliant les étages en hauteur
+    m_model->addColumn(n1, n5, 0.40, 0.40);
+    m_model->addColumn(n2, n6, 0.40, 0.40);
+    m_model->addColumn(n3, n7, 0.40, 0.40);
+    m_model->addColumn(n4, n8, 0.40, 0.40);
+
+    // 3. Création des 4 poutres d'encadrement inférieur
+    m_model->addBeam(n1, n2, 0.30, 0.50);
+    m_model->addBeam(n2, n3, 0.30, 0.50);
+    m_model->addBeam(n3, n4, 0.30, 0.50);
+    m_model->addBeam(n4, n1, 0.30, 0.50);
+
+    // 4. Création des 4 poutres d'encadrement supérieur
+    m_model->addBeam(n5, n6, 0.30, 0.50);
+    m_model->addBeam(n6, n7, 0.30, 0.50);
+    m_model->addBeam(n7, n8, 0.30, 0.50);
+    m_model->addBeam(n8, n5, 0.30, 0.50);
+
+    // 5. Création de la dalle supérieure
+    m_model->addSlab({n5, n6, n7, n8}, 0.20);
+
+    if (m_modelTree)
+    {
+        m_modelTree->refreshAll();
+    }
+
+    if (m_statusInfo)
+    {
+        m_statusInfo->setText(tr("Structure Cube 3D créée entre Z = %1 m et Z = %2 m (8 nœuds, 4 poteaux, 8 poutres, 1 dalle)")
+            .arg(z0, 0, 'f', 2)
+            .arg(z1, 0, 'f', 2));
+    }
+
+    if (m_occView)
+    {
+        m_occView->fitAll();
+    }
+}
+
+void MainWindow::onActionViewXY()
+{
+    if (m_occView)
+        m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXY);
+}
+
+void MainWindow::onActionViewYZ()
+{
+    if (m_occView)
+        m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanYZ);
+}
+
+void MainWindow::onActionViewXZ()
+{
+    if (m_occView)
+        m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXZ);
+}
+
+void MainWindow::onActionView3D()
+{
+    if (m_occView)
+        m_occView->setViewPlaneMode(OccView::ViewPlaneMode::Perspective3D);
+}
+
+void MainWindow::onActionCoordSystem()
+{
+    if (!m_occView)
+        return;
+    bool isLocal = !m_occView->isLocalCoordinateSystem();
+    m_occView->setLocalCoordinateSystem(isLocal);
+    m_actionCoordSystem->setChecked(isLocal);
+    statusBar()->showMessage(isLocal ? tr("Repère Local (LCS) activé") : tr("Repère Global (GCS) activé"), 3000);
+}
+
+void MainWindow::onActionSectionCut()
+{
+    if (!m_sectionCutDialog)
+        return;
+
+    if (m_occView)
+    {
+        m_sectionCutDialog->setCutLimits(-20.0, 50.0);
+        m_sectionCutDialog->setCutPosition(m_occView->activeLevelElevation() + 1.20);
+    }
+    m_sectionCutDialog->show();
+    m_sectionCutDialog->raise();
+    m_sectionCutDialog->activateWindow();
 }

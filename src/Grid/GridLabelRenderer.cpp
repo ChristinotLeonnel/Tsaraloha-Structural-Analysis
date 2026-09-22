@@ -85,12 +85,13 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
         return;
     }
 
-    Quantity_Color textColor(0.95, 0.95, 0.98, Quantity_TOC_RGB);
-    Quantity_Color bubbleColor(0.25, 0.55, 0.85, Quantity_TOC_RGB);
+    Quantity_Color textColor(0.20, 0.25, 0.35, Quantity_TOC_RGB);
+    Quantity_Color bubbleColor(0.45, 0.55, 0.68, Quantity_TOC_RGB);
 
     if (gridSystem.type() == GridType::Cartesian && gridSystem.cartesian())
     {
-        const auto& anchors = gridSystem.cartesian()->labelAnchors();
+        const auto* cartesian = gridSystem.cartesian();
+        const auto& anchors = cartesian->labelAnchors();
 
         for (const auto& anchor : anchors)
         {
@@ -117,6 +118,22 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
                 context->Display(aisBubble, false);
                 m_bubbleShapes.push_back(aisBubble);
             }
+        }
+
+        // 3. Étiquettes d'élévations d'étages le long de la colonne verticale Z
+        Quantity_Color levelTextColor(1.0, 0.85, 0.30, Quantity_TOC_RGB); // Jaune d'or chaud
+        for (const auto& anchor : cartesian->levelLabelAnchors())
+        {
+            Handle(AIS_TextLabel) aisText = new AIS_TextLabel();
+            aisText->SetText(TCollection_ExtendedString(anchor.text.c_str()));
+            aisText->SetPosition(anchor.position);
+            aisText->SetColor(levelTextColor);
+            aisText->SetHJustification(Graphic3d_HTA_RIGHT);
+            aisText->SetVJustification(Graphic3d_VTA_CENTER);
+            aisText->SetHeight(12.0);
+
+            context->Display(aisText, false);
+            m_textLabels.push_back(aisText);
         }
     }
     else if (gridSystem.type() == GridType::Cylindrical && gridSystem.cylindrical())

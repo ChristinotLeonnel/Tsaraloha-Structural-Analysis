@@ -168,8 +168,8 @@ void OccView::initOcc()
         wind->Map();
     }
 
-    Quantity_Color topColor(0.18, 0.22, 0.28, Quantity_TOC_RGB);
-    Quantity_Color bottomColor(0.08, 0.10, 0.13, Quantity_TOC_RGB);
+    Quantity_Color topColor(0.82, 0.88, 0.95, Quantity_TOC_RGB);   // Bleu ciel clair CAO
+    Quantity_Color bottomColor(0.92, 0.94, 0.98, Quantity_TOC_RGB); // Blanc / gris très doux
     m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
 
     // Configuration explicite des axes du trièdre : X=Rouge, Y=Vert, Z=Bleu
@@ -184,7 +184,7 @@ void OccView::initOcc()
 
     m_view->TriedronDisplay(
         Aspect_TOTP_LEFT_LOWER,
-        Quantity_NOC_WHITE,
+        Quantity_NOC_BLACK,
         0.1,
         V3d_ZBUFFER
     );
@@ -193,6 +193,30 @@ void OccView::initOcc()
     m_view->SetUp(0.0, 0.0, 1.0);
     m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
     m_view->MustBeResized();
+
+    // 3D ViewCube (Cube de navigation 3D interactif comme Robot Structural Analysis)
+    m_viewCube = new AIS_ViewCube();
+    m_viewCube->SetSize(62.0);
+    m_viewCube->SetBoxColor(Quantity_Color(0.92, 0.94, 0.96, Quantity_TOC_RGB));
+    m_viewCube->SetInnerColor(Quantity_Color(0.85, 0.88, 0.92, Quantity_TOC_RGB));
+    m_viewCube->SetRoundRadius(0.10);
+    m_viewCube->SetYup(false); // +Z vertical (élévation)
+
+    // Libellés français conformes à Robot Structural Analysis
+    m_viewCube->SetBoxSideLabel(V3d_Zpos, "HAUT");
+    m_viewCube->SetBoxSideLabel(V3d_Zneg, "BAS");
+    m_viewCube->SetBoxSideLabel(V3d_Ypos, "ARRIERE");
+    m_viewCube->SetBoxSideLabel(V3d_Yneg, "AVANT");
+    m_viewCube->SetBoxSideLabel(V3d_Xpos, "DROITE");
+    m_viewCube->SetBoxSideLabel(V3d_Xneg, "GAUCHE");
+
+    m_viewCube->SetTransformPersistence(new Graphic3d_TransformPers(
+        Graphic3d_TMF_TriedronPers,
+        Aspect_TOTP_RIGHT_UPPER,
+        NCollection_Vec2<int>(85, 85)
+    ));
+
+    m_context->Display(m_viewCube, false);
 }
 
 void OccView::setModel(TSA::Model::Model* model)
@@ -716,6 +740,7 @@ void OccView::resizeEvent(QResizeEvent* /*event*/)
     if (!m_view.IsNull())
     {
         m_view->MustBeResized();
+        emit viewCameraChanged();
     }
 }
 
@@ -726,6 +751,7 @@ void OccView::fitAll()
         m_view->FitAll();
         m_view->ZFitAll();
         m_view->Redraw();
+        emit viewCameraChanged();
     }
 }
 
@@ -737,6 +763,209 @@ void OccView::resetView()
         m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
         fitAll();
     }
+}
+
+bool OccView::pixelToWorldPlane(int px, int py, double& wx, double& wy, double& wz) const
+{
+    if (m_view.IsNull())
+        return false;
+
+    double xEye = 0.0, yEye = 0.0, zEye = 0.0;
+    double xDir = 0.0, yDir = 0.0, zDir = 0.0;
+    m_view->ConvertWithProj(px, py, xEye, yEye, zEye, xDir, yDir, zDir);
+
+    if (m_viewPlaneMode == ViewPlaneMode::PlanXZ || (m_viewPlaneMode == ViewPlaneMode::Perspective3D && std::abs(yDir) > 0.85))
+    {
+        if (std::abs(yDir) > 1e-6)
+        {
+            double t = (0.0 - yEye) / yDir;
+            wx = xEye + t * xDir;
+            wy = 0.0;
+            wz = zEye + t * zDir;
+            return true;
+        }
+    }
+    else if (m_viewPlaneMode == ViewPlaneMode::PlanYZ || (m_viewPlaneMode == ViewPlaneMode::Perspective3D && std::abs(xDir) > 0.85))
+    {
+        if (std::abs(xDir) > 1e-6)
+        {
+            double t = (0.0 - xEye) / xDir;
+            wx = 0.0;
+            wy = yEye + t * yDir;
+            wz = zEye + t * zDir;
+            return true;
+        }
+    }
+    else // PlanXY ou Perspective3D standard (plan horizontal à m_activeLevelZ)
+    {
+        if (std::abs(zDir) > 1e-6)
+        {
+            double t = (m_activeLevelZ - zEye) / zDir;
+            wx = xEye + t * xDir;
+            wy = yEye + t * yDir;
+            wz = m_activeLevelZ;
+            return true;
+        }
+    }
+
+    m_view->Convert(px, py, wx, wy, wz);
+    return true;
+}
+
+void OccView::worldToPixel(double wx, double wy, double wz, int& px, int& py) const
+{
+    if (m_view.IsNull())
+    {
+        px = 0;
+        py = 0;
+        return;
+    }
+    int occX = 0, occY = 0;
+    m_view->Convert(wx, wy, wz, occX, occY);
+    px = occX;
+    py = occY;
+}
+
+void OccView::setViewOrientation(V3d_TypeOfOrientation orientation)
+{
+    if (!m_view.IsNull())
+    {
+        m_view->SetUp(0.0, 0.0, 1.0);
+        m_view->SetProj(orientation, false);
+        m_view->FitAll();
+        m_view->Redraw();
+        emit viewCameraChanged();
+    }
+}
+
+void OccView::setViewPlaneMode(ViewPlaneMode mode)
+{
+    m_viewPlaneMode = mode;
+    if (m_view.IsNull())
+        return;
+
+    m_view->SetUp(0.0, 0.0, 1.0);
+
+    switch (mode)
+    {
+    case ViewPlaneMode::PlanXY:
+        // Vue en plan horizontal d'étage (Zup_Top)
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_Top, false);
+        break;
+    case ViewPlaneMode::PlanXZ:
+        // Élévation de face / portique (Zup_Front)
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_Front, false);
+        break;
+    case ViewPlaneMode::PlanYZ:
+        // Élévation latérale / pignon (Zup_Right)
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_Right, false);
+        break;
+    case ViewPlaneMode::Perspective3D:
+    default:
+        // Vue 3D axonométrique globale
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
+        break;
+    }
+
+    m_view->FitAll();
+    m_view->Redraw();
+    emit viewPlaneModeChanged(mode);
+    emit viewCameraChanged();
+}
+
+void OccView::setLocalCoordinateSystem(bool local)
+{
+    m_isLocalCoordinateSystem = local;
+    emit coordinateSystemChanged(local);
+}
+
+void OccView::setClippingEnabled(bool enabled)
+{
+    m_isClippingEnabled = enabled;
+    if (m_view.IsNull())
+        return;
+
+    if (m_clipPlane.IsNull())
+    {
+        m_clipPlane = new Graphic3d_ClipPlane();
+        m_clipPlane->SetCapping(true);
+        m_clipPlane->SetCappingColor(Quantity_Color(0.85, 0.65, 0.15, Quantity_TOC_RGB));
+    }
+
+    if (enabled)
+    {
+        updateClipPlaneEquation();
+        m_clipPlane->SetOn(true);
+        m_view->AddClipPlane(m_clipPlane);
+    }
+    else
+    {
+        m_clipPlane->SetOn(false);
+        m_view->RemoveClipPlane(m_clipPlane);
+    }
+    m_view->Redraw();
+    emit clippingChanged(m_isClippingEnabled, m_clipAxisIndex, m_clipPosition, m_isClipFlipped);
+}
+
+void OccView::setClipPlane(int axisIndex, double position, bool flip)
+{
+    m_clipAxisIndex = axisIndex;
+    m_clipPosition = position;
+    m_isClipFlipped = flip;
+
+    if (m_isClippingEnabled && !m_view.IsNull())
+    {
+        updateClipPlaneEquation();
+        m_view->Redraw();
+    }
+    emit clippingChanged(m_isClippingEnabled, m_clipAxisIndex, m_clipPosition, m_isClipFlipped);
+}
+
+void OccView::updateClipPlaneEquation()
+{
+    if (m_clipPlane.IsNull())
+        return;
+
+    gp_Dir normal(0, 0, 1);
+    gp_Pnt pnt(0, 0, m_clipPosition);
+
+    if (m_clipAxisIndex == 0) // XY, coupe selon Z
+    {
+        normal = m_isClipFlipped ? gp_Dir(0, 0, -1) : gp_Dir(0, 0, 1);
+        pnt = gp_Pnt(0, 0, m_clipPosition);
+    }
+    else if (m_clipAxisIndex == 1) // XZ, coupe selon Y
+    {
+        normal = m_isClipFlipped ? gp_Dir(0, -1, 0) : gp_Dir(0, 1, 0);
+        pnt = gp_Pnt(0, m_clipPosition, 0);
+    }
+    else if (m_clipAxisIndex == 2) // YZ, coupe selon X
+    {
+        normal = m_isClipFlipped ? gp_Dir(-1, 0, 0) : gp_Dir(1, 0, 0);
+        pnt = gp_Pnt(m_clipPosition, 0, 0);
+    }
+
+    m_clipPlane->SetEquation(gp_Pln(pnt, normal));
+}
+
+void OccView::setCadBlueprintTheme(bool enabled)
+{
+    if (m_view.IsNull())
+        return;
+
+    if (enabled)
+    {
+        Quantity_Color topColor(0.82, 0.88, 0.95, Quantity_TOC_RGB);
+        Quantity_Color bottomColor(0.92, 0.94, 0.98, Quantity_TOC_RGB);
+        m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
+    }
+    else
+    {
+        Quantity_Color topColor(0.18, 0.22, 0.28, Quantity_TOC_RGB);
+        Quantity_Color bottomColor(0.08, 0.10, 0.13, Quantity_TOC_RGB);
+        m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
+    }
+    m_view->Redraw();
 }
 
 void OccView::setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::GridSnapManager* snapManager)
@@ -760,6 +989,7 @@ void OccView::rebuildGrid()
             if (grid && grid->isVisible())
             {
                 m_gridRenderer.renderGrid(*grid, m_context);
+                m_gridRenderer.setActiveLevelElevation(m_activeLevelZ, grid.get(), m_context);
             }
         }
     }
@@ -767,6 +997,18 @@ void OccView::rebuildGrid()
     if (!m_view.IsNull())
     {
         m_view->Redraw();
+    }
+}
+
+void OccView::setActiveLevelElevation(double z)
+{
+    m_activeLevelZ = z;
+    const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
+    m_gridRenderer.setActiveLevelElevation(z, grid, m_context);
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+        emit viewCameraChanged();
     }
 }
 
@@ -827,6 +1069,20 @@ void OccView::setGridLabelsVisible(bool visible)
 bool OccView::areGridLabelsVisible() const
 {
     return m_gridLabelsVisible;
+}
+
+void OccView::setGridLevelsVisible(bool visible)
+{
+    m_gridRenderer.setLevelsVisible(visible, m_context);
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
+bool OccView::areGridLevelsVisible() const
+{
+    return true;
 }
 
 QPoint OccView::convertMousePos(const QPointF& logicalPos) const
@@ -907,6 +1163,141 @@ void OccView::cancelCurrentDrawing()
     }
 }
 
+bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, double& outZ,
+                                int& outNodeId, QString& outDesc, TSA::Grid::GridSnapType& outType) const
+{
+    outNodeId = -1;
+    outType = TSA::Grid::GridSnapType::None;
+    if (m_view.IsNull())
+        return false;
+
+    double xEye = 0.0, yEye = 0.0, zEye = 0.0;
+    double xDir = 0.0, yDir = 0.0, zDir = 0.0;
+    m_view->ConvertWithProj(px, py, xEye, yEye, zEye, xDir, yDir, zDir);
+    gp_Pnt eyePnt(xEye, yEye, zEye);
+    gp_Dir viewDir(xDir, yDir, zDir);
+
+    const double screenPixelRadius = 18.0; // 18 pixels d'aimantation écran
+    double bestNodeDist2 = screenPixelRadius * screenPixelRadius;
+    bool foundNode = false;
+    gp_Pnt bestNodePnt;
+    int bestNodeId = -1;
+
+    // 1. Détection prioritaire N°1 : Nœuds structuraux réels du modèle dans l'espace 3D
+    if (m_model)
+    {
+        for (const auto& [nId, node] : m_model->nodes())
+        {
+            gp_Pnt p(node.x(), node.y(), node.z());
+            gp_Vec toP(eyePnt, p);
+            if (toP.Dot(viewDir) < 0.0)
+                continue;
+
+            int sx = 0, sy = 0;
+            m_view->Convert(p.X(), p.Y(), p.Z(), sx, sy);
+            double dx = sx - px;
+            double dy = sy - py;
+            double dist2 = dx * dx + dy * dy;
+            if (dist2 <= bestNodeDist2)
+            {
+                bestNodeDist2 = dist2;
+                bestNodePnt = p;
+                bestNodeId = nId;
+                foundNode = true;
+            }
+        }
+    }
+
+    if (foundNode)
+    {
+        outX = bestNodePnt.X();
+        outY = bestNodePnt.Y();
+        outZ = bestNodePnt.Z();
+        outNodeId = bestNodeId;
+        outType = TSA::Grid::GridSnapType::Node;
+        outDesc = QString("Nœud N%1 (%2, %3, %4 m)")
+            .arg(bestNodeId)
+            .arg(outX, 0, 'f', 2)
+            .arg(outY, 0, 'f', 2)
+            .arg(outZ, 0, 'f', 2);
+        return true;
+    }
+
+    // 2. Détection prioritaire N°2 : Intersections 3D de la grille (tous étages et montants verticaux)
+    const TSA::Grid::GridSystem* activeGrid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
+    if (activeGrid && activeGrid->isActive() && activeGrid->isVisible())
+    {
+        double bestGridDist2 = screenPixelRadius * screenPixelRadius;
+        bool foundGridInter = false;
+        gp_Pnt bestGridPnt;
+        QString bestGridLabel;
+
+        if (activeGrid->cartesian())
+        {
+            for (const auto& inter : activeGrid->cartesian()->intersections())
+            {
+                const gp_Pnt& p = inter.point;
+                gp_Vec toP(eyePnt, p);
+                if (toP.Dot(viewDir) < 0.0)
+                    continue;
+
+                int sx = 0, sy = 0;
+                m_view->Convert(p.X(), p.Y(), p.Z(), sx, sy);
+                double dx = sx - px;
+                double dy = sy - py;
+                double dist2 = dx * dx + dy * dy;
+                if (dist2 <= bestGridDist2)
+                {
+                    bestGridDist2 = dist2;
+                    bestGridPnt = p;
+                    bestGridLabel = QString("Grille (%1, %2, Z=%3 m)")
+                        .arg(QString::fromStdString(inter.labelX))
+                        .arg(QString::fromStdString(inter.labelY))
+                        .arg(p.Z(), 0, 'f', 2);
+                    foundGridInter = true;
+                }
+            }
+        }
+        else if (activeGrid->cylindrical())
+        {
+            for (const auto& inter : activeGrid->cylindrical()->intersections())
+            {
+                const gp_Pnt& p = inter.point;
+                gp_Vec toP(eyePnt, p);
+                if (toP.Dot(viewDir) < 0.0)
+                    continue;
+
+                int sx = 0, sy = 0;
+                m_view->Convert(p.X(), p.Y(), p.Z(), sx, sy);
+                double dx = sx - px;
+                double dy = sy - py;
+                double dist2 = dx * dx + dy * dy;
+                if (dist2 <= bestGridDist2)
+                {
+                    bestGridDist2 = dist2;
+                    bestGridPnt = p;
+                    bestGridLabel = QString("Grille Cylindrique (R=%1, %2°)")
+                        .arg(p.Distance(gp_Pnt(0, 0, p.Z())), 0, 'f', 2)
+                        .arg(inter.angleDeg, 0, 'f', 1);
+                    foundGridInter = true;
+                }
+            }
+        }
+
+        if (foundGridInter)
+        {
+            outX = bestGridPnt.X();
+            outY = bestGridPnt.Y();
+            outZ = bestGridPnt.Z();
+            outType = TSA::Grid::GridSnapType::Intersection;
+            outDesc = bestGridLabel;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double& y, double& z, int& detectedNodeId)
 {
     detectedNodeId = -1;
@@ -916,62 +1307,33 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
     const int px = mousePixelPos.x();
     const int py = mousePixelPos.y();
 
-    // 1. Détection prioritaire d'un nœud existant sous le curseur
-    if (!m_context.IsNull())
+    // 1. Détection 3D sous le curseur (Proximité écran 18px sur nœuds structuraux ou intersections 3D de grille)
+    if (m_snapToGrid)
     {
-        AIS_StatusOfDetection status = m_context->MoveTo(px, py, m_view, false);
-        if (status != AIS_SOD_Nothing && m_context->HasDetected())
+        QString snapDesc;
+        TSA::Grid::GridSnapType snapType = TSA::Grid::GridSnapType::None;
+        if (findNearest3DPoint(px, py, x, y, z, detectedNodeId, snapDesc, snapType))
         {
-            Handle(AIS_InteractiveObject) detectedObj = m_context->DetectedInteractive();
-            int nId = m_selectionManager ? m_selectionManager->getNodeId(detectedObj) : -1;
-            if (nId > 0 && m_model)
-            {
-                const auto* node = m_model->getNode(nId);
-                if (node)
-                {
-                    x = node->x();
-                    y = node->y();
-                    z = node->z();
-                    detectedNodeId = nId;
-                    if (m_snapToGrid)
-                    {
-                        TSA::Grid::GridSnapResult nodeSnap;
-                        nodeSnap.snapped = true;
-                        nodeSnap.point = gp_Pnt(x, y, z);
-                        nodeSnap.type = TSA::Grid::GridSnapType::Node;
-                        nodeSnap.description = "Noeud N" + std::to_string(nId);
-                        m_gridRenderer.showSnapMarker(nodeSnap, m_context);
-                    }
-                    return true;
-                }
-            }
+            TSA::Grid::GridSnapResult snapRes;
+            snapRes.snapped = true;
+            snapRes.point = gp_Pnt(x, y, z);
+            snapRes.type = snapType;
+            snapRes.description = snapDesc.toStdString();
+            m_gridRenderer.showSnapMarker(snapRes, m_context);
+            emit objectHovered(snapDesc);
+            return true;
         }
     }
 
-    // 2. Si aucun nœud n'est détecté, projection 3D sur le plan de référence de la grille
-    double zPlane = m_gridZOffset;
-    if (m_gridManager && m_gridManager->activeGrid())
+    // 2. Si aucun point 3D direct n'est détecté, projection sur le plan de référence actif
+    double wx = 0.0, wy = 0.0, wz = 0.0;
+    if (!pixelToWorldPlane(px, py, wx, wy, wz))
     {
-        zPlane = m_gridManager->activeGrid()->definition().origin().Z();
+        m_gridRenderer.hideSnapMarker(m_context);
+        return false;
     }
 
-    double xEye = 0.0, yEye = 0.0, zEye = 0.0;
-    double xDir = 0.0, yDir = 0.0, zDir = 0.0;
-    m_view->ConvertWithProj(px, py, xEye, yEye, zEye, xDir, yDir, zDir);
-
-    double wx = 0.0, wy = 0.0, wz = zPlane;
-    if (std::abs(zDir) > 1e-6)
-    {
-        double t = (zPlane - zEye) / zDir;
-        wx = xEye + t * xDir;
-        wy = yEye + t * yDir;
-    }
-    else
-    {
-        m_view->Convert(px, py, wx, wy, wz);
-    }
-
-    // 3. Accrochage magnétique à la grille / nœuds si activé
+    // 3. Accrochage magnétique à la grille du plan si activé
     if (m_snapToGrid && m_gridSnapManager)
     {
         gp_Pnt rawPnt(wx, wy, wz);
@@ -994,6 +1356,7 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
                 }
             }
             m_gridRenderer.showSnapMarker(snapRes, m_context);
+            emit objectHovered(QString::fromStdString(snapRes.description));
         }
         else
         {
@@ -1117,6 +1480,27 @@ void OccView::mousePressEvent(QMouseEvent* event)
 
     if (event->button() == Qt::LeftButton)
     {
+        // 1. Clic prioritaire sur le ViewCube 3D (réorientation de caméra)
+        if (!m_context.IsNull() && !m_viewCube.IsNull())
+        {
+            m_context->MoveTo(px, py, m_view, false);
+            if (m_context->HasDetected())
+            {
+                Handle(AIS_InteractiveObject) detectedObj = m_context->DetectedInteractive();
+                if (detectedObj == m_viewCube)
+                {
+                    Handle(AIS_ViewCubeOwner) cubeOwner = Handle(AIS_ViewCubeOwner)::DownCast(m_context->DetectedOwner());
+                    if (!cubeOwner.IsNull())
+                    {
+                        m_viewCube->HandleClick(cubeOwner);
+                        m_view->Redraw();
+                        emit viewCameraChanged();
+                        return;
+                    }
+                }
+            }
+        }
+
         if (m_interactionMode == InteractionMode::Select)
         {
             // En mode sélection, on attend le mouvement pour distinguer un clic d'un glissé fenêtre/capture
@@ -1384,6 +1768,8 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
     const int px = p.x();
     const int py = p.y();
 
+    emit mousePixelPositionChanged(px, py);
+
     // Mode Sélection rectangulaire (Fenêtre gauche->droite ou Capture droite->gauche)
     if (m_interactionMode == InteractionMode::Select && (event->buttons() & Qt::LeftButton))
     {
@@ -1450,12 +1836,14 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
     {
     case CurrentAction::Rotation:
         m_view->Rotation(px, py);
+        emit viewCameraChanged();
         break;
 
     case CurrentAction::Pan:
         m_view->Pan(px - m_lastMousePos.x(),
                     m_lastMousePos.y() - py);
         m_lastMousePos = p;
+        emit viewCameraChanged();
         break;
 
     case CurrentAction::Nothing:
@@ -1599,6 +1987,7 @@ void OccView::wheelEvent(QWheelEvent* event)
     m_view->Pan(px - newPx, newPy - py);
 
     m_view->Redraw();
+    emit viewCameraChanged();
 }
 
 void OccView::keyPressEvent(QKeyEvent* event)

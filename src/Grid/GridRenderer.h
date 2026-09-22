@@ -24,29 +24,42 @@ public:
     void setGridVisible(bool visible, const Handle(AIS_InteractiveContext)& context);
     void setLabelsVisible(bool visible, const Handle(AIS_InteractiveContext)& context);
     void setIntersectionsVisible(bool visible, const Handle(AIS_InteractiveContext)& context);
+    void setLevelsVisible(bool visible, const Handle(AIS_InteractiveContext)& context);
 
     bool isGridVisible() const { return m_gridVisible; }
     bool areLabelsVisible() const { return m_labelsVisible; }
     bool areIntersectionsVisible() const { return m_intersectionsVisible; }
+    bool areLevelsVisible() const { return m_levelsVisible; }
 
     // Marqueur visuel interactif de Snapping (aimantation temps réel)
     void showSnapMarker(const GridSnapResult& snap, const Handle(AIS_InteractiveContext)& context);
     void hideSnapMarker(const Handle(AIS_InteractiveContext)& context);
 
+    // Niveau actif pour le dessin en hauteur
+    void setActiveLevelElevation(double z, const GridSystem* gridSystem, const Handle(AIS_InteractiveContext)& context);
+    double activeLevelElevation() const { return m_activeLevelZ; }
+
 private:
     void renderCartesian(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
     void renderCylindrical(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
+    void updateActiveLevelHighlight(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
 
 private:
     bool m_gridVisible = true;
     bool m_labelsVisible = true;
     bool m_intersectionsVisible = true;
+    bool m_levelsVisible = true;
+    double m_activeLevelZ = 0.0;
 
     // Formes d'axes et de lignes
     Handle(AIS_Shape) m_axesShape;
+    Handle(AIS_Shape) m_verticalConnectionsShape;
+    Handle(AIS_Shape) m_activeLevelPlaneShape;
     Handle(AIS_Shape) m_circlesShape;
     Handle(AIS_Shape) m_intersectionsShape;
     Handle(AIS_Shape) m_originShape;
+    Handle(AIS_Shape) m_levelAxisShape;
+    Handle(AIS_Shape) m_levelPlanesShape;
 
     // Rendu des libellés et bulles
     GridLabelRenderer m_labelRenderer;

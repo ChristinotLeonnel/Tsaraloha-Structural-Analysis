@@ -22,6 +22,7 @@ public:
 
     void setGridManager(TSA::Grid::GridManager* gridManager);
     void refreshAll();
+    void refreshLevels();
     void refreshGrids();
 
     void selectNodeItem(int nodeId);
@@ -31,6 +32,7 @@ public:
     void clearTreeSelection();
 
 signals:
+    void levelSelected(const QString& levelId);
     void nodeSelected(int nodeId);
     void beamSelected(int beamId);
     void columnSelected(int columnId);
@@ -69,6 +71,7 @@ private:
     TSA::Grid::GridManager* m_gridManager = nullptr;
     QTreeWidget* m_tree = nullptr;
 
+    QTreeWidgetItem* m_levelsCategory = nullptr;
     QTreeWidgetItem* m_gridsCategory = nullptr;
     QTreeWidgetItem* m_nodesCategory = nullptr;
     QTreeWidgetItem* m_beamsCategory = nullptr;
