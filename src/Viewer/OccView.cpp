@@ -1810,7 +1810,18 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                 emit objectHovered(tr("Fenêtre (Gauche -> Droite) : Sélectionne uniquement les éléments entièrement inclus"));
             }
 
-            m_selectRubberBand->SetRectangle(minX, minY, maxX, maxY);
+            // Inverser l'axe Y pour AIS_RubberBand (convention OpenGL : Y=0 en bas)
+            // Qt fournit des coordonnées écran (Y=0 en haut)
+            int winH = 0;
+            if (!m_view.IsNull() && !m_view->Window().IsNull())
+            {
+                int winW = 0;
+                m_view->Window()->Size(winW, winH);
+            }
+            int rbMinY = winH - maxY;
+            int rbMaxY = winH - minY;
+
+            m_selectRubberBand->SetRectangle(minX, rbMinY, maxX, rbMaxY);
 
             if (!m_context.IsNull())
             {
