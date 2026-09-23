@@ -10,6 +10,8 @@
 #include <vector>
 #include <set>
 #include <memory>
+#include <gp_Pnt.hxx>
+#include <gp_Dir.hxx>
 
 namespace TSA::Model
 {
@@ -93,11 +95,18 @@ public:
 
     // Transformations
     bool moveNodes(const std::set<int>& nodeIds, double dx, double dy, double dz);
+    bool rotateNodes(const std::set<int>& nodeIds, const gp_Pnt& center, const gp_Dir& axis, double angleRad);
     std::vector<int> copyElements(const std::set<int>& nodeIds,
                                   const std::set<int>& beamIds,
                                   const std::set<int>& columnIds,
                                   const std::set<int>& slabIds,
                                   double dx, double dy, double dz, int repetitions = 1);
+    std::vector<int> copyAndRotateElements(const std::set<int>& nodeIds,
+                                          const std::set<int>& beamIds,
+                                          const std::set<int>& columnIds,
+                                          const std::set<int>& slabIds,
+                                          const gp_Pnt& center, const gp_Dir& axis,
+                                          double angleRad, int repetitions = 1);
 
     // Notifications de modification
     void notifyNodeModified(int nodeId);

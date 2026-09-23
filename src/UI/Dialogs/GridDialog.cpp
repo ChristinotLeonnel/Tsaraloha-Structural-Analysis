@@ -1,6 +1,7 @@
 #include "GridDialog.h"
 #include "../../Grid/GridManager.h"
 #include "../../Model/Model.h"
+#include "../../Viewer/OccView.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -20,16 +21,18 @@ namespace TSA::UI
 {
 
 GridDialog::GridDialog(QWidget* parent)
-    : GridDialog(nullptr, nullptr, parent)
+    : GridDialog(nullptr, nullptr, nullptr, parent)
 {
 }
 
 GridDialog::GridDialog(TSA::Grid::GridManager* gridManager,
                        TSA::Model::Model* model,
+                       OccView* occView,
                        QWidget* parent)
     : QDialog(parent)
     , m_gridManager(gridManager)
     , m_model(model)
+    , m_occView(occView)
 {
     setupUi();
 
@@ -71,17 +74,19 @@ GridDialog::GridDialog(TSA::Grid::GridManager* gridManager,
 }
 
 GridDialog::GridDialog(const TSA::Grid::GridDefinition& existingDef, QWidget* parent)
-    : GridDialog(existingDef, nullptr, nullptr, parent)
+    : GridDialog(existingDef, nullptr, nullptr, nullptr, parent)
 {
 }
 
 GridDialog::GridDialog(const TSA::Grid::GridDefinition& existingDef,
                        TSA::Grid::GridManager* gridManager,
                        TSA::Model::Model* model,
+                       OccView* occView,
                        QWidget* parent)
     : QDialog(parent)
     , m_gridManager(gridManager)
     , m_model(model)
+    , m_occView(occView)
     , m_isEditMode(true)
     , m_gridId(existingDef.id())
 {
@@ -138,6 +143,10 @@ void GridDialog::setupUi()
 
     m_btnArbitrary = new QPushButton(tr("Lignes arbitraires"), this);
     m_btnArbitrary->setCheckable(true);
+    // Non implémenté côté moteur (GridType ne connaît que Cartésien/Cylindrique) :
+    // on désactive plutôt que de laisser un bouton qui ne fait rien.
+    m_btnArbitrary->setEnabled(false);
+    m_btnArbitrary->setToolTip(tr("Fonctionnalité pas encore disponible"));
 
     modeLayout->addWidget(m_btnCartesian);
     modeLayout->addWidget(m_btnCylindrical);
@@ -167,9 +176,9 @@ void GridDialog::setupUi()
     inputGrid->setHorizontalSpacing(8);
     inputGrid->setVerticalSpacing(4);
 
-    inputGrid->addWidget(new QLabel(tr("Position:"), this), 0, 0);
-    inputGrid->addWidget(new QLabel(tr("Répéter x:"), this), 0, 1);
-    inputGrid->addWidget(new QLabel(tr("Espacement:"), this), 0, 2);
+    inputGrid->addWidget(m_posLabel = new QLabel(tr("Position:"), this), 0, 0);
+    inputGrid->addWidget(m_repeatLabel = new QLabel(tr("Répéter x:"), this), 0, 1);
+    inputGrid->addWidget(m_spacingLabel = new QLabel(tr("Espacement:"), this), 0, 2);
 
     auto* posLayout = new QHBoxLayout();
     m_posSpin = new QDoubleSpinBox(this);
@@ -179,12 +188,12 @@ void GridDialog::setupUi()
     m_posSpin->setValue(0.0);
     m_posSpin->setStyleSheet("border: 1.5px solid #28A745; background-color: #E8F8EE; font-weight: bold;");
     posLayout->addWidget(m_posSpin);
-    posLayout->addWidget(new QLabel(tr("(m)"), this));
+    posLayout->addWidget(m_posUnitLabel = new QLabel(tr("(m)"), this));
     inputGrid->addLayout(posLayout, 1, 0);
 
     m_repeatSpin = new QSpinBox(this);
     m_repeatSpin->setRange(1, 100);
-    m_repeatSpin->setValue(1);
+    m_repeatSpin->setValue(2); // 2 par défaut pour éviter tout bug de grille
     inputGrid->addWidget(m_repeatSpin, 1, 1);
 
     auto* spaceLayout = new QHBoxLayout();
@@ -194,7 +203,7 @@ void GridDialog::setupUi()
     m_spacingSpin->setSingleStep(1.0);
     m_spacingSpin->setValue(3.0);
     spaceLayout->addWidget(m_spacingSpin);
-    spaceLayout->addWidget(new QLabel(tr("(m)"), this));
+    spaceLayout->addWidget(m_spacingUnitLabel = new QLabel(tr("(m)"), this));
     inputGrid->addLayout(spaceLayout, 1, 2);
 
     mainLayout->addLayout(inputGrid);
@@ -285,10 +294,16 @@ void GridDialog::setupUi()
     connect(m_btnNew, &QPushButton::clicked, this, &GridDialog::onNewGrid);
     connect(m_btnApply, &QPushButton::clicked, this, &GridDialog::onApply);
     connect(m_btnClose, &QPushButton::clicked, this, &QDialog::accept);
+    // Le bouton n'était relié à aucun slot : il ne faisait rigoureusement rien.
+    // On le relie à un signal que la fenêtre principale écoute pour ouvrir le
+    // vrai gestionnaire de grilles (GridSettingsDialog).
+    connect(m_btnManage, &QPushButton::clicked, this, &GridDialog::manageGridsRequested);
 }
 
 void GridDialog::onModeCartesian()
 {
+    const bool changed = (m_currentType != TSA::Grid::GridType::Cartesian);
+
     m_btnCartesian->setChecked(true);
     m_btnCylindrical->setChecked(false);
     m_btnArbitrary->setChecked(false);
@@ -297,10 +312,30 @@ void GridDialog::onModeCartesian()
     m_axisTabs->setTabText(0, tr("X"));
     m_axisTabs->setTabText(1, tr("Y"));
     m_axisTabs->setTabText(2, tr("Z"));
+
+    if (changed)
+    {
+        m_axes[0].positions = { 0.0, 6.0, 12.0, 18.0 };
+        m_axes[1].positions = { 0.0, 4.0, 8.0 };
+        m_axes[0].spacing = 3.0;
+        m_axes[1].spacing = 3.0;
+        m_axes[0].repeatCount = 2;
+        m_axes[1].repeatCount = 2;
+        for (int i = 0; i < 2; ++i)
+        {
+            applyLabels(i);
+            m_axes[i].currentPosition = m_axes[i].positions.back() + 3.0;
+        }
+    }
+
+    updateTableForCurrentTab();
+    onApply();
 }
 
 void GridDialog::onModeCylindrical()
 {
+    const bool changed = (m_currentType != TSA::Grid::GridType::Cylindrical);
+
     m_btnCartesian->setChecked(false);
     m_btnCylindrical->setChecked(true);
     m_btnArbitrary->setChecked(false);
@@ -309,6 +344,23 @@ void GridDialog::onModeCylindrical()
     m_axisTabs->setTabText(0, tr("R (m)"));
     m_axisTabs->setTabText(1, tr("Thêta (°)"));
     m_axisTabs->setTabText(2, tr("Z (m)"));
+
+    if (changed)
+    {
+        m_axes[0].positions = { 2.0, 4.0, 6.0, 8.0 };
+        m_axes[1].positions = { 0.0, 30.0, 60.0, 90.0, 120.0, 150.0, 180.0, 210.0, 240.0, 270.0, 300.0, 330.0 };
+        m_axes[0].spacing = 2.0;
+        m_axes[1].spacing = 30.0;
+        m_axes[0].repeatCount = 2;
+        m_axes[1].repeatCount = 2;
+        applyLabels(0);
+        applyLabels(1);
+        m_axes[0].currentPosition = m_axes[0].positions.back() + 2.0;
+        m_axes[1].currentPosition = 0.0;
+    }
+
+    updateTableForCurrentTab();
+    onApply();
 }
 
 void GridDialog::onModeArbitrary()
@@ -332,7 +384,7 @@ void GridDialog::onTabChanged(int index)
     // Restaurer l'état du nouvel onglet
     m_isUpdating = true;
     m_posSpin->setValue(m_axes[m_currentAxisIndex].currentPosition);
-    m_repeatSpin->setValue(m_axes[m_currentAxisIndex].repeatCount);
+    m_repeatSpin->setValue(std::max(2, m_axes[m_currentAxisIndex].repeatCount));
     m_spacingSpin->setValue(m_axes[m_currentAxisIndex].spacing);
     m_labelStyleCombo->setCurrentIndex(m_axes[m_currentAxisIndex].labelStyle);
     m_isUpdating = false;
@@ -344,6 +396,12 @@ void GridDialog::onAddLines()
 {
     double startPos = m_posSpin->value();
     int repeat = m_repeatSpin->value();
+    // Exigence utilisateur : "Ajouter automatiquement 2 fois pour éviter les bugs de grille"
+    if (repeat < 2)
+    {
+        repeat = 2;
+        m_repeatSpin->setValue(2);
+    }
     double spacing = m_spacingSpin->value();
 
     auto& axis = m_axes[m_currentAxisIndex];
@@ -351,6 +409,14 @@ void GridDialog::onAddLines()
     for (int i = 0; i < repeat; ++i)
     {
         double p = startPos + i * spacing;
+
+        // Normalisation d'angle pour grille cylindrique (axe Thêta)
+        if (m_currentType == TSA::Grid::GridType::Cylindrical && m_currentAxisIndex == 1)
+        {
+            while (p >= 360.0) p -= 360.0;
+            while (p < 0.0) p += 360.0;
+        }
+
         // Éviter les doublons stricts
         bool exists = false;
         for (double existing : axis.positions)
@@ -372,12 +438,16 @@ void GridDialog::onAddLines()
 
     // Calculer la prochaine position suggérée
     double nextPos = startPos + repeat * spacing;
+    if (m_currentType == TSA::Grid::GridType::Cylindrical && m_currentAxisIndex == 1)
+    {
+        while (nextPos >= 360.0) nextPos -= 360.0;
+    }
     m_posSpin->setValue(nextPos);
     axis.currentPosition = nextPos;
 
     updateTableForCurrentTab();
 
-    // Mettre à jour en direct dans le 3D viewport
+    // Mettre à jour immédiatement dans le 3D viewport dès l'ajout
     onApply();
 }
 
@@ -449,6 +519,75 @@ void GridDialog::applyLabels(int tabIdx)
 
 void GridDialog::updateTableForCurrentTab()
 {
+    // Mettre à jour les libellés et unités des champs selon le type et l'onglet actif
+    QString col1Header;
+    if (m_currentType == TSA::Grid::GridType::Cylindrical)
+    {
+        if (m_currentAxisIndex == 0) // Rayon
+        {
+            m_posLabel->setText(tr("Rayon (R):"));
+            m_posUnitLabel->setText(tr("(m)"));
+            m_spacingLabel->setText(tr("Pas radial:"));
+            m_spacingUnitLabel->setText(tr("(m)"));
+            m_posSpin->setRange(0.0, 10000.0);
+            m_posSpin->setSingleStep(1.0);
+            m_spacingSpin->setRange(0.01, 1000.0);
+            m_spacingSpin->setSingleStep(1.0);
+            col1Header = tr("Rayon R (m)");
+        }
+        else if (m_currentAxisIndex == 1) // Angle Thêta
+        {
+            m_posLabel->setText(tr("Angle (θ):"));
+            m_posUnitLabel->setText(tr("(°)"));
+            m_spacingLabel->setText(tr("Pas angulaire:"));
+            m_spacingUnitLabel->setText(tr("(°)"));
+            m_posSpin->setRange(-360.0, 360.0);
+            m_posSpin->setSingleStep(15.0);
+            m_spacingSpin->setRange(0.1, 360.0);
+            m_spacingSpin->setSingleStep(15.0);
+            col1Header = tr("Angle θ (°)");
+        }
+        else // Élévation Z
+        {
+            m_posLabel->setText(tr("Position (Z):"));
+            m_posUnitLabel->setText(tr("(m)"));
+            m_spacingLabel->setText(tr("Espacement:"));
+            m_spacingUnitLabel->setText(tr("(m)"));
+            m_posSpin->setRange(-10000.0, 10000.0);
+            m_posSpin->setSingleStep(1.0);
+            m_spacingSpin->setRange(0.01, 1000.0);
+            m_spacingSpin->setSingleStep(1.0);
+            col1Header = tr("Élévation Z (m)");
+        }
+    }
+    else // Cartésien
+    {
+        m_posUnitLabel->setText(tr("(m)"));
+        m_spacingUnitLabel->setText(tr("(m)"));
+        m_posSpin->setRange(-10000.0, 10000.0);
+        m_posSpin->setSingleStep(1.0);
+        m_spacingSpin->setRange(0.01, 1000.0);
+        m_spacingSpin->setSingleStep(1.0);
+
+        if (m_currentAxisIndex == 0)
+        {
+            m_posLabel->setText(tr("Position (X):"));
+            col1Header = tr("Position X (m)");
+        }
+        else if (m_currentAxisIndex == 1)
+        {
+            m_posLabel->setText(tr("Position (Y):"));
+            col1Header = tr("Position Y (m)");
+        }
+        else
+        {
+            m_posLabel->setText(tr("Position (Z):"));
+            col1Header = tr("Élévation Z (m)");
+        }
+    }
+
+    m_table->setHorizontalHeaderLabels({ tr("Libellé"), col1Header });
+
     m_table->setRowCount(0);
     const auto& axis = m_axes[m_currentAxisIndex];
 
@@ -459,7 +598,17 @@ void GridDialog::updateTableForCurrentTab()
         auto* itemLabel = new QTableWidgetItem(labelStr);
         itemLabel->setTextAlignment(Qt::AlignCenter);
 
-        auto* itemPos = new QTableWidgetItem(QString::number(axis.positions[i], 'f', 2));
+        QString posStr;
+        if (m_currentType == TSA::Grid::GridType::Cylindrical && m_currentAxisIndex == 1)
+        {
+            posStr = QString("%1°").arg(QString::number(axis.positions[i], 'f', 2));
+        }
+        else
+        {
+            posStr = QString::number(axis.positions[i], 'f', 2);
+        }
+
+        auto* itemPos = new QTableWidgetItem(posStr);
         itemPos->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
         m_table->setItem(i, 0, itemLabel);
@@ -491,10 +640,15 @@ void GridDialog::onApply()
     TSA::Grid::GridDefinition def = getDefinition();
 
     // Mettre à jour directement le système de coordonnées du modèle
+    // (uniquement pertinent pour une grille Cartésienne : les rayons/angles
+    // d'une grille Cylindrique ne doivent jamais écraser les axes X/Y du modèle)
     if (m_model && m_model->coordinateSystem())
     {
-        m_model->coordinateSystem()->setXPositions(m_axes[0].positions);
-        m_model->coordinateSystem()->setYPositions(m_axes[1].positions);
+        if (m_currentType == TSA::Grid::GridType::Cartesian)
+        {
+            m_model->coordinateSystem()->setXPositions(m_axes[0].positions);
+            m_model->coordinateSystem()->setYPositions(m_axes[1].positions);
+        }
 
         if (m_model->levelManager())
         {
@@ -505,18 +659,30 @@ void GridDialog::onApply()
     // Mettre à jour la grille active dans le GridManager
     if (m_gridManager)
     {
-        if (auto* active = m_gridManager->activeGrid())
+        if (m_isEditMode && !m_gridId.empty())
         {
-            active->updateDefinition(def);
+            m_gridManager->updateGrid(m_gridId, def);
+        }
+        else if (auto* active = m_gridManager->activeGrid())
+        {
+            m_gridManager->updateGrid(active->id(), def);
         }
         else
         {
             auto* newGrid = m_gridManager->addGrid(def);
             if (newGrid)
             {
+                m_gridId = newGrid->id();
+                m_isEditMode = true;
                 m_gridManager->setActiveGridId(newGrid->id());
             }
         }
+    }
+
+    // Reconstruire immédiatement la vue 3D
+    if (m_occView)
+    {
+        m_occView->rebuildGrid();
     }
 
     emit gridDefinitionApplied(def);
@@ -532,11 +698,22 @@ TSA::Grid::GridDefinition GridDialog::getDefinition() const
         def.setId(m_gridId);
     }
 
-    def.setXPositions(m_axes[0].positions);
-    def.setXLabels(m_axes[0].labels);
+    if (m_currentType == TSA::Grid::GridType::Cartesian)
+    {
+        def.setXPositions(m_axes[0].positions);
+        def.setXLabels(m_axes[0].labels);
 
-    def.setYPositions(m_axes[1].positions);
-    def.setYLabels(m_axes[1].labels);
+        def.setYPositions(m_axes[1].positions);
+        def.setYLabels(m_axes[1].labels);
+    }
+    else // Cylindrique : l'onglet 0 contient les rayons, l'onglet 1 les angles
+    {
+        def.setRadii(m_axes[0].positions);
+        def.setRadiusLabels(m_axes[0].labels);
+
+        def.setAngles(m_axes[1].positions);
+        def.setAngleLabels(m_axes[1].labels);
+    }
 
     def.setZLevels(m_axes[2].positions);
     def.setZLabels(m_axes[2].labels);
@@ -558,11 +735,22 @@ void GridDialog::loadFromDefinition(const TSA::Grid::GridDefinition& def)
         onModeCylindrical();
     }
 
-    m_axes[0].positions = def.xPositions();
-    m_axes[0].labels = def.xLabels();
+    if (def.type() == TSA::Grid::GridType::Cartesian)
+    {
+        m_axes[0].positions = def.xPositions();
+        m_axes[0].labels = def.xLabels();
 
-    m_axes[1].positions = def.yPositions();
-    m_axes[1].labels = def.yLabels();
+        m_axes[1].positions = def.yPositions();
+        m_axes[1].labels = def.yLabels();
+    }
+    else // Cylindrique : recharger rayons/angles, pas X/Y (toujours vides pour ce type)
+    {
+        m_axes[0].positions = def.radii();
+        m_axes[0].labels = def.radiusLabels();
+
+        m_axes[1].positions = def.angles();
+        m_axes[1].labels = def.angleLabels();
+    }
 
     m_axes[2].positions = def.zLevels();
     m_axes[2].labels = def.zLabels();

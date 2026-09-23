@@ -2,6 +2,9 @@
 
 #include <QMainWindow>
 #include <memory>
+#include <vector>
+#include <gp_Pnt.hxx>
+#include <gp_Dir.hxx>
 
 namespace TSA::Model { class Model; }
 namespace TSA::Viewer { class SelectionManager; }
@@ -117,6 +120,36 @@ private:
 
     QAction* m_actionNewNode = nullptr;
     QAction* m_actionNewBeam = nullptr;
+    // Presse-papier structural pour copier-coller 3D (Ctrl+C / Ctrl+V)
+    struct ClipboardNode {
+        int originalId = 0;
+        double relX = 0.0, relY = 0.0, relZ = 0.0;
+    };
+    struct ClipboardBeam {
+        int originalStartNodeId = 0;
+        int originalEndNodeId = 0;
+        double width = 0.30;
+        double height = 0.50;
+    };
+    struct ClipboardColumn {
+        int originalStartNodeId = 0;
+        int originalEndNodeId = 0;
+        double width = 0.40;
+        double height = 0.40;
+    };
+    struct ClipboardSlab {
+        std::vector<int> originalNodeIds;
+        double thickness = 0.20;
+    };
+    struct StructuralClipboard {
+        bool hasData = false;
+        double refOriginX = 0.0, refOriginY = 0.0, refOriginZ = 0.0;
+        std::vector<ClipboardNode> nodes;
+        std::vector<ClipboardBeam> beams;
+        std::vector<ClipboardColumn> columns;
+        std::vector<ClipboardSlab> slabs;
+    };
+
     QAction* m_actionNewColumn = nullptr;
     QAction* m_actionNewSlab = nullptr;
     QAction* m_actionAddCube = nullptr;
@@ -124,6 +157,16 @@ private:
 
     QAction* m_actionMove = nullptr;
     QAction* m_actionCopy = nullptr;
+
+    // Actions Transformations 3D directes & Presse-papier
+    QAction* m_actionMove3D = nullptr;
+    QAction* m_actionCopy3D = nullptr;
+    QAction* m_actionRotate3D = nullptr;
+    QAction* m_actionMoveOrigin = nullptr;
+    QAction* m_actionCopyClipboard = nullptr;
+    QAction* m_actionPasteClipboard = nullptr;
+
+    StructuralClipboard m_clipboard;
 
     // Actions Barre "Vue" (Robot SA style)
     QAction* m_actionViewXY = nullptr;
@@ -142,4 +185,17 @@ private slots:
     void onActionView3D();
     void onActionCoordSystem();
     void onActionSectionCut();
+
+    // Slots Transformations 3D directes & Presse-papier
+    void onActionMove3D();
+    void onActionCopy3D();
+    void onActionRotate3D();
+    void onActionMoveOrigin();
+    void onActionCopyClipboard();
+    void onActionPasteClipboard();
+
+    void onPointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& target, bool isCopy);
+    void onPointToPointRotateRequested(const gp_Pnt& center, double angleRad, bool isCopy);
+    void onOriginMoveRequested(const gp_Pnt& newOrigin);
+    void onPasteAtPointRequested(const gp_Pnt& target);
 };

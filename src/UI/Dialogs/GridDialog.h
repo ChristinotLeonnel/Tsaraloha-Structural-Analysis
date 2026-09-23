@@ -24,6 +24,8 @@ namespace TSA::Model
     class Model;
 }
 
+class OccView;
+
 namespace TSA::UI
 {
 
@@ -35,19 +37,23 @@ public:
     explicit GridDialog(QWidget* parent = nullptr);
     explicit GridDialog(TSA::Grid::GridManager* gridManager,
                         TSA::Model::Model* model,
+                        OccView* occView = nullptr,
                         QWidget* parent = nullptr);
     explicit GridDialog(const TSA::Grid::GridDefinition& existingDef,
                         QWidget* parent = nullptr);
     explicit GridDialog(const TSA::Grid::GridDefinition& existingDef,
                         TSA::Grid::GridManager* gridManager,
                         TSA::Model::Model* model,
+                        OccView* occView = nullptr,
                         QWidget* parent = nullptr);
     ~GridDialog() override = default;
 
     TSA::Grid::GridDefinition getDefinition() const;
+    void setOccView(OccView* occView) { m_occView = occView; }
 
 signals:
     void gridDefinitionApplied(const TSA::Grid::GridDefinition& def);
+    void manageGridsRequested();
 
 private slots:
     void onModeCartesian();
@@ -74,13 +80,14 @@ private:
         int labelStyle = 0; // 0: 1 2 3..., 1: A B C..., 2: Niveau 1 2 3..., 3: Custom
         std::string customLabel;
         double currentPosition = 0.0;
-        int repeatCount = 1;
+        int repeatCount = 2; // Répéter 2 fois par défaut pour éviter les bugs de grille
         double spacing = 3.0;
     };
 
 private:
     TSA::Grid::GridManager* m_gridManager = nullptr;
     TSA::Model::Model* m_model = nullptr;
+    OccView* m_occView = nullptr;
     bool m_isEditMode = false;
     std::string m_gridId;
 
@@ -94,7 +101,13 @@ private:
     // Sub-tabs
     QTabWidget* m_axisTabs = nullptr;
 
-    // Saisie par onglet
+    // Saisie par onglet avec labels et unités dynamiques
+    QLabel* m_posLabel = nullptr;
+    QLabel* m_posUnitLabel = nullptr;
+    QLabel* m_repeatLabel = nullptr;
+    QLabel* m_spacingLabel = nullptr;
+    QLabel* m_spacingUnitLabel = nullptr;
+
     QDoubleSpinBox* m_posSpin = nullptr;
     QSpinBox* m_repeatSpin = nullptr;
     QDoubleSpinBox* m_spacingSpin = nullptr;

@@ -72,3 +72,9 @@ Thumbs.db
 *.log
 *.tlog
 *.dump
+
+# Archives
+*.rar
+*.zip
+*.7z
+*.tar.gz

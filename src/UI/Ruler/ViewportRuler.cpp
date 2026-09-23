@@ -151,18 +151,19 @@ void HorizontalRulerWidget::paintEvent(QPaintEvent* /*event*/)
         }
     }
 
-    // Repère suiveur de souris (Hairline curseur)
+    // Repère suiveur de souris (Hairline curseur et triangle indicateur)
     if (m_cursorPixelX >= 0 && m_cursorPixelX <= width())
     {
         p.setPen(QColor(0xD3, 0x2F, 0x2F)); // Rouge alerte suiveur
         p.drawLine(m_cursorPixelX, 0, m_cursorPixelX, height() - 1);
 
-        // Petit triangle indicateur en haut de la règle
+        // Triangle indicateur pointant vers le bas (vers la vue 3D)
         QPolygon triangle;
-        triangle << QPoint(m_cursorPixelX - 3, 0)
-                 << QPoint(m_cursorPixelX + 3, 0)
-                 << QPoint(m_cursorPixelX, 4);
+        triangle << QPoint(m_cursorPixelX - 4, height() - 1)
+                 << QPoint(m_cursorPixelX + 4, height() - 1)
+                 << QPoint(m_cursorPixelX, height() - 7);
         p.setBrush(QColor(0xD3, 0x2F, 0x2F));
+        p.setPen(Qt::NoPen);
         p.drawPolygon(triangle);
     }
 }
@@ -315,7 +316,7 @@ void VerticalRulerWidget::paintEvent(QPaintEvent* /*event*/)
         }
     }
 
-    // Repère suiveur de souris
+    // Repère suiveur de souris (Hairline curseur et triangle indicateur)
     if (m_cursorPixelY >= 0 && m_cursorPixelY <= height())
     {
         p.setPen(QColor(0xD3, 0x2F, 0x2F));
@@ -324,17 +325,20 @@ void VerticalRulerWidget::paintEvent(QPaintEvent* /*event*/)
         QPolygon triangle;
         if (m_position == Position::Left)
         {
-            triangle << QPoint(0, m_cursorPixelY - 3)
-                     << QPoint(0, m_cursorPixelY + 3)
-                     << QPoint(4, m_cursorPixelY);
+            // Bord droit de la règle gauche (adjacent à la vue 3D)
+            triangle << QPoint(width() - 1, m_cursorPixelY - 4)
+                     << QPoint(width() - 1, m_cursorPixelY + 4)
+                     << QPoint(width() - 7, m_cursorPixelY);
         }
         else
         {
-            triangle << QPoint(width() - 1, m_cursorPixelY - 3)
-                     << QPoint(width() - 1, m_cursorPixelY + 3)
-                     << QPoint(width() - 5, m_cursorPixelY);
+            // Bord gauche de la règle droite (adjacent à la vue 3D)
+            triangle << QPoint(0, m_cursorPixelY - 4)
+                     << QPoint(0, m_cursorPixelY + 4)
+                     << QPoint(6, m_cursorPixelY);
         }
         p.setBrush(QColor(0xD3, 0x2F, 0x2F));
+        p.setPen(Qt::NoPen);
         p.drawPolygon(triangle);
     }
 }

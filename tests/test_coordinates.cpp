@@ -33,7 +33,7 @@ static bool approxEqual(double a, double b, double eps = 1e-4)
 int main()
 {
     int passed = 0;
-    int total = 9;
+    int total = 10;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -236,6 +236,37 @@ int main()
         TEST_CHECK(approxEqual(snapRes.point.X(), 4.0) && approxEqual(snapRes.point.Y(), 6.0) && approxEqual(snapRes.point.Z(), 3.0), "Snap point coords");
 
         std::cout << "[PASS] Test 9: 18 3D Grid intersections verified & Priority Node Snap confirmed" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 10: 3D Node & Element Rotation and Copy-and-Rotate
+    // -------------------------------------------------------------------------
+    {
+        Model rotModel;
+        int n1 = rotModel.addNode(1.0, 0.0, 0.0);
+        int n2 = rotModel.addNode(1.0, 2.0, 0.0);
+        int b1 = rotModel.addBeam(n1, n2, 0.3, 0.5);
+
+        // Rotate 90° around Z-axis passing through (0, 0, 0)
+        constexpr double kPi_2 = 3.14159265358979323846 / 2.0;
+        bool ok = rotModel.rotateNodes({n1, n2}, gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0), kPi_2);
+        TEST_CHECK(ok, "rotateNodes succeeded");
+
+        const auto* node1 = rotModel.getNode(n1);
+        const auto* node2 = rotModel.getNode(n2);
+        TEST_CHECK(node1 && approxEqual(node1->x(), 0.0) && approxEqual(node1->y(), 1.0) && approxEqual(node1->z(), 0.0), "Node 1 rotated to (0, 1, 0)");
+        TEST_CHECK(node2 && approxEqual(node2->x(), -2.0) && approxEqual(node2->y(), 1.0) && approxEqual(node2->z(), 0.0), "Node 2 rotated to (-2, 1, 0)");
+
+        // Copy and Rotate 90° further: (-1, 0, 0) and (-1, -2, 0)
+        auto newIds = rotModel.copyAndRotateElements({n1, n2}, {b1}, {}, {}, gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0), kPi_2, 1);
+        TEST_CHECK(newIds.size() == 3, "Created 2 new nodes and 1 new beam");
+
+        // Verify model now has 4 nodes and 2 beams
+        TEST_CHECK(rotModel.nodes().size() == 4, "Total 4 nodes");
+        TEST_CHECK(rotModel.beams().size() == 2, "Total 2 beams");
+
+        std::cout << "[PASS] Test 10: 3D Rotation and Copy-and-Rotate of structural elements verified" << std::endl;
         passed++;
     }
 

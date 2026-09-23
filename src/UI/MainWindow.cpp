@@ -143,6 +143,56 @@ static QIcon makeSectionCutIcon()
 
     return QIcon(pix);
 }
+
+static QIcon makeRotateIcon()
+{
+    QPixmap pix(26, 26);
+    pix.fill(Qt::transparent);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    p.setPen(QPen(QColor(30, 140, 240), 2.2));
+    p.drawArc(4, 4, 18, 18, 45 * 16, 270 * 16);
+
+    // Flèche de rotation
+    p.setBrush(QColor(30, 140, 240));
+    QPolygon arrow;
+    arrow << QPoint(18, 5) << QPoint(23, 8) << QPoint(19, 12);
+    p.drawPolygon(arrow);
+
+    // Point central
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(240, 60, 60));
+    p.drawEllipse(11, 11, 4, 4);
+
+    return QIcon(pix);
+}
+
+static QIcon makeOriginMoveIcon()
+{
+    QPixmap pix(26, 26);
+    pix.fill(Qt::transparent);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    // Triad axes
+    p.setPen(QPen(Qt::red, 2.0));
+    p.drawLine(13, 13, 23, 13);
+    p.setPen(QPen(Qt::green, 2.0));
+    p.drawLine(13, 13, 13, 3);
+    p.setPen(QPen(Qt::blue, 2.0));
+    p.drawLine(13, 13, 6, 20);
+
+    // Center target ring
+    p.setPen(QPen(QColor(255, 140, 0), 2.0));
+    p.setBrush(Qt::NoBrush);
+    p.drawEllipse(8, 8, 10, 10);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(255, 140, 0));
+    p.drawEllipse(11, 11, 4, 4);
+
+    return QIcon(pix);
+}
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -234,6 +284,11 @@ MainWindow::MainWindow(QWidget* parent)
         }
     });
 
+    connect(m_occView, &OccView::pointToPointMoveRequested, this, &MainWindow::onPointToPointMoveRequested);
+    connect(m_occView, &OccView::pointToPointRotateRequested, this, &MainWindow::onPointToPointRotateRequested);
+    connect(m_occView, &OccView::originMoveRequested, this, &MainWindow::onOriginMoveRequested);
+    connect(m_occView, &OccView::pasteAtPointRequested, this, &MainWindow::onPasteAtPointRequested);
+
     if (m_statusInfo)
     {
         m_statusInfo->setText(tr("Model: %1 nodes, %2 beams, %3 columns, %4 slabs | Ready")
@@ -274,14 +329,50 @@ void MainWindow::createMenus()
 
     // Menu Edition
     QMenu* editMenu = menuBar()->addMenu(tr("&Edit"));
-    m_actionMove = editMenu->addAction(tr("&Move Elements..."), this, &MainWindow::onActionMove);
-    m_actionMove->setIcon(QIcon(":/icons/move.svg"));
-    m_actionMove->setToolTip(tr("Move Elements (M)..."));
-    m_actionMove->setShortcut(QKeySequence(Qt::Key_M));
 
-    m_actionCopy = editMenu->addAction(tr("&Copy / Repeat..."), this, &MainWindow::onActionCopy);
+    m_actionCopyClipboard = editMenu->addAction(tr("&Copier (Presse-papier)"), this, &MainWindow::onActionCopyClipboard);
+    m_actionCopyClipboard->setIcon(QIcon(":/icons/copy.svg"));
+    m_actionCopyClipboard->setToolTip(tr("Copier la sélection dans le presse-papier structural (Ctrl+C)"));
+    m_actionCopyClipboard->setShortcut(QKeySequence::Copy);
+
+    m_actionPasteClipboard = editMenu->addAction(tr("C&oller en 3D"), this, &MainWindow::onActionPasteClipboard);
+    m_actionPasteClipboard->setIcon(QIcon(":/icons/copy.svg"));
+    m_actionPasteClipboard->setToolTip(tr("Coller les éléments copiés dans la vue 3D au clic souris (Ctrl+V)"));
+    m_actionPasteClipboard->setShortcut(QKeySequence::Paste);
+
+    editMenu->addSeparator();
+
+    m_actionMove3D = editMenu->addAction(tr("&Déplacement 3D (Point à Point)..."), this, &MainWindow::onActionMove3D);
+    m_actionMove3D->setIcon(QIcon(":/icons/move.svg"));
+    m_actionMove3D->setToolTip(tr("Déplacer interactivement les éléments dans la vue 3D (M)"));
+    m_actionMove3D->setShortcut(QKeySequence(Qt::Key_M));
+    m_actionMove3D->setCheckable(true);
+
+    m_actionCopy3D = editMenu->addAction(tr("C&opie 3D (Translation)..."), this, &MainWindow::onActionCopy3D);
+    m_actionCopy3D->setIcon(QIcon(":/icons/copy.svg"));
+    m_actionCopy3D->setToolTip(tr("Copier interactivement les éléments par translation en 3D"));
+    m_actionCopy3D->setCheckable(true);
+
+    m_actionRotate3D = editMenu->addAction(tr("&Rotation 3D..."), this, &MainWindow::onActionRotate3D);
+    m_actionRotate3D->setIcon(makeRotateIcon());
+    m_actionRotate3D->setToolTip(tr("Faire tourner les éléments sélectionnés autour d'un axe 3D (Ctrl+R)"));
+    m_actionRotate3D->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
+    m_actionRotate3D->setCheckable(true);
+
+    m_actionMoveOrigin = editMenu->addAction(tr("Déplacer l'&Origine 3D..."), this, &MainWindow::onActionMoveOrigin);
+    m_actionMoveOrigin->setIcon(makeOriginMoveIcon());
+    m_actionMoveOrigin->setToolTip(tr("Positionner le repère global / la grille 3D par clic ou snap"));
+    m_actionMoveOrigin->setCheckable(true);
+
+    editMenu->addSeparator();
+
+    m_actionMove = editMenu->addAction(tr("Déplacement paramétrique (Dialogue)..."), this, &MainWindow::onActionMove);
+    m_actionMove->setIcon(QIcon(":/icons/move.svg"));
+    m_actionMove->setToolTip(tr("Déplacer par coordonnées dx, dy, dz"));
+
+    m_actionCopy = editMenu->addAction(tr("Copie paramétrique / Répétition..."), this, &MainWindow::onActionCopy);
     m_actionCopy->setIcon(QIcon(":/icons/copy.svg"));
-    m_actionCopy->setToolTip(tr("Copy / Repeat Elements (Ctrl+D)..."));
+    m_actionCopy->setToolTip(tr("Copier et répéter par coordonnées dx, dy, dz (Ctrl+D)..."));
     m_actionCopy->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_D));
 
     editMenu->addSeparator();
@@ -432,6 +523,11 @@ void MainWindow::createMenus()
     connect(m_actionDrawSlab, &QAction::triggered, this, &MainWindow::onModeDrawSlab);
     m_drawModeGroup->addAction(m_actionDrawSlab);
 
+    m_drawModeGroup->addAction(m_actionMove3D);
+    m_drawModeGroup->addAction(m_actionCopy3D);
+    m_drawModeGroup->addAction(m_actionRotate3D);
+    m_drawModeGroup->addAction(m_actionMoveOrigin);
+
     // Menu Modèle (Création d'éléments structuraux)
     QMenu* modelMenu = menuBar()->addMenu(tr("&Model"));
 
@@ -442,6 +538,11 @@ void MainWindow::createMenus()
     drawMenu->addAction(m_actionDrawBeam);
     drawMenu->addAction(m_actionDrawColumn);
     drawMenu->addAction(m_actionDrawSlab);
+    drawMenu->addSeparator();
+    drawMenu->addAction(m_actionMove3D);
+    drawMenu->addAction(m_actionCopy3D);
+    drawMenu->addAction(m_actionRotate3D);
+    drawMenu->addAction(m_actionMoveOrigin);
 
     modelMenu->addSeparator();
     m_actionNewNode = modelMenu->addAction(tr("New &Node (Dialog)..."), this, &MainWindow::onActionNewNode);
@@ -483,6 +584,11 @@ void MainWindow::createToolBars()
     drawToolBar->addAction(m_actionDrawBeam);
     drawToolBar->addAction(m_actionDrawColumn);
     drawToolBar->addAction(m_actionDrawSlab);
+    drawToolBar->addSeparator();
+    drawToolBar->addAction(m_actionMove3D);
+    drawToolBar->addAction(m_actionCopy3D);
+    drawToolBar->addAction(m_actionRotate3D);
+    drawToolBar->addAction(m_actionMoveOrigin);
 
     // Barre d'outils Modélisation
     QToolBar* modelToolBar = addToolBar(tr("Model"));
@@ -496,6 +602,9 @@ void MainWindow::createToolBars()
     modelToolBar->addAction(m_actionNewSlab);
     modelToolBar->addSeparator();
     modelToolBar->addAction(m_actionAddCube);
+    modelToolBar->addSeparator();
+    modelToolBar->addAction(m_actionCopyClipboard);
+    modelToolBar->addAction(m_actionPasteClipboard);
     modelToolBar->addSeparator();
     modelToolBar->addAction(m_actionMove);
     modelToolBar->addAction(m_actionCopy);
@@ -514,6 +623,7 @@ void MainWindow::createToolBars()
     viewToolBar->addAction(m_actionView3D);
     viewToolBar->addSeparator();
     viewToolBar->addAction(m_actionCoordSystem);
+    viewToolBar->addAction(m_actionMoveOrigin);
     viewToolBar->addAction(m_actionSectionCut);
     viewToolBar->addSeparator();
     viewToolBar->addAction(m_actionFitAll);
@@ -736,6 +846,20 @@ void MainWindow::createStatusBar()
         case OccView::InteractionMode::DrawSlab:
             if (m_actionDrawSlab) m_actionDrawSlab->setChecked(true);
             break;
+        case OccView::InteractionMode::Move3D:
+            if (m_actionMove3D) m_actionMove3D->setChecked(true);
+            break;
+        case OccView::InteractionMode::Copy3D:
+            if (m_actionCopy3D) m_actionCopy3D->setChecked(true);
+            break;
+        case OccView::InteractionMode::Rotate3D:
+            if (m_actionRotate3D) m_actionRotate3D->setChecked(true);
+            break;
+        case OccView::InteractionMode::MoveOrigin3D:
+            if (m_actionMoveOrigin) m_actionMoveOrigin->setChecked(true);
+            break;
+        case OccView::InteractionMode::Paste3D:
+            break;
         }
     });
 
@@ -805,7 +929,7 @@ void MainWindow::onResetView()
 
 void MainWindow::onNewGrid()
 {
-    TSA::UI::GridDialog dlg(m_gridManager.get(), m_model.get(), this);
+    TSA::UI::GridDialog dlg(m_gridManager.get(), m_model.get(), m_occView, this);
     connect(&dlg, &TSA::UI::GridDialog::gridDefinitionApplied, this, [this](const TSA::Grid::GridDefinition& /*def*/) {
         m_occView->rebuildGrid();
         m_modelTree->refreshGrids();
@@ -815,6 +939,7 @@ void MainWindow::onNewGrid()
             m_viewportContainer->updateRulers();
         }
     });
+    connect(&dlg, &TSA::UI::GridDialog::manageGridsRequested, this, &MainWindow::onGridManagerDialog);
 
     dlg.exec();
 
@@ -1302,3 +1427,449 @@ void MainWindow::onActionSectionCut()
     m_sectionCutDialog->raise();
     m_sectionCutDialog->activateWindow();
 }
+
+void MainWindow::onActionMove3D()
+{
+    if (!m_selectionManager || !m_selectionManager->hasSelection())
+    {
+        QMessageBox::information(this, tr("Déplacement 3D"),
+            tr("Veuillez d'abord sélectionner les éléments à déplacer (nœuds, barres, poteaux ou dalles)."));
+        if (m_actionSelectMode) m_actionSelectMode->setChecked(true);
+        return;
+    }
+    if (m_occView)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::Move3D);
+    }
+}
+
+void MainWindow::onActionCopy3D()
+{
+    if (!m_selectionManager || !m_selectionManager->hasSelection())
+    {
+        QMessageBox::information(this, tr("Copie 3D"),
+            tr("Veuillez d'abord sélectionner les éléments à copier (nœuds, barres, poteaux ou dalles)."));
+        if (m_actionSelectMode) m_actionSelectMode->setChecked(true);
+        return;
+    }
+    if (m_occView)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::Copy3D);
+    }
+}
+
+void MainWindow::onActionRotate3D()
+{
+    if (!m_selectionManager || !m_selectionManager->hasSelection())
+    {
+        QMessageBox::information(this, tr("Rotation 3D"),
+            tr("Veuillez d'abord sélectionner les éléments à faire tourner."));
+        if (m_actionSelectMode) m_actionSelectMode->setChecked(true);
+        return;
+    }
+    if (m_occView)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::Rotate3D);
+    }
+}
+
+void MainWindow::onActionMoveOrigin()
+{
+    if (m_occView)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::MoveOrigin3D);
+    }
+}
+
+void MainWindow::onActionCopyClipboard()
+{
+    if (!m_selectionManager || !m_selectionManager->hasSelection() || !m_model)
+    {
+        if (statusBar()) statusBar()->showMessage(tr("Presse-papier : Aucun élément sélectionné."), 3000);
+        return;
+    }
+
+    std::unordered_set<int> allNodeIds(
+        m_selectionManager->selectedNodes().begin(),
+        m_selectionManager->selectedNodes().end()
+    );
+    for (int bId : m_selectionManager->selectedBeams())
+    {
+        const auto* b = m_model->getBeam(bId);
+        if (b) { allNodeIds.insert(b->startNodeId()); allNodeIds.insert(b->endNodeId()); }
+    }
+    for (int cId : m_selectionManager->selectedColumns())
+    {
+        const auto* c = m_model->getColumn(cId);
+        if (c) { allNodeIds.insert(c->startNodeId()); allNodeIds.insert(c->endNodeId()); }
+    }
+    for (int sId : m_selectionManager->selectedSlabs())
+    {
+        const auto* s = m_model->getSlab(sId);
+        if (s)
+        {
+            for (int nid : s->nodeIds()) allNodeIds.insert(nid);
+        }
+    }
+
+    if (allNodeIds.empty())
+        return;
+
+    double minX = 1e9, minY = 1e9, minZ = 1e9;
+    for (int nid : allNodeIds)
+    {
+        const auto* node = m_model->getNode(nid);
+        if (node)
+        {
+            minX = std::min(minX, node->x());
+            minY = std::min(minY, node->y());
+            minZ = std::min(minZ, node->z());
+        }
+    }
+
+    m_clipboard.hasData = true;
+    m_clipboard.refOriginX = minX;
+    m_clipboard.refOriginY = minY;
+    m_clipboard.refOriginZ = minZ;
+
+    m_clipboard.nodes.clear();
+    for (int nid : allNodeIds)
+    {
+        const auto* node = m_model->getNode(nid);
+        if (node)
+        {
+            ClipboardNode cn;
+            cn.originalId = nid;
+            cn.relX = node->x() - minX;
+            cn.relY = node->y() - minY;
+            cn.relZ = node->z() - minZ;
+            m_clipboard.nodes.push_back(cn);
+        }
+    }
+
+    m_clipboard.beams.clear();
+    for (int bId : m_selectionManager->selectedBeams())
+    {
+        const auto* b = m_model->getBeam(bId);
+        if (b)
+        {
+            ClipboardBeam cb;
+            cb.originalStartNodeId = b->startNodeId();
+            cb.originalEndNodeId = b->endNodeId();
+            cb.width = b->width();
+            cb.height = b->height();
+            m_clipboard.beams.push_back(cb);
+        }
+    }
+
+    m_clipboard.columns.clear();
+    for (int cId : m_selectionManager->selectedColumns())
+    {
+        const auto* c = m_model->getColumn(cId);
+        if (c)
+        {
+            ClipboardColumn cc;
+            cc.originalStartNodeId = c->startNodeId();
+            cc.originalEndNodeId = c->endNodeId();
+            cc.width = c->width();
+            cc.height = c->height();
+            m_clipboard.columns.push_back(cc);
+        }
+    }
+
+    m_clipboard.slabs.clear();
+    for (int sId : m_selectionManager->selectedSlabs())
+    {
+        const auto* s = m_model->getSlab(sId);
+        if (s)
+        {
+            ClipboardSlab cs;
+            cs.originalNodeIds = s->nodeIds();
+            cs.thickness = s->thickness();
+            m_clipboard.slabs.push_back(cs);
+        }
+    }
+
+    if (statusBar())
+    {
+        statusBar()->showMessage(tr("Presse-papier : %1 nœud(s), %2 poutre(s), %3 poteau(x), %4 dalle(s) copiés. (Appuyez sur Ctrl+V pour coller)")
+            .arg(m_clipboard.nodes.size())
+            .arg(m_clipboard.beams.size())
+            .arg(m_clipboard.columns.size())
+            .arg(m_clipboard.slabs.size()), 4000);
+    }
+}
+
+void MainWindow::onActionPasteClipboard()
+{
+    if (!m_clipboard.hasData || m_clipboard.nodes.empty())
+    {
+        if (statusBar()) statusBar()->showMessage(tr("Presse-papier vide. Sélectionnez des éléments et faites Ctrl+C."), 3000);
+        return;
+    }
+    if (m_occView)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::Paste3D);
+    }
+}
+
+void MainWindow::onPointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& target, bool isCopy)
+{
+    if (!m_selectionManager || !m_model)
+        return;
+
+    double dx = target.X() - base.X();
+    double dy = target.Y() - base.Y();
+    double dz = target.Z() - base.Z();
+
+    if (!isCopy)
+    {
+        std::set<int> nodesToMove(
+            m_selectionManager->selectedNodes().begin(),
+            m_selectionManager->selectedNodes().end()
+        );
+        for (int bId : m_selectionManager->selectedBeams())
+        {
+            const auto* b = m_model->getBeam(bId);
+            if (b) { nodesToMove.insert(b->startNodeId()); nodesToMove.insert(b->endNodeId()); }
+        }
+        for (int cId : m_selectionManager->selectedColumns())
+        {
+            const auto* c = m_model->getColumn(cId);
+            if (c) { nodesToMove.insert(c->startNodeId()); nodesToMove.insert(c->endNodeId()); }
+        }
+        for (int sId : m_selectionManager->selectedSlabs())
+        {
+            const auto* s = m_model->getSlab(sId);
+            if (s)
+            {
+                for (int nid : s->nodeIds()) nodesToMove.insert(nid);
+            }
+        }
+
+        if (m_model->moveNodes(nodesToMove, dx, dy, dz))
+        {
+            if (m_modelTree) m_modelTree->refreshAll();
+            if (m_occView) m_occView->update();
+            if (m_statusInfo)
+            {
+                m_statusInfo->setText(tr("Déplacement 3D : %1 nœud(s) déplacé(s) de (%2, %3, %4) m")
+                    .arg(nodesToMove.size())
+                    .arg(dx, 0, 'f', 3)
+                    .arg(dy, 0, 'f', 3)
+                    .arg(dz, 0, 'f', 3));
+            }
+        }
+    }
+    else
+    {
+        auto newIds = m_model->copyElements(
+            m_selectionManager->selectedNodes(),
+            m_selectionManager->selectedBeams(),
+            m_selectionManager->selectedColumns(),
+            m_selectionManager->selectedSlabs(),
+            dx, dy, dz, 1
+        );
+        if (!newIds.empty())
+        {
+            if (m_modelTree) m_modelTree->refreshAll();
+            if (m_occView) m_occView->update();
+            if (m_statusInfo)
+            {
+                m_statusInfo->setText(tr("Copie 3D : %1 élément(s) créé(s) par translation")
+                    .arg(newIds.size()));
+            }
+        }
+    }
+}
+
+void MainWindow::onPointToPointRotateRequested(const gp_Pnt& center, double angleRad, bool isCopy)
+{
+    if (!m_selectionManager || !m_model)
+        return;
+
+    gp_Dir axis(0.0, 0.0, 1.0);
+    constexpr double kRadToDeg = 180.0 / 3.14159265358979323846;
+    double deg = angleRad * kRadToDeg;
+
+    if (!isCopy)
+    {
+        std::set<int> nodesToRotate(
+            m_selectionManager->selectedNodes().begin(),
+            m_selectionManager->selectedNodes().end()
+        );
+        for (int bId : m_selectionManager->selectedBeams())
+        {
+            const auto* b = m_model->getBeam(bId);
+            if (b) { nodesToRotate.insert(b->startNodeId()); nodesToRotate.insert(b->endNodeId()); }
+        }
+        for (int cId : m_selectionManager->selectedColumns())
+        {
+            const auto* c = m_model->getColumn(cId);
+            if (c) { nodesToRotate.insert(c->startNodeId()); nodesToRotate.insert(c->endNodeId()); }
+        }
+        for (int sId : m_selectionManager->selectedSlabs())
+        {
+            const auto* s = m_model->getSlab(sId);
+            if (s)
+            {
+                for (int nid : s->nodeIds()) nodesToRotate.insert(nid);
+            }
+        }
+
+        if (m_model->rotateNodes(nodesToRotate, center, axis, angleRad))
+        {
+            if (m_modelTree) m_modelTree->refreshAll();
+            if (m_occView) m_occView->update();
+            if (m_statusInfo)
+            {
+                m_statusInfo->setText(tr("Rotation 3D : %1 nœud(s) tourné(s) de %2° autour de (%3, %4, %5)")
+                    .arg(nodesToRotate.size())
+                    .arg(deg, 0, 'f', 1)
+                    .arg(center.X(), 0, 'f', 2)
+                    .arg(center.Y(), 0, 'f', 2)
+                    .arg(center.Z(), 0, 'f', 2));
+            }
+        }
+    }
+    else
+    {
+        auto newIds = m_model->copyAndRotateElements(
+            m_selectionManager->selectedNodes(),
+            m_selectionManager->selectedBeams(),
+            m_selectionManager->selectedColumns(),
+            m_selectionManager->selectedSlabs(),
+            center, axis, angleRad, 1
+        );
+        if (!newIds.empty())
+        {
+            if (m_modelTree) m_modelTree->refreshAll();
+            if (m_occView) m_occView->update();
+            if (m_statusInfo)
+            {
+                m_statusInfo->setText(tr("Copie & Rotation 3D : %1 élément(s) créé(s) (angle %2°)")
+                    .arg(newIds.size())
+                    .arg(deg, 0, 'f', 1));
+            }
+        }
+    }
+}
+
+void MainWindow::onOriginMoveRequested(const gp_Pnt& newOrigin)
+{
+    if (m_gridManager)
+    {
+        if (auto* grid = m_gridManager->activeGrid())
+        {
+            auto gdef = grid->definition();
+            gdef.setOrigin(newOrigin.X(), newOrigin.Y(), newOrigin.Z());
+            grid->updateDefinition(gdef);
+        }
+    }
+    if (m_occView)
+    {
+        m_occView->rebuildGrid();
+    }
+    if (m_viewportContainer)
+    {
+        m_viewportContainer->updateRulers();
+    }
+    if (m_statusInfo)
+    {
+        m_statusInfo->setText(tr("Repère Global & Grille déplacés en (%1, %2, %3) m")
+            .arg(newOrigin.X(), 0, 'f', 3)
+            .arg(newOrigin.Y(), 0, 'f', 3)
+            .arg(newOrigin.Z(), 0, 'f', 3));
+    }
+}
+
+void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
+{
+    if (!m_model || !m_clipboard.hasData || m_clipboard.nodes.empty())
+        return;
+
+    std::unordered_map<int, int> nodeMap;
+    std::vector<int> newNodes;
+    for (const auto& cn : m_clipboard.nodes)
+    {
+        double nx = target.X() + cn.relX;
+        double ny = target.Y() + cn.relY;
+        double nz = target.Z() + cn.relZ;
+        int newId = m_model->addNode(nx, ny, nz);
+        nodeMap[cn.originalId] = newId;
+        newNodes.push_back(newId);
+    }
+
+    std::vector<int> newBeams;
+    for (const auto& cb : m_clipboard.beams)
+    {
+        auto itS = nodeMap.find(cb.originalStartNodeId);
+        auto itE = nodeMap.find(cb.originalEndNodeId);
+        if (itS != nodeMap.end() && itE != nodeMap.end())
+        {
+            int bId = m_model->addBeam(itS->second, itE->second, cb.width, cb.height);
+            newBeams.push_back(bId);
+        }
+    }
+
+    std::vector<int> newColumns;
+    for (const auto& cc : m_clipboard.columns)
+    {
+        auto itS = nodeMap.find(cc.originalStartNodeId);
+        auto itE = nodeMap.find(cc.originalEndNodeId);
+        if (itS != nodeMap.end() && itE != nodeMap.end())
+        {
+            int cId = m_model->addColumn(itS->second, itE->second, cc.width, cc.height);
+            newColumns.push_back(cId);
+        }
+    }
+
+    std::vector<int> newSlabs;
+    for (const auto& cs : m_clipboard.slabs)
+    {
+        std::vector<int> sNodes;
+        for (int onid : cs.originalNodeIds)
+        {
+            auto it = nodeMap.find(onid);
+            if (it != nodeMap.end())
+            {
+                sNodes.push_back(it->second);
+            }
+        }
+        if (sNodes.size() >= 3)
+        {
+            int sId = m_model->addSlab(sNodes, cs.thickness);
+            newSlabs.push_back(sId);
+        }
+    }
+
+    // Sélectionner les nouveaux éléments créés
+    if (m_selectionManager)
+    {
+        m_selectionManager->clearSelection();
+        for (int nid : newNodes) m_selectionManager->selectNode(nid);
+        for (int bid : newBeams) m_selectionManager->selectBeam(bid);
+        for (int cid : newColumns) m_selectionManager->selectColumn(cid);
+        for (int sid : newSlabs) m_selectionManager->selectSlab(sid);
+    }
+
+    if (m_modelTree) m_modelTree->refreshAll();
+    if (m_occView)
+    {
+        m_occView->update();
+        m_occView->setInteractionMode(OccView::InteractionMode::Select);
+    }
+
+    if (m_statusInfo)
+    {
+        m_statusInfo->setText(tr("Collé en (%1, %2, %3) m : %4 nœud(s), %5 poutre(s), %6 poteau(x), %7 dalle(s)")
+            .arg(target.X(), 0, 'f', 2)
+            .arg(target.Y(), 0, 'f', 2)
+            .arg(target.Z(), 0, 'f', 2)
+            .arg(newNodes.size())
+            .arg(newBeams.size())
+            .arg(newColumns.size())
+            .arg(newSlabs.size()));
+    }
+}
+

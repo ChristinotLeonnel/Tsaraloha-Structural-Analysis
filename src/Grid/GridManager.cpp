@@ -148,9 +148,71 @@ std::string GridManager::serializeToJson() const
     return oss.str();
 }
 
-void GridManager::deserializeFromJson(const std::string& /*json*/)
+void GridManager::deserializeFromJson(const std::string& json)
 {
-    // Extensible pour futurs fichiers projets
+    // Auparavant : fonction vide, aucune grille sauvegardée n'était jamais rechargée.
+    auto findField = [&json](const std::string& field) -> std::string {
+        std::string token = "\"" + field + "\"";
+        size_t pos = json.find(token);
+        if (pos == std::string::npos) return "";
+        size_t colon = json.find(':', pos);
+        if (colon == std::string::npos) return "";
+        size_t start = colon + 1;
+        while (start < json.size() && (json[start] == ' ' || json[start] == '\n' || json[start] == '\r'))
+            start++;
+        size_t end = json.find_first_of(",}\n\r", start);
+        if (end == std::string::npos) end = json.size();
+        std::string val = json.substr(start, end - start);
+        if (!val.empty() && val.front() == '"') val = val.substr(1);
+        if (!val.empty() && val.back() == '"') val.pop_back();
+        return val;
+    };
+
+    const std::string activeId = findField("activeGridId");
+
+    size_t arrPos = json.find("\"grids\"");
+    if (arrPos == std::string::npos)
+        return;
+    size_t arrStart = json.find('[', arrPos);
+    if (arrStart == std::string::npos)
+        return;
+
+    clearAllGrids();
+
+    // Découpage des objets JSON de premier niveau du tableau "grids" en
+    // comptant la profondeur des accolades (les tableaux internes comme
+    // "xPositions": [...] ne contiennent pas d'accolades, donc pas de risque
+    // de confusion).
+    int depth = 0;
+    size_t objStart = std::string::npos;
+    for (size_t i = arrStart + 1; i < json.size(); ++i)
+    {
+        char c = json[i];
+        if (c == '{')
+        {
+            if (depth == 0) objStart = i;
+            ++depth;
+        }
+        else if (c == '}')
+        {
+            --depth;
+            if (depth == 0 && objStart != std::string::npos)
+            {
+                std::string objStr = json.substr(objStart, i - objStart + 1);
+                addGrid(GridDefinition::fromJson(objStr));
+                objStart = std::string::npos;
+            }
+        }
+        else if (c == ']' && depth == 0)
+        {
+            break; // fin du tableau "grids"
+        }
+    }
+
+    if (!activeId.empty() && getGrid(activeId))
+    {
+        setActiveGridId(activeId);
+    }
 }
 
 } // namespace TSA::Grid

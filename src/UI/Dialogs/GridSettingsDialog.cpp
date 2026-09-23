@@ -215,14 +215,21 @@ void GridSettingsDialog::onSelectedGridChanged()
 
 void GridSettingsDialog::onAddGrid()
 {
-    GridDialog dlg(this);
+    GridDialog dlg(m_gridManager, nullptr, m_occView, this);
+    connect(&dlg, &GridDialog::gridDefinitionApplied, this, [this](const TSA::Grid::GridDefinition& /*def*/) {
+        refreshGridList();
+        if (m_occView)
+        {
+            m_occView->rebuildGrid();
+        }
+    });
+
     if (dlg.exec() == QDialog::Accepted)
     {
-        TSA::Grid::GridDefinition def = dlg.getDefinition();
-        if (m_gridManager)
+        refreshGridList();
+        if (m_occView)
         {
-            m_gridManager->addGrid(def);
-            refreshGridList();
+            m_occView->rebuildGrid();
         }
     }
 }
@@ -238,12 +245,28 @@ void GridSettingsDialog::onEditGrid()
     if (!grid)
         return;
 
-    GridDialog dlg(grid->definition(), this);
+    GridDialog dlg(grid->definition(), m_gridManager, nullptr, m_occView, this);
+    connect(&dlg, &GridDialog::gridDefinitionApplied, this, [this, id](const TSA::Grid::GridDefinition& def) {
+        if (m_gridManager)
+        {
+            m_gridManager->updateGrid(id, def);
+            refreshGridList();
+        }
+        if (m_occView)
+        {
+            m_occView->rebuildGrid();
+        }
+    });
+
     if (dlg.exec() == QDialog::Accepted)
     {
         TSA::Grid::GridDefinition def = dlg.getDefinition();
         m_gridManager->updateGrid(id, def);
         refreshGridList();
+        if (m_occView)
+        {
+            m_occView->rebuildGrid();
+        }
     }
 }
 

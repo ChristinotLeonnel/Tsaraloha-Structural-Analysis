@@ -378,6 +378,7 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, const Handle(
 
     for (const auto& circ : cyl->circles())
     {
+        if (circ.radius <= 1e-4) continue;
         gp_Circ occtCirc(gp_Ax2(circ.center, gp_Dir(0, 0, 1)), circ.radius);
         TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(occtCirc);
         if (!edge.IsNull())
@@ -397,6 +398,7 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, const Handle(
 
     for (const auto& rad : cyl->radialLines())
     {
+        if (rad.start.Distance(rad.end) <= 1e-4) continue;
         TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(rad.start, rad.end);
         if (!edge.IsNull())
         {

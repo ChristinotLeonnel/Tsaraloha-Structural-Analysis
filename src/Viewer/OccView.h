@@ -124,14 +124,19 @@ public:
     void setActiveLevelElevation(double z);
     double activeLevelElevation() const { return m_activeLevelZ; }
 
-    // Modes d'interaction (Sélection & Dessin 3D)
+    // Modes d'interaction (Sélection & Dessin / Manipulation 3D)
     enum class InteractionMode
     {
         Select,
         DrawNode,
         DrawBeam,
         DrawColumn,
-        DrawSlab
+        DrawSlab,
+        Move3D,
+        Copy3D,
+        Rotate3D,
+        MoveOrigin3D,
+        Paste3D
     };
 
     InteractionMode interactionMode() const { return m_interactionMode; }
@@ -150,6 +155,12 @@ signals:
     void viewPlaneModeChanged(ViewPlaneMode mode);
     void coordinateSystemChanged(bool isLocal);
     void clippingChanged(bool enabled, int axisIndex, double position, bool flip);
+
+    // Signaux de manipulation 3D directe
+    void pointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& target, bool isCopy);
+    void pointToPointRotateRequested(const gp_Pnt& center, double angleRad, bool isCopy);
+    void originMoveRequested(const gp_Pnt& newOrigin);
+    void pasteAtPointRequested(const gp_Pnt& target);
 
 protected:
     // IModelObserver overrides
@@ -180,6 +191,8 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
+    void enterEvent(QEnterEvent* event) override;
+    void leaveEvent(QEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
@@ -250,4 +263,9 @@ private:
     std::vector<gp_Pnt> m_drawingPoints;
     Handle(AIS_Shape) m_rubberBandShape;
     Handle(AIS_RubberBand) m_selectRubberBand;
+
+    gp_Pnt m_basePoint3D;
+    gp_Pnt m_centerPoint3D;
+    bool m_hasBasePoint = false;
+    bool m_hasCenterPoint = false;
 };

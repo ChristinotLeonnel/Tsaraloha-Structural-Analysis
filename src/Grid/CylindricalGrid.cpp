@@ -76,7 +76,34 @@ void CylindricalGrid::computeGeometry()
         return;
     }
 
-    m_maxRadius = radii.back();
+    // Filtrer les rayons strictement positifs (> 0) pour OpenCASCADE
+    std::vector<double> validRadii;
+    for (double r : radii)
+    {
+        if (r > 1e-4)
+        {
+            validRadii.push_back(r);
+        }
+    }
+    if (validRadii.empty())
+    {
+        validRadii = { 2.0, 4.0 };
+    }
+    else if (validRadii.size() == 1)
+    {
+        validRadii.push_back(validRadii[0] + 2.0);
+    }
+
+    std::vector<double> validAngles = angles;
+    if (validAngles.size() == 1)
+    {
+        double a2 = validAngles[0] + 45.0;
+        if (a2 >= 360.0) a2 -= 360.0;
+        validAngles.push_back(a2);
+        std::sort(validAngles.begin(), validAngles.end());
+    }
+
+    m_maxRadius = validRadii.back();
     double outerR = m_maxRadius + m_extension;
 
     std::vector<double> levels = zLevels;
@@ -91,11 +118,11 @@ void CylindricalGrid::computeGeometry()
         gp_Pnt centerPt(orig.X(), orig.Y(), zVal);
 
         // 1. Cercles concentriques
-        for (size_t i = 0; i < radii.size(); ++i)
+        for (size_t i = 0; i < validRadii.size(); ++i)
         {
             CylindricalCircle c;
             c.center = centerPt;
-            c.radius = radii[i];
+            c.radius = validRadii[i];
             c.zLevel = zVal;
             c.label = m_definition.getRadiusLabel(i);
             c.index = static_cast<int>(i);
@@ -103,14 +130,14 @@ void CylindricalGrid::computeGeometry()
             m_circles.push_back(c);
 
             // Ancrage libellé rayon (à 0° ou au début)
-            gp_Pnt pos = polarToWorld(radii[i], 0.0, levels[k]);
+            gp_Pnt pos = polarToWorld(validRadii[i], 0.0, levels[k]);
             m_labelAnchors.push_back({ pos, c.label, false });
         }
 
         // 2. Lignes radiales
-        for (size_t j = 0; j < angles.size(); ++j)
+        for (size_t j = 0; j < validAngles.size(); ++j)
         {
-            double ang = angles[j];
+            double ang = validAngles[j];
             CylindricalRadialLine line;
             line.start = centerPt;
             line.end = polarToWorld(outerR, ang, levels[k]);
@@ -126,17 +153,17 @@ void CylindricalGrid::computeGeometry()
         }
 
         // 3. Intersections (Cercles x Rayons)
-        for (size_t i = 0; i < radii.size(); ++i)
+        for (size_t i = 0; i < validRadii.size(); ++i)
         {
-            for (size_t j = 0; j < angles.size(); ++j)
+            for (size_t j = 0; j < validAngles.size(); ++j)
             {
                 CylindricalIntersection inter;
-                inter.point = polarToWorld(radii[i], angles[j], levels[k]);
+                inter.point = polarToWorld(validRadii[i], validAngles[j], levels[k]);
                 inter.radiusIndex = static_cast<int>(i);
                 inter.angleIndex = static_cast<int>(j);
                 inter.zIndex = static_cast<int>(k);
-                inter.radius = radii[i];
-                inter.angleDeg = angles[j];
+                inter.radius = validRadii[i];
+                inter.angleDeg = validAngles[j];
                 inter.labelRadius = m_definition.getRadiusLabel(i);
                 inter.labelAngle = m_definition.getAngleLabel(j);
                 inter.labelZ = m_definition.getZLabel(k);

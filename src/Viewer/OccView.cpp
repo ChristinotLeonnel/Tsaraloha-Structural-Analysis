@@ -151,7 +151,7 @@ void OccView::initOcc()
     m_context->SelectionStyle()->SetMethod(Aspect_TOHM_COLOR);
     m_context->SelectionStyle()->SetTransparency(0.0f);
 
-    setCursor(Qt::CrossCursor);
+    setCursor(Qt::ArrowCursor);
 
     m_view = m_viewer->CreateView();
 
@@ -1114,7 +1114,7 @@ void OccView::setInteractionMode(InteractionMode mode)
     switch (m_interactionMode)
     {
     case InteractionMode::Select:
-        setCursor(Qt::CrossCursor);
+        setCursor(Qt::ArrowCursor);
         emit drawingPromptChanged(tr("Mode Sélection actif"));
         break;
     case InteractionMode::DrawNode:
@@ -1133,6 +1133,30 @@ void OccView::setInteractionMode(InteractionMode mode)
         setCursor(Qt::CrossCursor);
         emit drawingPromptChanged(tr("Mode Dessin Dalle : Cliquez les nœuds du contour polygonal (Clic droit ou Entrée pour valider)"));
         break;
+    case InteractionMode::Move3D:
+        setCursor(Qt::CrossCursor);
+        m_hasBasePoint = false;
+        emit drawingPromptChanged(tr("Déplacement 3D : Cliquez sur le point de base"));
+        break;
+    case InteractionMode::Copy3D:
+        setCursor(Qt::CrossCursor);
+        m_hasBasePoint = false;
+        emit drawingPromptChanged(tr("Copie 3D (Translation) : Cliquez sur le point de base"));
+        break;
+    case InteractionMode::Rotate3D:
+        setCursor(Qt::CrossCursor);
+        m_hasCenterPoint = false;
+        m_hasBasePoint = false;
+        emit drawingPromptChanged(tr("Rotation 3D : Cliquez sur le centre de rotation"));
+        break;
+    case InteractionMode::MoveOrigin3D:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Déplacer le Repère 3D : Cliquez sur le nouvel emplacement de l'origine"));
+        break;
+    case InteractionMode::Paste3D:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Coller en 3D : Cliquez à l'endroit désiré pour déposer les éléments (ou Échap pour annuler)"));
+        break;
     }
 
     emit interactionModeChanged(m_interactionMode);
@@ -1143,6 +1167,8 @@ void OccView::cancelCurrentDrawing()
     clearRubberBand();
     m_drawingNodeIds.clear();
     m_drawingPoints.clear();
+    m_hasBasePoint = false;
+    m_hasCenterPoint = false;
 
     switch (m_interactionMode)
     {
@@ -1157,6 +1183,21 @@ void OccView::cancelCurrentDrawing()
         break;
     case InteractionMode::DrawSlab:
         emit drawingPromptChanged(tr("Mode Dessin Dalle : Cliquez les nœuds du contour polygonal (Clic droit ou Entrée pour valider)"));
+        break;
+    case InteractionMode::Move3D:
+        emit drawingPromptChanged(tr("Déplacement 3D : Cliquez sur le point de base"));
+        break;
+    case InteractionMode::Copy3D:
+        emit drawingPromptChanged(tr("Copie 3D (Translation) : Cliquez sur le point de base"));
+        break;
+    case InteractionMode::Rotate3D:
+        emit drawingPromptChanged(tr("Rotation 3D : Cliquez sur le centre de rotation"));
+        break;
+    case InteractionMode::MoveOrigin3D:
+        emit drawingPromptChanged(tr("Déplacer le Repère 3D : Cliquez sur le nouvel emplacement de l'origine"));
+        break;
+    case InteractionMode::Paste3D:
+        emit drawingPromptChanged(tr("Coller en 3D : Cliquez pour déposer les éléments (ou Échap pour annuler)"));
         break;
     default:
         break;
@@ -1414,7 +1455,9 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
 
     TopoDS_Shape shape;
 
-    if (m_interactionMode == InteractionMode::DrawBeam || m_interactionMode == InteractionMode::DrawColumn)
+    if (m_interactionMode == InteractionMode::DrawBeam || m_interactionMode == InteractionMode::DrawColumn ||
+        m_interactionMode == InteractionMode::Move3D || m_interactionMode == InteractionMode::Copy3D ||
+        m_interactionMode == InteractionMode::Rotate3D)
     {
         if (m_drawingPoints.empty())
             return;
@@ -1474,6 +1517,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
     const QPoint p = convertMousePos(event->position());
     const int px = p.x();
     const int py = p.y();
+    emit mousePixelPositionChanged(event->position().toPoint().x(), event->position().toPoint().y());
     m_lastMousePos = p;
     m_pressMousePos = p;
     m_dragStartPos = p;
@@ -1625,6 +1669,110 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
+        else if (m_interactionMode == InteractionMode::Move3D || m_interactionMode == InteractionMode::Copy3D)
+        {
+            bool isCopy = (m_interactionMode == InteractionMode::Copy3D);
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId))
+            {
+                gp_Pnt pt(wx, wy, wz);
+                if (!m_hasBasePoint)
+                {
+                    m_basePoint3D = pt;
+                    m_hasBasePoint = true;
+                    m_drawingPoints.clear();
+                    m_drawingPoints.push_back(pt);
+                    emit drawingPromptChanged(isCopy ?
+                        tr("Copie 3D : Point de base fixé en (%1, %2, %3 m). Cliquez sur la destination").arg(wx, 0, 'f', 2).arg(wy, 0, 'f', 2).arg(wz, 0, 'f', 2) :
+                        tr("Déplacement 3D : Point de base fixé en (%1, %2, %3 m). Cliquez sur la destination").arg(wx, 0, 'f', 2).arg(wy, 0, 'f', 2).arg(wz, 0, 'f', 2));
+                }
+                else
+                {
+                    gp_Pnt targetPt = pt;
+                    clearRubberBand();
+                    m_hasBasePoint = false;
+                    m_drawingPoints.clear();
+                    emit pointToPointMoveRequested(m_basePoint3D, targetPt, isCopy);
+                    if (!isCopy)
+                    {
+                        setInteractionMode(InteractionMode::Select);
+                    }
+                    else
+                    {
+                        emit drawingPromptChanged(tr("Copie 3D effectuée ! Vous pouvez cliquer un autre point de base ou appuyer sur Échap"));
+                    }
+                }
+            }
+        }
+        else if (m_interactionMode == InteractionMode::Rotate3D)
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId))
+            {
+                gp_Pnt pt(wx, wy, wz);
+                if (!m_hasCenterPoint)
+                {
+                    m_centerPoint3D = pt;
+                    m_hasCenterPoint = true;
+                    m_drawingPoints.clear();
+                    m_drawingPoints.push_back(pt);
+                    emit drawingPromptChanged(tr("Rotation 3D : Centre fixé en (%1, %2, %3 m). Cliquez pour définir le 1er axe de référence").arg(wx, 0, 'f', 2).arg(wy, 0, 'f', 2).arg(wz, 0, 'f', 2));
+                }
+                else if (!m_hasBasePoint)
+                {
+                    m_basePoint3D = pt;
+                    m_hasBasePoint = true;
+                    m_drawingPoints.clear();
+                    m_drawingPoints.push_back(m_centerPoint3D);
+                    emit drawingPromptChanged(tr("Rotation 3D : Direction initiale fixée. Cliquez pour définir la nouvelle orientation"));
+                }
+                else
+                {
+                    gp_Pnt targetPt = pt;
+                    clearRubberBand();
+                    double v1x = m_basePoint3D.X() - m_centerPoint3D.X();
+                    double v1y = m_basePoint3D.Y() - m_centerPoint3D.Y();
+                    double v2x = targetPt.X() - m_centerPoint3D.X();
+                    double v2y = targetPt.Y() - m_centerPoint3D.Y();
+                    double a1 = std::atan2(v1y, v1x);
+                    double a2 = std::atan2(v2y, v2x);
+                    double angleRad = a2 - a1;
+
+                    m_hasCenterPoint = false;
+                    m_hasBasePoint = false;
+                    m_drawingPoints.clear();
+
+                    emit pointToPointRotateRequested(m_centerPoint3D, angleRad, false);
+                    setInteractionMode(InteractionMode::Select);
+                }
+            }
+        }
+        else if (m_interactionMode == InteractionMode::MoveOrigin3D)
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId))
+            {
+                gp_Pnt newOrigin(wx, wy, wz);
+                emit originMoveRequested(newOrigin);
+                emit drawingPromptChanged(tr("Origine 3D déplacée en (X = %1 m, Y = %2 m, Z = %3 m)")
+                    .arg(wx, 0, 'f', 3).arg(wy, 0, 'f', 3).arg(wz, 0, 'f', 3));
+                setInteractionMode(InteractionMode::Select);
+            }
+        }
+        else if (m_interactionMode == InteractionMode::Paste3D)
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId))
+            {
+                gp_Pnt target(wx, wy, wz);
+                emit pasteAtPointRequested(target);
+                emit drawingPromptChanged(tr("Éléments collés à l'emplacement ! Vous pouvez cliquer pour coller à nouveau ou Échap"));
+            }
+        }
     }
     else if (event->button() == Qt::RightButton)
     {
@@ -1693,7 +1841,7 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
 
                 m_currentAction = CurrentAction::Nothing;
                 emit objectHovered(QString());
-                setCursor(Qt::CrossCursor);
+                setCursor(m_interactionMode == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
                 return;
             }
             else
@@ -1759,7 +1907,19 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
     }
 
     m_currentAction = CurrentAction::Nothing;
-    setCursor(Qt::CrossCursor);
+    setCursor(m_interactionMode == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
+}
+
+void OccView::enterEvent(QEnterEvent* event)
+{
+    QWidget::enterEvent(event);
+    emit mousePixelPositionChanged(event->position().toPoint().x(), event->position().toPoint().y());
+}
+
+void OccView::leaveEvent(QEvent* event)
+{
+    QWidget::leaveEvent(event);
+    emit mousePixelPositionChanged(-1, -1);
 }
 
 void OccView::mouseMoveEvent(QMouseEvent* event)
@@ -1768,7 +1928,8 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
     const int px = p.x();
     const int py = p.y();
 
-    emit mousePixelPositionChanged(px, py);
+    // Émettre les coordonnées logiques exactes pour le suivi parfait du curseur par le triangle des règles
+    emit mousePixelPositionChanged(event->position().toPoint().x(), event->position().toPoint().y());
 
     // Mode Sélection rectangulaire (Fenêtre gauche->droite ou Capture droite->gauche)
     if (m_interactionMode == InteractionMode::Select && (event->buttons() & Qt::LeftButton))
@@ -1941,7 +2102,7 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
             }
             else
             {
-                setCursor(Qt::CrossCursor);
+                setCursor(m_interactionMode == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
                 emit objectHovered(QString());
                 emit mouseCoordinatesChanged(wx, wy, wz);
                 if (m_snapToGrid && !m_view.IsNull())

@@ -151,7 +151,8 @@ void ViewportContainer::setupUi()
     m_lblCoords->setStyleSheet("font-family: Consolas, monospace; font-size: 11px; color: #1E2D3D; font-weight: bold;");
     barLayout->addWidget(m_lblCoords);
 
-    grid->addWidget(m_bottomBar, 2, 0, 1, 3);
+    grid->addWidget(m_bottomBar, 3, 0, 1, 3);
+    grid->setRowStretch(3, 0);
 
     connect(m_btnViewFront, &QPushButton::clicked, this, &ViewportContainer::onViewFront);
     connect(m_btnViewTop, &QPushButton::clicked, this, &ViewportContainer::onViewTop);

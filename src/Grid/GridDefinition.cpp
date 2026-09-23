@@ -366,6 +366,50 @@ std::string GridDefinition::toJson() const
     return oss.str();
 }
 
+static std::vector<double> parseDoubleArray(const std::string& json, const std::string& field)
+{
+    std::vector<double> result;
+    std::string token = "\"" + field + "\"";
+    size_t pos = json.find(token);
+    if (pos == std::string::npos) return result;
+    size_t open = json.find('[', pos);
+    size_t close = json.find(']', open);
+    if (open == std::string::npos || close == std::string::npos) return result;
+
+    std::string inner = json.substr(open + 1, close - open - 1);
+    std::stringstream ss(inner);
+    std::string item;
+    while (std::getline(ss, item, ','))
+    {
+        try { result.push_back(std::stod(item)); } catch (...) { /* jeton invalide ignoré */ }
+    }
+    return result;
+}
+
+static std::vector<std::string> parseStringArray(const std::string& json, const std::string& field)
+{
+    std::vector<std::string> result;
+    std::string token = "\"" + field + "\"";
+    size_t pos = json.find(token);
+    if (pos == std::string::npos) return result;
+    size_t open = json.find('[', pos);
+    size_t close = json.find(']', open);
+    if (open == std::string::npos || close == std::string::npos) return result;
+
+    std::string inner = json.substr(open + 1, close - open - 1);
+    size_t i = 0;
+    while (i < inner.size())
+    {
+        size_t q1 = inner.find('"', i);
+        if (q1 == std::string::npos) break;
+        size_t q2 = inner.find('"', q1 + 1);
+        if (q2 == std::string::npos) break;
+        result.push_back(inner.substr(q1 + 1, q2 - q1 - 1));
+        i = q2 + 1;
+    }
+    return result;
+}
+
 GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
 {
     GridDefinition def;
@@ -387,12 +431,41 @@ GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
         return val;
     };
 
+    std::string id = findField("id");
+    if (!id.empty()) def.setId(id);
+
     std::string name = findField("name");
     if (!name.empty()) def.setName(name);
 
     std::string type = findField("type");
-    if (type == "Cylindrical") def.setType(GridType::Cylindrical);
-    else def.setType(GridType::Cartesian);
+    const GridType parsedType = (type == "Cylindrical") ? GridType::Cylindrical : GridType::Cartesian;
+    def.setType(parsedType);
+
+    std::vector<double> origin = parseDoubleArray(jsonStr, "origin");
+    if (origin.size() == 3)
+        def.setOrigin(origin[0], origin[1], origin[2]);
+
+    // Avant : seuls "name" et "type" étaient relus, toutes les positions,
+    // rayons, angles et libellés étaient silencieusement perdus au rechargement.
+    if (parsedType == GridType::Cartesian)
+    {
+        def.setXPositions(parseDoubleArray(jsonStr, "xPositions"));
+        def.setXLabels(parseStringArray(jsonStr, "xLabels"));
+
+        def.setYPositions(parseDoubleArray(jsonStr, "yPositions"));
+        def.setYLabels(parseStringArray(jsonStr, "yLabels"));
+    }
+    else
+    {
+        def.setRadii(parseDoubleArray(jsonStr, "radii"));
+        def.setRadiusLabels(parseStringArray(jsonStr, "radiusLabels"));
+
+        def.setAngles(parseDoubleArray(jsonStr, "angles"));
+        def.setAngleLabels(parseStringArray(jsonStr, "angleLabels"));
+    }
+
+    def.setZLevels(parseDoubleArray(jsonStr, "zLevels"));
+    def.setZLabels(parseStringArray(jsonStr, "zLabels"));
 
     return def;
 }
