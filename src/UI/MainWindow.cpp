@@ -361,7 +361,10 @@ MainWindow::~MainWindow() = default;
 void MainWindow::setupUi()
 {
     setWindowTitle(tr("TSA - 3D Structural Modeler"));
-    setWindowIcon(QIcon(":/icons/TSA.svg"));
+    QIcon appIcon;
+    appIcon.addFile(":/icons/TSA.ico");
+    appIcon.addFile(":/icons/TSA.svg");
+    setWindowIcon(appIcon);
     resize(1440, 880);
 
     setDockNestingEnabled(true);

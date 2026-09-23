@@ -96,6 +96,7 @@ set(SOURCES
     src/Model/Model.h
     src/Model/Model.cpp
     resources/resources.qrc
+    resources/TSA.rc
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

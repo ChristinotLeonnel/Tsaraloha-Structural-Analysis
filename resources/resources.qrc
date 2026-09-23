@@ -22,5 +22,6 @@
         <file alias="undo.svg">icons/undo.svg</file>
         <file alias="redo.svg">icons/redo.svg</file>
         <file alias="TSA.svg">icons/TSA.svg</file>
+        <file alias="TSA.ico">icons/TSA.ico</file>
     </qresource>
 </RCC>

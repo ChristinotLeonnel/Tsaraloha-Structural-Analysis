@@ -5,13 +5,40 @@
 #include <QDir>
 #include <QIcon>
 
+#ifdef _WIN32
+#include <windows.h>
+static void initWindowsAppUserModelID()
+{
+    typedef HRESULT (WINAPI *SetAppIdFunc)(PCWSTR);
+    HMODULE hShell = LoadLibraryW(L"shell32.dll");
+    if (hShell)
+    {
+        SetAppIdFunc pFunc = reinterpret_cast<SetAppIdFunc>(GetProcAddress(hShell, "SetCurrentProcessExplicitAppUserModelID"));
+        if (pFunc)
+        {
+            pFunc(L"TSAEngineering.TSA.StructuralModeler.1.0");
+        }
+        FreeLibrary(hShell);
+    }
+}
+#endif
+
 Application::Application(int& argc, char** argv)
     : QApplication(argc, argv)
 {
+#ifdef _WIN32
+    // Association explicite pour afficher l'icône sur la barre des tâches de Windows
+    initWindowsAppUserModelID();
+#endif
+
     setApplicationName("TSA");
     setOrganizationName("TSA Engineering");
     setApplicationVersion("0.1.0");
-    setWindowIcon(QIcon(":/icons/TSA.svg"));
+
+    QIcon appIcon;
+    appIcon.addFile(":/icons/TSA.ico");
+    appIcon.addFile(":/icons/TSA.svg");
+    setWindowIcon(appIcon);
 
     // Thème moderne épuré pour logiciel technique
     setStyle(QStyleFactory::create("Fusion"));
