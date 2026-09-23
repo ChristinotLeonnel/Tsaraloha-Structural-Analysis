@@ -9,11 +9,20 @@ namespace TSA::Model
 
 class Model;
 
-class Beam
+enum class TrussMemberRole
+{
+    TopChord,
+    BottomChord,
+    Vertical,
+    Diagonal,
+    Brace
+};
+
+class TrussMember
 {
 public:
-    Beam() = default;
-    Beam(int id, int startNodeId, int endNodeId, double width = 0.30, double height = 0.50, const std::string& name = "");
+    TrussMember() = default;
+    TrussMember(int id, int startNodeId, int endNodeId, double diameterOrWidth = 0.10, const std::string& name = "", TrussMemberRole role = TrussMemberRole::Diagonal);
 
     int id() const { return m_id; }
     void setId(int id) { m_id = id; }
@@ -28,24 +37,16 @@ public:
     int endNodeId() const { return m_endNodeId; }
     void setEndNodeId(int nodeId) { m_endNodeId = nodeId; }
 
-    double width() const { return m_section.width; }
-    void setWidth(double width) { m_section.width = width; }
-
-    double height() const { return m_section.height; }
-    void setHeight(double height) { m_section.height = height; }
-
-    void setDimensions(double width, double height);
+    TrussMemberRole role() const { return m_role; }
+    void setRole(TrussMemberRole r) { m_role = r; }
 
     const Section& section() const { return m_section; }
     Section& section() { return m_section; }
-    void setSection(const Section& section) { m_section = section; }
+    void setSection(const Section& s) { m_section = s; }
 
     const Material& material() const { return m_material; }
     Material& material() { return m_material; }
-    void setMaterial(const Material& material) { m_material = material; }
-
-    double rotation() const { return m_rotation; }
-    void setRotation(double degrees) { m_rotation = degrees; }
+    void setMaterial(const Material& m) { m_material = m; }
 
     double length(const Model& model) const;
 
@@ -54,9 +55,9 @@ private:
     std::string m_name;
     int m_startNodeId = 0;
     int m_endNodeId = 0;
-    Section m_section = Section::rectangular(0.30, 0.50);
-    Material m_material = Material::concreteC25_30();
-    double m_rotation = 0.0; // Angle bêta en degrés (0 à 360)
+    TrussMemberRole m_role = TrussMemberRole::Diagonal;
+    Section m_section = Section::circular(0.10);
+    Material m_material = Material::steelS235();
 };
 
 } // namespace TSA::Model

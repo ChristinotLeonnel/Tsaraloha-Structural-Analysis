@@ -54,17 +54,26 @@ public:
     void updateBeamShape(int beamId);
     void updateColumnShape(int columnId);
     void updateSlabShape(int slabId);
+    void updateWallShape(int wallId);
+    void updateFoundationShape(int foundationId);
+    void updateTrussMemberShape(int memberId);
 
     void removeNodeShape(int nodeId);
     void removeBeamShape(int beamId);
     void removeColumnShape(int columnId);
     void removeSlabShape(int slabId);
+    void removeWallShape(int wallId);
+    void removeFoundationShape(int foundationId);
+    void removeTrussMemberShape(int memberId);
 
     // Mise en surbrillance / Sélection visuelle
     void highlightNode(int nodeId);
     void highlightBeam(int beamId);
     void highlightColumn(int columnId);
     void highlightSlab(int slabId);
+    void highlightWall(int wallId);
+    void highlightFoundation(int foundationId);
+    void highlightTrussMember(int memberId);
     void clearHighlight();
 
     // Actions de vue
@@ -134,6 +143,9 @@ public:
         DrawBeam,
         DrawColumn,
         DrawSlab,
+        DrawWall,
+        DrawFoundation,
+        DrawTruss,
         Move3D,
         Copy3D,
         Rotate3D,
@@ -183,6 +195,18 @@ protected:
     void onSlabModified(const TSA::Model::Slab& slab) override;
     void onSlabRemoved(int slabId) override;
 
+    void onWallAdded(const TSA::Model::Wall& wall) override;
+    void onWallModified(const TSA::Model::Wall& wall) override;
+    void onWallRemoved(int wallId) override;
+
+    void onFoundationAdded(const TSA::Model::Foundation& foundation) override;
+    void onFoundationModified(const TSA::Model::Foundation& foundation) override;
+    void onFoundationRemoved(int foundationId) override;
+
+    void onTrussMemberAdded(const TSA::Model::TrussMember& member) override;
+    void onTrussMemberModified(const TSA::Model::TrussMember& member) override;
+    void onTrussMemberRemoved(int memberId) override;
+
     void onModelCleared() override;
 
 protected:
@@ -223,6 +247,9 @@ private:
     std::map<int, Handle(AIS_Shape)> m_beamShapes;
     std::map<int, Handle(AIS_Shape)> m_columnShapes;
     std::map<int, Handle(AIS_Shape)> m_slabShapes;
+    std::map<int, Handle(AIS_Shape)> m_wallShapes;
+    std::map<int, Handle(AIS_Shape)> m_foundationShapes;
+    std::map<int, Handle(AIS_Shape)> m_trussShapes;
 
     bool m_isInitialized = false;
 

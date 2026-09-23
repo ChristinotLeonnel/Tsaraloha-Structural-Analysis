@@ -1,13 +1,14 @@
 #include "PropertyPanel.h"
-
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QFormLayout>
-#include <QGroupBox>
 #include <QLabel>
-#include <QLineEdit>
-#include <QCheckBox>
 #include <QDoubleSpinBox>
-#include <QSpinBox>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QRadioButton>
+#include <QGroupBox>
+#include <QPushButton>
 
 namespace TSA::UI
 {
@@ -20,496 +21,773 @@ PropertyPanel::PropertyPanel(TSA::Model::Model* model, QWidget* parent)
     clearProperties();
 }
 
+void PropertyPanel::setupMaterialCombo(QComboBox* combo)
+{
+    combo->clear();
+    combo->addItem("Concrete C25/30", 1);
+    combo->addItem("Concrete C30/37", 2);
+    combo->addItem("Steel S235", 3);
+    combo->addItem("Steel S355", 4);
+    combo->addItem("Timber C24", 5);
+}
+
+void PropertyPanel::setupSectionTypeCombo(QComboBox* combo)
+{
+    combo->clear();
+    combo->addItem(tr("Rectangulaire"), 0);
+    combo->addItem(tr("Circulaire"), 1);
+    combo->addItem("IPE 160", 160);
+    combo->addItem("IPE 200", 200);
+    combo->addItem("IPE 240", 240);
+    combo->addItem("IPE 300", 300);
+    combo->addItem("HEA 200", 2000);
+    combo->addItem("HEA 240", 2400);
+    combo->addItem("HEB 200", 2001);
+    combo->addItem("HEB 300", 3001);
+}
+
 void PropertyPanel::setupUi()
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(8, 8, 8, 8);
-    mainLayout->setSpacing(12);
+    mainLayout->setContentsMargins(6, 6, 6, 6);
+    mainLayout->setSpacing(6);
 
-    m_titleLabel = new QLabel(tr("PROPERTIES"), this);
-    QFont titleFont = m_titleLabel->font();
-    titleFont.setBold(true);
-    titleFont.setPointSize(titleFont.pointSize() + 1);
-    m_titleLabel->setFont(titleFont);
-    mainLayout->addWidget(m_titleLabel);
+    auto* scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
 
-    m_emptyLabel = new QLabel(tr("No element selected"), this);
+    auto* container = new QWidget(scrollArea);
+    auto* containerLayout = new QVBoxLayout(container);
+    containerLayout->setContentsMargins(0, 0, 0, 0);
+    containerLayout->setSpacing(8);
+
+    m_titleLabel = new QLabel(tr("PROPRIÉTÉS STRUCTURALES"), container);
+    m_titleLabel->setStyleSheet("font-weight: bold; font-size: 11pt; padding: 4px; background: rgba(0,0,0,0.1); border-radius: 3px;");
+    containerLayout->addWidget(m_titleLabel);
+
+    m_emptyLabel = new QLabel(tr("Aucun élément sélectionné.\nCliquez sur un élément dans le Viewport 3D ou dans l'Arbre du Modèle."), container);
     m_emptyLabel->setAlignment(Qt::AlignCenter);
-    m_emptyLabel->setStyleSheet("color: #888888; font-style: italic; padding: 20px;");
-    mainLayout->addWidget(m_emptyLabel);
+    m_emptyLabel->setStyleSheet("color: gray; padding: 20px; font-style: italic;");
+    containerLayout->addWidget(m_emptyLabel);
 
-    // -------------------------------------------------------------
-    // Groupe Niveau / Étage
-    // -------------------------------------------------------------
-    m_levelGroup = new QGroupBox(tr("Level Information"), this);
-    auto* levelForm = new QFormLayout(m_levelGroup);
-    levelForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-
-    m_levelIdLabel = new QLabel(m_levelGroup);
-    m_levelNameEdit = new QLineEdit(m_levelGroup);
-    m_levelElevationSpin = new QDoubleSpinBox(m_levelGroup);
-    m_levelElevationSpin->setRange(-1000.0, 10000.0);
-    m_levelElevationSpin->setDecimals(3);
-    m_levelElevationSpin->setSingleStep(0.5);
-    m_levelElevationSpin->setSuffix(" m");
-    m_levelElevationSpin->setKeyboardTracking(false);
-
-    m_levelVisibleCheck = new QCheckBox(tr("Visible in 3D"), m_levelGroup);
-    m_levelVisibleCheck->setChecked(true);
-
-    levelForm->addRow(tr("ID:"), m_levelIdLabel);
-    levelForm->addRow(tr("Name:"), m_levelNameEdit);
-    levelForm->addRow(tr("Elevation (Z):"), m_levelElevationSpin);
-    levelForm->addRow(tr("Display:"), m_levelVisibleCheck);
-
-    mainLayout->addWidget(m_levelGroup);
-
-    connect(m_levelNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onLevelNameChanged);
-    connect(m_levelElevationSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onLevelElevationChanged);
-    connect(m_levelVisibleCheck, &QCheckBox::toggled, this, &PropertyPanel::onLevelVisibleChanged);
-
-    // -------------------------------------------------------------
-    // Groupe Nœud
-    // -------------------------------------------------------------
-    m_nodeGroup = new QGroupBox(tr("Node Information"), this);
+    // ==========================================
+    // 1. PANNEAU NŒUD
+    // ==========================================
+    m_nodeGroup = new QGroupBox(tr("Propriétés du Nœud"), container);
     auto* nodeForm = new QFormLayout(m_nodeGroup);
-    nodeForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-
+    m_nodeNameEdit = new QLineEdit(m_nodeGroup);
     m_nodeIdLabel = new QLabel(m_nodeGroup);
     m_nodeLevelLabel = new QLabel(m_nodeGroup);
+
     m_nodeXSpin = new QDoubleSpinBox(m_nodeGroup);
+    m_nodeXSpin->setRange(-10000.0, 10000.0);
+    m_nodeXSpin->setDecimals(3);
+    m_nodeXSpin->setSuffix(" m");
+
     m_nodeYSpin = new QDoubleSpinBox(m_nodeGroup);
+    m_nodeYSpin->setRange(-10000.0, 10000.0);
+    m_nodeYSpin->setDecimals(3);
+    m_nodeYSpin->setSuffix(" m");
+
     m_nodeZSpin = new QDoubleSpinBox(m_nodeGroup);
+    m_nodeZSpin->setRange(-10000.0, 10000.0);
+    m_nodeZSpin->setDecimals(3);
+    m_nodeZSpin->setSuffix(" m");
 
-    for (auto* spin : { m_nodeXSpin, m_nodeYSpin, m_nodeZSpin })
-    {
-        spin->setRange(-10000.0, 10000.0);
-        spin->setDecimals(3);
-        spin->setSingleStep(0.5);
-        spin->setSuffix(" m");
-        spin->setKeyboardTracking(true);
-    }
+    m_nodeSupportCombo = new QComboBox(m_nodeGroup);
+    m_nodeSupportCombo->addItem(tr("Libre (Aucun appui)"), static_cast<int>(TSA::Model::SupportType::Free));
+    m_nodeSupportCombo->addItem(tr("Encastrement (6 DDL bloqués)"), static_cast<int>(TSA::Model::SupportType::Fixed));
+    m_nodeSupportCombo->addItem(tr("Articulation / Rotule 3D"), static_cast<int>(TSA::Model::SupportType::Pinned));
+    m_nodeSupportCombo->addItem(tr("Appui Simple (Rouleau Tz)"), static_cast<int>(TSA::Model::SupportType::Roller));
 
-    nodeForm->addRow(tr("ID:"), m_nodeIdLabel);
-    nodeForm->addRow(tr("Level:"), m_nodeLevelLabel);
-    nodeForm->addRow(tr("X:"), m_nodeXSpin);
-    nodeForm->addRow(tr("Y:"), m_nodeYSpin);
-    nodeForm->addRow(tr("Z:"), m_nodeZSpin);
+    nodeForm->addRow(tr("Nom / Repère :"), m_nodeNameEdit);
+    nodeForm->addRow(tr("ID Interne :"), m_nodeIdLabel);
+    nodeForm->addRow(tr("Niveau :"), m_nodeLevelLabel);
+    nodeForm->addRow(tr("X (m) :"), m_nodeXSpin);
+    nodeForm->addRow(tr("Y (m) :"), m_nodeYSpin);
+    nodeForm->addRow(tr("Z (m) :"), m_nodeZSpin);
+    nodeForm->addRow(tr("Liaison / Appui :"), m_nodeSupportCombo);
 
-    mainLayout->addWidget(m_nodeGroup);
+    auto* nodeBtnLayout = new QHBoxLayout();
+    auto* btnApplyNode = new QPushButton(tr("Appliquer"), m_nodeGroup);
+    btnApplyNode->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    connect(btnApplyNode, &QPushButton::clicked, this, &PropertyPanel::onApplyNode);
+    auto* btnCancelNode = new QPushButton(tr("Annuler"), m_nodeGroup);
+    connect(btnCancelNode, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
+    nodeBtnLayout->addWidget(btnApplyNode);
+    nodeBtnLayout->addWidget(btnCancelNode);
+    nodeForm->addRow(nodeBtnLayout);
 
-    connect(m_nodeXSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onNodeCoordinatesChanged);
-    connect(m_nodeYSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onNodeCoordinatesChanged);
-    connect(m_nodeZSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onNodeCoordinatesChanged);
+    containerLayout->addWidget(m_nodeGroup);
 
-    // -------------------------------------------------------------
-    // Groupe Poutre
-    // -------------------------------------------------------------
-    m_beamGroup = new QGroupBox(tr("Beam Information"), this);
+    // ==========================================
+    // 2. PANNEAU POUTRE
+    // ==========================================
+    m_beamGroup = new QGroupBox(tr("Propriétés de la Poutre"), container);
     auto* beamForm = new QFormLayout(m_beamGroup);
-    beamForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-
+    m_beamNameEdit = new QLineEdit(m_beamGroup);
     m_beamIdLabel = new QLabel(m_beamGroup);
     m_beamStartNodeLabel = new QLabel(m_beamGroup);
     m_beamEndNodeLabel = new QLabel(m_beamGroup);
     m_beamLengthLabel = new QLabel(m_beamGroup);
 
+    m_beamSectionTypeCombo = new QComboBox(m_beamGroup);
+    setupSectionTypeCombo(m_beamSectionTypeCombo);
+
     m_beamWidthSpin = new QDoubleSpinBox(m_beamGroup);
     m_beamWidthSpin->setRange(0.01, 10.0);
-    m_beamWidthSpin->setDecimals(2);
     m_beamWidthSpin->setSingleStep(0.05);
     m_beamWidthSpin->setSuffix(" m");
 
     m_beamHeightSpin = new QDoubleSpinBox(m_beamGroup);
     m_beamHeightSpin->setRange(0.01, 10.0);
-    m_beamHeightSpin->setDecimals(2);
     m_beamHeightSpin->setSingleStep(0.05);
     m_beamHeightSpin->setSuffix(" m");
 
-    beamForm->addRow(tr("ID:"), m_beamIdLabel);
-    beamForm->addRow(tr("Start Node:"), m_beamStartNodeLabel);
-    beamForm->addRow(tr("End Node:"), m_beamEndNodeLabel);
-    beamForm->addRow(tr("Length:"), m_beamLengthLabel);
-    beamForm->addRow(tr("Width (b):"), m_beamWidthSpin);
-    beamForm->addRow(tr("Height (h):"), m_beamHeightSpin);
+    m_beamMaterialCombo = new QComboBox(m_beamGroup);
+    setupMaterialCombo(m_beamMaterialCombo);
 
-    mainLayout->addWidget(m_beamGroup);
+    m_beamRotationSpin = new QDoubleSpinBox(m_beamGroup);
+    m_beamRotationSpin->setRange(0.0, 360.0);
+    m_beamRotationSpin->setSingleStep(15.0);
+    m_beamRotationSpin->setSuffix(" °");
 
-    connect(m_beamWidthSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onBeamDimensionsChanged);
-    connect(m_beamHeightSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onBeamDimensionsChanged);
+    beamForm->addRow(tr("Nom / Repère :"), m_beamNameEdit);
+    beamForm->addRow(tr("ID Interne :"), m_beamIdLabel);
+    beamForm->addRow(tr("Nœud Départ :"), m_beamStartNodeLabel);
+    beamForm->addRow(tr("Nœud Arrivée :"), m_beamEndNodeLabel);
+    beamForm->addRow(tr("Longueur :"), m_beamLengthLabel);
+    beamForm->addRow(tr("Section :"), m_beamSectionTypeCombo);
+    beamForm->addRow(tr("Largeur b :"), m_beamWidthSpin);
+    beamForm->addRow(tr("Hauteur h :"), m_beamHeightSpin);
+    beamForm->addRow(tr("Matériau :"), m_beamMaterialCombo);
+    beamForm->addRow(tr("Rotation β :"), m_beamRotationSpin);
 
-    // -------------------------------------------------------------
-    // Groupe Poteau
-    // -------------------------------------------------------------
-    m_columnGroup = new QGroupBox(tr("Column Information"), this);
-    auto* columnForm = new QFormLayout(m_columnGroup);
-    columnForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    auto* beamBtnLayout = new QHBoxLayout();
+    auto* btnApplyBeam = new QPushButton(tr("Appliquer"), m_beamGroup);
+    btnApplyBeam->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    connect(btnApplyBeam, &QPushButton::clicked, this, &PropertyPanel::onApplyBeam);
+    auto* btnCancelBeam = new QPushButton(tr("Annuler"), m_beamGroup);
+    connect(btnCancelBeam, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
+    beamBtnLayout->addWidget(btnApplyBeam);
+    beamBtnLayout->addWidget(btnCancelBeam);
+    beamForm->addRow(beamBtnLayout);
 
+    containerLayout->addWidget(m_beamGroup);
+
+    // ==========================================
+    // 3. PANNEAU POTEAU
+    // ==========================================
+    m_columnGroup = new QGroupBox(tr("Propriétés du Poteau"), container);
+    auto* colForm = new QFormLayout(m_columnGroup);
+    m_columnNameEdit = new QLineEdit(m_columnGroup);
     m_columnIdLabel = new QLabel(m_columnGroup);
     m_columnStartNodeLabel = new QLabel(m_columnGroup);
     m_columnEndNodeLabel = new QLabel(m_columnGroup);
     m_columnHeightLabel = new QLabel(m_columnGroup);
-    m_columnVerticalLabel = new QLabel(m_columnGroup);
-    m_columnElevationRangeLabel = new QLabel(m_columnGroup);
+
+    m_columnSectionTypeCombo = new QComboBox(m_columnGroup);
+    setupSectionTypeCombo(m_columnSectionTypeCombo);
 
     m_columnWidthSpin = new QDoubleSpinBox(m_columnGroup);
     m_columnWidthSpin->setRange(0.01, 10.0);
-    m_columnWidthSpin->setDecimals(2);
     m_columnWidthSpin->setSingleStep(0.05);
     m_columnWidthSpin->setSuffix(" m");
 
     m_columnDepthSpin = new QDoubleSpinBox(m_columnGroup);
     m_columnDepthSpin->setRange(0.01, 10.0);
-    m_columnDepthSpin->setDecimals(2);
     m_columnDepthSpin->setSingleStep(0.05);
     m_columnDepthSpin->setSuffix(" m");
 
-    columnForm->addRow(tr("ID:"), m_columnIdLabel);
-    columnForm->addRow(tr("Bottom Node:"), m_columnStartNodeLabel);
-    columnForm->addRow(tr("Top Node:"), m_columnEndNodeLabel);
-    columnForm->addRow(tr("Orientation:"), m_columnVerticalLabel);
-    columnForm->addRow(tr("Elevations:"), m_columnElevationRangeLabel);
-    columnForm->addRow(tr("Height (H):"), m_columnHeightLabel);
-    columnForm->addRow(tr("Width (b):"), m_columnWidthSpin);
-    columnForm->addRow(tr("Depth (h):"), m_columnDepthSpin);
+    m_columnMaterialCombo = new QComboBox(m_columnGroup);
+    setupMaterialCombo(m_columnMaterialCombo);
 
-    mainLayout->addWidget(m_columnGroup);
+    m_columnRotationSpin = new QDoubleSpinBox(m_columnGroup);
+    m_columnRotationSpin->setRange(0.0, 360.0);
+    m_columnRotationSpin->setSingleStep(15.0);
+    m_columnRotationSpin->setSuffix(" °");
 
-    connect(m_columnWidthSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onColumnDimensionsChanged);
-    connect(m_columnDepthSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onColumnDimensionsChanged);
+    colForm->addRow(tr("Nom / Repère :"), m_columnNameEdit);
+    colForm->addRow(tr("ID Interne :"), m_columnIdLabel);
+    colForm->addRow(tr("Nœud Base :"), m_columnStartNodeLabel);
+    colForm->addRow(tr("Nœud Sommet :"), m_columnEndNodeLabel);
+    colForm->addRow(tr("Hauteur :"), m_columnHeightLabel);
+    colForm->addRow(tr("Forme Section :"), m_columnSectionTypeCombo);
+    colForm->addRow(tr("Largeur b :"), m_columnWidthSpin);
+    colForm->addRow(tr("Profondeur h :"), m_columnDepthSpin);
+    colForm->addRow(tr("Matériau :"), m_columnMaterialCombo);
+    colForm->addRow(tr("Rotation β :"), m_columnRotationSpin);
 
-    // -------------------------------------------------------------
-    // Groupe Dalle
-    // -------------------------------------------------------------
-    m_slabGroup = new QGroupBox(tr("Slab Information"), this);
+    auto* colBtnLayout = new QHBoxLayout();
+    auto* btnApplyCol = new QPushButton(tr("Appliquer"), m_columnGroup);
+    btnApplyCol->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    connect(btnApplyCol, &QPushButton::clicked, this, &PropertyPanel::onApplyColumn);
+    auto* btnCancelCol = new QPushButton(tr("Annuler"), m_columnGroup);
+    connect(btnCancelCol, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
+    colBtnLayout->addWidget(btnApplyCol);
+    colBtnLayout->addWidget(btnCancelCol);
+    colForm->addRow(colBtnLayout);
+
+    containerLayout->addWidget(m_columnGroup);
+
+    // ==========================================
+    // 4. PANNEAU DALLE
+    // ==========================================
+    m_slabGroup = new QGroupBox(tr("Propriétés de la Dalle"), container);
     auto* slabForm = new QFormLayout(m_slabGroup);
-    slabForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-
+    m_slabNameEdit = new QLineEdit(m_slabGroup);
     m_slabIdLabel = new QLabel(m_slabGroup);
     m_slabNodesLabel = new QLabel(m_slabGroup);
     m_slabAreaLabel = new QLabel(m_slabGroup);
 
     m_slabThicknessSpin = new QDoubleSpinBox(m_slabGroup);
-    m_slabThicknessSpin->setRange(0.01, 5.0);
-    m_slabThicknessSpin->setDecimals(2);
+    m_slabThicknessSpin->setRange(0.05, 2.0);
     m_slabThicknessSpin->setSingleStep(0.02);
     m_slabThicknessSpin->setSuffix(" m");
 
-    slabForm->addRow(tr("ID:"), m_slabIdLabel);
-    slabForm->addRow(tr("Nodes:"), m_slabNodesLabel);
-    slabForm->addRow(tr("Surface Area:"), m_slabAreaLabel);
-    slabForm->addRow(tr("Thickness (e):"), m_slabThicknessSpin);
+    m_slabMaterialCombo = new QComboBox(m_slabGroup);
+    setupMaterialCombo(m_slabMaterialCombo);
 
-    mainLayout->addWidget(m_slabGroup);
+    auto* typeLayout = new QVBoxLayout();
+    m_slabRadioTwoWay = new QRadioButton(tr("Portance Bidirectionnelle (Two-way)"), m_slabGroup);
+    m_slabRadioOneWay = new QRadioButton(tr("Portance Unidirectionnelle (One-way)"), m_slabGroup);
+    m_slabRadioFlat   = new QRadioButton(tr("Plancher-Dalle (Flat slab)"), m_slabGroup);
+    m_slabRadioTwoWay->setChecked(true);
+    typeLayout->addWidget(m_slabRadioTwoWay);
+    typeLayout->addWidget(m_slabRadioOneWay);
+    typeLayout->addWidget(m_slabRadioFlat);
 
-    connect(m_slabThicknessSpin, &QDoubleSpinBox::valueChanged, this, &PropertyPanel::onSlabPropertiesChanged);
+    slabForm->addRow(tr("Nom / Repère :"), m_slabNameEdit);
+    slabForm->addRow(tr("ID Interne :"), m_slabIdLabel);
+    slabForm->addRow(tr("Nœuds Contour :"), m_slabNodesLabel);
+    slabForm->addRow(tr("Surface 3D :"), m_slabAreaLabel);
+    slabForm->addRow(tr("Épaisseur e :"), m_slabThicknessSpin);
+    slabForm->addRow(tr("Matériau :"), m_slabMaterialCombo);
+    slabForm->addRow(tr("Typologie :"), typeLayout);
 
-    mainLayout->addStretch();
+    auto* slabBtnLayout = new QHBoxLayout();
+    auto* btnApplySlab = new QPushButton(tr("Appliquer"), m_slabGroup);
+    btnApplySlab->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    connect(btnApplySlab, &QPushButton::clicked, this, &PropertyPanel::onApplySlab);
+    auto* btnCancelSlab = new QPushButton(tr("Annuler"), m_slabGroup);
+    connect(btnCancelSlab, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
+    slabBtnLayout->addWidget(btnApplySlab);
+    slabBtnLayout->addWidget(btnCancelSlab);
+    slabForm->addRow(slabBtnLayout);
+
+    containerLayout->addWidget(m_slabGroup);
+
+    // ==========================================
+    // 5. PANNEAU VOILE (WALL)
+    // ==========================================
+    m_wallGroup = new QGroupBox(tr("Propriétés du Voile"), container);
+    auto* wallForm = new QFormLayout(m_wallGroup);
+    m_wallNameEdit = new QLineEdit(m_wallGroup);
+    m_wallIdLabel = new QLabel(m_wallGroup);
+    m_wallStartNodeLabel = new QLabel(m_wallGroup);
+    m_wallEndNodeLabel = new QLabel(m_wallGroup);
+    m_wallLengthLabel = new QLabel(m_wallGroup);
+
+    m_wallHeightSpin = new QDoubleSpinBox(m_wallGroup);
+    m_wallHeightSpin->setRange(0.5, 100.0);
+    m_wallHeightSpin->setSingleStep(0.5);
+    m_wallHeightSpin->setSuffix(" m");
+
+    m_wallThicknessSpin = new QDoubleSpinBox(m_wallGroup);
+    m_wallThicknessSpin->setRange(0.05, 2.0);
+    m_wallThicknessSpin->setSingleStep(0.05);
+    m_wallThicknessSpin->setSuffix(" m");
+
+    m_wallMaterialCombo = new QComboBox(m_wallGroup);
+    setupMaterialCombo(m_wallMaterialCombo);
+
+    m_wallOffsetSpin = new QDoubleSpinBox(m_wallGroup);
+    m_wallOffsetSpin->setRange(-10.0, 10.0);
+    m_wallOffsetSpin->setSingleStep(0.05);
+    m_wallOffsetSpin->setSuffix(" m");
+
+    wallForm->addRow(tr("Nom / Repère :"), m_wallNameEdit);
+    wallForm->addRow(tr("ID Interne :"), m_wallIdLabel);
+    wallForm->addRow(tr("Nœud 1 :"), m_wallStartNodeLabel);
+    wallForm->addRow(tr("Nœud 2 :"), m_wallEndNodeLabel);
+    wallForm->addRow(tr("Longueur :"), m_wallLengthLabel);
+    wallForm->addRow(tr("Hauteur H :"), m_wallHeightSpin);
+    wallForm->addRow(tr("Épaisseur e :"), m_wallThicknessSpin);
+    wallForm->addRow(tr("Matériau :"), m_wallMaterialCombo);
+    wallForm->addRow(tr("Décalage :"), m_wallOffsetSpin);
+
+    auto* wallBtnLayout = new QHBoxLayout();
+    auto* btnApplyWall = new QPushButton(tr("Appliquer"), m_wallGroup);
+    btnApplyWall->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    connect(btnApplyWall, &QPushButton::clicked, this, &PropertyPanel::onApplyWall);
+    auto* btnCancelWall = new QPushButton(tr("Annuler"), m_wallGroup);
+    connect(btnCancelWall, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
+    wallBtnLayout->addWidget(btnApplyWall);
+    wallBtnLayout->addWidget(btnCancelWall);
+    wallForm->addRow(wallBtnLayout);
+
+    containerLayout->addWidget(m_wallGroup);
+
+    // ==========================================
+    // 6. PANNEAU FONDATION
+    // ==========================================
+    m_foundationGroup = new QGroupBox(tr("Propriétés de la Fondation"), container);
+    auto* fForm = new QFormLayout(m_foundationGroup);
+    m_foundationNameEdit = new QLineEdit(m_foundationGroup);
+    m_foundationIdLabel = new QLabel(m_foundationGroup);
+    m_foundationNodeLabel = new QLabel(m_foundationGroup);
+
+    m_foundationTypeCombo = new QComboBox(m_foundationGroup);
+    m_foundationTypeCombo->addItem(tr("Semelle Isolée (Poteau)"), static_cast<int>(TSA::Model::FoundationType::IsolatedFooting));
+    m_foundationTypeCombo->addItem(tr("Semelle Filante (Voile)"), static_cast<int>(TSA::Model::FoundationType::StripFooting));
+    m_foundationTypeCombo->addItem(tr("Radier Général"), static_cast<int>(TSA::Model::FoundationType::Raft));
+    m_foundationTypeCombo->addItem(tr("Pieu"), static_cast<int>(TSA::Model::FoundationType::Pile));
+
+    m_foundationWidthASpin = new QDoubleSpinBox(m_foundationGroup);
+    m_foundationWidthASpin->setRange(0.2, 50.0);
+    m_foundationWidthASpin->setSingleStep(0.1);
+    m_foundationWidthASpin->setSuffix(" m");
+
+    m_foundationLengthBSpin = new QDoubleSpinBox(m_foundationGroup);
+    m_foundationLengthBSpin->setRange(0.2, 50.0);
+    m_foundationLengthBSpin->setSingleStep(0.1);
+    m_foundationLengthBSpin->setSuffix(" m");
+
+    m_foundationHeightHSpin = new QDoubleSpinBox(m_foundationGroup);
+    m_foundationHeightHSpin->setRange(0.1, 10.0);
+    m_foundationHeightHSpin->setSingleStep(0.05);
+    m_foundationHeightHSpin->setSuffix(" m");
+
+    m_foundationMaterialCombo = new QComboBox(m_foundationGroup);
+    setupMaterialCombo(m_foundationMaterialCombo);
+
+    m_foundationSoilCapacitySpin = new QDoubleSpinBox(m_foundationGroup);
+    m_foundationSoilCapacitySpin->setRange(10.0, 5000.0);
+    m_foundationSoilCapacitySpin->setSingleStep(50.0);
+    m_foundationSoilCapacitySpin->setSuffix(" kPa");
+
+    fForm->addRow(tr("Nom / Repère :"), m_foundationNameEdit);
+    fForm->addRow(tr("ID Interne :"), m_foundationIdLabel);
+    fForm->addRow(tr("Nœud Support :"), m_foundationNodeLabel);
+    fForm->addRow(tr("Type Fondation :"), m_foundationTypeCombo);
+    fForm->addRow(tr("Largeur A :"), m_foundationWidthASpin);
+    fForm->addRow(tr("Longueur B :"), m_foundationLengthBSpin);
+    fForm->addRow(tr("Hauteur H :"), m_foundationHeightHSpin);
+    fForm->addRow(tr("Matériau :"), m_foundationMaterialCombo);
+    fForm->addRow(tr("Capacité Sol :"), m_foundationSoilCapacitySpin);
+
+    auto* fBtnLayout = new QHBoxLayout();
+    auto* btnApplyF = new QPushButton(tr("Appliquer"), m_foundationGroup);
+    btnApplyF->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    connect(btnApplyF, &QPushButton::clicked, this, &PropertyPanel::onApplyFoundation);
+    auto* btnCancelF = new QPushButton(tr("Annuler"), m_foundationGroup);
+    connect(btnCancelF, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
+    fBtnLayout->addWidget(btnApplyF);
+    fBtnLayout->addWidget(btnCancelF);
+    fForm->addRow(fBtnLayout);
+
+    containerLayout->addWidget(m_foundationGroup);
+
+    // ==========================================
+    // 7. PANNEAU TREILLIS / CONTREVENTEMENT
+    // ==========================================
+    m_trussGroup = new QGroupBox(tr("Propriétés de la Barre de Treillis"), container);
+    auto* trForm = new QFormLayout(m_trussGroup);
+    m_trussNameEdit = new QLineEdit(m_trussGroup);
+    m_trussIdLabel = new QLabel(m_trussGroup);
+    m_trussStartNodeLabel = new QLabel(m_trussGroup);
+    m_trussEndNodeLabel = new QLabel(m_trussGroup);
+    m_trussLengthLabel = new QLabel(m_trussGroup);
+
+    m_trussRoleCombo = new QComboBox(m_trussGroup);
+    m_trussRoleCombo->addItem(tr("Diagonale"), static_cast<int>(TSA::Model::TrussMemberRole::Diagonal));
+    m_trussRoleCombo->addItem(tr("Membrure Supérieure"), static_cast<int>(TSA::Model::TrussMemberRole::TopChord));
+    m_trussRoleCombo->addItem(tr("Membrure Inférieure"), static_cast<int>(TSA::Model::TrussMemberRole::BottomChord));
+    m_trussRoleCombo->addItem(tr("Montant Vertical"), static_cast<int>(TSA::Model::TrussMemberRole::Vertical));
+    m_trussRoleCombo->addItem(tr("Contreventement (Brace)"), static_cast<int>(TSA::Model::TrussMemberRole::Brace));
+
+    m_trussDimensionSpin = new QDoubleSpinBox(m_trussGroup);
+    m_trussDimensionSpin->setRange(0.02, 1.0);
+    m_trussDimensionSpin->setSingleStep(0.01);
+    m_trussDimensionSpin->setSuffix(" m");
+
+    m_trussMaterialCombo = new QComboBox(m_trussGroup);
+    setupMaterialCombo(m_trussMaterialCombo);
+
+    trForm->addRow(tr("Nom / Repère :"), m_trussNameEdit);
+    trForm->addRow(tr("ID Interne :"), m_trussIdLabel);
+    trForm->addRow(tr("Nœud 1 :"), m_trussStartNodeLabel);
+    trForm->addRow(tr("Nœud 2 :"), m_trussEndNodeLabel);
+    trForm->addRow(tr("Longueur :"), m_trussLengthLabel);
+    trForm->addRow(tr("Rôle :"), m_trussRoleCombo);
+    trForm->addRow(tr("Diamètre / Section :"), m_trussDimensionSpin);
+    trForm->addRow(tr("Matériau :"), m_trussMaterialCombo);
+
+    auto* trBtnLayout = new QHBoxLayout();
+    auto* btnApplyTr = new QPushButton(tr("Appliquer"), m_trussGroup);
+    btnApplyTr->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    connect(btnApplyTr, &QPushButton::clicked, this, &PropertyPanel::onApplyTruss);
+    auto* btnCancelTr = new QPushButton(tr("Annuler"), m_trussGroup);
+    connect(btnCancelTr, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
+    trBtnLayout->addWidget(btnApplyTr);
+    trBtnLayout->addWidget(btnCancelTr);
+    trForm->addRow(trBtnLayout);
+
+    containerLayout->addWidget(m_trussGroup);
+
+    containerLayout->addStretch();
+    scrollArea->setWidget(container);
+    mainLayout->addWidget(scrollArea);
+}
+
+void PropertyPanel::hideAllGroups()
+{
+    m_nodeGroup->setVisible(false);
+    m_beamGroup->setVisible(false);
+    m_columnGroup->setVisible(false);
+    m_slabGroup->setVisible(false);
+    m_wallGroup->setVisible(false);
+    m_foundationGroup->setVisible(false);
+    m_trussGroup->setVisible(false);
 }
 
 void PropertyPanel::clearProperties()
 {
-    m_currentLevelId.clear();
+    m_currentType = CurrentType::None;
     m_currentNodeId = -1;
     m_currentBeamId = -1;
     m_currentColumnId = -1;
     m_currentSlabId = -1;
+    m_currentWallId = -1;
+    m_currentFoundationId = -1;
+    m_currentTrussId = -1;
 
-    m_emptyLabel->show();
-    m_levelGroup->hide();
-    m_nodeGroup->hide();
-    m_beamGroup->hide();
-    m_columnGroup->hide();
-    m_slabGroup->hide();
-    m_titleLabel->setText(tr("PROPERTIES"));
+    m_titleLabel->setText(tr("PROPRIÉTÉS STRUCTURALES"));
+    m_emptyLabel->setVisible(true);
+    hideAllGroups();
 }
 
 void PropertyPanel::showLevelProperties(const QString& levelId)
 {
-    if (!m_model || !m_model->levelManager())
-        return;
-
-    const auto* lvl = m_model->levelManager()->getLevel(levelId.toStdString());
-    if (!lvl)
-    {
-        clearProperties();
-        return;
-    }
-
-    m_isUpdating = true;
+    clearProperties();
+    m_currentType = CurrentType::Level;
     m_currentLevelId = levelId;
-    m_currentNodeId = -1;
-    m_currentBeamId = -1;
-    m_currentColumnId = -1;
-    m_currentSlabId = -1;
-
-    m_titleLabel->setText(QString("LEVEL %1").arg(QString::fromStdString(lvl->name)));
-    m_levelIdLabel->setText(QString::fromStdString(lvl->id));
-    m_levelNameEdit->setText(QString::fromStdString(lvl->name));
-    m_levelElevationSpin->setValue(lvl->elevation);
-    m_levelVisibleCheck->setChecked(lvl->visible);
-
-    m_emptyLabel->hide();
-    m_nodeGroup->hide();
-    m_beamGroup->hide();
-    m_columnGroup->hide();
-    m_slabGroup->hide();
-    m_levelGroup->show();
-
-    m_isUpdating = false;
+    m_emptyLabel->setVisible(false);
+    m_titleLabel->setText(tr("PROPRIÉTÉS DU NIVEAU : %1").arg(levelId));
 }
 
 void PropertyPanel::showNodeProperties(int nodeId)
 {
-    if (!m_model)
-        return;
-
+    if (!m_model) return;
     const auto* node = m_model->getNode(nodeId);
-    if (!node)
-    {
-        clearProperties();
-        return;
-    }
+    if (!node) return;
 
-    m_isUpdating = true;
+    clearProperties();
+    m_currentType = CurrentType::Node;
     m_currentNodeId = nodeId;
-    m_currentLevelId.clear();
-    m_currentBeamId = -1;
-    m_currentColumnId = -1;
-    m_currentSlabId = -1;
+    m_emptyLabel->setVisible(false);
+    m_titleLabel->setText(tr("PROPRIÉTÉS DU NŒUD"));
 
-    m_titleLabel->setText(QString("NODE %1").arg(nodeId));
-    m_nodeIdLabel->setText(QString::number(nodeId));
-
-    if (!node->levelId().empty())
-    {
-        if (const auto* lvl = m_model->levelManager() ? m_model->levelManager()->getLevel(node->levelId()) : nullptr)
-            m_nodeLevelLabel->setText(QString::fromStdString(lvl->name));
-        else
-            m_nodeLevelLabel->setText(QString::fromStdString(node->levelId()));
-    }
-    else
-    {
-        if (m_model->levelManager())
-        {
-            if (const auto* lvl = m_model->levelManager()->findLevelAtElevation(node->z()))
-                m_nodeLevelLabel->setText(QString::fromStdString(lvl->name));
-            else
-                m_nodeLevelLabel->setText(tr("None"));
-        }
-        else
-        {
-            m_nodeLevelLabel->setText(tr("None"));
-        }
-    }
-
+    m_nodeNameEdit->setText(QString::fromStdString(node->formattedName()));
+    m_nodeIdLabel->setText(QString::number(node->id()));
+    m_nodeLevelLabel->setText(node->levelId().empty() ? tr("Aucun") : QString::fromStdString(node->levelId()));
     m_nodeXSpin->setValue(node->x());
     m_nodeYSpin->setValue(node->y());
     m_nodeZSpin->setValue(node->z());
 
-    m_emptyLabel->hide();
-    m_levelGroup->hide();
-    m_beamGroup->hide();
-    m_columnGroup->hide();
-    m_slabGroup->hide();
-    m_nodeGroup->show();
+    int idx = m_nodeSupportCombo->findData(static_cast<int>(node->supportType()));
+    if (idx >= 0) m_nodeSupportCombo->setCurrentIndex(idx);
 
-    m_isUpdating = false;
+    m_nodeGroup->setVisible(true);
 }
 
 void PropertyPanel::showBeamProperties(int beamId)
 {
-    if (!m_model)
-        return;
-
+    if (!m_model) return;
     const auto* beam = m_model->getBeam(beamId);
-    if (!beam)
-    {
-        clearProperties();
-        return;
-    }
+    if (!beam) return;
 
-    m_isUpdating = true;
+    clearProperties();
+    m_currentType = CurrentType::Beam;
     m_currentBeamId = beamId;
-    m_currentLevelId.clear();
-    m_currentNodeId = -1;
-    m_currentColumnId = -1;
-    m_currentSlabId = -1;
+    m_emptyLabel->setVisible(false);
+    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA POUTRE"));
 
-    m_titleLabel->setText(QString("BEAM %1").arg(beamId));
-    m_beamIdLabel->setText(QString::number(beamId));
-    m_beamStartNodeLabel->setText(QString("Node %1").arg(beam->startNodeId()));
-    m_beamEndNodeLabel->setText(QString("Node %1").arg(beam->endNodeId()));
-    m_beamLengthLabel->setText(QString("%1 m").arg(beam->length(*m_model), 0, 'f', 3));
+    m_beamNameEdit->setText(QString::fromStdString(beam->formattedName()));
+    m_beamIdLabel->setText(QString::number(beam->id()));
+    m_beamStartNodeLabel->setText(QString("N%1").arg(beam->startNodeId()));
+    m_beamEndNodeLabel->setText(QString("N%1").arg(beam->endNodeId()));
+    m_beamLengthLabel->setText(QString("%1 m").arg(beam->length(*m_model), 0, 'f', 2));
     m_beamWidthSpin->setValue(beam->width());
     m_beamHeightSpin->setValue(beam->height());
+    m_beamRotationSpin->setValue(beam->rotation());
 
-    m_emptyLabel->hide();
-    m_levelGroup->hide();
-    m_nodeGroup->hide();
-    m_columnGroup->hide();
-    m_slabGroup->hide();
-    m_beamGroup->show();
-
-    m_isUpdating = false;
+    m_beamGroup->setVisible(true);
 }
 
 void PropertyPanel::showColumnProperties(int columnId)
 {
-    if (!m_model)
-        return;
-
+    if (!m_model) return;
     const auto* col = m_model->getColumn(columnId);
-    if (!col)
-    {
-        clearProperties();
-        return;
-    }
+    if (!col) return;
 
-    m_isUpdating = true;
+    clearProperties();
+    m_currentType = CurrentType::Column;
     m_currentColumnId = columnId;
-    m_currentLevelId.clear();
-    m_currentNodeId = -1;
-    m_currentBeamId = -1;
-    m_currentSlabId = -1;
+    m_emptyLabel->setVisible(false);
+    m_titleLabel->setText(tr("PROPRIÉTÉS DU POTEAU"));
 
-    m_titleLabel->setText(QString("COLUMN %1").arg(columnId));
-    m_columnIdLabel->setText(QString::number(columnId));
-    m_columnStartNodeLabel->setText(QString("Node %1").arg(col->startNodeId()));
-    m_columnEndNodeLabel->setText(QString("Node %1").arg(col->endNodeId()));
-    m_columnVerticalLabel->setText(col->isVertical(*m_model) ? tr("Vertical (along Z)") : tr("Inclined"));
-    m_columnElevationRangeLabel->setText(QString("%1 m -> %2 m")
-        .arg(col->bottomElevation(*m_model), 0, 'f', 2)
-        .arg(col->topElevation(*m_model), 0, 'f', 2));
-    m_columnHeightLabel->setText(QString("%1 m").arg(col->length(*m_model), 0, 'f', 3));
+    m_columnNameEdit->setText(QString::fromStdString(col->formattedName()));
+    m_columnIdLabel->setText(QString::number(col->id()));
+    m_columnStartNodeLabel->setText(QString("N%1").arg(col->startNodeId()));
+    m_columnEndNodeLabel->setText(QString("N%1").arg(col->endNodeId()));
+    m_columnHeightLabel->setText(QString("%1 m (%2)").arg(col->length(*m_model), 0, 'f', 2).arg(QString::fromStdString(col->direction(*m_model))));
     m_columnWidthSpin->setValue(col->width());
     m_columnDepthSpin->setValue(col->height());
+    m_columnRotationSpin->setValue(col->rotation());
 
-    m_emptyLabel->hide();
-    m_levelGroup->hide();
-    m_nodeGroup->hide();
-    m_beamGroup->hide();
-    m_slabGroup->hide();
-    m_columnGroup->show();
-
-    m_isUpdating = false;
+    m_columnGroup->setVisible(true);
 }
 
 void PropertyPanel::showSlabProperties(int slabId)
 {
-    if (!m_model)
-        return;
-
+    if (!m_model) return;
     const auto* slab = m_model->getSlab(slabId);
-    if (!slab)
-    {
-        clearProperties();
-        return;
-    }
+    if (!slab) return;
 
-    m_isUpdating = true;
+    clearProperties();
+    m_currentType = CurrentType::Slab;
     m_currentSlabId = slabId;
-    m_currentLevelId.clear();
-    m_currentNodeId = -1;
-    m_currentBeamId = -1;
-    m_currentColumnId = -1;
+    m_emptyLabel->setVisible(false);
+    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA DALLE"));
 
-    QString nodesStr;
-    for (size_t i = 0; i < slab->nodeIds().size(); ++i)
-    {
-        if (i > 0) nodesStr += ", ";
-        nodesStr += QString::number(slab->nodeIds()[i]);
-    }
+    m_slabNameEdit->setText(QString::fromStdString(slab->formattedName()));
+    m_slabIdLabel->setText(QString::number(slab->id()));
 
-    m_titleLabel->setText(QString("SLAB %1").arg(slabId));
-    m_slabIdLabel->setText(QString::number(slabId));
-    m_slabNodesLabel->setText(nodesStr);
-    m_slabAreaLabel->setText(QString("%1 m²").arg(slab->area(*m_model), 0, 'f', 3));
+    QStringList nodeStrs;
+    for (int nid : slab->nodeIds()) nodeStrs << QString("N%1").arg(nid);
+    m_slabNodesLabel->setText(nodeStrs.join(" - "));
+    m_slabAreaLabel->setText(QString("%1 m²").arg(slab->area(*m_model), 0, 'f', 2));
     m_slabThicknessSpin->setValue(slab->thickness());
 
-    m_emptyLabel->hide();
-    m_levelGroup->hide();
-    m_nodeGroup->hide();
-    m_beamGroup->hide();
-    m_columnGroup->hide();
-    m_slabGroup->show();
+    if (slab->slabType() == TSA::Model::SlabType::OneWay) m_slabRadioOneWay->setChecked(true);
+    else if (slab->slabType() == TSA::Model::SlabType::FlatSlab) m_slabRadioFlat->setChecked(true);
+    else m_slabRadioTwoWay->setChecked(true);
 
-    m_isUpdating = false;
+    m_slabGroup->setVisible(true);
 }
 
-void PropertyPanel::onLevelNameChanged()
+void PropertyPanel::showWallProperties(int wallId)
 {
-    if (m_isUpdating || !m_model || !m_model->levelManager() || m_currentLevelId.isEmpty())
-        return;
+    if (!m_model) return;
+    const auto* wall = m_model->getWall(wallId);
+    if (!wall) return;
 
-    m_model->levelManager()->setLevelName(m_currentLevelId.toStdString(), m_levelNameEdit->text().toStdString());
+    clearProperties();
+    m_currentType = CurrentType::Wall;
+    m_currentWallId = wallId;
+    m_emptyLabel->setVisible(false);
+    m_titleLabel->setText(tr("PROPRIÉTÉS DU VOILE"));
+
+    m_wallNameEdit->setText(QString::fromStdString(wall->formattedName()));
+    m_wallIdLabel->setText(QString::number(wall->id()));
+    m_wallStartNodeLabel->setText(QString("N%1").arg(wall->startNodeId()));
+    m_wallEndNodeLabel->setText(QString("N%1").arg(wall->endNodeId()));
+    m_wallLengthLabel->setText(QString("%1 m (Aire = %2 m²)").arg(wall->length(*m_model), 0, 'f', 2).arg(wall->area(*m_model), 0, 'f', 2));
+    m_wallHeightSpin->setValue(wall->height());
+    m_wallThicknessSpin->setValue(wall->thickness());
+    m_wallOffsetSpin->setValue(wall->offset());
+
+    m_wallGroup->setVisible(true);
 }
 
-void PropertyPanel::onLevelElevationChanged()
+void PropertyPanel::showFoundationProperties(int foundationId)
 {
-    if (m_isUpdating || !m_model || !m_model->levelManager() || m_currentLevelId.isEmpty())
-        return;
+    if (!m_model) return;
+    const auto* f = m_model->getFoundation(foundationId);
+    if (!f) return;
 
-    m_model->levelManager()->setLevelElevation(m_currentLevelId.toStdString(), m_levelElevationSpin->value());
+    clearProperties();
+    m_currentType = CurrentType::Foundation;
+    m_currentFoundationId = foundationId;
+    m_emptyLabel->setVisible(false);
+    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA FONDATION"));
+
+    m_foundationNameEdit->setText(QString::fromStdString(f->formattedName()));
+    m_foundationIdLabel->setText(QString::number(f->id()));
+    m_foundationNodeLabel->setText(QString("N%1").arg(f->nodeId()));
+
+    int idx = m_foundationTypeCombo->findData(static_cast<int>(f->foundationType()));
+    if (idx >= 0) m_foundationTypeCombo->setCurrentIndex(idx);
+
+    m_foundationWidthASpin->setValue(f->widthA());
+    m_foundationLengthBSpin->setValue(f->lengthB());
+    m_foundationHeightHSpin->setValue(f->heightH());
+    m_foundationSoilCapacitySpin->setValue(f->soilBearingCapacity());
+
+    m_foundationGroup->setVisible(true);
 }
 
-void PropertyPanel::onLevelVisibleChanged(bool checked)
+void PropertyPanel::showTrussMemberProperties(int memberId)
 {
-    if (m_isUpdating || !m_model || !m_model->levelManager() || m_currentLevelId.isEmpty())
-        return;
+    if (!m_model) return;
+    const auto* truss = m_model->getTrussMember(memberId);
+    if (!truss) return;
 
-    m_model->levelManager()->setLevelVisible(m_currentLevelId.toStdString(), checked);
+    clearProperties();
+    m_currentType = CurrentType::Truss;
+    m_currentTrussId = memberId;
+    m_emptyLabel->setVisible(false);
+    m_titleLabel->setText(tr("PROPRIÉTÉS DU TREILLIS"));
+
+    m_trussNameEdit->setText(QString::fromStdString(truss->formattedName()));
+    m_trussIdLabel->setText(QString::number(truss->id()));
+    m_trussStartNodeLabel->setText(QString("N%1").arg(truss->startNodeId()));
+    m_trussEndNodeLabel->setText(QString("N%1").arg(truss->endNodeId()));
+    m_trussLengthLabel->setText(QString("%1 m").arg(truss->length(*m_model), 0, 'f', 2));
+
+    int idx = m_trussRoleCombo->findData(static_cast<int>(truss->role()));
+    if (idx >= 0) m_trussRoleCombo->setCurrentIndex(idx);
+
+    m_trussDimensionSpin->setValue(truss->section().width);
+
+    m_trussGroup->setVisible(true);
 }
 
-void PropertyPanel::onNodeCoordinatesChanged()
+void PropertyPanel::onApplyNode()
 {
-    if (m_isUpdating || !m_model || m_currentNodeId <= 0)
-        return;
-
+    if (!m_model || m_currentNodeId < 0) return;
     auto* node = m_model->getNode(m_currentNodeId);
-    if (node)
-    {
-        node->setCoordinates(m_nodeXSpin->value(), m_nodeYSpin->value(), m_nodeZSpin->value());
-        m_model->notifyNodeModified(m_currentNodeId);
-    }
+    if (!node) return;
+
+    m_model->pushUndoState(tr("Modification Nœud %1").arg(m_currentNodeId).toStdString());
+
+    node->setName(m_nodeNameEdit->text().toStdString());
+    node->setCoordinates(m_nodeXSpin->value(), m_nodeYSpin->value(), m_nodeZSpin->value());
+    node->setSupportType(static_cast<TSA::Model::SupportType>(m_nodeSupportCombo->currentData().toInt()));
+
+    m_model->notifyNodeModified(m_currentNodeId);
+    emit elementModified();
 }
 
-void PropertyPanel::onBeamDimensionsChanged()
+void PropertyPanel::onApplyBeam()
 {
-    if (m_isUpdating || !m_model || m_currentBeamId <= 0)
-        return;
-
+    if (!m_model || m_currentBeamId < 0) return;
     auto* beam = m_model->getBeam(m_currentBeamId);
-    if (beam)
-    {
-        beam->setDimensions(m_beamWidthSpin->value(), m_beamHeightSpin->value());
-        m_model->notifyBeamModified(m_currentBeamId);
-    }
+    if (!beam) return;
+
+    m_model->pushUndoState(tr("Modification Poutre %1").arg(m_currentBeamId).toStdString());
+
+    beam->setName(m_beamNameEdit->text().toStdString());
+    beam->setWidth(m_beamWidthSpin->value());
+    beam->setHeight(m_beamHeightSpin->value());
+    beam->setRotation(m_beamRotationSpin->value());
+
+    m_model->notifyBeamModified(m_currentBeamId);
+    emit elementModified();
 }
 
-void PropertyPanel::onColumnDimensionsChanged()
+void PropertyPanel::onApplyColumn()
 {
-    if (m_isUpdating || !m_model || m_currentColumnId <= 0)
-        return;
-
+    if (!m_model || m_currentColumnId < 0) return;
     auto* col = m_model->getColumn(m_currentColumnId);
-    if (col)
-    {
-        col->setDimensions(m_columnWidthSpin->value(), m_columnDepthSpin->value());
-        m_model->notifyColumnModified(m_currentColumnId);
-    }
+    if (!col) return;
+
+    m_model->pushUndoState(tr("Modification Poteau %1").arg(m_currentColumnId).toStdString());
+
+    col->setName(m_columnNameEdit->text().toStdString());
+    col->setWidth(m_columnWidthSpin->value());
+    col->setHeight(m_columnDepthSpin->value());
+    col->setRotation(m_columnRotationSpin->value());
+
+    m_model->notifyColumnModified(m_currentColumnId);
+    emit elementModified();
 }
 
-void PropertyPanel::onSlabPropertiesChanged()
+void PropertyPanel::onApplySlab()
 {
-    if (m_isUpdating || !m_model || m_currentSlabId <= 0)
-        return;
-
+    if (!m_model || m_currentSlabId < 0) return;
     auto* slab = m_model->getSlab(m_currentSlabId);
-    if (slab)
+    if (!slab) return;
+
+    m_model->pushUndoState(tr("Modification Dalle %1").arg(m_currentSlabId).toStdString());
+
+    slab->setName(m_slabNameEdit->text().toStdString());
+    slab->setThickness(m_slabThicknessSpin->value());
+
+    if (m_slabRadioOneWay->isChecked()) slab->setSlabType(TSA::Model::SlabType::OneWay);
+    else if (m_slabRadioFlat->isChecked()) slab->setSlabType(TSA::Model::SlabType::FlatSlab);
+    else slab->setSlabType(TSA::Model::SlabType::TwoWay);
+
+    m_model->notifySlabModified(m_currentSlabId);
+    emit elementModified();
+}
+
+void PropertyPanel::onApplyWall()
+{
+    if (!m_model || m_currentWallId < 0) return;
+    auto* wall = m_model->getWall(m_currentWallId);
+    if (!wall) return;
+
+    m_model->pushUndoState(tr("Modification Voile %1").arg(m_currentWallId).toStdString());
+
+    wall->setName(m_wallNameEdit->text().toStdString());
+    wall->setHeight(m_wallHeightSpin->value());
+    wall->setThickness(m_wallThicknessSpin->value());
+    wall->setOffset(m_wallOffsetSpin->value());
+
+    m_model->notifyWallModified(m_currentWallId);
+    emit elementModified();
+}
+
+void PropertyPanel::onApplyFoundation()
+{
+    if (!m_model || m_currentFoundationId < 0) return;
+    auto* f = m_model->getFoundation(m_currentFoundationId);
+    if (!f) return;
+
+    m_model->pushUndoState(tr("Modification Fondation %1").arg(m_currentFoundationId).toStdString());
+
+    f->setName(m_foundationNameEdit->text().toStdString());
+    f->setFoundationType(static_cast<TSA::Model::FoundationType>(m_foundationTypeCombo->currentData().toInt()));
+    f->setWidthA(m_foundationWidthASpin->value());
+    f->setLengthB(m_foundationLengthBSpin->value());
+    f->setHeightH(m_foundationHeightHSpin->value());
+    f->setSoilBearingCapacity(m_foundationSoilCapacitySpin->value());
+
+    m_model->notifyFoundationModified(m_currentFoundationId);
+    emit elementModified();
+}
+
+void PropertyPanel::onApplyTruss()
+{
+    if (!m_model || m_currentTrussId < 0) return;
+    auto* truss = m_model->getTrussMember(m_currentTrussId);
+    if (!truss) return;
+
+    m_model->pushUndoState(tr("Modification Treillis %1").arg(m_currentTrussId).toStdString());
+
+    truss->setName(m_trussNameEdit->text().toStdString());
+    truss->setRole(static_cast<TSA::Model::TrussMemberRole>(m_trussRoleCombo->currentData().toInt()));
+    truss->section().width = m_trussDimensionSpin->value();
+    truss->section().diameter = m_trussDimensionSpin->value();
+
+    m_model->notifyTrussMemberModified(m_currentTrussId);
+    emit elementModified();
+}
+
+void PropertyPanel::onCancelCurrent()
+{
+    switch (m_currentType)
     {
-        slab->setThickness(m_slabThicknessSpin->value());
-        m_model->notifySlabModified(m_currentSlabId);
+    case CurrentType::Node:       showNodeProperties(m_currentNodeId); break;
+    case CurrentType::Beam:       showBeamProperties(m_currentBeamId); break;
+    case CurrentType::Column:     showColumnProperties(m_currentColumnId); break;
+    case CurrentType::Slab:       showSlabProperties(m_currentSlabId); break;
+    case CurrentType::Wall:       showWallProperties(m_currentWallId); break;
+    case CurrentType::Foundation: showFoundationProperties(m_currentFoundationId); break;
+    case CurrentType::Truss:      showTrussMemberProperties(m_currentTrussId); break;
+    default:                      clearProperties(); break;
     }
 }
 

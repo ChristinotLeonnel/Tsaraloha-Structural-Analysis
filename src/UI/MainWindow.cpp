@@ -1221,6 +1221,24 @@ void MainWindow::createDockWindows()
         m_propertyPanel->showSlabProperties(slabId);
     });
 
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::wallSelected, this, [this](int wallId) {
+        m_selectionManager->selectWall(wallId);
+        m_occView->highlightWall(wallId);
+        m_propertyPanel->showWallProperties(wallId);
+    });
+
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::foundationSelected, this, [this](int fId) {
+        m_selectionManager->selectFoundation(fId);
+        m_occView->highlightFoundation(fId);
+        m_propertyPanel->showFoundationProperties(fId);
+    });
+
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::trussMemberSelected, this, [this](int trId) {
+        m_selectionManager->selectTrussMember(trId);
+        m_occView->highlightTrussMember(trId);
+        m_propertyPanel->showTrussMemberProperties(trId);
+    });
+
     connect(m_modelTree, &TSA::UI::ModelTreeWidget::selectionCleared, this, [this]() {
         m_selectionManager->clearSelection();
         m_occView->clearHighlight();
@@ -1266,6 +1284,42 @@ void MainWindow::createDockWindows()
         {
             m_statusInfo->setText(tr("Selected Slab %1").arg(slabId));
         }
+    });
+
+    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::wallSelected, this, [this](int wallId) {
+        m_modelTree->selectWallItem(wallId);
+        m_occView->highlightWall(wallId);
+        m_propertyPanel->showWallProperties(wallId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Selected Wall %1").arg(wallId));
+        }
+    });
+
+    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::foundationSelected, this, [this](int fId) {
+        m_modelTree->selectFoundationItem(fId);
+        m_occView->highlightFoundation(fId);
+        m_propertyPanel->showFoundationProperties(fId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Selected Foundation %1").arg(fId));
+        }
+    });
+
+    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::trussMemberSelected, this, [this](int trId) {
+        m_modelTree->selectTrussMemberItem(trId);
+        m_occView->highlightTrussMember(trId);
+        m_propertyPanel->showTrussMemberProperties(trId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Selected Truss Member %1").arg(trId));
+        }
+    });
+
+    connect(m_propertyPanel, &TSA::UI::PropertyPanel::elementModified, this, [this]() {
+        m_modelTree->refreshAll();
+        m_occView->update();
+        updateUndoRedoActions();
     });
 
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::selectionCleared, this, [this]() {
@@ -1779,30 +1833,29 @@ void MainWindow::onActionDeleteSelected()
     if (total == 0)
         return;
 
-    // Supprimer dans l'ordre sécurisé : Dalles, Poutres, Poteaux, Nœuds
+    m_model->pushUndoState(tr("Suppression d'éléments").toStdString());
+
+    // Supprimer dans l'ordre sécurisé : Dalles, Voiles, Fondations, Treillis, Poutres, Poteaux, Nœuds
     auto slabs = m_selectionManager->selectedSlabs();
-    for (int id : slabs)
-    {
-        m_model->removeSlab(id);
-    }
+    for (int id : slabs) m_model->removeSlab(id);
+
+    auto walls = m_selectionManager->selectedWalls();
+    for (int id : walls) m_model->removeWall(id);
+
+    auto foundations = m_selectionManager->selectedFoundations();
+    for (int id : foundations) m_model->removeFoundation(id);
+
+    auto truss = m_selectionManager->selectedTrussMembers();
+    for (int id : truss) m_model->removeTrussMember(id);
 
     auto beams = m_selectionManager->selectedBeams();
-    for (int id : beams)
-    {
-        m_model->removeBeam(id);
-    }
+    for (int id : beams) m_model->removeBeam(id);
 
     auto columns = m_selectionManager->selectedColumns();
-    for (int id : columns)
-    {
-        m_model->removeColumn(id);
-    }
+    for (int id : columns) m_model->removeColumn(id);
 
     auto nodes = m_selectionManager->selectedNodes();
-    for (int id : nodes)
-    {
-        m_model->removeNode(id);
-    }
+    for (int id : nodes) m_model->removeNode(id);
 
     m_selectionManager->clearSelection();
     if (m_occView) m_occView->clearHighlight();
@@ -1812,6 +1865,7 @@ void MainWindow::onActionDeleteSelected()
     {
         m_statusInfo->setText(tr("%1 élément(s) supprimé(s)").arg(total));
     }
+    updateUndoRedoActions();
 }
 
 void MainWindow::onActionAddCube()

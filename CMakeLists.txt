@@ -104,6 +104,14 @@ set(SOURCES
     src/Geometry/BeamGeometry.cpp
     src/Geometry/SlabGeometry.h
     src/Geometry/SlabGeometry.cpp
+    src/Geometry/WallGeometry.h
+    src/Geometry/WallGeometry.cpp
+    src/Geometry/FoundationGeometry.h
+    src/Geometry/FoundationGeometry.cpp
+    src/Model/Material.h
+    src/Model/Material.cpp
+    src/Model/Section.h
+    src/Model/Section.cpp
     src/Model/Node.h
     src/Model/Node.cpp
     src/Model/Beam.h
@@ -112,6 +120,12 @@ set(SOURCES
     src/Model/Column.cpp
     src/Model/Slab.h
     src/Model/Slab.cpp
+    src/Model/Wall.h
+    src/Model/Wall.cpp
+    src/Model/Foundation.h
+    src/Model/Foundation.cpp
+    src/Model/TrussMember.h
+    src/Model/TrussMember.cpp
     src/Model/Model.h
     src/Model/Model.cpp
     resources/resources.qrc
@@ -172,6 +186,10 @@ set(TEST_SOURCES
     src/Coordinate/CoordinateSystem.cpp
     src/Coordinate/CylindricalCoordinates.h
     src/Coordinate/CylindricalCoordinates.cpp
+    src/Model/Material.h
+    src/Model/Material.cpp
+    src/Model/Section.h
+    src/Model/Section.cpp
     src/Model/Node.h
     src/Model/Node.cpp
     src/Model/Beam.h
@@ -180,6 +198,12 @@ set(TEST_SOURCES
     src/Model/Column.cpp
     src/Model/Slab.h
     src/Model/Slab.cpp
+    src/Model/Wall.h
+    src/Model/Wall.cpp
+    src/Model/Foundation.h
+    src/Model/Foundation.cpp
+    src/Model/TrussMember.h
+    src/Model/TrussMember.cpp
     src/Model/Model.h
     src/Model/Model.cpp
     src/Grid/GridType.h

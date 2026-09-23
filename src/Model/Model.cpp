@@ -45,7 +45,7 @@ void Model::removeObserver(IModelObserver* observer)
     m_observers.erase(std::remove(m_observers.begin(), m_observers.end(), observer), m_observers.end());
 }
 
-int Model::addNode(double x, double y, double z, const std::string& levelId)
+int Model::addNode(double x, double y, double z, const std::string& levelId, const std::string& name)
 {
     int id = m_nextNodeId++;
     while (m_nodes.find(id) != m_nodes.end())
@@ -61,7 +61,7 @@ int Model::addNode(double x, double y, double z, const std::string& levelId)
             actualLvlId = lvl->id;
     }
 
-    Node node(id, x, y, z, actualLvlId);
+    Node node(id, x, y, z, actualLvlId, name);
     auto it = m_nodes.emplace(id, node).first;
 
     for (auto* obs : m_observers)
@@ -72,7 +72,7 @@ int Model::addNode(double x, double y, double z, const std::string& levelId)
     return id;
 }
 
-bool Model::addNodeWithId(int id, double x, double y, double z, const std::string& levelId)
+bool Model::addNodeWithId(int id, double x, double y, double z, const std::string& levelId, const std::string& name)
 {
     if (m_nodes.find(id) != m_nodes.end())
     {
@@ -87,7 +87,7 @@ bool Model::addNodeWithId(int id, double x, double y, double z, const std::strin
             actualLvlId = lvl->id;
     }
 
-    Node node(id, x, y, z, actualLvlId);
+    Node node(id, x, y, z, actualLvlId, name);
     auto it = m_nodes.emplace(id, node).first;
     if (id >= m_nextNodeId)
     {
@@ -255,6 +255,45 @@ bool Model::removeNode(int nodeId)
         removeSlab(slabId);
     }
 
+    std::vector<int> connectedWalls;
+    for (const auto& [wallId, wall] : m_walls)
+    {
+        if (wall.startNodeId() == nodeId || wall.endNodeId() == nodeId)
+        {
+            connectedWalls.push_back(wallId);
+        }
+    }
+    for (int wallId : connectedWalls)
+    {
+        removeWall(wallId);
+    }
+
+    std::vector<int> connectedFoundations;
+    for (const auto& [fId, f] : m_foundations)
+    {
+        if (f.nodeId() == nodeId)
+        {
+            connectedFoundations.push_back(fId);
+        }
+    }
+    for (int fId : connectedFoundations)
+    {
+        removeFoundation(fId);
+    }
+
+    std::vector<int> connectedTruss;
+    for (const auto& [trId, tr] : m_trussMembers)
+    {
+        if (tr.startNodeId() == nodeId || tr.endNodeId() == nodeId)
+        {
+            connectedTruss.push_back(trId);
+        }
+    }
+    for (int trId : connectedTruss)
+    {
+        removeTrussMember(trId);
+    }
+
     m_nodes.erase(it);
 
     for (auto* obs : m_observers)
@@ -277,9 +316,8 @@ const Node* Model::getNode(int nodeId) const
     return (it != m_nodes.end()) ? &it->second : nullptr;
 }
 
-int Model::addBeam(int startNodeId, int endNodeId, double width, double height)
+int Model::addBeam(int startNodeId, int endNodeId, double width, double height, const std::string& name)
 {
-    // Vérifier que les deux nœuds d'extrémité existent
     if (m_nodes.find(startNodeId) == m_nodes.end() || m_nodes.find(endNodeId) == m_nodes.end())
     {
         return -1;
@@ -291,7 +329,7 @@ int Model::addBeam(int startNodeId, int endNodeId, double width, double height)
         id = m_nextBeamId++;
     }
 
-    Beam beam(id, startNodeId, endNodeId, width, height);
+    Beam beam(id, startNodeId, endNodeId, width, height, name);
     auto it = m_beams.emplace(id, beam).first;
 
     for (auto* obs : m_observers)
@@ -302,7 +340,7 @@ int Model::addBeam(int startNodeId, int endNodeId, double width, double height)
     return id;
 }
 
-bool Model::addBeamWithId(int id, int startNodeId, int endNodeId, double width, double height)
+bool Model::addBeamWithId(int id, int startNodeId, int endNodeId, double width, double height, const std::string& name)
 {
     if (m_beams.find(id) != m_beams.end() ||
         m_nodes.find(startNodeId) == m_nodes.end() ||
@@ -311,7 +349,7 @@ bool Model::addBeamWithId(int id, int startNodeId, int endNodeId, double width, 
         return false;
     }
 
-    Beam beam(id, startNodeId, endNodeId, width, height);
+    Beam beam(id, startNodeId, endNodeId, width, height, name);
     auto it = m_beams.emplace(id, beam).first;
     if (id >= m_nextBeamId)
     {
@@ -404,7 +442,7 @@ void Model::notifySlabModified(int slabId)
     }
 }
 
-int Model::addColumn(int startNodeId, int endNodeId, double width, double height)
+int Model::addColumn(int startNodeId, int endNodeId, double width, double height, const std::string& name)
 {
     if (m_nodes.find(startNodeId) == m_nodes.end() || m_nodes.find(endNodeId) == m_nodes.end())
     {
@@ -417,7 +455,7 @@ int Model::addColumn(int startNodeId, int endNodeId, double width, double height
         id = m_nextColumnId++;
     }
 
-    Column col(id, startNodeId, endNodeId, width, height);
+    Column col(id, startNodeId, endNodeId, width, height, name);
     auto it = m_columns.emplace(id, col).first;
 
     for (auto* obs : m_observers)
@@ -428,7 +466,7 @@ int Model::addColumn(int startNodeId, int endNodeId, double width, double height
     return id;
 }
 
-bool Model::addColumnWithId(int id, int startNodeId, int endNodeId, double width, double height)
+bool Model::addColumnWithId(int id, int startNodeId, int endNodeId, double width, double height, const std::string& name)
 {
     if (m_columns.find(id) != m_columns.end() ||
         m_nodes.find(startNodeId) == m_nodes.end() ||
@@ -437,7 +475,7 @@ bool Model::addColumnWithId(int id, int startNodeId, int endNodeId, double width
         return false;
     }
 
-    Column col(id, startNodeId, endNodeId, width, height);
+    Column col(id, startNodeId, endNodeId, width, height, name);
     auto it = m_columns.emplace(id, col).first;
     if (id >= m_nextColumnId)
     {
@@ -482,7 +520,7 @@ const Column* Model::getColumn(int columnId) const
     return (it != m_columns.end()) ? &it->second : nullptr;
 }
 
-int Model::addSlab(const std::vector<int>& nodeIds, double thickness)
+int Model::addSlab(const std::vector<int>& nodeIds, double thickness, const std::string& name, SlabType type)
 {
     if (nodeIds.size() < 3)
     {
@@ -503,7 +541,7 @@ int Model::addSlab(const std::vector<int>& nodeIds, double thickness)
         id = m_nextSlabId++;
     }
 
-    Slab slab(id, nodeIds, thickness);
+    Slab slab(id, nodeIds, thickness, name, type);
     auto it = m_slabs.emplace(id, slab).first;
 
     for (auto* obs : m_observers)
@@ -514,7 +552,7 @@ int Model::addSlab(const std::vector<int>& nodeIds, double thickness)
     return id;
 }
 
-bool Model::addSlabWithId(int id, const std::vector<int>& nodeIds, double thickness)
+bool Model::addSlabWithId(int id, const std::vector<int>& nodeIds, double thickness, const std::string& name, SlabType type)
 {
     if (m_slabs.find(id) != m_slabs.end() || nodeIds.size() < 3)
     {
@@ -529,7 +567,7 @@ bool Model::addSlabWithId(int id, const std::vector<int>& nodeIds, double thickn
         }
     }
 
-    Slab slab(id, nodeIds, thickness);
+    Slab slab(id, nodeIds, thickness, name, type);
     auto it = m_slabs.emplace(id, slab).first;
     if (id >= m_nextSlabId)
     {
@@ -572,6 +610,274 @@ const Slab* Model::getSlab(int slabId) const
 {
     auto it = m_slabs.find(slabId);
     return (it != m_slabs.end()) ? &it->second : nullptr;
+}
+
+void Model::notifyWallModified(int wallId)
+{
+    const Wall* w = getWall(wallId);
+    if (w)
+    {
+        for (auto* obs : m_observers)
+        {
+            obs->onWallModified(*w);
+        }
+    }
+}
+
+int Model::addWall(int startNodeId, int endNodeId, double height, double thickness, const std::string& name)
+{
+    if (m_nodes.find(startNodeId) == m_nodes.end() || m_nodes.find(endNodeId) == m_nodes.end())
+    {
+        return -1;
+    }
+
+    int id = m_nextWallId++;
+    while (m_walls.find(id) != m_walls.end())
+    {
+        id = m_nextWallId++;
+    }
+
+    Wall wall(id, startNodeId, endNodeId, height, thickness, name);
+    auto it = m_walls.emplace(id, wall).first;
+
+    for (auto* obs : m_observers)
+    {
+        obs->onWallAdded(it->second);
+    }
+
+    return id;
+}
+
+bool Model::addWallWithId(int id, int startNodeId, int endNodeId, double height, double thickness, const std::string& name)
+{
+    if (m_walls.find(id) != m_walls.end() ||
+        m_nodes.find(startNodeId) == m_nodes.end() ||
+        m_nodes.find(endNodeId) == m_nodes.end())
+    {
+        return false;
+    }
+
+    Wall wall(id, startNodeId, endNodeId, height, thickness, name);
+    auto it = m_walls.emplace(id, wall).first;
+    if (id >= m_nextWallId)
+    {
+        m_nextWallId = id + 1;
+    }
+
+    for (auto* obs : m_observers)
+    {
+        obs->onWallAdded(it->second);
+    }
+
+    return true;
+}
+
+bool Model::removeWall(int wallId)
+{
+    auto it = m_walls.find(wallId);
+    if (it == m_walls.end())
+    {
+        return false;
+    }
+
+    m_walls.erase(it);
+
+    for (auto* obs : m_observers)
+    {
+        obs->onWallRemoved(wallId);
+    }
+
+    return true;
+}
+
+Wall* Model::getWall(int wallId)
+{
+    auto it = m_walls.find(wallId);
+    return (it != m_walls.end()) ? &it->second : nullptr;
+}
+
+const Wall* Model::getWall(int wallId) const
+{
+    auto it = m_walls.find(wallId);
+    return (it != m_walls.end()) ? &it->second : nullptr;
+}
+
+void Model::notifyFoundationModified(int foundationId)
+{
+    const Foundation* f = getFoundation(foundationId);
+    if (f)
+    {
+        for (auto* obs : m_observers)
+        {
+            obs->onFoundationModified(*f);
+        }
+    }
+}
+
+int Model::addFoundation(int nodeId, double widthA, double lengthB, double heightH, const std::string& name, FoundationType type)
+{
+    if (m_nodes.find(nodeId) == m_nodes.end())
+    {
+        return -1;
+    }
+
+    int id = m_nextFoundationId++;
+    while (m_foundations.find(id) != m_foundations.end())
+    {
+        id = m_nextFoundationId++;
+    }
+
+    Foundation f(id, nodeId, widthA, lengthB, heightH, name, type);
+    auto it = m_foundations.emplace(id, f).first;
+
+    for (auto* obs : m_observers)
+    {
+        obs->onFoundationAdded(it->second);
+    }
+
+    return id;
+}
+
+bool Model::addFoundationWithId(int id, int nodeId, double widthA, double lengthB, double heightH, const std::string& name, FoundationType type)
+{
+    if (m_foundations.find(id) != m_foundations.end() || m_nodes.find(nodeId) == m_nodes.end())
+    {
+        return false;
+    }
+
+    Foundation f(id, nodeId, widthA, lengthB, heightH, name, type);
+    auto it = m_foundations.emplace(id, f).first;
+    if (id >= m_nextFoundationId)
+    {
+        m_nextFoundationId = id + 1;
+    }
+
+    for (auto* obs : m_observers)
+    {
+        obs->onFoundationAdded(it->second);
+    }
+
+    return true;
+}
+
+bool Model::removeFoundation(int foundationId)
+{
+    auto it = m_foundations.find(foundationId);
+    if (it == m_foundations.end())
+    {
+        return false;
+    }
+
+    m_foundations.erase(it);
+
+    for (auto* obs : m_observers)
+    {
+        obs->onFoundationRemoved(foundationId);
+    }
+
+    return true;
+}
+
+Foundation* Model::getFoundation(int foundationId)
+{
+    auto it = m_foundations.find(foundationId);
+    return (it != m_foundations.end()) ? &it->second : nullptr;
+}
+
+const Foundation* Model::getFoundation(int foundationId) const
+{
+    auto it = m_foundations.find(foundationId);
+    return (it != m_foundations.end()) ? &it->second : nullptr;
+}
+
+void Model::notifyTrussMemberModified(int memberId)
+{
+    const TrussMember* tr = getTrussMember(memberId);
+    if (tr)
+    {
+        for (auto* obs : m_observers)
+        {
+            obs->onTrussMemberModified(*tr);
+        }
+    }
+}
+
+int Model::addTrussMember(int startNodeId, int endNodeId, double diameterOrWidth, const std::string& name, TrussMemberRole role)
+{
+    if (m_nodes.find(startNodeId) == m_nodes.end() || m_nodes.find(endNodeId) == m_nodes.end())
+    {
+        return -1;
+    }
+
+    int id = m_nextTrussMemberId++;
+    while (m_trussMembers.find(id) != m_trussMembers.end())
+    {
+        id = m_nextTrussMemberId++;
+    }
+
+    TrussMember member(id, startNodeId, endNodeId, diameterOrWidth, name, role);
+    auto it = m_trussMembers.emplace(id, member).first;
+
+    for (auto* obs : m_observers)
+    {
+        obs->onTrussMemberAdded(it->second);
+    }
+
+    return id;
+}
+
+bool Model::addTrussMemberWithId(int id, int startNodeId, int endNodeId, double diameterOrWidth, const std::string& name, TrussMemberRole role)
+{
+    if (m_trussMembers.find(id) != m_trussMembers.end() ||
+        m_nodes.find(startNodeId) == m_nodes.end() ||
+        m_nodes.find(endNodeId) == m_nodes.end())
+    {
+        return false;
+    }
+
+    TrussMember member(id, startNodeId, endNodeId, diameterOrWidth, name, role);
+    auto it = m_trussMembers.emplace(id, member).first;
+    if (id >= m_nextTrussMemberId)
+    {
+        m_nextTrussMemberId = id + 1;
+    }
+
+    for (auto* obs : m_observers)
+    {
+        obs->onTrussMemberAdded(it->second);
+    }
+
+    return true;
+}
+
+bool Model::removeTrussMember(int memberId)
+{
+    auto it = m_trussMembers.find(memberId);
+    if (it == m_trussMembers.end())
+    {
+        return false;
+    }
+
+    m_trussMembers.erase(it);
+
+    for (auto* obs : m_observers)
+    {
+        obs->onTrussMemberRemoved(memberId);
+    }
+
+    return true;
+}
+
+TrussMember* Model::getTrussMember(int memberId)
+{
+    auto it = m_trussMembers.find(memberId);
+    return (it != m_trussMembers.end()) ? &it->second : nullptr;
+}
+
+const TrussMember* Model::getTrussMember(int memberId) const
+{
+    auto it = m_trussMembers.find(memberId);
+    return (it != m_trussMembers.end()) ? &it->second : nullptr;
 }
 
 bool Model::moveNodes(const std::set<int>& nodeIds, double dx, double dy, double dz)
@@ -873,10 +1179,16 @@ Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) c
     snap.beams = m_beams;
     snap.columns = m_columns;
     snap.slabs = m_slabs;
+    snap.walls = m_walls;
+    snap.foundations = m_foundations;
+    snap.trussMembers = m_trussMembers;
     snap.nextNodeId = m_nextNodeId;
     snap.nextBeamId = m_nextBeamId;
     snap.nextColumnId = m_nextColumnId;
     snap.nextSlabId = m_nextSlabId;
+    snap.nextWallId = m_nextWallId;
+    snap.nextFoundationId = m_nextFoundationId;
+    snap.nextTrussMemberId = m_nextTrussMemberId;
     snap.actionName = actionName;
     return snap;
 }
@@ -887,10 +1199,16 @@ void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
     m_beams = snapshot.beams;
     m_columns = snapshot.columns;
     m_slabs = snapshot.slabs;
+    m_walls = snapshot.walls;
+    m_foundations = snapshot.foundations;
+    m_trussMembers = snapshot.trussMembers;
     m_nextNodeId = snapshot.nextNodeId;
     m_nextBeamId = snapshot.nextBeamId;
     m_nextColumnId = snapshot.nextColumnId;
     m_nextSlabId = snapshot.nextSlabId;
+    m_nextWallId = snapshot.nextWallId;
+    m_nextFoundationId = snapshot.nextFoundationId;
+    m_nextTrussMemberId = snapshot.nextTrussMemberId;
 
     for (auto* obs : m_observers)
     {
@@ -900,6 +1218,9 @@ void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
 
 void Model::clear()
 {
+    m_trussMembers.clear();
+    m_foundations.clear();
+    m_walls.clear();
     m_slabs.clear();
     m_columns.clear();
     m_beams.clear();
@@ -908,6 +1229,9 @@ void Model::clear()
     m_nextBeamId = 1;
     m_nextColumnId = 1;
     m_nextSlabId = 1;
+    m_nextWallId = 1;
+    m_nextFoundationId = 1;
+    m_nextTrussMemberId = 1;
 
     for (auto* obs : m_observers)
     {

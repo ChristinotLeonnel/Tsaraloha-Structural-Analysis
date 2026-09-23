@@ -8,6 +8,11 @@
 #include "Coordinate/LevelManager.h"
 #include "Coordinate/CoordinateSystem.h"
 #include "Model/Model.h"
+#include "Model/Material.h"
+#include "Model/Section.h"
+#include "Model/Wall.h"
+#include "Model/Foundation.h"
+#include "Model/TrussMember.h"
 #include "Grid/CartesianGrid.h"
 #include "Grid/GridDefinition.h"
 #include "Grid/GridSystem.h"
@@ -33,7 +38,7 @@ static bool approxEqual(double a, double b, double eps = 1e-4)
 int main()
 {
     int passed = 0;
-    int total = 11;
+    int total = 15;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -325,6 +330,159 @@ int main()
         TEST_CHECK(pn1Redone && approxEqual(pn1Redone->x(), 2.0) && approxEqual(pn1Redone->y(), 3.0), "Node 1 coordinates re-applied after redo");
 
         std::cout << "[PASS] Test 11: Undo (Ctrl+Z) & Redo (Ctrl+Y) snapshot system fully verified" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 12: Material & Section library calculations
+    // -------------------------------------------------------------------------
+    {
+        auto conc = Material::concreteC25_30();
+        TEST_CHECK(conc.type == MaterialType::Concrete, "Concrete type");
+        TEST_CHECK(approxEqual(conc.E, 31e9), "Concrete E");
+        TEST_CHECK(approxEqual(conc.density, 2500), "Concrete density");
+
+        auto steel = Material::steelS355();
+        TEST_CHECK(steel.type == MaterialType::Steel, "Steel type");
+        TEST_CHECK(approxEqual(steel.E, 210e9), "Steel E");
+        TEST_CHECK(approxEqual(steel.density, 7850), "Steel density");
+
+        // Rectangular Section 0.30 x 0.50
+        auto rect = Section::rectangular(0.30, 0.50);
+        TEST_CHECK(approxEqual(rect.area(), 0.15), "Rect Area");
+        // Iy = b*h^3/12 = 0.30 * 0.50^3 / 12 = 0.003125
+        TEST_CHECK(approxEqual(rect.iy(), 0.30 * std::pow(0.50, 3) / 12.0), "Rect Iy");
+        // Iz = h*b^3/12 = 0.50 * 0.30^3 / 12 = 0.001125
+        TEST_CHECK(approxEqual(rect.iz(), 0.50 * std::pow(0.30, 3) / 12.0), "Rect Iz");
+
+        // Circular Section D = 0.40
+        auto circ = Section::circular(0.40);
+        double expectedCircArea = 3.14159265358979323846 * 0.20 * 0.20;
+        TEST_CHECK(approxEqual(circ.area(), expectedCircArea), "Circular Area");
+
+        // I-Shape IPE 300
+        auto ipe300 = Section::ipe(300);
+        TEST_CHECK(ipe300.area() > 0.004 && ipe300.area() < 0.006, "IPE 300 Area range");
+
+        std::cout << "[PASS] Test 12: Material & Section geometric and mechanical properties" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 13: 1D Elements (Beam, Column, TrussMember)
+    // -------------------------------------------------------------------------
+    {
+        Model testModel13;
+        int n1 = testModel13.addNode(0.0, 0.0, 0.0);
+        int n2 = testModel13.addNode(0.0, 0.0, 3.5);
+        int n3 = testModel13.addNode(6.0, 0.0, 3.5);
+
+        // Column n1 -> n2
+        int colId = testModel13.addColumn(n1, n2, 0.35, 0.35);
+        const auto* col = testModel13.getColumn(colId);
+        TEST_CHECK(col != nullptr, "Column created");
+        TEST_CHECK(col->formattedName() == "C001", "Column formatted name");
+        TEST_CHECK(approxEqual(col->length(testModel13), 3.5), "Column length");
+        TEST_CHECK(approxEqual(col->width(), 0.35) && approxEqual(col->height(), 0.35), "Column section dimensions");
+        TEST_CHECK(col->isVertical(testModel13), "Column is vertical");
+
+        // Beam n2 -> n3
+        int beamId = testModel13.addBeam(n2, n3, 0.25, 0.50);
+        const auto* beam = testModel13.getBeam(beamId);
+        TEST_CHECK(beam != nullptr, "Beam created");
+        TEST_CHECK(beam->formattedName() == "B001", "Beam formatted name");
+        TEST_CHECK(approxEqual(beam->length(testModel13), 6.0), "Beam length 6.0m");
+
+        // Truss Member n1 -> n3 (Diagonal Brace)
+        int trId = testModel13.addTrussMember(n1, n3, 0.10, "", TrussMemberRole::Diagonal);
+        auto* tr = testModel13.getTrussMember(trId);
+        TEST_CHECK(tr != nullptr, "TrussMember created");
+        TEST_CHECK(tr->formattedName() == "TR001", "Truss formatted name");
+        double expectedTrussLen = std::sqrt(6.0 * 6.0 + 3.5 * 3.5);
+        TEST_CHECK(approxEqual(tr->length(testModel13), expectedTrussLen), "Truss length calculated");
+        TEST_CHECK(tr->role() == TrussMemberRole::Diagonal, "Truss role Diagonal");
+
+        std::cout << "[PASS] Test 13: 1D Elements (Beam, Column, TrussMember) lengths and roles" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 14: 2D Elements (Slab & Wall)
+    // -------------------------------------------------------------------------
+    {
+        Model testModel14;
+        int n1 = testModel14.addNode(0.0, 0.0, 3.0);
+        int n2 = testModel14.addNode(5.0, 0.0, 3.0);
+        int n3 = testModel14.addNode(5.0, 4.0, 3.0);
+        int n4 = testModel14.addNode(0.0, 4.0, 3.0);
+
+        // Slab
+        int slabId = testModel14.addSlab({ n1, n2, n3, n4 }, 0.20, "", SlabType::TwoWay);
+        const auto* slab = testModel14.getSlab(slabId);
+        TEST_CHECK(slab != nullptr, "Slab created");
+        TEST_CHECK(slab->formattedName() == "S001", "Slab formatted name");
+        TEST_CHECK(approxEqual(slab->thickness(), 0.20), "Slab thickness");
+        TEST_CHECK(approxEqual(slab->area(testModel14), 20.0), "Slab 5x4 = 20m2");
+        TEST_CHECK(slab->slabType() == SlabType::TwoWay, "Slab type TwoWay");
+
+        // Wall between (0,0,0) and (5,0,0) with height 3.0m, thickness 0.20m
+        int nw1 = testModel14.addNode(0.0, 0.0, 0.0);
+        int nw2 = testModel14.addNode(5.0, 0.0, 0.0);
+        int wallId = testModel14.addWall(nw1, nw2, 3.0, 0.20);
+        const auto* wall = testModel14.getWall(wallId);
+        TEST_CHECK(wall != nullptr, "Wall created");
+        TEST_CHECK(wall->formattedName() == "W001", "Wall formatted name");
+        TEST_CHECK(approxEqual(wall->length(testModel14), 5.0), "Wall length 5m");
+        TEST_CHECK(approxEqual(wall->height(), 3.0), "Wall height 3m");
+        TEST_CHECK(approxEqual(wall->area(testModel14), 15.0), "Wall surface 15m2");
+
+        std::cout << "[PASS] Test 14: 2D Elements (Slab & Wall) surface area and thickness" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 15: Foundation and Global Undo/Redo across all element types
+    // -------------------------------------------------------------------------
+    {
+        Model testModel15;
+        int n1 = testModel15.addNode(0.0, 0.0, 0.0);
+        int fId = testModel15.addFoundation(n1, 1.8, 1.8, 0.5, "", FoundationType::IsolatedFooting);
+        const auto* f = testModel15.getFoundation(fId);
+        TEST_CHECK(f != nullptr, "Foundation created");
+        TEST_CHECK(f->formattedName() == "F001", "Foundation formatted name");
+        TEST_CHECK(approxEqual(f->baseArea(), 1.8 * 1.8), "Foundation base area");
+        TEST_CHECK(approxEqual(f->volume(), 1.8 * 1.8 * 0.5), "Foundation volume");
+
+        // Test Snapshot & Undo with all types
+        testModel15.pushUndoState("Creation Complète");
+        int n2 = testModel15.addNode(4.0, 0.0, 0.0);
+        int n3 = testModel15.addNode(4.0, 0.0, 3.0);
+        int wId = testModel15.addWall(n1, n2, 3.0, 0.20);
+        int trId = testModel15.addTrussMember(n1, n3, 0.08, "", TrussMemberRole::Brace);
+
+        TEST_CHECK(testModel15.walls().size() == 1, "1 wall present");
+        TEST_CHECK(testModel15.trussMembers().size() == 1, "1 truss present");
+
+        // Undo
+        bool undoOk = testModel15.undo();
+        TEST_CHECK(undoOk, "undo succeeded");
+        TEST_CHECK(testModel15.walls().empty(), "Walls reverted to 0");
+        TEST_CHECK(testModel15.trussMembers().empty(), "Truss members reverted to 0");
+        TEST_CHECK(testModel15.foundations().size() == 1, "Initial foundation retained");
+
+        // Redo
+        bool redoOk = testModel15.redo();
+        TEST_CHECK(redoOk, "redo succeeded");
+        TEST_CHECK(testModel15.walls().size() == 1, "Wall restored");
+        TEST_CHECK(testModel15.trussMembers().size() == 1, "Truss member restored");
+
+        // Cascaded Node Removal
+        testModel15.removeNode(n1);
+        TEST_CHECK(testModel15.getFoundation(fId) == nullptr, "Foundation cascade removed with node");
+        TEST_CHECK(testModel15.getWall(wId) == nullptr, "Wall cascade removed with node");
+        TEST_CHECK(testModel15.getTrussMember(trId) == nullptr, "Truss cascade removed with node");
+
+        std::cout << "[PASS] Test 15: Foundations, Undo/Redo & cascaded deletion across all types" << std::endl;
         passed++;
     }
 

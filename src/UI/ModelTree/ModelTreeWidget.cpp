@@ -20,7 +20,10 @@ enum ItemType
     TypeColumn = 3,
     TypeSlab = 4,
     TypeGrid = 5,
-    TypeLevel = 6
+    TypeLevel = 6,
+    TypeWall = 7,
+    TypeFoundation = 8,
+    TypeTruss = 9
 };
 
 ModelTreeWidget::ModelTreeWidget(TSA::Model::Model* model, QWidget* parent)
@@ -111,6 +114,15 @@ void ModelTreeWidget::createRootCategories()
 
     m_wallsCategory = new QTreeWidgetItem(m_tree, { tr("Walls"), "" });
     m_wallsCategory->setData(0, TypeRole, TypeCategory);
+    m_wallsCategory->setExpanded(true);
+
+    m_foundationsCategory = new QTreeWidgetItem(m_tree, { tr("Foundations"), "" });
+    m_foundationsCategory->setData(0, TypeRole, TypeCategory);
+    m_foundationsCategory->setExpanded(true);
+
+    m_trussCategory = new QTreeWidgetItem(m_tree, { tr("Truss / Braces"), "" });
+    m_trussCategory->setData(0, TypeRole, TypeCategory);
+    m_trussCategory->setExpanded(true);
 }
 
 void ModelTreeWidget::refreshLevels()
@@ -156,12 +168,12 @@ void ModelTreeWidget::refreshGrids()
 
     for (const auto& grid : m_gridManager->grids())
     {
-        if (!grid) continue;
         QString name = QString::fromStdString(grid->name());
         QString typeStr = (grid->type() == TSA::Grid::GridType::Cartesian) ? tr("Cartésienne") : tr("Cylindrique");
-        QString status = grid->isActive() ? tr("Active") : tr("Secondaire");
-        if (!grid->isVisible()) status += tr(", Masquée");
-        QString details = QString("%1 (%2)").arg(typeStr, status);
+        QString details = QString("%1%2%3")
+            .arg(typeStr)
+            .arg(grid->isActive() ? tr(" (Active)") : "")
+            .arg(grid->isVisible() ? "" : tr(" (Masquée)"));
 
         auto* item = new QTreeWidgetItem(m_gridsCategory, { name, details });
         item->setData(0, TypeRole, TypeGrid);
@@ -173,31 +185,42 @@ void ModelTreeWidget::refreshGrids()
 
 void ModelTreeWidget::refreshAll()
 {
+    QSignalBlocker blocker(m_tree);
     createRootCategories();
+
     refreshLevels();
     refreshGrids();
 
     if (!m_model)
         return;
 
-    for (const auto& [id, node] : m_model->nodes())
+    for (const auto& [nodeId, node] : m_model->nodes())
     {
         onNodeAdded(node);
     }
-
-    for (const auto& [id, beam] : m_model->beams())
+    for (const auto& [beamId, beam] : m_model->beams())
     {
         onBeamAdded(beam);
     }
-
-    for (const auto& [id, col] : m_model->columns())
+    for (const auto& [columnId, col] : m_model->columns())
     {
         onColumnAdded(col);
     }
-
-    for (const auto& [id, slab] : m_model->slabs())
+    for (const auto& [slabId, slab] : m_model->slabs())
     {
         onSlabAdded(slab);
+    }
+    for (const auto& [wallId, wall] : m_model->walls())
+    {
+        onWallAdded(wall);
+    }
+    for (const auto& [fId, f] : m_model->foundations())
+    {
+        onFoundationAdded(f);
+    }
+    for (const auto& [trId, tr] : m_model->trussMembers())
+    {
+        onTrussMemberAdded(tr);
     }
 }
 
@@ -265,6 +288,54 @@ void ModelTreeWidget::selectSlabItem(int slabId)
     }
 }
 
+void ModelTreeWidget::selectWallItem(int wallId)
+{
+    QSignalBlocker blocker(m_tree);
+    m_tree->clearSelection();
+    for (int i = 0; i < m_wallsCategory->childCount(); ++i)
+    {
+        auto* child = m_wallsCategory->child(i);
+        if (child->data(0, IdRole).toInt() == wallId)
+        {
+            child->setSelected(true);
+            m_tree->scrollToItem(child);
+            break;
+        }
+    }
+}
+
+void ModelTreeWidget::selectFoundationItem(int foundationId)
+{
+    QSignalBlocker blocker(m_tree);
+    m_tree->clearSelection();
+    for (int i = 0; i < m_foundationsCategory->childCount(); ++i)
+    {
+        auto* child = m_foundationsCategory->child(i);
+        if (child->data(0, IdRole).toInt() == foundationId)
+        {
+            child->setSelected(true);
+            m_tree->scrollToItem(child);
+            break;
+        }
+    }
+}
+
+void ModelTreeWidget::selectTrussMemberItem(int memberId)
+{
+    QSignalBlocker blocker(m_tree);
+    m_tree->clearSelection();
+    for (int i = 0; i < m_trussCategory->childCount(); ++i)
+    {
+        auto* child = m_trussCategory->child(i);
+        if (child->data(0, IdRole).toInt() == memberId)
+        {
+            child->setSelected(true);
+            m_tree->scrollToItem(child);
+            break;
+        }
+    }
+}
+
 void ModelTreeWidget::clearTreeSelection()
 {
     QSignalBlocker blocker(m_tree);
@@ -273,8 +344,8 @@ void ModelTreeWidget::clearTreeSelection()
 
 void ModelTreeWidget::onNodeAdded(const TSA::Model::Node& node)
 {
-    QString label = QString("Node %1").arg(node.id());
-    QString desc = QString("(%1, %2, %3)").arg(node.x(), 0, 'f', 2).arg(node.y(), 0, 'f', 2).arg(node.z(), 0, 'f', 2);
+    QString label = QString::fromStdString(node.formattedName());
+    QString desc = QString("(%1, %2, %3) m").arg(node.x(), 0, 'f', 2).arg(node.y(), 0, 'f', 2).arg(node.z(), 0, 'f', 2);
 
     auto* item = new QTreeWidgetItem(m_nodesCategory, { label, desc });
     item->setData(0, TypeRole, TypeNode);
@@ -290,7 +361,8 @@ void ModelTreeWidget::onNodeModified(const TSA::Model::Node& node)
         auto* child = m_nodesCategory->child(i);
         if (child->data(0, IdRole).toInt() == node.id())
         {
-            child->setText(1, QString("(%1, %2, %3)").arg(node.x(), 0, 'f', 2).arg(node.y(), 0, 'f', 2).arg(node.z(), 0, 'f', 2));
+            child->setText(0, QString::fromStdString(node.formattedName()));
+            child->setText(1, QString("(%1, %2, %3) m").arg(node.x(), 0, 'f', 2).arg(node.y(), 0, 'f', 2).arg(node.z(), 0, 'f', 2));
             break;
         }
     }
@@ -312,8 +384,8 @@ void ModelTreeWidget::onNodeRemoved(int nodeId)
 
 void ModelTreeWidget::onBeamAdded(const TSA::Model::Beam& beam)
 {
-    QString label = QString("Beam %1").arg(beam.id());
-    QString desc = QString("Nodes %1 -> %2 (%3x%4 m)")
+    QString label = QString::fromStdString(beam.formattedName());
+    QString desc = QString("N%1 -> N%2 (%3x%4 m)")
         .arg(beam.startNodeId())
         .arg(beam.endNodeId())
         .arg(beam.width(), 0, 'f', 2)
@@ -333,7 +405,8 @@ void ModelTreeWidget::onBeamModified(const TSA::Model::Beam& beam)
         auto* child = m_beamsCategory->child(i);
         if (child->data(0, IdRole).toInt() == beam.id())
         {
-            child->setText(1, QString("Nodes %1 -> %2 (%3x%4 m)")
+            child->setText(0, QString::fromStdString(beam.formattedName()));
+            child->setText(1, QString("N%1 -> N%2 (%3x%4 m)")
                 .arg(beam.startNodeId())
                 .arg(beam.endNodeId())
                 .arg(beam.width(), 0, 'f', 2)
@@ -359,8 +432,8 @@ void ModelTreeWidget::onBeamRemoved(int beamId)
 
 void ModelTreeWidget::onColumnAdded(const TSA::Model::Column& column)
 {
-    QString label = QString("Column %1").arg(column.id());
-    QString desc = QString("Nodes %1 -> %2 (%3x%4 m)")
+    QString label = QString::fromStdString(column.formattedName());
+    QString desc = QString("N%1 -> N%2 (%3x%4 m)")
         .arg(column.startNodeId())
         .arg(column.endNodeId())
         .arg(column.width(), 0, 'f', 2)
@@ -380,7 +453,8 @@ void ModelTreeWidget::onColumnModified(const TSA::Model::Column& column)
         auto* child = m_columnsCategory->child(i);
         if (child->data(0, IdRole).toInt() == column.id())
         {
-            child->setText(1, QString("Nodes %1 -> %2 (%3x%4 m)")
+            child->setText(0, QString::fromStdString(column.formattedName()));
+            child->setText(1, QString("N%1 -> N%2 (%3x%4 m)")
                 .arg(column.startNodeId())
                 .arg(column.endNodeId())
                 .arg(column.width(), 0, 'f', 2)
@@ -406,8 +480,8 @@ void ModelTreeWidget::onColumnRemoved(int columnId)
 
 void ModelTreeWidget::onSlabAdded(const TSA::Model::Slab& slab)
 {
-    QString label = QString("Slab %1").arg(slab.id());
-    QString desc = QString("%1 nodes (e = %2 m)")
+    QString label = QString::fromStdString(slab.formattedName());
+    QString desc = QString("%1 nodes, e=%2 m")
         .arg(slab.nodeIds().size())
         .arg(slab.thickness(), 0, 'f', 2);
 
@@ -425,7 +499,8 @@ void ModelTreeWidget::onSlabModified(const TSA::Model::Slab& slab)
         auto* child = m_slabsCategory->child(i);
         if (child->data(0, IdRole).toInt() == slab.id())
         {
-            child->setText(1, QString("%1 nodes (e = %2 m)")
+            child->setText(0, QString::fromStdString(slab.formattedName()));
+            child->setText(1, QString("%1 nodes, e=%2 m")
                 .arg(slab.nodeIds().size())
                 .arg(slab.thickness(), 0, 'f', 2));
             break;
@@ -447,53 +522,194 @@ void ModelTreeWidget::onSlabRemoved(int slabId)
     m_slabsCategory->setText(1, QString("[%1]").arg(m_slabsCategory->childCount()));
 }
 
+void ModelTreeWidget::onWallAdded(const TSA::Model::Wall& wall)
+{
+    QString label = QString::fromStdString(wall.formattedName());
+    QString desc = QString("N%1 -> N%2 (H=%3 m, e=%4 m)")
+        .arg(wall.startNodeId())
+        .arg(wall.endNodeId())
+        .arg(wall.height(), 0, 'f', 2)
+        .arg(wall.thickness(), 0, 'f', 2);
+
+    auto* item = new QTreeWidgetItem(m_wallsCategory, { label, desc });
+    item->setData(0, TypeRole, TypeWall);
+    item->setData(0, IdRole, wall.id());
+    m_wallsCategory->setText(1, QString("[%1]").arg(m_wallsCategory->childCount()));
+}
+
+void ModelTreeWidget::onWallModified(const TSA::Model::Wall& wall)
+{
+    QSignalBlocker blocker(m_tree);
+    for (int i = 0; i < m_wallsCategory->childCount(); ++i)
+    {
+        auto* child = m_wallsCategory->child(i);
+        if (child->data(0, IdRole).toInt() == wall.id())
+        {
+            child->setText(0, QString::fromStdString(wall.formattedName()));
+            child->setText(1, QString("N%1 -> N%2 (H=%3 m, e=%4 m)")
+                .arg(wall.startNodeId())
+                .arg(wall.endNodeId())
+                .arg(wall.height(), 0, 'f', 2)
+                .arg(wall.thickness(), 0, 'f', 2));
+            break;
+        }
+    }
+}
+
+void ModelTreeWidget::onWallRemoved(int wallId)
+{
+    for (int i = 0; i < m_wallsCategory->childCount(); ++i)
+    {
+        auto* child = m_wallsCategory->child(i);
+        if (child->data(0, IdRole).toInt() == wallId)
+        {
+            delete m_wallsCategory->takeChild(i);
+            break;
+        }
+    }
+    m_wallsCategory->setText(1, QString("[%1]").arg(m_wallsCategory->childCount()));
+}
+
+void ModelTreeWidget::onFoundationAdded(const TSA::Model::Foundation& foundation)
+{
+    QString label = QString::fromStdString(foundation.formattedName());
+    QString desc = QString("Node N%1 (%2x%3x%4 m)")
+        .arg(foundation.nodeId())
+        .arg(foundation.widthA(), 0, 'f', 2)
+        .arg(foundation.lengthB(), 0, 'f', 2)
+        .arg(foundation.heightH(), 0, 'f', 2);
+
+    auto* item = new QTreeWidgetItem(m_foundationsCategory, { label, desc });
+    item->setData(0, TypeRole, TypeFoundation);
+    item->setData(0, IdRole, foundation.id());
+    m_foundationsCategory->setText(1, QString("[%1]").arg(m_foundationsCategory->childCount()));
+}
+
+void ModelTreeWidget::onFoundationModified(const TSA::Model::Foundation& foundation)
+{
+    QSignalBlocker blocker(m_tree);
+    for (int i = 0; i < m_foundationsCategory->childCount(); ++i)
+    {
+        auto* child = m_foundationsCategory->child(i);
+        if (child->data(0, IdRole).toInt() == foundation.id())
+        {
+            child->setText(0, QString::fromStdString(foundation.formattedName()));
+            child->setText(1, QString("Node N%1 (%2x%3x%4 m)")
+                .arg(foundation.nodeId())
+                .arg(foundation.widthA(), 0, 'f', 2)
+                .arg(foundation.lengthB(), 0, 'f', 2)
+                .arg(foundation.heightH(), 0, 'f', 2));
+            break;
+        }
+    }
+}
+
+void ModelTreeWidget::onFoundationRemoved(int foundationId)
+{
+    for (int i = 0; i < m_foundationsCategory->childCount(); ++i)
+    {
+        auto* child = m_foundationsCategory->child(i);
+        if (child->data(0, IdRole).toInt() == foundationId)
+        {
+            delete m_foundationsCategory->takeChild(i);
+            break;
+        }
+    }
+    m_foundationsCategory->setText(1, QString("[%1]").arg(m_foundationsCategory->childCount()));
+}
+
+void ModelTreeWidget::onTrussMemberAdded(const TSA::Model::TrussMember& member)
+{
+    QString label = QString::fromStdString(member.formattedName());
+    QString desc = QString("N%1 -> N%2 (D=%3 m)")
+        .arg(member.startNodeId())
+        .arg(member.endNodeId())
+        .arg(member.section().diameter, 0, 'f', 2);
+
+    auto* item = new QTreeWidgetItem(m_trussCategory, { label, desc });
+    item->setData(0, TypeRole, TypeTruss);
+    item->setData(0, IdRole, member.id());
+    m_trussCategory->setText(1, QString("[%1]").arg(m_trussCategory->childCount()));
+}
+
+void ModelTreeWidget::onTrussMemberModified(const TSA::Model::TrussMember& member)
+{
+    QSignalBlocker blocker(m_tree);
+    for (int i = 0; i < m_trussCategory->childCount(); ++i)
+    {
+        auto* child = m_trussCategory->child(i);
+        if (child->data(0, IdRole).toInt() == member.id())
+        {
+            child->setText(0, QString::fromStdString(member.formattedName()));
+            child->setText(1, QString("N%1 -> N%2 (D=%3 m)")
+                .arg(member.startNodeId())
+                .arg(member.endNodeId())
+                .arg(member.section().diameter, 0, 'f', 2));
+            break;
+        }
+    }
+}
+
+void ModelTreeWidget::onTrussMemberRemoved(int memberId)
+{
+    for (int i = 0; i < m_trussCategory->childCount(); ++i)
+    {
+        auto* child = m_trussCategory->child(i);
+        if (child->data(0, IdRole).toInt() == memberId)
+        {
+            delete m_trussCategory->takeChild(i);
+            break;
+        }
+    }
+    m_trussCategory->setText(1, QString("[%1]").arg(m_trussCategory->childCount()));
+}
+
 void ModelTreeWidget::onModelCleared()
 {
-    createRootCategories();
-    refreshLevels();
-    refreshGrids();
+    refreshAll();
 }
 
 void ModelTreeWidget::onItemSelectionChanged()
 {
-    QList<QTreeWidgetItem*> selected = m_tree->selectedItems();
-    if (selected.isEmpty())
+    auto selectedItems = m_tree->selectedItems();
+    if (selectedItems.empty())
     {
         emit selectionCleared();
         return;
     }
 
-    QTreeWidgetItem* item = selected.first();
+    auto* item = selectedItems.first();
     int type = item->data(0, TypeRole).toInt();
 
-    if (type == TypeLevel)
+    switch (type)
     {
-        QString lvlId = item->data(0, IdRole).toString();
-        emit levelSelected(lvlId);
-    }
-    else if (type == TypeNode)
-    {
-        int id = item->data(0, IdRole).toInt();
-        emit nodeSelected(id);
-    }
-    else if (type == TypeBeam)
-    {
-        int id = item->data(0, IdRole).toInt();
-        emit beamSelected(id);
-    }
-    else if (type == TypeColumn)
-    {
-        int id = item->data(0, IdRole).toInt();
-        emit columnSelected(id);
-    }
-    else if (type == TypeSlab)
-    {
-        int id = item->data(0, IdRole).toInt();
-        emit slabSelected(id);
-    }
-    else
-    {
+    case TypeLevel:
+        emit levelSelected(item->data(0, IdRole).toString());
+        break;
+    case TypeNode:
+        emit nodeSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeBeam:
+        emit beamSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeColumn:
+        emit columnSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeSlab:
+        emit slabSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeWall:
+        emit wallSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeFoundation:
+        emit foundationSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeTruss:
+        emit trussMemberSelected(item->data(0, IdRole).toInt());
+        break;
+    default:
         emit selectionCleared();
+        break;
     }
 }
 

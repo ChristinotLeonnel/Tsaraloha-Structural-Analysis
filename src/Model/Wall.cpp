@@ -1,4 +1,4 @@
-#include "Beam.h"
+#include "Wall.h"
 #include "Model.h"
 #include <cmath>
 #include <iomanip>
@@ -7,38 +7,33 @@
 namespace TSA::Model
 {
 
-Beam::Beam(int id, int startNodeId, int endNodeId, double width, double height, const std::string& name)
+Wall::Wall(int id, int startNodeId, int endNodeId, double height, double thickness, const std::string& name)
     : m_id(id)
     , m_name(name)
     , m_startNodeId(startNodeId)
     , m_endNodeId(endNodeId)
-    , m_section(Section::rectangular(width, height))
+    , m_height(height)
+    , m_thickness(thickness)
     , m_material(Material::concreteC25_30())
 {
     if (m_name.empty() && m_id > 0)
     {
         std::ostringstream ss;
-        ss << "B" << std::setw(3) << std::setfill('0') << m_id;
+        ss << "W" << std::setw(3) << std::setfill('0') << m_id;
         m_name = ss.str();
     }
 }
 
-std::string Beam::formattedName() const
+std::string Wall::formattedName() const
 {
     if (!m_name.empty())
         return m_name;
     std::ostringstream ss;
-    ss << "B" << std::setw(3) << std::setfill('0') << m_id;
+    ss << "W" << std::setw(3) << std::setfill('0') << m_id;
     return ss.str();
 }
 
-void Beam::setDimensions(double width, double height)
-{
-    m_section.width = width;
-    m_section.height = height;
-}
-
-double Beam::length(const Model& model) const
+double Wall::length(const Model& model) const
 {
     const auto* start = model.getNode(m_startNodeId);
     const auto* end   = model.getNode(m_endNodeId);
@@ -48,6 +43,11 @@ double Beam::length(const Model& model) const
     double dy = end->y() - start->y();
     double dz = end->z() - start->z();
     return std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+double Wall::area(const Model& model) const
+{
+    return length(model) * m_height;
 }
 
 } // namespace TSA::Model

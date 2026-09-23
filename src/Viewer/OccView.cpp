@@ -3,6 +3,11 @@
 #include "../Model/Model.h"
 #include "../Geometry/BeamGeometry.h"
 #include "../Geometry/SlabGeometry.h"
+#include "../Geometry/WallGeometry.h"
+#include "../Geometry/FoundationGeometry.h"
+#include "../Model/Wall.h"
+#include "../Model/Foundation.h"
+#include "../Model/TrussMember.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
 
@@ -106,6 +111,51 @@ void OccView::onSlabModified(const TSA::Model::Slab& slab)
 void OccView::onSlabRemoved(int slabId)
 {
     removeSlabShape(slabId);
+}
+
+void OccView::onWallAdded(const TSA::Model::Wall& wall)
+{
+    updateWallShape(wall.id());
+}
+
+void OccView::onWallModified(const TSA::Model::Wall& wall)
+{
+    updateWallShape(wall.id());
+}
+
+void OccView::onWallRemoved(int wallId)
+{
+    removeWallShape(wallId);
+}
+
+void OccView::onFoundationAdded(const TSA::Model::Foundation& foundation)
+{
+    updateFoundationShape(foundation.id());
+}
+
+void OccView::onFoundationModified(const TSA::Model::Foundation& foundation)
+{
+    updateFoundationShape(foundation.id());
+}
+
+void OccView::onFoundationRemoved(int foundationId)
+{
+    removeFoundationShape(foundationId);
+}
+
+void OccView::onTrussMemberAdded(const TSA::Model::TrussMember& member)
+{
+    updateTrussMemberShape(member.id());
+}
+
+void OccView::onTrussMemberModified(const TSA::Model::TrussMember& member)
+{
+    updateTrussMemberShape(member.id());
+}
+
+void OccView::onTrussMemberRemoved(int memberId)
+{
+    removeTrussMemberShape(memberId);
 }
 
 void OccView::onModelCleared()
@@ -324,6 +374,60 @@ void OccView::highlightSlab(int slabId)
     }
 }
 
+void OccView::highlightWall(int wallId)
+{
+    if (m_context.IsNull())
+        return;
+
+    m_context->ClearSelected(false);
+    auto it = m_wallShapes.find(wallId);
+    if (it != m_wallShapes.end())
+    {
+        m_context->SetSelected(it->second, false);
+    }
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
+void OccView::highlightFoundation(int foundationId)
+{
+    if (m_context.IsNull())
+        return;
+
+    m_context->ClearSelected(false);
+    auto it = m_foundationShapes.find(foundationId);
+    if (it != m_foundationShapes.end())
+    {
+        m_context->SetSelected(it->second, false);
+    }
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
+void OccView::highlightTrussMember(int memberId)
+{
+    if (m_context.IsNull())
+        return;
+
+    m_context->ClearSelected(false);
+    auto it = m_trussShapes.find(memberId);
+    if (it != m_trussShapes.end())
+    {
+        m_context->SetSelected(it->second, false);
+    }
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
 void OccView::clearHighlight()
 {
     if (m_context.IsNull())
@@ -367,6 +471,24 @@ void OccView::rebuildAllShapes()
     }
     m_slabShapes.clear();
 
+    for (auto& [id, aisShape] : m_wallShapes)
+    {
+        m_context->Remove(aisShape, false);
+    }
+    m_wallShapes.clear();
+
+    for (auto& [id, aisShape] : m_foundationShapes)
+    {
+        m_context->Remove(aisShape, false);
+    }
+    m_foundationShapes.clear();
+
+    for (auto& [id, aisShape] : m_trussShapes)
+    {
+        m_context->Remove(aisShape, false);
+    }
+    m_trussShapes.clear();
+
     if (m_selectionManager)
     {
         m_selectionManager->clearRegistry();
@@ -397,6 +519,24 @@ void OccView::rebuildAllShapes()
     for (const auto& [slabId, slab] : m_model->slabs())
     {
         updateSlabShape(slabId);
+    }
+
+    // 5. Créer les formes des voiles
+    for (const auto& [wallId, wall] : m_model->walls())
+    {
+        updateWallShape(wallId);
+    }
+
+    // 6. Créer les formes des fondations
+    for (const auto& [fId, f] : m_model->foundations())
+    {
+        updateFoundationShape(fId);
+    }
+
+    // 7. Créer les formes des treillis
+    for (const auto& [trId, tr] : m_model->trussMembers())
+    {
+        updateTrussMemberShape(trId);
     }
 
     m_context->UpdateCurrentViewer();
@@ -642,6 +782,154 @@ void OccView::updateSlabShape(int slabId)
     }
 }
 
+void OccView::updateWallShape(int wallId)
+{
+    if (m_context.IsNull() || !m_model)
+        return;
+
+    const auto* wall = m_model->getWall(wallId);
+    if (!wall)
+        return;
+
+    const auto* nodeA = m_model->getNode(wall->startNodeId());
+    const auto* nodeB = m_model->getNode(wall->endNodeId());
+    if (!nodeA || !nodeB)
+        return;
+
+    auto it = m_wallShapes.find(wallId);
+    if (it != m_wallShapes.end())
+    {
+        m_context->Remove(it->second, false);
+        m_wallShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterWall(wallId);
+        }
+    }
+
+    TopoDS_Shape shape = TSA::Geometry::WallGeometry::createWallShape(*nodeA, *nodeB, wall->height(), wall->thickness(), wall->offset());
+    if (!shape.IsNull())
+    {
+        Handle(AIS_Shape) aisWall = new AIS_Shape(shape);
+        aisWall->SetColor(Quantity_NOC_GRAY60);
+        aisWall->SetMaterial(Graphic3d_NOM_STONE);
+        aisWall->SetDisplayMode(AIS_Shaded);
+        aisWall->SetTransparency(0.25f);
+
+        m_context->Display(aisWall, false);
+        m_wallShapes[wallId] = aisWall;
+        if (m_selectionManager)
+        {
+            m_selectionManager->registerWall(wallId, aisWall);
+        }
+    }
+
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->ZFitAll();
+        m_view->Redraw();
+    }
+}
+
+void OccView::updateFoundationShape(int foundationId)
+{
+    if (m_context.IsNull() || !m_model)
+        return;
+
+    const auto* f = m_model->getFoundation(foundationId);
+    if (!f)
+        return;
+
+    const auto* node = m_model->getNode(f->nodeId());
+    if (!node)
+        return;
+
+    auto it = m_foundationShapes.find(foundationId);
+    if (it != m_foundationShapes.end())
+    {
+        m_context->Remove(it->second, false);
+        m_foundationShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterFoundation(foundationId);
+        }
+    }
+
+    TopoDS_Shape shape = TSA::Geometry::FoundationGeometry::createFoundationShape(*node, f->widthA(), f->lengthB(), f->heightH());
+    if (!shape.IsNull())
+    {
+        Handle(AIS_Shape) aisF = new AIS_Shape(shape);
+        aisF->SetColor(Quantity_NOC_DARKGOLDENROD);
+        aisF->SetMaterial(Graphic3d_NOM_STONE);
+        aisF->SetDisplayMode(AIS_Shaded);
+
+        m_context->Display(aisF, false);
+        m_foundationShapes[foundationId] = aisF;
+        if (m_selectionManager)
+        {
+            m_selectionManager->registerFoundation(foundationId, aisF);
+        }
+    }
+
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->ZFitAll();
+        m_view->Redraw();
+    }
+}
+
+void OccView::updateTrussMemberShape(int memberId)
+{
+    if (m_context.IsNull() || !m_model)
+        return;
+
+    const auto* tr = m_model->getTrussMember(memberId);
+    if (!tr)
+        return;
+
+    const auto* nodeA = m_model->getNode(tr->startNodeId());
+    const auto* nodeB = m_model->getNode(tr->endNodeId());
+    if (!nodeA || !nodeB)
+        return;
+
+    auto it = m_trussShapes.find(memberId);
+    if (it != m_trussShapes.end())
+    {
+        m_context->Remove(it->second, false);
+        m_trussShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterTrussMember(memberId);
+        }
+    }
+
+    double dim = (tr->section().width > 0) ? tr->section().width : 0.10;
+    TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(*nodeA, *nodeB, dim, dim);
+    if (!shape.IsNull())
+    {
+        Handle(AIS_Shape) aisTr = new AIS_Shape(shape);
+        aisTr->SetColor(Quantity_NOC_CORAL);
+        aisTr->SetMaterial(Graphic3d_NOM_STEEL);
+        aisTr->SetDisplayMode(AIS_Shaded);
+
+        m_context->Display(aisTr, false);
+        m_trussShapes[memberId] = aisTr;
+        if (m_selectionManager)
+        {
+            m_selectionManager->registerTrussMember(memberId, aisTr);
+        }
+    }
+
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->ZFitAll();
+        m_view->Redraw();
+    }
+}
+
 void OccView::removeNodeShape(int nodeId)
 {
     auto it = m_nodeShapes.find(nodeId);
@@ -728,6 +1016,78 @@ void OccView::removeSlabShape(int slabId)
         if (m_selectionManager)
         {
             m_selectionManager->unregisterSlab(slabId);
+        }
+    }
+
+    if (!m_view.IsNull())
+    {
+        m_view->ZFitAll();
+        m_view->Redraw();
+    }
+}
+
+void OccView::removeWallShape(int wallId)
+{
+    auto it = m_wallShapes.find(wallId);
+    if (it != m_wallShapes.end())
+    {
+        if (!m_context.IsNull())
+        {
+            m_context->Remove(it->second, false);
+            m_context->UpdateCurrentViewer();
+        }
+        m_wallShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterWall(wallId);
+        }
+    }
+
+    if (!m_view.IsNull())
+    {
+        m_view->ZFitAll();
+        m_view->Redraw();
+    }
+}
+
+void OccView::removeFoundationShape(int foundationId)
+{
+    auto it = m_foundationShapes.find(foundationId);
+    if (it != m_foundationShapes.end())
+    {
+        if (!m_context.IsNull())
+        {
+            m_context->Remove(it->second, false);
+            m_context->UpdateCurrentViewer();
+        }
+        m_foundationShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterFoundation(foundationId);
+        }
+    }
+
+    if (!m_view.IsNull())
+    {
+        m_view->ZFitAll();
+        m_view->Redraw();
+    }
+}
+
+void OccView::removeTrussMemberShape(int memberId)
+{
+    auto it = m_trussShapes.find(memberId);
+    if (it != m_trussShapes.end())
+    {
+        if (!m_context.IsNull())
+        {
+            m_context->Remove(it->second, false);
+            m_context->UpdateCurrentViewer();
+        }
+        m_trussShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterTrussMember(memberId);
         }
     }
 
@@ -1720,6 +2080,81 @@ void OccView::mousePressEvent(QMouseEvent* event)
                         .arg(nodeId)
                         .arg(m_drawingNodeIds.size())
                         .arg(m_drawingNodeIds.front()));
+                }
+            }
+        }
+        else if (m_interactionMode == InteractionMode::DrawWall)
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
+            {
+                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
+                if (m_drawingNodeIds.empty())
+                {
+                    m_drawingNodeIds.push_back(nodeId);
+                    const auto* node = m_model->getNode(nodeId);
+                    if (node) m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
+                    emit drawingPromptChanged(tr("Mode Voile : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud").arg(nodeId));
+                }
+                else
+                {
+                    int startId = m_drawingNodeIds[0];
+                    int endId = nodeId;
+                    if (startId != endId)
+                    {
+                        m_model->pushUndoState(tr("Création Voile").toStdString());
+                        int wallId = m_model->addWall(startId, endId, 3.0, 0.20);
+                        emit elementCreated();
+                        emit drawingPromptChanged(tr("Voile W%1 créé reliant N%2 à N%3. Cliquez pour un autre voile").arg(wallId).arg(startId).arg(endId));
+                    }
+                    clearRubberBand();
+                    m_drawingNodeIds.clear();
+                    m_drawingPoints.clear();
+                }
+            }
+        }
+        else if (m_interactionMode == InteractionMode::DrawFoundation)
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
+            {
+                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
+                m_model->pushUndoState(tr("Création Fondation").toStdString());
+                int fId = m_model->addFoundation(nodeId, 1.50, 1.50, 0.50);
+                emit elementCreated();
+                emit drawingPromptChanged(tr("Semelle F%1 créée sous le nœud N%2 (1.50x1.50x0.50 m)").arg(fId).arg(nodeId));
+            }
+        }
+        else if (m_interactionMode == InteractionMode::DrawTruss)
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
+            {
+                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
+                if (m_drawingNodeIds.empty())
+                {
+                    m_drawingNodeIds.push_back(nodeId);
+                    const auto* node = m_model->getNode(nodeId);
+                    if (node) m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
+                    emit drawingPromptChanged(tr("Mode Treillis : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud").arg(nodeId));
+                }
+                else
+                {
+                    int startId = m_drawingNodeIds[0];
+                    int endId = nodeId;
+                    if (startId != endId)
+                    {
+                        m_model->pushUndoState(tr("Création Barre de Treillis").toStdString());
+                        int trId = m_model->addTrussMember(startId, endId, 0.10);
+                        emit elementCreated();
+                        emit drawingPromptChanged(tr("Barre TR%1 créée reliant N%2 à N%3").arg(trId).arg(startId).arg(endId));
+                    }
+                    clearRubberBand();
+                    m_drawingNodeIds.clear();
+                    m_drawingPoints.clear();
                 }
             }
         }

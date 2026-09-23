@@ -29,6 +29,9 @@ public:
     void selectBeamItem(int beamId);
     void selectColumnItem(int columnId);
     void selectSlabItem(int slabId);
+    void selectWallItem(int wallId);
+    void selectFoundationItem(int foundationId);
+    void selectTrussMemberItem(int memberId);
     void clearTreeSelection();
 
 signals:
@@ -37,6 +40,9 @@ signals:
     void beamSelected(int beamId);
     void columnSelected(int columnId);
     void slabSelected(int slabId);
+    void wallSelected(int wallId);
+    void foundationSelected(int foundationId);
+    void trussMemberSelected(int memberId);
     void selectionCleared();
 
 protected:
@@ -56,6 +62,18 @@ protected:
     void onSlabAdded(const TSA::Model::Slab& slab) override;
     void onSlabModified(const TSA::Model::Slab& slab) override;
     void onSlabRemoved(int slabId) override;
+
+    void onWallAdded(const TSA::Model::Wall& wall) override;
+    void onWallModified(const TSA::Model::Wall& wall) override;
+    void onWallRemoved(int wallId) override;
+
+    void onFoundationAdded(const TSA::Model::Foundation& foundation) override;
+    void onFoundationModified(const TSA::Model::Foundation& foundation) override;
+    void onFoundationRemoved(int foundationId) override;
+
+    void onTrussMemberAdded(const TSA::Model::TrussMember& member) override;
+    void onTrussMemberModified(const TSA::Model::TrussMember& member) override;
+    void onTrussMemberRemoved(int memberId) override;
 
     void onModelCleared() override;
 
@@ -78,6 +96,8 @@ private:
     QTreeWidgetItem* m_columnsCategory = nullptr;
     QTreeWidgetItem* m_slabsCategory = nullptr;
     QTreeWidgetItem* m_wallsCategory = nullptr;
+    QTreeWidgetItem* m_foundationsCategory = nullptr;
+    QTreeWidgetItem* m_trussCategory = nullptr;
 };
 
 } // namespace TSA::UI

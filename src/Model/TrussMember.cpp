@@ -1,4 +1,4 @@
-#include "Beam.h"
+#include "TrussMember.h"
 #include "Model.h"
 #include <cmath>
 #include <iomanip>
@@ -7,38 +7,33 @@
 namespace TSA::Model
 {
 
-Beam::Beam(int id, int startNodeId, int endNodeId, double width, double height, const std::string& name)
+TrussMember::TrussMember(int id, int startNodeId, int endNodeId, double diameterOrWidth, const std::string& name, TrussMemberRole role)
     : m_id(id)
     , m_name(name)
     , m_startNodeId(startNodeId)
     , m_endNodeId(endNodeId)
-    , m_section(Section::rectangular(width, height))
-    , m_material(Material::concreteC25_30())
+    , m_role(role)
+    , m_section(Section::circular(diameterOrWidth))
+    , m_material(Material::steelS235())
 {
     if (m_name.empty() && m_id > 0)
     {
         std::ostringstream ss;
-        ss << "B" << std::setw(3) << std::setfill('0') << m_id;
+        ss << "TR" << std::setw(3) << std::setfill('0') << m_id;
         m_name = ss.str();
     }
 }
 
-std::string Beam::formattedName() const
+std::string TrussMember::formattedName() const
 {
     if (!m_name.empty())
         return m_name;
     std::ostringstream ss;
-    ss << "B" << std::setw(3) << std::setfill('0') << m_id;
+    ss << "TR" << std::setw(3) << std::setfill('0') << m_id;
     return ss.str();
 }
 
-void Beam::setDimensions(double width, double height)
-{
-    m_section.width = width;
-    m_section.height = height;
-}
-
-double Beam::length(const Model& model) const
+double TrussMember::length(const Model& model) const
 {
     const auto* start = model.getNode(m_startNodeId);
     const auto* end   = model.getNode(m_endNodeId);

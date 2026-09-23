@@ -1,58 +1,57 @@
 #include "Slab.h"
 #include "Model.h"
-#include "Node.h"
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 
 namespace TSA::Model
 {
 
-Slab::Slab(int id, const std::vector<int>& nodeIds, double thickness)
+Slab::Slab(int id, const std::vector<int>& nodeIds, double thickness, const std::string& name, SlabType type)
     : m_id(id)
+    , m_name(name)
     , m_nodeIds(nodeIds)
     , m_thickness(thickness)
+    , m_material(Material::concreteC25_30())
+    , m_slabType(type)
 {
+    if (m_name.empty() && m_id > 0)
+    {
+        std::ostringstream ss;
+        ss << "S" << std::setw(3) << std::setfill('0') << m_id;
+        m_name = ss.str();
+    }
+}
+
+std::string Slab::formattedName() const
+{
+    if (!m_name.empty())
+        return m_name;
+    std::ostringstream ss;
+    ss << "S" << std::setw(3) << std::setfill('0') << m_id;
+    return ss.str();
 }
 
 double Slab::area(const Model& model) const
 {
-    if (m_nodeIds.size() < 3)
-        return 0.0;
+    if (m_nodeIds.size() < 3) return 0.0;
 
-    // Calcul de l'aire d'un polygone 3D via somme des produits vectoriels
-    double totalVx = 0.0;
-    double totalVy = 0.0;
-    double totalVz = 0.0;
+    // Calcul d'aire 3D via la formule du vecteur aire (somme des produits vectoriels)
+    double ax = 0.0, ay = 0.0, az = 0.0;
+    size_t n = m_nodeIds.size();
 
-    const auto* origin = model.getNode(m_nodeIds[0]);
-    if (!origin)
-        return 0.0;
-
-    for (size_t i = 1; i + 1 < m_nodeIds.size(); ++i)
+    for (size_t i = 0; i < n; ++i)
     {
         const auto* p1 = model.getNode(m_nodeIds[i]);
-        const auto* p2 = model.getNode(m_nodeIds[i + 1]);
-        if (!p1 || !p2)
-            continue;
+        const auto* p2 = model.getNode(m_nodeIds[(i + 1) % n]);
+        if (!p1 || !p2) return 0.0;
 
-        double v1x = p1->x() - origin->x();
-        double v1y = p1->y() - origin->y();
-        double v1z = p1->z() - origin->z();
-
-        double v2x = p2->x() - origin->x();
-        double v2y = p2->y() - origin->y();
-        double v2z = p2->z() - origin->z();
-
-        // Produit vectoriel v1 x v2
-        double cx = v1y * v2z - v1z * v2y;
-        double cy = v1z * v2x - v1x * v2z;
-        double cz = v1x * v2y - v1y * v2x;
-
-        totalVx += cx;
-        totalVy += cy;
-        totalVz += cz;
+        ax += (p1->y() * p2->z() - p1->z() * p2->y());
+        ay += (p1->z() * p2->x() - p1->x() * p2->z());
+        az += (p1->x() * p2->y() - p1->y() * p2->x());
     }
 
-    return 0.5 * std::sqrt(totalVx * totalVx + totalVy * totalVy + totalVz * totalVz);
+    return 0.5 * std::sqrt(ax * ax + ay * ay + az * az);
 }
 
 } // namespace TSA::Model
