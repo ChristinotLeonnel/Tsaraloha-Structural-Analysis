@@ -161,6 +161,7 @@ signals:
     void pointToPointRotateRequested(const gp_Pnt& center, double angleRad, bool isCopy);
     void originMoveRequested(const gp_Pnt& newOrigin);
     void pasteAtPointRequested(const gp_Pnt& target);
+    void elementCreated();
 
 protected:
     // IModelObserver overrides

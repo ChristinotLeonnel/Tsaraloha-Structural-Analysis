@@ -3,6 +3,7 @@
 
 #include <QStyleFactory>
 #include <QDir>
+#include <QIcon>
 
 Application::Application(int& argc, char** argv)
     : QApplication(argc, argv)
@@ -10,6 +11,7 @@ Application::Application(int& argc, char** argv)
     setApplicationName("TSA");
     setOrganizationName("TSA Engineering");
     setApplicationVersion("0.1.0");
+    setWindowIcon(QIcon(":/icons/TSA.svg"));
 
     // Thème moderne épuré pour logiciel technique
     setStyle(QStyleFactory::create("Fusion"));

@@ -19,5 +19,8 @@
         <file alias="grid_cylindrical.svg">icons/grid_cylindrical.svg</file>
         <file alias="snap.svg">icons/snap.svg</file>
         <file alias="settings.svg">icons/settings.svg</file>
+        <file alias="undo.svg">icons/undo.svg</file>
+        <file alias="redo.svg">icons/redo.svg</file>
+        <file alias="TSA.svg">icons/TSA.svg</file>
     </qresource>
 </RCC>

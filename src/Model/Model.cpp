@@ -800,6 +800,104 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
     return newElementIds;
 }
 
+void Model::pushUndoState(const std::string& actionName)
+{
+    m_undoStack.push_back(createSnapshot(actionName));
+    if (m_undoStack.size() > m_maxUndoSteps)
+    {
+        m_undoStack.erase(m_undoStack.begin());
+    }
+    m_redoStack.clear();
+}
+
+bool Model::canUndo() const
+{
+    return !m_undoStack.empty();
+}
+
+bool Model::canRedo() const
+{
+    return !m_redoStack.empty();
+}
+
+bool Model::undo()
+{
+    if (m_undoStack.empty())
+        return false;
+
+    std::string currentAction = m_undoStack.back().actionName;
+    m_redoStack.push_back(createSnapshot(currentAction));
+
+    ModelStateSnapshot target = m_undoStack.back();
+    m_undoStack.pop_back();
+
+    restoreSnapshot(target);
+    return true;
+}
+
+bool Model::redo()
+{
+    if (m_redoStack.empty())
+        return false;
+
+    std::string currentAction = m_redoStack.back().actionName;
+    m_undoStack.push_back(createSnapshot(currentAction));
+
+    ModelStateSnapshot target = m_redoStack.back();
+    m_redoStack.pop_back();
+
+    restoreSnapshot(target);
+    return true;
+}
+
+void Model::clearUndoRedo()
+{
+    m_undoStack.clear();
+    m_redoStack.clear();
+}
+
+std::string Model::lastUndoActionName() const
+{
+    return m_undoStack.empty() ? "" : m_undoStack.back().actionName;
+}
+
+std::string Model::lastRedoActionName() const
+{
+    return m_redoStack.empty() ? "" : m_redoStack.back().actionName;
+}
+
+Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) const
+{
+    ModelStateSnapshot snap;
+    snap.nodes = m_nodes;
+    snap.beams = m_beams;
+    snap.columns = m_columns;
+    snap.slabs = m_slabs;
+    snap.nextNodeId = m_nextNodeId;
+    snap.nextBeamId = m_nextBeamId;
+    snap.nextColumnId = m_nextColumnId;
+    snap.nextSlabId = m_nextSlabId;
+    snap.actionName = actionName;
+    return snap;
+}
+
+void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
+{
+    m_nodes = snapshot.nodes;
+    m_beams = snapshot.beams;
+    m_columns = snapshot.columns;
+    m_slabs = snapshot.slabs;
+    m_nextNodeId = snapshot.nextNodeId;
+    m_nextBeamId = snapshot.nextBeamId;
+    m_nextColumnId = snapshot.nextColumnId;
+    m_nextSlabId = snapshot.nextSlabId;
+
+    for (auto* obs : m_observers)
+    {
+        obs->onModelCleared();
+    }
+}
+
 void Model::clear()
 {
     m_slabs.clear();

@@ -108,6 +108,32 @@ public:
                                           const gp_Pnt& center, const gp_Dir& axis,
                                           double angleRad, int repetitions = 1);
 
+struct ModelStateSnapshot
+{
+    std::map<int, Node> nodes;
+    std::map<int, Beam> beams;
+    std::map<int, Column> columns;
+    std::map<int, Slab> slabs;
+    int nextNodeId = 1;
+    int nextBeamId = 1;
+    int nextColumnId = 1;
+    int nextSlabId = 1;
+    std::string actionName;
+};
+
+    // Historique Undo / Redo (Ctrl+Z / Ctrl+Y)
+    void pushUndoState(const std::string& actionName = "");
+    bool canUndo() const;
+    bool canRedo() const;
+    bool undo();
+    bool redo();
+    void clearUndoRedo();
+    std::string lastUndoActionName() const;
+    std::string lastRedoActionName() const;
+
+    ModelStateSnapshot createSnapshot(const std::string& actionName = "") const;
+    void restoreSnapshot(const ModelStateSnapshot& snapshot);
+
     // Notifications de modification
     void notifyNodeModified(int nodeId);
     void notifyBeamModified(int beamId);
@@ -134,6 +160,10 @@ private:
     std::map<int, Column> m_columns;
     std::map<int, Slab> m_slabs;
     std::vector<IModelObserver*> m_observers;
+
+    std::vector<ModelStateSnapshot> m_undoStack;
+    std::vector<ModelStateSnapshot> m_redoStack;
+    size_t m_maxUndoSteps = 50;
 
     std::shared_ptr<TSA::Coordinate::CoordinateSystem> m_coordinateSystem;
 };

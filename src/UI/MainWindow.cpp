@@ -193,6 +193,50 @@ static QIcon makeOriginMoveIcon()
 
     return QIcon(pix);
 }
+
+static QIcon makeUndoIcon()
+{
+    QIcon icon(":/icons/undo.svg");
+    if (!icon.isNull()) return icon;
+
+    QPixmap pix(26, 26);
+    pix.fill(Qt::transparent);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    p.setPen(QPen(QColor(50, 70, 95), 2.5));
+    p.drawArc(7, 8, 14, 14, 0, 180 * 16);
+
+    QPolygon arrow;
+    arrow << QPoint(4, 15) << QPoint(10, 10) << QPoint(10, 20);
+    p.setBrush(QColor(50, 70, 95));
+    p.setPen(Qt::NoPen);
+    p.drawPolygon(arrow);
+
+    return QIcon(pix);
+}
+
+static QIcon makeRedoIcon()
+{
+    QIcon icon(":/icons/redo.svg");
+    if (!icon.isNull()) return icon;
+
+    QPixmap pix(26, 26);
+    pix.fill(Qt::transparent);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    p.setPen(QPen(QColor(50, 70, 95), 2.5));
+    p.drawArc(5, 8, 14, 14, 0, 180 * 16);
+
+    QPolygon arrow;
+    arrow << QPoint(22, 15) << QPoint(16, 10) << QPoint(16, 20);
+    p.setBrush(QColor(50, 70, 95));
+    p.setPen(Qt::NoPen);
+    p.drawPolygon(arrow);
+
+    return QIcon(pix);
+}
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -288,6 +332,19 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_occView, &OccView::pointToPointRotateRequested, this, &MainWindow::onPointToPointRotateRequested);
     connect(m_occView, &OccView::originMoveRequested, this, &MainWindow::onOriginMoveRequested);
     connect(m_occView, &OccView::pasteAtPointRequested, this, &MainWindow::onPasteAtPointRequested);
+    connect(m_occView, &OccView::elementCreated, this, [this]() {
+        updateUndoRedoActions();
+        if (m_statusInfo && m_model)
+        {
+            m_statusInfo->setText(tr("Model: %1 nodes, %2 beams, %3 columns, %4 slabs | Ready")
+                .arg(m_model->nodes().size())
+                .arg(m_model->beams().size())
+                .arg(m_model->columns().size())
+                .arg(m_model->slabs().size()));
+        }
+    });
+
+    updateUndoRedoActions();
 
     if (m_statusInfo)
     {
@@ -304,6 +361,7 @@ MainWindow::~MainWindow() = default;
 void MainWindow::setupUi()
 {
     setWindowTitle(tr("TSA - 3D Structural Modeler"));
+    setWindowIcon(QIcon(":/icons/TSA.svg"));
     resize(1440, 880);
 
     setDockNestingEnabled(true);
@@ -329,6 +387,20 @@ void MainWindow::createMenus()
 
     // Menu Edition
     QMenu* editMenu = menuBar()->addMenu(tr("&Edit"));
+
+    m_actionUndo = editMenu->addAction(tr("&Annuler"), this, &MainWindow::onActionUndo);
+    m_actionUndo->setIcon(makeUndoIcon());
+    m_actionUndo->setToolTip(tr("Annuler la dernière action (Ctrl+Z)"));
+    m_actionUndo->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z));
+    m_actionUndo->setEnabled(false);
+
+    m_actionRedo = editMenu->addAction(tr("&Rétablir"), this, &MainWindow::onActionRedo);
+    m_actionRedo->setIcon(makeRedoIcon());
+    m_actionRedo->setToolTip(tr("Rétablir la dernière action annulée (Ctrl+Y)"));
+    m_actionRedo->setShortcuts({ QKeySequence(Qt::CTRL | Qt::Key_Y), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z) });
+    m_actionRedo->setEnabled(false);
+
+    editMenu->addSeparator();
 
     m_actionCopyClipboard = editMenu->addAction(tr("&Copier (Presse-papier)"), this, &MainWindow::onActionCopyClipboard);
     m_actionCopyClipboard->setIcon(QIcon(":/icons/copy.svg"));
@@ -595,6 +667,10 @@ void MainWindow::createToolBars()
     modelToolBar->setObjectName("ModelToolBar");
     modelToolBar->setIconSize(QSize(22, 22));
     modelToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+
+    modelToolBar->addAction(m_actionUndo);
+    modelToolBar->addAction(m_actionRedo);
+    modelToolBar->addSeparator();
 
     modelToolBar->addAction(m_actionNewNode);
     modelToolBar->addAction(m_actionNewBeam);
@@ -1042,7 +1118,9 @@ void MainWindow::onActionNewNode()
     double z = QInputDialog::getDouble(this, tr("New Node"), tr("Coordinate Z (m):"), 0.0, -10000.0, 10000.0, 3, &ok);
     if (!ok) return;
 
+    m_model->pushUndoState(tr("Nouveau Nœud").toStdString());
     int newId = m_model->addNode(x, y, z);
+    updateUndoRedoActions();
     if (m_statusInfo)
     {
         m_statusInfo->setText(tr("Created Node %1 (%2, %3, %4)")
@@ -1071,7 +1149,9 @@ void MainWindow::onActionNewBeam()
         return;
     }
 
+    m_model->pushUndoState(tr("Nouvelle Poutre").toStdString());
     int beamId = m_model->addBeam(startNode, endNode, 0.30, 0.50);
+    updateUndoRedoActions();
     if (m_statusInfo)
     {
         m_statusInfo->setText(tr("Created Beam %1 (Nodes %2 -> %3)").arg(beamId).arg(startNode).arg(endNode));
@@ -1099,7 +1179,9 @@ void MainWindow::onActionNewColumn()
         return;
     }
 
+    m_model->pushUndoState(tr("Nouveau Poteau").toStdString());
     int colId = m_model->addColumn(startNode, endNode, 0.35, 0.35);
+    updateUndoRedoActions();
     if (m_statusInfo)
     {
         m_statusInfo->setText(tr("Created Column %1 (Nodes %2 -> %3)").arg(colId).arg(startNode).arg(endNode));
@@ -1148,7 +1230,9 @@ void MainWindow::onActionNewSlab()
     double thickness = QInputDialog::getDouble(this, tr("New Slab"), tr("Thickness (m):"), 0.20, 0.01, 5.0, 2, &ok);
     if (!ok) return;
 
+    m_model->pushUndoState(tr("Nouvelle Dalle").toStdString());
     int slabId = m_model->addSlab(nodeIds, thickness);
+    updateUndoRedoActions();
     if (m_statusInfo)
     {
         m_statusInfo->setText(tr("Created Slab %1 (%2 nodes, e = %3 m)").arg(slabId).arg(nodeIds.size()).arg(thickness));
@@ -1191,8 +1275,14 @@ void MainWindow::onActionMove()
         }
     }
 
+    if (m_model)
+    {
+        m_model->pushUndoState(tr("Déplacement paramétrique").toStdString());
+    }
+
     if (m_model->moveNodes(nodesToMove, dx, dy, dz))
     {
+        updateUndoRedoActions();
         if (m_statusInfo)
         {
             m_statusInfo->setText(tr("Moved %1 node(s) by (%2, %3, %4) m")
@@ -1218,6 +1308,11 @@ void MainWindow::onActionCopy()
     double dz = dlg.deltaZ();
     int reps = dlg.repetitions();
 
+    if (m_model)
+    {
+        m_model->pushUndoState(tr("Copie paramétrique").toStdString());
+    }
+
     auto newIds = m_model->copyElements(
         m_selectionManager->selectedNodes(),
         m_selectionManager->selectedBeams(),
@@ -1225,6 +1320,8 @@ void MainWindow::onActionCopy()
         m_selectionManager->selectedSlabs(),
         dx, dy, dz, reps
     );
+
+    updateUndoRedoActions();
 
     if (!newIds.empty() && m_statusInfo)
     {
@@ -1241,6 +1338,8 @@ void MainWindow::onActionDeleteSelected()
     size_t total = m_selectionManager->totalSelectedCount();
     if (total == 0)
         return;
+
+    m_model->pushUndoState(tr("Suppression").toStdString());
 
     // Supprimer dans l'ordre sécurisé : Dalles, Poutres, Poteaux, Nœuds
     auto slabs = m_selectionManager->selectedSlabs();
@@ -1275,12 +1374,15 @@ void MainWindow::onActionDeleteSelected()
     {
         m_statusInfo->setText(tr("%1 élément(s) supprimé(s)").arg(total));
     }
+    updateUndoRedoActions();
 }
 
 void MainWindow::onActionAddCube()
 {
     if (!m_model)
         return;
+
+    m_model->pushUndoState(tr("Structure Cube 3D").toStdString());
 
     // Déterminer les dimensions et élévations du cube depuis le niveau actif et la grille
     double x0 = 0.0, x1 = 6.0;
@@ -1377,6 +1479,7 @@ void MainWindow::onActionAddCube()
     {
         m_occView->fitAll();
     }
+    updateUndoRedoActions();
 }
 
 void MainWindow::onActionViewXY()
@@ -1618,6 +1721,8 @@ void MainWindow::onPointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& t
     if (!m_selectionManager || !m_model)
         return;
 
+    m_model->pushUndoState(isCopy ? tr("Copie 3D").toStdString() : tr("Déplacement 3D").toStdString());
+
     double dx = target.X() - base.X();
     double dy = target.Y() - base.Y();
     double dz = target.Z() - base.Z();
@@ -1681,12 +1786,15 @@ void MainWindow::onPointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& t
             }
         }
     }
+    updateUndoRedoActions();
 }
 
 void MainWindow::onPointToPointRotateRequested(const gp_Pnt& center, double angleRad, bool isCopy)
 {
     if (!m_selectionManager || !m_model)
         return;
+
+    m_model->pushUndoState(isCopy ? tr("Copie & Rotation 3D").toStdString() : tr("Rotation 3D").toStdString());
 
     gp_Dir axis(0.0, 0.0, 1.0);
     constexpr double kRadToDeg = 180.0 / 3.14159265358979323846;
@@ -1753,6 +1861,7 @@ void MainWindow::onPointToPointRotateRequested(const gp_Pnt& center, double angl
             }
         }
     }
+    updateUndoRedoActions();
 }
 
 void MainWindow::onOriginMoveRequested(const gp_Pnt& newOrigin)
@@ -1787,6 +1896,8 @@ void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
 {
     if (!m_model || !m_clipboard.hasData || m_clipboard.nodes.empty())
         return;
+
+    m_model->pushUndoState(tr("Coller").toStdString());
 
     std::unordered_map<int, int> nodeMap;
     std::vector<int> newNodes;
@@ -1870,6 +1981,110 @@ void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
             .arg(newBeams.size())
             .arg(newColumns.size())
             .arg(newSlabs.size()));
+    }
+    updateUndoRedoActions();
+}
+
+void MainWindow::onActionUndo()
+{
+    if (m_model && m_model->canUndo())
+    {
+        std::string actionName = m_model->lastUndoActionName();
+        if (m_model->undo())
+        {
+            if (m_selectionManager)
+            {
+                m_selectionManager->clearSelection();
+            }
+            if (m_modelTree)
+            {
+                m_modelTree->refreshAll();
+            }
+            if (m_occView)
+            {
+                m_occView->rebuildAllShapes();
+                m_occView->update();
+            }
+            updateUndoRedoActions();
+            if (m_statusInfo && m_model)
+            {
+                m_statusInfo->setText(tr("Model: %1 nodes, %2 beams, %3 columns, %4 slabs | Ready")
+                    .arg(m_model->nodes().size())
+                    .arg(m_model->beams().size())
+                    .arg(m_model->columns().size())
+                    .arg(m_model->slabs().size()));
+            }
+            statusBar()->showMessage(tr("Action annulée : %1 (Ctrl+Z)").arg(QString::fromStdString(actionName)), 3000);
+        }
+    }
+}
+
+void MainWindow::onActionRedo()
+{
+    if (m_model && m_model->canRedo())
+    {
+        std::string actionName = m_model->lastRedoActionName();
+        if (m_model->redo())
+        {
+            if (m_selectionManager)
+            {
+                m_selectionManager->clearSelection();
+            }
+            if (m_modelTree)
+            {
+                m_modelTree->refreshAll();
+            }
+            if (m_occView)
+            {
+                m_occView->rebuildAllShapes();
+                m_occView->update();
+            }
+            updateUndoRedoActions();
+            if (m_statusInfo && m_model)
+            {
+                m_statusInfo->setText(tr("Model: %1 nodes, %2 beams, %3 columns, %4 slabs | Ready")
+                    .arg(m_model->nodes().size())
+                    .arg(m_model->beams().size())
+                    .arg(m_model->columns().size())
+                    .arg(m_model->slabs().size()));
+            }
+            statusBar()->showMessage(tr("Action rétablie : %1 (Ctrl+Y)").arg(QString::fromStdString(actionName)), 3000);
+        }
+    }
+}
+
+void MainWindow::updateUndoRedoActions()
+{
+    if (!m_model) return;
+    if (m_actionUndo)
+    {
+        bool canU = m_model->canUndo();
+        m_actionUndo->setEnabled(canU);
+        if (canU && !m_model->lastUndoActionName().empty())
+        {
+            m_actionUndo->setText(tr("&Annuler %1").arg(QString::fromStdString(m_model->lastUndoActionName())));
+            m_actionUndo->setToolTip(tr("Annuler : %1 (Ctrl+Z)").arg(QString::fromStdString(m_model->lastUndoActionName())));
+        }
+        else
+        {
+            m_actionUndo->setText(tr("&Annuler"));
+            m_actionUndo->setToolTip(tr("Annuler la dernière action (Ctrl+Z)"));
+        }
+    }
+    if (m_actionRedo)
+    {
+        bool canR = m_model->canRedo();
+        m_actionRedo->setEnabled(canR);
+        if (canR && !m_model->lastRedoActionName().empty())
+        {
+            m_actionRedo->setText(tr("&Rétablir %1").arg(QString::fromStdString(m_model->lastRedoActionName())));
+            m_actionRedo->setToolTip(tr("Rétablir : %1 (Ctrl+Y)").arg(QString::fromStdString(m_model->lastRedoActionName())));
+        }
+        else
+        {
+            m_actionRedo->setText(tr("&Rétablir"));
+            m_actionRedo->setToolTip(tr("Rétablir la dernière action annulée (Ctrl+Y)"));
+        }
     }
 }
 

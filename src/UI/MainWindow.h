@@ -73,7 +73,12 @@ private slots:
     void onActionMove();
     void onActionCopy();
 
+    // Undo / Redo (Ctrl+Z / Ctrl+Y)
+    void onActionUndo();
+    void onActionRedo();
+
 private:
+    void updateUndoRedoActions();
     void setupUi();
     void createMenus();
     void createToolBars();
@@ -157,6 +162,10 @@ private:
 
     QAction* m_actionMove = nullptr;
     QAction* m_actionCopy = nullptr;
+
+    // Actions Undo / Redo
+    QAction* m_actionUndo = nullptr;
+    QAction* m_actionRedo = nullptr;
 
     // Actions Transformations 3D directes & Presse-papier
     QAction* m_actionMove3D = nullptr;

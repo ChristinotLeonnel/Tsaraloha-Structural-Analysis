@@ -1556,7 +1556,9 @@ void OccView::mousePressEvent(QMouseEvent* event)
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
+                m_model->pushUndoState(tr("Création Nœud").toStdString());
                 int newId = getOrCreateNode(wx, wy, wz, detectedId);
+                emit elementCreated();
                 emit drawingPromptChanged(tr("Nœud N%1 créé en (X = %2 m, Y = %3 m, Z = %4 m)")
                     .arg(newId)
                     .arg(wx, 0, 'f', 3)
@@ -1587,7 +1589,9 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     int endId = nodeId;
                     if (startId != endId)
                     {
+                        m_model->pushUndoState(tr("Création Poutre").toStdString());
                         int beamId = m_model->addBeam(startId, endId, 0.30, 0.50);
+                        emit elementCreated();
                         emit drawingPromptChanged(tr("Poutre B%1 créée reliant N%2 à N%3. Cliquez pour tracer une autre poutre").arg(beamId).arg(startId).arg(endId));
                     }
                     clearRubberBand();
@@ -1628,7 +1632,9 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     }
                     if (startId != endId)
                     {
+                        m_model->pushUndoState(tr("Création Poteau").toStdString());
                         int colId = m_model->addColumn(startId, endId, 0.30, 0.30);
+                        emit elementCreated();
                         emit drawingPromptChanged(tr("Poteau C%1 créé reliant N%2 à N%3. Cliquez pour un autre poteau").arg(colId).arg(startId).arg(endId));
                     }
                     clearRubberBand();
@@ -1648,7 +1654,9 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 // Si clic sur le 1er nœud pour fermer le polygone
                 if (!m_drawingNodeIds.empty() && nodeId == m_drawingNodeIds.front() && m_drawingNodeIds.size() >= 3)
                 {
+                    m_model->pushUndoState(tr("Création Dalle").toStdString());
                     int slabId = m_model->addSlab(m_drawingNodeIds, 0.20);
+                    emit elementCreated();
                     emit drawingPromptChanged(tr("Dalle S%1 créée (%2 nœuds). Cliquez pour une nouvelle dalle").arg(slabId).arg(m_drawingNodeIds.size()));
                     clearRubberBand();
                     m_drawingNodeIds.clear();
@@ -1888,7 +1896,9 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
         {
             if (m_interactionMode == InteractionMode::DrawSlab && m_drawingNodeIds.size() >= 3 && m_model)
             {
+                m_model->pushUndoState(tr("Création Dalle").toStdString());
                 int slabId = m_model->addSlab(m_drawingNodeIds, 0.20);
+                emit elementCreated();
                 emit drawingPromptChanged(tr("Dalle S%1 validée et créée (%2 nœuds)").arg(slabId).arg(m_drawingNodeIds.size()));
                 cancelCurrentDrawing();
             }

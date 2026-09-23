@@ -33,7 +33,7 @@ static bool approxEqual(double a, double b, double eps = 1e-4)
 int main()
 {
     int passed = 0;
-    int total = 10;
+    int total = 11;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -267,6 +267,64 @@ int main()
         TEST_CHECK(rotModel.beams().size() == 2, "Total 2 beams");
 
         std::cout << "[PASS] Test 10: 3D Rotation and Copy-and-Rotate of structural elements verified" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 11: Undo & Redo (Ctrl+Z and Ctrl+Y snapshot system)
+    // -------------------------------------------------------------------------
+    {
+        Model undoModel;
+        TEST_CHECK(!undoModel.canUndo(), "Initial model cannot undo");
+        TEST_CHECK(!undoModel.canRedo(), "Initial model cannot redo");
+
+        // Action 1: Create a beam (2 nodes + 1 beam)
+        undoModel.pushUndoState("Création Poutre");
+        int n1 = undoModel.addNode(0.0, 0.0, 0.0);
+        int n2 = undoModel.addNode(5.0, 0.0, 0.0);
+        int b1 = undoModel.addBeam(n1, n2, 0.3, 0.5);
+        TEST_CHECK(b1 > 0, "Beam created successfully");
+
+        TEST_CHECK(undoModel.canUndo(), "canUndo after beam creation");
+        TEST_CHECK(!undoModel.canRedo(), "cannot redo after new action");
+        TEST_CHECK(undoModel.lastUndoActionName() == "Création Poutre", "Action name matches");
+        TEST_CHECK(undoModel.nodes().size() == 2, "2 nodes before undo");
+        TEST_CHECK(undoModel.beams().size() == 1, "1 beam before undo");
+
+        // Test Undo (Ctrl+Z)
+        bool undoOk = undoModel.undo();
+        TEST_CHECK(undoOk, "undo succeeded");
+        TEST_CHECK(undoModel.nodes().empty(), "Nodes reverted to 0 after undo");
+        TEST_CHECK(undoModel.beams().empty(), "Beams reverted to 0 after undo");
+        TEST_CHECK(!undoModel.canUndo(), "canUndo false after undo to initial state");
+        TEST_CHECK(undoModel.canRedo(), "canRedo true after undo");
+        TEST_CHECK(undoModel.lastRedoActionName() == "Création Poutre", "Redo action name matches");
+
+        // Test Redo (Ctrl+Y)
+        bool redoOk = undoModel.redo();
+        TEST_CHECK(redoOk, "redo succeeded");
+        TEST_CHECK(undoModel.nodes().size() == 2, "Nodes restored after redo");
+        TEST_CHECK(undoModel.beams().size() == 1, "Beam restored after redo");
+        TEST_CHECK(undoModel.canUndo(), "canUndo true after redo");
+        TEST_CHECK(!undoModel.canRedo(), "canRedo false after redo");
+
+        // Action 2: Move nodes
+        undoModel.pushUndoState("Déplacement");
+        undoModel.moveNodes({n1, n2}, 2.0, 3.0, 0.0);
+        const auto* pn1 = undoModel.getNode(n1);
+        TEST_CHECK(pn1 && approxEqual(pn1->x(), 2.0) && approxEqual(pn1->y(), 3.0), "Node 1 moved");
+
+        // Undo Move
+        undoModel.undo();
+        const auto* pn1Restored = undoModel.getNode(n1);
+        TEST_CHECK(pn1Restored && approxEqual(pn1Restored->x(), 0.0) && approxEqual(pn1Restored->y(), 0.0), "Node 1 coordinates restored after undo");
+
+        // Redo Move
+        undoModel.redo();
+        const auto* pn1Redone = undoModel.getNode(n1);
+        TEST_CHECK(pn1Redone && approxEqual(pn1Redone->x(), 2.0) && approxEqual(pn1Redone->y(), 3.0), "Node 1 coordinates re-applied after redo");
+
+        std::cout << "[PASS] Test 11: Undo (Ctrl+Z) & Redo (Ctrl+Y) snapshot system fully verified" << std::endl;
         passed++;
     }
 
