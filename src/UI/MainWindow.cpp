@@ -12,7 +12,10 @@
 #include "Dialogs/LevelDialog.h"
 #include "Dialogs/SectionCutDialog.h"
 #include "Ruler/ViewportContainer.h"
+#include "Theme/ThemeManager.h"
 
+#include <QSettings>
+#include <QApplication>
 #include <QMenuBar>
 #include <QToolBar>
 #include <QStatusBar>
@@ -346,6 +349,17 @@ MainWindow::MainWindow(QWidget* parent)
 
     updateUndoRedoActions();
 
+    QSettings settings("TSAEngineering", "TSA");
+    bool isDark = settings.value("Theme/DarkMode", false).toBool();
+    if (m_actionDarkMode)
+    {
+        m_actionDarkMode->setChecked(isDark);
+    }
+    if (isDark)
+    {
+        onToggleDarkMode(true);
+    }
+
     if (m_statusInfo)
     {
         m_statusInfo->setText(tr("Model: %1 nodes, %2 beams, %3 columns, %4 slabs | Ready")
@@ -499,6 +513,14 @@ void MainWindow::createMenus()
     m_actionResetView->setIcon(QIcon(":/icons/view_iso.svg"));
     m_actionResetView->setToolTip(tr("Reset View - Isometric (R)"));
     m_actionResetView->setShortcut(QKeySequence(Qt::Key_R));
+
+    viewMenu->addSeparator();
+
+    m_actionDarkMode = viewMenu->addAction(tr("Mode &Sombre (Dark Theme)"), this, &MainWindow::onToggleDarkMode);
+    m_actionDarkMode->setIcon(QIcon(":/icons/theme_dark.svg"));
+    m_actionDarkMode->setToolTip(tr("Basculer entre le mode sombre et le mode clair (Ctrl+D)"));
+    m_actionDarkMode->setCheckable(true);
+    m_actionDarkMode->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_D));
 
     viewMenu->addSeparator();
 
@@ -712,6 +734,8 @@ void MainWindow::createToolBars()
     viewToolBar->addAction(m_actionGridSnap);
     viewToolBar->addAction(m_actionNewGrid);
     viewToolBar->addAction(m_actionGridManager);
+    viewToolBar->addSeparator();
+    viewToolBar->addAction(m_actionDarkMode);
 }
 
 void MainWindow::createDockWindows()
@@ -1070,6 +1094,32 @@ void MainWindow::onToggleRulersVisible(bool checked)
         {
             m_statusInfo->setText(checked ? tr("Règles de bordure affichées") : tr("Règles de bordure masquées"));
         }
+    }
+}
+
+void MainWindow::onToggleDarkMode(bool checked)
+{
+    TSA::UI::ThemeManager::setDarkMode(checked);
+
+    if (checked)
+    {
+        qApp->setStyleSheet(TSA::UI::ThemeManager::darkStyleSheet());
+        if (statusBar()) statusBar()->showMessage(tr("Mode sombre activé"), 2000);
+    }
+    else
+    {
+        qApp->setStyleSheet(TSA::UI::ThemeManager::lightStyleSheet());
+        if (statusBar()) statusBar()->showMessage(tr("Mode clair activé"), 2000);
+    }
+
+    if (m_actionDarkMode && m_actionDarkMode->isChecked() != checked)
+    {
+        m_actionDarkMode->setChecked(checked);
+    }
+
+    if (m_viewportContainer)
+    {
+        m_viewportContainer->setDarkMode(checked);
     }
 }
 

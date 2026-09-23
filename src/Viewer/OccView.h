@@ -92,6 +92,8 @@ public:
     void worldToPixel(double wx, double wy, double wz, int& px, int& py) const;
     void setViewOrientation(V3d_TypeOfOrientation orientation);
     void setCadBlueprintTheme(bool enabled);
+    void setDarkMode(bool dark);
+    bool isDarkMode() const { return m_isDarkMode; }
 
     // Vues en Plan & Projections (Robot SA style)
     enum class ViewPlaneMode
@@ -244,6 +246,7 @@ private:
     bool m_snapToGrid = true;
     bool m_gridVisible = true;
     bool m_gridLabelsVisible = true;
+    bool m_isDarkMode = false;
     double m_gridZOffset = 0.0;
     double m_activeLevelZ = 0.0;
 

@@ -14,8 +14,13 @@ public:
     explicit CornerWidget(QWidget* parent = nullptr);
     ~CornerWidget() override = default;
 
+    void setDarkMode(bool dark);
+
 protected:
     void paintEvent(QPaintEvent* event) override;
+
+private:
+    bool m_darkMode = false;
 };
 
 class HorizontalRulerWidget : public QWidget
@@ -27,6 +32,7 @@ public:
 
     void setCursorPos(int px);
     void updateRuler();
+    void setDarkMode(bool dark);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -34,6 +40,7 @@ protected:
 private:
     OccView* m_occView = nullptr;
     int m_cursorPixelX = -1;
+    bool m_darkMode = false;
 };
 
 class VerticalRulerWidget : public QWidget
@@ -51,6 +58,7 @@ public:
 
     void setCursorPos(int py);
     void updateRuler();
+    void setDarkMode(bool dark);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -59,6 +67,7 @@ private:
     OccView* m_occView = nullptr;
     Position m_position = Position::Left;
     int m_cursorPixelY = -1;
+    bool m_darkMode = false;
 };
 
 } // namespace TSA::UI

@@ -52,6 +52,8 @@ set(SOURCES
     src/UI/Ruler/ViewportRuler.cpp
     src/UI/Ruler/ViewportContainer.h
     src/UI/Ruler/ViewportContainer.cpp
+    src/UI/Theme/ThemeManager.h
+    src/UI/Theme/ThemeManager.cpp
     src/Coordinate/Point3D.h
     src/Coordinate/Level.h
     src/Coordinate/LevelManager.h

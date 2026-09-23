@@ -23,5 +23,6 @@
         <file alias="redo.svg">icons/redo.svg</file>
         <file alias="TSA.svg">icons/TSA.svg</file>
         <file alias="TSA.ico">icons/TSA.ico</file>
+        <file alias="theme_dark.svg">icons/theme_dark.svg</file>
     </qresource>
 </RCC>

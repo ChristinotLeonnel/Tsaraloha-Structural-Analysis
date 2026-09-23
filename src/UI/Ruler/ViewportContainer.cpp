@@ -1,6 +1,7 @@
 #include "ViewportContainer.h"
 #include "ViewportRuler.h"
 #include "../../Viewer/OccView.h"
+#include "../Theme/ThemeManager.h"
 
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -33,16 +34,9 @@ void ViewportContainer::setupUi()
     grid->setSpacing(0);
 
     m_topBar = new QWidget(this);
+    m_topBar->setObjectName("topBar");
     m_topBar->setFixedHeight(28);
-    m_topBar->setStyleSheet(
-        "QWidget { background: #EEF2F6; border-bottom: 1px solid #CCD3DC; font-family: Segoe UI, sans-serif; font-size: 11px; }"
-        "QComboBox { background: #FFFFFF; border: 1px solid #B0BDCC; border-radius: 2px; padding: 1px 6px; font-weight: 600; color: #1E293B; min-width: 180px; }"
-        "QComboBox:hover { border-color: #3884D8; }"
-        "QPushButton { background: #FFFFFF; border: 1px solid #B0BDCC; border-radius: 2px; padding: 2px 7px; color: #2C3E50; font-weight: bold; max-width: 24px; }"
-        "QPushButton:hover { background: #E0EBF8; border-color: #3884D8; }"
-        "QPushButton:pressed { background: #C8DCF2; }"
-        "QLabel { color: #334455; font-weight: 600; padding: 0 4px; }"
-    );
+    m_topBar->setStyleSheet(ThemeManager::topBarLightStyle());
 
     auto* topLayout = new QHBoxLayout(m_topBar);
     topLayout->setContentsMargins(6, 2, 8, 2);
@@ -62,9 +56,9 @@ void ViewportContainer::setupUi()
 
     topLayout->addSpacing(8);
 
-    auto* lblHint = new QLabel(tr("Plan de dessin actif en hauteur"), m_topBar);
-    lblHint->setStyleSheet("color: #64748B; font-weight: normal; font-style: italic;");
-    topLayout->addWidget(lblHint);
+    m_lblHint = new QLabel(tr("Plan de dessin actif en hauteur"), m_topBar);
+    m_lblHint->setStyleSheet("color: #64748B; font-weight: normal; font-style: italic;");
+    topLayout->addWidget(m_lblHint);
 
     topLayout->addStretch();
 
@@ -77,9 +71,9 @@ void ViewportContainer::setupUi()
     m_leftRuler = new VerticalRulerWidget(m_occView, VerticalRulerWidget::Position::Left, this);
     m_rightRuler = new VerticalRulerWidget(m_occView, VerticalRulerWidget::Position::Right, this);
 
-    auto* topCornerRight = new QWidget(this);
-    topCornerRight->setFixedSize(34, 22);
-    topCornerRight->setStyleSheet("background: #EEF2F6; border-left: 1px solid #CCD3DC; border-bottom: 1px solid #CCD3DC;");
+    m_topCornerRight = new QWidget(this);
+    m_topCornerRight->setFixedSize(34, 22);
+    m_topCornerRight->setStyleSheet("background: #EEF2F6; border-left: 1px solid #CCD3DC; border-bottom: 1px solid #CCD3DC;");
 
     // Row 0: Barre supérieure de sélection d'étage
     grid->addWidget(m_topBar, 0, 0, 1, 3);
@@ -87,7 +81,7 @@ void ViewportContainer::setupUi()
     // Row 1: Règles supérieures
     grid->addWidget(m_corner, 1, 0);
     grid->addWidget(m_topRuler, 1, 1);
-    grid->addWidget(topCornerRight, 1, 2);
+    grid->addWidget(m_topCornerRight, 1, 2);
 
     // Row 2: Règles latérales & Viewport 3D
     grid->addWidget(m_leftRuler, 2, 0);
@@ -103,14 +97,9 @@ void ViewportContainer::setupUi()
 
     // Row 3: Barre inférieure de statut et plan de travail (Style Robot Structural Analysis)
     m_bottomBar = new QWidget(this);
+    m_bottomBar->setObjectName("bottomBar");
     m_bottomBar->setFixedHeight(26);
-    m_bottomBar->setStyleSheet(
-        "QWidget { background: #E6EBF2; border-top: 1px solid #CCD3DC; font-family: Segoe UI, sans-serif; font-size: 11px; }"
-        "QPushButton { background: #FFFFFF; border: 1px solid #B0BDCC; border-radius: 2px; padding: 2px 7px; color: #2C3E50; font-weight: 600; }"
-        "QPushButton:hover { background: #E0EBF8; border-color: #3884D8; }"
-        "QPushButton:pressed { background: #C8DCF2; }"
-        "QLabel { color: #334455; padding: 0 4px; }"
-    );
+    m_bottomBar->setStyleSheet(ThemeManager::bottomBarLightStyle());
 
     auto* barLayout = new QHBoxLayout(m_bottomBar);
     barLayout->setContentsMargins(6, 2, 8, 2);
@@ -364,6 +353,42 @@ void ViewportContainer::onLevelDown()
     {
         m_levelCombo->setCurrentIndex(cur - 1);
     }
+}
+
+void ViewportContainer::setDarkMode(bool dark)
+{
+    m_isDarkMode = dark;
+
+    if (m_topBar)
+    {
+        m_topBar->setStyleSheet(dark ? ThemeManager::topBarDarkStyle() : ThemeManager::topBarLightStyle());
+    }
+    if (m_bottomBar)
+    {
+        m_bottomBar->setStyleSheet(dark ? ThemeManager::bottomBarDarkStyle() : ThemeManager::bottomBarLightStyle());
+    }
+    if (m_lblHint)
+    {
+        m_lblHint->setStyleSheet(dark ? "color: #9CA3AF; font-weight: normal; font-style: italic;"
+                                      : "color: #64748B; font-weight: normal; font-style: italic;");
+    }
+    if (m_topCornerRight)
+    {
+        m_topCornerRight->setStyleSheet(dark ? "background: #21252B; border-left: 1px solid #3B4048; border-bottom: 1px solid #3B4048;"
+                                             : "background: #EEF2F6; border-left: 1px solid #CCD3DC; border-bottom: 1px solid #CCD3DC;");
+    }
+    if (m_lblCoords)
+    {
+        m_lblCoords->setStyleSheet(dark ? "font-family: Consolas, monospace; font-size: 11px; color: #60A5FA; font-weight: bold;"
+                                        : "font-family: Consolas, monospace; font-size: 11px; color: #1E2D3D; font-weight: bold;");
+    }
+
+    if (m_corner) m_corner->setDarkMode(dark);
+    if (m_topRuler) m_topRuler->setDarkMode(dark);
+    if (m_leftRuler) m_leftRuler->setDarkMode(dark);
+    if (m_rightRuler) m_rightRuler->setDarkMode(dark);
+
+    if (m_occView) m_occView->setDarkMode(dark);
 }
 
 } // namespace TSA::UI

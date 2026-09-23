@@ -28,6 +28,9 @@ public:
     void setRulersVisible(bool visible);
     bool areRulersVisible() const { return m_rulersVisible; }
 
+    void setDarkMode(bool dark);
+    bool isDarkMode() const { return m_isDarkMode; }
+
     // Gestion du niveau actif (Dessin en hauteur style Robot SA)
     void updateLevelsList(const std::vector<double>& elevations, const std::vector<std::string>& names = {});
     double activeLevelElevation() const;
@@ -75,6 +78,9 @@ private:
     QLabel* m_lblCoords = nullptr;
 
     bool m_rulersVisible = true;
+    bool m_isDarkMode = false;
+    QWidget* m_topCornerRight = nullptr;
+    QLabel* m_lblHint = nullptr;
 };
 
 } // namespace TSA::UI

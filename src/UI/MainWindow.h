@@ -53,6 +53,7 @@ private slots:
     void onToggleGridLabels(bool checked);
     void onToggleLevelsVisible(bool checked);
     void onToggleRulersVisible(bool checked);
+    void onToggleDarkMode(bool checked);
 
     // Modes d'interaction (Dessin 3D)
     void onModeSelect();
@@ -114,6 +115,7 @@ private:
     QAction* m_actionGridLabels = nullptr;
     QAction* m_actionLevelsVisible = nullptr;
     QAction* m_actionRulersVisible = nullptr;
+    QAction* m_actionDarkMode = nullptr;
 
     // Actions Modes d'interaction / Dessin 3D
     QActionGroup* m_drawModeGroup = nullptr;

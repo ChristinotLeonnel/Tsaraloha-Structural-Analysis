@@ -168,8 +168,10 @@ void OccView::initOcc()
         wind->Map();
     }
 
-    Quantity_Color topColor(0.82, 0.88, 0.95, Quantity_TOC_RGB);   // Bleu ciel clair CAO
-    Quantity_Color bottomColor(0.92, 0.94, 0.98, Quantity_TOC_RGB); // Blanc / gris très doux
+    Quantity_Color topColor = m_isDarkMode ? Quantity_Color(0.12, 0.14, 0.18, Quantity_TOC_RGB)
+                                           : Quantity_Color(0.82, 0.88, 0.95, Quantity_TOC_RGB);
+    Quantity_Color bottomColor = m_isDarkMode ? Quantity_Color(0.06, 0.08, 0.10, Quantity_TOC_RGB)
+                                              : Quantity_Color(0.92, 0.94, 0.98, Quantity_TOC_RGB);
     m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
 
     // Configuration explicite des axes du trièdre : X=Rouge, Y=Vert, Z=Bleu
@@ -197,8 +199,17 @@ void OccView::initOcc()
     // 3D ViewCube (Cube de navigation 3D interactif comme Robot Structural Analysis)
     m_viewCube = new AIS_ViewCube();
     m_viewCube->SetSize(62.0);
-    m_viewCube->SetBoxColor(Quantity_Color(0.92, 0.94, 0.96, Quantity_TOC_RGB));
-    m_viewCube->SetInnerColor(Quantity_Color(0.85, 0.88, 0.92, Quantity_TOC_RGB));
+    if (m_isDarkMode)
+    {
+        m_viewCube->SetBoxColor(Quantity_Color(0.24, 0.28, 0.34, Quantity_TOC_RGB));
+        m_viewCube->SetInnerColor(Quantity_Color(0.16, 0.19, 0.24, Quantity_TOC_RGB));
+        m_viewCube->SetTextColor(Quantity_Color(0.90, 0.93, 0.96, Quantity_TOC_RGB));
+    }
+    else
+    {
+        m_viewCube->SetBoxColor(Quantity_Color(0.92, 0.94, 0.96, Quantity_TOC_RGB));
+        m_viewCube->SetInnerColor(Quantity_Color(0.85, 0.88, 0.92, Quantity_TOC_RGB));
+    }
     m_viewCube->SetRoundRadius(0.10);
     m_viewCube->SetYup(false); // +Z vertical (élévation)
 
@@ -964,6 +975,41 @@ void OccView::setCadBlueprintTheme(bool enabled)
         Quantity_Color topColor(0.18, 0.22, 0.28, Quantity_TOC_RGB);
         Quantity_Color bottomColor(0.08, 0.10, 0.13, Quantity_TOC_RGB);
         m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
+    }
+    m_view->Redraw();
+}
+
+void OccView::setDarkMode(bool dark)
+{
+    m_isDarkMode = dark;
+    if (m_view.IsNull())
+        return;
+
+    if (dark)
+    {
+        Quantity_Color topColor(0.12, 0.14, 0.18, Quantity_TOC_RGB);
+        Quantity_Color bottomColor(0.06, 0.08, 0.10, Quantity_TOC_RGB);
+        m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
+
+        if (!m_viewCube.IsNull())
+        {
+            m_viewCube->SetBoxColor(Quantity_Color(0.24, 0.28, 0.34, Quantity_TOC_RGB));
+            m_viewCube->SetInnerColor(Quantity_Color(0.16, 0.19, 0.24, Quantity_TOC_RGB));
+            m_viewCube->SetTextColor(Quantity_Color(0.90, 0.93, 0.96, Quantity_TOC_RGB));
+        }
+    }
+    else
+    {
+        Quantity_Color topColor(0.82, 0.88, 0.95, Quantity_TOC_RGB);
+        Quantity_Color bottomColor(0.92, 0.94, 0.98, Quantity_TOC_RGB);
+        m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
+
+        if (!m_viewCube.IsNull())
+        {
+            m_viewCube->SetBoxColor(Quantity_Color(0.92, 0.94, 0.96, Quantity_TOC_RGB));
+            m_viewCube->SetInnerColor(Quantity_Color(0.85, 0.88, 0.92, Quantity_TOC_RGB));
+            m_viewCube->SetTextColor(Quantity_Color(0.10, 0.12, 0.15, Quantity_TOC_RGB));
+        }
     }
     m_view->Redraw();
 }
