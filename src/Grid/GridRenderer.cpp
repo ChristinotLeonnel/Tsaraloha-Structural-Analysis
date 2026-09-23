@@ -19,6 +19,7 @@ GridRenderer::GridRenderer()
     : m_gridVisible(true)
     , m_labelsVisible(true)
     , m_intersectionsVisible(true)
+    , m_levelsVisible(true)
 {
 }
 

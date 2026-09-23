@@ -61,7 +61,8 @@ void GridDefinition::setXPositions(const std::vector<double>& positions)
 {
     m_xPositions = positions;
     std::sort(m_xPositions.begin(), m_xPositions.end());
-    m_xPositions.erase(std::unique(m_xPositions.begin(), m_xPositions.end()), m_xPositions.end());
+    m_xPositions.erase(std::unique(m_xPositions.begin(), m_xPositions.end(),
+        [](double a, double b) { return std::abs(a - b) < 1e-6; }), m_xPositions.end());
     ensureLabelsSynchronized();
 }
 
@@ -69,7 +70,8 @@ void GridDefinition::setYPositions(const std::vector<double>& positions)
 {
     m_yPositions = positions;
     std::sort(m_yPositions.begin(), m_yPositions.end());
-    m_yPositions.erase(std::unique(m_yPositions.begin(), m_yPositions.end()), m_yPositions.end());
+    m_yPositions.erase(std::unique(m_yPositions.begin(), m_yPositions.end(),
+        [](double a, double b) { return std::abs(a - b) < 1e-6; }), m_yPositions.end());
     ensureLabelsSynchronized();
 }
 
@@ -77,7 +79,8 @@ void GridDefinition::setZLevels(const std::vector<double>& levels)
 {
     m_zLevels = levels;
     std::sort(m_zLevels.begin(), m_zLevels.end());
-    m_zLevels.erase(std::unique(m_zLevels.begin(), m_zLevels.end()), m_zLevels.end());
+    m_zLevels.erase(std::unique(m_zLevels.begin(), m_zLevels.end(),
+        [](double a, double b) { return std::abs(a - b) < 1e-6; }), m_zLevels.end());
     ensureLabelsSynchronized();
 }
 
@@ -85,7 +88,8 @@ void GridDefinition::setRadii(const std::vector<double>& radii)
 {
     m_radii = radii;
     std::sort(m_radii.begin(), m_radii.end());
-    m_radii.erase(std::unique(m_radii.begin(), m_radii.end()), m_radii.end());
+    m_radii.erase(std::unique(m_radii.begin(), m_radii.end(),
+        [](double a, double b) { return std::abs(a - b) < 1e-6; }), m_radii.end());
     ensureLabelsSynchronized();
 }
 

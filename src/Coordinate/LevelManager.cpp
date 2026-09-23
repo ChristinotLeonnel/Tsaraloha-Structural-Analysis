@@ -51,7 +51,7 @@ Level* LevelManager::addLevelWithId(const std::string& id, const std::string& na
             sortLevels();
             emit levelModified(id);
             emit levelsChanged();
-            return &lvl;
+            return getLevel(id);
         }
     }
 
@@ -298,6 +298,20 @@ void LevelManager::deserializeFromJson(const std::string& json)
         }
     }
     sortLevels();
+
+    // Recalculer le compteur pour éviter les collisions d'ID après désérialisation
+    m_nextLevelCounter = 0;
+    for (const auto& lvl : m_levels)
+    {
+        if (lvl.id.size() > 4 && lvl.id.substr(0, 4) == "lvl_")
+        {
+            try {
+                int n = std::stoi(lvl.id.substr(4));
+                if (n > m_nextLevelCounter) m_nextLevelCounter = n;
+            } catch (...) {}
+        }
+    }
+
     emit levelsChanged();
 }
 

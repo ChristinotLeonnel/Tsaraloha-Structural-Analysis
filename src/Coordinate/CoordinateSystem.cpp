@@ -167,9 +167,11 @@ Point3D CoordinateSystem::gridPoint(int ix, int iy, int iz) const
     if (iy >= 0 && static_cast<size_t>(iy) < m_yPositions.size())
         y = m_yPositions[iy];
 
-    std::vector<double> levels = zLevels();
-    if (iz >= 0 && static_cast<size_t>(iz) < levels.size())
-        z = levels[iz];
+    if (m_levelManager && iz >= 0 && static_cast<size_t>(iz) < m_levelManager->levelCount())
+    {
+        const auto* lvl = m_levelManager->getLevelByIndex(iz);
+        if (lvl) z = lvl->elevation;
+    }
 
     return Point3D(x, y, z);
 }
@@ -312,7 +314,10 @@ std::string CoordinateSystem::serializeToJson() const
 
     if (m_levelManager)
     {
-        root["levels"] = QString::fromStdString(m_levelManager->serializeToJson());
+        QJsonDocument levelDoc = QJsonDocument::fromJson(
+            QByteArray::fromStdString(m_levelManager->serializeToJson()));
+        if (levelDoc.isArray())
+            root["levels"] = levelDoc.array();
     }
 
     QJsonDocument doc(root);
@@ -341,7 +346,16 @@ void CoordinateSystem::deserializeFromJson(const std::string& json)
 
     if (m_levelManager && root.contains("levels"))
     {
-        m_levelManager->deserializeFromJson(root["levels"].toString().toStdString());
+        if (root["levels"].isArray())
+        {
+            QJsonDocument lvlDoc(root["levels"].toArray());
+            m_levelManager->deserializeFromJson(lvlDoc.toJson(QJsonDocument::Compact).toStdString());
+        }
+        else if (root["levels"].isString())
+        {
+            // Rétrocompatibilité avec l'ancien format double-encodé
+            m_levelManager->deserializeFromJson(root["levels"].toString().toStdString());
+        }
     }
 
     synchronizeLabels();
