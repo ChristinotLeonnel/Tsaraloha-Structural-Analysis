@@ -23,8 +23,9 @@ ViewportContainer::ViewportContainer(OccView* occView, QWidget* parent)
     {
         connect(m_occView, &OccView::mousePixelPositionChanged, this, &ViewportContainer::onMouseMovedInViewport);
         connect(m_occView, &OccView::viewCameraChanged, this, &ViewportContainer::onCameraChanged);
-        connect(m_occView, &OccView::mouseCoordinatesChanged, this, &ViewportContainer::onMouseCoordsChanged);
     }
+
+    connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, &ViewportContainer::updateTheme);
 }
 
 void ViewportContainer::setupUi()
@@ -34,9 +35,16 @@ void ViewportContainer::setupUi()
     grid->setSpacing(0);
 
     m_topBar = new QWidget(this);
-    m_topBar->setObjectName("topBar");
     m_topBar->setFixedHeight(28);
-    m_topBar->setStyleSheet(ThemeManager::topBarLightStyle());
+    m_topBar->setStyleSheet(
+        "QWidget { background: #161B22; border-bottom: 1px solid #30363D; font-family: Segoe UI, sans-serif; font-size: 11px; }"
+        "QComboBox { background: #212830; border: 1px solid #444C56; border-radius: 2px; padding: 1px 6px; font-weight: 600; color: #E6EDF3; min-width: 180px; }"
+        "QComboBox:hover { border-color: #58A6FF; }"
+        "QPushButton { background: #212830; border: 1px solid #444C56; border-radius: 2px; padding: 2px 7px; color: #E6EDF3; font-weight: bold; max-width: 24px; }"
+        "QPushButton:hover { background: #30363D; border-color: #58A6FF; }"
+        "QPushButton:pressed { background: #1F3A5A; }"
+        "QLabel { color: #8B949E; font-weight: 600; padding: 0 4px; }"
+    );
 
     auto* topLayout = new QHBoxLayout(m_topBar);
     topLayout->setContentsMargins(6, 2, 8, 2);
@@ -56,9 +64,9 @@ void ViewportContainer::setupUi()
 
     topLayout->addSpacing(8);
 
-    m_lblHint = new QLabel(tr("Plan de dessin actif en hauteur"), m_topBar);
-    m_lblHint->setStyleSheet("color: #64748B; font-weight: normal; font-style: italic;");
-    topLayout->addWidget(m_lblHint);
+    auto* lblHint = new QLabel(tr("Plan de dessin actif en hauteur"), m_topBar);
+    lblHint->setStyleSheet("color: #8B949E; font-weight: normal; font-style: italic;");
+    topLayout->addWidget(lblHint);
 
     topLayout->addStretch();
 
@@ -73,7 +81,9 @@ void ViewportContainer::setupUi()
 
     m_topCornerRight = new QWidget(this);
     m_topCornerRight->setFixedSize(34, 22);
-    m_topCornerRight->setStyleSheet("background: #EEF2F6; border-left: 1px solid #CCD3DC; border-bottom: 1px solid #CCD3DC;");
+    m_topCornerRight->setStyleSheet(ThemeManager::instance().isDarkMode()
+        ? "background: #161B22; border-left: 1px solid #30363D; border-bottom: 1px solid #30363D;"
+        : "background: #F6F8FA; border-left: 1px solid #D0D7DE; border-bottom: 1px solid #D0D7DE;");
 
     // Row 0: Barre supérieure de sélection d'étage
     grid->addWidget(m_topBar, 0, 0, 1, 3);
@@ -95,82 +105,9 @@ void ViewportContainer::setupUi()
     grid->setRowStretch(2, 1);
     grid->setColumnStretch(1, 1);
 
-    // Row 3: Barre inférieure de statut et plan de travail (Style Robot Structural Analysis)
-    m_bottomBar = new QWidget(this);
-    m_bottomBar->setObjectName("bottomBar");
-    m_bottomBar->setFixedHeight(26);
-    m_bottomBar->setStyleSheet(ThemeManager::bottomBarLightStyle());
-
-    auto* barLayout = new QHBoxLayout(m_bottomBar);
-    barLayout->setContentsMargins(6, 2, 8, 2);
-    barLayout->setSpacing(8);
-
-    m_btnPlane = new QPushButton(tr("XZ"), m_bottomBar);
-    m_btnPlane->setToolTip(tr("Changer le plan de projection actif (XZ, XY, YZ, 3D)"));
-    barLayout->addWidget(m_btnPlane);
-
-    m_lblElevation = new QLabel(tr("Y = 0,00 m"), m_bottomBar);
-    barLayout->addWidget(m_lblElevation);
-
-    auto* sep1 = new QFrame(m_bottomBar);
-    sep1->setFrameShape(QFrame::VLine);
-    sep1->setFrameShadow(QFrame::Sunken);
-    barLayout->addWidget(sep1);
-
-    m_btnViewFront = new QPushButton(tr("Face (AVANT)"), m_bottomBar);
-    m_btnViewFront->setToolTip(tr("Vue de face (Plan XZ)"));
-    barLayout->addWidget(m_btnViewFront);
-
-    m_btnViewTop = new QPushButton(tr("Dessus"), m_bottomBar);
-    m_btnViewTop->setToolTip(tr("Vue de dessus (Plan XY)"));
-    barLayout->addWidget(m_btnViewTop);
-
-    m_btnViewIso = new QPushButton(tr("3D Iso"), m_bottomBar);
-    m_btnViewIso->setToolTip(tr("Vue axonométrique 3D"));
-    barLayout->addWidget(m_btnViewIso);
-
-    auto* sep2 = new QFrame(m_bottomBar);
-    sep2->setFrameShape(QFrame::VLine);
-    sep2->setFrameShadow(QFrame::Sunken);
-    barLayout->addWidget(sep2);
-
-    barLayout->addStretch();
-
-    m_lblCoords = new QLabel(tr("X: 0,00 m   Y: 0,00 m   Z: 0,00 m"), m_bottomBar);
-    m_lblCoords->setStyleSheet("font-family: Consolas, monospace; font-size: 11px; color: #1E2D3D; font-weight: bold;");
-    barLayout->addWidget(m_lblCoords);
-
-    grid->addWidget(m_bottomBar, 3, 0, 1, 3);
-    grid->setRowStretch(3, 0);
-
-    connect(m_btnViewFront, &QPushButton::clicked, this, &ViewportContainer::onViewFront);
-    connect(m_btnViewTop, &QPushButton::clicked, this, &ViewportContainer::onViewTop);
-    connect(m_btnViewIso, &QPushButton::clicked, this, &ViewportContainer::onViewIso);
-    connect(m_btnPlane, &QPushButton::clicked, this, &ViewportContainer::onWorkplaneClicked);
-
     if (m_occView)
     {
-        connect(m_occView, &OccView::viewPlaneModeChanged, this, [this](OccView::ViewPlaneMode mode) {
-            if (mode == OccView::ViewPlaneMode::PlanXY)
-            {
-                m_btnPlane->setText("XY");
-                m_lblElevation->setText(QString("Z = %1 m").arg(m_occView->activeLevelElevation(), 0, 'f', 2));
-            }
-            else if (mode == OccView::ViewPlaneMode::PlanXZ)
-            {
-                m_btnPlane->setText("XZ");
-                m_lblElevation->setText("Y = 0,00 m");
-            }
-            else if (mode == OccView::ViewPlaneMode::PlanYZ)
-            {
-                m_btnPlane->setText("YZ");
-                m_lblElevation->setText("X = 0,00 m");
-            }
-            else
-            {
-                m_btnPlane->setText("3D");
-                m_lblElevation->setText("Vue Globale");
-            }
+        connect(m_occView, &OccView::viewPlaneModeChanged, this, [this](OccView::ViewPlaneMode) {
             updateRulers();
         });
     }
@@ -211,62 +148,6 @@ void ViewportContainer::onMouseMovedInViewport(int px, int py)
 void ViewportContainer::onCameraChanged()
 {
     updateRulers();
-}
-
-void ViewportContainer::onMouseCoordsChanged(double x, double y, double z)
-{
-    if (m_lblCoords)
-    {
-        m_lblCoords->setText(QString("X: %1 m   Y: %2 m   Z: %3 m")
-            .arg(x, 7, 'f', 2)
-            .arg(y, 7, 'f', 2)
-            .arg(z, 7, 'f', 2));
-    }
-}
-
-void ViewportContainer::onViewFront()
-{
-    if (m_occView)
-    {
-        m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXZ);
-    }
-}
-
-void ViewportContainer::onViewTop()
-{
-    if (m_occView)
-    {
-        m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXY);
-    }
-}
-
-void ViewportContainer::onViewIso()
-{
-    if (m_occView)
-    {
-        m_occView->setViewPlaneMode(OccView::ViewPlaneMode::Perspective3D);
-    }
-}
-
-void ViewportContainer::onWorkplaneClicked()
-{
-    QString current = m_btnPlane->text();
-    if (current == "XZ")
-    {
-        onViewTop();
-    }
-    else if (current == "XY")
-    {
-        if (m_occView) m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanYZ);
-    }
-    else if (current == "YZ")
-    {
-        onViewIso();
-    }
-    else
-    {
-        onViewFront();
-    }
 }
 
 void ViewportContainer::updateLevelsList(const std::vector<double>& elevations, const std::vector<std::string>& names)
@@ -319,11 +200,6 @@ void ViewportContainer::onLevelComboChanged(int index)
     double elev = m_levelCombo->itemData(index).toDouble();
     QString text = m_levelCombo->itemText(index);
 
-    if (m_lblElevation)
-    {
-        m_lblElevation->setText(QString("Z = %1 m").arg(elev, 0, 'f', 2));
-    }
-
     if (m_occView)
     {
         m_occView->setActiveLevelElevation(elev);
@@ -355,40 +231,50 @@ void ViewportContainer::onLevelDown()
     }
 }
 
+void ViewportContainer::updateTheme(bool isDark)
+{
+    if (m_topBar)
+    {
+        if (isDark)
+        {
+            m_topBar->setStyleSheet(
+                "QWidget { background: #161B22; border-bottom: 1px solid #30363D; font-family: Segoe UI, sans-serif; font-size: 11px; }"
+                "QComboBox { background: #212830; border: 1px solid #444C56; border-radius: 2px; padding: 1px 6px; font-weight: 600; color: #E6EDF3; min-width: 180px; }"
+                "QComboBox:hover { border-color: #58A6FF; }"
+                "QPushButton { background: #212830; border: 1px solid #444C56; border-radius: 2px; padding: 2px 7px; color: #E6EDF3; font-weight: bold; max-width: 24px; }"
+                "QPushButton:hover { background: #30363D; border-color: #58A6FF; }"
+                "QPushButton:pressed { background: #1F3A5A; }"
+                "QLabel { color: #8B949E; font-weight: 600; padding: 0 4px; }"
+            );
+        }
+        else
+        {
+            m_topBar->setStyleSheet(
+                "QWidget { background: #F6F8FA; border-bottom: 1px solid #D0D7DE; font-family: Segoe UI, sans-serif; font-size: 11px; }"
+                "QComboBox { background: #FFFFFF; border: 1px solid #D0D7DE; border-radius: 2px; padding: 1px 6px; font-weight: 600; color: #24292F; min-width: 180px; }"
+                "QComboBox:hover { border-color: #0969DA; }"
+                "QPushButton { background: #FFFFFF; border: 1px solid #D0D7DE; border-radius: 2px; padding: 2px 7px; color: #24292F; font-weight: bold; max-width: 24px; }"
+                "QPushButton:hover { background: #EAEEF2; border-color: #0969DA; }"
+                "QPushButton:pressed { background: #DDF4FF; }"
+                "QLabel { color: #57606A; font-weight: 600; padding: 0 4px; }"
+            );
+        }
+    }
+
+    if (m_topCornerRight)
+    {
+        m_topCornerRight->setStyleSheet(isDark
+            ? "background: #161B22; border-left: 1px solid #30363D; border-bottom: 1px solid #30363D;"
+            : "background: #F6F8FA; border-left: 1px solid #D0D7DE; border-bottom: 1px solid #D0D7DE;");
+    }
+
+    updateRulers();
+}
+
 void ViewportContainer::setDarkMode(bool dark)
 {
     m_isDarkMode = dark;
-
-    if (m_topBar)
-    {
-        m_topBar->setStyleSheet(dark ? ThemeManager::topBarDarkStyle() : ThemeManager::topBarLightStyle());
-    }
-    if (m_bottomBar)
-    {
-        m_bottomBar->setStyleSheet(dark ? ThemeManager::bottomBarDarkStyle() : ThemeManager::bottomBarLightStyle());
-    }
-    if (m_lblHint)
-    {
-        m_lblHint->setStyleSheet(dark ? "color: #9CA3AF; font-weight: normal; font-style: italic;"
-                                      : "color: #64748B; font-weight: normal; font-style: italic;");
-    }
-    if (m_topCornerRight)
-    {
-        m_topCornerRight->setStyleSheet(dark ? "background: #21252B; border-left: 1px solid #3B4048; border-bottom: 1px solid #3B4048;"
-                                             : "background: #EEF2F6; border-left: 1px solid #CCD3DC; border-bottom: 1px solid #CCD3DC;");
-    }
-    if (m_lblCoords)
-    {
-        m_lblCoords->setStyleSheet(dark ? "font-family: Consolas, monospace; font-size: 11px; color: #60A5FA; font-weight: bold;"
-                                        : "font-family: Consolas, monospace; font-size: 11px; color: #1E2D3D; font-weight: bold;");
-    }
-
-    if (m_corner) m_corner->setDarkMode(dark);
-    if (m_topRuler) m_topRuler->setDarkMode(dark);
-    if (m_leftRuler) m_leftRuler->setDarkMode(dark);
-    if (m_rightRuler) m_rightRuler->setDarkMode(dark);
-
-    if (m_occView) m_occView->setDarkMode(dark);
+    updateTheme(dark);
 }
 
 } // namespace TSA::UI

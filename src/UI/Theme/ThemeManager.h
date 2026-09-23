@@ -1,27 +1,55 @@
 #pragma once
 
+#include <QObject>
 #include <QString>
+#include <QColor>
 
 namespace TSA::UI
 {
 
-class ThemeManager
+class ThemeManager : public QObject
 {
+    Q_OBJECT
+
 public:
-    static QString darkStyleSheet();
-    static QString lightStyleSheet();
+    static ThemeManager& instance();
 
-    static QString topBarDarkStyle();
-    static QString topBarLightStyle();
+    bool isDarkMode() const { return m_isDark; }
+    void setDarkMode(bool dark);
+    void toggleTheme();
 
-    static QString bottomBarDarkStyle();
-    static QString bottomBarLightStyle();
+    // Méthodes statiques pratiques
+    static bool isDark() { return instance().isDarkMode(); }
+    static void setDark(bool dark) { instance().setDarkMode(dark); }
 
-    static bool isDarkMode();
-    static void setDarkMode(bool dark);
+    // Couleurs des règles graduées
+    QColor rulerBackground() const;
+    QColor rulerBorder() const;
+    QColor rulerMajorTick() const;
+    QColor rulerMinorTick() const;
+    QColor rulerText() const;
+
+    // Stylesheets spécifiques
+    QString ribbonTabWidgetStyleSheet() const;
+    QString ribbonScrollStyleSheet() const;
+    QString ribbonContainerStyleSheet() const;
+    QString ribbonPanelStyleSheet() const;
+    QString ribbonPanelTitleStyleSheet() const;
+    QString ribbonSeparatorStyleSheet() const;
+    QString ribbonButtonLargeStyleSheet() const;
+    QString ribbonButtonSmallStyleSheet() const;
+    QString topBarStyleSheet() const;
+    QString topBarButtonStyleSheet() const;
+    QString topBarComboStyleSheet() const;
+
+signals:
+    void themeChanged(bool isDark);
 
 private:
-    static bool s_darkMode;
+    ThemeManager();
+    void applyApplicationTheme();
+
+    bool m_isDark = true;
 };
 
 } // namespace TSA::UI

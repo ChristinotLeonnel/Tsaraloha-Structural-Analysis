@@ -1,5 +1,6 @@
 #include "ViewportRuler.h"
 #include "../../Viewer/OccView.h"
+#include "../Theme/ThemeManager.h"
 #include <QPainter>
 #include <QPaintEvent>
 #include <cmath>
@@ -17,21 +18,13 @@ CornerWidget::CornerWidget(QWidget* parent)
     setFixedSize(34, 22);
 }
 
-void CornerWidget::setDarkMode(bool dark)
-{
-    if (m_darkMode != dark)
-    {
-        m_darkMode = dark;
-        update();
-    }
-}
-
 void CornerWidget::paintEvent(QPaintEvent* /*event*/)
 {
+    const auto& tm = ThemeManager::instance();
     QPainter p(this);
-    p.fillRect(rect(), m_darkMode ? QColor(0x21, 0x25, 0x2B) : QColor(0xEE, 0xF2, 0xF6));
+    p.fillRect(rect(), tm.rulerBackground());
 
-    p.setPen(m_darkMode ? QColor(0x3B, 0x40, 0x48) : QColor(0xCC, 0xD3, 0xDC));
+    p.setPen(tm.rulerBorder());
     p.drawLine(rect().right(), 0, rect().right(), rect().bottom());
     p.drawLine(0, rect().bottom(), rect().right(), rect().bottom());
 
@@ -39,7 +32,7 @@ void CornerWidget::paintEvent(QPaintEvent* /*event*/)
     font.setPointSize(8);
     font.setBold(true);
     p.setFont(font);
-    p.setPen(m_darkMode ? QColor(0x8B, 0x94, 0x9E) : QColor(0x55, 0x60, 0x70));
+    p.setPen(tm.rulerText());
     p.drawText(rect(), Qt::AlignCenter, "m");
 }
 
@@ -68,15 +61,6 @@ void HorizontalRulerWidget::updateRuler()
     update();
 }
 
-void HorizontalRulerWidget::setDarkMode(bool dark)
-{
-    if (m_darkMode != dark)
-    {
-        m_darkMode = dark;
-        update();
-    }
-}
-
 static double calculateNiceStep(double rawStep)
 {
     if (rawStep <= 0.0) return 1.0;
@@ -89,11 +73,12 @@ static double calculateNiceStep(double rawStep)
 
 void HorizontalRulerWidget::paintEvent(QPaintEvent* /*event*/)
 {
+    const auto& tm = ThemeManager::instance();
     QPainter p(this);
-    p.fillRect(rect(), m_darkMode ? QColor(0x21, 0x25, 0x2B) : QColor(0xEE, 0xF2, 0xF6));
+    p.fillRect(rect(), tm.rulerBackground());
 
     // Ligne de bordure inférieure
-    p.setPen(m_darkMode ? QColor(0x3B, 0x40, 0x48) : QColor(0xCC, 0xD3, 0xDC));
+    p.setPen(tm.rulerBorder());
     p.drawLine(0, height() - 1, width(), height() - 1);
 
     if (!m_occView)
@@ -140,7 +125,7 @@ void HorizontalRulerWidget::paintEvent(QPaintEvent* /*event*/)
         if (px >= -20 && px <= width() + 20)
         {
             // Trait majeur
-            p.setPen(m_darkMode ? QColor(0x8B, 0x94, 0x9E) : QColor(0x70, 0x7E, 0x90));
+            p.setPen(tm.rulerMajorTick());
             p.drawLine(px, height() - 9, px, height() - 1);
 
             // Trait mineur médian
@@ -148,7 +133,7 @@ void HorizontalRulerWidget::paintEvent(QPaintEvent* /*event*/)
             m_occView->worldToPixel(v + 0.5 * step, wy0, wz0, pxMid, pyMid);
             if (pxMid >= 0 && pxMid <= width())
             {
-                p.setPen(m_darkMode ? QColor(0x56, 0x5E, 0x69) : QColor(0x9E, 0xAB, 0xBC));
+                p.setPen(tm.rulerMinorTick());
                 p.drawLine(pxMid, height() - 5, pxMid, height() - 1);
             }
 
@@ -163,25 +148,24 @@ void HorizontalRulerWidget::paintEvent(QPaintEvent* /*event*/)
                 txt = QString::number(v, 'f', 1).replace('.', ',');
             }
 
-            p.setPen(m_darkMode ? QColor(0xC9, 0xD1, 0xD9) : QColor(0x33, 0x3E, 0x4E));
+            p.setPen(tm.rulerText());
             QRect textRect(px - 35, 1, 70, height() - 10);
             p.drawText(textRect, Qt::AlignCenter, txt);
         }
     }
 
-    // Repère suiveur de souris (Hairline curseur et triangle indicateur)
+    // Repère suiveur de souris (Hairline curseur)
     if (m_cursorPixelX >= 0 && m_cursorPixelX <= width())
     {
         p.setPen(QColor(0xD3, 0x2F, 0x2F)); // Rouge alerte suiveur
         p.drawLine(m_cursorPixelX, 0, m_cursorPixelX, height() - 1);
 
-        // Triangle indicateur pointant vers le bas (vers la vue 3D)
+        // Petit triangle indicateur en haut de la règle
         QPolygon triangle;
-        triangle << QPoint(m_cursorPixelX - 4, height() - 1)
-                 << QPoint(m_cursorPixelX + 4, height() - 1)
-                 << QPoint(m_cursorPixelX, height() - 7);
+        triangle << QPoint(m_cursorPixelX - 3, 0)
+                 << QPoint(m_cursorPixelX + 3, 0)
+                 << QPoint(m_cursorPixelX, 4);
         p.setBrush(QColor(0xD3, 0x2F, 0x2F));
-        p.setPen(Qt::NoPen);
         p.drawPolygon(triangle);
     }
 }
@@ -212,22 +196,14 @@ void VerticalRulerWidget::updateRuler()
     update();
 }
 
-void VerticalRulerWidget::setDarkMode(bool dark)
-{
-    if (m_darkMode != dark)
-    {
-        m_darkMode = dark;
-        update();
-    }
-}
-
 void VerticalRulerWidget::paintEvent(QPaintEvent* /*event*/)
 {
+    const auto& tm = ThemeManager::instance();
     QPainter p(this);
-    p.fillRect(rect(), m_darkMode ? QColor(0x21, 0x25, 0x2B) : QColor(0xEE, 0xF2, 0xF6));
+    p.fillRect(rect(), tm.rulerBackground());
 
     // Ligne de bordure latérale
-    p.setPen(m_darkMode ? QColor(0x3B, 0x40, 0x48) : QColor(0xCC, 0xD3, 0xDC));
+    p.setPen(tm.rulerBorder());
     if (m_position == Position::Left)
     {
         p.drawLine(width() - 1, 0, width() - 1, height());
@@ -286,7 +262,7 @@ void VerticalRulerWidget::paintEvent(QPaintEvent* /*event*/)
         if (py >= -20 && py <= height() + 20)
         {
             // Trait majeur
-            p.setPen(m_darkMode ? QColor(0x8B, 0x94, 0x9E) : QColor(0x70, 0x7E, 0x90));
+            p.setPen(tm.rulerMajorTick());
             if (m_position == Position::Left)
             {
                 p.drawLine(width() - 9, py, width() - 1, py);
@@ -301,7 +277,7 @@ void VerticalRulerWidget::paintEvent(QPaintEvent* /*event*/)
             m_occView->worldToPixel(wx0, wy0, v + 0.5 * step, pxMid, pyMid);
             if (pyMid >= 0 && pyMid <= height())
             {
-                p.setPen(m_darkMode ? QColor(0x56, 0x5E, 0x69) : QColor(0x9E, 0xAB, 0xBC));
+                p.setPen(tm.rulerMinorTick());
                 if (m_position == Position::Left)
                 {
                     p.drawLine(width() - 5, pyMid, width() - 1, pyMid);
@@ -324,7 +300,7 @@ void VerticalRulerWidget::paintEvent(QPaintEvent* /*event*/)
             }
 
             p.save();
-            p.setPen(m_darkMode ? QColor(0xC9, 0xD1, 0xD9) : QColor(0x33, 0x3E, 0x4E));
+            p.setPen(tm.rulerText());
 
             // Pour une lisibilité optimale, on pivote le texte de 90°
             if (m_position == Position::Left)
@@ -343,7 +319,7 @@ void VerticalRulerWidget::paintEvent(QPaintEvent* /*event*/)
         }
     }
 
-    // Repère suiveur de souris (Hairline curseur et triangle indicateur)
+    // Repère suiveur de souris
     if (m_cursorPixelY >= 0 && m_cursorPixelY <= height())
     {
         p.setPen(QColor(0xD3, 0x2F, 0x2F));
@@ -352,20 +328,17 @@ void VerticalRulerWidget::paintEvent(QPaintEvent* /*event*/)
         QPolygon triangle;
         if (m_position == Position::Left)
         {
-            // Bord droit de la règle gauche (adjacent à la vue 3D)
-            triangle << QPoint(width() - 1, m_cursorPixelY - 4)
-                     << QPoint(width() - 1, m_cursorPixelY + 4)
-                     << QPoint(width() - 7, m_cursorPixelY);
+            triangle << QPoint(0, m_cursorPixelY - 3)
+                     << QPoint(0, m_cursorPixelY + 3)
+                     << QPoint(4, m_cursorPixelY);
         }
         else
         {
-            // Bord gauche de la règle droite (adjacent à la vue 3D)
-            triangle << QPoint(0, m_cursorPixelY - 4)
-                     << QPoint(0, m_cursorPixelY + 4)
-                     << QPoint(6, m_cursorPixelY);
+            triangle << QPoint(width() - 1, m_cursorPixelY - 3)
+                     << QPoint(width() - 1, m_cursorPixelY + 3)
+                     << QPoint(width() - 5, m_cursorPixelY);
         }
         p.setBrush(QColor(0xD3, 0x2F, 0x2F));
-        p.setPen(Qt::NoPen);
         p.drawPolygon(triangle);
     }
 }

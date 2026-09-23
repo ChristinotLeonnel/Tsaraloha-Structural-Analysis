@@ -168,9 +168,9 @@ void OccView::initOcc()
         wind->Map();
     }
 
-    Quantity_Color topColor = m_isDarkMode ? Quantity_Color(0.12, 0.14, 0.18, Quantity_TOC_RGB)
+    Quantity_Color topColor = m_isDarkMode ? Quantity_Color(0.18, 0.22, 0.28, Quantity_TOC_RGB)
                                            : Quantity_Color(0.82, 0.88, 0.95, Quantity_TOC_RGB);
-    Quantity_Color bottomColor = m_isDarkMode ? Quantity_Color(0.06, 0.08, 0.10, Quantity_TOC_RGB)
+    Quantity_Color bottomColor = m_isDarkMode ? Quantity_Color(0.08, 0.10, 0.13, Quantity_TOC_RGB)
                                               : Quantity_Color(0.92, 0.94, 0.98, Quantity_TOC_RGB);
     m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
 
@@ -2027,7 +2027,18 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                 emit objectHovered(tr("Fenêtre (Gauche -> Droite) : Sélectionne uniquement les éléments entièrement inclus"));
             }
 
-            m_selectRubberBand->SetRectangle(minX, minY, maxX, maxY);
+            // Inverser l'axe Y pour AIS_RubberBand (convention OpenGL : Y=0 en bas)
+            // Qt fournit des coordonnées écran (Y=0 en haut)
+            int winH = 0;
+            if (!m_view.IsNull() && !m_view->Window().IsNull())
+            {
+                int winW = 0;
+                m_view->Window()->Size(winW, winH);
+            }
+            int rbMinY = winH - maxY;
+            int rbMaxY = winH - minY;
+
+            m_selectRubberBand->SetRectangle(minX, rbMinY, maxX, rbMaxY);
 
             if (!m_context.IsNull())
             {

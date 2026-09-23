@@ -25,5 +25,40 @@
         <file alias="TSA.ico">icons/TSA.ico</file>
         <file alias="theme_dark.svg">icons/theme_dark.svg</file>
         <file alias="fullscreen.svg">icons/fullscreen.svg</file>
+        <!-- Nouvelles icônes AutoCAD/Génie Civil -->
+        <file alias="file_new.svg">icons/file_new.svg</file>
+        <file alias="file_open.svg">icons/file_open.svg</file>
+        <file alias="file_save.svg">icons/file_save.svg</file>
+        <file alias="geom_line.svg">icons/geom_line.svg</file>
+        <file alias="geom_polyline.svg">icons/geom_polyline.svg</file>
+        <file alias="geom_circle.svg">icons/geom_circle.svg</file>
+        <file alias="geom_cube.svg">icons/geom_cube.svg</file>
+        <file alias="struct_wall.svg">icons/struct_wall.svg</file>
+        <file alias="struct_truss.svg">icons/struct_truss.svg</file>
+        <file alias="struct_foundation.svg">icons/struct_foundation.svg</file>
+        <file alias="section_i.svg">icons/section_i.svg</file>
+        <file alias="section_rect.svg">icons/section_rect.svg</file>
+        <file alias="section_circle.svg">icons/section_circle.svg</file>
+        <file alias="material_concrete.svg">icons/material_concrete.svg</file>
+        <file alias="material_steel.svg">icons/material_steel.svg</file>
+        <file alias="load_point.svg">icons/load_point.svg</file>
+        <file alias="load_dist.svg">icons/load_dist.svg</file>
+        <file alias="load_moment.svg">icons/load_moment.svg</file>
+        <file alias="load_seismic.svg">icons/load_seismic.svg</file>
+        <file alias="support_fixed.svg">icons/support_fixed.svg</file>
+        <file alias="support_pinned.svg">icons/support_pinned.svg</file>
+        <file alias="support_roller.svg">icons/support_roller.svg</file>
+        <file alias="mesh_generate.svg">icons/mesh_generate.svg</file>
+        <file alias="analysis_run.svg">icons/analysis_run.svg</file>
+        <file alias="analysis_modal.svg">icons/analysis_modal.svg</file>
+        <file alias="results_disp.svg">icons/results_disp.svg</file>
+        <file alias="results_force.svg">icons/results_force.svg</file>
+        <file alias="results_stress.svg">icons/results_stress.svg</file>
+        <file alias="measure.svg">icons/measure.svg</file>
+        <file alias="view_top.svg">icons/view_top.svg</file>
+        <file alias="view_front.svg">icons/view_front.svg</file>
+        <file alias="view_side.svg">icons/view_side.svg</file>
+        <file alias="visibility.svg">icons/visibility.svg</file>
+        <file alias="console.svg">icons/console.svg</file>
     </qresource>
 </RCC>

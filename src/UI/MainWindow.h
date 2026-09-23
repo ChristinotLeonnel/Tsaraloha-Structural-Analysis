@@ -19,6 +19,10 @@ namespace TSA::UI
     class PropertyPanel;
     class ViewportContainer;
     class SectionCutDialog;
+    class RibbonBar;
+    class VisibilityDock;
+    class LogConsoleDock;
+    class HelpDialog;
 }
 
 class OccView;
@@ -79,10 +83,17 @@ private slots:
     void onActionUndo();
     void onActionRedo();
 
+    // Fichier
+    void onActionNew();
+    void onActionOpen();
+    void onActionSave();
+
 private:
     void updateUndoRedoActions();
     void setupUi();
+    void createActions();
     void createMenus();
+    void createRibbon();
     void createToolBars();
     void createDockWindows();
     void createStatusBar();
@@ -97,12 +108,21 @@ private:
     TSA::UI::ViewportContainer* m_viewportContainer = nullptr;
     TSA::UI::ModelTreeWidget* m_modelTree = nullptr;
     TSA::UI::PropertyPanel*   m_propertyPanel = nullptr;
+    TSA::UI::RibbonBar*       m_ribbonBar = nullptr;
 
     QDockWidget* m_modelTreeDock = nullptr;
     QDockWidget* m_propertiesDock = nullptr;
+    TSA::UI::VisibilityDock* m_visibilityDock = nullptr;
+    TSA::UI::LogConsoleDock* m_consoleDock = nullptr;
 
     QLabel*  m_statusCoordinates = nullptr;
     QLabel*  m_statusInfo = nullptr;
+
+    // Actions Fichier
+    QAction* m_actionNew = nullptr;
+    QAction* m_actionOpen = nullptr;
+    QAction* m_actionSave = nullptr;
+    QAction* m_actionExit = nullptr;
 
     QAction* m_actionFitAll = nullptr;
     QAction* m_actionResetView = nullptr;
@@ -190,7 +210,43 @@ private:
     QAction* m_actionCoordSystem = nullptr;
     QAction* m_actionSectionCut = nullptr;
 
+    // Actions Thème & Aide
+    QAction* m_actionToggleTheme = nullptr;
+    QAction* m_actionHelp = nullptr;
+    QAction* m_actionShortcuts = nullptr;
+    QAction* m_actionAbout = nullptr;
+
+    // Actions Métier & Outils Avancés
+    QAction* m_actionWall = nullptr;
+    QAction* m_actionTruss = nullptr;
+    QAction* m_actionFooting = nullptr;
+
+    QAction* m_actionSecI = nullptr;
+    QAction* m_actionSecRect = nullptr;
+    QAction* m_actionSecCirc = nullptr;
+
+    QAction* m_actionConcrete = nullptr;
+    QAction* m_actionSteel = nullptr;
+
+    QAction* m_actionFixed = nullptr;
+    QAction* m_actionPinned = nullptr;
+    QAction* m_actionRoller = nullptr;
+
+    QAction* m_actionPointLoad = nullptr;
+    QAction* m_actionDistLoad = nullptr;
+    QAction* m_actionMoment = nullptr;
+    QAction* m_actionSeismic = nullptr;
+    QAction* m_actionMeshGen = nullptr;
+    QAction* m_actionRunSolve = nullptr;
+    QAction* m_actionModal = nullptr;
+
+    QAction* m_actionResultsDisp = nullptr;
+    QAction* m_actionResultsForces = nullptr;
+    QAction* m_actionResultsStress = nullptr;
+    QAction* m_actionMeasure = nullptr;
+
     TSA::UI::SectionCutDialog* m_sectionCutDialog = nullptr;
+    TSA::UI::HelpDialog* m_helpDialog = nullptr;
 
 private slots:
     void onActionViewXY();
@@ -199,6 +255,34 @@ private slots:
     void onActionView3D();
     void onActionCoordSystem();
     void onActionSectionCut();
+    void onToggleTheme();
+    void onActionHelp();
+    void onActionShortcuts();
+    void onActionAbout();
+
+    // Slots Outils Métier
+    void onActionWall();
+    void onActionTruss();
+    void onActionFooting();
+    void onActionSecI();
+    void onActionSecRect();
+    void onActionSecCirc();
+    void onActionConcrete();
+    void onActionSteel();
+    void onActionFixed();
+    void onActionPinned();
+    void onActionRoller();
+    void onActionPointLoad();
+    void onActionDistLoad();
+    void onActionMoment();
+    void onActionSeismic();
+    void onActionMeshGen();
+    void onActionRunSolve();
+    void onActionModal();
+    void onActionResultsDisp();
+    void onActionResultsForces();
+    void onActionResultsStress();
+    void onActionMeasure();
 
     // Slots Transformations 3D directes & Presse-papier
     void onActionMove3D();
