@@ -522,6 +522,12 @@ void MainWindow::createMenus()
     m_actionDarkMode->setCheckable(true);
     m_actionDarkMode->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_D));
 
+    m_actionFullScreen = viewMenu->addAction(tr("Mode &Plein écran"), this, &MainWindow::onToggleFullScreen);
+    m_actionFullScreen->setIcon(QIcon(":/icons/fullscreen.svg"));
+    m_actionFullScreen->setToolTip(tr("Basculer en mode plein écran (F11)"));
+    m_actionFullScreen->setCheckable(true);
+    m_actionFullScreen->setShortcut(QKeySequence(Qt::Key_F11));
+
     viewMenu->addSeparator();
 
     // Menu Grille 3D & Niveaux
@@ -736,6 +742,7 @@ void MainWindow::createToolBars()
     viewToolBar->addAction(m_actionGridManager);
     viewToolBar->addSeparator();
     viewToolBar->addAction(m_actionDarkMode);
+    viewToolBar->addAction(m_actionFullScreen);
 }
 
 void MainWindow::createDockWindows()
@@ -1120,6 +1127,60 @@ void MainWindow::onToggleDarkMode(bool checked)
     if (m_viewportContainer)
     {
         m_viewportContainer->setDarkMode(checked);
+    }
+}
+
+void MainWindow::onToggleFullScreen(bool checked)
+{
+    if (checked)
+    {
+        if (!isFullScreen())
+        {
+            m_wasMaximizedBeforeFullScreen = isMaximized();
+            showFullScreen();
+            if (statusBar())
+                statusBar()->showMessage(tr("Mode plein écran activé (F11 pour quitter)"), 3000);
+        }
+    }
+    else
+    {
+        if (isFullScreen())
+        {
+            if (m_wasMaximizedBeforeFullScreen)
+                showMaximized();
+            else
+                showNormal();
+            if (statusBar())
+                statusBar()->showMessage(tr("Mode fenêtre rétabli"), 2000);
+        }
+    }
+}
+
+void MainWindow::changeEvent(QEvent* event)
+{
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::WindowStateChange)
+    {
+        bool full = isFullScreen();
+        if (m_actionFullScreen && m_actionFullScreen->isChecked() != full)
+        {
+            m_actionFullScreen->blockSignals(true);
+            m_actionFullScreen->setChecked(full);
+            m_actionFullScreen->blockSignals(false);
+        }
+        if (m_actionFullScreen)
+        {
+            if (full)
+            {
+                m_actionFullScreen->setText(tr("&Quitter le plein écran"));
+                m_actionFullScreen->setToolTip(tr("Quitter le mode plein écran (F11)"));
+            }
+            else
+            {
+                m_actionFullScreen->setText(tr("Mode &Plein écran"));
+                m_actionFullScreen->setToolTip(tr("Basculer en mode plein écran (F11)"));
+            }
+        }
     }
 }
 

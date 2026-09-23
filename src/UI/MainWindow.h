@@ -54,6 +54,7 @@ private slots:
     void onToggleLevelsVisible(bool checked);
     void onToggleRulersVisible(bool checked);
     void onToggleDarkMode(bool checked);
+    void onToggleFullScreen(bool checked);
 
     // Modes d'interaction (Dessin 3D)
     void onModeSelect();
@@ -116,6 +117,8 @@ private:
     QAction* m_actionLevelsVisible = nullptr;
     QAction* m_actionRulersVisible = nullptr;
     QAction* m_actionDarkMode = nullptr;
+    QAction* m_actionFullScreen = nullptr;
+    bool m_wasMaximizedBeforeFullScreen = false;
 
     // Actions Modes d'interaction / Dessin 3D
     QActionGroup* m_drawModeGroup = nullptr;
@@ -209,4 +212,7 @@ private slots:
     void onPointToPointRotateRequested(const gp_Pnt& center, double angleRad, bool isCopy);
     void onOriginMoveRequested(const gp_Pnt& newOrigin);
     void onPasteAtPointRequested(const gp_Pnt& target);
+
+protected:
+    void changeEvent(QEvent* event) override;
 };
