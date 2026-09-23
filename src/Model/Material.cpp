@@ -59,13 +59,28 @@ Material Material::steelS355()
     return m;
 }
 
+Material Material::timberC24()
+{
+    Material m;
+    m.id = 5;
+    m.name = "Timber C24";
+    m.type = MaterialType::Timber;
+    m.E = 11.0e9;       // 11 GPa
+    m.nu = 0.30;
+    m.density = 420.0;  // 420 kg/m³
+    m.fk = 24.0e6;      // 24 MPa
+    m.thermalCoeff = 5.0e-6;
+    return m;
+}
+
 std::vector<Material> Material::defaultLibrary()
 {
     return {
         concreteC25_30(),
         concreteC30_37(),
         steelS235(),
-        steelS355()
+        steelS355(),
+        timberC24()
     };
 }
 

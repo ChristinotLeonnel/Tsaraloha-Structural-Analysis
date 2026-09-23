@@ -642,16 +642,29 @@ void OccView::updateBeamShape(int beamId)
         }
     }
 
-    // 2. Créer le nouveau solide 3D
+    // 2. Créer le nouveau solide 3D selon la forme réelle de la section et l'orientation
     TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
-        *nodeA, *nodeB, beam->width(), beam->height()
+        *nodeA, *nodeB, beam->section(), beam->rotation()
     );
 
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisBeam = new AIS_Shape(shape);
-        aisBeam->SetColor(Quantity_NOC_STEELBLUE);
-        aisBeam->SetMaterial(Graphic3d_NOM_STEEL);
+        if (beam->material().type == TSA::Model::MaterialType::Steel || beam->section().shape == TSA::Model::SectionShape::IShape)
+        {
+            aisBeam->SetColor(Quantity_NOC_STEELBLUE);
+            aisBeam->SetMaterial(Graphic3d_NOM_STEEL);
+        }
+        else if (beam->material().type == TSA::Model::MaterialType::Timber)
+        {
+            aisBeam->SetColor(Quantity_NOC_BURLYWOOD4);
+            aisBeam->SetMaterial(Graphic3d_NOM_SATIN);
+        }
+        else
+        {
+            aisBeam->SetColor(Quantity_NOC_LIGHTSLATEGRAY);
+            aisBeam->SetMaterial(Graphic3d_NOM_STONE);
+        }
         aisBeam->SetDisplayMode(AIS_Shaded);
 
         m_context->Display(aisBeam, false);
@@ -697,14 +710,27 @@ void OccView::updateColumnShape(int columnId)
     }
 
     TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
-        *nodeA, *nodeB, col->width(), col->height()
+        *nodeA, *nodeB, col->section(), col->rotation()
     );
 
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisCol = new AIS_Shape(shape);
-        aisCol->SetColor(Quantity_NOC_DARKSLATEBLUE);
-        aisCol->SetMaterial(Graphic3d_NOM_STONE);
+        if (col->material().type == TSA::Model::MaterialType::Steel || col->section().shape == TSA::Model::SectionShape::IShape)
+        {
+            aisCol->SetColor(Quantity_NOC_SLATEBLUE);
+            aisCol->SetMaterial(Graphic3d_NOM_STEEL);
+        }
+        else if (col->material().type == TSA::Model::MaterialType::Timber)
+        {
+            aisCol->SetColor(Quantity_NOC_BURLYWOOD3);
+            aisCol->SetMaterial(Graphic3d_NOM_SATIN);
+        }
+        else
+        {
+            aisCol->SetColor(Quantity_NOC_GRAY40);
+            aisCol->SetMaterial(Graphic3d_NOM_STONE);
+        }
         aisCol->SetDisplayMode(AIS_Shaded);
 
         m_context->Display(aisCol, false);
@@ -905,12 +931,13 @@ void OccView::updateTrussMemberShape(int memberId)
         }
     }
 
-    double dim = (tr->section().width > 0) ? tr->section().width : 0.10;
-    TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(*nodeA, *nodeB, dim, dim);
+    TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
+        *nodeA, *nodeB, tr->section(), 0.0
+    );
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisTr = new AIS_Shape(shape);
-        aisTr->SetColor(Quantity_NOC_CORAL);
+        aisTr->SetColor(Quantity_NOC_GOLDENROD);
         aisTr->SetMaterial(Graphic3d_NOM_STEEL);
         aisTr->SetDisplayMode(AIS_Shaded);
 

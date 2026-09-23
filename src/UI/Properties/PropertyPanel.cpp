@@ -152,6 +152,29 @@ void PropertyPanel::setupUi()
     m_beamRotationSpin->setSingleStep(15.0);
     m_beamRotationSpin->setSuffix(" °");
 
+    connect(m_beamSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+        int secData = m_beamSectionTypeCombo->currentData().toInt();
+        if (secData >= 160 && secData <= 400) {
+            auto s = TSA::Model::Section::ipe(secData);
+            m_beamWidthSpin->setValue(s.width);
+            m_beamHeightSpin->setValue(s.height);
+            int stIdx = m_beamMaterialCombo->findData(4);
+            if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
+        } else if (secData == 2000 || secData == 2400) {
+            auto s = TSA::Model::Section::hea(secData / 10);
+            m_beamWidthSpin->setValue(s.width);
+            m_beamHeightSpin->setValue(s.height);
+            int stIdx = m_beamMaterialCombo->findData(4);
+            if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
+        } else if (secData == 2001 || secData == 3001) {
+            auto s = TSA::Model::Section::heb((secData - 1) / 10);
+            m_beamWidthSpin->setValue(s.width);
+            m_beamHeightSpin->setValue(s.height);
+            int stIdx = m_beamMaterialCombo->findData(4);
+            if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
+        }
+    });
+
     beamForm->addRow(tr("Nom / Repère :"), m_beamNameEdit);
     beamForm->addRow(tr("ID Interne :"), m_beamIdLabel);
     beamForm->addRow(tr("Nœud Départ :"), m_beamStartNodeLabel);
@@ -206,6 +229,29 @@ void PropertyPanel::setupUi()
     m_columnRotationSpin->setRange(0.0, 360.0);
     m_columnRotationSpin->setSingleStep(15.0);
     m_columnRotationSpin->setSuffix(" °");
+
+    connect(m_columnSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+        int secData = m_columnSectionTypeCombo->currentData().toInt();
+        if (secData >= 160 && secData <= 400) {
+            auto s = TSA::Model::Section::ipe(secData);
+            m_columnWidthSpin->setValue(s.width);
+            m_columnDepthSpin->setValue(s.height);
+            int stIdx = m_columnMaterialCombo->findData(4);
+            if (stIdx >= 0) m_columnMaterialCombo->setCurrentIndex(stIdx);
+        } else if (secData == 2000 || secData == 2400) {
+            auto s = TSA::Model::Section::hea(secData / 10);
+            m_columnWidthSpin->setValue(s.width);
+            m_columnDepthSpin->setValue(s.height);
+            int stIdx = m_columnMaterialCombo->findData(4);
+            if (stIdx >= 0) m_columnMaterialCombo->setCurrentIndex(stIdx);
+        } else if (secData == 2001 || secData == 3001) {
+            auto s = TSA::Model::Section::heb((secData - 1) / 10);
+            m_columnWidthSpin->setValue(s.width);
+            m_columnDepthSpin->setValue(s.height);
+            int stIdx = m_columnMaterialCombo->findData(4);
+            if (stIdx >= 0) m_columnMaterialCombo->setCurrentIndex(stIdx);
+        }
+    });
 
     colForm->addRow(tr("Nom / Repère :"), m_columnNameEdit);
     colForm->addRow(tr("ID Interne :"), m_columnIdLabel);
@@ -522,6 +568,38 @@ void PropertyPanel::showBeamProperties(int beamId)
     m_beamHeightSpin->setValue(beam->height());
     m_beamRotationSpin->setValue(beam->rotation());
 
+    m_beamSectionTypeCombo->blockSignals(true);
+    const auto& sec = beam->section();
+    if (sec.shape == TSA::Model::SectionShape::Circular)
+    {
+        m_beamSectionTypeCombo->setCurrentIndex(m_beamSectionTypeCombo->findData(1));
+    }
+    else if (sec.shape == TSA::Model::SectionShape::IShape)
+    {
+        int idx = m_beamSectionTypeCombo->findText(QString::fromStdString(sec.name));
+        if (idx < 0)
+        {
+            int hMm = static_cast<int>(std::round(sec.height * 1000.0));
+            idx = m_beamSectionTypeCombo->findData(hMm);
+        }
+        if (idx >= 0) m_beamSectionTypeCombo->setCurrentIndex(idx);
+        else m_beamSectionTypeCombo->setCurrentIndex(0);
+    }
+    else
+    {
+        m_beamSectionTypeCombo->setCurrentIndex(m_beamSectionTypeCombo->findData(0));
+    }
+    m_beamSectionTypeCombo->blockSignals(false);
+
+    int matCode = 1;
+    if (beam->material().type == TSA::Model::MaterialType::Steel)
+        matCode = (beam->material().fk > 300e6) ? 4 : 3;
+    else if (beam->material().type == TSA::Model::MaterialType::Timber)
+        matCode = 5;
+    else
+        matCode = (beam->material().fk > 28e6) ? 2 : 1;
+    m_beamMaterialCombo->setCurrentIndex(m_beamMaterialCombo->findData(matCode));
+
     m_beamGroup->setVisible(true);
 }
 
@@ -545,6 +623,38 @@ void PropertyPanel::showColumnProperties(int columnId)
     m_columnWidthSpin->setValue(col->width());
     m_columnDepthSpin->setValue(col->height());
     m_columnRotationSpin->setValue(col->rotation());
+
+    m_columnSectionTypeCombo->blockSignals(true);
+    const auto& sec = col->section();
+    if (sec.shape == TSA::Model::SectionShape::Circular)
+    {
+        m_columnSectionTypeCombo->setCurrentIndex(m_columnSectionTypeCombo->findData(1));
+    }
+    else if (sec.shape == TSA::Model::SectionShape::IShape)
+    {
+        int idx = m_columnSectionTypeCombo->findText(QString::fromStdString(sec.name));
+        if (idx < 0)
+        {
+            int hMm = static_cast<int>(std::round(sec.height * 1000.0));
+            idx = m_columnSectionTypeCombo->findData(hMm);
+        }
+        if (idx >= 0) m_columnSectionTypeCombo->setCurrentIndex(idx);
+        else m_columnSectionTypeCombo->setCurrentIndex(0);
+    }
+    else
+    {
+        m_columnSectionTypeCombo->setCurrentIndex(m_columnSectionTypeCombo->findData(0));
+    }
+    m_columnSectionTypeCombo->blockSignals(false);
+
+    int matCode = 1;
+    if (col->material().type == TSA::Model::MaterialType::Steel)
+        matCode = (col->material().fk > 300e6) ? 4 : 3;
+    else if (col->material().type == TSA::Model::MaterialType::Timber)
+        matCode = 5;
+    else
+        matCode = (col->material().fk > 28e6) ? 2 : 1;
+    m_columnMaterialCombo->setCurrentIndex(m_columnMaterialCombo->findData(matCode));
 
     m_columnGroup->setVisible(true);
 }
@@ -574,6 +684,15 @@ void PropertyPanel::showSlabProperties(int slabId)
     else if (slab->slabType() == TSA::Model::SlabType::FlatSlab) m_slabRadioFlat->setChecked(true);
     else m_slabRadioTwoWay->setChecked(true);
 
+    int matCode = 1;
+    if (slab->material().type == TSA::Model::MaterialType::Steel)
+        matCode = (slab->material().fk > 300e6) ? 4 : 3;
+    else if (slab->material().type == TSA::Model::MaterialType::Timber)
+        matCode = 5;
+    else
+        matCode = (slab->material().fk > 28e6) ? 2 : 1;
+    m_slabMaterialCombo->setCurrentIndex(m_slabMaterialCombo->findData(matCode));
+
     m_slabGroup->setVisible(true);
 }
 
@@ -597,6 +716,15 @@ void PropertyPanel::showWallProperties(int wallId)
     m_wallHeightSpin->setValue(wall->height());
     m_wallThicknessSpin->setValue(wall->thickness());
     m_wallOffsetSpin->setValue(wall->offset());
+
+    int matCode = 1;
+    if (wall->material().type == TSA::Model::MaterialType::Steel)
+        matCode = (wall->material().fk > 300e6) ? 4 : 3;
+    else if (wall->material().type == TSA::Model::MaterialType::Timber)
+        matCode = 5;
+    else
+        matCode = (wall->material().fk > 28e6) ? 2 : 1;
+    m_wallMaterialCombo->setCurrentIndex(m_wallMaterialCombo->findData(matCode));
 
     m_wallGroup->setVisible(true);
 }
@@ -625,6 +753,15 @@ void PropertyPanel::showFoundationProperties(int foundationId)
     m_foundationHeightHSpin->setValue(f->heightH());
     m_foundationSoilCapacitySpin->setValue(f->soilBearingCapacity());
 
+    int matCode = 1;
+    if (f->material().type == TSA::Model::MaterialType::Steel)
+        matCode = (f->material().fk > 300e6) ? 4 : 3;
+    else if (f->material().type == TSA::Model::MaterialType::Timber)
+        matCode = 5;
+    else
+        matCode = (f->material().fk > 28e6) ? 2 : 1;
+    m_foundationMaterialCombo->setCurrentIndex(m_foundationMaterialCombo->findData(matCode));
+
     m_foundationGroup->setVisible(true);
 }
 
@@ -650,6 +787,15 @@ void PropertyPanel::showTrussMemberProperties(int memberId)
     if (idx >= 0) m_trussRoleCombo->setCurrentIndex(idx);
 
     m_trussDimensionSpin->setValue(truss->section().width);
+
+    int matCode = 3;
+    if (truss->material().type == TSA::Model::MaterialType::Steel)
+        matCode = (truss->material().fk > 300e6) ? 4 : 3;
+    else if (truss->material().type == TSA::Model::MaterialType::Timber)
+        matCode = 5;
+    else
+        matCode = (truss->material().fk > 28e6) ? 2 : 1;
+    m_trussMaterialCombo->setCurrentIndex(m_trussMaterialCombo->findData(matCode));
 
     m_trussGroup->setVisible(true);
 }
@@ -679,10 +825,45 @@ void PropertyPanel::onApplyBeam()
     m_model->pushUndoState(tr("Modification Poutre %1").arg(m_currentBeamId).toStdString());
 
     beam->setName(m_beamNameEdit->text().toStdString());
-    beam->setWidth(m_beamWidthSpin->value());
-    beam->setHeight(m_beamHeightSpin->value());
+
+    // 1. Mise à jour de la section
+    int secData = m_beamSectionTypeCombo->currentData().toInt();
+    if (secData == 0) // Rectangulaire
+    {
+        beam->setSection(TSA::Model::Section::rectangular(m_beamWidthSpin->value(), m_beamHeightSpin->value()));
+    }
+    else if (secData == 1) // Circulaire
+    {
+        beam->setSection(TSA::Model::Section::circular(m_beamWidthSpin->value()));
+    }
+    else if (secData >= 160 && secData <= 400) // IPE
+    {
+        beam->setSection(TSA::Model::Section::ipe(secData));
+    }
+    else if (secData == 2000 || secData == 2400) // HEA
+    {
+        beam->setSection(TSA::Model::Section::hea(secData / 10));
+    }
+    else if (secData == 2001 || secData == 3001) // HEB
+    {
+        beam->setSection(TSA::Model::Section::heb((secData - 1) / 10));
+    }
+
+    // 2. Mise à jour du matériau
+    int matCode = m_beamMaterialCombo->currentData().toInt();
+    switch (matCode)
+    {
+    case 1: beam->setMaterial(TSA::Model::Material::concreteC25_30()); break;
+    case 2: beam->setMaterial(TSA::Model::Material::concreteC30_37()); break;
+    case 3: beam->setMaterial(TSA::Model::Material::steelS235()); break;
+    case 4: beam->setMaterial(TSA::Model::Material::steelS355()); break;
+    case 5: beam->setMaterial(TSA::Model::Material::timberC24()); break;
+    }
+
+    // 3. Mise à jour de l'orientation bêta
     beam->setRotation(m_beamRotationSpin->value());
 
+    // 4. Notification immédiate -> reconstruction 3D automatique
     m_model->notifyBeamModified(m_currentBeamId);
     emit elementModified();
 }
@@ -696,10 +877,45 @@ void PropertyPanel::onApplyColumn()
     m_model->pushUndoState(tr("Modification Poteau %1").arg(m_currentColumnId).toStdString());
 
     col->setName(m_columnNameEdit->text().toStdString());
-    col->setWidth(m_columnWidthSpin->value());
-    col->setHeight(m_columnDepthSpin->value());
+
+    // 1. Mise à jour de la section
+    int secData = m_columnSectionTypeCombo->currentData().toInt();
+    if (secData == 0) // Rectangulaire
+    {
+        col->setSection(TSA::Model::Section::rectangular(m_columnWidthSpin->value(), m_columnDepthSpin->value()));
+    }
+    else if (secData == 1) // Circulaire
+    {
+        col->setSection(TSA::Model::Section::circular(m_columnWidthSpin->value()));
+    }
+    else if (secData >= 160 && secData <= 400) // IPE
+    {
+        col->setSection(TSA::Model::Section::ipe(secData));
+    }
+    else if (secData == 2000 || secData == 2400) // HEA
+    {
+        col->setSection(TSA::Model::Section::hea(secData / 10));
+    }
+    else if (secData == 2001 || secData == 3001) // HEB
+    {
+        col->setSection(TSA::Model::Section::heb((secData - 1) / 10));
+    }
+
+    // 2. Mise à jour du matériau
+    int matCode = m_columnMaterialCombo->currentData().toInt();
+    switch (matCode)
+    {
+    case 1: col->setMaterial(TSA::Model::Material::concreteC25_30()); break;
+    case 2: col->setMaterial(TSA::Model::Material::concreteC30_37()); break;
+    case 3: col->setMaterial(TSA::Model::Material::steelS235()); break;
+    case 4: col->setMaterial(TSA::Model::Material::steelS355()); break;
+    case 5: col->setMaterial(TSA::Model::Material::timberC24()); break;
+    }
+
+    // 3. Mise à jour de l'orientation bêta
     col->setRotation(m_columnRotationSpin->value());
 
+    // 4. Notification immédiate -> reconstruction 3D automatique
     m_model->notifyColumnModified(m_currentColumnId);
     emit elementModified();
 }
@@ -719,6 +935,16 @@ void PropertyPanel::onApplySlab()
     else if (m_slabRadioFlat->isChecked()) slab->setSlabType(TSA::Model::SlabType::FlatSlab);
     else slab->setSlabType(TSA::Model::SlabType::TwoWay);
 
+    int matCode = m_slabMaterialCombo->currentData().toInt();
+    switch (matCode)
+    {
+    case 1: slab->setMaterial(TSA::Model::Material::concreteC25_30()); break;
+    case 2: slab->setMaterial(TSA::Model::Material::concreteC30_37()); break;
+    case 3: slab->setMaterial(TSA::Model::Material::steelS235()); break;
+    case 4: slab->setMaterial(TSA::Model::Material::steelS355()); break;
+    case 5: slab->setMaterial(TSA::Model::Material::timberC24()); break;
+    }
+
     m_model->notifySlabModified(m_currentSlabId);
     emit elementModified();
 }
@@ -735,6 +961,16 @@ void PropertyPanel::onApplyWall()
     wall->setHeight(m_wallHeightSpin->value());
     wall->setThickness(m_wallThicknessSpin->value());
     wall->setOffset(m_wallOffsetSpin->value());
+
+    int matCode = m_wallMaterialCombo->currentData().toInt();
+    switch (matCode)
+    {
+    case 1: wall->setMaterial(TSA::Model::Material::concreteC25_30()); break;
+    case 2: wall->setMaterial(TSA::Model::Material::concreteC30_37()); break;
+    case 3: wall->setMaterial(TSA::Model::Material::steelS235()); break;
+    case 4: wall->setMaterial(TSA::Model::Material::steelS355()); break;
+    case 5: wall->setMaterial(TSA::Model::Material::timberC24()); break;
+    }
 
     m_model->notifyWallModified(m_currentWallId);
     emit elementModified();
@@ -755,6 +991,16 @@ void PropertyPanel::onApplyFoundation()
     f->setHeightH(m_foundationHeightHSpin->value());
     f->setSoilBearingCapacity(m_foundationSoilCapacitySpin->value());
 
+    int matCode = m_foundationMaterialCombo->currentData().toInt();
+    switch (matCode)
+    {
+    case 1: f->setMaterial(TSA::Model::Material::concreteC25_30()); break;
+    case 2: f->setMaterial(TSA::Model::Material::concreteC30_37()); break;
+    case 3: f->setMaterial(TSA::Model::Material::steelS235()); break;
+    case 4: f->setMaterial(TSA::Model::Material::steelS355()); break;
+    case 5: f->setMaterial(TSA::Model::Material::timberC24()); break;
+    }
+
     m_model->notifyFoundationModified(m_currentFoundationId);
     emit elementModified();
 }
@@ -770,7 +1016,18 @@ void PropertyPanel::onApplyTruss()
     truss->setName(m_trussNameEdit->text().toStdString());
     truss->setRole(static_cast<TSA::Model::TrussMemberRole>(m_trussRoleCombo->currentData().toInt()));
     truss->section().width = m_trussDimensionSpin->value();
+    truss->section().height = m_trussDimensionSpin->value();
     truss->section().diameter = m_trussDimensionSpin->value();
+
+    int matCode = m_trussMaterialCombo->currentData().toInt();
+    switch (matCode)
+    {
+    case 1: truss->setMaterial(TSA::Model::Material::concreteC25_30()); break;
+    case 2: truss->setMaterial(TSA::Model::Material::concreteC30_37()); break;
+    case 3: truss->setMaterial(TSA::Model::Material::steelS235()); break;
+    case 4: truss->setMaterial(TSA::Model::Material::steelS355()); break;
+    case 5: truss->setMaterial(TSA::Model::Material::timberC24()); break;
+    }
 
     m_model->notifyTrussMemberModified(m_currentTrussId);
     emit elementModified();

@@ -31,6 +31,7 @@ struct Material
     static Material concreteC30_37();
     static Material steelS235();
     static Material steelS355();
+    static Material timberC24();
     static std::vector<Material> defaultLibrary();
 };
 
