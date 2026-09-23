@@ -48,10 +48,29 @@ set(SOURCES
     src/UI/Dialogs/LevelDialog.cpp
     src/UI/Dialogs/SectionCutDialog.h
     src/UI/Dialogs/SectionCutDialog.cpp
+    src/UI/Dialogs/HelpDialog.h
+    src/UI/Dialogs/HelpDialog.cpp
+    src/UI/Theme/ThemeManager.h
+    src/UI/Theme/ThemeManager.cpp
     src/UI/Ruler/ViewportRuler.h
     src/UI/Ruler/ViewportRuler.cpp
     src/UI/Ruler/ViewportContainer.h
     src/UI/Ruler/ViewportContainer.cpp
+    src/UI/Ribbon/RibbonTypes.h
+    src/UI/Ribbon/RibbonButton.h
+    src/UI/Ribbon/RibbonButton.cpp
+    src/UI/Ribbon/RibbonPanel.h
+    src/UI/Ribbon/RibbonPanel.cpp
+    src/UI/Ribbon/RibbonTab.h
+    src/UI/Ribbon/RibbonTab.cpp
+    src/UI/Ribbon/RibbonBar.h
+    src/UI/Ribbon/RibbonBar.cpp
+    src/UI/Ribbon/RibbonBuilder.h
+    src/UI/Ribbon/RibbonBuilder.cpp
+    src/UI/Dock/VisibilityDock.h
+    src/UI/Dock/VisibilityDock.cpp
+    src/UI/Dock/LogConsoleDock.h
+    src/UI/Dock/LogConsoleDock.cpp
     src/Coordinate/Point3D.h
     src/Coordinate/Level.h
     src/Coordinate/LevelManager.h

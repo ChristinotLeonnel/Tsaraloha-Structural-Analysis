@@ -168,8 +168,8 @@ void OccView::initOcc()
         wind->Map();
     }
 
-    Quantity_Color topColor(0.82, 0.88, 0.95, Quantity_TOC_RGB);   // Bleu ciel clair CAO
-    Quantity_Color bottomColor(0.92, 0.94, 0.98, Quantity_TOC_RGB); // Blanc / gris très doux
+    Quantity_Color topColor(0.18, 0.22, 0.28, Quantity_TOC_RGB);   // Dark AutoCAD / Steel charcoal
+    Quantity_Color bottomColor(0.08, 0.10, 0.13, Quantity_TOC_RGB); // Dark deep viewport
     m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
 
     // Configuration explicite des axes du trièdre : X=Rouge, Y=Vert, Z=Bleu

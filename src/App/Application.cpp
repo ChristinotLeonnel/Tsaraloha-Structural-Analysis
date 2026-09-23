@@ -1,5 +1,6 @@
 #include "Application.h"
 #include "../UI/MainWindow.h"
+#include "../UI/Theme/ThemeManager.h"
 
 #include <QStyleFactory>
 #include <QDir>
@@ -11,8 +12,10 @@ Application::Application(int& argc, char** argv)
     setOrganizationName("TSA Engineering");
     setApplicationVersion("0.1.0");
 
-    // Thème moderne épuré pour logiciel technique
+    // Thème moderne AutoCAD 2024 Dark pour logiciel technique
     setStyle(QStyleFactory::create("Fusion"));
+
+    TSA::UI::ThemeManager::instance().setDarkMode(true);
 
     // Configuration automatique de l'environnement OpenCASCADE (ressources et shaders)
     if (qEnvironmentVariableIsEmpty("CSF_OCCTResourcePath"))

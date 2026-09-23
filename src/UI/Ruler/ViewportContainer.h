@@ -38,15 +38,11 @@ signals:
 
 public slots:
     void updateRulers();
+    void updateTheme(bool isDark);
 
 private slots:
     void onMouseMovedInViewport(int px, int py);
     void onCameraChanged();
-    void onMouseCoordsChanged(double x, double y, double z);
-    void onViewFront();
-    void onViewTop();
-    void onViewIso();
-    void onWorkplaneClicked();
     void onLevelComboChanged(int index);
     void onLevelUp();
     void onLevelDown();
@@ -60,19 +56,12 @@ private:
     HorizontalRulerWidget* m_topRuler = nullptr;
     VerticalRulerWidget* m_leftRuler = nullptr;
     VerticalRulerWidget* m_rightRuler = nullptr;
+    QWidget* m_topCornerRight = nullptr;
 
     QWidget* m_topBar = nullptr;
     QComboBox* m_levelCombo = nullptr;
     QPushButton* m_btnLevelUp = nullptr;
     QPushButton* m_btnLevelDown = nullptr;
-
-    QWidget* m_bottomBar = nullptr;
-    QPushButton* m_btnPlane = nullptr;
-    QLabel* m_lblElevation = nullptr;
-    QPushButton* m_btnViewFront = nullptr;
-    QPushButton* m_btnViewTop = nullptr;
-    QPushButton* m_btnViewIso = nullptr;
-    QLabel* m_lblCoords = nullptr;
 
     bool m_rulersVisible = true;
 };
