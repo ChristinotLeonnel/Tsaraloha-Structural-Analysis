@@ -44,6 +44,9 @@ public:
 
     double area(const Model& model) const;
 
+    const std::string& color() const { return m_color; }
+    void setColor(const std::string& color) { m_color = color; }
+
 private:
     int m_id = 0;
     std::string m_name;
@@ -51,6 +54,7 @@ private:
     double m_thickness = 0.20; // Épaisseur en mètres
     Material m_material = Material::concreteC25_30();
     SlabType m_slabType = SlabType::TwoWay;
+    std::string m_color;
 };
 
 } // namespace TSA::Model

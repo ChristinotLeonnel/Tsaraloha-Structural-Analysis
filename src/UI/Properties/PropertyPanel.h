@@ -45,13 +45,16 @@ private slots:
     void onApplyWall();
     void onApplyFoundation();
     void onApplyTruss();
-    void onCancelCurrent();
 
 private:
     void setupUi();
     void hideAllGroups();
     void setupMaterialCombo(QComboBox* combo);
     void setupSectionTypeCombo(QComboBox* combo);
+    void setupColorButton(QPushButton* btn, const QString& hexColor);
+    void pickColor(QString& targetColor, QPushButton* targetBtn, const QString& title);
+    void updateBeamSectionVisibility(int secData);
+    void updateColumnSectionVisibility(int secData);
 
 private:
     TSA::Model::Model* m_model = nullptr;
@@ -80,6 +83,8 @@ private:
     QDoubleSpinBox* m_nodeYSpin = nullptr;
     QDoubleSpinBox* m_nodeZSpin = nullptr;
     QComboBox* m_nodeSupportCombo = nullptr;
+    QPushButton* m_nodeColorBtn = nullptr;
+    QString m_nodeColor;
 
     // Panneau Poutre
     QGroupBox* m_beamGroup = nullptr;
@@ -89,10 +94,14 @@ private:
     QLabel* m_beamEndNodeLabel = nullptr;
     QLabel* m_beamLengthLabel = nullptr;
     QComboBox* m_beamSectionTypeCombo = nullptr;
+    QLabel* m_beamWidthLabel = nullptr;
     QDoubleSpinBox* m_beamWidthSpin = nullptr;
+    QLabel* m_beamHeightLabel = nullptr;
     QDoubleSpinBox* m_beamHeightSpin = nullptr;
     QComboBox* m_beamMaterialCombo = nullptr;
     QDoubleSpinBox* m_beamRotationSpin = nullptr;
+    QPushButton* m_beamColorBtn = nullptr;
+    QString m_beamColor;
 
     // Panneau Poteau
     QGroupBox* m_columnGroup = nullptr;
@@ -102,10 +111,14 @@ private:
     QLabel* m_columnEndNodeLabel = nullptr;
     QLabel* m_columnHeightLabel = nullptr;
     QComboBox* m_columnSectionTypeCombo = nullptr;
+    QLabel* m_columnWidthLabel = nullptr;
     QDoubleSpinBox* m_columnWidthSpin = nullptr;
+    QLabel* m_columnDepthLabel = nullptr;
     QDoubleSpinBox* m_columnDepthSpin = nullptr;
     QComboBox* m_columnMaterialCombo = nullptr;
     QDoubleSpinBox* m_columnRotationSpin = nullptr;
+    QPushButton* m_columnColorBtn = nullptr;
+    QString m_columnColor;
 
     // Panneau Dalle
     QGroupBox* m_slabGroup = nullptr;
@@ -118,6 +131,8 @@ private:
     QRadioButton* m_slabRadioOneWay = nullptr;
     QRadioButton* m_slabRadioTwoWay = nullptr;
     QRadioButton* m_slabRadioFlat = nullptr;
+    QPushButton* m_slabColorBtn = nullptr;
+    QString m_slabColor;
 
     // Panneau Voile (Wall)
     QGroupBox* m_wallGroup = nullptr;
@@ -130,6 +145,8 @@ private:
     QDoubleSpinBox* m_wallThicknessSpin = nullptr;
     QComboBox* m_wallMaterialCombo = nullptr;
     QDoubleSpinBox* m_wallOffsetSpin = nullptr;
+    QPushButton* m_wallColorBtn = nullptr;
+    QString m_wallColor;
 
     // Panneau Fondation
     QGroupBox* m_foundationGroup = nullptr;
@@ -142,6 +159,8 @@ private:
     QDoubleSpinBox* m_foundationHeightHSpin = nullptr;
     QComboBox* m_foundationMaterialCombo = nullptr;
     QDoubleSpinBox* m_foundationSoilCapacitySpin = nullptr;
+    QPushButton* m_foundationColorBtn = nullptr;
+    QString m_foundationColor;
 
     // Panneau Treillis / Contreventement
     QGroupBox* m_trussGroup = nullptr;
@@ -153,6 +172,8 @@ private:
     QComboBox* m_trussRoleCombo = nullptr;
     QDoubleSpinBox* m_trussDimensionSpin = nullptr;
     QComboBox* m_trussMaterialCombo = nullptr;
+    QPushButton* m_trussColorBtn = nullptr;
+    QString m_trussColor;
 };
 
 } // namespace TSA::UI

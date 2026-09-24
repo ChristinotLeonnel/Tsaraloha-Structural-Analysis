@@ -29,15 +29,7 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
     auto* filePanel = new RibbonPanel(QObject::tr("Fichier"), tab);
     if (acts.actionNew)
     {
-        auto* fileMenu = new QMenu(parentWindow);
-        if (acts.actionOpen) fileMenu->addAction(acts.actionOpen);
-        if (acts.actionSave) fileMenu->addAction(acts.actionSave);
-        if (acts.actionExit)
-        {
-            fileMenu->addSeparator();
-            fileMenu->addAction(acts.actionExit);
-        }
-        filePanel->addLargeAction(acts.actionNew, fileMenu);
+        filePanel->addLargeAction(acts.actionNew);
     }
     if (acts.actionOpen && acts.actionSave)
     {
@@ -67,10 +59,7 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
     auto* geomPanel = new RibbonPanel(QObject::tr("Nœuds & Primitives"), tab);
     if (acts.actionDrawNode)
     {
-        auto* nodeMenu = new QMenu(parentWindow);
-        if (acts.actionNewNode) nodeMenu->addAction(acts.actionNewNode);
-        if (acts.actionAddCube) nodeMenu->addAction(acts.actionAddCube);
-        geomPanel->addLargeAction(acts.actionDrawNode, nodeMenu);
+        geomPanel->addLargeAction(acts.actionDrawNode);
     }
     std::vector<QAction*> geomSub;
     if (acts.actionNewNode) geomSub.push_back(acts.actionNewNode);
@@ -86,23 +75,17 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
     auto* structPanel = new RibbonPanel(QObject::tr("Structure 3D"), tab);
     if (acts.actionDrawBeam)
     {
-        auto* beamMenu = new QMenu(parentWindow);
-        if (acts.actionNewBeam) beamMenu->addAction(acts.actionNewBeam);
-        structPanel->addLargeAction(acts.actionDrawBeam, beamMenu);
+        structPanel->addLargeAction(acts.actionDrawBeam);
     }
     structPanel->addInternalSeparator();
     if (acts.actionDrawColumn)
     {
-        auto* colMenu = new QMenu(parentWindow);
-        if (acts.actionNewColumn) colMenu->addAction(acts.actionNewColumn);
-        structPanel->addLargeAction(acts.actionDrawColumn, colMenu);
+        structPanel->addLargeAction(acts.actionDrawColumn);
     }
     structPanel->addInternalSeparator();
     if (acts.actionDrawSlab)
     {
-        auto* slabMenu = new QMenu(parentWindow);
-        if (acts.actionNewSlab) slabMenu->addAction(acts.actionNewSlab);
-        structPanel->addLargeAction(acts.actionDrawSlab, slabMenu);
+        structPanel->addLargeAction(acts.actionDrawSlab);
     }
     tab->addPanel(structPanel);
 
@@ -110,12 +93,7 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
     auto* gridPanel = new RibbonPanel(QObject::tr("Grilles & Niveaux"), tab);
     if (acts.actionGridVisible)
     {
-        auto* gMenu = new QMenu(parentWindow);
-        if (acts.actionGridSnap) gMenu->addAction(acts.actionGridSnap);
-        if (acts.actionNewGrid) gMenu->addAction(acts.actionNewGrid);
-        if (acts.actionGridManager) gMenu->addAction(acts.actionGridManager);
-        if (acts.actionManageLevels) gMenu->addAction(acts.actionManageLevels);
-        gridPanel->addLargeAction(acts.actionGridVisible, gMenu);
+        gridPanel->addLargeAction(acts.actionGridVisible);
     }
     std::vector<QAction*> gridCol1;
     if (acts.actionGridSnap) gridCol1.push_back(acts.actionGridSnap);
@@ -132,11 +110,7 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
     auto* viewPanel = new RibbonPanel(QObject::tr("Orientation"), tab);
     if (acts.actionView3D)
     {
-        auto* vMenu = new QMenu(parentWindow);
-        if (acts.actionViewXY) vMenu->addAction(acts.actionViewXY);
-        if (acts.actionViewXZ) vMenu->addAction(acts.actionViewXZ);
-        if (acts.actionViewYZ) vMenu->addAction(acts.actionViewYZ);
-        viewPanel->addLargeAction(acts.actionView3D, vMenu);
+        viewPanel->addLargeAction(acts.actionView3D);
     }
     std::vector<QAction*> viewCol;
     if (acts.actionViewXY) viewCol.push_back(acts.actionViewXY);
@@ -178,10 +152,7 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
     auto* actSecRect = acts.actionSecRect ? acts.actionSecRect : new QAction(QIcon(":/icons/section_rect.svg"), QObject::tr("Rectangulaire"), parentWindow);
     auto* actSecCirc = acts.actionSecCirc ? acts.actionSecCirc : new QAction(QIcon(":/icons/section_circle.svg"), QObject::tr("Circulaire"), parentWindow);
 
-    auto* secMenu = new QMenu(parentWindow);
-    secMenu->addAction(actSecRect);
-    secMenu->addAction(actSecCirc);
-    secPanel->addLargeAction(actSecI, secMenu);
+    secPanel->addLargeAction(actSecI);
     secPanel->addInternalSeparator();
     secPanel->addSmallColumn({ actSecRect, actSecCirc });
     tab->addPanel(secPanel);
@@ -191,9 +162,7 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
     auto* actConcrete = acts.actionConcrete ? acts.actionConcrete : new QAction(QIcon(":/icons/material_concrete.svg"), QObject::tr("Béton C25/30"), parentWindow);
     auto* actSteel = acts.actionSteel ? acts.actionSteel : new QAction(QIcon(":/icons/material_steel.svg"), QObject::tr("Acier S355"), parentWindow);
 
-    auto* matMenu = new QMenu(parentWindow);
-    matMenu->addAction(actSteel);
-    matPanel->addLargeAction(actConcrete, matMenu);
+    matPanel->addLargeAction(actConcrete);
     matPanel->addInternalSeparator();
     matPanel->addSmallColumn({ actSteel });
     tab->addPanel(matPanel);
@@ -204,10 +173,7 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
     auto* actPinned = acts.actionPinned ? acts.actionPinned : new QAction(QIcon(":/icons/support_pinned.svg"), QObject::tr("Articulation"), parentWindow);
     auto* actRoller = acts.actionRoller ? acts.actionRoller : new QAction(QIcon(":/icons/support_roller.svg"), QObject::tr("Appui Simple"), parentWindow);
 
-    auto* supMenu = new QMenu(parentWindow);
-    supMenu->addAction(actPinned);
-    supMenu->addAction(actRoller);
-    supPanel->addLargeAction(actFixed, supMenu);
+    supPanel->addLargeAction(actFixed);
     supPanel->addInternalSeparator();
     supPanel->addSmallColumn({ actPinned, actRoller });
     tab->addPanel(supPanel);
@@ -226,11 +192,7 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
     auto* actMoment = acts.actionMoment ? acts.actionMoment : new QAction(QIcon(":/icons/load_moment.svg"), QObject::tr("Moment"), parentWindow);
     auto* actSeismic = acts.actionSeismic ? acts.actionSeismic : new QAction(QIcon(":/icons/load_seismic.svg"), QObject::tr("Séisme / Vent"), parentWindow);
 
-    auto* loadMenu = new QMenu(parentWindow);
-    loadMenu->addAction(actDistLoad);
-    loadMenu->addAction(actMoment);
-    loadMenu->addAction(actSeismic);
-    loadPanel->addLargeAction(actPointLoad, loadMenu);
+    loadPanel->addLargeAction(actPointLoad);
     loadPanel->addInternalSeparator();
     loadPanel->addSmallColumn({ actDistLoad, actMoment, actSeismic });
     tab->addPanel(loadPanel);
@@ -246,9 +208,7 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
     auto* actRun = acts.actionRunSolve ? acts.actionRunSolve : new QAction(QIcon(":/icons/analysis_run.svg"), QObject::tr("Calculer"), parentWindow);
     auto* actModal = acts.actionModal ? acts.actionModal : new QAction(QIcon(":/icons/analysis_modal.svg"), QObject::tr("Analyse Modale"), parentWindow);
 
-    auto* runMenu = new QMenu(parentWindow);
-    runMenu->addAction(actModal);
-    solvPanel->addLargeAction(actRun, runMenu);
+    solvPanel->addLargeAction(actRun);
     solvPanel->addInternalSeparator();
     solvPanel->addSmallColumn({ actModal });
     tab->addPanel(solvPanel);
@@ -259,10 +219,7 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
     auto* actForces = acts.actionResultsForces ? acts.actionResultsForces : new QAction(QIcon(":/icons/results_force.svg"), QObject::tr("Diagrammes M/N/V"), parentWindow);
     auto* actStress = acts.actionResultsStress ? acts.actionResultsStress : new QAction(QIcon(":/icons/results_stress.svg"), QObject::tr("Contraintes"), parentWindow);
 
-    auto* resMenu = new QMenu(parentWindow);
-    resMenu->addAction(actForces);
-    resMenu->addAction(actStress);
-    resPanel->addLargeAction(actDisp, resMenu);
+    resPanel->addLargeAction(actDisp);
     resPanel->addInternalSeparator();
     resPanel->addSmallColumn({ actForces, actStress });
     tab->addPanel(resPanel);

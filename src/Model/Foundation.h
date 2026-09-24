@@ -54,6 +54,9 @@ public:
     double volume() const { return m_widthA * m_lengthB * m_heightH; }
     double baseArea() const { return m_widthA * m_lengthB; }
 
+    const std::string& color() const { return m_color; }
+    void setColor(const std::string& color) { m_color = color; }
+
 private:
     int m_id = 0;
     std::string m_name;
@@ -64,6 +67,7 @@ private:
     double m_heightH = 0.50; // Hauteur H en mètres
     Material m_material = Material::concreteC25_30();
     double m_soilBearingCapacity = 250.0; // Contrainte admissible du sol en kPa
+    std::string m_color;
 };
 
 } // namespace TSA::Model

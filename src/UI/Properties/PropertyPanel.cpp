@@ -9,6 +9,7 @@
 #include <QRadioButton>
 #include <QGroupBox>
 #include <QPushButton>
+#include <QColorDialog>
 
 namespace TSA::UI
 {
@@ -44,6 +45,83 @@ void PropertyPanel::setupSectionTypeCombo(QComboBox* combo)
     combo->addItem("HEA 240", 2400);
     combo->addItem("HEB 200", 2001);
     combo->addItem("HEB 300", 3001);
+}
+
+void PropertyPanel::setupColorButton(QPushButton* btn, const QString& hexColor)
+{
+    if (!btn) return;
+    QColor c(hexColor);
+    if (!c.isValid()) c = QColor("#007ACC");
+
+    double luminance = (0.299 * c.red() + 0.587 * c.green() + 0.114 * c.blue()) / 255.0;
+    QString textColor = luminance > 0.5 ? "#111111" : "#FFFFFF";
+
+    btn->setText(c.name(QColor::HexRgb).toUpper());
+    btn->setStyleSheet(QString(
+        "QPushButton {"
+        "  background-color: %1;"
+        "  color: %2;"
+        "  font-weight: bold;"
+        "  border: 1px solid #555555;"
+        "  border-radius: 4px;"
+        "  padding: 4px 8px;"
+        "  text-align: center;"
+        "}"
+        "QPushButton:hover {"
+        "  border: 1px solid #ffffff;"
+        "}"
+    ).arg(c.name(QColor::HexRgb)).arg(textColor));
+}
+
+void PropertyPanel::pickColor(QString& targetColor, QPushButton* targetBtn, const QString& title)
+{
+    QColor initial(targetColor);
+    QColor chosen = QColorDialog::getColor(initial.isValid() ? initial : Qt::white, this, title);
+    if (chosen.isValid())
+    {
+        targetColor = chosen.name(QColor::HexRgb).toUpper();
+        setupColorButton(targetBtn, targetColor);
+    }
+}
+
+void PropertyPanel::updateBeamSectionVisibility(int secData)
+{
+    if (secData == 1) // Circulaire
+    {
+        if (m_beamWidthLabel) m_beamWidthLabel->setText(tr("Diamètre D :"));
+        if (m_beamHeightLabel) m_beamHeightLabel->setVisible(false);
+        if (m_beamHeightSpin) m_beamHeightSpin->setVisible(false);
+    }
+    else
+    {
+        if (m_beamWidthLabel) m_beamWidthLabel->setText(tr("Largeur b :"));
+        if (m_beamHeightLabel)
+        {
+            m_beamHeightLabel->setText(tr("Hauteur h :"));
+            m_beamHeightLabel->setVisible(true);
+        }
+        if (m_beamHeightSpin) m_beamHeightSpin->setVisible(true);
+    }
+}
+
+void PropertyPanel::updateColumnSectionVisibility(int secData)
+{
+    if (secData == 1) // Circulaire
+    {
+        if (m_columnWidthLabel) m_columnWidthLabel->setText(tr("Diamètre D :"));
+        if (m_columnDepthLabel) m_columnDepthLabel->setVisible(false);
+        if (m_columnDepthSpin) m_columnDepthSpin->setVisible(false);
+    }
+    else
+    {
+        if (m_columnWidthLabel) m_columnWidthLabel->setText(tr("Largeur b :"));
+        if (m_columnDepthLabel)
+        {
+            m_columnDepthLabel->setText(tr("Profondeur h :"));
+            m_columnDepthLabel->setVisible(true);
+        }
+        if (m_columnDepthSpin) m_columnDepthSpin->setVisible(true);
+    }
 }
 
 void PropertyPanel::setupUi()
@@ -100,6 +178,13 @@ void PropertyPanel::setupUi()
     m_nodeSupportCombo->addItem(tr("Articulation / Rotule 3D"), static_cast<int>(TSA::Model::SupportType::Pinned));
     m_nodeSupportCombo->addItem(tr("Appui Simple (Rouleau Tz)"), static_cast<int>(TSA::Model::SupportType::Roller));
 
+    m_nodeColorBtn = new QPushButton(m_nodeGroup);
+    m_nodeColor = "#FFD700";
+    setupColorButton(m_nodeColorBtn, m_nodeColor);
+    connect(m_nodeColorBtn, &QPushButton::clicked, this, [this]() {
+        pickColor(m_nodeColor, m_nodeColorBtn, tr("Couleur du Nœud"));
+    });
+
     nodeForm->addRow(tr("Nom / Repère :"), m_nodeNameEdit);
     nodeForm->addRow(tr("ID Interne :"), m_nodeIdLabel);
     nodeForm->addRow(tr("Niveau :"), m_nodeLevelLabel);
@@ -107,16 +192,12 @@ void PropertyPanel::setupUi()
     nodeForm->addRow(tr("Y (m) :"), m_nodeYSpin);
     nodeForm->addRow(tr("Z (m) :"), m_nodeZSpin);
     nodeForm->addRow(tr("Liaison / Appui :"), m_nodeSupportCombo);
+    nodeForm->addRow(tr("Couleur 3D :"), m_nodeColorBtn);
 
-    auto* nodeBtnLayout = new QHBoxLayout();
-    auto* btnApplyNode = new QPushButton(tr("Appliquer"), m_nodeGroup);
-    btnApplyNode->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    auto* btnApplyNode = new QPushButton(tr("Appliquer les modifications"), m_nodeGroup);
+    btnApplyNode->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyNode, &QPushButton::clicked, this, &PropertyPanel::onApplyNode);
-    auto* btnCancelNode = new QPushButton(tr("Annuler"), m_nodeGroup);
-    connect(btnCancelNode, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
-    nodeBtnLayout->addWidget(btnApplyNode);
-    nodeBtnLayout->addWidget(btnCancelNode);
-    nodeForm->addRow(nodeBtnLayout);
+    nodeForm->addRow(btnApplyNode);
 
     containerLayout->addWidget(m_nodeGroup);
 
@@ -134,11 +215,13 @@ void PropertyPanel::setupUi()
     m_beamSectionTypeCombo = new QComboBox(m_beamGroup);
     setupSectionTypeCombo(m_beamSectionTypeCombo);
 
+    m_beamWidthLabel = new QLabel(tr("Largeur b :"), m_beamGroup);
     m_beamWidthSpin = new QDoubleSpinBox(m_beamGroup);
     m_beamWidthSpin->setRange(0.01, 10.0);
     m_beamWidthSpin->setSingleStep(0.05);
     m_beamWidthSpin->setSuffix(" m");
 
+    m_beamHeightLabel = new QLabel(tr("Hauteur h :"), m_beamGroup);
     m_beamHeightSpin = new QDoubleSpinBox(m_beamGroup);
     m_beamHeightSpin->setRange(0.01, 10.0);
     m_beamHeightSpin->setSingleStep(0.05);
@@ -152,8 +235,16 @@ void PropertyPanel::setupUi()
     m_beamRotationSpin->setSingleStep(15.0);
     m_beamRotationSpin->setSuffix(" °");
 
+    m_beamColorBtn = new QPushButton(m_beamGroup);
+    m_beamColor = "#4682B4";
+    setupColorButton(m_beamColorBtn, m_beamColor);
+    connect(m_beamColorBtn, &QPushButton::clicked, this, [this]() {
+        pickColor(m_beamColor, m_beamColorBtn, tr("Couleur de la Poutre"));
+    });
+
     connect(m_beamSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
         int secData = m_beamSectionTypeCombo->currentData().toInt();
+        updateBeamSectionVisibility(secData);
         if (secData >= 160 && secData <= 400) {
             auto s = TSA::Model::Section::ipe(secData);
             m_beamWidthSpin->setValue(s.width);
@@ -181,20 +272,16 @@ void PropertyPanel::setupUi()
     beamForm->addRow(tr("Nœud Arrivée :"), m_beamEndNodeLabel);
     beamForm->addRow(tr("Longueur :"), m_beamLengthLabel);
     beamForm->addRow(tr("Section :"), m_beamSectionTypeCombo);
-    beamForm->addRow(tr("Largeur b :"), m_beamWidthSpin);
-    beamForm->addRow(tr("Hauteur h :"), m_beamHeightSpin);
+    beamForm->addRow(m_beamWidthLabel, m_beamWidthSpin);
+    beamForm->addRow(m_beamHeightLabel, m_beamHeightSpin);
     beamForm->addRow(tr("Matériau :"), m_beamMaterialCombo);
     beamForm->addRow(tr("Rotation β :"), m_beamRotationSpin);
+    beamForm->addRow(tr("Couleur 3D :"), m_beamColorBtn);
 
-    auto* beamBtnLayout = new QHBoxLayout();
-    auto* btnApplyBeam = new QPushButton(tr("Appliquer"), m_beamGroup);
-    btnApplyBeam->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    auto* btnApplyBeam = new QPushButton(tr("Appliquer les modifications"), m_beamGroup);
+    btnApplyBeam->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyBeam, &QPushButton::clicked, this, &PropertyPanel::onApplyBeam);
-    auto* btnCancelBeam = new QPushButton(tr("Annuler"), m_beamGroup);
-    connect(btnCancelBeam, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
-    beamBtnLayout->addWidget(btnApplyBeam);
-    beamBtnLayout->addWidget(btnCancelBeam);
-    beamForm->addRow(beamBtnLayout);
+    beamForm->addRow(btnApplyBeam);
 
     containerLayout->addWidget(m_beamGroup);
 
@@ -212,11 +299,13 @@ void PropertyPanel::setupUi()
     m_columnSectionTypeCombo = new QComboBox(m_columnGroup);
     setupSectionTypeCombo(m_columnSectionTypeCombo);
 
+    m_columnWidthLabel = new QLabel(tr("Largeur b :"), m_columnGroup);
     m_columnWidthSpin = new QDoubleSpinBox(m_columnGroup);
     m_columnWidthSpin->setRange(0.01, 10.0);
     m_columnWidthSpin->setSingleStep(0.05);
     m_columnWidthSpin->setSuffix(" m");
 
+    m_columnDepthLabel = new QLabel(tr("Profondeur h :"), m_columnGroup);
     m_columnDepthSpin = new QDoubleSpinBox(m_columnGroup);
     m_columnDepthSpin->setRange(0.01, 10.0);
     m_columnDepthSpin->setSingleStep(0.05);
@@ -230,8 +319,16 @@ void PropertyPanel::setupUi()
     m_columnRotationSpin->setSingleStep(15.0);
     m_columnRotationSpin->setSuffix(" °");
 
+    m_columnColorBtn = new QPushButton(m_columnGroup);
+    m_columnColor = "#6A5ACD";
+    setupColorButton(m_columnColorBtn, m_columnColor);
+    connect(m_columnColorBtn, &QPushButton::clicked, this, [this]() {
+        pickColor(m_columnColor, m_columnColorBtn, tr("Couleur du Poteau"));
+    });
+
     connect(m_columnSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
         int secData = m_columnSectionTypeCombo->currentData().toInt();
+        updateColumnSectionVisibility(secData);
         if (secData >= 160 && secData <= 400) {
             auto s = TSA::Model::Section::ipe(secData);
             m_columnWidthSpin->setValue(s.width);
@@ -259,20 +356,16 @@ void PropertyPanel::setupUi()
     colForm->addRow(tr("Nœud Sommet :"), m_columnEndNodeLabel);
     colForm->addRow(tr("Hauteur :"), m_columnHeightLabel);
     colForm->addRow(tr("Forme Section :"), m_columnSectionTypeCombo);
-    colForm->addRow(tr("Largeur b :"), m_columnWidthSpin);
-    colForm->addRow(tr("Profondeur h :"), m_columnDepthSpin);
+    colForm->addRow(m_columnWidthLabel, m_columnWidthSpin);
+    colForm->addRow(m_columnDepthLabel, m_columnDepthSpin);
     colForm->addRow(tr("Matériau :"), m_columnMaterialCombo);
     colForm->addRow(tr("Rotation β :"), m_columnRotationSpin);
+    colForm->addRow(tr("Couleur 3D :"), m_columnColorBtn);
 
-    auto* colBtnLayout = new QHBoxLayout();
-    auto* btnApplyCol = new QPushButton(tr("Appliquer"), m_columnGroup);
-    btnApplyCol->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    auto* btnApplyCol = new QPushButton(tr("Appliquer les modifications"), m_columnGroup);
+    btnApplyCol->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyCol, &QPushButton::clicked, this, &PropertyPanel::onApplyColumn);
-    auto* btnCancelCol = new QPushButton(tr("Annuler"), m_columnGroup);
-    connect(btnCancelCol, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
-    colBtnLayout->addWidget(btnApplyCol);
-    colBtnLayout->addWidget(btnCancelCol);
-    colForm->addRow(colBtnLayout);
+    colForm->addRow(btnApplyCol);
 
     containerLayout->addWidget(m_columnGroup);
 
@@ -303,6 +396,13 @@ void PropertyPanel::setupUi()
     typeLayout->addWidget(m_slabRadioOneWay);
     typeLayout->addWidget(m_slabRadioFlat);
 
+    m_slabColorBtn = new QPushButton(m_slabGroup);
+    m_slabColor = "#B0C4DE";
+    setupColorButton(m_slabColorBtn, m_slabColor);
+    connect(m_slabColorBtn, &QPushButton::clicked, this, [this]() {
+        pickColor(m_slabColor, m_slabColorBtn, tr("Couleur de la Dalle"));
+    });
+
     slabForm->addRow(tr("Nom / Repère :"), m_slabNameEdit);
     slabForm->addRow(tr("ID Interne :"), m_slabIdLabel);
     slabForm->addRow(tr("Nœuds Contour :"), m_slabNodesLabel);
@@ -310,16 +410,12 @@ void PropertyPanel::setupUi()
     slabForm->addRow(tr("Épaisseur e :"), m_slabThicknessSpin);
     slabForm->addRow(tr("Matériau :"), m_slabMaterialCombo);
     slabForm->addRow(tr("Typologie :"), typeLayout);
+    slabForm->addRow(tr("Couleur 3D :"), m_slabColorBtn);
 
-    auto* slabBtnLayout = new QHBoxLayout();
-    auto* btnApplySlab = new QPushButton(tr("Appliquer"), m_slabGroup);
-    btnApplySlab->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    auto* btnApplySlab = new QPushButton(tr("Appliquer les modifications"), m_slabGroup);
+    btnApplySlab->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplySlab, &QPushButton::clicked, this, &PropertyPanel::onApplySlab);
-    auto* btnCancelSlab = new QPushButton(tr("Annuler"), m_slabGroup);
-    connect(btnCancelSlab, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
-    slabBtnLayout->addWidget(btnApplySlab);
-    slabBtnLayout->addWidget(btnCancelSlab);
-    slabForm->addRow(slabBtnLayout);
+    slabForm->addRow(btnApplySlab);
 
     containerLayout->addWidget(m_slabGroup);
 
@@ -352,6 +448,13 @@ void PropertyPanel::setupUi()
     m_wallOffsetSpin->setSingleStep(0.05);
     m_wallOffsetSpin->setSuffix(" m");
 
+    m_wallColorBtn = new QPushButton(m_wallGroup);
+    m_wallColor = "#808080";
+    setupColorButton(m_wallColorBtn, m_wallColor);
+    connect(m_wallColorBtn, &QPushButton::clicked, this, [this]() {
+        pickColor(m_wallColor, m_wallColorBtn, tr("Couleur du Voile"));
+    });
+
     wallForm->addRow(tr("Nom / Repère :"), m_wallNameEdit);
     wallForm->addRow(tr("ID Interne :"), m_wallIdLabel);
     wallForm->addRow(tr("Nœud 1 :"), m_wallStartNodeLabel);
@@ -361,16 +464,12 @@ void PropertyPanel::setupUi()
     wallForm->addRow(tr("Épaisseur e :"), m_wallThicknessSpin);
     wallForm->addRow(tr("Matériau :"), m_wallMaterialCombo);
     wallForm->addRow(tr("Décalage :"), m_wallOffsetSpin);
+    wallForm->addRow(tr("Couleur 3D :"), m_wallColorBtn);
 
-    auto* wallBtnLayout = new QHBoxLayout();
-    auto* btnApplyWall = new QPushButton(tr("Appliquer"), m_wallGroup);
-    btnApplyWall->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    auto* btnApplyWall = new QPushButton(tr("Appliquer les modifications"), m_wallGroup);
+    btnApplyWall->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyWall, &QPushButton::clicked, this, &PropertyPanel::onApplyWall);
-    auto* btnCancelWall = new QPushButton(tr("Annuler"), m_wallGroup);
-    connect(btnCancelWall, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
-    wallBtnLayout->addWidget(btnApplyWall);
-    wallBtnLayout->addWidget(btnCancelWall);
-    wallForm->addRow(wallBtnLayout);
+    wallForm->addRow(btnApplyWall);
 
     containerLayout->addWidget(m_wallGroup);
 
@@ -412,6 +511,13 @@ void PropertyPanel::setupUi()
     m_foundationSoilCapacitySpin->setSingleStep(50.0);
     m_foundationSoilCapacitySpin->setSuffix(" kPa");
 
+    m_foundationColorBtn = new QPushButton(m_foundationGroup);
+    m_foundationColor = "#B8860B";
+    setupColorButton(m_foundationColorBtn, m_foundationColor);
+    connect(m_foundationColorBtn, &QPushButton::clicked, this, [this]() {
+        pickColor(m_foundationColor, m_foundationColorBtn, tr("Couleur de la Fondation"));
+    });
+
     fForm->addRow(tr("Nom / Repère :"), m_foundationNameEdit);
     fForm->addRow(tr("ID Interne :"), m_foundationIdLabel);
     fForm->addRow(tr("Nœud Support :"), m_foundationNodeLabel);
@@ -421,16 +527,12 @@ void PropertyPanel::setupUi()
     fForm->addRow(tr("Hauteur H :"), m_foundationHeightHSpin);
     fForm->addRow(tr("Matériau :"), m_foundationMaterialCombo);
     fForm->addRow(tr("Capacité Sol :"), m_foundationSoilCapacitySpin);
+    fForm->addRow(tr("Couleur 3D :"), m_foundationColorBtn);
 
-    auto* fBtnLayout = new QHBoxLayout();
-    auto* btnApplyF = new QPushButton(tr("Appliquer"), m_foundationGroup);
-    btnApplyF->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    auto* btnApplyF = new QPushButton(tr("Appliquer les modifications"), m_foundationGroup);
+    btnApplyF->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyF, &QPushButton::clicked, this, &PropertyPanel::onApplyFoundation);
-    auto* btnCancelF = new QPushButton(tr("Annuler"), m_foundationGroup);
-    connect(btnCancelF, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
-    fBtnLayout->addWidget(btnApplyF);
-    fBtnLayout->addWidget(btnCancelF);
-    fForm->addRow(fBtnLayout);
+    fForm->addRow(btnApplyF);
 
     containerLayout->addWidget(m_foundationGroup);
 
@@ -460,6 +562,13 @@ void PropertyPanel::setupUi()
     m_trussMaterialCombo = new QComboBox(m_trussGroup);
     setupMaterialCombo(m_trussMaterialCombo);
 
+    m_trussColorBtn = new QPushButton(m_trussGroup);
+    m_trussColor = "#DAA520";
+    setupColorButton(m_trussColorBtn, m_trussColor);
+    connect(m_trussColorBtn, &QPushButton::clicked, this, [this]() {
+        pickColor(m_trussColor, m_trussColorBtn, tr("Couleur du Treillis"));
+    });
+
     trForm->addRow(tr("Nom / Repère :"), m_trussNameEdit);
     trForm->addRow(tr("ID Interne :"), m_trussIdLabel);
     trForm->addRow(tr("Nœud 1 :"), m_trussStartNodeLabel);
@@ -468,16 +577,12 @@ void PropertyPanel::setupUi()
     trForm->addRow(tr("Rôle :"), m_trussRoleCombo);
     trForm->addRow(tr("Diamètre / Section :"), m_trussDimensionSpin);
     trForm->addRow(tr("Matériau :"), m_trussMaterialCombo);
+    trForm->addRow(tr("Couleur 3D :"), m_trussColorBtn);
 
-    auto* trBtnLayout = new QHBoxLayout();
-    auto* btnApplyTr = new QPushButton(tr("Appliquer"), m_trussGroup);
-    btnApplyTr->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 4px 10px;");
+    auto* btnApplyTr = new QPushButton(tr("Appliquer les modifications"), m_trussGroup);
+    btnApplyTr->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyTr, &QPushButton::clicked, this, &PropertyPanel::onApplyTruss);
-    auto* btnCancelTr = new QPushButton(tr("Annuler"), m_trussGroup);
-    connect(btnCancelTr, &QPushButton::clicked, this, &PropertyPanel::onCancelCurrent);
-    trBtnLayout->addWidget(btnApplyTr);
-    trBtnLayout->addWidget(btnCancelTr);
-    trForm->addRow(trBtnLayout);
+    trForm->addRow(btnApplyTr);
 
     containerLayout->addWidget(m_trussGroup);
 
@@ -500,6 +605,7 @@ void PropertyPanel::hideAllGroups()
 void PropertyPanel::clearProperties()
 {
     m_currentType = CurrentType::None;
+    m_currentLevelId.clear();
     m_currentNodeId = -1;
     m_currentBeamId = -1;
     m_currentColumnId = -1;
@@ -544,6 +650,9 @@ void PropertyPanel::showNodeProperties(int nodeId)
     int idx = m_nodeSupportCombo->findData(static_cast<int>(node->supportType()));
     if (idx >= 0) m_nodeSupportCombo->setCurrentIndex(idx);
 
+    m_nodeColor = QString::fromStdString(node->color());
+    setupColorButton(m_nodeColorBtn, m_nodeColor);
+
     m_nodeGroup->setVisible(true);
 }
 
@@ -570,8 +679,10 @@ void PropertyPanel::showBeamProperties(int beamId)
 
     m_beamSectionTypeCombo->blockSignals(true);
     const auto& sec = beam->section();
+    int activeSecData = 0;
     if (sec.shape == TSA::Model::SectionShape::Circular)
     {
+        activeSecData = 1;
         m_beamSectionTypeCombo->setCurrentIndex(m_beamSectionTypeCombo->findData(1));
     }
     else if (sec.shape == TSA::Model::SectionShape::IShape)
@@ -582,14 +693,24 @@ void PropertyPanel::showBeamProperties(int beamId)
             int hMm = static_cast<int>(std::round(sec.height * 1000.0));
             idx = m_beamSectionTypeCombo->findData(hMm);
         }
-        if (idx >= 0) m_beamSectionTypeCombo->setCurrentIndex(idx);
-        else m_beamSectionTypeCombo->setCurrentIndex(0);
+        if (idx >= 0)
+        {
+            m_beamSectionTypeCombo->setCurrentIndex(idx);
+            activeSecData = m_beamSectionTypeCombo->currentData().toInt();
+        }
+        else
+        {
+            m_beamSectionTypeCombo->setCurrentIndex(0);
+            activeSecData = 0;
+        }
     }
     else
     {
         m_beamSectionTypeCombo->setCurrentIndex(m_beamSectionTypeCombo->findData(0));
+        activeSecData = 0;
     }
     m_beamSectionTypeCombo->blockSignals(false);
+    updateBeamSectionVisibility(activeSecData);
 
     int matCode = 1;
     if (beam->material().type == TSA::Model::MaterialType::Steel)
@@ -599,6 +720,9 @@ void PropertyPanel::showBeamProperties(int beamId)
     else
         matCode = (beam->material().fk > 28e6) ? 2 : 1;
     m_beamMaterialCombo->setCurrentIndex(m_beamMaterialCombo->findData(matCode));
+
+    m_beamColor = QString::fromStdString(beam->color());
+    setupColorButton(m_beamColorBtn, m_beamColor);
 
     m_beamGroup->setVisible(true);
 }
@@ -626,8 +750,10 @@ void PropertyPanel::showColumnProperties(int columnId)
 
     m_columnSectionTypeCombo->blockSignals(true);
     const auto& sec = col->section();
+    int activeSecData = 0;
     if (sec.shape == TSA::Model::SectionShape::Circular)
     {
+        activeSecData = 1;
         m_columnSectionTypeCombo->setCurrentIndex(m_columnSectionTypeCombo->findData(1));
     }
     else if (sec.shape == TSA::Model::SectionShape::IShape)
@@ -638,14 +764,24 @@ void PropertyPanel::showColumnProperties(int columnId)
             int hMm = static_cast<int>(std::round(sec.height * 1000.0));
             idx = m_columnSectionTypeCombo->findData(hMm);
         }
-        if (idx >= 0) m_columnSectionTypeCombo->setCurrentIndex(idx);
-        else m_columnSectionTypeCombo->setCurrentIndex(0);
+        if (idx >= 0)
+        {
+            m_columnSectionTypeCombo->setCurrentIndex(idx);
+            activeSecData = m_columnSectionTypeCombo->currentData().toInt();
+        }
+        else
+        {
+            m_columnSectionTypeCombo->setCurrentIndex(0);
+            activeSecData = 0;
+        }
     }
     else
     {
         m_columnSectionTypeCombo->setCurrentIndex(m_columnSectionTypeCombo->findData(0));
+        activeSecData = 0;
     }
     m_columnSectionTypeCombo->blockSignals(false);
+    updateColumnSectionVisibility(activeSecData);
 
     int matCode = 1;
     if (col->material().type == TSA::Model::MaterialType::Steel)
@@ -655,6 +791,9 @@ void PropertyPanel::showColumnProperties(int columnId)
     else
         matCode = (col->material().fk > 28e6) ? 2 : 1;
     m_columnMaterialCombo->setCurrentIndex(m_columnMaterialCombo->findData(matCode));
+
+    m_columnColor = QString::fromStdString(col->color());
+    setupColorButton(m_columnColorBtn, m_columnColor);
 
     m_columnGroup->setVisible(true);
 }
@@ -693,6 +832,9 @@ void PropertyPanel::showSlabProperties(int slabId)
         matCode = (slab->material().fk > 28e6) ? 2 : 1;
     m_slabMaterialCombo->setCurrentIndex(m_slabMaterialCombo->findData(matCode));
 
+    m_slabColor = QString::fromStdString(slab->color());
+    setupColorButton(m_slabColorBtn, m_slabColor);
+
     m_slabGroup->setVisible(true);
 }
 
@@ -725,6 +867,9 @@ void PropertyPanel::showWallProperties(int wallId)
     else
         matCode = (wall->material().fk > 28e6) ? 2 : 1;
     m_wallMaterialCombo->setCurrentIndex(m_wallMaterialCombo->findData(matCode));
+
+    m_wallColor = QString::fromStdString(wall->color());
+    setupColorButton(m_wallColorBtn, m_wallColor);
 
     m_wallGroup->setVisible(true);
 }
@@ -762,6 +907,9 @@ void PropertyPanel::showFoundationProperties(int foundationId)
         matCode = (f->material().fk > 28e6) ? 2 : 1;
     m_foundationMaterialCombo->setCurrentIndex(m_foundationMaterialCombo->findData(matCode));
 
+    m_foundationColor = QString::fromStdString(f->color());
+    setupColorButton(m_foundationColorBtn, m_foundationColor);
+
     m_foundationGroup->setVisible(true);
 }
 
@@ -797,6 +945,9 @@ void PropertyPanel::showTrussMemberProperties(int memberId)
         matCode = (truss->material().fk > 28e6) ? 2 : 1;
     m_trussMaterialCombo->setCurrentIndex(m_trussMaterialCombo->findData(matCode));
 
+    m_trussColor = QString::fromStdString(truss->color());
+    setupColorButton(m_trussColorBtn, m_trussColor);
+
     m_trussGroup->setVisible(true);
 }
 
@@ -811,6 +962,7 @@ void PropertyPanel::onApplyNode()
     node->setName(m_nodeNameEdit->text().toStdString());
     node->setCoordinates(m_nodeXSpin->value(), m_nodeYSpin->value(), m_nodeZSpin->value());
     node->setSupportType(static_cast<TSA::Model::SupportType>(m_nodeSupportCombo->currentData().toInt()));
+    node->setColor(m_nodeColor.toStdString());
 
     m_model->notifyNodeModified(m_currentNodeId);
     emit elementModified();
@@ -863,7 +1015,10 @@ void PropertyPanel::onApplyBeam()
     // 3. Mise à jour de l'orientation bêta
     beam->setRotation(m_beamRotationSpin->value());
 
-    // 4. Notification immédiate -> reconstruction 3D automatique
+    // 4. Mise à jour de la couleur
+    beam->setColor(m_beamColor.toStdString());
+
+    // 5. Notification immédiate -> reconstruction 3D automatique
     m_model->notifyBeamModified(m_currentBeamId);
     emit elementModified();
 }
@@ -915,7 +1070,10 @@ void PropertyPanel::onApplyColumn()
     // 3. Mise à jour de l'orientation bêta
     col->setRotation(m_columnRotationSpin->value());
 
-    // 4. Notification immédiate -> reconstruction 3D automatique
+    // 4. Mise à jour de la couleur
+    col->setColor(m_columnColor.toStdString());
+
+    // 5. Notification immédiate -> reconstruction 3D automatique
     m_model->notifyColumnModified(m_currentColumnId);
     emit elementModified();
 }
@@ -945,6 +1103,8 @@ void PropertyPanel::onApplySlab()
     case 5: slab->setMaterial(TSA::Model::Material::timberC24()); break;
     }
 
+    slab->setColor(m_slabColor.toStdString());
+
     m_model->notifySlabModified(m_currentSlabId);
     emit elementModified();
 }
@@ -971,6 +1131,8 @@ void PropertyPanel::onApplyWall()
     case 4: wall->setMaterial(TSA::Model::Material::steelS355()); break;
     case 5: wall->setMaterial(TSA::Model::Material::timberC24()); break;
     }
+
+    wall->setColor(m_wallColor.toStdString());
 
     m_model->notifyWallModified(m_currentWallId);
     emit elementModified();
@@ -1001,6 +1163,8 @@ void PropertyPanel::onApplyFoundation()
     case 5: f->setMaterial(TSA::Model::Material::timberC24()); break;
     }
 
+    f->setColor(m_foundationColor.toStdString());
+
     m_model->notifyFoundationModified(m_currentFoundationId);
     emit elementModified();
 }
@@ -1029,23 +1193,10 @@ void PropertyPanel::onApplyTruss()
     case 5: truss->setMaterial(TSA::Model::Material::timberC24()); break;
     }
 
+    truss->setColor(m_trussColor.toStdString());
+
     m_model->notifyTrussMemberModified(m_currentTrussId);
     emit elementModified();
-}
-
-void PropertyPanel::onCancelCurrent()
-{
-    switch (m_currentType)
-    {
-    case CurrentType::Node:       showNodeProperties(m_currentNodeId); break;
-    case CurrentType::Beam:       showBeamProperties(m_currentBeamId); break;
-    case CurrentType::Column:     showColumnProperties(m_currentColumnId); break;
-    case CurrentType::Slab:       showSlabProperties(m_currentSlabId); break;
-    case CurrentType::Wall:       showWallProperties(m_currentWallId); break;
-    case CurrentType::Foundation: showFoundationProperties(m_currentFoundationId); break;
-    case CurrentType::Truss:      showTrussMemberProperties(m_currentTrussId); break;
-    default:                      clearProperties(); break;
-    }
 }
 
 } // namespace TSA::UI

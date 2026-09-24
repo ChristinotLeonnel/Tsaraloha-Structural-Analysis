@@ -14,6 +14,18 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
+#include <QColor>
+
+static bool parseHexColor(const std::string& hex, Quantity_Color& outColor)
+{
+    if (hex.empty())
+        return false;
+    QColor qc(QString::fromStdString(hex));
+    if (!qc.isValid())
+        return false;
+    outColor = Quantity_Color(qc.redF(), qc.greenF(), qc.blueF(), Quantity_TOC_sRGB);
+    return true;
+}
 
 #ifdef _WIN32
     #include <windows.h>
@@ -569,7 +581,15 @@ void OccView::updateNodeShape(int nodeId)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisNode = new AIS_Shape(shape);
-        aisNode->SetColor(Quantity_NOC_GOLD);
+        Quantity_Color qc;
+        if (parseHexColor(node->color(), qc))
+        {
+            aisNode->SetColor(qc);
+        }
+        else
+        {
+            aisNode->SetColor(Quantity_NOC_GOLD);
+        }
         aisNode->SetMaterial(Graphic3d_NOM_COPPER);
         aisNode->SetDisplayMode(AIS_Shaded);
 
@@ -650,21 +670,31 @@ void OccView::updateBeamShape(int beamId)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisBeam = new AIS_Shape(shape);
-        if (beam->material().type == TSA::Model::MaterialType::Steel || beam->section().shape == TSA::Model::SectionShape::IShape)
+        Quantity_Color qc;
+        if (parseHexColor(beam->color(), qc))
+        {
+            aisBeam->SetColor(qc);
+        }
+        else if (beam->material().type == TSA::Model::MaterialType::Steel || beam->section().shape == TSA::Model::SectionShape::IShape)
         {
             aisBeam->SetColor(Quantity_NOC_STEELBLUE);
-            aisBeam->SetMaterial(Graphic3d_NOM_STEEL);
         }
         else if (beam->material().type == TSA::Model::MaterialType::Timber)
         {
             aisBeam->SetColor(Quantity_NOC_BURLYWOOD4);
-            aisBeam->SetMaterial(Graphic3d_NOM_SATIN);
         }
         else
         {
             aisBeam->SetColor(Quantity_NOC_LIGHTSLATEGRAY);
-            aisBeam->SetMaterial(Graphic3d_NOM_STONE);
         }
+
+        if (beam->material().type == TSA::Model::MaterialType::Timber)
+            aisBeam->SetMaterial(Graphic3d_NOM_SATIN);
+        else if (beam->material().type == TSA::Model::MaterialType::Steel || beam->section().shape == TSA::Model::SectionShape::IShape)
+            aisBeam->SetMaterial(Graphic3d_NOM_STEEL);
+        else
+            aisBeam->SetMaterial(Graphic3d_NOM_STONE);
+
         aisBeam->SetDisplayMode(AIS_Shaded);
 
         m_context->Display(aisBeam, false);
@@ -716,21 +746,31 @@ void OccView::updateColumnShape(int columnId)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisCol = new AIS_Shape(shape);
-        if (col->material().type == TSA::Model::MaterialType::Steel || col->section().shape == TSA::Model::SectionShape::IShape)
+        Quantity_Color qc;
+        if (parseHexColor(col->color(), qc))
+        {
+            aisCol->SetColor(qc);
+        }
+        else if (col->material().type == TSA::Model::MaterialType::Steel || col->section().shape == TSA::Model::SectionShape::IShape)
         {
             aisCol->SetColor(Quantity_NOC_SLATEBLUE);
-            aisCol->SetMaterial(Graphic3d_NOM_STEEL);
         }
         else if (col->material().type == TSA::Model::MaterialType::Timber)
         {
             aisCol->SetColor(Quantity_NOC_BURLYWOOD3);
-            aisCol->SetMaterial(Graphic3d_NOM_SATIN);
         }
         else
         {
             aisCol->SetColor(Quantity_NOC_GRAY40);
-            aisCol->SetMaterial(Graphic3d_NOM_STONE);
         }
+
+        if (col->material().type == TSA::Model::MaterialType::Timber)
+            aisCol->SetMaterial(Graphic3d_NOM_SATIN);
+        else if (col->material().type == TSA::Model::MaterialType::Steel || col->section().shape == TSA::Model::SectionShape::IShape)
+            aisCol->SetMaterial(Graphic3d_NOM_STEEL);
+        else
+            aisCol->SetMaterial(Graphic3d_NOM_STONE);
+
         aisCol->SetDisplayMode(AIS_Shaded);
 
         m_context->Display(aisCol, false);
@@ -787,7 +827,15 @@ void OccView::updateSlabShape(int slabId)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisSlab = new AIS_Shape(shape);
-        aisSlab->SetColor(Quantity_NOC_GRAY70);
+        Quantity_Color qc;
+        if (parseHexColor(slab->color(), qc))
+        {
+            aisSlab->SetColor(qc);
+        }
+        else
+        {
+            aisSlab->SetColor(Quantity_NOC_GRAY70);
+        }
         aisSlab->SetMaterial(Graphic3d_NOM_STONE);
         aisSlab->SetDisplayMode(AIS_Shaded);
         aisSlab->SetTransparency(0.35f);
@@ -837,7 +885,15 @@ void OccView::updateWallShape(int wallId)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisWall = new AIS_Shape(shape);
-        aisWall->SetColor(Quantity_NOC_GRAY60);
+        Quantity_Color qc;
+        if (parseHexColor(wall->color(), qc))
+        {
+            aisWall->SetColor(qc);
+        }
+        else
+        {
+            aisWall->SetColor(Quantity_NOC_GRAY60);
+        }
         aisWall->SetMaterial(Graphic3d_NOM_STONE);
         aisWall->SetDisplayMode(AIS_Shaded);
         aisWall->SetTransparency(0.25f);
@@ -886,7 +942,15 @@ void OccView::updateFoundationShape(int foundationId)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisF = new AIS_Shape(shape);
-        aisF->SetColor(Quantity_NOC_DARKGOLDENROD);
+        Quantity_Color qc;
+        if (parseHexColor(f->color(), qc))
+        {
+            aisF->SetColor(qc);
+        }
+        else
+        {
+            aisF->SetColor(Quantity_NOC_DARKGOLDENROD);
+        }
         aisF->SetMaterial(Graphic3d_NOM_STONE);
         aisF->SetDisplayMode(AIS_Shaded);
 
@@ -937,7 +1001,15 @@ void OccView::updateTrussMemberShape(int memberId)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisTr = new AIS_Shape(shape);
-        aisTr->SetColor(Quantity_NOC_GOLDENROD);
+        Quantity_Color qc;
+        if (parseHexColor(tr->color(), qc))
+        {
+            aisTr->SetColor(qc);
+        }
+        else
+        {
+            aisTr->SetColor(Quantity_NOC_GOLDENROD);
+        }
         aisTr->SetMaterial(Graphic3d_NOM_STEEL);
         aisTr->SetDisplayMode(AIS_Shaded);
 

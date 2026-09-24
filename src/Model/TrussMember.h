@@ -50,6 +50,9 @@ public:
 
     double length(const Model& model) const;
 
+    const std::string& color() const { return m_color; }
+    void setColor(const std::string& color) { m_color = color; }
+
 private:
     int m_id = 0;
     std::string m_name;
@@ -58,6 +61,7 @@ private:
     TrussMemberRole m_role = TrussMemberRole::Diagonal;
     Section m_section = Section::circular(0.10);
     Material m_material = Material::steelS235();
+    std::string m_color;
 };
 
 } // namespace TSA::Model

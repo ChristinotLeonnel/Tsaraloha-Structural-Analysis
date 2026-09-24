@@ -45,6 +45,9 @@ public:
     SupportType supportType() const { return m_supportType; }
     void setSupportType(SupportType type) { m_supportType = type; }
 
+    const std::string& color() const { return m_color; }
+    void setColor(const std::string& color) { m_color = color; }
+
 private:
     int m_id = 0;
     std::string m_name;
@@ -53,6 +56,7 @@ private:
     double m_z = 0.0;
     std::string m_levelId;
     SupportType m_supportType = SupportType::Free;
+    std::string m_color;
 };
 
 } // namespace TSA::Model

@@ -56,6 +56,9 @@ public:
     double topElevation(const Model& model) const;
     std::string direction(const Model& model) const;
 
+    const std::string& color() const { return m_color; }
+    void setColor(const std::string& color) { m_color = color; }
+
 private:
     int m_id = 0;
     std::string m_name;
@@ -64,6 +67,7 @@ private:
     Section m_section = Section::rectangular(0.30, 0.30);
     Material m_material = Material::concreteC25_30();
     double m_rotation = 0.0;
+    std::string m_color;
 };
 
 } // namespace TSA::Model
