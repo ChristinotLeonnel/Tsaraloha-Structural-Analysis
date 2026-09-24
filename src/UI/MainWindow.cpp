@@ -216,11 +216,11 @@ static QIcon makeShortcutsIcon()
     QPainter p(&pix);
     p.setRenderHint(QPainter::Antialiasing);
 
-    p.setPen(QPen(QColor(100, 116, 139), 1.5));
-    p.setBrush(QColor(226, 232, 240));
+    p.setPen(QPen(QColor(51, 65, 85), 1.8));
+    p.setBrush(QColor(203, 213, 225));
     p.drawRoundedRect(2, 5, 22, 16, 2, 2);
 
-    p.setBrush(QColor(51, 65, 85));
+    p.setBrush(QColor(15, 23, 42));
     p.setPen(Qt::NoPen);
     p.drawRect(5, 8, 4, 3);
     p.drawRect(11, 8, 4, 3);
@@ -444,6 +444,9 @@ MainWindow::MainWindow(QWidget* parent)
             .arg(m_model->columns().size())
             .arg(m_model->slabs().size()));
     }
+
+    connect(&TSA::UI::ThemeManager::instance(), &TSA::UI::ThemeManager::themeChanged, this, &MainWindow::applyTheme);
+    applyTheme(TSA::UI::ThemeManager::instance().isDarkMode());
 }
 
 MainWindow::~MainWindow() = default;
@@ -1093,7 +1096,7 @@ void MainWindow::createRibbon()
     ribbonToolBar->setMovable(false);
     ribbonToolBar->setFloatable(false);
     ribbonToolBar->setContextMenuPolicy(Qt::PreventContextMenu);
-    ribbonToolBar->setStyleSheet("QToolBar { border: none; background: #F8FAFC; margin: 0; padding: 0; }");
+    ribbonToolBar->setStyleSheet("QToolBar { border: none; background: transparent; margin: 0; padding: 0; }");
     ribbonToolBar->addWidget(m_ribbonBar);
 }
 
@@ -2050,8 +2053,10 @@ void MainWindow::onActionSave()
 void MainWindow::onToggleTheme()
 {
     TSA::UI::ThemeManager::instance().toggleTheme();
-    const bool dark = TSA::UI::ThemeManager::instance().isDarkMode();
+}
 
+void MainWindow::applyTheme(bool dark)
+{
     if (m_actionToggleTheme)
     {
         m_actionToggleTheme->setChecked(dark);
@@ -2059,9 +2064,14 @@ void MainWindow::onToggleTheme()
         m_actionToggleTheme->setText(dark ? tr("Mode Sombre (Actif)") : tr("Mode Clair (Actif)"));
     }
 
+    if (m_viewportContainer)
+    {
+        m_viewportContainer->setDarkMode(dark);
+    }
+
     if (m_occView)
     {
-        m_occView->setCadBlueprintTheme(!dark);
+        m_occView->setDarkMode(dark);
     }
 
     if (m_consoleDock)
@@ -3341,10 +3351,10 @@ void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
     if (m_selectionManager)
     {
         m_selectionManager->clearSelection();
-        for (int nid : newNodes) m_selectionManager->selectNode(nid);
-        for (int bid : newBeams) m_selectionManager->selectBeam(bid);
-        for (int cid : newColumns) m_selectionManager->selectColumn(cid);
-        for (int sid : newSlabs) m_selectionManager->selectSlab(sid);
+        for (int nid : newNodes) m_selectionManager->selectNode(nid, true);
+        for (int bid : newBeams) m_selectionManager->selectBeam(bid, true);
+        for (int cid : newColumns) m_selectionManager->selectColumn(cid, true);
+        for (int sid : newSlabs) m_selectionManager->selectSlab(sid, true);
     }
 
     if (m_modelTree) m_modelTree->refreshAll();
@@ -3442,14 +3452,9 @@ void MainWindow::updateUndoRedoActions()
 
 void MainWindow::onToggleDarkMode(bool checked)
 {
-    TSA::UI::ThemeManager::instance().setDarkMode(checked);
-    if (m_viewportContainer)
+    if (TSA::UI::ThemeManager::instance().isDarkMode() != checked)
     {
-        m_viewportContainer->setDarkMode(checked);
-    }
-    if (m_occView)
-    {
-        m_occView->setDarkMode(checked);
+        onToggleTheme();
     }
 }
 

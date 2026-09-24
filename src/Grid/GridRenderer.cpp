@@ -188,14 +188,17 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
     }
 
     m_axesShape = new AIS_Shape(axesCompound);
+    Quantity_Color axesColor = m_isDarkMode
+        ? Quantity_Color(0.48, 0.54, 0.62, Quantity_TOC_RGB)
+        : Quantity_Color(0.55, 0.60, 0.68, Quantity_TOC_RGB);
     Handle(Prs3d_LineAspect) dashAspect = new Prs3d_LineAspect(
-        Quantity_Color(0.60, 0.65, 0.72, Quantity_TOC_RGB),
+        axesColor,
         Aspect_TOL_DASH,
         1.0
     );
     m_axesShape->Attributes()->SetWireAspect(dashAspect);
     m_axesShape->Attributes()->SetLineAspect(dashAspect);
-    m_axesShape->SetColor(Quantity_Color(0.60, 0.65, 0.72, Quantity_TOC_RGB));
+    m_axesShape->SetColor(axesColor);
     m_axesShape->SetWidth(1.0);
     context->Display(m_axesShape, false);
 
@@ -213,14 +216,17 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
             }
         }
         m_verticalConnectionsShape = new AIS_Shape(connCompound);
+        Quantity_Color vConnColor = m_isDarkMode
+            ? Quantity_Color(0.42, 0.48, 0.56, Quantity_TOC_RGB)
+            : Quantity_Color(0.58, 0.62, 0.70, Quantity_TOC_RGB);
         Handle(Prs3d_LineAspect) vDashAspect = new Prs3d_LineAspect(
-            Quantity_Color(0.58, 0.62, 0.70, Quantity_TOC_RGB),
+            vConnColor,
             Aspect_TOL_DASH,
             1.2
         );
         m_verticalConnectionsShape->Attributes()->SetWireAspect(vDashAspect);
         m_verticalConnectionsShape->Attributes()->SetLineAspect(vDashAspect);
-        m_verticalConnectionsShape->SetColor(Quantity_Color(0.58, 0.62, 0.70, Quantity_TOC_RGB));
+        m_verticalConnectionsShape->SetColor(vConnColor);
         m_verticalConnectionsShape->SetWidth(1.2);
         context->Display(m_verticalConnectionsShape, false);
     }
@@ -352,14 +358,17 @@ void GridRenderer::updateActiveLevelHighlight(const GridSystem& gridSystem, cons
     if (hasLines)
     {
         m_activeLevelPlaneShape = new AIS_Shape(activeCompound);
+        Quantity_Color activeColor = m_isDarkMode
+            ? Quantity_Color(0.25, 0.70, 0.95, Quantity_TOC_RGB)   // Cyan électrique éclatant en mode sombre
+            : Quantity_Color(0.10, 0.40, 0.80, Quantity_TOC_RGB);  // Bleu royal soutenu en mode clair
         Handle(Prs3d_LineAspect) activeAspect = new Prs3d_LineAspect(
-            Quantity_Color(0.15, 0.40, 0.78, Quantity_TOC_RGB),
+            activeColor,
             Aspect_TOL_SOLID,
             2.0
         );
         m_activeLevelPlaneShape->Attributes()->SetWireAspect(activeAspect);
         m_activeLevelPlaneShape->Attributes()->SetLineAspect(activeAspect);
-        m_activeLevelPlaneShape->SetColor(Quantity_Color(0.15, 0.40, 0.78, Quantity_TOC_RGB));
+        m_activeLevelPlaneShape->SetColor(activeColor);
         m_activeLevelPlaneShape->SetWidth(2.0);
         context->Display(m_activeLevelPlaneShape, false);
     }
@@ -468,7 +477,7 @@ void GridRenderer::showSnapMarker(const GridSnapResult& snap, const Handle(AIS_I
     {
         m_snapMarkerShape = new AIS_Shape(boxShape);
         m_snapMarkerShape->SetDisplayMode(AIS_Shaded);
-        m_snapMarkerShape->SetColor(Quantity_NOC_SPRINGGREEN);
+        m_snapMarkerShape->SetColor(snap.type == GridSnapType::Intersection ? Quantity_NOC_SPRINGGREEN : Quantity_NOC_CYAN1);
         context->Display(m_snapMarkerShape, false);
     }
     else

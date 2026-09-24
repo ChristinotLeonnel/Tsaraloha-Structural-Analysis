@@ -66,6 +66,17 @@ void CartesianGrid::computeGeometry()
     double startX = m_minX - m_extension;
     double endX   = m_maxX + m_extension;
 
+    // Pré-allocation des vecteurs (tailles connues à l'avance)
+    size_t nLevels = levels.size();
+    size_t nX = xPos.size();
+    size_t nY = yPos.size();
+    m_xLines.reserve(nLevels * nX);
+    m_yLines.reserve(nLevels * nY);
+    m_allLines.reserve(nLevels * (nX + nY));
+    m_intersections.reserve(nLevels * nX * nY);
+    m_labelAnchors.reserve(nLevels * (2 * nX + 2 * nY));
+    m_verticalConnectionLines.reserve(nX * nY);
+
     // 1. Génération des lignes et intersections pour chaque niveau Z
     for (size_t k = 0; k < levels.size(); ++k)
     {
@@ -231,6 +242,7 @@ GridSnapResult CartesianGrid::findClosestSnap(const gp_Pnt& worldPoint, double s
     }
 
     // 2. Accrochage : Intersections de grille (Priorité très haute)
+    const GridIntersection* bestInter = nullptr;
     for (const auto& inter : m_intersections)
     {
         double d = worldPoint.Distance(inter.point);
@@ -240,19 +252,19 @@ GridSnapResult CartesianGrid::findClosestSnap(const gp_Pnt& worldPoint, double s
             bestResult.point = inter.point;
             bestResult.type = GridSnapType::Intersection;
             bestResult.distance = d;
-
-            std::ostringstream oss;
-            oss << "Intersection Grille " << inter.labelX << "-" << inter.labelY
-                << " [" << inter.labelZ << "] ("
-                << std::fixed << std::setprecision(3)
-                << inter.point.X() << ", " << inter.point.Y() << ", " << inter.point.Z() << " m)";
-            bestResult.description = oss.str();
+            bestInter = &inter;
         }
     }
 
-    // Si une intersection a été trouvée, on la privilégie immédiatement
+    // Si une intersection a été trouvée, construire la description une seule fois et retourner
     if (bestResult.snapped && bestResult.type == GridSnapType::Intersection)
     {
+        std::ostringstream oss;
+        oss << "Intersection Grille " << bestInter->labelX << "-" << bestInter->labelY
+            << " [" << bestInter->labelZ << "] ("
+            << std::fixed << std::setprecision(3)
+            << bestInter->point.X() << ", " << bestInter->point.Y() << ", " << bestInter->point.Z() << " m)";
+        bestResult.description = oss.str();
         return bestResult;
     }
 

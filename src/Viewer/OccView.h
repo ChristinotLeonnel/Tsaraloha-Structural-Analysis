@@ -273,7 +273,7 @@ private:
     bool m_snapToGrid = true;
     bool m_gridVisible = true;
     bool m_gridLabelsVisible = true;
-    bool m_isDarkMode = false;
+    bool m_isDarkMode = true;
     double m_gridZOffset = 0.0;
     double m_activeLevelZ = 0.0;
 

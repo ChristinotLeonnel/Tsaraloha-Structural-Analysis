@@ -30,7 +30,7 @@ void SectionCutDialog::setupUi()
 
     // 1. Activer la coupe
     m_enableCheck = new QCheckBox(tr("Activer la coupe de la structure"), this);
-    m_enableCheck->setStyleSheet("font-weight: bold; color: #1e3a8a;");
+    m_enableCheck->setStyleSheet("font-weight: bold;");
     groupLayout->addWidget(m_enableCheck);
 
     // 2. Choix du plan de coupe

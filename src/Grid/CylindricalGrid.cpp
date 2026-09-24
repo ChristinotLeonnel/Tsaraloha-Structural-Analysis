@@ -112,6 +112,15 @@ void CylindricalGrid::computeGeometry()
         levels.push_back(0.0);
     }
 
+    // Pré-allocation des vecteurs (tailles connues à l'avance)
+    size_t nLevels = levels.size();
+    size_t nRadii = validRadii.size();
+    size_t nAngles = validAngles.size();
+    m_circles.reserve(nLevels * nRadii);
+    m_radialLines.reserve(nLevels * nAngles);
+    m_intersections.reserve(nLevels * nRadii * nAngles);
+    m_labelAnchors.reserve(nLevels * (nRadii + nAngles));
+
     for (size_t k = 0; k < levels.size(); ++k)
     {
         double zVal = orig.Z() + levels[k];
@@ -195,6 +204,7 @@ GridSnapResult CylindricalGrid::findClosestSnap(const gp_Pnt& worldPoint, double
     }
 
     // 2. Accrochage : Intersections (Cercle x Rayon)
+    const CylindricalIntersection* bestInter = nullptr;
     for (const auto& inter : m_intersections)
     {
         double d = worldPoint.Distance(inter.point);
@@ -204,18 +214,18 @@ GridSnapResult CylindricalGrid::findClosestSnap(const gp_Pnt& worldPoint, double
             bestResult.point = inter.point;
             bestResult.type = GridSnapType::Intersection;
             bestResult.distance = d;
-
-            std::ostringstream oss;
-            oss << "Intersection Polaire " << inter.labelRadius << " / " << inter.labelAngle
-                << " [" << inter.labelZ << "] ("
-                << std::fixed << std::setprecision(3)
-                << inter.point.X() << ", " << inter.point.Y() << ", " << inter.point.Z() << " m)";
-            bestResult.description = oss.str();
+            bestInter = &inter;
         }
     }
 
     if (bestResult.snapped && bestResult.type == GridSnapType::Intersection)
     {
+        std::ostringstream oss;
+        oss << "Intersection Polaire " << bestInter->labelRadius << " / " << bestInter->labelAngle
+            << " [" << bestInter->labelZ << "] ("
+            << std::fixed << std::setprecision(3)
+            << bestInter->point.X() << ", " << bestInter->point.Y() << ", " << bestInter->point.Z() << " m)";
+        bestResult.description = oss.str();
         return bestResult;
     }
 

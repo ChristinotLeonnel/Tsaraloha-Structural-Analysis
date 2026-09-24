@@ -2,6 +2,7 @@
 #include "../../Grid/GridManager.h"
 #include "../../Model/Model.h"
 #include "../../Viewer/OccView.h"
+#include "../Theme/ThemeManager.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -98,19 +99,39 @@ void GridDialog::setupUi()
 {
     setWindowTitle(tr("Lignes de construction..."));
     setFixedSize(430, 520);
-    setStyleSheet(
-        "QDialog { background-color: #F0F3F7; font-family: Segoe UI, sans-serif; font-size: 12px; color: #202630; }"
-        "QPushButton { background: #FFFFFF; border: 1px solid #B4C0CE; border-radius: 2px; padding: 4px 10px; color: #1E2D3D; font-size: 11px; }"
-        "QPushButton:hover { background: #E8F0FA; border-color: #3884D8; }"
-        "QPushButton:pressed { background: #D0E2F6; }"
-        "QPushButton:checked { background: #D6E7FA; border-color: #2475D0; font-weight: bold; color: #104C90; }"
-        "QTableWidget { background: #FFFFFF; border: 1px solid #B4C0CE; gridline-color: #E2E8F0; selection-background-color: #D6E7FA; selection-color: #104C90; font-size: 11px; }"
-        "QHeaderView::section { background: #EEF2F6; border: 1px solid #CCD3DC; padding: 3px; font-weight: 600; font-size: 11px; color: #334455; }"
-        "QDoubleSpinBox, QSpinBox, QLineEdit, QComboBox { background: #FFFFFF; border: 1px solid #B4C0CE; border-radius: 2px; padding: 2px 4px; font-size: 11px; }"
-        "QDoubleSpinBox:focus, QSpinBox:focus, QLineEdit:focus { border: 1px solid #28A745; background: #F4FDF6; }"
-        "QTabBar::tab { background: #E4E9F0; border: 1px solid #B4C0CE; border-bottom: none; padding: 5px 16px; margin-right: 2px; border-top-left-radius: 2px; border-top-right-radius: 2px; font-weight: 600; color: #405060; }"
-        "QTabBar::tab:selected { background: #FFFFFF; border-bottom: 1px solid #FFFFFF; color: #104C90; }"
-    );
+    const bool isDark = ThemeManager::instance().isDarkMode();
+    if (isDark)
+    {
+        setStyleSheet(
+            "QDialog { background-color: #1E2328; font-family: Segoe UI, sans-serif; font-size: 12px; color: #E6EDF3; }"
+            "QPushButton { background: #212830; border: 1px solid #30363D; border-radius: 2px; padding: 4px 10px; color: #E6EDF3; font-size: 11px; }"
+            "QPushButton:hover { background: #30363D; border-color: #58A6FF; color: #58A6FF; }"
+            "QPushButton:pressed { background: #1F3A5A; }"
+            "QPushButton:checked { background: #1F3A5A; border-color: #1F6FEB; font-weight: bold; color: #58A6FF; }"
+            "QTableWidget { background: #161B22; border: 1px solid #30363D; gridline-color: #30363D; color: #E6EDF3; selection-background-color: #1F3A5A; selection-color: #58A6FF; font-size: 11px; }"
+            "QHeaderView::section { background: #212830; border: 1px solid #30363D; padding: 3px; font-weight: 600; font-size: 11px; color: #8B949E; }"
+            "QDoubleSpinBox, QSpinBox, QLineEdit, QComboBox { background: #161B22; color: #E6EDF3; border: 1px solid #30363D; border-radius: 2px; padding: 2px 4px; font-size: 11px; }"
+            "QDoubleSpinBox:focus, QSpinBox:focus, QLineEdit:focus { border: 1px solid #2EA043; background: #12261A; }"
+            "QTabBar::tab { background: #161B22; border: 1px solid #30363D; border-bottom: none; padding: 5px 16px; margin-right: 2px; border-top-left-radius: 2px; border-top-right-radius: 2px; font-weight: 600; color: #8B949E; }"
+            "QTabBar::tab:selected { background: #212830; border-bottom: 1px solid #212830; color: #58A6FF; }"
+        );
+    }
+    else
+    {
+        setStyleSheet(
+            "QDialog { background-color: #F0F3F7; font-family: Segoe UI, sans-serif; font-size: 12px; color: #202630; }"
+            "QPushButton { background: #FFFFFF; border: 1px solid #B4C0CE; border-radius: 2px; padding: 4px 10px; color: #1E2D3D; font-size: 11px; }"
+            "QPushButton:hover { background: #E8F0FA; border-color: #3884D8; }"
+            "QPushButton:pressed { background: #D0E2F6; }"
+            "QPushButton:checked { background: #D6E7FA; border-color: #2475D0; font-weight: bold; color: #104C90; }"
+            "QTableWidget { background: #FFFFFF; border: 1px solid #B4C0CE; gridline-color: #E2E8F0; selection-background-color: #D6E7FA; selection-color: #104C90; font-size: 11px; }"
+            "QHeaderView::section { background: #EEF2F6; border: 1px solid #CCD3DC; padding: 3px; font-weight: 600; font-size: 11px; color: #334455; }"
+            "QDoubleSpinBox, QSpinBox, QLineEdit, QComboBox { background: #FFFFFF; border: 1px solid #B4C0CE; border-radius: 2px; padding: 2px 4px; font-size: 11px; }"
+            "QDoubleSpinBox:focus, QSpinBox:focus, QLineEdit:focus { border: 1px solid #28A745; background: #F4FDF6; }"
+            "QTabBar::tab { background: #E4E9F0; border: 1px solid #B4C0CE; border-bottom: none; padding: 5px 16px; margin-right: 2px; border-top-left-radius: 2px; border-top-right-radius: 2px; font-weight: 600; color: #405060; }"
+            "QTabBar::tab:selected { background: #FFFFFF; border-bottom: 1px solid #FFFFFF; color: #104C90; }"
+        );
+    }
 
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(10, 10, 10, 10);
@@ -186,7 +207,9 @@ void GridDialog::setupUi()
     m_posSpin->setDecimals(2);
     m_posSpin->setSingleStep(1.0);
     m_posSpin->setValue(0.0);
-    m_posSpin->setStyleSheet("border: 1.5px solid #28A745; background-color: #E8F8EE; font-weight: bold;");
+    m_posSpin->setStyleSheet(isDark
+        ? "border: 1.5px solid #2EA043; background-color: #12261A; color: #7EE787; font-weight: bold;"
+        : "border: 1.5px solid #28A745; background-color: #E8F8EE; font-weight: bold;");
     posLayout->addWidget(m_posSpin);
     posLayout->addWidget(m_posUnitLabel = new QLabel(tr("(m)"), this));
     inputGrid->addLayout(posLayout, 1, 0);
@@ -227,7 +250,9 @@ void GridDialog::setupUi()
     sideBtnLayout->setSpacing(6);
 
     m_btnAdd = new QPushButton(tr("Ajouter"), this);
-    m_btnAdd->setStyleSheet("QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; } QPushButton:hover { background: #D9ECFC; }");
+    m_btnAdd->setStyleSheet(isDark
+        ? "QPushButton { border: 1.5px solid #1F6FEB; background: #1F3A5A; font-weight: bold; color: #58A6FF; } QPushButton:hover { background: #234975; }"
+        : "QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; } QPushButton:hover { background: #D9ECFC; }");
     m_btnAdd->setFixedHeight(28);
 
     m_btnDelete = new QPushButton(tr("Supprimer"), this);

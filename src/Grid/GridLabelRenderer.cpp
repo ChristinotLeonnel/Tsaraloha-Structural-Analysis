@@ -85,8 +85,12 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
         return;
     }
 
-    Quantity_Color textColor(0.20, 0.25, 0.35, Quantity_TOC_RGB);
-    Quantity_Color bubbleColor(0.45, 0.55, 0.68, Quantity_TOC_RGB);
+    Quantity_Color textColor = m_isDarkMode
+        ? Quantity_Color(0.90, 0.93, 0.98, Quantity_TOC_RGB)
+        : Quantity_Color(0.12, 0.16, 0.24, Quantity_TOC_RGB);
+    Quantity_Color bubbleColor = m_isDarkMode
+        ? Quantity_Color(0.40, 0.65, 0.90, Quantity_TOC_RGB)
+        : Quantity_Color(0.20, 0.45, 0.70, Quantity_TOC_RGB);
 
     if (gridSystem.type() == GridType::Cartesian && gridSystem.cartesian())
     {
@@ -121,7 +125,9 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
         }
 
         // 3. Étiquettes d'élévations d'étages le long de la colonne verticale Z
-        Quantity_Color levelTextColor(1.0, 0.85, 0.30, Quantity_TOC_RGB); // Jaune d'or chaud
+        Quantity_Color levelTextColor = m_isDarkMode
+            ? Quantity_Color(1.0, 0.85, 0.30, Quantity_TOC_RGB)  // Jaune d'or chaud lisible sur fond sombre
+            : Quantity_Color(0.70, 0.40, 0.05, Quantity_TOC_RGB); // Ambre sombre lisible sur fond clair
         for (const auto& anchor : cartesian->levelLabelAnchors())
         {
             Handle(AIS_TextLabel) aisText = new AIS_TextLabel();
@@ -159,7 +165,7 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
             if (!edge.IsNull())
             {
                 Handle(AIS_Shape) aisBubble = new AIS_Shape(edge);
-                aisBubble->SetColor(Quantity_NOC_CYAN3);
+                aisBubble->SetColor(m_isDarkMode ? Quantity_NOC_CYAN2 : Quantity_NOC_CYAN4);
                 aisBubble->SetWidth(1.6);
                 context->Display(aisBubble, false);
                 m_bubbleShapes.push_back(aisBubble);

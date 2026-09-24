@@ -44,7 +44,7 @@ Application::Application(int& argc, char** argv)
     // Thème moderne AutoCAD 2024 Dark pour logiciel technique
     setStyle(QStyleFactory::create("Fusion"));
 
-    TSA::UI::ThemeManager::instance().setDarkMode(true);
+    TSA::UI::ThemeManager::instance().setDarkMode(true, true);
 
     // Configuration automatique de l'environnement OpenCASCADE (ressources et shaders)
     if (qEnvironmentVariableIsEmpty("CSF_OCCTResourcePath"))

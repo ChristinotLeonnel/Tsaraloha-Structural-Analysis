@@ -39,6 +39,10 @@ public:
     void setActiveLevelElevation(double z, const GridSystem* gridSystem, const Handle(AIS_InteractiveContext)& context);
     double activeLevelElevation() const { return m_activeLevelZ; }
 
+    // Mode sombre / clair
+    void setDarkMode(bool dark) { m_isDarkMode = dark; m_labelRenderer.setDarkMode(dark); }
+    bool isDarkMode() const { return m_isDarkMode; }
+
 private:
     void renderCartesian(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
     void renderCylindrical(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
@@ -49,6 +53,7 @@ private:
     bool m_labelsVisible = true;
     bool m_intersectionsVisible = true;
     bool m_levelsVisible = true;
+    bool m_isDarkMode = true;
     double m_activeLevelZ = 0.0;
 
     // Formes d'axes et de lignes

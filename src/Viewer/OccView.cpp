@@ -10,6 +10,7 @@
 #include "../Model/TrussMember.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
+#include "../UI/Theme/ThemeManager.h"
 
 #include <QMouseEvent>
 #include <QWheelEvent>
@@ -50,6 +51,7 @@ static bool parseHexColor(const std::string& hex, Quantity_Color& outColor)
 
 OccView::OccView(QWidget* parent)
     : QWidget(parent)
+    , m_isDarkMode(TSA::UI::ThemeManager::instance().isDarkMode())
 {
     setAttribute(Qt::WA_PaintOnScreen);
     setAttribute(Qt::WA_NoSystemBackground);
@@ -230,9 +232,9 @@ void OccView::initOcc()
         wind->Map();
     }
 
-    Quantity_Color topColor = m_isDarkMode ? Quantity_Color(0.18, 0.22, 0.28, Quantity_TOC_RGB)
+    Quantity_Color topColor = m_isDarkMode ? Quantity_Color(0.12, 0.14, 0.18, Quantity_TOC_RGB)
                                            : Quantity_Color(0.82, 0.88, 0.95, Quantity_TOC_RGB);
-    Quantity_Color bottomColor = m_isDarkMode ? Quantity_Color(0.08, 0.10, 0.13, Quantity_TOC_RGB)
+    Quantity_Color bottomColor = m_isDarkMode ? Quantity_Color(0.06, 0.08, 0.10, Quantity_TOC_RGB)
                                               : Quantity_Color(0.92, 0.94, 0.98, Quantity_TOC_RGB);
     m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
 
@@ -271,6 +273,7 @@ void OccView::initOcc()
     {
         m_viewCube->SetBoxColor(Quantity_Color(0.92, 0.94, 0.96, Quantity_TOC_RGB));
         m_viewCube->SetInnerColor(Quantity_Color(0.85, 0.88, 0.92, Quantity_TOC_RGB));
+        m_viewCube->SetTextColor(Quantity_Color(0.10, 0.12, 0.15, Quantity_TOC_RGB));
     }
     m_viewCube->SetRoundRadius(0.10);
     m_viewCube->SetYup(false); // +Z vertical (élévation)
@@ -601,31 +604,36 @@ void OccView::updateNodeShape(int nodeId)
         }
     }
 
-    // 3. Mettre à jour aussi toutes les barres et dalles reliées à ce nœud
+    // 3. Collecter les éléments connectés à ce nœud avant de les mettre à jour
+    //    (chaque updateXxxShape fait UpdateCurrentViewer+ZFitAll+Redraw individuellement,
+    //     on les regroupe ici pour n'actualiser qu'une seule fois à la fin)
+    std::vector<int> connectedBeams;
     for (const auto& [beamId, beam] : m_model->beams())
     {
         if (beam.startNodeId() == nodeId || beam.endNodeId() == nodeId)
-        {
-            updateBeamShape(beamId);
-        }
+            connectedBeams.push_back(beamId);
     }
 
+    std::vector<int> connectedCols;
     for (const auto& [colId, col] : m_model->columns())
     {
         if (col.startNodeId() == nodeId || col.endNodeId() == nodeId)
-        {
-            updateColumnShape(colId);
-        }
+            connectedCols.push_back(colId);
     }
 
+    std::vector<int> connectedSlabs;
     for (const auto& [slabId, slab] : m_model->slabs())
     {
         const auto& nids = slab.nodeIds();
         if (std::find(nids.begin(), nids.end(), nodeId) != nids.end())
-        {
-            updateSlabShape(slabId);
-        }
+            connectedSlabs.push_back(slabId);
     }
+
+    // Mettre à jour silencieusement (les updateXxxShape font UpdateCurrentViewer+Redraw chacun,
+    // mais on ne peut pas les éviter sans refactoring plus profond)
+    for (int bid : connectedBeams) updateBeamShape(bid);
+    for (int cid : connectedCols)  updateColumnShape(cid);
+    for (int sid : connectedSlabs) updateSlabShape(sid);
 
     // 4. Actualiser immédiatement l'affichage 3D OpenCASCADE
     m_context->UpdateCurrentViewer();
@@ -1420,57 +1428,58 @@ void OccView::updateClipPlaneEquation()
 
 void OccView::setCadBlueprintTheme(bool enabled)
 {
-    if (m_view.IsNull())
-        return;
-
-    if (enabled)
-    {
-        Quantity_Color topColor(0.82, 0.88, 0.95, Quantity_TOC_RGB);
-        Quantity_Color bottomColor(0.92, 0.94, 0.98, Quantity_TOC_RGB);
-        m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
-    }
-    else
-    {
-        Quantity_Color topColor(0.18, 0.22, 0.28, Quantity_TOC_RGB);
-        Quantity_Color bottomColor(0.08, 0.10, 0.13, Quantity_TOC_RGB);
-        m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
-    }
-    m_view->Redraw();
+    setDarkMode(!enabled);
 }
 
 void OccView::setDarkMode(bool dark)
 {
     m_isDarkMode = dark;
-    if (m_view.IsNull())
-        return;
+    m_gridRenderer.setDarkMode(dark);
 
-    if (dark)
+    if (!m_view.IsNull())
     {
-        Quantity_Color topColor(0.12, 0.14, 0.18, Quantity_TOC_RGB);
-        Quantity_Color bottomColor(0.06, 0.08, 0.10, Quantity_TOC_RGB);
-        m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
-
-        if (!m_viewCube.IsNull())
+        if (dark)
         {
-            m_viewCube->SetBoxColor(Quantity_Color(0.24, 0.28, 0.34, Quantity_TOC_RGB));
-            m_viewCube->SetInnerColor(Quantity_Color(0.16, 0.19, 0.24, Quantity_TOC_RGB));
-            m_viewCube->SetTextColor(Quantity_Color(0.90, 0.93, 0.96, Quantity_TOC_RGB));
+            Quantity_Color topColor(0.12, 0.14, 0.18, Quantity_TOC_RGB);
+            Quantity_Color bottomColor(0.06, 0.08, 0.10, Quantity_TOC_RGB);
+            m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
+
+            if (!m_viewCube.IsNull())
+            {
+                m_viewCube->SetBoxColor(Quantity_Color(0.24, 0.28, 0.34, Quantity_TOC_RGB));
+                m_viewCube->SetInnerColor(Quantity_Color(0.16, 0.19, 0.24, Quantity_TOC_RGB));
+                m_viewCube->SetTextColor(Quantity_Color(0.90, 0.93, 0.96, Quantity_TOC_RGB));
+                if (!m_context.IsNull() && m_context->IsDisplayed(m_viewCube))
+                {
+                    m_context->Redisplay(m_viewCube, false);
+                }
+            }
+        }
+        else
+        {
+            Quantity_Color topColor(0.82, 0.88, 0.95, Quantity_TOC_RGB);
+            Quantity_Color bottomColor(0.92, 0.94, 0.98, Quantity_TOC_RGB);
+            m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
+
+            if (!m_viewCube.IsNull())
+            {
+                m_viewCube->SetBoxColor(Quantity_Color(0.92, 0.94, 0.96, Quantity_TOC_RGB));
+                m_viewCube->SetInnerColor(Quantity_Color(0.85, 0.88, 0.92, Quantity_TOC_RGB));
+                m_viewCube->SetTextColor(Quantity_Color(0.10, 0.12, 0.15, Quantity_TOC_RGB));
+                if (!m_context.IsNull() && m_context->IsDisplayed(m_viewCube))
+                {
+                    m_context->Redisplay(m_viewCube, false);
+                }
+            }
         }
     }
-    else
-    {
-        Quantity_Color topColor(0.82, 0.88, 0.95, Quantity_TOC_RGB);
-        Quantity_Color bottomColor(0.92, 0.94, 0.98, Quantity_TOC_RGB);
-        m_view->SetBgGradientColors(topColor, bottomColor, Aspect_GFM_VER);
 
-        if (!m_viewCube.IsNull())
-        {
-            m_viewCube->SetBoxColor(Quantity_Color(0.92, 0.94, 0.96, Quantity_TOC_RGB));
-            m_viewCube->SetInnerColor(Quantity_Color(0.85, 0.88, 0.92, Quantity_TOC_RGB));
-            m_viewCube->SetTextColor(Quantity_Color(0.10, 0.12, 0.15, Quantity_TOC_RGB));
-        }
+    rebuildGrid();
+
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
     }
-    m_view->Redraw();
 }
 
 void OccView::setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::GridSnapManager* snapManager)
@@ -1778,8 +1787,10 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
         gp_Pnt bestGridPnt;
         QString bestGridLabel;
 
+        // Stocker un pointeur vers le gagnant pour construire le label une seule fois
         if (activeGrid->cartesian())
         {
+            const TSA::Grid::GridIntersection* bestCartInter = nullptr;
             for (const auto& inter : activeGrid->cartesian()->intersections())
             {
                 const gp_Pnt& p = inter.point;
@@ -1796,16 +1807,21 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
                 {
                     bestGridDist2 = dist2;
                     bestGridPnt = p;
-                    bestGridLabel = QString("Grille (%1, %2, Z=%3 m)")
-                        .arg(QString::fromStdString(inter.labelX))
-                        .arg(QString::fromStdString(inter.labelY))
-                        .arg(p.Z(), 0, 'f', 2);
+                    bestCartInter = &inter;
                     foundGridInter = true;
                 }
+            }
+            if (foundGridInter && bestCartInter)
+            {
+                bestGridLabel = QString("Grille (%1, %2, Z=%3 m)")
+                    .arg(QString::fromStdString(bestCartInter->labelX))
+                    .arg(QString::fromStdString(bestCartInter->labelY))
+                    .arg(bestGridPnt.Z(), 0, 'f', 2);
             }
         }
         else if (activeGrid->cylindrical())
         {
+            const TSA::Grid::CylindricalIntersection* bestCylInter = nullptr;
             for (const auto& inter : activeGrid->cylindrical()->intersections())
             {
                 const gp_Pnt& p = inter.point;
@@ -1822,11 +1838,15 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
                 {
                     bestGridDist2 = dist2;
                     bestGridPnt = p;
-                    bestGridLabel = QString("Grille Cylindrique (R=%1, %2°)")
-                        .arg(p.Distance(gp_Pnt(0, 0, p.Z())), 0, 'f', 2)
-                        .arg(inter.angleDeg, 0, 'f', 1);
+                    bestCylInter = &inter;
                     foundGridInter = true;
                 }
+            }
+            if (foundGridInter && bestCylInter)
+            {
+                bestGridLabel = QString("Grille Cylindrique (R=%1, %2°)")
+                    .arg(bestGridPnt.Distance(gp_Pnt(0, 0, bestGridPnt.Z())), 0, 'f', 2)
+                    .arg(bestCylInter->angleDeg, 0, 'f', 1);
             }
         }
 
@@ -2781,7 +2801,9 @@ void OccView::keyPressEvent(QKeyEvent* event)
     {
         if (m_interactionMode == InteractionMode::DrawSlab && m_drawingNodeIds.size() >= 3 && m_model)
         {
+            m_model->pushUndoState(tr("Création Dalle").toStdString());
             int slabId = m_model->addSlab(m_drawingNodeIds, 0.20);
+            emit elementCreated();
             emit drawingPromptChanged(tr("Dalle S%1 créée (%2 nœuds)").arg(slabId).arg(m_drawingNodeIds.size()));
             cancelCurrentDrawing();
         }

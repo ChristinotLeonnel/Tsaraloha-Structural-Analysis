@@ -21,8 +21,12 @@ public:
 
     bool isVisible() const { return m_isVisible; }
 
+    void setDarkMode(bool dark) { m_isDarkMode = dark; }
+    bool isDarkMode() const { return m_isDarkMode; }
+
 private:
     bool m_isVisible = true;
+    bool m_isDarkMode = true;
     std::vector<Handle(AIS_TextLabel)> m_textLabels;
     std::vector<Handle(AIS_Shape)> m_bubbleShapes;
 };

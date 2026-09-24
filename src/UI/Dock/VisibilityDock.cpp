@@ -26,7 +26,6 @@ void VisibilityDock::setupUi()
 
     // Groupe Guides & Repères
     auto* guidesGroup = new QGroupBox(tr("Guides & Repères 3D"), container);
-    guidesGroup->setStyleSheet("QGroupBox { font-weight: bold; color: #58A6FF; }");
     auto* guidesLayout = new QVBoxLayout(guidesGroup);
     guidesLayout->setSpacing(6);
 
@@ -54,7 +53,6 @@ void VisibilityDock::setupUi()
 
     // Groupe Modèle & Structure
     auto* modelGroup = new QGroupBox(tr("Composants de Structure"), container);
-    modelGroup->setStyleSheet("QGroupBox { font-weight: bold; color: #58A6FF; }");
     auto* modelLayout = new QVBoxLayout(modelGroup);
     modelLayout->setSpacing(6);
 

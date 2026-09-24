@@ -97,6 +97,7 @@ private:
     void createToolBars();
     void createDockWindows();
     void createStatusBar();
+    void applyTheme(bool dark);
 
 private:
     std::unique_ptr<TSA::Model::Model> m_model;

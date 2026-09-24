@@ -124,6 +124,7 @@ void ViewportContainer::setRulersVisible(bool visible)
 
 void ViewportContainer::updateRulers()
 {
+    if (m_corner) m_corner->update();
     if (m_topRuler) m_topRuler->updateRuler();
     if (m_leftRuler) m_leftRuler->updateRuler();
     if (m_rightRuler) m_rightRuler->updateRuler();

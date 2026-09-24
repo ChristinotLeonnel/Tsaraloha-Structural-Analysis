@@ -15,12 +15,12 @@ public:
     static ThemeManager& instance();
 
     bool isDarkMode() const { return m_isDark; }
-    void setDarkMode(bool dark);
+    void setDarkMode(bool dark, bool force = false);
     void toggleTheme();
 
     // Méthodes statiques pratiques
     static bool isDark() { return instance().isDarkMode(); }
-    static void setDark(bool dark) { instance().setDarkMode(dark); }
+    static void setDark(bool dark, bool force = false) { instance().setDarkMode(dark, force); }
 
     // Couleurs des règles graduées
     QColor rulerBackground() const;
