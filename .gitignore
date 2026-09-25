@@ -4,6 +4,7 @@
 
 # Dossiers de compilation & build
 build/
+build-*/
 bin/
 out/
 dist/
@@ -40,6 +41,7 @@ CMakeUserPresets.json
 cmake_install.cmake
 compile_commands.json
 CTestTestfile.cmake
+Testing/
 Makefile
 
 # Fichiers compilés C++ / Objets / Bibliothèques / Débogage
@@ -72,3 +74,9 @@ Thumbs.db
 *.log
 *.tlog
 *.dump
+
+# Archives
+*.rar
+*.zip
+*.7z
+*.tar.gz

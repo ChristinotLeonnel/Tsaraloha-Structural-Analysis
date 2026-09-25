@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none">
+  <circle cx="7" cy="7" r="4.5" fill="#E3F2FD" stroke="#1976D2" stroke-width="1.8"/>
+  <text x="7" y="9.5" font-size="6.5" font-family="Segoe UI, sans-serif" font-weight="bold" fill="#1976D2" text-anchor="middle">A</text>
+  <circle cx="17" cy="17" r="4.5" fill="#E8F5E9" stroke="#388E3C" stroke-width="1.8"/>
+  <text x="17" y="19.5" font-size="6.5" font-family="Segoe UI, sans-serif" font-weight="bold" fill="#388E3C" text-anchor="middle">1</text>
+  <line x1="7" y1="12" x2="7" y2="21" stroke="#90A4AE" stroke-width="1.5" stroke-dasharray="2 2"/>
+  <line x1="3" y1="17" x2="12" y2="17" stroke="#90A4AE" stroke-width="1.5" stroke-dasharray="2 2"/>
+</svg>

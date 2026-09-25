@@ -1,0 +1,49 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Ombre douce sous le document -->
+    <filter id="shadow" x="80" y="36" width="352" height="456" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.12"/>
+    </filter>
+
+    <!-- Dégradé officiel TSA pour le badge -->
+    <linearGradient id="tsa_badge_grad" x1="156" y1="360" x2="356" y2="432" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#4A00E0"/>
+    </linearGradient>
+
+    <!-- Dégradé subtil pour la page -->
+    <linearGradient id="page_grad" x1="112" y1="48" x2="400" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F8FAFC"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Forme principale du document avec pli d'angle -->
+  <g filter="url(#shadow)">
+    <!-- Corps du document -->
+    <path d="M128 48H304L400 144V448C400 456.837 392.837 464 384 464H128C119.163 464 112 456.837 112 448V64C112 55.1634 119.163 48 128 48Z" fill="url(#page_grad)" stroke="#CBD5E1" stroke-width="8" stroke-linejoin="round"/>
+    
+    <!-- Coin plié (Fold) -->
+    <path d="M304 48V144H400" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="8" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Symbole structural épuré (Portique / Treillis élémentaire) -->
+  <g stroke="#6366F1" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Poteaux et traverse -->
+    <line x1="192" y1="200" x2="192" y2="312"/>
+    <line x1="320" y1="200" x2="320" y2="312"/>
+    <line x1="192" y1="200" x2="320" y2="200"/>
+    <!-- Diagonale de contreventement -->
+    <line x1="192" y1="312" x2="320" y2="200" stroke="#818CF8" stroke-dasharray="1 1"/>
+  </g>
+
+  <!-- Nœuds structuraux -->
+  <circle cx="192" cy="200" r="10" fill="#4338CA"/>
+  <circle cx="320" cy="200" r="10" fill="#4338CA"/>
+  <circle cx="192" cy="312" r="10" fill="#4338CA"/>
+  <circle cx="320" cy="312" r="10" fill="#4338CA"/>
+
+  <!-- Badge d'extension .TSA -->
+  <rect x="156" y="364" width="200" height="68" rx="16" fill="url(#tsa_badge_grad)"/>
+  <text x="256" y="413" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="3">TSA</text>
+</svg>

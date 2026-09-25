@@ -16,10 +16,13 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Svg)
 
 # -----------------------------------------------------------------------------
-# Configuration OpenCASCADE (OCCT)
+# Configuration OpenCASCADE (OCCT) et dépendances tierces
 # -----------------------------------------------------------------------------
-# On peut définir OpenCASCADE_DIR en ligne de commande ou via variable d'environnement :
-# ex: -DOpenCASCADE_DIR="C:/OpenCASCADE-7.8.0/cmake"
+# Gestion automatique : si OCCT ou 3rdparty sont absents, CMake les télécharge
+# automatiquement depuis les dépôts officiels GitHub (V8.0.1).
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/SetupDependencies.cmake")
+setup_external_dependencies()
+
 find_package(OpenCASCADE REQUIRED)
 
 message(STATUS "OpenCASCADE Version: ${OpenCASCADE_VERSION}")
@@ -40,8 +43,71 @@ set(SOURCES
     src/UI/Properties/PropertyPanel.cpp
     src/UI/Dialogs/TransformDialog.h
     src/UI/Dialogs/TransformDialog.cpp
+    src/UI/Dialogs/GridDialog.h
+    src/UI/Dialogs/GridDialog.cpp
     src/UI/Dialogs/GridSettingsDialog.h
     src/UI/Dialogs/GridSettingsDialog.cpp
+    src/UI/Dialogs/LevelDialog.h
+    src/UI/Dialogs/LevelDialog.cpp
+    src/UI/Dialogs/SectionCutDialog.h
+    src/UI/Dialogs/SectionCutDialog.cpp
+    src/UI/Dialogs/HelpDialog.h
+    src/UI/Dialogs/HelpDialog.cpp
+    src/UI/Dialogs/StructurePresetDialog.h
+    src/UI/Dialogs/StructurePresetDialog.cpp
+    src/UI/Dialogs/BarCreationDialog.h
+    src/UI/Dialogs/BarCreationDialog.cpp
+    src/UI/Dialogs/SurfaceCreationDialog.h
+    src/UI/Dialogs/SurfaceCreationDialog.cpp
+    src/Model/CreationPresets.h
+    src/UI/Theme/ThemeManager.h
+    src/UI/Theme/ThemeManager.cpp
+    src/UI/Ruler/ViewportRuler.h
+    src/UI/Ruler/ViewportRuler.cpp
+    src/UI/Ruler/ViewportContainer.h
+    src/UI/Ruler/ViewportContainer.cpp
+    src/UI/Widgets/SectionPreviewWidget.h
+    src/UI/Widgets/SectionPreviewWidget.cpp
+    src/UI/Ribbon/RibbonTypes.h
+    src/UI/Ribbon/RibbonButton.h
+    src/UI/Ribbon/RibbonButton.cpp
+    src/UI/Ribbon/RibbonPanel.h
+    src/UI/Ribbon/RibbonPanel.cpp
+    src/UI/Ribbon/RibbonTab.h
+    src/UI/Ribbon/RibbonTab.cpp
+    src/UI/Ribbon/RibbonBar.h
+    src/UI/Ribbon/RibbonBar.cpp
+    src/UI/Ribbon/RibbonBuilder.h
+    src/UI/Ribbon/RibbonBuilder.cpp
+    src/UI/Dock/VisibilityDock.h
+    src/UI/Dock/VisibilityDock.cpp
+    src/UI/Dock/LogConsoleDock.h
+    src/UI/Dock/LogConsoleDock.cpp
+    src/Coordinate/Point3D.h
+    src/Coordinate/Level.h
+    src/Coordinate/LevelManager.h
+    src/Coordinate/LevelManager.cpp
+    src/Coordinate/CoordinateSystem.h
+    src/Coordinate/CoordinateSystem.cpp
+    src/Coordinate/CylindricalCoordinates.h
+    src/Coordinate/CylindricalCoordinates.cpp
+    src/Grid/GridType.h
+    src/Grid/GridDefinition.h
+    src/Grid/GridDefinition.cpp
+    src/Grid/CartesianGrid.h
+    src/Grid/CartesianGrid.cpp
+    src/Grid/CylindricalGrid.h
+    src/Grid/CylindricalGrid.cpp
+    src/Grid/GridLabelRenderer.h
+    src/Grid/GridLabelRenderer.cpp
+    src/Grid/GridRenderer.h
+    src/Grid/GridRenderer.cpp
+    src/Grid/GridSnapManager.h
+    src/Grid/GridSnapManager.cpp
+    src/Grid/GridSystem.h
+    src/Grid/GridSystem.cpp
+    src/Grid/GridManager.h
+    src/Grid/GridManager.cpp
     src/Viewer/OccView.h
     src/Viewer/OccView.cpp
     src/Viewer/SelectionManager.h
@@ -50,6 +116,14 @@ set(SOURCES
     src/Geometry/BeamGeometry.cpp
     src/Geometry/SlabGeometry.h
     src/Geometry/SlabGeometry.cpp
+    src/Geometry/WallGeometry.h
+    src/Geometry/WallGeometry.cpp
+    src/Geometry/FoundationGeometry.h
+    src/Geometry/FoundationGeometry.cpp
+    src/Model/Material.h
+    src/Model/Material.cpp
+    src/Model/Section.h
+    src/Model/Section.cpp
     src/Model/Node.h
     src/Model/Node.cpp
     src/Model/Beam.h
@@ -58,9 +132,25 @@ set(SOURCES
     src/Model/Column.cpp
     src/Model/Slab.h
     src/Model/Slab.cpp
+    src/Model/Wall.h
+    src/Model/Wall.cpp
+    src/Model/Foundation.h
+    src/Model/Foundation.cpp
+    src/Model/TrussMember.h
+    src/Model/TrussMember.cpp
     src/Model/Model.h
     src/Model/Model.cpp
+    src/Model/ModelDiff.h
+    src/Model/ModelDiff.cpp
+    src/IO/TSAFileFormat.h
+    src/IO/TSAFile.h
+    src/IO/TSAFile.cpp
+    src/IO/TSAPreviewGenerator.h
+    src/IO/TSAPreviewGenerator.cpp
+    src/Platform/WindowsAssociation.h
+    src/Platform/WindowsAssociation.cpp
     resources/resources.qrc
+    resources/TSA.rc
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -100,7 +190,85 @@ if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /permissive- /utf-8)
     # Définition pour éviter min/max de windows.h
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+
+    # Sous-système Windows :
+    # - Mode Debug : conserve la console cmd pour afficher les logs (qDebug, std::cout, diagnostics)
+    # - Mode Release / RelWithDebInfo / MinSizeRel : mode fenêtré pur sans console cmd
+    target_link_options(${PROJECT_NAME} PRIVATE
+        $<$<CONFIG:Debug>:/SUBSYSTEM:CONSOLE>
+        $<$<NOT:$<CONFIG:Debug>>:/SUBSYSTEM:WINDOWS>
+        $<$<NOT:$<CONFIG:Debug>>:/ENTRY:mainCRTStartup>
+    )
 endif()
+
+# -----------------------------------------------------------------------------
+# Tests unitaires
+# -----------------------------------------------------------------------------
+enable_testing()
+
+set(TEST_SOURCES
+    tests/test_coordinates.cpp
+    src/Coordinate/Point3D.h
+    src/Coordinate/Level.h
+    src/Coordinate/LevelManager.h
+    src/Coordinate/LevelManager.cpp
+    src/Coordinate/CoordinateSystem.h
+    src/Coordinate/CoordinateSystem.cpp
+    src/Coordinate/CylindricalCoordinates.h
+    src/Coordinate/CylindricalCoordinates.cpp
+    src/Model/Material.h
+    src/Model/Material.cpp
+    src/Model/Section.h
+    src/Model/Section.cpp
+    src/Model/Node.h
+    src/Model/Node.cpp
+    src/Model/Beam.h
+    src/Model/Beam.cpp
+    src/Model/Column.h
+    src/Model/Column.cpp
+    src/Model/Slab.h
+    src/Model/Slab.cpp
+    src/Model/Wall.h
+    src/Model/Wall.cpp
+    src/Model/Foundation.h
+    src/Model/Foundation.cpp
+    src/Model/TrussMember.h
+    src/Model/TrussMember.cpp
+    src/Model/Model.h
+    src/Model/Model.cpp
+    src/Model/ModelDiff.h
+    src/Model/ModelDiff.cpp
+    src/Grid/GridType.h
+    src/Grid/GridDefinition.h
+    src/Grid/GridDefinition.cpp
+    src/Grid/CartesianGrid.h
+    src/Grid/CartesianGrid.cpp
+    src/Grid/CylindricalGrid.h
+    src/Grid/CylindricalGrid.cpp
+    src/Grid/GridSystem.h
+    src/Grid/GridSystem.cpp
+    src/Grid/GridManager.h
+    src/Grid/GridManager.cpp
+    src/Grid/GridSnapManager.h
+    src/Grid/GridSnapManager.cpp
+    src/Geometry/BeamGeometry.h
+    src/Geometry/BeamGeometry.cpp
+    src/IO/TSAFileFormat.h
+    src/IO/TSAFile.h
+    src/IO/TSAFile.cpp
+    src/IO/TSAPreviewGenerator.h
+    src/IO/TSAPreviewGenerator.cpp
+)
+
+add_executable(TSA_Tests ${TEST_SOURCES})
+target_include_directories(TSA_Tests PRIVATE src ${OpenCASCADE_INCLUDE_DIR})
+target_link_libraries(TSA_Tests PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets ${OCCT_LIBS})
+if(MSVC)
+    target_compile_options(TSA_Tests PRIVATE /W4 /permissive- /utf-8)
+    target_compile_definitions(TSA_Tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+endif()
+set_target_properties(TSA_Tests PROPERTIES OUTPUT_NAME "TSA_TestSuite")
+add_test(NAME CoordinatesAndLevelsTest COMMAND TSA_Tests)
 
 # -----------------------------------------------------------------------------
 # Déploiement automatique des DLLs et dépendances dans le dossier de l'exécutable
