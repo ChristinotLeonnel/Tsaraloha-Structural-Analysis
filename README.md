@@ -7,9 +7,11 @@ Logiciel de modélisation et d'analyse 3D orienté structure et génie civil, d�
 ## 📋 Prérequis et Environnement
 
 - **Système d'exploitation** : Windows 10 / 11 (x64)
-- **Compilateur** : MSVC (Visual Studio 2022 / 2026 x64) avec support complet C++20
+- **Compilateur** : 
+  - **MSVC** (Visual Studio 2022 / 2026 x64) avec support C++20 — *sélectionné automatiquement par défaut*
+  - **MinGW-w64** (GCC 13+ / 16+ x64) — *sélectionné automatiquement si MSVC est absent, ou téléchargé/installé automatiquement si aucun compilateur n'est présent*
 - **CMake** : Version 3.20 ou supérieure
-- **Qt 6** : Qt 6.2+ (`Core`, `Gui`, `Widgets`, `Svg`) — *ex. `C:\Qt\6.11.2\msvc2022_64`*
+- **Qt 6** : Qt 6.2+ (`Core`, `Gui`, `Widgets`, `Svg`) — *ex. `C:\Qt\6.11.2\msvc2022_64` ou `C:\Qt\6.11.2\mingw_64`*
 - **OpenCASCADE** : OCCT 8.0.1 (**téléchargé et extrait automatiquement par CMake** si absent)
 - **Dépendances tierces (3rdparty)** : FreeType, TBB, FreeImage, Jemalloc, etc. (**téléchargées automatiquement par CMake** si absentes)
 
@@ -17,9 +19,27 @@ Logiciel de modélisation et d'analyse 3D orienté structure et génie civil, d�
 
 ## 🛠️ Configuration & Compilation
 
-> **Téléchargement automatique des bibliothèques :** Si `opencascade-8.0.1-vc14-64` ou `3rdparty-vc14-64` ne sont pas encore présents dans votre copie locale (ex: clone Git frais), CMake les télécharge et les décompresse automatiquement depuis les dépôts officiels GitHub dès la première configuration. Vous pouvez désactiver cette option via `-DTSA_AUTO_DOWNLOAD_DEPS=OFF`.
+### Option 1 : Script Intelligent Tout-en-Un (Fortement Recommandé)
 
-### Option 1 : Avec CMake Presets (Recommandé)
+Le projet intègre un système d'orchestration PowerShell qui :
+1. Détecte automatiquement si **Visual Studio / MSVC** est installé.
+2. Si MSVC est absent, détecte **MinGW-w64** existant.
+3. Si aucun compilateur n'est installé, télécharge et installe automatiquement **MinGW-w64 x64** officiel (WinLibs) avec contrôle d'intégrité SHA256.
+4. Vérifie la stricte compatibilité de toolchain avec votre installation **Qt 6** et **OCCT**.
+5. Configure CMake dans un dossier dédié non-destructif (`build-msvc/` ou `build-mingw/`).
+
+```powershell
+# Détection automatique du compilateur et configuration CMake
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1
+
+# Configuration ET compilation immédiate en Release
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -Build
+
+# Mode Debug complet
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -Config Debug -Build
+```
+
+### Option 2 : Avec CMake Presets
 
 ```powershell
 # Configuration (Release)
@@ -35,10 +55,10 @@ cmake --preset windows-x64-debug
 cmake --build --preset windows-x64-debug
 ```
 
-### Option 2 : En ligne de commande standard
+### Option 3 : En ligne de commande standard
 
 ```powershell
-# 1. Génération de la solution (ajuster le chemin Qt si nécessaire, OCCT sera trouvé ou téléchargé automatiquement)
+# 1. Génération de la solution (OCCT et 3rdparty téléchargés automatiquement si absents)
 cmake -B build -S . -DQt6_DIR="C:/Qt/6.11.2/msvc2022_64/lib/cmake/Qt6"
 
 # 2. Compilation en Release
@@ -108,9 +128,15 @@ Ou directement :
 
 ```text
 TSA/
-├── cmake/                      # Scripts d'automatisation de déploiement
-├── opencascade-8.0.1-vc14-64/   # SDK OpenCASCADE local
-├── 3rdparty-vc14-64/           # Bibliothèques tierces (FreeType, TBB...)
+├── cmake/                      # Scripts CMake et téléchargement auto OCCT
+├── scripts/                    # Scripts PowerShell d'orchestration et détection compilateurs
+│   ├── setup_build.ps1         # Script principal (détection, vérification, build)
+│   ├── detect_compiler.ps1     # Détection rigoureuse MSVC et MinGW
+│   ├── install_mingw.ps1       # Téléchargement sécurisé WinLibs MinGW-w64
+│   ├── detect_qt.ps1           # Détection Qt et vérification de toolchain
+│   └── detect_dependencies.ps1 # Détection de compatibilité OCCT et VTK
+├── opencascade-8.0.1-vc14-64/   # SDK OpenCASCADE local (téléchargé si absent)
+├── 3rdparty-vc14-64/           # Bibliothèques tierces (téléchargées si absentes)
 ├── resources/                  # Icônes et fichiers de ressources Qt (.qrc)
 ├── src/
 │   ├── App/                    # Classe d'application principale

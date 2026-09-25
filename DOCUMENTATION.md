@@ -18,6 +18,12 @@
 8. [Guide des Raccourcis Clavier](#8-guide-des-raccourcis-clavier)
 9. [Analyse EF, Calculs et Exploitation des Résultats](#9-analyse-ef-calculs-et-exploitation-des-résultats)
 10. [Guide de Compilation et Déploiement](#10-guide-de-compilation-et-déploiement)
+   - [10.1 Détection et Gestion Automatique des Compilateurs](#101-détection-et-gestion-automatique-des-compilateurs)
+   - [10.2 Installation Sécurisée de MinGW-w64](#102-installation-sécurisée-de-mingw-w64)
+   - [10.3 Compatibilité des Toolchains (Qt 6, OCCT, VTK)](#103-compatibilité-des-toolchains-qt-6-occt-vtk)
+   - [10.4 Téléchargement Automatisé des Bibliothèques Tierces](#104-téléchargement-automatisé-des-bibliothèques-tierces)
+   - [10.5 Répertoires Non-Destructifs et Compilation](#105-répertoires-non-destructifs-et-compilation)
+   - [10.6 Déploiement et Exécution](#106-déploiement-et-exécution)
 
 ---
 
@@ -281,39 +287,115 @@ La console inférieure dispose d'un interpréteur de commandes en langage nature
 ## 10. Guide de Compilation et Déploiement
 
 ### Prérequis Système :
-- **Système** : Windows 10 ou Windows 11 (x64).
-- **Compilateur** : Visual Studio 2022 / 2026 (MSVC x64) avec support standard **C++20**.
+- **Système** : Windows 10 ou Windows 11 (architecture **x64** obligatoire).
+- **Compilateur** :
+  - **MSVC** (Visual Studio 2022 / 2026 x64) avec support complet standard **C++20** *(recommandé, sélectionné par défaut si installé)*.
+  - **MinGW-w64** (GCC 13+ / 16+ x64) avec POSIX threads et SEH exceptions *(sélectionné automatiquement si MSVC est absent, ou téléchargé à la volée)*.
 - **Outils** : CMake 3.20+ et Ninja ou MSBuild.
 - **Bibliothèques** :
-  - Qt 6.2+ (`Core`, `Gui`, `Widgets`, `Svg`).
+  - Qt 6.2+ (`Core`, `Gui`, `Widgets`, `Svg`) — *ex. `C:\Qt\6.11.2\msvc2022_64` ou `C:\Qt\6.11.2\mingw_64`*.
   - OpenCASCADE Technology 8.0.1 (**téléchargé et installé automatiquement par CMake** si non présent).
   - Dépendances tierces 3rdparty (**téléchargées automatiquement par CMake** si non présentes).
 
-### Compilation en Ligne de Commande :
+---
+
+### 10.1 Détection et Gestion Automatique des Compilateurs
+
+Le projet intègre un ensemble de scripts PowerShell situés dans le dossier `scripts/` assurant une configuration 100% automatisée sans intervention manuelle :
+
+- **Script principal d'orchestration : [`scripts/setup_build.ps1`](file:///e:/Book/Dev/TSA/scripts/setup_build.ps1)**
+  - Coordonne la détection, la validation par compilation test C++20, la vérification de compatibilité Qt / OCCT, et la génération CMake.
+- **Détection des compilateurs : [`scripts/detect_compiler.ps1`](file:///e:/Book/Dev/TSA/scripts/detect_compiler.ps1)**
+  - Interroge les outils Microsoft (`vswhere.exe`) pour localiser Visual Studio ou Visual Studio Build Tools, l'environnement `vcvarsall.bat` x64 et le Windows SDK.
+  - Vérifie la présence de `cl.exe` même s'il n'est pas déclaré dans le `PATH` global de Windows.
+  - Si MSVC est présent, il est **toujours prioritaire** et sélectionné (`Compiler sélectionné : MSVC`).
+  - Si MSVC est absent, il recherche un environnement **MinGW-w64** existant (`gcc.exe`, `g++.exe` dans le `PATH`, `C:\TSA\tools\mingw64\bin`, `C:\Qt\Tools\mingw*`, etc.).
+
+---
+
+### 10.2 Installation Sécurisée de MinGW-w64
+
+Si **aucun compilateur fonctionnel n'est détecté** sur la machine hôte :
+
+- Le script [`scripts/install_mingw.ps1`](file:///e:/Book/Dev/TSA/scripts/install_mingw.ps1) prend le relais automatiquement.
+- **Règle d'or** : Il ne télécharge **jamais** MinGW si un environnement MSVC fonctionnel est déjà disponible.
+- **Source fiable et maintenue** : Utilise la distribution officielle **WinLibs MinGW-w64 GCC 16.2.0 + UCRT + SEH (x86_64)** depuis GitHub Releases.
+- **Contrôle d'intégrité strict** : Calcule l'empreinte **SHA256** du fichier téléchargé et la compare au condensat officiel (`c1f52294597c0b73786b2a78eb5d176d89226d2f21875eab75e783a8b1cefcc4`). En cas de non-concordance, le fichier est détruit et le script s'arrête avec un code d'erreur non nul.
+- **Emplacement contrôlé** : Installé par défaut dans `C:\TSA\tools\mingw64` (ou repli automatique dans `%LOCALAPPDATA%\TSA\tools\mingw64` si les droits d'administration sur `C:\` sont insuffisants).
+- **Configuration PATH** : Injecte le dossier `bin` dans la variable d'environnement `PATH` de la session courante sans créer de doublon.
+
+---
+
+### 10.3 Compatibilité des Toolchains (Qt 6, OCCT, VTK)
+
+En C++, le mélange arbitraire d'ABI (Application Binary Interface) provoque des erreurs de liaison irrémédiables. Le script [`scripts/detect_qt.ps1`](file:///e:/Book/Dev/TSA/scripts/detect_qt.ps1) et [`scripts/detect_dependencies.ps1`](file:///e:/Book/Dev/TSA/scripts/detect_dependencies.ps1) appliquent une politique stricte :
+
+| Compilateur Sélectionné | Toolchain Qt Requise | Toolchain OCCT Requise |
+|---|---|---|
+| **MSVC** | `Qt 6 MSVC` (ex. `msvc2022_64`) | `OCCT MSVC` (`opencascade-8.0.1-vc14-64`) |
+| **MinGW** | `Qt 6 MinGW` (ex. `mingw_64`) | `OCCT MinGW` |
+
+Si la version de Qt détectée ne correspond pas au compilateur sélectionné, le système stoppe immédiatement la configuration et affiche l'erreur explicite :
+```text
+Erreur : la version de Qt détectée n'est pas compatible avec le compilateur sélectionné.
+```
+
+---
+
+### 10.4 Téléchargement Automatisé des Bibliothèques Tierces
+
+Grâce au module CMake [`cmake/SetupDependencies.cmake`](file:///e:/Book/Dev/TSA/cmake/SetupDependencies.cmake) :
+- Si `opencascade-8.0.1-vc14-64` ou `3rdparty-vc14-64` ne sont pas présents localement (ex. clone Git frais), CMake télécharge automatiquement les archives officielles de **OCCT 8.0.1** (~53 Mo) et **3rdparty** (~188 Mo) depuis GitHub Releases avec affichage de la progression en direct (`SHOW_PROGRESS`).
+- Les archives imbriquées sont décompressées directement à la racine du projet et les fichiers d'archive temporaires sont purgés.
+- Cette automatisation peut être désactivée si nécessaire via `-DTSA_AUTO_DOWNLOAD_DEPS=OFF`.
+
+---
+
+### 10.5 Répertoires Non-Destructifs et Compilation
+
+Afin d'éviter tout conflit de cache CMake lorsque plusieurs compilateurs sont utilisés sur la même machine, le système n'écrase jamais le dossier `build/` existant :
+- Les configurations MSVC ciblent le dossier dédié **`build-msvc/`**.
+- Les configurations MinGW ciblent le dossier dédié **`build-mingw/`**.
+
+#### Commandes d'utilisation courante :
 
 ```powershell
-# 1. Configuration avec CMake Presets
-cmake --preset windows-x64-debug
+# 1. Configuration automatique (MSVC prioritaire, MinGW en repli)
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1
 
-# 2. Compilation complète du projet
-cmake --build --preset windows-x64-debug
+# 2. Configuration ET compilation immédiate (Release)
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -Build
+
+# 3. Compilation en mode Debug
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -Config Debug -Build
+
+# 4. Forcer l'utilisation de MinGW-w64 (test de la branche MinGW)
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -ForceMinGW
 ```
 
-### Déploiement Automatique des DLLs :
-À la fin de la compilation, le système CMake exécute automatiquement :
-1. Le déploiement des 74 DLLs OpenCASCADE 8.0.1.
-2. Le déploiement des bibliothèques tierces 3rdparty (FreeType, TBB, FreeImage).
-3. L'utilitaire `windeployqt` qui installe toutes les DLLs et plugins nécessaires de Qt 6.
+---
 
-### Exécution :
-Double-cliquez simplement sur le script racine :
-```cmd
-run.bat
-```
-ou lancez directement l'exécutable compilé :
-```powershell
-.\build\Debug\TSA.exe
-```
+### 10.6 Déploiement et Exécution
+
+À la fin de la compilation, la commande post-build CMake [`cmake/DeployDependencies.cmake`](file:///e:/Book/Dev/TSA/cmake/DeployDependencies.cmake) déploie automatiquement :
+1. Les 74 DLLs OpenCASCADE 8.0.1.
+2. L'ensemble des DLLs tierces 3rdparty (FreeType, TBB, FreeImage, Jemalloc).
+3. Toutes les dépendances et plugins de rendu Qt 6 via `windeployqt`.
+
+#### Lancement de l'application :
+
+- **Via le script batch configuré** :
+  ```cmd
+  run.bat
+  ```
+- **Ou directement via l'exécutable autonome** :
+  ```powershell
+  # Pour un build MSVC :
+  .\build-msvc\Release\TSA.exe
+
+  # Pour un build MinGW :
+  .\build-mingw\TSA.exe
+  ```
 
 ---
 *Documentation rédigée pour TSA - Tsaraloha Structural Analysis. Tous droits réservés.*
