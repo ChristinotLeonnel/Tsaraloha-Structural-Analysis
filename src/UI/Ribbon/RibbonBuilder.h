@@ -54,6 +54,7 @@ struct RibbonActions
     QAction* actionFixed = nullptr;
     QAction* actionPinned = nullptr;
     QAction* actionRoller = nullptr;
+    QAction* actionLibrary = nullptr;
 
     // 4. Calcul
     QAction* actionPointLoad = nullptr;

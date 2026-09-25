@@ -264,6 +264,8 @@ private:
     bool getPointUnderCursor(const QPoint& mousePixelPos, double& x, double& y, double& z, int& detectedNodeId);
     void updateRubberBand(const gp_Pnt& currentPnt);
     void clearRubberBand();
+    void updateTransformPreview(const gp_Pnt& currentPnt);
+    void clearTransformPreview();
     int getOrCreateNode(double x, double y, double z, int existingNodeId);
     void updateClipPlaneEquation();
 
@@ -328,6 +330,7 @@ private:
     std::vector<gp_Pnt> m_drawingPoints;
     Handle(AIS_Shape) m_rubberBandShape;
     Handle(AIS_RubberBand) m_selectRubberBand;
+    std::vector<Handle(AIS_Shape)> m_previewGhostShapes;
 
     gp_Pnt m_basePoint3D;
     gp_Pnt m_centerPoint3D;

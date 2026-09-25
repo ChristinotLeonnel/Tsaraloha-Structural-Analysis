@@ -1,5 +1,7 @@
 #include "PropertyPanel.h"
 #include "../Widgets/SectionPreviewWidget.h"
+#include "../../Library/LibraryManager.h"
+#include "../../Model/ModelDiff.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -23,6 +25,13 @@ struct LoadingGuard
     explicit LoadingGuard(bool& f) : flag(f) { flag = true; }
     ~LoadingGuard() { flag = false; }
 };
+
+struct SelfUpdateGuard
+{
+    bool& flag;
+    explicit SelfUpdateGuard(bool& f) : flag(f) { flag = true; }
+    ~SelfUpdateGuard() { flag = false; }
+};
 }
 
 namespace TSA::UI
@@ -33,7 +42,46 @@ PropertyPanel::PropertyPanel(TSA::Model::Model* model, QWidget* parent)
     , m_model(model)
 {
     setupUi();
+    if (m_model)
+    {
+        m_model->addObserver(this);
+    }
     clearProperties();
+}
+
+PropertyPanel::~PropertyPanel()
+{
+    if (m_model)
+    {
+        m_model->removeObserver(this);
+    }
+}
+
+void PropertyPanel::setModel(TSA::Model::Model* model)
+{
+    if (m_model == model) return;
+    if (m_model)
+    {
+        m_model->removeObserver(this);
+    }
+    m_model = model;
+    if (m_model)
+    {
+        m_model->addObserver(this);
+    }
+    clearProperties();
+}
+
+void PropertyPanel::refreshLibraryLists()
+{
+    if (m_beamMaterialCombo) setupMaterialCombo(m_beamMaterialCombo);
+    if (m_columnMaterialCombo) setupMaterialCombo(m_columnMaterialCombo);
+    if (m_slabMaterialCombo) setupMaterialCombo(m_slabMaterialCombo);
+    if (m_wallMaterialCombo) setupMaterialCombo(m_wallMaterialCombo);
+    if (m_foundationMaterialCombo) setupMaterialCombo(m_foundationMaterialCombo);
+    if (m_trussMaterialCombo) setupMaterialCombo(m_trussMaterialCombo);
+    if (m_beamSectionTypeCombo) setupSectionTypeCombo(m_beamSectionTypeCombo);
+    if (m_columnSectionTypeCombo) setupSectionTypeCombo(m_columnSectionTypeCombo);
 }
 
 void PropertyPanel::setupMaterialCombo(QComboBox* combo)
@@ -1761,6 +1809,7 @@ void PropertyPanel::onApplyNode()
     auto* node = m_model->getNode(m_currentNodeId);
     if (!node) return;
 
+    SelfUpdateGuard selfGuard(m_isUpdatingFromSelf);
     m_model->pushUndoState(tr("Modification Nœud %1").arg(m_currentNodeId).toStdString());
 
     node->setName(m_nodeNameEdit->text().toStdString());
@@ -1778,6 +1827,7 @@ void PropertyPanel::onApplyBeam()
     auto* beam = m_model->getBeam(m_currentBeamId);
     if (!beam) return;
 
+    SelfUpdateGuard selfGuard(m_isUpdatingFromSelf);
     m_model->pushUndoState(tr("Modification Barre %1").arg(m_currentBeamId).toStdString());
 
     beam->setName(m_beamNameEdit->text().toStdString());
@@ -1846,6 +1896,7 @@ void PropertyPanel::onApplyColumn()
     auto* col = m_model->getColumn(m_currentColumnId);
     if (!col) return;
 
+    SelfUpdateGuard selfGuard(m_isUpdatingFromSelf);
     m_model->pushUndoState(tr("Modification Poteau %1").arg(m_currentColumnId).toStdString());
 
     col->setName(m_columnNameEdit->text().toStdString());
@@ -1890,6 +1941,7 @@ void PropertyPanel::onApplySlab()
     auto* slab = m_model->getSlab(m_currentSlabId);
     if (!slab) return;
 
+    SelfUpdateGuard selfGuard(m_isUpdatingFromSelf);
     m_model->pushUndoState(tr("Modification Dalle %1").arg(m_currentSlabId).toStdString());
 
     slab->setName(m_slabNameEdit->text().toStdString());
@@ -1921,6 +1973,7 @@ void PropertyPanel::onApplyWall()
     auto* wall = m_model->getWall(m_currentWallId);
     if (!wall) return;
 
+    SelfUpdateGuard selfGuard(m_isUpdatingFromSelf);
     m_model->pushUndoState(tr("Modification Voile %1").arg(m_currentWallId).toStdString());
 
     wall->setName(m_wallNameEdit->text().toStdString());
@@ -1950,6 +2003,7 @@ void PropertyPanel::onApplyFoundation()
     auto* f = m_model->getFoundation(m_currentFoundationId);
     if (!f) return;
 
+    SelfUpdateGuard selfGuard(m_isUpdatingFromSelf);
     m_model->pushUndoState(tr("Modification Fondation %1").arg(m_currentFoundationId).toStdString());
 
     f->setName(m_foundationNameEdit->text().toStdString());
@@ -1981,6 +2035,7 @@ void PropertyPanel::onApplyTruss()
     auto* truss = m_model->getTrussMember(m_currentTrussId);
     if (!truss) return;
 
+    SelfUpdateGuard selfGuard(m_isUpdatingFromSelf);
     m_model->pushUndoState(tr("Modification Treillis %1").arg(m_currentTrussId).toStdString());
 
     truss->setName(m_trussNameEdit->text().toStdString());
@@ -2038,6 +2093,159 @@ void PropertyPanel::onWidgetChanged()
     default:
         break;
     }
+}
+
+// -----------------------------------------------------------------------------
+// Implémentation IModelObserver pour la synchronisation bidirectionnelle
+// -----------------------------------------------------------------------------
+
+void PropertyPanel::onNodeModified(const TSA::Model::Node& node)
+{
+    if (m_isUpdatingFromSelf) return;
+    if (m_currentType == CurrentType::Node && m_currentNodeId == node.id())
+    {
+        showNodeProperties(node.id());
+    }
+}
+
+void PropertyPanel::onNodeRemoved(int nodeId)
+{
+    if (m_currentType == CurrentType::Node && m_currentNodeId == nodeId)
+    {
+        clearProperties();
+    }
+}
+
+void PropertyPanel::onBeamModified(const TSA::Model::Beam& beam)
+{
+    if (m_isUpdatingFromSelf) return;
+    if (m_currentType == CurrentType::Beam && m_currentBeamId == beam.id())
+    {
+        showBeamProperties(beam.id());
+    }
+}
+
+void PropertyPanel::onBeamRemoved(int beamId)
+{
+    if (m_currentType == CurrentType::Beam && m_currentBeamId == beamId)
+    {
+        clearProperties();
+    }
+}
+
+void PropertyPanel::onColumnModified(const TSA::Model::Column& column)
+{
+    if (m_isUpdatingFromSelf) return;
+    if (m_currentType == CurrentType::Column && m_currentColumnId == column.id())
+    {
+        showColumnProperties(column.id());
+    }
+}
+
+void PropertyPanel::onColumnRemoved(int columnId)
+{
+    if (m_currentType == CurrentType::Column && m_currentColumnId == columnId)
+    {
+        clearProperties();
+    }
+}
+
+void PropertyPanel::onSlabModified(const TSA::Model::Slab& slab)
+{
+    if (m_isUpdatingFromSelf) return;
+    if (m_currentType == CurrentType::Slab && m_currentSlabId == slab.id())
+    {
+        showSlabProperties(slab.id());
+    }
+}
+
+void PropertyPanel::onSlabRemoved(int slabId)
+{
+    if (m_currentType == CurrentType::Slab && m_currentSlabId == slabId)
+    {
+        clearProperties();
+    }
+}
+
+void PropertyPanel::onWallModified(const TSA::Model::Wall& wall)
+{
+    if (m_isUpdatingFromSelf) return;
+    if (m_currentType == CurrentType::Wall && m_currentWallId == wall.id())
+    {
+        showWallProperties(wall.id());
+    }
+}
+
+void PropertyPanel::onWallRemoved(int wallId)
+{
+    if (m_currentType == CurrentType::Wall && m_currentWallId == wallId)
+    {
+        clearProperties();
+    }
+}
+
+void PropertyPanel::onFoundationModified(const TSA::Model::Foundation& foundation)
+{
+    if (m_isUpdatingFromSelf) return;
+    if (m_currentType == CurrentType::Foundation && m_currentFoundationId == foundation.id())
+    {
+        showFoundationProperties(foundation.id());
+    }
+}
+
+void PropertyPanel::onFoundationRemoved(int foundationId)
+{
+    if (m_currentType == CurrentType::Foundation && m_currentFoundationId == foundationId)
+    {
+        clearProperties();
+    }
+}
+
+void PropertyPanel::onTrussMemberModified(const TSA::Model::TrussMember& member)
+{
+    if (m_isUpdatingFromSelf) return;
+    if (m_currentType == CurrentType::Truss && m_currentTrussId == member.id())
+    {
+        showTrussMemberProperties(member.id());
+    }
+}
+
+void PropertyPanel::onTrussMemberRemoved(int memberId)
+{
+    if (m_currentType == CurrentType::Truss && m_currentTrussId == memberId)
+    {
+        clearProperties();
+    }
+}
+
+void PropertyPanel::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
+{
+    if (m_isUpdatingFromSelf) return;
+    if (m_currentType == CurrentType::Node && m_currentNodeId >= 0)
+    {
+        for (int id : diff.modifiedNodeIds) { if (id == m_currentNodeId) { showNodeProperties(id); break; } }
+        for (int id : diff.deletedNodeIds) { if (id == m_currentNodeId) { clearProperties(); break; } }
+    }
+    else if (m_currentType == CurrentType::Beam && m_currentBeamId >= 0)
+    {
+        for (int id : diff.modifiedBeamIds) { if (id == m_currentBeamId) { showBeamProperties(id); break; } }
+        for (int id : diff.deletedBeamIds) { if (id == m_currentBeamId) { clearProperties(); break; } }
+    }
+    else if (m_currentType == CurrentType::Column && m_currentColumnId >= 0)
+    {
+        for (int id : diff.modifiedColumnIds) { if (id == m_currentColumnId) { showColumnProperties(id); break; } }
+        for (int id : diff.deletedColumnIds) { if (id == m_currentColumnId) { clearProperties(); break; } }
+    }
+    else if (m_currentType == CurrentType::Slab && m_currentSlabId >= 0)
+    {
+        for (int id : diff.slabs.modified) { if (id == m_currentSlabId) { showSlabProperties(id); break; } }
+        for (int id : diff.slabs.deleted) { if (id == m_currentSlabId) { clearProperties(); break; } }
+    }
+}
+
+void PropertyPanel::onModelCleared()
+{
+    clearProperties();
 }
 
 } // namespace TSA::UI

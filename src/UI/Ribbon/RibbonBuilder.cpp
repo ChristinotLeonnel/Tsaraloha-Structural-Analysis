@@ -205,6 +205,12 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
     supPanel->addSmallColumn({ actPinned, actRoller });
     tab->addPanel(supPanel);
 
+    // Bibliothèque Personnalisée
+    auto* libPanel = new RibbonPanel(QObject::tr("Bibliothèque"), tab);
+    auto* actLib = acts.actionLibrary ? acts.actionLibrary : new QAction(QIcon(":/icons/structure_preset.svg"), QObject::tr("Bibliothèque..."), parentWindow);
+    libPanel->addLargeAction(actLib);
+    tab->addPanel(libPanel);
+
     return tab;
 }
 

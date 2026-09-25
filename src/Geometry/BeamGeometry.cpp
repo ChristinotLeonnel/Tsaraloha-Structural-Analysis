@@ -473,6 +473,47 @@ TopoDS_Shape BeamGeometry::createBeamShape(
         break;
     }
 
+    case TSA::Model::SectionShape::TSection:
+    {
+        double b = std::max(0.02, section.width);
+        double h = std::max(0.02, section.height);
+        double tw = (section.tw > 0.0 && section.tw < b) ? section.tw : std::max(0.005, b * 0.10);
+        double tf = (section.tf > 0.0 && section.tf < h) ? section.tf : std::max(0.007, h * 0.12);
+
+        double b2 = b / 2.0;
+        double h2 = h / 2.0;
+        double tw2 = tw / 2.0;
+
+        std::vector<std::pair<double, double>> pts2D = {
+            { -tw2, -h2 },
+            {  tw2, -h2 },
+            {  tw2,  h2 - tf },
+            {   b2,  h2 - tf },
+            {   b2,  h2 },
+            {  -b2,  h2 },
+            {  -b2,  h2 - tf },
+            { -tw2,  h2 - tf }
+        };
+
+        BRepBuilderAPI_MakePolygon poly;
+        for (const auto& pt : pts2D)
+        {
+            poly.Add(pA.Translated(dirX * pt.first + dirY * pt.second));
+        }
+        poly.Close();
+
+        if (poly.IsDone())
+        {
+            BRepBuilderAPI_MakeFace faceMaker(poly.Wire());
+            if (faceMaker.IsDone())
+            {
+                BRepPrimAPI_MakePrism prism(faceMaker.Face(), vAB);
+                if (prism.IsDone()) return prism.Shape();
+            }
+        }
+        break;
+    }
+
     case TSA::Model::SectionShape::Rectangular:
     default:
     {

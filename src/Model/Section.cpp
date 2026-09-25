@@ -26,6 +26,8 @@ double Section::area() const
         return 2.0 * (width * tf) + (height - 2.0 * tf) * tw;
     case SectionShape::Angle:
         return (height + width - tw) * tw;
+    case SectionShape::TSection:
+        return width * tf + (height - tf) * tw;
     }
     return width * height;
 }
@@ -52,6 +54,19 @@ double Section::iy() const
     {
         double t = (tw > 0.0) ? tw : 0.008;
         return (t * std::pow(height, 3) + width * std::pow(t, 3)) / 12.0;
+    }
+    case SectionShape::TSection:
+    {
+        double aFlange = width * tf;
+        double aWeb = (height - tf) * tw;
+        double aTotal = aFlange + aWeb;
+        if (aTotal < 1e-6) return (width * std::pow(height, 3)) / 12.0;
+        double yFlange = height - tf / 2.0;
+        double yWeb = (height - tf) / 2.0;
+        double yc = (aFlange * yFlange + aWeb * yWeb) / aTotal;
+        double iyFlange = (width * std::pow(tf, 3)) / 12.0 + aFlange * std::pow(yFlange - yc, 2);
+        double iyWeb = (tw * std::pow(height - tf, 3)) / 12.0 + aWeb * std::pow(yWeb - yc, 2);
+        return iyFlange + iyWeb;
     }
     }
     return (width * height * height * height) / 12.0;
@@ -86,6 +101,12 @@ double Section::iz() const
         double t = (tw > 0.0) ? tw : 0.008;
         return (t * std::pow(width, 3) + height * std::pow(t, 3)) / 12.0;
     }
+    case SectionShape::TSection:
+    {
+        double iflange = (tf * std::pow(width, 3)) / 12.0;
+        double iweb = ((height - tf) * std::pow(tw, 3)) / 12.0;
+        return iflange + iweb;
+    }
     }
     return (height * width * width * width) / 12.0;
 }
@@ -100,6 +121,8 @@ double Section::it() const
     case SectionShape::IShape:
     case SectionShape::UPN:
         return (2.0 * width * std::pow(tf, 3) + (height - tf) * std::pow(tw, 3)) / 3.0;
+    case SectionShape::TSection:
+        return (width * std::pow(tf, 3) + (height - tf) * std::pow(tw, 3)) / 3.0;
     case SectionShape::Angle:
         return (height + width - tw) * std::pow(tw, 3) / 3.0;
     case SectionShape::Rectangular:
@@ -286,6 +309,20 @@ Section Section::pipe(double diameter, double thickness, const std::string& name
     return s;
 }
 
+Section Section::tSection(double h, double b, double tw, double tf, const std::string& name)
+{
+    Section s;
+    s.shape = SectionShape::TSection;
+    s.height = h;
+    s.width = b;
+    s.tw = tw;
+    s.tf = tf;
+    s.name = name.empty() ? ("T " + std::to_string(static_cast<int>(b * 1000)) + "x" +
+                             std::to_string(static_cast<int>(h * 1000)) + "x" +
+                             std::to_string(static_cast<int>(tw * 1000))) : name;
+    return s;
+}
+
 std::vector<Section> Section::defaultLibrary()
 {
     return {
@@ -322,6 +359,10 @@ std::vector<Section> Section::defaultLibrary()
         Section::angle(0.060, 0.060, 0.006),
         Section::angle(0.080, 0.080, 0.008),
         Section::angle(0.100, 0.100, 0.010),
+        // Profils en T
+        Section::tSection(0.100, 0.100, 0.008, 0.010, "T 100x100x8"),
+        Section::tSection(0.120, 0.120, 0.009, 0.011, "T 120x120x9"),
+        Section::tSection(0.140, 0.140, 0.010, 0.012, "T 140x140x10"),
         // Tubes rectangulaires / carrés
         Section::boxHollow(0.100, 0.100, 0.005),
         Section::boxHollow(0.150, 0.150, 0.006),

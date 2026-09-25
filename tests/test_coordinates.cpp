@@ -23,6 +23,7 @@
 #include "IO/TSAFile.h"
 #include "IO/TSAFileFormat.h"
 #include "IO/TSAPreviewGenerator.h"
+#include "Library/LibraryManager.h"
 
 #include <fstream>
 #include <filesystem>
@@ -1481,8 +1482,174 @@ int main(int argc, char* argv[])
         passed++;
     }
 
+    // =========================================================================
+    // TEST 21 : Synchronisation Bidirectionnelle UI <-> MODÈLE <-> 3D (IModelObserver)
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 21: Synchronisation Bidirectionnelle UI <-> Modele <-> 3D ---" << std::endl;
+
+        Model model;
+
+        struct SyncObserver : public IModelObserver
+        {
+            int modifiedBeamCount = 0;
+            int lastModifiedBeamId = -1;
+            int modifiedNodeCount = 0;
+            int lastModifiedNodeId = -1;
+
+            void onBeamModified(const Beam& b) override
+            {
+                modifiedBeamCount++;
+                lastModifiedBeamId = b.id();
+            }
+
+            void onNodeModified(const Node& n) override
+            {
+                modifiedNodeCount++;
+                lastModifiedNodeId = n.id();
+            }
+        };
+
+        SyncObserver uiObserver;
+        SyncObserver occObserver;
+
+        model.addObserver(&uiObserver);
+        model.addObserver(&occObserver);
+
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        int n2 = model.addNode(0.0, 0.0, 3.0);
+        int b1 = model.addBeam(n1, n2, 0.30, 0.50);
+
+        // 1. Modification depuis l'UI (ex: changement de section en IPE 300)
+        auto* beam = model.getBeam(b1);
+        TEST_CHECK(beam != nullptr, "Test 21: beam exists");
+        beam->setSection(Section::ipe(300));
+        model.notifyBeamModified(b1);
+
+        TEST_CHECK(occObserver.modifiedBeamCount == 1, "Test 21: OccView received onBeamModified");
+        TEST_CHECK(occObserver.lastModifiedBeamId == b1, "Test 21: OccView targeted beam b1");
+        TEST_CHECK(beam->section().name == "IPE 300", "Test 21: beam section is IPE 300");
+
+        // 2. Modification depuis la 3D (ex: déplacement de nœud de 5.0m en X)
+        bool moveOk = model.moveNodes({ n1, n2 }, 5.0, 0.0, 0.0);
+        TEST_CHECK(moveOk, "Test 21: moveNodes succeeded");
+
+        TEST_CHECK(uiObserver.modifiedNodeCount >= 2, "Test 21: UI received onNodeModified for moved nodes");
+        const auto* movedN1 = model.getNode(n1);
+        const auto* movedN2 = model.getNode(n2);
+        TEST_CHECK(approxEqual(movedN1->x(), 5.0), "Test 21: N1 x is 5.0m");
+        TEST_CHECK(approxEqual(movedN2->x(), 5.0), "Test 21: N2 x is 5.0m");
+
+        model.removeObserver(&uiObserver);
+        model.removeObserver(&occObserver);
+
+        std::cout << "[PASS] Test 21: Bidirectional UI <-> Model <-> 3D Synchronization Validated!" << std::endl;
+        passed++;
+    }
+
+    // =========================================================================
+    // TEST 22 : Section en T et Géométrie BRep Solide 3D
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 22: Profil en T et Construction 3D BRep OpenCASCADE ---" << std::endl;
+
+        Section tSec = Section::tSection(0.140, 0.140, 0.010, 0.012, "T 140x140x10");
+        TEST_CHECK(tSec.shape == SectionShape::TSection, "Test 22: shape is TSection");
+
+        // Calcul analytique de l'aire :
+        // A = b*tf + (h-tf)*tw = 0.14*0.012 + (0.14-0.012)*0.010 = 0.00168 + 0.00128 = 0.00296 m²
+        double expectedArea = 0.140 * 0.012 + (0.140 - 0.012) * 0.010;
+        TEST_CHECK(approxEqual(tSec.area(), expectedArea), "Test 22: TSection area exact");
+        TEST_CHECK(tSec.iy() > 0.0, "Test 22: Iy > 0");
+        TEST_CHECK(tSec.iz() > 0.0, "Test 22: Iz > 0");
+        TEST_CHECK(tSec.it() > 0.0, "Test 22: It > 0");
+
+        // Génération 3D OpenCASCADE du solide BRep
+        Node nA(1, 0.0, 0.0, 0.0);
+        Node nB(2, 4.0, 0.0, 0.0);
+        TopoDS_Shape tShape = BeamGeometry::createBeamShape(nA, nB, tSec);
+        TEST_CHECK(!tShape.IsNull(), "Test 22: 3D shape is not null");
+
+        Bnd_Box bnd;
+        BRepBndLib::Add(tShape, bnd);
+        bnd.SetGap(0.0);
+        double xmin, ymin, zmin, xmax, ymax, zmax;
+        bnd.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+
+        double length = xmax - xmin;
+        double width = ymax - ymin;
+        double height = zmax - zmin;
+
+        TEST_CHECK(approxEqual(length, 4.0, 0.01), "Test 22: length is 4.0m");
+        TEST_CHECK(approxEqual(width, 0.140, 0.01), "Test 22: width is 0.14m");
+        TEST_CHECK(approxEqual(height, 0.140, 0.01), "Test 22: height is 0.14m");
+
+        std::cout << "[PASS] Test 22: T-Section and Exact 3D BRep Solid Validated!" << std::endl;
+        passed++;
+    }
+
+    // =========================================================================
+    // TEST 23 : Bibliothèque Personnalisée Persistante (LibraryManager)
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 23: Bibliotheque Personnalisee Persistante (LibraryManager) ---" << std::endl;
+
+        auto& lib = TSA::Library::LibraryManager::instance();
+
+        // 1. Ajout d'une section personnalisée
+        Section customSec = Section::rectangular(0.35, 0.65, "MaSection_Poutre_01");
+        lib.addCustomSection(customSec);
+        const auto* foundSec = lib.findSectionByName("MaSection_Poutre_01");
+        TEST_CHECK(foundSec != nullptr, "Test 23: custom section found");
+        TEST_CHECK(approxEqual(foundSec->width, 0.35), "Test 23: custom section width preserved");
+        TEST_CHECK(approxEqual(foundSec->height, 0.65), "Test 23: custom section height preserved");
+
+        // 2. Ajout d'un matériau personnalisé
+        Material customMat;
+        customMat.name = "MonAcier_S460_Test";
+        customMat.type = MaterialType::Custom;
+        customMat.E = 210.0e9;
+        customMat.nu = 0.30;
+        customMat.density = 7850.0;
+        customMat.fk = 460.0e6;
+        lib.addCustomMaterial(customMat);
+        const auto* foundMat = lib.findMaterialByName("MonAcier_S460_Test");
+        TEST_CHECK(foundMat != nullptr, "Test 23: custom material found");
+        TEST_CHECK(approxEqual(foundMat->E, 210.0e9), "Test 23: custom material E preserved");
+        TEST_CHECK(approxEqual(foundMat->fk, 460.0e6), "Test 23: custom material fk preserved");
+
+        // 3. Ajout d'une couleur personnalisée
+        lib.addCustomColor("Bleu Marine TSA", "#002060", "Mes Couleurs");
+        QColor col = lib.getColor("Bleu Marine TSA");
+        TEST_CHECK(col.isValid(), "Test 23: color is valid");
+        TEST_CHECK(col == QColor("#002060"), "Test 23: exact color hex match");
+
+        // 4. Modèle de structure personnalisée (Template) et instanciation
+        Model srcModel;
+        int sn1 = srcModel.addNode(0.0, 0.0, 0.0);
+        int sn2 = srcModel.addNode(0.0, 0.0, 3.0);
+        srcModel.addBeam(sn1, sn2, 0.30, 0.50, "Poutre_Template");
+        auto snapshot = srcModel.createSnapshot("Template_Portique");
+
+        lib.addStructureTemplate("Portique_Test_Lib", "Mes Structures", "Portique de test", snapshot);
+
+        Model dstModel;
+        bool instOk = lib.instantiateTemplateInModel("Portique_Test_Lib", &dstModel, 10.0, 5.0, 0.0);
+        TEST_CHECK(instOk, "Test 23: template instantiation succeeded");
+        TEST_CHECK(dstModel.nodes().size() == 2, "Test 23: 2 nodes created in destination model");
+        TEST_CHECK(dstModel.beams().size() == 1, "Test 23: 1 beam created in destination model");
+
+        // Vérification de la translation d'offset
+        auto itNode = dstModel.nodes().begin();
+        TEST_CHECK(approxEqual(itNode->second.x(), 10.0), "Test 23: instantiated node x has 10m offset");
+        TEST_CHECK(approxEqual(itNode->second.y(), 5.0), "Test 23: instantiated node y has 5m offset");
+
+        std::cout << "[PASS] Test 23: Persistent Custom Library System Validated Successfully!" << std::endl;
+        passed++;
+    }
+
     std::cout << "=================================================" << std::endl;
-    std::cout << "RESULTS: " << passed << " / " << (total + 5) << " tests passed successfully!" << std::endl;
+    std::cout << "RESULTS: " << passed << " / " << (total + 8) << " tests passed successfully!" << std::endl;
     std::cout << "=================================================" << std::endl;
 
     return 0;
