@@ -84,16 +84,25 @@ public:
     // Modification d'un niveau d'étage avec propagation instantanée aux objets attachés
     void onLevelElevationChanged(const std::string& levelId, double oldElevation, double newElevation);
 
-    // Gestion des poutres
+    // Gestion des poutres et barres structurales (Bar)
     int addBeam(int startNodeId, int endNodeId, double width = 0.30, double height = 0.50, const std::string& name = "");
     bool addBeamWithId(int id, int startNodeId, int endNodeId, double width = 0.30, double height = 0.50, const std::string& name = "");
+    int addBar(int startNodeId, int endNodeId, const Section& section, const Material& material, BarRole role = BarRole::Beam, double rotation = 0.0, const std::string& name = "");
+    int addBar(const BarProperties& props, int startNodeId, int endNodeId);
     bool removeBeam(int beamId);
     Beam* getBeam(int beamId);
     const Beam* getBeam(int beamId) const;
     const std::map<int, Beam>& beams() const { return m_beams; }
 
+    // Alias Bar
+    Bar* getBar(int barId) { return getBeam(barId); }
+    const Bar* getBar(int barId) const { return getBeam(barId); }
+    bool removeBar(int barId) { return removeBeam(barId); }
+    const std::map<int, Bar>& bars() const { return m_beams; }
+
     // Gestion des poteaux
     int addColumn(int startNodeId, int endNodeId, double width = 0.30, double height = 0.30, const std::string& name = "");
+    int addColumn(int startNodeId, int endNodeId, const Section& section, const Material& material, double rotation = 0.0, const std::string& name = "");
     bool addColumnWithId(int id, int startNodeId, int endNodeId, double width = 0.30, double height = 0.30, const std::string& name = "");
     bool removeColumn(int columnId);
     Column* getColumn(int columnId);

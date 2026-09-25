@@ -18,6 +18,9 @@
 #include "Dock/LogConsoleDock.h"
 #include "Theme/ThemeManager.h"
 #include "Dialogs/HelpDialog.h"
+#include "Dialogs/StructurePresetDialog.h"
+#include "Dialogs/BarCreationDialog.h"
+#include "Dialogs/SurfaceCreationDialog.h"
 
 #include <QMenuBar>
 #include <QToolBar>
@@ -407,6 +410,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     m_occView->setModel(m_model.get());
     m_occView->setGridManager(m_gridManager.get(), m_gridSnapManager.get());
+    m_occView->setCreationPresets(m_presets);
 
     connect(m_gridManager.get(), &TSA::Grid::GridManager::gridAdded, this, [this]() {
         m_occView->rebuildGrid();
@@ -493,6 +497,8 @@ void MainWindow::createActions()
     connect(m_actionSave, &QAction::triggered, this, &MainWindow::onActionSave);
 
     m_actionExit = new QAction(tr("&Quitter"), this);
+    m_actionExit->setIcon(QIcon(":/icons/file_exit.svg"));
+    m_actionExit->setToolTip(tr("Quitter l'application (Alt+F4)"));
     m_actionExit->setShortcut(QKeySequence::Quit);
     connect(m_actionExit, &QAction::triggered, this, &QWidget::close);
 
@@ -571,7 +577,7 @@ void MainWindow::createActions()
     connect(m_actionGridManager, &QAction::triggered, this, &MainWindow::onGridManagerDialog);
 
     m_actionManageLevels = new QAction(tr("Gestion des &Étages / Niveaux..."), this);
-    m_actionManageLevels->setIcon(QIcon(":/icons/settings.svg"));
+    m_actionManageLevels->setIcon(QIcon(":/icons/levels.svg"));
     m_actionManageLevels->setToolTip(tr("Gérer les hauteurs d'étages, niveaux altimétriques et liaisons verticales (Ctrl+L)..."));
     m_actionManageLevels->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_L));
     connect(m_actionManageLevels, &QAction::triggered, this, &MainWindow::onManageLevels);
@@ -585,6 +591,7 @@ void MainWindow::createActions()
     connect(m_actionGridVisible, &QAction::toggled, this, &MainWindow::onToggleGridVisible);
 
     m_actionLevelsVisible = new QAction(tr("Afficher Plans d'&Étages"), this);
+    m_actionLevelsVisible->setIcon(QIcon(":/icons/levels.svg"));
     m_actionLevelsVisible->setToolTip(tr("Afficher ou masquer les plans 3D des étages et marqueurs altimétriques"));
     m_actionLevelsVisible->setCheckable(true);
     m_actionLevelsVisible->setChecked(true);
@@ -599,16 +606,25 @@ void MainWindow::createActions()
     connect(m_actionGridSnap, &QAction::toggled, this, &MainWindow::onToggleGridSnap);
 
     m_actionGridLabels = new QAction(tr("Afficher Libellés d'&Axes"), this);
+    m_actionGridLabels->setIcon(QIcon(":/icons/grid_labels.svg"));
     m_actionGridLabels->setToolTip(tr("Afficher ou masquer les bulles d'axes et libellés en 3D"));
     m_actionGridLabels->setCheckable(true);
     m_actionGridLabels->setChecked(true);
     connect(m_actionGridLabels, &QAction::toggled, this, &MainWindow::onToggleGridLabels);
 
     m_actionRulersVisible = new QAction(tr("Afficher &Règles Graduées"), this);
+    m_actionRulersVisible->setIcon(QIcon(":/icons/rulers.svg"));
     m_actionRulersVisible->setToolTip(tr("Afficher ou masquer les règles graduées du viewport"));
     m_actionRulersVisible->setCheckable(true);
     m_actionRulersVisible->setChecked(true);
     connect(m_actionRulersVisible, &QAction::toggled, this, &MainWindow::onToggleRulersVisible);
+
+    m_actionFullScreen = new QAction(tr("Mode &Plein écran"), this);
+    m_actionFullScreen->setIcon(QIcon(":/icons/fullscreen.svg"));
+    m_actionFullScreen->setToolTip(tr("Basculer en mode plein écran (F11)"));
+    m_actionFullScreen->setShortcut(QKeySequence(Qt::Key_F11));
+    m_actionFullScreen->setCheckable(true);
+    connect(m_actionFullScreen, &QAction::toggled, this, &MainWindow::onToggleFullScreen);
 
     // Modes d'interaction / Dessin 3D
     m_drawModeGroup = new QActionGroup(this);
@@ -632,21 +648,46 @@ void MainWindow::createActions()
     connect(m_actionDrawNode, &QAction::triggered, this, &MainWindow::onModeDrawNode);
     m_drawModeGroup->addAction(m_actionDrawNode);
 
+    m_actionDrawWire = new QAction(tr("Éléments &Filaires..."), this);
+    m_actionDrawWire->setIcon(QIcon(":/icons/draw_beam.svg"));
+    m_actionDrawWire->setToolTip(tr("Outil Éléments Filaires (Barres, Poutres, Poteaux, Treillis) (Alt+B)"));
+    m_actionDrawWire->setCheckable(true);
+    m_actionDrawWire->setShortcut(QKeySequence("Alt+B"));
+    m_actionDrawWire->setStatusTip(tr("Outil Éléments Filaires : création interactive et paramétrique de barres, poutres et poteaux (Alt+B)"));
+    connect(m_actionDrawWire, &QAction::triggered, this, &MainWindow::onModeDrawWire);
+    m_drawModeGroup->addAction(m_actionDrawWire);
+
+    m_actionDrawSurface = new QAction(tr("Éléments &Surfaciques..."), this);
+    m_actionDrawSurface->setIcon(QIcon(":/icons/draw_slab.svg"));
+    m_actionDrawSurface->setToolTip(tr("Outil Éléments Surfaciques (Dalles, Planchers, Voiles, Murs) (Alt+S)"));
+    m_actionDrawSurface->setCheckable(true);
+    m_actionDrawSurface->setShortcut(QKeySequence("Alt+S"));
+    m_actionDrawSurface->setStatusTip(tr("Outil Éléments Surfaciques : création interactive et paramétrique de dalles et voiles (Alt+S)"));
+    connect(m_actionDrawSurface, &QAction::triggered, this, &MainWindow::onModeDrawSurface);
+    m_drawModeGroup->addAction(m_actionDrawSurface);
+
+    m_actionDrawBar = new QAction(tr("Outil &Barres"), this);
+    m_actionDrawBar->setIcon(QIcon(":/icons/struct_beam.svg"));
+    m_actionDrawBar->setToolTip(tr("Outil Barres (style Robot Structural Analysis) : définition et dessin en direct"));
+    m_actionDrawBar->setCheckable(true);
+    connect(m_actionDrawBar, &QAction::triggered, this, &MainWindow::onModeDrawBar);
+    m_drawModeGroup->addAction(m_actionDrawBar);
+
     m_actionDrawBeam = new QAction(tr("Dessiner &Poutre"), this);
     m_actionDrawBeam->setIcon(QIcon(":/icons/draw_beam.svg"));
     m_actionDrawBeam->setToolTip(tr("Dessiner une Poutre (B)"));
     m_actionDrawBeam->setCheckable(true);
     m_actionDrawBeam->setShortcut(QKeySequence(Qt::Key_B));
-    m_actionDrawBeam->setStatusTip(tr("Cliquez deux points ou nœuds pour créer une Poutre (B)"));
+    m_actionDrawBeam->setStatusTip(tr("Ouvre l'interface filaire préconfigurée en mode Poutre (B)"));
     connect(m_actionDrawBeam, &QAction::triggered, this, &MainWindow::onModeDrawBeam);
     m_drawModeGroup->addAction(m_actionDrawBeam);
 
-    m_actionDrawColumn = new QAction(tr("Dessiner Poteau"), this);
+    m_actionDrawColumn = new QAction(tr("Dessiner &Poteau"), this);
     m_actionDrawColumn->setIcon(QIcon(":/icons/draw_column.svg"));
     m_actionDrawColumn->setToolTip(tr("Dessiner un Poteau (C)"));
     m_actionDrawColumn->setCheckable(true);
     m_actionDrawColumn->setShortcut(QKeySequence(Qt::Key_C));
-    m_actionDrawColumn->setStatusTip(tr("Cliquez le point de base pour ériger un Poteau vertical (C)"));
+    m_actionDrawColumn->setStatusTip(tr("Ouvre l'interface filaire préconfigurée en mode Poteau (C)"));
     connect(m_actionDrawColumn, &QAction::triggered, this, &MainWindow::onModeDrawColumn);
     m_drawModeGroup->addAction(m_actionDrawColumn);
 
@@ -655,9 +696,24 @@ void MainWindow::createActions()
     m_actionDrawSlab->setToolTip(tr("Dessiner une Dalle (L)"));
     m_actionDrawSlab->setCheckable(true);
     m_actionDrawSlab->setShortcut(QKeySequence(Qt::Key_L));
-    m_actionDrawSlab->setStatusTip(tr("Cliquez le polygone de nœuds pour créer une Dalle (L)"));
+    m_actionDrawSlab->setStatusTip(tr("Ouvre l'interface surfacique en mode Dalle (L)"));
     connect(m_actionDrawSlab, &QAction::triggered, this, &MainWindow::onModeDrawSlab);
     m_drawModeGroup->addAction(m_actionDrawSlab);
+
+    m_actionDrawWall = new QAction(tr("Dessiner &Voile"), this);
+    m_actionDrawWall->setIcon(QIcon(":/icons/struct_wall.svg"));
+    m_actionDrawWall->setToolTip(tr("Dessiner un Voile (W)"));
+    m_actionDrawWall->setCheckable(true);
+    m_actionDrawWall->setShortcut(QKeySequence(Qt::Key_W));
+    m_actionDrawWall->setStatusTip(tr("Ouvre l'interface surfacique en mode Voile (W)"));
+    connect(m_actionDrawWall, &QAction::triggered, this, &MainWindow::onModeDrawWall);
+    m_drawModeGroup->addAction(m_actionDrawWall);
+
+    m_actionStructurePresets = new QAction(tr("&Paramètres de Modélisation..."), this);
+    m_actionStructurePresets->setIcon(QIcon(":/icons/settings.svg"));
+    m_actionStructurePresets->setToolTip(tr("Configurer les caractéristiques des structures avant de dessiner (sections, épaisseurs, matériaux)..."));
+    m_actionStructurePresets->setStatusTip(tr("Configurer les sections, hauteurs, épaisseurs et matériaux par défaut pour le dessin 3D"));
+    connect(m_actionStructurePresets, &QAction::triggered, this, &MainWindow::onActionStructurePresets);
 
     m_actionNewNode = new QAction(tr("Nouveau &Nœud (Dialogue)..."), this);
     m_actionNewNode->setIcon(QIcon(":/icons/node_add.svg"));
@@ -918,6 +974,7 @@ void MainWindow::createMenus()
     viewMenu->addAction(m_actionResetView);
     viewMenu->addSeparator();
     viewMenu->addAction(m_actionToggleTheme);
+    viewMenu->addAction(m_actionFullScreen);
 
     // Menu Grille 3D & Niveaux
     QMenu* gridMenu = menuBar()->addMenu(tr("&Grilles && Niveaux"));
@@ -931,26 +988,40 @@ void MainWindow::createMenus()
     gridMenu->addAction(m_actionGridLabels);
     gridMenu->addAction(m_actionRulersVisible);
 
+    // Menu Dessin (Draw - style Robot SA / AutoCAD)
+    QMenu* cadDrawMenu = menuBar()->addMenu(tr("&Dessin"));
+    cadDrawMenu->addAction(m_actionDrawWire);
+    cadDrawMenu->addAction(m_actionDrawSurface);
+    cadDrawMenu->addSeparator();
+    cadDrawMenu->addAction(m_actionDrawNode);
+
     // Menu Modèle (Création d'éléments structuraux)
     QMenu* modelMenu = menuBar()->addMenu(tr("&Modèle"));
+    QMenu* modelStructSubMenu = modelMenu->addMenu(tr("&Structure"));
+    modelStructSubMenu->addAction(m_actionDrawWire);
+    modelStructSubMenu->addAction(m_actionDrawSurface);
+
     QMenu* drawMenu = modelMenu->addMenu(tr("Modes de Dessin 3D"));
     drawMenu->addAction(m_actionSelectMode);
     drawMenu->addSeparator();
     drawMenu->addAction(m_actionDrawNode);
-    drawMenu->addAction(m_actionDrawBeam);
-    drawMenu->addAction(m_actionDrawColumn);
-    drawMenu->addAction(m_actionDrawSlab);
+    drawMenu->addAction(m_actionDrawWire);
+    drawMenu->addAction(m_actionDrawSurface);
+    drawMenu->addSeparator();
+    drawMenu->addAction(m_actionStructurePresets);
 
     modelMenu->addSeparator();
     modelMenu->addAction(m_actionNewNode);
-    modelMenu->addAction(m_actionNewBeam);
-    modelMenu->addAction(m_actionNewColumn);
-    modelMenu->addAction(m_actionNewSlab);
-    modelMenu->addSeparator();
     modelMenu->addAction(m_actionAddCube);
 
     // Menu Structure (Voiles, Treillis, Fondations, Sections, Matériaux, Appuis)
     QMenu* structMenu = menuBar()->addMenu(tr("&Structure"));
+    structMenu->addAction(m_actionDrawBar);
+    structMenu->addAction(m_actionDrawBeam);
+    structMenu->addAction(m_actionDrawColumn);
+    structMenu->addAction(m_actionDrawWall);
+    structMenu->addAction(m_actionStructurePresets);
+    structMenu->addSeparator();
     structMenu->addAction(m_actionWall);
     structMenu->addAction(m_actionTruss);
     structMenu->addAction(m_actionFooting);
@@ -1023,12 +1094,17 @@ void MainWindow::createRibbon()
     acts.actionNewNode = m_actionNewNode;
     acts.actionAddCube = m_actionAddCube;
 
+    acts.actionDrawWire = m_actionDrawWire;
+    acts.actionDrawSurface = m_actionDrawSurface;
+    acts.actionDrawBar = m_actionDrawBar;
     acts.actionDrawBeam = m_actionDrawBeam;
     acts.actionNewBeam = m_actionNewBeam;
     acts.actionDrawColumn = m_actionDrawColumn;
     acts.actionNewColumn = m_actionNewColumn;
     acts.actionDrawSlab = m_actionDrawSlab;
     acts.actionNewSlab = m_actionNewSlab;
+    acts.actionDrawWall = m_actionDrawWall;
+    acts.actionStructurePresets = m_actionStructurePresets;
 
     acts.actionWall = m_actionWall;
     acts.actionTruss = m_actionTruss;
@@ -1115,10 +1191,12 @@ void MainWindow::createDockWindows()
     m_modelTree = new TSA::UI::ModelTreeWidget(m_model.get(), m_modelTreeDock);
     m_modelTreeDock->setWidget(m_modelTree);
     m_modelTreeDock->setMinimumWidth(280);
+    m_modelTreeDock->toggleViewAction()->setIcon(QIcon(":/icons/model_tree.svg"));
     addDockWidget(Qt::LeftDockWidgetArea, m_modelTreeDock);
 
     // 2. Dock gauche ongletisé : CALQUES & VISIBILITÉ
     m_visibilityDock = new TSA::UI::VisibilityDock(this);
+    m_visibilityDock->toggleViewAction()->setIcon(QIcon(":/icons/visibility.svg"));
     addDockWidget(Qt::LeftDockWidgetArea, m_visibilityDock);
     tabifyDockWidget(m_modelTreeDock, m_visibilityDock);
     m_modelTreeDock->raise();
@@ -1137,10 +1215,12 @@ void MainWindow::createDockWindows()
     m_propertyPanel = new TSA::UI::PropertyPanel(m_model.get(), m_propertiesDock);
     m_propertiesDock->setWidget(m_propertyPanel);
     m_propertiesDock->setMinimumWidth(280);
+    m_propertiesDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
     addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
 
     // 4. Dock inférieur : CONSOLE & HISTORIQUE COMMANDES
     m_consoleDock = new TSA::UI::LogConsoleDock(this);
+    m_consoleDock->toggleViewAction()->setIcon(QIcon(":/icons/console.svg"));
     addDockWidget(Qt::BottomDockWidgetArea, m_consoleDock);
 
     connect(m_consoleDock, &TSA::UI::LogConsoleDock::commandEntered, this, [this](const QString& cmd) {
@@ -1149,10 +1229,13 @@ void MainWindow::createDockWindows()
         else if (c == "RESET") onResetView();
         else if (c == "SELECT" || c == "ESC") onModeSelect();
         else if (c == "NODE" || c == "N") onModeDrawNode();
-        else if (c == "BEAM" || c == "B") onModeDrawBeam();
-        else if (c == "COLUMN" || c == "C") onModeDrawColumn();
-        else if (c == "SLAB" || c == "L") onModeDrawSlab();
-        else if (c == "WALL" || c == "W") onActionWall();
+        else if (c == "WIRE" || c == "FILAIRE") onModeDrawWire();
+        else if (c == "BAR" || c == "BARRE") onModeDrawBar();
+        else if (c == "BEAM" || c == "B" || c == "POUTRE") onModeDrawBeam();
+        else if (c == "COLUMN" || c == "C" || c == "POTEAU") onModeDrawColumn();
+        else if (c == "SURF" || c == "SURFACE") onModeDrawSurface();
+        else if (c == "SLAB" || c == "L" || c == "DALLE") onModeDrawSlab();
+        else if (c == "WALL" || c == "W" || c == "VOILE") onModeDrawWall();
         else if (c == "TRUSS" || c == "TREILLIS") onActionTruss();
         else if (c == "FOOTING" || c == "SEMELLE" || c == "FONDATION") onActionFooting();
         else if (c == "SECI" || c == "IPE" || c == "HEA" || c == "HEB") onActionSecI();
@@ -1263,6 +1346,13 @@ void MainWindow::createDockWindows()
         m_modelTree->selectBeamItem(beamId);
         m_occView->highlightBeam(beamId);
         m_propertyPanel->showBeamProperties(beamId);
+        if (m_barDialog && m_barDialog->isVisible() && m_model)
+        {
+            if (const auto* b = m_model->getBeam(beamId))
+            {
+                m_barDialog->loadFromBar(*b);
+            }
+        }
         if (m_statusInfo)
         {
             m_statusInfo->setText(tr("Selected Beam %1").arg(beamId));
@@ -1427,14 +1517,14 @@ void MainWindow::createStatusBar()
         case OccView::InteractionMode::DrawNode:
             if (m_actionDrawNode) m_actionDrawNode->setChecked(true);
             break;
+        case OccView::InteractionMode::DrawBar:
         case OccView::InteractionMode::DrawBeam:
-            if (m_actionDrawBeam) m_actionDrawBeam->setChecked(true);
-            break;
         case OccView::InteractionMode::DrawColumn:
-            if (m_actionDrawColumn) m_actionDrawColumn->setChecked(true);
+            if (m_actionDrawWire) m_actionDrawWire->setChecked(true);
             break;
         case OccView::InteractionMode::DrawSlab:
-            if (m_actionDrawSlab) m_actionDrawSlab->setChecked(true);
+        case OccView::InteractionMode::DrawWall:
+            if (m_actionDrawSurface) m_actionDrawSurface->setChecked(true);
             break;
         case OccView::InteractionMode::Move3D:
             if (m_actionMove3D) m_actionMove3D->setChecked(true);
@@ -1482,27 +1572,127 @@ void MainWindow::onModeDrawNode()
     }
 }
 
+void MainWindow::openBarCreationDialog(TSA::Model::BarRole role)
+{
+    if (!m_occView) return;
+    if (!m_barDialog)
+    {
+        m_barDialog = new TSA::UI::BarCreationDialog(m_model.get(), m_occView, this);
+        connect(m_barDialog, &TSA::UI::BarCreationDialog::barPropertiesChanged, this, [this](const TSA::Model::BarProperties& p) {
+            if (m_occView) m_occView->setCurrentBarProperties(p);
+        });
+        connect(m_occView, &OccView::barFirstPointPicked, m_barDialog, &TSA::UI::BarCreationDialog::onFirstPointPicked);
+        connect(m_occView, &OccView::barSecondPointPicked, m_barDialog, &TSA::UI::BarCreationDialog::onSecondPointPicked);
+        connect(m_occView, &OccView::barDrawingCancelled, m_barDialog, &TSA::UI::BarCreationDialog::onDrawingCancelled);
+    }
+
+    m_barDialog->setRole(role);
+    m_occView->setCurrentBarProperties(m_barDialog->currentProperties());
+    m_occView->setInteractionMode(OccView::InteractionMode::DrawBar);
+    if (m_actionDrawBar) m_actionDrawBar->setChecked(true);
+
+    m_barDialog->showNormal();
+    m_barDialog->raise();
+    m_barDialog->activateWindow();
+
+    // Positionner le dialogue de manière bien visible au premier plan, au centre-droit du viewport 3D
+    if (m_viewportContainer)
+    {
+        QPoint vpGlobal = m_viewportContainer->mapToGlobal(QPoint(0, 0));
+        int targetX = vpGlobal.x() + m_viewportContainer->width() - m_barDialog->width() - 40;
+        int targetY = vpGlobal.y() + 40;
+        if (targetX < vpGlobal.x() + 20) targetX = vpGlobal.x() + 20;
+        if (targetY < vpGlobal.y() + 20) targetY = vpGlobal.y() + 20;
+        m_barDialog->move(targetX, targetY);
+    }
+}
+
+void MainWindow::onModeDrawWire()
+{
+    openBarCreationDialog(TSA::Model::BarRole::Beam);
+}
+
+void MainWindow::onModeDrawBar()
+{
+    openBarCreationDialog(TSA::Model::BarRole::Generic);
+}
+
 void MainWindow::onModeDrawBeam()
 {
-    if (m_occView)
-    {
-        m_occView->setInteractionMode(OccView::InteractionMode::DrawBeam);
-    }
+    openBarCreationDialog(TSA::Model::BarRole::Beam);
 }
 
 void MainWindow::onModeDrawColumn()
 {
-    if (m_occView)
+    openBarCreationDialog(TSA::Model::BarRole::Column);
+}
+
+void MainWindow::openSurfaceCreationDialog(int surfaceType)
+{
+    if (!m_occView) return;
+    if (!m_surfaceDialog)
     {
-        m_occView->setInteractionMode(OccView::InteractionMode::DrawColumn);
+        m_surfaceDialog = new TSA::UI::SurfaceCreationDialog(m_model.get(), m_occView, this);
+        connect(m_occView, &OccView::slabNodePicked, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onSlabNodePicked);
+        connect(m_occView, &OccView::slabCreated, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onSlabCreated);
+        connect(m_occView, &OccView::slabDrawingCancelled, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onSlabDrawingCancelled);
+        connect(m_occView, &OccView::wallFirstPointPicked, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onWallFirstPointPicked);
+        connect(m_occView, &OccView::wallSecondPointPicked, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onWallSecondPointPicked);
+        connect(m_occView, &OccView::wallDrawingCancelled, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onWallDrawingCancelled);
+        connect(m_occView, &OccView::wallCreated, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onWallCreated);
     }
+
+    m_surfaceDialog->setSurfaceType(static_cast<TSA::UI::SurfaceCreationDialog::SurfaceType>(surfaceType));
+    if (surfaceType == 0)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawSlab);
+    }
+    else
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawWall);
+    }
+    if (m_actionDrawSurface) m_actionDrawSurface->setChecked(true);
+
+    m_surfaceDialog->showNormal();
+    m_surfaceDialog->raise();
+    m_surfaceDialog->activateWindow();
+
+    if (m_viewportContainer)
+    {
+        QPoint vpGlobal = m_viewportContainer->mapToGlobal(QPoint(0, 0));
+        int targetX = vpGlobal.x() + m_viewportContainer->width() - m_surfaceDialog->width() - 40;
+        int targetY = vpGlobal.y() + 40;
+        if (targetX < vpGlobal.x() + 20) targetX = vpGlobal.x() + 20;
+        if (targetY < vpGlobal.y() + 20) targetY = vpGlobal.y() + 20;
+        m_surfaceDialog->move(targetX, targetY);
+    }
+}
+
+void MainWindow::onModeDrawSurface()
+{
+    openSurfaceCreationDialog(0);
 }
 
 void MainWindow::onModeDrawSlab()
 {
-    if (m_occView)
+    openSurfaceCreationDialog(0);
+}
+
+void MainWindow::onModeDrawWall()
+{
+    openSurfaceCreationDialog(1);
+}
+
+void MainWindow::onActionStructurePresets()
+{
+    TSA::UI::StructurePresetDialog dlg(m_presets, TSA::UI::PresetTarget::Wall, this);
+    if (dlg.exec() == QDialog::Accepted)
     {
-        m_occView->setInteractionMode(OccView::InteractionMode::DrawSlab);
+        m_presets = dlg.presets();
+        if (m_occView)
+        {
+            m_occView->setCreationPresets(m_presets);
+        }
     }
 }
 
@@ -1646,107 +1836,17 @@ void MainWindow::onActionNewNode()
 
 void MainWindow::onActionNewBeam()
 {
-    if (m_model->nodes().size() < 2)
-    {
-        QMessageBox::warning(this, tr("New Beam"), tr("At least two nodes are required to create a beam."));
-        return;
-    }
-
-    bool ok = false;
-    int startNode = QInputDialog::getInt(this, tr("New Beam"), tr("Start Node ID:"), 1, 1, 100000, 1, &ok);
-    if (!ok) return;
-
-    int endNode = QInputDialog::getInt(this, tr("New Beam"), tr("End Node ID:"), 2, 1, 100000, 1, &ok);
-    if (!ok) return;
-
-    if (!m_model->getNode(startNode) || !m_model->getNode(endNode))
-    {
-        QMessageBox::warning(this, tr("New Beam"), tr("One or both specified nodes do not exist."));
-        return;
-    }
-
-    int beamId = m_model->addBeam(startNode, endNode, 0.30, 0.50);
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Created Beam %1 (Nodes %2 -> %3)").arg(beamId).arg(startNode).arg(endNode));
-    }
+    openBarCreationDialog(TSA::Model::BarRole::Beam);
 }
 
 void MainWindow::onActionNewColumn()
 {
-    if (m_model->nodes().size() < 2)
-    {
-        QMessageBox::warning(this, tr("New Column"), tr("At least two nodes are required to create a column."));
-        return;
-    }
-
-    bool ok = false;
-    int startNode = QInputDialog::getInt(this, tr("New Column"), tr("Bottom Node ID:"), 1, 1, 100000, 1, &ok);
-    if (!ok) return;
-
-    int endNode = QInputDialog::getInt(this, tr("New Column"), tr("Top Node ID:"), 2, 1, 100000, 1, &ok);
-    if (!ok) return;
-
-    if (!m_model->getNode(startNode) || !m_model->getNode(endNode))
-    {
-        QMessageBox::warning(this, tr("New Column"), tr("One or both specified nodes do not exist."));
-        return;
-    }
-
-    int colId = m_model->addColumn(startNode, endNode, 0.35, 0.35);
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Created Column %1 (Nodes %2 -> %3)").arg(colId).arg(startNode).arg(endNode));
-    }
+    openBarCreationDialog(TSA::Model::BarRole::Column);
 }
 
 void MainWindow::onActionNewSlab()
 {
-    if (m_model->nodes().size() < 3)
-    {
-        QMessageBox::warning(this, tr("New Slab"), tr("At least 3 nodes are required to create a slab polygon."));
-        return;
-    }
-
-    bool ok = false;
-    QString text = QInputDialog::getText(this, tr("New Slab"),
-        tr("Enter contour Node IDs (separated by commas or spaces, e.g. 2, 4, 8, 6):"),
-        QLineEdit::Normal, "2, 4, 8, 6", &ok);
-    if (!ok || text.trimmed().isEmpty())
-        return;
-
-    std::vector<int> nodeIds;
-    std::string s = text.toStdString();
-    for (char& c : s)
-    {
-        if (c == ',' || c == ';') c = ' ';
-    }
-    std::istringstream iss(s);
-    int nid = 0;
-    while (iss >> nid)
-    {
-        if (!m_model->getNode(nid))
-        {
-            QMessageBox::warning(this, tr("New Slab"), tr("Node %1 does not exist.").arg(nid));
-            return;
-        }
-        nodeIds.push_back(nid);
-    }
-
-    if (nodeIds.size() < 3)
-    {
-        QMessageBox::warning(this, tr("New Slab"), tr("A slab must contain at least 3 nodes."));
-        return;
-    }
-
-    double thickness = QInputDialog::getDouble(this, tr("New Slab"), tr("Thickness (m):"), 0.20, 0.01, 5.0, 2, &ok);
-    if (!ok) return;
-
-    int slabId = m_model->addSlab(nodeIds, thickness);
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Created Slab %1 (%2 nodes, e = %3 m)").arg(slabId).arg(nodeIds.size()).arg(thickness));
-    }
+    openSurfaceCreationDialog(0);
 }
 
 void MainWindow::onActionMove()
@@ -2123,60 +2223,7 @@ void MainWindow::onActionAbout()
 
 void MainWindow::onActionWall()
 {
-    if (!m_model) return;
-
-    int n1Id = -1, n2Id = -1;
-    const auto selNodes = m_selectionManager ? m_selectionManager->selectedNodes() : std::set<int>{};
-
-    if (selNodes.size() >= 2)
-    {
-        auto it = selNodes.begin();
-        n1Id = *it++;
-        n2Id = *it;
-    }
-    else
-    {
-        bool ok = false;
-        QString text = QInputDialog::getText(this, tr("Voile / Mur en Béton Armé"),
-            tr("Entrez les ID des 2 nœuds de base (séparés par un espace ou virgule) :"),
-            QLineEdit::Normal, "1 2", &ok);
-        if (!ok || text.trimmed().isEmpty()) return;
-
-        std::string s = text.toStdString();
-        for (char& c : s) if (c == ',' || c == ';') c = ' ';
-        std::istringstream iss(s);
-        iss >> n1Id >> n2Id;
-    }
-
-    const auto* n1 = m_model->getNode(n1Id);
-    const auto* n2 = m_model->getNode(n2Id);
-    if (!n1 || !n2)
-    {
-        QMessageBox::warning(this, tr("Voile BA"), tr("Les nœuds spécifiés (%1, %2) n'existent pas.").arg(n1Id).arg(n2Id));
-        return;
-    }
-
-    bool ok = false;
-    double height = QInputDialog::getDouble(this, tr("Hauteur du Voile"), tr("Hauteur H (m) :"), 3.0, 0.5, 50.0, 2, &ok);
-    if (!ok) return;
-
-    double thickness = QInputDialog::getDouble(this, tr("Épaisseur du Voile"), tr("Épaisseur e (m) :"), 0.20, 0.10, 2.0, 2, &ok);
-    if (!ok) return;
-
-    int n3Id = m_model->addNode(n2->x(), n2->y(), n2->z() + height);
-    int n4Id = m_model->addNode(n1->x(), n1->y(), n1->z() + height);
-
-    int slabId = m_model->addSlab({ n1Id, n2Id, n3Id, n4Id }, thickness);
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Voile BA #%1 créé entre N#%2 et N#%3 (H = %4 m, e = %5 m, Nœuds sommets: #%6, #%7)")
-            .arg(slabId).arg(n1Id).arg(n2Id).arg(height).arg(thickness).arg(n3Id).arg(n4Id), "SUCCESS");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Voile BA #%1 créé (H=%2 m, e=%3 m)").arg(slabId).arg(height).arg(thickness));
-    }
+    onModeDrawWall();
 }
 
 void MainWindow::onActionTruss()
@@ -2362,18 +2409,22 @@ void MainWindow::onActionSecI()
     QString choice = QInputDialog::getItem(this, tr("Catalogue Profilés Métalliques"), tr("Sélectionnez le profilé en I/H :"), catalog, 4, false, &ok);
     if (!ok) return;
 
-    double h = 0.30, b = 0.15;
-    if (choice.startsWith("IPE 160")) { h = 0.16; b = 0.082; }
-    else if (choice.startsWith("IPE 200")) { h = 0.20; b = 0.100; }
-    else if (choice.startsWith("IPE 240")) { h = 0.24; b = 0.120; }
-    else if (choice.startsWith("IPE 270")) { h = 0.27; b = 0.135; }
-    else if (choice.startsWith("IPE 300")) { h = 0.30; b = 0.150; }
-    else if (choice.startsWith("IPE 360")) { h = 0.36; b = 0.170; }
-    else if (choice.startsWith("IPE 400")) { h = 0.40; b = 0.180; }
-    else if (choice.startsWith("HEA 200")) { h = 0.19; b = 0.200; }
-    else if (choice.startsWith("HEA 240")) { h = 0.23; b = 0.240; }
-    else if (choice.startsWith("HEB 200")) { h = 0.20; b = 0.200; }
-    else if (choice.startsWith("HEB 300")) { h = 0.30; b = 0.300; }
+    TSA::Model::Section sec;
+    if (choice.startsWith("IPE 160")) sec = TSA::Model::Section::ipe(160);
+    else if (choice.startsWith("IPE 200")) sec = TSA::Model::Section::ipe(200);
+    else if (choice.startsWith("IPE 240")) sec = TSA::Model::Section::ipe(240);
+    else if (choice.startsWith("IPE 270")) sec = TSA::Model::Section::ipe(270);
+    else if (choice.startsWith("IPE 300")) sec = TSA::Model::Section::ipe(300);
+    else if (choice.startsWith("IPE 360")) sec = TSA::Model::Section::ipe(360);
+    else if (choice.startsWith("IPE 400")) sec = TSA::Model::Section::ipe(400);
+    else if (choice.startsWith("HEA 200")) sec = TSA::Model::Section::hea(200);
+    else if (choice.startsWith("HEA 240")) sec = TSA::Model::Section::hea(240);
+    else if (choice.startsWith("HEB 200")) sec = TSA::Model::Section::heb(200);
+    else if (choice.startsWith("HEB 300")) sec = TSA::Model::Section::heb(300);
+    else sec = TSA::Model::Section::ipe(200);
+
+    double h = sec.height;
+    double b = sec.width;
 
     int modified = 0;
     if (m_selectionManager)
@@ -2381,14 +2432,28 @@ void MainWindow::onActionSecI()
         for (int bId : m_selectionManager->selectedBeams())
         {
             auto* bm = m_model->getBeam(bId);
-            if (bm) { bm->setDimensions(b, h); m_model->notifyBeamModified(bId); modified++; }
+            if (bm)
+            {
+                bm->setSection(sec);
+                m_model->notifyBeamModified(bId);
+                modified++;
+            }
         }
         for (int cId : m_selectionManager->selectedColumns())
         {
             auto* col = m_model->getColumn(cId);
-            if (col) { col->setDimensions(b, h); m_model->notifyColumnModified(cId); modified++; }
+            if (col)
+            {
+                col->setSection(sec);
+                m_model->notifyColumnModified(cId);
+                modified++;
+            }
         }
     }
+
+    m_presets.beam.section = sec;
+    m_presets.column.section = sec;
+    if (m_occView) m_occView->setCreationPresets(m_presets);
 
     QString profName = choice.split(" ").value(0) + " " + choice.split(" ").value(1);
     if (m_consoleDock)
@@ -2412,20 +2477,37 @@ void MainWindow::onActionSecRect()
     double h = QInputDialog::getDouble(this, tr("Section Rectangulaire BA"), tr("Hauteur h (m) :"), 0.50, 0.05, 5.0, 2, &ok);
     if (!ok) return;
 
+    std::string secName = QString("R%1x%2").arg(b * 100, 0, 'f', 0).arg(h * 100, 0, 'f', 0).toStdString();
+    auto sec = TSA::Model::Section::rectangular(b, h, secName);
+
     int modified = 0;
     if (m_selectionManager)
     {
         for (int bId : m_selectionManager->selectedBeams())
         {
             auto* bm = m_model->getBeam(bId);
-            if (bm) { bm->setDimensions(b, h); m_model->notifyBeamModified(bId); modified++; }
+            if (bm)
+            {
+                bm->setSection(sec);
+                m_model->notifyBeamModified(bId);
+                modified++;
+            }
         }
         for (int cId : m_selectionManager->selectedColumns())
         {
             auto* col = m_model->getColumn(cId);
-            if (col) { col->setDimensions(b, h); m_model->notifyColumnModified(cId); modified++; }
+            if (col)
+            {
+                col->setSection(sec);
+                m_model->notifyColumnModified(cId);
+                modified++;
+            }
         }
     }
+
+    m_presets.beam.section = sec;
+    m_presets.column.section = sec;
+    if (m_occView) m_occView->setCreationPresets(m_presets);
 
     if (m_consoleDock)
     {
@@ -2436,8 +2518,11 @@ void MainWindow::onActionSecRect()
 void MainWindow::onActionSecCirc()
 {
     bool ok = false;
-    double d = QInputDialog::getDouble(this, tr("Section Circulaire"), tr("Diamètre D (m) :"), 0.40, 0.05, 5.0, 2, &ok);
+    double d = QInputDialog::getDouble(this, tr("Section Circulaire"), tr("Diamètre D (m) :"), 0.60, 0.05, 5.0, 2, &ok);
     if (!ok) return;
+
+    std::string secName = QString("D%1").arg(d * 100, 0, 'f', 0).toStdString();
+    auto sec = TSA::Model::Section::circular(d, secName);
 
     int modified = 0;
     if (m_selectionManager)
@@ -2445,18 +2530,41 @@ void MainWindow::onActionSecCirc()
         for (int bId : m_selectionManager->selectedBeams())
         {
             auto* bm = m_model->getBeam(bId);
-            if (bm) { bm->setDimensions(d, d); m_model->notifyBeamModified(bId); modified++; }
+            if (bm)
+            {
+                bm->setSection(sec);
+                m_model->notifyBeamModified(bId);
+                modified++;
+            }
         }
         for (int cId : m_selectionManager->selectedColumns())
         {
             auto* col = m_model->getColumn(cId);
-            if (col) { col->setDimensions(d, d); m_model->notifyColumnModified(cId); modified++; }
+            if (col)
+            {
+                col->setSection(sec);
+                m_model->notifyColumnModified(cId);
+                modified++;
+            }
         }
     }
 
+    m_presets.beam.section = sec;
+    m_presets.column.section = sec;
+    if (m_occView) m_occView->setCreationPresets(m_presets);
+
     if (m_consoleDock)
     {
-        m_consoleDock->appendLog(tr("Section Circulaire Ø%1 m appliquée à %2 élément(s)").arg(d).arg(modified), "SUCCESS");
+        if (modified > 0)
+        {
+            m_consoleDock->appendLog(tr("Section Circulaire %1 (Ø%2 m) appliquée à %3 élément(s)")
+                .arg(QString::fromStdString(secName)).arg(d).arg(modified), "SUCCESS");
+        }
+        else
+        {
+            m_consoleDock->appendLog(tr("Section Circulaire %1 (Ø%2 m) définie comme section par défaut")
+                .arg(QString::fromStdString(secName)).arg(d), "INFO");
+        }
     }
 }
 

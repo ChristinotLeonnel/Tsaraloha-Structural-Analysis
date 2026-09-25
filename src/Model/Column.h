@@ -14,6 +14,7 @@ class Column
 public:
     Column() = default;
     Column(int id, int startNodeId, int endNodeId, double width = 0.30, double height = 0.30, const std::string& name = "");
+    Column(int id, int startNodeId, int endNodeId, const Section& section, const Material& material, double rotation = 0.0, const std::string& name = "");
 
     int id() const { return m_id; }
     void setId(int id) { m_id = id; }

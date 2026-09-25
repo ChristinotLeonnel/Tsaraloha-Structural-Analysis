@@ -10,6 +10,18 @@
 #include <QGroupBox>
 #include <QPushButton>
 #include <QColorDialog>
+#include <QCheckBox>
+#include <QIcon>
+
+namespace
+{
+struct LoadingGuard
+{
+    bool& flag;
+    explicit LoadingGuard(bool& f) : flag(f) { flag = true; }
+    ~LoadingGuard() { flag = false; }
+};
+}
 
 namespace TSA::UI
 {
@@ -37,14 +49,24 @@ void PropertyPanel::setupSectionTypeCombo(QComboBox* combo)
     combo->clear();
     combo->addItem(tr("Rectangulaire"), 0);
     combo->addItem(tr("Circulaire"), 1);
+    combo->addItem("IPE 100", 100);
     combo->addItem("IPE 160", 160);
     combo->addItem("IPE 200", 200);
     combo->addItem("IPE 240", 240);
     combo->addItem("IPE 300", 300);
+    combo->addItem("HEA 160", 1600);
     combo->addItem("HEA 200", 2000);
     combo->addItem("HEA 240", 2400);
+    combo->addItem("HEB 160", 1601);
     combo->addItem("HEB 200", 2001);
     combo->addItem("HEB 300", 3001);
+    combo->addItem("UPN 100", 5100);
+    combo->addItem("UPN 160", 5160);
+    combo->addItem("UPN 200", 5200);
+    combo->addItem("L 60x60x6", 6060);
+    combo->addItem("L 80x80x8", 6080);
+    combo->addItem("Tube 100x100x5", 7100);
+    combo->addItem("Tube D114x5", 8114);
 }
 
 void PropertyPanel::setupColorButton(QPushButton* btn, const QString& hexColor)
@@ -81,6 +103,10 @@ void PropertyPanel::pickColor(QString& targetColor, QPushButton* targetBtn, cons
     {
         targetColor = chosen.name(QColor::HexRgb).toUpper();
         setupColorButton(targetBtn, targetColor);
+        if (m_chkLiveSync && m_chkLiveSync->isChecked())
+        {
+            onWidgetChanged();
+        }
     }
 }
 
@@ -143,6 +169,18 @@ void PropertyPanel::setupUi()
     m_titleLabel->setStyleSheet("font-weight: bold; font-size: 11pt; padding: 4px; background: rgba(0,0,0,0.1); border-radius: 3px;");
     containerLayout->addWidget(m_titleLabel);
 
+    m_chkLiveSync = new QCheckBox(tr("Synchronisation en direct (temps réel)"), container);
+    m_chkLiveSync->setChecked(true);
+    m_chkLiveSync->setToolTip(tr("Si coché, toute modification de valeur est répercutée immédiatement sur la structure 3D.\nSinon, effectuez vos modifications puis cliquez sur 'Appliquer les modifications'."));
+    m_chkLiveSync->setStyleSheet("QCheckBox { font-weight: bold; color: #1E70BF; padding: 4px 6px; background: rgba(30,112,191,0.08); border-radius: 4px; }");
+    containerLayout->addWidget(m_chkLiveSync);
+
+    connect(m_chkLiveSync, &QCheckBox::toggled, this, [this](bool checked) {
+        if (checked) {
+            onWidgetChanged();
+        }
+    });
+
     m_emptyLabel = new QLabel(tr("Aucun élément sélectionné.\nCliquez sur un élément dans le Viewport 3D ou dans l'Arbre du Modèle."), container);
     m_emptyLabel->setAlignment(Qt::AlignCenter);
     m_emptyLabel->setStyleSheet("color: gray; padding: 20px; font-style: italic;");
@@ -194,10 +232,16 @@ void PropertyPanel::setupUi()
     nodeForm->addRow(tr("Liaison / Appui :"), m_nodeSupportCombo);
     nodeForm->addRow(tr("Couleur 3D :"), m_nodeColorBtn);
 
-    auto* btnApplyNode = new QPushButton(tr("Appliquer les modifications"), m_nodeGroup);
+    auto* btnApplyNode = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_nodeGroup);
     btnApplyNode->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyNode, &QPushButton::clicked, this, &PropertyPanel::onApplyNode);
     nodeForm->addRow(btnApplyNode);
+
+    connect(m_nodeNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
+    connect(m_nodeXSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_nodeYSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_nodeZSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_nodeSupportCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
 
     containerLayout->addWidget(m_nodeGroup);
 
@@ -211,6 +255,15 @@ void PropertyPanel::setupUi()
     m_beamStartNodeLabel = new QLabel(m_beamGroup);
     m_beamEndNodeLabel = new QLabel(m_beamGroup);
     m_beamLengthLabel = new QLabel(m_beamGroup);
+
+    m_beamRoleCombo = new QComboBox(m_beamGroup);
+    m_beamRoleCombo->addItem(tr("Barre"), static_cast<int>(TSA::Model::BarRole::Generic));
+    m_beamRoleCombo->addItem(tr("Poutre"), static_cast<int>(TSA::Model::BarRole::Beam));
+    m_beamRoleCombo->addItem(tr("Poteau"), static_cast<int>(TSA::Model::BarRole::Column));
+    m_beamRoleCombo->addItem(tr("Diagonale / Contreventement"), static_cast<int>(TSA::Model::BarRole::Brace));
+    m_beamRoleCombo->addItem(tr("Tirant"), static_cast<int>(TSA::Model::BarRole::Tie));
+    m_beamRoleCombo->addItem(tr("Barre acier"), static_cast<int>(TSA::Model::BarRole::SteelMember));
+    m_beamRoleCombo->addItem(tr("Treillis"), static_cast<int>(TSA::Model::BarRole::Truss));
 
     m_beamSectionTypeCombo = new QComboBox(m_beamGroup);
     setupSectionTypeCombo(m_beamSectionTypeCombo);
@@ -235,6 +288,13 @@ void PropertyPanel::setupUi()
     m_beamRotationSpin->setSingleStep(15.0);
     m_beamRotationSpin->setSuffix(" °");
 
+    m_beamEccentricityCombo = new QComboBox(m_beamGroup);
+    m_beamEccentricityCombo->addItem(tr("inexistant"), static_cast<int>(TSA::Model::BarEccentricity::None));
+    m_beamEccentricityCombo->addItem(tr("Fibre supérieure"), static_cast<int>(TSA::Model::BarEccentricity::TopFlange));
+    m_beamEccentricityCombo->addItem(tr("Fibre inférieure"), static_cast<int>(TSA::Model::BarEccentricity::BottomFlange));
+    m_beamEccentricityCombo->addItem(tr("Fibre gauche"), static_cast<int>(TSA::Model::BarEccentricity::LeftFlange));
+    m_beamEccentricityCombo->addItem(tr("Fibre droite"), static_cast<int>(TSA::Model::BarEccentricity::RightFlange));
+
     m_beamColorBtn = new QPushButton(m_beamGroup);
     m_beamColor = "#4682B4";
     setupColorButton(m_beamColorBtn, m_beamColor);
@@ -245,29 +305,48 @@ void PropertyPanel::setupUi()
     connect(m_beamSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
         int secData = m_beamSectionTypeCombo->currentData().toInt();
         updateBeamSectionVisibility(secData);
-        if (secData >= 160 && secData <= 400) {
+        if (secData >= 100 && secData <= 400) {
             auto s = TSA::Model::Section::ipe(secData);
             m_beamWidthSpin->setValue(s.width);
             m_beamHeightSpin->setValue(s.height);
             int stIdx = m_beamMaterialCombo->findData(4);
             if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
-        } else if (secData == 2000 || secData == 2400) {
+        } else if (secData >= 1600 && secData <= 2400) {
             auto s = TSA::Model::Section::hea(secData / 10);
             m_beamWidthSpin->setValue(s.width);
             m_beamHeightSpin->setValue(s.height);
             int stIdx = m_beamMaterialCombo->findData(4);
             if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
-        } else if (secData == 2001 || secData == 3001) {
+        } else if (secData >= 1601 && secData <= 3001) {
             auto s = TSA::Model::Section::heb((secData - 1) / 10);
             m_beamWidthSpin->setValue(s.width);
             m_beamHeightSpin->setValue(s.height);
             int stIdx = m_beamMaterialCombo->findData(4);
             if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
+        } else if (secData >= 5100 && secData <= 5300) {
+            auto s = TSA::Model::Section::upn(secData - 5000);
+            m_beamWidthSpin->setValue(s.width);
+            m_beamHeightSpin->setValue(s.height);
+            int stIdx = m_beamMaterialCombo->findData(4);
+            if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
+        } else if (secData == 6060) {
+            auto s = TSA::Model::Section::angle(0.060, 0.060, 0.006);
+            m_beamWidthSpin->setValue(s.width);
+            m_beamHeightSpin->setValue(s.height);
+        } else if (secData == 7100) {
+            auto s = TSA::Model::Section::boxHollow(0.100, 0.100, 0.005);
+            m_beamWidthSpin->setValue(s.width);
+            m_beamHeightSpin->setValue(s.height);
+        } else if (secData == 8114) {
+            auto s = TSA::Model::Section::pipe(0.114, 0.005);
+            m_beamWidthSpin->setValue(s.width);
+            m_beamHeightSpin->setValue(s.height);
         }
     });
 
     beamForm->addRow(tr("Nom / Repère :"), m_beamNameEdit);
     beamForm->addRow(tr("ID Interne :"), m_beamIdLabel);
+    beamForm->addRow(tr("Rôle / Type :"), m_beamRoleCombo);
     beamForm->addRow(tr("Nœud Départ :"), m_beamStartNodeLabel);
     beamForm->addRow(tr("Nœud Arrivée :"), m_beamEndNodeLabel);
     beamForm->addRow(tr("Longueur :"), m_beamLengthLabel);
@@ -275,13 +354,23 @@ void PropertyPanel::setupUi()
     beamForm->addRow(m_beamWidthLabel, m_beamWidthSpin);
     beamForm->addRow(m_beamHeightLabel, m_beamHeightSpin);
     beamForm->addRow(tr("Matériau :"), m_beamMaterialCombo);
-    beamForm->addRow(tr("Rotation β :"), m_beamRotationSpin);
+    beamForm->addRow(tr("Rotation γ :"), m_beamRotationSpin);
+    beamForm->addRow(tr("Excentrement :"), m_beamEccentricityCombo);
     beamForm->addRow(tr("Couleur 3D :"), m_beamColorBtn);
 
-    auto* btnApplyBeam = new QPushButton(tr("Appliquer les modifications"), m_beamGroup);
+    auto* btnApplyBeam = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_beamGroup);
     btnApplyBeam->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyBeam, &QPushButton::clicked, this, &PropertyPanel::onApplyBeam);
     beamForm->addRow(btnApplyBeam);
+
+    connect(m_beamNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
+    connect(m_beamRoleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_beamSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_beamWidthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_beamHeightSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_beamMaterialCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_beamRotationSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_beamEccentricityCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
 
     containerLayout->addWidget(m_beamGroup);
 
@@ -362,10 +451,17 @@ void PropertyPanel::setupUi()
     colForm->addRow(tr("Rotation β :"), m_columnRotationSpin);
     colForm->addRow(tr("Couleur 3D :"), m_columnColorBtn);
 
-    auto* btnApplyCol = new QPushButton(tr("Appliquer les modifications"), m_columnGroup);
+    auto* btnApplyCol = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_columnGroup);
     btnApplyCol->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyCol, &QPushButton::clicked, this, &PropertyPanel::onApplyColumn);
     colForm->addRow(btnApplyCol);
+
+    connect(m_columnNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
+    connect(m_columnSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_columnWidthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_columnDepthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_columnMaterialCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_columnRotationSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
 
     containerLayout->addWidget(m_columnGroup);
 
@@ -412,10 +508,17 @@ void PropertyPanel::setupUi()
     slabForm->addRow(tr("Typologie :"), typeLayout);
     slabForm->addRow(tr("Couleur 3D :"), m_slabColorBtn);
 
-    auto* btnApplySlab = new QPushButton(tr("Appliquer les modifications"), m_slabGroup);
+    auto* btnApplySlab = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_slabGroup);
     btnApplySlab->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplySlab, &QPushButton::clicked, this, &PropertyPanel::onApplySlab);
     slabForm->addRow(btnApplySlab);
+
+    connect(m_slabNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
+    connect(m_slabThicknessSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_slabMaterialCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_slabRadioOneWay, &QRadioButton::toggled, this, &PropertyPanel::onWidgetChanged);
+    connect(m_slabRadioTwoWay, &QRadioButton::toggled, this, &PropertyPanel::onWidgetChanged);
+    connect(m_slabRadioFlat, &QRadioButton::toggled, this, &PropertyPanel::onWidgetChanged);
 
     containerLayout->addWidget(m_slabGroup);
 
@@ -466,10 +569,16 @@ void PropertyPanel::setupUi()
     wallForm->addRow(tr("Décalage :"), m_wallOffsetSpin);
     wallForm->addRow(tr("Couleur 3D :"), m_wallColorBtn);
 
-    auto* btnApplyWall = new QPushButton(tr("Appliquer les modifications"), m_wallGroup);
+    auto* btnApplyWall = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_wallGroup);
     btnApplyWall->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyWall, &QPushButton::clicked, this, &PropertyPanel::onApplyWall);
     wallForm->addRow(btnApplyWall);
+
+    connect(m_wallNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
+    connect(m_wallHeightSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_wallThicknessSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_wallMaterialCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_wallOffsetSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
 
     containerLayout->addWidget(m_wallGroup);
 
@@ -529,10 +638,18 @@ void PropertyPanel::setupUi()
     fForm->addRow(tr("Capacité Sol :"), m_foundationSoilCapacitySpin);
     fForm->addRow(tr("Couleur 3D :"), m_foundationColorBtn);
 
-    auto* btnApplyF = new QPushButton(tr("Appliquer les modifications"), m_foundationGroup);
+    auto* btnApplyF = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_foundationGroup);
     btnApplyF->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyF, &QPushButton::clicked, this, &PropertyPanel::onApplyFoundation);
     fForm->addRow(btnApplyF);
+
+    connect(m_foundationNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
+    connect(m_foundationTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_foundationWidthASpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_foundationLengthBSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_foundationHeightHSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_foundationMaterialCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_foundationSoilCapacitySpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
 
     containerLayout->addWidget(m_foundationGroup);
 
@@ -579,10 +696,15 @@ void PropertyPanel::setupUi()
     trForm->addRow(tr("Matériau :"), m_trussMaterialCombo);
     trForm->addRow(tr("Couleur 3D :"), m_trussColorBtn);
 
-    auto* btnApplyTr = new QPushButton(tr("Appliquer les modifications"), m_trussGroup);
+    auto* btnApplyTr = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_trussGroup);
     btnApplyTr->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
     connect(btnApplyTr, &QPushButton::clicked, this, &PropertyPanel::onApplyTruss);
     trForm->addRow(btnApplyTr);
+
+    connect(m_trussNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
+    connect(m_trussRoleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_trussDimensionSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_trussMaterialCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
 
     containerLayout->addWidget(m_trussGroup);
 
@@ -621,6 +743,7 @@ void PropertyPanel::clearProperties()
 
 void PropertyPanel::showLevelProperties(const QString& levelId)
 {
+    LoadingGuard guard(m_isLoading);
     clearProperties();
     m_currentType = CurrentType::Level;
     m_currentLevelId = levelId;
@@ -630,6 +753,7 @@ void PropertyPanel::showLevelProperties(const QString& levelId)
 
 void PropertyPanel::showNodeProperties(int nodeId)
 {
+    LoadingGuard guard(m_isLoading);
     if (!m_model) return;
     const auto* node = m_model->getNode(nodeId);
     if (!node) return;
@@ -658,6 +782,7 @@ void PropertyPanel::showNodeProperties(int nodeId)
 
 void PropertyPanel::showBeamProperties(int beamId)
 {
+    LoadingGuard guard(m_isLoading);
     if (!m_model) return;
     const auto* beam = m_model->getBeam(beamId);
     if (!beam) return;
@@ -676,6 +801,12 @@ void PropertyPanel::showBeamProperties(int beamId)
     m_beamWidthSpin->setValue(beam->width());
     m_beamHeightSpin->setValue(beam->height());
     m_beamRotationSpin->setValue(beam->rotation());
+
+    int roleIdx = m_beamRoleCombo->findData(static_cast<int>(beam->role()));
+    if (roleIdx >= 0) m_beamRoleCombo->setCurrentIndex(roleIdx);
+
+    int eccIdx = m_beamEccentricityCombo->findData(static_cast<int>(beam->eccentricity()));
+    if (eccIdx >= 0) m_beamEccentricityCombo->setCurrentIndex(eccIdx);
 
     m_beamSectionTypeCombo->blockSignals(true);
     const auto& sec = beam->section();
@@ -729,6 +860,7 @@ void PropertyPanel::showBeamProperties(int beamId)
 
 void PropertyPanel::showColumnProperties(int columnId)
 {
+    LoadingGuard guard(m_isLoading);
     if (!m_model) return;
     const auto* col = m_model->getColumn(columnId);
     if (!col) return;
@@ -800,6 +932,7 @@ void PropertyPanel::showColumnProperties(int columnId)
 
 void PropertyPanel::showSlabProperties(int slabId)
 {
+    LoadingGuard guard(m_isLoading);
     if (!m_model) return;
     const auto* slab = m_model->getSlab(slabId);
     if (!slab) return;
@@ -840,6 +973,7 @@ void PropertyPanel::showSlabProperties(int slabId)
 
 void PropertyPanel::showWallProperties(int wallId)
 {
+    LoadingGuard guard(m_isLoading);
     if (!m_model) return;
     const auto* wall = m_model->getWall(wallId);
     if (!wall) return;
@@ -876,6 +1010,7 @@ void PropertyPanel::showWallProperties(int wallId)
 
 void PropertyPanel::showFoundationProperties(int foundationId)
 {
+    LoadingGuard guard(m_isLoading);
     if (!m_model) return;
     const auto* f = m_model->getFoundation(foundationId);
     if (!f) return;
@@ -915,6 +1050,7 @@ void PropertyPanel::showFoundationProperties(int foundationId)
 
 void PropertyPanel::showTrussMemberProperties(int memberId)
 {
+    LoadingGuard guard(m_isLoading);
     if (!m_model) return;
     const auto* truss = m_model->getTrussMember(memberId);
     if (!truss) return;
@@ -977,6 +1113,8 @@ void PropertyPanel::onApplyBeam()
     m_model->pushUndoState(tr("Modification Poutre %1").arg(m_currentBeamId).toStdString());
 
     beam->setName(m_beamNameEdit->text().toStdString());
+    beam->setRole(static_cast<TSA::Model::BarRole>(m_beamRoleCombo->currentData().toInt()));
+    beam->setEccentricity(static_cast<TSA::Model::BarEccentricity>(m_beamEccentricityCombo->currentData().toInt()));
 
     // 1. Mise à jour de la section
     int secData = m_beamSectionTypeCombo->currentData().toInt();
@@ -988,17 +1126,37 @@ void PropertyPanel::onApplyBeam()
     {
         beam->setSection(TSA::Model::Section::circular(m_beamWidthSpin->value()));
     }
-    else if (secData >= 160 && secData <= 400) // IPE
+    else if (secData >= 100 && secData <= 400) // IPE
     {
         beam->setSection(TSA::Model::Section::ipe(secData));
     }
-    else if (secData == 2000 || secData == 2400) // HEA
+    else if (secData >= 1600 && secData <= 2400) // HEA
     {
         beam->setSection(TSA::Model::Section::hea(secData / 10));
     }
-    else if (secData == 2001 || secData == 3001) // HEB
+    else if (secData >= 1601 && secData <= 3001) // HEB
     {
         beam->setSection(TSA::Model::Section::heb((secData - 1) / 10));
+    }
+    else if (secData >= 5100 && secData <= 5300) // UPN
+    {
+        beam->setSection(TSA::Model::Section::upn(secData - 5000));
+    }
+    else if (secData == 6060)
+    {
+        beam->setSection(TSA::Model::Section::angle(0.060, 0.060, 0.006));
+    }
+    else if (secData == 6080)
+    {
+        beam->setSection(TSA::Model::Section::angle(0.080, 0.080, 0.008));
+    }
+    else if (secData == 7100)
+    {
+        beam->setSection(TSA::Model::Section::boxHollow(0.100, 0.100, 0.005));
+    }
+    else if (secData == 8114)
+    {
+        beam->setSection(TSA::Model::Section::pipe(0.114, 0.005));
     }
 
     // 2. Mise à jour du matériau
@@ -1012,7 +1170,7 @@ void PropertyPanel::onApplyBeam()
     case 5: beam->setMaterial(TSA::Model::Material::timberC24()); break;
     }
 
-    // 3. Mise à jour de l'orientation bêta
+    // 3. Mise à jour de l'orientation gamma
     beam->setRotation(m_beamRotationSpin->value());
 
     // 4. Mise à jour de la couleur
@@ -1197,6 +1355,41 @@ void PropertyPanel::onApplyTruss()
 
     m_model->notifyTrussMemberModified(m_currentTrussId);
     emit elementModified();
+}
+
+void PropertyPanel::onWidgetChanged()
+{
+    if (m_isLoading)
+        return;
+    if (!m_chkLiveSync || !m_chkLiveSync->isChecked())
+        return;
+
+    switch (m_currentType)
+    {
+    case CurrentType::Node:
+        onApplyNode();
+        break;
+    case CurrentType::Beam:
+        onApplyBeam();
+        break;
+    case CurrentType::Column:
+        onApplyColumn();
+        break;
+    case CurrentType::Slab:
+        onApplySlab();
+        break;
+    case CurrentType::Wall:
+        onApplyWall();
+        break;
+    case CurrentType::Foundation:
+        onApplyFoundation();
+        break;
+    case CurrentType::Truss:
+        onApplyTruss();
+        break;
+    default:
+        break;
+    }
 }
 
 } // namespace TSA::UI

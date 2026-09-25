@@ -38,6 +38,7 @@ private slots:
     void onSnapToleranceChanged(double val);
     void refreshGridList();
     void onSelectedGridChanged();
+    void onApply();
 
 private:
     void setupUi();
@@ -58,6 +59,9 @@ private:
     QCheckBox* m_labelsCheck = nullptr;
     QCheckBox* m_intersectionsCheck = nullptr;
     QDoubleSpinBox* m_snapToleranceSpin = nullptr;
+
+    QCheckBox* m_chkLiveSync = nullptr;
+    QPushButton* m_btnApply = nullptr;
 
     QLabel* m_infoLabel = nullptr;
 };

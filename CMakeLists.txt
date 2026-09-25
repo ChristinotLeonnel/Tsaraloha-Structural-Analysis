@@ -50,6 +50,13 @@ set(SOURCES
     src/UI/Dialogs/SectionCutDialog.cpp
     src/UI/Dialogs/HelpDialog.h
     src/UI/Dialogs/HelpDialog.cpp
+    src/UI/Dialogs/StructurePresetDialog.h
+    src/UI/Dialogs/StructurePresetDialog.cpp
+    src/UI/Dialogs/BarCreationDialog.h
+    src/UI/Dialogs/BarCreationDialog.cpp
+    src/UI/Dialogs/SurfaceCreationDialog.h
+    src/UI/Dialogs/SurfaceCreationDialog.cpp
+    src/Model/CreationPresets.h
     src/UI/Theme/ThemeManager.h
     src/UI/Theme/ThemeManager.cpp
     src/UI/Ruler/ViewportRuler.h
@@ -169,6 +176,15 @@ if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /permissive- /utf-8)
     # Définition pour éviter min/max de windows.h
     target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+
+    # Sous-système Windows :
+    # - Mode Debug : conserve la console cmd pour afficher les logs (qDebug, std::cout, diagnostics)
+    # - Mode Release / RelWithDebInfo / MinSizeRel : mode fenêtré pur sans console cmd
+    target_link_options(${PROJECT_NAME} PRIVATE
+        $<$<CONFIG:Debug>:/SUBSYSTEM:CONSOLE>
+        $<$<NOT:$<CONFIG:Debug>>:/SUBSYSTEM:WINDOWS>
+        $<$<NOT:$<CONFIG:Debug>>:/ENTRY:mainCRTStartup>
+    )
 endif()
 
 # -----------------------------------------------------------------------------
@@ -217,6 +233,8 @@ set(TEST_SOURCES
     src/Grid/GridSystem.cpp
     src/Grid/GridSnapManager.h
     src/Grid/GridSnapManager.cpp
+    src/Geometry/BeamGeometry.h
+    src/Geometry/BeamGeometry.cpp
 )
 
 add_executable(TSA_Tests ${TEST_SOURCES})

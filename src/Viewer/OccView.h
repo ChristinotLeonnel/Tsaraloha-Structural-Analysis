@@ -27,6 +27,7 @@ namespace TSA::Grid
     class GridSnapManager;
 }
 #include "../Grid/GridRenderer.h"
+#include "../Model/CreationPresets.h"
 #include <AIS_ViewCube.hxx>
 #include <AIS_RubberBand.hxx>
 #include <Graphic3d_ClipPlane.hxx>
@@ -140,6 +141,7 @@ public:
     {
         Select,
         DrawNode,
+        DrawBar,
         DrawBeam,
         DrawColumn,
         DrawSlab,
@@ -157,6 +159,18 @@ public:
     void setInteractionMode(InteractionMode mode);
     void cancelCurrentDrawing();
 
+    const TSA::Model::StructurePresets& creationPresets() const { return m_presets; }
+    TSA::Model::StructurePresets& creationPresets() { return m_presets; }
+    void setCreationPresets(const TSA::Model::StructurePresets& p) { m_presets = p; }
+
+    const TSA::Model::BarProperties& currentBarProperties() const { return m_currentBarProps; }
+    void setCurrentBarProperties(const TSA::Model::BarProperties& props);
+    void startChainedBarDrawing(const gp_Pnt& originPt, int originNodeId);
+
+    // Dessin d'éléments surfaciques (Dalles & Voiles)
+    void finishCurrentSlab();
+    void resetCurrentSlabContour();
+
 signals:
     void mouseCoordinatesChanged(double x, double y, double z);
     void mousePixelPositionChanged(int px, int py);
@@ -169,6 +183,20 @@ signals:
     void viewPlaneModeChanged(ViewPlaneMode mode);
     void coordinateSystemChanged(bool isLocal);
     void clippingChanged(bool enabled, int axisIndex, double position, bool flip);
+
+    // Signaux Barres (Robot Structural Analysis)
+    void barFirstPointPicked(const gp_Pnt& pt, int nodeId);
+    void barSecondPointPicked(const gp_Pnt& pt, int nodeId);
+    void barDrawingCancelled();
+
+    // Signaux Surfaciques (Dalles & Voiles)
+    void slabNodePicked(int nodeId, const gp_Pnt& pt, int totalCount);
+    void slabDrawingCancelled();
+    void slabCreated(int slabId);
+    void wallFirstPointPicked(const gp_Pnt& pt, int nodeId);
+    void wallSecondPointPicked(const gp_Pnt& pt, int nodeId);
+    void wallDrawingCancelled();
+    void wallCreated(int wallId);
 
     // Signaux de manipulation 3D directe
     void pointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& target, bool isCopy);
@@ -299,4 +327,7 @@ private:
     gp_Pnt m_centerPoint3D;
     bool m_hasBasePoint = false;
     bool m_hasCenterPoint = false;
+
+    TSA::Model::StructurePresets m_presets;
+    TSA::Model::BarProperties m_currentBarProps;
 };

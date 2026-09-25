@@ -11,6 +11,7 @@ class QComboBox;
 class QRadioButton;
 class QGroupBox;
 class QPushButton;
+class QCheckBox;
 
 namespace TSA::UI
 {
@@ -45,6 +46,7 @@ private slots:
     void onApplyWall();
     void onApplyFoundation();
     void onApplyTruss();
+    void onWidgetChanged();
 
 private:
     void setupUi();
@@ -93,6 +95,7 @@ private:
     QLabel* m_beamStartNodeLabel = nullptr;
     QLabel* m_beamEndNodeLabel = nullptr;
     QLabel* m_beamLengthLabel = nullptr;
+    QComboBox* m_beamRoleCombo = nullptr;
     QComboBox* m_beamSectionTypeCombo = nullptr;
     QLabel* m_beamWidthLabel = nullptr;
     QDoubleSpinBox* m_beamWidthSpin = nullptr;
@@ -100,6 +103,7 @@ private:
     QDoubleSpinBox* m_beamHeightSpin = nullptr;
     QComboBox* m_beamMaterialCombo = nullptr;
     QDoubleSpinBox* m_beamRotationSpin = nullptr;
+    QComboBox* m_beamEccentricityCombo = nullptr;
     QPushButton* m_beamColorBtn = nullptr;
     QString m_beamColor;
 
@@ -174,6 +178,10 @@ private:
     QComboBox* m_trussMaterialCombo = nullptr;
     QPushButton* m_trussColorBtn = nullptr;
     QString m_trussColor;
+
+    // Synchronisation en direct
+    QCheckBox* m_chkLiveSync = nullptr;
+    bool m_isLoading = false;
 };
 
 } // namespace TSA::UI

@@ -21,7 +21,7 @@ void RibbonBuilder::buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWid
     buildViewTab(bar, acts, parentWindow);
 }
 
-RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts, QWidget* /*parentWindow*/)
 {
     auto* tab = bar->addTab(QObject::tr("Accueil"));
 
@@ -73,19 +73,30 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
 
     // 4. Groupe Éléments Structuraux
     auto* structPanel = new RibbonPanel(QObject::tr("Structure 3D"), tab);
-    if (acts.actionDrawBeam)
+    if (acts.actionDrawWire)
     {
-        structPanel->addLargeAction(acts.actionDrawBeam);
+        structPanel->addLargeAction(acts.actionDrawWire);
+        structPanel->addInternalSeparator();
     }
-    structPanel->addInternalSeparator();
-    if (acts.actionDrawColumn)
+    else if (acts.actionDrawBar)
     {
-        structPanel->addLargeAction(acts.actionDrawColumn);
+        structPanel->addLargeAction(acts.actionDrawBar);
+        structPanel->addInternalSeparator();
     }
-    structPanel->addInternalSeparator();
-    if (acts.actionDrawSlab)
+
+    if (acts.actionDrawSurface)
+    {
+        structPanel->addLargeAction(acts.actionDrawSurface);
+    }
+    else if (acts.actionDrawSlab)
     {
         structPanel->addLargeAction(acts.actionDrawSlab);
+    }
+
+    if (acts.actionStructurePresets)
+    {
+        structPanel->addInternalSeparator();
+        structPanel->addLargeAction(acts.actionStructurePresets);
     }
     tab->addPanel(structPanel);
 
@@ -132,18 +143,35 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
 
     // 1. Éléments de structure
     auto* elemPanel = new RibbonPanel(QObject::tr("Éléments de Structure"), tab);
-    if (acts.actionDrawBeam) elemPanel->addLargeAction(acts.actionDrawBeam);
-    elemPanel->addInternalSeparator();
-    if (acts.actionDrawColumn) elemPanel->addLargeAction(acts.actionDrawColumn);
-    elemPanel->addInternalSeparator();
-    if (acts.actionDrawSlab) elemPanel->addLargeAction(acts.actionDrawSlab);
-    elemPanel->addInternalSeparator();
+    if (acts.actionDrawWire)
+    {
+        elemPanel->addLargeAction(acts.actionDrawWire);
+        elemPanel->addInternalSeparator();
+    }
+    else if (acts.actionDrawBar)
+    {
+        elemPanel->addLargeAction(acts.actionDrawBar);
+        elemPanel->addInternalSeparator();
+    }
 
-    auto* actWall = acts.actionWall ? acts.actionWall : new QAction(QIcon(":/icons/struct_wall.svg"), QObject::tr("Voile / Mur"), parentWindow);
-    auto* actTruss = acts.actionTruss ? acts.actionTruss : new QAction(QIcon(":/icons/struct_truss.svg"), QObject::tr("Treillis"), parentWindow);
+    if (acts.actionDrawSurface)
+    {
+        elemPanel->addLargeAction(acts.actionDrawSurface);
+        elemPanel->addInternalSeparator();
+    }
+    else if (acts.actionDrawSlab)
+    {
+        elemPanel->addLargeAction(acts.actionDrawSlab);
+        elemPanel->addInternalSeparator();
+    }
+
     auto* actFooting = acts.actionFooting ? acts.actionFooting : new QAction(QIcon(":/icons/struct_foundation.svg"), QObject::tr("Fondation"), parentWindow);
-
-    elemPanel->addSmallColumn({ actWall, actTruss, actFooting });
+    elemPanel->addSmallColumn({ actFooting });
+    if (acts.actionStructurePresets)
+    {
+        elemPanel->addInternalSeparator();
+        elemPanel->addLargeAction(acts.actionStructurePresets);
+    }
     tab->addPanel(elemPanel);
 
     // 2. Sections Transversales
@@ -264,14 +292,34 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     // 3. Guides & Visibilité
     auto* visPanel = new RibbonPanel(QObject::tr("Guides & Règles"), tab);
     std::vector<QAction*> visCol1;
-    if (acts.actionGridVisible) visCol1.push_back(acts.actionGridVisible);
-    if (acts.actionLevelsVisible) visCol1.push_back(acts.actionLevelsVisible);
-    if (acts.actionRulersVisible) visCol1.push_back(acts.actionRulersVisible);
+    if (acts.actionGridVisible)
+    {
+        if (acts.actionGridVisible->icon().isNull()) acts.actionGridVisible->setIcon(QIcon(":/icons/grid_cartesian.svg"));
+        visCol1.push_back(acts.actionGridVisible);
+    }
+    if (acts.actionLevelsVisible)
+    {
+        if (acts.actionLevelsVisible->icon().isNull()) acts.actionLevelsVisible->setIcon(QIcon(":/icons/levels.svg"));
+        visCol1.push_back(acts.actionLevelsVisible);
+    }
+    if (acts.actionRulersVisible)
+    {
+        if (acts.actionRulersVisible->icon().isNull()) acts.actionRulersVisible->setIcon(QIcon(":/icons/rulers.svg"));
+        visCol1.push_back(acts.actionRulersVisible);
+    }
     if (!visCol1.empty()) visPanel->addSmallColumn(visCol1);
 
     std::vector<QAction*> visCol2;
-    if (acts.actionGridSnap) visCol2.push_back(acts.actionGridSnap);
-    if (acts.actionGridLabels) visCol2.push_back(acts.actionGridLabels);
+    if (acts.actionGridSnap)
+    {
+        if (acts.actionGridSnap->icon().isNull()) acts.actionGridSnap->setIcon(QIcon(":/icons/snap.svg"));
+        visCol2.push_back(acts.actionGridSnap);
+    }
+    if (acts.actionGridLabels)
+    {
+        if (acts.actionGridLabels->icon().isNull()) acts.actionGridLabels->setIcon(QIcon(":/icons/grid_labels.svg"));
+        visCol2.push_back(acts.actionGridLabels);
+    }
     if (!visCol2.empty())
     {
         visPanel->addInternalSeparator();
@@ -288,13 +336,29 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     // 5. Panneaux Docks
     auto* dockPanel = new RibbonPanel(QObject::tr("Fenêtres & Docks"), tab);
     std::vector<QAction*> dockCol1;
-    if (acts.actionToggleModelTree) dockCol1.push_back(acts.actionToggleModelTree);
-    if (acts.actionToggleProperties) dockCol1.push_back(acts.actionToggleProperties);
+    if (acts.actionToggleModelTree)
+    {
+        if (acts.actionToggleModelTree->icon().isNull()) acts.actionToggleModelTree->setIcon(QIcon(":/icons/model_tree.svg"));
+        dockCol1.push_back(acts.actionToggleModelTree);
+    }
+    if (acts.actionToggleProperties)
+    {
+        if (acts.actionToggleProperties->icon().isNull()) acts.actionToggleProperties->setIcon(QIcon(":/icons/properties.svg"));
+        dockCol1.push_back(acts.actionToggleProperties);
+    }
     if (!dockCol1.empty()) dockPanel->addSmallColumn(dockCol1);
 
     std::vector<QAction*> dockCol2;
-    if (acts.actionToggleVisibility) dockCol2.push_back(acts.actionToggleVisibility);
-    if (acts.actionToggleConsole) dockCol2.push_back(acts.actionToggleConsole);
+    if (acts.actionToggleVisibility)
+    {
+        if (acts.actionToggleVisibility->icon().isNull()) acts.actionToggleVisibility->setIcon(QIcon(":/icons/visibility.svg"));
+        dockCol2.push_back(acts.actionToggleVisibility);
+    }
+    if (acts.actionToggleConsole)
+    {
+        if (acts.actionToggleConsole->icon().isNull()) acts.actionToggleConsole->setIcon(QIcon(":/icons/console.svg"));
+        dockCol2.push_back(acts.actionToggleConsole);
+    }
     if (!dockCol2.empty())
     {
         dockPanel->addInternalSeparator();

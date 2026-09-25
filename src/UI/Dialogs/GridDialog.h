@@ -13,6 +13,7 @@ class QTabWidget;
 class QPushButton;
 class QTableWidget;
 class QLabel;
+class QCheckBox;
 
 namespace TSA::Grid
 {
@@ -123,6 +124,7 @@ private:
     QLineEdit* m_customLabelEdit = nullptr;
 
     // Boutons inférieurs
+    QCheckBox* m_chkLiveSync = nullptr;
     QPushButton* m_btnNew = nullptr;
     QPushButton* m_btnManage = nullptr;
     QPushButton* m_btnApply = nullptr;

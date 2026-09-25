@@ -364,6 +364,63 @@ bool Model::addBeamWithId(int id, int startNodeId, int endNodeId, double width, 
     return true;
 }
 
+int Model::addBar(int startNodeId, int endNodeId, const Section& section, const Material& material, BarRole role, double rotation, const std::string& name)
+{
+    if (m_nodes.find(startNodeId) == m_nodes.end() || m_nodes.find(endNodeId) == m_nodes.end())
+    {
+        return -1;
+    }
+
+    int id = m_nextBeamId++;
+    while (m_beams.find(id) != m_beams.end())
+    {
+        id = m_nextBeamId++;
+    }
+
+    Beam bar(id, startNodeId, endNodeId, section, material, role, rotation, name);
+    auto it = m_beams.emplace(id, bar).first;
+
+    for (auto* obs : m_observers)
+    {
+        obs->onBeamAdded(it->second);
+    }
+
+    return id;
+}
+
+int Model::addBar(const BarProperties& props, int startNodeId, int endNodeId)
+{
+    if (m_nodes.find(startNodeId) == m_nodes.end() || m_nodes.find(endNodeId) == m_nodes.end())
+    {
+        return -1;
+    }
+
+    int id = props.id > 0 && m_beams.find(props.id) == m_beams.end() ? props.id : m_nextBeamId++;
+    while (m_beams.find(id) != m_beams.end())
+    {
+        id = m_nextBeamId++;
+    }
+    if (id >= m_nextBeamId)
+    {
+        m_nextBeamId = id + 1;
+    }
+
+    Beam bar(id, startNodeId, endNodeId, props.section, props.material, props.role, props.rotation, props.name);
+    bar.setEccentricity(props.eccentricity);
+    bar.setStartRelease(props.startRelease);
+    bar.setEndRelease(props.endRelease);
+    if (!props.color.empty()) bar.setColor(props.color);
+
+    auto it = m_beams.emplace(id, bar).first;
+
+    for (auto* obs : m_observers)
+    {
+        obs->onBeamAdded(it->second);
+    }
+
+    return id;
+}
+
 bool Model::removeBeam(int beamId)
 {
     auto it = m_beams.find(beamId);
@@ -456,6 +513,30 @@ int Model::addColumn(int startNodeId, int endNodeId, double width, double height
     }
 
     Column col(id, startNodeId, endNodeId, width, height, name);
+    auto it = m_columns.emplace(id, col).first;
+
+    for (auto* obs : m_observers)
+    {
+        obs->onColumnAdded(it->second);
+    }
+
+    return id;
+}
+
+int Model::addColumn(int startNodeId, int endNodeId, const Section& section, const Material& material, double rotation, const std::string& name)
+{
+    if (m_nodes.find(startNodeId) == m_nodes.end() || m_nodes.find(endNodeId) == m_nodes.end())
+    {
+        return -1;
+    }
+
+    int id = m_nextColumnId++;
+    while (m_columns.find(id) != m_columns.end())
+    {
+        id = m_nextColumnId++;
+    }
+
+    Column col(id, startNodeId, endNodeId, section, material, rotation, name);
     auto it = m_columns.emplace(id, col).first;
 
     for (auto* obs : m_observers)
@@ -955,6 +1036,16 @@ std::vector<int> Model::copyElements(const std::set<int>& nodeIds,
                 int newStart = oldToNewNodes[origBeam->startNodeId()];
                 int newEnd = oldToNewNodes[origBeam->endNodeId()];
                 int newBId = addBeam(newStart, newEnd, origBeam->width(), origBeam->height());
+                if (auto* nb = getBeam(newBId))
+                {
+                    nb->setSection(origBeam->section());
+                    nb->setMaterial(origBeam->material());
+                    nb->setRotation(origBeam->rotation());
+                    nb->setEccentricity(origBeam->eccentricity());
+                    nb->setStartRelease(origBeam->startRelease());
+                    nb->setEndRelease(origBeam->endRelease());
+                    nb->setColor(origBeam->color());
+                }
                 newElementIds.push_back(newBId);
             }
         }
@@ -967,6 +1058,13 @@ std::vector<int> Model::copyElements(const std::set<int>& nodeIds,
                 int newStart = oldToNewNodes[origCol->startNodeId()];
                 int newEnd = oldToNewNodes[origCol->endNodeId()];
                 int newCId = addColumn(newStart, newEnd, origCol->width(), origCol->height());
+                if (auto* nc = getColumn(newCId))
+                {
+                    nc->setSection(origCol->section());
+                    nc->setMaterial(origCol->material());
+                    nc->setRotation(origCol->rotation());
+                    nc->setColor(origCol->color());
+                }
                 newElementIds.push_back(newCId);
             }
         }
@@ -982,6 +1080,12 @@ std::vector<int> Model::copyElements(const std::set<int>& nodeIds,
                     newSlabNodes.push_back(oldToNewNodes[nid]);
                 }
                 int newSId = addSlab(newSlabNodes, origSlab->thickness());
+                if (auto* ns = getSlab(newSId))
+                {
+                    ns->setMaterial(origSlab->material());
+                    ns->setSlabType(origSlab->slabType());
+                    ns->setColor(origSlab->color());
+                }
                 newElementIds.push_back(newSId);
             }
         }
@@ -1071,6 +1175,16 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
                 int newStart = oldToNewNodes[origBeam->startNodeId()];
                 int newEnd = oldToNewNodes[origBeam->endNodeId()];
                 int newBId = addBeam(newStart, newEnd, origBeam->width(), origBeam->height());
+                if (auto* nb = getBeam(newBId))
+                {
+                    nb->setSection(origBeam->section());
+                    nb->setMaterial(origBeam->material());
+                    nb->setRotation(origBeam->rotation());
+                    nb->setEccentricity(origBeam->eccentricity());
+                    nb->setStartRelease(origBeam->startRelease());
+                    nb->setEndRelease(origBeam->endRelease());
+                    nb->setColor(origBeam->color());
+                }
                 newElementIds.push_back(newBId);
             }
         }
@@ -1083,6 +1197,13 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
                 int newStart = oldToNewNodes[origCol->startNodeId()];
                 int newEnd = oldToNewNodes[origCol->endNodeId()];
                 int newCId = addColumn(newStart, newEnd, origCol->width(), origCol->height());
+                if (auto* nc = getColumn(newCId))
+                {
+                    nc->setSection(origCol->section());
+                    nc->setMaterial(origCol->material());
+                    nc->setRotation(origCol->rotation());
+                    nc->setColor(origCol->color());
+                }
                 newElementIds.push_back(newCId);
             }
         }
@@ -1098,6 +1219,12 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
                     newSlabNodes.push_back(oldToNewNodes[nid]);
                 }
                 int newSId = addSlab(newSlabNodes, origSlab->thickness());
+                if (auto* ns = getSlab(newSId))
+                {
+                    ns->setMaterial(origSlab->material());
+                    ns->setSlabType(origSlab->slabType());
+                    ns->setColor(origSlab->color());
+                }
                 newElementIds.push_back(newSId);
             }
         }

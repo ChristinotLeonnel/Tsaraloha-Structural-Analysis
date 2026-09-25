@@ -563,11 +563,8 @@ void OccView::updateNodeShape(int nodeId)
     if (m_context.IsNull() || !m_model)
         return;
 
-    const auto* node = m_model->getNode(nodeId);
-    if (!node)
-        return;
-
-    // 1. Supprimer l'ancienne forme
+    // 1. Supprimer l'ancienne forme (avant le contrôle de validité, pour ne jamais
+    //    laisser un nœud fantôme affiché/sélectionnable)
     auto it = m_nodeShapes.find(nodeId);
     if (it != m_nodeShapes.end())
     {
@@ -578,6 +575,10 @@ void OccView::updateNodeShape(int nodeId)
             m_selectionManager->unregisterNode(nodeId);
         }
     }
+
+    const auto* node = m_model->getNode(nodeId);
+    if (!node)
+        return;
 
     // 2. Créer la nouvelle forme 3D
     TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createNodeShape(*node, 0.12);
@@ -629,11 +630,19 @@ void OccView::updateNodeShape(int nodeId)
             connectedSlabs.push_back(slabId);
     }
 
+    std::vector<int> connectedWalls;
+    for (const auto& [wallId, wall] : m_model->walls())
+    {
+        if (wall.startNodeId() == nodeId || wall.endNodeId() == nodeId)
+            connectedWalls.push_back(wallId);
+    }
+
     // Mettre à jour silencieusement (les updateXxxShape font UpdateCurrentViewer+Redraw chacun,
     // mais on ne peut pas les éviter sans refactoring plus profond)
     for (int bid : connectedBeams) updateBeamShape(bid);
     for (int cid : connectedCols)  updateColumnShape(cid);
     for (int sid : connectedSlabs) updateSlabShape(sid);
+    for (int wid : connectedWalls) updateWallShape(wid);
 
     // 4. Actualiser immédiatement l'affichage 3D OpenCASCADE
     m_context->UpdateCurrentViewer();
@@ -653,12 +662,9 @@ void OccView::updateBeamShape(int beamId)
     if (!beam)
         return;
 
-    const auto* nodeA = m_model->getNode(beam->startNodeId());
-    const auto* nodeB = m_model->getNode(beam->endNodeId());
-    if (!nodeA || !nodeB)
-        return;
-
-    // 1. Supprimer l'ancienne forme
+    // 1. Supprimer l'ancienne forme (avant le contrôle de validité des nœuds, pour
+    //    ne jamais laisser une forme fantôme affichée/sélectionnable si les nœuds
+    //    référencés ne sont plus valides)
     auto it = m_beamShapes.find(beamId);
     if (it != m_beamShapes.end())
     {
@@ -669,6 +675,11 @@ void OccView::updateBeamShape(int beamId)
             m_selectionManager->unregisterBeam(beamId);
         }
     }
+
+    const auto* nodeA = m_model->getNode(beam->startNodeId());
+    const auto* nodeB = m_model->getNode(beam->endNodeId());
+    if (!nodeA || !nodeB)
+        return;
 
     // 2. Créer le nouveau solide 3D selon la forme réelle de la section et l'orientation
     TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
@@ -731,11 +742,6 @@ void OccView::updateColumnShape(int columnId)
     if (!col)
         return;
 
-    const auto* nodeA = m_model->getNode(col->startNodeId());
-    const auto* nodeB = m_model->getNode(col->endNodeId());
-    if (!nodeA || !nodeB)
-        return;
-
     auto it = m_columnShapes.find(columnId);
     if (it != m_columnShapes.end())
     {
@@ -746,6 +752,11 @@ void OccView::updateColumnShape(int columnId)
             m_selectionManager->unregisterColumn(columnId);
         }
     }
+
+    const auto* nodeA = m_model->getNode(col->startNodeId());
+    const auto* nodeB = m_model->getNode(col->endNodeId());
+    if (!nodeA || !nodeB)
+        return;
 
     TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
         *nodeA, *nodeB, col->section(), col->rotation()
@@ -816,9 +827,6 @@ void OccView::updateSlabShape(int slabId)
         }
     }
 
-    if (contourNodes.size() < 3)
-        return;
-
     auto it = m_slabShapes.find(slabId);
     if (it != m_slabShapes.end())
     {
@@ -829,6 +837,9 @@ void OccView::updateSlabShape(int slabId)
             m_selectionManager->unregisterSlab(slabId);
         }
     }
+
+    if (contourNodes.size() < 3)
+        return;
 
     TopoDS_Shape shape = TSA::Geometry::SlabGeometry::createSlabShape(contourNodes, slab->thickness());
 
@@ -873,11 +884,6 @@ void OccView::updateWallShape(int wallId)
     if (!wall)
         return;
 
-    const auto* nodeA = m_model->getNode(wall->startNodeId());
-    const auto* nodeB = m_model->getNode(wall->endNodeId());
-    if (!nodeA || !nodeB)
-        return;
-
     auto it = m_wallShapes.find(wallId);
     if (it != m_wallShapes.end())
     {
@@ -888,6 +894,11 @@ void OccView::updateWallShape(int wallId)
             m_selectionManager->unregisterWall(wallId);
         }
     }
+
+    const auto* nodeA = m_model->getNode(wall->startNodeId());
+    const auto* nodeB = m_model->getNode(wall->endNodeId());
+    if (!nodeA || !nodeB)
+        return;
 
     TopoDS_Shape shape = TSA::Geometry::WallGeometry::createWallShape(*nodeA, *nodeB, wall->height(), wall->thickness(), wall->offset());
     if (!shape.IsNull())
@@ -931,10 +942,6 @@ void OccView::updateFoundationShape(int foundationId)
     if (!f)
         return;
 
-    const auto* node = m_model->getNode(f->nodeId());
-    if (!node)
-        return;
-
     auto it = m_foundationShapes.find(foundationId);
     if (it != m_foundationShapes.end())
     {
@@ -945,6 +952,10 @@ void OccView::updateFoundationShape(int foundationId)
             m_selectionManager->unregisterFoundation(foundationId);
         }
     }
+
+    const auto* node = m_model->getNode(f->nodeId());
+    if (!node)
+        return;
 
     TopoDS_Shape shape = TSA::Geometry::FoundationGeometry::createFoundationShape(*node, f->widthA(), f->lengthB(), f->heightH());
     if (!shape.IsNull())
@@ -987,11 +998,6 @@ void OccView::updateTrussMemberShape(int memberId)
     if (!tr)
         return;
 
-    const auto* nodeA = m_model->getNode(tr->startNodeId());
-    const auto* nodeB = m_model->getNode(tr->endNodeId());
-    if (!nodeA || !nodeB)
-        return;
-
     auto it = m_trussShapes.find(memberId);
     if (it != m_trussShapes.end())
     {
@@ -1002,6 +1008,11 @@ void OccView::updateTrussMemberShape(int memberId)
             m_selectionManager->unregisterTrussMember(memberId);
         }
     }
+
+    const auto* nodeA = m_model->getNode(tr->startNodeId());
+    const auto* nodeB = m_model->getNode(tr->endNodeId());
+    if (!nodeA || !nodeB)
+        return;
 
     TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
         *nodeA, *nodeB, tr->section(), 0.0
@@ -1635,6 +1646,10 @@ void OccView::setInteractionMode(InteractionMode mode)
         setCursor(Qt::CrossCursor);
         emit drawingPromptChanged(tr("Mode Dessin Nœud : Cliquez dans le viewport pour créer un nœud"));
         break;
+    case InteractionMode::DrawBar:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Outil Barre (Robot) : Cliquez sur le premier nœud ou saisissez ses coordonnées"));
+        break;
     case InteractionMode::DrawBeam:
         setCursor(Qt::CrossCursor);
         emit drawingPromptChanged(tr("Mode Dessin Poutre : Cliquez pour sélectionner ou créer le 1er nœud"));
@@ -1646,6 +1661,18 @@ void OccView::setInteractionMode(InteractionMode mode)
     case InteractionMode::DrawSlab:
         setCursor(Qt::CrossCursor);
         emit drawingPromptChanged(tr("Mode Dessin Dalle : Cliquez les nœuds du contour polygonal (Clic droit ou Entrée pour valider)"));
+        break;
+    case InteractionMode::DrawWall:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Mode Dessin Voile : Cliquez pour définir le 1er nœud du voile (Ép=%1m, H=%2m)").arg(m_presets.wall.thickness).arg(m_presets.wall.height));
+        break;
+    case InteractionMode::DrawFoundation:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Mode Dessin Fondation : Cliquez sur un nœud pour créer une semelle"));
+        break;
+    case InteractionMode::DrawTruss:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Mode Dessin Treillis : Cliquez pour sélectionner ou créer le 1er nœud"));
         break;
     case InteractionMode::Move3D:
         setCursor(Qt::CrossCursor);
@@ -1676,6 +1703,60 @@ void OccView::setInteractionMode(InteractionMode mode)
     emit interactionModeChanged(m_interactionMode);
 }
 
+void OccView::setCurrentBarProperties(const TSA::Model::BarProperties& props)
+{
+    m_currentBarProps = props;
+    if (!m_drawingPoints.empty() && !m_lastMousePos.isNull())
+    {
+        double wx = 0.0, wy = 0.0, wz = 0.0;
+        int detNodeId = -1;
+        if (getPointUnderCursor(m_lastMousePos, wx, wy, wz, detNodeId))
+        {
+            updateRubberBand(gp_Pnt(wx, wy, wz));
+        }
+    }
+}
+
+void OccView::startChainedBarDrawing(const gp_Pnt& originPt, int originNodeId)
+{
+    m_drawingNodeIds.clear();
+    m_drawingPoints.clear();
+    m_drawingNodeIds.push_back(originNodeId);
+    m_drawingPoints.push_back(originPt);
+    m_interactionMode = InteractionMode::DrawBar;
+    emit drawingPromptChanged(tr("Barre : Origine N%1 fixée en (%2; %3; %4). Cliquez pour l'extrémité")
+        .arg(originNodeId).arg(originPt.X(), 0, 'f', 2).arg(originPt.Y(), 0, 'f', 2).arg(originPt.Z(), 0, 'f', 2));
+}
+
+void OccView::finishCurrentSlab()
+{
+    if (m_drawingNodeIds.size() >= 3 && m_model)
+    {
+        m_model->pushUndoState(tr("Création Dalle").toStdString());
+        int slabId = m_model->addSlab(m_drawingNodeIds, m_presets.slab.thickness);
+        if (auto* s = m_model->getSlab(slabId))
+        {
+            s->setMaterial(TSA::Model::Material::findByName(m_presets.slab.material.name));
+            if (!m_presets.slab.color.empty()) s->setColor(m_presets.slab.color);
+            updateSlabShape(slabId);
+        }
+        emit elementCreated();
+        emit slabCreated(slabId);
+        emit drawingPromptChanged(tr("Dalle S%1 créée (%2 nœuds, ép=%3m). Cliquez pour une nouvelle dalle").arg(slabId).arg(m_drawingNodeIds.size()).arg(m_presets.slab.thickness));
+        clearRubberBand();
+        m_drawingNodeIds.clear();
+        m_drawingPoints.clear();
+    }
+}
+
+void OccView::resetCurrentSlabContour()
+{
+    clearRubberBand();
+    m_drawingNodeIds.clear();
+    m_drawingPoints.clear();
+    emit slabDrawingCancelled();
+}
+
 void OccView::cancelCurrentDrawing()
 {
     clearRubberBand();
@@ -1689,6 +1770,10 @@ void OccView::cancelCurrentDrawing()
     case InteractionMode::DrawNode:
         emit drawingPromptChanged(tr("Mode Dessin Nœud : Cliquez dans le viewport pour créer un nœud"));
         break;
+    case InteractionMode::DrawBar:
+        emit barDrawingCancelled();
+        emit drawingPromptChanged(tr("Outil Barre (Robot) : Cliquez pour sélectionner ou créer le 1er nœud"));
+        break;
     case InteractionMode::DrawBeam:
         emit drawingPromptChanged(tr("Mode Dessin Poutre : Cliquez pour sélectionner ou créer le 1er nœud"));
         break;
@@ -1696,7 +1781,18 @@ void OccView::cancelCurrentDrawing()
         emit drawingPromptChanged(tr("Mode Dessin Poteau : Cliquez pour définir la base du poteau"));
         break;
     case InteractionMode::DrawSlab:
+        emit slabDrawingCancelled();
         emit drawingPromptChanged(tr("Mode Dessin Dalle : Cliquez les nœuds du contour polygonal (Clic droit ou Entrée pour valider)"));
+        break;
+    case InteractionMode::DrawWall:
+        emit wallDrawingCancelled();
+        emit drawingPromptChanged(tr("Mode Dessin Voile : Cliquez pour définir le 1er nœud du voile (Ép=%1m, H=%2m)").arg(m_presets.wall.thickness).arg(m_presets.wall.height));
+        break;
+    case InteractionMode::DrawFoundation:
+        emit drawingPromptChanged(tr("Mode Dessin Fondation : Cliquez sur un nœud pour créer une semelle"));
+        break;
+    case InteractionMode::DrawTruss:
+        emit drawingPromptChanged(tr("Mode Dessin Treillis : Cliquez pour sélectionner ou créer le 1er nœud"));
         break;
     case InteractionMode::Move3D:
         emit drawingPromptChanged(tr("Déplacement 3D : Cliquez sur le point de base"));
@@ -1980,9 +2076,38 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
 
     TopoDS_Shape shape;
 
-    if (m_interactionMode == InteractionMode::DrawBeam || m_interactionMode == InteractionMode::DrawColumn ||
-        m_interactionMode == InteractionMode::Move3D || m_interactionMode == InteractionMode::Copy3D ||
-        m_interactionMode == InteractionMode::Rotate3D)
+    if (m_interactionMode == InteractionMode::DrawBar ||
+        m_interactionMode == InteractionMode::DrawBeam ||
+        m_interactionMode == InteractionMode::DrawColumn)
+    {
+        if (m_drawingPoints.empty())
+            return;
+
+        const gp_Pnt& pStart = m_drawingPoints.back();
+        if (pStart.Distance(currentPnt) < 1e-4)
+            return;
+
+        TSA::Model::Node tempA(0, pStart.X(), pStart.Y(), pStart.Z());
+        TSA::Model::Node tempB(1, currentPnt.X(), currentPnt.Y(), currentPnt.Z());
+
+        TSA::Model::Section currentSec = (m_interactionMode == InteractionMode::DrawBar)
+            ? m_currentBarProps.section
+            : ((m_interactionMode == InteractionMode::DrawColumn) ? m_presets.column.section : m_presets.beam.section);
+        double rot = (m_interactionMode == InteractionMode::DrawBar)
+            ? m_currentBarProps.rotation
+            : ((m_interactionMode == InteractionMode::DrawColumn) ? m_presets.column.betaAngle : m_presets.beam.betaAngle);
+        TSA::Model::BarEccentricity ecc = (m_interactionMode == InteractionMode::DrawBar)
+            ? m_currentBarProps.eccentricity : TSA::Model::BarEccentricity::None;
+
+        shape = TSA::Geometry::BeamGeometry::createBeamShape(tempA, tempB, currentSec, rot, ecc);
+        if (shape.IsNull())
+        {
+            shape = BRepBuilderAPI_MakeEdge(pStart, currentPnt).Edge();
+        }
+    }
+    else if (m_interactionMode == InteractionMode::Move3D ||
+             m_interactionMode == InteractionMode::Copy3D ||
+             m_interactionMode == InteractionMode::Rotate3D)
     {
         if (m_drawingPoints.empty())
             return;
@@ -2013,6 +2138,24 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
 
         shape = poly.Wire();
     }
+    else if (m_interactionMode == InteractionMode::DrawWall)
+    {
+        if (m_drawingPoints.empty())
+            return;
+
+        const gp_Pnt& pStart = m_drawingPoints.front();
+        if (pStart.Distance(currentPnt) < 1e-4)
+            return;
+
+        TSA::Model::Node tempA(0, pStart.X(), pStart.Y(), pStart.Z());
+        TSA::Model::Node tempB(1, currentPnt.X(), currentPnt.Y(), currentPnt.Z());
+        shape = TSA::Geometry::WallGeometry::createWallShape(tempA, tempB,
+                    m_presets.wall.height, m_presets.wall.thickness, m_presets.wall.offset);
+        if (shape.IsNull())
+        {
+            shape = BRepBuilderAPI_MakeEdge(pStart, currentPnt).Edge();
+        }
+    }
     else
     {
         return;
@@ -2025,12 +2168,15 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
     {
         m_rubberBandShape = new AIS_Shape(shape);
         m_rubberBandShape->SetColor(Quantity_NOC_ORANGE);
+        m_rubberBandShape->SetTransparency(0.35);
         m_rubberBandShape->SetWidth(2.5);
         m_context->Display(m_rubberBandShape, false);
     }
     else
     {
         m_rubberBandShape->SetShape(shape);
+        m_rubberBandShape->SetColor(Quantity_NOC_ORANGE);
+        m_rubberBandShape->SetTransparency(0.35);
         m_context->Redisplay(m_rubberBandShape, false);
     }
 
@@ -2091,6 +2237,40 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     .arg(wz, 0, 'f', 3));
             }
         }
+        else if (m_interactionMode == InteractionMode::DrawBar)
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
+            {
+                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
+                const auto* node = m_model->getNode(nodeId);
+                gp_Pnt pt = node ? gp_Pnt(node->x(), node->y(), node->z()) : gp_Pnt(wx, wy, wz);
+
+                if (m_drawingNodeIds.empty())
+                {
+                    m_drawingNodeIds.push_back(nodeId);
+                    m_drawingPoints.push_back(pt);
+                    emit barFirstPointPicked(pt, nodeId);
+                    emit drawingPromptChanged(tr("Barre : 1er point N%1 fixé en (%2; %3; %4). Cliquez pour le 2nd point")
+                        .arg(nodeId).arg(pt.X(), 0, 'f', 2).arg(pt.Y(), 0, 'f', 2).arg(pt.Z(), 0, 'f', 2));
+                }
+                else
+                {
+                    int startId = m_drawingNodeIds[0];
+                    int endId = nodeId;
+                    clearRubberBand();
+                    m_drawingNodeIds.clear();
+                    m_drawingPoints.clear();
+
+                    if (startId != endId)
+                    {
+                        emit barSecondPointPicked(pt, endId);
+                        emit elementCreated();
+                    }
+                }
+            }
+        }
         else if (m_interactionMode == InteractionMode::DrawBeam)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
@@ -2115,9 +2295,16 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     if (startId != endId)
                     {
                         m_model->pushUndoState(tr("Création Poutre").toStdString());
-                        int beamId = m_model->addBeam(startId, endId, 0.30, 0.50);
+                        int beamId = m_model->addBar(startId, endId, m_presets.beam.section,
+                            TSA::Model::Material::findByName(m_presets.beam.material.name),
+                            TSA::Model::BarRole::Beam, m_presets.beam.betaAngle, m_presets.beam.section.name);
+                        if (auto* b = m_model->getBeam(beamId))
+                        {
+                            if (!m_presets.beam.color.empty()) b->setColor(m_presets.beam.color);
+                            updateBeamShape(beamId);
+                        }
                         emit elementCreated();
-                        emit drawingPromptChanged(tr("Poutre B%1 créée reliant N%2 à N%3. Cliquez pour tracer une autre poutre").arg(beamId).arg(startId).arg(endId));
+                        emit drawingPromptChanged(tr("Poutre B%1 créée reliant N%2 à N%3 (%4). Cliquez pour continuer").arg(beamId).arg(startId).arg(endId).arg(QString::fromStdString(m_presets.beam.section.name)));
                     }
                     clearRubberBand();
                     m_drawingNodeIds.clear();
@@ -2158,9 +2345,20 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     if (startId != endId)
                     {
                         m_model->pushUndoState(tr("Création Poteau").toStdString());
-                        int colId = m_model->addColumn(startId, endId, 0.30, 0.30);
+                        int colId = m_model->addColumn(
+                            startId, endId, m_presets.column.section,
+                            TSA::Model::Material::findByName(m_presets.column.material.name),
+                            m_presets.column.betaAngle, m_presets.column.section.name);
+                        if (auto* c = m_model->getColumn(colId))
+                        {
+                            if (!m_presets.column.color.empty())
+                            {
+                                c->setColor(m_presets.column.color);
+                                updateColumnShape(colId);
+                            }
+                        }
                         emit elementCreated();
-                        emit drawingPromptChanged(tr("Poteau C%1 créé reliant N%2 à N%3. Cliquez pour un autre poteau").arg(colId).arg(startId).arg(endId));
+                        emit drawingPromptChanged(tr("Poteau C%1 créé reliant N%2 à N%3 (%4). Cliquez pour un autre poteau").arg(colId).arg(startId).arg(endId).arg(QString::fromStdString(m_presets.column.section.name)));
                     }
                     clearRubberBand();
                     m_drawingNodeIds.clear();
@@ -2179,22 +2377,18 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 // Si clic sur le 1er nœud pour fermer le polygone
                 if (!m_drawingNodeIds.empty() && nodeId == m_drawingNodeIds.front() && m_drawingNodeIds.size() >= 3)
                 {
-                    m_model->pushUndoState(tr("Création Dalle").toStdString());
-                    int slabId = m_model->addSlab(m_drawingNodeIds, 0.20);
-                    emit elementCreated();
-                    emit drawingPromptChanged(tr("Dalle S%1 créée (%2 nœuds). Cliquez pour une nouvelle dalle").arg(slabId).arg(m_drawingNodeIds.size()));
-                    clearRubberBand();
-                    m_drawingNodeIds.clear();
-                    m_drawingPoints.clear();
+                    finishCurrentSlab();
                 }
                 else
                 {
                     m_drawingNodeIds.push_back(nodeId);
                     const auto* node = m_model->getNode(nodeId);
+                    gp_Pnt pt(node ? node->x() : wx, node ? node->y() : wy, node ? node->z() : wz);
                     if (node)
                     {
-                        m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
+                        m_drawingPoints.push_back(pt);
                     }
+                    emit slabNodePicked(nodeId, pt, static_cast<int>(m_drawingNodeIds.size()));
                     emit drawingPromptChanged(tr("Dalle : Nœud N%1 ajouté (total : %2 nœuds). Cliquez pour ajouter, ou fermez sur N%3 / Clic droit")
                         .arg(nodeId)
                         .arg(m_drawingNodeIds.size())
@@ -2209,12 +2403,15 @@ void OccView::mousePressEvent(QMouseEvent* event)
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
                 int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
+                const auto* node = m_model->getNode(nodeId);
+                gp_Pnt pt(node ? node->x() : wx, node ? node->y() : wy, node ? node->z() : wz);
+
                 if (m_drawingNodeIds.empty())
                 {
                     m_drawingNodeIds.push_back(nodeId);
-                    const auto* node = m_model->getNode(nodeId);
-                    if (node) m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
-                    emit drawingPromptChanged(tr("Mode Voile : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud").arg(nodeId));
+                    if (node) m_drawingPoints.push_back(pt);
+                    emit wallFirstPointPicked(pt, nodeId);
+                    emit drawingPromptChanged(tr("Mode Voile : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud (H=%2m, ép=%3m)").arg(nodeId).arg(m_presets.wall.height).arg(m_presets.wall.thickness));
                 }
                 else
                 {
@@ -2222,14 +2419,27 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     int endId = nodeId;
                     if (startId != endId)
                     {
+                        emit wallSecondPointPicked(pt, endId);
                         m_model->pushUndoState(tr("Création Voile").toStdString());
-                        int wallId = m_model->addWall(startId, endId, 3.0, 0.20);
+                        int wallId = m_model->addWall(startId, endId, m_presets.wall.height, m_presets.wall.thickness);
+                        if (auto* w = m_model->getWall(wallId))
+                        {
+                            w->setOffset(m_presets.wall.offset);
+                            w->setMaterial(TSA::Model::Material::findByName(m_presets.wall.material.name));
+                            if (!m_presets.wall.color.empty()) w->setColor(m_presets.wall.color);
+                            updateWallShape(wallId);
+                        }
                         emit elementCreated();
-                        emit drawingPromptChanged(tr("Voile W%1 créé reliant N%2 à N%3. Cliquez pour un autre voile").arg(wallId).arg(startId).arg(endId));
+                        emit wallCreated(wallId);
+                        emit drawingPromptChanged(tr("Voile W%1 créé reliant N%2 à N%3 (H=%4m, ép=%5m). Cliquez pour continuer").arg(wallId).arg(startId).arg(endId).arg(m_presets.wall.height).arg(m_presets.wall.thickness));
                     }
                     clearRubberBand();
                     m_drawingNodeIds.clear();
                     m_drawingPoints.clear();
+                    // Enchaînement continu du tracé de voile
+                    m_drawingNodeIds.push_back(endId);
+                    const auto* nEnd = m_model->getNode(endId);
+                    if (nEnd) m_drawingPoints.push_back(gp_Pnt(nEnd->x(), nEnd->y(), nEnd->z()));
                 }
             }
         }
@@ -2496,11 +2706,7 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
         {
             if (m_interactionMode == InteractionMode::DrawSlab && m_drawingNodeIds.size() >= 3 && m_model)
             {
-                m_model->pushUndoState(tr("Création Dalle").toStdString());
-                int slabId = m_model->addSlab(m_drawingNodeIds, 0.20);
-                emit elementCreated();
-                emit drawingPromptChanged(tr("Dalle S%1 validée et créée (%2 nœuds)").arg(slabId).arg(m_drawingNodeIds.size()));
-                cancelCurrentDrawing();
+                finishCurrentSlab();
             }
             else
             {
@@ -2802,9 +3008,15 @@ void OccView::keyPressEvent(QKeyEvent* event)
         if (m_interactionMode == InteractionMode::DrawSlab && m_drawingNodeIds.size() >= 3 && m_model)
         {
             m_model->pushUndoState(tr("Création Dalle").toStdString());
-            int slabId = m_model->addSlab(m_drawingNodeIds, 0.20);
+            int slabId = m_model->addSlab(m_drawingNodeIds, m_presets.slab.thickness);
+            if (auto* s = m_model->getSlab(slabId))
+            {
+                s->setMaterial(TSA::Model::Material::findByName(m_presets.slab.material.name));
+                if (!m_presets.slab.color.empty()) s->setColor(m_presets.slab.color);
+                updateSlabShape(slabId);
+            }
             emit elementCreated();
-            emit drawingPromptChanged(tr("Dalle S%1 créée (%2 nœuds)").arg(slabId).arg(m_drawingNodeIds.size()));
+            emit drawingPromptChanged(tr("Dalle S%1 créée (%2 nœuds, ép=%3m)").arg(slabId).arg(m_drawingNodeIds.size()).arg(m_presets.slab.thickness));
             cancelCurrentDrawing();
         }
     }

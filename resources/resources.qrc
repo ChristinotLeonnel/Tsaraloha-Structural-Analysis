@@ -60,5 +60,13 @@
         <file alias="view_side.svg">icons/view_side.svg</file>
         <file alias="visibility.svg">icons/visibility.svg</file>
         <file alias="console.svg">icons/console.svg</file>
+        <file alias="file_exit.svg">icons/file_exit.svg</file>
+        <file alias="levels.svg">icons/levels.svg</file>
+        <file alias="grid_labels.svg">icons/grid_labels.svg</file>
+        <file alias="rulers.svg">icons/rulers.svg</file>
+        <file alias="model_tree.svg">icons/model_tree.svg</file>
+        <file alias="properties.svg">icons/properties.svg</file>
+        <file alias="apply.svg">icons/apply.svg</file>
+        <file alias="cancel.svg">icons/cancel.svg</file>
     </qresource>
 </RCC>

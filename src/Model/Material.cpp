@@ -84,4 +84,19 @@ std::vector<Material> Material::defaultLibrary()
     };
 }
 
+Material Material::findByName(const std::string& name)
+{
+    for (const auto& m : defaultLibrary())
+    {
+        if (m.name == name)
+            return m;
+    }
+    // Recherche par mot-clé
+    if (name.find("30/37") != std::string::npos) return concreteC30_37();
+    if (name.find("355") != std::string::npos) return steelS355();
+    if (name.find("235") != std::string::npos) return steelS235();
+    if (name.find("Timber") != std::string::npos || name.find("Bois") != std::string::npos) return timberC24();
+    return concreteC25_30();
+}
+
 } // namespace TSA::Model

@@ -41,10 +41,11 @@ private slots:
     void onSliderValueChanged(int value);
     void onSpinBoxValueChanged(double value);
     void onFlipToggled(bool checked);
+    void onApply();
 
 private:
     void setupUi();
-    void emitChange();
+    void emitChange(bool force = false);
 
 private:
     QCheckBox*      m_enableCheck = nullptr;
@@ -53,6 +54,9 @@ private:
     QDoubleSpinBox* m_posSpin = nullptr;
     QCheckBox*      m_flipCheck = nullptr;
     QPushButton*    m_btnCutAtLevel = nullptr;
+
+    QCheckBox*      m_chkLiveSync = nullptr;
+    QPushButton*    m_btnApply = nullptr;
 
     double m_minPos = -20.0;
     double m_maxPos = 50.0;

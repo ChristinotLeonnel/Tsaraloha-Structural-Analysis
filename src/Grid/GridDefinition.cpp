@@ -102,7 +102,12 @@ void GridDefinition::setAngles(const std::vector<double>& anglesDeg)
         while (a >= 360.0) a -= 360.0;
     }
     std::sort(m_angles.begin(), m_angles.end());
-    m_angles.erase(std::unique(m_angles.begin(), m_angles.end()), m_angles.end());
+    // Correction : comme les autres setters (positions, niveaux, rayons), on
+    // déduplique avec une tolérance plutôt qu'une égalité stricte. Sans cela,
+    // deux angles très proches après la normalisation [0, 360[ ci-dessus
+    // (erreurs d'arrondi flottant) pouvaient rester considérés distincts.
+    m_angles.erase(std::unique(m_angles.begin(), m_angles.end(),
+        [](double a, double b) { return std::abs(a - b) < 1e-6; }), m_angles.end());
     ensureLabelsSynchronized();
 }
 

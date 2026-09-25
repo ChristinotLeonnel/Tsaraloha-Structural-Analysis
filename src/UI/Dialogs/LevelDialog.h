@@ -10,6 +10,7 @@ class QPushButton;
 class QDoubleSpinBox;
 class QSpinBox;
 class QLineEdit;
+class QCheckBox;
 
 namespace TSA::UI
 {
@@ -28,6 +29,7 @@ private slots:
     void onGenerateStories();
     void onTableCellChanged(int row, int column);
     void refreshTable();
+    void onApply();
 
 private:
     void setupUi();
@@ -38,6 +40,8 @@ private:
     QPushButton* m_btnAdd = nullptr;
     QPushButton* m_btnRemove = nullptr;
     QPushButton* m_btnGenerate = nullptr;
+    QCheckBox* m_chkLiveSync = nullptr;
+    QPushButton* m_btnApply = nullptr;
 
     bool m_isUpdatingTable = false;
 };

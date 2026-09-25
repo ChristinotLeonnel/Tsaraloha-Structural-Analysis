@@ -54,12 +54,16 @@ void CartesianGrid::computeGeometry()
         levels.push_back(0.0);
     }
 
-    m_minX = orig.X() + xPos.front();
-    m_maxX = orig.X() + xPos.back();
-    m_minY = orig.Y() + yPos.front();
-    m_maxY = orig.Y() + yPos.back();
-    m_minZ = orig.Z() + levels.front();
-    m_maxZ = orig.Z() + levels.back();
+    auto minMaxX = std::minmax_element(xPos.begin(), xPos.end());
+    auto minMaxY = std::minmax_element(yPos.begin(), yPos.end());
+    auto minMaxZ = std::minmax_element(levels.begin(), levels.end());
+
+    m_minX = orig.X() + *minMaxX.first;
+    m_maxX = orig.X() + *minMaxX.second;
+    m_minY = orig.Y() + *minMaxY.first;
+    m_maxY = orig.Y() + *minMaxY.second;
+    m_minZ = orig.Z() + *minMaxZ.first;
+    m_maxZ = orig.Z() + *minMaxZ.second;
 
     double startY = m_minY - m_extension;
     double endY   = m_maxY + m_extension;

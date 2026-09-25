@@ -79,24 +79,29 @@ void GridRenderer::setGridVisible(bool visible, const Handle(AIS_InteractiveCont
     if (context.IsNull())
         return;
 
-    auto updateVis = [&](Handle(AIS_Shape)& shape) {
+    auto updateVis = [&](Handle(AIS_Shape)& shape, bool alsoVisible) {
         if (!shape.IsNull())
         {
-            if (m_gridVisible)
+            if (m_gridVisible && alsoVisible)
                 context->Display(shape, false);
             else
                 context->Erase(shape, false);
         }
     };
 
-    updateVis(m_axesShape);
-    updateVis(m_verticalConnectionsShape);
-    updateVis(m_activeLevelPlaneShape);
-    updateVis(m_circlesShape);
-    updateVis(m_intersectionsShape);
-    updateVis(m_originShape);
-    updateVis(m_levelAxisShape);
-    updateVis(m_levelPlanesShape);
+    // Correction : m_intersectionsShape et m_levelAxisShape/m_levelPlanesShape
+    // doivent aussi respecter m_intersectionsVisible / m_levelsVisible, sinon
+    // un simple setGridVisible(true) après un setGridVisible(false) réaffiche
+    // des éléments que l'utilisateur avait explicitement masqués via
+    // setIntersectionsVisible(false) / setLevelsVisible(false).
+    updateVis(m_axesShape, true);
+    updateVis(m_verticalConnectionsShape, true);
+    updateVis(m_activeLevelPlaneShape, true);
+    updateVis(m_circlesShape, true);
+    updateVis(m_intersectionsShape, m_intersectionsVisible);
+    updateVis(m_originShape, true);
+    updateVis(m_levelAxisShape, m_levelsVisible);
+    updateVis(m_levelPlanesShape, m_levelsVisible);
 
     m_labelRenderer.setVisible(m_gridVisible && m_labelsVisible, context);
 }
@@ -235,7 +240,13 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
     updateActiveLevelHighlight(gridSystem, context);
 
     // 2. Intersections (petites sphères discrètes aux nœuds de grille)
-    if (gridSystem.showIntersections())
+    // Correction : la création doit aussi respecter le flag de visibilité du
+    // renderer (m_intersectionsVisible), pas uniquement le flag propre à la
+    // grille (gridSystem.showIntersections()), sinon un simple re-rendu
+    // (changement de grille active, mise à jour de définition, etc.) fait
+    // réapparaître des intersections que l'utilisateur avait masquées via
+    // setIntersectionsVisible(false).
+    if (gridSystem.showIntersections() && m_intersectionsVisible)
     {
         TopoDS_Compound interCompound;
         builder.MakeCompound(interCompound);
@@ -271,7 +282,12 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
     context->Display(m_originShape, false);
 
     // 4. Colonne verticale Z reliant tous les étages (exigence centrale)
-    if (!cartesian->verticalLevelLines().empty())
+    // Correction : cette section ne vérifiait ni gridSystem.showLevels() ni
+    // m_levelsVisible, alors que ce sont précisément les flags prévus pour
+    // piloter cet élément (cf. setShowLevels / setLevelsVisible). L'axe de
+    // niveaux s'affichait donc toujours, même quand l'utilisateur l'avait
+    // explicitement masqué.
+    if (gridSystem.showLevels() && m_levelsVisible && !cartesian->verticalLevelLines().empty())
     {
         TopoDS_Compound vertCompound;
         builder.MakeCompound(vertCompound);
@@ -292,7 +308,8 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
     }
 
     // 5. Cadres de contour des niveaux d'étages
-    if (!cartesian->levelBoundaryPlanes().empty())
+    // Correction : même bug que la section 4 ci-dessus (showLevels()/m_levelsVisible ignorés).
+    if (gridSystem.showLevels() && m_levelsVisible && !cartesian->levelBoundaryPlanes().empty())
     {
         TopoDS_Compound planesCompound;
         builder.MakeCompound(planesCompound);
@@ -422,7 +439,8 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, const Handle(
     context->Display(m_axesShape, false);
 
     // 3. Intersections (Cercles x Rayons)
-    if (gridSystem.showIntersections())
+    // Correction : voir renderCartesian, même bug (m_intersectionsVisible ignoré).
+    if (gridSystem.showIntersections() && m_intersectionsVisible)
     {
         TopoDS_Compound interCompound;
         builder.MakeCompound(interCompound);

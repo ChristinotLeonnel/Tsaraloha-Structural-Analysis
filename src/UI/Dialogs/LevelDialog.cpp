@@ -8,6 +8,7 @@
 #include <QInputDialog>
 #include <QDialogButtonBox>
 #include <QLabel>
+#include <QCheckBox>
 
 namespace TSA::UI
 {
@@ -53,9 +54,12 @@ void LevelDialog::setupUi()
     // Boutons d'action
     auto* btnLayout = new QHBoxLayout();
 
-    m_btnAdd = new QPushButton(tr("+ Add Level"), this);
-    m_btnRemove = new QPushButton(tr("- Delete Level"), this);
-    m_btnGenerate = new QPushButton(tr("Generate Stories..."), this);
+    m_btnAdd = new QPushButton(tr("Ajouter un niveau"), this);
+    m_btnAdd->setIcon(QIcon(":/icons/node_add.svg"));
+    m_btnRemove = new QPushButton(tr("Supprimer le niveau"), this);
+    m_btnRemove->setIcon(QIcon(":/icons/delete.svg"));
+    m_btnGenerate = new QPushButton(tr("Générer des étages..."), this);
+    m_btnGenerate->setIcon(QIcon(":/icons/geom_cube.svg"));
 
     btnLayout->addWidget(m_btnAdd);
     btnLayout->addWidget(m_btnRemove);
@@ -64,10 +68,33 @@ void LevelDialog::setupUi()
 
     mainLayout->addLayout(btnLayout);
 
-    auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, this);
-    connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::accept);
-    mainLayout->addWidget(buttonBox);
+    m_chkLiveSync = new QCheckBox(tr("Synchronisation en direct (temps réel)"), this);
+    m_chkLiveSync->setChecked(true);
+    m_chkLiveSync->setToolTip(tr("Coché : applique immédiatement les modifications de niveaux dans la vue 3D.\nDécoché : attend un clic sur 'Appliquer'."));
+    m_chkLiveSync->setStyleSheet("font-weight: bold; color: #58A6FF; margin-top: 4px;");
+    mainLayout->addWidget(m_chkLiveSync);
 
+    auto* bottomLayout = new QHBoxLayout();
+    m_btnApply = new QPushButton(tr("Appliquer"), this);
+    m_btnApply->setIcon(QIcon(":/icons/apply.svg"));
+    m_btnApply->setStyleSheet("QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; }");
+    m_btnApply->setFixedHeight(26);
+
+    auto* closeBtn = new QPushButton(tr("Fermer"), this);
+    closeBtn->setIcon(QIcon(":/icons/cancel.svg"));
+    closeBtn->setFixedHeight(26);
+    closeBtn->setDefault(true);
+    connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+
+    bottomLayout->addStretch();
+    bottomLayout->addWidget(m_btnApply);
+    bottomLayout->addWidget(closeBtn);
+    mainLayout->addLayout(bottomLayout);
+
+    connect(m_chkLiveSync, &QCheckBox::toggled, this, [this](bool checked) {
+        if (checked) onApply();
+    });
+    connect(m_btnApply, &QPushButton::clicked, this, &LevelDialog::onApply);
     connect(m_btnAdd, &QPushButton::clicked, this, &LevelDialog::onAddLevel);
     connect(m_btnRemove, &QPushButton::clicked, this, &LevelDialog::onRemoveSelectedLevel);
     connect(m_btnGenerate, &QPushButton::clicked, this, &LevelDialog::onGenerateStories);
@@ -187,26 +214,60 @@ void LevelDialog::onTableCellChanged(int row, int column)
     if (row < 0 || row >= static_cast<int>(m_levelManager->levelCount()))
         return;
 
-    std::string id = m_table->item(row, 0)->text().toStdString();
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
+    {
+        std::string id = m_table->item(row, 0)->text().toStdString();
 
-    if (column == 1) // Name
-    {
-        QString newName = m_table->item(row, column)->text();
-        m_levelManager->setLevelName(id, newName.toStdString());
+        if (column == 1) // Name
+        {
+            QString newName = m_table->item(row, column)->text();
+            m_levelManager->setLevelName(id, newName.toStdString());
+        }
+        else if (column == 2) // Elevation
+        {
+            bool ok = false;
+            double newElev = m_table->item(row, column)->text().toDouble(&ok);
+            if (ok)
+            {
+                m_levelManager->setLevelElevation(id, newElev);
+            }
+        }
+        else if (column == 4) // Visible
+        {
+            bool isVisible = (m_table->item(row, column)->checkState() == Qt::Checked);
+            m_levelManager->setLevelVisible(id, isVisible);
+        }
     }
-    else if (column == 2) // Elevation
+}
+
+void LevelDialog::onApply()
+{
+    if (!m_levelManager)
+        return;
+
+    for (int r = 0; r < m_table->rowCount(); ++r)
     {
+        auto* idItem = m_table->item(r, 0);
+        auto* nameItem = m_table->item(r, 1);
+        auto* elevItem = m_table->item(r, 2);
+        auto* visItem = m_table->item(r, 4);
+        if (!idItem || !nameItem || !elevItem)
+            continue;
+
+        std::string id = idItem->text().toStdString();
+        m_levelManager->setLevelName(id, nameItem->text().toStdString());
+
         bool ok = false;
-        double newElev = m_table->item(row, column)->text().toDouble(&ok);
+        double newElev = elevItem->text().toDouble(&ok);
         if (ok)
         {
             m_levelManager->setLevelElevation(id, newElev);
         }
-    }
-    else if (column == 4) // Visible
-    {
-        bool isVisible = (m_table->item(row, column)->checkState() == Qt::Checked);
-        m_levelManager->setLevelVisible(id, isVisible);
+
+        if (visItem)
+        {
+            m_levelManager->setLevelVisible(id, visItem->checkState() == Qt::Checked);
+        }
     }
 }
 

@@ -24,6 +24,23 @@ Column::Column(int id, int startNodeId, int endNodeId, double width, double heig
     }
 }
 
+Column::Column(int id, int startNodeId, int endNodeId, const Section& section, const Material& material, double rotation, const std::string& name)
+    : m_id(id)
+    , m_name(name)
+    , m_startNodeId(startNodeId)
+    , m_endNodeId(endNodeId)
+    , m_section(section)
+    , m_material(material)
+    , m_rotation(rotation)
+{
+    if (m_name.empty() && m_id > 0)
+    {
+        std::ostringstream ss;
+        ss << "C" << std::setw(3) << std::setfill('0') << m_id;
+        m_name = ss.str();
+    }
+}
+
 std::string Column::formattedName() const
 {
     if (!m_name.empty())

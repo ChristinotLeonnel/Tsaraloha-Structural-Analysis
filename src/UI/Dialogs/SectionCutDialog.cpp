@@ -4,6 +4,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QDialogButtonBox>
+#include <QIcon>
 
 namespace TSA::UI
 {
@@ -50,10 +51,10 @@ void SectionCutDialog::setupUi()
     m_posSpin = new QDoubleSpinBox(this);
     m_posSpin->setRange(m_minPos, m_maxPos);
     m_posSpin->setDecimals(2);
+    posLayout->addWidget(m_posSpin);
     m_posSpin->setSingleStep(0.20);
     m_posSpin->setValue(0.0);
     m_posSpin->setSuffix(" m");
-    posLayout->addWidget(m_posSpin);
     groupLayout->addLayout(posLayout);
 
     m_posSlider = new QSlider(Qt::Horizontal, this);
@@ -72,6 +73,21 @@ void SectionCutDialog::setupUi()
 
     mainLayout->addWidget(group);
 
+    // Barre d'options : Synchronisation en direct & Appliquer
+    auto* syncLayout = new QHBoxLayout();
+    m_chkLiveSync = new QCheckBox(tr("Synchronisation en direct"), this);
+    m_chkLiveSync->setChecked(true);
+    m_chkLiveSync->setToolTip(tr("Si activé, les ajustements du plan de coupe sont répercutés immédiatement en 3D.\nSinon, cliquez sur 'Appliquer'."));
+    m_chkLiveSync->setStyleSheet("font-weight: bold; color: #1E70BF;");
+    syncLayout->addWidget(m_chkLiveSync);
+    syncLayout->addStretch();
+
+    m_btnApply = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer"), this);
+    m_btnApply->setToolTip(tr("Appliquer immédiatement les modifications de la coupe"));
+    m_btnApply->setStyleSheet("QPushButton { font-weight: bold; padding: 4px 12px; }");
+    syncLayout->addWidget(m_btnApply);
+    mainLayout->addLayout(syncLayout);
+
     // Boutons Fermer
     auto* btnBox = new QDialogButtonBox(QDialogButtonBox::Close, this);
     connect(btnBox, &QDialogButtonBox::rejected, this, &QDialog::accept);
@@ -89,6 +105,12 @@ void SectionCutDialog::setupUi()
         m_axisCombo->setCurrentIndex(0);
         emitChange();
     });
+
+    connect(m_chkLiveSync, &QCheckBox::toggled, this, [this](bool checked) {
+        if (checked)
+            onApply();
+    });
+    connect(m_btnApply, &QPushButton::clicked, this, &SectionCutDialog::onApply);
 }
 
 bool SectionCutDialog::isCutEnabled() const
@@ -193,8 +215,18 @@ void SectionCutDialog::onFlipToggled(bool /*checked*/)
     emitChange();
 }
 
-void SectionCutDialog::emitChange()
+void SectionCutDialog::onApply()
 {
+    emitChange(true);
+}
+
+void SectionCutDialog::emitChange(bool force)
+{
+    if (!force && m_chkLiveSync && !m_chkLiveSync->isChecked())
+    {
+        return;
+    }
+
     emit clippingChanged(
         m_enableCheck->isChecked(),
         selectedAxis(),
@@ -204,3 +236,4 @@ void SectionCutDialog::emitChange()
 }
 
 } // namespace TSA::UI
+

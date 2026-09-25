@@ -5,6 +5,8 @@
 #include <vector>
 #include <gp_Pnt.hxx>
 #include <gp_Dir.hxx>
+#include "../Model/CreationPresets.h"
+#include "../Model/Beam.h"
 
 namespace TSA::Model { class Model; }
 namespace TSA::Viewer { class SelectionManager; }
@@ -23,6 +25,8 @@ namespace TSA::UI
     class VisibilityDock;
     class LogConsoleDock;
     class HelpDialog;
+    class BarCreationDialog;
+    class SurfaceCreationDialog;
 }
 
 class OccView;
@@ -63,9 +67,16 @@ private slots:
     // Modes d'interaction (Dessin 3D)
     void onModeSelect();
     void onModeDrawNode();
+    void onModeDrawWire();
+    void onModeDrawSurface();
+    void onModeDrawBar();
     void onModeDrawBeam();
     void onModeDrawColumn();
     void onModeDrawSlab();
+    void onModeDrawWall();
+    void onActionStructurePresets();
+    void openBarCreationDialog(TSA::Model::BarRole role = TSA::Model::BarRole::Beam);
+    void openSurfaceCreationDialog(int surfaceType = 0);
 
     // Actions structurales (Dialogues)
     void onActionNewNode();
@@ -145,9 +156,18 @@ private:
     QActionGroup* m_drawModeGroup = nullptr;
     QAction* m_actionSelectMode = nullptr;
     QAction* m_actionDrawNode = nullptr;
+    QAction* m_actionDrawWire = nullptr;
+    QAction* m_actionDrawSurface = nullptr;
+    QAction* m_actionDrawBar = nullptr;
     QAction* m_actionDrawBeam = nullptr;
     QAction* m_actionDrawColumn = nullptr;
     QAction* m_actionDrawSlab = nullptr;
+    QAction* m_actionDrawWall = nullptr;
+    QAction* m_actionStructurePresets = nullptr;
+
+    TSA::UI::BarCreationDialog* m_barDialog = nullptr;
+    TSA::UI::SurfaceCreationDialog* m_surfaceDialog = nullptr;
+    TSA::Model::StructurePresets m_presets;
 
     QAction* m_actionNewNode = nullptr;
     QAction* m_actionNewBeam = nullptr;

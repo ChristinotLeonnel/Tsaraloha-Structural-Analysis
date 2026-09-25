@@ -17,6 +17,7 @@
 #include <QLabel>
 #include <QTabWidget>
 #include <QMessageBox>
+#include <QCheckBox>
 
 namespace TSA::UI
 {
@@ -60,6 +61,20 @@ GridDialog::GridDialog(TSA::Grid::GridManager* gridManager,
         m_axes[0].labelStyle = 0;
         m_axes[1].labelStyle = 1;
         m_axes[2].labelStyle = 2;
+    }
+
+    if (m_model && m_gridManager && m_gridManager->activeGrid())
+    {
+        m_isEditMode = true;
+        m_gridId = m_gridManager->activeGrid()->id();
+        m_nameCombo->setCurrentText(QString::fromStdString(m_gridManager->activeGrid()->name()));
+    }
+    else
+    {
+        m_isEditMode = false;
+        m_gridId.clear();
+        int nextNum = m_gridManager ? static_cast<int>(m_gridManager->grids().size() + 1) : 1;
+        m_nameCombo->setCurrentText(tr("Grille %1").arg(nextNum));
     }
 
     for (int i = 0; i < 3; ++i)
@@ -156,13 +171,16 @@ void GridDialog::setupUi()
     modeLayout->setSpacing(4);
 
     m_btnCartesian = new QPushButton(tr("Cartésien"), this);
+    m_btnCartesian->setIcon(QIcon(":/icons/grid_cartesian.svg"));
     m_btnCartesian->setCheckable(true);
     m_btnCartesian->setChecked(true);
 
     m_btnCylindrical = new QPushButton(tr("Cylindrique"), this);
+    m_btnCylindrical->setIcon(QIcon(":/icons/grid_cylindrical.svg"));
     m_btnCylindrical->setCheckable(true);
 
     m_btnArbitrary = new QPushButton(tr("Lignes arbitraires"), this);
+    m_btnArbitrary->setIcon(QIcon(":/icons/geom_polyline.svg"));
     m_btnArbitrary->setCheckable(true);
     // Non implémenté côté moteur (GridType ne connaît que Cartésien/Cylindrique) :
     // on désactive plutôt que de laisser un bouton qui ne fait rien.
@@ -180,6 +198,7 @@ void GridDialog::setupUi()
 
     // 3. Bouton Paramètres avancés
     m_btnAdvanced = new QPushButton(tr("Paramètres avancés"), this);
+    m_btnAdvanced->setIcon(QIcon(":/icons/settings.svg"));
     mainLayout->addWidget(m_btnAdvanced);
 
     // 4. Sous-onglets d'axes : X / Y / Z
@@ -250,13 +269,16 @@ void GridDialog::setupUi()
     sideBtnLayout->setSpacing(6);
 
     m_btnAdd = new QPushButton(tr("Ajouter"), this);
+    m_btnAdd->setIcon(QIcon(":/icons/node_add.svg"));
     m_btnAdd->setStyleSheet(isDark
         ? "QPushButton { border: 1.5px solid #1F6FEB; background: #1F3A5A; font-weight: bold; color: #58A6FF; } QPushButton:hover { background: #234975; }"
         : "QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; } QPushButton:hover { background: #D9ECFC; }");
     m_btnAdd->setFixedHeight(28);
 
     m_btnDelete = new QPushButton(tr("Supprimer"), this);
+    m_btnDelete->setIcon(QIcon(":/icons/delete.svg"));
     m_btnClearAll = new QPushButton(tr("Supprimer tout"), this);
+    m_btnClearAll->setIcon(QIcon(":/icons/delete.svg"));
     m_btnBold = new QPushButton(tr("Gras"), this);
 
     sideBtnLayout->addWidget(m_btnAdd);
@@ -293,22 +315,33 @@ void GridDialog::setupUi()
     connect(m_labelStyleCombo, &QComboBox::currentIndexChanged, this, &GridDialog::onLabelStyleChanged);
 
     // 8. Barre d'actions inférieure (Nouveau, Gestionnaire, Appliquer, Fermer, Aide)
+    m_chkLiveSync = new QCheckBox(tr("Synchronisation en direct (temps réel)"), this);
+    m_chkLiveSync->setChecked(true);
+    m_chkLiveSync->setToolTip(tr("Coché : applique immédiatement les modifications dans la vue 3D.\nDécoché : conserve les modifications en mémoire et attend un clic sur 'Appliquer'."));
+    m_chkLiveSync->setStyleSheet("font-weight: bold; color: #58A6FF; margin-top: 4px;");
+    mainLayout->addWidget(m_chkLiveSync);
+
     auto* bottomLayout1 = new QHBoxLayout();
     m_btnNew = new QPushButton(tr("Nouveau"), this);
+    m_btnNew->setIcon(QIcon(":/icons/file_new.svg"));
     m_btnManage = new QPushButton(tr("Gestionnaire de lignes"), this);
+    m_btnManage->setIcon(QIcon(":/icons/settings.svg"));
     bottomLayout1->addWidget(m_btnNew);
     bottomLayout1->addWidget(m_btnManage);
     mainLayout->addLayout(bottomLayout1);
 
     auto* bottomLayout2 = new QHBoxLayout();
     m_btnApply = new QPushButton(tr("Appliquer"), this);
+    m_btnApply->setIcon(QIcon(":/icons/apply.svg"));
     m_btnApply->setStyleSheet("QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; }");
     m_btnApply->setFixedHeight(26);
 
     m_btnClose = new QPushButton(tr("Fermer"), this);
+    m_btnClose->setIcon(QIcon(":/icons/cancel.svg"));
     m_btnClose->setFixedHeight(26);
 
     m_btnHelp = new QPushButton(tr("Aide"), this);
+    m_btnHelp->setIcon(QIcon(":/icons/TSA.svg"));
     m_btnHelp->setFixedHeight(26);
 
     bottomLayout2->addWidget(m_btnApply);
@@ -316,12 +349,12 @@ void GridDialog::setupUi()
     bottomLayout2->addWidget(m_btnHelp);
     mainLayout->addLayout(bottomLayout2);
 
+    connect(m_chkLiveSync, &QCheckBox::toggled, this, [this](bool checked) {
+        if (checked) onApply();
+    });
     connect(m_btnNew, &QPushButton::clicked, this, &GridDialog::onNewGrid);
     connect(m_btnApply, &QPushButton::clicked, this, &GridDialog::onApply);
     connect(m_btnClose, &QPushButton::clicked, this, &QDialog::accept);
-    // Le bouton n'était relié à aucun slot : il ne faisait rigoureusement rien.
-    // On le relie à un signal que la fenêtre principale écoute pour ouvrir le
-    // vrai gestionnaire de grilles (GridSettingsDialog).
     connect(m_btnManage, &QPushButton::clicked, this, &GridDialog::manageGridsRequested);
 }
 
@@ -354,7 +387,10 @@ void GridDialog::onModeCartesian()
     }
 
     updateTableForCurrentTab();
-    onApply();
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
+    {
+        onApply();
+    }
 }
 
 void GridDialog::onModeCylindrical()
@@ -385,7 +421,10 @@ void GridDialog::onModeCylindrical()
     }
 
     updateTableForCurrentTab();
-    onApply();
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
+    {
+        onApply();
+    }
 }
 
 void GridDialog::onModeArbitrary()
@@ -409,7 +448,7 @@ void GridDialog::onTabChanged(int index)
     // Restaurer l'état du nouvel onglet
     m_isUpdating = true;
     m_posSpin->setValue(m_axes[m_currentAxisIndex].currentPosition);
-    m_repeatSpin->setValue(std::max(2, m_axes[m_currentAxisIndex].repeatCount));
+    m_repeatSpin->setValue(std::max(1, m_axes[m_currentAxisIndex].repeatCount));
     m_spacingSpin->setValue(m_axes[m_currentAxisIndex].spacing);
     m_labelStyleCombo->setCurrentIndex(m_axes[m_currentAxisIndex].labelStyle);
     m_isUpdating = false;
@@ -421,11 +460,10 @@ void GridDialog::onAddLines()
 {
     double startPos = m_posSpin->value();
     int repeat = m_repeatSpin->value();
-    // Exigence utilisateur : "Ajouter automatiquement 2 fois pour éviter les bugs de grille"
-    if (repeat < 2)
+    if (repeat < 1)
     {
-        repeat = 2;
-        m_repeatSpin->setValue(2);
+        repeat = 1;
+        m_repeatSpin->setValue(1);
     }
     double spacing = m_spacingSpin->value();
 
@@ -471,9 +509,10 @@ void GridDialog::onAddLines()
     axis.currentPosition = nextPos;
 
     updateTableForCurrentTab();
-
-    // Mettre à jour immédiatement dans le 3D viewport dès l'ajout
-    onApply();
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
+    {
+        onApply();
+    }
 }
 
 void GridDialog::onRemoveLine()
@@ -485,7 +524,10 @@ void GridDialog::onRemoveLine()
         axis.positions.erase(axis.positions.begin() + row);
         applyLabels(m_currentAxisIndex);
         updateTableForCurrentTab();
-        onApply();
+        if (m_chkLiveSync && m_chkLiveSync->isChecked())
+        {
+            onApply();
+        }
     }
 }
 
@@ -497,7 +539,10 @@ void GridDialog::onClearLines()
     axis.currentPosition = 0.0;
     m_posSpin->setValue(0.0);
     updateTableForCurrentTab();
-    onApply();
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
+    {
+        onApply();
+    }
 }
 
 void GridDialog::onLabelStyleChanged(int index)
@@ -649,6 +694,13 @@ void GridDialog::updateTableForCurrentTab()
 
 void GridDialog::onNewGrid()
 {
+    // Passer en mode création d'une nouvelle grille (sans toucher ni écraser la grille existante)
+    m_isEditMode = false;
+    m_gridId.clear();
+
+    int nextNum = m_gridManager ? static_cast<int>(m_gridManager->grids().size() + 1) : 1;
+    m_nameCombo->setCurrentText(tr("Grille %1").arg(nextNum));
+
     for (int i = 0; i < 3; ++i)
     {
         m_axes[i].positions.clear();
@@ -657,49 +709,84 @@ void GridDialog::onNewGrid()
     }
     m_posSpin->setValue(0.0);
     updateTableForCurrentTab();
-    onApply();
+
+    // IMPORTANT : Ne PAS appeler onApply() ici !
+    // La grille 3D existante dans le viewport reste intacte. La nouvelle grille
+    // sera créée et affichée dès que l'utilisateur aura défini des lignes et cliqué sur Appliquer.
 }
 
 void GridDialog::onApply()
 {
     TSA::Grid::GridDefinition def = getDefinition();
 
-    // Mettre à jour directement le système de coordonnées du modèle
-    // (uniquement pertinent pour une grille Cartésienne : les rayons/angles
-    // d'une grille Cylindrique ne doivent jamais écraser les axes X/Y du modèle)
-    if (m_model && m_model->coordinateSystem())
+    // Vérifier si la définition contient au minimum des lignes en X et Y (ou R et Thêta)
+    bool hasLines = false;
+    if (m_currentType == TSA::Grid::GridType::Cartesian)
     {
-        if (m_currentType == TSA::Grid::GridType::Cartesian)
-        {
-            m_model->coordinateSystem()->setXPositions(m_axes[0].positions);
-            m_model->coordinateSystem()->setYPositions(m_axes[1].positions);
-        }
-
-        if (m_model->levelManager())
-        {
-            m_model->levelManager()->setFromElevations(m_axes[2].positions, m_axes[2].labels);
-        }
+        hasLines = !m_axes[0].positions.empty() && !m_axes[1].positions.empty();
+    }
+    else // Cylindrique
+    {
+        hasLines = !m_axes[0].positions.empty() && !m_axes[1].positions.empty();
     }
 
-    // Mettre à jour la grille active dans le GridManager
+    if (!hasLines)
+    {
+        if (sender() == m_btnApply)
+        {
+            QMessageBox::warning(this, tr("Grille incomplète"),
+                (m_currentType == TSA::Grid::GridType::Cartesian)
+                ? tr("Veuillez définir au moins une ligne sur l'axe X et sur l'axe Y.")
+                : tr("Veuillez définir au moins un rayon (R) et un angle (θ)."));
+        }
+        return;
+    }
+
+    // Mettre à jour la grille existante ou ajouter une nouvelle grille dans le GridManager
     if (m_gridManager)
     {
-        if (m_isEditMode && !m_gridId.empty())
+        if (m_isEditMode && !m_gridId.empty() && m_gridManager->getGrid(m_gridId))
         {
             m_gridManager->updateGrid(m_gridId, def);
         }
-        else if (auto* active = m_gridManager->activeGrid())
-        {
-            m_gridManager->updateGrid(active->id(), def);
-        }
         else
         {
+            // Nouvelle grille : ne JAMAIS écraser la grille active existante
             auto* newGrid = m_gridManager->addGrid(def);
             if (newGrid)
             {
                 m_gridId = newGrid->id();
-                m_isEditMode = true;
+                m_isEditMode = true; // Pour que les modifications ultérieures dans cette boîte mettent à jour cette grille
                 m_gridManager->setActiveGridId(newGrid->id());
+            }
+        }
+    }
+
+    // Mettre à jour directement le système de coordonnées du modèle UNIQUEMENT si cette grille est la grille active
+    if (m_model && m_model->coordinateSystem())
+    {
+        bool isActive = false;
+        if (m_gridManager)
+        {
+            auto* active = m_gridManager->activeGrid();
+            isActive = (active && active->id() == m_gridId);
+        }
+        else
+        {
+            isActive = true;
+        }
+
+        if (isActive)
+        {
+            if (m_currentType == TSA::Grid::GridType::Cartesian)
+            {
+                m_model->coordinateSystem()->setXPositions(m_axes[0].positions);
+                m_model->coordinateSystem()->setYPositions(m_axes[1].positions);
+            }
+
+            if (m_model->levelManager() && !m_axes[2].positions.empty())
+            {
+                m_model->levelManager()->setFromElevations(m_axes[2].positions, m_axes[2].labels);
             }
         }
     }

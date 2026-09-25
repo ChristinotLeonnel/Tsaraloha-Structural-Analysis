@@ -32,12 +32,17 @@ struct RibbonActions
     QAction* actionAddCube = nullptr;
 
     // Structure
+    QAction* actionDrawWire = nullptr;
+    QAction* actionDrawSurface = nullptr;
+    QAction* actionDrawBar = nullptr;
     QAction* actionDrawBeam = nullptr;
     QAction* actionNewBeam = nullptr;
     QAction* actionDrawColumn = nullptr;
     QAction* actionNewColumn = nullptr;
     QAction* actionDrawSlab = nullptr;
     QAction* actionNewSlab = nullptr;
+    QAction* actionDrawWall = nullptr;
+    QAction* actionStructurePresets = nullptr;
 
     // Grilles & Niveaux
     QAction* actionNewGrid = nullptr;

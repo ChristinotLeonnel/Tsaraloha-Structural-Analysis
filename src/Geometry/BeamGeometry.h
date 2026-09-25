@@ -2,6 +2,7 @@
 
 #include <TopoDS_Shape.hxx>
 #include "../Model/Section.h"
+#include "../Model/Beam.h"
 
 namespace TSA::Model
 {
@@ -15,12 +16,13 @@ namespace TSA::Geometry
 class BeamGeometry
 {
 public:
-    // Construit un solide 3D TopoDS_Shape selon la géométrie exacte de la section et l'angle de rotation bêta
+    // Construit un solide 3D TopoDS_Shape selon la géométrie exacte de la section, la rotation bêta et l'excentrement
     static TopoDS_Shape createBeamShape(
         const TSA::Model::Node& startNode,
         const TSA::Model::Node& endNode,
         const TSA::Model::Section& section,
-        double rotationDegrees = 0.0
+        double rotationDegrees = 0.0,
+        TSA::Model::BarEccentricity eccentricity = TSA::Model::BarEccentricity::None
     );
 
     // Surcharge de compatibilité pour sections rectangulaires simples

@@ -58,6 +58,17 @@ bool GridManager::removeGrid(const std::string& id)
         if (m_activeGridId == id)
         {
             m_activeGridId = m_grids.empty() ? "" : m_grids.front()->id();
+
+            // Correction : synchroniser le flag GridSystem::isActive() de chaque
+            // grille restante avec le nouvel m_activeGridId. Sans cela, la grille
+            // promue active reste marquée isActive() == false (valeur héritée
+            // d'addGrid), et GridSnapManager::findSnap() / GridSystem::findClosestSnap()
+            // l'ignorent silencieusement puisqu'ils se basent sur isActive().
+            for (auto& g : m_grids)
+            {
+                g->setActive(g->id() == m_activeGridId);
+            }
+
             emit activeGridChanged(m_activeGridId);
         }
         emit gridRemoved(id);

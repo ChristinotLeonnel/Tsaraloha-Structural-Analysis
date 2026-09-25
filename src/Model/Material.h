@@ -33,6 +33,7 @@ struct Material
     static Material steelS355();
     static Material timberC24();
     static std::vector<Material> defaultLibrary();
+    static Material findByName(const std::string& name);
 };
 
 } // namespace TSA::Model

@@ -2,14 +2,73 @@
 #include "../Theme/ThemeManager.h"
 #include <QAction>
 #include <QMenu>
+#include <QPainter>
+#include <QRegularExpression>
+#include <algorithm>
 
 namespace TSA::UI
 {
+
+static QIcon generateFallbackIcon(const QString& rawText, bool isLarge)
+{
+    const int size = isLarge ? 28 : 16;
+    QPixmap pix(size, size);
+    pix.fill(Qt::transparent);
+
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    QString clean = rawText;
+    clean.remove('&');
+    clean.remove(QRegularExpression("\\(.*\\)"));
+    clean = clean.trimmed();
+
+    QString initials;
+    const QStringList words = clean.split(' ', Qt::SkipEmptyParts);
+    if (words.size() >= 2)
+    {
+        initials = words[0].left(1).toUpper() + words[1].left(1).toUpper();
+    }
+    else if (!clean.isEmpty())
+    {
+        initials = clean.left(std::min<int>(2, clean.length())).toUpper();
+    }
+    else
+    {
+        initials = "•";
+    }
+
+    uint hash = 0;
+    for (QChar c : clean)
+    {
+        hash = (hash * 33) + c.unicode();
+    }
+    const int hue = hash % 360;
+    const QColor bg = QColor::fromHsv(hue, 160, 190, 220);
+    const QColor border = QColor::fromHsv(hue, 210, 150, 255);
+
+    p.setPen(QPen(border, 1.2));
+    p.setBrush(bg);
+    p.drawRoundedRect(1, 1, size - 2, size - 2, 4, 4);
+
+    p.setPen(Qt::white);
+    QFont f = p.font();
+    f.setPixelSize(isLarge ? 11 : 9);
+    f.setBold(true);
+    p.setFont(f);
+    p.drawText(QRect(0, 0, size, size), Qt::AlignCenter, initials);
+
+    return QIcon(pix);
+}
 
 RibbonButton::RibbonButton(QAction* action, RibbonButtonSize size, QWidget* parent)
     : QToolButton(parent)
     , m_size(size)
 {
+    if (action && action->icon().isNull())
+    {
+        action->setIcon(generateFallbackIcon(action->text(), m_size == RibbonButtonSize::Large));
+    }
     setDefaultAction(action);
     initStyle();
     connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, &RibbonButton::updateTheme);
@@ -20,7 +79,14 @@ RibbonButton::RibbonButton(const QString& text, const QIcon& icon, RibbonButtonS
     , m_size(size)
 {
     setText(text);
-    setIcon(icon);
+    if (icon.isNull())
+    {
+        setIcon(generateFallbackIcon(text, size == RibbonButtonSize::Large));
+    }
+    else
+    {
+        setIcon(icon);
+    }
     initStyle();
     connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, &RibbonButton::updateTheme);
 }

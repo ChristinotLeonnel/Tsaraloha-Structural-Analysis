@@ -45,9 +45,13 @@ void GridSettingsDialog::setupUi()
 
     auto* btnCol = new QVBoxLayout();
     m_addBtn = new QPushButton(tr("Ajouter..."), listGroup);
+    m_addBtn->setIcon(QIcon(":/icons/node_add.svg"));
     m_editBtn = new QPushButton(tr("Modifier..."), listGroup);
+    m_editBtn->setIcon(QIcon(":/icons/settings.svg"));
     m_deleteBtn = new QPushButton(tr("Supprimer"), listGroup);
+    m_deleteBtn->setIcon(QIcon(":/icons/delete.svg"));
     m_setActiveBtn = new QPushButton(tr("Définir comme Active"), listGroup);
+    m_setActiveBtn->setIcon(QIcon(":/icons/grid_cartesian.svg"));
 
     btnCol->addWidget(m_addBtn);
     btnCol->addWidget(m_editBtn);
@@ -93,16 +97,34 @@ void GridSettingsDialog::setupUi()
 
     mainLayout->addWidget(optionsGroup);
 
-    // 3. Bouton Fermer
+    // 3. Barre d'actions inférieure (Live Sync, Appliquer, Fermer)
+    m_chkLiveSync = new QCheckBox(tr("Synchronisation en direct (temps réel)"), this);
+    m_chkLiveSync->setChecked(true);
+    m_chkLiveSync->setToolTip(tr("Coché : applique immédiatement les options de grille et d'accrochage.\nDécoché : attend un clic sur 'Appliquer'."));
+    m_chkLiveSync->setStyleSheet("font-weight: bold; color: #58A6FF; margin-top: 4px;");
+    mainLayout->addWidget(m_chkLiveSync);
+
     auto* closeBtnLayout = new QHBoxLayout();
     closeBtnLayout->addStretch();
+    m_btnApply = new QPushButton(tr("Appliquer"), this);
+    m_btnApply->setIcon(QIcon(":/icons/apply.svg"));
+    m_btnApply->setStyleSheet("QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; }");
+    m_btnApply->setFixedHeight(26);
+    closeBtnLayout->addWidget(m_btnApply);
+
     auto* closeBtn = new QPushButton(tr("Fermer"), this);
+    closeBtn->setIcon(QIcon(":/icons/cancel.svg"));
+    closeBtn->setFixedHeight(26);
     closeBtn->setDefault(true);
     connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
     closeBtnLayout->addWidget(closeBtn);
     mainLayout->addLayout(closeBtnLayout);
 
     // Connexions
+    connect(m_chkLiveSync, &QCheckBox::toggled, this, [this](bool checked) {
+        if (checked) onApply();
+    });
+    connect(m_btnApply, &QPushButton::clicked, this, &GridSettingsDialog::onApply);
     connect(m_addBtn, &QPushButton::clicked, this, &GridSettingsDialog::onAddGrid);
     connect(m_editBtn, &QPushButton::clicked, this, &GridSettingsDialog::onEditGrid);
     connect(m_deleteBtn, &QPushButton::clicked, this, &GridSettingsDialog::onDeleteGrid);
@@ -133,6 +155,7 @@ void GridSettingsDialog::refreshGridList()
         QString itemText = QString("%1 (%2)%3").arg(QString::fromStdString(g->name())).arg(typeStr).arg(status);
 
         auto* item = new QListWidgetItem(itemText, m_gridList);
+        item->setIcon(QIcon((g->type() == TSA::Grid::GridType::Cartesian) ? ":/icons/grid_cartesian.svg" : ":/icons/grid_cylindrical.svg"));
         item->setData(Qt::UserRole, QString::fromStdString(g->id()));
 
         if (g->isActive())
@@ -304,57 +327,100 @@ void GridSettingsDialog::onSetActiveGrid()
 
 void GridSettingsDialog::onToggleVisibility(bool checked)
 {
-    auto* item = m_gridList->currentItem();
-    if (!item || !m_gridManager)
-        return;
-
-    std::string id = item->data(Qt::UserRole).toString().toStdString();
-    m_gridManager->setGridVisible(id, checked);
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
+    {
+        auto* item = m_gridList->currentItem();
+        if (item && m_gridManager)
+        {
+            std::string id = item->data(Qt::UserRole).toString().toStdString();
+            m_gridManager->setGridVisible(id, checked);
+        }
+    }
 }
 
 void GridSettingsDialog::onToggleSnap(bool checked)
 {
-    if (m_snapManager)
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
     {
-        m_snapManager->setSnapEnabled(checked);
+        if (m_snapManager)
+        {
+            m_snapManager->setSnapEnabled(checked);
+        }
     }
 }
 
 void GridSettingsDialog::onToggleLabels(bool checked)
 {
-    auto* item = m_gridList->currentItem();
-    if (!item || !m_gridManager)
-        return;
-
-    std::string id = item->data(Qt::UserRole).toString().toStdString();
-    auto* grid = m_gridManager->getGrid(id);
-    if (grid)
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
     {
-        grid->setShowLabels(checked);
-        m_gridManager->updateGrid(id, grid->definition());
+        auto* item = m_gridList->currentItem();
+        if (item && m_gridManager)
+        {
+            std::string id = item->data(Qt::UserRole).toString().toStdString();
+            auto* grid = m_gridManager->getGrid(id);
+            if (grid)
+            {
+                grid->setShowLabels(checked);
+                m_gridManager->updateGrid(id, grid->definition());
+            }
+        }
     }
 }
 
 void GridSettingsDialog::onToggleIntersections(bool checked)
 {
-    auto* item = m_gridList->currentItem();
-    if (!item || !m_gridManager)
-        return;
-
-    std::string id = item->data(Qt::UserRole).toString().toStdString();
-    auto* grid = m_gridManager->getGrid(id);
-    if (grid)
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
     {
-        grid->setShowIntersections(checked);
-        m_gridManager->updateGrid(id, grid->definition());
+        auto* item = m_gridList->currentItem();
+        if (item && m_gridManager)
+        {
+            std::string id = item->data(Qt::UserRole).toString().toStdString();
+            auto* grid = m_gridManager->getGrid(id);
+            if (grid)
+            {
+                grid->setShowIntersections(checked);
+                m_gridManager->updateGrid(id, grid->definition());
+            }
+        }
     }
 }
 
 void GridSettingsDialog::onSnapToleranceChanged(double val)
 {
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
+    {
+        if (m_snapManager)
+        {
+            m_snapManager->setSnapTolerance(val);
+        }
+    }
+}
+
+void GridSettingsDialog::onApply()
+{
+    auto* item = m_gridList->currentItem();
+    if (item && m_gridManager)
+    {
+        std::string id = item->data(Qt::UserRole).toString().toStdString();
+        m_gridManager->setGridVisible(id, m_visibleCheck->isChecked());
+        auto* grid = m_gridManager->getGrid(id);
+        if (grid)
+        {
+            grid->setShowLabels(m_labelsCheck->isChecked());
+            grid->setShowIntersections(m_intersectionsCheck->isChecked());
+            m_gridManager->updateGrid(id, grid->definition());
+        }
+    }
+
     if (m_snapManager)
     {
-        m_snapManager->setSnapTolerance(val);
+        m_snapManager->setSnapEnabled(m_snapCheck->isChecked());
+        m_snapManager->setSnapTolerance(m_snapToleranceSpin->value());
+    }
+
+    if (m_occView)
+    {
+        m_occView->rebuildGrid();
     }
 }
 
