@@ -16,173 +16,165 @@ void RibbonBuilder::buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWid
     if (!bar) return;
 
     buildHomeTab(bar, acts, parentWindow);
+    buildModelingTab(bar, acts, parentWindow);
     buildStructureTab(bar, acts, parentWindow);
-    buildAnalysisTab(bar, acts, parentWindow);
+    buildCalculationTab(bar, acts, parentWindow);
+    buildResultsTab(bar, acts, parentWindow);
+    buildEditTab(bar, acts, parentWindow);
     buildViewTab(bar, acts, parentWindow);
+    buildToolsTab(bar, acts, parentWindow);
 }
 
+// -----------------------------------------------------------------------------
+// 1. Onglet ACCUEIL
+// -----------------------------------------------------------------------------
 RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts, QWidget* /*parentWindow*/)
 {
     auto* tab = bar->addTab(QObject::tr("Accueil"));
 
-    // 1. Groupe Fichier
-    auto* filePanel = new RibbonPanel(QObject::tr("Fichier"), tab);
-    if (acts.actionNew)
-    {
-        filePanel->addLargeAction(acts.actionNew);
-    }
-    if (acts.actionOpen && acts.actionSave)
+    // Groupe Projet / Fichier
+    auto* filePanel = new RibbonPanel(QObject::tr("Projet"), tab);
+    if (acts.actionNew) filePanel->addLargeAction(acts.actionNew);
+    std::vector<QAction*> fileSub;
+    if (acts.actionOpen) fileSub.push_back(acts.actionOpen);
+    if (acts.actionSave) fileSub.push_back(acts.actionSave);
+    if (acts.actionSaveAs) fileSub.push_back(acts.actionSaveAs);
+    if (!fileSub.empty())
     {
         filePanel->addInternalSeparator();
-        if (acts.actionSaveAs)
-        {
-            filePanel->addSmallColumn({ acts.actionOpen, acts.actionSave, acts.actionSaveAs });
-        }
-        else
-        {
-            filePanel->addSmallColumn({ acts.actionOpen, acts.actionSave });
-        }
+        filePanel->addSmallColumn(fileSub);
     }
     tab->addPanel(filePanel);
 
-    // 2. Groupe Sélection & Modification
-    auto* selectPanel = new RibbonPanel(QObject::tr("Sélection & Édition"), tab);
-    if (acts.actionSelectMode)
-    {
-        selectPanel->addLargeAction(acts.actionSelectMode);
-    }
-    std::vector<QAction*> modifyActions;
-    if (acts.actionMove) modifyActions.push_back(acts.actionMove);
-    if (acts.actionCopy) modifyActions.push_back(acts.actionCopy);
-    if (acts.actionDelete) modifyActions.push_back(acts.actionDelete);
-    if (!modifyActions.empty())
-    {
-        selectPanel->addInternalSeparator();
-        selectPanel->addSmallColumn(modifyActions);
-    }
-    tab->addPanel(selectPanel);
+    // Groupe Historique & Presse-papier
+    auto* clipPanel = new RibbonPanel(QObject::tr("Historique"), tab);
+    std::vector<QAction*> histCol;
+    if (acts.actionUndo) histCol.push_back(acts.actionUndo);
+    if (acts.actionRedo) histCol.push_back(acts.actionRedo);
+    if (!histCol.empty()) clipPanel->addSmallColumn(histCol);
 
-    // 3. Groupe Géométrie & Nœuds
-    auto* geomPanel = new RibbonPanel(QObject::tr("Nœuds & Primitives"), tab);
-    if (acts.actionDrawNode)
+    std::vector<QAction*> clipCol;
+    if (acts.actionCopyClipboard) clipCol.push_back(acts.actionCopyClipboard);
+    if (acts.actionPasteClipboard) clipCol.push_back(acts.actionPasteClipboard);
+    if (!clipCol.empty())
     {
-        geomPanel->addLargeAction(acts.actionDrawNode);
+        clipPanel->addInternalSeparator();
+        clipPanel->addSmallColumn(clipCol);
     }
-    std::vector<QAction*> geomSub;
-    if (acts.actionNewNode) geomSub.push_back(acts.actionNewNode);
-    if (acts.actionAddCube) geomSub.push_back(acts.actionAddCube);
-    if (!geomSub.empty())
-    {
-        geomPanel->addInternalSeparator();
-        geomPanel->addSmallColumn(geomSub);
-    }
-    tab->addPanel(geomPanel);
+    tab->addPanel(clipPanel);
 
-    // 4. Groupe Éléments Structuraux
-    auto* structPanel = new RibbonPanel(QObject::tr("Structure 3D"), tab);
-    if (acts.actionDrawWire)
+    // Groupe Accès Rapide
+    auto* quickPanel = new RibbonPanel(QObject::tr("Accès Rapide"), tab);
+    if (acts.actionSelectMode) quickPanel->addLargeAction(acts.actionSelectMode);
+    if (acts.actionDrawBeam)
     {
-        structPanel->addLargeAction(acts.actionDrawWire);
-        structPanel->addInternalSeparator();
+        quickPanel->addInternalSeparator();
+        quickPanel->addLargeAction(acts.actionDrawBeam);
     }
-    else if (acts.actionDrawBar)
+    if (acts.actionDrawColumn) quickPanel->addLargeAction(acts.actionDrawColumn);
+    if (acts.actionDrawSlab) quickPanel->addLargeAction(acts.actionDrawSlab);
+    if (acts.actionRunSolve)
     {
-        structPanel->addLargeAction(acts.actionDrawBar);
-        structPanel->addInternalSeparator();
+        quickPanel->addInternalSeparator();
+        quickPanel->addLargeAction(acts.actionRunSolve);
     }
+    tab->addPanel(quickPanel);
 
-    if (acts.actionDrawSurface)
-    {
-        structPanel->addLargeAction(acts.actionDrawSurface);
-    }
-    else if (acts.actionDrawSlab)
-    {
-        structPanel->addLargeAction(acts.actionDrawSlab);
-    }
-
-    if (acts.actionStructurePresets)
-    {
-        structPanel->addInternalSeparator();
-        structPanel->addLargeAction(acts.actionStructurePresets);
-    }
-    tab->addPanel(structPanel);
-
-    // 5. Groupe Grilles & Niveaux
-    auto* gridPanel = new RibbonPanel(QObject::tr("Grilles & Niveaux"), tab);
-    if (acts.actionGridVisible)
-    {
-        gridPanel->addLargeAction(acts.actionGridVisible);
-    }
-    std::vector<QAction*> gridCol1;
-    if (acts.actionGridSnap) gridCol1.push_back(acts.actionGridSnap);
-    if (acts.actionGridManager) gridCol1.push_back(acts.actionGridManager);
-    if (acts.actionManageLevels) gridCol1.push_back(acts.actionManageLevels);
-    if (!gridCol1.empty())
-    {
-        gridPanel->addInternalSeparator();
-        gridPanel->addSmallColumn(gridCol1);
-    }
-    tab->addPanel(gridPanel);
-
-    // 6. Groupe Affichage Rapide
-    auto* viewPanel = new RibbonPanel(QObject::tr("Orientation"), tab);
-    if (acts.actionView3D)
-    {
-        viewPanel->addLargeAction(acts.actionView3D);
-    }
-    std::vector<QAction*> viewCol;
-    if (acts.actionViewXY) viewCol.push_back(acts.actionViewXY);
-    if (acts.actionFitAll) viewCol.push_back(acts.actionFitAll);
-    if (acts.actionResetView) viewCol.push_back(acts.actionResetView);
-    if (!viewCol.empty())
+    // Groupe Vue Rapide
+    auto* viewPanel = new RibbonPanel(QObject::tr("Vue 3D"), tab);
+    if (acts.actionView3D) viewPanel->addLargeAction(acts.actionView3D);
+    std::vector<QAction*> vCol;
+    if (acts.actionFitAll) vCol.push_back(acts.actionFitAll);
+    if (acts.actionResetView) vCol.push_back(acts.actionResetView);
+    if (!vCol.empty())
     {
         viewPanel->addInternalSeparator();
-        viewPanel->addSmallColumn(viewCol);
+        viewPanel->addSmallColumn(vCol);
     }
     tab->addPanel(viewPanel);
 
     return tab;
 }
 
-RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+// -----------------------------------------------------------------------------
+// 2. Onglet MODÉLISATION
+// -----------------------------------------------------------------------------
+RibbonTab* RibbonBuilder::buildModelingTab(RibbonBar* bar, const RibbonActions& acts, QWidget* /*parentWindow*/)
 {
-    auto* tab = bar->addTab(QObject::tr("Structure & Sections"));
+    auto* tab = bar->addTab(QObject::tr("Modélisation"));
 
-    // 1. Éléments de structure
-    auto* elemPanel = new RibbonPanel(QObject::tr("Éléments de Structure"), tab);
-    if (acts.actionDrawWire)
-    {
-        elemPanel->addLargeAction(acts.actionDrawWire);
-        elemPanel->addInternalSeparator();
-    }
-    else if (acts.actionDrawBar)
-    {
-        elemPanel->addLargeAction(acts.actionDrawBar);
-        elemPanel->addInternalSeparator();
-    }
+    // Éléments Filaires (1D)
+    auto* beamPanel = new RibbonPanel(QObject::tr("Éléments Filaires (1D)"), tab);
+    if (acts.actionDrawBeam) beamPanel->addLargeAction(acts.actionDrawBeam);
+    if (acts.actionDrawColumn) beamPanel->addLargeAction(acts.actionDrawColumn);
 
-    if (acts.actionDrawSurface)
+    std::vector<QAction*> wireSub;
+    if (acts.actionDrawBar) wireSub.push_back(acts.actionDrawBar);
+    if (acts.actionTruss) wireSub.push_back(acts.actionTruss);
+    if (!wireSub.empty())
     {
-        elemPanel->addLargeAction(acts.actionDrawSurface);
-        elemPanel->addInternalSeparator();
+        beamPanel->addInternalSeparator();
+        beamPanel->addSmallColumn(wireSub);
     }
-    else if (acts.actionDrawSlab)
-    {
-        elemPanel->addLargeAction(acts.actionDrawSlab);
-        elemPanel->addInternalSeparator();
-    }
+    tab->addPanel(beamPanel);
 
-    auto* actFooting = acts.actionFooting ? acts.actionFooting : new QAction(QIcon(":/icons/struct_foundation.svg"), QObject::tr("Fondation"), parentWindow);
-    elemPanel->addSmallColumn({ actFooting });
+    // Éléments Surfaciques (2D)
+    auto* surfPanel = new RibbonPanel(QObject::tr("Éléments Surfaciques (2D)"), tab);
+    if (acts.actionDrawSlab) surfPanel->addLargeAction(acts.actionDrawSlab);
+    if (acts.actionDrawWall) surfPanel->addLargeAction(acts.actionDrawWall);
+    if (acts.actionFooting)
+    {
+        surfPanel->addInternalSeparator();
+        surfPanel->addSmallColumn({ acts.actionFooting });
+    }
+    tab->addPanel(surfPanel);
+
+    // Nœuds & Primitives
+    auto* nodePanel = new RibbonPanel(QObject::tr("Nœuds & Primitives"), tab);
+    if (acts.actionDrawNode) nodePanel->addLargeAction(acts.actionDrawNode);
+    std::vector<QAction*> nodeSub;
+    if (acts.actionNewNode) nodeSub.push_back(acts.actionNewNode);
+    if (acts.actionAddCube) nodeSub.push_back(acts.actionAddCube);
+    if (!nodeSub.empty())
+    {
+        nodePanel->addInternalSeparator();
+        nodePanel->addSmallColumn(nodeSub);
+    }
+    tab->addPanel(nodePanel);
+
+    // Grilles & Niveaux
+    auto* gridPanel = new RibbonPanel(QObject::tr("Trame & Niveaux"), tab);
+    if (acts.actionNewGrid) gridPanel->addLargeAction(acts.actionNewGrid);
+    std::vector<QAction*> gSub;
+    if (acts.actionGridManager) gSub.push_back(acts.actionGridManager);
+    if (acts.actionManageLevels) gSub.push_back(acts.actionManageLevels);
+    if (!gSub.empty())
+    {
+        gridPanel->addInternalSeparator();
+        gridPanel->addSmallColumn(gSub);
+    }
+    tab->addPanel(gridPanel);
+
+    // Paramètres
     if (acts.actionStructurePresets)
     {
-        elemPanel->addInternalSeparator();
-        elemPanel->addLargeAction(acts.actionStructurePresets);
+        auto* cfgPanel = new RibbonPanel(QObject::tr("Préréglages"), tab);
+        cfgPanel->addLargeAction(acts.actionStructurePresets);
+        tab->addPanel(cfgPanel);
     }
-    tab->addPanel(elemPanel);
 
-    // 2. Sections Transversales
-    auto* secPanel = new RibbonPanel(QObject::tr("Profilés & Sections"), tab);
+    return tab;
+}
+
+// -----------------------------------------------------------------------------
+// 3. Onglet STRUCTURE
+// -----------------------------------------------------------------------------
+RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+{
+    auto* tab = bar->addTab(QObject::tr("Structure"));
+
+    // Sections & Profilés
+    auto* secPanel = new RibbonPanel(QObject::tr("Sections & Profilés"), tab);
     auto* actSecI = acts.actionSecI ? acts.actionSecI : new QAction(QIcon(":/icons/section_i.svg"), QObject::tr("Profilé I/H"), parentWindow);
     auto* actSecRect = acts.actionSecRect ? acts.actionSecRect : new QAction(QIcon(":/icons/section_rect.svg"), QObject::tr("Rectangulaire"), parentWindow);
     auto* actSecCirc = acts.actionSecCirc ? acts.actionSecCirc : new QAction(QIcon(":/icons/section_circle.svg"), QObject::tr("Circulaire"), parentWindow);
@@ -192,18 +184,18 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
     secPanel->addSmallColumn({ actSecRect, actSecCirc });
     tab->addPanel(secPanel);
 
-    // 3. Matériaux
+    // Matériaux
     auto* matPanel = new RibbonPanel(QObject::tr("Matériaux"), tab);
-    auto* actConcrete = acts.actionConcrete ? acts.actionConcrete : new QAction(QIcon(":/icons/material_concrete.svg"), QObject::tr("Béton C25/30"), parentWindow);
-    auto* actSteel = acts.actionSteel ? acts.actionSteel : new QAction(QIcon(":/icons/material_steel.svg"), QObject::tr("Acier S355"), parentWindow);
+    auto* actConcrete = acts.actionConcrete ? acts.actionConcrete : new QAction(QIcon(":/icons/material_concrete.svg"), QObject::tr("Béton Armé (EC2)"), parentWindow);
+    auto* actSteel = acts.actionSteel ? acts.actionSteel : new QAction(QIcon(":/icons/material_steel.svg"), QObject::tr("Acier Structural (EC3)"), parentWindow);
 
     matPanel->addLargeAction(actConcrete);
     matPanel->addInternalSeparator();
     matPanel->addSmallColumn({ actSteel });
     tab->addPanel(matPanel);
 
-    // 4. Appuis & Conditions aux Limites
-    auto* supPanel = new RibbonPanel(QObject::tr("Appuis & Liaisons"), tab);
+    // Conditions d'Appuis
+    auto* supPanel = new RibbonPanel(QObject::tr("Conditions d'Appuis"), tab);
     auto* actFixed = acts.actionFixed ? acts.actionFixed : new QAction(QIcon(":/icons/support_fixed.svg"), QObject::tr("Encastrement"), parentWindow);
     auto* actPinned = acts.actionPinned ? acts.actionPinned : new QAction(QIcon(":/icons/support_pinned.svg"), QObject::tr("Articulation"), parentWindow);
     auto* actRoller = acts.actionRoller ? acts.actionRoller : new QAction(QIcon(":/icons/support_roller.svg"), QObject::tr("Appui Simple"), parentWindow);
@@ -216,31 +208,34 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
     return tab;
 }
 
-RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+// -----------------------------------------------------------------------------
+// 4. Onglet CALCUL
+// -----------------------------------------------------------------------------
+RibbonTab* RibbonBuilder::buildCalculationTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
 {
-    auto* tab = bar->addTab(QObject::tr("Charges & Analyse"));
+    auto* tab = bar->addTab(QObject::tr("Calcul"));
 
-    // 1. Charges
-    auto* loadPanel = new RibbonPanel(QObject::tr("Cas de Charges"), tab);
+    // Actions & Charges
+    auto* loadPanel = new RibbonPanel(QObject::tr("Actions & Charges"), tab);
     auto* actPointLoad = acts.actionPointLoad ? acts.actionPointLoad : new QAction(QIcon(":/icons/load_point.svg"), QObject::tr("Force Ponctuelle"), parentWindow);
     auto* actDistLoad = acts.actionDistLoad ? acts.actionDistLoad : new QAction(QIcon(":/icons/load_dist.svg"), QObject::tr("Charge Répartie"), parentWindow);
     auto* actMoment = acts.actionMoment ? acts.actionMoment : new QAction(QIcon(":/icons/load_moment.svg"), QObject::tr("Moment"), parentWindow);
-    auto* actSeismic = acts.actionSeismic ? acts.actionSeismic : new QAction(QIcon(":/icons/load_seismic.svg"), QObject::tr("Séisme / Vent"), parentWindow);
+    auto* actSeismic = acts.actionSeismic ? acts.actionSeismic : new QAction(QIcon(":/icons/load_seismic.svg"), QObject::tr("Séisme (EC8)"), parentWindow);
 
     loadPanel->addLargeAction(actPointLoad);
     loadPanel->addInternalSeparator();
     loadPanel->addSmallColumn({ actDistLoad, actMoment, actSeismic });
     tab->addPanel(loadPanel);
 
-    // 2. Maillage
-    auto* meshPanel = new RibbonPanel(QObject::tr("Maillage EF"), tab);
+    // Maillage Éléments Finis
+    auto* meshPanel = new RibbonPanel(QObject::tr("Discrétisation"), tab);
     auto* actGenMesh = acts.actionMeshGen ? acts.actionMeshGen : new QAction(QIcon(":/icons/mesh_generate.svg"), QObject::tr("Générer Maillage"), parentWindow);
     meshPanel->addLargeAction(actGenMesh);
     tab->addPanel(meshPanel);
 
-    // 3. Calculs & Solveur
+    // Solveur
     auto* solvPanel = new RibbonPanel(QObject::tr("Solveur"), tab);
-    auto* actRun = acts.actionRunSolve ? acts.actionRunSolve : new QAction(QIcon(":/icons/analysis_run.svg"), QObject::tr("Calculer"), parentWindow);
+    auto* actRun = acts.actionRunSolve ? acts.actionRunSolve : new QAction(QIcon(":/icons/analysis_run.svg"), QObject::tr("Calcul Statique"), parentWindow);
     auto* actModal = acts.actionModal ? acts.actionModal : new QAction(QIcon(":/icons/analysis_modal.svg"), QObject::tr("Analyse Modale"), parentWindow);
 
     solvPanel->addLargeAction(actRun);
@@ -248,85 +243,156 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
     solvPanel->addSmallColumn({ actModal });
     tab->addPanel(solvPanel);
 
-    // 4. Résultats
-    auto* resPanel = new RibbonPanel(QObject::tr("Résultats"), tab);
-    auto* actDisp = acts.actionResultsDisp ? acts.actionResultsDisp : new QAction(QIcon(":/icons/results_disp.svg"), QObject::tr("Déplacements"), parentWindow);
-    auto* actForces = acts.actionResultsForces ? acts.actionResultsForces : new QAction(QIcon(":/icons/results_force.svg"), QObject::tr("Diagrammes M/N/V"), parentWindow);
-    auto* actStress = acts.actionResultsStress ? acts.actionResultsStress : new QAction(QIcon(":/icons/results_stress.svg"), QObject::tr("Contraintes"), parentWindow);
+    return tab;
+}
 
-    resPanel->addLargeAction(actDisp);
-    resPanel->addInternalSeparator();
-    resPanel->addSmallColumn({ actForces, actStress });
-    tab->addPanel(resPanel);
+// -----------------------------------------------------------------------------
+// 5. Onglet RÉSULTATS
+// -----------------------------------------------------------------------------
+RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+{
+    auto* tab = bar->addTab(QObject::tr("Résultats"));
+
+    // Déformations
+    auto* defPanel = new RibbonPanel(QObject::tr("Déformations"), tab);
+    auto* actDisp = acts.actionResultsDisp ? acts.actionResultsDisp : new QAction(QIcon(":/icons/results_disp.svg"), QObject::tr("Déplacements"), parentWindow);
+    defPanel->addLargeAction(actDisp);
+    tab->addPanel(defPanel);
+
+    // Efforts Internes
+    auto* forcePanel = new RibbonPanel(QObject::tr("Efforts Internes"), tab);
+    auto* actForces = acts.actionResultsForces ? acts.actionResultsForces : new QAction(QIcon(":/icons/results_force.svg"), QObject::tr("Diagrammes M/N/V"), parentWindow);
+    forcePanel->addLargeAction(actForces);
+    tab->addPanel(forcePanel);
+
+    // Contraintes
+    auto* stressPanel = new RibbonPanel(QObject::tr("Contraintes"), tab);
+    auto* actStress = acts.actionResultsStress ? acts.actionResultsStress : new QAction(QIcon(":/icons/results_stress.svg"), QObject::tr("Von Mises (σ_vm)"), parentWindow);
+    stressPanel->addLargeAction(actStress);
+    tab->addPanel(stressPanel);
 
     return tab;
 }
 
-RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+// -----------------------------------------------------------------------------
+// 6. Onglet ÉDITION
+// -----------------------------------------------------------------------------
+RibbonTab* RibbonBuilder::buildEditTab(RibbonBar* bar, const RibbonActions& acts, QWidget* /*parentWindow*/)
 {
-    auto* tab = bar->addTab(QObject::tr("Vue & Outils"));
+    auto* tab = bar->addTab(QObject::tr("Édition"));
 
-    // 1. Caméra & Projections
-    auto* camPanel = new RibbonPanel(QObject::tr("Orientation & Zoom"), tab);
-    if (acts.actionView3D) camPanel->addLargeAction(acts.actionView3D);
+    // Sélection
+    auto* selPanel = new RibbonPanel(QObject::tr("Sélection"), tab);
+    if (acts.actionSelectMode) selPanel->addLargeAction(acts.actionSelectMode);
+    tab->addPanel(selPanel);
+
+    // Déplacement
+    auto* movePanel = new RibbonPanel(QObject::tr("Déplacement"), tab);
+    if (acts.actionMove3D) movePanel->addLargeAction(acts.actionMove3D);
+    if (acts.actionMove)
+    {
+        movePanel->addInternalSeparator();
+        movePanel->addSmallColumn({ acts.actionMove });
+    }
+    tab->addPanel(movePanel);
+
+    // Copie & Répétition
+    auto* copyPanel = new RibbonPanel(QObject::tr("Copie & Duplication"), tab);
+    if (acts.actionCopy3D) copyPanel->addLargeAction(acts.actionCopy3D);
+    std::vector<QAction*> copySub;
+    if (acts.actionCopy) copySub.push_back(acts.actionCopy);
+    if (acts.actionRotate3D) copySub.push_back(acts.actionRotate3D);
+    if (!copySub.empty())
+    {
+        copyPanel->addInternalSeparator();
+        copyPanel->addSmallColumn(copySub);
+    }
+    tab->addPanel(copyPanel);
+
+    // Repère de Travail
+    if (acts.actionMoveOrigin)
+    {
+        auto* origPanel = new RibbonPanel(QObject::tr("Repère"), tab);
+        origPanel->addLargeAction(acts.actionMoveOrigin);
+        tab->addPanel(origPanel);
+    }
+
+    // Presse-papier
+    std::vector<QAction*> clipCol;
+    if (acts.actionCopyClipboard) clipCol.push_back(acts.actionCopyClipboard);
+    if (acts.actionPasteClipboard) clipCol.push_back(acts.actionPasteClipboard);
+    if (!clipCol.empty())
+    {
+        auto* clipPanel = new RibbonPanel(QObject::tr("Presse-papier"), tab);
+        clipPanel->addSmallColumn(clipCol);
+        tab->addPanel(clipPanel);
+    }
+
+    // Suppression
+    if (acts.actionDelete)
+    {
+        auto* delPanel = new RibbonPanel(QObject::tr("Suppression"), tab);
+        delPanel->addLargeAction(acts.actionDelete);
+        tab->addPanel(delPanel);
+    }
+
+    return tab;
+}
+
+// -----------------------------------------------------------------------------
+// 7. Onglet AFFICHAGE
+// -----------------------------------------------------------------------------
+RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts, QWidget* /*parentWindow*/)
+{
+    auto* tab = bar->addTab(QObject::tr("Affichage"));
+
+    // Projections
+    auto* projPanel = new RibbonPanel(QObject::tr("Projections"), tab);
+    if (acts.actionView3D) projPanel->addLargeAction(acts.actionView3D);
     std::vector<QAction*> colViews;
     if (acts.actionViewXY) colViews.push_back(acts.actionViewXY);
     if (acts.actionViewXZ) colViews.push_back(acts.actionViewXZ);
     if (acts.actionViewYZ) colViews.push_back(acts.actionViewYZ);
     if (!colViews.empty())
     {
-        camPanel->addInternalSeparator();
-        camPanel->addSmallColumn(colViews);
+        projPanel->addInternalSeparator();
+        projPanel->addSmallColumn(colViews);
     }
+    tab->addPanel(projPanel);
 
+    // Navigation & Cadrage
     std::vector<QAction*> colZoom;
     if (acts.actionFitAll) colZoom.push_back(acts.actionFitAll);
     if (acts.actionResetView) colZoom.push_back(acts.actionResetView);
     if (!colZoom.empty())
     {
-        camPanel->addInternalSeparator();
-        camPanel->addSmallColumn(colZoom);
+        auto* navPanel = new RibbonPanel(QObject::tr("Navigation"), tab);
+        navPanel->addSmallColumn(colZoom);
+        tab->addPanel(navPanel);
     }
-    tab->addPanel(camPanel);
 
-    // 2. Repères & Coupes 3D
-    auto* coordPanel = new RibbonPanel(QObject::tr("Repères & Coupes"), tab);
-    if (acts.actionCoordSystem) coordPanel->addLargeAction(acts.actionCoordSystem);
-    coordPanel->addInternalSeparator();
-    if (acts.actionSectionCut) coordPanel->addLargeAction(acts.actionSectionCut);
-    tab->addPanel(coordPanel);
+    // Repères & Coupes
+    auto* cutPanel = new RibbonPanel(QObject::tr("Plans & Coupes"), tab);
+    if (acts.actionCoordSystem) cutPanel->addLargeAction(acts.actionCoordSystem);
+    if (acts.actionSectionCut)
+    {
+        cutPanel->addInternalSeparator();
+        cutPanel->addLargeAction(acts.actionSectionCut);
+    }
+    tab->addPanel(cutPanel);
 
-    // 3. Guides & Visibilité
-    auto* visPanel = new RibbonPanel(QObject::tr("Guides & Règles"), tab);
+    // Aides Visuelles
+    auto* visPanel = new RibbonPanel(QObject::tr("Aides Visuelles"), tab);
     std::vector<QAction*> visCol1;
-    if (acts.actionGridVisible)
-    {
-        if (acts.actionGridVisible->icon().isNull()) acts.actionGridVisible->setIcon(QIcon(":/icons/grid_cartesian.svg"));
-        visCol1.push_back(acts.actionGridVisible);
-    }
-    if (acts.actionLevelsVisible)
-    {
-        if (acts.actionLevelsVisible->icon().isNull()) acts.actionLevelsVisible->setIcon(QIcon(":/icons/levels.svg"));
-        visCol1.push_back(acts.actionLevelsVisible);
-    }
-    if (acts.actionRulersVisible)
-    {
-        if (acts.actionRulersVisible->icon().isNull()) acts.actionRulersVisible->setIcon(QIcon(":/icons/rulers.svg"));
-        visCol1.push_back(acts.actionRulersVisible);
-    }
+    if (acts.actionGridVisible) visCol1.push_back(acts.actionGridVisible);
+    if (acts.actionLevelsVisible) visCol1.push_back(acts.actionLevelsVisible);
+    if (acts.actionRulersVisible) visCol1.push_back(acts.actionRulersVisible);
     if (!visCol1.empty()) visPanel->addSmallColumn(visCol1);
 
     std::vector<QAction*> visCol2;
-    if (acts.actionGridSnap)
-    {
-        if (acts.actionGridSnap->icon().isNull()) acts.actionGridSnap->setIcon(QIcon(":/icons/snap.svg"));
-        visCol2.push_back(acts.actionGridSnap);
-    }
-    if (acts.actionGridLabels)
-    {
-        if (acts.actionGridLabels->icon().isNull()) acts.actionGridLabels->setIcon(QIcon(":/icons/grid_labels.svg"));
-        visCol2.push_back(acts.actionGridLabels);
-    }
+    if (acts.actionGridSnap) visCol2.push_back(acts.actionGridSnap);
+    if (acts.actionGridLabels) visCol2.push_back(acts.actionGridLabels);
+    if (acts.actionFullScreen) visCol2.push_back(acts.actionFullScreen);
     if (!visCol2.empty())
     {
         visPanel->addInternalSeparator();
@@ -334,38 +400,16 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     }
     tab->addPanel(visPanel);
 
-    // 4. Outils de Mesure
-    auto* toolsPanel = new RibbonPanel(QObject::tr("Mesures"), tab);
-    auto* actMeasure = acts.actionMeasure ? acts.actionMeasure : new QAction(QIcon(":/icons/measure.svg"), QObject::tr("Mesurer 3D"), parentWindow);
-    toolsPanel->addLargeAction(actMeasure);
-    tab->addPanel(toolsPanel);
-
-    // 5. Panneaux Docks
+    // Fenêtres Docks
     auto* dockPanel = new RibbonPanel(QObject::tr("Fenêtres & Docks"), tab);
     std::vector<QAction*> dockCol1;
-    if (acts.actionToggleModelTree)
-    {
-        if (acts.actionToggleModelTree->icon().isNull()) acts.actionToggleModelTree->setIcon(QIcon(":/icons/model_tree.svg"));
-        dockCol1.push_back(acts.actionToggleModelTree);
-    }
-    if (acts.actionToggleProperties)
-    {
-        if (acts.actionToggleProperties->icon().isNull()) acts.actionToggleProperties->setIcon(QIcon(":/icons/properties.svg"));
-        dockCol1.push_back(acts.actionToggleProperties);
-    }
+    if (acts.actionToggleModelTree) dockCol1.push_back(acts.actionToggleModelTree);
+    if (acts.actionToggleProperties) dockCol1.push_back(acts.actionToggleProperties);
     if (!dockCol1.empty()) dockPanel->addSmallColumn(dockCol1);
 
     std::vector<QAction*> dockCol2;
-    if (acts.actionToggleVisibility)
-    {
-        if (acts.actionToggleVisibility->icon().isNull()) acts.actionToggleVisibility->setIcon(QIcon(":/icons/visibility.svg"));
-        dockCol2.push_back(acts.actionToggleVisibility);
-    }
-    if (acts.actionToggleConsole)
-    {
-        if (acts.actionToggleConsole->icon().isNull()) acts.actionToggleConsole->setIcon(QIcon(":/icons/console.svg"));
-        dockCol2.push_back(acts.actionToggleConsole);
-    }
+    if (acts.actionToggleVisibility) dockCol2.push_back(acts.actionToggleVisibility);
+    if (acts.actionToggleConsole) dockCol2.push_back(acts.actionToggleConsole);
     if (!dockCol2.empty())
     {
         dockPanel->addInternalSeparator();
@@ -373,18 +417,34 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     }
     tab->addPanel(dockPanel);
 
-    // 6. Style & Thème (Sombre / Clair)
+    return tab;
+}
+
+// -----------------------------------------------------------------------------
+// 8. Onglet OUTILS
+// -----------------------------------------------------------------------------
+RibbonTab* RibbonBuilder::buildToolsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+{
+    auto* tab = bar->addTab(QObject::tr("Outils"));
+
+    // Mesures
+    auto* actMeasure = acts.actionMeasure ? acts.actionMeasure : new QAction(QIcon(":/icons/measure.svg"), QObject::tr("Mesurer 3D"), parentWindow);
+    auto* measPanel = new RibbonPanel(QObject::tr("Inspection"), tab);
+    measPanel->addLargeAction(actMeasure);
+    tab->addPanel(measPanel);
+
+    // Préférences & Thème
     if (acts.actionToggleTheme)
     {
-        auto* themePanel = new RibbonPanel(QObject::tr("Thème CAO"), tab);
-        themePanel->addLargeAction(acts.actionToggleTheme);
-        tab->addPanel(themePanel);
+        auto* envPanel = new RibbonPanel(QObject::tr("Environnement"), tab);
+        envPanel->addLargeAction(acts.actionToggleTheme);
+        tab->addPanel(envPanel);
     }
 
-    // 7. Aide & Documentation
+    // Documentation & Aide
     if (acts.actionHelp || acts.actionShortcuts || acts.actionAbout)
     {
-        auto* helpPanel = new RibbonPanel(QObject::tr("Aide & Support"), tab);
+        auto* helpPanel = new RibbonPanel(QObject::tr("Documentation"), tab);
         if (acts.actionHelp) helpPanel->addLargeAction(acts.actionHelp);
 
         std::vector<QAction*> helpCol;

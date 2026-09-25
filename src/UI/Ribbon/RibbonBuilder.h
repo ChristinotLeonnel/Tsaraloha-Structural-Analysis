@@ -14,89 +14,48 @@ class RibbonPanel;
 
 struct RibbonActions
 {
-    // Fichier
+    // 1. Accueil & Fichier
     QAction* actionNew = nullptr;
     QAction* actionOpen = nullptr;
     QAction* actionSave = nullptr;
     QAction* actionSaveAs = nullptr;
     QAction* actionExit = nullptr;
 
-    // Sélection & Édition
-    QAction* actionSelectMode = nullptr;
-    QAction* actionMove = nullptr;
-    QAction* actionCopy = nullptr;
-    QAction* actionDelete = nullptr;
+    // Historique & Presse-papier
+    QAction* actionUndo = nullptr;
+    QAction* actionRedo = nullptr;
+    QAction* actionCopyClipboard = nullptr;
+    QAction* actionPasteClipboard = nullptr;
 
-    // Géométrie
+    // 2. Modélisation
     QAction* actionDrawNode = nullptr;
     QAction* actionNewNode = nullptr;
-    QAction* actionAddCube = nullptr;
-
-    // Structure
-    QAction* actionDrawWire = nullptr;
-    QAction* actionDrawSurface = nullptr;
     QAction* actionDrawBar = nullptr;
     QAction* actionDrawBeam = nullptr;
-    QAction* actionNewBeam = nullptr;
     QAction* actionDrawColumn = nullptr;
-    QAction* actionNewColumn = nullptr;
     QAction* actionDrawSlab = nullptr;
-    QAction* actionNewSlab = nullptr;
     QAction* actionDrawWall = nullptr;
+    QAction* actionTruss = nullptr;
+    QAction* actionFooting = nullptr;
+    QAction* actionAddCube = nullptr;
     QAction* actionStructurePresets = nullptr;
 
-    // Grilles & Niveaux
+    // Trame & Niveaux
     QAction* actionNewGrid = nullptr;
     QAction* actionGridManager = nullptr;
     QAction* actionManageLevels = nullptr;
-    QAction* actionGridVisible = nullptr;
-    QAction* actionGridSnap = nullptr;
-    QAction* actionGridLabels = nullptr;
-    QAction* actionLevelsVisible = nullptr;
-    QAction* actionRulersVisible = nullptr;
 
-    // Vues & Navigation
-    QAction* actionViewXY = nullptr;
-    QAction* actionViewYZ = nullptr;
-    QAction* actionViewXZ = nullptr;
-    QAction* actionView3D = nullptr;
-    QAction* actionCoordSystem = nullptr;
-    QAction* actionSectionCut = nullptr;
-    QAction* actionFitAll = nullptr;
-    QAction* actionResetView = nullptr;
-
-    // Affichage des Panneaux Docks
-    QAction* actionToggleModelTree = nullptr;
-    QAction* actionToggleProperties = nullptr;
-    QAction* actionToggleVisibility = nullptr;
-    QAction* actionToggleConsole = nullptr;
-
-    // Thème & Documentation
-    QAction* actionToggleTheme = nullptr;
-    QAction* actionHelp = nullptr;
-    QAction* actionShortcuts = nullptr;
-    QAction* actionAbout = nullptr;
-
-    // Éléments avancés & Métier
-    QAction* actionWall = nullptr;
-    QAction* actionTruss = nullptr;
-    QAction* actionFooting = nullptr;
-
-    // Profilés & Sections
+    // 3. Structure
     QAction* actionSecI = nullptr;
     QAction* actionSecRect = nullptr;
     QAction* actionSecCirc = nullptr;
-
-    // Matériaux
     QAction* actionConcrete = nullptr;
     QAction* actionSteel = nullptr;
-
-    // Appuis
     QAction* actionFixed = nullptr;
     QAction* actionPinned = nullptr;
     QAction* actionRoller = nullptr;
 
-    // Charges & Analyse
+    // 4. Calcul
     QAction* actionPointLoad = nullptr;
     QAction* actionDistLoad = nullptr;
     QAction* actionMoment = nullptr;
@@ -105,11 +64,49 @@ struct RibbonActions
     QAction* actionRunSolve = nullptr;
     QAction* actionModal = nullptr;
 
-    // Résultats & Outils
+    // 5. Résultats
     QAction* actionResultsDisp = nullptr;
     QAction* actionResultsForces = nullptr;
     QAction* actionResultsStress = nullptr;
+
+    // 6. Édition & Transformations
+    QAction* actionSelectMode = nullptr;
+    QAction* actionMove3D = nullptr;
+    QAction* actionMove = nullptr;
+    QAction* actionCopy3D = nullptr;
+    QAction* actionCopy = nullptr;
+    QAction* actionRotate3D = nullptr;
+    QAction* actionMoveOrigin = nullptr;
+    QAction* actionDelete = nullptr;
+
+    // 7. Affichage & Vues
+    QAction* actionView3D = nullptr;
+    QAction* actionViewXY = nullptr;
+    QAction* actionViewXZ = nullptr;
+    QAction* actionViewYZ = nullptr;
+    QAction* actionFitAll = nullptr;
+    QAction* actionResetView = nullptr;
+    QAction* actionCoordSystem = nullptr;
+    QAction* actionSectionCut = nullptr;
+
+    QAction* actionGridVisible = nullptr;
+    QAction* actionLevelsVisible = nullptr;
+    QAction* actionGridLabels = nullptr;
+    QAction* actionGridSnap = nullptr;
+    QAction* actionRulersVisible = nullptr;
+    QAction* actionFullScreen = nullptr;
+
+    QAction* actionToggleModelTree = nullptr;
+    QAction* actionToggleProperties = nullptr;
+    QAction* actionToggleVisibility = nullptr;
+    QAction* actionToggleConsole = nullptr;
+
+    // 8. Outils & Préférences
     QAction* actionMeasure = nullptr;
+    QAction* actionToggleTheme = nullptr;
+    QAction* actionHelp = nullptr;
+    QAction* actionShortcuts = nullptr;
+    QAction* actionAbout = nullptr;
 };
 
 class RibbonBuilder
@@ -118,9 +115,13 @@ public:
     static void buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
 
     static RibbonTab* buildHomeTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+    static RibbonTab* buildModelingTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
     static RibbonTab* buildStructureTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildAnalysisTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+    static RibbonTab* buildCalculationTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+    static RibbonTab* buildResultsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+    static RibbonTab* buildEditTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
     static RibbonTab* buildViewTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+    static RibbonTab* buildToolsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
 };
 
 } // namespace TSA::UI

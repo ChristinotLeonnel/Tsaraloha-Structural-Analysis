@@ -164,8 +164,6 @@ private:
     QActionGroup* m_drawModeGroup = nullptr;
     QAction* m_actionSelectMode = nullptr;
     QAction* m_actionDrawNode = nullptr;
-    QAction* m_actionDrawWire = nullptr;
-    QAction* m_actionDrawSurface = nullptr;
     QAction* m_actionDrawBar = nullptr;
     QAction* m_actionDrawBeam = nullptr;
     QAction* m_actionDrawColumn = nullptr;
@@ -178,7 +176,6 @@ private:
     TSA::Model::StructurePresets m_presets;
 
     QAction* m_actionNewNode = nullptr;
-    QAction* m_actionNewBeam = nullptr;
     // Presse-papier structural pour copier-coller 3D (Ctrl+C / Ctrl+V)
     struct ClipboardNode {
         int originalId = 0;
@@ -209,8 +206,6 @@ private:
         std::vector<ClipboardSlab> slabs;
     };
 
-    QAction* m_actionNewColumn = nullptr;
-    QAction* m_actionNewSlab = nullptr;
     QAction* m_actionAddCube = nullptr;
     QAction* m_actionDelete = nullptr;
 
@@ -246,7 +241,6 @@ private:
     QAction* m_actionAbout = nullptr;
 
     // Actions Métier & Outils Avancés
-    QAction* m_actionWall = nullptr;
     QAction* m_actionTruss = nullptr;
     QAction* m_actionFooting = nullptr;
 

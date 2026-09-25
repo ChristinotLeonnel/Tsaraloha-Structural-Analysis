@@ -242,15 +242,15 @@ void MainWindow::createActions()
     connect(m_actionExit, &QAction::triggered, this, &QWidget::close);
 
     // Actions Édition & Transformation
-    m_actionMove = new QAction(tr("&Déplacer les éléments..."), this);
+    m_actionMove = new QAction(tr("Translation &Numérique (Dialogue)..."), this);
     m_actionMove->setIcon(QIcon(":/icons/move.svg"));
-    m_actionMove->setToolTip(tr("Déplacer / Translation (M)..."));
-    m_actionMove->setShortcut(QKeySequence(Qt::Key_M));
+    m_actionMove->setToolTip(tr("Translation numérique par incréments dX, dY, dZ (Ctrl+Shift+M)..."));
+    m_actionMove->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_M));
     connect(m_actionMove, &QAction::triggered, this, &MainWindow::onActionMove);
 
-    m_actionCopy = new QAction(tr("&Copier / Répéter..."), this);
+    m_actionCopy = new QAction(tr("&Copie Numérique (Répétition)..."), this);
     m_actionCopy->setIcon(QIcon(":/icons/copy.svg"));
-    m_actionCopy->setToolTip(tr("Copier / Répéter plusieurs fois (Ctrl+D)..."));
+    m_actionCopy->setToolTip(tr("Copie numérique paramétrique avec répétitions multiples (Ctrl+D)..."));
     m_actionCopy->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_D));
     connect(m_actionCopy, &QAction::triggered, this, &MainWindow::onActionCopy);
 
@@ -387,27 +387,9 @@ void MainWindow::createActions()
     connect(m_actionDrawNode, &QAction::triggered, this, &MainWindow::onModeDrawNode);
     m_drawModeGroup->addAction(m_actionDrawNode);
 
-    m_actionDrawWire = new QAction(tr("Éléments &Filaires..."), this);
-    m_actionDrawWire->setIcon(QIcon(":/icons/draw_beam.svg"));
-    m_actionDrawWire->setToolTip(tr("Outil Éléments Filaires (Barres, Poutres, Poteaux, Treillis) (Alt+B)"));
-    m_actionDrawWire->setCheckable(true);
-    m_actionDrawWire->setShortcut(QKeySequence("Alt+B"));
-    m_actionDrawWire->setStatusTip(tr("Outil Éléments Filaires : création interactive et paramétrique de barres, poutres et poteaux (Alt+B)"));
-    connect(m_actionDrawWire, &QAction::triggered, this, &MainWindow::onModeDrawWire);
-    m_drawModeGroup->addAction(m_actionDrawWire);
-
-    m_actionDrawSurface = new QAction(tr("Éléments &Surfaciques..."), this);
-    m_actionDrawSurface->setIcon(QIcon(":/icons/draw_slab.svg"));
-    m_actionDrawSurface->setToolTip(tr("Outil Éléments Surfaciques (Dalles, Planchers, Voiles, Murs) (Alt+S)"));
-    m_actionDrawSurface->setCheckable(true);
-    m_actionDrawSurface->setShortcut(QKeySequence("Alt+S"));
-    m_actionDrawSurface->setStatusTip(tr("Outil Éléments Surfaciques : création interactive et paramétrique de dalles et voiles (Alt+S)"));
-    connect(m_actionDrawSurface, &QAction::triggered, this, &MainWindow::onModeDrawSurface);
-    m_drawModeGroup->addAction(m_actionDrawSurface);
-
     m_actionDrawBar = new QAction(tr("Outil &Barres"), this);
     m_actionDrawBar->setIcon(QIcon(":/icons/modeling/draw_bar.svg"));
-    m_actionDrawBar->setToolTip(tr("Outil Barres (style Robot Structural Analysis) : définition et dessin en direct"));
+    m_actionDrawBar->setToolTip(tr("Outil Barres (style Robot Structural Analysis) : définition et dessin direct en 3D"));
     m_actionDrawBar->setCheckable(true);
     connect(m_actionDrawBar, &QAction::triggered, this, &MainWindow::onModeDrawBar);
     m_drawModeGroup->addAction(m_actionDrawBar);
@@ -456,23 +438,8 @@ void MainWindow::createActions()
 
     m_actionNewNode = new QAction(tr("Nouveau &Nœud (Dialogue)..."), this);
     m_actionNewNode->setIcon(QIcon(":/icons/node_add.svg"));
-    m_actionNewNode->setToolTip(tr("Créer un Nœud par saisie de coordonnées..."));
+    m_actionNewNode->setToolTip(tr("Créer un Nœud par saisie de coordonnées numériques..."));
     connect(m_actionNewNode, &QAction::triggered, this, &MainWindow::onActionNewNode);
-
-    m_actionNewBeam = new QAction(tr("Nouvelle &Poutre (Dialogue)..."), this);
-    m_actionNewBeam->setIcon(QIcon(":/icons/beam_add.svg"));
-    m_actionNewBeam->setToolTip(tr("Créer une Poutre par numéros de nœuds..."));
-    connect(m_actionNewBeam, &QAction::triggered, this, &MainWindow::onActionNewBeam);
-
-    m_actionNewColumn = new QAction(tr("Nouveau &Poteau (Dialogue)..."), this);
-    m_actionNewColumn->setIcon(QIcon(":/icons/column_add.svg"));
-    m_actionNewColumn->setToolTip(tr("Créer un Poteau par dialogue paramétrique..."));
-    connect(m_actionNewColumn, &QAction::triggered, this, &MainWindow::onActionNewColumn);
-
-    m_actionNewSlab = new QAction(tr("Nouvelle &Dalle (Dialogue)..."), this);
-    m_actionNewSlab->setIcon(QIcon(":/icons/slab_add.svg"));
-    m_actionNewSlab->setToolTip(tr("Créer une Dalle par dialogue paramétrique..."));
-    connect(m_actionNewSlab, &QAction::triggered, this, &MainWindow::onActionNewSlab);
 
     m_actionAddCube = new QAction(tr("Cube &Structurel 3D"), this);
     m_actionAddCube->setIcon(QIcon(":/icons/geom_cube.svg"));
@@ -559,11 +526,6 @@ void MainWindow::createActions()
     connect(m_actionAbout, &QAction::triggered, this, &MainWindow::onActionAbout);
 
     // Actions Métier & Outils Avancés
-    m_actionWall = new QAction(tr("Voile / &Mur BA..."), this);
-    m_actionWall->setIcon(QIcon(":/icons/struct_wall.svg"));
-    m_actionWall->setToolTip(tr("Créer un voile / mur en béton armé entre nœuds ou par saisie"));
-    connect(m_actionWall, &QAction::triggered, this, &MainWindow::onActionWall);
-
     m_actionTruss = new QAction(tr("&Treillis Paramétrique..."), this);
     m_actionTruss->setIcon(QIcon(":/icons/struct_truss.svg"));
     m_actionTruss->setToolTip(tr("Générer une ferme ou poutre en treillis (Warren, Pratt, Howe)"));
@@ -673,7 +635,7 @@ void MainWindow::createActions()
 
 void MainWindow::createMenus()
 {
-    // Menu Fichier
+    // 1. Menu Fichier (Accueil)
     QMenu* fileMenu = menuBar()->addMenu(tr("&Fichier"));
     fileMenu->addAction(m_actionNew);
     fileMenu->addAction(m_actionOpen);
@@ -682,104 +644,70 @@ void MainWindow::createMenus()
     fileMenu->addSeparator();
     fileMenu->addAction(m_actionExit);
 
-    // Menu Édition
+    // 2. Menu Édition
     QMenu* editMenu = menuBar()->addMenu(tr("&Édition"));
     editMenu->addAction(m_actionUndo);
     editMenu->addAction(m_actionRedo);
+    editMenu->addSeparator();
+    editMenu->addAction(m_actionSelectMode);
     editMenu->addSeparator();
     editMenu->addAction(m_actionCopyClipboard);
     editMenu->addAction(m_actionPasteClipboard);
     editMenu->addSeparator();
     editMenu->addAction(m_actionMove3D);
-    editMenu->addAction(m_actionCopy3D);
-    editMenu->addAction(m_actionRotate3D);
-    editMenu->addAction(m_actionMoveOrigin);
-    editMenu->addSeparator();
     editMenu->addAction(m_actionMove);
+    editMenu->addSeparator();
+    editMenu->addAction(m_actionCopy3D);
     editMenu->addAction(m_actionCopy);
+    editMenu->addAction(m_actionRotate3D);
     editMenu->addSeparator();
     editMenu->addAction(m_actionDelete);
 
-    // Menu Affichage / Vue
-    QMenu* viewMenu = menuBar()->addMenu(tr("&Affichage"));
-    viewMenu->addAction(m_actionViewXY);
-    viewMenu->addAction(m_actionViewYZ);
-    viewMenu->addAction(m_actionViewXZ);
-    viewMenu->addAction(m_actionView3D);
-    viewMenu->addSeparator();
-    viewMenu->addAction(m_actionCoordSystem);
-    viewMenu->addAction(m_actionSectionCut);
-    viewMenu->addSeparator();
-    viewMenu->addAction(m_actionFitAll);
-    viewMenu->addAction(m_actionResetView);
-    viewMenu->addSeparator();
-    viewMenu->addAction(m_actionToggleTheme);
-    viewMenu->addAction(m_actionFullScreen);
+    // 3. Menu Modélisation
+    QMenu* modelMenu = menuBar()->addMenu(tr("&Modélisation"));
+    QMenu* filarSub = modelMenu->addMenu(tr("Éléments Filaires (1D)"));
+    filarSub->addAction(m_actionDrawBeam);
+    filarSub->addAction(m_actionDrawColumn);
+    filarSub->addAction(m_actionDrawBar);
+    filarSub->addAction(m_actionTruss);
 
-    // Menu Grille 3D & Niveaux
-    QMenu* gridMenu = menuBar()->addMenu(tr("&Grilles && Niveaux"));
-    gridMenu->addAction(m_actionNewGrid);
-    gridMenu->addAction(m_actionGridManager);
-    gridMenu->addAction(m_actionManageLevels);
-    gridMenu->addSeparator();
-    gridMenu->addAction(m_actionGridVisible);
-    gridMenu->addAction(m_actionLevelsVisible);
-    gridMenu->addAction(m_actionGridSnap);
-    gridMenu->addAction(m_actionGridLabels);
-    gridMenu->addAction(m_actionRulersVisible);
-
-    // Menu Dessin (Draw - style Robot SA / AutoCAD)
-    QMenu* cadDrawMenu = menuBar()->addMenu(tr("&Dessin"));
-    cadDrawMenu->addAction(m_actionDrawWire);
-    cadDrawMenu->addAction(m_actionDrawSurface);
-    cadDrawMenu->addSeparator();
-    cadDrawMenu->addAction(m_actionDrawNode);
-
-    // Menu Modèle (Création d'éléments structuraux)
-    QMenu* modelMenu = menuBar()->addMenu(tr("&Modèle"));
-    QMenu* modelStructSubMenu = modelMenu->addMenu(tr("&Structure"));
-    modelStructSubMenu->addAction(m_actionDrawWire);
-    modelStructSubMenu->addAction(m_actionDrawSurface);
-
-    QMenu* drawMenu = modelMenu->addMenu(tr("Modes de Dessin 3D"));
-    drawMenu->addAction(m_actionSelectMode);
-    drawMenu->addSeparator();
-    drawMenu->addAction(m_actionDrawNode);
-    drawMenu->addAction(m_actionDrawWire);
-    drawMenu->addAction(m_actionDrawSurface);
-    drawMenu->addSeparator();
-    drawMenu->addAction(m_actionStructurePresets);
+    QMenu* surfSub = modelMenu->addMenu(tr("Éléments Surfaciques (2D)"));
+    surfSub->addAction(m_actionDrawSlab);
+    surfSub->addAction(m_actionDrawWall);
+    surfSub->addAction(m_actionFooting);
 
     modelMenu->addSeparator();
+    modelMenu->addAction(m_actionDrawNode);
     modelMenu->addAction(m_actionNewNode);
     modelMenu->addAction(m_actionAddCube);
+    modelMenu->addSeparator();
+    modelMenu->addAction(m_actionMoveOrigin);
+    modelMenu->addSeparator();
+    QMenu* gridSub = modelMenu->addMenu(tr("Trame && Niveaux"));
+    gridSub->addAction(m_actionNewGrid);
+    gridSub->addAction(m_actionGridManager);
+    gridSub->addAction(m_actionManageLevels);
+    modelMenu->addSeparator();
+    modelMenu->addAction(m_actionStructurePresets);
 
-    // Menu Structure (Voiles, Treillis, Fondations, Sections, Matériaux, Appuis)
+    // 4. Menu Structure
     QMenu* structMenu = menuBar()->addMenu(tr("&Structure"));
-    structMenu->addAction(m_actionDrawBar);
-    structMenu->addAction(m_actionDrawBeam);
-    structMenu->addAction(m_actionDrawColumn);
-    structMenu->addAction(m_actionDrawWall);
-    structMenu->addAction(m_actionStructurePresets);
-    structMenu->addSeparator();
-    structMenu->addAction(m_actionWall);
-    structMenu->addAction(m_actionTruss);
-    structMenu->addAction(m_actionFooting);
-    structMenu->addSeparator();
     QMenu* secSubMenu = structMenu->addMenu(tr("Sections && Profilés"));
     secSubMenu->addAction(m_actionSecI);
     secSubMenu->addAction(m_actionSecRect);
     secSubMenu->addAction(m_actionSecCirc);
+
     QMenu* matSubMenu = structMenu->addMenu(tr("Matériaux"));
     matSubMenu->addAction(m_actionConcrete);
     matSubMenu->addAction(m_actionSteel);
+
     structMenu->addSeparator();
     QMenu* supSubMenu = structMenu->addMenu(tr("Conditions d'Appuis"));
     supSubMenu->addAction(m_actionFixed);
     supSubMenu->addAction(m_actionPinned);
     supSubMenu->addAction(m_actionRoller);
 
-    // Menu Calculs & Analyse
+    // 5. Menu Calculs
     QMenu* analysisMenu = menuBar()->addMenu(tr("&Calculs"));
     QMenu* loadSubMenu = analysisMenu->addMenu(tr("Charges && Actions"));
     loadSubMenu->addAction(m_actionPointLoad);
@@ -788,26 +716,53 @@ void MainWindow::createMenus()
     loadSubMenu->addAction(m_actionSeismic);
     analysisMenu->addSeparator();
     analysisMenu->addAction(m_actionMeshGen);
+    analysisMenu->addSeparator();
     analysisMenu->addAction(m_actionRunSolve);
     analysisMenu->addAction(m_actionModal);
-    analysisMenu->addSeparator();
-    QMenu* resSubMenu = analysisMenu->addMenu(tr("Résultats"));
-    resSubMenu->addAction(m_actionResultsDisp);
-    resSubMenu->addAction(m_actionResultsForces);
-    resSubMenu->addAction(m_actionResultsStress);
 
-    // Menu Outils
-    QMenu* toolsMenu = menuBar()->addMenu(tr("&Outils"));
-    toolsMenu->addAction(m_actionMeasure);
+    // 6. Menu Résultats
+    QMenu* resMenu = menuBar()->addMenu(tr("&Résultats"));
+    resMenu->addAction(m_actionResultsDisp);
+    resMenu->addAction(m_actionResultsForces);
+    resMenu->addAction(m_actionResultsStress);
 
-    // Menu Fenêtres / Docks
+    // 7. Menu Affichage
+    QMenu* viewMenu = menuBar()->addMenu(tr("&Affichage"));
+    QMenu* projSub = viewMenu->addMenu(tr("Projections"));
+    projSub->addAction(m_actionView3D);
+    projSub->addAction(m_actionViewXY);
+    projSub->addAction(m_actionViewXZ);
+    projSub->addAction(m_actionViewYZ);
+
+    viewMenu->addSeparator();
+    viewMenu->addAction(m_actionFitAll);
+    viewMenu->addAction(m_actionResetView);
+    viewMenu->addSeparator();
+    viewMenu->addAction(m_actionCoordSystem);
+    viewMenu->addAction(m_actionSectionCut);
+    viewMenu->addSeparator();
+    QMenu* visSub = viewMenu->addMenu(tr("Aides Visuelles"));
+    visSub->addAction(m_actionGridVisible);
+    visSub->addAction(m_actionLevelsVisible);
+    visSub->addAction(m_actionGridLabels);
+    visSub->addAction(m_actionGridSnap);
+    visSub->addAction(m_actionRulersVisible);
+    visSub->addAction(m_actionFullScreen);
+
+    // 8. Menu Fenêtres
     QMenu* windowsMenu = menuBar()->addMenu(tr("&Fenêtres"));
     if (m_modelTreeDock) windowsMenu->addAction(m_modelTreeDock->toggleViewAction());
     if (m_propertiesDock) windowsMenu->addAction(m_propertiesDock->toggleViewAction());
     if (m_visibilityDock) windowsMenu->addAction(m_visibilityDock->toggleViewAction());
     if (m_consoleDock) windowsMenu->addAction(m_consoleDock->toggleViewAction());
 
-    // Menu Aide
+    // 9. Menu Outils
+    QMenu* toolsMenu = menuBar()->addMenu(tr("&Outils"));
+    toolsMenu->addAction(m_actionMeasure);
+    toolsMenu->addSeparator();
+    toolsMenu->addAction(m_actionToggleTheme);
+
+    // 10. Menu Aide
     QMenu* helpMenu = menuBar()->addMenu(tr("&Aide"));
     helpMenu->addAction(m_actionHelp);
     helpMenu->addAction(m_actionShortcuts);
@@ -826,30 +781,35 @@ void MainWindow::createRibbon()
     acts.actionSaveAs = m_actionSaveAs;
     acts.actionExit = m_actionExit;
 
+    acts.actionUndo = m_actionUndo;
+    acts.actionRedo = m_actionRedo;
+    acts.actionCopyClipboard = m_actionCopyClipboard;
+    acts.actionPasteClipboard = m_actionPasteClipboard;
+
     acts.actionSelectMode = m_actionSelectMode;
+    acts.actionMove3D = m_actionMove3D;
     acts.actionMove = m_actionMove;
+    acts.actionCopy3D = m_actionCopy3D;
     acts.actionCopy = m_actionCopy;
+    acts.actionRotate3D = m_actionRotate3D;
+    acts.actionMoveOrigin = m_actionMoveOrigin;
     acts.actionDelete = m_actionDelete;
 
     acts.actionDrawNode = m_actionDrawNode;
     acts.actionNewNode = m_actionNewNode;
-    acts.actionAddCube = m_actionAddCube;
-
-    acts.actionDrawWire = m_actionDrawWire;
-    acts.actionDrawSurface = m_actionDrawSurface;
     acts.actionDrawBar = m_actionDrawBar;
     acts.actionDrawBeam = m_actionDrawBeam;
-    acts.actionNewBeam = m_actionNewBeam;
     acts.actionDrawColumn = m_actionDrawColumn;
-    acts.actionNewColumn = m_actionNewColumn;
     acts.actionDrawSlab = m_actionDrawSlab;
-    acts.actionNewSlab = m_actionNewSlab;
     acts.actionDrawWall = m_actionDrawWall;
-    acts.actionStructurePresets = m_actionStructurePresets;
-
-    acts.actionWall = m_actionWall;
     acts.actionTruss = m_actionTruss;
     acts.actionFooting = m_actionFooting;
+    acts.actionAddCube = m_actionAddCube;
+    acts.actionStructurePresets = m_actionStructurePresets;
+
+    acts.actionNewGrid = m_actionNewGrid;
+    acts.actionGridManager = m_actionGridManager;
+    acts.actionManageLevels = m_actionManageLevels;
 
     acts.actionSecI = m_actionSecI;
     acts.actionSecRect = m_actionSecRect;
@@ -875,31 +835,28 @@ void MainWindow::createRibbon()
     acts.actionResultsForces = m_actionResultsForces;
     acts.actionResultsStress = m_actionResultsStress;
 
-    acts.actionMeasure = m_actionMeasure;
-
-    acts.actionNewGrid = m_actionNewGrid;
-    acts.actionGridManager = m_actionGridManager;
-    acts.actionManageLevels = m_actionManageLevels;
-    acts.actionGridVisible = m_actionGridVisible;
-    acts.actionGridSnap = m_actionGridSnap;
-    acts.actionGridLabels = m_actionGridLabels;
-    acts.actionLevelsVisible = m_actionLevelsVisible;
-    acts.actionRulersVisible = m_actionRulersVisible;
-
-    acts.actionViewXY = m_actionViewXY;
-    acts.actionViewYZ = m_actionViewYZ;
-    acts.actionViewXZ = m_actionViewXZ;
     acts.actionView3D = m_actionView3D;
-    acts.actionCoordSystem = m_actionCoordSystem;
-    acts.actionSectionCut = m_actionSectionCut;
+    acts.actionViewXY = m_actionViewXY;
+    acts.actionViewXZ = m_actionViewXZ;
+    acts.actionViewYZ = m_actionViewYZ;
     acts.actionFitAll = m_actionFitAll;
     acts.actionResetView = m_actionResetView;
+    acts.actionCoordSystem = m_actionCoordSystem;
+    acts.actionSectionCut = m_actionSectionCut;
+
+    acts.actionGridVisible = m_actionGridVisible;
+    acts.actionLevelsVisible = m_actionLevelsVisible;
+    acts.actionGridLabels = m_actionGridLabels;
+    acts.actionGridSnap = m_actionGridSnap;
+    acts.actionRulersVisible = m_actionRulersVisible;
+    acts.actionFullScreen = m_actionFullScreen;
 
     if (m_modelTreeDock) acts.actionToggleModelTree = m_modelTreeDock->toggleViewAction();
     if (m_propertiesDock) acts.actionToggleProperties = m_propertiesDock->toggleViewAction();
     if (m_visibilityDock) acts.actionToggleVisibility = m_visibilityDock->toggleViewAction();
     if (m_consoleDock) acts.actionToggleConsole = m_consoleDock->toggleViewAction();
 
+    acts.actionMeasure = m_actionMeasure;
     acts.actionToggleTheme = m_actionToggleTheme;
     acts.actionHelp = m_actionHelp;
     acts.actionShortcuts = m_actionShortcuts;
@@ -1259,13 +1216,19 @@ void MainWindow::createStatusBar()
             if (m_actionDrawNode) m_actionDrawNode->setChecked(true);
             break;
         case OccView::InteractionMode::DrawBar:
+            if (m_actionDrawBar) m_actionDrawBar->setChecked(true);
+            break;
         case OccView::InteractionMode::DrawBeam:
+            if (m_actionDrawBeam) m_actionDrawBeam->setChecked(true);
+            break;
         case OccView::InteractionMode::DrawColumn:
-            if (m_actionDrawWire) m_actionDrawWire->setChecked(true);
+            if (m_actionDrawColumn) m_actionDrawColumn->setChecked(true);
             break;
         case OccView::InteractionMode::DrawSlab:
+            if (m_actionDrawSlab) m_actionDrawSlab->setChecked(true);
+            break;
         case OccView::InteractionMode::DrawWall:
-            if (m_actionDrawSurface) m_actionDrawSurface->setChecked(true);
+            if (m_actionDrawWall) m_actionDrawWall->setChecked(true);
             break;
         case OccView::InteractionMode::Move3D:
             if (m_actionMove3D) m_actionMove3D->setChecked(true);
@@ -1329,8 +1292,21 @@ void MainWindow::openBarCreationDialog(TSA::Model::BarRole role)
 
     m_barDialog->setRole(role);
     m_occView->setCurrentBarProperties(m_barDialog->currentProperties());
-    m_occView->setInteractionMode(OccView::InteractionMode::DrawBar);
-    if (m_actionDrawBar) m_actionDrawBar->setChecked(true);
+    if (role == TSA::Model::BarRole::Beam)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawBeam);
+        if (m_actionDrawBeam) m_actionDrawBeam->setChecked(true);
+    }
+    else if (role == TSA::Model::BarRole::Column)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawColumn);
+        if (m_actionDrawColumn) m_actionDrawColumn->setChecked(true);
+    }
+    else
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawBar);
+        if (m_actionDrawBar) m_actionDrawBar->setChecked(true);
+    }
 
     m_barDialog->showNormal();
     m_barDialog->raise();
@@ -1387,12 +1363,13 @@ void MainWindow::openSurfaceCreationDialog(int surfaceType)
     if (surfaceType == 0)
     {
         m_occView->setInteractionMode(OccView::InteractionMode::DrawSlab);
+        if (m_actionDrawSlab) m_actionDrawSlab->setChecked(true);
     }
     else
     {
         m_occView->setInteractionMode(OccView::InteractionMode::DrawWall);
+        if (m_actionDrawWall) m_actionDrawWall->setChecked(true);
     }
-    if (m_actionDrawSurface) m_actionDrawSurface->setChecked(true);
 
     m_surfaceDialog->showNormal();
     m_surfaceDialog->raise();
