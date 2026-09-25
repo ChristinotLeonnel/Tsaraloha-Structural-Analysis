@@ -1,4 +1,5 @@
 #include "ModelTreeWidget.h"
+#include "../../Model/ModelDiff.h"
 #include "../../Grid/GridManager.h"
 #include <QVBoxLayout>
 #include <QHeaderView>
@@ -662,6 +663,83 @@ void ModelTreeWidget::onTrussMemberRemoved(int memberId)
         }
     }
     m_trussCategory->setText(1, QString("[%1]").arg(m_trussCategory->childCount()));
+}
+
+void ModelTreeWidget::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
+{
+    QSignalBlocker blocker(m_tree);
+
+    // 1. Éléments supprimés
+    for (int id : diff.deletedNodeIds) onNodeRemoved(id);
+    for (int id : diff.deletedBeamIds) onBeamRemoved(id);
+    for (int id : diff.deletedColumnIds) onColumnRemoved(id);
+    for (int id : diff.deletedSlabIds) onSlabRemoved(id);
+    for (int id : diff.deletedWallIds) onWallRemoved(id);
+    for (int id : diff.deletedFoundationIds) onFoundationRemoved(id);
+    for (int id : diff.deletedTrussMemberIds) onTrussMemberRemoved(id);
+
+    if (m_model)
+    {
+        // 2. Éléments créés
+        for (int id : diff.createdNodeIds)
+        {
+            if (const auto* n = m_model->getNode(id)) onNodeAdded(*n);
+        }
+        for (int id : diff.createdBeamIds)
+        {
+            if (const auto* b = m_model->getBeam(id)) onBeamAdded(*b);
+        }
+        for (int id : diff.createdColumnIds)
+        {
+            if (const auto* c = m_model->getColumn(id)) onColumnAdded(*c);
+        }
+        for (int id : diff.createdSlabIds)
+        {
+            if (const auto* s = m_model->getSlab(id)) onSlabAdded(*s);
+        }
+        for (int id : diff.createdWallIds)
+        {
+            if (const auto* w = m_model->getWall(id)) onWallAdded(*w);
+        }
+        for (int id : diff.createdFoundationIds)
+        {
+            if (const auto* f = m_model->getFoundation(id)) onFoundationAdded(*f);
+        }
+        for (int id : diff.createdTrussMemberIds)
+        {
+            if (const auto* t = m_model->getTrussMember(id)) onTrussMemberAdded(*t);
+        }
+
+        // 3. Éléments modifiés
+        for (int id : diff.modifiedNodeIds)
+        {
+            if (const auto* n = m_model->getNode(id)) onNodeModified(*n);
+        }
+        for (int id : diff.modifiedBeamIds)
+        {
+            if (const auto* b = m_model->getBeam(id)) onBeamModified(*b);
+        }
+        for (int id : diff.modifiedColumnIds)
+        {
+            if (const auto* c = m_model->getColumn(id)) onColumnModified(*c);
+        }
+        for (int id : diff.modifiedSlabIds)
+        {
+            if (const auto* s = m_model->getSlab(id)) onSlabModified(*s);
+        }
+        for (int id : diff.modifiedWallIds)
+        {
+            if (const auto* w = m_model->getWall(id)) onWallModified(*w);
+        }
+        for (int id : diff.modifiedFoundationIds)
+        {
+            if (const auto* f = m_model->getFoundation(id)) onFoundationModified(*f);
+        }
+        for (int id : diff.modifiedTrussMemberIds)
+        {
+            if (const auto* t = m_model->getTrussMember(id)) onTrussMemberModified(*t);
+        }
+    }
 }
 
 void ModelTreeWidget::onModelCleared()

@@ -3711,13 +3711,6 @@ void MainWindow::onActionUndo()
         std::string actionName = m_model->lastUndoActionName();
         if (m_model->undo())
         {
-            if (m_selectionManager) m_selectionManager->clearSelection();
-            if (m_modelTree) m_modelTree->refreshAll();
-            if (m_occView)
-            {
-                m_occView->rebuildAllShapes();
-                m_occView->update();
-            }
             updateUndoRedoActions();
             statusBar()->showMessage(tr("Action annulée : %1 (Ctrl+Z)").arg(QString::fromStdString(actionName)), 3000);
         }
@@ -3731,13 +3724,6 @@ void MainWindow::onActionRedo()
         std::string actionName = m_model->lastRedoActionName();
         if (m_model->redo())
         {
-            if (m_selectionManager) m_selectionManager->clearSelection();
-            if (m_modelTree) m_modelTree->refreshAll();
-            if (m_occView)
-            {
-                m_occView->rebuildAllShapes();
-                m_occView->update();
-            }
             updateUndoRedoActions();
             statusBar()->showMessage(tr("Action rétablie : %1 (Ctrl+Y)").arg(QString::fromStdString(actionName)), 3000);
         }

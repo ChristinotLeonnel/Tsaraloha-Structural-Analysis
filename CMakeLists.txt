@@ -137,6 +137,8 @@ set(SOURCES
     src/Model/TrussMember.cpp
     src/Model/Model.h
     src/Model/Model.cpp
+    src/Model/ModelDiff.h
+    src/Model/ModelDiff.cpp
     src/IO/TSAFileFormat.h
     src/IO/TSAFile.h
     src/IO/TSAFile.cpp
@@ -231,6 +233,8 @@ set(TEST_SOURCES
     src/Model/TrussMember.cpp
     src/Model/Model.h
     src/Model/Model.cpp
+    src/Model/ModelDiff.h
+    src/Model/ModelDiff.cpp
     src/Grid/GridType.h
     src/Grid/GridDefinition.h
     src/Grid/GridDefinition.cpp
@@ -260,6 +264,7 @@ if(MSVC)
     target_compile_options(TSA_Tests PRIVATE /W4 /permissive- /utf-8)
     target_compile_definitions(TSA_Tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 endif()
+set_target_properties(TSA_Tests PROPERTIES OUTPUT_NAME "TSA_TestSuite")
 add_test(NAME CoordinatesAndLevelsTest COMMAND TSA_Tests)
 
 # -----------------------------------------------------------------------------

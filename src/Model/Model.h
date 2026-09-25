@@ -19,6 +19,8 @@
 namespace TSA::Model
 {
 
+struct ModelDiff;
+
 class IModelObserver
 {
 public:
@@ -51,6 +53,7 @@ public:
     virtual void onTrussMemberModified(const TrussMember& /*member*/) {}
     virtual void onTrussMemberRemoved(int /*memberId*/) {}
 
+    virtual void onModelDiffApplied(const ModelDiff& /*diff*/) {}
     virtual void onModelCleared() {}
 };
 
@@ -187,6 +190,8 @@ public:
 
     ModelStateSnapshot createSnapshot(const std::string& actionName = "") const;
     void restoreSnapshot(const ModelStateSnapshot& snapshot);
+    void applySnapshotData(const ModelStateSnapshot& snapshot);
+    void notifyModelDiffApplied(const ModelDiff& diff);
 
     // Notifications de modification
     void notifyNodeModified(int nodeId);

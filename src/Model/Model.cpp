@@ -1,4 +1,5 @@
 #include "Model.h"
+#include "ModelDiff.h"
 #include <algorithm>
 #include <cmath>
 #include <gp_Trsf.hxx>
@@ -1259,13 +1260,20 @@ bool Model::undo()
     if (m_undoStack.empty())
         return false;
 
-    std::string currentAction = m_undoStack.back().actionName;
-    m_redoStack.push_back(createSnapshot(currentAction));
+    ModelStateSnapshot currentSnap = createSnapshot(m_undoStack.back().actionName);
+    m_redoStack.push_back(currentSnap);
 
     ModelStateSnapshot target = m_undoStack.back();
     m_undoStack.pop_back();
 
-    restoreSnapshot(target);
+    // 1. Calculer le différentiel précis avant modification
+    ModelDiff diff = ModelDiff::compute(currentSnap, target);
+
+    // 2. Mettre à jour l'état logique des données du modèle
+    applySnapshotData(target);
+
+    // 3. Notifier différentiellement les observateurs (mise à jour ciblée du viewport OCCT et de l'arbre)
+    notifyModelDiffApplied(diff);
     return true;
 }
 
@@ -1274,13 +1282,20 @@ bool Model::redo()
     if (m_redoStack.empty())
         return false;
 
-    std::string currentAction = m_redoStack.back().actionName;
-    m_undoStack.push_back(createSnapshot(currentAction));
+    ModelStateSnapshot currentSnap = createSnapshot(m_redoStack.back().actionName);
+    m_undoStack.push_back(currentSnap);
 
     ModelStateSnapshot target = m_redoStack.back();
     m_redoStack.pop_back();
 
-    restoreSnapshot(target);
+    // 1. Calculer le différentiel précis
+    ModelDiff diff = ModelDiff::compute(currentSnap, target);
+
+    // 2. Mettre à jour l'état logique
+    applySnapshotData(target);
+
+    // 3. Notification différentielle
+    notifyModelDiffApplied(diff);
     return true;
 }
 
@@ -1321,7 +1336,7 @@ Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) c
     return snap;
 }
 
-void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
+void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
 {
     m_nodes = snapshot.nodes;
     m_beams = snapshot.beams;
@@ -1337,6 +1352,20 @@ void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
     m_nextWallId = snapshot.nextWallId;
     m_nextFoundationId = snapshot.nextFoundationId;
     m_nextTrussMemberId = snapshot.nextTrussMemberId;
+    m_isModified = true;
+}
+
+void Model::notifyModelDiffApplied(const ModelDiff& diff)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onModelDiffApplied(diff);
+    }
+}
+
+void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
+{
+    applySnapshotData(snapshot);
 
     for (auto* obs : m_observers)
     {

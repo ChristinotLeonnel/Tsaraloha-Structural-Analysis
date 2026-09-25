@@ -1,6 +1,7 @@
 #include "OccView.h"
 #include "SelectionManager.h"
 #include "../Model/Model.h"
+#include "../Model/ModelDiff.h"
 #include "../Geometry/BeamGeometry.h"
 #include "../Geometry/SlabGeometry.h"
 #include "../Geometry/WallGeometry.h"
@@ -175,6 +176,46 @@ void OccView::onTrussMemberModified(const TSA::Model::TrussMember& member)
 void OccView::onTrussMemberRemoved(int memberId)
 {
     removeTrussMemberShape(memberId);
+}
+
+void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
+{
+    if (m_context.IsNull() || !m_model)
+        return;
+
+    // 1. Supprimer uniquement les objets supprimés (sans redraw intermédiaire)
+    for (int id : diff.deletedNodeIds) removeNodeShape(id, false);
+    for (int id : diff.deletedBeamIds) removeBeamShape(id, false);
+    for (int id : diff.deletedColumnIds) removeColumnShape(id, false);
+    for (int id : diff.deletedSlabIds) removeSlabShape(id, false);
+    for (int id : diff.deletedWallIds) removeWallShape(id, false);
+    for (int id : diff.deletedFoundationIds) removeFoundationShape(id, false);
+    for (int id : diff.deletedTrussMemberIds) removeTrussMemberShape(id, false);
+
+    // 2. Mettre à jour uniquement les objets créés et modifiés (sans redraw intermédiaire)
+    for (int id : diff.createdNodeIds) updateNodeShape(id, false);
+    for (int id : diff.createdBeamIds) updateBeamShape(id, false);
+    for (int id : diff.createdColumnIds) updateColumnShape(id, false);
+    for (int id : diff.createdSlabIds) updateSlabShape(id, false);
+    for (int id : diff.createdWallIds) updateWallShape(id, false);
+    for (int id : diff.createdFoundationIds) updateFoundationShape(id, false);
+    for (int id : diff.createdTrussMemberIds) updateTrussMemberShape(id, false);
+
+    for (int id : diff.modifiedNodeIds) updateNodeShape(id, false);
+    for (int id : diff.modifiedBeamIds) updateBeamShape(id, false);
+    for (int id : diff.modifiedColumnIds) updateColumnShape(id, false);
+    for (int id : diff.modifiedSlabIds) updateSlabShape(id, false);
+    for (int id : diff.modifiedWallIds) updateWallShape(id, false);
+    for (int id : diff.modifiedFoundationIds) updateFoundationShape(id, false);
+    for (int id : diff.modifiedTrussMemberIds) updateTrussMemberShape(id, false);
+
+    // 3. Une SEULE passe d'actualisation de la vue graphique OCCT
+    // AUCUN fitAll(), la caméra et le zoom sont rigoureusement préservés !
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
 }
 
 void OccView::onModelCleared()
@@ -564,10 +605,12 @@ void OccView::rebuildAllShapes()
     fitAll();
 }
 
-void OccView::updateNodeShape(int nodeId)
+void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
 {
     if (m_context.IsNull() || !m_model)
         return;
+
+    bool wasSelected = m_selectionManager && m_selectionManager->selectedNodes().count(nodeId) > 0;
 
     // 1. Supprimer l'ancienne forme (avant le contrôle de validité, pour ne jamais
     //    laisser un nœud fantôme affiché/sélectionnable)
@@ -608,65 +651,68 @@ void OccView::updateNodeShape(int nodeId)
         if (m_selectionManager)
         {
             m_selectionManager->registerNode(nodeId, aisNode);
+            if (wasSelected)
+            {
+                m_selectionManager->selectNode(nodeId, true);
+                m_context->SetSelected(aisNode, false);
+            }
         }
     }
 
     // 3. Collecter les éléments connectés à ce nœud avant de les mettre à jour
-    //    (chaque updateXxxShape fait UpdateCurrentViewer+ZFitAll+Redraw individuellement,
-    //     on les regroupe ici pour n'actualiser qu'une seule fois à la fin)
-    std::vector<int> connectedBeams;
-    for (const auto& [beamId, beam] : m_model->beams())
+    //    (uniquement si redrawImmediately est vrai, sinon c'est le diff global qui gère)
+    if (redrawImmediately)
     {
-        if (beam.startNodeId() == nodeId || beam.endNodeId() == nodeId)
-            connectedBeams.push_back(beamId);
-    }
+        std::vector<int> connectedBeams;
+        for (const auto& [beamId, beam] : m_model->beams())
+        {
+            if (beam.startNodeId() == nodeId || beam.endNodeId() == nodeId)
+                connectedBeams.push_back(beamId);
+        }
 
-    std::vector<int> connectedCols;
-    for (const auto& [colId, col] : m_model->columns())
-    {
-        if (col.startNodeId() == nodeId || col.endNodeId() == nodeId)
-            connectedCols.push_back(colId);
-    }
+        std::vector<int> connectedCols;
+        for (const auto& [colId, col] : m_model->columns())
+        {
+            if (col.startNodeId() == nodeId || col.endNodeId() == nodeId)
+                connectedCols.push_back(colId);
+        }
 
-    std::vector<int> connectedSlabs;
-    for (const auto& [slabId, slab] : m_model->slabs())
-    {
-        const auto& nids = slab.nodeIds();
-        if (std::find(nids.begin(), nids.end(), nodeId) != nids.end())
-            connectedSlabs.push_back(slabId);
-    }
+        std::vector<int> connectedSlabs;
+        for (const auto& [slabId, slab] : m_model->slabs())
+        {
+            const auto& nids = slab.nodeIds();
+            if (std::find(nids.begin(), nids.end(), nodeId) != nids.end())
+                connectedSlabs.push_back(slabId);
+        }
 
-    std::vector<int> connectedWalls;
-    for (const auto& [wallId, wall] : m_model->walls())
-    {
-        if (wall.startNodeId() == nodeId || wall.endNodeId() == nodeId)
-            connectedWalls.push_back(wallId);
-    }
+        std::vector<int> connectedWalls;
+        for (const auto& [wallId, wall] : m_model->walls())
+        {
+            if (wall.startNodeId() == nodeId || wall.endNodeId() == nodeId)
+                connectedWalls.push_back(wallId);
+        }
 
-    // Mettre à jour silencieusement (les updateXxxShape font UpdateCurrentViewer+Redraw chacun,
-    // mais on ne peut pas les éviter sans refactoring plus profond)
-    for (int bid : connectedBeams) updateBeamShape(bid);
-    for (int cid : connectedCols)  updateColumnShape(cid);
-    for (int sid : connectedSlabs) updateSlabShape(sid);
-    for (int wid : connectedWalls) updateWallShape(wid);
+        for (int bid : connectedBeams) updateBeamShape(bid, false);
+        for (int cid : connectedCols)  updateColumnShape(cid, false);
+        for (int sid : connectedSlabs) updateSlabShape(sid, false);
+        for (int wid : connectedWalls) updateWallShape(wid, false);
 
-    // 4. Actualiser immédiatement l'affichage 3D OpenCASCADE
-    m_context->UpdateCurrentViewer();
-    if (!m_view.IsNull())
-    {
-        m_view->ZFitAll();
-        m_view->Redraw();
+        // 4. Actualiser immédiatement l'affichage 3D OpenCASCADE
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->ZFitAll();
+            m_view->Redraw();
+        }
     }
 }
 
-void OccView::updateBeamShape(int beamId)
+void OccView::updateBeamShape(int beamId, bool redrawImmediately)
 {
     if (m_context.IsNull() || !m_model)
         return;
 
-    const auto* beam = m_model->getBeam(beamId);
-    if (!beam)
-        return;
+    bool wasSelected = m_selectionManager && m_selectionManager->selectedBeams().count(beamId) > 0;
 
     // 1. Supprimer l'ancienne forme (avant le contrôle de validité des nœuds, pour
     //    ne jamais laisser une forme fantôme affichée/sélectionnable si les nœuds
@@ -681,6 +727,10 @@ void OccView::updateBeamShape(int beamId)
             m_selectionManager->unregisterBeam(beamId);
         }
     }
+
+    const auto* beam = m_model->getBeam(beamId);
+    if (!beam)
+        return;
 
     const auto* nodeA = m_model->getNode(beam->startNodeId());
     const auto* nodeB = m_model->getNode(beam->endNodeId());
@@ -727,26 +777,32 @@ void OccView::updateBeamShape(int beamId)
         if (m_selectionManager)
         {
             m_selectionManager->registerBeam(beamId, aisBeam);
+            if (wasSelected)
+            {
+                m_selectionManager->selectBeam(beamId, true);
+                m_context->SetSelected(aisBeam, false);
+            }
         }
     }
 
-    // 3. Actualiser immédiatement l'affichage 3D
-    m_context->UpdateCurrentViewer();
-    if (!m_view.IsNull())
+    // 3. Actualiser immédiatement l'affichage 3D si demandé
+    if (redrawImmediately)
     {
-        m_view->ZFitAll();
-        m_view->Redraw();
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->ZFitAll();
+            m_view->Redraw();
+        }
     }
 }
 
-void OccView::updateColumnShape(int columnId)
+void OccView::updateColumnShape(int columnId, bool redrawImmediately)
 {
     if (m_context.IsNull() || !m_model)
         return;
 
-    const auto* col = m_model->getColumn(columnId);
-    if (!col)
-        return;
+    bool wasSelected = m_selectionManager && m_selectionManager->selectedColumns().count(columnId) > 0;
 
     auto it = m_columnShapes.find(columnId);
     if (it != m_columnShapes.end())
@@ -758,6 +814,10 @@ void OccView::updateColumnShape(int columnId)
             m_selectionManager->unregisterColumn(columnId);
         }
     }
+
+    const auto* col = m_model->getColumn(columnId);
+    if (!col)
+        return;
 
     const auto* nodeA = m_model->getNode(col->startNodeId());
     const auto* nodeB = m_model->getNode(col->endNodeId());
@@ -803,21 +863,31 @@ void OccView::updateColumnShape(int columnId)
         if (m_selectionManager)
         {
             m_selectionManager->registerColumn(columnId, aisCol);
+            if (wasSelected)
+            {
+                m_selectionManager->selectColumn(columnId, true);
+                m_context->SetSelected(aisCol, false);
+            }
         }
     }
 
-    m_context->UpdateCurrentViewer();
-    if (!m_view.IsNull())
+    if (redrawImmediately)
     {
-        m_view->ZFitAll();
-        m_view->Redraw();
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->ZFitAll();
+            m_view->Redraw();
+        }
     }
 }
 
-void OccView::updateSlabShape(int slabId)
+void OccView::updateSlabShape(int slabId, bool redrawImmediately)
 {
     if (m_context.IsNull() || !m_model)
         return;
+
+    bool wasSelected = m_selectionManager && m_selectionManager->selectedSlabs().count(slabId) > 0;
 
     const auto* slab = m_model->getSlab(slabId);
     if (!slab)
@@ -870,21 +940,31 @@ void OccView::updateSlabShape(int slabId)
         if (m_selectionManager)
         {
             m_selectionManager->registerSlab(slabId, aisSlab);
+            if (wasSelected)
+            {
+                m_selectionManager->selectSlab(slabId, true);
+                m_context->SetSelected(aisSlab, false);
+            }
         }
     }
 
-    m_context->UpdateCurrentViewer();
-    if (!m_view.IsNull())
+    if (redrawImmediately)
     {
-        m_view->ZFitAll();
-        m_view->Redraw();
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->ZFitAll();
+            m_view->Redraw();
+        }
     }
 }
 
-void OccView::updateWallShape(int wallId)
+void OccView::updateWallShape(int wallId, bool redrawImmediately)
 {
     if (m_context.IsNull() || !m_model)
         return;
+
+    bool wasSelected = m_selectionManager && m_selectionManager->selectedWalls().count(wallId) > 0;
 
     const auto* wall = m_model->getWall(wallId);
     if (!wall)
@@ -928,21 +1008,31 @@ void OccView::updateWallShape(int wallId)
         if (m_selectionManager)
         {
             m_selectionManager->registerWall(wallId, aisWall);
+            if (wasSelected)
+            {
+                m_selectionManager->selectWall(wallId, true);
+                m_context->SetSelected(aisWall, false);
+            }
         }
     }
 
-    m_context->UpdateCurrentViewer();
-    if (!m_view.IsNull())
+    if (redrawImmediately)
     {
-        m_view->ZFitAll();
-        m_view->Redraw();
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->ZFitAll();
+            m_view->Redraw();
+        }
     }
 }
 
-void OccView::updateFoundationShape(int foundationId)
+void OccView::updateFoundationShape(int foundationId, bool redrawImmediately)
 {
     if (m_context.IsNull() || !m_model)
         return;
+
+    bool wasSelected = m_selectionManager && m_selectionManager->selectedFoundations().count(foundationId) > 0;
 
     const auto* f = m_model->getFoundation(foundationId);
     if (!f)
@@ -984,21 +1074,31 @@ void OccView::updateFoundationShape(int foundationId)
         if (m_selectionManager)
         {
             m_selectionManager->registerFoundation(foundationId, aisF);
+            if (wasSelected)
+            {
+                m_selectionManager->selectFoundation(foundationId, true);
+                m_context->SetSelected(aisF, false);
+            }
         }
     }
 
-    m_context->UpdateCurrentViewer();
-    if (!m_view.IsNull())
+    if (redrawImmediately)
     {
-        m_view->ZFitAll();
-        m_view->Redraw();
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->ZFitAll();
+            m_view->Redraw();
+        }
     }
 }
 
-void OccView::updateTrussMemberShape(int memberId)
+void OccView::updateTrussMemberShape(int memberId, bool redrawImmediately)
 {
     if (m_context.IsNull() || !m_model)
         return;
+
+    bool wasSelected = m_selectionManager && m_selectionManager->selectedTrussMembers().count(memberId) > 0;
 
     const auto* tr = m_model->getTrussMember(memberId);
     if (!tr)
@@ -1043,18 +1143,26 @@ void OccView::updateTrussMemberShape(int memberId)
         if (m_selectionManager)
         {
             m_selectionManager->registerTrussMember(memberId, aisTr);
+            if (wasSelected)
+            {
+                m_selectionManager->selectTrussMember(memberId, true);
+                m_context->SetSelected(aisTr, false);
+            }
         }
     }
 
-    m_context->UpdateCurrentViewer();
-    if (!m_view.IsNull())
+    if (redrawImmediately)
     {
-        m_view->ZFitAll();
-        m_view->Redraw();
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->ZFitAll();
+            m_view->Redraw();
+        }
     }
 }
 
-void OccView::removeNodeShape(int nodeId)
+void OccView::removeNodeShape(int nodeId, bool redrawImmediately)
 {
     auto it = m_nodeShapes.find(nodeId);
     if (it != m_nodeShapes.end())
@@ -1062,7 +1170,10 @@ void OccView::removeNodeShape(int nodeId)
         if (!m_context.IsNull())
         {
             m_context->Remove(it->second, false);
-            m_context->UpdateCurrentViewer();
+            if (redrawImmediately)
+            {
+                m_context->UpdateCurrentViewer();
+            }
         }
         m_nodeShapes.erase(it);
         if (m_selectionManager)
@@ -1071,14 +1182,14 @@ void OccView::removeNodeShape(int nodeId)
         }
     }
 
-    if (!m_view.IsNull())
+    if (redrawImmediately && !m_view.IsNull())
     {
         m_view->ZFitAll();
         m_view->Redraw();
     }
 }
 
-void OccView::removeBeamShape(int beamId)
+void OccView::removeBeamShape(int beamId, bool redrawImmediately)
 {
     auto it = m_beamShapes.find(beamId);
     if (it != m_beamShapes.end())
@@ -1086,7 +1197,10 @@ void OccView::removeBeamShape(int beamId)
         if (!m_context.IsNull())
         {
             m_context->Remove(it->second, false);
-            m_context->UpdateCurrentViewer();
+            if (redrawImmediately)
+            {
+                m_context->UpdateCurrentViewer();
+            }
         }
         m_beamShapes.erase(it);
         if (m_selectionManager)
@@ -1095,14 +1209,14 @@ void OccView::removeBeamShape(int beamId)
         }
     }
 
-    if (!m_view.IsNull())
+    if (redrawImmediately && !m_view.IsNull())
     {
         m_view->ZFitAll();
         m_view->Redraw();
     }
 }
 
-void OccView::removeColumnShape(int columnId)
+void OccView::removeColumnShape(int columnId, bool redrawImmediately)
 {
     auto it = m_columnShapes.find(columnId);
     if (it != m_columnShapes.end())
@@ -1110,7 +1224,10 @@ void OccView::removeColumnShape(int columnId)
         if (!m_context.IsNull())
         {
             m_context->Remove(it->second, false);
-            m_context->UpdateCurrentViewer();
+            if (redrawImmediately)
+            {
+                m_context->UpdateCurrentViewer();
+            }
         }
         m_columnShapes.erase(it);
         if (m_selectionManager)
@@ -1119,14 +1236,14 @@ void OccView::removeColumnShape(int columnId)
         }
     }
 
-    if (!m_view.IsNull())
+    if (redrawImmediately && !m_view.IsNull())
     {
         m_view->ZFitAll();
         m_view->Redraw();
     }
 }
 
-void OccView::removeSlabShape(int slabId)
+void OccView::removeSlabShape(int slabId, bool redrawImmediately)
 {
     auto it = m_slabShapes.find(slabId);
     if (it != m_slabShapes.end())
@@ -1134,7 +1251,10 @@ void OccView::removeSlabShape(int slabId)
         if (!m_context.IsNull())
         {
             m_context->Remove(it->second, false);
-            m_context->UpdateCurrentViewer();
+            if (redrawImmediately)
+            {
+                m_context->UpdateCurrentViewer();
+            }
         }
         m_slabShapes.erase(it);
         if (m_selectionManager)
@@ -1143,14 +1263,14 @@ void OccView::removeSlabShape(int slabId)
         }
     }
 
-    if (!m_view.IsNull())
+    if (redrawImmediately && !m_view.IsNull())
     {
         m_view->ZFitAll();
         m_view->Redraw();
     }
 }
 
-void OccView::removeWallShape(int wallId)
+void OccView::removeWallShape(int wallId, bool redrawImmediately)
 {
     auto it = m_wallShapes.find(wallId);
     if (it != m_wallShapes.end())
@@ -1158,7 +1278,10 @@ void OccView::removeWallShape(int wallId)
         if (!m_context.IsNull())
         {
             m_context->Remove(it->second, false);
-            m_context->UpdateCurrentViewer();
+            if (redrawImmediately)
+            {
+                m_context->UpdateCurrentViewer();
+            }
         }
         m_wallShapes.erase(it);
         if (m_selectionManager)
@@ -1167,14 +1290,14 @@ void OccView::removeWallShape(int wallId)
         }
     }
 
-    if (!m_view.IsNull())
+    if (redrawImmediately && !m_view.IsNull())
     {
         m_view->ZFitAll();
         m_view->Redraw();
     }
 }
 
-void OccView::removeFoundationShape(int foundationId)
+void OccView::removeFoundationShape(int foundationId, bool redrawImmediately)
 {
     auto it = m_foundationShapes.find(foundationId);
     if (it != m_foundationShapes.end())
@@ -1182,7 +1305,10 @@ void OccView::removeFoundationShape(int foundationId)
         if (!m_context.IsNull())
         {
             m_context->Remove(it->second, false);
-            m_context->UpdateCurrentViewer();
+            if (redrawImmediately)
+            {
+                m_context->UpdateCurrentViewer();
+            }
         }
         m_foundationShapes.erase(it);
         if (m_selectionManager)
@@ -1191,14 +1317,14 @@ void OccView::removeFoundationShape(int foundationId)
         }
     }
 
-    if (!m_view.IsNull())
+    if (redrawImmediately && !m_view.IsNull())
     {
         m_view->ZFitAll();
         m_view->Redraw();
     }
 }
 
-void OccView::removeTrussMemberShape(int memberId)
+void OccView::removeTrussMemberShape(int memberId, bool redrawImmediately)
 {
     auto it = m_trussShapes.find(memberId);
     if (it != m_trussShapes.end())
@@ -1206,7 +1332,10 @@ void OccView::removeTrussMemberShape(int memberId)
         if (!m_context.IsNull())
         {
             m_context->Remove(it->second, false);
-            m_context->UpdateCurrentViewer();
+            if (redrawImmediately)
+            {
+                m_context->UpdateCurrentViewer();
+            }
         }
         m_trussShapes.erase(it);
         if (m_selectionManager)
@@ -1215,7 +1344,7 @@ void OccView::removeTrussMemberShape(int memberId)
         }
     }
 
-    if (!m_view.IsNull())
+    if (redrawImmediately && !m_view.IsNull())
     {
         m_view->ZFitAll();
         m_view->Redraw();

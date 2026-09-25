@@ -5,6 +5,7 @@
 #include <map>
 
 #include "../Model/Model.h"
+#include "../Model/ModelDiff.h"
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Shape.hxx>
@@ -50,22 +51,22 @@ public:
     void setSelectionManager(TSA::Viewer::SelectionManager* selectionManager);
     void rebuildAllShapes();
 
-    // Gestion des formes 3D
-    void updateNodeShape(int nodeId);
-    void updateBeamShape(int beamId);
-    void updateColumnShape(int columnId);
-    void updateSlabShape(int slabId);
-    void updateWallShape(int wallId);
-    void updateFoundationShape(int foundationId);
-    void updateTrussMemberShape(int memberId);
+    // Gestion des formes 3D (avec mode batch / diff pour éviter les redraws multiples)
+    void updateNodeShape(int nodeId, bool redrawImmediately = true);
+    void updateBeamShape(int beamId, bool redrawImmediately = true);
+    void updateColumnShape(int columnId, bool redrawImmediately = true);
+    void updateSlabShape(int slabId, bool redrawImmediately = true);
+    void updateWallShape(int wallId, bool redrawImmediately = true);
+    void updateFoundationShape(int foundationId, bool redrawImmediately = true);
+    void updateTrussMemberShape(int memberId, bool redrawImmediately = true);
 
-    void removeNodeShape(int nodeId);
-    void removeBeamShape(int beamId);
-    void removeColumnShape(int columnId);
-    void removeSlabShape(int slabId);
-    void removeWallShape(int wallId);
-    void removeFoundationShape(int foundationId);
-    void removeTrussMemberShape(int memberId);
+    void removeNodeShape(int nodeId, bool redrawImmediately = true);
+    void removeBeamShape(int beamId, bool redrawImmediately = true);
+    void removeColumnShape(int columnId, bool redrawImmediately = true);
+    void removeSlabShape(int slabId, bool redrawImmediately = true);
+    void removeWallShape(int wallId, bool redrawImmediately = true);
+    void removeFoundationShape(int foundationId, bool redrawImmediately = true);
+    void removeTrussMemberShape(int memberId, bool redrawImmediately = true);
 
     // Mise en surbrillance / Sélection visuelle
     void highlightNode(int nodeId);
@@ -237,6 +238,7 @@ protected:
     void onTrussMemberModified(const TSA::Model::TrussMember& member) override;
     void onTrussMemberRemoved(int memberId) override;
 
+    void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;
 
 protected:

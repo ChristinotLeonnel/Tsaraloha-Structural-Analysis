@@ -74,6 +74,7 @@ protected:
   void onTrussMemberModified(const TSA::Model::TrussMember &member) override;
   void onTrussMemberRemoved(int memberId) override;
 
+  void onModelDiffApplied(const TSA::Model::ModelDiff &diff) override;
   void onModelCleared() override;
 
 private slots:

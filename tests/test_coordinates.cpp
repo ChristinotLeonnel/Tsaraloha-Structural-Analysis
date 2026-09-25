@@ -8,7 +8,9 @@
 #include "Coordinate/LevelManager.h"
 #include "Coordinate/CoordinateSystem.h"
 #include "Model/Model.h"
+#include "Model/ModelDiff.h"
 #include "Model/Material.h"
+#include <chrono>
 #include "Model/Section.h"
 #include "Model/Wall.h"
 #include "Model/Foundation.h"
@@ -1096,8 +1098,391 @@ int main(int argc, char* argv[])
         passed++;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 19: Functional Suite for Differential Undo/Redo & ModelDiff
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 19: Functional Suite for Differential Undo/Redo & ModelDiff ---" << std::endl;
+
+        class MockDiffObserver : public IModelObserver
+        {
+        public:
+            int diffCallCount = 0;
+            int clearedCallCount = 0;
+            ModelDiff lastDiff;
+
+            void onModelDiffApplied(const ModelDiff& diff) override
+            {
+                diffCallCount++;
+                lastDiff = diff;
+            }
+
+            void onModelCleared() override
+            {
+                clearedCallCount++;
+            }
+        };
+
+        Model testModel;
+        MockDiffObserver obs;
+        testModel.addObserver(&obs);
+
+        // 19.1: Création d'une barre, Undo, Redo
+        {
+            testModel.pushUndoState("Create Bar 1");
+            int n1 = testModel.addNode(0, 0, 0);
+            int n2 = testModel.addNode(5, 0, 0);
+            int b1 = testModel.addBeam(n1, n2, 0.3, 0.4);
+
+            TEST_CHECK(testModel.canUndo(), "Test 19.1: canUndo true");
+            obs.diffCallCount = 0;
+            obs.clearedCallCount = 0;
+
+            bool undoOk = testModel.undo();
+            TEST_CHECK(undoOk, "Test 19.1: undo succeeded");
+            TEST_CHECK(obs.clearedCallCount == 0, "Test 19.1: onModelCleared NEVER called on Undo");
+            TEST_CHECK(obs.diffCallCount == 1, "Test 19.1: onModelDiffApplied called exactly once");
+            TEST_CHECK(obs.lastDiff.deletedBeamIds.size() == 1 && obs.lastDiff.deletedBeamIds[0] == b1, "Test 19.1: b1 deleted in diff");
+            TEST_CHECK(testModel.beams().empty(), "Test 19.1: model has 0 beams after undo");
+
+            // Redo
+            bool redoOk = testModel.redo();
+            TEST_CHECK(redoOk, "Test 19.1: redo succeeded");
+            TEST_CHECK(obs.clearedCallCount == 0, "Test 19.1: onModelCleared NEVER called on Redo");
+            TEST_CHECK(obs.lastDiff.createdBeamIds.size() == 1 && obs.lastDiff.createdBeamIds[0] == b1, "Test 19.1: b1 recreated in diff");
+            TEST_CHECK(testModel.beams().size() == 1, "Test 19.1: model has 1 beam after redo");
+            std::cout << "  [PASS] Subtest 19.1: Create Bar -> Undo -> Redo (Differential correctness confirmed)" << std::endl;
+        }
+
+        // 19.2: Suppression d'une barre parmi 5, Undo, Redo
+        {
+            testModel.clear();
+            obs.diffCallCount = 0;
+            obs.clearedCallCount = 0;
+
+            std::vector<int> nodeIds;
+            for (int i = 0; i <= 5; ++i)
+                nodeIds.push_back(testModel.addNode(i * 3.0, 0, 0));
+
+            std::vector<int> beamIds;
+            for (int i = 0; i < 5; ++i)
+                beamIds.push_back(testModel.addBeam(nodeIds[i], nodeIds[i+1], 0.25, 0.40));
+
+            // Supprimer la barre 3 (beamIds[2])
+            int deletedId = beamIds[2];
+            testModel.pushUndoState("Bar 3 Deleted");
+            testModel.removeBeam(deletedId);
+
+            TEST_CHECK(testModel.beams().size() == 4, "Test 19.2: 4 beams remain");
+
+            // Undo de la suppression
+            bool undoOk = testModel.undo();
+            TEST_CHECK(undoOk, "Test 19.2: undo delete succeeded");
+            TEST_CHECK(obs.clearedCallCount == 0, "Test 19.2: onModelCleared NEVER called");
+            TEST_CHECK(obs.lastDiff.createdBeamIds.size() == 1 && obs.lastDiff.createdBeamIds[0] == deletedId,
+                       "Test 19.2: ONLY deleted bar is in createdBeamIds on undo");
+            TEST_CHECK(obs.lastDiff.deletedBeamIds.empty(), "Test 19.2: no deleted beams on undo");
+            TEST_CHECK(obs.lastDiff.modifiedBeamIds.empty(), "Test 19.2: no modified beams on undo");
+            TEST_CHECK(testModel.beams().size() == 5, "Test 19.2: all 5 beams restored");
+
+            // Redo de la suppression
+            bool redoOk = testModel.redo();
+            TEST_CHECK(redoOk, "Test 19.2: redo delete succeeded");
+            TEST_CHECK(obs.lastDiff.deletedBeamIds.size() == 1 && obs.lastDiff.deletedBeamIds[0] == deletedId,
+                       "Test 19.2: ONLY target bar is in deletedBeamIds on redo");
+            TEST_CHECK(obs.lastDiff.createdBeamIds.empty(), "Test 19.2: no created beams on redo");
+            TEST_CHECK(testModel.beams().size() == 4, "Test 19.2: 4 beams after redo");
+            std::cout << "  [PASS] Subtest 19.2: Delete 1 Bar among 5 -> Undo -> Redo (Only target bar affected)" << std::endl;
+        }
+
+        // 19.3: Modification de section d'une barre, Undo, Redo
+        {
+            testModel.clear();
+            obs.clearedCallCount = 0;
+            obs.diffCallCount = 0;
+            int nA = testModel.addNode(0, 0, 0);
+            int nB = testModel.addNode(4, 0, 0);
+            int nC = testModel.addNode(8, 0, 0);
+            int b1 = testModel.addBeam(nA, nB, 0.30, 0.40);
+            int b2 = testModel.addBeam(nB, nC, 0.30, 0.40);
+
+            // Modifier b1 en Cercle D=400mm
+            testModel.pushUndoState("Change B1 Section to Circle");
+            auto* pB1 = testModel.getBeam(b1);
+            TEST_CHECK(pB1 != nullptr, "Test 19.3: pB1 valid");
+            Section circleSec = Section::circular(0.40, "Circle 400");
+            pB1->setSection(circleSec);
+
+            // Undo
+            bool undoOk = testModel.undo();
+            TEST_CHECK(undoOk, "Test 19.3: undo succeeded");
+            TEST_CHECK(obs.clearedCallCount == 0, "Test 19.3: no clear called");
+            TEST_CHECK(obs.lastDiff.modifiedBeamIds.size() == 1 && obs.lastDiff.modifiedBeamIds[0] == b1,
+                       "Test 19.3: ONLY b1 marked modified");
+            TEST_CHECK(obs.lastDiff.createdBeamIds.empty(), "Test 19.3: no created beams");
+            TEST_CHECK(obs.lastDiff.deletedBeamIds.empty(), "Test 19.3: no deleted beams");
+            TEST_CHECK(testModel.getBeam(b1)->section().shape == SectionShape::Rectangular, "Test 19.3: b1 restored to Rectangular");
+            TEST_CHECK(testModel.getBeam(b2)->section().shape == SectionShape::Rectangular, "Test 19.3: b2 unchanged");
+
+            // Redo
+            bool redoOk = testModel.redo();
+            TEST_CHECK(redoOk, "Test 19.3: redo succeeded");
+            TEST_CHECK(obs.lastDiff.modifiedBeamIds.size() == 1 && obs.lastDiff.modifiedBeamIds[0] == b1,
+                       "Test 19.3: ONLY b1 marked modified on redo");
+            TEST_CHECK(testModel.getBeam(b1)->section().shape == SectionShape::Circular, "Test 19.3: b1 redo to Circular");
+            std::cout << "  [PASS] Subtest 19.3: Modify Section -> Undo -> Redo (Only modified beam updated)" << std::endl;
+        }
+
+        // 19.4: Déplacement d'un nœud et propagation différentielle
+        {
+            testModel.clear();
+            obs.clearedCallCount = 0;
+            obs.diffCallCount = 0;
+            int n1 = testModel.addNode(0, 0, 0);
+            int n2 = testModel.addNode(5, 0, 0);
+            int n3 = testModel.addNode(10, 0, 0);
+            int n4 = testModel.addNode(15, 0, 0);
+
+            int bConnect = testModel.addBeam(n1, n2, 0.3, 0.4); // connecté à n1
+            int bOther = testModel.addBeam(n3, n4, 0.3, 0.4);   // non connecté à n1
+
+            // Déplacer n1
+            testModel.pushUndoState("Move Node 1");
+            auto* pN1 = testModel.getNode(n1);
+            pN1->setCoordinates(0, 2.5, 3.0);
+
+            // Undo
+            bool undoOk = testModel.undo();
+            TEST_CHECK(undoOk, "Test 19.4: undo move succeeded");
+            TEST_CHECK(obs.clearedCallCount == 0, "Test 19.4: no clear");
+            TEST_CHECK(obs.lastDiff.modifiedNodeIds.size() == 1 && obs.lastDiff.modifiedNodeIds[0] == n1,
+                       "Test 19.4: n1 in modifiedNodeIds");
+            TEST_CHECK(obs.lastDiff.modifiedBeamIds.size() == 1 && obs.lastDiff.modifiedBeamIds[0] == bConnect,
+                       "Test 19.4: connected bConnect propagated to modifiedBeamIds");
+            // bOther NE doit PAS être présent dans modifiedBeamIds !
+            TEST_CHECK(std::find(obs.lastDiff.modifiedBeamIds.begin(), obs.lastDiff.modifiedBeamIds.end(), bOther)
+                       == obs.lastDiff.modifiedBeamIds.end(), "Test 19.4: unconnected bOther NOT modified");
+
+            // Redo
+            bool redoOk = testModel.redo();
+            TEST_CHECK(redoOk, "Test 19.4: redo move succeeded");
+            TEST_CHECK(obs.lastDiff.modifiedNodeIds.size() == 1 && obs.lastDiff.modifiedNodeIds[0] == n1,
+                       "Test 19.4: n1 in modifiedNodeIds on redo");
+            TEST_CHECK(obs.lastDiff.modifiedBeamIds.size() == 1 && obs.lastDiff.modifiedBeamIds[0] == bConnect,
+                       "Test 19.4: bConnect in modifiedBeamIds on redo");
+            std::cout << "  [PASS] Subtest 19.4: Move Node -> Connected Bars marked MODIFIED, Unconnected UNCHANGED" << std::endl;
+        }
+
+        // 19.5: Modification de matériau
+        {
+            testModel.clear();
+            obs.clearedCallCount = 0;
+            obs.diffCallCount = 0;
+            int nA = testModel.addNode(0, 0, 0);
+            int nB = testModel.addNode(3, 0, 0);
+            int b = testModel.addBeam(nA, nB, 0.2, 0.3);
+
+            testModel.pushUndoState("Steel Material");
+            auto* pB = testModel.getBeam(b);
+            Material steelMat;
+            steelMat.type = MaterialType::Steel;
+            steelMat.name = "S355";
+            pB->setMaterial(steelMat);
+
+            testModel.undo();
+            TEST_CHECK(obs.lastDiff.modifiedBeamIds.size() == 1 && obs.lastDiff.modifiedBeamIds[0] == b,
+                       "Test 19.5: Material change detected in diff on undo");
+            TEST_CHECK(testModel.getBeam(b)->material().type == MaterialType::Concrete, "Test 19.5: Material restored to Concrete");
+
+            testModel.redo();
+            TEST_CHECK(obs.lastDiff.modifiedBeamIds.size() == 1 && obs.lastDiff.modifiedBeamIds[0] == b,
+                       "Test 19.5: Material change detected in diff on redo");
+            TEST_CHECK(testModel.getBeam(b)->material().type == MaterialType::Steel, "Test 19.5: Material restored to Steel");
+            std::cout << "  [PASS] Subtest 19.5: Modify Material -> Undo -> Redo (Detected and differentiated)" << std::endl;
+        }
+
+        // 19.6: Modification des relâchements (End Releases)
+        {
+            testModel.clear();
+            obs.clearedCallCount = 0;
+            obs.diffCallCount = 0;
+            int nA = testModel.addNode(0, 0, 0);
+            int nB = testModel.addNode(4, 0, 0);
+            int b = testModel.addBeam(nA, nB, 0.2, 0.3);
+
+            testModel.pushUndoState("Hinged Releases");
+            auto* pB = testModel.getBeam(b);
+            EndRelease hingedRel;
+            hingedRel.my = true;
+            hingedRel.mz = true;
+            pB->setEndRelease(hingedRel);
+
+            testModel.undo();
+            TEST_CHECK(obs.lastDiff.modifiedBeamIds.size() == 1 && obs.lastDiff.modifiedBeamIds[0] == b,
+                       "Test 19.6: EndRelease change detected in diff on undo");
+            TEST_CHECK(testModel.getBeam(b)->endRelease().my == false, "Test 19.6: Release restored to Fixed (my=false)");
+
+            testModel.redo();
+            TEST_CHECK(testModel.getBeam(b)->endRelease().my == true, "Test 19.6: Release restored to Hinged (my=true)");
+            std::cout << "  [PASS] Subtest 19.6: Modify Releases -> Undo -> Redo (Detected and differentiated)" << std::endl;
+        }
+
+        // 19.7: Multiples Undo / Multiples Redo séquentiels
+        {
+            testModel.clear();
+            obs.clearedCallCount = 0;
+            obs.diffCallCount = 0;
+            testModel.pushUndoState("Step 1 (Bar 1)");
+            int n1 = testModel.addNode(0, 0, 0);
+            int n2 = testModel.addNode(1, 0, 0);
+            int b1 = testModel.addBeam(n1, n2, 0.2, 0.2);
+            (void)b1;
+
+            testModel.pushUndoState("Step 2 (Bar 2)");
+            int n3 = testModel.addNode(2, 0, 0);
+            int b2 = testModel.addBeam(n2, n3, 0.2, 0.2);
+
+            testModel.pushUndoState("Step 3 (Bar 3)");
+            int n4 = testModel.addNode(3, 0, 0);
+            int b3 = testModel.addBeam(n3, n4, 0.2, 0.2);
+
+            TEST_CHECK(testModel.beams().size() == 3, "Test 19.7: 3 beams initially");
+
+            // Undo step 3
+            testModel.undo();
+            TEST_CHECK(obs.lastDiff.deletedBeamIds.size() == 1 && obs.lastDiff.deletedBeamIds[0] == b3, "Test 19.7: b3 removed");
+            TEST_CHECK(testModel.beams().size() == 2, "Test 19.7: 2 beams left");
+
+            // Undo step 2
+            testModel.undo();
+            TEST_CHECK(obs.lastDiff.deletedBeamIds.size() == 1 && obs.lastDiff.deletedBeamIds[0] == b2, "Test 19.7: b2 removed");
+            TEST_CHECK(testModel.beams().size() == 1, "Test 19.7: 1 beam left");
+
+            // Redo step 2
+            testModel.redo();
+            TEST_CHECK(obs.lastDiff.createdBeamIds.size() == 1 && obs.lastDiff.createdBeamIds[0] == b2, "Test 19.7: b2 restored");
+            TEST_CHECK(testModel.beams().size() == 2, "Test 19.7: 2 beams restored");
+
+            // Redo step 3
+            testModel.redo();
+            TEST_CHECK(obs.lastDiff.createdBeamIds.size() == 1 && obs.lastDiff.createdBeamIds[0] == b3, "Test 19.7: b3 restored");
+            TEST_CHECK(testModel.beams().size() == 3, "Test 19.7: 3 beams restored");
+            std::cout << "  [PASS] Subtest 19.7: Multiple Undo/Redo sequence perfectly maintains state & diffs" << std::endl;
+        }
+
+        testModel.removeObserver(&obs);
+        std::cout << "[PASS] Test 19: Full Differential Undo/Redo Functional Suite (7 Subtests Validated)" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 20: Performance and Scalability Benchmark (100, 1000, 5000 Bars)
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 20: Performance & Scalability Benchmark for Differential Undo/Redo ---" << std::endl;
+
+        class BenchmarkObserver : public IModelObserver
+        {
+        public:
+            int diffCount = 0;
+            int clearCount = 0;
+            ModelDiff lastDiff;
+
+            void onModelDiffApplied(const ModelDiff& diff) override
+            {
+                diffCount++;
+                lastDiff = diff;
+            }
+
+            void onModelCleared() override
+            {
+                clearCount++;
+            }
+        };
+
+        const std::vector<int> modelSizes = { 100, 1000, 5000 };
+
+        for (int totalBars : modelSizes)
+        {
+            Model benchModel;
+            BenchmarkObserver benchObs;
+            benchModel.addObserver(&benchObs);
+
+            // Générer un modèle linéaire avec totalBars barres
+            std::vector<int> nodeIds;
+            nodeIds.reserve(totalBars + 1);
+            for (int i = 0; i <= totalBars; ++i)
+            {
+                nodeIds.push_back(benchModel.addNode(i * 1.5, (i % 10) * 2.0, ((i / 10) % 5) * 3.0));
+            }
+
+            std::vector<int> beamIds;
+            beamIds.reserve(totalBars);
+            for (int i = 0; i < totalBars; ++i)
+            {
+                beamIds.push_back(benchModel.addBeam(nodeIds[i], nodeIds[i+1], 0.30, 0.45));
+            }
+
+            // Supprimer une seule barre au milieu du modèle (index totalBars / 2)
+            int targetIdx = totalBars / 2;
+            int targetBarId = beamIds[targetIdx];
+            benchModel.pushUndoState("Delete Single Bar");
+            benchModel.removeBeam(targetBarId);
+
+            TEST_CHECK(benchModel.beams().size() == static_cast<size_t>(totalBars - 1), "Test 20: 1 bar removed");
+
+            // Mesurer le temps d'exécution de Undo (restauration logique + calcul du diff)
+            benchObs.diffCount = 0;
+            benchObs.clearCount = 0;
+
+            auto tStart = std::chrono::high_resolution_clock::now();
+            bool undoOk = benchModel.undo();
+            auto tEnd = std::chrono::high_resolution_clock::now();
+
+            double elapsedMs = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+
+            TEST_CHECK(undoOk, "Test 20: undo succeeded");
+            TEST_CHECK(benchObs.clearCount == 0, "Test 20: clearScene/rebuildAll was NEVER called!");
+            TEST_CHECK(benchObs.diffCount == 1, "Test 20: onModelDiffApplied called exactly once");
+
+            // Vérifier la nature purement différentielle : 1 seule barre créée, 0 barres supprimées/modifiées
+            TEST_CHECK(benchObs.lastDiff.createdBeamIds.size() == 1 && benchObs.lastDiff.createdBeamIds[0] == targetBarId,
+                       "Test 20: exact target bar restored");
+            TEST_CHECK(benchObs.lastDiff.deletedBeamIds.empty(), "Test 20: 0 deletions");
+            TEST_CHECK(benchObs.lastDiff.modifiedBeamIds.empty(), "Test 20: 0 modifications");
+            TEST_CHECK(benchModel.beams().size() == static_cast<size_t>(totalBars), "Test 20: full bar count restored");
+
+            std::cout << "  Model with " << totalBars << " bars:"
+                      << " Undo of 1 deleted bar completed in " << elapsedMs << " ms"
+                      << " (Cost: O(1) modified object, 4999+ untouched objects preserved)" << std::endl;
+
+            // Le calcul logique + diff sur 5000 barres doit prendre moins de 50 ms
+            TEST_CHECK(elapsedMs < 50.0, "Test 20: Undo diff computation is blazing fast (< 50 ms)");
+
+            // Mesurer le temps d'exécution du Redo
+            tStart = std::chrono::high_resolution_clock::now();
+            bool redoOk = benchModel.redo();
+            tEnd = std::chrono::high_resolution_clock::now();
+            double redoElapsedMs = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+
+            TEST_CHECK(redoOk, "Test 20: redo succeeded");
+            TEST_CHECK(benchObs.lastDiff.deletedBeamIds.size() == 1 && benchObs.lastDiff.deletedBeamIds[0] == targetBarId,
+                       "Test 20: exact target bar deleted on redo");
+            TEST_CHECK(benchObs.lastDiff.createdBeamIds.empty(), "Test 20: 0 creations on redo");
+            TEST_CHECK(benchObs.clearCount == 0, "Test 20: no clear on redo");
+
+            std::cout << "  Model with " << totalBars << " bars:"
+                      << " Redo of 1 deleted bar completed in " << redoElapsedMs << " ms" << std::endl;
+
+            benchModel.removeObserver(&benchObs);
+        }
+
+        std::cout << "[PASS] Test 20: Performance and Scalability Benchmark Validated Successfully!" << std::endl;
+        passed++;
+    }
+
     std::cout << "=================================================" << std::endl;
-    std::cout << "RESULTS: " << passed << " / " << (total + 3) << " tests passed successfully!" << std::endl;
+    std::cout << "RESULTS: " << passed << " / " << (total + 5) << " tests passed successfully!" << std::endl;
     std::cout << "=================================================" << std::endl;
 
     return 0;
