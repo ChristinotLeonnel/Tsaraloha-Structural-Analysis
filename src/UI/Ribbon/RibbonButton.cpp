@@ -43,9 +43,8 @@ static QIcon generateFallbackIcon(const QString& rawText, bool isLarge)
     {
         hash = (hash * 33) + c.unicode();
     }
-    const int hue = hash % 360;
-    const QColor bg = QColor::fromHsv(hue, 160, 190, 220);
-    const QColor border = QColor::fromHsv(hue, 210, 150, 255);
+    const QColor bg = QColor(30, 41, 59);
+    const QColor border = QColor(56, 189, 248);
 
     p.setPen(QPen(border, 1.2));
     p.setBrush(bg);

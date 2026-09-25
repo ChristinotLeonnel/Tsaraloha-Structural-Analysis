@@ -49,312 +49,25 @@
 
 namespace
 {
-static QIcon makePlanIcon(const QColor& planeColor, const QColor& axis1Color, const QColor& axis2Color, const QString& l1, const QString& l2)
+static inline QIcon makePlanIcon(const QColor&, const QColor&, const QColor&, const QString& l1, const QString& l2)
 {
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    // Fond du plan coloré style Robot SA
-    p.setPen(QPen(planeColor.darker(150), 1.2));
-    p.setBrush(QBrush(planeColor));
-    p.drawRect(7, 4, 15, 15);
-
-    // Axes
-    p.setPen(QPen(axis1Color, 2.0));
-    p.drawLine(5, 21, 23, 21); // Horizontal
-    p.setPen(QPen(axis2Color, 2.0));
-    p.drawLine(5, 21, 5, 3);   // Vertical
-
-    // Flèches d'axe
-    p.drawLine(23, 21, 20, 19);
-    p.drawLine(23, 21, 20, 23);
-    p.drawLine(5, 3, 3, 6);
-    p.drawLine(5, 3, 7, 6);
-
-    // Libellés d'axes
-    QFont f = p.font();
-    f.setPixelSize(7);
-    f.setBold(true);
-    p.setFont(f);
-    p.setPen(axis1Color);
-    p.drawText(20, 25, l1);
-    p.setPen(axis2Color);
-    p.drawText(0, 8, l2);
-
-    return QIcon(pix);
+    if (l1 == "X" && l2 == "Y") return QIcon(":/icons/view/view_top.svg");
+    if (l1 == "X" && l2 == "Z") return QIcon(":/icons/view/view_front.svg");
+    if (l1 == "Y" && l2 == "Z") return QIcon(":/icons/view/view_side.svg");
+    return QIcon(":/icons/view/view_3d.svg");
 }
 
-static QIcon make3DIsoIcon()
-{
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    // Face supérieure (XY)
-    QPolygon topPoly;
-    topPoly << QPoint(13, 3) << QPoint(22, 8) << QPoint(13, 13) << QPoint(4, 8);
-    p.setPen(QPen(QColor(180, 50, 50), 1.0));
-    p.setBrush(QColor(240, 110, 110, 220));
-    p.drawPolygon(topPoly);
-
-    // Face gauche (XZ)
-    QPolygon leftPoly;
-    leftPoly << QPoint(4, 8) << QPoint(13, 13) << QPoint(13, 23) << QPoint(4, 18);
-    p.setPen(QPen(QColor(40, 150, 60), 1.0));
-    p.setBrush(QColor(100, 210, 120, 220));
-    p.drawPolygon(leftPoly);
-
-    // Face droite (YZ)
-    QPolygon rightPoly;
-    rightPoly << QPoint(13, 13) << QPoint(22, 8) << QPoint(22, 18) << QPoint(13, 23);
-    p.setPen(QPen(QColor(40, 80, 200), 1.0));
-    p.setBrush(QColor(100, 140, 240, 220));
-    p.drawPolygon(rightPoly);
-
-    return QIcon(pix);
-}
-
-static QIcon makeCoordSystemIcon()
-{
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    // Poutre inclinée
-    p.setPen(QPen(QColor(50, 60, 80), 2.5));
-    p.drawLine(3, 21, 23, 9);
-
-    // Flèche normale (rouge)
-    p.setPen(QPen(QColor(220, 30, 30), 2.0));
-    p.drawLine(13, 15, 19, 4);
-    p.drawLine(19, 4, 16, 5);
-
-    // Flèche tangentielle (bleue)
-    p.setPen(QPen(QColor(30, 90, 220), 2.0));
-    p.drawLine(13, 15, 23, 9);
-    p.drawLine(23, 9, 20, 9);
-
-    return QIcon(pix);
-}
-
-static QIcon makeSectionCutIcon()
-{
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    // Bâtiment filaire
-    p.setPen(QPen(QColor(90, 105, 125), 1.2, Qt::DashLine));
-    p.drawRect(4, 5, 18, 18);
-    p.drawLine(4, 14, 22, 14);
-
-    // Plan de coupe jaune vif
-    QPolygon cutPoly;
-    cutPoly << QPoint(11, 2) << QPoint(25, 6) << QPoint(15, 25) << QPoint(1, 21);
-    p.setPen(QPen(QColor(220, 160, 10), 2.0));
-    p.setBrush(QColor(255, 225, 40, 150));
-    p.drawPolygon(cutPoly);
-
-    return QIcon(pix);
-}
-
-static QIcon makeThemeIcon(bool dark)
-{
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    if (dark)
-    {
-        p.setBrush(QColor(250, 205, 70));
-        p.setPen(Qt::NoPen);
-        p.drawEllipse(4, 4, 18, 18);
-        p.setBrush(QColor(0x1E, 0x23, 0x28));
-        p.drawEllipse(9, 2, 16, 16);
-    }
-    else
-    {
-        p.setBrush(QColor(245, 160, 20));
-        p.setPen(Qt::NoPen);
-        p.drawEllipse(7, 7, 12, 12);
-        p.setPen(QPen(QColor(245, 160, 20), 2.0));
-        for (int i = 0; i < 8; ++i)
-        {
-            double angle = i * 3.14159 / 4.0;
-            int x1 = 13 + static_cast<int>(8 * std::cos(angle));
-            int y1 = 13 + static_cast<int>(8 * std::sin(angle));
-            int x2 = 13 + static_cast<int>(11 * std::cos(angle));
-            int y2 = 13 + static_cast<int>(11 * std::sin(angle));
-            p.drawLine(x1, y1, x2, y2);
-        }
-    }
-
-    return QIcon(pix);
-}
-
-static QIcon makeHelpIcon()
-{
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    p.setBrush(QColor(14, 165, 233));
-    p.setPen(QPen(QColor(2, 132, 199), 1.5));
-    p.drawEllipse(3, 3, 20, 20);
-
-    QFont f = p.font();
-    f.setPixelSize(14);
-    f.setBold(true);
-    p.setFont(f);
-    p.setPen(Qt::white);
-    p.drawText(QRect(3, 3, 20, 20), Qt::AlignCenter, "?");
-
-    return QIcon(pix);
-}
-
-static QIcon makeShortcutsIcon()
-{
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    p.setPen(QPen(QColor(51, 65, 85), 1.8));
-    p.setBrush(QColor(203, 213, 225));
-    p.drawRoundedRect(2, 5, 22, 16, 2, 2);
-
-    p.setBrush(QColor(15, 23, 42));
-    p.setPen(Qt::NoPen);
-    p.drawRect(5, 8, 4, 3);
-    p.drawRect(11, 8, 4, 3);
-    p.drawRect(17, 8, 4, 3);
-    p.drawRect(5, 13, 4, 3);
-    p.drawRect(11, 13, 10, 3);
-
-    return QIcon(pix);
-}
-
-static QIcon makeAboutIcon()
-{
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    p.setBrush(QColor(99, 102, 241));
-    p.setPen(QPen(QColor(79, 70, 229), 1.5));
-    p.drawRoundedRect(3, 3, 20, 20, 4, 4);
-
-    QFont f = p.font();
-    f.setPixelSize(13);
-    f.setBold(true);
-    p.setFont(f);
-    p.setPen(Qt::white);
-    p.drawText(QRect(3, 3, 20, 20), Qt::AlignCenter, "i");
-
-    return QIcon(pix);
-}
-
-static QIcon makeRotateIcon()
-{
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    p.setPen(QPen(QColor(30, 140, 240), 2.2));
-    p.drawArc(4, 4, 18, 18, 45 * 16, 270 * 16);
-
-    // Flèche de rotation
-    p.setBrush(QColor(30, 140, 240));
-    QPolygon arrow;
-    arrow << QPoint(18, 5) << QPoint(23, 8) << QPoint(19, 12);
-    p.drawPolygon(arrow);
-
-    // Point central
-    p.setPen(Qt::NoPen);
-    p.setBrush(QColor(240, 60, 60));
-    p.drawEllipse(11, 11, 4, 4);
-
-    return QIcon(pix);
-}
-
-static QIcon makeOriginMoveIcon()
-{
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    // Triad axes
-    p.setPen(QPen(Qt::red, 2.0));
-    p.drawLine(13, 13, 23, 13);
-    p.setPen(QPen(Qt::green, 2.0));
-    p.drawLine(13, 13, 13, 3);
-    p.setPen(QPen(Qt::blue, 2.0));
-    p.drawLine(13, 13, 6, 20);
-
-    // Center target ring
-    p.setPen(QPen(QColor(255, 140, 0), 2.0));
-    p.setBrush(Qt::NoBrush);
-    p.drawEllipse(8, 8, 10, 10);
-    p.setPen(Qt::NoPen);
-    p.setBrush(QColor(255, 140, 0));
-    p.drawEllipse(11, 11, 4, 4);
-
-    return QIcon(pix);
-}
-
-static QIcon makeUndoIcon()
-{
-    QIcon icon(":/icons/undo.svg");
-    if (!icon.isNull()) return icon;
-
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    p.setPen(QPen(QColor(50, 70, 95), 2.5));
-    p.drawArc(7, 8, 14, 14, 0, 180 * 16);
-
-    QPolygon arrow;
-    arrow << QPoint(4, 15) << QPoint(10, 10) << QPoint(10, 20);
-    p.setBrush(QColor(50, 70, 95));
-    p.setPen(Qt::NoPen);
-    p.drawPolygon(arrow);
-
-    return QIcon(pix);
-}
-
-static QIcon makeRedoIcon()
-{
-    QIcon icon(":/icons/redo.svg");
-    if (!icon.isNull()) return icon;
-
-    QPixmap pix(26, 26);
-    pix.fill(Qt::transparent);
-    QPainter p(&pix);
-    p.setRenderHint(QPainter::Antialiasing);
-
-    p.setPen(QPen(QColor(50, 70, 95), 2.5));
-    p.drawArc(5, 8, 14, 14, 0, 180 * 16);
-
-    QPolygon arrow;
-    arrow << QPoint(22, 15) << QPoint(16, 10) << QPoint(16, 20);
-    p.setBrush(QColor(50, 70, 95));
-    p.setPen(Qt::NoPen);
-    p.drawPolygon(arrow);
-
-    return QIcon(pix);
-}
+static inline QIcon make3DIsoIcon() { return QIcon(":/icons/view/view_3d.svg"); }
+static inline QIcon makeCoordSystemIcon() { return QIcon(":/icons/view/coord_system.svg"); }
+static inline QIcon makeSectionCutIcon() { return QIcon(":/icons/view/section_cut.svg"); }
+static inline QIcon makeThemeIcon(bool dark) { return QIcon(dark ? ":/icons/common/theme_dark.svg" : ":/icons/common/theme_light.svg"); }
+static inline QIcon makeHelpIcon() { return QIcon(":/icons/common/help.svg"); }
+static inline QIcon makeShortcutsIcon() { return QIcon(":/icons/common/shortcuts.svg"); }
+static inline QIcon makeAboutIcon() { return QIcon(":/icons/common/about.svg"); }
+static inline QIcon makeRotateIcon() { return QIcon(":/icons/edit/rotate.svg"); }
+static inline QIcon makeOriginMoveIcon() { return QIcon(":/icons/structure/struct_move.svg"); }
+static inline QIcon makeUndoIcon() { return QIcon(":/icons/edit/undo.svg"); }
+static inline QIcon makeRedoIcon() { return QIcon(":/icons/edit/redo.svg"); }
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -517,7 +230,7 @@ void MainWindow::createActions()
     connect(m_actionSave, &QAction::triggered, this, &MainWindow::onActionSave);
 
     m_actionSaveAs = new QAction(tr("Enregistrer &sous..."), this);
-    m_actionSaveAs->setIcon(QIcon(":/icons/file_tsa.svg"));
+    m_actionSaveAs->setIcon(QIcon(":/icons/file/file_save_as.svg"));
     m_actionSaveAs->setToolTip(tr("Enregistrer le projet sous un nouveau nom (Ctrl+Shift+S)"));
     m_actionSaveAs->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
     connect(m_actionSaveAs, &QAction::triggered, this, &MainWindow::onActionSaveAs);
@@ -693,7 +406,7 @@ void MainWindow::createActions()
     m_drawModeGroup->addAction(m_actionDrawSurface);
 
     m_actionDrawBar = new QAction(tr("Outil &Barres"), this);
-    m_actionDrawBar->setIcon(QIcon(":/icons/struct_beam.svg"));
+    m_actionDrawBar->setIcon(QIcon(":/icons/modeling/draw_bar.svg"));
     m_actionDrawBar->setToolTip(tr("Outil Barres (style Robot Structural Analysis) : définition et dessin en direct"));
     m_actionDrawBar->setCheckable(true);
     connect(m_actionDrawBar, &QAction::triggered, this, &MainWindow::onModeDrawBar);
@@ -789,20 +502,20 @@ void MainWindow::createActions()
     connect(m_actionCopyClipboard, &QAction::triggered, this, &MainWindow::onActionCopyClipboard);
 
     m_actionPasteClipboard = new QAction(tr("C&oller en 3D"), this);
-    m_actionPasteClipboard->setIcon(QIcon(":/icons/copy.svg"));
+    m_actionPasteClipboard->setIcon(QIcon(":/icons/edit/paste.svg"));
     m_actionPasteClipboard->setToolTip(tr("Coller les éléments copiés dans la vue 3D au clic souris (Ctrl+V)"));
     m_actionPasteClipboard->setShortcut(QKeySequence::Paste);
     connect(m_actionPasteClipboard, &QAction::triggered, this, &MainWindow::onActionPasteClipboard);
 
     m_actionMove3D = new QAction(tr("&Déplacement 3D (Point à Point)..."), this);
-    m_actionMove3D->setIcon(QIcon(":/icons/move.svg"));
+    m_actionMove3D->setIcon(QIcon(":/icons/structure/struct_move.svg"));
     m_actionMove3D->setToolTip(tr("Déplacer interactivement les éléments dans la vue 3D (M)"));
     m_actionMove3D->setShortcut(QKeySequence(Qt::Key_M));
     m_actionMove3D->setCheckable(true);
     connect(m_actionMove3D, &QAction::triggered, this, &MainWindow::onActionMove3D);
 
     m_actionCopy3D = new QAction(tr("C&opie 3D (Translation)..."), this);
-    m_actionCopy3D->setIcon(QIcon(":/icons/copy.svg"));
+    m_actionCopy3D->setIcon(QIcon(":/icons/structure/struct_copy.svg"));
     m_actionCopy3D->setToolTip(tr("Copier interactivement les éléments par translation en 3D"));
     m_actionCopy3D->setCheckable(true);
     connect(m_actionCopy3D, &QAction::triggered, this, &MainWindow::onActionCopy3D);
