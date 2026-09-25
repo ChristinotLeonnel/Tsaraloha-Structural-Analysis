@@ -284,7 +284,10 @@ La console inférieure dispose d'un interpréteur de commandes en langage nature
 - **Système** : Windows 10 ou Windows 11 (x64).
 - **Compilateur** : Visual Studio 2022 / 2026 (MSVC x64) avec support standard **C++20**.
 - **Outils** : CMake 3.20+ et Ninja ou MSBuild.
-- **Bibliothèques** : Qt 6.2+ (`Core`, `Gui`, `Widgets`, `Svg`) et OpenCASCADE 8.0.1 (fourni dans le projet).
+- **Bibliothèques** :
+  - Qt 6.2+ (`Core`, `Gui`, `Widgets`, `Svg`).
+  - OpenCASCADE Technology 8.0.1 (**téléchargé et installé automatiquement par CMake** si non présent).
+  - Dépendances tierces 3rdparty (**téléchargées automatiquement par CMake** si non présentes).
 
 ### Compilation en Ligne de Commande :
 

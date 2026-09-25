@@ -16,10 +16,13 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Svg)
 
 # -----------------------------------------------------------------------------
-# Configuration OpenCASCADE (OCCT)
+# Configuration OpenCASCADE (OCCT) et dépendances tierces
 # -----------------------------------------------------------------------------
-# On peut définir OpenCASCADE_DIR en ligne de commande ou via variable d'environnement :
-# ex: -DOpenCASCADE_DIR="C:/OpenCASCADE-7.8.0/cmake"
+# Gestion automatique : si OCCT ou 3rdparty sont absents, CMake les télécharge
+# automatiquement depuis les dépôts officiels GitHub (V8.0.1).
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/SetupDependencies.cmake")
+setup_external_dependencies()
+
 find_package(OpenCASCADE REQUIRED)
 
 message(STATUS "OpenCASCADE Version: ${OpenCASCADE_VERSION}")

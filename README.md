@@ -10,12 +10,14 @@ Logiciel de modélisation et d'analyse 3D orienté structure et génie civil, d�
 - **Compilateur** : MSVC (Visual Studio 2022 / 2026 x64) avec support complet C++20
 - **CMake** : Version 3.20 ou supérieure
 - **Qt 6** : Qt 6.2+ (`Core`, `Gui`, `Widgets`, `Svg`) — *ex. `C:\Qt\6.11.2\msvc2022_64`*
-- **OpenCASCADE** : OCCT 8.0.1 (inclus localement dans `opencascade-8.0.1-vc14-64`)
-- **Dépendances tierces (3rdparty)** : Incluses localement dans `3rdparty-vc14-64` (FreeType, TBB, FreeImage, Jemalloc, etc.)
+- **OpenCASCADE** : OCCT 8.0.1 (**téléchargé et extrait automatiquement par CMake** si absent)
+- **Dépendances tierces (3rdparty)** : FreeType, TBB, FreeImage, Jemalloc, etc. (**téléchargées automatiquement par CMake** si absentes)
 
 ---
 
 ## 🛠️ Configuration & Compilation
+
+> **Téléchargement automatique des bibliothèques :** Si `opencascade-8.0.1-vc14-64` ou `3rdparty-vc14-64` ne sont pas encore présents dans votre copie locale (ex: clone Git frais), CMake les télécharge et les décompresse automatiquement depuis les dépôts officiels GitHub dès la première configuration. Vous pouvez désactiver cette option via `-DTSA_AUTO_DOWNLOAD_DEPS=OFF`.
 
 ### Option 1 : Avec CMake Presets (Recommandé)
 
@@ -36,8 +38,8 @@ cmake --build --preset windows-x64-debug
 ### Option 2 : En ligne de commande standard
 
 ```powershell
-# 1. Génération de la solution (ajuster le chemin Qt si nécessaire)
-cmake -B build -S . -DQt6_DIR="C:/Qt/6.11.2/msvc2022_64/lib/cmake/Qt6" -DOpenCASCADE_DIR="./opencascade-8.0.1-vc14-64/cmake"
+# 1. Génération de la solution (ajuster le chemin Qt si nécessaire, OCCT sera trouvé ou téléchargé automatiquement)
+cmake -B build -S . -DQt6_DIR="C:/Qt/6.11.2/msvc2022_64/lib/cmake/Qt6"
 
 # 2. Compilation en Release
 cmake --build build --config Release
