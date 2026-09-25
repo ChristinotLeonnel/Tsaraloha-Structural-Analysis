@@ -52,6 +52,9 @@ static bool parseHexColor(const std::string& hex, Quantity_Color& outColor)
 #include <TopoDS_Edge.hxx>
 #include <SelectMgr_ViewerSelector.hxx>
 #include <StdSelect_ViewerSelector3d.hxx>
+#include <Graphic3d_Camera.hxx>
+#include <gp_Dir.hxx>
+#include <gp_Vec.hxx>
 #include <cmath>
 
 OccView::OccView(QWidget* parent)
@@ -3083,32 +3086,63 @@ void OccView::wheelEvent(QWheelEvent* event)
     if (delta == 0 || m_view.IsNull())
         return;
 
+    const Handle(Graphic3d_Camera)& aCam = m_view->Camera();
+    if (aCam.IsNull())
+        return;
+
+    const int w = width();
+    const int h = height();
+    if (w <= 0 || h <= 0)
+        return;
+
+    // Normalisation continue du facteur de zoom selon l'angle de rotation de la molette
+    // (delta standard = ±120 ; supporte également les touchpads fins et molettes crantées)
+    const double zoomFactor = std::pow(1.15, static_cast<double>(delta) / 120.0);
+    if (zoomFactor <= 0.0)
+        return;
+
     const QPoint p = convertMousePos(event->position());
-    const int px = p.x();
-    const int py = p.y();
+    const double px = p.x();
+    const double py = p.y();
 
-    // 1. Convertir les coordonnées pixels de la souris en coordonnées monde 3D avant zoom
-    double wx = 0.0, wy = 0.0, wz = 0.0;
-    m_view->Convert(px, py, wx, wy, wz);
-
-    // 2. Appliquer le zoom
-    constexpr double zoomFactor = 1.15;
-    if (delta > 0)
+    if (aCam->IsOrthographic())
     {
-        m_view->SetZoom(zoomFactor);
+        const double curScale = aCam->Scale();
+        double newScale = curScale / zoomFactor;
+        if (newScale < 1e-4) newScale = 1e-4;
+        if (newScale > 1e8)  newScale = 1e8;
+
+        // Décalage du curseur par rapport au centre du viewport (en pixels)
+        const double dx = px - (static_cast<double>(w) * 0.5);
+        const double dy = (static_cast<double>(h) * 0.5) - py; // Qt Y orienté vers le bas
+
+        // Repère orthonormé de la vue dans l'espace monde 3D
+        const gp_Dir anUp = aCam->OrthogonalizedUp();
+        const gp_Dir aSide = aCam->SideRight();
+
+        // Translation sub-pixel du centre caméra pour maintenir le point 3D ancré sous le curseur
+        const double scaleDiff = (curScale - newScale) / static_cast<double>(h);
+        const gp_Vec aShift = gp_Vec(aSide) * (dx * scaleDiff) + gp_Vec(anUp) * (dy * scaleDiff);
+
+        // Mise à jour atomique de la caméra sans passer par des étapes intermédiaires
+        aCam->SetScale(newScale);
+        aCam->SetEyeAndCenter(aCam->Eye().Translated(aShift), aCam->Center().Translated(aShift));
     }
     else
     {
-        m_view->SetZoom(1.0 / zoomFactor);
+        // En projection perspective : translation de la caméra le long du rayon vers le point ciblé
+        double wx = 0.0, wy = 0.0, wz = 0.0;
+        m_view->Convert(static_cast<int>(px), static_cast<int>(py), wx, wy, wz);
+
+        const gp_Pnt targetPnt(wx, wy, wz);
+        const gp_Vec eyeToTarget(aCam->Eye(), targetPnt);
+        const double moveFactor = 1.0 - (1.0 / zoomFactor);
+        const gp_Vec aShift = eyeToTarget * moveFactor;
+
+        aCam->SetEyeAndCenter(aCam->Eye().Translated(aShift), aCam->Center().Translated(aShift));
     }
 
-    // 3. Re-projeter le point 3D initial en nouvelles coordonnées pixels après zoom
-    int newPx = 0, newPy = 0;
-    m_view->Convert(wx, wy, wz, newPx, newPy);
-
-    // 4. Déplacer la vue (Pan) pour réaligner exactement le point 3D sous le curseur
-    m_view->Pan(px - newPx, newPy - py);
-
+    // Un seul rendu direct à la position finale calculée
     m_view->Redraw();
     emit viewCameraChanged();
 }

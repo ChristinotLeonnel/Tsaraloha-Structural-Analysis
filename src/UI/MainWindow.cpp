@@ -1933,14 +1933,11 @@ void MainWindow::onActionNew()
     }
     updateWindowTitle();
 
-    if (m_modelTree)
-        m_modelTree->refreshAll();
     if (m_selectionManager)
         m_selectionManager->clearSelection();
     if (m_occView)
     {
-        m_occView->rebuildAllShapes();
-        m_occView->fitAll();
+        m_occView->rebuildGrid();
     }
 
     if (m_consoleDock)
@@ -2058,14 +2055,9 @@ bool MainWindow::loadFile(const QString& path)
     {
         m_selectionManager->clearSelection();
     }
-    if (m_modelTree)
-    {
-        m_modelTree->refreshAll();
-    }
     if (m_occView)
     {
-        m_occView->rebuildAllShapes();
-        m_occView->fitAll();
+        m_occView->rebuildGrid();
     }
 
     if (m_consoleDock)
