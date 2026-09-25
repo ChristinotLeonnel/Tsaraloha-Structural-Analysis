@@ -4,6 +4,7 @@
 
 # Dossiers de compilation & build
 build/
+build-*/
 bin/
 out/
 dist/
