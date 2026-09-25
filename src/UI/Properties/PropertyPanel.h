@@ -18,13 +18,15 @@ namespace TSA::UI
 
 class SectionPreviewWidget;
 
-class PropertyPanel : public QWidget
+class PropertyPanel : public QWidget, public TSA::Model::IModelObserver
 {
     Q_OBJECT
 
 public:
     explicit PropertyPanel(TSA::Model::Model* model, QWidget* parent = nullptr);
-    ~PropertyPanel() override = default;
+    ~PropertyPanel() override;
+
+    void setModel(TSA::Model::Model* model);
 
 public slots:
     void showLevelProperties(const QString& levelId);
@@ -36,9 +38,36 @@ public slots:
     void showFoundationProperties(int foundationId);
     void showTrussMemberProperties(int memberId);
     void clearProperties();
+    void refreshLibraryLists();
 
 signals:
     void elementModified();
+
+protected:
+    // IModelObserver overrides pour la synchronisation bidirectionnelle 100% temps réel
+    void onNodeModified(const TSA::Model::Node& node) override;
+    void onNodeRemoved(int nodeId) override;
+
+    void onBeamModified(const TSA::Model::Beam& beam) override;
+    void onBeamRemoved(int beamId) override;
+
+    void onColumnModified(const TSA::Model::Column& column) override;
+    void onColumnRemoved(int columnId) override;
+
+    void onSlabModified(const TSA::Model::Slab& slab) override;
+    void onSlabRemoved(int slabId) override;
+
+    void onWallModified(const TSA::Model::Wall& wall) override;
+    void onWallRemoved(int wallId) override;
+
+    void onFoundationModified(const TSA::Model::Foundation& foundation) override;
+    void onFoundationRemoved(int foundationId) override;
+
+    void onTrussMemberModified(const TSA::Model::TrussMember& member) override;
+    void onTrussMemberRemoved(int memberId) override;
+
+    void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
+    void onModelCleared() override;
 
 private slots:
     void onApplyNode();
@@ -245,6 +274,7 @@ private:
     // Synchronisation en direct
     QCheckBox* m_chkLiveSync = nullptr;
     bool m_isLoading = false;
+    bool m_isUpdatingFromSelf = false;
 };
 
 } // namespace TSA::UI

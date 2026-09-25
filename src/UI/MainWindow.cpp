@@ -21,6 +21,8 @@
 #include "Dialogs/StructurePresetDialog.h"
 #include "Dialogs/BarCreationDialog.h"
 #include "Dialogs/SurfaceCreationDialog.h"
+#include "Dialogs/LibraryDialog.h"
+#include "../Library/LibraryManager.h"
 #include "../IO/TSAFile.h"
 
 #include <QMenuBar>
@@ -576,6 +578,11 @@ void MainWindow::createActions()
     m_actionRoller->setToolTip(tr("Bloquer le déplacement vertical Tz"));
     connect(m_actionRoller, &QAction::triggered, this, &MainWindow::onActionRoller);
 
+    m_actionLibrary = new QAction(tr("&Bibliothèque Personnalisée..."), this);
+    m_actionLibrary->setIcon(QIcon(":/icons/structure_preset.svg"));
+    m_actionLibrary->setToolTip(tr("Gérer la bibliothèque de sections, matériaux, textures, couleurs et structures personnalisées"));
+    connect(m_actionLibrary, &QAction::triggered, this, [this]() { onActionLibrary(0); });
+
     m_actionPointLoad = new QAction(tr("&Force Ponctuelle..."), this);
     m_actionPointLoad->setIcon(QIcon(":/icons/load_point.svg"));
     m_actionPointLoad->setToolTip(tr("Appliquer une force ponctuelle (Fx, Fy, Fz)"));
@@ -821,6 +828,7 @@ void MainWindow::createRibbon()
     acts.actionFixed = m_actionFixed;
     acts.actionPinned = m_actionPinned;
     acts.actionRoller = m_actionRoller;
+    acts.actionLibrary = m_actionLibrary;
 
     acts.actionPointLoad = m_actionPointLoad;
     acts.actionDistLoad = m_actionDistLoad;
@@ -1412,6 +1420,22 @@ void MainWindow::onActionStructurePresets()
             m_occView->setCreationPresets(m_presets);
         }
     }
+}
+
+void MainWindow::onActionLibrary(int tabIndex)
+{
+    TSA::UI::LibraryDialog dlg(m_model.get(), this);
+    dlg.selectTab(tabIndex);
+    connect(&dlg, &TSA::UI::LibraryDialog::sectionLibraryUpdated, this, [this]() {
+        if (m_propertyPanel) m_propertyPanel->refreshLibraryLists();
+    });
+    connect(&dlg, &TSA::UI::LibraryDialog::materialLibraryUpdated, this, [this]() {
+        if (m_propertyPanel) m_propertyPanel->refreshLibraryLists();
+    });
+    connect(&dlg, &TSA::UI::LibraryDialog::colorLibraryUpdated, this, [this]() {
+        if (m_propertyPanel) m_propertyPanel->refreshLibraryLists();
+    });
+    dlg.exec();
 }
 
 void MainWindow::onFitAll()

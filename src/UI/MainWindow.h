@@ -80,6 +80,7 @@ private slots:
     void onModeDrawSlab();
     void onModeDrawWall();
     void onActionStructurePresets();
+    void onActionLibrary(int tabIndex = 0);
     void openBarCreationDialog(TSA::Model::BarRole role = TSA::Model::BarRole::Beam);
     void openSurfaceCreationDialog(int surfaceType = 0);
 
@@ -208,6 +209,7 @@ private:
 
     QAction* m_actionAddCube = nullptr;
     QAction* m_actionDelete = nullptr;
+    QAction* m_actionLibrary = nullptr;
 
     QAction* m_actionMove = nullptr;
     QAction* m_actionCopy = nullptr;

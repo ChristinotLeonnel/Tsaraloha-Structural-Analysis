@@ -59,6 +59,10 @@ set(SOURCES
     src/UI/Dialogs/BarCreationDialog.cpp
     src/UI/Dialogs/SurfaceCreationDialog.h
     src/UI/Dialogs/SurfaceCreationDialog.cpp
+    src/UI/Dialogs/LibraryDialog.h
+    src/UI/Dialogs/LibraryDialog.cpp
+    src/Library/LibraryManager.h
+    src/Library/LibraryManager.cpp
     src/Model/CreationPresets.h
     src/UI/Theme/ThemeManager.h
     src/UI/Theme/ThemeManager.cpp
@@ -253,6 +257,8 @@ set(TEST_SOURCES
     src/Grid/GridSnapManager.cpp
     src/Geometry/BeamGeometry.h
     src/Geometry/BeamGeometry.cpp
+    src/Library/LibraryManager.h
+    src/Library/LibraryManager.cpp
     src/IO/TSAFileFormat.h
     src/IO/TSAFile.h
     src/IO/TSAFile.cpp
