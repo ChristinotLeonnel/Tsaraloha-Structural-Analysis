@@ -1,6 +1,7 @@
 #include "Application.h"
 #include "../UI/MainWindow.h"
 #include "../UI/Theme/ThemeManager.h"
+#include "../Platform/WindowsAssociation.h"
 
 #include <QStyleFactory>
 #include <QDir>
@@ -63,7 +64,41 @@ Application::~Application() = default;
 
 bool Application::init()
 {
+#ifdef _WIN32
+    // Enregistrement automatique de l'association .tsa pour l'utilisateur courant (Robot SA style)
+    TSA::Platform::WindowsAssociation::registerFileAssociation();
+#endif
+
+    const QStringList args = arguments();
+    for (int i = 1; i < args.size(); ++i)
+    {
+        if (args[i] == "--register-associations")
+        {
+#ifdef _WIN32
+            TSA::Platform::WindowsAssociation::registerFileAssociation();
+#endif
+            return false;
+        }
+        if (args[i] == "--unregister-associations")
+        {
+#ifdef _WIN32
+            TSA::Platform::WindowsAssociation::unregisterFileAssociation();
+#endif
+            return false;
+        }
+    }
+
     m_mainWindow = std::make_unique<MainWindow>();
+
+    for (int i = 1; i < args.size(); ++i)
+    {
+        if (args[i].endsWith(".tsa", Qt::CaseInsensitive))
+        {
+            m_mainWindow->loadFile(args[i]);
+            break;
+        }
+    }
+
     m_mainWindow->show();
     return true;
 }

@@ -18,6 +18,7 @@ struct RibbonActions
     QAction* actionNew = nullptr;
     QAction* actionOpen = nullptr;
     QAction* actionSave = nullptr;
+    QAction* actionSaveAs = nullptr;
     QAction* actionExit = nullptr;
 
     // Sélection & Édition

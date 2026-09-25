@@ -15,7 +15,11 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
 #include <QColor>
+#include <Image_PixMap.hxx>
 
 static bool parseHexColor(const std::string& hex, Quantity_Color& outColor)
 {
@@ -57,6 +61,7 @@ OccView::OccView(QWidget* parent)
     setAttribute(Qt::WA_NoSystemBackground);
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
+    setAcceptDrops(true);
 }
 
 OccView::~OccView()
@@ -3032,4 +3037,62 @@ void OccView::keyPressEvent(QKeyEvent* event)
     {
         QWidget::keyPressEvent(event);
     }
+}
+
+QImage OccView::captureViewImage(int width, int height)
+{
+    if (m_view.IsNull())
+    {
+        return QImage();
+    }
+
+    try
+    {
+        Image_PixMap pixmap;
+        if (m_view->ToPixMap(pixmap, width, height, Graphic3d_BT_RGB))
+        {
+            QImage img(pixmap.Data(), static_cast<int>(pixmap.Width()), static_cast<int>(pixmap.Height()),
+                       static_cast<int>(pixmap.SizeRowBytes()), QImage::Format_RGB888);
+            return img.copy();
+        }
+    }
+    catch (...)
+    {
+    }
+
+    return grab().toImage().scaled(width, height, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+}
+
+void OccView::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (event->mimeData()->hasUrls())
+    {
+        for (const QUrl& url : event->mimeData()->urls())
+        {
+            if (url.toLocalFile().endsWith(".tsa", Qt::CaseInsensitive))
+            {
+                event->acceptProposedAction();
+                return;
+            }
+        }
+    }
+    QWidget::dragEnterEvent(event);
+}
+
+void OccView::dropEvent(QDropEvent* event)
+{
+    if (event->mimeData()->hasUrls())
+    {
+        for (const QUrl& url : event->mimeData()->urls())
+        {
+            QString filePath = url.toLocalFile();
+            if (filePath.endsWith(".tsa", Qt::CaseInsensitive))
+            {
+                event->acceptProposedAction();
+                emit fileDropped(filePath);
+                return;
+            }
+        }
+    }
+    QWidget::dropEvent(event);
 }

@@ -16,6 +16,8 @@ class QCheckBox;
 namespace TSA::UI
 {
 
+class SectionPreviewWidget;
+
 class PropertyPanel : public QWidget
 {
     Q_OBJECT
@@ -57,6 +59,10 @@ private:
     void pickColor(QString& targetColor, QPushButton* targetBtn, const QString& title);
     void updateBeamSectionVisibility(int secData);
     void updateColumnSectionVisibility(int secData);
+    void updateBeamCalculatedProperties(const TSA::Model::Section& sec);
+    void updateColumnCalculatedProperties(const TSA::Model::Section& sec);
+    TSA::Model::Section getBeamSectionFromUi() const;
+    TSA::Model::Section getColumnSectionFromUi() const;
 
 private:
     TSA::Model::Model* m_model = nullptr;
@@ -88,7 +94,7 @@ private:
     QPushButton* m_nodeColorBtn = nullptr;
     QString m_nodeColor;
 
-    // Panneau Poutre
+    // Panneau Poutre / Barre
     QGroupBox* m_beamGroup = nullptr;
     QLineEdit* m_beamNameEdit = nullptr;
     QLabel* m_beamIdLabel = nullptr;
@@ -96,14 +102,49 @@ private:
     QLabel* m_beamEndNodeLabel = nullptr;
     QLabel* m_beamLengthLabel = nullptr;
     QComboBox* m_beamRoleCombo = nullptr;
+
+    // Éditeur Graphique de Section (Poutre)
     QComboBox* m_beamSectionTypeCombo = nullptr;
+    SectionPreviewWidget* m_beamSectionPreview = nullptr;
     QLabel* m_beamWidthLabel = nullptr;
     QDoubleSpinBox* m_beamWidthSpin = nullptr;
     QLabel* m_beamHeightLabel = nullptr;
     QDoubleSpinBox* m_beamHeightSpin = nullptr;
+    QLabel* m_beamTwLabel = nullptr;
+    QDoubleSpinBox* m_beamTwSpin = nullptr;
+    QLabel* m_beamTfLabel = nullptr;
+    QDoubleSpinBox* m_beamTfSpin = nullptr;
+
+    // Propriétés calculées (Poutre)
+    QLabel* m_beamPropArea = nullptr;
+    QLabel* m_beamPropIy = nullptr;
+    QLabel* m_beamPropIz = nullptr;
+    QLabel* m_beamPropIt = nullptr;
+    QLabel* m_beamPropW = nullptr;
+
+    // Matériau & Orientation (Poutre)
     QComboBox* m_beamMaterialCombo = nullptr;
     QDoubleSpinBox* m_beamRotationSpin = nullptr;
+
+    // Excentrement (Poutre)
     QComboBox* m_beamEccentricityCombo = nullptr;
+    QDoubleSpinBox* m_beamEySpin = nullptr;
+    QDoubleSpinBox* m_beamEzSpin = nullptr;
+
+    // Relâchements aux extrémités (Poutre)
+    QCheckBox* m_beamStartUx = nullptr;
+    QCheckBox* m_beamStartUy = nullptr;
+    QCheckBox* m_beamStartUz = nullptr;
+    QCheckBox* m_beamStartRx = nullptr;
+    QCheckBox* m_beamStartRy = nullptr;
+    QCheckBox* m_beamStartRz = nullptr;
+    QCheckBox* m_beamEndUx = nullptr;
+    QCheckBox* m_beamEndUy = nullptr;
+    QCheckBox* m_beamEndUz = nullptr;
+    QCheckBox* m_beamEndRx = nullptr;
+    QCheckBox* m_beamEndRy = nullptr;
+    QCheckBox* m_beamEndRz = nullptr;
+
     QPushButton* m_beamColorBtn = nullptr;
     QString m_beamColor;
 
@@ -114,13 +155,35 @@ private:
     QLabel* m_columnStartNodeLabel = nullptr;
     QLabel* m_columnEndNodeLabel = nullptr;
     QLabel* m_columnHeightLabel = nullptr;
+
+    // Éditeur Graphique de Section (Poteau)
     QComboBox* m_columnSectionTypeCombo = nullptr;
+    SectionPreviewWidget* m_columnSectionPreview = nullptr;
     QLabel* m_columnWidthLabel = nullptr;
     QDoubleSpinBox* m_columnWidthSpin = nullptr;
     QLabel* m_columnDepthLabel = nullptr;
     QDoubleSpinBox* m_columnDepthSpin = nullptr;
+    QLabel* m_columnTwLabel = nullptr;
+    QDoubleSpinBox* m_columnTwSpin = nullptr;
+    QLabel* m_columnTfLabel = nullptr;
+    QDoubleSpinBox* m_columnTfSpin = nullptr;
+
+    // Propriétés calculées (Poteau)
+    QLabel* m_columnPropArea = nullptr;
+    QLabel* m_columnPropIy = nullptr;
+    QLabel* m_columnPropIz = nullptr;
+    QLabel* m_columnPropIt = nullptr;
+    QLabel* m_columnPropW = nullptr;
+
+    // Matériau & Orientation (Poteau)
     QComboBox* m_columnMaterialCombo = nullptr;
     QDoubleSpinBox* m_columnRotationSpin = nullptr;
+
+    // Excentrement (Poteau)
+    QComboBox* m_columnEccentricityCombo = nullptr;
+    QDoubleSpinBox* m_columnEySpin = nullptr;
+    QDoubleSpinBox* m_columnEzSpin = nullptr;
+
     QPushButton* m_columnColorBtn = nullptr;
     QString m_columnColor;
 

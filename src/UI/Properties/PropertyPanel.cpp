@@ -1,7 +1,9 @@
 #include "PropertyPanel.h"
+#include "../Widgets/SectionPreviewWidget.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
+#include <QGridLayout>
 #include <QLabel>
 #include <QDoubleSpinBox>
 #include <QLineEdit>
@@ -114,19 +116,71 @@ void PropertyPanel::updateBeamSectionVisibility(int secData)
 {
     if (secData == 1) // Circulaire
     {
-        if (m_beamWidthLabel) m_beamWidthLabel->setText(tr("Diamètre D :"));
+        if (m_beamWidthLabel) m_beamWidthLabel->setText(tr("Diamètre Ø :"));
+        if (m_beamWidthSpin) m_beamWidthSpin->setVisible(true);
+        if (m_beamWidthLabel) m_beamWidthLabel->setVisible(true);
         if (m_beamHeightLabel) m_beamHeightLabel->setVisible(false);
         if (m_beamHeightSpin) m_beamHeightSpin->setVisible(false);
+        if (m_beamTwLabel) m_beamTwLabel->setVisible(false);
+        if (m_beamTwSpin) m_beamTwSpin->setVisible(false);
+        if (m_beamTfLabel) m_beamTfLabel->setVisible(false);
+        if (m_beamTfSpin) m_beamTfSpin->setVisible(false);
     }
-    else
+    else if (secData == 8114) // Tube circulaire (Pipe)
     {
-        if (m_beamWidthLabel) m_beamWidthLabel->setText(tr("Largeur b :"));
-        if (m_beamHeightLabel)
-        {
-            m_beamHeightLabel->setText(tr("Hauteur h :"));
-            m_beamHeightLabel->setVisible(true);
-        }
+        if (m_beamWidthLabel) m_beamWidthLabel->setText(tr("Diamètre ext. Ø :"));
+        if (m_beamWidthSpin) m_beamWidthSpin->setVisible(true);
+        if (m_beamWidthLabel) m_beamWidthLabel->setVisible(true);
+        if (m_beamHeightLabel) m_beamHeightLabel->setVisible(false);
+        if (m_beamHeightSpin) m_beamHeightSpin->setVisible(false);
+        if (m_beamTwLabel) { m_beamTwLabel->setText(tr("Épaisseur t :")); m_beamTwLabel->setVisible(true); }
+        if (m_beamTwSpin) m_beamTwSpin->setVisible(true);
+        if (m_beamTfLabel) m_beamTfLabel->setVisible(false);
+        if (m_beamTfSpin) m_beamTfSpin->setVisible(false);
+    }
+    else if (secData >= 100 && secData <= 400) // IPE
+    {
+        if (m_beamWidthLabel) { m_beamWidthLabel->setText(tr("Largeur b :")); m_beamWidthLabel->setVisible(true); }
+        if (m_beamWidthSpin) m_beamWidthSpin->setVisible(true);
+        if (m_beamHeightLabel) { m_beamHeightLabel->setText(tr("Hauteur h :")); m_beamHeightLabel->setVisible(true); }
         if (m_beamHeightSpin) m_beamHeightSpin->setVisible(true);
+        if (m_beamTwLabel) { m_beamTwLabel->setText(tr("Ép. âme tw :")); m_beamTwLabel->setVisible(true); }
+        if (m_beamTwSpin) m_beamTwSpin->setVisible(true);
+        if (m_beamTfLabel) { m_beamTfLabel->setText(tr("Ép. aile tf :")); m_beamTfLabel->setVisible(true); }
+        if (m_beamTfSpin) m_beamTfSpin->setVisible(true);
+    }
+    else if ((secData >= 1600 && secData <= 2400) || (secData >= 1601 && secData <= 3001) || (secData >= 5100 && secData <= 5300)) // HEA, HEB, UPN
+    {
+        if (m_beamWidthLabel) { m_beamWidthLabel->setText(tr("Largeur b :")); m_beamWidthLabel->setVisible(true); }
+        if (m_beamWidthSpin) m_beamWidthSpin->setVisible(true);
+        if (m_beamHeightLabel) { m_beamHeightLabel->setText(tr("Hauteur h :")); m_beamHeightLabel->setVisible(true); }
+        if (m_beamHeightSpin) m_beamHeightSpin->setVisible(true);
+        if (m_beamTwLabel) { m_beamTwLabel->setText(tr("Ép. âme tw :")); m_beamTwLabel->setVisible(true); }
+        if (m_beamTwSpin) m_beamTwSpin->setVisible(true);
+        if (m_beamTfLabel) { m_beamTfLabel->setText(tr("Ép. aile tf :")); m_beamTfLabel->setVisible(true); }
+        if (m_beamTfSpin) m_beamTfSpin->setVisible(true);
+    }
+    else if (secData == 6060 || secData == 6080) // Cornière
+    {
+        if (m_beamWidthLabel) { m_beamWidthLabel->setText(tr("Largeur b :")); m_beamWidthLabel->setVisible(true); }
+        if (m_beamWidthSpin) m_beamWidthSpin->setVisible(true);
+        if (m_beamHeightLabel) { m_beamHeightLabel->setText(tr("Hauteur h :")); m_beamHeightLabel->setVisible(true); }
+        if (m_beamHeightSpin) m_beamHeightSpin->setVisible(true);
+        if (m_beamTwLabel) { m_beamTwLabel->setText(tr("Épaisseur t :")); m_beamTwLabel->setVisible(true); }
+        if (m_beamTwSpin) m_beamTwSpin->setVisible(true);
+        if (m_beamTfLabel) m_beamTfLabel->setVisible(false);
+        if (m_beamTfSpin) m_beamTfSpin->setVisible(false);
+    }
+    else // Rectangulaire par défaut
+    {
+        if (m_beamWidthLabel) { m_beamWidthLabel->setText(tr("Largeur b :")); m_beamWidthLabel->setVisible(true); }
+        if (m_beamWidthSpin) m_beamWidthSpin->setVisible(true);
+        if (m_beamHeightLabel) { m_beamHeightLabel->setText(tr("Hauteur h :")); m_beamHeightLabel->setVisible(true); }
+        if (m_beamHeightSpin) m_beamHeightSpin->setVisible(true);
+        if (m_beamTwLabel) m_beamTwLabel->setVisible(false);
+        if (m_beamTwSpin) m_beamTwSpin->setVisible(false);
+        if (m_beamTfLabel) m_beamTfLabel->setVisible(false);
+        if (m_beamTfSpin) m_beamTfSpin->setVisible(false);
     }
 }
 
@@ -134,20 +188,206 @@ void PropertyPanel::updateColumnSectionVisibility(int secData)
 {
     if (secData == 1) // Circulaire
     {
-        if (m_columnWidthLabel) m_columnWidthLabel->setText(tr("Diamètre D :"));
+        if (m_columnWidthLabel) m_columnWidthLabel->setText(tr("Diamètre Ø :"));
+        if (m_columnWidthSpin) m_columnWidthSpin->setVisible(true);
+        if (m_columnWidthLabel) m_columnWidthLabel->setVisible(true);
         if (m_columnDepthLabel) m_columnDepthLabel->setVisible(false);
         if (m_columnDepthSpin) m_columnDepthSpin->setVisible(false);
+        if (m_columnTwLabel) m_columnTwLabel->setVisible(false);
+        if (m_columnTwSpin) m_columnTwSpin->setVisible(false);
+        if (m_columnTfLabel) m_columnTfLabel->setVisible(false);
+        if (m_columnTfSpin) m_columnTfSpin->setVisible(false);
     }
-    else
+    else if (secData >= 160 && secData <= 400) // IPE
     {
-        if (m_columnWidthLabel) m_columnWidthLabel->setText(tr("Largeur b :"));
-        if (m_columnDepthLabel)
-        {
-            m_columnDepthLabel->setText(tr("Profondeur h :"));
-            m_columnDepthLabel->setVisible(true);
-        }
+        if (m_columnWidthLabel) { m_columnWidthLabel->setText(tr("Largeur b :")); m_columnWidthLabel->setVisible(true); }
+        if (m_columnWidthSpin) m_columnWidthSpin->setVisible(true);
+        if (m_columnDepthLabel) { m_columnDepthLabel->setText(tr("Hauteur h :")); m_columnDepthLabel->setVisible(true); }
         if (m_columnDepthSpin) m_columnDepthSpin->setVisible(true);
+        if (m_columnTwLabel) { m_columnTwLabel->setText(tr("Ép. âme tw :")); m_columnTwLabel->setVisible(true); }
+        if (m_columnTwSpin) m_columnTwSpin->setVisible(true);
+        if (m_columnTfLabel) { m_columnTfLabel->setText(tr("Ép. aile tf :")); m_columnTfLabel->setVisible(true); }
+        if (m_columnTfSpin) m_columnTfSpin->setVisible(true);
     }
+    else if (secData == 2000 || secData == 2400 || secData == 2001 || secData == 3001) // HEA / HEB
+    {
+        if (m_columnWidthLabel) { m_columnWidthLabel->setText(tr("Largeur b :")); m_columnWidthLabel->setVisible(true); }
+        if (m_columnWidthSpin) m_columnWidthSpin->setVisible(true);
+        if (m_columnDepthLabel) { m_columnDepthLabel->setText(tr("Hauteur h :")); m_columnDepthLabel->setVisible(true); }
+        if (m_columnDepthSpin) m_columnDepthSpin->setVisible(true);
+        if (m_columnTwLabel) { m_columnTwLabel->setText(tr("Ép. âme tw :")); m_columnTwLabel->setVisible(true); }
+        if (m_columnTwSpin) m_columnTwSpin->setVisible(true);
+        if (m_columnTfLabel) { m_columnTfLabel->setText(tr("Ép. aile tf :")); m_columnTfLabel->setVisible(true); }
+        if (m_columnTfSpin) m_columnTfSpin->setVisible(true);
+    }
+    else // Rectangulaire
+    {
+        if (m_columnWidthLabel) { m_columnWidthLabel->setText(tr("Largeur b :")); m_columnWidthLabel->setVisible(true); }
+        if (m_columnWidthSpin) m_columnWidthSpin->setVisible(true);
+        if (m_columnDepthLabel) { m_columnDepthLabel->setText(tr("Profondeur h :")); m_columnDepthLabel->setVisible(true); }
+        if (m_columnDepthSpin) m_columnDepthSpin->setVisible(true);
+        if (m_columnTwLabel) m_columnTwLabel->setVisible(false);
+        if (m_columnTwSpin) m_columnTwSpin->setVisible(false);
+        if (m_columnTfLabel) m_columnTfLabel->setVisible(false);
+        if (m_columnTfSpin) m_columnTfSpin->setVisible(false);
+    }
+}
+
+void PropertyPanel::updateBeamCalculatedProperties(const TSA::Model::Section& sec)
+{
+    if (!m_beamPropArea) return;
+    double aCm2 = sec.area() * 10000.0;
+    double iyCm4 = sec.iy() * 100000000.0;
+    double izCm4 = sec.iz() * 100000000.0;
+    double itCm4 = sec.it() * 100000000.0;
+    double wyCm3 = sec.wy() * 1000000.0;
+    double wzCm3 = sec.wz() * 1000000.0;
+
+    m_beamPropArea->setText(QString("Aire <b>A</b> = %1 cm² (%2 m²)").arg(aCm2, 0, 'f', 1).arg(sec.area(), 0, 'f', 4));
+    m_beamPropIy->setText(QString("Inertie <b>Iy</b> = %1 cm⁴ (axe fort)").arg(iyCm4, 0, 'f', 1));
+    m_beamPropIz->setText(QString("Inertie <b>Iz</b> = %1 cm⁴ (axe faible)").arg(izCm4, 0, 'f', 1));
+    m_beamPropIt->setText(QString("Torsion <b>J</b> = %1 cm⁴").arg(itCm4, 0, 'f', 1));
+    m_beamPropW->setText(QString("Module <b>Wel,y</b> = %1 cm³ | <b>Wel,z</b> = %2 cm³").arg(wyCm3, 0, 'f', 1).arg(wzCm3, 0, 'f', 1));
+
+    if (m_beamSectionPreview)
+    {
+        m_beamSectionPreview->setSection(sec);
+    }
+}
+
+void PropertyPanel::updateColumnCalculatedProperties(const TSA::Model::Section& sec)
+{
+    if (!m_columnPropArea) return;
+    double aCm2 = sec.area() * 10000.0;
+    double iyCm4 = sec.iy() * 100000000.0;
+    double izCm4 = sec.iz() * 100000000.0;
+    double itCm4 = sec.it() * 100000000.0;
+    double wyCm3 = sec.wy() * 1000000.0;
+    double wzCm3 = sec.wz() * 1000000.0;
+
+    m_columnPropArea->setText(QString("Aire <b>A</b> = %1 cm² (%2 m²)").arg(aCm2, 0, 'f', 1).arg(sec.area(), 0, 'f', 4));
+    m_columnPropIy->setText(QString("Inertie <b>Iy</b> = %1 cm⁴ (axe fort)").arg(iyCm4, 0, 'f', 1));
+    m_columnPropIz->setText(QString("Inertie <b>Iz</b> = %1 cm⁴ (axe faible)").arg(izCm4, 0, 'f', 1));
+    m_columnPropIt->setText(QString("Torsion <b>J</b> = %1 cm⁴").arg(itCm4, 0, 'f', 1));
+    m_columnPropW->setText(QString("Module <b>Wel,y</b> = %1 cm³ | <b>Wel,z</b> = %2 cm³").arg(wyCm3, 0, 'f', 1).arg(wzCm3, 0, 'f', 1));
+
+    if (m_columnSectionPreview)
+    {
+        m_columnSectionPreview->setSection(sec);
+    }
+}
+
+TSA::Model::Section PropertyPanel::getBeamSectionFromUi() const
+{
+    int secData = m_beamSectionTypeCombo ? m_beamSectionTypeCombo->currentData().toInt() : 0;
+    double w = m_beamWidthSpin ? m_beamWidthSpin->value() : 0.30;
+    double h = m_beamHeightSpin ? m_beamHeightSpin->value() : 0.50;
+    double tw = m_beamTwSpin ? m_beamTwSpin->value() : 0.01;
+    double tf = m_beamTfSpin ? m_beamTfSpin->value() : 0.015;
+
+    if (secData == 0) // Rectangulaire
+    {
+        return TSA::Model::Section::rectangular(w, h);
+    }
+    else if (secData == 1) // Circulaire
+    {
+        return TSA::Model::Section::circular(w);
+    }
+    else if (secData >= 100 && secData <= 400) // IPE
+    {
+        auto s = TSA::Model::Section::ipe(secData);
+        s.width = w;
+        s.height = h;
+        s.tw = tw;
+        s.tf = tf;
+        return s;
+    }
+    else if (secData >= 1600 && secData <= 2400) // HEA
+    {
+        auto s = TSA::Model::Section::hea(secData / 10);
+        s.width = w;
+        s.height = h;
+        s.tw = tw;
+        s.tf = tf;
+        return s;
+    }
+    else if (secData >= 1601 && secData <= 3001) // HEB
+    {
+        auto s = TSA::Model::Section::heb((secData - 1) / 10);
+        s.width = w;
+        s.height = h;
+        s.tw = tw;
+        s.tf = tf;
+        return s;
+    }
+    else if (secData >= 5100 && secData <= 5300) // UPN
+    {
+        auto s = TSA::Model::Section::upn(secData - 5000);
+        s.width = w;
+        s.height = h;
+        s.tw = tw;
+        s.tf = tf;
+        return s;
+    }
+    else if (secData == 6060 || secData == 6080) // Cornière
+    {
+        return TSA::Model::Section::angle(h, w, tw);
+    }
+    else if (secData == 7100) // Tube rectangulaire
+    {
+        return TSA::Model::Section::boxHollow(w, h, tw, tf);
+    }
+    else if (secData == 8114) // Tube circulaire
+    {
+        return TSA::Model::Section::pipe(w, tw);
+    }
+    return TSA::Model::Section::rectangular(w, h);
+}
+
+TSA::Model::Section PropertyPanel::getColumnSectionFromUi() const
+{
+    int secData = m_columnSectionTypeCombo ? m_columnSectionTypeCombo->currentData().toInt() : 0;
+    double w = m_columnWidthSpin ? m_columnWidthSpin->value() : 0.30;
+    double h = m_columnDepthSpin ? m_columnDepthSpin->value() : 0.30;
+    double tw = m_columnTwSpin ? m_columnTwSpin->value() : 0.01;
+    double tf = m_columnTfSpin ? m_columnTfSpin->value() : 0.015;
+
+    if (secData == 0) // Rectangulaire
+    {
+        return TSA::Model::Section::rectangular(w, h);
+    }
+    else if (secData == 1) // Circulaire
+    {
+        return TSA::Model::Section::circular(w);
+    }
+    else if (secData >= 160 && secData <= 400) // IPE
+    {
+        auto s = TSA::Model::Section::ipe(secData);
+        s.width = w;
+        s.height = h;
+        s.tw = tw;
+        s.tf = tf;
+        return s;
+    }
+    else if (secData == 2000 || secData == 2400) // HEA
+    {
+        auto s = TSA::Model::Section::hea(secData / 10);
+        s.width = w;
+        s.height = h;
+        s.tw = tw;
+        s.tf = tf;
+        return s;
+    }
+    else if (secData == 2001 || secData == 3001) // HEB
+    {
+        auto s = TSA::Model::Section::heb((secData - 1) / 10);
+        s.width = w;
+        s.height = h;
+        s.tw = tw;
+        s.tf = tf;
+        return s;
+    }
+    return TSA::Model::Section::rectangular(w, h);
 }
 
 void PropertyPanel::setupUi()
@@ -246,17 +486,26 @@ void PropertyPanel::setupUi()
     containerLayout->addWidget(m_nodeGroup);
 
     // ==========================================
-    // 2. PANNEAU POUTRE
+    // 2. PANNEAU POUTRE / BARRE
     // ==========================================
-    m_beamGroup = new QGroupBox(tr("Propriétés de la Poutre"), container);
-    auto* beamForm = new QFormLayout(m_beamGroup);
-    m_beamNameEdit = new QLineEdit(m_beamGroup);
-    m_beamIdLabel = new QLabel(m_beamGroup);
-    m_beamStartNodeLabel = new QLabel(m_beamGroup);
-    m_beamEndNodeLabel = new QLabel(m_beamGroup);
-    m_beamLengthLabel = new QLabel(m_beamGroup);
+    m_beamGroup = new QGroupBox(tr("Propriétés de la Barre"), container);
+    auto* beamMainLayout = new QVBoxLayout(m_beamGroup);
+    beamMainLayout->setContentsMargins(6, 8, 6, 8);
+    beamMainLayout->setSpacing(8);
 
-    m_beamRoleCombo = new QComboBox(m_beamGroup);
+    // 2.1 Identification
+    auto* beamIdentBox = new QGroupBox(tr("Identification"), m_beamGroup);
+    auto* beamIdentForm = new QFormLayout(beamIdentBox);
+    beamIdentForm->setContentsMargins(6, 6, 6, 6);
+    beamIdentForm->setSpacing(4);
+
+    m_beamNameEdit = new QLineEdit(beamIdentBox);
+    m_beamIdLabel = new QLabel(beamIdentBox);
+    m_beamStartNodeLabel = new QLabel(beamIdentBox);
+    m_beamEndNodeLabel = new QLabel(beamIdentBox);
+    m_beamLengthLabel = new QLabel(beamIdentBox);
+
+    m_beamRoleCombo = new QComboBox(beamIdentBox);
     m_beamRoleCombo->addItem(tr("Barre"), static_cast<int>(TSA::Model::BarRole::Generic));
     m_beamRoleCombo->addItem(tr("Poutre"), static_cast<int>(TSA::Model::BarRole::Beam));
     m_beamRoleCombo->addItem(tr("Poteau"), static_cast<int>(TSA::Model::BarRole::Column));
@@ -265,112 +514,353 @@ void PropertyPanel::setupUi()
     m_beamRoleCombo->addItem(tr("Barre acier"), static_cast<int>(TSA::Model::BarRole::SteelMember));
     m_beamRoleCombo->addItem(tr("Treillis"), static_cast<int>(TSA::Model::BarRole::Truss));
 
-    m_beamSectionTypeCombo = new QComboBox(m_beamGroup);
+    beamIdentForm->addRow(tr("Nom / Repère :"), m_beamNameEdit);
+    beamIdentForm->addRow(tr("ID Interne :"), m_beamIdLabel);
+    beamIdentForm->addRow(tr("Rôle / Type :"), m_beamRoleCombo);
+    beamIdentForm->addRow(tr("Nœud Départ :"), m_beamStartNodeLabel);
+    beamIdentForm->addRow(tr("Nœud Arrivée :"), m_beamEndNodeLabel);
+    beamIdentForm->addRow(tr("Longueur :"), m_beamLengthLabel);
+    beamMainLayout->addWidget(beamIdentBox);
+
+    // 2.2 Éditeur Graphique de Section
+    auto* beamSecBox = new QGroupBox(tr("Éditeur Graphique de Section"), m_beamGroup);
+    beamSecBox->setStyleSheet("QGroupBox { font-weight: bold; }");
+    auto* beamSecLayout = new QVBoxLayout(beamSecBox);
+    beamSecLayout->setContentsMargins(6, 6, 6, 6);
+    beamSecLayout->setSpacing(6);
+
+    // Aperçu interactif 2D
+    m_beamSectionPreview = new SectionPreviewWidget(beamSecBox);
+    m_beamSectionPreview->setMinimumHeight(190);
+    beamSecLayout->addWidget(m_beamSectionPreview);
+
+    // Paramètres géométriques de la section
+    auto* beamSecForm = new QFormLayout();
+    beamSecForm->setContentsMargins(0, 4, 0, 4);
+    beamSecForm->setSpacing(4);
+
+    m_beamSectionTypeCombo = new QComboBox(beamSecBox);
     setupSectionTypeCombo(m_beamSectionTypeCombo);
+    beamSecForm->addRow(tr("Profil / Forme :"), m_beamSectionTypeCombo);
 
-    m_beamWidthLabel = new QLabel(tr("Largeur b :"), m_beamGroup);
-    m_beamWidthSpin = new QDoubleSpinBox(m_beamGroup);
+    m_beamWidthLabel = new QLabel(tr("Largeur b :"), beamSecBox);
+    m_beamWidthSpin = new QDoubleSpinBox(beamSecBox);
     m_beamWidthSpin->setRange(0.01, 10.0);
-    m_beamWidthSpin->setSingleStep(0.05);
+    m_beamWidthSpin->setSingleStep(0.02);
+    m_beamWidthSpin->setDecimals(3);
     m_beamWidthSpin->setSuffix(" m");
+    beamSecForm->addRow(m_beamWidthLabel, m_beamWidthSpin);
 
-    m_beamHeightLabel = new QLabel(tr("Hauteur h :"), m_beamGroup);
-    m_beamHeightSpin = new QDoubleSpinBox(m_beamGroup);
+    m_beamHeightLabel = new QLabel(tr("Hauteur h :"), beamSecBox);
+    m_beamHeightSpin = new QDoubleSpinBox(beamSecBox);
     m_beamHeightSpin->setRange(0.01, 10.0);
-    m_beamHeightSpin->setSingleStep(0.05);
+    m_beamHeightSpin->setSingleStep(0.02);
+    m_beamHeightSpin->setDecimals(3);
     m_beamHeightSpin->setSuffix(" m");
+    beamSecForm->addRow(m_beamHeightLabel, m_beamHeightSpin);
 
-    m_beamMaterialCombo = new QComboBox(m_beamGroup);
+    m_beamTwLabel = new QLabel(tr("Ép. âme tw :"), beamSecBox);
+    m_beamTwSpin = new QDoubleSpinBox(beamSecBox);
+    m_beamTwSpin->setRange(0.001, 1.0);
+    m_beamTwSpin->setSingleStep(0.002);
+    m_beamTwSpin->setDecimals(3);
+    m_beamTwSpin->setSuffix(" m");
+    beamSecForm->addRow(m_beamTwLabel, m_beamTwSpin);
+
+    m_beamTfLabel = new QLabel(tr("Ép. aile tf :"), beamSecBox);
+    m_beamTfSpin = new QDoubleSpinBox(beamSecBox);
+    m_beamTfSpin->setRange(0.001, 1.0);
+    m_beamTfSpin->setSingleStep(0.002);
+    m_beamTfSpin->setDecimals(3);
+    m_beamTfSpin->setSuffix(" m");
+    beamSecForm->addRow(m_beamTfLabel, m_beamTfSpin);
+
+    beamSecLayout->addLayout(beamSecForm);
+
+    // Caractéristiques mécaniques calculées
+    auto* beamCalcFrame = new QFrame(beamSecBox);
+    beamCalcFrame->setStyleSheet("QFrame { background: rgba(30, 45, 60, 0.05); border: 1px solid rgba(0,0,0,0.12); border-radius: 4px; padding: 4px; }");
+    auto* beamCalcLayout = new QVBoxLayout(beamCalcFrame);
+    beamCalcLayout->setContentsMargins(6, 4, 6, 4);
+    beamCalcLayout->setSpacing(2);
+
+    auto* calcHdr = new QLabel(tr("<b>Caractéristiques Mécaniques Calculées</b>"), beamCalcFrame);
+    calcHdr->setStyleSheet("color: #1976D2; font-size: 8.5pt;");
+    beamCalcLayout->addWidget(calcHdr);
+
+    m_beamPropArea = new QLabel(beamCalcFrame);
+    m_beamPropArea->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+    m_beamPropIy = new QLabel(beamCalcFrame);
+    m_beamPropIy->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+    m_beamPropIz = new QLabel(beamCalcFrame);
+    m_beamPropIz->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+    m_beamPropIt = new QLabel(beamCalcFrame);
+    m_beamPropIt->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+    m_beamPropW = new QLabel(beamCalcFrame);
+    m_beamPropW->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+
+    beamCalcLayout->addWidget(m_beamPropArea);
+    beamCalcLayout->addWidget(m_beamPropIy);
+    beamCalcLayout->addWidget(m_beamPropIz);
+    beamCalcLayout->addWidget(m_beamPropIt);
+    beamCalcLayout->addWidget(m_beamPropW);
+
+    beamSecLayout->addWidget(beamCalcFrame);
+    beamMainLayout->addWidget(beamSecBox);
+
+    // 2.3 Matériau & Orientation
+    auto* beamMatBox = new QGroupBox(tr("Matériau & Orientation"), m_beamGroup);
+    auto* beamMatForm = new QFormLayout(beamMatBox);
+    beamMatForm->setContentsMargins(6, 6, 6, 6);
+    beamMatForm->setSpacing(4);
+
+    m_beamMaterialCombo = new QComboBox(beamMatBox);
     setupMaterialCombo(m_beamMaterialCombo);
+    beamMatForm->addRow(tr("Matériau :"), m_beamMaterialCombo);
 
-    m_beamRotationSpin = new QDoubleSpinBox(m_beamGroup);
+    m_beamRotationSpin = new QDoubleSpinBox(beamMatBox);
     m_beamRotationSpin->setRange(0.0, 360.0);
     m_beamRotationSpin->setSingleStep(15.0);
     m_beamRotationSpin->setSuffix(" °");
+    beamMatForm->addRow(tr("Rotation γ :"), m_beamRotationSpin);
+    beamMainLayout->addWidget(beamMatBox);
 
-    m_beamEccentricityCombo = new QComboBox(m_beamGroup);
-    m_beamEccentricityCombo->addItem(tr("inexistant"), static_cast<int>(TSA::Model::BarEccentricity::None));
-    m_beamEccentricityCombo->addItem(tr("Fibre supérieure"), static_cast<int>(TSA::Model::BarEccentricity::TopFlange));
-    m_beamEccentricityCombo->addItem(tr("Fibre inférieure"), static_cast<int>(TSA::Model::BarEccentricity::BottomFlange));
-    m_beamEccentricityCombo->addItem(tr("Fibre gauche"), static_cast<int>(TSA::Model::BarEccentricity::LeftFlange));
-    m_beamEccentricityCombo->addItem(tr("Fibre droite"), static_cast<int>(TSA::Model::BarEccentricity::RightFlange));
+    // 2.4 Excentrement & Positionnement
+    auto* beamEccBox = new QGroupBox(tr("Excentrement & Alignement"), m_beamGroup);
+    auto* beamEccForm = new QFormLayout(beamEccBox);
+    beamEccForm->setContentsMargins(6, 6, 6, 6);
+    beamEccForm->setSpacing(4);
 
+    m_beamEccentricityCombo = new QComboBox(beamEccBox);
+    m_beamEccentricityCombo->addItem(tr("Axe neutre (Axe de barre)"), static_cast<int>(TSA::Model::BarEccentricity::None));
+    m_beamEccentricityCombo->addItem(tr("Fibre supérieure (Top)"), static_cast<int>(TSA::Model::BarEccentricity::TopFlange));
+    m_beamEccentricityCombo->addItem(tr("Fibre inférieure (Bottom)"), static_cast<int>(TSA::Model::BarEccentricity::BottomFlange));
+    m_beamEccentricityCombo->addItem(tr("Fibre gauche (Left)"), static_cast<int>(TSA::Model::BarEccentricity::LeftFlange));
+    m_beamEccentricityCombo->addItem(tr("Fibre droite (Right)"), static_cast<int>(TSA::Model::BarEccentricity::RightFlange));
+    beamEccForm->addRow(tr("Fibre d'alignement :"), m_beamEccentricityCombo);
+
+    m_beamEySpin = new QDoubleSpinBox(beamEccBox);
+    m_beamEySpin->setRange(-2.0, 2.0);
+    m_beamEySpin->setSingleStep(0.01);
+    m_beamEySpin->setDecimals(3);
+    m_beamEySpin->setSuffix(" m");
+    beamEccForm->addRow(tr("Décalage ey :"), m_beamEySpin);
+
+    m_beamEzSpin = new QDoubleSpinBox(beamEccBox);
+    m_beamEzSpin->setRange(-2.0, 2.0);
+    m_beamEzSpin->setSingleStep(0.01);
+    m_beamEzSpin->setDecimals(3);
+    m_beamEzSpin->setSuffix(" m");
+    beamEccForm->addRow(tr("Décalage ez :"), m_beamEzSpin);
+    beamMainLayout->addWidget(beamEccBox);
+
+    // 2.5 Relâchements aux extrémités (End Releases)
+    auto* beamRelBox = new QGroupBox(tr("Relâchements aux Extrémités (Articulations)"), m_beamGroup);
+    auto* beamRelLayout = new QVBoxLayout(beamRelBox);
+    beamRelLayout->setContentsMargins(6, 6, 6, 6);
+    beamRelLayout->setSpacing(4);
+
+    auto* relGrid = new QGridLayout();
+    relGrid->addWidget(new QLabel(tr("<b>DDL</b>")), 0, 0);
+    relGrid->addWidget(new QLabel(tr("<b>Nœud Départ</b>")), 0, 1);
+    relGrid->addWidget(new QLabel(tr("<b>Nœud Fin</b>")), 0, 2);
+
+    m_beamStartUx = new QCheckBox(tr("Ux (Fx)"));
+    m_beamEndUx = new QCheckBox(tr("Ux (Fx)"));
+    relGrid->addWidget(new QLabel(tr("T axial :")), 1, 0);
+    relGrid->addWidget(m_beamStartUx, 1, 1);
+    relGrid->addWidget(m_beamEndUx, 1, 2);
+
+    m_beamStartUy = new QCheckBox(tr("Uy (Fy)"));
+    m_beamEndUy = new QCheckBox(tr("Uy (Fy)"));
+    relGrid->addWidget(new QLabel(tr("V cisail. y :")), 2, 0);
+    relGrid->addWidget(m_beamStartUy, 2, 1);
+    relGrid->addWidget(m_beamEndUy, 2, 2);
+
+    m_beamStartUz = new QCheckBox(tr("Uz (Fz)"));
+    m_beamEndUz = new QCheckBox(tr("Uz (Fz)"));
+    relGrid->addWidget(new QLabel(tr("V cisail. z :")), 3, 0);
+    relGrid->addWidget(m_beamStartUz, 3, 1);
+    relGrid->addWidget(m_beamEndUz, 3, 2);
+
+    m_beamStartRx = new QCheckBox(tr("Rx (Mx)"));
+    m_beamEndRx = new QCheckBox(tr("Rx (Mx)"));
+    relGrid->addWidget(new QLabel(tr("M torsion :")), 4, 0);
+    relGrid->addWidget(m_beamStartRx, 4, 1);
+    relGrid->addWidget(m_beamEndRx, 4, 2);
+
+    m_beamStartRy = new QCheckBox(tr("Ry (My)"));
+    m_beamEndRy = new QCheckBox(tr("Ry (My)"));
+    relGrid->addWidget(new QLabel(tr("M flex. y :")), 5, 0);
+    relGrid->addWidget(m_beamStartRy, 5, 1);
+    relGrid->addWidget(m_beamEndRy, 5, 2);
+
+    m_beamStartRz = new QCheckBox(tr("Rz (Mz)"));
+    m_beamEndRz = new QCheckBox(tr("Rz (Mz)"));
+    relGrid->addWidget(new QLabel(tr("M flex. z :")), 6, 0);
+    relGrid->addWidget(m_beamStartRz, 6, 1);
+    relGrid->addWidget(m_beamEndRz, 6, 2);
+
+    beamRelLayout->addLayout(relGrid);
+
+    auto* relBtnLayout = new QHBoxLayout();
+    auto* btnFixedFixed = new QPushButton(tr("Encastré"), beamRelBox);
+    btnFixedFixed->setToolTip(tr("Bloquer toutes les rotations et translations aux deux extrémités"));
+    auto* btnPinnedPinned = new QPushButton(tr("Articulé"), beamRelBox);
+    btnPinnedPinned->setToolTip(tr("Relâcher les rotations de flexion (Ry, Rz) aux deux extrémités"));
+    relBtnLayout->addWidget(btnFixedFixed);
+    relBtnLayout->addWidget(btnPinnedPinned);
+    beamRelLayout->addLayout(relBtnLayout);
+
+    connect(btnFixedFixed, &QPushButton::clicked, this, [this]() {
+        m_beamStartUx->setChecked(false); m_beamStartUy->setChecked(false); m_beamStartUz->setChecked(false);
+        m_beamStartRx->setChecked(false); m_beamStartRy->setChecked(false); m_beamStartRz->setChecked(false);
+        m_beamEndUx->setChecked(false); m_beamEndUy->setChecked(false); m_beamEndUz->setChecked(false);
+        m_beamEndRx->setChecked(false); m_beamEndRy->setChecked(false); m_beamEndRz->setChecked(false);
+        onWidgetChanged();
+    });
+    connect(btnPinnedPinned, &QPushButton::clicked, this, [this]() {
+        m_beamStartUx->setChecked(false); m_beamStartUy->setChecked(false); m_beamStartUz->setChecked(false);
+        m_beamStartRx->setChecked(false); m_beamStartRy->setChecked(true);  m_beamStartRz->setChecked(true);
+        m_beamEndUx->setChecked(false); m_beamEndUy->setChecked(false); m_beamEndUz->setChecked(false);
+        m_beamEndRx->setChecked(false); m_beamEndRy->setChecked(true);  m_beamEndRz->setChecked(true);
+        onWidgetChanged();
+    });
+
+    beamMainLayout->addWidget(beamRelBox);
+
+    // 2.6 Couleur & Bouton Appliquer
+    auto* beamColorForm = new QFormLayout();
     m_beamColorBtn = new QPushButton(m_beamGroup);
     m_beamColor = "#4682B4";
     setupColorButton(m_beamColorBtn, m_beamColor);
     connect(m_beamColorBtn, &QPushButton::clicked, this, [this]() {
-        pickColor(m_beamColor, m_beamColorBtn, tr("Couleur de la Poutre"));
+        pickColor(m_beamColor, m_beamColorBtn, tr("Couleur de la Barre"));
     });
+    beamColorForm->addRow(tr("Couleur 3D :"), m_beamColorBtn);
+
+    auto* btnApplyBeam = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_beamGroup);
+    btnApplyBeam->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
+    connect(btnApplyBeam, &QPushButton::clicked, this, &PropertyPanel::onApplyBeam);
+    beamColorForm->addRow(btnApplyBeam);
+
+    beamMainLayout->addLayout(beamColorForm);
+
+    // Signaux Poutre
+    connect(m_beamNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
+    connect(m_beamRoleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
 
     connect(m_beamSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+        if (m_isLoading) return;
         int secData = m_beamSectionTypeCombo->currentData().toInt();
         updateBeamSectionVisibility(secData);
         if (secData >= 100 && secData <= 400) {
             auto s = TSA::Model::Section::ipe(secData);
             m_beamWidthSpin->setValue(s.width);
             m_beamHeightSpin->setValue(s.height);
+            m_beamTwSpin->setValue(s.tw);
+            m_beamTfSpin->setValue(s.tf);
             int stIdx = m_beamMaterialCombo->findData(4);
             if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
         } else if (secData >= 1600 && secData <= 2400) {
             auto s = TSA::Model::Section::hea(secData / 10);
             m_beamWidthSpin->setValue(s.width);
             m_beamHeightSpin->setValue(s.height);
+            m_beamTwSpin->setValue(s.tw);
+            m_beamTfSpin->setValue(s.tf);
             int stIdx = m_beamMaterialCombo->findData(4);
             if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
         } else if (secData >= 1601 && secData <= 3001) {
             auto s = TSA::Model::Section::heb((secData - 1) / 10);
             m_beamWidthSpin->setValue(s.width);
             m_beamHeightSpin->setValue(s.height);
+            m_beamTwSpin->setValue(s.tw);
+            m_beamTfSpin->setValue(s.tf);
             int stIdx = m_beamMaterialCombo->findData(4);
             if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
         } else if (secData >= 5100 && secData <= 5300) {
             auto s = TSA::Model::Section::upn(secData - 5000);
             m_beamWidthSpin->setValue(s.width);
             m_beamHeightSpin->setValue(s.height);
+            m_beamTwSpin->setValue(s.tw);
+            m_beamTfSpin->setValue(s.tf);
             int stIdx = m_beamMaterialCombo->findData(4);
             if (stIdx >= 0) m_beamMaterialCombo->setCurrentIndex(stIdx);
         } else if (secData == 6060) {
             auto s = TSA::Model::Section::angle(0.060, 0.060, 0.006);
             m_beamWidthSpin->setValue(s.width);
             m_beamHeightSpin->setValue(s.height);
+            m_beamTwSpin->setValue(s.tw);
+        } else if (secData == 6080) {
+            auto s = TSA::Model::Section::angle(0.080, 0.080, 0.008);
+            m_beamWidthSpin->setValue(s.width);
+            m_beamHeightSpin->setValue(s.height);
+            m_beamTwSpin->setValue(s.tw);
         } else if (secData == 7100) {
             auto s = TSA::Model::Section::boxHollow(0.100, 0.100, 0.005);
             m_beamWidthSpin->setValue(s.width);
             m_beamHeightSpin->setValue(s.height);
+            m_beamTwSpin->setValue(s.tw);
+            m_beamTfSpin->setValue(s.tf);
         } else if (secData == 8114) {
             auto s = TSA::Model::Section::pipe(0.114, 0.005);
             m_beamWidthSpin->setValue(s.width);
-            m_beamHeightSpin->setValue(s.height);
+            m_beamTwSpin->setValue(s.tw);
         }
+        auto sec = getBeamSectionFromUi();
+        updateBeamCalculatedProperties(sec);
+        onWidgetChanged();
     });
 
-    beamForm->addRow(tr("Nom / Repère :"), m_beamNameEdit);
-    beamForm->addRow(tr("ID Interne :"), m_beamIdLabel);
-    beamForm->addRow(tr("Rôle / Type :"), m_beamRoleCombo);
-    beamForm->addRow(tr("Nœud Départ :"), m_beamStartNodeLabel);
-    beamForm->addRow(tr("Nœud Arrivée :"), m_beamEndNodeLabel);
-    beamForm->addRow(tr("Longueur :"), m_beamLengthLabel);
-    beamForm->addRow(tr("Section :"), m_beamSectionTypeCombo);
-    beamForm->addRow(m_beamWidthLabel, m_beamWidthSpin);
-    beamForm->addRow(m_beamHeightLabel, m_beamHeightSpin);
-    beamForm->addRow(tr("Matériau :"), m_beamMaterialCombo);
-    beamForm->addRow(tr("Rotation γ :"), m_beamRotationSpin);
-    beamForm->addRow(tr("Excentrement :"), m_beamEccentricityCombo);
-    beamForm->addRow(tr("Couleur 3D :"), m_beamColorBtn);
-
-    auto* btnApplyBeam = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_beamGroup);
-    btnApplyBeam->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
-    connect(btnApplyBeam, &QPushButton::clicked, this, &PropertyPanel::onApplyBeam);
-    beamForm->addRow(btnApplyBeam);
-
-    connect(m_beamNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
-    connect(m_beamRoleCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
-    connect(m_beamSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
-    connect(m_beamWidthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
-    connect(m_beamHeightSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    auto onBeamDimChanged = [this]() {
+        if (m_isLoading) return;
+        auto sec = getBeamSectionFromUi();
+        updateBeamCalculatedProperties(sec);
+        onWidgetChanged();
+    };
+    connect(m_beamWidthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onBeamDimChanged);
+    connect(m_beamHeightSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onBeamDimChanged);
+    connect(m_beamTwSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onBeamDimChanged);
+    connect(m_beamTfSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onBeamDimChanged);
     connect(m_beamMaterialCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
-    connect(m_beamRotationSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
-    connect(m_beamEccentricityCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+
+    connect(m_beamRotationSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
+        if (m_isLoading) return;
+        if (m_beamSectionPreview) m_beamSectionPreview->setRotation(val);
+        onWidgetChanged();
+    });
+
+    auto onBeamEccChanged = [this]() {
+        if (m_isLoading) return;
+        if (m_beamSectionPreview) {
+            m_beamSectionPreview->setEccentricity(
+                static_cast<TSA::Model::BarEccentricity>(m_beamEccentricityCombo->currentData().toInt()),
+                m_beamEySpin->value(),
+                m_beamEzSpin->value()
+            );
+        }
+        onWidgetChanged();
+    };
+    connect(m_beamEccentricityCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, onBeamEccChanged);
+    connect(m_beamEySpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onBeamEccChanged);
+    connect(m_beamEzSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onBeamEccChanged);
+
+    auto onReleaseToggle = [this](bool) {
+        if (m_isLoading) return;
+        onWidgetChanged();
+    };
+    connect(m_beamStartUx, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamStartUy, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamStartUz, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamStartRx, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamStartRy, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamStartRz, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamEndUx, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamEndUy, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamEndUz, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamEndRx, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamEndRy, &QCheckBox::toggled, this, onReleaseToggle);
+    connect(m_beamEndRz, &QCheckBox::toggled, this, onReleaseToggle);
 
     containerLayout->addWidget(m_beamGroup);
 
@@ -378,90 +868,201 @@ void PropertyPanel::setupUi()
     // 3. PANNEAU POTEAU
     // ==========================================
     m_columnGroup = new QGroupBox(tr("Propriétés du Poteau"), container);
-    auto* colForm = new QFormLayout(m_columnGroup);
-    m_columnNameEdit = new QLineEdit(m_columnGroup);
-    m_columnIdLabel = new QLabel(m_columnGroup);
-    m_columnStartNodeLabel = new QLabel(m_columnGroup);
-    m_columnEndNodeLabel = new QLabel(m_columnGroup);
-    m_columnHeightLabel = new QLabel(m_columnGroup);
+    auto* colMainLayout = new QVBoxLayout(m_columnGroup);
+    colMainLayout->setContentsMargins(6, 8, 6, 8);
+    colMainLayout->setSpacing(8);
 
-    m_columnSectionTypeCombo = new QComboBox(m_columnGroup);
+    // 3.1 Identification
+    auto* colIdentBox = new QGroupBox(tr("Identification"), m_columnGroup);
+    auto* colIdentForm = new QFormLayout(colIdentBox);
+    colIdentForm->setContentsMargins(6, 6, 6, 6);
+    colIdentForm->setSpacing(4);
+
+    m_columnNameEdit = new QLineEdit(colIdentBox);
+    m_columnIdLabel = new QLabel(colIdentBox);
+    m_columnStartNodeLabel = new QLabel(colIdentBox);
+    m_columnEndNodeLabel = new QLabel(colIdentBox);
+    m_columnHeightLabel = new QLabel(colIdentBox);
+
+    colIdentForm->addRow(tr("Nom / Repère :"), m_columnNameEdit);
+    colIdentForm->addRow(tr("ID Interne :"), m_columnIdLabel);
+    colIdentForm->addRow(tr("Nœud Base :"), m_columnStartNodeLabel);
+    colIdentForm->addRow(tr("Nœud Sommet :"), m_columnEndNodeLabel);
+    colIdentForm->addRow(tr("Hauteur :"), m_columnHeightLabel);
+    colMainLayout->addWidget(colIdentBox);
+
+    // 3.2 Éditeur Graphique de Section
+    auto* colSecBox = new QGroupBox(tr("Éditeur Graphique de Section"), m_columnGroup);
+    colSecBox->setStyleSheet("QGroupBox { font-weight: bold; }");
+    auto* colSecLayout = new QVBoxLayout(colSecBox);
+    colSecLayout->setContentsMargins(6, 6, 6, 6);
+    colSecLayout->setSpacing(6);
+
+    m_columnSectionPreview = new SectionPreviewWidget(colSecBox);
+    m_columnSectionPreview->setMinimumHeight(190);
+    colSecLayout->addWidget(m_columnSectionPreview);
+
+    auto* colSecForm = new QFormLayout();
+    colSecForm->setContentsMargins(0, 4, 0, 4);
+    colSecForm->setSpacing(4);
+
+    m_columnSectionTypeCombo = new QComboBox(colSecBox);
     setupSectionTypeCombo(m_columnSectionTypeCombo);
+    colSecForm->addRow(tr("Profil / Forme :"), m_columnSectionTypeCombo);
 
-    m_columnWidthLabel = new QLabel(tr("Largeur b :"), m_columnGroup);
-    m_columnWidthSpin = new QDoubleSpinBox(m_columnGroup);
+    m_columnWidthLabel = new QLabel(tr("Largeur b :"), colSecBox);
+    m_columnWidthSpin = new QDoubleSpinBox(colSecBox);
     m_columnWidthSpin->setRange(0.01, 10.0);
-    m_columnWidthSpin->setSingleStep(0.05);
+    m_columnWidthSpin->setSingleStep(0.02);
+    m_columnWidthSpin->setDecimals(3);
     m_columnWidthSpin->setSuffix(" m");
+    colSecForm->addRow(m_columnWidthLabel, m_columnWidthSpin);
 
-    m_columnDepthLabel = new QLabel(tr("Profondeur h :"), m_columnGroup);
-    m_columnDepthSpin = new QDoubleSpinBox(m_columnGroup);
+    m_columnDepthLabel = new QLabel(tr("Profondeur h :"), colSecBox);
+    m_columnDepthSpin = new QDoubleSpinBox(colSecBox);
     m_columnDepthSpin->setRange(0.01, 10.0);
-    m_columnDepthSpin->setSingleStep(0.05);
+    m_columnDepthSpin->setSingleStep(0.02);
+    m_columnDepthSpin->setDecimals(3);
     m_columnDepthSpin->setSuffix(" m");
+    colSecForm->addRow(m_columnDepthLabel, m_columnDepthSpin);
 
-    m_columnMaterialCombo = new QComboBox(m_columnGroup);
+    m_columnTwLabel = new QLabel(tr("Ép. âme tw :"), colSecBox);
+    m_columnTwSpin = new QDoubleSpinBox(colSecBox);
+    m_columnTwSpin->setRange(0.001, 1.0);
+    m_columnTwSpin->setSingleStep(0.002);
+    m_columnTwSpin->setDecimals(3);
+    m_columnTwSpin->setSuffix(" m");
+    colSecForm->addRow(m_columnTwLabel, m_columnTwSpin);
+
+    m_columnTfLabel = new QLabel(tr("Ép. aile tf :"), colSecBox);
+    m_columnTfSpin = new QDoubleSpinBox(colSecBox);
+    m_columnTfSpin->setRange(0.001, 1.0);
+    m_columnTfSpin->setSingleStep(0.002);
+    m_columnTfSpin->setDecimals(3);
+    m_columnTfSpin->setSuffix(" m");
+    colSecForm->addRow(m_columnTfLabel, m_columnTfSpin);
+
+    colSecLayout->addLayout(colSecForm);
+
+    // Caractéristiques calculées
+    auto* colCalcFrame = new QFrame(colSecBox);
+    colCalcFrame->setStyleSheet("QFrame { background: rgba(30, 45, 60, 0.05); border: 1px solid rgba(0,0,0,0.12); border-radius: 4px; padding: 4px; }");
+    auto* colCalcLayout = new QVBoxLayout(colCalcFrame);
+    colCalcLayout->setContentsMargins(6, 4, 6, 4);
+    colCalcLayout->setSpacing(2);
+
+    auto* colCalcHdr = new QLabel(tr("<b>Caractéristiques Mécaniques Calculées</b>"), colCalcFrame);
+    colCalcHdr->setStyleSheet("color: #1976D2; font-size: 8.5pt;");
+    colCalcLayout->addWidget(colCalcHdr);
+
+    m_columnPropArea = new QLabel(colCalcFrame);
+    m_columnPropArea->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+    m_columnPropIy = new QLabel(colCalcFrame);
+    m_columnPropIy->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+    m_columnPropIz = new QLabel(colCalcFrame);
+    m_columnPropIz->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+    m_columnPropIt = new QLabel(colCalcFrame);
+    m_columnPropIt->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+    m_columnPropW = new QLabel(colCalcFrame);
+    m_columnPropW->setStyleSheet("font-size: 8.5pt; font-family: monospace;");
+
+    colCalcLayout->addWidget(m_columnPropArea);
+    colCalcLayout->addWidget(m_columnPropIy);
+    colCalcLayout->addWidget(m_columnPropIz);
+    colCalcLayout->addWidget(m_columnPropIt);
+    colCalcLayout->addWidget(m_columnPropW);
+
+    colSecLayout->addWidget(colCalcFrame);
+    colMainLayout->addWidget(colSecBox);
+
+    // 3.3 Matériau & Orientation
+    auto* colMatBox = new QGroupBox(tr("Matériau & Orientation"), m_columnGroup);
+    auto* colMatForm = new QFormLayout(colMatBox);
+    colMatForm->setContentsMargins(6, 6, 6, 6);
+    colMatForm->setSpacing(4);
+
+    m_columnMaterialCombo = new QComboBox(colMatBox);
     setupMaterialCombo(m_columnMaterialCombo);
+    colMatForm->addRow(tr("Matériau :"), m_columnMaterialCombo);
 
-    m_columnRotationSpin = new QDoubleSpinBox(m_columnGroup);
+    m_columnRotationSpin = new QDoubleSpinBox(colMatBox);
     m_columnRotationSpin->setRange(0.0, 360.0);
     m_columnRotationSpin->setSingleStep(15.0);
     m_columnRotationSpin->setSuffix(" °");
+    colMatForm->addRow(tr("Rotation β :"), m_columnRotationSpin);
+    colMainLayout->addWidget(colMatBox);
 
+    // 3.4 Couleur & Bouton Appliquer
+    auto* colColorForm = new QFormLayout();
     m_columnColorBtn = new QPushButton(m_columnGroup);
     m_columnColor = "#6A5ACD";
     setupColorButton(m_columnColorBtn, m_columnColor);
     connect(m_columnColorBtn, &QPushButton::clicked, this, [this]() {
         pickColor(m_columnColor, m_columnColorBtn, tr("Couleur du Poteau"));
     });
+    colColorForm->addRow(tr("Couleur 3D :"), m_columnColorBtn);
+
+    auto* btnApplyCol = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_columnGroup);
+    btnApplyCol->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
+    connect(btnApplyCol, &QPushButton::clicked, this, &PropertyPanel::onApplyColumn);
+    colColorForm->addRow(btnApplyCol);
+
+    colMainLayout->addLayout(colColorForm);
+
+    // Signaux Poteau
+    connect(m_columnNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
 
     connect(m_columnSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+        if (m_isLoading) return;
         int secData = m_columnSectionTypeCombo->currentData().toInt();
         updateColumnSectionVisibility(secData);
         if (secData >= 160 && secData <= 400) {
             auto s = TSA::Model::Section::ipe(secData);
             m_columnWidthSpin->setValue(s.width);
             m_columnDepthSpin->setValue(s.height);
+            m_columnTwSpin->setValue(s.tw);
+            m_columnTfSpin->setValue(s.tf);
             int stIdx = m_columnMaterialCombo->findData(4);
             if (stIdx >= 0) m_columnMaterialCombo->setCurrentIndex(stIdx);
         } else if (secData == 2000 || secData == 2400) {
             auto s = TSA::Model::Section::hea(secData / 10);
             m_columnWidthSpin->setValue(s.width);
             m_columnDepthSpin->setValue(s.height);
+            m_columnTwSpin->setValue(s.tw);
+            m_columnTfSpin->setValue(s.tf);
             int stIdx = m_columnMaterialCombo->findData(4);
             if (stIdx >= 0) m_columnMaterialCombo->setCurrentIndex(stIdx);
         } else if (secData == 2001 || secData == 3001) {
             auto s = TSA::Model::Section::heb((secData - 1) / 10);
             m_columnWidthSpin->setValue(s.width);
             m_columnDepthSpin->setValue(s.height);
+            m_columnTwSpin->setValue(s.tw);
+            m_columnTfSpin->setValue(s.tf);
             int stIdx = m_columnMaterialCombo->findData(4);
             if (stIdx >= 0) m_columnMaterialCombo->setCurrentIndex(stIdx);
         }
+        auto sec = getColumnSectionFromUi();
+        updateColumnCalculatedProperties(sec);
+        onWidgetChanged();
     });
 
-    colForm->addRow(tr("Nom / Repère :"), m_columnNameEdit);
-    colForm->addRow(tr("ID Interne :"), m_columnIdLabel);
-    colForm->addRow(tr("Nœud Base :"), m_columnStartNodeLabel);
-    colForm->addRow(tr("Nœud Sommet :"), m_columnEndNodeLabel);
-    colForm->addRow(tr("Hauteur :"), m_columnHeightLabel);
-    colForm->addRow(tr("Forme Section :"), m_columnSectionTypeCombo);
-    colForm->addRow(m_columnWidthLabel, m_columnWidthSpin);
-    colForm->addRow(m_columnDepthLabel, m_columnDepthSpin);
-    colForm->addRow(tr("Matériau :"), m_columnMaterialCombo);
-    colForm->addRow(tr("Rotation β :"), m_columnRotationSpin);
-    colForm->addRow(tr("Couleur 3D :"), m_columnColorBtn);
-
-    auto* btnApplyCol = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_columnGroup);
-    btnApplyCol->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
-    connect(btnApplyCol, &QPushButton::clicked, this, &PropertyPanel::onApplyColumn);
-    colForm->addRow(btnApplyCol);
-
-    connect(m_columnNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
-    connect(m_columnSectionTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
-    connect(m_columnWidthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
-    connect(m_columnDepthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    auto onColDimChanged = [this]() {
+        if (m_isLoading) return;
+        auto sec = getColumnSectionFromUi();
+        updateColumnCalculatedProperties(sec);
+        onWidgetChanged();
+    };
+    connect(m_columnWidthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onColDimChanged);
+    connect(m_columnDepthSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onColDimChanged);
+    connect(m_columnTwSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onColDimChanged);
+    connect(m_columnTfSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, onColDimChanged);
     connect(m_columnMaterialCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
-    connect(m_columnRotationSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+
+    connect(m_columnRotationSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
+        if (m_isLoading) return;
+        if (m_columnSectionPreview) m_columnSectionPreview->setRotation(val);
+        onWidgetChanged();
+    });
 
     containerLayout->addWidget(m_columnGroup);
 
@@ -791,32 +1392,74 @@ void PropertyPanel::showBeamProperties(int beamId)
     m_currentType = CurrentType::Beam;
     m_currentBeamId = beamId;
     m_emptyLabel->setVisible(false);
-    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA POUTRE"));
+    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA BARRE / POUTRE"));
 
     m_beamNameEdit->setText(QString::fromStdString(beam->formattedName()));
     m_beamIdLabel->setText(QString::number(beam->id()));
     m_beamStartNodeLabel->setText(QString("N%1").arg(beam->startNodeId()));
     m_beamEndNodeLabel->setText(QString("N%1").arg(beam->endNodeId()));
     m_beamLengthLabel->setText(QString("%1 m").arg(beam->length(*m_model), 0, 'f', 2));
-    m_beamWidthSpin->setValue(beam->width());
-    m_beamHeightSpin->setValue(beam->height());
-    m_beamRotationSpin->setValue(beam->rotation());
 
     int roleIdx = m_beamRoleCombo->findData(static_cast<int>(beam->role()));
     if (roleIdx >= 0) m_beamRoleCombo->setCurrentIndex(roleIdx);
 
+    const auto& sec = beam->section();
+    double wVal = (sec.shape == TSA::Model::SectionShape::Circular || sec.shape == TSA::Model::SectionShape::Pipe)
+                  ? ((sec.diameter > 0.0) ? sec.diameter : sec.width)
+                  : sec.width;
+    double hVal = (sec.shape == TSA::Model::SectionShape::Circular || sec.shape == TSA::Model::SectionShape::Pipe)
+                  ? ((sec.diameter > 0.0) ? sec.diameter : sec.height)
+                  : sec.height;
+
+    m_beamWidthSpin->setValue(wVal > 0.0 ? wVal : 0.30);
+    m_beamHeightSpin->setValue(hVal > 0.0 ? hVal : 0.50);
+    m_beamTwSpin->setValue(sec.tw > 0.0 ? sec.tw : 0.010);
+    m_beamTfSpin->setValue(sec.tf > 0.0 ? sec.tf : 0.015);
+    m_beamRotationSpin->setValue(beam->rotation());
+
     int eccIdx = m_beamEccentricityCombo->findData(static_cast<int>(beam->eccentricity()));
     if (eccIdx >= 0) m_beamEccentricityCombo->setCurrentIndex(eccIdx);
 
+    // Relâchements aux extrémités
+    const auto& sr = beam->startRelease();
+    m_beamStartUx->setChecked(sr.fx);
+    m_beamStartUy->setChecked(sr.fy);
+    m_beamStartUz->setChecked(sr.fz);
+    m_beamStartRx->setChecked(sr.mx);
+    m_beamStartRy->setChecked(sr.my);
+    m_beamStartRz->setChecked(sr.mz);
+
+    const auto& er = beam->endRelease();
+    m_beamEndUx->setChecked(er.fx);
+    m_beamEndUy->setChecked(er.fy);
+    m_beamEndUz->setChecked(er.fz);
+    m_beamEndRx->setChecked(er.mx);
+    m_beamEndRy->setChecked(er.my);
+    m_beamEndRz->setChecked(er.mz);
+
     m_beamSectionTypeCombo->blockSignals(true);
-    const auto& sec = beam->section();
     int activeSecData = 0;
     if (sec.shape == TSA::Model::SectionShape::Circular)
     {
         activeSecData = 1;
         m_beamSectionTypeCombo->setCurrentIndex(m_beamSectionTypeCombo->findData(1));
     }
-    else if (sec.shape == TSA::Model::SectionShape::IShape)
+    else if (sec.shape == TSA::Model::SectionShape::Pipe)
+    {
+        activeSecData = 8114;
+        m_beamSectionTypeCombo->setCurrentIndex(m_beamSectionTypeCombo->findData(8114));
+    }
+    else if (sec.shape == TSA::Model::SectionShape::BoxHollow)
+    {
+        activeSecData = 7100;
+        m_beamSectionTypeCombo->setCurrentIndex(m_beamSectionTypeCombo->findData(7100));
+    }
+    else if (sec.shape == TSA::Model::SectionShape::Angle)
+    {
+        activeSecData = 6060;
+        m_beamSectionTypeCombo->setCurrentIndex(m_beamSectionTypeCombo->findData(6060));
+    }
+    else if (sec.shape == TSA::Model::SectionShape::IShape || sec.shape == TSA::Model::SectionShape::UPN)
     {
         int idx = m_beamSectionTypeCombo->findText(QString::fromStdString(sec.name));
         if (idx < 0)
@@ -842,6 +1485,14 @@ void PropertyPanel::showBeamProperties(int beamId)
     }
     m_beamSectionTypeCombo->blockSignals(false);
     updateBeamSectionVisibility(activeSecData);
+
+    updateBeamCalculatedProperties(sec);
+    if (m_beamSectionPreview)
+    {
+        m_beamSectionPreview->setSection(sec);
+        m_beamSectionPreview->setRotation(beam->rotation());
+        m_beamSectionPreview->setEccentricity(beam->eccentricity(), m_beamEySpin->value(), m_beamEzSpin->value());
+    }
 
     int matCode = 1;
     if (beam->material().type == TSA::Model::MaterialType::Steel)
@@ -876,12 +1527,22 @@ void PropertyPanel::showColumnProperties(int columnId)
     m_columnStartNodeLabel->setText(QString("N%1").arg(col->startNodeId()));
     m_columnEndNodeLabel->setText(QString("N%1").arg(col->endNodeId()));
     m_columnHeightLabel->setText(QString("%1 m (%2)").arg(col->length(*m_model), 0, 'f', 2).arg(QString::fromStdString(col->direction(*m_model))));
-    m_columnWidthSpin->setValue(col->width());
-    m_columnDepthSpin->setValue(col->height());
+
+    const auto& sec = col->section();
+    double wVal = (sec.shape == TSA::Model::SectionShape::Circular)
+                  ? ((sec.diameter > 0.0) ? sec.diameter : sec.width)
+                  : sec.width;
+    double dVal = (sec.shape == TSA::Model::SectionShape::Circular)
+                  ? ((sec.diameter > 0.0) ? sec.diameter : sec.height)
+                  : sec.height;
+
+    m_columnWidthSpin->setValue(wVal > 0.0 ? wVal : 0.30);
+    m_columnDepthSpin->setValue(dVal > 0.0 ? dVal : 0.30);
+    m_columnTwSpin->setValue(sec.tw > 0.0 ? sec.tw : 0.010);
+    m_columnTfSpin->setValue(sec.tf > 0.0 ? sec.tf : 0.015);
     m_columnRotationSpin->setValue(col->rotation());
 
     m_columnSectionTypeCombo->blockSignals(true);
-    const auto& sec = col->section();
     int activeSecData = 0;
     if (sec.shape == TSA::Model::SectionShape::Circular)
     {
@@ -914,6 +1575,13 @@ void PropertyPanel::showColumnProperties(int columnId)
     }
     m_columnSectionTypeCombo->blockSignals(false);
     updateColumnSectionVisibility(activeSecData);
+
+    updateColumnCalculatedProperties(sec);
+    if (m_columnSectionPreview)
+    {
+        m_columnSectionPreview->setSection(sec);
+        m_columnSectionPreview->setRotation(col->rotation());
+    }
 
     int matCode = 1;
     if (col->material().type == TSA::Model::MaterialType::Steel)
@@ -1110,54 +1778,14 @@ void PropertyPanel::onApplyBeam()
     auto* beam = m_model->getBeam(m_currentBeamId);
     if (!beam) return;
 
-    m_model->pushUndoState(tr("Modification Poutre %1").arg(m_currentBeamId).toStdString());
+    m_model->pushUndoState(tr("Modification Barre %1").arg(m_currentBeamId).toStdString());
 
     beam->setName(m_beamNameEdit->text().toStdString());
     beam->setRole(static_cast<TSA::Model::BarRole>(m_beamRoleCombo->currentData().toInt()));
-    beam->setEccentricity(static_cast<TSA::Model::BarEccentricity>(m_beamEccentricityCombo->currentData().toInt()));
 
-    // 1. Mise à jour de la section
-    int secData = m_beamSectionTypeCombo->currentData().toInt();
-    if (secData == 0) // Rectangulaire
-    {
-        beam->setSection(TSA::Model::Section::rectangular(m_beamWidthSpin->value(), m_beamHeightSpin->value()));
-    }
-    else if (secData == 1) // Circulaire
-    {
-        beam->setSection(TSA::Model::Section::circular(m_beamWidthSpin->value()));
-    }
-    else if (secData >= 100 && secData <= 400) // IPE
-    {
-        beam->setSection(TSA::Model::Section::ipe(secData));
-    }
-    else if (secData >= 1600 && secData <= 2400) // HEA
-    {
-        beam->setSection(TSA::Model::Section::hea(secData / 10));
-    }
-    else if (secData >= 1601 && secData <= 3001) // HEB
-    {
-        beam->setSection(TSA::Model::Section::heb((secData - 1) / 10));
-    }
-    else if (secData >= 5100 && secData <= 5300) // UPN
-    {
-        beam->setSection(TSA::Model::Section::upn(secData - 5000));
-    }
-    else if (secData == 6060)
-    {
-        beam->setSection(TSA::Model::Section::angle(0.060, 0.060, 0.006));
-    }
-    else if (secData == 6080)
-    {
-        beam->setSection(TSA::Model::Section::angle(0.080, 0.080, 0.008));
-    }
-    else if (secData == 7100)
-    {
-        beam->setSection(TSA::Model::Section::boxHollow(0.100, 0.100, 0.005));
-    }
-    else if (secData == 8114)
-    {
-        beam->setSection(TSA::Model::Section::pipe(0.114, 0.005));
-    }
+    // 1. Mise à jour de la section depuis l'interface
+    auto sec = getBeamSectionFromUi();
+    beam->setSection(sec);
 
     // 2. Mise à jour du matériau
     int matCode = m_beamMaterialCombo->currentData().toInt();
@@ -1173,10 +1801,41 @@ void PropertyPanel::onApplyBeam()
     // 3. Mise à jour de l'orientation gamma
     beam->setRotation(m_beamRotationSpin->value());
 
-    // 4. Mise à jour de la couleur
+    // 4. Excentrement
+    beam->setEccentricity(static_cast<TSA::Model::BarEccentricity>(m_beamEccentricityCombo->currentData().toInt()));
+
+    // 5. Relâchements aux extrémités
+    TSA::Model::EndRelease sr;
+    sr.fx = m_beamStartUx ? m_beamStartUx->isChecked() : false;
+    sr.fy = m_beamStartUy ? m_beamStartUy->isChecked() : false;
+    sr.fz = m_beamStartUz ? m_beamStartUz->isChecked() : false;
+    sr.mx = m_beamStartRx ? m_beamStartRx->isChecked() : false;
+    sr.my = m_beamStartRy ? m_beamStartRy->isChecked() : false;
+    sr.mz = m_beamStartRz ? m_beamStartRz->isChecked() : false;
+    beam->setStartRelease(sr);
+
+    TSA::Model::EndRelease er;
+    er.fx = m_beamEndUx ? m_beamEndUx->isChecked() : false;
+    er.fy = m_beamEndUy ? m_beamEndUy->isChecked() : false;
+    er.fz = m_beamEndUz ? m_beamEndUz->isChecked() : false;
+    er.mx = m_beamEndRx ? m_beamEndRx->isChecked() : false;
+    er.my = m_beamEndRy ? m_beamEndRy->isChecked() : false;
+    er.mz = m_beamEndRz ? m_beamEndRz->isChecked() : false;
+    beam->setEndRelease(er);
+
+    // 6. Mise à jour de la couleur
     beam->setColor(m_beamColor.toStdString());
 
-    // 5. Notification immédiate -> reconstruction 3D automatique
+    // 7. Synchronisation aperçu graphique & calculs
+    updateBeamCalculatedProperties(sec);
+    if (m_beamSectionPreview)
+    {
+        m_beamSectionPreview->setSection(sec);
+        m_beamSectionPreview->setRotation(beam->rotation());
+        m_beamSectionPreview->setEccentricity(beam->eccentricity(), m_beamEySpin ? m_beamEySpin->value() : 0.0, m_beamEzSpin ? m_beamEzSpin->value() : 0.0);
+    }
+
+    // 8. Notification immédiate -> reconstruction 3D automatique
     m_model->notifyBeamModified(m_currentBeamId);
     emit elementModified();
 }
@@ -1191,28 +1850,9 @@ void PropertyPanel::onApplyColumn()
 
     col->setName(m_columnNameEdit->text().toStdString());
 
-    // 1. Mise à jour de la section
-    int secData = m_columnSectionTypeCombo->currentData().toInt();
-    if (secData == 0) // Rectangulaire
-    {
-        col->setSection(TSA::Model::Section::rectangular(m_columnWidthSpin->value(), m_columnDepthSpin->value()));
-    }
-    else if (secData == 1) // Circulaire
-    {
-        col->setSection(TSA::Model::Section::circular(m_columnWidthSpin->value()));
-    }
-    else if (secData >= 160 && secData <= 400) // IPE
-    {
-        col->setSection(TSA::Model::Section::ipe(secData));
-    }
-    else if (secData == 2000 || secData == 2400) // HEA
-    {
-        col->setSection(TSA::Model::Section::hea(secData / 10));
-    }
-    else if (secData == 2001 || secData == 3001) // HEB
-    {
-        col->setSection(TSA::Model::Section::heb((secData - 1) / 10));
-    }
+    // 1. Mise à jour de la section depuis l'interface
+    auto sec = getColumnSectionFromUi();
+    col->setSection(sec);
 
     // 2. Mise à jour du matériau
     int matCode = m_columnMaterialCombo->currentData().toInt();
@@ -1231,7 +1871,15 @@ void PropertyPanel::onApplyColumn()
     // 4. Mise à jour de la couleur
     col->setColor(m_columnColor.toStdString());
 
-    // 5. Notification immédiate -> reconstruction 3D automatique
+    // 5. Synchronisation aperçu graphique & calculs
+    updateColumnCalculatedProperties(sec);
+    if (m_columnSectionPreview)
+    {
+        m_columnSectionPreview->setSection(sec);
+        m_columnSectionPreview->setRotation(col->rotation());
+    }
+
+    // 6. Notification immédiate -> reconstruction 3D automatique
     m_model->notifyColumnModified(m_currentColumnId);
     emit elementModified();
 }

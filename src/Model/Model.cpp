@@ -1241,6 +1241,7 @@ void Model::pushUndoState(const std::string& actionName)
         m_undoStack.erase(m_undoStack.begin());
     }
     m_redoStack.clear();
+    m_isModified = true;
 }
 
 bool Model::canUndo() const
@@ -1359,6 +1360,8 @@ void Model::clear()
     m_nextWallId = 1;
     m_nextFoundationId = 1;
     m_nextTrussMemberId = 1;
+    m_isModified = false;
+    clearUndoRedo();
 
     for (auto* obs : m_observers)
     {

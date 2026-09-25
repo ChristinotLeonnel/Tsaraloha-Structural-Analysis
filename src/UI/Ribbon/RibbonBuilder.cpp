@@ -34,7 +34,14 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
     if (acts.actionOpen && acts.actionSave)
     {
         filePanel->addInternalSeparator();
-        filePanel->addSmallColumn({ acts.actionOpen, acts.actionSave });
+        if (acts.actionSaveAs)
+        {
+            filePanel->addSmallColumn({ acts.actionOpen, acts.actionSave, acts.actionSaveAs });
+        }
+        else
+        {
+            filePanel->addSmallColumn({ acts.actionOpen, acts.actionSave });
+        }
     }
     tab->addPanel(filePanel);
 

@@ -63,6 +63,8 @@ set(SOURCES
     src/UI/Ruler/ViewportRuler.cpp
     src/UI/Ruler/ViewportContainer.h
     src/UI/Ruler/ViewportContainer.cpp
+    src/UI/Widgets/SectionPreviewWidget.h
+    src/UI/Widgets/SectionPreviewWidget.cpp
     src/UI/Ribbon/RibbonTypes.h
     src/UI/Ribbon/RibbonButton.h
     src/UI/Ribbon/RibbonButton.cpp
@@ -135,6 +137,13 @@ set(SOURCES
     src/Model/TrussMember.cpp
     src/Model/Model.h
     src/Model/Model.cpp
+    src/IO/TSAFileFormat.h
+    src/IO/TSAFile.h
+    src/IO/TSAFile.cpp
+    src/IO/TSAPreviewGenerator.h
+    src/IO/TSAPreviewGenerator.cpp
+    src/Platform/WindowsAssociation.h
+    src/Platform/WindowsAssociation.cpp
     resources/resources.qrc
     resources/TSA.rc
 )
@@ -231,15 +240,22 @@ set(TEST_SOURCES
     src/Grid/CylindricalGrid.cpp
     src/Grid/GridSystem.h
     src/Grid/GridSystem.cpp
+    src/Grid/GridManager.h
+    src/Grid/GridManager.cpp
     src/Grid/GridSnapManager.h
     src/Grid/GridSnapManager.cpp
     src/Geometry/BeamGeometry.h
     src/Geometry/BeamGeometry.cpp
+    src/IO/TSAFileFormat.h
+    src/IO/TSAFile.h
+    src/IO/TSAFile.cpp
+    src/IO/TSAPreviewGenerator.h
+    src/IO/TSAPreviewGenerator.cpp
 )
 
 add_executable(TSA_Tests ${TEST_SOURCES})
 target_include_directories(TSA_Tests PRIVATE src ${OpenCASCADE_INCLUDE_DIR})
-target_link_libraries(TSA_Tests PRIVATE Qt6::Core ${OCCT_LIBS})
+target_link_libraries(TSA_Tests PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets ${OCCT_LIBS})
 if(MSVC)
     target_compile_options(TSA_Tests PRIVATE /W4 /permissive- /utf-8)
     target_compile_definitions(TSA_Tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)

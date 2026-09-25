@@ -21,11 +21,18 @@
 #include "Dialogs/StructurePresetDialog.h"
 #include "Dialogs/BarCreationDialog.h"
 #include "Dialogs/SurfaceCreationDialog.h"
+#include "../IO/TSAFile.h"
 
 #include <QMenuBar>
 #include <QToolBar>
 #include <QStatusBar>
 #include <QEvent>
+#include <QCloseEvent>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QLabel>
 #include <QAction>
 #include <QActionGroup>
@@ -451,6 +458,19 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(&TSA::UI::ThemeManager::instance(), &TSA::UI::ThemeManager::themeChanged, this, &MainWindow::applyTheme);
     applyTheme(TSA::UI::ThemeManager::instance().isDarkMode());
+
+    setAcceptDrops(true);
+    if (m_occView)
+    {
+        connect(m_occView, &OccView::fileDropped, this, [this](const QString& filePath) {
+            if (maybeSave())
+            {
+                loadFile(filePath);
+            }
+        });
+    }
+
+    updateWindowTitle();
 }
 
 MainWindow::~MainWindow() = default;
@@ -495,6 +515,12 @@ void MainWindow::createActions()
     m_actionSave->setToolTip(tr("Enregistrer le projet (Ctrl+S)"));
     m_actionSave->setShortcut(QKeySequence::Save);
     connect(m_actionSave, &QAction::triggered, this, &MainWindow::onActionSave);
+
+    m_actionSaveAs = new QAction(tr("Enregistrer &sous..."), this);
+    m_actionSaveAs->setIcon(QIcon(":/icons/file_tsa.svg"));
+    m_actionSaveAs->setToolTip(tr("Enregistrer le projet sous un nouveau nom (Ctrl+Shift+S)"));
+    m_actionSaveAs->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
+    connect(m_actionSaveAs, &QAction::triggered, this, &MainWindow::onActionSaveAs);
 
     m_actionExit = new QAction(tr("&Quitter"), this);
     m_actionExit->setIcon(QIcon(":/icons/file_exit.svg"));
@@ -939,6 +965,7 @@ void MainWindow::createMenus()
     fileMenu->addAction(m_actionNew);
     fileMenu->addAction(m_actionOpen);
     fileMenu->addAction(m_actionSave);
+    fileMenu->addAction(m_actionSaveAs);
     fileMenu->addSeparator();
     fileMenu->addAction(m_actionExit);
 
@@ -1083,6 +1110,7 @@ void MainWindow::createRibbon()
     acts.actionNew = m_actionNew;
     acts.actionOpen = m_actionOpen;
     acts.actionSave = m_actionSave;
+    acts.actionSaveAs = m_actionSaveAs;
     acts.actionExit = m_actionExit;
 
     acts.actionSelectMode = m_actionSelectMode;
@@ -2122,8 +2150,86 @@ void MainWindow::onActionSectionCut()
     m_sectionCutDialog->activateWindow();
 }
 
+void MainWindow::updateWindowTitle()
+{
+    QString baseName = m_currentFilePath.isEmpty() ? tr("Sans titre") : QFileInfo(m_currentFilePath).fileName();
+    bool modified = (m_model && (m_model->isModified() || m_model->canUndo()));
+    setWindowTitle(QString("TSA — %1%2").arg(baseName, modified ? " *" : ""));
+}
+
+bool MainWindow::maybeSave()
+{
+    if (!m_model || (!m_model->isModified() && !m_model->canUndo()))
+        return true;
+
+    const QMessageBox::StandardButton ret = QMessageBox::warning(
+        this,
+        tr("TSA - Enregistrer les modifications"),
+        tr("Le projet actuel a été modifié.\nVoulez-vous enregistrer les modifications avant de continuer ?"),
+        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel
+    );
+
+    if (ret == QMessageBox::Save)
+    {
+        return saveFile(m_currentFilePath);
+    }
+    else if (ret == QMessageBox::Cancel)
+    {
+        return false;
+    }
+    return true; // Discard
+}
+
+void MainWindow::closeEvent(QCloseEvent* event)
+{
+    if (maybeSave())
+    {
+        event->accept();
+    }
+    else
+    {
+        event->ignore();
+    }
+}
+
 void MainWindow::onActionNew()
 {
+    if (!maybeSave())
+        return;
+
+    if (m_model)
+    {
+        m_model->clear();
+        m_model->clearUndoRedo();
+    }
+    if (m_gridManager)
+    {
+        m_gridManager->clearAllGrids();
+        TSA::Grid::GridDefinition def("Grille Bâtiment", TSA::Grid::GridType::Cartesian);
+        def.setOrigin(0.0, 0.0, 0.0);
+        auto* defaultGrid = m_gridManager->addGrid(def);
+        if (defaultGrid)
+        {
+            m_gridManager->setActiveGridId(defaultGrid->id());
+        }
+    }
+    m_currentFilePath.clear();
+    if (m_model)
+    {
+        m_model->setModified(false);
+    }
+    updateWindowTitle();
+
+    if (m_modelTree)
+        m_modelTree->refreshAll();
+    if (m_selectionManager)
+        m_selectionManager->clearSelection();
+    if (m_occView)
+    {
+        m_occView->rebuildAllShapes();
+        m_occView->fitAll();
+    }
+
     if (m_consoleDock)
     {
         m_consoleDock->appendLog(tr("Nouveau projet initialisé."), "SYS");
@@ -2136,18 +2242,133 @@ void MainWindow::onActionNew()
 
 void MainWindow::onActionOpen()
 {
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Ouverture d'un fichier de projet (TSA / DXF / STEP)..."), "SYS");
-    }
+    if (!maybeSave())
+        return;
+
+    QString initialDir = m_currentFilePath.isEmpty() ? QString() : QFileInfo(m_currentFilePath).absolutePath();
+    QString filePath = QFileDialog::getOpenFileName(
+        this,
+        tr("Ouvrir un projet TSA"),
+        initialDir,
+        tr("TSA Project (*.tsa);;Tous les fichiers (*.*)")
+    );
+
+    if (filePath.isEmpty())
+        return;
+
+    loadFile(filePath);
 }
 
 void MainWindow::onActionSave()
 {
+    saveFile(m_currentFilePath);
+}
+
+void MainWindow::onActionSaveAs()
+{
+    saveFile(QString());
+}
+
+bool MainWindow::saveFile(const QString& path)
+{
+    QString targetPath = path;
+    if (targetPath.isEmpty())
+    {
+        QString defaultName = m_currentFilePath.isEmpty() ? "Projet.tsa" : m_currentFilePath;
+        targetPath = QFileDialog::getSaveFileName(
+            this,
+            tr("Enregistrer le projet TSA"),
+            defaultName,
+            tr("TSA Project (*.tsa);;Tous les fichiers (*.*)")
+        );
+        if (targetPath.isEmpty())
+            return false;
+
+        if (!targetPath.endsWith(".tsa", Qt::CaseInsensitive))
+        {
+            targetPath += ".tsa";
+        }
+    }
+
+    if (!m_model)
+        return false;
+
+    // Capture de la vue 3D pour la miniature Windows Explorer
+    QImage thumbnail;
+    if (m_occView)
+    {
+        thumbnail = m_occView->captureViewImage(512, 512);
+    }
+
+    std::string errorMsg;
+    if (!TSA::IO::TSAProjectIO::saveToFile(targetPath, *m_model, m_gridManager.get(), thumbnail, &errorMsg))
+    {
+        QMessageBox::critical(this, tr("Erreur de sauvegarde"),
+            tr("Échec de l'enregistrement du projet TSA :\n%1").arg(QString::fromStdString(errorMsg)));
+        return false;
+    }
+
+    m_currentFilePath = targetPath;
+    m_model->setModified(false);
+    updateWindowTitle();
+
     if (m_consoleDock)
     {
-        m_consoleDock->appendLog(tr("Projet enregistré avec succès."), "SYS");
+        m_consoleDock->appendLog(tr("Projet enregistré : %1").arg(targetPath), "SYS");
     }
+    if (m_statusInfo)
+    {
+        m_statusInfo->setText(tr("Enregistré : %1").arg(QFileInfo(targetPath).fileName()));
+    }
+    return true;
+}
+
+bool MainWindow::loadFile(const QString& path)
+{
+    if (!m_model)
+        return false;
+
+    std::string errorMsg;
+    if (!TSA::IO::TSAProjectIO::loadFromFile(path, *m_model, m_gridManager.get(), &errorMsg))
+    {
+        QMessageBox::critical(this, tr("Erreur de chargement"),
+            tr("Échec de l'ouverture du projet TSA :\n%1").arg(QString::fromStdString(errorMsg)));
+        return false;
+    }
+
+    m_currentFilePath = path;
+    m_model->setModified(false);
+    m_model->clearUndoRedo();
+    updateWindowTitle();
+
+    if (m_selectionManager)
+    {
+        m_selectionManager->clearSelection();
+    }
+    if (m_modelTree)
+    {
+        m_modelTree->refreshAll();
+    }
+    if (m_occView)
+    {
+        m_occView->rebuildAllShapes();
+        m_occView->fitAll();
+    }
+
+    if (m_consoleDock)
+    {
+        m_consoleDock->appendLog(tr("Projet TSA chargé avec succès : %1").arg(path), "SYS");
+    }
+    if (m_statusInfo)
+    {
+        m_statusInfo->setText(tr("Modèle : %1 nœuds, %2 poutres, %3 poteaux, %4 dalles | %5")
+            .arg(m_model->nodes().size())
+            .arg(m_model->beams().size())
+            .arg(m_model->columns().size())
+            .arg(m_model->slabs().size())
+            .arg(QFileInfo(path).fileName()));
+    }
+    return true;
 }
 
 void MainWindow::onToggleTheme()
@@ -3556,6 +3777,7 @@ void MainWindow::updateUndoRedoActions()
             m_actionRedo->setToolTip(tr("Rétablir la dernière action annulée (Ctrl+Y)"));
         }
     }
+    updateWindowTitle();
 }
 
 void MainWindow::onToggleDarkMode(bool checked)
@@ -3618,4 +3840,42 @@ void MainWindow::changeEvent(QEvent* event)
             }
         }
     }
+}
+
+
+void MainWindow::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (event->mimeData()->hasUrls())
+    {
+        for (const QUrl& url : event->mimeData()->urls())
+        {
+            if (url.toLocalFile().endsWith(".tsa", Qt::CaseInsensitive))
+            {
+                event->acceptProposedAction();
+                return;
+            }
+        }
+    }
+    QMainWindow::dragEnterEvent(event);
+}
+
+void MainWindow::dropEvent(QDropEvent* event)
+{
+    if (event->mimeData()->hasUrls())
+    {
+        for (const QUrl& url : event->mimeData()->urls())
+        {
+            QString path = url.toLocalFile();
+            if (path.endsWith(".tsa", Qt::CaseInsensitive))
+            {
+                event->acceptProposedAction();
+                if (maybeSave())
+                {
+                    loadFile(path);
+                }
+                return;
+            }
+        }
+    }
+    QMainWindow::dropEvent(event);
 }

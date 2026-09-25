@@ -197,6 +197,10 @@ public:
     void notifyFoundationModified(int foundationId);
     void notifyTrussMemberModified(int memberId);
 
+    // État de modification du document (Dirty state)
+    bool isModified() const { return m_isModified; }
+    void setModified(bool modified) { m_isModified = modified; }
+
     // Réinitialisation
     void clear();
 
@@ -233,6 +237,7 @@ private:
     size_t m_maxUndoSteps = 50;
 
     std::shared_ptr<TSA::Coordinate::CoordinateSystem> m_coordinateSystem;
+    bool m_isModified = false;
 };
 
 } // namespace TSA::Model

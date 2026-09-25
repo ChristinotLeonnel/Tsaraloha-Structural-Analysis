@@ -80,6 +80,7 @@ public:
     // Actions de vue
     void fitAll();
     void resetView();
+    QImage captureViewImage(int width = 512, int height = 512);
 
     // Intégration du système de Grille 3D paramétrique
     void setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::GridSnapManager* snapManager);
@@ -172,6 +173,7 @@ public:
     void resetCurrentSlabContour();
 
 signals:
+    void fileDropped(const QString& filePath);
     void mouseCoordinatesChanged(double x, double y, double z);
     void mousePixelPositionChanged(int px, int py);
     void viewCameraChanged();
@@ -250,6 +252,8 @@ protected:
     void leaveEvent(QEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
 
 private:
     void initOcc();

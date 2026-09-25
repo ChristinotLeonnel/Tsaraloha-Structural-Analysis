@@ -48,6 +48,11 @@ public:
 
     TSA::Grid::GridManager* gridManager() { return m_gridManager.get(); }
 
+    bool loadFile(const QString& filePath);
+    bool saveFile(const QString& filePath);
+    bool maybeSave();
+    void updateWindowTitle();
+
 private slots:
     void onFitAll();
     void onResetView();
@@ -98,6 +103,7 @@ private slots:
     void onActionNew();
     void onActionOpen();
     void onActionSave();
+    void onActionSaveAs();
 
 private:
     void updateUndoRedoActions();
@@ -134,7 +140,9 @@ private:
     QAction* m_actionNew = nullptr;
     QAction* m_actionOpen = nullptr;
     QAction* m_actionSave = nullptr;
+    QAction* m_actionSaveAs = nullptr;
     QAction* m_actionExit = nullptr;
+    QString  m_currentFilePath;
 
     QAction* m_actionFitAll = nullptr;
     QAction* m_actionResetView = nullptr;
@@ -320,4 +328,7 @@ private slots:
 
 protected:
     void changeEvent(QEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
+    void dragEnterEvent(QDragEnterEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
 };

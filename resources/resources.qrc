@@ -29,6 +29,7 @@
         <file alias="file_new.svg">icons/file_new.svg</file>
         <file alias="file_open.svg">icons/file_open.svg</file>
         <file alias="file_save.svg">icons/file_save.svg</file>
+        <file alias="file_tsa.svg">icons/file_tsa.svg</file>
         <file alias="geom_line.svg">icons/geom_line.svg</file>
         <file alias="geom_polyline.svg">icons/geom_polyline.svg</file>
         <file alias="geom_circle.svg">icons/geom_circle.svg</file>
