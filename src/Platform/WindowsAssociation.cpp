@@ -49,7 +49,7 @@ bool WindowsAssociation::registerFileAssociation(const QString& executablePath)
 
     // Commande shell pour l'ouverture par double-clic
     reg.setValue("TSA.Project/shell/open/.", "Ouvrir avec TSA");
-    reg.setValue("TSA.Project/shell/open/command/.", QString("\"%1\" \"%%1\"").arg(appPath));
+    reg.setValue("TSA.Project/shell/open/command/.", "\"" + appPath + "\" \"%1\"");
 
     reg.sync();
 

@@ -89,16 +89,21 @@ bool Application::init()
     }
 
     m_mainWindow = std::make_unique<MainWindow>();
+    m_mainWindow->show();
 
     for (int i = 1; i < args.size(); ++i)
     {
-        if (args[i].endsWith(".tsa", Qt::CaseInsensitive))
+        QString arg = args[i].trimmed();
+        if (arg.startsWith('"') && arg.endsWith('"') && arg.length() >= 2)
         {
-            m_mainWindow->loadFile(args[i]);
+            arg = arg.mid(1, arg.length() - 2);
+        }
+        if (arg.endsWith(".tsa", Qt::CaseInsensitive))
+        {
+            m_mainWindow->loadFile(arg);
             break;
         }
     }
 
-    m_mainWindow->show();
     return true;
 }

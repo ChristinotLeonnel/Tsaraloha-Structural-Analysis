@@ -192,6 +192,7 @@ void OccView::showEvent(QShowEvent* event)
         m_isInitialized = true;
         rebuildAllShapes();
         rebuildGrid();
+        fitAll();
     }
 }
 
