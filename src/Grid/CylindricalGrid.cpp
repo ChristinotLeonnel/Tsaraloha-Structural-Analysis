@@ -69,10 +69,9 @@ void CylindricalGrid::computeGeometry()
     const auto& zLevels = m_definition.zLevels();
     const gp_Pnt& orig = m_definition.origin();
 
-    if (radii.empty() || angles.empty())
-    {
-        return;
-    }
+    double startAngle = m_definition.startAngleDeg();
+    double totalAngle = m_definition.totalAngleDeg();
+    if (totalAngle <= 0.0 || totalAngle > 360.0) totalAngle = 360.0;
 
     // Filtrer les rayons strictement positifs (> 0) pour OpenCASCADE
     std::vector<double> validRadii;
@@ -93,7 +92,18 @@ void CylindricalGrid::computeGeometry()
     }
 
     std::vector<double> validAngles = angles;
-    if (validAngles.size() == 1)
+    if (validAngles.empty())
+    {
+        int divs = std::max(1, m_definition.angularDivisions());
+        double step = totalAngle / divs;
+        const bool isFull = (totalAngle >= 360.0 - 1e-4);
+        int numSteps = isFull ? divs : (divs + 1);
+        for (int j = 0; j < numSteps; ++j)
+        {
+            validAngles.push_back(startAngle + j * step);
+        }
+    }
+    else if (validAngles.size() == 1)
     {
         double a2 = validAngles[0] + 45.0;
         if (a2 >= 360.0) a2 -= 360.0;
@@ -124,7 +134,7 @@ void CylindricalGrid::computeGeometry()
         double zVal = orig.Z() + levels[k];
         gp_Pnt centerPt(orig.X(), orig.Y(), zVal);
 
-        // 1. Cercles concentriques
+        // 1. Cercles concentriques (ou arcs)
         for (size_t i = 0; i < validRadii.size(); ++i)
         {
             CylindricalCircle c;
@@ -133,11 +143,13 @@ void CylindricalGrid::computeGeometry()
             c.zLevel = zVal;
             c.label = m_definition.getRadiusLabel(i);
             c.index = static_cast<int>(i);
+            c.startAngleDeg = startAngle;
+            c.totalAngleDeg = totalAngle;
 
             m_circles.push_back(c);
 
-            // Ancrage libellé rayon (à 0° ou au début)
-            gp_Pnt pos = polarToWorld(validRadii[i], 0.0, levels[k]);
+            // Ancrage libellé rayon (au départ du secteur angulaire)
+            gp_Pnt pos = polarToWorld(validRadii[i], startAngle, levels[k]);
             m_labelAnchors.push_back({ pos, c.label, false });
         }
 
@@ -256,7 +268,7 @@ GridSnapResult CylindricalGrid::findClosestSnap(const gp_Pnt& worldPoint, double
         }
     }
 
-    // 4. Accrochage : Cercles concentriques
+    // 4. Accrochage : Cercles ou Arcs concentriques
     for (const auto& circ : m_circles)
     {
         double dx = worldPoint.X() - circ.center.X();
@@ -265,10 +277,44 @@ GridSnapResult CylindricalGrid::findClosestSnap(const gp_Pnt& worldPoint, double
 
         if (curDist > 1e-4)
         {
-            double scale = circ.radius / curDist;
-            gp_Pnt projPoint(circ.center.X() + dx * scale,
-                             circ.center.Y() + dy * scale,
-                             circ.zLevel);
+            double snapAngle = 0.0;
+            double rad = std::atan2(dy, dx);
+            double angleDeg = rad * RAD_TO_DEG - m_definition.rotationDeg();
+            while (angleDeg < 0.0) angleDeg += 360.0;
+            while (angleDeg >= 360.0) angleDeg -= 360.0;
+
+            if (circ.isFullCircle())
+            {
+                snapAngle = angleDeg;
+            }
+            else
+            {
+                // Vérifier si angleDeg tombe dans l'arc [startAngle, startAngle + totalAngle]
+                double start = circ.startAngleDeg;
+                while (start < 0.0) start += 360.0;
+                while (start >= 360.0) start -= 360.0;
+
+                double delta = angleDeg - start;
+                while (delta < 0.0) delta += 360.0;
+                while (delta >= 360.0) delta -= 360.0;
+
+                if (delta <= circ.totalAngleDeg + 1e-4)
+                {
+                    snapAngle = angleDeg;
+                }
+                else
+                {
+                    // Clamp à l'extrémité la plus proche
+                    double toStart = 360.0 - delta;
+                    double toEnd = delta - circ.totalAngleDeg;
+                    if (toStart < toEnd)
+                        snapAngle = circ.startAngleDeg;
+                    else
+                        snapAngle = circ.startAngleDeg + circ.totalAngleDeg;
+                }
+            }
+
+            gp_Pnt projPoint = polarToWorld(circ.radius, snapAngle, circ.zLevel - orig.Z());
             double d = worldPoint.Distance(projPoint);
 
             if (d <= snapToleranceWorld && d < bestResult.distance)
@@ -279,7 +325,7 @@ GridSnapResult CylindricalGrid::findClosestSnap(const gp_Pnt& worldPoint, double
                 bestResult.distance = d;
 
                 std::ostringstream oss;
-                oss << "Cercle " << circ.label
+                oss << (circ.isFullCircle() ? "Cercle " : "Arc ") << circ.label
                     << " (" << std::fixed << std::setprecision(3)
                     << projPoint.X() << ", " << projPoint.Y() << ", " << projPoint.Z() << " m)";
                 bestResult.description = oss.str();

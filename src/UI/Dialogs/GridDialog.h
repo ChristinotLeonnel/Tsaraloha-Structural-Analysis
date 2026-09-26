@@ -70,6 +70,7 @@ private slots:
     void onAdvancedButtonClicked();
     void onCreateFromSelectedBars();
     void onToggleBold();
+    void onCylindricalParamsChanged();
 
 private:
     void setupUi();
@@ -126,9 +127,17 @@ private:
     QLabel* m_spacingLabel = nullptr;
     QLabel* m_spacingUnitLabel = nullptr;
 
+    QWidget* m_standardInputGridWidget = nullptr;
     QDoubleSpinBox* m_posSpin = nullptr;
     QSpinBox* m_repeatSpin = nullptr;
     QDoubleSpinBox* m_spacingSpin = nullptr;
+
+    // Saisie Paramètres Angulaires pour mode Cylindrique (Thêta)
+    QWidget* m_cylAngleWidget = nullptr;
+    QDoubleSpinBox* m_cylStartAngleSpin = nullptr;
+    QDoubleSpinBox* m_cylTotalAngleSpin = nullptr;
+    QSpinBox* m_cylDivisionsSpin = nullptr;
+    QDoubleSpinBox* m_cylStepSpin = nullptr;
 
     // Saisie mode Arbitraire
     QComboBox* m_arbTypeCombo = nullptr;

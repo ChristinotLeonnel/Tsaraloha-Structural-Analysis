@@ -16,7 +16,12 @@
 #include "Model/Foundation.h"
 #include "Model/TrussMember.h"
 #include "Grid/CartesianGrid.h"
+#include "Grid/CylindricalGrid.h"
 #include "Grid/ArbitraryGrid.h"
+#include <GCPnts_AbscissaPoint.hxx>
+#include <BRepAdaptor_Curve.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <gp_Circ.hxx>
 #include "Grid/GridDefinition.h"
 #include "Grid/GridSystem.h"
 #include "Grid/GridManager.h"
@@ -73,7 +78,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 31;
+    int total = 32;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -2263,6 +2268,149 @@ int main(int argc, char* argv[])
         TEST_CHECK(loadedCart->definition().xIsBold(2) == true, "Test 31.6: xIsBold[2] == true preserved");
 
         std::cout << "[PASS] Test 31: Advanced Robot Structural Analysis Grid Features (Arbitrary, Display Settings, Clipboard, Snapping, JSON) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 32: Cylindrical Grid Angular Sectors (Robot Structural Analysis)
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 32: Cylindrical Grid Angular Sectors Suite ---" << std::endl;
+
+        // Subtest 32.1: Test 1 - Départ = 0°, Total = 90° -> secteur 0° -> 90°
+        {
+            GridDefinition def1("Cyl_90", GridType::Cylindrical);
+            def1.generateCylindrical(2, 3.0, 5, 18.0, 1, 3.0, 0.0, 90.0);
+            TEST_CHECK(approxEqual(def1.startAngleDeg(), 0.0), "Test 32.1: startAngleDeg == 0");
+            TEST_CHECK(approxEqual(def1.totalAngleDeg(), 90.0), "Test 32.1: totalAngleDeg == 90");
+            TEST_CHECK(def1.angles().size() == 6, "Test 32.1: 5 divisions give 6 angle rays");
+            TEST_CHECK(approxEqual(def1.angles().front(), 0.0), "Test 32.1: First angle is 0 deg");
+            TEST_CHECK(approxEqual(def1.angles().back(), 90.0), "Test 32.1: Last angle is 90 deg");
+
+            CylindricalGrid cyl1(def1);
+            TEST_CHECK(!cyl1.circles().empty(), "Test 32.1: circles not empty");
+            TEST_CHECK(cyl1.circles().front().isFullCircle() == false, "Test 32.1: isFullCircle == false for 90 deg");
+            TEST_CHECK(approxEqual(cyl1.circles().front().startAngleDeg, 0.0), "Test 32.1: circle startAngle == 0");
+            TEST_CHECK(approxEqual(cyl1.circles().front().totalAngleDeg, 90.0), "Test 32.1: circle totalAngle == 90");
+            TEST_CHECK(cyl1.radialLines().size() == 12, "Test 32.1: 6 rays * 2 levels == 12 radial lines");
+
+            // OCCT Arc BRep verification
+            gp_Circ occtCirc(gp_Ax2(gp_Pnt(0,0,0), gp_Dir(0,0,1)), 3.0);
+            BRepBuilderAPI_MakeEdge arcMaker(occtCirc, 0.0, 90.0 * 3.14159265358979323846 / 180.0);
+            TEST_CHECK(arcMaker.IsDone(), "Test 32.1: OCCT arc edge created");
+            BRepAdaptor_Curve adapt(arcMaker.Edge());
+            double arcLen = GCPnts_AbscissaPoint::Length(adapt);
+            TEST_CHECK(approxEqual(arcLen, 3.0 * (3.14159265358979323846 / 2.0)), "Test 32.1: Arc length == R * pi / 2");
+
+            // Snapping inside arc (with tolerance 0.2m so it snaps to the arc rather than intersection at 36 deg which is 0.47m away)
+            gp_Pnt pInSector(3.0 * std::cos(45.0 * 3.14159265358979323846 / 180.0),
+                             3.0 * std::sin(45.0 * 3.14159265358979323846 / 180.0), 0.0);
+            GridSnapResult snapIn = cyl1.findClosestSnap(pInSector, 0.2);
+            TEST_CHECK(snapIn.snapped, "Test 32.1: Snapped on arc in sector");
+            TEST_CHECK(snapIn.type == GridSnapType::Circle, "Test 32.1: Snap type is Circle/Arc");
+
+            // Snapping outside sector (at 180 deg) clamps to sector bound
+            gp_Pnt pOutside(-3.0, 0.0, 0.0);
+            GridSnapResult snapOut = cyl1.findClosestSnap(pOutside, 10.0);
+            TEST_CHECK(snapOut.snapped, "Test 32.1: Snapped with large tolerance");
+            TEST_CHECK(snapOut.point.X() >= -1e-4 && snapOut.point.Y() >= -1e-4, "Test 32.1: Clamped point stays within first quadrant [0, 90 deg]");
+            std::cout << "  [PASS] Subtest 32.1: Test 1 (0° -> 90° sector) Validated" << std::endl;
+        }
+
+        // Subtest 32.2: Test 2 - Départ = 0°, Total = 180° -> demi-cercle
+        {
+            GridDefinition def2("Cyl_180", GridType::Cylindrical);
+            def2.generateCylindrical(2, 4.0, 6, 30.0, 0, 0.0, 0.0, 180.0);
+            TEST_CHECK(approxEqual(def2.totalAngleDeg(), 180.0), "Test 32.2: totalAngleDeg == 180");
+            TEST_CHECK(def2.angles().size() == 7, "Test 32.2: 6 divs = 7 angles (0 to 180)");
+            TEST_CHECK(approxEqual(def2.angles().front(), 0.0) && approxEqual(def2.angles().back(), 180.0), "Test 32.2: bounds 0 and 180");
+            CylindricalGrid cyl2(def2);
+            TEST_CHECK(cyl2.circles().front().isFullCircle() == false, "Test 32.2: isFullCircle == false");
+            TEST_CHECK(approxEqual(cyl2.circles().front().totalAngleDeg, 180.0), "Test 32.2: totalAngle == 180");
+            std::cout << "  [PASS] Subtest 32.2: Test 2 (0° -> 180° demi-cercle) Validated" << std::endl;
+        }
+
+        // Subtest 32.3: Test 3 - Départ = 30°, Total = 120° -> secteur 30° -> 150°
+        {
+            GridDefinition def3("Cyl_30_150", GridType::Cylindrical);
+            def3.generateCylindrical(2, 5.0, 4, 30.0, 0, 0.0, 30.0, 120.0);
+            TEST_CHECK(approxEqual(def3.startAngleDeg(), 30.0), "Test 32.3: startAngleDeg == 30");
+            TEST_CHECK(approxEqual(def3.totalAngleDeg(), 120.0), "Test 32.3: totalAngleDeg == 120");
+            TEST_CHECK(def3.angles().size() == 5, "Test 32.3: 4 divs = 5 angles (30, 60, 90, 120, 150)");
+            TEST_CHECK(approxEqual(def3.angles().front(), 30.0), "Test 32.3: first angle is 30");
+            TEST_CHECK(approxEqual(def3.angles().back(), 150.0), "Test 32.3: last angle is 150");
+            CylindricalGrid cyl3(def3);
+            TEST_CHECK(approxEqual(cyl3.circles().front().startAngleDeg, 30.0), "Test 32.3: circle start == 30");
+            TEST_CHECK(approxEqual(cyl3.circles().front().totalAngleDeg, 120.0), "Test 32.3: circle total == 120");
+            std::cout << "  [PASS] Subtest 32.3: Test 3 (30° -> 150° sector, total 120°) Validated" << std::endl;
+        }
+
+        // Subtest 32.4: Test 4 - Départ = 0°, Total = 270° -> 270° seulement
+        {
+            GridDefinition def4("Cyl_270", GridType::Cylindrical);
+            def4.generateCylindrical(2, 5.0, 3, 90.0, 0, 0.0, 0.0, 270.0);
+            TEST_CHECK(approxEqual(def4.totalAngleDeg(), 270.0), "Test 32.4: totalAngleDeg == 270");
+            TEST_CHECK(def4.angles().size() == 4, "Test 32.4: 3 divs = 4 angles (0, 90, 180, 270)");
+            TEST_CHECK(approxEqual(def4.angles().back(), 270.0), "Test 32.4: last angle is 270");
+            CylindricalGrid cyl4(def4);
+            TEST_CHECK(cyl4.circles().front().isFullCircle() == false, "Test 32.4: isFullCircle == false");
+            TEST_CHECK(approxEqual(cyl4.circles().front().totalAngleDeg, 270.0), "Test 32.4: totalAngle == 270");
+            std::cout << "  [PASS] Subtest 32.4: Test 4 (0° -> 270° sector) Validated" << std::endl;
+        }
+
+        // Subtest 32.5: Test 5 - Départ = 0°, Total = 360° -> cercle complet
+        {
+            GridDefinition def5("Cyl_360", GridType::Cylindrical);
+            def5.generateCylindrical(2, 5.0, 8, 45.0, 0, 0.0, 0.0, 360.0);
+            TEST_CHECK(approxEqual(def5.totalAngleDeg(), 360.0), "Test 32.5: totalAngleDeg == 360");
+            TEST_CHECK(def5.angles().size() == 8, "Test 32.5: 8 unique radial directions (no duplicate 360 == 0)");
+            CylindricalGrid cyl5(def5);
+            TEST_CHECK(cyl5.circles().front().isFullCircle() == true, "Test 32.5: isFullCircle == true for 360 deg");
+            std::cout << "  [PASS] Subtest 32.5: Test 5 (0° -> 360° full circle) Validated" << std::endl;
+        }
+
+        // Subtest 32.6: JSON Serialization & Deserialization
+        {
+            GridDefinition defJson("Cyl_Json", GridType::Cylindrical);
+            defJson.generateCylindrical(3, 2.5, 4, 30.0, 2, 3.0, 30.0, 120.0);
+            std::string json = defJson.toJson();
+            TEST_CHECK(json.find("\"startAngleDeg\": 30") != std::string::npos, "Test 32.6: json contains startAngleDeg");
+            TEST_CHECK(json.find("\"totalAngleDeg\": 120") != std::string::npos, "Test 32.6: json contains totalAngleDeg");
+
+            GridDefinition loaded = GridDefinition::fromJson(json);
+            TEST_CHECK(loaded.type() == GridType::Cylindrical, "Test 32.6: type is Cylindrical");
+            TEST_CHECK(approxEqual(loaded.startAngleDeg(), 30.0), "Test 32.6: loaded startAngleDeg == 30");
+            TEST_CHECK(approxEqual(loaded.totalAngleDeg(), 120.0), "Test 32.6: loaded totalAngleDeg == 120");
+            TEST_CHECK(loaded.angles().size() == 5, "Test 32.6: loaded angles size == 5");
+            TEST_CHECK(approxEqual(loaded.angles().front(), 30.0), "Test 32.6: loaded first angle == 30");
+            TEST_CHECK(approxEqual(loaded.angles().back(), 150.0), "Test 32.6: loaded last angle == 150");
+            std::cout << "  [PASS] Subtest 32.6: JSON Serialization & Deserialization Validated" << std::endl;
+        }
+
+        // Subtest 32.7: Multi-Grid GridManager integration with Cylindrical Sector
+        {
+            GridManager gm;
+            GridDefinition defSector("ActiveSectorGrid", GridType::Cylindrical);
+            defSector.generateCylindrical(2, 4.0, 5, 18.0, 0, 0.0, 0.0, 90.0);
+            gm.addGrid(defSector);
+            gm.setActiveGridId(defSector.id());
+            GridSystem* sys = gm.getGrid(defSector.id());
+            TEST_CHECK(sys != nullptr, "Test 32.7: GridSystem exists in manager");
+            TEST_CHECK(sys->type() == GridType::Cylindrical, "Test 32.7: System is cylindrical");
+            TEST_CHECK(sys->cylindrical() != nullptr, "Test 32.7: cylindrical ptr not null");
+            TEST_CHECK(sys->cylindrical()->circles().front().isFullCircle() == false, "Test 32.7: sector circle is not full");
+
+            GridSnapManager snapMgr;
+            snapMgr.setSnapEnabled(true);
+            snapMgr.setSnapTolerance(0.1);
+            gp_Pnt pNearOrigin(-0.02, -0.01, 0.0);
+            GridSnapResult snapOrig = snapMgr.findSnap(pNearOrigin, &gm);
+            TEST_CHECK(snapOrig.snapped, "Test 32.7: Snapped to origin");
+            TEST_CHECK(snapOrig.type == GridSnapType::Origin, "Test 32.7: Snap type is origin");
+            std::cout << "  [PASS] Subtest 32.7: GridManager & Snapping Integration Validated" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 32: Advanced Cylindrical Grid Sectors (startAngle, totalAngle, divisions, OCCT arcs, snapping, JSON) Passed Successfully!" << std::endl;
         passed++;
     }
 

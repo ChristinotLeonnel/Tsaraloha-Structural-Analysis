@@ -287,25 +287,30 @@ void GridDefinition::generateCartesian(int countX, double spacingX,
 
 void GridDefinition::generateCylindrical(int radiusCount, double radiusSpacing,
                                          int angleCount, double angleSpacingDeg,
-                                         int countZ, double spacingZ)
+                                         int countZ, double spacingZ,
+                                         double startAngleDeg,
+                                         double totalAngleDeg)
 {
     m_type = GridType::Cylindrical;
     m_radii.clear();
     m_angles.clear();
     m_zLevels.clear();
 
+    m_startAngleDeg = startAngleDeg;
+    m_totalAngleDeg = (totalAngleDeg <= 0.0) ? 360.0 : (totalAngleDeg > 360.0 ? 360.0 : totalAngleDeg);
+    m_angularDivisions = (angleCount > 0) ? angleCount : 1;
+
     for (int i = 1; i <= radiusCount; ++i)
     {
         m_radii.push_back(i * radiusSpacing);
     }
 
-    for (int j = 0; j < angleCount; ++j)
+    const bool isFull = (m_totalAngleDeg >= 360.0 - 1e-4);
+    int numSteps = isFull ? angleCount : (angleCount + 1);
+    for (int j = 0; j < numSteps; ++j)
     {
-        double ang = j * angleSpacingDeg;
-        if (ang < 360.0)
-        {
-            m_angles.push_back(ang);
-        }
+        double ang = m_startAngleDeg + j * angleSpacingDeg;
+        m_angles.push_back(ang);
     }
 
     for (int k = 0; k <= countZ; ++k)
@@ -388,6 +393,9 @@ std::string GridDefinition::toJson() const
     {
         oss << "  \"radii\": " << vectorToJsonArray(m_radii) << ",\n";
         oss << "  \"angles\": " << vectorToJsonArray(m_angles) << ",\n";
+        oss << "  \"startAngleDeg\": " << m_startAngleDeg << ",\n";
+        oss << "  \"totalAngleDeg\": " << m_totalAngleDeg << ",\n";
+        oss << "  \"angularDivisions\": " << m_angularDivisions << ",\n";
         oss << "  \"radiusLabels\": " << stringVectorToJsonArray(m_radiusLabels) << ",\n";
         oss << "  \"angleLabels\": " << stringVectorToJsonArray(m_angleLabels) << ",\n";
     }
@@ -558,6 +566,15 @@ GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
 
         def.setAngles(parseDoubleArray(jsonStr, "angles"));
         def.setAngleLabels(parseStringArray(jsonStr, "angleLabels"));
+
+        std::string saStr = findField("startAngleDeg");
+        if (!saStr.empty()) { try { def.setStartAngleDeg(std::stod(saStr)); } catch (...) {} }
+
+        std::string taStr = findField("totalAngleDeg");
+        if (!taStr.empty()) { try { def.setTotalAngleDeg(std::stod(taStr)); } catch (...) {} }
+
+        std::string divStr = findField("angularDivisions");
+        if (!divStr.empty()) { try { def.setAngularDivisions(std::stoi(divStr)); } catch (...) {} }
     }
     else // Arbitrary
     {

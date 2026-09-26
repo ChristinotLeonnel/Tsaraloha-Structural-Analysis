@@ -15,6 +15,9 @@ struct CylindricalCircle
     double zLevel = 0.0;
     std::string label;
     int index = -1;
+    double startAngleDeg = 0.0;
+    double totalAngleDeg = 360.0;
+    bool isFullCircle() const { return totalAngleDeg >= 360.0 - 1e-4; }
 };
 
 struct CylindricalRadialLine

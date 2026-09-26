@@ -61,6 +61,23 @@ public:
     const std::vector<double>& angles() const { return m_angles; }
     void setAngles(const std::vector<double>& anglesDeg);
 
+    // Paramètres angulaires sectoriels (Robot Structural Analysis style)
+    double startAngleDeg() const { return m_startAngleDeg; }
+    void setStartAngleDeg(double deg) { m_startAngleDeg = deg; }
+    double startAngle() const { return m_startAngleDeg; }
+    void setStartAngle(double deg) { m_startAngleDeg = deg; }
+
+    double totalAngleDeg() const { return m_totalAngleDeg; }
+    void setTotalAngleDeg(double deg) { m_totalAngleDeg = (deg <= 0.0) ? 360.0 : (deg > 360.0 ? 360.0 : deg); }
+    double totalAngle() const { return m_totalAngleDeg; }
+    void setTotalAngle(double deg) { setTotalAngleDeg(deg); }
+
+    int angularDivisions() const { return m_angularDivisions; }
+    void setAngularDivisions(int divs) { m_angularDivisions = std::max(1, divs); }
+
+    int radialDivisions() const { return static_cast<int>(m_radii.size()); }
+    void setRadialDivisions(int /*divs*/) {}
+
     // --- Libellés personnalisés ---
     const std::vector<std::string>& xLabels() const { return m_xLabels; }
     void setXLabels(const std::vector<std::string>& labels) { m_xLabels = labels; }
@@ -91,7 +108,9 @@ public:
 
     void generateCylindrical(int radiusCount, double radiusSpacing,
                              int angleCount, double angleSpacingDeg,
-                             int countZ, double spacingZ);
+                             int countZ, double spacingZ,
+                             double startAngleDeg = 0.0,
+                             double totalAngleDeg = 360.0);
 
     // --- Lignes de construction arbitraires ---
     const std::vector<ArbitraryLine>& arbitraryLines() const { return m_arbitraryLines; }
@@ -142,6 +161,9 @@ private:
     // Cylindrique
     std::vector<double> m_radii;
     std::vector<double> m_angles; // en degrés
+    double m_startAngleDeg = 0.0;
+    double m_totalAngleDeg = 360.0;
+    int m_angularDivisions = 12;
 
     // Libellés
     std::vector<std::string> m_xLabels;

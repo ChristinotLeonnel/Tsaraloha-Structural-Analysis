@@ -12,8 +12,12 @@
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_LineAspect.hxx>
 
+#include <cmath>
+
 namespace TSA::Grid
 {
+
+constexpr double DEG_TO_RAD = 3.14159265358979323846 / 180.0;
 
 GridRenderer::GridRenderer()
     : m_gridVisible(true)
@@ -418,18 +422,36 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, PerGridRender
 
     BRep_Builder builder;
 
-    // 1. Cercles concentriques
+    // 1. Cercles concentriques ou arcs de secteur
     TopoDS_Compound circlesCompound;
     builder.MakeCompound(circlesCompound);
+
+    const double rotDeg = gridSystem.definition().rotationDeg();
 
     for (const auto& circ : cyl->circles())
     {
         if (circ.radius <= 1e-4) continue;
         gp_Circ occtCirc(gp_Ax2(circ.center, gp_Dir(0, 0, 1)), circ.radius);
-        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(occtCirc);
-        if (!edge.IsNull())
+
+        if (circ.isFullCircle())
         {
-            builder.Add(circlesCompound, edge);
+            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(occtCirc);
+            if (!edge.IsNull())
+            {
+                builder.Add(circlesCompound, edge);
+            }
+        }
+        else
+        {
+            // Arc de cercle entre startAngle et startAngle + totalAngle (sens trigonométrique)
+            double u1Rad = (circ.startAngleDeg + rotDeg) * DEG_TO_RAD;
+            double u2Rad = u1Rad + (circ.totalAngleDeg * DEG_TO_RAD);
+
+            BRepBuilderAPI_MakeEdge edgeMaker(occtCirc, u1Rad, u2Rad);
+            if (edgeMaker.IsDone())
+            {
+                builder.Add(circlesCompound, edgeMaker.Edge());
+            }
         }
     }
 
