@@ -3691,6 +3691,7 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                 int colId = m_selectionManager ? m_selectionManager->getColumnId(detectedObj) : -1;
                 int slabId = m_selectionManager ? m_selectionManager->getSlabId(detectedObj) : -1;
                 int nodeId = m_selectionManager ? m_selectionManager->getNodeId(detectedObj) : -1;
+                int cableId = m_selectionManager ? m_selectionManager->getCableId(detectedObj) : -1;
 
                 if (nodeId > 0 && m_model)
                 {
@@ -3754,6 +3755,20 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                             .arg(slab->nodeIds().size())
                             .arg(slab->thickness(), 0, 'f', 2)
                             .arg(slab->area(*m_model), 0, 'f', 2));
+                    }
+                }
+                else if (cableId > 0 && m_model)
+                {
+                    const auto* cable = m_model->getCable(cableId);
+                    if (cable)
+                    {
+                        emit objectHovered(tr("Survol : Câble C%1 (Nœuds %2 -> %3 | Longueur = %4 m | Ø%5 mm | T0 = %6 kN)")
+                            .arg(cableId)
+                            .arg(cable->startNodeId())
+                            .arg(cable->endNodeId())
+                            .arg(cable->length(*m_model), 0, 'f', 3)
+                            .arg(cable->diameter() * 1000.0, 0, 'f', 1)
+                            .arg(cable->initialTension() / 1000.0, 0, 'f', 1));
                     }
                 }
             }

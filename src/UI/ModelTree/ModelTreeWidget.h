@@ -31,6 +31,7 @@ public:
   void selectWallItem(int wallId);
   void selectFoundationItem(int foundationId);
   void selectTrussMemberItem(int memberId);
+  void selectCableItem(int cableId);
   void clearTreeSelection();
 
 signals:
@@ -42,6 +43,7 @@ signals:
   void wallSelected(int wallId);
   void foundationSelected(int foundationId);
   void trussMemberSelected(int memberId);
+  void cableSelected(int cableId);
   void selectionCleared();
 
 protected:
@@ -74,6 +76,10 @@ protected:
   void onTrussMemberModified(const TSA::Model::TrussMember &member) override;
   void onTrussMemberRemoved(int memberId) override;
 
+  void onCableAdded(const TSA::Model::Cable &cable) override;
+  void onCableModified(const TSA::Model::Cable &cable) override;
+  void onCableRemoved(int cableId) override;
+
   void onModelDiffApplied(const TSA::Model::ModelDiff &diff) override;
   void onModelCleared() override;
 
@@ -98,6 +104,7 @@ private:
   QTreeWidgetItem *m_wallsCategory = nullptr;
   QTreeWidgetItem *m_foundationsCategory = nullptr;
   QTreeWidgetItem *m_trussCategory = nullptr;
+  QTreeWidgetItem *m_cablesCategory = nullptr;
 };
 
 } // namespace TSA::UI

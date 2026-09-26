@@ -106,4 +106,12 @@ void Beam::setMaterialId(int id)
     m_material = Material::findById(id);
 }
 
+double Beam::weight(const Model& model) const
+{
+    double len = length(model);
+    double area = m_section.area();
+    double rho = m_material.density > 0.0 ? m_material.density : 7850.0;
+    return area * rho * 9.80665 * len;
+}
+
 } // namespace TSA::Model

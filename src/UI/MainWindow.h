@@ -26,6 +26,7 @@ namespace TSA::UI
     class SectionCutDialog;
     class RibbonBar;
     class VisibilityDock;
+    class StructuralElementsDock;
     class LogConsoleDock;
     class HelpDialog;
     class BarCreationDialog;
@@ -86,6 +87,7 @@ private slots:
     void onModeDrawBar();
     void onModeDrawBeam();
     void onModeDrawColumn();
+    void onModeDrawCable();
     void onModeDrawSlab();
     void onModeDrawWall();
     void onActionStructurePresets();
@@ -141,6 +143,7 @@ private:
     QDockWidget* m_modelTreeDock = nullptr;
     QDockWidget* m_propertiesDock = nullptr;
     TSA::UI::VisibilityDock* m_visibilityDock = nullptr;
+    TSA::UI::StructuralElementsDock* m_elementsDock = nullptr;
     TSA::UI::LogConsoleDock* m_consoleDock = nullptr;
 
     QLabel*  m_statusCoordinates = nullptr;
@@ -177,6 +180,7 @@ private:
     QAction* m_actionDrawBar = nullptr;
     QAction* m_actionDrawBeam = nullptr;
     QAction* m_actionDrawColumn = nullptr;
+    QAction* m_actionDrawCable = nullptr;
     QAction* m_actionDrawSlab = nullptr;
     QAction* m_actionDrawWall = nullptr;
     QAction* m_actionStructurePresets = nullptr;

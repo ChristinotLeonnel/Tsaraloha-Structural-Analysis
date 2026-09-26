@@ -204,4 +204,17 @@ std::vector<gp_Pnt> Cable::sampleWorldPoints(const Model& model, int numSamples)
     return localGeom.samplePoints(numSamples);
 }
 
+double Cable::weight(const Model& model) const
+{
+    double len = length(model);
+    double linMass = m_definition.linearMass();
+    if (linMass <= 1e-4)
+    {
+        double area = metallicArea();
+        double rho = m_material.density > 0.0 ? m_material.density : 7850.0;
+        linMass = area * rho;
+    }
+    return linMass * 9.80665 * len;
+}
+
 } // namespace TSA::Model

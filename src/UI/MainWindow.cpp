@@ -15,6 +15,7 @@
 #include "Ribbon/RibbonBar.h"
 #include "Ribbon/RibbonBuilder.h"
 #include "Dock/VisibilityDock.h"
+#include "Dock/StructuralElementsDock.h"
 #include "Dock/LogConsoleDock.h"
 #include "Theme/ThemeManager.h"
 #include "Dialogs/HelpDialog.h"
@@ -420,6 +421,15 @@ void MainWindow::createActions()
     connect(m_actionDrawColumn, &QAction::triggered, this, &MainWindow::onModeDrawColumn);
     m_drawModeGroup->addAction(m_actionDrawColumn);
 
+    m_actionDrawCable = new QAction(tr("Dessiner &Câble"), this);
+    m_actionDrawCable->setIcon(QIcon(":/icons/draw_cable.svg"));
+    m_actionDrawCable->setToolTip(tr("Dessiner un Câble (Alt+C) - Élément filaire tendu"));
+    m_actionDrawCable->setCheckable(true);
+    m_actionDrawCable->setShortcut(QKeySequence(Qt::ALT | Qt::Key_C));
+    m_actionDrawCable->setStatusTip(tr("Active le mode dessin Câble reliant deux nœuds (Alt+C)"));
+    connect(m_actionDrawCable, &QAction::triggered, this, &MainWindow::onModeDrawCable);
+    m_drawModeGroup->addAction(m_actionDrawCable);
+
     m_actionDrawSlab = new QAction(tr("Dessiner &Dalle"), this);
     m_actionDrawSlab->setIcon(QIcon(":/icons/draw_slab.svg"));
     m_actionDrawSlab->setToolTip(tr("Dessiner une Dalle (L)"));
@@ -682,6 +692,7 @@ void MainWindow::createMenus()
     filarSub->addAction(m_actionDrawBeam);
     filarSub->addAction(m_actionDrawColumn);
     filarSub->addAction(m_actionDrawBar);
+    filarSub->addAction(m_actionDrawCable);
     filarSub->addAction(m_actionTruss);
 
     QMenu* surfSub = modelMenu->addMenu(tr("Éléments Surfaciques (2D)"));
@@ -765,6 +776,7 @@ void MainWindow::createMenus()
     // 8. Menu Fenêtres
     QMenu* windowsMenu = menuBar()->addMenu(tr("&Fenêtres"));
     if (m_modelTreeDock) windowsMenu->addAction(m_modelTreeDock->toggleViewAction());
+    if (m_elementsDock) windowsMenu->addAction(m_elementsDock->toggleViewAction());
     if (m_propertiesDock) windowsMenu->addAction(m_propertiesDock->toggleViewAction());
     if (m_visibilityDock) windowsMenu->addAction(m_visibilityDock->toggleViewAction());
     if (m_consoleDock) windowsMenu->addAction(m_consoleDock->toggleViewAction());
@@ -813,6 +825,7 @@ void MainWindow::createRibbon()
     acts.actionDrawBar = m_actionDrawBar;
     acts.actionDrawBeam = m_actionDrawBeam;
     acts.actionDrawColumn = m_actionDrawColumn;
+    acts.actionDrawCable = m_actionDrawCable;
     acts.actionDrawSlab = m_actionDrawSlab;
     acts.actionDrawWall = m_actionDrawWall;
     acts.actionTruss = m_actionTruss;
@@ -919,6 +932,23 @@ void MainWindow::createDockWindows()
     m_visibilityDock->bindRulersVisibleAction(m_actionRulersVisible);
     m_visibilityDock->bindCoordSystemAction(m_actionCoordSystem);
 
+    // 3. Dock gauche ongletisé : ÉLÉMENTS STRUCTURAUX (Volet de dessin)
+    m_elementsDock = new TSA::UI::StructuralElementsDock(this);
+    m_elementsDock->toggleViewAction()->setIcon(QIcon(":/icons/draw_cable.svg"));
+    addDockWidget(Qt::LeftDockWidgetArea, m_elementsDock);
+    tabifyDockWidget(m_modelTreeDock, m_elementsDock);
+    m_modelTreeDock->raise();
+
+    connect(m_elementsDock, &TSA::UI::StructuralElementsDock::drawBeamTriggered, this, &MainWindow::onModeDrawBeam);
+    connect(m_elementsDock, &TSA::UI::StructuralElementsDock::drawColumnTriggered, this, &MainWindow::onModeDrawColumn);
+    connect(m_elementsDock, &TSA::UI::StructuralElementsDock::drawBarTriggered, this, &MainWindow::onModeDrawBar);
+    connect(m_elementsDock, &TSA::UI::StructuralElementsDock::drawCableTriggered, this, &MainWindow::onModeDrawCable);
+    connect(m_elementsDock, &TSA::UI::StructuralElementsDock::drawTrussTriggered, this, &MainWindow::onActionTruss);
+    connect(m_elementsDock, &TSA::UI::StructuralElementsDock::drawSlabTriggered, this, &MainWindow::onModeDrawSlab);
+    connect(m_elementsDock, &TSA::UI::StructuralElementsDock::drawWallTriggered, this, &MainWindow::onModeDrawWall);
+    connect(m_elementsDock, &TSA::UI::StructuralElementsDock::drawPanelTriggered, this, &MainWindow::onModeDrawSlab);
+    connect(m_elementsDock, &TSA::UI::StructuralElementsDock::drawFootingTriggered, this, &MainWindow::onActionFooting);
+
     // 3. Dock droit : PROPERTIES
     m_propertiesDock = new QDockWidget(tr("PROPRIÉTÉS"), this);
     m_propertiesDock->setObjectName("PropertiesDock");
@@ -945,6 +975,7 @@ void MainWindow::createDockWindows()
         else if (c == "BAR" || c == "BARRE") onModeDrawBar();
         else if (c == "BEAM" || c == "B" || c == "POUTRE") onModeDrawBeam();
         else if (c == "COLUMN" || c == "C" || c == "POTEAU") onModeDrawColumn();
+        else if (c == "CABLE" || c == "CABL") onModeDrawCable();
         else if (c == "SURF" || c == "SURFACE") onModeDrawSurface();
         else if (c == "SLAB" || c == "L" || c == "DALLE") onModeDrawSlab();
         else if (c == "WALL" || c == "W" || c == "VOILE") onModeDrawWall();
@@ -1122,11 +1153,23 @@ void MainWindow::createDockWindows()
     });
 
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::cableSelected, this, [this](int cableId) {
+        m_modelTree->selectCableItem(cableId);
         m_occView->highlightCable(cableId);
         m_propertyPanel->showCableProperties(cableId);
         if (m_statusInfo)
         {
-            m_statusInfo->setText(tr("Câble sélectionné %1").arg(cableId));
+            m_statusInfo->setText(tr("Câble sélectionné C%1").arg(cableId));
+        }
+    });
+
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::cableSelected, this, [this](int cableId) {
+        m_selectionManager->clearSelection();
+        m_selectionManager->selectCable(cableId);
+        m_occView->highlightCable(cableId);
+        m_propertyPanel->showCableProperties(cableId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Câble sélectionné C%1").arg(cableId));
         }
     });
 
@@ -1365,6 +1408,17 @@ void MainWindow::onModeDrawBeam()
 void MainWindow::onModeDrawColumn()
 {
     openBarCreationDialog(TSA::Model::BarRole::Column);
+}
+
+void MainWindow::onModeDrawCable()
+{
+    if (!m_occView) return;
+    m_occView->setInteractionMode(OccView::InteractionMode::DrawCable);
+    if (m_actionDrawCable) m_actionDrawCable->setChecked(true);
+    if (m_statusInfo)
+    {
+        m_statusInfo->setText(tr("Mode dessin : Cable (Cliquez pour sélectionner le 1er nœud)"));
+    }
 }
 
 void MainWindow::openSurfaceCreationDialog(int surfaceType)

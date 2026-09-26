@@ -2,6 +2,7 @@
 
 #include "Section.h"
 #include "Material.h"
+#include "Element.h"
 #include <string>
 
 namespace TSA::Model
@@ -49,24 +50,25 @@ struct BarProperties
     std::string color;
 };
 
-class Beam
+class Beam : public LinearElement
 {
 public:
     Beam() = default;
     Beam(int id, int startNodeId, int endNodeId, double width = 0.30, double height = 0.50, const std::string& name = "", BarRole role = BarRole::Beam);
     Beam(int id, int startNodeId, int endNodeId, const Section& section, const Material& material, BarRole role = BarRole::Beam, double rotation = 0.0, const std::string& name = "");
 
-    int id() const { return m_id; }
+    int id() const override { return m_id; }
     void setId(int id) { m_id = id; }
 
-    const std::string& name() const { return m_name; }
+    std::string name() const override { return m_name; }
     void setName(const std::string& name) { m_name = name; }
     std::string formattedName() const;
+    std::string typeName() const override { return "Beam"; }
 
-    int startNodeId() const { return m_startNodeId; }
+    int startNodeId() const override { return m_startNodeId; }
     void setStartNodeId(int nodeId) { m_startNodeId = nodeId; }
 
-    int endNodeId() const { return m_endNodeId; }
+    int endNodeId() const override { return m_endNodeId; }
     void setEndNodeId(int nodeId) { m_endNodeId = nodeId; }
 
     BarRole role() const { return m_role; }
@@ -80,11 +82,11 @@ public:
 
     void setDimensions(double width, double height);
 
-    const Section& section() const { return m_section; }
+    const Section& section() const override { return m_section; }
     Section& section() { return m_section; }
     void setSection(const Section& section) { m_section = section; }
 
-    const Material& material() const { return m_material; }
+    const Material& material() const override { return m_material; }
     Material& material() { return m_material; }
     void setMaterial(const Material& material) { m_material = material; }
     int materialId() const { return m_material.id; }
@@ -102,7 +104,8 @@ public:
     const EndRelease& endRelease() const { return m_endRelease; }
     void setEndRelease(const EndRelease& rel) { m_endRelease = rel; }
 
-    double length(const Model& model) const;
+    double length(const Model& model) const override;
+    double weight(const Model& model) const override;
 
     const std::string& color() const { return m_color; }
     void setColor(const std::string& color) { m_color = color; }

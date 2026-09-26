@@ -33,6 +33,7 @@ struct RibbonActions
     QAction* actionDrawBar = nullptr;
     QAction* actionDrawBeam = nullptr;
     QAction* actionDrawColumn = nullptr;
+    QAction* actionDrawCable = nullptr;
     QAction* actionDrawSlab = nullptr;
     QAction* actionDrawWall = nullptr;
     QAction* actionTruss = nullptr;

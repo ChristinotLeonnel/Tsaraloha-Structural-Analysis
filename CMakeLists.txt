@@ -89,6 +89,8 @@ set(SOURCES
     src/UI/Ribbon/RibbonBuilder.cpp
     src/UI/Dock/VisibilityDock.h
     src/UI/Dock/VisibilityDock.cpp
+    src/UI/Dock/StructuralElementsDock.h
+    src/UI/Dock/StructuralElementsDock.cpp
     src/UI/Dock/LogConsoleDock.h
     src/UI/Dock/LogConsoleDock.cpp
     src/Coordinate/Point3D.h
@@ -132,6 +134,7 @@ set(SOURCES
     src/Geometry/WallGeometry.cpp
     src/Geometry/FoundationGeometry.h
     src/Geometry/FoundationGeometry.cpp
+    src/Model/Element.h
     src/Model/Material.h
     src/Model/Material.cpp
     src/Model/MaterialLibrary.h
@@ -271,6 +274,7 @@ set(TEST_SOURCES
     src/Coordinate/CoordinateSystem.cpp
     src/Coordinate/CylindricalCoordinates.h
     src/Coordinate/CylindricalCoordinates.cpp
+    src/Model/Element.h
     src/Model/Material.h
     src/Model/Material.cpp
     src/Model/MaterialLibrary.h

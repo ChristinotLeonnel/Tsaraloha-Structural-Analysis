@@ -40,6 +40,7 @@
         <file alias="modeling/draw_slab.svg">icons/modeling/draw_slab.svg</file>
         <file alias="modeling/slab_add.svg">icons/modeling/slab_add.svg</file>
         <file alias="modeling/draw_wall.svg">icons/modeling/draw_wall.svg</file>
+        <file alias="modeling/draw_cable.svg">icons/modeling/draw_cable.svg</file>
         <file alias="modeling/struct_truss.svg">icons/modeling/struct_truss.svg</file>
         <file alias="modeling/struct_foundation.svg">icons/modeling/struct_foundation.svg</file>
         <file alias="modeling/support_fixed.svg">icons/modeling/support_fixed.svg</file>
@@ -179,6 +180,7 @@
         <file alias="geom_circle.svg">icons/modeling/geom_circle.svg</file>
         <file alias="geom_cube.svg">icons/modeling/geom_cube.svg</file>
         <file alias="struct_wall.svg">icons/modeling/draw_wall.svg</file>
+        <file alias="draw_cable.svg">icons/modeling/draw_cable.svg</file>
         <file alias="struct_truss.svg">icons/modeling/struct_truss.svg</file>
         <file alias="struct_foundation.svg">icons/modeling/struct_foundation.svg</file>
         <file alias="section_i.svg">icons/sections/section_i.svg</file>

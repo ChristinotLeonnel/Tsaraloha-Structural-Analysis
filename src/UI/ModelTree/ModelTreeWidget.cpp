@@ -24,7 +24,8 @@ enum ItemType
     TypeLevel = 6,
     TypeWall = 7,
     TypeFoundation = 8,
-    TypeTruss = 9
+    TypeTruss = 9,
+    TypeCable = 10
 };
 
 ModelTreeWidget::ModelTreeWidget(TSA::Model::Model* model, QWidget* parent)
@@ -124,6 +125,10 @@ void ModelTreeWidget::createRootCategories()
     m_trussCategory = new QTreeWidgetItem(m_tree, { tr("Truss / Braces"), "" });
     m_trussCategory->setData(0, TypeRole, TypeCategory);
     m_trussCategory->setExpanded(true);
+
+    m_cablesCategory = new QTreeWidgetItem(m_tree, { tr("Cables"), "" });
+    m_cablesCategory->setData(0, TypeRole, TypeCategory);
+    m_cablesCategory->setExpanded(true);
 }
 
 void ModelTreeWidget::refreshLevels()
@@ -222,6 +227,10 @@ void ModelTreeWidget::refreshAll()
     for (const auto& [trId, tr] : m_model->trussMembers())
     {
         onTrussMemberAdded(tr);
+    }
+    for (const auto& [cabId, cab] : m_model->cables())
+    {
+        onCableAdded(cab);
     }
 }
 
@@ -329,6 +338,23 @@ void ModelTreeWidget::selectTrussMemberItem(int memberId)
     {
         auto* child = m_trussCategory->child(i);
         if (child->data(0, IdRole).toInt() == memberId)
+        {
+            child->setSelected(true);
+            m_tree->scrollToItem(child);
+            break;
+        }
+    }
+}
+
+void ModelTreeWidget::selectCableItem(int cableId)
+{
+    QSignalBlocker blocker(m_tree);
+    m_tree->clearSelection();
+    if (!m_cablesCategory) return;
+    for (int i = 0; i < m_cablesCategory->childCount(); ++i)
+    {
+        auto* child = m_cablesCategory->child(i);
+        if (child->data(0, IdRole).toInt() == cableId)
         {
             child->setSelected(true);
             m_tree->scrollToItem(child);
@@ -665,6 +691,58 @@ void ModelTreeWidget::onTrussMemberRemoved(int memberId)
     m_trussCategory->setText(1, QString("[%1]").arg(m_trussCategory->childCount()));
 }
 
+void ModelTreeWidget::onCableAdded(const TSA::Model::Cable& cable)
+{
+    if (!m_cablesCategory) return;
+    QString label = QString::fromStdString(cable.formattedName());
+    QString desc = QString("N%1 -> N%2 | L=%3m | Ø%4mm")
+        .arg(cable.startNodeId())
+        .arg(cable.endNodeId())
+        .arg(m_model ? cable.length(*m_model) : cable.length(), 0, 'f', 2)
+        .arg(cable.diameter() * 1000.0, 0, 'f', 1);
+
+    auto* item = new QTreeWidgetItem(m_cablesCategory, { label, desc });
+    item->setData(0, TypeRole, TypeCable);
+    item->setData(0, IdRole, cable.id());
+    item->setIcon(0, QIcon(":/icons/draw_cable.svg"));
+    m_cablesCategory->setText(1, QString("[%1]").arg(m_cablesCategory->childCount()));
+}
+
+void ModelTreeWidget::onCableModified(const TSA::Model::Cable& cable)
+{
+    if (!m_cablesCategory) return;
+    QSignalBlocker blocker(m_tree);
+    for (int i = 0; i < m_cablesCategory->childCount(); ++i)
+    {
+        auto* child = m_cablesCategory->child(i);
+        if (child->data(0, IdRole).toInt() == cable.id())
+        {
+            child->setText(0, QString::fromStdString(cable.formattedName()));
+            child->setText(1, QString("N%1 -> N%2 | L=%3m | Ø%4mm")
+                .arg(cable.startNodeId())
+                .arg(cable.endNodeId())
+                .arg(m_model ? cable.length(*m_model) : cable.length(), 0, 'f', 2)
+                .arg(cable.diameter() * 1000.0, 0, 'f', 1));
+            break;
+        }
+    }
+}
+
+void ModelTreeWidget::onCableRemoved(int cableId)
+{
+    if (!m_cablesCategory) return;
+    for (int i = 0; i < m_cablesCategory->childCount(); ++i)
+    {
+        auto* child = m_cablesCategory->child(i);
+        if (child->data(0, IdRole).toInt() == cableId)
+        {
+            delete m_cablesCategory->takeChild(i);
+            break;
+        }
+    }
+    m_cablesCategory->setText(1, QString("[%1]").arg(m_cablesCategory->childCount()));
+}
+
 void ModelTreeWidget::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
 {
     QSignalBlocker blocker(m_tree);
@@ -677,6 +755,7 @@ void ModelTreeWidget::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
     for (int id : diff.deletedWallIds) onWallRemoved(id);
     for (int id : diff.deletedFoundationIds) onFoundationRemoved(id);
     for (int id : diff.deletedTrussMemberIds) onTrussMemberRemoved(id);
+    for (int id : diff.deletedCableIds) onCableRemoved(id);
 
     if (m_model)
     {
@@ -709,6 +788,10 @@ void ModelTreeWidget::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
         {
             if (const auto* t = m_model->getTrussMember(id)) onTrussMemberAdded(*t);
         }
+        for (int id : diff.createdCableIds)
+        {
+            if (const auto* c = m_model->getCable(id)) onCableAdded(*c);
+        }
 
         // 3. Éléments modifiés
         for (int id : diff.modifiedNodeIds)
@@ -739,6 +822,14 @@ void ModelTreeWidget::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
         {
             if (const auto* t = m_model->getTrussMember(id)) onTrussMemberModified(*t);
         }
+    }
+    for (int id : diff.modifiedCableIds)
+    {
+        if (const auto* c = m_model->getCable(id)) onCableModified(*c);
+    }
+    for (int id : diff.deletedCableIds)
+    {
+        onCableRemoved(id);
     }
 }
 
@@ -784,6 +875,9 @@ void ModelTreeWidget::onItemSelectionChanged()
         break;
     case TypeTruss:
         emit trussMemberSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeCable:
+        emit cableSelected(item->data(0, IdRole).toInt());
         break;
     default:
         emit selectionCleared();

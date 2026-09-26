@@ -9,6 +9,7 @@
 #include "CableGeometry.h"
 #include "../Section.h"
 #include "../Material.h"
+#include "../Element.h"
 
 #include <string>
 #include <vector>
@@ -22,25 +23,27 @@ class Model;
  * @brief Élément structural câble haute performance pour le génie civil et les ponts.
  * Intègre la géométrie 3D, le système de tension / précontrainte, les ancrages,
  * la section transversale, le matériau normé et les paramètres d'analyse non linéaire.
+ * Hérite conceptuellement de LinearElement (ElementLineaire).
  */
-class Cable : public ICableElement
+class Cable : public LinearElement, public ICableElement
 {
 public:
     Cable();
     Cable(int id, int startNodeId, int endNodeId, const std::string& name = "", CableType type = CableType::Generic);
     Cable(int id, int startNodeId, int endNodeId, const CableDefinition& definition, const std::string& name = "");
 
-    int id() const { return m_id; }
+    int id() const override { return m_id; }
     void setId(int id) { m_id = id; }
 
-    const std::string& name() const { return m_name; }
+    std::string name() const override { return m_name; }
     void setName(const std::string& name) { m_name = name; }
     std::string formattedName() const;
+    std::string typeName() const override { return "Cable"; }
 
-    int startNodeId() const { return m_startNodeId; }
+    int startNodeId() const override { return m_startNodeId; }
     void setStartNodeId(int nodeId) { m_startNodeId = nodeId; }
 
-    int endNodeId() const { return m_endNodeId; }
+    int endNodeId() const override { return m_endNodeId; }
     void setEndNodeId(int nodeId) { m_endNodeId = nodeId; }
 
     CableType type() const { return m_type; }
@@ -66,14 +69,14 @@ public:
     void setIntermediatePoints(const std::vector<gp_Pnt>& pts) { m_geometry.setIntermediatePoints(pts); }
 
     // Section et Matériau
-    const Section& section() const { return m_section; }
+    const Section& section() const override { return m_section; }
     Section& section() { return m_section; }
     void setSection(const Section& sec) { m_section = sec; }
 
     double diameter() const { return m_definition.nominalDiameter() > 0.0 ? m_definition.nominalDiameter() : m_section.diameter; }
     void setDiameter(double d);
 
-    const Material& material() const { return m_material; }
+    const Material& material() const override { return m_material; }
     Material& material() { return m_material; }
     void setMaterial(const Material& mat) { m_material = mat; }
 
@@ -108,13 +111,14 @@ public:
 
     // ICableElement overrides & calculs mécaniques
     double length() const override; // Longueur chord par défaut
-    double length(const Model& model) const;
+    double length(const Model& model) const override;
     double arcLength(const Model& model) const { return length(model); }
     double chordLength(const Model& model) const;
     double metallicArea() const override;
     double elasticModulus() const override;
     double equivalentErnstModulus(const Model& model) const;
     double equivalentElasticModulus(const Model& model) const { return equivalentErnstModulus(model); }
+    double weight(const Model& model) const override;
 
     // Discrétisation synchronisée avec les coordonnées réelles des nœuds du modèle
     std::vector<gp_Pnt> sampleWorldPoints(const Model& model, int numSamples = 30) const;

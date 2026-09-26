@@ -107,6 +107,7 @@ RibbonTab* RibbonBuilder::buildModelingTab(RibbonBar* bar, const RibbonActions& 
     auto* beamPanel = new RibbonPanel(QObject::tr("Éléments Filaires (1D)"), tab);
     if (acts.actionDrawBeam) beamPanel->addLargeAction(acts.actionDrawBeam);
     if (acts.actionDrawColumn) beamPanel->addLargeAction(acts.actionDrawColumn);
+    if (acts.actionDrawCable) beamPanel->addLargeAction(acts.actionDrawCable);
 
     std::vector<QAction*> wireSub;
     if (acts.actionDrawBar) wireSub.push_back(acts.actionDrawBar);
