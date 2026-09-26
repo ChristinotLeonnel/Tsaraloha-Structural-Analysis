@@ -3260,28 +3260,33 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
     }
 }
 
-void OccView::wheelEvent(QWheelEvent* event)
+void OccView::zoomAtCursor(const QPointF& logicalMousePos, double zoomFactor)
 {
-    const int delta = event->angleDelta().y();
-    if (delta == 0 || m_view.IsNull())
+    if (zoomFactor <= 0.0 || m_view.IsNull())
         return;
 
     const Handle(Graphic3d_Camera)& aCam = m_view->Camera();
     if (aCam.IsNull())
         return;
 
-    const int w = width();
-    const int h = height();
-    if (w <= 0 || h <= 0)
+    // Récupérer les dimensions réelles de la fenêtre OCCT (en pixels physiques/fenêtre)
+    int winW = 0, winH = 0;
+    if (!m_view->Window().IsNull())
+    {
+        m_view->Window()->Size(winW, winH);
+    }
+    if (winW <= 0 || winH <= 0)
+    {
+        const qreal dpr = devicePixelRatioF();
+        winW = static_cast<int>(std::round(width() * dpr));
+        winH = static_cast<int>(std::round(height() * dpr));
+    }
+
+    if (winW <= 0 || winH <= 0)
         return;
 
-    // Normalisation continue du facteur de zoom selon l'angle de rotation de la molette
-    // (delta standard = ±120 ; supporte également les touchpads fins et molettes crantées)
-    const double zoomFactor = std::pow(1.15, static_cast<double>(delta) / 120.0);
-    if (zoomFactor <= 0.0)
-        return;
-
-    const QPoint p = convertMousePos(event->position());
+    // Position exacte de la souris dans le repère de la fenêtre OCCT (en pixels physiques)
+    const QPoint p = convertMousePos(logicalMousePos);
     const double px = p.x();
     const double py = p.y();
 
@@ -3292,39 +3297,59 @@ void OccView::wheelEvent(QWheelEvent* event)
         if (newScale < 1e-4) newScale = 1e-4;
         if (newScale > 1e8)  newScale = 1e8;
 
-        // Décalage du curseur par rapport au centre du viewport (en pixels)
-        const double dx = px - (static_cast<double>(w) * 0.5);
-        const double dy = (static_cast<double>(h) * 0.5) - py; // Qt Y orienté vers le bas
+        // Décalage du curseur par rapport au centre de la fenêtre OCCT (en pixels physiques)
+        const double dx = px - (static_cast<double>(winW) * 0.5);
+        const double dy = (static_cast<double>(winH) * 0.5) - py; // Qt Y est orienté vers le bas
 
         // Repère orthonormé de la vue dans l'espace monde 3D
         const gp_Dir anUp = aCam->OrthogonalizedUp();
         const gp_Dir aSide = aCam->SideRight();
 
-        // Translation sub-pixel du centre caméra pour maintenir le point 3D ancré sous le curseur
-        const double scaleDiff = (curScale - newScale) / static_cast<double>(h);
+        // Translation exacte du centre caméra pour maintenir le point 3D ancré sous le curseur
+        const double scaleDiff = (curScale - newScale) / static_cast<double>(winH);
         const gp_Vec aShift = gp_Vec(aSide) * (dx * scaleDiff) + gp_Vec(anUp) * (dy * scaleDiff);
 
-        // Mise à jour atomique de la caméra sans passer par des étapes intermédiaires
+        // Mise à jour atomique de la caméra
         aCam->SetScale(newScale);
         aCam->SetEyeAndCenter(aCam->Eye().Translated(aShift), aCam->Center().Translated(aShift));
     }
     else
     {
-        // En projection perspective : translation de la caméra le long du rayon vers le point ciblé
+        // En projection perspective : trouver le point 3D sous le curseur et ajuster l'œil le long du rayon
         double wx = 0.0, wy = 0.0, wz = 0.0;
-        m_view->Convert(static_cast<int>(px), static_cast<int>(py), wx, wy, wz);
+        int detectedId = -1;
+
+        if (!getPointUnderCursor(p, wx, wy, wz, detectedId))
+        {
+            m_view->Convert(static_cast<int>(px), static_cast<int>(py), wx, wy, wz);
+        }
 
         const gp_Pnt targetPnt(wx, wy, wz);
         const gp_Vec eyeToTarget(aCam->Eye(), targetPnt);
+
         const double moveFactor = 1.0 - (1.0 / zoomFactor);
         const gp_Vec aShift = eyeToTarget * moveFactor;
 
-        aCam->SetEyeAndCenter(aCam->Eye().Translated(aShift), aCam->Center().Translated(aShift));
+        const double curDist = eyeToTarget.Magnitude();
+        if (curDist > 1e-3 || moveFactor < 0.0)
+        {
+            aCam->SetEyeAndCenter(aCam->Eye().Translated(aShift), aCam->Center().Translated(aShift));
+        }
     }
 
-    // Un seul rendu direct à la position finale calculée
     m_view->Redraw();
     emit viewCameraChanged();
+}
+
+void OccView::wheelEvent(QWheelEvent* event)
+{
+    const int delta = event->angleDelta().y();
+    if (delta == 0 || m_view.IsNull())
+        return;
+
+    // Normalisation continue du facteur de zoom selon l'angle de rotation de la molette
+    const double zoomFactor = std::pow(1.15, static_cast<double>(delta) / 120.0);
+    zoomAtCursor(event->position(), zoomFactor);
 }
 
 void OccView::keyPressEvent(QKeyEvent* event)

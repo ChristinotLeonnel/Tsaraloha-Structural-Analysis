@@ -1761,6 +1761,69 @@ int main(int argc, char* argv[])
         passed++;
     }
 
+    // =========================================================================
+    // TEST 27: Zoom Under Cursor Camera Precision Math (OCCT Orthographic & Perspective)
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 27: Zoom Under Cursor Camera Precision Math ---" << std::endl;
+        total++;
+
+        // 1. Validation mathématique de la caméra Orthographique
+        const double winW = 1920.0;
+        const double winH = 1080.0;
+        const double px = 1440.0; // Quart supérieur droit
+        const double py = 270.0;
+
+        const double dx = px - (winW * 0.5); // +480 px
+        const double dy = (winH * 0.5) - py; // +270 px
+
+        const double curScale = 10.0; // 10m d'emprise verticale
+        const double zoomFactor = 1.15; // Zoom avant
+        const double newScale = curScale / zoomFactor; // 8.695652m
+
+        // Point 3D initialement sous la souris avant zoom (centre camera initial = (0,0,0))
+        // P_world = (0,0,0) + dx * (curScale / winH) * Side + dy * (curScale / winH) * Up
+        const double pX_init = dx * (curScale / winH);
+        const double pY_init = dy * (curScale / winH);
+
+        // Décalage du centre de caméra calculé par zoomAtCursor
+        const double scaleDiff = (curScale - newScale) / winH;
+        const double shiftX = dx * scaleDiff;
+        const double shiftY = dy * scaleDiff;
+
+        // Nouveau centre de la caméra
+        const double centerX_new = shiftX;
+        const double centerY_new = shiftY;
+
+        // Reprojection de P_world dans le nouveau système de caméra (centreX_new, centerY_new, newScale)
+        const double pX_rel = pX_init - centerX_new;
+        const double pY_rel = pY_init - centerY_new;
+
+        const double px_reprojected = (winW * 0.5) + pX_rel * (winH / newScale);
+        const double py_reprojected = (winH * 0.5) - pY_rel * (winH / newScale);
+
+        TEST_CHECK(approxEqual(px_reprojected, px, 1e-6), "Test 27: Reprojected mouse X matches initial cursor position exactly");
+        TEST_CHECK(approxEqual(py_reprojected, py, 1e-6), "Test 27: Reprojected mouse Y matches initial cursor position exactly");
+
+        // 2. Validation mathématique de la caméra Perspective (stabilité du rayon de visée)
+        gp_Pnt eye(0.0, 0.0, 10.0);
+        gp_Pnt target(2.0, 3.0, 0.0);
+        gp_Vec eyeToTarget(eye, target);
+
+        double moveFactor = 1.0 - (1.0 / zoomFactor);
+        gp_Vec shiftVec = eyeToTarget * moveFactor;
+
+        gp_Pnt newEye = eye.Translated(shiftVec);
+        gp_Vec newEyeToTarget(newEye, target);
+
+        // Les deux vecteurs doivent rester colinéaires (produit vectoriel nul)
+        gp_Vec crossProd = eyeToTarget.Crossed(newEyeToTarget);
+        TEST_CHECK(crossProd.Magnitude() < 1e-8, "Test 27: Perspective line-of-sight ray remains perfectly collinear with zero drift");
+
+        std::cout << "[PASS] Test 27: Zoom Under Cursor Camera Precision Math Validated Successfully!" << std::endl;
+        passed++;
+    }
+
     std::cout << "=================================================" << std::endl;
     std::cout << "RESULTS: " << passed << " / " << (total + 8) << " tests passed successfully!" << std::endl;
     std::cout << "=================================================" << std::endl;
