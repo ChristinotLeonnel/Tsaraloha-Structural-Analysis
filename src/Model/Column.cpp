@@ -123,4 +123,9 @@ BarProperties Column::properties() const
     return p;
 }
 
+void Column::setMaterialId(int id)
+{
+    m_material = Material::findById(id);
+}
+
 } // namespace TSA::Model

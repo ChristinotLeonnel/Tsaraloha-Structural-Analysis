@@ -45,4 +45,9 @@ double TrussMember::length(const Model& model) const
     return std::sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+void TrussMember::setMaterialId(int id)
+{
+    m_material = Material::findById(id);
+}
+
 } // namespace TSA::Model

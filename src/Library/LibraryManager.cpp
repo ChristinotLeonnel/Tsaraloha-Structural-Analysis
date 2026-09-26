@@ -80,13 +80,7 @@ void LibraryManager::populateDefaultStandardData()
 {
     m_standardSections = TSA::Model::Section::defaultLibrary();
 
-    m_standardMaterials = {
-        TSA::Model::Material::concreteC25_30(),
-        TSA::Model::Material::concreteC30_37(),
-        TSA::Model::Material::steelS235(),
-        TSA::Model::Material::steelS355(),
-        TSA::Model::Material::timberC24()
-    };
+    m_standardMaterials = TSA::Model::Material::defaultLibrary();
 
     m_colors = {
         { "Béton Gris",       "#808080", "Béton" },
@@ -441,12 +435,22 @@ void LibraryManager::loadMaterials()
     {
         QJsonObject obj = val.toObject();
         TSA::Model::Material m;
+        m.id = obj["id"].toInt(0);
         m.name = obj["name"].toString().toStdString();
+        m.type = static_cast<TSA::Model::MaterialType>(obj["type"].toInt(static_cast<int>(TSA::Model::MaterialType::Custom)));
         m.E = obj["E"].toDouble(30e9);
         m.nu = obj["nu"].toDouble(0.2);
         m.density = obj["rho"].toDouble(2500.0);
         m.fk = obj["fk"].toDouble(25e6);
         m.thermalCoeff = obj["thermalCoeff"].toDouble(1e-5);
+        m.syncMechanical();
+
+        if (obj.contains("baseColor")) m.visual.baseColor = obj["baseColor"].toString().toStdString();
+        if (obj.contains("roughness")) m.visual.roughness = obj["roughness"].toDouble(0.85);
+        if (obj.contains("metallic")) m.visual.metallic = obj["metallic"].toDouble(0.0);
+        if (obj.contains("transparency")) m.visual.transparency = obj["transparency"].toDouble(0.0);
+        if (obj.contains("textureName")) m.visual.textureName = obj["textureName"].toString().toStdString();
+
         if (!m.name.empty())
         {
             m_customMaterials.push_back(m);
@@ -463,12 +467,19 @@ void LibraryManager::saveMaterials()
     for (const auto& m : m_customMaterials)
     {
         QJsonObject obj;
+        obj["id"] = m.id;
         obj["name"] = QString::fromStdString(m.name);
+        obj["type"] = static_cast<int>(m.type);
         obj["E"] = m.E;
         obj["nu"] = m.nu;
         obj["rho"] = m.density;
         obj["fk"] = m.fk;
         obj["thermalCoeff"] = m.thermalCoeff;
+        obj["baseColor"] = QString::fromStdString(m.visual.baseColor);
+        obj["roughness"] = m.visual.roughness;
+        obj["metallic"] = m.visual.metallic;
+        obj["transparency"] = m.visual.transparency;
+        obj["textureName"] = QString::fromStdString(m.visual.textureName);
         arr.append(obj);
     }
     file.write(QJsonDocument(arr).toJson(QJsonDocument::Indented));

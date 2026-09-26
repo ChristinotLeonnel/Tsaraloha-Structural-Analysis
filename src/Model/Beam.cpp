@@ -101,4 +101,9 @@ double Beam::length(const Model& model) const
     return std::sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+void Beam::setMaterialId(int id)
+{
+    m_material = Material::findById(id);
+}
+
 } // namespace TSA::Model

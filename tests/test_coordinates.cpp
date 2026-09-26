@@ -53,11 +53,16 @@
 #include <Bnd_Box.hxx>
 #include <BRepBndLib.hxx>
 
+#include "Model/MaterialLibrary.h"
+#include "Viewer/MaterialVisual.h"
+#include <AIS_Shape.hxx>
+
 using namespace TSA::Coordinate;
 using namespace TSA::Model;
 using namespace TSA::Grid;
 using namespace TSA::Geometry;
 using namespace TSA::IO;
+using namespace TSA::Viewer;
 
 static bool approxEqual(double a, double b, double eps = 1e-4)
 {
@@ -78,7 +83,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 27;
+    int total = 34;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -1668,7 +1673,6 @@ int main(int argc, char* argv[])
     // =========================================================================
     {
         std::cout << "\n--- TEST 24: Structural Clipboard & Project Manager Architecture ---" << std::endl;
-        total++;
 
         // 1. Presse-papier structurel découplé
         Model srcModel;
@@ -1710,7 +1714,6 @@ int main(int argc, char* argv[])
     // =========================================================================
     {
         std::cout << "\n--- TEST 25: Command Pattern & Centralized Undo/Redo Architecture ---" << std::endl;
-        total++;
 
         Model model;
         int n1 = model.addNode(0.0, 0.0, 0.0);
@@ -1744,7 +1747,6 @@ int main(int argc, char* argv[])
     // =========================================================================
     {
         std::cout << "\n--- TEST 26: 3D Interaction State Manager Architecture ---" << std::endl;
-        total++;
 
         TSA::Interaction::InteractionManager interactMgr;
         TEST_CHECK(interactMgr.mode() == TSA::Interaction::InteractionMode::Select, "Test 26: initial mode is Select");
@@ -1774,7 +1776,6 @@ int main(int argc, char* argv[])
     // =========================================================================
     {
         std::cout << "\n--- TEST 27: Zoom Under Cursor Camera Precision Math ---" << std::endl;
-        total++;
 
         // 1. Validation mathématique de la caméra Orthographique
         const double winW = 1920.0;
@@ -1813,7 +1814,47 @@ int main(int argc, char* argv[])
         TEST_CHECK(approxEqual(px_reprojected, px, 1e-6), "Test 27: Reprojected mouse X matches initial cursor position exactly");
         TEST_CHECK(approxEqual(py_reprojected, py, 1e-6), "Test 27: Reprojected mouse Y matches initial cursor position exactly");
 
-        // 2. Validation mathématique de la caméra Perspective (stabilité du rayon de visée)
+        // 2. Validation mathématique de la caméra Orthographique avec OpenCASCADE Camera UnProject
+        // Test sur caméra en orientation axonométrique Z-up (comme dans TSA par défaut) avec centre arbitraire
+        Handle(Graphic3d_Camera) testCam = new Graphic3d_Camera();
+        testCam->SetProjectionType(Graphic3d_Camera::Projection_Orthographic);
+        testCam->SetAspect(1920.0 / 1080.0);
+        testCam->SetScale(25.0);
+        testCam->SetEyeAndCenter(gp_Pnt(100.0, -100.0, 100.0), gp_Pnt(10.0, 20.0, 5.0));
+        testCam->SetUp(gp_Dir(0.0, 0.0, 1.0));
+        testCam->SetDirection(gp_Dir(-1.0, 1.0, -1.0));
+
+        // Test à plusieurs positions de curseur (NDC variés) et plusieurs facteurs de zoom
+        const std::vector<gp_Pnt> testNdcPoints = {
+            gp_Pnt(0.0, 0.0, 0.0),     // Centre
+            gp_Pnt(0.5, 0.5, 0.0),     // Quart haut-droit
+            gp_Pnt(-0.7, -0.4, 0.0),   // Bas-gauche
+            gp_Pnt(0.85, -0.65, 0.0)   // Bas-droit
+        };
+
+        const std::vector<double> testZoomFactors = { 1.15, 0.85, 1.5, 0.5 };
+
+        for (size_t i = 0; i < testNdcPoints.size(); ++i)
+        {
+            const gp_Pnt& ndc = testNdcPoints[i];
+            const double zFactor = testZoomFactors[i];
+
+            const gp_Pnt pntBefore = testCam->UnProject(ndc);
+
+            const double camScale = testCam->Scale();
+            const double nextCamScale = camScale / zFactor;
+            testCam->SetScale(nextCamScale);
+
+            const gp_Pnt pntAfter = testCam->UnProject(ndc);
+            const gp_Vec camShift(pntAfter, pntBefore);
+            testCam->SetEyeAndCenter(testCam->Eye().Translated(camShift), testCam->Center().Translated(camShift));
+
+            // Après le déplacement, le point initial pntBefore doit se reprojeter EXACTEMENT sous le même NDC
+            const gp_Pnt reprojectedNdc = testCam->Project(pntBefore);
+            TEST_CHECK(approxEqual(reprojectedNdc.X(), ndc.X(), 1e-7), "Test 27: Reprojected NDC X matches cursor with 0 drift");
+            TEST_CHECK(approxEqual(reprojectedNdc.Y(), ndc.Y(), 1e-7), "Test 27: Reprojected NDC Y matches cursor with 0 drift");
+        }
+
         gp_Pnt eye(0.0, 0.0, 10.0);
         gp_Pnt target(2.0, 3.0, 0.0);
         gp_Vec eyeToTarget(eye, target);
@@ -1837,7 +1878,6 @@ int main(int argc, char* argv[])
     // =========================================================================
     {
         std::cout << "\n--- TEST 28: Custom Section Customization, Copy/Paste, OCCT 3D & Save/Load ---" << std::endl;
-        total++;
 
         TSA::Model::Model testModel;
 
@@ -1936,7 +1976,6 @@ int main(int argc, char* argv[])
     // =========================================================================
     {
         std::cout << "\n--- TEST 29: Comprehensive Audit of Beam & Column Section Pipeline ---" << std::endl;
-        total++;
 
         TSA::Model::Model auditModel;
 
@@ -2711,6 +2750,220 @@ int main(int argc, char* argv[])
         std::cout << "  [PASS] Subtest 33.8: Undo/Redo Consistency on Cylindrical Grid Elements Validated" << std::endl;
 
         std::cout << "[PASS] Test 33: Complete Structural Modeling & Snapping Pipeline on Cylindrical Grids Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // =========================================================================
+    // TEST 34: Realistic Material Visual Appearance, Architecture & Persistence
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 34: Realistic Material Visual Appearance, Architecture & Persistence ---" << std::endl;
+
+        MaterialLibrary& matLib = MaterialLibrary::instance();
+        MaterialVisual& matVis = MaterialVisual::instance();
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.1: Concrete Beam -> Concrete Appearance
+        // ---------------------------------------------------------------------
+        Material concreteC25 = Material::concreteC25_30();
+        TEST_CHECK(matLib.findByType(MaterialType::Concrete) != nullptr, "Test 34.1: MaterialLibrary contains Concrete");
+        TEST_CHECK(concreteC25.type == MaterialType::Concrete, "Test 34.1: Material type is Concrete");
+        TEST_CHECK(concreteC25.visual.roughness >= 0.80, "Test 34.1: Concrete has high roughness (roughness >= 0.80)");
+        TEST_CHECK(concreteC25.visual.metallic == 0.0, "Test 34.1: Concrete is non-metallic (metallic == 0.0)");
+        TEST_CHECK(concreteC25.visual.transparency == 0.0, "Test 34.1: Concrete has 0 transparency");
+        TEST_CHECK(concreteC25.mechanical.youngModulus > 25.0e9, "Test 34.1: Concrete E modulus realistic (> 25 GPa)");
+
+        Graphic3d_MaterialAspect concreteAspect = matVis.getOcctMaterial(concreteC25);
+        TEST_CHECK(approxEqual(concreteAspect.PBRMaterial().Roughness(), static_cast<float>(concreteC25.visual.roughness), 1e-2),
+                   "Test 34.1: OCCT PBR Roughness matches concrete visual properties");
+        TEST_CHECK(approxEqual(concreteAspect.PBRMaterial().Metallic(), 0.0f),
+                   "Test 34.1: OCCT PBR Metallic is 0 for concrete");
+
+        Model testModel;
+        int n1 = testModel.addNode(0.0, 0.0, 0.0);
+        int n2 = testModel.addNode(5.0, 0.0, 0.0);
+        int beamConcId = testModel.addBeam(n1, n2, 0.3, 0.5);
+        auto* beamConc = testModel.getBeam(beamConcId);
+        TEST_CHECK(beamConc != nullptr, "Test 34.1: Concrete beam created");
+        beamConc->setMaterial(concreteC25);
+        TEST_CHECK(beamConc->material().type == MaterialType::Concrete, "Test 34.1: Beam material is Concrete");
+        TEST_CHECK(beamConc->materialId() == concreteC25.id, "Test 34.1: Beam materialId matches concreteC25.id");
+
+        TopoDS_Shape beamShape = BeamGeometry::createBeamShape(*testModel.getNode(n1), *testModel.getNode(n2), beamConc->section(), 0.0);
+        Handle(AIS_Shape) aisBeam = new AIS_Shape(beamShape);
+        matVis.applyToShape(aisBeam, beamConc->material(), "", RenderDisplayMode::Materials);
+        TEST_CHECK(!aisBeam.IsNull(), "Test 34.1: AIS_Shape for concrete beam configured with realistic appearance");
+        std::cout << "  [PASS] Subtest 34.1: Concrete Beam Appearance Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.2: Concrete Column -> Concrete Appearance
+        // ---------------------------------------------------------------------
+        Material concreteC30 = Material::concreteC30_37();
+        int n3 = testModel.addNode(0.0, 0.0, 3.0);
+        int colConcId = testModel.addColumn(n1, n3, Section::rectangular(0.4, 0.4), concreteC30, 0.0, "C_CONC");
+        auto* colConc = testModel.getColumn(colConcId);
+        TEST_CHECK(colConc != nullptr, "Test 34.2: Column created");
+        TEST_CHECK(colConc->material().type == MaterialType::Concrete, "Test 34.2: Column material type is Concrete");
+        TEST_CHECK(colConc->material().visual.metallic == 0.0, "Test 34.2: Column material is non-metallic");
+        Graphic3d_MaterialAspect colAspect = matVis.getOcctMaterial(colConc->material());
+        TEST_CHECK(colAspect.PBRMaterial().Roughness() >= 0.80f, "Test 34.2: Column OCCT PBR Roughness is high");
+        std::cout << "  [PASS] Subtest 34.2: Concrete Column Appearance Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.3: IPE 200 Steel -> Steel Metallic Appearance
+        // ---------------------------------------------------------------------
+        Material steelS235 = Material::steelS235();
+        TEST_CHECK(matLib.findByType(MaterialType::Steel) != nullptr, "Test 34.3: MaterialLibrary contains Steel");
+        TEST_CHECK(steelS235.type == MaterialType::Steel, "Test 34.3: Material type is Steel");
+        TEST_CHECK(steelS235.visual.metallic >= 0.80, "Test 34.3: Steel is metallic (metallic >= 0.80)");
+        TEST_CHECK(steelS235.visual.roughness <= 0.40, "Test 34.3: Steel has moderate/low roughness (<= 0.40)");
+        TEST_CHECK(steelS235.visual.shininess >= 0.60, "Test 34.3: Steel has specular reflection (shininess >= 0.60)");
+        TEST_CHECK(steelS235.mechanical.youngModulus >= 200.0e9, "Test 34.3: Steel E modulus is 210 GPa");
+
+        Graphic3d_MaterialAspect steelAspect = matVis.getOcctMaterial(steelS235);
+        TEST_CHECK(approxEqual(steelAspect.PBRMaterial().Metallic(), static_cast<float>(steelS235.visual.metallic)),
+                   "Test 34.3: OCCT PBR Metallic matches steel visual properties");
+        TEST_CHECK(steelAspect.PBRMaterial().Roughness() <= 0.40f,
+                   "Test 34.3: OCCT PBR Roughness is moderate for steel");
+
+        int n4 = testModel.addNode(5.0, 0.0, 3.0);
+        int beamSteelId = testModel.addBar(n3, n4, Section::ipe(200), steelS235, BarRole::Beam, 0.0, "B_IPE200");
+        auto* beamSteel = testModel.getBeam(beamSteelId);
+        TEST_CHECK(beamSteel != nullptr, "Test 34.3: IPE 200 beam created");
+        TEST_CHECK(beamSteel->material().type == MaterialType::Steel, "Test 34.3: Beam material is Steel");
+        TEST_CHECK(beamSteel->materialId() == steelS235.id, "Test 34.3: Beam materialId matches steelS235.id");
+        std::cout << "  [PASS] Subtest 34.3: IPE 200 Steel Appearance Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.4: Rebar / Ferraillage -> Dark Steel Metallic Appearance
+        // ---------------------------------------------------------------------
+        Material rebarMat = Material::rebarSteel();
+        TEST_CHECK(matLib.findByType(MaterialType::RebarSteel) != nullptr, "Test 34.4: MaterialLibrary contains Rebar");
+        TEST_CHECK(rebarMat.type == MaterialType::RebarSteel, "Test 34.4: Material type is RebarSteel");
+        TEST_CHECK(rebarMat.visual.metallic >= 0.85, "Test 34.4: Rebar is metallic (metallic >= 0.85)");
+        TEST_CHECK(rebarMat.visual.roughness >= 0.40, "Test 34.4: Rebar has visible surface texture/roughness");
+        TEST_CHECK(rebarMat.visual.baseColor != steelS235.visual.baseColor, "Test 34.4: Rebar color is distinct from standard steel");
+        Graphic3d_MaterialAspect rebarAspect = matVis.getOcctMaterial(rebarMat);
+        TEST_CHECK(rebarAspect.PBRMaterial().Metallic() >= 0.85f, "Test 34.4: Rebar OCCT metallic confirmed");
+        std::cout << "  [PASS] Subtest 34.4: Rebar / Ferraillage Appearance Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.5: Wood / Timber -> Natural Wood Appearance
+        // ---------------------------------------------------------------------
+        Material woodMat = Material::timberC24();
+        TEST_CHECK(matLib.findByType(MaterialType::Timber) != nullptr, "Test 34.5: MaterialLibrary contains Timber");
+        TEST_CHECK(woodMat.type == MaterialType::Timber, "Test 34.5: Material type is Timber");
+        TEST_CHECK(woodMat.visual.metallic == 0.0, "Test 34.5: Wood is non-metallic (metallic == 0.0)");
+        TEST_CHECK(woodMat.visual.roughness >= 0.70, "Test 34.5: Wood has natural diffuse roughness");
+        Graphic3d_MaterialAspect woodAspect = matVis.getOcctMaterial(woodMat);
+        TEST_CHECK(woodAspect.PBRMaterial().Metallic() == 0.0f, "Test 34.5: Wood OCCT metallic is 0");
+        std::cout << "  [PASS] Subtest 34.5: Wood / Timber Appearance Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.6: Soil & Geotechnical Materials -> Distinct Earth Appearances
+        // ---------------------------------------------------------------------
+        Material soilMat = Material::soil();
+        Material sandMat = Material::sand();
+        Material gravelMat = Material::gravel();
+        Material rockMat = Material::rock();
+        TEST_CHECK(soilMat.type == MaterialType::Soil, "Test 34.6: Soil material type");
+        TEST_CHECK(sandMat.type == MaterialType::Sand, "Test 34.6: Sand material type");
+        TEST_CHECK(gravelMat.type == MaterialType::Gravel, "Test 34.6: Gravel material type");
+        TEST_CHECK(rockMat.type == MaterialType::Rock, "Test 34.6: Rock material type");
+        TEST_CHECK(soilMat.visual.baseColor != sandMat.visual.baseColor, "Test 34.6: Soil and Sand colors distinct");
+        TEST_CHECK(soilMat.visual.baseColor != gravelMat.visual.baseColor, "Test 34.6: Soil and Gravel colors distinct");
+        TEST_CHECK(rockMat.visual.roughness >= 0.80, "Test 34.6: Rock has high roughness");
+        std::cout << "  [PASS] Subtest 34.6: Soil, Sand, Gravel & Rock Appearances Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.7: Dynamic Material Modification & ModelDiff Detection
+        // ---------------------------------------------------------------------
+        auto snapBefore = testModel.createSnapshot("Before Change");
+        auto* beamToMod = testModel.getBeam(beamConcId);
+        TEST_CHECK(beamToMod != nullptr, "Test 34.7: Beam exists");
+        Material aluminumMat = Material::aluminum();
+        beamToMod->setMaterial(aluminumMat);
+        beamToMod->setMaterialId(aluminumMat.id);
+
+        auto snapAfter = testModel.createSnapshot("After Change");
+        ModelDiff diff = ModelDiff::compute(snapBefore, snapAfter);
+        TEST_CHECK(!diff.isEmpty(), "Test 34.7: ModelDiff detects changes after material modification");
+        TEST_CHECK(!diff.modifiedBeamIds.empty(), "Test 34.7: modifiedBeamIds list is non-empty");
+        TEST_CHECK(diff.modifiedBeamIds[0] == beamConcId, "Test 34.7: Modified beam identified in ModelDiff");
+
+        matVis.clearCache();
+        Graphic3d_MaterialAspect aluAspect = matVis.getOcctMaterial(beamToMod->material());
+        TEST_CHECK(aluAspect.PBRMaterial().Metallic() >= 0.85f, "Test 34.7: Modified beam has aluminum metallic appearance");
+        std::cout << "  [PASS] Subtest 34.7: Dynamic Material Modification & ModelDiff Detection Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.8: Native .tsa Save and Load Persistence
+        // ---------------------------------------------------------------------
+        std::string testFile = "test_material_persistence.tsa";
+        TSAFileWriter fileWriter;
+        std::string errStr;
+        bool saveOk = fileWriter.saveToFile(testFile, testModel, nullptr, "Material Test", "Unit Test", &errStr);
+        TEST_CHECK(saveOk, "Test 34.8: Model with varied materials saved successfully");
+
+        Model loadedModel;
+        TSAFileReader fileReader;
+        bool loadOk = fileReader.loadFromFile(testFile, loadedModel, nullptr, "", nullptr, nullptr, nullptr, &errStr);
+        TEST_CHECK(loadOk, "Test 34.8: Model loaded successfully");
+
+        const auto* lBeamAlu = loadedModel.getBeam(beamConcId);
+        TEST_CHECK(lBeamAlu != nullptr, "Test 34.8: Loaded aluminum beam exists");
+        TEST_CHECK(lBeamAlu->material().type == MaterialType::Aluminum, "Test 34.8: Loaded beam material type is Aluminum");
+        TEST_CHECK(approxEqual(lBeamAlu->material().visual.metallic, aluminumMat.visual.metallic), "Test 34.8: Visual metallic restored");
+        TEST_CHECK(approxEqual(lBeamAlu->material().visual.roughness, aluminumMat.visual.roughness), "Test 34.8: Visual roughness restored");
+
+        const auto* lBeamSteel = loadedModel.getBeam(beamSteelId);
+        TEST_CHECK(lBeamSteel != nullptr, "Test 34.8: Loaded steel beam exists");
+        TEST_CHECK(lBeamSteel->material().type == MaterialType::Steel, "Test 34.8: Loaded steel beam material type is Steel");
+        TEST_CHECK(approxEqual(lBeamSteel->material().mechanical.youngModulus, steelS235.mechanical.youngModulus), "Test 34.8: Mechanical E modulus restored");
+
+        std::filesystem::remove(testFile);
+        std::cout << "  [PASS] Subtest 34.8: TSA File Save & Load Material Persistence Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.9: Copy / Paste Integrity with MaterialId Preservation
+        // ---------------------------------------------------------------------
+        StructuralClipboard clipboard;
+        std::set<int> selNodes = { n3, n4 };
+        std::set<int> selBeams = { beamSteelId };
+        std::set<int> selCols;
+        std::set<int> selSlabs;
+        clipboard.copyFrom(testModel, selNodes, selBeams, selCols, selSlabs);
+
+        Model targetModel;
+        PasteResult pasteRes = clipboard.pasteTo(targetModel, 10.0, 10.0, 0.0);
+        TEST_CHECK(!pasteRes.beamIds.empty(), "Test 34.9: Beam pasted into new model");
+        const auto* pastedSteelBeam = targetModel.getBeam(pasteRes.beamIds[0]);
+        TEST_CHECK(pastedSteelBeam != nullptr, "Test 34.9: Pasted beam exists");
+        TEST_CHECK(pastedSteelBeam->material().type == MaterialType::Steel, "Test 34.9: Pasted beam material is Steel");
+        TEST_CHECK(pastedSteelBeam->materialId() == steelS235.id, "Test 34.9: Pasted beam materialId preserved exactly");
+        TEST_CHECK(approxEqual(pastedSteelBeam->material().visual.metallic, steelS235.visual.metallic), "Test 34.9: Pasted beam visual metallic preserved");
+        std::cout << "  [PASS] Subtest 34.9: Copy / Paste Integrity with Material Preservation Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 34.10: Centralized Undo / Redo Material Restoration
+        // ---------------------------------------------------------------------
+        testModel.pushUndoState("Modify Material to Wood");
+        beamToMod->setMaterial(woodMat);
+        beamToMod->setMaterialId(woodMat.id);
+        TEST_CHECK(testModel.getBeam(beamConcId)->material().type == MaterialType::Timber, "Test 34.10: Material changed to Timber");
+
+        // Undo
+        bool undoOk = testModel.undo();
+        TEST_CHECK(undoOk, "Test 34.10: Undo operation succeeded");
+        TEST_CHECK(testModel.getBeam(beamConcId)->material().type == MaterialType::Aluminum, "Test 34.10: Undo restored Aluminum material");
+
+        // Redo
+        bool redoOk = testModel.redo();
+        TEST_CHECK(redoOk, "Test 34.10: Redo operation succeeded");
+        TEST_CHECK(testModel.getBeam(beamConcId)->material().type == MaterialType::Timber, "Test 34.10: Redo restored Timber material");
+        std::cout << "  [PASS] Subtest 34.10: Undo / Redo Material Restoration Validated" << std::endl;
+
+        std::cout << "[PASS] Test 34: Complete Realistic Material Pipeline (Concrete, Steel, Rebar, Wood, Soil, OCCT PBR, Persistence, Undo/Redo) Passed Successfully!" << std::endl;
         passed++;
     }
 

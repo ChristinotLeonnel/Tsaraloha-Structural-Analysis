@@ -16,6 +16,7 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
+#include <algorithm>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
@@ -719,6 +720,49 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
     }
 }
 
+void OccView::setRenderDisplayMode(TSA::Viewer::RenderDisplayMode mode)
+{
+    m_renderDisplayMode = mode;
+    if (m_context.IsNull() || !m_model) return;
+
+    for (const auto& [id, shape] : m_beamShapes)
+    {
+        const auto* b = m_model->getBeam(id);
+        if (b) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, b->material(), b->color(), m_renderDisplayMode);
+    }
+    for (const auto& [id, shape] : m_columnShapes)
+    {
+        const auto* c = m_model->getColumn(id);
+        if (c) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, c->material(), c->color(), m_renderDisplayMode);
+    }
+    for (const auto& [id, shape] : m_slabShapes)
+    {
+        const auto* s = m_model->getSlab(id);
+        if (s) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, s->material(), s->color(), m_renderDisplayMode, 0.35);
+    }
+    for (const auto& [id, shape] : m_wallShapes)
+    {
+        const auto* w = m_model->getWall(id);
+        if (w) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, w->material(), w->color(), m_renderDisplayMode, 0.25);
+    }
+    for (const auto& [id, shape] : m_foundationShapes)
+    {
+        const auto* f = m_model->getFoundation(id);
+        if (f) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, f->material(), f->color(), m_renderDisplayMode);
+    }
+    for (const auto& [id, shape] : m_trussShapes)
+    {
+        const auto* tr = m_model->getTrussMember(id);
+        if (tr) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, tr->material(), tr->color(), m_renderDisplayMode);
+    }
+
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
 void OccView::updateBeamShape(int beamId, bool redrawImmediately)
 {
     if (m_context.IsNull() || !m_model)
@@ -757,32 +801,7 @@ void OccView::updateBeamShape(int beamId, bool redrawImmediately)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisBeam = new AIS_Shape(shape);
-        Quantity_Color qc;
-        if (parseHexColor(beam->color(), qc))
-        {
-            aisBeam->SetColor(qc);
-        }
-        else if (beam->material().type == TSA::Model::MaterialType::Steel || beam->section().shape == TSA::Model::SectionShape::IShape)
-        {
-            aisBeam->SetColor(Quantity_NOC_STEELBLUE);
-        }
-        else if (beam->material().type == TSA::Model::MaterialType::Timber)
-        {
-            aisBeam->SetColor(Quantity_NOC_BURLYWOOD4);
-        }
-        else
-        {
-            aisBeam->SetColor(Quantity_NOC_LIGHTSLATEGRAY);
-        }
-
-        if (beam->material().type == TSA::Model::MaterialType::Timber)
-            aisBeam->SetMaterial(Graphic3d_NOM_SATIN);
-        else if (beam->material().type == TSA::Model::MaterialType::Steel || beam->section().shape == TSA::Model::SectionShape::IShape)
-            aisBeam->SetMaterial(Graphic3d_NOM_STEEL);
-        else
-            aisBeam->SetMaterial(Graphic3d_NOM_STONE);
-
-        aisBeam->SetDisplayMode(AIS_Shaded);
+        TSA::Viewer::MaterialVisual::instance().applyToShape(aisBeam, beam->material(), beam->color(), m_renderDisplayMode);
 
         m_context->Display(aisBeam, false);
         m_beamShapes[beamId] = aisBeam;
@@ -843,32 +862,7 @@ void OccView::updateColumnShape(int columnId, bool redrawImmediately)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisCol = new AIS_Shape(shape);
-        Quantity_Color qc;
-        if (parseHexColor(col->color(), qc))
-        {
-            aisCol->SetColor(qc);
-        }
-        else if (col->material().type == TSA::Model::MaterialType::Steel || col->section().shape == TSA::Model::SectionShape::IShape)
-        {
-            aisCol->SetColor(Quantity_NOC_SLATEBLUE);
-        }
-        else if (col->material().type == TSA::Model::MaterialType::Timber)
-        {
-            aisCol->SetColor(Quantity_NOC_BURLYWOOD3);
-        }
-        else
-        {
-            aisCol->SetColor(Quantity_NOC_GRAY40);
-        }
-
-        if (col->material().type == TSA::Model::MaterialType::Timber)
-            aisCol->SetMaterial(Graphic3d_NOM_SATIN);
-        else if (col->material().type == TSA::Model::MaterialType::Steel || col->section().shape == TSA::Model::SectionShape::IShape)
-            aisCol->SetMaterial(Graphic3d_NOM_STEEL);
-        else
-            aisCol->SetMaterial(Graphic3d_NOM_STONE);
-
-        aisCol->SetDisplayMode(AIS_Shaded);
+        TSA::Viewer::MaterialVisual::instance().applyToShape(aisCol, col->material(), col->color(), m_renderDisplayMode);
 
         m_context->Display(aisCol, false);
         m_columnShapes[columnId] = aisCol;
@@ -934,18 +928,7 @@ void OccView::updateSlabShape(int slabId, bool redrawImmediately)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisSlab = new AIS_Shape(shape);
-        Quantity_Color qc;
-        if (parseHexColor(slab->color(), qc))
-        {
-            aisSlab->SetColor(qc);
-        }
-        else
-        {
-            aisSlab->SetColor(Quantity_NOC_GRAY70);
-        }
-        aisSlab->SetMaterial(Graphic3d_NOM_STONE);
-        aisSlab->SetDisplayMode(AIS_Shaded);
-        aisSlab->SetTransparency(0.35f);
+        TSA::Viewer::MaterialVisual::instance().applyToShape(aisSlab, slab->material(), slab->color(), m_renderDisplayMode, 0.35);
 
         m_context->Display(aisSlab, false);
         m_slabShapes[slabId] = aisSlab;
@@ -1002,18 +985,7 @@ void OccView::updateWallShape(int wallId, bool redrawImmediately)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisWall = new AIS_Shape(shape);
-        Quantity_Color qc;
-        if (parseHexColor(wall->color(), qc))
-        {
-            aisWall->SetColor(qc);
-        }
-        else
-        {
-            aisWall->SetColor(Quantity_NOC_GRAY60);
-        }
-        aisWall->SetMaterial(Graphic3d_NOM_STONE);
-        aisWall->SetDisplayMode(AIS_Shaded);
-        aisWall->SetTransparency(0.25f);
+        TSA::Viewer::MaterialVisual::instance().applyToShape(aisWall, wall->material(), wall->color(), m_renderDisplayMode, 0.25);
 
         m_context->Display(aisWall, false);
         m_wallShapes[wallId] = aisWall;
@@ -1069,17 +1041,7 @@ void OccView::updateFoundationShape(int foundationId, bool redrawImmediately)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisF = new AIS_Shape(shape);
-        Quantity_Color qc;
-        if (parseHexColor(f->color(), qc))
-        {
-            aisF->SetColor(qc);
-        }
-        else
-        {
-            aisF->SetColor(Quantity_NOC_DARKGOLDENROD);
-        }
-        aisF->SetMaterial(Graphic3d_NOM_STONE);
-        aisF->SetDisplayMode(AIS_Shaded);
+        TSA::Viewer::MaterialVisual::instance().applyToShape(aisF, f->material(), f->color(), m_renderDisplayMode);
 
         m_context->Display(aisF, false);
         m_foundationShapes[foundationId] = aisF;
@@ -1138,17 +1100,7 @@ void OccView::updateTrussMemberShape(int memberId, bool redrawImmediately)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisTr = new AIS_Shape(shape);
-        Quantity_Color qc;
-        if (parseHexColor(tr->color(), qc))
-        {
-            aisTr->SetColor(qc);
-        }
-        else
-        {
-            aisTr->SetColor(Quantity_NOC_GOLDENROD);
-        }
-        aisTr->SetMaterial(Graphic3d_NOM_STEEL);
-        aisTr->SetDisplayMode(AIS_Shaded);
+        TSA::Viewer::MaterialVisual::instance().applyToShape(aisTr, tr->material(), tr->color(), m_renderDisplayMode);
 
         m_context->Display(aisTr, false);
         m_trussShapes[memberId] = aisTr;
@@ -3573,8 +3525,26 @@ void OccView::zoomAtCursor(const QPointF& logicalMousePos, double zoomFactor)
 
     // Position exacte de la souris dans le repère de la fenêtre OCCT (en pixels physiques)
     const QPoint p = convertMousePos(logicalMousePos);
-    const double px = p.x();
-    const double py = p.y();
+
+    // Calcul des coordonnées normalisées de l'écran (NDC : [-1, 1] en X et Y)
+    // ndcX : -1.0 (gauche) -> 0.0 (centre) -> +1.0 (droite)
+    // ndcY : +1.0 (haut)   -> 0.0 (centre) -> -1.0 (bas)
+    double normX = 0.5;
+    double normY = 0.5;
+    if (winW > 0 && winH > 0)
+    {
+        normX = static_cast<double>(p.x()) / static_cast<double>(winW);
+        normY = static_cast<double>(p.y()) / static_cast<double>(winH);
+    }
+    else if (width() > 0 && height() > 0)
+    {
+        normX = logicalMousePos.x() / static_cast<double>(width());
+        normY = logicalMousePos.y() / static_cast<double>(height());
+    }
+
+    const double ndcX = std::clamp((2.0 * normX) - 1.0, -1.0, 1.0);
+    const double ndcY = std::clamp(1.0 - (2.0 * normY), -1.0, 1.0);
+    const gp_Pnt ndcPnt(ndcX, ndcY, 0.0);
 
     if (aCam->IsOrthographic())
     {
@@ -3583,31 +3553,31 @@ void OccView::zoomAtCursor(const QPointF& logicalMousePos, double zoomFactor)
         if (newScale < 1e-4) newScale = 1e-4;
         if (newScale > 1e8)  newScale = 1e8;
 
-        // Décalage du curseur par rapport au centre de la fenêtre OCCT (en pixels physiques)
-        const double dx = px - (static_cast<double>(winW) * 0.5);
-        const double dy = (static_cast<double>(winH) * 0.5) - py; // Qt Y est orienté vers le bas
+        // 1. Point 3D exact dans l'espace monde actuellement sous le curseur avant zoom
+        const gp_Pnt pntBefore = aCam->UnProject(ndcPnt);
 
-        // Repère orthonormé de la vue dans l'espace monde 3D
-        const gp_Dir anUp = aCam->OrthogonalizedUp();
-        const gp_Dir aSide = aCam->SideRight();
-
-        // Translation exacte du centre caméra pour maintenir le point 3D ancré sous le curseur
-        const double scaleDiff = (curScale - newScale) / static_cast<double>(winH);
-        const gp_Vec aShift = gp_Vec(aSide) * (dx * scaleDiff) + gp_Vec(anUp) * (dy * scaleDiff);
-
-        // Mise à jour atomique de la caméra
+        // 2. Application de la nouvelle échelle de zoom
         aCam->SetScale(newScale);
+
+        // 3. Point 3D qui se retrouverait sous le même curseur après zoom sans translation
+        const gp_Pnt pntAfter = aCam->UnProject(ndcPnt);
+
+        // 4. Déplacement exact de la caméra pour maintenir le point 3D initial rigoureusement immobile sous le curseur
+        const gp_Vec aShift(pntAfter, pntBefore);
         aCam->SetEyeAndCenter(aCam->Eye().Translated(aShift), aCam->Center().Translated(aShift));
     }
     else
     {
-        // En projection perspective : trouver le point 3D sous le curseur et ajuster l'œil le long du rayon
+        // En projection perspective : trouver le point 3D exact sous le curseur et zoomer le long du rayon
         double wx = 0.0, wy = 0.0, wz = 0.0;
         int detectedId = -1;
 
         if (!getPointUnderCursor(p, wx, wy, wz, detectedId))
         {
-            m_view->Convert(static_cast<int>(px), static_cast<int>(py), wx, wy, wz);
+            const gp_Pnt pntOnPlane = aCam->UnProject(ndcPnt);
+            wx = pntOnPlane.X();
+            wy = pntOnPlane.Y();
+            wz = pntOnPlane.Z();
         }
 
         const gp_Pnt targetPnt(wx, wy, wz);

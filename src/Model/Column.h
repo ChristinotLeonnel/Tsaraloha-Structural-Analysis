@@ -48,6 +48,8 @@ public:
     const Material& material() const { return m_material; }
     Material& material() { return m_material; }
     void setMaterial(const Material& material) { m_material = material; }
+    int materialId() const { return m_material.id; }
+    void setMaterialId(int id);
 
     double rotation() const { return m_rotation; }
     void setRotation(double degrees) { m_rotation = degrees; }

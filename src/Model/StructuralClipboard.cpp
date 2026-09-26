@@ -144,6 +144,7 @@ void StructuralClipboard::copyFrom(const Model& model,
             ClipboardSlab cs;
             cs.originalNodeIds = s->nodeIds();
             cs.thickness = s->thickness();
+            cs.material = s->material();
             m_slabs.push_back(cs);
         }
     }
@@ -206,6 +207,11 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         if (sNodes.size() >= 3)
         {
             int sId = model.addSlab(sNodes, cs.thickness);
+            auto* s = model.getSlab(sId);
+            if (s)
+            {
+                s->setMaterial(cs.material);
+            }
             result.slabIds.push_back(sId);
         }
     }

@@ -42,13 +42,19 @@ bool isSectionDifferent(const Section& a, const Section& b)
 
 bool isMaterialDifferent(const Material& a, const Material& b)
 {
+    if (a.id != b.id && a.id != 0 && b.id != 0) return true;
     if (a.type != b.type) return true;
+    if (a.name != b.name) return true;
     if (!approxEq(a.E, b.E, 1e-2)) return true;
     if (!approxEq(a.nu, b.nu, 1e-5)) return true;
     if (!approxEq(a.density, b.density, 1e-2)) return true;
     if (!approxEq(a.fk, b.fk, 1e-2)) return true;
     if (!approxEq(a.thermalCoeff, b.thermalCoeff, 1e-8)) return true;
-    if (a.name != b.name) return true;
+    if (a.visual.baseColor != b.visual.baseColor) return true;
+    if (!approxEq(a.visual.roughness, b.visual.roughness, 1e-4)) return true;
+    if (!approxEq(a.visual.metallic, b.visual.metallic, 1e-4)) return true;
+    if (!approxEq(a.visual.transparency, b.visual.transparency, 1e-4)) return true;
+    if (a.visual.textureName != b.visual.textureName) return true;
     return false;
 }
 

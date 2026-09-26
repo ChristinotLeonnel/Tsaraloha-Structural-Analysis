@@ -47,6 +47,8 @@ public:
     const Material& material() const { return m_material; }
     Material& material() { return m_material; }
     void setMaterial(const Material& m) { m_material = m; }
+    int materialId() const { return m_material.id; }
+    void setMaterialId(int id);
 
     double soilBearingCapacity() const { return m_soilBearingCapacity; } // En kPa (ex: 250 kPa = 0.25 MPa)
     void setSoilBearingCapacity(double q) { m_soilBearingCapacity = q; }

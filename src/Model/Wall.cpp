@@ -50,4 +50,9 @@ double Wall::area(const Model& model) const
     return length(model) * m_height;
 }
 
+void Wall::setMaterialId(int id)
+{
+    m_material = Material::findById(id);
+}
+
 } // namespace TSA::Model

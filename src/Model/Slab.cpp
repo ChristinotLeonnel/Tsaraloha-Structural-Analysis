@@ -54,4 +54,9 @@ double Slab::area(const Model& model) const
     return 0.5 * std::sqrt(ax * ax + ay * ay + az * az);
 }
 
+void Slab::setMaterialId(int id)
+{
+    m_material = Material::findById(id);
+}
+
 } // namespace TSA::Model

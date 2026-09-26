@@ -38,6 +38,8 @@ public:
     const Material& material() const { return m_material; }
     Material& material() { return m_material; }
     void setMaterial(const Material& material) { m_material = material; }
+    int materialId() const { return m_material.id; }
+    void setMaterialId(int id);
 
     SlabType slabType() const { return m_slabType; }
     void setSlabType(SlabType type) { m_slabType = type; }

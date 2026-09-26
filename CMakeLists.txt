@@ -120,6 +120,8 @@ set(SOURCES
     src/Grid/GridManager.cpp
     src/Viewer/OccView.h
     src/Viewer/OccView.cpp
+    src/Viewer/MaterialVisual.h
+    src/Viewer/MaterialVisual.cpp
     src/Viewer/SelectionManager.h
     src/Viewer/SelectionManager.cpp
     src/Geometry/BeamGeometry.h
@@ -132,6 +134,8 @@ set(SOURCES
     src/Geometry/FoundationGeometry.cpp
     src/Model/Material.h
     src/Model/Material.cpp
+    src/Model/MaterialLibrary.h
+    src/Model/MaterialLibrary.cpp
     src/Model/Section.h
     src/Model/Section.cpp
     src/Model/Node.h
@@ -243,6 +247,10 @@ set(TEST_SOURCES
     src/Coordinate/CylindricalCoordinates.cpp
     src/Model/Material.h
     src/Model/Material.cpp
+    src/Model/MaterialLibrary.h
+    src/Model/MaterialLibrary.cpp
+    src/Viewer/MaterialVisual.h
+    src/Viewer/MaterialVisual.cpp
     src/Model/Section.h
     src/Model/Section.cpp
     src/Model/Node.h

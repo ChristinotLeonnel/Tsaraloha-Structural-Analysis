@@ -33,4 +33,9 @@ std::string Foundation::formattedName() const
     return ss.str();
 }
 
+void Foundation::setMaterialId(int id)
+{
+    m_material = Material::findById(id);
+}
+
 } // namespace TSA::Model

@@ -34,6 +34,7 @@ namespace TSA::Grid
 #include <AIS_RubberBand.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 #include <gp_Ax3.hxx>
+#include "MaterialVisual.h"
 
 class OccView : public QWidget, public TSA::Model::IModelObserver
 {
@@ -51,6 +52,10 @@ public:
     void setModel(TSA::Model::Model* model);
     void setSelectionManager(TSA::Viewer::SelectionManager* selectionManager);
     void rebuildAllShapes();
+
+    // Mode d'affichage et de rendu des matériaux
+    TSA::Viewer::RenderDisplayMode renderDisplayMode() const { return m_renderDisplayMode; }
+    void setRenderDisplayMode(TSA::Viewer::RenderDisplayMode mode);
 
     // Gestion des formes 3D (avec mode batch / diff pour éviter les redraws multiples)
     void updateNodeShape(int nodeId, bool redrawImmediately = true);
@@ -330,4 +335,5 @@ private:
 
     TSA::Model::StructurePresets m_presets;
     TSA::Model::BarProperties m_currentBarProps;
+    TSA::Viewer::RenderDisplayMode m_renderDisplayMode = TSA::Viewer::RenderDisplayMode::Materials;
 };

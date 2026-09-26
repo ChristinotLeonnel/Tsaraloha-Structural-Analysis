@@ -2,6 +2,7 @@
 #include "../Widgets/SectionPreviewWidget.h"
 #include "../../Library/LibraryManager.h"
 #include "../../Model/ModelDiff.h"
+#include "../../Model/MaterialLibrary.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -87,11 +88,10 @@ void PropertyPanel::refreshLibraryLists()
 void PropertyPanel::setupMaterialCombo(QComboBox* combo)
 {
     combo->clear();
-    combo->addItem("Concrete C25/30", 1);
-    combo->addItem("Concrete C30/37", 2);
-    combo->addItem("Steel S235", 3);
-    combo->addItem("Steel S355", 4);
-    combo->addItem("Timber C24", 5);
+    for (const auto& mat : TSA::Model::MaterialLibrary::instance().allMaterials())
+    {
+        combo->addItem(QString::fromStdString(mat.name), mat.id);
+    }
 }
 
 void PropertyPanel::setupSectionTypeCombo(QComboBox* combo)
@@ -1542,14 +1542,9 @@ void PropertyPanel::showBeamProperties(int beamId)
         m_beamSectionPreview->setEccentricity(beam->eccentricity(), m_beamEySpin->value(), m_beamEzSpin->value());
     }
 
-    int matCode = 1;
-    if (beam->material().type == TSA::Model::MaterialType::Steel)
-        matCode = (beam->material().fk > 300e6) ? 4 : 3;
-    else if (beam->material().type == TSA::Model::MaterialType::Timber)
-        matCode = 5;
-    else
-        matCode = (beam->material().fk > 28e6) ? 2 : 1;
-    m_beamMaterialCombo->setCurrentIndex(m_beamMaterialCombo->findData(matCode));
+    int bMatIdx = m_beamMaterialCombo->findData(beam->material().id);
+    if (bMatIdx < 0) bMatIdx = m_beamMaterialCombo->findText(QString::fromStdString(beam->material().name));
+    if (bMatIdx >= 0) m_beamMaterialCombo->setCurrentIndex(bMatIdx);
 
     m_beamColor = QString::fromStdString(beam->color());
     setupColorButton(m_beamColorBtn, m_beamColor);
@@ -1631,14 +1626,9 @@ void PropertyPanel::showColumnProperties(int columnId)
         m_columnSectionPreview->setRotation(col->rotation());
     }
 
-    int matCode = 1;
-    if (col->material().type == TSA::Model::MaterialType::Steel)
-        matCode = (col->material().fk > 300e6) ? 4 : 3;
-    else if (col->material().type == TSA::Model::MaterialType::Timber)
-        matCode = 5;
-    else
-        matCode = (col->material().fk > 28e6) ? 2 : 1;
-    m_columnMaterialCombo->setCurrentIndex(m_columnMaterialCombo->findData(matCode));
+    int cMatIdx = m_columnMaterialCombo->findData(col->material().id);
+    if (cMatIdx < 0) cMatIdx = m_columnMaterialCombo->findText(QString::fromStdString(col->material().name));
+    if (cMatIdx >= 0) m_columnMaterialCombo->setCurrentIndex(cMatIdx);
 
     m_columnColor = QString::fromStdString(col->color());
     setupColorButton(m_columnColorBtn, m_columnColor);
@@ -1672,14 +1662,9 @@ void PropertyPanel::showSlabProperties(int slabId)
     else if (slab->slabType() == TSA::Model::SlabType::FlatSlab) m_slabRadioFlat->setChecked(true);
     else m_slabRadioTwoWay->setChecked(true);
 
-    int matCode = 1;
-    if (slab->material().type == TSA::Model::MaterialType::Steel)
-        matCode = (slab->material().fk > 300e6) ? 4 : 3;
-    else if (slab->material().type == TSA::Model::MaterialType::Timber)
-        matCode = 5;
-    else
-        matCode = (slab->material().fk > 28e6) ? 2 : 1;
-    m_slabMaterialCombo->setCurrentIndex(m_slabMaterialCombo->findData(matCode));
+    int sMatIdx = m_slabMaterialCombo->findData(slab->material().id);
+    if (sMatIdx < 0) sMatIdx = m_slabMaterialCombo->findText(QString::fromStdString(slab->material().name));
+    if (sMatIdx >= 0) m_slabMaterialCombo->setCurrentIndex(sMatIdx);
 
     m_slabColor = QString::fromStdString(slab->color());
     setupColorButton(m_slabColorBtn, m_slabColor);
@@ -1709,14 +1694,9 @@ void PropertyPanel::showWallProperties(int wallId)
     m_wallThicknessSpin->setValue(wall->thickness());
     m_wallOffsetSpin->setValue(wall->offset());
 
-    int matCode = 1;
-    if (wall->material().type == TSA::Model::MaterialType::Steel)
-        matCode = (wall->material().fk > 300e6) ? 4 : 3;
-    else if (wall->material().type == TSA::Model::MaterialType::Timber)
-        matCode = 5;
-    else
-        matCode = (wall->material().fk > 28e6) ? 2 : 1;
-    m_wallMaterialCombo->setCurrentIndex(m_wallMaterialCombo->findData(matCode));
+    int wMatIdx = m_wallMaterialCombo->findData(wall->material().id);
+    if (wMatIdx < 0) wMatIdx = m_wallMaterialCombo->findText(QString::fromStdString(wall->material().name));
+    if (wMatIdx >= 0) m_wallMaterialCombo->setCurrentIndex(wMatIdx);
 
     m_wallColor = QString::fromStdString(wall->color());
     setupColorButton(m_wallColorBtn, m_wallColor);
@@ -1749,14 +1729,9 @@ void PropertyPanel::showFoundationProperties(int foundationId)
     m_foundationHeightHSpin->setValue(f->heightH());
     m_foundationSoilCapacitySpin->setValue(f->soilBearingCapacity());
 
-    int matCode = 1;
-    if (f->material().type == TSA::Model::MaterialType::Steel)
-        matCode = (f->material().fk > 300e6) ? 4 : 3;
-    else if (f->material().type == TSA::Model::MaterialType::Timber)
-        matCode = 5;
-    else
-        matCode = (f->material().fk > 28e6) ? 2 : 1;
-    m_foundationMaterialCombo->setCurrentIndex(m_foundationMaterialCombo->findData(matCode));
+    int fMatIdx = m_foundationMaterialCombo->findData(f->material().id);
+    if (fMatIdx < 0) fMatIdx = m_foundationMaterialCombo->findText(QString::fromStdString(f->material().name));
+    if (fMatIdx >= 0) m_foundationMaterialCombo->setCurrentIndex(fMatIdx);
 
     m_foundationColor = QString::fromStdString(f->color());
     setupColorButton(m_foundationColorBtn, m_foundationColor);
@@ -1788,14 +1763,9 @@ void PropertyPanel::showTrussMemberProperties(int memberId)
 
     m_trussDimensionSpin->setValue(truss->section().width);
 
-    int matCode = 3;
-    if (truss->material().type == TSA::Model::MaterialType::Steel)
-        matCode = (truss->material().fk > 300e6) ? 4 : 3;
-    else if (truss->material().type == TSA::Model::MaterialType::Timber)
-        matCode = 5;
-    else
-        matCode = (truss->material().fk > 28e6) ? 2 : 1;
-    m_trussMaterialCombo->setCurrentIndex(m_trussMaterialCombo->findData(matCode));
+    int tMatIdx = m_trussMaterialCombo->findData(truss->material().id);
+    if (tMatIdx < 0) tMatIdx = m_trussMaterialCombo->findText(QString::fromStdString(truss->material().name));
+    if (tMatIdx >= 0) m_trussMaterialCombo->setCurrentIndex(tMatIdx);
 
     m_trussColor = QString::fromStdString(truss->color());
     setupColorButton(m_trussColorBtn, m_trussColor);
@@ -1839,13 +1809,14 @@ void PropertyPanel::onApplyBeam()
 
     // 2. Mise à jour du matériau
     int matCode = m_beamMaterialCombo->currentData().toInt();
-    switch (matCode)
+    const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(matCode);
+    if (pMat)
     {
-    case 1: beam->setMaterial(TSA::Model::Material::concreteC25_30()); break;
-    case 2: beam->setMaterial(TSA::Model::Material::concreteC30_37()); break;
-    case 3: beam->setMaterial(TSA::Model::Material::steelS235()); break;
-    case 4: beam->setMaterial(TSA::Model::Material::steelS355()); break;
-    case 5: beam->setMaterial(TSA::Model::Material::timberC24()); break;
+        beam->setMaterial(*pMat);
+    }
+    else
+    {
+        beam->setMaterial(TSA::Model::Material::findByName(m_beamMaterialCombo->currentText().toStdString()));
     }
 
     // 3. Mise à jour de l'orientation gamma
@@ -1906,14 +1877,15 @@ void PropertyPanel::onApplyColumn()
     col->setSection(sec);
 
     // 2. Mise à jour du matériau
-    int matCode = m_columnMaterialCombo->currentData().toInt();
-    switch (matCode)
+    int colMatCode = m_columnMaterialCombo->currentData().toInt();
+    const auto* pColMat = TSA::Model::MaterialLibrary::instance().findById(colMatCode);
+    if (pColMat)
     {
-    case 1: col->setMaterial(TSA::Model::Material::concreteC25_30()); break;
-    case 2: col->setMaterial(TSA::Model::Material::concreteC30_37()); break;
-    case 3: col->setMaterial(TSA::Model::Material::steelS235()); break;
-    case 4: col->setMaterial(TSA::Model::Material::steelS355()); break;
-    case 5: col->setMaterial(TSA::Model::Material::timberC24()); break;
+        col->setMaterial(*pColMat);
+    }
+    else
+    {
+        col->setMaterial(TSA::Model::Material::findByName(m_columnMaterialCombo->currentText().toStdString()));
     }
 
     // 3. Mise à jour de l'orientation bêta
@@ -1951,14 +1923,15 @@ void PropertyPanel::onApplySlab()
     else if (m_slabRadioFlat->isChecked()) slab->setSlabType(TSA::Model::SlabType::FlatSlab);
     else slab->setSlabType(TSA::Model::SlabType::TwoWay);
 
-    int matCode = m_slabMaterialCombo->currentData().toInt();
-    switch (matCode)
+    int slabMatCode = m_slabMaterialCombo->currentData().toInt();
+    const auto* pSlabMat = TSA::Model::MaterialLibrary::instance().findById(slabMatCode);
+    if (pSlabMat)
     {
-    case 1: slab->setMaterial(TSA::Model::Material::concreteC25_30()); break;
-    case 2: slab->setMaterial(TSA::Model::Material::concreteC30_37()); break;
-    case 3: slab->setMaterial(TSA::Model::Material::steelS235()); break;
-    case 4: slab->setMaterial(TSA::Model::Material::steelS355()); break;
-    case 5: slab->setMaterial(TSA::Model::Material::timberC24()); break;
+        slab->setMaterial(*pSlabMat);
+    }
+    else
+    {
+        slab->setMaterial(TSA::Model::Material::findByName(m_slabMaterialCombo->currentText().toStdString()));
     }
 
     slab->setColor(m_slabColor.toStdString());
@@ -1981,14 +1954,15 @@ void PropertyPanel::onApplyWall()
     wall->setThickness(m_wallThicknessSpin->value());
     wall->setOffset(m_wallOffsetSpin->value());
 
-    int matCode = m_wallMaterialCombo->currentData().toInt();
-    switch (matCode)
+    int wallMatCode = m_wallMaterialCombo->currentData().toInt();
+    const auto* pWallMat = TSA::Model::MaterialLibrary::instance().findById(wallMatCode);
+    if (pWallMat)
     {
-    case 1: wall->setMaterial(TSA::Model::Material::concreteC25_30()); break;
-    case 2: wall->setMaterial(TSA::Model::Material::concreteC30_37()); break;
-    case 3: wall->setMaterial(TSA::Model::Material::steelS235()); break;
-    case 4: wall->setMaterial(TSA::Model::Material::steelS355()); break;
-    case 5: wall->setMaterial(TSA::Model::Material::timberC24()); break;
+        wall->setMaterial(*pWallMat);
+    }
+    else
+    {
+        wall->setMaterial(TSA::Model::Material::findByName(m_wallMaterialCombo->currentText().toStdString()));
     }
 
     wall->setColor(m_wallColor.toStdString());
@@ -2013,14 +1987,15 @@ void PropertyPanel::onApplyFoundation()
     f->setHeightH(m_foundationHeightHSpin->value());
     f->setSoilBearingCapacity(m_foundationSoilCapacitySpin->value());
 
-    int matCode = m_foundationMaterialCombo->currentData().toInt();
-    switch (matCode)
+    int fMatCode = m_foundationMaterialCombo->currentData().toInt();
+    const auto* pFMat = TSA::Model::MaterialLibrary::instance().findById(fMatCode);
+    if (pFMat)
     {
-    case 1: f->setMaterial(TSA::Model::Material::concreteC25_30()); break;
-    case 2: f->setMaterial(TSA::Model::Material::concreteC30_37()); break;
-    case 3: f->setMaterial(TSA::Model::Material::steelS235()); break;
-    case 4: f->setMaterial(TSA::Model::Material::steelS355()); break;
-    case 5: f->setMaterial(TSA::Model::Material::timberC24()); break;
+        f->setMaterial(*pFMat);
+    }
+    else
+    {
+        f->setMaterial(TSA::Model::Material::findByName(m_foundationMaterialCombo->currentText().toStdString()));
     }
 
     f->setColor(m_foundationColor.toStdString());
@@ -2044,14 +2019,15 @@ void PropertyPanel::onApplyTruss()
     truss->section().height = m_trussDimensionSpin->value();
     truss->section().diameter = m_trussDimensionSpin->value();
 
-    int matCode = m_trussMaterialCombo->currentData().toInt();
-    switch (matCode)
+    int trMatCode = m_trussMaterialCombo->currentData().toInt();
+    const auto* pTrMat = TSA::Model::MaterialLibrary::instance().findById(trMatCode);
+    if (pTrMat)
     {
-    case 1: truss->setMaterial(TSA::Model::Material::concreteC25_30()); break;
-    case 2: truss->setMaterial(TSA::Model::Material::concreteC30_37()); break;
-    case 3: truss->setMaterial(TSA::Model::Material::steelS235()); break;
-    case 4: truss->setMaterial(TSA::Model::Material::steelS355()); break;
-    case 5: truss->setMaterial(TSA::Model::Material::timberC24()); break;
+        truss->setMaterial(*pTrMat);
+    }
+    else
+    {
+        truss->setMaterial(TSA::Model::Material::findByName(m_trussMaterialCombo->currentText().toStdString()));
     }
 
     truss->setColor(m_trussColor.toStdString());

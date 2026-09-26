@@ -1,5 +1,6 @@
 #include "TSAFile.h"
 #include "TSAPreviewGenerator.h"
+#include "../Model/MaterialLibrary.h"
 
 #include <QByteArray>
 #include <QBuffer>
@@ -188,6 +189,13 @@ inline bool deserializeMaterial(const uint8_t* data, size_t size, size_t& offset
     if (!readDouble(data, size, offset, m.density)) return false;
     if (!readDouble(data, size, offset, m.fk)) return false;
     if (!readDouble(data, size, offset, m.thermalCoeff)) return false;
+    m.syncMechanical();
+    const auto* stdMat = TSA::Model::MaterialLibrary::instance().findById(m.id);
+    if (!stdMat) stdMat = TSA::Model::MaterialLibrary::instance().findByName(m.name);
+    if (stdMat)
+    {
+        m.visual = stdMat->visual;
+    }
     return true;
 }
 

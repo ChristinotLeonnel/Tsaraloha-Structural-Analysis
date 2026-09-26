@@ -36,6 +36,8 @@ public:
     const Material& material() const { return m_material; }
     Material& material() { return m_material; }
     void setMaterial(const Material& m) { m_material = m; }
+    int materialId() const { return m_material.id; }
+    void setMaterialId(int id);
 
     double offset() const { return m_offset; }
     void setOffset(double off) { m_offset = off; }

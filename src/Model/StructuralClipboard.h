@@ -36,6 +36,7 @@ struct ClipboardSlab
 {
     std::vector<int> originalNodeIds;
     double thickness = 0.20;
+    Material material = Material::concreteC25_30();
 };
 
 struct PasteResult
