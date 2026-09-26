@@ -2,6 +2,7 @@
 
 #include "Section.h"
 #include "Material.h"
+#include "Beam.h"
 #include <string>
 
 namespace TSA::Model
@@ -59,6 +60,8 @@ public:
 
     const std::string& color() const { return m_color; }
     void setColor(const std::string& color) { m_color = color; }
+
+    BarProperties properties() const;
 
 private:
     int m_id = 0;

@@ -4,6 +4,7 @@
 #include <set>
 #include <unordered_map>
 #include <cstddef>
+#include "Beam.h"
 
 namespace TSA::Model
 {
@@ -21,16 +22,14 @@ struct ClipboardBeam
 {
     int originalStartNodeId = 0;
     int originalEndNodeId = 0;
-    double width = 0.30;
-    double height = 0.50;
+    BarProperties props;
 };
 
 struct ClipboardColumn
 {
     int originalStartNodeId = 0;
     int originalEndNodeId = 0;
-    double width = 0.40;
-    double height = 0.40;
+    BarProperties props;
 };
 
 struct ClipboardSlab

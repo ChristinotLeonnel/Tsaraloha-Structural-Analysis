@@ -1824,6 +1824,105 @@ int main(int argc, char* argv[])
         passed++;
     }
 
+    // =========================================================================
+    // TEST 28: Custom Section Customization, Copy/Paste, OCCT 3D & Save/Load
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 28: Custom Section Customization, Copy/Paste, OCCT 3D & Save/Load ---" << std::endl;
+        total++;
+
+        TSA::Model::Model testModel;
+
+        // Subtest 1: Créer une section circulaire Ø20 (D = 0.20 m)
+        int n1 = testModel.addNode(0.0, 0.0, 0.0);
+        int n2 = testModel.addNode(0.0, 0.0, 4.0);
+
+        TSA::Model::BarProperties propsCirc;
+        propsCirc.name = "Poteau_Circulaire_D20";
+        propsCirc.role = TSA::Model::BarRole::Column;
+        propsCirc.section = TSA::Model::Section::circular(0.20, "Circ D20");
+
+        int colId1 = testModel.addBar(propsCirc, n1, n2);
+        const auto* col1 = testModel.getBeam(colId1);
+        TEST_CHECK(col1 != nullptr, "Test 28.1: Circular bar created");
+        TEST_CHECK(col1->section().shape == TSA::Model::SectionShape::Circular, "Test 28.1: Section shape is Circular");
+        TEST_CHECK(approxEqual(col1->section().diameter, 0.20), "Test 28.1: Diameter is 0.20m");
+
+        const auto* nodeA = testModel.getNode(n1);
+        const auto* nodeB = testModel.getNode(n2);
+        TopoDS_Shape shapeCirc = TSA::Geometry::BeamGeometry::createBeamShape(*nodeA, *nodeB, col1->section(), col1->rotation(), col1->eccentricity());
+        TEST_CHECK(!shapeCirc.IsNull(), "Test 28.1: OCCT 3D cylinder shape built successfully");
+
+        // Subtest 2: Copier cet élément (StructuralClipboard) -> vérifier que la copie reste Circulaire Ø20 dans Model ET OCCT
+        TSA::Model::StructuralClipboard clipboard;
+        std::set<int> selNodes = { n1, n2 };
+        std::set<int> selBeams = { colId1 };
+        std::set<int> emptyCols, emptySlabs;
+        clipboard.copyFrom(testModel, selNodes, selBeams, emptyCols, emptySlabs);
+
+        TSA::Model::PasteResult pasteRes = clipboard.pasteTo(testModel, 5.0, 0.0, 0.0);
+        TEST_CHECK(!pasteRes.beamIds.empty(), "Test 28.2: Bar pasted successfully");
+        int copyId = pasteRes.beamIds[0];
+        const auto* colCopy = testModel.getBeam(copyId);
+        TEST_CHECK(colCopy != nullptr, "Test 28.2: Copied bar exists");
+        TEST_CHECK(colCopy->section().shape == TSA::Model::SectionShape::Circular, "Test 28.2: Copied bar section shape is Circular (NOT rectangle!)");
+        TEST_CHECK(approxEqual(colCopy->section().diameter, 0.20), "Test 28.2: Copied bar diameter is 0.20m");
+
+        const auto* copyNodeA = testModel.getNode(colCopy->startNodeId());
+        const auto* copyNodeB = testModel.getNode(colCopy->endNodeId());
+        TopoDS_Shape shapeCopy = TSA::Geometry::BeamGeometry::createBeamShape(*copyNodeA, *copyNodeB, colCopy->section(), colCopy->rotation(), colCopy->eccentricity());
+        TEST_CHECK(!shapeCopy.IsNull(), "Test 28.2: Copied bar OCCT 3D shape built successfully as real cylinder");
+
+        // Subtest 3: Modifier Ø20 en Ø30
+        auto sec30 = TSA::Model::Section::circular(0.30, "Circ D30");
+        testModel.getBeam(colId1)->setSection(sec30);
+        const auto* col1Mod = testModel.getBeam(colId1);
+        TEST_CHECK(approxEqual(col1Mod->section().diameter, 0.30), "Test 28.3: Modified section diameter is 0.30m");
+        TopoDS_Shape shapeMod = TSA::Geometry::BeamGeometry::createBeamShape(*nodeA, *nodeB, col1Mod->section(), col1Mod->rotation(), col1Mod->eccentricity());
+        TEST_CHECK(!shapeMod.IsNull(), "Test 28.3: Modified section OCCT 3D shape updated to Ø30");
+
+        // Subtest 4: Créer une section rectangulaire 60x30 (B = 0.60m, H = 0.30m)
+        int n3 = testModel.addNode(10.0, 0.0, 0.0);
+        int n4 = testModel.addNode(10.0, 5.0, 0.0);
+        TSA::Model::BarProperties propsRect;
+        propsRect.name = "Poutre_60x30";
+        propsRect.role = TSA::Model::BarRole::Beam;
+        propsRect.section = TSA::Model::Section::rectangular(0.60, 0.30, "R60x30");
+        int rectBarId = testModel.addBar(propsRect, n3, n4);
+        const auto* rectBar = testModel.getBeam(rectBarId);
+        TEST_CHECK(rectBar->section().shape == TSA::Model::SectionShape::Rectangular, "Test 28.4: Section shape is Rectangular");
+        TEST_CHECK(approxEqual(rectBar->section().width, 0.60), "Test 28.4: Width B is 0.60m");
+        TEST_CHECK(approxEqual(rectBar->section().height, 0.30), "Test 28.4: Height H is 0.30m");
+        TopoDS_Shape shapeRect = TSA::Geometry::BeamGeometry::createBeamShape(*testModel.getNode(n3), *testModel.getNode(n4), rectBar->section(), rectBar->rotation(), rectBar->eccentricity());
+        TEST_CHECK(!shapeRect.IsNull(), "Test 28.4: Rectangular 60x30 OCCT 3D shape built successfully");
+
+        // Subtest 5: Sauvegarder puis recharger le projet (.tsa)
+        std::string filename = "test_custom_section.tsa";
+        TSA::IO::TSAFileWriter writer;
+        std::string err;
+        bool saveOk = writer.saveToFile(filename, testModel, nullptr, "Test Custom Section", "TSA Unit Test", &err);
+        TEST_CHECK(saveOk, "Test 28.5: Saved TSA file with custom sections");
+
+        TSA::Model::Model loadedModel;
+        TSA::IO::TSAFileReader reader;
+        bool loadOk = reader.loadFromFile(filename, loadedModel, nullptr, "", nullptr, nullptr, nullptr, &err);
+        TEST_CHECK(loadOk, "Test 28.5: Loaded TSA file with custom sections");
+
+        const auto* loadedCirc = loadedModel.getBeam(colId1);
+        TEST_CHECK(loadedCirc != nullptr, "Test 28.5: Loaded circular bar exists");
+        TEST_CHECK(loadedCirc->section().shape == TSA::Model::SectionShape::Circular, "Test 28.5: Loaded circular bar shape is Circular");
+        TEST_CHECK(approxEqual(loadedCirc->section().diameter, 0.30), "Test 28.5: Loaded circular bar diameter is 0.30m");
+
+        const auto* loadedRect = loadedModel.getBeam(rectBarId);
+        TEST_CHECK(loadedRect != nullptr, "Test 28.5: Loaded rectangular bar exists");
+        TEST_CHECK(loadedRect->section().shape == TSA::Model::SectionShape::Rectangular, "Test 28.5: Loaded rectangular bar shape is Rectangular");
+        TEST_CHECK(approxEqual(loadedRect->section().width, 0.60), "Test 28.5: Loaded rectangular bar width is 0.60m");
+        TEST_CHECK(approxEqual(loadedRect->section().height, 0.30), "Test 28.5: Loaded rectangular bar height is 0.30m");
+
+        std::cout << "[PASS] Test 28: Custom Section Customization, Copy/Paste, OCCT 3D & Save/Load Validated Successfully!" << std::endl;
+        passed++;
+    }
+
     std::cout << "=================================================" << std::endl;
     std::cout << "RESULTS: " << passed << " / " << (total + 8) << " tests passed successfully!" << std::endl;
     std::cout << "=================================================" << std::endl;

@@ -118,8 +118,7 @@ void StructuralClipboard::copyFrom(const Model& model,
             ClipboardBeam cb;
             cb.originalStartNodeId = b->startNodeId();
             cb.originalEndNodeId = b->endNodeId();
-            cb.width = b->width();
-            cb.height = b->height();
+            cb.props = b->properties();
             m_beams.push_back(cb);
         }
     }
@@ -132,8 +131,7 @@ void StructuralClipboard::copyFrom(const Model& model,
             ClipboardColumn cc;
             cc.originalStartNodeId = c->startNodeId();
             cc.originalEndNodeId = c->endNodeId();
-            cc.width = c->width();
-            cc.height = c->height();
+            cc.props = c->properties();
             m_columns.push_back(cc);
         }
     }
@@ -175,7 +173,8 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         auto itE = nodeMap.find(cb.originalEndNodeId);
         if (itS != nodeMap.end() && itE != nodeMap.end())
         {
-            int bId = model.addBeam(itS->second, itE->second, cb.width, cb.height);
+            BarProperties p = cb.props;
+            int bId = model.addBar(p, itS->second, itE->second);
             result.beamIds.push_back(bId);
         }
     }
@@ -186,7 +185,8 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         auto itE = nodeMap.find(cc.originalEndNodeId);
         if (itS != nodeMap.end() && itE != nodeMap.end())
         {
-            int cId = model.addColumn(itS->second, itE->second, cc.width, cc.height);
+            BarProperties p = cc.props;
+            int cId = model.addBar(p, itS->second, itE->second);
             result.columnIds.push_back(cId);
         }
     }

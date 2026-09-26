@@ -1,4 +1,6 @@
 #include "BarCreationDialog.h"
+#include "SectionCustomizationDialog.h"
+#include "../../Library/LibraryManager.h"
 #include "../../Model/Model.h"
 #include "../../Viewer/OccView.h"
 #include <QVBoxLayout>
@@ -118,16 +120,21 @@ void BarCreationDialog::setupUi()
 
     m_btnSectionMore = new QToolButton(grpProps);
     m_btnSectionMore->setIcon(QIcon(":/icons/section_i.svg"));
-    m_btnSectionMore->setToolTip(tr("Gérer / Définir des sections..."));
+    m_btnSectionMore->setToolTip(tr("Modifier / Personnaliser la section..."));
     propsLayout->addWidget(m_btnSectionMore, 1, 2);
 
+    m_btnCustomizeSection = new QPushButton(tr("Modifier / Personnaliser la section..."), grpProps);
+    m_btnCustomizeSection->setIcon(QIcon(":/icons/edit.svg"));
+    m_btnCustomizeSection->setStyleSheet("font-size: 8.5pt; font-weight: bold; background-color: #1E70BF; color: white; padding: 4px 8px; border-radius: 3px;");
+    propsLayout->addWidget(m_btnCustomizeSection, 2, 1, 1, 2);
+
     // Matériau par défaut
-    propsLayout->addWidget(new QLabel(tr("Matériau par défaut :"), grpProps), 2, 0);
+    propsLayout->addWidget(new QLabel(tr("Matériau par défaut :"), grpProps), 3, 0);
     m_editMaterial = new QLineEdit(grpProps);
     m_editMaterial->setReadOnly(true);
     m_editMaterial->setText("ACIER S235");
     m_editMaterial->setStyleSheet("background-color: #F0F0F0; color: #404040;");
-    propsLayout->addWidget(m_editMaterial, 2, 1, 1, 2);
+    propsLayout->addWidget(m_editMaterial, 3, 1, 1, 2);
 
     mainLayout->addWidget(grpProps);
 
@@ -210,6 +217,10 @@ void BarCreationDialog::setupUi()
     connect(m_btnClose, &QPushButton::clicked, this, &QDialog::close);
     connect(m_btnHelp, &QPushButton::clicked, this, &BarCreationDialog::onHelpClicked);
     connect(m_btnSectionMore, &QPushButton::clicked, this, &BarCreationDialog::onCustomSectionRequested);
+    if (m_btnCustomizeSection)
+    {
+        connect(m_btnCustomizeSection, &QPushButton::clicked, this, &BarCreationDialog::onCustomSectionRequested);
+    }
 }
 
 void BarCreationDialog::populateSections()
@@ -529,43 +540,23 @@ void BarCreationDialog::onAddClicked()
 
 void BarCreationDialog::onCustomSectionRequested()
 {
-    QStringList choices = { tr("Circulaire (Ø)"), tr("Rectangulaire (b x h)"), tr("Profilé IPE") };
-    bool ok = false;
-    QString choice = QInputDialog::getItem(this, tr("Nouvelle Section"), tr("Forme géométrique :"), choices, 0, false, &ok);
-    if (!ok) return;
+    TSA::Model::Section initialSec;
+    int secIdx = m_comboSection ? m_comboSection->currentData().toInt() : -1;
+    if (secIdx >= 0 && secIdx < static_cast<int>(m_sectionLibrary.size()))
+    {
+        initialSec = m_sectionLibrary[secIdx];
+    }
+    else
+    {
+        initialSec = TSA::Model::Section::rectangular(0.40, 0.40);
+    }
 
-    if (choice == tr("Circulaire (Ø)"))
+    SectionCustomizationDialog dlg(initialSec, this);
+    if (dlg.exec() == QDialog::Accepted)
     {
-        double d = QInputDialog::getDouble(this, tr("Section Circulaire"), tr("Diamètre D (m) :"), 0.60, 0.05, 5.0, 2, &ok);
-        if (ok)
-        {
-            std::string secName = QString("D%1").arg(d * 100, 0, 'f', 0).toStdString();
-            auto s = TSA::Model::Section::circular(d, secName);
-            setSection(s);
-        }
-    }
-    else if (choice == tr("Rectangulaire (b x h)"))
-    {
-        double b = QInputDialog::getDouble(this, tr("Nouvelle Section Rectangulaire"), tr("Largeur b (m) :"), 0.30, 0.01, 10.0, 2, &ok);
-        if (!ok) return;
-        double h = QInputDialog::getDouble(this, tr("Nouvelle Section Rectangulaire"), tr("Hauteur h (m) :"), 0.50, 0.01, 10.0, 2, &ok);
-        if (ok)
-        {
-            std::string secName = QString("R%1x%2").arg(b * 100, 0, 'f', 0).arg(h * 100, 0, 'f', 0).toStdString();
-            auto s = TSA::Model::Section::rectangular(b, h, secName);
-            setSection(s);
-        }
-    }
-    else if (choice == tr("Profilé IPE"))
-    {
-        QStringList ipes = { "IPE 100", "IPE 160", "IPE 200", "IPE 240", "IPE 300", "IPE 360", "IPE 400" };
-        QString sel = QInputDialog::getItem(this, tr("Profilé IPE"), tr("Type IPE :"), ipes, 2, false, &ok);
-        if (ok)
-        {
-            int num = sel.remove("IPE ").toInt();
-            auto s = TSA::Model::Section::ipe(num > 0 ? num : 200);
-            setSection(s);
-        }
+        auto newSec = dlg.customizedSection();
+        setSection(newSec);
+        TSA::Library::LibraryManager::instance().addCustomSection(newSec);
     }
 }
 
