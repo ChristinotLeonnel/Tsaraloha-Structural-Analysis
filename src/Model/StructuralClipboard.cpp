@@ -186,7 +186,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         if (itS != nodeMap.end() && itE != nodeMap.end())
         {
             BarProperties p = cc.props;
-            int cId = model.addBar(p, itS->second, itE->second);
+            int cId = model.addColumn(itS->second, itE->second, p.section, p.material, p.rotation, p.name);
             result.columnIds.push_back(cId);
         }
     }

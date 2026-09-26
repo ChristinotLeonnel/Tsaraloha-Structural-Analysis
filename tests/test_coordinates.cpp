@@ -1923,8 +1923,98 @@ int main(int argc, char* argv[])
         passed++;
     }
 
+    // =========================================================================
+    // TEST 29: Comprehensive Audit of Beam & Column Section Pipeline
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 29: Comprehensive Audit of Beam & Column Section Pipeline ---" << std::endl;
+        total++;
+
+        TSA::Model::Model auditModel;
+
+        // 1. Audit Poteau Circulaire Ø20
+        int n1 = auditModel.addNode(0.0, 0.0, 0.0);
+        int n2 = auditModel.addNode(0.0, 0.0, 3.5);
+        auto secCirc20 = TSA::Model::Section::circular(0.20, "Circ D20");
+        int colId1 = auditModel.addColumn(n1, n2, secCirc20, TSA::Model::Material::concreteC25_30(), 0.0, "C001");
+
+        const auto* col1 = auditModel.getColumn(colId1);
+        TEST_CHECK(col1 != nullptr, "Test 29.1: Column C001 created in Model");
+        TEST_CHECK(col1->section().shape == TSA::Model::SectionShape::Circular, "Test 29.1: Column section shape is Circular in Model");
+        TEST_CHECK(approxEqual(col1->section().diameter, 0.20), "Test 29.1: Column diameter is 0.20m in Model");
+
+        TopoDS_Shape shapeCol1 = TSA::Geometry::BeamGeometry::createBeamShape(*auditModel.getNode(n1), *auditModel.getNode(n2), col1->section(), col1->rotation());
+        TEST_CHECK(!shapeCol1.IsNull(), "Test 29.1: OCCT 3D Shape for Circular Column generated successfully");
+
+        // 2. Audit Poutre IPE 200
+        int n3 = auditModel.addNode(0.0, 0.0, 3.5);
+        int n4 = auditModel.addNode(6.0, 0.0, 3.5);
+        auto secIpe200 = TSA::Model::Section::ipe(200);
+        int beamId1 = auditModel.addBar(n3, n4, secIpe200, TSA::Model::Material::steelS235(), TSA::Model::BarRole::Beam, 0.0, "B001");
+
+        const auto* beam1 = auditModel.getBeam(beamId1);
+        TEST_CHECK(beam1 != nullptr, "Test 29.2: Beam B001 created in Model");
+        TEST_CHECK(beam1->section().shape == TSA::Model::SectionShape::IShape, "Test 29.2: Beam section shape is IShape in Model");
+        TEST_CHECK(approxEqual(beam1->section().height, 0.200), "Test 29.2: IPE 200 height is 0.200m");
+        TEST_CHECK(approxEqual(beam1->section().width, 0.100), "Test 29.2: IPE 200 width is 0.100m");
+
+        TopoDS_Shape shapeBeam1 = TSA::Geometry::BeamGeometry::createBeamShape(*auditModel.getNode(n3), *auditModel.getNode(n4), beam1->section(), beam1->rotation(), beam1->eccentricity());
+        TEST_CHECK(!shapeBeam1.IsNull(), "Test 29.2: OCCT 3D Shape for IPE 200 Beam generated successfully");
+
+        // 3. Audit Presse-papier (Copier / Coller IPE 200 & Circular Ø20)
+        TSA::Model::StructuralClipboard clip;
+        std::set<int> selN = { n1, n2, n3, n4 };
+        std::set<int> selB = { beamId1 };
+        std::set<int> selC = { colId1 };
+        std::set<int> selS;
+        clip.copyFrom(auditModel, selN, selB, selC, selS);
+
+        TSA::Model::PasteResult pRes = clip.pasteTo(auditModel, 10.0, 0.0, 0.0);
+        TEST_CHECK(!pRes.beamIds.empty(), "Test 29.3: Pasted beam created");
+        TEST_CHECK(!pRes.columnIds.empty(), "Test 29.3: Pasted column created");
+
+        const auto* pastedBeam = auditModel.getBeam(pRes.beamIds[0]);
+        TEST_CHECK(pastedBeam->section().shape == TSA::Model::SectionShape::IShape, "Test 29.3: Pasted beam retains IShape IPE 200 (NOT rectangle)");
+        TEST_CHECK(approxEqual(pastedBeam->section().height, 0.200), "Test 29.3: Pasted IPE 200 height preserved");
+
+        const auto* pastedCol = auditModel.getColumn(pRes.columnIds[0]);
+        TEST_CHECK(pastedCol->section().shape == TSA::Model::SectionShape::Circular, "Test 29.3: Pasted column retains Circular shape (NOT rectangle)");
+        TEST_CHECK(approxEqual(pastedCol->section().diameter, 0.20), "Test 29.3: Pasted column diameter 0.20m preserved");
+
+        // 4. Audit Modification Post-Création (Ø20 -> Ø30)
+        auditModel.getColumn(colId1)->setSection(TSA::Model::Section::circular(0.30, "Circ D30"));
+        TEST_CHECK(approxEqual(auditModel.getColumn(colId1)->section().diameter, 0.30), "Test 29.4: Column modified to Ø30");
+        TopoDS_Shape shapeColMod = TSA::Geometry::BeamGeometry::createBeamShape(*auditModel.getNode(n1), *auditModel.getNode(n2), auditModel.getColumn(colId1)->section(), 0.0);
+        TEST_CHECK(!shapeColMod.IsNull(), "Test 29.4: Modified Ø30 OCCT shape re-generated cleanly");
+
+        // 5. Audit Sauvegarde / Chargement Fichier Native .tsa
+        std::string fn = "test_section_audit.tsa";
+        TSA::IO::TSAFileWriter w;
+        std::string e;
+        bool sOk = w.saveToFile(fn, auditModel, nullptr, "Section Audit", "Unit Test", &e);
+        TEST_CHECK(sOk, "Test 29.5: Audit model saved to TSA file");
+
+        TSA::Model::Model lModel;
+        TSA::IO::TSAFileReader r;
+        bool lOk = r.loadFromFile(fn, lModel, nullptr, "", nullptr, nullptr, nullptr, &e);
+        TEST_CHECK(lOk, "Test 29.5: Audit model loaded from TSA file");
+
+        const auto* lCol = lModel.getColumn(colId1);
+        TEST_CHECK(lCol != nullptr, "Test 29.5: Loaded column exists");
+        TEST_CHECK(lCol->section().shape == TSA::Model::SectionShape::Circular, "Test 29.5: Loaded column shape is Circular");
+        TEST_CHECK(approxEqual(lCol->section().diameter, 0.30), "Test 29.5: Loaded column diameter is 0.30m");
+
+        const auto* lBeam = lModel.getBeam(beamId1);
+        TEST_CHECK(lBeam != nullptr, "Test 29.5: Loaded beam exists");
+        TEST_CHECK(lBeam->section().shape == TSA::Model::SectionShape::IShape, "Test 29.5: Loaded beam shape is IShape IPE 200");
+        TEST_CHECK(approxEqual(lBeam->section().height, 0.200), "Test 29.5: Loaded beam height is 0.200m");
+
+        std::cout << "[PASS] Test 29: Comprehensive Audit of Beam & Column Section Pipeline Passed Successfully!" << std::endl;
+        passed++;
+    }
+
     std::cout << "=================================================" << std::endl;
-    std::cout << "RESULTS: " << passed << " / " << (total + 8) << " tests passed successfully!" << std::endl;
+    std::cout << "RESULTS: " << passed << " / 29 tests passed successfully!" << std::endl;
     std::cout << "=================================================" << std::endl;
 
     return 0;

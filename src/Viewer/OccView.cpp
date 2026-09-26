@@ -751,7 +751,7 @@ void OccView::updateBeamShape(int beamId, bool redrawImmediately)
 
     // 2. Créer le nouveau solide 3D selon la forme réelle de la section et l'orientation
     TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
-        *nodeA, *nodeB, beam->section(), beam->rotation()
+        *nodeA, *nodeB, beam->section(), beam->rotation(), beam->eccentricity()
     );
 
     if (!shape.IsNull())
@@ -1861,6 +1861,17 @@ void OccView::setInteractionMode(InteractionMode mode)
 void OccView::setCurrentBarProperties(const TSA::Model::BarProperties& props)
 {
     m_currentBarProps = props;
+
+    m_presets.beam.section = props.section;
+    m_presets.beam.material = props.material;
+    m_presets.beam.betaAngle = props.rotation;
+    if (!props.color.empty()) m_presets.beam.color = props.color;
+
+    m_presets.column.section = props.section;
+    m_presets.column.material = props.material;
+    m_presets.column.betaAngle = props.rotation;
+    if (!props.color.empty()) m_presets.column.color = props.color;
+
     if (!m_drawingPoints.empty() && !m_lastMousePos.isNull())
     {
         double wx = 0.0, wy = 0.0, wz = 0.0;
@@ -2407,14 +2418,14 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
         TSA::Model::Node tempA(0, pStart.X(), pStart.Y(), pStart.Z());
         TSA::Model::Node tempB(1, currentPnt.X(), currentPnt.Y(), currentPnt.Z());
 
-        TSA::Model::Section currentSec = (interactionMode() == InteractionMode::DrawBar)
-            ? m_currentBarProps.section
-            : ((interactionMode() == InteractionMode::DrawColumn) ? m_presets.column.section : m_presets.beam.section);
-        double rot = (interactionMode() == InteractionMode::DrawBar)
-            ? m_currentBarProps.rotation
+        TSA::Model::Section currentSec = m_currentBarProps.section;
+        if (currentSec.width <= 0.0 && currentSec.diameter <= 0.0)
+        {
+            currentSec = (interactionMode() == InteractionMode::DrawColumn) ? m_presets.column.section : m_presets.beam.section;
+        }
+        double rot = (m_currentBarProps.rotation != 0.0) ? m_currentBarProps.rotation
             : ((interactionMode() == InteractionMode::DrawColumn) ? m_presets.column.betaAngle : m_presets.beam.betaAngle);
-        TSA::Model::BarEccentricity ecc = (interactionMode() == InteractionMode::DrawBar)
-            ? m_currentBarProps.eccentricity : TSA::Model::BarEccentricity::None;
+        TSA::Model::BarEccentricity ecc = m_currentBarProps.eccentricity;
 
         shape = TSA::Geometry::BeamGeometry::createBeamShape(tempA, tempB, currentSec, rot, ecc);
         if (shape.IsNull())
@@ -2613,16 +2624,22 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     if (startId != endId)
                     {
                         m_model->pushUndoState(tr("Création Poutre").toStdString());
-                        int beamId = m_model->addBar(startId, endId, m_presets.beam.section,
-                            TSA::Model::Material::findByName(m_presets.beam.material.name),
-                            TSA::Model::BarRole::Beam, m_presets.beam.betaAngle, m_presets.beam.section.name);
+                        TSA::Model::Section sec = (m_currentBarProps.section.width > 0.0 || m_currentBarProps.section.diameter > 0.0)
+                            ? m_currentBarProps.section : m_presets.beam.section;
+                        TSA::Model::Material mat = (m_currentBarProps.material.E > 0.0)
+                            ? m_currentBarProps.material : TSA::Model::Material::findByName(m_presets.beam.material.name);
+                        double rot = (m_currentBarProps.rotation != 0.0) ? m_currentBarProps.rotation : m_presets.beam.betaAngle;
+
+                        int beamId = m_model->addBar(startId, endId, sec, mat,
+                            TSA::Model::BarRole::Beam, rot, sec.name);
                         if (auto* b = m_model->getBeam(beamId))
                         {
-                            if (!m_presets.beam.color.empty()) b->setColor(m_presets.beam.color);
+                            if (!m_currentBarProps.color.empty()) b->setColor(m_currentBarProps.color);
+                            else if (!m_presets.beam.color.empty()) b->setColor(m_presets.beam.color);
                             updateBeamShape(beamId);
                         }
                         emit elementCreated();
-                        emit drawingPromptChanged(tr("Poutre B%1 créée reliant N%2 à N%3 (%4). Cliquez pour continuer").arg(beamId).arg(startId).arg(endId).arg(QString::fromStdString(m_presets.beam.section.name)));
+                        emit drawingPromptChanged(tr("Poutre B%1 créée reliant N%2 à N%3 (%4). Cliquez pour continuer").arg(beamId).arg(startId).arg(endId).arg(QString::fromStdString(sec.name)));
                     }
                     clearRubberBand();
                     m_drawingNodeIds.clear();
@@ -2663,17 +2680,19 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     if (startId != endId)
                     {
                         m_model->pushUndoState(tr("Création Poteau").toStdString());
+                        TSA::Model::Section sec = (m_currentBarProps.section.width > 0.0 || m_currentBarProps.section.diameter > 0.0)
+                            ? m_currentBarProps.section : m_presets.column.section;
+                        TSA::Model::Material mat = (m_currentBarProps.material.E > 0.0)
+                            ? m_currentBarProps.material : TSA::Model::Material::findByName(m_presets.column.material.name);
+                        double rot = (m_currentBarProps.rotation != 0.0) ? m_currentBarProps.rotation : m_presets.column.betaAngle;
+
                         int colId = m_model->addColumn(
-                            startId, endId, m_presets.column.section,
-                            TSA::Model::Material::findByName(m_presets.column.material.name),
-                            m_presets.column.betaAngle, m_presets.column.section.name);
+                            startId, endId, sec, mat, rot, sec.name);
                         if (auto* c = m_model->getColumn(colId))
                         {
-                            if (!m_presets.column.color.empty())
-                            {
-                                c->setColor(m_presets.column.color);
-                                updateColumnShape(colId);
-                            }
+                            if (!m_currentBarProps.color.empty()) c->setColor(m_currentBarProps.color);
+                            else if (!m_presets.column.color.empty()) c->setColor(m_presets.column.color);
+                            updateColumnShape(colId);
                         }
                         emit elementCreated();
                         emit drawingPromptChanged(tr("Poteau C%1 créé reliant N%2 à N%3 (%4). Cliquez pour un autre poteau").arg(colId).arg(startId).arg(endId).arg(QString::fromStdString(m_presets.column.section.name)));
