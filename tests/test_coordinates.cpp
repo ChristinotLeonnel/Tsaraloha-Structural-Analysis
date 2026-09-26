@@ -15,6 +15,19 @@
 #include "Model/Wall.h"
 #include "Model/Foundation.h"
 #include "Model/TrussMember.h"
+#include "Model/Cable/CableTypes.h"
+#include "Model/Cable/CableStandards.h"
+#include "Model/Cable/CableAnchor.h"
+#include "Model/Cable/CablePrestress.h"
+#include "Model/Cable/CableAnalysisProperties.h"
+#include "Model/Cable/CableDefinition.h"
+#include "Model/Cable/CableGeometry.h"
+#include "Model/Cable/Cable.h"
+#include "Model/Cable/StayCable.h"
+#include "Model/Cable/SuspensionSystem.h"
+#include "Geometry/CableGeometry3D.h"
+#include "Grid/CableGrid.h"
+#include "Library/CableLibrary.h"
 #include "Grid/CartesianGrid.h"
 #include "Grid/CylindricalGrid.h"
 #include "Grid/ArbitraryGrid.h"
@@ -83,7 +96,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 35;
+    int total = 36;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -3230,6 +3243,359 @@ int main(int argc, char* argv[])
         TEST_CHECK(cancelOnDestroyCalled, "Subtest 35.10: onCancelled called on sender destruction");
 
         std::cout << "[PASS] Test 35: Global Non-Blocking 3D Interactive Selection Mechanism Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 36: Cable & Tension System Comprehensive Test Suite
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 36: Cable & Tension System Comprehensive Test Suite ---" << std::endl;
+
+        // 36.1: Normative Standards Registry (EN 10138-3, EN 10138-4, EN 1993-1-11, ASTM A416)
+        {
+            auto& reg = TSA::Model::CableStandardsRegistry::instance();
+            
+            // EN 10138-3 Toron 15.7mm Y1860S7
+            auto pStrand = reg.findProduct("EN 10138-3", "Y1860S7-15.7");
+            TEST_CHECK(pStrand.has_value(), "Subtest 36.1: EN 10138-3 Y1860S7-15.7 found");
+            if (pStrand.has_value())
+            {
+                TEST_CHECK(std::abs(pStrand->nominalDiameter - 0.0157) < 1e-5, "Subtest 36.1: Strand diameter 15.7mm");
+                TEST_CHECK(std::abs(pStrand->nominalCrossSection - 150e-6) < 1e-7, "Subtest 36.1: Strand area 150 mm²");
+                TEST_CHECK(std::abs(pStrand->elasticModulus - 195e9) < 1e5, "Subtest 36.1: Strand E = 195 GPa");
+                TEST_CHECK(std::abs(pStrand->characteristicStrength - 1860e6) < 1e5, "Subtest 36.1: f_pk = 1860 MPa");
+            }
+
+            // EN 10138-4 Barre Y1030 36mm
+            auto pBar = reg.findProduct("EN 10138-4", "Y1030-36");
+            TEST_CHECK(pBar.has_value(), "Subtest 36.1: EN 10138-4 Y1030-36 found");
+            if (pBar.has_value())
+            {
+                TEST_CHECK(std::abs(pBar->characteristicStrength - 1030e6) < 1e5, "Subtest 36.1: Bar f_pk = 1030 MPa");
+                TEST_CHECK(std::abs(pBar->elasticModulus - 205e9) < 1e5, "Subtest 36.1: Bar E = 205 GPa");
+            }
+
+            // EN 1993-1-11 Câble clos (Locked Coil)
+            auto pLocked = reg.findProduct("EN 1993-1-11", "FLC-120");
+            TEST_CHECK(pLocked.has_value(), "Subtest 36.1: EN 1993-1-11 FLC-120 found");
+            if (pLocked.has_value())
+            {
+                TEST_CHECK(std::abs(pLocked->nominalDiameter - 0.120) < 1e-4, "Subtest 36.1: Locked coil dia 120mm");
+                TEST_CHECK(std::abs(pLocked->elasticModulus - 160e9) < 1e5, "Subtest 36.1: Locked coil E = 160 GPa");
+            }
+
+            // ASTM A416 Grade 270 0.6 inch
+            auto pASTM = reg.findProduct("ASTM A416", "Gr270-0.6in");
+            TEST_CHECK(pASTM.has_value(), "Subtest 36.1: ASTM A416 Grade 270 found");
+
+            std::cout << "  [PASS] Subtest 36.1: Standards Registry (EN 10138-3, EN 10138-4, EN 1993-1-11, ASTM A416) Verified" << std::endl;
+        }
+
+        // 36.2: Cable Creation & Type Specializations
+        {
+            TSA::Model::Model m;
+            int n1 = m.addNode(0, 0, 0);
+            int n2 = m.addNode(10, 0, 0);
+            int n3 = m.addNode(0, 0, 20);
+            int n4 = m.addNode(10, 0, 20);
+
+            int cGeneric = m.addCable(n1, n2, TSA::Model::CableType::Generic);
+            int cStay = m.addCable(n3, n2, TSA::Model::CableType::StayCable);
+            int cSusp = m.addCable(n3, n4, TSA::Model::CableType::SuspensionCable);
+            int cHanger = m.addCable(n4, n2, TSA::Model::CableType::Hanger);
+
+            TEST_CHECK(m.cables().size() == 4, "Subtest 36.2: 4 cables created in Model");
+            TEST_CHECK(m.getCable(cGeneric)->type() == TSA::Model::CableType::Generic, "Subtest 36.2: cGeneric type");
+            TEST_CHECK(m.getCable(cStay)->type() == TSA::Model::CableType::StayCable, "Subtest 36.2: cStay type");
+            TEST_CHECK(m.getCable(cSusp)->type() == TSA::Model::CableType::SuspensionCable, "Subtest 36.2: cSusp type");
+            TEST_CHECK(m.getCable(cHanger)->type() == TSA::Model::CableType::Hanger, "Subtest 36.2: cHanger type");
+
+            std::cout << "  [PASS] Subtest 36.2: Cable Creation & Type Specializations in Model Verified" << std::endl;
+        }
+
+        // 36.3: Geometric Profiles (Straight, Parabolic Sag, Catenary Equation)
+        {
+            TSA::Model::Model m;
+            int n1 = m.addNode(0, 0, 0);
+            int n2 = m.addNode(100, 0, 0);
+
+            TSA::Model::Cable cable(1, n1, n2, "MainSpan", TSA::Model::CableType::SuspensionCable);
+            cable.setGeometryMode(TSA::Model::CableGeometryMode::Straight);
+            TEST_CHECK(std::abs(cable.chordLength(m) - 100.0) < 1e-4, "Subtest 36.3: Straight chord length = 100m");
+            TEST_CHECK(std::abs(cable.arcLength(m) - 100.0) < 1e-4, "Subtest 36.3: Straight arc length = 100m");
+
+            // Mode Parabolique : flèche de 10m sur 100m de portée
+            cable.setGeometryMode(TSA::Model::CableGeometryMode::Parabolic);
+            cable.geometry().setSag(10.0);
+            double expectedApprox = 100.0 * (1.0 + (8.0 * 10.0 * 10.0) / (3.0 * 100.0 * 100.0)); // 102.67m
+            double actualArc = cable.arcLength(m);
+            TEST_CHECK(actualArc > 102.0 && actualArc < 103.5, "Subtest 36.3: Parabolic arc length accurate");
+
+            // Échantillonnage 3D
+            auto samples = cable.sampleWorldPoints(m, 11);
+            TEST_CHECK(samples.size() == 11, "Subtest 36.3: 11 sample points");
+            TEST_CHECK(std::abs(samples.front().X() - 0.0) < 1e-4, "Subtest 36.3: Start sample point at X=0");
+            TEST_CHECK(std::abs(samples.back().X() - 100.0) < 1e-4, "Subtest 36.3: End sample point at X=100");
+            // Point médian : flèche négative Z = -10m
+            TEST_CHECK(std::abs(samples[5].Z() - (-10.0)) < 1e-2, "Subtest 36.3: Midpoint sag at Z = -10m");
+
+            // Mode Caténaire
+            cable.setGeometryMode(TSA::Model::CableGeometryMode::Catenary);
+            cable.geometry().setCatenaryHorizontalTension(1000000.0); // 1 MN
+            cable.geometry().setCatenaryLinearWeight(100.0); // 100 N/m
+            double cParam = cable.geometry().catenaryParameter();
+            TEST_CHECK(std::abs(cParam - 10000.0) < 1e-2, "Subtest 36.3: Catenary parameter c = H/w = 10000m");
+
+            std::cout << "  [PASS] Subtest 36.3: Straight, Parabolic Sag & Catenary Profile Equations Verified" << std::endl;
+        }
+
+        // 36.4: Stay Cable Inclination & Anchor Socket Modeling
+        {
+            TSA::Model::Model m;
+            int nPylon = m.addNode(0, 0, 50);
+            int nDeck = m.addNode(100, 0, 0);
+
+            TSA::Model::StayCable stay(1, nPylon, nDeck, "Stay-01");
+            stay.setStaySystem(TSA::Model::StaySystemMode::Fan);
+            double inclination = stay.inclinationDegrees(m);
+            double expectedAngle = std::atan2(50.0, 100.0) * 180.0 / 3.14159265358979323846;
+            TEST_CHECK(std::abs(inclination - expectedAngle) < 1e-3, "Subtest 36.4: Stay inclination angle correct");
+
+            // Configuration Ancrages
+            stay.startAnchor().setType(TSA::Model::AnchorType::StructuralAnchor);
+            stay.startAnchor().setCapacity(5000e3); // 5 MN
+            stay.startAnchor().setSocketDiameter(0.25);
+            stay.startAnchor().setSocketLength(0.60);
+
+            stay.endAnchor().setType(TSA::Model::AnchorType::PrestressingAnchor);
+            stay.endAnchor().setSlip(0.006); // 6 mm rentrée d'ancrage
+            TEST_CHECK(stay.endAnchor().slip() == 0.006, "Subtest 36.4: End anchor slip 6mm");
+
+            std::cout << "  [PASS] Subtest 36.4: Stay Cable Inclination & Anchor Sockets Verified" << std::endl;
+        }
+
+        // 36.5: Suspension Bridge & Automatic Hanger Generation
+        {
+            TSA::Model::Model m;
+            int p1 = m.addNode(0, 0, 25);
+            int p2 = m.addNode(100, 0, 25);
+
+            TSA::Model::SuspensionBridge bridge("PontSuspenduTest");
+            bridge.setMainSpan(100.0);
+            bridge.setSag(10.0);
+            bridge.setHangerSpacing(10.0);
+
+            // Création de 9 nœuds de tablier entre X=10 et X=90
+            std::vector<int> deckNodeIds;
+            for (int i = 1; i <= 9; ++i)
+            {
+                deckNodeIds.push_back(m.addNode(i * 10.0, 0.0, 0.0));
+            }
+
+            int mainCableId = m.addCable(p1, p2, TSA::Model::CableType::SuspensionCable);
+            m.getCable(mainCableId)->setGeometryMode(TSA::Model::CableGeometryMode::Parabolic);
+            m.getCable(mainCableId)->geometry().setSag(10.0);
+
+            auto generatedHangers = bridge.generateHangers(m, mainCableId, deckNodeIds);
+            TEST_CHECK(generatedHangers.size() == 9, "Subtest 36.5: 9 vertical hangers generated automatically");
+            
+            // Vérifier que chaque suspente est verticale et connectée à un nœud de tablier
+            for (size_t i = 0; i < generatedHangers.size(); ++i)
+            {
+                const auto* h = m.getCable(generatedHangers[i]);
+                TEST_CHECK(h != nullptr, "Subtest 36.5: Hanger exists in Model");
+                TEST_CHECK(h->type() == TSA::Model::CableType::Hanger, "Subtest 36.5: Element is Hanger");
+                const auto* nDeck = m.getNode(h->endNodeId());
+                const auto* nCable = m.getNode(h->startNodeId());
+                TEST_CHECK(std::abs(nDeck->x() - nCable->x()) < 1e-4, "Subtest 36.5: Hanger is perfectly vertical in X");
+                TEST_CHECK(nCable->z() > nDeck->z(), "Subtest 36.5: Top cable node is above deck node");
+            }
+
+            std::cout << "  [PASS] Subtest 36.5: Suspension Bridge Automatic Hanger Generator Verified" << std::endl;
+        }
+
+        // 36.6: Prestress & Non-Linear Ernst Equivalent Modulus
+        {
+            TSA::Model::CablePrestress prestress;
+            prestress.initialTension = 150000.0; // 150 kN
+            double A = 150e-6; // 150 mm²
+            double E = 195e9;  // 195 GPa
+            double strain = prestress.calculateStrain(A, E);
+            TEST_CHECK(std::abs(strain - (150000.0 / (150e-6 * 195e9))) < 1e-7, "Subtest 36.6: Initial strain calculation");
+
+            // Calcul du module d'Ernst : E_eq = E / (1 + (w*L)^2 * E * A / (12 * T^3))
+            double L = 100.0; // 100m
+            double w = 15.0;  // 15 N/m
+            double T_high = 500000.0; // 500 kN
+            double E_eq_high = TSA::Model::CableAnalysisProperties::calculateErnstEquivalentModulus(E, A, w, L, T_high);
+            // Sous forte tension, E_eq doit être très proche de E (perte < 1%)
+            TEST_CHECK(E_eq_high > 0.99 * E && E_eq_high <= E, "Subtest 36.6: Ernst modulus near nominal E under high tension");
+
+            // Sous faible tension (5 kN), le mou réduit considérablement le module effectif
+            double T_low = 5000.0;
+            double E_eq_low = TSA::Model::CableAnalysisProperties::calculateErnstEquivalentModulus(E, A, w, L, T_low);
+            TEST_CHECK(E_eq_low < 0.5 * E, "Subtest 36.6: Significant Ernst modulus reduction under low tension");
+
+            // Pertes de frottement (Eurocode 2)
+            double lossFriction = prestress.calculateFrictionLoss(100.0, 0.15);
+            TEST_CHECK(lossFriction > 0.0 && lossFriction < prestress.initialTension, "Subtest 36.6: Friction loss calculation valid");
+
+            std::cout << "  [PASS] Subtest 36.6: Prestressing & Non-Linear Ernst Modulus Formulations Verified" << std::endl;
+        }
+
+        // 36.7: OpenCASCADE 3D Solid Geometry Generation
+        {
+            gp_Pnt pA(0, 0, 0);
+            gp_Pnt pB(50, 0, 0);
+
+            // Câble droit cylindrique
+            TopoDS_Shape straightShape = TSA::Geometry::CableGeometry3D::createStraightCable(pA, pB, 0.030);
+            TEST_CHECK(!straightShape.IsNull(), "Subtest 36.7: Straight cable solid shape created");
+
+            Bnd_Box bnd;
+            BRepBndLib::Add(straightShape, bnd);
+            double xmin, ymin, zmin, xmax, ymax, zmax;
+            bnd.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+            TEST_CHECK(std::abs(xmax - xmin - 50.0) < 0.1, "Subtest 36.7: Solid bounding box length ~50m");
+
+            // Câble courbe par balayage (Pipe)
+            std::vector<gp_Pnt> curvePts = { gp_Pnt(0, 0, 10), gp_Pnt(25, 0, 5), gp_Pnt(50, 0, 10) };
+            TopoDS_Shape curvedShape = TSA::Geometry::CableGeometry3D::createCurvedCable(curvePts, 0.025);
+            TEST_CHECK(!curvedShape.IsNull(), "Subtest 36.7: Curved pipe solid shape created");
+
+            // Culot d'ancrage
+            TopoDS_Shape socketShape = TSA::Geometry::CableGeometry3D::createAnchorSocket(pA, pB, 0.15, 0.40);
+            TEST_CHECK(!socketShape.IsNull(), "Subtest 36.7: Anchor socket solid shape created");
+
+            std::cout << "  [PASS] Subtest 36.7: OpenCASCADE B-Rep 3D Solid Generation (Cylinders & Swept Pipes) Verified" << std::endl;
+        }
+
+        // 36.8: Model Cascading Deletions on Node Removal
+        {
+            TSA::Model::Model m;
+            int n1 = m.addNode(0, 0, 0);
+            int n2 = m.addNode(10, 0, 0);
+            int n3 = m.addNode(20, 0, 0);
+
+            int c1 = m.addCable(n1, n2);
+            int c2 = m.addCable(n2, n3);
+            (void)c1;
+            (void)c2;
+            TEST_CHECK(m.cables().size() == 2, "Subtest 36.8: 2 cables initially");
+
+            // Supprimer le nœud pivot n2 -> les deux câbles c1 et c2 doivent être supprimés en cascade
+            m.removeNode(n2);
+            TEST_CHECK(m.cables().empty(), "Subtest 36.8: Connected cables cascaded upon node removal");
+
+            std::cout << "  [PASS] Subtest 36.8: Model Cascading Deletions on Node Removal Verified" << std::endl;
+        }
+
+        // 36.9: ModelDiff & Differential Undo/Redo with Cables
+        {
+            class CableTestObserver : public TSA::Model::IModelObserver
+            {
+            public:
+                int diffCount = 0;
+                TSA::Model::ModelDiff lastDiff;
+                void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override
+                {
+                    diffCount++;
+                    lastDiff = diff;
+                }
+                void onModelCleared() override {}
+            };
+
+            TSA::Model::Model m;
+            CableTestObserver obs;
+            m.addObserver(&obs);
+
+            int n1 = m.addNode(0, 0, 0);
+            int n2 = m.addNode(30, 0, 0);
+
+            m.pushUndoState("Création Câble Diff");
+            int cId = m.addCable(n1, n2, TSA::Model::CableType::StayCable);
+
+            m.pushUndoState("Modification Câble");
+            auto* cab = m.getCable(cId);
+            cab->definition().setNominalDiameter(0.045);
+            m.notifyCableModified(cId);
+
+            // Annuler la modification
+            m.undo();
+            TEST_CHECK(obs.lastDiff.modifiedCableIds.size() == 1, "Subtest 36.9: Modified cable diff on undo");
+            TEST_CHECK(obs.lastDiff.modifiedCableIds[0] == cId, "Subtest 36.9: Correct cable ID in diff");
+
+            // Annuler la création
+            m.undo();
+            TEST_CHECK(obs.lastDiff.deletedCableIds.size() == 1, "Subtest 36.9: Deleted cable diff on undo");
+            TEST_CHECK(m.cables().empty(), "Subtest 36.9: Cable removed on undo");
+
+            // Rétablir la création
+            m.redo();
+            TEST_CHECK(obs.lastDiff.createdCableIds.size() == 1, "Subtest 36.9: Created cable diff on redo");
+            TEST_CHECK(m.cables().size() == 1, "Subtest 36.9: Cable restored on redo");
+
+            m.removeObserver(&obs);
+            std::cout << "  [PASS] Subtest 36.9: ModelDiff & Differential Undo/Redo for Cables Validated" << std::endl;
+        }
+
+        // 36.10: Complete TSA File Format Save/Load Round-Trip
+        {
+            TSA::Model::Model mSave;
+            int nA = mSave.addNode(0, 0, 0);
+            int nB = mSave.addNode(50, 0, 20);
+
+            int cId = mSave.addCable(nA, nB, TSA::Model::CableType::StayCable);
+            auto* cab = mSave.getCable(cId);
+            cab->setName("CableHaubanNord");
+            cab->setGeometryMode(TSA::Model::CableGeometryMode::Straight);
+            cab->definition().setStandardName("EN 1993-1-11");
+            cab->definition().setGrade("FLC-90");
+            cab->definition().setNominalDiameter(0.090);
+            cab->definition().setMetallicArea(0.0055);
+            cab->definition().setElasticModulus(160e9);
+            cab->definition().setDefaultInitialTension(750000.0);
+            cab->prestress().initialTension = 750000.0; // 750 kN
+            cab->startAnchor().setType(TSA::Model::AnchorType::StructuralAnchor);
+            cab->startAnchor().setCapacity(4000e3);
+            cab->endAnchor().setType(TSA::Model::AnchorType::PrestressingAnchor);
+            cab->endAnchor().setSlip(0.005);
+            cab->analysisProperties().tensionOnly = true;
+
+            std::string tempFile = (std::filesystem::temp_directory_path() / "test_cable_io.tsa").string();
+            std::string errMsg;
+
+            TSA::IO::TSAFileWriter writer;
+            writer.setCompressionEnabled(false);
+            bool saved = writer.saveToFile(tempFile, mSave, nullptr, "ProjetCableTest", "IngénieurTSA", &errMsg);
+            TEST_CHECK(saved, "Subtest 36.10: TSA file with CABL chunk saved successfully");
+
+            TSA::Model::Model mLoad;
+            TSA::IO::TSAFileReader reader;
+            bool loaded = reader.loadFromFile(tempFile, mLoad, nullptr, "", nullptr, nullptr, nullptr, &errMsg);
+            TEST_CHECK(loaded, "Subtest 36.10: TSA file loaded successfully");
+
+            TEST_CHECK(mLoad.cables().size() == 1, "Subtest 36.10: Exactly 1 cable restored");
+            const auto* cLoaded = mLoad.getCable(cId);
+            TEST_CHECK(cLoaded != nullptr, "Subtest 36.10: Cable found by original ID");
+            if (cLoaded)
+            {
+                TEST_CHECK(cLoaded->name() == "CableHaubanNord", "Subtest 36.10: Cable name preserved");
+                TEST_CHECK(cLoaded->type() == TSA::Model::CableType::StayCable, "Subtest 36.10: Cable type preserved");
+                TEST_CHECK(std::abs(cLoaded->definition().nominalDiameter() - 0.090) < 1e-5, "Subtest 36.10: Diameter preserved");
+                TEST_CHECK(std::abs(cLoaded->definition().elasticModulus() - 160e9) < 1e3, "Subtest 36.10: Modulus preserved");
+                TEST_CHECK(std::abs(cLoaded->prestress().initialTension - 750000.0) < 1.0, "Subtest 36.10: Initial tension preserved");
+                TEST_CHECK(cLoaded->startAnchor().type() == TSA::Model::AnchorType::StructuralAnchor, "Subtest 36.10: Start anchor preserved");
+                TEST_CHECK(std::abs(cLoaded->endAnchor().slip() - 0.005) < 1e-6, "Subtest 36.10: Anchorage slip preserved");
+                TEST_CHECK(cLoaded->analysisProperties().tensionOnly == true, "Subtest 36.10: Tension-only flag preserved");
+            }
+
+            std::filesystem::remove(tempFile);
+            std::cout << "  [PASS] Subtest 36.10: Complete TSA File Binary Save/Load Round-Trip Validated" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 36: Cable & Tension System Comprehensive Test Suite (10 Subtests Validated) Passed Successfully!" << std::endl;
         passed++;
     }
 

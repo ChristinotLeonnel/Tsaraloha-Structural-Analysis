@@ -89,6 +89,7 @@ private:
     void writeWallChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Wall>& walls);
     void writeFoundationChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Foundation>& foundations);
     void writeTrussChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::TrussMember>& trussMembers);
+    void writeCableChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Cable>& cables);
 
 private:
     bool m_useCompression = true;
@@ -144,6 +145,7 @@ private:
     bool readWallChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Wall>& walls, std::string* errorMessage);
     bool readFoundationChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Foundation>& foundations, std::string* errorMessage);
     bool readTrussChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::TrussMember>& trussMembers, std::string* errorMessage);
+    bool readCableChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Cable>& cables, std::string* errorMessage);
 
 private:
     std::shared_ptr<ICompressionProvider> m_compressor;

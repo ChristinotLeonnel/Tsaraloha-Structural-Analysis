@@ -3,6 +3,7 @@
 #include "../../Library/LibraryManager.h"
 #include "../../Model/ModelDiff.h"
 #include "../../Model/MaterialLibrary.h"
+#include "../../Model/Cable/Cable.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -1357,6 +1358,118 @@ void PropertyPanel::setupUi()
 
     containerLayout->addWidget(m_trussGroup);
 
+    // --- GROUPE CÂBLE & TENSION SYSTEM ---
+    m_cableGroup = new QGroupBox(tr("Câble / Système de Tension"), container);
+    auto* cabForm = new QFormLayout(m_cableGroup);
+
+    m_cableNameEdit = new QLineEdit(m_cableGroup);
+    m_cableIdLabel = new QLabel(m_cableGroup);
+    m_cableStartNodeLabel = new QLabel(m_cableGroup);
+    m_cableEndNodeLabel = new QLabel(m_cableGroup);
+    m_cableLengthLabel = new QLabel(m_cableGroup);
+
+    m_cableTypeCombo = new QComboBox(m_cableGroup);
+    m_cableTypeCombo->addItem(tr("Générique"), static_cast<int>(TSA::Model::CableType::Generic));
+    m_cableTypeCombo->addItem(tr("Toron (Strand)"), static_cast<int>(TSA::Model::CableType::Strand));
+    m_cableTypeCombo->addItem(tr("Fil tréfilé (Wire)"), static_cast<int>(TSA::Model::CableType::Wire));
+    m_cableTypeCombo->addItem(tr("Barre précontrainte"), static_cast<int>(TSA::Model::CableType::PrestressingBar));
+    m_cableTypeCombo->addItem(tr("Hauban (Stay Cable)"), static_cast<int>(TSA::Model::CableType::StayCable));
+    m_cableTypeCombo->addItem(tr("Câble porteur suspendu"), static_cast<int>(TSA::Model::CableType::SuspensionCable));
+    m_cableTypeCombo->addItem(tr("Suspente verticale"), static_cast<int>(TSA::Model::CableType::Hanger));
+    m_cableTypeCombo->addItem(tr("Précontrainte extérieure"), static_cast<int>(TSA::Model::CableType::ExternalPrestressing));
+    m_cableTypeCombo->addItem(tr("Tirant d'ancrage"), static_cast<int>(TSA::Model::CableType::GroundAnchor));
+
+    m_cableGeomModeCombo = new QComboBox(m_cableGroup);
+    m_cableGeomModeCombo->addItem(tr("Droit (Straight chord)"), static_cast<int>(TSA::Model::CableGeometryMode::Straight));
+    m_cableGeomModeCombo->addItem(tr("Parabolique (Tension & flèche)"), static_cast<int>(TSA::Model::CableGeometryMode::Parabolic));
+    m_cableGeomModeCombo->addItem(tr("Caténaire (Catenary exact)"), static_cast<int>(TSA::Model::CableGeometryMode::Catenary));
+
+    m_cableDiaSpin = new QDoubleSpinBox(m_cableGroup);
+    m_cableDiaSpin->setRange(1.0, 500.0);
+    m_cableDiaSpin->setSingleStep(1.0);
+    m_cableDiaSpin->setSuffix(" mm");
+
+    m_cableAreaSpin = new QDoubleSpinBox(m_cableGroup);
+    m_cableAreaSpin->setRange(1.0, 100000.0);
+    m_cableAreaSpin->setSingleStep(10.0);
+    m_cableAreaSpin->setSuffix(" mm²");
+
+    m_cableModulusSpin = new QDoubleSpinBox(m_cableGroup);
+    m_cableModulusSpin->setRange(50.0, 300.0);
+    m_cableModulusSpin->setSingleStep(5.0);
+    m_cableModulusSpin->setSuffix(" GPa");
+
+    m_cableInitialTensionSpin = new QDoubleSpinBox(m_cableGroup);
+    m_cableInitialTensionSpin->setRange(0.0, 100000.0);
+    m_cableInitialTensionSpin->setSingleStep(10.0);
+    m_cableInitialTensionSpin->setSuffix(" kN");
+
+    m_cableSagSpin = new QDoubleSpinBox(m_cableGroup);
+    m_cableSagSpin->setRange(0.0, 100.0);
+    m_cableSagSpin->setSingleStep(0.1);
+    m_cableSagSpin->setSuffix(" m");
+
+    m_cableStartAnchorCombo = new QComboBox(m_cableGroup);
+    m_cableStartAnchorCombo->addItem(tr("Encastré"), static_cast<int>(TSA::Model::AnchorType::Fixed));
+    m_cableStartAnchorCombo->addItem(tr("Articulé"), static_cast<int>(TSA::Model::AnchorType::Pinned));
+    m_cableStartAnchorCombo->addItem(tr("Tête de précontrainte"), static_cast<int>(TSA::Model::AnchorType::PrestressingAnchor));
+    m_cableStartAnchorCombo->addItem(tr("Culot / Trompette de hauban"), static_cast<int>(TSA::Model::AnchorType::StructuralAnchor));
+
+    m_cableEndAnchorCombo = new QComboBox(m_cableGroup);
+    m_cableEndAnchorCombo->addItem(tr("Encastré"), static_cast<int>(TSA::Model::AnchorType::Fixed));
+    m_cableEndAnchorCombo->addItem(tr("Articulé"), static_cast<int>(TSA::Model::AnchorType::Pinned));
+    m_cableEndAnchorCombo->addItem(tr("Tête de précontrainte"), static_cast<int>(TSA::Model::AnchorType::PrestressingAnchor));
+    m_cableEndAnchorCombo->addItem(tr("Culot / Trompette de hauban"), static_cast<int>(TSA::Model::AnchorType::StructuralAnchor));
+
+    m_cableTensionOnlyCheck = new QCheckBox(tr("Traction seule (Tension-only)"), m_cableGroup);
+    m_cableTensionOnlyCheck->setChecked(true);
+
+    m_cableErnstModulusLabel = new QLabel(m_cableGroup);
+
+    m_cableColorBtn = new QPushButton(m_cableGroup);
+    m_cableColor = "#3296DC";
+    setupColorButton(m_cableColorBtn, m_cableColor);
+    connect(m_cableColorBtn, &QPushButton::clicked, this, [this]() {
+        pickColor(m_cableColor, m_cableColorBtn, tr("Couleur du Câble"));
+    });
+
+    cabForm->addRow(tr("Nom / Repère :"), m_cableNameEdit);
+    cabForm->addRow(tr("ID Interne :"), m_cableIdLabel);
+    cabForm->addRow(tr("Nœud Début :"), m_cableStartNodeLabel);
+    cabForm->addRow(tr("Nœud Fin :"), m_cableEndNodeLabel);
+    cabForm->addRow(tr("Longueur de corde :"), m_cableLengthLabel);
+    cabForm->addRow(tr("Type de Câble :"), m_cableTypeCombo);
+    cabForm->addRow(tr("Profil Géométrique :"), m_cableGeomModeCombo);
+    cabForm->addRow(tr("Diamètre Nominal :"), m_cableDiaSpin);
+    cabForm->addRow(tr("Section d'acier :"), m_cableAreaSpin);
+    cabForm->addRow(tr("Module Élastique E :"), m_cableModulusSpin);
+    cabForm->addRow(tr("Tension Initiale N0 :"), m_cableInitialTensionSpin);
+    cabForm->addRow(tr("Flèche / Sag :"), m_cableSagSpin);
+    cabForm->addRow(tr("Ancrage Début :"), m_cableStartAnchorCombo);
+    cabForm->addRow(tr("Ancrage Fin :"), m_cableEndAnchorCombo);
+    cabForm->addRow(tr("Comportement EF :"), m_cableTensionOnlyCheck);
+    cabForm->addRow(tr("Module Ernst E_eq :"), m_cableErnstModulusLabel);
+    cabForm->addRow(tr("Couleur 3D :"), m_cableColorBtn);
+
+    auto* btnApplyCab = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer les modifications"), m_cableGroup);
+    btnApplyCab->setStyleSheet("font-weight: bold; background: #007acc; color: white; padding: 6px 12px; border-radius: 4px;");
+    connect(btnApplyCab, &QPushButton::clicked, this, &PropertyPanel::onApplyCable);
+    cabForm->addRow(btnApplyCab);
+
+    connect(m_cableNameEdit, &QLineEdit::editingFinished, this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableGeomModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableDiaSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableAreaSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableModulusSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableInitialTensionSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableSagSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableStartAnchorCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableEndAnchorCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PropertyPanel::onWidgetChanged);
+    connect(m_cableTensionOnlyCheck, &QCheckBox::toggled, this, &PropertyPanel::onWidgetChanged);
+
+    containerLayout->addWidget(m_cableGroup);
+
     containerLayout->addStretch();
     scrollArea->setWidget(container);
     mainLayout->addWidget(scrollArea);
@@ -1371,6 +1484,7 @@ void PropertyPanel::hideAllGroups()
     m_wallGroup->setVisible(false);
     m_foundationGroup->setVisible(false);
     m_trussGroup->setVisible(false);
+    m_cableGroup->setVisible(false);
 }
 
 void PropertyPanel::clearProperties()
@@ -1384,6 +1498,7 @@ void PropertyPanel::clearProperties()
     m_currentWallId = -1;
     m_currentFoundationId = -1;
     m_currentTrussId = -1;
+    m_currentCableId = -1;
 
     m_titleLabel->setText(tr("PROPRIÉTÉS STRUCTURALES"));
     m_emptyLabel->setVisible(true);
@@ -1773,6 +1888,62 @@ void PropertyPanel::showTrussMemberProperties(int memberId)
     m_trussGroup->setVisible(true);
 }
 
+void PropertyPanel::showCableProperties(int cableId)
+{
+    LoadingGuard guard(m_isLoading);
+    if (!m_model) return;
+    const auto* cable = m_model->getCable(cableId);
+    if (!cable) return;
+
+    clearProperties();
+    m_currentType = CurrentType::Cable;
+    m_currentCableId = cableId;
+    m_emptyLabel->setVisible(false);
+    m_titleLabel->setText(tr("PROPRIÉTÉS DU CÂBLE / SYSTÈME DE TENSION"));
+
+    m_cableNameEdit->setText(QString::fromStdString(cable->formattedName()));
+    m_cableIdLabel->setText(QString::number(cable->id()));
+    m_cableStartNodeLabel->setText(QString("N%1").arg(cable->startNodeId()));
+    m_cableEndNodeLabel->setText(QString("N%1").arg(cable->endNodeId()));
+
+    double chordLen = cable->chordLength(*m_model);
+    m_cableLengthLabel->setText(QString("%1 m").arg(chordLen, 0, 'f', 3));
+
+    int typeIdx = m_cableTypeCombo->findData(static_cast<int>(cable->type()));
+    if (typeIdx >= 0) m_cableTypeCombo->setCurrentIndex(typeIdx);
+
+    int geomIdx = m_cableGeomModeCombo->findData(static_cast<int>(cable->geometryMode()));
+    if (geomIdx >= 0) m_cableGeomModeCombo->setCurrentIndex(geomIdx);
+
+    // Diameter in mm
+    m_cableDiaSpin->setValue(cable->definition().nominalDiameter() * 1000.0);
+    // Area in mm2
+    m_cableAreaSpin->setValue(cable->definition().area() * 1e6);
+    // Modulus in GPa
+    m_cableModulusSpin->setValue(cable->definition().elasticModulus() / 1e9);
+    // Initial tension in kN
+    m_cableInitialTensionSpin->setValue(cable->prestress().initialTension / 1000.0);
+    // Sag in m
+    m_cableSagSpin->setValue(cable->geometry().sag());
+
+    int startAncIdx = m_cableStartAnchorCombo->findData(static_cast<int>(cable->startAnchor().type()));
+    if (startAncIdx >= 0) m_cableStartAnchorCombo->setCurrentIndex(startAncIdx);
+
+    int endAncIdx = m_cableEndAnchorCombo->findData(static_cast<int>(cable->endAnchor().type()));
+    if (endAncIdx >= 0) m_cableEndAnchorCombo->setCurrentIndex(endAncIdx);
+
+    m_cableTensionOnlyCheck->setChecked(cable->analysisProperties().tensionOnly);
+
+    // Ernst equivalent modulus
+    double E_eq = cable->equivalentElasticModulus(*m_model);
+    m_cableErnstModulusLabel->setText(QString("%1 GPa").arg(E_eq / 1e9, 0, 'f', 2));
+
+    m_cableColor = "#3296DC";
+    setupColorButton(m_cableColorBtn, m_cableColor);
+
+    m_cableGroup->setVisible(true);
+}
+
 void PropertyPanel::onApplyNode()
 {
     if (!m_model || m_currentNodeId < 0) return;
@@ -2036,6 +2207,34 @@ void PropertyPanel::onApplyTruss()
     emit elementModified();
 }
 
+void PropertyPanel::onApplyCable()
+{
+    if (!m_model || m_currentCableId < 0) return;
+    auto* cable = m_model->getCable(m_currentCableId);
+    if (!cable) return;
+
+    SelfUpdateGuard selfGuard(m_isUpdatingFromSelf);
+    m_model->pushUndoState(tr("Modification Câble %1").arg(m_currentCableId).toStdString());
+
+    cable->setName(m_cableNameEdit->text().toStdString());
+    cable->setType(static_cast<TSA::Model::CableType>(m_cableTypeCombo->currentData().toInt()));
+    cable->setGeometryMode(static_cast<TSA::Model::CableGeometryMode>(m_cableGeomModeCombo->currentData().toInt()));
+
+    cable->definition().setNominalDiameter(m_cableDiaSpin->value() / 1000.0);
+    cable->definition().setArea(m_cableAreaSpin->value() / 1e6);
+    cable->definition().setElasticModulus(m_cableModulusSpin->value() * 1e9);
+    cable->prestress().initialTension = m_cableInitialTensionSpin->value() * 1000.0;
+    cable->definition().setInitialTension(cable->prestress().initialTension);
+    cable->geometry().setSag(m_cableSagSpin->value());
+
+    cable->startAnchor().setType(static_cast<TSA::Model::AnchorType>(m_cableStartAnchorCombo->currentData().toInt()));
+    cable->endAnchor().setType(static_cast<TSA::Model::AnchorType>(m_cableEndAnchorCombo->currentData().toInt()));
+    cable->analysisProperties().tensionOnly = m_cableTensionOnlyCheck->isChecked();
+
+    m_model->notifyCableModified(m_currentCableId);
+    emit elementModified();
+}
+
 void PropertyPanel::onWidgetChanged()
 {
     if (m_isLoading)
@@ -2065,6 +2264,9 @@ void PropertyPanel::onWidgetChanged()
         break;
     case CurrentType::Truss:
         onApplyTruss();
+        break;
+    case CurrentType::Cable:
+        onApplyCable();
         break;
     default:
         break;
@@ -2194,6 +2396,23 @@ void PropertyPanel::onTrussMemberRemoved(int memberId)
     }
 }
 
+void PropertyPanel::onCableModified(const TSA::Model::Cable& cable)
+{
+    if (m_isUpdatingFromSelf) return;
+    if (m_currentType == CurrentType::Cable && m_currentCableId == cable.id())
+    {
+        showCableProperties(cable.id());
+    }
+}
+
+void PropertyPanel::onCableRemoved(int cableId)
+{
+    if (m_currentType == CurrentType::Cable && m_currentCableId == cableId)
+    {
+        clearProperties();
+    }
+}
+
 void PropertyPanel::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
 {
     if (m_isUpdatingFromSelf) return;
@@ -2216,6 +2435,11 @@ void PropertyPanel::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
     {
         for (int id : diff.slabs.modified) { if (id == m_currentSlabId) { showSlabProperties(id); break; } }
         for (int id : diff.slabs.deleted) { if (id == m_currentSlabId) { clearProperties(); break; } }
+    }
+    else if (m_currentType == CurrentType::Cable && m_currentCableId >= 0)
+    {
+        for (int id : diff.modifiedCableIds) { if (id == m_currentCableId) { showCableProperties(id); break; } }
+        for (int id : diff.deletedCableIds) { if (id == m_currentCableId) { clearProperties(); break; } }
     }
 }
 

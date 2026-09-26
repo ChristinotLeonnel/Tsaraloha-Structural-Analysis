@@ -60,6 +60,7 @@ constexpr uint32_t CHUNK_SLAB = 0x42414C53; // 'SLAB' : Dalles & planchers surfa
 constexpr uint32_t CHUNK_WALL = 0x4C4C4157; // 'WALL' : Voiles et murs porteurs
 constexpr uint32_t CHUNK_FNDN = 0x4E444E46; // 'FNDN' : Fondations (semelles isolées/filantes, radiers, pieux)
 constexpr uint32_t CHUNK_TRUS = 0x53555254; // 'TRUS' : Barres de treillis & contreventements
+constexpr uint32_t CHUNK_CABL = 0x4C424143; // 'CABL' : Câbles, haubans, suspentes et systèmes de tension
 constexpr uint32_t CHUNK_LOAD = 0x44414F4C; // 'LOAD' : Cas de charges, combinaisons & chargements
 constexpr uint32_t CHUNK_SETT = 0x54544553; // 'SETT' : Paramètres d'analyse & calcul
 constexpr uint32_t CHUNK_RSLT = 0x544C5352; // 'RSLT' : Résultats de calcul EF (déplacements, efforts, contraintes)

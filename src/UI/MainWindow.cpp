@@ -1121,6 +1121,15 @@ void MainWindow::createDockWindows()
         }
     });
 
+    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::cableSelected, this, [this](int cableId) {
+        m_occView->highlightCable(cableId);
+        m_propertyPanel->showCableProperties(cableId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Câble sélectionné %1").arg(cableId));
+        }
+    });
+
     connect(m_propertyPanel, &TSA::UI::PropertyPanel::elementModified, this, [this]() {
         m_modelTree->refreshAll();
         m_occView->update();

@@ -9,6 +9,8 @@
 #include "../Model/Wall.h"
 #include "../Model/Foundation.h"
 #include "../Model/TrussMember.h"
+#include "../Model/Cable/Cable.h"
+#include "../Geometry/CableGeometry3D.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
 #include "../UI/Theme/ThemeManager.h"
@@ -205,6 +207,21 @@ void OccView::onTrussMemberRemoved(int memberId)
     removeTrussMemberShape(memberId);
 }
 
+void OccView::onCableAdded(const TSA::Model::Cable& cable)
+{
+    updateCableShape(cable.id());
+}
+
+void OccView::onCableModified(const TSA::Model::Cable& cable)
+{
+    updateCableShape(cable.id());
+}
+
+void OccView::onCableRemoved(int cableId)
+{
+    removeCableShape(cableId);
+}
+
 void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
 {
     if (m_context.IsNull() || !m_model)
@@ -218,6 +235,7 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
     for (int id : diff.deletedWallIds) removeWallShape(id, false);
     for (int id : diff.deletedFoundationIds) removeFoundationShape(id, false);
     for (int id : diff.deletedTrussMemberIds) removeTrussMemberShape(id, false);
+    for (int id : diff.deletedCableIds) removeCableShape(id, false);
 
     // 2. Mettre à jour uniquement les objets créés et modifiés (sans redraw intermédiaire)
     for (int id : diff.createdNodeIds) updateNodeShape(id, false);
@@ -227,6 +245,7 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
     for (int id : diff.createdWallIds) updateWallShape(id, false);
     for (int id : diff.createdFoundationIds) updateFoundationShape(id, false);
     for (int id : diff.createdTrussMemberIds) updateTrussMemberShape(id, false);
+    for (int id : diff.createdCableIds) updateCableShape(id, false);
 
     for (int id : diff.modifiedNodeIds) updateNodeShape(id, false);
     for (int id : diff.modifiedBeamIds) updateBeamShape(id, false);
@@ -235,6 +254,7 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
     for (int id : diff.modifiedWallIds) updateWallShape(id, false);
     for (int id : diff.modifiedFoundationIds) updateFoundationShape(id, false);
     for (int id : diff.modifiedTrussMemberIds) updateTrussMemberShape(id, false);
+    for (int id : diff.modifiedCableIds) updateCableShape(id, false);
 
     // 3. Une SEULE passe d'actualisation de la vue graphique OCCT
     // AUCUN fitAll(), la caméra et le zoom sont rigoureusement préservés !
@@ -517,6 +537,24 @@ void OccView::highlightTrussMember(int memberId)
     }
 }
 
+void OccView::highlightCable(int cableId)
+{
+    if (m_context.IsNull())
+        return;
+
+    m_context->ClearSelected(false);
+    auto it = m_cableShapes.find(cableId);
+    if (it != m_cableShapes.end())
+    {
+        m_context->SetSelected(it->second, false);
+    }
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
 void OccView::clearHighlight()
 {
     if (m_context.IsNull())
@@ -578,6 +616,12 @@ void OccView::rebuildAllShapes()
     }
     m_trussShapes.clear();
 
+    for (auto& [id, aisShape] : m_cableShapes)
+    {
+        m_context->Remove(aisShape, false);
+    }
+    m_cableShapes.clear();
+
     if (m_selectionManager)
     {
         m_selectionManager->clearRegistry();
@@ -626,6 +670,12 @@ void OccView::rebuildAllShapes()
     for (const auto& [trId, tr] : m_model->trussMembers())
     {
         updateTrussMemberShape(trId);
+    }
+
+    // 8. Créer les formes des câbles
+    for (const auto& [cableId, cable] : m_model->cables())
+    {
+        updateCableShape(cableId, false);
     }
 
     m_context->UpdateCurrentViewer();
@@ -768,6 +818,11 @@ void OccView::setRenderDisplayMode(TSA::Viewer::RenderDisplayMode mode)
     {
         const auto* tr = m_model->getTrussMember(id);
         if (tr) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, tr->material(), tr->color(), m_renderDisplayMode);
+    }
+    for (const auto& [id, shape] : m_cableShapes)
+    {
+        const auto* c = m_model->getCable(id);
+        if (c) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, c->material(), c->color(), m_renderDisplayMode);
     }
 
     m_context->UpdateCurrentViewer();
@@ -1140,6 +1195,58 @@ void OccView::updateTrussMemberShape(int memberId, bool redrawImmediately)
     }
 }
 
+void OccView::updateCableShape(int cableId, bool redrawImmediately)
+{
+    if (m_context.IsNull() || !m_model)
+        return;
+
+    bool wasSelected = m_selectionManager && m_selectionManager->selectedCables().count(cableId) > 0;
+
+    const auto* cable = m_model->getCable(cableId);
+    if (!cable)
+        return;
+
+    auto it = m_cableShapes.find(cableId);
+    if (it != m_cableShapes.end())
+    {
+        m_context->Remove(it->second, false);
+        m_cableShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterCable(cableId);
+        }
+    }
+
+    TopoDS_Shape shape = TSA::Geometry::CableGeometry3D::createCableShape(*cable, *m_model, true);
+    if (!shape.IsNull())
+    {
+        Handle(AIS_Shape) aisCable = new AIS_Shape(shape);
+        TSA::Viewer::MaterialVisual::instance().applyToShape(aisCable, cable->material(), cable->color(), m_renderDisplayMode);
+
+        m_context->Display(aisCable, false);
+        m_cableShapes[cableId] = aisCable;
+        if (m_selectionManager)
+        {
+            m_selectionManager->registerCable(cableId, aisCable);
+            if (wasSelected)
+            {
+                m_selectionManager->selectCable(cableId, true);
+                m_context->SetSelected(aisCable, false);
+            }
+        }
+    }
+
+    if (redrawImmediately)
+    {
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->ZFitAll();
+            m_view->Redraw();
+        }
+    }
+}
+
 void OccView::removeNodeShape(int nodeId, bool redrawImmediately)
 {
     auto it = m_nodeShapes.find(nodeId);
@@ -1319,6 +1426,33 @@ void OccView::removeTrussMemberShape(int memberId, bool redrawImmediately)
         if (m_selectionManager)
         {
             m_selectionManager->unregisterTrussMember(memberId);
+        }
+    }
+
+    if (redrawImmediately && !m_view.IsNull())
+    {
+        m_view->ZFitAll();
+        m_view->Redraw();
+    }
+}
+
+void OccView::removeCableShape(int cableId, bool redrawImmediately)
+{
+    auto it = m_cableShapes.find(cableId);
+    if (it != m_cableShapes.end())
+    {
+        if (!m_context.IsNull())
+        {
+            m_context->Remove(it->second, false);
+            if (redrawImmediately)
+            {
+                m_context->UpdateCurrentViewer();
+            }
+        }
+        m_cableShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterCable(cableId);
         }
     }
 
@@ -1810,6 +1944,22 @@ void OccView::setInteractionMode(InteractionMode mode)
         setCursor(Qt::CrossCursor);
         emit drawingPromptChanged(tr("Mode Dessin Treillis : Cliquez pour sélectionner ou créer le 1er nœud"));
         break;
+    case InteractionMode::DrawCable:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Mode Dessin Câble : Cliquez pour sélectionner ou créer le 1er nœud"));
+        break;
+    case InteractionMode::DrawStayCable:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Mode Dessin Hauban : Cliquez sur le nœud de pylône"));
+        break;
+    case InteractionMode::DrawSuspensionCable:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Mode Dessin Câble Porteur : Cliquez sur le premier ancrage/pylône"));
+        break;
+    case InteractionMode::DrawHanger:
+        setCursor(Qt::CrossCursor);
+        emit drawingPromptChanged(tr("Mode Dessin Suspente : Cliquez sur le câble porteur ou nœud supérieur"));
+        break;
     case InteractionMode::Move3D:
         setCursor(Qt::CrossCursor);
         m_hasBasePoint = false;
@@ -1940,6 +2090,18 @@ void OccView::cancelCurrentDrawing()
         break;
     case InteractionMode::DrawTruss:
         emit drawingPromptChanged(tr("Mode Dessin Treillis : Cliquez pour sélectionner ou créer le 1er nœud"));
+        break;
+    case InteractionMode::DrawCable:
+        emit drawingPromptChanged(tr("Mode Dessin Câble : Cliquez pour sélectionner ou créer le 1er nœud"));
+        break;
+    case InteractionMode::DrawStayCable:
+        emit drawingPromptChanged(tr("Mode Dessin Hauban : Cliquez sur le nœud de pylône"));
+        break;
+    case InteractionMode::DrawSuspensionCable:
+        emit drawingPromptChanged(tr("Mode Dessin Câble Porteur : Cliquez sur le premier ancrage/pylône"));
+        break;
+    case InteractionMode::DrawHanger:
+        emit drawingPromptChanged(tr("Mode Dessin Suspente : Cliquez sur le câble porteur ou nœud supérieur"));
         break;
     case InteractionMode::Move3D:
         emit drawingPromptChanged(tr("Déplacement 3D : Cliquez sur le point de base"));
@@ -2715,6 +2877,24 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
             shape = BRepBuilderAPI_MakeEdge(pStart, currentPnt).Edge();
         }
     }
+    else if (interactionMode() == InteractionMode::DrawCable ||
+             interactionMode() == InteractionMode::DrawStayCable ||
+             interactionMode() == InteractionMode::DrawSuspensionCable ||
+             interactionMode() == InteractionMode::DrawHanger)
+    {
+        if (m_drawingPoints.empty())
+            return;
+
+        const gp_Pnt& pStart = m_drawingPoints.back();
+        if (pStart.Distance(currentPnt) < 1e-4)
+            return;
+
+        shape = TSA::Geometry::CableGeometry3D::createStraightCable(pStart, currentPnt, 0.020);
+        if (shape.IsNull())
+        {
+            shape = BRepBuilderAPI_MakeEdge(pStart, currentPnt).Edge();
+        }
+    }
     else
     {
         return;
@@ -3079,6 +3259,53 @@ void OccView::mousePressEvent(QMouseEvent* event)
                         int trId = m_model->addTrussMember(startId, endId, 0.10);
                         emit elementCreated();
                         emit drawingPromptChanged(tr("Barre TR%1 créée reliant N%2 à N%3").arg(trId).arg(startId).arg(endId));
+                    }
+                    clearRubberBand();
+                    m_drawingNodeIds.clear();
+                    m_drawingPoints.clear();
+                }
+            }
+        }
+        else if (interactionMode() == InteractionMode::DrawCable ||
+                 interactionMode() == InteractionMode::DrawStayCable ||
+                 interactionMode() == InteractionMode::DrawSuspensionCable ||
+                 interactionMode() == InteractionMode::DrawHanger)
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
+            {
+                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
+                if (m_drawingNodeIds.empty())
+                {
+                    m_drawingNodeIds.push_back(nodeId);
+                    const auto* node = m_model->getNode(nodeId);
+                    if (node) m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
+                    QString typeStr = (interactionMode() == InteractionMode::DrawStayCable) ? tr("Hauban") :
+                                      (interactionMode() == InteractionMode::DrawSuspensionCable) ? tr("Câble Porteur") :
+                                      (interactionMode() == InteractionMode::DrawHanger) ? tr("Suspente") : tr("Câble");
+                    emit drawingPromptChanged(tr("Mode Dessin %1 : 1er nœud N%2 sélectionné. Cliquez pour le 2nd nœud").arg(typeStr).arg(nodeId));
+                }
+                else
+                {
+                    int startId = m_drawingNodeIds[0];
+                    int endId = nodeId;
+                    if (startId != endId)
+                    {
+                        QString typeStr = (interactionMode() == InteractionMode::DrawStayCable) ? tr("Hauban") :
+                                          (interactionMode() == InteractionMode::DrawSuspensionCable) ? tr("Câble Porteur") :
+                                          (interactionMode() == InteractionMode::DrawHanger) ? tr("Suspente") : tr("Câble");
+                        m_model->pushUndoState(tr("Création %1").arg(typeStr).toStdString());
+
+                        TSA::Model::CableType cType = TSA::Model::CableType::Generic;
+                        if (interactionMode() == InteractionMode::DrawStayCable) cType = TSA::Model::CableType::StayCable;
+                        else if (interactionMode() == InteractionMode::DrawSuspensionCable) cType = TSA::Model::CableType::SuspensionCable;
+                        else if (interactionMode() == InteractionMode::DrawHanger) cType = TSA::Model::CableType::Hanger;
+
+                        int cableId = m_model->addCable(startId, endId, cType);
+                        updateCableShape(cableId);
+                        emit elementCreated();
+                        emit drawingPromptChanged(tr("%1 C%2 créé reliant N%3 à N%4. Cliquez pour continuer").arg(typeStr).arg(cableId).arg(startId).arg(endId));
                     }
                     clearRubberBand();
                     m_drawingNodeIds.clear();

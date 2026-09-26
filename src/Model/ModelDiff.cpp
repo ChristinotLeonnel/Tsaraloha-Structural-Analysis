@@ -145,6 +145,27 @@ bool isTrussDifferent(const TrussMember& a, const TrussMember& b, const std::set
     return false;
 }
 
+bool isCableDifferent(const Cable& a, const Cable& b, const std::set<int>& movedNodes)
+{
+    if (a.startNodeId() != b.startNodeId() || a.endNodeId() != b.endNodeId()) return true;
+    if (a.type() != b.type()) return true;
+    if (a.geometryMode() != b.geometryMode()) return true;
+    if (!approxEq(a.sag(), b.sag(), 1e-4)) return true;
+    if (!approxEq(a.initialTension(), b.initialTension(), 1e-1)) return true;
+    if (!approxEq(a.diameter(), b.diameter(), 1e-5)) return true;
+    if (!approxEq(a.definition().nominalDiameter(), b.definition().nominalDiameter(), 1e-5)) return true;
+    if (!approxEq(a.definition().elasticModulus(), b.definition().elasticModulus(), 1e2)) return true;
+    if (a.definition().name() != b.definition().name()) return true;
+    if (a.definition().grade() != b.definition().grade()) return true;
+    if (a.definition().standardName() != b.definition().standardName()) return true;
+    if (a.name() != b.name()) return true;
+    if (a.color() != b.color()) return true;
+    if (isSectionDifferent(a.section(), b.section())) return true;
+    if (isMaterialDifferent(a.material(), b.material())) return true;
+    if (movedNodes.count(b.startNodeId()) > 0 || movedNodes.count(b.endNodeId()) > 0) return true;
+    return false;
+}
+
 } // anonymous namespace
 
 ModelDiff ModelDiff::compute(const Model::ModelStateSnapshot& before, const Model::ModelStateSnapshot& after)
@@ -302,6 +323,27 @@ ModelDiff ModelDiff::compute(const Model::ModelStateSnapshot& before, const Mode
         }
     }
 
+    // 8. Câbles & Haubans
+    for (const auto& [id, cAfter] : after.cables)
+    {
+        auto it = before.cables.find(id);
+        if (it == before.cables.end())
+        {
+            diff.cables.created.push_back(id);
+        }
+        else if (isCableDifferent(it->second, cAfter, movedNodes))
+        {
+            diff.cables.modified.push_back(id);
+        }
+    }
+    for (const auto& [id, _] : before.cables)
+    {
+        if (after.cables.find(id) == after.cables.end())
+        {
+            diff.cables.deleted.push_back(id);
+        }
+    }
+
     diff.createdNodeIds = diff.nodes.created;
     diff.modifiedNodeIds = diff.nodes.modified;
     diff.deletedNodeIds = diff.nodes.deleted;
@@ -329,6 +371,10 @@ ModelDiff ModelDiff::compute(const Model::ModelStateSnapshot& before, const Mode
     diff.createdTrussMemberIds = diff.trussMembers.created;
     diff.modifiedTrussMemberIds = diff.trussMembers.modified;
     diff.deletedTrussMemberIds = diff.trussMembers.deleted;
+
+    diff.createdCableIds = diff.cables.created;
+    diff.modifiedCableIds = diff.cables.modified;
+    diff.deletedCableIds = diff.cables.deleted;
 
     return diff;
 }

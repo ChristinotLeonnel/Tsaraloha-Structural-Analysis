@@ -65,6 +65,7 @@ public:
     void updateWallShape(int wallId, bool redrawImmediately = true);
     void updateFoundationShape(int foundationId, bool redrawImmediately = true);
     void updateTrussMemberShape(int memberId, bool redrawImmediately = true);
+    void updateCableShape(int cableId, bool redrawImmediately = true);
 
     void removeNodeShape(int nodeId, bool redrawImmediately = true);
     void removeBeamShape(int beamId, bool redrawImmediately = true);
@@ -73,6 +74,7 @@ public:
     void removeWallShape(int wallId, bool redrawImmediately = true);
     void removeFoundationShape(int foundationId, bool redrawImmediately = true);
     void removeTrussMemberShape(int memberId, bool redrawImmediately = true);
+    void removeCableShape(int cableId, bool redrawImmediately = true);
 
     // Mise en surbrillance / Sélection visuelle
     void highlightNode(int nodeId);
@@ -82,6 +84,7 @@ public:
     void highlightWall(int wallId);
     void highlightFoundation(int foundationId);
     void highlightTrussMember(int memberId);
+    void highlightCable(int cableId);
     void clearHighlight();
 
     TSA::Viewer::SelectionManager* selectionManager() const { return m_selectionManager; }
@@ -233,6 +236,10 @@ protected:
     void onTrussMemberModified(const TSA::Model::TrussMember& member) override;
     void onTrussMemberRemoved(int memberId) override;
 
+    void onCableAdded(const TSA::Model::Cable& cable) override;
+    void onCableModified(const TSA::Model::Cable& cable) override;
+    void onCableRemoved(int cableId) override;
+
     void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;
 
@@ -281,6 +288,7 @@ private:
     std::map<int, Handle(AIS_Shape)> m_wallShapes;
     std::map<int, Handle(AIS_Shape)> m_foundationShapes;
     std::map<int, Handle(AIS_Shape)> m_trussShapes;
+    std::map<int, Handle(AIS_Shape)> m_cableShapes;
 
     bool m_isInitialized = false;
 

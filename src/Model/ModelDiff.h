@@ -44,6 +44,7 @@ struct ModelDiff
     ElementDiff walls;
     ElementDiff foundations;
     ElementDiff trussMembers;
+    ElementDiff cables;
 
     // Listes d'identifiants à accès direct pour les vues et les tests
     std::vector<int> createdNodeIds;
@@ -74,18 +75,22 @@ struct ModelDiff
     std::vector<int> modifiedTrussMemberIds;
     std::vector<int> deletedTrussMemberIds;
 
+    std::vector<int> createdCableIds;
+    std::vector<int> modifiedCableIds;
+    std::vector<int> deletedCableIds;
+
     bool isEmpty() const
     {
         return nodes.isEmpty() && beams.isEmpty() && columns.isEmpty() &&
                slabs.isEmpty() && walls.isEmpty() && foundations.isEmpty() &&
-               trussMembers.isEmpty();
+               trussMembers.isEmpty() && cables.isEmpty();
     }
 
     size_t totalChanges() const
     {
         return nodes.totalChanges() + beams.totalChanges() + columns.totalChanges() +
                slabs.totalChanges() + walls.totalChanges() + foundations.totalChanges() +
-               trussMembers.totalChanges();
+               trussMembers.totalChanges() + cables.totalChanges();
     }
 
     /**

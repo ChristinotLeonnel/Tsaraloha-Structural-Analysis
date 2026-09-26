@@ -57,6 +57,13 @@ void SelectionManager::registerTrussMember(int memberId, const Handle(AIS_Intera
     m_objToTruss[obj] = memberId;
 }
 
+void SelectionManager::registerCable(int cableId, const Handle(AIS_InteractiveObject)& obj)
+{
+    if (obj.IsNull()) return;
+    m_cableToObj[cableId] = obj;
+    m_objToCable[obj] = cableId;
+}
+
 void SelectionManager::unregisterNode(int nodeId)
 {
     auto it = m_nodeToObj.find(nodeId);
@@ -134,6 +141,17 @@ void SelectionManager::unregisterTrussMember(int memberId)
     m_selectedTrussMembers.erase(memberId);
 }
 
+void SelectionManager::unregisterCable(int cableId)
+{
+    auto it = m_cableToObj.find(cableId);
+    if (it != m_cableToObj.end())
+    {
+        m_objToCable.erase(it->second);
+        m_cableToObj.erase(it);
+    }
+    m_selectedCables.erase(cableId);
+}
+
 void SelectionManager::clearRegistry()
 {
     m_nodeToObj.clear();
@@ -150,6 +168,8 @@ void SelectionManager::clearRegistry()
     m_objToFoundation.clear();
     m_trussToObj.clear();
     m_objToTruss.clear();
+    m_cableToObj.clear();
+    m_objToCable.clear();
 }
 
 int SelectionManager::getNodeId(const Handle(AIS_InteractiveObject)& obj) const
@@ -194,6 +214,12 @@ int SelectionManager::getTrussMemberId(const Handle(AIS_InteractiveObject)& obj)
     return (it != m_objToTruss.end()) ? it->second : -1;
 }
 
+int SelectionManager::getCableId(const Handle(AIS_InteractiveObject)& obj) const
+{
+    auto it = m_objToCable.find(obj);
+    return (it != m_objToCable.end()) ? it->second : -1;
+}
+
 Handle(AIS_InteractiveObject) SelectionManager::getNodeObject(int nodeId) const
 {
     auto it = m_nodeToObj.find(nodeId);
@@ -236,6 +262,12 @@ Handle(AIS_InteractiveObject) SelectionManager::getTrussMemberObject(int memberI
     return (it != m_trussToObj.end()) ? it->second : Handle(AIS_InteractiveObject)();
 }
 
+Handle(AIS_InteractiveObject) SelectionManager::getCableObject(int cableId) const
+{
+    auto it = m_cableToObj.find(cableId);
+    return (it != m_cableToObj.end()) ? it->second : Handle(AIS_InteractiveObject)();
+}
+
 void SelectionManager::selectNode(int nodeId, bool multiSelect)
 {
     if (!multiSelect)
@@ -247,6 +279,7 @@ void SelectionManager::selectNode(int nodeId, bool multiSelect)
         m_selectedWalls.clear();
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
     }
     m_selectedNodes.insert(nodeId);
     m_selectionType = SelectionType::Node;
@@ -267,6 +300,7 @@ void SelectionManager::selectBeam(int beamId, bool multiSelect)
         m_selectedWalls.clear();
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
     }
     m_selectedBeams.insert(beamId);
     m_selectionType = SelectionType::Beam;
@@ -287,6 +321,7 @@ void SelectionManager::selectColumn(int columnId, bool multiSelect)
         m_selectedWalls.clear();
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
     }
     m_selectedColumns.insert(columnId);
     m_selectionType = SelectionType::Column;
@@ -307,6 +342,7 @@ void SelectionManager::selectSlab(int slabId, bool multiSelect)
         m_selectedWalls.clear();
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
     }
     m_selectedSlabs.insert(slabId);
     m_selectionType = SelectionType::Slab;
@@ -327,6 +363,7 @@ void SelectionManager::selectWall(int wallId, bool multiSelect)
         m_selectedWalls.clear();
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
     }
     m_selectedWalls.insert(wallId);
     m_selectionType = SelectionType::Wall;
@@ -347,6 +384,7 @@ void SelectionManager::selectFoundation(int foundationId, bool multiSelect)
         m_selectedWalls.clear();
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
     }
     m_selectedFoundations.insert(foundationId);
     m_selectionType = SelectionType::Foundation;
@@ -367,12 +405,34 @@ void SelectionManager::selectTrussMember(int memberId, bool multiSelect)
         m_selectedWalls.clear();
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
     }
     m_selectedTrussMembers.insert(memberId);
     m_selectionType = SelectionType::TrussMember;
     m_primaryId = memberId;
 
     emit trussMemberSelected(memberId);
+    emit selectionChanged();
+}
+
+void SelectionManager::selectCable(int cableId, bool multiSelect)
+{
+    if (!multiSelect)
+    {
+        m_selectedNodes.clear();
+        m_selectedBeams.clear();
+        m_selectedColumns.clear();
+        m_selectedSlabs.clear();
+        m_selectedWalls.clear();
+        m_selectedFoundations.clear();
+        m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
+    }
+    m_selectedCables.insert(cableId);
+    m_selectionType = SelectionType::Cable;
+    m_primaryId = cableId;
+
+    emit cableSelected(cableId);
     emit selectionChanged();
 }
 
@@ -402,6 +462,9 @@ void SelectionManager::selectObject(const Handle(AIS_InteractiveObject)& obj, bo
     int trId = getTrussMemberId(obj);
     if (trId > 0) { selectTrussMember(trId, multiSelect); return; }
 
+    int cableId = getCableId(obj);
+    if (cableId > 0) { selectCable(cableId, multiSelect); return; }
+
     int nodeId = getNodeId(obj);
     if (nodeId > 0) { selectNode(nodeId, multiSelect); return; }
 
@@ -419,6 +482,7 @@ void SelectionManager::setMultipleObjectsSelected(const std::vector<Handle(AIS_I
         m_selectedWalls.clear();
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
         m_primaryId = -1;
         m_selectionType = SelectionType::None;
     }
@@ -475,6 +539,14 @@ void SelectionManager::setMultipleObjectsSelected(const std::vector<Handle(AIS_I
             continue;
         }
 
+        int cableId = getCableId(obj);
+        if (cableId > 0)
+        {
+            m_selectedCables.insert(cableId);
+            if (m_primaryId < 0) { m_primaryId = cableId; m_selectionType = SelectionType::Cable; }
+            continue;
+        }
+
         int nodeId = getNodeId(obj);
         if (nodeId > 0)
         {
@@ -499,6 +571,7 @@ void SelectionManager::setMultipleObjectsSelected(const std::vector<Handle(AIS_I
         else if (!m_selectedWalls.empty()) emit wallSelected(*m_selectedWalls.begin());
         else if (!m_selectedFoundations.empty()) emit foundationSelected(*m_selectedFoundations.begin());
         else if (!m_selectedTrussMembers.empty()) emit trussMemberSelected(*m_selectedTrussMembers.begin());
+        else if (!m_selectedCables.empty()) emit cableSelected(*m_selectedCables.begin());
     }
 
     emit selectionChanged();
@@ -518,6 +591,7 @@ void SelectionManager::clearSelection()
     m_selectedWalls.clear();
     m_selectedFoundations.clear();
     m_selectedTrussMembers.clear();
+    m_selectedCables.clear();
     m_primaryId = -1;
     m_selectionType = SelectionType::None;
 

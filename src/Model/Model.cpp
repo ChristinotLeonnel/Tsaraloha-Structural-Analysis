@@ -297,6 +297,19 @@ bool Model::removeNode(int nodeId)
         removeTrussMember(trId);
     }
 
+    std::vector<int> connectedCables;
+    for (const auto& [cId, c] : m_cables)
+    {
+        if (c.startNodeId() == nodeId || c.endNodeId() == nodeId)
+        {
+            connectedCables.push_back(cId);
+        }
+    }
+    for (int cId : connectedCables)
+    {
+        removeCable(cId);
+    }
+
     m_nodes.erase(it);
 
     for (auto* obs : m_observers)
@@ -964,6 +977,118 @@ const TrussMember* Model::getTrussMember(int memberId) const
     return (it != m_trussMembers.end()) ? &it->second : nullptr;
 }
 
+void Model::notifyCableModified(int cableId)
+{
+    const Cable* c = getCable(cableId);
+    if (c)
+    {
+        for (auto* obs : m_observers)
+        {
+            obs->onCableModified(*c);
+        }
+    }
+}
+
+int Model::addCable(int startNodeId, int endNodeId, double diameter, const std::string& name, CableGeometryMode mode, double sag)
+{
+    CableDefinition def;
+    def.setNominalDiameter(diameter);
+    def.setName(name.empty() ? ("Cable_" + std::to_string(m_nextCableId)) : name);
+    return addCable(startNodeId, endNodeId, def, name, mode, sag);
+}
+
+int Model::addCable(int startNodeId, int endNodeId, CableType type, const std::string& name, CableGeometryMode mode, double sag)
+{
+    CableDefinition def;
+    def.setType(type);
+    def.setName(name.empty() ? ("Cable_" + std::to_string(m_nextCableId)) : name);
+    return addCable(startNodeId, endNodeId, def, name, mode, sag);
+}
+
+int Model::addCable(int startNodeId, int endNodeId, const CableDefinition& definition, const std::string& name, CableGeometryMode mode, double sag)
+{
+    if (m_nodes.find(startNodeId) == m_nodes.end() || m_nodes.find(endNodeId) == m_nodes.end())
+    {
+        return -1;
+    }
+
+    int id = m_nextCableId++;
+    while (m_cables.find(id) != m_cables.end())
+    {
+        id = m_nextCableId++;
+    }
+
+    Cable cable(id, startNodeId, endNodeId, definition, name);
+    cable.setGeometryMode(mode);
+    cable.setSag(sag);
+
+    auto it = m_cables.emplace(id, cable).first;
+
+    for (auto* obs : m_observers)
+    {
+        obs->onCableAdded(it->second);
+    }
+
+    return id;
+}
+
+bool Model::addCableWithId(int id, int startNodeId, int endNodeId, const CableDefinition& definition, const std::string& name, CableGeometryMode mode, double sag)
+{
+    if (m_cables.find(id) != m_cables.end() ||
+        m_nodes.find(startNodeId) == m_nodes.end() ||
+        m_nodes.find(endNodeId) == m_nodes.end())
+    {
+        return false;
+    }
+
+    Cable cable(id, startNodeId, endNodeId, definition, name);
+    cable.setGeometryMode(mode);
+    cable.setSag(sag);
+
+    auto it = m_cables.emplace(id, cable).first;
+    if (id >= m_nextCableId)
+    {
+        m_nextCableId = id + 1;
+    }
+
+    for (auto* obs : m_observers)
+    {
+        obs->onCableAdded(it->second);
+    }
+
+    return true;
+}
+
+bool Model::removeCable(int cableId)
+{
+    auto it = m_cables.find(cableId);
+    if (it == m_cables.end())
+    {
+        return false;
+    }
+
+    m_cables.erase(it);
+
+    for (auto* obs : m_observers)
+    {
+        obs->onCableRemoved(cableId);
+    }
+
+    return true;
+}
+
+Cable* Model::getCable(int cableId)
+{
+    auto it = m_cables.find(cableId);
+    return (it != m_cables.end()) ? &it->second : nullptr;
+}
+
+const Cable* Model::getCable(int cableId) const
+{
+    auto it = m_cables.find(cableId);
+    return (it != m_cables.end()) ? &it->second : nullptr;
+}
+
 bool Model::moveNodes(const std::set<int>& nodeIds, double dx, double dy, double dz)
 {
     if (nodeIds.empty())
@@ -1302,6 +1427,7 @@ Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) c
     snap.walls = m_walls;
     snap.foundations = m_foundations;
     snap.trussMembers = m_trussMembers;
+    snap.cables = m_cables;
     snap.nextNodeId = m_nextNodeId;
     snap.nextBeamId = m_nextBeamId;
     snap.nextColumnId = m_nextColumnId;
@@ -1309,6 +1435,7 @@ Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) c
     snap.nextWallId = m_nextWallId;
     snap.nextFoundationId = m_nextFoundationId;
     snap.nextTrussMemberId = m_nextTrussMemberId;
+    snap.nextCableId = m_nextCableId;
     snap.actionName = actionName;
     return snap;
 }
@@ -1322,6 +1449,7 @@ void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
     m_walls = snapshot.walls;
     m_foundations = snapshot.foundations;
     m_trussMembers = snapshot.trussMembers;
+    m_cables = snapshot.cables;
     m_nextNodeId = snapshot.nextNodeId;
     m_nextBeamId = snapshot.nextBeamId;
     m_nextColumnId = snapshot.nextColumnId;
@@ -1329,6 +1457,7 @@ void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
     m_nextWallId = snapshot.nextWallId;
     m_nextFoundationId = snapshot.nextFoundationId;
     m_nextTrussMemberId = snapshot.nextTrussMemberId;
+    m_nextCableId = snapshot.nextCableId;
     m_isModified = true;
 }
 
@@ -1352,6 +1481,7 @@ void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
 
 void Model::clear()
 {
+    m_cables.clear();
     m_trussMembers.clear();
     m_foundations.clear();
     m_walls.clear();
@@ -1366,6 +1496,7 @@ void Model::clear()
     m_nextWallId = 1;
     m_nextFoundationId = 1;
     m_nextTrussMemberId = 1;
+    m_nextCableId = 1;
     m_isModified = false;
     clearUndoRedo();
 

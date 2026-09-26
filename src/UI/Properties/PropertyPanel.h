@@ -37,6 +37,7 @@ public slots:
     void showWallProperties(int wallId);
     void showFoundationProperties(int foundationId);
     void showTrussMemberProperties(int memberId);
+    void showCableProperties(int cableId);
     void clearProperties();
     void refreshLibraryLists();
 
@@ -66,6 +67,9 @@ protected:
     void onTrussMemberModified(const TSA::Model::TrussMember& member) override;
     void onTrussMemberRemoved(int memberId) override;
 
+    void onCableModified(const TSA::Model::Cable& cable) override;
+    void onCableRemoved(int cableId) override;
+
     void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;
 
@@ -77,6 +81,7 @@ private slots:
     void onApplyWall();
     void onApplyFoundation();
     void onApplyTruss();
+    void onApplyCable();
     void onWidgetChanged();
 
 private:
@@ -96,7 +101,7 @@ private:
 private:
     TSA::Model::Model* m_model = nullptr;
 
-    enum class CurrentType { None, Level, Node, Beam, Column, Slab, Wall, Foundation, Truss };
+    enum class CurrentType { None, Level, Node, Beam, Column, Slab, Wall, Foundation, Truss, Cable };
     CurrentType m_currentType = CurrentType::None;
 
     QString m_currentLevelId;
@@ -107,6 +112,7 @@ private:
     int m_currentWallId = -1;
     int m_currentFoundationId = -1;
     int m_currentTrussId = -1;
+    int m_currentCableId = -1;
 
     QLabel* m_titleLabel = nullptr;
     QLabel* m_emptyLabel = nullptr;
@@ -270,6 +276,28 @@ private:
     QComboBox* m_trussMaterialCombo = nullptr;
     QPushButton* m_trussColorBtn = nullptr;
     QString m_trussColor;
+
+    // Panneau Câble & Tension System
+    QGroupBox* m_cableGroup = nullptr;
+    QLineEdit* m_cableNameEdit = nullptr;
+    QLabel* m_cableIdLabel = nullptr;
+    QLabel* m_cableStartNodeLabel = nullptr;
+    QLabel* m_cableEndNodeLabel = nullptr;
+    QLabel* m_cableLengthLabel = nullptr;
+    QComboBox* m_cableTypeCombo = nullptr;
+    QComboBox* m_cableGeomModeCombo = nullptr;
+    QComboBox* m_cableStandardCombo = nullptr;
+    QDoubleSpinBox* m_cableDiaSpin = nullptr;
+    QDoubleSpinBox* m_cableAreaSpin = nullptr;
+    QDoubleSpinBox* m_cableModulusSpin = nullptr;
+    QDoubleSpinBox* m_cableInitialTensionSpin = nullptr;
+    QDoubleSpinBox* m_cableSagSpin = nullptr;
+    QComboBox* m_cableStartAnchorCombo = nullptr;
+    QComboBox* m_cableEndAnchorCombo = nullptr;
+    QCheckBox* m_cableTensionOnlyCheck = nullptr;
+    QLabel* m_cableErnstModulusLabel = nullptr;
+    QPushButton* m_cableColorBtn = nullptr;
+    QString m_cableColor;
 
     // Synchronisation en direct
     QCheckBox* m_chkLiveSync = nullptr;

@@ -7,6 +7,7 @@
 #include "Wall.h"
 #include "Foundation.h"
 #include "TrussMember.h"
+#include "Cable/Cable.h"
 #include "../Coordinate/CoordinateSystem.h"
 
 #include <map>
@@ -54,6 +55,10 @@ public:
     virtual void onTrussMemberAdded(const TrussMember& /*member*/) {}
     virtual void onTrussMemberModified(const TrussMember& /*member*/) {}
     virtual void onTrussMemberRemoved(int /*memberId*/) {}
+
+    virtual void onCableAdded(const Cable& /*cable*/) {}
+    virtual void onCableModified(const Cable& /*cable*/) {}
+    virtual void onCableRemoved(int /*cableId*/) {}
 
     virtual void onModelDiffApplied(const ModelDiff& /*diff*/) {}
     virtual void onModelCleared() {}
@@ -146,6 +151,16 @@ public:
     const TrussMember* getTrussMember(int memberId) const;
     const std::map<int, TrussMember>& trussMembers() const { return m_trussMembers; }
 
+    // Gestion des câbles & éléments tendus
+    int addCable(int startNodeId, int endNodeId, double diameter = 0.020, const std::string& name = "", CableGeometryMode mode = CableGeometryMode::Straight, double sag = 0.0);
+    int addCable(int startNodeId, int endNodeId, CableType type, const std::string& name = "", CableGeometryMode mode = CableGeometryMode::Straight, double sag = 0.0);
+    int addCable(int startNodeId, int endNodeId, const CableDefinition& definition, const std::string& name = "", CableGeometryMode mode = CableGeometryMode::Straight, double sag = 0.0);
+    bool addCableWithId(int id, int startNodeId, int endNodeId, const CableDefinition& definition, const std::string& name = "", CableGeometryMode mode = CableGeometryMode::Straight, double sag = 0.0);
+    bool removeCable(int cableId);
+    Cable* getCable(int cableId);
+    const Cable* getCable(int cableId) const;
+    const std::map<int, Cable>& cables() const { return m_cables; }
+
     // Transformations
     bool moveNodes(const std::set<int>& nodeIds, double dx, double dy, double dz);
     bool rotateNodes(const std::set<int>& nodeIds, const gp_Pnt& center, const gp_Dir& axis, double angleRad);
@@ -170,6 +185,7 @@ public:
         std::map<int, Wall> walls;
         std::map<int, Foundation> foundations;
         std::map<int, TrussMember> trussMembers;
+        std::map<int, Cable> cables;
         int nextNodeId = 1;
         int nextBeamId = 1;
         int nextColumnId = 1;
@@ -177,6 +193,7 @@ public:
         int nextWallId = 1;
         int nextFoundationId = 1;
         int nextTrussMemberId = 1;
+        int nextCableId = 1;
         std::string actionName;
     };
 
@@ -206,6 +223,7 @@ public:
     void notifyWallModified(int wallId);
     void notifyFoundationModified(int foundationId);
     void notifyTrussMemberModified(int memberId);
+    void notifyCableModified(int cableId);
 
     // État de modification du document (Dirty state)
     bool isModified() const { return m_isModified; }
@@ -222,6 +240,7 @@ public:
     int nextWallId() const { return m_nextWallId; }
     int nextFoundationId() const { return m_nextFoundationId; }
     int nextTrussMemberId() const { return m_nextTrussMemberId; }
+    int nextCableId() const { return m_nextCableId; }
 
 private:
     int m_nextNodeId = 1;
@@ -231,6 +250,7 @@ private:
     int m_nextWallId = 1;
     int m_nextFoundationId = 1;
     int m_nextTrussMemberId = 1;
+    int m_nextCableId = 1;
 
     std::map<int, Node> m_nodes;
     std::map<int, Beam> m_beams;
@@ -239,6 +259,7 @@ private:
     std::map<int, Wall> m_walls;
     std::map<int, Foundation> m_foundations;
     std::map<int, TrussMember> m_trussMembers;
+    std::map<int, Cable> m_cables;
 
     std::vector<IModelObserver*> m_observers;
 

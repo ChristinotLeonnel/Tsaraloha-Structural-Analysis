@@ -152,6 +152,29 @@ set(SOURCES
     src/Model/Foundation.cpp
     src/Model/TrussMember.h
     src/Model/TrussMember.cpp
+    src/Model/Cable/CableTypes.h
+    src/Model/Cable/CableStandards.h
+    src/Model/Cable/CableStandards.cpp
+    src/Model/Cable/CableAnchor.h
+    src/Model/Cable/CableAnchor.cpp
+    src/Model/Cable/CablePrestress.h
+    src/Model/Cable/CableAnalysisProperties.h
+    src/Model/Cable/CableDefinition.h
+    src/Model/Cable/CableDefinition.cpp
+    src/Model/Cable/CableGeometry.h
+    src/Model/Cable/CableGeometry.cpp
+    src/Model/Cable/Cable.h
+    src/Model/Cable/Cable.cpp
+    src/Model/Cable/StayCable.h
+    src/Model/Cable/StayCable.cpp
+    src/Model/Cable/SuspensionSystem.h
+    src/Model/Cable/SuspensionSystem.cpp
+    src/Geometry/CableGeometry3D.h
+    src/Geometry/CableGeometry3D.cpp
+    src/Grid/CableGrid.h
+    src/Grid/CableGrid.cpp
+    src/Library/CableLibrary.h
+    src/Library/CableLibrary.cpp
     src/Model/Model.h
     src/Model/Model.cpp
     src/Model/ModelDiff.h
@@ -200,6 +223,9 @@ set(OCCT_LIBS
     TKBRep
     TKTopAlgo
     TKPrim
+    TKOffset
+    TKBO
+    TKBool
     TKService
     TKV3d
     TKOpenGl
@@ -267,6 +293,29 @@ set(TEST_SOURCES
     src/Model/Foundation.cpp
     src/Model/TrussMember.h
     src/Model/TrussMember.cpp
+    src/Model/Cable/CableTypes.h
+    src/Model/Cable/CableStandards.h
+    src/Model/Cable/CableStandards.cpp
+    src/Model/Cable/CableAnchor.h
+    src/Model/Cable/CableAnchor.cpp
+    src/Model/Cable/CablePrestress.h
+    src/Model/Cable/CableAnalysisProperties.h
+    src/Model/Cable/CableDefinition.h
+    src/Model/Cable/CableDefinition.cpp
+    src/Model/Cable/CableGeometry.h
+    src/Model/Cable/CableGeometry.cpp
+    src/Model/Cable/Cable.h
+    src/Model/Cable/Cable.cpp
+    src/Model/Cable/StayCable.h
+    src/Model/Cable/StayCable.cpp
+    src/Model/Cable/SuspensionSystem.h
+    src/Model/Cable/SuspensionSystem.cpp
+    src/Geometry/CableGeometry3D.h
+    src/Geometry/CableGeometry3D.cpp
+    src/Grid/CableGrid.h
+    src/Grid/CableGrid.cpp
+    src/Library/CableLibrary.h
+    src/Library/CableLibrary.cpp
     src/Model/Model.h
     src/Model/Model.cpp
     src/Model/ModelDiff.h

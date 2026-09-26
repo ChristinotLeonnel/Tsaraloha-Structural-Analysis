@@ -18,7 +18,8 @@ enum class SelectionType
     Slab,
     Wall,
     Foundation,
-    TrussMember
+    TrussMember,
+    Cable
 };
 
 class SelectionManager : public QObject
@@ -37,6 +38,7 @@ public:
     void registerWall(int wallId, const Handle(AIS_InteractiveObject)& obj);
     void registerFoundation(int foundationId, const Handle(AIS_InteractiveObject)& obj);
     void registerTrussMember(int memberId, const Handle(AIS_InteractiveObject)& obj);
+    void registerCable(int cableId, const Handle(AIS_InteractiveObject)& obj);
 
     void unregisterNode(int nodeId);
     void unregisterBeam(int beamId);
@@ -45,6 +47,7 @@ public:
     void unregisterWall(int wallId);
     void unregisterFoundation(int foundationId);
     void unregisterTrussMember(int memberId);
+    void unregisterCable(int cableId);
 
     void clearRegistry();
 
@@ -56,6 +59,7 @@ public:
     int getWallId(const Handle(AIS_InteractiveObject)& obj) const;
     int getFoundationId(const Handle(AIS_InteractiveObject)& obj) const;
     int getTrussMemberId(const Handle(AIS_InteractiveObject)& obj) const;
+    int getCableId(const Handle(AIS_InteractiveObject)& obj) const;
 
     Handle(AIS_InteractiveObject) getNodeObject(int nodeId) const;
     Handle(AIS_InteractiveObject) getBeamObject(int beamId) const;
@@ -64,6 +68,7 @@ public:
     Handle(AIS_InteractiveObject) getWallObject(int wallId) const;
     Handle(AIS_InteractiveObject) getFoundationObject(int foundationId) const;
     Handle(AIS_InteractiveObject) getTrussMemberObject(int memberId) const;
+    Handle(AIS_InteractiveObject) getCableObject(int cableId) const;
 
     // État de sélection
     SelectionType currentSelectionType() const { return m_selectionType; }
@@ -75,12 +80,13 @@ public:
     const std::set<int>& selectedWalls() const { return m_selectedWalls; }
     const std::set<int>& selectedFoundations() const { return m_selectedFoundations; }
     const std::set<int>& selectedTrussMembers() const { return m_selectedTrussMembers; }
+    const std::set<int>& selectedCables() const { return m_selectedCables; }
 
     bool hasSelection() const { return m_selectionType != SelectionType::None; }
     size_t totalSelectedCount() const {
         return m_selectedNodes.size() + m_selectedBeams.size() + m_selectedColumns.size() +
                m_selectedSlabs.size() + m_selectedWalls.size() + m_selectedFoundations.size() +
-               m_selectedTrussMembers.size();
+               m_selectedTrussMembers.size() + m_selectedCables.size();
     }
 
 public slots:
@@ -91,6 +97,7 @@ public slots:
     void selectWall(int wallId, bool multiSelect = false);
     void selectFoundation(int foundationId, bool multiSelect = false);
     void selectTrussMember(int memberId, bool multiSelect = false);
+    void selectCable(int cableId, bool multiSelect = false);
     void selectObject(const Handle(AIS_InteractiveObject)& obj, bool multiSelect = false);
     void setMultipleObjectsSelected(const std::vector<Handle(AIS_InteractiveObject)>& objects, bool multiSelect = false);
     void clearSelection();
@@ -104,6 +111,7 @@ signals:
     void wallSelected(int wallId);
     void foundationSelected(int foundationId);
     void trussMemberSelected(int memberId);
+    void cableSelected(int cableId);
     void selectionCleared();
 
 private:
@@ -128,6 +136,9 @@ private:
     std::map<int, Handle(AIS_InteractiveObject)> m_trussToObj;
     std::map<Handle(AIS_InteractiveObject), int> m_objToTruss;
 
+    std::map<int, Handle(AIS_InteractiveObject)> m_cableToObj;
+    std::map<Handle(AIS_InteractiveObject), int> m_objToCable;
+
     SelectionType m_selectionType = SelectionType::None;
     int m_primaryId = -1;
     std::set<int> m_selectedNodes;
@@ -137,6 +148,7 @@ private:
     std::set<int> m_selectedWalls;
     std::set<int> m_selectedFoundations;
     std::set<int> m_selectedTrussMembers;
+    std::set<int> m_selectedCables;
 };
 
 } // namespace TSA::Viewer

@@ -31,6 +31,10 @@ bool InteractionManager::isDrawingMode() const noexcept
     case InteractionMode::DrawWall:
     case InteractionMode::DrawFoundation:
     case InteractionMode::DrawTruss:
+    case InteractionMode::DrawCable:
+    case InteractionMode::DrawStayCable:
+    case InteractionMode::DrawSuspensionCable:
+    case InteractionMode::DrawHanger:
         return true;
     default:
         return false;
@@ -173,6 +177,22 @@ QString InteractionManager::promptText() const
         return m_hasStartPoint
             ? tr("Deuxième point : Cliquez la fin du membre de treillis (Échap = Annuler)")
             : tr("Premier point : Cliquez l'origine du membre de treillis (Échap = Annuler)");
+    case InteractionMode::DrawCable:
+        return m_hasStartPoint
+            ? tr("Deuxième point : Cliquez l'extrémité du câble (Échap = Annuler)")
+            : tr("Premier point : Cliquez le premier point ou ancrage du câble (Échap = Annuler)");
+    case InteractionMode::DrawStayCable:
+        return m_hasStartPoint
+            ? tr("Nœud de Tablier : Cliquez le point d'ancrage sur le tablier (Échap = Annuler)")
+            : tr("Nœud de Pylône : Cliquez le nœud supérieur d'attache sur le pylône (Échap = Annuler)");
+    case InteractionMode::DrawSuspensionCable:
+        return m_hasStartPoint
+            ? tr("Pylône Droit : Cliquez le sommet du second pylône (Échap = Annuler)")
+            : tr("Pylône Gauche : Cliquez le sommet du premier pylône (Échap = Annuler)");
+    case InteractionMode::DrawHanger:
+        return m_hasStartPoint
+            ? tr("Nœud de Tablier : Cliquez le nœud de suspension sur le tablier (Échap = Annuler)")
+            : tr("Câble Principal : Cliquez le point d'attache haut sur le câble porteur (Échap = Annuler)");
     case InteractionMode::Move3D:
     case InteractionMode::Copy3D:
         return m_hasStartPoint

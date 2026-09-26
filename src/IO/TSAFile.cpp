@@ -313,6 +313,7 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     writeWallChunk(payload, model.walls());
     writeFoundationChunk(payload, model.foundations());
     writeTrussChunk(payload, model.trussMembers());
+    writeCableChunk(payload, model.cables());
 
     uint64_t uncompressedSize = payload.size();
 
@@ -689,6 +690,84 @@ void TSAFileWriter::writeTrussChunk(std::vector<uint8_t>& buffer, const std::map
     buffer.insert(buffer.end(), chunkData.begin(), chunkData.end());
 }
 
+void TSAFileWriter::writeCableChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Cable>& cables)
+{
+    std::vector<uint8_t> chunkData;
+    for (const auto& [id, c] : cables)
+    {
+        writeI32(chunkData, c.id());
+        writeString(chunkData, c.name());
+        writeI32(chunkData, c.startNodeId());
+        writeI32(chunkData, c.endNodeId());
+        writeU8(chunkData, static_cast<uint8_t>(c.type()));
+        writeU8(chunkData, static_cast<uint8_t>(c.geometryMode()));
+
+        // Definition
+        const auto& def = c.definition();
+        writeString(chunkData, def.id());
+        writeString(chunkData, def.name());
+        writeU8(chunkData, static_cast<uint8_t>(def.type()));
+        writeString(chunkData, def.standardName());
+        writeString(chunkData, def.standardVersion());
+        writeString(chunkData, def.grade());
+        writeDouble(chunkData, def.nominalDiameter());
+        writeDouble(chunkData, def.metallicArea());
+        writeDouble(chunkData, def.elasticModulus());
+        writeDouble(chunkData, def.density());
+        writeDouble(chunkData, def.characteristicStrength());
+        writeDouble(chunkData, def.ultimateStrength());
+        writeDouble(chunkData, def.defaultInitialTension());
+        writeU8(chunkData, def.tensionOnly() ? 1 : 0);
+        serializeSection(chunkData, c.section());
+        serializeMaterial(chunkData, c.material());
+
+        // Geometry
+        const auto& geom = c.geometry();
+        writeDouble(chunkData, geom.sag());
+        writeDouble(chunkData, geom.horizontalTensionH());
+        writeDouble(chunkData, geom.linearWeightW());
+
+        // Prestress
+        const auto& pr = c.prestress();
+        writeDouble(chunkData, pr.initialTension);
+        writeDouble(chunkData, pr.initialStrain);
+        writeDouble(chunkData, pr.anchorageSlip);
+        writeDouble(chunkData, pr.frictionCoeff);
+        writeDouble(chunkData, pr.wobbleCoeff);
+
+        // Anchors
+        const auto& aStart = c.startAnchor();
+        writeU8(chunkData, static_cast<uint8_t>(aStart.type()));
+        writeDouble(chunkData, aStart.capacity());
+        writeDouble(chunkData, aStart.slip());
+        writeDouble(chunkData, aStart.socketDiameter());
+        writeDouble(chunkData, aStart.socketLength());
+
+        const auto& aEnd = c.endAnchor();
+        writeU8(chunkData, static_cast<uint8_t>(aEnd.type()));
+        writeDouble(chunkData, aEnd.capacity());
+        writeDouble(chunkData, aEnd.slip());
+        writeDouble(chunkData, aEnd.socketDiameter());
+        writeDouble(chunkData, aEnd.socketLength());
+
+        // Analysis
+        const auto& an = c.analysisProperties();
+        writeU8(chunkData, an.tensionOnly ? 1 : 0);
+        writeU8(chunkData, an.largeDisplacement ? 1 : 0);
+        writeU8(chunkData, an.geometricNonlinearity ? 1 : 0);
+        writeDouble(chunkData, an.minTensionThreshold);
+    }
+
+    TSAChunkHeader ch;
+    ch.chunkId = CHUNK_CABL;
+    ch.chunkSize = static_cast<uint32_t>(chunkData.size());
+    ch.elementCount = static_cast<uint32_t>(cables.size());
+
+    const uint8_t* chBytes = reinterpret_cast<const uint8_t*>(&ch);
+    buffer.insert(buffer.end(), chBytes, chBytes + sizeof(ch));
+    buffer.insert(buffer.end(), chunkData.begin(), chunkData.end());
+}
+
 // =============================================================================
 // TSAFileReader
 // =============================================================================
@@ -868,6 +947,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::map<int, TSA::Model::Wall> loadedWalls;
     std::map<int, TSA::Model::Foundation> loadedFoundations;
     std::map<int, TSA::Model::TrussMember> loadedTrussMembers;
+    std::map<int, TSA::Model::Cable> loadedCables;
 
     while (offset + sizeof(TSAChunkHeader) <= size)
     {
@@ -925,6 +1005,9 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         case CHUNK_TRUS:
             if (!readTrussChunk(chunkBytes, chunkLen, ch.elementCount, loadedTrussMembers, errorMessage)) return false;
             break;
+        case CHUNK_CABL:
+            if (!readCableChunk(chunkBytes, chunkLen, ch.elementCount, loadedCables, errorMessage)) return false;
+            break;
         default:
             // Chunk inconnu (version future) : ignoré en toute sécurité grâce à chunkSize
             break;
@@ -942,9 +1025,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     snapshot.walls = std::move(loadedWalls);
     snapshot.foundations = std::move(loadedFoundations);
     snapshot.trussMembers = std::move(loadedTrussMembers);
+    snapshot.cables = std::move(loadedCables);
 
     // Calcul des identifiants suivants
-    int maxN = 0, maxB = 0, maxC = 0, maxS = 0, maxW = 0, maxF = 0, maxT = 0;
+    int maxN = 0, maxB = 0, maxC = 0, maxS = 0, maxW = 0, maxF = 0, maxT = 0, maxCab = 0;
     for (const auto& [id, _] : snapshot.nodes) maxN = std::max(maxN, id);
     for (const auto& [id, _] : snapshot.beams) maxB = std::max(maxB, id);
     for (const auto& [id, _] : snapshot.columns) maxC = std::max(maxC, id);
@@ -952,6 +1036,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     for (const auto& [id, _] : snapshot.walls) maxW = std::max(maxW, id);
     for (const auto& [id, _] : snapshot.foundations) maxF = std::max(maxF, id);
     for (const auto& [id, _] : snapshot.trussMembers) maxT = std::max(maxT, id);
+    for (const auto& [id, _] : snapshot.cables) maxCab = std::max(maxCab, id);
 
     snapshot.nextNodeId = maxN + 1;
     snapshot.nextBeamId = maxB + 1;
@@ -960,6 +1045,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     snapshot.nextWallId = maxW + 1;
     snapshot.nextFoundationId = maxF + 1;
     snapshot.nextTrussMemberId = maxT + 1;
+    snapshot.nextCableId = maxCab + 1;
     snapshot.actionName = "Chargement Projet .tsa";
 
     // Application dans le modèle -> déclenche automatiquement onModelCleared() chez tous les observateurs (OccView, ModelTree)
@@ -1355,6 +1441,142 @@ bool TSAFileReader::readTrussChunk(const uint8_t* data, size_t size, uint32_t co
         t.setMaterial(mat);
         t.setColor(color);
         trussMembers[id] = t;
+    }
+    return true;
+}
+
+bool TSAFileReader::readCableChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Cable>& cables, std::string* errorMessage)
+{
+    if (count > MAX_SAFE_ELEMENTS)
+    {
+        if (errorMessage) *errorMessage = "Nombre excessif de câbles dans le chunk CABL.";
+        return false;
+    }
+
+    size_t off = 0;
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        int32_t id = 0, startId = 0, endId = 0;
+        std::string name;
+        uint8_t typeVal = 0, geomModeVal = 0;
+
+        if (!readI32(data, size, off, id)) return false;
+        if (!readString(data, size, off, name)) return false;
+        if (!readI32(data, size, off, startId)) return false;
+        if (!readI32(data, size, off, endId)) return false;
+        if (!readU8(data, size, off, typeVal)) return false;
+        if (!readU8(data, size, off, geomModeVal)) return false;
+
+        TSA::Model::Cable cable(id, startId, endId, name, static_cast<TSA::Model::CableType>(typeVal));
+        cable.setGeometryMode(static_cast<TSA::Model::CableGeometryMode>(geomModeVal));
+
+        // Definition
+        TSA::Model::CableDefinition def;
+        std::string defId, defName, stdStr, stdVer, grade;
+        uint8_t defType = 0;
+        double nomDia = 0.0, area = 0.0, E = 0.0, dens = 0.0, fpk = 0.0, fu = 0.0, initT = 0.0;
+        uint8_t tensionOnly = 1;
+        TSA::Model::Section sec;
+        TSA::Model::Material mat;
+
+        if (!readString(data, size, off, defId)) return false;
+        if (!readString(data, size, off, defName)) return false;
+        if (!readU8(data, size, off, defType)) return false;
+        if (!readString(data, size, off, stdStr)) return false;
+        if (!readString(data, size, off, stdVer)) return false;
+        if (!readString(data, size, off, grade)) return false;
+        if (!readDouble(data, size, off, nomDia)) return false;
+        if (!readDouble(data, size, off, area)) return false;
+        if (!readDouble(data, size, off, E)) return false;
+        if (!readDouble(data, size, off, dens)) return false;
+        if (!readDouble(data, size, off, fpk)) return false;
+        if (!readDouble(data, size, off, fu)) return false;
+        if (!readDouble(data, size, off, initT)) return false;
+        if (!readU8(data, size, off, tensionOnly)) return false;
+        if (!deserializeSection(data, size, off, sec)) return false;
+        if (!deserializeMaterial(data, size, off, mat)) return false;
+
+        def.setId(defId);
+        def.setName(defName);
+        def.setType(static_cast<TSA::Model::CableType>(defType));
+        def.setStandardName(stdStr);
+        def.setStandardVersion(stdVer);
+        def.setGrade(grade);
+        def.setNominalDiameter(nomDia);
+        def.setMetallicArea(area);
+        def.setElasticModulus(E);
+        def.setDensity(dens);
+        def.setCharacteristicStrength(fpk);
+        def.setUltimateStrength(fu);
+        def.setDefaultInitialTension(initT);
+        def.setTensionOnly(tensionOnly != 0);
+        cable.setDefinition(def);
+        cable.setSection(sec);
+        cable.setMaterial(mat);
+
+        // Geometry
+        double sag = 0.0, catH = 0.0, catW = 0.0;
+        if (!readDouble(data, size, off, sag)) return false;
+        if (!readDouble(data, size, off, catH)) return false;
+        if (!readDouble(data, size, off, catW)) return false;
+        cable.geometry().setSag(sag);
+        cable.geometry().setHorizontalTensionH(catH);
+        cable.geometry().setLinearWeightW(catW);
+
+        // Prestress
+        double prT = 0.0, prEps = 0.0, prSlip = 0.0, prMu = 0.0, prK = 0.0;
+        if (!readDouble(data, size, off, prT)) return false;
+        if (!readDouble(data, size, off, prEps)) return false;
+        if (!readDouble(data, size, off, prSlip)) return false;
+        if (!readDouble(data, size, off, prMu)) return false;
+        if (!readDouble(data, size, off, prK)) return false;
+        cable.prestress().initialTension = prT;
+        cable.prestress().initialStrain = prEps;
+        cable.prestress().anchorageSlip = prSlip;
+        cable.prestress().frictionCoeff = prMu;
+        cable.prestress().wobbleCoeff = prK;
+
+        // Anchors
+        uint8_t aStartType = 0, aEndType = 0;
+        double aStartCap = 0.0, aStartSlip = 0.0, aStartDia = 0.0, aStartLen = 0.0;
+        double aEndCap = 0.0, aEndSlip = 0.0, aEndDia = 0.0, aEndLen = 0.0;
+        if (!readU8(data, size, off, aStartType)) return false;
+        if (!readDouble(data, size, off, aStartCap)) return false;
+        if (!readDouble(data, size, off, aStartSlip)) return false;
+        if (!readDouble(data, size, off, aStartDia)) return false;
+        if (!readDouble(data, size, off, aStartLen)) return false;
+
+        if (!readU8(data, size, off, aEndType)) return false;
+        if (!readDouble(data, size, off, aEndCap)) return false;
+        if (!readDouble(data, size, off, aEndSlip)) return false;
+        if (!readDouble(data, size, off, aEndDia)) return false;
+        if (!readDouble(data, size, off, aEndLen)) return false;
+
+        cable.startAnchor().setType(static_cast<TSA::Model::AnchorType>(aStartType));
+        cable.startAnchor().setCapacity(aStartCap);
+        cable.startAnchor().setSlip(aStartSlip);
+        cable.startAnchor().setSocketDiameter(aStartDia);
+        cable.startAnchor().setSocketLength(aStartLen);
+
+        cable.endAnchor().setType(static_cast<TSA::Model::AnchorType>(aEndType));
+        cable.endAnchor().setCapacity(aEndCap);
+        cable.endAnchor().setSlip(aEndSlip);
+        cable.endAnchor().setSocketDiameter(aEndDia);
+        cable.endAnchor().setSocketLength(aEndLen);
+
+        // Analysis
+        uint8_t anTO = 1, anLD = 1, anGN = 1;
+        double minThresh = 0.0;
+        if (!readU8(data, size, off, anTO)) return false;
+        if (!readU8(data, size, off, anLD)) return false;
+        if (!readU8(data, size, off, anGN)) return false;
+        if (!readDouble(data, size, off, minThresh)) return false;
+        cable.analysisProperties().tensionOnly = (anTO != 0);
+        cable.analysisProperties().largeDisplacement = (anLD != 0);
+        cable.analysisProperties().geometricNonlinearity = (anGN != 0);
+        cable.analysisProperties().minTensionThreshold = minThresh;
+
+        cables[id] = cable;
     }
     return true;
 }
