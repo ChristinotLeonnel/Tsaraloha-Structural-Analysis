@@ -8,6 +8,7 @@ class QDoubleSpinBox;
 class QComboBox;
 class QCheckBox;
 class QPushButton;
+class OccView;
 
 namespace TSA::UI
 {
@@ -21,23 +22,31 @@ public:
         const gp_Pnt& origin,
         double rotationDeg,
         const TSA::Grid::GridDisplaySettings& displaySettings,
-        QWidget* parent = nullptr);
+        QWidget* parent = nullptr,
+        OccView* occView = nullptr);
     ~GridAdvancedSettingsDialog() override = default;
 
     gp_Pnt origin() const;
     double rotationDeg() const;
     TSA::Grid::GridDisplaySettings displaySettings() const;
 
+protected:
+    void closeEvent(QCloseEvent* event) override;
+    void reject() override;
+
 private slots:
     void onPickColor();
+    void onPickOriginClicked();
 
 private:
     void setupUi();
 
 private:
+    OccView* m_occView = nullptr;
     QDoubleSpinBox* m_spnOriginX = nullptr;
     QDoubleSpinBox* m_spnOriginY = nullptr;
     QDoubleSpinBox* m_spnOriginZ = nullptr;
+    QPushButton* m_btnPickOrigin = nullptr;
     QDoubleSpinBox* m_spnRotation = nullptr;
 
     QDoubleSpinBox* m_spnExtension = nullptr;

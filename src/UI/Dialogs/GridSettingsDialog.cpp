@@ -32,6 +32,7 @@ GridSettingsDialog::GridSettingsDialog(TSA::Grid::GridManager* gridManager,
 void GridSettingsDialog::setupUi()
 {
     setWindowTitle(tr("Gestionnaire des Grilles 3D & Accrochage"));
+    setWindowModality(Qt::NonModal);
     resize(580, 480);
 
     auto* mainLayout = new QVBoxLayout(this);
@@ -294,23 +295,25 @@ void GridSettingsDialog::onSelectedGridChanged()
 
 void GridSettingsDialog::onAddGrid()
 {
-    GridDialog dlg(m_gridManager, nullptr, m_occView, this);
-    connect(&dlg, &GridDialog::gridDefinitionApplied, this, [this](const TSA::Grid::GridDefinition& /*def*/) {
+    auto* dlg = new GridDialog(m_gridManager, nullptr, m_occView, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dlg, &GridDialog::gridDefinitionApplied, this, [this](const TSA::Grid::GridDefinition& /*def*/) {
         refreshGridList();
         if (m_occView)
         {
             m_occView->rebuildGrid();
         }
     });
-
-    if (dlg.exec() == QDialog::Accepted)
-    {
+    connect(dlg, &GridDialog::destroyed, this, [this]() {
         refreshGridList();
         if (m_occView)
         {
             m_occView->rebuildGrid();
         }
-    }
+    });
+    dlg->show();
+    dlg->raise();
+    dlg->activateWindow();
 }
 
 void GridSettingsDialog::onEditGrid()
@@ -324,8 +327,9 @@ void GridSettingsDialog::onEditGrid()
     if (!grid)
         return;
 
-    GridDialog dlg(grid->definition(), m_gridManager, nullptr, m_occView, this);
-    connect(&dlg, &GridDialog::gridDefinitionApplied, this, [this, id](const TSA::Grid::GridDefinition& def) {
+    auto* dlg = new GridDialog(grid->definition(), m_gridManager, nullptr, m_occView, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dlg, &GridDialog::gridDefinitionApplied, this, [this, id](const TSA::Grid::GridDefinition& def) {
         if (m_gridManager)
         {
             m_gridManager->updateGrid(id, def);
@@ -336,17 +340,16 @@ void GridSettingsDialog::onEditGrid()
             m_occView->rebuildGrid();
         }
     });
-
-    if (dlg.exec() == QDialog::Accepted)
-    {
-        TSA::Grid::GridDefinition def = dlg.getDefinition();
-        m_gridManager->updateGrid(id, def);
+    connect(dlg, &GridDialog::destroyed, this, [this]() {
         refreshGridList();
         if (m_occView)
         {
             m_occView->rebuildGrid();
         }
-    }
+    });
+    dlg->show();
+    dlg->raise();
+    dlg->activateWindow();
 }
 
 void GridSettingsDialog::onDuplicateGrid()

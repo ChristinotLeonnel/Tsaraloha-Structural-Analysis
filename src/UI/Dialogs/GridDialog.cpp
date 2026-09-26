@@ -8,7 +8,9 @@
 #include "../../Model/Node.h"
 #include "../../Viewer/OccView.h"
 #include "../../Viewer/SelectionManager.h"
+#include "../../Interaction/InteractionManager.h"
 #include "../Theme/ThemeManager.h"
+#include <cmath>
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -119,7 +121,9 @@ GridDialog::GridDialog(const TSA::Grid::GridDefinition& existingDef,
 void GridDialog::setupUi()
 {
     setWindowTitle(tr("Lignes de construction..."));
-    setFixedSize(430, 520);
+    setWindowModality(Qt::NonModal);
+    setMinimumSize(450, 560);
+    resize(460, 580);
     const bool isDark = ThemeManager::instance().isDarkMode();
     if (isDark)
     {
@@ -206,6 +210,56 @@ void GridDialog::setupUi()
     mainLayout->addWidget(m_btnAdvanced);
     connect(m_btnAdvanced, &QPushButton::clicked, this, &GridDialog::onAdvancedButtonClicked);
 
+    // 3b. Origine / Centre de la grille avec sélection 3D
+    m_originWidget = new QWidget(this);
+    auto* originLayout = new QHBoxLayout(m_originWidget);
+    originLayout->setContentsMargins(0, 0, 0, 0);
+    originLayout->setSpacing(4);
+
+    m_originTitleLabel = new QLabel(tr("Origine (m) :"), m_originWidget);
+    m_originTitleLabel->setFixedWidth(80);
+    originLayout->addWidget(m_originTitleLabel);
+
+    m_originXSpin = new QDoubleSpinBox(m_originWidget);
+    m_originXSpin->setRange(-10000.0, 10000.0);
+    m_originXSpin->setDecimals(2);
+    m_originXSpin->setPrefix("X: ");
+    m_originXSpin->setValue(m_origin.X());
+    originLayout->addWidget(m_originXSpin);
+
+    m_originYSpin = new QDoubleSpinBox(m_originWidget);
+    m_originYSpin->setRange(-10000.0, 10000.0);
+    m_originYSpin->setDecimals(2);
+    m_originYSpin->setPrefix("Y: ");
+    m_originYSpin->setValue(m_origin.Y());
+    originLayout->addWidget(m_originYSpin);
+
+    m_originZSpin = new QDoubleSpinBox(m_originWidget);
+    m_originZSpin->setRange(-10000.0, 10000.0);
+    m_originZSpin->setDecimals(2);
+    m_originZSpin->setPrefix("Z: ");
+    m_originZSpin->setValue(m_origin.Z());
+    originLayout->addWidget(m_originZSpin);
+
+    m_btnPickOrigin = new QPushButton(tr("🎯 3D"), m_originWidget);
+    m_btnPickOrigin->setToolTip(tr("Sélectionner l'origine dans la vue 3D"));
+    m_btnPickOrigin->setFixedHeight(24);
+    originLayout->addWidget(m_btnPickOrigin);
+    mainLayout->addWidget(m_originWidget);
+
+    auto updateOriginFromSpins = [this]() {
+        if (m_isUpdating) return;
+        m_origin = gp_Pnt(m_originXSpin->value(), m_originYSpin->value(), m_originZSpin->value());
+        if (m_chkLiveSync && m_chkLiveSync->isChecked())
+        {
+            onApply();
+        }
+    };
+    connect(m_originXSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, updateOriginFromSpins);
+    connect(m_originYSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, updateOriginFromSpins);
+    connect(m_originZSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, updateOriginFromSpins);
+    connect(m_btnPickOrigin, &QPushButton::clicked, this, &GridDialog::onPickOriginClicked);
+
     // 4. Conteneur Saisie Cartésienne / Cylindrique
     m_cartesianInputWidget = new QWidget(this);
     auto* cartLayout = new QVBoxLayout(m_cartesianInputWidget);
@@ -241,6 +295,13 @@ void GridDialog::setupUi()
         : "border: 1.5px solid #28A745; background-color: #E8F8EE; font-weight: bold;");
     posLayout->addWidget(m_posSpin);
     posLayout->addWidget(m_posUnitLabel = new QLabel(tr("(m)"), m_standardInputGridWidget));
+
+    m_btnPickPosition = new QPushButton(tr("🎯"), m_standardInputGridWidget);
+    m_btnPickPosition->setToolTip(tr("Sélectionner une coordonnée dans la vue 3D"));
+    m_btnPickPosition->setFixedSize(24, 24);
+    posLayout->addWidget(m_btnPickPosition);
+    connect(m_btnPickPosition, &QPushButton::clicked, this, &GridDialog::onPickPositionClicked);
+
     inputGrid->addLayout(posLayout, 1, 0);
 
     m_repeatSpin = new QSpinBox(m_standardInputGridWidget);
@@ -289,9 +350,13 @@ void GridDialog::setupUi()
     m_arbP1X = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP1X->setRange(-10000.0, 10000.0); m_arbP1X->setDecimals(2); m_arbP1X->setPrefix("X: ");
     m_arbP1Y = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP1Y->setRange(-10000.0, 10000.0); m_arbP1Y->setDecimals(2); m_arbP1Y->setPrefix("Y: ");
     m_arbP1Z = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP1Z->setRange(-10000.0, 10000.0); m_arbP1Z->setDecimals(2); m_arbP1Z->setPrefix("Z: ");
+    m_btnPickArbP1 = new QPushButton(tr("🎯 P1"), m_arbitraryInputWidget);
+    m_btnPickArbP1->setToolTip(tr("Sélectionner P1 dans la vue 3D"));
+    connect(m_btnPickArbP1, &QPushButton::clicked, this, &GridDialog::onPickArbP1Clicked);
     p1Layout->addWidget(m_arbP1X);
     p1Layout->addWidget(m_arbP1Y);
     p1Layout->addWidget(m_arbP1Z);
+    p1Layout->addWidget(m_btnPickArbP1);
     arbLayout->addLayout(p1Layout);
 
     auto* p2Layout = new QHBoxLayout();
@@ -299,9 +364,13 @@ void GridDialog::setupUi()
     m_arbP2X = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP2X->setRange(-10000.0, 10000.0); m_arbP2X->setDecimals(2); m_arbP2X->setPrefix("X: "); m_arbP2X->setValue(6.0);
     m_arbP2Y = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP2Y->setRange(-10000.0, 10000.0); m_arbP2Y->setDecimals(2); m_arbP2Y->setPrefix("Y: ");
     m_arbP2Z = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP2Z->setRange(-10000.0, 10000.0); m_arbP2Z->setDecimals(2); m_arbP2Z->setPrefix("Z: ");
+    m_btnPickArbP2 = new QPushButton(tr("🎯 P2"), m_arbitraryInputWidget);
+    m_btnPickArbP2->setToolTip(tr("Sélectionner P2 dans la vue 3D"));
+    connect(m_btnPickArbP2, &QPushButton::clicked, this, &GridDialog::onPickArbP2Clicked);
     p2Layout->addWidget(m_arbP2X);
     p2Layout->addWidget(m_arbP2Y);
     p2Layout->addWidget(m_arbP2Z);
+    p2Layout->addWidget(m_btnPickArbP2);
     arbLayout->addLayout(p2Layout);
 
     m_arbitraryInputWidget->hide();
@@ -416,6 +485,32 @@ void GridDialog::setupUi()
     connect(m_btnManage, &QPushButton::clicked, this, &GridDialog::manageGridsRequested);
 }
 
+void GridDialog::closeEvent(QCloseEvent* event)
+{
+    if (m_occView && m_occView->interactionManager() && m_occView->interactionManager()->hasActiveSelectionRequest())
+    {
+        const auto& req = m_occView->interactionManager()->activeSelectionRequest();
+        if (req && req->sender == this)
+        {
+            m_occView->interactionManager()->cancelSelectionRequest();
+        }
+    }
+    QDialog::closeEvent(event);
+}
+
+void GridDialog::reject()
+{
+    if (m_occView && m_occView->interactionManager() && m_occView->interactionManager()->hasActiveSelectionRequest())
+    {
+        const auto& req = m_occView->interactionManager()->activeSelectionRequest();
+        if (req && req->sender == this)
+        {
+            m_occView->interactionManager()->cancelSelectionRequest();
+        }
+    }
+    QDialog::reject();
+}
+
 void GridDialog::onModeCartesian()
 {
     const bool changed = (m_currentType != TSA::Grid::GridType::Cartesian);
@@ -427,6 +522,9 @@ void GridDialog::onModeCartesian()
 
     m_btnAdvanced->setText(tr("Paramètres avancés"));
     m_btnAdvanced->setIcon(QIcon(":/icons/settings.svg"));
+
+    if (m_originTitleLabel) m_originTitleLabel->setText(tr("Origine (m) :"));
+    if (m_originWidget) m_originWidget->show();
 
     m_cartesianInputWidget->show();
     m_arbitraryInputWidget->hide();
@@ -471,6 +569,9 @@ void GridDialog::onModeCylindrical()
 
     m_btnAdvanced->setText(tr("Paramètres avancés"));
     m_btnAdvanced->setIcon(QIcon(":/icons/settings.svg"));
+
+    if (m_originTitleLabel) m_originTitleLabel->setText(tr("Centre (m) :"));
+    if (m_originWidget) m_originWidget->show();
 
     m_cartesianInputWidget->show();
     m_arbitraryInputWidget->hide();
@@ -520,6 +621,8 @@ void GridDialog::onModeArbitrary()
 
     m_btnAdvanced->setText(tr("Créer à partir des barres/lignes sélectionnées"));
     m_btnAdvanced->setIcon(QIcon(":/icons/geom_polyline.svg"));
+
+    if (m_originWidget) m_originWidget->hide();
 
     m_cartesianInputWidget->hide();
     m_arbitraryInputWidget->show();
@@ -977,12 +1080,17 @@ void GridDialog::onAdvancedButtonClicked()
     }
     else
     {
-        GridAdvancedSettingsDialog dlg(m_origin, m_rotationDeg, m_displaySettings, this);
+        GridAdvancedSettingsDialog dlg(m_origin, m_rotationDeg, m_displaySettings, this, m_occView);
         if (dlg.exec() == QDialog::Accepted)
         {
             m_origin = dlg.origin();
             m_rotationDeg = dlg.rotationDeg();
             m_displaySettings = dlg.displaySettings();
+            m_isUpdating = true;
+            if (m_originXSpin) m_originXSpin->setValue(m_origin.X());
+            if (m_originYSpin) m_originYSpin->setValue(m_origin.Y());
+            if (m_originZSpin) m_originZSpin->setValue(m_origin.Z());
+            m_isUpdating = false;
             if (m_chkLiveSync && m_chkLiveSync->isChecked())
             {
                 onApply();
@@ -1075,6 +1183,12 @@ void GridDialog::onNewGrid()
     m_origin = gp_Pnt(0.0, 0.0, 0.0);
     m_rotationDeg = 0.0;
     m_displaySettings = TSA::Grid::GridDisplaySettings{};
+
+    m_isUpdating = true;
+    if (m_originXSpin) m_originXSpin->setValue(0.0);
+    if (m_originYSpin) m_originYSpin->setValue(0.0);
+    if (m_originZSpin) m_originZSpin->setValue(0.0);
+    m_isUpdating = false;
 
     m_posSpin->setValue(0.0);
     if (m_currentType == TSA::Grid::GridType::Arbitrary)
@@ -1247,6 +1361,12 @@ void GridDialog::loadFromDefinition(const TSA::Grid::GridDefinition& def)
     m_rotationDeg = def.rotationDeg();
     m_displaySettings = def.displaySettings();
 
+    m_isUpdating = true;
+    if (m_originXSpin) m_originXSpin->setValue(m_origin.X());
+    if (m_originYSpin) m_originYSpin->setValue(m_origin.Y());
+    if (m_originZSpin) m_originZSpin->setValue(m_origin.Z());
+    m_isUpdating = false;
+
     if (def.type() == TSA::Grid::GridType::Cartesian)
     {
         onModeCartesian();
@@ -1324,6 +1444,143 @@ void GridDialog::loadFromDefinition(const TSA::Grid::GridDefinition& def)
         m_arbitraryLines = def.arbitraryLines();
         updateTableForArbitrary();
     }
+}
+
+void GridDialog::onPickOriginClicked()
+{
+    if (!m_occView || !m_occView->interactionManager()) return;
+
+    TSA::Interaction::SelectionRequest req;
+    req.mode = TSA::Interaction::SelectionMode::SelectPoint;
+    req.targetField = (m_currentType == TSA::Grid::GridType::Cylindrical)
+        ? tr("Centre de la grille cylindrique")
+        : tr("Origine de la grille");
+    req.sender = this;
+    req.keepWindowOpen = true;
+    req.snapEnabled = true;
+    req.onSelected = [this](const TSA::Interaction::SelectedEntity& entity) {
+        m_origin = entity.point;
+        m_isUpdating = true;
+        if (m_originXSpin) m_originXSpin->setValue(m_origin.X());
+        if (m_originYSpin) m_originYSpin->setValue(m_origin.Y());
+        if (m_originZSpin) m_originZSpin->setValue(m_origin.Z());
+        m_isUpdating = false;
+
+        if (m_chkLiveSync && m_chkLiveSync->isChecked())
+        {
+            onApply();
+        }
+    };
+    req.onCancelled = []() {};
+
+    m_occView->interactionManager()->requestSelection(req);
+}
+
+void GridDialog::onPickPositionClicked()
+{
+    if (!m_occView || !m_occView->interactionManager()) return;
+
+    TSA::Interaction::SelectionRequest req;
+    req.mode = TSA::Interaction::SelectionMode::SelectPoint;
+    QString axisName;
+    if (m_currentType == TSA::Grid::GridType::Cylindrical)
+    {
+        axisName = (m_currentAxisIndex == 0) ? tr("Rayon R") : (m_currentAxisIndex == 1 ? tr("Angle θ") : tr("Niveau Z"));
+    }
+    else
+    {
+        axisName = (m_currentAxisIndex == 0) ? tr("Axe X") : (m_currentAxisIndex == 1 ? tr("Axe Y") : tr("Axe Z"));
+    }
+    req.targetField = tr("Position pour %1").arg(axisName);
+    req.sender = this;
+    req.keepWindowOpen = true;
+    req.snapEnabled = true;
+    req.onSelected = [this](const TSA::Interaction::SelectedEntity& entity) {
+        double val = 0.0;
+        const gp_Pnt& p = entity.point;
+        double rotRad = m_rotationDeg * M_PI / 180.0;
+        double cosR = std::cos(-rotRad);
+        double sinR = std::sin(-rotRad);
+        double dx = p.X() - m_origin.X();
+        double dy = p.Y() - m_origin.Y();
+        double dz = p.Z() - m_origin.Z();
+
+        double localX = dx * cosR - dy * sinR;
+        double localY = dx * sinR + dy * cosR;
+        double localZ = dz;
+
+        if (m_currentType == TSA::Grid::GridType::Cylindrical)
+        {
+            if (m_currentAxisIndex == 0)
+            {
+                val = std::hypot(dx, dy);
+            }
+            else if (m_currentAxisIndex == 1)
+            {
+                double angleDeg = std::atan2(localY, localX) * 180.0 / M_PI;
+                if (angleDeg < 0.0) angleDeg += 360.0;
+                val = angleDeg;
+            }
+            else
+            {
+                val = localZ;
+            }
+        }
+        else
+        {
+            if (m_currentAxisIndex == 0) val = localX;
+            else if (m_currentAxisIndex == 1) val = localY;
+            else val = localZ;
+        }
+
+        if (m_posSpin)
+        {
+            m_posSpin->setValue(val);
+        }
+    };
+    req.onCancelled = []() {};
+
+    m_occView->interactionManager()->requestSelection(req);
+}
+
+void GridDialog::onPickArbP1Clicked()
+{
+    if (!m_occView || !m_occView->interactionManager()) return;
+
+    TSA::Interaction::SelectionRequest req;
+    req.mode = TSA::Interaction::SelectionMode::SelectPoint;
+    req.targetField = tr("Ligne arbitraire - Point P1");
+    req.sender = this;
+    req.keepWindowOpen = true;
+    req.snapEnabled = true;
+    req.onSelected = [this](const TSA::Interaction::SelectedEntity& entity) {
+        if (m_arbP1X) m_arbP1X->setValue(entity.point.X());
+        if (m_arbP1Y) m_arbP1Y->setValue(entity.point.Y());
+        if (m_arbP1Z) m_arbP1Z->setValue(entity.point.Z());
+    };
+    req.onCancelled = []() {};
+
+    m_occView->interactionManager()->requestSelection(req);
+}
+
+void GridDialog::onPickArbP2Clicked()
+{
+    if (!m_occView || !m_occView->interactionManager()) return;
+
+    TSA::Interaction::SelectionRequest req;
+    req.mode = TSA::Interaction::SelectionMode::SelectPoint;
+    req.targetField = tr("Ligne arbitraire - Point P2");
+    req.sender = this;
+    req.keepWindowOpen = true;
+    req.snapEnabled = true;
+    req.onSelected = [this](const TSA::Interaction::SelectedEntity& entity) {
+        if (m_arbP2X) m_arbP2X->setValue(entity.point.X());
+        if (m_arbP2Y) m_arbP2Y->setValue(entity.point.Y());
+        if (m_arbP2Z) m_arbP2Z->setValue(entity.point.Z());
+    };
+    req.onCancelled = []() {};
+
+    m_occView->interactionManager()->requestSelection(req);
 }
 
 } // namespace TSA::UI

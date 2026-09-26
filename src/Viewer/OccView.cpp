@@ -75,6 +75,20 @@ OccView::OccView(QWidget* parent)
             emit interactionModeChanged(mode);
         });
         connect(m_interactionManager.get(), &TSA::Interaction::InteractionManager::promptChanged, this, &OccView::drawingPromptChanged);
+        connect(m_interactionManager.get(), &TSA::Interaction::InteractionManager::selectionRequested, this, [this](const TSA::Interaction::SelectionRequest& /*req*/) {
+            setCursor(Qt::CrossCursor);
+            emit drawingPromptChanged(m_interactionManager->promptText());
+        });
+        connect(m_interactionManager.get(), &TSA::Interaction::InteractionManager::selectionCompleted, this, [this](const TSA::Interaction::SelectedEntity& /*result*/) {
+            setCursor(Qt::ArrowCursor);
+            m_gridRenderer.hideSnapMarker(m_context);
+            if (!m_view.IsNull()) m_view->Redraw();
+        });
+        connect(m_interactionManager.get(), &TSA::Interaction::InteractionManager::selectionCancelled, this, [this]() {
+            setCursor(Qt::ArrowCursor);
+            m_gridRenderer.hideSnapMarker(m_context);
+            if (!m_view.IsNull()) m_view->Redraw();
+        });
     }
 }
 
@@ -2761,6 +2775,38 @@ void OccView::mousePressEvent(QMouseEvent* event)
             }
         }
 
+        // 2. Interception prioritaire : Requête de sélection 3D non-bloquante pour formulaire / dialogue
+        if (m_interactionManager && m_interactionManager->hasActiveSelectionRequest())
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId))
+            {
+                const auto& req = *m_interactionManager->activeSelectionRequest();
+                TSA::Interaction::SelectedEntity entity;
+                entity.mode = req.mode;
+                entity.point = gp_Pnt(wx, wy, wz);
+                entity.entityId = detectedId;
+                entity.targetField = req.targetField;
+                if (detectedId > 0)
+                {
+                    entity.description = tr("Nœud N%1").arg(detectedId);
+                }
+                else
+                {
+                    entity.description = tr("Point (%1, %2, %3)").arg(wx, 0, 'f', 3).arg(wy, 0, 'f', 3).arg(wz, 0, 'f', 3);
+                }
+
+                m_gridRenderer.hideSnapMarker(m_context);
+                m_interactionManager->completeSelection(entity);
+                if (!m_view.IsNull())
+                {
+                    m_view->Redraw();
+                }
+                return;
+            }
+        }
+
         if (interactionMode() == InteractionMode::Select)
         {
             // En mode sélection, on attend le mouvement pour distinguer un clic d'un glissé fenêtre/capture
@@ -3405,7 +3451,11 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
             AIS_StatusOfDetection status = m_context->MoveTo(px, py, m_view, true);
             bool objectDetected = (status != AIS_SOD_Nothing && m_context->HasDetected());
 
-            if (objectDetected)
+            if (m_interactionManager && m_interactionManager->hasActiveSelectionRequest())
+            {
+                setCursor(Qt::CrossCursor);
+            }
+            else if (objectDetected)
             {
                 setCursor(Qt::PointingHandCursor);
 
@@ -3624,6 +3674,13 @@ void OccView::keyPressEvent(QKeyEvent* event)
 
     if (event->key() == Qt::Key_Escape)
     {
+        if (m_interactionManager && m_interactionManager->hasActiveSelectionRequest())
+        {
+            m_gridRenderer.hideSnapMarker(m_context);
+            m_interactionManager->cancelSelectionRequest();
+            if (!m_view.IsNull()) m_view->Redraw();
+            return;
+        }
         if (!m_drawingPoints.empty())
         {
             cancelCurrentDrawing();

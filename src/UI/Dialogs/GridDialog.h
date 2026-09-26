@@ -52,6 +52,10 @@ public:
     TSA::Grid::GridDefinition getDefinition() const;
     void setOccView(OccView* occView) { m_occView = occView; }
 
+protected:
+    void closeEvent(QCloseEvent* event) override;
+    void reject() override;
+
 signals:
     void gridDefinitionApplied(const TSA::Grid::GridDefinition& def);
     void manageGridsRequested();
@@ -70,6 +74,12 @@ private slots:
     void onAdvancedButtonClicked();
     void onCreateFromSelectedBars();
     void onToggleBold();
+
+    // Slots pour la sélection 3D non-bloquante
+    void onPickOriginClicked();
+    void onPickPositionClicked();
+    void onPickArbP1Clicked();
+    void onPickArbP2Clicked();
 
 private:
     void setupUi();
@@ -128,18 +138,29 @@ private:
 
     QWidget* m_standardInputGridWidget = nullptr;
     QDoubleSpinBox* m_posSpin = nullptr;
+    QPushButton* m_btnPickPosition = nullptr;
     QSpinBox* m_repeatSpin = nullptr;
     QDoubleSpinBox* m_spacingSpin = nullptr;
     QPushButton* m_btnAddInline = nullptr;
+
+    // Contrôles Origine / Centre
+    QWidget* m_originWidget = nullptr;
+    QLabel* m_originTitleLabel = nullptr;
+    QDoubleSpinBox* m_originXSpin = nullptr;
+    QDoubleSpinBox* m_originYSpin = nullptr;
+    QDoubleSpinBox* m_originZSpin = nullptr;
+    QPushButton* m_btnPickOrigin = nullptr;
 
     // Saisie mode Arbitraire
     QComboBox* m_arbTypeCombo = nullptr;
     QDoubleSpinBox* m_arbP1X = nullptr;
     QDoubleSpinBox* m_arbP1Y = nullptr;
     QDoubleSpinBox* m_arbP1Z = nullptr;
+    QPushButton* m_btnPickArbP1 = nullptr;
     QDoubleSpinBox* m_arbP2X = nullptr;
     QDoubleSpinBox* m_arbP2Y = nullptr;
     QDoubleSpinBox* m_arbP2Z = nullptr;
+    QPushButton* m_btnPickArbP2 = nullptr;
 
     QTableWidget* m_table = nullptr;
 

@@ -1462,8 +1462,27 @@ void MainWindow::onResetView()
 
 void MainWindow::onNewGrid()
 {
-    TSA::UI::GridDialog dlg(m_gridManager.get(), m_model.get(), m_occView, this);
-    connect(&dlg, &TSA::UI::GridDialog::gridDefinitionApplied, this, [this](const TSA::Grid::GridDefinition& /*def*/) {
+    if (m_gridDialog)
+    {
+        m_gridDialog->show();
+        m_gridDialog->raise();
+        m_gridDialog->activateWindow();
+        return;
+    }
+
+    m_gridDialog = new TSA::UI::GridDialog(m_gridManager.get(), m_model.get(), m_occView, this);
+    m_gridDialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(m_gridDialog, &TSA::UI::GridDialog::gridDefinitionApplied, this, [this](const TSA::Grid::GridDefinition& /*def*/) {
+        m_occView->rebuildGrid();
+        m_modelTree->refreshGrids();
+        m_modelTree->refreshLevels();
+        if (m_viewportContainer)
+        {
+            m_viewportContainer->updateRulers();
+        }
+    });
+    connect(m_gridDialog, &TSA::UI::GridDialog::manageGridsRequested, this, &MainWindow::onGridManagerDialog);
+    connect(m_gridDialog, &TSA::UI::GridDialog::destroyed, this, [this]() {
         m_occView->rebuildGrid();
         m_modelTree->refreshGrids();
         m_modelTree->refreshLevels();
@@ -1473,23 +1492,28 @@ void MainWindow::onNewGrid()
         }
     });
 
-    dlg.exec();
-
-    m_occView->rebuildGrid();
-    m_modelTree->refreshGrids();
-    m_modelTree->refreshLevels();
-    if (m_viewportContainer)
-    {
-        m_viewportContainer->updateRulers();
-    }
+    m_gridDialog->show();
+    m_gridDialog->raise();
+    m_gridDialog->activateWindow();
 }
 
 void MainWindow::onGridManagerDialog()
 {
     if (m_gridManager && m_gridSnapManager && m_occView)
     {
-        TSA::UI::GridSettingsDialog dlg(m_gridManager.get(), m_gridSnapManager.get(), m_occView, this);
-        dlg.exec();
+        if (m_gridSettingsDialog)
+        {
+            m_gridSettingsDialog->show();
+            m_gridSettingsDialog->raise();
+            m_gridSettingsDialog->activateWindow();
+            return;
+        }
+
+        m_gridSettingsDialog = new TSA::UI::GridSettingsDialog(m_gridManager.get(), m_gridSnapManager.get(), m_occView, this);
+        m_gridSettingsDialog->setAttribute(Qt::WA_DeleteOnClose);
+        m_gridSettingsDialog->show();
+        m_gridSettingsDialog->raise();
+        m_gridSettingsDialog->activateWindow();
     }
 }
 

@@ -1,4 +1,6 @@
 #include "GridAdvancedSettingsDialog.h"
+#include "../../Viewer/OccView.h"
+#include "../../Interaction/InteractionManager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -17,11 +19,14 @@ GridAdvancedSettingsDialog::GridAdvancedSettingsDialog(
     const gp_Pnt& origin,
     double rotationDeg,
     const TSA::Grid::GridDisplaySettings& displaySettings,
-    QWidget* parent)
+    QWidget* parent,
+    OccView* occView)
     : QDialog(parent)
+    , m_occView(occView)
     , m_selectedColor(QString::fromStdString(displaySettings.lineColor))
 {
     setWindowTitle(tr("Paramètres avancés de la grille"));
+    setWindowModality(Qt::NonModal);
     resize(420, 460);
     setupUi();
 
@@ -78,7 +83,15 @@ void GridAdvancedSettingsDialog::setupUi()
     m_spnRotation->setDecimals(2);
     m_spnRotation->setSuffix(" °");
 
-    formCoord->addRow(tr("Origine X :"), m_spnOriginX);
+    auto* origXLayout = new QHBoxLayout();
+    origXLayout->addWidget(m_spnOriginX, 1);
+    m_btnPickOrigin = new QPushButton(tr("🎯 3D"), this);
+    m_btnPickOrigin->setToolTip(tr("Sélectionner l'origine dans la vue 3D"));
+    m_btnPickOrigin->setFixedHeight(24);
+    connect(m_btnPickOrigin, &QPushButton::clicked, this, &GridAdvancedSettingsDialog::onPickOriginClicked);
+    origXLayout->addWidget(m_btnPickOrigin);
+
+    formCoord->addRow(tr("Origine X :"), origXLayout);
     formCoord->addRow(tr("Origine Y :"), m_spnOriginY);
     formCoord->addRow(tr("Origine Z :"), m_spnOriginZ);
     formCoord->addRow(tr("Rotation (autour de Z) :"), m_spnRotation);
@@ -169,6 +182,52 @@ TSA::Grid::GridDisplaySettings GridAdvancedSettingsDialog::displaySettings() con
     ds.lineWidth = m_spnLineWidth->value();
     ds.lineColor = m_selectedColor.toStdString();
     return ds;
+}
+
+void GridAdvancedSettingsDialog::closeEvent(QCloseEvent* event)
+{
+    if (m_occView && m_occView->interactionManager() && m_occView->interactionManager()->hasActiveSelectionRequest())
+    {
+        const auto& req = m_occView->interactionManager()->activeSelectionRequest();
+        if (req && req->sender == this)
+        {
+            m_occView->interactionManager()->cancelSelectionRequest();
+        }
+    }
+    QDialog::closeEvent(event);
+}
+
+void GridAdvancedSettingsDialog::reject()
+{
+    if (m_occView && m_occView->interactionManager() && m_occView->interactionManager()->hasActiveSelectionRequest())
+    {
+        const auto& req = m_occView->interactionManager()->activeSelectionRequest();
+        if (req && req->sender == this)
+        {
+            m_occView->interactionManager()->cancelSelectionRequest();
+        }
+    }
+    QDialog::reject();
+}
+
+void GridAdvancedSettingsDialog::onPickOriginClicked()
+{
+    if (!m_occView || !m_occView->interactionManager()) return;
+
+    TSA::Interaction::SelectionRequest req;
+    req.mode = TSA::Interaction::SelectionMode::SelectPoint;
+    req.targetField = tr("Origine locale de la grille");
+    req.sender = this;
+    req.keepWindowOpen = true;
+    req.snapEnabled = true;
+    req.onSelected = [this](const TSA::Interaction::SelectedEntity& entity) {
+        if (m_spnOriginX) m_spnOriginX->setValue(entity.point.X());
+        if (m_spnOriginY) m_spnOriginY->setValue(entity.point.Y());
+        if (m_spnOriginZ) m_spnOriginZ->setValue(entity.point.Z());
+    };
+    req.onCancelled = []() {};
+
+    m_occView->interactionManager()->requestSelection(req);
 }
 
 } // namespace TSA::UI

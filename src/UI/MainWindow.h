@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QPointer>
 #include <memory>
 #include <vector>
 #include <gp_Pnt.hxx>
@@ -29,6 +30,8 @@ namespace TSA::UI
     class HelpDialog;
     class BarCreationDialog;
     class SurfaceCreationDialog;
+    class GridDialog;
+    class GridSettingsDialog;
 }
 
 class OccView;
@@ -248,6 +251,8 @@ private:
 
     TSA::UI::SectionCutDialog* m_sectionCutDialog = nullptr;
     TSA::UI::HelpDialog* m_helpDialog = nullptr;
+    QPointer<TSA::UI::GridDialog> m_gridDialog;
+    QPointer<TSA::UI::GridSettingsDialog> m_gridSettingsDialog;
 
 private slots:
     void onActionViewXY();

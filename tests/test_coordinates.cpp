@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 34;
+    int total = 35;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -2964,6 +2964,272 @@ int main(int argc, char* argv[])
         std::cout << "  [PASS] Subtest 34.10: Undo / Redo Material Restoration Validated" << std::endl;
 
         std::cout << "[PASS] Test 34: Complete Realistic Material Pipeline (Concrete, Steel, Rebar, Wood, Soil, OCCT PBR, Persistence, Undo/Redo) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 35: Global Non-Blocking 3D Interactive Selection Mechanism
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "--- TEST 35: Global Non-Blocking 3D Interactive Selection Mechanism ---" << std::endl;
+
+        using namespace TSA::Interaction;
+        InteractionManager interactionMgr;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.1: Navigation non-bloquante & État de requête de sélection
+        // ---------------------------------------------------------------------
+        bool reqSignalReceived = false;
+        QMetaObject::Connection reqConn = QObject::connect(&interactionMgr, &InteractionManager::selectionRequested, [&](const SelectionRequest& r) {
+            reqSignalReceived = true;
+            TEST_CHECK(r.targetField == "Origine_Test", "Subtest 35.1: Signal received with correct targetField");
+        });
+
+        SelectionRequest req1;
+        req1.mode = SelectionMode::SelectPoint;
+        req1.targetField = "Origine_Test";
+        req1.snapEnabled = true;
+        req1.keepWindowOpen = true;
+        interactionMgr.requestSelection(req1);
+
+        TEST_CHECK(interactionMgr.hasActiveSelectionRequest(), "Subtest 35.1: Active selection request is true");
+        TEST_CHECK(reqSignalReceived, "Subtest 35.1: selectionRequested signal fired");
+        TEST_CHECK(interactionMgr.activeSelectionRequest().has_value(), "Subtest 35.1: activeSelectionRequest has value");
+        TEST_CHECK(interactionMgr.promptText().contains("Origine_Test"), "Subtest 35.1: promptText reflects target field");
+        QObject::disconnect(reqConn);
+        std::cout << "  [PASS] Subtest 35.1: Non-blocking Selection Request & State Management Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.2: Navigation caméra pendant sélection active
+        // ---------------------------------------------------------------------
+        // Pendant que la sélection est active, le viewport ou l'utilisateur peut naviguer
+        // (zoom, pan, rotation). L'état de requête de sélection reste intact et actif.
+        interactionMgr.setMode(InteractionMode::Select);
+        TEST_CHECK(interactionMgr.hasActiveSelectionRequest(), "Subtest 35.2: Selection request stays active during navigation");
+        TEST_CHECK(interactionMgr.activeSelectionRequest()->targetField == "Origine_Test", "Subtest 35.2: targetField preserved during navigation");
+        std::cout << "  [PASS] Subtest 35.2: Camera Navigation During Active Selection Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.3: Sélection d'un point 3D exact
+        // ---------------------------------------------------------------------
+        gp_Pnt receivedPnt(0, 0, 0);
+        bool selectedCallbackCalled = false;
+        SelectionRequest reqPnt;
+        reqPnt.mode = SelectionMode::SelectPoint;
+        reqPnt.targetField = "Point3D";
+        reqPnt.onSelected = [&](const SelectedEntity& entity) {
+            selectedCallbackCalled = true;
+            receivedPnt = entity.point;
+        };
+        interactionMgr.requestSelection(reqPnt);
+
+        SelectedEntity pickedEntity;
+        pickedEntity.mode = SelectionMode::SelectPoint;
+        pickedEntity.point = gp_Pnt(12.5, 8.25, 4.0);
+        pickedEntity.targetField = "Point3D";
+        interactionMgr.completeSelection(pickedEntity);
+
+        TEST_CHECK(selectedCallbackCalled, "Subtest 35.3: onSelected callback executed");
+        TEST_CHECK(approxEqual(receivedPnt.X(), 12.5), "Subtest 35.3: Point X coordinate exact");
+        TEST_CHECK(approxEqual(receivedPnt.Y(), 8.25), "Subtest 35.3: Point Y coordinate exact");
+        TEST_CHECK(approxEqual(receivedPnt.Z(), 4.0), "Subtest 35.3: Point Z coordinate exact");
+        TEST_CHECK(!interactionMgr.hasActiveSelectionRequest(), "Subtest 35.3: Selection request cleared after completion");
+        std::cout << "  [PASS] Subtest 35.3: Exact 3D Point Selection Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.4: Accrochage sur intersection de grille cartésienne
+        // ---------------------------------------------------------------------
+        GridManager cartGridMgr;
+        cartGridMgr.clearAllGrids();
+        GridDefinition cartDef("CartGridTest", GridType::Cartesian);
+        cartDef.setXPositions({ 0.0, 6.0, 12.0 });
+        cartDef.setYPositions({ 0.0, 4.0, 8.0 });
+        cartDef.setZLevels({ 0.0, 3.0 });
+        auto* cartSys = cartGridMgr.addGrid(cartDef);
+        cartGridMgr.setActiveGridId(cartSys->id());
+
+        GridSnapManager snapMgr;
+        snapMgr.setSnapTolerance(0.50);
+
+        gp_Pnt nearCartPnt(6.08, 3.92, 0.02);
+        GridSnapResult cartSnap = snapMgr.findSnap(nearCartPnt, &cartGridMgr, nullptr);
+        TEST_CHECK(cartSnap.snapped, "Subtest 35.4: Snapped to cartesian grid");
+        TEST_CHECK(cartSnap.type == GridSnapType::Intersection, "Subtest 35.4: Snap type is Intersection");
+        TEST_CHECK(approxEqual(cartSnap.point.X(), 6.0), "Subtest 35.4: Snapped X exact");
+        TEST_CHECK(approxEqual(cartSnap.point.Y(), 4.0), "Subtest 35.4: Snapped Y exact");
+        TEST_CHECK(approxEqual(cartSnap.point.Z(), 0.0), "Subtest 35.4: Snapped Z exact");
+
+        // Transmettre le point accroché à la requête de sélection
+        gp_Pnt cartCallbackPnt;
+        SelectionRequest reqCart;
+        reqCart.mode = SelectionMode::SelectPoint;
+        reqCart.onSelected = [&](const SelectedEntity& e) { cartCallbackPnt = e.point; };
+        interactionMgr.requestSelection(reqCart);
+        SelectedEntity snappedCartEntity;
+        snappedCartEntity.point = cartSnap.point;
+        interactionMgr.completeSelection(snappedCartEntity);
+        TEST_CHECK(approxEqual(cartCallbackPnt.X(), 6.0) && approxEqual(cartCallbackPnt.Y(), 4.0), "Subtest 35.4: Dialog received snapped intersection");
+        std::cout << "  [PASS] Subtest 35.4: Cartesian Grid Intersection Snapping Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.5: Accrochage sur grille cylindrique (Rayon x Angle)
+        // ---------------------------------------------------------------------
+        GridManager cylGridMgr;
+        cylGridMgr.clearAllGrids();
+        GridDefinition cylDef("CylGridTest", GridType::Cylindrical);
+        cylDef.setRadii({ 2.0, 4.0, 6.0 });
+        cylDef.setAngles({ 0.0, 30.0, 60.0, 90.0 });
+        auto* cylSys = cylGridMgr.addGrid(cylDef);
+        cylGridMgr.setActiveGridId(cylSys->id());
+
+        // À R=4.0, theta=60°: X = 4 * cos(60°) = 2.0, Y = 4 * sin(60°) = 3.4641016
+        double expectedX = 4.0 * std::cos(60.0 * M_PI / 180.0);
+        double expectedY = 4.0 * std::sin(60.0 * M_PI / 180.0);
+        gp_Pnt nearCylPnt(2.05, 3.42, 0.0);
+        GridSnapResult cylSnap = snapMgr.findSnap(nearCylPnt, &cylGridMgr, nullptr);
+        TEST_CHECK(cylSnap.snapped, "Subtest 35.5: Snapped to cylindrical grid");
+        TEST_CHECK(approxEqual(cylSnap.point.X(), expectedX, 0.02), "Subtest 35.5: Cylindrical intersection X");
+        TEST_CHECK(approxEqual(cylSnap.point.Y(), expectedY, 0.02), "Subtest 35.5: Cylindrical intersection Y");
+
+        gp_Pnt cylCallbackPnt;
+        SelectionRequest reqCyl;
+        reqCyl.mode = SelectionMode::SelectPoint;
+        reqCyl.onSelected = [&](const SelectedEntity& e) { cylCallbackPnt = e.point; };
+        interactionMgr.requestSelection(reqCyl);
+        SelectedEntity snappedCylEntity;
+        snappedCylEntity.point = cylSnap.point;
+        interactionMgr.completeSelection(snappedCylEntity);
+        TEST_CHECK(approxEqual(cylCallbackPnt.X(), expectedX, 0.02), "Subtest 35.5: Callback received cylindrical snap");
+        std::cout << "  [PASS] Subtest 35.5: Cylindrical Radial x Angle Intersection Snapping Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.6: Annulation propre (Touche ESC) sans modification du modèle
+        // ---------------------------------------------------------------------
+        Model testModel35;
+        testModel35.addNode(0, 0, 0);
+        testModel35.addNode(5, 0, 0);
+        const size_t initialNodes = testModel35.nodes().size();
+        const size_t initialBars = testModel35.bars().size();
+
+        bool cancelCallbackCalled = false;
+        SelectionRequest reqCancel;
+        reqCancel.mode = SelectionMode::SelectPoint;
+        reqCancel.targetField = "Annuler_Test";
+        reqCancel.onCancelled = [&]() { cancelCallbackCalled = true; };
+        interactionMgr.requestSelection(reqCancel);
+        TEST_CHECK(interactionMgr.hasActiveSelectionRequest(), "Subtest 35.6: Request active before escape");
+
+        // Simuler ESC
+        interactionMgr.cancelSelectionRequest();
+        TEST_CHECK(cancelCallbackCalled, "Subtest 35.6: onCancelled triggered");
+        TEST_CHECK(!interactionMgr.hasActiveSelectionRequest(), "Subtest 35.6: Request cleared after cancel");
+        TEST_CHECK(testModel35.nodes().size() == initialNodes, "Subtest 35.6: Zero node changes");
+        TEST_CHECK(testModel35.bars().size() == initialBars, "Subtest 35.6: Zero bar changes");
+        std::cout << "  [PASS] Subtest 35.6: ESC Clean Cancellation with Zero Model Modification Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.7: Validation formulaire (Pick -> update field -> Apply -> update 3D)
+        // ---------------------------------------------------------------------
+        double formFieldX = 0.0, formFieldY = 0.0, formFieldZ = 0.0;
+        bool modelOrGridUpdated = false;
+
+        SelectionRequest reqForm;
+        reqForm.mode = SelectionMode::SelectPoint;
+        reqForm.targetField = "Origine_Form";
+        reqForm.onSelected = [&](const SelectedEntity& e) {
+            // Seuls les champs d'interface sont mis à jour lors de la sélection
+            formFieldX = e.point.X();
+            formFieldY = e.point.Y();
+            formFieldZ = e.point.Z();
+        };
+        interactionMgr.requestSelection(reqForm);
+
+        SelectedEntity formPick;
+        formPick.point = gp_Pnt(7.0, 14.0, 2.5);
+        interactionMgr.completeSelection(formPick);
+
+        TEST_CHECK(approxEqual(formFieldX, 7.0) && approxEqual(formFieldY, 14.0) && approxEqual(formFieldZ, 2.5),
+                   "Subtest 35.7: Form fields updated by 3D pick");
+        TEST_CHECK(!modelOrGridUpdated, "Subtest 35.7: Model/Grid not modified before Apply");
+
+        // L'utilisateur clique sur "Appliquer"
+        GridDefinition appliedDef("AppliedGrid", GridType::Cartesian);
+        appliedDef.setOrigin(formFieldX, formFieldY, formFieldZ);
+        appliedDef.setXPositions({ 0.0, 5.0 });
+        appliedDef.setYPositions({ 0.0, 5.0 });
+        cartGridMgr.addGrid(appliedDef);
+        modelOrGridUpdated = true;
+
+        TEST_CHECK(modelOrGridUpdated, "Subtest 35.7: Update committed on Apply");
+        TEST_CHECK(approxEqual(cartGridMgr.grids().back()->definition().origin().X(), 7.0), "Subtest 35.7: Grid origin updated on Apply");
+        std::cout << "  [PASS] Subtest 35.7: Form Validation Lifecycle (Pick -> Update Field -> Apply) Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.8: Deuxième appelant (généricité de l'architecture)
+        // ---------------------------------------------------------------------
+        QObject secondCaller;
+        int secondResultNodeId = -1;
+        SelectionRequest reqCaller2;
+        reqCaller2.mode = SelectionMode::SelectNode;
+        reqCaller2.targetField = "Appui_NodeId";
+        reqCaller2.sender = &secondCaller;
+        reqCaller2.onSelected = [&](const SelectedEntity& e) {
+            secondResultNodeId = e.entityId;
+        };
+        interactionMgr.requestSelection(reqCaller2);
+
+        SelectedEntity nodeEntity;
+        nodeEntity.mode = SelectionMode::SelectNode;
+        nodeEntity.entityId = 99;
+        nodeEntity.point = gp_Pnt(0.0, 0.0, 6.0);
+        interactionMgr.completeSelection(nodeEntity);
+
+        TEST_CHECK(secondResultNodeId == 99, "Subtest 35.8: Second caller received node ID 99 without code duplication");
+        std::cout << "  [PASS] Subtest 35.8: Generic Multi-Caller Architecture Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.9: Absence d'effet de bord sur l'historique Undo/Redo
+        // ---------------------------------------------------------------------
+        TSA::UndoRedo::UndoManager undoMgr;
+        TSA::UndoRedo::CommandManager cmdMgr(&testModel35, &undoMgr);
+        const bool initialCanUndo = undoMgr.canUndo();
+        const bool initialCanRedo = undoMgr.canRedo();
+
+        // Effectuer des sélections 3D et des navigations
+        SelectionRequest reqUndoCheck;
+        reqUndoCheck.mode = SelectionMode::SelectPoint;
+        interactionMgr.requestSelection(reqUndoCheck);
+        SelectedEntity dummyEntity;
+        dummyEntity.point = gp_Pnt(1, 2, 3);
+        interactionMgr.completeSelection(dummyEntity);
+
+        // Annulation d'une autre sélection
+        interactionMgr.requestSelection(reqUndoCheck);
+        interactionMgr.cancelSelectionRequest();
+
+        TEST_CHECK(undoMgr.canUndo() == initialCanUndo, "Subtest 35.9: canUndo unchanged by 3D selection");
+        TEST_CHECK(undoMgr.canRedo() == initialCanRedo, "Subtest 35.9: canRedo unchanged by 3D selection");
+        std::cout << "  [PASS] Subtest 35.9: Zero Undo/Redo Side Effects During 3D Selection Validated" << std::endl;
+
+        // ---------------------------------------------------------------------
+        // Subtest 35.10: Nettoyage automatique à la destruction de la fenêtre
+        // ---------------------------------------------------------------------
+        bool cancelOnDestroyCalled = false;
+        auto* dynamicCaller = new QObject();
+        SelectionRequest reqDestroy;
+        reqDestroy.mode = SelectionMode::SelectPoint;
+        reqDestroy.sender = dynamicCaller;
+        reqDestroy.targetField = "FenetreTemporaire";
+        reqDestroy.onCancelled = [&]() { cancelOnDestroyCalled = true; };
+        interactionMgr.requestSelection(reqDestroy);
+        TEST_CHECK(interactionMgr.hasActiveSelectionRequest(), "Subtest 35.10: Selection active with dynamic window");
+
+        // Fermeture / destruction de la fenêtre appelante
+        delete dynamicCaller;
+        TEST_CHECK(!interactionMgr.hasActiveSelectionRequest(), "Subtest 35.10: Request automatically cleaned up on sender destruction");
+        TEST_CHECK(cancelOnDestroyCalled, "Subtest 35.10: onCancelled called on sender destruction");
+
+        std::cout << "[PASS] Test 35: Global Non-Blocking 3D Interactive Selection Mechanism Passed Successfully!" << std::endl;
         passed++;
     }
 

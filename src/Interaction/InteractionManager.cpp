@@ -77,8 +77,78 @@ void InteractionManager::resetDrawingState()
     emit drawingStateReset();
 }
 
+void InteractionManager::requestSelection(const SelectionRequest& request)
+{
+    if (m_activeRequest.has_value())
+    {
+        cancelSelectionRequest();
+    }
+
+    m_activeRequest = request;
+
+    if (request.sender)
+    {
+        m_senderDestroyedConnection = connect(request.sender, &QObject::destroyed, this, [this]() {
+            cancelSelectionRequest();
+        });
+    }
+
+    emit selectionRequested(request);
+    emit promptChanged(promptText());
+}
+
+void InteractionManager::completeSelection(const SelectedEntity& result)
+{
+    if (!m_activeRequest.has_value())
+        return;
+
+    SelectionRequest req = *m_activeRequest;
+    m_activeRequest.reset();
+    if (m_senderDestroyedConnection)
+    {
+        disconnect(m_senderDestroyedConnection);
+    }
+
+    emit selectionCompleted(result);
+
+    if (req.onSelected)
+    {
+        req.onSelected(result);
+    }
+
+    emit promptChanged(promptText());
+}
+
+void InteractionManager::cancelSelectionRequest()
+{
+    if (!m_activeRequest.has_value())
+        return;
+
+    SelectionRequest req = *m_activeRequest;
+    m_activeRequest.reset();
+    if (m_senderDestroyedConnection)
+    {
+        disconnect(m_senderDestroyedConnection);
+    }
+
+    emit selectionCancelled();
+
+    if (req.onCancelled)
+    {
+        req.onCancelled();
+    }
+
+    emit promptChanged(promptText());
+}
+
 QString InteractionManager::promptText() const
 {
+    if (m_activeRequest.has_value())
+    {
+        QString target = m_activeRequest->targetField.isEmpty() ? tr("un point") : m_activeRequest->targetField;
+        return tr("Sélection 3D : Cliquez dans le viewport pour définir %1 (Échap pour annuler)").arg(target);
+    }
+
     switch (m_mode)
     {
     case InteractionMode::Select:
