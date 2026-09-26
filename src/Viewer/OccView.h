@@ -82,6 +82,7 @@ public:
     // Actions de vue
     void fitAll();
     void resetView();
+    void zoomAtCursor(const QPointF& logicalMousePos, double zoomFactor);
     QImage captureViewImage(int width = 512, int height = 512);
 
     // Intégration du système de Grille 3D paramétrique
