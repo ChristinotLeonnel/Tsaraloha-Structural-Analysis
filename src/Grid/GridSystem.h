@@ -23,16 +23,16 @@ public:
 
     // États de visibilité et d'activité
     bool isVisible() const { return m_isVisible; }
-    void setVisible(bool visible) { m_isVisible = visible; }
+    void setVisible(bool visible) { m_isVisible = visible; m_definition.setVisible(visible); }
 
     bool isActive() const { return m_isActive; }
-    void setActive(bool active) { m_isActive = active; }
+    void setActive(bool active) { m_isActive = active; m_definition.setActive(active); }
 
     bool showLabels() const { return m_showLabels; }
-    void setShowLabels(bool show) { m_showLabels = show; }
+    void setShowLabels(bool show) { m_showLabels = show; m_definition.setShowLabels(show); }
 
     bool showIntersections() const { return m_showIntersections; }
-    void setShowIntersections(bool show) { m_showIntersections = show; }
+    void setShowIntersections(bool show) { m_showIntersections = show; m_definition.setShowIntersections(show); }
 
     bool showLevels() const { return m_showLevels; }
     void setShowLevels(bool show) { m_showLevels = show; }

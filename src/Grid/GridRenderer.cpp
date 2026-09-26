@@ -20,57 +20,84 @@ GridRenderer::GridRenderer()
     , m_labelsVisible(true)
     , m_intersectionsVisible(true)
     , m_levelsVisible(true)
+    , m_isDarkMode(true)
 {
 }
 
-void GridRenderer::clearGrid(const Handle(AIS_InteractiveContext)& context)
+void GridRenderer::clearGridObjects(PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context)
 {
     if (context.IsNull())
         return;
 
-    hideSnapMarker(context);
-    m_labelRenderer.removeLabels(context);
+    auto removeShape = [&](Handle(AIS_Shape)& s) {
+        if (!s.IsNull())
+        {
+            context->Remove(s, false);
+            s.Nullify();
+        }
+    };
 
-    if (!m_axesShape.IsNull())
+    removeShape(objs.axesShape);
+    removeShape(objs.verticalConnectionsShape);
+    removeShape(objs.activeLevelPlaneShape);
+    removeShape(objs.circlesShape);
+    removeShape(objs.intersectionsShape);
+    removeShape(objs.originShape);
+    removeShape(objs.levelAxisShape);
+    removeShape(objs.levelPlanesShape);
+}
+
+void GridRenderer::removeGrid(const std::string& gridId, const Handle(AIS_InteractiveContext)& context)
+{
+    auto it = m_gridObjectsMap.find(gridId);
+    if (it != m_gridObjectsMap.end())
     {
-        context->Remove(m_axesShape, false);
-        m_axesShape.Nullify();
+        clearGridObjects(it->second, context);
+        m_gridObjectsMap.erase(it);
     }
-    if (!m_circlesShape.IsNull())
+    m_labelRenderer.removeLabels(gridId, context);
+}
+
+void GridRenderer::clearGrid(const Handle(AIS_InteractiveContext)& context)
+{
+    hideSnapMarker(context);
+    for (auto& [id, objs] : m_gridObjectsMap)
     {
-        context->Remove(m_circlesShape, false);
-        m_circlesShape.Nullify();
+        clearGridObjects(objs, context);
     }
-    if (!m_intersectionsShape.IsNull())
-    {
-        context->Remove(m_intersectionsShape, false);
-        m_intersectionsShape.Nullify();
-    }
-    if (!m_originShape.IsNull())
-    {
-        context->Remove(m_originShape, false);
-        m_originShape.Nullify();
-    }
-    if (!m_levelAxisShape.IsNull())
-    {
-        context->Remove(m_levelAxisShape, false);
-        m_levelAxisShape.Nullify();
-    }
-    if (!m_levelPlanesShape.IsNull())
-    {
-        context->Remove(m_levelPlanesShape, false);
-        m_levelPlanesShape.Nullify();
-    }
-    if (!m_verticalConnectionsShape.IsNull())
-    {
-        context->Remove(m_verticalConnectionsShape, false);
-        m_verticalConnectionsShape.Nullify();
-    }
-    if (!m_activeLevelPlaneShape.IsNull())
-    {
-        context->Remove(m_activeLevelPlaneShape, false);
-        m_activeLevelPlaneShape.Nullify();
-    }
+    m_gridObjectsMap.clear();
+    m_labelRenderer.removeAllLabels(context);
+}
+
+void GridRenderer::setGridVisible(const std::string& gridId, bool visible, const Handle(AIS_InteractiveContext)& context)
+{
+    auto it = m_gridObjectsMap.find(gridId);
+    if (it == m_gridObjectsMap.end() || context.IsNull())
+        return;
+
+    auto& objs = it->second;
+    bool show = visible && m_gridVisible;
+
+    auto updateVis = [&](Handle(AIS_Shape)& shape, bool alsoVisible) {
+        if (!shape.IsNull())
+        {
+            if (show && alsoVisible)
+                context->Display(shape, false);
+            else
+                context->Erase(shape, false);
+        }
+    };
+
+    updateVis(objs.axesShape, true);
+    updateVis(objs.verticalConnectionsShape, true);
+    updateVis(objs.activeLevelPlaneShape, true);
+    updateVis(objs.circlesShape, true);
+    updateVis(objs.intersectionsShape, m_intersectionsVisible);
+    updateVis(objs.originShape, true);
+    updateVis(objs.levelAxisShape, m_levelsVisible);
+    updateVis(objs.levelPlanesShape, m_levelsVisible);
+
+    m_labelRenderer.setGridLabelsVisible(gridId, show && m_labelsVisible, context);
 }
 
 void GridRenderer::setGridVisible(bool visible, const Handle(AIS_InteractiveContext)& context)
@@ -79,31 +106,10 @@ void GridRenderer::setGridVisible(bool visible, const Handle(AIS_InteractiveCont
     if (context.IsNull())
         return;
 
-    auto updateVis = [&](Handle(AIS_Shape)& shape, bool alsoVisible) {
-        if (!shape.IsNull())
-        {
-            if (m_gridVisible && alsoVisible)
-                context->Display(shape, false);
-            else
-                context->Erase(shape, false);
-        }
-    };
-
-    // Correction : m_intersectionsShape et m_levelAxisShape/m_levelPlanesShape
-    // doivent aussi respecter m_intersectionsVisible / m_levelsVisible, sinon
-    // un simple setGridVisible(true) après un setGridVisible(false) réaffiche
-    // des éléments que l'utilisateur avait explicitement masqués via
-    // setIntersectionsVisible(false) / setLevelsVisible(false).
-    updateVis(m_axesShape, true);
-    updateVis(m_verticalConnectionsShape, true);
-    updateVis(m_activeLevelPlaneShape, true);
-    updateVis(m_circlesShape, true);
-    updateVis(m_intersectionsShape, m_intersectionsVisible);
-    updateVis(m_originShape, true);
-    updateVis(m_levelAxisShape, m_levelsVisible);
-    updateVis(m_levelPlanesShape, m_levelsVisible);
-
-    m_labelRenderer.setVisible(m_gridVisible && m_labelsVisible, context);
+    for (auto& [id, objs] : m_gridObjectsMap)
+    {
+        setGridVisible(id, visible, context);
+    }
 }
 
 void GridRenderer::setLabelsVisible(bool visible, const Handle(AIS_InteractiveContext)& context)
@@ -115,12 +121,18 @@ void GridRenderer::setLabelsVisible(bool visible, const Handle(AIS_InteractiveCo
 void GridRenderer::setIntersectionsVisible(bool visible, const Handle(AIS_InteractiveContext)& context)
 {
     m_intersectionsVisible = visible;
-    if (!m_intersectionsShape.IsNull() && !context.IsNull())
+    if (context.IsNull())
+        return;
+
+    for (auto& [id, objs] : m_gridObjectsMap)
     {
-        if (m_gridVisible && m_intersectionsVisible)
-            context->Display(m_intersectionsShape, false);
-        else
-            context->Erase(m_intersectionsShape, false);
+        if (!objs.intersectionsShape.IsNull())
+        {
+            if (m_gridVisible && m_intersectionsVisible)
+                context->Display(objs.intersectionsShape, false);
+            else
+                context->Erase(objs.intersectionsShape, false);
+        }
     }
 }
 
@@ -130,48 +142,56 @@ void GridRenderer::setLevelsVisible(bool visible, const Handle(AIS_InteractiveCo
     if (context.IsNull())
         return;
 
-    if (!m_levelAxisShape.IsNull())
+    for (auto& [id, objs] : m_gridObjectsMap)
     {
-        if (m_gridVisible && m_levelsVisible)
-            context->Display(m_levelAxisShape, false);
-        else
-            context->Erase(m_levelAxisShape, false);
-    }
-
-    if (!m_levelPlanesShape.IsNull())
-    {
-        if (m_gridVisible && m_levelsVisible)
-            context->Display(m_levelPlanesShape, false);
-        else
-            context->Erase(m_levelPlanesShape, false);
+        if (!objs.levelAxisShape.IsNull())
+        {
+            if (m_gridVisible && m_levelsVisible)
+                context->Display(objs.levelAxisShape, false);
+            else
+                context->Erase(objs.levelAxisShape, false);
+        }
+        if (!objs.levelPlanesShape.IsNull())
+        {
+            if (m_gridVisible && m_levelsVisible)
+                context->Display(objs.levelPlanesShape, false);
+            else
+                context->Erase(objs.levelPlanesShape, false);
+        }
     }
 }
 
 void GridRenderer::renderGrid(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context)
 {
-    clearGrid(context);
+    std::string id = gridSystem.id();
+    removeGrid(id, context);
 
-    if (context.IsNull() || !gridSystem.isVisible())
+    if (context.IsNull() || !gridSystem.isVisible() || !m_gridVisible)
     {
         return;
     }
 
+    PerGridRenderObjects objs;
+    objs.gridId = id;
+
     if (gridSystem.type() == GridType::Cartesian)
     {
-        renderCartesian(gridSystem, context);
+        renderCartesian(gridSystem, objs, context);
     }
     else
     {
-        renderCylindrical(gridSystem, context);
+        renderCylindrical(gridSystem, objs, context);
     }
 
     if (m_labelsVisible && gridSystem.showLabels())
     {
         m_labelRenderer.updateLabels(gridSystem, context);
     }
+
+    m_gridObjectsMap[id] = std::move(objs);
 }
 
-void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context)
+void GridRenderer::renderCartesian(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context)
 {
     const auto* cartesian = gridSystem.cartesian();
     if (!cartesian)
@@ -192,7 +212,7 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
         }
     }
 
-    m_axesShape = new AIS_Shape(axesCompound);
+    objs.axesShape = new AIS_Shape(axesCompound);
     Quantity_Color axesColor = m_isDarkMode
         ? Quantity_Color(0.48, 0.54, 0.62, Quantity_TOC_RGB)
         : Quantity_Color(0.55, 0.60, 0.68, Quantity_TOC_RGB);
@@ -201,11 +221,11 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
         Aspect_TOL_DASH,
         1.0
     );
-    m_axesShape->Attributes()->SetWireAspect(dashAspect);
-    m_axesShape->Attributes()->SetLineAspect(dashAspect);
-    m_axesShape->SetColor(axesColor);
-    m_axesShape->SetWidth(1.0);
-    context->Display(m_axesShape, false);
+    objs.axesShape->Attributes()->SetWireAspect(dashAspect);
+    objs.axesShape->Attributes()->SetLineAspect(dashAspect);
+    objs.axesShape->SetColor(axesColor);
+    objs.axesShape->SetWidth(1.0);
+    context->Display(objs.axesShape, false);
 
     // 1b. Lignes de connexion verticales à chaque intersection (X_i, Y_j) reliant tous les étages
     if (!cartesian->verticalConnectionLines().empty())
@@ -220,7 +240,7 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
                 builder.Add(connCompound, edge);
             }
         }
-        m_verticalConnectionsShape = new AIS_Shape(connCompound);
+        objs.verticalConnectionsShape = new AIS_Shape(connCompound);
         Quantity_Color vConnColor = m_isDarkMode
             ? Quantity_Color(0.42, 0.48, 0.56, Quantity_TOC_RGB)
             : Quantity_Color(0.58, 0.62, 0.70, Quantity_TOC_RGB);
@@ -229,23 +249,20 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
             Aspect_TOL_DASH,
             1.2
         );
-        m_verticalConnectionsShape->Attributes()->SetWireAspect(vDashAspect);
-        m_verticalConnectionsShape->Attributes()->SetLineAspect(vDashAspect);
-        m_verticalConnectionsShape->SetColor(vConnColor);
-        m_verticalConnectionsShape->SetWidth(1.2);
-        context->Display(m_verticalConnectionsShape, false);
+        objs.verticalConnectionsShape->Attributes()->SetWireAspect(vDashAspect);
+        objs.verticalConnectionsShape->Attributes()->SetLineAspect(vDashAspect);
+        objs.verticalConnectionsShape->SetColor(vConnColor);
+        objs.verticalConnectionsShape->SetWidth(1.2);
+        context->Display(objs.verticalConnectionsShape, false);
     }
 
-    // 1c. Mise en surbrillance du plan de l'étage actif
-    updateActiveLevelHighlight(gridSystem, context);
+    // 1c. Mise en surbrillance du plan de l'étage actif (si cette grille est active)
+    if (gridSystem.isActive())
+    {
+        updateActiveLevelHighlight(gridSystem, objs, context);
+    }
 
     // 2. Intersections (petites sphères discrètes aux nœuds de grille)
-    // Correction : la création doit aussi respecter le flag de visibilité du
-    // renderer (m_intersectionsVisible), pas uniquement le flag propre à la
-    // grille (gridSystem.showIntersections()), sinon un simple re-rendu
-    // (changement de grille active, mise à jour de définition, etc.) fait
-    // réapparaître des intersections que l'utilisateur avait masquées via
-    // setIntersectionsVisible(false).
     if (gridSystem.showIntersections() && m_intersectionsVisible)
     {
         TopoDS_Compound interCompound;
@@ -260,10 +277,10 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
             }
         }
 
-        m_intersectionsShape = new AIS_Shape(interCompound);
-        m_intersectionsShape->SetColor(Quantity_Color(0.35, 0.70, 0.90, Quantity_TOC_RGB));
-        m_intersectionsShape->SetDisplayMode(AIS_Shaded);
-        context->Display(m_intersectionsShape, false);
+        objs.intersectionsShape = new AIS_Shape(interCompound);
+        objs.intersectionsShape->SetColor(Quantity_Color(0.35, 0.70, 0.90, Quantity_TOC_RGB));
+        objs.intersectionsShape->SetDisplayMode(AIS_Shaded);
+        context->Display(objs.intersectionsShape, false);
     }
 
     // 3. Origine de la grille (trièdre local / croix tridimensionnelle)
@@ -276,17 +293,12 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
     builder.Add(origCompound, BRepBuilderAPI_MakeEdge(orig, gp_Pnt(orig.X(), orig.Y() + armLen, orig.Z())).Edge());
     builder.Add(origCompound, BRepBuilderAPI_MakeEdge(orig, gp_Pnt(orig.X(), orig.Y(), orig.Z() + armLen)).Edge());
 
-    m_originShape = new AIS_Shape(origCompound);
-    m_originShape->SetColor(Quantity_NOC_YELLOW);
-    m_originShape->SetWidth(3.0);
-    context->Display(m_originShape, false);
+    objs.originShape = new AIS_Shape(origCompound);
+    objs.originShape->SetColor(gridSystem.isActive() ? Quantity_NOC_YELLOW : Quantity_NOC_GRAY60);
+    objs.originShape->SetWidth(3.0);
+    context->Display(objs.originShape, false);
 
-    // 4. Colonne verticale Z reliant tous les étages (exigence centrale)
-    // Correction : cette section ne vérifiait ni gridSystem.showLevels() ni
-    // m_levelsVisible, alors que ce sont précisément les flags prévus pour
-    // piloter cet élément (cf. setShowLevels / setLevelsVisible). L'axe de
-    // niveaux s'affichait donc toujours, même quand l'utilisateur l'avait
-    // explicitement masqué.
+    // 4. Colonne verticale Z reliant tous les étages
     if (gridSystem.showLevels() && m_levelsVisible && !cartesian->verticalLevelLines().empty())
     {
         TopoDS_Compound vertCompound;
@@ -301,14 +313,13 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
             }
         }
 
-        m_levelAxisShape = new AIS_Shape(vertCompound);
-        m_levelAxisShape->SetColor(Quantity_Color(0.95, 0.75, 0.15, Quantity_TOC_RGB)); // Or structural éclatant
-        m_levelAxisShape->SetWidth(2.6);
-        context->Display(m_levelAxisShape, false);
+        objs.levelAxisShape = new AIS_Shape(vertCompound);
+        objs.levelAxisShape->SetColor(Quantity_Color(0.95, 0.75, 0.15, Quantity_TOC_RGB));
+        objs.levelAxisShape->SetWidth(2.6);
+        context->Display(objs.levelAxisShape, false);
     }
 
     // 5. Cadres de contour des niveaux d'étages
-    // Correction : même bug que la section 4 ci-dessus (showLevels()/m_levelsVisible ignorés).
     if (gridSystem.showLevels() && m_levelsVisible && !cartesian->levelBoundaryPlanes().empty())
     {
         TopoDS_Compound planesCompound;
@@ -323,10 +334,10 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, const Handle(AI
             }
         }
 
-        m_levelPlanesShape = new AIS_Shape(planesCompound);
-        m_levelPlanesShape->SetColor(Quantity_Color(0.25, 0.50, 0.75, Quantity_TOC_RGB)); // Bleu acier moderne
-        m_levelPlanesShape->SetWidth(1.6);
-        context->Display(m_levelPlanesShape, false);
+        objs.levelPlanesShape = new AIS_Shape(planesCompound);
+        objs.levelPlanesShape->SetColor(Quantity_Color(0.25, 0.50, 0.75, Quantity_TOC_RGB));
+        objs.levelPlanesShape->SetWidth(1.6);
+        context->Display(objs.levelPlanesShape, false);
     }
 }
 
@@ -335,19 +346,23 @@ void GridRenderer::setActiveLevelElevation(double z, const GridSystem* gridSyste
     m_activeLevelZ = z;
     if (gridSystem)
     {
-        updateActiveLevelHighlight(*gridSystem, context);
+        auto it = m_gridObjectsMap.find(gridSystem->id());
+        if (it != m_gridObjectsMap.end())
+        {
+            updateActiveLevelHighlight(*gridSystem, it->second, context);
+        }
     }
 }
 
-void GridRenderer::updateActiveLevelHighlight(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context)
+void GridRenderer::updateActiveLevelHighlight(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context)
 {
     if (context.IsNull())
         return;
 
-    if (!m_activeLevelPlaneShape.IsNull())
+    if (!objs.activeLevelPlaneShape.IsNull())
     {
-        context->Remove(m_activeLevelPlaneShape, false);
-        m_activeLevelPlaneShape.Nullify();
+        context->Remove(objs.activeLevelPlaneShape, false);
+        objs.activeLevelPlaneShape.Nullify();
     }
 
     if (!m_gridVisible || gridSystem.type() != GridType::Cartesian || !gridSystem.cartesian())
@@ -374,24 +389,24 @@ void GridRenderer::updateActiveLevelHighlight(const GridSystem& gridSystem, cons
 
     if (hasLines)
     {
-        m_activeLevelPlaneShape = new AIS_Shape(activeCompound);
+        objs.activeLevelPlaneShape = new AIS_Shape(activeCompound);
         Quantity_Color activeColor = m_isDarkMode
-            ? Quantity_Color(0.25, 0.70, 0.95, Quantity_TOC_RGB)   // Cyan électrique éclatant en mode sombre
-            : Quantity_Color(0.10, 0.40, 0.80, Quantity_TOC_RGB);  // Bleu royal soutenu en mode clair
+            ? Quantity_Color(0.25, 0.70, 0.95, Quantity_TOC_RGB)
+            : Quantity_Color(0.10, 0.40, 0.80, Quantity_TOC_RGB);
         Handle(Prs3d_LineAspect) activeAspect = new Prs3d_LineAspect(
             activeColor,
             Aspect_TOL_SOLID,
             2.0
         );
-        m_activeLevelPlaneShape->Attributes()->SetWireAspect(activeAspect);
-        m_activeLevelPlaneShape->Attributes()->SetLineAspect(activeAspect);
-        m_activeLevelPlaneShape->SetColor(activeColor);
-        m_activeLevelPlaneShape->SetWidth(2.0);
-        context->Display(m_activeLevelPlaneShape, false);
+        objs.activeLevelPlaneShape->Attributes()->SetWireAspect(activeAspect);
+        objs.activeLevelPlaneShape->Attributes()->SetLineAspect(activeAspect);
+        objs.activeLevelPlaneShape->SetColor(activeColor);
+        objs.activeLevelPlaneShape->SetWidth(2.0);
+        context->Display(objs.activeLevelPlaneShape, false);
     }
 }
 
-void GridRenderer::renderCylindrical(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context)
+void GridRenderer::renderCylindrical(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context)
 {
     const auto* cyl = gridSystem.cylindrical();
     if (!cyl)
@@ -414,10 +429,10 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, const Handle(
         }
     }
 
-    m_circlesShape = new AIS_Shape(circlesCompound);
-    m_circlesShape->SetColor(Quantity_Color(0.35, 0.65, 0.75, Quantity_TOC_RGB));
-    m_circlesShape->SetWidth(1.4);
-    context->Display(m_circlesShape, false);
+    objs.circlesShape = new AIS_Shape(circlesCompound);
+    objs.circlesShape->SetColor(Quantity_Color(0.35, 0.65, 0.75, Quantity_TOC_RGB));
+    objs.circlesShape->SetWidth(1.4);
+    context->Display(objs.circlesShape, false);
 
     // 2. Lignes radiales
     TopoDS_Compound radCompound;
@@ -433,13 +448,12 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, const Handle(
         }
     }
 
-    m_axesShape = new AIS_Shape(radCompound);
-    m_axesShape->SetColor(Quantity_Color(0.45, 0.50, 0.60, Quantity_TOC_RGB));
-    m_axesShape->SetWidth(1.2);
-    context->Display(m_axesShape, false);
+    objs.axesShape = new AIS_Shape(radCompound);
+    objs.axesShape->SetColor(Quantity_Color(0.45, 0.50, 0.60, Quantity_TOC_RGB));
+    objs.axesShape->SetWidth(1.2);
+    context->Display(objs.axesShape, false);
 
     // 3. Intersections (Cercles x Rayons)
-    // Correction : voir renderCartesian, même bug (m_intersectionsVisible ignoré).
     if (gridSystem.showIntersections() && m_intersectionsVisible)
     {
         TopoDS_Compound interCompound;
@@ -454,10 +468,10 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, const Handle(
             }
         }
 
-        m_intersectionsShape = new AIS_Shape(interCompound);
-        m_intersectionsShape->SetColor(Quantity_Color(0.20, 0.85, 0.85, Quantity_TOC_RGB));
-        m_intersectionsShape->SetDisplayMode(AIS_Shaded);
-        context->Display(m_intersectionsShape, false);
+        objs.intersectionsShape = new AIS_Shape(interCompound);
+        objs.intersectionsShape->SetColor(Quantity_Color(0.20, 0.85, 0.85, Quantity_TOC_RGB));
+        objs.intersectionsShape->SetDisplayMode(AIS_Shaded);
+        context->Display(objs.intersectionsShape, false);
     }
 
     // 4. Centre de la grille cylindrique
@@ -471,10 +485,10 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, const Handle(
         builder.Add(centerCompound, sphereMaker.Shape());
     }
 
-    m_originShape = new AIS_Shape(centerCompound);
-    m_originShape->SetColor(Quantity_NOC_YELLOW);
-    m_originShape->SetDisplayMode(AIS_Shaded);
-    context->Display(m_originShape, false);
+    objs.originShape = new AIS_Shape(centerCompound);
+    objs.originShape->SetColor(Quantity_NOC_YELLOW);
+    objs.originShape->SetDisplayMode(AIS_Shaded);
+    context->Display(objs.originShape, false);
 }
 
 void GridRenderer::showSnapMarker(const GridSnapResult& snap, const Handle(AIS_InteractiveContext)& context)
@@ -485,7 +499,6 @@ void GridRenderer::showSnapMarker(const GridSnapResult& snap, const Handle(AIS_I
         return;
     }
 
-    // Marqueur visuel élégant (Diamant / Boîte rotatée ou sphère éclatante)
     double sz = 0.10;
     gp_Pnt minP(snap.point.X() - sz, snap.point.Y() - sz, snap.point.Z() - sz);
     gp_Pnt maxP(snap.point.X() + sz, snap.point.Y() + sz, snap.point.Z() + sz);

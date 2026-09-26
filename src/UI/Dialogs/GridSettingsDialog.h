@@ -29,6 +29,7 @@ public:
 private slots:
     void onAddGrid();
     void onEditGrid();
+    void onDuplicateGrid();
     void onDeleteGrid();
     void onSetActiveGrid();
     void onToggleVisibility(bool checked);
@@ -51,6 +52,7 @@ private:
     QListWidget* m_gridList = nullptr;
     QPushButton* m_addBtn = nullptr;
     QPushButton* m_editBtn = nullptr;
+    QPushButton* m_duplicateBtn = nullptr;
     QPushButton* m_deleteBtn = nullptr;
     QPushButton* m_setActiveBtn = nullptr;
 

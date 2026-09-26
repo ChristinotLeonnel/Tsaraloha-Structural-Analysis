@@ -58,17 +58,45 @@ void CartesianGrid::computeGeometry()
     auto minMaxY = std::minmax_element(yPos.begin(), yPos.end());
     auto minMaxZ = std::minmax_element(levels.begin(), levels.end());
 
-    m_minX = orig.X() + *minMaxX.first;
-    m_maxX = orig.X() + *minMaxX.second;
-    m_minY = orig.Y() + *minMaxY.first;
-    m_maxY = orig.Y() + *minMaxY.second;
+    double rotRad = m_definition.rotationDeg() * M_PI / 180.0;
+    double cosR = std::cos(rotRad);
+    double sinR = std::sin(rotRad);
+
+    auto transformPnt = [&](double dx, double dy, double dz) -> gp_Pnt {
+        double rx = dx * cosR - dy * sinR;
+        double ry = dx * sinR + dy * cosR;
+        return gp_Pnt(orig.X() + rx, orig.Y() + ry, orig.Z() + dz);
+    };
+
+    auto transformDir = [&](double dx, double dy, double dz) -> gp_Dir {
+        double rx = dx * cosR - dy * sinR;
+        double ry = dx * sinR + dy * cosR;
+        double len = std::hypot(rx, ry);
+        if (len < 1e-8) return gp_Dir(0, 0, dz >= 0 ? 1 : -1);
+        return gp_Dir(rx / len, ry / len, dz);
+    };
+
+    double minLx = *minMaxX.first;
+    double maxLx = *minMaxX.second;
+    double minLy = *minMaxY.first;
+    double maxLy = *minMaxY.second;
+
+    gp_Pnt p1 = transformPnt(minLx, minLy, *minMaxZ.first);
+    gp_Pnt p2 = transformPnt(maxLx, minLy, *minMaxZ.first);
+    gp_Pnt p3 = transformPnt(maxLx, maxLy, *minMaxZ.first);
+    gp_Pnt p4 = transformPnt(minLx, maxLy, *minMaxZ.first);
+
+    m_minX = std::min({p1.X(), p2.X(), p3.X(), p4.X()});
+    m_maxX = std::max({p1.X(), p2.X(), p3.X(), p4.X()});
+    m_minY = std::min({p1.Y(), p2.Y(), p3.Y(), p4.Y()});
+    m_maxY = std::max({p1.Y(), p2.Y(), p3.Y(), p4.Y()});
     m_minZ = orig.Z() + *minMaxZ.first;
     m_maxZ = orig.Z() + *minMaxZ.second;
 
-    double startY = m_minY - m_extension;
-    double endY   = m_maxY + m_extension;
-    double startX = m_minX - m_extension;
-    double endX   = m_maxX + m_extension;
+    double startLy = minLy - m_extension;
+    double endLy   = maxLy + m_extension;
+    double startLx = minLx - m_extension;
+    double endLx   = maxLx + m_extension;
 
     // Pré-allocation des vecteurs (tailles connues à l'avance)
     size_t nLevels = levels.size();
@@ -84,57 +112,53 @@ void CartesianGrid::computeGeometry()
     // 1. Génération des lignes et intersections pour chaque niveau Z
     for (size_t k = 0; k < levels.size(); ++k)
     {
-        double zVal = orig.Z() + levels[k];
+        double zVal = levels[k];
 
         // Lignes d'axes X (parallèles à Y, à chaque X_i)
         for (size_t i = 0; i < xPos.size(); ++i)
         {
-            double xVal = orig.X() + xPos[i];
             GridLineSegment seg;
-            seg.start = gp_Pnt(xVal, startY, zVal);
-            seg.end   = gp_Pnt(xVal, endY,   zVal);
+            seg.start = transformPnt(xPos[i], startLy, zVal);
+            seg.end   = transformPnt(xPos[i], endLy,   zVal);
             seg.label = m_definition.getXLabel(i);
             seg.index = static_cast<int>(i);
             seg.isXAxis = true;
-            seg.zLevel = zVal;
+            seg.zLevel = orig.Z() + zVal;
 
             m_xLines.push_back(seg);
             m_allLines.push_back(seg);
 
             // Ancrages des bulles d'axe X
-            m_labelAnchors.push_back({ seg.start, seg.label, gp_Dir(0, -1, 0), true });
-            m_labelAnchors.push_back({ seg.end,   seg.label, gp_Dir(0,  1, 0), false });
+            m_labelAnchors.push_back({ seg.start, seg.label, transformDir(0, -1, 0), true });
+            m_labelAnchors.push_back({ seg.end,   seg.label, transformDir(0,  1, 0), false });
         }
 
         // Lignes d'axes Y (parallèles à X, à chaque Y_j)
         for (size_t j = 0; j < yPos.size(); ++j)
         {
-            double yVal = orig.Y() + yPos[j];
             GridLineSegment seg;
-            seg.start = gp_Pnt(startX, yVal, zVal);
-            seg.end   = gp_Pnt(endX,   yVal, zVal);
+            seg.start = transformPnt(startLx, yPos[j], zVal);
+            seg.end   = transformPnt(endLx,   yPos[j], zVal);
             seg.label = m_definition.getYLabel(j);
             seg.index = static_cast<int>(j);
             seg.isXAxis = false;
-            seg.zLevel = zVal;
+            seg.zLevel = orig.Z() + zVal;
 
             m_yLines.push_back(seg);
             m_allLines.push_back(seg);
 
             // Ancrages des bulles d'axe Y
-            m_labelAnchors.push_back({ seg.start, seg.label, gp_Dir(-1, 0, 0), true });
-            m_labelAnchors.push_back({ seg.end,   seg.label, gp_Dir( 1, 0, 0), false });
+            m_labelAnchors.push_back({ seg.start, seg.label, transformDir(-1, 0, 0), true });
+            m_labelAnchors.push_back({ seg.end,   seg.label, transformDir( 1, 0, 0), false });
         }
 
         // Intersections de grille (X_i, Y_j, Z_k)
         for (size_t i = 0; i < xPos.size(); ++i)
         {
-            double xVal = orig.X() + xPos[i];
             for (size_t j = 0; j < yPos.size(); ++j)
             {
-                double yVal = orig.Y() + yPos[j];
                 GridIntersection inter;
-                inter.point = gp_Pnt(xVal, yVal, zVal);
+                inter.point = transformPnt(xPos[i], yPos[j], zVal);
                 inter.xIndex = static_cast<int>(i);
                 inter.yIndex = static_cast<int>(j);
                 inter.zIndex = static_cast<int>(k);
@@ -150,17 +174,15 @@ void CartesianGrid::computeGeometry()
     // 2. Lignes de connexion verticales à chaque intersection (X_i, Y_j) reliant tous les étages
     for (size_t i = 0; i < xPos.size(); ++i)
     {
-        double xVal = orig.X() + xPos[i];
         for (size_t j = 0; j < yPos.size(); ++j)
         {
-            double yVal = orig.Y() + yPos[j];
             GridLineSegment vSeg;
-            vSeg.start = gp_Pnt(xVal, yVal, m_minZ);
-            vSeg.end   = gp_Pnt(xVal, yVal, m_maxZ);
+            vSeg.start = transformPnt(xPos[i], yPos[j], levels.front());
+            vSeg.end   = transformPnt(xPos[i], yPos[j], levels.back());
             vSeg.label = m_definition.getXLabel(i) + "-" + m_definition.getYLabel(j);
             vSeg.index = static_cast<int>(i * yPos.size() + j);
             vSeg.isXAxis = false;
-            vSeg.zLevel = m_minZ;
+            vSeg.zLevel = orig.Z() + levels.front();
             m_verticalConnectionLines.push_back(vSeg);
         }
     }
@@ -170,58 +192,59 @@ void CartesianGrid::computeGeometry()
     m_levelBoundaryPlanes.clear();
     m_levelLabelAnchors.clear();
 
-    double xDatum = m_minX - m_extension - 0.6;
-    double yDatum = m_minY - m_extension - 0.6;
-    double zBottom = m_minZ - 0.5;
-    double zTop = m_maxZ + 1.2;
+    double lxDatum = minLx - m_extension - 0.6;
+    double lyDatum = minLy - m_extension - 0.6;
+    double zBottom = levels.front() - 0.5;
+    double zTop = levels.back() + 1.2;
 
     // Ligne verticale maîtresse Z
     GridLineSegment vertCol;
-    vertCol.start = gp_Pnt(xDatum, yDatum, zBottom);
-    vertCol.end = gp_Pnt(xDatum, yDatum, zTop);
+    vertCol.start = transformPnt(lxDatum, lyDatum, zBottom);
+    vertCol.end   = transformPnt(lxDatum, lyDatum, zTop);
     vertCol.label = "Axe Vertical Niveaux Z";
     vertCol.isXAxis = false;
     m_verticalLevelLines.push_back(vertCol);
 
     // Flèche au sommet de l'axe vertical Z
-    gp_Pnt arrowTip(xDatum, yDatum, zTop);
-    gp_Pnt arrowLeft(xDatum - 0.15, yDatum, zTop - 0.30);
-    gp_Pnt arrowRight(xDatum + 0.15, yDatum, zTop - 0.30);
-    m_verticalLevelLines.push_back({ arrowLeft, arrowTip, "", -1, false, zTop });
-    m_verticalLevelLines.push_back({ arrowRight, arrowTip, "", -1, false, zTop });
+    gp_Pnt arrowTip = transformPnt(lxDatum, lyDatum, zTop);
+    gp_Pnt arrowLeft = transformPnt(lxDatum - 0.15, lyDatum, zTop - 0.30);
+    gp_Pnt arrowRight = transformPnt(lxDatum + 0.15, lyDatum, zTop - 0.30);
+    m_verticalLevelLines.push_back({ arrowLeft, arrowTip, "", -1, false, orig.Z() + zTop });
+    m_verticalLevelLines.push_back({ arrowRight, arrowTip, "", -1, false, orig.Z() + zTop });
 
     for (size_t k = 0; k < levels.size(); ++k)
     {
-        double zVal = orig.Z() + levels[k];
+        double zVal = levels[k];
+        double realZ = orig.Z() + zVal;
 
         // Bras horizontal de niveau reliant la colonne Z à la grille
-        gp_Pnt tickStart(xDatum, yDatum, zVal);
-        gp_Pnt tickEnd(xDatum + 0.8, yDatum, zVal);
-        m_verticalLevelLines.push_back({ tickStart, tickEnd, "", static_cast<int>(k), false, zVal });
+        gp_Pnt tickStart = transformPnt(lxDatum, lyDatum, zVal);
+        gp_Pnt tickEnd   = transformPnt(lxDatum + 0.8, lyDatum, zVal);
+        m_verticalLevelLines.push_back({ tickStart, tickEnd, "", static_cast<int>(k), false, realZ });
 
         // Symbole triangulaire de niveau génie civil au niveau Z_k
-        gp_Pnt triTop(xDatum + 0.3, yDatum, zVal);
-        gp_Pnt triLeft(xDatum + 0.1, yDatum, zVal - 0.2);
-        gp_Pnt triRight(xDatum + 0.5, yDatum, zVal - 0.2);
-        m_verticalLevelLines.push_back({ triLeft, triTop, "", -1, false, zVal });
-        m_verticalLevelLines.push_back({ triTop, triRight, "", -1, false, zVal });
-        m_verticalLevelLines.push_back({ triRight, triLeft, "", -1, false, zVal });
+        gp_Pnt triTop   = transformPnt(lxDatum + 0.3, lyDatum, zVal);
+        gp_Pnt triLeft  = transformPnt(lxDatum + 0.1, lyDatum, zVal - 0.2);
+        gp_Pnt triRight = transformPnt(lxDatum + 0.5, lyDatum, zVal - 0.2);
+        m_verticalLevelLines.push_back({ triLeft, triTop, "", -1, false, realZ });
+        m_verticalLevelLines.push_back({ triTop, triRight, "", -1, false, realZ });
+        m_verticalLevelLines.push_back({ triRight, triLeft, "", -1, false, realZ });
 
         // Ancrage d'étiquette de niveau (nom + élévation)
         std::ostringstream ss;
         ss << m_definition.getZLabel(k) << " [" << std::fixed << std::setprecision(2)
-           << (zVal >= 0 ? "+" : "") << zVal << " m]";
-        m_levelLabelAnchors.push_back({ gp_Pnt(xDatum - 0.3, yDatum, zVal), ss.str(), gp_Dir(0, 0, 1), true });
+           << (realZ >= 0 ? "+" : "") << realZ << " m]";
+        m_levelLabelAnchors.push_back({ transformPnt(lxDatum - 0.3, lyDatum, zVal), ss.str(), gp_Dir(0, 0, 1), true });
 
         // Cadre périmétrique du plancher au niveau Z_k
-        gp_Pnt c1(m_minX, m_minY, zVal);
-        gp_Pnt c2(m_maxX, m_minY, zVal);
-        gp_Pnt c3(m_maxX, m_maxY, zVal);
-        gp_Pnt c4(m_minX, m_maxY, zVal);
-        m_levelBoundaryPlanes.push_back({ c1, c2, "", static_cast<int>(k), false, zVal });
-        m_levelBoundaryPlanes.push_back({ c2, c3, "", static_cast<int>(k), false, zVal });
-        m_levelBoundaryPlanes.push_back({ c3, c4, "", static_cast<int>(k), false, zVal });
-        m_levelBoundaryPlanes.push_back({ c4, c1, "", static_cast<int>(k), false, zVal });
+        gp_Pnt c1 = transformPnt(minLx, minLy, zVal);
+        gp_Pnt c2 = transformPnt(maxLx, minLy, zVal);
+        gp_Pnt c3 = transformPnt(maxLx, maxLy, zVal);
+        gp_Pnt c4 = transformPnt(minLx, maxLy, zVal);
+        m_levelBoundaryPlanes.push_back({ c1, c2, "", static_cast<int>(k), false, realZ });
+        m_levelBoundaryPlanes.push_back({ c2, c3, "", static_cast<int>(k), false, realZ });
+        m_levelBoundaryPlanes.push_back({ c3, c4, "", static_cast<int>(k), false, realZ });
+        m_levelBoundaryPlanes.push_back({ c4, c1, "", static_cast<int>(k), false, realZ });
     }
 }
 

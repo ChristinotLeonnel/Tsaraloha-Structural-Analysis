@@ -28,6 +28,21 @@ public:
     void setOrigin(const gp_Pnt& origin) { m_origin = origin; }
     void setOrigin(double x, double y, double z) { m_origin = gp_Pnt(x, y, z); }
 
+    double rotationDeg() const { return m_rotationDeg; }
+    void setRotationDeg(double deg) { m_rotationDeg = deg; }
+
+    bool isVisible() const { return m_isVisible; }
+    void setVisible(bool visible) { m_isVisible = visible; }
+
+    bool isActive() const { return m_isActive; }
+    void setActive(bool active) { m_isActive = active; }
+
+    bool showLabels() const { return m_showLabels; }
+    void setShowLabels(bool show) { m_showLabels = show; }
+
+    bool showIntersections() const { return m_showIntersections; }
+    void setShowIntersections(bool show) { m_showIntersections = show; }
+
     // --- Coordonnées Cartésiennes (Positions explicites et irrégulières) ---
     const std::vector<double>& xPositions() const { return m_xPositions; }
     void setXPositions(const std::vector<double>& positions);
@@ -90,6 +105,11 @@ private:
     std::string m_name;
     GridType m_type = GridType::Cartesian;
     gp_Pnt m_origin = gp_Pnt(0.0, 0.0, 0.0);
+    double m_rotationDeg = 0.0;
+    bool m_isVisible = true;
+    bool m_isActive = false;
+    bool m_showLabels = true;
+    bool m_showIntersections = true;
 
     // Cartésien
     std::vector<double> m_xPositions;

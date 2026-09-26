@@ -353,6 +353,11 @@ std::string GridDefinition::toJson() const
     oss << "  \"name\": \"" << m_name << "\",\n";
     oss << "  \"type\": \"" << (m_type == GridType::Cartesian ? "Cartesian" : "Cylindrical") << "\",\n";
     oss << "  \"origin\": [" << m_origin.X() << ", " << m_origin.Y() << ", " << m_origin.Z() << "],\n";
+    oss << "  \"rotationDeg\": " << m_rotationDeg << ",\n";
+    oss << "  \"isVisible\": " << (m_isVisible ? "true" : "false") << ",\n";
+    oss << "  \"isActive\": " << (m_isActive ? "true" : "false") << ",\n";
+    oss << "  \"showLabels\": " << (m_showLabels ? "true" : "false") << ",\n";
+    oss << "  \"showIntersections\": " << (m_showIntersections ? "true" : "false") << ",\n";
 
     if (m_type == GridType::Cartesian)
     {
@@ -422,7 +427,6 @@ static std::vector<std::string> parseStringArray(const std::string& json, const 
 GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
 {
     GridDefinition def;
-    // Simple parsing pour désérialisation
     auto findField = [&jsonStr](const std::string& field) -> std::string {
         std::string token = "\"" + field + "\"";
         size_t pos = jsonStr.find(token);
@@ -454,8 +458,24 @@ GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
     if (origin.size() == 3)
         def.setOrigin(origin[0], origin[1], origin[2]);
 
-    // Avant : seuls "name" et "type" étaient relus, toutes les positions,
-    // rayons, angles et libellés étaient silencieusement perdus au rechargement.
+    std::string rotStr = findField("rotationDeg");
+    if (!rotStr.empty())
+    {
+        try { def.setRotationDeg(std::stod(rotStr)); } catch (...) {}
+    }
+
+    std::string visStr = findField("isVisible");
+    if (!visStr.empty()) def.setVisible(visStr == "true");
+
+    std::string actStr = findField("isActive");
+    if (!actStr.empty()) def.setActive(actStr == "true");
+
+    std::string lblStr = findField("showLabels");
+    if (!lblStr.empty()) def.setShowLabels(lblStr == "true");
+
+    std::string intStr = findField("showIntersections");
+    if (!intStr.empty()) def.setShowIntersections(intStr == "true");
+
     if (parsedType == GridType::Cartesian)
     {
         def.setXPositions(parseDoubleArray(jsonStr, "xPositions"));

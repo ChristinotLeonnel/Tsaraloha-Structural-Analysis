@@ -18,6 +18,7 @@
 #include "Grid/CartesianGrid.h"
 #include "Grid/GridDefinition.h"
 #include "Grid/GridSystem.h"
+#include "Grid/GridManager.h"
 #include "Grid/GridSnapManager.h"
 #include "Geometry/BeamGeometry.h"
 #include "IO/TSAFile.h"
@@ -28,6 +29,7 @@
 #include "Project/ProjectManager.h"
 #include "Commands/ICommand.h"
 #include "Commands/CreateBeamCommand.h"
+#include "Commands/GridCommands.h"
 #include "UndoRedo/UndoManager.h"
 #include "UndoRedo/CommandManager.h"
 #include "Interaction/InteractionManager.h"
@@ -70,7 +72,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 15;
+    int total = 30;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -2013,8 +2015,121 @@ int main(int argc, char* argv[])
         passed++;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 30: Audit et Tests fonctionnels complets du Système de Grille (Grids 1 à 12)
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "--- Test 30: Comprehensive Grid System Audit (Tests 1 to 12) ---" << std::endl;
+        GridManager gm;
+        gm.clearAllGrids();
+
+        // Test 1: Créer Grid A -> affichage / définition correcte
+        GridDefinition defA("Grid A", GridType::Cartesian);
+        defA.setOrigin(0.0, 0.0, 0.0);
+        defA.setRotationDeg(0.0);
+        defA.setXPositions({ 0.0, 5.0, 10.0 });
+        defA.setYPositions({ 0.0, 5.0, 10.0 });
+        GridSystem* gridA = gm.addGrid(defA);
+        TEST_CHECK(gridA != nullptr, "Test 30.1: Grid A created");
+        TEST_CHECK(gridA->definition().name() == "Grid A", "Test 30.1: Grid A name");
+
+        // Test 2: Créer Grid B -> les deux visibles simultanément
+        GridDefinition defB("Grid B", GridType::Cartesian);
+        defB.setOrigin(20.0, 0.0, 0.0);
+        defB.setRotationDeg(15.0);
+        defB.setXPositions({ 0.0, 3.0, 6.0, 9.0 });
+        defB.setYPositions({ 0.0, 4.0, 8.0 });
+        GridSystem* gridB = gm.addGrid(defB);
+        TEST_CHECK(gridB != nullptr, "Test 30.2: Grid B created");
+        TEST_CHECK(gm.grids().size() == 2, "Test 30.2: Both Grid A and Grid B co-exist in GridManager");
+        TEST_CHECK(gridA->isVisible() && gridB->isVisible(), "Test 30.2: Both Grid A and Grid B are visible");
+
+        // Test 3: Activer Grid B -> UI = Grid B active, Model = Grid B active
+        gm.setActiveGridId(gridB->id());
+        TEST_CHECK(gm.activeGridId() == gridB->id(), "Test 30.3: Active Grid ID is Grid B");
+        TEST_CHECK(gridB->isActive(), "Test 30.3: Grid B isActive flag is true");
+        TEST_CHECK(!gridA->isActive(), "Test 30.3: Grid A isActive flag is false");
+
+        // Test 4: Modifier Grid B -> Grid A inchangée
+        GridDefinition newDefB = gridB->definition();
+        newDefB.setRotationDeg(30.0);
+        gm.updateGrid(gridB->id(), newDefB);
+        TEST_CHECK(approxEqual(gridB->definition().rotationDeg(), 30.0), "Test 30.4: Grid B modified rotation to 30 deg");
+        TEST_CHECK(approxEqual(gridA->definition().rotationDeg(), 0.0), "Test 30.4: Grid A rotation remains unchanged at 0 deg");
+        TEST_CHECK(gridA->definition().xPositions().size() == 3, "Test 30.4: Grid A X positions intact");
+
+        // Test 5: Supprimer Grid B -> Grid A reste fonctionnelle
+        std::string gridBId = gridB->id();
+        gm.removeGrid(gridBId);
+        TEST_CHECK(gm.grids().size() == 1, "Test 30.5: Grid B removed, 1 grid remains");
+        TEST_CHECK(gm.getGrid(gridA->id()) != nullptr, "Test 30.5: Grid A still exists and functional");
+        TEST_CHECK(gm.activeGridId() == gridA->id(), "Test 30.5: Active grid automatically reassigned to Grid A");
+        TEST_CHECK(gridA->isActive(), "Test 30.5: Grid A isActive state set to true");
+
+        // Test 6: Dupliquer Grid A -> A et C indépendantes
+        GridSystem* gridC = gm.duplicateGrid(gridA->id());
+        TEST_CHECK(gridC != nullptr, "Test 30.6: Grid C duplicated from Grid A");
+        TEST_CHECK(gridC->id() != gridA->id(), "Test 30.6: Grid C has unique distinct ID");
+        TEST_CHECK(gm.grids().size() == 2, "Test 30.6: GridManager now holds 2 grids");
+        // Modification de Grid C ne modifie pas Grid A
+        GridDefinition defCMod = gridC->definition();
+        defCMod.setOrigin(50.0, 50.0, 0.0);
+        gm.updateGrid(gridC->id(), defCMod);
+        TEST_CHECK(approxEqual(gridC->definition().origin().X(), 50.0), "Test 30.6: Grid C origin updated to 50");
+        TEST_CHECK(approxEqual(gridA->definition().origin().X(), 0.0), "Test 30.6: Grid A origin remains 0");
+
+        // Test 7: Undo via GridCommands
+        TSA::Commands::ModifyGridCommand modCmd(gm, gridA->id(), defCMod);
+        modCmd.execute();
+        TEST_CHECK(approxEqual(gridA->definition().origin().X(), 50.0), "Test 30.7: ModifyGridCommand executed");
+        modCmd.undo();
+        TEST_CHECK(approxEqual(gridA->definition().origin().X(), 0.0), "Test 30.7: Undo returned Grid A to exact previous state");
+
+        // Test 8: Redo via GridCommands
+        modCmd.execute();
+        TEST_CHECK(approxEqual(gridA->definition().origin().X(), 50.0), "Test 30.8: Redo restored modification");
+        modCmd.undo(); // Remettre à l'état initial pour la suite
+
+        // Test 9: Save / Load (Sérialisation / Désérialisation JSON)
+        std::string jsonStr = gm.serializeToJson();
+        TEST_CHECK(!jsonStr.empty(), "Test 30.9: GridManager serialized to JSON");
+        TEST_CHECK(jsonStr.find("Grid A") != std::string::npos, "Test 30.9: JSON contains Grid A");
+
+        GridManager gm2;
+        gm2.deserializeFromJson(jsonStr);
+        TEST_CHECK(gm2.grids().size() == 2, "Test 30.9: Deserialized GridManager contains 2 grids");
+        const GridSystem* loadedA = gm2.getGrid(gridA->id());
+        TEST_CHECK(loadedA != nullptr, "Test 30.9: Loaded Grid A exists");
+        TEST_CHECK(loadedA->definition().name() == "Grid A", "Test 30.9: Loaded Grid A name restored");
+
+        // Test 10: Snap avec plusieurs grilles (Multi-Grid Snapping)
+        GridSnapManager snapMgr;
+        snapMgr.setSnapEnabled(true);
+        snapMgr.setSnapTolerance(0.5);
+
+        // rawPoint proche de l'intersection (5, 5, 0) de Grid A
+        gp_Pnt nearPt(5.05, 4.95, 0.0);
+        GridSnapResult sRes = snapMgr.findSnap(nearPt, &gm, nullptr);
+        TEST_CHECK(sRes.snapped, "Test 30.10: Snapped to multi-grid candidate");
+        TEST_CHECK(approxEqual(sRes.point.X(), 5.0) && approxEqual(sRes.point.Y(), 5.0), "Test 30.10: Snap point accurate to intersection (5, 5, 0)");
+
+        // Test 11: Modifier une grille pendant qu'elle est visible -> aucun crash
+        TEST_CHECK(gridA->isVisible(), "Test 30.11: Grid A is visible");
+        GridDefinition liveDef = gridA->definition();
+        liveDef.generateCartesian(4, 4.0, 4, 4.0, 3, 3.0);
+        bool updatedOk = gm.updateGrid(gridA->id(), liveDef);
+        TEST_CHECK(updatedOk, "Test 30.11: Modified live visible grid without crash");
+
+        // Test 12: Modifier une grille active -> Modèle synchronisé
+        TEST_CHECK(gridA->isActive(), "Test 30.12: Grid A is active");
+        TEST_CHECK(gridA->definition().xPositions().size() == 5, "Test 30.12: Active grid updated with 5 X lines");
+
+        std::cout << "[PASS] Test 30: All 12 Grid System Audit Tests Passed Successfully!" << std::endl;
+        passed++;
+    }
+
     std::cout << "=================================================" << std::endl;
-    std::cout << "RESULTS: " << passed << " / 29 tests passed successfully!" << std::endl;
+    std::cout << "RESULTS: " << passed << " / " << total << " tests passed successfully!" << std::endl;
     std::cout << "=================================================" << std::endl;
 
     return 0;
