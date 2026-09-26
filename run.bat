@@ -14,13 +14,25 @@ set "QT_PLUGIN_PATH=%QT_DIR%\plugins"
 :: Ajout de toutes les dépendances OCCT, 3rdparty et Qt au PATH
 set "PATH=%QT_DIR%\bin;%OCCT_DIR%\win64\vc14\bin;%TP_DIR%\freetype-2.13.3-x64\bin;%TP_DIR%\tbb-2021.13.0-x64\bin;%TP_DIR%\jemalloc-vc14-64\bin;%TP_DIR%\freeimage-3.18.0-x64\bin;%TP_DIR%\openvr-1.14.15-64\bin\win64;%TP_DIR%\openvr-1.14.15-64\bin;%TP_DIR%\ffmpeg-3.3.4-64\bin;%TP_DIR%\tcltk-8.6.15-x64\bin;%PATH%"
 
+if exist "%TSA_DIR%build-msvc\Release\TSA.exe" goto launch_msvc_release
+if exist "%TSA_DIR%build-msvc\Debug\TSA.exe" goto launch_msvc_debug
 if exist "%TSA_DIR%build\Release\TSA.exe" goto launch_release
 if exist "%TSA_DIR%build\Debug\TSA.exe" goto launch_debug
 
-echo [ERREUR] TSA.exe introuvable dans build\Release ou build\Debug.
+echo [ERREUR] TSA.exe introuvable dans build-msvc ou build (Release/Debug).
 echo Veuillez compiler le projet avant de lancer le script.
 pause
 exit /b 1
+
+:launch_msvc_release
+echo Lancement de TSA [build-msvc\Release]...
+start "" "%TSA_DIR%build-msvc\Release\TSA.exe"
+goto end
+
+:launch_msvc_debug
+echo Lancement de TSA [build-msvc\Debug]...
+start "" "%TSA_DIR%build-msvc\Debug\TSA.exe"
+goto end
 
 :launch_release
 echo Lancement de TSA [Release]...
