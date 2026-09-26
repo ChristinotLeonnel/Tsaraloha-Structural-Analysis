@@ -1122,6 +1122,18 @@ void GridDialog::onApply()
     // Mettre à jour la grille existante ou ajouter une nouvelle grille dans le GridManager
     if (m_gridManager)
     {
+        bool wasActive = false;
+        if (m_isEditMode && !m_gridId.empty())
+        {
+            auto* cur = m_gridManager->getGrid(m_gridId);
+            wasActive = (cur && (cur->isActive() || m_gridManager->activeGridId() == m_gridId));
+        }
+        else
+        {
+            wasActive = m_gridManager->grids().empty();
+        }
+        def.setActive(wasActive);
+
         if (m_isEditMode && !m_gridId.empty() && m_gridManager->getGrid(m_gridId))
         {
             m_gridManager->updateGrid(m_gridId, def);

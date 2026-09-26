@@ -268,6 +268,11 @@ GridSnapResult CylindricalGrid::findClosestSnap(const gp_Pnt& worldPoint, double
         }
     }
 
+    if (bestResult.snapped && bestResult.type == GridSnapType::RadialLine)
+    {
+        return bestResult;
+    }
+
     // 4. Accrochage : Cercles ou Arcs concentriques
     for (const auto& circ : m_circles)
     {

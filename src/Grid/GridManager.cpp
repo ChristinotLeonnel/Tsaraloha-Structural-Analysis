@@ -42,7 +42,9 @@ bool GridManager::updateGrid(const std::string& id, const GridDefinition& defini
     if (!grid)
         return false;
 
+    bool wasActive = (m_activeGridId == id) || grid->isActive();
     grid->updateDefinition(definition);
+    grid->setActive(wasActive);
     emit gridModified(id);
     return true;
 }

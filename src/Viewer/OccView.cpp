@@ -2055,20 +2055,41 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
         return true;
     }
 
-    // 2. Détection prioritaire N°2 : Intersections 3D de la grille (tous étages et montants verticaux)
+    // Récupérer toutes les grilles visibles (la grille active en tête de liste)
+    std::vector<const TSA::Grid::GridSystem*> visibleGrids;
     const TSA::Grid::GridSystem* activeGrid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
-    if (activeGrid && activeGrid->isActive() && activeGrid->isVisible())
+    if (activeGrid && activeGrid->isVisible())
     {
-        double bestGridDist2 = screenPixelRadius * screenPixelRadius;
-        bool foundGridInter = false;
-        gp_Pnt bestGridPnt;
-        QString bestGridLabel;
-
-        // Stocker un pointeur vers le gagnant pour construire le label une seule fois
-        if (activeGrid->cartesian())
+        visibleGrids.push_back(activeGrid);
+    }
+    if (m_gridManager)
+    {
+        for (const auto& g : m_gridManager->grids())
         {
-            const TSA::Grid::GridIntersection* bestCartInter = nullptr;
-            for (const auto& inter : activeGrid->cartesian()->intersections())
+            if (g && g.get() != activeGrid && g->isVisible())
+            {
+                visibleGrids.push_back(g.get());
+            }
+        }
+    }
+
+    if (visibleGrids.empty())
+    {
+        return false;
+    }
+
+    // 2. Détection prioritaire N°2 : Intersections 3D & Origines des grilles (tous étages et montants verticaux)
+    double bestGridDist2 = screenPixelRadius * screenPixelRadius;
+    bool foundGridInter = false;
+    gp_Pnt bestGridPnt;
+    QString bestGridLabel;
+    TSA::Grid::GridSnapType bestGridType = TSA::Grid::GridSnapType::Intersection;
+
+    for (const auto* grid : visibleGrids)
+    {
+        if (grid->cartesian())
+        {
+            for (const auto& inter : grid->cartesian()->intersections())
             {
                 const gp_Pnt& p = inter.point;
                 gp_Vec toP(eyePnt, p);
@@ -2084,22 +2105,49 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
                 {
                     bestGridDist2 = dist2;
                     bestGridPnt = p;
-                    bestCartInter = &inter;
                     foundGridInter = true;
+                    bestGridType = TSA::Grid::GridSnapType::Intersection;
+                    bestGridLabel = QString("Grille (%1, %2, Z=%3 m)")
+                        .arg(QString::fromStdString(inter.labelX))
+                        .arg(QString::fromStdString(inter.labelY))
+                        .arg(p.Z(), 0, 'f', 2);
                 }
             }
-            if (foundGridInter && bestCartInter)
-            {
-                bestGridLabel = QString("Grille (%1, %2, Z=%3 m)")
-                    .arg(QString::fromStdString(bestCartInter->labelX))
-                    .arg(QString::fromStdString(bestCartInter->labelY))
-                    .arg(bestGridPnt.Z(), 0, 'f', 2);
-            }
         }
-        else if (activeGrid->cylindrical())
+        else if (grid->cylindrical())
         {
-            const TSA::Grid::CylindricalIntersection* bestCylInter = nullptr;
-            for (const auto& inter : activeGrid->cylindrical()->intersections())
+            const gp_Pnt& orig = grid->definition().origin();
+            const auto& zLevels = grid->definition().zLevels();
+            std::vector<double> levels = zLevels.empty() ? std::vector<double>{ 0.0 } : zLevels;
+
+            // Centre de la grille à chaque niveau Z
+            for (double zOffset : levels)
+            {
+                gp_Pnt centerPt(orig.X(), orig.Y(), orig.Z() + zOffset);
+                gp_Vec toP(eyePnt, centerPt);
+                if (toP.Dot(viewDir) < 0.0)
+                    continue;
+
+                int sx = 0, sy = 0;
+                m_view->Convert(centerPt.X(), centerPt.Y(), centerPt.Z(), sx, sy);
+                double dx = sx - px;
+                double dy = sy - py;
+                double dist2 = dx * dx + dy * dy;
+                if (dist2 <= bestGridDist2)
+                {
+                    bestGridDist2 = dist2;
+                    bestGridPnt = centerPt;
+                    foundGridInter = true;
+                    bestGridType = TSA::Grid::GridSnapType::Origin;
+                    bestGridLabel = QString("Centre Grille Cylindrique (%1, %2, %3 m)")
+                        .arg(centerPt.X(), 0, 'f', 2)
+                        .arg(centerPt.Y(), 0, 'f', 2)
+                        .arg(centerPt.Z(), 0, 'f', 2);
+                }
+            }
+
+            // Intersections (Rayons x Angles)
+            for (const auto& inter : grid->cylindrical()->intersections())
             {
                 const gp_Pnt& p = inter.point;
                 gp_Vec toP(eyePnt, p);
@@ -2115,27 +2163,226 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
                 {
                     bestGridDist2 = dist2;
                     bestGridPnt = p;
-                    bestCylInter = &inter;
                     foundGridInter = true;
+                    bestGridType = TSA::Grid::GridSnapType::Intersection;
+                    bestGridLabel = QString("Grille Cylindrique (R=%1 m, %2°)")
+                        .arg(inter.radius, 0, 'f', 2)
+                        .arg(inter.angleDeg, 0, 'f', 1);
                 }
             }
-            if (foundGridInter && bestCylInter)
+        }
+        else if (grid->arbitrary())
+        {
+            for (const auto& p : grid->arbitrary()->intersections())
             {
-                bestGridLabel = QString("Grille Cylindrique (R=%1, %2°)")
-                    .arg(bestGridPnt.Distance(gp_Pnt(0, 0, bestGridPnt.Z())), 0, 'f', 2)
-                    .arg(bestCylInter->angleDeg, 0, 'f', 1);
+                gp_Vec toP(eyePnt, p);
+                if (toP.Dot(viewDir) < 0.0)
+                    continue;
+
+                int sx = 0, sy = 0;
+                m_view->Convert(p.X(), p.Y(), p.Z(), sx, sy);
+                double dx = sx - px;
+                double dy = sy - py;
+                double dist2 = dx * dx + dy * dy;
+                if (dist2 <= bestGridDist2)
+                {
+                    bestGridDist2 = dist2;
+                    bestGridPnt = p;
+                    foundGridInter = true;
+                    bestGridType = TSA::Grid::GridSnapType::Intersection;
+                    bestGridLabel = QString("Intersection Arbitraire (%1, %2, %3 m)")
+                        .arg(p.X(), 0, 'f', 2)
+                        .arg(p.Y(), 0, 'f', 2)
+                        .arg(p.Z(), 0, 'f', 2);
+                }
             }
         }
+    }
 
-        if (foundGridInter)
+    if (foundGridInter)
+    {
+        outX = bestGridPnt.X();
+        outY = bestGridPnt.Y();
+        outZ = bestGridPnt.Z();
+        outType = bestGridType;
+        outDesc = bestGridLabel;
+        return true;
+    }
+
+    // 3. Détection prioritaire N°3 : Lignes radiales (Cylindrique) et axes de grille (Cartésien)
+    double bestLineDist2 = screenPixelRadius * screenPixelRadius;
+    bool foundLine = false;
+    gp_Pnt bestLinePnt;
+    QString bestLineLabel;
+    TSA::Grid::GridSnapType bestLineType = TSA::Grid::GridSnapType::None;
+
+    for (const auto* grid : visibleGrids)
+    {
+        if (grid->cylindrical())
         {
-            outX = bestGridPnt.X();
-            outY = bestGridPnt.Y();
-            outZ = bestGridPnt.Z();
-            outType = TSA::Grid::GridSnapType::Intersection;
-            outDesc = bestGridLabel;
-            return true;
+            for (const auto& rad : grid->cylindrical()->radialLines())
+            {
+                int sx1 = 0, sy1 = 0, sx2 = 0, sy2 = 0;
+                m_view->Convert(rad.start.X(), rad.start.Y(), rad.start.Z(), sx1, sy1);
+                m_view->Convert(rad.end.X(), rad.end.Y(), rad.end.Z(), sx2, sy2);
+
+                double vLineX = sx2 - sx1;
+                double vLineY = sy2 - sy1;
+                double len2 = vLineX * vLineX + vLineY * vLineY;
+                if (len2 < 1.0) continue;
+
+                double vPtX = px - sx1;
+                double vPtY = py - sy1;
+                double t = (vPtX * vLineX + vPtY * vLineY) / len2;
+                t = std::clamp(t, 0.0, 1.0);
+
+                double projScreenX = sx1 + t * vLineX;
+                double projScreenY = sy1 + t * vLineY;
+                double d2 = (projScreenX - px) * (projScreenX - px) + (projScreenY - py) * (projScreenY - py);
+
+                if (d2 <= bestLineDist2)
+                {
+                    bestLineDist2 = d2;
+                    gp_Vec v3D(rad.start, rad.end);
+                    bestLinePnt = rad.start.Translated(v3D * t);
+                    foundLine = true;
+                    bestLineType = TSA::Grid::GridSnapType::RadialLine;
+                    bestLineLabel = QString("Rayon Polaire %1 (%2°)")
+                        .arg(QString::fromStdString(rad.label))
+                        .arg(rad.angleDeg, 0, 'f', 1);
+                }
+            }
         }
+        else if (grid->cartesian())
+        {
+            for (const auto& line : grid->cartesian()->allLines())
+            {
+                int sx1 = 0, sy1 = 0, sx2 = 0, sy2 = 0;
+                m_view->Convert(line.start.X(), line.start.Y(), line.start.Z(), sx1, sy1);
+                m_view->Convert(line.end.X(), line.end.Y(), line.end.Z(), sx2, sy2);
+
+                double vLineX = sx2 - sx1;
+                double vLineY = sy2 - sy1;
+                double len2 = vLineX * vLineX + vLineY * vLineY;
+                if (len2 < 1.0) continue;
+
+                double vPtX = px - sx1;
+                double vPtY = py - sy1;
+                double t = (vPtX * vLineX + vPtY * vLineY) / len2;
+                t = std::clamp(t, 0.0, 1.0);
+
+                double projScreenX = sx1 + t * vLineX;
+                double projScreenY = sy1 + t * vLineY;
+                double d2 = (projScreenX - px) * (projScreenX - px) + (projScreenY - py) * (projScreenY - py);
+
+                if (d2 <= bestLineDist2)
+                {
+                    bestLineDist2 = d2;
+                    gp_Vec v3D(line.start, line.end);
+                    bestLinePnt = line.start.Translated(v3D * t);
+                    foundLine = true;
+                    bestLineType = TSA::Grid::GridSnapType::AxisLine;
+                    bestLineLabel = QString("Axe Grille %1: %2")
+                        .arg(line.isXAxis ? "X" : "Y")
+                        .arg(QString::fromStdString(line.label));
+                }
+            }
+        }
+    }
+
+    if (foundLine)
+    {
+        outX = bestLinePnt.X();
+        outY = bestLinePnt.Y();
+        outZ = bestLinePnt.Z();
+        outType = bestLineType;
+        outDesc = bestLineLabel;
+        return true;
+    }
+
+    // 4. Détection prioritaire N°4 : Arcs concentriques (Cylindrique)
+    double bestArcDist2 = screenPixelRadius * screenPixelRadius;
+    bool foundArc = false;
+    gp_Pnt bestArcPnt;
+    QString bestArcLabel;
+
+    constexpr double RAD_TO_DEG_LOCAL = 180.0 / 3.14159265358979323846;
+
+    for (const auto* grid : visibleGrids)
+    {
+        if (grid->cylindrical())
+        {
+            const auto& orig = grid->definition().origin();
+            double rotDeg = grid->definition().rotationDeg();
+
+            for (const auto& circ : grid->cylindrical()->circles())
+            {
+                if (circ.radius <= 1e-4) continue;
+
+                if (std::abs(viewDir.Z()) > 1e-6)
+                {
+                    double tRay = (circ.zLevel - eyePnt.Z()) / viewDir.Z();
+                    if (tRay > 0.0)
+                    {
+                        gp_Pnt planePnt = eyePnt.Translated(gp_Vec(viewDir) * tRay);
+                        double dx = planePnt.X() - circ.center.X();
+                        double dy = planePnt.Y() - circ.center.Y();
+                        double curR = std::hypot(dx, dy);
+                        if (curR > 1e-4)
+                        {
+                            double rad = std::atan2(dy, dx);
+                            double angleDeg = rad * RAD_TO_DEG_LOCAL - rotDeg;
+                            while (angleDeg < 0.0) angleDeg += 360.0;
+                            while (angleDeg >= 360.0) angleDeg -= 360.0;
+
+                            double snapAngle = angleDeg;
+                            if (!circ.isFullCircle())
+                            {
+                                double start = circ.startAngleDeg;
+                                while (start < 0.0) start += 360.0;
+                                while (start >= 360.0) start -= 360.0;
+
+                                double delta = angleDeg - start;
+                                while (delta < 0.0) delta += 360.0;
+                                while (delta >= 360.0) delta -= 360.0;
+
+                                if (delta > circ.totalAngleDeg + 1e-4)
+                                {
+                                    double toStart = 360.0 - delta;
+                                    double toEnd = delta - circ.totalAngleDeg;
+                                    snapAngle = (toStart < toEnd) ? circ.startAngleDeg : (circ.startAngleDeg + circ.totalAngleDeg);
+                                }
+                            }
+
+                            gp_Pnt pArc = grid->cylindrical()->polarToWorld(circ.radius, snapAngle, circ.zLevel - orig.Z());
+                            int sx = 0, sy = 0;
+                            m_view->Convert(pArc.X(), pArc.Y(), pArc.Z(), sx, sy);
+                            double d2 = (sx - px) * (sx - px) + (sy - py) * (sy - py);
+                            if (d2 <= bestArcDist2)
+                            {
+                                bestArcDist2 = d2;
+                                bestArcPnt = pArc;
+                                foundArc = true;
+                                bestArcLabel = QString("Arc Polaire %1 (R=%2 m, %3°)")
+                                    .arg(QString::fromStdString(circ.label))
+                                    .arg(circ.radius, 0, 'f', 2)
+                                    .arg(snapAngle, 0, 'f', 1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (foundArc)
+    {
+        outX = bestArcPnt.X();
+        outY = bestArcPnt.Y();
+        outZ = bestArcPnt.Z();
+        outType = TSA::Grid::GridSnapType::Circle;
+        outDesc = bestArcLabel;
+        return true;
     }
 
     return false;
@@ -2144,19 +2391,21 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
 bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double& y, double& z, int& detectedNodeId)
 {
     detectedNodeId = -1;
+    m_isCursorSnapped = false;
     if (m_view.IsNull())
         return false;
 
     const int px = mousePixelPos.x();
     const int py = mousePixelPos.y();
 
-    // 1. Détection 3D sous le curseur (Proximité écran 18px sur nœuds structuraux ou intersections 3D de grille)
+    // 1. Détection 3D sous le curseur (Proximité écran 18px sur nœuds structuraux, intersections, axes ou arcs)
     if (m_snapToGrid)
     {
         QString snapDesc;
         TSA::Grid::GridSnapType snapType = TSA::Grid::GridSnapType::None;
         if (findNearest3DPoint(px, py, x, y, z, detectedNodeId, snapDesc, snapType))
         {
+            m_isCursorSnapped = true;
             TSA::Grid::GridSnapResult snapRes;
             snapRes.snapped = true;
             snapRes.point = gp_Pnt(x, y, z);
@@ -2183,6 +2432,7 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
         TSA::Grid::GridSnapResult snapRes = m_gridSnapManager->findSnap(rawPnt, m_gridManager, m_model);
         if (snapRes.snapped)
         {
+            m_isCursorSnapped = true;
             wx = snapRes.point.X();
             wy = snapRes.point.Y();
             wz = snapRes.point.Z();
@@ -3281,7 +3531,10 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
             else
             {
                 setCursor(interactionMode() == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
-                emit objectHovered(QString());
+                if (!m_isCursorSnapped)
+                {
+                    emit objectHovered(QString());
+                }
                 emit mouseCoordinatesChanged(wx, wy, wz);
                 if (m_snapToGrid && !m_view.IsNull())
                 {

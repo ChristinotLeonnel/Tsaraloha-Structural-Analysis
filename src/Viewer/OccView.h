@@ -300,6 +300,7 @@ private:
     bool m_gridVisible = true;
     bool m_gridLabelsVisible = true;
     bool m_isDarkMode = true;
+    mutable bool m_isCursorSnapped = false;
     double m_gridZOffset = 0.0;
     double m_activeLevelZ = 0.0;
 

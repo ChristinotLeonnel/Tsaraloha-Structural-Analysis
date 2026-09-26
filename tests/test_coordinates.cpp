@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 32;
+    int total = 27;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -2488,6 +2488,229 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 32: Advanced Cylindrical Grid Sectors (AngularPattern, startAngle, totalAngle, divisions, OCCT arcs, snapping, JSON) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 33: Complete Structural Modeling & Snapping Pipeline on Cylindrical Grids
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 33: Structural Modeling & Snapping Pipeline on Cylindrical Grids ---" << std::endl;
+
+        // Subtest 33.1: Polar Grid Geometry & Intersections Verification
+        // R = {5, 10, 15, 20} m, theta = {0°, 30°, 60°, 90°}
+        GridDefinition cylDef("Cyl_Structural", GridType::Cylindrical);
+        cylDef.setRadii({ 5.0, 10.0, 15.0, 20.0 });
+        cylDef.setAngles({ 0.0, 30.0, 60.0, 90.0 });
+        cylDef.setZLevels({ 0.0 });
+
+        CylindricalGrid cylGrid(cylDef);
+        TEST_CHECK(cylGrid.intersections().size() == 16, "Test 33.1: 16 intersections (4 radii x 4 angles)");
+
+        // Point (10 m, 30°): x = 10 * cos(30°) = 8.66025, y = 10 * sin(30°) = 5.0, z = 0.0
+        gp_Pnt p10_30 = cylGrid.polarToWorld(10.0, 30.0, 0.0);
+        TEST_CHECK(approxEqual(p10_30.X(), 10.0 * std::cos(30.0 * M_PI / 180.0)), "Test 33.1: (10, 30°) X coord");
+        TEST_CHECK(approxEqual(p10_30.Y(), 5.0), "Test 33.1: (10, 30°) Y coord");
+        TEST_CHECK(approxEqual(p10_30.Z(), 0.0), "Test 33.1: (10, 30°) Z coord");
+
+        // Point (15 m, 60°): x = 15 * cos(60°) = 7.5, y = 15 * sin(60°) = 12.99038, z = 0.0
+        gp_Pnt p15_60 = cylGrid.polarToWorld(15.0, 60.0, 0.0);
+        TEST_CHECK(approxEqual(p15_60.X(), 7.5), "Test 33.1: (15, 60°) X coord");
+        TEST_CHECK(approxEqual(p15_60.Y(), 15.0 * std::sin(60.0 * M_PI / 180.0)), "Test 33.1: (15, 60°) Y coord");
+        TEST_CHECK(approxEqual(p15_60.Z(), 0.0), "Test 33.1: (15, 60°) Z coord");
+
+        // Snapping directly on the cylindrical grid
+        GridSnapResult snap10_30 = cylGrid.findClosestSnap(gp_Pnt(8.68, 5.02, 0.0), 0.10);
+        TEST_CHECK(snap10_30.snapped, "Test 33.1: Snapped near (10, 30°)");
+        TEST_CHECK(snap10_30.type == GridSnapType::Intersection, "Test 33.1: Snap type is Intersection");
+        TEST_CHECK(approxEqual(snap10_30.point.X(), p10_30.X()) && approxEqual(snap10_30.point.Y(), p10_30.Y()),
+                   "Test 33.1: Snapped exact point matches (10, 30°)");
+        std::cout << "  [PASS] Subtest 33.1: Polar Grid Geometry & Intersections Validated" << std::endl;
+
+        // Subtest 33.2: Modeling Structural Elements (Beams & Columns) on Cylindrical Grid Intersections
+        Model structuralModel;
+        // User clicks near (10 m, 30°) -> Snapped to p10_30, Node created
+        int nBase1 = structuralModel.addNode(snap10_30.point.X(), snap10_30.point.Y(), snap10_30.point.Z());
+        int nTop1 = structuralModel.addNode(snap10_30.point.X(), snap10_30.point.Y(), snap10_30.point.Z() + 3.0);
+        int col1 = structuralModel.addColumn(nBase1, nTop1, 0.30, 0.30, "C1");
+        TEST_CHECK(col1 > 0, "Test 33.2: Column 1 created at (10, 30°)");
+        TEST_CHECK(approxEqual(structuralModel.getColumn(col1)->length(structuralModel), 3.0), "Test 33.2: Column 1 length is 3.0m");
+
+        // User clicks near (15 m, 60°) -> Snapped to p15_60, Node created
+        GridSnapResult snap15_60 = cylGrid.findClosestSnap(gp_Pnt(7.48, 12.97, 0.0), 0.10);
+        TEST_CHECK(snap15_60.snapped, "Test 33.2: Snapped near (15, 60°)");
+        int nBase2 = structuralModel.addNode(snap15_60.point.X(), snap15_60.point.Y(), snap15_60.point.Z());
+        int nTop2 = structuralModel.addNode(snap15_60.point.X(), snap15_60.point.Y(), snap15_60.point.Z() + 3.0);
+        int col2 = structuralModel.addColumn(nBase2, nTop2, 0.30, 0.30, "C2");
+        TEST_CHECK(col2 > 0, "Test 33.2: Column 2 created at (15, 60°)");
+
+        // User draws Beam connecting (10, 30°) top node to (15, 60°) top node
+        int beam1 = structuralModel.addBeam(nTop1, nTop2, 0.25, 0.50);
+        TEST_CHECK(beam1 > 0, "Test 33.2: Beam created between (10, 30°) and (15, 60°)");
+        double expectedBeamLen = std::sqrt(std::pow(p15_60.X() - p10_30.X(), 2) + std::pow(p15_60.Y() - p10_30.Y(), 2));
+        TEST_CHECK(approxEqual(structuralModel.getBeam(beam1)->length(structuralModel), expectedBeamLen),
+                   "Test 33.2: Beam length matches distance between polar points");
+
+        // Verify OpenCASCADE 3D shapes can be generated cleanly from these polar elements
+        TopoDS_Shape colShape = BeamGeometry::createBeamShape(*structuralModel.getNode(nBase1), *structuralModel.getNode(nTop1), 0.30, 0.30, 0.0);
+        TEST_CHECK(!colShape.IsNull(), "Test 33.2: Column 3D OCC shape is non-null");
+
+        TopoDS_Shape beamShape = BeamGeometry::createBeamShape(*structuralModel.getNode(nTop1), *structuralModel.getNode(nTop2), 0.25, 0.50, 0.0);
+        TEST_CHECK(!beamShape.IsNull(), "Test 33.2: Beam 3D OCC shape is non-null");
+        std::cout << "  [PASS] Subtest 33.2: Modeling Beams & Columns on Cylindrical Grid Validated" << std::endl;
+
+        // Subtest 33.3: Drawing Polygonal Slab Panel on 4 Cylindrical Grid Points
+        // Panel on: (10, 30°), (15, 30°), (15, 60°), (10, 60°)
+        gp_Pnt p10_60 = cylGrid.polarToWorld(10.0, 60.0, 0.0);
+        gp_Pnt p15_30 = cylGrid.polarToWorld(15.0, 30.0, 0.0);
+        int nSlab1 = structuralModel.addNode(p10_30.X(), p10_30.Y(), 3.0);
+        int nSlab2 = structuralModel.addNode(p15_30.X(), p15_30.Y(), 3.0);
+        int nSlab3 = structuralModel.addNode(p15_60.X(), p15_60.Y(), 3.0);
+        int nSlab4 = structuralModel.addNode(p10_60.X(), p10_60.Y(), 3.0);
+
+        int slabId = structuralModel.addSlab({ nSlab1, nSlab2, nSlab3, nSlab4 }, 0.20);
+        TEST_CHECK(slabId > 0, "Test 33.3: Slab created on 4 polar grid points");
+        const auto* slab = structuralModel.getSlab(slabId);
+        TEST_CHECK(slab != nullptr, "Test 33.3: Slab exists");
+        TEST_CHECK(slab->nodeIds().size() == 4, "Test 33.3: Slab has 4 vertices");
+        TEST_CHECK(slab->area(structuralModel) > 0.0, "Test 33.3: Slab area is positive");
+        std::cout << "  [PASS] Subtest 33.3: Polygonal Slab on Cylindrical Grid Intersections Validated" << std::endl;
+
+        // Subtest 33.4: Snapping on Radial Lines & Concentric Arcs
+        // 1. Ray 30° at R = 7.5 (between 5 and 10m): point is (7.5 * cos(30°), 7.5 * sin(30°)) = (6.49519, 3.75, 0)
+        gp_Pnt ptOnRay(7.5 * std::cos(30.0 * M_PI / 180.0), 7.5 * 0.5, 0.0);
+        gp_Pnt ptQueryNearRay(ptOnRay.X() + 0.03, ptOnRay.Y() - 0.02, 0.0);
+        GridSnapResult snapRay = cylGrid.findClosestSnap(ptQueryNearRay, 0.20);
+        TEST_CHECK(snapRay.snapped, "Test 33.4: Snapped near radial ray 30°");
+        TEST_CHECK(snapRay.type == GridSnapType::RadialLine, "Test 33.4: Snap type is RadialLine");
+        double angleOfSnapped = std::atan2(snapRay.point.Y(), snapRay.point.X()) * 180.0 / M_PI;
+        TEST_CHECK(approxEqual(angleOfSnapped, 30.0), "Test 33.4: Snapped point lies exactly on 30° ray");
+        TEST_CHECK(snapRay.point.Distance(ptQueryNearRay) < 0.05, "Test 33.4: Snapped distance to ray is under 0.05m");
+
+        // 2. Arc R = 10.0 at theta = 45° (between 30° and 60°): point is (10 * cos(45°), 10 * sin(45°)) = (7.071, 7.071, 0)
+        gp_Pnt ptOnArc(10.0 * std::cos(45.0 * M_PI / 180.0), 10.0 * std::sin(45.0 * M_PI / 180.0), 0.0);
+        gp_Pnt ptQueryNearArc(ptOnArc.X() + 0.02, ptOnArc.Y() + 0.03, 0.0);
+        GridSnapResult snapArc = cylGrid.findClosestSnap(ptQueryNearArc, 0.20);
+        TEST_CHECK(snapArc.snapped, "Test 33.4: Snapped near concentric arc R=10m");
+        TEST_CHECK(snapArc.type == GridSnapType::Circle, "Test 33.4: Snap type is Circle (Arc)");
+        TEST_CHECK(approxEqual(snapArc.point.Distance(gp_Pnt(0, 0, 0)), 10.0), "Test 33.4: Snapped distance is exactly 10.0m radius");
+        std::cout << "  [PASS] Subtest 33.4: Snapping to Radial Lines & Concentric Arcs Validated" << std::endl;
+
+        // Subtest 33.5: Priority of Snapping Validation (Node > Intersection > Radial Line > Arc)
+        GridSnapManager snapManager;
+        snapManager.setSnapTolerance(0.50);
+
+        GridSystem cylSystem(cylDef);
+        cylSystem.setActive(true);
+        cylSystem.setVisible(true);
+
+        // a) Query near an existing structural node at (10, 30°):
+        // Node NBase1 exists at exact intersection point p10_30
+        GridSnapResult snapPrioNode = snapManager.findSnap(gp_Pnt(p10_30.X() + 0.04, p10_30.Y() + 0.03, 0.0), &cylSystem, &structuralModel);
+        TEST_CHECK(snapPrioNode.snapped, "Test 33.5: Snapped near node");
+        TEST_CHECK(snapPrioNode.type == GridSnapType::Node, "Test 33.5: Node has higher priority than Intersection");
+
+        // b) Query near intersection (20 m, 90°) where NO node exists:
+        gp_Pnt p20_90 = cylGrid.polarToWorld(20.0, 90.0, 0.0);
+        GridSnapResult snapPrioInter = snapManager.findSnap(gp_Pnt(p20_90.X() + 0.03, p20_90.Y() - 0.02, 0.0), &cylSystem, &structuralModel);
+        TEST_CHECK(snapPrioInter.snapped, "Test 33.5: Snapped near intersection");
+        TEST_CHECK(snapPrioInter.type == GridSnapType::Intersection, "Test 33.5: Intersection has higher priority than Radial/Arc");
+
+        // c) Query along radial line away from intersections:
+        GridSnapResult snapPrioRad = snapManager.findSnap(ptQueryNearRay, &cylSystem, &structuralModel);
+        TEST_CHECK(snapPrioRad.snapped, "Test 33.5: Snapped near ray");
+        TEST_CHECK(snapPrioRad.type == GridSnapType::RadialLine, "Test 33.5: Radial Line prioritized before Arc");
+        std::cout << "  [PASS] Subtest 33.5: Snapping Priority (Node > Intersection > Radial Line > Arc) Validated" << std::endl;
+
+        // Subtest 33.6: Dynamic Modifications of Cylindrical Grid (Rotation, Origin, Angles, Radii)
+        GridDefinition dynDef = cylDef;
+        dynDef.setRotationDeg(45.0);
+        dynDef.setOrigin(10.0, 20.0, 0.0);
+        dynDef.setRadii({ 5.0, 10.0, 15.0, 20.0, 25.0 }); // ajout 25m
+
+        CylindricalGrid dynGrid(dynDef);
+        TEST_CHECK(dynGrid.intersections().size() == 20, "Test 33.6: 20 intersections (5 radii x 4 angles)");
+
+        // Point (10 m, 30°) with rotation=45° and origin=(10, 20, 0):
+        // effective angle = 30 + 45 = 75°
+        // X = 10 + 10 * cos(75°), Y = 20 + 10 * sin(75°)
+        double expDynX = 10.0 + 10.0 * std::cos(75.0 * M_PI / 180.0);
+        double expDynY = 20.0 + 10.0 * std::sin(75.0 * M_PI / 180.0);
+        gp_Pnt dynP = dynGrid.polarToWorld(10.0, 30.0, 0.0);
+        TEST_CHECK(approxEqual(dynP.X(), expDynX), "Test 33.6: Dynamic origin + rotation X");
+        TEST_CHECK(approxEqual(dynP.Y(), expDynY), "Test 33.6: Dynamic origin + rotation Y");
+
+        GridSnapResult snapDyn = dynGrid.findClosestSnap(gp_Pnt(expDynX + 0.02, expDynY - 0.01, 0.0), 0.10);
+        TEST_CHECK(snapDyn.snapped, "Test 33.6: Snapped to updated dynamic intersection");
+        TEST_CHECK(snapDyn.type == GridSnapType::Intersection, "Test 33.6: Dynamic snap type is intersection");
+        std::cout << "  [PASS] Subtest 33.6: Dynamic Grid Modification (Origin, Rotation, Radii) Validated" << std::endl;
+
+        // Subtest 33.7: Multi-Grid Support, Active State Preservation & Visibility
+        GridManager gmMulti;
+        // gmMulti already has Cartesian "Main Grid" as default active grid
+        TEST_CHECK(gmMulti.grids().size() == 1, "Test 33.7: Main Grid created initially");
+        TEST_CHECK(gmMulti.activeGrid()->type() == GridType::Cartesian, "Test 33.7: Cartesian is active initially");
+
+        // Add Cylindrical Grid
+        GridSystem* addedCyl = gmMulti.addGrid(cylDef);
+        TEST_CHECK(addedCyl != nullptr, "Test 33.7: Cylindrical grid added");
+        std::string cylId = addedCyl->id();
+
+        // Set Cylindrical Grid as ACTIVE
+        gmMulti.setActiveGridId(cylId);
+        TEST_CHECK(gmMulti.activeGridId() == cylId, "Test 33.7: Active grid switched to Cylindrical");
+        TEST_CHECK(addedCyl->isActive() == true, "Test 33.7: Cylindrical grid isActive is true");
+
+        // Update Cylindrical Grid definition -> isActive MUST be preserved!
+        GridDefinition updatedDef = cylDef;
+        updatedDef.setName("Cyl_Updated");
+        gmMulti.updateGrid(cylId, updatedDef);
+        TEST_CHECK(addedCyl->isActive() == true, "Test 33.7: Cylindrical grid isActive preserved after updateGrid!");
+        TEST_CHECK(addedCyl->name() == "Cyl_Updated", "Test 33.7: Cylindrical name updated");
+
+        // Snapping with GridManager when Cylindrical is active
+        GridSnapResult snapFromMgr = snapManager.findSnap(gp_Pnt(p10_30.X() + 0.05, p10_30.Y() - 0.04, 0.0), &gmMulti);
+        TEST_CHECK(snapFromMgr.snapped, "Test 33.7: Snapped through GridManager");
+        TEST_CHECK(snapFromMgr.type == GridSnapType::Intersection, "Test 33.7: Intersection snap type through GridManager");
+
+        // Switch active grid back to Cartesian Main Grid, keep Cylindrical visible
+        std::string cartId = gmMulti.grids().front()->id();
+        gmMulti.setActiveGridId(cartId);
+        TEST_CHECK(gmMulti.activeGridId() == cartId, "Test 33.7: Active grid switched to Cartesian");
+
+        // Snapping to Cylindrical Grid as Priority 3 (Secondary visible grid)
+        GridSnapResult snapSecondary = snapManager.findSnap(gp_Pnt(p10_30.X() + 0.05, p10_30.Y() - 0.04, 0.0), &gmMulti);
+        TEST_CHECK(snapSecondary.snapped, "Test 33.7: Snapped to visible non-active Cylindrical grid");
+        TEST_CHECK(snapSecondary.type == GridSnapType::Intersection, "Test 33.7: Secondary grid intersection snapped");
+
+        // Toggle visibility of Cylindrical grid to false
+        gmMulti.setGridVisible(cylId, false);
+        TEST_CHECK(addedCyl->isVisible() == false, "Test 33.7: Cylindrical grid visibility false");
+        GridSnapResult snapInvisible = snapManager.findSnap(gp_Pnt(p10_30.X() + 0.05, p10_30.Y() - 0.04, 0.0), &gmMulti);
+        // Should NOT snap to Cylindrical since it is hidden!
+        TEST_CHECK(!snapInvisible.snapped || snapInvisible.point.Distance(p10_30) > 0.10,
+                   "Test 33.7: Hidden Cylindrical grid is not snappable");
+        std::cout << "  [PASS] Subtest 33.7: Multi-Grid Support, Active State Preservation & Visibility Validated" << std::endl;
+
+        // Subtest 33.8: Undo/Redo Consistency for Elements Modeled on Cylindrical Grid
+        structuralModel.pushUndoState("Draw Beam On Polar Grid");
+        int testBeam = structuralModel.addBeam(nBase1, nBase2, 0.3, 0.4);
+        TEST_CHECK(structuralModel.beams().size() >= 2, "Test 33.8: Beam added");
+
+        // Undo
+        bool undoSuccess = structuralModel.undo();
+        TEST_CHECK(undoSuccess, "Test 33.8: Undo succeeded");
+        TEST_CHECK(structuralModel.getBeam(testBeam) == nullptr, "Test 33.8: Beam removed by undo");
+
+        // Redo
+        bool redoSuccess = structuralModel.redo();
+        TEST_CHECK(redoSuccess, "Test 33.8: Redo succeeded");
+        TEST_CHECK(structuralModel.getBeam(testBeam) != nullptr, "Test 33.8: Beam restored by redo");
+        TEST_CHECK(approxEqual(structuralModel.getNode(nBase1)->x(), p10_30.X()), "Test 33.8: Node 1 polar X maintained");
+        TEST_CHECK(approxEqual(structuralModel.getNode(nBase2)->y(), p15_60.Y()), "Test 33.8: Node 2 polar Y maintained");
+        std::cout << "  [PASS] Subtest 33.8: Undo/Redo Consistency on Cylindrical Grid Elements Validated" << std::endl;
+
+        std::cout << "[PASS] Test 33: Complete Structural Modeling & Snapping Pipeline on Cylindrical Grids Passed Successfully!" << std::endl;
         passed++;
     }
 

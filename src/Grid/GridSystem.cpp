@@ -16,13 +16,14 @@ GridSystem::GridSystem(const GridDefinition& definition)
 void GridSystem::updateDefinition(const GridDefinition& definition)
 {
     std::string currentId = m_definition.id();
+    bool wasActive = m_isActive;
     m_definition = definition;
     if (!currentId.empty())
     {
         m_definition.setId(currentId);
     }
     m_isVisible = definition.isVisible();
-    m_isActive = definition.isActive();
+    m_isActive = definition.isActive() || wasActive;
     m_showLabels = definition.showLabels();
     m_showIntersections = definition.showIntersections();
     rebuildCalculators();
@@ -52,7 +53,7 @@ void GridSystem::rebuildCalculators()
 
 GridSnapResult GridSystem::findClosestSnap(const gp_Pnt& worldPoint, double snapToleranceWorld) const
 {
-    if (!m_isActive || !m_isVisible)
+    if (!m_isVisible)
     {
         return GridSnapResult{};
     }
