@@ -77,6 +77,19 @@ bool GridManager::removeGrid(const std::string& id)
     return false;
 }
 
+GridSystem* GridManager::duplicateGrid(const std::string& id)
+{
+    GridSystem* source = getGrid(id);
+    if (!source)
+        return nullptr;
+
+    GridDefinition dupDef = source->definition();
+    static uint64_t dupCounter = 0;
+    dupDef.setId("grid_" + std::to_string(++dupCounter) + "_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()));
+    dupDef.setName(source->definition().name() + " (Copie)");
+    return addGrid(dupDef);
+}
+
 void GridManager::clearAllGrids()
 {
     m_grids.clear();

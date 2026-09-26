@@ -1642,8 +1642,23 @@ void OccView::setDarkMode(bool dark)
 
 void OccView::setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::GridSnapManager* snapManager)
 {
+    if (m_gridManager)
+    {
+        disconnect(m_gridManager, nullptr, this, nullptr);
+    }
+
     m_gridManager = gridManager;
     m_gridSnapManager = snapManager;
+
+    if (m_gridManager)
+    {
+        connect(m_gridManager, &TSA::Grid::GridManager::gridAdded, this, [this](const std::string&) { rebuildGrid(); });
+        connect(m_gridManager, &TSA::Grid::GridManager::gridModified, this, [this](const std::string&) { rebuildGrid(); });
+        connect(m_gridManager, &TSA::Grid::GridManager::gridRemoved, this, [this](const std::string&) { rebuildGrid(); });
+        connect(m_gridManager, &TSA::Grid::GridManager::activeGridChanged, this, [this](const std::string&) { rebuildGrid(); });
+        connect(m_gridManager, &TSA::Grid::GridManager::gridVisibilityChanged, this, [this](const std::string&, bool) { rebuildGrid(); });
+    }
+
     rebuildGrid();
 }
 
@@ -2161,12 +2176,11 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
         return false;
     }
 
-    // 3. Accrochage magnétique à la grille du plan si activé
+    // 3. Accrochage magnétique aux grilles si activé
     if (m_snapToGrid && m_gridSnapManager)
     {
         gp_Pnt rawPnt(wx, wy, wz);
-        const TSA::Grid::GridSystem* activeGrid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
-        TSA::Grid::GridSnapResult snapRes = m_gridSnapManager->findSnap(rawPnt, activeGrid, m_model);
+        TSA::Grid::GridSnapResult snapRes = m_gridSnapManager->findSnap(rawPnt, m_gridManager, m_model);
         if (snapRes.snapped)
         {
             wx = snapRes.point.X();

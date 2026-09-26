@@ -34,7 +34,7 @@ void CylindricalGrid::setExtension(double ext)
 
 gp_Pnt CylindricalGrid::polarToWorld(double r, double angleDeg, double z) const
 {
-    double rad = angleDeg * DEG_TO_RAD;
+    double rad = (angleDeg + m_definition.rotationDeg()) * DEG_TO_RAD;
     const gp_Pnt& orig = m_definition.origin();
     return gp_Pnt(
         orig.X() + r * std::cos(rad),
@@ -52,11 +52,9 @@ void CylindricalGrid::worldToPolar(const gp_Pnt& worldPt, double& r, double& ang
 
     r = std::sqrt(dx * dx + dy * dy);
     double rad = std::atan2(dy, dx);
-    angleDeg = rad * RAD_TO_DEG;
-    if (angleDeg < 0.0)
-    {
-        angleDeg += 360.0;
-    }
+    angleDeg = rad * RAD_TO_DEG - m_definition.rotationDeg();
+    while (angleDeg < 0.0) angleDeg += 360.0;
+    while (angleDeg >= 360.0) angleDeg -= 360.0;
 }
 
 void CylindricalGrid::computeGeometry()

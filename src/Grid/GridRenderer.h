@@ -10,18 +10,33 @@
 namespace TSA::Grid
 {
 
+struct PerGridRenderObjects
+{
+    std::string gridId;
+    Handle(AIS_Shape) axesShape;
+    Handle(AIS_Shape) verticalConnectionsShape;
+    Handle(AIS_Shape) activeLevelPlaneShape;
+    Handle(AIS_Shape) circlesShape;
+    Handle(AIS_Shape) intersectionsShape;
+    Handle(AIS_Shape) originShape;
+    Handle(AIS_Shape) levelAxisShape;
+    Handle(AIS_Shape) levelPlanesShape;
+};
+
 class GridRenderer
 {
 public:
     GridRenderer();
     ~GridRenderer() = default;
 
-    // Rendu complet d'un système de grille
+    // Rendu d'un système de grille spécifique
     void renderGrid(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
+    void removeGrid(const std::string& gridId, const Handle(AIS_InteractiveContext)& context);
     void clearGrid(const Handle(AIS_InteractiveContext)& context);
 
     // Contrôles de visibilité globale et partielle
     void setGridVisible(bool visible, const Handle(AIS_InteractiveContext)& context);
+    void setGridVisible(const std::string& gridId, bool visible, const Handle(AIS_InteractiveContext)& context);
     void setLabelsVisible(bool visible, const Handle(AIS_InteractiveContext)& context);
     void setIntersectionsVisible(bool visible, const Handle(AIS_InteractiveContext)& context);
     void setLevelsVisible(bool visible, const Handle(AIS_InteractiveContext)& context);
@@ -44,9 +59,10 @@ public:
     bool isDarkMode() const { return m_isDarkMode; }
 
 private:
-    void renderCartesian(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
-    void renderCylindrical(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
-    void updateActiveLevelHighlight(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
+    void renderCartesian(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context);
+    void renderCylindrical(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context);
+    void updateActiveLevelHighlight(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context);
+    void clearGridObjects(PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context);
 
 private:
     bool m_gridVisible = true;
@@ -56,15 +72,8 @@ private:
     bool m_isDarkMode = true;
     double m_activeLevelZ = 0.0;
 
-    // Formes d'axes et de lignes
-    Handle(AIS_Shape) m_axesShape;
-    Handle(AIS_Shape) m_verticalConnectionsShape;
-    Handle(AIS_Shape) m_activeLevelPlaneShape;
-    Handle(AIS_Shape) m_circlesShape;
-    Handle(AIS_Shape) m_intersectionsShape;
-    Handle(AIS_Shape) m_originShape;
-    Handle(AIS_Shape) m_levelAxisShape;
-    Handle(AIS_Shape) m_levelPlanesShape;
+    // Représentations 3D AIS indexées par l'ID unique de la grille
+    std::unordered_map<std::string, PerGridRenderObjects> m_gridObjectsMap;
 
     // Rendu des libellés et bulles
     GridLabelRenderer m_labelRenderer;

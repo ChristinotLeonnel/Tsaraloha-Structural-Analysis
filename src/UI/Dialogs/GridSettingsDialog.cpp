@@ -48,6 +48,8 @@ void GridSettingsDialog::setupUi()
     m_addBtn->setIcon(QIcon(":/icons/node_add.svg"));
     m_editBtn = new QPushButton(tr("Modifier..."), listGroup);
     m_editBtn->setIcon(QIcon(":/icons/settings.svg"));
+    m_duplicateBtn = new QPushButton(tr("Dupliquer"), listGroup);
+    m_duplicateBtn->setIcon(QIcon(":/icons/file_new.svg"));
     m_deleteBtn = new QPushButton(tr("Supprimer"), listGroup);
     m_deleteBtn->setIcon(QIcon(":/icons/delete.svg"));
     m_setActiveBtn = new QPushButton(tr("Définir comme Active"), listGroup);
@@ -55,6 +57,7 @@ void GridSettingsDialog::setupUi()
 
     btnCol->addWidget(m_addBtn);
     btnCol->addWidget(m_editBtn);
+    btnCol->addWidget(m_duplicateBtn);
     btnCol->addWidget(m_deleteBtn);
     btnCol->addWidget(m_setActiveBtn);
     btnCol->addStretch();
@@ -127,6 +130,7 @@ void GridSettingsDialog::setupUi()
     connect(m_btnApply, &QPushButton::clicked, this, &GridSettingsDialog::onApply);
     connect(m_addBtn, &QPushButton::clicked, this, &GridSettingsDialog::onAddGrid);
     connect(m_editBtn, &QPushButton::clicked, this, &GridSettingsDialog::onEditGrid);
+    connect(m_duplicateBtn, &QPushButton::clicked, this, &GridSettingsDialog::onDuplicateGrid);
     connect(m_deleteBtn, &QPushButton::clicked, this, &GridSettingsDialog::onDeleteGrid);
     connect(m_setActiveBtn, &QPushButton::clicked, this, &GridSettingsDialog::onSetActiveGrid);
     connect(m_gridList, &QListWidget::currentRowChanged, this, &GridSettingsDialog::onSelectedGridChanged);
@@ -136,6 +140,14 @@ void GridSettingsDialog::setupUi()
     connect(m_labelsCheck, &QCheckBox::toggled, this, &GridSettingsDialog::onToggleLabels);
     connect(m_intersectionsCheck, &QCheckBox::toggled, this, &GridSettingsDialog::onToggleIntersections);
     connect(m_snapToleranceSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &GridSettingsDialog::onSnapToleranceChanged);
+
+    if (m_gridManager)
+    {
+        connect(m_gridManager, &TSA::Grid::GridManager::gridAdded, this, &GridSettingsDialog::refreshGridList);
+        connect(m_gridManager, &TSA::Grid::GridManager::gridModified, this, &GridSettingsDialog::refreshGridList);
+        connect(m_gridManager, &TSA::Grid::GridManager::gridRemoved, this, &GridSettingsDialog::refreshGridList);
+        connect(m_gridManager, &TSA::Grid::GridManager::activeGridChanged, this, &GridSettingsDialog::refreshGridList);
+    }
 }
 
 void GridSettingsDialog::refreshGridList()
@@ -182,6 +194,7 @@ void GridSettingsDialog::onSelectedGridChanged()
     if (!item || !m_gridManager)
     {
         m_editBtn->setEnabled(false);
+        m_duplicateBtn->setEnabled(false);
         m_deleteBtn->setEnabled(false);
         m_setActiveBtn->setEnabled(false);
         m_infoLabel->setText("");
@@ -194,6 +207,7 @@ void GridSettingsDialog::onSelectedGridChanged()
         return;
 
     m_editBtn->setEnabled(true);
+    m_duplicateBtn->setEnabled(true);
     m_deleteBtn->setEnabled(m_gridManager->grids().size() > 1);
     m_setActiveBtn->setEnabled(!grid->isActive());
 
@@ -285,6 +299,24 @@ void GridSettingsDialog::onEditGrid()
     {
         TSA::Grid::GridDefinition def = dlg.getDefinition();
         m_gridManager->updateGrid(id, def);
+        refreshGridList();
+        if (m_occView)
+        {
+            m_occView->rebuildGrid();
+        }
+    }
+}
+
+void GridSettingsDialog::onDuplicateGrid()
+{
+    auto* item = m_gridList->currentItem();
+    if (!item || !m_gridManager)
+        return;
+
+    std::string id = item->data(Qt::UserRole).toString().toStdString();
+    auto* dup = m_gridManager->duplicateGrid(id);
+    if (dup)
+    {
         refreshGridList();
         if (m_occView)
         {

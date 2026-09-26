@@ -5,9 +5,17 @@
 #include <AIS_TextLabel.hxx>
 #include <AIS_Shape.hxx>
 #include <vector>
+#include <unordered_map>
+#include <string>
 
 namespace TSA::Grid
 {
+
+struct PerGridLabels
+{
+    std::vector<Handle(AIS_TextLabel)> textLabels;
+    std::vector<Handle(AIS_Shape)> bubbleShapes;
+};
 
 class GridLabelRenderer
 {
@@ -16,7 +24,9 @@ public:
     ~GridLabelRenderer() = default;
 
     void updateLabels(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
-    void removeLabels(const Handle(AIS_InteractiveContext)& context);
+    void removeLabels(const std::string& gridId, const Handle(AIS_InteractiveContext)& context);
+    void removeAllLabels(const Handle(AIS_InteractiveContext)& context);
+    void setGridLabelsVisible(const std::string& gridId, bool visible, const Handle(AIS_InteractiveContext)& context);
     void setVisible(bool visible, const Handle(AIS_InteractiveContext)& context);
 
     bool isVisible() const { return m_isVisible; }
@@ -27,8 +37,7 @@ public:
 private:
     bool m_isVisible = true;
     bool m_isDarkMode = true;
-    std::vector<Handle(AIS_TextLabel)> m_textLabels;
-    std::vector<Handle(AIS_Shape)> m_bubbleShapes;
+    std::unordered_map<std::string, PerGridLabels> m_gridLabelsMap;
 };
 
 } // namespace TSA::Grid

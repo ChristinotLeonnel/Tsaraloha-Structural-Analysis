@@ -12,6 +12,8 @@ namespace TSA::Model
 namespace TSA::Grid
 {
 
+class GridManager;
+
 class GridSnapManager
 {
 public:
@@ -25,6 +27,10 @@ public:
     void setSnapTolerance(double tolerance) { m_snapTolerance = tolerance; }
 
     // Recherche du point d'accrochage optimal
+    GridSnapResult findSnap(const gp_Pnt& rawPoint,
+                            const GridManager* gridManager,
+                            const TSA::Model::Model* model = nullptr) const;
+
     GridSnapResult findSnap(const gp_Pnt& rawPoint,
                             const GridSystem* activeGrid,
                             const TSA::Model::Model* model = nullptr) const;

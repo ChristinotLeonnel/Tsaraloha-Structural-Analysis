@@ -155,6 +155,8 @@ set(SOURCES
     src/Commands/ICommand.h
     src/Commands/CreateBeamCommand.h
     src/Commands/CreateBeamCommand.cpp
+    src/Commands/GridCommands.h
+    src/Commands/GridCommands.cpp
     src/UndoRedo/UndoManager.h
     src/UndoRedo/UndoManager.cpp
     src/UndoRedo/CommandManager.h
@@ -264,6 +266,8 @@ set(TEST_SOURCES
     src/Commands/ICommand.h
     src/Commands/CreateBeamCommand.h
     src/Commands/CreateBeamCommand.cpp
+    src/Commands/GridCommands.h
+    src/Commands/GridCommands.cpp
     src/UndoRedo/UndoManager.h
     src/UndoRedo/UndoManager.cpp
     src/UndoRedo/CommandManager.h

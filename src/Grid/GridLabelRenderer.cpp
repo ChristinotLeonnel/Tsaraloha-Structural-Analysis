@@ -16,32 +16,75 @@ GridLabelRenderer::GridLabelRenderer()
 {
 }
 
-void GridLabelRenderer::removeLabels(const Handle(AIS_InteractiveContext)& context)
+void GridLabelRenderer::removeLabels(const std::string& gridId, const Handle(AIS_InteractiveContext)& context)
 {
-    if (context.IsNull())
-    {
-        m_textLabels.clear();
-        m_bubbleShapes.clear();
+    auto it = m_gridLabelsMap.find(gridId);
+    if (it == m_gridLabelsMap.end())
         return;
+
+    if (!context.IsNull())
+    {
+        for (auto& label : it->second.textLabels)
+        {
+            if (!label.IsNull())
+            {
+                context->Remove(label, false);
+            }
+        }
+        for (auto& bubble : it->second.bubbleShapes)
+        {
+            if (!bubble.IsNull())
+            {
+                context->Remove(bubble, false);
+            }
+        }
     }
 
-    for (auto& label : m_textLabels)
+    m_gridLabelsMap.erase(it);
+}
+
+void GridLabelRenderer::removeAllLabels(const Handle(AIS_InteractiveContext)& context)
+{
+    if (!context.IsNull())
+    {
+        for (auto& [id, perGrid] : m_gridLabelsMap)
+        {
+            for (auto& label : perGrid.textLabels)
+            {
+                if (!label.IsNull()) context->Remove(label, false);
+            }
+            for (auto& bubble : perGrid.bubbleShapes)
+            {
+                if (!bubble.IsNull()) context->Remove(bubble, false);
+            }
+        }
+    }
+    m_gridLabelsMap.clear();
+}
+
+void GridLabelRenderer::setGridLabelsVisible(const std::string& gridId, bool visible, const Handle(AIS_InteractiveContext)& context)
+{
+    auto it = m_gridLabelsMap.find(gridId);
+    if (it == m_gridLabelsMap.end() || context.IsNull())
+        return;
+
+    bool show = visible && m_isVisible;
+    for (auto& label : it->second.textLabels)
     {
         if (!label.IsNull())
         {
-            context->Remove(label, false);
+            if (show) context->Display(label, false);
+            else context->Erase(label, false);
         }
     }
-    m_textLabels.clear();
-
-    for (auto& bubble : m_bubbleShapes)
+    for (auto& bubble : it->second.bubbleShapes)
     {
         if (!bubble.IsNull())
         {
-            context->Remove(bubble, false);
+            if (show) context->Display(bubble, false);
+            else context->Erase(bubble, false);
         }
     }
-    m_bubbleShapes.clear();
 }
 
 void GridLabelRenderer::setVisible(bool visible, const Handle(AIS_InteractiveContext)& context)
@@ -53,37 +96,38 @@ void GridLabelRenderer::setVisible(bool visible, const Handle(AIS_InteractiveCon
     if (context.IsNull())
         return;
 
-    for (auto& label : m_textLabels)
+    for (auto& [id, perGrid] : m_gridLabelsMap)
     {
-        if (!label.IsNull())
+        for (auto& label : perGrid.textLabels)
         {
-            if (m_isVisible)
-                context->Display(label, false);
-            else
-                context->Erase(label, false);
+            if (!label.IsNull())
+            {
+                if (m_isVisible) context->Display(label, false);
+                else context->Erase(label, false);
+            }
         }
-    }
-
-    for (auto& bubble : m_bubbleShapes)
-    {
-        if (!bubble.IsNull())
+        for (auto& bubble : perGrid.bubbleShapes)
         {
-            if (m_isVisible)
-                context->Display(bubble, false);
-            else
-                context->Erase(bubble, false);
+            if (!bubble.IsNull())
+            {
+                if (m_isVisible) context->Display(bubble, false);
+                else context->Erase(bubble, false);
+            }
         }
     }
 }
 
 void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context)
 {
-    removeLabels(context);
+    std::string id = gridSystem.id();
+    removeLabels(id, context);
 
     if (context.IsNull() || !gridSystem.isVisible() || !gridSystem.showLabels() || !m_isVisible)
     {
         return;
     }
+
+    PerGridLabels perGrid;
 
     Quantity_Color textColor = m_isDarkMode
         ? Quantity_Color(0.90, 0.93, 0.98, Quantity_TOC_RGB)
@@ -109,7 +153,7 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
             aisText->SetHeight(13.0);
 
             context->Display(aisText, false);
-            m_textLabels.push_back(aisText);
+            perGrid.textLabels.push_back(aisText);
 
             // 2. Bulle circulaire entourant l'étiquette (R = 0.40m)
             gp_Circ circ(gp_Ax2(anchor.position, gp_Dir(0, 0, 1)), 0.40);
@@ -120,7 +164,7 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
                 aisBubble->SetColor(bubbleColor);
                 aisBubble->SetWidth(1.8);
                 context->Display(aisBubble, false);
-                m_bubbleShapes.push_back(aisBubble);
+                perGrid.bubbleShapes.push_back(aisBubble);
             }
         }
 
@@ -139,7 +183,7 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
             aisText->SetHeight(12.0);
 
             context->Display(aisText, false);
-            m_textLabels.push_back(aisText);
+            perGrid.textLabels.push_back(aisText);
         }
     }
     else if (gridSystem.type() == GridType::Cylindrical && gridSystem.cylindrical())
@@ -157,7 +201,7 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
             aisText->SetHeight(12.0);
 
             context->Display(aisText, false);
-            m_textLabels.push_back(aisText);
+            perGrid.textLabels.push_back(aisText);
 
             // Bulle pour rayons et angles
             gp_Circ circ(gp_Ax2(anchor.position, gp_Dir(0, 0, 1)), 0.35);
@@ -168,10 +212,12 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
                 aisBubble->SetColor(m_isDarkMode ? Quantity_NOC_CYAN2 : Quantity_NOC_CYAN4);
                 aisBubble->SetWidth(1.6);
                 context->Display(aisBubble, false);
-                m_bubbleShapes.push_back(aisBubble);
+                perGrid.bubbleShapes.push_back(aisBubble);
             }
         }
     }
+
+    m_gridLabelsMap[id] = std::move(perGrid);
 }
 
 } // namespace TSA::Grid

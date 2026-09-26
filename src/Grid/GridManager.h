@@ -23,6 +23,7 @@ public:
     GridSystem* addGrid(const GridDefinition& definition);
     bool updateGrid(const std::string& id, const GridDefinition& definition);
     bool removeGrid(const std::string& id);
+    GridSystem* duplicateGrid(const std::string& id);
     void clearAllGrids();
 
     GridSystem* getGrid(const std::string& id);
