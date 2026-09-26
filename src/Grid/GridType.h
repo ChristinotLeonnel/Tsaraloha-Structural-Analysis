@@ -22,6 +22,13 @@ struct ArbitraryLine
     bool isBold = false;
 };
 
+struct AngularPattern
+{
+    double startAngle = 0.0; // Angle de départ en degrés
+    int repeatCount = 0;     // Nombre de répétitions après l'angle initial
+    double angleStep = 0.0;  // Pas angulaire / espacement en degrés
+};
+
 struct GridDisplaySettings
 {
     std::string lineColor;         // Hex code e.g. "#7A8494", empty = theme default

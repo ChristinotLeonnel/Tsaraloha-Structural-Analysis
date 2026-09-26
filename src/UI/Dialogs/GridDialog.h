@@ -70,7 +70,6 @@ private slots:
     void onAdvancedButtonClicked();
     void onCreateFromSelectedBars();
     void onToggleBold();
-    void onCylindricalParamsChanged();
 
 private:
     void setupUi();
@@ -131,13 +130,7 @@ private:
     QDoubleSpinBox* m_posSpin = nullptr;
     QSpinBox* m_repeatSpin = nullptr;
     QDoubleSpinBox* m_spacingSpin = nullptr;
-
-    // Saisie Paramètres Angulaires pour mode Cylindrique (Thêta)
-    QWidget* m_cylAngleWidget = nullptr;
-    QDoubleSpinBox* m_cylStartAngleSpin = nullptr;
-    QDoubleSpinBox* m_cylTotalAngleSpin = nullptr;
-    QSpinBox* m_cylDivisionsSpin = nullptr;
-    QDoubleSpinBox* m_cylStepSpin = nullptr;
+    QPushButton* m_btnAddInline = nullptr;
 
     // Saisie mode Arbitraire
     QComboBox* m_arbTypeCombo = nullptr;
@@ -168,6 +161,7 @@ private:
 
     // Données par axe (X = 0, Y = 1, Z = 2)
     AxisState m_axes[3];
+    std::vector<TSA::Grid::AngularPattern> m_angularPatterns;
     int m_currentAxisIndex = 0;
     TSA::Grid::GridType m_currentType = TSA::Grid::GridType::Cartesian;
 

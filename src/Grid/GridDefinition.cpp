@@ -108,7 +108,81 @@ void GridDefinition::setAngles(const std::vector<double>& anglesDeg)
     // (erreurs d'arrondi flottant) pouvaient rester considérés distincts.
     m_angles.erase(std::unique(m_angles.begin(), m_angles.end(),
         [](double a, double b) { return std::abs(a - b) < 1e-6; }), m_angles.end());
+    updateAngularSectorFromAngles();
     ensureLabelsSynchronized();
+}
+
+void GridDefinition::setAngularPatterns(const std::vector<AngularPattern>& patterns)
+{
+    m_angularPatterns = patterns;
+    generateAnglesFromPatterns();
+}
+
+void GridDefinition::addAngularPattern(const AngularPattern& pattern)
+{
+    m_angularPatterns.push_back(pattern);
+    generateAnglesFromPatterns();
+}
+
+void GridDefinition::clearAngularPatterns()
+{
+    m_angularPatterns.clear();
+}
+
+void GridDefinition::generateAnglesFromPatterns()
+{
+    if (m_angularPatterns.empty())
+        return;
+
+    std::vector<double> newAngles;
+    for (const auto& pat : m_angularPatterns)
+    {
+        for (int i = 0; i <= pat.repeatCount; ++i)
+        {
+            double ang = pat.startAngle + i * pat.angleStep;
+            while (ang >= 360.0) ang -= 360.0;
+            while (ang < 0.0) ang += 360.0;
+            newAngles.push_back(ang);
+        }
+    }
+    setAngles(newAngles);
+}
+
+void GridDefinition::updateAngularSectorFromAngles()
+{
+    if (m_angles.empty()) return;
+    if (m_angles.size() == 1)
+    {
+        m_startAngleDeg = m_angles.front();
+        m_totalAngleDeg = 0.0;
+        return;
+    }
+
+    double minAng = m_angles.front();
+    double maxAng = m_angles.back();
+    double span = maxAng - minAng;
+
+    bool covers360 = (span >= 360.0 - 1e-4);
+    for (const auto& pat : m_angularPatterns)
+    {
+        if (pat.repeatCount * pat.angleStep >= 360.0 - 1e-4)
+        {
+            covers360 = true;
+            break;
+        }
+    }
+
+    if (covers360)
+    {
+        m_startAngleDeg = minAng;
+        m_totalAngleDeg = 360.0;
+    }
+    else
+    {
+        m_startAngleDeg = minAng;
+        m_totalAngleDeg = span;
+    }
+    m_angularDivisions = static_cast<int>(m_angles.size() - 1);
 }
 
 std::string GridDefinition::getXLabel(size_t index) const
@@ -321,6 +395,14 @@ void GridDefinition::generateCylindrical(int radiusCount, double radiusSpacing,
     m_radiusLabels.clear();
     m_angleLabels.clear();
     m_zLabels.clear();
+
+    m_angularPatterns.clear();
+    AngularPattern pat;
+    pat.startAngle = startAngleDeg;
+    pat.repeatCount = angleCount;
+    pat.angleStep = angleSpacingDeg;
+    m_angularPatterns.push_back(pat);
+
     ensureLabelsSynchronized();
 }
 
@@ -398,6 +480,17 @@ std::string GridDefinition::toJson() const
         oss << "  \"angularDivisions\": " << m_angularDivisions << ",\n";
         oss << "  \"radiusLabels\": " << stringVectorToJsonArray(m_radiusLabels) << ",\n";
         oss << "  \"angleLabels\": " << stringVectorToJsonArray(m_angleLabels) << ",\n";
+        oss << "  \"angularPatterns\": [\n";
+        for (size_t i = 0; i < m_angularPatterns.size(); ++i)
+        {
+            const auto& p = m_angularPatterns[i];
+            oss << "    {\"startAngle\": " << p.startAngle
+                << ", \"repeatCount\": " << p.repeatCount
+                << ", \"angleStep\": " << p.angleStep << "}";
+            if (i + 1 < m_angularPatterns.size()) oss << ",";
+            oss << "\n";
+        }
+        oss << "  ],\n";
     }
     else // Arbitrary
     {
@@ -575,6 +668,63 @@ GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
 
         std::string divStr = findField("angularDivisions");
         if (!divStr.empty()) { try { def.setAngularDivisions(std::stoi(divStr)); } catch (...) {} }
+
+        // Lecture de angularPatterns si présent
+        size_t apPos = jsonStr.find("\"angularPatterns\"");
+        if (apPos != std::string::npos)
+        {
+            size_t openBracket = jsonStr.find('[', apPos);
+            if (openBracket != std::string::npos)
+            {
+                int bDepth = 0;
+                size_t closeBracket = std::string::npos;
+                for (size_t k = openBracket; k < jsonStr.size(); ++k)
+                {
+                    if (jsonStr[k] == '[') ++bDepth;
+                    else if (jsonStr[k] == ']')
+                    {
+                        --bDepth;
+                        if (bDepth == 0)
+                        {
+                            closeBracket = k;
+                            break;
+                        }
+                    }
+                }
+                if (closeBracket != std::string::npos)
+                {
+                    std::string arrContent = jsonStr.substr(openBracket + 1, closeBracket - openBracket - 1);
+                    std::vector<AngularPattern> pats;
+                    size_t objStart = 0;
+                    while ((objStart = arrContent.find('{', objStart)) != std::string::npos)
+                    {
+                        size_t objEnd = arrContent.find('}', objStart);
+                        if (objEnd == std::string::npos) break;
+                        std::string objStr = arrContent.substr(objStart, objEnd - objStart + 1);
+                        objStart = objEnd + 1;
+
+                        AngularPattern p;
+                        auto extractVal = [&](const std::string& field) -> double {
+                            size_t fpos = objStr.find("\"" + field + "\"");
+                            if (fpos == std::string::npos) return 0.0;
+                            size_t colon = objStr.find(':', fpos);
+                            if (colon == std::string::npos) return 0.0;
+                            size_t comma = objStr.find_first_of(",}", colon);
+                            std::string val = objStr.substr(colon + 1, (comma != std::string::npos ? comma - colon - 1 : std::string::npos));
+                            try { return std::stod(val); } catch (...) { return 0.0; }
+                        };
+                        p.startAngle = extractVal("startAngle");
+                        p.repeatCount = static_cast<int>(extractVal("repeatCount"));
+                        p.angleStep = extractVal("angleStep");
+                        pats.push_back(p);
+                    }
+                    if (!pats.empty())
+                    {
+                        def.setAngularPatterns(pats);
+                    }
+                }
+            }
+        }
     }
     else // Arbitrary
     {

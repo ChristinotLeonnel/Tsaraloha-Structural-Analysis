@@ -2410,7 +2410,84 @@ int main(int argc, char* argv[])
             std::cout << "  [PASS] Subtest 32.7: GridManager & Snapping Integration Validated" << std::endl;
         }
 
-        std::cout << "[PASS] Test 32: Advanced Cylindrical Grid Sectors (startAngle, totalAngle, divisions, OCCT arcs, snapping, JSON) Passed Successfully!" << std::endl;
+        // Subtest 32.8: AngularPattern multi-group generation & Deduced sector (0°, 30°, 60°, 90° then 120°, 135°, 150°)
+        {
+            GridDefinition defPattern("Cyl_Patterns", GridType::Cylindrical);
+            defPattern.setRadii({ 3.0, 6.0 });
+            defPattern.setZLevels({ 0.0 });
+
+            // Groupe 1: Position = 0°, Répéter = 3, Angle = 30° -> 0°, 30°, 60°, 90°
+            AngularPattern group1{ 0.0, 3, 30.0 };
+            defPattern.addAngularPattern(group1);
+
+            TEST_CHECK(defPattern.angles().size() == 4, "Test 32.8: 4 angles generated for repeat=3");
+            TEST_CHECK(approxEqual(defPattern.angles()[0], 0.0), "Test 32.8: angle 0 == 0");
+            TEST_CHECK(approxEqual(defPattern.angles()[1], 30.0), "Test 32.8: angle 1 == 30");
+            TEST_CHECK(approxEqual(defPattern.angles()[2], 60.0), "Test 32.8: angle 2 == 60");
+            TEST_CHECK(approxEqual(defPattern.angles()[3], 90.0), "Test 32.8: angle 3 == 90");
+            TEST_CHECK(approxEqual(defPattern.startAngleDeg(), 0.0), "Test 32.8: Deduced start == 0");
+            TEST_CHECK(approxEqual(defPattern.totalAngleDeg(), 90.0), "Test 32.8: Deduced total == 90");
+
+            // Groupe 2: Position = 120°, Répéter = 2, Angle = 15° -> 120°, 135°, 150°
+            AngularPattern group2{ 120.0, 2, 15.0 };
+            defPattern.addAngularPattern(group2);
+
+            TEST_CHECK(defPattern.angles().size() == 7, "Test 32.8: 7 unique angles total");
+            std::vector<double> expected = { 0.0, 30.0, 60.0, 90.0, 120.0, 135.0, 150.0 };
+            for (size_t i = 0; i < expected.size(); ++i)
+            {
+                TEST_CHECK(approxEqual(defPattern.angles()[i], expected[i]), "Test 32.8: Angle matches expected value");
+            }
+            TEST_CHECK(approxEqual(defPattern.startAngleDeg(), 0.0), "Test 32.8: Deduced startAngle == 0");
+            TEST_CHECK(approxEqual(defPattern.totalAngleDeg(), 150.0), "Test 32.8: Deduced totalAngle == 150");
+
+            CylindricalGrid cyl(defPattern);
+            TEST_CHECK(cyl.radialLines().size() == 7, "Test 32.8: 7 radial lines created");
+            TEST_CHECK(cyl.circles().front().isFullCircle() == false, "Test 32.8: Not full circle");
+            TEST_CHECK(approxEqual(cyl.circles().front().startAngleDeg, 0.0), "Test 32.8: Circle start == 0");
+            TEST_CHECK(approxEqual(cyl.circles().front().totalAngleDeg, 150.0), "Test 32.8: Circle total == 150");
+            std::cout << "  [PASS] Subtest 32.8: AngularPattern multi-group (0..90° then 120..150°) Validated" << std::endl;
+        }
+
+        // Subtest 32.9: Second user example (15°, repeat 4, step 20°) & Validation example (10°, repeat 5, step 15°)
+        {
+            // Position = 15°, Répéter = 4, Angle = 20° -> 15°, 35°, 55°, 75°, 95°
+            GridDefinition defEx2("Cyl_Ex2", GridType::Cylindrical);
+            defEx2.setRadii({ 5.0 });
+            defEx2.addAngularPattern({ 15.0, 4, 20.0 });
+
+            TEST_CHECK(defEx2.angles().size() == 5, "Test 32.9: 5 angles for repeat=4");
+            std::vector<double> exp2 = { 15.0, 35.0, 55.0, 75.0, 95.0 };
+            for (size_t i = 0; i < exp2.size(); ++i)
+            {
+                TEST_CHECK(approxEqual(defEx2.angles()[i], exp2[i]), "Test 32.9: Ex2 angle matches");
+            }
+            TEST_CHECK(approxEqual(defEx2.startAngleDeg(), 15.0), "Test 32.9: Ex2 startAngle == 15");
+            TEST_CHECK(approxEqual(defEx2.totalAngleDeg(), 80.0), "Test 32.9: Ex2 totalAngle == 80 (15° -> 95°)");
+
+            // Validation: Position = 10°, Répéter = 5, Angle = 15° -> 10°, 25°, 40°, 55°, 70°, 85°
+            GridDefinition defVal("Cyl_Val", GridType::Cylindrical);
+            defVal.setRadii({ 4.0 });
+            defVal.setZLevels({ 0.0 });
+            defVal.addAngularPattern({ 10.0, 5, 15.0 });
+
+            TEST_CHECK(defVal.angles().size() == 6, "Test 32.9: 6 angles for repeat=5");
+            std::vector<double> expVal = { 10.0, 25.0, 40.0, 55.0, 70.0, 85.0 };
+            for (size_t i = 0; i < expVal.size(); ++i)
+            {
+                TEST_CHECK(approxEqual(defVal.angles()[i], expVal[i]), "Test 32.9: Val angle matches");
+            }
+            TEST_CHECK(approxEqual(defVal.startAngleDeg(), 10.0), "Test 32.9: Val startAngle == 10");
+            TEST_CHECK(approxEqual(defVal.totalAngleDeg(), 75.0), "Test 32.9: Val totalAngle == 75 (10° -> 85°)");
+
+            CylindricalGrid cylVal(defVal);
+            TEST_CHECK(cylVal.radialLines().size() == 6, "Test 32.9: 6 radial lines");
+            TEST_CHECK(approxEqual(cylVal.circles().front().startAngleDeg, 10.0), "Test 32.9: Start angle 10");
+            TEST_CHECK(approxEqual(cylVal.circles().front().totalAngleDeg, 75.0), "Test 32.9: Total angle 75");
+            std::cout << "  [PASS] Subtest 32.9: User examples (15°..95° and 10°..85°) Validated" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 32: Advanced Cylindrical Grid Sectors (AngularPattern, startAngle, totalAngle, divisions, OCCT arcs, snapping, JSON) Passed Successfully!" << std::endl;
         passed++;
     }
 

@@ -226,9 +226,9 @@ void GridDialog::setupUi()
     inputGrid->setHorizontalSpacing(8);
     inputGrid->setVerticalSpacing(4);
 
-    inputGrid->addWidget(m_posLabel = new QLabel(tr("Position:"), m_standardInputGridWidget), 0, 0);
-    inputGrid->addWidget(m_repeatLabel = new QLabel(tr("Répéter x:"), m_standardInputGridWidget), 0, 1);
-    inputGrid->addWidget(m_spacingLabel = new QLabel(tr("Espacement:"), m_standardInputGridWidget), 0, 2);
+    inputGrid->addWidget(m_posLabel = new QLabel(tr("Position :"), m_standardInputGridWidget), 0, 0);
+    inputGrid->addWidget(m_repeatLabel = new QLabel(tr("Répéter :"), m_standardInputGridWidget), 0, 1);
+    inputGrid->addWidget(m_spacingLabel = new QLabel(tr("Espacement :"), m_standardInputGridWidget), 0, 2);
 
     auto* posLayout = new QHBoxLayout();
     m_posSpin = new QDoubleSpinBox(m_standardInputGridWidget);
@@ -245,7 +245,7 @@ void GridDialog::setupUi()
 
     m_repeatSpin = new QSpinBox(m_standardInputGridWidget);
     m_repeatSpin->setRange(1, 100);
-    m_repeatSpin->setValue(2);
+    m_repeatSpin->setValue(3);
     inputGrid->addWidget(m_repeatSpin, 1, 1);
 
     auto* spaceLayout = new QHBoxLayout();
@@ -258,59 +258,16 @@ void GridDialog::setupUi()
     spaceLayout->addWidget(m_spacingUnitLabel = new QLabel(tr("(m)"), m_standardInputGridWidget));
     inputGrid->addLayout(spaceLayout, 1, 2);
 
+    m_btnAddInline = new QPushButton(tr("Ajouter"), m_standardInputGridWidget);
+    m_btnAddInline->setIcon(QIcon(":/icons/node_add.svg"));
+    m_btnAddInline->setFixedHeight(28);
+    m_btnAddInline->setStyleSheet(isDark
+        ? "QPushButton { border: 1.5px solid #1F6FEB; background: #1F3A5A; font-weight: bold; color: #58A6FF; } QPushButton:hover { background: #234975; }"
+        : "QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; } QPushButton:hover { background: #D9ECFC; }");
+    inputGrid->addWidget(m_btnAddInline, 1, 3);
+    connect(m_btnAddInline, &QPushButton::clicked, this, &GridDialog::onAddLines);
+
     cartLayout->addWidget(m_standardInputGridWidget);
-
-    // Conteneur Paramètres Angulaires (Mode Cylindrique - Thêta)
-    m_cylAngleWidget = new QWidget(m_cartesianInputWidget);
-    auto* cylLayout = new QGridLayout(m_cylAngleWidget);
-    cylLayout->setContentsMargins(4, 4, 4, 4);
-    cylLayout->setHorizontalSpacing(10);
-    cylLayout->setVerticalSpacing(4);
-
-    cylLayout->addWidget(new QLabel(tr("Angle de départ :"), m_cylAngleWidget), 0, 0);
-    m_cylStartAngleSpin = new QDoubleSpinBox(m_cylAngleWidget);
-    m_cylStartAngleSpin->setRange(-360.0, 360.0);
-    m_cylStartAngleSpin->setDecimals(2);
-    m_cylStartAngleSpin->setSingleStep(5.0);
-    m_cylStartAngleSpin->setValue(0.0);
-    m_cylStartAngleSpin->setSuffix(" °");
-    cylLayout->addWidget(m_cylStartAngleSpin, 0, 1);
-
-    cylLayout->addWidget(new QLabel(tr("Angle total :"), m_cylAngleWidget), 0, 2);
-    m_cylTotalAngleSpin = new QDoubleSpinBox(m_cylAngleWidget);
-    m_cylTotalAngleSpin->setRange(0.01, 360.0);
-    m_cylTotalAngleSpin->setDecimals(2);
-    m_cylTotalAngleSpin->setSingleStep(15.0);
-    m_cylTotalAngleSpin->setValue(90.0);
-    m_cylTotalAngleSpin->setSuffix(" °");
-    cylLayout->addWidget(m_cylTotalAngleSpin, 0, 3);
-
-    cylLayout->addWidget(new QLabel(tr("Nombre de divisions :"), m_cylAngleWidget), 1, 0);
-    m_cylDivisionsSpin = new QSpinBox(m_cylAngleWidget);
-    m_cylDivisionsSpin->setRange(1, 360);
-    m_cylDivisionsSpin->setValue(5);
-    cylLayout->addWidget(m_cylDivisionsSpin, 1, 1);
-
-    cylLayout->addWidget(new QLabel(tr("Pas :"), m_cylAngleWidget), 1, 2);
-    m_cylStepSpin = new QDoubleSpinBox(m_cylAngleWidget);
-    m_cylStepSpin->setRange(0.001, 360.0);
-    m_cylStepSpin->setDecimals(2);
-    m_cylStepSpin->setSuffix(" °");
-    m_cylStepSpin->setReadOnly(true);
-    m_cylStepSpin->setStyleSheet("font-weight: bold; color: #58A6FF;");
-    m_cylStepSpin->setValue(18.0);
-    cylLayout->addWidget(m_cylStepSpin, 1, 3);
-
-    cartLayout->addWidget(m_cylAngleWidget);
-    m_cylAngleWidget->hide();
-
-    connect(m_cylStartAngleSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, &GridDialog::onCylindricalParamsChanged);
-    connect(m_cylTotalAngleSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, &GridDialog::onCylindricalParamsChanged);
-    connect(m_cylDivisionsSpin, QOverload<int>::of(&QSpinBox::valueChanged),
-            this, &GridDialog::onCylindricalParamsChanged);
-
     mainLayout->addWidget(m_cartesianInputWidget);
 
     // 4b. Conteneur Saisie Mode Arbitraire
@@ -474,7 +431,6 @@ void GridDialog::onModeCartesian()
     m_cartesianInputWidget->show();
     m_arbitraryInputWidget->hide();
     if (m_standardInputGridWidget) m_standardInputGridWidget->show();
-    if (m_cylAngleWidget) m_cylAngleWidget->hide();
     m_labelStyleCombo->setEnabled(true);
     m_customLabelEdit->setEnabled(m_labelStyleCombo->currentIndex() == 3);
 
@@ -518,6 +474,7 @@ void GridDialog::onModeCylindrical()
 
     m_cartesianInputWidget->show();
     m_arbitraryInputWidget->hide();
+    if (m_standardInputGridWidget) m_standardInputGridWidget->show();
     m_labelStyleCombo->setEnabled(true);
     m_customLabelEdit->setEnabled(m_labelStyleCombo->currentIndex() == 3);
 
@@ -525,37 +482,26 @@ void GridDialog::onModeCylindrical()
     m_axisTabs->setTabText(1, tr("Thêta (°)"));
     m_axisTabs->setTabText(2, tr("Z (m)"));
 
-    if (m_currentAxisIndex == 1)
-    {
-        if (m_standardInputGridWidget) m_standardInputGridWidget->hide();
-        if (m_cylAngleWidget) m_cylAngleWidget->show();
-    }
-    else
-    {
-        if (m_standardInputGridWidget) m_standardInputGridWidget->show();
-        if (m_cylAngleWidget) m_cylAngleWidget->hide();
-    }
-
     if (changed)
     {
+        // R : 2.0, 4.0, 6.0, 8.0 (position 2.0, répéter 3, espacement 2.0 -> 2, 4, 6, 8)
         m_axes[0].positions = { 2.0, 4.0, 6.0, 8.0 };
         m_axes[0].spacing = 2.0;
-        m_axes[0].repeatCount = 2;
+        m_axes[0].repeatCount = 3;
+        m_axes[0].currentPosition = 10.0;
 
-        m_isUpdating = true;
-        if (m_cylStartAngleSpin) m_cylStartAngleSpin->setValue(0.0);
-        if (m_cylTotalAngleSpin) m_cylTotalAngleSpin->setValue(90.0);
-        if (m_cylDivisionsSpin) m_cylDivisionsSpin->setValue(5);
-        if (m_cylStepSpin) m_cylStepSpin->setValue(18.0);
-        m_isUpdating = false;
+        // Thêta : 0°, 30°, 60°, 90° (position 0.0, répéter 3, espacement 30.0 -> 0, 30, 60, 90)
+        m_axes[1].positions = { 0.0, 30.0, 60.0, 90.0 };
+        m_axes[1].spacing = 30.0;
+        m_axes[1].repeatCount = 3;
+        m_axes[1].currentPosition = 120.0;
+        m_axes[1].isBold.resize(4, false);
 
-        m_axes[1].positions = { 0.0, 18.0, 36.0, 54.0, 72.0, 90.0 };
-        m_axes[1].isBold.resize(m_axes[1].positions.size(), false);
+        m_angularPatterns.clear();
+        m_angularPatterns.push_back({ 0.0, 3, 30.0 });
 
         applyLabels(0);
         applyLabels(1);
-        m_axes[0].currentPosition = m_axes[0].positions.back() + 2.0;
-        m_axes[1].currentPosition = 0.0;
     }
 
     updateTableForCurrentTab();
@@ -653,18 +599,6 @@ void GridDialog::onTabChanged(int index)
 
     m_currentAxisIndex = index;
 
-    // Basculer l'affichage selon l'axe sélectionné en mode Cylindrique
-    if (m_currentType == TSA::Grid::GridType::Cylindrical && index == 1)
-    {
-        if (m_standardInputGridWidget) m_standardInputGridWidget->hide();
-        if (m_cylAngleWidget) m_cylAngleWidget->show();
-    }
-    else
-    {
-        if (m_standardInputGridWidget) m_standardInputGridWidget->show();
-        if (m_cylAngleWidget) m_cylAngleWidget->hide();
-    }
-
     // Restaurer l'état du nouvel onglet
     m_isUpdating = true;
     m_posSpin->setValue(m_axes[m_currentAxisIndex].currentPosition);
@@ -674,49 +608,6 @@ void GridDialog::onTabChanged(int index)
     m_isUpdating = false;
 
     updateTableForCurrentTab();
-}
-
-void GridDialog::onCylindricalParamsChanged()
-{
-    if (m_isUpdating) return;
-
-    double start = m_cylStartAngleSpin->value();
-    double total = m_cylTotalAngleSpin->value();
-    int divs = m_cylDivisionsSpin->value();
-    if (divs < 1) divs = 1;
-    if (total <= 0.0) total = 0.01;
-    if (total > 360.0) total = 360.0;
-
-    double step = total / divs;
-    m_cylStepSpin->setValue(step);
-
-    if (m_currentType == TSA::Grid::GridType::Cylindrical)
-    {
-        auto& axis = m_axes[1];
-        axis.positions.clear();
-        axis.isBold.clear();
-
-        const bool isFull = (total >= 360.0 - 1e-4);
-        int numAngles = isFull ? divs : (divs + 1);
-
-        for (int i = 0; i < numAngles; ++i)
-        {
-            double ang = start + i * step;
-            axis.positions.push_back(ang);
-            axis.isBold.push_back(false);
-        }
-
-        applyLabels(1);
-        if (m_currentAxisIndex == 1)
-        {
-            updateTableForCurrentTab();
-        }
-
-        if (m_chkLiveSync && m_chkLiveSync->isChecked())
-        {
-            onApply();
-        }
-    }
 }
 
 void GridDialog::onAddLines()
@@ -748,16 +639,18 @@ void GridDialog::onAddLines()
 
     double startPos = m_posSpin->value();
     int repeat = m_repeatSpin->value();
-    if (repeat < 1)
+    if (repeat < 0)
     {
-        repeat = 1;
-        m_repeatSpin->setValue(1);
+        repeat = 0;
+        m_repeatSpin->setValue(0);
     }
     double spacing = m_spacingSpin->value();
 
     auto& axis = m_axes[m_currentAxisIndex];
 
-    for (int i = 0; i < repeat; ++i)
+    // Répéter = N signifie N répétitions APRÈS l'élément initial (i = 0 ... repeat)
+    // Exemple : Position = 0, Répéter = 3, Angle = 30° -> 0°, 30°, 60°, 90° (4 éléments)
+    for (int i = 0; i <= repeat; ++i)
     {
         double p = startPos + i * spacing;
 
@@ -785,6 +678,16 @@ void GridDialog::onAddLines()
         }
     }
 
+    // Si on ajoute des angles, enregistrer également le motif de répétition
+    if (m_currentType == TSA::Grid::GridType::Cylindrical && m_currentAxisIndex == 1)
+    {
+        TSA::Grid::AngularPattern pat;
+        pat.startAngle = startPos;
+        pat.repeatCount = repeat;
+        pat.angleStep = spacing;
+        m_angularPatterns.push_back(pat);
+    }
+
     std::sort(axis.positions.begin(), axis.positions.end());
     if (axis.isBold.size() != axis.positions.size())
         axis.isBold.resize(axis.positions.size(), false);
@@ -792,10 +695,11 @@ void GridDialog::onAddLines()
     applyLabels(m_currentAxisIndex);
 
     // Calculer la prochaine position suggérée
-    double nextPos = startPos + repeat * spacing;
+    double nextPos = startPos + (repeat + 1) * spacing;
     if (m_currentType == TSA::Grid::GridType::Cylindrical && m_currentAxisIndex == 1)
     {
         while (nextPos >= 360.0) nextPos -= 360.0;
+        while (nextPos < 0.0) nextPos += 360.0;
     }
     m_posSpin->setValue(nextPos);
     axis.currentPosition = nextPos;
@@ -859,6 +763,10 @@ void GridDialog::onClearLines()
     axis.labels.clear();
     axis.isBold.clear();
     axis.currentPosition = 0.0;
+    if (m_currentType == TSA::Grid::GridType::Cylindrical && m_currentAxisIndex == 1)
+    {
+        m_angularPatterns.clear();
+    }
     m_posSpin->setValue(0.0);
     updateTableForCurrentTab();
     if (m_chkLiveSync && m_chkLiveSync->isChecked())
@@ -953,33 +861,36 @@ void GridDialog::updateTableForCurrentTab()
     {
         if (m_currentAxisIndex == 0) // Rayon
         {
-            m_posLabel->setText(tr("Rayon (R):"));
+            m_posLabel->setText(tr("Position :"));
             m_posUnitLabel->setText(tr("(m)"));
-            m_spacingLabel->setText(tr("Pas radial:"));
+            m_repeatLabel->setText(tr("Répéter :"));
+            m_spacingLabel->setText(tr("Espacement :"));
             m_spacingUnitLabel->setText(tr("(m)"));
             m_posSpin->setRange(0.0, 10000.0);
             m_posSpin->setSingleStep(1.0);
             m_spacingSpin->setRange(0.01, 1000.0);
             m_spacingSpin->setSingleStep(1.0);
-            col1Header = tr("Rayon R (m)");
+            col1Header = tr("Rayon (m)");
         }
         else if (m_currentAxisIndex == 1) // Angle Thêta
         {
-            m_posLabel->setText(tr("Angle (θ):"));
+            m_posLabel->setText(tr("Position :"));
             m_posUnitLabel->setText(tr("(°)"));
-            m_spacingLabel->setText(tr("Pas angulaire:"));
+            m_repeatLabel->setText(tr("Répéter :"));
+            m_spacingLabel->setText(tr("Angle :"));
             m_spacingUnitLabel->setText(tr("(°)"));
             m_posSpin->setRange(-360.0, 360.0);
             m_posSpin->setSingleStep(15.0);
-            m_spacingSpin->setRange(0.1, 360.0);
+            m_spacingSpin->setRange(0.01, 360.0);
             m_spacingSpin->setSingleStep(15.0);
-            col1Header = tr("Angle θ (°)");
+            col1Header = tr("Angle");
         }
         else // Élévation Z
         {
-            m_posLabel->setText(tr("Position (Z):"));
+            m_posLabel->setText(tr("Position :"));
             m_posUnitLabel->setText(tr("(m)"));
-            m_spacingLabel->setText(tr("Espacement:"));
+            m_repeatLabel->setText(tr("Répéter :"));
+            m_spacingLabel->setText(tr("Espacement :"));
             m_spacingUnitLabel->setText(tr("(m)"));
             m_posSpin->setRange(-10000.0, 10000.0);
             m_posSpin->setSingleStep(1.0);
@@ -991,6 +902,8 @@ void GridDialog::updateTableForCurrentTab()
     else // Cartésien
     {
         m_posUnitLabel->setText(tr("(m)"));
+        m_repeatLabel->setText(tr("Répéter :"));
+        m_spacingLabel->setText(tr("Espacement :"));
         m_spacingUnitLabel->setText(tr("(m)"));
         m_posSpin->setRange(-10000.0, 10000.0);
         m_posSpin->setSingleStep(1.0);
@@ -999,17 +912,17 @@ void GridDialog::updateTableForCurrentTab()
 
         if (m_currentAxisIndex == 0)
         {
-            m_posLabel->setText(tr("Position (X):"));
+            m_posLabel->setText(tr("Position :"));
             col1Header = tr("Position X (m)");
         }
         else if (m_currentAxisIndex == 1)
         {
-            m_posLabel->setText(tr("Position (Y):"));
+            m_posLabel->setText(tr("Position :"));
             col1Header = tr("Position Y (m)");
         }
         else
         {
-            m_posLabel->setText(tr("Position (Z):"));
+            m_posLabel->setText(tr("Position :"));
             col1Header = tr("Élévation Z (m)");
         }
     }
@@ -1300,12 +1213,7 @@ TSA::Grid::GridDefinition GridDialog::getDefinition() const
         def.setAngles(m_axes[1].positions);
         def.setAngleLabels(m_axes[1].labels);
 
-        if (m_cylStartAngleSpin)
-            def.setStartAngleDeg(m_cylStartAngleSpin->value());
-        if (m_cylTotalAngleSpin)
-            def.setTotalAngleDeg(m_cylTotalAngleSpin->value());
-        if (m_cylDivisionsSpin)
-            def.setAngularDivisions(m_cylDivisionsSpin->value());
+        def.setAngularPatterns(m_angularPatterns);
 
         def.setZLevels(m_axes[2].positions);
         def.setZLabels(m_axes[2].labels);
@@ -1367,16 +1275,33 @@ void GridDialog::loadFromDefinition(const TSA::Grid::GridDefinition& def)
         m_axes[2].positions = def.zLevels();
         m_axes[2].labels = def.zLabels();
 
+        m_angularPatterns = def.angularPatterns();
+
+        for (int i = 0; i < 3; ++i)
+        {
+            if (m_axes[i].labels.empty())
+            {
+                applyLabels(i);
+            }
+            if (!m_axes[i].positions.empty())
+            {
+                double last = m_axes[i].positions.back();
+                double step = (m_axes[i].positions.size() > 1)
+                    ? (last - m_axes[i].positions[m_axes[i].positions.size() - 2])
+                    : (i == 1 ? 30.0 : 2.0);
+                if (step <= 0.0) step = (i == 1 ? 30.0 : 2.0);
+                m_axes[i].spacing = step;
+                m_axes[i].repeatCount = 3;
+                m_axes[i].currentPosition = last + step;
+                if (i == 1 && m_axes[i].currentPosition >= 360.0)
+                    m_axes[i].currentPosition -= 360.0;
+            }
+        }
+
         m_isUpdating = true;
-        if (m_cylStartAngleSpin)
-            m_cylStartAngleSpin->setValue(def.startAngleDeg());
-        if (m_cylTotalAngleSpin)
-            m_cylTotalAngleSpin->setValue(def.totalAngleDeg());
-        if (m_cylDivisionsSpin)
-            m_cylDivisionsSpin->setValue(def.angularDivisions());
-        double step = def.totalAngleDeg() / std::max(1, def.angularDivisions());
-        if (m_cylStepSpin)
-            m_cylStepSpin->setValue(step);
+        m_posSpin->setValue(m_axes[m_currentAxisIndex].currentPosition);
+        m_repeatSpin->setValue(std::max(1, m_axes[m_currentAxisIndex].repeatCount));
+        m_spacingSpin->setValue(m_axes[m_currentAxisIndex].spacing);
         m_isUpdating = false;
 
         updateTableForCurrentTab();

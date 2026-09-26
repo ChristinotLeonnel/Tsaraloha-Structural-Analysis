@@ -75,8 +75,13 @@ public:
     int angularDivisions() const { return m_angularDivisions; }
     void setAngularDivisions(int divs) { m_angularDivisions = std::max(1, divs); }
 
-    int radialDivisions() const { return static_cast<int>(m_radii.size()); }
-    void setRadialDivisions(int /*divs*/) {}
+    // --- Motifs angulaires (Angular Patterns) ---
+    const std::vector<AngularPattern>& angularPatterns() const { return m_angularPatterns; }
+    void setAngularPatterns(const std::vector<AngularPattern>& patterns);
+    void addAngularPattern(const AngularPattern& pattern);
+    void clearAngularPatterns();
+    void generateAnglesFromPatterns();
+    void updateAngularSectorFromAngles();
 
     // --- Libellés personnalisés ---
     const std::vector<std::string>& xLabels() const { return m_xLabels; }
@@ -161,6 +166,7 @@ private:
     // Cylindrique
     std::vector<double> m_radii;
     std::vector<double> m_angles; // en degrés
+    std::vector<AngularPattern> m_angularPatterns;
     double m_startAngleDeg = 0.0;
     double m_totalAngleDeg = 360.0;
     int m_angularDivisions = 12;
