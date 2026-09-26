@@ -110,4 +110,17 @@ std::string Column::direction(const Model& model) const
     return "Incliné";
 }
 
+BarProperties Column::properties() const
+{
+    BarProperties p;
+    p.id = m_id;
+    p.name = m_name;
+    p.role = BarRole::Column;
+    p.section = m_section;
+    p.material = m_material;
+    p.rotation = m_rotation;
+    p.color = m_color;
+    return p;
+}
+
 } // namespace TSA::Model

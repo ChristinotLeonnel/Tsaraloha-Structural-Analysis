@@ -100,7 +100,7 @@ private:
     QToolButton* m_btnEccMore = nullptr;
     QDoubleSpinBox* m_spinRotation = nullptr;
 
-    // Boutons d'action
+    QPushButton* m_btnCustomizeSection = nullptr;
     QPushButton* m_btnAdd = nullptr;
     QPushButton* m_btnClose = nullptr;
     QPushButton* m_btnHelp = nullptr;
