@@ -7,8 +7,10 @@
 #include <gp_Dir.hxx>
 #include "../Model/CreationPresets.h"
 #include "../Model/Beam.h"
+#include "../Model/StructuralClipboard.h"
 
 namespace TSA::Model { class Model; }
+namespace TSA::Project { class ProjectManager; }
 namespace TSA::Viewer { class SelectionManager; }
 namespace TSA::Grid
 {
@@ -47,6 +49,10 @@ public:
     const TSA::Model::Model* model() const { return m_model.get(); }
 
     TSA::Grid::GridManager* gridManager() { return m_gridManager.get(); }
+    const TSA::Grid::GridManager* gridManager() const { return m_gridManager.get(); }
+
+    TSA::Project::ProjectManager* projectManager() { return m_projectManager.get(); }
+    const TSA::Project::ProjectManager* projectManager() const { return m_projectManager.get(); }
 
     bool loadFile(const QString& filePath);
     bool saveFile(const QString& filePath);
@@ -143,7 +149,7 @@ private:
     QAction* m_actionSave = nullptr;
     QAction* m_actionSaveAs = nullptr;
     QAction* m_actionExit = nullptr;
-    QString  m_currentFilePath;
+    std::unique_ptr<TSA::Project::ProjectManager> m_projectManager;
 
     QAction* m_actionFitAll = nullptr;
     QAction* m_actionResetView = nullptr;
@@ -177,36 +183,6 @@ private:
     TSA::Model::StructurePresets m_presets;
 
     QAction* m_actionNewNode = nullptr;
-    // Presse-papier structural pour copier-coller 3D (Ctrl+C / Ctrl+V)
-    struct ClipboardNode {
-        int originalId = 0;
-        double relX = 0.0, relY = 0.0, relZ = 0.0;
-    };
-    struct ClipboardBeam {
-        int originalStartNodeId = 0;
-        int originalEndNodeId = 0;
-        double width = 0.30;
-        double height = 0.50;
-    };
-    struct ClipboardColumn {
-        int originalStartNodeId = 0;
-        int originalEndNodeId = 0;
-        double width = 0.40;
-        double height = 0.40;
-    };
-    struct ClipboardSlab {
-        std::vector<int> originalNodeIds;
-        double thickness = 0.20;
-    };
-    struct StructuralClipboard {
-        bool hasData = false;
-        double refOriginX = 0.0, refOriginY = 0.0, refOriginZ = 0.0;
-        std::vector<ClipboardNode> nodes;
-        std::vector<ClipboardBeam> beams;
-        std::vector<ClipboardColumn> columns;
-        std::vector<ClipboardSlab> slabs;
-    };
-
     QAction* m_actionAddCube = nullptr;
     QAction* m_actionDelete = nullptr;
     QAction* m_actionLibrary = nullptr;
@@ -226,7 +202,7 @@ private:
     QAction* m_actionCopyClipboard = nullptr;
     QAction* m_actionPasteClipboard = nullptr;
 
-    StructuralClipboard m_clipboard;
+    TSA::Model::StructuralClipboard m_clipboard;
 
     // Actions Barre "Vue" (Robot SA style)
     QAction* m_actionViewXY = nullptr;

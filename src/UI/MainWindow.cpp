@@ -23,6 +23,7 @@
 #include "Dialogs/SurfaceCreationDialog.h"
 #include "Dialogs/LibraryDialog.h"
 #include "../Library/LibraryManager.h"
+#include "../Project/ProjectManager.h"
 #include "../IO/TSAFile.h"
 
 #include <QMenuBar>
@@ -78,6 +79,7 @@ MainWindow::MainWindow(QWidget* parent)
     , m_selectionManager(std::make_unique<TSA::Viewer::SelectionManager>(this))
     , m_gridManager(std::make_unique<TSA::Grid::GridManager>())
     , m_gridSnapManager(std::make_unique<TSA::Grid::GridSnapManager>())
+    , m_projectManager(std::make_unique<TSA::Project::ProjectManager>(this))
 {
     // Grille 3D initiale : synchronisée avec le système de coordonnées et de niveaux unifié
     m_gridManager->clearAllGrids();
@@ -175,6 +177,10 @@ MainWindow::MainWindow(QWidget* parent)
     applyTheme(TSA::UI::ThemeManager::instance().isDarkMode());
 
     setAcceptDrops(true);
+    if (m_projectManager)
+    {
+        connect(m_projectManager.get(), &TSA::Project::ProjectManager::projectTitleChanged, this, &MainWindow::setWindowTitle);
+    }
     if (m_occView)
     {
         connect(m_occView, &OccView::fileDropped, this, [this](const QString& filePath) {
@@ -1866,9 +1872,12 @@ void MainWindow::onActionSectionCut()
 
 void MainWindow::updateWindowTitle()
 {
-    QString baseName = m_currentFilePath.isEmpty() ? tr("Sans titre") : QFileInfo(m_currentFilePath).fileName();
-    bool modified = (m_model && (m_model->isModified() || m_model->canUndo()));
-    setWindowTitle(QString("TSA — %1%2").arg(baseName, modified ? " *" : ""));
+    if (m_projectManager)
+    {
+        bool modified = (m_model && (m_model->isModified() || m_model->canUndo()));
+        m_projectManager->setModified(modified);
+        setWindowTitle(m_projectManager->windowTitle());
+    }
 }
 
 bool MainWindow::maybeSave()
@@ -1885,7 +1894,7 @@ bool MainWindow::maybeSave()
 
     if (ret == QMessageBox::Save)
     {
-        return saveFile(m_currentFilePath);
+        return saveFile(m_projectManager ? m_projectManager->currentFilePath() : QString());
     }
     else if (ret == QMessageBox::Cancel)
     {
@@ -1911,28 +1920,15 @@ void MainWindow::onActionNew()
     if (!maybeSave())
         return;
 
-    if (m_model)
+    if (m_projectManager && m_model)
+    {
+        m_projectManager->newProject(*m_model, m_gridManager.get());
+    }
+    else if (m_model)
     {
         m_model->clear();
         m_model->clearUndoRedo();
     }
-    if (m_gridManager)
-    {
-        m_gridManager->clearAllGrids();
-        TSA::Grid::GridDefinition def("Grille Bâtiment", TSA::Grid::GridType::Cartesian);
-        def.setOrigin(0.0, 0.0, 0.0);
-        auto* defaultGrid = m_gridManager->addGrid(def);
-        if (defaultGrid)
-        {
-            m_gridManager->setActiveGridId(defaultGrid->id());
-        }
-    }
-    m_currentFilePath.clear();
-    if (m_model)
-    {
-        m_model->setModified(false);
-    }
-    updateWindowTitle();
 
     if (m_selectionManager)
         m_selectionManager->clearSelection();
@@ -1956,7 +1952,9 @@ void MainWindow::onActionOpen()
     if (!maybeSave())
         return;
 
-    QString initialDir = m_currentFilePath.isEmpty() ? QString() : QFileInfo(m_currentFilePath).absolutePath();
+    QString initialDir = (m_projectManager && m_projectManager->hasFilePath())
+        ? QFileInfo(m_projectManager->currentFilePath()).absolutePath()
+        : QString();
     QString filePath = QFileDialog::getOpenFileName(
         this,
         tr("Ouvrir un projet TSA"),
@@ -1972,7 +1970,7 @@ void MainWindow::onActionOpen()
 
 void MainWindow::onActionSave()
 {
-    saveFile(m_currentFilePath);
+    saveFile(m_projectManager ? m_projectManager->currentFilePath() : QString());
 }
 
 void MainWindow::onActionSaveAs()
@@ -1985,7 +1983,9 @@ bool MainWindow::saveFile(const QString& path)
     QString targetPath = path;
     if (targetPath.isEmpty())
     {
-        QString defaultName = m_currentFilePath.isEmpty() ? "Projet.tsa" : m_currentFilePath;
+        QString defaultName = (m_projectManager && m_projectManager->hasFilePath())
+            ? m_projectManager->currentFilePath()
+            : "Projet.tsa";
         targetPath = QFileDialog::getSaveFileName(
             this,
             tr("Enregistrer le projet TSA"),
@@ -2011,16 +2011,16 @@ bool MainWindow::saveFile(const QString& path)
         thumbnail = m_occView->captureViewImage(512, 512);
     }
 
-    std::string errorMsg;
-    if (!TSA::IO::TSAProjectIO::saveToFile(targetPath, *m_model, m_gridManager.get(), thumbnail, &errorMsg))
+    QString errorMsg;
+    bool ok = m_projectManager ? m_projectManager->saveProject(targetPath, *m_model, m_gridManager.get(), thumbnail, &errorMsg)
+                               : false;
+    if (!ok)
     {
         QMessageBox::critical(this, tr("Erreur de sauvegarde"),
-            tr("Échec de l'enregistrement du projet TSA :\n%1").arg(QString::fromStdString(errorMsg)));
+            tr("Échec de l'enregistrement du projet TSA :\n%1").arg(errorMsg));
         return false;
     }
 
-    m_currentFilePath = targetPath;
-    m_model->setModified(false);
     updateWindowTitle();
 
     if (m_consoleDock)
@@ -2039,16 +2039,16 @@ bool MainWindow::loadFile(const QString& path)
     if (!m_model)
         return false;
 
-    std::string errorMsg;
-    if (!TSA::IO::TSAProjectIO::loadFromFile(path, *m_model, m_gridManager.get(), &errorMsg))
+    QString errorMsg;
+    bool ok = m_projectManager ? m_projectManager->openProject(path, *m_model, m_gridManager.get(), &errorMsg)
+                               : false;
+    if (!ok)
     {
         QMessageBox::critical(this, tr("Erreur de chargement"),
-            tr("Échec de l'ouverture du projet TSA :\n%1").arg(QString::fromStdString(errorMsg)));
+            tr("Échec de l'ouverture du projet TSA :\n%1").arg(errorMsg));
         return false;
     }
 
-    m_currentFilePath = path;
-    m_model->setModified(false);
     m_model->clearUndoRedo();
     updateWindowTitle();
 
@@ -3040,118 +3040,23 @@ void MainWindow::onActionCopyClipboard()
         return;
     }
 
-    std::unordered_set<int> allNodeIds(
-        m_selectionManager->selectedNodes().begin(),
-        m_selectionManager->selectedNodes().end()
-    );
-    for (int bId : m_selectionManager->selectedBeams())
-    {
-        const auto* b = m_model->getBeam(bId);
-        if (b) { allNodeIds.insert(b->startNodeId()); allNodeIds.insert(b->endNodeId()); }
-    }
-    for (int cId : m_selectionManager->selectedColumns())
-    {
-        const auto* c = m_model->getColumn(cId);
-        if (c) { allNodeIds.insert(c->startNodeId()); allNodeIds.insert(c->endNodeId()); }
-    }
-    for (int sId : m_selectionManager->selectedSlabs())
-    {
-        const auto* s = m_model->getSlab(sId);
-        if (s)
-        {
-            for (int nid : s->nodeIds()) allNodeIds.insert(nid);
-        }
-    }
-
-    if (allNodeIds.empty())
-        return;
-
-    double minX = 1e9, minY = 1e9, minZ = 1e9;
-    for (int nid : allNodeIds)
-    {
-        const auto* node = m_model->getNode(nid);
-        if (node)
-        {
-            minX = std::min(minX, node->x());
-            minY = std::min(minY, node->y());
-            minZ = std::min(minZ, node->z());
-        }
-    }
-
-    m_clipboard.hasData = true;
-    m_clipboard.refOriginX = minX;
-    m_clipboard.refOriginY = minY;
-    m_clipboard.refOriginZ = minZ;
-
-    m_clipboard.nodes.clear();
-    for (int nid : allNodeIds)
-    {
-        const auto* node = m_model->getNode(nid);
-        if (node)
-        {
-            ClipboardNode cn;
-            cn.originalId = nid;
-            cn.relX = node->x() - minX;
-            cn.relY = node->y() - minY;
-            cn.relZ = node->z() - minZ;
-            m_clipboard.nodes.push_back(cn);
-        }
-    }
-
-    m_clipboard.beams.clear();
-    for (int bId : m_selectionManager->selectedBeams())
-    {
-        const auto* b = m_model->getBeam(bId);
-        if (b)
-        {
-            ClipboardBeam cb;
-            cb.originalStartNodeId = b->startNodeId();
-            cb.originalEndNodeId = b->endNodeId();
-            cb.width = b->width();
-            cb.height = b->height();
-            m_clipboard.beams.push_back(cb);
-        }
-    }
-
-    m_clipboard.columns.clear();
-    for (int cId : m_selectionManager->selectedColumns())
-    {
-        const auto* c = m_model->getColumn(cId);
-        if (c)
-        {
-            ClipboardColumn cc;
-            cc.originalStartNodeId = c->startNodeId();
-            cc.originalEndNodeId = c->endNodeId();
-            cc.width = c->width();
-            cc.height = c->height();
-            m_clipboard.columns.push_back(cc);
-        }
-    }
-
-    m_clipboard.slabs.clear();
-    for (int sId : m_selectionManager->selectedSlabs())
-    {
-        const auto* s = m_model->getSlab(sId);
-        if (s)
-        {
-            ClipboardSlab cs;
-            cs.originalNodeIds = s->nodeIds();
-            cs.thickness = s->thickness();
-            m_clipboard.slabs.push_back(cs);
-        }
-    }
+    m_clipboard.copyFrom(*m_model,
+                         m_selectionManager->selectedNodes(),
+                         m_selectionManager->selectedBeams(),
+                         m_selectionManager->selectedColumns(),
+                         m_selectionManager->selectedSlabs());
 
     if (statusBar())
     {
         statusBar()->showMessage(tr("Presse-papier : %1 nœud(s), %2 barre(s) copiés (Ctrl+V pour coller)")
-            .arg(m_clipboard.nodes.size())
-            .arg(m_clipboard.beams.size() + m_clipboard.columns.size() + m_clipboard.slabs.size()), 4000);
+            .arg(m_clipboard.nodeCount())
+            .arg(m_clipboard.totalElementCount()), 4000);
     }
 }
 
 void MainWindow::onActionPasteClipboard()
 {
-    if (!m_clipboard.hasData || m_clipboard.nodes.empty())
+    if (!m_clipboard.hasData())
     {
         if (statusBar()) statusBar()->showMessage(tr("Presse-papier vide. Sélectionnez des éléments et faites Ctrl+C."), 3000);
         return;
@@ -3318,78 +3223,22 @@ void MainWindow::onOriginMoveRequested(const gp_Pnt& newOrigin)
 
 void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
 {
-    if (!m_clipboard.hasData || m_clipboard.nodes.empty() || !m_model)
+    if (!m_clipboard.hasData() || !m_model)
         return;
 
     m_model->pushUndoState(tr("Coller Presse-papier").toStdString());
 
-    double offX = target.X();
-    double offY = target.Y();
-    double offZ = target.Z();
-
-    std::unordered_map<int, int> nodeMap;
-    std::vector<int> newNodes;
-
-    for (const auto& cn : m_clipboard.nodes)
-    {
-        double nx = offX + cn.relX;
-        double ny = offY + cn.relY;
-        double nz = offZ + cn.relZ;
-        int newNId = m_model->addNode(nx, ny, nz);
-        nodeMap[cn.originalId] = newNId;
-        newNodes.push_back(newNId);
-    }
-
-    std::vector<int> newBeams;
-    for (const auto& cb : m_clipboard.beams)
-    {
-        auto itS = nodeMap.find(cb.originalStartNodeId);
-        auto itE = nodeMap.find(cb.originalEndNodeId);
-        if (itS != nodeMap.end() && itE != nodeMap.end())
-        {
-            int bId = m_model->addBeam(itS->second, itE->second, cb.width, cb.height);
-            newBeams.push_back(bId);
-        }
-    }
-
-    std::vector<int> newColumns;
-    for (const auto& cc : m_clipboard.columns)
-    {
-        auto itS = nodeMap.find(cc.originalStartNodeId);
-        auto itE = nodeMap.find(cc.originalEndNodeId);
-        if (itS != nodeMap.end() && itE != nodeMap.end())
-        {
-            int cId = m_model->addColumn(itS->second, itE->second, cc.width, cc.height);
-            newColumns.push_back(cId);
-        }
-    }
-
-    std::vector<int> newSlabs;
-    for (const auto& cs : m_clipboard.slabs)
-    {
-        std::vector<int> sNodes;
-        for (int onid : cs.originalNodeIds)
-        {
-            auto it = nodeMap.find(onid);
-            if (it != nodeMap.end())
-            {
-                sNodes.push_back(it->second);
-            }
-        }
-        if (sNodes.size() >= 3)
-        {
-            int sId = m_model->addSlab(sNodes, cs.thickness);
-            newSlabs.push_back(sId);
-        }
-    }
+    auto res = m_clipboard.pasteTo(*m_model, target.X(), target.Y(), target.Z());
+    if (res.empty())
+        return;
 
     if (m_selectionManager)
     {
         m_selectionManager->clearSelection();
-        for (int nid : newNodes) m_selectionManager->selectNode(nid, true);
-        for (int bid : newBeams) m_selectionManager->selectBeam(bid, true);
-        for (int cid : newColumns) m_selectionManager->selectColumn(cid, true);
-        for (int sid : newSlabs) m_selectionManager->selectSlab(sid, true);
+        for (int nid : res.nodeIds) m_selectionManager->selectNode(nid, true);
+        for (int bid : res.beamIds) m_selectionManager->selectBeam(bid, true);
+        for (int cid : res.columnIds) m_selectionManager->selectColumn(cid, true);
+        for (int sid : res.slabIds) m_selectionManager->selectSlab(sid, true);
     }
 
     if (m_modelTree) m_modelTree->refreshAll();
@@ -3405,7 +3254,7 @@ void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
             .arg(target.X(), 0, 'f', 2)
             .arg(target.Y(), 0, 'f', 2)
             .arg(target.Z(), 0, 'f', 2)
-            .arg(newNodes.size() + newBeams.size() + newColumns.size() + newSlabs.size()));
+            .arg(res.nodeIds.size() + res.beamIds.size() + res.columnIds.size() + res.slabIds.size()));
     }
     updateUndoRedoActions();
 }

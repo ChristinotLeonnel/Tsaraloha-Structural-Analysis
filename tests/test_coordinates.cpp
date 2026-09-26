@@ -24,6 +24,13 @@
 #include "IO/TSAFileFormat.h"
 #include "IO/TSAPreviewGenerator.h"
 #include "Library/LibraryManager.h"
+#include "Model/StructuralClipboard.h"
+#include "Project/ProjectManager.h"
+#include "Commands/ICommand.h"
+#include "Commands/CreateBeamCommand.h"
+#include "UndoRedo/UndoManager.h"
+#include "UndoRedo/CommandManager.h"
+#include "Interaction/InteractionManager.h"
 
 #include <fstream>
 #include <filesystem>
@@ -1645,6 +1652,112 @@ int main(int argc, char* argv[])
         TEST_CHECK(approxEqual(itNode->second.y(), 5.0), "Test 23: instantiated node y has 5m offset");
 
         std::cout << "[PASS] Test 23: Persistent Custom Library System Validated Successfully!" << std::endl;
+        passed++;
+    }
+
+    // =========================================================================
+    // TEST 24: Structural Clipboard & Project Manager Architecture
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 24: Structural Clipboard & Project Manager Architecture ---" << std::endl;
+        total++;
+
+        // 1. Presse-papier structurel découplé
+        Model srcModel;
+        int n1 = srcModel.addNode(0.0, 0.0, 0.0);
+        int n2 = srcModel.addNode(5.0, 0.0, 0.0);
+        int b1 = srcModel.addBeam(n1, n2, 0.30, 0.50);
+
+        TSA::Model::StructuralClipboard clipboard;
+        TEST_CHECK(!clipboard.hasData(), "Test 24: clipboard empty initially");
+
+        clipboard.copyFrom(srcModel, std::vector<int>{n1, n2}, std::vector<int>{b1}, {}, {});
+        TEST_CHECK(clipboard.hasData(), "Test 24: clipboard has data after copyFrom");
+        TEST_CHECK(clipboard.nodeCount() == 2, "Test 24: 2 nodes copied");
+        TEST_CHECK(clipboard.beamCount() == 1, "Test 24: 1 beam copied");
+
+        Model dstModel;
+        auto pasteRes = clipboard.pasteTo(dstModel, 20.0, 10.0, 5.0);
+        TEST_CHECK(!pasteRes.empty(), "Test 24: paste result is non-empty");
+        TEST_CHECK(pasteRes.nodeIds.size() == 2, "Test 24: 2 nodes pasted");
+        TEST_CHECK(pasteRes.beamIds.size() == 1, "Test 24: 1 beam pasted");
+        TEST_CHECK(dstModel.nodes().size() == 2, "Test 24: destination model has 2 nodes");
+        TEST_CHECK(dstModel.beams().size() == 1, "Test 24: destination model has 1 beam");
+
+        // 2. Gestionnaire de Projet (ProjectManager)
+        TSA::Project::ProjectManager projectMgr;
+        TEST_CHECK(!projectMgr.hasFilePath(), "Test 24: new project has no file path");
+        TEST_CHECK(!projectMgr.isModified(), "Test 24: new project is not modified");
+        TEST_CHECK(projectMgr.currentFileName() == "Sans titre", "Test 24: default file name is 'Sans titre'");
+
+        projectMgr.setModified(true);
+        TEST_CHECK(projectMgr.isModified(), "Test 24: modified state updated");
+
+        std::cout << "[PASS] Test 24: Structural Clipboard & Project Manager Architecture Validated!" << std::endl;
+        passed++;
+    }
+
+    // =========================================================================
+    // TEST 25: Command Pattern & Centralized Undo/Redo Architecture
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 25: Command Pattern & Centralized Undo/Redo Architecture ---" << std::endl;
+        total++;
+
+        Model model;
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        int n2 = model.addNode(0.0, 0.0, 4.0);
+
+        TSA::UndoRedo::CommandManager cmdMgr(&model, model.undoManager());
+        TEST_CHECK(!cmdMgr.canUndo(), "Test 25: cannot undo initially");
+        TEST_CHECK(!cmdMgr.canRedo(), "Test 25: cannot redo initially");
+
+        auto createCmd = std::make_unique<TSA::Commands::CreateBeamCommand>(model, n1, n2, 0.30, 0.60, "Poutre_P25");
+        bool execOk = cmdMgr.executeCommand(std::move(createCmd));
+        TEST_CHECK(execOk, "Test 25: CreateBeamCommand executed successfully");
+        TEST_CHECK(model.beams().size() == 1, "Test 25: 1 beam created in model");
+        TEST_CHECK(cmdMgr.canUndo(), "Test 25: canUndo is true after command execution");
+
+        bool undoOk = cmdMgr.undo();
+        TEST_CHECK(undoOk, "Test 25: undo succeeded");
+        TEST_CHECK(model.beams().empty(), "Test 25: beam removed on undo");
+        TEST_CHECK(cmdMgr.canRedo(), "Test 25: canRedo is true");
+
+        bool redoOk = cmdMgr.redo();
+        TEST_CHECK(redoOk, "Test 25: redo succeeded");
+        TEST_CHECK(model.beams().size() == 1, "Test 25: beam restored on redo");
+
+        std::cout << "[PASS] Test 25: Command Pattern & Centralized Undo/Redo Validated Successfully!" << std::endl;
+        passed++;
+    }
+
+    // =========================================================================
+    // TEST 26: 3D Interaction State Manager Architecture
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 26: 3D Interaction State Manager Architecture ---" << std::endl;
+        total++;
+
+        TSA::Interaction::InteractionManager interactMgr;
+        TEST_CHECK(interactMgr.mode() == TSA::Interaction::InteractionMode::Select, "Test 26: initial mode is Select");
+        TEST_CHECK(!interactMgr.isDrawingMode(), "Test 26: Select is not a drawing mode");
+        TEST_CHECK(!interactMgr.isTransformMode(), "Test 26: Select is not a transform mode");
+
+        interactMgr.setMode(TSA::Interaction::InteractionMode::DrawBeam);
+        TEST_CHECK(interactMgr.mode() == TSA::Interaction::InteractionMode::DrawBeam, "Test 26: mode changed to DrawBeam");
+        TEST_CHECK(interactMgr.isDrawingMode(), "Test 26: DrawBeam is a drawing mode");
+        TEST_CHECK(!interactMgr.hasStartPoint(), "Test 26: hasStartPoint false initially");
+
+        gp_Pnt p1(1.0, 2.0, 3.0);
+        interactMgr.setStartPoint(p1, 42);
+        TEST_CHECK(interactMgr.hasStartPoint(), "Test 26: hasStartPoint true after setStartPoint");
+        TEST_CHECK(interactMgr.startNodeId() == 42, "Test 26: start node ID is 42");
+
+        interactMgr.setMode(TSA::Interaction::InteractionMode::Move3D);
+        TEST_CHECK(interactMgr.isTransformMode(), "Test 26: Move3D is a transform mode");
+        TEST_CHECK(!interactMgr.hasStartPoint(), "Test 26: drawing state reset on mode change");
+
+        std::cout << "[PASS] Test 26: 3D Interaction State Manager Validated Successfully!" << std::endl;
         passed++;
     }
 

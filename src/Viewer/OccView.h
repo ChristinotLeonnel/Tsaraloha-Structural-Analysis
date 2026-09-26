@@ -29,6 +29,7 @@ namespace TSA::Grid
 }
 #include "../Grid/GridRenderer.h"
 #include "../Model/CreationPresets.h"
+#include "../Interaction/InteractionManager.h"
 #include <AIS_ViewCube.hxx>
 #include <AIS_RubberBand.hxx>
 #include <Graphic3d_ClipPlane.hxx>
@@ -138,26 +139,12 @@ public:
     void setActiveLevelElevation(double z);
     double activeLevelElevation() const { return m_activeLevelZ; }
 
-    // Modes d'interaction (Sélection & Dessin / Manipulation 3D)
-    enum class InteractionMode
-    {
-        Select,
-        DrawNode,
-        DrawBar,
-        DrawBeam,
-        DrawColumn,
-        DrawSlab,
-        DrawWall,
-        DrawFoundation,
-        DrawTruss,
-        Move3D,
-        Copy3D,
-        Rotate3D,
-        MoveOrigin3D,
-        Paste3D
-    };
+    using InteractionMode = TSA::Interaction::InteractionMode;
 
-    InteractionMode interactionMode() const { return m_interactionMode; }
+    TSA::Interaction::InteractionManager* interactionManager() { return m_interactionManager.get(); }
+    const TSA::Interaction::InteractionManager* interactionManager() const { return m_interactionManager.get(); }
+
+    InteractionMode interactionMode() const;
     void setInteractionMode(InteractionMode mode);
     void cancelCurrentDrawing();
 
@@ -325,7 +312,7 @@ private:
 
     Handle(AIS_ViewCube) m_viewCube;
 
-    InteractionMode m_interactionMode = InteractionMode::Select;
+    std::unique_ptr<TSA::Interaction::InteractionManager> m_interactionManager;
     std::vector<int> m_drawingNodeIds;
     std::vector<gp_Pnt> m_drawingPoints;
     Handle(AIS_Shape) m_rubberBandShape;

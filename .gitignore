@@ -13,6 +13,7 @@ cmake-build-*/
 # Dépendances volumineuses tierces et SDKs binaires
 opencascade-*/
 3rdparty-*/
+thirdparty/
 
 # Fichiers et dossiers Visual Studio / MSVC
 .vs/

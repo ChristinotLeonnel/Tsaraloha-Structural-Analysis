@@ -146,6 +146,19 @@ set(SOURCES
     src/Model/Model.cpp
     src/Model/ModelDiff.h
     src/Model/ModelDiff.cpp
+    src/Model/StructuralClipboard.h
+    src/Model/StructuralClipboard.cpp
+    src/Project/ProjectManager.h
+    src/Project/ProjectManager.cpp
+    src/Commands/ICommand.h
+    src/Commands/CreateBeamCommand.h
+    src/Commands/CreateBeamCommand.cpp
+    src/UndoRedo/UndoManager.h
+    src/UndoRedo/UndoManager.cpp
+    src/UndoRedo/CommandManager.h
+    src/UndoRedo/CommandManager.cpp
+    src/Interaction/InteractionManager.h
+    src/Interaction/InteractionManager.cpp
     src/IO/TSAFileFormat.h
     src/IO/TSAFile.h
     src/IO/TSAFile.cpp
@@ -242,6 +255,19 @@ set(TEST_SOURCES
     src/Model/Model.cpp
     src/Model/ModelDiff.h
     src/Model/ModelDiff.cpp
+    src/Model/StructuralClipboard.h
+    src/Model/StructuralClipboard.cpp
+    src/Project/ProjectManager.h
+    src/Project/ProjectManager.cpp
+    src/Commands/ICommand.h
+    src/Commands/CreateBeamCommand.h
+    src/Commands/CreateBeamCommand.cpp
+    src/UndoRedo/UndoManager.h
+    src/UndoRedo/UndoManager.cpp
+    src/UndoRedo/CommandManager.h
+    src/UndoRedo/CommandManager.cpp
+    src/Interaction/InteractionManager.h
+    src/Interaction/InteractionManager.cpp
     src/Grid/GridType.h
     src/Grid/GridDefinition.h
     src/Grid/GridDefinition.cpp

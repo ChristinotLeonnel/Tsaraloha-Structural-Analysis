@@ -60,12 +60,21 @@ static bool parseHexColor(const std::string& hex, Quantity_Color& outColor)
 OccView::OccView(QWidget* parent)
     : QWidget(parent)
     , m_isDarkMode(TSA::UI::ThemeManager::instance().isDarkMode())
+    , m_interactionManager(std::make_unique<TSA::Interaction::InteractionManager>(this))
 {
     setAttribute(Qt::WA_PaintOnScreen);
     setAttribute(Qt::WA_NoSystemBackground);
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     setAcceptDrops(true);
+
+    if (m_interactionManager)
+    {
+        connect(m_interactionManager.get(), &TSA::Interaction::InteractionManager::modeChanged, this, [this](TSA::Interaction::InteractionMode mode) {
+            emit interactionModeChanged(mode);
+        });
+        connect(m_interactionManager.get(), &TSA::Interaction::InteractionManager::promptChanged, this, &OccView::drawingPromptChanged);
+    }
 }
 
 OccView::~OccView()
@@ -1766,15 +1775,23 @@ QPoint OccView::convertMousePos(const QPointF& logicalPos) const
                   static_cast<int>(std::round(logicalPos.y() * dpr)));
 }
 
+OccView::InteractionMode OccView::interactionMode() const
+{
+    return m_interactionManager ? m_interactionManager->mode() : InteractionMode::Select;
+}
+
 void OccView::setInteractionMode(InteractionMode mode)
 {
-    if (m_interactionMode == mode)
-        return;
+    if (m_interactionManager)
+    {
+        if (m_interactionManager->mode() == mode)
+            return;
 
-    cancelCurrentDrawing();
-    m_interactionMode = mode;
+        cancelCurrentDrawing();
+        m_interactionManager->setMode(mode);
+    }
 
-    switch (m_interactionMode)
+    switch (interactionMode())
     {
     case InteractionMode::Select:
         setCursor(Qt::ArrowCursor);
@@ -1838,7 +1855,7 @@ void OccView::setInteractionMode(InteractionMode mode)
         break;
     }
 
-    emit interactionModeChanged(m_interactionMode);
+    emit interactionModeChanged(interactionMode());
 }
 
 void OccView::setCurrentBarProperties(const TSA::Model::BarProperties& props)
@@ -1861,7 +1878,7 @@ void OccView::startChainedBarDrawing(const gp_Pnt& originPt, int originNodeId)
     m_drawingPoints.clear();
     m_drawingNodeIds.push_back(originNodeId);
     m_drawingPoints.push_back(originPt);
-    m_interactionMode = InteractionMode::DrawBar;
+    setInteractionMode(InteractionMode::DrawBar);
     emit drawingPromptChanged(tr("Barre : Origine N%1 fixée en (%2; %3; %4). Cliquez pour l'extrémité")
         .arg(originNodeId).arg(originPt.X(), 0, 'f', 2).arg(originPt.Y(), 0, 'f', 2).arg(originPt.Z(), 0, 'f', 2));
 }
@@ -1903,7 +1920,7 @@ void OccView::cancelCurrentDrawing()
     m_hasBasePoint = false;
     m_hasCenterPoint = false;
 
-    switch (m_interactionMode)
+    switch (interactionMode())
     {
     case InteractionMode::DrawNode:
         emit drawingPromptChanged(tr("Mode Dessin Nœud : Cliquez dans le viewport pour créer un nœud"));
@@ -2218,7 +2235,7 @@ void OccView::updateTransformPreview(const gp_Pnt& currentPnt)
 
     clearTransformPreview();
 
-    if (m_interactionMode == InteractionMode::Move3D || m_interactionMode == InteractionMode::Copy3D)
+    if (interactionMode() == InteractionMode::Move3D || interactionMode() == InteractionMode::Copy3D)
     {
         if (!m_hasBasePoint) return;
         gp_Vec delta(m_basePoint3D, currentPnt);
@@ -2285,7 +2302,7 @@ void OccView::updateTransformPreview(const gp_Pnt& currentPnt)
             }
         }
     }
-    else if (m_interactionMode == InteractionMode::Rotate3D)
+    else if (interactionMode() == InteractionMode::Rotate3D)
     {
         if (!m_hasCenterPoint || !m_hasBasePoint) return;
         double v1x = m_basePoint3D.X() - m_centerPoint3D.X();
@@ -2376,9 +2393,9 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
 
     TopoDS_Shape shape;
 
-    if (m_interactionMode == InteractionMode::DrawBar ||
-        m_interactionMode == InteractionMode::DrawBeam ||
-        m_interactionMode == InteractionMode::DrawColumn)
+    if (interactionMode() == InteractionMode::DrawBar ||
+        interactionMode() == InteractionMode::DrawBeam ||
+        interactionMode() == InteractionMode::DrawColumn)
     {
         if (m_drawingPoints.empty())
             return;
@@ -2390,13 +2407,13 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
         TSA::Model::Node tempA(0, pStart.X(), pStart.Y(), pStart.Z());
         TSA::Model::Node tempB(1, currentPnt.X(), currentPnt.Y(), currentPnt.Z());
 
-        TSA::Model::Section currentSec = (m_interactionMode == InteractionMode::DrawBar)
+        TSA::Model::Section currentSec = (interactionMode() == InteractionMode::DrawBar)
             ? m_currentBarProps.section
-            : ((m_interactionMode == InteractionMode::DrawColumn) ? m_presets.column.section : m_presets.beam.section);
-        double rot = (m_interactionMode == InteractionMode::DrawBar)
+            : ((interactionMode() == InteractionMode::DrawColumn) ? m_presets.column.section : m_presets.beam.section);
+        double rot = (interactionMode() == InteractionMode::DrawBar)
             ? m_currentBarProps.rotation
-            : ((m_interactionMode == InteractionMode::DrawColumn) ? m_presets.column.betaAngle : m_presets.beam.betaAngle);
-        TSA::Model::BarEccentricity ecc = (m_interactionMode == InteractionMode::DrawBar)
+            : ((interactionMode() == InteractionMode::DrawColumn) ? m_presets.column.betaAngle : m_presets.beam.betaAngle);
+        TSA::Model::BarEccentricity ecc = (interactionMode() == InteractionMode::DrawBar)
             ? m_currentBarProps.eccentricity : TSA::Model::BarEccentricity::None;
 
         shape = TSA::Geometry::BeamGeometry::createBeamShape(tempA, tempB, currentSec, rot, ecc);
@@ -2405,9 +2422,9 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
             shape = BRepBuilderAPI_MakeEdge(pStart, currentPnt).Edge();
         }
     }
-    else if (m_interactionMode == InteractionMode::Move3D ||
-             m_interactionMode == InteractionMode::Copy3D ||
-             m_interactionMode == InteractionMode::Rotate3D)
+    else if (interactionMode() == InteractionMode::Move3D ||
+             interactionMode() == InteractionMode::Copy3D ||
+             interactionMode() == InteractionMode::Rotate3D)
     {
         if (m_drawingPoints.empty())
             return;
@@ -2419,7 +2436,7 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
         shape = BRepBuilderAPI_MakeEdge(pStart, currentPnt).Edge();
         updateTransformPreview(currentPnt);
     }
-    else if (m_interactionMode == InteractionMode::DrawSlab)
+    else if (interactionMode() == InteractionMode::DrawSlab)
     {
         if (m_drawingPoints.empty())
             return;
@@ -2439,7 +2456,7 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
 
         shape = poly.Wire();
     }
-    else if (m_interactionMode == InteractionMode::DrawWall)
+    else if (interactionMode() == InteractionMode::DrawWall)
     {
         if (m_drawingPoints.empty())
             return;
@@ -2517,12 +2534,12 @@ void OccView::mousePressEvent(QMouseEvent* event)
             }
         }
 
-        if (m_interactionMode == InteractionMode::Select)
+        if (interactionMode() == InteractionMode::Select)
         {
             // En mode sélection, on attend le mouvement pour distinguer un clic d'un glissé fenêtre/capture
             m_currentAction = CurrentAction::Nothing;
         }
-        else if (m_interactionMode == InteractionMode::DrawNode)
+        else if (interactionMode() == InteractionMode::DrawNode)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2538,7 +2555,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     .arg(wz, 0, 'f', 3));
             }
         }
-        else if (m_interactionMode == InteractionMode::DrawBar)
+        else if (interactionMode() == InteractionMode::DrawBar)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2572,7 +2589,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
-        else if (m_interactionMode == InteractionMode::DrawBeam)
+        else if (interactionMode() == InteractionMode::DrawBeam)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2613,7 +2630,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
-        else if (m_interactionMode == InteractionMode::DrawColumn)
+        else if (interactionMode() == InteractionMode::DrawColumn)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2667,7 +2684,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
-        else if (m_interactionMode == InteractionMode::DrawSlab)
+        else if (interactionMode() == InteractionMode::DrawSlab)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2697,7 +2714,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
-        else if (m_interactionMode == InteractionMode::DrawWall)
+        else if (interactionMode() == InteractionMode::DrawWall)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2744,7 +2761,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
-        else if (m_interactionMode == InteractionMode::DrawFoundation)
+        else if (interactionMode() == InteractionMode::DrawFoundation)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2757,7 +2774,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 emit drawingPromptChanged(tr("Semelle F%1 créée sous le nœud N%2 (1.50x1.50x0.50 m)").arg(fId).arg(nodeId));
             }
         }
-        else if (m_interactionMode == InteractionMode::DrawTruss)
+        else if (interactionMode() == InteractionMode::DrawTruss)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2788,9 +2805,9 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
-        else if (m_interactionMode == InteractionMode::Move3D || m_interactionMode == InteractionMode::Copy3D)
+        else if (interactionMode() == InteractionMode::Move3D || interactionMode() == InteractionMode::Copy3D)
         {
-            bool isCopy = (m_interactionMode == InteractionMode::Copy3D);
+            bool isCopy = (interactionMode() == InteractionMode::Copy3D);
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId))
@@ -2824,7 +2841,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
-        else if (m_interactionMode == InteractionMode::Rotate3D)
+        else if (interactionMode() == InteractionMode::Rotate3D)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2868,7 +2885,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
-        else if (m_interactionMode == InteractionMode::MoveOrigin3D)
+        else if (interactionMode() == InteractionMode::MoveOrigin3D)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2881,7 +2898,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 setInteractionMode(InteractionMode::Select);
             }
         }
-        else if (m_interactionMode == InteractionMode::Paste3D)
+        else if (interactionMode() == InteractionMode::Paste3D)
         {
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
@@ -2912,7 +2929,7 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
 
     if (event->button() == Qt::LeftButton)
     {
-        if (m_interactionMode == InteractionMode::Select)
+        if (interactionMode() == InteractionMode::Select)
         {
             if (m_currentAction == CurrentAction::WindowSelect)
             {
@@ -2960,7 +2977,7 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
 
                 m_currentAction = CurrentAction::Nothing;
                 emit objectHovered(QString());
-                setCursor(m_interactionMode == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
+                setCursor(interactionMode() == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
                 return;
             }
             else
@@ -3003,9 +3020,9 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
         // Si le bouton droit a été relâché sans déplacement significatif (simple clic droit)
         int distSq = (p.x() - m_pressMousePos.x()) * (p.x() - m_pressMousePos.x()) +
                      (p.y() - m_pressMousePos.y()) * (p.y() - m_pressMousePos.y());
-        if (distSq <= 16 && m_interactionMode != InteractionMode::Select)
+        if (distSq <= 16 && interactionMode() != InteractionMode::Select)
         {
-            if (m_interactionMode == InteractionMode::DrawSlab && m_drawingNodeIds.size() >= 3 && m_model)
+            if (interactionMode() == InteractionMode::DrawSlab && m_drawingNodeIds.size() >= 3 && m_model)
             {
                 finishCurrentSlab();
             }
@@ -3024,7 +3041,7 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
     }
 
     m_currentAction = CurrentAction::Nothing;
-    setCursor(m_interactionMode == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
+    setCursor(interactionMode() == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
 }
 
 void OccView::enterEvent(QEnterEvent* event)
@@ -3049,7 +3066,7 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
     emit mousePixelPositionChanged(event->position().toPoint().x(), event->position().toPoint().y());
 
     // Mode Sélection rectangulaire (Fenêtre gauche->droite ou Capture droite->gauche)
-    if (m_interactionMode == InteractionMode::Select && (event->buttons() & Qt::LeftButton))
+    if (interactionMode() == InteractionMode::Select && (event->buttons() & Qt::LeftButton))
     {
         int dx = px - m_dragStartPos.x();
         int dy = py - m_dragStartPos.y();
@@ -3230,7 +3247,7 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
             }
             else
             {
-                setCursor(m_interactionMode == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
+                setCursor(interactionMode() == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
                 emit objectHovered(QString());
                 emit mouseCoordinatesChanged(wx, wy, wz);
                 if (m_snapToGrid && !m_view.IsNull())
@@ -3337,7 +3354,7 @@ void OccView::keyPressEvent(QKeyEvent* event)
     }
     else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
     {
-        if (m_interactionMode == InteractionMode::DrawSlab && m_drawingNodeIds.size() >= 3 && m_model)
+        if (interactionMode() == InteractionMode::DrawSlab && m_drawingNodeIds.size() >= 3 && m_model)
         {
             m_model->pushUndoState(tr("Création Dalle").toStdString());
             int slabId = m_model->addSlab(m_drawingNodeIds, m_presets.slab.thickness);

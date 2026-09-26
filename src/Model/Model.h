@@ -16,6 +16,8 @@
 #include <gp_Pnt.hxx>
 #include <gp_Dir.hxx>
 
+namespace TSA::UndoRedo { class UndoManager; }
+
 namespace TSA::Model
 {
 
@@ -188,6 +190,9 @@ public:
     std::string lastUndoActionName() const;
     std::string lastRedoActionName() const;
 
+    TSA::UndoRedo::UndoManager* undoManager();
+    const TSA::UndoRedo::UndoManager* undoManager() const;
+
     ModelStateSnapshot createSnapshot(const std::string& actionName = "") const;
     void restoreSnapshot(const ModelStateSnapshot& snapshot);
     void applySnapshotData(const ModelStateSnapshot& snapshot);
@@ -237,9 +242,7 @@ private:
 
     std::vector<IModelObserver*> m_observers;
 
-    std::vector<ModelStateSnapshot> m_undoStack;
-    std::vector<ModelStateSnapshot> m_redoStack;
-    size_t m_maxUndoSteps = 50;
+    std::unique_ptr<TSA::UndoRedo::UndoManager> m_undoManager;
 
     std::shared_ptr<TSA::Coordinate::CoordinateSystem> m_coordinateSystem;
     bool m_isModified = false;

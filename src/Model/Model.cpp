@@ -1,5 +1,6 @@
 #include "Model.h"
 #include "ModelDiff.h"
+#include "../UndoRedo/UndoManager.h"
 #include <algorithm>
 #include <cmath>
 #include <gp_Trsf.hxx>
@@ -10,6 +11,7 @@ namespace TSA::Model
 
 Model::Model()
     : m_coordinateSystem(std::make_shared<TSA::Coordinate::CoordinateSystem>())
+    , m_undoManager(std::make_unique<TSA::UndoRedo::UndoManager>())
 {
     m_coordinateSystem->setDefaultBuildingCoordinates();
 
@@ -1236,83 +1238,58 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
 
 void Model::pushUndoState(const std::string& actionName)
 {
-    m_undoStack.push_back(createSnapshot(actionName));
-    if (m_undoStack.size() > m_maxUndoSteps)
+    if (m_undoManager)
     {
-        m_undoStack.erase(m_undoStack.begin());
+        m_undoManager->pushState(*this, actionName);
     }
-    m_redoStack.clear();
-    m_isModified = true;
 }
 
 bool Model::canUndo() const
 {
-    return !m_undoStack.empty();
+    return m_undoManager ? m_undoManager->canUndo() : false;
 }
 
 bool Model::canRedo() const
 {
-    return !m_redoStack.empty();
+    return m_undoManager ? m_undoManager->canRedo() : false;
 }
 
 bool Model::undo()
 {
-    if (m_undoStack.empty())
-        return false;
-
-    ModelStateSnapshot currentSnap = createSnapshot(m_undoStack.back().actionName);
-    m_redoStack.push_back(currentSnap);
-
-    ModelStateSnapshot target = m_undoStack.back();
-    m_undoStack.pop_back();
-
-    // 1. Calculer le différentiel précis avant modification
-    ModelDiff diff = ModelDiff::compute(currentSnap, target);
-
-    // 2. Mettre à jour l'état logique des données du modèle
-    applySnapshotData(target);
-
-    // 3. Notifier différentiellement les observateurs (mise à jour ciblée du viewport OCCT et de l'arbre)
-    notifyModelDiffApplied(diff);
-    return true;
+    return m_undoManager ? m_undoManager->undo(*this) : false;
 }
 
 bool Model::redo()
 {
-    if (m_redoStack.empty())
-        return false;
-
-    ModelStateSnapshot currentSnap = createSnapshot(m_redoStack.back().actionName);
-    m_undoStack.push_back(currentSnap);
-
-    ModelStateSnapshot target = m_redoStack.back();
-    m_redoStack.pop_back();
-
-    // 1. Calculer le différentiel précis
-    ModelDiff diff = ModelDiff::compute(currentSnap, target);
-
-    // 2. Mettre à jour l'état logique
-    applySnapshotData(target);
-
-    // 3. Notification différentielle
-    notifyModelDiffApplied(diff);
-    return true;
+    return m_undoManager ? m_undoManager->redo(*this) : false;
 }
 
 void Model::clearUndoRedo()
 {
-    m_undoStack.clear();
-    m_redoStack.clear();
+    if (m_undoManager)
+    {
+        m_undoManager->clear();
+    }
 }
 
 std::string Model::lastUndoActionName() const
 {
-    return m_undoStack.empty() ? "" : m_undoStack.back().actionName;
+    return m_undoManager ? m_undoManager->lastUndoActionName() : "";
 }
 
 std::string Model::lastRedoActionName() const
 {
-    return m_redoStack.empty() ? "" : m_redoStack.back().actionName;
+    return m_undoManager ? m_undoManager->lastRedoActionName() : "";
+}
+
+TSA::UndoRedo::UndoManager* Model::undoManager()
+{
+    return m_undoManager.get();
+}
+
+const TSA::UndoRedo::UndoManager* Model::undoManager() const
+{
+    return m_undoManager.get();
 }
 
 Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) const
