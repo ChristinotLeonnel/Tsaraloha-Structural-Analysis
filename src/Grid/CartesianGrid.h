@@ -53,6 +53,7 @@ public:
         std::string text;
         gp_Dir direction; // direction de la ligne pour orientation éventuelle
         bool isStart = true;
+        bool isBold = false;
     };
 
     const std::vector<LabelAnchor>& labelAnchors() const { return m_labelAnchors; }

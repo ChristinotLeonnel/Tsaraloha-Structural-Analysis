@@ -47,6 +47,8 @@ set(SOURCES
     src/UI/Dialogs/GridDialog.cpp
     src/UI/Dialogs/GridSettingsDialog.h
     src/UI/Dialogs/GridSettingsDialog.cpp
+    src/UI/Dialogs/GridAdvancedSettingsDialog.h
+    src/UI/Dialogs/GridAdvancedSettingsDialog.cpp
     src/UI/Dialogs/LevelDialog.h
     src/UI/Dialogs/LevelDialog.cpp
     src/UI/Dialogs/SectionCutDialog.h
@@ -104,6 +106,8 @@ set(SOURCES
     src/Grid/CartesianGrid.cpp
     src/Grid/CylindricalGrid.h
     src/Grid/CylindricalGrid.cpp
+    src/Grid/ArbitraryGrid.h
+    src/Grid/ArbitraryGrid.cpp
     src/Grid/GridLabelRenderer.h
     src/Grid/GridLabelRenderer.cpp
     src/Grid/GridRenderer.h
@@ -281,6 +285,8 @@ set(TEST_SOURCES
     src/Grid/CartesianGrid.cpp
     src/Grid/CylindricalGrid.h
     src/Grid/CylindricalGrid.cpp
+    src/Grid/ArbitraryGrid.h
+    src/Grid/ArbitraryGrid.cpp
     src/Grid/GridSystem.h
     src/Grid/GridSystem.cpp
     src/Grid/GridManager.h

@@ -34,11 +34,19 @@ void GridSystem::rebuildCalculators()
     {
         m_cartesian = std::make_unique<CartesianGrid>(m_definition);
         m_cylindrical.reset();
+        m_arbitrary.reset();
     }
-    else
+    else if (m_definition.type() == GridType::Cylindrical)
     {
         m_cylindrical = std::make_unique<CylindricalGrid>(m_definition);
         m_cartesian.reset();
+        m_arbitrary.reset();
+    }
+    else if (m_definition.type() == GridType::Arbitrary)
+    {
+        m_arbitrary = std::make_unique<ArbitraryGrid>(m_definition);
+        m_cartesian.reset();
+        m_cylindrical.reset();
     }
 }
 
@@ -56,6 +64,10 @@ GridSnapResult GridSystem::findClosestSnap(const gp_Pnt& worldPoint, double snap
     else if (m_definition.type() == GridType::Cylindrical && m_cylindrical)
     {
         return m_cylindrical->findClosestSnap(worldPoint, snapToleranceWorld);
+    }
+    else if (m_definition.type() == GridType::Arbitrary && m_arbitrary)
+    {
+        return m_arbitrary->findClosestSnap(worldPoint, snapToleranceWorld);
     }
 
     return GridSnapResult{};

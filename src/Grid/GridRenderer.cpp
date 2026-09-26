@@ -178,9 +178,13 @@ void GridRenderer::renderGrid(const GridSystem& gridSystem, const Handle(AIS_Int
     {
         renderCartesian(gridSystem, objs, context);
     }
-    else
+    else if (gridSystem.type() == GridType::Cylindrical)
     {
         renderCylindrical(gridSystem, objs, context);
+    }
+    else if (gridSystem.type() == GridType::Arbitrary)
+    {
+        renderArbitrary(gridSystem, objs, context);
     }
 
     if (m_labelsVisible && gridSystem.showLabels())
@@ -489,6 +493,87 @@ void GridRenderer::renderCylindrical(const GridSystem& gridSystem, PerGridRender
     objs.originShape->SetColor(Quantity_NOC_YELLOW);
     objs.originShape->SetDisplayMode(AIS_Shaded);
     context->Display(objs.originShape, false);
+}
+
+void GridRenderer::renderArbitrary(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context)
+{
+    const auto* arbitrary = gridSystem.arbitrary();
+    if (!arbitrary)
+        return;
+
+    BRep_Builder builder;
+    TopoDS_Compound axesCompound;
+    builder.MakeCompound(axesCompound);
+
+    for (const auto& line : arbitrary->renderLines())
+    {
+        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+        if (!edge.IsNull())
+        {
+            builder.Add(axesCompound, edge);
+        }
+    }
+
+    objs.axesShape = new AIS_Shape(axesCompound);
+
+    const auto& ds = gridSystem.definition().displaySettings();
+    Aspect_TypeOfLine occtLineStyle = Aspect_TOL_DASH;
+    if (ds.lineStyle == "solid") occtLineStyle = Aspect_TOL_SOLID;
+    else if (ds.lineStyle == "dot") occtLineStyle = Aspect_TOL_DOT;
+    else if (ds.lineStyle == "dashdot") occtLineStyle = Aspect_TOL_DOTDASH;
+
+    Quantity_Color axesColor;
+    if (!ds.lineColor.empty() && ds.lineColor.front() == '#' && ds.lineColor.size() == 7)
+    {
+        try {
+            int r = std::stoi(ds.lineColor.substr(1, 2), nullptr, 16);
+            int g = std::stoi(ds.lineColor.substr(3, 2), nullptr, 16);
+            int b = std::stoi(ds.lineColor.substr(5, 2), nullptr, 16);
+            axesColor = Quantity_Color(r / 255.0, g / 255.0, b / 255.0, Quantity_TOC_RGB);
+        } catch (...) {
+            axesColor = Quantity_Color(0.48, 0.54, 0.62, Quantity_TOC_RGB);
+        }
+    }
+    else
+    {
+        axesColor = m_isDarkMode
+            ? Quantity_Color(0.48, 0.54, 0.62, Quantity_TOC_RGB)
+            : Quantity_Color(0.55, 0.60, 0.68, Quantity_TOC_RGB);
+    }
+
+    double width = ds.lineWidth > 0.0 ? ds.lineWidth : 1.2;
+
+    Handle(Prs3d_LineAspect) lineAspect = new Prs3d_LineAspect(
+        axesColor,
+        occtLineStyle,
+        width
+    );
+    objs.axesShape->Attributes()->SetWireAspect(lineAspect);
+    objs.axesShape->Attributes()->SetLineAspect(lineAspect);
+    objs.axesShape->SetColor(axesColor);
+    objs.axesShape->SetWidth(width);
+    context->Display(objs.axesShape, false);
+
+    // Intersections de lignes arbitraires
+    if (gridSystem.showIntersections() && m_intersectionsVisible)
+    {
+        TopoDS_Compound interCompound;
+        builder.MakeCompound(interCompound);
+
+        for (const auto& inter : arbitrary->intersections())
+        {
+            BRepPrimAPI_MakeSphere sphereMaker(inter, 0.05);
+            if (sphereMaker.IsDone())
+            {
+                builder.Add(interCompound, sphereMaker.Shape());
+            }
+        }
+
+        objs.intersectionsShape = new AIS_Shape(interCompound);
+        objs.intersectionsShape->SetColor(Quantity_Color(0.95, 0.40, 0.40, Quantity_TOC_RGB));
+        objs.intersectionsShape->SetDisplayMode(AIS_Shaded);
+        context->Display(objs.intersectionsShape, false);
+    }
 }
 
 void GridRenderer::showSnapMarker(const GridSnapResult& snap, const Handle(AIS_InteractiveContext)& context)

@@ -30,6 +30,9 @@ private slots:
     void onAddGrid();
     void onEditGrid();
     void onDuplicateGrid();
+    void onCopyGrid();
+    void onPasteGrid();
+    void onRenameGrid();
     void onDeleteGrid();
     void onSetActiveGrid();
     void onToggleVisibility(bool checked);
@@ -53,6 +56,9 @@ private:
     QPushButton* m_addBtn = nullptr;
     QPushButton* m_editBtn = nullptr;
     QPushButton* m_duplicateBtn = nullptr;
+    QPushButton* m_copyBtn = nullptr;
+    QPushButton* m_pasteBtn = nullptr;
+    QPushButton* m_renameBtn = nullptr;
     QPushButton* m_deleteBtn = nullptr;
     QPushButton* m_setActiveBtn = nullptr;
 

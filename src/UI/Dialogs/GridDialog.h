@@ -67,17 +67,22 @@ private slots:
     void onApply();
     void onNewGrid();
     void onTabChanged(int index);
+    void onAdvancedButtonClicked();
+    void onCreateFromSelectedBars();
+    void onToggleBold();
 
 private:
     void setupUi();
     void loadFromDefinition(const TSA::Grid::GridDefinition& def);
     void updateTableForCurrentTab();
+    void updateTableForArbitrary();
     void applyLabels(int tabIdx);
 
     struct AxisState
     {
         std::vector<double> positions;
         std::vector<std::string> labels;
+        std::vector<bool> isBold;
         int labelStyle = 0; // 0: 1 2 3..., 1: A B C..., 2: Niveau 1 2 3..., 3: Custom
         std::string customLabel;
         double currentPosition = 0.0;
@@ -92,6 +97,14 @@ private:
     bool m_isEditMode = false;
     std::string m_gridId;
 
+    // Paramètres avancés
+    gp_Pnt m_origin = gp_Pnt(0.0, 0.0, 0.0);
+    double m_rotationDeg = 0.0;
+    TSA::Grid::GridDisplaySettings m_displaySettings;
+
+    // Lignes arbitraires
+    std::vector<TSA::Grid::ArbitraryLine> m_arbitraryLines;
+
     // Header controls
     QComboBox* m_nameCombo = nullptr;
     QPushButton* m_btnCartesian = nullptr;
@@ -99,10 +112,14 @@ private:
     QPushButton* m_btnArbitrary = nullptr;
     QPushButton* m_btnAdvanced = nullptr;
 
+    // Conteneurs de saisie alternés
+    QWidget* m_cartesianInputWidget = nullptr;
+    QWidget* m_arbitraryInputWidget = nullptr;
+
     // Sub-tabs
     QTabWidget* m_axisTabs = nullptr;
 
-    // Saisie par onglet avec labels et unités dynamiques
+    // Saisie par onglet avec labels et unités dynamiques (Cartésien / Cylindrique)
     QLabel* m_posLabel = nullptr;
     QLabel* m_posUnitLabel = nullptr;
     QLabel* m_repeatLabel = nullptr;
@@ -112,6 +129,15 @@ private:
     QDoubleSpinBox* m_posSpin = nullptr;
     QSpinBox* m_repeatSpin = nullptr;
     QDoubleSpinBox* m_spacingSpin = nullptr;
+
+    // Saisie mode Arbitraire
+    QComboBox* m_arbTypeCombo = nullptr;
+    QDoubleSpinBox* m_arbP1X = nullptr;
+    QDoubleSpinBox* m_arbP1Y = nullptr;
+    QDoubleSpinBox* m_arbP1Z = nullptr;
+    QDoubleSpinBox* m_arbP2X = nullptr;
+    QDoubleSpinBox* m_arbP2Y = nullptr;
+    QDoubleSpinBox* m_arbP2Z = nullptr;
 
     QTableWidget* m_table = nullptr;
 

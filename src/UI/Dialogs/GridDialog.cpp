@@ -1,7 +1,13 @@
 #include "GridDialog.h"
+#include "GridAdvancedSettingsDialog.h"
 #include "../../Grid/GridManager.h"
 #include "../../Model/Model.h"
+#include "../../Model/Beam.h"
+#include "../../Model/Column.h"
+#include "../../Model/TrussMember.h"
+#include "../../Model/Node.h"
 #include "../../Viewer/OccView.h"
+#include "../../Viewer/SelectionManager.h"
 #include "../Theme/ThemeManager.h"
 
 #include <QVBoxLayout>
@@ -182,10 +188,8 @@ void GridDialog::setupUi()
     m_btnArbitrary = new QPushButton(tr("Lignes arbitraires"), this);
     m_btnArbitrary->setIcon(QIcon(":/icons/geom_polyline.svg"));
     m_btnArbitrary->setCheckable(true);
-    // Non implémenté côté moteur (GridType ne connaît que Cartésien/Cylindrique) :
-    // on désactive plutôt que de laisser un bouton qui ne fait rien.
-    m_btnArbitrary->setEnabled(false);
-    m_btnArbitrary->setToolTip(tr("Fonctionnalité pas encore disponible"));
+    m_btnArbitrary->setEnabled(true);
+    m_btnArbitrary->setToolTip(tr("Lignes de construction arbitraires"));
 
     modeLayout->addWidget(m_btnCartesian);
     modeLayout->addWidget(m_btnCylindrical);
@@ -196,32 +200,37 @@ void GridDialog::setupUi()
     connect(m_btnCylindrical, &QPushButton::clicked, this, &GridDialog::onModeCylindrical);
     connect(m_btnArbitrary, &QPushButton::clicked, this, &GridDialog::onModeArbitrary);
 
-    // 3. Bouton Paramètres avancés
+    // 3. Bouton Paramètres avancés / Créer à partir des barres
     m_btnAdvanced = new QPushButton(tr("Paramètres avancés"), this);
     m_btnAdvanced->setIcon(QIcon(":/icons/settings.svg"));
     mainLayout->addWidget(m_btnAdvanced);
+    connect(m_btnAdvanced, &QPushButton::clicked, this, &GridDialog::onAdvancedButtonClicked);
 
-    // 4. Sous-onglets d'axes : X / Y / Z
-    m_axisTabs = new QTabWidget(this);
+    // 4. Conteneur Saisie Cartésienne / Cylindrique
+    m_cartesianInputWidget = new QWidget(this);
+    auto* cartLayout = new QVBoxLayout(m_cartesianInputWidget);
+    cartLayout->setContentsMargins(0, 0, 0, 0);
+    cartLayout->setSpacing(4);
+
+    m_axisTabs = new QTabWidget(m_cartesianInputWidget);
     m_axisTabs->addTab(new QWidget(), tr("X"));
     m_axisTabs->addTab(new QWidget(), tr("Y"));
     m_axisTabs->addTab(new QWidget(), tr("Z"));
-    mainLayout->addWidget(m_axisTabs);
+    cartLayout->addWidget(m_axisTabs);
 
     connect(m_axisTabs, &QTabWidget::currentChanged, this, &GridDialog::onTabChanged);
 
-    // 5. Zone de saisie rapide (Position / Répéter / Espacement)
     auto* inputGrid = new QGridLayout();
     inputGrid->setContentsMargins(4, 4, 4, 4);
     inputGrid->setHorizontalSpacing(8);
     inputGrid->setVerticalSpacing(4);
 
-    inputGrid->addWidget(m_posLabel = new QLabel(tr("Position:"), this), 0, 0);
-    inputGrid->addWidget(m_repeatLabel = new QLabel(tr("Répéter x:"), this), 0, 1);
-    inputGrid->addWidget(m_spacingLabel = new QLabel(tr("Espacement:"), this), 0, 2);
+    inputGrid->addWidget(m_posLabel = new QLabel(tr("Position:"), m_cartesianInputWidget), 0, 0);
+    inputGrid->addWidget(m_repeatLabel = new QLabel(tr("Répéter x:"), m_cartesianInputWidget), 0, 1);
+    inputGrid->addWidget(m_spacingLabel = new QLabel(tr("Espacement:"), m_cartesianInputWidget), 0, 2);
 
     auto* posLayout = new QHBoxLayout();
-    m_posSpin = new QDoubleSpinBox(this);
+    m_posSpin = new QDoubleSpinBox(m_cartesianInputWidget);
     m_posSpin->setRange(-10000.0, 10000.0);
     m_posSpin->setDecimals(2);
     m_posSpin->setSingleStep(1.0);
@@ -230,25 +239,63 @@ void GridDialog::setupUi()
         ? "border: 1.5px solid #2EA043; background-color: #12261A; color: #7EE787; font-weight: bold;"
         : "border: 1.5px solid #28A745; background-color: #E8F8EE; font-weight: bold;");
     posLayout->addWidget(m_posSpin);
-    posLayout->addWidget(m_posUnitLabel = new QLabel(tr("(m)"), this));
+    posLayout->addWidget(m_posUnitLabel = new QLabel(tr("(m)"), m_cartesianInputWidget));
     inputGrid->addLayout(posLayout, 1, 0);
 
-    m_repeatSpin = new QSpinBox(this);
+    m_repeatSpin = new QSpinBox(m_cartesianInputWidget);
     m_repeatSpin->setRange(1, 100);
-    m_repeatSpin->setValue(2); // 2 par défaut pour éviter tout bug de grille
+    m_repeatSpin->setValue(2);
     inputGrid->addWidget(m_repeatSpin, 1, 1);
 
     auto* spaceLayout = new QHBoxLayout();
-    m_spacingSpin = new QDoubleSpinBox(this);
+    m_spacingSpin = new QDoubleSpinBox(m_cartesianInputWidget);
     m_spacingSpin->setRange(0.01, 1000.0);
     m_spacingSpin->setDecimals(2);
     m_spacingSpin->setSingleStep(1.0);
     m_spacingSpin->setValue(3.0);
     spaceLayout->addWidget(m_spacingSpin);
-    spaceLayout->addWidget(m_spacingUnitLabel = new QLabel(tr("(m)"), this));
+    spaceLayout->addWidget(m_spacingUnitLabel = new QLabel(tr("(m)"), m_cartesianInputWidget));
     inputGrid->addLayout(spaceLayout, 1, 2);
 
-    mainLayout->addLayout(inputGrid);
+    cartLayout->addLayout(inputGrid);
+    mainLayout->addWidget(m_cartesianInputWidget);
+
+    // 4b. Conteneur Saisie Mode Arbitraire
+    m_arbitraryInputWidget = new QWidget(this);
+    auto* arbLayout = new QVBoxLayout(m_arbitraryInputWidget);
+    arbLayout->setContentsMargins(4, 4, 4, 4);
+    arbLayout->setSpacing(6);
+
+    auto* arbTypeLayout = new QHBoxLayout();
+    arbTypeLayout->addWidget(new QLabel(tr("Type de ligne :"), m_arbitraryInputWidget));
+    m_arbTypeCombo = new QComboBox(m_arbitraryInputWidget);
+    m_arbTypeCombo->addItem(tr("droite"), "droite");
+    m_arbTypeCombo->addItem(tr("segment"), "segment");
+    arbTypeLayout->addWidget(m_arbTypeCombo, 1);
+    arbLayout->addLayout(arbTypeLayout);
+
+    auto* p1Layout = new QHBoxLayout();
+    p1Layout->addWidget(new QLabel(tr("P1 (m) :"), m_arbitraryInputWidget));
+    m_arbP1X = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP1X->setRange(-10000.0, 10000.0); m_arbP1X->setDecimals(2); m_arbP1X->setPrefix("X: ");
+    m_arbP1Y = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP1Y->setRange(-10000.0, 10000.0); m_arbP1Y->setDecimals(2); m_arbP1Y->setPrefix("Y: ");
+    m_arbP1Z = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP1Z->setRange(-10000.0, 10000.0); m_arbP1Z->setDecimals(2); m_arbP1Z->setPrefix("Z: ");
+    p1Layout->addWidget(m_arbP1X);
+    p1Layout->addWidget(m_arbP1Y);
+    p1Layout->addWidget(m_arbP1Z);
+    arbLayout->addLayout(p1Layout);
+
+    auto* p2Layout = new QHBoxLayout();
+    p2Layout->addWidget(new QLabel(tr("P2 (m) :"), m_arbitraryInputWidget));
+    m_arbP2X = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP2X->setRange(-10000.0, 10000.0); m_arbP2X->setDecimals(2); m_arbP2X->setPrefix("X: "); m_arbP2X->setValue(6.0);
+    m_arbP2Y = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP2Y->setRange(-10000.0, 10000.0); m_arbP2Y->setDecimals(2); m_arbP2Y->setPrefix("Y: ");
+    m_arbP2Z = new QDoubleSpinBox(m_arbitraryInputWidget); m_arbP2Z->setRange(-10000.0, 10000.0); m_arbP2Z->setDecimals(2); m_arbP2Z->setPrefix("Z: ");
+    p2Layout->addWidget(m_arbP2X);
+    p2Layout->addWidget(m_arbP2Y);
+    p2Layout->addWidget(m_arbP2Z);
+    arbLayout->addLayout(p2Layout);
+
+    m_arbitraryInputWidget->hide();
+    mainLayout->addWidget(m_arbitraryInputWidget);
 
     // 6. Tableau central + Boutons d'action latéraux (Ajouter, Supprimer, Supprimer tout, Gras)
     auto* centerLayout = new QHBoxLayout();
@@ -293,6 +340,7 @@ void GridDialog::setupUi()
     connect(m_btnAdd, &QPushButton::clicked, this, &GridDialog::onAddLines);
     connect(m_btnDelete, &QPushButton::clicked, this, &GridDialog::onRemoveLine);
     connect(m_btnClearAll, &QPushButton::clicked, this, &GridDialog::onClearLines);
+    connect(m_btnBold, &QPushButton::clicked, this, &GridDialog::onToggleBold);
 
     // 7. Format de Libellé
     auto* labelFormatLayout = new QHBoxLayout();
@@ -367,6 +415,14 @@ void GridDialog::onModeCartesian()
     m_btnArbitrary->setChecked(false);
     m_currentType = TSA::Grid::GridType::Cartesian;
 
+    m_btnAdvanced->setText(tr("Paramètres avancés"));
+    m_btnAdvanced->setIcon(QIcon(":/icons/settings.svg"));
+
+    m_cartesianInputWidget->show();
+    m_arbitraryInputWidget->hide();
+    m_labelStyleCombo->setEnabled(true);
+    m_customLabelEdit->setEnabled(m_labelStyleCombo->currentIndex() == 3);
+
     m_axisTabs->setTabText(0, tr("X"));
     m_axisTabs->setTabText(1, tr("Y"));
     m_axisTabs->setTabText(2, tr("Z"));
@@ -402,6 +458,14 @@ void GridDialog::onModeCylindrical()
     m_btnArbitrary->setChecked(false);
     m_currentType = TSA::Grid::GridType::Cylindrical;
 
+    m_btnAdvanced->setText(tr("Paramètres avancés"));
+    m_btnAdvanced->setIcon(QIcon(":/icons/settings.svg"));
+
+    m_cartesianInputWidget->show();
+    m_arbitraryInputWidget->hide();
+    m_labelStyleCombo->setEnabled(true);
+    m_customLabelEdit->setEnabled(m_labelStyleCombo->currentIndex() == 3);
+
     m_axisTabs->setTabText(0, tr("R (m)"));
     m_axisTabs->setTabText(1, tr("Thêta (°)"));
     m_axisTabs->setTabText(2, tr("Z (m)"));
@@ -432,6 +496,76 @@ void GridDialog::onModeArbitrary()
     m_btnCartesian->setChecked(false);
     m_btnCylindrical->setChecked(false);
     m_btnArbitrary->setChecked(true);
+    m_currentType = TSA::Grid::GridType::Arbitrary;
+
+    m_btnAdvanced->setText(tr("Créer à partir des barres/lignes sélectionnées"));
+    m_btnAdvanced->setIcon(QIcon(":/icons/geom_polyline.svg"));
+
+    m_cartesianInputWidget->hide();
+    m_arbitraryInputWidget->show();
+    m_labelStyleCombo->setEnabled(false);
+    m_customLabelEdit->setEnabled(false);
+
+    updateTableForArbitrary();
+    if (m_chkLiveSync && m_chkLiveSync->isChecked())
+    {
+        onApply();
+    }
+}
+
+void GridDialog::updateTableForArbitrary()
+{
+    m_table->clear();
+    m_table->setColumnCount(4);
+    m_table->setHorizontalHeaderLabels({ tr("Libellé"), tr("P1 (m)"), tr("P2 (m)"), tr("Type") });
+    m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
+    m_table->horizontalHeader()->resizeSection(0, 60);
+    m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    m_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+    m_table->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
+    m_table->horizontalHeader()->resizeSection(3, 70);
+
+    m_table->setRowCount(static_cast<int>(m_arbitraryLines.size()));
+    for (int i = 0; i < static_cast<int>(m_arbitraryLines.size()); ++i)
+    {
+        const auto& line = m_arbitraryLines[i];
+        auto* itemLabel = new QTableWidgetItem(QString::fromStdString(line.label.empty() ? ("L" + std::to_string(i + 1)) : line.label));
+        itemLabel->setTextAlignment(Qt::AlignCenter);
+        if (line.isBold)
+        {
+            QFont f = itemLabel->font();
+            f.setBold(true);
+            itemLabel->setFont(f);
+        }
+
+        QString p1Str = QString("(%1, %2, %3)")
+            .arg(QString::number(line.p1.X(), 'f', 2))
+            .arg(QString::number(line.p1.Y(), 'f', 2))
+            .arg(QString::number(line.p1.Z(), 'f', 2));
+        auto* itemP1 = new QTableWidgetItem(p1Str);
+        itemP1->setTextAlignment(Qt::AlignCenter);
+
+        QString p2Str = QString("(%1, %2, %3)")
+            .arg(QString::number(line.p2.X(), 'f', 2))
+            .arg(QString::number(line.p2.Y(), 'f', 2))
+            .arg(QString::number(line.p2.Z(), 'f', 2));
+        auto* itemP2 = new QTableWidgetItem(p2Str);
+        itemP2->setTextAlignment(Qt::AlignCenter);
+
+        auto* itemType = new QTableWidgetItem(QString::fromStdString(line.type));
+        itemType->setTextAlignment(Qt::AlignCenter);
+
+        m_table->setItem(i, 0, itemLabel);
+        m_table->setItem(i, 1, itemP1);
+        m_table->setItem(i, 2, itemP2);
+        m_table->setItem(i, 3, itemType);
+    }
+
+    if (m_table->rowCount() > 0)
+    {
+        m_table->selectRow(m_table->rowCount() - 1);
+        m_table->scrollToBottom();
+    }
 }
 
 void GridDialog::onTabChanged(int index)
@@ -458,6 +592,31 @@ void GridDialog::onTabChanged(int index)
 
 void GridDialog::onAddLines()
 {
+    if (m_currentType == TSA::Grid::GridType::Arbitrary)
+    {
+        TSA::Grid::ArbitraryLine line;
+        line.p1 = gp_Pnt(m_arbP1X->value(), m_arbP1Y->value(), m_arbP1Z->value());
+        line.p2 = gp_Pnt(m_arbP2X->value(), m_arbP2Y->value(), m_arbP2Z->value());
+        line.type = m_arbTypeCombo->currentData().toString().toStdString();
+        if (line.type.empty()) line.type = "droite";
+        line.label = "L" + std::to_string(m_arbitraryLines.size() + 1);
+        line.isBold = false;
+
+        if (line.p1.Distance(line.p2) < 1e-4)
+        {
+            QMessageBox::warning(this, tr("Ligne invalide"), tr("Les deux points P1 et P2 ne peuvent pas être identiques."));
+            return;
+        }
+
+        m_arbitraryLines.push_back(line);
+        updateTableForArbitrary();
+        if (m_chkLiveSync && m_chkLiveSync->isChecked())
+        {
+            onApply();
+        }
+        return;
+    }
+
     double startPos = m_posSpin->value();
     int repeat = m_repeatSpin->value();
     if (repeat < 1)
@@ -493,10 +652,14 @@ void GridDialog::onAddLines()
         if (!exists)
         {
             axis.positions.push_back(p);
+            axis.isBold.push_back(false);
         }
     }
 
     std::sort(axis.positions.begin(), axis.positions.end());
+    if (axis.isBold.size() != axis.positions.size())
+        axis.isBold.resize(axis.positions.size(), false);
+
     applyLabels(m_currentAxisIndex);
 
     // Calculer la prochaine position suggérée
@@ -518,10 +681,28 @@ void GridDialog::onAddLines()
 void GridDialog::onRemoveLine()
 {
     int row = m_table->currentRow();
+    if (m_currentType == TSA::Grid::GridType::Arbitrary)
+    {
+        if (row >= 0 && row < static_cast<int>(m_arbitraryLines.size()))
+        {
+            m_arbitraryLines.erase(m_arbitraryLines.begin() + row);
+            updateTableForArbitrary();
+            if (m_chkLiveSync && m_chkLiveSync->isChecked())
+            {
+                onApply();
+            }
+        }
+        return;
+    }
+
     auto& axis = m_axes[m_currentAxisIndex];
     if (row >= 0 && row < static_cast<int>(axis.positions.size()))
     {
         axis.positions.erase(axis.positions.begin() + row);
+        if (row < static_cast<int>(axis.isBold.size()))
+        {
+            axis.isBold.erase(axis.isBold.begin() + row);
+        }
         applyLabels(m_currentAxisIndex);
         updateTableForCurrentTab();
         if (m_chkLiveSync && m_chkLiveSync->isChecked())
@@ -533,15 +714,63 @@ void GridDialog::onRemoveLine()
 
 void GridDialog::onClearLines()
 {
+    if (m_currentType == TSA::Grid::GridType::Arbitrary)
+    {
+        m_arbitraryLines.clear();
+        updateTableForArbitrary();
+        if (m_chkLiveSync && m_chkLiveSync->isChecked())
+        {
+            onApply();
+        }
+        return;
+    }
+
     auto& axis = m_axes[m_currentAxisIndex];
     axis.positions.clear();
     axis.labels.clear();
+    axis.isBold.clear();
     axis.currentPosition = 0.0;
     m_posSpin->setValue(0.0);
     updateTableForCurrentTab();
     if (m_chkLiveSync && m_chkLiveSync->isChecked())
     {
         onApply();
+    }
+}
+
+void GridDialog::onToggleBold()
+{
+    int row = m_table->currentRow();
+    if (row < 0) return;
+
+    if (m_currentType == TSA::Grid::GridType::Arbitrary)
+    {
+        if (row < static_cast<int>(m_arbitraryLines.size()))
+        {
+            m_arbitraryLines[row].isBold = !m_arbitraryLines[row].isBold;
+            updateTableForArbitrary();
+            if (m_chkLiveSync && m_chkLiveSync->isChecked())
+            {
+                onApply();
+            }
+        }
+    }
+    else
+    {
+        auto& axis = m_axes[m_currentAxisIndex];
+        if (row < static_cast<int>(axis.positions.size()))
+        {
+            if (axis.isBold.size() < axis.positions.size())
+            {
+                axis.isBold.resize(axis.positions.size(), false);
+            }
+            axis.isBold[row] = !axis.isBold[row];
+            updateTableForCurrentTab();
+            if (m_chkLiveSync && m_chkLiveSync->isChecked())
+            {
+                onApply();
+            }
+        }
     }
 }
 
@@ -667,6 +896,12 @@ void GridDialog::updateTableForCurrentTab()
         QString labelStr = (i < static_cast<int>(axis.labels.size())) ? QString::fromStdString(axis.labels[i]) : QString::number(i + 1);
         auto* itemLabel = new QTableWidgetItem(labelStr);
         itemLabel->setTextAlignment(Qt::AlignCenter);
+        if (i < static_cast<int>(axis.isBold.size()) && axis.isBold[i])
+        {
+            QFont f = itemLabel->font();
+            f.setBold(true);
+            itemLabel->setFont(f);
+        }
 
         QString posStr;
         if (m_currentType == TSA::Grid::GridType::Cylindrical && m_currentAxisIndex == 1)
@@ -692,6 +927,92 @@ void GridDialog::updateTableForCurrentTab()
     }
 }
 
+void GridDialog::onAdvancedButtonClicked()
+{
+    if (m_currentType == TSA::Grid::GridType::Arbitrary)
+    {
+        onCreateFromSelectedBars();
+    }
+    else
+    {
+        GridAdvancedSettingsDialog dlg(m_origin, m_rotationDeg, m_displaySettings, this);
+        if (dlg.exec() == QDialog::Accepted)
+        {
+            m_origin = dlg.origin();
+            m_rotationDeg = dlg.rotationDeg();
+            m_displaySettings = dlg.displaySettings();
+            if (m_chkLiveSync && m_chkLiveSync->isChecked())
+            {
+                onApply();
+            }
+        }
+    }
+}
+
+void GridDialog::onCreateFromSelectedBars()
+{
+    if (!m_model || !m_occView || !m_occView->selectionManager())
+    {
+        QMessageBox::information(this, tr("Lignes arbitraires"),
+            tr("Aucune sélection active dans la vue 3D."));
+        return;
+    }
+
+    auto* selMgr = m_occView->selectionManager();
+    const std::set<int>& selectedBeams = selMgr->selectedBeams();
+    const std::set<int>& selectedCols = selMgr->selectedColumns();
+    const std::set<int>& selectedTruss = selMgr->selectedTrussMembers();
+
+    if (selectedBeams.empty() && selectedCols.empty() && selectedTruss.empty())
+    {
+        QMessageBox::information(this, tr("Lignes de construction"),
+            tr("Veuillez sélectionner au moins une barre (poutre, poteau, membrure) dans le modèle 3D."));
+        return;
+    }
+
+    int countAdded = 0;
+    auto addBarLine = [&](int startNodeId, int endNodeId) {
+        const auto* n1 = m_model->getNode(startNodeId);
+        const auto* n2 = m_model->getNode(endNodeId);
+        if (n1 && n2)
+        {
+            TSA::Grid::ArbitraryLine line;
+            line.p1 = gp_Pnt(n1->x(), n1->y(), n1->z());
+            line.p2 = gp_Pnt(n2->x(), n2->y(), n2->z());
+            line.type = "droite";
+            line.label = "L" + std::to_string(m_arbitraryLines.size() + 1);
+            line.isBold = false;
+            m_arbitraryLines.push_back(line);
+            countAdded++;
+        }
+    };
+
+    for (int beamId : selectedBeams)
+    {
+        const auto* b = m_model->getBeam(beamId);
+        if (b) addBarLine(b->startNodeId(), b->endNodeId());
+    }
+    for (int colId : selectedCols)
+    {
+        const auto* c = m_model->getColumn(colId);
+        if (c) addBarLine(c->startNodeId(), c->endNodeId());
+    }
+    for (int memId : selectedTruss)
+    {
+        const auto* t = m_model->getTrussMember(memId);
+        if (t) addBarLine(t->startNodeId(), t->endNodeId());
+    }
+
+    if (countAdded > 0)
+    {
+        updateTableForArbitrary();
+        if (m_chkLiveSync && m_chkLiveSync->isChecked())
+        {
+            onApply();
+        }
+    }
+}
+
 void GridDialog::onNewGrid()
 {
     // Passer en mode création d'une nouvelle grille (sans toucher ni écraser la grille existante)
@@ -705,39 +1026,53 @@ void GridDialog::onNewGrid()
     {
         m_axes[i].positions.clear();
         m_axes[i].labels.clear();
+        m_axes[i].isBold.clear();
         m_axes[i].currentPosition = 0.0;
     }
-    m_posSpin->setValue(0.0);
-    updateTableForCurrentTab();
+    m_arbitraryLines.clear();
+    m_origin = gp_Pnt(0.0, 0.0, 0.0);
+    m_rotationDeg = 0.0;
+    m_displaySettings = TSA::Grid::GridDisplaySettings{};
 
-    // IMPORTANT : Ne PAS appeler onApply() ici !
-    // La grille 3D existante dans le viewport reste intacte. La nouvelle grille
-    // sera créée et affichée dès que l'utilisateur aura défini des lignes et cliqué sur Appliquer.
+    m_posSpin->setValue(0.0);
+    if (m_currentType == TSA::Grid::GridType::Arbitrary)
+    {
+        updateTableForArbitrary();
+    }
+    else
+    {
+        updateTableForCurrentTab();
+    }
 }
 
 void GridDialog::onApply()
 {
     TSA::Grid::GridDefinition def = getDefinition();
 
-    // Vérifier si la définition contient au minimum des lignes en X et Y (ou R et Thêta)
     bool hasLines = false;
     if (m_currentType == TSA::Grid::GridType::Cartesian)
     {
         hasLines = !m_axes[0].positions.empty() && !m_axes[1].positions.empty();
     }
-    else // Cylindrique
+    else if (m_currentType == TSA::Grid::GridType::Cylindrical)
     {
         hasLines = !m_axes[0].positions.empty() && !m_axes[1].positions.empty();
+    }
+    else if (m_currentType == TSA::Grid::GridType::Arbitrary)
+    {
+        hasLines = !m_arbitraryLines.empty();
     }
 
     if (!hasLines)
     {
         if (sender() == m_btnApply)
         {
-            QMessageBox::warning(this, tr("Grille incomplète"),
-                (m_currentType == TSA::Grid::GridType::Cartesian)
-                ? tr("Veuillez définir au moins une ligne sur l'axe X et sur l'axe Y.")
-                : tr("Veuillez définir au moins un rayon (R) et un angle (θ)."));
+            QString msg = tr("Veuillez définir au moins une ligne sur l'axe X et sur l'axe Y.");
+            if (m_currentType == TSA::Grid::GridType::Cylindrical)
+                msg = tr("Veuillez définir au moins un rayon (R) et un angle (θ).");
+            else if (m_currentType == TSA::Grid::GridType::Arbitrary)
+                msg = tr("Veuillez définir au moins une ligne arbitraire.");
+            QMessageBox::warning(this, tr("Grille incomplète"), msg);
         }
         return;
     }
@@ -756,7 +1091,7 @@ void GridDialog::onApply()
             if (newGrid)
             {
                 m_gridId = newGrid->id();
-                m_isEditMode = true; // Pour que les modifications ultérieures dans cette boîte mettent à jour cette grille
+                m_isEditMode = true;
                 m_gridManager->setActiveGridId(newGrid->id());
             }
         }
@@ -810,25 +1145,39 @@ TSA::Grid::GridDefinition GridDialog::getDefinition() const
         def.setId(m_gridId);
     }
 
+    def.setOrigin(m_origin);
+    def.setRotationDeg(m_rotationDeg);
+    def.setDisplaySettings(m_displaySettings);
+
     if (m_currentType == TSA::Grid::GridType::Cartesian)
     {
         def.setXPositions(m_axes[0].positions);
         def.setXLabels(m_axes[0].labels);
+        def.setXIsBold(m_axes[0].isBold);
 
         def.setYPositions(m_axes[1].positions);
         def.setYLabels(m_axes[1].labels);
+        def.setYIsBold(m_axes[1].isBold);
+
+        def.setZLevels(m_axes[2].positions);
+        def.setZLabels(m_axes[2].labels);
+        def.setZIsBold(m_axes[2].isBold);
     }
-    else // Cylindrique : l'onglet 0 contient les rayons, l'onglet 1 les angles
+    else if (m_currentType == TSA::Grid::GridType::Cylindrical)
     {
         def.setRadii(m_axes[0].positions);
         def.setRadiusLabels(m_axes[0].labels);
 
         def.setAngles(m_axes[1].positions);
         def.setAngleLabels(m_axes[1].labels);
-    }
 
-    def.setZLevels(m_axes[2].positions);
-    def.setZLabels(m_axes[2].labels);
+        def.setZLevels(m_axes[2].positions);
+        def.setZLabels(m_axes[2].labels);
+    }
+    else if (m_currentType == TSA::Grid::GridType::Arbitrary)
+    {
+        def.setArbitraryLines(m_arbitraryLines);
+    }
 
     return def;
 }
@@ -838,48 +1187,69 @@ void GridDialog::loadFromDefinition(const TSA::Grid::GridDefinition& def)
     m_nameCombo->setCurrentText(QString::fromStdString(def.name()));
     m_currentType = def.type();
 
+    m_origin = def.origin();
+    m_rotationDeg = def.rotationDeg();
+    m_displaySettings = def.displaySettings();
+
     if (def.type() == TSA::Grid::GridType::Cartesian)
     {
         onModeCartesian();
-    }
-    else
-    {
-        onModeCylindrical();
-    }
-
-    if (def.type() == TSA::Grid::GridType::Cartesian)
-    {
         m_axes[0].positions = def.xPositions();
         m_axes[0].labels = def.xLabels();
+        m_axes[0].isBold = def.xIsBold();
 
         m_axes[1].positions = def.yPositions();
         m_axes[1].labels = def.yLabels();
+        m_axes[1].isBold = def.yIsBold();
+
+        m_axes[2].positions = def.zLevels();
+        m_axes[2].labels = def.zLabels();
+        m_axes[2].isBold = def.zIsBold();
+
+        for (int i = 0; i < 3; ++i)
+        {
+            if (m_axes[i].labels.empty())
+            {
+                applyLabels(i);
+            }
+            if (!m_axes[i].positions.empty())
+            {
+                m_axes[i].currentPosition = m_axes[i].positions.back() + 3.0;
+            }
+        }
+        updateTableForCurrentTab();
     }
-    else // Cylindrique : recharger rayons/angles, pas X/Y (toujours vides pour ce type)
+    else if (def.type() == TSA::Grid::GridType::Cylindrical)
     {
+        onModeCylindrical();
         m_axes[0].positions = def.radii();
         m_axes[0].labels = def.radiusLabels();
 
         m_axes[1].positions = def.angles();
         m_axes[1].labels = def.angleLabels();
+
+        m_axes[2].positions = def.zLevels();
+        m_axes[2].labels = def.zLabels();
+
+        for (int i = 0; i < 3; ++i)
+        {
+            if (m_axes[i].labels.empty())
+            {
+                applyLabels(i);
+            }
+            if (!m_axes[i].positions.empty())
+            {
+                m_axes[i].currentPosition = m_axes[i].positions.back() + 3.0;
+            }
+        }
+        updateTableForCurrentTab();
     }
-
-    m_axes[2].positions = def.zLevels();
-    m_axes[2].labels = def.zLabels();
-
-    for (int i = 0; i < 3; ++i)
+    else if (def.type() == TSA::Grid::GridType::Arbitrary)
     {
-        if (m_axes[i].labels.empty())
-        {
-            applyLabels(i);
-        }
-        if (!m_axes[i].positions.empty())
-        {
-            m_axes[i].currentPosition = m_axes[i].positions.back() + 3.0;
-        }
+        onModeArbitrary();
+        m_arbitraryLines = def.arbitraryLines();
+        updateTableForArbitrary();
     }
-
-    updateTableForCurrentTab();
 }
 
 } // namespace TSA::UI

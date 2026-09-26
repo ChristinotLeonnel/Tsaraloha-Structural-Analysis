@@ -61,6 +61,7 @@ public:
 private:
     void renderCartesian(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context);
     void renderCylindrical(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context);
+    void renderArbitrary(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context);
     void updateActiveLevelHighlight(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context);
     void clearGridObjects(PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context);
 

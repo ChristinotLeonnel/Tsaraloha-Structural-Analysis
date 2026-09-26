@@ -16,6 +16,7 @@
 #include "Model/Foundation.h"
 #include "Model/TrussMember.h"
 #include "Grid/CartesianGrid.h"
+#include "Grid/ArbitraryGrid.h"
 #include "Grid/GridDefinition.h"
 #include "Grid/GridSystem.h"
 #include "Grid/GridManager.h"
@@ -72,7 +73,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 30;
+    int total = 31;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -2125,6 +2126,143 @@ int main(int argc, char* argv[])
         TEST_CHECK(gridA->definition().xPositions().size() == 5, "Test 30.12: Active grid updated with 5 X lines");
 
         std::cout << "[PASS] Test 30: All 12 Grid System Audit Tests Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 31: Advanced Robot Structural Analysis Grid System Features
+    // -------------------------------------------------------------------------
+    {
+        // 1. Définition et calculateur de lignes arbitraires (ArbitraryGrid)
+        GridDefinition arbDef("Arbitrary Construction", GridType::Arbitrary);
+        ArbitraryLine line1;
+        line1.label = "Axe_1";
+        line1.p1 = gp_Pnt(0.0, 0.0, 0.0);
+        line1.p2 = gp_Pnt(10.0, 0.0, 0.0);
+        line1.type = "droite";
+        line1.isBold = true;
+
+        ArbitraryLine line2;
+        line2.label = "Axe_2";
+        line2.p1 = gp_Pnt(5.0, -5.0, 0.0);
+        line2.p2 = gp_Pnt(5.0, 5.0, 0.0);
+        line2.type = "droite";
+        line2.isBold = false;
+
+        ArbitraryLine line3;
+        line3.label = "Diag";
+        line3.p1 = gp_Pnt(0.0, 0.0, 0.0);
+        line3.p2 = gp_Pnt(10.0, 10.0, 0.0);
+        line3.type = "segment";
+        line3.isBold = false;
+
+        arbDef.addArbitraryLine(line1);
+        arbDef.addArbitraryLine(line2);
+        arbDef.addArbitraryLine(line3);
+
+        GridDisplaySettings ds;
+        ds.extension = 2.5;
+        ds.bubbleRadius = 0.5;
+        ds.showBubbles = true;
+        ds.lineColor = "#FF5500";
+        ds.lineStyle = "dash";
+        ds.lineWidth = 1.8;
+        arbDef.setDisplaySettings(ds);
+
+        ArbitraryGrid arbCalc(arbDef);
+
+        // Vérifier les lignes de rendu (extension pour droites, exacte pour segments)
+        const auto& rLines = arbCalc.renderLines();
+        TEST_CHECK(rLines.size() == 3, "Test 31.1: Arbitrary render lines count == 3");
+        // line3 est un segment de (0,0,0) à (10,10,0) -> longueur = sqrt(200) ~= 14.142
+        TEST_CHECK(approxEqual(rLines[2].start.Distance(rLines[2].end), std::sqrt(200.0)), "Test 31.1: Segment preserves exact length");
+        // line1 est une droite avec extension de 50m aux deux bouts -> longueur = 10 + 2*50 = 110.0
+        TEST_CHECK(approxEqual(rLines[0].start.Distance(rLines[0].end), 110.0), "Test 31.1: Droite extends across viewport (110m)");
+
+        // 2. Intersections entre lignes arbitraires
+        const auto& arbInters = arbCalc.intersections();
+        TEST_CHECK(arbInters.size() >= 2, "Test 31.2: Intersections detected between arbitrary lines");
+        // Intersection entre Axe_1 et Axe_2 doit être exactement (5, 0, 0)
+        bool foundIntersection500 = false;
+        for (const auto& inter : arbInters)
+        {
+            if (approxEqual(inter.X(), 5.0) && approxEqual(inter.Y(), 0.0) && approxEqual(inter.Z(), 0.0))
+            {
+                foundIntersection500 = true;
+                break;
+            }
+        }
+        TEST_CHECK(foundIntersection500, "Test 31.2: Exact intersection (5, 0, 0) found between Axe_1 and Axe_2");
+
+        // 3. Aimantation (Snapping) sur lignes arbitraires
+        // Proche de l'intersection (5, 0, 0)
+        gp_Pnt nearInter(5.02, 0.04, 0.0);
+        GridSnapResult snapInter = arbCalc.findClosestSnap(nearInter, 0.5);
+        TEST_CHECK(snapInter.snapped, "Test 31.3: Snapped near arbitrary intersection");
+        TEST_CHECK(snapInter.type == GridSnapType::Intersection, "Test 31.3: Snap type is Intersection");
+        TEST_CHECK(approxEqual(snapInter.point.X(), 5.0) && approxEqual(snapInter.point.Y(), 0.0), "Test 31.3: Snap point is exactly (5, 0, 0)");
+
+        // Proche de la ligne Diag (segment) à x=3, y=3
+        gp_Pnt nearLine(3.04, 2.95, 0.0);
+        GridSnapResult snapLine = arbCalc.findClosestSnap(nearLine, 0.5);
+        TEST_CHECK(snapLine.snapped, "Test 31.3: Snapped near arbitrary line segment");
+        TEST_CHECK(snapLine.type == GridSnapType::AxisLine, "Test 31.3: Snap type is AxisLine");
+        TEST_CHECK(approxEqual(snapLine.point.X(), snapLine.point.Y()), "Test 31.3: Snap on diagonal line (X == Y)");
+
+        // 4. Intégration dans GridSystem & GridManager
+        GridManager gm;
+        gm.clearAllGrids();
+        GridSystem* sysArb = gm.addGrid(arbDef);
+        TEST_CHECK(sysArb != nullptr, "Test 31.4: Added Arbitrary Grid to GridManager");
+        TEST_CHECK(sysArb->type() == GridType::Arbitrary, "Test 31.4: GridSystem type is Arbitrary");
+        TEST_CHECK(sysArb->arbitrary() != nullptr, "Test 31.4: GridSystem arbitrary calculator available");
+
+        // Snap unifié via GridSystem
+        GridSnapResult sysSnap = sysArb->findClosestSnap(nearInter, 0.5);
+        TEST_CHECK(sysSnap.snapped, "Test 31.4: Unified GridSystem findClosestSnap succeeded");
+
+        // 5. Presse-papier de grilles (Copy / Paste / Rename)
+        gm.copyGrid(sysArb->id());
+        TEST_CHECK(gm.hasCopiedGrid(), "Test 31.5: GridManager clipboard has copied grid");
+
+        GridSystem* pastedSys = gm.pasteGrid();
+        TEST_CHECK(pastedSys != nullptr, "Test 31.5: Pasted grid created successfully");
+        TEST_CHECK(pastedSys->id() != sysArb->id(), "Test 31.5: Pasted grid has unique independent ID");
+        TEST_CHECK(pastedSys->name() == "Arbitrary Construction (Copie)", "Test 31.5: Pasted grid renamed with (Copie)");
+        TEST_CHECK(pastedSys->type() == GridType::Arbitrary, "Test 31.5: Pasted grid retains Arbitrary type");
+
+        bool renamedOk = gm.renameGrid(pastedSys->id(), "Grille Rénommée");
+        TEST_CHECK(renamedOk, "Test 31.5: Renamed pasted grid");
+        TEST_CHECK(pastedSys->name() == "Grille Rénommée", "Test 31.5: Grid name reflects new name");
+
+        // 6. Sauvegarde / Chargement JSON avec lignes arbitraires, gras et displaySettings
+        GridDefinition cartWithBold("Cartesian Bold", GridType::Cartesian);
+        cartWithBold.generateCartesian(2, 5.0, 2, 5.0, 1, 3.0);
+        cartWithBold.setXIsBold({ true, false, true });
+        cartWithBold.setYIsBold({ false, true, false });
+        gm.addGrid(cartWithBold);
+
+        std::string jsonStr = gm.serializeToJson();
+        TEST_CHECK(jsonStr.find("\"Arbitrary\"") != std::string::npos, "Test 31.6: JSON contains Arbitrary type");
+        TEST_CHECK(jsonStr.find("\"xIsBold\"") != std::string::npos, "Test 31.6: JSON contains xIsBold");
+        TEST_CHECK(jsonStr.find("\"lineColor\"") != std::string::npos, "Test 31.6: JSON contains lineColor");
+
+        GridManager gmLoaded;
+        gmLoaded.deserializeFromJson(jsonStr);
+        TEST_CHECK(gmLoaded.grids().size() == 3, "Test 31.6: Deserialized all 3 grids correctly");
+        const GridSystem* loadedArb = gmLoaded.getGrid(sysArb->id());
+        TEST_CHECK(loadedArb != nullptr, "Test 31.6: Loaded arbitrary grid exists");
+        TEST_CHECK(loadedArb->definition().arbitraryLines().size() == 3, "Test 31.6: Loaded arbitrary grid has 3 lines");
+        TEST_CHECK(loadedArb->definition().displaySettings().lineColor == "#FF5500", "Test 31.6: Display settings color preserved");
+        TEST_CHECK(approxEqual(loadedArb->definition().displaySettings().extension, 2.5), "Test 31.6: Display settings extension preserved");
+
+        const GridSystem* loadedCart = gmLoaded.getGrid(cartWithBold.id());
+        TEST_CHECK(loadedCart != nullptr, "Test 31.6: Loaded cartesian grid exists");
+        TEST_CHECK(loadedCart->definition().xIsBold(0) == true, "Test 31.6: xIsBold[0] == true preserved");
+        TEST_CHECK(loadedCart->definition().xIsBold(1) == false, "Test 31.6: xIsBold[1] == false preserved");
+        TEST_CHECK(loadedCart->definition().xIsBold(2) == true, "Test 31.6: xIsBold[2] == true preserved");
+
+        std::cout << "[PASS] Test 31: Advanced Robot Structural Analysis Grid Features (Arbitrary, Display Settings, Clipboard, Snapping, JSON) Passed Successfully!" << std::endl;
         passed++;
     }
 

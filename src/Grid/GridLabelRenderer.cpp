@@ -7,6 +7,7 @@
 #include <gp_Dir.hxx>
 #include <Quantity_Color.hxx>
 #include <Prs3d_Drawer.hxx>
+#include <Font_FontAspect.hxx>
 
 namespace TSA::Grid
 {
@@ -141,6 +142,11 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
         const auto* cartesian = gridSystem.cartesian();
         const auto& anchors = cartesian->labelAnchors();
 
+        double rad = gridSystem.definition().displaySettings().bubbleRadius > 0.0
+            ? gridSystem.definition().displaySettings().bubbleRadius
+            : 0.40;
+        bool showBubbles = gridSystem.definition().displaySettings().showBubbles;
+
         for (const auto& anchor : anchors)
         {
             // 1. Étiquette textuelle 3D centrée
@@ -150,21 +156,28 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
             aisText->SetColor(textColor);
             aisText->SetHJustification(Graphic3d_HTA_CENTER);
             aisText->SetVJustification(Graphic3d_VTA_CENTER);
-            aisText->SetHeight(13.0);
+            aisText->SetHeight(anchor.isBold ? 15.0 : 13.0);
+            if (anchor.isBold)
+            {
+                aisText->SetFontAspect(Font_FA_Bold);
+            }
 
             context->Display(aisText, false);
             perGrid.textLabels.push_back(aisText);
 
-            // 2. Bulle circulaire entourant l'étiquette (R = 0.40m)
-            gp_Circ circ(gp_Ax2(anchor.position, gp_Dir(0, 0, 1)), 0.40);
-            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
-            if (!edge.IsNull())
+            // 2. Bulle circulaire entourant l'étiquette
+            if (showBubbles)
             {
-                Handle(AIS_Shape) aisBubble = new AIS_Shape(edge);
-                aisBubble->SetColor(bubbleColor);
-                aisBubble->SetWidth(1.8);
-                context->Display(aisBubble, false);
-                perGrid.bubbleShapes.push_back(aisBubble);
+                gp_Circ circ(gp_Ax2(anchor.position, gp_Dir(0, 0, 1)), rad);
+                TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
+                if (!edge.IsNull())
+                {
+                    Handle(AIS_Shape) aisBubble = new AIS_Shape(edge);
+                    aisBubble->SetColor(bubbleColor);
+                    aisBubble->SetWidth(anchor.isBold ? 2.5 : 1.8);
+                    context->Display(aisBubble, false);
+                    perGrid.bubbleShapes.push_back(aisBubble);
+                }
             }
         }
 
@@ -180,7 +193,11 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
             aisText->SetColor(levelTextColor);
             aisText->SetHJustification(Graphic3d_HTA_RIGHT);
             aisText->SetVJustification(Graphic3d_VTA_CENTER);
-            aisText->SetHeight(12.0);
+            aisText->SetHeight(anchor.isBold ? 14.0 : 12.0);
+            if (anchor.isBold)
+            {
+                aisText->SetFontAspect(Font_FA_Bold);
+            }
 
             context->Display(aisText, false);
             perGrid.textLabels.push_back(aisText);
@@ -213,6 +230,47 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
                 aisBubble->SetWidth(1.6);
                 context->Display(aisBubble, false);
                 perGrid.bubbleShapes.push_back(aisBubble);
+            }
+        }
+    }
+    else if (gridSystem.type() == GridType::Arbitrary && gridSystem.arbitrary())
+    {
+        const auto* arbitrary = gridSystem.arbitrary();
+        const auto& anchors = arbitrary->labelAnchors();
+        double rad = gridSystem.definition().displaySettings().bubbleRadius > 0.0
+            ? gridSystem.definition().displaySettings().bubbleRadius
+            : 0.40;
+        bool showBubbles = gridSystem.definition().displaySettings().showBubbles;
+
+        for (const auto& anchor : anchors)
+        {
+            Handle(AIS_TextLabel) aisText = new AIS_TextLabel();
+            aisText->SetText(TCollection_ExtendedString(anchor.text.c_str()));
+            aisText->SetPosition(anchor.position);
+            aisText->SetColor(textColor);
+            aisText->SetHJustification(Graphic3d_HTA_CENTER);
+            aisText->SetVJustification(Graphic3d_VTA_CENTER);
+            aisText->SetHeight(anchor.isBold ? 15.0 : 13.0);
+            if (anchor.isBold)
+            {
+                aisText->SetFontAspect(Font_FA_Bold);
+            }
+
+            context->Display(aisText, false);
+            perGrid.textLabels.push_back(aisText);
+
+            if (showBubbles)
+            {
+                gp_Circ circ(gp_Ax2(anchor.position, gp_Dir(0, 0, 1)), rad);
+                TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(circ);
+                if (!edge.IsNull())
+                {
+                    Handle(AIS_Shape) aisBubble = new AIS_Shape(edge);
+                    aisBubble->SetColor(bubbleColor);
+                    aisBubble->SetWidth(anchor.isBold ? 2.5 : 1.8);
+                    context->Display(aisBubble, false);
+                    perGrid.bubbleShapes.push_back(aisBubble);
+                }
             }
         }
     }

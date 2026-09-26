@@ -93,6 +93,29 @@ public:
                              int angleCount, double angleSpacingDeg,
                              int countZ, double spacingZ);
 
+    // --- Lignes de construction arbitraires ---
+    const std::vector<ArbitraryLine>& arbitraryLines() const { return m_arbitraryLines; }
+    void setArbitraryLines(const std::vector<ArbitraryLine>& lines) { m_arbitraryLines = lines; }
+    void addArbitraryLine(const ArbitraryLine& line) { m_arbitraryLines.push_back(line); }
+    void clearArbitraryLines() { m_arbitraryLines.clear(); }
+
+    // --- Paramètres d'affichage graphique ---
+    const GridDisplaySettings& displaySettings() const { return m_displaySettings; }
+    void setDisplaySettings(const GridDisplaySettings& settings) { m_displaySettings = settings; }
+
+    // --- Style Gras par axe ---
+    const std::vector<bool>& xIsBold() const { return m_xIsBold; }
+    bool xIsBold(size_t index) const { return index < m_xIsBold.size() ? m_xIsBold[index] : false; }
+    void setXIsBold(const std::vector<bool>& bold) { m_xIsBold = bold; }
+
+    const std::vector<bool>& yIsBold() const { return m_yIsBold; }
+    bool yIsBold(size_t index) const { return index < m_yIsBold.size() ? m_yIsBold[index] : false; }
+    void setYIsBold(const std::vector<bool>& bold) { m_yIsBold = bold; }
+
+    const std::vector<bool>& zIsBold() const { return m_zIsBold; }
+    bool zIsBold(size_t index) const { return index < m_zIsBold.size() ? m_zIsBold[index] : false; }
+    void setZIsBold(const std::vector<bool>& bold) { m_zIsBold = bold; }
+
     // --- Sérialisation JSON ---
     std::string toJson() const;
     static GridDefinition fromJson(const std::string& json);
@@ -126,6 +149,17 @@ private:
     std::vector<std::string> m_zLabels;
     std::vector<std::string> m_radiusLabels;
     std::vector<std::string> m_angleLabels;
+
+    // Lignes arbitraires
+    std::vector<ArbitraryLine> m_arbitraryLines;
+
+    // Paramètres graphiques
+    GridDisplaySettings m_displaySettings;
+
+    // Styles gras
+    std::vector<bool> m_xIsBold;
+    std::vector<bool> m_yIsBold;
+    std::vector<bool> m_zIsBold;
 };
 
 } // namespace TSA::Grid

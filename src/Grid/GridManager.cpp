@@ -90,6 +90,40 @@ GridSystem* GridManager::duplicateGrid(const std::string& id)
     return addGrid(dupDef);
 }
 
+void GridManager::copyGrid(const std::string& id)
+{
+    GridSystem* source = getGrid(id);
+    if (source)
+    {
+        m_clipboardGrid = source->definition();
+    }
+}
+
+GridSystem* GridManager::pasteGrid()
+{
+    if (!m_clipboardGrid.has_value())
+        return nullptr;
+
+    GridDefinition pasteDef = *m_clipboardGrid;
+    static uint64_t pasteCounter = 0;
+    pasteDef.setId("grid_" + std::to_string(++pasteCounter) + "_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()));
+    pasteDef.setName(pasteDef.name() + " (Copie)");
+    return addGrid(pasteDef);
+}
+
+bool GridManager::renameGrid(const std::string& id, const std::string& newName)
+{
+    GridSystem* grid = getGrid(id);
+    if (!grid || newName.empty())
+        return false;
+
+    GridDefinition def = grid->definition();
+    def.setName(newName);
+    grid->updateDefinition(def);
+    emit gridModified(id);
+    return true;
+}
+
 void GridManager::clearAllGrids()
 {
     m_grids.clear();

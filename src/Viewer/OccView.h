@@ -79,6 +79,8 @@ public:
     void highlightTrussMember(int memberId);
     void clearHighlight();
 
+    TSA::Viewer::SelectionManager* selectionManager() const { return m_selectionManager; }
+
     // Actions de vue
     void fitAll();
     void resetView();

@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <optional>
 
 namespace TSA::Grid
 {
@@ -25,6 +26,13 @@ public:
     bool removeGrid(const std::string& id);
     GridSystem* duplicateGrid(const std::string& id);
     void clearAllGrids();
+
+    // Presse-papier de grilles
+    void copyGrid(const std::string& id);
+    GridSystem* pasteGrid();
+    bool hasCopiedGrid() const { return m_clipboardGrid.has_value(); }
+
+    bool renameGrid(const std::string& id, const std::string& newName);
 
     GridSystem* getGrid(const std::string& id);
     const GridSystem* getGrid(const std::string& id) const;
@@ -53,6 +61,7 @@ signals:
 private:
     std::vector<std::unique_ptr<GridSystem>> m_grids;
     std::string m_activeGridId;
+    std::optional<GridDefinition> m_clipboardGrid;
 };
 
 } // namespace TSA::Grid

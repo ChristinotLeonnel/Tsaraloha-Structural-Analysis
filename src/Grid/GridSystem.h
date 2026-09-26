@@ -3,6 +3,7 @@
 #include "GridDefinition.h"
 #include "CartesianGrid.h"
 #include "CylindricalGrid.h"
+#include "ArbitraryGrid.h"
 #include <memory>
 
 namespace TSA::Grid
@@ -40,6 +41,7 @@ public:
     // Accès aux calculateurs mathématiques
     const CartesianGrid* cartesian() const { return m_cartesian.get(); }
     const CylindricalGrid* cylindrical() const { return m_cylindrical.get(); }
+    const ArbitraryGrid* arbitrary() const { return m_arbitrary.get(); }
 
     // Snapping unifié
     GridSnapResult findClosestSnap(const gp_Pnt& worldPoint, double snapToleranceWorld) const;
@@ -57,6 +59,7 @@ private:
 
     std::unique_ptr<CartesianGrid> m_cartesian;
     std::unique_ptr<CylindricalGrid> m_cylindrical;
+    std::unique_ptr<ArbitraryGrid> m_arbitrary;
 };
 
 } // namespace TSA::Grid

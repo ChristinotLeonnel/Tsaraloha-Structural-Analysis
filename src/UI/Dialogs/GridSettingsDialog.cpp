@@ -11,6 +11,7 @@
 #include <QDoubleSpinBox>
 #include <QLabel>
 #include <QMessageBox>
+#include <QInputDialog>
 
 namespace TSA::UI
 {
@@ -50,6 +51,12 @@ void GridSettingsDialog::setupUi()
     m_editBtn->setIcon(QIcon(":/icons/settings.svg"));
     m_duplicateBtn = new QPushButton(tr("Dupliquer"), listGroup);
     m_duplicateBtn->setIcon(QIcon(":/icons/file_new.svg"));
+    m_copyBtn = new QPushButton(tr("Copier"), listGroup);
+    m_copyBtn->setIcon(QIcon(":/icons/file_new.svg"));
+    m_pasteBtn = new QPushButton(tr("Coller"), listGroup);
+    m_pasteBtn->setIcon(QIcon(":/icons/node_add.svg"));
+    m_renameBtn = new QPushButton(tr("Renommer..."), listGroup);
+    m_renameBtn->setIcon(QIcon(":/icons/settings.svg"));
     m_deleteBtn = new QPushButton(tr("Supprimer"), listGroup);
     m_deleteBtn->setIcon(QIcon(":/icons/delete.svg"));
     m_setActiveBtn = new QPushButton(tr("Définir comme Active"), listGroup);
@@ -58,6 +65,9 @@ void GridSettingsDialog::setupUi()
     btnCol->addWidget(m_addBtn);
     btnCol->addWidget(m_editBtn);
     btnCol->addWidget(m_duplicateBtn);
+    btnCol->addWidget(m_copyBtn);
+    btnCol->addWidget(m_pasteBtn);
+    btnCol->addWidget(m_renameBtn);
     btnCol->addWidget(m_deleteBtn);
     btnCol->addWidget(m_setActiveBtn);
     btnCol->addStretch();
@@ -131,6 +141,9 @@ void GridSettingsDialog::setupUi()
     connect(m_addBtn, &QPushButton::clicked, this, &GridSettingsDialog::onAddGrid);
     connect(m_editBtn, &QPushButton::clicked, this, &GridSettingsDialog::onEditGrid);
     connect(m_duplicateBtn, &QPushButton::clicked, this, &GridSettingsDialog::onDuplicateGrid);
+    connect(m_copyBtn, &QPushButton::clicked, this, &GridSettingsDialog::onCopyGrid);
+    connect(m_pasteBtn, &QPushButton::clicked, this, &GridSettingsDialog::onPasteGrid);
+    connect(m_renameBtn, &QPushButton::clicked, this, &GridSettingsDialog::onRenameGrid);
     connect(m_deleteBtn, &QPushButton::clicked, this, &GridSettingsDialog::onDeleteGrid);
     connect(m_setActiveBtn, &QPushButton::clicked, this, &GridSettingsDialog::onSetActiveGrid);
     connect(m_gridList, &QListWidget::currentRowChanged, this, &GridSettingsDialog::onSelectedGridChanged);
@@ -163,11 +176,28 @@ void GridSettingsDialog::refreshGridList()
     {
         const auto& g = grids[i];
         QString status = g->isActive() ? tr(" [ACTIVE]") : "";
-        QString typeStr = (g->type() == TSA::Grid::GridType::Cartesian) ? tr("Cartésienne") : tr("Cylindrique");
+        QString typeStr;
+        QString iconPath;
+        if (g->type() == TSA::Grid::GridType::Cartesian)
+        {
+            typeStr = tr("Cartésienne");
+            iconPath = ":/icons/grid_cartesian.svg";
+        }
+        else if (g->type() == TSA::Grid::GridType::Cylindrical)
+        {
+            typeStr = tr("Cylindrique");
+            iconPath = ":/icons/grid_cylindrical.svg";
+        }
+        else
+        {
+            typeStr = tr("Lignes arbitraires");
+            iconPath = ":/icons/geom_polyline.svg";
+        }
+
         QString itemText = QString("%1 (%2)%3").arg(QString::fromStdString(g->name())).arg(typeStr).arg(status);
 
         auto* item = new QListWidgetItem(itemText, m_gridList);
-        item->setIcon(QIcon((g->type() == TSA::Grid::GridType::Cartesian) ? ":/icons/grid_cartesian.svg" : ":/icons/grid_cylindrical.svg"));
+        item->setIcon(QIcon(iconPath));
         item->setData(Qt::UserRole, QString::fromStdString(g->id()));
 
         if (g->isActive())
@@ -195,6 +225,9 @@ void GridSettingsDialog::onSelectedGridChanged()
     {
         m_editBtn->setEnabled(false);
         m_duplicateBtn->setEnabled(false);
+        m_copyBtn->setEnabled(false);
+        m_pasteBtn->setEnabled(m_gridManager ? m_gridManager->hasCopiedGrid() : false);
+        m_renameBtn->setEnabled(false);
         m_deleteBtn->setEnabled(false);
         m_setActiveBtn->setEnabled(false);
         m_infoLabel->setText("");
@@ -208,6 +241,9 @@ void GridSettingsDialog::onSelectedGridChanged()
 
     m_editBtn->setEnabled(true);
     m_duplicateBtn->setEnabled(true);
+    m_copyBtn->setEnabled(true);
+    m_pasteBtn->setEnabled(m_gridManager->hasCopiedGrid());
+    m_renameBtn->setEnabled(true);
     m_deleteBtn->setEnabled(m_gridManager->grids().size() > 1);
     m_setActiveBtn->setEnabled(!grid->isActive());
 
@@ -246,6 +282,12 @@ void GridSettingsDialog::onSelectedGridChanged()
             .arg(grid->definition().angles().size())
             .arg(grid->definition().zLevels().size())
             .arg(grid->cylindrical()->intersections().size());
+    }
+    else if (grid->type() == TSA::Grid::GridType::Arbitrary && grid->arbitrary())
+    {
+        info = tr("Lignes arbitraires : %1 lignes (%2 intersections)")
+            .arg(grid->definition().arbitraryLines().size())
+            .arg(grid->arbitrary()->intersections().size());
     }
     m_infoLabel->setText(info);
 }
@@ -322,6 +364,56 @@ void GridSettingsDialog::onDuplicateGrid()
         {
             m_occView->rebuildGrid();
         }
+    }
+}
+
+void GridSettingsDialog::onCopyGrid()
+{
+    auto* item = m_gridList->currentItem();
+    if (!item || !m_gridManager)
+        return;
+
+    std::string id = item->data(Qt::UserRole).toString().toStdString();
+    m_gridManager->copyGrid(id);
+    m_pasteBtn->setEnabled(m_gridManager->hasCopiedGrid());
+}
+
+void GridSettingsDialog::onPasteGrid()
+{
+    if (!m_gridManager || !m_gridManager->hasCopiedGrid())
+        return;
+
+    auto* pasted = m_gridManager->pasteGrid();
+    if (pasted)
+    {
+        refreshGridList();
+        if (m_occView)
+        {
+            m_occView->rebuildGrid();
+        }
+    }
+}
+
+void GridSettingsDialog::onRenameGrid()
+{
+    auto* item = m_gridList->currentItem();
+    if (!item || !m_gridManager)
+        return;
+
+    std::string id = item->data(Qt::UserRole).toString().toStdString();
+    auto* grid = m_gridManager->getGrid(id);
+    if (!grid)
+        return;
+
+    bool ok = false;
+    QString currentName = QString::fromStdString(grid->name());
+    QString newName = QInputDialog::getText(this, tr("Renommer la grille"),
+                                            tr("Nouveau nom :"), QLineEdit::Normal,
+                                            currentName, &ok);
+    if (ok && !newName.trimmed().isEmpty())
+    {
+        m_gridManager->renameGrid(id, newName.trimmed().toStdString());
+        refreshGridList();
     }
 }
 

@@ -345,13 +345,29 @@ static std::string stringVectorToJsonArray(const std::vector<std::string>& vec)
     return oss.str();
 }
 
+static std::string boolVectorToJsonArray(const std::vector<bool>& vec)
+{
+    std::ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < vec.size(); ++i)
+    {
+        oss << (vec[i] ? "true" : "false");
+        if (i + 1 < vec.size()) oss << ", ";
+    }
+    oss << "]";
+    return oss.str();
+}
+
 std::string GridDefinition::toJson() const
 {
     std::ostringstream oss;
     oss << "{\n";
     oss << "  \"id\": \"" << m_id << "\",\n";
     oss << "  \"name\": \"" << m_name << "\",\n";
-    oss << "  \"type\": \"" << (m_type == GridType::Cartesian ? "Cartesian" : "Cylindrical") << "\",\n";
+    std::string typeStr = "Cartesian";
+    if (m_type == GridType::Cylindrical) typeStr = "Cylindrical";
+    else if (m_type == GridType::Arbitrary) typeStr = "Arbitrary";
+    oss << "  \"type\": \"" << typeStr << "\",\n";
     oss << "  \"origin\": [" << m_origin.X() << ", " << m_origin.Y() << ", " << m_origin.Z() << "],\n";
     oss << "  \"rotationDeg\": " << m_rotationDeg << ",\n";
     oss << "  \"isVisible\": " << (m_isVisible ? "true" : "false") << ",\n";
@@ -365,17 +381,42 @@ std::string GridDefinition::toJson() const
         oss << "  \"yPositions\": " << vectorToJsonArray(m_yPositions) << ",\n";
         oss << "  \"xLabels\": " << stringVectorToJsonArray(m_xLabels) << ",\n";
         oss << "  \"yLabels\": " << stringVectorToJsonArray(m_yLabels) << ",\n";
+        oss << "  \"xIsBold\": " << boolVectorToJsonArray(m_xIsBold) << ",\n";
+        oss << "  \"yIsBold\": " << boolVectorToJsonArray(m_yIsBold) << ",\n";
     }
-    else
+    else if (m_type == GridType::Cylindrical)
     {
         oss << "  \"radii\": " << vectorToJsonArray(m_radii) << ",\n";
         oss << "  \"angles\": " << vectorToJsonArray(m_angles) << ",\n";
         oss << "  \"radiusLabels\": " << stringVectorToJsonArray(m_radiusLabels) << ",\n";
         oss << "  \"angleLabels\": " << stringVectorToJsonArray(m_angleLabels) << ",\n";
     }
+    else // Arbitrary
+    {
+        oss << "  \"arbitraryLines\": [\n";
+        for (size_t i = 0; i < m_arbitraryLines.size(); ++i)
+        {
+            const auto& line = m_arbitraryLines[i];
+            oss << "    {\"label\": \"" << line.label << "\", "
+                << "\"type\": \"" << line.type << "\", "
+                << "\"isBold\": " << (line.isBold ? "true" : "false") << ", "
+                << "\"p1\": [" << line.p1.X() << ", " << line.p1.Y() << ", " << line.p1.Z() << "], "
+                << "\"p2\": [" << line.p2.X() << ", " << line.p2.Y() << ", " << line.p2.Z() << "]}";
+            if (i + 1 < m_arbitraryLines.size()) oss << ",";
+            oss << "\n";
+        }
+        oss << "  ],\n";
+    }
 
     oss << "  \"zLevels\": " << vectorToJsonArray(m_zLevels) << ",\n";
-    oss << "  \"zLabels\": " << stringVectorToJsonArray(m_zLabels) << "\n";
+    oss << "  \"zLabels\": " << stringVectorToJsonArray(m_zLabels) << ",\n";
+    oss << "  \"zIsBold\": " << boolVectorToJsonArray(m_zIsBold) << ",\n";
+    oss << "  \"displaySettings\": {\"lineColor\": \"" << m_displaySettings.lineColor
+        << "\", \"lineStyle\": \"" << m_displaySettings.lineStyle
+        << "\", \"lineWidth\": " << m_displaySettings.lineWidth
+        << ", \"extension\": " << m_displaySettings.extension
+        << ", \"bubbleRadius\": " << m_displaySettings.bubbleRadius
+        << ", \"showBubbles\": " << (m_displaySettings.showBubbles ? "true" : "false") << "}\n";
     oss << "}";
     return oss.str();
 }
@@ -396,6 +437,28 @@ static std::vector<double> parseDoubleArray(const std::string& json, const std::
     while (std::getline(ss, item, ','))
     {
         try { result.push_back(std::stod(item)); } catch (...) { /* jeton invalide ignoré */ }
+    }
+    return result;
+}
+
+static std::vector<bool> parseBoolArray(const std::string& json, const std::string& field)
+{
+    std::vector<bool> result;
+    std::string token = "\"" + field + "\"";
+    size_t pos = json.find(token);
+    if (pos == std::string::npos) return result;
+    size_t open = json.find('[', pos);
+    size_t close = json.find(']', open);
+    if (open == std::string::npos || close == std::string::npos) return result;
+
+    std::string inner = json.substr(open + 1, close - open - 1);
+    std::stringstream ss(inner);
+    std::string item;
+    while (std::getline(ss, item, ','))
+    {
+        while (!item.empty() && (item.front() == ' ' || item.front() == '\t')) item.erase(0, 1);
+        while (!item.empty() && (item.back() == ' ' || item.back() == '\t')) item.pop_back();
+        result.push_back(item == "true");
     }
     return result;
 }
@@ -451,7 +514,9 @@ GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
     if (!name.empty()) def.setName(name);
 
     std::string type = findField("type");
-    const GridType parsedType = (type == "Cylindrical") ? GridType::Cylindrical : GridType::Cartesian;
+    GridType parsedType = GridType::Cartesian;
+    if (type == "Cylindrical") parsedType = GridType::Cylindrical;
+    else if (type == "Arbitrary") parsedType = GridType::Arbitrary;
     def.setType(parsedType);
 
     std::vector<double> origin = parseDoubleArray(jsonStr, "origin");
@@ -480,11 +545,13 @@ GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
     {
         def.setXPositions(parseDoubleArray(jsonStr, "xPositions"));
         def.setXLabels(parseStringArray(jsonStr, "xLabels"));
+        def.setXIsBold(parseBoolArray(jsonStr, "xIsBold"));
 
         def.setYPositions(parseDoubleArray(jsonStr, "yPositions"));
         def.setYLabels(parseStringArray(jsonStr, "yLabels"));
+        def.setYIsBold(parseBoolArray(jsonStr, "yIsBold"));
     }
-    else
+    else if (parsedType == GridType::Cylindrical)
     {
         def.setRadii(parseDoubleArray(jsonStr, "radii"));
         def.setRadiusLabels(parseStringArray(jsonStr, "radiusLabels"));
@@ -492,9 +559,117 @@ GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
         def.setAngles(parseDoubleArray(jsonStr, "angles"));
         def.setAngleLabels(parseStringArray(jsonStr, "angleLabels"));
     }
+    else // Arbitrary
+    {
+        // Découpage manuel des objets arbitraires dans "arbitraryLines"
+        size_t arrPos = jsonStr.find("\"arbitraryLines\"");
+        if (arrPos != std::string::npos)
+        {
+            size_t openBracket = jsonStr.find('[', arrPos);
+            if (openBracket != std::string::npos)
+            {
+                int bDepth = 0;
+                size_t closeBracket = std::string::npos;
+                for (size_t k = openBracket; k < jsonStr.size(); ++k)
+                {
+                    if (jsonStr[k] == '[') ++bDepth;
+                    else if (jsonStr[k] == ']')
+                    {
+                        --bDepth;
+                        if (bDepth == 0)
+                        {
+                            closeBracket = k;
+                            break;
+                        }
+                    }
+                }
+
+                if (closeBracket != std::string::npos)
+                {
+                    std::string arrContent = jsonStr.substr(openBracket + 1, closeBracket - openBracket - 1);
+                    size_t objStart = 0;
+                    while ((objStart = arrContent.find('{', objStart)) != std::string::npos)
+                    {
+                        size_t objEnd = arrContent.find('}', objStart);
+                        if (objEnd == std::string::npos) break;
+                        std::string objStr = arrContent.substr(objStart, objEnd - objStart + 1);
+                        objStart = objEnd + 1;
+
+                    ArbitraryLine line;
+                    auto findObjField = [&objStr](const std::string& f) -> std::string {
+                        std::string tok = "\"" + f + "\"";
+                        size_t p = objStr.find(tok);
+                        if (p == std::string::npos) return "";
+                        size_t c = objStr.find(':', p);
+                        if (c == std::string::npos) return "";
+                        size_t s = c + 1;
+                        while (s < objStr.size() && (objStr[s] == ' ' || objStr[s] == '\"')) s++;
+                        size_t e = objStr.find_first_of("\",}", s);
+                        if (e == std::string::npos) e = objStr.size();
+                        return objStr.substr(s, e - s);
+                    };
+
+                    line.label = findObjField("label");
+                    line.type = findObjField("type");
+                    if (line.type.empty()) line.type = "droite";
+                    line.isBold = (findObjField("isBold") == "true");
+
+                    std::vector<double> p1Vec = parseDoubleArray(objStr, "p1");
+                    if (p1Vec.size() >= 3) line.p1 = gp_Pnt(p1Vec[0], p1Vec[1], p1Vec[2]);
+                    std::vector<double> p2Vec = parseDoubleArray(objStr, "p2");
+                    if (p2Vec.size() >= 3) line.p2 = gp_Pnt(p2Vec[0], p2Vec[1], p2Vec[2]);
+
+                    def.addArbitraryLine(line);
+                    objStart = objEnd + 1;
+                }
+            }
+        }
+    }
+}
 
     def.setZLevels(parseDoubleArray(jsonStr, "zLevels"));
     def.setZLabels(parseStringArray(jsonStr, "zLabels"));
+    def.setZIsBold(parseBoolArray(jsonStr, "zIsBold"));
+
+    // Parse displaySettings
+    size_t dsPos = jsonStr.find("\"displaySettings\"");
+    if (dsPos != std::string::npos)
+    {
+        size_t dsOpen = jsonStr.find('{', dsPos);
+        size_t dsClose = jsonStr.find('}', dsOpen);
+        if (dsOpen != std::string::npos && dsClose != std::string::npos)
+        {
+            std::string dsStr = jsonStr.substr(dsOpen + 1, dsClose - dsOpen - 1);
+            auto findDsField = [&dsStr](const std::string& f) -> std::string {
+                std::string tok = "\"" + f + "\"";
+                size_t p = dsStr.find(tok);
+                if (p == std::string::npos) return "";
+                size_t c = dsStr.find(':', p);
+                if (c == std::string::npos) return "";
+                size_t s = c + 1;
+                while (s < dsStr.size() && (dsStr[s] == ' ' || dsStr[s] == '\"')) s++;
+                size_t e = dsStr.find_first_of("\",}", s);
+                if (e == std::string::npos) e = dsStr.size();
+                return dsStr.substr(s, e - s);
+            };
+
+            GridDisplaySettings ds;
+            std::string col = findDsField("lineColor");
+            if (!col.empty()) ds.lineColor = col;
+            std::string sty = findDsField("lineStyle");
+            if (!sty.empty()) ds.lineStyle = sty;
+            std::string lw = findDsField("lineWidth");
+            if (!lw.empty()) { try { ds.lineWidth = std::stod(lw); } catch (...) {} }
+            std::string ext = findDsField("extension");
+            if (!ext.empty()) { try { ds.extension = std::stod(ext); } catch (...) {} }
+            std::string br = findDsField("bubbleRadius");
+            if (!br.empty()) { try { ds.bubbleRadius = std::stod(br); } catch (...) {} }
+            std::string sb = findDsField("showBubbles");
+            if (!sb.empty()) ds.showBubbles = (sb == "true");
+
+            def.setDisplaySettings(ds);
+        }
+    }
 
     return def;
 }

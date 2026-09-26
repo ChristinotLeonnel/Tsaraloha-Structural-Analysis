@@ -93,6 +93,11 @@ void CartesianGrid::computeGeometry()
     m_minZ = orig.Z() + *minMaxZ.first;
     m_maxZ = orig.Z() + *minMaxZ.second;
 
+    if (m_definition.displaySettings().extension > 0.0)
+    {
+        m_extension = m_definition.displaySettings().extension;
+    }
+
     double startLy = minLy - m_extension;
     double endLy   = maxLy + m_extension;
     double startLx = minLx - m_extension;
@@ -129,8 +134,9 @@ void CartesianGrid::computeGeometry()
             m_allLines.push_back(seg);
 
             // Ancrages des bulles d'axe X
-            m_labelAnchors.push_back({ seg.start, seg.label, transformDir(0, -1, 0), true });
-            m_labelAnchors.push_back({ seg.end,   seg.label, transformDir(0,  1, 0), false });
+            bool isBoldX = m_definition.xIsBold(i);
+            m_labelAnchors.push_back({ seg.start, seg.label, transformDir(0, -1, 0), true, isBoldX });
+            m_labelAnchors.push_back({ seg.end,   seg.label, transformDir(0,  1, 0), false, isBoldX });
         }
 
         // Lignes d'axes Y (parallèles à X, à chaque Y_j)
@@ -148,8 +154,9 @@ void CartesianGrid::computeGeometry()
             m_allLines.push_back(seg);
 
             // Ancrages des bulles d'axe Y
-            m_labelAnchors.push_back({ seg.start, seg.label, transformDir(-1, 0, 0), true });
-            m_labelAnchors.push_back({ seg.end,   seg.label, transformDir( 1, 0, 0), false });
+            bool isBoldY = m_definition.yIsBold(j);
+            m_labelAnchors.push_back({ seg.start, seg.label, transformDir(-1, 0, 0), true, isBoldY });
+            m_labelAnchors.push_back({ seg.end,   seg.label, transformDir( 1, 0, 0), false, isBoldY });
         }
 
         // Intersections de grille (X_i, Y_j, Z_k)
@@ -234,7 +241,8 @@ void CartesianGrid::computeGeometry()
         std::ostringstream ss;
         ss << m_definition.getZLabel(k) << " [" << std::fixed << std::setprecision(2)
            << (realZ >= 0 ? "+" : "") << realZ << " m]";
-        m_levelLabelAnchors.push_back({ transformPnt(lxDatum - 0.3, lyDatum, zVal), ss.str(), gp_Dir(0, 0, 1), true });
+        bool isBoldZ = m_definition.zIsBold(k);
+        m_levelLabelAnchors.push_back({ transformPnt(lxDatum - 0.3, lyDatum, zVal), ss.str(), gp_Dir(0, 0, 1), true, isBoldZ });
 
         // Cadre périmétrique du plancher au niveau Z_k
         gp_Pnt c1 = transformPnt(minLx, minLy, zVal);
