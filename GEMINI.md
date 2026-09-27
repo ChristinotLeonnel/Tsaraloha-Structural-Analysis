@@ -25,3 +25,20 @@ corrigée dans le document concerné.
 Documentation additionnelle déjà présente dans le dépôt (à ne pas remplacer) :
 `DOCUMENTATION.md`, `README.md`, `docs/TSALIB_SYSTEM.md`, `docs/TSA_DIAGNOSTICS.md`,
 `docs/TSA_FILE_FORMAT.md`, `docs/cable-system/`.
+
+## Méthode obligatoire pour Gemini
+
+```text
+ANALYZE → IDENTIFY RESPONSIBILITY → CHECK EXISTING ARCHITECTURE → PLAN → IMPLEMENT → BUILD → TEST → VERIFY
+```
+
+- **Recherche préalable systématique :**
+  - `SEARCH EXISTING CODE` avant d'écrire du code.
+  - `CHECK WHETHER AN EQUIVALENT CLASS ALREADY EXISTS` avant de créer une classe.
+  - `CHECK WHETHER AN EXISTING SYSTEM CAN BE EXTENDED` avant de créer un système.
+- **Hiérarchie absolue des priorités :**
+  ```text
+  CORRECTNESS → ARCHITECTURE → MAINTAINABILITY → TESTABILITY → PERFORMANCE → Taille du code
+  ```
+- **Échelle de surveillance :**
+  - `< 300` : confortable | `300-600` : normale | `600-1000` : surveiller | `> 1000` : analyser | `> 2000` : refactoriser | `> 5000` : monolithique.

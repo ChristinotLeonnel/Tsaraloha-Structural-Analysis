@@ -51,6 +51,19 @@ la même représentation graphique (et de perdre leur indépendance lors d'une f
 - Les plans de coupe (`Graphic3d_ClipPlane`) sont un outil de visualisation : ils ne
   modifient jamais le modèle structural sous-jacent.
 
+## Responsabilité et modularité de la vue 3D (`OccView`)
+
+- `OccView` est un composant de **présentation visuelle et d'interaction 3D**.
+- Ne pas y concentrer :
+  - des calculs métier ou normatifs (ex. Eurocodes) ;
+  - des calculs géométriques complexes qui appartiennent à `CoordinateTransformationService`
+    ou aux `*Geometry` builders ;
+  - la logique de commande ou d'annulation (qui appartient à `src/Commands` et `src/UndoRedo`).
+- Pour les manipulations interactives 3D (Gizmo, déplacement temporaire de plan de travail ou d'éléments) :
+  - Privilégier les transformations locales d'affichage (`SetLocalTransformation`) pour éviter
+    tout re-maillage ou reconstruction géométrique lourde pendant le drag de la souris.
+  - La reconstruction géométrique complète n'intervient qu'à la validation finale de l'opération.
+
 ## Vérification
 
 `TODO: VERIFY IN SOURCE` pour le détail interne de chaque `*Geometry` builder et pour la

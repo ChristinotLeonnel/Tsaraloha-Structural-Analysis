@@ -15,13 +15,16 @@ SEARCH
 → UNDERSTAND
 → TRACE DEPENDENCIES
 → IDENTIFY SOURCE OF TRUTH
+→ CHECK MODULARITY & RESPONSIBILITY
 → PLAN
 ```
 
 ### 1. SEARCH
 
 - Chercher par nom métier (français et anglais si pertinent) dans `src/` : classes,
-  fonctions, fichiers déjà liés au sujet.
+  fonctions, fichiers déjà liés au sujet (`SEARCH EXISTING CODE`).
+- Vérifier si une classe équivalente existe déjà (`CHECK WHETHER AN EQUIVALENT CLASS ALREADY EXISTS`).
+- Vérifier si un système existant peut être étendu (`CHECK WHETHER AN EXISTING SYSTEM CAN BE EXTENDED`).
 - Vérifier aussi `docs/`, `AGENTS.md`, `.agents/rules/` pour du contexte déjà documenté.
 - Ne pas se limiter au dossier qui semble évident : un sujet « section » touche
   `src/Model/Section.*`, `src/UI/Properties`, `src/ExtensionSystem` (TSALib) et
@@ -46,7 +49,20 @@ SEARCH
 - Si la source de vérité semble être ailleurs, c'est un signal d'anomalie architecturale à
   signaler avant de construire dessus (voir agent `architecture-reviewer`).
 
-### 5. PLAN
+### 5. CHECK MODULARITY & RESPONSIBILITY
+
+- Vérifier que la classe/fonction cible a une responsabilité unique clairement délimitée.
+- Comparer la taille du fichier à l'échelle de surveillance :
+  - `< 300` : confortable
+  - `300–600` : normale
+  - `600–1 000` : surveiller la responsabilité
+  - `> 1 000` : analyser opportunité de découpage
+  - `> 2 000` : refactorisation à envisager
+  - `> 5 000` : analyse architecturale obligatoire
+- Si un découpage est envisagé, appliquer le protocole en 9 points (responsabilité, dépendances,
+  appels entrants/sortants, signaux Qt, OCCT, tests, CMake, risque de régression).
+
+### 6. PLAN
 
 - Écrire un plan court avant d'implémenter : fichiers à modifier, fichiers à créer, tests
   à ajouter/adapter, impact sur la synchronisation UI/Model/Geometry/3D.

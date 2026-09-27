@@ -21,6 +21,25 @@ applies_to: ["src/**", "tests/**", "CMakeLists.txt", "cmake/**", "CMakePresets.j
 - Headers : suivre la convention déjà en place (`#pragma once`, forward declarations pour
   limiter les inclusions croisées, ex. `class Model;` `struct Section;` dans `Element.h`).
 
+## Modularité et conception des fonctions
+
+- **Responsabilité unique de fonction** : chaque fonction doit réaliser une tâche clairement
+  identifiable.
+  - Éviter de combiner dans la même fonction : UI + validation + mutation du modèle + création
+    de forme OCCT + sauvegarde disque.
+  - Séparer le calcul géométrique ou métier pur du code d'affichage ou d'orchestration.
+- **Taille et lisibilité** :
+  - Ne jamais compresser artificiellement le code (pas de lignes condensées illisibles, pas de
+    macros obscures pour masquer du code).
+  - Éviter les fonctions géantes (> 100 lignes) accumulant des embranchements et des états
+    temporaires multiples.
+  - Ne pas sur-découper artificiellement : ne pas créer des dizaines de fonctions minuscules
+    d'une ligne sans gain d'abstraction ou de testabilité.
+- **Hiérarchie de qualité** :
+  ```text
+  CORRECTNESS → ARCHITECTURE → MAINTAINABILITY → TESTABILITY → PERFORMANCE → Taille du code
+  ```
+
 ## CMake
 
 - Le projet utilise `CMakeLists.txt` à la racine + `CMakePresets.json` + scripts

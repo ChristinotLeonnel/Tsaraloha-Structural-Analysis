@@ -24,22 +24,43 @@ Stack réelle du dépôt :
 - Visual Studio / MSVC (toolchain principale), MinGW-w64 (alternative)
 - Système d'extensions dynamique **TSALib** (bibliothèques de sections/matériaux chargées à chaud)
 
-## Méthode obligatoire
+## Méthode obligatoire pour tout agent (Gemini, Claude, autres)
 
-Pour toute tâche significative (ajout de fonctionnalité, correction de bug non trivial,
-modification d'architecture) :
+À chaque nouvelle tâche ou modification significative :
 
 ```text
 ANALYZE
-→ PLAN
-→ IMPLEMENT
-→ BUILD
-→ TEST
-→ VERIFY
+   ↓
+IDENTIFY RESPONSIBILITY
+   ↓
+CHECK EXISTING ARCHITECTURE
+   ↓
+PLAN
+   ↓
+IMPLEMENT
+   ↓
+BUILD
+   ↓
+TEST
+   ↓
+VERIFY
 ```
 
-Ne jamais sauter directement à IMPLEMENT sur une tâche non triviale. Utiliser le skill
-`analyze-project` en phase ANALYZE si le contexte n'est pas déjà clair.
+Ne jamais sauter directement à `IMPLEMENT` sur une tâche non triviale. Utiliser le skill
+`analyze-project` en phase `ANALYZE` si le contexte n'est pas déjà clair.
+
+Avant d'ajouter du code :
+```text
+SEARCH EXISTING CODE
+```
+Avant de créer une classe :
+```text
+CHECK WHETHER AN EQUIVALENT CLASS ALREADY EXISTS
+```
+Avant de créer un système :
+```text
+CHECK WHETHER AN EXISTING SYSTEM CAN BE EXTENDED
+```
 
 ## Règle fondamentale — Réutiliser avant de créer
 
@@ -53,6 +74,178 @@ Avant de créer une nouvelle classe, interface, bibliothèque ou abstraction :
 Cette règle rejoint et renforce la « Recherche Préalable Obligatoire sur Internet » définie
 plus bas dans ce fichier : ici il s'agit de réutilisation **interne** (code déjà présent dans
 TSA), là-bas de réutilisation **externe** (bibliothèques tierces).
+
+## Règle de modularité et taille du code
+
+Il n'existe pas de limite absolue de lignes de code pour un fichier, une classe ou une fonction.
+
+La taille du code doit être évaluée en fonction de la **responsabilité**, de la **complexité**,
+du **couplage**, de la **testabilité** et de la **lisibilité**.
+
+Une classe ou une fonction doit être découpée lorsque sa responsabilité devient difficile à
+comprendre, tester, maintenir ou modifier.
+
+Éviter les fichiers monolithiques.
+
+Lorsqu'un fichier dépasse environ **1 000 lignes**, effectuer systématiquement une analyse pour
+déterminer si une séparation cohérente est possible.
+
+Cette limite de 1 000 lignes est un **signal d'analyse et non une limite absolue**.
+
+Ne jamais réduire artificiellement le nombre de lignes simplement pour respecter une métrique.
+Il vaut mieux conserver un fichier plus long mais cohérent que créer plusieurs petites classes
+artificielles ou fortement couplées.
+
+### Échelle de surveillance
+
+```text
+< 300 lignes
+→ taille généralement confortable
+
+300–600 lignes
+→ normale
+
+600–1 000 lignes
+→ surveiller la responsabilité
+
+> 1 000 lignes
+→ analyser systématiquement la possibilité de découpage
+
+> 2 000 lignes
+→ refactorisation à envisager sérieusement
+
+> 5 000 lignes
+→ fichier potentiellement monolithique ; analyse architecturale obligatoire
+```
+
+**IMPORTANT :** Ces valeurs sont des **indicateurs**, pas des règles mécaniques. Ne jamais
+découper un fichier uniquement parce qu'il dépasse une valeur numérique.
+
+## Règle de responsabilité unique (Single Responsibility Principle)
+
+Une classe doit avoir une **responsabilité principale clairement identifiable**.
+
+Exemples TSA :
+- `Beam` → représente une poutre (données métier)
+- `Column` → représente un poteau (données métier)
+- `Cable` → représente un câble (données métier)
+- `Section` → représente une section transversale
+- `BeamGeometry` → construit la géométrie 3D d'une poutre
+- `SelectionManager` → gère la sélection dans le viewport
+- `WorkPlaneManager` → gère les plans de travail multiples
+
+Éviter une classe monolithique du type `MainWindow` qui contiendrait simultanément :
+```text
+UI + modèle structural + calcul + géométrie OCCT + sélection + sauvegarde + undo/redo + gestion des matériaux
+```
+Si ce type de concentration existe déjà dans le code hérité, l'analyser soigneusement avant de
+la modifier ou d'y ajouter de nouvelles responsabilités.
+
+## Règle pour les fonctions
+
+Une fonction doit réaliser une **tâche clairement identifiable**.
+
+Si une fonction contient plusieurs responsabilités indépendantes :
+```text
+UI + validation + modification du modèle + création OCCT + sauvegarde
+```
+chercher à séparer les responsabilités.
+
+Mais ne pas créer automatiquement une multitude de petites fonctions sans valeur architecturale
+(pas de morcellement excessif au détriment de la lisibilité).
+
+## Règle de couplage et flux architectural
+
+Lors d'un nouveau développement, éviter absolument les raccourcis de couplage :
+- ❌ `UI → OCCT` directement
+- ❌ `UI → fichier (.tsa)` directement
+- ❌ `UI → moteur de calcul (solveur)` directement
+- ❌ `UI → données internes du modèle` directement (contournant les commandes)
+
+Préférer, lorsque l'architecture existante le permet :
+```text
+UI
+ ↓
+Command / Application (ICommand, CommandManager)
+ ↓
+Structural Model (TSA::Model::Model — Source de vérité)
+ ↓
+Geometry (*Geometry builders)
+ ↓
+OCCT (AIS_Shape, OccView)
+```
+
+Et pour le calcul :
+```text
+Structural Model
+ ↓
+Analysis Model
+ ↓
+Solver / OpenSees Adapter
+ ↓
+Results
+```
+
+Le modèle structural reste en toute circonstance la **source de vérité unique**.
+
+## Règle de refactorisation sécurisée
+
+Ne jamais faire un grand refactoring sans nécessité démontrée.
+
+Avant de découper une classe ou un fichier volumineux :
+1. identifier sa responsabilité ;
+2. identifier ses dépendances ;
+3. identifier les appels entrants ;
+4. identifier les appels sortants ;
+5. vérifier les signaux/slots Qt ;
+6. vérifier les références OCCT ;
+7. vérifier les tests unitaires existants ;
+8. vérifier CMake (`CMakeLists.txt`) ;
+9. déterminer le risque de régression.
+
+Puis seulement proposer ou appliquer le découpage.
+
+## Objectifs des futures modifications
+
+Ne cherche jamais à minimiser le nombre de lignes de code comme objectif principal.
+
+Le but est :
+```text
+Maintenabilité + Lisibilité + Modularité + Faible couplage + Testabilité + Cohérence architecturale
+```
+et non :
+```text
+Nombre de lignes minimal
+```
+
+Éviter notamment :
+- le code artificiellement compressé ou obscurci ;
+- les fonctions gigantesques à effets de bord multiples ;
+- les classes fourre-tout ;
+- les abstractions inutiles et couches d'indirection vides ;
+- la duplication de code métier ou géométrique ;
+- les classes créées uniquement pour faire baisser artificiellement une métrique de lignes ;
+- les fichiers séparés sans responsabilité propre.
+
+## Règle absolue de priorité
+
+Ne jamais modifier le comportement fonctionnel de TSA uniquement pour respecter une métrique
+de lignes de code.
+
+La priorité stricte est toujours :
+```text
+CORRECTNESS
+   ↓
+ARCHITECTURE
+   ↓
+MAINTAINABILITY
+   ↓
+TESTABILITY
+   ↓
+PERFORMANCE
+   ↓
+Taille du code
+```
 
 ## Architecture réelle du dépôt
 

@@ -60,6 +60,23 @@ via un signal Qt relayant une notification de `IModelObserver`).
   `IModelObserver` (ajout/modification/suppression), ne pas maintenir une copie
   indépendante de la liste des éléments.
 
+## Responsabilité des classes UI et découplage
+
+- **Éviter le syndrome de la `MainWindow` monolithique** :
+  - `MainWindow` doit orchestrer les composants majeurs (menus, dock widgets, status bar)
+    sans implémenter directement : la géométrie OCCT, le solveur de calcul, la sérialisation
+    binaire, la logique d'algorithme métier, ou la gestion détaillée des matériaux.
+  - Déporter les logiques spécialisées dans des contrôleurs, services ou gestionnaires dédiés
+    (ex. `ProjectManager` pour le projet, `CommandManager` pour les actions, `WorkPlaneManager`
+    pour les plans de travail).
+- **Interdictions de couplage UI** :
+  - ❌ Pas de création de `TopoDS_Shape` ou manipulation directe d'`AIS_InteractiveContext`
+    dans les fenêtres ou dialogues UI.
+  - ❌ Pas de lecture/écriture directe de fichiers disque dans un widget sans passer par la couche
+    `IO` ou `ProjectManager`.
+  - ❌ Pas d'exécution de solveur FEM directement dans un callback de bouton sans abstraction
+    `Analysis`.
+
 ## Vérification
 
 `TODO: VERIFY IN SOURCE` pour le détail exact des signals exposés par `PropertyPanel` et

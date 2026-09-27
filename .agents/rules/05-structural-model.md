@@ -54,6 +54,18 @@ Ne jamais introduire une classe (`Truss`, `Frame`, `Panel`, etc.) qui n'existe p
 `src/Model` sans vérification explicite au préalable — utiliser le skill
 `analyze-project` pour confirmer l'absence avant de proposer une nouvelle classe.
 
+## Pureté du modèle et séparation stricte
+
+- Le modèle structural est la **source de vérité absolue**.
+- `src/Model` doit rester strictement découplé de la présentation :
+  - ❌ Pas d'inclusion de headers OCCT (`AIS_*`, `V3d_*`, `TopoDS_*`) dans les entités du modèle.
+  - ❌ Pas d'inclusion de widgets Qt (`QWidget`, `QDialog`, `QMainWindow`).
+  - L'observation du modèle vers l'affichage se fait exclusivement via l'interface abstraite
+    `IModelObserver`.
+- Les entités structurales (`Beam`, `Column`, `Cable`, `TrussMember`, `Slab`, `Wall`, `Foundation`)
+  représentent fidèlement les objets de génie civil et ne doivent jamais être dégradées ou
+  fusionnées arbitrairement pour simplifier une implémentation.
+
 ## Vérification
 
 `TODO: VERIFY IN SOURCE` pour le contenu détaillé de `Node`, `Foundation`, `ModelDiff`, et

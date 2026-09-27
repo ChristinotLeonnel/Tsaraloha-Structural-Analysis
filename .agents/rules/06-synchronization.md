@@ -55,6 +55,20 @@ Le `Model` est la source de vérité unique. Si une divergence apparaît entre U
 3D, identifier la **première couche** où la divergence apparaît (voir skill
 `verify-sync`) plutôt que de corriger le symptôme dans la couche où il est visible.
 
+## Synchronisation des Plans de Travail et Repères Locaux (LCS)
+
+- Les plans de travail (`WorkPlane`) et repères locaux (`CoordinateTransformationService`) suivent
+  le même contrat de synchronisation :
+  ```text
+  UI (WorkPlanePropertiesView) ↔ WorkPlaneManager ↔ OccView (AIS_Manipulator / Gizmo 3D)
+  ```
+- Les modifications numériques dans l'UI mettent à jour la position/orientation 3D sans
+  reconstruction globale de la scène.
+  Inversement, la manipulation interactive dans le viewport 3D met à jour en temps réel les
+  champs du panneau de propriétés.
+- L'annulation/rétablissement (Undo/Redo) d'un déplacement de plan ou d'élément restaure
+  l'exact état antérieur sans résidu graphique.
+
 ## Vérification
 
 `TODO: VERIFY IN SOURCE` pour la chaîne exacte de propagation entre `IModelObserver` et les

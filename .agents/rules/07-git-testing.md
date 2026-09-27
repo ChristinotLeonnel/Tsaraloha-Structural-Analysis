@@ -30,12 +30,15 @@ applies_to: ["**"]
 ## Tests
 
 - Suite existante : `tests/test_coordinates.cpp`, exécutée via la cible `TSA_Tests`
-  (`add_test(NAME CoordinatesAndLevelsTest COMMAND TSA_Tests)`), état de référence au
-  moment de la mise en place de ce framework : 48/48 tests PASS (voir `README.md`).
-- Toute modification de `src/Coordinate/**` ou de code exercé par cette suite doit être
-  validée par une exécution de `TSA_Tests` avant d'être considérée terminée.
-- Si une fonctionnalité nouvelle n'a pas de test correspondant, l'ajouter dans
-  `tests/` plutôt que de valider uniquement « à l'œil » dans l'UI.
+  (`add_test(NAME CoordinatesAndLevelsTest COMMAND TSA_Tests)`), état de référence actuel :
+  **52/52 tests PASS** (exécutable `build/Release/TSA_TestSuite.exe`).
+- Toute modification du modèle, des coordonnées, des grilles, de la persistance ou d'un
+  refactoring doit obligatoirement préserver le passage à 100% de cette suite (52/52 PASS).
+- **Règle absolue sur les tests :** Ne jamais commenter, désactiver ou affaiblir un test
+  existant pour faire passer une modification ou un refactoring. Corriger le code jusqu'à
+  satisfaction complète du banc d'essais.
+- Si une fonctionnalité nouvelle n'a pas de test correspondant, l'ajouter systématiquement
+  dans `tests/`.
 
 ## Régressions
 
