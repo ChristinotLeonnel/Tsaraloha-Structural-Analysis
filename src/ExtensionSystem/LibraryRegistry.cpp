@@ -48,10 +48,35 @@ const MaterialDefinition* LibraryRegistry::findMaterial(const std::string& id) c
     auto it = m_materials.find(id);
     if (it != m_materials.end()) return &it->second;
 
+    // Remplacement direct de '.' par '_'
+    std::string altUnderscore = id;
+    std::replace(altUnderscore.begin(), altUnderscore.end(), '.', '_');
+    auto itAlt1 = m_materials.find(altUnderscore);
+    if (itAlt1 != m_materials.end()) return &itAlt1->second;
+
+    // Remplacement du 1er point seulement (ex: concrete.c25_30 -> concrete_c25_30)
+    std::string altFirst = id;
+    size_t firstDot = altFirst.find('.');
+    if (firstDot != std::string::npos)
+    {
+        altFirst[firstDot] = '_';
+        auto itAlt2 = m_materials.find(altFirst);
+        if (itAlt2 != m_materials.end()) return &itAlt2->second;
+    }
+
     std::string lId = toLower(id);
+    std::string normId = lId;
+    std::replace(normId.begin(), normId.end(), '_', '.');
+
     for (const auto& [k, mat] : m_materials)
     {
         if (toLower(k) == lId || toLower(mat.id) == lId || toLower(mat.name) == lId)
+        {
+            return &mat;
+        }
+        std::string normK = toLower(k);
+        std::replace(normK.begin(), normK.end(), '_', '.');
+        if (normK == normId)
         {
             return &mat;
         }
@@ -64,6 +89,25 @@ const SectionDefinition* LibraryRegistry::findSection(const std::string& id) con
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_sections.find(id);
     if (it != m_sections.end()) return &it->second;
+
+    std::string lId = toLower(id);
+    for (const auto& [k, sec] : m_sections)
+    {
+        if (toLower(k) == lId || toLower(sec.id) == lId || toLower(sec.name) == lId)
+        {
+            return &sec;
+        }
+    }
+
+    // Essai sans préfixe catégorie ex: "steel.ipe200" -> "ipe200"
+    size_t dotPos = id.find('.');
+    if (dotPos != std::string::npos)
+    {
+        std::string stripped = id.substr(dotPos + 1);
+        auto itStrip = m_sections.find(stripped);
+        if (itStrip != m_sections.end()) return &itStrip->second;
+    }
+
     return nullptr;
 }
 
@@ -72,6 +116,24 @@ const CableCatalogDefinition* LibraryRegistry::findCable(const std::string& id) 
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_cables.find(id);
     if (it != m_cables.end()) return &it->second;
+
+    std::string lId = toLower(id);
+    for (const auto& [k, cab] : m_cables)
+    {
+        if (toLower(k) == lId || toLower(cab.id) == lId || toLower(cab.name) == lId)
+        {
+            return &cab;
+        }
+    }
+
+    size_t dotPos = id.find('.');
+    if (dotPos != std::string::npos)
+    {
+        std::string stripped = id.substr(dotPos + 1);
+        auto itStrip = m_cables.find(stripped);
+        if (itStrip != m_cables.end()) return &itStrip->second;
+    }
+
     return nullptr;
 }
 

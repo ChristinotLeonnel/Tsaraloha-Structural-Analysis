@@ -63,10 +63,19 @@ public:
     // Liste des manifests installés
     std::vector<ExtensionManifest> installedExtensions() const;
 
-    // Recherches rapides déléguées
-    const MaterialDefinition* findMaterial(const std::string& id) const { return LibraryRegistry::instance().findMaterial(id); }
-    const SectionDefinition* findSection(const std::string& id) const { return LibraryRegistry::instance().findSection(id); }
-    const CableCatalogDefinition* findCable(const std::string& id) const { return LibraryRegistry::instance().findCable(id); }
+    // Mode de chargement paresseux (Lazy Loading On-Demand)
+    void setLazyLoadingEnabled(bool enabled) { m_lazyLoadingEnabled = enabled; }
+    bool isLazyLoadingEnabled() const { return m_lazyLoadingEnabled; }
+
+    bool loadOnDemand(const std::string& id);
+    bool isIndexed(const std::string& id) const;
+    bool isLoaded(const std::string& id) const;
+    size_t indexedDefinitionsCount() const;
+
+    // Recherches rapides déléguées (avec chargement à la demande si lazy loading actif)
+    const MaterialDefinition* findMaterial(const std::string& id) const;
+    const SectionDefinition* findSection(const std::string& id) const;
+    const CableCatalogDefinition* findCable(const std::string& id) const;
 
 signals:
     void librariesDiscovered(int count);
@@ -92,6 +101,7 @@ private:
 
     std::map<std::string, ExtensionManifest> m_manifests;
     std::map<std::string, QString> m_extensionPaths; // id -> directoryPath
+    bool m_lazyLoadingEnabled = true;
 };
 
 } // namespace TSA::ExtensionSystem

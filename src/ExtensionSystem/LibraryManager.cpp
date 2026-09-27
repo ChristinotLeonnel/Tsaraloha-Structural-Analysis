@@ -201,4 +201,93 @@ std::vector<ExtensionManifest> LibraryManager::installedExtensions() const
     return res;
 }
 
+bool LibraryManager::loadOnDemand(const std::string& id)
+{
+    bool ok = m_loader.loadDefinitionById(id);
+    if (ok)
+    {
+        emit definitionsChanged();
+    }
+    return ok;
+}
+
+bool LibraryManager::isIndexed(const std::string& id) const
+{
+    const auto& idx = m_loader.index();
+    if (idx.find(id) != idx.end()) return true;
+
+    std::string alt = id;
+    if (alt.find('.') != std::string::npos)
+    {
+        std::replace(alt.begin(), alt.end(), '.', '_');
+        if (idx.find(alt) != idx.end()) return true;
+    }
+    else if (alt.find('_') != std::string::npos)
+    {
+        std::replace(alt.begin(), alt.end(), '_', '.');
+        if (idx.find(alt) != idx.end()) return true;
+    }
+    return false;
+}
+
+bool LibraryManager::isLoaded(const std::string& id) const
+{
+    const auto& idx = m_loader.index();
+    auto it = idx.find(id);
+    if (it != idx.end() && it->second.isLoaded) return true;
+
+    std::string alt = id;
+    if (alt.find('.') != std::string::npos)
+    {
+        std::replace(alt.begin(), alt.end(), '.', '_');
+        auto itAlt = idx.find(alt);
+        if (itAlt != idx.end() && itAlt->second.isLoaded) return true;
+    }
+    else if (alt.find('_') != std::string::npos)
+    {
+        std::replace(alt.begin(), alt.end(), '_', '.');
+        auto itAlt = idx.find(alt);
+        if (itAlt != idx.end() && itAlt->second.isLoaded) return true;
+    }
+    return false;
+}
+
+size_t LibraryManager::indexedDefinitionsCount() const
+{
+    return m_loader.index().size();
+}
+
+const MaterialDefinition* LibraryManager::findMaterial(const std::string& id) const
+{
+    const auto* mat = LibraryRegistry::instance().findMaterial(id);
+    if (!mat && m_lazyLoadingEnabled)
+    {
+        const_cast<LibraryManager*>(this)->loadOnDemand(id);
+        mat = LibraryRegistry::instance().findMaterial(id);
+    }
+    return mat;
+}
+
+const SectionDefinition* LibraryManager::findSection(const std::string& id) const
+{
+    const auto* sec = LibraryRegistry::instance().findSection(id);
+    if (!sec && m_lazyLoadingEnabled)
+    {
+        const_cast<LibraryManager*>(this)->loadOnDemand(id);
+        sec = LibraryRegistry::instance().findSection(id);
+    }
+    return sec;
+}
+
+const CableCatalogDefinition* LibraryManager::findCable(const std::string& id) const
+{
+    const auto* cab = LibraryRegistry::instance().findCable(id);
+    if (!cab && m_lazyLoadingEnabled)
+    {
+        const_cast<LibraryManager*>(this)->loadOnDemand(id);
+        cab = LibraryRegistry::instance().findCable(id);
+    }
+    return cab;
+}
+
 } // namespace TSA::ExtensionSystem

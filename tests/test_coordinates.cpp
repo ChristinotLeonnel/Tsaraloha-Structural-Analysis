@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 45;
+    int total = 46;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -5050,6 +5050,159 @@ int main(int argc, char* argv[])
         std::cout << "  [PASS] Subtest 45.4: Detection de Derive Normative & Garantie de Reproductibilite Validees" << std::endl;
 
         std::cout << "[PASS] Test 45: TSALib Phase 8 - Versioning & Snapshots de Calcul dans le format .tsa (4 Subtests Valides) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 46: TSALib Phase 9 - Optimisation : Lazy Loading & Cache Multi-Niveaux
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 46: TSALib Phase 9 - Optimisation : Lazy Loading & Cache Multi-Niveaux ---" << std::endl;
+
+        // 46.1: Benchmark d'Indexation Ultra-Rapide au Demarrage (< 50 ms)
+        auto& reg = TSA::ExtensionSystem::LibraryRegistry::instance();
+        reg.clear();
+
+        TSA::ExtensionSystem::LibraryManager testLibMgr;
+        testLibMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+
+        auto t0 = std::chrono::high_resolution_clock::now();
+        auto manifests = testLibMgr.discover();
+        auto t1 = std::chrono::high_resolution_clock::now();
+        double durationMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
+
+        TEST_CHECK(!manifests.empty(), "Subtest 46.1: Au moins 1 manifest decouvert");
+        TEST_CHECK(durationMs < 50.0, "Subtest 46.1: Duree d'indexation au demarrage < 50 ms");
+        TEST_CHECK(testLibMgr.indexedDefinitionsCount() >= 57, "Subtest 46.1: Au moins 57 definitions indexees");
+
+        // Verification du principe fondamental du Lazy Loading : AUCUN parsing complet effectue
+        TEST_CHECK(reg.materialCount() == 0, "Subtest 46.1: 0 materiaux charges prematurement");
+        TEST_CHECK(reg.sectionCount() == 0, "Subtest 46.1: 0 sections chargees prematurement");
+        TEST_CHECK(reg.cableCount() == 0, "Subtest 46.1: 0 cables charges prematurement");
+
+        TEST_CHECK(testLibMgr.isIndexed("concrete.c25_30"), "Subtest 46.1: concrete.c25_30 indexe");
+        TEST_CHECK(!testLibMgr.isLoaded("concrete.c25_30"), "Subtest 46.1: concrete.c25_30 non charge");
+        TEST_CHECK(testLibMgr.isIndexed("ipe200") || testLibMgr.isIndexed("steel.ipe200"), "Subtest 46.1: steel.ipe200 indexe");
+        TEST_CHECK(!testLibMgr.isLoaded("ipe200") && !testLibMgr.isLoaded("steel.ipe200"), "Subtest 46.1: steel.ipe200 non charge");
+        TEST_CHECK(testLibMgr.isIndexed("stay_pss_19_15_7"), "Subtest 46.1: stay_pss_19_15_7 indexe");
+        TEST_CHECK(!testLibMgr.isLoaded("stay_pss_19_15_7"), "Subtest 46.1: stay_pss_19_15_7 non charge");
+
+        std::cout << "  [PASS] Subtest 46.1: Indexation Rapide au Demarrage (" << durationMs << " ms < 50 ms) & Zero Parsing Premature Validees" << std::endl;
+
+        // 46.2: Resolution et Chargement a la Demande (On-Demand Lazy Loading)
+        const auto* loadedMat = testLibMgr.findMaterial("concrete.c25_30");
+        TEST_CHECK(loadedMat != nullptr, "Subtest 46.2: Definition concrete.c25_30 resolue a la demande");
+        if (loadedMat)
+        {
+            TEST_CHECK(loadedMat->name == "Concrete C25/30" || loadedMat->name == "C25/30", "Subtest 46.2: Nom du materiau conforme");
+            TEST_CHECK(testLibMgr.isLoaded("concrete.c25_30"), "Subtest 46.2: Statut passe a isLoaded=true");
+            TEST_CHECK(reg.materialCount() == 1, "Subtest 46.2: Exactement 1 materiau en memoire dans le registre");
+        }
+
+        const auto* loadedSec = testLibMgr.findSection("ipe200");
+        if (!loadedSec) loadedSec = testLibMgr.findSection("steel.ipe200");
+        TEST_CHECK(loadedSec != nullptr, "Subtest 46.2: Definition ipe200 resolue a la demande");
+        if (loadedSec)
+        {
+            TEST_CHECK(loadedSec->name == "IPE 200", "Subtest 46.2: Nom de la section conforme");
+            TEST_CHECK(testLibMgr.isLoaded("ipe200") || testLibMgr.isLoaded("steel.ipe200"), "Subtest 46.2: Statut passe a isLoaded=true");
+            TEST_CHECK(reg.sectionCount() == 1, "Subtest 46.2: Exactement 1 section en memoire dans le registre");
+        }
+
+        const auto* loadedCab = testLibMgr.findCable("stay_pss_19_15_7");
+        TEST_CHECK(loadedCab != nullptr, "Subtest 46.2: Definition stay_pss_19_15_7 resolue a la demande");
+        if (loadedCab)
+        {
+            TEST_CHECK(loadedCab->name == "Stay PSS 19x15.7mm", "Subtest 46.2: Nom du cable conforme");
+            TEST_CHECK(testLibMgr.isLoaded("stay_pss_19_15_7"), "Subtest 46.2: Statut passe a isLoaded=true");
+            TEST_CHECK(reg.cableCount() == 1, "Subtest 46.2: Exactement 1 cable en memoire dans le registre");
+        }
+
+        // Test d'un ID inexistant
+        TEST_CHECK(testLibMgr.findMaterial("unknown.mat.xyz") == nullptr, "Subtest 46.2: ID inconnu retourne nullptr");
+
+        std::cout << "  [PASS] Subtest 46.2: Resolution et Chargement a la Demande (On-Demand) Validees" << std::endl;
+
+        // 46.3: Cache Multi-Niveaux Haute Performance & Telemetrie
+        auto& cache = TSA::ExtensionSystem::LibraryCache::instance();
+        cache.clear();
+        cache.resetMetrics();
+
+        TSA::Model::Material sampleMat = TSA::Model::Material::concreteC25_30();
+        TSA::Model::Section sampleSec = TSA::Model::Section::rectangular(0.30, 0.50);
+        TSA::Model::CableDefinition sampleCab = TSA::Model::CableDefinition::strandY1860S7_15_7();
+        TSA::ExtensionSystem::MechanicalSnapshot sampleSnap;
+        sampleSnap.youngModulus = 31.0e9;
+
+        cache.putSnapshot("org.tsaraloha.tsalib:concrete.c25_30", sampleSnap);
+        cache.putMaterial("mat:c25_30", sampleMat);
+        cache.putSection("sec:rect_300x500", sampleSec);
+        cache.putCable("cab:t15_7", sampleCab);
+
+        TEST_CHECK(cache.snapshotCount() == 1, "Subtest 46.3: 1 snapshot en cache");
+        TEST_CHECK(cache.materialCount() == 1, "Subtest 46.3: 1 materiau en cache");
+        TEST_CHECK(cache.sectionCount() == 1, "Subtest 46.3: 1 section en cache");
+        TEST_CHECK(cache.cableCount() == 1, "Subtest 46.3: 1 cable en cache");
+
+        // Acces avec succes (Cache Hits)
+        const auto* hitSnap = cache.getSnapshot("org.tsaraloha.tsalib:concrete.c25_30");
+        const auto* hitMat = cache.getMaterial("mat:c25_30");
+        const auto* hitSec = cache.getSection("sec:rect_300x500");
+        const auto* hitCab = cache.getCable("cab:t15_7");
+
+        TEST_CHECK(hitSnap != nullptr, "Subtest 46.3: Hit snapshot");
+        TEST_CHECK(hitMat != nullptr, "Subtest 46.3: Hit material");
+        TEST_CHECK(hitSec != nullptr, "Subtest 46.3: Hit section");
+        TEST_CHECK(hitCab != nullptr, "Subtest 46.3: Hit cable");
+
+        // Acces infructueux (Cache Miss)
+        const auto* missMat = cache.getMaterial("mat:missing");
+        TEST_CHECK(missMat == nullptr, "Subtest 46.3: Miss material");
+
+        TEST_CHECK(cache.hitCount() == 4, "Subtest 46.3: 4 Cache Hits enregistres");
+        TEST_CHECK(cache.missCount() == 1, "Subtest 46.3: 1 Cache Miss enregistre");
+        TEST_CHECK(approxEqual(cache.hitRatio(), 4.0 / 5.0), "Subtest 46.3: Hit Ratio = 80%");
+
+        // Invalidation selective
+        cache.invalidate("c25_30");
+        TEST_CHECK(cache.getMaterial("mat:c25_30") == nullptr, "Subtest 46.3: Materiau invalide et purge");
+        TEST_CHECK(cache.getSection("sec:rect_300x500") != nullptr, "Subtest 46.3: Section preservee apres invalidation selective");
+
+        std::cout << "  [PASS] Subtest 46.3: Cache Multi-Niveaux & Telemetrie (Hit Ratio = 80%) Valides" << std::endl;
+
+        // 46.4: Cache de Solides 3D B-Rep OpenCASCADE (TopoDS_Shape)
+        TSA::Model::Model geomModel;
+        int gn1 = geomModel.addNode(0.0, 0.0, 0.0);
+        int gn2 = geomModel.addNode(0.0, 0.0, 4.0);
+        int colId = geomModel.addColumn(gn1, gn2, 0.30, 0.30, "Poteau Cache Test");
+        const auto* colElem = geomModel.getColumn(colId);
+        const auto* startN = geomModel.getNode(gn1);
+        const auto* endN = geomModel.getNode(gn2);
+        TEST_CHECK(startN != nullptr && endN != nullptr, "Subtest 46.4: Noeuds du poteau valides");
+
+        TopoDS_Shape colShape = TSA::Geometry::BeamGeometry::createBeamShape(*startN, *endN, 0.30, 0.30);
+        TEST_CHECK(!colShape.IsNull(), "Subtest 46.4: Solide OpenCASCADE genere");
+
+        cache.putShape("column_solid_0.30x0.30_H4m", colShape);
+        TEST_CHECK(cache.hasShape("column_solid_0.30x0.30_H4m"), "Subtest 46.4: hasShape retourne true");
+        TEST_CHECK(cache.shapeCount() == 1, "Subtest 46.4: 1 solide 3D en cache");
+
+        TopoDS_Shape retrievedShape = cache.getShape("column_solid_0.30x0.30_H4m");
+        TEST_CHECK(!retrievedShape.IsNull(), "Subtest 46.4: Solide 3D recupere du cache avec succes");
+        TEST_CHECK(retrievedShape.ShapeType() == TopAbs_SOLID || retrievedShape.ShapeType() == TopAbs_COMPOUND,
+                   "Subtest 46.4: Type OpenCASCADE solide valide");
+
+        cache.clearShapes();
+        TEST_CHECK(cache.shapeCount() == 0, "Subtest 46.4: Cache de solides 3D purge avec clearShapes");
+        TEST_CHECK(!cache.hasShape("column_solid_0.30x0.30_H4m"), "Subtest 46.4: Shape purge");
+
+        // Rechargement complet de TSALib pour garantir l'etat final des registres
+        testLibMgr.load("org.tsaraloha.tsalib");
+        TEST_CHECK(reg.materialCount() >= 16, "Subtest 46.4: TSALib rechargee completement apres le test");
+
+        std::cout << "  [PASS] Subtest 46.4: Cache de Geometries 3D B-Rep OpenCASCADE Valide" << std::endl;
+
+        std::cout << "[PASS] Test 46: TSALib Phase 9 - Optimisation : Lazy Loading & Cache Multi-Niveaux (4 Subtests Valides) Passed Successfully!" << std::endl;
         passed++;
     }
 

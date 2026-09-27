@@ -135,16 +135,49 @@ void LibraryLoader::scanCategoryDirectory(const QString& dirPath, const std::str
         {
             m_fileIndex[defId] = entry;
         }
+
+        // Aliases intelligents: remplacer le 1er underscore par un point (ex: concrete_c25_30 -> concrete.c25_30)
+        size_t firstUnder = baseId.find('_');
+        if (firstUnder != std::string::npos)
+        {
+            std::string dotted = baseId;
+            dotted[firstUnder] = '.';
+            m_fileIndex[dotted] = entry;
+        }
+
+        if (dirPath.contains("Profiles", Qt::CaseInsensitive))
+        {
+            m_fileIndex["steel." + baseId] = entry;
+            m_fileIndex["steel_" + baseId] = entry;
+        }
     }
 }
 
 bool LibraryLoader::loadDefinitionById(const std::string& id)
 {
     auto it = m_fileIndex.find(id);
+    if (it == m_fileIndex.end())
+    {
+        // Essai alternatif : remplacer point par underscore
+        std::string alt = id;
+        std::replace(alt.begin(), alt.end(), '.', '_');
+        it = m_fileIndex.find(alt);
+    }
     if (it == m_fileIndex.end()) return false;
 
     auto& entry = it->second;
     if (entry.isLoaded) return true;
+
+    auto markLoaded = [this, &entry]() {
+        entry.isLoaded = true;
+        for (auto& [_, item] : m_fileIndex)
+        {
+            if (item.filePath == entry.filePath)
+            {
+                item.isLoaded = true;
+            }
+        }
+    };
 
     ValidationResult res;
     if (entry.category == "Materials")
@@ -153,7 +186,7 @@ bool LibraryLoader::loadDefinitionById(const std::string& id)
         if (mat && m_registry)
         {
             m_registry->registerMaterial(*mat);
-            entry.isLoaded = true;
+            markLoaded();
             return true;
         }
     }
@@ -163,7 +196,7 @@ bool LibraryLoader::loadDefinitionById(const std::string& id)
         if (sec && m_registry)
         {
             m_registry->registerSection(*sec);
-            entry.isLoaded = true;
+            markLoaded();
             return true;
         }
     }
@@ -173,7 +206,7 @@ bool LibraryLoader::loadDefinitionById(const std::string& id)
         if (cab && m_registry)
         {
             m_registry->registerCable(*cab);
-            entry.isLoaded = true;
+            markLoaded();
             return true;
         }
     }
