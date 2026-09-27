@@ -11,6 +11,7 @@
 namespace TSA::Model
 {
     struct Material;
+    struct Section;
 }
 
 namespace TSA::ExtensionSystem
@@ -118,6 +119,10 @@ struct SectionDefinition
 
     std::string defaultMaterialId; // ex: "steel.s235"
     VisualDefinition visual;
+
+    // Bridge de conversion avec TSA::Model::Section
+    TSA::Model::Section toModelSection(int fallbackId = 0) const;
+    static SectionDefinition fromModelSection(const TSA::Model::Section& sec, const std::string& libraryId = "org.tsaraloha.tsalib");
 
     static std::optional<SectionDefinition> fromJson(const QJsonObject& json, std::string* outError = nullptr);
     QJsonObject toJson() const;

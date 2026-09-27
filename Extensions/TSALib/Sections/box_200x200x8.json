@@ -1,0 +1,42 @@
+{
+    "id":  "box_200x200x8",
+    "name":  "Box 200x200x8",
+    "category":  "Steel",
+    "shape_type":  "BoxHollow",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10210",
+                     "edition":  "2006",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.2,
+                       "height":  0.2,
+                       "diameter":  0,
+                       "tw":  0.008,
+                       "tf":  0.008,
+                       "r":  0.012
+                   },
+    "properties":  {
+                       "area":  0.006144,
+                       "ix":  3.7814E-05,
+                       "iy":  3.7814E-05,
+                       "it":  3.0251E-05,
+                       "wx":  0.0003781,
+                       "wy":  0.0003781
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

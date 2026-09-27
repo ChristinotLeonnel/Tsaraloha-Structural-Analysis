@@ -1,0 +1,42 @@
+{
+    "id":  "heb100",
+    "name":  "HEB 100",
+    "category":  "Steel",
+    "shape_type":  "IShape",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10365",
+                     "edition":  "2017",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.1,
+                       "height":  0.1,
+                       "diameter":  0,
+                       "tw":  0.006,
+                       "tf":  0.01,
+                       "r":  0.012
+                   },
+    "properties":  {
+                       "area":  0.00248,
+                       "ix":  4.323E-06,
+                       "iy":  1.668E-06,
+                       "it":  7.2E-08,
+                       "wx":  8.65E-05,
+                       "wy":  3.34E-05
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

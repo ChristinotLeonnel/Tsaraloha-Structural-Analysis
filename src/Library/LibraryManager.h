@@ -57,6 +57,7 @@ public:
     bool addCustomSection(const TSA::Model::Section& section);
     bool removeCustomSection(const std::string& name);
     const TSA::Model::Section* findSectionByName(const std::string& name) const;
+    void reloadSectionsFromRegistry();
 
     // --- Matériaux ---
     const std::vector<TSA::Model::Material>& standardMaterials() const { return m_standardMaterials; }

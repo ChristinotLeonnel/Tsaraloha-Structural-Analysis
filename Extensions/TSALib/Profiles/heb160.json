@@ -1,0 +1,42 @@
+{
+    "id":  "heb160",
+    "name":  "HEB 160",
+    "category":  "Steel",
+    "shape_type":  "IShape",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10365",
+                     "edition":  "2017",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.16,
+                       "height":  0.16,
+                       "diameter":  0,
+                       "tw":  0.008,
+                       "tf":  0.013,
+                       "r":  0.015
+                   },
+    "properties":  {
+                       "area":  0.005232,
+                       "ix":  2.4136E-05,
+                       "iy":  8.88E-06,
+                       "it":  2.57E-07,
+                       "wx":  0.0003017,
+                       "wy":  0.000111
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

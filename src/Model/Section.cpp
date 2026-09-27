@@ -1,4 +1,6 @@
 #include "Section.h"
+#include "../ExtensionSystem/LibraryRegistry.h"
+#include "../ExtensionSystem/DefinitionModels.h"
 #include <algorithm>
 
 #ifndef M_PI
@@ -325,6 +327,22 @@ Section Section::tSection(double h, double b, double tw, double tf, const std::s
 
 std::vector<Section> Section::defaultLibrary()
 {
+    const auto& extSections = TSA::ExtensionSystem::LibraryRegistry::instance().allSections();
+    if (!extSections.empty())
+    {
+        std::vector<Section> result;
+        result.reserve(extSections.size());
+        int id = 1;
+        for (const auto& secDef : extSections)
+        {
+            result.push_back(secDef.toModelSection(id++));
+        }
+        std::sort(result.begin(), result.end(), [](const Section& a, const Section& b) {
+            return a.name < b.name;
+        });
+        return result;
+    }
+
     return {
         // Profils IPE
         Section::ipe(100),

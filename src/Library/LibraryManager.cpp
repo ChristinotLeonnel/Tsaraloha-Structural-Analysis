@@ -146,6 +146,11 @@ const TSA::Model::Section* LibraryManager::findSectionByName(const std::string& 
     return nullptr;
 }
 
+void LibraryManager::reloadSectionsFromRegistry()
+{
+    m_standardSections = TSA::Model::Section::defaultLibrary();
+}
+
 std::vector<TSA::Model::Material> LibraryManager::allMaterials() const
 {
     std::vector<TSA::Model::Material> result = m_standardMaterials;

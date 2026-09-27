@@ -1,0 +1,42 @@
+{
+    "id":  "hea200",
+    "name":  "HEA 200",
+    "category":  "Steel",
+    "shape_type":  "IShape",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10365",
+                     "edition":  "2017",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.2,
+                       "height":  0.19,
+                       "diameter":  0,
+                       "tw":  0.0065,
+                       "tf":  0.01,
+                       "r":  0.018
+                   },
+    "properties":  {
+                       "area":  0.005105,
+                       "ix":  3.5095E-05,
+                       "iy":  1.3337E-05,
+                       "it":  1.49E-07,
+                       "wx":  0.0003694,
+                       "wy":  0.0001334
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

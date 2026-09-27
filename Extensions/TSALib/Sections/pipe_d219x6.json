@@ -1,0 +1,42 @@
+{
+    "id":  "pipe_d219x6",
+    "name":  "Pipe D219x6",
+    "category":  "Steel",
+    "shape_type":  "Pipe",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10210",
+                     "edition":  "2006",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.2191,
+                       "height":  0.2191,
+                       "diameter":  0.2191,
+                       "tw":  0.0063,
+                       "tf":  0.0063,
+                       "r":  0
+                   },
+    "properties":  {
+                       "area":  0.0042117,
+                       "ix":  2.3861E-05,
+                       "iy":  2.3861E-05,
+                       "it":  4.7723E-05,
+                       "wx":  0.0002178,
+                       "wy":  0.0002178
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

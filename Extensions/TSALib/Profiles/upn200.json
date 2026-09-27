@@ -1,0 +1,42 @@
+{
+    "id":  "upn200",
+    "name":  "UPN 200",
+    "category":  "Steel",
+    "shape_type":  "UPN",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10279",
+                     "edition":  "2000",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.075,
+                       "height":  0.2,
+                       "diameter":  0,
+                       "tw":  0.0085,
+                       "tf":  0.0115,
+                       "r":  0.0115
+                   },
+    "properties":  {
+                       "area":  0.0032295,
+                       "ix":  1.927E-05,
+                       "iy":  8.18E-07,
+                       "it":  1.12E-07,
+                       "wx":  0.0001927,
+                       "wy":  2.18E-05
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

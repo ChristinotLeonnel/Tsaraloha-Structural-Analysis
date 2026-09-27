@@ -1,5 +1,6 @@
 #include "DefinitionModels.h"
 #include "../Model/Material.h"
+#include "../Model/Section.h"
 #include <algorithm>
 #include <cctype>
 
@@ -470,6 +471,119 @@ QJsonObject SectionDefinition::toJson() const
 
     json["visual"] = visual.toJson();
     return json;
+}
+
+TSA::Model::Section SectionDefinition::toModelSection(int fallbackId) const
+{
+    TSA::Model::Section s;
+    s.id = fallbackId;
+    s.name = name;
+
+    if (shapeType == "IShape") s.shape = TSA::Model::SectionShape::IShape;
+    else if (shapeType == "Circular") s.shape = TSA::Model::SectionShape::Circular;
+    else if (shapeType == "Pipe") s.shape = TSA::Model::SectionShape::Pipe;
+    else if (shapeType == "BoxHollow") s.shape = TSA::Model::SectionShape::BoxHollow;
+    else if (shapeType == "UPN") s.shape = TSA::Model::SectionShape::UPN;
+    else if (shapeType == "Angle") s.shape = TSA::Model::SectionShape::Angle;
+    else if (shapeType == "TSection") s.shape = TSA::Model::SectionShape::TSection;
+    else s.shape = TSA::Model::SectionShape::Rectangular;
+
+    s.width = width;
+    s.height = height;
+    s.diameter = diameter;
+    s.tw = webThickness;
+    s.tf = flangeThickness;
+
+    // Harmonisation pour les sections circulaires et tubes
+    if ((s.shape == TSA::Model::SectionShape::Circular || s.shape == TSA::Model::SectionShape::Pipe) && s.diameter > 0.0)
+    {
+        if (s.width <= 0.0) s.width = s.diameter;
+        if (s.height <= 0.0) s.height = s.diameter;
+    }
+    else if ((s.shape == TSA::Model::SectionShape::Circular || s.shape == TSA::Model::SectionShape::Pipe) && s.diameter <= 0.0)
+    {
+        s.diameter = (s.width > 0.0) ? s.width : s.height;
+    }
+
+    return s;
+}
+
+SectionDefinition SectionDefinition::fromModelSection(const TSA::Model::Section& sec, const std::string& libraryId)
+{
+    SectionDefinition def;
+    def.ref.libraryId = libraryId;
+    def.ref.definitionVersion = SemanticVersion{ 1, 0, 0 };
+    def.version = SemanticVersion{ 1, 0, 0 };
+    def.name = sec.name;
+
+    std::string cleanId = sec.name;
+    std::transform(cleanId.begin(), cleanId.end(), cleanId.begin(), [](char c) {
+        if (isalnum(static_cast<unsigned char>(c))) return static_cast<char>(tolower(static_cast<unsigned char>(c)));
+        return '_';
+    });
+
+    std::string finalId;
+    for (size_t i = 0; i < cleanId.size(); ++i)
+    {
+        if (cleanId[i] == '_' && !finalId.empty() && finalId.back() == '_') continue;
+        finalId.push_back(cleanId[i]);
+    }
+    if (!finalId.empty() && finalId.back() == '_') finalId.pop_back();
+
+    def.id = finalId;
+    def.ref.definitionId = def.id;
+
+    switch (sec.shape)
+    {
+    case TSA::Model::SectionShape::IShape:
+        def.shapeType = "IShape";
+        def.category = "Steel";
+        break;
+    case TSA::Model::SectionShape::Circular:
+        def.shapeType = "Circular";
+        def.category = "Concrete";
+        break;
+    case TSA::Model::SectionShape::Pipe:
+        def.shapeType = "Pipe";
+        def.category = "Steel";
+        break;
+    case TSA::Model::SectionShape::BoxHollow:
+        def.shapeType = "BoxHollow";
+        def.category = "Steel";
+        break;
+    case TSA::Model::SectionShape::UPN:
+        def.shapeType = "UPN";
+        def.category = "Steel";
+        break;
+    case TSA::Model::SectionShape::Angle:
+        def.shapeType = "Angle";
+        def.category = "Steel";
+        break;
+    case TSA::Model::SectionShape::TSection:
+        def.shapeType = "TSection";
+        def.category = "Steel";
+        break;
+    case TSA::Model::SectionShape::Rectangular:
+    default:
+        def.shapeType = "Rectangular";
+        def.category = "Concrete";
+        break;
+    }
+
+    def.width = sec.width;
+    def.height = sec.height;
+    def.diameter = sec.diameter;
+    def.webThickness = sec.tw;
+    def.flangeThickness = sec.tf;
+
+    def.area = sec.area();
+    def.ix = sec.iy(); // strong axis bending inertia
+    def.iy = sec.iz(); // weak axis bending inertia
+    def.it = sec.it(); // torsional inertia
+    def.wx = sec.wy(); // strong axis elastic modulus
+    def.wy = sec.wz(); // weak axis elastic modulus
+
+    return def;
 }
 
 std::optional<CableCatalogDefinition> CableCatalogDefinition::fromJson(const QJsonObject& json, std::string* outError)

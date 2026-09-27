@@ -1,0 +1,42 @@
+{
+    "id":  "t_100x10",
+    "name":  "T 100x10",
+    "category":  "Steel",
+    "shape_type":  "TSection",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10055",
+                     "edition":  "1995",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.1,
+                       "height":  0.1,
+                       "diameter":  0,
+                       "tw":  0.01,
+                       "tf":  0.01,
+                       "r":  0.01
+                   },
+    "properties":  {
+                       "area":  0.0019,
+                       "ix":  8.333E-06,
+                       "iy":  8.333E-06,
+                       "it":  1.9E-06,
+                       "wx":  0.0001667,
+                       "wy":  0.0001667
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

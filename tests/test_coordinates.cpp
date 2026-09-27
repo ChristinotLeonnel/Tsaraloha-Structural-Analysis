@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 42;
+    int total = 43;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -4479,6 +4479,221 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 42: TSALib Phase 5 - Externalisation des Textures PBR & TextureManager (4 Subtests Validates) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // --- TEST 43: TSALib Phase 6 - Externalisation des Sections & Profilés Eurocodes ---
+    {
+        std::cout << "\n--- TEST 43: TSALib Phase 6 - Externalisation des Sections & Profilés Eurocodes ---" << std::endl;
+
+        // 43.1: Catalogue des Sections & Profilés Eurocodes sur disque (22 définitions JSON)
+        {
+            QString sectionsDir = "e:/Book/Dev/TSA/Extensions/TSALib/Sections";
+            QString profilesDir = "e:/Book/Dev/TSA/Extensions/TSALib/Profiles";
+
+            TEST_CHECK(QDir(sectionsDir).exists(), "Subtest 43.1: Repertoire Sections existe");
+            TEST_CHECK(QDir(profilesDir).exists(), "Subtest 43.1: Repertoire Profiles existe");
+
+            QStringList expectedSections = {
+                "rect_300x500.json",
+                "rect_400x400.json",
+                "circ_d300.json",
+                "circ_d400.json",
+                "pipe_d219x6.json",
+                "box_200x200x8.json"
+            };
+
+            for (const QString& fName : expectedSections)
+            {
+                QString filePath = sectionsDir + "/" + fName;
+                TEST_CHECK(QFile::exists(filePath), ("Subtest 43.1: Fichier section existe: " + fName.toStdString()).c_str());
+                QFile f(filePath);
+                TEST_CHECK(f.open(QIODevice::ReadOnly), ("Subtest 43.1: Ouverture de " + fName.toStdString()).c_str());
+                QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+                TEST_CHECK(doc.isObject(), ("Subtest 43.1: JSON valide pour " + fName.toStdString()).c_str());
+                QJsonObject obj = doc.object();
+                TEST_CHECK(!obj["name"].toString().isEmpty(), "Subtest 43.1: 'name' non vide");
+                TEST_CHECK(!obj["shape_type"].toString().isEmpty(), "Subtest 43.1: 'shape_type' non vide");
+                TEST_CHECK(obj.contains("dimensions") && obj["dimensions"].isObject(), "Subtest 43.1: 'dimensions' present");
+                TEST_CHECK(obj.contains("properties") && obj["properties"].isObject(), "Subtest 43.1: 'properties' present");
+            }
+
+            QStringList expectedProfiles = {
+                "ipe100.json", "ipe160.json", "ipe200.json", "ipe240.json", "ipe300.json",
+                "hea100.json", "hea160.json", "hea200.json",
+                "heb100.json", "heb160.json", "heb200.json",
+                "upn100.json", "upn160.json", "upn200.json",
+                "angle_l100x10.json", "t_100x10.json"
+            };
+
+            for (const QString& fName : expectedProfiles)
+            {
+                QString filePath = profilesDir + "/" + fName;
+                TEST_CHECK(QFile::exists(filePath), ("Subtest 43.1: Fichier profile existe: " + fName.toStdString()).c_str());
+                QFile f(filePath);
+                TEST_CHECK(f.open(QIODevice::ReadOnly), ("Subtest 43.1: Ouverture de " + fName.toStdString()).c_str());
+                QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+                TEST_CHECK(doc.isObject(), ("Subtest 43.1: JSON valide pour " + fName.toStdString()).c_str());
+                QJsonObject obj = doc.object();
+                TEST_CHECK(!obj["name"].toString().isEmpty(), "Subtest 43.1: 'name' non vide");
+                TEST_CHECK(!obj["shape_type"].toString().isEmpty(), "Subtest 43.1: 'shape_type' non vide");
+            }
+
+            std::cout << "  [PASS] Subtest 43.1: 22 Definitions JSON de Sections et Profiles Eurocodes Validees sur Disque" << std::endl;
+        }
+
+        // 43.2: Découverte & Indexation dans LibraryRegistry via LibraryManager / LibraryLoader
+        {
+            auto& extLibMgr = TSA::ExtensionSystem::LibraryManager::instance();
+            extLibMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            extLibMgr.discover();
+            extLibMgr.load("org.tsaraloha.tsalib");
+
+            auto& registry = TSA::ExtensionSystem::LibraryRegistry::instance();
+            auto allSecs = registry.allSections();
+            TEST_CHECK(allSecs.size() >= 22, "Subtest 43.2: Au moins 22 sections enregistrees dans le registre");
+
+            // Vérifications d'accès par ID logique
+            const auto* ipe200 = registry.findSection("ipe200");
+            TEST_CHECK(ipe200 != nullptr, "Subtest 43.2: Section 'ipe200' trouvee dans le registre");
+            if (ipe200)
+            {
+                TEST_CHECK(ipe200->name == "IPE 200", "Subtest 43.2: Nom IPE 200 conforme");
+                TEST_CHECK(ipe200->shapeType == "IShape", "Subtest 43.2: Forme IShape");
+                TEST_CHECK(approxEqual(ipe200->height, 0.200), "Subtest 43.2: Hauteur IPE 200 = 200 mm");
+                TEST_CHECK(approxEqual(ipe200->width, 0.100), "Subtest 43.2: Largeur IPE 200 = 100 mm");
+                TEST_CHECK(approxEqual(ipe200->webThickness, 0.0056), "Subtest 43.2: tw IPE 200 = 5.6 mm");
+                TEST_CHECK(approxEqual(ipe200->flangeThickness, 0.0085), "Subtest 43.2: tf IPE 200 = 8.5 mm");
+            }
+
+            const auto* hea160 = registry.findSection("hea160");
+            TEST_CHECK(hea160 != nullptr, "Subtest 43.2: Section 'hea160' trouvee dans le registre");
+            if (hea160)
+            {
+                TEST_CHECK(hea160->name == "HEA 160", "Subtest 43.2: Nom HEA 160");
+                TEST_CHECK(approxEqual(hea160->height, 0.152), "Subtest 43.2: Hauteur HEA 160 = 152 mm");
+            }
+
+            const auto* rect = registry.findSection("rect_300x500");
+            TEST_CHECK(rect != nullptr, "Subtest 43.2: Section 'rect_300x500' trouvee dans le registre");
+            if (rect)
+            {
+                TEST_CHECK(rect->category == "Concrete", "Subtest 43.2: Categorie Concrete");
+                TEST_CHECK(approxEqual(rect->width, 0.30), "Subtest 43.2: Largeur 0.30 m");
+                TEST_CHECK(approxEqual(rect->height, 0.50), "Subtest 43.2: Hauteur 0.50 m");
+            }
+
+            // Filtrage par catégorie
+            auto steelSecs = registry.sectionsByCategory("Steel");
+            TEST_CHECK(steelSecs.size() >= 16, "Subtest 43.2: Au moins 16 sections acier indexees");
+
+            auto concreteSecs = registry.sectionsByCategory("Concrete");
+            TEST_CHECK(concreteSecs.size() >= 4, "Subtest 43.2: Au moins 4 sections beton indexees");
+
+            std::cout << "  [PASS] Subtest 43.2: Decouverte & Indexation dans LibraryRegistry Validees" << std::endl;
+        }
+
+        // 43.3: Passerelle Bidirectionnelle SectionDefinition <-> TSA::Model::Section
+        {
+            auto& registry = TSA::ExtensionSystem::LibraryRegistry::instance();
+            const auto* ipeDef = registry.findSection("ipe200");
+            TEST_CHECK(ipeDef != nullptr, "Subtest 43.3: ipe200 present");
+            if (ipeDef)
+            {
+                // Conversion vers TSA::Model::Section
+                TSA::Model::Section modelSec = ipeDef->toModelSection(42);
+                TEST_CHECK(modelSec.id == 42, "Subtest 43.3: ID reporte");
+                TEST_CHECK(modelSec.name == "IPE 200", "Subtest 43.3: Nom reporte");
+                TEST_CHECK(modelSec.shape == TSA::Model::SectionShape::IShape, "Subtest 43.3: SectionShape::IShape");
+                TEST_CHECK(approxEqual(modelSec.height, 0.200), "Subtest 43.3: Hauteur = 0.200 m");
+                TEST_CHECK(approxEqual(modelSec.width, 0.100), "Subtest 43.3: Largeur = 0.100 m");
+                TEST_CHECK(approxEqual(modelSec.tw, 0.0056), "Subtest 43.3: tw = 5.6 mm");
+                TEST_CHECK(approxEqual(modelSec.tf, 0.0085), "Subtest 43.3: tf = 8.5 mm");
+
+                // Propriétés calculées
+                TEST_CHECK(modelSec.area() > 0.002, "Subtest 43.3: Aire calculee positive coherente");
+                TEST_CHECK(modelSec.iy() > 1e-5, "Subtest 43.3: Iy fort axe positif coherent");
+                TEST_CHECK(modelSec.iz() > 1e-6, "Subtest 43.3: Iz faible axe positif coherent");
+
+                // Aller-retour vers SectionDefinition
+                TSA::ExtensionSystem::SectionDefinition roundtripDef =
+                    TSA::ExtensionSystem::SectionDefinition::fromModelSection(modelSec, "test.lib");
+                TEST_CHECK(roundtripDef.name == "IPE 200", "Subtest 43.3: Nom aller-retour conforme");
+                TEST_CHECK(roundtripDef.shapeType == "IShape", "Subtest 43.3: ShapeType aller-retour conforme");
+                TEST_CHECK(approxEqual(roundtripDef.height, 0.200), "Subtest 43.3: Hauteur aller-retour conforme");
+                TEST_CHECK(roundtripDef.ix > 1e-5, "Subtest 43.3: Inertie forte axe transferee dans ix");
+            }
+
+            // Test section circulaire
+            const auto* circDef = registry.findSection("circ_d300");
+            TEST_CHECK(circDef != nullptr, "Subtest 43.3: circ_d300 present");
+            if (circDef)
+            {
+                TSA::Model::Section circSec = circDef->toModelSection(43);
+                TEST_CHECK(circSec.shape == TSA::Model::SectionShape::Circular, "Subtest 43.3: Forme circulaire");
+                TEST_CHECK(approxEqual(circSec.diameter, 0.30), "Subtest 43.3: Diametre = 0.30 m");
+                TEST_CHECK(approxEqual(circSec.area(), 3.14159265358979323846 * 0.30 * 0.30 / 4.0), "Subtest 43.3: Aire circulaire exacte");
+            }
+
+            std::cout << "  [PASS] Subtest 43.3: Passerelle Bidirectionnelle SectionDefinition <-> Section Validee" << std::endl;
+        }
+
+        // 43.4: Synchronisation de Section::defaultLibrary() et Génération Solide B-Rep OpenCASCADE
+        {
+            // Vérifier que Section::defaultLibrary() extrait bien les sections de LibraryRegistry
+            std::vector<TSA::Model::Section> defaultSections = TSA::Model::Section::defaultLibrary();
+            TEST_CHECK(defaultSections.size() >= 22, "Subtest 43.4: Section::defaultLibrary() contient les sections externalisees");
+
+            bool foundIpe200 = false;
+            TSA::Model::Section ipe200Sec;
+            for (const auto& sec : defaultSections)
+            {
+                if (sec.name == "IPE 200")
+                {
+                    foundIpe200 = true;
+                    ipe200Sec = sec;
+                    break;
+                }
+            }
+            TEST_CHECK(foundIpe200, "Subtest 43.4: IPE 200 present dans la defaultLibrary synchronisee");
+
+            // Vérifier la synchronisation avec LibraryManager UI
+            auto& uiLibMgr = TSA::Library::LibraryManager::instance();
+            uiLibMgr.reloadSectionsFromRegistry();
+            const auto* foundInUi = uiLibMgr.findSectionByName("IPE 200");
+            TEST_CHECK(foundInUi != nullptr, "Subtest 43.4: IPE 200 accessible dans LibraryManager UI");
+
+            // Construction d'un solide OpenCASCADE B-Rep avec la section externalisée
+            TSA::Model::Node nodeA(1, 0.0, 0.0, 0.0, "", "N1");
+            TSA::Model::Node nodeB(2, 5.0, 0.0, 0.0, "", "N2");
+
+            TopoDS_Shape beamSolid = TSA::Geometry::BeamGeometry::createBeamShape(
+                nodeA, nodeB, ipe200Sec, 0.0, TSA::Model::BarEccentricity::None
+            );
+
+            TEST_CHECK(!beamSolid.IsNull(), "Subtest 43.4: Solide OpenCASCADE B-Rep non-nul genere");
+            TEST_CHECK(beamSolid.ShapeType() == TopAbs_SOLID || beamSolid.ShapeType() == TopAbs_COMPOUND,
+                       "Subtest 43.4: Type de forme OpenCASCADE valide (Solide ou Compound)");
+
+            // Calcul du bounding box OpenCASCADE pour valider les dimensions réelles du solide
+            Bnd_Box bbox;
+            BRepBndLib::Add(beamSolid, bbox);
+            TEST_CHECK(!bbox.IsVoid(), "Subtest 43.4: Bounding Box du solide OpenCASCADE calcule");
+
+            double xmin, ymin, zmin, xmax, ymax, zmax;
+            bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+
+            double lengthX = xmax - xmin;
+            double dimY = ymax - ymin;
+            double dimZ = zmax - zmin;
+
+            TEST_CHECK(approxEqual(lengthX, 5.0, 0.05), "Subtest 43.4: Longueur poutre OpenCASCADE = 5.0 m");
+            TEST_CHECK(dimY > 0.05 && dimZ > 0.05, "Subtest 43.4: Section transversale extrudee en 3D avec succes");
+
+            std::cout << "  [PASS] Subtest 43.4: Synchronisation Section::defaultLibrary() & B-Rep OpenCASCADE Validees" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 43: TSALib Phase 6 - Externalisation des Sections & Profiles Eurocodes (4 Subtests Valides) Passed Successfully!" << std::endl;
         passed++;
     }
 

@@ -1,0 +1,42 @@
+{
+    "id":  "ipe200",
+    "name":  "IPE 200",
+    "category":  "Steel",
+    "shape_type":  "IShape",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10365",
+                     "edition":  "2017",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.1,
+                       "height":  0.2,
+                       "diameter":  0,
+                       "tw":  0.0056,
+                       "tf":  0.0085,
+                       "r":  0.012
+                   },
+    "properties":  {
+                       "area":  0.0027248,
+                       "ix":  1.8456E-05,
+                       "iy":  1.419E-06,
+                       "it":  5.2E-08,
+                       "wx":  0.0001846,
+                       "wy":  2.84E-05
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

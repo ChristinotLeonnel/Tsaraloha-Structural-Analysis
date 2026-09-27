@@ -1,0 +1,42 @@
+{
+    "id":  "rect_400x400",
+    "name":  "Rect 400x400",
+    "category":  "Concrete",
+    "shape_type":  "Rectangular",
+    "version":  "1.0.0",
+    "default_material":  "concrete_c25_30",
+    "standard":  {
+                     "name":  "EN 1992-1-1",
+                     "edition":  "2004",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.4,
+                       "height":  0.4,
+                       "diameter":  0,
+                       "tw":  0,
+                       "tf":  0,
+                       "r":  0
+                   },
+    "properties":  {
+                       "area":  0.16,
+                       "ix":  0.002133333,
+                       "iy":  0.002133333,
+                       "it":  0.0074496,
+                       "wx":  0.0106667,
+                       "wy":  0.0106667
+                   },
+    "visual":  {
+                   "base_color":  "#9EA0A2",
+                   "roughness":  0.88,
+                   "metallic":  0,
+                   "transparency":  0,
+                   "shininess":  0.08,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

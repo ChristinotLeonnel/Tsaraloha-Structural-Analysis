@@ -1,0 +1,42 @@
+{
+    "id":  "upn160",
+    "name":  "UPN 160",
+    "category":  "Steel",
+    "shape_type":  "UPN",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10279",
+                     "edition":  "2000",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.065,
+                       "height":  0.16,
+                       "diameter":  0,
+                       "tw":  0.0075,
+                       "tf":  0.0105,
+                       "r":  0.0105
+                   },
+    "properties":  {
+                       "area":  0.0024075,
+                       "ix":  9.318E-06,
+                       "iy":  4.85E-07,
+                       "it":  7E-08,
+                       "wx":  0.0001165,
+                       "wy":  1.49E-05
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

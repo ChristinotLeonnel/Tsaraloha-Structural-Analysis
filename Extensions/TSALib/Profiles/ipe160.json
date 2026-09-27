@@ -1,0 +1,42 @@
+{
+    "id":  "ipe160",
+    "name":  "IPE 160",
+    "category":  "Steel",
+    "shape_type":  "IShape",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10365",
+                     "edition":  "2017",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.082,
+                       "height":  0.16,
+                       "diameter":  0,
+                       "tw":  0.005,
+                       "tf":  0.0074,
+                       "r":  0.009
+                   },
+    "properties":  {
+                       "area":  0.0019396,
+                       "ix":  8.346E-06,
+                       "iy":  6.82E-07,
+                       "it":  2.8E-08,
+                       "wx":  0.0001043,
+                       "wy":  1.66E-05
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

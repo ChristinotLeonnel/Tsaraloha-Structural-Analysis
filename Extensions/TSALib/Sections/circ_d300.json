@@ -1,0 +1,42 @@
+{
+    "id":  "circ_d300",
+    "name":  "Circ D300",
+    "category":  "Concrete",
+    "shape_type":  "Circular",
+    "version":  "1.0.0",
+    "default_material":  "concrete_c25_30",
+    "standard":  {
+                     "name":  "EN 1992-1-1",
+                     "edition":  "2004",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.3,
+                       "height":  0.3,
+                       "diameter":  0.3,
+                       "tw":  0,
+                       "tf":  0,
+                       "r":  0
+                   },
+    "properties":  {
+                       "area":  0.0706858,
+                       "ix":  0.000397608,
+                       "iy":  0.000397608,
+                       "it":  0.000795216,
+                       "wx":  0.0026507,
+                       "wy":  0.0026507
+                   },
+    "visual":  {
+                   "base_color":  "#9EA0A2",
+                   "roughness":  0.88,
+                   "metallic":  0,
+                   "transparency":  0,
+                   "shininess":  0.08,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

@@ -1,0 +1,42 @@
+{
+    "id":  "ipe240",
+    "name":  "IPE 240",
+    "category":  "Steel",
+    "shape_type":  "IShape",
+    "version":  "1.0.0",
+    "default_material":  "steel_s235",
+    "standard":  {
+                     "name":  "EN 10365",
+                     "edition":  "2017",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.12,
+                       "height":  0.24,
+                       "diameter":  0,
+                       "tw":  0.0062,
+                       "tf":  0.0098,
+                       "r":  0.015
+                   },
+    "properties":  {
+                       "area":  0.0037185,
+                       "ix":  3.671E-05,
+                       "iy":  2.827E-06,
+                       "it":  9.3E-08,
+                       "wx":  0.0003059,
+                       "wy":  4.71E-05
+                   },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.9,
+                   "transparency":  0,
+                   "shininess":  0.65,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

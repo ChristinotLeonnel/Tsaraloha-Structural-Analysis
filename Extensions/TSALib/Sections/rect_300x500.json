@@ -1,0 +1,42 @@
+{
+    "id":  "rect_300x500",
+    "name":  "Rect 300x500",
+    "category":  "Concrete",
+    "shape_type":  "Rectangular",
+    "version":  "1.0.0",
+    "default_material":  "concrete_c25_30",
+    "standard":  {
+                     "name":  "EN 1992-1-1",
+                     "edition":  "2004",
+                     "clause":  "Standard Table",
+                     "source":  "CEN"
+                 },
+    "dimensions":  {
+                       "width":  0.3,
+                       "height":  0.5,
+                       "diameter":  0,
+                       "tw":  0,
+                       "tf":  0,
+                       "r":  0
+                   },
+    "properties":  {
+                       "area":  0.15,
+                       "ix":  0.003125,
+                       "iy":  0.001125,
+                       "it":  0.0039285,
+                       "wx":  0.0125,
+                       "wy":  0.0075
+                   },
+    "visual":  {
+                   "base_color":  "#9EA0A2",
+                   "roughness":  0.88,
+                   "metallic":  0,
+                   "transparency":  0,
+                   "shininess":  0.08,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}
