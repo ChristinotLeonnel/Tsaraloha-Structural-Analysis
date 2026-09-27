@@ -1,0 +1,31 @@
+{
+  "id": "timber_c24",
+  "name": "Timber C24",
+  "category": "Timber",
+  "version": "1.0.0",
+  "standard": {
+    "name": "EN 338 / EN 1995-1-1",
+    "edition": "2016",
+    "clause": "Table 1",
+    "source": "CEN"
+  },
+  "mechanical": {
+    "density": { "value": 420.0, "unit": "kg/m3" },
+    "young_modulus": { "value": 11000.0, "unit": "MPa" },
+    "poisson_ratio": 0.30,
+    "thermal_coeff": { "value": 5.0e-6, "unit": "1/K" }
+  },
+  "strength": {
+    "ft": { "value": 24.0, "unit": "MPa" }
+  },
+  "visual": {
+    "base_color": "#BA8C53",
+    "roughness": 0.75,
+    "metallic": 0.0,
+    "transparency": 0.0,
+    "shininess": 0.15,
+    "textures": {},
+    "texture_scale_u": 1.0,
+    "texture_scale_v": 1.0
+  }
+}

@@ -1,4 +1,5 @@
 #include "LibraryManager.h"
+#include "../Model/MaterialLibrary.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QCoreApplication>
@@ -15,7 +16,7 @@ LibraryManager& LibraryManager::instance()
 
 LibraryManager::LibraryManager(QObject* parent)
     : QObject(parent)
-    , m_loader(&m_registry)
+    , m_loader(&LibraryRegistry::instance())
 {
 }
 
@@ -105,6 +106,7 @@ bool LibraryManager::load(const std::string& extensionId)
     if (ok)
     {
         m_manifests[extensionId] = manifest;
+        TSA::Model::MaterialLibrary::instance().reloadFromRegistry();
         emit libraryLoaded(QString::fromStdString(extensionId));
         emit definitionsChanged();
     }
@@ -116,6 +118,7 @@ bool LibraryManager::unload(const std::string& extensionId)
     bool ok = m_loader.unloadExtension(extensionId);
     if (ok)
     {
+        TSA::Model::MaterialLibrary::instance().reloadFromRegistry();
         emit libraryUnloaded(QString::fromStdString(extensionId));
         emit definitionsChanged();
     }

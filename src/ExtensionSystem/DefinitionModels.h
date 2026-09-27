@@ -8,6 +8,11 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
+namespace TSA::Model
+{
+    struct Material;
+}
+
 namespace TSA::ExtensionSystem
 {
 
@@ -72,6 +77,10 @@ struct MaterialDefinition
 
     // Génération du snapshot immuable de calcul
     MechanicalSnapshot createSnapshot() const;
+
+    // Bridge de conversion avec TSA::Model::Material
+    TSA::Model::Material toModelMaterial(int fallbackId = 0) const;
+    static MaterialDefinition fromModelMaterial(const TSA::Model::Material& mat, const std::string& libraryId = "org.tsaraloha.tsalib");
 
     static std::optional<MaterialDefinition> fromJson(const QJsonObject& json, std::string* outError = nullptr);
     QJsonObject toJson() const;

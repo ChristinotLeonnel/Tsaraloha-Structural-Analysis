@@ -34,6 +34,10 @@ public:
     std::vector<SectionDefinition> allSections() const;
     std::vector<CableCatalogDefinition> allCables() const;
 
+    std::vector<MaterialDefinition> materials() const { return allMaterials(); }
+    std::vector<SectionDefinition> sections() const { return allSections(); }
+    std::vector<CableCatalogDefinition> cables() const { return allCables(); }
+
     // Filtrage par catégorie
     std::vector<MaterialDefinition> materialsByCategory(const std::string& category) const;
     std::vector<SectionDefinition> sectionsByCategory(const std::string& category) const;

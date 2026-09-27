@@ -51,8 +51,8 @@ public:
     ValidationResult validateAll() const;
 
     // Accès aux sous-systèmes
-    LibraryRegistry& registry() { return m_registry; }
-    const LibraryRegistry& registry() const { return m_registry; }
+    LibraryRegistry& registry() { return LibraryRegistry::instance(); }
+    const LibraryRegistry& registry() const { return LibraryRegistry::instance(); }
 
     LibraryLoader& loader() { return m_loader; }
     LibraryValidator& validator() { return m_validator; }
@@ -64,9 +64,9 @@ public:
     std::vector<ExtensionManifest> installedExtensions() const;
 
     // Recherches rapides déléguées
-    const MaterialDefinition* findMaterial(const std::string& id) const { return m_registry.findMaterial(id); }
-    const SectionDefinition* findSection(const std::string& id) const { return m_registry.findSection(id); }
-    const CableCatalogDefinition* findCable(const std::string& id) const { return m_registry.findCable(id); }
+    const MaterialDefinition* findMaterial(const std::string& id) const { return LibraryRegistry::instance().findMaterial(id); }
+    const SectionDefinition* findSection(const std::string& id) const { return LibraryRegistry::instance().findSection(id); }
+    const CableCatalogDefinition* findCable(const std::string& id) const { return LibraryRegistry::instance().findCable(id); }
 
 signals:
     void librariesDiscovered(int count);
@@ -84,7 +84,6 @@ public:
 
 private:
     QStringList m_searchPaths;
-    LibraryRegistry m_registry;
     LibraryLoader m_loader;
     LibraryValidator m_validator;
     LibraryCache m_cache;

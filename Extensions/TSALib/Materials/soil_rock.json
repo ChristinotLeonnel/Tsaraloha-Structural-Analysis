@@ -1,0 +1,31 @@
+{
+  "id": "soil_rock",
+  "name": "Rock",
+  "category": "Soil",
+  "version": "1.0.0",
+  "standard": {
+    "name": "EN 1997-1",
+    "edition": "2004",
+    "clause": "Annex D",
+    "source": "CEN"
+  },
+  "mechanical": {
+    "density": { "value": 2600.0, "unit": "kg/m3" },
+    "young_modulus": { "value": 20000.0, "unit": "MPa" },
+    "poisson_ratio": 0.20,
+    "thermal_coeff": { "value": 8.0e-6, "unit": "1/K" }
+  },
+  "strength": {
+    "ft": { "value": 50.0, "unit": "MPa" }
+  },
+  "visual": {
+    "base_color": "#44464A",
+    "roughness": 0.85,
+    "metallic": 0.0,
+    "transparency": 0.0,
+    "shininess": 0.10,
+    "textures": {},
+    "texture_scale_u": 1.0,
+    "texture_scale_v": 1.0
+  }
+}

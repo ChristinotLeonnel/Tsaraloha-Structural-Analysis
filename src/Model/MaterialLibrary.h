@@ -39,6 +39,10 @@ public:
     bool removeCustomMaterialByName(const std::string& name);
     void clearCustomMaterials();
 
+    // Synchronisation avec le nouveau système d'extensions TSALib
+    void reloadFromRegistry();
+    bool synchronizeToRegistry();
+
 private:
     MaterialLibrary();
     ~MaterialLibrary() = default;

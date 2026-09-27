@@ -1,4 +1,5 @@
 #include "LibraryManager.h"
+#include "../Model/MaterialLibrary.h"
 #include <QStandardPaths>
 #include <QDir>
 #include <QFile>
@@ -160,11 +161,13 @@ bool LibraryManager::addCustomMaterial(const TSA::Model::Material& material)
         {
             m = material;
             saveMaterials();
+            TSA::Model::MaterialLibrary::instance().registerCustomMaterial(material);
             return true;
         }
     }
     m_customMaterials.push_back(material);
     saveMaterials();
+    TSA::Model::MaterialLibrary::instance().registerCustomMaterial(material);
     return true;
 }
 
@@ -176,6 +179,7 @@ bool LibraryManager::removeCustomMaterial(const std::string& name)
         {
             m_customMaterials.erase(it);
             saveMaterials();
+            TSA::Model::MaterialLibrary::instance().removeCustomMaterialByName(name);
             return true;
         }
     }

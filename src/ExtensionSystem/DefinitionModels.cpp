@@ -1,4 +1,7 @@
 #include "DefinitionModels.h"
+#include "../Model/Material.h"
+#include <algorithm>
+#include <cctype>
 
 namespace TSA::ExtensionSystem
 {
@@ -75,6 +78,196 @@ MechanicalSnapshot MaterialDefinition::createSnapshot() const
     snap.yieldStrength = fy.toBaseSI();
     snap.thermalCoeff = thermalCoeff.toBaseSI();
     return snap;
+}
+
+TSA::Model::Material MaterialDefinition::toModelMaterial(int fallbackId) const
+{
+    TSA::Model::Material m;
+    m.id = fallbackId;
+    m.name = name;
+
+    std::string catLower = category;
+    std::transform(catLower.begin(), catLower.end(), catLower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::string idLower = id;
+    std::transform(idLower.begin(), idLower.end(), idLower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    if (catLower == "concrete")
+    {
+        if (idLower.find("reinforced") != std::string::npos)
+            m.type = TSA::Model::MaterialType::ReinforcedConcrete;
+        else
+            m.type = TSA::Model::MaterialType::Concrete;
+    }
+    else if (catLower == "steel")
+    {
+        if (idLower.find("rebar") != std::string::npos)
+            m.type = TSA::Model::MaterialType::RebarSteel;
+        else if (idLower.find("galvanized") != std::string::npos)
+            m.type = TSA::Model::MaterialType::GalvanizedSteel;
+        else
+            m.type = TSA::Model::MaterialType::Steel;
+    }
+    else if (catLower == "timber")
+    {
+        m.type = TSA::Model::MaterialType::Timber;
+    }
+    else if (catLower == "masonry")
+    {
+        if (idLower.find("brick") != std::string::npos)
+            m.type = TSA::Model::MaterialType::Brick;
+        else
+            m.type = TSA::Model::MaterialType::Masonry;
+    }
+    else if (catLower == "aluminum")
+    {
+        m.type = TSA::Model::MaterialType::Aluminum;
+    }
+    else if (catLower == "glass")
+    {
+        m.type = TSA::Model::MaterialType::Glass;
+    }
+    else if (catLower == "soil")
+    {
+        if (idLower.find("sand") != std::string::npos)
+            m.type = TSA::Model::MaterialType::Sand;
+        else if (idLower.find("gravel") != std::string::npos)
+            m.type = TSA::Model::MaterialType::Gravel;
+        else if (idLower.find("rock") != std::string::npos)
+            m.type = TSA::Model::MaterialType::Rock;
+        else
+            m.type = TSA::Model::MaterialType::Soil;
+    }
+    else
+    {
+        m.type = TSA::Model::MaterialType::Custom;
+    }
+
+    m.E = youngModulus.toBaseSI();
+    m.nu = poissonRatio;
+    m.density = density.toBaseSI();
+    if (fy.value > 0.0)
+        m.fk = fy.toBaseSI();
+    else if (fck.value > 0.0)
+        m.fk = fck.toBaseSI();
+    else if (ft.value > 0.0)
+        m.fk = ft.toBaseSI();
+    else
+        m.fk = 0.0;
+    m.thermalCoeff = thermalCoeff.toBaseSI();
+
+    m.syncMechanical();
+
+    m.visual.baseColor = visual.baseColor;
+    m.visual.roughness = visual.roughness;
+    m.visual.metallic = visual.metallic;
+    m.visual.transparency = visual.transparency;
+    m.visual.shininess = visual.shininess;
+    m.visual.textureScaleU = visual.textureScaleU;
+    m.visual.textureScaleV = visual.textureScaleV;
+
+    auto itTex = visual.textures.find("albedo");
+    if (itTex != visual.textures.end())
+    {
+        m.visual.texturePath = itTex->second;
+    }
+
+    return m;
+}
+
+MaterialDefinition MaterialDefinition::fromModelMaterial(const TSA::Model::Material& mat, const std::string& libraryId)
+{
+    MaterialDefinition def;
+    def.ref.libraryId = libraryId;
+    def.ref.definitionVersion = SemanticVersion{ 1, 0, 0 };
+    def.version = SemanticVersion{ 1, 0, 0 };
+
+    def.name = mat.name;
+
+    std::string cleanId = mat.name;
+    std::transform(cleanId.begin(), cleanId.end(), cleanId.begin(), [](char c) {
+        if (isalnum(static_cast<unsigned char>(c))) return static_cast<char>(tolower(static_cast<unsigned char>(c)));
+        return '_';
+    });
+
+    std::string finalId;
+    for (size_t i = 0; i < cleanId.size(); ++i)
+    {
+        if (cleanId[i] == '_' && !finalId.empty() && finalId.back() == '_') continue;
+        finalId.push_back(cleanId[i]);
+    }
+    if (!finalId.empty() && finalId.back() == '_') finalId.pop_back();
+
+    switch (mat.type)
+    {
+    case TSA::Model::MaterialType::Concrete:
+    case TSA::Model::MaterialType::ReinforcedConcrete:
+        def.category = "Concrete";
+        def.id = "concrete." + finalId;
+        def.fck = PhysicalValue{ mat.fk / 1.0e6, "MPa" };
+        break;
+    case TSA::Model::MaterialType::Steel:
+    case TSA::Model::MaterialType::RebarSteel:
+    case TSA::Model::MaterialType::GalvanizedSteel:
+        def.category = "Steel";
+        def.id = "steel." + finalId;
+        def.fy = PhysicalValue{ mat.fk / 1.0e6, "MPa" };
+        break;
+    case TSA::Model::MaterialType::Timber:
+        def.category = "Timber";
+        def.id = "timber." + finalId;
+        def.ft = PhysicalValue{ mat.fk / 1.0e6, "MPa" };
+        break;
+    case TSA::Model::MaterialType::Masonry:
+    case TSA::Model::MaterialType::Brick:
+        def.category = "Masonry";
+        def.id = "masonry." + finalId;
+        def.fck = PhysicalValue{ mat.fk / 1.0e6, "MPa" };
+        break;
+    case TSA::Model::MaterialType::Aluminum:
+        def.category = "Aluminum";
+        def.id = "aluminum." + finalId;
+        def.fy = PhysicalValue{ mat.fk / 1.0e6, "MPa" };
+        break;
+    case TSA::Model::MaterialType::Glass:
+        def.category = "Glass";
+        def.id = "glass." + finalId;
+        def.ft = PhysicalValue{ mat.fk / 1.0e6, "MPa" };
+        break;
+    case TSA::Model::MaterialType::Soil:
+    case TSA::Model::MaterialType::Sand:
+    case TSA::Model::MaterialType::Gravel:
+    case TSA::Model::MaterialType::Rock:
+        def.category = "Soil";
+        def.id = "soil." + finalId;
+        def.ft = PhysicalValue{ mat.fk / 1.0e6, "MPa" };
+        break;
+    default:
+        def.category = "Custom";
+        def.id = "custom." + finalId;
+        def.fck = PhysicalValue{ mat.fk / 1.0e6, "MPa" };
+        break;
+    }
+
+    def.ref.definitionId = def.id;
+
+    def.youngModulus = PhysicalValue{ mat.E / 1.0e6, "MPa" };
+    def.poissonRatio = mat.nu;
+    def.density = PhysicalValue{ mat.density, "kg/m3" };
+    def.thermalCoeff = PhysicalValue{ mat.thermalCoeff, "1/K" };
+
+    def.visual.baseColor = mat.visual.baseColor;
+    def.visual.roughness = mat.visual.roughness;
+    def.visual.metallic = mat.visual.metallic;
+    def.visual.transparency = mat.visual.transparency;
+    def.visual.shininess = mat.visual.shininess;
+    def.visual.textureScaleU = mat.visual.textureScaleU;
+    def.visual.textureScaleV = mat.visual.textureScaleV;
+    if (!mat.visual.texturePath.empty())
+    {
+        def.visual.textures["albedo"] = mat.visual.texturePath;
+    }
+
+    return def;
 }
 
 std::optional<MaterialDefinition> MaterialDefinition::fromJson(const QJsonObject& json, std::string* outError)

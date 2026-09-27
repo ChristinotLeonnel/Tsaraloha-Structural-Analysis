@@ -1,0 +1,31 @@
+{
+  "id": "aluminum_structural",
+  "name": "Aluminum",
+  "category": "Aluminum",
+  "version": "1.0.0",
+  "standard": {
+    "name": "EN 1999-1-1",
+    "edition": "2007",
+    "clause": "Table 3.1",
+    "source": "CEN"
+  },
+  "mechanical": {
+    "density": { "value": 2700.0, "unit": "kg/m3" },
+    "young_modulus": { "value": 70000.0, "unit": "MPa" },
+    "poisson_ratio": 0.33,
+    "thermal_coeff": { "value": 2.3e-5, "unit": "1/K" }
+  },
+  "strength": {
+    "fy": { "value": 200.0, "unit": "MPa" }
+  },
+  "visual": {
+    "base_color": "#D8DCE0",
+    "roughness": 0.25,
+    "metallic": 0.92,
+    "transparency": 0.0,
+    "shininess": 0.75,
+    "textures": {},
+    "texture_scale_u": 1.0,
+    "texture_scale_v": 1.0
+  }
+}

@@ -47,6 +47,15 @@ const MaterialDefinition* LibraryRegistry::findMaterial(const std::string& id) c
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_materials.find(id);
     if (it != m_materials.end()) return &it->second;
+
+    std::string lId = toLower(id);
+    for (const auto& [k, mat] : m_materials)
+    {
+        if (toLower(k) == lId || toLower(mat.id) == lId || toLower(mat.name) == lId)
+        {
+            return &mat;
+        }
+    }
     return nullptr;
 }
 

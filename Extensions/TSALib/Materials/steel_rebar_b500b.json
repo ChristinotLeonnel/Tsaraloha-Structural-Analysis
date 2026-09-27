@@ -1,0 +1,31 @@
+{
+  "id": "steel_rebar_b500b",
+  "name": "Rebar Steel B500B",
+  "category": "Steel",
+  "version": "1.0.0",
+  "standard": {
+    "name": "EN 1992-1-1",
+    "edition": "2004",
+    "clause": "Annex C",
+    "source": "CEN"
+  },
+  "mechanical": {
+    "density": { "value": 7850.0, "unit": "kg/m3" },
+    "young_modulus": { "value": 200000.0, "unit": "MPa" },
+    "poisson_ratio": 0.30,
+    "thermal_coeff": { "value": 1.2e-5, "unit": "1/K" }
+  },
+  "strength": {
+    "fy": { "value": 500.0, "unit": "MPa" }
+  },
+  "visual": {
+    "base_color": "#2B3036",
+    "roughness": 0.45,
+    "metallic": 0.88,
+    "transparency": 0.0,
+    "shininess": 0.50,
+    "textures": {},
+    "texture_scale_u": 1.0,
+    "texture_scale_v": 1.0
+  }
+}

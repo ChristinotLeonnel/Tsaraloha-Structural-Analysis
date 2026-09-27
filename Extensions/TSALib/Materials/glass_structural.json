@@ -1,0 +1,31 @@
+{
+  "id": "glass_structural",
+  "name": "Structural Glass",
+  "category": "Glass",
+  "version": "1.0.0",
+  "standard": {
+    "name": "EN 572-1",
+    "edition": "2012",
+    "clause": "Clause 5",
+    "source": "CEN"
+  },
+  "mechanical": {
+    "density": { "value": 2500.0, "unit": "kg/m3" },
+    "young_modulus": { "value": 70000.0, "unit": "MPa" },
+    "poisson_ratio": 0.22,
+    "thermal_coeff": { "value": 9.0e-6, "unit": "1/K" }
+  },
+  "strength": {
+    "ft": { "value": 45.0, "unit": "MPa" }
+  },
+  "visual": {
+    "base_color": "#C2E2E8",
+    "roughness": 0.05,
+    "metallic": 0.0,
+    "transparency": 0.65,
+    "shininess": 0.95,
+    "textures": {},
+    "texture_scale_u": 1.0,
+    "texture_scale_v": 1.0
+  }
+}

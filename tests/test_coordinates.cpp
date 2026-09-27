@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 40;
+    int total = 41;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -4197,6 +4197,156 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 40: TSALib Phase 3 - Manifest Format & Disk Layout (4 Subtests Validated) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // --- TEST 41: TSALib Phase 4 - Externalisation des Matériaux & Découplage C++ ---
+    {
+        std::cout << "\n--- TEST 41: TSALib Phase 4 - Externalisation des Materiaux & Decouplage C++ ---" << std::endl;
+
+        // 41.1: Verification de l'ensemble des 16 fiches materiaux JSON externes
+        {
+            QString matDir = "e:/Book/Dev/TSA/Extensions/TSALib/Materials";
+            TEST_CHECK(QDir(matDir).exists(), "Subtest 41.1: Repertoire Materials existe");
+
+            QStringList expectedMaterials = {
+                "concrete_c25_30.json",
+                "concrete_c30_37.json",
+                "concrete_reinforced.json",
+                "steel_s235.json",
+                "steel_s355.json",
+                "steel_rebar_b500b.json",
+                "steel_galvanized.json",
+                "aluminum_structural.json",
+                "timber_c24.json",
+                "masonry_brick.json",
+                "masonry_block.json",
+                "glass_structural.json",
+                "soil_earth.json",
+                "soil_sand.json",
+                "soil_gravel.json",
+                "soil_rock.json"
+            };
+
+            for (const QString& matFile : expectedMaterials)
+            {
+                QString filePath = matDir + "/" + matFile;
+                TEST_CHECK(QFile::exists(filePath), ("Subtest 41.1: Fichier existant: " + matFile.toStdString()).c_str());
+
+                QFile f(filePath);
+                TEST_CHECK(f.open(QIODevice::ReadOnly), ("Subtest 41.1: Lecture fichier: " + matFile.toStdString()).c_str());
+                QJsonParseError parseErr;
+                QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &parseErr);
+                TEST_CHECK(parseErr.error == QJsonParseError::NoError, ("Subtest 41.1: JSON valide: " + matFile.toStdString()).c_str());
+
+                std::string err;
+                auto matDef = TSA::ExtensionSystem::MaterialDefinition::fromJson(doc.object(), &err);
+                TEST_CHECK(matDef.has_value(), ("Subtest 41.1: Parsing MaterialDefinition: " + matFile.toStdString()).c_str());
+                TEST_CHECK(matDef->density.toBaseSI() > 0.0, "Subtest 41.1: Masse volumique positive");
+                TEST_CHECK(matDef->youngModulus.toBaseSI() > 0.0, "Subtest 41.1: Module d'Young positif");
+                TEST_CHECK(matDef->poissonRatio >= -1.0 && matDef->poissonRatio < 0.5, "Subtest 41.1: Poisson ratio dans [-1.0, 0.5[");
+            }
+
+            std::cout << "  [PASS] Subtest 41.1: 16 Fiches Materiaux Externes JSON Validees avec Succes" << std::endl;
+        }
+
+        // 41.2: Chargement d'extension & Indexation dans LibraryRegistry
+        {
+            auto& libMgr = TSA::ExtensionSystem::LibraryManager::instance();
+            libMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            libMgr.discover();
+            bool loaded = libMgr.load("org.tsaraloha.tsalib");
+            TEST_CHECK(loaded, "Subtest 41.2: Chargement de l'extension TSALib reussi");
+
+            auto& registry = TSA::ExtensionSystem::LibraryRegistry::instance();
+            auto materials = registry.allMaterials();
+            TEST_CHECK(materials.size() >= 16, "Subtest 41.2: Au moins 16 materiaux enregistres dans le registre");
+
+            // Verification d'un materiau specifique (Béton C25/30)
+            const auto* c25 = registry.findMaterial("concrete_c25_30");
+            TEST_CHECK(c25 != nullptr, "Subtest 41.2: concrete_c25_30 trouve dans LibraryRegistry");
+            if (c25)
+            {
+                TEST_CHECK(c25->name == "Concrete C25/30", "Subtest 41.2: Nom correspond");
+                TEST_CHECK(std::abs(c25->youngModulus.toBaseSI() - 31.0e9) < 1.0e3, "Subtest 41.2: Young Modulus = 31 GPa");
+                TEST_CHECK(std::abs(c25->density.toBaseSI() - 2500.0) < 1.0, "Subtest 41.2: Density = 2500 kg/m3");
+                TEST_CHECK(std::abs(c25->poissonRatio - 0.20) < 1.0e-4, "Subtest 41.2: Poisson = 0.20");
+                TEST_CHECK(std::abs(c25->fck.toBaseSI() - 25.0e6) < 1.0e3, "Subtest 41.2: fck = 25 MPa");
+            }
+
+            // Verification de recherche par categorie
+            auto concreteMats = registry.materialsByCategory("Concrete");
+            TEST_CHECK(concreteMats.size() >= 3, "Subtest 41.2: Au moins 3 materiaux de categorie Concrete");
+
+            auto steelMats = registry.materialsByCategory("Steel");
+            TEST_CHECK(steelMats.size() >= 4, "Subtest 41.2: Au moins 4 materiaux de categorie Steel");
+
+            std::cout << "  [PASS] Subtest 41.2: Chargement d'extension & Indexation dans LibraryRegistry Verifies" << std::endl;
+        }
+
+        // 41.3: Passerelle Bidirectionnelle MaterialDefinition <-> TSA::Model::Material
+        {
+            auto& registry = TSA::ExtensionSystem::LibraryRegistry::instance();
+            const auto* s235Def = registry.findMaterial("steel_s235");
+            TEST_CHECK(s235Def != nullptr, "Subtest 41.3: steel_s235 present");
+            if (s235Def)
+            {
+                // Conversion vers TSA::Model::Material
+                TSA::Model::Material modelMat = s235Def->toModelMaterial(101);
+                TEST_CHECK(modelMat.id == 101, "Subtest 41.3: ID reporte");
+                TEST_CHECK(modelMat.name == "Steel S235", "Subtest 41.3: Nom reporte");
+                TEST_CHECK(modelMat.type == TSA::Model::MaterialType::Steel, "Subtest 41.3: Type Steel correct");
+                TEST_CHECK(std::abs(modelMat.E - 210.0e9) < 1.0e3, "Subtest 41.3: E = 210 GPa");
+                TEST_CHECK(std::abs(modelMat.fk - 235.0e6) < 1.0e3, "Subtest 41.3: fk = 235 MPa");
+                TEST_CHECK(modelMat.visual.baseColor == "#4682B4", "Subtest 41.3: Couleur albedo conforme");
+
+                // Reconversion vers MaterialDefinition
+                auto backDef = TSA::ExtensionSystem::MaterialDefinition::fromModelMaterial(modelMat, "test.lib");
+                TEST_CHECK(backDef.category == "Steel", "Subtest 41.3: Categorie Steel preservee");
+                TEST_CHECK(std::abs(backDef.youngModulus.toBaseSI() - 210.0e9) < 1.0e3, "Subtest 41.3: E conserve");
+                TEST_CHECK(std::abs(backDef.fy.toBaseSI() - 235.0e6) < 1.0e3, "Subtest 41.3: fy conserve");
+            }
+
+            std::cout << "  [PASS] Subtest 41.3: Passerelle Bidirectionnelle MaterialDefinition <-> Material Verifiee" << std::endl;
+        }
+
+        // 41.4: Synchronisation MaterialLibrary & LibraryManager
+        {
+            auto& matLib = TSA::Model::MaterialLibrary::instance();
+            matLib.reloadFromRegistry();
+            TEST_CHECK(matLib.standardMaterials().size() >= 16, "Subtest 41.4: MaterialLibrary a synchronise les 16 materiaux standards");
+
+            // Creation d'un materiau personnalise
+            TSA::Model::Material customMat;
+            customMat.id = 999;
+            customMat.name = "Super Titanium Ti-6Al-4V";
+            customMat.type = TSA::Model::MaterialType::Custom;
+            customMat.E = 114.0e9;
+            customMat.nu = 0.34;
+            customMat.density = 4430.0;
+            customMat.fk = 880.0e6;
+            customMat.syncMechanical();
+
+            bool registered = matLib.registerCustomMaterial(customMat);
+            TEST_CHECK(registered, "Subtest 41.4: Enregistrement materiau personnalise reussi");
+
+            // Verifier presence dans MaterialLibrary
+            const auto* foundInMatLib = matLib.findByName("Super Titanium Ti-6Al-4V");
+            TEST_CHECK(foundInMatLib != nullptr, "Subtest 41.4: Materiau personnalise trouve dans MaterialLibrary");
+
+            // Verifier presence synchronisee automatique dans ExtensionSystem::LibraryRegistry
+            auto& registry = TSA::ExtensionSystem::LibraryRegistry::instance();
+            const auto* foundInRegistry = registry.findMaterial("Super Titanium Ti-6Al-4V");
+            TEST_CHECK(foundInRegistry != nullptr, "Subtest 41.4: Materiau personnalise synchronise dans LibraryRegistry");
+            if (foundInRegistry)
+            {
+                TEST_CHECK(std::abs(foundInRegistry->youngModulus.toBaseSI() - 114.0e9) < 1.0e3, "Subtest 41.4: Propriete E synchronisee");
+            }
+
+            std::cout << "  [PASS] Subtest 41.4: Synchronisation MaterialLibrary & LibraryManager Verifiee" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 41: TSALib Phase 4 - Externalisation des Materiaux & Decouplage C++ (4 Subtests Validates) Passed Successfully!" << std::endl;
         passed++;
     }
 

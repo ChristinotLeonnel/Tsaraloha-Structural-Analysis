@@ -114,7 +114,8 @@ void LibraryLoader::scanCategoryDirectory(const QString& dirPath, const std::str
     {
         QString filePath = it.next();
         QFileInfo fi(filePath);
-        std::string defId = fi.baseName().toLower().toStdString();
+        std::string baseId = fi.baseName().toLower().toStdString();
+        std::string defId = baseId;
 
         // Si l'id n'est pas qualifié, on préfixe par catégorie simplifiée
         if (defId.find('.') == std::string::npos)
@@ -125,11 +126,15 @@ void LibraryLoader::scanCategoryDirectory(const QString& dirPath, const std::str
         }
 
         DefinitionFileIndex entry;
-        entry.id = defId;
+        entry.id = baseId;
         entry.category = category;
         entry.filePath = filePath;
         entry.isLoaded = false;
-        m_fileIndex[defId] = entry;
+        m_fileIndex[baseId] = entry;
+        if (defId != baseId)
+        {
+            m_fileIndex[defId] = entry;
+        }
     }
 }
 

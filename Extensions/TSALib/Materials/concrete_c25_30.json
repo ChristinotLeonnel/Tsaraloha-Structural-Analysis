@@ -1,0 +1,31 @@
+{
+  "id": "concrete_c25_30",
+  "name": "Concrete C25/30",
+  "category": "Concrete",
+  "version": "1.0.0",
+  "standard": {
+    "name": "EN 1992-1-1",
+    "edition": "2004",
+    "clause": "Table 3.1",
+    "source": "CEN"
+  },
+  "mechanical": {
+    "density": { "value": 2500.0, "unit": "kg/m3" },
+    "young_modulus": { "value": 31000.0, "unit": "MPa" },
+    "poisson_ratio": 0.20,
+    "thermal_coeff": { "value": 1.0e-5, "unit": "1/K" }
+  },
+  "strength": {
+    "fck": { "value": 25.0, "unit": "MPa" }
+  },
+  "visual": {
+    "base_color": "#9EA0A2",
+    "roughness": 0.88,
+    "metallic": 0.0,
+    "transparency": 0.0,
+    "shininess": 0.08,
+    "textures": {},
+    "texture_scale_u": 1.0,
+    "texture_scale_v": 1.0
+  }
+}

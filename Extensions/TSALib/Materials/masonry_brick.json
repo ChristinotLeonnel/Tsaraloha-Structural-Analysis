@@ -1,0 +1,31 @@
+{
+  "id": "masonry_brick",
+  "name": "Brick Masonry",
+  "category": "Masonry",
+  "version": "1.0.0",
+  "standard": {
+    "name": "EN 1996-1-1",
+    "edition": "2005",
+    "clause": "Table 3.3",
+    "source": "CEN"
+  },
+  "mechanical": {
+    "density": { "value": 1800.0, "unit": "kg/m3" },
+    "young_modulus": { "value": 5000.0, "unit": "MPa" },
+    "poisson_ratio": 0.15,
+    "thermal_coeff": { "value": 6.0e-6, "unit": "1/K" }
+  },
+  "strength": {
+    "fck": { "value": 10.0, "unit": "MPa" }
+  },
+  "visual": {
+    "base_color": "#A64B35",
+    "roughness": 0.90,
+    "metallic": 0.0,
+    "transparency": 0.0,
+    "shininess": 0.05,
+    "textures": {},
+    "texture_scale_u": 1.0,
+    "texture_scale_v": 1.0
+  }
+}

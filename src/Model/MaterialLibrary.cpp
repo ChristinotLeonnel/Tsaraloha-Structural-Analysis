@@ -1,4 +1,6 @@
 #include "MaterialLibrary.h"
+#include "../ExtensionSystem/LibraryRegistry.h"
+#include "../ExtensionSystem/DefinitionModels.h"
 #include <algorithm>
 
 namespace TSA::Model
@@ -18,6 +20,7 @@ MaterialLibrary::MaterialLibrary()
 void MaterialLibrary::initializeStandards()
 {
     m_standards = Material::defaultLibrary();
+    reloadFromRegistry();
 }
 
 const std::vector<Material>& MaterialLibrary::standardMaterials() const
@@ -73,15 +76,24 @@ const Material* MaterialLibrary::findByType(MaterialType type) const
 
 bool MaterialLibrary::registerCustomMaterial(const Material& material)
 {
+    bool updated = false;
     for (auto& m : m_customMaterials)
     {
         if (m.id == material.id || m.name == material.name)
         {
             m = material;
-            return true;
+            updated = true;
+            break;
         }
     }
-    m_customMaterials.push_back(material);
+    if (!updated)
+    {
+        m_customMaterials.push_back(material);
+    }
+
+    // Synchronisation automatique avec LibraryRegistry de l'ExtensionSystem
+    auto def = TSA::ExtensionSystem::MaterialDefinition::fromModelMaterial(material, "user.custom");
+    TSA::ExtensionSystem::LibraryRegistry::instance().registerMaterial(def);
     return true;
 }
 
@@ -114,6 +126,32 @@ bool MaterialLibrary::removeCustomMaterialByName(const std::string& name)
 void MaterialLibrary::clearCustomMaterials()
 {
     m_customMaterials.clear();
+}
+
+void MaterialLibrary::reloadFromRegistry()
+{
+    auto& registry = TSA::ExtensionSystem::LibraryRegistry::instance();
+    auto extMaterials = registry.allMaterials();
+    if (!extMaterials.empty())
+    {
+        m_standards.clear();
+        int nextId = 1;
+        for (const auto& matDef : extMaterials)
+        {
+            m_standards.push_back(matDef.toModelMaterial(nextId++));
+        }
+    }
+}
+
+bool MaterialLibrary::synchronizeToRegistry()
+{
+    auto& registry = TSA::ExtensionSystem::LibraryRegistry::instance();
+    for (const auto& m : m_customMaterials)
+    {
+        auto def = TSA::ExtensionSystem::MaterialDefinition::fromModelMaterial(m, "user.custom");
+        registry.registerMaterial(def);
+    }
+    return true;
 }
 
 } // namespace TSA::Model

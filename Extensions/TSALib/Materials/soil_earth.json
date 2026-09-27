@@ -1,0 +1,31 @@
+{
+  "id": "soil_earth",
+  "name": "Soil / Earth",
+  "category": "Soil",
+  "version": "1.0.0",
+  "standard": {
+    "name": "EN 1997-1",
+    "edition": "2004",
+    "clause": "Annex D",
+    "source": "CEN"
+  },
+  "mechanical": {
+    "density": { "value": 1900.0, "unit": "kg/m3" },
+    "young_modulus": { "value": 50.0, "unit": "MPa" },
+    "poisson_ratio": 0.35,
+    "thermal_coeff": { "value": 1.0e-5, "unit": "1/K" }
+  },
+  "strength": {
+    "ft": { "value": 0.25, "unit": "MPa" }
+  },
+  "visual": {
+    "base_color": "#735137",
+    "roughness": 0.95,
+    "metallic": 0.0,
+    "transparency": 0.0,
+    "shininess": 0.02,
+    "textures": {},
+    "texture_scale_u": 1.0,
+    "texture_scale_v": 1.0
+  }
+}
