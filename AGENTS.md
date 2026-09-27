@@ -1,700 +1,1054 @@
-# TSA — Architecture interconnectée des bibliothèques, fenêtres, modèle, commandes et OCCT
+# Directives de Développement TSA - Recherche Préalable de Solutions & Dépendances Externes
 
-Dans le projet **TSA — Tsaraloha Structural Analysis**, je veux améliorer l'architecture globale afin que **toutes les fonctionnalités soient réellement interconnectées**.
-
-Le problème à éviter est d'avoir plusieurs systèmes indépendants qui font presque la même chose.
-
-Je veux une architecture cohérente où :
-
-```text
-Bibliothèques
-     ↕
-Fenêtres Qt
-     ↕
-Modèle TSA
-     ↕
-Commandes
-     ↕
-Sélection
-     ↕
-Undo / Redo
-     ↕
-Sauvegarde / Chargement
-     ↕
-OCCT / 3D
-     ↕
-Calculs
-```
-
-utilisent des données et des interfaces cohérentes.
+Pour toute nouvelle fonctionnalité, extension, bibliothèque, outil, composant visuel (icônes, widgets, thèmes) ou module dans le projet TSA, appliquer systématiquement la règle suivante :
 
 ---
 
-# 0. RÈGLE ABSOLUE — AUDIT AVANT MODIFICATION
+## 1. Règle Principale : Recherche Préalable Obligatoire sur Internet
 
-Avant toute modification du code :
-
-**NE MODIFIE RIEN.**
-
-Ne pas :
-
-* créer de nouvelle classe ;
-* créer de nouvelle bibliothèque ;
-* supprimer du code ;
-* déplacer des fichiers ;
-* refactoriser ;
-* modifier CMake ;
-* modifier les fenêtres ;
-* modifier `TsaLib`.
-
-Commencer par analyser l'architecture actuelle.
-
-Identifier notamment :
-
-```text
-TsaLib
-LibraryManager
-SectionManager
-MaterialManager
-
-Element
-ElementFilaire
-ElementSurfacique
-
-Beam
-Column
-Bar
-Cable
-Surface
-
-Property Windows
-Command System
-Selection System
-Undo / Redo
-
-Model
-ModelManager
-Document
-
-OCCT
-AIS
-Viewport
-
-Save / Load
-Import / Export
-
-Analysis / Calculation
-```
-
-Identifier également les dépendances entre ces systèmes.
-
-**Après l'audit, STOP et attends mon approbation avant toute modification.**
+Avant de créer ou de coder nous-mêmes une extension, une bibliothèque ou un composant :
+- **Toujours rechercher sur Internet s'il existe déjà une solution adaptée, maintenue, fiable et reconnue**.
+- **Ne jamais créer ou réinventer une solution si une bibliothèque ou un composant existant répond proprement au besoin**.
 
 ---
 
-# 1. PRINCIPLE — UNE SEULE SOURCE DE VÉRITÉ
+## 2. Protocole de Recherche & Évaluation
 
-Je veux éviter les copies indépendantes des mêmes données.
-
-Par exemple, ne pas avoir :
-
-```text
-TsaLib
-   │
-   ├── BeamWindow → copie des sections
-   │
-   ├── CableWindow → autre copie
-   │
-   └── ColumnWindow → autre copie
-```
-
-Je veux :
-
-```text
-                 TsaLib
-                    │
-        ┌───────────┼───────────┐
-        │           │           │
-      Beam        Column       Cable
-      Window      Window       Window
-        │           │           │
-        └───────────┼───────────┘
-                    ↓
-                TSA Model
-```
-
-Les fenêtres consultent les bibliothèques centrales.
-
-Elles ne doivent pas devenir des bases de données secondaires.
+Pour chaque besoin identifié :
+1. **Identifier précisément le besoin technique ou visuel**.
+2. **Rechercher les solutions existantes** (via `search_web`, documentation officielle, dépôts GitHub).
+3. **Privilégier les sources officielles et reconnues** :
+   - Dépôts GitHub officiels et maintenus
+   - Documentation officielle Qt
+   - Écosystème Microsoft / Windows SDK / MSVC
+   - CMake packages & modules
+   - MinGW-w64
+   - OpenCASCADE (OCCT)
+   - VTK
+   - Projets open source établis et activement maintenus
+4. **Vérifier les critères de compatibilité stricts avec TSA** :
+   - Compatibilité Windows 10/11 x64
+   - Compatibilité standard C++20
+   - Compatibilité toolchains (MSVC / MinGW)
+   - Compatibilité Qt 6
+   - Intégration CMake native
+   - Licence compatible (MIT, Apache 2.0, BSD, LGPL, etc.)
+   - Maintenance active et date des dernières mises à jour
+5. **Si une solution existante convient** : l'utiliser et l'intégrer au lieu de la recoder.
+6. **Si plusieurs solutions existent** : les comparer techniquement avant sélection.
+7. **Si aucune solution existante n'est adaptée** : créer une solution personnalisée.
 
 ---
 
-# 2. TsaLib doit être réellement intégrée
+## 3. Format d'Évaluation Obligatoire
 
-TSA possède déjà des bibliothèques telles que :
+Pour toute proposition ou étude de nouvelle fonctionnalité ou composant, présenter obligatoirement l'analyse sous ce format :
 
 ```text
-TsaLib
-├── Sections
-├── Materials
-├── Profiles
-├── ...
+Besoin :
+...
+
+Solution existante trouvée :
+...
+
+Source :
+...
+
+Compatibilité TSA :
+...
+
+Avantages :
+...
+
+Limites :
+...
+
+Solution personnalisée nécessaire :
+Oui / Non
 ```
-
-Il faut déterminer exactement ce qui existe déjà.
-
-**Ne recrée pas TsaLib.**
-
-Cherche comment elle est actuellement chargée, enregistrée, utilisée et sauvegardée.
-
-Si une fonctionnalité existe déjà dans `TsaLib`, les fenêtres doivent l'utiliser.
 
 ---
 
-# 3. Synchronisation automatique
+## 4. Conditions pour Développer une Solution Personnalisée
 
-Lorsqu'une bibliothèque évolue :
-
-```text
-TsaLib
-   ↓
-Library changed
-   ↓
-Property system
-   ↓
-Windows
-```
-
-les fenêtres concernées doivent pouvoir récupérer automatiquement les nouvelles données.
-
-Exemple :
-
-```text
-Ajout section IPE 500
-        ↓
-TsaLib
-        ↓
-Section enregistrée
-        ↓
-BeamPropertiesWindow
-        ↓
-IPE 500 disponible
-```
-
-Même principe pour les matériaux et les autres bibliothèques.
-
-Ne pas coder manuellement dans chaque fenêtre :
-
-```cpp
-comboBox->addItem("IPE 500");
-```
-
-si cette donnée appartient à `TsaLib`.
+Une solution personnalisée n'est développée que si :
+- Aucune solution existante ne répond au besoin technique.
+- Les solutions existantes sont incompatibles avec l'ABI ou l'architecture de TSA.
+- La licence est restrictive ou incompatible.
+- Le projet tiers est abandonné ou obsolète.
+- L'intégration de la dépendance est inutilement lourde/complexe comparée au besoin réel.
+- **OU** une implémentation sur-mesure est démontrée comme étant nettement plus légère, plus rapide, plus stable, plus moderne, plus esthétique ou mieux intégrée à l'architecture TSA (comparaison comparative obligatoire préalable).
 
 ---
 
-# 4. Toutes les fonctionnalités doivent être interconnectées
+## 5. Application aux Composants Visuels et Graphiques
 
-Je veux que les fonctionnalités principales de TSA ne soient pas des systèmes isolés.
-
-Architecture cible :
-
-```text
-                         TSA
-                          │
-                    ┌─────┴─────┐
-                    │  TsaLib   │
-                    └─────┬─────┘
-                          │
-                    Property System
-                          │
-             ┌────────────┼────────────┐
-             │            │            │
-           Beam        Column        Cable
-             │            │            │
-             └────────────┼────────────┘
-                          │
-                       Model
-                          │
-            ┌─────────────┼─────────────┐
-            │             │             │
-        Selection      Commands     Properties
-            │             │             │
-            └─────────────┼─────────────┘
-                          │
-                    Undo / Redo
-                          │
-                    Save / Load
-                          │
-                     OCCT / 3D
-                          │
-                      Analysis
-```
-
-Une action utilisateur doit donc traverser proprement les couches concernées.
+Cette règle s'applique identiquement aux :
+- Systèmes d'icônes (Font Awesome, Material Symbols, Fluent UI, svg-icons)
+- Widgets et composants d'interface Qt
+- Panneaux, docks et rubans
+- Thèmes et feuilles de style (QSS)
+- Moteurs de calcul et algorithmes
 
 ---
 
-# 5. Exemple concret — création d'un câble
+## 6. Règle Obligatoire — Recherche, Sources et Références
 
-Lorsque l'utilisateur clique sur :
+Toute recherche technique effectuée pendant l'audit ou le développement de TSA doit être **traçable et accompagnée de références vérifiables**.
 
-```text
-Cable
-```
+Cette règle s'applique notamment aux recherches concernant :
 
-puis dessine :
-
-```text
-Point A → Point B
-```
-
-le workflow doit être :
-
-```text
-Cable Tool
-    ↓
-Geometry Input
-    ↓
-Cable Creation Command
-    ↓
-Cable Model
-    ↓
-CablePropertiesWindow
-    ↓
-TsaLib
-    ↓
-Cable Section / Material
-    ↓
-Model Update
-    ↓
-OCCT Geometry
-    ↓
-Viewport
-    ↓
-Selection / Tree / Properties
-```
-
-Le câble ne doit pas être simplement dessiné dans OCCT sans être correctement enregistré dans le modèle.
-
----
-
-# 6. Cable — fenêtre indépendante
-
-Le **Cable possède sa propre fenêtre** :
-
-```text
-CablePropertiesWindow
-```
-
-Il ne doit pas utiliser la fenêtre de :
-
-```text
-Beam
-Column
-Bar
-```
-
-Le câble possède ses propres :
-
+* architecture logicielle ;
+* C++ ;
+* Qt ;
+* OCCT ;
+* CMake ;
+* Visual Studio / MSVC ;
+* MinGW ;
+* bibliothèques externes ;
+* formats de fichiers ;
+* géométrie ;
+* éléments structuraux ;
+* calcul de structures ;
+* câbles ;
+* matériaux ;
 * sections ;
-* paramètres ;
-* propriétés ;
-* règles de représentation ;
-* workflow.
+* Eurocodes ;
+* méthodes numériques ;
+* FEA/FEM ;
+* interaction UI / modèle / OCCT ;
+* Undo / Redo ;
+* sauvegarde / chargement ;
+* toute nouvelle technologie proposée pour TSA.
 
-Cependant, il peut réutiliser les infrastructures génériques :
+### 6.1 Sources à privilégier
+
+Utiliser en priorité des sources fiables et directement pertinentes :
+
+#### a) Documentation officielle
+
+* Qt
+* Open CASCADE Technology
+* CMake
+* Microsoft / Visual Studio
+* MinGW
+* bibliothèques utilisées par TSA
+
+#### b) Normes et documents officiels
+
+* Eurocodes
+* normes ISO/EN lorsqu'elles sont pertinentes
+* documents officiels des organismes concernés
+
+#### c) Livres techniques reconnus
+
+Pour un livre, indiquer autant que possible :
 
 ```text
-Property system
-Command system
-Undo/Redo
-Selection
-Library system
-Model system
+Titre
+Auteur(s)
+Édition
+Éditeur
+Chapitre / section
 ```
 
-La réutilisation de l'infrastructure est souhaitée.
+#### d) Articles scientifiques et publications universitaires
 
-La confusion des propriétés ne l'est pas.
-
----
-
-# 7. TsaLib + Cable
-
-Le câble doit pouvoir utiliser les bibliothèques compatibles :
+Indiquer :
 
 ```text
-CablePropertiesWindow
-        ↓
-TsaLib
-        ├── Cable Sections
-        ├── Materials
-        └── autres données compatibles
+Titre
+Auteur(s)
+Journal / conférence
+Année
+DOI ou référence disponible
 ```
 
-Exemple :
+#### e) Dépôts officiels
+
+Par exemple :
+
+* GitHub officiel d'un projet ;
+* GitLab officiel ;
+* documentation officielle du projet ;
+* dépôt officiel contenant le code source.
+
+### 6.2 Sources secondaires
+
+Les forums, blogs, Stack Overflow, Reddit, vidéos et autres sources communautaires peuvent être utilisés pour rechercher des pistes ou comprendre un problème, mais ils ne doivent pas être considérés automatiquement comme une autorité technique.
+
+Lorsqu'une information importante provient d'une source secondaire, rechercher si possible la documentation officielle ou la source primaire correspondante.
+
+### 6.3 Aucune référence inventée
+
+**INTERDICTION ABSOLUE d'inventer une référence.**
+
+Ne jamais fabriquer :
+
+* URL ;
+* titre de documentation ;
+* nom de livre ;
+* auteur ;
+* DOI ;
+* numéro de norme ;
+* chapitre ;
+* numéro de section ;
+* version de bibliothèque ;
+* fonction ou API supposée.
+
+Si une information ne peut pas être vérifiée, le préciser clairement :
 
 ```text
-Section :
-[ Cable Ø20 ]
-
-Matériau :
-[ Steel ... ]
-```
-
-Les données affichées doivent provenir de la bibliothèque réelle.
-
----
-
-# 8. Interconnexion avec les propriétés
-
-Lorsqu'une propriété est modifiée :
-
-```text
-Property Window
-      ↓
-Property System
-      ↓
-Model
-      ↓
-OCCT
-      ↓
-Viewport
-```
-
-La modification doit être immédiatement cohérente avec le modèle.
-
-Exemple :
-
-```text
-Cable Ø20
-     ↓
-Modification
-     ↓
-Cable Ø30
-     ↓
-Model = Ø30
-     ↓
-OCCT = Ø30
-     ↓
-UI = Ø30
-```
-
-Il ne doit jamais être possible d'avoir :
-
-```text
-UI : Ø30
-Model : Ø20
-OCCT : Ø20
-```
-
----
-
-# 9. Sélection
-
-La sélection doit également être connectée au système de propriétés.
-
-Exemple :
-
-```text
-Sélection Cable dans OCCT
-        ↓
-Identification du Cable
-        ↓
-Model
-        ↓
-CablePropertiesWindow
-        ↓
-Affichage des propriétés réelles
-```
-
-Même principe pour Beam, Column, Bar, Surface, etc.
-
-La fenêtre doit toujours représenter **l'objet réellement sélectionné**.
-
----
-
-# 10. Undo / Redo
-
-Toutes les modifications importantes doivent passer par le système de commandes existant lorsqu'il existe.
-
-Exemple :
-
-```text
-Modifier Cable
-      ↓
-Command
-      ↓
-Model
-      ↓
-OCCT
-```
-
-Puis :
-
-```text
-Ctrl + Z
-      ↓
-Undo Command
-      ↓
-Model restored
-      ↓
-OCCT updated
-      ↓
-UI updated
-```
-
-Ne pas créer un système Undo spécial uniquement pour les câbles.
-
----
-
-# 11. Sauvegarde / chargement
-
-Les bibliothèques et les objets doivent rester cohérents après :
-
-```text
-Save
-Load
-```
-
-Exemple :
-
-```text
-Cable
- ├── Section ID
- ├── Material ID
- ├── Parameters
- └── Geometry
-```
-
-Après chargement :
-
-```text
-File
- ↓
-Model
- ↓
-TsaLib references
- ↓
-Cable
- ↓
-OCCT
- ↓
-UI
-```
-
-Vérifier particulièrement les références vers les bibliothèques.
-
-Éviter les pointeurs invalides et les références vers des données qui n'existent plus.
-
----
-
-# 12. Modification d'une bibliothèque
-
-Analyser le comportement actuel de TSA.
-
-Déterminer si les éléments utilisent :
-
-### Référence dynamique
-
-```text
-TsaLib Section
-      ↓
-Cable
+Source non vérifiée
 ```
 
 ou :
 
-### Snapshot
-
 ```text
-TsaLib Section
-      ↓
-copie des propriétés
-      ↓
-Cable
+Information à confirmer
 ```
 
-Ne pas changer arbitrairement cette logique.
+plutôt que d'inventer une source.
 
-Documenter le comportement actuel et proposer une amélioration uniquement si nécessaire.
+### 6.4 Chaque décision technique importante doit être justifiée
 
----
-
-# 13. Architecture générique
-
-Si l'architecture actuelle le permet, rechercher la possibilité d'avoir un système générique :
+Lorsqu'une recherche conduit à une décision d'architecture ou d'implémentation, utiliser autant que possible le format :
 
 ```text
-PropertyProvider
-LibraryProvider
-ElementPropertyAdapter
+Décision :
+...
+
+Pourquoi :
+...
+
+Source :
+...
+
+Référence :
+...
+
+Impact sur TSA :
+...
 ```
 
-ou une architecture équivalente.
-
-Mais **ne crée pas ces classes automatiquement**.
-
-Avant de créer une nouvelle abstraction, vérifier si une architecture existante peut être réutilisée.
-
----
-
-# 14. Recherche obligatoire de solutions existantes
-
-Conformément aux directives du projet TSA, avant de créer une nouvelle :
-
-* bibliothèque ;
-* extension ;
-* composant ;
-* widget ;
-* système graphique ;
-* outil ;
-* dépendance ;
-
-rechercher d'abord une solution existante adaptée.
-
-Vérifier :
+Exemple :
 
 ```text
-Source
-Maintenance
+Décision :
+Réutiliser le système de commandes existant pour les modifications
+de propriétés du Cable.
+
+Pourquoi :
+Le système de commandes actuel fournit déjà Undo/Redo et permet
+d'éviter la création d'un deuxième système indépendant.
+
+Source :
+Analyse du code existant TSA.
+
+Référence :
+Fichier / classe / fonction concernée.
+
+Impact sur TSA :
+Le Cable utilise la même infrastructure de commandes que les autres
+éléments tout en conservant ses propres propriétés.
+```
+
+Lorsqu'une décision repose sur une documentation externe :
+
+```text
+Décision
+    ↓
+Justification technique
+    ↓
+Source primaire
+    ↓
+Référence vérifiable
+```
+
+### 6.5 Comparaison des solutions
+
+Lorsqu'il existe plusieurs solutions possibles, ne pas choisir immédiatement.
+
+Comparer d'abord les solutions pertinentes.
+
+Exemple :
+
+```text
+Solution A
+Source :
+Compatibilité :
+Avantages :
+Limites :
+
+Solution B
+Source :
+Compatibilité :
+Avantages :
+Limites :
+
+Solution retenue :
+...
+
+Justification :
+...
+```
+
+La solution retenue doit être justifiée par des critères techniques liés au projet TSA et non par une préférence arbitraire.
+
+### 6.6 Recherche sur les bibliothèques externes
+
+Avant d'ajouter une nouvelle dépendance :
+
+```text
+Besoin
+    ↓
+Recherche de solutions existantes
+    ↓
+Documentation officielle
+    ↓
 Licence
-Compatibilité
-C++20
+    ↓
+Maintenance
+    ↓
+Compatibilité TSA
+    ↓
+Décision
+```
+
+Vérifier notamment :
+
+```text
+C++
 Qt 6
 CMake
 Windows
 MSVC
 MinGW
 OCCT
+Architecture actuelle de TSA
+Licence
+Maintenance du projet
 ```
 
-Cette règle fait partie des directives de développement TSA.
+Ne pas ajouter une bibliothèque uniquement parce qu'elle semble résoudre rapidement un problème.
 
-Si aucune solution existante n'est adaptée, alors seulement envisager une implémentation personnalisée.
+### 6.7 Recherche sur les éléments structuraux
+
+Pour toute fonctionnalité liée au calcul ou à la modélisation structurale, rechercher autant que possible les références techniques correspondantes.
+
+Exemples :
+
+```text
+Cable
+    ↓
+Mécanique des câbles
+    ↓
+Référence technique / livre / norme / publication
+```
+
+```text
+Section acier
+    ↓
+Géométrie du profil
+    ↓
+Norme / catalogue / documentation
+```
+
+```text
+Béton armé
+    ↓
+Propriétés et dimensionnement
+    ↓
+Eurocode / norme / littérature technique
+```
+
+L'objectif est d'éviter que des propriétés ou formules structurales soient créées uniquement à partir d'une supposition.
+
+### 6.8 Rapport des recherches
+
+À la fin de l'audit, ajouter une section :
+
+```text
+## Références utilisées
+```
+
+avec les références réellement consultées.
+
+Format recommandé :
+
+```text
+[1] Organisation / Auteur
+Titre
+Version / édition
+Lien ou DOI
+Date de consultation si pertinente
+```
+
+Pour une documentation web :
+
+```text
+[1] Nom du projet
+Titre de la page
+URL
+Version concernée
+```
+
+Pour un livre :
+
+```text
+[2] Auteur
+Titre du livre
+Édition
+Éditeur
+Chapitre / section
+```
+
+Pour une norme :
+
+```text
+[3] Organisme
+Nom de la norme
+Partie
+Section / article
+```
+
+### 6.9 Règle importante
+
+**Ne pas utiliser une recherche externe pour remplacer l'analyse du code existant.**
+
+Pour TSA, l'ordre doit être :
+
+```text
+1. Analyser le code existant
+        ↓
+2. Comprendre l'architecture actuelle
+        ↓
+3. Identifier le problème
+        ↓
+4. Rechercher les solutions et références pertinentes
+        ↓
+5. Comparer les solutions
+        ↓
+6. Proposer une modification minimale
+        ↓
+7. Attendre mon approbation
+        ↓
+8. Modifier le code
+        ↓
+9. Compiler et tester
+        ↓
+10. Documenter les résultats et références
+```
+
+**La recherche externe complète l'analyse du projet ; elle ne doit pas la remplacer.**
 
 ---
 
-# 15. Interconnexion des bibliothèques
+## 7. Règle Globale — Traçabilité des Décisions
 
-À terme, je veux pouvoir avoir :
+Chaque modification architecturale importante doit pouvoir répondre à trois questions :
+
+```text
+Pourquoi cette modification ?
+        ↓
+Sur quelle analyse ou référence repose-t-elle ?
+        ↓
+Quel impact a-t-elle sur TSA ?
+```
+
+L'objectif est que plusieurs mois plus tard, un développeur puisse comprendre :
+
+```text
+Pourquoi cette classe existe ?
+Pourquoi cette bibliothèque est utilisée ?
+Pourquoi cette architecture a été choisie ?
+Pourquoi cette méthode OCCT est utilisée ?
+Pourquoi cette structure de données est organisée ainsi ?
+```
+
+sans devoir deviner les raisons originales.
+
+---
+
+## 8. Règle Finale — Audit + Recherche + Approbation
+
+Le processus obligatoire est donc :
+
+```text
+┌──────────────────────────┐
+│ Analyse du projet actuel │
+└────────────┬─────────────┘
+             ↓
+┌──────────────────────────┐
+│ Identification problèmes │
+└────────────┬─────────────┘
+             ↓
+┌──────────────────────────┐
+│ Recherche de solutions   │
+│ + sources vérifiables    │
+└────────────┬─────────────┘
+             ↓
+┌──────────────────────────┐
+│ Comparaison              │
+│ des solutions            │
+└────────────┬─────────────┘
+             ↓
+┌──────────────────────────┐
+│ Proposition              │
+│ d'architecture           │
+└────────────┬─────────────┘
+             ↓
+        ⛔ STOP
+             ↓
+┌──────────────────────────────┐
+│ Approbation de l'utilisateur │
+└────────────┬─────────────────┘
+             ↓
+┌──────────────────────────┐
+│ Modification du code     │
+└────────────┬─────────────┘
+             ↓
+┌──────────────────────────┐
+│ Compilation + tests      │
+└────────────┬─────────────┘
+             ↓
+┌──────────────────────────┐
+│ Rapport final            │
+│ + références             │
+└──────────────────────────┘
+```
+
+**IMPORTANT : l'audit initial reste strictement en lecture seule.**
+
+Avant mon approbation :
+
+* ne modifier aucun fichier ;
+* ne créer aucune classe ;
+* ne créer aucune bibliothèque ;
+* ne supprimer aucun code ;
+* ne déplacer aucun fichier ;
+* ne modifier aucun CMake ;
+* ne modifier aucune fenêtre ;
+* ne modifier aucune configuration ;
+* ne modifier aucune partie de `TsaLib`.
+
+Le premier objectif est de **comprendre TSA avant de le modifier**.
+
+---
+
+## 9. Suggestions Complémentaires (proposées — à valider)
+
+Ces points ne remplacent rien de ce qui précède ; ce sont des ajouts possibles, cohérents avec les règles 1 à 8 et alignés sur l'architecture réelle du dépôt (`src/ExtensionSystem`, `Extensions/TSALib`, format `.tsa`, suite `TSA_TestSuite`). À valider avant intégration définitive.
+
+### 9.1 Non-régression sur la suite de tests existante
+
+Le dépôt contient une suite de **48 bancs d'essais** (`TSA_Tests` / `TSA_TestSuite.exe`, 48/48 PASS selon le README). Il serait cohérent d'ajouter une règle explicite :
+
+```text
+Toute modification de src/Model, src/Geometry, src/IO ou src/ExtensionSystem
+    ↓
+Recompilation de la cible TSA_Tests
+    ↓
+Exécution complète de TSA_TestSuite.exe
+    ↓
+48/48 PASS requis avant de considérer la tâche terminée
+    ↓
+Si un test échoue : corriger avant de continuer, ne pas désactiver le test
+```
+
+### 9.2 Compatibilité du format binaire `.tsa`
+
+Le format `.tsa` (Magic `TSAF`, chunks FourCC, CRC32, spec 1.0) est un format de fichier persistant pour l'utilisateur final. Toute évolution devrait suivre une règle de compatibilité explicite :
+
+```text
+Ajout d'un nouveau CHUNK_XXX
+    ↓
+Compatibilité ascendante : un ancien lecteur doit pouvoir ignorer le chunk inconnu
+    ↓
+Compatibilité descendante : un fichier ancien doit rester chargeable
+    ↓
+Incrémenter Minor (ajout non cassant) ou Major (changement cassant) selon TSA_FILE_FORMAT.md
+    ↓
+Mise à jour de docs/TSA_FILE_FORMAT.md en conséquence
+```
+
+### 9.3 Extensions TSALib : validation et sécurité
+
+`TSALib` étant 100% découplé (JSON/PNG, hot reload, packaging `.tsalib` signé SHA-256, protection anti-Path-Traversal selon le README), toute modification touchant `src/ExtensionSystem` ou `Extensions/TSALib` devrait explicitement documenter :
+
+```text
+Impact sur la Registry / Loader / Validator / Cache / Packager
+    ↓
+Impact sur la validation globale (schéma JSON, cohérence Eurocodes)
+    ↓
+Impact sur la sécurité (signature, anti-Path-Traversal)
+    ↓
+Impact sur le hot reload (modèle 3D, listes UI)
+```
+
+### 9.4 Undo/Redo comme infrastructure partagée
+
+Le dossier `src/UndoRedo` et `src/Commands` existent déjà comme infrastructure commune. Il serait utile de formaliser, comme extension de la règle 6.4 :
+
+```text
+Toute nouvelle opération modifiant le Model
+    ↓
+Doit-elle passer par le système de Commands existant (src/Commands) ?
+    ↓
+Si non : justification explicite requise (pourquoi Undo/Redo n'est pas applicable)
+```
+
+### 9.5 Diagnostics et télémétrie
+
+`src/Diagnostics` gère logs, télémétrie et rapports de crash. Une règle pourrait préciser :
+
+```text
+Toute nouvelle fonctionnalité risquée (calcul, I/O, parsing)
+    ↓
+Ajout de logs de diagnostic pertinents (succès/échec, contexte)
+    ↓
+Pas de données sensibles dans les logs
+```
+
+### 9.6 Journal des décisions centralisé
+
+Plutôt que de laisser chaque décision (format de la règle 6.4) dispersée dans les rapports d'audit ponctuels, un fichier unique (par ex. `DECISIONS.md`) pourrait centraliser, dans l'ordre chronologique, toutes les décisions au format `Décision / Pourquoi / Source / Référence / Impact`. Cela répond directement à l'objectif de la règle 7 (qu'un développeur comprenne, des mois plus tard, sans deviner) et complète les documents d'audit déjà présents (`doc/TSALib_Architecture_Audit.md`).
+
+### 9.7 Convention de commit reliée aux décisions
+
+```text
+[TSA][Module] Résumé court
+
+Décision: ...
+Source: ...
+Réf: ...
+```
+
+Ceci relie directement l'historique Git au format de décision de la règle 6.4, sans dupliquer l'information dans un fichier séparé.
+
+### 9.8 Rappel du périmètre « lecture seule » en cas d'ambiguïté
+
+Préciser explicitement ce qui compte comme une « modification » interdite avant approbation :
+
+```text
+Autorisé pendant l'audit :
+- lecture de fichiers
+- exécution de commandes non destructives (grep, list, build de vérification sans écriture)
+- recherche externe
+
+Interdit avant approbation :
+- toute écriture disque
+- toute commande git modifiant l'historique ou l'état du dépôt
+- toute régénération de fichiers CMake/projet
+```
+
+---
+
+## 10. Règle Globale — Interconnexion Obligatoire de Tous les Éléments
+
+**Principe fondamental** : les différentes fonctionnalités de TSA ne doivent pas fonctionner comme des systèmes indépendants possédant chacun leurs propres données, propriétés, commandes ou représentations. Une même information doit rester cohérente depuis sa création jusqu'à son affichage, sa modification, sa sauvegarde et son utilisation dans le calcul :
+
+```text
+Bibliothèques
+      ↕
+Propriétés
+      ↕
+Fenêtres Qt
+      ↕
+Commandes
+      ↕
+Modèle TSA
+      ↕
+Sélection
+      ↕
+Undo / Redo
+      ↕
+Save / Load
+      ↕
+OCCT / 3D
+      ↕
+Calcul / Analysis
+```
+
+**Mais attention : INTERCONNECTÉ ≠ DÉPENDANCES DIRECTES PARTOUT.**
+
+Ne pas créer de dépendances circulaires, par exemple :
+
+```text
+Beam → Window → Model → OCCT → Beam → Window
+```
+
+ou :
+
+```text
+TsaLib ↔ UI ↔ Model ↔ TsaLib
+```
+
+Tous les systèmes doivent communiquer à travers les interfaces, modèles, services, commandes et événements déjà présents dans l'architecture TSA — jamais par des raccourcis directs entre couches qui ne devraient pas se connaître.
+
+### 10.1 Une source de vérité
+
+Une donnée structurale ne doit jamais exister sous plusieurs formes contradictoires. Par exemple, pour un câble `Diamètre = 30 mm`, `Matériau = Acier`, ces informations doivent rester cohérentes tout au long de la chaîne :
 
 ```text
 TsaLib
-│
-├── Sections
-├── Materials
-├── Profiles
-├── Supports
-├── Loads
-├── Cables
-├── Bolts
-├── Connections
-└── autres bibliothèques
+   ↓
+Property System
+   ↓
+Cable Model
+   ↓
+Qt Window
+   ↓
+OCCT
+   ↓
+Analysis
+   ↓
+Save / Load
 ```
 
-et que les différentes parties de TSA puissent utiliser les bibliothèques concernées sans duplication.
+Il ne doit jamais être possible d'avoir :
 
-Exemple :
+```text
+Qt        → Ø30
+Model     → Ø20
+OCCT      → Ø20
+Analysis  → Ø25
+```
+
+Toutes les représentations doivent dériver d'une information cohérente.
+
+### 10.2 Les fenêtres ne doivent pas être des systèmes indépendants
+
+Une fenêtre Qt ne doit pas posséder sa propre base de données locale. Ne pas faire :
+
+```text
+BeamWindow   → liste locale de sections
+CableWindow  → autre liste locale de sections
+ColumnWindow → troisième liste locale
+```
+
+mais plutôt :
+
+```text
+             TsaLib
+                ↓
+        Property / Library System
+          ↙      ↓       ↘
+      Beam     Column    Cable
+      Window    Window    Window
+```
+
+Chaque fenêtre utilise les données centrales appropriées.
+
+### 10.3 Chaque élément doit être connecté au modèle
+
+Lorsqu'un utilisateur crée un câble (`Point A → Point B`), l'objet ne doit pas être créé uniquement dans OCCT. Le workflow doit être :
+
+```text
+Cable Tool
+     ↓
+Geometry Input
+     ↓
+Create Command
+     ↓
+Cable Model
+     ↓
+Properties
+     ↓
+Library
+     ↓
+OCCT Geometry
+     ↓
+Viewport
+     ↓
+Selection
+     ↓
+Property Window
+```
+
+Ainsi, sélectionner le câble dans le viewport permet de retrouver exactement le même objet dans le modèle.
+
+### 10.4 Un élément doit être indépendant mais interconnecté
+
+Un élément (par exemple `Cable`) possède ses propres classe, propriétés, section, matériau, fenêtre de propriétés, workflow de création et représentation OCCT — il ne doit pas être transformé en un autre type (`Beam`) simplement parce que celui-ci est déjà implémenté. Il doit cependant utiliser les infrastructures communes de TSA :
+
+```text
+Cable
+  ↓
+Common Model Infrastructure
+  ↓
+Commands
+  ↓
+Selection
+  ↓
+Undo / Redo
+  ↓
+Save / Load
+  ↓
+OCCT
+  ↓
+Analysis
+```
+
+Donc : **propriétés spécifiques ≠ infrastructure indépendante.**
+
+### 10.5 Une modification doit traverser le système
+
+Si `Cable Ø20` devient `Cable Ø30`, la modification doit suivre :
+
+```text
+Qt Property Window
+       ↓
+Command
+       ↓
+Cable Model
+       ↓
+Property System
+       ↓
+OCCT Update
+       ↓
+Viewport Update
+       ↓
+Selection Update
+       ↓
+Analysis Data Update
+```
+
+et Undo doit pouvoir revenir à `Cable Ø20` sans créer un deuxième système parallèle.
+
+### 10.6 Copier/coller doit rester interconnecté
+
+Si l'on copie un `Cable Ø30`, la copie doit conserver `Type`, `Section`, `Material`, `Properties`, `Geometry`, `ID / références nécessaires`, et rester correctement connectée à `Model`, `Library`, `Selection`, `OCCT`, `Undo/Redo`, `Save/Load`, `Analysis`. Même principe pour `Beam`, `Column`, `Bar`, `Surface`, `Cable`.
+
+### 10.7 La sélection doit être connectée à tout le reste
+
+Si l'on sélectionne un objet dans OCCT :
+
+```text
+OCCT Selection
+      ↓
+Object ID
+      ↓
+TSA Model
+      ↓
+Object Properties
+      ↓
+Qt Property Window
+```
+
+La fenêtre doit afficher les propriétés de **l'objet réellement sélectionné**. Elle ne doit jamais afficher un objet ou des propriétés provenant d'une copie locale.
+
+### 10.8 Undo/Redo doit être connecté au modèle
+
+Une modification doit passer par le système de commandes existant :
+
+```text
+User Action → Command → Model → OCCT
+```
+
+Puis :
+
+```text
+Ctrl + Z → Undo Command → Model restored → OCCT updated → UI updated
+```
+
+Ne pas créer `Cable Undo System`, `Beam Undo System`, `Column Undo System` séparés si TSA possède déjà un système général de commandes/Undo (cohérent avec la règle 9.4).
+
+### 10.9 Save/Load doit rester connecté
+
+Lorsqu'un modèle est sauvegardé, il doit conserver les informations nécessaires pour reconstruire correctement `Elements`, `Properties`, `Library references`, `Materials`, `Sections`, `Geometry`, `Relationships`. Après chargement :
+
+```text
+File → Model → Libraries → Properties → OCCT → UI → Analysis
+```
+
+Le modèle chargé doit redevenir un modèle TSA complet, pas simplement une géométrie OCCT (cohérent avec la règle 9.2 sur le format `.tsa`).
+
+### 10.10 OCCT ne doit pas devenir le modèle principal
+
+OCCT doit représenter graphiquement le modèle :
+
+```text
+TSA Model → Geometry Representation → OCCT → Viewport
+```
+
+et non l'inverse (`OCCT → propriétés → model`). Les propriétés structurales appartiennent au modèle TSA ; OCCT fournit uniquement la représentation géométrique et graphique.
+
+### 10.11 Le calcul doit utiliser les mêmes données
+
+Le calcul ne doit pas recréer son propre modèle contradictoire :
+
+```text
+TSA Model → Analysis Model → Solver
+```
+
+et non `UI Model → données A`, `OCCT → données B`, `Analysis → données C` en parallèle. Par exemple, un `Cable Model` avec `Diameter = 30 mm`, `Material = Steel` doit fournir au calcul exactement ces propriétés.
+
+### 10.12 Les bibliothèques doivent être connectées
+
+Les bibliothèques (`TsaLib` : Sections, Materials, Profiles, Cables, Supports, Loads, ...) ne doivent pas être de simples fichiers isolés. Les systèmes qui les utilisent doivent passer par les bibliothèques centrales :
 
 ```text
 Section Library
        ↓
- ┌─────┼──────┐
- ↓     ↓      ↓
-Beam  Bar    Cable
+ ┌─────┼─────┐
+ ↓     ↓     ↓
+Beam  Bar   Cable
 ```
 
-Mais chaque élément ne voit que les catégories qui lui sont applicables.
+Chaque élément ne récupère que les catégories qui lui sont applicables.
+
+### 10.13 Toute nouvelle fonctionnalité doit s'intégrer au système
+
+Ne pas simplement créer `NewFeature.cpp`, `NewFeatureWindow.cpp`, `NewFeatureData.cpp` et laisser la fonctionnalité fonctionner seule. Il faut déterminer comment elle s'intègre à `Model`, `Library`, `Properties`, `Commands`, `Selection`, `Undo/Redo`, `Save/Load`, `OCCT`, `Analysis`, `UI`. **Une fonctionnalité n'est considérée comme terminée que lorsqu'elle est correctement intégrée aux systèmes concernés.**
+
+### 10.14 Chercher ce qui existe déjà avant de créer
+
+Avant de créer une classe, une bibliothèque, un manager, une fenêtre, un système de propriétés, un système Undo, une commande ou une solution graphique, vérifier d'abord si TSA possède déjà quelque chose de réutilisable (cohérent avec les règles 1 et 2). Si une solution externe est envisagée, rechercher également les solutions existantes et leurs documentations, avec des références vérifiables (documentation officielle, livre technique, norme, article scientifique, dépôt officiel — règle 6) : **ne jamais inventer une référence ou une URL** (règle 6.3).
+
+### 10.15 Le but final
+
+TSA doit fonctionner comme **un seul système cohérent** :
+
+```text
+             ┌───────────────┐
+             │    TsaLib     │
+             └───────┬───────┘
+                     ↓
+             ┌───────────────┐
+             │   Properties  │
+             └───────┬───────┘
+                     ↓
+             ┌───────────────┐
+             │     Model     │
+             └───────┬───────┘
+                     ↓
+        ┌────────────┼────────────┐
+        ↓            ↓            ↓
+   Commands      Selection     Analysis
+        ↓            ↓            ↓
+        └────────────┼────────────┘
+                     ↓
+                Undo / Redo
+                     ↓
+                Save / Load
+                     ↓
+                  OCCT
+                     ↓
+                Viewport
+```
+
+Les fenêtres Qt se connectent aux systèmes appropriés.
+
+### 10.16 Règle fondamentale
+
+Lorsque tu travailles sur TSA, pose toujours cette question :
+
+> **« Cette modification est-elle correctement connectée au reste du système ? »**
+
+Si la réponse est non, la fonctionnalité n'est pas encore correctement intégrée. L'objectif n'est pas seulement que chaque fonctionnalité fonctionne individuellement, mais que :
+
+**Bibliothèques + Propriétés + UI + Modèle + Commandes + Sélection + Undo/Redo + Save/Load + OCCT + Calculs**
+
+fonctionnent ensemble avec **une source de vérité cohérente, des interfaces claires, peu de couplage inutile et aucune duplication contradictoire**.
+
+L'interconnexion est donc une **règle architecturale permanente de TSA**, et non une correction ponctuelle limitée au système Cable.
+
+### 10.17 Traçabilité croisée entre artefacts (complément)
+
+Au-delà de l'architecture logicielle (10.1 à 10.16), le même principe d'interconnexion s'applique aux artefacts du projet : règle (AGENTS.md), décision (règle 6.4), documentation (`docs/`, `doc/`, `README.md`), code, test (`TSA_TestSuite`) et commit Git (règle 9.7) doivent rester reliés entre eux plutôt qu'exister isolément :
+
+```text
+Règle (AGENTS.md) ↕ Décision ↕ Documentation ↕ Code ↕ Test ↕ Commit Git
+```
+
+Avant de considérer une tâche terminée :
+
+```text
+Le code a-t-il une décision associée (règle 6.4) ?
+        ↓
+La décision référence-t-elle précisément le code (fichier/classe/fonction) ?
+        ↓
+Le changement est-il couvert par un test (règle 9.1) ?
+        ↓
+La documentation concernée a-t-elle été mise à jour si nécessaire ?
+        ↓
+Le commit référence-t-il la décision (règle 9.7) ?
+```
+
+Si l'une de ces questions n'a pas de réponse claire, l'élément manquant doit être ajouté avant de considérer la tâche terminée.
 
 ---
 
-# 16. Interconnexion avec le calcul
+## 11. Règle Importante — Aucun Doublon de Commande
 
-À terme, les données utilisées pour l'affichage doivent également être cohérentes avec les données utilisées pour le calcul.
+Il faut absolument éviter de créer plusieurs commandes qui réalisent la même opération.
 
-Exemple :
+Avant de créer une nouvelle commande, rechercher dans tout le projet si une commande existante permet déjà de réaliser cette opération ou peut être généralisée proprement.
 
-```text
-CableProperties
-       ↓
-Cable Model
-       ↓
-Analysis Model
-       ↓
-Structural Solver
-```
-
-Il ne doit pas y avoir :
+Par exemple, ne pas créer :
 
 ```text
-3D → diamètre 30 mm
-Model → diamètre 30 mm
-Calculation → diamètre 20 mm
+CreateBeamCommand
+CreateCableCommand
+CreateColumnCommand
+CreateBarCommand
 ```
 
-Les différentes représentations doivent dériver d'une source cohérente.
+si le système actuel possède déjà une infrastructure générique permettant de gérer la création des éléments.
 
----
-
-# 17. Interconnexion avec OCCT
-
-OCCT ne doit pas devenir une deuxième base de données.
-
-Architecture souhaitée :
+De même, éviter de créer plusieurs commandes indépendantes pour :
 
 ```text
-TSA Model
-    ↓
-Geometry Representation
-    ↓
-OCCT
+Move
+Delete
+Copy
+Paste
+ModifyProperties
+ChangeSection
+ChangeMaterial
+CreateElement
 ```
 
-OCCT représente le modèle.
+lorsqu'une commande existante peut être réutilisée ou étendue correctement.
 
-Il ne doit pas devenir la source principale des propriétés structurales.
+### 11.1 Principe
 
----
-
-# 18. Interconnexion avec l'UI
-
-Les fenêtres Qt doivent refléter l'état réel du modèle.
+Les commandes doivent suivre la même philosophie que les bibliothèques :
 
 ```text
-Model
-  ↓
-Property System
-  ↓
-Qt UI
+UNE OPÉRATION
+      ↓
+UNE LOGIQUE DE COMMANDE
+      ↓
+RÉUTILISABLE PAR PLUSIEURS ÉLÉMENTS
 ```
 
-et les actions utilisateur :
+Les différences spécifiques à chaque élément doivent être gérées par les données ou comportements spécifiques de l'élément, et non par la duplication complète de la commande.
+
+Par exemple :
 
 ```text
-Qt UI
-  ↓
-Command
-  ↓
-Model
-  ↓
-OCCT
+             CreateElementCommand
+                     │
+          ┌──────────┼──────────┐
+          ↓          ↓          ↓
+        Beam       Column      Cable
 ```
 
-Éviter les modifications directes et non contrôlées :
+Cela ne signifie pas que tous les éléments doivent obligatoirement utiliser exactement la même classe de commande. Si un élément possède réellement un workflow différent, il peut avoir une commande spécialisée. Mais avant de créer `CreateCableCommand`, il faut vérifier si `CreateElementCommand` ou une commande existante peut être utilisée ou adaptée proprement.
+
+### 11.2 Même règle pour Undo/Redo
+
+Une opération ne doit pas avoir plusieurs systèmes Undo concurrents. Éviter :
 
 ```text
-Qt UI → OCCT
+BeamUndo
+CableUndo
+ColumnUndo
 ```
 
-si cela contourne le modèle et le système de commandes.
-
----
-
-# 19. Interconnexion avec les diagnostics
-
-Chaque workflow important doit également être traçable :
+si TSA possède déjà un système global de commandes et Undo/Redo (cohérent avec les règles 9.4 et 10.8). Le workflow doit rester :
 
 ```text
 User Action
@@ -703,341 +1057,585 @@ Command
      ↓
 Model
      ↓
-Library
-     ↓
 OCCT
      ↓
-Result
+Undo / Redo
 ```
 
-Le système de diagnostic doit permettre de comprendre où une opération a échoué.
+### 11.3 Même règle pour les autres fonctionnalités
 
-Exemple :
+Rechercher les doublons dans :
 
-```text
-CableCreateStarted
-CableLibraryLookup
-CableCreated
-CableGeometryCreated
-OCCTDisplayUpdated
-CableCreateCompleted
-```
+* commandes ;
+* managers ;
+* services ;
+* propriétés ;
+* bibliothèques ;
+* validation ;
+* sélection ;
+* création géométrique ;
+* mise à jour OCCT ;
+* sauvegarde ;
+* chargement ;
+* conversion de données ;
+* notifications ;
+* gestion des événements.
 
-En cas d'erreur :
-
-```text
-CableCreateStarted
-CableLibraryLookup
-CableCreateFailed
-```
-
----
-
-# 20. Attention aux dépendances circulaires
-
-L'interconnexion ne signifie pas que toutes les classes doivent se connaître directement.
-
-Éviter :
+Pour chaque doublon trouvé, ne pas supprimer immédiatement. D'abord identifier :
 
 ```text
-Beam → Window → Model → Beam → Window
-```
-
-ou :
-
-```text
-TsaLib → UI → TsaLib → UI
-```
-
-Utiliser les mécanismes appropriés déjà présents :
-
-```text
-interfaces
-signals / slots
-events
-commands
-services
-managers
-dependency injection
-```
-
-selon l'architecture actuelle.
-
-Objectif :
-
-**forte cohérence fonctionnelle, faible couplage inutile.**
-
----
-
-# 21. Audit des duplications
-
-Rechercher notamment :
-
-```text
-Sections codées en dur
-Materials codés en dur
-Property lists dupliquées
-Conversion de données dupliquée
-Logic de validation dupliquée
-Logic de sélection dupliquée
-Logic de création dupliquée
-Logic de mise à jour OCCT dupliquée
-```
-
-Pour chaque duplication :
-
-```text
+Nom
 Emplacement
 Responsabilité
-Source de vérité actuelle
-Risque
-Solution proposée
+Utilisateurs
+Fonctionnalité
+Source de vérité
+Doublon potentiel
 ```
 
-Ne pas supprimer immédiatement.
+Puis déterminer s'il s'agit réellement d'un doublon ou d'une responsabilité volontairement spécialisée.
 
-D'abord comprendre l'architecture.
+### 11.4 Règle architecturale
 
----
+**Ne jamais résoudre un problème en créant simplement une deuxième implémentation parallèle.**
 
-# 22. Tests d'intégration
-
-Ne pas seulement tester chaque module séparément.
-
-Tester les chaînes complètes.
-
-### Test A — Cable
+Avant de créer quelque chose de nouveau :
 
 ```text
-Tool
- ↓
+1. Rechercher l'existant
+        ↓
+2. Comprendre son rôle
+        ↓
+3. Vérifier s'il peut être réutilisé
+        ↓
+4. Vérifier s'il peut être généralisé
+        ↓
+5. Vérifier les conséquences sur les autres systèmes
+        ↓
+6. Seulement ensuite créer une nouvelle implémentation si nécessaire
+```
+
+L'objectif est que TSA possède **une architecture intégrée et réutilisable**, et non plusieurs systèmes parallèles qui finissent par diverger.
+
+### 11.5 Exemple concret
+
+Ne pas arriver progressivement à :
+
+```text
+BeamCommandSystem
+CableCommandSystem
+ColumnCommandSystem
+SurfaceCommandSystem
+```
+
+avec chacun :
+
+```text
 Create
- ↓
-Property Window
- ↓
-TsaLib
- ↓
-Model
- ↓
-OCCT
- ↓
-Selection
- ↓
-Edit
- ↓
+Delete
+Move
+Copy
+Paste
+Modify
 Undo
- ↓
 Redo
- ↓
-Save
- ↓
-Load
 ```
 
-### Test B — Beam
-
-Même principe.
-
-### Test C — Library
+et donc plusieurs implémentations de la même logique. Préférer :
 
 ```text
-Ajouter section
- ↓
-TsaLib
- ↓
-Property Window
- ↓
-Créer élément
- ↓
+             TSA Command System
+                     │
+       ┌─────────────┼─────────────┐
+       ↓             ↓             ↓
+   Generic       Element       Specialized
+   Commands      Commands       Commands
+       │             │             │
+       └─────────────┼─────────────┘
+                     ↓
+                   Model
+```
+
+avec une spécialisation uniquement lorsqu'elle est réellement nécessaire.
+
+### 11.6 Principe final
+
+> Avant de créer une nouvelle commande, chercher d'abord si la commande existe déjà.
+>
+> Avant de créer un nouveau système, chercher d'abord si le système existe déjà.
+>
+> Avant de créer une nouvelle donnée, chercher d'abord si une source de vérité existe déjà.
+
+Cela doit être appliqué à toute l'architecture TSA, en cohérence avec les règles 10.14 et 6.6.
+
+---
+
+## 12. Règle — Classification et Organisation des Commandes
+
+Le système de commandes de TSA doit être clairement structuré et correctement classifié, avec une organisation inspirée du principe de classification des commandes utilisé dans des logiciels de CAO comme AutoCAD.
+
+**L'objectif n'est PAS de copier le code ou l'architecture interne d'AutoCAD**, mais de reprendre le principe important suivant : **chaque commande doit appartenir à une catégorie fonctionnelle clairement identifiable.**
+
+Avant de créer ou modifier une commande, analyser les commandes déjà présentes dans TSA et déterminer leur classification.
+
+### 12.1 Classification fonctionnelle
+
+Les commandes doivent être organisées par grandes catégories, par exemple :
+
+* **Création / Draw** — Create Beam, Create Column, Create Bar, Create Cable, Create Surface, Create Node, etc.
+* **Modification / Modify** — Move, Rotate, Scale, Stretch, Offset, Trim, Extend, Mirror, Edit Properties, etc.
+* **Copie / Duplication** — Copy, Array, Duplicate, Paste, etc.
+* **Suppression / Delete** — Delete Element, Delete Node, Delete Surface, etc.
+* **Sélection / Selection** — Select, Select Similar, Select by Type, Select by Property, etc.
+* **Propriétés / Properties** — Edit Element Properties, Assign Section, Assign Material, Assign Parameters, etc.
+* **Bibliothèques / Libraries** — Add Section, Modify Section, Delete Section, Add Material, Modify Material, etc.
+* **Structure / Structural** — Assign Support, Assign Load, Release, Connection, etc.
+* **Analyse / Analysis** — Generate Analysis Model, Mesh, Solve, Run Analysis, etc.
+* **Affichage / View** — Zoom, Pan, Rotate View, Fit View, Display Mode, Show/Hide Elements, etc.
+* **Fichier / File** — New, Open, Save, Save As, Import, Export, etc.
+* **Édition / Edit** — Undo, Redo, Cut, Copy, Paste, etc.
+
+Cette classification doit rester cohérente avec l'architecture réelle de TSA.
+
+### 12.2 Une commande = une responsabilité claire
+
+Chaque commande doit avoir une responsabilité précise. Ne pas créer plusieurs commandes différentes qui réalisent essentiellement la même opération.
+
+Exemple : si TSA possède déjà `CreateElementCommand`, il ne faut pas créer inutilement `CreateBeamCommand`, `CreateColumnCommand`, `CreateCableCommand`, `CreateBarCommand` si ces commandes ne font finalement que répéter la même logique (cohérent avec la règle 11.1). Dans ce cas, utiliser une commande générique avec un type d'élément ou une stratégie spécialisée lorsque cela est réellement nécessaire.
+
+À l'inverse, si le workflow d'un `Cable` est réellement différent de celui d'une `Beam`, il peut avoir une commande spécialisée, mais cette différence doit être justifiée architecturalement (format décision, règle 6.4).
+
+### 12.3 Classification ≠ duplication
+
+La classification ne doit surtout pas conduire à créer plusieurs systèmes de commandes parallèles. Ne pas avoir `BeamCommandSystem`, `ColumnCommandSystem`, `CableCommandSystem`, `SurfaceCommandSystem` avec chacun ses propres Create/Delete/Move/Copy/Paste/Modify/Undo/Redo si une infrastructure commune existe déjà (cohérent avec la règle 11.4).
+
+Architecture souhaitée :
+
+```text
+Command System
+→ Command Category
+→ Command
+→ Element Type / Target
+→ Model
+→ OCCT
+→ UI
+```
+
+### 12.4 Nommage cohérent
+
+Convention de nommage cohérente, par exemple : `CreateElementCommand`, `DeleteElementCommand`, `MoveElementCommand`, `CopyElementCommand`, `ModifyElementPropertiesCommand`, `AssignSectionCommand`, `AssignMaterialCommand`. Éviter les noms incohérents ou plusieurs noms pour la même responsabilité. Avant de créer un nouveau nom, rechercher les classes et commandes existantes.
+
+### 12.5 Commandes et UI
+
+Les boutons, icônes, menus, raccourcis clavier et outils de la barre de commande doivent utiliser les commandes existantes — jamais implémenter directement une opération qui existe déjà dans le Command System.
+
+Architecture souhaitée :
+
+```text
+Qt Button / Toolbar / Menu / Shortcut
+↓
+Command
+↓
 Model
- ↓
+↓
+Property / Library
+↓
+OCCT
+↓
+Viewport
+```
+
+et non `Qt Button → OCCT directement` lorsque cela contourne le modèle et le système de commandes (cohérent avec la règle 10.10).
+
+### 12.6 Commandes et Undo/Redo
+
+Toutes les commandes qui modifient le modèle doivent être compatibles avec le système global Undo/Redo :
+
+```text
+MoveElementCommand → Execute → Model modification → OCCT update
+```
+
+puis :
+
+```text
+Ctrl + Z → Undo → Model restoration → OCCT synchronization → UI synchronization
+```
+
+Ne pas créer un système Undo spécifique pour chaque type d'élément si TSA possède déjà un système global (règles 9.4, 10.8, 11.2).
+
+### 12.7 Organisation des fichiers du Command System
+
+Organiser les fichiers et classes du Command System de manière logique, par exemple (si l'architecture existante le permet) :
+
+```text
+Commands/
+├── Core/
+│   ├── Command.h
+│   ├── CommandManager.h
+│   └── CommandHistory.h
+│
+├── Create/
+│   ├── CreateElementCommand.h
+│   ├── CreateNodeCommand.h
+│   └── CreateSurfaceCommand.h
+│
+├── Modify/
+│   ├── MoveElementCommand.h
+│   ├── RotateElementCommand.h
+│   └── ModifyPropertiesCommand.h
+│
+├── Edit/
+│   ├── CopyCommand.h
+│   ├── PasteCommand.h
+│   ├── UndoCommand.h
+│   └── RedoCommand.h
+│
+├── Selection/
+│   └── SelectionCommands.h
+│
+├── Library/
+│   ├── AddSectionCommand.h
+│   └── AddMaterialCommand.h
+│
+└── Analysis/
+    └── RunAnalysisCommand.h
+```
+
+**Mais attention** : ne pas créer automatiquement cette structure si TSA possède déjà une organisation différente et cohérente (`src/Commands` existe déjà, cf. règle 9.4). Commencer par analyser l'architecture actuelle et déterminer comment améliorer la classification sans créer de doublons ni provoquer une refactorisation inutile.
+
+### 12.8 Audit obligatoire avant création d'une commande
+
+Avant de créer une nouvelle commande :
+
+1. rechercher les commandes existantes ;
+2. rechercher les fonctions existantes ;
+3. rechercher les Command Managers existants ;
+4. rechercher les opérations similaires ;
+5. vérifier si une commande générique peut être réutilisée ;
+6. vérifier si une commande existante peut être généralisée ;
+7. vérifier les relations avec Undo/Redo ;
+8. vérifier les relations avec le Model ;
+9. vérifier les relations avec OCCT ;
+10. déterminer sa catégorie fonctionnelle ;
+11. vérifier son nommage ;
+12. vérifier qu'elle ne crée pas un système parallèle.
+
+Ensuite seulement, proposer la solution.
+
+### 12.9 Rapport d'audit des commandes
+
+Pendant l'audit, créer un tableau permettant de comprendre le système actuel :
+
+| Commande | Catégorie | Responsabilité | Utilisée par | Modifie Model | Modifie OCCT | Undo/Redo | Doublon potentiel |
+| -------- | --------- | -------------- | ------------ | ------------- | ------------ | --------- | ----------------- |
+
+Pour chaque doublon potentiel, ne rien supprimer immédiatement. Expliquer :
+
+* où se trouve le doublon ;
+* pourquoi il existe ;
+* quelle implémentation semble être la source de vérité ;
+* qui utilise chaque implémentation ;
+* quelle serait la meilleure stratégie de fusion ou généralisation ;
+* quels seraient les impacts.
+
+### 12.10 Objectif final
+
+Le système de commandes de TSA doit être : clairement classifié, facilement navigable, extensible, réutilisable, cohérent avec le Model, cohérent avec TsaLib, cohérent avec les Property Systems, cohérent avec OCCT, compatible Undo/Redo, compatible avec les fenêtres Qt, compatible avec les raccourcis et menus, sans commandes dupliquées, sans systèmes de commandes parallèles inutiles.
+
+Le principe général doit être :
+
+> **Une opération fonctionnelle → une commande clairement identifiée → une catégorie claire → une infrastructure commune → une synchronisation avec le reste de TSA.**
+
+Et surtout :
+
+> **Ne créer aucune nouvelle commande avant d'avoir vérifié si une commande existante peut être réutilisée, généralisée ou correctement classifiée.**
+
+---
+
+## 13. Règle — Organisation des Fenêtres et Panneaux
+
+L'organisation de l'interface graphique de TSA doit être pensée selon une logique similaire à celle des logiciels de CAO professionnels comme AutoCAD.
+
+**L'objectif n'est PAS de copier l'interface d'AutoCAD pixel par pixel**, mais de reprendre son principe d'organisation : **le logiciel doit être composé de fenêtres, panneaux, palettes et barres d'outils clairement organisés, accessibles, déplaçables et personnalisables.**
+
+### 13.1 Fenêtres dockables
+
+Les fenêtres importantes de TSA (Properties, Project/Model Tree, Libraries, Materials, Sections, Commands/Tools, Layers ou catégories similaires, Analysis, Results, Messages/Logs, etc.) doivent pouvoir être organisées comme des panneaux dockables : dockées à gauche/droite/haut/bas, redimensionnées, déplacées, regroupées, transformées en onglets, détachées en fenêtres flottantes lorsque pertinent, masquées puis réaffichées.
+
+Éviter une interface composée de nombreuses fenêtres indépendantes qui apparaissent de manière désordonnée.
+
+### 13.2 Une organisation centrale de l'interface
+
+TSA doit avoir une organisation centrale de ses fenêtres et panneaux, par exemple :
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ Menu / Ribbon / Commandes                                    │
+├───────────────┬───────────────────────────────┬──────────────┤
+│               │                               │              │
+│ Model Tree    │                               │ Properties   │
+│               │          OCCT 3D              │              │
+│ Libraries     │          Viewport              │              │
+│               │                               │              │
+│               │                               │              │
+├───────────────┴───────────────────────────────┴──────────────┤
+│ Messages / Logs / Analysis / Results                          │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Cette disposition n'est qu'un exemple. **Il faut d'abord analyser l'interface actuelle de TSA avant de décider de la structure finale.**
+
+### 13.3 Les fenêtres ne doivent pas être des systèmes isolés
+
+Une fenêtre Qt ne doit pas devenir une mini-application indépendante :
+
+```text
+CablePropertiesWindow
+        ↓
+Property System
+        ↓
+Cable Model
+        ↓
+TsaLib
+        ↓
+Command System
+        ↓
 OCCT
 ```
 
-### Test D — plusieurs éléments
+Même principe pour `BeamPropertiesWindow`, `ColumnPropertiesWindow`, `BarPropertiesWindow`, `SurfacePropertiesWindow`, `MaterialWindow`, `SectionWindow`, `AnalysisWindow`, etc. (cohérent avec la règle 10.2). Les fenêtres sont des interfaces utilisateur permettant de manipuler le système central de TSA.
+
+### 13.4 Fenêtre Properties contextuelle
+
+Logique similaire aux logiciels de CAO professionnels :
 
 ```text
-Beam
-Column
-Bar
-Cable
-Surface
+Sélection dans le viewport
+        ↓
+Identification de l'objet TSA
+        ↓
+Property System
+        ↓
+Properties Panel
 ```
 
-dans le même modèle.
+Exemple : sélectionner un `Cable` affiche `Section = Cable Ø20`, `Material = Steel`, `Length = ...` ; sélectionner une `Beam` affiche `Section = 40 × 40`, `Material = C25/30`, etc. Le panneau Properties doit donc être **contextuel** et afficher les propriétés réelles de l'objet sélectionné (cohérent avec la règle 10.7).
 
-Vérifier qu'ils ne se contaminent pas entre eux.
+### 13.5 Une fenêtre par responsabilité
+
+Éviter de créer une fenêtre pour chaque petite fonction. Avant de créer une nouvelle fenêtre :
+
+1. rechercher les fenêtres existantes ;
+2. rechercher les panels existants ;
+3. rechercher les Property Providers ;
+4. rechercher les systèmes de bibliothèques ;
+5. vérifier si une fenêtre existante peut être réutilisée ;
+6. vérifier si un panneau contextuel peut gérer le besoin ;
+7. vérifier si une nouvelle fenêtre est réellement nécessaire.
+
+Ne pas avoir par exemple `BeamSectionWindow`, `CableSectionWindow`, `ColumnSectionWindow`, `BarSectionWindow` si toutes ces fenêtres servent simplement à sélectionner des sections provenant de la même bibliothèque centrale. Étudier plutôt :
+
+```text
+Section Library Panel
+        ↓
+TsaLib
+        ↓
+Element Property System
+```
+
+tout en conservant des propriétés spécifiques lorsque les éléments ont réellement des besoins différents.
+
+### 13.6 Fenêtres et commandes doivent être connectées
+
+L'organisation des fenêtres doit être cohérente avec la classification des commandes (règle 12.1) :
+
+```text
+CREATE
+ ├── Beam
+ ├── Column
+ ├── Bar
+ ├── Cable
+ └── Surface
+
+MODIFY
+ ├── Move
+ ├── Rotate
+ ├── Copy
+ └── Properties
+
+LIBRARIES
+ ├── Sections
+ ├── Materials
+ └── Cable Sections
+
+ANALYSIS
+ ├── Mesh
+ ├── Solve
+ └── Results
+```
+
+Les boutons, icônes, menus et panneaux doivent appeler les commandes du système central (règle 12.5). La fenêtre ne doit pas contenir sa propre logique parallèle de création ou de modification.
+
+### 13.7 Organisation modifiable par l'utilisateur
+
+Lorsque Qt le permet, l'interface doit être conçue pour permettre à l'utilisateur de personnaliser son espace de travail, par exemple :
+
+```text
+Workspace
+├── Structural Modeling
+├── Analysis
+├── Results
+├── Libraries
+└── Custom
+```
+
+Un utilisateur travaillant principalement sur la modélisation peut avoir `Model Tree + Properties + 3D View` ; un utilisateur travaillant sur l'analyse peut avoir `Model Tree + Analysis + Results + 3D View`. L'objectif est de pouvoir faire évoluer l'espace de travail sans modifier le cœur du logiciel.
+
+### 13.8 Sauvegarde de l'organisation
+
+Si l'architecture actuelle le permet, étudier la possibilité de sauvegarder/restaurer : position des panneaux, taille des panneaux, fenêtres dockées/flottantes, onglets, workspace utilisé, panneaux visibles/cachés. Mais avant d'implémenter cela, rechercher si Qt fournit déjà les mécanismes nécessaires (`QMainWindow::saveState`/`restoreState`, etc. — règle 1). Ne pas recréer inutilement un système qui existe déjà dans Qt.
+
+### 13.9 Recherche obligatoire avant nouvelle interface
+
+Avant de créer une nouvelle fenêtre ou un nouveau système d'organisation :
+
+* analyser les fenêtres Qt existantes ;
+* analyser les layouts existants ;
+* analyser les `QDockWidget` ;
+* analyser les menus ;
+* analyser les toolbars ;
+* analyser les panneaux Properties ;
+* analyser le système de navigation ;
+* rechercher les solutions déjà présentes dans TSA ;
+* rechercher les possibilités natives de Qt.
+
+Si une solution existante peut être réutilisée, il faut la privilégier.
+
+### 13.10 Objectif final
+
+TSA doit avoir une interface de logiciel de CAO professionnel :
+
+```text
+Commandes
+↕
+Toolbars / Menus / Icônes
+↕
+Panneaux / Fenêtres dockables
+↕
+Property System
+↕
+Model
+↕
+OCCT / 3D
+```
+
+Les fenêtres doivent être des vues différentes d'un même système central, et non plusieurs systèmes indépendants. Le principe fondamental est :
+
+> **UNE INTERFACE UNIFIÉE + DES PANNEAUX ORGANISÉS + UN MODÈLE CENTRAL + DES COMMANDES CENTRALISÉES.**
+
+Et comme pour le système de commandes (règle 12) :
+
+> **Avant de créer une nouvelle fenêtre, rechercher d'abord si une fenêtre, un panneau ou un système existant peut être réutilisé ou généralisé.**
+
+Ne pas créer de fenêtres ou systèmes parallèles simplement parce qu'un nouvel élément, comme Cable, Beam ou Column, possède des propriétés différentes.
 
 ---
 
-# 23. Test de cohérence globale
+## 14. Règle — Une Classe Métier Distincte Peut Avoir sa Propre Fenêtre
 
-Pour chaque élément, vérifier :
+Lorsqu'un élément structural est réellement une **classe métier distincte**, avec ses propres propriétés, paramètres, règles de modélisation et comportement, il doit disposer de sa **propre fenêtre ou de son propre panneau de propriétés adapté**.
 
-```text
-                ┌───────────┐
-                │ TsaLib    │
-                └─────┬─────┘
-                      ↓
-                ┌───────────┐
-                │ Properties│
-                └─────┬─────┘
-                      ↓
-                ┌───────────┐
-                │   Model   │
-                └─────┬─────┘
-                      ↓
-          ┌───────────┴───────────┐
-          ↓                       ↓
-       OCCT 3D                 Analysis
-          ↓                       ↓
-       Viewport                Results
-```
-
-Toutes les branches doivent utiliser des données cohérentes.
-
----
-
-# 24. Ce que je ne veux PAS
-
-Ne fais pas :
+Exemples :
 
 ```text
-❌ nouvelle TsaLib parallèle
-❌ liste de sections dans chaque fenêtre
-❌ liste de matériaux dans chaque fenêtre
-❌ système Cable séparé qui ignore le Model
-❌ système Cable séparé qui ignore Undo/Redo
-❌ OCCT utilisé comme base de données
-❌ calcul utilisant des données différentes du Model
-❌ duplication de commandes
-❌ duplication de validation
-❌ duplication des bibliothèques
-❌ refactorisation massive sans nécessité
+Beam            → BeamPropertiesWindow
+Column          → ColumnPropertiesWindow
+Cable           → CablePropertiesWindow
+Surface / Slab  → SurfacePropertiesWindow
+Wall            → WallPropertiesWindow
 ```
 
----
+Par exemple, **Cable, Beam et Wall ne doivent pas être forcés à utiliser une seule fenêtre générique** si leurs propriétés et leurs comportements sont réellement différents. Cette règle complète la 13.5 (« une fenêtre par responsabilité ») : elle ne s'y oppose pas, elle en précise la limite — la règle 13.5 empêche les fenêtres redondantes pour une même responsabilité, celle-ci reconnaît qu'une responsabilité métier réellement différente mérite sa propre fenêtre.
 
-# 25. Ce que je veux
+### 14.1 Propre fenêtre ≠ système indépendant
 
-Je veux :
+Avoir une fenêtre propre ne signifie **PAS** créer un système parallèle. Chaque fenêtre doit utiliser les infrastructures communes de TSA :
 
 ```text
-                    TsaLib
-                      │
-                      ▼
-               Property System
-                      │
-                      ▼
-                   Model
-                      │
-          ┌───────────┼───────────┐
-          ↓           ↓           ↓
-       Commands   Selection    Analysis
-          │           │           │
-          └───────────┼───────────┘
-                      ↓
-                  Undo / Redo
-                      │
-                      ↓
-                 Save / Load
-                      │
-                      ↓
-                    OCCT
-                      │
-                      ↓
-                   Viewport
+Element-specific Properties Window
+              ↓
+       Common Property System
+              ↓
+          TSA Model
+              ↓
+           TsaLib
+              ↓
+       Command System
+              ↓
+        Undo / Redo
+              ↓
+             OCCT
+              ↓
+           Viewport
 ```
 
-avec les fenêtres Qt connectées au système approprié.
+Ainsi, `CablePropertiesWindow`, `BeamPropertiesWindow`, `WallPropertiesWindow` peuvent être différentes au niveau de leur interface et de leurs propriétés métier, tout en partageant les mêmes infrastructures centrales (cohérent avec la règle 10.4 : « propriétés spécifiques ≠ infrastructure indépendante »).
 
----
-
-# 26. Rapport d'audit obligatoire
-
-Avant toute modification, produire :
-
-### A. Architecture actuelle
+### 14.2 Exemple
 
 ```text
-TsaLib :
-...
-
-Property System :
-...
-
-Model :
-...
-
-Commands :
-...
-
-OCCT :
-...
-
-Analysis :
-...
+CablePropertiesWindow          BeamPropertiesWindow           WallPropertiesWindow
+├── Cable Section               ├── Beam Section                ├── Thickness
+├── Diameter                    ├── Material                    ├── Material
+├── Material                    ├── Orientation                 ├── Reinforcement
+├── Pretension                  ├── Releases                    ├── Orientation
+├── Parameters                  └── Beam-specific properties    └── Wall-specific properties
+└── Cable-specific properties
 ```
 
-### B. Connexions existantes
+Il ne faut donc pas essayer de mettre artificiellement toutes ces propriétés dans une seule fenêtre universelle si cela rend le système incohérent.
 
-Identifier ce qui est déjà correctement interconnecté.
+### 14.3 Architecture à respecter
 
-### C. Ruptures d'interconnexion
-
-Identifier les systèmes actuellement isolés.
-
-### D. Duplications
-
-Identifier les données ou fonctionnalités dupliquées.
-
-### E. Risques
-
-Identifier :
-
-* incohérences ;
-* références invalides ;
-* dépendances circulaires ;
-* problèmes d'initialisation ;
-* problèmes de synchronisation ;
-* données différentes entre UI/Model/OCCT/Analysis.
-
-### F. Architecture proposée
-
-Présenter les modifications minimales nécessaires.
-
-### G. Recherche externe
-
-Pour toute nouvelle bibliothèque ou composant envisagé :
+Le principe recherché est : **interface spécialisée + infrastructure commune.**
 
 ```text
-Besoin
-Solution existante
-Source
-Compatibilité TSA
-Avantages
-Limites
-Solution personnalisée : Oui / Non
+                    Common TSA Infrastructure
+                             │
+        ┌────────────────────┼────────────────────┐
+        ↓                    ↓                    ↓
+BeamProperties       CableProperties       WallProperties
+    Window                Window                Window
+        ↓                    ↓                    ↓
+     Beam                  Cable                 Wall
+        └────────────────────┼────────────────────┘
+                             ↓
+                         TSA Model
+                             ↓
+                           OCCT
 ```
 
-Ce format correspond aux directives de développement TSA.
+### 14.4 Règle de décision
 
----
+Avant de créer ou fusionner une fenêtre, analyser :
 
-# 27. RÈGLE FINALE
+1. Est-ce une classe métier distincte ?
+2. Possède-t-elle des propriétés spécifiques ?
+3. Possède-t-elle un workflow différent ?
+4. Possède-t-elle une représentation ou des paramètres spécifiques ?
+5. Existe-t-il déjà une fenêtre dédiée ?
+6. Une fenêtre générique serait-elle réellement adaptée ?
 
-**Ne commence pas par coder.**
+Si la réponse montre que l'élément possède une identité métier propre, **conserver ou créer une fenêtre spécialisée**. En revanche, ne pas dupliquer toute l'infrastructure derrière cette fenêtre.
 
-Commence par comprendre comment TSA fonctionne actuellement.
+**Ne jamais confondre :**
 
-L'objectif n'est pas simplement de faire fonctionner `CablePropertiesWindow`.
+> fenêtre spécialisée
 
-L'objectif est de construire une architecture où :
+avec
 
-**Bibliothèques + UI + Modèle + Commandes + Sélection + Undo/Redo + Sauvegarde + OCCT + Calculs + Diagnostics**
+> système indépendant.
 
-fonctionnent comme **un seul système cohérent et interconnecté**, sans duplication inutile et avec une source de vérité clairement définie.
+Le premier est souhaité lorsque les besoins métier sont différents ; le second doit être évité lorsqu'une infrastructure commune existe déjà.
 
-Après l'audit :
-
-**STOP et attends mon approbation.**
+Cette règle s'applique à tous les éléments de TSA, pas uniquement au Cable.
