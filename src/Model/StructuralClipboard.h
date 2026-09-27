@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <cstddef>
 #include "Beam.h"
+#include "Cable/Cable.h"
 
 namespace TSA::Model
 {
@@ -39,15 +40,34 @@ struct ClipboardSlab
     Material material = Material::concreteC25_30();
 };
 
+struct ClipboardCable
+{
+    int originalStartNodeId = 0;
+    int originalEndNodeId = 0;
+    CableDefinition definition;
+    CableType type = CableType::Generic;
+    CableGeometryMode geometryMode = CableGeometryMode::Straight;
+    double sag = 0.0;
+    Section section;
+    Material material;
+    CablePrestress prestress;
+    CableAnalysisProperties analysis;
+    CableAnchor startAnchor;
+    CableAnchor endAnchor;
+    std::string color;
+    std::string name;
+};
+
 struct PasteResult
 {
     std::vector<int> nodeIds;
     std::vector<int> beamIds;
     std::vector<int> columnIds;
     std::vector<int> slabIds;
+    std::vector<int> cableIds;
 
     bool empty() const {
-        return nodeIds.empty() && beamIds.empty() && columnIds.empty() && slabIds.empty();
+        return nodeIds.empty() && beamIds.empty() && columnIds.empty() && slabIds.empty() && cableIds.empty();
     }
 };
 
@@ -67,19 +87,22 @@ public:
     size_t beamCount() const noexcept { return m_beams.size(); }
     size_t columnCount() const noexcept { return m_columns.size(); }
     size_t slabCount() const noexcept { return m_slabs.size(); }
-    size_t totalElementCount() const noexcept { return m_beams.size() + m_columns.size() + m_slabs.size(); }
+    size_t cableCount() const noexcept { return m_cables.size(); }
+    size_t totalElementCount() const noexcept { return m_beams.size() + m_columns.size() + m_slabs.size() + m_cables.size(); }
 
     void copyFrom(const Model& model,
                   const std::vector<int>& selectedNodes,
                   const std::vector<int>& selectedBeams,
                   const std::vector<int>& selectedColumns,
-                  const std::vector<int>& selectedSlabs);
+                  const std::vector<int>& selectedSlabs,
+                  const std::vector<int>& selectedCables = {});
 
     void copyFrom(const Model& model,
                   const std::set<int>& selectedNodes,
                   const std::set<int>& selectedBeams,
                   const std::set<int>& selectedColumns,
-                  const std::set<int>& selectedSlabs);
+                  const std::set<int>& selectedSlabs,
+                  const std::set<int>& selectedCables = {});
 
     PasteResult pasteTo(Model& model, double targetX, double targetY, double targetZ) const;
 
@@ -87,6 +110,7 @@ public:
     const std::vector<ClipboardBeam>& beams() const noexcept { return m_beams; }
     const std::vector<ClipboardColumn>& columns() const noexcept { return m_columns; }
     const std::vector<ClipboardSlab>& slabs() const noexcept { return m_slabs; }
+    const std::vector<ClipboardCable>& cables() const noexcept { return m_cables; }
 
 private:
     bool m_hasData = false;
@@ -98,6 +122,7 @@ private:
     std::vector<ClipboardBeam> m_beams;
     std::vector<ClipboardColumn> m_columns;
     std::vector<ClipboardSlab> m_slabs;
+    std::vector<ClipboardCable> m_cables;
 };
 
 } // namespace TSA::Model

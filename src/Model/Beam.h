@@ -18,7 +18,8 @@ enum class BarRole
     Brace,
     Tie,
     Truss,
-    SteelMember
+    SteelMember,
+    Cable
 };
 
 enum class BarEccentricity

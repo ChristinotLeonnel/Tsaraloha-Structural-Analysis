@@ -68,6 +68,8 @@ set(SOURCES
     src/UI/Dialogs/StructurePresetDialog.cpp
     src/UI/Dialogs/BarCreationDialog.h
     src/UI/Dialogs/BarCreationDialog.cpp
+    src/UI/Dialogs/CableCreationDialog.h
+    src/UI/Dialogs/CableCreationDialog.cpp
     src/UI/Dialogs/SectionCustomizationDialog.h
     src/UI/Dialogs/SectionCustomizationDialog.cpp
     src/UI/Dialogs/SurfaceCreationDialog.h

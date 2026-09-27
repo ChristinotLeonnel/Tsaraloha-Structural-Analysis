@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int total = 48;
+    int total = 49;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -5402,6 +5402,282 @@ int main(int argc, char* argv[])
         std::cout << "  [PASS] Subtest 48.5: Export via LibraryManager & Validation Globale Finale des 11 Phases Validees" << std::endl;
 
         std::cout << "[PASS] Test 48: TSALib Phase 11 - Packaging .tsalib, Distribution & Validation Globale Finale (5 Subtests Valides) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // --- TEST 49: Cable System Audit & End-to-End Validation ---
+    // Creation, Selection, Properties, Deletion, Move, Copy & Undo/Redo
+    {
+        std::cout << "\n--- TEST 49: Cable System Audit & End-to-End Validation ---" << std::endl;
+
+        // 49.1: Unified Linear Element Role & Cable Creation Contract
+        {
+            TEST_CHECK(TSA::Model::BarRole::Cable != TSA::Model::BarRole::Beam, "Subtest 49.1: BarRole::Cable distinct role");
+            TEST_CHECK(static_cast<int>(TSA::Model::BarRole::Cable) == 7, "Subtest 49.1: BarRole::Cable enum integration");
+
+            TSA::Model::Model m1;
+            int n1 = m1.addNode(0.0, 0.0, 0.0);
+            int n2 = m1.addNode(10.0, 0.0, 5.0);
+
+            int cId = m1.addCable(n1, n2, TSA::Model::CableType::StayCable);
+            TEST_CHECK(cId > 0, "Subtest 49.1: Cable created with valid positive ID");
+            const auto* cable = m1.getCable(cId);
+            TEST_CHECK(cable != nullptr, "Subtest 49.1: Cable retrieved from model");
+            if (cable)
+            {
+                TEST_CHECK(cable->startNodeId() == n1, "Subtest 49.1: Start node matching");
+                TEST_CHECK(cable->endNodeId() == n2, "Subtest 49.1: End node matching");
+                TEST_CHECK(cable->type() == TSA::Model::CableType::StayCable, "Subtest 49.1: Type StayCable confirmed");
+                TEST_CHECK(cable->chordLength(m1) > 11.18 && cable->chordLength(m1) < 11.19, "Subtest 49.1: Chord length sqrt(100+25) ~ 11.18 m");
+                TEST_CHECK(cable->diameter() > 0.0, "Subtest 49.1: Cable diameter is positive");
+                TEST_CHECK(!cable->color().empty(), "Subtest 49.1: Cable has valid non-empty color");
+                TEST_CHECK(cable->typeName() == "Cable", "Subtest 49.1: Cable typeName is Cable");
+                TEST_CHECK(dynamic_cast<const TSA::Model::LinearElement*>(cable) != nullptr, "Subtest 49.1: Cable inherits from LinearElement");
+            }
+            std::cout << "  [PASS] Subtest 49.1: Unified Linear Element Role & Cable Creation Contract Verified" << std::endl;
+        }
+
+        // 49.2: Cable Deletion & Model Isolation
+        {
+            TSA::Model::Model m2;
+            int n1 = m2.addNode(0.0, 0.0, 0.0);
+            int n2 = m2.addNode(5.0, 0.0, 0.0);
+            int n3 = m2.addNode(10.0, 0.0, 0.0);
+            int n4 = m2.addNode(15.0, 0.0, 0.0);
+
+            int c1 = m2.addCable(n1, n2);
+            int c2 = m2.addCable(n2, n3);
+            int c3 = m2.addCable(n3, n4);
+            TEST_CHECK(m2.cables().size() == 3, "Subtest 49.2: 3 cables initially in model");
+
+            // Deleting single cable
+            m2.removeCable(c2);
+            TEST_CHECK(m2.getCable(c2) == nullptr, "Subtest 49.2: Cable c2 successfully removed from model");
+            TEST_CHECK(m2.cables().size() == 2, "Subtest 49.2: Model cable count decreased to 2");
+            TEST_CHECK(m2.getCable(c1) != nullptr, "Subtest 49.2: Cable c1 remains intact");
+            TEST_CHECK(m2.getCable(c3) != nullptr, "Subtest 49.2: Cable c3 remains intact");
+
+            // Deleting remaining cables
+            m2.removeCable(c1);
+            m2.removeCable(c3);
+            TEST_CHECK(m2.cables().empty(), "Subtest 49.2: All cables deleted successfully");
+
+            // Deleting non-existent cable should not crash
+            m2.removeCable(9999);
+            TEST_CHECK(m2.cables().empty(), "Subtest 49.2: Deleting invalid ID handled gracefully");
+
+            std::cout << "  [PASS] Subtest 49.2: Cable Deletion & Model Isolation Cleanliness Verified" << std::endl;
+        }
+
+        // 49.3: Cable Node Translation & Dynamic Recomputation
+        {
+            TSA::Model::Model m3;
+            int n1 = m3.addNode(0.0, 0.0, 0.0);
+            int n2 = m3.addNode(10.0, 0.0, 0.0);
+            int cId = m3.addCable(n1, n2);
+
+            auto* cable = m3.getCable(cId);
+            TEST_CHECK(approxEqual(cable->chordLength(m3), 10.0), "Subtest 49.3: Initial chord length = 10.0 m");
+
+            // Move node 2 to (12.0, 0.0, 5.0) -> chord length = sqrt(144 + 25) = 13.0 m
+            auto* node2 = m3.getNode(n2);
+            node2->setCoordinates(12.0, 0.0, 5.0);
+            m3.notifyNodeModified(n2);
+
+            TEST_CHECK(approxEqual(cable->chordLength(m3), 13.0), "Subtest 49.3: Updated chord length dynamically recomputed to 13.0 m");
+
+            std::cout << "  [PASS] Subtest 49.3: Cable Node Translation & Dynamic Recomputation Verified" << std::endl;
+        }
+
+        // 49.4: Duplication via copyElements & copyAndRotateElements
+        {
+            TSA::Model::Model m4;
+            int n1 = m4.addNode(0.0, 0.0, 0.0);
+            int n2 = m4.addNode(5.0, 0.0, 10.0);
+            int cId = m4.addCable(n1, n2, TSA::Model::CableType::StayCable);
+            auto* origCable = m4.getCable(cId);
+            origCable->setDiameter(0.040); // 40 mm
+            origCable->setColor("#FF8800");
+            origCable->prestress().initialTension = 150000.0; // 150 kN
+
+            // 1. Translation copy (dy = +4.0m)
+            std::set<int> selNodes = {n1, n2};
+            std::set<int> selCables = {cId};
+            auto created = m4.copyElements(selNodes, {}, {}, {}, 0.0, 4.0, 0.0, 1, selCables);
+            TEST_CHECK(!created.empty(), "Subtest 49.4: copyElements returned created entity IDs");
+            TEST_CHECK(m4.cables().size() == 2, "Subtest 49.4: Model now has 2 cables");
+
+            int copyCableId = -1;
+            for (const auto& [id, c] : m4.cables())
+            {
+                if (id != cId) { copyCableId = id; break; }
+            }
+            TEST_CHECK(copyCableId > 0, "Subtest 49.4: Duplicated cable identified");
+            const auto* copiedCable = m4.getCable(copyCableId);
+            TEST_CHECK(copiedCable != nullptr, "Subtest 49.4: Duplicated cable pointer valid");
+            if (copiedCable)
+            {
+                TEST_CHECK(copiedCable->type() == TSA::Model::CableType::StayCable, "Subtest 49.4: Type preserved");
+                TEST_CHECK(approxEqual(copiedCable->diameter(), 0.040), "Subtest 49.4: Diameter 40mm preserved");
+                TEST_CHECK(copiedCable->color() == "#FF8800", "Subtest 49.4: Color #FF8800 preserved");
+                TEST_CHECK(approxEqual(copiedCable->initialTension(), 150000.0), "Subtest 49.4: Prestress 150kN preserved");
+
+                const auto* nStartCopy = m4.getNode(copiedCable->startNodeId());
+                const auto* nEndCopy = m4.getNode(copiedCable->endNodeId());
+                TEST_CHECK(approxEqual(nStartCopy->y(), 4.0), "Subtest 49.4: Start node shifted dy = 4.0");
+                TEST_CHECK(approxEqual(nEndCopy->y(), 4.0), "Subtest 49.4: End node shifted dy = 4.0");
+            }
+
+            // 2. Rotation copy around Z axis by 90 degrees
+            gp_Pnt center(0.0, 0.0, 0.0);
+            gp_Dir axis(0.0, 0.0, 1.0);
+            double angle = 1.5707963267948966; // 90 deg in rad
+            auto rotCreated = m4.copyAndRotateElements(selNodes, {}, {}, {}, center, axis, angle, 1, selCables);
+            TEST_CHECK(m4.cables().size() == 3, "Subtest 49.4: Model now has 3 cables after copyAndRotate");
+
+            std::cout << "  [PASS] Subtest 49.4: copyElements & copyAndRotateElements for Cables Verified" << std::endl;
+        }
+
+        // 49.5: StructuralClipboard Integration (Copy & Paste to Another Model)
+        {
+            TSA::Model::Model sourceModel;
+            int sN1 = sourceModel.addNode(1.0, 2.0, 3.0);
+            int sN2 = sourceModel.addNode(6.0, 2.0, 3.0);
+            int sC = sourceModel.addCable(sN1, sN2, TSA::Model::CableType::Generic);
+            auto* cab = sourceModel.getCable(sC);
+            cab->setDiameter(0.025);
+            cab->setColor("#00AAFF");
+
+            TSA::Model::StructuralClipboard clipboard;
+            std::vector<int> selN = {sN1, sN2};
+            std::vector<int> selC = {sC};
+            std::vector<int> emptyVec;
+            clipboard.copyFrom(sourceModel, selN, emptyVec, emptyVec, emptyVec, selC);
+            TEST_CHECK(clipboard.hasData(), "Subtest 49.5: Clipboard hasData is true");
+            TEST_CHECK(clipboard.cableCount() == 1, "Subtest 49.5: Clipboard contains 1 cable");
+            TEST_CHECK(clipboard.nodeCount() == 2, "Subtest 49.5: Clipboard contains 2 nodes");
+
+            TSA::Model::Model targetModel;
+            auto pasteResult = clipboard.pasteTo(targetModel, 10.0, 20.0, 30.0);
+            TEST_CHECK(!pasteResult.empty(), "Subtest 49.5: pasteTo returned non-empty result");
+            TEST_CHECK(pasteResult.cableIds.size() == 1, "Subtest 49.5: 1 cable pasted in target model");
+            TEST_CHECK(targetModel.cables().size() == 1, "Subtest 49.5: Target model has 1 cable");
+
+            const auto* pastedCable = targetModel.getCable(pasteResult.cableIds[0]);
+            TEST_CHECK(pastedCable != nullptr, "Subtest 49.5: Pasted cable retrieved");
+            if (pastedCable)
+            {
+                TEST_CHECK(approxEqual(pastedCable->diameter(), 0.025), "Subtest 49.5: Pasted diameter 25mm preserved");
+                TEST_CHECK(pastedCable->color() == "#00AAFF", "Subtest 49.5: Pasted color preserved");
+                TEST_CHECK(approxEqual(pastedCable->chordLength(targetModel), 5.0), "Subtest 49.5: Pasted chord length 5.0m preserved");
+            }
+
+            std::cout << "  [PASS] Subtest 49.5: StructuralClipboard Cable Copy & Paste Integration Verified" << std::endl;
+        }
+
+        // 49.6: Full Undo/Redo & State Transaction Integrity
+        {
+            TSA::Model::Model m6;
+            int n1 = m6.addNode(0.0, 0.0, 0.0);
+            int n2 = m6.addNode(10.0, 0.0, 0.0);
+
+            m6.pushUndoState("Creation Cable");
+            int cId = m6.addCable(n1, n2);
+            TEST_CHECK(m6.cables().size() == 1, "Subtest 49.6: 1 cable added");
+
+            m6.pushUndoState("Modification Diametre");
+            auto* cab = m6.getCable(cId);
+            cab->setDiameter(0.060);
+            cab->setColor("#123456");
+            m6.notifyCableModified(cId);
+            TEST_CHECK(approxEqual(m6.getCable(cId)->diameter(), 0.060), "Subtest 49.6: Diameter set to 60mm");
+
+            m6.pushUndoState("Suppression Cable");
+            m6.removeCable(cId);
+            TEST_CHECK(m6.cables().empty(), "Subtest 49.6: Cable removed from model");
+
+            // Undo deletion -> cable restored
+            m6.undo();
+            TEST_CHECK(m6.cables().size() == 1, "Subtest 49.6: Cable restored after undo deletion");
+            auto* restoredCab = m6.getCable(cId);
+            TEST_CHECK(restoredCab != nullptr, "Subtest 49.6: Restored cable pointer valid");
+            if (restoredCab)
+            {
+                TEST_CHECK(approxEqual(restoredCab->diameter(), 0.060), "Subtest 49.6: Restored cable diameter is 60mm");
+                TEST_CHECK(restoredCab->color() == "#123456", "Subtest 49.6: Restored cable color is #123456");
+            }
+
+            // Undo modification -> reverted diameter
+            m6.undo();
+            TEST_CHECK(m6.cables().size() == 1, "Subtest 49.6: Cable still exists after undo modification");
+            TEST_CHECK(m6.getCable(cId)->diameter() < 0.059, "Subtest 49.6: Cable diameter reverted back to default");
+
+            // Redo modification
+            m6.redo();
+            TEST_CHECK(approxEqual(m6.getCable(cId)->diameter(), 0.060), "Subtest 49.6: Cable diameter is 60mm after redo");
+
+            // Redo deletion
+            m6.redo();
+            TEST_CHECK(m6.cables().empty(), "Subtest 49.6: Cable deleted after redo deletion");
+
+            std::cout << "  [PASS] Subtest 49.6: Full Undo/Redo & State Transaction Integrity Verified" << std::endl;
+        }
+
+        // 49.7: Multi-Element Coexistence & Strict Separation (Cable != Beam != Column != Truss)
+        {
+            TSA::Model::Model m7;
+            int nA = m7.addNode(0.0, 0.0, 0.0);
+            int nB = m7.addNode(5.0, 0.0, 0.0);
+            int nC = m7.addNode(0.0, 0.0, 4.0);
+            int nD = m7.addNode(5.0, 0.0, 4.0);
+
+            // 1. Poutre (Beam) — largeur 0.20m, hauteur 0.50m
+            int beamId = m7.addBeam(nC, nD, 0.20, 0.50);
+            // 2. Poteau (Column) — 0.30m x 0.30m
+            int colId = m7.addColumn(nA, nC, 0.30, 0.30);
+            // 3. Barre de Treillis (TrussMember) — diamètre 0.050m
+            int trussId = m7.addTrussMember(nA, nD, 0.050);
+            // 4. Câble (Cable)
+            int cableId = m7.addCable(nB, nC, TSA::Model::CableType::StayCable);
+            auto* cab = m7.getCable(cableId);
+            cab->setDiameter(0.035);
+            cab->setInitialTension(120000.0); // 120 kN
+
+            TEST_CHECK(m7.beams().size() == 1, "Subtest 49.7: Exactly 1 beam in model");
+            TEST_CHECK(m7.columns().size() == 1, "Subtest 49.7: Exactly 1 column in model");
+            TEST_CHECK(m7.trussMembers().size() == 1, "Subtest 49.7: Exactly 1 truss member in model");
+            TEST_CHECK(m7.cables().size() == 1, "Subtest 49.7: Exactly 1 cable in model");
+
+            // Strict segregation checks
+            const auto* beam = m7.getBeam(beamId);
+            const auto* col = m7.getColumn(colId);
+            TEST_CHECK(approxEqual(beam->width(), 0.20), "Subtest 49.7: Beam width is 0.20m");
+            TEST_CHECK(approxEqual(col->width(), 0.30), "Subtest 49.7: Column width is 0.30m");
+            TEST_CHECK(cab->type() == TSA::Model::CableType::StayCable, "Subtest 49.7: Cable is StayCable");
+            TEST_CHECK(cab->tensionOnly() == true, "Subtest 49.7: Cable is tensionOnly");
+            TEST_CHECK(approxEqual(cab->diameter(), 0.035), "Subtest 49.7: Cable diameter is 35mm");
+
+            // Deleting Beam does not impact Cable or Column
+            m7.removeBeam(beamId);
+            TEST_CHECK(m7.beams().empty(), "Subtest 49.7: Beam removed");
+            TEST_CHECK(m7.columns().size() == 1, "Subtest 49.7: Column remains intact");
+            TEST_CHECK(m7.cables().size() == 1, "Subtest 49.7: Cable remains intact");
+            TEST_CHECK(approxEqual(m7.getCable(cableId)->diameter(), 0.035), "Subtest 49.7: Cable properties unaffected by beam deletion");
+
+            // Deleting Column does not impact Cable
+            m7.removeColumn(colId);
+            TEST_CHECK(m7.columns().empty(), "Subtest 49.7: Column removed");
+            TEST_CHECK(m7.cables().size() == 1, "Subtest 49.7: Cable still exists");
+
+            // Deleting Cable
+            m7.removeCable(cableId);
+            TEST_CHECK(m7.cables().empty(), "Subtest 49.7: Cable cleanly removed");
+            TEST_CHECK(m7.trussMembers().size() == 1, "Subtest 49.7: Truss member remains");
+
+            std::cout << "  [PASS] Subtest 49.7: Multi-Element Coexistence & Strict Separation (Cable != Beam != Column != Truss) Verified" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 49: Cable System Audit & End-to-End Validation (7 Subtests Validated) Passed Successfully!" << std::endl;
         passed++;
     }
 

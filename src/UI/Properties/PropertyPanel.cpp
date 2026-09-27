@@ -1938,7 +1938,8 @@ void PropertyPanel::showCableProperties(int cableId)
     double E_eq = cable->equivalentElasticModulus(*m_model);
     m_cableErnstModulusLabel->setText(QString("%1 GPa").arg(E_eq / 1e9, 0, 'f', 2));
 
-    m_cableColor = "#3296DC";
+    m_cableColor = QString::fromStdString(cable->color());
+    if (m_cableColor.isEmpty()) m_cableColor = "#E06622";
     setupColorButton(m_cableColorBtn, m_cableColor);
 
     m_cableGroup->setVisible(true);
@@ -2220,7 +2221,7 @@ void PropertyPanel::onApplyCable()
     cable->setType(static_cast<TSA::Model::CableType>(m_cableTypeCombo->currentData().toInt()));
     cable->setGeometryMode(static_cast<TSA::Model::CableGeometryMode>(m_cableGeomModeCombo->currentData().toInt()));
 
-    cable->definition().setNominalDiameter(m_cableDiaSpin->value() / 1000.0);
+    cable->setDiameter(m_cableDiaSpin->value() / 1000.0);
     cable->definition().setArea(m_cableAreaSpin->value() / 1e6);
     cable->definition().setElasticModulus(m_cableModulusSpin->value() * 1e9);
     cable->prestress().initialTension = m_cableInitialTensionSpin->value() * 1000.0;
@@ -2230,6 +2231,7 @@ void PropertyPanel::onApplyCable()
     cable->startAnchor().setType(static_cast<TSA::Model::AnchorType>(m_cableStartAnchorCombo->currentData().toInt()));
     cable->endAnchor().setType(static_cast<TSA::Model::AnchorType>(m_cableEndAnchorCombo->currentData().toInt()));
     cable->analysisProperties().tensionOnly = m_cableTensionOnlyCheck->isChecked();
+    cable->setColor(m_cableColor.toStdString());
 
     m_model->notifyCableModified(m_currentCableId);
     emit elementModified();

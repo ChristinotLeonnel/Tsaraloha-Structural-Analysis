@@ -23,6 +23,7 @@
 #include "Dialogs/HelpDialog.h"
 #include "Dialogs/StructurePresetDialog.h"
 #include "Dialogs/BarCreationDialog.h"
+#include "Dialogs/CableCreationDialog.h"
 #include "Dialogs/SurfaceCreationDialog.h"
 #include "Dialogs/LibraryDialog.h"
 #include "Dialogs/ExtensionManagerDialog.h"
@@ -1175,6 +1176,13 @@ void MainWindow::createDockWindows()
         m_modelTree->selectCableItem(cableId);
         m_occView->highlightCable(cableId);
         m_propertyPanel->showCableProperties(cableId);
+        if (m_cableDialog && m_cableDialog->isVisible() && m_model)
+        {
+            if (const auto* c = m_model->getCable(cableId))
+            {
+                m_cableDialog->loadFromCable(*c);
+            }
+        }
         if (m_statusInfo)
         {
             m_statusInfo->setText(tr("Câble sélectionné C%1").arg(cableId));
@@ -1409,6 +1417,40 @@ void MainWindow::openBarCreationDialog(TSA::Model::BarRole role)
     }
 }
 
+void MainWindow::openCableCreationDialog()
+{
+    if (!m_occView) return;
+    if (!m_cableDialog)
+    {
+        m_cableDialog = new TSA::UI::CableCreationDialog(m_model.get(), m_occView, this);
+        connect(m_occView, &OccView::cableFirstPointPicked, m_cableDialog, &TSA::UI::CableCreationDialog::onFirstPointPicked);
+        connect(m_occView, &OccView::cableSecondPointPicked, m_cableDialog, &TSA::UI::CableCreationDialog::onSecondPointPicked);
+        connect(m_occView, &OccView::cableDrawingCancelled, m_cableDialog, &TSA::UI::CableCreationDialog::onDrawingCancelled);
+        connect(m_cableDialog, &TSA::UI::CableCreationDialog::cableCreated, this, [this](int cableId) {
+            if (m_statusInfo) m_statusInfo->setText(tr("Câble C%1 créé avec succès").arg(cableId));
+            updateUndoRedoActions();
+        });
+    }
+
+    m_occView->setInteractionMode(OccView::InteractionMode::DrawCable);
+    if (m_actionDrawCable) m_actionDrawCable->setChecked(true);
+
+    m_cableDialog->showNormal();
+    m_cableDialog->raise();
+    m_cableDialog->activateWindow();
+
+    // Positionner le dialogue de manière bien visible au premier plan, au centre-droit du viewport 3D
+    if (m_viewportContainer)
+    {
+        QPoint vpGlobal = m_viewportContainer->mapToGlobal(QPoint(0, 0));
+        int targetX = vpGlobal.x() + m_viewportContainer->width() - m_cableDialog->width() - 40;
+        int targetY = vpGlobal.y() + 40;
+        if (targetX < vpGlobal.x() + 20) targetX = vpGlobal.x() + 20;
+        if (targetY < vpGlobal.y() + 20) targetY = vpGlobal.y() + 20;
+        m_cableDialog->move(targetX, targetY);
+    }
+}
+
 void MainWindow::onModeDrawWire()
 {
     openBarCreationDialog(TSA::Model::BarRole::Beam);
@@ -1431,13 +1473,7 @@ void MainWindow::onModeDrawColumn()
 
 void MainWindow::onModeDrawCable()
 {
-    if (!m_occView) return;
-    m_occView->setInteractionMode(OccView::InteractionMode::DrawCable);
-    if (m_actionDrawCable) m_actionDrawCable->setChecked(true);
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Mode dessin : Cable (Cliquez pour sélectionner le 1er nœud)"));
-    }
+    openCableCreationDialog();
 }
 
 void MainWindow::openSurfaceCreationDialog(int surfaceType)
@@ -1748,6 +1784,11 @@ void MainWindow::onActionMove()
             for (int nid : s->nodeIds()) nodesToMove.insert(nid);
         }
     }
+    for (int cId : m_selectionManager->selectedCables())
+    {
+        const auto* c = m_model->getCable(cId);
+        if (c) { nodesToMove.insert(c->startNodeId()); nodesToMove.insert(c->endNodeId()); }
+    }
 
     if (m_model->moveNodes(nodesToMove, dx, dy, dz))
     {
@@ -1781,7 +1822,8 @@ void MainWindow::onActionCopy()
         m_selectionManager->selectedBeams(),
         m_selectionManager->selectedColumns(),
         m_selectionManager->selectedSlabs(),
-        dx, dy, dz, reps
+        dx, dy, dz, reps,
+        m_selectionManager->selectedCables()
     );
 
     if (!newIds.empty() && m_statusInfo)
@@ -1820,6 +1862,20 @@ void MainWindow::onActionDeleteSelected()
 
     auto columns = m_selectionManager->selectedColumns();
     for (int id : columns) m_model->removeColumn(id);
+
+    auto cables = m_selectionManager->selectedCables();
+    for (int id : cables)
+    {
+        TSA_LOG_INFO("UI", "CableDeleteStarted", "Suppression du câble C" + std::to_string(id));
+        if (m_model->removeCable(id))
+        {
+            TSA_LOG_INFO("UI", "CableDeleted", "Câble C" + std::to_string(id) + " supprimé avec succès");
+        }
+        else
+        {
+            TSA_LOG_WARN("UI", "CableDeleteFailed", "Échec de suppression du câble C" + std::to_string(id));
+        }
+    }
 
     auto nodes = m_selectionManager->selectedNodes();
     for (int id : nodes) m_model->removeNode(id);

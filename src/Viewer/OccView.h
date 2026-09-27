@@ -190,6 +190,11 @@ signals:
     void barSecondPointPicked(const gp_Pnt& pt, int nodeId);
     void barDrawingCancelled();
 
+    // Signaux Câbles (Tension Systems)
+    void cableFirstPointPicked(const gp_Pnt& pt, int nodeId);
+    void cableSecondPointPicked(const gp_Pnt& pt, int nodeId);
+    void cableDrawingCancelled();
+
     // Signaux Surfaciques (Dalles & Voiles)
     void slabNodePicked(int nodeId, const gp_Pnt& pt, int totalCount);
     void slabDrawingCancelled();
