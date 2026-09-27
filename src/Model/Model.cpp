@@ -1112,13 +1112,14 @@ std::vector<int> Model::copyElements(const std::set<int>& nodeIds,
                                      const std::set<int>& beamIds,
                                      const std::set<int>& columnIds,
                                      const std::set<int>& slabIds,
-                                     double dx, double dy, double dz, int repetitions)
+                                     double dx, double dy, double dz, int repetitions,
+                                     const std::set<int>& cableIds)
 {
     std::vector<int> newElementIds;
     if (repetitions < 1)
         return newElementIds;
 
-    // Déterminer l'ensemble de tous les nœuds impliqués (explicites + connectés aux barres/dalles)
+    // Déterminer l'ensemble de tous les nœuds impliqués (explicites + connectés aux barres/dalles/câbles)
     std::set<int> allNodeIds = nodeIds;
     for (int bId : beamIds)
     {
@@ -1137,6 +1138,11 @@ std::vector<int> Model::copyElements(const std::set<int>& nodeIds,
         {
             for (int nid : s->nodeIds()) allNodeIds.insert(nid);
         }
+    }
+    for (int cId : cableIds)
+    {
+        const auto* c = getCable(cId);
+        if (c) { allNodeIds.insert(c->startNodeId()); allNodeIds.insert(c->endNodeId()); }
     }
 
     for (int step = 1; step <= repetitions; ++step)
@@ -1218,6 +1224,29 @@ std::vector<int> Model::copyElements(const std::set<int>& nodeIds,
                 newElementIds.push_back(newSId);
             }
         }
+
+        for (int cId : cableIds)
+        {
+            const auto* origCable = getCable(cId);
+            if (origCable)
+            {
+                int newStart = oldToNewNodes[origCable->startNodeId()];
+                int newEnd = oldToNewNodes[origCable->endNodeId()];
+                int newCId = addCable(newStart, newEnd, origCable->definition(), origCable->name(), origCable->geometryMode(), origCable->sag());
+                if (auto* nc = getCable(newCId))
+                {
+                    nc->setType(origCable->type());
+                    nc->setSection(origCable->section());
+                    nc->setMaterial(origCable->material());
+                    nc->setPrestress(origCable->prestress());
+                    nc->setAnalysisProperties(origCable->analysisProperties());
+                    nc->setStartAnchor(origCable->startAnchor());
+                    nc->setEndAnchor(origCable->endAnchor());
+                    nc->setColor(origCable->color());
+                }
+                newElementIds.push_back(newCId);
+            }
+        }
     }
 
     return newElementIds;
@@ -1250,7 +1279,8 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
                                               const std::set<int>& columnIds,
                                               const std::set<int>& slabIds,
                                               const gp_Pnt& center, const gp_Dir& axis,
-                                              double angleRad, int repetitions)
+                                              double angleRad, int repetitions,
+                                              const std::set<int>& cableIds)
 {
     std::vector<int> newElementIds;
     if (repetitions < 1 || std::abs(angleRad) < 1e-7)
@@ -1274,6 +1304,11 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
         {
             for (int nid : s->nodeIds()) allNodeIds.insert(nid);
         }
+    }
+    for (int cId : cableIds)
+    {
+        const auto* c = getCable(cId);
+        if (c) { allNodeIds.insert(c->startNodeId()); allNodeIds.insert(c->endNodeId()); }
     }
 
     for (int step = 1; step <= repetitions; ++step)
@@ -1355,6 +1390,29 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
                     ns->setColor(origSlab->color());
                 }
                 newElementIds.push_back(newSId);
+            }
+        }
+
+        for (int cId : cableIds)
+        {
+            const auto* origCable = getCable(cId);
+            if (origCable)
+            {
+                int newStart = oldToNewNodes[origCable->startNodeId()];
+                int newEnd = oldToNewNodes[origCable->endNodeId()];
+                int newCId = addCable(newStart, newEnd, origCable->definition(), origCable->name(), origCable->geometryMode(), origCable->sag());
+                if (auto* nc = getCable(newCId))
+                {
+                    nc->setType(origCable->type());
+                    nc->setSection(origCable->section());
+                    nc->setMaterial(origCable->material());
+                    nc->setPrestress(origCable->prestress());
+                    nc->setAnalysisProperties(origCable->analysisProperties());
+                    nc->setStartAnchor(origCable->startAnchor());
+                    nc->setEndAnchor(origCable->endAnchor());
+                    nc->setColor(origCable->color());
+                }
+                newElementIds.push_back(newCId);
             }
         }
     }

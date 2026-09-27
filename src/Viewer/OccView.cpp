@@ -2092,6 +2092,7 @@ void OccView::cancelCurrentDrawing()
         emit drawingPromptChanged(tr("Mode Dessin Treillis : Cliquez pour sélectionner ou créer le 1er nœud"));
         break;
     case InteractionMode::DrawCable:
+        emit cableDrawingCancelled();
         emit drawingPromptChanged(tr("Mode Dessin Câble : Cliquez pour sélectionner ou créer le 1er nœud"));
         break;
     case InteractionMode::DrawStayCable:
@@ -3266,8 +3267,40 @@ void OccView::mousePressEvent(QMouseEvent* event)
                 }
             }
         }
-        else if (interactionMode() == InteractionMode::DrawCable ||
-                 interactionMode() == InteractionMode::DrawStayCable ||
+        else if (interactionMode() == InteractionMode::DrawCable)
+        {
+            double wx = 0.0, wy = 0.0, wz = 0.0;
+            int detectedId = -1;
+            if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
+            {
+                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
+                const auto* node = m_model->getNode(nodeId);
+                gp_Pnt pt = node ? gp_Pnt(node->x(), node->y(), node->z()) : gp_Pnt(wx, wy, wz);
+
+                if (m_drawingNodeIds.empty())
+                {
+                    m_drawingNodeIds.push_back(nodeId);
+                    m_drawingPoints.push_back(pt);
+                    emit cableFirstPointPicked(pt, nodeId);
+                    emit drawingPromptChanged(tr("Mode Dessin Câble : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud (Échap pour annuler)").arg(nodeId));
+                }
+                else
+                {
+                    int startId = m_drawingNodeIds[0];
+                    int endId = nodeId;
+                    clearRubberBand();
+                    m_drawingNodeIds.clear();
+                    m_drawingPoints.clear();
+
+                    if (startId != endId)
+                    {
+                        emit cableSecondPointPicked(pt, endId);
+                        emit elementCreated();
+                    }
+                }
+            }
+        }
+        else if (interactionMode() == InteractionMode::DrawStayCable ||
                  interactionMode() == InteractionMode::DrawSuspensionCable ||
                  interactionMode() == InteractionMode::DrawHanger)
         {
@@ -3282,8 +3315,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     const auto* node = m_model->getNode(nodeId);
                     if (node) m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
                     QString typeStr = (interactionMode() == InteractionMode::DrawStayCable) ? tr("Hauban") :
-                                      (interactionMode() == InteractionMode::DrawSuspensionCable) ? tr("Câble Porteur") :
-                                      (interactionMode() == InteractionMode::DrawHanger) ? tr("Suspente") : tr("Câble");
+                                      (interactionMode() == InteractionMode::DrawSuspensionCable) ? tr("Câble Porteur") : tr("Suspente");
                     emit drawingPromptChanged(tr("Mode Dessin %1 : 1er nœud N%2 sélectionné. Cliquez pour le 2nd nœud").arg(typeStr).arg(nodeId));
                 }
                 else
@@ -3293,8 +3325,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     if (startId != endId)
                     {
                         QString typeStr = (interactionMode() == InteractionMode::DrawStayCable) ? tr("Hauban") :
-                                          (interactionMode() == InteractionMode::DrawSuspensionCable) ? tr("Câble Porteur") :
-                                          (interactionMode() == InteractionMode::DrawHanger) ? tr("Suspente") : tr("Câble");
+                                          (interactionMode() == InteractionMode::DrawSuspensionCable) ? tr("Câble Porteur") : tr("Suspente");
                         m_model->pushUndoState(tr("Création %1").arg(typeStr).toStdString());
 
                         TSA::Model::CableType cType = TSA::Model::CableType::Generic;

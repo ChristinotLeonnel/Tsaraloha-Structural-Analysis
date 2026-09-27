@@ -169,13 +169,15 @@ public:
                                   const std::set<int>& beamIds,
                                   const std::set<int>& columnIds,
                                   const std::set<int>& slabIds,
-                                  double dx, double dy, double dz, int repetitions = 1);
+                                  double dx, double dy, double dz, int repetitions = 1,
+                                  const std::set<int>& cableIds = {});
     std::vector<int> copyAndRotateElements(const std::set<int>& nodeIds,
                                           const std::set<int>& beamIds,
                                           const std::set<int>& columnIds,
                                           const std::set<int>& slabIds,
                                           const gp_Pnt& center, const gp_Dir& axis,
-                                          double angleRad, int repetitions = 1);
+                                          double angleRad, int repetitions = 1,
+                                          const std::set<int>& cableIds = {});
 
     struct ModelStateSnapshot
     {

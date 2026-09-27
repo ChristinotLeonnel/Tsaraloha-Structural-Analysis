@@ -30,6 +30,7 @@ namespace TSA::UI
     class LogConsoleDock;
     class HelpDialog;
     class BarCreationDialog;
+    class CableCreationDialog;
     class SurfaceCreationDialog;
     class GridDialog;
     class GridSettingsDialog;
@@ -94,6 +95,7 @@ private slots:
     void onActionLibrary(int tabIndex = 0);
     void onActionExtensionManager();
     void openBarCreationDialog(TSA::Model::BarRole role = TSA::Model::BarRole::Beam);
+    void openCableCreationDialog();
     void openSurfaceCreationDialog(int surfaceType = 0);
 
     // Actions structurales (Dialogues)
@@ -187,6 +189,7 @@ private:
     QAction* m_actionStructurePresets = nullptr;
 
     TSA::UI::BarCreationDialog* m_barDialog = nullptr;
+    TSA::UI::CableCreationDialog* m_cableDialog = nullptr;
     TSA::UI::SurfaceCreationDialog* m_surfaceDialog = nullptr;
     TSA::Model::StructurePresets m_presets;
 

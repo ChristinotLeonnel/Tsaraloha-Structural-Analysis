@@ -226,6 +226,21 @@ void BarCreationDialog::setupUi()
 void BarCreationDialog::populateSections()
 {
     m_sectionLibrary = TSA::Model::Section::defaultLibrary();
+    bool hasCirc = false;
+    for (const auto& s : m_sectionLibrary)
+    {
+        if (s.shape == TSA::Model::SectionShape::Circular) { hasCirc = true; break; }
+    }
+    if (!hasCirc)
+    {
+        m_sectionLibrary.push_back(TSA::Model::Section::circular(0.010, "Câble D10"));
+        m_sectionLibrary.push_back(TSA::Model::Section::circular(0.0157, "Toron Y1860 15.7mm"));
+        m_sectionLibrary.push_back(TSA::Model::Section::circular(0.020, "Câble D20"));
+        m_sectionLibrary.push_back(TSA::Model::Section::circular(0.025, "Câble D25"));
+        m_sectionLibrary.push_back(TSA::Model::Section::circular(0.032, "Câble D32"));
+        m_sectionLibrary.push_back(TSA::Model::Section::circular(0.050, "Câble D50"));
+    }
+
     m_comboSection->clear();
     for (size_t i = 0; i < m_sectionLibrary.size(); ++i)
     {
@@ -387,9 +402,8 @@ void BarCreationDialog::onSecondPointPicked(const gp_Pnt& pt, int nodeId)
 
     auto props = currentProperties();
     m_model->pushUndoState(tr("Création %1").arg(QString::fromStdString(props.name)).toStdString());
-
-    int barId = m_model->addBar(props, nStartId, nEndId);
-    emit barCreated(barId);
+    int createdId = m_model->addBar(props, nStartId, nEndId);
+    emit barCreated(createdId);
 
     // Incrémenter la numérotation
     int nextId = m_spinBarId->value() + m_spinStep->value();
