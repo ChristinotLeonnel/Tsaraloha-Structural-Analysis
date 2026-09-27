@@ -1,0 +1,38 @@
+﻿{
+    "id":  "en10138_bar_y1030_40",
+    "name":  "EN10138 Bar Y1030 40mm",
+    "category":  "PrestressingBar",
+    "grade":  "Y1030",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 10138-4",
+                     "edition":  "2011",
+                     "clause":  "Table 2",
+                     "source":  "CEN"
+                 },
+    "geometry":  {
+                     "diameter":  0.04,
+                     "area":  0.0012566,
+                     "linear_mass":  9.87
+                 },
+    "mechanical":  {
+                       "elastic_modulus":  205000000000,
+                       "density":  7854,
+                       "characteristic_strength":  1030000000,
+                       "breaking_force":  1294000,
+                       "initial_tension":  517600,
+                       "tension_only":  true
+                   },
+    "visual":  {
+                   "base_color":  "#5A6B7C",
+                   "roughness":  0.35,
+                   "metallic":  0.95,
+                   "transparency":  0,
+                   "shininess":  0.7,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

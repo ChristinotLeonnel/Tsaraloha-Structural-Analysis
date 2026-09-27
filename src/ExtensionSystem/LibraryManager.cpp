@@ -1,6 +1,7 @@
 #include "LibraryManager.h"
 #include "../Model/MaterialLibrary.h"
 #include "../Library/LibraryManager.h"
+#include "../Library/CableLibrary.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QCoreApplication>
@@ -109,6 +110,7 @@ bool LibraryManager::load(const std::string& extensionId)
         m_manifests[extensionId] = manifest;
         TSA::Model::MaterialLibrary::instance().reloadFromRegistry();
         TSA::Library::LibraryManager::instance().reloadSectionsFromRegistry();
+        TSA::Library::CableLibrary::instance().reloadFromRegistry();
         emit libraryLoaded(QString::fromStdString(extensionId));
         emit definitionsChanged();
     }
@@ -122,6 +124,7 @@ bool LibraryManager::unload(const std::string& extensionId)
     {
         TSA::Model::MaterialLibrary::instance().reloadFromRegistry();
         TSA::Library::LibraryManager::instance().reloadSectionsFromRegistry();
+        TSA::Library::CableLibrary::instance().reloadFromRegistry();
         emit libraryUnloaded(QString::fromStdString(extensionId));
         emit definitionsChanged();
     }

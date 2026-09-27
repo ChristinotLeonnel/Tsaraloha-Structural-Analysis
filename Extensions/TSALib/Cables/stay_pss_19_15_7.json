@@ -1,0 +1,38 @@
+﻿{
+    "id":  "stay_pss_19_15_7",
+    "name":  "Stay PSS 19x15.7mm",
+    "category":  "StayCable",
+    "grade":  "PSS-19xT15S",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 1993-1-11 / fib 89",
+                     "edition":  "2019",
+                     "clause":  "fib Bulletin 89",
+                     "source":  "fib / CEN"
+                 },
+    "geometry":  {
+                     "diameter":  0.09,
+                     "area":  0.00285,
+                     "linear_mass":  24.768
+                 },
+    "mechanical":  {
+                       "elastic_modulus":  195000000000,
+                       "density":  7850,
+                       "characteristic_strength":  1860000000,
+                       "breaking_force":  5301000,
+                       "initial_tension":  2120400,
+                       "tension_only":  true
+                   },
+    "visual":  {
+                   "base_color":  "#2B6CB0",
+                   "roughness":  0.35,
+                   "metallic":  0.95,
+                   "transparency":  0,
+                   "shininess":  0.7,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

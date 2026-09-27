@@ -1,6 +1,8 @@
 #include "DefinitionModels.h"
 #include "../Model/Material.h"
 #include "../Model/Section.h"
+#include "../Model/Cable/CableDefinition.h"
+#include "../Model/Cable/CableTypes.h"
 #include <algorithm>
 #include <cctype>
 
@@ -677,6 +679,70 @@ QJsonObject CableCatalogDefinition::toJson() const
 
     json["visual"] = visual.toJson();
     return json;
+}
+
+TSA::Model::CableDefinition CableCatalogDefinition::toModelCableDefinition() const
+{
+    TSA::Model::CableDefinition def;
+    def.setId(id);
+    def.setName(name);
+    def.setType(TSA::Model::stringToCableType(category));
+    def.setGrade(grade);
+    def.setStandardName(standard.name);
+    def.setStandardVersion(standard.edition);
+
+    // Initialisation diamètre puis section/masse exacte
+    def.setNominalDiameter(nominalDiameter);
+    if (metallicArea > 0.0) def.setMetallicArea(metallicArea);
+    if (linearMass > 0.0) def.setLinearMass(linearMass);
+
+    if (elasticModulus > 0.0) def.setElasticModulus(elasticModulus);
+    if (density > 0.0) def.setDensity(density);
+    if (characteristicStrength > 0.0)
+    {
+        def.setCharacteristicStrength(characteristicStrength);
+        def.setUltimateStrength(characteristicStrength);
+    }
+    if (minimumBreakingForce > 0.0) def.setMinimumBreakingForce(minimumBreakingForce);
+
+    if (defaultInitialTension > 0.0) def.setDefaultInitialTension(defaultInitialTension);
+    def.setTensionOnly(tensionOnly);
+
+    return def;
+}
+
+CableCatalogDefinition CableCatalogDefinition::fromModelCableDefinition(
+    const TSA::Model::CableDefinition& cable,
+    const std::string& libraryId)
+{
+    CableCatalogDefinition def;
+    def.ref.libraryId = libraryId;
+    def.ref.definitionVersion = SemanticVersion{ 1, 0, 0 };
+    def.version = SemanticVersion{ 1, 0, 0 };
+
+    def.id = cable.id();
+    def.ref.definitionId = def.id;
+    def.name = cable.name();
+    def.category = TSA::Model::cableTypeToString(cable.type());
+    def.grade = cable.grade();
+
+    def.standard.name = cable.standardName();
+    def.standard.edition = cable.standardVersion();
+    def.standard.source = "Official Standards";
+
+    def.nominalDiameter = cable.nominalDiameter();
+    def.metallicArea = cable.metallicArea();
+    def.linearMass = cable.linearMass();
+
+    def.elasticModulus = cable.elasticModulus();
+    def.density = cable.density();
+    def.characteristicStrength = cable.characteristicStrength();
+    def.minimumBreakingForce = cable.minimumBreakingForce();
+
+    def.defaultInitialTension = cable.defaultInitialTension();
+    def.tensionOnly = cable.tensionOnly();
+
+    return def;
 }
 
 } // namespace TSA::ExtensionSystem

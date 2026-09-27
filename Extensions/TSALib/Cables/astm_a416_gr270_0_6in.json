@@ -1,0 +1,38 @@
+﻿{
+    "id":  "astm_a416_gr270_0_6in",
+    "name":  "ASTM A416 Gr270 0.6in",
+    "category":  "Strand",
+    "grade":  "Grade 270",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "ASTM A416",
+                     "edition":  "2018",
+                     "clause":  "Table 1",
+                     "source":  "ASTM International"
+                 },
+    "geometry":  {
+                     "diameter":  0.01524,
+                     "area":  0.00014,
+                     "linear_mass":  1.102
+                 },
+    "mechanical":  {
+                       "elastic_modulus":  196500000000,
+                       "density":  7871,
+                       "characteristic_strength":  1860000000,
+                       "breaking_force":  260700,
+                       "initial_tension":  104280,
+                       "tension_only":  true
+                   },
+    "visual":  {
+                   "base_color":  "#708090",
+                   "roughness":  0.35,
+                   "metallic":  0.95,
+                   "transparency":  0,
+                   "shininess":  0.7,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

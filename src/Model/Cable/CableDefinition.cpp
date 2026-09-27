@@ -1,5 +1,8 @@
 #include "CableDefinition.h"
+#include "../../ExtensionSystem/LibraryRegistry.h"
+#include "../../ExtensionSystem/DefinitionModels.h"
 #include <cmath>
+#include <algorithm>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -180,6 +183,21 @@ CableDefinition CableDefinition::prestressingBar_32()
 
 std::vector<CableDefinition> CableDefinition::defaultDefinitions()
 {
+    const auto& extCables = TSA::ExtensionSystem::LibraryRegistry::instance().allCables();
+    if (!extCables.empty())
+    {
+        std::vector<CableDefinition> list;
+        list.reserve(extCables.size());
+        for (const auto& cabDef : extCables)
+        {
+            list.push_back(cabDef.toModelCableDefinition());
+        }
+        std::sort(list.begin(), list.end(), [](const CableDefinition& a, const CableDefinition& b) {
+            return a.name() < b.name();
+        });
+        return list;
+    }
+
     std::vector<CableDefinition> list;
     const auto& stdList = CableStandardsRegistry::instance().allProducts();
     for (const auto& prod : stdList)

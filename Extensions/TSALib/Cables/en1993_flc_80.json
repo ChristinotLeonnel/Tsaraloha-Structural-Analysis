@@ -1,0 +1,38 @@
+﻿{
+    "id":  "en1993_flc_80",
+    "name":  "EN1993 FLC 80mm",
+    "category":  "StayCable",
+    "grade":  "FLC-1570",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 1993-1-11",
+                     "edition":  "2006",
+                     "clause":  "Table 3.1",
+                     "source":  "CEN"
+                 },
+    "geometry":  {
+                     "diameter":  0.08,
+                     "area":  0.00431,
+                     "linear_mass":  35.7
+                 },
+    "mechanical":  {
+                       "elastic_modulus":  160000000000,
+                       "density":  8283,
+                       "characteristic_strength":  1570000000,
+                       "breaking_force":  6090000,
+                       "initial_tension":  2436000,
+                       "tension_only":  true
+                   },
+    "visual":  {
+                   "base_color":  "#4A5568",
+                   "roughness":  0.35,
+                   "metallic":  0.95,
+                   "transparency":  0,
+                   "shininess":  0.7,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

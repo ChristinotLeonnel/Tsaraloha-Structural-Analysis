@@ -1,0 +1,38 @@
+﻿{
+    "id":  "en1993_hanger_30",
+    "name":  "EN1993 Hanger 30mm",
+    "category":  "Hanger",
+    "grade":  "SpiralStrand-1770",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 1993-1-11",
+                     "edition":  "2006",
+                     "clause":  "Table 3.2",
+                     "source":  "CEN"
+                 },
+    "geometry":  {
+                     "diameter":  0.03,
+                     "area":  0.000565,
+                     "linear_mass":  4.65
+                 },
+    "mechanical":  {
+                       "elastic_modulus":  150000000000,
+                       "density":  8230,
+                       "characteristic_strength":  1770000000,
+                       "breaking_force":  850000,
+                       "initial_tension":  340000,
+                       "tension_only":  true
+                   },
+    "visual":  {
+                   "base_color":  "#8A9BA8",
+                   "roughness":  0.35,
+                   "metallic":  0.95,
+                   "transparency":  0,
+                   "shininess":  0.7,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

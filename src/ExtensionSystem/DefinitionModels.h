@@ -12,6 +12,7 @@ namespace TSA::Model
 {
     struct Material;
     struct Section;
+    class CableDefinition;
 }
 
 namespace TSA::ExtensionSystem
@@ -155,6 +156,10 @@ struct CableCatalogDefinition
     bool tensionOnly = true;
 
     VisualDefinition visual;
+
+    // Bridge de conversion avec TSA::Model::CableDefinition
+    TSA::Model::CableDefinition toModelCableDefinition() const;
+    static CableCatalogDefinition fromModelCableDefinition(const TSA::Model::CableDefinition& cable, const std::string& libraryId = "org.tsaraloha.tsalib");
 
     static std::optional<CableCatalogDefinition> fromJson(const QJsonObject& json, std::string* outError = nullptr);
     QJsonObject toJson() const;

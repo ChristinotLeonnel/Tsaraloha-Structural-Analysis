@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 43;
+    int total = 44;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -4694,6 +4694,190 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 43: TSALib Phase 6 - Externalisation des Sections & Profiles Eurocodes (4 Subtests Valides) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // --- TEST 44: TSALib Phase 7 - Externalisation des Câbles & Torons Eurocodes / ASTM ---
+    {
+        std::cout << "\n--- TEST 44: TSALib Phase 7 - Externalisation des Câbles & Torons Eurocodes / ASTM ---" << std::endl;
+
+        // 44.1: Catalogue des 19 Câbles & Torons Eurocodes / ASTM sur disque
+        {
+            QString cablesDir = "e:/Book/Dev/TSA/Extensions/TSALib/Cables";
+            TEST_CHECK(QDir(cablesDir).exists(), "Subtest 44.1: Repertoire Cables existe");
+
+            QStringList expectedCables = {
+                "en10138_y1860s7_12_5.json",
+                "en10138_y1860s7_12_7.json",
+                "en10138_y1860s7_12_9.json",
+                "en10138_y1860s7_15_2.json",
+                "en10138_y1860s7_15_7.json",
+                "en10138_y1770s7_15_2.json",
+                "en10138_bar_y1030_26_5.json",
+                "en10138_bar_y1030_32.json",
+                "en10138_bar_y1030_36.json",
+                "en10138_bar_y1030_40.json",
+                "en1993_flc_50.json",
+                "en1993_flc_80.json",
+                "en1993_flc_120.json",
+                "en1993_hanger_30.json",
+                "stay_pss_19_15_7.json",
+                "stay_pss_37_15_7.json",
+                "stay_pss_61_15_7.json",
+                "astm_a416_gr270_0_5in.json",
+                "astm_a416_gr270_0_6in.json"
+            };
+
+            for (const QString& fName : expectedCables)
+            {
+                QString filePath = cablesDir + "/" + fName;
+                TEST_CHECK(QFile::exists(filePath), ("Subtest 44.1: Fichier cable existe: " + fName.toStdString()).c_str());
+                QFile f(filePath);
+                TEST_CHECK(f.open(QIODevice::ReadOnly), ("Subtest 44.1: Ouverture de " + fName.toStdString()).c_str());
+                QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+                TEST_CHECK(doc.isObject(), ("Subtest 44.1: JSON valide pour " + fName.toStdString()).c_str());
+                QJsonObject obj = doc.object();
+                TEST_CHECK(!obj["id"].toString().isEmpty(), "Subtest 44.1: 'id' non vide");
+                TEST_CHECK(!obj["name"].toString().isEmpty(), "Subtest 44.1: 'name' non vide");
+                TEST_CHECK(!obj["category"].toString().isEmpty(), "Subtest 44.1: 'category' non vide");
+                TEST_CHECK(obj.contains("standard") && obj["standard"].isObject(), "Subtest 44.1: 'standard' present");
+                TEST_CHECK(obj.contains("geometry") && obj["geometry"].isObject(), "Subtest 44.1: 'geometry' present");
+                TEST_CHECK(obj.contains("mechanical") && obj["mechanical"].isObject(), "Subtest 44.1: 'mechanical' present");
+            }
+
+            std::cout << "  [PASS] Subtest 44.1: 19 Definitions JSON de Cables Eurocodes / ASTM Validees sur Disque" << std::endl;
+        }
+
+        // 44.2: Découverte & Indexation dans LibraryRegistry via LibraryManager / LibraryLoader
+        {
+            auto& extLibMgr = TSA::ExtensionSystem::LibraryManager::instance();
+            extLibMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            extLibMgr.discover();
+            extLibMgr.load("org.tsaraloha.tsalib");
+
+            auto& registry = TSA::ExtensionSystem::LibraryRegistry::instance();
+            auto allCables = registry.allCables();
+            TEST_CHECK(allCables.size() >= 19, "Subtest 44.2: Au moins 19 cables enregistres dans le registre");
+
+            // Vérifications d'accès par ID logique
+            const auto* pss19 = registry.findCable("stay_pss_19_15_7");
+            TEST_CHECK(pss19 != nullptr, "Subtest 44.2: Cable 'stay_pss_19_15_7' trouve dans le registre");
+            if (pss19)
+            {
+                TEST_CHECK(pss19->name == "Stay PSS 19x15.7mm", "Subtest 44.2: Nom Stay PSS 19x15.7mm conforme");
+                TEST_CHECK(pss19->category == "StayCable", "Subtest 44.2: Categorie StayCable");
+                TEST_CHECK(approxEqual(pss19->nominalDiameter, 0.090), "Subtest 44.2: Diametre enveloppe = 90 mm");
+                TEST_CHECK(approxEqual(pss19->metallicArea, 0.00285), "Subtest 44.2: Section metallique = 2850 mm2");
+                TEST_CHECK(approxEqual(pss19->elasticModulus, 195.0e9), "Subtest 44.2: E = 195 GPa");
+                TEST_CHECK(approxEqual(pss19->minimumBreakingForce, 5301.0e3), "Subtest 44.2: Breaking Force = 5301 kN");
+            }
+
+            const auto* t15 = registry.findCable("en10138_y1860s7_15_7");
+            TEST_CHECK(t15 != nullptr, "Subtest 44.2: Toron 'en10138_y1860s7_15_7' trouve");
+            if (t15)
+            {
+                TEST_CHECK(t15->grade == "Y1860S7", "Subtest 44.2: Grade Y1860S7");
+                TEST_CHECK(approxEqual(t15->nominalDiameter, 0.0157), "Subtest 44.2: Diametre nominal = 15.7 mm");
+                TEST_CHECK(approxEqual(t15->characteristicStrength, 1860.0e6), "Subtest 44.2: fpk = 1860 MPa");
+            }
+
+            const auto* bar32 = registry.findCable("en10138_bar_y1030_32");
+            TEST_CHECK(bar32 != nullptr, "Subtest 44.2: Barre 'en10138_bar_y1030_32' trouvee");
+            if (bar32)
+            {
+                TEST_CHECK(bar32->category == "PrestressingBar", "Subtest 44.2: Categorie PrestressingBar");
+                TEST_CHECK(approxEqual(bar32->nominalDiameter, 0.032), "Subtest 44.2: Diametre = 32 mm");
+            }
+
+            // Filtrage par catégorie
+            auto strands = registry.cablesByCategory("Strand");
+            TEST_CHECK(strands.size() >= 8, "Subtest 44.2: Au moins 8 torons indexees");
+
+            auto stayCables = registry.cablesByCategory("StayCable");
+            TEST_CHECK(stayCables.size() >= 5, "Subtest 44.2: Au moins 5 haubans indexes");
+
+            auto bars = registry.cablesByCategory("PrestressingBar");
+            TEST_CHECK(bars.size() >= 4, "Subtest 44.2: Au moins 4 barres de precontrainte indexees");
+
+            std::cout << "  [PASS] Subtest 44.2: Decouverte & Indexation des Cables dans LibraryRegistry Validees" << std::endl;
+        }
+
+        // 44.3: Passerelle Bidirectionnelle CableCatalogDefinition <-> TSA::Model::CableDefinition
+        {
+            auto& registry = TSA::ExtensionSystem::LibraryRegistry::instance();
+            const auto* pssDef = registry.findCable("stay_pss_19_15_7");
+            TEST_CHECK(pssDef != nullptr, "Subtest 44.3: stay_pss_19_15_7 present");
+            if (pssDef)
+            {
+                // Conversion vers TSA::Model::CableDefinition
+                TSA::Model::CableDefinition modelCable = pssDef->toModelCableDefinition();
+                TEST_CHECK(modelCable.id() == "stay_pss_19_15_7", "Subtest 44.3: ID reporte");
+                TEST_CHECK(modelCable.name() == "Stay PSS 19x15.7mm", "Subtest 44.3: Nom reporte");
+                TEST_CHECK(modelCable.type() == TSA::Model::CableType::StayCable, "Subtest 44.3: Type StayCable");
+                TEST_CHECK(approxEqual(modelCable.nominalDiameter(), 0.090), "Subtest 44.3: Diametre = 90 mm");
+                TEST_CHECK(approxEqual(modelCable.metallicArea(), 0.00285), "Subtest 44.3: Section = 2850 mm2");
+                TEST_CHECK(approxEqual(modelCable.elasticModulus(), 195.0e9), "Subtest 44.3: E = 195 GPa");
+                TEST_CHECK(approxEqual(modelCable.minimumBreakingForce(), 5301.0e3), "Subtest 44.3: Rupture = 5301 kN");
+
+                // Aller-retour vers CableCatalogDefinition
+                TSA::ExtensionSystem::CableCatalogDefinition roundtrip =
+                    TSA::ExtensionSystem::CableCatalogDefinition::fromModelCableDefinition(modelCable, "test.lib");
+                TEST_CHECK(roundtrip.id == "stay_pss_19_15_7", "Subtest 44.3: ID aller-retour conforme");
+                TEST_CHECK(roundtrip.name == "Stay PSS 19x15.7mm", "Subtest 44.3: Nom aller-retour conforme");
+                TEST_CHECK(roundtrip.category == "StayCable", "Subtest 44.3: Categorie aller-retour conforme");
+                TEST_CHECK(approxEqual(roundtrip.nominalDiameter, 0.090), "Subtest 44.3: Diametre aller-retour conforme");
+                TEST_CHECK(approxEqual(roundtrip.minimumBreakingForce, 5301.0e3), "Subtest 44.3: Rupture aller-retour conforme");
+            }
+
+            std::cout << "  [PASS] Subtest 44.3: Passerelle Bidirectionnelle CableCatalogDefinition <-> CableDefinition Validee" << std::endl;
+        }
+
+        // 44.4: Synchronisation de CableLibrary, Model Integration & Génération 3D OpenCASCADE
+        {
+            // Vérifier que CableDefinition::defaultLibrary() extrait les câbles de LibraryRegistry
+            std::vector<TSA::Model::CableDefinition> defaultCables = TSA::Model::CableDefinition::defaultLibrary();
+            TEST_CHECK(defaultCables.size() >= 19, "Subtest 44.4: defaultLibrary() contient les cables externalises");
+
+            // Vérifier la synchronisation avec CableLibrary
+            auto& cableLib = TSA::Library::CableLibrary::instance();
+            cableLib.reloadFromRegistry();
+            const auto* foundInLib = cableLib.findByName("Stay PSS 19x15.7mm");
+            TEST_CHECK(foundInLib != nullptr, "Subtest 44.4: Cable accessible dans CableLibrary");
+
+            // Intégration dans le modèle structural TSA
+            TSA::Model::Model testModel;
+            int n1 = testModel.addNode(0.0, 0.0, 0.0, "", "Ancrage Bas");
+            int n2 = testModel.addNode(10.0, 0.0, 2.0, "", "Ancrage Haut");
+
+            int cableId = testModel.addCable(n1, n2, *foundInLib, "Hauban H1");
+            TEST_CHECK(cableId > 0, "Subtest 44.4: Ajout du cable externalise dans Model reussi");
+
+            const auto* cableElem = testModel.getCable(cableId);
+            TEST_CHECK(cableElem != nullptr, "Subtest 44.4: Recuperation du cable dans le modele");
+
+            // Génération du solide 3D OpenCASCADE via CableGeometry3D
+            TopoDS_Shape cableSolid = TSA::Geometry::CableGeometry3D::createCableShape(*cableElem, testModel, true);
+            TEST_CHECK(!cableSolid.IsNull(), "Subtest 44.4: Solide OpenCASCADE B-Rep non-nul genere");
+            TEST_CHECK(cableSolid.ShapeType() == TopAbs_SOLID || cableSolid.ShapeType() == TopAbs_COMPOUND,
+                       "Subtest 44.4: Type OpenCASCADE valide");
+
+            // Calcul et validation du Bounding Box OpenCASCADE
+            Bnd_Box bbox;
+            BRepBndLib::Add(cableSolid, bbox);
+            TEST_CHECK(!bbox.IsVoid(), "Subtest 44.4: Bounding Box du cable calcule");
+
+            double xmin, ymin, zmin, xmax, ymax, zmax;
+            bbox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+
+            double spanX = xmax - xmin;
+            double spanZ = zmax - zmin;
+            TEST_CHECK(spanX >= 9.9, "Subtest 44.4: Portee X OpenCASCADE >= 9.9 m");
+            TEST_CHECK(spanZ >= 1.9, "Subtest 44.4: Denivele Z OpenCASCADE >= 1.9 m");
+
+            std::cout << "  [PASS] Subtest 44.4: Synchronisation CableLibrary, Model & B-Rep 3D OpenCASCADE Validees" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 44: TSALib Phase 7 - Externalisation des Cables & Torons Eurocodes / ASTM (4 Subtests Valides) Passed Successfully!" << std::endl;
         passed++;
     }
 

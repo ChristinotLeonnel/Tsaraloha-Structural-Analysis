@@ -1,0 +1,38 @@
+﻿{
+    "id":  "en10138_y1860s7_12_5",
+    "name":  "EN10138 Y1860S7 12.5mm",
+    "category":  "Strand",
+    "grade":  "Y1860S7",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 10138-3",
+                     "edition":  "2011",
+                     "clause":  "Table 4",
+                     "source":  "CEN"
+                 },
+    "geometry":  {
+                     "diameter":  0.0125,
+                     "area":  9.3E-05,
+                     "linear_mass":  0.726
+                 },
+    "mechanical":  {
+                       "elastic_modulus":  195000000000,
+                       "density":  7806,
+                       "characteristic_strength":  1860000000,
+                       "breaking_force":  173000,
+                       "initial_tension":  69200,
+                       "tension_only":  true
+                   },
+    "visual":  {
+                   "base_color":  "#708090",
+                   "roughness":  0.35,
+                   "metallic":  0.95,
+                   "transparency":  0,
+                   "shininess":  0.7,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

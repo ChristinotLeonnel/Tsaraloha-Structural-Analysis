@@ -1,0 +1,38 @@
+﻿{
+    "id":  "en1993_flc_50",
+    "name":  "EN1993 FLC 50mm",
+    "category":  "StayCable",
+    "grade":  "FLC-1570",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 1993-1-11",
+                     "edition":  "2006",
+                     "clause":  "Table 3.1",
+                     "source":  "CEN"
+                 },
+    "geometry":  {
+                     "diameter":  0.05,
+                     "area":  0.00168,
+                     "linear_mass":  13.9
+                 },
+    "mechanical":  {
+                       "elastic_modulus":  160000000000,
+                       "density":  8274,
+                       "characteristic_strength":  1570000000,
+                       "breaking_force":  2375000,
+                       "initial_tension":  950000,
+                       "tension_only":  true
+                   },
+    "visual":  {
+                   "base_color":  "#4A5568",
+                   "roughness":  0.35,
+                   "metallic":  0.95,
+                   "transparency":  0,
+                   "shininess":  0.7,
+                   "textures":  {
+
+                                },
+                   "texture_scale_u":  1,
+                   "texture_scale_v":  1
+               }
+}

@@ -18,6 +18,7 @@ public:
 
     void initialize();
     void save();
+    void reloadFromRegistry();
 
     /// Liste de tous les câbles standard officiels
     const std::vector<TSA::Model::CableDefinition>& standardDefinitions() const { return m_standardDefinitions; }

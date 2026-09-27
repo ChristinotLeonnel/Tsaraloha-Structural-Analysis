@@ -37,6 +37,11 @@ void CableLibrary::initialize()
     }
 }
 
+void CableLibrary::reloadFromRegistry()
+{
+    m_standardDefinitions = TSA::Model::CableDefinition::defaultLibrary();
+}
+
 void CableLibrary::save()
 {
     QFile file(QString::fromStdString(m_storageFilePath));
