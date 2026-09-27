@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "textures": [
+    { "id": "concrete", "name": "Concrete C25/30", "category": "Concrete", "file": "concrete.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "reinforced_concrete", "name": "Reinforced Concrete", "category": "Concrete", "file": "reinforced_concrete.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "steel", "name": "Structural Steel", "category": "Steel", "file": "steel.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "rebar", "name": "Rebar B500B", "category": "Steel", "file": "rebar.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "galvanized", "name": "Galvanized Steel", "category": "Steel", "file": "galvanized.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "aluminum", "name": "Structural Aluminum", "category": "Aluminum", "file": "aluminum.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "wood", "name": "Timber C24 Wood", "category": "Timber", "file": "wood.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "brick", "name": "Red Brick", "category": "Masonry", "file": "brick.png", "repeat_u": 2.0, "repeat_v": 2.0 },
+    { "id": "masonry", "name": "Concrete Block Masonry", "category": "Masonry", "file": "masonry.png", "repeat_u": 2.0, "repeat_v": 2.0 },
+    { "id": "glass", "name": "Structural Glass", "category": "Glass", "file": "glass.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "soil", "name": "Soil Earth", "category": "Soil", "file": "soil.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "sand", "name": "Sand Bed", "category": "Soil", "file": "sand.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "gravel", "name": "Aggregate Gravel", "category": "Soil", "file": "gravel.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "rock", "name": "Solid Bedrock", "category": "Soil", "file": "rock.png", "repeat_u": 1.0, "repeat_v": 1.0 }
+  ]
+}

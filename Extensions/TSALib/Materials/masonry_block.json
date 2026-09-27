@@ -1,31 +1,45 @@
 {
-  "id": "masonry_block",
-  "name": "Concrete Block Masonry",
-  "category": "Masonry",
-  "version": "1.0.0",
-  "standard": {
-    "name": "EN 1996-1-1",
-    "edition": "2005",
-    "clause": "Table 3.3",
-    "source": "CEN"
-  },
-  "mechanical": {
-    "density": { "value": 2000.0, "unit": "kg/m3" },
-    "young_modulus": { "value": 4000.0, "unit": "MPa" },
-    "poisson_ratio": 0.20,
-    "thermal_coeff": { "value": 8.0e-6, "unit": "1/K" }
-  },
-  "strength": {
-    "fck": { "value": 8.0, "unit": "MPa" }
-  },
-  "visual": {
-    "base_color": "#8E887E",
-    "roughness": 0.88,
-    "metallic": 0.0,
-    "transparency": 0.0,
-    "shininess": 0.05,
-    "textures": {},
-    "texture_scale_u": 1.0,
-    "texture_scale_v": 1.0
-  }
+    "id":  "masonry_block",
+    "name":  "Concrete Block Masonry",
+    "category":  "Masonry",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 1996-1-1",
+                     "edition":  "2005",
+                     "clause":  "Table 3.3",
+                     "source":  "CEN"
+                 },
+    "mechanical":  {
+                       "density":  {
+                                       "value":  2000.0,
+                                       "unit":  "kg/m3"
+                                   },
+                       "young_modulus":  {
+                                             "value":  4000.0,
+                                             "unit":  "MPa"
+                                         },
+                       "poisson_ratio":  0.20,
+                       "thermal_coeff":  {
+                                             "value":  8E-06,
+                                             "unit":  "1/K"
+                                         }
+                   },
+    "strength":  {
+                     "fck":  {
+                                 "value":  8.0,
+                                 "unit":  "MPa"
+                             }
+                 },
+    "visual":  {
+                   "base_color":  "#8E887E",
+                   "roughness":  0.88,
+                   "metallic":  0.0,
+                   "transparency":  0.0,
+                   "shininess":  0.05,
+                   "textures":  {
+                                    "albedo":  "Textures/masonry.png"
+                                },
+                   "texture_scale_u":  1.0,
+                   "texture_scale_v":  1.0
+               }
 }

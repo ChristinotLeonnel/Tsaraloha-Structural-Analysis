@@ -1,31 +1,45 @@
 {
-  "id": "steel_s235",
-  "name": "Steel S235",
-  "category": "Steel",
-  "version": "1.0.0",
-  "standard": {
-    "name": "EN 1993-1-1",
-    "edition": "2005",
-    "clause": "Table 3.1",
-    "source": "CEN"
-  },
-  "mechanical": {
-    "density": { "value": 7850.0, "unit": "kg/m3" },
-    "young_modulus": { "value": 210000.0, "unit": "MPa" },
-    "poisson_ratio": 0.30,
-    "thermal_coeff": { "value": 1.2e-5, "unit": "1/K" }
-  },
-  "strength": {
-    "fy": { "value": 235.0, "unit": "MPa" }
-  },
-  "visual": {
-    "base_color": "#4682B4",
-    "roughness": 0.35,
-    "metallic": 0.90,
-    "transparency": 0.0,
-    "shininess": 0.65,
-    "textures": {},
-    "texture_scale_u": 1.0,
-    "texture_scale_v": 1.0
-  }
+    "id":  "steel_s235",
+    "name":  "Steel S235",
+    "category":  "Steel",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 1993-1-1",
+                     "edition":  "2005",
+                     "clause":  "Table 3.1",
+                     "source":  "CEN"
+                 },
+    "mechanical":  {
+                       "density":  {
+                                       "value":  7850.0,
+                                       "unit":  "kg/m3"
+                                   },
+                       "young_modulus":  {
+                                             "value":  210000.0,
+                                             "unit":  "MPa"
+                                         },
+                       "poisson_ratio":  0.30,
+                       "thermal_coeff":  {
+                                             "value":  1.2E-05,
+                                             "unit":  "1/K"
+                                         }
+                   },
+    "strength":  {
+                     "fy":  {
+                                "value":  235.0,
+                                "unit":  "MPa"
+                            }
+                 },
+    "visual":  {
+                   "base_color":  "#4682B4",
+                   "roughness":  0.35,
+                   "metallic":  0.90,
+                   "transparency":  0.0,
+                   "shininess":  0.65,
+                   "textures":  {
+                                    "albedo":  "Textures/steel.png"
+                                },
+                   "texture_scale_u":  1.0,
+                   "texture_scale_v":  1.0
+               }
 }

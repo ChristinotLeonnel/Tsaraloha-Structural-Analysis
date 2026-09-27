@@ -1,31 +1,45 @@
 {
-  "id": "concrete_reinforced",
-  "name": "Reinforced Concrete",
-  "category": "Concrete",
-  "version": "1.0.0",
-  "standard": {
-    "name": "EN 1992-1-1",
-    "edition": "2004",
-    "clause": "Clause 3.1",
-    "source": "CEN"
-  },
-  "mechanical": {
-    "density": { "value": 2500.0, "unit": "kg/m3" },
-    "young_modulus": { "value": 32000.0, "unit": "MPa" },
-    "poisson_ratio": 0.20,
-    "thermal_coeff": { "value": 1.0e-5, "unit": "1/K" }
-  },
-  "strength": {
-    "fck": { "value": 30.0, "unit": "MPa" }
-  },
-  "visual": {
-    "base_color": "#7E8489",
-    "roughness": 0.82,
-    "metallic": 0.05,
-    "transparency": 0.0,
-    "shininess": 0.12,
-    "textures": {},
-    "texture_scale_u": 1.0,
-    "texture_scale_v": 1.0
-  }
+    "id":  "concrete_reinforced",
+    "name":  "Reinforced Concrete",
+    "category":  "Concrete",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 1992-1-1",
+                     "edition":  "2004",
+                     "clause":  "Clause 3.1",
+                     "source":  "CEN"
+                 },
+    "mechanical":  {
+                       "density":  {
+                                       "value":  2500.0,
+                                       "unit":  "kg/m3"
+                                   },
+                       "young_modulus":  {
+                                             "value":  32000.0,
+                                             "unit":  "MPa"
+                                         },
+                       "poisson_ratio":  0.20,
+                       "thermal_coeff":  {
+                                             "value":  1E-05,
+                                             "unit":  "1/K"
+                                         }
+                   },
+    "strength":  {
+                     "fck":  {
+                                 "value":  30.0,
+                                 "unit":  "MPa"
+                             }
+                 },
+    "visual":  {
+                   "base_color":  "#7E8489",
+                   "roughness":  0.82,
+                   "metallic":  0.05,
+                   "transparency":  0.0,
+                   "shininess":  0.12,
+                   "textures":  {
+                                    "albedo":  "Textures/reinforced_concrete.png"
+                                },
+                   "texture_scale_u":  1.0,
+                   "texture_scale_v":  1.0
+               }
 }

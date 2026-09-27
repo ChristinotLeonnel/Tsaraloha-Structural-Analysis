@@ -1,31 +1,45 @@
 {
-  "id": "soil_sand",
-  "name": "Sand",
-  "category": "Soil",
-  "version": "1.0.0",
-  "standard": {
-    "name": "EN 1997-1",
-    "edition": "2004",
-    "clause": "Annex D",
-    "source": "CEN"
-  },
-  "mechanical": {
-    "density": { "value": 1600.0, "unit": "kg/m3" },
-    "young_modulus": { "value": 30.0, "unit": "MPa" },
-    "poisson_ratio": 0.30,
-    "thermal_coeff": { "value": 1.0e-5, "unit": "1/K" }
-  },
-  "strength": {
-    "ft": { "value": 0.15, "unit": "MPa" }
-  },
-  "visual": {
-    "base_color": "#D2B57B",
-    "roughness": 0.92,
-    "metallic": 0.0,
-    "transparency": 0.0,
-    "shininess": 0.04,
-    "textures": {},
-    "texture_scale_u": 1.0,
-    "texture_scale_v": 1.0
-  }
+    "id":  "soil_sand",
+    "name":  "Sand",
+    "category":  "Soil",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 1997-1",
+                     "edition":  "2004",
+                     "clause":  "Annex D",
+                     "source":  "CEN"
+                 },
+    "mechanical":  {
+                       "density":  {
+                                       "value":  1600.0,
+                                       "unit":  "kg/m3"
+                                   },
+                       "young_modulus":  {
+                                             "value":  30.0,
+                                             "unit":  "MPa"
+                                         },
+                       "poisson_ratio":  0.30,
+                       "thermal_coeff":  {
+                                             "value":  1E-05,
+                                             "unit":  "1/K"
+                                         }
+                   },
+    "strength":  {
+                     "ft":  {
+                                "value":  0.15,
+                                "unit":  "MPa"
+                            }
+                 },
+    "visual":  {
+                   "base_color":  "#D2B57B",
+                   "roughness":  0.92,
+                   "metallic":  0.0,
+                   "transparency":  0.0,
+                   "shininess":  0.04,
+                   "textures":  {
+                                    "albedo":  "Textures/sand.png"
+                                },
+                   "texture_scale_u":  1.0,
+                   "texture_scale_v":  1.0
+               }
 }

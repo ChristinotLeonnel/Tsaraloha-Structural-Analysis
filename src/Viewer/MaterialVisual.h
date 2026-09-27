@@ -5,6 +5,7 @@
 #include <Graphic3d_PBRMaterial.hxx>
 #include <Quantity_Color.hxx>
 #include <AIS_Shape.hxx>
+#include <QString>
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -45,6 +46,10 @@ public:
                       const std::string& overrideHexColor = "",
                       RenderDisplayMode mode = RenderDisplayMode::Materials,
                       double defaultTransparency = 0.0);
+
+    // Résolution et gestion des textures physiques externes
+    QString resolveTexturePath(const TSA::Model::Material& mat) const;
+    bool hasTexture(const TSA::Model::Material& mat) const;
 
     // Utilitaire de parsing hexadécimal vers Quantity_Color OCCT
     static bool parseHexColor(const std::string& hex, Quantity_Color& outColor);

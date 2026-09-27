@@ -84,6 +84,7 @@
 
 #include "Model/MaterialLibrary.h"
 #include "Viewer/MaterialVisual.h"
+#include "Viewer/TextureManager.h"
 #include <AIS_Shape.hxx>
 
 using namespace TSA::Coordinate;
@@ -116,7 +117,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 41;
+    int total = 42;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -4347,6 +4348,137 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 41: TSALib Phase 4 - Externalisation des Materiaux & Decouplage C++ (4 Subtests Validates) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // --- TEST 42: TSALib Phase 5 - Externalisation des Textures PBR & TextureManager ---
+    {
+        std::cout << "\n--- TEST 42: TSALib Phase 5 - Externalisation des Textures PBR & TextureManager ---" << std::endl;
+
+        // 42.1: Verification de l'ensemble des 14 textures PNG externes et de textures.json
+        {
+            QString texDir = "e:/Book/Dev/TSA/Extensions/TSALib/Textures";
+            TEST_CHECK(QDir(texDir).exists(), "Subtest 42.1: Repertoire Textures existe");
+
+            QString manifestPath = texDir + "/textures.json";
+            TEST_CHECK(QFile::exists(manifestPath), "Subtest 42.1: textures.json existe");
+
+            QStringList expectedTextures = {
+                "concrete.png",
+                "reinforced_concrete.png",
+                "steel.png",
+                "rebar.png",
+                "galvanized.png",
+                "aluminum.png",
+                "wood.png",
+                "brick.png",
+                "masonry.png",
+                "glass.png",
+                "soil.png",
+                "sand.png",
+                "gravel.png",
+                "rock.png"
+            };
+
+            for (const QString& texFile : expectedTextures)
+            {
+                QString filePath = texDir + "/" + texFile;
+                TEST_CHECK(QFile::exists(filePath), ("Subtest 42.1: Texture existante: " + texFile.toStdString()).c_str());
+                QFileInfo fi(filePath);
+                TEST_CHECK(fi.size() > 500, ("Subtest 42.1: Taille non-nulle pour: " + texFile.toStdString()).c_str());
+            }
+
+            std::cout << "  [PASS] Subtest 42.1: 14 Textures PNG PBR & textures.json Validees sur Disque" << std::endl;
+        }
+
+        // 42.2: TextureManager - Decouverte, Catalogue & Resolution
+        {
+            auto& texMgr = TSA::Viewer::TextureManager::instance();
+            texMgr.initialize("e:/Book/Dev/TSA");
+            texMgr.addSearchPath("e:/Book/Dev/TSA/Extensions/TSALib/Textures");
+
+            TEST_CHECK(texMgr.count() >= 14, "Subtest 42.2: Au moins 14 textures indexees par TextureManager");
+
+            // Resolution par ID court
+            QString concretePath = texMgr.resolveTexturePath("concrete");
+            TEST_CHECK(!concretePath.isEmpty(), "Subtest 42.2: Resolution ID 'concrete' reussie");
+            TEST_CHECK(QFile::exists(concretePath), "Subtest 42.2: Fichier concrete resolu existe");
+
+            // Resolution par chemin relatif complet
+            QString steelPath = texMgr.resolveTexturePath("Textures/steel.png");
+            TEST_CHECK(!steelPath.isEmpty(), "Subtest 42.2: Resolution relatif 'Textures/steel.png' reussie");
+            TEST_CHECK(QFile::exists(steelPath), "Subtest 42.2: Fichier steel resolu existe");
+
+            // Resolution de texture inexistante retourne vide sans crasher
+            QString nonExistent = texMgr.resolveTexturePath("unobtainium_texture_xyz");
+            TEST_CHECK(nonExistent.isEmpty(), "Subtest 42.2: Texture inexistante retourne chaine vide de maniere securisee");
+
+            // Verification du filtrage par categorie
+            auto concreteCat = texMgr.texturesByCategory("Concrete");
+            TEST_CHECK(!concreteCat.empty(), "Subtest 42.2: Categorie Concrete non vide");
+
+            std::cout << "  [PASS] Subtest 42.2: TextureManager Decouverte, Catalogue & Resolution Verifies" << std::endl;
+        }
+
+        // 42.3: Integration MaterialVisual avec Textures Externes & PBR
+        {
+            auto& matLib = TSA::Model::MaterialLibrary::instance();
+            matLib.reloadFromRegistry();
+
+            const auto* c25 = matLib.findByName("Concrete C25/30");
+            TEST_CHECK(c25 != nullptr, "Subtest 42.3: Materiau Concrete C25/30 disponible");
+            if (c25)
+            {
+                auto& matVis = TSA::Viewer::MaterialVisual::instance();
+                TEST_CHECK(matVis.hasTexture(*c25), "Subtest 42.3: MaterialVisual detecte la texture pour C25/30");
+
+                QString resolved = matVis.resolveTexturePath(*c25);
+                TEST_CHECK(!resolved.isEmpty(), "Subtest 42.3: Texture resolue pour C25/30");
+                TEST_CHECK(resolved.endsWith("concrete.png", Qt::CaseInsensitive), "Subtest 42.3: Pointeur vers concrete.png");
+
+                // Verifier PBR material
+                Graphic3d_MaterialAspect aspect = matVis.getOcctMaterial(*c25);
+                TEST_CHECK(aspect.PBRMaterial().Roughness() > 0.5f, "Subtest 42.3: Rugosite PBR concrete conforme");
+                TEST_CHECK(aspect.PBRMaterial().Metallic() < 0.1f, "Subtest 42.3: Caractere non metallique concrete conforme");
+            }
+
+            const auto* s235 = matLib.findByName("Steel S235");
+            TEST_CHECK(s235 != nullptr, "Subtest 42.3: Materiau Steel S235 disponible");
+            if (s235)
+            {
+                auto& matVis = TSA::Viewer::MaterialVisual::instance();
+                TEST_CHECK(matVis.hasTexture(*s235), "Subtest 42.3: MaterialVisual detecte la texture pour S235");
+
+                Graphic3d_MaterialAspect aspect = matVis.getOcctMaterial(*s235);
+                TEST_CHECK(aspect.PBRMaterial().Metallic() > 0.8f, "Subtest 42.3: Caractere metallique PBR acier conforme");
+            }
+
+            std::cout << "  [PASS] Subtest 42.3: Integration MaterialVisual avec Textures Externes & PBR Verifiee" << std::endl;
+        }
+
+        // 42.4: Hot Reload & Invalidation de Cache
+        {
+            auto& texMgr = TSA::Viewer::TextureManager::instance();
+            auto& matVis = TSA::Viewer::MaterialVisual::instance();
+
+            // Rechargement a chaud des textures
+            texMgr.reloadTextures();
+            TEST_CHECK(texMgr.count() >= 14, "Subtest 42.4: Textures toujours presentes apres rechargement a chaud");
+
+            // Vidage et reconstruction du cache d'aspects graphiques
+            matVis.clearCache();
+            const auto* wood = TSA::Model::MaterialLibrary::instance().findByName("Timber C24");
+            TEST_CHECK(wood != nullptr, "Subtest 42.4: Materiau Timber C24 present");
+            if (wood)
+            {
+                Graphic3d_MaterialAspect reloadedAspect = matVis.getOcctMaterial(*wood);
+                TEST_CHECK(matVis.hasTexture(*wood), "Subtest 42.4: Texture toujours associee apres clearCache");
+            }
+
+            std::cout << "  [PASS] Subtest 42.4: Hot Reload & Invalidation de Cache Verifies" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 42: TSALib Phase 5 - Externalisation des Textures PBR & TextureManager (4 Subtests Validates) Passed Successfully!" << std::endl;
         passed++;
     }
 

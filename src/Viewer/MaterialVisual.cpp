@@ -1,8 +1,10 @@
 #include "MaterialVisual.h"
+#include "TextureManager.h"
 #include <QColor>
 #include <QString>
 #include <TCollection_AsciiString.hxx>
 #include <AIS_DisplayMode.hxx>
+#include <AIS_TexturedShape.hxx>
 
 namespace TSA::Viewer
 {
@@ -190,11 +192,51 @@ void MaterialVisual::applyToShape(Handle(AIS_Shape) aisShape,
     {
         aisShape->UnsetTransparency();
     }
+
+    // Application de la texture physique externe si l'objet est un AIS_TexturedShape
+    Handle(AIS_TexturedShape) texShape = Handle(AIS_TexturedShape)::DownCast(aisShape);
+    if (!texShape.IsNull())
+    {
+        QString texPath = resolveTexturePath(mat);
+        if (!texPath.isEmpty() && mode == RenderDisplayMode::Materials)
+        {
+            texShape->SetTextureFileName(TCollection_AsciiString(texPath.toUtf8().constData()));
+            texShape->SetTextureMapOn();
+            texShape->SetTextureRepeat(true, mat.visual.textureScaleU, mat.visual.textureScaleV);
+            texShape->EnableTextureModulate();
+            texShape->UpdateAttributes();
+        }
+        else
+        {
+            texShape->SetTextureMapOff();
+        }
+    }
+}
+
+QString MaterialVisual::resolveTexturePath(const TSA::Model::Material& mat) const
+{
+    if (!mat.visual.texturePath.empty())
+    {
+        QString res = TextureManager::instance().resolveTexturePath(mat.visual.texturePath);
+        if (!res.isEmpty()) return res;
+    }
+    if (!mat.visual.textureName.empty())
+    {
+        QString res = TextureManager::instance().resolveTexturePath(mat.visual.textureName);
+        if (!res.isEmpty()) return res;
+    }
+    return QString();
+}
+
+bool MaterialVisual::hasTexture(const TSA::Model::Material& mat) const
+{
+    return !resolveTexturePath(mat).isEmpty();
 }
 
 void MaterialVisual::clearCache()
 {
     m_aspectCache.clear();
+    TextureManager::instance().clearCache();
 }
 
 } // namespace TSA::Viewer

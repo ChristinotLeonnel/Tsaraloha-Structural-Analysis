@@ -153,6 +153,8 @@ set(SOURCES
     src/Viewer/OccView.cpp
     src/Viewer/MaterialVisual.h
     src/Viewer/MaterialVisual.cpp
+    src/Viewer/TextureManager.h
+    src/Viewer/TextureManager.cpp
     src/Viewer/SelectionManager.h
     src/Viewer/SelectionManager.cpp
     src/Geometry/BeamGeometry.h
@@ -314,6 +316,8 @@ set(TEST_SOURCES
     src/Model/MaterialLibrary.cpp
     src/Viewer/MaterialVisual.h
     src/Viewer/MaterialVisual.cpp
+    src/Viewer/TextureManager.h
+    src/Viewer/TextureManager.cpp
     src/Model/Section.h
     src/Model/Section.cpp
     src/Model/Node.h

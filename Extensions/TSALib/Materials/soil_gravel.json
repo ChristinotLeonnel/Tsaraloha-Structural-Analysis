@@ -1,31 +1,45 @@
 {
-  "id": "soil_gravel",
-  "name": "Gravel",
-  "category": "Soil",
-  "version": "1.0.0",
-  "standard": {
-    "name": "EN 1997-1",
-    "edition": "2004",
-    "clause": "Annex D",
-    "source": "CEN"
-  },
-  "mechanical": {
-    "density": { "value": 2000.0, "unit": "kg/m3" },
-    "young_modulus": { "value": 80.0, "unit": "MPa" },
-    "poisson_ratio": 0.25,
-    "thermal_coeff": { "value": 1.0e-5, "unit": "1/K" }
-  },
-  "strength": {
-    "ft": { "value": 0.40, "unit": "MPa" }
-  },
-  "visual": {
-    "base_color": "#6E6962",
-    "roughness": 0.90,
-    "metallic": 0.0,
-    "transparency": 0.0,
-    "shininess": 0.05,
-    "textures": {},
-    "texture_scale_u": 1.0,
-    "texture_scale_v": 1.0
-  }
+    "id":  "soil_gravel",
+    "name":  "Gravel",
+    "category":  "Soil",
+    "version":  "1.0.0",
+    "standard":  {
+                     "name":  "EN 1997-1",
+                     "edition":  "2004",
+                     "clause":  "Annex D",
+                     "source":  "CEN"
+                 },
+    "mechanical":  {
+                       "density":  {
+                                       "value":  2000.0,
+                                       "unit":  "kg/m3"
+                                   },
+                       "young_modulus":  {
+                                             "value":  80.0,
+                                             "unit":  "MPa"
+                                         },
+                       "poisson_ratio":  0.25,
+                       "thermal_coeff":  {
+                                             "value":  1E-05,
+                                             "unit":  "1/K"
+                                         }
+                   },
+    "strength":  {
+                     "ft":  {
+                                "value":  0.40,
+                                "unit":  "MPa"
+                            }
+                 },
+    "visual":  {
+                   "base_color":  "#6E6962",
+                   "roughness":  0.90,
+                   "metallic":  0.0,
+                   "transparency":  0.0,
+                   "shininess":  0.05,
+                   "textures":  {
+                                    "albedo":  "Textures/gravel.png"
+                                },
+                   "texture_scale_u":  1.0,
+                   "texture_scale_v":  1.0
+               }
 }
