@@ -76,6 +76,24 @@ set(SOURCES
     src/UI/Dialogs/LibraryDialog.cpp
     src/ExtensionSystem/ExtensionTypes.h
     src/ExtensionSystem/ExtensionTypes.cpp
+    src/ExtensionSystem/DefinitionModels.h
+    src/ExtensionSystem/DefinitionModels.cpp
+    src/ExtensionSystem/LibraryRegistry.h
+    src/ExtensionSystem/LibraryRegistry.cpp
+    src/ExtensionSystem/LibraryValidator.h
+    src/ExtensionSystem/LibraryValidator.cpp
+    src/ExtensionSystem/LibraryLoader.h
+    src/ExtensionSystem/LibraryLoader.cpp
+    src/ExtensionSystem/LibraryCache.h
+    src/ExtensionSystem/LibraryCache.cpp
+    src/ExtensionSystem/LibraryVersionManager.h
+    src/ExtensionSystem/LibraryVersionManager.cpp
+    src/ExtensionSystem/LibraryDependencyManager.h
+    src/ExtensionSystem/LibraryDependencyManager.cpp
+    src/ExtensionSystem/LibraryManager.h
+    src/ExtensionSystem/LibraryManager.cpp
+    src/ExtensionSystem/ExtensionManager.h
+    src/ExtensionSystem/ExtensionManager.cpp
     src/Library/LibraryManager.h
     src/Library/LibraryManager.cpp
     src/Model/CreationPresets.h
@@ -373,6 +391,24 @@ set(TEST_SOURCES
     src/Geometry/BeamGeometry.cpp
     src/ExtensionSystem/ExtensionTypes.h
     src/ExtensionSystem/ExtensionTypes.cpp
+    src/ExtensionSystem/DefinitionModels.h
+    src/ExtensionSystem/DefinitionModels.cpp
+    src/ExtensionSystem/LibraryRegistry.h
+    src/ExtensionSystem/LibraryRegistry.cpp
+    src/ExtensionSystem/LibraryValidator.h
+    src/ExtensionSystem/LibraryValidator.cpp
+    src/ExtensionSystem/LibraryLoader.h
+    src/ExtensionSystem/LibraryLoader.cpp
+    src/ExtensionSystem/LibraryCache.h
+    src/ExtensionSystem/LibraryCache.cpp
+    src/ExtensionSystem/LibraryVersionManager.h
+    src/ExtensionSystem/LibraryVersionManager.cpp
+    src/ExtensionSystem/LibraryDependencyManager.h
+    src/ExtensionSystem/LibraryDependencyManager.cpp
+    src/ExtensionSystem/LibraryManager.h
+    src/ExtensionSystem/LibraryManager.cpp
+    src/ExtensionSystem/ExtensionManager.h
+    src/ExtensionSystem/ExtensionManager.cpp
     src/Library/LibraryManager.h
     src/Library/LibraryManager.cpp
     src/IO/TSAFileFormat.h

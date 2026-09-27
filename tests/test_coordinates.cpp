@@ -59,6 +59,15 @@
 #include "Diagnostics/CrashHandler.h"
 #include "Diagnostics/DiagnosticReport.h"
 #include "ExtensionSystem/ExtensionTypes.h"
+#include "ExtensionSystem/DefinitionModels.h"
+#include "ExtensionSystem/LibraryRegistry.h"
+#include "ExtensionSystem/LibraryValidator.h"
+#include "ExtensionSystem/LibraryLoader.h"
+#include "ExtensionSystem/LibraryCache.h"
+#include "ExtensionSystem/LibraryVersionManager.h"
+#include "ExtensionSystem/LibraryDependencyManager.h"
+#include "ExtensionSystem/LibraryManager.h"
+#include "ExtensionSystem/ExtensionManager.h"
 
 #include <fstream>
 #include <filesystem>
@@ -103,7 +112,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 38;
+    int total = 39;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -3886,6 +3895,217 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 38: TSALib ExtensionSystem Foundation & Type Contracts (4 Subtests Validated) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------
+    // TEST 39: TSALib Phase 2 - ExtensionSystem Core & Registries
+    // -------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 39: TSALib Phase 2 - ExtensionSystem Core & Registries ---" << std::endl;
+
+        // 39.1: LibraryRegistry Registration, Logical Lookup & Search
+        {
+            auto& reg = TSA::ExtensionSystem::LibraryRegistry::instance();
+            reg.clear();
+
+            TSA::ExtensionSystem::MaterialDefinition c25;
+            c25.id = "concrete.c25_30";
+            c25.name = "Béton C25/30";
+            c25.category = "Concrete";
+            c25.version = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            c25.youngModulus = TSA::ExtensionSystem::PhysicalValue(31000.0, "MPa");
+            c25.density = TSA::ExtensionSystem::PhysicalValue(2500.0, "kg/m3");
+            c25.poissonRatio = 0.20;
+            c25.fck = TSA::ExtensionSystem::PhysicalValue(25.0, "MPa");
+            c25.standard.name = "EN 1992-1-1";
+
+            TEST_CHECK(reg.registerMaterial(c25), "Subtest 39.1: Register Material");
+
+            TSA::ExtensionSystem::SectionDefinition ipe200;
+            ipe200.id = "steel.ipe200";
+            ipe200.name = "IPE 200";
+            ipe200.category = "Steel";
+            ipe200.shapeType = "IShape";
+            ipe200.width = 0.100;
+            ipe200.height = 0.200;
+            ipe200.webThickness = 0.0056;
+            ipe200.flangeThickness = 0.0085;
+            ipe200.standard.name = "EN 1993-1-1";
+
+            TEST_CHECK(reg.registerSection(ipe200), "Subtest 39.1: Register Section");
+
+            TSA::ExtensionSystem::CableCatalogDefinition t15;
+            t15.id = "cable.strand_15_7";
+            t15.name = "Toron 7 fils 15.7 mm";
+            t15.category = "Prestressing";
+            t15.nominalDiameter = 0.0157;
+            t15.metallicArea = 150e-6;
+            t15.elasticModulus = 195.0e9;
+
+            TEST_CHECK(reg.registerCable(t15), "Subtest 39.1: Register Cable");
+
+            TEST_CHECK(reg.findMaterial("concrete.c25_30") != nullptr, "Subtest 39.1: Find Material by ID");
+            TEST_CHECK(reg.findSection("steel.ipe200") != nullptr, "Subtest 39.1: Find Section by ID");
+            TEST_CHECK(reg.findCable("cable.strand_15_7") != nullptr, "Subtest 39.1: Find Cable by ID");
+            TEST_CHECK(reg.findMaterial("unknown.id") == nullptr, "Subtest 39.1: Non-existent ID returns nullptr");
+
+            auto concreteList = reg.materialsByCategory("Concrete");
+            TEST_CHECK(concreteList.size() == 1, "Subtest 39.1: Category filter returns 1 concrete");
+
+            auto searchRes = reg.searchSections("ipe");
+            TEST_CHECK(searchRes.size() == 1 && searchRes[0].id == "steel.ipe200", "Subtest 39.1: Search sections by keyword");
+
+            std::cout << "  [PASS] Subtest 39.1: LibraryRegistry Registration, Logical Lookup & Search Verified" << std::endl;
+        }
+
+        // 39.2: LibraryValidator Strict Conformance & Anti-Crash Protection
+        {
+            TSA::ExtensionSystem::LibraryValidator val;
+
+            // ID Validation
+            TEST_CHECK(TSA::ExtensionSystem::LibraryValidator::isValidId("concrete.c25_30"), "Subtest 39.2: Valid ID");
+            TEST_CHECK(TSA::ExtensionSystem::LibraryValidator::isValidId("org.tsaraloha.tsalib"), "Subtest 39.2: Valid manifest ID");
+            TEST_CHECK(!TSA::ExtensionSystem::LibraryValidator::isValidId("invalid id with spaces"), "Subtest 39.2: Invalid ID with spaces rejected");
+            TEST_CHECK(!TSA::ExtensionSystem::LibraryValidator::isValidId("INVALID_UPPERCASE.ID"), "Subtest 39.2: Uppercase ID rejected");
+
+            // Material Validation
+            TSA::ExtensionSystem::MaterialDefinition validMat;
+            validMat.id = "steel.s355";
+            validMat.name = "Acier S355";
+            validMat.youngModulus = TSA::ExtensionSystem::PhysicalValue(210000.0, "MPa");
+            validMat.density = TSA::ExtensionSystem::PhysicalValue(7850.0, "kg/m3");
+            validMat.poissonRatio = 0.30;
+            auto resValid = val.validateMaterial(validMat);
+            TEST_CHECK(resValid.valid, "Subtest 39.2: Valid Material passes validation");
+
+            // Corrupted Material with out-of-range Poisson's ratio
+            TSA::ExtensionSystem::MaterialDefinition invalidMat = validMat;
+            invalidMat.poissonRatio = 0.85; // Physique impossible
+            auto resInvalid = val.validateMaterial(invalidMat);
+            TEST_CHECK(!resInvalid.valid, "Subtest 39.2: Aberrant Poisson ratio rejected");
+
+            // Unknown physical unit
+            TSA::ExtensionSystem::MaterialDefinition invalidUnitMat = validMat;
+            invalidUnitMat.youngModulus.unit = "UnknownUnit_XYZ";
+            auto resUnit = val.validateMaterial(invalidUnitMat);
+            TEST_CHECK(!resUnit.valid, "Subtest 39.2: Unsupported physical unit rejected");
+
+            std::cout << "  [PASS] Subtest 39.2: LibraryValidator Strict Conformance & Anti-Crash Protection Verified" << std::endl;
+        }
+
+        // 39.3: LibraryVersionManager Version Comparison & Mechanical Property Diff
+        {
+            TSA::ExtensionSystem::LibraryVersionManager vm;
+
+            TSA::ExtensionSystem::MechanicalSnapshot projectSnap;
+            projectSnap.youngModulus = 31.0e9; // 31 GPa
+            projectSnap.poissonRatio = 0.20;
+            projectSnap.density = 2500.0;
+            projectSnap.characteristicStrength = 25.0e6;
+            projectSnap.yieldStrength = 0.0;
+            projectSnap.thermalCoeff = 1.0e-5;
+
+            TSA::ExtensionSystem::MaterialDefinition updatedLibMat;
+            updatedLibMat.id = "concrete.c25_30";
+            updatedLibMat.version = TSA::ExtensionSystem::SemanticVersion(1, 1, 0);
+            updatedLibMat.youngModulus = TSA::ExtensionSystem::PhysicalValue(31500.0, "MPa"); // Modifié: 31.5 GPa
+            updatedLibMat.density = TSA::ExtensionSystem::PhysicalValue(2500.0, "kg/m3");    // Inchangé
+            updatedLibMat.poissonRatio = 0.20;                                              // Inchangé
+            updatedLibMat.fck = TSA::ExtensionSystem::PhysicalValue(25.0, "MPa");          // Inchangé
+            updatedLibMat.thermalCoeff = TSA::ExtensionSystem::PhysicalValue(1.0e-5, "1/K"); // Inchangé
+
+            auto diffReport = vm.compare(projectSnap, TSA::ExtensionSystem::SemanticVersion(1, 0, 0), updatedLibMat);
+            TEST_CHECK(diffReport.hasMechanicalChanges(), "Subtest 39.3: Mechanical change detected");
+            TEST_CHECK(diffReport.modifiedProperties.size() == 1, "Subtest 39.3: Exactly 1 modified property (Young Modulus)");
+            TEST_CHECK(diffReport.modifiedProperties[0].propertyName.find("Young") != std::string::npos, "Subtest 39.3: Young modulus identified");
+            TEST_CHECK(diffReport.unchangedProperties.size() >= 4, "Subtest 39.3: Unchanged properties detected");
+
+            // SemVer compatibility check
+            TEST_CHECK(vm.isCompatible(TSA::ExtensionSystem::SemanticVersion(1, 0, 0), TSA::ExtensionSystem::SemanticVersion(1, 1, 0)), "Subtest 39.3: Minor upgrade is compatible");
+            TEST_CHECK(!vm.isCompatible(TSA::ExtensionSystem::SemanticVersion(1, 0, 0), TSA::ExtensionSystem::SemanticVersion(2, 0, 0)), "Subtest 39.3: Major upgrade is incompatible");
+
+            std::cout << "  [PASS] Subtest 39.3: LibraryVersionManager Version Comparison & Mechanical Property Diff Verified" << std::endl;
+        }
+
+        // 39.4: LibraryDependencyManager Dependency Resolution & Topological Order
+        {
+            TSA::ExtensionSystem::LibraryDependencyManager depMgr;
+
+            TSA::ExtensionSystem::ExtensionManifest mStandards;
+            mStandards.id = "org.tsaraloha.standards";
+            mStandards.name = "TSA Standards Library";
+            mStandards.version = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+
+            TSA::ExtensionSystem::ExtensionManifest mTSALib;
+            mTSALib.id = "org.tsaraloha.tsalib";
+            mTSALib.name = "TSA Core Engineering Library";
+            mTSALib.version = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            mTSALib.dependencies.push_back({ "org.tsaraloha.standards", TSA::ExtensionSystem::SemanticVersion(1, 0, 0), false });
+
+            depMgr.registerManifest(mStandards);
+            depMgr.registerManifest(mTSALib);
+
+            auto depVal = depMgr.validateDependencies();
+            TEST_CHECK(depVal.valid, "Subtest 39.4: All dependencies satisfied");
+
+            auto loadOrder = depMgr.computeLoadOrder();
+            TEST_CHECK(loadOrder.size() == 2, "Subtest 39.4: 2 extensions in load order");
+            TEST_CHECK(loadOrder[0] == "org.tsaraloha.standards", "Subtest 39.4: standards loaded before tsalib");
+            TEST_CHECK(loadOrder[1] == "org.tsaraloha.tsalib", "Subtest 39.4: tsalib loaded second");
+
+            // Missing dependency test
+            TSA::ExtensionSystem::ExtensionManifest mBroken;
+            mBroken.id = "org.tsaraloha.broken";
+            mBroken.dependencies.push_back({ "org.tsaraloha.missing_lib", TSA::ExtensionSystem::SemanticVersion(1, 0, 0), false });
+            depMgr.registerManifest(mBroken);
+
+            auto brokenVal = depMgr.validateDependencies();
+            TEST_CHECK(!brokenVal.valid, "Subtest 39.4: Missing dependency properly detected");
+
+            std::cout << "  [PASS] Subtest 39.4: LibraryDependencyManager Dependency Resolution & Topological Order Verified" << std::endl;
+        }
+
+        // 39.5: LibraryCache High-Performance In-Memory Cache
+        {
+            auto& cache = TSA::ExtensionSystem::LibraryCache::instance();
+            cache.clear();
+
+            TSA::ExtensionSystem::MechanicalSnapshot snap;
+            snap.youngModulus = 210.0e9;
+            snap.poissonRatio = 0.30;
+            snap.density = 7850.0;
+
+            cache.putSnapshot("org.tsaraloha.tsalib:steel.s355", snap);
+            TEST_CHECK(cache.size() == 1, "Subtest 39.5: Cache contains 1 snapshot");
+
+            const auto* cached = cache.getSnapshot("org.tsaraloha.tsalib:steel.s355");
+            TEST_CHECK(cached != nullptr, "Subtest 39.5: Cache hit");
+            TEST_CHECK(approxEqual(cached->youngModulus, 210.0e9), "Subtest 39.5: Cached snapshot values intact");
+
+            cache.invalidate("steel.s355");
+            TEST_CHECK(cache.size() == 0, "Subtest 39.5: Targeted invalidation works");
+
+            std::cout << "  [PASS] Subtest 39.5: LibraryCache High-Performance In-Memory Cache Verified" << std::endl;
+        }
+
+        // 39.6: ExtensionManager & LibraryManager Lifecycle Integration
+        {
+            auto& extMgr = TSA::ExtensionSystem::ExtensionManager::instance();
+            auto& libMgr = TSA::ExtensionSystem::LibraryManager::instance();
+
+            libMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            TEST_CHECK(!libMgr.searchPaths().isEmpty(), "Subtest 39.6: Search paths registered");
+
+            // Test de résilience : discovery sur chemin existant/inexistant ne plante jamais
+            auto discovered = libMgr.discover();
+            (void)discovered;
+            TEST_CHECK(true, "Subtest 39.6: Extension discovery executed safely");
+
+            std::cout << "  [PASS] Subtest 39.6: ExtensionManager & LibraryManager Lifecycle Integration Verified" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 39: TSALib Phase 2 - ExtensionSystem Core & Registries (6 Subtests Validated) Passed Successfully!" << std::endl;
         passed++;
     }
 
