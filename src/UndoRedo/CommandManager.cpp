@@ -1,6 +1,7 @@
 #include "CommandManager.h"
 #include "UndoManager.h"
 #include "../Model/Model.h"
+#include "../Diagnostics/Logger.h"
 
 namespace TSA::UndoRedo
 {
@@ -16,16 +17,25 @@ bool CommandManager::executeCommand(std::unique_ptr<TSA::Commands::ICommand> com
     if (!command)
         return false;
 
+    std::string cmdName = command->name();
+    TSA::Diagnostics::Logger::instance().setLastCommand(cmdName);
+    TSA_LOG_INFO("Command", "CommandStarted", "Exécution de la commande : " + cmdName);
+
     if (m_undoManager && m_model)
     {
-        m_undoManager->pushState(*m_model, command->name());
+        m_undoManager->pushState(*m_model, cmdName);
     }
 
     bool success = command->execute();
     if (success)
     {
+        TSA_LOG_INFO("Command", "CommandCompleted", "Commande exécutée avec succès : " + cmdName);
         m_undoCommands.push_back(std::move(command));
         m_redoCommands.clear();
+    }
+    else
+    {
+        TSA_LOG_ERROR("Command", "CommandFailed", "Échec de l'exécution de la commande : " + cmdName);
     }
     return success;
 }
@@ -50,6 +60,7 @@ bool CommandManager::canRedo() const
 
 bool CommandManager::undo()
 {
+    TSA_LOG_INFO("Command", "CommandUndo", "Annulation de commande demandée");
     if (m_undoManager && m_model)
     {
         return m_undoManager->undo(*m_model);
@@ -70,6 +81,7 @@ bool CommandManager::undo()
 
 bool CommandManager::redo()
 {
+    TSA_LOG_INFO("Command", "CommandRedo", "Rétablissement de commande demandé");
     if (m_undoManager && m_model)
     {
         return m_undoManager->redo(*m_model);

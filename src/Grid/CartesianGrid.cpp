@@ -1,4 +1,5 @@
 #include "CartesianGrid.h"
+#include "../Diagnostics/Logger.h"
 #include <cmath>
 #include <algorithm>
 #include <limits>
@@ -47,6 +48,10 @@ void CartesianGrid::computeGeometry()
     {
         return;
     }
+
+    TSA_LOG_DEBUG("Grid", "CartesianGridRebuildStarted",
+        "Calcul géométrie grille '" + m_definition.name() + "' - X: " + std::to_string(xPos.size()) +
+        ", Y: " + std::to_string(yPos.size()) + ", Z: " + std::to_string(zLevels.size()));
 
     std::vector<double> levels = zLevels;
     if (levels.empty())
@@ -98,10 +103,11 @@ void CartesianGrid::computeGeometry()
         m_extension = m_definition.displaySettings().extension;
     }
 
-    double startLy = minLy - m_extension;
-    double endLy   = maxLy + m_extension;
-    double startLx = minLx - m_extension;
-    double endLx   = maxLx + m_extension;
+    double ext = m_extension > 0.1 ? m_extension : 1.2;
+    double startLy = minLy - ext;
+    double endLy   = maxLy + ext;
+    double startLx = minLx - ext;
+    double endLx   = maxLx + ext;
 
     // Pré-allocation des vecteurs (tailles connues à l'avance)
     size_t nLevels = levels.size();
@@ -179,18 +185,22 @@ void CartesianGrid::computeGeometry()
     }
 
     // 2. Lignes de connexion verticales à chaque intersection (X_i, Y_j) reliant tous les étages
-    for (size_t i = 0; i < xPos.size(); ++i)
+    // Générées UNIQUEMENT s'il y a au moins 2 étages réels et distincts pour éviter les arêtes de longueur nulle
+    if (levels.size() >= 2 && std::abs(levels.back() - levels.front()) > 1e-4)
     {
-        for (size_t j = 0; j < yPos.size(); ++j)
+        for (size_t i = 0; i < xPos.size(); ++i)
         {
-            GridLineSegment vSeg;
-            vSeg.start = transformPnt(xPos[i], yPos[j], levels.front());
-            vSeg.end   = transformPnt(xPos[i], yPos[j], levels.back());
-            vSeg.label = m_definition.getXLabel(i) + "-" + m_definition.getYLabel(j);
-            vSeg.index = static_cast<int>(i * yPos.size() + j);
-            vSeg.isXAxis = false;
-            vSeg.zLevel = orig.Z() + levels.front();
-            m_verticalConnectionLines.push_back(vSeg);
+            for (size_t j = 0; j < yPos.size(); ++j)
+            {
+                GridLineSegment vSeg;
+                vSeg.start = transformPnt(xPos[i], yPos[j], levels.front());
+                vSeg.end   = transformPnt(xPos[i], yPos[j], levels.back());
+                vSeg.label = m_definition.getXLabel(i) + "-" + m_definition.getYLabel(j);
+                vSeg.index = static_cast<int>(i * yPos.size() + j);
+                vSeg.isXAxis = false;
+                vSeg.zLevel = orig.Z() + levels.front();
+                m_verticalConnectionLines.push_back(vSeg);
+            }
         }
     }
 
@@ -199,8 +209,8 @@ void CartesianGrid::computeGeometry()
     m_levelBoundaryPlanes.clear();
     m_levelLabelAnchors.clear();
 
-    double lxDatum = minLx - m_extension - 0.6;
-    double lyDatum = minLy - m_extension - 0.6;
+    double lxDatum = minLx - ext - 0.6;
+    double lyDatum = minLy - ext - 0.6;
     double zBottom = levels.front() - 0.5;
     double zTop = levels.back() + 1.2;
 
@@ -244,16 +254,23 @@ void CartesianGrid::computeGeometry()
         bool isBoldZ = m_definition.zIsBold(k);
         m_levelLabelAnchors.push_back({ transformPnt(lxDatum - 0.3, lyDatum, zVal), ss.str(), gp_Dir(0, 0, 1), true, isBoldZ });
 
-        // Cadre périmétrique du plancher au niveau Z_k
-        gp_Pnt c1 = transformPnt(minLx, minLy, zVal);
-        gp_Pnt c2 = transformPnt(maxLx, minLy, zVal);
-        gp_Pnt c3 = transformPnt(maxLx, maxLy, zVal);
-        gp_Pnt c4 = transformPnt(minLx, maxLy, zVal);
-        m_levelBoundaryPlanes.push_back({ c1, c2, "", static_cast<int>(k), false, realZ });
-        m_levelBoundaryPlanes.push_back({ c2, c3, "", static_cast<int>(k), false, realZ });
-        m_levelBoundaryPlanes.push_back({ c3, c4, "", static_cast<int>(k), false, realZ });
-        m_levelBoundaryPlanes.push_back({ c4, c1, "", static_cast<int>(k), false, realZ });
+        // Cadre périmétrique du plancher au niveau Z_k (uniquement si la grille forme une surface 2D réelle)
+        if ((maxLx - minLx) > 1e-4 && (maxLy - minLy) > 1e-4)
+        {
+            gp_Pnt c1 = transformPnt(minLx, minLy, zVal);
+            gp_Pnt c2 = transformPnt(maxLx, minLy, zVal);
+            gp_Pnt c3 = transformPnt(maxLx, maxLy, zVal);
+            gp_Pnt c4 = transformPnt(minLx, maxLy, zVal);
+            m_levelBoundaryPlanes.push_back({ c1, c2, "", static_cast<int>(k), false, realZ });
+            m_levelBoundaryPlanes.push_back({ c2, c3, "", static_cast<int>(k), false, realZ });
+            m_levelBoundaryPlanes.push_back({ c3, c4, "", static_cast<int>(k), false, realZ });
+            m_levelBoundaryPlanes.push_back({ c4, c1, "", static_cast<int>(k), false, realZ });
+        }
     }
+
+    TSA_LOG_DEBUG("Grid", "CartesianGridRebuildCompleted",
+        "Grille '" + m_definition.name() + "' reconstruite - Lignes: " + std::to_string(m_allLines.size()) +
+        ", Intersections: " + std::to_string(m_intersections.size()));
 }
 
 GridSnapResult CartesianGrid::findClosestSnap(const gp_Pnt& worldPoint, double snapToleranceWorld) const

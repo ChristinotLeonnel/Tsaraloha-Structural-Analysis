@@ -224,6 +224,7 @@ private:
     QAction* m_actionHelp = nullptr;
     QAction* m_actionShortcuts = nullptr;
     QAction* m_actionAbout = nullptr;
+    QAction* m_actionExportDiagnostic = nullptr;
 
     // Actions Métier & Outils Avancés
     QAction* m_actionTruss = nullptr;
@@ -269,6 +270,7 @@ private slots:
     void onActionHelp();
     void onActionShortcuts();
     void onActionAbout();
+    void onActionExportDiagnosticReport();
 
     // Slots Outils Métier
     void onActionWall();

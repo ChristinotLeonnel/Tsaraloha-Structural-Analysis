@@ -35,6 +35,15 @@ set(SOURCES
     src/main.cpp
     src/App/Application.h
     src/App/Application.cpp
+    src/Diagnostics/LogLevel.h
+    src/Diagnostics/LogEntry.h
+    src/Diagnostics/RingBuffer.h
+    src/Diagnostics/Logger.h
+    src/Diagnostics/Logger.cpp
+    src/Diagnostics/CrashHandler.h
+    src/Diagnostics/CrashHandler.cpp
+    src/Diagnostics/DiagnosticReport.h
+    src/Diagnostics/DiagnosticReport.cpp
     src/UI/MainWindow.h
     src/UI/MainWindow.cpp
     src/UI/ModelTree/ModelTreeWidget.h
@@ -65,6 +74,8 @@ set(SOURCES
     src/UI/Dialogs/SurfaceCreationDialog.cpp
     src/UI/Dialogs/LibraryDialog.h
     src/UI/Dialogs/LibraryDialog.cpp
+    src/ExtensionSystem/ExtensionTypes.h
+    src/ExtensionSystem/ExtensionTypes.cpp
     src/Library/LibraryManager.h
     src/Library/LibraryManager.cpp
     src/Model/CreationPresets.h
@@ -243,6 +254,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${OCCT_LIBS}
 )
 
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE DbgHelp)
+endif()
+
 # Propriétés spécifiques MSVC / Windows
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /permissive- /utf-8)
@@ -356,6 +371,8 @@ set(TEST_SOURCES
     src/Grid/GridSnapManager.cpp
     src/Geometry/BeamGeometry.h
     src/Geometry/BeamGeometry.cpp
+    src/ExtensionSystem/ExtensionTypes.h
+    src/ExtensionSystem/ExtensionTypes.cpp
     src/Library/LibraryManager.h
     src/Library/LibraryManager.cpp
     src/IO/TSAFileFormat.h
@@ -363,11 +380,23 @@ set(TEST_SOURCES
     src/IO/TSAFile.cpp
     src/IO/TSAPreviewGenerator.h
     src/IO/TSAPreviewGenerator.cpp
+    src/Diagnostics/LogLevel.h
+    src/Diagnostics/LogEntry.h
+    src/Diagnostics/RingBuffer.h
+    src/Diagnostics/Logger.h
+    src/Diagnostics/Logger.cpp
+    src/Diagnostics/CrashHandler.h
+    src/Diagnostics/CrashHandler.cpp
+    src/Diagnostics/DiagnosticReport.h
+    src/Diagnostics/DiagnosticReport.cpp
 )
 
 add_executable(TSA_Tests ${TEST_SOURCES})
 target_include_directories(TSA_Tests PRIVATE src ${OpenCASCADE_INCLUDE_DIR})
 target_link_libraries(TSA_Tests PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets ${OCCT_LIBS})
+if(WIN32)
+    target_link_libraries(TSA_Tests PRIVATE DbgHelp)
+endif()
 if(MSVC)
     target_compile_options(TSA_Tests PRIVATE /W4 /permissive- /utf-8)
     target_compile_definitions(TSA_Tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)

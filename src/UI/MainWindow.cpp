@@ -17,6 +17,8 @@
 #include "Dock/VisibilityDock.h"
 #include "Dock/StructuralElementsDock.h"
 #include "Dock/LogConsoleDock.h"
+#include "../Diagnostics/Logger.h"
+#include "../Diagnostics/DiagnosticReport.h"
 #include "Theme/ThemeManager.h"
 #include "Dialogs/HelpDialog.h"
 #include "Dialogs/StructurePresetDialog.h"
@@ -543,6 +545,11 @@ void MainWindow::createActions()
     m_actionAbout->setToolTip(tr("Informations sur l'application, OpenCASCADE et crédits"));
     connect(m_actionAbout, &QAction::triggered, this, &MainWindow::onActionAbout);
 
+    m_actionExportDiagnostic = new QAction(tr("&Exporter Rapport de Diagnostic..."), this);
+    m_actionExportDiagnostic->setIcon(QIcon(":/icons/console.svg"));
+    m_actionExportDiagnostic->setToolTip(tr("Générer un rapport de diagnostic complet (système, modèle, 100 derniers événements)"));
+    connect(m_actionExportDiagnostic, &QAction::triggered, this, &MainWindow::onActionExportDiagnosticReport);
+
     // Actions Métier & Outils Avancés
     m_actionTruss = new QAction(tr("&Treillis Paramétrique..."), this);
     m_actionTruss->setIcon(QIcon(":/icons/struct_truss.svg"));
@@ -792,6 +799,8 @@ void MainWindow::createMenus()
     helpMenu->addAction(m_actionHelp);
     helpMenu->addAction(m_actionShortcuts);
     helpMenu->addSeparator();
+    helpMenu->addAction(m_actionExportDiagnostic);
+    helpMenu->addSeparator();
     helpMenu->addAction(m_actionAbout);
 }
 
@@ -1014,10 +1023,13 @@ void MainWindow::createDockWindows()
             if (TSA::UI::ThemeManager::instance().isDarkMode()) onToggleTheme();
         }
         else if (c == "HELP" || c == "AIDE" || c == "?") onActionHelp();
+        else if (c == "DIAG" || c == "REPORT" || c == "DIAGNOSTIC") onActionExportDiagnosticReport();
         else {
-            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, SEISMIC, MESH, SOLVE, MODAL, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, THEME, HELP").arg(cmd), "WARN");
+            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, SEISMIC, MESH, SOLVE, MODAL, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, THEME, DIAG, HELP").arg(cmd), "WARN");
         }
     });
+
+    connect(m_consoleDock, &TSA::UI::LogConsoleDock::exportReportRequested, this, &MainWindow::onActionExportDiagnosticReport);
 
     // 1. Sélection depuis le MODEL TREE
     connect(m_modelTree, &TSA::UI::ModelTreeWidget::levelSelected, this, [this](const QString& levelId) {
@@ -3507,3 +3519,24 @@ void MainWindow::dropEvent(QDropEvent* event)
     }
     QMainWindow::dropEvent(event);
 }
+
+void MainWindow::onActionExportDiagnosticReport()
+{
+    TSA_LOG_INFO("UI", "DiagnosticReportExportInitiated", "Export manuel du rapport de diagnostic demandé");
+    std::string reportPath = TSA::Diagnostics::DiagnosticReport::exportReport(m_model.get());
+    if (!reportPath.empty())
+    {
+        QMessageBox::information(this, tr("Rapport de Diagnostic TSA"),
+            tr("Le rapport de diagnostic a été exporté avec succès :\n\n%1").arg(QString::fromStdString(reportPath)));
+        if (m_consoleDock)
+        {
+            m_consoleDock->appendLog(tr("Rapport de diagnostic généré : %1").arg(QString::fromStdString(reportPath)), "INFO");
+        }
+    }
+    else
+    {
+        QMessageBox::warning(this, tr("Erreur Diagnostic"),
+            tr("Impossible de générer le rapport de diagnostic."));
+    }
+}
+

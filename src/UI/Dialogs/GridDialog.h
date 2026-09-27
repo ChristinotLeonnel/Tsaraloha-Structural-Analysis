@@ -141,7 +141,6 @@ private:
     QPushButton* m_btnPickPosition = nullptr;
     QSpinBox* m_repeatSpin = nullptr;
     QDoubleSpinBox* m_spacingSpin = nullptr;
-    QPushButton* m_btnAddInline = nullptr;
 
     // Contrôles Origine / Centre
     QWidget* m_originWidget = nullptr;

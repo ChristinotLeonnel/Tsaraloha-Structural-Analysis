@@ -180,6 +180,8 @@
         <file alias="geom_circle.svg">icons/modeling/geom_circle.svg</file>
         <file alias="geom_cube.svg">icons/modeling/geom_cube.svg</file>
         <file alias="struct_wall.svg">icons/modeling/draw_wall.svg</file>
+        <file alias="draw_wall.svg">icons/modeling/draw_wall.svg</file>
+        <file alias="structure_preset.svg">icons/sections/section_custom.svg</file>
         <file alias="draw_cable.svg">icons/modeling/draw_cable.svg</file>
         <file alias="struct_truss.svg">icons/modeling/struct_truss.svg</file>
         <file alias="struct_foundation.svg">icons/modeling/struct_foundation.svg</file>

@@ -1,6 +1,7 @@
 #include "Model.h"
 #include "ModelDiff.h"
 #include "../UndoRedo/UndoManager.h"
+#include "../Diagnostics/Logger.h"
 #include <algorithm>
 #include <cmath>
 #include <gp_Trsf.hxx>
@@ -1363,6 +1364,11 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
 
 void Model::pushUndoState(const std::string& actionName)
 {
+    if (!actionName.empty())
+    {
+        TSA::Diagnostics::Logger::instance().setLastCommand(actionName);
+        TSA_LOG_INFO("Model", "ActionStarted", actionName);
+    }
     if (m_undoManager)
     {
         m_undoManager->pushState(*this, actionName);

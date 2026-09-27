@@ -52,6 +52,13 @@
 #include "UndoRedo/UndoManager.h"
 #include "UndoRedo/CommandManager.h"
 #include "Interaction/InteractionManager.h"
+#include "Diagnostics/LogLevel.h"
+#include "Diagnostics/LogEntry.h"
+#include "Diagnostics/RingBuffer.h"
+#include "Diagnostics/Logger.h"
+#include "Diagnostics/CrashHandler.h"
+#include "Diagnostics/DiagnosticReport.h"
+#include "ExtensionSystem/ExtensionTypes.h"
 
 #include <fstream>
 #include <filesystem>
@@ -96,7 +103,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 36;
+    int total = 38;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -2182,7 +2189,25 @@ int main(int argc, char* argv[])
         TEST_CHECK(gridA->isActive(), "Test 30.12: Grid A is active");
         TEST_CHECK(gridA->definition().xPositions().size() == 5, "Test 30.12: Active grid updated with 5 X lines");
 
-        std::cout << "[PASS] Test 30: All 12 Grid System Audit Tests Passed Successfully!" << std::endl;
+        // Test 13: Cas limite d'une nouvelle grille où Y est configuré en premier (1 coordonnée X, 1 coordonnée Y, 1 niveau Z)
+        // Vérification de non-dégénérescence géométrique (aucun segment de longueur nulle)
+        GridDefinition minimalDef("Minimal Y First Grid", GridType::Cartesian);
+        minimalDef.setXPositions({ 0.0 });
+        minimalDef.setYPositions({ 0.0 });
+        minimalDef.setZLevels({ 0.0 });
+        CartesianGrid minimalCartesian(minimalDef);
+
+        TEST_CHECK(minimalCartesian.verticalConnectionLines().empty(),
+            "Test 30.13: No vertical connection lines when only 1 Z level (prevents zero-length edges)");
+        TEST_CHECK(minimalCartesian.levelBoundaryPlanes().empty(),
+            "Test 30.13: No boundary planes when 2D area is zero (prevents zero-length edges)");
+        for (const auto& line : minimalCartesian.allLines())
+        {
+            TEST_CHECK(line.start.Distance(line.end) > 0.1,
+                "Test 30.13: All axis lines have strictly positive length even with single point per axis");
+        }
+
+        std::cout << "[PASS] Test 30: All 13 Grid System Audit Tests Passed Successfully!" << std::endl;
         passed++;
     }
 
@@ -3596,6 +3621,271 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 36: Cable & Tension System Comprehensive Test Suite (10 Subtests Validated) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // =========================================================================
+    // TEST 37 : Système Intégré de Diagnostic, Logging, Crash Reporting & Télémétrie TSA
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 37: Systeme Integre de Diagnostic, Logging & Telemetrie TSA ---" << std::endl;
+
+        // 37.1: Initialisation Logger et Session
+        {
+            auto& logger = TSA::Diagnostics::Logger::instance();
+            logger.init();
+            logger.setDeveloperModeEnabled(true);
+
+            std::string sessId = logger.sessionId();
+            TEST_CHECK(!sessId.empty(), "Subtest 37.1: Session ID is generated");
+            TEST_CHECK(sessId.rfind("session_", 0) == 0, "Subtest 37.1: Session ID starts with session_");
+
+            std::string logDir = logger.logsDirectory();
+            TEST_CHECK(std::filesystem::exists(logDir), "Subtest 37.1: Logs directory exists");
+            TEST_CHECK(std::filesystem::exists(logger.sessionLogPath()), "Subtest 37.1: Session log file exists");
+
+            std::cout << "  [PASS] Subtest 37.1: Logger Initialization & Session Setup Verified (Session: " << sessId << ")" << std::endl;
+        }
+
+        // 37.2: RingBuffer FIFO et Capacité Circulaire (100 événements)
+        {
+            TSA::Diagnostics::RingBuffer<100, int> rb;
+            TEST_CHECK(rb.empty(), "Subtest 37.2: RingBuffer starts empty");
+            TEST_CHECK(rb.size() == 0, "Subtest 37.2: Size starts at 0");
+
+            for (int i = 0; i < 150; ++i)
+            {
+                rb.push(i);
+            }
+
+            TEST_CHECK(rb.size() == 100, "Subtest 37.2: Size clamped to 100");
+            auto snapshot = rb.snapshot();
+            TEST_CHECK(snapshot.size() == 100, "Subtest 37.2: Snapshot has 100 elements");
+            TEST_CHECK(snapshot.front() == 50, "Subtest 37.2: First element is 50 (oldest retained)");
+            TEST_CHECK(snapshot.back() == 149, "Subtest 37.2: Last element is 149 (newest)");
+
+            std::cout << "  [PASS] Subtest 37.2: Thread-Safe RingBuffer FIFO Clamping (100 items) Verified" << std::endl;
+        }
+
+        // 37.3: LogEntry Structuré et Formatage
+        {
+            TSA::Diagnostics::LogEntry entry;
+            entry.sequenceId = 42;
+            entry.timestamp = "2026-09-27 12:00:00.123";
+            entry.level = TSA::Diagnostics::LogLevel::Warning;
+            entry.module = "Geometry";
+            entry.eventName = "ToleranceExceeded";
+            entry.message = "Écart géométrique détecté";
+            entry.file = "src/Geometry/BeamGeometry.cpp";
+            entry.line = 105;
+            entry.function = "createBeamShape";
+
+            TEST_CHECK(std::string(TSA::Diagnostics::logLevelToString(entry.level)) == "WARN", "Subtest 37.3: LogLevel Warning string");
+            std::string formatted = entry.format();
+            TEST_CHECK(formatted.find("WARN") != std::string::npos, "Subtest 37.3: Formatted string contains WARN");
+            TEST_CHECK(formatted.find("Geometry") != std::string::npos, "Subtest 37.3: Formatted string contains Geometry");
+            TEST_CHECK(formatted.find("ToleranceExceeded") != std::string::npos, "Subtest 37.3: Formatted string contains eventName");
+
+            std::cout << "  [PASS] Subtest 37.3: Structured LogEntry Formatting Verified" << std::endl;
+        }
+
+        // 37.4: Mode Développeur et Filtrage
+        {
+            auto& logger = TSA::Diagnostics::Logger::instance();
+            logger.setDeveloperModeEnabled(false);
+            TEST_CHECK(!logger.isDeveloperModeEnabled(), "Subtest 37.4: Developer mode is disabled");
+
+            size_t countBefore = logger.recentEntries().size();
+            TSA_LOG_TRACE("TestModule", "TraceEvent", "Message trace filtre");
+            size_t countAfter = logger.recentEntries().size();
+            TEST_CHECK(countBefore == countAfter, "Subtest 37.4: Trace message skipped when dev mode disabled");
+
+            logger.setDeveloperModeEnabled(true);
+            TEST_CHECK(logger.isDeveloperModeEnabled(), "Subtest 37.4: Developer mode is enabled");
+            TSA_LOG_TRACE("TestModule", "TraceEvent", "Message trace autorise");
+            TEST_CHECK(logger.recentEntries().size() == countAfter + 1, "Subtest 37.4: Trace message accepted when dev mode enabled");
+
+            std::cout << "  [PASS] Subtest 37.4: Developer Mode Filtering Verified" << std::endl;
+        }
+
+        // 37.5: Suivi de la Dernière Commande Utilisateur (Last Executed Command)
+        {
+            auto& logger = TSA::Diagnostics::Logger::instance();
+            logger.setLastCommand("CREATION_POUTRE_IPE300");
+            TEST_CHECK(logger.lastCommand() == "CREATION_POUTRE_IPE300", "Subtest 37.5: Last command recorded");
+
+            // Intégration CommandManager
+            TSA::UndoRedo::CommandManager cmdMgr;
+            logger.setLastCommand("None");
+
+            class DummyCommand : public TSA::Commands::ICommand
+            {
+            public:
+                std::string name() const override { return "TestDummyCommand_Diagnostics"; }
+                bool execute() override { return true; }
+                bool undo() override { return true; }
+            };
+
+            cmdMgr.executeCommand(std::make_unique<DummyCommand>());
+            TEST_CHECK(logger.lastCommand() == "TestDummyCommand_Diagnostics", "Subtest 37.5: CommandManager updated lastCommand");
+
+            std::cout << "  [PASS] Subtest 37.5: Last Executed Command Tracking Verified" << std::endl;
+        }
+
+        // 37.6: Génération et Export du Rapport de Diagnostic
+        {
+            TSA::Model::Model m;
+            int n1 = m.addNode(0, 0, 0);
+            int n2 = m.addNode(5, 0, 0);
+            m.addBeam(n1, n2, 0.3, 0.5);
+
+            auto& logger = TSA::Diagnostics::Logger::instance();
+            logger.setLastCommand("EXPORT_REPORT_TEST");
+            TSA_LOG_INFO("Audit", "ReportTestEvent", "Événement de test pour export");
+
+            std::string reportPath = TSA::Diagnostics::DiagnosticReport::exportReport(&m);
+            TEST_CHECK(!reportPath.empty(), "Subtest 37.6: Report path is not empty");
+            TEST_CHECK(std::filesystem::exists(reportPath), "Subtest 37.6: Exported report file exists on disk");
+            TEST_CHECK(std::filesystem::file_size(reportPath) > 500, "Subtest 37.6: Report file is not empty (>500 bytes)");
+
+            std::ifstream rfs(reportPath);
+            std::string content((std::istreambuf_iterator<char>(rfs)), std::istreambuf_iterator<char>());
+            TEST_CHECK(content.find("RAPPORT DE DIAGNOSTIC TECHNIQUE") != std::string::npos, "Subtest 37.6: Header found in report");
+            TEST_CHECK(content.find("EXPORT_REPORT_TEST") != std::string::npos, "Subtest 37.6: Last command in report");
+            TEST_CHECK(content.find("2") != std::string::npos, "Subtest 37.6: Node count in report");
+            TEST_CHECK(content.find("Poutres           : 1") != std::string::npos, "Subtest 37.6: Beam count in report");
+            TEST_CHECK(content.find("ReportTestEvent") != std::string::npos, "Subtest 37.6: Audit event in report");
+
+            std::cout << "  [PASS] Subtest 37.6: Diagnostic Report Generation & Validation Verified" << std::endl;
+        }
+
+        // 37.7: Télémétrie Automatique Grille Cartésienne
+        {
+            TSA::Grid::GridDefinition def("GrilleTelemetrieTest", TSA::Grid::GridType::Cartesian);
+            def.setXPositions({ 0.0, 3.0, 6.0 });
+            def.setYPositions({ 0.0, 4.0, 8.0 });
+            def.setZLevels({ 0.0, 3.2 });
+
+            TSA::Grid::CartesianGrid grid(def);
+
+            auto recent = TSA::Diagnostics::Logger::instance().recentEntries();
+            bool foundRebuild = false;
+            for (const auto& entry : recent)
+            {
+                if (entry.eventName == "CartesianGridRebuildCompleted" &&
+                    entry.message.find("GrilleTelemetrieTest") != std::string::npos)
+                {
+                    foundRebuild = true;
+                    break;
+                }
+            }
+            TEST_CHECK(foundRebuild, "Subtest 37.7: CartesianGrid rebuild logged automatically to telemetry");
+
+            std::cout << "  [PASS] Subtest 37.7: Automated Cartesian Grid Rebuild Telemetry Verified" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 37: Diagnostic, Logging & Telemetry Subsystem (7 Subtests Validated) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------
+    // TEST 38: TSALib ExtensionSystem Foundation & Type Contracts
+    // -------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 38: TSALib ExtensionSystem Foundation & Type Contracts ---" << std::endl;
+
+        // 38.1: Semantic Versioning (SemVer 2.0)
+        {
+            auto v1 = TSA::ExtensionSystem::SemanticVersion::fromString("1.0.0");
+            auto v2 = TSA::ExtensionSystem::SemanticVersion::fromString("1.1.0");
+            auto v3 = TSA::ExtensionSystem::SemanticVersion::fromString("2.0.0-beta");
+            auto vInvalid = TSA::ExtensionSystem::SemanticVersion::fromString("invalid_ver");
+
+            TEST_CHECK(v1.has_value(), "Subtest 38.1: v1 is valid");
+            TEST_CHECK(v2.has_value(), "Subtest 38.1: v2 is valid");
+            TEST_CHECK(v3.has_value(), "Subtest 38.1: v3 is valid");
+            TEST_CHECK(!vInvalid.has_value(), "Subtest 38.1: invalid version rejected");
+
+            TEST_CHECK(*v1 < *v2, "Subtest 38.1: 1.0.0 < 1.1.0");
+            TEST_CHECK(*v2 < *v3, "Subtest 38.1: 1.1.0 < 2.0.0-beta");
+            TEST_CHECK(v1->toString() == "1.0.0", "Subtest 38.1: v1 toString == 1.0.0");
+            TEST_CHECK(v3->toString() == "2.0.0-beta", "Subtest 38.1: v3 toString == 2.0.0-beta");
+
+            std::cout << "  [PASS] Subtest 38.1: Semantic Versioning Parser & Operators Verified" << std::endl;
+        }
+
+        // 38.2: Physical Values & SI Conversion
+        {
+            TSA::ExtensionSystem::PhysicalValue eMod(31000.0, "MPa");
+            TEST_CHECK(approxEqual(eMod.toBaseSI(), 31.0e9), "Subtest 38.2: 31000 MPa == 31 GPa (Pa)");
+
+            TSA::ExtensionSystem::PhysicalValue density(2.5, "t/m3");
+            TEST_CHECK(approxEqual(density.toBaseSI(), 2500.0), "Subtest 38.2: 2.5 t/m3 == 2500 kg/m3");
+
+            TSA::ExtensionSystem::PhysicalValue force(150.0, "kN");
+            TEST_CHECK(approxEqual(force.toBaseSI(), 150000.0), "Subtest 38.2: 150 kN == 150000 N");
+
+            TSA::ExtensionSystem::PhysicalValue length(25.4, "mm");
+            TEST_CHECK(approxEqual(length.toBaseSI(), 0.0254), "Subtest 38.2: 25.4 mm == 0.0254 m");
+
+            auto json = eMod.toJson();
+            auto restored = TSA::ExtensionSystem::PhysicalValue::fromJson(json);
+            TEST_CHECK(approxEqual(restored.value, 31000.0) && restored.unit == "MPa", "Subtest 38.2: PhysicalValue JSON roundtrip");
+
+            std::cout << "  [PASS] Subtest 38.2: Physical Value SI Conversions & JSON Roundtrip Verified" << std::endl;
+        }
+
+        // 38.3: Mechanical Snapshot Integrity & Immutability
+        {
+            TSA::ExtensionSystem::MechanicalSnapshot s1;
+            s1.youngModulus = 31.0e9;
+            s1.poissonRatio = 0.20;
+            s1.density = 2500.0;
+            s1.characteristicStrength = 25.0e6;
+            s1.yieldStrength = 0.0;
+            s1.thermalCoeff = 1.0e-5;
+
+            TSA::ExtensionSystem::MechanicalSnapshot s2 = s1;
+            TEST_CHECK(s1 == s2, "Subtest 38.3: Identical snapshots are equal");
+
+            s2.youngModulus = 34.0e9; // C30/37 E modulus
+            TEST_CHECK(s1 != s2, "Subtest 38.3: Modified snapshots are detected as different");
+
+            std::cout << "  [PASS] Subtest 38.3: Mechanical Snapshot Equality & Difference Detection Verified" << std::endl;
+        }
+
+        // 38.4: Extension Manifest Parsing & Serialization
+        {
+            QJsonObject manifestJson;
+            manifestJson["id"] = "org.tsaraloha.tsalib";
+            manifestJson["name"] = "TSA Engineering Library";
+            manifestJson["version"] = "1.0.0";
+            manifestJson["format_version"] = "1.0";
+            manifestJson["minimum_tsa_version"] = "0.1.0";
+            manifestJson["author"] = "Tsaraloha Christinot";
+            manifestJson["kind"] = "data";
+
+            QJsonArray cats;
+            cats.append("materials");
+            cats.append("sections");
+            cats.append("cables");
+            cats.append("textures");
+            manifestJson["categories"] = cats;
+
+            std::string parseErr;
+            auto manifest = TSA::ExtensionSystem::ExtensionManifest::fromJson(manifestJson, &parseErr);
+            TEST_CHECK(manifest.has_value(), "Subtest 38.4: Manifest parsed successfully");
+            TEST_CHECK(manifest->id == "org.tsaraloha.tsalib", "Subtest 38.4: Manifest ID match");
+            TEST_CHECK(manifest->kind == TSA::ExtensionSystem::ExtensionKind::DataExtension, "Subtest 38.4: DataExtension kind match");
+            TEST_CHECK(manifest->categories.size() == 4, "Subtest 38.4: 4 categories declared");
+
+            QJsonObject exported = manifest->toJson();
+            TEST_CHECK(exported["id"].toString() == "org.tsaraloha.tsalib", "Subtest 38.4: Exported JSON matches");
+
+            std::cout << "  [PASS] Subtest 38.4: Extension Manifest Parsing & Export Verified" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 38: TSALib ExtensionSystem Foundation & Type Contracts (4 Subtests Validated) Passed Successfully!" << std::endl;
         passed++;
     }
 

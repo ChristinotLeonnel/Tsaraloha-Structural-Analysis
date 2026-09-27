@@ -319,15 +319,6 @@ void GridDialog::setupUi()
     spaceLayout->addWidget(m_spacingUnitLabel = new QLabel(tr("(m)"), m_standardInputGridWidget));
     inputGrid->addLayout(spaceLayout, 1, 2);
 
-    m_btnAddInline = new QPushButton(tr("Ajouter"), m_standardInputGridWidget);
-    m_btnAddInline->setIcon(QIcon(":/icons/node_add.svg"));
-    m_btnAddInline->setFixedHeight(28);
-    m_btnAddInline->setStyleSheet(isDark
-        ? "QPushButton { border: 1.5px solid #1F6FEB; background: #1F3A5A; font-weight: bold; color: #58A6FF; } QPushButton:hover { background: #234975; }"
-        : "QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; } QPushButton:hover { background: #D9ECFC; }");
-    inputGrid->addWidget(m_btnAddInline, 1, 3);
-    connect(m_btnAddInline, &QPushButton::clicked, this, &GridDialog::onAddLines);
-
     cartLayout->addWidget(m_standardInputGridWidget);
     mainLayout->addWidget(m_cartesianInputWidget);
 
@@ -1172,25 +1163,113 @@ void GridDialog::onNewGrid()
     int nextNum = m_gridManager ? static_cast<int>(m_gridManager->grids().size() + 1) : 1;
     m_nameCombo->setCurrentText(tr("Grille %1").arg(nextNum));
 
-    for (int i = 0; i < 3; ++i)
+    // Réinitialiser TOUS les champs de chaque axe avec des valeurs par défaut valides.
+    // IMPORTANT : ne PAS laisser les positions vides — une grille doit toujours être
+    // dans un état cohérent dès sa création pour que n'importe quel axe (X, Y ou Z)
+    // puisse être modifié en premier sans crash.
+    if (m_currentType == TSA::Grid::GridType::Cartesian)
     {
-        m_axes[i].positions.clear();
-        m_axes[i].labels.clear();
-        m_axes[i].isBold.clear();
-        m_axes[i].currentPosition = 0.0;
+        // Axe X : valeurs par défaut minimales
+        m_axes[0].positions = { 0.0 };
+        m_axes[0].labels.clear();
+        m_axes[0].isBold.clear();
+        m_axes[0].labelStyle = 0; // 1 2 3...
+        m_axes[0].customLabel.clear();
+        m_axes[0].currentPosition = 6.0;
+        m_axes[0].repeatCount = 2;
+        m_axes[0].spacing = 6.0;
+
+        // Axe Y : valeurs par défaut minimales
+        m_axes[1].positions = { 0.0 };
+        m_axes[1].labels.clear();
+        m_axes[1].isBold.clear();
+        m_axes[1].labelStyle = 1; // A B C...
+        m_axes[1].customLabel.clear();
+        m_axes[1].currentPosition = 4.0;
+        m_axes[1].repeatCount = 2;
+        m_axes[1].spacing = 4.0;
+
+        // Axe Z : valeurs par défaut minimales
+        m_axes[2].positions = { 0.0 };
+        m_axes[2].labels.clear();
+        m_axes[2].isBold.clear();
+        m_axes[2].labelStyle = 2; // Niveau 0 1 2...
+        m_axes[2].customLabel.clear();
+        m_axes[2].currentPosition = 3.0;
+        m_axes[2].repeatCount = 1;
+        m_axes[2].spacing = 3.0;
     }
+    else if (m_currentType == TSA::Grid::GridType::Cylindrical)
+    {
+        // Rayon R : valeur par défaut minimale
+        m_axes[0].positions = { 2.0 };
+        m_axes[0].labels.clear();
+        m_axes[0].isBold.clear();
+        m_axes[0].labelStyle = 0;
+        m_axes[0].customLabel.clear();
+        m_axes[0].currentPosition = 4.0;
+        m_axes[0].repeatCount = 2;
+        m_axes[0].spacing = 2.0;
+
+        // Angle Thêta : valeur par défaut minimale
+        m_axes[1].positions = { 0.0 };
+        m_axes[1].labels.clear();
+        m_axes[1].isBold.clear();
+        m_axes[1].labelStyle = 0;
+        m_axes[1].customLabel.clear();
+        m_axes[1].currentPosition = 30.0;
+        m_axes[1].repeatCount = 3;
+        m_axes[1].spacing = 30.0;
+
+        m_angularPatterns.clear();
+
+        // Axe Z : valeur par défaut minimale
+        m_axes[2].positions = { 0.0 };
+        m_axes[2].labels.clear();
+        m_axes[2].isBold.clear();
+        m_axes[2].labelStyle = 2;
+        m_axes[2].customLabel.clear();
+        m_axes[2].currentPosition = 3.0;
+        m_axes[2].repeatCount = 1;
+        m_axes[2].spacing = 3.0;
+    }
+    else
+    {
+        // Arbitraire : pas de positions d'axe, juste des lignes
+        for (int i = 0; i < 3; ++i)
+        {
+            m_axes[i].positions.clear();
+            m_axes[i].labels.clear();
+            m_axes[i].isBold.clear();
+            m_axes[i].labelStyle = (i == 1) ? 1 : (i == 2 ? 2 : 0);
+            m_axes[i].customLabel.clear();
+            m_axes[i].currentPosition = 0.0;
+            m_axes[i].repeatCount = 2;
+            m_axes[i].spacing = 3.0;
+        }
+    }
+
     m_arbitraryLines.clear();
     m_origin = gp_Pnt(0.0, 0.0, 0.0);
     m_rotationDeg = 0.0;
     m_displaySettings = TSA::Grid::GridDisplaySettings{};
 
+    // Regénérer les labels pour les positions par défaut
+    for (int i = 0; i < 3; ++i)
+    {
+        applyLabels(i);
+    }
+
     m_isUpdating = true;
     if (m_originXSpin) m_originXSpin->setValue(0.0);
     if (m_originYSpin) m_originYSpin->setValue(0.0);
     if (m_originZSpin) m_originZSpin->setValue(0.0);
+    m_posSpin->setValue(m_axes[m_currentAxisIndex].currentPosition);
+    m_repeatSpin->setValue(std::max(1, m_axes[m_currentAxisIndex].repeatCount));
+    m_spacingSpin->setValue(m_axes[m_currentAxisIndex].spacing);
+    m_labelStyleCombo->setCurrentIndex(m_axes[m_currentAxisIndex].labelStyle);
     m_isUpdating = false;
 
-    m_posSpin->setValue(0.0);
     if (m_currentType == TSA::Grid::GridType::Arbitrary)
     {
         updateTableForArbitrary();

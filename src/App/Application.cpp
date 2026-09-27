@@ -3,6 +3,9 @@
 #include "../UI/Theme/ThemeManager.h"
 #include "../Platform/WindowsAssociation.h"
 
+#include "../Diagnostics/Logger.h"
+#include "../Diagnostics/CrashHandler.h"
+
 #include <QStyleFactory>
 #include <QDir>
 #include <QIcon>
@@ -28,6 +31,13 @@ static void initWindowsAppUserModelID()
 Application::Application(int& argc, char** argv)
     : QApplication(argc, argv)
 {
+    // 1. Initialiser immédiatement le système central de logging et de crash reporting
+    TSA::Diagnostics::Logger::instance().init();
+    TSA::Diagnostics::Logger::installQtMessageHandler();
+    TSA::Diagnostics::CrashHandler::install();
+
+    TSA_LOG_INFO("App", "ApplicationStarted", "Démarrage de l'application TSA v0.1.0");
+
 #ifdef _WIN32
     // Association explicite pour afficher l'icône sur la barre des tâches de Windows
     initWindowsAppUserModelID();
@@ -60,7 +70,12 @@ Application::Application(int& argc, char** argv)
     }
 }
 
-Application::~Application() = default;
+Application::~Application()
+{
+    TSA_LOG_INFO("App", "ApplicationClosing", "Fermeture normale de l'application TSA");
+    TSA::Diagnostics::CrashHandler::uninstall();
+    TSA::Diagnostics::Logger::instance().shutdown();
+}
 
 bool Application::init()
 {

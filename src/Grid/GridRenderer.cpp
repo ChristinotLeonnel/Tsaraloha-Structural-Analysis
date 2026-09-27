@@ -213,11 +213,16 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, PerGridRenderOb
 
     for (const auto& line : cartesian->allLines())
     {
-        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
-        if (!edge.IsNull())
+        if (line.start.Distance(line.end) < 1e-6) continue;
+        try
         {
-            builder.Add(axesCompound, edge);
+            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+            if (!edge.IsNull())
+            {
+                builder.Add(axesCompound, edge);
+            }
         }
+        catch (...) { /* arête dégénérée ignorée */ }
     }
 
     objs.axesShape = new AIS_Shape(axesCompound);
@@ -242,11 +247,16 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, PerGridRenderOb
         builder.MakeCompound(connCompound);
         for (const auto& line : cartesian->verticalConnectionLines())
         {
-            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
-            if (!edge.IsNull())
+            if (line.start.Distance(line.end) < 1e-6) continue;
+            try
             {
-                builder.Add(connCompound, edge);
+                TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+                if (!edge.IsNull())
+                {
+                    builder.Add(connCompound, edge);
+                }
             }
+            catch (...) { /* arête dégénérée ignorée */ }
         }
         objs.verticalConnectionsShape = new AIS_Shape(connCompound);
         Quantity_Color vConnColor = m_isDarkMode
@@ -314,11 +324,16 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, PerGridRenderOb
 
         for (const auto& line : cartesian->verticalLevelLines())
         {
-            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
-            if (!edge.IsNull())
+            if (line.start.Distance(line.end) < 1e-6) continue;
+            try
             {
-                builder.Add(vertCompound, edge);
+                TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+                if (!edge.IsNull())
+                {
+                    builder.Add(vertCompound, edge);
+                }
             }
+            catch (...) { /* arête dégénérée ignorée */ }
         }
 
         objs.levelAxisShape = new AIS_Shape(vertCompound);
@@ -335,11 +350,16 @@ void GridRenderer::renderCartesian(const GridSystem& gridSystem, PerGridRenderOb
 
         for (const auto& line : cartesian->levelBoundaryPlanes())
         {
-            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
-            if (!edge.IsNull())
+            if (line.start.Distance(line.end) < 1e-6) continue;
+            try
             {
-                builder.Add(planesCompound, edge);
+                TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+                if (!edge.IsNull())
+                {
+                    builder.Add(planesCompound, edge);
+                }
             }
+            catch (...) { /* arête dégénérée ignorée */ }
         }
 
         objs.levelPlanesShape = new AIS_Shape(planesCompound);
@@ -386,12 +406,17 @@ void GridRenderer::updateActiveLevelHighlight(const GridSystem& gridSystem, PerG
     {
         if (std::abs(line.zLevel - m_activeLevelZ) < 1e-4)
         {
-            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
-            if (!edge.IsNull())
+            if (line.start.Distance(line.end) < 1e-6) continue;
+            try
             {
-                builder.Add(activeCompound, edge);
-                hasLines = true;
+                TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+                if (!edge.IsNull())
+                {
+                    builder.Add(activeCompound, edge);
+                    hasLines = true;
+                }
             }
+            catch (...) { /* arête dégénérée ignorée */ }
         }
     }
 
@@ -529,11 +554,16 @@ void GridRenderer::renderArbitrary(const GridSystem& gridSystem, PerGridRenderOb
 
     for (const auto& line : arbitrary->renderLines())
     {
-        TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
-        if (!edge.IsNull())
+        if (line.start.Distance(line.end) < 1e-6) continue;
+        try
         {
-            builder.Add(axesCompound, edge);
+            TopoDS_Edge edge = BRepBuilderAPI_MakeEdge(line.start, line.end);
+            if (!edge.IsNull())
+            {
+                builder.Add(axesCompound, edge);
+            }
         }
+        catch (...) { /* arête dégénérée ignorée */ }
     }
 
     objs.axesShape = new AIS_Shape(axesCompound);
