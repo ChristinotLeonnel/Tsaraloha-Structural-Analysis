@@ -94,20 +94,28 @@ Puisque les dépendances sont copiées automatiquement lors du build :
 
 ## 🧪 Tests Unitaires
 
-Le projet inclut une suite de tests automatisés (QtTest) validant les systèmes de coordonnées, les niveaux et la sérialisation JSON :
+Le projet inclut une suite complète de **48 bancs d'essais automatisés** validant rigoureusement la modélisation 3D, le système de câbles/haubans, le diagnostic temps réel et l'ensemble du système d'extensions **TSALib** :
 
 ```powershell
 # Compilation de la cible de tests
 cmake --build build --config Release --target TSA_Tests
 
-# Exécution des tests via CTest
-ctest --test-dir build -C Release --output-on-failure
+# Exécution directe de la suite de tests (48 / 48 PASS)
+.\build\Release\TSA_TestSuite.exe
 ```
 
-Ou directement :
-```powershell
-.\build\Release\TSA_Tests.exe
-```
+---
+
+## 📦 Système d'Extensions TSALib
+
+TSA intègre le système d'extensions et de bibliothèques d'ingénierie **TSALib** (`TSA::ExtensionSystem`) :
+- **100% Découplé** : Matériaux Eurocodes, profilés métalliques, sections, câbles, haubans et textures PBR stockés en fichiers JSON et PNG ouverts sans recompilation.
+- **Gestionnaire Graphique** : Accessible via l'onglet *Structure & Sections* > *Gestionnaire TSALib...* (Recherche instantanée, fiches techniques HTML, validation globale).
+- **Rechargement à Chaud (Hot Reload)** : Actualisation immédiate du modèle 3D et des listes en 1 clic.
+- **Packaging Autonome (.tsalib)** : Importation et exportation de bibliothèques complètes signées SHA-256 avec protection anti-Path-Traversal.
+- **Reproductibilité des Calculs** : Snapshots mécaniques scellés dans le fichier `.tsa` (`CHUNK_SNAP`).
+
+> 📖 **Consultez la documentation détaillée : [docs/TSALIB_SYSTEM.md](file:///e:/Book/Dev/TSA/docs/TSALIB_SYSTEM.md).**
 
 ---
 
@@ -129,24 +137,29 @@ Ou directement :
 ```text
 TSA/
 ├── cmake/                      # Scripts CMake et téléchargement auto OCCT
+├── docs/                       # Guides et spécifications techniques détaillées
+│   ├── TSALIB_SYSTEM.md        # Guide complet du système d'extensions TSALib
+│   ├── TSA_FILE_FORMAT.md      # Spécification du format binaire .tsa (chunks)
+│   └── TSA_DIAGNOSTICS.md      # Documentation du système de logs et télémétrie
+├── Extensions/                 # Extensions et bibliothèques de calcul installées
+│   └── TSALib/                 # Bibliothèque standard Eurocodes (Matériaux, Sections, Câbles, Textures)
 ├── scripts/                    # Scripts PowerShell d'orchestration et détection compilateurs
-│   ├── setup_build.ps1         # Script principal (détection, vérification, build)
-│   ├── detect_compiler.ps1     # Détection rigoureuse MSVC et MinGW
-│   ├── install_mingw.ps1       # Téléchargement sécurisé WinLibs MinGW-w64
-│   ├── detect_qt.ps1           # Détection Qt et vérification de toolchain
-│   └── detect_dependencies.ps1 # Détection de compatibilité OCCT et VTK
 ├── opencascade-8.0.1-vc14-64/   # SDK OpenCASCADE local (téléchargé si absent)
 ├── 3rdparty-vc14-64/           # Bibliothèques tierces (téléchargées si absentes)
 ├── resources/                  # Icônes et fichiers de ressources Qt (.qrc)
 ├── src/
 │   ├── App/                    # Classe d'application principale
 │   ├── Coordinate/             # Gestion des points 3D, niveaux et repères
-│   ├── Geometry/               # Utilitaires géométriques OCCT
-│   ├── Grid/                   # Définition et rendu des grilles 3D
-│   ├── Model/                  # Modèle structurel (nœuds, barres, charges)
-│   ├── UI/                     # Interface utilisateur (MainWindow, dialogues, widgets)
-│   └── Viewer/                 # Vue 3D OpenCASCADE intégrée dans Qt
-├── tests/                      # Tests unitaires automatisés
+│   ├── Diagnostics/            # Moteur de logging, télémétrie et rapports de crash
+│   ├── ExtensionSystem/        # Moteur TSALib (Registry, Loader, Validator, Cache, Packager)
+│   ├── Geometry/               # Utilitaires géométriques et solides B-Rep OCCT
+│   ├── Grid/                   # Définition, rendu et magnétisme des grilles 3D
+│   ├── IO/                     # Format binaire .tsa, chunks, snapshots et prévisualisations
+│   ├── Library/                # Catalogues et gestionnaires de sections/matériaux
+│   ├── Model/                  # Modèle structurel (nœuds, barres, câbles, dalles, charges)
+│   ├── UI/                     # Interface utilisateur Qt 6 (Ruban, docks, dialogues, widgets)
+│   └── Viewer/                 # Vue 3D OpenCASCADE (OccView, textures PBR, sélection)
+├── tests/                      # Suite de tests unitaires automatisés (48 bancs d'essais)
 ├── CMakeLists.txt              # Configuration principale CMake
 ├── CMakePresets.json           # Presets de configuration et build
 └── run.bat                     # Script de lancement rapide

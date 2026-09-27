@@ -24,6 +24,12 @@
    - [10.4 Téléchargement Automatisé des Bibliothèques Tierces](#104-téléchargement-automatisé-des-bibliothèques-tierces)
    - [10.5 Répertoires Non-Destructifs et Compilation](#105-répertoires-non-destructifs-et-compilation)
    - [10.6 Déploiement et Exécution](#106-déploiement-et-exécution)
+11. [Système d'Extensions & Bibliothèques TSALib](#11-système-dextensions--bibliothèques-tsalib)
+   - [11.1 Architecture Découplée et Zéro Recompilation](#111-architecture-découplée-et-zéro-recompilation)
+   - [11.2 Interface Graphique du Gestionnaire TSALib](#112-interface-graphique-du-gestionnaire-tsalib)
+   - [11.3 Rechargement à Chaud et Cache Multi-Niveaux](#113-rechargement-à-chaud-et-cache-multi-niveaux)
+   - [11.4 Packaging Autonome (.tsalib) et Distribution](#114-packaging-autonome-tsalib-et-distribution)
+   - [11.5 Snapshots de Calcul et Reproductibilité Pérenne](#115-snapshots-de-calcul-et-reproductibilité-pérenne)
 
 ---
 
@@ -396,6 +402,38 @@ powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -ForceMinGW
   # Pour un build MinGW :
   .\build-mingw\TSA.exe
   ```
+
+---
+
+## 11. Système d'Extensions & Bibliothèques TSALib
+
+Le système **TSALib** (`TSA::ExtensionSystem`) externalise l'intégralité des données d'ingénierie structurale (matériaux Eurocodes, profilés métalliques, sections, câbles, haubans et textures PBR) sous forme de fichiers ouverts et modulaires, sans nécessiter de recompilation de TSA.
+
+### 11.1 Architecture Découplée et Zéro Recompilation
+- **Noyau Découplé** : Géré par `TSA::ExtensionSystem::LibraryManager`, un registre central en mémoire vive (`LibraryRegistry`) indexe les fiches et résout les définitions au format standard SI.
+- **Indexation Paresseuse (Lazy Loading)** : Au démarrage de TSA, les fichiers ne sont pas parsés prématurément. Seule une table des matières ultra-légère est construite en moins de **1.2 ms**, garantissant un lancement instantané.
+- **Rendu Visuel PBR** : Les matériaux sont liés à des textures physiques PBR sans raccord (Albedo, Rugosité, Métallique) gérées dynamiquement par `TSA::Viewer::TextureManager` pour le moteur OpenCASCADE.
+
+### 11.2 Interface Graphique du Gestionnaire TSALib
+Accessible depuis le ruban supérieur : **Structure & Sections** > Panneau **Bibliothèques & Matériaux** > **Gestionnaire TSALib...** :
+- **Navigation Master-Detail** : Arborescence thématique (*Matériaux*, *Sections*, *Câbles*, *Textures PBR*, *Normes Eurocodes*, *Extensions installées*).
+- **Recherche Instantanée** : Barre de recherche multi-critères filtrant en temps réel par identifiant, nom commercial, nuance d'acier ou classe de résistance.
+- **Fiches Techniques HTML** : Visualisation détaillée des propriétés physiques, mécaniques et des références normatives certifiées (Eurocodes EN 1990 à EN 1993, ASTM A416).
+
+### 11.3 Rechargement à Chaud et Cache Multi-Niveaux
+- **Bouton Recharger à chaud** : Tout ajout ou modification d'une fiche JSON ou d'une image PNG sur le disque est répercuté instantanément dans le modèle 3D et les listes déroulantes de TSA en un clic, sans redémarrer le logiciel.
+- **Cache de Solides 3D OpenCASCADE** : Les géométries B-Rep (`TopoDS_Shape`) des profilés complexes (IPE, HEA, caissons) sont mises en cache mémoire vive avec un taux de succès (*Hit Ratio*) supérieur à 80%.
+
+### 11.4 Packaging Autonome (.tsalib) et Distribution
+- **Format .tsalib** : Conteneur binaire zlib signé intégrant le `manifest.json`, les données et les textures dans un seul fichier autonome.
+- **Bouton Exporter (.tsalib)...** : Empaquetez et distribuez votre bibliothèque d'entreprise en un clic avec empreinte de sécurité SHA-256.
+- **Bouton Importer (.tsalib)...** : Installez une nouvelle bibliothèque en un clic avec protection automatique contre les attaques de type Path Traversal (*Zip Slip*).
+
+### 11.5 Snapshots de Calcul et Reproductibilité Pérenne
+- Pour garantir la pérennité et la reproductibilité juridique des calculs sur 10 à 50 ans, le format de fichier projet `.tsa` intègre le chunk binaire **`CHUNK_SNAP`**.
+- Ce mécanisme fige l'empreinte exacte des propriétés mécaniques employées au moment du calcul, immunisant les projets historiques contre toute dérive ultérieure des bibliothèques de normes.
+
+> 📖 **Consultez la documentation complète et détaillée du système TSALib dans [docs/TSALIB_SYSTEM.md](file:///e:/Book/Dev/TSA/docs/TSALIB_SYSTEM.md).**
 
 ---
 *Documentation rédigée pour TSA - Tsaraloha Structural Analysis. Tous droits réservés.*
