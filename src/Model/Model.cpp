@@ -13,6 +13,7 @@ namespace TSA::Model
 Model::Model()
     : m_coordinateSystem(std::make_shared<TSA::Coordinate::CoordinateSystem>())
     , m_undoManager(std::make_unique<TSA::UndoRedo::UndoManager>())
+    , m_workPlaneManager(std::make_unique<TSA::Coordinate::WorkPlaneManager>())
 {
     m_coordinateSystem->setDefaultBuildingCoordinates();
 
@@ -1610,6 +1611,11 @@ void Model::clear()
     m_nextCableId = 1;
     m_isModified = false;
     clearUndoRedo();
+
+    if (m_workPlaneManager)
+    {
+        m_workPlaneManager->resetToDefault();
+    }
 
     for (auto* obs : m_observers)
     {

@@ -1,14 +1,20 @@
 #include "WorkPlane.h"
 #include <gp_Lin.hxx>
+#include <gp_Trsf.hxx>
 #include <IntAna_IntConicQuad.hxx>
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QString>
 #include <cmath>
+#include <algorithm>
 
 namespace TSA::Coordinate
 {
+
+constexpr double PI_VAL = 3.14159265358979323846;
+constexpr double RAD_TO_DEG = 180.0 / PI_VAL;
+constexpr double DEG_TO_RAD = PI_VAL / 180.0;
 
 WorkPlane::WorkPlane()
     : m_type(WorkPlaneType::GlobalXY)
@@ -48,6 +54,114 @@ void WorkPlane::setCoordinateSystem(const gp_Ax3& cs)
 {
     m_cs = cs;
     m_plane = gp_Pln(m_cs);
+}
+
+void WorkPlane::setOrigin(const gp_Pnt& orig)
+{
+    m_cs.SetLocation(orig);
+    m_plane = gp_Pln(m_cs);
+    if (m_type == WorkPlaneType::GlobalXY || m_type == WorkPlaneType::ElevationZ)
+    {
+        m_offset = orig.Z();
+    }
+    else if (m_type == WorkPlaneType::GlobalXZ)
+    {
+        m_offset = orig.Y();
+    }
+    else if (m_type == WorkPlaneType::GlobalYZ)
+    {
+        m_offset = orig.X();
+    }
+}
+
+double WorkPlane::rotationX() const noexcept
+{
+    gp_Dir d = normal();
+    return std::atan2(d.Y(), d.Z()) * RAD_TO_DEG;
+}
+
+double WorkPlane::rotationY() const noexcept
+{
+    gp_Dir d = normal();
+    return std::asin(std::clamp(-d.X(), -1.0, 1.0)) * RAD_TO_DEG;
+}
+
+double WorkPlane::rotationZ() const noexcept
+{
+    gp_Dir xd = xDirection();
+    return std::atan2(xd.Y(), xd.X()) * RAD_TO_DEG;
+}
+
+void WorkPlane::setRotation(double rxDeg, double ryDeg, double rzDeg)
+{
+    double rx = rxDeg * DEG_TO_RAD;
+    double ry = ryDeg * DEG_TO_RAD;
+    double rz = rzDeg * DEG_TO_RAD;
+
+    // Matrice de rotation Euler Rz * Ry * Rx
+    gp_Trsf rotX, rotY, rotZ;
+    rotX.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(1,0,0)), rx);
+    rotY.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(0,1,0)), ry);
+    rotZ.SetRotation(gp_Ax1(gp_Pnt(0,0,0), gp_Dir(0,0,1)), rz);
+
+    gp_Trsf totalRot = rotZ * rotY * rotX;
+
+    gp_Dir baseNormal(0, 0, 1);
+    gp_Dir baseX(1, 0, 0);
+
+    baseNormal.Transform(totalRot);
+    baseX.Transform(totalRot);
+
+    gp_Pnt curOrigin = origin();
+    m_cs = gp_Ax3(curOrigin, baseNormal, baseX);
+    m_plane = gp_Pln(m_cs);
+    m_type = WorkPlaneType::Custom;
+}
+
+void WorkPlane::setDimensions(double w, double h) noexcept
+{
+    m_width = std::max(0.5, w);
+    m_height = std::max(0.5, h);
+}
+
+void WorkPlane::setGridSettings(double spX, double spY, int subdivisions, bool visible) noexcept
+{
+    m_gridSpacingX = std::max(0.01, spX);
+    m_gridSpacingY = std::max(0.01, spY);
+    m_gridSubdivisions = std::max(1, subdivisions);
+    m_isGridVisible = visible;
+}
+
+void WorkPlane::translate(const gp_Vec& vec)
+{
+    m_cs.Translate(vec);
+    m_plane = gp_Pln(m_cs);
+    if (m_type == WorkPlaneType::GlobalXY || m_type == WorkPlaneType::ElevationZ)
+    {
+        m_offset = m_cs.Location().Z();
+    }
+    else if (m_type == WorkPlaneType::GlobalXZ)
+    {
+        m_offset = m_cs.Location().Y();
+    }
+    else if (m_type == WorkPlaneType::GlobalYZ)
+    {
+        m_offset = m_cs.Location().X();
+    }
+}
+
+void WorkPlane::rotate(const gp_Pnt& center, const gp_Dir& axis, double angleRad)
+{
+    gp_Trsf rotTrsf;
+    rotTrsf.SetRotation(gp_Ax1(center, axis), angleRad);
+    transform(rotTrsf);
+}
+
+void WorkPlane::transform(const gp_Trsf& trsf)
+{
+    m_cs.Transform(trsf);
+    m_plane = gp_Pln(m_cs);
+    m_type = WorkPlaneType::Custom;
 }
 
 void WorkPlane::updatePlane()
@@ -188,9 +302,21 @@ WorkPlane WorkPlane::fromOriginAndNormal(const gp_Pnt& origin, const gp_Dir& nor
 std::string WorkPlane::serializeToJson() const
 {
     QJsonObject j;
+    j["id"] = m_id;
     j["type"] = static_cast<int>(m_type);
     j["name"] = QString::fromStdString(m_name);
     j["offset"] = m_offset;
+    j["width"] = m_width;
+    j["height"] = m_height;
+    j["gridSpacingX"] = m_gridSpacingX;
+    j["gridSpacingY"] = m_gridSpacingY;
+    j["gridSubdivisions"] = m_gridSubdivisions;
+    j["isGridVisible"] = m_isGridVisible;
+    j["isVisible"] = m_isVisible;
+    j["isActive"] = m_isActive;
+    j["isLocked"] = m_isLocked;
+    j["isIsolated"] = m_isIsolated;
+    j["isolationDistance"] = m_isolationDistance;
 
     QJsonArray orig;
     orig.append(origin().X());
@@ -229,6 +355,19 @@ WorkPlane WorkPlane::deserializeFromJson(const std::string& jsonStr)
     std::string n = j.value("name").toString("Plan XY").toStdString();
     double off = j.value("offset").toDouble(0.0);
 
+    WorkPlane wp(t, n, off);
+    wp.setId(j.value("id").toInt(1));
+    wp.setDimensions(j.value("width").toDouble(20.0), j.value("height").toDouble(20.0));
+    wp.setGridSettings(j.value("gridSpacingX").toDouble(1.0),
+                       j.value("gridSpacingY").toDouble(1.0),
+                       j.value("gridSubdivisions").toInt(5),
+                       j.value("isGridVisible").toBool(true));
+    wp.setVisible(j.value("isVisible").toBool(true));
+    wp.setActive(j.value("isActive").toBool(true));
+    wp.setLocked(j.value("isLocked").toBool(false));
+    wp.setIsolated(j.value("isIsolated").toBool(false));
+    wp.setIsolationDistance(j.value("isolationDistance").toDouble(1.5));
+
     if (j.contains("origin") && j.contains("normal") && j.contains("xDir"))
     {
         QJsonArray o = j.value("origin").toArray();
@@ -240,13 +379,14 @@ WorkPlane WorkPlane::deserializeFromJson(const std::string& jsonStr)
             gp_Dir norm(nm[0].toDouble(), nm[1].toDouble(), nm[2].toDouble());
             gp_Dir xDir(xd[0].toDouble(), xd[1].toDouble(), xd[2].toDouble());
             gp_Ax3 cs(p0, norm, xDir);
-            WorkPlane wp(cs, n, t);
+            wp.setCoordinateSystem(cs);
+            wp.setType(t);
+            wp.setName(n);
             wp.m_offset = off;
-            return wp;
         }
     }
 
-    return WorkPlane(t, n, off);
+    return wp;
 }
 
 } // namespace TSA::Coordinate

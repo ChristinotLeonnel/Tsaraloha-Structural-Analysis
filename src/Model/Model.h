@@ -9,6 +9,7 @@
 #include "TrussMember.h"
 #include "Cable/Cable.h"
 #include "../Coordinate/CoordinateSystem.h"
+#include "../Coordinate/WorkPlaneManager.h"
 #include "../ExtensionSystem/ExtensionTypes.h"
 
 #include <map>
@@ -77,6 +78,9 @@ public:
 
     TSA::Coordinate::LevelManager* levelManager();
     const TSA::Coordinate::LevelManager* levelManager() const;
+
+    TSA::Coordinate::WorkPlaneManager* workPlaneManager() { return m_workPlaneManager.get(); }
+    const TSA::Coordinate::WorkPlaneManager* workPlaneManager() const { return m_workPlaneManager.get(); }
 
     // Observateurs
     void addObserver(IModelObserver* observer);
@@ -283,6 +287,7 @@ private:
     std::unique_ptr<TSA::UndoRedo::UndoManager> m_undoManager;
 
     std::shared_ptr<TSA::Coordinate::CoordinateSystem> m_coordinateSystem;
+    std::unique_ptr<TSA::Coordinate::WorkPlaneManager> m_workPlaneManager;
     bool m_isModified = false;
 };
 

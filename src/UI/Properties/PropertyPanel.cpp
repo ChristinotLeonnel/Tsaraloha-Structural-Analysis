@@ -7,6 +7,8 @@
 #include "WallPropertiesView.h"
 #include "FoundationPropertiesView.h"
 #include "TrussMemberPropertiesView.h"
+#include "WorkPlanePropertiesView.h"
+#include "../../Coordinate/WorkPlane.h"
 
 #include <QVBoxLayout>
 #include <QLabel>
@@ -60,6 +62,10 @@ void PropertyPanel::setModel(TSA::Model::Model* model)
     m_wallView->setModel(m_model);
     m_foundationView->setModel(m_model);
     m_trussView->setModel(m_model);
+    if (m_workPlaneView)
+    {
+        m_workPlaneView->setModel(m_model);
+    }
 
     clearProperties();
 }
@@ -131,6 +137,10 @@ void PropertyPanel::setupUi()
     m_trussView = new TrussMemberPropertiesView(m_model, m_stack);
     connect(m_trussView, &IElementPropertyView::elementModified, this, &PropertyPanel::elementModified);
     m_stack->addWidget(m_trussView); // Index 8
+
+    m_workPlaneView = new WorkPlanePropertiesView(m_model, m_stack);
+    connect(m_workPlaneView, &WorkPlanePropertiesView::workPlaneModified, this, &PropertyPanel::workPlaneModified);
+    m_stack->addWidget(m_workPlaneView); // Index 9
 
     containerLayout->addWidget(m_stack);
     scrollContainer->setLayout(containerLayout);
@@ -206,6 +216,27 @@ void PropertyPanel::showTrussMemberProperties(int memberId)
     m_titleLabel->setText(tr("PROPRIÉTÉS DU TREILLIS T%1").arg(memberId));
     m_trussView->setElementId(memberId);
     m_stack->setCurrentWidget(m_trussView);
+}
+
+void PropertyPanel::showWorkPlaneProperties(int workPlaneId)
+{
+    m_titleLabel->setText(tr("PROPRIÉTÉS DU PLAN DE TRAVAIL WP%1").arg(workPlaneId));
+    if (m_model && m_model->workPlaneManager())
+    {
+        const auto* wp = m_model->workPlaneManager()->getWorkPlane(workPlaneId);
+        if (wp)
+        {
+            m_workPlaneView->setWorkPlane(*wp);
+        }
+    }
+    m_stack->setCurrentWidget(m_workPlaneView);
+}
+
+void PropertyPanel::setWorkPlane(const TSA::Coordinate::WorkPlane& wp)
+{
+    m_titleLabel->setText(tr("PROPRIÉTÉS DU PLAN DE TRAVAIL [%1]").arg(QString::fromStdString(wp.name())));
+    m_workPlaneView->setWorkPlane(wp);
+    m_stack->setCurrentWidget(m_workPlaneView);
 }
 
 void PropertyPanel::refreshLibraryLists()

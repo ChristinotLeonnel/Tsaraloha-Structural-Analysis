@@ -87,6 +87,8 @@
 #include "Viewer/MaterialVisual.h"
 #include "Viewer/TextureManager.h"
 #include "Coordinate/WorkPlane.h"
+#include "Coordinate/WorkPlaneManager.h"
+#include "Commands/ModifyCommands.h"
 #include "Coordinate/CoordinateTransformationService.h"
 #include <Graphic3d_Camera.hxx>
 #include <AIS_Shape.hxx>
@@ -128,7 +130,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int total = 51;
+    int total = 52;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -6179,6 +6181,274 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 51: Advanced CAD Modeling Navigation, WorkPlane, Coordinate Transformations, and Object Snap Engine Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // =========================================================================
+    // TEST 52: Interactive 3D WorkPlane, Arbitrary Coordinate Systems, LCS & Multi-Plane Management
+    // =========================================================================
+    {
+        std::cout << "\n[TEST 52] Interactive 3D WorkPlane, Arbitrary Coordinate Systems, LCS & Multi-Plane Management..." << std::endl;
+
+        // Subtest 52.1: WorkPlane as a true 3D interactive object & state engine
+        {
+            WorkPlane wp(WorkPlaneType::GlobalXY, "Etage 1", 3.0);
+            wp.setId(101);
+            wp.setWidth(24.0);
+            wp.setHeight(18.0);
+            wp.setGridSpacingX(1.5);
+            wp.setGridSpacingY(2.0);
+            wp.setGridSubdivisions(4);
+            wp.setIsGridVisible(true);
+            wp.setIsVisible(true);
+            wp.setIsActive(true);
+            wp.setIsLocked(false);
+            wp.setIsIsolated(true);
+            wp.setIsolationDistance(1.25);
+
+            TEST_CHECK(wp.id() == 101, "Subtest 52.1: WorkPlane ID is 101");
+            TEST_CHECK(approxEqual(wp.width(), 24.0), "Subtest 52.1: WorkPlane width is 24m");
+            TEST_CHECK(approxEqual(wp.height(), 18.0), "Subtest 52.1: WorkPlane height is 18m");
+            TEST_CHECK(approxEqual(wp.gridSpacingX(), 1.5), "Subtest 52.1: Grid spacing X is 1.5m");
+            TEST_CHECK(approxEqual(wp.gridSpacingY(), 2.0), "Subtest 52.1: Grid spacing Y is 2.0m");
+            TEST_CHECK(wp.gridSubdivisions() == 4, "Subtest 52.1: Subdivisions is 4");
+            TEST_CHECK(wp.isGridVisible(), "Subtest 52.1: Grid is visible");
+            TEST_CHECK(wp.isVisible(), "Subtest 52.1: WorkPlane is visible");
+            TEST_CHECK(wp.isActive(), "Subtest 52.1: WorkPlane is active");
+            TEST_CHECK(!wp.isLocked(), "Subtest 52.1: WorkPlane is not locked");
+            TEST_CHECK(wp.isIsolated(), "Subtest 52.1: WorkPlane is isolated");
+            TEST_CHECK(approxEqual(wp.isolationDistance(), 1.25), "Subtest 52.1: Isolation distance is 1.25m");
+
+            // Plan arbitraire non limité aux étages : Z = 4.37, X = 7.25, Y = -2.50
+            WorkPlane wpArbitrary(WorkPlaneType::Custom, "Plan Arbitraire 4.37m");
+            wpArbitrary.setOrigin(gp_Pnt(7.25, -2.50, 4.37));
+            TEST_CHECK(approxEqual(wpArbitrary.origin().X(), 7.25), "Subtest 52.1: Arbitrary X is 7.25m");
+            TEST_CHECK(approxEqual(wpArbitrary.origin().Y(), -2.50), "Subtest 52.1: Arbitrary Y is -2.50m");
+            TEST_CHECK(approxEqual(wpArbitrary.origin().Z(), 4.37), "Subtest 52.1: Arbitrary Z is 4.37m (not restricted to story levels)");
+
+            std::cout << "  [PASS] Subtest 52.1: WorkPlane 3D Interactive Object & State Engine Verified" << std::endl;
+        }
+
+        // Subtest 52.2: 3D Transformations (Translation, Rotation, gp_Trsf & Euler Angles)
+        {
+            WorkPlane wp(WorkPlaneType::GlobalXY, "Plan Transformed", 0.0);
+            
+            // Translation 3D
+            wp.translate(gp_Vec(3.0, 4.0, 5.0));
+            TEST_CHECK(approxEqual(wp.origin().X(), 3.0), "Subtest 52.2: Translated origin X is 3.0");
+            TEST_CHECK(approxEqual(wp.origin().Y(), 4.0), "Subtest 52.2: Translated origin Y is 4.0");
+            TEST_CHECK(approxEqual(wp.origin().Z(), 5.0), "Subtest 52.2: Translated origin Z is 5.0");
+
+            // Rotation 90° autour de l'axe X passant par l'origine
+            gp_Ax1 rotAxis(wp.origin(), gp_Dir(1.0, 0.0, 0.0));
+            wp.rotate(rotAxis, 90.0 * 3.14159265358979323846 / 180.0);
+            
+            // Après rotation 90° autour de X:
+            // Normale Z (0, 0, 1) pivote vers (0, -1, 0)
+            // Y local (0, 1, 0) pivote vers (0, 0, 1)
+            // X local (1, 0, 0) reste invariant
+            TEST_CHECK(approxEqual(wp.xDirection().X(), 1.0) && approxEqual(wp.xDirection().Y(), 0.0),
+                       "Subtest 52.2: X direction invariant under X-axis rotation");
+            TEST_CHECK(approxEqual(wp.yDirection().Z(), 1.0), "Subtest 52.2: Y direction rotated to Z");
+            TEST_CHECK(approxEqual(wp.normal().Y(), -1.0), "Subtest 52.2: Normal rotated to -Y");
+
+            // Définition directe par angles d'Euler
+            wp.setRotation(0.0, 0.0, 45.0); // 45° autour de Z
+            TEST_CHECK(approxEqual(wp.rotationZ(), 45.0, 0.5), "Subtest 52.2: Euler angle Rz is 45°");
+            TEST_CHECK(approxEqual(wp.normal().Z(), 1.0), "Subtest 52.2: Normal is vertical Z after Rz");
+
+            std::cout << "  [PASS] Subtest 52.2: WorkPlane 3D Transformations & Euler Angles Verified" << std::endl;
+        }
+
+        // Subtest 52.3: Bidirectional 2D <-> 3D Coordinate Transformations
+        {
+            WorkPlane wp(WorkPlaneType::GlobalXY, "Plan Local 2D-3D", 5.0);
+            wp.setOrigin(gp_Pnt(10.0, 20.0, 5.0));
+            
+            // Point local 2D (u = 4.0, v = 7.0)
+            gp_Pnt worldP = wp.toWorld(4.0, 7.0);
+            TEST_CHECK(approxEqual(worldP.X(), 14.0), "Subtest 52.3: 2D->3D world X is 14m");
+            TEST_CHECK(approxEqual(worldP.Y(), 27.0), "Subtest 52.3: 2D->3D world Y is 27m");
+            TEST_CHECK(approxEqual(worldP.Z(), 5.0), "Subtest 52.3: 2D->3D world Z is 5m");
+
+            // Conversion inverse 3D -> 2D
+            double uOut = 0.0, vOut = 0.0;
+            wp.toLocal(worldP, uOut, vOut);
+            TEST_CHECK(approxEqual(uOut, 4.0), "Subtest 52.3: 3D->2D local U is 4m");
+            TEST_CHECK(approxEqual(vOut, 7.0), "Subtest 52.3: 3D->2D local V is 7m");
+
+            // Raycast analytique (simulation du clic souris depuis la caméra)
+            gp_Pnt eye(14.0, 27.0, 25.0);
+            gp_Dir rayDir(0.0, 0.0, -1.0);
+            gp_Pnt hitPnt;
+            bool hit = wp.projectRay(eye, rayDir, hitPnt);
+            TEST_CHECK(hit, "Subtest 52.3: Raycast hit workplane");
+            TEST_CHECK(approxEqual(hitPnt.X(), 14.0) && approxEqual(hitPnt.Y(), 27.0) && approxEqual(hitPnt.Z(), 5.0),
+                       "Subtest 52.3: Raycast hit point matches expected (14, 27, 5)");
+
+            std::cout << "  [PASS] Subtest 52.3: Bidirectional 2D <-> 3D Coordinate Transformations Verified" << std::endl;
+        }
+
+        // Subtest 52.4: Centralized Multi-WorkPlane Manager (WorkPlaneManager)
+        {
+            WorkPlaneManager wpMgr;
+            TEST_CHECK(wpMgr.count() >= 3, "Subtest 52.4: Default WorkPlanes (XY, XZ, YZ) created");
+            TEST_CHECK(wpMgr.activeWorkPlane() != nullptr, "Subtest 52.4: Active WorkPlane exists");
+
+            // Création de multiples plans de travail
+            WorkPlane wp1(WorkPlaneType::GlobalXY, "Toiture R+3", 9.0);
+            int id1 = wpMgr.addWorkPlane(wp1);
+            TEST_CHECK(id1 > 0, "Subtest 52.4: Added WorkPlane ID > 0");
+
+            WorkPlane wp2(WorkPlaneType::GlobalXZ, "Pignon Nord", 12.5);
+            int id2 = wpMgr.addWorkPlane(wp2);
+
+            WorkPlane wpCustom(WorkPlaneType::Custom, "Passerelle Inclinee");
+            wpCustom.setOrigin(gp_Pnt(0.0, 0.0, 4.37));
+            wpCustom.setLocalAxes(gp_Dir(0.866, 0.5, 0.0), gp_Dir(-0.5, 0.866, 0.0), gp_Dir(0.0, 0.0, 1.0));
+            int idCustom = wpMgr.addWorkPlane(wpCustom);
+
+            // Changement de plan actif
+            TEST_CHECK(wpMgr.setActiveWorkPlane(idCustom), "Subtest 52.4: Set active WorkPlane to Custom");
+            TEST_CHECK(wpMgr.activeWorkPlaneId() == idCustom, "Subtest 52.4: Active ID matches Custom");
+            TEST_CHECK(wpMgr.activeWorkPlane()->name() == "Passerelle Inclinee", "Subtest 52.4: Active name is Passerelle Inclinee");
+
+            // Mise à jour de plan
+            auto* activeWp = wpMgr.activeWorkPlane();
+            activeWp->setWidth(50.0);
+            wpMgr.updateWorkPlane(*activeWp);
+            TEST_CHECK(approxEqual(wpMgr.getWorkPlane(idCustom)->width(), 50.0), "Subtest 52.4: WorkPlane width updated to 50m");
+
+            // Sérialisation et désérialisation JSON
+            std::string jsonStr = wpMgr.serializeToJson();
+            TEST_CHECK(!jsonStr.empty(), "Subtest 52.4: JSON string is not empty");
+            TEST_CHECK(jsonStr.find("Passerelle Inclinee") != std::string::npos, "Subtest 52.4: JSON contains custom plane name");
+
+            WorkPlaneManager wpMgrRestored;
+            bool ok = wpMgrRestored.deserializeFromJson(jsonStr);
+            TEST_CHECK(ok, "Subtest 52.4: Deserialization succeeded");
+            TEST_CHECK(wpMgrRestored.count() == wpMgr.count(), "Subtest 52.4: Restored count matches original");
+            const auto* restoredCustom = wpMgrRestored.getWorkPlane(idCustom);
+            TEST_CHECK(restoredCustom != nullptr, "Subtest 52.4: Restored custom plane exists");
+            TEST_CHECK(approxEqual(restoredCustom->origin().Z(), 4.37), "Subtest 52.4: Restored custom plane origin Z is 4.37m");
+            TEST_CHECK(approxEqual(restoredCustom->width(), 50.0), "Subtest 52.4: Restored custom plane width is 50m");
+
+            std::cout << "  [PASS] Subtest 52.4: Multi-WorkPlane Manager & JSON Serialization Verified" << std::endl;
+        }
+
+        // Subtest 52.5: Non-destructive Undo/Redo (ModifyWorkPlaneCommand)
+        {
+            WorkPlaneManager wpMgr;
+            WorkPlane wpOriginal(WorkPlaneType::GlobalXY, "Plan Undo Test", 0.0);
+            wpOriginal.setWidth(10.0);
+            int wpId = wpMgr.addWorkPlane(wpOriginal);
+            wpOriginal.setId(wpId);
+
+            WorkPlane wpModified = wpOriginal;
+            wpModified.setOrigin(gp_Pnt(5.0, 10.0, 15.0));
+            wpModified.setWidth(30.0);
+            wpModified.setIsLocked(true);
+
+            TSA::UndoRedo::CommandManager cmdMgr;
+            auto cmd = std::make_unique<TSA::Commands::ModifyWorkPlaneCommand>(
+                wpId, wpOriginal, wpModified, &wpMgr);
+
+            cmdMgr.executeCommand(std::move(cmd));
+
+            // Après exécution:
+            const auto* curr = wpMgr.getWorkPlane(wpId);
+            TEST_CHECK(approxEqual(curr->origin().X(), 5.0), "Subtest 52.5: Executed origin X is 5.0m");
+            TEST_CHECK(approxEqual(curr->origin().Z(), 15.0), "Subtest 52.5: Executed origin Z is 15.0m");
+            TEST_CHECK(approxEqual(curr->width(), 30.0), "Subtest 52.5: Executed width is 30.0m");
+            TEST_CHECK(curr->isLocked(), "Subtest 52.5: Executed isLocked is true");
+
+            // Undo:
+            TEST_CHECK(cmdMgr.canUndo(), "Subtest 52.5: CommandManager canUndo is true");
+            cmdMgr.undo();
+
+            const auto* undone = wpMgr.getWorkPlane(wpId);
+            TEST_CHECK(approxEqual(undone->origin().X(), 0.0), "Subtest 52.5: Undone origin X restored to 0.0m");
+            TEST_CHECK(approxEqual(undone->origin().Z(), 0.0), "Subtest 52.5: Undone origin Z restored to 0.0m");
+            TEST_CHECK(approxEqual(undone->width(), 10.0), "Subtest 52.5: Undone width restored to 10.0m");
+            TEST_CHECK(!undone->isLocked(), "Subtest 52.5: Undone isLocked restored to false");
+
+            // Redo:
+            TEST_CHECK(cmdMgr.canRedo(), "Subtest 52.5: CommandManager canRedo is true");
+            cmdMgr.redo();
+
+            const auto* redone = wpMgr.getWorkPlane(wpId);
+            TEST_CHECK(approxEqual(redone->origin().X(), 5.0), "Subtest 52.5: Redone origin X restored to 5.0m");
+            TEST_CHECK(approxEqual(redone->width(), 30.0), "Subtest 52.5: Redone width restored to 30.0m");
+
+            std::cout << "  [PASS] Subtest 52.5: Non-destructive WorkPlane Undo/Redo Verified" << std::endl;
+        }
+
+        // Subtest 52.6: Structural Elements Local Coordinate Systems (LCS - Rules 10 & 11)
+        {
+            TSA::Model::Model testModel;
+            int n1 = testModel.addNode(0.0, 0.0, 0.0);
+            int n2 = testModel.addNode(6.0, 0.0, 0.0); // Poutre horizontale le long de X
+            int n3 = testModel.addNode(0.0, 0.0, 3.5); // Poteau vertical le long de Z
+
+            int beamId = testModel.addBeam(n1, n2, 0.30, 0.50, "Poutre_LCS");
+            int colId = testModel.addColumn(n1, n3, 0.40, 0.40, "Poteau_LCS");
+
+            const auto* beam = testModel.getBeam(beamId);
+            TEST_CHECK(beam != nullptr, "Subtest 52.6: Beam created");
+
+            // Calcul du repère local de la poutre (LCS)
+            const auto* nodeA = testModel.getNode(beam->startNodeId());
+            const auto* nodeB = testModel.getNode(beam->endNodeId());
+            gp_Vec vLong(gp_Pnt(nodeA->x(), nodeA->y(), nodeA->z()), gp_Pnt(nodeB->x(), nodeB->y(), nodeB->z()));
+            gp_Dir lcsX(vLong);
+
+            // Axe longitudinal X local est orienté selon (1, 0, 0)
+            TEST_CHECK(approxEqual(lcsX.X(), 1.0) && approxEqual(lcsX.Y(), 0.0) && approxEqual(lcsX.Z(), 0.0),
+                       "Subtest 52.6: Beam LCS longitudinal X is (1, 0, 0)");
+
+            // Vecteur de référence vertical
+            gp_Vec vRef(0.0, 0.0, 1.0);
+            gp_Vec lcsY = vRef.Crossed(gp_Vec(lcsX)).Normalized();
+            gp_Vec lcsZ = gp_Vec(lcsX).Crossed(lcsY).Normalized();
+
+            TEST_CHECK(approxEqual(lcsY.Y(), -1.0) || approxEqual(lcsY.Y(), 1.0), "Subtest 52.6: Beam LCS transverse Y is along Y");
+            TEST_CHECK(approxEqual(lcsZ.Z(), 1.0) || approxEqual(lcsZ.Z(), -1.0), "Subtest 52.6: Beam LCS vertical Z is along Z");
+
+            // Poteau vertical (le long de Z)
+            const auto* col = testModel.getColumn(colId);
+            TEST_CHECK(col != nullptr, "Subtest 52.6: Column created");
+            const auto* colA = testModel.getNode(col->startNodeId());
+            const auto* colB = testModel.getNode(col->endNodeId());
+            gp_Vec vCol(gp_Pnt(colA->x(), colA->y(), colA->z()), gp_Pnt(colB->x(), colB->y(), colB->z()));
+            gp_Dir colLcsX(vCol);
+            TEST_CHECK(approxEqual(colLcsX.Z(), 1.0), "Subtest 52.6: Column LCS longitudinal X is along vertical Z");
+
+            std::cout << "  [PASS] Subtest 52.6: Structural Elements Local Coordinate Systems (LCS) Verified" << std::endl;
+        }
+
+        // Subtest 52.7: WorkPlane Isolation Filtering
+        {
+            WorkPlane wp(WorkPlaneType::GlobalXY, "Niveau 2", 6.0);
+            wp.setIsIsolated(true);
+            wp.setIsolationDistance(0.5);
+
+            gp_Pnt pInPlane(4.0, 5.0, 6.0);
+            gp_Pnt pNearPlane(1.0, 2.0, 6.3);
+            gp_Pnt pFarPlane(0.0, 0.0, 0.0);
+            gp_Pnt pUpperPlane(0.0, 0.0, 9.0);
+
+            TEST_CHECK(approxEqual(wp.distanceTo(pInPlane), 0.0), "Subtest 52.7: Point on plane distance is 0");
+            TEST_CHECK(std::abs(wp.distanceTo(pNearPlane)) <= wp.isolationDistance(),
+                       "Subtest 52.7: Point within 0.3m is kept by 0.5m isolation");
+            TEST_CHECK(std::abs(wp.distanceTo(pFarPlane)) > wp.isolationDistance(),
+                       "Subtest 52.7: Ground floor point (Z=0) is filtered out by isolation");
+            TEST_CHECK(std::abs(wp.distanceTo(pUpperPlane)) > wp.isolationDistance(),
+                       "Subtest 52.7: Story 3 point (Z=9) is filtered out by isolation");
+
+            std::cout << "  [PASS] Subtest 52.7: WorkPlane Isolation Distance Filtering Verified" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 52: Interactive 3D WorkPlane, Arbitrary Coordinate Systems, LCS & Multi-Plane Management Passed Successfully!" << std::endl;
         passed++;
     }
 

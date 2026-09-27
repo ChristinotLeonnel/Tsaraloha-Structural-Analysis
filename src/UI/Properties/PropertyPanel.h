@@ -18,6 +18,11 @@ class SlabPropertiesView;
 class WallPropertiesView;
 class FoundationPropertiesView;
 class TrussMemberPropertiesView;
+class WorkPlanePropertiesView;
+}
+namespace TSA::Coordinate { class WorkPlane; }
+namespace TSA::UI
+{
 
 /**
  * @brief Panneau hôte centralisé d'inspection des propriétés CAO (Inspector).
@@ -44,11 +49,16 @@ public slots:
     void showFoundationProperties(int foundationId);
     void showTrussMemberProperties(int memberId);
     void showCableProperties(int cableId);
+    void showWorkPlaneProperties(int workPlaneId);
+    void setWorkPlane(const TSA::Coordinate::WorkPlane& wp);
     void clearProperties();
     void refreshLibraryLists();
 
+    WorkPlanePropertiesView* workPlaneView() const { return m_workPlaneView; }
+
 signals:
     void elementModified();
+    void workPlaneModified(const TSA::Coordinate::WorkPlane& wp);
 
 protected:
     // IModelObserver overrides pour la synchronisation bidirectionnelle 100% temps réel
@@ -97,6 +107,7 @@ private:
     WallPropertiesView* m_wallView = nullptr;
     FoundationPropertiesView* m_foundationView = nullptr;
     TrussMemberPropertiesView* m_trussView = nullptr;
+    WorkPlanePropertiesView* m_workPlaneView = nullptr;
 };
 
 } // namespace TSA::UI

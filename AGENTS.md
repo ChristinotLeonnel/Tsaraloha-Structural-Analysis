@@ -1,3 +1,220 @@
+# TSA — Directives Fondamentales pour Agents IA (Claude, Gemini, autres)
+
+> Ce fichier est la référence générale pour tout agent IA (ou humain) travaillant sur TSA.
+> Les règles détaillées et thématiques sont dans `.agents/rules/`.
+> Les procédures pas-à-pas pour les tâches courantes sont dans `.agents/skills/`.
+> Les rôles spécialisés (revue d'architecture, correction de bug) sont dans `.agents/agents/`.
+>
+> ⚠️ La section « Directives de Recherche Préalable » plus bas dans ce fichier existait avant
+> la mise en place de ce framework et reste pleinement en vigueur : elle est complémentaire,
+> pas remplacée.
+
+## Mission
+
+TSA (Tsaraloha Structural Analysis) est un logiciel desktop de modélisation et d'analyse des
+structures de génie civil (poutres, poteaux, dalles, voiles, fondations, treillis, câbles),
+avec visualisation 3D et export de calculs.
+
+Stack réelle du dépôt :
+
+- C++ (C++20)
+- Qt 6 (Widgets)
+- OpenCASCADE Technology (OCCT) — modélisation géométrique + viewer 3D (AIS/V3d)
+- CMake (+ CMakePresets.json)
+- Visual Studio / MSVC (toolchain principale), MinGW-w64 (alternative)
+- Système d'extensions dynamique **TSALib** (bibliothèques de sections/matériaux chargées à chaud)
+
+## Méthode obligatoire
+
+Pour toute tâche significative (ajout de fonctionnalité, correction de bug non trivial,
+modification d'architecture) :
+
+```text
+ANALYZE
+→ PLAN
+→ IMPLEMENT
+→ BUILD
+→ TEST
+→ VERIFY
+```
+
+Ne jamais sauter directement à IMPLEMENT sur une tâche non triviale. Utiliser le skill
+`analyze-project` en phase ANALYZE si le contexte n'est pas déjà clair.
+
+## Règle fondamentale — Réutiliser avant de créer
+
+Avant de créer une nouvelle classe, interface, bibliothèque ou abstraction :
+
+1. rechercher l'existant dans `src/` ;
+2. comprendre son fonctionnement (lire l'implémentation, pas seulement le header) ;
+3. vérifier s'il peut être réutilisé ou étendu ;
+4. seulement ensuite créer quelque chose de nouveau.
+
+Cette règle rejoint et renforce la « Recherche Préalable Obligatoire sur Internet » définie
+plus bas dans ce fichier : ici il s'agit de réutilisation **interne** (code déjà présent dans
+TSA), là-bas de réutilisation **externe** (bibliothèques tierces).
+
+## Architecture réelle du dépôt
+
+Constatée par inspection de `src/` (voir `.agents/rules/01-architecture.md` et
+`docs/ARCHITECTURE.md` pour le détail) :
+
+```text
+UI (src/UI : Ribbon, Dock, Properties, ModelTree, Dialogs, Widgets, Theme, Ruler)
+  ↓ signals/slots, Commands
+Commands / UndoRedo (src/Commands : ICommand, CreateBeamCommand, GridCommands
+                      src/UndoRedo : CommandManager, UndoManager)
+  ↓ agit sur
+Structural Model (src/Model : Model, Element/LinearElement/SurfaceElement,
+                   Beam, Column, Slab, Wall, Foundation, TrussMember, Cable/*,
+                   Node, Section, Material, MaterialLibrary)
+  ↓ construit
+Geometry (src/Geometry : BeamGeometry, SlabGeometry, WallGeometry,
+          FoundationGeometry, CableGeometry3D)
+  ↓ affiché par
+OCCT / Viewer (src/Viewer : OccView, SelectionManager, MaterialVisual, TextureManager)
+```
+
+En complément, transversaux à ces couches :
+
+- `src/Coordinate` : `CoordinateSystem`, `Point3D`, `LevelManager`/`Level` (étages),
+  `CylindricalCoordinates`.
+- `src/Grid` : grilles 3D paramétriques et accrochage (snap).
+- `src/ExtensionSystem` : chargement dynamique des bibliothèques **TSALib** (sections,
+  matériaux) sans recompilation.
+- `src/IO` : sérialisation du format fichier `.tsa`.
+- `src/Diagnostics` : télémétrie / diagnostics internes.
+- `src/Interaction` : gestion des interactions utilisateur dans le viewport 3D.
+- `src/Project`, `src/App`, `src/main.cpp` : bootstrap de l'application.
+
+Adapter systématiquement cette représentation si le code réel a évolué depuis la rédaction de
+ce document (voir la règle de vérification ci-dessous).
+
+## Modèle structural = source de vérité
+
+Le modèle structural (`TSA::Model::Model` et les classes qu'il possède : `Beam`, `Column`,
+`Slab`, `Wall`, `Foundation`, `TrussMember`, `Cable`, `Node`, `Section`, `Material`) est la
+**source de vérité**.
+
+Ne jamais utiliser comme source principale des propriétés métier :
+
+- un widget UI (`src/UI/**`) ;
+- une variable graphique ou d'affichage ;
+- une `TopoDS_Shape` / `AIS_Shape` OCCT.
+
+Ces couches doivent toujours se **dériver** du modèle, jamais l'inverse.
+
+## Synchronisation
+
+Les propriétés doivent rester cohérentes dans les deux sens :
+
+```text
+UI → Model → Geometry → 3D (AIS/OccView)
+```
+
+et
+
+```text
+Sélection 3D → Model → UI
+```
+
+`OccView` implémente `TSA::Model::IModelObserver` : c'est le mécanisme réel de
+synchronisation modèle → 3D constaté dans le code (callbacks `onBeamAdded`,
+`onBeamModified`, `onBeamRemoved`, etc., un triplet par type d'élément). Toute nouvelle
+propriété ou tout nouvel élément doit s'intégrer à ce mécanisme d'observation plutôt que
+d'en créer un parallèle. Voir `.agents/rules/06-synchronization.md`.
+
+## Éléments structuraux
+
+Hiérarchie réelle (`src/Model/Element.h`) :
+
+```text
+Element (interface : id, name, typeName, volume, weight)
+├── LinearElement (interface : startNodeId, endNodeId, section, material, length)
+│     → implémenté par Beam, Column, TrussMember, Cable (src/Model/Cable/*)
+└── SurfaceElement (interface : nodeIds, thickness, material, area)
+      → implémenté par Slab, Wall
+```
+
+`Foundation` existe également dans `src/Model` : vérifier dans le code si elle dérive de
+`SurfaceElement`, de `LinearElement`, ou si c'est une classe à part avant de la traiter comme
+l'un ou l'autre (`TODO: VERIFY IN SOURCE` dans `docs/MODEL.md`).
+
+Ne jamais transformer artificiellement un type d'élément en un autre (un `Cable` ne doit pas
+devenir un `Beam` pour simplifier une tâche).
+
+## Sections
+
+Système centralisé dans `src/Model/Section.h` / `Section.cpp` : `struct Section` avec un
+`enum class SectionShape { Rectangular, Circular, IShape, Pipe, BoxHollow, UPN, Angle,
+TSection }` et des usines statiques (`Section::rectangular`, `Section::circular`,
+`Section::ipe`, `Section::hea`, `Section::heb`, `Section::upn`, `Section::angle`,
+`Section::tSection`, `Section::boxHollow`, `Section::pipe`, `Section::defaultLibrary`).
+
+Une section sélectionnée dans l'UI (`src/UI/Properties/PropertyPanel`) doit être identique à
+celle du modèle et à celle utilisée par la géométrie OCCT (`src/Geometry/*Geometry`). Voir
+`.agents/skills/add-section/SKILL.md` pour la procédure de vérification (notamment lors du
+Copy/Paste).
+
+## OCCT
+
+OCCT (via `src/Viewer/OccView` et `src/Geometry/*`) représente visuellement le modèle
+structural. Éviter les reconstructions globales inutiles de la scène.
+
+Pour tout problème 3D, suivre le flux réel :
+
+```text
+Model → Paramètres (Section/Material/Node) → *Geometry (Geometry Builder) → OCCT (TopoDS_Shape/AIS_Shape) → OccView (Viewer)
+```
+
+Lorsqu'un élément est copié (`src/Model/StructuralClipboard`), sa géométrie doit être
+recréée depuis son modèle structural copié — jamais réutilisée telle quelle depuis la Shape
+OCCT source.
+
+## Undo / Redo
+
+Le mécanisme réel repose sur `TSA::UndoRedo::UndoManager` (piles de
+`Model::ModelStateSnapshot`) et `TSA::UndoRedo::CommandManager` (exécution de
+`TSA::Commands::ICommand`). Privilégier la restauration d'état du modèle
+(`UndoManager::undo`/`redo`) plutôt que de redessiner toute la scène OCCT à la main.
+
+## Git
+
+Ne jamais effectuer automatiquement, sans demande explicite de l'utilisateur :
+
+```text
+git push
+git reset --hard
+git clean -fd
+git commit
+```
+
+## Validation
+
+Après toute modification importante :
+
+- compiler (`build-test` skill, cible `TSA_Tests` si pertinente) ;
+- exécuter les tests (`tests/test_coordinates.cpp` et toute autre suite existante) ;
+- vérifier les régressions ;
+- vérifier la couche UI ;
+- vérifier la couche modèle ;
+- vérifier la couche OCCT/3D.
+
+## Vérification du contenu de ce fichier
+
+Ce document a été rédigé par inspection ponctuelle du dépôt à une date donnée. Le code réel
+fait foi. Si une divergence apparaît entre ce fichier et le code, corriger ce fichier plutôt
+que de se fier aveuglément à sa version actuelle.
+
+---
+
+# Directives de Recherche Préalable de Solutions & Dépendances Externes (existant, préservé)
+
+_Le contenu ci-dessous existait déjà dans `AGENTS.md` avant la mise en place du framework
+`.agents/`. Il est conservé intégralement car il reste en vigueur — il couvre notamment la
+recherche de bibliothèques tierces, la traçabilité des décisions, l'interconnexion des
+éléments du système, et l'organisation des commandes et des fenêtres._
+
 # Directives de Développement TSA - Recherche Préalable de Solutions & Dépendances Externes
 
 Pour toute nouvelle fonctionnalité, extension, bibliothèque, outil, composant visuel (icônes, widgets, thèmes) ou module dans le projet TSA, appliquer systématiquement la règle suivante :
@@ -1639,50 +1856,3 @@ avec
 Le premier est souhaité lorsque les besoins métier sont différents ; le second doit être évité lorsqu'une infrastructure commune existe déjà.
 
 Cette règle s'applique à tous les éléments de TSA, pas uniquement au Cable.
-
----
-
-## 15. Règle — Architecture Globale du Projet
-
-L'architecture retenue pour TSA est une architecture modulaire en couches, orientée domaine, avec **Command + Services + événements**, proche d'une architecture de type **Hexagonal / Clean Architecture** adaptée à une application CAO/CAE.
-
-```text
-                         ┌───────────────────────────┐
-                         │          UI / Qt          │
-                         │ MainWindow / Dialogs /    │
-                         │ Panels / Toolbars         │
-                         └─────────────┬─────────────┘
-                          Commands ↓        ↑ Events (via EventBus)
-                         ┌───────────────────────────┐
-                         │       APPLICATION         │
-                         │ Commands / Use Cases /    │
-                         │ Selection / Undo-Redo     │
-                         └─────────────┬─────────────┘
-                                       │ appelle
-                                       ▼
-                         ┌───────────────────────────┐
-                         │          DOMAIN           │
-                         │ Model, Beam, Cable, Wall…  │
-                         │ Domain Services (Library,  │
-                         │ Section, Material Manager) │
-                         │                            │
-                         │ ── définit des PORTS ──    │
-                         │ IGeometryPort              │
-                         │ IPersistencePort           │
-                         │ IEventPublisher            │
-                         └─────────────┬─────────────┘
-                                       ▲ implémente (dépendance inversée)
-                                       │
-                         ┌───────────────────────────┐
-                         │      INFRASTRUCTURE       │
-                         │ OcctGeometryAdapter (OCCT) │
-                         │ JsonPersistenceAdapter     │
-                         │ QtEventBusAdapter          │
-                         └───────────────────────────┘
-```
-
-Cette orientation architecturale sert de cadre de référence pour l'ensemble des règles précédentes (Command System, Property System, interconnexion des éléments, organisation des fenêtres), avec deux précisions importantes :
-
-- **Inversion de dépendance (le cœur du Hexagonal) :** le Domain ne dépend jamais d'Infrastructure. C'est le Domain qui définit les ports (`IGeometryPort`, `IPersistencePort`, `IEventPublisher`) et Infrastructure qui les implémente via des adaptateurs (`OcctGeometryAdapter`, `JsonPersistenceAdapter`, `QtEventBusAdapter`). Ainsi le Domain (Model, TsaLib) reste réellement indépendant d'OCCT, de Qt et du format de fichier (cohérent avec la règle 10.10).
-- **Services de domaine vs adaptateurs techniques :** `LibraryManager`, `SectionManager`, `MaterialManager` sont des services de domaine (logique métier CAO) et restent dans la couche Domain. `Serialization`, le rendu OCCT, l'accès fichier sont des adaptateurs techniques et vont dans Infrastructure — ne pas les mélanger dans une même couche « Services » générique.
-- **Les événements formalisent la remontée d'information** décrite par la règle 10 (interconnexion) : le Domain publie des événements via `IEventPublisher` sans connaître l'UI ; Application/UI s'y abonnent pour se mettre à jour (viewport, panneau de propriétés, sélection). Cela permet de concilier la règle 10 (« tout doit rester synchronisé ») avec le principe Hexagonal (« le Domain ne connaît pas les détails techniques ») : la synchronisation passe par les ports/événements, jamais par un appel direct du Domain vers Qt ou OCCT.

@@ -2,9 +2,12 @@
 
 #include "ICommand.h"
 #include "../Model/Model.h"
+#include "../Coordinate/WorkPlane.h"
 #include <set>
 #include <vector>
 #include <string>
+
+namespace TSA::Coordinate { class WorkPlaneManager; }
 
 namespace TSA::Commands
 {
@@ -88,6 +91,30 @@ private:
     // Snapshot Memento local pour garantir un undo bit-exact parfait
     TSA::Model::Model::ModelStateSnapshot m_snapshot;
     bool m_hasSnapshot = false;
+};
+
+/**
+ * @brief Commande de modification géométrique ou paramétrique d'un plan de travail.
+ * Gère l'annulation/rétablissement instantané (Undo/Redo) sans reconstruire toute la scène 3D.
+ */
+class ModifyWorkPlaneCommand : public ICommand
+{
+public:
+    ModifyWorkPlaneCommand(int workPlaneId,
+                           const TSA::Coordinate::WorkPlane& oldWp,
+                           const TSA::Coordinate::WorkPlane& newWp,
+                           TSA::Coordinate::WorkPlaneManager* manager = nullptr);
+
+    bool execute() override;
+    bool undo() override;
+    std::string name() const override;
+    CommandCategory category() const override { return CommandCategory::Modify; }
+
+private:
+    int m_wpId = 1;
+    TSA::Coordinate::WorkPlane m_oldWp;
+    TSA::Coordinate::WorkPlane m_newWp;
+    TSA::Coordinate::WorkPlaneManager* m_manager = nullptr;
 };
 
 } // namespace TSA::Commands

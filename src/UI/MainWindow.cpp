@@ -1320,6 +1320,8 @@ void MainWindow::createDockWindows()
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::nodeSelected, this, [this](int nodeId) {
         m_modelTree->selectNodeItem(nodeId);
         m_occView->highlightNode(nodeId);
+        m_occView->detachManipulator();
+        m_occView->clearSelectedElementLocalAxes();
         m_propertyPanel->showNodeProperties(nodeId);
         if (m_statusInfo)
         {
@@ -1330,6 +1332,8 @@ void MainWindow::createDockWindows()
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::beamSelected, this, [this](int beamId) {
         m_modelTree->selectBeamItem(beamId);
         m_occView->highlightBeam(beamId);
+        m_occView->detachManipulator();
+        m_occView->updateSelectedElementLocalAxes();
         m_propertyPanel->showBeamProperties(beamId);
         if (m_barDialog && m_barDialog->isVisible() && m_model)
         {
@@ -1347,6 +1351,8 @@ void MainWindow::createDockWindows()
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::columnSelected, this, [this](int columnId) {
         m_modelTree->selectColumnItem(columnId);
         m_occView->highlightColumn(columnId);
+        m_occView->detachManipulator();
+        m_occView->updateSelectedElementLocalAxes();
         m_propertyPanel->showColumnProperties(columnId);
         if (m_statusInfo)
         {
@@ -1357,6 +1363,8 @@ void MainWindow::createDockWindows()
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::slabSelected, this, [this](int slabId) {
         m_modelTree->selectSlabItem(slabId);
         m_occView->highlightSlab(slabId);
+        m_occView->detachManipulator();
+        m_occView->clearSelectedElementLocalAxes();
         m_propertyPanel->showSlabProperties(slabId);
         if (m_statusInfo)
         {
@@ -1367,6 +1375,8 @@ void MainWindow::createDockWindows()
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::wallSelected, this, [this](int wallId) {
         m_modelTree->selectWallItem(wallId);
         m_occView->highlightWall(wallId);
+        m_occView->detachManipulator();
+        m_occView->clearSelectedElementLocalAxes();
         m_propertyPanel->showWallProperties(wallId);
         if (m_statusInfo)
         {
@@ -1377,6 +1387,8 @@ void MainWindow::createDockWindows()
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::foundationSelected, this, [this](int fId) {
         m_modelTree->selectFoundationItem(fId);
         m_occView->highlightFoundation(fId);
+        m_occView->detachManipulator();
+        m_occView->clearSelectedElementLocalAxes();
         m_propertyPanel->showFoundationProperties(fId);
         if (m_statusInfo)
         {
@@ -1387,6 +1399,8 @@ void MainWindow::createDockWindows()
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::trussMemberSelected, this, [this](int trId) {
         m_modelTree->selectTrussMemberItem(trId);
         m_occView->highlightTrussMember(trId);
+        m_occView->detachManipulator();
+        m_occView->updateSelectedElementLocalAxes();
         m_propertyPanel->showTrussMemberProperties(trId);
         if (m_statusInfo)
         {
@@ -1397,6 +1411,8 @@ void MainWindow::createDockWindows()
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::cableSelected, this, [this](int cableId) {
         m_modelTree->selectCableItem(cableId);
         m_occView->highlightCable(cableId);
+        m_occView->detachManipulator();
+        m_occView->updateSelectedElementLocalAxes();
         m_propertyPanel->showCableProperties(cableId);
         if (m_cableDialog && m_cableDialog->isVisible() && m_model)
         {
@@ -1408,6 +1424,16 @@ void MainWindow::createDockWindows()
         if (m_statusInfo)
         {
             m_statusInfo->setText(tr("Câble sélectionné C%1").arg(cableId));
+        }
+    });
+
+    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::workPlaneSelected, this, [this](int wpId) {
+        m_propertyPanel->showWorkPlaneProperties(wpId);
+        m_occView->attachManipulatorToWorkPlane();
+        m_occView->clearSelectedElementLocalAxes();
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Plan de travail WP%1 sélectionné (Manipulateur 3D interactif)").arg(wpId));
         }
     });
 
@@ -1428,9 +1454,20 @@ void MainWindow::createDockWindows()
         updateUndoRedoActions();
     });
 
+    connect(m_propertyPanel, &TSA::UI::PropertyPanel::workPlaneModified, this, [this](const TSA::Coordinate::WorkPlane& wp) {
+        if (m_model && m_model->workPlaneManager())
+        {
+            m_model->workPlaneManager()->updateWorkPlane(wp);
+        }
+        m_occView->setActiveWorkPlane(wp);
+        updateUndoRedoActions();
+    });
+
     connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::selectionCleared, this, [this]() {
         m_modelTree->clearTreeSelection();
         m_occView->clearHighlight();
+        m_occView->detachManipulator();
+        m_occView->clearSelectedElementLocalAxes();
         m_propertyPanel->clearProperties();
         if (m_statusInfo)
         {
@@ -2408,7 +2445,17 @@ void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
         m_viewportContainer->setActiveLevelElevation(wp.offset());
     }
 
-    // 4. Log console
+    // 4. Synchronisation bidirectionnelle immédiate avec le panneau de propriétés et le gestionnaire
+    if (m_propertyPanel && m_selectionManager && m_selectionManager->isWorkPlaneSelected())
+    {
+        m_propertyPanel->setWorkPlane(wp);
+    }
+    if (m_model && m_model->workPlaneManager())
+    {
+        m_model->workPlaneManager()->updateWorkPlane(wp);
+    }
+
+    // 5. Log console
     if (m_consoleDock)
     {
         m_consoleDock->appendLog(tr("Plan de travail actif : %1 (Origine: %2, %3, %4 m)")

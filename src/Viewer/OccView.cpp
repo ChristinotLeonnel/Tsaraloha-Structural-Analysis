@@ -15,6 +15,11 @@
 #include "../Grid/GridSnapManager.h"
 #include "../UI/Theme/ThemeManager.h"
 #include "../Coordinate/CoordinateTransformationService.h"
+#include "../Commands/ModifyCommands.h"
+#include <gp_Trsf.hxx>
+#include <gp_Ax3.hxx>
+#include <gp_Ax2.hxx>
+#include <gp_Ax1.hxx>
 
 #include <QMouseEvent>
 #include <QWheelEvent>
@@ -415,6 +420,10 @@ void OccView::setModel(TSA::Model::Model* model)
 void OccView::setSelectionManager(TSA::Viewer::SelectionManager* selectionManager)
 {
     m_selectionManager = selectionManager;
+    if (m_selectionManager && !m_workPlaneShape.IsNull())
+    {
+        m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneShape);
+    }
 }
 
 void OccView::highlightNode(int nodeId)
@@ -1865,6 +1874,14 @@ void OccView::nextView()
 
 void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
 {
+    bool needFullRebuild = (m_workPlaneShape.IsNull() ||
+                            std::abs(m_workPlane.width() - wp.width()) > 1e-4 ||
+                            std::abs(m_workPlane.height() - wp.height()) > 1e-4 ||
+                            m_workPlane.isGridVisible() != wp.isGridVisible() ||
+                            std::abs(m_workPlane.gridSpacingX() - wp.gridSpacingX()) > 1e-4 ||
+                            std::abs(m_workPlane.gridSpacingY() - wp.gridSpacingY()) > 1e-4 ||
+                            m_workPlane.isVisible() != wp.isVisible());
+
     m_workPlane = wp;
     if (wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXY ||
         wp.type() == TSA::Coordinate::WorkPlaneType::ElevationZ)
@@ -1874,7 +1891,16 @@ void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
     TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
     const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
     m_gridRenderer.setActiveLevelElevation(m_activeLevelZ, grid, m_context);
-    updateWorkPlaneVisual();
+
+    if (needFullRebuild)
+    {
+        updateWorkPlaneVisual();
+    }
+    else
+    {
+        applyWorkPlaneTransformation();
+    }
+
     emit workPlaneChanged(m_workPlane);
     if (!m_view.IsNull())
         m_view->Redraw();
@@ -1887,7 +1913,7 @@ void OccView::setWorkPlaneElevation(double elevation)
     TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
     const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
     m_gridRenderer.setActiveLevelElevation(elevation, grid, m_context);
-    updateWorkPlaneVisual();
+    applyWorkPlaneTransformation();
     emit workPlaneChanged(m_workPlane);
     if (!m_view.IsNull())
         m_view->Redraw();
@@ -1904,7 +1930,7 @@ void OccView::setWorkPlaneType(TSA::Coordinate::WorkPlaneType type, double offse
     TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
     const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
     m_gridRenderer.setActiveLevelElevation(m_activeLevelZ, grid, m_context);
-    updateWorkPlaneVisual();
+    applyWorkPlaneTransformation();
     emit workPlaneChanged(m_workPlane);
     if (!m_view.IsNull())
         m_view->Redraw();
@@ -1915,6 +1941,7 @@ void OccView::setWorkPlaneVisible(bool visible)
     if (m_workPlaneVisible == visible)
         return;
     m_workPlaneVisible = visible;
+    m_workPlane.setIsVisible(visible);
     updateWorkPlaneVisual();
 }
 
@@ -1938,6 +1965,358 @@ void OccView::viewNormalToWorkPlane()
     emit viewCameraChanged();
 }
 
+void OccView::attachManipulatorToWorkPlane()
+{
+    if (m_context.IsNull() || m_workPlaneShape.IsNull())
+        return;
+
+    if (m_workPlane.isLocked())
+    {
+        detachManipulator();
+        return;
+    }
+
+    if (m_manipulator.IsNull())
+    {
+        m_manipulator = new AIS_Manipulator();
+        m_manipulator->SetModeActivationOnDetection(true);
+        m_manipulator->EnableMode(AIS_MM_Translation);
+        m_manipulator->EnableMode(AIS_MM_Rotation);
+        m_manipulator->SetPart(0, AIS_MM_Scaling, false);
+        m_manipulator->SetPart(1, AIS_MM_Scaling, false);
+        m_manipulator->SetPart(2, AIS_MM_Scaling, false);
+    }
+
+    if (m_manipulator->IsAttached())
+    {
+        m_manipulator->Detach();
+    }
+
+    AIS_Manipulator::OptionsForAttach opts;
+    opts.SetAdjustPosition(false);
+    opts.SetAdjustSize(true);
+    opts.SetEnableModes(true);
+
+    m_manipulator->Attach(m_workPlaneShape, opts);
+    m_manipulator->SetPosition(m_workPlane.coordinateSystem().Ax2());
+
+    if (!m_view.IsNull())
+        m_view->Redraw();
+}
+
+void OccView::detachManipulator()
+{
+    if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
+    {
+        m_manipulator->DeactivateCurrentMode();
+        m_manipulator->Detach();
+        if (!m_view.IsNull())
+            m_view->Redraw();
+    }
+}
+
+void OccView::applyWorkPlaneTransformation()
+{
+    if (m_workPlaneShape.IsNull())
+        return;
+
+    gp_Trsf trsf;
+    gp_Ax3 stdCS(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0));
+    trsf.SetDisplacement(stdCS, m_workPlane.coordinateSystem());
+    m_workPlaneShape->SetLocalTransformation(trsf);
+
+    if (!m_workPlaneAxesShape.IsNull())
+    {
+        m_workPlaneAxesShape->SetLocalTransformation(trsf);
+    }
+
+    if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
+    {
+        m_manipulator->SetPosition(m_workPlane.coordinateSystem().Ax2());
+    }
+
+    if (!m_viewer.IsNull())
+    {
+        m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
+    }
+
+    if (m_workPlane.isIsolated())
+    {
+        updateElementIsolation();
+    }
+
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
+void OccView::setWorkPlaneIsolation(bool isolated, double distance)
+{
+    m_workPlane.setIsIsolated(isolated);
+    m_workPlane.setIsolationDistance(distance);
+    updateElementIsolation();
+    if (!m_view.IsNull())
+        m_view->Redraw();
+}
+
+void OccView::updateElementIsolation()
+{
+    if (m_context.IsNull() || !m_model)
+        return;
+
+    bool isolate = m_workPlane.isIsolated();
+    double maxDist = m_workPlane.isolationDistance();
+
+    auto isNearPlane = [&](double x, double y, double z) {
+        if (!isolate) return true;
+        double d = std::abs(m_workPlane.distanceTo(gp_Pnt(x, y, z)));
+        return d <= maxDist;
+    };
+
+    for (const auto& [nid, shape] : m_nodeShapes)
+    {
+        if (shape.IsNull()) continue;
+        const auto* n = m_model->getNode(nid);
+        if (!n) continue;
+        bool keep = isNearPlane(n->x(), n->y(), n->z());
+        if (keep) { if (!m_context->IsDisplayed(shape)) m_context->Display(shape, false); }
+        else { if (m_context->IsDisplayed(shape)) m_context->Erase(shape, false); }
+    }
+
+    for (const auto& [bid, shape] : m_beamShapes)
+    {
+        if (shape.IsNull()) continue;
+        const auto* b = m_model->getBeam(bid);
+        if (!b) continue;
+        const auto* n1 = m_model->getNode(b->startNodeId());
+        const auto* n2 = m_model->getNode(b->endNodeId());
+        bool keep = !isolate;
+        if (isolate && n1 && n2) keep = isNearPlane(n1->x(), n1->y(), n1->z()) || isNearPlane(n2->x(), n2->y(), n2->z());
+        if (keep) { if (!m_context->IsDisplayed(shape)) m_context->Display(shape, false); }
+        else { if (m_context->IsDisplayed(shape)) m_context->Erase(shape, false); }
+    }
+
+    for (const auto& [cid, shape] : m_columnShapes)
+    {
+        if (shape.IsNull()) continue;
+        const auto* col = m_model->getColumn(cid);
+        if (!col) continue;
+        const auto* n1 = m_model->getNode(col->startNodeId());
+        const auto* n2 = m_model->getNode(col->endNodeId());
+        bool keep = !isolate;
+        if (isolate && n1 && n2) keep = isNearPlane(n1->x(), n1->y(), n1->z()) || isNearPlane(n2->x(), n2->y(), n2->z());
+        if (keep) { if (!m_context->IsDisplayed(shape)) m_context->Display(shape, false); }
+        else { if (m_context->IsDisplayed(shape)) m_context->Erase(shape, false); }
+    }
+
+    for (const auto& [sid, shape] : m_slabShapes)
+    {
+        if (shape.IsNull()) continue;
+        const auto* slab = m_model->getSlab(sid);
+        if (!slab) continue;
+        bool keep = !isolate;
+        if (isolate)
+        {
+            for (int nid : slab->nodeIds())
+            {
+                const auto* n = m_model->getNode(nid);
+                if (n && isNearPlane(n->x(), n->y(), n->z())) { keep = true; break; }
+            }
+        }
+        if (keep) { if (!m_context->IsDisplayed(shape)) m_context->Display(shape, false); }
+        else { if (m_context->IsDisplayed(shape)) m_context->Erase(shape, false); }
+    }
+
+    for (const auto& [wid, shape] : m_wallShapes)
+    {
+        if (shape.IsNull()) continue;
+        const auto* wall = m_model->getWall(wid);
+        if (!wall) continue;
+        bool keep = !isolate;
+        if (isolate)
+        {
+            const auto* n1 = m_model->getNode(wall->startNodeId());
+            const auto* n2 = m_model->getNode(wall->endNodeId());
+            if ((n1 && isNearPlane(n1->x(), n1->y(), n1->z())) ||
+                (n2 && isNearPlane(n2->x(), n2->y(), n2->z())))
+            {
+                keep = true;
+            }
+        }
+        if (keep) { if (!m_context->IsDisplayed(shape)) m_context->Display(shape, false); }
+        else { if (m_context->IsDisplayed(shape)) m_context->Erase(shape, false); }
+    }
+
+    for (const auto& [kid, shape] : m_cableShapes)
+    {
+        if (shape.IsNull()) continue;
+        const auto* cab = m_model->getCable(kid);
+        if (!cab) continue;
+        const auto* n1 = m_model->getNode(cab->startNodeId());
+        const auto* n2 = m_model->getNode(cab->endNodeId());
+        bool keep = !isolate;
+        if (isolate && n1 && n2) keep = isNearPlane(n1->x(), n1->y(), n1->z()) || isNearPlane(n2->x(), n2->y(), n2->z());
+        if (keep) { if (!m_context->IsDisplayed(shape)) m_context->Display(shape, false); }
+        else { if (m_context->IsDisplayed(shape)) m_context->Erase(shape, false); }
+    }
+}
+
+void OccView::setShowLocalAxes(bool show)
+{
+    m_showLocalAxes = show;
+    if (!show)
+    {
+        clearSelectedElementLocalAxes();
+    }
+    else
+    {
+        updateSelectedElementLocalAxes();
+    }
+}
+
+void OccView::clearSelectedElementLocalAxes()
+{
+    if (!m_elementLocalAxesShape.IsNull() && !m_context.IsNull())
+    {
+        m_context->Remove(m_elementLocalAxesShape, false);
+        m_elementLocalAxesShape.Nullify();
+        if (!m_view.IsNull())
+            m_view->Redraw();
+    }
+}
+
+void OccView::updateSelectedElementLocalAxes()
+{
+    if (m_context.IsNull() || !m_model || !m_selectionManager || !m_showLocalAxes)
+        return;
+
+    clearSelectedElementLocalAxes();
+
+    gp_Pnt origin;
+    gp_Dir dirX, dirY, dirZ;
+    bool found = false;
+
+    if (!m_selectionManager->selectedBeams().empty())
+    {
+        int bId = *m_selectionManager->selectedBeams().begin();
+        const auto* b = m_model->getBeam(bId);
+        if (b)
+        {
+            const auto* n1 = m_model->getNode(b->startNodeId());
+            const auto* n2 = m_model->getNode(b->endNodeId());
+            if (n1 && n2)
+            {
+                gp_Pnt p1(n1->x(), n1->y(), n1->z());
+                gp_Pnt p2(n2->x(), n2->y(), n2->z());
+                gp_Vec v(p1, p2);
+                if (v.Magnitude() > 1e-4)
+                {
+                    origin = gp_Pnt((p1.X() + p2.X()) * 0.5, (p1.Y() + p2.Y()) * 0.5, (p1.Z() + p2.Z()) * 0.5);
+                    dirX = gp_Dir(v);
+                    gp_Vec vRef = (std::abs(dirX.Z()) > 0.99) ? gp_Vec(0, 1, 0) : gp_Vec(0, 0, 1);
+                    gp_Vec vy = vRef.Crossed(gp_Vec(dirX)).Normalized();
+                    gp_Vec vz = gp_Vec(dirX).Crossed(vy).Normalized();
+                    if (std::abs(b->rotation()) > 1e-4)
+                    {
+                        double rad = b->rotation() * M_PI / 180.0;
+                        gp_Ax1 ax(origin, dirX);
+                        vy.Rotate(ax, rad);
+                        vz.Rotate(ax, rad);
+                    }
+                    dirY = gp_Dir(vy);
+                    dirZ = gp_Dir(vz);
+                    found = true;
+                }
+            }
+        }
+    }
+    else if (!m_selectionManager->selectedColumns().empty())
+    {
+        int cId = *m_selectionManager->selectedColumns().begin();
+        const auto* col = m_model->getColumn(cId);
+        if (col)
+        {
+            const auto* n1 = m_model->getNode(col->startNodeId());
+            const auto* n2 = m_model->getNode(col->endNodeId());
+            if (n1 && n2)
+            {
+                gp_Pnt p1(n1->x(), n1->y(), n1->z());
+                gp_Pnt p2(n2->x(), n2->y(), n2->z());
+                gp_Vec v(p1, p2);
+                if (v.Magnitude() > 1e-4)
+                {
+                    origin = gp_Pnt((p1.X() + p2.X()) * 0.5, (p1.Y() + p2.Y()) * 0.5, (p1.Z() + p2.Z()) * 0.5);
+                    dirX = gp_Dir(v);
+                    gp_Vec vRef = (std::abs(dirX.Z()) > 0.99) ? gp_Vec(0, 1, 0) : gp_Vec(0, 0, 1);
+                    gp_Vec vy = vRef.Crossed(gp_Vec(dirX)).Normalized();
+                    gp_Vec vz = gp_Vec(dirX).Crossed(vy).Normalized();
+                    if (std::abs(col->rotation()) > 1e-4)
+                    {
+                        double rad = col->rotation() * M_PI / 180.0;
+                        gp_Ax1 ax(origin, dirX);
+                        vy.Rotate(ax, rad);
+                        vz.Rotate(ax, rad);
+                    }
+                    dirY = gp_Dir(vy);
+                    dirZ = gp_Dir(vz);
+                    found = true;
+                }
+            }
+        }
+    }
+    else if (!m_selectionManager->selectedCables().empty())
+    {
+        int cabId = *m_selectionManager->selectedCables().begin();
+        const auto* cab = m_model->getCable(cabId);
+        if (cab)
+        {
+            const auto* n1 = m_model->getNode(cab->startNodeId());
+            const auto* n2 = m_model->getNode(cab->endNodeId());
+            if (n1 && n2)
+            {
+                gp_Pnt p1(n1->x(), n1->y(), n1->z());
+                gp_Pnt p2(n2->x(), n2->y(), n2->z());
+                gp_Vec v(p1, p2);
+                if (v.Magnitude() > 1e-4)
+                {
+                    origin = gp_Pnt((p1.X() + p2.X()) * 0.5, (p1.Y() + p2.Y()) * 0.5, (p1.Z() + p2.Z()) * 0.5);
+                    dirX = gp_Dir(v);
+                    gp_Vec vRef = (std::abs(dirX.Z()) > 0.99) ? gp_Vec(0, 1, 0) : gp_Vec(0, 0, 1);
+                    gp_Vec vy = vRef.Crossed(gp_Vec(dirX)).Normalized();
+                    gp_Vec vz = gp_Vec(dirX).Crossed(vy).Normalized();
+                    dirY = gp_Dir(vy);
+                    dirZ = gp_Dir(vz);
+                    found = true;
+                }
+            }
+        }
+    }
+
+    if (!found) return;
+
+    double L = 0.8;
+    BRep_Builder b;
+    TopoDS_Compound comp;
+    b.MakeCompound(comp);
+
+    gp_Pnt pX = origin.Translated(gp_Vec(dirX) * L);
+    gp_Pnt pY = origin.Translated(gp_Vec(dirY) * L);
+    gp_Pnt pZ = origin.Translated(gp_Vec(dirZ) * L);
+
+    b.Add(comp, BRepBuilderAPI_MakeEdge(origin, pX).Edge());
+    b.Add(comp, BRepBuilderAPI_MakeEdge(origin, pY).Edge());
+    b.Add(comp, BRepBuilderAPI_MakeEdge(origin, pZ).Edge());
+
+    m_elementLocalAxesShape = new AIS_Shape(comp);
+    m_elementLocalAxesShape->SetColor(Quantity_NOC_YELLOW);
+    m_elementLocalAxesShape->SetWidth(2.5);
+    m_context->Display(m_elementLocalAxesShape, false);
+
+    if (!m_view.IsNull())
+        m_view->Redraw();
+}
+
 void OccView::updateWorkPlaneVisual()
 {
     if (m_context.IsNull())
@@ -1946,6 +2325,14 @@ void OccView::updateWorkPlaneVisual()
     // 1. Supprimer l'ancienne forme visuelle si existante
     if (!m_workPlaneShape.IsNull())
     {
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterWorkPlane(m_workPlane.id());
+        }
+        if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
+        {
+            m_manipulator->Detach();
+        }
         m_context->Remove(m_workPlaneShape, false);
         m_workPlaneShape.Nullify();
     }
@@ -1955,44 +2342,47 @@ void OccView::updateWorkPlaneVisual()
         m_workPlaneAxesShape.Nullify();
     }
 
-    if (!m_workPlaneVisible)
+    if (!m_workPlaneVisible || !m_workPlane.isVisible())
     {
         if (!m_view.IsNull())
             m_view->Redraw();
         return;
     }
 
-    // 2. Détermination de la dimension de la grille du plan
-    double L = 15.0;
-    if (m_model && !m_model->nodes().empty())
+    // 2. Détermination de la dimension du plan (largeur / hauteur paramétriques ou dynamique)
+    double hx = (m_workPlane.width() > 0.0) ? (m_workPlane.width() * 0.5) : 10.0;
+    double hy = (m_workPlane.height() > 0.0) ? (m_workPlane.height() * 0.5) : 10.0;
+    if (m_workPlane.width() <= 0.0 || m_workPlane.height() <= 0.0)
     {
-        double minX = 1e9, maxX = -1e9;
-        double minY = 1e9, maxY = -1e9;
-        double minZ = 1e9, maxZ = -1e9;
-        for (const auto& [nid, n] : m_model->nodes())
+        if (m_model && !m_model->nodes().empty())
         {
-            if (n.x() < minX) minX = n.x();
-            if (n.x() > maxX) maxX = n.x();
-            if (n.y() < minY) minY = n.y();
-            if (n.y() > maxY) maxY = n.y();
-            if (n.z() < minZ) minZ = n.z();
-            if (n.z() > maxZ) maxZ = n.z();
+            double minX = 1e9, maxX = -1e9;
+            double minY = 1e9, maxY = -1e9;
+            double minZ = 1e9, maxZ = -1e9;
+            for (const auto& [nid, n] : m_model->nodes())
+            {
+                if (n.x() < minX) minX = n.x();
+                if (n.x() > maxX) maxX = n.x();
+                if (n.y() < minY) minY = n.y();
+                if (n.y() > maxY) maxY = n.y();
+                if (n.z() < minZ) minZ = n.z();
+                if (n.z() > maxZ) maxZ = n.z();
+            }
+            double span = std::max({ maxX - minX, maxY - minY, maxZ - minZ });
+            if (span > 5.0)
+            {
+                double L = std::max(10.0, span * 0.6);
+                hx = L;
+                hy = L;
+            }
         }
-        double span = std::max({ maxX - minX, maxY - minY, maxZ - minZ });
-        if (span > 5.0)
-            L = std::max(15.0, span * 0.8);
     }
 
-    gp_Pnt orig = m_workPlane.origin();
-    gp_Dir dirU = m_workPlane.xDirection();
-    gp_Dir dirV = m_workPlane.yDirection();
-    gp_Dir dirN = m_workPlane.normal();
-
-    // 3. Panneau surfacique semi-transparent
-    gp_Pnt p00 = orig.Translated(gp_Vec(dirU) * -L).Translated(gp_Vec(dirV) * -L);
-    gp_Pnt p10 = orig.Translated(gp_Vec(dirU) *  L).Translated(gp_Vec(dirV) * -L);
-    gp_Pnt p11 = orig.Translated(gp_Vec(dirU) *  L).Translated(gp_Vec(dirV) *  L);
-    gp_Pnt p01 = orig.Translated(gp_Vec(dirU) * -L).Translated(gp_Vec(dirV) *  L);
+    // 3. Panneau surfacique semi-transparent centré en (0,0,0) local
+    gp_Pnt p00(-hx, -hy, 0.0);
+    gp_Pnt p10( hx, -hy, 0.0);
+    gp_Pnt p11( hx,  hy, 0.0);
+    gp_Pnt p01(-hx,  hy, 0.0);
 
     BRepBuilderAPI_MakePolygon poly(p00, p10, p11, p01, true);
     if (poly.IsDone())
@@ -2008,33 +2398,39 @@ void OccView::updateWorkPlaneVisual()
         }
     }
 
-    // 4. Lignes de grille UV et trièdre d'orientation
+    // 4. Lignes de grille UV locale et trièdre d'orientation
     BRep_Builder b;
     TopoDS_Compound compLines;
     b.MakeCompound(compLines);
 
-    double step = 2.0;
-    int nSteps = static_cast<int>(L / step);
-    for (int i = -nSteps; i <= nSteps; ++i)
+    if (m_workPlane.isGridVisible())
     {
-        double u = i * step;
-        gp_Pnt pA = orig.Translated(gp_Vec(dirU) * u).Translated(gp_Vec(dirV) * -L);
-        gp_Pnt pB = orig.Translated(gp_Vec(dirU) * u).Translated(gp_Vec(dirV) *  L);
-        b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
-    }
-    for (int j = -nSteps; j <= nSteps; ++j)
-    {
-        double v = j * step;
-        gp_Pnt pA = orig.Translated(gp_Vec(dirU) * -L).Translated(gp_Vec(dirV) * v);
-        gp_Pnt pB = orig.Translated(gp_Vec(dirU) *  L).Translated(gp_Vec(dirV) * v);
-        b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
+        double stepX = (m_workPlane.gridSpacingX() > 0.1) ? m_workPlane.gridSpacingX() : 2.0;
+        double stepY = (m_workPlane.gridSpacingY() > 0.1) ? m_workPlane.gridSpacingY() : 2.0;
+        int nStepsX = static_cast<int>(hx / stepX);
+        int nStepsY = static_cast<int>(hy / stepY);
+        for (int i = -nStepsX; i <= nStepsX; ++i)
+        {
+            double u = i * stepX;
+            gp_Pnt pA(u, -hy, 0.0);
+            gp_Pnt pB(u,  hy, 0.0);
+            b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
+        }
+        for (int j = -nStepsY; j <= nStepsY; ++j)
+        {
+            double v = j * stepY;
+            gp_Pnt pA(-hx, v, 0.0);
+            gp_Pnt pB( hx, v, 0.0);
+            b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
+        }
     }
 
-    // Axes U, V, N (longueur 3.0 m)
-    double axisLen = 3.0;
-    gp_Pnt ptU = orig.Translated(gp_Vec(dirU) * axisLen);
-    gp_Pnt ptV = orig.Translated(gp_Vec(dirV) * axisLen);
-    gp_Pnt ptN = orig.Translated(gp_Vec(dirN) * axisLen);
+    // Axes U, V, N au centre (0,0,0)
+    double axisLen = std::max(2.0, std::min(hx, hy) * 0.35);
+    gp_Pnt orig(0.0, 0.0, 0.0);
+    gp_Pnt ptU(axisLen, 0.0, 0.0);
+    gp_Pnt ptV(0.0, axisLen, 0.0);
+    gp_Pnt ptN(0.0, 0.0, axisLen);
     b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptU).Edge());
     b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptV).Edge());
     b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptN).Edge());
@@ -2044,10 +2440,35 @@ void OccView::updateWorkPlaneVisual()
     m_workPlaneAxesShape->SetWidth(1.5);
     m_context->Display(m_workPlaneAxesShape, false);
 
-    // Synchronisation du repère privilégié du viewer OCCT
+    // Appliquer la transformation 3D globale
+    gp_Trsf trsf;
+    gp_Ax3 stdCS(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0));
+    trsf.SetDisplacement(stdCS, m_workPlane.coordinateSystem());
+    if (!m_workPlaneShape.IsNull())
+    {
+        m_workPlaneShape->SetLocalTransformation(trsf);
+    }
+    m_workPlaneAxesShape->SetLocalTransformation(trsf);
+
+    if (m_selectionManager && !m_workPlaneShape.IsNull())
+    {
+        m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneShape);
+    }
+
     if (!m_viewer.IsNull())
     {
         m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
+    }
+
+    if (m_selectionManager && m_selectionManager->isWorkPlaneSelected() &&
+        m_selectionManager->selectedWorkPlaneId() == m_workPlane.id())
+    {
+        attachManipulatorToWorkPlane();
+    }
+
+    if (m_workPlane.isIsolated())
+    {
+        updateElementIsolation();
     }
 
     if (!m_view.IsNull())
@@ -3547,6 +3968,15 @@ void OccView::mousePressEvent(QMouseEvent* event)
 
     if (event->button() == Qt::LeftButton)
     {
+        // 0. Clic interactif prioritaire sur le Gizmo AIS_Manipulator du Plan de Travail
+        if (!m_manipulator.IsNull() && m_manipulator->HasActiveMode())
+        {
+            m_isManipulatingWorkPlane = true;
+            m_manipulatorStartWp = m_workPlane;
+            m_manipulator->StartTransform(px, py, m_view);
+            return;
+        }
+
         // 1. Clic prioritaire sur le ViewCube 3D (réorientation de caméra)
         if (!m_context.IsNull() && !m_viewCube.IsNull())
         {
@@ -4104,6 +4534,27 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
 
     if (event->button() == Qt::LeftButton)
     {
+        // 0. Fin de manipulation interactive du Plan de Travail via Gizmo
+        if (m_isManipulatingWorkPlane && !m_manipulator.IsNull())
+        {
+            m_manipulator->StopTransform(true);
+            m_isManipulatingWorkPlane = false;
+
+            if (m_model)
+            {
+                m_model->pushUndoState(tr("Modification Plan de Travail").toStdString());
+                if (m_model->workPlaneManager())
+                {
+                    m_model->workPlaneManager()->updateWorkPlane(m_workPlane);
+                }
+            }
+
+            emit workPlaneChanged(m_workPlane);
+            if (!m_view.IsNull())
+                m_view->Redraw();
+            return;
+        }
+
         if (interactionMode() == InteractionMode::Select)
         {
             if (m_currentAction == CurrentAction::WindowSelect)
@@ -4244,6 +4695,45 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
 
     // Émettre les coordonnées logiques exactes pour le suivi parfait du curseur par le triangle des règles
     emit mousePixelPositionChanged(event->position().toPoint().x(), event->position().toPoint().y());
+
+    // 0. Déplacement interactif du Plan de Travail via le Gizmo AIS_Manipulator
+    if (m_isManipulatingWorkPlane && !m_manipulator.IsNull())
+    {
+        m_manipulator->Transform(px, py, m_view);
+        gp_Trsf trsf = m_workPlaneShape->LocalTransformation();
+        if (!m_workPlaneAxesShape.IsNull())
+        {
+            m_workPlaneAxesShape->SetLocalTransformation(trsf);
+        }
+
+        gp_Pnt orig(0, 0, 0);
+        orig.Transform(trsf);
+        gp_Dir dirX(1, 0, 0);
+        dirX.Transform(trsf);
+        gp_Dir dirY(0, 1, 0);
+        dirY.Transform(trsf);
+        gp_Dir dirZ(0, 0, 1);
+        dirZ.Transform(trsf);
+
+        m_workPlane.setOrigin(orig);
+        m_workPlane.setLocalAxes(dirX, dirY, dirZ);
+
+        TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
+        if (!m_viewer.IsNull())
+        {
+            m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
+        }
+
+        if (m_workPlane.isIsolated())
+        {
+            updateElementIsolation();
+        }
+
+        emit workPlaneChanged(m_workPlane);
+        if (!m_view.IsNull())
+            m_view->Redraw();
+        return;
+    }
 
     // Mode Zoom Fenêtre interactif
     if (m_currentAction == CurrentAction::ZoomWindow && (event->buttons() & Qt::LeftButton))

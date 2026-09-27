@@ -33,6 +33,7 @@ namespace TSA::Grid
 #include "../Coordinate/WorkPlane.h"
 #include <AIS_ViewCube.hxx>
 #include <AIS_RubberBand.hxx>
+#include <AIS_Manipulator.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 #include <Graphic3d_Camera.hxx>
 #include <gp_Ax3.hxx>
@@ -127,6 +128,20 @@ public:
     bool isWorkPlaneVisible() const { return m_workPlaneVisible; }
     void viewNormalToWorkPlane();
     void updateWorkPlaneVisual();
+
+    // Manipulation 3D interactive, Gizmo & Isolation du Plan de Travail
+    void attachManipulatorToWorkPlane();
+    void detachManipulator();
+    bool isManipulatingWorkPlane() const { return m_isManipulatingWorkPlane; }
+    void applyWorkPlaneTransformation();
+    void setWorkPlaneIsolation(bool isolated, double distance = 1.0);
+    void updateElementIsolation();
+
+    // Repère Local des Éléments Structuraux (LCS - Règle 10 & 11)
+    void setShowLocalAxes(bool show);
+    bool showLocalAxes() const { return m_showLocalAxes; }
+    void updateSelectedElementLocalAxes();
+    void clearSelectedElementLocalAxes();
 
     QImage captureViewImage(int width = 512, int height = 512);
 
@@ -380,6 +395,13 @@ private:
     Handle(AIS_Shape) m_workPlaneShape;
     Handle(AIS_Shape) m_workPlaneAxesShape;
     bool m_workPlaneVisible = true;
+    Handle(AIS_Manipulator) m_manipulator;
+    bool m_isManipulatingWorkPlane = false;
+    TSA::Coordinate::WorkPlane m_manipulatorStartWp;
+
+    // Repère local de l'élément sélectionné
+    Handle(AIS_Shape) m_elementLocalAxesShape;
+    bool m_showLocalAxes = true;
 
     // Historique Caméra (Previous / Next View)
     std::vector<Handle(Graphic3d_Camera)> m_cameraUndoStack;

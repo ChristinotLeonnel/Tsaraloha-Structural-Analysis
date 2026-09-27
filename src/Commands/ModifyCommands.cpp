@@ -1,4 +1,5 @@
 #include "ModifyCommands.h"
+#include "../Coordinate/WorkPlaneManager.h"
 
 namespace TSA::Commands
 {
@@ -90,6 +91,45 @@ bool DeleteElementsCommand::undo()
     if (!m_hasSnapshot) return false;
     m_model.restoreSnapshot(m_snapshot);
     return true;
+}
+
+// -----------------------------------------------------------------------------
+// ModifyWorkPlaneCommand
+// -----------------------------------------------------------------------------
+ModifyWorkPlaneCommand::ModifyWorkPlaneCommand(int workPlaneId,
+                                               const TSA::Coordinate::WorkPlane& oldWp,
+                                               const TSA::Coordinate::WorkPlane& newWp,
+                                               TSA::Coordinate::WorkPlaneManager* manager)
+    : m_wpId(workPlaneId)
+    , m_oldWp(oldWp)
+    , m_newWp(newWp)
+    , m_manager(manager)
+{
+    m_oldWp.setId(m_wpId);
+    m_newWp.setId(m_wpId);
+}
+
+bool ModifyWorkPlaneCommand::execute()
+{
+    if (m_manager)
+    {
+        m_manager->updateWorkPlane(m_newWp);
+    }
+    return true;
+}
+
+bool ModifyWorkPlaneCommand::undo()
+{
+    if (m_manager)
+    {
+        m_manager->updateWorkPlane(m_oldWp);
+    }
+    return true;
+}
+
+std::string ModifyWorkPlaneCommand::name() const
+{
+    return "Modifier Plan de Travail (" + m_newWp.name() + ")";
 }
 
 } // namespace TSA::Commands

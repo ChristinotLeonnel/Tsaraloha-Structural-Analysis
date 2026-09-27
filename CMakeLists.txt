@@ -67,6 +67,8 @@ set(SOURCES
     src/UI/Properties/FoundationPropertiesView.cpp
     src/UI/Properties/TrussMemberPropertiesView.h
     src/UI/Properties/TrussMemberPropertiesView.cpp
+    src/UI/Properties/WorkPlanePropertiesView.h
+    src/UI/Properties/WorkPlanePropertiesView.cpp
     src/UI/Dialogs/TransformDialog.h
     src/UI/Dialogs/TransformDialog.cpp
     src/UI/Dialogs/GridDialog.h
@@ -157,6 +159,8 @@ set(SOURCES
     src/Coordinate/CylindricalCoordinates.cpp
     src/Coordinate/WorkPlane.h
     src/Coordinate/WorkPlane.cpp
+    src/Coordinate/WorkPlaneManager.h
+    src/Coordinate/WorkPlaneManager.cpp
     src/Coordinate/CoordinateTransformationService.h
     src/Coordinate/CoordinateTransformationService.cpp
     src/Grid/GridType.h
@@ -347,6 +351,8 @@ set(TEST_SOURCES
     src/Coordinate/CylindricalCoordinates.cpp
     src/Coordinate/WorkPlane.h
     src/Coordinate/WorkPlane.cpp
+    src/Coordinate/WorkPlaneManager.h
+    src/Coordinate/WorkPlaneManager.cpp
     src/Coordinate/CoordinateTransformationService.h
     src/Coordinate/CoordinateTransformationService.cpp
     src/Model/Element.h

@@ -1,0 +1,27 @@
+# TSA — Contexte pour Gemini
+
+Ce fichier existe pour que Gemini partage le même contexte que les autres agents IA
+(Claude, etc.) travaillant sur TSA (Tsaraloha Structural Analysis).
+
+La référence générale des règles est `AGENTS.md` à la racine du dépôt — ne pas la
+dupliquer ici. Les règles thématiques détaillées sont dans `.agents/rules/`, les
+procédures pas-à-pas dans `.agents/skills/`, les rôles spécialisés dans `.agents/agents/`.
+
+## Documents vivants à consulter avant toute tâche
+
+@docs/ARCHITECTURE.md
+@docs/MODEL.md
+@docs/UI.md
+@docs/OCCT.md
+@docs/COORDINATES.md
+@docs/SECTIONS.md
+@docs/MATERIALS.md
+@docs/ROADMAP.md
+
+Ces fichiers documentent l'architecture réelle du dépôt telle que constatée dans le code.
+Toute divergence entre ces documents et le code doit être résolue en faveur du code, puis
+corrigée dans le document concerné.
+
+Documentation additionnelle déjà présente dans le dépôt (à ne pas remplacer) :
+`DOCUMENTATION.md`, `README.md`, `docs/TSALIB_SYSTEM.md`, `docs/TSA_DIAGNOSTICS.md`,
+`docs/TSA_FILE_FORMAT.md`, `docs/cable-system/`.

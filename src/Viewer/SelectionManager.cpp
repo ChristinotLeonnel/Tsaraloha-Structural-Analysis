@@ -64,6 +64,27 @@ void SelectionManager::registerCable(int cableId, const Handle(AIS_InteractiveOb
     m_objToCable[obj] = cableId;
 }
 
+void SelectionManager::registerWorkPlane(int workPlaneId, const Handle(AIS_InteractiveObject)& obj)
+{
+    if (obj.IsNull()) return;
+    m_workPlaneToObj[workPlaneId] = obj;
+    m_objToWorkPlane[obj] = workPlaneId;
+}
+
+void SelectionManager::unregisterWorkPlane(int workPlaneId)
+{
+    auto it = m_workPlaneToObj.find(workPlaneId);
+    if (it != m_workPlaneToObj.end())
+    {
+        m_objToWorkPlane.erase(it->second);
+        m_workPlaneToObj.erase(it);
+    }
+    if (m_primaryId == workPlaneId && m_selectionType == SelectionType::WorkPlane)
+    {
+        clearSelection();
+    }
+}
+
 void SelectionManager::unregisterNode(int nodeId)
 {
     auto it = m_nodeToObj.find(nodeId);
@@ -170,6 +191,8 @@ void SelectionManager::clearRegistry()
     m_objToTruss.clear();
     m_cableToObj.clear();
     m_objToCable.clear();
+    m_workPlaneToObj.clear();
+    m_objToWorkPlane.clear();
 }
 
 int SelectionManager::getNodeId(const Handle(AIS_InteractiveObject)& obj) const
@@ -220,6 +243,12 @@ int SelectionManager::getCableId(const Handle(AIS_InteractiveObject)& obj) const
     return (it != m_objToCable.end()) ? it->second : -1;
 }
 
+int SelectionManager::getWorkPlaneId(const Handle(AIS_InteractiveObject)& obj) const
+{
+    auto it = m_objToWorkPlane.find(obj);
+    return (it != m_objToWorkPlane.end()) ? it->second : -1;
+}
+
 Handle(AIS_InteractiveObject) SelectionManager::getNodeObject(int nodeId) const
 {
     auto it = m_nodeToObj.find(nodeId);
@@ -266,6 +295,12 @@ Handle(AIS_InteractiveObject) SelectionManager::getCableObject(int cableId) cons
 {
     auto it = m_cableToObj.find(cableId);
     return (it != m_cableToObj.end()) ? it->second : Handle(AIS_InteractiveObject)();
+}
+
+Handle(AIS_InteractiveObject) SelectionManager::getWorkPlaneObject(int workPlaneId) const
+{
+    auto it = m_workPlaneToObj.find(workPlaneId);
+    return (it != m_workPlaneToObj.end()) ? it->second : Handle(AIS_InteractiveObject)();
 }
 
 void SelectionManager::selectNode(int nodeId, bool multiSelect)
@@ -436,6 +471,26 @@ void SelectionManager::selectCable(int cableId, bool multiSelect)
     emit selectionChanged();
 }
 
+void SelectionManager::selectWorkPlane(int workPlaneId, bool multiSelect)
+{
+    if (!multiSelect)
+    {
+        m_selectedNodes.clear();
+        m_selectedBeams.clear();
+        m_selectedColumns.clear();
+        m_selectedSlabs.clear();
+        m_selectedWalls.clear();
+        m_selectedFoundations.clear();
+        m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
+    }
+    m_selectionType = SelectionType::WorkPlane;
+    m_primaryId = workPlaneId;
+
+    emit workPlaneSelected(workPlaneId);
+    emit selectionChanged();
+}
+
 void SelectionManager::selectObject(const Handle(AIS_InteractiveObject)& obj, bool multiSelect)
 {
     if (obj.IsNull())
@@ -443,6 +498,9 @@ void SelectionManager::selectObject(const Handle(AIS_InteractiveObject)& obj, bo
         clearSelection();
         return;
     }
+
+    int wpId = getWorkPlaneId(obj);
+    if (wpId > 0) { selectWorkPlane(wpId, multiSelect); return; }
 
     int beamId = getBeamId(obj);
     if (beamId > 0) { selectBeam(beamId, multiSelect); return; }
