@@ -87,9 +87,32 @@ struct RibbonActions
     QAction* actionViewXY = nullptr;
     QAction* actionViewXZ = nullptr;
     QAction* actionViewYZ = nullptr;
+    QAction* actionViewTop = nullptr;
+    QAction* actionViewBottom = nullptr;
+    QAction* actionViewFront = nullptr;
+    QAction* actionViewBack = nullptr;
+    QAction* actionViewLeft = nullptr;
+    QAction* actionViewRight = nullptr;
+    QAction* actionViewIsometric = nullptr;
+    QAction* actionViewHome = nullptr;
+
     QAction* actionFitAll = nullptr;
+    QAction* actionFitSelection = nullptr;
     QAction* actionResetView = nullptr;
+    QAction* actionZoomIn = nullptr;
+    QAction* actionZoomOut = nullptr;
+    QAction* actionZoomWindow = nullptr;
+    QAction* actionPreviousView = nullptr;
+    QAction* actionNextView = nullptr;
+
     QAction* actionCoordSystem = nullptr;
+    QAction* actionWorkPlaneXY = nullptr;
+    QAction* actionWorkPlaneXZ = nullptr;
+    QAction* actionWorkPlaneYZ = nullptr;
+    QAction* actionWorkPlaneLevel = nullptr;
+    QAction* actionWorkPlaneCustom = nullptr;
+    QAction* actionWorkPlaneVisible = nullptr;
+    QAction* actionViewNormalToPlane = nullptr;
     QAction* actionSectionCut = nullptr;
 
     QAction* actionGridVisible = nullptr;

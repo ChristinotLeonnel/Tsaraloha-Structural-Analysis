@@ -22,6 +22,7 @@ public:
     bool execute() override;
     bool undo() override;
     std::string name() const override { return "Créer " + m_beamName; }
+    CommandCategory category() const override { return CommandCategory::Create; }
 
     int createdBeamId() const noexcept { return m_createdBeamId; }
 

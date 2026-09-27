@@ -30,9 +30,11 @@ namespace TSA::Grid
 #include "../Grid/GridRenderer.h"
 #include "../Model/CreationPresets.h"
 #include "../Interaction/InteractionManager.h"
+#include "../Coordinate/WorkPlane.h"
 #include <AIS_ViewCube.hxx>
 #include <AIS_RubberBand.hxx>
 #include <Graphic3d_ClipPlane.hxx>
+#include <Graphic3d_Camera.hxx>
 #include <gp_Ax3.hxx>
 #include "MaterialVisual.h"
 
@@ -89,10 +91,43 @@ public:
 
     TSA::Viewer::SelectionManager* selectionManager() const { return m_selectionManager; }
 
-    // Actions de vue
+    // Actions de vue et navigation étendues (AutoCAD / Robot SA style)
     void fitAll();
+    void fitSelection();
     void resetView();
+    void viewHome();
+    void viewTop();
+    void viewBottom();
+    void viewFront();
+    void viewBack();
+    void viewLeft();
+    void viewRight();
+    void viewIsometric();
+
+    void zoomIn(double factor = 1.25);
+    void zoomOut(double factor = 1.25);
     void zoomAtCursor(const QPointF& logicalMousePos, double zoomFactor);
+    void zoomWindow(int x1, int y1, int x2, int y2);
+    void startInteractiveZoomWindow();
+    void rotate2D(double angleDeg);
+
+    // Historique de navigation de caméra (Previous / Next view)
+    void pushCameraHistory();
+    void previousView();
+    void nextView();
+    bool hasPreviousView() const;
+    bool hasNextView() const;
+
+    // Gestion du Plan de Travail actif (Work Plane)
+    const TSA::Coordinate::WorkPlane& activeWorkPlane() const { return m_workPlane; }
+    void setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp);
+    void setWorkPlaneElevation(double elevation);
+    void setWorkPlaneType(TSA::Coordinate::WorkPlaneType type, double offset = 0.0);
+    void setWorkPlaneVisible(bool visible);
+    bool isWorkPlaneVisible() const { return m_workPlaneVisible; }
+    void viewNormalToWorkPlane();
+    void updateWorkPlaneVisual();
+
     QImage captureViewImage(int width = 512, int height = 512);
 
     // Intégration du système de Grille 3D paramétrique
@@ -211,6 +246,11 @@ signals:
     void pasteAtPointRequested(const gp_Pnt& target);
     void elementCreated();
 
+    // Signaux Navigation & Modélisation CAO avancée
+    void cameraHistoryChanged(bool hasPrev, bool hasNext);
+    void workPlaneChanged(const TSA::Coordinate::WorkPlane& wp);
+    void snapChanged(const TSA::Grid::GridSnapResult& snap);
+
 protected:
     // IModelObserver overrides
     void onNodeAdded(const TSA::Model::Node& node) override;
@@ -302,7 +342,8 @@ private:
         Nothing,
         Pan,
         Rotation,
-        WindowSelect
+        WindowSelect,
+        ZoomWindow
     };
 
     CurrentAction m_currentAction = CurrentAction::Nothing;
@@ -333,6 +374,24 @@ private:
     Handle(Graphic3d_ClipPlane) m_clipPlane;
 
     Handle(AIS_ViewCube) m_viewCube;
+
+    // Plan de Travail (WorkPlane) actif & Visualiseur 3D
+    TSA::Coordinate::WorkPlane m_workPlane;
+    Handle(AIS_Shape) m_workPlaneShape;
+    Handle(AIS_Shape) m_workPlaneAxesShape;
+    bool m_workPlaneVisible = true;
+
+    // Historique Caméra (Previous / Next View)
+    std::vector<Handle(Graphic3d_Camera)> m_cameraUndoStack;
+    std::vector<Handle(Graphic3d_Camera)> m_cameraRedoStack;
+    bool m_isRestoringCamera = false;
+    static constexpr size_t MAX_CAMERA_HISTORY = 30;
+
+    // Marqueur visuel interactif d'accrochage (Snap Marker)
+    TSA::Grid::GridSnapResult m_lastSnapResult;
+    Handle(AIS_Shape) m_snapMarkerShape;
+    void updateSnapMarker(const TSA::Grid::GridSnapResult& snap);
+    void clearSnapMarker();
 
     std::unique_ptr<TSA::Interaction::InteractionManager> m_interactionManager;
     std::vector<int> m_drawingNodeIds;

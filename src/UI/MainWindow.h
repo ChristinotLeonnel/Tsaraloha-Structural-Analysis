@@ -11,8 +11,10 @@
 #include "../Model/StructuralClipboard.h"
 
 namespace TSA::Model { class Model; }
+namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Project { class ProjectManager; }
 namespace TSA::Viewer { class SelectionManager; }
+namespace TSA::UndoRedo { class CommandManager; }
 namespace TSA::Grid
 {
     class GridManager;
@@ -34,6 +36,7 @@ namespace TSA::UI
     class SurfaceCreationDialog;
     class GridDialog;
     class GridSettingsDialog;
+    class WorkPlaneDialog;
 }
 
 class OccView;
@@ -52,6 +55,9 @@ public:
 
     TSA::Model::Model* model() { return m_model.get(); }
     const TSA::Model::Model* model() const { return m_model.get(); }
+
+    TSA::UndoRedo::CommandManager* commandManager() { return m_commandManager.get(); }
+    const TSA::UndoRedo::CommandManager* commandManager() const { return m_commandManager.get(); }
 
     TSA::Grid::GridManager* gridManager() { return m_gridManager.get(); }
     const TSA::Grid::GridManager* gridManager() const { return m_gridManager.get(); }
@@ -133,6 +139,7 @@ private:
 
 private:
     std::unique_ptr<TSA::Model::Model> m_model;
+    std::unique_ptr<TSA::UndoRedo::CommandManager> m_commandManager;
     std::unique_ptr<TSA::Viewer::SelectionManager> m_selectionManager;
     std::unique_ptr<TSA::Grid::GridManager> m_gridManager;
     std::unique_ptr<TSA::Grid::GridSnapManager> m_gridSnapManager;
@@ -216,13 +223,43 @@ private:
 
     TSA::Model::StructuralClipboard m_clipboard;
 
-    // Actions Barre "Vue" (Robot SA style)
+    // Actions Barre "Vue" & Navigation (AutoCAD / Robot SA style)
     QAction* m_actionViewXY = nullptr;
     QAction* m_actionViewYZ = nullptr;
     QAction* m_actionViewXZ = nullptr;
     QAction* m_actionView3D = nullptr;
+    QAction* m_actionViewHome = nullptr;
+    QAction* m_actionViewTop = nullptr;
+    QAction* m_actionViewBottom = nullptr;
+    QAction* m_actionViewFront = nullptr;
+    QAction* m_actionViewBack = nullptr;
+    QAction* m_actionViewLeft = nullptr;
+    QAction* m_actionViewRight = nullptr;
+    QAction* m_actionViewIsometric = nullptr;
+
+    QAction* m_actionFitSelection = nullptr;
+    QAction* m_actionZoomIn = nullptr;
+    QAction* m_actionZoomOut = nullptr;
+    QAction* m_actionZoomWindow = nullptr;
+    QAction* m_actionRotateLeft = nullptr;
+    QAction* m_actionRotateRight = nullptr;
+    QAction* m_actionPreviousView = nullptr;
+    QAction* m_actionNextView = nullptr;
+
+    QAction* m_actionWorkPlaneXY = nullptr;
+    QAction* m_actionWorkPlaneXZ = nullptr;
+    QAction* m_actionWorkPlaneYZ = nullptr;
+    QAction* m_actionWorkPlaneLevel = nullptr;
+    QAction* m_actionWorkPlaneCustom = nullptr;
+    QAction* m_actionWorkPlaneVisible = nullptr;
+    QAction* m_actionViewNormalToPlane = nullptr;
+    QActionGroup* m_workPlaneGroup = nullptr;
+
     QAction* m_actionCoordSystem = nullptr;
     QAction* m_actionSectionCut = nullptr;
+
+    QLabel* m_statusWorkPlane = nullptr;
+    QLabel* m_statusSnap = nullptr;
 
     // Actions Thème & Aide
     QAction* m_actionToggleTheme = nullptr;
@@ -265,6 +302,31 @@ private:
     QPointer<TSA::UI::GridSettingsDialog> m_gridSettingsDialog;
 
 private slots:
+    void onFitSelection();
+    void onZoomIn();
+    void onZoomOut();
+    void onZoomWindow();
+    void onPreviousView();
+    void onNextView();
+    void onActionViewHome();
+    void onActionViewTop();
+    void onActionViewBottom();
+    void onActionViewFront();
+    void onActionViewBack();
+    void onActionViewLeft();
+    void onActionViewRight();
+    void onActionViewIsometric();
+    void onRotate2DLeft();
+    void onRotate2DRight();
+    void onWorkPlaneXY();
+    void onWorkPlaneXZ();
+    void onWorkPlaneYZ();
+    void onWorkPlaneLevel();
+    void onActionWorkPlaneCustom();
+    void onActionToggleWorkPlaneVisible(bool checked);
+    void onActionViewNormalToPlane();
+    void onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp);
+
     void onActionViewXY();
     void onActionViewYZ();
     void onActionViewXZ();

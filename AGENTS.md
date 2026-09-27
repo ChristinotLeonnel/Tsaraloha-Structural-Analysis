@@ -1639,3 +1639,50 @@ avec
 Le premier est souhaité lorsque les besoins métier sont différents ; le second doit être évité lorsqu'une infrastructure commune existe déjà.
 
 Cette règle s'applique à tous les éléments de TSA, pas uniquement au Cable.
+
+---
+
+## 15. Règle — Architecture Globale du Projet
+
+L'architecture retenue pour TSA est une architecture modulaire en couches, orientée domaine, avec **Command + Services + événements**, proche d'une architecture de type **Hexagonal / Clean Architecture** adaptée à une application CAO/CAE.
+
+```text
+                         ┌───────────────────────────┐
+                         │          UI / Qt          │
+                         │ MainWindow / Dialogs /    │
+                         │ Panels / Toolbars         │
+                         └─────────────┬─────────────┘
+                          Commands ↓        ↑ Events (via EventBus)
+                         ┌───────────────────────────┐
+                         │       APPLICATION         │
+                         │ Commands / Use Cases /    │
+                         │ Selection / Undo-Redo     │
+                         └─────────────┬─────────────┘
+                                       │ appelle
+                                       ▼
+                         ┌───────────────────────────┐
+                         │          DOMAIN           │
+                         │ Model, Beam, Cable, Wall…  │
+                         │ Domain Services (Library,  │
+                         │ Section, Material Manager) │
+                         │                            │
+                         │ ── définit des PORTS ──    │
+                         │ IGeometryPort              │
+                         │ IPersistencePort           │
+                         │ IEventPublisher            │
+                         └─────────────┬─────────────┘
+                                       ▲ implémente (dépendance inversée)
+                                       │
+                         ┌───────────────────────────┐
+                         │      INFRASTRUCTURE       │
+                         │ OcctGeometryAdapter (OCCT) │
+                         │ JsonPersistenceAdapter     │
+                         │ QtEventBusAdapter          │
+                         └───────────────────────────┘
+```
+
+Cette orientation architecturale sert de cadre de référence pour l'ensemble des règles précédentes (Command System, Property System, interconnexion des éléments, organisation des fenêtres), avec deux précisions importantes :
+
+- **Inversion de dépendance (le cœur du Hexagonal) :** le Domain ne dépend jamais d'Infrastructure. C'est le Domain qui définit les ports (`IGeometryPort`, `IPersistencePort`, `IEventPublisher`) et Infrastructure qui les implémente via des adaptateurs (`OcctGeometryAdapter`, `JsonPersistenceAdapter`, `QtEventBusAdapter`). Ainsi le Domain (Model, TsaLib) reste réellement indépendant d'OCCT, de Qt et du format de fichier (cohérent avec la règle 10.10).
+- **Services de domaine vs adaptateurs techniques :** `LibraryManager`, `SectionManager`, `MaterialManager` sont des services de domaine (logique métier CAO) et restent dans la couche Domain. `Serialization`, le rendu OCCT, l'accès fichier sont des adaptateurs techniques et vont dans Infrastructure — ne pas les mélanger dans une même couche « Services » générique.
+- **Les événements formalisent la remontée d'information** décrite par la règle 10 (interconnexion) : le Domain publie des événements via `IEventPublisher` sans connaître l'UI ; Application/UI s'y abonnent pour se mettre à jour (viewport, panneau de propriétés, sélection). Cela permet de concilier la règle 10 (« tout doit rester synchronisé ») avec le principe Hexagonal (« le Domain ne connaît pas les détails techniques ») : la synchronisation passe par les ports/événements, jamais par un appel direct du Domain vers Qt ou OCCT.

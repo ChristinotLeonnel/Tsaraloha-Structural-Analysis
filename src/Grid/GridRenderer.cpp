@@ -641,17 +641,49 @@ void GridRenderer::showSnapMarker(const GridSnapResult& snap, const Handle(AIS_I
     gp_Pnt maxP(snap.point.X() + sz, snap.point.Y() + sz, snap.point.Z() + sz);
     TopoDS_Shape boxShape = BRepPrimAPI_MakeBox(minP, maxP).Shape();
 
+    Quantity_Color markerColor;
+    switch (snap.type)
+    {
+    case GridSnapType::Endpoint:
+        markerColor = Quantity_NOC_ORANGE;
+        break;
+    case GridSnapType::Midpoint:
+        markerColor = Quantity_NOC_YELLOW;
+        break;
+    case GridSnapType::Center:
+        markerColor = Quantity_NOC_MAGENTA;
+        break;
+    case GridSnapType::Intersection:
+        markerColor = Quantity_NOC_SPRINGGREEN;
+        break;
+    case GridSnapType::Perpendicular:
+        markerColor = Quantity_NOC_CYAN1;
+        break;
+    case GridSnapType::Nearest:
+        markerColor = Quantity_NOC_DEEPSKYBLUE1;
+        break;
+    case GridSnapType::Node:
+        markerColor = Quantity_NOC_INDIANRED1;
+        break;
+    case GridSnapType::Circle:
+        markerColor = Quantity_NOC_GOLD;
+        break;
+    default:
+        markerColor = Quantity_NOC_CYAN1;
+        break;
+    }
+
     if (m_snapMarkerShape.IsNull())
     {
         m_snapMarkerShape = new AIS_Shape(boxShape);
         m_snapMarkerShape->SetDisplayMode(AIS_Shaded);
-        m_snapMarkerShape->SetColor(snap.type == GridSnapType::Intersection ? Quantity_NOC_SPRINGGREEN : Quantity_NOC_CYAN1);
+        m_snapMarkerShape->SetColor(markerColor);
         context->Display(m_snapMarkerShape, false);
     }
     else
     {
         m_snapMarkerShape->SetShape(boxShape);
-        m_snapMarkerShape->SetColor(snap.type == GridSnapType::Intersection ? Quantity_NOC_SPRINGGREEN : Quantity_NOC_CYAN1);
+        m_snapMarkerShape->SetColor(markerColor);
         if (!context->IsDisplayed(m_snapMarkerShape))
         {
             context->Display(m_snapMarkerShape, false);

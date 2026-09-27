@@ -193,6 +193,28 @@ void ViewportContainer::setActiveLevelIndex(int index)
     }
 }
 
+void ViewportContainer::setActiveLevelElevation(double elevation)
+{
+    if (!m_levelCombo)
+        return;
+
+    for (int i = 0; i < m_levelCombo->count(); ++i)
+    {
+        double e = m_levelCombo->itemData(i).toDouble();
+        if (std::abs(e - elevation) < 1e-3)
+        {
+            if (m_levelCombo->currentIndex() != i)
+            {
+                m_levelCombo->blockSignals(true);
+                m_levelCombo->setCurrentIndex(i);
+                m_levelCombo->blockSignals(false);
+                updateRulers();
+            }
+            return;
+        }
+    }
+}
+
 void ViewportContainer::onLevelComboChanged(int index)
 {
     if (!m_levelCombo || index < 0 || index >= m_levelCombo->count())

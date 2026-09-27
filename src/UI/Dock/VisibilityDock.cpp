@@ -49,6 +49,10 @@ void VisibilityDock::setupUi()
     m_chkCoords->setChecked(false);
     guidesLayout->addWidget(m_chkCoords);
 
+    m_chkWorkPlane = new QCheckBox(tr("Plan de travail 3D (W)"), guidesGroup);
+    m_chkWorkPlane->setChecked(true);
+    guidesLayout->addWidget(m_chkWorkPlane);
+
     mainLayout->addWidget(guidesGroup);
 
     // Groupe Modèle & Structure
@@ -117,6 +121,14 @@ void VisibilityDock::bindCoordSystemAction(QAction* act)
     m_chkCoords->setChecked(act->isChecked());
     connect(m_chkCoords, &QCheckBox::toggled, act, &QAction::setChecked);
     connect(act, &QAction::toggled, m_chkCoords, &QCheckBox::setChecked);
+}
+
+void VisibilityDock::bindWorkPlaneVisibleAction(QAction* act)
+{
+    if (!act || !m_chkWorkPlane) return;
+    m_chkWorkPlane->setChecked(act->isChecked());
+    connect(m_chkWorkPlane, &QCheckBox::toggled, act, &QAction::setChecked);
+    connect(act, &QAction::toggled, m_chkWorkPlane, &QCheckBox::setChecked);
 }
 
 } // namespace TSA::UI

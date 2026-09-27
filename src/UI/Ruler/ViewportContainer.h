@@ -34,6 +34,7 @@ public:
                         const std::vector<std::string> &names = {});
   double activeLevelElevation() const;
   void setActiveLevelIndex(int index);
+  void setActiveLevelElevation(double elevation);
 
 signals:
   void activeLevelChanged(double elevation, const QString &name);

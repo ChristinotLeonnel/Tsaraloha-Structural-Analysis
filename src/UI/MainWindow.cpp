@@ -2,6 +2,7 @@
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "../Model/Model.h"
+#include "../Coordinate/WorkPlane.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
 #include "ModelTree/ModelTreeWidget.h"
@@ -10,6 +11,7 @@
 #include "Dialogs/GridDialog.h"
 #include "Dialogs/GridSettingsDialog.h"
 #include "Dialogs/LevelDialog.h"
+#include "Dialogs/WorkPlaneDialog.h"
 #include "Dialogs/SectionCutDialog.h"
 #include "Ruler/ViewportContainer.h"
 #include "Ribbon/RibbonBar.h"
@@ -30,6 +32,10 @@
 #include "../Library/LibraryManager.h"
 #include "../Project/ProjectManager.h"
 #include "../IO/TSAFile.h"
+#include "../UndoRedo/CommandManager.h"
+#include "../Commands/CreateElementCommands.h"
+#include "../Commands/ModifyCommands.h"
+#include "../Commands/CommandCatalog.h"
 
 #include <QMenuBar>
 #include <QToolBar>
@@ -81,6 +87,7 @@ static inline QIcon makeRedoIcon() { return QIcon(":/icons/edit/redo.svg"); }
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , m_model(std::make_unique<TSA::Model::Model>())
+    , m_commandManager(std::make_unique<TSA::UndoRedo::CommandManager>(m_model.get(), m_model->undoManager()))
     , m_selectionManager(std::make_unique<TSA::Viewer::SelectionManager>(this))
     , m_gridManager(std::make_unique<TSA::Grid::GridManager>())
     , m_gridSnapManager(std::make_unique<TSA::Grid::GridSnapManager>())
@@ -316,6 +323,143 @@ void MainWindow::createActions()
     m_actionResetView->setToolTip(tr("Réinitialiser l'orientation de caméra 3D (R)"));
     m_actionResetView->setShortcut(QKeySequence(Qt::Key_R));
     connect(m_actionResetView, &QAction::triggered, this, &MainWindow::onResetView);
+
+    m_actionFitSelection = new QAction(tr("Zoom &Sélection (Fit Selection)"), this);
+    m_actionFitSelection->setIcon(QIcon(":/icons/fit_all.svg"));
+    m_actionFitSelection->setToolTip(tr("Cadrer la vue sur les éléments sélectionnés (Maj+F)"));
+    m_actionFitSelection->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_F));
+    connect(m_actionFitSelection, &QAction::triggered, this, &MainWindow::onFitSelection);
+
+    m_actionZoomIn = new QAction(tr("Zoom &Avant (+)"), this);
+    m_actionZoomIn->setIcon(QIcon(":/icons/zoom_in.svg"));
+    m_actionZoomIn->setToolTip(tr("Agrandir la vue (+)"));
+    m_actionZoomIn->setShortcut(QKeySequence(Qt::Key_Plus));
+    connect(m_actionZoomIn, &QAction::triggered, this, &MainWindow::onZoomIn);
+
+    m_actionZoomOut = new QAction(tr("Zoom A&rrière (-)"), this);
+    m_actionZoomOut->setIcon(QIcon(":/icons/zoom_out.svg"));
+    m_actionZoomOut->setToolTip(tr("Réduire la vue (-)"));
+    m_actionZoomOut->setShortcut(QKeySequence(Qt::Key_Minus));
+    connect(m_actionZoomOut, &QAction::triggered, this, &MainWindow::onZoomOut);
+
+    m_actionZoomWindow = new QAction(tr("Zoom &Fenêtre"), this);
+    m_actionZoomWindow->setIcon(QIcon(":/icons/zoom_window.svg"));
+    m_actionZoomWindow->setToolTip(tr("Agrandir une région rectangulaire par glisser-déposer"));
+    connect(m_actionZoomWindow, &QAction::triggered, this, &MainWindow::onZoomWindow);
+
+    m_actionRotateLeft = new QAction(tr("Pivoter Vue 2D &Gauche (-15°)"), this);
+    m_actionRotateLeft->setIcon(QIcon(":/icons/edit/rotate.svg"));
+    m_actionRotateLeft->setToolTip(tr("Pivoter la vue de 15° vers la gauche"));
+    connect(m_actionRotateLeft, &QAction::triggered, this, &MainWindow::onRotate2DLeft);
+
+    m_actionRotateRight = new QAction(tr("Pivoter Vue 2D &Droite (+15°)"), this);
+    m_actionRotateRight->setIcon(QIcon(":/icons/edit/rotate.svg"));
+    m_actionRotateRight->setToolTip(tr("Pivoter la vue de 15° vers la droite"));
+    connect(m_actionRotateRight, &QAction::triggered, this, &MainWindow::onRotate2DRight);
+
+    m_actionPreviousView = new QAction(tr("Vue &Précédente"), this);
+    m_actionPreviousView->setIcon(QIcon(":/icons/edit/undo.svg"));
+    m_actionPreviousView->setToolTip(tr("Revenir à la vue de caméra précédente (Alt+Gauche)"));
+    m_actionPreviousView->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Left));
+    m_actionPreviousView->setEnabled(false);
+    connect(m_actionPreviousView, &QAction::triggered, this, &MainWindow::onPreviousView);
+
+    m_actionNextView = new QAction(tr("Vue &Suivante"), this);
+    m_actionNextView->setIcon(QIcon(":/icons/edit/redo.svg"));
+    m_actionNextView->setToolTip(tr("Rétablir la vue de caméra suivante (Alt+Droite)"));
+    m_actionNextView->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Right));
+    m_actionNextView->setEnabled(false);
+    connect(m_actionNextView, &QAction::triggered, this, &MainWindow::onNextView);
+
+    m_actionViewHome = new QAction(tr("Vue d'&Accueil (Home)"), this);
+    m_actionViewHome->setIcon(QIcon(":/icons/view_iso.svg"));
+    m_actionViewHome->setToolTip(tr("Réorienter la caméra en vue d'accueil 3D (Home)"));
+    m_actionViewHome->setShortcut(QKeySequence(Qt::Key_Home));
+    connect(m_actionViewHome, &QAction::triggered, this, &MainWindow::onActionViewHome);
+
+    m_actionViewTop = new QAction(tr("Vue de &Dessus (Top)"), this);
+    m_actionViewTop->setIcon(makePlanIcon(QColor(255, 140, 140), Qt::blue, Qt::darkGreen, "X", "Y"));
+    m_actionViewTop->setToolTip(tr("Orienter la vue de dessus (Plan XY, +Z)"));
+    connect(m_actionViewTop, &QAction::triggered, this, &MainWindow::onActionViewTop);
+
+    m_actionViewBottom = new QAction(tr("Vue de Dessou&s (Bottom)"), this);
+    m_actionViewBottom->setIcon(makePlanIcon(QColor(200, 200, 200), Qt::blue, Qt::darkGreen, "X", "Y"));
+    m_actionViewBottom->setToolTip(tr("Orienter la vue de dessous (-Z)"));
+    connect(m_actionViewBottom, &QAction::triggered, this, &MainWindow::onActionViewBottom);
+
+    m_actionViewFront = new QAction(tr("Vue de &Face (Front)"), this);
+    m_actionViewFront->setIcon(makePlanIcon(QColor(140, 230, 160), Qt::blue, Qt::red, "X", "Z"));
+    m_actionViewFront->setToolTip(tr("Orienter la vue de face (Élévation XZ, -Y)"));
+    connect(m_actionViewFront, &QAction::triggered, this, &MainWindow::onActionViewFront);
+
+    m_actionViewBack = new QAction(tr("Vue Arriè&re (Back)"), this);
+    m_actionViewBack->setIcon(makePlanIcon(QColor(140, 200, 160), Qt::blue, Qt::red, "X", "Z"));
+    m_actionViewBack->setToolTip(tr("Orienter la vue arrière (+Y)"));
+    connect(m_actionViewBack, &QAction::triggered, this, &MainWindow::onActionViewBack);
+
+    m_actionViewLeft = new QAction(tr("Vue &Gauche (Left)"), this);
+    m_actionViewLeft->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
+    m_actionViewLeft->setToolTip(tr("Orienter la vue gauche (-X)"));
+    connect(m_actionViewLeft, &QAction::triggered, this, &MainWindow::onActionViewLeft);
+
+    m_actionViewRight = new QAction(tr("Vue &Droite (Right)"), this);
+    m_actionViewRight->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
+    m_actionViewRight->setToolTip(tr("Orienter la vue droite (+X)"));
+    connect(m_actionViewRight, &QAction::triggered, this, &MainWindow::onActionViewRight);
+
+    m_actionViewIsometric = new QAction(tr("Vue &Isométrique"), this);
+    m_actionViewIsometric->setIcon(make3DIsoIcon());
+    m_actionViewIsometric->setToolTip(tr("Orienter la vue en projection axonométrique isométrique"));
+    connect(m_actionViewIsometric, &QAction::triggered, this, &MainWindow::onActionViewIsometric);
+
+    m_workPlaneGroup = new QActionGroup(this);
+    m_workPlaneGroup->setExclusive(true);
+
+    m_actionWorkPlaneXY = new QAction(tr("Plan de Travail &XY"), this);
+    m_actionWorkPlaneXY->setIcon(QIcon(":/icons/view_top.svg"));
+    m_actionWorkPlaneXY->setToolTip(tr("Définir le plan de travail horizontal (Global XY, Z=0)"));
+    m_actionWorkPlaneXY->setCheckable(true);
+    m_actionWorkPlaneXY->setChecked(true);
+    connect(m_actionWorkPlaneXY, &QAction::triggered, this, &MainWindow::onWorkPlaneXY);
+    m_workPlaneGroup->addAction(m_actionWorkPlaneXY);
+
+    m_actionWorkPlaneLevel = new QAction(tr("Plan de Travail sur &Étage"), this);
+    m_actionWorkPlaneLevel->setIcon(QIcon(":/icons/levels.svg"));
+    m_actionWorkPlaneLevel->setToolTip(tr("Aligner le plan de travail horizontal sur l'altitude de l'étage actif"));
+    m_actionWorkPlaneLevel->setCheckable(true);
+    connect(m_actionWorkPlaneLevel, &QAction::triggered, this, &MainWindow::onWorkPlaneLevel);
+    m_workPlaneGroup->addAction(m_actionWorkPlaneLevel);
+
+    m_actionWorkPlaneXZ = new QAction(tr("Plan de Travail &XZ"), this);
+    m_actionWorkPlaneXZ->setIcon(QIcon(":/icons/view_front.svg"));
+    m_actionWorkPlaneXZ->setToolTip(tr("Définir le plan de travail vertical frontal (Global XZ, Façade)"));
+    m_actionWorkPlaneXZ->setCheckable(true);
+    connect(m_actionWorkPlaneXZ, &QAction::triggered, this, &MainWindow::onWorkPlaneXZ);
+    m_workPlaneGroup->addAction(m_actionWorkPlaneXZ);
+
+    m_actionWorkPlaneYZ = new QAction(tr("Plan de Travail &YZ"), this);
+    m_actionWorkPlaneYZ->setIcon(QIcon(":/icons/view_right.svg"));
+    m_actionWorkPlaneYZ->setToolTip(tr("Définir le plan de travail vertical latéral (Global YZ, Pignon)"));
+    m_actionWorkPlaneYZ->setCheckable(true);
+    connect(m_actionWorkPlaneYZ, &QAction::triggered, this, &MainWindow::onWorkPlaneYZ);
+    m_workPlaneGroup->addAction(m_actionWorkPlaneYZ);
+
+    m_actionWorkPlaneCustom = new QAction(tr("Plan de Travail &Personnalisé..."), this);
+    m_actionWorkPlaneCustom->setIcon(QIcon(":/icons/settings.svg"));
+    m_actionWorkPlaneCustom->setToolTip(tr("Définir un plan de travail personnalisé (3 points, décalage, options 3D)..."));
+    connect(m_actionWorkPlaneCustom, &QAction::triggered, this, &MainWindow::onActionWorkPlaneCustom);
+
+    m_actionWorkPlaneVisible = new QAction(tr("Afficher le &Plan de Travail 3D"), this);
+    m_actionWorkPlaneVisible->setIcon(QIcon(":/icons/view_home.svg"));
+    m_actionWorkPlaneVisible->setToolTip(tr("Afficher ou masquer la trame et le panneau 3D du plan de travail actif"));
+    m_actionWorkPlaneVisible->setCheckable(true);
+    m_actionWorkPlaneVisible->setChecked(true);
+    connect(m_actionWorkPlaneVisible, &QAction::toggled, this, &MainWindow::onActionToggleWorkPlaneVisible);
+
+    m_actionViewNormalToPlane = new QAction(tr("&Vue Normale au Plan"), this);
+    m_actionViewNormalToPlane->setIcon(QIcon(":/icons/view_iso.svg"));
+    m_actionViewNormalToPlane->setToolTip(tr("Orienter la caméra perpendiculairement au plan de travail actif"));
+    connect(m_actionViewNormalToPlane, &QAction::triggered, this, &MainWindow::onActionViewNormalToPlane);
 
     // Actions Grilles & Niveaux
     m_actionNewGrid = new QAction(tr("&Nouvelle Grille 3D..."), this);
@@ -766,15 +910,44 @@ void MainWindow::createMenus()
 
     // 7. Menu Affichage
     QMenu* viewMenu = menuBar()->addMenu(tr("&Affichage"));
-    QMenu* projSub = viewMenu->addMenu(tr("Projections"));
+    QMenu* projSub = viewMenu->addMenu(tr("Projections && Orientations"));
     projSub->addAction(m_actionView3D);
-    projSub->addAction(m_actionViewXY);
-    projSub->addAction(m_actionViewXZ);
-    projSub->addAction(m_actionViewYZ);
+    projSub->addAction(m_actionViewIsometric);
+    projSub->addAction(m_actionViewHome);
+    projSub->addSeparator();
+    projSub->addAction(m_actionViewTop);
+    projSub->addAction(m_actionViewBottom);
+    projSub->addAction(m_actionViewFront);
+    projSub->addAction(m_actionViewBack);
+    projSub->addAction(m_actionViewLeft);
+    projSub->addAction(m_actionViewRight);
 
-    viewMenu->addSeparator();
-    viewMenu->addAction(m_actionFitAll);
-    viewMenu->addAction(m_actionResetView);
+    QMenu* navSub = viewMenu->addMenu(tr("Navigation && Zoom"));
+    navSub->addAction(m_actionFitAll);
+    navSub->addAction(m_actionFitSelection);
+    navSub->addAction(m_actionZoomWindow);
+    navSub->addSeparator();
+    navSub->addAction(m_actionZoomIn);
+    navSub->addAction(m_actionZoomOut);
+    navSub->addSeparator();
+    navSub->addAction(m_actionPreviousView);
+    navSub->addAction(m_actionNextView);
+    navSub->addSeparator();
+    navSub->addAction(m_actionRotateLeft);
+    navSub->addAction(m_actionRotateRight);
+    navSub->addAction(m_actionResetView);
+
+    QMenu* wpSub = viewMenu->addMenu(tr("Plans de Travail"));
+    wpSub->addAction(m_actionWorkPlaneXY);
+    wpSub->addAction(m_actionWorkPlaneLevel);
+    wpSub->addAction(m_actionWorkPlaneXZ);
+    wpSub->addAction(m_actionWorkPlaneYZ);
+    wpSub->addSeparator();
+    wpSub->addAction(m_actionViewNormalToPlane);
+    wpSub->addAction(m_actionWorkPlaneVisible);
+    wpSub->addSeparator();
+    wpSub->addAction(m_actionWorkPlaneCustom);
+
     viewMenu->addSeparator();
     viewMenu->addAction(m_actionCoordSystem);
     viewMenu->addAction(m_actionSectionCut);
@@ -883,9 +1056,32 @@ void MainWindow::createRibbon()
     acts.actionViewXY = m_actionViewXY;
     acts.actionViewXZ = m_actionViewXZ;
     acts.actionViewYZ = m_actionViewYZ;
+    acts.actionViewTop = m_actionViewTop;
+    acts.actionViewBottom = m_actionViewBottom;
+    acts.actionViewFront = m_actionViewFront;
+    acts.actionViewBack = m_actionViewBack;
+    acts.actionViewLeft = m_actionViewLeft;
+    acts.actionViewRight = m_actionViewRight;
+    acts.actionViewIsometric = m_actionViewIsometric;
+    acts.actionViewHome = m_actionViewHome;
+
     acts.actionFitAll = m_actionFitAll;
+    acts.actionFitSelection = m_actionFitSelection;
     acts.actionResetView = m_actionResetView;
+    acts.actionZoomIn = m_actionZoomIn;
+    acts.actionZoomOut = m_actionZoomOut;
+    acts.actionZoomWindow = m_actionZoomWindow;
+    acts.actionPreviousView = m_actionPreviousView;
+    acts.actionNextView = m_actionNextView;
+
     acts.actionCoordSystem = m_actionCoordSystem;
+    acts.actionWorkPlaneXY = m_actionWorkPlaneXY;
+    acts.actionWorkPlaneXZ = m_actionWorkPlaneXZ;
+    acts.actionWorkPlaneYZ = m_actionWorkPlaneYZ;
+    acts.actionWorkPlaneLevel = m_actionWorkPlaneLevel;
+    acts.actionWorkPlaneCustom = m_actionWorkPlaneCustom;
+    acts.actionWorkPlaneVisible = m_actionWorkPlaneVisible;
+    acts.actionViewNormalToPlane = m_actionViewNormalToPlane;
     acts.actionSectionCut = m_actionSectionCut;
 
     acts.actionGridVisible = m_actionGridVisible;
@@ -948,6 +1144,7 @@ void MainWindow::createDockWindows()
     m_visibilityDock->bindGridLabelsAction(m_actionGridLabels);
     m_visibilityDock->bindRulersVisibleAction(m_actionRulersVisible);
     m_visibilityDock->bindCoordSystemAction(m_actionCoordSystem);
+    m_visibilityDock->bindWorkPlaneVisibleAction(m_actionWorkPlaneVisible);
 
     // 3. Dock gauche ongletisé : ÉLÉMENTS STRUCTURAUX (Volet de dessin)
     m_elementsDock = new TSA::UI::StructuralElementsDock(this);
@@ -985,6 +1182,31 @@ void MainWindow::createDockWindows()
     connect(m_consoleDock, &TSA::UI::LogConsoleDock::commandEntered, this, [this](const QString& cmd) {
         QString c = cmd.toUpper().trimmed();
         if (c == "FIT") onFitAll();
+        else if (c == "FITSEL" || c == "FS") onFitSelection();
+        else if (c == "ZOOMIN" || c == "ZI" || c == "+") onZoomIn();
+        else if (c == "ZOOMOUT" || c == "ZO" || c == "-") onZoomOut();
+        else if (c == "ZOOMW" || c == "ZW") onZoomWindow();
+        else if (c == "PREV" || c == "VPREV") onPreviousView();
+        else if (c == "NEXT" || c == "VNEXT") onNextView();
+        else if (c == "HOME" || c == "VHOME") onActionViewHome();
+        else if (c == "TOP" || c == "VTOP") onActionViewTop();
+        else if (c == "BOTTOM" || c == "VBOT") onActionViewBottom();
+        else if (c == "FRONT" || c == "VFRONT") onActionViewFront();
+        else if (c == "BACK" || c == "VBACK") onActionViewBack();
+        else if (c == "LEFT" || c == "VLEFT") onActionViewLeft();
+        else if (c == "RIGHT" || c == "VRIGHT") onActionViewRight();
+        else if (c == "ISO" || c == "VISO") onActionViewIsometric();
+        else if (c == "WPXY") onWorkPlaneXY();
+        else if (c == "WPXZ") onWorkPlaneXZ();
+        else if (c == "WPYZ") onWorkPlaneYZ();
+        else if (c == "WPLEVEL") onWorkPlaneLevel();
+        else if (c == "WPCUSTOM" || c == "WP") onActionWorkPlaneCustom();
+        else if (c == "WPNORMAL" || c == "VPN") onActionViewNormalToPlane();
+        else if (c == "WPSHOW") onActionToggleWorkPlaneVisible(true);
+        else if (c == "WPHIDE") onActionToggleWorkPlaneVisible(false);
+        else if (c == "SNAP" || c == "OSNAP") {
+            if (m_actionGridSnap) m_actionGridSnap->setChecked(!m_actionGridSnap->isChecked());
+        }
         else if (c == "RESET") onResetView();
         else if (c == "SELECT" || c == "ESC") onModeSelect();
         else if (c == "NODE" || c == "N") onModeDrawNode();
@@ -1239,8 +1461,38 @@ void MainWindow::createStatusBar()
     m_statusCoordinates->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; padding: 2px 8px;");
     bar->addWidget(m_statusCoordinates);
 
+    m_statusWorkPlane = new QLabel(tr("Plan: XY (Z=0.00 m)"), this);
+    m_statusWorkPlane->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #38bdf8; font-weight: bold;");
+    bar->addWidget(m_statusWorkPlane);
+
+    m_statusSnap = new QLabel(tr("SNAP: ACTIF"), this);
+    m_statusSnap->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #4ade80; font-weight: bold;");
+    bar->addWidget(m_statusSnap);
+
     m_statusInfo = new QLabel(tr("Ready"), this);
     bar->addPermanentWidget(m_statusInfo);
+
+    // Synchronisation du plan de travail et de l'historique caméra
+    connect(m_occView, &OccView::workPlaneChanged, this, &MainWindow::onWorkPlaneChanged);
+    if (m_occView)
+    {
+        onWorkPlaneChanged(m_occView->activeWorkPlane());
+    }
+
+    if (m_viewportContainer)
+    {
+        connect(m_viewportContainer, &TSA::UI::ViewportContainer::activeLevelChanged, this, [this](double elev, const QString& name) {
+            if (m_statusInfo)
+            {
+                m_statusInfo->setText(tr("Niveau actif : %1 (Z=%2 m)").arg(name).arg(elev, 0, 'f', 2));
+            }
+        });
+    }
+
+    connect(m_occView, &OccView::cameraHistoryChanged, this, [this](bool hasPrev, bool hasNext) {
+        if (m_actionPreviousView) m_actionPreviousView->setEnabled(hasPrev);
+        if (m_actionNextView) m_actionNextView->setEnabled(hasNext);
+    });
 
     // Suivi continu des coordonnées du pointeur de souris
     connect(m_occView, &OccView::mouseCoordinatesChanged, this, [this](double x, double y, double z) {
@@ -1842,43 +2094,26 @@ void MainWindow::onActionDeleteSelected()
     if (total == 0)
         return;
 
-    m_model->pushUndoState(tr("Suppression d'éléments").toStdString());
+    auto cmd = std::make_unique<TSA::Commands::DeleteElementsCommand>(
+        *m_model,
+        m_selectionManager->selectedNodes(),
+        m_selectionManager->selectedBeams(),
+        m_selectionManager->selectedColumns(),
+        m_selectionManager->selectedSlabs(),
+        m_selectionManager->selectedWalls(),
+        m_selectionManager->selectedFoundations(),
+        m_selectionManager->selectedTrussMembers(),
+        m_selectionManager->selectedCables()
+    );
 
-    // Supprimer dans l'ordre sécurisé : Dalles, Voiles, Fondations, Treillis, Poutres, Poteaux, Nœuds
-    auto slabs = m_selectionManager->selectedSlabs();
-    for (int id : slabs) m_model->removeSlab(id);
-
-    auto walls = m_selectionManager->selectedWalls();
-    for (int id : walls) m_model->removeWall(id);
-
-    auto foundations = m_selectionManager->selectedFoundations();
-    for (int id : foundations) m_model->removeFoundation(id);
-
-    auto truss = m_selectionManager->selectedTrussMembers();
-    for (int id : truss) m_model->removeTrussMember(id);
-
-    auto beams = m_selectionManager->selectedBeams();
-    for (int id : beams) m_model->removeBeam(id);
-
-    auto columns = m_selectionManager->selectedColumns();
-    for (int id : columns) m_model->removeColumn(id);
-
-    auto cables = m_selectionManager->selectedCables();
-    for (int id : cables)
+    if (m_commandManager)
     {
-        TSA_LOG_INFO("UI", "CableDeleteStarted", "Suppression du câble C" + std::to_string(id));
-        if (m_model->removeCable(id))
-        {
-            TSA_LOG_INFO("UI", "CableDeleted", "Câble C" + std::to_string(id) + " supprimé avec succès");
-        }
-        else
-        {
-            TSA_LOG_WARN("UI", "CableDeleteFailed", "Échec de suppression du câble C" + std::to_string(id));
-        }
+        m_commandManager->executeCommand(std::move(cmd));
     }
-
-    auto nodes = m_selectionManager->selectedNodes();
-    for (int id : nodes) m_model->removeNode(id);
+    else
+    {
+        cmd->execute();
+    }
 
     m_selectionManager->clearSelection();
     if (m_occView) m_occView->clearHighlight();
@@ -1990,6 +2225,197 @@ void MainWindow::onActionAddCube()
     if (m_occView)
     {
         m_occView->fitAll();
+    }
+}
+
+void MainWindow::onFitSelection()
+{
+    if (m_occView) m_occView->fitSelection();
+}
+
+void MainWindow::onZoomIn()
+{
+    if (m_occView) m_occView->zoomIn(1.25);
+}
+
+void MainWindow::onZoomOut()
+{
+    if (m_occView) m_occView->zoomOut(1.25);
+}
+
+void MainWindow::onZoomWindow()
+{
+    if (m_occView) m_occView->startInteractiveZoomWindow();
+}
+
+void MainWindow::onPreviousView()
+{
+    if (m_occView) m_occView->previousView();
+}
+
+void MainWindow::onNextView()
+{
+    if (m_occView) m_occView->nextView();
+}
+
+void MainWindow::onActionViewHome()
+{
+    if (m_occView) m_occView->viewHome();
+}
+
+void MainWindow::onActionViewTop()
+{
+    if (m_occView) m_occView->viewTop();
+}
+
+void MainWindow::onActionViewBottom()
+{
+    if (m_occView) m_occView->viewBottom();
+}
+
+void MainWindow::onActionViewFront()
+{
+    if (m_occView) m_occView->viewFront();
+}
+
+void MainWindow::onActionViewBack()
+{
+    if (m_occView) m_occView->viewBack();
+}
+
+void MainWindow::onActionViewLeft()
+{
+    if (m_occView) m_occView->viewLeft();
+}
+
+void MainWindow::onActionViewRight()
+{
+    if (m_occView) m_occView->viewRight();
+}
+
+void MainWindow::onActionViewIsometric()
+{
+    if (m_occView) m_occView->viewIsometric();
+}
+
+void MainWindow::onRotate2DLeft()
+{
+    if (m_occView) m_occView->rotate2D(-15.0);
+}
+
+void MainWindow::onRotate2DRight()
+{
+    if (m_occView) m_occView->rotate2D(15.0);
+}
+
+void MainWindow::onWorkPlaneXY()
+{
+    if (m_occView) m_occView->setWorkPlaneType(TSA::Coordinate::WorkPlaneType::GlobalXY, 0.0);
+}
+
+void MainWindow::onWorkPlaneXZ()
+{
+    if (m_occView) m_occView->setWorkPlaneType(TSA::Coordinate::WorkPlaneType::GlobalXZ, 0.0);
+}
+
+void MainWindow::onWorkPlaneYZ()
+{
+    if (m_occView) m_occView->setWorkPlaneType(TSA::Coordinate::WorkPlaneType::GlobalYZ, 0.0);
+}
+
+void MainWindow::onWorkPlaneLevel()
+{
+    if (m_occView)
+    {
+        double currentZ = m_occView->activeLevelElevation();
+        m_occView->setWorkPlaneType(TSA::Coordinate::WorkPlaneType::ElevationZ, currentZ);
+    }
+}
+
+void MainWindow::onActionWorkPlaneCustom()
+{
+    if (!m_occView)
+        return;
+    TSA::Coordinate::LevelManager* lm = (m_model && m_model->coordinateSystem()) ? m_model->coordinateSystem()->levelManager() : nullptr;
+    TSA::UI::WorkPlaneDialog dlg(m_occView, lm, this);
+    dlg.exec();
+}
+
+void MainWindow::onActionToggleWorkPlaneVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setWorkPlaneVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Plan de travail 3D affiché") : tr("Plan de travail 3D masqué"));
+        }
+    }
+}
+
+void MainWindow::onActionViewNormalToPlane()
+{
+    if (m_occView)
+    {
+        m_occView->viewNormalToWorkPlane();
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Vue orientée perpendiculairement au plan de travail actif"));
+        }
+    }
+}
+
+void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
+{
+    // 1. Synchronisation de la coche exclusive dans m_workPlaneGroup
+    if (m_actionWorkPlaneXY) m_actionWorkPlaneXY->setChecked(wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXY);
+    if (m_actionWorkPlaneLevel) m_actionWorkPlaneLevel->setChecked(wp.type() == TSA::Coordinate::WorkPlaneType::ElevationZ);
+    if (m_actionWorkPlaneXZ) m_actionWorkPlaneXZ->setChecked(wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXZ);
+    if (m_actionWorkPlaneYZ) m_actionWorkPlaneYZ->setChecked(wp.type() == TSA::Coordinate::WorkPlaneType::GlobalYZ);
+
+    // 2. Synchronisation de la barre d'état avec affichage précis
+    if (m_statusWorkPlane)
+    {
+        QString desc;
+        switch (wp.type())
+        {
+        case TSA::Coordinate::WorkPlaneType::GlobalXY:
+            desc = tr("Plan: XY (Z = %1 m)").arg(wp.offset(), 0, 'f', 2);
+            break;
+        case TSA::Coordinate::WorkPlaneType::ElevationZ:
+            desc = tr("Plan: Étage (Z = %1 m)").arg(wp.offset(), 0, 'f', 2);
+            break;
+        case TSA::Coordinate::WorkPlaneType::GlobalXZ:
+            desc = tr("Plan: XZ Façade (Y = %1 m)").arg(wp.offset(), 0, 'f', 2);
+            break;
+        case TSA::Coordinate::WorkPlaneType::GlobalYZ:
+            desc = tr("Plan: YZ Pignon (X = %1 m)").arg(wp.offset(), 0, 'f', 2);
+            break;
+        case TSA::Coordinate::WorkPlaneType::ThreePoints:
+            desc = tr("Plan: Incliné 3P");
+            break;
+        default:
+            desc = tr("Plan: %1").arg(QString::fromStdString(wp.name()));
+            break;
+        }
+        m_statusWorkPlane->setText(desc);
+    }
+
+    // 3. Synchronisation avec le sélecteur de niveau du viewport si plan horizontal
+    if (m_viewportContainer && (wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXY ||
+                               wp.type() == TSA::Coordinate::WorkPlaneType::ElevationZ))
+    {
+        m_viewportContainer->setActiveLevelElevation(wp.offset());
+    }
+
+    // 4. Log console
+    if (m_consoleDock)
+    {
+        m_consoleDock->appendLog(tr("Plan de travail actif : %1 (Origine: %2, %3, %4 m)")
+            .arg(QString::fromStdString(wp.name()))
+            .arg(wp.origin().X(), 0, 'f', 2)
+            .arg(wp.origin().Y(), 0, 'f', 2)
+            .arg(wp.origin().Z(), 0, 'f', 2), "INFO");
     }
 }
 
@@ -3275,17 +3701,22 @@ void MainWindow::onPointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& t
             }
         }
 
-        if (m_model->moveNodes(nodesToMove, dx, dy, dz))
+        if (!nodesToMove.empty())
         {
-            if (m_modelTree) m_modelTree->refreshAll();
-            if (m_occView) m_occView->update();
-            if (m_statusInfo)
+            auto cmd = std::make_unique<TSA::Commands::MoveElementsCommand>(*m_model, nodesToMove, dx, dy, dz);
+            bool ok = m_commandManager ? m_commandManager->executeCommand(std::move(cmd)) : m_model->moveNodes(nodesToMove, dx, dy, dz);
+            if (ok)
             {
-                m_statusInfo->setText(tr("Déplacement 3D : %1 nœud(s) déplacé(s) de (%2, %3, %4) m")
-                    .arg(nodesToMove.size())
-                    .arg(dx, 0, 'f', 3)
-                    .arg(dy, 0, 'f', 3)
-                    .arg(dz, 0, 'f', 3));
+                if (m_modelTree) m_modelTree->refreshAll();
+                if (m_occView) m_occView->update();
+                if (m_statusInfo)
+                {
+                    m_statusInfo->setText(tr("Déplacement 3D : %1 nœud(s) déplacé(s) de (%2, %3, %4) m")
+                        .arg(nodesToMove.size())
+                        .arg(dx, 0, 'f', 3)
+                        .arg(dy, 0, 'f', 3)
+                        .arg(dz, 0, 'f', 3));
+                }
             }
         }
     }
@@ -3348,15 +3779,20 @@ void MainWindow::onPointToPointRotateRequested(const gp_Pnt& center, double angl
             }
         }
 
-        if (m_model->rotateNodes(nodesToRotate, center, axis, angleRad))
+        if (!nodesToRotate.empty())
         {
-            if (m_modelTree) m_modelTree->refreshAll();
-            if (m_occView) m_occView->update();
-            if (m_statusInfo)
+            auto cmd = std::make_unique<TSA::Commands::RotateElementsCommand>(*m_model, nodesToRotate, center.X(), center.Y(), center.Z(), deg, axis.X(), axis.Y(), axis.Z());
+            bool ok = m_commandManager ? m_commandManager->executeCommand(std::move(cmd)) : m_model->rotateNodes(nodesToRotate, center, axis, angleRad);
+            if (ok)
             {
-                m_statusInfo->setText(tr("Rotation 3D : %1 nœud(s) tourné(s) de %2°")
-                    .arg(nodesToRotate.size())
-                    .arg(deg, 0, 'f', 1));
+                if (m_modelTree) m_modelTree->refreshAll();
+                if (m_occView) m_occView->update();
+                if (m_statusInfo)
+                {
+                    m_statusInfo->setText(tr("Rotation 3D : %1 nœud(s) tourné(s) de %2°")
+                        .arg(nodesToRotate.size())
+                        .arg(deg, 0, 'f', 1));
+                }
             }
         }
     }
@@ -3433,7 +3869,16 @@ void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
 
 void MainWindow::onActionUndo()
 {
-    if (m_model && m_model->canUndo())
+    if (m_commandManager && m_commandManager->canUndo())
+    {
+        std::string actionName = m_model ? m_model->lastUndoActionName() : "";
+        if (m_commandManager->undo())
+        {
+            updateUndoRedoActions();
+            statusBar()->showMessage(tr("Action annulée : %1 (Ctrl+Z)").arg(QString::fromStdString(actionName)), 3000);
+        }
+    }
+    else if (m_model && m_model->canUndo())
     {
         std::string actionName = m_model->lastUndoActionName();
         if (m_model->undo())
@@ -3446,7 +3891,16 @@ void MainWindow::onActionUndo()
 
 void MainWindow::onActionRedo()
 {
-    if (m_model && m_model->canRedo())
+    if (m_commandManager && m_commandManager->canRedo())
+    {
+        std::string actionName = m_model ? m_model->lastRedoActionName() : "";
+        if (m_commandManager->redo())
+        {
+            updateUndoRedoActions();
+            statusBar()->showMessage(tr("Action rétablie : %1 (Ctrl+Y)").arg(QString::fromStdString(actionName)), 3000);
+        }
+    }
+    else if (m_model && m_model->canRedo())
     {
         std::string actionName = m_model->lastRedoActionName();
         if (m_model->redo())
@@ -3462,7 +3916,7 @@ void MainWindow::updateUndoRedoActions()
     if (!m_model) return;
     if (m_actionUndo)
     {
-        bool canU = m_model->canUndo();
+        bool canU = (m_commandManager && m_commandManager->canUndo()) || (m_model && m_model->canUndo());
         m_actionUndo->setEnabled(canU);
         if (canU && !m_model->lastUndoActionName().empty())
         {
@@ -3477,7 +3931,7 @@ void MainWindow::updateUndoRedoActions()
     }
     if (m_actionRedo)
     {
-        bool canR = m_model->canRedo();
+        bool canR = (m_commandManager && m_commandManager->canRedo()) || (m_model && m_model->canRedo());
         m_actionRedo->setEnabled(canR);
         if (canR && !m_model->lastRedoActionName().empty())
         {

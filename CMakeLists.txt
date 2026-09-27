@@ -48,8 +48,25 @@ set(SOURCES
     src/UI/MainWindow.cpp
     src/UI/ModelTree/ModelTreeWidget.h
     src/UI/ModelTree/ModelTreeWidget.cpp
+    src/UI/Properties/IElementPropertyView.h
     src/UI/Properties/PropertyPanel.h
     src/UI/Properties/PropertyPanel.cpp
+    src/UI/Properties/NodePropertiesView.h
+    src/UI/Properties/NodePropertiesView.cpp
+    src/UI/Properties/BeamPropertiesView.h
+    src/UI/Properties/BeamPropertiesView.cpp
+    src/UI/Properties/ColumnPropertiesView.h
+    src/UI/Properties/ColumnPropertiesView.cpp
+    src/UI/Properties/CablePropertiesView.h
+    src/UI/Properties/CablePropertiesView.cpp
+    src/UI/Properties/SlabPropertiesView.h
+    src/UI/Properties/SlabPropertiesView.cpp
+    src/UI/Properties/WallPropertiesView.h
+    src/UI/Properties/WallPropertiesView.cpp
+    src/UI/Properties/FoundationPropertiesView.h
+    src/UI/Properties/FoundationPropertiesView.cpp
+    src/UI/Properties/TrussMemberPropertiesView.h
+    src/UI/Properties/TrussMemberPropertiesView.cpp
     src/UI/Dialogs/TransformDialog.h
     src/UI/Dialogs/TransformDialog.cpp
     src/UI/Dialogs/GridDialog.h
@@ -60,6 +77,8 @@ set(SOURCES
     src/UI/Dialogs/GridAdvancedSettingsDialog.cpp
     src/UI/Dialogs/LevelDialog.h
     src/UI/Dialogs/LevelDialog.cpp
+    src/UI/Dialogs/WorkPlaneDialog.h
+    src/UI/Dialogs/WorkPlaneDialog.cpp
     src/UI/Dialogs/SectionCutDialog.h
     src/UI/Dialogs/SectionCutDialog.cpp
     src/UI/Dialogs/HelpDialog.h
@@ -136,6 +155,10 @@ set(SOURCES
     src/Coordinate/CoordinateSystem.cpp
     src/Coordinate/CylindricalCoordinates.h
     src/Coordinate/CylindricalCoordinates.cpp
+    src/Coordinate/WorkPlane.h
+    src/Coordinate/WorkPlane.cpp
+    src/Coordinate/CoordinateTransformationService.h
+    src/Coordinate/CoordinateTransformationService.cpp
     src/Grid/GridType.h
     src/Grid/GridDefinition.h
     src/Grid/GridDefinition.cpp
@@ -224,6 +247,13 @@ set(SOURCES
     src/Project/ProjectManager.h
     src/Project/ProjectManager.cpp
     src/Commands/ICommand.h
+    src/Commands/CommandCategory.h
+    src/Commands/CommandCatalog.h
+    src/Commands/CommandCatalog.cpp
+    src/Commands/CreateElementCommands.h
+    src/Commands/CreateElementCommands.cpp
+    src/Commands/ModifyCommands.h
+    src/Commands/ModifyCommands.cpp
     src/Commands/CreateBeamCommand.h
     src/Commands/CreateBeamCommand.cpp
     src/Commands/GridCommands.h
@@ -315,6 +345,10 @@ set(TEST_SOURCES
     src/Coordinate/CoordinateSystem.cpp
     src/Coordinate/CylindricalCoordinates.h
     src/Coordinate/CylindricalCoordinates.cpp
+    src/Coordinate/WorkPlane.h
+    src/Coordinate/WorkPlane.cpp
+    src/Coordinate/CoordinateTransformationService.h
+    src/Coordinate/CoordinateTransformationService.cpp
     src/Model/Element.h
     src/Model/Material.h
     src/Model/Material.cpp
@@ -372,6 +406,13 @@ set(TEST_SOURCES
     src/Project/ProjectManager.h
     src/Project/ProjectManager.cpp
     src/Commands/ICommand.h
+    src/Commands/CommandCategory.h
+    src/Commands/CommandCatalog.h
+    src/Commands/CommandCatalog.cpp
+    src/Commands/CreateElementCommands.h
+    src/Commands/CreateElementCommands.cpp
+    src/Commands/ModifyCommands.h
+    src/Commands/ModifyCommands.cpp
     src/Commands/CreateBeamCommand.h
     src/Commands/CreateBeamCommand.cpp
     src/Commands/GridCommands.h

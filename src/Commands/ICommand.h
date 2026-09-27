@@ -3,6 +3,8 @@
 #include <string>
 #include <memory>
 
+#include "CommandCategory.h"
+
 namespace TSA::Commands
 {
 
@@ -30,6 +32,11 @@ public:
      * @brief Nom descriptif de la commande (ex: "Créer Poutre", "Déplacer Nœuds").
      */
     virtual std::string name() const = 0;
+
+    /**
+     * @brief Catégorie CAO de la commande selon la classification professionnelle TSA.
+     */
+    virtual CommandCategory category() const { return CommandCategory::Edit; }
 };
 
 } // namespace TSA::Commands

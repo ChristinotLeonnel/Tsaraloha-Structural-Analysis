@@ -48,8 +48,43 @@ enum class GridSnapType
     RadialLine,
     LevelPlane,
     Origin,
-    Node
+    Node,
+    Endpoint,
+    Midpoint,
+    Center,
+    Perpendicular,
+    Nearest,
+    Element
 };
+
+enum class SnapMode : uint32_t
+{
+    None          = 0,
+    Grid          = 1 << 0,
+    Node          = 1 << 1,
+    Endpoint      = 1 << 2,
+    Midpoint      = 1 << 3,
+    Intersection  = 1 << 4,
+    Center        = 1 << 5,
+    Perpendicular = 1 << 6,
+    Nearest       = 1 << 7,
+    Axis          = 1 << 8,
+    Level         = 1 << 9,
+    All           = 0xFFFFFFFF
+};
+
+inline SnapMode operator|(SnapMode a, SnapMode b) {
+    return static_cast<SnapMode>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+}
+inline SnapMode operator&(SnapMode a, SnapMode b) {
+    return static_cast<SnapMode>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+}
+inline SnapMode operator~(SnapMode a) {
+    return static_cast<SnapMode>(~static_cast<uint32_t>(a));
+}
+inline bool hasSnapMode(SnapMode flags, SnapMode test) {
+    return (static_cast<uint32_t>(flags) & static_cast<uint32_t>(test)) != 0;
+}
 
 struct GridSnapResult
 {
@@ -58,6 +93,7 @@ struct GridSnapResult
     GridSnapType type = GridSnapType::None;
     double distance = 1e9;
     std::string description;
+    int targetEntityId = -1;
 };
 
 } // namespace TSA::Grid

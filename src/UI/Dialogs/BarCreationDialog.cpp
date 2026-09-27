@@ -119,12 +119,12 @@ void BarCreationDialog::setupUi()
     propsLayout->addWidget(m_comboSection, 1, 1);
 
     m_btnSectionMore = new QToolButton(grpProps);
-    m_btnSectionMore->setIcon(QIcon(":/icons/section_i.svg"));
+    m_btnSectionMore->setIcon(QIcon(":/icons/sections/section_i.svg"));
     m_btnSectionMore->setToolTip(tr("Modifier / Personnaliser la section..."));
     propsLayout->addWidget(m_btnSectionMore, 1, 2);
 
     m_btnCustomizeSection = new QPushButton(tr("Modifier / Personnaliser la section..."), grpProps);
-    m_btnCustomizeSection->setIcon(QIcon(":/icons/edit.svg"));
+    m_btnCustomizeSection->setIcon(QIcon(":/icons/sections/section_custom.svg"));
     m_btnCustomizeSection->setStyleSheet("font-size: 8.5pt; font-weight: bold; background-color: #1E70BF; color: white; padding: 4px 8px; border-radius: 3px;");
     propsLayout->addWidget(m_btnCustomizeSection, 2, 1, 1, 2);
 

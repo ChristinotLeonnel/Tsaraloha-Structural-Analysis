@@ -355,34 +355,84 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
 {
     auto* tab = bar->addTab(QObject::tr("Affichage"));
 
-    // Projections
+    // Projections & Orientations
     auto* projPanel = new RibbonPanel(QObject::tr("Projections"), tab);
     if (acts.actionView3D) projPanel->addLargeAction(acts.actionView3D);
-    std::vector<QAction*> colViews;
-    if (acts.actionViewXY) colViews.push_back(acts.actionViewXY);
-    if (acts.actionViewXZ) colViews.push_back(acts.actionViewXZ);
-    if (acts.actionViewYZ) colViews.push_back(acts.actionViewYZ);
-    if (!colViews.empty())
+    std::vector<QAction*> colViews1;
+    if (acts.actionViewTop) colViews1.push_back(acts.actionViewTop);
+    else if (acts.actionViewXY) colViews1.push_back(acts.actionViewXY);
+    if (acts.actionViewFront) colViews1.push_back(acts.actionViewFront);
+    else if (acts.actionViewXZ) colViews1.push_back(acts.actionViewXZ);
+    if (acts.actionViewRight) colViews1.push_back(acts.actionViewRight);
+    else if (acts.actionViewYZ) colViews1.push_back(acts.actionViewYZ);
+    if (!colViews1.empty())
     {
         projPanel->addInternalSeparator();
-        projPanel->addSmallColumn(colViews);
+        projPanel->addSmallColumn(colViews1);
+    }
+    std::vector<QAction*> colViews2;
+    if (acts.actionViewIsometric) colViews2.push_back(acts.actionViewIsometric);
+    if (acts.actionViewHome) colViews2.push_back(acts.actionViewHome);
+    if (acts.actionViewLeft) colViews2.push_back(acts.actionViewLeft);
+    if (!colViews2.empty())
+    {
+        projPanel->addInternalSeparator();
+        projPanel->addSmallColumn(colViews2);
     }
     tab->addPanel(projPanel);
 
     // Navigation & Cadrage
-    std::vector<QAction*> colZoom;
-    if (acts.actionFitAll) colZoom.push_back(acts.actionFitAll);
-    if (acts.actionResetView) colZoom.push_back(acts.actionResetView);
-    if (!colZoom.empty())
+    auto* navPanel = new RibbonPanel(QObject::tr("Navigation"), tab);
+    if (acts.actionFitAll) navPanel->addLargeAction(acts.actionFitAll);
+
+    std::vector<QAction*> colZoom1;
+    if (acts.actionFitSelection) colZoom1.push_back(acts.actionFitSelection);
+    if (acts.actionZoomWindow) colZoom1.push_back(acts.actionZoomWindow);
+    if (acts.actionResetView) colZoom1.push_back(acts.actionResetView);
+    if (!colZoom1.empty())
     {
-        auto* navPanel = new RibbonPanel(QObject::tr("Navigation"), tab);
-        navPanel->addSmallColumn(colZoom);
-        tab->addPanel(navPanel);
+        navPanel->addInternalSeparator();
+        navPanel->addSmallColumn(colZoom1);
     }
 
-    // Repères & Coupes
+    std::vector<QAction*> colZoom2;
+    if (acts.actionZoomIn) colZoom2.push_back(acts.actionZoomIn);
+    if (acts.actionZoomOut) colZoom2.push_back(acts.actionZoomOut);
+    if (acts.actionPreviousView) colZoom2.push_back(acts.actionPreviousView);
+    if (acts.actionNextView) colZoom2.push_back(acts.actionNextView);
+    if (!colZoom2.empty())
+    {
+        navPanel->addInternalSeparator();
+        navPanel->addSmallColumn(colZoom2);
+    }
+    tab->addPanel(navPanel);
+
+    // Plans de Travail, Repères & Coupes
     auto* cutPanel = new RibbonPanel(QObject::tr("Plans & Coupes"), tab);
-    if (acts.actionCoordSystem) cutPanel->addLargeAction(acts.actionCoordSystem);
+    if (acts.actionViewNormalToPlane) cutPanel->addLargeAction(acts.actionViewNormalToPlane);
+    if (acts.actionCoordSystem)
+    {
+        cutPanel->addInternalSeparator();
+        cutPanel->addLargeAction(acts.actionCoordSystem);
+    }
+    std::vector<QAction*> colPlans;
+    if (acts.actionWorkPlaneXY) colPlans.push_back(acts.actionWorkPlaneXY);
+    if (acts.actionWorkPlaneLevel) colPlans.push_back(acts.actionWorkPlaneLevel);
+    if (acts.actionWorkPlaneXZ) colPlans.push_back(acts.actionWorkPlaneXZ);
+    if (acts.actionWorkPlaneYZ) colPlans.push_back(acts.actionWorkPlaneYZ);
+    if (!colPlans.empty())
+    {
+        cutPanel->addInternalSeparator();
+        cutPanel->addSmallColumn(colPlans);
+    }
+    std::vector<QAction*> colOpt;
+    if (acts.actionWorkPlaneCustom) colOpt.push_back(acts.actionWorkPlaneCustom);
+    if (acts.actionWorkPlaneVisible) colOpt.push_back(acts.actionWorkPlaneVisible);
+    if (!colOpt.empty())
+    {
+        cutPanel->addInternalSeparator();
+        cutPanel->addSmallColumn(colOpt);
+    }
     if (acts.actionSectionCut)
     {
         cutPanel->addInternalSeparator();

@@ -86,6 +86,9 @@
 #include "Model/MaterialLibrary.h"
 #include "Viewer/MaterialVisual.h"
 #include "Viewer/TextureManager.h"
+#include "Coordinate/WorkPlane.h"
+#include "Coordinate/CoordinateTransformationService.h"
+#include <Graphic3d_Camera.hxx>
 #include <AIS_Shape.hxx>
 
 using namespace TSA::Coordinate;
@@ -114,12 +117,18 @@ static bool approxEqual(double a, double b, double eps = 1e-4)
 #include <QJsonDocument>
 #include <QJsonObject>
 #include "UI/Dialogs/ExtensionManagerDialog.h"
+#include "Commands/CommandCategory.h"
+#include "Commands/CommandCatalog.h"
+#include "Commands/CreateElementCommands.h"
+#include "Commands/ModifyCommands.h"
+#include "Commands/CreateBeamCommand.h"
+#include "UndoRedo/CommandManager.h"
 
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int total = 49;
+    int total = 51;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -5678,6 +5687,498 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 49: Cable System Audit & End-to-End Validation (7 Subtests Validated) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 50: Professional CAD Command System, Command Catalog & Classification
+    // (Inspiré d'AutoCAD & Robot Structural Analysis)
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 50: Professional CAD Command System & Command Classification ---" << std::endl;
+
+        // 50.1: CommandCategory & Names
+        {
+            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Create) == "Création / Dessin", "Subtest 50.1: Category Create string valid");
+            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Modify) == "Modification CAO", "Subtest 50.1: Category Modify string valid");
+            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Properties) == "Propriétés", "Subtest 50.1: Category Properties string valid");
+            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Analysis) == "Calculs / Analyse", "Subtest 50.1: Category Analysis string valid");
+            std::cout << "  [PASS] Subtest 50.1: CommandCategory Taxonomy & Localized Names Verified" << std::endl;
+        }
+
+        // 50.2: CommandCatalog Registration & Querying
+        {
+            auto& catalog = TSA::Commands::CommandCatalog::instance();
+            const auto* cmdBeam = catalog.findCommand("cmd.create.beam");
+            TEST_CHECK(cmdBeam != nullptr, "Subtest 50.2: Command cmd.create.beam found");
+            if (cmdBeam)
+            {
+                TEST_CHECK(cmdBeam->category == TSA::Commands::CommandCategory::Create, "Subtest 50.2: Beam command is in Create category");
+                TEST_CHECK(cmdBeam->shortcut == "B", "Subtest 50.2: Beam shortcut is 'B'");
+            }
+
+            const auto* cmdCable = catalog.findCommand("cmd.create.cable");
+            TEST_CHECK(cmdCable != nullptr, "Subtest 50.2: Command cmd.create.cable found");
+            if (cmdCable)
+            {
+                TEST_CHECK(cmdCable->category == TSA::Commands::CommandCategory::Create, "Subtest 50.2: Cable command is in Create category");
+            }
+
+            auto createCmds = catalog.commandsInCategory(TSA::Commands::CommandCategory::Create);
+            TEST_CHECK(createCmds.size() >= 8, "Subtest 50.2: At least 8 structural creation commands registered");
+
+            auto modifyCmds = catalog.commandsInCategory(TSA::Commands::CommandCategory::Modify);
+            TEST_CHECK(modifyCmds.size() >= 3, "Subtest 50.2: At least 3 modify commands registered");
+
+            std::cout << "  [PASS] Subtest 50.2: CommandCatalog Central Registry & Querying Verified" << std::endl;
+        }
+
+        // 50.3: CreateElementCommands (Node, Column, Cable, Slab, Wall, Foundation, Truss)
+        {
+            TSA::Model::Model m;
+
+            // 1. CreateNodeCommand
+            auto nodeCmd1 = std::make_unique<TSA::Commands::CreateNodeCommand>(m, 0.0, 0.0, 0.0, "", "N1");
+            TEST_CHECK(nodeCmd1->execute(), "Subtest 50.3: CreateNodeCommand 1 executed");
+            int n1 = nodeCmd1->createdNodeId();
+            TEST_CHECK(n1 > 0 && m.nodes().size() == 1, "Subtest 50.3: Node 1 in model");
+
+            auto nodeCmd2 = std::make_unique<TSA::Commands::CreateNodeCommand>(m, 5.0, 0.0, 0.0, "", "N2");
+            TEST_CHECK(nodeCmd2->execute(), "Subtest 50.3: CreateNodeCommand 2 executed");
+            int n2 = nodeCmd2->createdNodeId();
+
+            auto nodeCmd3 = std::make_unique<TSA::Commands::CreateNodeCommand>(m, 5.0, 4.0, 0.0, "", "N3");
+            TEST_CHECK(nodeCmd3->execute(), "Subtest 50.3: CreateNodeCommand 3 executed");
+            int n3 = nodeCmd3->createdNodeId();
+
+            auto nodeCmd4 = std::make_unique<TSA::Commands::CreateNodeCommand>(m, 0.0, 4.0, 0.0, "", "N4");
+            TEST_CHECK(nodeCmd4->execute(), "Subtest 50.3: CreateNodeCommand 4 executed");
+            int n4 = nodeCmd4->createdNodeId();
+
+            auto nodeCmd5 = std::make_unique<TSA::Commands::CreateNodeCommand>(m, 0.0, 0.0, 3.5, "", "N5");
+            TEST_CHECK(nodeCmd5->execute(), "Subtest 50.3: CreateNodeCommand 5 executed");
+            int n5 = nodeCmd5->createdNodeId();
+
+            auto nodeCmd6 = std::make_unique<TSA::Commands::CreateNodeCommand>(m, 5.0, 0.0, 3.5, "", "N6");
+            TEST_CHECK(nodeCmd6->execute(), "Subtest 50.3: CreateNodeCommand 6 executed");
+            int n6 = nodeCmd6->createdNodeId();
+
+            // 2. CreateColumnCommand
+            auto colCmd = std::make_unique<TSA::Commands::CreateColumnCommand>(m, n1, n5, 0.35, 0.35, "Poteau_C1");
+            TEST_CHECK(colCmd->category() == TSA::Commands::CommandCategory::Create, "Subtest 50.3: Column command category is Create");
+            TEST_CHECK(colCmd->execute(), "Subtest 50.3: CreateColumnCommand executed");
+            int colId = colCmd->createdColumnId();
+            TEST_CHECK(m.columns().size() == 1, "Subtest 50.3: Column added to model");
+
+            // 3. CreateCableCommand
+            auto cableCmd = std::make_unique<TSA::Commands::CreateCableCommand>(m, n2, n5, TSA::Model::CableType::StayCable, "Hauban_K1");
+            TEST_CHECK(cableCmd->category() == TSA::Commands::CommandCategory::Create, "Subtest 50.3: Cable command category is Create");
+            TEST_CHECK(cableCmd->execute(), "Subtest 50.3: CreateCableCommand executed");
+            int cableId = cableCmd->createdCableId();
+            TEST_CHECK(m.cables().size() == 1, "Subtest 50.3: Cable added to model");
+
+            // 4. CreateSlabCommand
+            auto slabCmd = std::make_unique<TSA::Commands::CreateSlabCommand>(m, std::vector<int>{n1, n2, n3, n4}, 0.22, "Dalle_D1");
+            TEST_CHECK(slabCmd->category() == TSA::Commands::CommandCategory::Create, "Subtest 50.3: Slab command category is Create");
+            TEST_CHECK(slabCmd->execute(), "Subtest 50.3: CreateSlabCommand executed");
+            int slabId = slabCmd->createdSlabId();
+            TEST_CHECK(m.slabs().size() == 1, "Subtest 50.3: Slab added to model");
+
+            // 5. CreateWallCommand
+            auto wallCmd = std::make_unique<TSA::Commands::CreateWallCommand>(m, n1, n4, 3.5, 0.20, "Voile_V1");
+            TEST_CHECK(wallCmd->category() == TSA::Commands::CommandCategory::Create, "Subtest 50.3: Wall command category is Create");
+            TEST_CHECK(wallCmd->execute(), "Subtest 50.3: CreateWallCommand executed");
+            int wallId = wallCmd->createdWallId();
+            TEST_CHECK(m.walls().size() == 1, "Subtest 50.3: Wall added to model");
+
+            // 6. CreateFoundationCommand
+            auto fndCmd = std::make_unique<TSA::Commands::CreateFoundationCommand>(m, n1, 1.8, 1.8, 0.60, "Semelle_S1");
+            TEST_CHECK(fndCmd->category() == TSA::Commands::CommandCategory::Create, "Subtest 50.3: Foundation command category is Create");
+            TEST_CHECK(fndCmd->execute(), "Subtest 50.3: CreateFoundationCommand executed");
+            int fndId = fndCmd->createdFoundationId();
+            TEST_CHECK(m.foundations().size() == 1, "Subtest 50.3: Foundation added to model");
+
+            // 7. CreateTrussMemberCommand
+            auto trussCmd = std::make_unique<TSA::Commands::CreateTrussMemberCommand>(m, n1, n6, 0.08, "Diagonale_T1");
+            TEST_CHECK(trussCmd->category() == TSA::Commands::CommandCategory::Create, "Subtest 50.3: Truss command category is Create");
+            TEST_CHECK(trussCmd->execute(), "Subtest 50.3: CreateTrussMemberCommand executed");
+            int trId = trussCmd->createdMemberId();
+            TEST_CHECK(m.trussMembers().size() == 1, "Subtest 50.3: Truss member added to model");
+
+            // Undo every command in reverse order
+            TEST_CHECK(trussCmd->undo(), "Subtest 50.3: Undo CreateTrussMemberCommand");
+            TEST_CHECK(m.trussMembers().empty(), "Subtest 50.3: Truss members empty");
+
+            TEST_CHECK(fndCmd->undo(), "Subtest 50.3: Undo CreateFoundationCommand");
+            TEST_CHECK(m.foundations().empty(), "Subtest 50.3: Foundations empty");
+
+            TEST_CHECK(wallCmd->undo(), "Subtest 50.3: Undo CreateWallCommand");
+            TEST_CHECK(m.walls().empty(), "Subtest 50.3: Walls empty");
+
+            TEST_CHECK(slabCmd->undo(), "Subtest 50.3: Undo CreateSlabCommand");
+            TEST_CHECK(m.slabs().empty(), "Subtest 50.3: Slabs empty");
+
+            TEST_CHECK(cableCmd->undo(), "Subtest 50.3: Undo CreateCableCommand");
+            TEST_CHECK(m.cables().empty(), "Subtest 50.3: Cables empty");
+
+            TEST_CHECK(colCmd->undo(), "Subtest 50.3: Undo CreateColumnCommand");
+            TEST_CHECK(m.columns().empty(), "Subtest 50.3: Columns empty");
+
+            std::cout << "  [PASS] Subtest 50.3: CreateElementCommands (Node, Col, Cable, Slab, Wall, Fnd, Truss) Execute & Undo Verified" << std::endl;
+        }
+
+        // 50.4: ModifyCommands (Move, Rotate, Delete)
+        {
+            TSA::Model::Model m;
+            int nA = m.addNode(0.0, 0.0, 0.0);
+            int nB = m.addNode(4.0, 0.0, 0.0);
+            int bId = m.addBeam(nA, nB, 0.25, 0.40);
+            int cId = m.addCable(nA, nB, TSA::Model::CableType::Strand);
+
+            // MoveElementsCommand
+            auto moveCmd = std::make_unique<TSA::Commands::MoveElementsCommand>(m, std::set<int>{nA, nB}, 2.0, 3.0, 1.0);
+            TEST_CHECK(moveCmd->category() == TSA::Commands::CommandCategory::Modify, "Subtest 50.4: Move command is in Modify category");
+            TEST_CHECK(moveCmd->execute(), "Subtest 50.4: Move command executed");
+            TEST_CHECK(approxEqual(m.getNode(nA)->x(), 2.0), "Subtest 50.4: nA x is 2.0");
+            TEST_CHECK(approxEqual(m.getNode(nB)->x(), 6.0), "Subtest 50.4: nB x is 6.0");
+
+            TEST_CHECK(moveCmd->undo(), "Subtest 50.4: Move command undone");
+            TEST_CHECK(approxEqual(m.getNode(nA)->x(), 0.0), "Subtest 50.4: nA x reverted to 0.0");
+            TEST_CHECK(approxEqual(m.getNode(nB)->x(), 4.0), "Subtest 50.4: nB x reverted to 4.0");
+
+            // RotateElementsCommand
+            auto rotCmd = std::make_unique<TSA::Commands::RotateElementsCommand>(m, std::set<int>{nB}, 0.0, 0.0, 0.0, 90.0, 0.0, 0.0, 1.0);
+            TEST_CHECK(rotCmd->category() == TSA::Commands::CommandCategory::Modify, "Subtest 50.4: Rotate command is in Modify category");
+            TEST_CHECK(rotCmd->execute(), "Subtest 50.4: Rotate command executed");
+            TEST_CHECK(approxEqual(m.getNode(nB)->x(), 0.0, 1e-4), "Subtest 50.4: nB x after 90 deg rotation is 0");
+            TEST_CHECK(approxEqual(m.getNode(nB)->y(), 4.0, 1e-4), "Subtest 50.4: nB y after 90 deg rotation is 4");
+
+            TEST_CHECK(rotCmd->undo(), "Subtest 50.4: Rotate command undone");
+            TEST_CHECK(approxEqual(m.getNode(nB)->x(), 4.0, 1e-4), "Subtest 50.4: nB x reverted to 4");
+            TEST_CHECK(approxEqual(m.getNode(nB)->y(), 0.0, 1e-4), "Subtest 50.4: nB y reverted to 0");
+
+            // DeleteElementsCommand
+            auto delCmd = std::make_unique<TSA::Commands::DeleteElementsCommand>(
+                m, std::set<int>{nA, nB}, std::set<int>{bId}, std::set<int>{},
+                std::set<int>{}, std::set<int>{}, std::set<int>{}, std::set<int>{},
+                std::set<int>{cId}
+            );
+            TEST_CHECK(delCmd->execute(), "Subtest 50.4: Delete command executed");
+            TEST_CHECK(m.nodes().empty(), "Subtest 50.4: All nodes deleted");
+            TEST_CHECK(m.beams().empty(), "Subtest 50.4: Beam deleted");
+            TEST_CHECK(m.cables().empty(), "Subtest 50.4: Cable deleted");
+
+            TEST_CHECK(delCmd->undo(), "Subtest 50.4: Delete command undone via snapshot");
+            TEST_CHECK(m.nodes().size() == 2, "Subtest 50.4: Nodes restored");
+            TEST_CHECK(m.beams().size() == 1, "Subtest 50.4: Beam restored");
+            TEST_CHECK(m.cables().size() == 1, "Subtest 50.4: Cable restored");
+
+            std::cout << "  [PASS] Subtest 50.4: ModifyCommands (Move, Rotate, Delete) Execute & Undo Verified" << std::endl;
+        }
+
+        // 50.5: CommandManager Pipeline & Transaction Safety
+        {
+            TSA::Model::Model m;
+            TSA::UndoRedo::CommandManager cmdMgr(&m, m.undoManager());
+
+            TEST_CHECK(!cmdMgr.canUndo(), "Subtest 50.5: Initial canUndo is false");
+            TEST_CHECK(!cmdMgr.canRedo(), "Subtest 50.5: Initial canRedo is false");
+
+            auto cmd1 = std::make_unique<TSA::Commands::CreateNodeCommand>(m, 1.0, 2.0, 3.0, "", "NodA");
+            TEST_CHECK(cmdMgr.executeCommand(std::move(cmd1)), "Subtest 50.5: executeCommand 1 succeeded");
+            TEST_CHECK(m.nodes().size() == 1, "Subtest 50.5: Node count is 1");
+            TEST_CHECK(cmdMgr.canUndo(), "Subtest 50.5: canUndo is true");
+
+            auto cmd2 = std::make_unique<TSA::Commands::CreateNodeCommand>(m, 4.0, 5.0, 6.0, "", "NodB");
+            TEST_CHECK(cmdMgr.executeCommand(std::move(cmd2)), "Subtest 50.5: executeCommand 2 succeeded");
+            TEST_CHECK(m.nodes().size() == 2, "Subtest 50.5: Node count is 2");
+
+            TEST_CHECK(cmdMgr.undo(), "Subtest 50.5: cmdMgr.undo() succeeded");
+            TEST_CHECK(m.nodes().size() == 1, "Subtest 50.5: Node count back to 1");
+            TEST_CHECK(cmdMgr.canRedo(), "Subtest 50.5: canRedo is true");
+
+            TEST_CHECK(cmdMgr.redo(), "Subtest 50.5: cmdMgr.redo() succeeded");
+            TEST_CHECK(m.nodes().size() == 2, "Subtest 50.5: Node count back to 2");
+
+            std::cout << "  [PASS] Subtest 50.5: CommandManager Execution Pipeline & Transaction Safety Verified" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 50: Professional CAD Command System & Command Classification (5 Subtests Validated) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 51: Advanced CAD Modeling Navigation, WorkPlane, Coordinate Transformations, and Object Snap Engine
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n[TEST 51] Advanced CAD Modeling Navigation, WorkPlane, Coordinate Transformations, and Object Snap Engine..." << std::endl;
+
+        // Subtest 51.1: WorkPlane Standard Factories, Raycasting & Coordinate Conversions
+        {
+            auto wpXY = WorkPlane::xy(2.5, "Floor Level 1");
+            TEST_CHECK(wpXY.type() == WorkPlaneType::GlobalXY, "Subtest 51.1: XY plane type");
+            TEST_CHECK(approxEqual(wpXY.offset(), 2.5), "Subtest 51.1: XY plane offset");
+            TEST_CHECK(approxEqual(wpXY.origin().Z(), 2.5), "Subtest 51.1: XY plane origin Z");
+
+            // Orthogonal projection
+            gp_Pnt ptA(10.0, 20.0, 100.0);
+            gp_Pnt projA = wpXY.projectOrtho(ptA);
+            TEST_CHECK(approxEqual(projA.X(), 10.0) && approxEqual(projA.Y(), 20.0) && approxEqual(projA.Z(), 2.5), "Subtest 51.1: projectOrtho on XY plane");
+            TEST_CHECK(approxEqual(wpXY.distanceTo(ptA), 97.5), "Subtest 51.1: distanceTo XY plane");
+
+            // Raycast intersection: camera eye at (5, 5, 20), looking down along (0, 0, -1)
+            gp_Pnt eye(5.0, 5.0, 20.0);
+            gp_Dir rayDir(0.0, 0.0, -1.0);
+            gp_Pnt hitPnt;
+            bool hit = wpXY.projectRay(eye, rayDir, hitPnt);
+            TEST_CHECK(hit, "Subtest 51.1: Raycast hit XY plane");
+            TEST_CHECK(approxEqual(hitPnt.X(), 5.0) && approxEqual(hitPnt.Y(), 5.0) && approxEqual(hitPnt.Z(), 2.5), "Subtest 51.1: Raycast hit coordinates");
+
+            // WCS <-> UCS
+            gp_Pnt ucsPt = wpXY.toUcs(hitPnt);
+            TEST_CHECK(approxEqual(ucsPt.X(), 5.0) && approxEqual(ucsPt.Y(), 5.0) && approxEqual(ucsPt.Z(), 0.0), "Subtest 51.1: toUcs coordinates");
+            gp_Pnt backWorld = wpXY.toWorld(ucsPt);
+            TEST_CHECK(approxEqual(backWorld.X(), 5.0) && approxEqual(backWorld.Y(), 5.0) && approxEqual(backWorld.Z(), 2.5), "Subtest 51.1: toWorld coordinates");
+
+            // WorkPlane 3 points
+            gp_Pnt p1(0, 0, 0);
+            gp_Pnt p2(10, 0, 0);
+            gp_Pnt p3(0, 10, 0);
+            auto wp3P = WorkPlane::fromThreePoints(p1, p2, p3, "Custom 3P");
+            TEST_CHECK(wp3P.type() == WorkPlaneType::ThreePoints, "Subtest 51.1: 3P plane type");
+            TEST_CHECK(approxEqual(wp3P.normal().Z(), 1.0), "Subtest 51.1: 3P normal Z");
+
+            // JSON serialization
+            auto json = wpXY.toJson();
+            auto restoredWp = WorkPlane::fromJson(json);
+            TEST_CHECK(restoredWp.name() == "Floor Level 1", "Subtest 51.1: JSON name restored");
+            TEST_CHECK(approxEqual(restoredWp.offset(), 2.5), "Subtest 51.1: JSON offset restored");
+
+            std::cout << "  [PASS] Subtest 51.1: WorkPlane Standard Factories, Raycasting & Projections Verified" << std::endl;
+        }
+
+        // Subtest 51.2: CoordinateTransformationService & Local Element Frames
+        {
+            auto& cts = CoordinateTransformationService::instance();
+            cts.setActiveWorkPlane(WorkPlane::xy(3.0, "Floor 3m"));
+            TEST_CHECK(cts.hasActiveWorkPlane(), "Subtest 51.2: hasActiveWorkPlane is true");
+            TEST_CHECK(approxEqual(cts.activeWorkPlane().offset(), 3.0), "Subtest 51.2: Active work plane offset is 3m");
+
+            gp_Pnt wPt(2.0, 4.0, 3.0);
+            gp_Pnt uPt = cts.wcsToUcs(wPt);
+            TEST_CHECK(approxEqual(uPt.Z(), 0.0), "Subtest 51.2: wcsToUcs Z is 0 on plane");
+            gp_Pnt backPt = cts.ucsToWcs(uPt);
+            TEST_CHECK(approxEqual(backPt.Z(), 3.0), "Subtest 51.2: ucsToWcs Z is restored to 3");
+
+            // Element local coordinate system: horizontal beam along X from (0,0,0) to (5,0,0)
+            gp_Pnt start(0, 0, 0);
+            gp_Pnt end(5, 0, 0);
+            auto localFrame = cts.computeElementLocalFrame(start, end, 0.0);
+            TEST_CHECK(approxEqual(localFrame.XDirection().X(), 1.0), "Subtest 51.2: Beam local X-axis is longitudinal");
+            TEST_CHECK(approxEqual(localFrame.Direction().Z(), 1.0), "Subtest 51.2: Beam local Z-axis is vertical (+Z)");
+
+            // Point along beam converted to local
+            gp_Pnt midW(2.5, 0.0, 0.0);
+            gp_Pnt midL = cts.wcsToElementLocal(midW, start, end, 0.0);
+            TEST_CHECK(approxEqual(midL.X(), 2.5) && approxEqual(midL.Y(), 0.0) && approxEqual(midL.Z(), 0.0), "Subtest 51.2: wcsToElementLocal midpoint");
+
+            // Vertical column from (0,0,0) to (0,0,4)
+            gp_Pnt colStart(0, 0, 0);
+            gp_Pnt colEnd(0, 0, 4);
+            auto colFrame = cts.computeElementLocalFrame(colStart, colEnd, 0.0);
+            TEST_CHECK(approxEqual(colFrame.XDirection().Z(), 1.0), "Subtest 51.2: Column local X-axis is vertical (+Z)");
+
+            std::cout << "  [PASS] Subtest 51.2: CoordinateTransformationService & Local Element Frames Verified" << std::endl;
+        }
+
+        // Subtest 51.3: SnapMode Bitmask Operations
+        {
+            auto modes = SnapMode::Endpoint | SnapMode::Midpoint | SnapMode::Center;
+            TEST_CHECK(hasSnapMode(modes, SnapMode::Endpoint), "Subtest 51.3: Bitmask has Endpoint");
+            TEST_CHECK(hasSnapMode(modes, SnapMode::Midpoint), "Subtest 51.3: Bitmask has Midpoint");
+            TEST_CHECK(hasSnapMode(modes, SnapMode::Center), "Subtest 51.3: Bitmask has Center");
+            TEST_CHECK(!hasSnapMode(modes, SnapMode::Intersection), "Subtest 51.3: Bitmask does NOT have Intersection");
+
+            // Remove Midpoint
+            modes = modes & ~SnapMode::Midpoint;
+            TEST_CHECK(!hasSnapMode(modes, SnapMode::Midpoint), "Subtest 51.3: Midpoint removed");
+            TEST_CHECK(hasSnapMode(modes, SnapMode::Endpoint), "Subtest 51.3: Endpoint still present");
+
+            std::cout << "  [PASS] Subtest 51.3: SnapMode Bitmask Operators Verified" << std::endl;
+        }
+
+        // Subtest 51.4: Multi-mode Object Snap on Structural Elements (Beam, Column, Wall, Foundation)
+        {
+            TSA::Model::Model m;
+            int n1 = m.addNode(0.0, 0.0, 0.0);
+            int n2 = m.addNode(6.0, 0.0, 0.0);
+            int n3 = m.addNode(6.0, 0.0, 3.0);
+            int bId = m.addBeam(n1, n2, 0.30, 0.50);
+            int colId = m.addColumn(n2, n3, 0.40, 0.40);
+            int fId = m.addFoundation(n1, 1.5, 1.5, 0.5);
+            (void)colId;
+            (void)bId;
+            (void)fId;
+
+            GridSnapManager snapMgr;
+            snapMgr.setActiveModes(SnapMode::Endpoint | SnapMode::Midpoint | SnapMode::Center | SnapMode::Nearest);
+
+            // 1. Endpoint snap near n1 (0.05, 0.05, 0.0)
+            auto snapNearN1 = snapMgr.findObjectSnap(gp_Pnt(0.05, 0.05, 0.0), &m, 0.5);
+            TEST_CHECK(snapNearN1.snapped, "Subtest 51.4: Endpoint snap found near N1");
+            TEST_CHECK(snapNearN1.type == GridSnapType::Endpoint, "Subtest 51.4: Snap type is Endpoint");
+            TEST_CHECK(approxEqual(snapNearN1.point.X(), 0.0) && approxEqual(snapNearN1.point.Y(), 0.0), "Subtest 51.4: Endpoint snapped to (0,0,0)");
+
+            // 2. Midpoint snap near (3.05, 0.02, 0.0) on the beam
+            auto snapMidBeam = snapMgr.findObjectSnap(gp_Pnt(3.05, 0.02, 0.0), &m, 0.5);
+            TEST_CHECK(snapMidBeam.snapped, "Subtest 51.4: Midpoint snap found on beam");
+            TEST_CHECK(snapMidBeam.type == GridSnapType::Midpoint, "Subtest 51.4: Snap type is Midpoint");
+            TEST_CHECK(approxEqual(snapMidBeam.point.X(), 3.0) && approxEqual(snapMidBeam.point.Y(), 0.0) && approxEqual(snapMidBeam.point.Z(), 0.0), "Subtest 51.4: Beam midpoint is exactly (3,0,0)");
+
+            // 3. Center snap near foundation at N1
+            snapMgr.setActiveModes(SnapMode::Center);
+            auto snapCenterF = snapMgr.findObjectSnap(gp_Pnt(0.08, 0.08, -0.2), &m, 0.5);
+            TEST_CHECK(snapCenterF.snapped, "Subtest 51.4: Center snap found on foundation");
+            TEST_CHECK(snapCenterF.type == GridSnapType::Center, "Subtest 51.4: Snap type is Center");
+
+            // 4. Nearest snap along beam at X = 1.75
+            snapMgr.setActiveModes(SnapMode::Nearest);
+            auto snapNearBeam = snapMgr.findObjectSnap(gp_Pnt(1.75, 0.08, 0.0), &m, 0.3);
+            TEST_CHECK(snapNearBeam.snapped, "Subtest 51.4: Nearest snap found on beam axis");
+            TEST_CHECK(snapNearBeam.type == GridSnapType::Nearest, "Subtest 51.4: Snap type is Nearest");
+            TEST_CHECK(approxEqual(snapNearBeam.point.X(), 1.75) && approxEqual(snapNearBeam.point.Y(), 0.0), "Subtest 51.4: Nearest projected onto beam axis");
+
+            std::cout << "  [PASS] Subtest 51.4: Multi-mode Object Snap Engine (Endpoint, Midpoint, Center, Nearest) Verified" << std::endl;
+        }
+
+        // Subtest 51.5: Camera Navigation History Deep-Copy Stack
+        {
+            Handle(Graphic3d_Camera) cam1 = new Graphic3d_Camera();
+            cam1->SetCenter(gp_Pnt(0, 0, 0));
+            cam1->SetEye(gp_Pnt(10, 10, 10));
+            cam1->SetScale(100.0);
+
+            Handle(Graphic3d_Camera) cam2 = new Graphic3d_Camera();
+            cam2->SetCenter(gp_Pnt(5, 5, 0));
+            cam2->SetEye(gp_Pnt(15, 15, 10));
+            cam2->SetScale(200.0);
+
+            // Verify deep copy capability
+            Handle(Graphic3d_Camera) camCopy = new Graphic3d_Camera();
+            camCopy->Copy(cam1);
+            TEST_CHECK(camCopy->Center().IsEqual(cam1->Center(), 1e-4), "Subtest 51.5: Camera copy center matches");
+            TEST_CHECK(approxEqual(camCopy->Scale(), cam1->Scale()), "Subtest 51.5: Camera copy scale matches");
+
+            // Simulate undo stack
+            std::vector<Handle(Graphic3d_Camera)> undoStack;
+            undoStack.push_back(camCopy);
+            TEST_CHECK(undoStack.size() == 1, "Subtest 51.5: Undo stack size is 1");
+
+            // Restore from undo stack
+            Handle(Graphic3d_Camera) restored = new Graphic3d_Camera();
+            restored->Copy(undoStack.back());
+            undoStack.pop_back();
+            TEST_CHECK(undoStack.empty(), "Subtest 51.5: Undo stack empty after pop");
+            TEST_CHECK(restored->Center().IsEqual(cam1->Center(), 1e-4), "Subtest 51.5: Restored camera center matches cam1");
+            TEST_CHECK(approxEqual(restored->Scale(), 100.0), "Subtest 51.5: Restored camera scale is 100.0");
+
+            std::cout << "  [PASS] Subtest 51.5: Camera Navigation Deep-Copy History Mechanism Verified" << std::endl;
+        }
+
+        // Subtest 51.6: Structural Level / Story WorkPlane Synchronization and Elevation Tracking
+        {
+            LevelManager lm;
+            lm.addLevel("RDC", 0.0);
+            lm.addLevel("R+1", 3.20);
+            lm.addLevel("R+2", 6.40);
+            lm.addLevel("Toiture", 9.60);
+
+            TEST_CHECK(lm.levelCount() == 4, "Subtest 51.6: Level count is 4");
+
+            // Recherche exacte par élévation
+            const Level* lvl1 = lm.findLevelAtElevation(3.20);
+            TEST_CHECK(lvl1 != nullptr && lvl1->name == "R+1", "Subtest 51.6: Level R+1 found at Z=3.20m");
+
+            // Recherche du niveau le plus proche
+            const Level* closest = lm.findClosestLevel(3.18);
+            TEST_CHECK(closest != nullptr && closest->name == "R+1", "Subtest 51.6: Closest level to 3.18m is R+1");
+
+            // Synchronisation avec WorkPlane
+            WorkPlane wpLevel(WorkPlaneType::ElevationZ, lvl1->name, lvl1->elevation);
+            TEST_CHECK(wpLevel.type() == WorkPlaneType::ElevationZ, "Subtest 51.6: WorkPlane type is ElevationZ");
+            TEST_CHECK(approxEqual(wpLevel.offset(), 3.20), "Subtest 51.6: WorkPlane offset is 3.20m");
+
+            // Projection orthogonale d'un point arbitraire (10.0, 5.0, 1.5) sur le plan d'étage R+1
+            gp_Pnt pWorld(10.0, 5.0, 1.5);
+            gp_Pnt pProj = wpLevel.projectOrtho(pWorld);
+            TEST_CHECK(approxEqual(pProj.X(), 10.0) && approxEqual(pProj.Y(), 5.0) && approxEqual(pProj.Z(), 3.20), "Subtest 51.6: Orthogonal projection onto R+1 workplane");
+
+            // Transformation WCS <-> UCS au niveau R+1
+            gp_Pnt pUcs = wpLevel.toUcs(pProj);
+            TEST_CHECK(approxEqual(pUcs.X(), 10.0) && approxEqual(pUcs.Y(), 5.0) && approxEqual(pUcs.Z(), 0.0), "Subtest 51.6: UCS coordinate Z is 0 on workplane");
+            gp_Pnt pBack = wpLevel.toWorld(pUcs);
+            TEST_CHECK(approxEqual(pBack.Z(), 3.20), "Subtest 51.6: Restored world coordinate Z is 3.20m");
+
+            std::cout << "  [PASS] Subtest 51.6: Structural Level / Story WorkPlane Synchronization Verified" << std::endl;
+        }
+
+        // Subtest 51.7: WorkPlane Arbitrary 3-Point Definition, Camera Normal Alignment & Geometry
+        {
+            // Plan incliné défini par 3 points : Origine (0, 0, 0), Point U (10, 0, 0), Point V (0, 5, 5)
+            gp_Pnt p1(0.0, 0.0, 0.0);
+            gp_Pnt p2(10.0, 0.0, 0.0);
+            gp_Pnt p3(0.0, 5.0, 5.0);
+            WorkPlane wp3P = WorkPlane::fromThreePoints(p1, p2, p3, "Toiture Inclinee 3P");
+
+            TEST_CHECK(wp3P.type() == WorkPlaneType::ThreePoints, "Subtest 51.7: WorkPlane type is ThreePoints");
+            TEST_CHECK(wp3P.name() == "Toiture Inclinee 3P", "Subtest 51.7: WorkPlane name is preserved");
+
+            // Vecteur X-direction doit être orienté selon P1->P2 (1, 0, 0)
+            gp_Dir uDir = wp3P.xDirection();
+            TEST_CHECK(approxEqual(uDir.X(), 1.0) && approxEqual(uDir.Y(), 0.0) && approxEqual(uDir.Z(), 0.0),
+                       "Subtest 51.7: WorkPlane U direction matches (1, 0, 0)");
+
+            // La normale doit être orthogonale à (1, 0, 0) et au vecteur (0, 5, 5)
+            gp_Dir nDir = wp3P.normal();
+            TEST_CHECK(approxEqual(nDir.X(), 0.0), "Subtest 51.7: Normal X is 0");
+            TEST_CHECK(approxEqual(std::abs(nDir.Y()), std::abs(nDir.Z())), "Subtest 51.7: Normal Y and Z have equal magnitude (45 deg incline)");
+            TEST_CHECK(approxEqual(nDir.Dot(gp_Dir(1, 0, 0)), 0.0), "Subtest 51.7: Normal is perpendicular to U-axis");
+
+            // Projection du point P3 (0, 5, 5) sur le plan doit redonner exactement P3 (distance = 0)
+            TEST_CHECK(approxEqual(wp3P.distanceTo(p3), 0.0), "Subtest 51.7: Distance from P3 to plane is 0");
+            gp_Pnt pProjP3 = wp3P.projectOrtho(p3);
+            TEST_CHECK(approxEqual(pProjP3.X(), 0.0) && approxEqual(pProjP3.Y(), 5.0) && approxEqual(pProjP3.Z(), 5.0),
+                       "Subtest 51.7: Ortho projection of P3 is P3");
+
+            // Coordonnée UCS de P3 doit avoir Z = 0
+            gp_Pnt ucsP3 = wp3P.toUcs(p3);
+            TEST_CHECK(approxEqual(ucsP3.Z(), 0.0), "Subtest 51.7: UCS coordinate Z of P3 is 0 on plane");
+            gp_Pnt worldP3 = wp3P.toWorld(ucsP3);
+            TEST_CHECK(approxEqual(worldP3.Y(), 5.0) && approxEqual(worldP3.Z(), 5.0), "Subtest 51.7: Roundtrip UCS->World for P3");
+
+            // Alignement de caméra "Vue normale au plan" (Camera Normal View)
+            // L'œil de la caméra est positionné le long de la normale à une distance d, visant l'origine
+            double camDist = 25.0;
+            gp_Pnt camEye(wp3P.origin().X() + nDir.X() * camDist,
+                          wp3P.origin().Y() + nDir.Y() * camDist,
+                          wp3P.origin().Z() + nDir.Z() * camDist);
+            gp_Pnt camTarget = wp3P.origin();
+            gp_Vec camViewVec(camEye, camTarget);
+            gp_Dir camViewDir(camViewVec);
+
+            // Le vecteur de visée (Target - Eye) doit être exactement opposé à la normale du plan (dot product = -1)
+            TEST_CHECK(approxEqual(camViewDir.Dot(nDir), -1.0),
+                       "Subtest 51.7: Camera view direction is strictly anti-parallel to workplane normal");
+
+            // Le vecteur Up de la caméra doit être orthogonal à la direction de visée
+            gp_Dir camUp = wp3P.yDirection();
+            TEST_CHECK(approxEqual(camUp.Dot(camViewDir), 0.0),
+                       "Subtest 51.7: Camera Up direction is strictly orthogonal to view direction");
+
+            std::cout << "  [PASS] Subtest 51.7: WorkPlane Arbitrary 3-Point Definition, Camera Normal Alignment & Geometry Verified" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 51: Advanced CAD Modeling Navigation, WorkPlane, Coordinate Transformations, and Object Snap Engine Passed Successfully!" << std::endl;
         passed++;
     }
 

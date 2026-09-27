@@ -14,6 +14,7 @@
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
 #include "../UI/Theme/ThemeManager.h"
+#include "../Coordinate/CoordinateTransformationService.h"
 
 #include <QMouseEvent>
 #include <QWheelEvent>
@@ -50,6 +51,9 @@ static bool parseHexColor(const std::string& hex, Quantity_Color& outColor)
 #include <Prs3d_Drawer.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakePolygon.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRep_Builder.hxx>
+#include <TopoDS_Compound.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Edge.hxx>
@@ -58,6 +62,7 @@ static bool parseHexColor(const std::string& hex, Quantity_Color& outColor)
 #include <Graphic3d_Camera.hxx>
 #include <gp_Dir.hxx>
 #include <gp_Vec.hxx>
+#include <Bnd_Box.hxx>
 #include <cmath>
 
 OccView::OccView(QWidget* parent)
@@ -280,6 +285,7 @@ void OccView::showEvent(QShowEvent* event)
         m_isInitialized = true;
         rebuildAllShapes();
         rebuildGrid();
+        updateWorkPlaneVisual();
         fitAll();
     }
 }
@@ -1491,14 +1497,577 @@ void OccView::fitAll()
     }
 }
 
+void OccView::fitSelection()
+{
+    if (m_view.IsNull() || !m_model || !m_selectionManager || !m_selectionManager->hasSelection())
+    {
+        fitAll();
+        return;
+    }
+
+    pushCameraHistory();
+    Bnd_Box bndBox;
+    bool hasGeom = false;
+
+    for (int nId : m_selectionManager->selectedNodes())
+    {
+        if (const auto* n = m_model->getNode(nId))
+        {
+            bndBox.Add(gp_Pnt(n->x(), n->y(), n->z()));
+            hasGeom = true;
+        }
+    }
+    for (int bId : m_selectionManager->selectedBeams())
+    {
+        if (const auto* b = m_model->getBeam(bId))
+        {
+            const auto* n1 = m_model->getNode(b->startNodeId());
+            const auto* n2 = m_model->getNode(b->endNodeId());
+            if (n1) { bndBox.Add(gp_Pnt(n1->x(), n1->y(), n1->z())); hasGeom = true; }
+            if (n2) { bndBox.Add(gp_Pnt(n2->x(), n2->y(), n2->z())); hasGeom = true; }
+        }
+    }
+    for (int cId : m_selectionManager->selectedColumns())
+    {
+        if (const auto* c = m_model->getColumn(cId))
+        {
+            const auto* n1 = m_model->getNode(c->startNodeId());
+            const auto* n2 = m_model->getNode(c->endNodeId());
+            if (n1) { bndBox.Add(gp_Pnt(n1->x(), n1->y(), n1->z())); hasGeom = true; }
+            if (n2) { bndBox.Add(gp_Pnt(n2->x(), n2->y(), n2->z())); hasGeom = true; }
+        }
+    }
+    for (int cbId : m_selectionManager->selectedCables())
+    {
+        if (const auto* cb = m_model->getCable(cbId))
+        {
+            const auto* n1 = m_model->getNode(cb->startNodeId());
+            const auto* n2 = m_model->getNode(cb->endNodeId());
+            if (n1) { bndBox.Add(gp_Pnt(n1->x(), n1->y(), n1->z())); hasGeom = true; }
+            if (n2) { bndBox.Add(gp_Pnt(n2->x(), n2->y(), n2->z())); hasGeom = true; }
+        }
+    }
+    for (int trId : m_selectionManager->selectedTrussMembers())
+    {
+        if (const auto* tr = m_model->getTrussMember(trId))
+        {
+            const auto* n1 = m_model->getNode(tr->startNodeId());
+            const auto* n2 = m_model->getNode(tr->endNodeId());
+            if (n1) { bndBox.Add(gp_Pnt(n1->x(), n1->y(), n1->z())); hasGeom = true; }
+            if (n2) { bndBox.Add(gp_Pnt(n2->x(), n2->y(), n2->z())); hasGeom = true; }
+        }
+    }
+    for (int sId : m_selectionManager->selectedSlabs())
+    {
+        if (const auto* s = m_model->getSlab(sId))
+        {
+            for (int nid : s->nodeIds())
+            {
+                if (const auto* n = m_model->getNode(nid))
+                {
+                    bndBox.Add(gp_Pnt(n->x(), n->y(), n->z()));
+                    hasGeom = true;
+                }
+            }
+        }
+    }
+    for (int wId : m_selectionManager->selectedWalls())
+    {
+        if (const auto* w = m_model->getWall(wId))
+        {
+            const auto* n1 = m_model->getNode(w->startNodeId());
+            const auto* n2 = m_model->getNode(w->endNodeId());
+            if (n1)
+            {
+                bndBox.Add(gp_Pnt(n1->x(), n1->y(), n1->z()));
+                bndBox.Add(gp_Pnt(n1->x(), n1->y(), n1->z() + w->height()));
+                hasGeom = true;
+            }
+            if (n2)
+            {
+                bndBox.Add(gp_Pnt(n2->x(), n2->y(), n2->z()));
+                bndBox.Add(gp_Pnt(n2->x(), n2->y(), n2->z() + w->height()));
+                hasGeom = true;
+            }
+        }
+    }
+    for (int fId : m_selectionManager->selectedFoundations())
+    {
+        if (const auto* f = m_model->getFoundation(fId))
+        {
+            if (const auto* n = m_model->getNode(f->nodeId()))
+            {
+                bndBox.Add(gp_Pnt(n->x() - f->widthA() * 0.5, n->y() - f->lengthB() * 0.5, n->z() - f->heightH()));
+                bndBox.Add(gp_Pnt(n->x() + f->widthA() * 0.5, n->y() + f->lengthB() * 0.5, n->z()));
+                hasGeom = true;
+            }
+        }
+    }
+
+    if (!hasGeom || bndBox.IsVoid())
+    {
+        fitAll();
+        return;
+    }
+
+    bndBox.Enlarge(0.5);
+    m_view->FitAll(bndBox, 0.15, true);
+    m_view->ZFitAll();
+    m_view->Redraw();
+    emit viewCameraChanged();
+}
+
 void OccView::resetView()
 {
     if (!m_view.IsNull())
     {
+        pushCameraHistory();
         m_view->SetUp(0.0, 0.0, 1.0);
         m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
         fitAll();
     }
+}
+
+void OccView::viewHome()
+{
+    resetView();
+}
+
+void OccView::viewTop()
+{
+    if (!m_view.IsNull())
+    {
+        pushCameraHistory();
+        m_view->SetUp(0.0, 1.0, 0.0);
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_Top, false);
+        fitAll();
+    }
+}
+
+void OccView::viewBottom()
+{
+    if (!m_view.IsNull())
+    {
+        pushCameraHistory();
+        m_view->SetUp(0.0, 1.0, 0.0);
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_Bottom, false);
+        fitAll();
+    }
+}
+
+void OccView::viewFront()
+{
+    if (!m_view.IsNull())
+    {
+        pushCameraHistory();
+        m_view->SetUp(0.0, 0.0, 1.0);
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_Front, false);
+        fitAll();
+    }
+}
+
+void OccView::viewBack()
+{
+    if (!m_view.IsNull())
+    {
+        pushCameraHistory();
+        m_view->SetUp(0.0, 0.0, 1.0);
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_Back, false);
+        fitAll();
+    }
+}
+
+void OccView::viewLeft()
+{
+    if (!m_view.IsNull())
+    {
+        pushCameraHistory();
+        m_view->SetUp(0.0, 0.0, 1.0);
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_Left, false);
+        fitAll();
+    }
+}
+
+void OccView::viewRight()
+{
+    if (!m_view.IsNull())
+    {
+        pushCameraHistory();
+        m_view->SetUp(0.0, 0.0, 1.0);
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_Right, false);
+        fitAll();
+    }
+}
+
+void OccView::viewIsometric()
+{
+    if (!m_view.IsNull())
+    {
+        pushCameraHistory();
+        m_view->SetUp(0.0, 0.0, 1.0);
+        m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
+        fitAll();
+    }
+}
+
+void OccView::zoomIn(double factor)
+{
+    if (m_view.IsNull() || factor <= 0.0)
+        return;
+    pushCameraHistory();
+    QPoint center(width() / 2, height() / 2);
+    zoomAtCursor(center, factor);
+    emit viewCameraChanged();
+}
+
+void OccView::zoomOut(double factor)
+{
+    if (m_view.IsNull() || factor <= 0.0)
+        return;
+    pushCameraHistory();
+    QPoint center(width() / 2, height() / 2);
+    zoomAtCursor(center, 1.0 / factor);
+    emit viewCameraChanged();
+}
+
+void OccView::zoomWindow(int x1, int y1, int x2, int y2)
+{
+    if (m_view.IsNull())
+        return;
+    pushCameraHistory();
+    int minX = std::min(x1, x2);
+    int maxX = std::max(x1, x2);
+    int minY = std::min(y1, y2);
+    int maxY = std::max(y1, y2);
+    if (maxX - minX > 5 && maxY - minY > 5)
+    {
+        m_view->WindowFitAll(minX, minY, maxX, maxY);
+        m_view->Redraw();
+        emit viewCameraChanged();
+    }
+}
+
+void OccView::startInteractiveZoomWindow()
+{
+    m_currentAction = CurrentAction::ZoomWindow;
+    setCursor(Qt::CrossCursor);
+}
+
+void OccView::rotate2D(double angleDeg)
+{
+    if (m_view.IsNull() || std::abs(angleDeg) < 1e-4)
+        return;
+    pushCameraHistory();
+    const Handle(Graphic3d_Camera)& cam = m_view->Camera();
+    if (!cam.IsNull())
+    {
+        double angleRad = angleDeg * 3.14159265358979323846 / 180.0;
+        gp_Dir dir = cam->Direction();
+        gp_Dir up = cam->Up();
+        gp_Trsf rot;
+        rot.SetRotation(gp_Ax1(gp_Pnt(0, 0, 0), dir), angleRad);
+        up.Transform(rot);
+        cam->SetUp(up);
+        m_view->Update();
+        m_view->Redraw();
+        emit viewCameraChanged();
+    }
+}
+
+void OccView::pushCameraHistory()
+{
+    if (m_view.IsNull() || m_isRestoringCamera)
+        return;
+
+    const Handle(Graphic3d_Camera)& currentCam = m_view->Camera();
+    if (currentCam.IsNull())
+        return;
+
+    if (!m_cameraUndoStack.empty())
+    {
+        const auto& top = m_cameraUndoStack.back();
+        if (top->Center().IsEqual(currentCam->Center(), 1e-4) &&
+            top->Eye().IsEqual(currentCam->Eye(), 1e-4) &&
+            top->Up().IsEqual(currentCam->Up(), 1e-4) &&
+            std::abs(top->Scale() - currentCam->Scale()) < 1e-4)
+        {
+            return;
+        }
+    }
+
+    Handle(Graphic3d_Camera) savedCam = new Graphic3d_Camera();
+    savedCam->Copy(currentCam);
+    m_cameraUndoStack.push_back(savedCam);
+    if (m_cameraUndoStack.size() > MAX_CAMERA_HISTORY)
+    {
+        m_cameraUndoStack.erase(m_cameraUndoStack.begin());
+    }
+    m_cameraRedoStack.clear();
+
+    emit cameraHistoryChanged(hasPreviousView(), hasNextView());
+}
+
+bool OccView::hasPreviousView() const
+{
+    return !m_cameraUndoStack.empty();
+}
+
+bool OccView::hasNextView() const
+{
+    return !m_cameraRedoStack.empty();
+}
+
+void OccView::previousView()
+{
+    if (m_view.IsNull() || m_cameraUndoStack.empty())
+        return;
+
+    const Handle(Graphic3d_Camera)& currentCam = m_view->Camera();
+    Handle(Graphic3d_Camera) currSaved = new Graphic3d_Camera();
+    currSaved->Copy(currentCam);
+    m_cameraRedoStack.push_back(currSaved);
+
+    Handle(Graphic3d_Camera) prevCam = m_cameraUndoStack.back();
+    m_cameraUndoStack.pop_back();
+
+    m_isRestoringCamera = true;
+    m_view->Camera()->Copy(prevCam);
+    m_view->Update();
+    m_view->Redraw();
+    m_isRestoringCamera = false;
+
+    emit cameraHistoryChanged(hasPreviousView(), hasNextView());
+    emit viewCameraChanged();
+}
+
+void OccView::nextView()
+{
+    if (m_view.IsNull() || m_cameraRedoStack.empty())
+        return;
+
+    const Handle(Graphic3d_Camera)& currentCam = m_view->Camera();
+    Handle(Graphic3d_Camera) currSaved = new Graphic3d_Camera();
+    currSaved->Copy(currentCam);
+    m_cameraUndoStack.push_back(currSaved);
+
+    Handle(Graphic3d_Camera) nextCam = m_cameraRedoStack.back();
+    m_cameraRedoStack.pop_back();
+
+    m_isRestoringCamera = true;
+    m_view->Camera()->Copy(nextCam);
+    m_view->Update();
+    m_view->Redraw();
+    m_isRestoringCamera = false;
+
+    emit cameraHistoryChanged(hasPreviousView(), hasNextView());
+    emit viewCameraChanged();
+}
+
+void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
+{
+    m_workPlane = wp;
+    if (wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXY ||
+        wp.type() == TSA::Coordinate::WorkPlaneType::ElevationZ)
+    {
+        m_activeLevelZ = wp.offset();
+    }
+    TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
+    const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
+    m_gridRenderer.setActiveLevelElevation(m_activeLevelZ, grid, m_context);
+    updateWorkPlaneVisual();
+    emit workPlaneChanged(m_workPlane);
+    if (!m_view.IsNull())
+        m_view->Redraw();
+}
+
+void OccView::setWorkPlaneElevation(double elevation)
+{
+    m_workPlane.setOffset(elevation);
+    m_activeLevelZ = elevation;
+    TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
+    const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
+    m_gridRenderer.setActiveLevelElevation(elevation, grid, m_context);
+    updateWorkPlaneVisual();
+    emit workPlaneChanged(m_workPlane);
+    if (!m_view.IsNull())
+        m_view->Redraw();
+}
+
+void OccView::setWorkPlaneType(TSA::Coordinate::WorkPlaneType type, double offset)
+{
+    m_workPlane = TSA::Coordinate::WorkPlane(type, "Plan", offset);
+    if (type == TSA::Coordinate::WorkPlaneType::GlobalXY ||
+        type == TSA::Coordinate::WorkPlaneType::ElevationZ)
+    {
+        m_activeLevelZ = offset;
+    }
+    TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
+    const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
+    m_gridRenderer.setActiveLevelElevation(m_activeLevelZ, grid, m_context);
+    updateWorkPlaneVisual();
+    emit workPlaneChanged(m_workPlane);
+    if (!m_view.IsNull())
+        m_view->Redraw();
+}
+
+void OccView::setWorkPlaneVisible(bool visible)
+{
+    if (m_workPlaneVisible == visible)
+        return;
+    m_workPlaneVisible = visible;
+    updateWorkPlaneVisual();
+}
+
+void OccView::viewNormalToWorkPlane()
+{
+    if (m_view.IsNull())
+        return;
+
+    pushCameraHistory();
+
+    gp_Pnt orig = m_workPlane.origin();
+    gp_Dir norm = m_workPlane.normal();
+    gp_Dir up = m_workPlane.yDirection();
+
+    m_view->SetUp(up.X(), up.Y(), up.Z());
+    m_view->SetProj(norm.X(), norm.Y(), norm.Z());
+    m_view->SetAt(orig.X(), orig.Y(), orig.Z());
+    m_view->FitAll();
+    m_view->Redraw();
+
+    emit viewCameraChanged();
+}
+
+void OccView::updateWorkPlaneVisual()
+{
+    if (m_context.IsNull())
+        return;
+
+    // 1. Supprimer l'ancienne forme visuelle si existante
+    if (!m_workPlaneShape.IsNull())
+    {
+        m_context->Remove(m_workPlaneShape, false);
+        m_workPlaneShape.Nullify();
+    }
+    if (!m_workPlaneAxesShape.IsNull())
+    {
+        m_context->Remove(m_workPlaneAxesShape, false);
+        m_workPlaneAxesShape.Nullify();
+    }
+
+    if (!m_workPlaneVisible)
+    {
+        if (!m_view.IsNull())
+            m_view->Redraw();
+        return;
+    }
+
+    // 2. Détermination de la dimension de la grille du plan
+    double L = 15.0;
+    if (m_model && !m_model->nodes().empty())
+    {
+        double minX = 1e9, maxX = -1e9;
+        double minY = 1e9, maxY = -1e9;
+        double minZ = 1e9, maxZ = -1e9;
+        for (const auto& [nid, n] : m_model->nodes())
+        {
+            if (n.x() < minX) minX = n.x();
+            if (n.x() > maxX) maxX = n.x();
+            if (n.y() < minY) minY = n.y();
+            if (n.y() > maxY) maxY = n.y();
+            if (n.z() < minZ) minZ = n.z();
+            if (n.z() > maxZ) maxZ = n.z();
+        }
+        double span = std::max({ maxX - minX, maxY - minY, maxZ - minZ });
+        if (span > 5.0)
+            L = std::max(15.0, span * 0.8);
+    }
+
+    gp_Pnt orig = m_workPlane.origin();
+    gp_Dir dirU = m_workPlane.xDirection();
+    gp_Dir dirV = m_workPlane.yDirection();
+    gp_Dir dirN = m_workPlane.normal();
+
+    // 3. Panneau surfacique semi-transparent
+    gp_Pnt p00 = orig.Translated(gp_Vec(dirU) * -L).Translated(gp_Vec(dirV) * -L);
+    gp_Pnt p10 = orig.Translated(gp_Vec(dirU) *  L).Translated(gp_Vec(dirV) * -L);
+    gp_Pnt p11 = orig.Translated(gp_Vec(dirU) *  L).Translated(gp_Vec(dirV) *  L);
+    gp_Pnt p01 = orig.Translated(gp_Vec(dirU) * -L).Translated(gp_Vec(dirV) *  L);
+
+    BRepBuilderAPI_MakePolygon poly(p00, p10, p11, p01, true);
+    if (poly.IsDone())
+    {
+        BRepBuilderAPI_MakeFace mkFace(poly.Wire());
+        if (mkFace.IsDone())
+        {
+            m_workPlaneShape = new AIS_Shape(mkFace.Face());
+            m_workPlaneShape->SetColor(Quantity_NOC_STEELBLUE);
+            m_workPlaneShape->SetTransparency(0.88);
+            m_workPlaneShape->SetDisplayMode(AIS_Shaded);
+            m_context->Display(m_workPlaneShape, false);
+        }
+    }
+
+    // 4. Lignes de grille UV et trièdre d'orientation
+    BRep_Builder b;
+    TopoDS_Compound compLines;
+    b.MakeCompound(compLines);
+
+    double step = 2.0;
+    int nSteps = static_cast<int>(L / step);
+    for (int i = -nSteps; i <= nSteps; ++i)
+    {
+        double u = i * step;
+        gp_Pnt pA = orig.Translated(gp_Vec(dirU) * u).Translated(gp_Vec(dirV) * -L);
+        gp_Pnt pB = orig.Translated(gp_Vec(dirU) * u).Translated(gp_Vec(dirV) *  L);
+        b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
+    }
+    for (int j = -nSteps; j <= nSteps; ++j)
+    {
+        double v = j * step;
+        gp_Pnt pA = orig.Translated(gp_Vec(dirU) * -L).Translated(gp_Vec(dirV) * v);
+        gp_Pnt pB = orig.Translated(gp_Vec(dirU) *  L).Translated(gp_Vec(dirV) * v);
+        b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
+    }
+
+    // Axes U, V, N (longueur 3.0 m)
+    double axisLen = 3.0;
+    gp_Pnt ptU = orig.Translated(gp_Vec(dirU) * axisLen);
+    gp_Pnt ptV = orig.Translated(gp_Vec(dirV) * axisLen);
+    gp_Pnt ptN = orig.Translated(gp_Vec(dirN) * axisLen);
+    b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptU).Edge());
+    b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptV).Edge());
+    b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptN).Edge());
+
+    m_workPlaneAxesShape = new AIS_Shape(compLines);
+    m_workPlaneAxesShape->SetColor(Quantity_NOC_CYAN1);
+    m_workPlaneAxesShape->SetWidth(1.5);
+    m_context->Display(m_workPlaneAxesShape, false);
+
+    // Synchronisation du repère privilégié du viewer OCCT
+    if (!m_viewer.IsNull())
+    {
+        m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
+    }
+
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
+void OccView::updateSnapMarker(const TSA::Grid::GridSnapResult& snap)
+{
+    m_lastSnapResult = snap;
+    m_gridRenderer.showSnapMarker(snap, m_context);
+    emit snapChanged(snap);
+}
+
+void OccView::clearSnapMarker()
+{
+    m_lastSnapResult = TSA::Grid::GridSnapResult();
+    m_gridRenderer.hideSnapMarker(m_context);
+    emit snapChanged(m_lastSnapResult);
 }
 
 bool OccView::pixelToWorldPlane(int px, int py, double& wx, double& wy, double& wz) const
@@ -1510,6 +2079,19 @@ bool OccView::pixelToWorldPlane(int px, int py, double& wx, double& wy, double& 
     double xDir = 0.0, yDir = 0.0, zDir = 0.0;
     m_view->ConvertWithProj(px, py, xEye, yEye, zEye, xDir, yDir, zDir);
 
+    // 1. Raycast analytique direct sur le Plan de Travail actif
+    gp_Pnt eye(xEye, yEye, zEye);
+    gp_Dir dir(xDir, yDir, zDir);
+    gp_Pnt hitPnt;
+    if (m_workPlane.projectRay(eye, dir, hitPnt))
+    {
+        wx = hitPnt.X();
+        wy = hitPnt.Y();
+        wz = hitPnt.Z();
+        return true;
+    }
+
+    // 2. Repli selon le mode de vue standard
     if (m_viewPlaneMode == ViewPlaneMode::PlanXZ || (m_viewPlaneMode == ViewPlaneMode::Perspective3D && std::abs(yDir) > 0.85))
     {
         if (std::abs(yDir) > 1e-6)
@@ -1790,8 +2372,11 @@ void OccView::rebuildGrid()
 void OccView::setActiveLevelElevation(double z)
 {
     m_activeLevelZ = z;
+    m_workPlane.setOffset(z);
+    TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
     const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
     m_gridRenderer.setActiveLevelElevation(z, grid, m_context);
+    emit workPlaneChanged(m_workPlane);
     if (!m_view.IsNull())
     {
         m_view->Redraw();
@@ -2182,6 +2767,33 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
             .arg(outY, 0, 'f', 2)
             .arg(outZ, 0, 'f', 2);
         return true;
+    }
+
+    // 1b. Détection Object Snap analytique (Extrémité, Milieu, Centre, Perpendiculaire, Le plus proche)
+    if (m_gridSnapManager && m_model)
+    {
+        double wx = 0.0, wy = 0.0, wz = 0.0;
+        if (pixelToWorldPlane(px, py, wx, wy, wz))
+        {
+            auto objSnap = m_gridSnapManager->findObjectSnap(gp_Pnt(wx, wy, wz), m_model, 0.80);
+            if (objSnap.snapped)
+            {
+                int sx = 0, sy = 0;
+                m_view->Convert(objSnap.point.X(), objSnap.point.Y(), objSnap.point.Z(), sx, sy);
+                double dx = sx - px;
+                double dy = sy - py;
+                if (dx * dx + dy * dy <= screenPixelRadius * screenPixelRadius)
+                {
+                    outX = objSnap.point.X();
+                    outY = objSnap.point.Y();
+                    outZ = objSnap.point.Z();
+                    outNodeId = -1;
+                    outType = objSnap.type;
+                    outDesc = QString::fromStdString(objSnap.description);
+                    return true;
+                }
+            }
+        }
     }
 
     // Récupérer toutes les grilles visibles (la grille active en tête de liste)
@@ -2947,6 +3559,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     Handle(AIS_ViewCubeOwner) cubeOwner = Handle(AIS_ViewCubeOwner)::DownCast(m_context->DetectedOwner());
                     if (!cubeOwner.IsNull())
                     {
+                        pushCameraHistory();
                         m_viewCube->HandleClick(cubeOwner);
                         m_view->Redraw();
                         emit viewCameraChanged();
@@ -2954,6 +3567,15 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     }
                 }
             }
+        }
+
+        // Interception du mode Zoom Fenêtre interactif
+        if (m_currentAction == CurrentAction::ZoomWindow)
+        {
+            m_dragStartPos = p;
+            m_pressMousePos = p;
+            m_lastMousePos = p;
+            return;
         }
 
         // 2. Interception prioritaire : Requête de sélection 3D non-bloquante pour formulaire / dialogue
@@ -3451,11 +4073,13 @@ void OccView::mousePressEvent(QMouseEvent* event)
     }
     else if (event->button() == Qt::RightButton)
     {
+        pushCameraHistory();
         m_currentAction = CurrentAction::Rotation;
         m_view->StartRotation(px, py);
     }
     else if (event->button() == Qt::MiddleButton)
     {
+        pushCameraHistory();
         m_currentAction = CurrentAction::Pan;
     }
 }
@@ -3465,6 +4089,18 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
     const QPoint p = convertMousePos(event->position());
     const int px = p.x();
     const int py = p.y();
+
+    if (m_currentAction == CurrentAction::ZoomWindow)
+    {
+        if (!m_selectRubberBand.IsNull() && !m_context.IsNull() && m_context->IsDisplayed(m_selectRubberBand))
+        {
+            m_context->Erase(m_selectRubberBand, false);
+        }
+        zoomWindow(m_dragStartPos.x(), m_dragStartPos.y(), px, py);
+        m_currentAction = CurrentAction::Nothing;
+        setCursor(interactionMode() == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
+        return;
+    }
 
     if (event->button() == Qt::LeftButton)
     {
@@ -3579,6 +4215,11 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
         }
     }
 
+    if (m_currentAction == CurrentAction::Pan || m_currentAction == CurrentAction::Rotation)
+    {
+        emit viewCameraChanged();
+    }
+
     m_currentAction = CurrentAction::Nothing;
     setCursor(interactionMode() == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
 }
@@ -3603,6 +4244,47 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
 
     // Émettre les coordonnées logiques exactes pour le suivi parfait du curseur par le triangle des règles
     emit mousePixelPositionChanged(event->position().toPoint().x(), event->position().toPoint().y());
+
+    // Mode Zoom Fenêtre interactif
+    if (m_currentAction == CurrentAction::ZoomWindow && (event->buttons() & Qt::LeftButton))
+    {
+        int minX = std::min(m_dragStartPos.x(), px);
+        int maxX = std::max(m_dragStartPos.x(), px);
+        int minY = std::min(m_dragStartPos.y(), py);
+        int maxY = std::max(m_dragStartPos.y(), py);
+
+        if (m_selectRubberBand.IsNull())
+        {
+            m_selectRubberBand = new AIS_RubberBand();
+        }
+
+        m_selectRubberBand->SetLineColor(Quantity_NOC_ORANGE);
+        m_selectRubberBand->SetLineType(Aspect_TOL_DASH);
+        m_selectRubberBand->SetLineWidth(1.8);
+        m_selectRubberBand->SetFilling(Quantity_NOC_GOLD, 0.85);
+
+        int winH = 0;
+        if (!m_view.IsNull() && !m_view->Window().IsNull())
+        {
+            int winW = 0;
+            m_view->Window()->Size(winW, winH);
+        }
+        int rbMinY = winH - maxY;
+        int rbMaxY = winH - minY;
+
+        m_selectRubberBand->SetRectangle(minX, rbMinY, maxX, rbMaxY);
+
+        if (!m_context.IsNull())
+        {
+            if (!m_context->IsDisplayed(m_selectRubberBand))
+                m_context->Display(m_selectRubberBand, false);
+            else
+                m_context->Redisplay(m_selectRubberBand, false);
+        }
+        if (!m_view.IsNull())
+            m_view->Redraw();
+        return;
+    }
 
     // Mode Sélection rectangulaire (Fenêtre gauche->droite ou Capture droite->gauche)
     if (interactionMode() == InteractionMode::Select && (event->buttons() & Qt::LeftButton))

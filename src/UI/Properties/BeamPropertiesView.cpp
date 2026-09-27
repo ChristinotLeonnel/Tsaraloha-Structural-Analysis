@@ -1,0 +1,394 @@
+#include "BeamPropertiesView.h"
+#include "../Widgets/SectionPreviewWidget.h"
+#include "../../Model/Model.h"
+#include "../../Model/Beam.h"
+#include "../../Model/MaterialLibrary.h"
+
+#include <QVBoxLayout>
+#include <QFormLayout>
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QLineEdit>
+#include <QDoubleSpinBox>
+#include <QComboBox>
+#include <QCheckBox>
+#include <QPushButton>
+#include <QLabel>
+#include <QColorDialog>
+
+namespace TSA::UI
+{
+
+BeamPropertiesView::BeamPropertiesView(TSA::Model::Model* model, QWidget* parent)
+    : IElementPropertyView(parent)
+    , m_model(model)
+{
+    setupUi();
+}
+
+void BeamPropertiesView::setModel(TSA::Model::Model* model)
+{
+    m_model = model;
+    refreshView();
+}
+
+void BeamPropertiesView::setElementId(int id)
+{
+    m_beamId = id;
+    refreshView();
+}
+
+void BeamPropertiesView::setupUi()
+{
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(4, 4, 4, 4);
+    mainLayout->setSpacing(8);
+
+    // 1. Général & Rôle
+    auto* grpGen = new QGroupBox(tr("Général & Rôle"), this);
+    auto* formGen = new QFormLayout(grpGen);
+    formGen->setContentsMargins(8, 8, 8, 8);
+    formGen->setSpacing(6);
+
+    m_editName = new QLineEdit(grpGen);
+    connect(m_editName, &QLineEdit::editingFinished, this, &BeamPropertiesView::onWidgetChanged);
+    formGen->addRow(tr("Désignation :"), m_editName);
+
+    m_comboRole = new QComboBox(grpGen);
+    m_comboRole->addItem(tr("Poutre (Beam)"), static_cast<int>(TSA::Model::BarRole::Beam));
+    m_comboRole->addItem(tr("Poteau (Column)"), static_cast<int>(TSA::Model::BarRole::Column));
+    m_comboRole->addItem(tr("Barre générique"), static_cast<int>(TSA::Model::BarRole::Generic));
+    connect(m_comboRole, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formGen->addRow(tr("Rôle structural :"), m_comboRole);
+
+    m_comboMaterial = new QComboBox(grpGen);
+    refreshLibraries();
+    connect(m_comboMaterial, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formGen->addRow(tr("Matériau :"), m_comboMaterial);
+
+    m_spinRotation = new QDoubleSpinBox(grpGen);
+    m_spinRotation->setRange(-360.0, 360.0);
+    m_spinRotation->setDecimals(1);
+    m_spinRotation->setSingleStep(5.0);
+    m_spinRotation->setSuffix(" °");
+    connect(m_spinRotation, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formGen->addRow(tr("Angle Gamma (Rotation) :"), m_spinRotation);
+
+    mainLayout->addWidget(grpGen);
+
+    // 2. Section Transversale
+    auto* grpSec = new QGroupBox(tr("Section Transversale"), this);
+    auto* formSec = new QFormLayout(grpSec);
+    formSec->setContentsMargins(8, 8, 8, 8);
+    formSec->setSpacing(6);
+
+    m_comboSectionType = new QComboBox(grpSec);
+    m_comboSectionType->addItem(tr("Rectangulaire"), static_cast<int>(TSA::Model::SectionShape::Rectangular));
+    m_comboSectionType->addItem(tr("Circulaire Pleine"), static_cast<int>(TSA::Model::SectionShape::Circular));
+    m_comboSectionType->addItem(tr("Profilé en I (IPE / HEA)"), static_cast<int>(TSA::Model::SectionShape::IShape));
+    m_comboSectionType->addItem(tr("Tube Rectangulaire (RHS)"), static_cast<int>(TSA::Model::SectionShape::BoxHollow));
+    connect(m_comboSectionType, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &BeamPropertiesView::onSectionTypeChanged);
+    formSec->addRow(tr("Type de Profilé :"), m_comboSectionType);
+
+    m_spinWidth = new QDoubleSpinBox(grpSec);
+    m_spinWidth->setRange(0.01, 10.0);
+    m_spinWidth->setDecimals(3);
+    m_spinWidth->setSingleStep(0.05);
+    m_spinWidth->setSuffix(" m");
+    connect(m_spinWidth, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formSec->addRow(tr("Largeur (b) :"), m_spinWidth);
+
+    m_spinHeight = new QDoubleSpinBox(grpSec);
+    m_spinHeight->setRange(0.01, 10.0);
+    m_spinHeight->setDecimals(3);
+    m_spinHeight->setSingleStep(0.05);
+    m_spinHeight->setSuffix(" m");
+    connect(m_spinHeight, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formSec->addRow(tr("Hauteur (h) :"), m_spinHeight);
+
+    m_spinRadius = new QDoubleSpinBox(grpSec);
+    m_spinRadius->setRange(0.005, 5.0);
+    m_spinRadius->setDecimals(3);
+    m_spinRadius->setSingleStep(0.02);
+    m_spinRadius->setSuffix(" m");
+    connect(m_spinRadius, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formSec->addRow(tr("Rayon (r) :"), m_spinRadius);
+
+    m_spinFlangeWidth = new QDoubleSpinBox(grpSec);
+    m_spinFlangeWidth->setRange(0.01, 2.0);
+    m_spinFlangeWidth->setDecimals(3);
+    m_spinFlangeWidth->setSingleStep(0.01);
+    m_spinFlangeWidth->setSuffix(" m");
+    connect(m_spinFlangeWidth, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formSec->addRow(tr("Largeur Semelle (bf) :"), m_spinFlangeWidth);
+
+    m_spinFlangeThick = new QDoubleSpinBox(grpSec);
+    m_spinFlangeThick->setRange(0.001, 0.2);
+    m_spinFlangeThick->setDecimals(4);
+    m_spinFlangeThick->setSingleStep(0.002);
+    m_spinFlangeThick->setSuffix(" m");
+    connect(m_spinFlangeThick, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formSec->addRow(tr("Épaisseur Semelle (tf) :"), m_spinFlangeThick);
+
+    m_spinWebThick = new QDoubleSpinBox(grpSec);
+    m_spinWebThick->setRange(0.001, 0.2);
+    m_spinWebThick->setDecimals(4);
+    m_spinWebThick->setSingleStep(0.002);
+    m_spinWebThick->setSuffix(" m");
+    connect(m_spinWebThick, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &BeamPropertiesView::onWidgetChanged);
+    formSec->addRow(tr("Épaisseur Âme (tw) :"), m_spinWebThick);
+
+    m_previewWidget = new SectionPreviewWidget(grpSec);
+    m_previewWidget->setFixedHeight(120);
+    formSec->addRow(m_previewWidget);
+
+    m_lblArea = new QLabel(grpSec);
+    m_lblArea->setStyleSheet("color: #64748B; font-size: 11px;");
+    formSec->addRow(tr("Aire (A) :"), m_lblArea);
+
+    mainLayout->addWidget(grpSec);
+
+    // 3. Relâchements (Rotules)
+    auto* grpRel = new QGroupBox(tr("Relâchements aux Extrémités (Rotules)"), this);
+    auto* gridRel = new QGridLayout(grpRel);
+    gridRel->setContentsMargins(8, 8, 8, 8);
+    gridRel->setSpacing(6);
+
+    gridRel->addWidget(new QLabel(tr("Début :")), 0, 0);
+    m_chkStartUx = new QCheckBox("Ux", grpRel);
+    m_chkStartUy = new QCheckBox("Uy", grpRel);
+    m_chkStartUz = new QCheckBox("Uz", grpRel);
+    m_chkStartRx = new QCheckBox("Rx", grpRel);
+    m_chkStartRy = new QCheckBox("Ry", grpRel);
+    m_chkStartRz = new QCheckBox("Rz", grpRel);
+    gridRel->addWidget(m_chkStartUx, 0, 1);
+    gridRel->addWidget(m_chkStartUy, 0, 2);
+    gridRel->addWidget(m_chkStartUz, 0, 3);
+    gridRel->addWidget(m_chkStartRx, 0, 4);
+    gridRel->addWidget(m_chkStartRy, 0, 5);
+    gridRel->addWidget(m_chkStartRz, 0, 6);
+
+    gridRel->addWidget(new QLabel(tr("Fin :")), 1, 0);
+    m_chkEndUx = new QCheckBox("Ux", grpRel);
+    m_chkEndUy = new QCheckBox("Uy", grpRel);
+    m_chkEndUz = new QCheckBox("Uz", grpRel);
+    m_chkEndRx = new QCheckBox("Rx", grpRel);
+    m_chkEndRy = new QCheckBox("Ry", grpRel);
+    m_chkEndRz = new QCheckBox("Rz", grpRel);
+    gridRel->addWidget(m_chkEndUx, 1, 1);
+    gridRel->addWidget(m_chkEndUy, 1, 2);
+    gridRel->addWidget(m_chkEndUz, 1, 3);
+    gridRel->addWidget(m_chkEndRx, 1, 4);
+    gridRel->addWidget(m_chkEndRy, 1, 5);
+    gridRel->addWidget(m_chkEndRz, 1, 6);
+
+    auto connectRel = [this](QCheckBox* c) {
+        connect(c, &QCheckBox::toggled, this, &BeamPropertiesView::onWidgetChanged);
+    };
+    connectRel(m_chkStartUx); connectRel(m_chkStartUy); connectRel(m_chkStartUz);
+    connectRel(m_chkStartRx); connectRel(m_chkStartRy); connectRel(m_chkStartRz);
+    connectRel(m_chkEndUx); connectRel(m_chkEndUy); connectRel(m_chkEndUz);
+    connectRel(m_chkEndRx); connectRel(m_chkEndRy); connectRel(m_chkEndRz);
+
+    mainLayout->addWidget(grpRel);
+
+    // 4. Couleur
+    auto* grpCol = new QGroupBox(tr("Affichage"), this);
+    auto* formCol = new QFormLayout(grpCol);
+    m_btnColor = new QPushButton(grpCol);
+    m_btnColor->setFixedHeight(24);
+    connect(m_btnColor, &QPushButton::clicked, this, &BeamPropertiesView::pickColor);
+    formCol->addRow(tr("Couleur de barre :"), m_btnColor);
+    mainLayout->addWidget(grpCol);
+
+    mainLayout->addStretch();
+}
+
+void BeamPropertiesView::refreshLibraries()
+{
+    if (!m_comboMaterial) return;
+    m_comboMaterial->clear();
+    const auto& lib = TSA::Model::MaterialLibrary::instance();
+    for (const auto& mat : lib.allMaterials())
+    {
+        m_comboMaterial->addItem(QString::fromStdString(mat.name), mat.id);
+    }
+}
+
+void BeamPropertiesView::updateSectionVisibility(int secType)
+{
+    auto t = static_cast<TSA::Model::SectionShape>(secType);
+    bool isRect = (t == TSA::Model::SectionShape::Rectangular);
+    bool isCirc = (t == TSA::Model::SectionShape::Circular);
+    bool isI    = (t == TSA::Model::SectionShape::IShape);
+    bool isTube = (t == TSA::Model::SectionShape::BoxHollow);
+
+    m_spinWidth->setVisible(isRect || isTube);
+    m_spinHeight->setVisible(isRect || isTube || isI);
+    m_spinRadius->setVisible(isCirc);
+    m_spinFlangeWidth->setVisible(isI);
+    m_spinFlangeThick->setVisible(isI);
+    m_spinWebThick->setVisible(isI || isTube);
+}
+
+void BeamPropertiesView::onSectionTypeChanged(int index)
+{
+    updateSectionVisibility(m_comboSectionType->itemData(index).toInt());
+    if (!m_isLoading) onWidgetChanged();
+}
+
+TSA::Model::Section BeamPropertiesView::getSectionFromUi() const
+{
+    auto t = static_cast<TSA::Model::SectionShape>(m_comboSectionType->currentData().toInt());
+    switch (t)
+    {
+    case TSA::Model::SectionShape::Circular:
+        return TSA::Model::Section::circular(m_spinRadius->value() * 2.0, "Circulaire");
+    case TSA::Model::SectionShape::IShape:
+    {
+        TSA::Model::Section sec;
+        sec.shape = TSA::Model::SectionShape::IShape;
+        sec.height = m_spinHeight->value();
+        sec.width = m_spinFlangeWidth->value();
+        sec.tw = m_spinWebThick->value();
+        sec.tf = m_spinFlangeThick->value();
+        sec.name = "Profilé I";
+        return sec;
+    }
+    case TSA::Model::SectionShape::BoxHollow:
+        return TSA::Model::Section::boxHollow(m_spinWidth->value(), m_spinHeight->value(),
+                                              m_spinWebThick->value(), m_spinFlangeThick->value(), "Tube Rectangulaire");
+    case TSA::Model::SectionShape::Rectangular:
+    default:
+        return TSA::Model::Section::rectangular(m_spinWidth->value(), m_spinHeight->value(), "Rectangulaire");
+    }
+}
+
+void BeamPropertiesView::updateCalculatedProperties(const TSA::Model::Section& sec)
+{
+    m_lblArea->setText(QString("%1 cm²").arg(sec.area() * 10000.0, 0, 'f', 1));
+}
+
+void BeamPropertiesView::refreshView()
+{
+    if (!m_model || m_beamId <= 0)
+    {
+        setEnabled(false);
+        return;
+    }
+
+    const auto* beam = m_model->getBeam(m_beamId);
+    if (!beam)
+    {
+        setEnabled(false);
+        return;
+    }
+
+    setEnabled(true);
+    m_isLoading = true;
+
+    m_editName->setText(QString::fromStdString(beam->name()));
+
+    int rIdx = m_comboRole->findData(static_cast<int>(beam->role()));
+    if (rIdx >= 0) m_comboRole->setCurrentIndex(rIdx);
+
+    const auto& sec = beam->section();
+    int sIdx = m_comboSectionType->findData(static_cast<int>(sec.shape));
+    if (sIdx >= 0) m_comboSectionType->setCurrentIndex(sIdx);
+    updateSectionVisibility(static_cast<int>(sec.shape));
+
+    m_spinWidth->setValue(sec.width);
+    m_spinHeight->setValue(sec.height);
+    m_spinRadius->setValue(sec.diameter / 2.0);
+    m_spinFlangeWidth->setValue(sec.width);
+    m_spinFlangeThick->setValue(sec.tf);
+    m_spinWebThick->setValue(sec.tw);
+    m_spinRotation->setValue(beam->rotation());
+
+    int mIdx = m_comboMaterial->findData(beam->material().id);
+    if (mIdx >= 0) m_comboMaterial->setCurrentIndex(mIdx);
+
+    const auto& sr = beam->startRelease();
+    m_chkStartUx->setChecked(sr.fx); m_chkStartUy->setChecked(sr.fy); m_chkStartUz->setChecked(sr.fz);
+    m_chkStartRx->setChecked(sr.mx); m_chkStartRy->setChecked(sr.my); m_chkStartRz->setChecked(sr.mz);
+
+    const auto& er = beam->endRelease();
+    m_chkEndUx->setChecked(er.fx); m_chkEndUy->setChecked(er.fy); m_chkEndUz->setChecked(er.fz);
+    m_chkEndRx->setChecked(er.mx); m_chkEndRy->setChecked(er.my); m_chkEndRz->setChecked(er.mz);
+
+    if (m_previewWidget)
+    {
+        m_previewWidget->setSection(sec);
+        m_previewWidget->setRotation(beam->rotation());
+    }
+    updateCalculatedProperties(sec);
+
+    m_colorHex = QString::fromStdString(beam->color().empty() ? "#3B82F6" : beam->color());
+    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+
+    m_isLoading = false;
+}
+
+void BeamPropertiesView::pickColor()
+{
+    QColor c = QColorDialog::getColor(QColor(m_colorHex), this, tr("Couleur de la Poutre"));
+    if (c.isValid())
+    {
+        m_colorHex = c.name();
+        m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+        applyChanges();
+    }
+}
+
+void BeamPropertiesView::onWidgetChanged()
+{
+    if (m_isLoading) return;
+    applyChanges();
+}
+
+void BeamPropertiesView::applyChanges()
+{
+    if (!m_model || m_beamId <= 0) return;
+    auto* beam = m_model->getBeam(m_beamId);
+    if (!beam) return;
+
+    m_model->pushUndoState(tr("Modification Barre %1").arg(m_beamId).toStdString());
+
+    beam->setName(m_editName->text().toStdString());
+    beam->setRole(static_cast<TSA::Model::BarRole>(m_comboRole->currentData().toInt()));
+
+    auto sec = getSectionFromUi();
+    beam->setSection(sec);
+
+    int matCode = m_comboMaterial->currentData().toInt();
+    const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(matCode);
+    if (pMat)
+    {
+        beam->setMaterial(*pMat);
+    }
+    beam->setRotation(m_spinRotation->value());
+
+    TSA::Model::EndRelease sr;
+    sr.fx = m_chkStartUx->isChecked(); sr.fy = m_chkStartUy->isChecked(); sr.fz = m_chkStartUz->isChecked();
+    sr.mx = m_chkStartRx->isChecked(); sr.my = m_chkStartRy->isChecked(); sr.mz = m_chkStartRz->isChecked();
+    beam->setStartRelease(sr);
+
+    TSA::Model::EndRelease er;
+    er.fx = m_chkEndUx->isChecked(); er.fy = m_chkEndUy->isChecked(); er.fz = m_chkEndUz->isChecked();
+    er.mx = m_chkEndRx->isChecked(); er.my = m_chkEndRy->isChecked(); er.mz = m_chkEndRz->isChecked();
+    beam->setEndRelease(er);
+
+    beam->setColor(m_colorHex.toStdString());
+
+    if (m_previewWidget)
+    {
+        m_previewWidget->setSection(sec);
+        m_previewWidget->setRotation(beam->rotation());
+    }
+    updateCalculatedProperties(sec);
+
+    m_model->notifyBeamModified(m_beamId);
+    emit elementModified();
+}
+
+} // namespace TSA::UI

@@ -21,6 +21,7 @@ public:
     void bindGridLabelsAction(QAction* act);
     void bindRulersVisibleAction(QAction* act);
     void bindCoordSystemAction(QAction* act);
+    void bindWorkPlaneVisibleAction(QAction* act);
 
 private:
     void setupUi();
@@ -31,6 +32,7 @@ private:
     QCheckBox* m_chkLabels = nullptr;
     QCheckBox* m_chkRulers = nullptr;
     QCheckBox* m_chkCoords = nullptr;
+    QCheckBox* m_chkWorkPlane = nullptr;
 
     QCheckBox* m_chkNodes = nullptr;
     QCheckBox* m_chkBeams = nullptr;
