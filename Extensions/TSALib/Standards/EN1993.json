@@ -1,0 +1,13 @@
+{
+    "id": "standard.en1993",
+    "name": "Eurocode 3 - Calcul des structures en acier",
+    "standard": "EN 1993-1-1",
+    "edition": "2005+A1:2014",
+    "authority": "CEN",
+    "scope": "Règles générales et règles pour les bâtiments en ossature métallique.",
+    "partial_factors": {
+        "gamma_M0": 1.00,
+        "gamma_M1": 1.00,
+        "gamma_M2": 1.25
+    }
+}

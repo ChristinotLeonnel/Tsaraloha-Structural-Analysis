@@ -107,12 +107,16 @@ static bool approxEqual(double a, double b, double eps = 1e-4)
     } while(0)
 
 #include <QGuiApplication>
+#include <QFile>
+#include <QDir>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 39;
+    int total = 40;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -4106,6 +4110,93 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 39: TSALib Phase 2 - ExtensionSystem Core & Registries (6 Subtests Validated) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------
+    // TEST 40: TSALib Phase 3 - Manifest Format & Disk Layout
+    // -------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 40: TSALib Phase 3 - Manifest Format & Disk Layout ---" << std::endl;
+
+        // 40.1: TSALib manifest.json Existence & Semantics
+        {
+            QString manifestPath = "e:/Book/Dev/TSA/Extensions/TSALib/manifest.json";
+            TEST_CHECK(QFile::exists(manifestPath), "Subtest 40.1: Extensions/TSALib/manifest.json exists on disk");
+
+            QFile f(manifestPath);
+            TEST_CHECK(f.open(QIODevice::ReadOnly), "Subtest 40.1: manifest.json is readable");
+
+            QJsonParseError err;
+            QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
+            TEST_CHECK(err.error == QJsonParseError::NoError, "Subtest 40.1: manifest.json is valid JSON");
+
+            std::string parseErr;
+            auto manifest = TSA::ExtensionSystem::ExtensionManifest::fromJson(doc.object(), &parseErr);
+            TEST_CHECK(manifest.has_value(), "Subtest 40.1: manifest parsed via ExtensionManifest::fromJson");
+            TEST_CHECK(manifest->id == "org.tsaraloha.tsalib", "Subtest 40.1: Official ID is org.tsaraloha.tsalib");
+            TEST_CHECK(manifest->name == "TSA Engineering Library", "Subtest 40.1: Official Name is TSA Engineering Library");
+            TEST_CHECK(manifest->version == TSA::ExtensionSystem::SemanticVersion(1, 0, 0), "Subtest 40.1: Version is 1.0.0");
+            TEST_CHECK(manifest->kind == TSA::ExtensionSystem::ExtensionKind::DataExtension, "Subtest 40.1: Kind is DataExtension");
+            TEST_CHECK(manifest->categories.size() >= 8, "Subtest 40.1: At least 8 engineering categories declared");
+
+            std::cout << "  [PASS] Subtest 40.1: TSALib manifest.json Existence & Semantics Verified" << std::endl;
+        }
+
+        // 40.2: LibraryValidator Full Directory Validation
+        {
+            TSA::ExtensionSystem::LibraryValidator validator;
+            auto valRes = validator.validateExtensionDirectory("e:/Book/Dev/TSA/Extensions/TSALib");
+            TEST_CHECK(valRes.valid, "Subtest 40.2: Extensions/TSALib directory validates without errors");
+
+            std::cout << "  [PASS] Subtest 40.2: LibraryValidator Full Directory Validation Verified" << std::endl;
+        }
+
+        // 40.3: Standards Directory & Reference Specifications
+        {
+            QString standardsDir = "e:/Book/Dev/TSA/Extensions/TSALib/Standards";
+            TEST_CHECK(QDir(standardsDir).exists(), "Subtest 40.3: Standards directory exists");
+
+            QString en1990 = standardsDir + "/EN1990.json";
+            QString en1992 = standardsDir + "/EN1992.json";
+            QString en1993 = standardsDir + "/EN1993.json";
+            QString en10138 = standardsDir + "/EN10138.json";
+
+            TEST_CHECK(QFile::exists(en1990), "Subtest 40.3: EN1990.json exists");
+            TEST_CHECK(QFile::exists(en1992), "Subtest 40.3: EN1992.json exists");
+            TEST_CHECK(QFile::exists(en1993), "Subtest 40.3: EN1993.json exists");
+            TEST_CHECK(QFile::exists(en10138), "Subtest 40.3: EN10138.json exists");
+
+            // Vérification de contenu d'une fiche normative
+            QFile f1992(en1992);
+            TEST_CHECK(f1992.open(QIODevice::ReadOnly), "Subtest 40.3: EN1992.json readable");
+            QJsonDocument doc = QJsonDocument::fromJson(f1992.readAll());
+            TEST_CHECK(doc.object()["standard"].toString() == "EN 1992-1-1", "Subtest 40.3: EN 1992-1-1 code match");
+
+            std::cout << "  [PASS] Subtest 40.3: Standards Directory & Reference Specifications Verified" << std::endl;
+        }
+
+        // 40.4: LibraryManager Auto-Discovery of TSALib on Disk
+        {
+            auto& libMgr = TSA::ExtensionSystem::LibraryManager::instance();
+            libMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            auto discovered = libMgr.discover();
+
+            bool foundTSALib = false;
+            for (const auto& ext : discovered)
+            {
+                if (ext.id == "org.tsaraloha.tsalib")
+                {
+                    foundTSALib = true;
+                    break;
+                }
+            }
+            TEST_CHECK(foundTSALib, "Subtest 40.4: TSALib extension auto-discovered by LibraryManager");
+
+            std::cout << "  [PASS] Subtest 40.4: LibraryManager Auto-Discovery of TSALib on Disk Verified" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 40: TSALib Phase 3 - Manifest Format & Disk Layout (4 Subtests Validated) Passed Successfully!" << std::endl;
         passed++;
     }
 

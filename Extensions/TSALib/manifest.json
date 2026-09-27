@@ -1,0 +1,25 @@
+{
+    "id": "org.tsaraloha.tsalib",
+    "name": "TSA Engineering Library",
+    "version": "1.0.0",
+    "format_version": "1.0",
+    "minimum_tsa_version": "0.1.0",
+    "author": "Tsaraloha Christinot",
+    "license": "Proprietary",
+    "description": "Bibliothèque officielle d'ingénierie structurale, matériaux Eurocodes, profilés et câbles pour TSA.",
+    "website": "https://github.com/ChristinotLeonnel/Tsaraloha-Structural-Analysis",
+    "kind": "data",
+    "categories": [
+        "materials",
+        "sections",
+        "profiles",
+        "cables",
+        "reinforcement",
+        "prestressing",
+        "anchors",
+        "standards",
+        "textures",
+        "loads",
+        "components"
+    ]
+}

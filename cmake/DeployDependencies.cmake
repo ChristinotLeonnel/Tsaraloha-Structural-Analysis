@@ -40,9 +40,13 @@ if(WINDEPLOYQT_EXECUTABLE AND EXISTS "${WINDEPLOYQT_EXECUTABLE}" AND EXISTS "${T
     )
     if(NOT WINDEPLOY_RES EQUAL 0)
         message(WARNING "windeployqt a retourné le code : ${WINDEPLOY_RES}")
-    else()
-        message(STATUS "Qt : Déploiement windeployqt terminé avec succès.")
     endif()
+endif()
+
+# 4. Déploiement des extensions TSALib
+if(EXISTS "${SOURCE_DIR}/Extensions")
+    file(COPY "${SOURCE_DIR}/Extensions" DESTINATION "${TARGET_DIR}")
+    message(STATUS "TSALib : Dossier Extensions déployé avec succès vers ${TARGET_DIR}.")
 endif()
 
 message(STATUS "=== Déploiement terminé. L'exécutable peut être lancé directement ! ===")

@@ -1,0 +1,9 @@
+{
+    "id": "standard.en10138",
+    "name": "Armatures de précontrainte - Torons 7 fils",
+    "standard": "EN 10138-3",
+    "edition": "2006",
+    "authority": "CEN",
+    "scope": "Spécifications relatives aux torons haute adhérence pour structures précontraintes par post-tension et pré-tension.",
+    "steel_grades": ["Y1860S7", "Y1770S7"]
+}

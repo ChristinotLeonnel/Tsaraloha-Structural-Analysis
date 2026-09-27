@@ -1,0 +1,13 @@
+{
+    "id": "standard.en1990",
+    "name": "Eurocode 0 - Bases de calcul des structures",
+    "standard": "EN 1990",
+    "edition": "2002+A1:2005",
+    "authority": "CEN",
+    "scope": "Principes et exigences pour la sécurité, l'aptitude au service et la durabilité des structures.",
+    "partial_factors": {
+        "gamma_G_unfav": 1.35,
+        "gamma_G_fav": 1.00,
+        "gamma_Q": 1.50
+    }
+}
