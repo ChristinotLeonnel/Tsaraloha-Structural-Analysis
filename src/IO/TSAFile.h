@@ -90,6 +90,9 @@ private:
     void writeFoundationChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Foundation>& foundations);
     void writeTrussChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::TrussMember>& trussMembers);
     void writeCableChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Cable>& cables);
+    void writeSnapshotChunk(std::vector<uint8_t>& buffer,
+                            const std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot>& snapshots,
+                            const std::map<std::string, TSA::ExtensionSystem::DefinitionReference>& references);
 
 private:
     bool m_useCompression = true;
@@ -146,6 +149,10 @@ private:
     bool readFoundationChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Foundation>& foundations, std::string* errorMessage);
     bool readTrussChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::TrussMember>& trussMembers, std::string* errorMessage);
     bool readCableChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Cable>& cables, std::string* errorMessage);
+    bool readSnapshotChunk(const uint8_t* data, size_t size, uint32_t count,
+                           std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot>& snapshots,
+                           std::map<std::string, TSA::ExtensionSystem::DefinitionReference>& references,
+                           std::string* errorMessage);
 
 private:
     std::shared_ptr<ICompressionProvider> m_compressor;

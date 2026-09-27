@@ -47,6 +47,42 @@ VersionComparisonResult LibraryVersionManager::compare(const MechanicalSnapshot&
     return result;
 }
 
+VersionComparisonResult LibraryVersionManager::compareCable(const MechanicalSnapshot& projectSnapshot,
+                                                             const SemanticVersion& projectVersion,
+                                                             const CableCatalogDefinition& libraryDefinition) const
+{
+    VersionComparisonResult result;
+    result.definitionId = libraryDefinition.id;
+    result.oldVersion = projectVersion;
+    result.newVersion = libraryDefinition.version;
+
+    auto checkProp = [&](const std::string& name, double oldV, double newV, const std::string& unit) {
+        if (!approxEqual(oldV, newV))
+        {
+            PropertyDiff diff;
+            diff.propertyName = name;
+            diff.oldValue = oldV;
+            diff.newValue = newV;
+            diff.unit = unit;
+            diff.isModified = true;
+            result.modifiedProperties.push_back(diff);
+        }
+        else
+        {
+            result.unchangedProperties.push_back(name);
+        }
+    };
+
+    checkProp("Module d'Young (E)", projectSnapshot.youngModulus, libraryDefinition.elasticModulus, "Pa");
+    checkProp("Masse volumique (rho)", projectSnapshot.density, libraryDefinition.density, "kg/m3");
+    checkProp("Resistance caracteristique (fpk)", projectSnapshot.characteristicStrength, libraryDefinition.characteristicStrength, "Pa");
+
+    double newFy = libraryDefinition.minimumBreakingForce / (libraryDefinition.metallicArea > 0.0 ? libraryDefinition.metallicArea : 1.0);
+    checkProp("Limite de rupture (fu/fy)", projectSnapshot.yieldStrength, newFy, "Pa");
+
+    return result;
+}
+
 bool LibraryVersionManager::isCompatible(const SemanticVersion& requiredVersion, const SemanticVersion& availableVersion) const
 {
     // Selon SemVer : Changement de version majeure = rupture de compatibilité

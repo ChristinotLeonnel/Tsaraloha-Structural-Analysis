@@ -1434,6 +1434,8 @@ Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) c
     snap.foundations = m_foundations;
     snap.trussMembers = m_trussMembers;
     snap.cables = m_cables;
+    snap.calculationSnapshots = m_calculationSnapshots;
+    snap.definitionReferences = m_definitionReferences;
     snap.nextNodeId = m_nextNodeId;
     snap.nextBeamId = m_nextBeamId;
     snap.nextColumnId = m_nextColumnId;
@@ -1456,6 +1458,8 @@ void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
     m_foundations = snapshot.foundations;
     m_trussMembers = snapshot.trussMembers;
     m_cables = snapshot.cables;
+    m_calculationSnapshots = snapshot.calculationSnapshots;
+    m_definitionReferences = snapshot.definitionReferences;
     m_nextNodeId = snapshot.nextNodeId;
     m_nextBeamId = snapshot.nextBeamId;
     m_nextColumnId = snapshot.nextColumnId;
@@ -1485,8 +1489,51 @@ void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
     }
 }
 
+void Model::setCalculationSnapshot(const std::string& key, const TSA::ExtensionSystem::MechanicalSnapshot& snapshot, const TSA::ExtensionSystem::DefinitionReference& ref)
+{
+    m_calculationSnapshots[key] = snapshot;
+    if (ref.isValid())
+    {
+        m_definitionReferences[key] = ref;
+    }
+    m_isModified = true;
+}
+
+const TSA::ExtensionSystem::MechanicalSnapshot* Model::getCalculationSnapshot(const std::string& key) const
+{
+    auto it = m_calculationSnapshots.find(key);
+    return (it != m_calculationSnapshots.end()) ? &it->second : nullptr;
+}
+
+const TSA::ExtensionSystem::DefinitionReference* Model::getDefinitionReference(const std::string& key) const
+{
+    auto it = m_definitionReferences.find(key);
+    return (it != m_definitionReferences.end()) ? &it->second : nullptr;
+}
+
+bool Model::hasCalculationSnapshot(const std::string& key) const
+{
+    return m_calculationSnapshots.find(key) != m_calculationSnapshots.end();
+}
+
+void Model::removeCalculationSnapshot(const std::string& key)
+{
+    m_calculationSnapshots.erase(key);
+    m_definitionReferences.erase(key);
+    m_isModified = true;
+}
+
+void Model::clearCalculationSnapshots()
+{
+    m_calculationSnapshots.clear();
+    m_definitionReferences.clear();
+    m_isModified = true;
+}
+
 void Model::clear()
 {
+    m_calculationSnapshots.clear();
+    m_definitionReferences.clear();
     m_cables.clear();
     m_trussMembers.clear();
     m_foundations.clear();

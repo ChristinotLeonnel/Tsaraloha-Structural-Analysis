@@ -745,4 +745,16 @@ CableCatalogDefinition CableCatalogDefinition::fromModelCableDefinition(
     return def;
 }
 
+MechanicalSnapshot CableCatalogDefinition::createSnapshot() const
+{
+    MechanicalSnapshot snap;
+    snap.youngModulus = elasticModulus;
+    snap.poissonRatio = 0.30;
+    snap.density = density;
+    snap.characteristicStrength = characteristicStrength;
+    snap.yieldStrength = minimumBreakingForce / (metallicArea > 0.0 ? metallicArea : 1.0);
+    snap.thermalCoeff = 1.2e-5;
+    return snap;
+}
+
 } // namespace TSA::ExtensionSystem

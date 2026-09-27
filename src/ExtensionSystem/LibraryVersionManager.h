@@ -49,6 +49,10 @@ public:
                                     const SemanticVersion& projectVersion,
                                     const MaterialDefinition& libraryDefinition) const;
 
+    VersionComparisonResult compareCable(const MechanicalSnapshot& projectSnapshot,
+                                         const SemanticVersion& projectVersion,
+                                         const CableCatalogDefinition& libraryDefinition) const;
+
     // Vérification de compatibilité de version (Majeure / Mineure)
     bool isCompatible(const SemanticVersion& requiredVersion, const SemanticVersion& availableVersion) const;
 };

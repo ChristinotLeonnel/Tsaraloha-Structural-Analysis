@@ -157,6 +157,9 @@ struct CableCatalogDefinition
 
     VisualDefinition visual;
 
+    // Génération du snapshot immuable de calcul
+    MechanicalSnapshot createSnapshot() const;
+
     // Bridge de conversion avec TSA::Model::CableDefinition
     TSA::Model::CableDefinition toModelCableDefinition() const;
     static CableCatalogDefinition fromModelCableDefinition(const TSA::Model::CableDefinition& cable, const std::string& libraryId = "org.tsaraloha.tsalib");

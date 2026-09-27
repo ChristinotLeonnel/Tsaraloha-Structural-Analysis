@@ -9,6 +9,7 @@
 #include "TrussMember.h"
 #include "Cable/Cable.h"
 #include "../Coordinate/CoordinateSystem.h"
+#include "../ExtensionSystem/ExtensionTypes.h"
 
 #include <map>
 #include <vector>
@@ -186,6 +187,8 @@ public:
         std::map<int, Foundation> foundations;
         std::map<int, TrussMember> trussMembers;
         std::map<int, Cable> cables;
+        std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> calculationSnapshots;
+        std::map<std::string, TSA::ExtensionSystem::DefinitionReference> definitionReferences;
         int nextNodeId = 1;
         int nextBeamId = 1;
         int nextColumnId = 1;
@@ -232,6 +235,16 @@ public:
     // Réinitialisation
     void clear();
 
+    // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
+    const std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot>& calculationSnapshots() const { return m_calculationSnapshots; }
+    const std::map<std::string, TSA::ExtensionSystem::DefinitionReference>& definitionReferences() const { return m_definitionReferences; }
+    void setCalculationSnapshot(const std::string& key, const TSA::ExtensionSystem::MechanicalSnapshot& snapshot, const TSA::ExtensionSystem::DefinitionReference& ref = {});
+    const TSA::ExtensionSystem::MechanicalSnapshot* getCalculationSnapshot(const std::string& key) const;
+    const TSA::ExtensionSystem::DefinitionReference* getDefinitionReference(const std::string& key) const;
+    bool hasCalculationSnapshot(const std::string& key) const;
+    void removeCalculationSnapshot(const std::string& key);
+    void clearCalculationSnapshots();
+
     // Générateurs d'identifiants
     int nextNodeId() const { return m_nextNodeId; }
     int nextBeamId() const { return m_nextBeamId; }
@@ -260,6 +273,8 @@ private:
     std::map<int, Foundation> m_foundations;
     std::map<int, TrussMember> m_trussMembers;
     std::map<int, Cable> m_cables;
+    std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> m_calculationSnapshots;
+    std::map<std::string, TSA::ExtensionSystem::DefinitionReference> m_definitionReferences;
 
     std::vector<IModelObserver*> m_observers;
 

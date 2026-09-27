@@ -315,6 +315,68 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     writeTrussChunk(payload, model.trussMembers());
     writeCableChunk(payload, model.cables());
 
+    // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
+    std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> snapshotsToSave = model.calculationSnapshots();
+    std::map<std::string, TSA::ExtensionSystem::DefinitionReference> referencesToSave = model.definitionReferences();
+
+    auto captureMat = [&](const TSA::Model::Material& mat) {
+        std::string key = "material:" + mat.name;
+        if (snapshotsToSave.find(key) == snapshotsToSave.end())
+        {
+            TSA::ExtensionSystem::MechanicalSnapshot snap;
+            snap.youngModulus = mat.E;
+            snap.poissonRatio = mat.nu;
+            snap.density = mat.density;
+            snap.characteristicStrength = mat.fk;
+            snap.yieldStrength = mat.fk;
+            snap.thermalCoeff = mat.thermalCoeff;
+            snapshotsToSave[key] = snap;
+
+            TSA::ExtensionSystem::DefinitionReference ref;
+            ref.libraryId = "org.tsaraloha.tsalib";
+            ref.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            ref.definitionId = mat.name;
+            ref.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            referencesToSave[key] = ref;
+        }
+    };
+
+    for (const auto& [id, b] : model.beams()) captureMat(b.material());
+    for (const auto& [id, c] : model.columns()) captureMat(c.material());
+    for (const auto& [id, s] : model.slabs()) captureMat(s.material());
+    for (const auto& [id, w] : model.walls()) captureMat(w.material());
+    for (const auto& [id, f] : model.foundations()) captureMat(f.material());
+    for (const auto& [id, t] : model.trussMembers()) captureMat(t.material());
+
+    for (const auto& [id, cable] : model.cables())
+    {
+        const auto& def = cable.definition();
+        std::string key = "cable:" + (def.id().empty() ? def.name() : def.id());
+        if (snapshotsToSave.find(key) == snapshotsToSave.end())
+        {
+            TSA::ExtensionSystem::MechanicalSnapshot snap;
+            snap.youngModulus = def.elasticModulus();
+            snap.poissonRatio = 0.30;
+            snap.density = def.density();
+            snap.characteristicStrength = def.characteristicStrength();
+            snap.yieldStrength = def.ultimateStrength();
+            snap.thermalCoeff = 1.2e-5;
+            snapshotsToSave[key] = snap;
+
+            TSA::ExtensionSystem::DefinitionReference ref;
+            ref.libraryId = "org.tsaraloha.tsalib";
+            ref.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            ref.definitionId = def.id().empty() ? def.name() : def.id();
+            ref.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            referencesToSave[key] = ref;
+        }
+    }
+
+    if (!snapshotsToSave.empty())
+    {
+        writeSnapshotChunk(payload, snapshotsToSave, referencesToSave);
+    }
+
     uint64_t uncompressedSize = payload.size();
 
     // 2. Traitement Compression
@@ -768,6 +830,64 @@ void TSAFileWriter::writeCableChunk(std::vector<uint8_t>& buffer, const std::map
     buffer.insert(buffer.end(), chunkData.begin(), chunkData.end());
 }
 
+void TSAFileWriter::writeSnapshotChunk(std::vector<uint8_t>& buffer,
+                                       const std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot>& snapshots,
+                                       const std::map<std::string, TSA::ExtensionSystem::DefinitionReference>& references)
+{
+    std::vector<uint8_t> chunkData;
+    for (const auto& [key, snap] : snapshots)
+    {
+        writeString(chunkData, key);
+
+        auto itRef = references.find(key);
+        if (itRef != references.end())
+        {
+            const auto& ref = itRef->second;
+            writeString(chunkData, ref.libraryId);
+            writeI32(chunkData, ref.libraryVersion.major);
+            writeI32(chunkData, ref.libraryVersion.minor);
+            writeI32(chunkData, ref.libraryVersion.patch);
+            writeString(chunkData, ref.libraryVersion.prerelease);
+
+            writeString(chunkData, ref.definitionId);
+            writeI32(chunkData, ref.definitionVersion.major);
+            writeI32(chunkData, ref.definitionVersion.minor);
+            writeI32(chunkData, ref.definitionVersion.patch);
+            writeString(chunkData, ref.definitionVersion.prerelease);
+        }
+        else
+        {
+            writeString(chunkData, "");
+            writeI32(chunkData, 1);
+            writeI32(chunkData, 0);
+            writeI32(chunkData, 0);
+            writeString(chunkData, "");
+
+            writeString(chunkData, key);
+            writeI32(chunkData, 1);
+            writeI32(chunkData, 0);
+            writeI32(chunkData, 0);
+            writeString(chunkData, "");
+        }
+
+        writeDouble(chunkData, snap.youngModulus);
+        writeDouble(chunkData, snap.poissonRatio);
+        writeDouble(chunkData, snap.density);
+        writeDouble(chunkData, snap.characteristicStrength);
+        writeDouble(chunkData, snap.yieldStrength);
+        writeDouble(chunkData, snap.thermalCoeff);
+    }
+
+    TSAChunkHeader ch;
+    ch.chunkId = CHUNK_SNAP;
+    ch.chunkSize = static_cast<uint32_t>(chunkData.size());
+    ch.elementCount = static_cast<uint32_t>(snapshots.size());
+
+    const uint8_t* chBytes = reinterpret_cast<const uint8_t*>(&ch);
+    buffer.insert(buffer.end(), chBytes, chBytes + sizeof(ch));
+    buffer.insert(buffer.end(), chunkData.begin(), chunkData.end());
+}
+
 // =============================================================================
 // TSAFileReader
 // =============================================================================
@@ -948,6 +1068,8 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::map<int, TSA::Model::Foundation> loadedFoundations;
     std::map<int, TSA::Model::TrussMember> loadedTrussMembers;
     std::map<int, TSA::Model::Cable> loadedCables;
+    std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> loadedSnapshots;
+    std::map<std::string, TSA::ExtensionSystem::DefinitionReference> loadedReferences;
 
     while (offset + sizeof(TSAChunkHeader) <= size)
     {
@@ -1008,6 +1130,9 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         case CHUNK_CABL:
             if (!readCableChunk(chunkBytes, chunkLen, ch.elementCount, loadedCables, errorMessage)) return false;
             break;
+        case CHUNK_SNAP:
+            if (!readSnapshotChunk(chunkBytes, chunkLen, ch.elementCount, loadedSnapshots, loadedReferences, errorMessage)) return false;
+            break;
         default:
             // Chunk inconnu (version future) : ignoré en toute sécurité grâce à chunkSize
             break;
@@ -1026,6 +1151,8 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     snapshot.foundations = std::move(loadedFoundations);
     snapshot.trussMembers = std::move(loadedTrussMembers);
     snapshot.cables = std::move(loadedCables);
+    snapshot.calculationSnapshots = std::move(loadedSnapshots);
+    snapshot.definitionReferences = std::move(loadedReferences);
 
     // Calcul des identifiants suivants
     int maxN = 0, maxB = 0, maxC = 0, maxS = 0, maxW = 0, maxF = 0, maxT = 0, maxCab = 0;
@@ -1578,6 +1705,67 @@ bool TSAFileReader::readCableChunk(const uint8_t* data, size_t size, uint32_t co
 
         cables[id] = cable;
     }
+    return true;
+}
+
+bool TSAFileReader::readSnapshotChunk(const uint8_t* data, size_t size, uint32_t count,
+                                      std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot>& snapshots,
+                                      std::map<std::string, TSA::ExtensionSystem::DefinitionReference>& references,
+                                      std::string* errorMessage)
+{
+    if (count > MAX_SAFE_MATERIALS * 10)
+    {
+        if (errorMessage) *errorMessage = "Nombre excessif de snapshots de calcul dans le fichier.";
+        return false;
+    }
+
+    size_t off = 0;
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        std::string key;
+        std::string libId, libPre, defId, defPre;
+        int32_t libMaj = 1, libMin = 0, libPat = 0;
+        int32_t defMaj = 1, defMin = 0, defPat = 0;
+        double E = 0.0, nu = 0.0, rho = 0.0, fk = 0.0, fy = 0.0, alpha = 0.0;
+
+        if (!readString(data, size, off, key)) return false;
+
+        if (!readString(data, size, off, libId)) return false;
+        if (!readI32(data, size, off, libMaj)) return false;
+        if (!readI32(data, size, off, libMin)) return false;
+        if (!readI32(data, size, off, libPat)) return false;
+        if (!readString(data, size, off, libPre)) return false;
+
+        if (!readString(data, size, off, defId)) return false;
+        if (!readI32(data, size, off, defMaj)) return false;
+        if (!readI32(data, size, off, defMin)) return false;
+        if (!readI32(data, size, off, defPat)) return false;
+        if (!readString(data, size, off, defPre)) return false;
+
+        if (!readDouble(data, size, off, E)) return false;
+        if (!readDouble(data, size, off, nu)) return false;
+        if (!readDouble(data, size, off, rho)) return false;
+        if (!readDouble(data, size, off, fk)) return false;
+        if (!readDouble(data, size, off, fy)) return false;
+        if (!readDouble(data, size, off, alpha)) return false;
+
+        TSA::ExtensionSystem::MechanicalSnapshot snap;
+        snap.youngModulus = E;
+        snap.poissonRatio = nu;
+        snap.density = rho;
+        snap.characteristicStrength = fk;
+        snap.yieldStrength = fy;
+        snap.thermalCoeff = alpha;
+        snapshots[key] = snap;
+
+        TSA::ExtensionSystem::DefinitionReference ref;
+        ref.libraryId = libId;
+        ref.libraryVersion = TSA::ExtensionSystem::SemanticVersion(libMaj, libMin, libPat, libPre);
+        ref.definitionId = defId;
+        ref.definitionVersion = TSA::ExtensionSystem::SemanticVersion(defMaj, defMin, defPat, defPre);
+        references[key] = ref;
+    }
+
     return true;
 }
 

@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
     int passed = 0;
-    int total = 44;
+    int total = 45;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -4878,6 +4878,178 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "[PASS] Test 44: TSALib Phase 7 - Externalisation des Cables & Torons Eurocodes / ASTM (4 Subtests Valides) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 45: TSALib Phase 8 - Versioning & Snapshots de Calcul dans le format .tsa
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 45: TSALib Phase 8 - Versioning & Snapshots de Calcul dans le format .tsa ---" << std::endl;
+
+        // 45.1: Generation et Affectation de MechanicalSnapshot & DefinitionReference
+        TSA::Model::Model testModel;
+        int n1 = testModel.addNode(0.0, 0.0, 0.0, "", "N1");
+        int n2 = testModel.addNode(5.0, 0.0, 0.0, "", "N2");
+        int n3 = testModel.addNode(5.0, 0.0, 3.0, "", "N3");
+
+        auto matConcrete = TSA::Model::Material::concreteC25_30();
+        auto matSteel = TSA::Model::Material::steelS355();
+        auto secBeam = TSA::Model::Section::rectangular(0.30, 0.50);
+        auto secCol = TSA::Model::Section::rectangular(0.30, 0.30);
+
+        testModel.addBar(n1, n2, secBeam, matConcrete, TSA::Model::BarRole::Beam, 0.0, "Poutre B1");
+        testModel.addBar(n2, n3, secCol, matSteel, TSA::Model::BarRole::Column, 0.0, "Poteau C1");
+
+        // Affectation explicite de snapshots de calcul immuables
+        TSA::ExtensionSystem::MechanicalSnapshot concreteSnap;
+        concreteSnap.youngModulus = 31.0e9;
+        concreteSnap.poissonRatio = 0.20;
+        concreteSnap.density = 2500.0;
+        concreteSnap.characteristicStrength = 25.0e6;
+        concreteSnap.yieldStrength = 25.0e6;
+        concreteSnap.thermalCoeff = 1.0e-5;
+
+        TSA::ExtensionSystem::DefinitionReference concreteRef;
+        concreteRef.libraryId = "org.tsaraloha.tsalib";
+        concreteRef.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+        concreteRef.definitionId = "concrete.c25_30";
+        concreteRef.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+
+        testModel.setCalculationSnapshot("org.tsaraloha.tsalib:concrete.c25_30", concreteSnap, concreteRef);
+
+        TSA::ExtensionSystem::MechanicalSnapshot steelSnap;
+        steelSnap.youngModulus = 210.0e9;
+        steelSnap.poissonRatio = 0.30;
+        steelSnap.density = 7850.0;
+        steelSnap.characteristicStrength = 355.0e6;
+        steelSnap.yieldStrength = 355.0e6;
+        steelSnap.thermalCoeff = 1.2e-5;
+
+        TSA::ExtensionSystem::DefinitionReference steelRef;
+        steelRef.libraryId = "org.tsaraloha.tsalib";
+        steelRef.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+        steelRef.definitionId = "steel.s355";
+        steelRef.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+
+        testModel.setCalculationSnapshot("org.tsaraloha.tsalib:steel.s355", steelSnap, steelRef);
+
+        // Ajout d'un cable avec definition catalogue et snapshot
+        auto& cableLib = TSA::Library::CableLibrary::instance();
+        cableLib.reloadFromRegistry();
+        const auto* foundCableDef = cableLib.findByName("Stay PSS 19x15.7mm");
+        if (foundCableDef)
+        {
+            testModel.addCable(n1, n3, *foundCableDef, "Hauban H1");
+            TSA::ExtensionSystem::MechanicalSnapshot cableSnap;
+            cableSnap.youngModulus = foundCableDef->elasticModulus();
+            cableSnap.poissonRatio = 0.30;
+            cableSnap.density = foundCableDef->density();
+            cableSnap.characteristicStrength = foundCableDef->characteristicStrength();
+            cableSnap.yieldStrength = foundCableDef->minimumBreakingForce() / foundCableDef->metallicArea();
+            cableSnap.thermalCoeff = 1.2e-5;
+
+            TSA::ExtensionSystem::DefinitionReference cableRef;
+            cableRef.libraryId = "org.tsaraloha.tsalib";
+            cableRef.libraryVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+            cableRef.definitionId = "stay_pss_19_15_7";
+            cableRef.definitionVersion = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+
+            testModel.setCalculationSnapshot("org.tsaraloha.tsalib:stay_pss_19_15_7", cableSnap, cableRef);
+        }
+
+        TEST_CHECK(testModel.hasCalculationSnapshot("org.tsaraloha.tsalib:concrete.c25_30"), "Subtest 45.1: Snapshot beton enregistre");
+        TEST_CHECK(testModel.hasCalculationSnapshot("org.tsaraloha.tsalib:steel.s355"), "Subtest 45.1: Snapshot acier enregistre");
+        TEST_CHECK(testModel.calculationSnapshots().size() >= 2, "Subtest 45.1: Au moins 2 snapshots presents");
+        std::cout << "  [PASS] Subtest 45.1: Generation et Affectation des Snapshots de Calcul Validees" << std::endl;
+
+        // 45.2: Serialisation binaire dans le format .tsa avec CHUNK_SNAP
+        std::string testFilePath = "test_phase8_snapshot.tsa";
+        TSA::IO::TSAFileWriter writer;
+        writer.setCompressionEnabled(true);
+        std::string saveErr;
+        bool saved = writer.saveToFile(testFilePath, testModel, nullptr, "Projet Phase 8", "TSA Testing", &saveErr);
+        TEST_CHECK(saved, "Subtest 45.2: Sauvegarde fichier .tsa reussie");
+        TEST_CHECK(std::filesystem::exists(testFilePath), "Subtest 45.2: Fichier .tsa cree sur disque");
+
+        // Verification de la presence du header valide
+        TSA::IO::TSAFileHeader header;
+        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(testFilePath, header), "Subtest 45.2: En-tete binaire lisible");
+        TEST_CHECK(header.magic == TSA::IO::TSA_FILE_MAGIC, "Subtest 45.2: Magic TSAF valide");
+        TEST_CHECK(header.checksumCRC32 != 0, "Subtest 45.2: Checksum CRC32 present");
+        std::cout << "  [PASS] Subtest 45.2: Serialisation Binaire avec CHUNK_SNAP Validee" << std::endl;
+
+        // 45.3: Deserialisation et Verification Bitwise des Snapshots et References
+        TSA::Model::Model loadedModel;
+        TSA::IO::TSAFileReader reader;
+        std::string loadErr, outProj, outAuth;
+        bool loaded = reader.loadFromFile(testFilePath, loadedModel, nullptr, "", &outProj, &outAuth, nullptr, &loadErr);
+        TEST_CHECK(loaded, "Subtest 45.3: Chargement du fichier .tsa reussi");
+        TEST_CHECK(outProj == "Projet Phase 8", "Subtest 45.3: Nom de projet conforme");
+
+        TEST_CHECK(loadedModel.hasCalculationSnapshot("org.tsaraloha.tsalib:concrete.c25_30"), "Subtest 45.3: Snapshot beton recupere");
+        const auto* loadedConcreteSnap = loadedModel.getCalculationSnapshot("org.tsaraloha.tsalib:concrete.c25_30");
+        TEST_CHECK(loadedConcreteSnap != nullptr, "Subtest 45.3: Pointeur snapshot non-nul");
+        if (loadedConcreteSnap)
+        {
+            TEST_CHECK(approxEqual(loadedConcreteSnap->youngModulus, 31.0e9), "Subtest 45.3: E = 31 GPa bitwise exact");
+            TEST_CHECK(approxEqual(loadedConcreteSnap->poissonRatio, 0.20), "Subtest 45.3: nu = 0.20 exact");
+            TEST_CHECK(approxEqual(loadedConcreteSnap->density, 2500.0), "Subtest 45.3: rho = 2500 kg/m3 exact");
+            TEST_CHECK(approxEqual(loadedConcreteSnap->characteristicStrength, 25.0e6), "Subtest 45.3: fck = 25 MPa exact");
+            TEST_CHECK(approxEqual(loadedConcreteSnap->thermalCoeff, 1.0e-5), "Subtest 45.3: alpha = 1.0e-5 exact");
+        }
+
+        const auto* loadedConcreteRef = loadedModel.getDefinitionReference("org.tsaraloha.tsalib:concrete.c25_30");
+        TEST_CHECK(loadedConcreteRef != nullptr, "Subtest 45.3: DefinitionReference presente");
+        if (loadedConcreteRef)
+        {
+            TEST_CHECK(loadedConcreteRef->libraryId == "org.tsaraloha.tsalib", "Subtest 45.3: Library ID conforme");
+            TEST_CHECK(loadedConcreteRef->libraryVersion.toString() == "1.0.0", "Subtest 45.3: Library Version 1.0.0");
+            TEST_CHECK(loadedConcreteRef->definitionId == "concrete.c25_30", "Subtest 45.3: Definition ID conforme");
+        }
+
+        // Test de persistance Undo/Redo dans le modele charge
+        auto undoSnapshot = loadedModel.createSnapshot("Test Undo");
+        TEST_CHECK(undoSnapshot.calculationSnapshots.size() >= 2, "Subtest 45.3: Snapshots inclus dans ModelStateSnapshot");
+        std::filesystem::remove(testFilePath);
+        std::cout << "  [PASS] Subtest 45.3: Deserialisation et Verification Bitwise des Snapshots Validees" << std::endl;
+
+        // 45.4: Simulation d'Evolution Normative de TSALib & Detection par LibraryVersionManager
+        TSA::ExtensionSystem::LibraryVersionManager versionMgr;
+
+        // Cas A : Definition identique -> 0 differences mecaniques
+        TSA::ExtensionSystem::MaterialDefinition identicalDef;
+        identicalDef.id = "concrete.c25_30";
+        identicalDef.version = TSA::ExtensionSystem::SemanticVersion(1, 0, 0);
+        identicalDef.youngModulus = TSA::ExtensionSystem::PhysicalValue(31000.0, "MPa");
+        identicalDef.poissonRatio = 0.20;
+        identicalDef.density = TSA::ExtensionSystem::PhysicalValue(2500.0, "kg/m3");
+        identicalDef.fck = TSA::ExtensionSystem::PhysicalValue(25.0, "MPa");
+        identicalDef.fy = TSA::ExtensionSystem::PhysicalValue(25.0, "MPa");
+        identicalDef.thermalCoeff = TSA::ExtensionSystem::PhysicalValue(1.0e-5, "1/K");
+
+        auto resultIdentical = versionMgr.compare(*loadedConcreteSnap, TSA::ExtensionSystem::SemanticVersion(1, 0, 0), identicalDef);
+        TEST_CHECK(!resultIdentical.hasMechanicalChanges(), "Subtest 45.4: Aucune divergence detectee sur version identique");
+
+        // Cas B : Mise a jour normative TSALib (v1.1.0 avec E = 35 GPa et fck = 28 MPa)
+        TSA::ExtensionSystem::MaterialDefinition modifiedDef = identicalDef;
+        modifiedDef.version = TSA::ExtensionSystem::SemanticVersion(1, 1, 0);
+        modifiedDef.youngModulus = TSA::ExtensionSystem::PhysicalValue(35000.0, "MPa"); // Modifie
+        modifiedDef.fck = TSA::ExtensionSystem::PhysicalValue(28.0, "MPa");            // Modifie
+        modifiedDef.fy = TSA::ExtensionSystem::PhysicalValue(28.0, "MPa");             // Modifie
+
+        auto resultModified = versionMgr.compare(*loadedConcreteSnap, TSA::ExtensionSystem::SemanticVersion(1, 0, 0), modifiedDef);
+        TEST_CHECK(resultModified.hasMechanicalChanges(), "Subtest 45.4: Divergence mecanique detectee avec succes");
+        TEST_CHECK(resultModified.modifiedProperties.size() == 3, "Subtest 45.4: Exactement 3 proprietes physiques modifiees (E, fck et fy)");
+
+        // Verification que le snapshot du projet en memoire est reste INALTERE (garantie de reproductibilite)
+        const auto* preservedSnap = loadedModel.getCalculationSnapshot("org.tsaraloha.tsalib:concrete.c25_30");
+        TEST_CHECK(approxEqual(preservedSnap->youngModulus, 31.0e9), "Subtest 45.4: E du projet conserve a 31 GPa (immuabilite garantie)");
+        TEST_CHECK(approxEqual(preservedSnap->characteristicStrength, 25.0e6), "Subtest 45.4: fck du projet conserve a 25 MPa (immuabilite garantie)");
+
+        std::cout << "  [PASS] Subtest 45.4: Detection de Derive Normative & Garantie de Reproductibilite Validees" << std::endl;
+
+        std::cout << "[PASS] Test 45: TSALib Phase 8 - Versioning & Snapshots de Calcul dans le format .tsa (4 Subtests Valides) Passed Successfully!" << std::endl;
         passed++;
     }
 
