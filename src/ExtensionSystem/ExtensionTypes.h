@@ -79,6 +79,7 @@ struct PhysicalValue
 
     // Conversion normalisée vers le Système International (SI) de base de TSA (m, kg, s, N, Pa)
     double toBaseSI() const;
+    double toSI() const { return toBaseSI(); }
 
     static PhysicalValue fromJson(const QJsonObject& obj);
     QJsonObject toJson() const;
@@ -158,6 +159,8 @@ struct ValidationResult
     bool valid = true;
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
+
+    bool isValid() const { return valid; }
 
     void addError(const std::string& err)
     {

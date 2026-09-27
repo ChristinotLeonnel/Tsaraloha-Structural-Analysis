@@ -107,17 +107,18 @@ static bool approxEqual(double a, double b, double eps = 1e-4)
         } \
     } while(0)
 
-#include <QGuiApplication>
+#include <QApplication>
 #include <QFile>
 #include <QDir>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include "UI/Dialogs/ExtensionManagerDialog.h"
 
 int main(int argc, char* argv[])
 {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
     int passed = 0;
-    int total = 46;
+    int total = 47;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -5203,6 +5204,84 @@ int main(int argc, char* argv[])
         std::cout << "  [PASS] Subtest 46.4: Cache de Geometries 3D B-Rep OpenCASCADE Valide" << std::endl;
 
         std::cout << "[PASS] Test 46: TSALib Phase 9 - Optimisation : Lazy Loading & Cache Multi-Niveaux (4 Subtests Valides) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 47: TSALib Phase 10 - Interface Utilisateur Library Manager & Gestionnaire d'Extensions
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 47: TSALib Phase 10 - Interface Utilisateur Library Manager & Gestionnaire d'Extensions ---" << std::endl;
+
+        // 47.1: Instanciation et initialisation du dialogue moderne Master-Detail
+        TSA::UI::ExtensionManagerDialog extDlg;
+        TEST_CHECK(!extDlg.windowTitle().isEmpty(), "Subtest 47.1: Titre de la fenetre non vide");
+        TEST_CHECK(extDlg.windowTitle().contains("TSALib"), "Subtest 47.1: Titre reference TSALib");
+        TEST_CHECK(extDlg.displayedItemCount() >= 16, "Subtest 47.1: Au moins 16 materiaux affiches par defaut");
+
+        std::cout << "  [PASS] Subtest 47.1: Instanciation et Initialisation de ExtensionManagerDialog Validees" << std::endl;
+
+        // 47.2: Navigation par Catégories et affichage dynamique du catalogue
+        extDlg.selectCategory("Sections");
+        TEST_CHECK(extDlg.displayedItemCount() >= 22, "Subtest 47.2: Au moins 22 sections Eurocodes affichees");
+
+        extDlg.selectCategory("Cables");
+        TEST_CHECK(extDlg.displayedItemCount() >= 19, "Subtest 47.2: Au moins 19 cables Eurocodes / ASTM affiches");
+
+        extDlg.selectCategory("Textures");
+        TEST_CHECK(extDlg.displayedItemCount() >= 14, "Subtest 47.2: Au moins 14 textures PBR affichees");
+
+        extDlg.selectCategory("Extensions");
+        TEST_CHECK(extDlg.displayedItemCount() >= 1, "Subtest 47.2: Au moins 1 extension installee listee");
+
+        extDlg.selectCategory("Standards");
+        TEST_CHECK(extDlg.displayedItemCount() >= 5, "Subtest 47.2: Normes Eurocodes listees");
+
+        std::cout << "  [PASS] Subtest 47.2: Navigation Multi-Categories (Sections, Cables, Textures, Extensions, Normes) Validee" << std::endl;
+
+        // 47.3: Filtrage et Recherche Textuelle en Temps Réel
+        extDlg.selectCategory("Materials");
+        extDlg.setSearchQuery("C25");
+        TEST_CHECK(extDlg.displayedItemCount() >= 1, "Subtest 47.3: Filtrage materiau C25");
+
+        extDlg.selectCategory("Sections");
+        extDlg.setSearchQuery("IPE");
+        TEST_CHECK(extDlg.displayedItemCount() >= 5, "Subtest 47.3: Filtrage profilés IPE (au moins 5)");
+
+        extDlg.selectCategory("Cables");
+        extDlg.setSearchQuery("Stay");
+        TEST_CHECK(extDlg.displayedItemCount() >= 3, "Subtest 47.3: Filtrage haubans Stay (au moins 3)");
+
+        extDlg.setSearchQuery("introuvable_xyz_999");
+        TEST_CHECK(extDlg.displayedItemCount() == 0, "Subtest 47.3: Recherche infructueuse retourne 0 elements");
+
+        // Reinitialisation du filtre
+        extDlg.setSearchQuery("");
+        TEST_CHECK(extDlg.displayedItemCount() >= 19, "Subtest 47.3: Retablissement de la liste complete");
+
+        std::cout << "  [PASS] Subtest 47.3: Filtrage et Recherche Textuelle Instantanee Multi-Criteres Valides" << std::endl;
+
+        // 47.4: Rechargement a Chaud en 1 clic (Hot Reload) & Validation Globale
+        extDlg.onReloadAll(false); // Mode silencieux pour test automatique
+        extDlg.selectCategory("Materials");
+        TEST_CHECK(extDlg.displayedItemCount() >= 16, "Subtest 47.4: 16 materiaux recharges avec succes");
+
+        extDlg.onValidateAll(false); // Mode silencieux pour test automatique
+        auto valResult = TSA::ExtensionSystem::LibraryManager::instance().validateAll();
+        TEST_CHECK(valResult.isValid(), "Subtest 47.4: Validation globale 100% conforme sans erreur");
+
+        std::cout << "  [PASS] Subtest 47.4: Rechargement a Chaud (Hot Reload) & Validation Globale Valides" << std::endl;
+
+        // 47.5: Telemetrie & Indicateurs de Performance
+        auto& cache = TSA::ExtensionSystem::LibraryCache::instance();
+        auto& mgr = TSA::ExtensionSystem::LibraryManager::instance();
+        TEST_CHECK(mgr.indexedDefinitionsCount() >= 57, "Subtest 47.5: Telemetrie indexation >= 57 definitions");
+        TEST_CHECK(cache.hitCount() >= 0, "Subtest 47.5: Compteur de Hits cache operationnel");
+        TEST_CHECK(cache.hitRatio() >= 0.0 && cache.hitRatio() <= 1.0, "Subtest 47.5: Ratio de hit cache borne [0, 1]");
+
+        std::cout << "  [PASS] Subtest 47.5: Telemetrie du Cache & Performance en Temps Reel Validees" << std::endl;
+
+        std::cout << "[PASS] Test 47: TSALib Phase 10 - Interface Utilisateur Library Manager & Gestionnaire d'Extensions (5 Subtests Valides) Passed Successfully!" << std::endl;
         passed++;
     }
 

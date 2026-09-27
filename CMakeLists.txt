@@ -74,6 +74,8 @@ set(SOURCES
     src/UI/Dialogs/SurfaceCreationDialog.cpp
     src/UI/Dialogs/LibraryDialog.h
     src/UI/Dialogs/LibraryDialog.cpp
+    src/UI/Dialogs/ExtensionManagerDialog.h
+    src/UI/Dialogs/ExtensionManagerDialog.cpp
     src/ExtensionSystem/ExtensionTypes.h
     src/ExtensionSystem/ExtensionTypes.cpp
     src/ExtensionSystem/DefinitionModels.h
@@ -429,6 +431,8 @@ set(TEST_SOURCES
     src/Diagnostics/CrashHandler.cpp
     src/Diagnostics/DiagnosticReport.h
     src/Diagnostics/DiagnosticReport.cpp
+    src/UI/Dialogs/ExtensionManagerDialog.h
+    src/UI/Dialogs/ExtensionManagerDialog.cpp
 )
 
 add_executable(TSA_Tests ${TEST_SOURCES})

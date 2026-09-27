@@ -206,9 +206,11 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
     supPanel->addSmallColumn({ actPinned, actRoller });
     tab->addPanel(supPanel);
 
-    // Bibliothèque Personnalisée
-    auto* libPanel = new RibbonPanel(QObject::tr("Bibliothèque"), tab);
+    // Bibliothèques & Extensions TSALib
+    auto* libPanel = new RibbonPanel(QObject::tr("Bibliothèques & TSALib"), tab);
+    auto* actExtMgr = acts.actionExtensionManager ? acts.actionExtensionManager : new QAction(QIcon(":/icons/file_new.svg"), QObject::tr("Gestionnaire TSALib..."), parentWindow);
     auto* actLib = acts.actionLibrary ? acts.actionLibrary : new QAction(QIcon(":/icons/structure_preset.svg"), QObject::tr("Bibliothèque..."), parentWindow);
+    libPanel->addLargeAction(actExtMgr);
     libPanel->addLargeAction(actLib);
     tab->addPanel(libPanel);
 

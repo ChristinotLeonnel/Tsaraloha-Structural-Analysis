@@ -25,6 +25,7 @@
 #include "Dialogs/BarCreationDialog.h"
 #include "Dialogs/SurfaceCreationDialog.h"
 #include "Dialogs/LibraryDialog.h"
+#include "Dialogs/ExtensionManagerDialog.h"
 #include "../Library/LibraryManager.h"
 #include "../Project/ProjectManager.h"
 #include "../IO/TSAFile.h"
@@ -606,6 +607,11 @@ void MainWindow::createActions()
     m_actionLibrary->setToolTip(tr("Gérer la bibliothèque de sections, matériaux, textures, couleurs et structures personnalisées"));
     connect(m_actionLibrary, &QAction::triggered, this, [this]() { onActionLibrary(0); });
 
+    m_actionExtensionManager = new QAction(tr("&Gestionnaire TSALib..."), this);
+    m_actionExtensionManager->setIcon(QIcon(":/icons/file_new.svg"));
+    m_actionExtensionManager->setToolTip(tr("Gérer les extensions, explorer les catalogues Eurocodes (matériaux, sections, câbles, textures) et recharger à chaud"));
+    connect(m_actionExtensionManager, &QAction::triggered, this, &MainWindow::onActionExtensionManager);
+
     m_actionPointLoad = new QAction(tr("&Force Ponctuelle..."), this);
     m_actionPointLoad->setIcon(QIcon(":/icons/load_point.svg"));
     m_actionPointLoad->setToolTip(tr("Appliquer une force ponctuelle (Fx, Fy, Fz)"));
@@ -857,6 +863,7 @@ void MainWindow::createRibbon()
     acts.actionPinned = m_actionPinned;
     acts.actionRoller = m_actionRoller;
     acts.actionLibrary = m_actionLibrary;
+    acts.actionExtensionManager = m_actionExtensionManager;
 
     acts.actionPointLoad = m_actionPointLoad;
     acts.actionDistLoad = m_actionDistLoad;
@@ -1515,6 +1522,16 @@ void MainWindow::onActionLibrary(int tabIndex)
     });
     connect(&dlg, &TSA::UI::LibraryDialog::colorLibraryUpdated, this, [this]() {
         if (m_propertyPanel) m_propertyPanel->refreshLibraryLists();
+    });
+    dlg.exec();
+}
+
+void MainWindow::onActionExtensionManager()
+{
+    TSA::UI::ExtensionManagerDialog dlg(this);
+    connect(&dlg, &TSA::UI::ExtensionManagerDialog::extensionsReloaded, this, [this]() {
+        if (m_propertyPanel) m_propertyPanel->refreshLibraryLists();
+        if (m_occView) m_occView->rebuildAllShapes();
     });
     dlg.exec();
 }
