@@ -1,4 +1,5 @@
 #include "LibraryManager.h"
+#include "ExtensionPackager.h"
 #include "../Model/MaterialLibrary.h"
 #include "../Library/LibraryManager.h"
 #include "../Library/CableLibrary.h"
@@ -288,6 +289,29 @@ const CableCatalogDefinition* LibraryManager::findCable(const std::string& id) c
         cab = LibraryRegistry::instance().findCable(id);
     }
     return cab;
+}
+
+QString LibraryManager::extensionPath(const std::string& extensionId) const
+{
+    auto it = m_extensionPaths.find(extensionId);
+    if (it != m_extensionPaths.end()) return it->second;
+    return QString();
+}
+
+bool LibraryManager::installPackage(const QString& packagePath, QString* outError)
+{
+    QString installedDir;
+    bool ok = ExtensionPackager::installPackage(packagePath, QString(), &installedDir, outError);
+    if (ok)
+    {
+        reloadAll();
+    }
+    return ok;
+}
+
+bool LibraryManager::exportPackage(const std::string& extensionId, const QString& outputPackagePath, QString* outError)
+{
+    return ExtensionPackager::exportExtension(extensionId, outputPackagePath, outError);
 }
 
 } // namespace TSA::ExtensionSystem

@@ -77,6 +77,11 @@ public:
     const SectionDefinition* findSection(const std::string& id) const;
     const CableCatalogDefinition* findCable(const std::string& id) const;
 
+    // Gestion des packages .tsalib
+    QString extensionPath(const std::string& extensionId) const;
+    bool installPackage(const QString& packagePath, QString* outError = nullptr);
+    bool exportPackage(const std::string& extensionId, const QString& outputPackagePath, QString* outError = nullptr);
+
 signals:
     void librariesDiscovered(int count);
     void libraryLoaded(const QString& extensionId);

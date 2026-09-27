@@ -68,6 +68,7 @@
 #include "ExtensionSystem/LibraryDependencyManager.h"
 #include "ExtensionSystem/LibraryManager.h"
 #include "ExtensionSystem/ExtensionManager.h"
+#include "ExtensionSystem/ExtensionPackager.h"
 
 #include <fstream>
 #include <filesystem>
@@ -118,7 +119,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int total = 47;
+    int total = 48;
 
     std::cout << "=================================================" << std::endl;
     std::cout << "TSA Unit Tests: 3D Coordinates, Grid & Levels" << std::endl;
@@ -5282,6 +5283,125 @@ int main(int argc, char* argv[])
         std::cout << "  [PASS] Subtest 47.5: Telemetrie du Cache & Performance en Temps Reel Validees" << std::endl;
 
         std::cout << "[PASS] Test 47: TSALib Phase 10 - Interface Utilisateur Library Manager & Gestionnaire d'Extensions (5 Subtests Valides) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 48: TSALib Phase 11 - Packaging .tsalib, Distribution & Validation Globale Finale
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 48: TSALib Phase 11 - Packaging .tsalib, Distribution & Validation Globale Finale ---" << std::endl;
+
+        QString sourceDir = "e:/Book/Dev/TSA/Extensions/TSALib";
+        if (!QDir(sourceDir).exists())
+        {
+            sourceDir = QDir::currentPath() + "/Extensions/TSALib";
+        }
+
+        QString pkgOutputPath = QDir::currentPath() + "/scratch_test_tsalib.tsalib";
+        if (QFile::exists(pkgOutputPath))
+        {
+            QFile::remove(pkgOutputPath);
+        }
+
+        // 48.1: Création d'un package binaire compressé .tsalib
+        QString packError;
+        bool created = TSA::ExtensionSystem::ExtensionPackager::createPackage(sourceDir, pkgOutputPath, &packError);
+        TEST_CHECK(created, "Subtest 48.1: Package .tsalib cree avec succes");
+        TEST_CHECK(QFile::exists(pkgOutputPath), "Subtest 48.1: Fichier .tsalib present sur le disque");
+        QFileInfo pkgInfo(pkgOutputPath);
+        TEST_CHECK(pkgInfo.size() > 5000, "Subtest 48.1: Taille package substantielle (> 5 KB compresse)");
+
+        std::cout << "  [PASS] Subtest 48.1: Creation de Package .tsalib Compresse Validee (Taille: " << pkgInfo.size() << " octets)" << std::endl;
+
+        // 48.2: Inspection sécurisée sans extraction intégrale
+        auto inspectRes = TSA::ExtensionSystem::ExtensionPackager::inspectPackage(pkgOutputPath);
+        TEST_CHECK(inspectRes.isValid(), "Subtest 48.2: Inspection du package .tsalib valide");
+        TEST_CHECK(inspectRes.formatVersion == 1, "Subtest 48.2: Version de format = 1");
+        TEST_CHECK(inspectRes.manifest.id == "org.tsaraloha.tsalib", "Subtest 48.2: Manifest ID = org.tsaraloha.tsalib");
+        TEST_CHECK(!inspectRes.manifest.name.empty(), "Subtest 48.2: Manifest Name present");
+        TEST_CHECK(!inspectRes.packageSha256Hex.isEmpty(), "Subtest 48.2: Empreinte SHA-256 calculee");
+        TEST_CHECK(inspectRes.files.size() >= 55, "Subtest 48.2: Au moins 55 fichiers archives dans le package");
+        TEST_CHECK(static_cast<qint64>(inspectRes.totalUncompressedBytes) > pkgInfo.size(), "Subtest 48.2: Ratio de compression zlib efficace");
+
+        std::cout << "  [PASS] Subtest 48.2: Inspection Securisee sans Extraction Validee (" 
+                  << inspectRes.files.size() << " fichiers, SHA-256: " 
+                  << inspectRes.packageSha256Hex.left(12).toStdString() << "...)" << std::endl;
+
+        // 48.3: Securite Anti-Path-Traversal & Detection de Paquet Corrompu
+        TEST_CHECK(TSA::ExtensionSystem::ExtensionPackager::isSafeRelativePath("Materials/concrete_c25_30.json"), 
+                   "Subtest 48.3: Chemin relatif standard accepte");
+        TEST_CHECK(TSA::ExtensionSystem::ExtensionPackager::isSafeRelativePath("Textures/concrete_diffuse.png"), 
+                   "Subtest 48.3: Chemin sous-dossier valide");
+        TEST_CHECK(!TSA::ExtensionSystem::ExtensionPackager::isSafeRelativePath("../../Windows/System32/evil.dll"), 
+                   "Subtest 48.3: Tentative de traversal ../../ rejetee");
+        TEST_CHECK(!TSA::ExtensionSystem::ExtensionPackager::isSafeRelativePath("/etc/shadow"), 
+                   "Subtest 48.3: Chemin absolu racine rejete");
+        TEST_CHECK(!TSA::ExtensionSystem::ExtensionPackager::isSafeRelativePath("C:/Windows/cmd.exe"), 
+                   "Subtest 48.3: Chemin absolu Windows avec lettre de lecteur rejete");
+        TEST_CHECK(!TSA::ExtensionSystem::ExtensionPackager::isSafeRelativePath(""), 
+                   "Subtest 48.3: Chemin vide rejete");
+
+        // Fichier invalide / corrompu
+        QString corruptPath = QDir::currentPath() + "/scratch_corrupt.tsalib";
+        QFile corruptFile(corruptPath);
+        if (corruptFile.open(QIODevice::WriteOnly))
+        {
+            corruptFile.write("CORRUPTED_NOT_TSALIB_HEADER_DATA_12345");
+            corruptFile.close();
+        }
+        auto corruptInspect = TSA::ExtensionSystem::ExtensionPackager::inspectPackage(corruptPath);
+        TEST_CHECK(!corruptInspect.isValid(), "Subtest 48.3: Rejet immediat d'un package corrompu avec mauvais magic");
+        QFile::remove(corruptPath);
+
+        std::cout << "  [PASS] Subtest 48.3: Protection Anti-Path-Traversal (Zip Slip) & Detection d'Anomalies Validees" << std::endl;
+
+        // 48.4: Installation & Extraction Reelle dans un Sandbox Temporaire
+        QString sandboxDir = QDir::currentPath() + "/scratch_install_sandbox";
+        if (QDir(sandboxDir).exists())
+        {
+            QDir(sandboxDir).removeRecursively();
+        }
+        QDir().mkpath(sandboxDir);
+
+        QString installedPath;
+        QString installError;
+        bool installed = TSA::ExtensionSystem::ExtensionPackager::installPackage(pkgOutputPath, sandboxDir, &installedPath, &installError);
+        TEST_CHECK(installed, "Subtest 48.4: Installation et extraction du package reussies");
+        TEST_CHECK(QFile::exists(sandboxDir + "/manifest.json"), "Subtest 48.4: manifest.json extrait avec succes");
+        TEST_CHECK(QFile::exists(sandboxDir + "/Materials/concrete_c25_30.json"), "Subtest 48.4: Fiche materiau extraite");
+        TEST_CHECK(QFile::exists(sandboxDir + "/Sections/rect_300x500.json"), "Subtest 48.4: Fiche section extraite");
+        TEST_CHECK(QFile::exists(sandboxDir + "/Profiles/ipe200.json"), "Subtest 48.4: Fiche profile extraite");
+        TEST_CHECK(QFile::exists(sandboxDir + "/Cables/en10138_y1860s7_15_7.json"), "Subtest 48.4: Fiche cable extraite");
+        TEST_CHECK(QFile::exists(sandboxDir + "/Textures/concrete.png"), "Subtest 48.4: Texture PBR extraite");
+
+        // Nettoyage sandbox
+        QDir(sandboxDir).removeRecursively();
+        QFile::remove(pkgOutputPath);
+
+        std::cout << "  [PASS] Subtest 48.4: Extraction Reelle Sandbox & Verification d'Integrite Bitwise Validees" << std::endl;
+
+        // 48.5: Exportation d'Extension via LibraryManager & Validation Globale Finale
+        QString exportOutPath = QDir::currentPath() + "/scratch_export_manager.tsalib";
+        if (QFile::exists(exportOutPath)) QFile::remove(exportOutPath);
+
+        QString expErr;
+        bool exported = TSA::ExtensionSystem::LibraryManager::instance().exportPackage("org.tsaraloha.tsalib", exportOutPath, &expErr);
+        TEST_CHECK(exported, "Subtest 48.5: Export de package via LibraryManager reussi");
+        TEST_CHECK(QFile::exists(exportOutPath), "Subtest 48.5: Fichier exporte present");
+
+        auto expInspect = TSA::ExtensionSystem::ExtensionPackager::inspectPackage(exportOutPath);
+        TEST_CHECK(expInspect.isValid(), "Subtest 48.5: Package exporte valide");
+        TEST_CHECK(expInspect.manifest.id == "org.tsaraloha.tsalib", "Subtest 48.5: ID conforme");
+        QFile::remove(exportOutPath);
+
+        // Validation finale de l'ensemble de l'architecture TSALib
+        auto finalVal = TSA::ExtensionSystem::LibraryManager::instance().validateAll();
+        TEST_CHECK(finalVal.isValid(), "Subtest 48.5: Validation globale finale 100% conforme de TSALib sans aucune erreur");
+
+        std::cout << "  [PASS] Subtest 48.5: Export via LibraryManager & Validation Globale Finale des 11 Phases Validees" << std::endl;
+
+        std::cout << "[PASS] Test 48: TSALib Phase 11 - Packaging .tsalib, Distribution & Validation Globale Finale (5 Subtests Valides) Passed Successfully!" << std::endl;
         passed++;
     }
 

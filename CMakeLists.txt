@@ -96,6 +96,8 @@ set(SOURCES
     src/ExtensionSystem/LibraryManager.cpp
     src/ExtensionSystem/ExtensionManager.h
     src/ExtensionSystem/ExtensionManager.cpp
+    src/ExtensionSystem/ExtensionPackager.h
+    src/ExtensionSystem/ExtensionPackager.cpp
     src/Library/LibraryManager.h
     src/Library/LibraryManager.cpp
     src/Model/CreationPresets.h
@@ -415,6 +417,8 @@ set(TEST_SOURCES
     src/ExtensionSystem/LibraryManager.cpp
     src/ExtensionSystem/ExtensionManager.h
     src/ExtensionSystem/ExtensionManager.cpp
+    src/ExtensionSystem/ExtensionPackager.h
+    src/ExtensionSystem/ExtensionPackager.cpp
     src/Library/LibraryManager.h
     src/Library/LibraryManager.cpp
     src/IO/TSAFileFormat.h

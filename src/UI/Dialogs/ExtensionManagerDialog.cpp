@@ -64,10 +64,15 @@ void ExtensionManagerDialog::setupUi()
     m_btnValidateAll->setMinimumHeight(32);
     topLayout->addWidget(m_btnValidateAll);
 
-    m_btnImport = new QPushButton(QIcon(":/icons/file_open.svg"), tr("Importer..."), this);
-    m_btnImport->setToolTip(tr("Ajouter un dossier de bibliothèque ou paquet d'extension"));
+    m_btnImport = new QPushButton(QIcon(":/icons/file_open.svg"), tr("Importer (.tsalib)..."), this);
+    m_btnImport->setToolTip(tr("Importer et installer un package .tsalib ou un dossier d'extension"));
     m_btnImport->setMinimumHeight(32);
     topLayout->addWidget(m_btnImport);
+
+    m_btnExport = new QPushButton(QIcon(":/icons/file_save.svg"), tr("Exporter (.tsalib)..."), this);
+    m_btnExport->setToolTip(tr("Empaqueter et exporter une extension au format autonome .tsalib"));
+    m_btnExport->setMinimumHeight(32);
+    topLayout->addWidget(m_btnExport);
 
     m_btnOpenFolder = new QPushButton(QIcon(":/icons/structure_preset.svg"), tr("Ouvrir dossier"), this);
     m_btnOpenFolder->setToolTip(tr("Ouvrir le répertoire des extensions dans l'explorateur Windows"));
@@ -141,6 +146,7 @@ void ExtensionManagerDialog::setupUi()
     connect(m_btnReloadAll, &QPushButton::clicked, this, [this]() { onReloadAll(true); });
     connect(m_btnValidateAll, &QPushButton::clicked, this, [this]() { onValidateAll(true); });
     connect(m_btnImport, &QPushButton::clicked, this, &ExtensionManagerDialog::onImportExtension);
+    connect(m_btnExport, &QPushButton::clicked, this, &ExtensionManagerDialog::onExportExtension);
     connect(m_btnOpenFolder, &QPushButton::clicked, this, &ExtensionManagerDialog::onOpenExtensionsFolder);
     connect(m_btnClose, &QPushButton::clicked, this, &QDialog::accept);
 
@@ -890,18 +896,89 @@ void ExtensionManagerDialog::onValidateAll(bool showMessage)
 
 void ExtensionManagerDialog::onImportExtension()
 {
-    QString dir = QFileDialog::getExistingDirectory(this, tr("Sélectionner un dossier d'extension à importer"));
-    if (dir.isEmpty()) return;
+    QString selected = QFileDialog::getOpenFileName(this,
+        tr("Importer un package TSALib ou dossier"),
+        QString(),
+        tr("Packages TSALib (*.tsalib);;Tous les fichiers (*.*)"));
 
-    TSA::ExtensionSystem::LibraryManager::instance().addSearchPath(dir);
-    auto discovered = TSA::ExtensionSystem::LibraryManager::instance().discover();
+    if (selected.isEmpty())
+    {
+        // Si l'utilisateur n'a pas sélectionné de fichier .tsalib, demander s'il souhaite importer un dossier
+        QString dir = QFileDialog::getExistingDirectory(this, tr("Ou sélectionner un dossier d'extension à importer"));
+        if (dir.isEmpty()) return;
 
-    populateCategoryTree();
-    refreshCurrentCategory();
-    updateTelemetryBar();
+        TSA::ExtensionSystem::LibraryManager::instance().addSearchPath(dir);
+        auto discovered = TSA::ExtensionSystem::LibraryManager::instance().discover();
 
-    QMessageBox::information(this, tr("Importation d'Extension"),
-        tr("Le dossier a été ajouté aux chemins de recherche.\n%1 extension(s) candidate(s) découverte(s).").arg(discovered.size()));
+        populateCategoryTree();
+        refreshCurrentCategory();
+        updateTelemetryBar();
+
+        QMessageBox::information(this, tr("Importation d'Extension"),
+            tr("Le dossier a été ajouté aux chemins de recherche.\n%1 extension(s) candidate(s) découverte(s).").arg(discovered.size()));
+        return;
+    }
+
+    if (selected.endsWith(".tsalib", Qt::CaseInsensitive))
+    {
+        QString err;
+        if (TSA::ExtensionSystem::LibraryManager::instance().installPackage(selected, &err))
+        {
+            populateCategoryTree();
+            refreshCurrentCategory();
+            updateTelemetryBar();
+            emit extensionsReloaded();
+
+            QMessageBox::information(this, tr("Importation Réussie"),
+                tr("Le package .tsalib a été validé, extrait et chargé à chaud avec succès dans TSA !"));
+        }
+        else
+        {
+            QMessageBox::critical(this, tr("Erreur d'Importation"),
+                tr("Échec de l'installation du package .tsalib :\n%1").arg(err));
+        }
+    }
+}
+
+void ExtensionManagerDialog::onExportExtension()
+{
+    auto exts = TSA::ExtensionSystem::LibraryManager::instance().installedExtensions();
+    if (exts.empty())
+    {
+        QMessageBox::warning(this, tr("Exportation"), tr("Aucune extension n'est disponible pour l'exportation."));
+        return;
+    }
+
+    std::string extId = exts.front().id;
+    if (m_currentView == CurrentViewType::Extensions && !m_currentExtensions.empty())
+    {
+        int row = m_itemsTable->currentRow();
+        if (row >= 0 && row < static_cast<int>(m_currentExtensions.size()))
+        {
+            extId = m_currentExtensions[row].id;
+        }
+    }
+
+    QString defaultName = QString::fromStdString(extId) + ".tsalib";
+    QString outPath = QFileDialog::getSaveFileName(this,
+        tr("Exporter le package TSALib"),
+        defaultName,
+        tr("Packages TSALib (*.tsalib)"));
+
+    if (outPath.isEmpty()) return;
+
+    QString err;
+    if (TSA::ExtensionSystem::LibraryManager::instance().exportPackage(extId, outPath, &err))
+    {
+        QMessageBox::information(this, tr("Exportation Réussie"),
+            tr("L'extension '%1' a été exportée avec succès sous forme de package autonome :\n%2")
+            .arg(QString::fromStdString(extId)).arg(outPath));
+    }
+    else
+    {
+        QMessageBox::critical(this, tr("Erreur d'Exportation"),
+            tr("Impossible d'exporter l'extension :\n%1").arg(err));
+    }
 }
 
 void ExtensionManagerDialog::onOpenExtensionsFolder()

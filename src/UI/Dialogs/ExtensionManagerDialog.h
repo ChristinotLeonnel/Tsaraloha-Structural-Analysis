@@ -54,6 +54,7 @@ public slots:
     void onReloadAll(bool showMessage = true);
     void onValidateAll(bool showMessage = true);
     void onImportExtension();
+    void onExportExtension();
     void onOpenExtensionsFolder();
 
 private slots:
@@ -86,6 +87,7 @@ private:
     QPushButton* m_btnReloadAll = nullptr;
     QPushButton* m_btnValidateAll = nullptr;
     QPushButton* m_btnImport = nullptr;
+    QPushButton* m_btnExport = nullptr;
     QPushButton* m_btnOpenFolder = nullptr;
 
     // Volet central Master-Detail

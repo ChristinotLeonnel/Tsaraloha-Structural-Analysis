@@ -147,6 +147,8 @@ struct ExtensionManifest
     std::vector<ExtensionDependency> dependencies; // Dépendances
     std::string checksum;               // Somme de contrôle SHA256 / CRC32 optionnelle
 
+    bool isValid() const { return !id.empty() && !name.empty(); }
+
     static std::optional<ExtensionManifest> fromJson(const QJsonObject& json, std::string* outError = nullptr);
     QJsonObject toJson() const;
 };
