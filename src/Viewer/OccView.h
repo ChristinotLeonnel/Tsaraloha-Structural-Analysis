@@ -38,6 +38,9 @@ namespace TSA::Grid
 #include <Graphic3d_Camera.hxx>
 #include <gp_Ax3.hxx>
 #include "MaterialVisual.h"
+#include "ProjectionManager.h"
+#include "ViewManager.h"
+#include "../Grid/SnapManager.h"
 
 class OccView : public QWidget, public TSA::Model::IModelObserver
 {
@@ -128,6 +131,32 @@ public:
     bool isWorkPlaneVisible() const { return m_workPlaneVisible; }
     void viewNormalToWorkPlane();
     void updateWorkPlaneVisual();
+
+    // Gestionnaires spécialisés Découplés (Section 11)
+    TSA::Viewer::ProjectionManager* projectionManager() noexcept { return &m_projectionManager; }
+    const TSA::Viewer::ProjectionManager* projectionManager() const noexcept { return &m_projectionManager; }
+
+    TSA::Viewer::ViewManager* viewManager() noexcept { return &m_viewManager; }
+    const TSA::Viewer::ViewManager* viewManager() const noexcept { return &m_viewManager; }
+
+    TSA::Grid::SnapManager* snapManager() noexcept { return &m_snapManager; }
+    const TSA::Grid::SnapManager* snapManager() const noexcept { return &m_snapManager; }
+
+    // Mode et direction de projection (Section 5, 6 & 7)
+    void setProjectionMode(TSA::Viewer::ProjectionMode mode);
+    TSA::Viewer::ProjectionMode projectionMode() const { return m_projectionManager.mode(); }
+    void setProjectionDirection(TSA::Viewer::ProjectionDirection dir);
+    TSA::Viewer::ProjectionDirection projectionDirection() const { return m_projectionManager.direction(); }
+
+    void applyStandardView(TSA::Viewer::StandardCameraView view);
+
+    // Repère local du WorkPlane (Section 2)
+    void setWorkPlaneAxesVisible(bool visible);
+    bool isWorkPlaneAxesVisible() const noexcept { return m_workPlaneAxesVisible; }
+
+    // Taille visuelle du Gizmo (Section 12)
+    double gizmoSize() const noexcept { return m_gizmoSize; }
+    void setGizmoSize(double size);
 
     // Manipulation 3D interactive, Gizmo & Isolation du Plan de Travail
     void attachManipulatorToWorkPlane();
@@ -265,6 +294,12 @@ signals:
     void cameraHistoryChanged(bool hasPrev, bool hasNext);
     void workPlaneChanged(const TSA::Coordinate::WorkPlane& wp);
     void snapChanged(const TSA::Grid::GridSnapResult& snap);
+    void projectionModeChanged(TSA::Viewer::ProjectionMode mode);
+    void projectionDirectionChanged(TSA::Viewer::ProjectionDirection dir);
+    void standardViewChanged(TSA::Viewer::StandardCameraView view);
+    void workPlaneAxesVisibleChanged(bool visible);
+    void gizmoSizeChanged(double size);
+    void mouseLocalCoordinatesChanged(double xwp, double ywp);
 
 protected:
     // IModelObserver overrides
@@ -394,6 +429,15 @@ private:
     TSA::Coordinate::WorkPlane m_workPlane;
     Handle(AIS_Shape) m_workPlaneShape;
     Handle(AIS_Shape) m_workPlaneAxesShape;
+    Handle(AIS_Shape) m_workPlaneAxisXShape;
+    Handle(AIS_Shape) m_workPlaneAxisYShape;
+    Handle(AIS_Shape) m_workPlaneAxisZShape;
+    Handle(AIS_Shape) m_workPlaneOriginShape;
+    bool m_workPlaneAxesVisible = true;
+    double m_gizmoSize = 100.0;
+    TSA::Viewer::ProjectionManager m_projectionManager;
+    TSA::Viewer::ViewManager m_viewManager;
+    TSA::Grid::SnapManager m_snapManager;
     bool m_workPlaneVisible = true;
     Handle(AIS_Manipulator) m_manipulator;
     bool m_isManipulatingWorkPlane = false;

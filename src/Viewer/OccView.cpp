@@ -276,11 +276,11 @@ bool OccView::pixelToWorldPlane(int px, int py, double& wx, double& wy, double& 
     double xDir = 0.0, yDir = 0.0, zDir = 0.0;
     m_view->ConvertWithProj(px, py, xEye, yEye, zEye, xDir, yDir, zDir);
 
-    // 1. Raycast analytique direct sur le Plan de Travail actif
+    // 1. Raycast direct sur le Plan de Travail actif via ProjectionManager
     gp_Pnt eye(xEye, yEye, zEye);
     gp_Dir dir(xDir, yDir, zDir);
     gp_Pnt hitPnt;
-    if (m_workPlane.projectRay(eye, dir, hitPnt))
+    if (m_projectionManager.projectCursorRay(eye, dir, m_workPlane, hitPnt))
     {
         wx = hitPnt.X();
         wy = hitPnt.Y();
@@ -1031,6 +1031,18 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
         TSA::Grid::GridSnapType snapType = TSA::Grid::GridSnapType::None;
         if (findNearest3DPoint(px, py, x, y, z, detectedNodeId, snapDesc, snapType))
         {
+            if (m_projectionManager.is2D())
+            {
+                gp_Pnt pWorld(x, y, z);
+                gp_Pnt pProj = m_projectionManager.projectPoint(pWorld, m_workPlane);
+                x = pProj.X();
+                y = pProj.Y();
+                z = pProj.Z();
+                if (pWorld.Distance(pProj) > 1e-4)
+                {
+                    detectedNodeId = -1;
+                }
+            }
             m_isCursorSnapped = true;
             TSA::Grid::GridSnapResult snapRes;
             snapRes.snapped = true;
@@ -1051,11 +1063,16 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
         return false;
     }
 
-    // 3. Accrochage magnétique aux grilles si activé
-    if (m_snapToGrid && m_gridSnapManager)
+    // 3. Accrochage magnétique aux grilles et au WorkPlane si activé
+    if (m_snapToGrid)
     {
         gp_Pnt rawPnt(wx, wy, wz);
-        TSA::Grid::GridSnapResult snapRes = m_gridSnapManager->findSnap(rawPnt, m_gridManager, m_model);
+        TSA::Grid::GridSnapResult snapRes = m_snapManager.findWorkPlaneSnap(rawPnt, m_workPlane, m_model);
+        if (!snapRes.snapped && m_gridSnapManager && m_gridManager)
+        {
+            snapRes = m_gridSnapManager->findSnap(rawPnt, m_gridManager, m_model);
+        }
+
         if (snapRes.snapped)
         {
             m_isCursorSnapped = true;

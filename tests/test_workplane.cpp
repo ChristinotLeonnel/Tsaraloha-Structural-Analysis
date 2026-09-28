@@ -1,4 +1,10 @@
 #include "test_common.h"
+#include "Coordinate/WorkPlaneCoordinateSystem.h"
+#include "Coordinate/CoordinateTransform.h"
+#include "Coordinate/AxisColorConfig.h"
+#include "Viewer/ProjectionManager.h"
+#include "Viewer/ViewManager.h"
+#include "Grid/SnapManager.h"
 
 bool runSuite_WorkPlane(int& passed)
 {
@@ -541,6 +547,208 @@ bool runSuite_WorkPlane(int& passed)
                        "Subtest 52.7: Story 3 point (Z=9) is filtered out by isolation");
 
             std::cout << "  [PASS] Subtest 52.7: WorkPlane Isolation Distance Filtering Verified" << std::endl;
+        }
+
+        // Subtest 52.8: WorkPlaneCoordinateSystem Orthonormal Frame & Kinematics
+        {
+            using namespace TSA::Coordinate;
+            auto csXY = WorkPlaneCoordinateSystem::xy(3.0);
+            TEST_CHECK(approxEqual(csXY.origin().Z(), 3.0), "Subtest 52.8: XY origin Z is 3.0");
+            TEST_CHECK(approxEqual(csXY.axisX().X(), 1.0), "Subtest 52.8: XY axisX is (1, 0, 0)");
+            TEST_CHECK(approxEqual(csXY.axisY().Y(), 1.0), "Subtest 52.8: XY axisY is (0, 1, 0)");
+            TEST_CHECK(approxEqual(csXY.axisZ().Z(), 1.0), "Subtest 52.8: XY axisZ is (0, 0, 1)");
+
+            // Orthonormality checks
+            TEST_CHECK(std::abs(csXY.axisX().Dot(csXY.axisY())) < 1e-9, "Subtest 52.8: axisX perpendicular to axisY");
+            TEST_CHECK(std::abs(csXY.axisX().Dot(csXY.axisZ())) < 1e-9, "Subtest 52.8: axisX perpendicular to axisZ");
+            TEST_CHECK(std::abs(csXY.axisY().Dot(csXY.axisZ())) < 1e-9, "Subtest 52.8: axisY perpendicular to axisZ");
+
+            // Point transformation
+            gp_Pnt pGlobal(7.0, 8.0, 3.0);
+            double u = 0, v = 0, w = 0;
+            csXY.toLocal(pGlobal, u, v, w);
+            TEST_CHECK(approxEqual(u, 7.0) && approxEqual(v, 8.0) && approxEqual(w, 0.0), "Subtest 52.8: toLocal on XY plane");
+            gp_Pnt pBack = csXY.toGlobal(u, v, w);
+            TEST_CHECK(approxEqual(pBack.X(), 7.0) && approxEqual(pBack.Y(), 8.0) && approxEqual(pBack.Z(), 3.0), "Subtest 52.8: toGlobal roundtrip");
+
+            // Arbitrary rotated coordinate system (90 deg around Z)
+            gp_Pnt origRot(10.0, 20.0, 5.0);
+            gp_Dir axX(0.0, 1.0, 0.0);
+            gp_Dir axY(-1.0, 0.0, 0.0);
+            auto csRot = WorkPlaneCoordinateSystem::fromOriginAndAxes(origRot, axX, axY);
+            TEST_CHECK(approxEqual(csRot.axisZ().Z(), 1.0), "Subtest 52.8: Rotated cs axisZ is along +Z");
+            gp_Pnt pRotGlobal(10.0, 25.0, 5.0);
+            csRot.toLocal(pRotGlobal, u, v, w);
+            TEST_CHECK(approxEqual(u, 5.0) && approxEqual(v, 0.0) && approxEqual(w, 0.0), "Subtest 52.8: Rotated cs toLocal u=5, v=0, w=0");
+
+            // Raycast intersection
+            gp_Pnt rayEye(10.0, 25.0, 20.0);
+            gp_Dir rayDir(0.0, 0.0, -1.0);
+            gp_Pnt hitPoint;
+            bool hit = csRot.intersectRay(rayEye, rayDir, hitPoint);
+            TEST_CHECK(hit, "Subtest 52.8: Ray intersection succeeded");
+            TEST_CHECK(approxEqual(hitPoint.X(), 10.0) && approxEqual(hitPoint.Y(), 25.0) && approxEqual(hitPoint.Z(), 5.0), "Subtest 52.8: Ray intersection point");
+
+            std::cout << "  [PASS] Subtest 52.8: WorkPlaneCoordinateSystem Orthonormal Frame & Kinematics Verified" << std::endl;
+        }
+
+        // Subtest 52.9: CoordinateTransform & AxisColorConfig Centralized Management
+        {
+            using namespace TSA::Coordinate;
+            auto cs = WorkPlaneCoordinateSystem::xy(0.0);
+            gp_Pnt p(4.0, 6.0, 2.0);
+            gp_Pnt localP = CoordinateTransform::toWorkPlaneLocal(p, cs);
+            TEST_CHECK(approxEqual(localP.X(), 4.0) && approxEqual(localP.Y(), 6.0) && approxEqual(localP.Z(), 2.0), "Subtest 52.9: toWorkPlaneLocal point");
+            gp_Pnt globalP = CoordinateTransform::toGlobalFromWorkPlane(localP, cs);
+            TEST_CHECK(approxEqual(globalP.X(), 4.0) && approxEqual(globalP.Y(), 6.0) && approxEqual(globalP.Z(), 2.0), "Subtest 52.9: toGlobalFromWorkPlane point");
+
+            // AxisColorConfig
+            auto& colorCfg = AxisColorConfig::instance();
+            colorCfg.resetToDefaults();
+            TEST_CHECK(colorCfg.axisXColor().Red() > 0.80 && colorCfg.axisXColor().Green() < 0.30, "Subtest 52.9: Default X axis color is Red");
+            TEST_CHECK(colorCfg.axisYColor().Green() > 0.80 && colorCfg.axisYColor().Red() < 0.30, "Subtest 52.9: Default Y axis color is Green");
+            TEST_CHECK(colorCfg.axisZColor().Blue() > 0.80 && colorCfg.axisZColor().Red() < 0.30, "Subtest 52.9: Default Z axis color is Blue");
+
+            // Custom local WorkPlane colors
+            colorCfg.setWorkPlaneAxisColors(Quantity_Color(Quantity_NOC_ORANGE),
+                                            Quantity_Color(Quantity_NOC_CYAN1),
+                                            Quantity_Color(Quantity_NOC_MAGENTA1));
+            TEST_CHECK(colorCfg.workPlaneAxisXColor().Name() == Quantity_NOC_ORANGE, "Subtest 52.9: Custom WorkPlane X color");
+            colorCfg.resetToDefaults();
+
+            std::cout << "  [PASS] Subtest 52.9: CoordinateTransform & AxisColorConfig Centralized Management Verified" << std::endl;
+        }
+
+        // Subtest 52.10: ProjectionManager & ViewManager WorkPlane Navigation
+        {
+            using namespace TSA::Viewer;
+            ProjectionManager projMgr;
+            TEST_CHECK(projMgr.mode() == ProjectionMode::ThreeD, "Subtest 52.10: Default projection mode is ThreeD");
+            TEST_CHECK(projMgr.direction() == ProjectionDirection::Normal, "Subtest 52.10: Default direction is Normal");
+
+            auto wp = WorkPlane::xy(4.0, "Floor 4m");
+            gp_Pnt eye(2.0, 3.0, 10.0);
+            gp_Dir rayDir(0.0, 0.0, -1.0);
+            gp_Pnt hitPnt;
+            bool hit = projMgr.projectCursorRay(eye, rayDir, wp, hitPnt);
+            TEST_CHECK(hit, "Subtest 52.10: 3D cursor ray projection hits plane");
+            TEST_CHECK(approxEqual(hitPnt.Z(), 4.0), "Subtest 52.10: Hit point elevation is 4.0");
+
+            // 2D projection mode
+            projMgr.setMode(ProjectionMode::TwoD);
+            gp_Pnt pt3D(5.0, 6.0, 12.0);
+            gp_Pnt proj2D = projMgr.projectPoint(pt3D, wp);
+            TEST_CHECK(approxEqual(proj2D.X(), 5.0) && approxEqual(proj2D.Y(), 6.0) && approxEqual(proj2D.Z(), 4.0), "Subtest 52.10: 2D orthogonal projection onto plane");
+
+            ViewManager viewMgr;
+            viewMgr.setCurrentView(StandardCameraView::Top);
+            TEST_CHECK(viewMgr.currentView() == StandardCameraView::Top, "Subtest 52.10: Standard view set to Top");
+
+            std::cout << "  [PASS] Subtest 52.10: ProjectionManager & ViewManager WorkPlane Navigation Verified" << std::endl;
+        }
+
+        // Subtest 52.11: SnapManager Kinematic Snapping Pipeline
+        {
+            using namespace TSA::Grid;
+            SnapManager snapMgr;
+            TEST_CHECK(snapMgr.isWorkPlaneGridSnapEnabled(), "Subtest 52.11: WorkPlane grid snap enabled by default");
+            snapMgr.setSnapTolerance(0.50);
+
+            WorkPlane wp = WorkPlane::xy(0.0, "GridSnap WP");
+            wp.setGridSettings(1.0, 1.0, true);
+
+            // Raw point near grid intersection (3.08, 4.05, 0.0) -> snaps to (3.0, 4.0, 0.0)
+            gp_Pnt rawPnt(3.08, 4.05, 0.0);
+            GridSnapResult res = snapMgr.snapToWorkPlaneGrid(rawPnt, wp);
+            TEST_CHECK(res.snapped, "Subtest 52.11: WorkPlane grid snap succeeded");
+            TEST_CHECK(approxEqual(res.point.X(), 3.0) && approxEqual(res.point.Y(), 4.0) && approxEqual(res.point.Z(), 0.0),
+                       "Subtest 52.11: Snapped to nearest grid vertex (3, 4, 0)");
+
+            // Point outside tolerance (3.45, 4.45, 0.0) with tolerance 0.20
+            snapMgr.setSnapTolerance(0.20);
+            GridSnapResult resFar = snapMgr.snapToWorkPlaneGrid(gp_Pnt(3.45, 4.45, 0.0), wp);
+            TEST_CHECK(!resFar.snapped, "Subtest 52.11: Point outside tolerance does not snap");
+
+            std::cout << "  [PASS] Subtest 52.11: SnapManager Kinematic Snapping Pipeline Verified" << std::endl;
+        }
+
+        // Subtest 52.12: Tilted WorkPlane Drawing Constraints, Snapping & Non-Destructive 2D/3D Projection
+        {
+            using namespace TSA::Coordinate;
+            using namespace TSA::Viewer;
+            using namespace TSA::Grid;
+
+            // 1. Plan incliné à 45° (ex. toiture / rampant)
+            const double invSqrt2 = std::sqrt(2.0) / 2.0;
+            gp_Pnt wpOrigin(5.0, 5.0, 2.0);
+            gp_Dir wpAxisX(1.0, 0.0, 0.0);
+            gp_Dir wpAxisY(0.0, invSqrt2, invSqrt2);
+            gp_Dir wpNormal(0.0, -invSqrt2, invSqrt2);
+
+            WorkPlaneCoordinateSystem tiltedCs(wpOrigin, wpNormal, wpAxisX);
+            WorkPlane tiltedWp(tiltedCs, "Toiture 45deg", WorkPlaneType::Custom);
+            TEST_CHECK(std::abs(tiltedWp.normal().Dot(wpNormal) - 1.0) < 1e-4, "Subtest 52.12: Tilted WorkPlane normal correctly set");
+
+            // 2. Projection 2D sur le plan incliné
+            ProjectionManager projMgr;
+            projMgr.setMode(ProjectionMode::TwoD);
+
+            gp_Pnt worldPt(5.0, 10.0, 20.0); // Point dans l'espace
+            gp_Pnt projectedPt = projMgr.projectPoint(worldPt, tiltedWp);
+            TEST_CHECK(std::abs(tiltedWp.distanceTo(projectedPt)) < 1e-5,
+                       "Subtest 52.12: 2D projected point strictly lies on tilted WorkPlane");
+
+            // 3. Snapping sur la grille locale du plan incliné
+            SnapManager snapMgr;
+            tiltedWp.setGridSettings(1.0, 1.0, true);
+            snapMgr.setSnapTolerance(0.60);
+
+            // Coordonnées locales cibles : U=3.0, V=4.0
+            gp_Pnt targetGlobal = tiltedWp.toGlobal(3.0, 4.0, 0.0);
+            // Point bruité à proximité
+            gp_Pnt noisyPt(targetGlobal.X() + 0.08, targetGlobal.Y() - 0.06, targetGlobal.Z() + 0.04);
+            GridSnapResult snapRes = snapMgr.snapToWorkPlaneGrid(noisyPt, tiltedWp);
+
+            TEST_CHECK(snapRes.snapped, "Subtest 52.12: Snapping succeeded on tilted WorkPlane");
+            TEST_CHECK(std::abs(tiltedWp.distanceTo(snapRes.point)) < 1e-5,
+                       "Subtest 52.12: Snapped point strictly on tilted plane");
+            TEST_CHECK(approxEqual(snapRes.point.X(), targetGlobal.X()) &&
+                       approxEqual(snapRes.point.Y(), targetGlobal.Y()) &&
+                       approxEqual(snapRes.point.Z(), targetGlobal.Z()),
+                       "Subtest 52.12: Snapped to exact local grid point");
+
+            // 4. Modélisation / Dessin contraint sur le WorkPlane dans le modèle structural
+            TSA::Model::Model model;
+            // Point 1 sur le plan (U=0, V=0)
+            gp_Pnt p1 = tiltedWp.toGlobal(0.0, 0.0, 0.0);
+            // Point 2 sur le plan (U=6.0, V=0.0) -> Poutre faitière / panne
+            gp_Pnt p2 = tiltedWp.toGlobal(6.0, 0.0, 0.0);
+
+            int n1 = model.addNode(p1.X(), p1.Y(), p1.Z());
+            int n2 = model.addNode(p2.X(), p2.Y(), p2.Z());
+            int beamId = model.addBeam(n1, n2, 0.20, 0.40, "Panne Inclinee");
+            TEST_CHECK(beamId > 0, "Subtest 52.12: Beam created on tilted WorkPlane");
+
+            const auto* beam = model.getBeam(beamId);
+            TEST_CHECK(beam != nullptr, "Subtest 52.12: Beam exists");
+            TEST_CHECK(approxEqual(beam->length(model), 6.0), "Subtest 52.12: Beam length on tilted plane is 6.0m");
+
+            // 5. Non-destructivité : alternance des modes de projection 2D <-> 3D
+            projMgr.setMode(ProjectionMode::ThreeD);
+            gp_Pnt pt3D = projMgr.projectPoint(worldPt, tiltedWp);
+            TEST_CHECK(approxEqual(pt3D.X(), worldPt.X()) &&
+                       approxEqual(pt3D.Y(), worldPt.Y()) &&
+                       approxEqual(pt3D.Z(), worldPt.Z()),
+                       "Subtest 52.12: ThreeD projection preserves full 3D coordinates");
+
+            // Le modèle structural conserve ses nœuds intacts
+            const auto* checkNode1 = model.getNode(n1);
+            TEST_CHECK(approxEqual(checkNode1->x(), p1.X()) &&
+                       approxEqual(checkNode1->y(), p1.Y()) &&
+                       approxEqual(checkNode1->z(), p1.Z()),
+                       "Subtest 52.12: Structural model nodes remain intact across projection modes");
+
+            std::cout << "  [PASS] Subtest 52.12: Tilted WorkPlane Drawing Constraints, Snapping & Non-Destructive 2D/3D Projection Verified" << std::endl;
         }
 
         std::cout << "[PASS] Test 52: Interactive 3D WorkPlane, Arbitrary Coordinate Systems, LCS & Multi-Plane Management Passed Successfully!" << std::endl;

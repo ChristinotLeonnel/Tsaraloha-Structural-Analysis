@@ -1,9 +1,12 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource prefix="/icons">
-        <!-- Logo de l'application -->
+        <!-- Logo de l'application & variantes d'identité -->
         <file alias="TSA.svg">icons/TSA.svg</file>
         <file alias="TSA.ico">icons/TSA.ico</file>
+        <file alias="TSA_glyph.svg">icons/TSA_glyph.svg</file>
+        <file alias="TSA_light.svg">icons/TSA_light.svg</file>
+        <file alias="TSA_monochrome.svg">icons/TSA_monochrome.svg</file>
 
         <!-- 1. Fichier (File) -->
         <file alias="file/file_new.svg">icons/file/file_new.svg</file>

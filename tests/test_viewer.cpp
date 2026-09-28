@@ -1,4 +1,6 @@
 #include "test_common.h"
+#include <QIcon>
+#include <QPixmap>
 
 bool runSuite_Viewer(int& passed)
 {
@@ -617,6 +619,41 @@ bool runSuite_Viewer(int& passed)
         passed++;
     }
 
+    // =========================================================================
+    // TEST 36: Application Brand Identity and Multi-Resolution Icon Resources
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 36: Application Brand Identity and Multi-Resolution Icon Resources ---" << std::endl;
+
+        // Subtest 36.1: Vérification de la présence des ressources vectorielles et multi-résolutions
+        TEST_CHECK(QFile::exists(":/icons/TSA.ico"), "Subtest 36.1: :/icons/TSA.ico resource exists");
+        TEST_CHECK(QFile::exists(":/icons/TSA.svg"), "Subtest 36.1: :/icons/TSA.svg resource exists");
+        TEST_CHECK(QFile::exists(":/icons/TSA_glyph.svg"), "Subtest 36.1: :/icons/TSA_glyph.svg resource exists");
+        TEST_CHECK(QFile::exists(":/icons/TSA_light.svg"), "Subtest 36.1: :/icons/TSA_light.svg resource exists");
+        TEST_CHECK(QFile::exists(":/icons/TSA_monochrome.svg"), "Subtest 36.1: :/icons/TSA_monochrome.svg resource exists");
+
+        // Subtest 36.2: Chargement et validation de l'objet QIcon principal
+        QIcon appIcon(":/icons/TSA.ico");
+        TEST_CHECK(!appIcon.isNull(), "Subtest 36.2: QIcon from :/icons/TSA.ico is not null");
+
+        QIcon svgIcon(":/icons/TSA.svg");
+        TEST_CHECK(!svgIcon.isNull(), "Subtest 36.2: QIcon from :/icons/TSA.svg is not null");
+
+        // Subtest 36.3: Rendu multi-tailles pixmap (16x16, 24x24, 32x32, 48x48, 64x64, 128x128, 256x256)
+        const std::vector<int> targetSizes = {16, 24, 32, 48, 64, 128, 256};
+        for (int sz : targetSizes) {
+            QPixmap pxSvg = svgIcon.pixmap(sz, sz);
+            TEST_CHECK(!pxSvg.isNull(), std::string("Subtest 36.3: SVG Pixmap not null for size ") + std::to_string(sz));
+            TEST_CHECK(pxSvg.width() > 0 && pxSvg.height() > 0, std::string("Subtest 36.3: SVG Pixmap valid dimensions for size ") + std::to_string(sz));
+
+            QPixmap pxIco = appIcon.pixmap(sz, sz);
+            TEST_CHECK(!pxIco.isNull(), std::string("Subtest 36.3: ICO Pixmap not null for size ") + std::to_string(sz));
+            TEST_CHECK(pxIco.width() > 0 && pxIco.height() > 0, std::string("Subtest 36.3: ICO Pixmap valid dimensions for size ") + std::to_string(sz));
+        }
+
+        std::cout << "[PASS] Test 36: Brand Identity and Multi-Resolution Icon Resources Validated Successfully!" << std::endl;
+        passed++;
+    }
 
     return true;
 }

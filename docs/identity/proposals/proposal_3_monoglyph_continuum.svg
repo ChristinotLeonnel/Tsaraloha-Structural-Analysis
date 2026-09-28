@@ -1,0 +1,48 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients Direction 3 : Continuum TSA Ribbon -->
+    <linearGradient id="p3_grad_ribbon" x1="90" y1="100" x2="420" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F5D4"/>
+      <stop offset="35%" stop-color="#00BBF9"/>
+      <stop offset="70%" stop-color="#4361EE"/>
+      <stop offset="100%" stop-color="#3A0CA3"/>
+    </linearGradient>
+    <filter id="p3_glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#4361EE" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="#0A0F1D"/>
+
+  <g filter="url(#p3_glow)">
+    <!-- Ruban géométrique entrelacé formant T-S-A d'un seul trait sculptural -->
+    <!-- Branche supérieure T : de (96, 128) à (416, 128) avec épaisseur 48px et chanfreins 45° -->
+    <path d="M 96,156 
+             L 96,128 
+             L 416,128 
+             L 416,156 
+             L 372,200 
+             L 284,200 
+             L 284,260 
+             L 364,260 
+             L 404,300 
+             L 404,384 
+             L 364,424 
+             L 240,424 
+             L 240,376 
+             L 348,376 
+             L 356,368 
+             L 356,316 
+             L 348,308 
+             L 236,308 
+             L 236,200 
+             L 140,200 
+             Z" 
+          fill="url(#p3_grad_ribbon)"/>
+
+    <!-- Aile triangulaire A en contre-forme négative et pilier d'ancrage -->
+    <polygon points="120,424 212,240 236,288 172,424" fill="#00BBF9" opacity="0.9"/>
+    <!-- Nœud nodal de connexion -->
+    <circle cx="212" cy="240" r="14" fill="#FFFFFF"/>
+  </g>
+</svg>
