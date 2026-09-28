@@ -371,16 +371,78 @@ Le mécanisme réel repose sur `TSA::UndoRedo::UndoManager` (piles de
 `TSA::Commands::ICommand`). Privilégier la restauration d'état du modèle
 (`UndoManager::undo`/`redo`) plutôt que de redessiner toute la scène OCCT à la main.
 
-## Git
+## Git — Gestion Automatique des Branches et Workflow
 
-Ne jamais effectuer automatiquement, sans demande explicite de l'utilisateur :
+Pour toute modification du projet TSA, déterminer d'abord la nature du travail avant de modifier le code.
+**Principe fondamental : NE PAS effectuer automatiquement toutes les modifications dans la branche courante.**
 
-```text
-git push
-git reset --hard
-git clean -fd
-git commit
+### 1. Conventions de Branches Dédiées
+
+| Préfixe | Usage | Exemples |
+| :--- | :--- | :--- |
+| `feature/<nom-court>` | Nouvelle fonctionnalité | `feature/workplane-3d`, `feature/cable-element`, `feature/result-diagrams` |
+| `fix/<nom-court>` | Correction de bug existant | `fix/workplane-selection`, `fix/circular-column-display`, `fix/grid-crash` |
+| `refactor/<nom-court>` | Refactorisation sans ajout fonctionnel direct | `refactor/coordinate-system`, `refactor/occview-split` |
+| `perf/<nom-court>` | Amélioration de performance | `perf/occt-scene-update`, `perf/spatial-indexing` |
+| `ui/<nom-court>` | Modification visuelle ou ergonomique | `ui/workplane-marker`, `ui/toolbar-elements` |
+| `docs/<nom-court>` | Modification uniquement documentaire / règles | `docs/git-branching-rules`, `docs/workplane-system` |
+| `test/<nom-court>` | Ajout ou refonte dédiée aux tests | `test/modular-test-suites` |
+
+### 2. Modification Commune / Transversale vs Modification Indépendante
+
+- **Modification liée ou transversale indispensable :**
+  Si la modification est petite, transversale, nécessaire à la tâche actuelle, directement liée à la branche courante, ou constitue une correction mineure indispensable à la fonctionnalité en cours → **rester dans la branche actuelle**.
+  *Exemple :* Sur `feature/workplane-3d`, une correction de synchronisation mineure du WorkPlane reste sur `feature/workplane-3d`.
+- **Modification indépendante :**
+  Si une modification concerne une autre fonctionnalité, un bug extérieur ou une amélioration indépendante → **NE PAS** l'implémenter dans la branche courante. Créer une branche appropriée (ex. `fix/cable-section-display`).
+
+### 3. Avant de Créer une Branche
+
+Toujours exécuter et vérifier :
+```bash
+git status
+git branch --show-current
 ```
+Vérifier que le working tree est propre et mettre à jour la branche de base (`main` ou branche de référence) avant d'embrancher :
+```bash
+git switch main
+git pull
+git switch -c feature/<nom-court>
+```
+
+### 4. Préservation du Travail Existant
+
+Ne jamais :
+- supprimer les modifications locales de l'utilisateur ;
+- faire un reset destructif (`git reset --hard` sans demande explicite) ;
+- utiliser `git clean -fd` sans autorisation explicite ;
+- écraser des commits existants ou forcer avec `git push --force` ;
+- changer de branche avec des modifications non sauvegardées sans vérifier les conséquences.
+
+### 5. Conventions de Commit
+
+Format recommandé : `type: message clair et concis`
+```text
+feat: implement interactive 3D workplane
+fix: adapt gizmo size to camera zoom
+refactor: split OccView into modular translation units
+ui: improve workplane CAD marker
+test: add regression tests for cable tension
+docs: update architecture documentation
+```
+
+### 6. Push et Fusion
+
+- Pousser la branche correspondante vers le remote (`git push -u origin feature/<nom-court>`).
+- Ne jamais pousser automatiquement vers `main`.
+- Ne jamais effectuer de `push --force` destructif sauf demande explicite.
+
+### 7. Identification Préalable Obligatoire
+
+Avant toute modification importante, identifier explicitement :
+- **TYPE :** `feature` / `fix` / `refactor` / `perf` / `ui` / `docs` / `test`
+- **BRANCHE :** branche actuelle ou nouvelle branche
+- **JUSTIFICATION :** pourquoi cette modification appartient à cette branche.
 
 ## Validation
 

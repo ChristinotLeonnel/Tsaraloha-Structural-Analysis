@@ -42,3 +42,17 @@ ANALYZE → IDENTIFY RESPONSIBILITY → CHECK EXISTING ARCHITECTURE → PLAN →
   ```
 - **Échelle de surveillance :**
   - `< 300` : confortable | `300-600` : normale | `600-1000` : surveiller | `> 1000` : analyser | `> 2000` : refactoriser | `> 5000` : monolithique.
+
+## Règle Git — Gestion Automatique des Branches
+
+Ne pas effectuer toutes les modifications dans la branche courante. Identifier avant toute modification importante :
+- **TYPE :** `feature` / `fix` / `refactor` / `perf` / `ui` / `docs` / `test`
+- **BRANCHE :** branche actuelle ou nouvelle branche (`feature/<nom>`, `fix/<nom>`, `refactor/<nom>`, `ui/<nom>`, `docs/<nom>`, etc.)
+- **JUSTIFICATION :** pourquoi cette modification appartient à cette branche.
+- **Workflow :**
+  - Modification petite et nécessaire à la tâche en cours → conserver sur la branche courante.
+  - Modification indépendante → créer une branche dédiée issue de la branche de base à jour.
+  - Préservation absolue du travail local (aucun `git reset --hard` ni `git clean -fd` sans accord explicite).
+  - Conventions de commit : `feat:`, `fix:`, `refactor:`, `perf:`, `ui:`, `docs:`, `test:`.
+  - Push de la branche dédiée (`git push -u origin <branche>`), pas d'écrasement ni de push direct sur `main`.
+
