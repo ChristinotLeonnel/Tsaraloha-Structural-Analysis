@@ -536,6 +536,7 @@ set(TEST_SOURCES
     tests/test_cables.cpp
     tests/test_extensions.cpp
     tests/test_workplane.cpp
+    resources/resources.qrc
     ${CORE_SOURCES}
 )
 
