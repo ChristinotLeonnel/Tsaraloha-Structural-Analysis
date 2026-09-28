@@ -469,18 +469,28 @@ set(SOURCES
     ${GEOMETRY_MAIN_SOURCES}
     ${PLATFORM_SOURCES}
     ${RESOURCES_SOURCES}
-    ${CORE_SOURCES}
 )
 
 # =============================================================================
-# Exécutable principal
+# Options de build
 # =============================================================================
-add_executable(${PROJECT_NAME} ${SOURCES})
+option(TSA_BUILD_TESTS "Compiler la suite de tests TSA_Tests" ON)
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-    src
-    ${OpenCASCADE_INCLUDE_DIR}
-)
+# ccache (optionnel, ignoré avec les générateurs Visual Studio).
+# Avec MSVC, ccache exige des infos de debug embarquées (/Z7) et son support
+# des en-têtes précompilés est limité : à activer seulement si vous le testez.
+option(TSA_USE_CCACHE "Utiliser ccache comme lanceur de compilation (Ninja)" OFF)
+if(TSA_USE_CCACHE AND NOT CMAKE_GENERATOR MATCHES "Visual Studio")
+    find_program(CCACHE_PROGRAM ccache)
+    if(CCACHE_PROGRAM)
+        set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+        if(MSVC)
+            set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
+            cmake_policy(SET CMP0141 NEW)
+        endif()
+        message(STATUS "ccache activé : ${CCACHE_PROGRAM}")
+    endif()
+endif()
 
 # Modules OCCT nécessaires pour l'affichage 3D et primitives de base
 set(OCCT_LIBS
@@ -502,24 +512,90 @@ set(OCCT_LIBS
     TKMesh
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
+# Options de compilation communes (Core, exécutable et tests).
+# IMPORTANT : elles doivent être identiques pour pouvoir partager le PCH.
+function(tsa_apply_common_settings target)
+    # SYSTEM : les en-têtes OCCT sont traités comme "externes" (plus rapide,
+    # et supprime les milliers d'avertissements /W4 venant d'OCCT).
+    target_include_directories(${target} PRIVATE src)
+    target_include_directories(${target} SYSTEM PRIVATE ${OpenCASCADE_INCLUDE_DIR})
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8)
+        # Compilation parallèle des fichiers (générateurs Visual Studio uniquement ;
+        # Ninja parallélise déjà de lui-même).
+        if(CMAKE_GENERATOR MATCHES "Visual Studio")
+            target_compile_options(${target} PRIVATE /MP)
+        endif()
+        target_compile_definitions(${target} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    endif()
+endfunction()
+
+# =============================================================================
+# TSA_Core : logique "métier", compilée UNE SEULE FOIS
+# -----------------------------------------------------------------------------
+# Avant, CORE_SOURCES était compilé deux fois (exécutable + tests).
+# Bibliothèque OBJECT : les .obj sont réutilisés tels quels par les deux cibles
+# (pas de risque de perdre des initialisations statiques comme avec une .lib).
+# =============================================================================
+add_library(TSA_Core OBJECT ${CORE_SOURCES})
+tsa_apply_common_settings(TSA_Core)
+target_link_libraries(TSA_Core PUBLIC
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
-    Qt6::Svg
     ${OCCT_LIBS}
 )
 
+# En-têtes précompilés : Qt et OCCT sont très lourds à parser.
+# Les autres cibles réutilisent ce PCH (REUSE_FROM).
+target_precompile_headers(TSA_Core PRIVATE
+    <QtCore/QtCore>
+    <QtGui/QtGui>
+    <QtWidgets/QtWidgets>
+    <Standard_Handle.hxx>
+    <gp_Pnt.hxx>
+    <gp_Vec.hxx>
+    <gp_Dir.hxx>
+    <gp_Ax1.hxx>
+    <gp_Ax2.hxx>
+    <gp_Trsf.hxx>
+    <TopoDS_Shape.hxx>
+    <algorithm>
+    <memory>
+    <string>
+    <vector>
+    <map>
+    <unordered_map>
+    <functional>
+)
+
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE DbgHelp)
+    target_link_libraries(TSA_Core PUBLIC DbgHelp)
 endif()
+
+# Fichiers qui utilisent directement l'API Win32 (MessageBox, shell, dbghelp...) :
+# ils incluent eux-mêmes <windows.h> avec leurs propres réglages, on les exclut
+# donc du PCH (dont <windows.h> est déjà inclus via Qt/OCCT avec d'autres macros).
+set_source_files_properties(
+    src/Diagnostics/CrashHandler.cpp
+    src/Platform/WindowsAssociation.cpp
+    PROPERTIES SKIP_PRECOMPILE_HEADERS ON
+)
+
+# =============================================================================
+# Exécutable principal
+# =============================================================================
+add_executable(${PROJECT_NAME} ${SOURCES})
+tsa_apply_common_settings(${PROJECT_NAME})
+target_precompile_headers(${PROJECT_NAME} REUSE_FROM TSA_Core)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    TSA_Core
+    Qt6::Svg
+)
 
 # Propriétés spécifiques MSVC / Windows
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /permissive- /utf-8)
-    # Définition pour éviter min/max de windows.h
-    target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-
     # Sous-système Windows :
     # - Mode Debug : conserve la console cmd pour afficher les logs (qDebug, std::cout, diagnostics)
     # - Mode Release / RelWithDebInfo / MinSizeRel : mode fenêtré pur sans console cmd
@@ -536,6 +612,7 @@ endif()
 # Réutilise CORE_SOURCES : les tests ne compilent que la logique "métier",
 # sans les fichiers spécifiques à l'UI (fenêtres, dialogues, rendu du viewer...).
 # =============================================================================
+if(TSA_BUILD_TESTS)
 enable_testing()
 
 set(TEST_SOURCES
@@ -551,19 +628,13 @@ set(TEST_SOURCES
     tests/test_extensions.cpp
     tests/test_workplane.cpp
     resources/resources.qrc
-    ${CORE_SOURCES}
 )
 
 add_executable(TSA_Tests ${TEST_SOURCES})
-target_include_directories(TSA_Tests PRIVATE src tests ${OpenCASCADE_INCLUDE_DIR})
-target_link_libraries(TSA_Tests PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets ${OCCT_LIBS})
-if(WIN32)
-    target_link_libraries(TSA_Tests PRIVATE DbgHelp)
-endif()
-if(MSVC)
-    target_compile_options(TSA_Tests PRIVATE /W4 /permissive- /utf-8)
-    target_compile_definitions(TSA_Tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-endif()
+tsa_apply_common_settings(TSA_Tests)
+target_include_directories(TSA_Tests PRIVATE tests)
+target_precompile_headers(TSA_Tests REUSE_FROM TSA_Core)
+target_link_libraries(TSA_Tests PRIVATE TSA_Core)
 set_target_properties(TSA_Tests PROPERTIES OUTPUT_NAME "TSA_TestSuite")
 
 # Tests complets et suites thématiques enregistrés sous CTest
@@ -577,6 +648,7 @@ add_test(NAME TSA_ViewerTests COMMAND TSA_Tests --suite=viewer)
 add_test(NAME TSA_CablesTests COMMAND TSA_Tests --suite=cables)
 add_test(NAME TSA_ExtensionsTests COMMAND TSA_Tests --suite=extensions)
 add_test(NAME TSA_WorkPlaneTests COMMAND TSA_Tests --suite=workplane)
+endif()
 
 # =============================================================================
 # Déploiement automatique des DLLs et dépendances dans le dossier de l'exécutable

@@ -20,7 +20,8 @@ Stack réelle du dépôt :
 - C++ (C++20)
 - Qt 6 (Widgets)
 - OpenCASCADE Technology (OCCT) — modélisation géométrique + viewer 3D (AIS/V3d)
-- CMake (+ CMakePresets.json)
+- CMake (+ CMakePresets.json) — presets **Ninja** (`ninja-debug`, `ninja-release`) recommandés pour le
+  développement ; presets Visual Studio (`windows-x64-*`) conservés (voir « Build et compilation »)
 - Visual Studio / MSVC (toolchain principale), MinGW-w64 (alternative)
 - Système d'extensions dynamique **TSALib** (bibliothèques de sections/matériaux chargées à chaud)
 
@@ -200,7 +201,8 @@ Avant de découper une classe ou un fichier volumineux :
 5. vérifier les signaux/slots Qt ;
 6. vérifier les références OCCT ;
 7. vérifier les tests unitaires existants ;
-8. vérifier CMake (`CMakeLists.txt`) ;
+8. vérifier CMake (`CMakeLists.txt`) : appartenance des fichiers à `CORE_SOURCES` ou `SOURCES`,
+   impact sur le PCH (voir « Build et compilation ») ;
 9. déterminer le risque de régression.
 
 Puis seulement proposer ou appliquer le découpage.
@@ -444,11 +446,118 @@ Avant toute modification importante, identifier explicitement :
 - **BRANCHE :** branche actuelle ou nouvelle branche
 - **JUSTIFICATION :** pourquoi cette modification appartient à cette branche.
 
+## Build et compilation (CMake / Ninja / PCH)
+
+Section ajoutée après l'optimisation du temps de compilation. Le `CMakeLists.txt` et le
+`CMakePresets.json` font foi : en cas de divergence, corriger ce fichier.
+
+### Presets
+
+| Preset | Générateur | Dossier de build | Usage |
+| :--- | :--- | :--- | :--- |
+| `ninja-debug` | Ninja + MSVC (`cl`) | `build-ninja-debug/` | Développement quotidien (rapide) |
+| `ninja-release` | Ninja + MSVC (`cl`) | `build-ninja-release/` | Release rapide |
+| `windows-x64-debug` | Visual Studio 18 2026 | `build-debug/` | Conservé tel quel |
+| `windows-x64-release` | Visual Studio 18 2026 | `build/` | Conservé tel quel |
+
+Les presets `ninja-*` héritent de `ninja-base` (caché) et utilisent `"strategy": "external"` pour
+l'architecture et le toolset : **l'environnement MSVC doit déjà être chargé** dans le terminal.
+
+### Lancer un build Ninja (PowerShell)
+
+```powershell
+# 1. Charger l'environnement Visual Studio (une fois par fenêtre)
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+$vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+& "$vs\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64
+
+# 2. Vérifier les outils
+where.exe cl
+where.exe ninja
+
+# 3. Configurer puis compiler (-k 0 : afficher toutes les erreurs d'un coup)
+cmake --preset ninja-debug
+cmake --build --preset ninja-debug -- -k 0
+```
+
+Symptôme « `CMAKE_MAKE_PROGRAM is not set` » = environnement MSVC / Ninja non chargé (pas un bug du
+projet). `Set-ExecutionPolicy -Scope Process` n'agit que sur la fenêtre courante. Alternative sans
+politique PowerShell : `cmd /k "…\VC\Auxiliary\Build\vcvars64.bat"`.
+
+### Structure des cibles CMake
+
+```text
+TSA_Core   (bibliothèque OBJECT — CORE_SOURCES, compilée UNE SEULE FOIS)
+   ├── TSA          (exécutable : SOURCES = UI + viewer + rendu + plateforme + ressources)
+   └── TSA_Tests    (exécutable : tests/*.cpp, sortie TSA_TestSuite.exe)
+```
+
+Règles à respecter lors de l'ajout ou du déplacement de fichiers :
+
+- Un fichier **[CORE]** (modèle, coordonnées, grilles logiques, commandes, IO, ExtensionSystem…) va
+  dans un groupe inclus dans `CORE_SOURCES`. Il **ne doit jamais** être ajouté aussi à `SOURCES` ou
+  `TEST_SOURCES` : il serait compilé deux fois (c'était le défaut d'origine).
+- Un fichier **UI / viewer / rendu / plateforme** va dans `SOURCES` (exécutable uniquement).
+- `TSA_Core` est partagé avec les tests : il ne doit dépendre d'aucun fichier UI ni de `Qt6::Svg`.
+  Si une dépendance supplémentaire est réellement nécessaire au Core, l'ajouter à
+  `target_link_libraries(TSA_Core PUBLIC …)` et vérifier que `TSA_Tests` compile toujours.
+- `TSA_Core` est une bibliothèque `OBJECT` (et non `STATIC`) pour ne pas perdre d'initialisations
+  statiques au lien.
+
+### En-têtes précompilés (PCH)
+
+- Le PCH est défini sur `TSA_Core` (Qt Core/Gui/Widgets, types de base OCCT `gp_*`/`TopoDS_Shape`,
+  STL) et réutilisé par `TSA` et `TSA_Tests` (`REUSE_FROM`).
+- Les trois cibles doivent conserver des **options de compilation identiques** : elles passent par
+  `tsa_apply_common_settings()` (`/W4 /permissive- /utf-8`, `NOMINMAX`, `WIN32_LEAN_AND_MEAN`, `/MP`
+  avec les générateurs Visual Studio). Ne pas ajouter d'options ou de définitions propres à une seule
+  cible sans vérifier que le PCH reste partageable.
+- N'ajouter au PCH que des en-têtes **stables et tiers** (Qt, OCCT, STL). Jamais d'en-têtes du projet
+  fréquemment modifiés : toute modification du PCH recompile tout.
+- Les fichiers qui utilisent directement l'API Win32 (`MessageBox`, shell, dbghelp…) sont exclus du
+  PCH via `SKIP_PRECOMPILE_HEADERS` (actuellement `src/Diagnostics/CrashHandler.cpp` et
+  `src/Platform/WindowsAssociation.cpp`). Symptôme d'un fichier à ajouter à cette liste :
+  `identificateur non déclaré` sur `MB_OK`, `MessageBoxA` ou une constante/fonction Windows alors que
+  `<windows.h>` est inclus dans le fichier.
+
+### Options CMake
+
+| Option | Défaut | Rôle |
+| :--- | :--- | :--- |
+| `TSA_BUILD_TESTS` | `ON` | Compile `TSA_Tests` et enregistre les tests CTest |
+| `TSA_USE_CCACHE` | `OFF` | Utilise `ccache` (ignoré avec les générateurs Visual Studio) |
+
+`TSA_USE_CCACHE` est désactivé par défaut : avec MSVC, le support de `ccache` pour les en-têtes
+précompilés est limité. À activer seulement après mesure.
+
+### Points connus
+
+- Les includes OCCT sont déclarés `SYSTEM` (compilation plus rapide, pas d'avertissements `/W4`
+  provenant d'OCCT).
+- Avertissements de dépréciation OCCT 8.0 encore présents dans le code du projet
+  (`TColgp_HArray1OfPnt`, `TColgp_Array1OfPnt` → `NCollection_HArray1<gp_Pnt>` /
+  `NCollection_Array1<gp_Pnt>` ; `Standard_False` → `false`), par ex. dans
+  `src/Geometry/CableGeometry3D.cpp`. Sans effet sur la vitesse de build.
+- L'étape `POST_BUILD` (`cmake/DeployDependencies.cmake`) copie les DLL OCCT/3rdparty et lance
+  `windeployqt` **à chaque édition de liens de `TSA.exe`**. Piste d'amélioration possible (la rendre
+  conditionnelle) — *information à confirmer par mesure avant toute modification*.
+
+### Règles pour les agents
+
+- Toute modification de `CMakeLists.txt` / `CMakePresets.json` suit les règles Git (branche
+  `perf/…` ou `refactor/…`) et la règle « lecture seule avant approbation » (section 8).
+- Après une modification CMake : reconfigurer (supprimer le dossier de build si nécessaire), compiler
+  la cible complète avec `-- -k 0`, puis compiler et exécuter `TSA_Tests`.
+- Ne pas ajouter un fichier dans deux listes de sources ; ne pas contourner `TSA_Core`.
+- Avant de proposer une optimisation de build, **mesurer** (build complet et rebuild après
+  modification d'un seul `.cpp`) et rapporter les temps ; ne pas affirmer un gain non mesuré.
+
 ## Validation
 
 Après toute modification importante :
 
-- compiler (`build-test` skill, cible `TSA_Tests` si pertinente) ;
+- compiler (`build-test` skill, cible `TSA_Tests` si pertinente) — de préférence avec le preset
+  `ninja-debug` (voir « Build et compilation ») ;
 - exécuter les tests (`tests/test_coordinates.cpp` et toute autre suite existante) ;
 - vérifier les régressions ;
 - vérifier la couche UI ;
