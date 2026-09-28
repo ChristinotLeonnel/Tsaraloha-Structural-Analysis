@@ -6,17 +6,80 @@ applies_to: ["**"]
 
 # 07 — Git & Testing
 
-## Git
+## Git — Gestion Automatique des Branches et Workflow
 
-- Ne **jamais** exécuter automatiquement, sans demande explicite de l'utilisateur pour
-  cette action précise :
-  - `git push`
-  - `git reset --hard`
-  - `git clean -fd`
-  - `git commit`
-- Les commandes de lecture (`git status`, `git log`, `git diff`, `git show`) sont
-  autorisées librement pour l'analyse.
-- Ne jamais supprimer un fichier existant du dépôt sans demande explicite.
+Pour toute modification du projet TSA, déterminer d'abord la nature du travail avant de modifier le code.
+**Principe : NE PAS effectuer automatiquement toutes les modifications dans la branche courante.**
+
+### 1. Conventions de Branches
+
+| Préfixe | Usage | Exemples |
+| :--- | :--- | :--- |
+| `feature/<nom-court>` | Nouvelle fonctionnalité | `feature/workplane-3d`, `feature/cable-element`, `feature/result-diagrams` |
+| `fix/<nom-court>` | Correction de bug existant | `fix/workplane-selection`, `fix/circular-column-display`, `fix/grid-crash` |
+| `refactor/<nom-court>` | Refactorisation sans ajout fonctionnel direct | `refactor/coordinate-system`, `refactor/occview-split` |
+| `perf/<nom-court>` | Amélioration de performance | `perf/occt-scene-update`, `perf/spatial-indexing` |
+| `ui/<nom-court>` | Modification visuelle ou ergonomique | `ui/workplane-marker`, `ui/toolbar-elements` |
+| `docs/<nom-court>` | Modification uniquement documentaire / règles | `docs/git-branching-rules`, `docs/workplane-system` |
+| `test/<nom-court>` | Ajout ou refonte dédiée aux tests | `test/modular-test-suites` |
+
+### 2. Modifications Communes / Transversales vs Indépendantes
+
+- **Modification commune / transversale liée :**
+  Si la modification est très petite, transversale, nécessaire à la tâche actuelle, directement liée à la branche courante, ou constitue une correction mineure indispensable à la fonctionnalité en cours → **rester dans la branche actuelle**.
+  *Exemple :* Sur `feature/workplane-3d`, corriger une petite synchronisation du WorkPlane reste sur `feature/workplane-3d`.
+- **Modification indépendante :**
+  Si une modification n'est pas nécessaire à la tâche actuelle, concerne une autre fonctionnalité ou amélioration indépendante, ou risque de mélanger les livraisons → **NE PAS** l'implémenter dans la branche courante. Créer une branche dédiée (ex. `fix/cable-section-display`).
+
+### 3. Protocole Avant Création d'une Branche
+
+1. Toujours vérifier :
+   ```bash
+   git status
+   git branch --show-current
+   ```
+2. Identifier la branche actuelle et déterminer si la modification appartient réellement à la tâche courante.
+3. Ne jamais créer de branches inutilement.
+4. **Branche de base :** Partir de la branche appropriée et à jour (ex. `main`).
+   ```bash
+   git switch main
+   git pull
+   git switch -c feature/<nom>
+   ```
+
+### 4. Préservation du Travail Existant (Règles Absolues)
+
+- Ne **jamais** supprimer les modifications locales de l'utilisateur.
+- Ne **jamais** faire de reset destructif (`git reset --hard` sans demande explicite).
+- Ne **jamais** utiliser `git clean -fd` sans autorisation explicite.
+- Ne **jamais** écraser des commits existants ou forcer avec `git push --force`.
+- Ne **jamais** changer de branche avec des modifications non sauvegardées sans vérifier les conséquences.
+
+### 5. Conventions de Commit
+
+Format des messages de commit :
+```text
+feat: ...
+fix: ...
+refactor: ...
+perf: ...
+ui: ...
+docs: ...
+test: ...
+```
+
+### 6. Push et Fusion
+
+- Pousser la branche de travail correspondante vers le remote après validation (`git push -u origin feature/<nom>`).
+- Ne pas pousser automatiquement vers `main`.
+- Ne fusionner dans `main` qu'après validation complète (compilation 0 erreur et suite de tests 100% PASS).
+
+### 7. Checklist Obligatoire Avant Toute Modification Importante
+
+Identifier explicitement :
+- **TYPE :** `feature` / `fix` / `refactor` / `perf` / `ui` / `docs` / `test`
+- **BRANCHE :** branche actuelle ou nouvelle branche
+- **JUSTIFICATION :** pourquoi cette modification appartient à cette branche.
 
 ## Build
 
