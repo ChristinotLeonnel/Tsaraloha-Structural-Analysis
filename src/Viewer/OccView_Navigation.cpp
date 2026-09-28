@@ -443,6 +443,10 @@ void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
     }
 
     emit workPlaneChanged(m_workPlane);
+    if (m_projectionManager.is2D())
+    {
+        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
+    }
     if (!m_view.IsNull())
         m_view->Redraw();
 }
@@ -569,6 +573,18 @@ void OccView::applyWorkPlaneTransformation()
     if (!m_workPlaneAxesShape.IsNull())
     {
         m_workPlaneAxesShape->SetLocalTransformation(trsf);
+    }
+    if (!m_workPlaneAxisXShape.IsNull())
+    {
+        m_workPlaneAxisXShape->SetLocalTransformation(trsf);
+    }
+    if (!m_workPlaneAxisYShape.IsNull())
+    {
+        m_workPlaneAxisYShape->SetLocalTransformation(trsf);
+    }
+    if (!m_workPlaneAxisZShape.IsNull())
+    {
+        m_workPlaneAxisZShape->SetLocalTransformation(trsf);
     }
 
     if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
@@ -1353,6 +1369,11 @@ bool OccView::areGridLevelsVisible() const
 void OccView::setProjectionMode(TSA::Viewer::ProjectionMode mode)
 {
     m_projectionManager.setMode(mode);
+    if (mode == TSA::Viewer::ProjectionMode::TwoD)
+    {
+        m_viewManager.setOrthographic(true, m_view);
+        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
+    }
     emit projectionModeChanged(mode);
 }
 

@@ -1024,6 +1024,17 @@ void MainWindow::createDockWindows()
                 m_occView, &OccView::setGizmoSize);
         connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::workPlaneVisibleToggled,
                 this, &MainWindow::onActionToggleWorkPlaneVisible);
+        connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::activeWorkPlaneSelected,
+                this, [this](int wpId) {
+                    if (m_model && m_model->workPlaneManager() && m_occView)
+                    {
+                        m_model->workPlaneManager()->setActiveWorkPlane(wpId);
+                        if (const auto* wp = m_model->workPlaneManager()->activeWorkPlane())
+                        {
+                            m_occView->setActiveWorkPlane(*wp);
+                        }
+                    }
+                });
     }
 
     // 4. Dock inférieur : CONSOLE & HISTORIQUE COMMANDES

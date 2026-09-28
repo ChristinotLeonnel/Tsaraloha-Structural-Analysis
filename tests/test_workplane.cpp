@@ -672,6 +672,85 @@ bool runSuite_WorkPlane(int& passed)
             std::cout << "  [PASS] Subtest 52.11: SnapManager Kinematic Snapping Pipeline Verified" << std::endl;
         }
 
+        // Subtest 52.12: Tilted WorkPlane Drawing Constraints, Snapping & Non-Destructive 2D/3D Projection
+        {
+            using namespace TSA::Coordinate;
+            using namespace TSA::Viewer;
+            using namespace TSA::Grid;
+
+            // 1. Plan incliné à 45° (ex. toiture / rampant)
+            const double invSqrt2 = std::sqrt(2.0) / 2.0;
+            gp_Pnt wpOrigin(5.0, 5.0, 2.0);
+            gp_Dir wpAxisX(1.0, 0.0, 0.0);
+            gp_Dir wpAxisY(0.0, invSqrt2, invSqrt2);
+            gp_Dir wpNormal(0.0, -invSqrt2, invSqrt2);
+
+            WorkPlaneCoordinateSystem tiltedCs(wpOrigin, wpNormal, wpAxisX);
+            WorkPlane tiltedWp(tiltedCs, "Toiture 45deg", WorkPlaneType::Custom);
+            TEST_CHECK(std::abs(tiltedWp.normal().Dot(wpNormal) - 1.0) < 1e-4, "Subtest 52.12: Tilted WorkPlane normal correctly set");
+
+            // 2. Projection 2D sur le plan incliné
+            ProjectionManager projMgr;
+            projMgr.setMode(ProjectionMode::TwoD);
+
+            gp_Pnt worldPt(5.0, 10.0, 20.0); // Point dans l'espace
+            gp_Pnt projectedPt = projMgr.projectPoint(worldPt, tiltedWp);
+            TEST_CHECK(std::abs(tiltedWp.distanceTo(projectedPt)) < 1e-5,
+                       "Subtest 52.12: 2D projected point strictly lies on tilted WorkPlane");
+
+            // 3. Snapping sur la grille locale du plan incliné
+            SnapManager snapMgr;
+            tiltedWp.setGridSettings(1.0, 1.0, true);
+            snapMgr.setSnapTolerance(0.60);
+
+            // Coordonnées locales cibles : U=3.0, V=4.0
+            gp_Pnt targetGlobal = tiltedWp.toGlobal(3.0, 4.0, 0.0);
+            // Point bruité à proximité
+            gp_Pnt noisyPt(targetGlobal.X() + 0.08, targetGlobal.Y() - 0.06, targetGlobal.Z() + 0.04);
+            GridSnapResult snapRes = snapMgr.snapToWorkPlaneGrid(noisyPt, tiltedWp);
+
+            TEST_CHECK(snapRes.snapped, "Subtest 52.12: Snapping succeeded on tilted WorkPlane");
+            TEST_CHECK(std::abs(tiltedWp.distanceTo(snapRes.point)) < 1e-5,
+                       "Subtest 52.12: Snapped point strictly on tilted plane");
+            TEST_CHECK(approxEqual(snapRes.point.X(), targetGlobal.X()) &&
+                       approxEqual(snapRes.point.Y(), targetGlobal.Y()) &&
+                       approxEqual(snapRes.point.Z(), targetGlobal.Z()),
+                       "Subtest 52.12: Snapped to exact local grid point");
+
+            // 4. Modélisation / Dessin contraint sur le WorkPlane dans le modèle structural
+            TSA::Model::Model model;
+            // Point 1 sur le plan (U=0, V=0)
+            gp_Pnt p1 = tiltedWp.toGlobal(0.0, 0.0, 0.0);
+            // Point 2 sur le plan (U=6.0, V=0.0) -> Poutre faitière / panne
+            gp_Pnt p2 = tiltedWp.toGlobal(6.0, 0.0, 0.0);
+
+            int n1 = model.addNode(p1.X(), p1.Y(), p1.Z());
+            int n2 = model.addNode(p2.X(), p2.Y(), p2.Z());
+            int beamId = model.addBeam(n1, n2, 0.20, 0.40, "Panne Inclinee");
+            TEST_CHECK(beamId > 0, "Subtest 52.12: Beam created on tilted WorkPlane");
+
+            const auto* beam = model.getBeam(beamId);
+            TEST_CHECK(beam != nullptr, "Subtest 52.12: Beam exists");
+            TEST_CHECK(approxEqual(beam->length(model), 6.0), "Subtest 52.12: Beam length on tilted plane is 6.0m");
+
+            // 5. Non-destructivité : alternance des modes de projection 2D <-> 3D
+            projMgr.setMode(ProjectionMode::ThreeD);
+            gp_Pnt pt3D = projMgr.projectPoint(worldPt, tiltedWp);
+            TEST_CHECK(approxEqual(pt3D.X(), worldPt.X()) &&
+                       approxEqual(pt3D.Y(), worldPt.Y()) &&
+                       approxEqual(pt3D.Z(), worldPt.Z()),
+                       "Subtest 52.12: ThreeD projection preserves full 3D coordinates");
+
+            // Le modèle structural conserve ses nœuds intacts
+            const auto* checkNode1 = model.getNode(n1);
+            TEST_CHECK(approxEqual(checkNode1->x(), p1.X()) &&
+                       approxEqual(checkNode1->y(), p1.Y()) &&
+                       approxEqual(checkNode1->z(), p1.Z()),
+                       "Subtest 52.12: Structural model nodes remain intact across projection modes");
+
+            std::cout << "  [PASS] Subtest 52.12: Tilted WorkPlane Drawing Constraints, Snapping & Non-Destructive 2D/3D Projection Verified" << std::endl;
+        }
+
         std::cout << "[PASS] Test 52: Interactive 3D WorkPlane, Arbitrary Coordinate Systems, LCS & Multi-Plane Management Passed Successfully!" << std::endl;
         passed++;
     }

@@ -1031,6 +1031,18 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
         TSA::Grid::GridSnapType snapType = TSA::Grid::GridSnapType::None;
         if (findNearest3DPoint(px, py, x, y, z, detectedNodeId, snapDesc, snapType))
         {
+            if (m_projectionManager.is2D())
+            {
+                gp_Pnt pWorld(x, y, z);
+                gp_Pnt pProj = m_projectionManager.projectPoint(pWorld, m_workPlane);
+                x = pProj.X();
+                y = pProj.Y();
+                z = pProj.Z();
+                if (pWorld.Distance(pProj) > 1e-4)
+                {
+                    detectedNodeId = -1;
+                }
+            }
             m_isCursorSnapped = true;
             TSA::Grid::GridSnapResult snapRes;
             snapRes.snapped = true;
