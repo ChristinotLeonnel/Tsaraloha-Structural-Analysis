@@ -1,0 +1,183 @@
+﻿================================================================================
+  TSA - Tsaraloha Structural Analysis
+  LISTE COMPLETE DES RACCOURCIS CLAVIER
+  Version : 2026.09
+================================================================================
+
+Legende :
+  Ctrl     = Controle            Alt  = Alternative
+  Shift    = Majuscule           Echap = Echappement
+  Suppr    = Suppression         Home = Origine
+  F1-F12   = Touches de fonction
+
+================================================================================
+  1. FICHIER
+================================================================================
+
+  Ctrl+N              Nouveau Projet
+  Ctrl+O              Ouvrir un projet (.tsa)
+  Ctrl+S              Enregistrer
+  Ctrl+Shift+S        Enregistrer sous...
+  Alt+F4              Quitter TSA
+
+================================================================================
+  2. EDITION
+================================================================================
+
+  Ctrl+Z              Annuler (Undo)
+  Ctrl+Y              Retablir (Redo)
+  Ctrl+Shift+Z        Retablir (Redo - alternatif)
+  Ctrl+C              Copier les elements selectionnes
+  Ctrl+V              Coller les elements du presse-papier
+  Suppr               Supprimer les elements selectionnes
+  Ctrl+A              Tout Selectionner
+  Echap               Mode Selection / Effacer la selection
+
+================================================================================
+  3. CREATION D'ELEMENTS (Modes de dessin 3D)
+================================================================================
+
+  N                   Mode Dessin - Noeud structural
+  B                   Mode Dessin - Poutre
+  C                   Mode Dessin - Poteau
+  Alt+C               Mode Dessin - Cable / Hauban
+  L                   Mode Dessin - Dalle
+  W                   Mode Dessin - Voile
+  [aucun]             Mode Dessin - Fondation
+  [aucun]             Mode Dessin - Barre generique
+  [aucun]             Mode Dessin - Treillis
+
+================================================================================
+  4. MODIFICATION / TRANSFORMATIONS 3D
+================================================================================
+
+  M                   Deplacer point-a-point (Move 3D interactif)
+  Ctrl+Shift+M        Translation numerique par dialogue (dX, dY, dZ)
+  Ctrl+D              Copie 3D / Copie numerique parametrique
+  Ctrl+R              Rotation 3D (interactive)
+  [aucun]             Deplacer vers l'Origine (0,0,0)
+
+================================================================================
+  5. AFFICHAGE - NAVIGATION 3D
+================================================================================
+
+  F                   Tout Ajuster (Fit All)
+  Shift+F             Cadrer sur la Selection
+  +                   Zoom Avant
+  -                   Zoom Arriere
+  [aucun]             Zoom Fenetre (selection rectangulaire)
+  Home                Vue Initiale (Home 3D)
+  Alt+Left            Vue Precedente (historique camera)
+  Alt+Right           Vue Suivante (historique camera)
+
+================================================================================
+  6. VUES PREDEFINIES (Orientations de camera)
+================================================================================
+
+  Num7                Vue de Dessus  (+Z)
+  Ctrl+Num7           Vue de Dessous (-Z)
+  Num1                Vue de Face    (+Y)
+  Ctrl+Num1           Vue Arriere    (-Y)
+  Num3                Vue Gauche     (-X)
+  Ctrl+Num3           Vue Droite     (+X)
+  Num5                Vue 3D Isometrique
+  [aucun]             Plan XY (vue d'etage)
+  [aucun]             Plan XZ (facade / elevation)
+  [aucun]             Plan YZ (pignon / coupe laterale)
+
+================================================================================
+  7. PLAN DE TRAVAIL (WorkPlane)
+================================================================================
+
+  [aucun]             Plan de Travail XY (horizontal)
+  [aucun]             Plan de Travail XZ (vertical frontal)
+  [aucun]             Plan de Travail YZ (vertical lateral)
+  [aucun]             Plan de Travail Etage (niveau actif)
+
+================================================================================
+  8. GRILLE & NIVEAUX
+================================================================================
+
+  G                   Afficher / Masquer la Grille 3D
+  S                   Activer / Desactiver le Magnetisme (Snap)
+  F3                  Accrochage Objets (OSNAP)
+  F7                  Afficher / Masquer la Grille (alternatif)
+  Ctrl+L              Gestionnaire d'Etages et Niveaux
+  [aucun]             Gestionnaire de Grilles
+  [aucun]             Afficher Plans d'Etages
+  [aucun]             Afficher Libelles d'Axes
+  [aucun]             Afficher Regles Graduees
+
+================================================================================
+  9. PROPRIETES & BIBLIOTHEQUES
+================================================================================
+
+  P                   Panneau Proprietes (inspection de la selection)
+  [aucun]             Catalogue Profiles (sections TSALib)
+  [aucun]             Catalogue Materiaux (Eurocodes / ASTM)
+  [aucun]             Catalogue Cables (torons et cables clos)
+  [aucun]             Gestionnaire d'Extensions (.tsalib)
+
+================================================================================
+  10. CHARGES
+================================================================================
+
+  [aucun]             Charge Ponctuelle (force sur noeud)
+  [aucun]             Charge Repartie (lineique sur barre)
+  [aucun]             Moment Flechissant
+  [aucun]             Action Sismique (spectre EC8)
+
+================================================================================
+  11. ANALYSE & CALCUL
+================================================================================
+
+  F5                  Calcul Statique ([K]{u}={F})
+  [aucun]             Generer le Maillage EF 1D/2D
+  [aucun]             Analyse Modale (frequences et modes propres)
+
+================================================================================
+  12. RESULTATS
+================================================================================
+
+  [aucun]             Deplacements / Deforme
+  [aucun]             Efforts Internes (moments, tranchants)
+  [aucun]             Contraintes (Von Mises)
+
+================================================================================
+  13. INTERFACE & THEME
+================================================================================
+
+  Ctrl+T              Basculer Theme (Sombre / Clair)
+  F11                 Mode Plein Ecran
+  [aucun]             Afficher / Masquer Plan de Coupe 3D
+  [aucun]             Systeme de Coordonnees
+
+================================================================================
+  14. AIDE
+================================================================================
+
+  F1                  Afficher la liste des raccourcis clavier
+  [aucun]             Aide generale
+  [aucun]             A Propos de TSA
+
+================================================================================
+  RESUME RAPIDE - RACCOURCIS LES PLUS UTILES
+================================================================================
+
+  Fichier    : Ctrl+N  Ctrl+O  Ctrl+S  Ctrl+Shift+S
+  Edition    : Ctrl+Z  Ctrl+Y  Ctrl+C  Ctrl+V  Suppr  Ctrl+A
+  Dessin     : N (noeud)  B (poutre)  C (poteau)  Alt+C (cable)
+               L (dalle)  W (voile)
+  Modif 3D   : M (deplacer)  Ctrl+D (copier)  Ctrl+R (rotation)
+  Vue        : F (fit)  Shift+F (cadrer)  +/-  Home  Alt+Left/Right
+  Vues campi : Num1/3/5/7 (face/gauche/iso/dessus)
+  Grille     : G (grille)  S (snap)  F3 (osnap)  Ctrl+L (niveaux)
+  Calcul     : F5 (calcul statique)
+  Theme      : Ctrl+T
+  Plein ecran: F11
+  Proprietes : P
+  Undo/Redo  : Ctrl+Z / Ctrl+Y (ou Ctrl+Shift+Z)
+
+================================================================================
+  FIN DU FICHIER
+================================================================================
