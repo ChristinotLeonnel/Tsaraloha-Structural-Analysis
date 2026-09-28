@@ -34,6 +34,8 @@ namespace TSA::Grid
 #include <AIS_ViewCube.hxx>
 #include <AIS_RubberBand.hxx>
 #include <AIS_Manipulator.hxx>
+#include <AIS_Trihedron.hxx>
+#include <gp_Trsf.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 #include <Graphic3d_Camera.hxx>
 #include <gp_Ax3.hxx>
@@ -375,6 +377,8 @@ private:
     int getOrCreateNode(double x, double y, double z, int existingNodeId);
     void updateClipPlaneEquation();
     void updateSectionPlaneVisual();
+    /// Applique au trièdre du WorkPlane la rotation (sans translation) + l'ancrage au point d'origine
+    void applyWorkPlaneTrihedronTransform(const gp_Trsf& workPlaneTrsf);
 
 private:
     TSA::Model::Model* m_model = nullptr;
@@ -440,10 +444,8 @@ private:
     // Plan de Travail (WorkPlane) actif & Visualiseur 3D
     TSA::Coordinate::WorkPlane m_workPlane;
     Handle(AIS_Shape) m_workPlaneShape;
-    Handle(AIS_Shape) m_workPlaneAxesShape;
-    Handle(AIS_Shape) m_workPlaneAxisXShape;
-    Handle(AIS_Shape) m_workPlaneAxisYShape;
-    Handle(AIS_Shape) m_workPlaneAxisZShape;
+    /// Axes X/Y/Z du WorkPlane avec lettres : taille FIXE À L'ÉCRAN (persistance de zoom, unités = pixels)
+    Handle(AIS_Trihedron) m_workPlaneTrihedron;
     Handle(AIS_Shape) m_workPlaneOriginShape;
     bool m_workPlaneAxesVisible = true;
     double m_gizmoSize = 100.0;

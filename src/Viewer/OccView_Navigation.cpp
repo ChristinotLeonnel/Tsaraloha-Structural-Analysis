@@ -20,6 +20,12 @@
 #include <Graphic3d_Camera.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 #include <Prs3d_Drawer.hxx>
+#include <AIS_Trihedron.hxx>
+#include <Geom_Axis2Placement.hxx>
+#include <Graphic3d_TransformPers.hxx>
+#include <Prs3d_DatumParts.hxx>
+#include <Prs3d_DatumMode.hxx>
+#include <TCollection_ExtendedString.hxx>
 #include <Prs3d_LineAspect.hxx>
 #include <Aspect_TypeOfLine.hxx>
 #include <Bnd_Box.hxx>
@@ -510,6 +516,26 @@ void OccView::viewNormalToWorkPlane()
     emit viewCameraChanged();
 }
 
+void OccView::applyWorkPlaneTrihedronTransform(const gp_Trsf& workPlaneTrsf)
+{
+    if (m_workPlaneTrihedron.IsNull())
+        return;
+
+    // En persistance de zoom, le repère local est en pixels et son origine est le point
+    // d'ancrage (coordonnées monde) : la transformation locale ne doit donc contenir QUE
+    // la rotation ; la translation est portée par le point d'ancrage.
+    const gp_Pnt anchor(workPlaneTrsf.TranslationPart());
+    gp_Trsf rotOnly = workPlaneTrsf;
+    rotOnly.SetTranslationPart(gp_Vec(0.0, 0.0, 0.0));
+    m_workPlaneTrihedron->SetLocalTransformation(rotOnly);
+
+    const Handle(Graphic3d_TransformPers)& pers = m_workPlaneTrihedron->TransformPersistence();
+    if (pers.IsNull() || pers->Mode() != Graphic3d_TMF_ZoomPers || !pers->AnchorPoint().IsEqual(anchor, 0.0))
+    {
+        m_workPlaneTrihedron->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_ZoomPers, anchor));
+    }
+}
+
 void OccView::attachManipulatorToWorkPlane()
 {
     if (m_context.IsNull() || m_workPlaneShape.IsNull())
@@ -539,10 +565,13 @@ void OccView::attachManipulatorToWorkPlane()
 
     AIS_Manipulator::OptionsForAttach opts;
     opts.SetAdjustPosition(false);
-    opts.SetAdjustSize(true);
+    // AIS_Manipulator est en persistance de zoom : sa taille est en PIXELS. AdjustSize la
+    // remplaçait par la dimension du plan en mètres (~10) => gizmo minuscule (~10 px).
+    opts.SetAdjustSize(false);
     opts.SetEnableModes(true);
 
     m_manipulator->Attach(m_workPlaneShape, opts);
+    m_manipulator->SetSize(static_cast<float>(m_gizmoSize));
     m_manipulator->SetPosition(m_workPlane.coordinateSystem().Ax2());
 
     if (!m_view.IsNull())
@@ -570,22 +599,7 @@ void OccView::applyWorkPlaneTransformation()
     trsf.SetDisplacement(stdCS, m_workPlane.coordinateSystem());
     m_workPlaneShape->SetLocalTransformation(trsf);
 
-    if (!m_workPlaneAxesShape.IsNull())
-    {
-        m_workPlaneAxesShape->SetLocalTransformation(trsf);
-    }
-    if (!m_workPlaneAxisXShape.IsNull())
-    {
-        m_workPlaneAxisXShape->SetLocalTransformation(trsf);
-    }
-    if (!m_workPlaneAxisYShape.IsNull())
-    {
-        m_workPlaneAxisYShape->SetLocalTransformation(trsf);
-    }
-    if (!m_workPlaneAxisZShape.IsNull())
-    {
-        m_workPlaneAxisZShape->SetLocalTransformation(trsf);
-    }
+    applyWorkPlaneTrihedronTransform(trsf);
 
     if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
     {
@@ -848,25 +862,11 @@ void OccView::updateWorkPlaneVisual()
         m_context->Remove(m_workPlaneShape, false);
         m_workPlaneShape.Nullify();
     }
-    if (!m_workPlaneAxesShape.IsNull())
+    if (!m_workPlaneTrihedron.IsNull())
     {
-        m_context->Remove(m_workPlaneAxesShape, false);
-        m_workPlaneAxesShape.Nullify();
-    }
-    if (!m_workPlaneAxisXShape.IsNull())
-    {
-        m_context->Remove(m_workPlaneAxisXShape, false);
-        m_workPlaneAxisXShape.Nullify();
-    }
-    if (!m_workPlaneAxisYShape.IsNull())
-    {
-        m_context->Remove(m_workPlaneAxisYShape, false);
-        m_workPlaneAxisYShape.Nullify();
-    }
-    if (!m_workPlaneAxisZShape.IsNull())
-    {
-        m_context->Remove(m_workPlaneAxisZShape, false);
-        m_workPlaneAxisZShape.Nullify();
+        if (m_context->IsDisplayed(m_workPlaneTrihedron))
+            m_context->Remove(m_workPlaneTrihedron, false);
+        m_workPlaneTrihedron.Nullify();
     }
 
     if (!m_workPlaneVisible || !m_workPlane.isVisible())
@@ -929,28 +929,7 @@ void OccView::updateWorkPlaneVisual()
         }
     }
 
-    // 4. Trièdre d'orientation (le quadrillage UV n'est plus dessiné ; le snapping
-    //    sur la grille du WorkPlane reste géré par SnapManager, indépendamment du rendu)
-    BRep_Builder b;
-    TopoDS_Compound compLines;
-    b.MakeCompound(compLines);
-
-    // Axes U, V, N au centre (0,0,0)
-    double axisLen = std::max(2.0, std::min(hx, hy) * 0.35);
-    gp_Pnt orig(0.0, 0.0, 0.0);
-    gp_Pnt ptU(axisLen, 0.0, 0.0);
-    gp_Pnt ptV(0.0, axisLen, 0.0);
-    gp_Pnt ptN(0.0, 0.0, axisLen);
-    b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptU).Edge());
-    b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptV).Edge());
-    b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptN).Edge());
-
-    m_workPlaneAxesShape = new AIS_Shape(compLines);
-    m_workPlaneAxesShape->SetColor(Quantity_NOC_CYAN1);
-    m_workPlaneAxesShape->SetWidth(1.5);
-    m_context->Display(m_workPlaneAxesShape, false);
-
-    // Appliquer la transformation 3D globale
+    // 4. Transformation 3D globale du plan
     gp_Trsf trsf;
     gp_Ax3 stdCS(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0));
     trsf.SetDisplacement(stdCS, m_workPlane.coordinateSystem());
@@ -958,35 +937,39 @@ void OccView::updateWorkPlaneVisual()
     {
         m_workPlaneShape->SetLocalTransformation(trsf);
     }
-    m_workPlaneAxesShape->SetLocalTransformation(trsf);
 
-    // 5. Axes individuels colorés Xwp, Ywp, Zwp selon AxisColorConfig (Section 2 & 12)
+    // 5. Axes Xwp, Ywp, Zwp avec lettres, couleurs AxisColorConfig (Section 2 & 12).
+    //    Trièdre court à taille constante à l'écran, comme le trièdre 3D de la vue :
+    //    longueur en PIXELS (proportionnelle à la taille du gizmo), indépendante du zoom
+    //    et des dimensions du modèle.
     if (m_workPlaneAxesVisible)
     {
-        double gLen = axisLen * m_gizmoSize;
-        gp_Pnt pX(gLen, 0.0, 0.0);
-        gp_Pnt pY(0.0, gLen, 0.0);
-        gp_Pnt pZ(0.0, 0.0, gLen);
-
         const auto& colorConfig = TSA::Coordinate::AxisColorConfig::instance();
+        const Quantity_Color cx = colorConfig.workPlaneAxisXColor();
+        const Quantity_Color cy = colorConfig.workPlaneAxisYColor();
+        const Quantity_Color cz = colorConfig.workPlaneAxisZColor();
 
-        m_workPlaneAxisXShape = new AIS_Shape(BRepBuilderAPI_MakeEdge(orig, pX).Edge());
-        m_workPlaneAxisXShape->SetColor(colorConfig.workPlaneAxisXColor());
-        m_workPlaneAxisXShape->SetWidth(2.5);
-        m_workPlaneAxisXShape->SetLocalTransformation(trsf);
-        m_context->Display(m_workPlaneAxisXShape, false);
+        Handle(Geom_Axis2Placement) place = new Geom_Axis2Placement(gp::XOY());
+        m_workPlaneTrihedron = new AIS_Trihedron(place);
+        m_workPlaneTrihedron->SetDatumDisplayMode(Prs3d_DM_Shaded);
+        m_workPlaneTrihedron->SetSize(std::max(20.0, 0.45 * m_gizmoSize));
 
-        m_workPlaneAxisYShape = new AIS_Shape(BRepBuilderAPI_MakeEdge(orig, pY).Edge());
-        m_workPlaneAxisYShape->SetColor(colorConfig.workPlaneAxisYColor());
-        m_workPlaneAxisYShape->SetWidth(2.5);
-        m_workPlaneAxisYShape->SetLocalTransformation(trsf);
-        m_context->Display(m_workPlaneAxisYShape, false);
+        m_workPlaneTrihedron->SetDatumPartColor(Prs3d_DP_XAxis, cx);
+        m_workPlaneTrihedron->SetDatumPartColor(Prs3d_DP_YAxis, cy);
+        m_workPlaneTrihedron->SetDatumPartColor(Prs3d_DP_ZAxis, cz);
+        m_workPlaneTrihedron->SetArrowColor(Prs3d_DP_XAxis, cx);
+        m_workPlaneTrihedron->SetArrowColor(Prs3d_DP_YAxis, cy);
+        m_workPlaneTrihedron->SetArrowColor(Prs3d_DP_ZAxis, cz);
+        m_workPlaneTrihedron->SetTextColor(Prs3d_DP_XAxis, cx);
+        m_workPlaneTrihedron->SetTextColor(Prs3d_DP_YAxis, cy);
+        m_workPlaneTrihedron->SetTextColor(Prs3d_DP_ZAxis, cz);
+        m_workPlaneTrihedron->SetLabel(Prs3d_DP_XAxis, TCollection_ExtendedString("X"));
+        m_workPlaneTrihedron->SetLabel(Prs3d_DP_YAxis, TCollection_ExtendedString("Y"));
+        m_workPlaneTrihedron->SetLabel(Prs3d_DP_ZAxis, TCollection_ExtendedString("Z"));
 
-        m_workPlaneAxisZShape = new AIS_Shape(BRepBuilderAPI_MakeEdge(orig, pZ).Edge());
-        m_workPlaneAxisZShape->SetColor(colorConfig.workPlaneAxisZColor());
-        m_workPlaneAxisZShape->SetWidth(2.5);
-        m_workPlaneAxisZShape->SetLocalTransformation(trsf);
-        m_context->Display(m_workPlaneAxisZShape, false);
+        applyWorkPlaneTrihedronTransform(trsf);
+        // Mode de sélection -1 : purement visuel (ne gêne ni la sélection ni le snapping)
+        m_context->Display(m_workPlaneTrihedron, 0, -1, false);
     }
 
     if (m_selectionManager && !m_workPlaneShape.IsNull())

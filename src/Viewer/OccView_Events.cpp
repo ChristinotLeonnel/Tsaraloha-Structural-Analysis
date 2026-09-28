@@ -780,22 +780,7 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
     {
         m_manipulator->Transform(px, py, m_view);
         gp_Trsf trsf = m_workPlaneShape->LocalTransformation();
-        if (!m_workPlaneAxesShape.IsNull())
-        {
-            m_workPlaneAxesShape->SetLocalTransformation(trsf);
-        }
-        if (!m_workPlaneAxisXShape.IsNull())
-        {
-            m_workPlaneAxisXShape->SetLocalTransformation(trsf);
-        }
-        if (!m_workPlaneAxisYShape.IsNull())
-        {
-            m_workPlaneAxisYShape->SetLocalTransformation(trsf);
-        }
-        if (!m_workPlaneAxisZShape.IsNull())
-        {
-            m_workPlaneAxisZShape->SetLocalTransformation(trsf);
-        }
+        applyWorkPlaneTrihedronTransform(trsf);
 
         gp_Pnt orig(0, 0, 0);
         orig.Transform(trsf);
