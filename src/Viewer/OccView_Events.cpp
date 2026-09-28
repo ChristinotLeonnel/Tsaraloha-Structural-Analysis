@@ -981,6 +981,9 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                     if (node)
                     {
                         emit mouseCoordinatesChanged(node->x(), node->y(), node->z());
+                        double uwp = 0.0, vwp = 0.0, wwp = 0.0;
+                        m_workPlane.toLocal(gp_Pnt(node->x(), node->y(), node->z()), uwp, vwp, wwp);
+                        emit mouseLocalCoordinatesChanged(uwp, vwp);
                         emit objectHovered(tr("Survol : Nœud %1 (X = %2 m, Y = %3 m, Z = %4 m)")
                             .arg(nodeId)
                             .arg(node->x(), 0, 'f', 3)
@@ -1062,6 +1065,9 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                     emit objectHovered(QString());
                 }
                 emit mouseCoordinatesChanged(wx, wy, wz);
+                double uwp = 0.0, vwp = 0.0, wwp = 0.0;
+                m_workPlane.toLocal(gp_Pnt(wx, wy, wz), uwp, vwp, wwp);
+                emit mouseLocalCoordinatesChanged(uwp, vwp);
                 if (m_snapToGrid && !m_view.IsNull())
                 {
                     m_view->Redraw();

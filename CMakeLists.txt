@@ -216,6 +216,8 @@ set(UI_DOCK_SOURCES
     src/UI/Dock/StructuralElementsDock.cpp
     src/UI/Dock/LogConsoleDock.h
     src/UI/Dock/LogConsoleDock.cpp
+    src/UI/Dock/ProjectionViewDock.h
+    src/UI/Dock/ProjectionViewDock.cpp
 )
 
 # --- Systèmes de coordonnées et plans de travail — [CORE] --------------------
@@ -230,6 +232,12 @@ set(COORDINATE_SOURCES
     src/Coordinate/CylindricalCoordinates.cpp
     src/Coordinate/WorkPlane.h
     src/Coordinate/WorkPlane.cpp
+    src/Coordinate/WorkPlaneCoordinateSystem.h
+    src/Coordinate/WorkPlaneCoordinateSystem.cpp
+    src/Coordinate/CoordinateTransform.h
+    src/Coordinate/CoordinateTransform.cpp
+    src/Coordinate/AxisColorConfig.h
+    src/Coordinate/AxisColorConfig.cpp
     src/Coordinate/WorkPlaneManager.h
     src/Coordinate/WorkPlaneManager.cpp
     src/Coordinate/CoordinateTransformationService.h
@@ -249,6 +257,8 @@ set(GRID_CORE_SOURCES
     src/Grid/ArbitraryGrid.cpp
     src/Grid/GridSnapManager.h
     src/Grid/GridSnapManager.cpp
+    src/Grid/SnapManager.h
+    src/Grid/SnapManager.cpp
     src/Grid/GridSystem.h
     src/Grid/GridSystem.cpp
     src/Grid/GridManager.h
@@ -274,12 +284,16 @@ set(VIEWER_MAIN_SOURCES
     src/Viewer/SelectionManager.cpp
 )
 
-# --- Matériaux visuels (texturing) — [CORE] -----------------------------------
+# --- Matériaux visuels, projection et navigation de vue — [CORE] --------------
 set(VIEWER_CORE_SOURCES
     src/Viewer/MaterialVisual.h
     src/Viewer/MaterialVisual.cpp
     src/Viewer/TextureManager.h
     src/Viewer/TextureManager.cpp
+    src/Viewer/ProjectionManager.h
+    src/Viewer/ProjectionManager.cpp
+    src/Viewer/ViewManager.h
+    src/Viewer/ViewManager.cpp
 )
 
 # --- Géométrie des poutres (utilisée par les tests) — [CORE] -----------------

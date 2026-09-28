@@ -15,6 +15,7 @@
 #include "Dock/VisibilityDock.h"
 #include "Dock/StructuralElementsDock.h"
 #include "Dock/LogConsoleDock.h"
+#include "Dock/ProjectionViewDock.h"
 #include "Dialogs/BarCreationDialog.h"
 #include "Dialogs/CableCreationDialog.h"
 #include "Theme/ThemeManager.h"
@@ -999,6 +1000,32 @@ void MainWindow::createDockWindows()
     m_propertiesDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
     addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
 
+    // 4. Dock droit : PROJECTION & VUE (WorkPlane, 2D/3D, Caméra)
+    m_projectionViewDock = new TSA::UI::ProjectionViewDock(this);
+    m_projectionViewDock->setModel(m_model.get());
+    m_projectionViewDock->toggleViewAction()->setIcon(QIcon(":/icons/view_normal_workplane.svg"));
+    addDockWidget(Qt::RightDockWidgetArea, m_projectionViewDock);
+    tabifyDockWidget(m_propertiesDock, m_projectionViewDock);
+    m_propertiesDock->raise();
+
+    if (m_occView)
+    {
+        connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::standardViewRequested,
+                m_occView, &OccView::applyStandardView);
+        connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::projectionModeRequested,
+                m_occView, &OccView::setProjectionMode);
+        connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::projectionDirectionRequested,
+                m_occView, &OccView::setProjectionDirection);
+        connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::alignViewToWorkPlaneRequested,
+                m_occView, &OccView::viewNormalToWorkPlane);
+        connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::workPlaneAxesVisibleToggled,
+                m_occView, &OccView::setWorkPlaneAxesVisible);
+        connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::gizmoSizeChanged,
+                m_occView, &OccView::setGizmoSize);
+        connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::workPlaneVisibleToggled,
+                this, &MainWindow::onActionToggleWorkPlaneVisible);
+    }
+
     // 4. Dock inférieur : CONSOLE & HISTORIQUE COMMANDES
     m_consoleDock = new TSA::UI::LogConsoleDock(this);
     m_consoleDock->toggleViewAction()->setIcon(QIcon(":/icons/console.svg"));
@@ -1323,6 +1350,11 @@ void MainWindow::createStatusBar()
     m_statusCoordinates->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; padding: 2px 8px;");
     bar->addWidget(m_statusCoordinates);
 
+    m_statusCoordinatesLocal = new QLabel(tr("Xwp: 0.000 m   Ywp: 0.000 m"), this);
+    m_statusCoordinatesLocal->setMinimumWidth(220);
+    m_statusCoordinatesLocal->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; padding: 2px 8px; color: #a78bfa;");
+    bar->addWidget(m_statusCoordinatesLocal);
+
     m_statusWorkPlane = new QLabel(tr("Plan: XY (Z=0.00 m)"), this);
     m_statusWorkPlane->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #38bdf8; font-weight: bold;");
     bar->addWidget(m_statusWorkPlane);
@@ -1364,6 +1396,16 @@ void MainWindow::createStatusBar()
                 .arg(x, 7, 'f', 3)
                 .arg(y, 7, 'f', 3)
                 .arg(z, 7, 'f', 3));
+        }
+    });
+
+    // Suivi continu des coordonnées locales WorkPlane
+    connect(m_occView, &OccView::mouseLocalCoordinatesChanged, this, [this](double xwp, double ywp) {
+        if (m_statusCoordinatesLocal)
+        {
+            m_statusCoordinatesLocal->setText(tr("Xwp: %1 m   Ywp: %2 m")
+                .arg(xwp, 7, 'f', 3)
+                .arg(ywp, 7, 'f', 3));
         }
     });
 

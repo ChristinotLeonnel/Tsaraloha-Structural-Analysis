@@ -10,6 +10,7 @@
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
 #include "../Coordinate/CoordinateTransformationService.h"
+#include "../Coordinate/AxisColorConfig.h"
 
 #include <AIS_Shape.hxx>
 #include <AIS_InteractiveContext.hxx>
@@ -836,6 +837,21 @@ void OccView::updateWorkPlaneVisual()
         m_context->Remove(m_workPlaneAxesShape, false);
         m_workPlaneAxesShape.Nullify();
     }
+    if (!m_workPlaneAxisXShape.IsNull())
+    {
+        m_context->Remove(m_workPlaneAxisXShape, false);
+        m_workPlaneAxisXShape.Nullify();
+    }
+    if (!m_workPlaneAxisYShape.IsNull())
+    {
+        m_context->Remove(m_workPlaneAxisYShape, false);
+        m_workPlaneAxisYShape.Nullify();
+    }
+    if (!m_workPlaneAxisZShape.IsNull())
+    {
+        m_context->Remove(m_workPlaneAxisZShape, false);
+        m_workPlaneAxisZShape.Nullify();
+    }
 
     if (!m_workPlaneVisible || !m_workPlane.isVisible())
     {
@@ -944,6 +960,35 @@ void OccView::updateWorkPlaneVisual()
         m_workPlaneShape->SetLocalTransformation(trsf);
     }
     m_workPlaneAxesShape->SetLocalTransformation(trsf);
+
+    // 5. Axes individuels colorés Xwp, Ywp, Zwp selon AxisColorConfig (Section 2 & 12)
+    if (m_workPlaneAxesVisible)
+    {
+        double gLen = axisLen * m_gizmoSize;
+        gp_Pnt pX(gLen, 0.0, 0.0);
+        gp_Pnt pY(0.0, gLen, 0.0);
+        gp_Pnt pZ(0.0, 0.0, gLen);
+
+        const auto& colorConfig = TSA::Coordinate::AxisColorConfig::instance();
+
+        m_workPlaneAxisXShape = new AIS_Shape(BRepBuilderAPI_MakeEdge(orig, pX).Edge());
+        m_workPlaneAxisXShape->SetColor(colorConfig.workPlaneAxisXColor());
+        m_workPlaneAxisXShape->SetWidth(2.5);
+        m_workPlaneAxisXShape->SetLocalTransformation(trsf);
+        m_context->Display(m_workPlaneAxisXShape, false);
+
+        m_workPlaneAxisYShape = new AIS_Shape(BRepBuilderAPI_MakeEdge(orig, pY).Edge());
+        m_workPlaneAxisYShape->SetColor(colorConfig.workPlaneAxisYColor());
+        m_workPlaneAxisYShape->SetWidth(2.5);
+        m_workPlaneAxisYShape->SetLocalTransformation(trsf);
+        m_context->Display(m_workPlaneAxisYShape, false);
+
+        m_workPlaneAxisZShape = new AIS_Shape(BRepBuilderAPI_MakeEdge(orig, pZ).Edge());
+        m_workPlaneAxisZShape->SetColor(colorConfig.workPlaneAxisZColor());
+        m_workPlaneAxisZShape->SetWidth(2.5);
+        m_workPlaneAxisZShape->SetLocalTransformation(trsf);
+        m_context->Display(m_workPlaneAxisZShape, false);
+    }
 
     if (m_selectionManager && !m_workPlaneShape.IsNull())
     {
@@ -1174,6 +1219,7 @@ void OccView::setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::Gri
 
     m_gridManager = gridManager;
     m_gridSnapManager = snapManager;
+    m_snapManager.setGridSnapManager(snapManager);
 
     if (m_gridManager)
     {
@@ -1300,3 +1346,44 @@ bool OccView::areGridLevelsVisible() const
     return true;
 }
 
+// =============================================================================
+// Gestionnaires spécialisés découplés (Section 11)
+// =============================================================================
+
+void OccView::setProjectionMode(TSA::Viewer::ProjectionMode mode)
+{
+    m_projectionManager.setMode(mode);
+    emit projectionModeChanged(mode);
+}
+
+void OccView::setProjectionDirection(TSA::Viewer::ProjectionDirection dir)
+{
+    m_projectionManager.setDirection(dir);
+    emit projectionDirectionChanged(dir);
+}
+
+void OccView::applyStandardView(TSA::Viewer::StandardCameraView view)
+{
+    m_viewManager.applyStandardView(view, m_view, m_workPlane);
+    emit standardViewChanged(view);
+}
+
+void OccView::setWorkPlaneAxesVisible(bool visible)
+{
+    if (m_workPlaneAxesVisible == visible)
+        return;
+
+    m_workPlaneAxesVisible = visible;
+    updateWorkPlaneVisual();
+    emit workPlaneAxesVisibleChanged(visible);
+}
+
+void OccView::setGizmoSize(double size)
+{
+    if (std::abs(m_gizmoSize - size) < 0.01)
+        return;
+
+    m_gizmoSize = size;
+    updateWorkPlaneVisual();
+    emit gizmoSizeChanged(size);
+}

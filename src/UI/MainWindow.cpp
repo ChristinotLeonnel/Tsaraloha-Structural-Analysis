@@ -19,6 +19,7 @@
 #include "Dock/VisibilityDock.h"
 #include "Dock/StructuralElementsDock.h"
 #include "Dock/LogConsoleDock.h"
+#include "Dock/ProjectionViewDock.h"
 #include "../Diagnostics/Logger.h"
 #include "../Diagnostics/DiagnosticReport.h"
 #include "Theme/ThemeManager.h"
@@ -1025,7 +1026,17 @@ void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
         m_model->workPlaneManager()->updateWorkPlane(wp);
     }
 
-    // 5. Log console
+    // 5. Synchronisation avec le volet Projection & Vue
+    if (m_projectionViewDock)
+    {
+        m_projectionViewDock->syncFromWorkPlane(wp);
+        if (m_model && m_model->workPlaneManager())
+        {
+            m_projectionViewDock->updateWorkPlaneList(m_model->workPlaneManager());
+        }
+    }
+
+    // 6. Log console
     if (m_consoleDock)
     {
         m_consoleDock->appendLog(tr("Plan de travail actif : %1 (Origine: %2, %3, %4 m)")

@@ -8,6 +8,7 @@
 #include <gp_Vec.hxx>
 #include <gp_Trsf.hxx>
 #include <string>
+#include "WorkPlaneCoordinateSystem.h"
 
 namespace TSA::Coordinate
 {
@@ -26,7 +27,7 @@ enum class WorkPlaneType
 /**
  * @brief Gestionnaire de plan de travail 3D (Work Plane) interactif pour la modélisation et le dessin CAO.
  * Fournit :
- * - Position 3D (Origine), orientation (Axe X local, Axe Y local, Normale)
+ * - Repère local orthonormé (Origine, Axe X local Xwp, Axe Y local Ywp, Normale Zwp)
  * - Dimensions visibles (Largeur, Hauteur)
  * - Grille locale paramétrable (espacement X/Y, subdivisions, visibilité)
  * - États de contrôle (Actif, Visible, Verrouillé, Isolé)
@@ -39,6 +40,7 @@ public:
     WorkPlane();
     explicit WorkPlane(WorkPlaneType type, const std::string& name = "Plan XY", double offset = 0.0);
     WorkPlane(const gp_Ax3& coordinateSystem, const std::string& name = "Plan Personnalisé", WorkPlaneType type = WorkPlaneType::Custom);
+    WorkPlane(const WorkPlaneCoordinateSystem& localCs, const std::string& name = "Plan Personnalisé", WorkPlaneType type = WorkPlaneType::Custom);
 
     // Identifiant & Nom
     int id() const noexcept { return m_id; }
@@ -58,14 +60,20 @@ public:
     const gp_Ax3& coordinateSystem() const noexcept { return m_cs; }
     void setCoordinateSystem(const gp_Ax3& cs);
 
+    const WorkPlaneCoordinateSystem& coordinateSystemLocal() const noexcept { return m_localCS; }
+    void setCoordinateSystemLocal(const WorkPlaneCoordinateSystem& localCs);
+
     const gp_Pln& plane() const noexcept { return m_plane; }
 
-    gp_Pnt origin() const noexcept { return m_cs.Location(); }
+    gp_Pnt origin() const noexcept { return m_localCS.origin(); }
     void setOrigin(const gp_Pnt& orig);
 
-    gp_Dir normal() const noexcept { return m_cs.Direction(); }
-    gp_Dir xDirection() const noexcept { return m_cs.XDirection(); }
-    gp_Dir yDirection() const noexcept { return m_cs.YDirection(); }
+    gp_Dir normal() const noexcept { return m_localCS.normal(); }
+    gp_Dir axisX() const noexcept { return m_localCS.axisX(); }
+    gp_Dir axisY() const noexcept { return m_localCS.axisY(); }
+    gp_Dir axisZ() const noexcept { return m_localCS.axisZ(); }
+    gp_Dir xDirection() const noexcept { return m_localCS.axisX(); }
+    gp_Dir yDirection() const noexcept { return m_localCS.axisY(); }
 
     // Angles d'orientation (en degrés)
     double rotationX() const noexcept;
@@ -86,6 +94,7 @@ public:
     int gridSubdivisions() const noexcept { return m_gridSubdivisions; }
     bool isGridVisible() const noexcept { return m_isGridVisible; }
     void setGridSettings(double spX, double spY, int subdivisions, bool visible) noexcept;
+    void setGridSettings(double spX, double spY, bool visible) noexcept { setGridSettings(spX, spY, 1, visible); }
     void setGridSpacingX(double s) noexcept { m_gridSpacingX = s; }
     void setGridSpacingY(double s) noexcept { m_gridSpacingY = s; }
     void setGridSubdivisions(int sub) noexcept { m_gridSubdivisions = sub; }
@@ -116,32 +125,37 @@ public:
     void rotate(const gp_Pnt& center, const gp_Dir& axis, double angleRad);
     void rotate(const gp_Ax1& axis, double angleRad) { rotate(axis.Location(), axis.Direction(), angleRad); }
     void transform(const gp_Trsf& trsf);
-    void setLocalAxes(const gp_Dir& xDir, const gp_Dir& yDir, const gp_Dir& zDir) {
-        (void)yDir;
-        m_cs = gp_Ax3(m_cs.Location(), zDir, xDir);
-        m_plane = gp_Pln(m_cs);
-        m_type = WorkPlaneType::Custom;
-    }
+    void setLocalAxes(const gp_Dir& xDir, const gp_Dir& yDir, const gp_Dir& zDir);
 
     // Projections géométriques
     bool projectRay(const gp_Pnt& eye, const gp_Dir& rayDir, gp_Pnt& outPnt) const;
     gp_Pnt projectOrtho(const gp_Pnt& worldPoint) const;
     double distanceTo(const gp_Pnt& worldPoint) const;
 
-    // Transformation WCS (Monde global) <-> UCS (Plan de travail local)
+    // Transformation WCS (Monde global) <-> UCS (Plan de travail local Xwp, Ywp, Zwp)
     gp_Pnt toUcs(const gp_Pnt& worldPoint) const;
     gp_Pnt toWorld(const gp_Pnt& ucsPoint) const;
     gp_Pnt toWorld(double u, double v) const { return toWorld(gp_Pnt(u, v, 0.0)); }
+    gp_Pnt toLocal(const gp_Pnt& worldPoint) const { return toUcs(worldPoint); }
+    gp_Pnt toGlobal(const gp_Pnt& localPoint) const { return toWorld(localPoint); }
+    gp_Pnt toGlobal(double u, double v, double w = 0.0) const { return toWorld(gp_Pnt(u, v, w)); }
     void toLocal(const gp_Pnt& worldPoint, double& outU, double& outV) const {
         gp_Pnt p = toUcs(worldPoint);
         outU = p.X();
         outV = p.Y();
+    }
+    void toLocal(const gp_Pnt& worldPoint, double& outU, double& outV, double& outW) const {
+        gp_Pnt p = toUcs(worldPoint);
+        outU = p.X();
+        outV = p.Y();
+        outW = p.Z();
     }
 
     // Usines standard (Robot SA / AutoCAD style)
     static WorkPlane xy(double elevation = 0.0, const std::string& name = "Plan XY");
     static WorkPlane xz(double yOffset = 0.0, const std::string& name = "Plan XZ");
     static WorkPlane yz(double xOffset = 0.0, const std::string& name = "Plan YZ");
+    static WorkPlane fromOriginAndAxes(const gp_Pnt& origin, const gp_Dir& axisX, const gp_Dir& axisY, const std::string& name = "Plan Personnalisé");
     static WorkPlane fromThreePoints(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3, const std::string& name = "Plan 3 Points");
     static WorkPlane fromOriginAndNormal(const gp_Pnt& origin, const gp_Dir& normal, const std::string& name = "Plan Personnalisé");
 
@@ -153,12 +167,14 @@ public:
 
 private:
     void updatePlane();
+    void syncCsFromLocalCs();
 
 private:
     int m_id = 1;
     WorkPlaneType m_type = WorkPlaneType::GlobalXY;
     std::string m_name = "Plan XY";
     double m_offset = 0.0;
+    WorkPlaneCoordinateSystem m_localCS;
     gp_Ax3 m_cs;
     gp_Pln m_plane;
 

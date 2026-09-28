@@ -37,6 +37,7 @@ namespace TSA::UI
     class GridDialog;
     class GridSettingsDialog;
     class WorkPlaneDialog;
+    class ProjectionViewDock;
 }
 
 class OccView;
@@ -155,8 +156,10 @@ private:
     TSA::UI::VisibilityDock* m_visibilityDock = nullptr;
     TSA::UI::StructuralElementsDock* m_elementsDock = nullptr;
     TSA::UI::LogConsoleDock* m_consoleDock = nullptr;
+    TSA::UI::ProjectionViewDock* m_projectionViewDock = nullptr;
 
     QLabel*  m_statusCoordinates = nullptr;
+    QLabel*  m_statusCoordinatesLocal = nullptr;
     QLabel*  m_statusInfo = nullptr;
 
     // Actions Fichier

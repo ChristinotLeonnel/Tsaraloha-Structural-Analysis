@@ -1,7 +1,6 @@
 #include "WorkPlane.h"
 #include <gp_Lin.hxx>
 #include <gp_Trsf.hxx>
-#include <IntAna_IntConicQuad.hxx>
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonArray>
@@ -20,8 +19,9 @@ WorkPlane::WorkPlane()
     : m_type(WorkPlaneType::GlobalXY)
     , m_name("Plan XY")
     , m_offset(0.0)
-    , m_cs(gp_Pnt(0.0, 0.0, 0.0), gp_Dir(0.0, 0.0, 1.0), gp_Dir(1.0, 0.0, 0.0))
-    , m_plane(m_cs)
+    , m_localCS(WorkPlaneCoordinateSystem::xy(0.0))
+    , m_cs(m_localCS.toAx3())
+    , m_plane(m_localCS.toPln())
 {
 }
 
@@ -29,8 +29,6 @@ WorkPlane::WorkPlane(WorkPlaneType type, const std::string& name, double offset)
     : m_type(type)
     , m_name(name)
     , m_offset(offset)
-    , m_cs(gp_Pnt(0.0, 0.0, offset), gp_Dir(0.0, 0.0, 1.0), gp_Dir(1.0, 0.0, 0.0))
-    , m_plane(m_cs)
 {
     updatePlane();
 }
@@ -39,8 +37,19 @@ WorkPlane::WorkPlane(const gp_Ax3& coordinateSystem, const std::string& name, Wo
     : m_type(type)
     , m_name(name)
     , m_offset(0.0)
+    , m_localCS(coordinateSystem)
     , m_cs(coordinateSystem)
-    , m_plane(m_cs)
+    , m_plane(coordinateSystem)
+{
+}
+
+WorkPlane::WorkPlane(const WorkPlaneCoordinateSystem& localCs, const std::string& name, WorkPlaneType type)
+    : m_type(type)
+    , m_name(name)
+    , m_offset(0.0)
+    , m_localCS(localCs)
+    , m_cs(localCs.toAx3())
+    , m_plane(localCs.toPln())
 {
 }
 
@@ -53,13 +62,27 @@ void WorkPlane::setOffset(double off)
 void WorkPlane::setCoordinateSystem(const gp_Ax3& cs)
 {
     m_cs = cs;
-    m_plane = gp_Pln(m_cs);
+    m_localCS = WorkPlaneCoordinateSystem(cs);
+    m_plane = m_localCS.toPln();
+}
+
+void WorkPlane::setCoordinateSystemLocal(const WorkPlaneCoordinateSystem& localCs)
+{
+    m_localCS = localCs;
+    syncCsFromLocalCs();
+}
+
+void WorkPlane::syncCsFromLocalCs()
+{
+    m_cs = m_localCS.toAx3();
+    m_plane = m_localCS.toPln();
 }
 
 void WorkPlane::setOrigin(const gp_Pnt& orig)
 {
-    m_cs.SetLocation(orig);
-    m_plane = gp_Pln(m_cs);
+    m_localCS.setOrigin(orig);
+    syncCsFromLocalCs();
+
     if (m_type == WorkPlaneType::GlobalXY || m_type == WorkPlaneType::ElevationZ)
     {
         m_offset = orig.Z();
@@ -113,8 +136,8 @@ void WorkPlane::setRotation(double rxDeg, double ryDeg, double rzDeg)
     baseX.Transform(totalRot);
 
     gp_Pnt curOrigin = origin();
-    m_cs = gp_Ax3(curOrigin, baseNormal, baseX);
-    m_plane = gp_Pln(m_cs);
+    m_localCS = WorkPlaneCoordinateSystem(curOrigin, baseNormal, baseX);
+    syncCsFromLocalCs();
     m_type = WorkPlaneType::Custom;
 }
 
@@ -134,19 +157,21 @@ void WorkPlane::setGridSettings(double spX, double spY, int subdivisions, bool v
 
 void WorkPlane::translate(const gp_Vec& vec)
 {
-    m_cs.Translate(vec);
-    m_plane = gp_Pln(m_cs);
+    gp_Pnt newOrigin = origin().Translated(vec);
+    m_localCS.setOrigin(newOrigin);
+    syncCsFromLocalCs();
+
     if (m_type == WorkPlaneType::GlobalXY || m_type == WorkPlaneType::ElevationZ)
     {
-        m_offset = m_cs.Location().Z();
+        m_offset = newOrigin.Z();
     }
     else if (m_type == WorkPlaneType::GlobalXZ)
     {
-        m_offset = m_cs.Location().Y();
+        m_offset = newOrigin.Y();
     }
     else if (m_type == WorkPlaneType::GlobalYZ)
     {
-        m_offset = m_cs.Location().X();
+        m_offset = newOrigin.X();
     }
 }
 
@@ -159,8 +184,25 @@ void WorkPlane::rotate(const gp_Pnt& center, const gp_Dir& axis, double angleRad
 
 void WorkPlane::transform(const gp_Trsf& trsf)
 {
-    m_cs.Transform(trsf);
-    m_plane = gp_Pln(m_cs);
+    gp_Pnt p0 = origin();
+    p0.Transform(trsf);
+
+    gp_Dir n = normal();
+    n.Transform(trsf);
+
+    gp_Dir xd = xDirection();
+    xd.Transform(trsf);
+
+    m_localCS = WorkPlaneCoordinateSystem(p0, n, xd);
+    syncCsFromLocalCs();
+    m_type = WorkPlaneType::Custom;
+}
+
+void WorkPlane::setLocalAxes(const gp_Dir& xDir, const gp_Dir& yDir, const gp_Dir& zDir)
+{
+    (void)zDir;
+    m_localCS.setAxes(xDir, yDir);
+    syncCsFromLocalCs();
     m_type = WorkPlaneType::Custom;
 }
 
@@ -169,92 +211,44 @@ void WorkPlane::updatePlane()
     switch (m_type)
     {
     case WorkPlaneType::GlobalXZ:
-        m_cs = gp_Ax3(gp_Pnt(0.0, m_offset, 0.0), gp_Dir(0.0, 1.0, 0.0), gp_Dir(1.0, 0.0, 0.0));
+        m_localCS = WorkPlaneCoordinateSystem::xz(m_offset);
         break;
     case WorkPlaneType::GlobalYZ:
-        m_cs = gp_Ax3(gp_Pnt(m_offset, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0), gp_Dir(0.0, 1.0, 0.0));
+        m_localCS = WorkPlaneCoordinateSystem::yz(m_offset);
         break;
     case WorkPlaneType::GlobalXY:
     case WorkPlaneType::ElevationZ:
     default:
-        m_cs = gp_Ax3(gp_Pnt(0.0, 0.0, m_offset), gp_Dir(0.0, 0.0, 1.0), gp_Dir(1.0, 0.0, 0.0));
+        m_localCS = WorkPlaneCoordinateSystem::xy(m_offset);
         break;
     }
-    m_plane = gp_Pln(m_cs);
+    syncCsFromLocalCs();
 }
 
 bool WorkPlane::projectRay(const gp_Pnt& eye, const gp_Dir& rayDir, gp_Pnt& outPnt) const
 {
-    gp_Lin line(eye, rayDir);
-    IntAna_IntConicQuad inter(line, m_plane, 1e-6);
-    if (inter.IsDone() && !inter.IsParallel() && inter.NbPoints() > 0)
-    {
-        outPnt = inter.Point(1);
-        return true;
-    }
-
-    // Fallback analytique direct : (P - P0) . N = 0 => (Eye + t*Dir - P0) . N = 0
-    gp_Dir N = normal();
-    double denom = rayDir.X() * N.X() + rayDir.Y() * N.Y() + rayDir.Z() * N.Z();
-    if (std::abs(denom) > 1e-7)
-    {
-        gp_Pnt P0 = origin();
-        double numer = (P0.X() - eye.X()) * N.X() + (P0.Y() - eye.Y()) * N.Y() + (P0.Z() - eye.Z()) * N.Z();
-        double t = numer / denom;
-        outPnt = gp_Pnt(eye.X() + t * rayDir.X(),
-                        eye.Y() + t * rayDir.Y(),
-                        eye.Z() + t * rayDir.Z());
-        return true;
-    }
-
-    return false;
+    double t = 0.0;
+    return m_localCS.intersectRay(eye, rayDir, outPnt, t);
 }
 
 gp_Pnt WorkPlane::projectOrtho(const gp_Pnt& worldPoint) const
 {
-    gp_Dir N = normal();
-    gp_Pnt P0 = origin();
-    double dist = (worldPoint.X() - P0.X()) * N.X() +
-                  (worldPoint.Y() - P0.Y()) * N.Y() +
-                  (worldPoint.Z() - P0.Z()) * N.Z();
-
-    return gp_Pnt(worldPoint.X() - dist * N.X(),
-                  worldPoint.Y() - dist * N.Y(),
-                  worldPoint.Z() - dist * N.Z());
+    return m_localCS.projectPoint(worldPoint);
 }
 
 double WorkPlane::distanceTo(const gp_Pnt& worldPoint) const
 {
-    return m_plane.Distance(worldPoint);
+    return m_localCS.distanceTo(worldPoint);
 }
 
 gp_Pnt WorkPlane::toUcs(const gp_Pnt& worldPoint) const
 {
-    gp_Pnt P0 = origin();
-    gp_Vec V(P0, worldPoint);
-    gp_Dir Xd = xDirection();
-    gp_Dir Yd = yDirection();
-    gp_Dir Zd = normal();
-
-    double u = V.Dot(gp_Vec(Xd));
-    double v = V.Dot(gp_Vec(Yd));
-    double w = V.Dot(gp_Vec(Zd));
-
-    return gp_Pnt(u, v, w);
+    return m_localCS.toLocal(worldPoint);
 }
 
 gp_Pnt WorkPlane::toWorld(const gp_Pnt& ucsPoint) const
 {
-    gp_Pnt P0 = origin();
-    gp_Dir Xd = xDirection();
-    gp_Dir Yd = yDirection();
-    gp_Dir Zd = normal();
-
-    gp_Vec Vu = gp_Vec(Xd) * ucsPoint.X();
-    gp_Vec Vv = gp_Vec(Yd) * ucsPoint.Y();
-    gp_Vec Vw = gp_Vec(Zd) * ucsPoint.Z();
-
-    return P0.Translated(Vu).Translated(Vv).Translated(Vw);
+    return m_localCS.toGlobal(ucsPoint);
 }
 
 WorkPlane WorkPlane::xy(double elevation, const std::string& name)
@@ -272,6 +266,13 @@ WorkPlane WorkPlane::yz(double xOffset, const std::string& name)
     return WorkPlane(WorkPlaneType::GlobalYZ, name.empty() ? "Plan YZ" : name, xOffset);
 }
 
+WorkPlane WorkPlane::fromOriginAndAxes(const gp_Pnt& origin, const gp_Dir& axisX, const gp_Dir& axisY, const std::string& name)
+{
+    auto cs = WorkPlaneCoordinateSystem::fromOriginAndAxes(origin, axisX, axisY);
+    WorkPlane wp(cs, name.empty() ? "Plan Personnalisé" : name, WorkPlaneType::Custom);
+    return wp;
+}
+
 WorkPlane WorkPlane::fromThreePoints(const gp_Pnt& p1, const gp_Pnt& p2, const gp_Pnt& p3, const std::string& name)
 {
     gp_Vec v12(p1, p2);
@@ -286,7 +287,7 @@ WorkPlane WorkPlane::fromThreePoints(const gp_Pnt& p1, const gp_Pnt& p2, const g
 
     gp_Dir normDir(normalVec);
     gp_Dir xDir(v12);
-    gp_Ax3 cs(p1, normDir, xDir);
+    auto cs = WorkPlaneCoordinateSystem(p1, normDir, xDir);
 
     WorkPlane wp(cs, name.empty() ? "Plan 3 Points" : name, WorkPlaneType::ThreePoints);
     return wp;
@@ -294,7 +295,7 @@ WorkPlane WorkPlane::fromThreePoints(const gp_Pnt& p1, const gp_Pnt& p2, const g
 
 WorkPlane WorkPlane::fromOriginAndNormal(const gp_Pnt& origin, const gp_Dir& normal, const std::string& name)
 {
-    gp_Ax3 cs(origin, normal);
+    auto cs = WorkPlaneCoordinateSystem(origin, normal);
     WorkPlane wp(cs, name.empty() ? "Plan Personnalisé" : name, WorkPlaneType::Custom);
     return wp;
 }
@@ -378,8 +379,8 @@ WorkPlane WorkPlane::deserializeFromJson(const std::string& jsonStr)
             gp_Pnt p0(o[0].toDouble(), o[1].toDouble(), o[2].toDouble());
             gp_Dir norm(nm[0].toDouble(), nm[1].toDouble(), nm[2].toDouble());
             gp_Dir xDir(xd[0].toDouble(), xd[1].toDouble(), xd[2].toDouble());
-            gp_Ax3 cs(p0, norm, xDir);
-            wp.setCoordinateSystem(cs);
+            WorkPlaneCoordinateSystem cs(p0, norm, xDir);
+            wp.setCoordinateSystemLocal(cs);
             wp.setType(t);
             wp.setName(n);
             wp.m_offset = off;
