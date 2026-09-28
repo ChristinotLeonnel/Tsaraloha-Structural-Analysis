@@ -1,0 +1,293 @@
+From 5664f74994448b11271c2768f654c2caffc362e8 Mon Sep 17 00:00:00 2001
+From: claude <noreply@anthropic.com>
+Date: Mon, 28 Sep 2026 08:37:31 +0000
+Subject: [PATCH] feat(workplane): outils plan de travail X/Y/Z, collage ligne
+ de grille, projection + fleche, isolation
+
+Ajoute deux en-tetes autonomes (header-only) :
+- WorkPlaneTools.h : plan suivant X/Y/Z, collage sur ligne de grille, projection, fleche de face
+- IsolationManager.h : isoler / masquer / isolation auto pour la projection
+---
+ src/Viewer/IsolationManager.h | 132 ++++++++++++++++++++++++++++++++++
+ src/Viewer/WorkPlaneTools.h   | 130 +++++++++++++++++++++++++++++++++
+ 2 files changed, 262 insertions(+)
+ create mode 100644 src/Viewer/IsolationManager.h
+ create mode 100644 src/Viewer/WorkPlaneTools.h
+
+diff --git a/src/Viewer/IsolationManager.h b/src/Viewer/IsolationManager.h
+new file mode 100644
+index 0000000..b39df42
+--- /dev/null
++++ b/src/Viewer/IsolationManager.h
+@@ -0,0 +1,132 @@
++#pragma once
++
++// Système d'isolation : masquer / isoler des entités du viewer 3D sans les supprimer du modèle.
++// Header-only : aucun ajout à CMakeLists.txt nécessaire.
++
++#include <AIS_InteractiveContext.hxx>
++#include <AIS_InteractiveObject.hxx>
++#include <AIS_ListOfInteractive.hxx>
++#include <Bnd_Box.hxx>
++#include <gp_Ax3.hxx>
++#include <gp_Pnt.hxx>
++#include <gp_Vec.hxx>
++
++#include <algorithm>
++#include <set>
++#include <vector>
++
++namespace TSA::Viewer
++{
++
++class IsolationManager
++{
++public:
++    /// Objets à ne jamais masquer (grille, trièdre du plan, gizmo, flèche de projection...).
++    void protect(const Handle(AIS_InteractiveObject)& obj)
++    {
++        if (!obj.IsNull())
++            m_protected.insert(obj.get());
++    }
++    void unprotect(const Handle(AIS_InteractiveObject)& obj)
++    {
++        if (!obj.IsNull())
++            m_protected.erase(obj.get());
++    }
++
++    bool isActive() const { return !m_hidden.empty(); }
++
++    /// "Isoler" : ne garde affichée que la sélection courante.
++    void isolateSelection(const Handle(AIS_InteractiveContext)& ctx)
++    {
++        std::vector<Handle(AIS_InteractiveObject)> keep = selected(ctx);
++        if (keep.empty())
++            return;
++        AIS_ListOfInteractive shown;
++        ctx->DisplayedObjects(shown);
++        for (const Handle(AIS_InteractiveObject)& obj : shown)
++        {
++            if (isProtected(obj) || std::find(keep.begin(), keep.end(), obj) != keep.end())
++                continue;
++            hide(ctx, obj);
++        }
++        ctx->UpdateCurrentViewer();
++    }
++
++    /// "Masquer" : cache la sélection courante.
++    void hideSelection(const Handle(AIS_InteractiveContext)& ctx)
++    {
++        for (const Handle(AIS_InteractiveObject)& obj : selected(ctx))
++            if (!isProtected(obj))
++                hide(ctx, obj);
++        ctx->UpdateCurrentViewer();
++    }
++
++    /// Isolation automatique pour la projection : cache tout objet situé ENTIÈREMENT du côté
++    /// caméra du plan (il gênerait la vue). 'flip' = même valeur que pour la projection.
++    void isolateForProjection(const Handle(AIS_InteractiveContext)& ctx, const gp_Ax3& plane, bool flip = false,
++                              double tol = 1e-6)
++    {
++        gp_Vec n(plane.Direction());
++        if (flip)
++            n.Reverse();
++        AIS_ListOfInteractive shown;
++        ctx->DisplayedObjects(shown);
++        for (const Handle(AIS_InteractiveObject)& obj : shown)
++        {
++            if (isProtected(obj))
++                continue;
++            const Bnd_Box& box = obj->BoundingBox();
++            if (box.IsVoid() || box.IsOpen())
++                continue;
++            double x0, y0, z0, x1, y1, z1;
++            box.Get(x0, y0, z0, x1, y1, z1);
++            double minDist = 1e300;
++            for (int i = 0; i < 8; ++i)
++            {
++                const gp_Pnt c((i & 1) ? x1 : x0, (i & 2) ? y1 : y0, (i & 4) ? z1 : z0);
++                minDist = std::min(minDist, gp_Vec(plane.Location(), c).Dot(n));
++            }
++            if (minDist > tol)
++                hide(ctx, obj);
++        }
++        ctx->UpdateCurrentViewer();
++    }
++
++    /// "Tout afficher" : quitte le mode isolation.
++    void restoreAll(const Handle(AIS_InteractiveContext)& ctx)
++    {
++        for (const Handle(AIS_InteractiveObject)& obj : m_hidden)
++            ctx->Display(obj, false);
++        m_hidden.clear();
++        ctx->UpdateCurrentViewer();
++    }
++
++    /// À appeler si un objet est supprimé du modèle pendant l'isolation.
++    void forget(const Handle(AIS_InteractiveObject)& obj)
++    {
++        m_hidden.erase(std::remove(m_hidden.begin(), m_hidden.end(), obj), m_hidden.end());
++        unprotect(obj);
++    }
++
++private:
++    bool isProtected(const Handle(AIS_InteractiveObject)& o) const { return m_protected.count(o.get()) != 0; }
++
++    void hide(const Handle(AIS_InteractiveContext)& ctx, const Handle(AIS_InteractiveObject)& obj)
++    {
++        ctx->Erase(obj, false);
++        m_hidden.push_back(obj);
++    }
++
++    static std::vector<Handle(AIS_InteractiveObject)> selected(const Handle(AIS_InteractiveContext)& ctx)
++    {
++        std::vector<Handle(AIS_InteractiveObject)> out;
++        for (ctx->InitSelected(); ctx->MoreSelected(); ctx->NextSelected())
++            out.push_back(ctx->SelectedInteractive());
++        return out;
++    }
++
++    std::vector<Handle(AIS_InteractiveObject)> m_hidden;
++    std::set<const AIS_InteractiveObject*> m_protected;
++};
++
++} // namespace TSA::Viewer
+diff --git a/src/Viewer/WorkPlaneTools.h b/src/Viewer/WorkPlaneTools.h
+new file mode 100644
+index 0000000..ced0ccb
+--- /dev/null
++++ b/src/Viewer/WorkPlaneTools.h
+@@ -0,0 +1,130 @@
++#pragma once
++
++// Outils purs (sans état) pour le plan de travail :
++//  - construction du plan suivant X / Y / Z
++//  - collage du plan sur une ligne de grille
++//  - orientation de la vue (projection) + flèche indiquant la face regardée
++// Header-only : aucun ajout à CMakeLists.txt nécessaire.
++
++#include <AIS_Shape.hxx>
++#include <BRepPrimAPI_MakeCone.hxx>
++#include <BRepPrimAPI_MakeCylinder.hxx>
++#include <BRep_Builder.hxx>
++#include <Graphic3d_ZLayerId.hxx>
++#include <Quantity_Color.hxx>
++#include <TopoDS_Compound.hxx>
++#include <V3d_View.hxx>
++#include <gp_Ax2.hxx>
++#include <gp_Ax3.hxx>
++#include <gp_Dir.hxx>
++#include <gp_Pnt.hxx>
++#include <gp_Vec.hxx>
++
++#include <algorithm>
++#include <cmath>
++#include <optional>
++#include <vector>
++
++namespace TSA::Viewer::WorkPlaneTools
++{
++
++enum class Axis
++{
++    X,
++    Y,
++    Z
++};
++
++/// "Plan de travail suivant X / Y / Z" : plan PERPENDICULAIRE à l'axe, à la cote 'offset'.
++///  - Z : plan XY (vue de dessus)   normale +Z, X horizontal, Y vertical
++///  - Y : plan XZ (vue de face)     normale -Y, X horizontal, Z vertical
++///  - X : plan YZ (vue de droite)   normale +X, Y horizontal, Z vertical
++inline gp_Ax3 fromAxis(Axis axis, double offset)
++{
++    switch (axis)
++    {
++    case Axis::X: return gp_Ax3(gp_Pnt(offset, 0, 0), gp_Dir(1, 0, 0), gp_Dir(0, 1, 0));
++    case Axis::Y: return gp_Ax3(gp_Pnt(0, offset, 0), gp_Dir(0, -1, 0), gp_Dir(1, 0, 0));
++    case Axis::Z:
++    default:      return gp_Ax3(gp_Pnt(0, 0, offset), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0));
++    }
++}
++
++/// Collage sur une ligne de grille [a,b] (à appeler quand le snap renvoie une ligne de grille).
++/// Une droite appartient à une infinité de plans : seuls les plans "de grille" (normale = axe
++/// global perpendiculaire à la droite) sont candidats ; on prend celui qui fait le plus face à
++/// la caméra. 'cycle' (touche Tab) bascule sur le candidat suivant.
++/// 'eyeDir' = direction cible -> oeil (même convention que V3d_View::Proj).
++/// L'axe X du plan est aligné sur la ligne. Retourne nullopt si la ligne est oblique.
++inline std::optional<gp_Ax3> fromGridLine(const gp_Pnt& a, const gp_Pnt& b, const gp_Dir& eyeDir, int cycle = 0)
++{
++    if (a.Distance(b) < 1e-9)
++        return std::nullopt;
++
++    const gp_Dir d(gp_Vec(a, b));
++
++    std::vector<gp_Dir> cands;
++    const gp_Dir axes[3] = {gp_Dir(1, 0, 0), gp_Dir(0, 1, 0), gp_Dir(0, 0, 1)};
++    for (const gp_Dir& ax : axes)
++        if (std::abs(ax.Dot(d)) < 1e-6)
++            cands.push_back(ax);
++    if (cands.empty())
++        return std::nullopt;
++
++    std::stable_sort(cands.begin(), cands.end(),
++                     [&](const gp_Dir& p, const gp_Dir& q) { return std::abs(p.Dot(eyeDir)) > std::abs(q.Dot(eyeDir)); });
++
++    gp_Dir n = cands[static_cast<size_t>(cycle < 0 ? 0 : cycle) % cands.size()];
++    if (n.Dot(eyeDir) < 0.0)
++        n.Reverse(); // normale orientée vers la caméra
++    return gp_Ax3(a, n, d);
++}
++
++/// Direction cible -> oeil pour regarder le plan (flip : face opposée).
++inline gp_Dir projectionDirection(const gp_Ax3& plane, bool flip = false)
++{
++    gp_Dir n = plane.Direction();
++    if (flip)
++        n.Reverse();
++    return n;
++}
++
++/// Oriente la vue perpendiculairement au plan (équivalent de viewNormalToWorkPlane, mais
++/// avec choix de la face). Le haut de l'écran = axe Y du plan.
++inline void applyProjection(const Handle(V3d_View)& view, const gp_Ax3& plane, bool flip = false, bool fit = true)
++{
++    if (view.IsNull())
++        return;
++    const gp_Dir n = projectionDirection(plane, flip);
++    const gp_Dir up = plane.YDirection();
++    view->SetUp(up.X(), up.Y(), up.Z());
++    view->SetProj(n.X(), n.Y(), n.Z());
++    if (fit)
++        view->FitAll(0.1, false);
++    view->Update();
++}
++
++/// Flèche 3D partant de l'origine du plan, orientée vers la face depuis laquelle on regarde la
++/// projection. Longueur en unités monde. À protéger de l'isolation (IsolationManager::protect).
++inline Handle(AIS_Shape) makeProjectionArrow(const gp_Ax3& plane, double length, bool flip = false)
++{
++    const gp_Dir n = projectionDirection(plane, flip);
++    const double head = length * 0.28;
++    const double shaftLen = std::max(length - head, 1e-6);
++
++    const gp_Ax2 axShaft(plane.Location(), n);
++    const gp_Ax2 axHead(plane.Location().Translated(gp_Vec(n) * shaftLen), n);
++
++    BRep_Builder bb;
++    TopoDS_Compound comp;
++    bb.MakeCompound(comp);
++    bb.Add(comp, BRepPrimAPI_MakeCylinder(axShaft, length * 0.03, shaftLen).Shape());
++    bb.Add(comp, BRepPrimAPI_MakeCone(axHead, length * 0.08, 0.0, head).Shape());
++
++    Handle(AIS_Shape) arrow = new AIS_Shape(comp);
++    arrow->SetColor(Quantity_Color(1.0, 0.55, 0.0, Quantity_TOC_RGB));
++    arrow->SetZLayer(Graphic3d_ZLayerId_Top);
++    return arrow;
++}
++
++} // namespace TSA::Viewer::WorkPlaneTools
+-- 
+2.43.0
+
