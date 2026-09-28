@@ -1,5 +1,9 @@
 #include "CommandCatalog.h"
 
+#ifndef NDEBUG
+#include <iostream>
+#endif
+
 namespace TSA::Commands {
 
 CommandCatalog &CommandCatalog::instance() {
@@ -10,6 +14,18 @@ CommandCatalog &CommandCatalog::instance() {
 CommandCatalog::CommandCatalog() { initializeStandardCatalog(); }
 
 void CommandCatalog::registerCommand(const CommandDescriptor &desc) {
+#ifndef NDEBUG
+  // Un raccourci partage par deux commandes est "ambigu" pour Qt : aucune des
+  // deux ne se declenche. On le signale des l'enregistrement.
+  if (!desc.shortcut.empty()) {
+    for (const auto &[otherId, other] : m_commands) {
+      if (otherId != desc.id && other.shortcut == desc.shortcut) {
+        std::cerr << "[CommandCatalog] Raccourci en conflit '" << desc.shortcut
+                  << "' : " << otherId << " <-> " << desc.id << std::endl;
+      }
+    }
+  }
+#endif
   m_commands[desc.id] = desc;
 }
 
@@ -66,7 +82,7 @@ void CommandCatalog::initializeStandardCatalog() {
                    "Coller les éléments du presse-papier", "Ctrl+V",
                    ":/icons/edit/paste.svg", CommandCategory::Edit});
   registerCommand({"cmd.edit.delete", "Supprimer",
-                   "Supprimer les éléments sélectionnés", "Suppr",
+                   "Supprimer les éléments sélectionnés", "Del",
                    ":/icons/edit/delete.svg", CommandCategory::Edit});
 
   // --- 3. CREATE / DRAW ---
@@ -79,7 +95,7 @@ void CommandCatalog::initializeStandardCatalog() {
                    "Créer un poteau vertical ou incliné", "C",
                    ":/icons/structure/column.svg", CommandCategory::Create});
   registerCommand({"cmd.create.cable", "Câble",
-                   "Créer un câble structural ou hauban", "K",
+                   "Créer un câble structural ou hauban", "Alt+C",
                    ":/icons/structure/cable.svg", CommandCategory::Create});
   registerCommand({"cmd.create.bar", "Barre",
                    "Créer une barre générique (Robot SA style)", "",
@@ -88,12 +104,12 @@ void CommandCatalog::initializeStandardCatalog() {
                    "Créer une barre de treillis ou diagonale", "",
                    ":/icons/structure/truss.svg", CommandCategory::Create});
   registerCommand({"cmd.create.slab", "Dalle",
-                   "Créer un panneau de dalle ou plancher", "S",
+                   "Créer un panneau de dalle ou plancher", "L",
                    ":/icons/structure/slab.svg", CommandCategory::Create});
   registerCommand({"cmd.create.wall", "Voile", "Créer un voile ou mur porteur",
                    "W", ":/icons/structure/wall.svg", CommandCategory::Create});
   registerCommand({"cmd.create.foundation", "Fondation",
-                   "Créer une semelle isolée ou filante", "F",
+                   "Créer une semelle isolée ou filante", "",
                    ":/icons/structure/footing.svg", CommandCategory::Create});
   registerCommand({"cmd.create.presets", "Structures Types",
                    "Générer un portique, treillis ou tour type", "",
@@ -109,7 +125,7 @@ void CommandCatalog::initializeStandardCatalog() {
                    ":/icons/structure/struct_copy.svg",
                    CommandCategory::Modify});
   registerCommand({"cmd.modify.rotate", "Rotation 3D",
-                   "Faire pivoter les éléments autour d'un axe", "R",
+                   "Faire pivoter les éléments autour d'un axe", "Ctrl+R",
                    ":/icons/edit/rotate.svg", CommandCategory::Modify});
   registerCommand({"cmd.modify.move_origin", "Déplacer vers Origine",
                    "Repositionner la sélection sur l'origine (0,0,0)", "",
@@ -118,13 +134,13 @@ void CommandCatalog::initializeStandardCatalog() {
 
   // --- 5. SELECTION ---
   registerCommand({"cmd.select.mode", "Sélectionner",
-                   "Activer le mode sélection souris standard", "Echap",
+                   "Activer le mode sélection souris standard", "Esc",
                    ":/icons/edit/select.svg", CommandCategory::Selection});
   registerCommand({"cmd.select.all", "Tout Sélectionner",
                    "Sélectionner tous les éléments du modèle", "Ctrl+A",
                    ":/icons/edit/select_all.svg", CommandCategory::Selection});
   registerCommand({"cmd.select.clear", "Effacer Sélection",
-                   "Désélectionner tous les éléments", "Echap", "",
+                   "Désélectionner tous les éléments", "", "",
                    CommandCategory::Selection});
 
   // --- 6. PROPERTIES ---
@@ -152,11 +168,11 @@ void CommandCatalog::initializeStandardCatalog() {
 
   // --- 8. STRUCTURE (Grilles & Niveaux) ---
   registerCommand({"cmd.struct.grid_dialog", "Gestionnaire de Grilles",
-                   "Créer et modifier les grilles 3D", "G",
+                   "Créer et modifier les grilles 3D", "",
                    ":/icons/grid/grid_manager.svg",
                    CommandCategory::Structure});
   registerCommand({"cmd.struct.levels", "Gestionnaire d'Étages",
-                   "Définir les étages et niveaux de référence", "L",
+                   "Définir les étages et niveaux de référence", "Ctrl+L",
                    ":/icons/structure/levels.svg", CommandCategory::Structure});
 
   // --- 9. LOADS ---
@@ -265,7 +281,7 @@ void CommandCatalog::initializeStandardCatalog() {
                    "Activer/désactiver l'accrochage magnétique intelligent",
                    "F3", ":/icons/view/snap.svg", CommandCategory::View});
   registerCommand({"cmd.display.grid", "Afficher Grille",
-                   "Afficher ou masquer la grille 3D", "F7",
+                   "Afficher ou masquer la grille 3D", "G",
                    ":/icons/view/grid.svg", CommandCategory::Display});
   registerCommand({"cmd.display.rulers", "Afficher Règles",
                    "Afficher ou masquer les règles de projection", "",
@@ -281,6 +297,44 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.help.about", "À Propos de TSA",
                    "Afficher les informations de version et crédits", "",
                    ":/icons/common/about.svg", CommandCategory::Settings});
+
+  // --- 14. ISOLATION 3D ---
+  registerCommand({"cmd.isolate.selection", "Isoler la Sélection",
+                   "Masquer tous les objets sauf la sélection", "I", "",
+                   CommandCategory::View});
+  registerCommand({"cmd.isolate.same_type", "Isoler par Type",
+                   "Isoler les objets du même type que la sélection", "Alt+I",
+                   "", CommandCategory::View});
+  registerCommand({"cmd.isolate.workplane", "Isoler sur Plan de Travail",
+                   "Isoler les objets situés sur le plan de travail actif",
+                   "Alt+W", ":/icons/view/view_top.svg",
+                   CommandCategory::View});
+  registerCommand({"cmd.isolate.section", "Isoler par Coupe",
+                   "Isoler les objets d'une tranche entre deux plans parallèles",
+                   "Ctrl+I", ":/icons/view/section_cut.svg",
+                   CommandCategory::View});
+  registerCommand({"cmd.isolate.projection", "Isoler par Projection",
+                   "Isoler les objets dont la projection tombe dans une fenêtre",
+                   "Ctrl+Shift+I", ":/icons/view/zoom_window.svg",
+                   CommandCategory::View});
+  registerCommand({"cmd.isolate.volume", "Isoler par Volume",
+                   "Isoler les objets contenus dans une boîte 3D", "", "",
+                   CommandCategory::View});
+  registerCommand({"cmd.isolate.hide", "Masquer la Sélection",
+                   "Masquer les éléments sélectionnés", "H", "",
+                   CommandCategory::View});
+  registerCommand({"cmd.isolate.ghost", "Estomper les Autres",
+                   "Basculer entre masquer et estomper les objets non isolés",
+                   "Shift+I", "", CommandCategory::View});
+  registerCommand({"cmd.isolate.invert", "Inverser l'Isolation",
+                   "Échanger objets visibles et objets masqués", "", "",
+                   CommandCategory::View});
+  registerCommand({"cmd.isolate.undo", "Isolation Précédente",
+                   "Annuler la dernière isolation", "Ctrl+H", "",
+                   CommandCategory::View});
+  registerCommand({"cmd.isolate.show_all", "Tout Afficher",
+                   "Mettre fin à l'isolation et réafficher tous les objets",
+                   "Alt+H", "", CommandCategory::View});
 }
 
 } // namespace TSA::Commands
