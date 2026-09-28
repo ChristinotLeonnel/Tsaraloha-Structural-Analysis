@@ -7,6 +7,7 @@ class OccView;
 class QLabel;
 class QPushButton;
 class QComboBox;
+class QCheckBox;
 
 namespace TSA::UI {
 
@@ -65,6 +66,7 @@ private:
   QComboBox *m_levelCombo = nullptr;
   QPushButton *m_btnLevelUp = nullptr;
   QPushButton *m_btnLevelDown = nullptr;
+  QCheckBox *m_chkSyncWorkPlane = nullptr;
 
   bool m_rulersVisible = true;
   bool m_isDarkMode = false;

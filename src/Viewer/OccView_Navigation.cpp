@@ -1277,14 +1277,26 @@ void OccView::rebuildGrid()
 void OccView::setActiveLevelElevation(double z)
 {
     m_activeLevelZ = z;
-    m_workPlane.setOffset(z);
-    TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
+
+    // Règle : le niveau ne déplace le WorkPlane que si la synchronisation est active ET que le
+    // plan est horizontal. Un plan vertical/incliné/personnalisé reste indépendant du niveau.
+    // (Avant : setOffset() reconstruisait le repère en XY/XZ/YZ standard, ce qui détruisait
+    // l'orientation d'un plan personnalisé et déplaçait un plan XZ/YZ sur le mauvais axe.)
+    const bool moved = m_syncWorkPlaneWithLevel && m_workPlane.moveToElevation(z);
+
     const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
     m_gridRenderer.setActiveLevelElevation(z, grid, m_context);
-    emit workPlaneChanged(m_workPlane);
+
+    if (moved)
+    {
+        TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
+        applyWorkPlaneTransformation(); // simple transformation locale des objets AIS du plan, sans reconstruction
+        emit workPlaneChanged(m_workPlane);
+    }
     if (!m_view.IsNull())
     {
-        m_view->Redraw();
+        if (!moved || m_workPlaneShape.IsNull())
+            m_view->Redraw();
         emit viewCameraChanged();
     }
 }

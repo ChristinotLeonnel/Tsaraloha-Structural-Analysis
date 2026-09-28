@@ -43,3 +43,21 @@ Support de coordonnées cylindriques (complément aux grilles cartésiennes X/Y/
 Toute position dans TSA (nœud, niveau, grille) doit se référer à ce système central
 (`CoordinateSystem`/`LevelManager`/`Point3D`) plutôt qu'à des coordonnées ad-hoc stockées
 localement dans un widget UI ou un builder de géométrie.
+
+## Synchronisation Niveau ↔ WorkPlane
+
+Un niveau (`Level`) est une référence structurelle ; un `WorkPlane` est un plan de travail
+géométrique. Ils ne sont **pas** fusionnés. La relation est contrôlée par l'option
+`OccView::syncWorkPlaneWithLevel` (case « Synchroniser le WorkPlane » du sélecteur de niveau).
+
+Règle déterministe (`WorkPlane::moveToElevation`) appliquée quand un niveau est sélectionné :
+
+1. Option décochée : le niveau devient le niveau actif (surbrillance de grille) ; le WorkPlane n'est pas modifié.
+2. Option cochée et WorkPlane **horizontal** (normale ∥ Z, y compris axes X/Y tournés) : translation
+   le long de Z jusqu'à l'altitude du niveau. Origine X/Y et axes locaux conservés.
+3. Option cochée et WorkPlane vertical, incliné, 3 points ou arbitraire : **aucune modification**
+   (le plan reste indépendant du niveau).
+
+Seule la transformation du WorkPlane change : jamais les coordonnées globales du modèle structural.
+La mise à jour visuelle se fait par `applyWorkPlaneTransformation()` (transformation locale des objets AIS
+existants, sans reconstruction de la grille ni du modèle).

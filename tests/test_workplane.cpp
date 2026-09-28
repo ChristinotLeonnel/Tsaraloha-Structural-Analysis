@@ -755,5 +755,90 @@ bool runSuite_WorkPlane(int& passed)
         passed++;
     }
 
+    // TEST 53: Synchronisation Niveau -> WorkPlane (règle déterministe, modèle inchangé)
+    // =========================================================================
+    {
+        std::cout << "\n[TEST 53] Level -> WorkPlane synchronization rule..." << std::endl;
+        using TSA::Coordinate::WorkPlane;
+
+        TSA::Coordinate::LevelManager levels;
+        levels.addLevel("Niveau 0", 0.0);
+        levels.addLevel("Niveau 1", 3.0);
+        levels.addLevel("Niveau 2", 6.0);
+
+        TSA::Model::Model model;
+        const int n1 = model.addNode(1.0, 2.0, 0.0);
+        const int n2 = model.addNode(4.0, 2.0, 3.0);
+        auto modelIntact = [&]() {
+            const auto* a = model.getNode(n1);
+            const auto* b = model.getNode(n2);
+            return a && b && approxEqual(a->x(), 1.0) && approxEqual(a->y(), 2.0) && approxEqual(a->z(), 0.0) &&
+                   approxEqual(b->x(), 4.0) && approxEqual(b->y(), 2.0) && approxEqual(b->z(), 3.0);
+        };
+
+        // 53.1 Plan horizontal : suit chaque niveau
+        {
+            WorkPlane wp = WorkPlane::xy(0.0);
+            TEST_CHECK(wp.isHorizontal(), "Subtest 53.1: XY plane is horizontal");
+            for (const auto& lvl : levels.levels())
+            {
+                wp.moveToElevation(lvl.elevation);
+                TEST_CHECK(approxEqual(wp.origin().Z(), lvl.elevation), "Subtest 53.1: WorkPlane Z follows level");
+                TEST_CHECK(approxEqual(wp.offset(), lvl.elevation), "Subtest 53.1: offset stays consistent");
+            }
+            TEST_CHECK(!wp.moveToElevation(6.0), "Subtest 53.1: no-op when already at elevation");
+            TEST_CHECK(modelIntact(), "Subtest 53.1: structural model unchanged");
+        }
+
+        // 53.2 Plan horizontal à axes tournés : orientation et origine X/Y conservées
+        {
+            const double a = 30.0 * 3.14159265358979323846 / 180.0;
+            WorkPlane wp = WorkPlane::fromOriginAndAxes(gp_Pnt(2.0, 5.0, 1.0),
+                                                        gp_Dir(std::cos(a), std::sin(a), 0.0),
+                                                        gp_Dir(-std::sin(a), std::cos(a), 0.0));
+            TEST_CHECK(wp.isHorizontal(), "Subtest 53.2: rotated-axes plane is horizontal");
+            TEST_CHECK(wp.moveToElevation(4.0), "Subtest 53.2: rotated horizontal plane moved");
+            TEST_CHECK(approxEqual(wp.origin().X(), 2.0) && approxEqual(wp.origin().Y(), 5.0) &&
+                       approxEqual(wp.origin().Z(), 4.0), "Subtest 53.2: XY origin kept, Z = 4");
+            TEST_CHECK(approxEqual(wp.axisX().X(), std::cos(a)) && approxEqual(wp.axisX().Y(), std::sin(a)),
+                       "Subtest 53.2: local X axis orientation kept");
+
+            // Local <-> global aller-retour
+            gp_Pnt g = wp.toGlobal(1.5, -0.5, 0.0);
+            gp_Pnt l = wp.toLocal(g);
+            TEST_CHECK(approxEqual(l.X(), 1.5) && approxEqual(l.Y(), -0.5) && approxEqual(l.Z(), 0.0),
+                       "Subtest 53.2: local -> global -> local round trip");
+            TEST_CHECK(approxEqual(g.Z(), 4.0), "Subtest 53.2: in-plane point lies at level Z");
+        }
+
+        // 53.3 Plans indépendants : jamais modifiés par un niveau
+        {
+            WorkPlane tilted = WorkPlane::fromThreePoints(gp_Pnt(0, 0, 0), gp_Pnt(1, 0, 0), gp_Pnt(0, 1, 1));
+            const gp_Pnt o0 = tilted.origin();
+            const gp_Dir n0 = tilted.normal();
+            TEST_CHECK(!tilted.isHorizontal(), "Subtest 53.3: tilted plane is not horizontal");
+            TEST_CHECK(!tilted.moveToElevation(6.0), "Subtest 53.3: tilted plane not moved by level");
+            TEST_CHECK(tilted.origin().Distance(o0) < 1e-9 && tilted.normal().IsEqual(n0, 1e-9),
+                       "Subtest 53.3: tilted plane unchanged");
+
+            WorkPlane xz = WorkPlane::xz(2.0);
+            TEST_CHECK(!xz.moveToElevation(6.0), "Subtest 53.3: XZ plane not moved by level");
+            TEST_CHECK(approxEqual(xz.offset(), 2.0) && approxEqual(xz.origin().Y(), 2.0),
+                       "Subtest 53.3: XZ plane keeps Y offset");
+            TEST_CHECK(modelIntact(), "Subtest 53.3: structural model unchanged");
+        }
+
+        // 53.4 Translation libre d'un plan indépendant : aucun élément structurel modifié
+        {
+            WorkPlane wp = WorkPlane::xy(3.0);
+            wp.translate(gp_Vec(0.0, 0.0, 0.5));
+            TEST_CHECK(approxEqual(wp.origin().Z(), 3.5), "Subtest 53.4: WorkPlane translated 3.00 -> 3.50");
+            TEST_CHECK(modelIntact(), "Subtest 53.4: structural model unchanged by WorkPlane translation");
+        }
+
+        std::cout << "[PASS] Test 53: Level -> WorkPlane synchronization rule Passed Successfully!" << std::endl;
+        passed++;
+    }
+
     return true;
 }

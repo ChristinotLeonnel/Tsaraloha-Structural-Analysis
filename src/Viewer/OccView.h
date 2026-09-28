@@ -229,6 +229,10 @@ public:
     void setActiveLevelElevation(double z);
     double activeLevelElevation() const { return m_activeLevelZ; }
 
+    /// Synchronisation explicite Niveau -> WorkPlane (voir WorkPlane::moveToElevation pour la règle).
+    void setSyncWorkPlaneWithLevel(bool enabled) { m_syncWorkPlaneWithLevel = enabled; }
+    bool syncWorkPlaneWithLevel() const { return m_syncWorkPlaneWithLevel; }
+
     using InteractionMode = TSA::Interaction::InteractionMode;
 
     TSA::Interaction::InteractionManager* interactionManager() { return m_interactionManager.get(); }
@@ -439,6 +443,7 @@ private:
     TSA::Viewer::ViewManager m_viewManager;
     TSA::Grid::SnapManager m_snapManager;
     bool m_workPlaneVisible = true;
+    bool m_syncWorkPlaneWithLevel = true; ///< Niveau sélectionné -> déplace le WorkPlane horizontal actif
     Handle(AIS_Manipulator) m_manipulator;
     bool m_isManipulatingWorkPlane = false;
     TSA::Coordinate::WorkPlane m_manipulatorStartWp;

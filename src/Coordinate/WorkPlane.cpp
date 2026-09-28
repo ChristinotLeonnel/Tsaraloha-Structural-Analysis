@@ -175,6 +175,22 @@ void WorkPlane::translate(const gp_Vec& vec)
     }
 }
 
+bool WorkPlane::isHorizontal(double tolerance) const noexcept
+{
+    return std::abs(std::abs(m_localCS.normal().Z()) - 1.0) <= tolerance;
+}
+
+bool WorkPlane::moveToElevation(double z)
+{
+    if (!isHorizontal())
+        return false;
+    const double dz = z - origin().Z();
+    if (std::abs(dz) < 1e-9)
+        return false;
+    translate(gp_Vec(0.0, 0.0, dz));
+    return true;
+}
+
 void WorkPlane::rotate(const gp_Pnt& center, const gp_Dir& axis, double angleRad)
 {
     gp_Trsf rotTrsf;

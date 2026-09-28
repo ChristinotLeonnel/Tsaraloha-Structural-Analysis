@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QFrame>
 
 namespace TSA::UI
@@ -61,6 +62,21 @@ void ViewportContainer::setupUi()
     m_btnLevelDown = new QPushButton(tr("▼"), m_topBar);
     m_btnLevelDown->setToolTip(tr("Descendre à l'étage inférieur"));
     topLayout->addWidget(m_btnLevelDown);
+
+    topLayout->addSpacing(8);
+
+    m_chkSyncWorkPlane = new QCheckBox(tr("Synchroniser le WorkPlane"), m_topBar);
+    m_chkSyncWorkPlane->setToolTip(tr("Le niveau sélectionné déplace le WorkPlane horizontal actif (Z du niveau). "
+                                      "Les plans verticaux, inclinés ou personnalisés ne sont jamais modifiés."));
+    m_chkSyncWorkPlane->setChecked(m_occView ? m_occView->syncWorkPlaneWithLevel() : true);
+    topLayout->addWidget(m_chkSyncWorkPlane);
+    connect(m_chkSyncWorkPlane, &QCheckBox::toggled, this, [this](bool on) {
+        if (!m_occView)
+            return;
+        m_occView->setSyncWorkPlaneWithLevel(on);
+        if (on)
+            m_occView->setActiveLevelElevation(activeLevelElevation()); // ré-aligne immédiatement
+    });
 
     topLayout->addSpacing(8);
 

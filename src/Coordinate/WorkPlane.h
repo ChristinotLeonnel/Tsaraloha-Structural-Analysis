@@ -122,6 +122,18 @@ public:
 
     // Transformations 3D directes (pour Gizmo et manipulations temps réel)
     void translate(const gp_Vec& vec);
+
+    /// Vrai si la normale est parallèle à Z global (plan horizontal, y compris repère X/Y tourné).
+    bool isHorizontal(double tolerance = 1e-9) const noexcept;
+
+    /**
+     * @brief Règle de synchronisation Niveau -> WorkPlane (déterministe).
+     * Si le plan est horizontal : translation le long de Z global jusqu'à l'altitude demandée ;
+     * l'origine X/Y et les axes locaux sont conservés. Sinon (vertical, incliné, arbitraire) :
+     * aucune modification. Ne touche jamais au modèle structural.
+     * @return true si le plan a été déplacé.
+     */
+    bool moveToElevation(double z);
     void rotate(const gp_Pnt& center, const gp_Dir& axis, double angleRad);
     void rotate(const gp_Ax1& axis, double angleRad) { rotate(axis.Location(), axis.Direction(), angleRad); }
     void transform(const gp_Trsf& trsf);

@@ -1010,8 +1010,8 @@ void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
     }
 
     // 3. Synchronisation avec le sélecteur de niveau du viewport si plan horizontal
-    if (m_viewportContainer && (wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXY ||
-                               wp.type() == TSA::Coordinate::WorkPlaneType::ElevationZ))
+    if (m_viewportContainer && m_occView && m_occView->syncWorkPlaneWithLevel() &&
+        wp.isHorizontal())
     {
         m_viewportContainer->setActiveLevelElevation(wp.offset());
     }
