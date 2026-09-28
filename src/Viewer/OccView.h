@@ -220,6 +220,9 @@ public:
     double clipPosition() const { return m_clipPosition; }
     int clipAxisIndex() const { return m_clipAxisIndex; }
     bool isClipFlipped() const { return m_isClipFlipped; }
+    // Affichage du plan de section (rectangle visuel), indépendant de l'activation de la coupe
+    void setSectionPlaneVisible(bool visible);
+    bool isSectionPlaneVisible() const { return m_sectionPlaneVisible; }
 
     // Détection 3D intelligente sous le curseur
     bool findNearest3DPoint(int px, int py, double& outX, double& outY, double& outZ,
@@ -371,6 +374,7 @@ private:
     void buildTransformPreviewGhosts(InteractionMode mode);
     int getOrCreateNode(double x, double y, double z, int existingNodeId);
     void updateClipPlaneEquation();
+    void updateSectionPlaneVisual();
 
 private:
     TSA::Model::Model* m_model = nullptr;
@@ -428,6 +432,8 @@ private:
     double m_clipPosition = 0.0;
     bool m_isClipFlipped = false;
     Handle(Graphic3d_ClipPlane) m_clipPlane;
+    Handle(AIS_Shape) m_sectionPlaneShape;   ///< Rectangle visuel du plan de section (non sélectionnable)
+    bool m_sectionPlaneVisible = false;
 
     Handle(AIS_ViewCube) m_viewCube;
 

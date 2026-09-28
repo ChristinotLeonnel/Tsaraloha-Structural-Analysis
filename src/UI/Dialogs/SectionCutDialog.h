@@ -22,6 +22,7 @@ public:
     int selectedAxis() const; // 0=XY (Z), 1=XZ (Y), 2=YZ (X)
     double cutPosition() const;
     bool isFlipped() const;
+    bool isSectionPlaneShown() const;
 
     void setCutEnabled(bool enabled);
     void setSelectedAxis(int axis);
@@ -31,6 +32,7 @@ public:
 
 signals:
     void clippingChanged(bool enabled, int axisIndex, double position, bool flip);
+    void sectionPlaneDisplayChanged(bool visible);
 
 public slots:
     void onActiveLevelCutRequested(double zLevel);
@@ -53,6 +55,7 @@ private:
     QSlider*        m_posSlider = nullptr;
     QDoubleSpinBox* m_posSpin = nullptr;
     QCheckBox*      m_flipCheck = nullptr;
+    QCheckBox*      m_showPlaneCheck = nullptr;
     QPushButton*    m_btnCutAtLevel = nullptr;
 
     QCheckBox*      m_chkLiveSync = nullptr;

@@ -19,6 +19,9 @@
 #include <V3d_View.hxx>
 #include <Graphic3d_Camera.hxx>
 #include <Graphic3d_ClipPlane.hxx>
+#include <Prs3d_Drawer.hxx>
+#include <Prs3d_LineAspect.hxx>
+#include <Aspect_TypeOfLine.hxx>
 #include <Bnd_Box.hxx>
 #include <BRep_Builder.hxx>
 #include <TopoDS.hxx>
@@ -418,9 +421,6 @@ void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
     bool needFullRebuild = (m_workPlaneShape.IsNull() ||
                             std::abs(m_workPlane.width() - wp.width()) > 1e-4 ||
                             std::abs(m_workPlane.height() - wp.height()) > 1e-4 ||
-                            m_workPlane.isGridVisible() != wp.isGridVisible() ||
-                            std::abs(m_workPlane.gridSpacingX() - wp.gridSpacingX()) > 1e-4 ||
-                            std::abs(m_workPlane.gridSpacingY() - wp.gridSpacingY()) > 1e-4 ||
                             m_workPlane.isVisible() != wp.isVisible());
 
     m_workPlane = wp;
@@ -917,40 +917,23 @@ void OccView::updateWorkPlaneVisual()
         BRepBuilderAPI_MakeFace mkFace(poly.Wire());
         if (mkFace.IsDone())
         {
+            // Rectangle plein (plus de quadrillage UV) : face teintée + contour net.
             m_workPlaneShape = new AIS_Shape(mkFace.Face());
             m_workPlaneShape->SetColor(Quantity_NOC_STEELBLUE);
-            m_workPlaneShape->SetTransparency(0.88);
+            m_workPlaneShape->SetTransparency(0.55);
+            m_workPlaneShape->Attributes()->SetFaceBoundaryDraw(true);
+            m_workPlaneShape->Attributes()->SetFaceBoundaryAspect(
+                new Prs3d_LineAspect(Quantity_NOC_STEELBLUE, Aspect_TOL_SOLID, 1.5));
             m_workPlaneShape->SetDisplayMode(AIS_Shaded);
             m_context->Display(m_workPlaneShape, false);
         }
     }
 
-    // 4. Lignes de grille UV locale et trièdre d'orientation
+    // 4. Trièdre d'orientation (le quadrillage UV n'est plus dessiné ; le snapping
+    //    sur la grille du WorkPlane reste géré par SnapManager, indépendamment du rendu)
     BRep_Builder b;
     TopoDS_Compound compLines;
     b.MakeCompound(compLines);
-
-    if (m_workPlane.isGridVisible())
-    {
-        double stepX = (m_workPlane.gridSpacingX() > 0.1) ? m_workPlane.gridSpacingX() : 2.0;
-        double stepY = (m_workPlane.gridSpacingY() > 0.1) ? m_workPlane.gridSpacingY() : 2.0;
-        int nStepsX = static_cast<int>(hx / stepX);
-        int nStepsY = static_cast<int>(hy / stepY);
-        for (int i = -nStepsX; i <= nStepsX; ++i)
-        {
-            double u = i * stepX;
-            gp_Pnt pA(u, -hy, 0.0);
-            gp_Pnt pB(u,  hy, 0.0);
-            b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
-        }
-        for (int j = -nStepsY; j <= nStepsY; ++j)
-        {
-            double v = j * stepY;
-            gp_Pnt pA(-hx, v, 0.0);
-            gp_Pnt pB( hx, v, 0.0);
-            b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
-        }
-    }
 
     // Axes U, V, N au centre (0,0,0)
     double axisLen = std::max(2.0, std::min(hx, hy) * 0.35);
@@ -1138,9 +1121,101 @@ void OccView::setClipPlane(int axisIndex, double position, bool flip)
     if (m_isClippingEnabled && !m_view.IsNull())
     {
         updateClipPlaneEquation();
-        m_view->Redraw();
     }
+    // Ne met à jour que la transformation du rectangle (pas de reconstruction) et redessine.
+    updateSectionPlaneVisual();
+    if (!m_view.IsNull())
+        m_view->Redraw();
     emit clippingChanged(m_isClippingEnabled, m_clipAxisIndex, m_clipPosition, m_isClipFlipped);
+}
+
+void OccView::setSectionPlaneVisible(bool visible)
+{
+    if (m_sectionPlaneVisible == visible)
+        return;
+    m_sectionPlaneVisible = visible;
+    updateSectionPlaneVisual();
+    if (!m_view.IsNull())
+        m_view->Redraw();
+}
+
+void OccView::updateSectionPlaneVisual()
+{
+    if (m_context.IsNull())
+        return;
+
+    if (!m_sectionPlaneVisible)
+    {
+        if (!m_sectionPlaneShape.IsNull())
+        {
+            if (m_context->IsDisplayed(m_sectionPlaneShape))
+                m_context->Remove(m_sectionPlaneShape, false);
+            m_sectionPlaneShape.Nullify();
+        }
+        return;
+    }
+
+    // Centre et demi-taille déduits du modèle (repli : 10 m autour de l'origine)
+    double cx = 0.0, cy = 0.0, cz = 0.0, half = 10.0;
+    if (m_model && !m_model->nodes().empty())
+    {
+        double minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, minZ = 1e9, maxZ = -1e9;
+        for (const auto& [nid, n] : m_model->nodes())
+        {
+            minX = std::min(minX, n.x()); maxX = std::max(maxX, n.x());
+            minY = std::min(minY, n.y()); maxY = std::max(maxY, n.y());
+            minZ = std::min(minZ, n.z()); maxZ = std::max(maxZ, n.z());
+        }
+        cx = 0.5 * (minX + maxX);
+        cy = 0.5 * (minY + maxY);
+        cz = 0.5 * (minZ + maxZ);
+        half = std::max(5.0, 0.6 * std::max({ maxX - minX, maxY - minY, maxZ - minZ }));
+    }
+
+    // Création unique : rectangle centré à l'origine local, dans son plan XY local.
+    // Ensuite seule la transformation locale change (position / axe), sans rebuild.
+    if (m_sectionPlaneShape.IsNull())
+    {
+        BRepBuilderAPI_MakePolygon poly(gp_Pnt(-half, -half, 0.0), gp_Pnt(half, -half, 0.0),
+                                        gp_Pnt(half, half, 0.0), gp_Pnt(-half, half, 0.0), true);
+        if (!poly.IsDone())
+            return;
+        BRepBuilderAPI_MakeFace mkFace(poly.Wire());
+        if (!mkFace.IsDone())
+            return;
+
+        m_sectionPlaneShape = new AIS_Shape(mkFace.Face());
+        m_sectionPlaneShape->SetColor(Quantity_Color(0.85, 0.65, 0.15, Quantity_TOC_RGB));
+        m_sectionPlaneShape->SetTransparency(0.6);
+        m_sectionPlaneShape->Attributes()->SetFaceBoundaryDraw(true);
+        m_sectionPlaneShape->Attributes()->SetFaceBoundaryAspect(
+            new Prs3d_LineAspect(Quantity_Color(0.85, 0.65, 0.15, Quantity_TOC_RGB), Aspect_TOL_SOLID, 2.0));
+        // Mode de sélection -1 : purement visuel, ne gêne ni la sélection ni le snapping.
+        m_context->Display(m_sectionPlaneShape, AIS_Shaded, -1, false);
+    }
+    else if (!m_context->IsDisplayed(m_sectionPlaneShape))
+    {
+        m_context->Display(m_sectionPlaneShape, AIS_Shaded, -1, false);
+    }
+
+    // Décalage de 1 mm du côté conservé par la coupe : évite que le rectangle, situé
+    // exactement sur le plan de coupe, soit lui-même écrêté (z-fighting / clipping).
+    // Sens : normale du plan de coupe, identique à updateClipPlaneEquation().
+    constexpr double kSectionPlaneOffset = 0.001;
+    const double sgn = m_isClipFlipped ? -1.0 : 1.0;
+    const double d = m_clipPosition + sgn * kSectionPlaneOffset;
+
+    gp_Ax3 planeCS;
+    if (m_clipAxisIndex == 1)       // XZ : coupe selon Y
+        planeCS = gp_Ax3(gp_Pnt(cx, d, cz), gp_Dir(0, 1, 0), gp_Dir(1, 0, 0));
+    else if (m_clipAxisIndex == 2)  // YZ : coupe selon X
+        planeCS = gp_Ax3(gp_Pnt(d, cy, cz), gp_Dir(1, 0, 0), gp_Dir(0, 1, 0));
+    else                            // XY : coupe selon Z
+        planeCS = gp_Ax3(gp_Pnt(cx, cy, d), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0));
+
+    gp_Trsf trsf;
+    trsf.SetDisplacement(gp_Ax3(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0)), planeCS);
+    m_sectionPlaneShape->SetLocalTransformation(trsf);
 }
 
 void OccView::updateClipPlaneEquation()

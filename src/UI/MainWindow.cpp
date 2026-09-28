@@ -158,6 +158,10 @@ MainWindow::MainWindow(QWidget* parent)
             m_occView->setClipPlane(axis, pos, flip);
         }
     });
+    connect(m_sectionCutDialog, &TSA::UI::SectionCutDialog::sectionPlaneDisplayChanged, this, [this](bool visible) {
+        if (m_occView)
+            m_occView->setSectionPlaneVisible(visible);
+    });
 
     if (m_statusInfo)
     {

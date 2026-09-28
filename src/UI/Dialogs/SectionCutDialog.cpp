@@ -66,6 +66,11 @@ void SectionCutDialog::setupUi()
     m_flipCheck = new QCheckBox(tr("Inverser le sens de coupe (Vue opposée)"), this);
     groupLayout->addWidget(m_flipCheck);
 
+    // 4b. Afficher le plan de section (rectangle visuel dans la vue 3D)
+    m_showPlaneCheck = new QCheckBox(tr("Afficher le plan de section"), this);
+    m_showPlaneCheck->setToolTip(tr("Affiche un rectangle représentant la position du plan de coupe, même si la coupe est désactivée."));
+    groupLayout->addWidget(m_showPlaneCheck);
+
     // 5. Bouton coupe rapide à l'étage actif
     m_btnCutAtLevel = new QPushButton(tr("Couper à la hauteur de l'étage sélectionné"), this);
     m_btnCutAtLevel->setStyleSheet("padding: 4px 8px; font-weight: 500;");
@@ -99,6 +104,8 @@ void SectionCutDialog::setupUi()
     connect(m_posSlider, &QSlider::valueChanged, this, &SectionCutDialog::onSliderValueChanged);
     connect(m_posSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &SectionCutDialog::onSpinBoxValueChanged);
     connect(m_flipCheck, &QCheckBox::toggled, this, &SectionCutDialog::onFlipToggled);
+    // Affichage pur : toujours immédiat, indépendant de la « synchronisation en direct »
+    connect(m_showPlaneCheck, &QCheckBox::toggled, this, &SectionCutDialog::sectionPlaneDisplayChanged);
 
     connect(m_btnCutAtLevel, &QPushButton::clicked, this, [this]() {
         // Active le plan XY et coupe à la position courante
@@ -131,6 +138,11 @@ double SectionCutDialog::cutPosition() const
 bool SectionCutDialog::isFlipped() const
 {
     return m_flipCheck->isChecked();
+}
+
+bool SectionCutDialog::isSectionPlaneShown() const
+{
+    return m_showPlaneCheck->isChecked();
 }
 
 void SectionCutDialog::setCutEnabled(bool enabled)
