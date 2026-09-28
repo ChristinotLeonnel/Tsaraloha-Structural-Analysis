@@ -1,6 +1,8 @@
 #include "test_common.h"
 #include <QIcon>
 #include <QPixmap>
+#include <BRepBuilderAPI_Transform.hxx>
+#include "Geometry/BeamGeometry.h"
 
 bool runSuite_Viewer(int& passed)
 {
@@ -654,6 +656,62 @@ bool runSuite_Viewer(int& passed)
         std::cout << "[PASS] Test 36: Brand Identity and Multi-Resolution Icon Resources Validated Successfully!" << std::endl;
         passed++;
     }
+
+    // TEST PERF-GHOST: l'aperçu fantôme (transformation locale d'un solide construit une fois)
+    // doit être géométriquement équivalent au solide reconstruit aux positions transformées.
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST PERF-GHOST: Transform preview ghost equivalence ---" << std::endl;
+
+        auto sameBox = [](const TopoDS_Shape& a, const TopoDS_Shape& b) -> bool {
+            Bnd_Box ba, bb;
+            BRepBndLib::Add(a, ba);
+            BRepBndLib::Add(b, bb);
+            double a0[6], b0[6];
+            ba.Get(a0[0], a0[1], a0[2], a0[3], a0[4], a0[5]);
+            bb.Get(b0[0], b0[1], b0[2], b0[3], b0[4], b0[5]);
+            for (int i = 0; i < 6; ++i)
+                if (std::abs(a0[i] - b0[i]) > 1e-5) return false;
+            return true;
+        };
+
+        const auto sec = TSA::Model::Section::rectangular(0.30, 0.50);
+
+        // Translation
+        {
+            TSA::Model::Node a(0, 0.0, 0.0, 0.0), b(1, 4.0, 1.0, 0.0);
+            TSA::Model::Node ta(0, 2.0, 3.0, 1.0), tb(1, 6.0, 4.0, 1.0);
+            TopoDS_Shape ghost = TSA::Geometry::BeamGeometry::createBeamShape(a, b, sec, 0.0, TSA::Model::BarEccentricity::None);
+            TopoDS_Shape rebuilt = TSA::Geometry::BeamGeometry::createBeamShape(ta, tb, sec, 0.0, TSA::Model::BarEccentricity::None);
+            gp_Trsf t;
+            t.SetTranslation(gp_Vec(2.0, 3.0, 1.0));
+            TopoDS_Shape moved = BRepBuilderAPI_Transform(ghost, t, true).Shape();
+            TEST_CHECK(sameBox(moved, rebuilt), "PERF-GHOST: translated ghost == rebuilt beam");
+        }
+
+        // Rotation autour de Z (barre non verticale)
+        {
+            const double ang = 30.0 * M_PI / 180.0;
+            const gp_Pnt c(1.0, 1.0, 0.0);
+            auto rot = [&](double x, double y, double z) {
+                double rx = x - c.X(), ry = y - c.Y();
+                return TSA::Model::Node(0, c.X() + rx * std::cos(ang) - ry * std::sin(ang),
+                                           c.Y() + rx * std::sin(ang) + ry * std::cos(ang), z);
+            };
+            TSA::Model::Node a(0, 0.0, 0.0, 0.0), b(1, 4.0, 1.0, 0.0);
+            TSA::Model::Node ra = rot(0.0, 0.0, 0.0), rb = rot(4.0, 1.0, 0.0);
+            TopoDS_Shape ghost = TSA::Geometry::BeamGeometry::createBeamShape(a, b, sec, 0.0, TSA::Model::BarEccentricity::None);
+            TopoDS_Shape rebuilt = TSA::Geometry::BeamGeometry::createBeamShape(ra, rb, sec, 0.0, TSA::Model::BarEccentricity::None);
+            gp_Trsf t;
+            t.SetRotation(gp_Ax1(c, gp_Dir(0, 0, 1)), ang);
+            TopoDS_Shape turned = BRepBuilderAPI_Transform(ghost, t, true).Shape();
+            TEST_CHECK(sameBox(turned, rebuilt), "PERF-GHOST: rotated ghost == rebuilt beam (non-vertical)");
+        }
+
+        std::cout << "[PASS] TEST PERF-GHOST" << std::endl;
+        passed++;
+    }
+
 
     return true;
 }

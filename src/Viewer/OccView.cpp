@@ -1133,8 +1133,12 @@ int OccView::getOrCreateNode(double x, double y, double z, int existingNodeId)
 
 void OccView::clearTransformPreview()
 {
+    m_previewGhostsBuilt = false;
     if (m_context.IsNull())
+    {
+        m_previewGhostShapes.clear();
         return;
+    }
 
     for (auto& ghost : m_previewGhostShapes)
     {
@@ -1146,149 +1150,106 @@ void OccView::clearTransformPreview()
     m_previewGhostShapes.clear();
 }
 
+void OccView::buildTransformPreviewGhosts(InteractionMode mode)
+{
+    // Les fantômes sont construits UNE SEULE FOIS à la position d'origine ;
+    // le déplacement/la rotation de l'aperçu est ensuite appliqué par une
+    // transformation locale (voir updateTransformPreview).
+    const bool isRotation = (mode == InteractionMode::Rotate3D);
+    const Quantity_Color barColor = isRotation ? Quantity_NOC_ORANGE : Quantity_NOC_CYAN;
+
+    auto addGhost = [&](const TopoDS_Shape& s, double transparency, const Quantity_Color& color)
+    {
+        if (s.IsNull())
+            return;
+        Handle(AIS_Shape) ghost = new AIS_Shape(s);
+        ghost->SetColor(color);
+        ghost->SetTransparency(transparency);
+        m_context->Display(ghost, false);
+        m_previewGhostShapes.push_back(ghost);
+        ++m_previewGhostBuildCount;
+    };
+
+    for (int bId : m_selectionManager->selectedBeams())
+    {
+        const auto* b = m_model->getBeam(bId);
+        if (!b) continue;
+        const auto* nA = m_model->getNode(b->startNodeId());
+        const auto* nB = m_model->getNode(b->endNodeId());
+        if (!nA || !nB) continue;
+        addGhost(TSA::Geometry::BeamGeometry::createBeamShape(*nA, *nB, b->section(), b->rotation(), b->eccentricity()),
+                 0.4, barColor);
+    }
+
+    for (int cId : m_selectionManager->selectedColumns())
+    {
+        const auto* col = m_model->getColumn(cId);
+        if (!col) continue;
+        const auto* nA = m_model->getNode(col->startNodeId());
+        const auto* nB = m_model->getNode(col->endNodeId());
+        if (!nA || !nB) continue;
+        addGhost(TSA::Geometry::BeamGeometry::createBeamShape(*nA, *nB, col->section(), col->rotation()),
+                 0.4, barColor);
+    }
+
+    // Nœuds isolés : uniquement pour Déplacer / Copier (comportement inchangé)
+    if (!isRotation)
+    {
+        for (int nId : m_selectionManager->selectedNodes())
+        {
+            const auto* node = m_model->getNode(nId);
+            if (!node) continue;
+            addGhost(TSA::Geometry::BeamGeometry::createNodeShape(*node, 0.10), 0.3, barColor);
+        }
+    }
+
+    m_previewGhostMode = mode;
+    m_previewGhostsBuilt = true;
+}
+
 void OccView::updateTransformPreview(const gp_Pnt& currentPnt)
 {
     if (!m_model || !m_selectionManager || m_context.IsNull())
         return;
 
-    clearTransformPreview();
+    const InteractionMode mode = interactionMode();
+    gp_Trsf trsf;
 
-    if (interactionMode() == InteractionMode::Move3D || interactionMode() == InteractionMode::Copy3D)
+    if (mode == InteractionMode::Move3D || mode == InteractionMode::Copy3D)
     {
-        if (!m_hasBasePoint) return;
+        if (!m_hasBasePoint) { clearTransformPreview(); return; }
         gp_Vec delta(m_basePoint3D, currentPnt);
-        if (delta.Magnitude() < 1e-4) return;
-
-        // Poutres sélectionnées
-        for (int bId : m_selectionManager->selectedBeams())
-        {
-            const auto* b = m_model->getBeam(bId);
-            if (!b) continue;
-            const auto* nA = m_model->getNode(b->startNodeId());
-            const auto* nB = m_model->getNode(b->endNodeId());
-            if (!nA || !nB) continue;
-
-            TSA::Model::Node tA(0, nA->x() + delta.X(), nA->y() + delta.Y(), nA->z() + delta.Z());
-            TSA::Model::Node tB(1, nB->x() + delta.X(), nB->y() + delta.Y(), nB->z() + delta.Z());
-            TopoDS_Shape s = TSA::Geometry::BeamGeometry::createBeamShape(tA, tB, b->section(), b->rotation(), b->eccentricity());
-            if (!s.IsNull())
-            {
-                Handle(AIS_Shape) ghost = new AIS_Shape(s);
-                ghost->SetColor(Quantity_NOC_CYAN);
-                ghost->SetTransparency(0.4);
-                m_context->Display(ghost, false);
-                m_previewGhostShapes.push_back(ghost);
-            }
-        }
-
-        // Poteaux sélectionnés
-        for (int cId : m_selectionManager->selectedColumns())
-        {
-            const auto* col = m_model->getColumn(cId);
-            if (!col) continue;
-            const auto* nA = m_model->getNode(col->startNodeId());
-            const auto* nB = m_model->getNode(col->endNodeId());
-            if (!nA || !nB) continue;
-
-            TSA::Model::Node tA(0, nA->x() + delta.X(), nA->y() + delta.Y(), nA->z() + delta.Z());
-            TSA::Model::Node tB(1, nB->x() + delta.X(), nB->y() + delta.Y(), nB->z() + delta.Z());
-            TopoDS_Shape s = TSA::Geometry::BeamGeometry::createBeamShape(tA, tB, col->section(), col->rotation());
-            if (!s.IsNull())
-            {
-                Handle(AIS_Shape) ghost = new AIS_Shape(s);
-                ghost->SetColor(Quantity_NOC_CYAN);
-                ghost->SetTransparency(0.4);
-                m_context->Display(ghost, false);
-                m_previewGhostShapes.push_back(ghost);
-            }
-        }
-
-        // Nœuds isolés sélectionnés
-        for (int nId : m_selectionManager->selectedNodes())
-        {
-            const auto* node = m_model->getNode(nId);
-            if (!node) continue;
-            TSA::Model::Node tN(0, node->x() + delta.X(), node->y() + delta.Y(), node->z() + delta.Z());
-            TopoDS_Shape s = TSA::Geometry::BeamGeometry::createNodeShape(tN, 0.10);
-            if (!s.IsNull())
-            {
-                Handle(AIS_Shape) ghost = new AIS_Shape(s);
-                ghost->SetColor(Quantity_NOC_CYAN);
-                ghost->SetTransparency(0.3);
-                m_context->Display(ghost, false);
-                m_previewGhostShapes.push_back(ghost);
-            }
-        }
+        if (delta.Magnitude() < 1e-4) { clearTransformPreview(); return; }
+        trsf.SetTranslation(delta);
     }
-    else if (interactionMode() == InteractionMode::Rotate3D)
+    else if (mode == InteractionMode::Rotate3D)
     {
-        if (!m_hasCenterPoint || !m_hasBasePoint) return;
-        double v1x = m_basePoint3D.X() - m_centerPoint3D.X();
-        double v1y = m_basePoint3D.Y() - m_centerPoint3D.Y();
-        double v2x = currentPnt.X() - m_centerPoint3D.X();
-        double v2y = currentPnt.Y() - m_centerPoint3D.Y();
-        double a1 = std::atan2(v1y, v1x);
-        double a2 = std::atan2(v2y, v2x);
-        double angleRad = a2 - a1;
-        if (std::abs(angleRad) < 1e-4) return;
+        if (!m_hasCenterPoint || !m_hasBasePoint) { clearTransformPreview(); return; }
+        const double a1 = std::atan2(m_basePoint3D.Y() - m_centerPoint3D.Y(),
+                                     m_basePoint3D.X() - m_centerPoint3D.X());
+        const double a2 = std::atan2(currentPnt.Y() - m_centerPoint3D.Y(),
+                                     currentPnt.X() - m_centerPoint3D.X());
+        const double angleRad = a2 - a1;
+        if (std::abs(angleRad) < 1e-4) { clearTransformPreview(); return; }
+        trsf.SetRotation(gp_Ax1(m_centerPoint3D, gp_Dir(0.0, 0.0, 1.0)), angleRad);
+    }
+    else
+    {
+        clearTransformPreview();
+        return;
+    }
 
-        double cosA = std::cos(angleRad);
-        double sinA = std::sin(angleRad);
-        auto rotatePnt = [&](double px, double py, double pz) -> gp_Pnt {
-            double rx = px - m_centerPoint3D.X();
-            double ry = py - m_centerPoint3D.Y();
-            double nx = m_centerPoint3D.X() + rx * cosA - ry * sinA;
-            double ny = m_centerPoint3D.Y() + rx * sinA + ry * cosA;
-            return gp_Pnt(nx, ny, pz);
-        };
+    if (!m_previewGhostsBuilt || m_previewGhostMode != mode || m_previewGhostShapes.empty())
+    {
+        clearTransformPreview();
+        buildTransformPreviewGhosts(mode);
+    }
 
-        // Poutres sélectionnées en rotation
-        for (int bId : m_selectionManager->selectedBeams())
-        {
-            const auto* b = m_model->getBeam(bId);
-            if (!b) continue;
-            const auto* nA = m_model->getNode(b->startNodeId());
-            const auto* nB = m_model->getNode(b->endNodeId());
-            if (!nA || !nB) continue;
-
-            gp_Pnt pA = rotatePnt(nA->x(), nA->y(), nA->z());
-            gp_Pnt pB = rotatePnt(nB->x(), nB->y(), nB->z());
-            TSA::Model::Node tA(0, pA.X(), pA.Y(), pA.Z());
-            TSA::Model::Node tB(1, pB.X(), pB.Y(), pB.Z());
-            TopoDS_Shape s = TSA::Geometry::BeamGeometry::createBeamShape(tA, tB, b->section(), b->rotation(), b->eccentricity());
-            if (!s.IsNull())
-            {
-                Handle(AIS_Shape) ghost = new AIS_Shape(s);
-                ghost->SetColor(Quantity_NOC_ORANGE);
-                ghost->SetTransparency(0.4);
-                m_context->Display(ghost, false);
-                m_previewGhostShapes.push_back(ghost);
-            }
-        }
-
-        // Poteaux sélectionnés en rotation
-        for (int cId : m_selectionManager->selectedColumns())
-        {
-            const auto* col = m_model->getColumn(cId);
-            if (!col) continue;
-            const auto* nA = m_model->getNode(col->startNodeId());
-            const auto* nB = m_model->getNode(col->endNodeId());
-            if (!nA || !nB) continue;
-
-            gp_Pnt pA = rotatePnt(nA->x(), nA->y(), nA->z());
-            gp_Pnt pB = rotatePnt(nB->x(), nB->y(), nB->z());
-            TSA::Model::Node tA(0, pA.X(), pA.Y(), pA.Z());
-            TSA::Model::Node tB(1, pB.X(), pB.Y(), pB.Z());
-            TopoDS_Shape s = TSA::Geometry::BeamGeometry::createBeamShape(tA, tB, col->section(), col->rotation());
-            if (!s.IsNull())
-            {
-                Handle(AIS_Shape) ghost = new AIS_Shape(s);
-                ghost->SetColor(Quantity_NOC_ORANGE);
-                ghost->SetTransparency(0.4);
-                m_context->Display(ghost, false);
-                m_previewGhostShapes.push_back(ghost);
-            }
-        }
+    // Mise à jour ciblée : simple transformation locale, sans recréer ni géométrie ni AIS_Shape
+    for (auto& ghost : m_previewGhostShapes)
+    {
+        if (!ghost.IsNull())
+            ghost->SetLocalTransformation(trsf);
     }
 }
 

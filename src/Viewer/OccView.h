@@ -241,6 +241,7 @@ public:
     InteractionMode interactionMode() const;
     void setInteractionMode(InteractionMode mode);
     void cancelCurrentDrawing();
+    size_t previewGhostBuildCount() const { return m_previewGhostBuildCount; } ///< Mesure : fantômes créés depuis le début
 
     const TSA::Model::StructurePresets& creationPresets() const { return m_presets; }
     TSA::Model::StructurePresets& creationPresets() { return m_presets; }
@@ -367,6 +368,7 @@ private:
     void clearRubberBand();
     void updateTransformPreview(const gp_Pnt& currentPnt);
     void clearTransformPreview();
+    void buildTransformPreviewGhosts(InteractionMode mode);
     int getOrCreateNode(double x, double y, double z, int existingNodeId);
     void updateClipPlaneEquation();
 
@@ -470,6 +472,9 @@ private:
     Handle(AIS_Shape) m_rubberBandShape;
     Handle(AIS_RubberBand) m_selectRubberBand;
     std::vector<Handle(AIS_Shape)> m_previewGhostShapes;
+    bool m_previewGhostsBuilt = false;
+    InteractionMode m_previewGhostMode = InteractionMode::Select;
+    size_t m_previewGhostBuildCount = 0; ///< Nombre de fantômes créés (mesure : doit rester constant pendant un déplacement de souris)
 
     gp_Pnt m_basePoint3D;
     gp_Pnt m_centerPoint3D;
