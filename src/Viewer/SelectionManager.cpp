@@ -73,12 +73,14 @@ void SelectionManager::registerWorkPlane(int workPlaneId, const Handle(AIS_Inter
 
 void SelectionManager::unregisterWorkPlane(int workPlaneId)
 {
-    auto it = m_workPlaneToObj.find(workPlaneId);
-    if (it != m_workPlaneToObj.end())
+    for (auto it = m_objToWorkPlane.begin(); it != m_objToWorkPlane.end(); )
     {
-        m_objToWorkPlane.erase(it->second);
-        m_workPlaneToObj.erase(it);
+        if (it->second == workPlaneId)
+            it = m_objToWorkPlane.erase(it);
+        else
+            ++it;
     }
+    m_workPlaneToObj.erase(workPlaneId);
     if (m_primaryId == workPlaneId && m_selectionType == SelectionType::WorkPlane)
     {
         clearSelection();
@@ -499,9 +501,6 @@ void SelectionManager::selectObject(const Handle(AIS_InteractiveObject)& obj, bo
         return;
     }
 
-    int wpId = getWorkPlaneId(obj);
-    if (wpId > 0) { selectWorkPlane(wpId, multiSelect); return; }
-
     int beamId = getBeamId(obj);
     if (beamId > 0) { selectBeam(beamId, multiSelect); return; }
 
@@ -525,6 +524,9 @@ void SelectionManager::selectObject(const Handle(AIS_InteractiveObject)& obj, bo
 
     int nodeId = getNodeId(obj);
     if (nodeId > 0) { selectNode(nodeId, multiSelect); return; }
+
+    int wpId = getWorkPlaneId(obj);
+    if (wpId > 0) { selectWorkPlane(wpId, multiSelect); return; }
 
     clearSelection();
 }

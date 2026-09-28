@@ -34,6 +34,7 @@ namespace TSA::Grid
 #include <AIS_ViewCube.hxx>
 #include <AIS_RubberBand.hxx>
 #include <AIS_Manipulator.hxx>
+#include <AIS_TextLabel.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 #include <Graphic3d_Camera.hxx>
 #include <gp_Ax3.hxx>
@@ -132,6 +133,7 @@ public:
     // Manipulation 3D interactive, Gizmo & Isolation du Plan de Travail
     void attachManipulatorToWorkPlane();
     void detachManipulator();
+    void updateWorkPlaneGizmoScale();
     bool isManipulatingWorkPlane() const { return m_isManipulatingWorkPlane; }
     void applyWorkPlaneTransformation();
     void setWorkPlaneIsolation(bool isolated, double distance = 1.0);
@@ -392,8 +394,14 @@ private:
 
     // Plan de Travail (WorkPlane) actif & Visualiseur 3D
     TSA::Coordinate::WorkPlane m_workPlane;
-    Handle(AIS_Shape) m_workPlaneShape;
-    Handle(AIS_Shape) m_workPlaneAxesShape;
+    Handle(AIS_Shape) m_workPlaneShape;        // Cadre rectangulaire de contour CAO avec coins
+    Handle(AIS_Shape) m_workPlaneAxesShape;    // Axes de secours
+    Handle(AIS_Shape) m_workPlaneAxisX;        // Axe X rouge avec flèche CAO
+    Handle(AIS_Shape) m_workPlaneAxisY;        // Axe Y vert avec flèche CAO
+    Handle(AIS_Shape) m_workPlaneAxisZ;        // Axe Z (normale) cyan/bleu avec flèche CAO
+    Handle(AIS_Shape) m_workPlaneOriginShape;  // Symbole d'origine O jaune CAO
+    Handle(AIS_Shape) m_workPlaneGridShape;    // Grille filaire fine
+    Handle(AIS_TextLabel) m_workPlaneLabel;    // Label texte CAO non zoomable
     bool m_workPlaneVisible = true;
     Handle(AIS_Manipulator) m_manipulator;
     bool m_isManipulatingWorkPlane = false;

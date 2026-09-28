@@ -784,6 +784,30 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
         {
             m_workPlaneAxesShape->SetLocalTransformation(trsf);
         }
+        if (!m_workPlaneGridShape.IsNull())
+        {
+            m_workPlaneGridShape->SetLocalTransformation(trsf);
+        }
+        if (!m_workPlaneOriginShape.IsNull())
+        {
+            m_workPlaneOriginShape->SetLocalTransformation(trsf);
+        }
+        if (!m_workPlaneAxisX.IsNull())
+        {
+            m_workPlaneAxisX->SetLocalTransformation(trsf);
+        }
+        if (!m_workPlaneAxisY.IsNull())
+        {
+            m_workPlaneAxisY->SetLocalTransformation(trsf);
+        }
+        if (!m_workPlaneAxisZ.IsNull())
+        {
+            m_workPlaneAxisZ->SetLocalTransformation(trsf);
+        }
+        if (!m_workPlaneLabel.IsNull())
+        {
+            m_workPlaneLabel->SetLocalTransformation(trsf);
+        }
 
         gp_Pnt orig(0, 0, 0);
         orig.Transform(trsf);
@@ -807,6 +831,8 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
         {
             updateElementIsolation();
         }
+
+        updateWorkPlaneGizmoScale();
 
         emit workPlaneChanged(m_workPlane);
         if (!m_view.IsNull())

@@ -14,6 +14,7 @@
 #include <AIS_Shape.hxx>
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Manipulator.hxx>
+#include <AIS_TextLabel.hxx>
 #include <AIS_ViewCube.hxx>
 #include <V3d_View.hxx>
 #include <Graphic3d_Camera.hxx>
@@ -525,6 +526,12 @@ void OccView::attachManipulatorToWorkPlane()
         m_manipulator->SetPart(0, AIS_MM_Scaling, false);
         m_manipulator->SetPart(1, AIS_MM_Scaling, false);
         m_manipulator->SetPart(2, AIS_MM_Scaling, false);
+        m_manipulator->SetPart(0, AIS_MM_Translation, true);
+        m_manipulator->SetPart(1, AIS_MM_Translation, true);
+        m_manipulator->SetPart(2, AIS_MM_Translation, true);
+        m_manipulator->SetPart(0, AIS_MM_Rotation, true);
+        m_manipulator->SetPart(1, AIS_MM_Rotation, true);
+        m_manipulator->SetPart(2, AIS_MM_Rotation, true);
     }
 
     if (m_manipulator->IsAttached())
@@ -534,11 +541,13 @@ void OccView::attachManipulatorToWorkPlane()
 
     AIS_Manipulator::OptionsForAttach opts;
     opts.SetAdjustPosition(false);
-    opts.SetAdjustSize(true);
+    opts.SetAdjustSize(false);
     opts.SetEnableModes(true);
 
     m_manipulator->Attach(m_workPlaneShape, opts);
     m_manipulator->SetPosition(m_workPlane.coordinateSystem().Ax2());
+
+    updateWorkPlaneGizmoScale();
 
     if (!m_view.IsNull())
         m_view->Redraw();
@@ -555,6 +564,58 @@ void OccView::detachManipulator()
     }
 }
 
+void OccView::updateWorkPlaneGizmoScale()
+{
+    if (m_view.IsNull() || m_context.IsNull())
+        return;
+
+    if (m_manipulator.IsNull() || !m_manipulator->IsAttached())
+        return;
+
+    const Handle(Graphic3d_Camera)& cam = m_view->Camera();
+    if (cam.IsNull())
+        return;
+
+    int winW = 0, winH = 0;
+    if (!m_view->Window().IsNull())
+    {
+        m_view->Window()->Size(winW, winH);
+    }
+    if (winH <= 0) winH = height();
+    if (winH <= 0) winH = 600;
+
+    // Dimension cible visuelle idéale à l'écran : ~120 pixels
+    const double targetPixelSize = 120.0;
+    double worldSize = 3.0;
+
+    if (cam->IsOrthographic())
+    {
+        // En projection orthographique, cam->Scale() est la hauteur visible en unités monde
+        const double viewWorldHeight = cam->Scale();
+        worldSize = viewWorldHeight * (targetPixelSize / static_cast<double>(winH));
+    }
+    else
+    {
+        // En projection perspective, adapter la taille à la distance caméra <-> WorkPlane
+        const gp_Pnt wpOrigin = m_workPlane.origin();
+        const double dist = cam->Eye().Distance(wpOrigin);
+        const double fovYRad = cam->FOVy() * (3.14159265358979323846 / 180.0);
+        const double visibleHeightAtDist = 2.0 * dist * std::tan(fovYRad * 0.5);
+        worldSize = visibleHeightAtDist * (targetPixelSize / static_cast<double>(winH));
+    }
+
+    if (worldSize < 0.05) worldSize = 0.05;
+    if (worldSize > 2000.0) worldSize = 2000.0;
+
+    m_manipulator->SetSize(static_cast<float>(worldSize));
+    m_manipulator->SetGap(static_cast<float>(worldSize * 0.12));
+
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
 void OccView::applyWorkPlaneTransformation()
 {
     if (m_workPlaneShape.IsNull())
@@ -563,16 +624,42 @@ void OccView::applyWorkPlaneTransformation()
     gp_Trsf trsf;
     gp_Ax3 stdCS(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0));
     trsf.SetDisplacement(stdCS, m_workPlane.coordinateSystem());
+
     m_workPlaneShape->SetLocalTransformation(trsf);
 
     if (!m_workPlaneAxesShape.IsNull())
     {
         m_workPlaneAxesShape->SetLocalTransformation(trsf);
     }
+    if (!m_workPlaneGridShape.IsNull())
+    {
+        m_workPlaneGridShape->SetLocalTransformation(trsf);
+    }
+    if (!m_workPlaneOriginShape.IsNull())
+    {
+        m_workPlaneOriginShape->SetLocalTransformation(trsf);
+    }
+    if (!m_workPlaneAxisX.IsNull())
+    {
+        m_workPlaneAxisX->SetLocalTransformation(trsf);
+    }
+    if (!m_workPlaneAxisY.IsNull())
+    {
+        m_workPlaneAxisY->SetLocalTransformation(trsf);
+    }
+    if (!m_workPlaneAxisZ.IsNull())
+    {
+        m_workPlaneAxisZ->SetLocalTransformation(trsf);
+    }
+    if (!m_workPlaneLabel.IsNull())
+    {
+        m_workPlaneLabel->SetLocalTransformation(trsf);
+    }
 
     if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
     {
         m_manipulator->SetPosition(m_workPlane.coordinateSystem().Ax2());
+        updateWorkPlaneGizmoScale();
     }
 
     if (!m_viewer.IsNull())
@@ -817,25 +904,32 @@ void OccView::updateWorkPlaneVisual()
     if (m_context.IsNull())
         return;
 
-    // 1. Supprimer l'ancienne forme visuelle si existante
-    if (!m_workPlaneShape.IsNull())
-    {
-        if (m_selectionManager)
+    // 1. Supprimer tous les anciens objets visuels du WorkPlane
+    auto removeVisual = [this](Handle(AIS_InteractiveObject)& obj) {
+        if (!obj.IsNull())
         {
-            m_selectionManager->unregisterWorkPlane(m_workPlane.id());
+            m_context->Remove(obj, false);
+            obj.Nullify();
         }
-        if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
-        {
-            m_manipulator->Detach();
-        }
-        m_context->Remove(m_workPlaneShape, false);
-        m_workPlaneShape.Nullify();
-    }
-    if (!m_workPlaneAxesShape.IsNull())
+    };
+
+    if (m_selectionManager)
     {
-        m_context->Remove(m_workPlaneAxesShape, false);
-        m_workPlaneAxesShape.Nullify();
+        m_selectionManager->unregisterWorkPlane(m_workPlane.id());
     }
+    if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
+    {
+        m_manipulator->Detach();
+    }
+
+    removeVisual(m_workPlaneShape);
+    removeVisual(m_workPlaneAxesShape);
+    removeVisual(m_workPlaneAxisX);
+    removeVisual(m_workPlaneAxisY);
+    removeVisual(m_workPlaneAxisZ);
+    removeVisual(m_workPlaneOriginShape);
+    removeVisual(m_workPlaneGridShape);
+    removeVisual(m_workPlaneLabel);
 
     if (!m_workPlaneVisible || !m_workPlane.isVisible())
     {
@@ -844,7 +938,7 @@ void OccView::updateWorkPlaneVisual()
         return;
     }
 
-    // 2. Détermination de la dimension du plan (largeur / hauteur paramétriques ou dynamique)
+    // 2. Détermination de l'étendue visible du plan (largeur / hauteur)
     double hx = (m_workPlane.width() > 0.0) ? (m_workPlane.width() * 0.5) : 10.0;
     double hy = (m_workPlane.height() > 0.0) ? (m_workPlane.height() * 0.5) : 10.0;
     if (m_workPlane.width() <= 0.0 || m_workPlane.height() <= 0.0)
@@ -873,33 +967,44 @@ void OccView::updateWorkPlaneVisual()
         }
     }
 
-    // 3. Panneau surfacique semi-transparent centré en (0,0,0) local
+    BRep_Builder b;
+
+    // 3. Cadre de contour CAO léger (Lignes fines sans aucun solide ni face pleine)
+    TopoDS_Compound compFrame;
+    b.MakeCompound(compFrame);
+
     gp_Pnt p00(-hx, -hy, 0.0);
     gp_Pnt p10( hx, -hy, 0.0);
     gp_Pnt p11( hx,  hy, 0.0);
     gp_Pnt p01(-hx,  hy, 0.0);
 
-    BRepBuilderAPI_MakePolygon poly(p00, p10, p11, p01, true);
-    if (poly.IsDone())
-    {
-        BRepBuilderAPI_MakeFace mkFace(poly.Wire());
-        if (mkFace.IsDone())
-        {
-            m_workPlaneShape = new AIS_Shape(mkFace.Face());
-            m_workPlaneShape->SetColor(Quantity_NOC_STEELBLUE);
-            m_workPlaneShape->SetTransparency(0.88);
-            m_workPlaneShape->SetDisplayMode(AIS_Shaded);
-            m_context->Display(m_workPlaneShape, false);
-        }
-    }
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p00, p10).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p10, p11).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p11, p01).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p01, p00).Edge());
 
-    // 4. Lignes de grille UV locale et trièdre d'orientation
-    BRep_Builder b;
-    TopoDS_Compound compLines;
-    b.MakeCompound(compLines);
+    // Repères de coins CAO aux 4 angles
+    double cLen = std::min(hx, hy) * 0.08;
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p00, gp_Pnt(-hx + cLen, -hy, 0.0)).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p00, gp_Pnt(-hx, -hy + cLen, 0.0)).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p10, gp_Pnt( hx - cLen, -hy, 0.0)).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p10, gp_Pnt( hx, -hy + cLen, 0.0)).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p11, gp_Pnt( hx - cLen,  hy, 0.0)).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p11, gp_Pnt( hx,  hy - cLen, 0.0)).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p01, gp_Pnt(-hx + cLen,  hy, 0.0)).Edge());
+    b.Add(compFrame, BRepBuilderAPI_MakeEdge(p01, gp_Pnt(-hx,  hy - cLen, 0.0)).Edge());
 
+    m_workPlaneShape = new AIS_Shape(compFrame);
+    m_workPlaneShape->SetColor(Quantity_NOC_CYAN3);
+    m_workPlaneShape->SetWidth(1.8);
+    m_context->Display(m_workPlaneShape, false);
+
+    // 4. Grille locale fine (si activée)
     if (m_workPlane.isGridVisible())
     {
+        TopoDS_Compound compGrid;
+        b.MakeCompound(compGrid);
+
         double stepX = (m_workPlane.gridSpacingX() > 0.1) ? m_workPlane.gridSpacingX() : 2.0;
         double stepY = (m_workPlane.gridSpacingY() > 0.1) ? m_workPlane.gridSpacingY() : 2.0;
         int nStepsX = static_cast<int>(hx / stepX);
@@ -907,47 +1012,119 @@ void OccView::updateWorkPlaneVisual()
         for (int i = -nStepsX; i <= nStepsX; ++i)
         {
             double u = i * stepX;
-            gp_Pnt pA(u, -hy, 0.0);
-            gp_Pnt pB(u,  hy, 0.0);
-            b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
+            b.Add(compGrid, BRepBuilderAPI_MakeEdge(gp_Pnt(u, -hy, 0.0), gp_Pnt(u, hy, 0.0)).Edge());
         }
         for (int j = -nStepsY; j <= nStepsY; ++j)
         {
             double v = j * stepY;
-            gp_Pnt pA(-hx, v, 0.0);
-            gp_Pnt pB( hx, v, 0.0);
-            b.Add(compLines, BRepBuilderAPI_MakeEdge(pA, pB).Edge());
+            b.Add(compGrid, BRepBuilderAPI_MakeEdge(gp_Pnt(-hx, v, 0.0), gp_Pnt(hx, v, 0.0)).Edge());
         }
+
+        m_workPlaneGridShape = new AIS_Shape(compGrid);
+        m_workPlaneGridShape->SetColor(Quantity_Color(0.35, 0.42, 0.50, Quantity_TOC_RGB));
+        m_workPlaneGridShape->SetWidth(1.0);
+        m_context->Display(m_workPlaneGridShape, false);
     }
 
-    // Axes U, V, N au centre (0,0,0)
+    // 5. Repère d'Origine CAO (symbole central à O)
     double axisLen = std::max(2.0, std::min(hx, hy) * 0.35);
-    gp_Pnt orig(0.0, 0.0, 0.0);
-    gp_Pnt ptU(axisLen, 0.0, 0.0);
-    gp_Pnt ptV(0.0, axisLen, 0.0);
-    gp_Pnt ptN(0.0, 0.0, axisLen);
-    b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptU).Edge());
-    b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptV).Edge());
-    b.Add(compLines, BRepBuilderAPI_MakeEdge(orig, ptN).Edge());
+    double s = std::max(0.12, axisLen * 0.06);
 
-    m_workPlaneAxesShape = new AIS_Shape(compLines);
-    m_workPlaneAxesShape->SetColor(Quantity_NOC_CYAN1);
-    m_workPlaneAxesShape->SetWidth(1.5);
-    m_context->Display(m_workPlaneAxesShape, false);
+    TopoDS_Compound compOrigin;
+    b.MakeCompound(compOrigin);
+    // Carré d'origine
+    b.Add(compOrigin, BRepBuilderAPI_MakeEdge(gp_Pnt(-s, -s, 0.0), gp_Pnt( s, -s, 0.0)).Edge());
+    b.Add(compOrigin, BRepBuilderAPI_MakeEdge(gp_Pnt( s, -s, 0.0), gp_Pnt( s,  s, 0.0)).Edge());
+    b.Add(compOrigin, BRepBuilderAPI_MakeEdge(gp_Pnt( s,  s, 0.0), gp_Pnt(-s,  s, 0.0)).Edge());
+    b.Add(compOrigin, BRepBuilderAPI_MakeEdge(gp_Pnt(-s,  s, 0.0), gp_Pnt(-s, -s, 0.0)).Edge());
+    // Croix d'origine
+    b.Add(compOrigin, BRepBuilderAPI_MakeEdge(gp_Pnt(-s * 1.5, 0.0, 0.0), gp_Pnt(s * 1.5, 0.0, 0.0)).Edge());
+    b.Add(compOrigin, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, -s * 1.5, 0.0), gp_Pnt(0.0, s * 1.5, 0.0)).Edge());
 
-    // Appliquer la transformation 3D globale
+    m_workPlaneOriginShape = new AIS_Shape(compOrigin);
+    m_workPlaneOriginShape->SetColor(Quantity_NOC_GOLD);
+    m_workPlaneOriginShape->SetWidth(2.0);
+    m_context->Display(m_workPlaneOriginShape, false);
+
+    // 6. Axes X, Y, Z CAO avec flèches
+    double arrLen = axisLen * 0.16;
+    double arrW = arrLen * 0.35;
+
+    // Axe X (Rouge)
+    TopoDS_Compound compX;
+    b.MakeCompound(compX);
+    b.Add(compX, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(axisLen, 0.0, 0.0)).Edge());
+    b.Add(compX, BRepBuilderAPI_MakeEdge(gp_Pnt(axisLen, 0.0, 0.0), gp_Pnt(axisLen - arrLen,  arrW, 0.0)).Edge());
+    b.Add(compX, BRepBuilderAPI_MakeEdge(gp_Pnt(axisLen, 0.0, 0.0), gp_Pnt(axisLen - arrLen, -arrW, 0.0)).Edge());
+    b.Add(compX, BRepBuilderAPI_MakeEdge(gp_Pnt(axisLen, 0.0, 0.0), gp_Pnt(axisLen - arrLen, 0.0,  arrW)).Edge());
+    b.Add(compX, BRepBuilderAPI_MakeEdge(gp_Pnt(axisLen, 0.0, 0.0), gp_Pnt(axisLen - arrLen, 0.0, -arrW)).Edge());
+    m_workPlaneAxisX = new AIS_Shape(compX);
+    m_workPlaneAxisX->SetColor(Quantity_NOC_RED1);
+    m_workPlaneAxisX->SetWidth(2.2);
+    m_context->Display(m_workPlaneAxisX, false);
+
+    // Axe Y (Vert)
+    TopoDS_Compound compY;
+    b.MakeCompound(compY);
+    b.Add(compY, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, axisLen, 0.0)).Edge());
+    b.Add(compY, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, axisLen, 0.0), gp_Pnt( arrW, axisLen - arrLen, 0.0)).Edge());
+    b.Add(compY, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, axisLen, 0.0), gp_Pnt(-arrW, axisLen - arrLen, 0.0)).Edge());
+    b.Add(compY, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, axisLen, 0.0), gp_Pnt(0.0, axisLen - arrLen,  arrW)).Edge());
+    b.Add(compY, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, axisLen, 0.0), gp_Pnt(0.0, axisLen - arrLen, -arrW)).Edge());
+    m_workPlaneAxisY = new AIS_Shape(compY);
+    m_workPlaneAxisY->SetColor(Quantity_NOC_GREEN);
+    m_workPlaneAxisY->SetWidth(2.2);
+    m_context->Display(m_workPlaneAxisY, false);
+
+    // Axe Z (Normale - Bleu/Cyan)
+    TopoDS_Compound compZ;
+    b.MakeCompound(compZ);
+    b.Add(compZ, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, 0.0), gp_Pnt(0.0, 0.0, axisLen)).Edge());
+    b.Add(compZ, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, axisLen), gp_Pnt( arrW, 0.0, axisLen - arrLen)).Edge());
+    b.Add(compZ, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, axisLen), gp_Pnt(-arrW, 0.0, axisLen - arrLen)).Edge());
+    b.Add(compZ, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, axisLen), gp_Pnt(0.0,  arrW, axisLen - arrLen)).Edge());
+    b.Add(compZ, BRepBuilderAPI_MakeEdge(gp_Pnt(0.0, 0.0, axisLen), gp_Pnt(0.0, -arrW, axisLen - arrLen)).Edge());
+    m_workPlaneAxisZ = new AIS_Shape(compZ);
+    m_workPlaneAxisZ->SetColor(Quantity_NOC_DEEPSKYBLUE1);
+    m_workPlaneAxisZ->SetWidth(2.2);
+    m_context->Display(m_workPlaneAxisZ, false);
+
+    // 7. Label texte CAO du plan
+    m_workPlaneLabel = new AIS_TextLabel();
+    QString labelText = QString::fromStdString(m_workPlane.name());
+    if (m_workPlane.type() == TSA::Coordinate::WorkPlaneType::GlobalXY ||
+        m_workPlane.type() == TSA::Coordinate::WorkPlaneType::ElevationZ)
+    {
+        labelText += QString(" (Z = %1 m)").arg(m_workPlane.offset(), 0, 'f', 2);
+    }
+    m_workPlaneLabel->SetText(TCollection_ExtendedString(labelText.toUtf8().constData()));
+    m_workPlaneLabel->SetPosition(gp_Pnt(s * 2.0, s * 2.0, 0.0));
+    m_workPlaneLabel->SetColor(Quantity_NOC_CYAN1);
+    m_workPlaneLabel->SetHeight(13.0);
+    m_workPlaneLabel->SetZoomable(false);
+    m_context->Display(m_workPlaneLabel, false);
+
+    // 8. Application de la transformation 3D globale à tous les composants
     gp_Trsf trsf;
     gp_Ax3 stdCS(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0));
     trsf.SetDisplacement(stdCS, m_workPlane.coordinateSystem());
-    if (!m_workPlaneShape.IsNull())
-    {
-        m_workPlaneShape->SetLocalTransformation(trsf);
-    }
-    m_workPlaneAxesShape->SetLocalTransformation(trsf);
 
-    if (m_selectionManager && !m_workPlaneShape.IsNull())
+    m_workPlaneShape->SetLocalTransformation(trsf);
+    if (!m_workPlaneGridShape.IsNull()) m_workPlaneGridShape->SetLocalTransformation(trsf);
+    m_workPlaneOriginShape->SetLocalTransformation(trsf);
+    m_workPlaneAxisX->SetLocalTransformation(trsf);
+    m_workPlaneAxisY->SetLocalTransformation(trsf);
+    m_workPlaneAxisZ->SetLocalTransformation(trsf);
+    m_workPlaneLabel->SetLocalTransformation(trsf);
+
+    // 9. Enregistrement pour la sélection
+    if (m_selectionManager)
     {
         m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneShape);
+        m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneOriginShape);
+        m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneAxisX);
+        m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneAxisY);
+        m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneAxisZ);
     }
 
     if (!m_viewer.IsNull())

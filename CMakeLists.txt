@@ -270,16 +270,16 @@ set(VIEWER_MAIN_SOURCES
     src/Viewer/OccView_Shapes.cpp
     src/Viewer/OccView_Navigation.cpp
     src/Viewer/OccView_Events.cpp
-    src/Viewer/SelectionManager.h
-    src/Viewer/SelectionManager.cpp
 )
 
-# --- Matériaux visuels (texturing) — [CORE] -----------------------------------
+# --- Matériaux visuels, sélection (texturing, registre) — [CORE] --------------
 set(VIEWER_CORE_SOURCES
     src/Viewer/MaterialVisual.h
     src/Viewer/MaterialVisual.cpp
     src/Viewer/TextureManager.h
     src/Viewer/TextureManager.cpp
+    src/Viewer/SelectionManager.h
+    src/Viewer/SelectionManager.cpp
 )
 
 # --- Géométrie des poutres (utilisée par les tests) — [CORE] -----------------

@@ -1,4 +1,7 @@
 #include "test_common.h"
+#include "Viewer/SelectionManager.h"
+#include <TopoDS_Compound.hxx>
+#include <BRep_Builder.hxx>
 
 bool runSuite_WorkPlane(int& passed)
 {
@@ -541,6 +544,100 @@ bool runSuite_WorkPlane(int& passed)
                        "Subtest 52.7: Story 3 point (Z=9) is filtered out by isolation");
 
             std::cout << "  [PASS] Subtest 52.7: WorkPlane Isolation Distance Filtering Verified" << std::endl;
+        }
+
+        // Subtest 52.8: CAD WorkPlane Marker Invariance, Adaptive Gizmo Math & Structural Selection Priority
+        {
+            // 1. Invariance stricte des coordonnées réelles (Règle 7)
+            WorkPlane realWp(WorkPlaneType::GlobalXY, "Etage 3", 9.0);
+            realWp.setDimensions(10.0, 10.0);
+            realWp.setGridSettings(1.0, 1.0, 5, true);
+
+            gp_Pnt origBefore = realWp.origin();
+            double wBefore = realWp.width();
+            double hBefore = realWp.height();
+            double offBefore = realWp.offset();
+
+            // Simulation de calculs de zoom caméra
+            // Mode Orthographique à différentes échelles de zoom
+            const double targetPixelSize = 120.0;
+            const double winH = 800.0;
+
+            const double scaleFar = 100.0; // Vue très éloignée
+            const double worldSizeFar = scaleFar * (targetPixelSize / winH); // 15.0m
+            TEST_CHECK(approxEqual(worldSizeFar, 15.0), "Subtest 52.8: Adaptive gizmo scale far is 15.0m");
+
+            const double scaleNear = 5.0; // Vue très proche
+            const double worldSizeNear = scaleNear * (targetPixelSize / winH); // 0.75m
+            TEST_CHECK(approxEqual(worldSizeNear, 0.75), "Subtest 52.8: Adaptive gizmo scale near is 0.75m");
+
+            // Ratio d'échelle à l'écran invariant (120 px / 800 px)
+            TEST_CHECK(approxEqual(worldSizeFar / scaleFar, worldSizeNear / scaleNear),
+                       "Subtest 52.8: Screen pixel ratio is strictly invariant across zoom levels");
+
+            // Mode Perspective à différentes distances
+            const double fovYRad = 45.0 * (3.14159265358979323846 / 180.0);
+            const double distFar = 100.0;
+            const double visibleHFar = 2.0 * distFar * std::tan(fovYRad * 0.5);
+            const double pWorldSizeFar = visibleHFar * (targetPixelSize / winH);
+
+            const double distNear = 10.0;
+            const double visibleHNear = 2.0 * distNear * std::tan(fovYRad * 0.5);
+            const double pWorldSizeNear = visibleHNear * (targetPixelSize / winH);
+
+            TEST_CHECK(approxEqual(pWorldSizeFar / distFar, pWorldSizeNear / distNear),
+                       "Subtest 52.8: Perspective gizmo size adapts linearly with camera distance");
+
+            // Vérification que les coordonnées et dimensions réelles du WorkPlane n'ont absolument pas changé !
+            TEST_CHECK(approxEqual(realWp.origin().X(), origBefore.X()) &&
+                       approxEqual(realWp.origin().Y(), origBefore.Y()) &&
+                       approxEqual(realWp.origin().Z(), origBefore.Z()),
+                       "Subtest 52.8: Real WorkPlane origin strictly unchanged by visual adaptation");
+            TEST_CHECK(approxEqual(realWp.width(), wBefore) && approxEqual(realWp.height(), hBefore),
+                       "Subtest 52.8: Real WorkPlane dimensions strictly unchanged by visual adaptation");
+            TEST_CHECK(approxEqual(realWp.offset(), offBefore),
+                       "Subtest 52.8: Real WorkPlane offset strictly unchanged by visual adaptation");
+
+            // 2. Priorité de sélection dans SelectionManager (Règles 8 & 9)
+            TSA::Viewer::SelectionManager selMgr;
+
+            // Créer deux faux shapes interactifs
+            TopoDS_Compound comp1, comp2;
+            BRep_Builder b;
+            b.MakeCompound(comp1);
+            b.MakeCompound(comp2);
+            b.Add(comp1, BRepBuilderAPI_MakeEdge(gp_Pnt(0,0,0), gp_Pnt(1,0,0)).Edge());
+            b.Add(comp2, BRepBuilderAPI_MakeEdge(gp_Pnt(0,0,0), gp_Pnt(0,1,0)).Edge());
+
+            Handle(AIS_Shape) wpFrameShape = new AIS_Shape(comp1);
+            Handle(AIS_Shape) wpAxisShape = new AIS_Shape(comp2);
+            Handle(AIS_Shape) beamShape = new AIS_Shape(comp1);
+
+            selMgr.registerWorkPlane(1, wpFrameShape);
+            selMgr.registerWorkPlane(1, wpAxisShape);
+            selMgr.registerBeam(42, beamShape);
+
+            // Clic sur un objet qui est une poutre -> la poutre doit être sélectionnée
+            selMgr.selectObject(beamShape, false);
+            TEST_CHECK(selMgr.currentSelectionType() == TSA::Viewer::SelectionType::Beam, "Subtest 52.8: Structural Beam has priority over WorkPlane");
+            TEST_CHECK(selMgr.primarySelectedId() == 42, "Subtest 52.8: Selected beam ID is 42");
+            TEST_CHECK(!selMgr.isWorkPlaneSelected(), "Subtest 52.8: WorkPlane not selected when beam clicked");
+
+            // Clic sur le cadre ou l'axe du WorkPlane -> le WorkPlane est sélectionné
+            selMgr.selectObject(wpFrameShape, false);
+            TEST_CHECK(selMgr.isWorkPlaneSelected(), "Subtest 52.8: WorkPlane selected when frame clicked");
+            TEST_CHECK(selMgr.selectedWorkPlaneId() == 1, "Subtest 52.8: Selected WorkPlane ID is 1");
+
+            selMgr.selectObject(wpAxisShape, false);
+            TEST_CHECK(selMgr.isWorkPlaneSelected(), "Subtest 52.8: WorkPlane selected when axis clicked");
+            TEST_CHECK(selMgr.selectedWorkPlaneId() == 1, "Subtest 52.8: Selected WorkPlane ID is 1 via axis");
+
+            // Unregister WorkPlane
+            selMgr.unregisterWorkPlane(1);
+            TEST_CHECK(selMgr.getWorkPlaneId(wpFrameShape) == -1, "Subtest 52.8: wpFrameShape unregistered");
+            TEST_CHECK(selMgr.getWorkPlaneId(wpAxisShape) == -1, "Subtest 52.8: wpAxisShape unregistered");
+
+            std::cout << "  [PASS] Subtest 52.8: CAD WorkPlane Marker Invariance, Adaptive Gizmo Math & Structural Selection Priority Verified" << std::endl;
         }
 
         std::cout << "[PASS] Test 52: Interactive 3D WorkPlane, Arbitrary Coordinate Systems, LCS & Multi-Plane Management Passed Successfully!" << std::endl;

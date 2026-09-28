@@ -91,6 +91,8 @@ OccView::OccView(QWidget* parent)
             if (!m_view.IsNull()) m_view->Redraw();
         });
     }
+
+    connect(this, &OccView::viewCameraChanged, this, &OccView::updateWorkPlaneGizmoScale);
 }
 
 OccView::~OccView()
