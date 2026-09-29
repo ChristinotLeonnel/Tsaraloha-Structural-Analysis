@@ -1,0 +1,35 @@
+{
+    "id": "prestressed_i_beam_h1000",
+    "name": "Poutre I Précontrainte H1000",
+    "category": "Concrete",
+    "shape_type": "IShape",
+    "version": "1.0.0",
+    "default_material": "concrete_c50_60",
+    "standard": {
+        "name": "EN 13369 / EN 1992-1-1",
+        "edition": "2018",
+        "clause": "Poutres Précontraintes",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.500,
+        "height": 1.000,
+        "diameter": 0.0,
+        "tw": 0.160,
+        "tf": 0.200,
+        "r": 0.050
+    },
+    "properties": {
+        "area": 0.250,
+        "ix": 0.0354,
+        "iy": 0.0042,
+        "it": 0.0018,
+        "wx": 0.0708,
+        "wy": 0.0168
+    },
+    "visual": {
+        "base_color": "#6E7B7C",
+        "roughness": 0.80,
+        "metallic": 0.05
+    }
+}

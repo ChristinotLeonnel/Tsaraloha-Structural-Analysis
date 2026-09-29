@@ -1,0 +1,35 @@
+{
+    "id": "glulam_240x800",
+    "name": "Lamellé-Collé 240x800 Forte Portée",
+    "category": "Timber",
+    "shape_type": "Rectangular",
+    "version": "1.0.0",
+    "default_material": "glulam_gl32h",
+    "standard": {
+        "name": "EN 14080",
+        "edition": "2013",
+        "clause": "Tableau Dimensions",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.240,
+        "height": 0.800,
+        "diameter": 0.0,
+        "tw": 0.0,
+        "tf": 0.0,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.1920,
+        "ix": 0.01024,
+        "iy": 0.0009216,
+        "it": 0.00288,
+        "wx": 0.02560,
+        "wy": 0.00768
+    },
+    "visual": {
+        "base_color": "#C8955A",
+        "roughness": 0.65,
+        "metallic": 0.0
+    }
+}

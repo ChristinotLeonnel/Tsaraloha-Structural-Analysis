@@ -1,0 +1,27 @@
+{
+    "id": "clt_c24",
+    "name": "Panneau Lamellé-Croisé CLT C24 (5 Plis)",
+    "category": "Timber",
+    "version": "1.0.0",
+    "standard": {
+        "name": "EN 16351 / EN 1995-1-1",
+        "edition": "2021",
+        "clause": "Tableau Annexe CLT",
+        "source": "CEN"
+    },
+    "mechanical": {
+        "density": { "value": 470.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 11000.0, "unit": "MPa" },
+        "poisson_ratio": 0.25,
+        "thermal_coeff": { "value": 5.0e-6, "unit": "1/K" }
+    },
+    "strength": {
+        "ft": { "value": 24.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#D7B58A",
+        "roughness": 0.75,
+        "metallic": 0.0,
+        "textures": { "albedo": "Textures/wood.png" }
+    }
+}

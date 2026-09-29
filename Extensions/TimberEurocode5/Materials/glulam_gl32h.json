@@ -1,0 +1,27 @@
+{
+    "id": "glulam_gl32h",
+    "name": "Bois Lamellé-Collé Haute Résistance GL32h",
+    "category": "Timber",
+    "version": "1.0.0",
+    "standard": {
+        "name": "EN 14080 / EN 1995-1-1",
+        "edition": "2013",
+        "clause": "Tableau 4 - Classes GLh",
+        "source": "CEN"
+    },
+    "mechanical": {
+        "density": { "value": 490.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 14200.0, "unit": "MPa" },
+        "poisson_ratio": 0.30,
+        "thermal_coeff": { "value": 5.0e-6, "unit": "1/K" }
+    },
+    "strength": {
+        "ft": { "value": 32.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#C8955A",
+        "roughness": 0.65,
+        "metallic": 0.0,
+        "textures": { "albedo": "Textures/wood.png" }
+    }
+}

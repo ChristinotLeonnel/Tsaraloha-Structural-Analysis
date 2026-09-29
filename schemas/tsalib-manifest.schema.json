@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TSALib Manifest Schema",
+  "description": "Schéma de validation officiel pour le fichier manifest.json d'une extension TSALib",
+  "type": "object",
+  "required": ["id", "name", "version", "kind", "categories"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+(\\.[a-z0-9_-]+)*$",
+      "description": "Identifiant unique en minuscules (ex: org.eurocode.timber ou com.monentreprise.structures)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Nom complet de l'extension"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?$",
+      "description": "Version sémantique (ex: 1.0.0)"
+    },
+    "format_version": {
+      "type": "string",
+      "description": "Version du format de manifest (ex: 1.0)"
+    },
+    "minimum_tsa_version": {
+      "type": "string",
+      "description": "Version minimale requise de TSA"
+    },
+    "author": {
+      "type": "string",
+      "description": "Auteur ou organisme"
+    },
+    "license": {
+      "type": "string",
+      "description": "Licence logicielle (ex: MIT, Proprietary)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description détaillée du catalogue"
+    },
+    "website": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL du site web ou de la documentation"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["data", "code", "data_extension", "plugin"],
+      "description": "Type d'extension"
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Liste des catégories fournies par l'extension"
+    }
+  }
+}

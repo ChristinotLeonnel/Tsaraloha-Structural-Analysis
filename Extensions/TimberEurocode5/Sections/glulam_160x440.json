@@ -1,0 +1,35 @@
+{
+    "id": "glulam_160x440",
+    "name": "Lamellé-Collé 160x440",
+    "category": "Timber",
+    "shape_type": "Rectangular",
+    "version": "1.0.0",
+    "default_material": "glulam_gl28h",
+    "standard": {
+        "name": "EN 14080",
+        "edition": "2013",
+        "clause": "Tableau Dimensions",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.160,
+        "height": 0.440,
+        "diameter": 0.0,
+        "tw": 0.0,
+        "tf": 0.0,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.0704,
+        "ix": 0.00113579,
+        "iy": 0.00015019,
+        "it": 0.000412,
+        "wx": 0.005163,
+        "wy": 0.001877
+    },
+    "visual": {
+        "base_color": "#D2A679",
+        "roughness": 0.70,
+        "metallic": 0.0
+    }
+}

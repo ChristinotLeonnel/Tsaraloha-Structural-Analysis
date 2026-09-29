@@ -1,0 +1,27 @@
+{
+    "id": "timber_d70_azobe",
+    "name": "Bois Feuillu Lourd Tropical Azobé D70",
+    "category": "Timber",
+    "version": "1.0.0",
+    "standard": {
+        "name": "EN 338 / EN 1995-1-1",
+        "edition": "2016",
+        "clause": "Tableau 1 - Classe D70",
+        "source": "CEN"
+    },
+    "mechanical": {
+        "density": { "value": 1050.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 20000.0, "unit": "MPa" },
+        "poisson_ratio": 0.35,
+        "thermal_coeff": { "value": 5.0e-6, "unit": "1/K" }
+    },
+    "strength": {
+        "ft": { "value": 70.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#4A2E18",
+        "roughness": 0.65,
+        "metallic": 0.0,
+        "textures": { "albedo": "Textures/wood.png" }
+    }
+}

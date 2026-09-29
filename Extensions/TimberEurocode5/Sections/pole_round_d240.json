@@ -1,0 +1,35 @@
+{
+    "id": "pole_round_d240",
+    "name": "Poteau Rond Bois Calibré D240",
+    "category": "Timber",
+    "shape_type": "Circular",
+    "version": "1.0.0",
+    "default_material": "timber_c30",
+    "standard": {
+        "name": "EN 14251",
+        "edition": "2013",
+        "clause": "Tableau Bois Ronds",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.240,
+        "height": 0.240,
+        "diameter": 0.240,
+        "tw": 0.0,
+        "tf": 0.0,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.04524,
+        "ix": 0.00016286,
+        "iy": 0.00016286,
+        "it": 0.00032572,
+        "wx": 0.001357,
+        "wy": 0.001357
+    },
+    "visual": {
+        "base_color": "#B8860B",
+        "roughness": 0.72,
+        "metallic": 0.0
+    }
+}

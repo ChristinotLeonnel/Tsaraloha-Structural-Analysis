@@ -1,0 +1,35 @@
+{
+    "id": "hss_6x6x3_8",
+    "name": "HSS 6x6x3/8 Carré",
+    "category": "Steel",
+    "shape_type": "BoxHollow",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a500_grb",
+    "standard": {
+        "name": "AISC 360-16 / ASTM A500",
+        "edition": "2016",
+        "clause": "Table HSS Square",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.1524,
+        "height": 0.1524,
+        "diameter": 0.0,
+        "tw": 0.00953,
+        "tf": 0.00953,
+        "r": 0.019
+    },
+    "properties": {
+        "area": 0.00515,
+        "ix": 0.0000175,
+        "iy": 0.0000175,
+        "it": 0.0000285,
+        "wx": 0.000230,
+        "wy": 0.000230
+    },
+    "visual": {
+        "base_color": "#4A6B82",
+        "roughness": 0.38,
+        "metallic": 0.88
+    }
+}

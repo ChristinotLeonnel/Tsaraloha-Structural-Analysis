@@ -1327,9 +1327,114 @@ bool runSuite_Extensions(int& passed)
         auto finalVal = TSA::ExtensionSystem::LibraryManager::instance().validateAll();
         TEST_CHECK(finalVal.isValid(), "Subtest 48.5: Validation globale finale 100% conforme de TSALib sans aucune erreur");
 
-        std::cout << "  [PASS] Subtest 48.5: Export via LibraryManager & Validation Globale Finale des 11 Phases Validees" << std::endl;
-
         std::cout << "[PASS] Test 48: TSALib Phase 11 - Packaging .tsalib, Distribution & Validation Globale Finale (5 Subtests Valides) Passed Successfully!" << std::endl;
+        passed++;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // TEST 53: TSALib Phase 12 - Assistant de Création & Échafaudage (ExtensionScaffolder & NewExtensionDialog)
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 53: TSALib Phase 12 - Assistant de Creation & Echafaudage (ExtensionScaffolder & UI) ---" << std::endl;
+
+        // 53.1: Validation de la conformité des IDs et rejet des formats erronés
+        {
+            TEST_CHECK(TSA::ExtensionSystem::LibraryValidator::isValidId("com.mycompany.concrete"), "Subtest 53.1: Valid dot-separated ID");
+            TEST_CHECK(TSA::ExtensionSystem::LibraryValidator::isValidId("org.eurocode.timber_ec5"), "Subtest 53.1: Valid ID with underscore");
+            TEST_CHECK(!TSA::ExtensionSystem::LibraryValidator::isValidId("Invalid Upper Case"), "Subtest 53.1: Upper case with spaces rejected");
+            TEST_CHECK(!TSA::ExtensionSystem::LibraryValidator::isValidId("bad/slash/id"), "Subtest 53.1: Slash rejected");
+            TEST_CHECK(!TSA::ExtensionSystem::LibraryValidator::isValidId(""), "Subtest 53.1: Empty ID rejected");
+
+            std::cout << "  [PASS] Subtest 53.1: Validation Syntaxique Stricte des Identifiants Validee" << std::endl;
+        }
+
+        // 53.2: Échafaudage complet d'une nouvelle bibliothèque sur disque via ExtensionScaffolder
+        QString scaffoldDir = QDir::currentPath() + "/scratch_scaffold_test";
+        if (QDir(scaffoldDir).exists()) QDir(scaffoldDir).removeRecursively();
+
+        {
+            TSA::ExtensionSystem::ExtensionTemplateOptions opts;
+            opts.id = "test.scaffold.library";
+            opts.name = "Bibliotheque Test Echafaudee";
+            opts.version = TSA::ExtensionSystem::SemanticVersion{ 1, 2, 0 };
+            opts.author = "TSA Automated Test Suite";
+            opts.license = "MIT";
+            opts.description = "Extension generee automatiquement pour validation du scaffolder.";
+            opts.includeMaterials = true;
+            opts.includeSections = true;
+            opts.includeProfiles = true;
+            opts.includeCables = true;
+            opts.includeTextures = true;
+            opts.includeStandards = true;
+            opts.targetDirectory = scaffoldDir;
+            opts.createPackage = true;
+            opts.packageOutputPath = scaffoldDir + ".tsalib";
+
+            QString createdDir;
+            QString scaffoldErr;
+            bool ok = TSA::ExtensionSystem::ExtensionScaffolder::scaffold(opts, &createdDir, &scaffoldErr);
+            TEST_CHECK(ok, "Subtest 53.2: Echafaudage de la bibliotheque reussi");
+            TEST_CHECK(QDir(scaffoldDir).exists(), "Subtest 53.2: Dossier cree sur disque");
+
+            // Vérification de l'arborescence et des fichiers types
+            TEST_CHECK(QFile::exists(scaffoldDir + "/manifest.json"), "Subtest 53.2: manifest.json genere");
+            TEST_CHECK(QFile::exists(scaffoldDir + "/README.md"), "Subtest 53.2: README.md genere");
+            TEST_CHECK(QFile::exists(scaffoldDir + "/Materials/sample_material.json"), "Subtest 53.2: Materiau type genere");
+            TEST_CHECK(QFile::exists(scaffoldDir + "/Sections/sample_rect_300x500.json"), "Subtest 53.2: Section type generee");
+            TEST_CHECK(QFile::exists(scaffoldDir + "/Profiles/sample_ipe240.json"), "Subtest 53.2: Profile type genere");
+            TEST_CHECK(QFile::exists(scaffoldDir + "/Cables/sample_strand_15_7.json"), "Subtest 53.2: Cable type genere");
+            TEST_CHECK(QFile::exists(scaffoldDir + "/Textures/textures.json"), "Subtest 53.2: Textures type genere");
+            TEST_CHECK(QFile::exists(scaffoldDir + "/Standards/standard_eurocode.json"), "Subtest 53.2: Norme type generee");
+
+            // Vérification du manifest.json généré
+            QFile mf(scaffoldDir + "/manifest.json");
+            TEST_CHECK(mf.open(QIODevice::ReadOnly), "Subtest 53.2: Lecture manifest");
+            auto doc = QJsonDocument::fromJson(mf.readAll());
+            TEST_CHECK(doc.isObject(), "Subtest 53.2: manifest est un JSON valide");
+            auto obj = doc.object();
+            TEST_CHECK(obj["id"].toString() == "test.scaffold.library", "Subtest 53.2: ID manifest conforme");
+            TEST_CHECK(obj["name"].toString() == "Bibliotheque Test Echafaudee", "Subtest 53.2: Nom manifest conforme");
+            TEST_CHECK(obj["version"].toString() == "1.2.0", "Subtest 53.2: Version manifest conforme");
+
+            std::cout << "  [PASS] Subtest 53.2: Echafaudage Complet & Generation de Fiches Types Valides" << std::endl;
+        }
+
+        // 53.3: Validation par le moteur LibraryValidator de la bibliothèque échafaudée
+        {
+            TSA::ExtensionSystem::LibraryValidator validator;
+            auto valResult = validator.validateExtensionDirectory(scaffoldDir);
+            TEST_CHECK(valResult.isValid(), "Subtest 53.3: Bibliotheque echafaudee 100% valide selon LibraryValidator");
+
+            std::cout << "  [PASS] Subtest 53.3: Validation Normative Immediate de l'Extension Echafaudee Validee" << std::endl;
+        }
+
+        // 53.4: Inspection du package .tsalib généré automatiquement par l'échafaudage
+        {
+            QString pkgPath = scaffoldDir + ".tsalib";
+            TEST_CHECK(QFile::exists(pkgPath), "Subtest 53.4: Package .tsalib genere");
+            auto inspect = TSA::ExtensionSystem::ExtensionPackager::inspectPackage(pkgPath);
+            TEST_CHECK(inspect.isValid(), "Subtest 53.4: Package inspecte valide");
+            TEST_CHECK(inspect.manifest.id == "test.scaffold.library", "Subtest 53.4: ID dans package conforme");
+            TEST_CHECK(inspect.files.size() >= 7, "Subtest 53.4: Au moins 7 fichiers empaquetes");
+
+            // Nettoyage temporaire
+            QFile::remove(pkgPath);
+            QDir(scaffoldDir).removeRecursively();
+
+            std::cout << "  [PASS] Subtest 53.4: Packaging .tsalib Integre a l'Assistant Valide" << std::endl;
+        }
+
+        // 53.5: Interface Utilisateur NewExtensionDialog
+        {
+            TSA::UI::NewExtensionDialog newDlg;
+            TEST_CHECK(!newDlg.windowTitle().isEmpty(), "Subtest 53.5: Titre fenetre non vide");
+            TEST_CHECK(newDlg.windowTitle().contains("TSALib"), "Subtest 53.5: Titre dialogue reference TSALib");
+
+            std::cout << "  [PASS] Subtest 53.5: Instanciation et Composants de NewExtensionDialog Valides" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 53: TSALib Phase 12 - Assistant de Creation & Echafaudage (5 Subtests Valides) Passed Successfully!" << std::endl;
         passed++;
     }
 

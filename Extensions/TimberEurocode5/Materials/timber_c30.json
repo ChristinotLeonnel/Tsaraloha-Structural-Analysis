@@ -1,0 +1,27 @@
+{
+    "id": "timber_c30",
+    "name": "Bois Massif Résineux Haute Résistance C30",
+    "category": "Timber",
+    "version": "1.0.0",
+    "standard": {
+        "name": "EN 338 / EN 1995-1-1",
+        "edition": "2016",
+        "clause": "Tableau 1 - Classe C30",
+        "source": "CEN"
+    },
+    "mechanical": {
+        "density": { "value": 460.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 12000.0, "unit": "MPa" },
+        "poisson_ratio": 0.30,
+        "thermal_coeff": { "value": 5.0e-6, "unit": "1/K" }
+    },
+    "strength": {
+        "ft": { "value": 30.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#B8860B",
+        "roughness": 0.72,
+        "metallic": 0.0,
+        "textures": { "albedo": "Textures/wood.png" }
+    }
+}

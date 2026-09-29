@@ -1,0 +1,35 @@
+{
+    "id": "box_girder_voussoir_800x1200",
+    "name": "Caisson Préfabriqué Voussoir 800x1200",
+    "category": "Concrete",
+    "shape_type": "BoxHollow",
+    "version": "1.0.0",
+    "default_material": "concrete_c50_60",
+    "standard": {
+        "name": "EN 1992-2",
+        "edition": "2005",
+        "clause": "Sections Caissons de Ponts",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.800,
+        "height": 1.200,
+        "diameter": 0.0,
+        "tw": 0.150,
+        "tf": 0.150,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.510,
+        "ix": 0.0934,
+        "iy": 0.0468,
+        "it": 0.0710,
+        "wx": 0.1557,
+        "wy": 0.1170
+    },
+    "visual": {
+        "base_color": "#5C6869",
+        "roughness": 0.80,
+        "metallic": 0.05
+    }
+}

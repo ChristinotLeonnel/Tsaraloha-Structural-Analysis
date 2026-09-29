@@ -1,0 +1,18 @@
+{
+    "$schema": "../../schemas/tsalib-manifest.schema.json",
+    "id": "org.tsaraloha.timber_ec5",
+    "name": "TSALib Eurocode 5 - Bois Massif, Lamellé-Collé & CLT",
+    "version": "1.0.0",
+    "format_version": "1.0",
+    "minimum_tsa_version": "0.1.0",
+    "author": "Tsaraloha Structural Analysis",
+    "license": "MIT",
+    "description": "Bibliothèque de structures bois selon l'Eurocode 5 (EN 1995-1-1), normes EN 338, EN 14080 et EN 16351. Inclut résineux C18-C30, feuillus D40-D70, lamellé-collé GL24h-GL32h, CLT, poutres et poteaux calibrés.",
+    "website": "https://github.com/ChristinotLeonnel/Tsaraloha-Structural-Analysis",
+    "kind": "data",
+    "categories": [
+        "materials",
+        "sections",
+        "standards"
+    ]
+}

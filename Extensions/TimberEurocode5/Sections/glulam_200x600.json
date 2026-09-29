@@ -1,0 +1,35 @@
+{
+    "id": "glulam_200x600",
+    "name": "Lamellé-Collé 200x600",
+    "category": "Timber",
+    "shape_type": "Rectangular",
+    "version": "1.0.0",
+    "default_material": "glulam_gl32h",
+    "standard": {
+        "name": "EN 14080",
+        "edition": "2013",
+        "clause": "Tableau Dimensions",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.200,
+        "height": 0.600,
+        "diameter": 0.0,
+        "tw": 0.0,
+        "tf": 0.0,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.1200,
+        "ix": 0.003600,
+        "iy": 0.000400,
+        "it": 0.00115,
+        "wx": 0.01200,
+        "wy": 0.00400
+    },
+    "visual": {
+        "base_color": "#C8955A",
+        "roughness": 0.65,
+        "metallic": 0.0
+    }
+}

@@ -1,0 +1,35 @@
+{
+    "id": "w30x90",
+    "name": "W 30x90 Poutre Forte Portée",
+    "category": "Steel",
+    "shape_type": "IShape",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a992",
+    "standard": {
+        "name": "AISC 360-16 / ASTM A6",
+        "edition": "2016",
+        "clause": "W Shapes Table - Heavy Girders",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.264,
+        "height": 0.750,
+        "diameter": 0.0,
+        "tw": 0.0120,
+        "tf": 0.0155,
+        "r": 0.018
+    },
+    "properties": {
+        "area": 0.0170,
+        "ix": 0.00150,
+        "iy": 0.0000479,
+        "it": 0.0000013,
+        "wx": 0.00400,
+        "wy": 0.000363
+    },
+    "visual": {
+        "base_color": "#3D566E",
+        "roughness": 0.35,
+        "metallic": 0.90
+    }
+}

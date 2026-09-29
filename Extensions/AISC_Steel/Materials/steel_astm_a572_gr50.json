@@ -1,0 +1,28 @@
+{
+    "id": "steel_astm_a572_gr50",
+    "name": "Acier Haute Résistance ASTM A572 Gr. 50",
+    "category": "Steel",
+    "version": "1.0.0",
+    "standard": {
+        "name": "ASTM A572 / AISC 360",
+        "edition": "2021",
+        "clause": "Table 2-4 - HSLA",
+        "source": "ASTM International"
+    },
+    "mechanical": {
+        "density": { "value": 7850.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 200000.0, "unit": "MPa" },
+        "poisson_ratio": 0.30,
+        "thermal_coeff": { "value": 1.2e-5, "unit": "1/K" }
+    },
+    "strength": {
+        "fy": { "value": 345.0, "unit": "MPa" },
+        "ft": { "value": 450.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#34495E",
+        "roughness": 0.33,
+        "metallic": 0.92,
+        "textures": { "albedo": "Textures/steel.png" }
+    }
+}

@@ -1,0 +1,27 @@
+{
+    "id": "glulam_gl24h",
+    "name": "Bois Lamellé-Collé GL24h",
+    "category": "Timber",
+    "version": "1.0.0",
+    "standard": {
+        "name": "EN 14080 / EN 1995-1-1",
+        "edition": "2013",
+        "clause": "Tableau 4 - Classes GLh",
+        "source": "CEN"
+    },
+    "mechanical": {
+        "density": { "value": 420.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 11500.0, "unit": "MPa" },
+        "poisson_ratio": 0.30,
+        "thermal_coeff": { "value": 5.0e-6, "unit": "1/K" }
+    },
+    "strength": {
+        "ft": { "value": 24.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#DEB887",
+        "roughness": 0.70,
+        "metallic": 0.0,
+        "textures": { "albedo": "Textures/wood.png" }
+    }
+}

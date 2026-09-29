@@ -1,0 +1,35 @@
+{
+    "id": "inverted_t_beam_400x600",
+    "name": "Poutre T Inversé Préfabriquée 400x600",
+    "category": "Concrete",
+    "shape_type": "TSection",
+    "version": "1.0.0",
+    "default_material": "concrete_c40_50",
+    "standard": {
+        "name": "EN 13369",
+        "edition": "2018",
+        "clause": "Table Poutres en T Inversé",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.400,
+        "height": 0.600,
+        "diameter": 0.0,
+        "tw": 0.200,
+        "tf": 0.200,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.160,
+        "ix": 0.00533,
+        "iy": 0.00160,
+        "it": 0.00095,
+        "wx": 0.0177,
+        "wy": 0.0080
+    },
+    "visual": {
+        "base_color": "#7B8A8B",
+        "roughness": 0.85,
+        "metallic": 0.05
+    }
+}

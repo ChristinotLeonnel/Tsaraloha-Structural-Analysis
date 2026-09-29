@@ -5,7 +5,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 52;
+    int expectedTotal = 53;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Cables(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "extensions" || suiteFilter == "tsalib") {
-        std::cout << "\n--- [Suite 8/9] Diagnostics & TSALib Extensions (Tests 37-39, 41-43, 46-48) ---" << std::endl;
+        std::cout << "\n--- [Suite 8/9] Diagnostics & TSALib Extensions (Tests 37-39, 41-43, 46-48, 53) ---" << std::endl;
         if (!runSuite_Extensions(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "workplane" || suiteFilter == "wp") {

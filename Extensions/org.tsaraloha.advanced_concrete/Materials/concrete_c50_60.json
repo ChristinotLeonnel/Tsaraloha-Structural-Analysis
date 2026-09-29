@@ -1,0 +1,27 @@
+{
+    "id": "concrete_c50_60",
+    "name": "Béton Haute Performance BHP C50/60",
+    "category": "Concrete",
+    "version": "1.0.0",
+    "standard": {
+        "name": "EN 1992-1-1",
+        "edition": "2004",
+        "clause": "Tableau 3.1",
+        "source": "CEN"
+    },
+    "mechanical": {
+        "density": { "value": 2500.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 37000.0, "unit": "MPa" },
+        "poisson_ratio": 0.20,
+        "thermal_coeff": { "value": 1.0e-5, "unit": "1/K" }
+    },
+    "strength": {
+        "fck": { "value": 50.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#6E7B7C",
+        "roughness": 0.82,
+        "metallic": 0.05,
+        "textures": { "albedo": "Textures/concrete.png" }
+    }
+}

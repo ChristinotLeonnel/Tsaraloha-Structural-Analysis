@@ -51,6 +51,7 @@ signals:
     void extensionsReloaded();
 
 public slots:
+    void onNewExtension();
     void onReloadAll(bool showMessage = true);
     void onValidateAll(bool showMessage = true);
     void onImportExtension();
@@ -84,6 +85,7 @@ private:
 private:
     // Widgets d'en-tête
     QLineEdit* m_searchEdit = nullptr;
+    QPushButton* m_btnNewExtension = nullptr;
     QPushButton* m_btnReloadAll = nullptr;
     QPushButton* m_btnValidateAll = nullptr;
     QPushButton* m_btnImport = nullptr;

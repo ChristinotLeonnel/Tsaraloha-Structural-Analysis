@@ -1,4 +1,5 @@
 #include "ExtensionManagerDialog.h"
+#include "NewExtensionDialog.h"
 #include "../../ExtensionSystem/LibraryManager.h"
 #include "../../ExtensionSystem/LibraryRegistry.h"
 #include "../../ExtensionSystem/LibraryCache.h"
@@ -53,6 +54,11 @@ void ExtensionManagerDialog::setupUi()
     m_searchEdit->setMinimumHeight(32);
     m_searchEdit->setStyleSheet("QLineEdit { padding: 4px 8px; border-radius: 4px; font-size: 13px; }");
     topLayout->addWidget(m_searchEdit, 1);
+
+    m_btnNewExtension = new QPushButton(QIcon(":/icons/add.svg"), tr("Nouvelle bibliothèque..."), this);
+    m_btnNewExtension->setToolTip(tr("Créer une nouvelle extension TSALib avec l'assistant interactif"));
+    m_btnNewExtension->setMinimumHeight(32);
+    topLayout->addWidget(m_btnNewExtension);
 
     m_btnReloadAll = new QPushButton(QIcon(":/icons/edit/redo.svg"), tr("Recharger tout"), this);
     m_btnReloadAll->setToolTip(tr("Recharger à chaud toutes les bibliothèques JSON et textures du disque sans recompiler"));
@@ -143,6 +149,7 @@ void ExtensionManagerDialog::setupUi()
 
     // Connexions de signaux/slots
     connect(m_searchEdit, &QLineEdit::textChanged, this, &ExtensionManagerDialog::onSearchTextChanged);
+    connect(m_btnNewExtension, &QPushButton::clicked, this, &ExtensionManagerDialog::onNewExtension);
     connect(m_btnReloadAll, &QPushButton::clicked, this, [this]() { onReloadAll(true); });
     connect(m_btnValidateAll, &QPushButton::clicked, this, [this]() { onValidateAll(true); });
     connect(m_btnImport, &QPushButton::clicked, this, &ExtensionManagerDialog::onImportExtension);
@@ -978,6 +985,17 @@ void ExtensionManagerDialog::onExportExtension()
     {
         QMessageBox::critical(this, tr("Erreur d'Exportation"),
             tr("Impossible d'exporter l'extension :\n%1").arg(err));
+    }
+}
+
+void ExtensionManagerDialog::onNewExtension()
+{
+    NewExtensionDialog dlg(this);
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        onReloadAll(false);
+        selectCategory("Extensions");
+        m_statusLabel->setText(tr("Bibliothèque '%1' créée et chargée avec succès.").arg(dlg.createdExtensionId()));
     }
 }
 

@@ -1,0 +1,35 @@
+{
+    "id": "solid_200x200",
+    "name": "Poteau Bois Massif Fort 200x200",
+    "category": "Timber",
+    "shape_type": "Rectangular",
+    "version": "1.0.0",
+    "default_material": "timber_c30",
+    "standard": {
+        "name": "EN 338",
+        "edition": "2016",
+        "clause": "Tableau Dimensions",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.200,
+        "height": 0.200,
+        "diameter": 0.0,
+        "tw": 0.0,
+        "tf": 0.0,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.0400,
+        "ix": 0.00013333,
+        "iy": 0.00013333,
+        "it": 0.000200,
+        "wx": 0.001333,
+        "wy": 0.001333
+    },
+    "visual": {
+        "base_color": "#B8860B",
+        "roughness": 0.72,
+        "metallic": 0.0
+    }
+}

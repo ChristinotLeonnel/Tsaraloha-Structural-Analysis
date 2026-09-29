@@ -1,0 +1,35 @@
+{
+    "id": "glulam_140x360",
+    "name": "Lamellé-Collé 140x360",
+    "category": "Timber",
+    "shape_type": "Rectangular",
+    "version": "1.0.0",
+    "default_material": "glulam_gl28h",
+    "standard": {
+        "name": "EN 14080",
+        "edition": "2013",
+        "clause": "Tableau Dimensions",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.140,
+        "height": 0.360,
+        "diameter": 0.0,
+        "tw": 0.0,
+        "tf": 0.0,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.0504,
+        "ix": 0.00054432,
+        "iy": 0.00008232,
+        "it": 0.000215,
+        "wx": 0.003024,
+        "wy": 0.001176
+    },
+    "visual": {
+        "base_color": "#D2A679",
+        "roughness": 0.70,
+        "metallic": 0.0
+    }
+}

@@ -1,0 +1,35 @@
+{
+    "id": "solid_100x200",
+    "name": "Solive Bois Massif 100x200",
+    "category": "Timber",
+    "shape_type": "Rectangular",
+    "version": "1.0.0",
+    "default_material": "timber_c24_nordic",
+    "standard": {
+        "name": "EN 338",
+        "edition": "2016",
+        "clause": "Tableau Dimensions",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.100,
+        "height": 0.200,
+        "diameter": 0.0,
+        "tw": 0.0,
+        "tf": 0.0,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.0200,
+        "ix": 0.00006667,
+        "iy": 0.00001667,
+        "it": 0.000035,
+        "wx": 0.000667,
+        "wy": 0.000333
+    },
+    "visual": {
+        "base_color": "#C49A45",
+        "roughness": 0.75,
+        "metallic": 0.0
+    }
+}

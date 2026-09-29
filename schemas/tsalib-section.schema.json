@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TSALib Section Schema",
+  "description": "Schéma officiel pour une section ou un profilé structural TSALib",
+  "type": "object",
+  "required": ["id", "name", "category", "shape_type", "dimensions"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+(\\.[a-z0-9_-]+)*$",
+      "description": "Identifiant unique de la section"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Nom usuel de la section (ex: IPE 200)"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["Steel", "Concrete", "Timber", "Aluminum", "Composite", "Custom"],
+      "description": "Famille de matériau associée"
+    },
+    "shape_type": {
+      "type": "string",
+      "enum": ["Rectangular", "Circular", "IShape", "Pipe", "BoxHollow", "UPN", "Angle", "TSection"],
+      "description": "Type géométrique de la section"
+    },
+    "version": {
+      "type": "string"
+    },
+    "default_material": {
+      "type": "string",
+      "description": "Identifiant du matériau par défaut associé"
+    },
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 },
+        "diameter": { "type": "number", "minimum": 0 },
+        "tw": { "type": "number", "minimum": 0 },
+        "tf": { "type": "number", "minimum": 0 },
+        "r": { "type": "number", "minimum": 0 }
+      }
+    },
+    "properties": {
+      "type": "object",
+      "properties": {
+        "area": { "type": "number", "minimum": 0 },
+        "ix": { "type": "number", "minimum": 0 },
+        "iy": { "type": "number", "minimum": 0 },
+        "it": { "type": "number", "minimum": 0 },
+        "wx": { "type": "number", "minimum": 0 },
+        "wy": { "type": "number", "minimum": 0 }
+      }
+    },
+    "visual": {
+      "type": "object",
+      "properties": {
+        "base_color": { "type": "string" },
+        "roughness": { "type": "number" },
+        "metallic": { "type": "number" }
+      }
+    }
+  }
+}

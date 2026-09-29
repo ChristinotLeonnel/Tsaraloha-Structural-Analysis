@@ -1,0 +1,35 @@
+{
+    "id": "w10x33",
+    "name": "W 10x33",
+    "category": "Steel",
+    "shape_type": "IShape",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a992",
+    "standard": {
+        "name": "AISC 360-16 / ASTM A6",
+        "edition": "2016",
+        "clause": "W Shapes Table",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.202,
+        "height": 0.247,
+        "diameter": 0.0,
+        "tw": 0.0074,
+        "tf": 0.0110,
+        "r": 0.012
+    },
+    "properties": {
+        "area": 0.00626,
+        "ix": 0.0000712,
+        "iy": 0.0000152,
+        "it": 0.00000024,
+        "wx": 0.000577,
+        "wy": 0.000150
+    },
+    "visual": {
+        "base_color": "#4A6B82",
+        "roughness": 0.35,
+        "metallic": 0.90
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "$schema": "../../schemas/tsalib-manifest.schema.json",
+    "id": "org.tsaraloha.advanced_concrete",
+    "name": "TSALib Bétons Spéciaux, Bétons Fibrés & Préfabrication",
+    "version": "1.0.0",
+    "format_version": "1.0",
+    "minimum_tsa_version": "0.1.0",
+    "author": "Tsaraloha Structural Analysis",
+    "license": "MIT",
+    "description": "Bibliothèque de bétons à hautes performances (BHP C50/60, C70/85), bétons fibrés à ultra-hautes performances (BFUP fck=150 MPa), bétons légers structuraux (LC25/28), et éléments préfabriqués de ponts et bâtiments (poutres I précontraintes, voussoirs, poutres en T inversé).",
+    "website": "https://github.com/ChristinotLeonnel/Tsaraloha-Structural-Analysis",
+    "kind": "data",
+    "categories": [
+        "materials",
+        "sections",
+        "standards"
+    ]
+}

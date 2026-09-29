@@ -122,11 +122,13 @@
 #include "ExtensionSystem/LibraryManager.h"
 #include "ExtensionSystem/ExtensionManager.h"
 #include "ExtensionSystem/ExtensionPackager.h"
+#include "ExtensionSystem/ExtensionScaffolder.h"
 
 #include "Viewer/MaterialVisual.h"
 #include "Viewer/TextureManager.h"
 
 #include "UI/Dialogs/ExtensionManagerDialog.h"
+#include "UI/Dialogs/NewExtensionDialog.h"
 
 using namespace TSA::Coordinate;
 using namespace TSA::Model;

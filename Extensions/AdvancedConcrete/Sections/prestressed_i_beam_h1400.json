@@ -1,0 +1,35 @@
+{
+    "id": "prestressed_i_beam_h1400",
+    "name": "Poutre I Précontrainte Pont H1400",
+    "category": "Concrete",
+    "shape_type": "IShape",
+    "version": "1.0.0",
+    "default_material": "concrete_c50_60",
+    "standard": {
+        "name": "EN 13369 / EN 1992-2",
+        "edition": "2018",
+        "clause": "Poutres de Ponts",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.600,
+        "height": 1.400,
+        "diameter": 0.0,
+        "tw": 0.200,
+        "tf": 0.250,
+        "r": 0.060
+    },
+    "properties": {
+        "area": 0.380,
+        "ix": 0.102,
+        "iy": 0.0090,
+        "it": 0.0035,
+        "wx": 0.145,
+        "wy": 0.0300
+    },
+    "visual": {
+        "base_color": "#6E7B7C",
+        "roughness": 0.80,
+        "metallic": 0.05
+    }
+}

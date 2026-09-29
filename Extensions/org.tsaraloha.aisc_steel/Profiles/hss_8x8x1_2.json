@@ -1,0 +1,35 @@
+{
+    "id": "hss_8x8x1_2",
+    "name": "HSS 8x8x1/2 Poteau Carré",
+    "category": "Steel",
+    "shape_type": "BoxHollow",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a500_grb",
+    "standard": {
+        "name": "AISC 360-16 / ASTM A500",
+        "edition": "2016",
+        "clause": "Table HSS Square Columns",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.2032,
+        "height": 0.2032,
+        "diameter": 0.0,
+        "tw": 0.0127,
+        "tf": 0.0127,
+        "r": 0.025
+    },
+    "properties": {
+        "area": 0.00935,
+        "ix": 0.0000566,
+        "iy": 0.0000566,
+        "it": 0.0000915,
+        "wx": 0.000557,
+        "wy": 0.000557
+    },
+    "visual": {
+        "base_color": "#3D566E",
+        "roughness": 0.38,
+        "metallic": 0.88
+    }
+}

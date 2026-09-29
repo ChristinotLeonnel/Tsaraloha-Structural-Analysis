@@ -134,6 +134,8 @@ set(UI_DIALOGS_SOURCES
 set(UI_EXTENSIONMANAGERDIALOG_SOURCES
     src/UI/Dialogs/ExtensionManagerDialog.h
     src/UI/Dialogs/ExtensionManagerDialog.cpp
+    src/UI/Dialogs/NewExtensionDialog.h
+    src/UI/Dialogs/NewExtensionDialog.cpp
 )
 
 # --- Système d'extensions / bibliothèques de composants — [CORE] ------------
@@ -160,6 +162,8 @@ set(EXTENSIONSYSTEM_SOURCES
     src/ExtensionSystem/ExtensionManager.cpp
     src/ExtensionSystem/ExtensionPackager.h
     src/ExtensionSystem/ExtensionPackager.cpp
+    src/ExtensionSystem/ExtensionScaffolder.h
+    src/ExtensionSystem/ExtensionScaffolder.cpp
 )
 
 # --- Bibliothèque de composants (gestionnaire générique) — [CORE] -----------

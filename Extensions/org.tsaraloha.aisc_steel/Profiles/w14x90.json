@@ -1,0 +1,35 @@
+{
+    "id": "w14x90",
+    "name": "W 14x90 Poteau Lourd",
+    "category": "Steel",
+    "shape_type": "IShape",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a992",
+    "standard": {
+        "name": "AISC 360-16 / ASTM A6",
+        "edition": "2016",
+        "clause": "W Shapes Table - Heavy Columns",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.368,
+        "height": 0.356,
+        "diameter": 0.0,
+        "tw": 0.0112,
+        "tf": 0.0180,
+        "r": 0.015
+    },
+    "properties": {
+        "area": 0.0171,
+        "ix": 0.000416,
+        "iy": 0.000151,
+        "it": 0.0000017,
+        "wx": 0.00234,
+        "wy": 0.00082
+    },
+    "visual": {
+        "base_color": "#3D566E",
+        "roughness": 0.35,
+        "metallic": 0.90
+    }
+}

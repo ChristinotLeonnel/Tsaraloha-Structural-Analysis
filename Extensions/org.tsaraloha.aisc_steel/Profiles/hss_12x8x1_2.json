@@ -1,0 +1,35 @@
+{
+    "id": "hss_12x8x1_2",
+    "name": "HSS 12x8x1/2 Fort Tube",
+    "category": "Steel",
+    "shape_type": "BoxHollow",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a500_grb",
+    "standard": {
+        "name": "AISC 360-16 / ASTM A500",
+        "edition": "2016",
+        "clause": "Table HSS Rectangular Columns",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.2032,
+        "height": 0.3048,
+        "diameter": 0.0,
+        "tw": 0.0127,
+        "tf": 0.0127,
+        "r": 0.025
+    },
+    "properties": {
+        "area": 0.0119,
+        "ix": 0.000157,
+        "iy": 0.0000832,
+        "it": 0.000178,
+        "wx": 0.00103,
+        "wy": 0.000819
+    },
+    "visual": {
+        "base_color": "#3D566E",
+        "roughness": 0.38,
+        "metallic": 0.88
+    }
+}

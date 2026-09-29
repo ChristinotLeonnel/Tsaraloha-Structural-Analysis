@@ -1,0 +1,27 @@
+{
+    "id": "concrete_c70_85",
+    "name": "Béton Très Haute Performance C70/85",
+    "category": "Concrete",
+    "version": "1.0.0",
+    "standard": {
+        "name": "EN 1992-1-1",
+        "edition": "2004",
+        "clause": "Tableau 3.1 - BHP",
+        "source": "CEN"
+    },
+    "mechanical": {
+        "density": { "value": 2550.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 41000.0, "unit": "MPa" },
+        "poisson_ratio": 0.20,
+        "thermal_coeff": { "value": 1.0e-5, "unit": "1/K" }
+    },
+    "strength": {
+        "fck": { "value": 70.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#5C6869",
+        "roughness": 0.80,
+        "metallic": 0.08,
+        "textures": { "albedo": "Textures/concrete.png" }
+    }
+}

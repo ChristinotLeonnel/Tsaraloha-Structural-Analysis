@@ -1,0 +1,35 @@
+{
+    "id": "solid_150x150",
+    "name": "Poteau Bois Massif 150x150",
+    "category": "Timber",
+    "shape_type": "Rectangular",
+    "version": "1.0.0",
+    "default_material": "timber_c24_nordic",
+    "standard": {
+        "name": "EN 338",
+        "edition": "2016",
+        "clause": "Tableau Dimensions",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.150,
+        "height": 0.150,
+        "diameter": 0.0,
+        "tw": 0.0,
+        "tf": 0.0,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.0225,
+        "ix": 0.00004219,
+        "iy": 0.00004219,
+        "it": 0.000060,
+        "wx": 0.000562,
+        "wy": 0.000562
+    },
+    "visual": {
+        "base_color": "#C49A45",
+        "roughness": 0.75,
+        "metallic": 0.0
+    }
+}

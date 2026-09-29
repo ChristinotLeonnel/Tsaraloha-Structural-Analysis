@@ -1,0 +1,27 @@
+{
+    "id": "concrete_c40_50",
+    "name": "Béton d'Ouvrage d'Art C40/50",
+    "category": "Concrete",
+    "version": "1.0.0",
+    "standard": {
+        "name": "EN 1992-1-1",
+        "edition": "2004",
+        "clause": "Tableau 3.1",
+        "source": "CEN"
+    },
+    "mechanical": {
+        "density": { "value": 2500.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 35000.0, "unit": "MPa" },
+        "poisson_ratio": 0.20,
+        "thermal_coeff": { "value": 1.0e-5, "unit": "1/K" }
+    },
+    "strength": {
+        "fck": { "value": 40.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#7B8A8B",
+        "roughness": 0.85,
+        "metallic": 0.05,
+        "textures": { "albedo": "Textures/concrete.png" }
+    }
+}

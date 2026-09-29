@@ -1,0 +1,35 @@
+{
+    "id": "pipe_6_std",
+    "name": "Pipe 6 Std (D=168.3x7.11)",
+    "category": "Steel",
+    "shape_type": "Pipe",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a500_grb",
+    "standard": {
+        "name": "ASTM A53 / AISC 360",
+        "edition": "2020",
+        "clause": "Table Steel Pipe",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.1683,
+        "height": 0.1683,
+        "diameter": 0.1683,
+        "tw": 0.00711,
+        "tf": 0.00711,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.00360,
+        "ix": 0.0000119,
+        "iy": 0.0000119,
+        "it": 0.0000238,
+        "wx": 0.000141,
+        "wy": 0.000141
+    },
+    "visual": {
+        "base_color": "#4A6B82",
+        "roughness": 0.35,
+        "metallic": 0.90
+    }
+}

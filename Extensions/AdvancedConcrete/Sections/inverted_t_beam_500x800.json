@@ -1,0 +1,35 @@
+{
+    "id": "inverted_t_beam_500x800",
+    "name": "Poutre T Inversé Lourde 500x800",
+    "category": "Concrete",
+    "shape_type": "TSection",
+    "version": "1.0.0",
+    "default_material": "concrete_c50_60",
+    "standard": {
+        "name": "EN 13369",
+        "edition": "2018",
+        "clause": "Table Poutres en T Inversé",
+        "source": "CEN"
+    },
+    "dimensions": {
+        "width": 0.500,
+        "height": 0.800,
+        "diameter": 0.0,
+        "tw": 0.250,
+        "tf": 0.250,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.2625,
+        "ix": 0.0152,
+        "iy": 0.0039,
+        "it": 0.0022,
+        "wx": 0.0380,
+        "wy": 0.0156
+    },
+    "visual": {
+        "base_color": "#6E7B7C",
+        "roughness": 0.82,
+        "metallic": 0.05
+    }
+}

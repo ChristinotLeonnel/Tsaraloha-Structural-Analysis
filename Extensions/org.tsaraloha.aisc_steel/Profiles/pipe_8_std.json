@@ -1,0 +1,35 @@
+{
+    "id": "pipe_8_std",
+    "name": "Pipe 8 Std (D=219.1x8.18)",
+    "category": "Steel",
+    "shape_type": "Pipe",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a500_grb",
+    "standard": {
+        "name": "ASTM A53 / AISC 360",
+        "edition": "2020",
+        "clause": "Table Steel Pipe",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.2191,
+        "height": 0.2191,
+        "diameter": 0.2191,
+        "tw": 0.00818,
+        "tf": 0.00818,
+        "r": 0.0
+    },
+    "properties": {
+        "area": 0.00542,
+        "ix": 0.0000300,
+        "iy": 0.0000300,
+        "it": 0.0000600,
+        "wx": 0.000274,
+        "wy": 0.000274
+    },
+    "visual": {
+        "base_color": "#3D566E",
+        "roughness": 0.35,
+        "metallic": 0.90
+    }
+}

@@ -1,0 +1,28 @@
+{
+    "id": "concrete_bfup_150",
+    "name": "Béton Fibré à Ultra-Hautes Performances BFUP 150",
+    "category": "Concrete",
+    "version": "1.0.0",
+    "standard": {
+        "name": "NF P 18-470",
+        "edition": "2016",
+        "clause": "Tableau 1 - BFUP",
+        "source": "AFNOR"
+    },
+    "mechanical": {
+        "density": { "value": 2600.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 50000.0, "unit": "MPa" },
+        "poisson_ratio": 0.22,
+        "thermal_coeff": { "value": 1.1e-5, "unit": "1/K" }
+    },
+    "strength": {
+        "fck": { "value": 150.0, "unit": "MPa" },
+        "ft": { "value": 12.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#4A5253",
+        "roughness": 0.65,
+        "metallic": 0.15,
+        "textures": { "albedo": "Textures/concrete.png" }
+    }
+}

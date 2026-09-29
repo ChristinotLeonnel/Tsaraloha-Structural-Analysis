@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TSALib Material Schema",
+  "description": "Schéma officiel pour une fiche de matériau structural TSALib",
+  "type": "object",
+  "required": ["id", "name", "category", "mechanical"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]+(\\.[a-z0-9_-]+)*$",
+      "description": "Identifiant unique du matériau (ex: timber_c24)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Nom usuel du matériau (ex: Timber C24)"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["Concrete", "Steel", "Timber", "Masonry", "Aluminum", "Glass", "Soil", "Custom"],
+      "description": "Famille de matériau structural"
+    },
+    "version": {
+      "type": "string",
+      "description": "Version de la fiche matériau"
+    },
+    "standard": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "edition": { "type": "string" },
+        "clause": { "type": "string" },
+        "source": { "type": "string" }
+      }
+    },
+    "mechanical": {
+      "type": "object",
+      "required": ["young_modulus", "density", "poisson_ratio"],
+      "properties": {
+        "young_modulus": {
+          "type": "object",
+          "required": ["value", "unit"],
+          "properties": {
+            "value": { "type": "number", "minimum": 0 },
+            "unit": { "type": "string", "enum": ["MPa", "GPa", "Pa", "N/mm2"] }
+          }
+        },
+        "density": {
+          "type": "object",
+          "required": ["value", "unit"],
+          "properties": {
+            "value": { "type": "number", "minimum": 0 },
+            "unit": { "type": "string", "enum": ["kg/m3", "t/m3", "g/cm3"] }
+          }
+        },
+        "poisson_ratio": {
+          "type": "number",
+          "minimum": -1.0,
+          "maximum": 0.5
+        },
+        "thermal_coeff": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "unit": { "type": "string", "enum": ["1/K", "K^-1"] }
+          }
+        }
+      }
+    },
+    "strength": {
+      "type": "object",
+      "properties": {
+        "fck": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "unit": { "type": "string" }
+          }
+        },
+        "fy": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "unit": { "type": "string" }
+          }
+        },
+        "ft": {
+          "type": "object",
+          "properties": {
+            "value": { "type": "number" },
+            "unit": { "type": "string" }
+          }
+        }
+      }
+    },
+    "visual": {
+      "type": "object",
+      "properties": {
+        "base_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "roughness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "metallic": { "type": "number", "minimum": 0, "maximum": 1 },
+        "transparency": { "type": "number", "minimum": 0, "maximum": 1 },
+        "shininess": { "type": "number" },
+        "textures": {
+          "type": "object",
+          "properties": {
+            "albedo": { "type": "string" },
+            "normal": { "type": "string" },
+            "roughness": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

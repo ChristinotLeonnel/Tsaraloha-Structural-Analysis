@@ -1,0 +1,27 @@
+{
+    "id": "concrete_lightweight_lc25_28",
+    "name": "Béton Léger de Structure LC25/28",
+    "category": "Concrete",
+    "version": "1.0.0",
+    "standard": {
+        "name": "EN 1992-1-1",
+        "edition": "2004",
+        "clause": "Section 11 - Bétons Légers",
+        "source": "CEN"
+    },
+    "mechanical": {
+        "density": { "value": 1750.0, "unit": "kg/m3" },
+        "young_modulus": { "value": 19000.0, "unit": "MPa" },
+        "poisson_ratio": 0.20,
+        "thermal_coeff": { "value": 0.8e-5, "unit": "1/K" }
+    },
+    "strength": {
+        "fck": { "value": 25.0, "unit": "MPa" }
+    },
+    "visual": {
+        "base_color": "#9E9E9E",
+        "roughness": 0.90,
+        "metallic": 0.0,
+        "textures": { "albedo": "Textures/concrete.png" }
+    }
+}

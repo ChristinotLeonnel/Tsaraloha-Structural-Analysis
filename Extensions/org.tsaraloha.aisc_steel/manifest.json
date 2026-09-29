@@ -1,0 +1,18 @@
+{
+    "$schema": "../../schemas/tsalib-manifest.schema.json",
+    "id": "org.tsaraloha.aisc_steel",
+    "name": "TSALib AISC Steel & ASTM Structural Shapes",
+    "version": "1.0.0",
+    "format_version": "1.0",
+    "minimum_tsa_version": "0.1.0",
+    "author": "Tsaraloha Structural Analysis",
+    "license": "MIT",
+    "description": "Bibliothèque officielle nord-américaine conforme à AISC 360-16 et normes ASTM (A992, A36, A500, A572). Inclut profilés W (Wide Flange), tubes structuraux HSS et tubes circulaires Pipe.",
+    "website": "https://github.com/ChristinotLeonnel/Tsaraloha-Structural-Analysis",
+    "kind": "data",
+    "categories": [
+        "materials",
+        "profiles",
+        "standards"
+    ]
+}

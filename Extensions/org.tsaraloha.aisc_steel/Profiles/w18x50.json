@@ -1,0 +1,35 @@
+{
+    "id": "w18x50",
+    "name": "W 18x50 Poutre Plancher",
+    "category": "Steel",
+    "shape_type": "IShape",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a992",
+    "standard": {
+        "name": "AISC 360-16 / ASTM A6",
+        "edition": "2016",
+        "clause": "W Shapes Table",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.190,
+        "height": 0.457,
+        "diameter": 0.0,
+        "tw": 0.0090,
+        "tf": 0.0145,
+        "r": 0.015
+    },
+    "properties": {
+        "area": 0.00948,
+        "ix": 0.000333,
+        "iy": 0.0000167,
+        "it": 0.00000055,
+        "wx": 0.00146,
+        "wy": 0.000176
+    },
+    "visual": {
+        "base_color": "#4A6B82",
+        "roughness": 0.35,
+        "metallic": 0.90
+    }
+}

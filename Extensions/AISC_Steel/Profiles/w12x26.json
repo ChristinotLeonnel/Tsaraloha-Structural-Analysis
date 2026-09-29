@@ -1,0 +1,35 @@
+{
+    "id": "w12x26",
+    "name": "W 12x26",
+    "category": "Steel",
+    "shape_type": "IShape",
+    "version": "1.0.0",
+    "default_material": "steel_astm_a992",
+    "standard": {
+        "name": "AISC 360-16 / ASTM A6",
+        "edition": "2016",
+        "clause": "W Shapes Table",
+        "source": "AISC"
+    },
+    "dimensions": {
+        "width": 0.165,
+        "height": 0.310,
+        "diameter": 0.0,
+        "tw": 0.0058,
+        "tf": 0.0097,
+        "r": 0.012
+    },
+    "properties": {
+        "area": 0.00494,
+        "ix": 0.0000849,
+        "iy": 0.0000072,
+        "it": 0.00000013,
+        "wx": 0.000548,
+        "wy": 0.000087
+    },
+    "visual": {
+        "base_color": "#4A6B82",
+        "roughness": 0.35,
+        "metallic": 0.90
+    }
+}
