@@ -67,6 +67,7 @@ Legende :
   -                   Zoom Arriere
   [aucun]             Zoom Fenetre (selection rectangulaire)
   Home                Vue Initiale (Home 3D)
+  R                   Reinitialiser la Vue (Reset View)
   Alt+Left            Vue Precedente (historique camera)
   Alt+Right           Vue Suivante (historique camera)
 
@@ -99,9 +100,9 @@ Legende :
 ================================================================================
 
   G                   Afficher / Masquer la Grille 3D
-  S                   Activer / Desactiver le Magnetisme (Snap)
-  F3                  Accrochage Objets (OSNAP)
   F7                  Afficher / Masquer la Grille (alternatif)
+  S                   Activer / Desactiver le Magnetisme Grille (Snap)
+  F3                  Activer / Desactiver l'Accrochage Objets (OSNAP)
   Ctrl+L              Gestionnaire d'Etages et Niveaux
   [aucun]             Gestionnaire de Grilles
   [aucun]             Afficher Plans d'Etages
@@ -112,7 +113,7 @@ Legende :
   9. PROPRIETES & BIBLIOTHEQUES
 ================================================================================
 
-  P                   Panneau Proprietes (inspection de la selection)
+  P                   Panneau Proprietes (toggle visibilite)
   [aucun]             Catalogue Profiles (sections TSALib)
   [aucun]             Catalogue Materiaux (Eurocodes / ASTM)
   [aucun]             Catalogue Cables (torons et cables clos)
@@ -185,9 +186,9 @@ Legende :
   Dessin     : N (noeud)  B (poutre)  C (poteau)  Alt+C (cable)
                L (dalle)  W (voile)
   Modif 3D   : M (deplacer)  Ctrl+D (copier)  Ctrl+R (rotation)
-  Vue        : F (fit)  Shift+F (cadrer)  +/-  Home  Alt+Left/Right
+  Vue        : F (fit)  Shift+F (cadrer)  +/-  Home  R (reset)  Alt+Left/Right
   Vues campi : Num1/3/5/7 (face/gauche/iso/dessus)
-  Grille     : G (grille)  S (snap)  F3 (osnap)  Ctrl+L (niveaux)
+  Grille     : G (grille)  F7 (grille alt.)  S (snap)  F3 (osnap)  Ctrl+L (niveaux)
   Calcul     : F5 (calcul statique)
   Theme      : Ctrl+T
   Plein ecran: F11

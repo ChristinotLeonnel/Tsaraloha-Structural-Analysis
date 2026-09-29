@@ -119,6 +119,7 @@ struct RibbonActions
     QAction* actionLevelsVisible = nullptr;
     QAction* actionGridLabels = nullptr;
     QAction* actionGridSnap = nullptr;
+    QAction* actionObjectSnap = nullptr;
     QAction* actionRulersVisible = nullptr;
     QAction* actionFullScreen = nullptr;
 

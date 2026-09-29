@@ -1025,7 +1025,7 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
     const int py = mousePixelPos.y();
 
     // 1. Détection 3D sous le curseur (Proximité écran 18px sur nœuds structuraux, intersections, axes ou arcs)
-    if (m_snapToGrid)
+    if (m_snapToObject)
     {
         QString snapDesc;
         TSA::Grid::GridSnapType snapType = TSA::Grid::GridSnapType::None;

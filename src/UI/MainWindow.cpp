@@ -561,7 +561,20 @@ void MainWindow::onToggleGridSnap(bool checked)
         m_occView->setGridSnapEnabled(checked);
         if (m_statusInfo)
         {
-            m_statusInfo->setText(checked ? tr("Accrochage magnétique à la grille activé") : tr("Accrochage désactivé"));
+            m_statusInfo->setText(checked ? tr("Accrochage magnétique à la grille activé (S)") : tr("Accrochage grille désactivé (S)"));
+        }
+    }
+}
+
+void MainWindow::onToggleObjectSnap(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setObjectSnapEnabled(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Accrochage intelligent aux objets (OSNAP) activé (F3)")
+                                          : tr("Accrochage objets (OSNAP) désactivé (F3)"));
         }
     }
 }
@@ -737,6 +750,66 @@ void MainWindow::onActionDeleteSelected()
     }
     updateUndoRedoActions();
 }
+
+void MainWindow::onActionSelectAll()
+{
+    if (!m_selectionManager || !m_model)
+        return;
+
+    m_selectionManager->clearSelection();
+
+    // Sélectionner tous les nœuds
+    for (const auto& [id, node] : m_model->nodes())
+    {
+        m_selectionManager->selectNode(id, true);
+    }
+    // Sélectionner toutes les poutres
+    for (const auto& [id, beam] : m_model->beams())
+    {
+        m_selectionManager->selectBeam(id, true);
+    }
+    // Sélectionner tous les poteaux
+    for (const auto& [id, col] : m_model->columns())
+    {
+        m_selectionManager->selectColumn(id, true);
+    }
+    // Sélectionner toutes les dalles
+    for (const auto& [id, slab] : m_model->slabs())
+    {
+        m_selectionManager->selectSlab(id, true);
+    }
+    // Sélectionner tous les voiles
+    for (const auto& [id, wall] : m_model->walls())
+    {
+        m_selectionManager->selectWall(id, true);
+    }
+    // Sélectionner toutes les fondations
+    for (const auto& [id, f] : m_model->foundations())
+    {
+        m_selectionManager->selectFoundation(id, true);
+    }
+    // Sélectionner toutes les barres de treillis
+    for (const auto& [id, tr] : m_model->trussMembers())
+    {
+        m_selectionManager->selectTrussMember(id, true);
+    }
+    // Sélectionner tous les câbles
+    for (const auto& [id, c] : m_model->cables())
+    {
+        m_selectionManager->selectCable(id, true);
+    }
+
+    size_t total = m_selectionManager->totalSelectedCount();
+    if (m_occView)
+    {
+        m_occView->update();
+    }
+    if (m_statusInfo)
+    {
+        m_statusInfo->setText(tr("Tout sélectionné : %1 élément(s)").arg(total));
+    }
+}
+
 
 void MainWindow::onActionAddCube()
 {

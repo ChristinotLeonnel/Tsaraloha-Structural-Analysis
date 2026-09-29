@@ -186,6 +186,9 @@ public:
     void setGridSnapEnabled(bool enabled);
     bool isGridSnapEnabled() const;
 
+    void setObjectSnapEnabled(bool enabled);
+    bool isObjectSnapEnabled() const;
+
     void setGridLabelsVisible(bool visible);
     bool areGridLabelsVisible() const;
 
@@ -268,6 +271,7 @@ signals:
     void objectHovered(const QString& info);
     void gridVisibilityChanged(bool visible);
     void gridSnapChanged(bool enabled);
+    void objectSnapChanged(bool enabled);
     void interactionModeChanged(InteractionMode mode);
     void drawingPromptChanged(const QString& prompt);
     void viewPlaneModeChanged(ViewPlaneMode mode);
@@ -420,6 +424,7 @@ private:
     TSA::Grid::GridRenderer m_gridRenderer;
 
     bool m_snapToGrid = true;
+    bool m_snapToObject = true;
     bool m_gridVisible = true;
     bool m_gridLabelsVisible = true;
     bool m_isDarkMode = true;

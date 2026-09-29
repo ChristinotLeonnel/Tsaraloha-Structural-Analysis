@@ -18,8 +18,18 @@ void CommandCatalog::registerCommand(const CommandDescriptor &desc) {
   // Un raccourci partage par deux commandes est "ambigu" pour Qt : aucune des
   // deux ne se declenche. On le signale des l'enregistrement.
   if (!desc.shortcut.empty()) {
+    auto norm = [](const std::string &s) {
+      std::string out;
+      for (char c : s) {
+        if (c != ' ') {
+          out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        }
+      }
+      return out;
+    };
+    std::string normDesc = norm(desc.shortcut);
     for (const auto &[otherId, other] : m_commands) {
-      if (otherId != desc.id && other.shortcut == desc.shortcut) {
+      if (otherId != desc.id && norm(other.shortcut) == normDesc) {
         std::cerr << "[CommandCatalog] Raccourci en conflit '" << desc.shortcut
                   << "' : " << otherId << " <-> " << desc.id << std::endl;
       }
@@ -127,6 +137,10 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.modify.rotate", "Rotation 3D",
                    "Faire pivoter les éléments autour d'un axe", "Ctrl+R",
                    ":/icons/edit/rotate.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.translate", "Translation Numérique",
+                   "Déplacer les éléments par incréments dX, dY, dZ",
+                   "Ctrl+Shift+M", ":/icons/move.svg",
+                   CommandCategory::Modify});
   registerCommand({"cmd.modify.move_origin", "Déplacer vers Origine",
                    "Repositionner la sélection sur l'origine (0,0,0)", "",
                    ":/icons/structure/struct_move.svg",
@@ -235,26 +249,29 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.view.home", "Vue Initiale",
                    "Réinitialiser la caméra en vue d'accueil 3D", "Home",
                    ":/icons/view/view_3d.svg", CommandCategory::View});
+  registerCommand({"cmd.view.reset", "Réinitialiser Vue",
+                   "Réinitialiser l'orientation de caméra 3D", "R",
+                   ":/icons/view/view_iso.svg", CommandCategory::View});
   registerCommand({"cmd.view.top", "Vue de Dessus",
-                   "Orienter la caméra vue de dessus (+Z)", "",
+                   "Orienter la caméra vue de dessus (+Z)", "Num+7",
                    ":/icons/view/view_top.svg", CommandCategory::View});
   registerCommand({"cmd.view.bottom", "Vue de Dessous",
-                   "Orienter la caméra vue de dessous (-Z)", "",
+                   "Orienter la caméra vue de dessous (-Z)", "Ctrl+Num+7",
                    ":/icons/view/view_top.svg", CommandCategory::View});
   registerCommand({"cmd.view.front", "Vue de Face",
-                   "Orienter la caméra vue de face (+Y)", "",
+                   "Orienter la caméra vue de face (+Y)", "Num+1",
                    ":/icons/view/view_front.svg", CommandCategory::View});
   registerCommand({"cmd.view.back", "Vue Arrière",
-                   "Orienter la caméra vue arrière (-Y)", "",
+                   "Orienter la caméra vue arrière (-Y)", "Ctrl+Num+1",
                    ":/icons/view/view_front.svg", CommandCategory::View});
   registerCommand({"cmd.view.left", "Vue Gauche",
-                   "Orienter la caméra vue gauche (-X)", "",
+                   "Orienter la caméra vue gauche (-X)", "Num+3",
                    ":/icons/view/view_side.svg", CommandCategory::View});
   registerCommand({"cmd.view.right", "Vue Droite",
-                   "Orienter la caméra vue droite (+X)", "",
+                   "Orienter la caméra vue droite (+X)", "Ctrl+Num+3",
                    ":/icons/view/view_side.svg", CommandCategory::View});
   registerCommand({"cmd.view.iso", "Vue 3D Isométrique",
-                   "Basculer en vue 3D axonométrique", "",
+                   "Basculer en vue 3D axonométrique", "Num+5",
                    ":/icons/view/view_3d.svg", CommandCategory::View});
   registerCommand({"cmd.view.xy", "Plan (XY)", "Basculer en vue de dessus", "",
                    ":/icons/view/view_top.svg", CommandCategory::View});
@@ -265,6 +282,9 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.view.section_cut", "Plan de Coupe",
                    "Activer le plan de coupe dynamique 3D", "",
                    ":/icons/view/section_cut.svg", CommandCategory::View});
+  registerCommand({"cmd.view.fullscreen", "Plein Écran",
+                   "Basculer en mode plein écran", "F11",
+                   ":/icons/fullscreen.svg", CommandCategory::View});
   registerCommand({"cmd.coord.workplane_xy", "Plan de Travail XY",
                    "Activer le plan de travail horizontal XY", "",
                    ":/icons/view/view_top.svg", CommandCategory::View});
@@ -277,6 +297,9 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.coord.workplane_level", "Plan de Travail Étage",
                    "Aligner le plan de travail sur l'étage actif", "",
                    ":/icons/structure/levels.svg", CommandCategory::View});
+  registerCommand({"cmd.snap.grid", "Magnétisme Grille",
+                   "Activer ou désactiver l'accrochage magnétique à la grille",
+                   "S", ":/icons/snap.svg", CommandCategory::View});
   registerCommand({"cmd.snap.object_snap", "Accrochage Objets (OSNAP)",
                    "Activer/désactiver l'accrochage magnétique intelligent",
                    "F3", ":/icons/view/snap.svg", CommandCategory::View});
@@ -291,6 +314,9 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.settings.theme", "Basculer Thème",
                    "Alterner entre le thème sombre et clair", "Ctrl+T",
                    ":/icons/common/theme_dark.svg", CommandCategory::Settings});
+  registerCommand({"cmd.help.help", "Aide Complète TSA",
+                   "Ouvrir le centre d'aide, guide et documentation", "",
+                   ":/icons/common/help.svg", CommandCategory::Settings});
   registerCommand({"cmd.help.shortcuts", "Raccourcis Clavier",
                    "Afficher la liste des raccourcis", "F1",
                    ":/icons/common/shortcuts.svg", CommandCategory::Settings});

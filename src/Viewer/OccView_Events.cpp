@@ -1065,7 +1065,7 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                 double uwp = 0.0, vwp = 0.0, wwp = 0.0;
                 m_workPlane.toLocal(gp_Pnt(wx, wy, wz), uwp, vwp, wwp);
                 emit mouseLocalCoordinatesChanged(uwp, vwp);
-                if (m_snapToGrid && !m_view.IsNull())
+                if ((m_snapToGrid || m_snapToObject) && !m_view.IsNull())
                 {
                     m_view->Redraw();
                 }
@@ -1236,11 +1236,29 @@ void OccView::keyPressEvent(QKeyEvent* event)
     }
     else if (event->key() == Qt::Key_F)
     {
-        fitAll();
+        if (event->modifiers() == Qt::ShiftModifier)
+        {
+            fitSelection();
+        }
+        else if (event->modifiers() == Qt::NoModifier)
+        {
+            fitAll();
+        }
+        else
+        {
+            QWidget::keyPressEvent(event);
+        }
     }
     else if (event->key() == Qt::Key_R)
     {
-        resetView();
+        if (event->modifiers() == Qt::NoModifier)
+        {
+            resetView();
+        }
+        else
+        {
+            QWidget::keyPressEvent(event);
+        }
     }
     else
     {

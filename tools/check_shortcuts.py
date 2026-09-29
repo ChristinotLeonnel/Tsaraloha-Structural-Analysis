@@ -17,7 +17,14 @@ CATALOG = ROOT / "src" / "Commands" / "CommandCatalog.cpp"
 DOCS = ROOT / "docs" / "shortcuts.txt"
 
 # Noms francais -> noms portables Qt
-ALIASES = {"suppr": "del", "echap": "esc"}
+ALIASES = {
+    "suppr": "del",
+    "echap": "esc",
+    "num1": "num+1",
+    "num3": "num+3",
+    "num5": "num+5",
+    "num7": "num+7",
+}
 NON_PORTABLE = {"suppr", "echap"}
 
 CALL = re.compile(
@@ -42,7 +49,7 @@ def doc_shortcuts():
         if "RESUME RAPIDE" in line:
             break
         m = re.match(r"^  (\S.*?)\s{2,}(\S.*)$", line)
-        if not m or m.group(2).startswith("=") or m.group(1) == "[aucun]":
+        if not m or m.group(2).startswith("=") or m.group(1) == "[aucun]" or "alternatif" in m.group(2).lower():
             continue
         found.add(norm(m.group(1)))
     return found
