@@ -61,6 +61,17 @@ tests), `docs/TSALIB_SYSTEM.md`, `docs/TSA_DIAGNOSTICS.md`, `docs/TSA_FILE_FORMA
 `ROADMAP.md` complètent cet ensemble avec une vue orientée agents IA/architecture — ils ne
 remplacent aucun de ces documents existants.
 
+## Normes Internationales & Documentation
+
+Le développement et la documentation de TSA respectent le cadre normatif international :
+- **IEEE Std 1063-2001 (R2007)** et **ISO/IEC/IEEE 26514:2022** : Structure formelle, métadonnées, clarté et complétude des documents utilisateurs (voir `docs/USER_MANUAL_SHORTCUTS.md` et `docs/shortcuts.txt`).
+- **ISO/IEC/IEEE 12207:2017 & 29148:2018** : Processus ordonné du cycle de vie logiciel et traçabilité stricte des exigences.
+- **ISO/IEC/IEEE 29119** : Validation continue par la suite de tests automatisée (`tests/`).
+- **ISO/IEC 25010:2023** : Préservation des attributs qualité (fiabilité, maintenabilité, performance, adéquation fonctionnelle).
+- **Eurocodes (EN 1990 à EN 1999)** : Normes de référence de calcul des structures en génie civil (repère orthonormé direct, unités SI).
+
+Voir `.agents/rules/08-documentation-and-standards.md` pour le détail des règles obligatoires.
+
 ## Roadmap
 
 Voir `ROADMAP.md`.

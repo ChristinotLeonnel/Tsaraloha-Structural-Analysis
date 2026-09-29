@@ -1,14 +1,40 @@
 ================================================================================
   TSA - Tsaraloha Structural Analysis
-  LISTE COMPLETE DES RACCOURCIS CLAVIER
-  Version : 2026.09
+  MANUEL DE REFERENCE DES RACCOURCIS ET COMMANDES CLAVIER
+  Conformite : IEEE Std 1063-2001 (R2007) / ISO/IEC/IEEE 26514:2022
 ================================================================================
 
-Legende :
-  Ctrl     = Controle            Alt  = Alternative
-  Shift    = Majuscule           Echap = Echappement
-  Suppr    = Suppression         Home = Origine
-  F1-F12   = Touches de fonction
+SECTION 1 : IDENTIFICATION DU DOCUMENT (IEEE Std 1063 §5.2)
+--------------------------------------------------------------------------------
+* Titre du document  : Reference des Raccourcis Clavier et Commandes Console TSA
+* Identifiant Doc    : TSA-DOC-USER-SC-2026.09
+* Version Document   : 2.1.0
+* Logiciel cible     : Tsaraloha Structural Analysis (TSA) v2026.09
+* Date d'emission    : 2026-09-29
+* Editeur / Auteur   : Equipe de Developpement TSA
+* Classification     : Manuel de Reference Utilisateur (Software User Documentation)
+
+SECTION 2 : PORTEE, PUBLIC CIBLE ET PRE-REQUIS (IEEE Std 1063 §5.3 - §5.4)
+--------------------------------------------------------------------------------
+* Portee : Ce document constitue la reference exhaustive des accelerateurs
+  clavier, raccourcis de navigation 3D et commandes console du logiciel TSA.
+* Public Cible : Ingenieurs civils, projeteurs structures, calculateurs et
+  developpeurs integrant le systeme de commandes TSA.
+* Pre-requis : Poste de travail Windows x64, clavier standard (avec pave
+  numerique recommande) et souris 3 boutons avec molette pour la vue 3D.
+
+SECTION 3 : CONVENTIONS ET NOTATIONS TYPOGRAPHIQUES (IEEE Std 1063 §5.5)
+--------------------------------------------------------------------------------
+Legende des touches :
+  Ctrl     = Touche Controle (Cmd sous macOS si porte)
+  Shift    = Touche Majuscule
+  Alt      = Touche Alternative
+  Num+<N>  = Pavé numerique (Keypad 0 a 9)
+  Echap    = Touche Echappement (Escape - annulation / deselection)
+  Suppr    = Touche Suppression (Delete)
+  Home     = Touche Origine (Reinitialisation vue accueil)
+  F1-F12   = Touches de fonctions standardisees (F1: Aide, F3: OSNAP, F5: Solve, F7: Grille, F11: Plein ecran)
+  [aucun]  = Fonction accessible via Menu, Ruban ou Console sans raccourci direct
 
 ================================================================================
   1. FICHIER
@@ -196,6 +222,24 @@ Legende :
   Isolation  : I (isoler)  H (masquer)  Alt+H (tout afficher)  Ctrl+H (annuler)
                Alt+I (type)  Alt+W (plan)  Ctrl+I (coupe)  Ctrl+Shift+I (projection)
   Undo/Redo  : Ctrl+Z / Ctrl+Y (ou Ctrl+Shift+Z)
+
+================================================================================
+  16. VERIFICATION, TRACABILITE ET CONFORMITE (IEEE Std 1063 §4.2)
+================================================================================
+
+* Tracabilite Source :
+  Toutes les commandes listees dans ce document sont definies de maniere canonique
+  dans `src/Commands/CommandCatalog.cpp` et reliees aux actions Qt dans
+  `src/UI/MainWindow_Actions.cpp`.
+* Verification Automatique :
+  La conformite biunivoque entre ce document et le code est controlee par le script :
+  `python tools/check_shortcuts.py --strict`
+  Toute divergence (raccourci non documente ou commande manquante) invalide le build.
+* Journal des Revisions (IEEE Std 1063 §5.2.7) :
+  - 2026.09 (v2.1.0) : Mise en conformite IEEE Std 1063. Ajout de Ctrl+A (Tout
+    selectionner), P (Proprietes), separation OSNAP (F3) vs Grille (S), et
+    commandes de vues standard Numpad (Num1, Num3, Num5, Num7).
+  - 2026.08 (v2.0.0) : Initialisation du systeme unifie de commandes TSA.
 
 ================================================================================
   FIN DU FICHIER
