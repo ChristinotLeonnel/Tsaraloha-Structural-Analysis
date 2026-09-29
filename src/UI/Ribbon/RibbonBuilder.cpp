@@ -450,6 +450,7 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
 
     std::vector<QAction*> visCol2;
     if (acts.actionGridSnap) visCol2.push_back(acts.actionGridSnap);
+    if (acts.actionObjectSnap) visCol2.push_back(acts.actionObjectSnap);
     if (acts.actionGridLabels) visCol2.push_back(acts.actionGridLabels);
     if (acts.actionFullScreen) visCol2.push_back(acts.actionFullScreen);
     if (!visCol2.empty())

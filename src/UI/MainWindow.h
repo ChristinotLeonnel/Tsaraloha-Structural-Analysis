@@ -74,6 +74,7 @@ public:
 private slots:
     void onFitAll();
     void onResetView();
+    void onActionSelectAll();
 
     // Grille 3D & Niveaux
     void onNewGrid();
@@ -81,6 +82,7 @@ private slots:
     void onManageLevels();
     void onToggleGridVisible(bool checked);
     void onToggleGridSnap(bool checked);
+    void onToggleObjectSnap(bool checked);
     void onToggleGridLabels(bool checked);
     void onToggleLevelsVisible(bool checked);
     void onToggleRulersVisible(bool checked);
@@ -179,6 +181,7 @@ private:
     QAction* m_actionManageLevels = nullptr;
     QAction* m_actionGridVisible = nullptr;
     QAction* m_actionGridSnap = nullptr;
+    QAction* m_actionObjectSnap = nullptr;
     QAction* m_actionGridLabels = nullptr;
     QAction* m_actionLevelsVisible = nullptr;
     QAction* m_actionRulersVisible = nullptr;
@@ -205,6 +208,7 @@ private:
 
     QAction* m_actionNewNode = nullptr;
     QAction* m_actionAddCube = nullptr;
+    QAction* m_actionSelectAll = nullptr;
     QAction* m_actionDelete = nullptr;
     QAction* m_actionLibrary = nullptr;
     QAction* m_actionExtensionManager = nullptr;

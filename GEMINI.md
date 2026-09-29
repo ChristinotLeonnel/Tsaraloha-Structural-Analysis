@@ -56,3 +56,8 @@ Ne pas effectuer toutes les modifications dans la branche courante. Identifier a
   - Conventions de commit : `feat:`, `fix:`, `refactor:`, `perf:`, `ui:`, `docs:`, `test:`.
   - Push de la branche dédiée (`git push -u origin <branche>`), pas d'écrasement ni de push direct sur `main`.
 
+## Normes Internationales & Documentation (IEEE Std 1063)
+
+Toute documentation utilisateur ou technique doit se conformer à la norme **IEEE Std 1063** (structure en 5 sections, exactitude, complétude, traçabilité et cohérence).
+Toute modification logicielle future doit respecter les normes internationales du génie logiciel (**ISO/IEC/IEEE 12207**, **29148**, **29119**, **25010**) et les Eurocodes (**EN 1990 à EN 1999**). Voir la règle complète dans `.agents/rules/08-documentation-and-standards.md`.
+

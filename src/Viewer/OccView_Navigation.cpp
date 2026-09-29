@@ -1403,6 +1403,25 @@ bool OccView::isGridSnapEnabled() const
     return m_snapToGrid;
 }
 
+void OccView::setObjectSnapEnabled(bool enabled)
+{
+    m_snapToObject = enabled;
+    if (!enabled && !m_snapToGrid && !m_context.IsNull())
+    {
+        m_gridRenderer.hideSnapMarker(m_context);
+        if (!m_view.IsNull())
+        {
+            m_view->Redraw();
+        }
+    }
+    emit objectSnapChanged(enabled);
+}
+
+bool OccView::isObjectSnapEnabled() const
+{
+    return m_snapToObject;
+}
+
 void OccView::setGridLabelsVisible(bool visible)
 {
     m_gridLabelsVisible = visible;

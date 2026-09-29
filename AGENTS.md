@@ -249,6 +249,17 @@ PERFORMANCE
 Taille du code
 ```
 
+## Normes Internationales & Documentation (IEEE Std 1063)
+
+Toute documentation utilisateur ou technique doit obligatoirement respecter les exigences de la norme **IEEE Std 1063-2001 (R2007)** et de l'**ISO/IEC/IEEE 26514:2022** :
+- **Identification & Contrôle** : Métadonnées complètes (titre, version document, version logicielle, date, révision).
+- **Portée & Public cible** : Définition explicite des prérequis et des limites d'utilisation.
+- **Conventions & Notations** : Uniformité stricte de la typographie et des interactions (raccourcis clavier, souris 3D, console, unités SI).
+- **Contenu & Référence** : Spécification des commandes (préconditions, actions, résultats, gestion des erreurs).
+- **Qualité & Traçabilité** : Correspondance biunivoque avec le code source (`CommandCatalog`, UI, slots), vérification systématique via `python tools/check_shortcuts.py --strict`.
+
+Toute modification future doit de plus se conformer aux normes internationales d'ingénierie logicielle (**ISO/IEC/IEEE 12207**, **ISO/IEC/IEEE 29148**, **ISO/IEC/IEEE 29119**, **ISO/IEC 25010**) et aux **Eurocodes** (EN 1990 à EN 1999). Voir le document de référence `.agents/rules/08-documentation-and-standards.md`.
+
 ## Architecture réelle du dépôt
 
 Constatée par inspection de `src/` (voir `.agents/rules/01-architecture.md` et

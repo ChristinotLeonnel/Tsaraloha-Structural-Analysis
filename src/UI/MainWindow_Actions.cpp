@@ -106,6 +106,12 @@ void MainWindow::createActions()
     m_actionDelete->setShortcut(QKeySequence::Delete);
     connect(m_actionDelete, &QAction::triggered, this, &MainWindow::onActionDeleteSelected);
 
+    m_actionSelectAll = new QAction(tr("&Tout Sélectionner"), this);
+    m_actionSelectAll->setIcon(QIcon(":/icons/edit/select_all.svg"));
+    m_actionSelectAll->setToolTip(tr("Sélectionner tous les éléments du modèle (Ctrl+A)"));
+    m_actionSelectAll->setShortcut(QKeySequence::SelectAll);
+    connect(m_actionSelectAll, &QAction::triggered, this, &MainWindow::onActionSelectAll);
+
     // Actions Vues et Projections
     m_actionViewXY = new QAction(tr("Plan &XY (Vue d'étage)"), this);
     m_actionViewXY->setIcon(makePlanIcon(QColor(255, 140, 140), Qt::blue, Qt::darkGreen, "X", "Y"));
@@ -205,37 +211,44 @@ void MainWindow::createActions()
 
     m_actionViewTop = new QAction(tr("Vue de &Dessus (Top)"), this);
     m_actionViewTop->setIcon(makePlanIcon(QColor(255, 140, 140), Qt::blue, Qt::darkGreen, "X", "Y"));
-    m_actionViewTop->setToolTip(tr("Orienter la vue de dessus (Plan XY, +Z)"));
+    m_actionViewTop->setToolTip(tr("Orienter la vue de dessus (Plan XY, +Z) (Num7)"));
+    m_actionViewTop->setShortcut(QKeySequence(Qt::KeypadModifier | Qt::Key_7));
     connect(m_actionViewTop, &QAction::triggered, this, &MainWindow::onActionViewTop);
 
     m_actionViewBottom = new QAction(tr("Vue de Dessou&s (Bottom)"), this);
     m_actionViewBottom->setIcon(makePlanIcon(QColor(200, 200, 200), Qt::blue, Qt::darkGreen, "X", "Y"));
-    m_actionViewBottom->setToolTip(tr("Orienter la vue de dessous (-Z)"));
+    m_actionViewBottom->setToolTip(tr("Orienter la vue de dessous (-Z) (Ctrl+Num7)"));
+    m_actionViewBottom->setShortcut(QKeySequence(Qt::CTRL | Qt::KeypadModifier | Qt::Key_7));
     connect(m_actionViewBottom, &QAction::triggered, this, &MainWindow::onActionViewBottom);
 
     m_actionViewFront = new QAction(tr("Vue de &Face (Front)"), this);
     m_actionViewFront->setIcon(makePlanIcon(QColor(140, 230, 160), Qt::blue, Qt::red, "X", "Z"));
-    m_actionViewFront->setToolTip(tr("Orienter la vue de face (Élévation XZ, -Y)"));
+    m_actionViewFront->setToolTip(tr("Orienter la vue de face (Élévation XZ, -Y) (Num1)"));
+    m_actionViewFront->setShortcut(QKeySequence(Qt::KeypadModifier | Qt::Key_1));
     connect(m_actionViewFront, &QAction::triggered, this, &MainWindow::onActionViewFront);
 
     m_actionViewBack = new QAction(tr("Vue Arriè&re (Back)"), this);
     m_actionViewBack->setIcon(makePlanIcon(QColor(140, 200, 160), Qt::blue, Qt::red, "X", "Z"));
-    m_actionViewBack->setToolTip(tr("Orienter la vue arrière (+Y)"));
+    m_actionViewBack->setToolTip(tr("Orienter la vue arrière (+Y) (Ctrl+Num1)"));
+    m_actionViewBack->setShortcut(QKeySequence(Qt::CTRL | Qt::KeypadModifier | Qt::Key_1));
     connect(m_actionViewBack, &QAction::triggered, this, &MainWindow::onActionViewBack);
 
     m_actionViewLeft = new QAction(tr("Vue &Gauche (Left)"), this);
     m_actionViewLeft->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
-    m_actionViewLeft->setToolTip(tr("Orienter la vue gauche (-X)"));
+    m_actionViewLeft->setToolTip(tr("Orienter la vue gauche (-X) (Num3)"));
+    m_actionViewLeft->setShortcut(QKeySequence(Qt::KeypadModifier | Qt::Key_3));
     connect(m_actionViewLeft, &QAction::triggered, this, &MainWindow::onActionViewLeft);
 
     m_actionViewRight = new QAction(tr("Vue &Droite (Right)"), this);
     m_actionViewRight->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
-    m_actionViewRight->setToolTip(tr("Orienter la vue droite (+X)"));
+    m_actionViewRight->setToolTip(tr("Orienter la vue droite (+X) (Ctrl+Num3)"));
+    m_actionViewRight->setShortcut(QKeySequence(Qt::CTRL | Qt::KeypadModifier | Qt::Key_3));
     connect(m_actionViewRight, &QAction::triggered, this, &MainWindow::onActionViewRight);
 
     m_actionViewIsometric = new QAction(tr("Vue &Isométrique"), this);
     m_actionViewIsometric->setIcon(make3DIsoIcon());
-    m_actionViewIsometric->setToolTip(tr("Orienter la vue en projection axonométrique isométrique"));
+    m_actionViewIsometric->setToolTip(tr("Orienter la vue en projection axonométrique isométrique (Num5)"));
+    m_actionViewIsometric->setShortcut(QKeySequence(Qt::KeypadModifier | Qt::Key_5));
     connect(m_actionViewIsometric, &QAction::triggered, this, &MainWindow::onActionViewIsometric);
 
     m_workPlaneGroup = new QActionGroup(this);
@@ -306,10 +319,10 @@ void MainWindow::createActions()
 
     m_actionGridVisible = new QAction(tr("&Afficher Grille 3D"), this);
     m_actionGridVisible->setIcon(QIcon(":/icons/grid_cartesian.svg"));
-    m_actionGridVisible->setToolTip(tr("Activer ou masquer la grille 3D (G)"));
+    m_actionGridVisible->setToolTip(tr("Activer ou masquer la grille 3D (G / F7)"));
     m_actionGridVisible->setCheckable(true);
     m_actionGridVisible->setChecked(true);
-    m_actionGridVisible->setShortcut(QKeySequence(Qt::Key_G));
+    m_actionGridVisible->setShortcuts({ QKeySequence(Qt::Key_G), QKeySequence(Qt::Key_F7) });
     connect(m_actionGridVisible, &QAction::toggled, this, &MainWindow::onToggleGridVisible);
 
     m_actionLevelsVisible = new QAction(tr("Afficher Plans d'&Étages"), this);
@@ -321,11 +334,19 @@ void MainWindow::createActions()
 
     m_actionGridSnap = new QAction(tr("&Magnétisme Grille (Snap)"), this);
     m_actionGridSnap->setIcon(QIcon(":/icons/snap.svg"));
-    m_actionGridSnap->setToolTip(tr("Accrochage magnétique du curseur aux intersections de grille et nœuds (S)"));
+    m_actionGridSnap->setToolTip(tr("Accrochage magnétique du curseur aux intersections de grille (S)"));
     m_actionGridSnap->setCheckable(true);
     m_actionGridSnap->setChecked(true);
     m_actionGridSnap->setShortcut(QKeySequence(Qt::Key_S));
     connect(m_actionGridSnap, &QAction::toggled, this, &MainWindow::onToggleGridSnap);
+
+    m_actionObjectSnap = new QAction(tr("Accrochage &Objets (OSNAP)"), this);
+    m_actionObjectSnap->setIcon(QIcon(":/icons/view/snap.svg"));
+    m_actionObjectSnap->setToolTip(tr("Accrochage magnétique intelligent aux nœuds, milieux et extrémités (F3)"));
+    m_actionObjectSnap->setCheckable(true);
+    m_actionObjectSnap->setChecked(true);
+    m_actionObjectSnap->setShortcut(QKeySequence(Qt::Key_F3));
+    connect(m_actionObjectSnap, &QAction::toggled, this, &MainWindow::onToggleObjectSnap);
 
     m_actionGridLabels = new QAction(tr("Afficher Libellés d'&Axes"), this);
     m_actionGridLabels->setIcon(QIcon(":/icons/grid_labels.svg"));
@@ -503,13 +524,13 @@ void MainWindow::createActions()
 
     m_actionHelp = new QAction(tr("&Aide Complète TSA..."), this);
     m_actionHelp->setIcon(makeHelpIcon());
-    m_actionHelp->setToolTip(tr("Ouvrir le centre d'aide, guide et documentation (F1)"));
-    m_actionHelp->setShortcut(QKeySequence::HelpContents);
+    m_actionHelp->setToolTip(tr("Ouvrir le centre d'aide, guide et documentation"));
     connect(m_actionHelp, &QAction::triggered, this, &MainWindow::onActionHelp);
 
     m_actionShortcuts = new QAction(tr("&Raccourcis Clavier..."), this);
     m_actionShortcuts->setIcon(makeShortcutsIcon());
-    m_actionShortcuts->setToolTip(tr("Afficher la liste des raccourcis clavier et commandes console"));
+    m_actionShortcuts->setToolTip(tr("Afficher la liste des raccourcis clavier et commandes console (F1)"));
+    m_actionShortcuts->setShortcut(QKeySequence::HelpContents);
     connect(m_actionShortcuts, &QAction::triggered, this, &MainWindow::onActionShortcuts);
 
     m_actionAbout = new QAction(tr("À &propos de TSA..."), this);
@@ -668,6 +689,8 @@ void MainWindow::createMenus()
     editMenu->addAction(m_actionCopy);
     editMenu->addAction(m_actionRotate3D);
     editMenu->addSeparator();
+    editMenu->addAction(m_actionSelectAll);
+    editMenu->addSeparator();
     editMenu->addAction(m_actionDelete);
 
     // 3. Menu Modélisation
@@ -783,6 +806,7 @@ void MainWindow::createMenus()
     visSub->addAction(m_actionLevelsVisible);
     visSub->addAction(m_actionGridLabels);
     visSub->addAction(m_actionGridSnap);
+    visSub->addAction(m_actionObjectSnap);
     visSub->addAction(m_actionRulersVisible);
     visSub->addAction(m_actionFullScreen);
 
@@ -914,6 +938,7 @@ void MainWindow::createRibbon()
     acts.actionLevelsVisible = m_actionLevelsVisible;
     acts.actionGridLabels = m_actionGridLabels;
     acts.actionGridSnap = m_actionGridSnap;
+    acts.actionObjectSnap = m_actionObjectSnap;
     acts.actionRulersVisible = m_actionRulersVisible;
     acts.actionFullScreen = m_actionFullScreen;
 
@@ -998,6 +1023,7 @@ void MainWindow::createDockWindows()
     m_propertiesDock->setWidget(m_propertyPanel);
     m_propertiesDock->setMinimumWidth(280);
     m_propertiesDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
+    m_propertiesDock->toggleViewAction()->setShortcut(QKeySequence(Qt::Key_P));
     addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
 
     // 4. Dock droit : PROJECTION & VUE (WorkPlane, 2D/3D, Caméra)
@@ -1067,8 +1093,23 @@ void MainWindow::createDockWindows()
         else if (c == "WPNORMAL" || c == "VPN") onActionViewNormalToPlane();
         else if (c == "WPSHOW") onActionToggleWorkPlaneVisible(true);
         else if (c == "WPHIDE") onActionToggleWorkPlaneVisible(false);
-        else if (c == "SNAP" || c == "OSNAP") {
+        else if (c == "SNAP" || c == "GRIDS") {
             if (m_actionGridSnap) m_actionGridSnap->setChecked(!m_actionGridSnap->isChecked());
+        }
+        else if (c == "OSNAP") {
+            if (m_actionObjectSnap) m_actionObjectSnap->setChecked(!m_actionObjectSnap->isChecked());
+        }
+        else if (c == "SELECTALL" || c == "ALL") onActionSelectAll();
+        else if (c == "PROP" || c == "PROPERTIES" || c == "P") {
+            if (m_propertiesDock) m_propertiesDock->setVisible(!m_propertiesDock->isVisible());
+        }
+        else if (c == "UNDO" || c == "U") onActionUndo();
+        else if (c == "REDO") onActionRedo();
+        else if (c == "SAVE") onActionSave();
+        else if (c == "OPEN") onActionOpen();
+        else if (c == "NEW") onActionNew();
+        else if (c == "FULLSCREEN" || c == "FSCR") {
+            if (m_actionFullScreen) m_actionFullScreen->trigger();
         }
         else if (c == "RESET") onResetView();
         else if (c == "SELECT" || c == "ESC") onModeSelect();
@@ -1466,6 +1507,10 @@ void MainWindow::createStatusBar()
         if (m_actionGridSnap) m_actionGridSnap->setChecked(enabled);
     });
 
+    connect(m_occView, &OccView::objectSnapChanged, this, [this](bool enabled) {
+        if (m_actionObjectSnap) m_actionObjectSnap->setChecked(enabled);
+    });
+
     connect(m_occView, &OccView::interactionModeChanged, this, [this](OccView::InteractionMode mode) {
         switch (mode)
         {
@@ -1501,6 +1546,17 @@ void MainWindow::createStatusBar()
             break;
         case OccView::InteractionMode::MoveOrigin3D:
             if (m_actionMoveOrigin) m_actionMoveOrigin->setChecked(true);
+            break;
+        case OccView::InteractionMode::DrawCable:
+        case OccView::InteractionMode::DrawStayCable:
+        case OccView::InteractionMode::DrawSuspensionCable:
+        case OccView::InteractionMode::DrawHanger:
+            if (m_actionDrawCable) m_actionDrawCable->setChecked(true);
+            break;
+        case OccView::InteractionMode::DrawFoundation:
+        case OccView::InteractionMode::DrawTruss:
+        case OccView::InteractionMode::Paste3D:
+            // Pas de QAction checkable dédiée pour ces modes
             break;
         default:
             break;
