@@ -8,14 +8,15 @@
 
 ```text
 src/UI/
-├── Ribbon      — ruban de commandes (barre d'outils principale)
-├── Dock        — panneaux ancrables
-├── Properties  — PropertyPanel.h/.cpp (panneau de propriétés contextuel)
-├── ModelTree   — ModelTreeWidget.h/.cpp (arbre du modèle)
-├── Dialogs     — boîtes de dialogue
-├── Widgets     — widgets réutilisables
-├── Theme       — feuilles de style / thèmes (QSS)
-└── Ruler       — règles/graduations du viewport
+├── Ribbon         — ruban de commandes (barre d'outils principale)
+├── Dock           — panneaux ancrables (Visibility, Elements, Console, ProjectionView)
+├── WindowManager  — gestionnaire centralisé des fenêtres, docks, profils et menu Fenêtres
+├── Properties     — PropertyPanel.h/.cpp (panneau de propriétés contextuel)
+├── ModelTree      — ModelTreeWidget.h/.cpp (arbre du modèle)
+├── Dialogs        — boîtes de dialogue
+├── Widgets        — widgets réutilisables
+├── Theme          — feuilles de style / thèmes (QSS)
+└── Ruler          — règles/graduations du viewport
 ```
 
 `TODO: VERIFY IN SOURCE` si de nouveaux sous-dossiers apparaissent depuis la rédaction de
@@ -50,9 +51,25 @@ La sélection dans l'arbre (`ModelTreeWidget`) et dans le viewport 3D
 (`TSA::Viewer::SelectionManager`) doivent converger vers un même état de sélection
 référencé par IDs d'éléments/nœuds du modèle — pas vers des objets graphiques isolés.
 
+## `WindowManager` & `LayoutManager` (`src/UI/WindowManager`)
+
+Système centralisé de gestion des fenêtres, panneaux et profils de disposition (ISO/IEC/IEEE 26514 / IEEE Std 1063) :
+
+- **`WindowRegistry`** : Registre central unique des fenêtres/docks de l'application avec identifiants stables (`"viewport"`, `"model_browser"`, `"properties"`, `"work_planes"`, `"elements"`, `"visibility"`, `"console"`), état visible/flottant, positions, tailles et raccourcis.
+- **`LayoutManager`** : Gestionnaire d'agencement et de profils de disposition.
+  - Sauvegarde et restauration binaire native via `QMainWindow::saveState` et `restoreState` (LayoutVersion = 1).
+  - Profils prédéfinis : *Modélisation*, *Analyse*, *Résultats*, *Détaillage*, *Personnalisée*.
+  - Réinitialisation canonique propre par défaut (`resetLayout()`).
+  - Persistance automatique dans `QSettings` au démarrage et à la fermeture (`closeEvent`).
+- **`WindowManager`** : Façade applicative et constructeur dynamique du menu `Fenêtres` (`&Fenêtres`).
+  - Synchronisation bidirectionnelle automatique (fermeture native via bouton X répercutée instantanément sur la case cochée du menu).
+  - Raccourcis centralisés (`Ctrl+1` Vue 3D, `Ctrl+2` Propriétés, `Ctrl+3` Navigateur, `Ctrl+4` Plans de travail, `F2` Console).
+  - Extensibilité : tout nouveau panneau s'enregistre via `registerDock()` sans modification manuelle du menu.
+
 ## Vérification
 
 `TODO: VERIFY IN SOURCE` pour la liste exacte des signals exposés par `PropertyPanel` et
 `ModelTreeWidget`, et pour le détail des widgets présents dans `Ribbon`, `Dock`,
 `Dialogs`, `Widgets`, `Theme`, `Ruler` — lire les fichiers correspondants avant
 modification structurelle de l'UI.
+

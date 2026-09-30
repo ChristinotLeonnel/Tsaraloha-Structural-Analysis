@@ -38,6 +38,7 @@ namespace TSA::UI
     class GridSettingsDialog;
     class WorkPlaneDialog;
     class ProjectionViewDock;
+    class WindowManager;
 }
 
 class OccView;
@@ -65,6 +66,9 @@ public:
 
     TSA::Project::ProjectManager* projectManager() { return m_projectManager.get(); }
     const TSA::Project::ProjectManager* projectManager() const { return m_projectManager.get(); }
+
+    TSA::UI::WindowManager* windowManager() { return m_windowManager.get(); }
+    const TSA::UI::WindowManager* windowManager() const { return m_windowManager.get(); }
 
     bool loadFile(const QString& filePath);
     bool saveFile(const QString& filePath);
@@ -146,6 +150,7 @@ private:
     std::unique_ptr<TSA::Viewer::SelectionManager> m_selectionManager;
     std::unique_ptr<TSA::Grid::GridManager> m_gridManager;
     std::unique_ptr<TSA::Grid::GridSnapManager> m_gridSnapManager;
+    std::unique_ptr<TSA::UI::WindowManager> m_windowManager;
 
     OccView* m_occView = nullptr;
     TSA::UI::ViewportContainer* m_viewportContainer = nullptr;

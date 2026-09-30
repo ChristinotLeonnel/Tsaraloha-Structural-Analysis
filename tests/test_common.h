@@ -158,3 +158,4 @@ bool runSuite_Viewer(int& passed);
 bool runSuite_Cables(int& passed);
 bool runSuite_Extensions(int& passed);
 bool runSuite_WorkPlane(int& passed);
+bool runSuite_WindowManager(int& passed);

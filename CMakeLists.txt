@@ -136,6 +136,18 @@ set(UI_EXTENSIONMANAGERDIALOG_SOURCES
     src/UI/Dialogs/ExtensionManagerDialog.cpp
 )
 
+# --- Gestionnaire centralisé des fenêtres et disposition (Window Manager) — [CORE] ---
+set(UI_WINDOWMANAGER_SOURCES
+    src/UI/WindowManager/WindowItem.h
+    src/UI/WindowManager/WindowItem.cpp
+    src/UI/WindowManager/WindowRegistry.h
+    src/UI/WindowManager/WindowRegistry.cpp
+    src/UI/WindowManager/LayoutManager.h
+    src/UI/WindowManager/LayoutManager.cpp
+    src/UI/WindowManager/WindowManager.h
+    src/UI/WindowManager/WindowManager.cpp
+)
+
 # --- Système d'extensions / bibliothèques de composants — [CORE] ------------
 set(EXTENSIONSYSTEM_SOURCES
     src/ExtensionSystem/ExtensionTypes.h
@@ -435,6 +447,7 @@ set(RESOURCES_SOURCES
 set(CORE_SOURCES
     ${DIAGNOSTICS_SOURCES}
     ${UI_EXTENSIONMANAGERDIALOG_SOURCES}
+    ${UI_WINDOWMANAGER_SOURCES}
     ${EXTENSIONSYSTEM_SOURCES}
     ${LIBRARY_SOURCES}
     ${COORDINATE_SOURCES}
@@ -627,6 +640,7 @@ set(TEST_SOURCES
     tests/test_cables.cpp
     tests/test_extensions.cpp
     tests/test_workplane.cpp
+    tests/test_window_manager.cpp
     resources/resources.qrc
 )
 
@@ -648,6 +662,7 @@ add_test(NAME TSA_ViewerTests COMMAND TSA_Tests --suite=viewer)
 add_test(NAME TSA_CablesTests COMMAND TSA_Tests --suite=cables)
 add_test(NAME TSA_ExtensionsTests COMMAND TSA_Tests --suite=extensions)
 add_test(NAME TSA_WorkPlaneTests COMMAND TSA_Tests --suite=workplane)
+add_test(NAME TSA_WindowManagerTests COMMAND TSA_Tests --suite=window)
 endif()
 
 # =============================================================================

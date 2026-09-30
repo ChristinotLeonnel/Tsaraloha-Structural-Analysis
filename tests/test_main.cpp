@@ -59,8 +59,12 @@ int main(int argc, char* argv[])
         if (!runSuite_Extensions(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "workplane" || suiteFilter == "wp") {
-        std::cout << "\n--- [Suite 9/9] WorkPlane, LCS & Spatial Snapping (Tests 51-52) ---" << std::endl;
+        std::cout << "\n--- [Suite 9/10] WorkPlane, LCS & Spatial Snapping (Tests 51-52) ---" << std::endl;
         if (!runSuite_WorkPlane(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "window" || suiteFilter == "windowmanager" || suiteFilter == "layout") {
+        std::cout << "\n--- [Suite 10/10] Window Manager, Docks & Layout Profiles (Test 54) ---" << std::endl;
+        if (!runSuite_WindowManager(passed)) allOk = false;
     }
 
     std::cout << "\n=================================================" << std::endl;

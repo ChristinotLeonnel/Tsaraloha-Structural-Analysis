@@ -19,6 +19,7 @@
 #include "Dialogs/BarCreationDialog.h"
 #include "Dialogs/CableCreationDialog.h"
 #include "Theme/ThemeManager.h"
+#include "WindowManager/WindowManager.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -810,13 +811,11 @@ void MainWindow::createMenus()
     visSub->addAction(m_actionRulersVisible);
     visSub->addAction(m_actionFullScreen);
 
-    // 8. Menu Fenêtres
-    QMenu* windowsMenu = menuBar()->addMenu(tr("&Fenêtres"));
-    if (m_modelTreeDock) windowsMenu->addAction(m_modelTreeDock->toggleViewAction());
-    if (m_elementsDock) windowsMenu->addAction(m_elementsDock->toggleViewAction());
-    if (m_propertiesDock) windowsMenu->addAction(m_propertiesDock->toggleViewAction());
-    if (m_visibilityDock) windowsMenu->addAction(m_visibilityDock->toggleViewAction());
-    if (m_consoleDock) windowsMenu->addAction(m_consoleDock->toggleViewAction());
+    // 8. Menu Fenêtres (généré et synchronisé dynamiquement par WindowManager)
+    if (m_windowManager)
+    {
+        m_windowManager->createWindowsMenu(menuBar());
+    }
 
     // 9. Menu Outils
     QMenu* toolsMenu = menuBar()->addMenu(tr("&Outils"));
@@ -1391,6 +1390,38 @@ void MainWindow::createDockWindows()
                 .arg(m_selectionManager->selectedSlabs().size()));
         }
     });
+
+    // Enregistrement centralisé de toutes les fenêtres et panneaux dans WindowManager
+    if (m_windowManager)
+    {
+        m_windowManager->registerWindow(
+            "viewport", tr("Vue 3D"), tr("Général"), m_viewportContainer,
+            Qt::NoDockWidgetArea, true, QKeySequence("Ctrl+1"), QIcon(":/icons/view/view_3d.svg"));
+
+        m_windowManager->registerDock(
+            "model_browser", tr("Navigateur du modèle"), tr("Modélisation"), m_modelTreeDock,
+            Qt::LeftDockWidgetArea, true, QKeySequence("Ctrl+3"), QIcon(":/icons/model_tree.svg"));
+
+        m_windowManager->registerDock(
+            "visibility", tr("Calques & Visibilité"), tr("Affichage"), m_visibilityDock,
+            Qt::LeftDockWidgetArea, true, QKeySequence(), QIcon(":/icons/visibility.svg"));
+
+        m_windowManager->registerDock(
+            "elements", tr("Éléments structuraux"), tr("Modélisation"), m_elementsDock,
+            Qt::LeftDockWidgetArea, true, QKeySequence(), QIcon(":/icons/draw_cable.svg"));
+
+        m_windowManager->registerDock(
+            "properties", tr("Propriétés"), tr("Général"), m_propertiesDock,
+            Qt::RightDockWidgetArea, true, QKeySequence("Ctrl+2"), QIcon(":/icons/properties.svg"));
+
+        m_windowManager->registerDock(
+            "work_planes", tr("Plans de travail & Vues"), tr("Modélisation"), m_projectionViewDock,
+            Qt::RightDockWidgetArea, true, QKeySequence("Ctrl+4"), QIcon(":/icons/view_normal_workplane.svg"));
+
+        m_windowManager->registerDock(
+            "console", tr("Console & Messages"), tr("Outils"), m_consoleDock,
+            Qt::BottomDockWidgetArea, true, QKeySequence(Qt::Key_F2), QIcon(":/icons/console.svg"));
+    }
 }
 
 void MainWindow::createStatusBar()

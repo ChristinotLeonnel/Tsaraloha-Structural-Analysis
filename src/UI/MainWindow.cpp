@@ -20,6 +20,7 @@
 #include "Dock/StructuralElementsDock.h"
 #include "Dock/LogConsoleDock.h"
 #include "Dock/ProjectionViewDock.h"
+#include "WindowManager/WindowManager.h"
 #include "../Diagnostics/Logger.h"
 #include "../Diagnostics/DiagnosticReport.h"
 #include "Theme/ThemeManager.h"
@@ -75,6 +76,7 @@ MainWindow::MainWindow(QWidget* parent)
     , m_gridManager(std::make_unique<TSA::Grid::GridManager>())
     , m_gridSnapManager(std::make_unique<TSA::Grid::GridSnapManager>())
     , m_projectManager(std::make_unique<TSA::Project::ProjectManager>(this))
+    , m_windowManager(std::make_unique<TSA::UI::WindowManager>(this, this))
 {
     // Grille 3D initiale : synchronisée avec le système de coordonnées et de niveaux unifié
     m_gridManager->clearAllGrids();
@@ -190,6 +192,11 @@ MainWindow::MainWindow(QWidget* parent)
         });
     }
 
+    if (m_windowManager)
+    {
+        m_windowManager->restoreLayout();
+    }
+
     updateWindowTitle();
 }
 
@@ -210,8 +217,8 @@ void MainWindow::setupUi()
     setCentralWidget(m_viewportContainer);
 
     createActions();
-    createMenus();
     createDockWindows();
+    createMenus();
     createRibbon();
     createStatusBar();
 }
@@ -1210,6 +1217,10 @@ void MainWindow::closeEvent(QCloseEvent* event)
 {
     if (maybeSave())
     {
+        if (m_windowManager)
+        {
+            m_windowManager->saveLayout();
+        }
         event->accept();
     }
     else
