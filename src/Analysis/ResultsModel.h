@@ -123,6 +123,18 @@ struct TimeHistoryStep
 };
 
 /**
+ * @brief Résultats d'un incrément / pas de calcul (analyse non-linéaire ou temporelle).
+ */
+struct StepResults
+{
+    int stepNumber = 0;
+    double factorOrTime = 0.0;
+    std::map<int, NodeDisplacement> displacements;
+    std::map<int, NodeReaction> reactions;
+    std::map<int, ElementResults> elementResults;
+};
+
+/**
  * @brief Contrôle d'équilibre statique global.
  */
 struct GlobalEquilibrium
@@ -189,12 +201,24 @@ public:
     // Déplacements nodaux
     void setNodeDisplacement(int nodeId, const NodeDisplacement& disp);
     const NodeDisplacement* getNodeDisplacement(int nodeId) const;
+    bool hasNodeDisplacement(int nodeId) const { return getNodeDisplacement(nodeId) != nullptr; }
+    NodeDisplacement nodeDisplacement(int nodeId) const {
+        const auto* d = getNodeDisplacement(nodeId);
+        return d ? *d : NodeDisplacement();
+    }
     const std::map<int, NodeDisplacement>& allDisplacements() const { return m_displacements; }
 
     // Réactions nodales
     void setNodeReaction(int nodeId, const NodeReaction& react);
     const NodeReaction* getNodeReaction(int nodeId) const;
+    bool hasNodeReaction(int nodeId) const { return getNodeReaction(nodeId) != nullptr; }
+    NodeReaction nodeReaction(int nodeId) const {
+        const auto* r = getNodeReaction(nodeId);
+        return r ? *r : NodeReaction();
+    }
     const std::map<int, NodeReaction>& allReactions() const { return m_reactions; }
+
+    bool hasResults() const { return m_isValid && (!m_displacements.empty() || !m_elementResults.empty()); }
 
     // Résultats des éléments
     void setElementResults(int elemId, const ElementResults& res);
@@ -213,6 +237,14 @@ public:
     // Time History
     void addTimeHistoryStep(const TimeHistoryStep& step);
     const std::vector<TimeHistoryStep>& timeHistorySteps() const { return m_timeHistorySteps; }
+
+    // Pas et Incréments non-linéaires
+    void addStepResults(const StepResults& step);
+    const std::vector<StepResults>& allStepResults() const { return m_stepResults; }
+    const StepResults* getStepResults(int stepNumber) const;
+    int stepCount() const { return static_cast<int>(m_stepResults.size()); }
+    int activeStep() const { return m_activeStep; }
+    void setActiveStep(int step);
 
     // Équilibre global & Synthèse
     GlobalEquilibrium equilibrium() const { return m_equilibrium; }
@@ -239,6 +271,12 @@ private:
     std::vector<ModalMode> m_modalModes;
     std::vector<PushoverStep> m_pushoverSteps;
     std::vector<TimeHistoryStep> m_timeHistorySteps;
+    std::vector<StepResults> m_stepResults;
+
+    int m_activeStep = -1;
+    std::map<int, NodeDisplacement> m_finalDisplacements;
+    std::map<int, NodeReaction> m_finalReactions;
+    std::map<int, ElementResults> m_finalElementResults;
 
     GlobalEquilibrium m_equilibrium;
     ResultsSummary m_summary;

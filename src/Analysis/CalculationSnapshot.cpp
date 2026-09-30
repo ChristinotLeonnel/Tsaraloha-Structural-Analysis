@@ -38,6 +38,12 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
         {
             sn.fixRx = true;
         }
+        // Pour un appui simple (roller), le déplacement transversal hors-plan Ty est bloqué
+        // pour empêcher le mécanisme de corps rigide en rotation horizontale dans l'espace 3D.
+        if (supp.isRoller() && supp.ty() != TSA::Model::DOFState::Spring)
+        {
+            sn.fixTy = true;
+        }
 
         // Raideurs élastiques (ressorts)
         if (supp.tx() == TSA::Model::DOFState::Spring) sn.kTx = supp.kx();

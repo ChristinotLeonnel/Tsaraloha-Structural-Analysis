@@ -23,7 +23,7 @@ std::string OpenSeesAnalysisBuilder::buildScript(const CalculationSnapshot& snap
 
     tcl << buildNodes(snapshot);
     tcl << buildBoundaryConditions(snapshot);
-    tcl << buildElements(snapshot, params.useKiloNewtons);
+    tcl << buildElements(snapshot, params);
     tcl << buildRecorders(snapshot, params);
     tcl << buildLoads(snapshot, params);
     tcl << buildAnalysisCommands(snapshot, params);
@@ -140,10 +140,17 @@ std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSn
 
 std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& snapshot, bool useKiloNewtons)
 {
+    AnalysisParameters p;
+    p.useKiloNewtons = useKiloNewtons;
+    return buildElements(snapshot, p);
+}
+
+std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& snapshot, const AnalysisParameters& params)
+{
     std::ostringstream tcl;
     tcl << std::fixed << std::setprecision(6);
     tcl << "# ------------------------------------------------------------------------------\n";
-    tcl << "# Repères locaux & Transformations géométriques (geomTransf Linear)\n";
+    tcl << "# Repères locaux & Transformations géométriques (geomTransf " << toTclString(params.geomTransf) << ")\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
     int transfTag = 1;
@@ -165,16 +172,18 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
 
         int tag = transfTag++;
         elemToTransf[id] = tag;
-        tcl << "geomTransf Linear " << tag << " " << dirZ.X() << " " << dirZ.Y() << " " << dirZ.Z()
+        tcl << "geomTransf " << toTclString(params.geomTransf) << " " << tag << " "
+            << dirZ.X() << " " << dirZ.Y() << " " << dirZ.Z()
             << " ;# Element #" << id << "\n";
     }
     tcl << "\n";
 
     tcl << "# ------------------------------------------------------------------------------\n";
-    tcl << "# Éléments finis (elasticBeamColumn & truss)\n";
+    tcl << "# Éléments finis (elasticBeamColumn & treillis formulation)\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
-    double scaleForce = useKiloNewtons ? 1e-3 : 1.0;
+    double scaleForce = params.useKiloNewtons ? 1e-3 : 1.0;
+    int trussMatTag = 80000;
 
     for (const auto& [id, el] : snapshot.elements())
     {
@@ -182,8 +191,27 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
         {
             double A = el.section.area();
             double E = el.material.mechanical.youngModulus * scaleForce;
-            tcl << "element truss " << id << " " << el.startNodeId << " " << el.endNodeId << " "
-                << A << " " << E << " ;# Treillis\n";
+
+            switch (params.trussFormulation)
+            {
+            case TrussFormulation::CorotTruss:
+            case TrussFormulation::CorotTrussSection:
+            {
+                int matId = trussMatTag++;
+                tcl << "uniaxialMaterial Elastic " << matId << " " << E << "\n";
+                tcl << "element corotTruss " << id << " " << el.startNodeId << " " << el.endNodeId << " "
+                    << A << " " << matId << " ;# Treillis corotationnel\n";
+                break;
+            }
+            case TrussFormulation::TrussSection:
+            case TrussFormulation::Truss:
+            default:
+            {
+                tcl << "element truss " << id << " " << el.startNodeId << " " << el.endNodeId << " "
+                    << A << " " << E << " ;# Treillis standard\n";
+                break;
+            }
+            }
         }
         else
         {
@@ -195,7 +223,7 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
             double Iy = el.section.iy();
             double Iz = el.section.iz();
             int tTag = elemToTransf.count(id) ? elemToTransf[id] : 1;
-            double massDens = A * el.material.density * (useKiloNewtons ? 1e-3 : 1.0);
+            double massDens = A * el.material.density * (params.useKiloNewtons ? 1e-3 : 1.0);
             tcl << "element elasticBeamColumn " << id << " " << el.startNodeId << " " << el.endNodeId << " "
                 << A << " " << E << " " << G << " " << J << " " << Iy << " " << Iz << " " << tTag
                 << " -mass " << massDens << " ;# " << el.section.name << "\n";
@@ -393,14 +421,41 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
     }
     else if (params.type == AnalysisType::NonLinearStatic)
     {
-        tcl << "constraints Transformation\n";
+        tcl << "constraints " << toTclString(params.constraintHandler) << "\n";
         tcl << "numberer RCM\n";
-        tcl << "system BandGeneral\n";
+        tcl << "system " << toTclString(params.systemSolver) << "\n";
         tcl << "test NormDispIncr " << params.tolerance << " " << params.maxIterations << " 0\n";
-        tcl << "algorithm " << params.algorithm << "\n";
-        double stepSize = 1.0 / std::max(1, params.numSteps);
-        tcl << "integrator LoadControl " << stepSize << "\n";
+        tcl << "algorithm " << toTclString(params.algorithmType) << "\n";
+
+        switch (params.integratorType)
+        {
+        case IntegratorType::DisplacementControl:
+            tcl << "integrator DisplacementControl " << params.controlNodeId << " "
+                << params.controlDof << " " << params.dispIncrement << "\n";
+            break;
+        case IntegratorType::ArcLength:
+        {
+            double s = (params.stepSize > 0.0) ? params.stepSize : 0.05;
+            tcl << "integrator ArcLength " << s << " 1.0\n";
+            break;
+        }
+        case IntegratorType::MinUnbalDispNorm:
+        {
+            double s = (params.stepSize > 0.0) ? params.stepSize : 0.05;
+            tcl << "integrator MinUnbalDispNorm " << s << "\n";
+            break;
+        }
+        case IntegratorType::LoadControl:
+        default:
+        {
+            double stepSize = (params.stepSize > 0.0) ? params.stepSize : (1.0 / std::max(1, params.numSteps));
+            tcl << "integrator LoadControl " << stepSize << "\n";
+            break;
+        }
+        }
+
         tcl << "analysis Static\n";
+        tcl << "set ok 0\n";
         tcl << "for {set i 1} {$i <= " << params.numSteps << "} {incr i} {\n";
         tcl << "  set ok [analyze 1]\n";
         tcl << "  if {$ok != 0} {\n";
@@ -415,9 +470,9 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
     else
     {
         // Linear Static
-        tcl << "constraints Transformation\n";
+        tcl << "constraints " << toTclString(params.constraintHandler) << "\n";
         tcl << "numberer RCM\n";
-        tcl << "system BandGeneral\n";
+        tcl << "system " << toTclString(params.systemSolver) << "\n";
         tcl << "test NormDispIncr " << params.tolerance << " " << params.maxIterations << "\n";
         tcl << "algorithm Linear\n";
         tcl << "integrator LoadControl 1.0\n";
@@ -430,7 +485,6 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
         tcl << "}\n";
     }
 
-    tcl << "record\n";
     tcl << "wipe\n";
 
     return tcl.str();

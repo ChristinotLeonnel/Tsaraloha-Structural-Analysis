@@ -11,6 +11,8 @@
 #include "../Grid/GridSnapManager.h"
 #include "../Coordinate/CoordinateTransformationService.h"
 #include "../Coordinate/AxisColorConfig.h"
+#include "ResultsVisualManager.h"
+#include "../Analysis/ResultsModel.h"
 
 #include <AIS_Shape.hxx>
 #include <AIS_InteractiveContext.hxx>
@@ -170,6 +172,112 @@ void OccView::fitSelection()
     }
 
     bndBox.Enlarge(0.5);
+    m_view->FitAll(bndBox, 0.15, true);
+    m_view->ZFitAll();
+    m_view->Redraw();
+    emit viewCameraChanged();
+}
+
+void OccView::fitModel()
+{
+    if (m_view.IsNull() || !m_model || m_model->nodes().empty())
+    {
+        fitAll();
+        return;
+    }
+
+    pushCameraHistory();
+    Bnd_Box bndBox;
+    for (const auto& [id, node] : m_model->nodes())
+    {
+        bndBox.Add(gp_Pnt(node.x(), node.y(), node.z()));
+    }
+
+    if (bndBox.IsVoid())
+    {
+        fitAll();
+        return;
+    }
+
+    bndBox.Enlarge(0.5);
+    m_view->FitAll(bndBox, 0.15, true);
+    m_view->ZFitAll();
+    m_view->Redraw();
+    emit viewCameraChanged();
+}
+
+void OccView::fitDeformed()
+{
+    if (m_view.IsNull() || !m_model || !m_resultsVisual || !m_resultsVisual->hasResults())
+    {
+        fitModel();
+        return;
+    }
+
+    pushCameraHistory();
+    Bnd_Box bndBox;
+    double scale = m_resultsVisual->deformationScale();
+    const auto results = m_resultsVisual->resultsModel();
+
+    for (const auto& [id, node] : m_model->nodes())
+    {
+        double dx = 0.0, dy = 0.0, dz = 0.0;
+        if (results && results->hasNodeDisplacement(id))
+        {
+            const auto& disp = results->nodeDisplacement(id);
+            dx = disp.ux * scale;
+            dy = disp.uy * scale;
+            dz = disp.uz * scale;
+        }
+        bndBox.Add(gp_Pnt(node.x() + dx, node.y() + dy, node.z() + dz));
+    }
+
+    if (bndBox.IsVoid())
+    {
+        fitModel();
+        return;
+    }
+
+    bndBox.Enlarge(0.5);
+    m_view->FitAll(bndBox, 0.15, true);
+    m_view->ZFitAll();
+    m_view->Redraw();
+    emit viewCameraChanged();
+}
+
+void OccView::fitResults()
+{
+    if (m_view.IsNull() || !m_model || !m_resultsVisual || !m_resultsVisual->hasResults())
+    {
+        fitModel();
+        return;
+    }
+
+    pushCameraHistory();
+    Bnd_Box bndBox;
+    double defScale = m_resultsVisual->deformationScale();
+    const auto results = m_resultsVisual->resultsModel();
+
+    for (const auto& [id, node] : m_model->nodes())
+    {
+        bndBox.Add(gp_Pnt(node.x(), node.y(), node.z()));
+
+        if (results && results->hasNodeDisplacement(id))
+        {
+            const auto& disp = results->nodeDisplacement(id);
+            bndBox.Add(gp_Pnt(node.x() + disp.ux * defScale,
+                              node.y() + disp.uy * defScale,
+                              node.z() + disp.uz * defScale));
+        }
+    }
+
+    if (bndBox.IsVoid())
+    {
+        fitAll();
+        return;
+    }
+
+    bndBox.Enlarge(1.0);
     m_view->FitAll(bndBox, 0.15, true);
     m_view->ZFitAll();
     m_view->Redraw();
@@ -1483,62 +1591,78 @@ bool OccView::areGridLevelsVisible() const
     return true;
 }
 
+bool OccView::isNodeVisibleByFilter(int nodeId) const
+{
+    if (!m_nodesVisible) return false;
+    if (!m_model) return true;
+
+    switch (m_nodeDisplayFilter)
+    {
+    case NodeDisplayFilter::All:
+        return true;
+    case NodeDisplayFilter::FreeOnly:
+        return m_model->isNodeFree(nodeId);
+    case NodeDisplayFilter::SupportedOnly:
+        if (const auto* n = m_model->getNode(nodeId))
+            return n->support().isSupported();
+        return false;
+    case NodeDisplayFilter::SelectedOnly:
+        return m_selectionManager && m_selectionManager->selectedNodes().count(nodeId) > 0;
+    }
+    return true;
+}
+
+void OccView::updateNodeVisibilities()
+{
+    if (m_context.IsNull()) return;
+
+    for (auto& [id, shape] : m_nodeShapes)
+    {
+        if (!shape.IsNull())
+        {
+            if (isNodeVisibleByFilter(id))
+                m_context->Display(shape, false);
+            else
+                m_context->Erase(shape, false);
+        }
+    }
+    for (auto& [id, lbl] : m_nodeLabels)
+    {
+        if (!lbl.IsNull())
+        {
+            if (isNodeVisibleByFilter(id) && m_nodeLabelsVisible)
+                m_context->Display(lbl, false);
+            else
+                m_context->Erase(lbl, false);
+        }
+    }
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
 void OccView::setNodesVisible(bool visible)
 {
     m_nodesVisible = visible;
-    if (!m_context.IsNull())
-    {
-        for (auto& [id, shape] : m_nodeShapes)
-        {
-            if (!shape.IsNull())
-            {
-                if (visible)
-                    m_context->Display(shape, false);
-                else
-                    m_context->Erase(shape, false);
-            }
-        }
-        for (auto& [id, lbl] : m_nodeLabels)
-        {
-            if (!lbl.IsNull())
-            {
-                if (visible && m_nodeLabelsVisible)
-                    m_context->Display(lbl, false);
-                else
-                    m_context->Erase(lbl, false);
-            }
-        }
-        m_context->UpdateCurrentViewer();
-        if (!m_view.IsNull())
-        {
-            m_view->Redraw();
-        }
-    }
+    updateNodeVisibilities();
     emit nodesVisibilityChanged(visible);
 }
 
 void OccView::setNodeLabelsVisible(bool visible)
 {
     m_nodeLabelsVisible = visible;
-    if (!m_context.IsNull())
-    {
-        for (auto& [id, lbl] : m_nodeLabels)
-        {
-            if (!lbl.IsNull())
-            {
-                if (visible && m_nodesVisible)
-                    m_context->Display(lbl, false);
-                else
-                    m_context->Erase(lbl, false);
-            }
-        }
-        m_context->UpdateCurrentViewer();
-        if (!m_view.IsNull())
-        {
-            m_view->Redraw();
-        }
-    }
+    updateNodeVisibilities();
     emit nodeLabelsVisibilityChanged(visible);
+}
+
+void OccView::setNodeDisplayFilter(NodeDisplayFilter filter)
+{
+    if (m_nodeDisplayFilter == filter) return;
+    m_nodeDisplayFilter = filter;
+    updateNodeVisibilities();
+    emit nodeDisplayFilterChanged(filter);
 }
 
 void OccView::setLoadsVisible(bool visible)

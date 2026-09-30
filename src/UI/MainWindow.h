@@ -9,6 +9,7 @@
 #include "../Model/CreationPresets.h"
 #include "../Model/Beam.h"
 #include "../Model/StructuralClipboard.h"
+#include "../Analysis/OpenSeesAnalysisBuilder.h"
 
 namespace TSA::Model { class Model; }
 namespace TSA::Analysis { class ResultsModel; class OpenSeesSolver; }
@@ -40,6 +41,7 @@ namespace TSA::UI
     class GridSettingsDialog;
     class WorkPlaneDialog;
     class ProjectionViewDock;
+    class ResultsDockWidget;
     class WindowManager;
 }
 
@@ -175,6 +177,8 @@ private:
     TSA::UI::StructuralElementsDock* m_elementsDock = nullptr;
     TSA::UI::LogConsoleDock* m_consoleDock = nullptr;
     TSA::UI::ProjectionViewDock* m_projectionViewDock = nullptr;
+    TSA::UI::ResultsDockWidget* m_resultsDock = nullptr;
+    TSA::Analysis::AnalysisParameters m_lastAnalysisParams;
 
     QLabel*  m_statusCoordinates = nullptr;
     QLabel*  m_statusCoordinatesLocal = nullptr;
@@ -318,6 +322,7 @@ private:
     QAction* m_actionLoadCases = nullptr;
     QAction* m_actionSeismic = nullptr;
     QAction* m_actionMeshGen = nullptr;
+    QAction* m_actionAnalysisConfig = nullptr;
     QAction* m_actionRunSolve = nullptr;
     QAction* m_actionModal = nullptr;
     QAction* m_actionPushover = nullptr;
@@ -417,6 +422,7 @@ private slots:
     void onActionLoadCases();
     void onActionSeismic();
     void onActionMeshGen();
+    void onActionAnalysisConfig();
     void onActionRunSolve();
     void onActionModal();
     void onActionResultsDisp();

@@ -17,6 +17,7 @@
 #include <Quantity_Color.hxx>
 #include <BRepPrimAPI_MakeCylinder.hxx>
 #include <BRepPrimAPI_MakeCone.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRep_Builder.hxx>
 #include <TopoDS_Compound.hxx>
 #include <cmath>
@@ -151,6 +152,21 @@ void ResultsVisualManager::autoComputeDeformationScale()
     m_deformationScale = std::clamp(0.05 * span / maxU, 1.0, 5000.0);
 }
 
+void ResultsVisualManager::setDeformationScalePreset(ScalePreset preset, double customVal)
+{
+    m_deformationPreset = preset;
+    switch (preset)
+    {
+    case ScalePreset::Auto:   autoComputeDeformationScale(); break;
+    case ScalePreset::X1:     setDeformationScale(1.0); break;
+    case ScalePreset::X10:    setDeformationScale(10.0); break;
+    case ScalePreset::X100:   setDeformationScale(100.0); break;
+    case ScalePreset::X1000:  setDeformationScale(1000.0); break;
+    case ScalePreset::X10000: setDeformationScale(10000.0); break;
+    case ScalePreset::Custom: setDeformationScale(customVal > 0.0 ? customVal : 1.0); break;
+    }
+}
+
 void ResultsVisualManager::setDiagramType(TSA::Geometry::DiagramType type)
 {
     if (m_diagramType == type) return;
@@ -166,6 +182,65 @@ void ResultsVisualManager::setDiagramScale(double scale)
     m_diagramScale = scale;
     updateDiagramShapes();
     emit visualStateChanged();
+}
+
+void ResultsVisualManager::setDiagramScalePreset(ScalePreset preset, double customVal)
+{
+    m_diagramPreset = preset;
+    switch (preset)
+    {
+    case ScalePreset::Auto:   autoComputeDiagramScale(); break;
+    case ScalePreset::X1:     setDiagramScale(1.0); break;
+    case ScalePreset::X10:    setDiagramScale(10.0); break;
+    case ScalePreset::X100:   setDiagramScale(100.0); break;
+    case ScalePreset::X1000:  setDiagramScale(1000.0); break;
+    case ScalePreset::X10000: setDiagramScale(10000.0); break;
+    case ScalePreset::Custom: setDiagramScale(customVal > 0.0 ? customVal : 0.05); break;
+    }
+}
+
+int ResultsVisualManager::activeStep() const
+{
+    return m_results ? m_results->activeStep() : -1;
+}
+
+void ResultsVisualManager::setActiveStep(int step)
+{
+    if (!m_results) return;
+    m_results->setActiveStep(step);
+    updateAllVisuals();
+    emit visualStateChanged();
+}
+
+void ResultsVisualManager::setLegendVisible(bool visible)
+{
+    if (m_legendVisible == visible) return;
+    m_legendVisible = visible;
+    updateLegend();
+    emit visualStateChanged();
+}
+
+QString ResultsVisualManager::legendSummaryText() const
+{
+    if (!m_results || !m_results->isValid()) return QString();
+
+    QString text;
+    if (m_deformedVisible)
+    {
+        const auto& sum = m_results->summary();
+        text += QString("DÉFORMÉE : δ_max = %1 mm (Nœud #%2) | Échelle ×%3\n")
+            .arg(sum.maxDisplacement * 1000.0, 0, 'f', 2)
+            .arg(sum.maxDisplacementNodeId)
+            .arg(m_deformationScale, 0, 'f', 1);
+    }
+    if (m_diagramType != TSA::Geometry::DiagramType::None)
+    {
+        text += QString("DIAGRAMME : %1 (%2) | Échelle ×%3\n")
+            .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType))
+            .arg(TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType))
+            .arg(m_diagramScale, 0, 'f', 4);
+    }
+    return text;
 }
 
 void ResultsVisualManager::autoComputeDiagramScale()
@@ -245,11 +320,57 @@ void ResultsVisualManager::onModalTimerTick()
     updateDeformedShapes();
 }
 
+void ResultsVisualManager::clearLegend()
+{
+    auto ctx = context();
+    if (ctx && !m_legendLabel.IsNull())
+    {
+        ctx->Remove(m_legendLabel, Standard_False);
+    }
+    m_legendLabel.Nullify();
+}
+
+void ResultsVisualManager::updateLegend()
+{
+    auto ctx = context();
+    if (!ctx) return;
+
+    clearLegend();
+    if (!m_legendVisible || !m_results || !m_results->isValid()) return;
+
+    QString txt = legendSummaryText();
+    if (txt.isEmpty()) return;
+
+    double minX = 0, minY = 0, maxZ = 0;
+    if (m_model && !m_model->nodes().empty())
+    {
+        minX = minY = 1e9;
+        maxZ = -1e9;
+        for (const auto& [id, n] : m_model->nodes())
+        {
+            minX = std::min(minX, n.x());
+            minY = std::min(minY, n.y());
+            maxZ = std::max(maxZ, n.z());
+        }
+    }
+
+    gp_Pnt legendPos(minX, minY, maxZ + 0.4);
+
+    m_legendLabel = new AIS_TextLabel();
+    m_legendLabel->SetPosition(legendPos);
+    m_legendLabel->SetText(TCollection_ExtendedString(txt.toUtf8().constData(), true));
+    m_legendLabel->SetColor(Quantity_NOC_YELLOW);
+    m_legendLabel->SetHeight(13.0);
+    m_legendLabel->SetFont("Arial");
+    ctx->Display(m_legendLabel, Standard_False);
+}
+
 void ResultsVisualManager::updateAllVisuals()
 {
     updateDeformedShapes();
     updateDiagramShapes();
     updateReactionShapes();
+    updateLegend();
     if (m_occView && m_occView->view())
     {
         m_occView->view()->Update();
@@ -261,6 +382,7 @@ void ResultsVisualManager::clearAllVisuals()
     clearDeformedShapes();
     clearDiagramShapes();
     clearReactionShapes();
+    clearLegend();
     if (m_occView && m_occView->view())
     {
         m_occView->view()->Update();
@@ -393,6 +515,43 @@ void ResultsVisualManager::updateDeformedShapes()
             m_deformedElementShapes[100000 + colId] = ais;
         }
     }
+
+    // 3. Treillis (Truss members)
+    for (const auto& [trussId, truss] : m_model->trussMembers())
+    {
+        const auto* n1 = m_model->getNode(truss.startNodeId());
+        const auto* n2 = m_model->getNode(truss.endNodeId());
+        if (!n1 || !n2) continue;
+
+        gp_Pnt p1(n1->x(), n1->y(), n1->z());
+        gp_Pnt p2(n2->x(), n2->y(), n2->z());
+
+        const auto* d1 = m_results->getNodeDisplacement(truss.startNodeId());
+        const auto* d2 = m_results->getNodeDisplacement(truss.endNodeId());
+        TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
+        TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
+
+        gp_Pnt defP1 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p1, disp1, m_deformationScale);
+        gp_Pnt defP2 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p2, disp2, m_deformationScale);
+
+        try
+        {
+            BRepBuilderAPI_MakeEdge edge(defP1, defP2);
+            if (edge.IsDone())
+            {
+                Handle(AIS_Shape) ais = new AIS_Shape(edge.Shape());
+                ais->SetColor(Quantity_NOC_CYAN1);
+                ais->SetWidth(2.5);
+                if (m_displayMode == DeformedDisplayMode::Both)
+                {
+                    ais->SetTransparency(0.2);
+                }
+                ctx->Display(ais, Standard_False);
+                m_deformedElementShapes[200000 + trussId] = ais;
+            }
+        }
+        catch (...) {}
+    }
 }
 
 void ResultsVisualManager::clearDeformedShapes()
@@ -455,7 +614,20 @@ void ResultsVisualManager::updateDiagramShapes()
                 p2 = gp_Pnt(n2->x(), n2->y(), n2->z());
                 rot = col->rotation();
             }
-            else continue;
+            else
+            {
+                const auto* truss = m_model->getTrussMember(elId);
+                if (truss)
+                {
+                    const auto* n1 = m_model->getNode(truss->startNodeId());
+                    const auto* n2 = m_model->getNode(truss->endNodeId());
+                    if (!n1 || !n2) continue;
+                    p1 = gp_Pnt(n1->x(), n1->y(), n1->z());
+                    p2 = gp_Pnt(n2->x(), n2->y(), n2->z());
+                    rot = 0.0;
+                }
+                else continue;
+            }
         }
 
         TopoDS_Shape dShape = TSA::Geometry::DiagramGeometry::createDiagramShape(
@@ -465,9 +637,15 @@ void ResultsVisualManager::updateDiagramShapes()
         if (!dShape.IsNull())
         {
             Handle(AIS_Shape) ais = new AIS_Shape(dShape);
-            // Couleurs : Rouge/Orange pour Moment, Bleu pour Effort Normal, Vert pour Tranchant
+            // Couleurs par famille :
+            // Moment (M) : Coral / Orange
+            // Effort Normal (N) : Bleu
+            // Effort Tranchant (V) : Vert
+            // Flèche / Déplacement (U) : Magenta
+            // Rotation (R) : Or / Jaune
             if (m_diagramType == TSA::Geometry::DiagramType::BendingMy ||
-                m_diagramType == TSA::Geometry::DiagramType::BendingMz)
+                m_diagramType == TSA::Geometry::DiagramType::BendingMz ||
+                m_diagramType == TSA::Geometry::DiagramType::TorsionMx)
             {
                 ais->SetColor(Quantity_NOC_CORAL);
             }
@@ -475,9 +653,21 @@ void ResultsVisualManager::updateDiagramShapes()
             {
                 ais->SetColor(Quantity_NOC_BLUE1);
             }
-            else
+            else if (m_diagramType == TSA::Geometry::DiagramType::ShearForceVy ||
+                     m_diagramType == TSA::Geometry::DiagramType::ShearForceVz)
             {
                 ais->SetColor(Quantity_NOC_GREEN1);
+            }
+            else if (m_diagramType == TSA::Geometry::DiagramType::DeflectionUx ||
+                     m_diagramType == TSA::Geometry::DiagramType::DeflectionUy ||
+                     m_diagramType == TSA::Geometry::DiagramType::DeflectionUz ||
+                     m_diagramType == TSA::Geometry::DiagramType::DeflectionUres)
+            {
+                ais->SetColor(Quantity_NOC_MAGENTA1);
+            }
+            else
+            {
+                ais->SetColor(Quantity_NOC_GOLD);
             }
             ais->SetTransparency(0.25);
             ctx->Display(ais, Standard_False);

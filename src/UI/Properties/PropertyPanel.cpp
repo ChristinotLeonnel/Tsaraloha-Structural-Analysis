@@ -70,6 +70,15 @@ void PropertyPanel::setModel(TSA::Model::Model* model)
     clearProperties();
 }
 
+void PropertyPanel::setResultsModel(const std::shared_ptr<class TSA::Analysis::ResultsModel>& results)
+{
+    m_resultsModel = results;
+    if (m_nodeView)
+    {
+        m_nodeView->setResultsModel(results);
+    }
+}
+
 void PropertyPanel::setupUi()
 {
     auto* mainLayout = new QVBoxLayout(this);

@@ -31,6 +31,17 @@ enum class DeformedDisplayMode
     Both
 };
 
+enum class ScalePreset
+{
+    Auto,
+    X1,
+    X10,
+    X100,
+    X1000,
+    X10000,
+    Custom
+};
+
 /**
  * @brief Gestionnaire de visualisation 3D des résultats de calcul OpenSees dans le viewport OCCT.
  * Responsable du rendu de la déformée (amplification, superposition), des diagrammes 3D (N, V, M),
@@ -61,6 +72,9 @@ public:
     void setDeformationScale(double scale);
     void autoComputeDeformationScale();
 
+    ScalePreset deformationScalePreset() const { return m_deformationPreset; }
+    void setDeformationScalePreset(ScalePreset preset, double customVal = 1.0);
+
     // Diagrammes 3D
     TSA::Geometry::DiagramType diagramType() const { return m_diagramType; }
     void setDiagramType(TSA::Geometry::DiagramType type);
@@ -68,6 +82,9 @@ public:
     double diagramScale() const { return m_diagramScale; }
     void setDiagramScale(double scale);
     void autoComputeDiagramScale();
+
+    ScalePreset diagramScalePreset() const { return m_diagramPreset; }
+    void setDiagramScalePreset(ScalePreset preset, double customVal = 0.05);
 
     bool areDiagramLabelsVisible() const { return m_diagramLabelsVisible; }
     void setDiagramLabelsVisible(bool visible);
@@ -81,6 +98,15 @@ public:
     void startModalAnimation(int modeIndex, double speed = 1.0);
     void stopModalAnimation();
     int activeModalModeIndex() const { return m_activeModalModeIndex; }
+
+    // Étape active (Incrément non-linéaire)
+    int activeStep() const;
+    void setActiveStep(int step);
+
+    // Légende
+    bool isLegendVisible() const { return m_legendVisible; }
+    void setLegendVisible(bool visible);
+    QString legendSummaryText() const;
 
     // Nettoyage et actualisation
     void updateAllVisuals();
@@ -126,6 +152,10 @@ private:
     double m_modalPhase = 0.0;
     double m_modalSpeed = 1.0;
 
+    ScalePreset m_deformationPreset = ScalePreset::Auto;
+    ScalePreset m_diagramPreset = ScalePreset::Auto;
+    bool m_legendVisible = true;
+
     // Objets OCCT affichés
     std::map<int, Handle(AIS_Shape)> m_deformedElementShapes;
     std::map<int, Handle(AIS_Shape)> m_deformedNodeShapes;
@@ -133,6 +163,10 @@ private:
     std::map<int, std::vector<Handle(AIS_TextLabel)>> m_diagramLabels;
     std::map<int, Handle(AIS_Shape)> m_reactionShapes;
     std::map<int, Handle(AIS_TextLabel)> m_reactionLabels;
+    Handle(AIS_TextLabel) m_legendLabel;
+
+    void updateLegend();
+    void clearLegend();
 };
 
 } // namespace TSA::Viewer

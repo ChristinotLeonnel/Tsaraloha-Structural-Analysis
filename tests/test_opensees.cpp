@@ -44,7 +44,7 @@ bool runSuite_OpenSees(int& passed)
         int n1 = model.addNode(0.0, 0.0, 0.0);
         int n2 = model.addNode(4.0, 0.0, 0.0);
         model.getNode(n1)->setSupportType(SupportType::Fixed);
-        int b1 = model.addBeam(n1, n2, 0.25, 0.40);
+        model.addBeam(n1, n2, 0.25, 0.40);
 
         CalculationSnapshot snap = CalculationSnapshot::capture(model);
         TEST_CHECK(snap.nodeCount() == 2, "Snapshot must have 2 nodes");
@@ -292,6 +292,106 @@ bool runSuite_OpenSees(int& passed)
 
         QString plain = doc.toPlainText();
         TEST_CHECK(!plain.isEmpty(), "Plain text representation must not be empty");
+        passed++;
+    }
+
+    // TEST 73: Free Node & Supported Node Identification in Model
+    {
+        Model model;
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        int n2 = model.addNode(4.0, 0.0, 0.0);
+        int n3 = model.addNode(8.0, 0.0, 0.0); // Nœud libre
+        int n4 = model.addNode(0.0, 4.0, 0.0); // Nœud avec appui seul
+
+        model.getNode(n1)->setSupportType(SupportType::Fixed);
+        model.getNode(n4)->setSupportType(SupportType::Pinned);
+
+        // Barre reliant n1 et n2
+        model.addBeam(n1, n2, 0.30, 0.40);
+
+        TEST_CHECK(!model.isNodeFree(n1), "Node 1 connected to beam is not free");
+        TEST_CHECK(!model.isNodeFree(n2), "Node 2 connected to beam is not free");
+        TEST_CHECK(model.isNodeFree(n3), "Node 3 unconnected to any element is free");
+        TEST_CHECK(model.isNodeFree(n4), "Node 4 unconnected to any element is free (even if supported)");
+
+        auto freeList = model.freeNodeIds();
+        TEST_CHECK(freeList.size() == 2, "Model should have exactly 2 free nodes (n3, n4)");
+        TEST_CHECK(std::find(freeList.begin(), freeList.end(), n3) != freeList.end(), "Free list contains n3");
+        TEST_CHECK(std::find(freeList.begin(), freeList.end(), n4) != freeList.end(), "Free list contains n4");
+
+        auto suppList = model.supportedNodeIds();
+        TEST_CHECK(suppList.size() == 2, "Model should have exactly 2 supported nodes (n1, n4)");
+        TEST_CHECK(std::find(suppList.begin(), suppList.end(), n1) != suppList.end(), "Supp list contains n1");
+        TEST_CHECK(std::find(suppList.begin(), suppList.end(), n4) != suppList.end(), "Supp list contains n4");
+        passed++;
+    }
+
+    // TEST 74: Extended Diagram Geometries & Multi-Step Results
+    {
+        gp_Pnt p1(0.0, 0.0, 0.0);
+        gp_Pnt p2(5.0, 0.0, 0.0);
+        std::vector<StationForces> stations;
+        for (int i = 0; i <= 5; ++i) {
+            StationForces st;
+            st.position = i * 1.0;
+            st.Mz = 10.0;
+            st.My = 5.0;
+            st.Mx = 2.0;
+            st.Vz = -3.0;
+            st.Vy = 1.5;
+            st.N = 25.0;
+            st.ux = 0.001;
+            st.uy = 0.002;
+            st.uz = -0.005;
+            stations.push_back(st);
+        }
+
+        // Test Deflection UZ diagram
+        TopoDS_Shape diagDef = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p2, 0.0, stations, TSA::Geometry::DiagramType::DeflectionUz, 100.0, true);
+        TEST_CHECK(!diagDef.IsNull(), "Deflection UZ 3D diagram shape must be valid");
+
+        // Test Rotation RY diagram
+        TopoDS_Shape diagRot = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p2, 0.0, stations, TSA::Geometry::DiagramType::RotationRy, 200.0, true);
+        TEST_CHECK(!diagRot.IsNull(), "Rotation RY 3D diagram shape must be valid");
+
+        // Test Nonlinear algorithm & integrator Tcl conversion helpers
+        TEST_CHECK(std::string(TSA::Analysis::toTclString(TSA::Analysis::NonlinearAlgorithm::NewtonLineSearch)).find("NewtonLineSearch") != std::string::npos, "NewtonLineSearch Tcl match");
+        TEST_CHECK(std::string(TSA::Analysis::toTclString(TSA::Analysis::NonlinearAlgorithm::KrylovNewton)) == "KrylovNewton", "KrylovNewton Tcl match");
+        TEST_CHECK(std::string(TSA::Analysis::toTclString(TSA::Analysis::IntegratorType::ArcLength)) == "ArcLength", "ArcLength Tcl match");
+        TEST_CHECK(std::string(TSA::Analysis::toTclString(TSA::Analysis::IntegratorType::DisplacementControl)) == "DisplacementControl", "DisplacementControl Tcl match");
+
+        // Test Multi-step tracking in ResultsModel
+        ResultsModel rm;
+        rm.setValid(true);
+        StepResults step0;
+        step0.stepNumber = 0;
+        step0.factorOrTime = 0.5;
+        step0.displacements[1] = NodeDisplacement{0.001, 0.0, -0.002, 0.0, 0.0, 0.0};
+        step0.reactions[1] = NodeReaction{0.0, 0.0, 10.0, 0.0, 0.0, 0.0};
+
+        StepResults step1;
+        step1.stepNumber = 1;
+        step1.factorOrTime = 1.0;
+        step1.displacements[1] = NodeDisplacement{0.002, 0.0, -0.004, 0.0, 0.0, 0.0};
+        step1.reactions[1] = NodeReaction{0.0, 0.0, 20.0, 0.0, 0.0, 0.0};
+
+        rm.addStepResults(step0);
+        rm.addStepResults(step1);
+        rm.setActiveStep(1);
+
+        TEST_CHECK(rm.stepCount() == 2, "ResultsModel must have 2 steps");
+        TEST_CHECK(rm.activeStep() == 1, "Default active step is 1");
+        TEST_CHECK(approxEqual(rm.nodeDisplacement(1).uz, -0.004), "Step 1 displacement");
+        TEST_CHECK(approxEqual(rm.nodeReaction(1).rz, 20.0), "Step 1 reaction");
+
+        // Switch to step 0
+        rm.setActiveStep(0);
+        TEST_CHECK(rm.activeStep() == 0, "Active step should now be 0");
+        TEST_CHECK(approxEqual(rm.nodeDisplacement(1).uz, -0.002), "Step 0 displacement");
+        TEST_CHECK(approxEqual(rm.nodeReaction(1).rz, 10.0), "Step 0 reaction");
+
         passed++;
     }
 

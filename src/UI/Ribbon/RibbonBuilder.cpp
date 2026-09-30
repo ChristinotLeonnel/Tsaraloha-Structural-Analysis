@@ -250,7 +250,9 @@ RibbonTab* RibbonBuilder::buildCalculationTab(RibbonBar* bar, const RibbonAction
 
     solvPanel->addLargeAction(actRun);
     solvPanel->addInternalSeparator();
-    solvPanel->addSmallColumn({ actModal, actPush });
+    std::vector<QAction*> solvCol = { actModal, actPush };
+    if (acts.actionAnalysisConfig) solvCol.push_back(acts.actionAnalysisConfig);
+    solvPanel->addSmallColumn(solvCol);
     tab->addPanel(solvPanel);
 
     return tab;
@@ -262,6 +264,14 @@ RibbonTab* RibbonBuilder::buildCalculationTab(RibbonBar* bar, const RibbonAction
 RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
 {
     auto* tab = bar->addTab(QObject::tr("Résultats"));
+
+    // Panneau de contrôle des Résultats 3D (Dock)
+    if (acts.actionResultsDock)
+    {
+        auto* dockPanel = new RibbonPanel(QObject::tr("Panneau"), tab);
+        dockPanel->addLargeAction(acts.actionResultsDock);
+        tab->addPanel(dockPanel);
+    }
 
     // Déformations & Déplacements
     auto* defPanel = new RibbonPanel(QObject::tr("Déformée 3D"), tab);

@@ -110,6 +110,11 @@ public:
     const Node* getNode(int nodeId) const;
     const std::map<int, Node>& nodes() const { return m_nodes; }
 
+    // Identification des nœuds (libres vs connectés, appuis)
+    bool isNodeFree(int nodeId) const;
+    std::vector<int> freeNodeIds() const;
+    std::vector<int> supportedNodeIds() const;
+
     // Modification d'un niveau d'étage avec propagation instantanée aux objets attachés
     void onLevelElevationChanged(const std::string& levelId, double oldElevation, double newElevation);
 

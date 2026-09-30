@@ -122,6 +122,10 @@ bool OpenSeesResultsReader::readDisplacements(const std::string& filePath,
             TimeHistoryStep thStep;
             thStep.time = static_cast<double>(stepIdx);
 
+            StepResults stepRes;
+            stepRes.stepNumber = static_cast<int>(stepIdx + 1);
+            stepRes.factorOrTime = static_cast<double>(stepIdx + 1) / static_cast<double>(lines.size());
+
             size_t sIdx = 0;
             for (const auto& [nodeId, _] : snapshot.nodes())
             {
@@ -135,10 +139,12 @@ bool OpenSeesResultsReader::readDisplacements(const std::string& filePath,
                     d.ry = stepVals[sIdx + 4];
                     d.rz = stepVals[sIdx + 5];
                     thStep.displacements[nodeId] = d;
+                    stepRes.displacements[nodeId] = d;
                     sIdx += 6;
                 }
             }
             outResults.addTimeHistoryStep(thStep);
+            outResults.addStepResults(stepRes);
         }
     }
 
