@@ -332,10 +332,17 @@ private:
     QAction* m_actionResultsStress = nullptr;
     QAction* m_actionDeformedToggle = nullptr;
     QAction* m_actionDiagramMz = nullptr;
+    QAction* m_actionDiagramMy = nullptr;
+    QAction* m_actionDiagramMx = nullptr;
     QAction* m_actionDiagramVz = nullptr;
+    QAction* m_actionDiagramVy = nullptr;
     QAction* m_actionDiagramN = nullptr;
+    QAction* m_actionDiagramDeflection = nullptr;
     QAction* m_actionDiagramNone = nullptr;
     QAction* m_actionReactionsToggle = nullptr;
+    QAction* m_actionFitModel = nullptr;
+    QAction* m_actionFitResults = nullptr;
+    QAction* m_actionFitDeformed = nullptr;
     QAction* m_actionNoteDeCalcul = nullptr;
 
     QAction* m_actionPortSingle = nullptr;
@@ -395,9 +402,16 @@ private slots:
     void onActionToggleDeformed(bool checked);
     void onActionToggleReactions(bool checked);
     void onActionDiagramMz();
+    void onActionDiagramMy();
+    void onActionDiagramMx();
     void onActionDiagramVz();
+    void onActionDiagramVy();
     void onActionDiagramN();
+    void onActionDiagramDeflection();
     void onActionDiagramNone();
+    void onFitModel();
+    void onFitResults();
+    void onFitDeformed();
     void onPortLayoutSingle();
     void onPortLayoutSplitH();
     void onPortLayoutSplitV();

@@ -941,6 +941,30 @@ void MainWindow::onActionDiagramMz()
     }
 }
 
+void MainWindow::onActionDiagramMy()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
+    }
+}
+
+void MainWindow::onActionDiagramMx()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
+    }
+}
+
 void MainWindow::onActionDiagramVz()
 {
     if (m_occView && m_occView->resultsVisual())
@@ -950,6 +974,18 @@ void MainWindow::onActionDiagramVz()
     if (m_portArea && m_portArea->diagramWidget())
     {
         m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVz);
+    }
+}
+
+void MainWindow::onActionDiagramVy()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVy);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVy);
     }
 }
 
@@ -965,12 +1001,39 @@ void MainWindow::onActionDiagramN()
     }
 }
 
+void MainWindow::onActionDiagramDeflection()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::DeflectionUz);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::DeflectionUz);
+    }
+}
+
 void MainWindow::onActionDiagramNone()
 {
     if (m_occView && m_occView->resultsVisual())
     {
         m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::None);
     }
+}
+
+void MainWindow::onFitModel()
+{
+    if (m_occView) m_occView->fitModel();
+}
+
+void MainWindow::onFitResults()
+{
+    if (m_occView) m_occView->fitResults();
+}
+
+void MainWindow::onFitDeformed()
+{
+    if (m_occView) m_occView->fitDeformed();
 }
 
 void MainWindow::onPortLayoutSingle()

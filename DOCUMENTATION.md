@@ -79,29 +79,29 @@ TSA/
 L'interface de TSA est organisée en 5 zones principales :
 
 ```
-+-------------------------------------------------------------------------+
-| Barre de Titre & Menus Déroulants (Fichier, Édition, Affichage, Dessin) |
-+-------------------------------------------------------------------------+
-| Ruban Principal (Accueil, Structure & Sections, Analyse, Affichage)    |
-+-------------------------------------------------------------------------+
-| Règles Supérieures & Barre de Sélection d'Étage Actif                  |
-+-------------------+---------------------------------+-------------------+
-|                   |                                 |                   |
-|  Arborescence     |     Viewport 3D OpenCASCADE     |   Inspecteur      |
-|  du Modèle        |     Rendu B-Rep Solide / Filaire|   des Propriétés  |
-|  (ModelTreeDock)  |     Manipulation temps réel     |   (PropertyDock)  |
-|                   |                                 |                   |
-+-------------------+---------------------------------+-------------------+
-| Console de Logs & Ligne de Commande Rapide (CLI)                       |
-+-------------------------------------------------------------------------+
-| Barre d'État (Coordonnées 3D du curseur, Magnétisme, Mode actif)       |
-+-------------------------------------------------------------------------+
++---------------------------------------------------------------------------------------+
+| Barre de Titre & Menus (Fichier, Édition, Affichage, Dessin, Calcul, Résultats...)   |
++---------------------------------------------------------------------------------------+
+| Ruban (Accueil, Modélisation, Structure, Calcul, Résultats, Édition, Affichage, Outils)|
++---------------------------------------------------------------------------------------+
+| Règles Supérieures & Barre de Sélection d'Étage Actif                                 |
++-------------------+---------------------------------+---------------------------------+
+|                   |                                 |  Inspecteur des Propriétés /    |
+|  Arborescence     |     Viewport 3D OpenCASCADE     |  Panneau Résultats 3D           |
+|  du Modèle        |     Rendu B-Rep Solide / Filaire|  (Properties / ResultsDock)     |
+|  (ModelTreeDock)  |     Manipulation temps réel     |  Plans & Projections (Dock)     |
+|                   |                                 |                                 |
++-------------------+---------------------------------+---------------------------------+
+| Console de Logs & Ligne de Commande Rapide (CLI)                                      |
++---------------------------------------------------------------------------------------+
+| Barre d'État (Coordonnées 3D du curseur, Magnétisme, Mode actif)                      |
++---------------------------------------------------------------------------------------+
 ```
 
-1. **Ruban Principal** : Accès thématique à tous les outils avec séparateurs et icônes haute résolution.
-2. **Viewport 3D** : Affichage temps réel accéléré matériellement par OpenGL, avec ombres douces et antialiasing.
-3. **Arborescence du Modèle (Gauche)** : Hiérarchie complète des éléments (Nœuds, Poutres, Poteaux, Dalles, Voiles, Niveaux, Grilles).
-4. **Inspecteur des Propriétés (Droite)** : Modification paramétrique instantanée de tout objet sélectionné.
+1. **Ruban Principal (8 onglets)** : Accès thématique à tous les outils avec séparateurs et icônes haute résolution (Accueil, Modélisation, Structure, Calcul, Résultats, Édition, Affichage, Outils).
+2. **Viewport 3D** : Affichage temps réel accéléré matériellement par OpenGL, avec ombres douces et antialiasing, support multiport indépendant.
+3. **Arborescence du Modèle (Gauche)** : Hiérarchie complète des éléments (Nœuds, Poutres, Poteaux, Câbles, Dalles, Voiles, Niveaux, Grilles).
+4. **Inspecteur des Propriétés & Panneau Résultats (Droite)** : Modification paramétrique instantanée de tout objet sélectionné et pilotage complet de la déformée, diagrammes 3D et pas de calculs.
 5. **Console & CLI (Bas)** : Historique des opérations et boîte de saisie pour commandes rapides type AutoCAD.
 
 ---
@@ -283,10 +283,35 @@ La console inférieure dispose d'un interpréteur de commandes en langage nature
 - Charges surfaciques uniformes ($kN/m^2$) sur les dalles et planchers.
 - Combinaisons de charges ELU (État Limite Ultime : $1.35 G + 1.5 Q$) et ELS (État Limite de Service : $G + Q$).
 
-### 3. Résolution & Résultats :
-- **Déplacements** : Représentation de la déformée réelle ou amplifiée avec échelle réglable.
-- **Efforts Internes** : Diagrammes le long des barres des moments fléchissants $M_y$, $M_z$, de l'effort normal $N$ et de l'effort tranchant $V_z$.
-- **Contraintes** : Cartographie en dégradé de couleurs des contraintes normales $\sigma$, de cisaillement $\tau$ et des contraintes équivalentes de Von Mises sur les dalles et voiles.
+### 3. Moteur de Résolution OpenSees & Types d'Analyses :
+- **Statique Linéaire** : Résolution élastique standard $[K]\{u\} = \{F\}$.
+- **Statique Non-Linéaire** : Grands déplacements ($P\text{-}\Delta$), formulations corotatives (*corotTruss*) et non-linéarités géométriques.
+- **Analyse Modale Dynamique** : Extraction des modes propres de vibration (valeurs propres $\lambda$, pulsations $\omega$, fréquences $f$, périodes fondamentales $T$).
+- **Analyse Pushover** : Courbes de capacité non-linéaires incrémentales.
+- **Algorithmes de Résolution** : Newton-Raphson, Newton avec recherche linéaire (*NewtonLineSearch*), Newton modifié (*ModifiedNewton*), *Krylov-Newton*, *BFGS*, *Broyden*, *SecantNewton*.
+- **Intégrateurs Numériques** : Contrôle d'effort (*LoadControl*), Contrôle de déplacement (*DisplacementControl*), Longueur d'arc (*Arc-Length* / Crisfield), Norme de déplacement non équilibré minimale (*MinUnbalDispNorm*).
+- **Dialogue de Configuration (`AnalysisConfigDialog`)** : Filtrage interactif et validation dynamique des paramètres selon l'analyse choisie.
+
+### 4. Exploitation et Visualisation 3D des Résultats :
+- **Déformée 3D Structurale** :
+  - 3 modes d'affichage : Modèle non déformé seul (initial), Déformée seule, Superposition non déformé + déformé.
+  - Normalisation automatique de l'échelle d'amplification par rapport à l'envergure caractéristique ($L_{span}$ / Bounding Box) pour une lecture immédiate et sans distorsion disproportionnée.
+  - Presets rapides ($\times 1, \times 10, \times 100, \times 1000, \times 10000$) et facteur d'amplification personnalisé.
+- **4 Familles de Diagrammes 3D Orientés dans l'Espace Local** :
+  - **Moments** : Flexion principale $M_z$, flexion secondaire $M_y$, torsion $M_x$.
+  - **Efforts Tranchants** : Tranchant selon $Z$ local ($V_z$), tranchant selon $Y$ local ($V_y$).
+  - **Effort Normal** : Traction et compression axiale $N$.
+  - **Déplacements & Rotations** : Flèches transversales et axiales ($U_x, U_y, U_z, U_{res}$), rotations ($R_x, R_y, R_z$).
+  - Surfaces polygonales décalées et hachurées projetées directement sur les barres dans le viewport 3D.
+- **Légende 3D Dynamique en Surimpression** : Indication instantanée de la grandeur observée, des extrema (min/max), du facteur d'échelle effectif et des unités physiques associées ($kN, kNm, mm, rad$).
+- **Réactions d'Appuis 3D** : Flèches vectorielles proportionnelles avec affichage numérique des valeurs aux nœuds d'appuis.
+- **Identification & Inspection des Nœuds** :
+  - Détection automatique et mise en évidence visuelle des **nœuds libres** (non connectés à des barres) par des sphères magenta proéminentes.
+  - Filtre d'affichage des nœuds : *Tous*, *Nœuds libres uniquement*, *Nœuds d'appuis uniquement*, *Nœuds sélectionnés uniquement*, *Masqués*.
+  - Panneau d'inspection nodale dans l'Inspecteur des Propriétés : composantes de déplacement $U$, de rotation $R$, réactions d'appui $F/M$ et statut de connectivité.
+  - Cadrage caméra contextuel : *Cadrer Modèle*, *Cadrer Résultats*, *Cadrer Déformée*, *Cadrer Sélection*.
+- **Navigation Multi-Incréments** : Curseur temporel et pas de charge ($\lambda$) pour inspecter pas à pas la progression des calculs non-linéaires.
+- **Espace Multi-Vues (Multiport)** : Rendu indépendant par port (jusqu'à 4 vues simultanées) sans re-calcul de la structure.
 
 ---
 

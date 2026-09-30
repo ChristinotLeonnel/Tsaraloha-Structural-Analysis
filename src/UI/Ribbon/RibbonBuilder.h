@@ -69,17 +69,23 @@ struct RibbonActions
     QAction* actionModal = nullptr;
     QAction* actionPushover = nullptr;
 
-    // 5. Résultats & Note de Calcul
     QAction* actionResultsDock = nullptr;
     QAction* actionResultsDisp = nullptr;
     QAction* actionResultsForces = nullptr;
     QAction* actionResultsStress = nullptr;
     QAction* actionDeformedToggle = nullptr;
     QAction* actionDiagramMz = nullptr;
+    QAction* actionDiagramMy = nullptr;
+    QAction* actionDiagramMx = nullptr;
     QAction* actionDiagramVz = nullptr;
+    QAction* actionDiagramVy = nullptr;
     QAction* actionDiagramN = nullptr;
+    QAction* actionDiagramDeflection = nullptr;
     QAction* actionDiagramNone = nullptr;
     QAction* actionReactionsToggle = nullptr;
+    QAction* actionFitModel = nullptr;
+    QAction* actionFitResults = nullptr;
+    QAction* actionFitDeformed = nullptr;
     QAction* actionOpenNDC = nullptr;
 
     // Multi-Port Workspace

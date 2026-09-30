@@ -710,13 +710,29 @@ void MainWindow::createActions()
     m_actionDiagramMz->setToolTip(tr("Afficher le diagramme 3D du moment fléchissant Mz"));
     connect(m_actionDiagramMz, &QAction::triggered, this, &MainWindow::onActionDiagramMz);
 
+    m_actionDiagramMy = new QAction(tr("Moment M&y"), this);
+    m_actionDiagramMy->setToolTip(tr("Afficher le diagramme 3D du moment fléchissant secondaire My"));
+    connect(m_actionDiagramMy, &QAction::triggered, this, &MainWindow::onActionDiagramMy);
+
+    m_actionDiagramMx = new QAction(tr("Torsion M&x"), this);
+    m_actionDiagramMx->setToolTip(tr("Afficher le diagramme 3D du moment de torsion Mx"));
+    connect(m_actionDiagramMx, &QAction::triggered, this, &MainWindow::onActionDiagramMx);
+
     m_actionDiagramVz = new QAction(tr("Tranchant &Vz"), this);
     m_actionDiagramVz->setToolTip(tr("Afficher le diagramme 3D de l'effort tranchant Vz"));
     connect(m_actionDiagramVz, &QAction::triggered, this, &MainWindow::onActionDiagramVz);
 
+    m_actionDiagramVy = new QAction(tr("Tranchant V&y"), this);
+    m_actionDiagramVy->setToolTip(tr("Afficher le diagramme 3D de l'effort tranchant Vy"));
+    connect(m_actionDiagramVy, &QAction::triggered, this, &MainWindow::onActionDiagramVy);
+
     m_actionDiagramN = new QAction(tr("Effort Normal &N"), this);
     m_actionDiagramN->setToolTip(tr("Afficher le diagramme 3D de l'effort normal N"));
     connect(m_actionDiagramN, &QAction::triggered, this, &MainWindow::onActionDiagramN);
+
+    m_actionDiagramDeflection = new QAction(tr("Flèches &UZ / Ures"), this);
+    m_actionDiagramDeflection->setToolTip(tr("Afficher le diagramme 3D des flèches transversales le long des éléments"));
+    connect(m_actionDiagramDeflection, &QAction::triggered, this, &MainWindow::onActionDiagramDeflection);
 
     m_actionDiagramNone = new QAction(tr("&Masquer Diagrammes"), this);
     connect(m_actionDiagramNone, &QAction::triggered, this, &MainWindow::onActionDiagramNone);
@@ -726,6 +742,21 @@ void MainWindow::createActions()
     m_actionReactionsToggle->setChecked(true);
     m_actionReactionsToggle->setToolTip(tr("Afficher les flèches et valeurs des réactions d'appui en 3D"));
     connect(m_actionReactionsToggle, &QAction::toggled, this, &MainWindow::onActionToggleReactions);
+
+    m_actionFitModel = new QAction(tr("Cadrer &Modèle"), this);
+    m_actionFitModel->setIcon(QIcon(":/icons/fit_all.svg"));
+    m_actionFitModel->setToolTip(tr("Cadrer la vue sur l'ensemble du modèle initial non déformé"));
+    connect(m_actionFitModel, &QAction::triggered, this, &MainWindow::onFitModel);
+
+    m_actionFitResults = new QAction(tr("Cadrer &Résultats"), this);
+    m_actionFitResults->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_actionFitResults->setToolTip(tr("Cadrer la vue sur l'enveloppe globale des résultats et diagrammes 3D"));
+    connect(m_actionFitResults, &QAction::triggered, this, &MainWindow::onFitResults);
+
+    m_actionFitDeformed = new QAction(tr("Cadrer &Déformée"), this);
+    m_actionFitDeformed->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_actionFitDeformed->setToolTip(tr("Cadrer la vue sur l'enveloppe de la structure déformée"));
+    connect(m_actionFitDeformed, &QAction::triggered, this, &MainWindow::onFitDeformed);
 
     m_actionNoteDeCalcul = new QAction(tr("Note de &Calcul..."), this);
     m_actionNoteDeCalcul->setIcon(QIcon(":/icons/ndc_report.svg"));
@@ -870,11 +901,24 @@ void MainWindow::createMenus()
     resMenu->addAction(m_actionDeformedToggle);
     QMenu* diagSub = resMenu->addMenu(tr("Diagrammes d'Efforts 3D"));
     diagSub->addAction(m_actionDiagramMz);
+    diagSub->addAction(m_actionDiagramMy);
+    diagSub->addAction(m_actionDiagramMx);
+    diagSub->addSeparator();
     diagSub->addAction(m_actionDiagramVz);
+    diagSub->addAction(m_actionDiagramVy);
+    diagSub->addSeparator();
     diagSub->addAction(m_actionDiagramN);
+    diagSub->addSeparator();
+    diagSub->addAction(m_actionDiagramDeflection);
     diagSub->addSeparator();
     diagSub->addAction(m_actionDiagramNone);
     resMenu->addAction(m_actionReactionsToggle);
+    resMenu->addSeparator();
+    QMenu* camSub = resMenu->addMenu(tr("Cadrage Résultats"));
+    camSub->addAction(m_actionFitDeformed);
+    camSub->addAction(m_actionFitResults);
+    camSub->addAction(m_actionFitModel);
+    camSub->addAction(m_actionFitAll);
     resMenu->addSeparator();
     resMenu->addAction(m_actionNoteDeCalcul);
     resMenu->addSeparator();
@@ -1038,10 +1082,17 @@ void MainWindow::createRibbon()
     acts.actionResultsStress = m_actionResultsStress;
     acts.actionDeformedToggle = m_actionDeformedToggle;
     acts.actionDiagramMz = m_actionDiagramMz;
+    acts.actionDiagramMy = m_actionDiagramMy;
+    acts.actionDiagramMx = m_actionDiagramMx;
     acts.actionDiagramVz = m_actionDiagramVz;
+    acts.actionDiagramVy = m_actionDiagramVy;
     acts.actionDiagramN = m_actionDiagramN;
+    acts.actionDiagramDeflection = m_actionDiagramDeflection;
     acts.actionDiagramNone = m_actionDiagramNone;
     acts.actionReactionsToggle = m_actionReactionsToggle;
+    acts.actionFitModel = m_actionFitModel;
+    acts.actionFitResults = m_actionFitResults;
+    acts.actionFitDeformed = m_actionFitDeformed;
     acts.actionOpenNDC = m_actionNoteDeCalcul;
 
     acts.actionPortSingle = m_actionPortSingle;
