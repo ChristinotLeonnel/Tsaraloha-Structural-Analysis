@@ -58,14 +58,20 @@ Toute modification du modèle déclenchée par l'utilisateur doit passer par une
 exécutée via `CommandManager::executeCommand`, jamais par une mutation directe du modèle
 depuis l'UI.
 
+## Système de Charges & Combinaisons (`src/Model/Load/`)
+
+Gestion complète des actions mécaniques et thermiques selon les Eurocodes :
+- **Charges Nodal & Éléments** : `PointLoad` (forces/moments nodaux), `DistributedLoad` (charges linéiques uniformes/trapézoïdales sur barres), `MemberPointLoad`, `ThermalLoad` ($\Delta T$), `SurfaceUniformLoad` (pressions surfaciques sur dalles/voiles).
+- **Cas de Charges** : `LoadCase` (type d'action : Permanente $G$, Variable $Q$, Neige $S$, Vent $W$, Séisme $E$, calcul automatique du poids propre `isSelfWeightIncluded`).
+- **Combinaisons d'Actions** : `LoadCombination` (combinaisons Eurocodes ELU / ELS avec coefficients partiels $\gamma_G, \gamma_Q, \psi_0$).
+- **Gestionnaire Centralisé** : `LoadManager` — gère le cycle de vie, la sérialisation, la suppression en cascade lors de la suppression d'éléments et l'intégration dans `ModelStateSnapshot` pour l'Undo/Redo.
+
 ## Autres classes centrales
 
 - `Node` (`src/Model/Node.h`) — nœud/point structurel référencé par ID.
 - `Section` / `SectionShape` — voir `SECTIONS.md`.
 - `Material` / `MaterialLibrary` — voir `MATERIALS.md`.
-- `ModelDiff` (`src/Model/ModelDiff.h`) — `TODO: VERIFY IN SOURCE` (usage exact : diff
-  d'affichage, journalisation, ou support d'un futur undo incrémental — à confirmer avant
-  de s'appuyer dessus).
+- `ModelDiff` (`src/Model/ModelDiff.h`) — diff d'affichage et journalisation des modifications.
 - `StructuralClipboard` (`src/Model/StructuralClipboard.h`) — Copy/Paste d'éléments
   structuraux ; doit préserver le type réel et régénérer la géométrie associée (ne jamais
   partager une `Shape` OCCT entre l'original et la copie).

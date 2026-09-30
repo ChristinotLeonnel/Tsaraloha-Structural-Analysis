@@ -133,11 +133,21 @@ void PortAreaWidget::onPortMaximizeRequested(int portId)
 
 void PortAreaWidget::applyLayout()
 {
-    // Nettoyer les conteneurs précédents
+    // Détacher d'abord tous les ports de l'ancien conteneur/splitter et les ré-assigner à this
+    for (int i = 0; i < 4; ++i)
+    {
+        if (m_ports[i])
+        {
+            m_ports[i]->setParent(this);
+            m_ports[i]->hide();
+        }
+    }
+
+    // Nettoyer les conteneurs précédents en toute sécurité
     if (m_containerWidget)
     {
         m_rootLayout->removeWidget(m_containerWidget);
-        m_containerWidget->deleteLater();
+        delete m_containerWidget;
         m_containerWidget = nullptr;
     }
 
@@ -239,30 +249,45 @@ void PortAreaWidget::applyLayout()
     m_rootLayout->addWidget(m_containerWidget);
 }
 
-void PortAreaWidget::attachContentToPort(PortWidget* port, PortType type)
+void PortAreaWidget::attachContentToPort(PortWidget* targetPort, PortType type)
 {
-    if (!port) return;
+    if (!targetPort) return;
 
+    QWidget* content = nullptr;
     switch (type)
     {
     case PortType::Model3D:
-        port->setContentWidget(m_primaryContainer ? static_cast<QWidget*>(m_primaryContainer) : static_cast<QWidget*>(m_primaryOccView));
+        content = m_primaryContainer ? static_cast<QWidget*>(m_primaryContainer) : static_cast<QWidget*>(m_primaryOccView);
         break;
     case PortType::Results3D:
         if (m_primaryOccView && m_primaryOccView->resultsVisual())
         {
             m_primaryOccView->resultsVisual()->setDeformedVisible(true);
         }
-        port->setContentWidget(m_primaryContainer ? static_cast<QWidget*>(m_primaryContainer) : static_cast<QWidget*>(m_primaryOccView));
+        content = m_primaryContainer ? static_cast<QWidget*>(m_primaryContainer) : static_cast<QWidget*>(m_primaryOccView);
         break;
     case PortType::Diagram2D:
-        port->setContentWidget(m_diagramWidget);
+        content = m_diagramWidget;
         break;
     case PortType::CalculationNote:
         if (m_ndcWidget) m_ndcWidget->refreshDocument();
-        port->setContentWidget(m_ndcWidget);
+        content = m_ndcWidget;
         break;
     }
+
+    // Si ce contenu est déjà assigné à un autre port, le détacher d'abord
+    if (content)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            if (m_ports[i] && m_ports[i] != targetPort && m_ports[i]->contentWidget() == content)
+            {
+                m_ports[i]->setContentWidget(nullptr);
+            }
+        }
+    }
+
+    targetPort->setContentWidget(content);
 }
 
 void PortAreaWidget::onPortTypeChanged(int portId, PortType newType)

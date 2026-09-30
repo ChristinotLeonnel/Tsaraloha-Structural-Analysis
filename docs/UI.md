@@ -13,14 +13,13 @@ src/UI/
 ├── WindowManager  — gestionnaire centralisé des fenêtres, docks, profils et menu Fenêtres
 ├── Properties     — PropertyPanel.h/.cpp (panneau de propriétés contextuel)
 ├── ModelTree      — ModelTreeWidget.h/.cpp (arbre du modèle)
+├── Port           — PortAreaWidget, PortWidget, PortTypes (espace de travail multi-ports)
+├── Diagrams       — Diagram2DWidget (diagrammes interactifs 2D des sollicitations N, V, M, courbes pushover)
 ├── Dialogs        — boîtes de dialogue
 ├── Widgets        — widgets réutilisables
 ├── Theme          — feuilles de style / thèmes (QSS)
 └── Ruler          — règles/graduations du viewport
 ```
-
-`TODO: VERIFY IN SOURCE` si de nouveaux sous-dossiers apparaissent depuis la rédaction de
-ce document.
 
 ## Règle centrale : UI ≠ source de vérité métier
 

@@ -866,14 +866,13 @@ void MainWindow::onActionNoteDeCalcul()
 {
     if (m_portArea)
     {
-        m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitHorizontal);
-        m_portArea->port(1)->setPortType(TSA::UI::PortType::CalculationNote);
         if (m_portArea->ndcWidget())
         {
             m_portArea->ndcWidget()->setModel(m_model.get());
             m_portArea->ndcWidget()->setResultsModel(m_resultsModel);
-            m_portArea->ndcWidget()->refreshDocument();
         }
+        m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitHorizontal);
+        m_portArea->port(1)->setPortType(TSA::UI::PortType::CalculationNote);
     }
 }
 

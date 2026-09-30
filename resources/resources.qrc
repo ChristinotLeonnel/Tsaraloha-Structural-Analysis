@@ -274,6 +274,8 @@
 
         <!-- Analyse & Résultats -->
         <file alias="analysis_mesh.svg">icons/analysis/mesh_generate.svg</file>
+        <file alias="analysis_pushover.svg">icons/analysis/analysis_run.svg</file>
+        <file alias="ndc_report.svg">icons/file/file_export.svg</file>
         <file alias="load_distributed.svg">icons/modeling/load_dist.svg</file>
         <file alias="results_forces.svg">icons/analysis/results_force.svg</file>
     </qresource>

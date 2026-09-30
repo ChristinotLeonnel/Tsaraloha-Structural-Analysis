@@ -9,25 +9,31 @@ TSA est une application desktop C++/Qt6/OCCT de modélisation et d'analyse de st
 génie civil. L'architecture réelle constatée dans `src/` :
 
 ```text
-UI (src/UI)
-  ↓ signals/slots
+UI (src/UI : Ribbon, Dock, Properties, ModelTree, PortArea, Diagrams)
+  ↓ signals/slots, Commands
 Commands / UndoRedo (src/Commands, src/UndoRedo)
   ↓ modifie
-Structural Model (src/Model)
-  ↓ construit via
-Geometry (src/Geometry)
-  ↓ affichée par
-OCCT / Viewer (src/Viewer)
+Structural Model (src/Model : Elements, Loads, Combinations, Sections, Materials)
+  ├── construit via → Geometry (src/Geometry : Elements, Deformed, Diagrams)
+  │                     ↓ affichée par
+  │                   OCCT / Viewer (src/Viewer : OccView, ResultsVisualManager)
+  └── résolu via → Analysis (src/Analysis : CalculationSnapshot, OpenSeesSolver)
+                      ↓ produit
+                    Results (ResultsModel)
+                      ↓ exporté via
+                    Note de Calcul (src/NDC : NDCGenerator, NDCExporter)
 ```
 
 ## Modules
 
 | Module | Rôle | Document dédié |
 |---|---|---|
-| `src/Model` | Source de vérité métier (éléments, sections, matériaux, nœuds) | `MODEL.md` |
-| `src/Geometry` | Construction des `TopoDS_Shape` depuis le modèle | `OCCT.md` |
-| `src/Viewer` | Viewer OCCT (AIS/V3d), sélection 3D, apparence | `OCCT.md` |
-| `src/UI` | Ribbon, Dock, Properties, ModelTree, Dialogs, Widgets, Theme, Ruler | `UI.md` |
+| `src/Model` | Source de vérité métier (éléments, sections, matériaux, nœuds, charges) | `MODEL.md` |
+| `src/Geometry` | Construction des `TopoDS_Shape` depuis le modèle et les résultats | `OCCT.md` |
+| `src/Viewer` | Viewer OCCT (AIS/V3d), sélection 3D, apparence, visualiseur de résultats | `OCCT.md` |
+| `src/UI` | Ribbon, Dock, Properties, ModelTree, Dialogs, Widgets, Theme, Ruler, Port, Diagrams | `UI.md` |
+| `src/Analysis` | Intégration OpenSees, snapshots immuables, solveur asynchrone, ResultsModel | `ANALYSIS_OPENSEES.md` |
+| `src/NDC` | Générateur & visualiseur de Note de Calcul (Eurocodes, IEEE 1063, PDF/HTML) | `NDC_SYSTEM.md` |
 | `src/Commands` | Command Pattern (`ICommand`) pour toute modification du modèle | `MODEL.md` |
 | `src/UndoRedo` | `CommandManager`, `UndoManager` (undo/redo par snapshot d'état) | `MODEL.md` |
 | `src/Coordinate` | `CoordinateSystem`, `Point3D`, `LevelManager`/`Level`, coordonnées cylindriques | `COORDINATES.md` |

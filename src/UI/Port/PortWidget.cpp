@@ -60,10 +60,16 @@ void PortWidget::setupUi()
 
 void PortWidget::setContentWidget(QWidget* widget)
 {
+    if (m_contentWidget == widget)
+    {
+        if (m_contentWidget) m_contentWidget->show();
+        return;
+    }
+
     if (m_contentWidget)
     {
         m_mainLayout->removeWidget(m_contentWidget);
-        m_contentWidget->setParent(nullptr);
+        m_contentWidget->hide();
     }
 
     m_contentWidget = widget;

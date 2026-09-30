@@ -38,13 +38,20 @@ Apparence visuelle (couleur, rugosité, texture) — voir `VisualProperties` dan
 modèle (`baseColor`, `roughness`, `metallic`, `transparency`, `shininess`, `textureName`,
 `texturePath`, `textureScaleU/V`).
 
+### `src/Viewer/ResultsVisualManager`
+
+Gestionnaire dédié à la visualisation interactive des résultats structurels dans le contexte OCCT :
+- Superposition et mise à l'échelle dynamique des déformées statiques ($\mathbf{u} \times s$).
+- Animation harmonique 30 FPS des modes propres ($\mathbf{\Phi}_i \cos(\omega_i t)$ via `QTimer`).
+- Rendu 3D des diagrammes d'efforts ($N, V_y, V_z, M_x, M_y, M_z$) en rubans orientés selon le repère local.
+- Vecteurs fléchés des réactions d'appuis aux nœuds encastrés ou appuyés.
+
 ### `src/Geometry/*Geometry` (Geometry Builders)
 
-`BeamGeometry`, `SlabGeometry`, `WallGeometry`, `FoundationGeometry`, `CableGeometry3D` —
-construisent les `TopoDS_Shape` à partir des paramètres du modèle (section, matériau,
-nœuds/coordonnées). `TODO: VERIFY IN SOURCE` pour l'absence éventuelle d'un
-`ColumnGeometry`/`TrussMemberGeometry` dédié — vérifier si `Column`/`TrussMember`
-réutilisent `BeamGeometry`.
+- **Éléments structuraux** : `BeamGeometry`, `SlabGeometry`, `WallGeometry`, `FoundationGeometry`, `CableGeometry3D` — construisent les `TopoDS_Shape` à partir des paramètres du modèle (section, matériau, nœuds/coordonnées).
+- **Résultats d'analyse** :
+  - `DeformedGeometry` : Construction de la fibre neutre déformée par interpolation cubique d'Hermite et extrusion solide B-Rep.
+  - `DiagramGeometry` : Construction des facettes de diagrammes 3D, contour, hachures et drapeaux d'extrema.
 
 ### `src/Grid`
 

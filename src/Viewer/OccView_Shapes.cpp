@@ -226,28 +226,19 @@ void OccView::onMemberLoadRemoved(int loadId)
     removeMemberLoadShape(loadId);
 }
 
-void OccView::onLoadAdded(int loadId)
+void OccView::onLoadAdded(int /*loadId*/)
 {
-    if (!m_model) return;
-    if (m_model->loadManager().getNodalLoad(loadId))
-    {
-        updateNodalLoadShape(loadId);
-    }
-    if (m_model->loadManager().getMemberLoad(loadId))
-    {
-        updateMemberLoadShape(loadId);
-    }
+    // Déjà traité de manière spécifique dans onNodalLoadAdded et onMemberLoadAdded
 }
 
-void OccView::onLoadModified(int loadId)
+void OccView::onLoadModified(int /*loadId*/)
 {
-    onLoadAdded(loadId);
+    // Déjà traité de manière spécifique dans onNodalLoadModified et onMemberLoadModified
 }
 
-void OccView::onLoadRemoved(int loadId)
+void OccView::onLoadRemoved(int /*loadId*/)
 {
-    removeNodalLoadShape(loadId);
-    removeMemberLoadShape(loadId);
+    // Déjà traité de manière spécifique dans onNodalLoadRemoved et onMemberLoadRemoved
 }
 
 void OccView::onLoadCaseChanged(int /*caseId*/)
