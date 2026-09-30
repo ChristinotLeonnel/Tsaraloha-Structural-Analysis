@@ -991,6 +991,38 @@ void Model::notifyCableModified(int cableId)
     }
 }
 
+void Model::notifyLoadAdded(int loadId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onLoadAdded(loadId);
+    }
+}
+
+void Model::notifyLoadModified(int loadId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onLoadModified(loadId);
+    }
+}
+
+void Model::notifyLoadRemoved(int loadId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onLoadRemoved(loadId);
+    }
+}
+
+void Model::notifyLoadCaseChanged(int caseId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onLoadCaseChanged(caseId);
+    }
+}
+
 int Model::addCable(int startNodeId, int endNodeId, double diameter, const std::string& name, CableGeometryMode mode, double sag)
 {
     CableDefinition def;
@@ -1493,6 +1525,7 @@ Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) c
     snap.foundations = m_foundations;
     snap.trussMembers = m_trussMembers;
     snap.cables = m_cables;
+    snap.loadSnapshot = m_loadManager.createSnapshot();
     snap.calculationSnapshots = m_calculationSnapshots;
     snap.definitionReferences = m_definitionReferences;
     snap.nextNodeId = m_nextNodeId;
@@ -1517,6 +1550,7 @@ void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
     m_foundations = snapshot.foundations;
     m_trussMembers = snapshot.trussMembers;
     m_cables = snapshot.cables;
+    m_loadManager.applySnapshot(snapshot.loadSnapshot);
     m_calculationSnapshots = snapshot.calculationSnapshots;
     m_definitionReferences = snapshot.definitionReferences;
     m_nextNodeId = snapshot.nextNodeId;
@@ -1609,6 +1643,7 @@ void Model::clear()
     m_nextFoundationId = 1;
     m_nextTrussMemberId = 1;
     m_nextCableId = 1;
+    m_loadManager.resetToDefaults();
     m_isModified = false;
     clearUndoRedo();
 

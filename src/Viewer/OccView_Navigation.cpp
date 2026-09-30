@@ -1541,6 +1541,85 @@ void OccView::setNodeLabelsVisible(bool visible)
     emit nodeLabelsVisibilityChanged(visible);
 }
 
+void OccView::setLoadsVisible(bool visible)
+{
+    m_loadsVisible = visible;
+    if (!m_context.IsNull())
+    {
+        for (auto& [id, shape] : m_nodalLoadShapes)
+        {
+            if (!shape.IsNull())
+            {
+                if (visible) m_context->Display(shape, false);
+                else m_context->Erase(shape, false);
+            }
+        }
+        for (auto& [id, shapes] : m_memberLoadShapes)
+        {
+            for (auto& s : shapes)
+            {
+                if (!s.IsNull())
+                {
+                    if (visible) m_context->Display(s, false);
+                    else m_context->Erase(s, false);
+                }
+            }
+        }
+        for (auto& [id, lbl] : m_nodalLoadLabels)
+        {
+            if (!lbl.IsNull())
+            {
+                if (visible && m_loadValuesVisible) m_context->Display(lbl, false);
+                else m_context->Erase(lbl, false);
+            }
+        }
+        for (auto& [id, lbl] : m_memberLoadLabels)
+        {
+            if (!lbl.IsNull())
+            {
+                if (visible && m_loadValuesVisible) m_context->Display(lbl, false);
+                else m_context->Erase(lbl, false);
+            }
+        }
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->Redraw();
+        }
+    }
+    emit loadsVisibilityChanged(visible);
+}
+
+void OccView::setLoadValuesVisible(bool visible)
+{
+    m_loadValuesVisible = visible;
+    if (!m_context.IsNull())
+    {
+        for (auto& [id, lbl] : m_nodalLoadLabels)
+        {
+            if (!lbl.IsNull())
+            {
+                if (visible && m_loadsVisible) m_context->Display(lbl, false);
+                else m_context->Erase(lbl, false);
+            }
+        }
+        for (auto& [id, lbl] : m_memberLoadLabels)
+        {
+            if (!lbl.IsNull())
+            {
+                if (visible && m_loadsVisible) m_context->Display(lbl, false);
+                else m_context->Erase(lbl, false);
+            }
+        }
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->Redraw();
+        }
+    }
+    emit loadValuesVisibilityChanged(visible);
+}
+
 void OccView::pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)>& onPicked,
                          const std::function<void()>& onCancelled)
 {

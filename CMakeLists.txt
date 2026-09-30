@@ -131,6 +131,12 @@ set(UI_DIALOGS_SOURCES
     src/UI/Dialogs/NodeSelectionDialog.cpp
     src/UI/Dialogs/NewNodeDialog.h
     src/UI/Dialogs/NewNodeDialog.cpp
+    src/UI/Dialogs/NodalLoadDialog.h
+    src/UI/Dialogs/NodalLoadDialog.cpp
+    src/UI/Dialogs/MemberLoadDialog.h
+    src/UI/Dialogs/MemberLoadDialog.cpp
+    src/UI/Dialogs/LoadCaseDialog.h
+    src/UI/Dialogs/LoadCaseDialog.cpp
 )
 
 # Cette boîte de dialogue dépend d'ExtensionManager, testé indépendamment de
@@ -361,6 +367,27 @@ set(MODEL_CORE_SOURCES
     src/Model/StructuralClipboard.cpp
 )
 
+# --- Système de chargement et solveur OpenSees — [CORE] ------------------------
+set(LOAD_CORE_SOURCES
+    src/Model/Load/LoadEnums.h
+    src/Model/Load/NodalLoad.h
+    src/Model/Load/NodalLoad.cpp
+    src/Model/Load/MemberLoad.h
+    src/Model/Load/MemberLoad.cpp
+    src/Model/Load/LoadCase.h
+    src/Model/Load/LoadCase.cpp
+    src/Model/Load/LoadCombination.h
+    src/Model/Load/LoadCombination.cpp
+    src/Model/Load/LoadManager.h
+    src/Model/Load/LoadManager.cpp
+    src/Analysis/LoadResolver.h
+    src/Analysis/LoadResolver.cpp
+    src/Analysis/LoadValidation.h
+    src/Analysis/LoadValidation.cpp
+    src/Analysis/OpenSeesAdapter.h
+    src/Analysis/OpenSeesAdapter.cpp
+)
+
 # --- Câbles : modèle et normes de calcul — [CORE] -----------------------------
 set(CABLE_SOURCES
     src/Model/Cable/CableTypes.h
@@ -461,6 +488,7 @@ set(CORE_SOURCES
     ${VIEWER_CORE_SOURCES}
     ${GEOMETRY_CORE_SOURCES}
     ${MODEL_CORE_SOURCES}
+    ${LOAD_CORE_SOURCES}
     ${CABLE_SOURCES}
     ${CABLE_GEOMETRY_SOURCES}
     ${PROJECT_SOURCES}
@@ -648,6 +676,7 @@ set(TEST_SOURCES
     tests/test_workplane.cpp
     tests/test_window_manager.cpp
     tests/test_node_system.cpp
+    tests/test_loads.cpp
     resources/resources.qrc
 )
 
@@ -671,6 +700,7 @@ add_test(NAME TSA_ExtensionsTests COMMAND TSA_Tests --suite=extensions)
 add_test(NAME TSA_WorkPlaneTests COMMAND TSA_Tests --suite=workplane)
 add_test(NAME TSA_WindowManagerTests COMMAND TSA_Tests --suite=window)
 add_test(NAME TSA_NodeSystemTests COMMAND TSA_Tests --suite=node)
+add_test(NAME TSA_LoadsTests COMMAND TSA_Tests --suite=loads)
 endif()
 
 # =============================================================================

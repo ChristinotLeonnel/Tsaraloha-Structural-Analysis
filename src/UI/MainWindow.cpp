@@ -624,6 +624,30 @@ void MainWindow::onToggleNodeLabelsVisible(bool checked)
     }
 }
 
+void MainWindow::onToggleLoadsVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setLoadsVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Charges & actions affichées en 3D") : tr("Charges masquées"));
+        }
+    }
+}
+
+void MainWindow::onToggleLoadValuesVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setLoadValuesVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Valeurs des charges affichées en 3D") : tr("Valeurs des charges masquées"));
+        }
+    }
+}
+
 void MainWindow::onActionNewNode()
 {
     TSA::UI::NewNodeDialog dlg(m_model.get(), m_occView, m_selectionManager.get(), this);

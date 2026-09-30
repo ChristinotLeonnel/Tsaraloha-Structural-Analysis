@@ -24,6 +24,8 @@ public:
     void bindWorkPlaneVisibleAction(QAction* act);
     void bindNodesVisibleAction(QAction* act);
     void bindNodeLabelsAction(QAction* act);
+    void bindLoadsVisibleAction(QAction* act);
+    void bindLoadValuesVisibleAction(QAction* act);
 
 private:
     void setupUi();
@@ -38,6 +40,8 @@ private:
 
     QCheckBox* m_chkNodes = nullptr;
     QCheckBox* m_chkNodeLabels = nullptr;
+    QCheckBox* m_chkLoads = nullptr;
+    QCheckBox* m_chkLoadValues = nullptr;
     QCheckBox* m_chkBeams = nullptr;
     QCheckBox* m_chkColumns = nullptr;
     QCheckBox* m_chkSlabs = nullptr;

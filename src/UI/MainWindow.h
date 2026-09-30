@@ -90,6 +90,8 @@ private slots:
     void onToggleGridLabels(bool checked);
     void onToggleNodesVisible(bool checked);
     void onToggleNodeLabelsVisible(bool checked);
+    void onToggleLoadsVisible(bool checked);
+    void onToggleLoadValuesVisible(bool checked);
     void onToggleLevelsVisible(bool checked);
     void onToggleRulersVisible(bool checked);
     void onToggleDarkMode(bool checked);
@@ -192,6 +194,8 @@ private:
     QAction* m_actionGridLabels = nullptr;
     QAction* m_actionNodesVisible = nullptr;
     QAction* m_actionNodeLabelsVisible = nullptr;
+    QAction* m_actionLoadsVisible = nullptr;
+    QAction* m_actionLoadValuesVisible = nullptr;
     QAction* m_actionLevelsVisible = nullptr;
     QAction* m_actionRulersVisible = nullptr;
     QAction* m_actionDarkMode = nullptr;
@@ -302,6 +306,7 @@ private:
     QAction* m_actionPointLoad = nullptr;
     QAction* m_actionDistLoad = nullptr;
     QAction* m_actionMoment = nullptr;
+    QAction* m_actionLoadCases = nullptr;
     QAction* m_actionSeismic = nullptr;
     QAction* m_actionMeshGen = nullptr;
     QAction* m_actionRunSolve = nullptr;
@@ -370,6 +375,7 @@ private slots:
     void onActionPointLoad();
     void onActionDistLoad();
     void onActionMoment();
+    void onActionLoadCases();
     void onActionSeismic();
     void onActionMeshGen();
     void onActionRunSolve();

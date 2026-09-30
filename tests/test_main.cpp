@@ -5,14 +5,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 52;
+    int expectedTotal = 63;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane]" << std::endl;
+            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads]" << std::endl;
             return 0;
         }
     }
@@ -67,8 +67,12 @@ int main(int argc, char* argv[])
         if (!runSuite_WindowManager(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "node" || suiteFilter == "nodes" || suiteFilter == "point_selector") {
-        std::cout << "\n--- [Suite 11/11] Centralized Node System & PointSelector (Tests 53-55) ---" << std::endl;
+        std::cout << "\n--- [Suite 11/12] Centralized Node System & PointSelector (Tests 53-55) ---" << std::endl;
         if (!runSuite_NodeSystem(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "loads" || suiteFilter == "load" || suiteFilter == "opensees") {
+        std::cout << "\n--- [Suite 12/12] Structural Loads & OpenSees Solver Integration (Tests 56-63) ---" << std::endl;
+        if (!runSuite_Loads(passed)) allOk = false;
     }
 
     std::cout << "\n=================================================" << std::endl;
