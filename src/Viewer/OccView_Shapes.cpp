@@ -19,6 +19,8 @@
 #include "../Geometry/CableGeometry3D.h"
 
 #include <AIS_Shape.hxx>
+#include <AIS_TextLabel.hxx>
+#include <Font_FontAspect.hxx>
 #include <AIS_InteractiveContext.hxx>
 #include <V3d_View.hxx>
 #include <Graphic3d_NameOfMaterial.hxx>
@@ -387,6 +389,12 @@ void OccView::rebuildAllShapes()
     }
     m_nodeShapes.clear();
 
+    for (auto& [id, aisLbl] : m_nodeLabels)
+    {
+        m_context->Remove(aisLbl, false);
+    }
+    m_nodeLabels.clear();
+
     for (auto& [id, aisShape] : m_beamShapes)
     {
         m_context->Remove(aisShape, false);
@@ -496,8 +504,14 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
 
     bool wasSelected = m_selectionManager && m_selectionManager->selectedNodes().count(nodeId) > 0;
 
-    // 1. Supprimer l'ancienne forme (avant le contrôle de validité, pour ne jamais
-    //    laisser un nœud fantôme affiché/sélectionnable)
+    // 1. Supprimer l'ancienne forme et étiquette
+    auto itLbl = m_nodeLabels.find(nodeId);
+    if (itLbl != m_nodeLabels.end())
+    {
+        m_context->Remove(itLbl->second, false);
+        m_nodeLabels.erase(itLbl);
+    }
+
     auto it = m_nodeShapes.find(nodeId);
     if (it != m_nodeShapes.end())
     {
@@ -513,7 +527,7 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
     if (!node)
         return;
 
-    // 2. Créer la nouvelle forme 3D
+    // 2. Créer la nouvelle forme 3D (Sphère)
     TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createNodeShape(*node, 0.12);
     if (!shape.IsNull())
     {
@@ -530,18 +544,48 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
         aisNode->SetMaterial(Graphic3d_NOM_COPPER);
         aisNode->SetDisplayMode(AIS_Shaded);
 
-        m_context->Display(aisNode, false);
         m_nodeShapes[nodeId] = aisNode;
+        if (m_nodesVisible)
+        {
+            m_context->Display(aisNode, false);
+        }
+
         if (m_selectionManager)
         {
             m_selectionManager->registerNode(nodeId, aisNode);
             if (wasSelected)
             {
                 m_selectionManager->selectNode(nodeId, true);
-                m_context->SetSelected(aisNode, false);
+                if (m_nodesVisible)
+                {
+                    m_context->SetSelected(aisNode, false);
+                }
             }
         }
     }
+
+    // 3. Créer l'étiquette 3D (AIS_TextLabel)
+    Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
+    QString labelText = QString("N%1").arg(node->id());
+    if (!node->name().empty() && node->name() != labelText.toStdString() && node->name() != node->formattedName())
+    {
+        labelText += QString(" (%1)").arg(QString::fromStdString(node->name()));
+    }
+    aisLabel->SetText(TCollection_ExtendedString(labelText.toUtf8().constData(), true));
+    aisLabel->SetPosition(gp_Pnt(node->x(), node->y(), node->z() + 0.18));
+    aisLabel->SetColor(m_isDarkMode ? Quantity_Color(0.2, 0.9, 0.9, Quantity_TOC_RGB) : Quantity_Color(0.0, 0.4, 0.6, Quantity_TOC_RGB));
+    aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
+    aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
+    aisLabel->SetHeight(13.0);
+    aisLabel->SetFontAspect(Font_FA_Bold);
+
+    m_context->Display(aisLabel, false);
+    m_context->Deactivate(aisLabel);
+    if (!m_nodeLabelsVisible || !m_nodesVisible)
+    {
+        m_context->Erase(aisLabel, false);
+    }
+    m_nodeLabels[nodeId] = aisLabel;
 
     // 3. Collecter les éléments connectés à ce nœud avant de les mettre à jour
     //    (uniquement si redrawImmediately est vrai, sinon c'est le diff global qui gère)
@@ -1056,6 +1100,16 @@ void OccView::updateCableShape(int cableId, bool redrawImmediately)
 
 void OccView::removeNodeShape(int nodeId, bool redrawImmediately)
 {
+    auto itLbl = m_nodeLabels.find(nodeId);
+    if (itLbl != m_nodeLabels.end())
+    {
+        if (!m_context.IsNull())
+        {
+            m_context->Remove(itLbl->second, false);
+        }
+        m_nodeLabels.erase(itLbl);
+    }
+
     auto it = m_nodeShapes.find(nodeId);
     if (it != m_nodeShapes.end())
     {

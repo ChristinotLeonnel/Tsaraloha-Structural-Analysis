@@ -121,6 +121,8 @@ struct RibbonActions
     QAction* actionGridSnap = nullptr;
     QAction* actionObjectSnap = nullptr;
     QAction* actionRulersVisible = nullptr;
+    QAction* actionNodesVisible = nullptr;
+    QAction* actionNodeLabelsVisible = nullptr;
     QAction* actionFullScreen = nullptr;
 
     QAction* actionToggleModelTree = nullptr;

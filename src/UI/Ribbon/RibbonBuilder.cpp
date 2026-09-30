@@ -458,6 +458,15 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
         visPanel->addInternalSeparator();
         visPanel->addSmallColumn(visCol2);
     }
+
+    std::vector<QAction*> visCol3;
+    if (acts.actionNodesVisible) visCol3.push_back(acts.actionNodesVisible);
+    if (acts.actionNodeLabelsVisible) visCol3.push_back(acts.actionNodeLabelsVisible);
+    if (!visCol3.empty())
+    {
+        visPanel->addInternalSeparator();
+        visPanel->addSmallColumn(visCol3);
+    }
     tab->addPanel(visPanel);
 
     // Fenêtres Docks

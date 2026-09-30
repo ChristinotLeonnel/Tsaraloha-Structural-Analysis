@@ -31,6 +31,8 @@
 #include "Dialogs/SurfaceCreationDialog.h"
 #include "Dialogs/LibraryDialog.h"
 #include "Dialogs/ExtensionManagerDialog.h"
+#include "Dialogs/NewNodeDialog.h"
+#include "Dialogs/NodeSelectionDialog.h"
 #include "../Library/LibraryManager.h"
 #include "../Project/ProjectManager.h"
 #include "../IO/TSAFile.h"
@@ -598,23 +600,45 @@ void MainWindow::onToggleGridLabels(bool checked)
     }
 }
 
+void MainWindow::onToggleNodesVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setNodesVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Nœuds structurels affichés en 3D") : tr("Nœuds structurels masqués"));
+        }
+    }
+}
+
+void MainWindow::onToggleNodeLabelsVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setNodeLabelsVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Numéros et étiquettes de nœuds affichés en 3D") : tr("Numéros de nœuds masqués"));
+        }
+    }
+}
+
 void MainWindow::onActionNewNode()
 {
-    bool ok = false;
-    double x = QInputDialog::getDouble(this, tr("New Node"), tr("Coordinate X (m):"), 0.0, -10000.0, 10000.0, 3, &ok);
-    if (!ok) return;
-
-    double y = QInputDialog::getDouble(this, tr("New Node"), tr("Coordinate Y (m):"), 0.0, -10000.0, 10000.0, 3, &ok);
-    if (!ok) return;
-
-    double z = QInputDialog::getDouble(this, tr("New Node"), tr("Coordinate Z (m):"), 0.0, -10000.0, 10000.0, 3, &ok);
-    if (!ok) return;
-
-    int newId = m_model->addNode(x, y, z);
-    if (m_statusInfo)
+    TSA::UI::NewNodeDialog dlg(m_model.get(), m_occView, m_selectionManager.get(), this);
+    if (dlg.exec() == QDialog::Accepted)
     {
-        m_statusInfo->setText(tr("Created Node %1 (%2, %3, %4)")
-            .arg(newId).arg(x).arg(y).arg(z));
+        int newId = dlg.createdNodeId();
+        if (m_statusInfo && newId > 0 && m_model)
+        {
+            const auto* n = m_model->getNode(newId);
+            if (n)
+            {
+                m_statusInfo->setText(tr("Nœud N%1 créé à (%2, %3, %4)")
+                    .arg(newId).arg(n->x(), 0, 'f', 2).arg(n->y(), 0, 'f', 2).arg(n->z(), 0, 'f', 2));
+            }
+        }
     }
 }
 

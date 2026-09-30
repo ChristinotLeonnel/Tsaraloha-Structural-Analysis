@@ -127,6 +127,10 @@ set(UI_DIALOGS_SOURCES
     src/UI/Dialogs/SurfaceCreationDialog.cpp
     src/UI/Dialogs/LibraryDialog.h
     src/UI/Dialogs/LibraryDialog.cpp
+    src/UI/Dialogs/NodeSelectionDialog.h
+    src/UI/Dialogs/NodeSelectionDialog.cpp
+    src/UI/Dialogs/NewNodeDialog.h
+    src/UI/Dialogs/NewNodeDialog.cpp
 )
 
 # Cette boîte de dialogue dépend d'ExtensionManager, testé indépendamment de
@@ -203,6 +207,8 @@ set(UI_RULER_SOURCES
 set(UI_WIDGETS_SOURCES
     src/UI/Widgets/SectionPreviewWidget.h
     src/UI/Widgets/SectionPreviewWidget.cpp
+    src/UI/Widgets/PointSelector.h
+    src/UI/Widgets/PointSelector.cpp
 )
 
 # --- Ruban (Ribbon UI) ---------------------------------------------------------
@@ -641,6 +647,7 @@ set(TEST_SOURCES
     tests/test_extensions.cpp
     tests/test_workplane.cpp
     tests/test_window_manager.cpp
+    tests/test_node_system.cpp
     resources/resources.qrc
 )
 
@@ -663,6 +670,7 @@ add_test(NAME TSA_CablesTests COMMAND TSA_Tests --suite=cables)
 add_test(NAME TSA_ExtensionsTests COMMAND TSA_Tests --suite=extensions)
 add_test(NAME TSA_WorkPlaneTests COMMAND TSA_Tests --suite=workplane)
 add_test(NAME TSA_WindowManagerTests COMMAND TSA_Tests --suite=window)
+add_test(NAME TSA_NodeSystemTests COMMAND TSA_Tests --suite=node)
 endif()
 
 # =============================================================================

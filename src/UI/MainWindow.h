@@ -88,6 +88,8 @@ private slots:
     void onToggleGridSnap(bool checked);
     void onToggleObjectSnap(bool checked);
     void onToggleGridLabels(bool checked);
+    void onToggleNodesVisible(bool checked);
+    void onToggleNodeLabelsVisible(bool checked);
     void onToggleLevelsVisible(bool checked);
     void onToggleRulersVisible(bool checked);
     void onToggleDarkMode(bool checked);
@@ -188,6 +190,8 @@ private:
     QAction* m_actionGridSnap = nullptr;
     QAction* m_actionObjectSnap = nullptr;
     QAction* m_actionGridLabels = nullptr;
+    QAction* m_actionNodesVisible = nullptr;
+    QAction* m_actionNodeLabelsVisible = nullptr;
     QAction* m_actionLevelsVisible = nullptr;
     QAction* m_actionRulersVisible = nullptr;
     QAction* m_actionDarkMode = nullptr;

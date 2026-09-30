@@ -63,8 +63,12 @@ int main(int argc, char* argv[])
         if (!runSuite_WorkPlane(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "window" || suiteFilter == "windowmanager" || suiteFilter == "layout") {
-        std::cout << "\n--- [Suite 10/10] Window Manager, Docks & Layout Profiles (Test 54) ---" << std::endl;
+        std::cout << "\n--- [Suite 10/11] Window Manager, Docks & Layout Profiles (Test 54) ---" << std::endl;
         if (!runSuite_WindowManager(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "node" || suiteFilter == "nodes" || suiteFilter == "point_selector") {
+        std::cout << "\n--- [Suite 11/11] Centralized Node System & PointSelector (Tests 53-55) ---" << std::endl;
+        if (!runSuite_NodeSystem(passed)) allOk = false;
     }
 
     std::cout << "\n=================================================" << std::endl;

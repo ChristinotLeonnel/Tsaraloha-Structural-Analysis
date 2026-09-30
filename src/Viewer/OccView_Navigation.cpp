@@ -670,7 +670,16 @@ void OccView::updateElementIsolation()
     for (const auto& [nid, shape] : m_nodeShapes)
     {
         const auto* n = m_model->getNode(nid);
-        if (n) setShapeVisibility(shape, isNearPlane(n->x(), n->y(), n->z()));
+        if (n)
+        {
+            bool keep = isNearPlane(n->x(), n->y(), n->z());
+            setShapeVisibility(shape, keep && m_nodesVisible);
+            auto itLbl = m_nodeLabels.find(nid);
+            if (itLbl != m_nodeLabels.end() && !itLbl->second.IsNull())
+            {
+                setShapeVisibility(itLbl->second, keep && m_nodesVisible && m_nodeLabelsVisible);
+            }
+        }
     }
 
     for (const auto& [bid, shape] : m_beamShapes)
@@ -1284,6 +1293,21 @@ void OccView::setDarkMode(bool dark)
         }
     }
 
+    Quantity_Color labelColor = dark
+        ? Quantity_Color(0.2, 0.9, 0.9, Quantity_TOC_RGB)
+        : Quantity_Color(0.0, 0.4, 0.6, Quantity_TOC_RGB);
+    for (auto& [id, lbl] : m_nodeLabels)
+    {
+        if (!lbl.IsNull())
+        {
+            lbl->SetColor(labelColor);
+            if (!m_context.IsNull() && m_context->IsDisplayed(lbl))
+            {
+                m_context->Redisplay(lbl, false);
+            }
+        }
+    }
+
     rebuildGrid();
 
     if (!m_view.IsNull())
@@ -1457,6 +1481,91 @@ void OccView::setGridLevelsVisible(bool visible)
 bool OccView::areGridLevelsVisible() const
 {
     return true;
+}
+
+void OccView::setNodesVisible(bool visible)
+{
+    m_nodesVisible = visible;
+    if (!m_context.IsNull())
+    {
+        for (auto& [id, shape] : m_nodeShapes)
+        {
+            if (!shape.IsNull())
+            {
+                if (visible)
+                    m_context->Display(shape, false);
+                else
+                    m_context->Erase(shape, false);
+            }
+        }
+        for (auto& [id, lbl] : m_nodeLabels)
+        {
+            if (!lbl.IsNull())
+            {
+                if (visible && m_nodeLabelsVisible)
+                    m_context->Display(lbl, false);
+                else
+                    m_context->Erase(lbl, false);
+            }
+        }
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->Redraw();
+        }
+    }
+    emit nodesVisibilityChanged(visible);
+}
+
+void OccView::setNodeLabelsVisible(bool visible)
+{
+    m_nodeLabelsVisible = visible;
+    if (!m_context.IsNull())
+    {
+        for (auto& [id, lbl] : m_nodeLabels)
+        {
+            if (!lbl.IsNull())
+            {
+                if (visible && m_nodesVisible)
+                    m_context->Display(lbl, false);
+                else
+                    m_context->Erase(lbl, false);
+            }
+        }
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull())
+        {
+            m_view->Redraw();
+        }
+    }
+    emit nodeLabelsVisibilityChanged(visible);
+}
+
+void OccView::pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)>& onPicked,
+                         const std::function<void()>& onCancelled)
+{
+    if (!m_interactionManager)
+        return;
+
+    TSA::Interaction::SelectionRequest req;
+    req.mode = TSA::Interaction::SelectionMode::SelectPoint;
+    req.targetField = tr("Sélection point 3D");
+    req.snapEnabled = true;
+    req.keepWindowOpen = true;
+    req.sender = this;
+    req.onSelected = [onPicked](const TSA::Interaction::SelectedEntity& entity) {
+        if (onPicked)
+        {
+            onPicked(entity.point, entity.entityId);
+        }
+    };
+    req.onCancelled = [onCancelled]() {
+        if (onCancelled)
+        {
+            onCancelled();
+        }
+    };
+    m_interactionManager->requestSelection(req);
 }
 
 // =============================================================================

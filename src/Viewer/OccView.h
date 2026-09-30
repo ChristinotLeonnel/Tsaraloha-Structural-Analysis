@@ -9,6 +9,7 @@
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Shape.hxx>
+#include <AIS_TextLabel.hxx>
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
 #include <OpenGl_GraphicDriver.hxx>
@@ -263,6 +264,16 @@ public:
     void finishCurrentSlab();
     void resetCurrentSlabContour();
 
+    // Visibilité et étiquetage 3D des nœuds
+    void setNodesVisible(bool visible);
+    bool areNodesVisible() const noexcept { return m_nodesVisible; }
+
+    void setNodeLabelsVisible(bool visible);
+    bool areNodeLabelsVisible() const noexcept { return m_nodeLabelsVisible; }
+
+    void pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)>& onPicked,
+                     const std::function<void()>& onCancelled = nullptr);
+
 signals:
     void fileDropped(const QString& filePath);
     void mouseCoordinatesChanged(double x, double y, double z);
@@ -272,6 +283,8 @@ signals:
     void gridVisibilityChanged(bool visible);
     void gridSnapChanged(bool enabled);
     void objectSnapChanged(bool enabled);
+    void nodesVisibilityChanged(bool visible);
+    void nodeLabelsVisibilityChanged(bool visible);
     void interactionModeChanged(InteractionMode mode);
     void drawingPromptChanged(const QString& prompt);
     void viewPlaneModeChanged(ViewPlaneMode mode);
@@ -395,6 +408,7 @@ private:
     Handle(AIS_InteractiveContext)  m_context;
 
     std::map<int, Handle(AIS_Shape)> m_nodeShapes;
+    std::map<int, Handle(AIS_TextLabel)> m_nodeLabels;
     std::map<int, Handle(AIS_Shape)> m_beamShapes;
     std::map<int, Handle(AIS_Shape)> m_columnShapes;
     std::map<int, Handle(AIS_Shape)> m_slabShapes;
@@ -427,6 +441,8 @@ private:
     bool m_snapToObject = true;
     bool m_gridVisible = true;
     bool m_gridLabelsVisible = true;
+    bool m_nodesVisible = true;
+    bool m_nodeLabelsVisible = false;
     bool m_isDarkMode = true;
     mutable bool m_isCursorSnapped = false;
     double m_gridZOffset = 0.0;

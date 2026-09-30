@@ -64,6 +64,10 @@ void VisibilityDock::setupUi()
     m_chkNodes->setChecked(true);
     modelLayout->addWidget(m_chkNodes);
 
+    m_chkNodeLabels = new QCheckBox(tr("Numéros des nœuds (labels 3D)"), modelGroup);
+    m_chkNodeLabels->setChecked(false);
+    modelLayout->addWidget(m_chkNodeLabels);
+
     m_chkBeams = new QCheckBox(tr("Poutres"), modelGroup);
     m_chkBeams->setChecked(true);
     modelLayout->addWidget(m_chkBeams);
@@ -129,6 +133,22 @@ void VisibilityDock::bindWorkPlaneVisibleAction(QAction* act)
     m_chkWorkPlane->setChecked(act->isChecked());
     connect(m_chkWorkPlane, &QCheckBox::toggled, act, &QAction::setChecked);
     connect(act, &QAction::toggled, m_chkWorkPlane, &QCheckBox::setChecked);
+}
+
+void VisibilityDock::bindNodesVisibleAction(QAction* act)
+{
+    if (!act || !m_chkNodes) return;
+    m_chkNodes->setChecked(act->isChecked());
+    connect(m_chkNodes, &QCheckBox::toggled, act, &QAction::setChecked);
+    connect(act, &QAction::toggled, m_chkNodes, &QCheckBox::setChecked);
+}
+
+void VisibilityDock::bindNodeLabelsAction(QAction* act)
+{
+    if (!act || !m_chkNodeLabels) return;
+    m_chkNodeLabels->setChecked(act->isChecked());
+    connect(m_chkNodeLabels, &QCheckBox::toggled, act, &QAction::setChecked);
+    connect(act, &QAction::toggled, m_chkNodeLabels, &QCheckBox::setChecked);
 }
 
 } // namespace TSA::UI

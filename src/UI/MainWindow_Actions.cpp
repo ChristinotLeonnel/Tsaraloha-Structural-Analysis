@@ -356,6 +356,20 @@ void MainWindow::createActions()
     m_actionGridLabels->setChecked(true);
     connect(m_actionGridLabels, &QAction::toggled, this, &MainWindow::onToggleGridLabels);
 
+    m_actionNodesVisible = new QAction(tr("Afficher les &Nœuds"), this);
+    m_actionNodesVisible->setIcon(QIcon(":/icons/draw_node.svg"));
+    m_actionNodesVisible->setToolTip(tr("Afficher ou masquer les nœuds du modèle dans la vue 3D"));
+    m_actionNodesVisible->setCheckable(true);
+    m_actionNodesVisible->setChecked(true);
+    connect(m_actionNodesVisible, &QAction::toggled, this, &MainWindow::onToggleNodesVisible);
+
+    m_actionNodeLabelsVisible = new QAction(tr("Afficher les Numéros de &Nœuds"), this);
+    m_actionNodeLabelsVisible->setIcon(QIcon(":/icons/grid_labels.svg"));
+    m_actionNodeLabelsVisible->setToolTip(tr("Afficher ou masquer les numéros et labels des nœuds (N1, N2...) en 3D"));
+    m_actionNodeLabelsVisible->setCheckable(true);
+    m_actionNodeLabelsVisible->setChecked(false);
+    connect(m_actionNodeLabelsVisible, &QAction::toggled, this, &MainWindow::onToggleNodeLabelsVisible);
+
     m_actionRulersVisible = new QAction(tr("Afficher &Règles Graduées"), this);
     m_actionRulersVisible->setIcon(QIcon(":/icons/rulers.svg"));
     m_actionRulersVisible->setToolTip(tr("Afficher ou masquer les règles graduées du viewport"));
@@ -806,6 +820,8 @@ void MainWindow::createMenus()
     visSub->addAction(m_actionGridVisible);
     visSub->addAction(m_actionLevelsVisible);
     visSub->addAction(m_actionGridLabels);
+    visSub->addAction(m_actionNodesVisible);
+    visSub->addAction(m_actionNodeLabelsVisible);
     visSub->addAction(m_actionGridSnap);
     visSub->addAction(m_actionObjectSnap);
     visSub->addAction(m_actionRulersVisible);
@@ -936,6 +952,8 @@ void MainWindow::createRibbon()
     acts.actionGridVisible = m_actionGridVisible;
     acts.actionLevelsVisible = m_actionLevelsVisible;
     acts.actionGridLabels = m_actionGridLabels;
+    acts.actionNodesVisible = m_actionNodesVisible;
+    acts.actionNodeLabelsVisible = m_actionNodeLabelsVisible;
     acts.actionGridSnap = m_actionGridSnap;
     acts.actionObjectSnap = m_actionObjectSnap;
     acts.actionRulersVisible = m_actionRulersVisible;
@@ -992,6 +1010,8 @@ void MainWindow::createDockWindows()
     m_visibilityDock->bindGridVisibleAction(m_actionGridVisible);
     m_visibilityDock->bindLevelsVisibleAction(m_actionLevelsVisible);
     m_visibilityDock->bindGridLabelsAction(m_actionGridLabels);
+    m_visibilityDock->bindNodesVisibleAction(m_actionNodesVisible);
+    m_visibilityDock->bindNodeLabelsAction(m_actionNodeLabelsVisible);
     m_visibilityDock->bindRulersVisibleAction(m_actionRulersVisible);
     m_visibilityDock->bindCoordSystemAction(m_actionCoordSystem);
     m_visibilityDock->bindWorkPlaneVisibleAction(m_actionWorkPlaneVisible);
