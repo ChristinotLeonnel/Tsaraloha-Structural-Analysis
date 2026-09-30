@@ -312,6 +312,16 @@ bool Model::removeNode(int nodeId)
         removeCable(cId);
     }
 
+    std::vector<int> removedNodalLoads = m_loadManager.removeNodalLoadsForNode(nodeId);
+    for (int loadId : removedNodalLoads)
+    {
+        for (auto* obs : m_observers)
+        {
+            obs->onNodalLoadRemoved(loadId);
+            obs->onLoadRemoved(loadId);
+        }
+    }
+
     m_nodes.erase(it);
 
     for (auto* obs : m_observers)
@@ -445,6 +455,16 @@ bool Model::removeBeam(int beamId)
     if (it == m_beams.end())
     {
         return false;
+    }
+
+    std::vector<int> removedMemberLoads = m_loadManager.removeMemberLoadsForElement(beamId, MemberTargetType::Beam);
+    for (int loadId : removedMemberLoads)
+    {
+        for (auto* obs : m_observers)
+        {
+            obs->onMemberLoadRemoved(loadId);
+            obs->onLoadRemoved(loadId);
+        }
     }
 
     m_beams.erase(it);
@@ -595,6 +615,16 @@ bool Model::removeColumn(int columnId)
     if (it == m_columns.end())
     {
         return false;
+    }
+
+    std::vector<int> removedMemberLoads = m_loadManager.removeMemberLoadsForElement(columnId, MemberTargetType::Column);
+    for (int loadId : removedMemberLoads)
+    {
+        for (auto* obs : m_observers)
+        {
+            obs->onMemberLoadRemoved(loadId);
+            obs->onLoadRemoved(loadId);
+        }
     }
 
     m_columns.erase(it);
@@ -957,6 +987,16 @@ bool Model::removeTrussMember(int memberId)
         return false;
     }
 
+    std::vector<int> removedMemberLoads = m_loadManager.removeMemberLoadsForElement(memberId, MemberTargetType::Truss);
+    for (int loadId : removedMemberLoads)
+    {
+        for (auto* obs : m_observers)
+        {
+            obs->onMemberLoadRemoved(loadId);
+            obs->onLoadRemoved(loadId);
+        }
+    }
+
     m_trussMembers.erase(it);
 
     for (auto* obs : m_observers)
@@ -988,6 +1028,60 @@ void Model::notifyCableModified(int cableId)
         {
             obs->onCableModified(*c);
         }
+    }
+}
+
+void Model::notifyNodalLoadAdded(int loadId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onNodalLoadAdded(loadId);
+        obs->onLoadAdded(loadId);
+    }
+}
+
+void Model::notifyNodalLoadModified(int loadId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onNodalLoadModified(loadId);
+        obs->onLoadModified(loadId);
+    }
+}
+
+void Model::notifyNodalLoadRemoved(int loadId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onNodalLoadRemoved(loadId);
+        obs->onLoadRemoved(loadId);
+    }
+}
+
+void Model::notifyMemberLoadAdded(int loadId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onMemberLoadAdded(loadId);
+        obs->onLoadAdded(loadId);
+    }
+}
+
+void Model::notifyMemberLoadModified(int loadId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onMemberLoadModified(loadId);
+        obs->onLoadModified(loadId);
+    }
+}
+
+void Model::notifyMemberLoadRemoved(int loadId)
+{
+    for (auto* obs : m_observers)
+    {
+        obs->onMemberLoadRemoved(loadId);
+        obs->onLoadRemoved(loadId);
     }
 }
 
@@ -1099,6 +1193,16 @@ bool Model::removeCable(int cableId)
     if (it == m_cables.end())
     {
         return false;
+    }
+
+    std::vector<int> removedMemberLoads = m_loadManager.removeMemberLoadsForElement(cableId, MemberTargetType::Cable);
+    for (int loadId : removedMemberLoads)
+    {
+        for (auto* obs : m_observers)
+        {
+            obs->onMemberLoadRemoved(loadId);
+            obs->onLoadRemoved(loadId);
+        }
     }
 
     m_cables.erase(it);

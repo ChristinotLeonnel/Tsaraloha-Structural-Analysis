@@ -20,6 +20,17 @@ enum class LoadType
 };
 
 /**
+ * @brief Type d'élément structural porteur de la charge sur barre.
+ */
+enum class MemberTargetType
+{
+    Beam,               ///< Poutre / barre générale (Model::beams)
+    Column,             ///< Poteau (Model::columns)
+    Truss,              ///< Barre de treillis (Model::trussMembers)
+    Cable               ///< Câble (Model::cables)
+};
+
+/**
  * @brief Système de coordonnées de définition de la charge.
  */
 enum class LoadCoordSystem

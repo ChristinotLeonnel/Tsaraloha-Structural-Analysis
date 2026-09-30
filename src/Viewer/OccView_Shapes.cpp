@@ -195,6 +195,36 @@ void OccView::onCableRemoved(int cableId)
     removeCableShape(cableId);
 }
 
+void OccView::onNodalLoadAdded(int loadId)
+{
+    updateNodalLoadShape(loadId);
+}
+
+void OccView::onNodalLoadModified(int loadId)
+{
+    updateNodalLoadShape(loadId);
+}
+
+void OccView::onNodalLoadRemoved(int loadId)
+{
+    removeNodalLoadShape(loadId);
+}
+
+void OccView::onMemberLoadAdded(int loadId)
+{
+    updateMemberLoadShape(loadId);
+}
+
+void OccView::onMemberLoadModified(int loadId)
+{
+    updateMemberLoadShape(loadId);
+}
+
+void OccView::onMemberLoadRemoved(int loadId)
+{
+    removeMemberLoadShape(loadId);
+}
+
 void OccView::onLoadAdded(int loadId)
 {
     if (!m_model) return;
@@ -202,7 +232,7 @@ void OccView::onLoadAdded(int loadId)
     {
         updateNodalLoadShape(loadId);
     }
-    else if (m_model->loadManager().getMemberLoad(loadId))
+    if (m_model->loadManager().getMemberLoad(loadId))
     {
         updateMemberLoadShape(loadId);
     }
@@ -1489,12 +1519,18 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
 
     int elemId = ml->elementId();
     int sNode = 0, eNode = 0;
+    double rotDeg = 0.0;
     const auto* b = m_model->getBeam(elemId);
-    if (b) { sNode = b->startNodeId(); eNode = b->endNodeId(); }
+    if (b) { sNode = b->startNodeId(); eNode = b->endNodeId(); rotDeg = b->rotation(); }
     else
     {
         const auto* col = m_model->getColumn(elemId);
-        if (col) { sNode = col->startNodeId(); eNode = col->endNodeId(); }
+        if (col) { sNode = col->startNodeId(); eNode = col->endNodeId(); rotDeg = col->rotation(); }
+        else
+        {
+            const auto* tr = m_model->getTrussMember(elemId);
+            if (tr) { sNode = tr->startNodeId(); eNode = tr->endNodeId(); }
+        }
     }
 
     const auto* n1 = m_model->getNode(sNode);
@@ -1514,6 +1550,22 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
     else if (ml->direction() == TSA::Model::LoadDirection::GlobalY) dirVec = gp_Vec(0.0, 1.0, 0.0);
     else if (ml->direction() == TSA::Model::LoadDirection::GlobalZ) dirVec = gp_Vec(0.0, 0.0, 1.0);
     else if (ml->direction() == TSA::Model::LoadDirection::Gravity) dirVec = gp_Vec(0.0, 0.0, -1.0);
+    else if (ml->direction() == TSA::Model::LoadDirection::LocalX)
+    {
+        gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
+        dirVec = gp_Vec(frame.XDirection());
+    }
+    else if (ml->direction() == TSA::Model::LoadDirection::LocalY)
+    {
+        gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
+        dirVec = gp_Vec(frame.YDirection());
+    }
+    else if (ml->direction() == TSA::Model::LoadDirection::LocalZ)
+    {
+        gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
+        dirVec = gp_Vec(frame.Direction());
+    }
+    if (dirVec.SquareMagnitude() > 1e-6) dirVec.Normalize();
 
     // Flèches réparties le long de la barre
     std::vector<Handle(AIS_Shape)> shapes;
@@ -1602,6 +1654,7 @@ void OccView::removeMemberLoadShape(int loadId, bool redrawImmediately)
 void OccView::updateAllLoadShapes()
 {
     if (!m_model) return;
+    clearLoadShapes();
     for (const auto& [id, nl] : m_model->loadManager().nodalLoads())
     {
         updateNodalLoadShape(id, false);

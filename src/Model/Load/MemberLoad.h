@@ -23,27 +23,31 @@ public:
                LoadCoordSystem coordSys = LoadCoordSystem::Global,
                double x1 = 0.0, double x2 = 0.0,
                bool isRelative = false,
-               const std::string& name = "");
+               const std::string& name = "",
+               MemberTargetType targetType = MemberTargetType::Beam);
 
     // Usines pratiques (Static Factories)
     static MemberLoad uniform(int id, int elementId, int loadCaseId,
                               double q, LoadDirection dir = LoadDirection::Gravity,
                               LoadCoordSystem sys = LoadCoordSystem::Global,
-                              const std::string& name = "");
+                              const std::string& name = "",
+                              MemberTargetType targetType = MemberTargetType::Beam);
 
     static MemberLoad uniform(int elementId, int loadCaseId,
                               double q, LoadDirection dir = LoadDirection::Gravity,
                               LoadCoordSystem sys = LoadCoordSystem::Global,
-                              const std::string& name = "")
+                              const std::string& name = "",
+                              MemberTargetType targetType = MemberTargetType::Beam)
     {
-        return uniform(0, elementId, loadCaseId, q, dir, sys, name);
+        return uniform(0, elementId, loadCaseId, q, dir, sys, name, targetType);
     }
 
     static MemberLoad uniform(int elementId, int loadCaseId,
                               double q, LoadDirection dir,
-                              const std::string& name)
+                              const std::string& name,
+                              MemberTargetType targetType = MemberTargetType::Beam)
     {
-        return uniform(0, elementId, loadCaseId, q, dir, LoadCoordSystem::Global, name);
+        return uniform(0, elementId, loadCaseId, q, dir, LoadCoordSystem::Global, name, targetType);
     }
 
     static MemberLoad trapezoidal(int id, int elementId, int loadCaseId,
@@ -163,6 +167,9 @@ public:
         return std::abs(m_x1) < 1e-9 && std::abs(m_x2) < 1e-9;
     }
 
+    MemberTargetType targetType() const noexcept { return m_targetType; }
+    void setTargetType(MemberTargetType t) noexcept { m_targetType = t; }
+
 private:
     int m_id = 0;
     int m_elementId = 0;
@@ -176,6 +183,7 @@ private:
     double m_x2 = 0.0;
     bool m_isRelative = false;
     std::string m_name;
+    MemberTargetType m_targetType = MemberTargetType::Beam;
 };
 
 } // namespace TSA::Model

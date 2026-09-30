@@ -177,6 +177,27 @@ std::string OpenSeesAdapter::generateTclScript(const TSA::Model::Model& model,
         // B. Charges sur barres
         for (const auto& ml : lm.memberLoadsForCase(caseId))
         {
+            const auto* tr = model.getTrussMember(ml.elementId());
+            if (tr)
+            {
+                // Les éléments treillis n'acceptent pas eleLoad dans OpenSees :
+                // décomposer en charges nodales équivalentes aux deux nœuds d'extrémité
+                double L = tr->length(model);
+                double totalForce = ml.q1() * L * factor;
+                double fx = 0.0, fy = 0.0, fz = 0.0;
+                if (ml.direction() == TSA::Model::LoadDirection::GlobalX) fx = totalForce * 0.5;
+                else if (ml.direction() == TSA::Model::LoadDirection::GlobalY) fy = totalForce * 0.5;
+                else if (ml.direction() == TSA::Model::LoadDirection::GlobalZ) fz = totalForce * 0.5;
+                else if (ml.direction() == TSA::Model::LoadDirection::Gravity) fz = -std::abs(totalForce) * 0.5;
+                else fz = -std::abs(totalForce) * 0.5;
+
+                tcl << "  load " << tr->startNodeId() << " " << fx << " " << fy << " " << fz
+                    << " 0.0 0.0 0.0 ;# Treillis #" << ml.elementId() << "\n";
+                tcl << "  load " << tr->endNodeId() << " " << fx << " " << fy << " " << fz
+                    << " 0.0 0.0 0.0 ;# Treillis #" << ml.elementId() << "\n";
+                continue;
+            }
+
             LocalMemberLoadComponents localComp = LoadResolver::resolveMemberLoadToLocal(ml, model);
 
             if (ml.type() == TSA::Model::LoadType::MemberPoint)
@@ -246,8 +267,24 @@ std::string OpenSeesAdapter::generateTclScript(const TSA::Model::Model& model,
                 }
             };
 
+            auto applyTrussSelfWeight = [&](int trId) {
+                const auto* tr = model.getTrussMember(trId);
+                if (!tr) return;
+                double q = lm.calculateElementLinearWeight(trId, model) * swFactor;
+                if (q > 1e-6)
+                {
+                    double L = tr->length(model);
+                    double halfW = (q * L) * 0.5;
+                    tcl << "  load " << tr->startNodeId() << " 0.0 0.0 " << (-halfW)
+                        << " 0.0 0.0 0.0 ;# Poids propre treillis #" << trId << "\n";
+                    tcl << "  load " << tr->endNodeId() << " 0.0 0.0 " << (-halfW)
+                        << " 0.0 0.0 0.0 ;# Poids propre treillis #" << trId << "\n";
+                }
+            };
+
             for (const auto& [id, _] : model.beams()) applyElementSelfWeight(id);
             for (const auto& [id, _] : model.columns()) applyElementSelfWeight(id);
+            for (const auto& [id, _] : model.trussMembers()) applyTrussSelfWeight(id);
         }
 
         tcl << "}\n\n";

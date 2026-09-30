@@ -260,6 +260,24 @@ std::vector<NodalLoad> LoadManager::nodalLoadsForCase(int loadCaseId) const
     return res;
 }
 
+std::vector<int> LoadManager::removeNodalLoadsForNode(int nodeId)
+{
+    std::vector<int> removedIds;
+    for (auto it = m_nodalLoads.begin(); it != m_nodalLoads.end(); )
+    {
+        if (it->second.nodeId() == nodeId)
+        {
+            removedIds.push_back(it->first);
+            it = m_nodalLoads.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    return removedIds;
+}
+
 // =============================================================================
 // Charges sur éléments
 // =============================================================================
@@ -335,6 +353,24 @@ std::vector<MemberLoad> LoadManager::memberLoadsForCase(int loadCaseId) const
         }
     }
     return res;
+}
+
+std::vector<int> LoadManager::removeMemberLoadsForElement(int elementId, MemberTargetType targetType)
+{
+    std::vector<int> removedIds;
+    for (auto it = m_memberLoads.begin(); it != m_memberLoads.end(); )
+    {
+        if (it->second.elementId() == elementId && it->second.targetType() == targetType)
+        {
+            removedIds.push_back(it->first);
+            it = m_memberLoads.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    return removedIds;
 }
 
 // =============================================================================

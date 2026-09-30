@@ -5,7 +5,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 63;
+    int expectedTotal = 64;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
         if (!runSuite_NodeSystem(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "loads" || suiteFilter == "load" || suiteFilter == "opensees") {
-        std::cout << "\n--- [Suite 12/12] Structural Loads & OpenSees Solver Integration (Tests 56-63) ---" << std::endl;
+        std::cout << "\n--- [Suite 12/12] Structural Loads & OpenSees Solver Integration (Tests 56-64) ---" << std::endl;
         if (!runSuite_Loads(passed)) allOk = false;
     }
 

@@ -386,5 +386,94 @@ bool runSuite_Loads(int& passed)
         passed++;
     }
 
+    // =========================================================================
+    // TEST 64: Cascade Load Deletions, ID Coexistence & Observer Routing
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 64: Cascade Deletions, ID Coexistence & Observers ---" << std::endl;
+
+        class MockObserver : public TSA::Model::IModelObserver
+        {
+        public:
+            std::vector<int> nodalAdded, nodalRemoved;
+            std::vector<int> memberAdded, memberRemoved;
+            void onNodalLoadAdded(int loadId) override { nodalAdded.push_back(loadId); }
+            void onNodalLoadRemoved(int loadId) override { nodalRemoved.push_back(loadId); }
+            void onMemberLoadAdded(int loadId) override { memberAdded.push_back(loadId); }
+            void onMemberLoadRemoved(int loadId) override { memberRemoved.push_back(loadId); }
+        };
+
+        Model model;
+        MockObserver obs;
+        model.addObserver(&obs);
+
+        int n1 = model.addNode(0, 0, 0);
+        int n2 = model.addNode(5, 0, 0);
+        int n3 = model.addNode(5, 0, 3);
+        int b1 = model.addBar(n1, n2, Section::rectangular(0.3, 0.5), Material::concreteC25_30(), BarRole::Beam);
+        int tr1 = model.addTrussMember(n2, n3, 0.1);
+
+        // 1. Coexistence of Nodal Load ID=1 and Member Load ID=1
+        int nl1 = model.loadManager().addNodalLoad(NodalLoad(0, n1, 1, 0, 0, -50.0, 0, 0, 0, LoadCoordSystem::Global, "NL1"));
+        int ml1 = model.loadManager().addMemberLoad(MemberLoad::uniform(b1, 1, -10.0, LoadDirection::GlobalZ, "ML1", MemberTargetType::Beam));
+        int mlTruss = model.loadManager().addMemberLoad(MemberLoad::uniform(tr1, 1, -5.0, LoadDirection::GlobalZ, "ML_Truss", MemberTargetType::Truss));
+
+        TEST_CHECK(nl1 == 1 && ml1 == 1, "Subtest 64.1: NodalLoad and MemberLoad both have ID 1 without conflict");
+        TEST_CHECK(model.loadManager().getNodalLoad(1) != nullptr, "Subtest 64.1: NodalLoad #1 exists");
+        TEST_CHECK(model.loadManager().getMemberLoad(1) != nullptr, "Subtest 64.1: MemberLoad #1 exists");
+
+        // Observers notify without ambiguity
+        model.notifyNodalLoadAdded(nl1);
+        model.notifyMemberLoadAdded(ml1);
+        TEST_CHECK(obs.nodalAdded.size() == 1 && obs.nodalAdded[0] == 1, "Subtest 64.2: Observer received nodalAdded(1)");
+        TEST_CHECK(obs.memberAdded.size() == 1 && obs.memberAdded[0] == 1, "Subtest 64.2: Observer received memberAdded(1)");
+
+        // 2. Cascade deletion of loads when a beam is removed
+        bool remBeam = model.removeBeam(b1);
+        TEST_CHECK(remBeam, "Subtest 64.3: Beam removed");
+        TEST_CHECK(model.loadManager().getMemberLoad(ml1) == nullptr,
+                   "Subtest 64.3: MemberLoad on deleted beam was automatically cascade deleted");
+        TEST_CHECK(obs.memberRemoved.size() == 1 && obs.memberRemoved[0] == ml1,
+                   "Subtest 64.3: Observer received memberRemoved notification for cascade deleted load");
+
+        // 3. Cascade deletion of loads when a node is removed
+        bool remNode = model.removeNode(n1);
+        TEST_CHECK(remNode, "Subtest 64.4: Node removed");
+        TEST_CHECK(model.loadManager().getNodalLoad(nl1) == nullptr,
+                   "Subtest 64.4: NodalLoad on deleted node was automatically cascade deleted");
+        TEST_CHECK(obs.nodalRemoved.size() == 1 && obs.nodalRemoved[0] == nl1,
+                   "Subtest 64.4: Observer received nodalRemoved notification for cascade deleted load");
+
+        // 4. Cascade deletion when truss member is removed
+        bool remTruss = model.removeTrussMember(tr1);
+        TEST_CHECK(remTruss, "Subtest 64.5: Truss member removed");
+        TEST_CHECK(model.loadManager().getMemberLoad(mlTruss) == nullptr,
+                   "Subtest 64.5: MemberLoad on deleted truss member was cascade deleted");
+
+        // 5. OpenSees Tcl generation with truss self-weight and equivalent end loads
+        Model model2;
+        int mN1 = model2.addNode(0, 0, 0);
+        int mN2 = model2.addNode(4, 0, 3);
+        model2.getNode(mN1)->setSupportType(SupportType::Fixed);
+        model2.getNode(mN2)->setSupportType(SupportType::Pinned);
+        int mTr = model2.addTrussMember(mN1, mN2, 0.1);
+        model2.loadManager().initializeEurocodeDefaults();
+        model2.loadManager().addMemberLoad(MemberLoad::uniform(mTr, 1, -10.0, LoadDirection::GlobalZ, "TrussLoad"));
+
+        OpenSeesOptions opt;
+        opt.includeSelfWeight = true;
+        opt.includeAnalysisCommands = true;
+        opt.targetLoadCaseId = 1;
+        std::string script = OpenSeesAdapter::generateTclScript(model2, opt);
+        TEST_CHECK(script.find("Treillis #" + std::to_string(mTr)) != std::string::npos,
+                   "Subtest 64.6: OpenSees generated equivalent end loads for truss member");
+        TEST_CHECK(script.find("Poids propre treillis #" + std::to_string(mTr)) != std::string::npos,
+                   "Subtest 64.6: OpenSees generated self-weight for truss member");
+
+        model.removeObserver(&obs);
+        std::cout << "[PASS] Test 64: Cascade Deletions & ID Coexistence Validated!" << std::endl;
+        passed++;
+    }
+
     return true;
 }

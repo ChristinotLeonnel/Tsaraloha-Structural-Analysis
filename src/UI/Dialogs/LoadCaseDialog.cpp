@@ -219,8 +219,10 @@ void LoadCaseDialog::onRemoveLoadCase()
     {
         m_model->pushUndoState("Supprimer Cas de Charge");
         m_model->loadManager().removeLoadCase(caseId);
+        m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
         refreshCasesTable();
         refreshCombinationsTable();
+        onValidateModel();
     }
 }
 
@@ -233,6 +235,7 @@ void LoadCaseDialog::onResetEurocodes()
     {
         m_model->pushUndoState("Réinitialiser Cas Eurocodes");
         m_model->loadManager().resetToDefaults();
+        m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
         refreshCasesTable();
         refreshCombinationsTable();
         onValidateModel();

@@ -70,7 +70,7 @@ ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
         return report;
     }
 
-    if (model.beams().empty() && model.columns().empty() && model.trussMembers().empty())
+    if (model.beams().empty() && model.columns().empty() && model.trussMembers().empty() && model.cables().empty())
     {
         report.addWarning("Géométrie", "Le modèle ne comporte aucun élément linéaire filaire.");
     }
@@ -130,7 +130,8 @@ ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
         int elemId = ml.elementId();
         bool elemExists = (model.getBeam(elemId) != nullptr) ||
                           (model.getColumn(elemId) != nullptr) ||
-                          (model.getTrussMember(elemId) != nullptr);
+                          (model.getTrussMember(elemId) != nullptr) ||
+                          (model.getCable(elemId) != nullptr);
 
         if (!elemExists)
         {

@@ -327,7 +327,7 @@ void MemberLoadDialog::onApplyClicked()
     TSA::Model::MemberLoad ml(0, elemId, loadCaseId, type, q1, q2, dir, coordSys, x1, x2, false, name);
     int newId = m_model->loadManager().addMemberLoad(ml);
 
-    m_model->notifyLoadAdded(newId);
+    m_model->notifyMemberLoadAdded(newId);
 
     QMessageBox::information(this, tr("Succès"),
                              tr("Charge sur barre ML#%1 appliquée avec succès sur l'élément #%2 !").arg(newId).arg(elemId));

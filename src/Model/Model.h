@@ -63,6 +63,14 @@ public:
     virtual void onCableModified(const Cable& /*cable*/) {}
     virtual void onCableRemoved(int /*cableId*/) {}
 
+    virtual void onNodalLoadAdded(int /*loadId*/) {}
+    virtual void onNodalLoadModified(int /*loadId*/) {}
+    virtual void onNodalLoadRemoved(int /*loadId*/) {}
+
+    virtual void onMemberLoadAdded(int /*loadId*/) {}
+    virtual void onMemberLoadModified(int /*loadId*/) {}
+    virtual void onMemberLoadRemoved(int /*loadId*/) {}
+
     virtual void onLoadAdded(int /*loadId*/) {}
     virtual void onLoadModified(int /*loadId*/) {}
     virtual void onLoadRemoved(int /*loadId*/) {}
@@ -244,6 +252,14 @@ public:
     void notifyFoundationModified(int foundationId);
     void notifyTrussMemberModified(int memberId);
     void notifyCableModified(int cableId);
+
+    void notifyNodalLoadAdded(int loadId);
+    void notifyNodalLoadModified(int loadId);
+    void notifyNodalLoadRemoved(int loadId);
+
+    void notifyMemberLoadAdded(int loadId);
+    void notifyMemberLoadModified(int loadId);
+    void notifyMemberLoadRemoved(int loadId);
 
     void notifyLoadAdded(int loadId);
     void notifyLoadModified(int loadId);

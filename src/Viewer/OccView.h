@@ -378,6 +378,14 @@ protected:
     void onCableModified(const TSA::Model::Cable& cable) override;
     void onCableRemoved(int cableId) override;
 
+    void onNodalLoadAdded(int loadId) override;
+    void onNodalLoadModified(int loadId) override;
+    void onNodalLoadRemoved(int loadId) override;
+
+    void onMemberLoadAdded(int loadId) override;
+    void onMemberLoadModified(int loadId) override;
+    void onMemberLoadRemoved(int loadId) override;
+
     void onLoadAdded(int loadId) override;
     void onLoadModified(int loadId) override;
     void onLoadRemoved(int loadId) override;

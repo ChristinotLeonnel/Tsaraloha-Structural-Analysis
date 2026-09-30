@@ -301,7 +301,7 @@ void NodalLoadDialog::onApplyClicked()
     TSA::Model::NodalLoad nl(0, nodeId, loadCaseId, fx, fy, fz, mx, my, mz, coordSys, name);
     int newId = m_model->loadManager().addNodalLoad(nl);
 
-    m_model->notifyLoadAdded(newId);
+    m_model->notifyNodalLoadAdded(newId);
 
     QMessageBox::information(this, tr("Succès"),
                              tr("Charge nodale NL#%1 appliquée avec succès sur le nœud N%2 !").arg(newId).arg(nodeId));

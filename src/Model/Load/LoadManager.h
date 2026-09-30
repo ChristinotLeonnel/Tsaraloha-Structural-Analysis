@@ -80,6 +80,7 @@ public:
 
     std::vector<NodalLoad> nodalLoadsForNode(int nodeId) const;
     std::vector<NodalLoad> nodalLoadsForCase(int loadCaseId) const;
+    std::vector<int> removeNodalLoadsForNode(int nodeId);
 
     // =========================================================================
     // Charges sur éléments (Uniforme, Linéaire, Ponctuelle sur barre)
@@ -93,6 +94,7 @@ public:
 
     std::vector<MemberLoad> memberLoadsForElement(int elementId) const;
     std::vector<MemberLoad> memberLoadsForCase(int loadCaseId) const;
+    std::vector<int> removeMemberLoadsForElement(int elementId, MemberTargetType targetType = MemberTargetType::Beam);
 
     std::vector<NodalLoad> getNodalLoadsForNode(int nodeId) const { return nodalLoadsForNode(nodeId); }
     std::vector<NodalLoad> getNodalLoadsForCase(int loadCaseId) const { return nodalLoadsForCase(loadCaseId); }

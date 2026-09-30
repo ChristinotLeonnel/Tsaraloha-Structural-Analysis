@@ -10,7 +10,8 @@ MemberLoad::MemberLoad(int id, int elementId, int loadCaseId,
                        LoadCoordSystem coordSys,
                        double x1, double x2,
                        bool isRelative,
-                       const std::string& name)
+                       const std::string& name,
+                       MemberTargetType targetType)
     : m_id(id)
     , m_elementId(elementId)
     , m_loadCaseId(loadCaseId)
@@ -23,6 +24,7 @@ MemberLoad::MemberLoad(int id, int elementId, int loadCaseId,
     , m_x2(x2)
     , m_isRelative(isRelative)
     , m_name(name)
+    , m_targetType(targetType)
 {
     if (m_name.empty() && m_id > 0)
     {
@@ -33,9 +35,10 @@ MemberLoad::MemberLoad(int id, int elementId, int loadCaseId,
 MemberLoad MemberLoad::uniform(int id, int elementId, int loadCaseId,
                               double q, LoadDirection dir,
                               LoadCoordSystem sys,
-                              const std::string& name)
+                              const std::string& name,
+                              MemberTargetType targetType)
 {
-    return MemberLoad(id, elementId, loadCaseId, LoadType::MemberUniform, q, q, dir, sys, 0.0, 0.0, false, name);
+    return MemberLoad(id, elementId, loadCaseId, LoadType::MemberUniform, q, q, dir, sys, 0.0, 0.0, false, name, targetType);
 }
 
 MemberLoad MemberLoad::trapezoidal(int id, int elementId, int loadCaseId,
