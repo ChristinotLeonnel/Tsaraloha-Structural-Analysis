@@ -40,6 +40,12 @@ struct SnapshotNode
     bool fixRx = false;
     bool fixRy = false;
     bool fixRz = false;
+    double kTx = 0.0;
+    double kTy = 0.0;
+    double kTz = 0.0;
+    double kRx = 0.0;
+    double kRy = 0.0;
+    double kRz = 0.0;
 };
 
 /**

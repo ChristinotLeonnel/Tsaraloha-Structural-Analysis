@@ -639,6 +639,30 @@ void MainWindow::onToggleNodeLabelsVisible(bool checked)
     }
 }
 
+void MainWindow::onToggleSupportsVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setSupportsVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Appuis structuraux affichés en 3D") : tr("Appuis structuraux masqués"));
+        }
+    }
+}
+
+void MainWindow::onToggleSupportLabelsVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setSupportLabelsVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Étiquettes des appuis affichées en 3D") : tr("Étiquettes des appuis masquées"));
+        }
+    }
+}
+
 void MainWindow::onToggleLoadsVisible(bool checked)
 {
     if (m_occView)

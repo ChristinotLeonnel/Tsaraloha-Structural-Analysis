@@ -307,6 +307,7 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
         writeGridChunk(payload, gridManager);
     }
     writeNodeChunk(payload, model.nodes());
+    writeSupportChunk(payload, model.nodes());
     writeBarChunk(payload, model.beams());
     writeColumnChunk(payload, model.columns());
     writeSlabChunk(payload, model.slabs());
@@ -568,6 +569,47 @@ void TSAFileWriter::writeNodeChunk(std::vector<uint8_t>& buffer, const std::map<
     ch.chunkId = CHUNK_NODE;
     ch.chunkSize = static_cast<uint32_t>(chunkData.size());
     ch.elementCount = static_cast<uint32_t>(nodes.size());
+
+    const uint8_t* chBytes = reinterpret_cast<const uint8_t*>(&ch);
+    buffer.insert(buffer.end(), chBytes, chBytes + sizeof(ch));
+    buffer.insert(buffer.end(), chunkData.begin(), chunkData.end());
+}
+
+void TSAFileWriter::writeSupportChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Node>& nodes)
+{
+    std::vector<uint8_t> chunkData;
+    uint32_t count = 0;
+    for (const auto& [id, n] : nodes)
+    {
+        const auto& s = n.support();
+        if (s.isFree()) continue;
+        ++count;
+        writeI32(chunkData, n.id());
+        writeU8(chunkData, static_cast<uint8_t>(s.tx()));
+        writeU8(chunkData, static_cast<uint8_t>(s.ty()));
+        writeU8(chunkData, static_cast<uint8_t>(s.tz()));
+        writeU8(chunkData, static_cast<uint8_t>(s.rx()));
+        writeU8(chunkData, static_cast<uint8_t>(s.ry()));
+        writeU8(chunkData, static_cast<uint8_t>(s.rz()));
+        writeDouble(chunkData, s.kx());
+        writeDouble(chunkData, s.ky());
+        writeDouble(chunkData, s.kz());
+        writeDouble(chunkData, s.krx());
+        writeDouble(chunkData, s.kry());
+        writeDouble(chunkData, s.krz());
+        writeU8(chunkData, static_cast<uint8_t>(s.orientationType()));
+        writeDouble(chunkData, s.customDirX());
+        writeDouble(chunkData, s.customDirY());
+        writeDouble(chunkData, s.customDirZ());
+        writeI32(chunkData, s.referenceElementId());
+    }
+
+    if (count == 0) return;
+
+    TSAChunkHeader ch;
+    ch.chunkId = CHUNK_SUPP;
+    ch.chunkSize = static_cast<uint32_t>(chunkData.size());
+    ch.elementCount = count;
 
     const uint8_t* chBytes = reinterpret_cast<const uint8_t*>(&ch);
     buffer.insert(buffer.end(), chBytes, chBytes + sizeof(ch));
@@ -1109,6 +1151,9 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         case CHUNK_NODE:
             if (!readNodeChunk(chunkBytes, chunkLen, ch.elementCount, loadedNodes, errorMessage)) return false;
             break;
+        case CHUNK_SUPP:
+            if (!readSupportChunk(chunkBytes, chunkLen, ch.elementCount, loadedNodes, errorMessage)) return false;
+            break;
         case CHUNK_BARS:
             if (!readBarChunk(chunkBytes, chunkLen, ch.elementCount, loadedBeams, errorMessage)) return false;
             break;
@@ -1325,6 +1370,61 @@ bool TSAFileReader::readNodeChunk(const uint8_t* data, size_t size, uint32_t cou
         n.setSupportType(static_cast<TSA::Model::SupportType>(supp));
         n.setColor(color);
         nodes[id] = n;
+    }
+    return true;
+}
+
+bool TSAFileReader::readSupportChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Node>& nodes, std::string* errorMessage)
+{
+    if (count > MAX_SAFE_NODES)
+    {
+        if (errorMessage) *errorMessage = "Nombre d'appuis anormalement élevé dans le fichier .tsa.";
+        return false;
+    }
+    size_t off = 0;
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        int32_t id = 0, refElemId = 0;
+        uint8_t tx = 0, ty = 0, tz = 0, rx = 0, ry = 0, rz = 0, orient = 0;
+        double kx = 0, ky = 0, kz = 0, krx = 0, kry = 0, krz = 0;
+        double dirX = 0, dirY = 0, dirZ = 1.0;
+
+        if (!readI32(data, size, off, id)) return false;
+        if (!readU8(data, size, off, tx)) return false;
+        if (!readU8(data, size, off, ty)) return false;
+        if (!readU8(data, size, off, tz)) return false;
+        if (!readU8(data, size, off, rx)) return false;
+        if (!readU8(data, size, off, ry)) return false;
+        if (!readU8(data, size, off, rz)) return false;
+        if (!readDouble(data, size, off, kx)) return false;
+        if (!readDouble(data, size, off, ky)) return false;
+        if (!readDouble(data, size, off, kz)) return false;
+        if (!readDouble(data, size, off, krx)) return false;
+        if (!readDouble(data, size, off, kry)) return false;
+        if (!readDouble(data, size, off, krz)) return false;
+        if (!readU8(data, size, off, orient)) return false;
+        if (!readDouble(data, size, off, dirX)) return false;
+        if (!readDouble(data, size, off, dirY)) return false;
+        if (!readDouble(data, size, off, dirZ)) return false;
+        if (!readI32(data, size, off, refElemId)) return false;
+
+        auto it = nodes.find(id);
+        if (it != nodes.end())
+        {
+            TSA::Model::SupportDefinition s(
+                static_cast<TSA::Model::DOFState>(tx),
+                static_cast<TSA::Model::DOFState>(ty),
+                static_cast<TSA::Model::DOFState>(tz),
+                static_cast<TSA::Model::DOFState>(rx),
+                static_cast<TSA::Model::DOFState>(ry),
+                static_cast<TSA::Model::DOFState>(rz),
+                kx, ky, kz, krx, kry, krz,
+                static_cast<TSA::Model::SupportOrientationType>(orient),
+                dirX, dirY, dirZ,
+                refElemId
+            );
+            it->second.setSupport(s);
+        }
     }
     return true;
 }

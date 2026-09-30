@@ -49,6 +49,7 @@ Gestionnaire dédié à la visualisation interactive des résultats structurels 
 ### `src/Geometry/*Geometry` (Geometry Builders)
 
 - **Éléments structuraux** : `BeamGeometry`, `SlabGeometry`, `WallGeometry`, `FoundationGeometry`, `CableGeometry3D` — construisent les `TopoDS_Shape` à partir des paramètres du modèle (section, matériau, nœuds/coordonnées).
+- **Appuis structuraux** : `SupportGeometry` (`src/Geometry/SupportGeometry.h/.cpp`) — construit les `TopoDS_Shape` B-Rep des conditions d'appui aux nœuds (plaques d'assise et hachures de sol pour encastrements, pyramides pivotantes pour rotules, rouleaux pour appuis simples, hélices 3D pour ressorts de translation, spirales pour ressorts de rotation). Géré dans `OccView` via `updateSupportShape`, `removeSupportShape`, `setSupportsVisible`.
 - **Résultats d'analyse** :
   - `DeformedGeometry` : Construction de la fibre neutre déformée par interpolation cubique d'Hermite et extrusion solide B-Rep.
   - `DiagramGeometry` : Construction des facettes de diagrammes 3D, contour, hachures et drapeaux d'extrema.

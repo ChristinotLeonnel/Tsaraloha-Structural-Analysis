@@ -5,14 +5,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 76;
+    int expectedTotal = 82;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees]" << std::endl;
+            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports]" << std::endl;
             return 0;
         }
     }
@@ -75,8 +75,12 @@ int main(int argc, char* argv[])
         if (!runSuite_Loads(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "opensees" || suiteFilter == "solver") {
-        std::cout << "\n--- [Suite 13/13] OpenSees Solver, Immutability & Analytical Validation (Tests 65-69) ---" << std::endl;
+        std::cout << "\n--- [Suite 13/14] OpenSees Solver, Immutability & Analytical Validation (Tests 65-69) ---" << std::endl;
         if (!runSuite_OpenSees(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "supports" || suiteFilter == "support") {
+        std::cout << "\n--- [Suite 14/14] Structural Supports & 3D Visualization (Tests 70-75) ---" << std::endl;
+        if (!runSuite_Supports(passed)) allOk = false;
     }
 
     std::cout << "\n=================================================" << std::endl;

@@ -55,6 +55,7 @@ std::string OpenSeesAnalysisBuilder::buildNodes(const CalculationSnapshot& snaps
 std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSnapshot& snapshot)
 {
     std::ostringstream tcl;
+    tcl << std::fixed << std::setprecision(6);
     tcl << "# ------------------------------------------------------------------------------\n";
     tcl << "# Conditions aux limites (fix $nodeTag $u1 $u2 $u3 $r1 $r2 $r3)\n";
     tcl << "# ------------------------------------------------------------------------------\n";
@@ -73,6 +74,67 @@ std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSn
         }
     }
     tcl << "\n";
+
+    // Appuis élastiques (ressorts) : uniaxialMaterial Elastic + element zeroLength
+    // Les DDL de type Spring ne sont pas bloqués par "fix" mais modélisés par des
+    // éléments zeroLength attachés à un nœud fixe auxiliaire.
+    bool hasAnySpring = false;
+    for (const auto& [id, n] : snapshot.nodes())
+    {
+        if (n.kTx > 0.0 || n.kTy > 0.0 || n.kTz > 0.0 ||
+            n.kRx > 0.0 || n.kRy > 0.0 || n.kRz > 0.0)
+        {
+            hasAnySpring = true;
+            break;
+        }
+    }
+
+    if (hasAnySpring)
+    {
+        tcl << "# ------------------------------------------------------------------------------\n";
+        tcl << "# Appuis élastiques (ressorts via zeroLength)\n";
+        tcl << "# ------------------------------------------------------------------------------\n";
+
+        int springMatTag = 90000;
+        int springElemTag = 90000;
+        int auxNodeTag = 90000;
+
+        for (const auto& [id, n] : snapshot.nodes())
+        {
+            double stiffnesses[6] = { n.kTx, n.kTy, n.kTz, n.kRx, n.kRy, n.kRz };
+            bool hasSpring = false;
+            for (int d = 0; d < 6; ++d)
+            {
+                if (stiffnesses[d] > 0.0) { hasSpring = true; break; }
+            }
+            if (!hasSpring) continue;
+
+            // Nœud auxiliaire fixe au même emplacement
+            int auxId = auxNodeTag++;
+            tcl << "node " << auxId << " " << n.x << " " << n.y << " " << n.z << "\n";
+            tcl << "fix " << auxId << " 1 1 1 1 1 1\n";
+
+            // Matériaux et élément zeroLength par DDL actif
+            std::string matTags;
+            std::string dirs;
+            for (int d = 0; d < 6; ++d)
+            {
+                if (stiffnesses[d] > 0.0)
+                {
+                    int matId = springMatTag++;
+                    tcl << "uniaxialMaterial Elastic " << matId << " " << stiffnesses[d] << "\n";
+                    if (!matTags.empty()) { matTags += " "; dirs += " "; }
+                    matTags += std::to_string(matId);
+                    dirs += std::to_string(d + 1);
+                }
+            }
+
+            tcl << "element zeroLength " << springElemTag++ << " " << auxId << " " << id
+                << " -mat " << matTags << " -dir " << dirs << "\n";
+        }
+        tcl << "\n";
+    }
+
     return tcl.str();
 }
 

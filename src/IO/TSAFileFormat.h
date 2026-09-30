@@ -54,6 +54,7 @@ constexpr uint32_t CHUNK_THMB = 0x424D4854; // 'THMB' : Miniature 3D (Thumbnail)
 constexpr uint32_t CHUNK_COOR = 0x524F4F43; // 'COOR' : Système de coordonnées (axes X, Y, Z, niveaux)
 constexpr uint32_t CHUNK_GRID = 0x44495247; // 'GRID' : Grilles 3D et repères cartésiens / cylindriques
 constexpr uint32_t CHUNK_NODE = 0x45444F4E; // 'NODE' : Nœuds structuraux (id, x, y, z, support)
+constexpr uint32_t CHUNK_SUPP = 0x50505553; // 'SUPP' : Appuis 3D et liaisons (6 DDL, raideurs, orientation)
 constexpr uint32_t CHUNK_BARS = 0x53524142; // 'BARS' : Poutres & barres (section, matériau, gamma, excentrement, relâchements)
 constexpr uint32_t CHUNK_COLS = 0x534C4F43; // 'COLS' : Poteaux verticaux et inclinés
 constexpr uint32_t CHUNK_SLAB = 0x42414C53; // 'SLAB' : Dalles & planchers surfaciques (épaisseur, portance)

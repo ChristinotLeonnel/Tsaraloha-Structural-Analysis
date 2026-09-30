@@ -19,28 +19,33 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
         sn.x = n.x();
         sn.y = n.y();
         sn.z = n.z();
-        sn.supportType = n.supportType();
+        const auto& supp = n.support();
+        // Utiliser supportType() du SupportDefinition (non tronqué) au lieu du legacy
+        sn.supportType = supp.supportType();
 
-        switch (n.supportType())
+        sn.fixTx = (supp.tx() == TSA::Model::DOFState::Fixed);
+        sn.fixTy = (supp.ty() == TSA::Model::DOFState::Fixed);
+        sn.fixTz = (supp.tz() == TSA::Model::DOFState::Fixed);
+        sn.fixRx = (supp.rx() == TSA::Model::DOFState::Fixed);
+        sn.fixRy = (supp.ry() == TSA::Model::DOFState::Fixed);
+        sn.fixRz = (supp.rz() == TSA::Model::DOFState::Fixed);
+
+        // Anti-singularité 3D : pour les appuis articulés (pinned) et rouleaux (roller),
+        // la rotation de forage (drill, Rx) est libre par définition mais crée une
+        // matrice de rigidité singulière dans un solveur 3D. On la bloque sauf si
+        // l'utilisateur a explicitement défini un ressort en rotation sur cet axe.
+        if ((supp.isPinned() || supp.isRoller()) && supp.rx() != TSA::Model::DOFState::Spring)
         {
-        case TSA::Model::SupportType::Fixed:
-            sn.fixTx = sn.fixTy = sn.fixTz = sn.fixRx = sn.fixRy = sn.fixRz = true;
-            break;
-        case TSA::Model::SupportType::Pinned:
-            sn.fixTx = sn.fixTy = sn.fixTz = true;
-            sn.fixRx = true; // Bloque la rotation autour de l'axe de la barre pour éviter le mécanisme de corps rigide en 3D
-            sn.fixRy = sn.fixRz = false;
-            break;
-        case TSA::Model::SupportType::Roller:
-            sn.fixTy = sn.fixTz = true; // Bloque le déplacement vertical et transversal hors-plan
             sn.fixRx = true;
-            sn.fixTx = sn.fixRy = sn.fixRz = false; // Libre en translation axiale X
-            break;
-        case TSA::Model::SupportType::Free:
-        default:
-            sn.fixTx = sn.fixTy = sn.fixTz = sn.fixRx = sn.fixRy = sn.fixRz = false;
-            break;
         }
+
+        // Raideurs élastiques (ressorts)
+        if (supp.tx() == TSA::Model::DOFState::Spring) sn.kTx = supp.kx();
+        if (supp.ty() == TSA::Model::DOFState::Spring) sn.kTy = supp.ky();
+        if (supp.tz() == TSA::Model::DOFState::Spring) sn.kTz = supp.kz();
+        if (supp.rx() == TSA::Model::DOFState::Spring) sn.kRx = supp.krx();
+        if (supp.ry() == TSA::Model::DOFState::Spring) sn.kRy = supp.kry();
+        if (supp.rz() == TSA::Model::DOFState::Spring) sn.kRz = supp.krz();
 
         snap.m_nodes[id] = sn;
     }

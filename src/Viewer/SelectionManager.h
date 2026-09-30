@@ -33,6 +33,7 @@ public:
 
     // Association ID métier <-> Objet 3D OpenCASCADE
     void registerNode(int nodeId, const Handle(AIS_InteractiveObject)& obj);
+    void registerSupport(int nodeId, const Handle(AIS_InteractiveObject)& obj);
     void registerBeam(int beamId, const Handle(AIS_InteractiveObject)& obj);
     void registerColumn(int columnId, const Handle(AIS_InteractiveObject)& obj);
     void registerSlab(int slabId, const Handle(AIS_InteractiveObject)& obj);
@@ -43,6 +44,7 @@ public:
     void registerWorkPlane(int workPlaneId, const Handle(AIS_InteractiveObject)& obj);
 
     void unregisterNode(int nodeId);
+    void unregisterSupport(int nodeId);
     void unregisterBeam(int beamId);
     void unregisterColumn(int columnId);
     void unregisterSlab(int slabId);
@@ -56,6 +58,7 @@ public:
 
     // Recherche
     int getNodeId(const Handle(AIS_InteractiveObject)& obj) const;
+    int getSupportNodeId(const Handle(AIS_InteractiveObject)& obj) const;
     int getBeamId(const Handle(AIS_InteractiveObject)& obj) const;
     int getColumnId(const Handle(AIS_InteractiveObject)& obj) const;
     int getSlabId(const Handle(AIS_InteractiveObject)& obj) const;
@@ -66,6 +69,7 @@ public:
     int getWorkPlaneId(const Handle(AIS_InteractiveObject)& obj) const;
 
     Handle(AIS_InteractiveObject) getNodeObject(int nodeId) const;
+    Handle(AIS_InteractiveObject) getSupportObject(int nodeId) const;
     Handle(AIS_InteractiveObject) getBeamObject(int beamId) const;
     Handle(AIS_InteractiveObject) getColumnObject(int columnId) const;
     Handle(AIS_InteractiveObject) getSlabObject(int slabId) const;
@@ -127,6 +131,9 @@ signals:
 private:
     std::map<int, Handle(AIS_InteractiveObject)> m_nodeToObj;
     std::map<Handle(AIS_InteractiveObject), int> m_objToNode;
+
+    std::map<int, Handle(AIS_InteractiveObject)> m_supportToObj;
+    std::map<Handle(AIS_InteractiveObject), int> m_objToSupport;
 
     std::map<int, Handle(AIS_InteractiveObject)> m_beamToObj;
     std::map<Handle(AIS_InteractiveObject), int> m_objToBeam;

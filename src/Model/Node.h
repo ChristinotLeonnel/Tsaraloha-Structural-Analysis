@@ -1,17 +1,10 @@
 #pragma once
 #include "../Coordinate/Point3D.h"
+#include "SupportDefinition.h"
 #include <string>
 
 namespace TSA::Model
 {
-
-enum class SupportType
-{
-    Free,       // Libre (aucun DDL bloqué)
-    Fixed,      // Encastrement (Tx=Ty=Tz=Rx=Ry=Rz bloqués)
-    Pinned,     // Articulation / Rotule (Tx=Ty=Tz bloqués, rotations libres)
-    Roller      // Appui simple (Tz bloqué)
-};
 
 class Node
 {
@@ -42,8 +35,12 @@ public:
     const std::string& levelId() const { return m_levelId; }
     void setLevelId(const std::string& lvlId) { m_levelId = lvlId; }
 
-    SupportType supportType() const { return m_supportType; }
-    void setSupportType(SupportType type) { m_supportType = type; }
+    const SupportDefinition& support() const { return m_support; }
+    SupportDefinition& support() { return m_support; }
+    void setSupport(const SupportDefinition& supp) { m_support = supp; }
+
+    SupportType supportType() const { return m_support.toLegacySupportType(); }
+    void setSupportType(SupportType type) { m_support = SupportDefinition::fromLegacySupportType(type); }
 
     const std::string& color() const { return m_color; }
     void setColor(const std::string& color) { m_color = color; }
@@ -55,7 +52,7 @@ private:
     double m_y = 0.0;
     double m_z = 0.0;
     std::string m_levelId;
-    SupportType m_supportType = SupportType::Free;
+    SupportDefinition m_support;
     std::string m_color;
 };
 

@@ -83,6 +83,7 @@ private:
     void writeCoordinateChunk(std::vector<uint8_t>& buffer, const TSA::Coordinate::CoordinateSystem* cs);
     void writeGridChunk(std::vector<uint8_t>& buffer, const TSA::Grid::GridManager* gm);
     void writeNodeChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Node>& nodes);
+    void writeSupportChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Node>& nodes);
     void writeBarChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Beam>& beams);
     void writeColumnChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Column>& columns);
     void writeSlabChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Slab>& slabs);
@@ -142,6 +143,7 @@ private:
     bool readCoordinateChunk(const uint8_t* data, size_t size, TSA::Coordinate::CoordinateSystem* cs, std::string* errorMessage);
     bool readGridChunk(const uint8_t* data, size_t size, TSA::Grid::GridManager* gm, std::string* errorMessage);
     bool readNodeChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Node>& nodes, std::string* errorMessage);
+    bool readSupportChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Node>& nodes, std::string* errorMessage);
     bool readBarChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Beam>& beams, std::string* errorMessage);
     bool readColumnChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Column>& columns, std::string* errorMessage);
     bool readSlabChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Slab>& slabs, std::string* errorMessage);

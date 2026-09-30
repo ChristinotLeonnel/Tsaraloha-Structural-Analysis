@@ -47,20 +47,29 @@ std::string OpenSeesAdapter::generateTclScript(const TSA::Model::Model& model,
     tcl << "# ------------------------------------------------------------------------------\n";
     for (const auto& [id, n] : model.nodes())
     {
-        switch (n.supportType())
+        const auto& supp = n.support();
+        if (supp.isFree()) continue;
+
+        // Détermine les flags de fixation par DDL
+        int u1 = (supp.tx() == TSA::Model::DOFState::Fixed) ? 1 : 0;
+        int u2 = (supp.ty() == TSA::Model::DOFState::Fixed) ? 1 : 0;
+        int u3 = (supp.tz() == TSA::Model::DOFState::Fixed) ? 1 : 0;
+        int r1 = (supp.rx() == TSA::Model::DOFState::Fixed) ? 1 : 0;
+        int r2 = (supp.ry() == TSA::Model::DOFState::Fixed) ? 1 : 0;
+        int r3 = (supp.rz() == TSA::Model::DOFState::Fixed) ? 1 : 0;
+
+        // Anti-singularité : bloquer Rx pour articulations/rouleaux si non-ressort
+        if ((supp.isPinned() || supp.isRoller()) && supp.rx() != TSA::Model::DOFState::Spring)
         {
-        case TSA::Model::SupportType::Fixed:
-            tcl << "fix " << id << " 1 1 1 1 1 1 ;# Encastrement\n";
-            break;
-        case TSA::Model::SupportType::Pinned:
-            tcl << "fix " << id << " 1 1 1 0 0 0 ;# Articulation / Rotule\n";
-            break;
-        case TSA::Model::SupportType::Roller:
-            tcl << "fix " << id << " 0 0 1 0 0 0 ;# Appui simple (Tz bloqué)\n";
-            break;
-        case TSA::Model::SupportType::Free:
-        default:
-            break;
+            r1 = 1;
+        }
+
+        if (u1 || u2 || u3 || r1 || r2 || r3)
+        {
+            tcl << "fix " << id << " "
+                << u1 << " " << u2 << " " << u3 << " "
+                << r1 << " " << r2 << " " << r3
+                << " ;# " << supp.typeName() << "\n";
         }
     }
     tcl << "\n";

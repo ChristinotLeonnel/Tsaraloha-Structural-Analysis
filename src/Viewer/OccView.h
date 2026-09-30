@@ -78,6 +78,7 @@ public:
 
     // Gestion des formes 3D (avec mode batch / diff pour éviter les redraws multiples)
     void updateNodeShape(int nodeId, bool redrawImmediately = true);
+    void updateSupportShape(int nodeId, bool redrawImmediately = true);
     void updateBeamShape(int beamId, bool redrawImmediately = true);
     void updateColumnShape(int columnId, bool redrawImmediately = true);
     void updateSlabShape(int slabId, bool redrawImmediately = true);
@@ -87,6 +88,7 @@ public:
     void updateCableShape(int cableId, bool redrawImmediately = true);
 
     void removeNodeShape(int nodeId, bool redrawImmediately = true);
+    void removeSupportShape(int nodeId, bool redrawImmediately = true);
     void removeBeamShape(int beamId, bool redrawImmediately = true);
     void removeColumnShape(int columnId, bool redrawImmediately = true);
     void removeSlabShape(int slabId, bool redrawImmediately = true);
@@ -94,6 +96,11 @@ public:
     void removeFoundationShape(int foundationId, bool redrawImmediately = true);
     void removeTrussMemberShape(int memberId, bool redrawImmediately = true);
     void removeCableShape(int cableId, bool redrawImmediately = true);
+
+    void setSupportsVisible(bool visible);
+    bool areSupportsVisible() const { return m_supportsVisible; }
+    void setSupportLabelsVisible(bool visible);
+    bool areSupportLabelsVisible() const { return m_supportLabelsVisible; }
 
     // Mise en surbrillance / Sélection visuelle
     void highlightNode(int nodeId);
@@ -448,6 +455,10 @@ private:
 
     std::map<int, Handle(AIS_Shape)> m_nodeShapes;
     std::map<int, Handle(AIS_TextLabel)> m_nodeLabels;
+    std::map<int, Handle(AIS_Shape)> m_supportShapes;
+    std::map<int, Handle(AIS_TextLabel)> m_supportLabels;
+    bool m_supportsVisible = true;
+    bool m_supportLabelsVisible = false;
     std::map<int, Handle(AIS_Shape)> m_beamShapes;
     std::map<int, Handle(AIS_Shape)> m_columnShapes;
     std::map<int, Handle(AIS_Shape)> m_slabShapes;

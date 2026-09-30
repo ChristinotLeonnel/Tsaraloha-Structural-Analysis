@@ -18,6 +18,7 @@
 #include "../Geometry/WallGeometry.h"
 #include "../Geometry/FoundationGeometry.h"
 #include "../Geometry/CableGeometry3D.h"
+#include "../Geometry/SupportGeometry.h"
 
 #include <AIS_Shape.hxx>
 #include <AIS_TextLabel.hxx>
@@ -476,6 +477,18 @@ void OccView::rebuildAllShapes()
     }
     m_nodeLabels.clear();
 
+    for (auto& [id, aisShape] : m_supportShapes)
+    {
+        m_context->Remove(aisShape, false);
+    }
+    m_supportShapes.clear();
+
+    for (auto& [id, aisLbl] : m_supportLabels)
+    {
+        m_context->Remove(aisLbl, false);
+    }
+    m_supportLabels.clear();
+
     for (auto& [id, aisShape] : m_beamShapes)
     {
         m_context->Remove(aisShape, false);
@@ -670,6 +683,9 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
         m_context->Erase(aisLabel, false);
     }
     m_nodeLabels[nodeId] = aisLabel;
+
+    // 4. Mettre à jour l'appui 3D lié au nœud
+    updateSupportShape(nodeId, false);
 
     // 3. Collecter les éléments connectés à ce nœud avant de les mettre à jour
     //    (uniquement si redrawImmediately est vrai, sinon c'est le diff global qui gère)
@@ -1212,6 +1228,8 @@ void OccView::removeNodeShape(int nodeId, bool redrawImmediately)
         }
     }
 
+    removeSupportShape(nodeId, false);
+
     if (redrawImmediately && !m_view.IsNull())
     {
         m_view->ZFitAll();
@@ -1695,5 +1713,200 @@ void OccView::clearLoadShapes()
     }
     m_memberLoadLabels.clear();
 }
+
+void OccView::updateSupportShape(int nodeId, bool redrawImmediately)
+{
+    if (m_context.IsNull() || !m_model)
+        return;
+
+    // 1. Supprimer l'ancienne forme et étiquette d'appui
+    auto itLbl = m_supportLabels.find(nodeId);
+    if (itLbl != m_supportLabels.end())
+    {
+        m_context->Remove(itLbl->second, false);
+        m_supportLabels.erase(itLbl);
+    }
+
+    auto it = m_supportShapes.find(nodeId);
+    if (it != m_supportShapes.end())
+    {
+        m_context->Remove(it->second, false);
+        m_supportShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterSupport(nodeId);
+        }
+    }
+
+    const auto* node = m_model->getNode(nodeId);
+    if (!node || node->support().isFree())
+    {
+        if (redrawImmediately) m_context->UpdateCurrentViewer();
+        return;
+    }
+
+    // 2. Déterminer la normale d'orientation
+    gp_Dir normal(0, 0, 1);
+    if (node->support().orientationType() == TSA::Model::SupportOrientationType::CustomVector)
+    {
+        gp_Vec cv(node->support().customDirX(), node->support().customDirY(), node->support().customDirZ());
+        if (cv.Magnitude() > 1e-4) normal = gp_Dir(cv);
+    }
+    else if (node->support().orientationType() == TSA::Model::SupportOrientationType::LocalBar)
+    {
+        for (const auto& [cid, col] : m_model->columns())
+        {
+            if (col.startNodeId() == nodeId)
+            {
+                const auto* nEnd = m_model->getNode(col.endNodeId());
+                if (nEnd) { gp_Vec v(node->x() - nEnd->x(), node->y() - nEnd->y(), node->z() - nEnd->z()); if (v.Magnitude() > 1e-4) { normal = gp_Dir(v); break; } }
+            }
+            else if (col.endNodeId() == nodeId)
+            {
+                const auto* nStart = m_model->getNode(col.startNodeId());
+                if (nStart) { gp_Vec v(node->x() - nStart->x(), node->y() - nStart->y(), node->z() - nStart->z()); if (v.Magnitude() > 1e-4) { normal = gp_Dir(v); break; } }
+            }
+        }
+    }
+
+    // 3. Créer la géométrie 3D de l'appui
+    TopoDS_Shape shape = TSA::Geometry::SupportGeometry::createSupportShape(*node, 0.40, normal);
+    if (!shape.IsNull())
+    {
+        Handle(AIS_Shape) aisSupport = new AIS_Shape(shape);
+
+        // Palette de couleurs normalisée génie civil
+        if (node->support().isFixed())
+        {
+            aisSupport->SetColor(Quantity_NOC_DARKSLATEBLUE);
+        }
+        else if (node->support().isPinned())
+        {
+            aisSupport->SetColor(Quantity_NOC_SPRINGGREEN);
+        }
+        else if (node->support().isRoller())
+        {
+            aisSupport->SetColor(Quantity_NOC_CYAN2);
+        }
+        else if (node->support().hasSprings())
+        {
+            aisSupport->SetColor(Quantity_NOC_GOLDENROD);
+        }
+        else
+        {
+            aisSupport->SetColor(Quantity_NOC_ORANGE);
+        }
+
+        aisSupport->SetMaterial(Graphic3d_NOM_STEEL);
+        aisSupport->SetDisplayMode(AIS_Shaded);
+
+        m_supportShapes[nodeId] = aisSupport;
+        if (m_supportsVisible)
+        {
+            m_context->Display(aisSupport, false);
+        }
+
+        if (m_selectionManager)
+        {
+            m_selectionManager->registerSupport(nodeId, aisSupport);
+        }
+    }
+
+    // 4. Étiquette d'appui (AIS_TextLabel)
+    Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
+    QString labelText = QString::fromStdString(node->support().typeName());
+    aisLabel->SetText(TCollection_ExtendedString(labelText.toUtf8().constData(), true));
+    aisLabel->SetPosition(gp_Pnt(node->x(), node->y(), node->z() - 0.45));
+    aisLabel->SetColor(Quantity_Color(0.95, 0.65, 0.15, Quantity_TOC_RGB));
+    aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
+    aisLabel->SetVJustification(Graphic3d_VTA_TOP);
+    aisLabel->SetHeight(12.0);
+    aisLabel->SetFontAspect(Font_FA_Bold);
+
+    m_context->Display(aisLabel, false);
+    m_context->Deactivate(aisLabel);
+    if (!m_supportLabelsVisible || !m_supportsVisible)
+    {
+        m_context->Erase(aisLabel, false);
+    }
+    m_supportLabels[nodeId] = aisLabel;
+
+    if (redrawImmediately)
+    {
+        m_context->UpdateCurrentViewer();
+    }
+}
+
+void OccView::removeSupportShape(int nodeId, bool redrawImmediately)
+{
+    auto itLbl = m_supportLabels.find(nodeId);
+    if (itLbl != m_supportLabels.end())
+    {
+        if (!m_context.IsNull())
+        {
+            m_context->Remove(itLbl->second, false);
+        }
+        m_supportLabels.erase(itLbl);
+    }
+
+    auto it = m_supportShapes.find(nodeId);
+    if (it != m_supportShapes.end())
+    {
+        if (!m_context.IsNull())
+        {
+            m_context->Remove(it->second, false);
+            if (redrawImmediately)
+            {
+                m_context->UpdateCurrentViewer();
+            }
+        }
+        m_supportShapes.erase(it);
+        if (m_selectionManager)
+        {
+            m_selectionManager->unregisterSupport(nodeId);
+        }
+    }
+}
+
+void OccView::setSupportsVisible(bool visible)
+{
+    m_supportsVisible = visible;
+    if (m_context.IsNull()) return;
+
+    for (const auto& [id, shape] : m_supportShapes)
+    {
+        if (visible)
+            m_context->Display(shape, false);
+        else
+            m_context->Erase(shape, false);
+    }
+
+    for (const auto& [id, lbl] : m_supportLabels)
+    {
+        if (visible && m_supportLabelsVisible)
+            m_context->Display(lbl, false);
+        else
+            m_context->Erase(lbl, false);
+    }
+
+    m_context->UpdateCurrentViewer();
+}
+
+void OccView::setSupportLabelsVisible(bool visible)
+{
+    m_supportLabelsVisible = visible;
+    if (m_context.IsNull()) return;
+
+    for (const auto& [id, lbl] : m_supportLabels)
+    {
+        if (visible && m_supportsVisible)
+            m_context->Display(lbl, false);
+        else
+            m_context->Erase(lbl, false);
+    }
+
+    m_context->UpdateCurrentViewer();
+}
+
 
 

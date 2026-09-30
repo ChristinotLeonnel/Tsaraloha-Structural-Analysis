@@ -370,6 +370,19 @@ void MainWindow::createActions()
     m_actionNodeLabelsVisible->setChecked(false);
     connect(m_actionNodeLabelsVisible, &QAction::toggled, this, &MainWindow::onToggleNodeLabelsVisible);
 
+    m_actionSupportsVisible = new QAction(tr("Afficher les &Appuis 3D"), this);
+    m_actionSupportsVisible->setIcon(QIcon(":/icons/draw_node.svg"));
+    m_actionSupportsVisible->setToolTip(tr("Afficher ou masquer les appuis structuraux (encastrements, rotules, rouleaux, ressorts)"));
+    m_actionSupportsVisible->setCheckable(true);
+    m_actionSupportsVisible->setChecked(true);
+    connect(m_actionSupportsVisible, &QAction::toggled, this, &MainWindow::onToggleSupportsVisible);
+
+    m_actionSupportLabelsVisible = new QAction(tr("Afficher les &Étiquettes d'Appuis"), this);
+    m_actionSupportLabelsVisible->setToolTip(tr("Afficher ou masquer les étiquettes textuelles des appuis 3D"));
+    m_actionSupportLabelsVisible->setCheckable(true);
+    m_actionSupportLabelsVisible->setChecked(false);
+    connect(m_actionSupportLabelsVisible, &QAction::toggled, this, &MainWindow::onToggleSupportLabelsVisible);
+
     m_actionLoadsVisible = new QAction(tr("Afficher les &Charges 3D"), this);
     m_actionLoadsVisible->setIcon(QIcon(":/icons/load_dist.svg"));
     m_actionLoadsVisible->setToolTip(tr("Afficher ou masquer les représentations et flèches 3D des charges"));
@@ -912,6 +925,8 @@ void MainWindow::createMenus()
     visSub->addAction(m_actionGridLabels);
     visSub->addAction(m_actionNodesVisible);
     visSub->addAction(m_actionNodeLabelsVisible);
+    visSub->addAction(m_actionSupportsVisible);
+    visSub->addAction(m_actionSupportLabelsVisible);
     visSub->addAction(m_actionLoadsVisible);
     visSub->addAction(m_actionLoadValuesVisible);
     visSub->addAction(m_actionGridSnap);

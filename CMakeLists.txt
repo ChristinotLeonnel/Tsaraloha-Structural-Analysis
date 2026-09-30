@@ -339,6 +339,8 @@ set(GEOMETRY_CORE_SOURCES
     src/Geometry/DeformedGeometry.cpp
     src/Geometry/DiagramGeometry.h
     src/Geometry/DiagramGeometry.cpp
+    src/Geometry/SupportGeometry.h
+    src/Geometry/SupportGeometry.cpp
 )
 
 # --- Géométrie des autres éléments (UI uniquement) ----------------------------
@@ -360,6 +362,8 @@ set(MODEL_CORE_SOURCES
     src/Model/MaterialLibrary.cpp
     src/Model/Section.h
     src/Model/Section.cpp
+    src/Model/SupportDefinition.h
+    src/Model/SupportDefinition.cpp
     src/Model/Node.h
     src/Model/Node.cpp
     src/Model/Beam.h
@@ -716,6 +720,7 @@ set(TEST_SOURCES
     tests/test_node_system.cpp
     tests/test_loads.cpp
     tests/test_opensees.cpp
+    tests/test_supports.cpp
     resources/resources.qrc
 )
 

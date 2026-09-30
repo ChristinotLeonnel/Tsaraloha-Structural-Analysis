@@ -23,7 +23,7 @@ bool isNodeDifferent(const Node& a, const Node& b)
     }
     if (a.name() != b.name()) return true;
     if (a.levelId() != b.levelId()) return true;
-    if (a.supportType() != b.supportType()) return true;
+    if (a.support() != b.support()) return true;
     if (a.color() != b.color()) return true;
     return false;
 }

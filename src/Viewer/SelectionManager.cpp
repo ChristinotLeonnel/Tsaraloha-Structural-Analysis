@@ -15,6 +15,13 @@ void SelectionManager::registerNode(int nodeId, const Handle(AIS_InteractiveObje
     m_objToNode[obj] = nodeId;
 }
 
+void SelectionManager::registerSupport(int nodeId, const Handle(AIS_InteractiveObject)& obj)
+{
+    if (obj.IsNull()) return;
+    m_supportToObj[nodeId] = obj;
+    m_objToSupport[obj] = nodeId;
+}
+
 void SelectionManager::registerBeam(int beamId, const Handle(AIS_InteractiveObject)& obj)
 {
     if (obj.IsNull()) return;
@@ -94,6 +101,16 @@ void SelectionManager::unregisterNode(int nodeId)
         m_nodeToObj.erase(it);
     }
     m_selectedNodes.erase(nodeId);
+}
+
+void SelectionManager::unregisterSupport(int nodeId)
+{
+    auto it = m_supportToObj.find(nodeId);
+    if (it != m_supportToObj.end())
+    {
+        m_objToSupport.erase(it->second);
+        m_supportToObj.erase(it);
+    }
 }
 
 void SelectionManager::unregisterBeam(int beamId)
@@ -177,6 +194,8 @@ void SelectionManager::clearRegistry()
 {
     m_nodeToObj.clear();
     m_objToNode.clear();
+    m_supportToObj.clear();
+    m_objToSupport.clear();
     m_beamToObj.clear();
     m_objToBeam.clear();
     m_columnToObj.clear();
@@ -198,7 +217,16 @@ void SelectionManager::clearRegistry()
 int SelectionManager::getNodeId(const Handle(AIS_InteractiveObject)& obj) const
 {
     auto it = m_objToNode.find(obj);
-    return (it != m_objToNode.end()) ? it->second : -1;
+    if (it != m_objToNode.end()) return it->second;
+    auto itSupp = m_objToSupport.find(obj);
+    if (itSupp != m_objToSupport.end()) return itSupp->second;
+    return -1;
+}
+
+int SelectionManager::getSupportNodeId(const Handle(AIS_InteractiveObject)& obj) const
+{
+    auto itSupp = m_objToSupport.find(obj);
+    return (itSupp != m_objToSupport.end()) ? itSupp->second : -1;
 }
 
 int SelectionManager::getBeamId(const Handle(AIS_InteractiveObject)& obj) const
@@ -253,6 +281,12 @@ Handle(AIS_InteractiveObject) SelectionManager::getNodeObject(int nodeId) const
 {
     auto it = m_nodeToObj.find(nodeId);
     return (it != m_nodeToObj.end()) ? it->second : Handle(AIS_InteractiveObject)();
+}
+
+Handle(AIS_InteractiveObject) SelectionManager::getSupportObject(int nodeId) const
+{
+    auto it = m_supportToObj.find(nodeId);
+    return (it != m_supportToObj.end()) ? it->second : Handle(AIS_InteractiveObject)();
 }
 
 Handle(AIS_InteractiveObject) SelectionManager::getBeamObject(int beamId) const

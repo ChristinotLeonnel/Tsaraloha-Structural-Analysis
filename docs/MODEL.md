@@ -66,9 +66,27 @@ Gestion complète des actions mécaniques et thermiques selon les Eurocodes :
 - **Combinaisons d'Actions** : `LoadCombination` (combinaisons Eurocodes ELU / ELS avec coefficients partiels $\gamma_G, \gamma_Q, \psi_0$).
 - **Gestionnaire Centralisé** : `LoadManager` — gère le cycle de vie, la sérialisation, la suppression en cascade lors de la suppression d'éléments et l'intégration dans `ModelStateSnapshot` pour l'Undo/Redo.
 
+## Système d'Appuis & Liaisons Structuraux (`src/Model/SupportDefinition.h`)
+
+Définition complète des conditions aux limites à 6 degrés de liberté (DDL) :
+- **États de DDL (`DOFState`)** : `Free` (Libre), `Fixed` (Bloqué/Encastré rigide), `Spring` (Élastique).
+- **6 DDLs indépendants** : 3 translations ($U_x, U_y, U_z$) et 3 rotations ($R_x, R_y, R_z$).
+- **Raideurs élastiques** : Constantes de ressort $K_x, K_y, K_z$ (en $\text{kN/m}$) et $K_{rx}, K_{ry}, K_{rz}$ (en $\text{kNm/rad}$).
+- **Orientations géométriques (`SupportOrientationType`)** : `Global` (repère général X, Y, Z), `LocalBar` (repère local de la barre connectée), `CustomVector` (vecteur normal $n_x, n_y, n_z$).
+- **Usines statiques & Presets** :
+  - `SupportDefinition::fixed()` : Encastrement parfait (6 DDLs bloqués).
+  - `SupportDefinition::pinned()` : Articulation / Rotule sphérique 3D ($U_x, U_y, U_z$ bloqués).
+  - `SupportDefinition::roller()` : Appui simple / Rouleau (translation normale bloquée, glissement libre).
+  - `SupportDefinition::sliding()` : Appui glissant / coulisseau.
+  - `SupportDefinition::linear()` : Guidage linéaire.
+  - `SupportDefinition::planar()` : Appui plan multi-directionnel.
+  - `SupportDefinition::elastic()` : Appui sur sol élastique ou ressorts discrets.
+  - `SupportDefinition::custom()` : Combinaison personnalisée quelconque.
+- **Intégration directe dans `Node`** : Chaque nœud détient son `SupportDefinition`, avec passerelle de compatibilité rétrograde (`supportType()` / `setSupportType()`).
+
 ## Autres classes centrales
 
-- `Node` (`src/Model/Node.h`) — nœud/point structurel référencé par ID.
+- `Node` (`src/Model/Node.h`) — nœud/point structurel référencé par ID, porteur des coordonnées et des conditions d'appui `SupportDefinition`.
 - `Section` / `SectionShape` — voir `SECTIONS.md`.
 - `Material` / `MaterialLibrary` — voir `MATERIALS.md`.
 - `ModelDiff` (`src/Model/ModelDiff.h`) — diff d'affichage et journalisation des modifications.
