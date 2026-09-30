@@ -1,5 +1,6 @@
 #include "OccView.h"
 #include "SelectionManager.h"
+#include "ResultsVisualManager.h"
 #include "MaterialVisual.h"
 #include "TextureManager.h"
 #include "../Model/Model.h"
@@ -300,6 +301,10 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
 
 void OccView::onModelCleared()
 {
+    if (m_resultsVisual)
+    {
+        m_resultsVisual->clearAllVisuals();
+    }
     rebuildAllShapes();
 }
 

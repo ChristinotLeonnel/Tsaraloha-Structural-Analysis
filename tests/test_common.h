@@ -161,3 +161,4 @@ bool runSuite_WorkPlane(int& passed);
 bool runSuite_WindowManager(int& passed);
 bool runSuite_NodeSystem(int& passed);
 bool runSuite_Loads(int& passed);
+bool runSuite_OpenSees(int& passed);

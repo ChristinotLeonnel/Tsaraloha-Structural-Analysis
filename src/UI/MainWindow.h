@@ -11,6 +11,7 @@
 #include "../Model/StructuralClipboard.h"
 
 namespace TSA::Model { class Model; }
+namespace TSA::Analysis { class ResultsModel; class OpenSeesSolver; }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Project { class ProjectManager; }
 namespace TSA::Viewer { class SelectionManager; }
@@ -25,6 +26,7 @@ namespace TSA::UI
     class ModelTreeWidget;
     class PropertyPanel;
     class ViewportContainer;
+    class PortAreaWidget;
     class SectionCutDialog;
     class RibbonBar;
     class VisibilityDock;
@@ -158,6 +160,9 @@ private:
 
     OccView* m_occView = nullptr;
     TSA::UI::ViewportContainer* m_viewportContainer = nullptr;
+    TSA::UI::PortAreaWidget* m_portArea = nullptr;
+    std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
+    std::unique_ptr<TSA::Analysis::OpenSeesSolver> m_openSeesSolver;
     TSA::UI::ModelTreeWidget* m_modelTree = nullptr;
     TSA::UI::PropertyPanel*   m_propertyPanel = nullptr;
     TSA::UI::RibbonBar*       m_ribbonBar = nullptr;
@@ -311,10 +316,25 @@ private:
     QAction* m_actionMeshGen = nullptr;
     QAction* m_actionRunSolve = nullptr;
     QAction* m_actionModal = nullptr;
+    QAction* m_actionPushover = nullptr;
 
     QAction* m_actionResultsDisp = nullptr;
     QAction* m_actionResultsForces = nullptr;
     QAction* m_actionResultsStress = nullptr;
+    QAction* m_actionDeformedToggle = nullptr;
+    QAction* m_actionDiagramMz = nullptr;
+    QAction* m_actionDiagramVz = nullptr;
+    QAction* m_actionDiagramN = nullptr;
+    QAction* m_actionDiagramNone = nullptr;
+    QAction* m_actionReactionsToggle = nullptr;
+    QAction* m_actionNoteDeCalcul = nullptr;
+
+    QAction* m_actionPortSingle = nullptr;
+    QAction* m_actionPortSplitH = nullptr;
+    QAction* m_actionPortSplitV = nullptr;
+    QAction* m_actionPortGrid2x2 = nullptr;
+    QAction* m_actionPortTabbed = nullptr;
+
     QAction* m_actionMeasure = nullptr;
 
     TSA::UI::SectionCutDialog* m_sectionCutDialog = nullptr;
@@ -359,6 +379,21 @@ private slots:
     void onActionShortcuts();
     void onActionAbout();
     void onActionExportDiagnosticReport();
+
+    // Slots Résultats, Note de Calcul et Multi-Port
+    void onActionPushover();
+    void onActionNoteDeCalcul();
+    void onActionToggleDeformed(bool checked);
+    void onActionToggleReactions(bool checked);
+    void onActionDiagramMz();
+    void onActionDiagramVz();
+    void onActionDiagramN();
+    void onActionDiagramNone();
+    void onPortLayoutSingle();
+    void onPortLayoutSplitH();
+    void onPortLayoutSplitV();
+    void onPortLayoutGrid2x2();
+    void onPortLayoutTabbed();
 
     // Slots Outils Métier
     void onActionWall();

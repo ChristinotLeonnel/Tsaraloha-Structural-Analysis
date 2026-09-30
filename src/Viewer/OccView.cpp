@@ -1,5 +1,6 @@
 #include "OccView.h"
 #include "SelectionManager.h"
+#include "ResultsVisualManager.h"
 #include "../Model/Model.h"
 #include "../Model/ModelDiff.h"
 #include "../Geometry/BeamGeometry.h"
@@ -63,6 +64,7 @@ OccView::OccView(QWidget* parent)
     : QWidget(parent)
     , m_isDarkMode(TSA::UI::ThemeManager::instance().isDarkMode())
     , m_interactionManager(std::make_unique<TSA::Interaction::InteractionManager>(this))
+    , m_resultsVisual(std::make_unique<TSA::Viewer::ResultsVisualManager>(this))
 {
     setAttribute(Qt::WA_PaintOnScreen);
     setAttribute(Qt::WA_NoSystemBackground);
@@ -229,6 +231,10 @@ void OccView::setModel(TSA::Model::Model* model)
         m_model->removeObserver(this);
     }
     m_model = model;
+    if (m_resultsVisual)
+    {
+        m_resultsVisual->setModel(model);
+    }
     if (m_model)
     {
         m_model->addObserver(this);
@@ -236,6 +242,14 @@ void OccView::setModel(TSA::Model::Model* model)
     if (m_isInitialized)
     {
         rebuildAllShapes();
+    }
+}
+
+void OccView::setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
+{
+    if (m_resultsVisual)
+    {
+        m_resultsVisual->setResultsModel(results);
     }
 }
 

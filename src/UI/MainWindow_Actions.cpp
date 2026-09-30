@@ -674,6 +674,60 @@ void MainWindow::createActions()
     m_actionModal->setToolTip(tr("Calculer les modes propres et fréquences de vibration"));
     connect(m_actionModal, &QAction::triggered, this, &MainWindow::onActionModal);
 
+    m_actionPushover = new QAction(tr("Analyse &Pushover Non-Linéaire..."), this);
+    m_actionPushover->setIcon(QIcon(":/icons/analysis_pushover.svg"));
+    m_actionPushover->setToolTip(tr("Exécuter une analyse statique non-linéaire (Pushover)"));
+    connect(m_actionPushover, &QAction::triggered, this, &MainWindow::onActionPushover);
+
+    m_actionDeformedToggle = new QAction(tr("Afficher la &Déformée 3D"), this);
+    m_actionDeformedToggle->setCheckable(true);
+    m_actionDeformedToggle->setChecked(true);
+    m_actionDeformedToggle->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_actionDeformedToggle->setToolTip(tr("Activer ou masquer la vue de la structure déformée"));
+    connect(m_actionDeformedToggle, &QAction::toggled, this, &MainWindow::onActionToggleDeformed);
+
+    m_actionDiagramMz = new QAction(tr("Moment &Mz"), this);
+    m_actionDiagramMz->setToolTip(tr("Afficher le diagramme 3D du moment fléchissant Mz"));
+    connect(m_actionDiagramMz, &QAction::triggered, this, &MainWindow::onActionDiagramMz);
+
+    m_actionDiagramVz = new QAction(tr("Tranchant &Vz"), this);
+    m_actionDiagramVz->setToolTip(tr("Afficher le diagramme 3D de l'effort tranchant Vz"));
+    connect(m_actionDiagramVz, &QAction::triggered, this, &MainWindow::onActionDiagramVz);
+
+    m_actionDiagramN = new QAction(tr("Effort Normal &N"), this);
+    m_actionDiagramN->setToolTip(tr("Afficher le diagramme 3D de l'effort normal N"));
+    connect(m_actionDiagramN, &QAction::triggered, this, &MainWindow::onActionDiagramN);
+
+    m_actionDiagramNone = new QAction(tr("&Masquer Diagrammes"), this);
+    connect(m_actionDiagramNone, &QAction::triggered, this, &MainWindow::onActionDiagramNone);
+
+    m_actionReactionsToggle = new QAction(tr("Afficher les &Réactions"), this);
+    m_actionReactionsToggle->setCheckable(true);
+    m_actionReactionsToggle->setChecked(true);
+    m_actionReactionsToggle->setToolTip(tr("Afficher les flèches et valeurs des réactions d'appui en 3D"));
+    connect(m_actionReactionsToggle, &QAction::toggled, this, &MainWindow::onActionToggleReactions);
+
+    m_actionNoteDeCalcul = new QAction(tr("Note de &Calcul..."), this);
+    m_actionNoteDeCalcul->setIcon(QIcon(":/icons/ndc_report.svg"));
+    m_actionNoteDeCalcul->setToolTip(tr("Ouvrir l'inspecteur et générateur de Note de Calcul (F8)"));
+    m_actionNoteDeCalcul->setShortcut(QKeySequence(Qt::Key_F8));
+    connect(m_actionNoteDeCalcul, &QAction::triggered, this, &MainWindow::onActionNoteDeCalcul);
+
+    m_actionPortSingle = new QAction(tr("Vue &Unique (1)"), this);
+    connect(m_actionPortSingle, &QAction::triggered, this, &MainWindow::onPortLayoutSingle);
+
+    m_actionPortSplitH = new QAction(tr("Double &Horizontale (2 H)"), this);
+    connect(m_actionPortSplitH, &QAction::triggered, this, &MainWindow::onPortLayoutSplitH);
+
+    m_actionPortSplitV = new QAction(tr("Double &Verticale (2 V)"), this);
+    connect(m_actionPortSplitV, &QAction::triggered, this, &MainWindow::onPortLayoutSplitV);
+
+    m_actionPortGrid2x2 = new QAction(tr("&Grille 2x2 (4 Vues)"), this);
+    connect(m_actionPortGrid2x2, &QAction::triggered, this, &MainWindow::onPortLayoutGrid2x2);
+
+    m_actionPortTabbed = new QAction(tr("&Onglets"), this);
+    connect(m_actionPortTabbed, &QAction::triggered, this, &MainWindow::onPortLayoutTabbed);
+
     m_actionResultsDisp = new QAction(tr("Déformée && &Déplacements"), this);
     m_actionResultsDisp->setIcon(QIcon(":/icons/results_disp.svg"));
     m_actionResultsDisp->setToolTip(tr("Afficher la déformée amplifiée et les déplacements nodaux"));
@@ -786,12 +840,27 @@ void MainWindow::createMenus()
     analysisMenu->addSeparator();
     analysisMenu->addAction(m_actionRunSolve);
     analysisMenu->addAction(m_actionModal);
+    analysisMenu->addAction(m_actionPushover);
 
     // 6. Menu Résultats
     QMenu* resMenu = menuBar()->addMenu(tr("&Résultats"));
-    resMenu->addAction(m_actionResultsDisp);
-    resMenu->addAction(m_actionResultsForces);
-    resMenu->addAction(m_actionResultsStress);
+    resMenu->addAction(m_actionDeformedToggle);
+    QMenu* diagSub = resMenu->addMenu(tr("Diagrammes d'Efforts 3D"));
+    diagSub->addAction(m_actionDiagramMz);
+    diagSub->addAction(m_actionDiagramVz);
+    diagSub->addAction(m_actionDiagramN);
+    diagSub->addSeparator();
+    diagSub->addAction(m_actionDiagramNone);
+    resMenu->addAction(m_actionReactionsToggle);
+    resMenu->addSeparator();
+    resMenu->addAction(m_actionNoteDeCalcul);
+    resMenu->addSeparator();
+    QMenu* portSub = resMenu->addMenu(tr("Disposition Multi-Vues"));
+    portSub->addAction(m_actionPortSingle);
+    portSub->addAction(m_actionPortSplitH);
+    portSub->addAction(m_actionPortSplitV);
+    portSub->addAction(m_actionPortGrid2x2);
+    portSub->addAction(m_actionPortTabbed);
 
     // 7. Menu Affichage
     QMenu* viewMenu = menuBar()->addMenu(tr("&Affichage"));
@@ -935,10 +1004,24 @@ void MainWindow::createRibbon()
     acts.actionMeshGen = m_actionMeshGen;
     acts.actionRunSolve = m_actionRunSolve;
     acts.actionModal = m_actionModal;
+    acts.actionPushover = m_actionPushover;
 
     acts.actionResultsDisp = m_actionResultsDisp;
     acts.actionResultsForces = m_actionResultsForces;
     acts.actionResultsStress = m_actionResultsStress;
+    acts.actionDeformedToggle = m_actionDeformedToggle;
+    acts.actionDiagramMz = m_actionDiagramMz;
+    acts.actionDiagramVz = m_actionDiagramVz;
+    acts.actionDiagramN = m_actionDiagramN;
+    acts.actionDiagramNone = m_actionDiagramNone;
+    acts.actionReactionsToggle = m_actionReactionsToggle;
+    acts.actionOpenNDC = m_actionNoteDeCalcul;
+
+    acts.actionPortSingle = m_actionPortSingle;
+    acts.actionPortSplitH = m_actionPortSplitH;
+    acts.actionPortSplitV = m_actionPortSplitV;
+    acts.actionPortGrid2x2 = m_actionPortGrid2x2;
+    acts.actionPortTabbed = m_actionPortTabbed;
 
     acts.actionView3D = m_actionView3D;
     acts.actionViewXY = m_actionViewXY;

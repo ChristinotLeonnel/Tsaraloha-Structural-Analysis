@@ -7,6 +7,13 @@
 #include "Dialogs/NodalLoadDialog.h"
 #include "Dialogs/MemberLoadDialog.h"
 #include "Dialogs/LoadCaseDialog.h"
+#include "Port/PortAreaWidget.h"
+#include "Diagrams/Diagram2DWidget.h"
+#include "../NDC/NDCViewerWidget.h"
+#include "../Analysis/OpenSeesSolver.h"
+#include "../Analysis/OpenSeesManager.h"
+#include "../Analysis/ResultsModel.h"
+#include "../Viewer/ResultsVisualManager.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -618,119 +625,356 @@ void MainWindow::onActionMeshGen()
 
 void MainWindow::onActionRunSolve()
 {
-    if (!m_model || m_model->nodes().empty())
+    if (!m_model || m_model->nodes().empty() || (m_model->beams().empty() && m_model->columns().empty() && m_model->trussMembers().empty()))
     {
-        QMessageBox::warning(this, tr("Solveur"), tr("Impossible de lancer le calcul : le modèle ne contient aucun élément."));
+        QMessageBox::warning(this, tr("Solveur"), tr("Impossible de lancer le calcul : le modèle ne contient aucun élément structural."));
         return;
     }
 
-    size_t nNodes = m_model->nodes().size();
-    size_t nBeams = m_model->beams().size();
-    size_t nCols = m_model->columns().size();
-    size_t nSlabs = m_model->slabs().size();
+    auto& opsMgr = TSA::Analysis::OpenSeesManager::instance();
+    if (!opsMgr.isAvailable())
+    {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this,
+            tr("OpenSees Non Détecté"),
+            tr("L'exécutable OpenSees est requis pour effectuer les calculs structurels.\n\n"
+               "Voulez-vous lancer le téléchargement automatique de la version officielle Windows ?"),
+            QMessageBox::Yes | QMessageBox::No
+        );
 
-    double totalPoids = (nBeams * 0.3 * 0.5 * 5.0 + nCols * 0.35 * 0.35 * 3.0 + nSlabs * 25.0 * 0.20) * 25.0;
-    if (totalPoids < 10.0) totalPoids = 150.0;
-    double maxDisp = 3.2 + (nBeams > 0 ? nBeams * 0.45 : 1.2);
-    double maxMoment = 48.5 + nBeams * 8.2;
-    double maxShear = 35.0 + nBeams * 5.5;
-    double maxAxial = totalPoids / (nCols > 0 ? nCols : 1);
+        if (reply == QMessageBox::Yes)
+        {
+            QString dlErr;
+            if (!opsMgr.downloadAndInstall(nullptr, &dlErr))
+            {
+                QMessageBox::critical(this, tr("Échec du Téléchargement"), tr("Impossible de télécharger OpenSees :\n%1").arg(dlErr));
+                return;
+            }
+        }
+        else
+        {
+            return;
+        }
+    }
 
     if (m_consoleDock)
     {
-        m_consoleDock->appendLog(tr("--- CALCUL STATIQUE LINÉAIRE EF [K]{u} = {F} ---"), "SYS");
-        m_consoleDock->appendLog(tr("Assemblage matrice de rigidité globale : %1 nœuds, %2 barres, %3 dalles").arg(nNodes).arg(nBeams + nCols).arg(nSlabs), "INFO");
-        m_consoleDock->appendLog(tr("Condition aux limites : Appuis rigides pris en compte."), "INFO");
-        m_consoleDock->appendLog(tr("Résolution par méthode de Cholesky directe : Convergence OK (résidu < 1e-9)."), "INFO");
-        m_consoleDock->appendLog(tr("RÉSULTATS STATIQUES GLOBAUX :"), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Réaction verticale totale Rz = %1 kN").arg(totalPoids, 0, 'f', 1), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Flèche verticale max δ_max    = %1 mm (Limite L/500 -> CONFORME)").arg(maxDisp, 0, 'f', 2), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Moment fléchissant max My,Ed  = %1 kNm").arg(maxMoment, 0, 'f', 1), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Effort tranchant max Vz,Ed    = %1 kN").arg(maxShear, 0, 'f', 1), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Effort normal max poteau N,Ed = %1 kN").arg(maxAxial, 0, 'f', 1), "SUCCESS");
+        m_consoleDock->appendLog(tr("--- CALCUL STATIQUE LINÉAIRE OPENSEES [K]{u} = {F} ---"), "SYS");
+        m_consoleDock->appendLog(tr("Modèle source : %1 nœuds, %2 poutres, %3 poteaux")
+                                .arg(m_model->nodes().size())
+                                .arg(m_model->beams().size())
+                                .arg(m_model->columns().size()), "INFO");
     }
 
-    QMessageBox::information(this, tr("Calcul Statique Terminé"),
-        tr("Calcul éléments finis terminé avec succès !\n\n"
-           "• Déplacement vertical max : %1 mm (CONFORME)\n"
-           "• Moment fléchissant max   : %2 kNm\n"
-           "• Effort normal max poteau : %3 kN\n"
-           "• Réaction totale Rz       : %4 kN")
-        .arg(maxDisp, 0, 'f', 2)
-        .arg(maxMoment, 0, 'f', 1)
-        .arg(maxAxial, 0, 'f', 1)
-        .arg(totalPoids, 0, 'f', 1));
+    TSA::Analysis::AnalysisParameters params;
+    params.type = TSA::Analysis::AnalysisType::LinearStatic;
+    params.useKiloNewtons = true;
+    params.includeSelfWeight = true;
+
+    if (!m_openSeesSolver)
+    {
+        m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
+    }
+
+    QString solveErr;
+    bool ok = m_openSeesSolver->solveSynchronous(*m_model, params, &solveErr);
+
+    if (!ok)
+    {
+        if (m_consoleDock)
+        {
+            m_consoleDock->appendLog(tr("Échec du calcul OpenSees : %1").arg(solveErr), "ERROR");
+            m_consoleDock->appendLog(QString::fromStdString(m_openSeesSolver->results().journalLog()), "ERROR");
+        }
+        QMessageBox::critical(this, tr("Erreur Solveur OpenSees"), tr("Le calcul a échoué :\n%1").arg(solveErr));
+        return;
+    }
+
+    m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
+
+    if (m_occView) m_occView->setResultsModel(m_resultsModel);
+    if (m_portArea) m_portArea->setResultsModel(m_resultsModel);
+
+    const auto& ext = m_resultsModel->summary();
+    const auto& eq = m_resultsModel->equilibrium();
+
+    if (m_consoleDock)
+    {
+        m_consoleDock->appendLog(tr("RÉSULTATS OPENSEES STATIQUES :"), "SUCCESS");
+        m_consoleDock->appendLog(tr("  • Réaction verticale totale Rz = %1 kN").arg(eq.reactionFz, 0, 'f', 2), "SUCCESS");
+        m_consoleDock->appendLog(tr("  • Flèche maximale absolue δ_max = %1 mm (Nœud #%2)")
+                                .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3)
+                                .arg(ext.maxDisplacementNodeId), "SUCCESS");
+        m_consoleDock->appendLog(tr("  • Moment fléchissant max M_max = %1 kNm (Barre #%2)")
+                                .arg(ext.maxBendingMoment, 0, 'f', 2)
+                                .arg(ext.maxBendingMomentElementId), "SUCCESS");
+        m_consoleDock->appendLog(tr("  • Traction max N_max           = %1 kN").arg(ext.maxTension, 0, 'f', 2), "SUCCESS");
+        m_consoleDock->appendLog(tr("  • Équilibre global statique     : %1").arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("DÉSÉQUILIBRE")), "SUCCESS");
+    }
 
     if (m_statusInfo)
     {
-        m_statusInfo->setText(tr("Calcul Statique OK : δ_max = %1 mm, M_max = %2 kNm").arg(maxDisp, 0, 'f', 2).arg(maxMoment, 0, 'f', 1));
+        m_statusInfo->setText(tr("OpenSees Statique OK : δ_max = %1 mm, M_max = %2 kNm")
+                              .arg(ext.maxDisplacement * 1000.0, 0, 'f', 2)
+                              .arg(ext.maxBendingMoment, 0, 'f', 1));
     }
+
+    QMessageBox::information(this, tr("Calcul OpenSees Terminé"),
+        tr("Calcul éléments finis OpenSees terminé avec succès !\n\n"
+           "• Déplacement vertical max : %1 mm (Nœud #%2)\n"
+           "• Moment fléchissant max   : %3 kNm (Barre #%4)\n"
+           "• Traction maximale        : %5 kN\n"
+           "• Réaction verticale totale Rz : %6 kN\n"
+           "• Équilibre global          : %7")
+        .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3)
+        .arg(ext.maxDisplacementNodeId)
+        .arg(ext.maxBendingMoment, 0, 'f', 2)
+        .arg(ext.maxBendingMomentElementId)
+        .arg(ext.maxTension, 0, 'f', 2)
+        .arg(eq.reactionFz, 0, 'f', 2)
+        .arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("VÉRIFIER")));
 }
 
 void MainWindow::onActionModal()
 {
-    if (!m_model || m_model->nodes().empty())
+    if (!m_model || m_model->nodes().empty() || (m_model->beams().empty() && m_model->columns().empty()))
     {
         QMessageBox::warning(this, tr("Analyse Modale"), tr("Impossible de lancer le calcul : le modèle ne contient aucun élément."));
         return;
     }
 
+    auto& opsMgr = TSA::Analysis::OpenSeesManager::instance();
+    if (!opsMgr.isAvailable())
+    {
+        QMessageBox::warning(this, tr("OpenSees Requis"), tr("OpenSees n'est pas détecté. Veuillez le configurer ou le télécharger."));
+        return;
+    }
+
     if (m_consoleDock)
     {
-        m_consoleDock->appendLog(tr("--- ANALYSE MODALE DYNAMIQUE ([K - ω²M]{Φ} = 0) ---"), "SYS");
-        m_consoleDock->appendLog(tr("Mode 1 (Translation X) : f1 = 2.45 Hz | T1 = 0.408 s | Masse part. = 68.5 %"), "INFO");
-        m_consoleDock->appendLog(tr("Mode 2 (Translation Y) : f2 = 2.82 Hz | T2 = 0.355 s | Masse part. = 71.2 %"), "INFO");
-        m_consoleDock->appendLog(tr("Mode 3 (Torsion Z)     : f3 = 4.15 Hz | T3 = 0.241 s | Masse part. = 82.4 %"), "INFO");
-        m_consoleDock->appendLog(tr("Cumul des masses modales > 90 % -> Conformité Eurocode 8 validée."), "SUCCESS");
+        m_consoleDock->appendLog(tr("--- ANALYSE MODALE DYNAMIQUE OPENSEES ([K - ω²M]{Φ} = 0) ---"), "SYS");
     }
 
-    QMessageBox::information(this, tr("Analyse Modale Dynamique"),
-        tr("Analyse Modale Terminée avec Succès !\n\n"
-           "• Mode 1 (Trans. X) : T1 = 0.408 s (f = 2.45 Hz) - Masse = 68.5%\n"
-           "• Mode 2 (Trans. Y) : T2 = 0.355 s (f = 2.82 Hz) - Masse = 71.2%\n"
-           "• Mode 3 (Torsion)  : T3 = 0.241 s (f = 4.15 Hz) - Masse = 82.4%\n\n"
-           "Total des masses modales effectives conforme à l'Eurocode 8."));
+    TSA::Analysis::AnalysisParameters params;
+    params.type = TSA::Analysis::AnalysisType::Modal;
+    params.numEigenmodes = 6;
 
-    if (m_statusInfo)
+    if (!m_openSeesSolver)
     {
-        m_statusInfo->setText(tr("Analyse modale terminée : T1 = 0.408 s (f1 = 2.45 Hz)"));
+        m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
     }
+
+    QString solveErr;
+    bool ok = m_openSeesSolver->solveSynchronous(*m_model, params, &solveErr);
+
+    if (!ok)
+    {
+        if (m_consoleDock)
+        {
+            m_consoleDock->appendLog(tr("Échec de l'analyse modale : %1").arg(solveErr), "ERROR");
+        }
+        QMessageBox::critical(this, tr("Erreur Analyse Modale"), tr("L'analyse modale a échoué :\n%1").arg(solveErr));
+        return;
+    }
+
+    m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
+
+    if (m_occView)
+    {
+        m_occView->setResultsModel(m_resultsModel);
+        if (m_occView->resultsVisual())
+        {
+            m_occView->resultsVisual()->startModalAnimation(1, 1.0);
+        }
+    }
+    if (m_portArea) m_portArea->setResultsModel(m_resultsModel);
+
+    QString msgSummary = tr("Analyse Modale OpenSees Terminée :\n\n");
+    for (const auto& m : m_resultsModel->modalModes())
+    {
+        QString line = tr("Mode %1 : f = %2 Hz | T = %3 s | omega = %4 rad/s")
+                       .arg(m.modeNumber)
+                       .arg(m.frequency, 0, 'f', 3)
+                       .arg(m.period, 0, 'f', 3)
+                       .arg(m.omega, 0, 'f', 2);
+        if (m_consoleDock) m_consoleDock->appendLog(line, "INFO");
+        msgSummary += line + "\n";
+    }
+
+    if (m_statusInfo && !m_resultsModel->modalModes().empty())
+    {
+        const auto& m1 = m_resultsModel->modalModes().front();
+        m_statusInfo->setText(tr("Modal OK : Mode 1: T = %1 s (f = %2 Hz)").arg(m1.period, 0, 'f', 3).arg(m1.frequency, 0, 'f', 2));
+    }
+
+    QMessageBox::information(this, tr("Analyse Modale OpenSees"), msgSummary);
+}
+
+void MainWindow::onActionPushover()
+{
+    if (!m_model || m_model->nodes().empty())
+    {
+        QMessageBox::warning(this, tr("Pushover"), tr("Le modèle ne contient aucun élément."));
+        return;
+    }
+
+    if (m_consoleDock)
+    {
+        m_consoleDock->appendLog(tr("--- ANALYSE NON-LINÉAIRE STATIQUE (PUSHOVER) OPENSEES ---"), "SYS");
+    }
+
+    TSA::Analysis::AnalysisParameters params;
+    params.type = TSA::Analysis::AnalysisType::Pushover;
+    params.numSteps = 30;
+    params.tolerance = 1e-4;
+
+    if (!m_openSeesSolver)
+    {
+        m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
+    }
+
+    QString solveErr;
+    bool ok = m_openSeesSolver->solveSynchronous(*m_model, params, &solveErr);
+
+    if (!ok)
+    {
+        if (m_consoleDock) m_consoleDock->appendLog(tr("Échec du calcul Pushover : %1").arg(solveErr), "ERROR");
+        QMessageBox::critical(this, tr("Erreur Pushover"), tr("L'analyse Pushover a échoué :\n%1").arg(solveErr));
+        return;
+    }
+
+    m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
+
+    if (m_occView) m_occView->setResultsModel(m_resultsModel);
+    if (m_portArea)
+    {
+        m_portArea->setResultsModel(m_resultsModel);
+        m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitHorizontal);
+        if (m_portArea->diagramWidget())
+        {
+            m_portArea->diagramWidget()->setViewMode(TSA::UI::Diagram2DWidget::ViewMode::PushoverCapacity);
+        }
+    }
+
+    if (m_consoleDock)
+    {
+        m_consoleDock->appendLog(tr("Calcul Pushover terminé avec succès. Courbe de capacité affichée dans le port 2D."), "SUCCESS");
+    }
+}
+
+void MainWindow::onActionNoteDeCalcul()
+{
+    if (m_portArea)
+    {
+        m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitHorizontal);
+        m_portArea->port(1)->setPortType(TSA::UI::PortType::CalculationNote);
+        if (m_portArea->ndcWidget())
+        {
+            m_portArea->ndcWidget()->setModel(m_model.get());
+            m_portArea->ndcWidget()->setResultsModel(m_resultsModel);
+            m_portArea->ndcWidget()->refreshDocument();
+        }
+    }
+}
+
+void MainWindow::onActionToggleDeformed(bool checked)
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDeformedVisible(checked);
+    }
+}
+
+void MainWindow::onActionToggleReactions(bool checked)
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setReactionsVisible(checked);
+    }
+}
+
+void MainWindow::onActionDiagramMz()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMz);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::BendingMz);
+    }
+}
+
+void MainWindow::onActionDiagramVz()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVz);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVz);
+    }
+}
+
+void MainWindow::onActionDiagramN()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::AxialForceN);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::AxialForceN);
+    }
+}
+
+void MainWindow::onActionDiagramNone()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::None);
+    }
+}
+
+void MainWindow::onPortLayoutSingle()
+{
+    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::Single);
+}
+
+void MainWindow::onPortLayoutSplitH()
+{
+    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitHorizontal);
+}
+
+void MainWindow::onPortLayoutSplitV()
+{
+    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitVertical);
+}
+
+void MainWindow::onPortLayoutGrid2x2()
+{
+    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::Grid2x2);
+}
+
+void MainWindow::onPortLayoutTabbed()
+{
+    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::Tabbed);
 }
 
 void MainWindow::onActionResultsDisp()
 {
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Affichage de la cartographie des déplacements (Déformée amplifiée x100 active)."), "INFO");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Résultats : Déformée & Déplacements"));
-    }
+    onActionToggleDeformed(true);
 }
 
 void MainWindow::onActionResultsForces()
 {
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Affichage des diagrammes d'efforts internes (Enveloppes M/N/V actives)."), "INFO");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Résultats : Diagrammes M / N / V"));
-    }
+    onActionDiagramMz();
 }
 
 void MainWindow::onActionResultsStress()
 {
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Affichage de la cartographie des contraintes de Von Mises (σ_vm)."), "INFO");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Résultats : Contraintes de Von Mises"));
-    }
+    onActionDiagramN();
 }
 
 void MainWindow::onActionMeasure()

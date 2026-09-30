@@ -215,6 +215,15 @@ set(UI_WIDGETS_SOURCES
     src/UI/Widgets/SectionPreviewWidget.cpp
     src/UI/Widgets/PointSelector.h
     src/UI/Widgets/PointSelector.cpp
+    src/UI/Diagrams/Diagram2DWidget.h
+    src/UI/Diagrams/Diagram2DWidget.cpp
+    src/NDC/NDCViewerWidget.h
+    src/NDC/NDCViewerWidget.cpp
+    src/UI/Port/PortTypes.h
+    src/UI/Port/PortWidget.h
+    src/UI/Port/PortWidget.cpp
+    src/UI/Port/PortAreaWidget.h
+    src/UI/Port/PortAreaWidget.cpp
 )
 
 # --- Ruban (Ribbon UI) ---------------------------------------------------------
@@ -306,6 +315,8 @@ set(VIEWER_MAIN_SOURCES
     src/Viewer/OccView_Events.cpp
     src/Viewer/SelectionManager.h
     src/Viewer/SelectionManager.cpp
+    src/Viewer/ResultsVisualManager.h
+    src/Viewer/ResultsVisualManager.cpp
 )
 
 # --- Matériaux visuels, projection et navigation de vue — [CORE] --------------
@@ -320,10 +331,14 @@ set(VIEWER_CORE_SOURCES
     src/Viewer/ViewManager.cpp
 )
 
-# --- Géométrie des poutres (utilisée par les tests) — [CORE] -----------------
+# --- Géométrie des poutres et résultats (utilisée par les tests) — [CORE] ----
 set(GEOMETRY_CORE_SOURCES
     src/Geometry/BeamGeometry.h
     src/Geometry/BeamGeometry.cpp
+    src/Geometry/DeformedGeometry.h
+    src/Geometry/DeformedGeometry.cpp
+    src/Geometry/DiagramGeometry.h
+    src/Geometry/DiagramGeometry.cpp
 )
 
 # --- Géométrie des autres éléments (UI uniquement) ----------------------------
@@ -386,6 +401,28 @@ set(LOAD_CORE_SOURCES
     src/Analysis/LoadValidation.cpp
     src/Analysis/OpenSeesAdapter.h
     src/Analysis/OpenSeesAdapter.cpp
+    src/Analysis/OpenSeesManager.h
+    src/Analysis/OpenSeesManager.cpp
+    src/Analysis/CalculationSnapshot.h
+    src/Analysis/CalculationSnapshot.cpp
+    src/Analysis/ResultsModel.h
+    src/Analysis/ResultsModel.cpp
+    src/Analysis/OpenSeesAnalysisBuilder.h
+    src/Analysis/OpenSeesAnalysisBuilder.cpp
+    src/Analysis/OpenSeesResultsReader.h
+    src/Analysis/OpenSeesResultsReader.cpp
+    src/Analysis/OpenSeesSolver.h
+    src/Analysis/OpenSeesSolver.cpp
+)
+
+# --- Note de Calcul (NDC) — [CORE] ---------------------------------------------
+set(NDC_CORE_SOURCES
+    src/NDC/NDCDocumentModel.h
+    src/NDC/NDCDocumentModel.cpp
+    src/NDC/NDCGenerator.h
+    src/NDC/NDCGenerator.cpp
+    src/NDC/NDCExporter.h
+    src/NDC/NDCExporter.cpp
 )
 
 # --- Câbles : modèle et normes de calcul — [CORE] -----------------------------
@@ -489,6 +526,7 @@ set(CORE_SOURCES
     ${GEOMETRY_CORE_SOURCES}
     ${MODEL_CORE_SOURCES}
     ${LOAD_CORE_SOURCES}
+    ${NDC_CORE_SOURCES}
     ${CABLE_SOURCES}
     ${CABLE_GEOMETRY_SOURCES}
     ${PROJECT_SOURCES}
@@ -677,6 +715,7 @@ set(TEST_SOURCES
     tests/test_window_manager.cpp
     tests/test_node_system.cpp
     tests/test_loads.cpp
+    tests/test_opensees.cpp
     resources/resources.qrc
 )
 
@@ -701,6 +740,7 @@ add_test(NAME TSA_WorkPlaneTests COMMAND TSA_Tests --suite=workplane)
 add_test(NAME TSA_WindowManagerTests COMMAND TSA_Tests --suite=window)
 add_test(NAME TSA_NodeSystemTests COMMAND TSA_Tests --suite=node)
 add_test(NAME TSA_LoadsTests COMMAND TSA_Tests --suite=loads)
+add_test(NAME TSA_OpenSeesTests COMMAND TSA_Tests --suite=opensees)
 endif()
 
 # =============================================================================

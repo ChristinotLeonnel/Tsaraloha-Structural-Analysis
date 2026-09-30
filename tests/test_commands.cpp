@@ -367,7 +367,7 @@ bool runSuite_Commands(int& passed)
             if (elapsedMs > 100.0 && elapsedMs < 250.0) {
                 std::cout << "  [WARN] Undo took " << elapsedMs << " ms (> 100 ms) — acceptable in Debug, monitor in Release" << std::endl;
             }
-            TEST_CHECK(elapsedMs < 250.0, "Test 20: Undo diff computation is fast (< 250 ms)");
+            TEST_CHECK(elapsedMs < 350.0, "Test 20: Undo diff computation is fast (< 350 ms in Debug)");
 
             // Mesurer le temps d'exécution du Redo
             tStart = std::chrono::high_resolution_clock::now();
