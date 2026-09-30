@@ -4,6 +4,9 @@
 #include "../Model/Model.h"
 #include "Ruler/ViewportContainer.h"
 #include "Dock/LogConsoleDock.h"
+#include "Dialogs/NodalLoadDialog.h"
+#include "Dialogs/MemberLoadDialog.h"
+#include "Dialogs/LoadCaseDialog.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -491,87 +494,49 @@ void MainWindow::onActionRoller()
 
 void MainWindow::onActionPointLoad()
 {
-    std::set<int> targetNodes = m_selectionManager ? m_selectionManager->selectedNodes() : std::set<int>{};
-    if (targetNodes.empty())
+    if (!m_model) return;
+    TSA::UI::NodalLoadDialog dlg(m_model.get(), m_selectionManager.get(), m_occView, this);
+    if (m_selectionManager && !m_selectionManager->selectedNodes().empty())
     {
-        QMessageBox::information(this, tr("Force Ponctuelle"), tr("Veuillez sélectionner au moins un nœud cible."));
-        return;
+        dlg.setTargetNodeId(*m_selectionManager->selectedNodes().begin());
     }
-
-    bool ok = false;
-    double fz = QInputDialog::getDouble(this, tr("Force Ponctuelle"), tr("Force Fz (kN, négatif vers le bas) :"), -50.0, -100000.0, 100000.0, 1, &ok);
-    if (!ok) return;
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Charge ponctuelle F = (0.0, 0.0, %1 kN) appliquée sur %2 nœud(s)")
-            .arg(fz).arg(targetNodes.size()), "SUCCESS");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Force Fz = %1 kN appliquée sur %2 nœuds").arg(fz).arg(targetNodes.size()));
-    }
+    dlg.exec();
 }
 
 void MainWindow::onActionDistLoad()
 {
-    std::set<int> targetBeams;
-    if (m_selectionManager && !m_selectionManager->selectedBeams().empty())
+    if (!m_model) return;
+    TSA::UI::MemberLoadDialog dlg(m_model.get(), m_selectionManager.get(), m_occView, this);
+    if (m_selectionManager)
     {
-        targetBeams = m_selectionManager->selectedBeams();
+        if (!m_selectionManager->selectedBeams().empty())
+        {
+            dlg.setTargetElementId(*m_selectionManager->selectedBeams().begin());
+        }
+        else if (!m_selectionManager->selectedColumns().empty())
+        {
+            dlg.setTargetElementId(*m_selectionManager->selectedColumns().begin());
+        }
     }
-    else
-    {
-        for (const auto& [id, b] : m_model->beams()) targetBeams.insert(id);
-    }
-
-    if (targetBeams.empty())
-    {
-        QMessageBox::information(this, tr("Charge Répartie"), tr("Aucune poutre présente dans le modèle."));
-        return;
-    }
-
-    bool ok = false;
-    double q = QInputDialog::getDouble(this, tr("Charge Répartie Linéique"), tr("Intensité qz (kN/m) :"), -15.0, -10000.0, 10000.0, 2, &ok);
-    if (!ok) return;
-
-    QStringList cases = { tr("G (Poids Propre & Charges Permanentes)"), tr("Q (Charges d'Exploitation)"), tr("S (Neige)") };
-    QString loadCase = QInputDialog::getItem(this, tr("Cas de Charge"), tr("Cas de charge Eurocode :"), cases, 0, false, &ok);
-    if (!ok) return;
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Charge linéique q = %1 kN/m [%2] appliquée sur %3 poutre(s)")
-            .arg(q).arg(loadCase.split(" ").value(0)).arg(targetBeams.size()), "SUCCESS");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Charge répartie q = %1 kN/m appliquée (%2 poutres)").arg(q).arg(targetBeams.size()));
-    }
+    dlg.exec();
 }
 
 void MainWindow::onActionMoment()
 {
-    std::set<int> targetNodes = m_selectionManager ? m_selectionManager->selectedNodes() : std::set<int>{};
-    if (targetNodes.empty())
+    if (!m_model) return;
+    TSA::UI::NodalLoadDialog dlg(m_model.get(), m_selectionManager.get(), m_occView, this);
+    if (m_selectionManager && !m_selectionManager->selectedNodes().empty())
     {
-        QMessageBox::information(this, tr("Moment"), tr("Veuillez sélectionner au moins un nœud."));
-        return;
+        dlg.setTargetNodeId(*m_selectionManager->selectedNodes().begin());
     }
+    dlg.exec();
+}
 
-    bool ok = false;
-    double my = QInputDialog::getDouble(this, tr("Moment Concentré"), tr("Moment My (kNm) :"), 25.0, -100000.0, 100000.0, 1, &ok);
-    if (!ok) return;
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Moment nodal My = %1 kNm appliqué sur %2 nœud(s)")
-            .arg(my).arg(targetNodes.size()), "SUCCESS");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Moment My = %1 kNm appliqué").arg(my));
-    }
+void MainWindow::onActionLoadCases()
+{
+    if (!m_model) return;
+    TSA::UI::LoadCaseDialog dlg(m_model.get(), this);
+    dlg.exec();
 }
 
 void MainWindow::onActionSeismic()

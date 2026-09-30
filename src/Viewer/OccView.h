@@ -271,6 +271,20 @@ public:
     void setNodeLabelsVisible(bool visible);
     bool areNodeLabelsVisible() const noexcept { return m_nodeLabelsVisible; }
 
+    // Visibilité et étiquetage 3D des charges (Forces, Moments, Réparties)
+    void setLoadsVisible(bool visible);
+    bool areLoadsVisible() const noexcept { return m_loadsVisible; }
+
+    void setLoadValuesVisible(bool visible);
+    bool areLoadValuesVisible() const noexcept { return m_loadValuesVisible; }
+
+    void updateNodalLoadShape(int loadId, bool redrawImmediately = true);
+    void removeNodalLoadShape(int loadId, bool redrawImmediately = true);
+    void updateMemberLoadShape(int loadId, bool redrawImmediately = true);
+    void removeMemberLoadShape(int loadId, bool redrawImmediately = true);
+    void updateAllLoadShapes();
+    void clearLoadShapes();
+
     void pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)>& onPicked,
                      const std::function<void()>& onCancelled = nullptr);
 
@@ -285,6 +299,8 @@ signals:
     void objectSnapChanged(bool enabled);
     void nodesVisibilityChanged(bool visible);
     void nodeLabelsVisibilityChanged(bool visible);
+    void loadsVisibilityChanged(bool visible);
+    void loadValuesVisibilityChanged(bool visible);
     void interactionModeChanged(InteractionMode mode);
     void drawingPromptChanged(const QString& prompt);
     void viewPlaneModeChanged(ViewPlaneMode mode);
@@ -362,6 +378,19 @@ protected:
     void onCableModified(const TSA::Model::Cable& cable) override;
     void onCableRemoved(int cableId) override;
 
+    void onNodalLoadAdded(int loadId) override;
+    void onNodalLoadModified(int loadId) override;
+    void onNodalLoadRemoved(int loadId) override;
+
+    void onMemberLoadAdded(int loadId) override;
+    void onMemberLoadModified(int loadId) override;
+    void onMemberLoadRemoved(int loadId) override;
+
+    void onLoadAdded(int loadId) override;
+    void onLoadModified(int loadId) override;
+    void onLoadRemoved(int loadId) override;
+    void onLoadCaseChanged(int caseId) override;
+
     void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;
 
@@ -416,6 +445,12 @@ private:
     std::map<int, Handle(AIS_Shape)> m_foundationShapes;
     std::map<int, Handle(AIS_Shape)> m_trussShapes;
     std::map<int, Handle(AIS_Shape)> m_cableShapes;
+    std::map<int, Handle(AIS_Shape)> m_nodalLoadShapes;
+    std::map<int, Handle(AIS_TextLabel)> m_nodalLoadLabels;
+    std::map<int, std::vector<Handle(AIS_Shape)>> m_memberLoadShapes;
+    std::map<int, Handle(AIS_TextLabel)> m_memberLoadLabels;
+    bool m_loadsVisible = true;
+    bool m_loadValuesVisible = true;
 
     bool m_isInitialized = false;
 

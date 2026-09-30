@@ -370,6 +370,20 @@ void MainWindow::createActions()
     m_actionNodeLabelsVisible->setChecked(false);
     connect(m_actionNodeLabelsVisible, &QAction::toggled, this, &MainWindow::onToggleNodeLabelsVisible);
 
+    m_actionLoadsVisible = new QAction(tr("Afficher les &Charges 3D"), this);
+    m_actionLoadsVisible->setIcon(QIcon(":/icons/load_dist.svg"));
+    m_actionLoadsVisible->setToolTip(tr("Afficher ou masquer les représentations et flèches 3D des charges"));
+    m_actionLoadsVisible->setCheckable(true);
+    m_actionLoadsVisible->setChecked(true);
+    connect(m_actionLoadsVisible, &QAction::toggled, this, &MainWindow::onToggleLoadsVisible);
+
+    m_actionLoadValuesVisible = new QAction(tr("Afficher les &Valeurs des Charges"), this);
+    m_actionLoadValuesVisible->setIcon(QIcon(":/icons/results_forces.svg"));
+    m_actionLoadValuesVisible->setToolTip(tr("Afficher ou masquer les étiquettes de valeurs des charges (kN, kNm) en 3D"));
+    m_actionLoadValuesVisible->setCheckable(true);
+    m_actionLoadValuesVisible->setChecked(true);
+    connect(m_actionLoadValuesVisible, &QAction::toggled, this, &MainWindow::onToggleLoadValuesVisible);
+
     m_actionRulersVisible = new QAction(tr("Afficher &Règles Graduées"), this);
     m_actionRulersVisible->setIcon(QIcon(":/icons/rulers.svg"));
     m_actionRulersVisible->setToolTip(tr("Afficher ou masquer les règles graduées du viewport"));
@@ -634,6 +648,11 @@ void MainWindow::createActions()
     m_actionMoment->setToolTip(tr("Appliquer un moment fléchissant ou de torsion"));
     connect(m_actionMoment, &QAction::triggered, this, &MainWindow::onActionMoment);
 
+    m_actionLoadCases = new QAction(tr("&Cas de Charges && Combinaisons..."), this);
+    m_actionLoadCases->setIcon(QIcon(":/icons/analysis_modal.svg"));
+    m_actionLoadCases->setToolTip(tr("Gérer les cas de charges, combinaisons Eurocodes et export OpenSees"));
+    connect(m_actionLoadCases, &QAction::triggered, this, &MainWindow::onActionLoadCases);
+
     m_actionSeismic = new QAction(tr("Action &Sismique (Eurocode 8)..."), this);
     m_actionSeismic->setIcon(QIcon(":/icons/load_seismic.svg"));
     m_actionSeismic->setToolTip(tr("Définir le spectre sismique réglementaire"));
@@ -760,6 +779,8 @@ void MainWindow::createMenus()
     loadSubMenu->addAction(m_actionDistLoad);
     loadSubMenu->addAction(m_actionMoment);
     loadSubMenu->addAction(m_actionSeismic);
+    loadSubMenu->addSeparator();
+    loadSubMenu->addAction(m_actionLoadCases);
     analysisMenu->addSeparator();
     analysisMenu->addAction(m_actionMeshGen);
     analysisMenu->addSeparator();
@@ -822,6 +843,8 @@ void MainWindow::createMenus()
     visSub->addAction(m_actionGridLabels);
     visSub->addAction(m_actionNodesVisible);
     visSub->addAction(m_actionNodeLabelsVisible);
+    visSub->addAction(m_actionLoadsVisible);
+    visSub->addAction(m_actionLoadValuesVisible);
     visSub->addAction(m_actionGridSnap);
     visSub->addAction(m_actionObjectSnap);
     visSub->addAction(m_actionRulersVisible);
@@ -1012,6 +1035,8 @@ void MainWindow::createDockWindows()
     m_visibilityDock->bindGridLabelsAction(m_actionGridLabels);
     m_visibilityDock->bindNodesVisibleAction(m_actionNodesVisible);
     m_visibilityDock->bindNodeLabelsAction(m_actionNodeLabelsVisible);
+    m_visibilityDock->bindLoadsVisibleAction(m_actionLoadsVisible);
+    m_visibilityDock->bindLoadValuesVisibleAction(m_actionLoadValuesVisible);
     m_visibilityDock->bindRulersVisibleAction(m_actionRulersVisible);
     m_visibilityDock->bindCoordSystemAction(m_actionCoordSystem);
     m_visibilityDock->bindWorkPlaneVisibleAction(m_actionWorkPlaneVisible);
@@ -1154,6 +1179,7 @@ void MainWindow::createDockWindows()
         else if (c == "LOAD" || c == "FORCE" || c == "CHARGE") onActionPointLoad();
         else if (c == "DISTLOAD" || c == "QLOAD") onActionDistLoad();
         else if (c == "MOMENT") onActionMoment();
+        else if (c == "CAS" || c == "LOADCASE" || c == "COMBINAISON" || c == "OPENSEES") onActionLoadCases();
         else if (c == "SEISMIC" || c == "SEISME") onActionSeismic();
         else if (c == "MESH" || c == "MAILLAGE") onActionMeshGen();
         else if (c == "SOLVE" || c == "CALC" || c == "RUN") onActionRunSolve();

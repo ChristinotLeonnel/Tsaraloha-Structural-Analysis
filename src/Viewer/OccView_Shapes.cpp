@@ -35,7 +35,11 @@
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <gp_Pnt.hxx>
 #include <QColor>
-#include <QString>
+#include "../Model/Load/LoadManager.h"
+#include "../Analysis/LoadResolver.h"
+#include <BRepPrimAPI_MakeCylinder.hxx>
+#include <BRepPrimAPI_MakeCone.hxx>
+#include <algorithm>
 
 namespace
 {
@@ -48,6 +52,26 @@ static bool parseHexColor(const std::string& hex, Quantity_Color& outColor)
         return false;
     outColor = Quantity_Color(qc.redF(), qc.greenF(), qc.blueF(), Quantity_TOC_sRGB);
     return true;
+}
+
+static TopoDS_Shape makeArrowShape(const gp_Pnt& targetPnt, const gp_Vec& dir, double length, double shaftRadius, double headRadius, double headLength)
+{
+    if (dir.Magnitude() < 1e-6 || length <= headLength) return TopoDS_Shape();
+    gp_Dir d(dir);
+    gp_Pnt basePnt = targetPnt.Translated(-gp_Vec(d) * length);
+    gp_Ax2 cylAxes(basePnt, d);
+    BRepPrimAPI_MakeCylinder cyl(cylAxes, shaftRadius, length - headLength);
+
+    gp_Pnt headBase = basePnt.Translated(gp_Vec(d) * (length - headLength));
+    gp_Ax2 coneAxes(headBase, d);
+    BRepPrimAPI_MakeCone cone(coneAxes, headRadius, 0.0, headLength);
+
+    BRep_Builder bb;
+    TopoDS_Compound comp;
+    bb.MakeCompound(comp);
+    bb.Add(comp, cyl.Shape());
+    bb.Add(comp, cone.Shape());
+    return comp;
 }
 } // namespace
 
@@ -171,6 +195,65 @@ void OccView::onCableRemoved(int cableId)
     removeCableShape(cableId);
 }
 
+void OccView::onNodalLoadAdded(int loadId)
+{
+    updateNodalLoadShape(loadId);
+}
+
+void OccView::onNodalLoadModified(int loadId)
+{
+    updateNodalLoadShape(loadId);
+}
+
+void OccView::onNodalLoadRemoved(int loadId)
+{
+    removeNodalLoadShape(loadId);
+}
+
+void OccView::onMemberLoadAdded(int loadId)
+{
+    updateMemberLoadShape(loadId);
+}
+
+void OccView::onMemberLoadModified(int loadId)
+{
+    updateMemberLoadShape(loadId);
+}
+
+void OccView::onMemberLoadRemoved(int loadId)
+{
+    removeMemberLoadShape(loadId);
+}
+
+void OccView::onLoadAdded(int loadId)
+{
+    if (!m_model) return;
+    if (m_model->loadManager().getNodalLoad(loadId))
+    {
+        updateNodalLoadShape(loadId);
+    }
+    if (m_model->loadManager().getMemberLoad(loadId))
+    {
+        updateMemberLoadShape(loadId);
+    }
+}
+
+void OccView::onLoadModified(int loadId)
+{
+    onLoadAdded(loadId);
+}
+
+void OccView::onLoadRemoved(int loadId)
+{
+    removeNodalLoadShape(loadId);
+    removeMemberLoadShape(loadId);
+}
+
+void OccView::onLoadCaseChanged(int /*caseId*/)
+{
+    updateAllLoadShapes();
+}
+
 void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
 {
     if (m_context.IsNull() || !m_model)
@@ -204,6 +287,7 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
     for (int id : diff.modifiedFoundationIds) updateFoundationShape(id, false);
     for (int id : diff.modifiedTrussMemberIds) updateTrussMemberShape(id, false);
     for (int id : diff.modifiedCableIds) updateCableShape(id, false);
+    updateAllLoadShapes();
 
     // 3. Une SEULE passe d'actualisation de la vue graphique OCCT
     // AUCUN fitAll(), la caméra et le zoom sont rigoureusement préservés !
@@ -383,6 +467,7 @@ void OccView::rebuildAllShapes()
         return;
 
     // Nettoyer tous les objets existants
+    clearLoadShapes();
     for (auto& [id, aisShape] : m_nodeShapes)
     {
         m_context->Remove(aisShape, false);
@@ -492,6 +577,9 @@ void OccView::rebuildAllShapes()
     {
         updateCableShape(cableId, false);
     }
+
+    // 9. Créer les formes des charges
+    updateAllLoadShapes();
 
     m_context->UpdateCurrentViewer();
     fitAll();
@@ -1323,4 +1411,293 @@ void OccView::removeCableShape(int cableId, bool redrawImmediately)
         m_view->Redraw();
     }
 }
+
+// =============================================================================
+// Visualisation 3D des charges (Forces, Moments, Réparties)
+// =============================================================================
+void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
+{
+    if (m_context.IsNull() || !m_model) return;
+
+    removeNodalLoadShape(loadId, false);
+
+    const auto* nl = m_model->loadManager().getNodalLoad(loadId);
+    if (!nl) return;
+
+    const auto* node = m_model->getNode(nl->nodeId());
+    if (!node) return;
+
+    gp_Pnt p0(node->x(), node->y(), node->z());
+
+    // 1. Vecteur force
+    gp_Vec fVec(nl->fx(), nl->fy(), nl->fz());
+    double mag = fVec.Magnitude();
+
+    if (mag > 1e-6)
+    {
+        gp_Dir fDir(fVec);
+        double arrowLen = std::clamp(0.6 + mag * 0.02, 0.8, 2.5);
+        TopoDS_Shape arrow = makeArrowShape(p0, fDir, arrowLen, 0.04, 0.10, 0.25);
+        if (!arrow.IsNull())
+        {
+            Handle(AIS_Shape) aisLoad = new AIS_Shape(arrow);
+            aisLoad->SetColor(Quantity_NOC_RED);
+            aisLoad->SetMaterial(Graphic3d_NOM_PLASTIC);
+            aisLoad->SetDisplayMode(AIS_Shaded);
+            m_nodalLoadShapes[loadId] = aisLoad;
+            if (m_loadsVisible)
+            {
+                m_context->Display(aisLoad, false);
+            }
+        }
+    }
+
+    // 2. Texte de valeur
+    Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
+    QString valTxt;
+    if (mag > 1e-6) valTxt = QString("F = %1 kN").arg(QString::number(mag, 'f', 1));
+    if (nl->hasMoment())
+    {
+        double mMag = nl->momentMagnitude();
+        if (!valTxt.isEmpty()) valTxt += "\n";
+        valTxt += QString("M = %1 kNm").arg(QString::number(mMag, 'f', 1));
+    }
+    if (valTxt.isEmpty()) valTxt = QString("NL#%1").arg(loadId);
+
+    aisLabel->SetText(TCollection_ExtendedString(valTxt.toUtf8().constData(), true));
+    aisLabel->SetPosition(gp_Pnt(p0.X(), p0.Y(), p0.Z() + 0.35));
+    aisLabel->SetColor(m_isDarkMode ? Quantity_Color(1.0, 0.8, 0.2, Quantity_TOC_RGB) : Quantity_Color(0.8, 0.4, 0.0, Quantity_TOC_RGB));
+    aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
+    aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
+    aisLabel->SetHeight(12.0);
+    aisLabel->SetFontAspect(Font_FA_Bold);
+
+    m_context->Display(aisLabel, false);
+    m_context->Deactivate(aisLabel);
+    if (!m_loadValuesVisible || !m_loadsVisible)
+    {
+        m_context->Erase(aisLabel, false);
+    }
+    m_nodalLoadLabels[loadId] = aisLabel;
+
+    if (redrawImmediately && !m_view.IsNull())
+    {
+        m_context->UpdateCurrentViewer();
+        m_view->Redraw();
+    }
+}
+
+void OccView::removeNodalLoadShape(int loadId, bool redrawImmediately)
+{
+    auto itS = m_nodalLoadShapes.find(loadId);
+    if (itS != m_nodalLoadShapes.end())
+    {
+        if (!m_context.IsNull()) m_context->Remove(itS->second, false);
+        m_nodalLoadShapes.erase(itS);
+    }
+    auto itL = m_nodalLoadLabels.find(loadId);
+    if (itL != m_nodalLoadLabels.end())
+    {
+        if (!m_context.IsNull()) m_context->Remove(itL->second, false);
+        m_nodalLoadLabels.erase(itL);
+    }
+    if (redrawImmediately && !m_view.IsNull())
+    {
+        m_context->UpdateCurrentViewer();
+        m_view->Redraw();
+    }
+}
+
+void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
+{
+    if (m_context.IsNull() || !m_model) return;
+
+    removeMemberLoadShape(loadId, false);
+
+    const auto* ml = m_model->loadManager().getMemberLoad(loadId);
+    if (!ml) return;
+
+    int elemId = ml->elementId();
+    int sNode = 0, eNode = 0;
+    double rotDeg = 0.0;
+    const auto* b = m_model->getBeam(elemId);
+    if (b) { sNode = b->startNodeId(); eNode = b->endNodeId(); rotDeg = b->rotation(); }
+    else
+    {
+        const auto* col = m_model->getColumn(elemId);
+        if (col) { sNode = col->startNodeId(); eNode = col->endNodeId(); rotDeg = col->rotation(); }
+        else
+        {
+            const auto* tr = m_model->getTrussMember(elemId);
+            if (tr) { sNode = tr->startNodeId(); eNode = tr->endNodeId(); }
+        }
+    }
+
+    const auto* n1 = m_model->getNode(sNode);
+    const auto* n2 = m_model->getNode(eNode);
+    if (!n1 || !n2) return;
+
+    gp_Pnt p1(n1->x(), n1->y(), n1->z());
+    gp_Pnt p2(n2->x(), n2->y(), n2->z());
+
+    gp_Vec vAxis(p1, p2);
+    double len = vAxis.Magnitude();
+    if (len < 1e-4) return;
+
+    // Direction de la charge
+    gp_Vec dirVec(0.0, 0.0, -1.0);
+    if (ml->direction() == TSA::Model::LoadDirection::GlobalX) dirVec = gp_Vec(1.0, 0.0, 0.0);
+    else if (ml->direction() == TSA::Model::LoadDirection::GlobalY) dirVec = gp_Vec(0.0, 1.0, 0.0);
+    else if (ml->direction() == TSA::Model::LoadDirection::GlobalZ) dirVec = gp_Vec(0.0, 0.0, 1.0);
+    else if (ml->direction() == TSA::Model::LoadDirection::Gravity) dirVec = gp_Vec(0.0, 0.0, -1.0);
+    else if (ml->direction() == TSA::Model::LoadDirection::LocalX)
+    {
+        gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
+        dirVec = gp_Vec(frame.XDirection());
+    }
+    else if (ml->direction() == TSA::Model::LoadDirection::LocalY)
+    {
+        gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
+        dirVec = gp_Vec(frame.YDirection());
+    }
+    else if (ml->direction() == TSA::Model::LoadDirection::LocalZ)
+    {
+        gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
+        dirVec = gp_Vec(frame.Direction());
+    }
+    if (dirVec.SquareMagnitude() > 1e-6) dirVec.Normalize();
+
+    // Flèches réparties le long de la barre
+    std::vector<Handle(AIS_Shape)> shapes;
+    int numArrows = 4;
+    double arrowH = 0.6;
+
+    for (int i = 0; i <= numArrows; ++i)
+    {
+        double t = static_cast<double>(i) / static_cast<double>(numArrows);
+        gp_Pnt pt = p1.Translated(vAxis * t);
+        TopoDS_Shape arr = makeArrowShape(pt, dirVec, arrowH, 0.025, 0.07, 0.16);
+        if (!arr.IsNull())
+        {
+            Handle(AIS_Shape) aisArr = new AIS_Shape(arr);
+            aisArr->SetColor(Quantity_NOC_CYAN);
+            aisArr->SetMaterial(Graphic3d_NOM_PLASTIC);
+            aisArr->SetDisplayMode(AIS_Shaded);
+            if (m_loadsVisible)
+            {
+                m_context->Display(aisArr, false);
+            }
+            shapes.push_back(aisArr);
+        }
+    }
+    m_memberLoadShapes[loadId] = shapes;
+
+    // Étiquette au milieu
+    gp_Pnt midPnt = p1.Translated(vAxis * 0.5);
+    gp_Pnt labelPos = midPnt.Translated(-dirVec * (arrowH + 0.15));
+
+    Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
+    QString textVal = QString("q = %1 kN/m").arg(QString::number(ml->q1(), 'f', 1));
+    const auto* lc = m_model->loadManager().getLoadCase(ml->loadCaseId());
+    if (lc) textVal += QString(" [%1]").arg(QString::fromStdString(lc->name()));
+
+    aisLabel->SetText(TCollection_ExtendedString(textVal.toUtf8().constData(), true));
+    aisLabel->SetPosition(labelPos);
+    aisLabel->SetColor(m_isDarkMode ? Quantity_Color(0.2, 0.9, 1.0, Quantity_TOC_RGB) : Quantity_Color(0.0, 0.5, 0.7, Quantity_TOC_RGB));
+    aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
+    aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
+    aisLabel->SetHeight(12.0);
+    aisLabel->SetFontAspect(Font_FA_Bold);
+
+    m_context->Display(aisLabel, false);
+    m_context->Deactivate(aisLabel);
+    if (!m_loadValuesVisible || !m_loadsVisible)
+    {
+        m_context->Erase(aisLabel, false);
+    }
+    m_memberLoadLabels[loadId] = aisLabel;
+
+    if (redrawImmediately && !m_view.IsNull())
+    {
+        m_context->UpdateCurrentViewer();
+        m_view->Redraw();
+    }
+}
+
+void OccView::removeMemberLoadShape(int loadId, bool redrawImmediately)
+{
+    auto itS = m_memberLoadShapes.find(loadId);
+    if (itS != m_memberLoadShapes.end())
+    {
+        if (!m_context.IsNull())
+        {
+            for (auto& s : itS->second)
+            {
+                if (!s.IsNull()) m_context->Remove(s, false);
+            }
+        }
+        m_memberLoadShapes.erase(itS);
+    }
+    auto itL = m_memberLoadLabels.find(loadId);
+    if (itL != m_memberLoadLabels.end())
+    {
+        if (!m_context.IsNull()) m_context->Remove(itL->second, false);
+        m_memberLoadLabels.erase(itL);
+    }
+    if (redrawImmediately && !m_view.IsNull())
+    {
+        m_context->UpdateCurrentViewer();
+        m_view->Redraw();
+    }
+}
+
+void OccView::updateAllLoadShapes()
+{
+    if (!m_model) return;
+    clearLoadShapes();
+    for (const auto& [id, nl] : m_model->loadManager().nodalLoads())
+    {
+        updateNodalLoadShape(id, false);
+    }
+    for (const auto& [id, ml] : m_model->loadManager().memberLoads())
+    {
+        updateMemberLoadShape(id, false);
+    }
+    if (!m_context.IsNull())
+    {
+        m_context->UpdateCurrentViewer();
+    }
+}
+
+void OccView::clearLoadShapes()
+{
+    if (m_context.IsNull()) return;
+    for (auto& [id, s] : m_nodalLoadShapes)
+    {
+        if (!s.IsNull()) m_context->Remove(s, false);
+    }
+    m_nodalLoadShapes.clear();
+
+    for (auto& [id, l] : m_nodalLoadLabels)
+    {
+        if (!l.IsNull()) m_context->Remove(l, false);
+    }
+    m_nodalLoadLabels.clear();
+
+    for (auto& [id, shapes] : m_memberLoadShapes)
+    {
+        for (auto& s : shapes)
+        {
+            if (!s.IsNull()) m_context->Remove(s, false);
+        }
+    }
+    m_memberLoadShapes.clear();
+
+    for (auto& [id, l] : m_memberLoadLabels)
+    {
+        if (!l.IsNull()) m_context->Remove(l, false);
+    }
+    m_memberLoadLabels.clear();
+}
+
 

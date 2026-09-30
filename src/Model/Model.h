@@ -8,6 +8,7 @@
 #include "Foundation.h"
 #include "TrussMember.h"
 #include "Cable/Cable.h"
+#include "Load/LoadManager.h"
 #include "../Coordinate/CoordinateSystem.h"
 #include "../Coordinate/WorkPlaneManager.h"
 #include "../ExtensionSystem/ExtensionTypes.h"
@@ -61,6 +62,19 @@ public:
     virtual void onCableAdded(const Cable& /*cable*/) {}
     virtual void onCableModified(const Cable& /*cable*/) {}
     virtual void onCableRemoved(int /*cableId*/) {}
+
+    virtual void onNodalLoadAdded(int /*loadId*/) {}
+    virtual void onNodalLoadModified(int /*loadId*/) {}
+    virtual void onNodalLoadRemoved(int /*loadId*/) {}
+
+    virtual void onMemberLoadAdded(int /*loadId*/) {}
+    virtual void onMemberLoadModified(int /*loadId*/) {}
+    virtual void onMemberLoadRemoved(int /*loadId*/) {}
+
+    virtual void onLoadAdded(int /*loadId*/) {}
+    virtual void onLoadModified(int /*loadId*/) {}
+    virtual void onLoadRemoved(int /*loadId*/) {}
+    virtual void onLoadCaseChanged(int /*caseId*/) {}
 
     virtual void onModelDiffApplied(const ModelDiff& /*diff*/) {}
     virtual void onModelCleared() {}
@@ -193,6 +207,7 @@ public:
         std::map<int, Foundation> foundations;
         std::map<int, TrussMember> trussMembers;
         std::map<int, Cable> cables;
+        LoadManager::LoadSnapshot loadSnapshot;
         std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> calculationSnapshots;
         std::map<std::string, TSA::ExtensionSystem::DefinitionReference> definitionReferences;
         int nextNodeId = 1;
@@ -205,6 +220,10 @@ public:
         int nextCableId = 1;
         std::string actionName;
     };
+
+    // Gestionnaire de charges, cas de charges et combinaisons
+    LoadManager& loadManager() noexcept { return m_loadManager; }
+    const LoadManager& loadManager() const noexcept { return m_loadManager; }
 
     // Historique Undo / Redo (Ctrl+Z / Ctrl+Y)
     void pushUndoState(const std::string& actionName = "");
@@ -233,6 +252,19 @@ public:
     void notifyFoundationModified(int foundationId);
     void notifyTrussMemberModified(int memberId);
     void notifyCableModified(int cableId);
+
+    void notifyNodalLoadAdded(int loadId);
+    void notifyNodalLoadModified(int loadId);
+    void notifyNodalLoadRemoved(int loadId);
+
+    void notifyMemberLoadAdded(int loadId);
+    void notifyMemberLoadModified(int loadId);
+    void notifyMemberLoadRemoved(int loadId);
+
+    void notifyLoadAdded(int loadId);
+    void notifyLoadModified(int loadId);
+    void notifyLoadRemoved(int loadId);
+    void notifyLoadCaseChanged(int caseId);
 
     // État de modification du document (Dirty state)
     bool isModified() const { return m_isModified; }
@@ -281,6 +313,7 @@ private:
     std::map<int, Cable> m_cables;
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> m_calculationSnapshots;
     std::map<std::string, TSA::ExtensionSystem::DefinitionReference> m_definitionReferences;
+    LoadManager m_loadManager;
 
     std::vector<IModelObserver*> m_observers;
 

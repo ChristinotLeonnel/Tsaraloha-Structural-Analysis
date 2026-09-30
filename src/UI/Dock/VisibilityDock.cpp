@@ -68,6 +68,14 @@ void VisibilityDock::setupUi()
     m_chkNodeLabels->setChecked(false);
     modelLayout->addWidget(m_chkNodeLabels);
 
+    m_chkLoads = new QCheckBox(tr("Charges & Actions (3D)"), modelGroup);
+    m_chkLoads->setChecked(true);
+    modelLayout->addWidget(m_chkLoads);
+
+    m_chkLoadValues = new QCheckBox(tr("Valeurs des charges (kN, kN/m)"), modelGroup);
+    m_chkLoadValues->setChecked(true);
+    modelLayout->addWidget(m_chkLoadValues);
+
     m_chkBeams = new QCheckBox(tr("Poutres"), modelGroup);
     m_chkBeams->setChecked(true);
     modelLayout->addWidget(m_chkBeams);
@@ -149,6 +157,22 @@ void VisibilityDock::bindNodeLabelsAction(QAction* act)
     m_chkNodeLabels->setChecked(act->isChecked());
     connect(m_chkNodeLabels, &QCheckBox::toggled, act, &QAction::setChecked);
     connect(act, &QAction::toggled, m_chkNodeLabels, &QCheckBox::setChecked);
+}
+
+void VisibilityDock::bindLoadsVisibleAction(QAction* act)
+{
+    if (!act || !m_chkLoads) return;
+    m_chkLoads->setChecked(act->isChecked());
+    connect(m_chkLoads, &QCheckBox::toggled, act, &QAction::setChecked);
+    connect(act, &QAction::toggled, m_chkLoads, &QCheckBox::setChecked);
+}
+
+void VisibilityDock::bindLoadValuesVisibleAction(QAction* act)
+{
+    if (!act || !m_chkLoadValues) return;
+    m_chkLoadValues->setChecked(act->isChecked());
+    connect(m_chkLoadValues, &QCheckBox::toggled, act, &QAction::setChecked);
+    connect(act, &QAction::toggled, m_chkLoadValues, &QCheckBox::setChecked);
 }
 
 } // namespace TSA::UI
