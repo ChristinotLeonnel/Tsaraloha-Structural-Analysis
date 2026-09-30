@@ -14,6 +14,14 @@
 #include "Dialogs/WorkPlaneDialog.h"
 #include "Dialogs/SectionCutDialog.h"
 #include "Ruler/ViewportContainer.h"
+#include "Port/PortAreaWidget.h"
+#include "Port/PortTypes.h"
+#include "Diagrams/Diagram2DWidget.h"
+#include "../NDC/NDCViewerWidget.h"
+#include "../Analysis/OpenSeesSolver.h"
+#include "../Analysis/ResultsModel.h"
+#include "../Analysis/OpenSeesManager.h"
+#include "../Viewer/ResultsVisualManager.h"
 #include "Ribbon/RibbonBar.h"
 #include "Ribbon/RibbonBuilder.h"
 #include "Dock/VisibilityDock.h"
@@ -135,6 +143,12 @@ MainWindow::MainWindow(QWidget* parent)
     m_occView->setGridManager(m_gridManager.get(), m_gridSnapManager.get());
     m_occView->setCreationPresets(m_presets);
 
+    m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
+    if (m_portArea)
+    {
+        m_portArea->setModel(m_model.get());
+    }
+
     connect(m_gridManager.get(), &TSA::Grid::GridManager::gridAdded, this, [this]() {
         m_occView->rebuildGrid();
     });
@@ -212,11 +226,12 @@ void MainWindow::setupUi()
 
     setDockNestingEnabled(true);
 
-    // Widget central : Viewport OpenCASCADE entouré des règles graduées (style Robot)
+    // Widget central : Espace de travail multi-ports intégrant le Viewport OpenCASCADE entouré des règles graduées
     m_occView = new OccView(this);
     m_occView->setSelectionManager(m_selectionManager.get());
     m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
-    setCentralWidget(m_viewportContainer);
+    m_portArea = new TSA::UI::PortAreaWidget(m_occView, m_viewportContainer, this);
+    setCentralWidget(m_portArea);
 
     createActions();
     createDockWindows();

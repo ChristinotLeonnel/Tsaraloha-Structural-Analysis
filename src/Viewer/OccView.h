@@ -18,9 +18,15 @@
 #include <gp_Pnt.hxx>
 #include <vector>
 
+namespace TSA::Analysis
+{
+    class ResultsModel;
+}
+
 namespace TSA::Viewer
 {
     class SelectionManager;
+    class ResultsVisualManager;
 }
 
 namespace TSA::Grid
@@ -65,6 +71,10 @@ public:
     // Mode d'affichage et de rendu des matériaux
     TSA::Viewer::RenderDisplayMode renderDisplayMode() const { return m_renderDisplayMode; }
     void setRenderDisplayMode(TSA::Viewer::RenderDisplayMode mode);
+
+    // Visualisation des résultats OpenSees (déformée, diagrammes 3D, réactions)
+    TSA::Viewer::ResultsVisualManager* resultsVisual() const { return m_resultsVisual.get(); }
+    void setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
 
     // Gestion des formes 3D (avec mode batch / diff pour éviter les redraws multiples)
     void updateNodeShape(int nodeId, bool redrawImmediately = true);
@@ -548,4 +558,5 @@ private:
     TSA::Model::StructurePresets m_presets;
     TSA::Model::BarProperties m_currentBarProps;
     TSA::Viewer::RenderDisplayMode m_renderDisplayMode = TSA::Viewer::RenderDisplayMode::Materials;
+    std::unique_ptr<TSA::Viewer::ResultsVisualManager> m_resultsVisual;
 };

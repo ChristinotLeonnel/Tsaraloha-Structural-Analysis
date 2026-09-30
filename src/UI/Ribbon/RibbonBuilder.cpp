@@ -246,10 +246,11 @@ RibbonTab* RibbonBuilder::buildCalculationTab(RibbonBar* bar, const RibbonAction
     auto* solvPanel = new RibbonPanel(QObject::tr("Solveur"), tab);
     auto* actRun = acts.actionRunSolve ? acts.actionRunSolve : new QAction(QIcon(":/icons/analysis_run.svg"), QObject::tr("Calcul Statique"), parentWindow);
     auto* actModal = acts.actionModal ? acts.actionModal : new QAction(QIcon(":/icons/analysis_modal.svg"), QObject::tr("Analyse Modale"), parentWindow);
+    auto* actPush = acts.actionPushover ? acts.actionPushover : new QAction(QIcon(":/icons/analysis_pushover.svg"), QObject::tr("Pushover"), parentWindow);
 
     solvPanel->addLargeAction(actRun);
     solvPanel->addInternalSeparator();
-    solvPanel->addSmallColumn({ actModal });
+    solvPanel->addSmallColumn({ actModal, actPush });
     tab->addPanel(solvPanel);
 
     return tab;
@@ -262,23 +263,68 @@ RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& a
 {
     auto* tab = bar->addTab(QObject::tr("Résultats"));
 
-    // Déformations
-    auto* defPanel = new RibbonPanel(QObject::tr("Déformations"), tab);
-    auto* actDisp = acts.actionResultsDisp ? acts.actionResultsDisp : new QAction(QIcon(":/icons/results_disp.svg"), QObject::tr("Déplacements"), parentWindow);
-    defPanel->addLargeAction(actDisp);
+    // Déformations & Déplacements
+    auto* defPanel = new RibbonPanel(QObject::tr("Déformée 3D"), tab);
+    if (acts.actionDeformedToggle)
+    {
+        defPanel->addLargeAction(acts.actionDeformedToggle);
+    }
+    else
+    {
+        auto* actDisp = acts.actionResultsDisp ? acts.actionResultsDisp : new QAction(QIcon(":/icons/results_disp.svg"), QObject::tr("Déplacements"), parentWindow);
+        defPanel->addLargeAction(actDisp);
+    }
     tab->addPanel(defPanel);
 
-    // Efforts Internes
-    auto* forcePanel = new RibbonPanel(QObject::tr("Efforts Internes"), tab);
-    auto* actForces = acts.actionResultsForces ? acts.actionResultsForces : new QAction(QIcon(":/icons/results_force.svg"), QObject::tr("Diagrammes M/N/V"), parentWindow);
-    forcePanel->addLargeAction(actForces);
+    // Diagrammes 3D & Efforts
+    auto* forcePanel = new RibbonPanel(QObject::tr("Diagrammes 3D"), tab);
+    std::vector<QAction*> diagCol;
+    if (acts.actionDiagramMz) diagCol.push_back(acts.actionDiagramMz);
+    if (acts.actionDiagramVz) diagCol.push_back(acts.actionDiagramVz);
+    if (acts.actionDiagramN) diagCol.push_back(acts.actionDiagramN);
+    if (acts.actionDiagramNone) diagCol.push_back(acts.actionDiagramNone);
+
+    if (!diagCol.empty())
+    {
+        forcePanel->addSmallColumn(diagCol);
+    }
+    else
+    {
+        auto* actForces = acts.actionResultsForces ? acts.actionResultsForces : new QAction(QIcon(":/icons/results_force.svg"), QObject::tr("Diagrammes M/N/V"), parentWindow);
+        forcePanel->addLargeAction(actForces);
+    }
     tab->addPanel(forcePanel);
 
-    // Contraintes
-    auto* stressPanel = new RibbonPanel(QObject::tr("Contraintes"), tab);
-    auto* actStress = acts.actionResultsStress ? acts.actionResultsStress : new QAction(QIcon(":/icons/results_stress.svg"), QObject::tr("Von Mises (σ_vm)"), parentWindow);
-    stressPanel->addLargeAction(actStress);
-    tab->addPanel(stressPanel);
+    // Réactions aux Appuis
+    if (acts.actionReactionsToggle)
+    {
+        auto* reactPanel = new RibbonPanel(QObject::tr("Réactions"), tab);
+        reactPanel->addLargeAction(acts.actionReactionsToggle);
+        tab->addPanel(reactPanel);
+    }
+
+    // Note de Calcul (NDC)
+    auto* ndcPanel = new RibbonPanel(QObject::tr("Note de Calcul"), tab);
+    auto* actNdc = acts.actionOpenNDC ? acts.actionOpenNDC : new QAction(QIcon(":/icons/ndc_report.svg"), QObject::tr("Note de Calcul"), parentWindow);
+    ndcPanel->addLargeAction(actNdc);
+    tab->addPanel(ndcPanel);
+
+    // Espace Multi-Vues (Multi-Port)
+    if (acts.actionPortSingle || acts.actionPortSplitH || acts.actionPortSplitV || acts.actionPortGrid2x2 || acts.actionPortTabbed)
+    {
+        auto* portPanel = new RibbonPanel(QObject::tr("Espace Multi-Vues"), tab);
+        std::vector<QAction*> portCol1;
+        std::vector<QAction*> portCol2;
+        if (acts.actionPortSingle) portCol1.push_back(acts.actionPortSingle);
+        if (acts.actionPortSplitH) portCol1.push_back(acts.actionPortSplitH);
+        if (acts.actionPortSplitV) portCol1.push_back(acts.actionPortSplitV);
+        if (acts.actionPortGrid2x2) portCol2.push_back(acts.actionPortGrid2x2);
+        if (acts.actionPortTabbed) portCol2.push_back(acts.actionPortTabbed);
+
+        if (!portCol1.empty()) portPanel->addSmallColumn(portCol1);
+        if (!portCol2.empty()) portPanel->addSmallColumn(portCol2);
+        tab->addPanel(portPanel);
+    }
 
     return tab;
 }

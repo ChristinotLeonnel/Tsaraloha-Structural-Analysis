@@ -43,7 +43,12 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
                                        ResultsModel& outResults,
                                        std::string* errorMessage)
 {
+    std::string savedLog = outResults.journalLog();
     outResults.clear();
+    if (!savedLog.empty())
+    {
+        outResults.appendLog(savedLog);
+    }
     outResults.setAnalysisType(params.type);
     outResults.updateTimestamp();
 

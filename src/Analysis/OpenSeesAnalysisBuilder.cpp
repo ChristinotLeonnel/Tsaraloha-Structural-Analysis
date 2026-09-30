@@ -342,12 +342,12 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
         tcl << "for {set i 1} {$i <= " << params.numSteps << "} {incr i} {\n";
         tcl << "  set ok [analyze 1]\n";
         tcl << "  if {$ok != 0} {\n";
-        tcl << "    puts \"[TSA-OPS-CONVERGENCE_FAIL] Step $i\"\n";
+        tcl << "    puts \"TSA_OPS_CONVERGENCE_FAIL Step $i\"\n";
         tcl << "    break\n";
         tcl << "  }\n";
         tcl << "}\n";
         tcl << "if {$ok == 0} {\n";
-        tcl << "  puts \"[TSA-OPS-SUCCESS] Non-Linear Static Converged\"\n";
+        tcl << "  puts \"TSA_OPS_SUCCESS Non-Linear Static Converged\"\n";
         tcl << "}\n";
     }
     else
@@ -362,9 +362,9 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
         tcl << "analysis Static\n";
         tcl << "set ok [analyze 1]\n";
         tcl << "if {$ok == 0} {\n";
-        tcl << "  puts \"[TSA-OPS-SUCCESS] Linear Static Converged\"\n";
+        tcl << "  puts \"TSA_OPS_SUCCESS Linear Static Converged\"\n";
         tcl << "} else {\n";
-        tcl << "  puts \"[TSA-OPS-FAIL] Linear Static Analysis Failed\"\n";
+        tcl << "  puts \"TSA_OPS_FAIL Linear Static Analysis Failed\"\n";
         tcl << "}\n";
     }
 

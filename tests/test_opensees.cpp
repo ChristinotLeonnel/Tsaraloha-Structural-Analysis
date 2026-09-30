@@ -9,6 +9,11 @@
 #include "Model/Section.h"
 #include "Model/Material.h"
 #include "Model/Load/LoadManager.h"
+#include "Geometry/DeformedGeometry.h"
+#include "Geometry/DiagramGeometry.h"
+#include "NDC/NDCDocumentModel.h"
+#include "NDC/NDCGenerator.h"
+#include "NDC/NDCExporter.h"
 
 using namespace TSA::Analysis;
 using namespace TSA::Model;
@@ -188,6 +193,105 @@ bool runSuite_OpenSees(int& passed)
             TEST_CHECK(m.frequency > 0.0, "Mode frequency must be positive");
             TEST_CHECK(m.period > 0.0, "Mode period must be positive");
         }
+        passed++;
+    }
+
+    // TEST 70: 3D Deformed Geometry Generation (Displacement amplification)
+    {
+        gp_Pnt p1(0.0, 0.0, 0.0);
+        gp_Pnt p2(5.0, 0.0, 0.0);
+        NodeDisplacement d1{ 0.0, 0.0, 0.0, 0.0, 0.01, 0.0 };
+        NodeDisplacement d2{ 0.0, 0.0, -0.005, 0.0, -0.01, 0.0 };
+        double scale = 50.0;
+
+        gp_Pnt defP1 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p1, d1, scale);
+        gp_Pnt defP2 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p2, d2, scale);
+
+        TEST_CHECK(std::abs(defP1.X() - 0.0) < 1e-5 && std::abs(defP1.Z() - 0.0) < 1e-5, "Node 1 remains at origin");
+        TEST_CHECK(std::abs(defP2.Z() - (-0.25)) < 1e-4, "Node 2 deformed Z is scaled by 50 (-0.005 * 50 = -0.25)");
+
+        Section sec = Section::ipe(200);
+        TopoDS_Shape defShape = TSA::Geometry::DeformedGeometry::createDeformedBeamShape(p1, p2, d1, d2, sec, scale);
+        TEST_CHECK(!defShape.IsNull(), "Deformed beam 3D shape must not be null");
+
+        TopoDS_Shape wire = TSA::Geometry::DeformedGeometry::createDeformedCenterline(p1, p2, d1, d2, scale, 10);
+        TEST_CHECK(!wire.IsNull(), "Deformed centerline wire must not be null");
+        passed++;
+    }
+
+    // TEST 71: 3D Force Diagram Ribbon Geometry (Bending Moment & Shear)
+    {
+        gp_Pnt p1(0.0, 0.0, 0.0);
+        gp_Pnt p2(6.0, 0.0, 0.0);
+        std::vector<StationForces> stations;
+        // Parabolic moment Mz: 0 at ends, 18 kNm at midspan
+        for (int i = 0; i <= 10; ++i) {
+            double s = i / 10.0;
+            double x = s * 6.0;
+            double m = 4.0 * 18.0 * s * (1.0 - s);
+            double v = 12.0 - 4.0 * x;
+            StationForces st;
+            st.position = x;
+            st.Mz = m;
+            st.Vz = v;
+            st.N = -50.0;
+            stations.push_back(st);
+        }
+
+        TopoDS_Shape diagMz = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p2, 0.0, stations, TSA::Geometry::DiagramType::BendingMz, 0.05, true);
+        TEST_CHECK(!diagMz.IsNull(), "Bending moment Mz 3D diagram shape must not be null");
+
+        TopoDS_Shape diagN = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p2, 0.0, stations, TSA::Geometry::DiagramType::AxialForceN, 0.02, true);
+        TEST_CHECK(!diagN.IsNull(), "Axial force N 3D diagram shape must not be null");
+        passed++;
+    }
+
+    // TEST 72: Note de Calcul (NDC) Generation, HTML & PDF Exporter
+    {
+        Model model;
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        model.getNode(n1)->setSupportType(SupportType::Pinned);
+        int n2 = model.addNode(4.0, 0.0, 0.0);
+        model.getNode(n2)->setSupportType(SupportType::Roller);
+        Section sec = Section::hea(200);
+        Material mat = Material::steelS355();
+        int b1 = model.addBar(n1, n2, sec, mat, BarRole::Beam);
+
+        auto& lm = model.loadManager();
+        int lcId = lm.addLoadCase(LoadCase(1, "G_Permanent", LoadCaseCategory::Dead, true, 1.35));
+        lm.addMemberLoad(MemberLoad::uniform(b1, lcId, 15.0, LoadDirection::GlobalZ));
+
+        OpenSeesSolver solver;
+        AnalysisParameters params;
+        params.type = AnalysisType::LinearStatic;
+        params.useKiloNewtons = true;
+        params.includeSelfWeight = false;
+        params.targetLoadCaseId = lcId;
+
+        QString err;
+        bool ok = solver.solveSynchronous(model, params, &err);
+        if (!ok) {
+            std::cout << "  Test 72 Solver error: " << err.toStdString() << "\n";
+            std::cout << "  Test 72 Journal log: \n" << solver.results().journalLog() << "\n";
+        }
+        TEST_CHECK(ok, "OpenSees solve for NDC test must succeed");
+
+        auto resultsPtr = std::make_shared<ResultsModel>(solver.results());
+        TSA::NDC::NDCDocument doc = TSA::NDC::NDCGenerator::generate(model, resultsPtr, "Tour d'essai", "Christinot");
+
+        TEST_CHECK(!doc.chapters.empty(), "NDC must contain structured chapters");
+        TEST_CHECK(doc.chapters.size() >= 7, "NDC must contain at least 7 comprehensive technical chapters");
+
+        QString html = doc.toHtml();
+        TEST_CHECK(!html.isEmpty(), "Generated HTML for NDC must not be empty");
+        TEST_CHECK(html.contains("NOTE DE CALCUL DE STRUCTURE"), "HTML must contain header title");
+        TEST_CHECK(html.contains("OpenSees"), "HTML must reference OpenSees solver engine");
+        TEST_CHECK(html.contains("Eurocode"), "HTML must reference Eurocode standards");
+
+        QString plain = doc.toPlainText();
+        TEST_CHECK(!plain.isEmpty(), "Plain text representation must not be empty");
         passed++;
     }
 
