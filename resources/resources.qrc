@@ -225,5 +225,56 @@
         <file alias="properties.svg">icons/common/properties.svg</file>
         <file alias="apply.svg">icons/common/apply.svg</file>
         <file alias="cancel.svg">icons/common/cancel.svg</file>
+
+        <!-- Zoom & Vues standard directes -->
+        <file alias="zoom_in.svg">icons/view/zoom_in.svg</file>
+        <file alias="zoom_out.svg">icons/view/zoom_out.svg</file>
+        <file alias="zoom_window.svg">icons/view/zoom_window.svg</file>
+        <file alias="view_right.svg">icons/view/view_side.svg</file>
+        <file alias="view/view_right.svg">icons/view/view_side.svg</file>
+        <file alias="view_home.svg">icons/view/view_3d.svg</file>
+        <file alias="view/view_home.svg">icons/view/view_3d.svg</file>
+        <file alias="view_normal_workplane.svg">icons/view/coord_system.svg</file>
+        <file alias="view/view_normal_workplane.svg">icons/view/coord_system.svg</file>
+        <file alias="view/snap.svg">icons/modeling/snap.svg</file>
+        <file alias="view/grid.svg">icons/modeling/grid_cartesian.svg</file>
+        <file alias="view/properties.svg">icons/common/properties.svg</file>
+        <file alias="view/rulers.svg">icons/modeling/rulers.svg</file>
+
+        <!-- Édition & Sélection -->
+        <file alias="edit/select.svg">icons/modeling/select.svg</file>
+        <file alias="edit/select_all.svg">icons/modeling/select.svg</file>
+        <file alias="select_all.svg">icons/modeling/select.svg</file>
+
+        <!-- Communs & Fichiers -->
+        <file alias="common/diagnostic.svg">icons/common/settings.svg</file>
+        <file alias="common/exit.svg">icons/file/file_exit.svg</file>
+        <file alias="common/file_new.svg">icons/file/file_new.svg</file>
+        <file alias="common/file_open.svg">icons/file/file_open.svg</file>
+        <file alias="common/file_save.svg">icons/file/file_save.svg</file>
+        <file alias="common/file_save_as.svg">icons/file/file_save_as.svg</file>
+        <file alias="extension_manager.svg">icons/common/settings.svg</file>
+        <file alias="grid/grid_manager.svg">icons/modeling/grid_cartesian.svg</file>
+
+        <!-- Modélisation & Structure (CommandCatalog) -->
+        <file alias="structure/bar.svg">icons/modeling/draw_bar.svg</file>
+        <file alias="structure/beam.svg">icons/modeling/draw_beam.svg</file>
+        <file alias="structure/cable.svg">icons/modeling/draw_cable.svg</file>
+        <file alias="structure/cable_library.svg">icons/modeling/draw_cable.svg</file>
+        <file alias="structure/column.svg">icons/modeling/draw_column.svg</file>
+        <file alias="structure/footing.svg">icons/modeling/struct_foundation.svg</file>
+        <file alias="structure/levels.svg">icons/modeling/levels.svg</file>
+        <file alias="structure/library.svg">icons/sections/section_i.svg</file>
+        <file alias="structure/materials.svg">icons/sections/material_steel.svg</file>
+        <file alias="structure/node.svg">icons/modeling/draw_node.svg</file>
+        <file alias="structure/presets.svg">icons/sections/section_custom.svg</file>
+        <file alias="structure/slab.svg">icons/modeling/draw_slab.svg</file>
+        <file alias="structure/truss.svg">icons/modeling/struct_truss.svg</file>
+        <file alias="structure/wall.svg">icons/modeling/draw_wall.svg</file>
+
+        <!-- Analyse & Résultats -->
+        <file alias="analysis_mesh.svg">icons/analysis/mesh_generate.svg</file>
+        <file alias="load_distributed.svg">icons/modeling/load_dist.svg</file>
+        <file alias="results_forces.svg">icons/analysis/results_force.svg</file>
     </qresource>
 </RCC>

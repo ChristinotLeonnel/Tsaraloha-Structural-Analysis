@@ -172,6 +172,9 @@ signals:
     void layoutSaved();
     void profileApplied(const QString& name);
 
+private slots:
+    void onMenuAboutToShow();
+
 private:
     QMainWindow* m_mainWindow = nullptr;
     std::unique_ptr<WindowRegistry> m_registry;

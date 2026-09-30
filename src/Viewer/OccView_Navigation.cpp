@@ -580,10 +580,18 @@ void OccView::attachManipulatorToWorkPlane()
 
 void OccView::detachManipulator()
 {
-    if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
+    m_isManipulatingWorkPlane = false;
+    if (!m_manipulator.IsNull())
     {
-        m_manipulator->DeactivateCurrentMode();
-        m_manipulator->Detach();
+        if (m_manipulator->HasActiveMode())
+        {
+            m_manipulator->StopTransform(false);
+            m_manipulator->DeactivateCurrentMode();
+        }
+        if (m_manipulator->IsAttached())
+        {
+            m_manipulator->Detach();
+        }
         if (!m_view.IsNull())
             m_view->Redraw();
     }

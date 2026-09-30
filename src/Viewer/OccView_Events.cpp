@@ -48,7 +48,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
     if (event->button() == Qt::LeftButton)
     {
         // 0. Clic interactif prioritaire sur le Gizmo AIS_Manipulator du Plan de Travail
-        if (!m_manipulator.IsNull() && m_manipulator->HasActiveMode())
+        if (!m_manipulator.IsNull() && m_manipulator->IsAttached() && m_manipulator->HasActiveMode() && !m_workPlaneShape.IsNull() && !m_view.IsNull())
         {
             m_isManipulatingWorkPlane = true;
             m_manipulatorStartWp = m_workPlane;
@@ -614,10 +614,13 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
     if (event->button() == Qt::LeftButton)
     {
         // 0. Fin de manipulation interactive du Plan de Travail via Gizmo
-        if (m_isManipulatingWorkPlane && !m_manipulator.IsNull())
+        if (m_isManipulatingWorkPlane)
         {
-            m_manipulator->StopTransform(true);
             m_isManipulatingWorkPlane = false;
+            if (!m_manipulator.IsNull() && m_manipulator->IsAttached() && m_manipulator->HasActiveMode() && !m_view.IsNull())
+            {
+                m_manipulator->StopTransform(true);
+            }
 
             if (m_model)
             {
@@ -776,39 +779,46 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
     emit mousePixelPositionChanged(event->position().toPoint().x(), event->position().toPoint().y());
 
     // 0. Déplacement interactif du Plan de Travail via le Gizmo AIS_Manipulator
-    if (m_isManipulatingWorkPlane && !m_manipulator.IsNull())
+    if (m_isManipulatingWorkPlane)
     {
-        m_manipulator->Transform(px, py, m_view);
-        gp_Trsf trsf = m_workPlaneShape->LocalTransformation();
-        applyWorkPlaneTrihedronTransform(trsf);
-
-        gp_Pnt orig(0, 0, 0);
-        orig.Transform(trsf);
-        gp_Dir dirX(1, 0, 0);
-        dirX.Transform(trsf);
-        gp_Dir dirY(0, 1, 0);
-        dirY.Transform(trsf);
-        gp_Dir dirZ(0, 0, 1);
-        dirZ.Transform(trsf);
-
-        m_workPlane.setOrigin(orig);
-        m_workPlane.setLocalAxes(dirX, dirY, dirZ);
-
-        TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
-        if (!m_viewer.IsNull())
+        if (!m_manipulator.IsNull() && m_manipulator->IsAttached() && m_manipulator->HasActiveMode() && !m_workPlaneShape.IsNull() && !m_view.IsNull())
         {
-            m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
-        }
+            m_manipulator->Transform(px, py, m_view);
+            gp_Trsf trsf = m_workPlaneShape->LocalTransformation();
+            applyWorkPlaneTrihedronTransform(trsf);
 
-        if (m_workPlane.isIsolated())
+            gp_Pnt orig(0, 0, 0);
+            orig.Transform(trsf);
+            gp_Dir dirX(1, 0, 0);
+            dirX.Transform(trsf);
+            gp_Dir dirY(0, 1, 0);
+            dirY.Transform(trsf);
+            gp_Dir dirZ(0, 0, 1);
+            dirZ.Transform(trsf);
+
+            m_workPlane.setOrigin(orig);
+            m_workPlane.setLocalAxes(dirX, dirY, dirZ);
+
+            TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
+            if (!m_viewer.IsNull())
+            {
+                m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
+            }
+
+            if (m_workPlane.isIsolated())
+            {
+                updateElementIsolation();
+            }
+
+            emit workPlaneChanged(m_workPlane);
+            if (!m_view.IsNull())
+                m_view->Redraw();
+            return;
+        }
+        else
         {
-            updateElementIsolation();
+            m_isManipulatingWorkPlane = false;
         }
-
-        emit workPlaneChanged(m_workPlane);
-        if (!m_view.IsNull())
-            m_view->Redraw();
-        return;
     }
 
     // Mode Zoom Fenêtre interactif

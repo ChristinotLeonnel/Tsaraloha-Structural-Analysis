@@ -393,9 +393,12 @@ void WindowManager::populateWindowsMenu(QMenu* menu)
     connect(actReset, &QAction::triggered, this, &WindowManager::resetLayout);
 
     // Mettre à jour l'état coché à chaque ouverture du menu
-    connect(menu, &QMenu::aboutToShow, this, [this]() {
-        m_layoutManager->syncAllActionStates();
-    }, Qt::UniqueConnection);
+    connect(menu, &QMenu::aboutToShow, this, &WindowManager::onMenuAboutToShow, Qt::UniqueConnection);
+}
+
+void WindowManager::onMenuAboutToShow()
+{
+    m_layoutManager->syncAllActionStates();
 }
 
 QMenu* WindowManager::createWindowsMenu(QMenuBar* menuBar)

@@ -526,6 +526,14 @@ void OccView::resetCurrentSlabContour()
 
 void OccView::cancelCurrentDrawing()
 {
+    if (m_isManipulatingWorkPlane)
+    {
+        m_isManipulatingWorkPlane = false;
+        if (!m_manipulator.IsNull() && m_manipulator->IsAttached() && m_manipulator->HasActiveMode())
+        {
+            m_manipulator->StopTransform(false);
+        }
+    }
     clearRubberBand();
     m_drawingNodeIds.clear();
     m_drawingPoints.clear();
