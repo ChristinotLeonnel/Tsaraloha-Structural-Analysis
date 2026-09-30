@@ -386,6 +386,18 @@ set(LOAD_CORE_SOURCES
     src/Analysis/LoadValidation.cpp
     src/Analysis/OpenSeesAdapter.h
     src/Analysis/OpenSeesAdapter.cpp
+    src/Analysis/OpenSeesManager.h
+    src/Analysis/OpenSeesManager.cpp
+    src/Analysis/CalculationSnapshot.h
+    src/Analysis/CalculationSnapshot.cpp
+    src/Analysis/ResultsModel.h
+    src/Analysis/ResultsModel.cpp
+    src/Analysis/OpenSeesAnalysisBuilder.h
+    src/Analysis/OpenSeesAnalysisBuilder.cpp
+    src/Analysis/OpenSeesResultsReader.h
+    src/Analysis/OpenSeesResultsReader.cpp
+    src/Analysis/OpenSeesSolver.h
+    src/Analysis/OpenSeesSolver.cpp
 )
 
 # --- Câbles : modèle et normes de calcul — [CORE] -----------------------------
@@ -677,6 +689,7 @@ set(TEST_SOURCES
     tests/test_window_manager.cpp
     tests/test_node_system.cpp
     tests/test_loads.cpp
+    tests/test_opensees.cpp
     resources/resources.qrc
 )
 
@@ -701,6 +714,7 @@ add_test(NAME TSA_WorkPlaneTests COMMAND TSA_Tests --suite=workplane)
 add_test(NAME TSA_WindowManagerTests COMMAND TSA_Tests --suite=window)
 add_test(NAME TSA_NodeSystemTests COMMAND TSA_Tests --suite=node)
 add_test(NAME TSA_LoadsTests COMMAND TSA_Tests --suite=loads)
+add_test(NAME TSA_OpenSeesTests COMMAND TSA_Tests --suite=opensees)
 endif()
 
 # =============================================================================
