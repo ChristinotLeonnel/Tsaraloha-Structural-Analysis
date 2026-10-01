@@ -21,6 +21,13 @@ QString DiagramGeometry::diagramTypeName(DiagramType type)
     case DiagramType::TorsionMx:    return QStringLiteral("Moment de Torsion (Mx)");
     case DiagramType::BendingMy:    return QStringLiteral("Moment Fléchissant (My)");
     case DiagramType::BendingMz:    return QStringLiteral("Moment Fléchissant (Mz)");
+    case DiagramType::DeflectionUx: return QStringLiteral("Déplacement Axial (UX)");
+    case DiagramType::DeflectionUy: return QStringLiteral("Flèche Horizontale (UY)");
+    case DiagramType::DeflectionUz: return QStringLiteral("Flèche Verticale (UZ)");
+    case DiagramType::DeflectionUres: return QStringLiteral("Flèche Résultante (U)");
+    case DiagramType::RotationRx:   return QStringLiteral("Rotation de Torsion (RX)");
+    case DiagramType::RotationRy:   return QStringLiteral("Rotation Flexion (RY)");
+    case DiagramType::RotationRz:   return QStringLiteral("Rotation Flexion (RZ)");
     case DiagramType::None:
     default:                        return QStringLiteral("Aucun");
     }
@@ -38,6 +45,15 @@ QString DiagramGeometry::diagramUnit(DiagramType type, bool useKiloNewtons)
     case DiagramType::BendingMy:
     case DiagramType::BendingMz:
         return useKiloNewtons ? QStringLiteral("kNm") : QStringLiteral("Nm");
+    case DiagramType::DeflectionUx:
+    case DiagramType::DeflectionUy:
+    case DiagramType::DeflectionUz:
+    case DiagramType::DeflectionUres:
+        return QStringLiteral("mm");
+    case DiagramType::RotationRx:
+    case DiagramType::RotationRy:
+    case DiagramType::RotationRz:
+        return QStringLiteral("rad");
     case DiagramType::None:
     default:
         return QString();
@@ -54,6 +70,14 @@ double DiagramGeometry::getStationValue(const TSA::Analysis::StationForces& st, 
     case DiagramType::TorsionMx:    return st.Mx;
     case DiagramType::BendingMy:    return st.My;
     case DiagramType::BendingMz:    return st.Mz;
+    case DiagramType::DeflectionUx: return st.ux * 1000.0; // en mm
+    case DiagramType::DeflectionUy: return st.uy * 1000.0; // en mm
+    case DiagramType::DeflectionUz: return st.uz * 1000.0; // en mm
+    case DiagramType::DeflectionUres:
+        return std::sqrt(st.ux * st.ux + st.uy * st.uy + st.uz * st.uz) * 1000.0; // en mm
+    case DiagramType::RotationRx:   return st.rx;
+    case DiagramType::RotationRy:   return st.ry;
+    case DiagramType::RotationRz:   return st.rz;
     case DiagramType::None:
     default:                        return 0.0;
     }
@@ -73,15 +97,22 @@ gp_Vec DiagramGeometry::getDiagramOffsetDirection(
     {
     case DiagramType::BendingMz:
     case DiagramType::ShearForceVy:
-        // Diagramme tracé dans la direction transversale Y local
+    case DiagramType::DeflectionUy:
+    case DiagramType::RotationRz:
+        // Tracé dans la direction Y locale
         return gp_Vec(frame.YDirection());
 
     case DiagramType::BendingMy:
     case DiagramType::ShearForceVz:
+    case DiagramType::DeflectionUz:
+    case DiagramType::DeflectionUres:
     case DiagramType::AxialForceN:
     case DiagramType::TorsionMx:
+    case DiagramType::DeflectionUx:
+    case DiagramType::RotationRx:
+    case DiagramType::RotationRy:
     default:
-        // Diagramme tracé dans la direction normale Z local
+        // Tracé dans la direction Z locale
         return gp_Vec(frame.Direction());
     }
 }

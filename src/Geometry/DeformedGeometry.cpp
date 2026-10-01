@@ -51,13 +51,13 @@ TopoDS_Shape DeformedGeometry::createDeformedCenterline(
     gp_Pnt p1Def = computeDeformedPoint(p1, d1, scaleFactor);
     gp_Pnt p2Def = computeDeformedPoint(p2, d2, scaleFactor);
 
-    gp_Vec vOrig(p1, p2);
-    double L = vOrig.Magnitude();
-    if (L < 1e-6) return TopoDS_Shape();
+    gp_Vec vDef(p1Def, p2Def);
+    double LDef = vDef.Magnitude();
+    if (LDef < 1e-6) return TopoDS_Shape();
 
-    // Tangentes initiales
-    gp_Vec t1 = vOrig;
-    gp_Vec t2 = vOrig;
+    // Tangentes initiales sur la corde déformée
+    gp_Vec t1 = vDef;
+    gp_Vec t2 = vDef;
 
     // Prise en compte des rotations nodales amplifiées sur les tangentes
     // theta x/y/z créent une rotation de la direction
@@ -121,9 +121,73 @@ TopoDS_Shape DeformedGeometry::createDeformedBeamShape(
         return TopoDS_Shape();
     }
 
+    gp_Vec vDef(p1Def, p2Def);
+    double LDef = vDef.Magnitude();
+    if (LDef < 1e-6) return TopoDS_Shape();
+
+    // Vérifie si des rotations notables sont présentes
+    double rotMag1 = std::sqrt(d1.rx * d1.rx + d1.ry * d1.ry + d1.rz * d1.rz) * scaleFactor;
+    double rotMag2 = std::sqrt(d2.rx * d2.rx + d2.ry * d2.ry + d2.rz * d2.rz) * scaleFactor;
+
+    if (rotMag1 < 1e-5 && rotMag2 < 1e-5)
+    {
+        TSA::Model::Node nA(1, p1Def.X(), p1Def.Y(), p1Def.Z());
+        TSA::Model::Node nB(2, p2Def.X(), p2Def.Y(), p2Def.Z());
+        return BeamGeometry::createBeamShape(nA, nB, section, rotationDeg);
+    }
+
+    // Discrétisation cubique d'Hermite pour afficher la flèche/courbure
+    const int numSegments = 6;
+    gp_Vec t1 = vDef;
+    gp_Vec t2 = vDef;
+    gp_Vec rot1(d1.rx * scaleFactor, d1.ry * scaleFactor, d1.rz * scaleFactor);
+    gp_Vec rot2(d2.rx * scaleFactor, d2.ry * scaleFactor, d2.rz * scaleFactor);
+    t1 += rot1.Crossed(t1);
+    t2 += rot2.Crossed(t2);
+
+    auto evalHermite = [&](double s) -> gp_Pnt {
+        double s2 = s * s;
+        double s3 = s2 * s;
+        double h1 = 2.0 * s3 - 3.0 * s2 + 1.0;
+        double h2 = -2.0 * s3 + 3.0 * s2;
+        double h3 = s3 - 2.0 * s2 + s;
+        double h4 = s3 - s2;
+        gp_XYZ ptCoord = p1Def.XYZ() * h1 + p2Def.XYZ() * h2 +
+                         t1.XYZ() * h3 + t2.XYZ() * h4;
+        return gp_Pnt(ptCoord);
+    };
+
+    BRep_Builder builder;
+    TopoDS_Compound comp;
+    builder.MakeCompound(comp);
+    int addedCount = 0;
+
+    gp_Pnt prevPnt = p1Def;
+    for (int i = 1; i <= numSegments; ++i)
+    {
+        double s = static_cast<double>(i) / numSegments;
+        gp_Pnt curPnt = evalHermite(s);
+        if (prevPnt.Distance(curPnt) > 1e-5)
+        {
+            TSA::Model::Node nA(i * 2 - 1, prevPnt.X(), prevPnt.Y(), prevPnt.Z());
+            TSA::Model::Node nB(i * 2, curPnt.X(), curPnt.Y(), curPnt.Z());
+            TopoDS_Shape segShape = BeamGeometry::createBeamShape(nA, nB, section, rotationDeg);
+            if (!segShape.IsNull())
+            {
+                builder.Add(comp, segShape);
+                addedCount++;
+            }
+        }
+        prevPnt = curPnt;
+    }
+
+    if (addedCount > 0)
+    {
+        return comp;
+    }
+
     TSA::Model::Node nA(1, p1Def.X(), p1Def.Y(), p1Def.Z());
     TSA::Model::Node nB(2, p2Def.X(), p2Def.Y(), p2Def.Z());
-
     return BeamGeometry::createBeamShape(nA, nB, section, rotationDeg);
 }
 

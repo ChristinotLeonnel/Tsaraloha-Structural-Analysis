@@ -78,6 +78,11 @@ void ResultsModel::clear()
     m_modalModes.clear();
     m_pushoverSteps.clear();
     m_timeHistorySteps.clear();
+    m_stepResults.clear();
+    m_finalDisplacements.clear();
+    m_finalReactions.clear();
+    m_finalElementResults.clear();
+    m_activeStep = -1;
     m_equilibrium = GlobalEquilibrium{};
     m_summary = ResultsSummary{};
     m_journalLog.clear();
@@ -159,6 +164,47 @@ void ResultsModel::addPushoverStep(const PushoverStep& step)
 void ResultsModel::addTimeHistoryStep(const TimeHistoryStep& step)
 {
     m_timeHistorySteps.push_back(step);
+}
+
+void ResultsModel::addStepResults(const StepResults& step)
+{
+    m_stepResults.push_back(step);
+}
+
+const StepResults* ResultsModel::getStepResults(int stepNumber) const
+{
+    for (const auto& s : m_stepResults)
+    {
+        if (s.stepNumber == stepNumber) return &s;
+    }
+    return nullptr;
+}
+
+void ResultsModel::setActiveStep(int step)
+{
+    if (step < 0 || step >= static_cast<int>(m_stepResults.size()))
+    {
+        m_activeStep = -1;
+        if (!m_finalDisplacements.empty()) m_displacements = m_finalDisplacements;
+        if (!m_finalReactions.empty()) m_reactions = m_finalReactions;
+        if (!m_finalElementResults.empty()) m_elementResults = m_finalElementResults;
+        computeSummary();
+        return;
+    }
+
+    if (m_finalDisplacements.empty() && !m_displacements.empty())
+    {
+        m_finalDisplacements = m_displacements;
+        m_finalReactions = m_reactions;
+        m_finalElementResults = m_elementResults;
+    }
+
+    m_activeStep = step;
+    const auto& s = m_stepResults[step];
+    m_displacements = s.displacements;
+    m_reactions = s.reactions;
+    m_elementResults = s.elementResults;
+    computeSummary();
 }
 
 void ResultsModel::computeSummary()

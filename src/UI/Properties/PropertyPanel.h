@@ -21,6 +21,7 @@ class TrussMemberPropertiesView;
 class WorkPlanePropertiesView;
 }
 namespace TSA::Coordinate { class WorkPlane; }
+namespace TSA::Analysis { class ResultsModel; }
 namespace TSA::UI
 {
 
@@ -38,6 +39,7 @@ public:
     ~PropertyPanel() override;
 
     void setModel(TSA::Model::Model* model);
+    void setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
 
 public slots:
     void showLevelProperties(const QString& levelId);
@@ -108,6 +110,7 @@ private:
     FoundationPropertiesView* m_foundationView = nullptr;
     TrussMemberPropertiesView* m_trussView = nullptr;
     WorkPlanePropertiesView* m_workPlaneView = nullptr;
+    std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
 };
 
 } // namespace TSA::UI

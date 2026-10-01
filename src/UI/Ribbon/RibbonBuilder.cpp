@@ -78,6 +78,7 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
         quickPanel->addInternalSeparator();
         quickPanel->addLargeAction(acts.actionRunSolve);
     }
+    if (acts.actionResultsDock) quickPanel->addLargeAction(acts.actionResultsDock);
     tab->addPanel(quickPanel);
 
     // Groupe Vue Rapide
@@ -250,7 +251,9 @@ RibbonTab* RibbonBuilder::buildCalculationTab(RibbonBar* bar, const RibbonAction
 
     solvPanel->addLargeAction(actRun);
     solvPanel->addInternalSeparator();
-    solvPanel->addSmallColumn({ actModal, actPush });
+    std::vector<QAction*> solvCol = { actModal, actPush };
+    if (acts.actionAnalysisConfig) solvCol.push_back(acts.actionAnalysisConfig);
+    solvPanel->addSmallColumn(solvCol);
     tab->addPanel(solvPanel);
 
     return tab;
@@ -262,6 +265,14 @@ RibbonTab* RibbonBuilder::buildCalculationTab(RibbonBar* bar, const RibbonAction
 RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
 {
     auto* tab = bar->addTab(QObject::tr("Résultats"));
+
+    // Panneau de contrôle des Résultats 3D (Dock)
+    if (acts.actionResultsDock)
+    {
+        auto* dockPanel = new RibbonPanel(QObject::tr("Panneau"), tab);
+        dockPanel->addLargeAction(acts.actionResultsDock);
+        tab->addPanel(dockPanel);
+    }
 
     // Déformations & Déplacements
     auto* defPanel = new RibbonPanel(QObject::tr("Déformée 3D"), tab);
@@ -276,22 +287,31 @@ RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& a
     }
     tab->addPanel(defPanel);
 
-    // Diagrammes 3D & Efforts
+    // Diagrammes 3D & Efforts (4 familles de sollicitations)
     auto* forcePanel = new RibbonPanel(QObject::tr("Diagrammes 3D"), tab);
-    std::vector<QAction*> diagCol;
-    if (acts.actionDiagramMz) diagCol.push_back(acts.actionDiagramMz);
-    if (acts.actionDiagramVz) diagCol.push_back(acts.actionDiagramVz);
-    if (acts.actionDiagramN) diagCol.push_back(acts.actionDiagramN);
-    if (acts.actionDiagramNone) diagCol.push_back(acts.actionDiagramNone);
+    std::vector<QAction*> diagCol1;
+    if (acts.actionDiagramMz) diagCol1.push_back(acts.actionDiagramMz);
+    if (acts.actionDiagramMy) diagCol1.push_back(acts.actionDiagramMy);
+    if (acts.actionDiagramMx) diagCol1.push_back(acts.actionDiagramMx);
+    if (!diagCol1.empty()) forcePanel->addSmallColumn(diagCol1);
 
-    if (!diagCol.empty())
+    std::vector<QAction*> diagCol2;
+    if (acts.actionDiagramVz) diagCol2.push_back(acts.actionDiagramVz);
+    if (acts.actionDiagramVy) diagCol2.push_back(acts.actionDiagramVy);
+    if (acts.actionDiagramN) diagCol2.push_back(acts.actionDiagramN);
+    if (!diagCol2.empty())
     {
-        forcePanel->addSmallColumn(diagCol);
+        forcePanel->addInternalSeparator();
+        forcePanel->addSmallColumn(diagCol2);
     }
-    else
+
+    std::vector<QAction*> diagCol3;
+    if (acts.actionDiagramDeflection) diagCol3.push_back(acts.actionDiagramDeflection);
+    if (acts.actionDiagramNone) diagCol3.push_back(acts.actionDiagramNone);
+    if (!diagCol3.empty())
     {
-        auto* actForces = acts.actionResultsForces ? acts.actionResultsForces : new QAction(QIcon(":/icons/results_force.svg"), QObject::tr("Diagrammes M/N/V"), parentWindow);
-        forcePanel->addLargeAction(actForces);
+        forcePanel->addInternalSeparator();
+        forcePanel->addSmallColumn(diagCol3);
     }
     tab->addPanel(forcePanel);
 
@@ -301,6 +321,23 @@ RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& a
         auto* reactPanel = new RibbonPanel(QObject::tr("Réactions"), tab);
         reactPanel->addLargeAction(acts.actionReactionsToggle);
         tab->addPanel(reactPanel);
+    }
+
+    // Cadrage Caméra Contextuel
+    if (acts.actionFitDeformed || acts.actionFitResults || acts.actionFitModel || acts.actionFitAll)
+    {
+        auto* camPanel = new RibbonPanel(QObject::tr("Cadrage"), tab);
+        if (acts.actionFitDeformed) camPanel->addLargeAction(acts.actionFitDeformed);
+        std::vector<QAction*> camCol;
+        if (acts.actionFitResults) camCol.push_back(acts.actionFitResults);
+        if (acts.actionFitModel) camCol.push_back(acts.actionFitModel);
+        if (acts.actionFitAll) camCol.push_back(acts.actionFitAll);
+        if (!camCol.empty())
+        {
+            camPanel->addInternalSeparator();
+            camPanel->addSmallColumn(camCol);
+        }
+        tab->addPanel(camPanel);
     }
 
     // Note de Calcul (NDC)
@@ -520,6 +557,7 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     std::vector<QAction*> dockCol1;
     if (acts.actionToggleModelTree) dockCol1.push_back(acts.actionToggleModelTree);
     if (acts.actionToggleProperties) dockCol1.push_back(acts.actionToggleProperties);
+    if (acts.actionResultsDock) dockCol1.push_back(acts.actionResultsDock);
     if (!dockCol1.empty()) dockPanel->addSmallColumn(dockCol1);
 
     std::vector<QAction*> dockCol2;

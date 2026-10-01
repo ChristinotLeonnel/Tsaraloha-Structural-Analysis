@@ -137,6 +137,8 @@ set(UI_DIALOGS_SOURCES
     src/UI/Dialogs/MemberLoadDialog.cpp
     src/UI/Dialogs/LoadCaseDialog.h
     src/UI/Dialogs/LoadCaseDialog.cpp
+    src/UI/Dialogs/AnalysisConfigDialog.h
+    src/UI/Dialogs/AnalysisConfigDialog.cpp
 )
 
 # Cette boîte de dialogue dépend d'ExtensionManager, testé indépendamment de
@@ -251,6 +253,8 @@ set(UI_DOCK_SOURCES
     src/UI/Dock/LogConsoleDock.cpp
     src/UI/Dock/ProjectionViewDock.h
     src/UI/Dock/ProjectionViewDock.cpp
+    src/UI/Dock/ResultsDockWidget.h
+    src/UI/Dock/ResultsDockWidget.cpp
 )
 
 # --- Systèmes de coordonnées et plans de travail — [CORE] --------------------

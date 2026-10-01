@@ -124,6 +124,7 @@ public:
 
     // --- Prédicats & Helpers ---
     bool isFree() const;
+    bool isSupported() const { return !isFree(); }
     bool isFixed() const;
     bool isPinned() const;
     bool isRoller() const;

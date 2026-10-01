@@ -118,6 +118,9 @@ public:
     // Actions de vue et navigation étendues (AutoCAD / Robot SA style)
     void fitAll();
     void fitSelection();
+    void fitModel();
+    void fitResults();
+    void fitDeformed();
     void resetView();
     void viewHome();
     void viewTop();
@@ -282,11 +285,22 @@ public:
     void resetCurrentSlabContour();
 
     // Visibilité et étiquetage 3D des nœuds
+    enum class NodeDisplayFilter
+    {
+        All = 0,
+        FreeOnly,
+        SupportedOnly,
+        SelectedOnly
+    };
+
     void setNodesVisible(bool visible);
     bool areNodesVisible() const noexcept { return m_nodesVisible; }
 
     void setNodeLabelsVisible(bool visible);
     bool areNodeLabelsVisible() const noexcept { return m_nodeLabelsVisible; }
+
+    void setNodeDisplayFilter(NodeDisplayFilter filter);
+    NodeDisplayFilter nodeDisplayFilter() const noexcept { return m_nodeDisplayFilter; }
 
     // Visibilité et étiquetage 3D des charges (Forces, Moments, Réparties)
     void setLoadsVisible(bool visible);
@@ -316,6 +330,7 @@ signals:
     void objectSnapChanged(bool enabled);
     void nodesVisibilityChanged(bool visible);
     void nodeLabelsVisibilityChanged(bool visible);
+    void nodeDisplayFilterChanged(NodeDisplayFilter filter);
     void loadsVisibilityChanged(bool visible);
     void loadValuesVisibilityChanged(bool visible);
     void interactionModeChanged(InteractionMode mode);
@@ -499,6 +514,9 @@ private:
     bool m_gridLabelsVisible = true;
     bool m_nodesVisible = true;
     bool m_nodeLabelsVisible = false;
+    NodeDisplayFilter m_nodeDisplayFilter = NodeDisplayFilter::All;
+    bool isNodeVisibleByFilter(int nodeId) const;
+    void updateNodeVisibilities();
     bool m_isDarkMode = true;
     mutable bool m_isCursorSnapped = false;
     double m_gridZOffset = 0.0;

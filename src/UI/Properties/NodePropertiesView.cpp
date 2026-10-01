@@ -1,6 +1,7 @@
 #include "NodePropertiesView.h"
 #include "../../Model/Model.h"
 #include "../../Model/Node.h"
+#include "../../Analysis/ResultsModel.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -33,6 +34,12 @@ void NodePropertiesView::setModel(TSA::Model::Model* model)
 void NodePropertiesView::setElementId(int id)
 {
     m_nodeId = id;
+    refreshView();
+}
+
+void NodePropertiesView::setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
+{
+    m_resultsModel = results;
     refreshView();
 }
 
@@ -186,6 +193,51 @@ void NodePropertiesView::setupUi()
     m_customDirWidget->setVisible(false);
 
     mainLayout->addWidget(grpOrient);
+
+    // 4. Groupe : Résultats de Calcul OpenSees
+    m_groupResults = new QGroupBox(tr("Résultats OpenSees"), this);
+    auto* formRes = new QFormLayout(m_groupResults);
+    formRes->setContentsMargins(8, 8, 8, 8);
+    formRes->setSpacing(6);
+
+    m_labelNodeStatus = new QLabel(m_groupResults);
+    m_labelNodeStatus->setStyleSheet("font-weight: bold;");
+    formRes->addRow(tr("Connectivité :"), m_labelNodeStatus);
+
+    m_labelDispX = new QLabel(m_groupResults);
+    m_labelDispY = new QLabel(m_groupResults);
+    m_labelDispZ = new QLabel(m_groupResults);
+    m_labelDispRes = new QLabel(m_groupResults);
+    m_labelDispRes->setStyleSheet("font-weight: bold; color: #3b82f6;");
+
+    formRes->addRow(tr("UX :"), m_labelDispX);
+    formRes->addRow(tr("UY :"), m_labelDispY);
+    formRes->addRow(tr("UZ :"), m_labelDispZ);
+    formRes->addRow(tr("U_res :"), m_labelDispRes);
+
+    m_labelRotX = new QLabel(m_groupResults);
+    m_labelRotY = new QLabel(m_groupResults);
+    m_labelRotZ = new QLabel(m_groupResults);
+    formRes->addRow(tr("Rot RX :"), m_labelRotX);
+    formRes->addRow(tr("Rot RY :"), m_labelRotY);
+    formRes->addRow(tr("Rot RZ :"), m_labelRotZ);
+
+    m_labelReactFx = new QLabel(m_groupResults);
+    m_labelReactFy = new QLabel(m_groupResults);
+    m_labelReactFz = new QLabel(m_groupResults);
+    m_labelReactMx = new QLabel(m_groupResults);
+    m_labelReactMy = new QLabel(m_groupResults);
+    m_labelReactMz = new QLabel(m_groupResults);
+    formRes->addRow(tr("Réaction Fx :"), m_labelReactFx);
+    formRes->addRow(tr("Réaction Fy :"), m_labelReactFy);
+    formRes->addRow(tr("Réaction Fz :"), m_labelReactFz);
+    formRes->addRow(tr("Moment Mx :"), m_labelReactMx);
+    formRes->addRow(tr("Moment My :"), m_labelReactMy);
+    formRes->addRow(tr("Moment Mz :"), m_labelReactMz);
+
+    m_groupResults->setVisible(false);
+    mainLayout->addWidget(m_groupResults);
+
     mainLayout->addStretch();
 }
 
@@ -216,6 +268,60 @@ void NodePropertiesView::refreshView()
     m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
 
     syncUiFromSupport(node->support());
+
+    // Connectivité
+    bool isFree = m_model->isNodeFree(m_nodeId);
+    if (isFree)
+    {
+        m_labelNodeStatus->setText(tr("⚠️ Nœud libre (non connecté)"));
+        m_labelNodeStatus->setStyleSheet("font-weight: bold; color: #ef4444;");
+    }
+    else
+    {
+        m_labelNodeStatus->setText(tr("✓ Nœud connecté au modèle"));
+        m_labelNodeStatus->setStyleSheet("font-weight: bold; color: #10b981;");
+    }
+
+    // Résultats OpenSees
+    if (m_resultsModel && m_resultsModel->hasResults() && m_resultsModel->hasNodeDisplacement(m_nodeId))
+    {
+        m_groupResults->setVisible(true);
+        const auto& d = m_resultsModel->nodeDisplacement(m_nodeId);
+        double ures = std::sqrt(d.ux * d.ux + d.uy * d.uy + d.uz * d.uz);
+
+        m_labelDispX->setText(tr("%1 mm").arg(d.ux * 1000.0, 0, 'f', 3));
+        m_labelDispY->setText(tr("%1 mm").arg(d.uy * 1000.0, 0, 'f', 3));
+        m_labelDispZ->setText(tr("%1 mm").arg(d.uz * 1000.0, 0, 'f', 3));
+        m_labelDispRes->setText(tr("%1 mm").arg(ures * 1000.0, 0, 'f', 3));
+
+        m_labelRotX->setText(tr("%1 mrad").arg(d.rx * 1000.0, 0, 'f', 3));
+        m_labelRotY->setText(tr("%1 mrad").arg(d.ry * 1000.0, 0, 'f', 3));
+        m_labelRotZ->setText(tr("%1 mrad").arg(d.rz * 1000.0, 0, 'f', 3));
+
+        if (m_resultsModel->hasNodeReaction(m_nodeId))
+        {
+            const auto& r = m_resultsModel->nodeReaction(m_nodeId);
+            m_labelReactFx->setText(tr("%1 kN").arg(r.rx, 0, 'f', 2));
+            m_labelReactFy->setText(tr("%1 kN").arg(r.ry, 0, 'f', 2));
+            m_labelReactFz->setText(tr("%1 kN").arg(r.rz, 0, 'f', 2));
+            m_labelReactMx->setText(tr("%1 kNm").arg(r.mx, 0, 'f', 2));
+            m_labelReactMy->setText(tr("%1 kNm").arg(r.my, 0, 'f', 2));
+            m_labelReactMz->setText(tr("%1 kNm").arg(r.mz, 0, 'f', 2));
+        }
+        else
+        {
+            m_labelReactFx->setText(tr("—"));
+            m_labelReactFy->setText(tr("—"));
+            m_labelReactFz->setText(tr("—"));
+            m_labelReactMx->setText(tr("—"));
+            m_labelReactMy->setText(tr("—"));
+            m_labelReactMz->setText(tr("—"));
+        }
+    }
+    else
+    {
+        m_groupResults->setVisible(false);
+    }
 
     m_isLoading = false;
 }

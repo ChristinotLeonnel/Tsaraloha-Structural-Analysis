@@ -344,6 +344,81 @@ const Node* Model::getNode(int nodeId) const
     return (it != m_nodes.end()) ? &it->second : nullptr;
 }
 
+bool Model::isNodeFree(int nodeId) const
+{
+    if (m_nodes.find(nodeId) == m_nodes.end())
+        return false;
+
+    for (const auto& [id, beam] : m_beams)
+    {
+        if (beam.startNodeId() == nodeId || beam.endNodeId() == nodeId) return false;
+    }
+    for (const auto& [id, col] : m_columns)
+    {
+        if (col.startNodeId() == nodeId || col.endNodeId() == nodeId) return false;
+    }
+    for (const auto& [id, tm] : m_trussMembers)
+    {
+        if (tm.startNodeId() == nodeId || tm.endNodeId() == nodeId) return false;
+    }
+    for (const auto& [id, cb] : m_cables)
+    {
+        if (cb.startNodeId() == nodeId || cb.endNodeId() == nodeId) return false;
+    }
+    for (const auto& [id, wall] : m_walls)
+    {
+        if (wall.startNodeId() == nodeId || wall.endNodeId() == nodeId) return false;
+    }
+    for (const auto& [id, slab] : m_slabs)
+    {
+        for (int nid : slab.nodeIds())
+        {
+            if (nid == nodeId) return false;
+        }
+    }
+    for (const auto& [id, f] : m_foundations)
+    {
+        if (f.nodeId() == nodeId) return false;
+    }
+
+    return true;
+}
+
+std::vector<int> Model::freeNodeIds() const
+{
+    std::set<int> connectedNodes;
+    for (const auto& [id, b] : m_beams) { connectedNodes.insert(b.startNodeId()); connectedNodes.insert(b.endNodeId()); }
+    for (const auto& [id, c] : m_columns) { connectedNodes.insert(c.startNodeId()); connectedNodes.insert(c.endNodeId()); }
+    for (const auto& [id, tm] : m_trussMembers) { connectedNodes.insert(tm.startNodeId()); connectedNodes.insert(tm.endNodeId()); }
+    for (const auto& [id, cb] : m_cables) { connectedNodes.insert(cb.startNodeId()); connectedNodes.insert(cb.endNodeId()); }
+    for (const auto& [id, w] : m_walls) { connectedNodes.insert(w.startNodeId()); connectedNodes.insert(w.endNodeId()); }
+    for (const auto& [id, s] : m_slabs) { for (int nid : s.nodeIds()) connectedNodes.insert(nid); }
+    for (const auto& [id, f] : m_foundations) { connectedNodes.insert(f.nodeId()); }
+
+    std::vector<int> freeIds;
+    for (const auto& [nid, node] : m_nodes)
+    {
+        if (connectedNodes.find(nid) == connectedNodes.end())
+        {
+            freeIds.push_back(nid);
+        }
+    }
+    return freeIds;
+}
+
+std::vector<int> Model::supportedNodeIds() const
+{
+    std::vector<int> suppIds;
+    for (const auto& [nid, node] : m_nodes)
+    {
+        if (node.support().isSupported())
+        {
+            suppIds.push_back(nid);
+        }
+    }
+    return suppIds;
+}
+
 int Model::addBeam(int startNodeId, int endNodeId, double width, double height, const std::string& name)
 {
     if (m_nodes.find(startNodeId) == m_nodes.end() || m_nodes.find(endNodeId) == m_nodes.end())

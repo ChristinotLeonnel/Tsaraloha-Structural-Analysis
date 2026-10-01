@@ -14,6 +14,9 @@
 #include "../Analysis/OpenSeesManager.h"
 #include "../Analysis/ResultsModel.h"
 #include "../Viewer/ResultsVisualManager.h"
+#include "Dialogs/AnalysisConfigDialog.h"
+#include "Dock/ResultsDockWidget.h"
+#include "Properties/PropertyPanel.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -623,6 +626,22 @@ void MainWindow::onActionMeshGen()
     }
 }
 
+void MainWindow::onActionAnalysisConfig()
+{
+    TSA::UI::AnalysisConfigDialog dlg(m_model.get(), this);
+    dlg.setParameters(m_lastAnalysisParams);
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        m_lastAnalysisParams = dlg.parameters();
+        if (m_consoleDock)
+        {
+            m_consoleDock->appendLog(tr("Paramètres de résolution mis à jour (Algorithme: %1, Intégrateur: %2)")
+                                         .arg(QString::fromStdString(TSA::Analysis::algorithmToTcl(m_lastAnalysisParams.algorithm)))
+                                         .arg(QString::fromStdString(TSA::Analysis::integratorToTcl(m_lastAnalysisParams.integrator))), "INFO");
+        }
+    }
+}
+
 void MainWindow::onActionRunSolve()
 {
     if (!m_model || m_model->nodes().empty() || (m_model->beams().empty() && m_model->columns().empty() && m_model->trussMembers().empty()))
@@ -657,19 +676,26 @@ void MainWindow::onActionRunSolve()
         }
     }
 
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("--- CALCUL STATIQUE LINÉAIRE OPENSEES [K]{u} = {F} ---"), "SYS");
-        m_consoleDock->appendLog(tr("Modèle source : %1 nœuds, %2 poutres, %3 poteaux")
-                                .arg(m_model->nodes().size())
-                                .arg(m_model->beams().size())
-                                .arg(m_model->columns().size()), "INFO");
-    }
-
-    TSA::Analysis::AnalysisParameters params;
-    params.type = TSA::Analysis::AnalysisType::LinearStatic;
+    TSA::Analysis::AnalysisParameters params = m_lastAnalysisParams;
     params.useKiloNewtons = true;
     params.includeSelfWeight = true;
+
+    if (m_consoleDock)
+    {
+        QString aName = (params.type == TSA::Analysis::AnalysisType::NonLinearStatic)
+                            ? tr("STATIQUE NON LINÉAIRE")
+                            : (params.type == TSA::Analysis::AnalysisType::Modal ? tr("MODALE") : tr("STATIQUE LINÉAIRE"));
+        m_consoleDock->appendLog(tr("--- CALCUL OPENSEES [%1] ---").arg(aName), "SYS");
+        m_consoleDock->appendLog(tr("Algorithme: %1 | Intégrateur: %2 | Solveur: %3")
+                                     .arg(QString::fromStdString(TSA::Analysis::algorithmToTcl(params.algorithm)))
+                                     .arg(QString::fromStdString(TSA::Analysis::integratorToTcl(params.integrator)))
+                                     .arg(QString::fromStdString(TSA::Analysis::systemSolverToTcl(params.systemSolver))), "INFO");
+        m_consoleDock->appendLog(tr("Modèle source : %1 nœuds, %2 poutres, %3 poteaux, %4 barres de treillis")
+                                .arg(m_model->nodes().size())
+                                .arg(m_model->beams().size())
+                                .arg(m_model->columns().size())
+                                .arg(m_model->trussMembers().size()), "INFO");
+    }
 
     if (!m_openSeesSolver)
     {
@@ -694,6 +720,17 @@ void MainWindow::onActionRunSolve()
 
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
     if (m_portArea) m_portArea->setResultsModel(m_resultsModel);
+    if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
+    if (m_resultsDock)
+    {
+        m_resultsDock->setResultsModel(m_resultsModel);
+        if (m_occView && m_occView->resultsVisual())
+        {
+            m_resultsDock->syncFromVisualManager(m_occView->resultsVisual());
+        }
+        m_resultsDock->show();
+        m_resultsDock->raise();
+    }
 
     const auto& ext = m_resultsModel->summary();
     const auto& eq = m_resultsModel->equilibrium();
@@ -788,6 +825,7 @@ void MainWindow::onActionModal()
         }
     }
     if (m_portArea) m_portArea->setResultsModel(m_resultsModel);
+    if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
 
     QString msgSummary = tr("Analyse Modale OpenSees Terminée :\n\n");
     for (const auto& m : m_resultsModel->modalModes())
@@ -846,6 +884,7 @@ void MainWindow::onActionPushover()
     m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
 
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
+    if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
     if (m_portArea)
     {
         m_portArea->setResultsModel(m_resultsModel);
@@ -904,6 +943,30 @@ void MainWindow::onActionDiagramMz()
     }
 }
 
+void MainWindow::onActionDiagramMy()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
+    }
+}
+
+void MainWindow::onActionDiagramMx()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
+    }
+}
+
 void MainWindow::onActionDiagramVz()
 {
     if (m_occView && m_occView->resultsVisual())
@@ -913,6 +976,18 @@ void MainWindow::onActionDiagramVz()
     if (m_portArea && m_portArea->diagramWidget())
     {
         m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVz);
+    }
+}
+
+void MainWindow::onActionDiagramVy()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVy);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVy);
     }
 }
 
@@ -928,12 +1003,39 @@ void MainWindow::onActionDiagramN()
     }
 }
 
+void MainWindow::onActionDiagramDeflection()
+{
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::DeflectionUz);
+    }
+    if (m_portArea && m_portArea->diagramWidget())
+    {
+        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::DeflectionUz);
+    }
+}
+
 void MainWindow::onActionDiagramNone()
 {
     if (m_occView && m_occView->resultsVisual())
     {
         m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::None);
     }
+}
+
+void MainWindow::onFitModel()
+{
+    if (m_occView) m_occView->fitModel();
+}
+
+void MainWindow::onFitResults()
+{
+    if (m_occView) m_occView->fitResults();
+}
+
+void MainWindow::onFitDeformed()
+{
+    if (m_occView) m_occView->fitDeformed();
 }
 
 void MainWindow::onPortLayoutSingle()

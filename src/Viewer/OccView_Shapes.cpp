@@ -625,12 +625,19 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
         return;
 
     // 2. Créer la nouvelle forme 3D (Sphère)
-    TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createNodeShape(*node, 0.12);
+    bool isFree = m_model && m_model->isNodeFree(nodeId);
+    double nodeRadius = isFree ? 0.16 : 0.12;
+    TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createNodeShape(*node, nodeRadius);
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisNode = new AIS_Shape(shape);
         Quantity_Color qc;
-        if (parseHexColor(node->color(), qc))
+        if (isFree)
+        {
+            // Nœuds libres : mis en évidence en magenta pour signaler les instabilités
+            aisNode->SetColor(Quantity_NOC_MAGENTA1);
+        }
+        else if (parseHexColor(node->color(), qc))
         {
             aisNode->SetColor(qc);
         }
@@ -642,7 +649,7 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
         aisNode->SetDisplayMode(AIS_Shaded);
 
         m_nodeShapes[nodeId] = aisNode;
-        if (m_nodesVisible)
+        if (isNodeVisibleByFilter(nodeId))
         {
             m_context->Display(aisNode, false);
         }
@@ -653,7 +660,7 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
             if (wasSelected)
             {
                 m_selectionManager->selectNode(nodeId, true);
-                if (m_nodesVisible)
+                if (isNodeVisibleByFilter(nodeId))
                 {
                     m_context->SetSelected(aisNode, false);
                 }
@@ -664,13 +671,17 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
     // 3. Créer l'étiquette 3D (AIS_TextLabel)
     Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
     QString labelText = QString("N%1").arg(node->id());
-    if (!node->name().empty() && node->name() != labelText.toStdString() && node->name() != node->formattedName())
+    if (isFree)
+    {
+        labelText += " [LIBRE]";
+    }
+    else if (!node->name().empty() && node->name() != labelText.toStdString() && node->name() != node->formattedName())
     {
         labelText += QString(" (%1)").arg(QString::fromStdString(node->name()));
     }
     aisLabel->SetText(TCollection_ExtendedString(labelText.toUtf8().constData(), true));
     aisLabel->SetPosition(gp_Pnt(node->x(), node->y(), node->z() + 0.18));
-    aisLabel->SetColor(m_isDarkMode ? Quantity_Color(0.2, 0.9, 0.9, Quantity_TOC_RGB) : Quantity_Color(0.0, 0.4, 0.6, Quantity_TOC_RGB));
+    aisLabel->SetColor(isFree ? Quantity_Color(1.0, 0.2, 0.8, Quantity_TOC_RGB) : (m_isDarkMode ? Quantity_Color(0.2, 0.9, 0.9, Quantity_TOC_RGB) : Quantity_Color(0.0, 0.4, 0.6, Quantity_TOC_RGB)));
     aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
     aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
     aisLabel->SetHeight(13.0);
@@ -678,7 +689,7 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
 
     m_context->Display(aisLabel, false);
     m_context->Deactivate(aisLabel);
-    if (!m_nodeLabelsVisible || !m_nodesVisible)
+    if (!m_nodeLabelsVisible || !isNodeVisibleByFilter(nodeId))
     {
         m_context->Erase(aisLabel, false);
     }

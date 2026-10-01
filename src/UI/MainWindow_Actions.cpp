@@ -16,6 +16,8 @@
 #include "Dock/StructuralElementsDock.h"
 #include "Dock/LogConsoleDock.h"
 #include "Dock/ProjectionViewDock.h"
+#include "Dock/ResultsDockWidget.h"
+#include "../Viewer/ResultsVisualManager.h"
 #include "Dialogs/BarCreationDialog.h"
 #include "Dialogs/CableCreationDialog.h"
 #include "Theme/ThemeManager.h"
@@ -676,7 +678,12 @@ void MainWindow::createActions()
     m_actionMeshGen->setToolTip(tr("Discrétiser les barres et dalles en éléments finis"));
     connect(m_actionMeshGen, &QAction::triggered, this, &MainWindow::onActionMeshGen);
 
-    m_actionRunSolve = new QAction(tr("&Calcul Statique Linéaire"), this);
+    m_actionAnalysisConfig = new QAction(tr("&Paramètres de Résolution..."), this);
+    m_actionAnalysisConfig->setIcon(QIcon(":/icons/analysis_settings.svg"));
+    m_actionAnalysisConfig->setToolTip(tr("Configurer la méthode de résolution, l'algorithme et l'intégrateur EF"));
+    connect(m_actionAnalysisConfig, &QAction::triggered, this, &MainWindow::onActionAnalysisConfig);
+
+    m_actionRunSolve = new QAction(tr("&Lancer le Calcul Structurel"), this);
     m_actionRunSolve->setIcon(QIcon(":/icons/analysis_run.svg"));
     m_actionRunSolve->setToolTip(tr("Lancer la résolution par éléments finis [K]{u} = {F} (F5)"));
     m_actionRunSolve->setShortcut(QKeySequence(Qt::Key_F5));
@@ -703,13 +710,29 @@ void MainWindow::createActions()
     m_actionDiagramMz->setToolTip(tr("Afficher le diagramme 3D du moment fléchissant Mz"));
     connect(m_actionDiagramMz, &QAction::triggered, this, &MainWindow::onActionDiagramMz);
 
+    m_actionDiagramMy = new QAction(tr("Moment M&y"), this);
+    m_actionDiagramMy->setToolTip(tr("Afficher le diagramme 3D du moment fléchissant secondaire My"));
+    connect(m_actionDiagramMy, &QAction::triggered, this, &MainWindow::onActionDiagramMy);
+
+    m_actionDiagramMx = new QAction(tr("Torsion M&x"), this);
+    m_actionDiagramMx->setToolTip(tr("Afficher le diagramme 3D du moment de torsion Mx"));
+    connect(m_actionDiagramMx, &QAction::triggered, this, &MainWindow::onActionDiagramMx);
+
     m_actionDiagramVz = new QAction(tr("Tranchant &Vz"), this);
     m_actionDiagramVz->setToolTip(tr("Afficher le diagramme 3D de l'effort tranchant Vz"));
     connect(m_actionDiagramVz, &QAction::triggered, this, &MainWindow::onActionDiagramVz);
 
+    m_actionDiagramVy = new QAction(tr("Tranchant V&y"), this);
+    m_actionDiagramVy->setToolTip(tr("Afficher le diagramme 3D de l'effort tranchant Vy"));
+    connect(m_actionDiagramVy, &QAction::triggered, this, &MainWindow::onActionDiagramVy);
+
     m_actionDiagramN = new QAction(tr("Effort Normal &N"), this);
     m_actionDiagramN->setToolTip(tr("Afficher le diagramme 3D de l'effort normal N"));
     connect(m_actionDiagramN, &QAction::triggered, this, &MainWindow::onActionDiagramN);
+
+    m_actionDiagramDeflection = new QAction(tr("Flèches &UZ / Ures"), this);
+    m_actionDiagramDeflection->setToolTip(tr("Afficher le diagramme 3D des flèches transversales le long des éléments"));
+    connect(m_actionDiagramDeflection, &QAction::triggered, this, &MainWindow::onActionDiagramDeflection);
 
     m_actionDiagramNone = new QAction(tr("&Masquer Diagrammes"), this);
     connect(m_actionDiagramNone, &QAction::triggered, this, &MainWindow::onActionDiagramNone);
@@ -719,6 +742,21 @@ void MainWindow::createActions()
     m_actionReactionsToggle->setChecked(true);
     m_actionReactionsToggle->setToolTip(tr("Afficher les flèches et valeurs des réactions d'appui en 3D"));
     connect(m_actionReactionsToggle, &QAction::toggled, this, &MainWindow::onActionToggleReactions);
+
+    m_actionFitModel = new QAction(tr("Cadrer &Modèle"), this);
+    m_actionFitModel->setIcon(QIcon(":/icons/fit_all.svg"));
+    m_actionFitModel->setToolTip(tr("Cadrer la vue sur l'ensemble du modèle initial non déformé"));
+    connect(m_actionFitModel, &QAction::triggered, this, &MainWindow::onFitModel);
+
+    m_actionFitResults = new QAction(tr("Cadrer &Résultats"), this);
+    m_actionFitResults->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_actionFitResults->setToolTip(tr("Cadrer la vue sur l'enveloppe globale des résultats et diagrammes 3D"));
+    connect(m_actionFitResults, &QAction::triggered, this, &MainWindow::onFitResults);
+
+    m_actionFitDeformed = new QAction(tr("Cadrer &Déformée"), this);
+    m_actionFitDeformed->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_actionFitDeformed->setToolTip(tr("Cadrer la vue sur l'enveloppe de la structure déformée"));
+    connect(m_actionFitDeformed, &QAction::triggered, this, &MainWindow::onFitDeformed);
 
     m_actionNoteDeCalcul = new QAction(tr("Note de &Calcul..."), this);
     m_actionNoteDeCalcul->setIcon(QIcon(":/icons/ndc_report.svg"));
@@ -851,20 +889,36 @@ void MainWindow::createMenus()
     analysisMenu->addSeparator();
     analysisMenu->addAction(m_actionMeshGen);
     analysisMenu->addSeparator();
+    analysisMenu->addAction(m_actionAnalysisConfig);
     analysisMenu->addAction(m_actionRunSolve);
     analysisMenu->addAction(m_actionModal);
     analysisMenu->addAction(m_actionPushover);
 
     // 6. Menu Résultats
     QMenu* resMenu = menuBar()->addMenu(tr("&Résultats"));
+    if (m_resultsDock) resMenu->addAction(m_resultsDock->toggleViewAction());
+    resMenu->addSeparator();
     resMenu->addAction(m_actionDeformedToggle);
     QMenu* diagSub = resMenu->addMenu(tr("Diagrammes d'Efforts 3D"));
     diagSub->addAction(m_actionDiagramMz);
+    diagSub->addAction(m_actionDiagramMy);
+    diagSub->addAction(m_actionDiagramMx);
+    diagSub->addSeparator();
     diagSub->addAction(m_actionDiagramVz);
+    diagSub->addAction(m_actionDiagramVy);
+    diagSub->addSeparator();
     diagSub->addAction(m_actionDiagramN);
+    diagSub->addSeparator();
+    diagSub->addAction(m_actionDiagramDeflection);
     diagSub->addSeparator();
     diagSub->addAction(m_actionDiagramNone);
     resMenu->addAction(m_actionReactionsToggle);
+    resMenu->addSeparator();
+    QMenu* camSub = resMenu->addMenu(tr("Cadrage Résultats"));
+    camSub->addAction(m_actionFitDeformed);
+    camSub->addAction(m_actionFitResults);
+    camSub->addAction(m_actionFitModel);
+    camSub->addAction(m_actionFitAll);
     resMenu->addSeparator();
     resMenu->addAction(m_actionNoteDeCalcul);
     resMenu->addSeparator();
@@ -1017,19 +1071,28 @@ void MainWindow::createRibbon()
     acts.actionSeismic = m_actionSeismic;
 
     acts.actionMeshGen = m_actionMeshGen;
+    acts.actionAnalysisConfig = m_actionAnalysisConfig;
     acts.actionRunSolve = m_actionRunSolve;
     acts.actionModal = m_actionModal;
     acts.actionPushover = m_actionPushover;
 
+    acts.actionResultsDock = m_resultsDock ? m_resultsDock->toggleViewAction() : nullptr;
     acts.actionResultsDisp = m_actionResultsDisp;
     acts.actionResultsForces = m_actionResultsForces;
     acts.actionResultsStress = m_actionResultsStress;
     acts.actionDeformedToggle = m_actionDeformedToggle;
     acts.actionDiagramMz = m_actionDiagramMz;
+    acts.actionDiagramMy = m_actionDiagramMy;
+    acts.actionDiagramMx = m_actionDiagramMx;
     acts.actionDiagramVz = m_actionDiagramVz;
+    acts.actionDiagramVy = m_actionDiagramVy;
     acts.actionDiagramN = m_actionDiagramN;
+    acts.actionDiagramDeflection = m_actionDiagramDeflection;
     acts.actionDiagramNone = m_actionDiagramNone;
     acts.actionReactionsToggle = m_actionReactionsToggle;
+    acts.actionFitModel = m_actionFitModel;
+    acts.actionFitResults = m_actionFitResults;
+    acts.actionFitDeformed = m_actionFitDeformed;
     acts.actionOpenNDC = m_actionNoteDeCalcul;
 
     acts.actionPortSingle = m_actionPortSingle;
@@ -1205,7 +1268,51 @@ void MainWindow::createDockWindows()
                 });
     }
 
-    // 4. Dock inférieur : CONSOLE & HISTORIQUE COMMANDES
+    // 5. Dock droit : RÉSULTATS STRUCTURAUX 3D
+    m_resultsDock = new TSA::UI::ResultsDockWidget(this);
+    m_resultsDock->setModel(m_model.get());
+    m_resultsDock->toggleViewAction()->setIcon(QIcon(":/icons/results_disp.svg"));
+    addDockWidget(Qt::RightDockWidgetArea, m_resultsDock);
+    tabifyDockWidget(m_propertiesDock, m_resultsDock);
+    m_propertiesDock->raise();
+
+    if (m_occView)
+    {
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::deformedToggled,
+                this, &MainWindow::onActionToggleDeformed);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::deformedDisplayModeChanged,
+                m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDeformedDisplayMode);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::deformationScalePresetChanged,
+                m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDeformationScalePreset);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::diagramTypeChanged,
+                m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDiagramType);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::diagramScalePresetChanged,
+                m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDiagramScalePreset);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::diagramLabelsToggled,
+                m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDiagramLabelsVisible);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::reactionsToggled,
+                this, &MainWindow::onActionToggleReactions);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::activeStepChanged,
+                m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setActiveStep);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::legendToggled,
+                m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setLegendVisible);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::nodesVisibleToggled,
+                m_occView, &OccView::setNodesVisible);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::nodeLabelsToggled,
+                m_occView, &OccView::setNodeLabelsVisible);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::nodeFilterChanged,
+                m_occView, &OccView::setNodeDisplayFilter);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::fitModelRequested,
+                m_occView, &OccView::fitModel);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::fitResultsRequested,
+                m_occView, &OccView::fitResults);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::fitDeformedRequested,
+                m_occView, &OccView::fitDeformed);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::fitSelectionRequested,
+                m_occView, &OccView::fitSelection);
+    }
+
+    // 6. Dock inférieur : CONSOLE & HISTORIQUE COMMANDES
     m_consoleDock = new TSA::UI::LogConsoleDock(this);
     m_consoleDock->toggleViewAction()->setIcon(QIcon(":/icons/console.svg"));
     addDockWidget(Qt::BottomDockWidgetArea, m_consoleDock);

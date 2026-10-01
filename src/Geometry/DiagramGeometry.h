@@ -14,12 +14,19 @@ namespace TSA::Geometry
 enum class DiagramType
 {
     None,
-    AxialForceN,    ///< N (Effort Normal)
-    ShearForceVy,   ///< Vy (Effort Tranchant selon Y local)
-    ShearForceVz,   ///< Vz (Effort Tranchant selon Z local)
+    AxialForceN,    ///< N / Nx (Effort Normal)
+    ShearForceVy,   ///< Vy / Qy (Effort Tranchant selon Y local)
+    ShearForceVz,   ///< Vz / Qz (Effort Tranchant selon Z local)
     TorsionMx,      ///< Mx (Moment de Torsion)
     BendingMy,      ///< My (Moment Fléchissant autour de Y local)
-    BendingMz       ///< Mz (Moment Fléchissant autour de Z local)
+    BendingMz,      ///< Mz (Moment Fléchissant autour de Z local)
+    DeflectionUx,   ///< UX (Déplacement axial le long de l'élément)
+    DeflectionUy,   ///< UY (Flèche transversale selon Y local)
+    DeflectionUz,   ///< UZ (Flèche verticale selon Z local)
+    DeflectionUres, ///< U résultant (Norme du déplacement)
+    RotationRx,     ///< RX (Rotation de torsion rad)
+    RotationRy,     ///< RY (Rotation de flexion Y rad)
+    RotationRz      ///< RZ (Rotation de flexion Z rad)
 };
 
 /**

@@ -10,6 +10,8 @@ class QPushButton;
 class QGroupBox;
 class QWidget;
 
+namespace TSA::Analysis { class ResultsModel; }
+
 namespace TSA::UI
 {
 
@@ -24,6 +26,7 @@ public:
     void setModel(TSA::Model::Model* model) override;
     void setElementId(int id) override;
     int elementId() const override { return m_nodeId; }
+    void setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
     void refreshView() override;
     void refreshLibraries() override {}
     void applyChanges() override;
@@ -78,6 +81,24 @@ private:
     QDoubleSpinBox* m_spinDirX = nullptr;
     QDoubleSpinBox* m_spinDirY = nullptr;
     QDoubleSpinBox* m_spinDirZ = nullptr;
+
+    // Résultats OpenSees
+    std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
+    QGroupBox* m_groupResults = nullptr;
+    class QLabel* m_labelNodeStatus = nullptr;
+    class QLabel* m_labelDispX = nullptr;
+    class QLabel* m_labelDispY = nullptr;
+    class QLabel* m_labelDispZ = nullptr;
+    class QLabel* m_labelDispRes = nullptr;
+    class QLabel* m_labelRotX = nullptr;
+    class QLabel* m_labelRotY = nullptr;
+    class QLabel* m_labelRotZ = nullptr;
+    class QLabel* m_labelReactFx = nullptr;
+    class QLabel* m_labelReactFy = nullptr;
+    class QLabel* m_labelReactFz = nullptr;
+    class QLabel* m_labelReactMx = nullptr;
+    class QLabel* m_labelReactMy = nullptr;
+    class QLabel* m_labelReactMz = nullptr;
 };
 
 } // namespace TSA::UI
