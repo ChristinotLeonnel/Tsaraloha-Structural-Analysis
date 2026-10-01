@@ -529,6 +529,10 @@ set(STANDARDS_SOURCES
     src/Standards/ModelValidator.cpp
     src/Standards/AnalyticalBenchmark.h
     src/Standards/AnalyticalBenchmark.cpp
+    src/Standards/Design/ConcreteDesignEC2.h
+    src/Standards/Design/ConcreteDesignEC2.cpp
+    src/Standards/Design/SteelDesignEC3.h
+    src/Standards/Design/SteelDesignEC3.cpp
 )
 
 # --- Intégration spécifique Windows (association de fichiers) ----------------

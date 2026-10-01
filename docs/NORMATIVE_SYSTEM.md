@@ -203,9 +203,9 @@ Pour maintenir la lisibilité sans surcharge artificielle, les marqueurs normali
 | **REQ-CALC-EC0-002** | Eurocodes | EN 1990 | Annexe A1 | Facteurs partiels $\gamma$ et $\psi$ configurables par Annexe Nationale | `NationalAnnexConfig.h` | `TSA_StandardsTests` | **IMPLEMENTED** |
 | **REQ-CALC-EC1-001** | Eurocodes | EN 1991 | §5.2 | Poids propre volumique automatique ($\rho \cdot g \cdot A$) | `OpenSeesAnalysisBuilder.cpp` | `TSA_OpenSeesTests` | **IMPLEMENTED** |
 | **REQ-CALC-EC2-001** | Eurocodes | EN 1992 | Tab. 3.1 | Bétons normés C20/25 à C50/60 ($f_{ck}, E_{cm}, \nu$) | `Material.cpp` | `TSA_ExtensionsTests` | **IMPLEMENTED** |
-| **REQ-CALC-EC2-002** | Eurocodes | EN 1992 | §6.1 | Dimensionnement du ferraillage longitudinal en flexion | `src/Design/` | Prévu Phase 6 | **PARTIAL** |
+| **REQ-CALC-EC2-002** | Eurocodes | EN 1992 | §6.1 | Dimensionnement du ferraillage longitudinal en flexion | `ConcreteDesignEC2.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
 | **REQ-CALC-EC3-001** | Eurocodes | EN 1993 | Tab. 3.1 | Aciers S235/S355 et profilés normalisés IPE/HEA/HEB/UPN | `Section.cpp`, `Material.cpp` | `TSA_ModelElementsTests` | **IMPLEMENTED** |
-| **REQ-CALC-EC3-002** | Eurocodes | EN 1993 | §6.3 | Justification des barres aux instabilités (flambement, déversement) | `src/Design/` | Prévu Phase 6 | **PARTIAL** |
+| **REQ-CALC-EC3-002** | Eurocodes | EN 1993 | §6.3 | Justification des barres aux instabilités (flambement, déversement) | `SteelDesignEC3.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
 | **REQ-CALC-CAB-001** | Câbles | EN 1993-1-11 | §5 & §6 | Câbles tendus, module d'Ernst, haubans, rentrée de mors | `CableStandards.cpp` | `TSA_CablesTests` | **IMPLEMENTED** |
 | **REQ-UI-PORT-001** | Ergonomie | ISO/IEC 25010 | §4.2.4 | Espace multi-ports réactif sans duplication mémoire du modèle | `PortAreaWidget.cpp` | `TSA_WindowManagerTests` | **IMPLEMENTED** |
 | **REQ-NDC-GEN-001** | Rapport | IEEE Std 1063 | Justification | Note de calcul réglementaire certifiée HTML / Texte brut | `NDCGenerator.cpp` | `TSA_AllTests` | **IMPLEMENTED** |

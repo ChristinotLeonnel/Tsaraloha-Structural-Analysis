@@ -358,10 +358,10 @@ void RequirementsCatalog::initializeDefaultCatalog()
         "EN 1992-1-1:2004",
         "§6.1 (Flexion simple et composée à l'ELU)",
         "Vérification de la capacité portante des sections rectangulaires et circulaires en béton armé et calcul des sections d'armatures longitudinales As.",
-        "src/Standards/Design/ConcreteDesignEC2.h [prévu Phase 6]",
-        "EC2_RC_BEAM_001 [prévu]",
-        RequirementStatus::Partial,
-        "Spécification rédigée, implémentation du vérificateur en Phase 6."
+        "src/Standards/Design/ConcreteDesignEC2.h, src/Standards/Design/ConcreteDesignEC2.cpp",
+        "TSA_StandardsTests",
+        RequirementStatus::Implemented,
+        "Formulation de flexion simple aux ELU (pivot A/B, mu_cu, bras de levier z, As_min, As_prov) validée."
     });
 
     registerRequirement({
@@ -384,10 +384,10 @@ void RequirementsCatalog::initializeDefaultCatalog()
         "EN 1993-1-1:2005",
         "§6.3 (Résistance des barres aux instabilités : flambement et déversement)",
         "Calcul des longueurs de flambement Lcr, des élancements réduits lambda_bar et des coefficients de réduction chi selon les courbes de flambement a0, a, b, c, d.",
-        "src/Standards/Design/SteelDesignEC3.h [prévu Phase 6]",
-        "EC3_STEEL_BEAM_001 [prévu]",
-        RequirementStatus::Partial,
-        "Spécification rédigée, implémentation du vérificateur en Phase 6."
+        "src/Standards/Design/SteelDesignEC3.h, src/Standards/Design/SteelDesignEC3.cpp",
+        "TSA_StandardsTests",
+        RequirementStatus::Implemented,
+        "Vérification des courbes de flambement a0 à d, effort résistant Nb,Rd et ratio d'utilisation eta validés."
     });
 
     registerRequirement({

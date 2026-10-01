@@ -6,6 +6,8 @@
 #include "../src/Standards/DataDefinition.h"
 #include "../src/Standards/ModelValidator.h"
 #include "../src/Standards/AnalyticalBenchmark.h"
+#include "../src/Standards/Design/ConcreteDesignEC2.h"
+#include "../src/Standards/Design/SteelDesignEC3.h"
 #include "../src/Analysis/OpenSeesSolver.h"
 #include "../src/Analysis/OpenSeesResultsReader.h"
 #include "../src/Analysis/CalculationSnapshot.h"
@@ -16,6 +18,7 @@
 #include <QDateTime>
 
 using namespace TSA::Standards;
+using namespace TSA::Standards::Design;
 
 bool runSuite_Standards(int& passed)
 {
@@ -352,6 +355,106 @@ bool runSuite_Standards(int& passed)
         assert(!reportMd.empty());
         assert(reportMd.find("EC3_STEEL_BEAM_001") != std::string::npos);
         assert(reportMd.find("PASSED") != std::string::npos);
+
+        passed++;
+        std::cout << "PASSED" << std::endl;
+    }
+
+    // Test 10 : Dimensionnement flexion simple béton armé selon Eurocode 2 (ConcreteDesignEC2)
+    {
+        std::cout << "Test Standards.10 : ConcreteDesignEC2 (EN 1992-1-1 §6.1)... ";
+
+        EC2BeamBendingInput in;
+        in.b = 0.30;
+        in.h = 0.50;
+        in.d = 0.45;
+        in.fck = 25.0e6;  // C25/30
+        in.fyk = 500.0e6; // B500B
+        in.Med = 150.0e3; // 150 kNm
+        in.gammaC = 1.50;
+        in.gammaS = 1.15;
+
+        auto res = ConcreteDesignEC2::calculateRectangularBeamFlexure(in);
+        assert(res.valid);
+        assert(!res.requiresCompressionSteel);
+        assert(res.effectiveDepth == 0.45);
+        assert(std::abs(res.fcd - 16.666667e6) < 1e3);
+        assert(std::abs(res.fyd - 434.782608e6) < 1e3);
+        // mu_cu ~ 0.1481
+        assert(res.mu_cu > 0.14 && res.mu_cu < 0.16);
+        assert(res.utilizationRatio < 1.0);
+        // Section As_provided en m² (~ 8.3 cm²)
+        assert(res.As_provided > 8.0e-4 && res.As_provided < 9.0e-4);
+        assert(res.As_provided >= res.As_min);
+
+        // Cas sous-dimensionné nécessitant armatures comprimées
+        in.Med = 500.0e3; // 500 kNm -> dépasse mu_lu = 0.372
+        auto resHeavy = ConcreteDesignEC2::calculateRectangularBeamFlexure(in);
+        assert(resHeavy.valid);
+        assert(resHeavy.requiresCompressionSteel);
+        assert(resHeavy.utilizationRatio > 1.0);
+
+        // Calcul direct depuis les objets du modèle TSA (Section & Material)
+        auto sec = TSA::Model::Section::rectangular(0.30, 0.50);
+        auto mat = TSA::Model::Material::concreteC25_30();
+        auto resModel = ConcreteDesignEC2::calculateFromModel(sec, mat, 120.0e3, 500.0e6, 0.05);
+        assert(resModel.valid);
+        assert(!resModel.requiresCompressionSteel);
+        assert(resModel.As_provided > 6.0e-4);
+
+        passed++;
+        std::cout << "PASSED" << std::endl;
+    }
+
+    // Test 11 : Justification des barres acier au flambement selon Eurocode 3 (SteelDesignEC3)
+    {
+        std::cout << "Test Standards.11 : SteelDesignEC3 (EN 1993-1-1 §6.2 & §6.3)... ";
+
+        // 1. Résistances de section (§6.2)
+        double A = 2.848e-3; // IPE 200 (28.48 cm²)
+        double fy = 235.0e6; // S235
+        double Wel = 1.943e-4; // 194.3 cm³
+
+        double Nt_Rd = SteelDesignEC3::tensionResistance(A, fy);
+        assert(std::abs(Nt_Rd - 669.28e3) < 1e2);
+
+        double Mc_Rd = SteelDesignEC3::bendingResistance(Wel, fy);
+        assert(std::abs(Mc_Rd - 45.66e3) < 1e2);
+
+        // 2. Flambement (§6.3) : Poteau IPE 200, L = 4.0 m, articulé (beta = 1.0), axe faible (Iz = 1.42e-6 m4)
+        EC3BucklingInput in;
+        in.Lcr = 4.0;
+        in.A = A;
+        in.I = 1.42e-6; // Iz
+        in.E = 210.0e9;
+        in.fy = fy;
+        in.Ned = 100.0e3; // 100 kN sollicitant
+        in.curve = EC3BucklingCurve::b;
+        in.gammaM1 = 1.00;
+
+        auto res = SteelDesignEC3::calculateBuckling(in);
+        assert(res.valid);
+        assert(res.radiusOfGyration > 0.02 && res.radiusOfGyration < 0.025); // ~ 2.23 cm
+        assert(res.slenderness > 170.0 && res.slenderness < 190.0);         // ~ 179
+        assert(res.reducedSlenderness > 1.8 && res.reducedSlenderness < 2.1); // ~ 1.91
+        assert(res.chi > 0.20 && res.chi < 0.26);                          // ~ 0.228
+        assert(res.Nb_Rd > 140.0e3 && res.Nb_Rd < 170.0e3);                // ~ 152 kN
+        assert(res.utilizationRatio < 1.0);
+        assert(res.pass);
+
+        // Cas charge excessive au-delà de Nb,Rd
+        in.Ned = 200.0e3; // 200 kN > 152 kN
+        auto resFail = SteelDesignEC3::calculateBuckling(in);
+        assert(resFail.valid);
+        assert(resFail.utilizationRatio > 1.0);
+        assert(!resFail.pass);
+
+        // Calcul direct depuis une barre du modèle TSA
+        auto secIpe = TSA::Model::Section::ipe(200);
+        auto matSteel = TSA::Model::Material::steelS235();
+        auto resBar = SteelDesignEC3::calculateFromBar(secIpe, matSteel, 4.0, 1.0, 100.0e3, false);
+        assert(resBar.valid);
+        assert(resBar.pass);
 
         passed++;
         std::cout << "PASSED" << std::endl;
