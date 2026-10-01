@@ -15,6 +15,8 @@ class Model;
 namespace TSA::Analysis
 {
 
+class CalculationSnapshot;
+
 /**
  * @brief Structure contenant les composantes locales décomposées d'une charge sur barre.
  * Axe x : longitudinal (start -> end).
@@ -59,6 +61,12 @@ public:
      */
     static LocalMemberLoadComponents resolveMemberLoadToLocal(const TSA::Model::MemberLoad& load,
                                                              const TSA::Model::Model& model);
+
+    /**
+     * @brief Résout une charge sur barre (MemberLoad) en composantes locales depuis un CalculationSnapshot.
+     */
+    static LocalMemberLoadComponents resolveMemberLoadToLocal(const TSA::Model::MemberLoad& load,
+                                                             const CalculationSnapshot& snapshot);
 
     static LocalMemberLoadComponents resolveMemberLoadLocal(const TSA::Model::Model& model,
                                                            const TSA::Model::MemberLoad& load)

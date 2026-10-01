@@ -11,7 +11,7 @@ std::string OpenSeesAnalysisBuilder::buildScript(const CalculationSnapshot& snap
                                                 const AnalysisParameters& params)
 {
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(6);
+    tcl << std::fixed << std::setprecision(12);
 
     tcl << "# ==============================================================================\n";
     tcl << "# TSA (Tsaraloha Structural Analysis) — Modèle de Calcul OpenSees\n";
@@ -34,7 +34,7 @@ std::string OpenSeesAnalysisBuilder::buildScript(const CalculationSnapshot& snap
 std::string OpenSeesAnalysisBuilder::buildNodes(const CalculationSnapshot& snapshot)
 {
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(6);
+    tcl << std::fixed << std::setprecision(12);
     tcl << "# ------------------------------------------------------------------------------\n";
     tcl << "# Nœuds structuraux (node $nodeTag $x $y $z)\n";
     tcl << "# ------------------------------------------------------------------------------\n";
@@ -55,7 +55,7 @@ std::string OpenSeesAnalysisBuilder::buildNodes(const CalculationSnapshot& snaps
 std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSnapshot& snapshot)
 {
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(6);
+    tcl << std::fixed << std::setprecision(12);
     tcl << "# ------------------------------------------------------------------------------\n";
     tcl << "# Conditions aux limites (fix $nodeTag $u1 $u2 $u3 $r1 $r2 $r3)\n";
     tcl << "# ------------------------------------------------------------------------------\n";
@@ -148,7 +148,7 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
 std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& snapshot, const AnalysisParameters& params)
 {
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(6);
+    tcl << std::fixed << std::setprecision(12);
     tcl << "# ------------------------------------------------------------------------------\n";
     tcl << "# Repères locaux & Transformations géométriques (geomTransf " << toTclString(params.geomTransf) << ")\n";
     tcl << "# ------------------------------------------------------------------------------\n";
@@ -158,7 +158,7 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
 
     for (const auto& [id, el] : snapshot.elements())
     {
-        if (el.type == SnapshotElement::ElementType::Truss) continue;
+        if (el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable) continue;
 
         const auto* n1 = snapshot.getNode(el.startNodeId);
         const auto* n2 = snapshot.getNode(el.endNodeId);
@@ -211,6 +211,32 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
                     << A << " " << E << " ;# Treillis standard\n";
                 break;
             }
+            }
+        }
+        else if (el.type == SnapshotElement::ElementType::Cable)
+        {
+            double A = el.section.area();
+            double E = el.material.mechanical.youngModulus * scaleForce;
+            if (A < 1e-8) A = 1e-4; // Sécurité section minimale câble
+
+            int matId = trussMatTag++;
+            if (el.initialTension > 1e-4)
+            {
+                // Précontrainte / Tension initiale du câble (InitStrain: eps0 = T0 / (E * A))
+                double t0_scaled = el.initialTension * (params.useKiloNewtons ? 1.0 : 1000.0);
+                double eps0 = t0_scaled / (E * A);
+                int baseMatId = matId;
+                int preMatId = trussMatTag++;
+                tcl << "uniaxialMaterial Elastic " << baseMatId << " " << E << "\n";
+                tcl << "uniaxialMaterial InitStrain " << preMatId << " " << baseMatId << " " << eps0 << "\n";
+                tcl << "element corotTruss " << id << " " << el.startNodeId << " " << el.endNodeId << " "
+                    << A << " " << preMatId << " ;# Câble corotationnel précontraint\n";
+            }
+            else
+            {
+                tcl << "uniaxialMaterial Elastic " << matId << " " << E << "\n";
+                tcl << "element corotTruss " << id << " " << el.startNodeId << " " << el.endNodeId << " "
+                    << A << " " << matId << " ;# Câble corotationnel (sans flexion)\n";
             }
         }
         else
@@ -289,12 +315,14 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                                                const AnalysisParameters& params)
 {
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(6);
+    tcl << std::fixed << std::setprecision(12);
     tcl << "# ------------------------------------------------------------------------------\n";
     tcl << "# Chargements appliqués\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
     tcl << "timeSeries Linear 1\n";
+
+    double forceScale = params.useKiloNewtons ? 1.0 : 1000.0;
 
     auto writeLoads = [&](int patternId, const std::string& patternName, double factor) {
         tcl << "pattern Plain " << patternId << " 1 {\n";
@@ -305,18 +333,18 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
         {
             if (params.targetLoadCaseId > 0 && nl.loadCaseId() != params.targetLoadCaseId) continue;
 
-            double fx = nl.fx() * factor;
-            double fy = nl.fy() * factor;
-            double fz = nl.fz() * factor;
-            double mx = nl.mx() * factor;
-            double my = nl.my() * factor;
-            double mz = nl.mz() * factor;
+            double fx = nl.fx() * factor * forceScale;
+            double fy = nl.fy() * factor * forceScale;
+            double fz = nl.fz() * factor * forceScale;
+            double mx = nl.mx() * factor * forceScale;
+            double my = nl.my() * factor * forceScale;
+            double mz = nl.mz() * factor * forceScale;
 
             tcl << "  load " << nl.nodeId() << " " << fx << " " << fy << " " << fz << " "
                 << mx << " " << my << " " << mz << " ;# " << nl.name() << "\n";
         }
 
-        // Charges sur barres
+        // Charges sur barres résolues dans leurs repères locaux
         for (const auto& ml : snapshot.memberLoads())
         {
             if (params.targetLoadCaseId > 0 && ml.loadCaseId() != params.targetLoadCaseId) continue;
@@ -324,34 +352,51 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
             const auto* el = snapshot.getElement(ml.elementId());
             if (!el) continue;
 
-            if (el->type == SnapshotElement::ElementType::Truss)
+            LocalMemberLoadComponents comp = LoadResolver::resolveMemberLoadToLocal(ml, snapshot);
+
+            if (el->type == SnapshotElement::ElementType::Truss || el->type == SnapshotElement::ElementType::Cable)
             {
-                double L = el->length;
-                double totalF = ml.q1() * L * factor;
-                double halfF = totalF * 0.5;
-                tcl << "  load " << el->startNodeId << " 0 0 " << (-halfF) << " 0 0 0\n";
-                tcl << "  load " << el->endNodeId << " 0 0 " << (-halfF) << " 0 0 0\n";
+                const auto* n1 = snapshot.getNode(el->startNodeId);
+                const auto* n2 = snapshot.getNode(el->endNodeId);
+                if (n1 && n2)
+                {
+                    gp_Pnt p1(n1->x, n1->y, n1->z);
+                    gp_Pnt p2(n2->x, n2->y, n2->z);
+                    gp_Vec gVec = LoadResolver::localVectorToGlobal(comp.wx, comp.wy, comp.wz, p1, p2, el->rotation);
+                    double totalMult = factor * forceScale * (ml.type() == TSA::Model::LoadType::MemberPoint ? 1.0 : el->length) * 0.5;
+                    double hfx = gVec.X() * totalMult;
+                    double hfy = gVec.Y() * totalMult;
+                    double hfz = gVec.Z() * totalMult;
+                    tcl << "  load " << el->startNodeId << " " << hfx << " " << hfy << " " << hfz << " 0 0 0\n";
+                    tcl << "  load " << el->endNodeId << " " << hfx << " " << hfy << " " << hfz << " 0 0 0\n";
+                }
             }
             else if (ml.type() == TSA::Model::LoadType::MemberPoint)
             {
-                double p = ml.q1() * factor;
+                double px = comp.wx * factor * forceScale;
+                double py = comp.wy * factor * forceScale;
+                double pz = comp.wz * factor * forceScale;
                 double pos = ml.x1();
                 if (!ml.isRelativePosition() && el->length > 1e-4)
                 {
                     pos /= el->length;
                 }
                 // eleLoad -ele $tag -type -beamPoint $Py $Pz $xL $Px
-                tcl << "  eleLoad -ele " << ml.elementId() << " -type -beamPoint 0.0 " << (-p) << " " << pos << " 0.0\n";
+                tcl << "  eleLoad -ele " << ml.elementId() << " -type -beamPoint "
+                    << py << " " << pz << " " << pos << " " << px << "\n";
             }
             else
             {
-                double q = ml.q1() * factor;
+                double wx = comp.wx * factor * forceScale;
+                double wy = comp.wy * factor * forceScale;
+                double wz = comp.wz * factor * forceScale;
                 // eleLoad -ele $tag -type -beamUniform $Wy $Wz $Wx
-                tcl << "  eleLoad -ele " << ml.elementId() << " -type -beamUniform 0.0 " << (-q) << " 0.0\n";
+                tcl << "  eleLoad -ele " << ml.elementId() << " -type -beamUniform "
+                    << wy << " " << wz << " " << wx << "\n";
             }
         }
 
-        // Poids propre
+        // Poids propre automatique décomposé
         if (params.includeSelfWeight)
         {
             for (const auto& [id, el] : snapshot.elements())
@@ -363,7 +408,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
 
                 if (linWeight > 1e-5)
                 {
-                    if (el.type == SnapshotElement::ElementType::Truss)
+                    if (el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable)
                     {
                         double halfW = linWeight * el.length * 0.5;
                         tcl << "  load " << el.startNodeId << " 0 0 " << (-halfW) << " 0 0 0\n";
@@ -371,7 +416,18 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                     }
                     else
                     {
-                        tcl << "  eleLoad -ele " << id << " -type -beamUniform 0.0 " << (-linWeight) << " 0.0\n";
+                        const auto* n1 = snapshot.getNode(el.startNodeId);
+                        const auto* n2 = snapshot.getNode(el.endNodeId);
+                        if (n1 && n2)
+                        {
+                            gp_Pnt p1(n1->x, n1->y, n1->z);
+                            gp_Pnt p2(n2->x, n2->y, n2->z);
+                            LocalMemberLoadComponents swComp = LoadResolver::decomposeGlobalVectorToLocal(
+                                gp_Vec(0.0, 0.0, -linWeight), p1, p2, el.rotation
+                            );
+                            tcl << "  eleLoad -ele " << id << " -type -beamUniform "
+                                << swComp.wy << " " << swComp.wz << " " << swComp.wx << " ;# Poids propre\n";
+                        }
                     }
                 }
             }

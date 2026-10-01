@@ -1,4 +1,5 @@
 #include "LoadResolver.h"
+#include "CalculationSnapshot.h"
 #include "../Model/Model.h"
 #include "../Coordinate/CoordinateTransformationService.h"
 
@@ -114,10 +115,66 @@ LocalMemberLoadComponents LoadResolver::resolveMemberLoadToLocal(const TSA::Mode
         globalVec = gp_Vec(0.0, qMag, 0.0);
         break;
     case TSA::Model::LoadDirection::GlobalZ:
-        globalVec = gp_Vec(0.0, 0.0, qMag);
-        break;
     case TSA::Model::LoadDirection::Gravity:
-        // Gravité orientée vers le bas (-Z)
+        // Gravité / charge verticale descendante (-Z)
+        globalVec = gp_Vec(0.0, 0.0, -std::abs(qMag));
+        break;
+    default:
+        globalVec = gp_Vec(0.0, 0.0, -std::abs(qMag));
+        break;
+    }
+
+    return decomposeGlobalVectorToLocal(globalVec, p1, p2, rotationDeg);
+}
+
+LocalMemberLoadComponents LoadResolver::resolveMemberLoadToLocal(const TSA::Model::MemberLoad& load,
+                                                               const CalculationSnapshot& snapshot)
+{
+    LocalMemberLoadComponents result;
+
+    const auto* el = snapshot.getElement(load.elementId());
+    if (!el) return result;
+
+    const auto* n1 = snapshot.getNode(el->startNodeId);
+    const auto* n2 = snapshot.getNode(el->endNodeId);
+    if (!n1 || !n2) return result;
+
+    gp_Pnt p1(n1->x, n1->y, n1->z);
+    gp_Pnt p2(n2->x, n2->y, n2->z);
+    double rotationDeg = el->rotation;
+    double qMag = load.q1();
+
+    if (load.coordSystem() == TSA::Model::LoadCoordSystem::Local)
+    {
+        switch (load.direction())
+        {
+        case TSA::Model::LoadDirection::LocalX:
+            result.wx = qMag;
+            break;
+        case TSA::Model::LoadDirection::LocalY:
+            result.wy = qMag;
+            break;
+        case TSA::Model::LoadDirection::LocalZ:
+            result.wz = qMag;
+            break;
+        default:
+            result.wz = -std::abs(qMag);
+            break;
+        }
+        return result;
+    }
+
+    gp_Vec globalVec(0.0, 0.0, 0.0);
+    switch (load.direction())
+    {
+    case TSA::Model::LoadDirection::GlobalX:
+        globalVec = gp_Vec(qMag, 0.0, 0.0);
+        break;
+    case TSA::Model::LoadDirection::GlobalY:
+        globalVec = gp_Vec(0.0, qMag, 0.0);
+        break;
+    case TSA::Model::LoadDirection::GlobalZ:
+    case TSA::Model::LoadDirection::Gravity:
         globalVec = gp_Vec(0.0, 0.0, -std::abs(qMag));
         break;
     default:

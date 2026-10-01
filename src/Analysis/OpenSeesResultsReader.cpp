@@ -30,6 +30,10 @@ std::vector<double> parseDoubles(const std::string& line)
     double v = 0.0;
     while (iss >> v)
     {
+        if (std::isnan(v) || std::isinf(v))
+        {
+            v = 0.0;
+        }
         vals.push_back(v);
     }
     return vals;
@@ -158,27 +162,45 @@ bool OpenSeesResultsReader::readReactions(const std::string& filePath,
     auto lines = readAllLines(filePath);
     if (lines.empty()) return false;
 
-    auto vals = parseDoubles(lines.back());
-    size_t idx = 0;
-
-    for (const auto& [nodeId, n] : snapshot.nodes())
-    {
-        if (n.fixTx || n.fixTy || n.fixTz || n.fixRx || n.fixRy || n.fixRz)
+    auto parseReactionsLine = [&](const std::vector<double>& vals) {
+        std::map<int, NodeReaction> reactions;
+        size_t idx = 0;
+        for (const auto& [nodeId, n] : snapshot.nodes())
         {
-            if (idx + 5 < vals.size())
+            if (n.fixTx || n.fixTy || n.fixTz || n.fixRx || n.fixRy || n.fixRz)
             {
-                NodeReaction react;
-                react.rx = vals[idx];
-                react.ry = vals[idx + 1];
-                react.rz = vals[idx + 2];
-                react.mx = vals[idx + 3];
-                react.my = vals[idx + 4];
-                react.mz = vals[idx + 5];
-                outResults.setNodeReaction(nodeId, react);
-                idx += 6;
+                if (idx + 5 < vals.size())
+                {
+                    NodeReaction react;
+                    react.rx = vals[idx];
+                    react.ry = vals[idx + 1];
+                    react.rz = vals[idx + 2];
+                    react.mx = vals[idx + 3];
+                    react.my = vals[idx + 4];
+                    react.mz = vals[idx + 5];
+                    reactions[nodeId] = react;
+                    idx += 6;
+                }
             }
         }
+        return reactions;
+    };
+
+    auto lastReactions = parseReactionsLine(parseDoubles(lines.back()));
+    for (const auto& [nodeId, react] : lastReactions)
+    {
+        outResults.setNodeReaction(nodeId, react);
     }
+
+    auto& steps = outResults.allStepResults();
+    if (!steps.empty())
+    {
+        for (size_t stepIdx = 0; stepIdx < steps.size() && stepIdx < lines.size(); ++stepIdx)
+        {
+            steps[stepIdx].reactions = parseReactionsLine(parseDoubles(lines[stepIdx]));
+        }
+    }
+
     return true;
 }
 
@@ -189,105 +211,123 @@ bool OpenSeesResultsReader::readElementForces(const std::string& filePath,
     auto lines = readAllLines(filePath);
     if (lines.empty()) return false;
 
-    auto vals = parseDoubles(lines.back());
-    size_t idx = 0;
+    auto parseElementsLine = [&](const std::vector<double>& vals) {
+        std::map<int, ElementResults> elementRes;
+        size_t idx = 0;
 
-    for (const auto& [elemId, el] : snapshot.elements())
-    {
-        ElementResults res;
-        res.elementId = elemId;
-        res.length = el.length;
-
-        if (el.type == SnapshotElement::ElementType::Truss)
+        for (const auto& [elemId, el] : snapshot.elements())
         {
-            if (idx < vals.size())
-            {
-                double axial = vals[idx++];
-                res.startForces.position = 0.0;
-                res.startForces.N = axial;
-                res.endForces.position = el.length;
-                res.endForces.N = axial;
-            }
-        }
-        else
-        {
-            // elasticBeamColumn 3D localForce fournit 12 composantes :
-            // End 1 : N1, Vy1, Vz1, T1, My1, Mz1
-            // End 2 : N2, Vy2, Vz2, T2, My2, Mz2
-            if (idx + 11 < vals.size())
-            {
-                res.startForces.position = 0.0;
-                res.startForces.N = vals[idx];
-                res.startForces.Vy = vals[idx + 1];
-                res.startForces.Vz = vals[idx + 2];
-                res.startForces.Mx = vals[idx + 3];
-                res.startForces.My = vals[idx + 4];
-                res.startForces.Mz = vals[idx + 5];
+            ElementResults res;
+            res.elementId = elemId;
+            res.length = el.length;
 
-                res.endForces.position = el.length;
-                res.endForces.N = vals[idx + 6];
-                res.endForces.Vy = vals[idx + 7];
-                res.endForces.Vz = vals[idx + 8];
-                res.endForces.Mx = vals[idx + 9];
-                res.endForces.My = vals[idx + 10];
-                res.endForces.Mz = vals[idx + 11];
-
-                // Interpolation et superposition des charges sur barre (M0, V0)
-                const int numStations = 20;
-                double L = el.length;
-                for (int s = 1; s < numStations; ++s)
+            if (el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable)
+            {
+                if (idx < vals.size())
                 {
-                    double t = static_cast<double>(s) / numStations;
-                    double x = t * L;
-                    StationForces sf;
-                    sf.position = x;
-                    sf.N = (1.0 - t) * res.startForces.N + t * res.endForces.N;
-                    sf.Vy = (1.0 - t) * res.startForces.Vy + t * res.endForces.Vy;
-                    sf.Vz = (1.0 - t) * res.startForces.Vz + t * res.endForces.Vz;
-                    sf.Mx = (1.0 - t) * res.startForces.Mx + t * res.endForces.Mx;
-                    sf.My = (1.0 - t) * res.startForces.My + t * res.endForces.My;
-                    sf.Mz = (1.0 - t) * res.startForces.Mz + t * res.endForces.Mz;
+                    double axial = vals[idx++];
+                    res.startForces.position = 0.0;
+                    res.startForces.N = axial;
+                    res.endForces.position = el.length;
+                    res.endForces.N = axial;
+                }
+            }
+            else
+            {
+                // elasticBeamColumn 3D localForce fournit 12 composantes :
+                // End 1 : N1, Vy1, Vz1, T1, My1, Mz1
+                // End 2 : N2, Vy2, Vz2, T2, My2, Mz2
+                if (idx + 11 < vals.size())
+                {
+                    res.startForces.position = 0.0;
+                    res.startForces.N = -vals[idx]; // Convention RDM : traction > 0
+                    res.startForces.Vy = vals[idx + 1];
+                    res.startForces.Vz = vals[idx + 2];
+                    res.startForces.Mx = vals[idx + 3];
+                    res.startForces.My = vals[idx + 4];
+                    res.startForces.Mz = vals[idx + 5];
 
-                    // Superposition isostatique des charges sur barres
-                    for (const auto& ml : snapshot.memberLoads())
+                    res.endForces.position = el.length;
+                    res.endForces.N = vals[idx + 6]; // Convention RDM : traction > 0
+                    res.endForces.Vy = vals[idx + 7];
+                    res.endForces.Vz = vals[idx + 8];
+                    res.endForces.Mx = vals[idx + 9];
+                    res.endForces.My = vals[idx + 10];
+                    res.endForces.Mz = vals[idx + 11];
+
+                    // Interpolation et superposition des charges sur barre (M0, V0)
+                    const int numStations = 20;
+                    double L = el.length;
+                    for (int s = 1; s < numStations; ++s)
                     {
-                        if (ml.elementId() != elemId) continue;
-                        if (ml.type() == TSA::Model::LoadType::MemberPoint)
-                        {
-                            double p = ml.q1();
-                            double a = ml.isRelativePosition() ? (ml.x1() * L) : ml.x1();
-                            if (a < 0.0) a = 0.0;
-                            if (a > L) a = L;
+                        double t = static_cast<double>(s) / numStations;
+                        double x = t * L;
+                        StationForces sf;
+                        sf.position = x;
+                        sf.N = (1.0 - t) * res.startForces.N + t * res.endForces.N;
+                        sf.Vy = (1.0 - t) * res.startForces.Vy + t * res.endForces.Vy;
+                        sf.Vz = (1.0 - t) * res.startForces.Vz + t * res.endForces.Vz;
+                        sf.Mx = (1.0 - t) * res.startForces.Mx + t * res.endForces.Mx;
+                        sf.My = (1.0 - t) * res.startForces.My + t * res.endForces.My;
+                        sf.Mz = (1.0 - t) * res.startForces.Mz + t * res.endForces.Mz;
 
-                            double m0 = 0.0;
-                            if (x <= a)
+                        // Superposition isostatique des charges sur barres
+                        for (const auto& ml : snapshot.memberLoads())
+                        {
+                            if (ml.elementId() != elemId) continue;
+                            if (ml.type() == TSA::Model::LoadType::MemberPoint)
                             {
-                                m0 = p * (1.0 - a / L) * x;
+                                double p = ml.q1();
+                                double a = ml.isRelativePosition() ? (ml.x1() * L) : ml.x1();
+                                if (a < 0.0) a = 0.0;
+                                if (a > L) a = L;
+
+                                double m0 = 0.0;
+                                if (x <= a)
+                                {
+                                    m0 = p * (1.0 - a / L) * x;
+                                }
+                                else
+                                {
+                                    m0 = p * a * (1.0 - x / L);
+                                }
+                                sf.My += m0;
                             }
                             else
                             {
-                                m0 = p * a * (1.0 - x / L);
+                                // Charge uniforme
+                                double q = ml.q1();
+                                double m0 = (q * x * (L - x)) * 0.5;
+                                sf.My += m0;
+                                sf.Vz += q * (0.5 * L - x);
                             }
-                            sf.My += m0;
                         }
-                        else
-                        {
-                            // Charge uniforme
-                            double q = ml.q1();
-                            double m0 = (q * x * (L - x)) * 0.5;
-                            sf.My += m0;
-                            sf.Vz += q * (0.5 * L - x);
-                        }
+
+                        res.intermediateStations.push_back(sf);
                     }
 
-                    res.intermediateStations.push_back(sf);
+                    idx += 12;
                 }
-
-                idx += 12;
             }
-        }
 
+            elementRes[elemId] = res;
+        }
+        return elementRes;
+    };
+
+    auto lastElements = parseElementsLine(parseDoubles(lines.back()));
+    for (const auto& [elemId, res] : lastElements)
+    {
         outResults.setElementResults(elemId, res);
+    }
+
+    auto& steps = outResults.allStepResults();
+    if (!steps.empty())
+    {
+        for (size_t stepIdx = 0; stepIdx < steps.size() && stepIdx < lines.size(); ++stepIdx)
+        {
+            steps[stepIdx].elementResults = parseElementsLine(parseDoubles(lines[stepIdx]));
+        }
     }
 
     return true;

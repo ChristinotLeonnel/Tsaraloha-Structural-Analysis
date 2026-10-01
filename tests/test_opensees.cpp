@@ -395,5 +395,48 @@ bool runSuite_OpenSees(int& passed)
         passed++;
     }
 
+    // TEST 76: Axial Normal Force Sign & Station Uniformity (RDM convention)
+    {
+        Model model;
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        model.getNode(n1)->setSupportType(SupportType::Fixed);
+        int n2 = model.addNode(5.0, 0.0, 0.0); // Bar along X, 5m
+
+        Section sec = Section::ipe(200);
+        Material mat = Material::steelS235();
+        int b1 = model.addBar(n1, n2, sec, mat, BarRole::Beam);
+
+        auto& lm = model.loadManager();
+        int lcId = lm.addLoadCase(LoadCase(1, "Traction", LoadCaseCategory::Live, false, 1.0));
+        // Tension: Nodal load +50 kN along X at node 2
+        lm.addNodalLoad(NodalLoad(0, n2, lcId, 50.0, 0.0, 0.0, 0.0, 0.0, 0.0, LoadCoordSystem::Global, "Traction_50kN"));
+
+        OpenSeesSolver solver;
+        AnalysisParameters params;
+        params.type = AnalysisType::LinearStatic;
+        params.useKiloNewtons = true;
+        params.includeSelfWeight = false;
+        params.targetLoadCaseId = lcId;
+
+        QString err;
+        bool ok = solver.solveSynchronous(model, params, &err);
+        TEST_CHECK(ok, "Solver execution failed for bar in axial tension");
+
+        const auto& res = solver.results();
+        const auto* eb = res.getElementResults(b1);
+        TEST_CHECK(eb != nullptr, "Element results must be present for beam");
+        TEST_CHECK(std::abs(eb->startForces.N - 50.0) < 1.0, "Start normal force must be ~50 kN in tension");
+        TEST_CHECK(std::abs(eb->endForces.N - 50.0) < 1.0, "End normal force must be ~50 kN in tension");
+
+        // Stations intermédiaires : doivent toutes être ~50 kN (et non 0 au milieu !)
+        TEST_CHECK(!eb->intermediateStations.empty(), "Intermediate stations must be populated");
+        for (const auto& st : eb->intermediateStations)
+        {
+            TEST_CHECK(std::abs(st.N - 50.0) < 1.0, "Station normal force must be ~50 kN throughout the bar");
+        }
+
+        passed++;
+    }
+
     return true;
 }

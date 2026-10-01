@@ -825,6 +825,7 @@ void MainWindow::onActionModal()
         }
     }
     if (m_portArea) m_portArea->setResultsModel(m_resultsModel);
+    if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
 
     QString msgSummary = tr("Analyse Modale OpenSees Terminée :\n\n");
     for (const auto& m : m_resultsModel->modalModes())
@@ -883,6 +884,7 @@ void MainWindow::onActionPushover()
     m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
 
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
+    if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
     if (m_portArea)
     {
         m_portArea->setResultsModel(m_resultsModel);

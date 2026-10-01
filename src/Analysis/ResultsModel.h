@@ -241,6 +241,7 @@ public:
     // Pas et Incréments non-linéaires
     void addStepResults(const StepResults& step);
     const std::vector<StepResults>& allStepResults() const { return m_stepResults; }
+    std::vector<StepResults>& allStepResults() { return m_stepResults; }
     const StepResults* getStepResults(int stepNumber) const;
     int stepCount() const { return static_cast<int>(m_stepResults.size()); }
     int activeStep() const { return m_activeStep; }
