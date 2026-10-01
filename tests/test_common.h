@@ -163,3 +163,4 @@ bool runSuite_NodeSystem(int& passed);
 bool runSuite_Loads(int& passed);
 bool runSuite_OpenSees(int& passed);
 bool runSuite_Supports(int& passed);
+bool runSuite_Standards(int& passed);

@@ -1,5 +1,14 @@
 #pragma once
 
+// ============================================================
+// NORMATIVE REFERENCE
+// Standard   : ISO/IEC 25010:2023 §4.2.7 (Maintainability - Modularity)
+// Area       : Domain Model / Single Source of Truth
+// Requirement: REQ-SW-ARCH-002 (Structural Model as Single Truth)
+// Interface  : IModelObserver (Asserved Observers Pattern)
+// Constraint : Model must remain agnostic of UI and OCCT shapes
+// ============================================================
+
 #include "Node.h"
 #include "Beam.h"
 #include "Column.h"

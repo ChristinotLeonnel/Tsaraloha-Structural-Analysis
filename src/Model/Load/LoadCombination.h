@@ -1,5 +1,13 @@
 #pragma once
 
+// ============================================================
+// STRUCTURAL STANDARD
+// Standard   : EN 1990:2002+A1:2005 (Eurocode 0 - Bases de calcul)
+// Clause     : §6.4.3 (Expressions 6.10, 6.10a/b) & §6.5.3 (ELS)
+// Requirement: REQ-CALC-EC0-001 (Load Combinations ULS / SLS)
+// Test ID    : TSA_LoadsTests / TSA_OpenSeesTests
+// ============================================================
+
 #include "LoadEnums.h"
 #include "LoadCase.h"
 #include <string>

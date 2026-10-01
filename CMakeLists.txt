@@ -509,6 +509,21 @@ set(IO_SOURCES
     src/IO/TSAPreviewGenerator.cpp
 )
 
+# --- Système de traçabilité des exigences et normes internationales — [CORE] ---
+set(STANDARDS_SOURCES
+    src/Standards/NormativeTypes.h
+    src/Standards/NormativeTypes.cpp
+    src/Standards/RequirementsCatalog.h
+    src/Standards/RequirementsCatalog.cpp
+    src/Standards/NationalAnnexConfig.h
+    src/Standards/NationalAnnexConfig.cpp
+    src/Standards/ExternalLibraryCatalog.h
+    src/Standards/ExternalLibraryCatalog.cpp
+    src/Standards/DataDefinition.h
+    src/Standards/ModelValidator.h
+    src/Standards/ModelValidator.cpp
+)
+
 # --- Intégration spécifique Windows (association de fichiers) ----------------
 set(PLATFORM_SOURCES
     src/Platform/WindowsAssociation.h
@@ -542,6 +557,7 @@ set(CORE_SOURCES
     ${UNDOREDO_SOURCES}
     ${INTERACTION_SOURCES}
     ${IO_SOURCES}
+    ${STANDARDS_SOURCES}
 )
 
 # --- Liste complète des sources de l'exécutable principal --------------------
@@ -725,6 +741,7 @@ set(TEST_SOURCES
     tests/test_loads.cpp
     tests/test_opensees.cpp
     tests/test_supports.cpp
+    tests/test_standards.cpp
     resources/resources.qrc
 )
 
@@ -750,6 +767,8 @@ add_test(NAME TSA_WindowManagerTests COMMAND TSA_Tests --suite=window)
 add_test(NAME TSA_NodeSystemTests COMMAND TSA_Tests --suite=node)
 add_test(NAME TSA_LoadsTests COMMAND TSA_Tests --suite=loads)
 add_test(NAME TSA_OpenSeesTests COMMAND TSA_Tests --suite=opensees)
+add_test(NAME TSA_SupportsTests COMMAND TSA_Tests --suite=supports)
+add_test(NAME TSA_StandardsTests COMMAND TSA_Tests --suite=standards)
 endif()
 
 # =============================================================================

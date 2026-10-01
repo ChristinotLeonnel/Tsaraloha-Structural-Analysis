@@ -40,6 +40,7 @@ Structural Model (src/Model : Elements, Loads, Combinations, Sections, Materials
 | `src/Grid` | Grilles 3D paramétriques, accrochage (snap), rendu de grille | `TODO: VERIFY IN SOURCE` |
 | `src/ExtensionSystem` | Système d'extensions dynamique TSALib (sections/matériaux) | `docs/TSALIB_SYSTEM.md` (existant) |
 | `src/IO` | Sérialisation du format fichier `.tsa` | `docs/TSA_FILE_FORMAT.md` (existant) |
+| `src/Standards` | Traçabilité des exigences normatives (ISO 25010, ISO 12207, ISO 29119, Eurocodes, Annexes Nationales, ModelValidator) | `ARCHITECTURE.md` |
 | `src/Diagnostics` | Diagnostics/télémétrie internes | `docs/TSA_DIAGNOSTICS.md` (existant) |
 | `src/Interaction` | Interactions utilisateur dans le viewport 3D | `TODO: VERIFY IN SOURCE` |
 | `src/Project`, `src/App`, `src/main.cpp` | Bootstrap de l'application | `TODO: VERIFY IN SOURCE` |

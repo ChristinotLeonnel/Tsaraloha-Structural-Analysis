@@ -1,5 +1,13 @@
 #pragma once
 
+// ============================================================
+// NORMATIVE REFERENCE
+// Standard   : ISO/IEC 25010:2023 §4.2.5 (Fault Tolerance & Integrity)
+// Area       : Analysis FEM / Decoupling
+// Requirement: REQ-CALC-SNAP-001 (Immutable Calculation Snapshot)
+// Purpose    : Isolates finite element calculations from UI model mutations
+// ============================================================
+
 #include "../Model/Node.h"
 #include "../Model/Beam.h"
 #include "../Model/Column.h"

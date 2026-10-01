@@ -5,14 +5,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 84;
+    int expectedTotal = 89;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports]" << std::endl;
+            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards]" << std::endl;
             return 0;
         }
     }
@@ -81,6 +81,10 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "supports" || suiteFilter == "support") {
         std::cout << "\n--- [Suite 14/14] Structural Supports & 3D Visualization (Tests 70-75) ---" << std::endl;
         if (!runSuite_Supports(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "standards" || suiteFilter == "normative") {
+        std::cout << "\n--- [Suite 15/15] Normative Requirements, Annexes & Model Validation (Tests 76-80) ---" << std::endl;
+        if (!runSuite_Standards(passed)) allOk = false;
     }
 
     std::cout << "\n=================================================" << std::endl;

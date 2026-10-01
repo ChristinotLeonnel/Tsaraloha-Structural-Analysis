@@ -1,5 +1,15 @@
 #pragma once
 
+// ============================================================
+// EXTERNAL LIBRARY
+// Library    : OpenSees (Open System for Earthquake Engineering Simulation)
+// Version    : 3.4.0 - 3.8.0+
+// Role       : Structural Analysis Backend (FEM)
+// Interface  : Adapter converting TSA StructuralModel / Snapshot to Tcl scripts
+// Constraint : TSA must not expose OpenSees implementation details to UI/Model
+// Standard   : ISO/IEC 25010 §4.2.7 / Requirement: REQ-EXT-LIB-001
+// ============================================================
+
 #include <string>
 #include <vector>
 

@@ -1,5 +1,13 @@
 #pragma once
 
+// ============================================================
+// STRUCTURAL STANDARD & DATA DEFINITION
+// Standard   : EN 1992-1-1:2004 Table 3.1 (Concrete) & EN 1993-1-1:2005 Table 3.1 (Steel)
+// Requirement: REQ-DATA-SI-001 (Strict SI Units: Pa, kg/m3) & REQ-CALC-EC2-001
+// Validator  : TSA::Standards::ModelValidator::validateMaterial
+// Decoupling : Mechanical properties (E, nu, rho, fk) strictly decoupled from PBR visual properties
+// ============================================================
+
 #include <string>
 #include <vector>
 
