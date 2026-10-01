@@ -50,6 +50,11 @@ Gestionnaire dédié à la visualisation interactive des résultats structurels 
 
 - **Éléments structuraux** : `BeamGeometry`, `SlabGeometry`, `WallGeometry`, `FoundationGeometry`, `CableGeometry3D` — construisent les `TopoDS_Shape` à partir des paramètres du modèle (section, matériau, nœuds/coordonnées).
 - **Appuis structuraux** : `SupportGeometry` (`src/Geometry/SupportGeometry.h/.cpp`) — construit les `TopoDS_Shape` B-Rep des conditions d'appui aux nœuds (plaques d'assise et hachures de sol pour encastrements, pyramides pivotantes pour rotules, rouleaux pour appuis simples, hélices 3D pour ressorts de translation, spirales pour ressorts de rotation). Géré dans `OccView` via `updateSupportShape`, `removeSupportShape`, `setSupportsVisible`.
+- **Charges & Moments 3D** (`OccView_Shapes.cpp`) :
+  - **Forces orientées** : Flèches 3D partant du point d'application (nœud ou position le long de la barre) et pointant dans la direction réelle du vecteur $\vec{F}$ sans inversion arbitraire ($+Z$ pointe vers le haut $\uparrow$, $-Z$ pointe vers le bas $\downarrow$).
+  - **Moments 3D volumiques** : Arcs circulaires hélicoïdaux de $270^\circ$ construits dans le plan normal au vecteur moment $\vec{M}$, surmontés d'une flèche conique orientée selon la règle de la main droite (sens direct pour $M > 0$).
+  - **Charges combinées** : Représentation simultanée force (rouge) + moment (magenta) avec étiquette de composantes ($F_x, F_y, F_z$ et $M_x, M_y, M_z$).
+  - **Sélection et contrôle** : Sélection directe par clic dans le viewport (`SelectionType::NodalLoad`, `SelectionType::MemberLoad`), bascule d'affichage (`setForcesVisible`, `setMomentsVisible`), échelle dynamique (`setLoadScale`).
 - **Résultats d'analyse** :
   - `DeformedGeometry` : Construction de la fibre neutre déformée par interpolation cubique d'Hermite et extrusion solide B-Rep.
   - `DiagramGeometry` : Construction des facettes de diagrammes 3D, contour, hachures et drapeaux d'extrema.
