@@ -1670,12 +1670,15 @@ void OccView::setLoadsVisible(bool visible)
     m_loadsVisible = visible;
     if (!m_context.IsNull())
     {
-        for (auto& [id, shape] : m_nodalLoadShapes)
+        for (auto& [id, shapes] : m_nodalLoadShapes)
         {
-            if (!shape.IsNull())
+            for (auto& s : shapes)
             {
-                if (visible) m_context->Display(shape, false);
-                else m_context->Erase(shape, false);
+                if (!s.IsNull())
+                {
+                    if (visible) m_context->Display(s, false);
+                    else m_context->Erase(s, false);
+                }
             }
         }
         for (auto& [id, shapes] : m_memberLoadShapes)
@@ -1714,6 +1717,29 @@ void OccView::setLoadsVisible(bool visible)
     emit loadsVisibilityChanged(visible);
 }
 
+void OccView::setForcesVisible(bool visible)
+{
+    m_forcesVisible = visible;
+    updateAllLoadShapes();
+    emit forcesVisibilityChanged(visible);
+}
+
+void OccView::setMomentsVisible(bool visible)
+{
+    m_momentsVisible = visible;
+    updateAllLoadShapes();
+    emit momentsVisibilityChanged(visible);
+}
+
+void OccView::setLoadScale(double scale)
+{
+    if (scale < 0.05) scale = 0.05;
+    if (scale > 20.0) scale = 20.0;
+    m_loadScale = scale;
+    updateAllLoadShapes();
+    emit loadScaleChanged(scale);
+}
+
 void OccView::setLoadValuesVisible(bool visible)
 {
     m_loadValuesVisible = visible;
@@ -1743,6 +1769,7 @@ void OccView::setLoadValuesVisible(bool visible)
     }
     emit loadValuesVisibilityChanged(visible);
 }
+
 
 void OccView::pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)>& onPicked,
                          const std::function<void()>& onCancelled)

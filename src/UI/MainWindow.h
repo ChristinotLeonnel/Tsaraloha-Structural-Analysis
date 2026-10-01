@@ -97,6 +97,8 @@ private slots:
     void onToggleSupportsVisible(bool checked);
     void onToggleSupportLabelsVisible(bool checked);
     void onToggleLoadsVisible(bool checked);
+    void onToggleForcesVisible(bool checked);
+    void onToggleMomentsVisible(bool checked);
     void onToggleLoadValuesVisible(bool checked);
     void onToggleLevelsVisible(bool checked);
     void onToggleRulersVisible(bool checked);
@@ -208,6 +210,8 @@ private:
     QAction* m_actionSupportsVisible = nullptr;
     QAction* m_actionSupportLabelsVisible = nullptr;
     QAction* m_actionLoadsVisible = nullptr;
+    QAction* m_actionForcesVisible = nullptr;
+    QAction* m_actionMomentsVisible = nullptr;
     QAction* m_actionLoadValuesVisible = nullptr;
     QAction* m_actionLevelsVisible = nullptr;
     QAction* m_actionRulersVisible = nullptr;

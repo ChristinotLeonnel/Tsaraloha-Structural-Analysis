@@ -95,6 +95,8 @@ set(UI_PROPERTIES_SOURCES
     src/UI/Properties/TrussMemberPropertiesView.cpp
     src/UI/Properties/WorkPlanePropertiesView.h
     src/UI/Properties/WorkPlanePropertiesView.cpp
+    src/UI/Properties/LoadPropertiesView.h
+    src/UI/Properties/LoadPropertiesView.cpp
 )
 
 # --- Boîtes de dialogue -------------------------------------------------------

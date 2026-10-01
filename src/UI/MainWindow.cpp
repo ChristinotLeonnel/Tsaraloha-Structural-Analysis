@@ -675,6 +675,30 @@ void MainWindow::onToggleLoadsVisible(bool checked)
     }
 }
 
+void MainWindow::onToggleForcesVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setForcesVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Forces 3D affichées") : tr("Forces 3D masquées"));
+        }
+    }
+}
+
+void MainWindow::onToggleMomentsVisible(bool checked)
+{
+    if (m_occView)
+    {
+        m_occView->setMomentsVisible(checked);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(checked ? tr("Moments 3D affichés") : tr("Moments 3D masqués"));
+        }
+    }
+}
+
 void MainWindow::onToggleLoadValuesVisible(bool checked)
 {
     if (m_occView)

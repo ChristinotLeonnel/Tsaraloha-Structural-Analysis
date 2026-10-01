@@ -58,11 +58,18 @@ struct RibbonActions
     QAction* actionLibrary = nullptr;
     QAction* actionExtensionManager = nullptr;
 
-    // 4. Calcul
+    // 4. Charges & Actions
     QAction* actionPointLoad = nullptr;
     QAction* actionDistLoad = nullptr;
     QAction* actionMoment = nullptr;
+    QAction* actionLoadCases = nullptr;
     QAction* actionSeismic = nullptr;
+    QAction* actionLoadsVisible = nullptr;
+    QAction* actionForcesVisible = nullptr;
+    QAction* actionMomentsVisible = nullptr;
+    QAction* actionLoadValuesVisible = nullptr;
+
+    // 5. Analyse & Calcul
     QAction* actionMeshGen = nullptr;
     QAction* actionAnalysisConfig = nullptr;
     QAction* actionRunSolve = nullptr;
@@ -169,6 +176,8 @@ public:
     static RibbonTab* buildHomeTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
     static RibbonTab* buildModelingTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
     static RibbonTab* buildStructureTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+    static RibbonTab* buildLoadsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+    static RibbonTab* buildAnalysisTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
     static RibbonTab* buildCalculationTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
     static RibbonTab* buildResultsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
     static RibbonTab* buildEditTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
@@ -177,3 +186,4 @@ public:
 };
 
 } // namespace TSA::UI
+

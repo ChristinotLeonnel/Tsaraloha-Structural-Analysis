@@ -20,7 +20,9 @@ enum class SelectionType
     Foundation,
     TrussMember,
     Cable,
-    WorkPlane
+    WorkPlane,
+    NodalLoad,
+    MemberLoad
 };
 
 class SelectionManager : public QObject
@@ -42,6 +44,8 @@ public:
     void registerTrussMember(int memberId, const Handle(AIS_InteractiveObject)& obj);
     void registerCable(int cableId, const Handle(AIS_InteractiveObject)& obj);
     void registerWorkPlane(int workPlaneId, const Handle(AIS_InteractiveObject)& obj);
+    void registerNodalLoad(int loadId, const Handle(AIS_InteractiveObject)& obj);
+    void registerMemberLoad(int loadId, const Handle(AIS_InteractiveObject)& obj);
 
     void unregisterNode(int nodeId);
     void unregisterSupport(int nodeId);
@@ -53,6 +57,8 @@ public:
     void unregisterTrussMember(int memberId);
     void unregisterCable(int cableId);
     void unregisterWorkPlane(int workPlaneId);
+    void unregisterNodalLoad(int loadId);
+    void unregisterMemberLoad(int loadId);
 
     void clearRegistry();
 
@@ -67,6 +73,8 @@ public:
     int getTrussMemberId(const Handle(AIS_InteractiveObject)& obj) const;
     int getCableId(const Handle(AIS_InteractiveObject)& obj) const;
     int getWorkPlaneId(const Handle(AIS_InteractiveObject)& obj) const;
+    int getNodalLoadId(const Handle(AIS_InteractiveObject)& obj) const;
+    int getMemberLoadId(const Handle(AIS_InteractiveObject)& obj) const;
 
     Handle(AIS_InteractiveObject) getNodeObject(int nodeId) const;
     Handle(AIS_InteractiveObject) getSupportObject(int nodeId) const;
@@ -78,6 +86,8 @@ public:
     Handle(AIS_InteractiveObject) getTrussMemberObject(int memberId) const;
     Handle(AIS_InteractiveObject) getCableObject(int cableId) const;
     Handle(AIS_InteractiveObject) getWorkPlaneObject(int workPlaneId) const;
+    Handle(AIS_InteractiveObject) getNodalLoadObject(int loadId) const;
+    Handle(AIS_InteractiveObject) getMemberLoadObject(int loadId) const;
 
     // État de sélection
     SelectionType currentSelectionType() const { return m_selectionType; }
@@ -90,6 +100,8 @@ public:
     const std::set<int>& selectedFoundations() const { return m_selectedFoundations; }
     const std::set<int>& selectedTrussMembers() const { return m_selectedTrussMembers; }
     const std::set<int>& selectedCables() const { return m_selectedCables; }
+    const std::set<int>& selectedNodalLoads() const { return m_selectedNodalLoads; }
+    const std::set<int>& selectedMemberLoads() const { return m_selectedMemberLoads; }
     bool isWorkPlaneSelected() const { return m_selectionType == SelectionType::WorkPlane; }
     int selectedWorkPlaneId() const { return (m_selectionType == SelectionType::WorkPlane) ? m_primaryId : -1; }
 
@@ -98,6 +110,7 @@ public:
         return m_selectedNodes.size() + m_selectedBeams.size() + m_selectedColumns.size() +
                m_selectedSlabs.size() + m_selectedWalls.size() + m_selectedFoundations.size() +
                m_selectedTrussMembers.size() + m_selectedCables.size() +
+               m_selectedNodalLoads.size() + m_selectedMemberLoads.size() +
                (isWorkPlaneSelected() ? 1 : 0);
     }
 
@@ -111,6 +124,8 @@ public slots:
     void selectTrussMember(int memberId, bool multiSelect = false);
     void selectCable(int cableId, bool multiSelect = false);
     void selectWorkPlane(int workPlaneId, bool multiSelect = false);
+    void selectNodalLoad(int loadId, bool multiSelect = false);
+    void selectMemberLoad(int loadId, bool multiSelect = false);
     void selectObject(const Handle(AIS_InteractiveObject)& obj, bool multiSelect = false);
     void setMultipleObjectsSelected(const std::vector<Handle(AIS_InteractiveObject)>& objects, bool multiSelect = false);
     void clearSelection();
@@ -126,6 +141,8 @@ signals:
     void trussMemberSelected(int memberId);
     void cableSelected(int cableId);
     void workPlaneSelected(int workPlaneId);
+    void nodalLoadSelected(int loadId);
+    void memberLoadSelected(int loadId);
     void selectionCleared();
 
 private:
@@ -159,6 +176,12 @@ private:
     std::map<int, Handle(AIS_InteractiveObject)> m_workPlaneToObj;
     std::map<Handle(AIS_InteractiveObject), int> m_objToWorkPlane;
 
+    std::map<int, std::vector<Handle(AIS_InteractiveObject)>> m_nodalLoadToObjs;
+    std::map<Handle(AIS_InteractiveObject), int> m_objToNodalLoad;
+
+    std::map<int, std::vector<Handle(AIS_InteractiveObject)>> m_memberLoadToObjs;
+    std::map<Handle(AIS_InteractiveObject), int> m_objToMemberLoad;
+
     SelectionType m_selectionType = SelectionType::None;
     int m_primaryId = -1;
     std::set<int> m_selectedNodes;
@@ -169,6 +192,9 @@ private:
     std::set<int> m_selectedFoundations;
     std::set<int> m_selectedTrussMembers;
     std::set<int> m_selectedCables;
+    std::set<int> m_selectedNodalLoads;
+    std::set<int> m_selectedMemberLoads;
 };
 
 } // namespace TSA::Viewer
+
