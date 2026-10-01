@@ -174,7 +174,7 @@ TopoDS_Shape CableGeometry3D::createCurvedCable(
             hPoints->SetValue(i + 1, points[i]);
         }
 
-        GeomAPI_Interpolate interpolator(hPoints, Standard_False, 1e-5);
+        GeomAPI_Interpolate interpolator(hPoints, false, 1e-5);
         interpolator.Perform();
         if (interpolator.IsDone())
         {

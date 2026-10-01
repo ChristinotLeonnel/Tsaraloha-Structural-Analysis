@@ -1,4 +1,5 @@
 #include "test_common.h"
+#include <limits>
 
 #include "Analysis/OpenSeesManager.h"
 #include "Analysis/CalculationSnapshot.h"
@@ -607,6 +608,93 @@ bool runSuite_OpenSees(int& passed)
         TEST_CHECK(html.contains("Poteau"), "NDC HTML must contain Poteau");
         TEST_CHECK(html.contains("Treillis"), "NDC HTML must contain Treillis");
         TEST_CHECK(html.contains("Câble"), "NDC HTML must contain Câble");
+
+        passed++;
+    }
+
+    // TEST 81: DeformedGeometry Robustness & Numerical Guards
+    {
+        gp_Pnt p1(0.0, 0.0, 0.0);
+        gp_Pnt p2(4.0, 0.0, 0.0);
+        NodeDisplacement dNan{ std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0, 0.0, 0.0, 0.0 };
+        NodeDisplacement dInf{ 0.0, std::numeric_limits<double>::infinity(), 0.0, 0.0, 0.0, 0.0 };
+
+        // computeDeformedPoint handles NaN/Inf safely without producing NaN coordinates
+        gp_Pnt pDefNan = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p1, dNan, 50.0);
+        TEST_CHECK(!std::isnan(pDefNan.X()) && !std::isnan(pDefNan.Y()) && !std::isnan(pDefNan.Z()),
+                   "computeDeformedPoint handles NaN disp safely");
+
+        gp_Pnt pDefInf = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p1, dInf, 50.0);
+        TEST_CHECK(!std::isinf(pDefInf.X()) && !std::isinf(pDefInf.Y()) && !std::isinf(pDefInf.Z()),
+                   "computeDeformedPoint handles Inf disp safely");
+
+        // Scale factor NaN/Inf handled safely
+        gp_Pnt pDefScaleNan = TSA::Geometry::DeformedGeometry::computeDeformedPoint(
+            p1, NodeDisplacement{0.01, 0.02, 0.03, 0, 0, 0}, std::numeric_limits<double>::quiet_NaN());
+        TEST_CHECK(std::abs(pDefScaleNan.X() - p1.X()) < 1e-6,
+                   "computeDeformedPoint with NaN scale yields original coordinates");
+
+        // Degenerate element (coincident nodes)
+        Section sec = Section::rectangular(0.2, 0.4);
+        TopoDS_Shape degShape = TSA::Geometry::DeformedGeometry::createDeformedBeamShape(p1, p1, dNan, dInf, sec, 1.0);
+        TEST_CHECK(degShape.IsNull(), "createDeformedBeamShape on coincident points returns null shape");
+
+        // Sphere with invalid radius
+        TopoDS_Shape sph = TSA::Geometry::DeformedGeometry::createDeformedNodeSphere(p1, dNan, 1.0, -1.0);
+        TEST_CHECK(!sph.IsNull(), "createDeformedNodeSphere with negative radius defaults safely to standard sphere");
+
+        // Modal deformed beam shape with NaN scale and phase
+        TopoDS_Shape modalShape = TSA::Geometry::DeformedGeometry::createModalDeformedBeamShape(
+            p1, p2, dNan, dInf, sec, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity());
+        TEST_CHECK(!modalShape.IsNull(), "createModalDeformedBeamShape handles NaN/Inf modal scale and phase safely");
+
+        passed++;
+    }
+
+    // TEST 82: DiagramGeometry Robustness & Numerical Guards
+    {
+        gp_Pnt p1(0.0, 0.0, 0.0);
+        gp_Pnt p2(5.0, 0.0, 0.0);
+
+        // Coincident points -> null shape
+        std::vector<StationForces> dummyStations(3);
+        dummyStations[0].position = 0.0; dummyStations[0].Mz = 10.0;
+        dummyStations[1].position = 2.5; dummyStations[1].Mz = 20.0;
+        dummyStations[2].position = 5.0; dummyStations[2].Mz = 10.0;
+        TopoDS_Shape shCoincident = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p1, 0.0, dummyStations, TSA::Geometry::DiagramType::BendingMz, 0.1);
+        TEST_CHECK(shCoincident.IsNull(), "Diagram on coincident points must be null");
+
+        // Type None -> null shape
+        TopoDS_Shape shNone = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p2, 0.0, dummyStations, TSA::Geometry::DiagramType::None, 0.1);
+        TEST_CHECK(shNone.IsNull(), "Diagram of type None must be null");
+
+        // Stations with NaN/Inf values
+        std::vector<StationForces> nanStations = dummyStations;
+        nanStations[1].Mz = std::numeric_limits<double>::quiet_NaN();
+        nanStations[2].Mz = std::numeric_limits<double>::infinity();
+        TopoDS_Shape shNan = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p2, 0.0, nanStations, TSA::Geometry::DiagramType::BendingMz, 0.1);
+        TEST_CHECK(!shNan.IsNull(), "Diagram with NaN/Inf station forces is built safely");
+
+        // Negative or NaN scale factor
+        TopoDS_Shape shNegScale = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p2, 0.0, dummyStations, TSA::Geometry::DiagramType::BendingMz, -5.0);
+        TEST_CHECK(!shNegScale.IsNull(), "Diagram with negative scale factor defaults to zero safely");
+
+        TopoDS_Shape shNanScale = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p2, 0.0, dummyStations, TSA::Geometry::DiagramType::BendingMz, std::numeric_limits<double>::quiet_NaN());
+        TEST_CHECK(!shNanScale.IsNull(), "Diagram with NaN scale factor defaults to zero safely");
+
+        // Diagram crossing zero (positive to negative Mz)
+        std::vector<StationForces> crossStations(3);
+        crossStations[0].position = 0.0; crossStations[0].Mz = 15.0;
+        crossStations[1].position = 2.5; crossStations[1].Mz = 0.0;
+        crossStations[2].position = 5.0; crossStations[2].Mz = -15.0;
+        TopoDS_Shape shCross = TSA::Geometry::DiagramGeometry::createDiagramShape(
+            p1, p2, 0.0, crossStations, TSA::Geometry::DiagramType::BendingMz, 0.05);
+        TEST_CHECK(!shCross.IsNull(), "Diagram crossing zero must produce valid compound shape");
 
         passed++;
     }

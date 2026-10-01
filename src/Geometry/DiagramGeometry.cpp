@@ -131,6 +131,11 @@ TopoDS_Shape DiagramGeometry::createDiagramShape(
         return TopoDS_Shape();
     }
 
+    if (std::isnan(scaleFactor) || std::isinf(scaleFactor) || scaleFactor < 0.0)
+    {
+        scaleFactor = 0.0;
+    }
+
     gp_Vec vAB(p1, p2);
     double length = vAB.Magnitude();
     if (length < 1e-5) return TopoDS_Shape();
@@ -162,6 +167,10 @@ TopoDS_Shape DiagramGeometry::createDiagramShape(
         basePoints[i] = base;
 
         double v = getStationValue(stations[i], type);
+        if (std::isnan(v) || std::isinf(v))
+        {
+            v = 0.0;
+        }
         vals[i] = v;
 
         gp_Pnt dPt = base.Translated(offsetDir * (v * scaleFactor));
@@ -193,59 +202,78 @@ TopoDS_Shape DiagramGeometry::createDiagramShape(
         double v2 = vals[i + 1];
 
         // Ligne extérieure de contour
-        try
+        if (d1.Distance(d2) > 1e-6)
         {
-            BRepBuilderAPI_MakeEdge contourEdge(d1, d2);
-            if (contourEdge.IsDone())
+            try
             {
-                bb.Add(comp, contourEdge.Shape());
+                BRepBuilderAPI_MakeEdge contourEdge(d1, d2);
+                if (contourEdge.IsDone())
+                {
+                    bb.Add(comp, contourEdge.Shape());
+                }
             }
+            catch (...) {}
         }
-        catch (...) {}
 
         // Détection de croisement par zéro
         if ((v1 > 1e-5 && v2 < -1e-5) || (v1 < -1e-5 && v2 > 1e-5))
         {
-            double r = -v1 / (v2 - v1);
-            gp_Pnt zPt = b1.Translated((b2.XYZ() - b1.XYZ()) * r);
-
-            // Triangle 1 : b1 -> d1 -> zPt
-            try
+            double denom = v2 - v1;
+            if (std::abs(denom) > 1e-9)
             {
-                BRepBuilderAPI_MakePolygon poly1(b1, d1, zPt, true);
-                if (poly1.IsDone())
+                double r = -v1 / denom;
+                if (r > 0.0 && r < 1.0)
                 {
-                    BRepBuilderAPI_MakeFace face1(poly1.Wire());
-                    if (face1.IsDone()) bb.Add(comp, face1.Shape());
+                    gp_Pnt zPt = b1.Translated((b2.XYZ() - b1.XYZ()) * r);
+
+                    // Triangle 1 : b1 -> d1 -> zPt
+                    if (b1.Distance(d1) > 1e-5 && d1.Distance(zPt) > 1e-5 && zPt.Distance(b1) > 1e-5)
+                    {
+                        try
+                        {
+                            BRepBuilderAPI_MakePolygon poly1(b1, d1, zPt, true);
+                            if (poly1.IsDone())
+                            {
+                                BRepBuilderAPI_MakeFace face1(poly1.Wire());
+                                if (face1.IsDone()) bb.Add(comp, face1.Shape());
+                            }
+                        }
+                        catch (...) {}
+                    }
+
+                    // Triangle 2 : zPt -> d2 -> b2
+                    if (zPt.Distance(d2) > 1e-5 && d2.Distance(b2) > 1e-5 && b2.Distance(zPt) > 1e-5)
+                    {
+                        try
+                        {
+                            BRepBuilderAPI_MakePolygon poly2(zPt, d2, b2, true);
+                            if (poly2.IsDone())
+                            {
+                                BRepBuilderAPI_MakeFace face2(poly2.Wire());
+                                if (face2.IsDone()) bb.Add(comp, face2.Shape());
+                            }
+                        }
+                        catch (...) {}
+                    }
                 }
             }
-            catch (...) {}
-
-            // Triangle 2 : zPt -> d2 -> b2
-            try
-            {
-                BRepBuilderAPI_MakePolygon poly2(zPt, d2, b2, true);
-                if (poly2.IsDone())
-                {
-                    BRepBuilderAPI_MakeFace face2(poly2.Wire());
-                    if (face2.IsDone()) bb.Add(comp, face2.Shape());
-                }
-            }
-            catch (...) {}
         }
         else
         {
             // Quadrilatère : b1 -> d1 -> d2 -> b2
-            try
+            if (b1.Distance(d1) > 1e-5 || b2.Distance(d2) > 1e-5)
             {
-                BRepBuilderAPI_MakePolygon poly(b1, d1, d2, b2, true);
-                if (poly.IsDone())
+                try
                 {
-                    BRepBuilderAPI_MakeFace face(poly.Wire());
-                    if (face.IsDone()) bb.Add(comp, face.Shape());
+                    BRepBuilderAPI_MakePolygon poly(b1, d1, d2, b2, true);
+                    if (poly.IsDone())
+                    {
+                        BRepBuilderAPI_MakeFace face(poly.Wire());
+                        if (face.IsDone()) bb.Add(comp, face.Shape());
+                    }
                 }
+                catch (...) {}
             }
-            catch (...) {}
         }
     }
 

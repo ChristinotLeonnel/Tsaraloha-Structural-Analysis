@@ -325,7 +325,7 @@ void ResultsVisualManager::clearLegend()
     auto ctx = context();
     if (ctx && !m_legendLabel.IsNull())
     {
-        ctx->Remove(m_legendLabel, Standard_False);
+        ctx->Remove(m_legendLabel, false);
     }
     m_legendLabel.Nullify();
 }
@@ -362,7 +362,7 @@ void ResultsVisualManager::updateLegend()
     m_legendLabel->SetColor(Quantity_NOC_YELLOW);
     m_legendLabel->SetHeight(13.0);
     m_legendLabel->SetFont("Arial");
-    ctx->Display(m_legendLabel, Standard_False);
+    ctx->Display(m_legendLabel, false);
 }
 
 void ResultsVisualManager::updateAllVisuals()
@@ -463,7 +463,7 @@ void ResultsVisualManager::updateDeformedShapes()
             {
                 ais->SetTransparency(0.2);
             }
-            ctx->Display(ais, Standard_False);
+            ctx->Display(ais, false);
             m_deformedElementShapes[beamId] = ais;
         }
     }
@@ -511,7 +511,7 @@ void ResultsVisualManager::updateDeformedShapes()
             {
                 ais->SetTransparency(0.2);
             }
-            ctx->Display(ais, Standard_False);
+            ctx->Display(ais, false);
             m_deformedElementShapes[100000 + colId] = ais;
         }
     }
@@ -546,7 +546,7 @@ void ResultsVisualManager::updateDeformedShapes()
                 {
                     ais->SetTransparency(0.2);
                 }
-                ctx->Display(ais, Standard_False);
+                ctx->Display(ais, false);
                 m_deformedElementShapes[200000 + trussId] = ais;
             }
         }
@@ -583,7 +583,7 @@ void ResultsVisualManager::updateDeformedShapes()
                 {
                     ais->SetTransparency(0.2);
                 }
-                ctx->Display(ais, Standard_False);
+                ctx->Display(ais, false);
                 m_deformedElementShapes[300000 + cableId] = ais;
             }
         }
@@ -598,11 +598,11 @@ void ResultsVisualManager::clearDeformedShapes()
     {
         for (auto& [id, shape] : m_deformedElementShapes)
         {
-            ctx->Remove(shape, Standard_False);
+            ctx->Remove(shape, false);
         }
         for (auto& [id, shape] : m_deformedNodeShapes)
         {
-            ctx->Remove(shape, Standard_False);
+            ctx->Remove(shape, false);
         }
     }
     m_deformedElementShapes.clear();
@@ -720,7 +720,7 @@ void ResultsVisualManager::updateDiagramShapes()
                 ais->SetColor(Quantity_NOC_GOLD);
             }
             ais->SetTransparency(0.25);
-            ctx->Display(ais, Standard_False);
+            ctx->Display(ais, false);
             m_diagramShapes[elId] = ais;
         }
 
@@ -740,6 +740,7 @@ void ResultsVisualManager::updateDiagramShapes()
             }
 
             gp_Vec offsetDir = TSA::Geometry::DiagramGeometry::getDiagramOffsetDirection(p1, p2, rot, m_diagramType);
+            if (offsetDir.Magnitude() < 1e-6) continue;
             offsetDir.Normalize();
             gp_Vec vAB(p1, p2);
             double length = vAB.Magnitude();
@@ -758,7 +759,7 @@ void ResultsVisualManager::updateDiagramShapes()
                 lbl->SetColor(Quantity_NOC_WHITE);
                 lbl->SetHeight(12.0);
                 lbl->SetFont("Arial");
-                ctx->Display(lbl, Standard_False);
+                ctx->Display(lbl, false);
                 m_diagramLabels[elId].push_back(lbl);
             };
 
@@ -778,13 +779,13 @@ void ResultsVisualManager::clearDiagramShapes()
     {
         for (auto& [id, shape] : m_diagramShapes)
         {
-            ctx->Remove(shape, Standard_False);
+            ctx->Remove(shape, false);
         }
         for (auto& [id, labels] : m_diagramLabels)
         {
             for (auto& lbl : labels)
             {
-                ctx->Remove(lbl, Standard_False);
+                ctx->Remove(lbl, false);
             }
         }
     }
@@ -825,7 +826,7 @@ void ResultsVisualManager::updateReactionShapes()
         {
             Handle(AIS_Shape) ais = new AIS_Shape(arrShape);
             ais->SetColor(Quantity_NOC_LIMEGREEN);
-            ctx->Display(ais, Standard_False);
+            ctx->Display(ais, false);
             m_reactionShapes[nodeId] = ais;
         }
 
@@ -849,7 +850,7 @@ void ResultsVisualManager::updateReactionShapes()
         lbl->SetText(TCollection_ExtendedString(lblStr.toUtf8().constData()));
         lbl->SetColor(Quantity_NOC_LIMEGREEN);
         lbl->SetHeight(12.0);
-        ctx->Display(lbl, Standard_False);
+        ctx->Display(lbl, false);
         m_reactionLabels[nodeId] = lbl;
     }
 }
@@ -861,11 +862,11 @@ void ResultsVisualManager::clearReactionShapes()
     {
         for (auto& [id, shape] : m_reactionShapes)
         {
-            ctx->Remove(shape, Standard_False);
+            ctx->Remove(shape, false);
         }
         for (auto& [id, lbl] : m_reactionLabels)
         {
-            ctx->Remove(lbl, Standard_False);
+            ctx->Remove(lbl, false);
         }
     }
     m_reactionShapes.clear();
