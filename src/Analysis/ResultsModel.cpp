@@ -85,6 +85,7 @@ void ResultsModel::clear()
     m_activeStep = -1;
     m_equilibrium = GlobalEquilibrium{};
     m_summary = ResultsSummary{};
+    m_executionMetadata = AnalysisExecutionMetadata{};
     m_journalLog.clear();
 }
 

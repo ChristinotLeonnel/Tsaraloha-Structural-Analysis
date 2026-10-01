@@ -5,7 +5,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 91;
+    int expectedTotal = 93;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Supports(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "standards" || suiteFilter == "normative") {
-        std::cout << "\n--- [Suite 15/15] Normative Requirements, Annexes & Model Validation (Tests 76-82) ---" << std::endl;
+        std::cout << "\n--- [Suite 15/15] Normative Requirements, Annexes & Model Validation (Tests 76-84) ---" << std::endl;
         if (!runSuite_Standards(passed)) allOk = false;
     }
 

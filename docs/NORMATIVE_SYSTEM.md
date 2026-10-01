@@ -55,7 +55,8 @@ src/Standards/
 ├── NationalAnnexConfig.h / .cpp  : Paramètres configurables des Annexes Nationales (France NF, DIN, BS, CEN)
 ├── ExternalLibraryCatalog.h/.cpp : Répertoire documenté des dépendances tierces (Qt, OCCT, OpenSees)
 ├── DataDefinition.h              : Métadonnées normatives des grandeurs physiques (fck, fy, E, nu, rho)
-└── ModelValidator.h / .cpp       : Validateur global défensif (NaN, infini, dimensions, appuis, stabilité)
+├── ModelValidator.h / .cpp       : Validateur global défensif (NaN, infini, dimensions, appuis, stabilité)
+└── AnalyticalBenchmark.h / .cpp  : Registre de benchmarks et cas de référence analytiques (V&V)
 ```
 
 ### 3.1 Registre Central des Exigences (`RequirementsCatalog`)
@@ -104,6 +105,30 @@ if (!report.isValid()) {
     }
 }
 ```
+
+### 3.4 Registre des Cas de Référence Analytiques (`AnalyticalBenchmarkRegistry`)
+
+Conformément à l'**ISO/IEC/IEEE 29119** et au principe de Vérification & Validation (V&V), les résultats numériques sont systématiquement confrontés à des solutions analytiques fermées de référence (Euler-Bernoulli, Timoshenko, Navier) avec tolérance certifiée ($\le 2\%$) :
+```cpp
+#include "Standards/AnalyticalBenchmark.h"
+
+auto& reg = TSA::Standards::AnalyticalBenchmarkRegistry::instance();
+// Évaluation analytique d'une poutre bi-appuyée (M_max = P*L/4)
+auto bench = TSA::Standards::AnalyticalBenchmarkRegistry::evaluateBeamPointLoad(
+    "EC3_STEEL_BEAM_001", 10.0 /* kN */, 5.0 /* m */, actualM /* kN.m */);
+assert(bench.passed);
+```
+
+### 3.5 Métadonnées d'Exécution et Traçabilité des Résultats (`AnalysisExecutionMetadata`)
+
+Chaque instance de `ResultsModel` conserve les métadonnées certifiées d'exécution :
+* Annexe Nationale active (`NationalAnnexConfig`) ;
+* Version du solveur OpenSees ;
+* Référentiel réglementaire et type de combinaison ELU/ELS ;
+* Statut d'équilibre statique global et résidu de fermeture maximal $\max |R_{unbalanced}|$ ;
+* Horodatage ISO 8601 et nombre d'entités calculées.
+
+Ces métadonnées sont automatiquement répercutées dans la Note de Calcul réglementaire (`NDCGenerator.cpp`).
 
 ---
 
@@ -184,3 +209,5 @@ Pour maintenir la lisibilité sans surcharge artificielle, les marqueurs normali
 | **REQ-CALC-CAB-001** | Câbles | EN 1993-1-11 | §5 & §6 | Câbles tendus, module d'Ernst, haubans, rentrée de mors | `CableStandards.cpp` | `TSA_CablesTests` | **IMPLEMENTED** |
 | **REQ-UI-PORT-001** | Ergonomie | ISO/IEC 25010 | §4.2.4 | Espace multi-ports réactif sans duplication mémoire du modèle | `PortAreaWidget.cpp` | `TSA_WindowManagerTests` | **IMPLEMENTED** |
 | **REQ-NDC-GEN-001** | Rapport | IEEE Std 1063 | Justification | Note de calcul réglementaire certifiée HTML / Texte brut | `NDCGenerator.cpp` | `TSA_AllTests` | **IMPLEMENTED** |
+| **REQ-RES-META-001** | Résultats | ISO/IEC 25010 | §4.2.5 | Métadonnées d'exécution certifiées (Annexe Nationale, OpenSees, résidu max) | `ResultsModel.h`, `OpenSeesSolver.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
+| **REQ-VV-BENCH-001** | Vérification & Validation | ISO/IEC/IEEE 29119 | Part. 2/3 | Benchmarks analytiques fermés (Euler-Bernoulli, Timoshenko, Navier) tol. <= 2% | `AnalyticalBenchmark.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |

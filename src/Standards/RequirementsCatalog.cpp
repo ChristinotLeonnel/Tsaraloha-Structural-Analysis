@@ -431,6 +431,35 @@ void RequirementsCatalog::initializeDefaultCatalog()
         RequirementStatus::Implemented,
         "Rapport technique complet généré et validé."
     });
+
+    // =========================================================================
+    // 6. RÉSULTATS, TRAÇABILITÉ D'EXÉCUTION ET BENCHMARKS (V&V)
+    // =========================================================================
+    registerRequirement({
+        "REQ-RES-META-001",
+        StandardFramework::ISO_IEC_25010,
+        RequirementDomain::ResultsVisualization,
+        "ISO/IEC 25010 §4.2.5 / EN 1990 §6",
+        "Métadonnées certifiées d'exécution du calcul",
+        "Enregistrement immuable des métadonnées de calcul : Annexe Nationale active, version OpenSees, statut d'équilibre statique, résidu de fermeture maximal et horodatage.",
+        "src/Analysis/ResultsModel.h, src/Analysis/OpenSeesSolver.cpp",
+        "TSA_StandardsTests",
+        RequirementStatus::Implemented,
+        "Traçabilité garantie et intégrée dans la Note de Calcul NDC."
+    });
+
+    registerRequirement({
+        "REQ-VV-BENCH-001",
+        StandardFramework::ISO_IEC_IEEE_29119,
+        RequirementDomain::TestingQA,
+        "ISO/IEC/IEEE 29119 / ISO 9001:2015",
+        "Cas de référence analytiques et benchmarks (V&V)",
+        "Répertoire centralisé de benchmarks avec formules analytiques fermées (Euler-Bernoulli, Timoshenko, RDM), seuils de tolérance et évaluation automatisée pass/fail.",
+        "src/Standards/AnalyticalBenchmark.h, src/Standards/AnalyticalBenchmark.cpp",
+        "TSA_StandardsTests",
+        RequirementStatus::Implemented,
+        "4 benchmarks fondamentaux validés avec écart relatif < 1%."
+    });
 }
 
 } // namespace TSA::Standards

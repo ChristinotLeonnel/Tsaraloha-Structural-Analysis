@@ -83,6 +83,21 @@ NDCDocument NDCGenerator::generate(
         ch.sections.push_back(s1);
         ch.sections.push_back(s2);
         ch.sections.push_back(s3);
+
+        if (results && results->isValid())
+        {
+            const auto& meta = results->executionMetadata();
+            NDCSection sMeta;
+            sMeta.title = "Traçabilité de Calcul & Annexe Nationale";
+            sMeta.paragraphs.push_back("Informations d'environnement et métadonnées d'exécution certifiées pour la présente note de calcul :");
+            sMeta.keyValues.push_back({QStringLiteral("Solveur de calcul"), QString::fromStdString(meta.solverEngine + " (v" + meta.solverVersion + ")")});
+            sMeta.keyValues.push_back({QStringLiteral("Annexe Nationale active"), QString::fromStdString(meta.nationalAnnex)});
+            sMeta.keyValues.push_back({QStringLiteral("Référentiel réglementaire"), QString::fromStdString(meta.normativeFramework)});
+            sMeta.keyValues.push_back({QStringLiteral("Date / Heure de calcul"), QString::fromStdString(meta.executionTimestamp.empty() ? results->timestamp() : meta.executionTimestamp)});
+            sMeta.keyValues.push_back({QStringLiteral("Équilibre global statique"), meta.isEquilibriumVerified ? QStringLiteral("CONFORME (Résidu max <= %1 kN)").arg(meta.globalEquilibriumTolerance) : QStringLiteral("Divergence / Non vérifié")});
+            ch.sections.push_back(sMeta);
+        }
+
         doc.addChapter(ch);
     }
 

@@ -152,7 +152,30 @@ struct GlobalEquilibrium
     double errorFx() const { return appliedFx + reactionFx; }
     double errorFy() const { return appliedFy + reactionFy; }
     double errorFz() const { return appliedFz + reactionFz; }
+    double maxError() const {
+        return std::max({ std::abs(errorFx()), std::abs(errorFy()), std::abs(errorFz()) });
+    }
     bool isBalanced(double tol = 1e-3) const;
+};
+
+/**
+ * @brief Métadonnées d'exécution et traçabilité normative des résultats d'analyse.
+ * [NORM: ISO/IEC 25010 §4.2.5, EN 1990 §6, IEEE Std 1063]
+ */
+struct AnalysisExecutionMetadata
+{
+    std::string solverEngine = "OpenSees";
+    std::string solverVersion = "3.8.0";
+    std::string nationalAnnex = "France NF (NF EN 1990/NA)";
+    std::string normativeFramework = "EN 1990:2002+A1:2005 / ISO/IEC 25010";
+    std::string loadCombinationType = "Statique Linéaire";
+    double globalEquilibriumTolerance = 1e-3;
+    double maxResidualForce = 0.0;
+    bool isEquilibriumVerified = false;
+    std::string executionTimestamp;
+    int totalNodes = 0;
+    int totalElements = 0;
+    double executionDurationMs = 0.0;
 };
 
 /**
@@ -257,6 +280,11 @@ public:
     ResultsSummary summary() const { return m_summary; }
     void computeSummary();
 
+    // Métadonnées d'exécution et traçabilité normative
+    const AnalysisExecutionMetadata& executionMetadata() const noexcept { return m_executionMetadata; }
+    AnalysisExecutionMetadata& executionMetadata() noexcept { return m_executionMetadata; }
+    void setExecutionMetadata(const AnalysisExecutionMetadata& meta) { m_executionMetadata = meta; }
+
     // Journal d'analyse
     void appendLog(const std::string& line) { m_journalLog += line + "\n"; }
     const std::string& journalLog() const { return m_journalLog; }
@@ -268,6 +296,7 @@ private:
     std::string m_caseOrComboName;
     std::string m_timestamp;
     std::string m_journalLog;
+    AnalysisExecutionMetadata m_executionMetadata;
 
     std::map<int, NodeDisplacement> m_displacements;
     std::map<int, NodeReaction> m_reactions;

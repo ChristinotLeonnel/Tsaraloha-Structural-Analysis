@@ -527,6 +527,17 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
     }
 
     outResults.setEquilibrium(eq);
+
+    auto meta = outResults.executionMetadata();
+    meta.maxResidualForce = eq.maxError();
+    meta.isEquilibriumVerified = eq.isBalanced(meta.globalEquilibriumTolerance);
+    meta.totalNodes = static_cast<int>(snapshot.nodeCount());
+    meta.totalElements = static_cast<int>(snapshot.elementCount());
+    if (meta.executionTimestamp.empty())
+    {
+        meta.executionTimestamp = outResults.timestamp();
+    }
+    outResults.setExecutionMetadata(meta);
 }
 
 } // namespace TSA::Analysis

@@ -5,6 +5,7 @@
 #include "../src/Standards/ExternalLibraryCatalog.h"
 #include "../src/Standards/DataDefinition.h"
 #include "../src/Standards/ModelValidator.h"
+#include "../src/Standards/AnalyticalBenchmark.h"
 #include "../src/Analysis/OpenSeesSolver.h"
 #include "../src/Analysis/OpenSeesResultsReader.h"
 #include "../src/Analysis/CalculationSnapshot.h"
@@ -301,6 +302,56 @@ bool runSuite_Standards(int& passed)
         // Nettoyage
         QFile::remove(dispFile);
         QDir().rmdir(tmpDir);
+
+        passed++;
+        std::cout << "PASSED" << std::endl;
+    }
+
+    // Test 8 : Métadonnées d'exécution et traçabilité normative des résultats (ResultsModel)
+    {
+        std::cout << "Test Standards.8 : AnalysisExecutionMetadata in ResultsModel... ";
+        TSA::Analysis::ResultsModel res;
+        auto meta = res.executionMetadata();
+        assert(meta.solverEngine == "OpenSees");
+        assert(!meta.nationalAnnex.empty());
+        assert(!meta.normativeFramework.empty());
+
+        meta.maxResidualForce = 0.00045;
+        meta.isEquilibriumVerified = true;
+        res.setExecutionMetadata(meta);
+
+        assert(res.executionMetadata().isEquilibriumVerified);
+        assert(res.executionMetadata().maxResidualForce < 0.001);
+
+        res.clear();
+        assert(!res.executionMetadata().isEquilibriumVerified);
+
+        passed++;
+        std::cout << "PASSED" << std::endl;
+    }
+
+    // Test 9 : Cas de référence analytiques et benchmarks (AnalyticalBenchmarkRegistry)
+    {
+        std::cout << "Test Standards.9 : AnalyticalBenchmarkRegistry and reference cases... ";
+        auto& reg = AnalyticalBenchmarkRegistry::instance();
+        assert(reg.totalCount() >= 4);
+        assert(reg.passedCount() >= 4);
+
+        // Évaluation analytique d'une poutre bi-appuyée sous P = 10 kN, L = 5 m (M_théorique = 12.5 kNm)
+        auto bc1 = AnalyticalBenchmarkRegistry::evaluateBeamPointLoad("TEST_POINT_LOAD", 10.0, 5.0, 12.502);
+        assert(bc1.passed);
+        assert(std::abs(bc1.expectedValue - 12.5) < 1e-9);
+        assert(bc1.relativeError() < 0.001);
+
+        // Évaluation avec écart supérieur à la tolérance
+        auto bcFail = AnalyticalBenchmarkRegistry::evaluateBeamPointLoad("TEST_FAIL", 10.0, 5.0, 15.0);
+        assert(!bcFail.passed);
+
+        // Rapport Markdown généré
+        std::string reportMd = reg.generateReportMarkdown();
+        assert(!reportMd.empty());
+        assert(reportMd.find("EC3_STEEL_BEAM_001") != std::string::npos);
+        assert(reportMd.find("PASSED") != std::string::npos);
 
         passed++;
         std::cout << "PASSED" << std::endl;

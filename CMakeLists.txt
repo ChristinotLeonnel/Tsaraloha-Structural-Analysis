@@ -527,6 +527,8 @@ set(STANDARDS_SOURCES
     src/Standards/DataDefinition.h
     src/Standards/ModelValidator.h
     src/Standards/ModelValidator.cpp
+    src/Standards/AnalyticalBenchmark.h
+    src/Standards/AnalyticalBenchmark.cpp
 )
 
 # --- Intégration spécifique Windows (association de fichiers) ----------------

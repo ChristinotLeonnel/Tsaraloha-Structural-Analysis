@@ -2,6 +2,7 @@
 #include "OpenSeesResultsReader.h"
 #include "../Model/Model.h"
 #include "../Standards/ModelValidator.h"
+#include "../Standards/NationalAnnexConfig.h"
 #include "../Diagnostics/Logger.h"
 
 #include <QDir>
@@ -285,6 +286,27 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
         if (errorMessage) *errorMessage = QString::fromStdString(readErr);
         return false;
     }
+
+    // Traçabilité des métadonnées normatives d'exécution
+    auto meta = m_results.executionMetadata();
+    meta.solverEngine = "OpenSees";
+    meta.solverVersion = OpenSeesManager::instance().versionInfo().versionString.toStdString();
+    if (meta.solverVersion.empty()) meta.solverVersion = "3.8.0";
+    meta.nationalAnnex = TSA::Standards::NationalAnnexConfig::instance().annexName().toStdString();
+    meta.normativeFramework = "EN 1990:2002+A1:2005 / ISO/IEC 25010";
+    if (params.targetCombinationId > 0)
+    {
+        meta.loadCombinationType = "Combinaison #" + std::to_string(params.targetCombinationId);
+    }
+    else if (params.targetLoadCaseId > 0)
+    {
+        meta.loadCombinationType = "Cas de charge #" + std::to_string(params.targetLoadCaseId);
+    }
+    else
+    {
+        meta.loadCombinationType = (params.type == AnalysisType::Modal) ? "Analyse Modale" : "Statique Linéaire";
+    }
+    m_results.setExecutionMetadata(meta);
 
     emit progressChanged(100, tr("Calcul et post-traitement terminés avec succès."));
     return true;
