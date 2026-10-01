@@ -8,6 +8,8 @@
 #include "../Model/Load/LoadManager.h"
 #include "../Analysis/ResultsModel.h"
 #include "../Analysis/OpenSeesManager.h"
+#include "../Standards/Design/ConcreteDesignEC2.h"
+#include "../Standards/Design/SteelDesignEC3.h"
 
 #include <cmath>
 #include <algorithm>
@@ -396,6 +398,168 @@ NDCDocument NDCGenerator::generate(
         ch.sections.push_back(sForces);
 
         doc.addChapter(ch);
+    }
+
+    // =========================================================================
+    // CHAPITRE : VÉRIFICATIONS RÉGLEMENTAIRES EUROCODES (EC2 & EC3)
+    // =========================================================================
+    if (results && results->isValid() && !results->allElementResults().empty())
+    {
+        NDCChapter ch;
+        ch.number = chapNum++;
+        ch.title = "Vérifications Réglementaires Eurocodes (EC2 & EC3)";
+
+        // 1. Béton armé (EN 1992-1-1 §6.1 Flexion simple aux ELU)
+        NDCSection sEC2;
+        sEC2.title = "Vérification en Flexion Simple Béton Armé (EN 1992-1-1 §6.1)";
+        sEC2.paragraphs.push_back("Calcul des sections d'armatures longitudinales As pour les poutres en béton armé sous moment fléchissant maximal ELU :");
+
+        NDCTable tEC2;
+        tEC2.caption = "Tableau : Ferraillage longitudinal des poutres béton (EC2)";
+        tEC2.headers = {"Poutre ID", "Section", "Matériau", "M_Ed (kNm)", "mu_cu", "z (m)", "As prov (cm²)", "Ratio eta (%)", "Statut"};
+
+        bool hasConcreteElements = false;
+        for (const auto& [bId, beam] : model.beams())
+        {
+            if (beam.material().type == TSA::Model::MaterialType::Concrete ||
+                beam.material().type == TSA::Model::MaterialType::ReinforcedConcrete)
+            {
+                const auto* elemRes = results->getElementResults(bId);
+                if (elemRes)
+                {
+                    double Med = elemRes->maxBendingMoment() * 1000.0; // kNm -> Nm
+                    auto ec2Res = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(
+                        beam.section(), beam.material(), Med
+                    );
+                    if (ec2Res.valid)
+                    {
+                        hasConcreteElements = true;
+                        tEC2.rows.push_back({
+                            QString::number(bId),
+                            QString::fromStdString(beam.section().name),
+                            QString::fromStdString(beam.material().name),
+                            QString::number(Med / 1000.0, 'f', 2),
+                            QString::number(ec2Res.mu_cu, 'f', 3),
+                            QString::number(ec2Res.z, 'f', 3),
+                            QString::number(ec2Res.As_provided * 1e4, 'f', 2),
+                            QString::number(ec2Res.utilizationRatio * 100.0, 'f', 1),
+                            ec2Res.requiresCompressionSteel ? QStringLiteral("Aciers comprimés requis") : QStringLiteral("Conforme (Pivot B)")
+                        });
+                    }
+                }
+            }
+        }
+        if (hasConcreteElements)
+        {
+            sEC2.tables.push_back(tEC2);
+            ch.sections.push_back(sEC2);
+        }
+
+        // 2. Acier de charpente (EN 1993-1-1 §6.3 Stabilité au flambement)
+        NDCSection sEC3;
+        sEC3.title = "Stabilité au Flambement des Barres Acier (EN 1993-1-1 §6.3)";
+        sEC3.paragraphs.push_back("Vérification des éléments comprimés au flambement par flexion selon les courbes européennes a0, a, b, c, d :");
+
+        NDCTable tEC3;
+        tEC3.caption = "Tableau : Résistance au flambement des barres acier (EC3)";
+        tEC3.headers = {"Barre ID", "Type", "Section", "N_Ed (kN)", "lambda_bar", "chi", "N_b,Rd (kN)", "Ratio eta (%)", "Statut"};
+
+        bool hasSteelElements = false;
+        // Poteaux acier
+        for (const auto& [colId, col] : model.columns())
+        {
+            if (col.material().type == TSA::Model::MaterialType::Steel ||
+                col.material().type == TSA::Model::MaterialType::GalvanizedSteel)
+            {
+                const auto* elemRes = results->getElementResults(colId);
+                if (elemRes)
+                {
+                    double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * 1000.0; // N
+                    const auto* n1 = model.getNode(col.startNodeId());
+                    const auto* n2 = model.getNode(col.endNodeId());
+                    double L = 3.0;
+                    if (n1 && n2)
+                    {
+                        double dx = n2->x() - n1->x(), dy = n2->y() - n1->y(), dz = n2->z() - n1->z();
+                        L = std::sqrt(dx * dx + dy * dy + dz * dz);
+                    }
+
+                    auto ec3Res = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(
+                        col.section(), col.material(), L, 1.0, Ned, false
+                    );
+                    if (ec3Res.valid)
+                    {
+                        hasSteelElements = true;
+                        tEC3.rows.push_back({
+                            QString::number(colId),
+                            QStringLiteral("Poteau"),
+                            QString::fromStdString(col.section().name),
+                            QString::number(Ned / 1000.0, 'f', 2),
+                            QString::number(ec3Res.reducedSlenderness, 'f', 2),
+                            QString::number(ec3Res.chi, 'f', 3),
+                            QString::number(ec3Res.Nb_Rd / 1000.0, 'f', 1),
+                            QString::number(ec3Res.utilizationRatio * 100.0, 'f', 1),
+                            ec3Res.pass ? QStringLiteral("CONFORME") : QStringLiteral("NON CONFORME")
+                        });
+                    }
+                }
+            }
+        }
+
+        // Poutres acier avec compression
+        for (const auto& [bId, beam] : model.beams())
+        {
+            if (beam.material().type == TSA::Model::MaterialType::Steel ||
+                beam.material().type == TSA::Model::MaterialType::GalvanizedSteel)
+            {
+                const auto* elemRes = results->getElementResults(bId);
+                if (elemRes)
+                {
+                    double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * 1000.0; // N
+                    if (Ned > 1000.0)
+                    {
+                        const auto* n1 = model.getNode(beam.startNodeId());
+                        const auto* n2 = model.getNode(beam.endNodeId());
+                        double L = 3.0;
+                        if (n1 && n2)
+                        {
+                            double dx = n2->x() - n1->x(), dy = n2->y() - n1->y(), dz = n2->z() - n1->z();
+                            L = std::sqrt(dx * dx + dy * dy + dz * dz);
+                        }
+
+                        auto ec3Res = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(
+                            beam.section(), beam.material(), L, 1.0, Ned, false
+                        );
+                        if (ec3Res.valid)
+                        {
+                            hasSteelElements = true;
+                            tEC3.rows.push_back({
+                                QString::number(bId),
+                                QStringLiteral("Poutre"),
+                                QString::fromStdString(beam.section().name),
+                                QString::number(Ned / 1000.0, 'f', 2),
+                                QString::number(ec3Res.reducedSlenderness, 'f', 2),
+                                QString::number(ec3Res.chi, 'f', 3),
+                                QString::number(ec3Res.Nb_Rd / 1000.0, 'f', 1),
+                                QString::number(ec3Res.utilizationRatio * 100.0, 'f', 1),
+                                ec3Res.pass ? QStringLiteral("CONFORME") : QStringLiteral("NON CONFORME")
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        if (hasSteelElements)
+        {
+            sEC3.tables.push_back(tEC3);
+            ch.sections.push_back(sEC3);
+        }
+
+        if (hasConcreteElements || hasSteelElements)
+        {
+            doc.addChapter(ch);
+        }
     }
 
     // =========================================================================
