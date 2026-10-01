@@ -1,6 +1,11 @@
 #include "ResultsDockWidget.h"
 #include "../../Model/Model.h"
+#include "../../Model/Node.h"
+#include "../../Model/Beam.h"
+#include "../../Model/Column.h"
 #include "../../Analysis/ResultsModel.h"
+#include "../../Standards/Design/ConcreteDesignEC2.h"
+#include "../../Standards/Design/SteelDesignEC3.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -335,6 +340,91 @@ void ResultsDockWidget::updateSummaryText()
     .arg(s.maxTension, 0, 'f', 1)
     .arg(eq.reactionFz, 0, 'f', 1)
     .arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("DÉSÉQUILIBRE"));
+
+    // Évaluation des ratios de travail maximaux Eurocodes (EC2 & EC3)
+    if (m_model)
+    {
+        double maxEtaEC2 = 0.0;
+        int maxEtaEC2Id = 0;
+        double maxEtaEC3 = 0.0;
+        int maxEtaEC3Id = 0;
+
+        for (const auto& [bId, beam] : m_model->beams())
+        {
+            const auto* elemRes = m_resultsModel->getElementResults(bId);
+            if (!elemRes) continue;
+
+            if (beam.material().type == TSA::Model::MaterialType::Concrete ||
+                beam.material().type == TSA::Model::MaterialType::ReinforcedConcrete)
+            {
+                double Med = elemRes->maxBendingMoment() * 1000.0;
+                auto ec2 = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(beam.section(), beam.material(), Med);
+                if (ec2.valid && ec2.utilizationRatio > maxEtaEC2)
+                {
+                    maxEtaEC2 = ec2.utilizationRatio;
+                    maxEtaEC2Id = bId;
+                }
+            }
+            else if (beam.material().type == TSA::Model::MaterialType::Steel ||
+                     beam.material().type == TSA::Model::MaterialType::GalvanizedSteel)
+            {
+                double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * 1000.0;
+                const auto* n1 = m_model->getNode(beam.startNodeId());
+                const auto* n2 = m_model->getNode(beam.endNodeId());
+                double L = 3.0;
+                if (n1 && n2)
+                {
+                    double dx = n2->x() - n1->x(), dy = n2->y() - n1->y(), dz = n2->z() - n1->z();
+                    L = std::sqrt(dx * dx + dy * dy + dz * dz);
+                }
+                auto ec3 = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(beam.section(), beam.material(), L, 1.0, Ned, false);
+                if (ec3.valid && ec3.utilizationRatio > maxEtaEC3)
+                {
+                    maxEtaEC3 = ec3.utilizationRatio;
+                    maxEtaEC3Id = bId;
+                }
+            }
+        }
+
+        for (const auto& [colId, col] : m_model->columns())
+        {
+            const auto* elemRes = m_resultsModel->getElementResults(colId);
+            if (!elemRes) continue;
+
+            if (col.material().type == TSA::Model::MaterialType::Steel ||
+                col.material().type == TSA::Model::MaterialType::GalvanizedSteel)
+            {
+                double Ned = std::max(std::abs(elemRes->minNormalForce()), std::abs(elemRes->maxNormalForce())) * 1000.0;
+                const auto* n1 = m_model->getNode(col.startNodeId());
+                const auto* n2 = m_model->getNode(col.endNodeId());
+                double L = 3.0;
+                if (n1 && n2)
+                {
+                    double dx = n2->x() - n1->x(), dy = n2->y() - n1->y(), dz = n2->z() - n1->z();
+                    L = std::sqrt(dx * dx + dy * dy + dz * dz);
+                }
+                auto ec3 = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(col.section(), col.material(), L, 1.0, Ned, false);
+                if (ec3.valid && ec3.utilizationRatio > maxEtaEC3)
+                {
+                    maxEtaEC3 = ec3.utilizationRatio;
+                    maxEtaEC3Id = colId;
+                }
+            }
+        }
+
+        if (maxEtaEC2 > 0.0)
+        {
+            txt += tr("\n• Ratio max EC2 (Béton) : %1% (#%2)")
+                       .arg(maxEtaEC2 * 100.0, 0, 'f', 1)
+                       .arg(maxEtaEC2Id);
+        }
+        if (maxEtaEC3 > 0.0)
+        {
+            txt += tr("\n• Ratio max EC3 (Acier) : %1% (#%2)")
+                       .arg(maxEtaEC3 * 100.0, 0, 'f', 1)
+                       .arg(maxEtaEC3Id);
+        }
+    }
 
     m_labelSummary->setText(txt);
 }
