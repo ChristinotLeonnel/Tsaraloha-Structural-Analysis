@@ -43,14 +43,7 @@ LocalMemberLoadComponents LoadResolver::resolveMemberLoadToLocal(const TSA::Mode
     int endNodeId = 0;
     double rotationDeg = 0.0;
 
-    const auto* b = model.getBeam(elemId);
-    if (b)
-    {
-        startNodeId = b->startNodeId();
-        endNodeId = b->endNodeId();
-        rotationDeg = b->rotation();
-    }
-    else
+    if (load.targetType() == TSA::Model::MemberTargetType::Column)
     {
         const auto* col = model.getColumn(elemId);
         if (col)
@@ -59,13 +52,42 @@ LocalMemberLoadComponents LoadResolver::resolveMemberLoadToLocal(const TSA::Mode
             endNodeId = col->endNodeId();
             rotationDeg = col->rotation();
         }
+    }
+    else if (load.targetType() == TSA::Model::MemberTargetType::Truss)
+    {
+        const auto* tr = model.getTrussMember(elemId);
+        if (tr)
+        {
+            startNodeId = tr->startNodeId();
+            endNodeId = tr->endNodeId();
+        }
+    }
+    else
+    {
+        const auto* b = model.getBeam(elemId);
+        if (b)
+        {
+            startNodeId = b->startNodeId();
+            endNodeId = b->endNodeId();
+            rotationDeg = b->rotation();
+        }
         else
         {
-            const auto* tr = model.getTrussMember(elemId);
-            if (tr)
+            const auto* col = model.getColumn(elemId);
+            if (col)
             {
-                startNodeId = tr->startNodeId();
-                endNodeId = tr->endNodeId();
+                startNodeId = col->startNodeId();
+                endNodeId = col->endNodeId();
+                rotationDeg = col->rotation();
+            }
+            else
+            {
+                const auto* tr = model.getTrussMember(elemId);
+                if (tr)
+                {
+                    startNodeId = tr->startNodeId();
+                    endNodeId = tr->endNodeId();
+                }
             }
         }
     }
@@ -115,8 +137,10 @@ LocalMemberLoadComponents LoadResolver::resolveMemberLoadToLocal(const TSA::Mode
         globalVec = gp_Vec(0.0, qMag, 0.0);
         break;
     case TSA::Model::LoadDirection::GlobalZ:
+        globalVec = gp_Vec(0.0, 0.0, qMag);
+        break;
     case TSA::Model::LoadDirection::Gravity:
-        // Gravité / charge verticale descendante (-Z)
+        // Gravité / charge verticale descendante (-Z par convention internationale)
         globalVec = gp_Vec(0.0, 0.0, -std::abs(qMag));
         break;
     default:
@@ -174,6 +198,8 @@ LocalMemberLoadComponents LoadResolver::resolveMemberLoadToLocal(const TSA::Mode
         globalVec = gp_Vec(0.0, qMag, 0.0);
         break;
     case TSA::Model::LoadDirection::GlobalZ:
+        globalVec = gp_Vec(0.0, 0.0, qMag);
+        break;
     case TSA::Model::LoadDirection::Gravity:
         globalVec = gp_Vec(0.0, 0.0, -std::abs(qMag));
         break;

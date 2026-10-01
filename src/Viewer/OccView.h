@@ -306,8 +306,17 @@ public:
     void setLoadsVisible(bool visible);
     bool areLoadsVisible() const noexcept { return m_loadsVisible; }
 
+    void setForcesVisible(bool visible);
+    bool areForcesVisible() const noexcept { return m_forcesVisible; }
+
+    void setMomentsVisible(bool visible);
+    bool areMomentsVisible() const noexcept { return m_momentsVisible; }
+
     void setLoadValuesVisible(bool visible);
     bool areLoadValuesVisible() const noexcept { return m_loadValuesVisible; }
+
+    void setLoadScale(double scale);
+    double loadScale() const noexcept { return m_loadScale; }
 
     void updateNodalLoadShape(int loadId, bool redrawImmediately = true);
     void removeNodalLoadShape(int loadId, bool redrawImmediately = true);
@@ -332,7 +341,10 @@ signals:
     void nodeLabelsVisibilityChanged(bool visible);
     void nodeDisplayFilterChanged(NodeDisplayFilter filter);
     void loadsVisibilityChanged(bool visible);
+    void forcesVisibilityChanged(bool visible);
+    void momentsVisibilityChanged(bool visible);
     void loadValuesVisibilityChanged(bool visible);
+    void loadScaleChanged(double scale);
     void interactionModeChanged(InteractionMode mode);
     void drawingPromptChanged(const QString& prompt);
     void viewPlaneModeChanged(ViewPlaneMode mode);
@@ -481,12 +493,15 @@ private:
     std::map<int, Handle(AIS_Shape)> m_foundationShapes;
     std::map<int, Handle(AIS_Shape)> m_trussShapes;
     std::map<int, Handle(AIS_Shape)> m_cableShapes;
-    std::map<int, Handle(AIS_Shape)> m_nodalLoadShapes;
+    std::map<int, std::vector<Handle(AIS_Shape)>> m_nodalLoadShapes;
     std::map<int, Handle(AIS_TextLabel)> m_nodalLoadLabels;
     std::map<int, std::vector<Handle(AIS_Shape)>> m_memberLoadShapes;
     std::map<int, Handle(AIS_TextLabel)> m_memberLoadLabels;
     bool m_loadsVisible = true;
+    bool m_forcesVisible = true;
+    bool m_momentsVisible = true;
     bool m_loadValuesVisible = true;
+    double m_loadScale = 1.0;
 
     bool m_isInitialized = false;
 

@@ -18,7 +18,8 @@ void RibbonBuilder::buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWid
     buildHomeTab(bar, acts, parentWindow);
     buildModelingTab(bar, acts, parentWindow);
     buildStructureTab(bar, acts, parentWindow);
-    buildCalculationTab(bar, acts, parentWindow);
+    buildLoadsTab(bar, acts, parentWindow);
+    buildAnalysisTab(bar, acts, parentWindow);
     buildResultsTab(bar, acts, parentWindow);
     buildEditTab(bar, acts, parentWindow);
     buildViewTab(bar, acts, parentWindow);
@@ -219,44 +220,106 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
 }
 
 // -----------------------------------------------------------------------------
-// 4. Onglet CALCUL
+// 4. Onglet CHARGES
 // -----------------------------------------------------------------------------
-RibbonTab* RibbonBuilder::buildCalculationTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+RibbonTab* RibbonBuilder::buildLoadsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
 {
-    auto* tab = bar->addTab(QObject::tr("Calcul"));
+    auto* tab = bar->addTab(QObject::tr("Charges"));
 
-    // Actions & Charges
-    auto* loadPanel = new RibbonPanel(QObject::tr("Actions & Charges"), tab);
+    // Groupe 1 : Actions Ponctuelles
+    auto* ptPanel = new RibbonPanel(QObject::tr("Actions Ponctuelles"), tab);
     auto* actPointLoad = acts.actionPointLoad ? acts.actionPointLoad : new QAction(QIcon(":/icons/load_point.svg"), QObject::tr("Force Ponctuelle"), parentWindow);
-    auto* actDistLoad = acts.actionDistLoad ? acts.actionDistLoad : new QAction(QIcon(":/icons/load_dist.svg"), QObject::tr("Charge Répartie"), parentWindow);
     auto* actMoment = acts.actionMoment ? acts.actionMoment : new QAction(QIcon(":/icons/load_moment.svg"), QObject::tr("Moment"), parentWindow);
+    ptPanel->addLargeAction(actPointLoad);
+    ptPanel->addLargeAction(actMoment);
+    tab->addPanel(ptPanel);
+
+    // Groupe 2 : Actions Réparties
+    auto* distPanel = new RibbonPanel(QObject::tr("Actions Réparties"), tab);
+    auto* actDistLoad = acts.actionDistLoad ? acts.actionDistLoad : new QAction(QIcon(":/icons/load_dist.svg"), QObject::tr("Charge Répartie"), parentWindow);
+    distPanel->addLargeAction(actDistLoad);
+    tab->addPanel(distPanel);
+
+    // Groupe 3 : Cas de Charges & Normes
+    auto* casesPanel = new RibbonPanel(QObject::tr("Cas & Normes"), tab);
+    if (acts.actionLoadCases)
+    {
+        casesPanel->addLargeAction(acts.actionLoadCases);
+    }
     auto* actSeismic = acts.actionSeismic ? acts.actionSeismic : new QAction(QIcon(":/icons/load_seismic.svg"), QObject::tr("Séisme (EC8)"), parentWindow);
+    casesPanel->addLargeAction(actSeismic);
+    tab->addPanel(casesPanel);
 
-    loadPanel->addLargeAction(actPointLoad);
-    loadPanel->addInternalSeparator();
-    loadPanel->addSmallColumn({ actDistLoad, actMoment, actSeismic });
-    tab->addPanel(loadPanel);
+    // Groupe 4 : Affichage 3D des Charges
+    auto* visPanel = new RibbonPanel(QObject::tr("Affichage 3D"), tab);
+    if (acts.actionLoadsVisible)
+    {
+        visPanel->addLargeAction(acts.actionLoadsVisible);
+    }
+    std::vector<QAction*> visSub;
+    if (acts.actionForcesVisible) visSub.push_back(acts.actionForcesVisible);
+    if (acts.actionMomentsVisible) visSub.push_back(acts.actionMomentsVisible);
+    if (acts.actionLoadValuesVisible) visSub.push_back(acts.actionLoadValuesVisible);
+    if (!visSub.empty())
+    {
+        visPanel->addInternalSeparator();
+        visPanel->addSmallColumn(visSub);
+    }
+    tab->addPanel(visPanel);
 
-    // Maillage Éléments Finis
+    return tab;
+}
+
+// -----------------------------------------------------------------------------
+// 5. Onglet ANALYSE
+// -----------------------------------------------------------------------------
+RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+{
+    auto* tab = bar->addTab(QObject::tr("Analyse"));
+
+    // Groupe 1 : Discrétisation EF
     auto* meshPanel = new RibbonPanel(QObject::tr("Discrétisation"), tab);
     auto* actGenMesh = acts.actionMeshGen ? acts.actionMeshGen : new QAction(QIcon(":/icons/mesh_generate.svg"), QObject::tr("Générer Maillage"), parentWindow);
     meshPanel->addLargeAction(actGenMesh);
     tab->addPanel(meshPanel);
 
-    // Solveur
-    auto* solvPanel = new RibbonPanel(QObject::tr("Solveur"), tab);
+    // Groupe 2 : Résolution & Solveur EF
+    auto* solvPanel = new RibbonPanel(QObject::tr("Solveur EF"), tab);
     auto* actRun = acts.actionRunSolve ? acts.actionRunSolve : new QAction(QIcon(":/icons/analysis_run.svg"), QObject::tr("Calcul Statique"), parentWindow);
     auto* actModal = acts.actionModal ? acts.actionModal : new QAction(QIcon(":/icons/analysis_modal.svg"), QObject::tr("Analyse Modale"), parentWindow);
     auto* actPush = acts.actionPushover ? acts.actionPushover : new QAction(QIcon(":/icons/analysis_pushover.svg"), QObject::tr("Pushover"), parentWindow);
 
     solvPanel->addLargeAction(actRun);
     solvPanel->addInternalSeparator();
-    std::vector<QAction*> solvCol = { actModal, actPush };
-    if (acts.actionAnalysisConfig) solvCol.push_back(acts.actionAnalysisConfig);
-    solvPanel->addSmallColumn(solvCol);
+    solvPanel->addSmallColumn({ actModal, actPush });
     tab->addPanel(solvPanel);
 
+    // Groupe 3 : Configuration & Paramètres
+    auto* paramPanel = new RibbonPanel(QObject::tr("Paramètres"), tab);
+    if (acts.actionAnalysisConfig)
+    {
+        paramPanel->addLargeAction(acts.actionAnalysisConfig);
+    }
+    tab->addPanel(paramPanel);
+
+    // Groupe 4 : Résultats Rapides (Panneau)
+    if (acts.actionResultsDock)
+    {
+        auto* resPanel = new RibbonPanel(QObject::tr("Panneau Résultats"), tab);
+        resPanel->addLargeAction(acts.actionResultsDock);
+        tab->addPanel(resPanel);
+    }
+
     return tab;
+}
+
+// -----------------------------------------------------------------------------
+// Ancien onglet CALCUL (conservé pour rétrocompatibilité)
+// -----------------------------------------------------------------------------
+RibbonTab* RibbonBuilder::buildCalculationTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
+{
+    buildLoadsTab(bar, acts, parentWindow);
+    return buildAnalysisTab(bar, acts, parentWindow);
 }
 
 // -----------------------------------------------------------------------------

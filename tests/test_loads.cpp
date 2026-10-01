@@ -475,5 +475,90 @@ bool runSuite_Loads(int& passed)
         passed++;
     }
 
+    // =========================================================================
+    // TEST 65: True-Direction Force Vectors, Right-Hand Rule Moments & 3D Load Orientations
+    // =========================================================================
+    {
+        std::cout << "\n--- TEST 65: True-Direction Force Vectors & Right-Hand Rule Moments ---" << std::endl;
+
+        // 1. Vecteur force global avec signe préservé (+Z soulèvement, -Z gravité)
+        NodalLoad nlDown(1, 1, 1, 0.0, 0.0, -25.0, 0.0, 0.0, 0.0, LoadCoordSystem::Global, "Gravity");
+        NodalLoad nlUp(2, 1, 1, 0.0, 0.0, +15.0, 0.0, 0.0, 0.0, LoadCoordSystem::Global, "Uplift");
+
+        TEST_CHECK(nlDown.fz() == -25.0, "Subtest 65.1: Negative Fz preserved");
+        TEST_CHECK(nlUp.fz() == +15.0, "Subtest 65.1: Positive Fz preserved");
+
+        // Direction unitaire des forces
+        gp_Vec vecDown(nlDown.fx(), nlDown.fy(), nlDown.fz());
+        gp_Vec vecUp(nlUp.fx(), nlUp.fy(), nlUp.fz());
+        TEST_CHECK(vecDown.Z() < 0.0, "Subtest 65.2: Gravity force vector points strictly downward in Z");
+        TEST_CHECK(vecUp.Z() > 0.0, "Subtest 65.2: Uplift force vector points strictly upward in Z");
+
+        // 2. Moments 3D et règle de la main droite (Right-Hand Rule)
+        NodalLoad nlMomZ(3, 2, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 50.0, LoadCoordSystem::Global, "MomZ_Pos");
+        NodalLoad nlMomZNeg(4, 2, 1, 0.0, 0.0, 0.0, 0.0, 0.0, -30.0, LoadCoordSystem::Global, "MomZ_Neg");
+        TEST_CHECK(approxEqual(nlMomZ.resultantMoment(), 50.0), "Subtest 65.3: Moment resultant magnitude");
+        TEST_CHECK(approxEqual(nlMomZNeg.resultantMoment(), 30.0), "Subtest 65.3: Negative moment resultant magnitude");
+
+        // L'axe de rotation du moment positif Mz est (0, 0, 1) -> rotation de +X vers +Y
+        gp_Vec axisMomPos(nlMomZ.mx(), nlMomZ.my(), nlMomZ.mz());
+        axisMomPos.Normalize();
+        TEST_CHECK(approxEqual(axisMomPos.X(), 0.0) && approxEqual(axisMomPos.Y(), 0.0) && approxEqual(axisMomPos.Z(), 1.0),
+                   "Subtest 65.4: Positive Mz axis aligned with +Z (right-hand rule CCW)");
+
+        // L'axe de rotation du moment négatif Mz est (0, 0, -1) -> rotation inversée
+        gp_Vec axisMomNeg(nlMomZNeg.mx(), nlMomZNeg.my(), nlMomZNeg.mz());
+        axisMomNeg.Normalize();
+        TEST_CHECK(approxEqual(axisMomNeg.Z(), -1.0),
+                   "Subtest 65.4: Negative Mz axis aligned with -Z (clockwise)");
+
+        // 3. Charge combinée Force + Moment sans ambiguïté
+        NodalLoad nlCombined(5, 3, 1, 10.0, 0.0, -40.0, 0.0, 15.0, 0.0, LoadCoordSystem::Global, "Combined");
+        TEST_CHECK(nlCombined.resultantForce() > 0.0, "Subtest 65.5: Combined load has valid force resultant");
+        TEST_CHECK(nlCombined.resultantMoment() > 0.0, "Subtest 65.5: Combined load has valid moment resultant");
+        TEST_CHECK(approxEqual(nlCombined.resultantForce(), std::sqrt(10.0*10.0 + 40.0*40.0)), "Subtest 65.5: Force resultant value");
+        TEST_CHECK(approxEqual(nlCombined.resultantMoment(), 15.0), "Subtest 65.5: Moment resultant value");
+
+        // 4. LoadResolver : projection d'une charge répartie positive GlobalZ (+Z soulèvement) sur poutre horizontale
+        Model model;
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        int n2 = model.addNode(6.0, 0.0, 0.0);
+        int beamId = model.addBeam(n1, n2, 0.3, 0.5);
+
+        MemberLoad mlUplift = MemberLoad::uniform(beamId, 1, +12.0, LoadDirection::GlobalZ, "UpliftBeam");
+        auto compUplift = LoadResolver::resolveMemberLoadToLocal(mlUplift, model);
+        // Sur une poutre horizontale orientée selon +X, l'axe vertical Z correspond à l'axe local Z
+        // Le signe positif doit être préservé (+12.0) et non forcé négatif (-12.0)
+        TEST_CHECK(compUplift.wz > 0.0 && approxEqual(compUplift.wz, 12.0),
+                   "Subtest 65.6: Uplift load (+Z) resolved to positive local wz, not forced negative");
+
+        MemberLoad mlGravity = MemberLoad::uniform(beamId, 1, -20.0, LoadDirection::GlobalZ, "GravBeam");
+        auto compGrav = LoadResolver::resolveMemberLoadToLocal(mlGravity, model);
+        TEST_CHECK(compGrav.wz < 0.0 && approxEqual(compGrav.wz, -20.0),
+                   "Subtest 65.7: Gravity load (-Z) resolved to negative local wz");
+
+        // 5. Poteau vertical (0,0,0) -> (0,0,4) avec charge de vent GlobalX
+        int n3 = model.addNode(0.0, 0.0, 4.0);
+        int colId = model.addColumn(n1, n3, 0.4, 0.4);
+        MemberLoad mlWind = MemberLoad::uniform(colId, 1, 8.0, LoadDirection::GlobalX, LoadCoordSystem::Global, "WindCol", MemberTargetType::Column);
+        auto compWind = LoadResolver::resolveMemberLoadToLocal(mlWind, model);
+        // Sur un poteau vertical, le vent selon GlobalX est transversal
+        double transversalMag = std::sqrt(compWind.wy * compWind.wy + compWind.wz * compWind.wz);
+        TEST_CHECK(approxEqual(transversalMag, 8.0), "Subtest 65.8: Wind on vertical column is purely transversal of magnitude 8.0");
+        TEST_CHECK(approxEqual(compWind.wx, 0.0), "Subtest 65.8: Wind on vertical column has zero axial component");
+
+        // 6. Barre inclinée (0,0,0) -> (3,4,0) : longueur = 5.0
+        int n4 = model.addNode(3.0, 4.0, 0.0);
+        int diagId = model.addBeam(n1, n4, 0.2, 0.2);
+        MemberLoad mlDiagY = MemberLoad::uniform(diagId, 1, 10.0, LoadDirection::GlobalY, "GlobalYDiag");
+        auto compDiag = LoadResolver::resolveMemberLoadToLocal(mlDiagY, model);
+        // Le vecteur de la barre est (0.6, 0.8, 0).
+        // Le produit scalaire du vecteur (0, 10, 0) avec dirX (0.6, 0.8, 0) est 8.0 (wx axial).
+        TEST_CHECK(approxEqual(compDiag.wx, 8.0), "Subtest 65.9: Axial component of GlobalY on 3-4-5 inclined member is 8.0");
+
+        std::cout << "[PASS] Test 65: True-Direction Force Vectors & Right-Hand Rule Moments Validated!" << std::endl;
+        passed++;
+    }
+
     return true;
 }

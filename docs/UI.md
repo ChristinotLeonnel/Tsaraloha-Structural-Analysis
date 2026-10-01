@@ -33,15 +33,16 @@ Chaque widget lit et écrit dans `TSA::Model::Model`, jamais l'inverse :
 
 ## `RibbonBar` & `RibbonBuilder` (`src/UI/Ribbon`)
 
-Architecture en Ruban structurée en 8 onglets métier :
+Architecture en Ruban structurée en 9 onglets métier :
 1. **Accueil** : Gestion du projet/fichiers, historique Undo/Redo, presse-papier, accès rapide (tracé, solveur, résultats 3D) et vue 3D.
 2. **Modélisation** : Éléments filaires (poutres, poteaux, câbles, treillis paramétriques), surfaciques (dalles, voiles, semelles), nœuds/primitives et trames/niveaux.
 3. **Structure** : Catalogues de sections (I/H, rectangulaire, circulaire), matériaux (béton EC2, acier EC3), conditions d'appuis 3D (encastrements, rotules, appuis simples) et bibliothèques TSALib.
-4. **Calcul** : Actions et charges (ponctuelles, réparties, moments, séisme), maillage EF et solveur OpenSees (calcul statique linéaire/non-linéaire, analyse modale, pushover, configuration).
-5. **Résultats** : Panneau dock de résultats 3D, déformée amplifiée, 4 familles de diagrammes 3D ($M, V, N, U, R$), réactions vectorielles 3D, cadrage caméra contextuel, note de calcul (NDC) et multiport.
-6. **Édition** : Outils de sélection, déplacement 3D, duplication/copie 3D, repère d'origine et suppression.
-7. **Affichage** : Projections standards 2D/3D, navigation caméra, plans de travail & coupes 3D, aides visuelles (grilles, niveaux, nœuds) et bascule des panneaux docks.
-8. **Outils** : Mesure spatiale 3D, bascule de thème sombre/clair, aide et raccourcis clavier.
+4. **Charges** : Actions ponctuelles (force, moment), charges linéiques réparties et trapézoïdales, cas de charges & combinaisons normalisées (Eurocodes), séisme EC8 et visibilité 3D dédiée (forces, moments, étiquettes).
+5. **Analyse** : Discrétisation et maillage éléments finis, solveur OpenSees (calcul statique linéaire/non-linéaire, analyse modale, pushover), paramètres d'analyse et accès rapide aux résultats.
+6. **Résultats** : Panneau dock de résultats 3D, déformée amplifiée, 4 familles de diagrammes 3D ($M, V, N, U, R$), réactions vectorielles 3D, cadrage caméra contextuel, note de calcul (NDC) et multiport.
+7. **Édition** : Outils de sélection, déplacement 3D, duplication/copie 3D, repère d'origine et suppression.
+8. **Affichage** : Projections standards 2D/3D, navigation caméra, plans de travail & coupes 3D, aides visuelles (grilles, niveaux, nœuds) et bascule des panneaux docks.
+9. **Outils** : Mesure spatiale 3D, bascule de thème sombre/clair, aide et raccourcis clavier.
 
 ## `ResultsDockWidget` (`src/UI/Dock`)
 
@@ -63,9 +64,10 @@ Dialogue de configuration avancée de la résolution mécanique :
 ## `PropertyPanel` (`src/UI/Properties`)
 
 Panneau de propriétés contextuel : affiche/édite les propriétés de l'élément
-actuellement sélectionné (section, matériau, dimensions, etc.). Intègre un volet
-d'inspection des résultats nodaux OpenSees en lecture seule (déplacements $U$, rotations $R$,
-réactions d'appui $F/M$ et diagnostic de connectivité).
+actuellement sélectionné (section, matériau, dimensions, etc.).
+- Comprend des vues dédiées par type d'élément : `NodePropertiesView`, `BeamPropertiesView`, `ColumnPropertiesView`, `CablePropertiesView`, `SlabPropertiesView`, `WallPropertiesView`, `FoundationPropertiesView`, `TrussMemberPropertiesView`, `WorkPlanePropertiesView`.
+- **Inspecteur de charges `LoadPropertiesView`** : Inspection et édition directe des charges nodales et sur barres (libellé, cas de charge, repère global/local, forces $F_x, F_y, F_z$, moments $M_x, M_y, M_z$, réparties $q_1, q_2$) avec synchronisation bidirectionnelle et Undo/Redo.
+- Intègre un volet d'inspection des résultats nodaux OpenSees en lecture seule (déplacements $U$, rotations $R$, réactions d'appui $F/M$ et diagnostic de connectivité).
 
 ## `ModelTreeWidget` (`src/UI/ModelTree`)
 

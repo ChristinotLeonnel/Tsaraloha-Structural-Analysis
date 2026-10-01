@@ -8,6 +8,7 @@
 #include "FoundationPropertiesView.h"
 #include "TrussMemberPropertiesView.h"
 #include "WorkPlanePropertiesView.h"
+#include "LoadPropertiesView.h"
 #include "../../Coordinate/WorkPlane.h"
 
 #include <QVBoxLayout>
@@ -65,6 +66,10 @@ void PropertyPanel::setModel(TSA::Model::Model* model)
     if (m_workPlaneView)
     {
         m_workPlaneView->setModel(m_model);
+    }
+    if (m_loadView)
+    {
+        m_loadView->setModel(m_model);
     }
 
     clearProperties();
@@ -150,6 +155,10 @@ void PropertyPanel::setupUi()
     m_workPlaneView = new WorkPlanePropertiesView(m_model, m_stack);
     connect(m_workPlaneView, &WorkPlanePropertiesView::workPlaneModified, this, &PropertyPanel::workPlaneModified);
     m_stack->addWidget(m_workPlaneView); // Index 9
+
+    m_loadView = new LoadPropertiesView(m_model, m_stack);
+    connect(m_loadView, &LoadPropertiesView::loadModified, this, &PropertyPanel::elementModified);
+    m_stack->addWidget(m_loadView); // Index 10
 
     containerLayout->addWidget(m_stack);
     scrollContainer->setLayout(containerLayout);
@@ -239,6 +248,20 @@ void PropertyPanel::showWorkPlaneProperties(int workPlaneId)
         }
     }
     m_stack->setCurrentWidget(m_workPlaneView);
+}
+
+void PropertyPanel::showNodalLoadProperties(int loadId)
+{
+    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA CHARGE NODALE #%1").arg(loadId));
+    m_loadView->setNodalLoadId(loadId);
+    m_stack->setCurrentWidget(m_loadView);
+}
+
+void PropertyPanel::showMemberLoadProperties(int loadId)
+{
+    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA CHARGE SUR BARRE #%1").arg(loadId));
+    m_loadView->setMemberLoadId(loadId);
+    m_stack->setCurrentWidget(m_loadView);
 }
 
 void PropertyPanel::setWorkPlane(const TSA::Coordinate::WorkPlane& wp)
@@ -389,6 +412,42 @@ void PropertyPanel::onCableRemoved(int cableId)
     }
 }
 
+void PropertyPanel::onNodalLoadModified(int loadId)
+{
+    if (m_stack->currentWidget() == m_loadView && m_loadView->currentLoadId() == loadId &&
+        m_loadView->displayMode() == LoadPropertiesView::DisplayMode::Nodal)
+    {
+        m_loadView->refreshView();
+    }
+}
+
+void PropertyPanel::onNodalLoadRemoved(int loadId)
+{
+    if (m_stack->currentWidget() == m_loadView && m_loadView->currentLoadId() == loadId &&
+        m_loadView->displayMode() == LoadPropertiesView::DisplayMode::Nodal)
+    {
+        clearProperties();
+    }
+}
+
+void PropertyPanel::onMemberLoadModified(int loadId)
+{
+    if (m_stack->currentWidget() == m_loadView && m_loadView->currentLoadId() == loadId &&
+        m_loadView->displayMode() == LoadPropertiesView::DisplayMode::Member)
+    {
+        m_loadView->refreshView();
+    }
+}
+
+void PropertyPanel::onMemberLoadRemoved(int loadId)
+{
+    if (m_stack->currentWidget() == m_loadView && m_loadView->currentLoadId() == loadId &&
+        m_loadView->displayMode() == LoadPropertiesView::DisplayMode::Member)
+    {
+        clearProperties();
+    }
+}
+
 void PropertyPanel::onModelDiffApplied(const TSA::Model::ModelDiff& /*diff*/)
 {
     // Rafraîchir la vue active si son élément a été affecté
@@ -400,6 +459,7 @@ void PropertyPanel::onModelDiffApplied(const TSA::Model::ModelDiff& /*diff*/)
     else if (m_stack->currentWidget() == m_nodeView) m_nodeView->refreshView();
     else if (m_stack->currentWidget() == m_foundationView) m_foundationView->refreshView();
     else if (m_stack->currentWidget() == m_trussView) m_trussView->refreshView();
+    else if (m_stack->currentWidget() == m_loadView) m_loadView->refreshView();
 }
 
 void PropertyPanel::onModelCleared()

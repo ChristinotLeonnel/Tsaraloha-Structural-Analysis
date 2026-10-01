@@ -79,8 +79,8 @@ bool runSuite_OpenSees(int& passed)
         auto& lm = model.loadManager();
         int lcId = lm.addLoadCase(LoadCase(1, "Charge_Ponctuelle", LoadCaseCategory::Live, false, 1.0));
 
-        // Fz = 10 kN au centre (x = 2.5 m, relatif = 0.5)
-        MemberLoad ml = MemberLoad::pointOnMember(b1, lcId, 10.0, 0.5, LoadDirection::GlobalZ, LoadCoordSystem::Global, true, "Pt_10kN");
+        // Fz = 10 kN gravitaire au centre (x = 2.5 m, relatif = 0.5)
+        MemberLoad ml = MemberLoad::pointOnMember(b1, lcId, 10.0, 0.5, LoadDirection::Gravity, LoadCoordSystem::Global, true, "Pt_10kN");
         lm.addMemberLoad(ml);
 
         OpenSeesSolver solver;
@@ -135,8 +135,8 @@ bool runSuite_OpenSees(int& passed)
         auto& lm = model.loadManager();
         int lcId = lm.addLoadCase(LoadCase(2, "Charge_Uniforme", LoadCaseCategory::Live, false, 1.0));
 
-        // q = 20 kN/m -> R = 20 * 6 / 2 = 60 kN
-        MemberLoad ml = MemberLoad::uniform(b1, lcId, 20.0, LoadDirection::GlobalZ, "UDL_20kN");
+        // q = 20 kN/m gravitaire -> R = 20 * 6 / 2 = 60 kN
+        MemberLoad ml = MemberLoad::uniform(b1, lcId, 20.0, LoadDirection::Gravity, "UDL_20kN");
         lm.addMemberLoad(ml);
 
         OpenSeesSolver solver;
@@ -501,8 +501,8 @@ bool runSuite_OpenSees(int& passed)
 
         auto& lm = model.loadManager();
         int lcId = lm.addLoadCase(LoadCase(1, "UDL_Case", LoadCaseCategory::Live, false, 1.0));
-        // Uniform load q = 25 kN/m downwards along GlobalZ -> Total applied force = 25 * 6 = 150 kN
-        lm.addMemberLoad(MemberLoad::uniform(b1, lcId, 25.0, LoadDirection::GlobalZ, "UDL_25kNm"));
+        // Uniform load q = 25 kN/m downwards along Gravity -> Total applied force = 25 * 6 = 150 kN
+        lm.addMemberLoad(MemberLoad::uniform(b1, lcId, 25.0, LoadDirection::Gravity, "UDL_25kNm"));
 
         OpenSeesSolver solver;
         AnalysisParameters params;

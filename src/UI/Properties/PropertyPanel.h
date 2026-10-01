@@ -19,6 +19,7 @@ class WallPropertiesView;
 class FoundationPropertiesView;
 class TrussMemberPropertiesView;
 class WorkPlanePropertiesView;
+class LoadPropertiesView;
 }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Analysis { class ResultsModel; }
@@ -52,6 +53,8 @@ public slots:
     void showTrussMemberProperties(int memberId);
     void showCableProperties(int cableId);
     void showWorkPlaneProperties(int workPlaneId);
+    void showNodalLoadProperties(int loadId);
+    void showMemberLoadProperties(int loadId);
     void setWorkPlane(const TSA::Coordinate::WorkPlane& wp);
     void clearProperties();
     void refreshLibraryLists();
@@ -88,6 +91,11 @@ protected:
     void onCableModified(const TSA::Model::Cable& cable) override;
     void onCableRemoved(int cableId) override;
 
+    void onNodalLoadModified(int loadId) override;
+    void onNodalLoadRemoved(int loadId) override;
+    void onMemberLoadModified(int loadId) override;
+    void onMemberLoadRemoved(int loadId) override;
+
     void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;
 
@@ -110,6 +118,7 @@ private:
     FoundationPropertiesView* m_foundationView = nullptr;
     TrussMemberPropertiesView* m_trussView = nullptr;
     WorkPlanePropertiesView* m_workPlaneView = nullptr;
+    LoadPropertiesView* m_loadView = nullptr;
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
 };
 

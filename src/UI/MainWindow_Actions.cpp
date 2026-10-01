@@ -392,6 +392,20 @@ void MainWindow::createActions()
     m_actionLoadsVisible->setChecked(true);
     connect(m_actionLoadsVisible, &QAction::toggled, this, &MainWindow::onToggleLoadsVisible);
 
+    m_actionForcesVisible = new QAction(tr("Afficher les &Forces 3D"), this);
+    m_actionForcesVisible->setIcon(QIcon(":/icons/load_point.svg"));
+    m_actionForcesVisible->setToolTip(tr("Afficher ou masquer les flèches 3D de forces (Fx, Fy, Fz)"));
+    m_actionForcesVisible->setCheckable(true);
+    m_actionForcesVisible->setChecked(true);
+    connect(m_actionForcesVisible, &QAction::toggled, this, &MainWindow::onToggleForcesVisible);
+
+    m_actionMomentsVisible = new QAction(tr("Afficher les &Moments 3D"), this);
+    m_actionMomentsVisible->setIcon(QIcon(":/icons/load_moment.svg"));
+    m_actionMomentsVisible->setToolTip(tr("Afficher ou masquer les arcs 3D orientés de moments (Mx, My, Mz)"));
+    m_actionMomentsVisible->setCheckable(true);
+    m_actionMomentsVisible->setChecked(true);
+    connect(m_actionMomentsVisible, &QAction::toggled, this, &MainWindow::onToggleMomentsVisible);
+
     m_actionLoadValuesVisible = new QAction(tr("Afficher les &Valeurs des Charges"), this);
     m_actionLoadValuesVisible->setIcon(QIcon(":/icons/results_forces.svg"));
     m_actionLoadValuesVisible->setToolTip(tr("Afficher ou masquer les étiquettes de valeurs des charges (kN, kNm) en 3D"));
@@ -982,6 +996,8 @@ void MainWindow::createMenus()
     visSub->addAction(m_actionSupportsVisible);
     visSub->addAction(m_actionSupportLabelsVisible);
     visSub->addAction(m_actionLoadsVisible);
+    visSub->addAction(m_actionForcesVisible);
+    visSub->addAction(m_actionMomentsVisible);
     visSub->addAction(m_actionLoadValuesVisible);
     visSub->addAction(m_actionGridSnap);
     visSub->addAction(m_actionObjectSnap);
@@ -1069,6 +1085,11 @@ void MainWindow::createRibbon()
     acts.actionDistLoad = m_actionDistLoad;
     acts.actionMoment = m_actionMoment;
     acts.actionSeismic = m_actionSeismic;
+    acts.actionLoadCases = m_actionLoadCases;
+    acts.actionLoadsVisible = m_actionLoadsVisible;
+    acts.actionForcesVisible = m_actionForcesVisible;
+    acts.actionMomentsVisible = m_actionMomentsVisible;
+    acts.actionLoadValuesVisible = m_actionLoadValuesVisible;
 
     acts.actionMeshGen = m_actionMeshGen;
     acts.actionAnalysisConfig = m_actionAnalysisConfig;
@@ -1588,6 +1609,26 @@ void MainWindow::createDockWindows()
         if (m_statusInfo)
         {
             m_statusInfo->setText(tr("Plan de travail WP%1 sélectionné (Manipulateur 3D interactif)").arg(wpId));
+        }
+    });
+
+    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::nodalLoadSelected, this, [this](int loadId) {
+        m_occView->detachManipulator();
+        m_occView->clearSelectedElementLocalAxes();
+        m_propertyPanel->showNodalLoadProperties(loadId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Charge Nodale #%1 sélectionnée").arg(loadId));
+        }
+    });
+
+    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::memberLoadSelected, this, [this](int loadId) {
+        m_occView->detachManipulator();
+        m_occView->clearSelectedElementLocalAxes();
+        m_propertyPanel->showMemberLoadProperties(loadId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Charge sur Barre #%1 sélectionnée").arg(loadId));
         }
     });
 

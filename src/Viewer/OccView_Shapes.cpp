@@ -41,7 +41,9 @@
 #include "../Analysis/LoadResolver.h"
 #include <BRepPrimAPI_MakeCylinder.hxx>
 #include <BRepPrimAPI_MakeCone.hxx>
+#include <BRepPrimAPI_MakeSphere.hxx>
 #include <algorithm>
+#include <cmath>
 
 namespace
 {
@@ -73,6 +75,116 @@ static TopoDS_Shape makeArrowShape(const gp_Pnt& targetPnt, const gp_Vec& dir, d
     bb.MakeCompound(comp);
     bb.Add(comp, cyl.Shape());
     bb.Add(comp, cone.Shape());
+    return comp;
+}
+
+// [CONVENTION]
+// Force vector is defined in the selected coordinate system.
+// Positive/negative sign determines the vector direction.
+// Do not invert the vector in the renderer.
+//
+// [TRACEABILITY]
+// ChargeModel -> CoordinateSystem -> ForceVector -> Viewer
+//
+// Origin of the arrow is at originPnt (application point / node).
+// The arrow extends from originPnt along dir over the given length.
+static TopoDS_Shape makeLoadArrowShape(const gp_Pnt& originPnt, const gp_Vec& dir,
+                                       double length, double shaftRadius, double headRadius, double headLength)
+{
+    if (dir.Magnitude() < 1e-6 || length <= headLength) return TopoDS_Shape();
+    gp_Dir d(dir);
+    gp_Ax2 cylAxes(originPnt, d);
+    BRepPrimAPI_MakeCylinder cyl(cylAxes, shaftRadius, length - headLength);
+
+    gp_Pnt headBase = originPnt.Translated(gp_Vec(d) * (length - headLength));
+    gp_Ax2 coneAxes(headBase, d);
+    BRepPrimAPI_MakeCone cone(coneAxes, headRadius, 0.0, headLength);
+
+    BRep_Builder bb;
+    TopoDS_Compound comp;
+    bb.MakeCompound(comp);
+    bb.Add(comp, cyl.Shape());
+    bb.Add(comp, cone.Shape());
+    return comp;
+}
+
+// [CONVENTION]
+// Moment direction follows the right-hand rule around the corresponding coordinate axis.
+//
+// Mx > 0 : positive rotation around X (anti-clockwise looking from +X towards origin)
+// Mx < 0 : opposite rotation
+//
+// [TRACEABILITY]
+// NodalLoad::moments -> CoordinateSystem -> RotationAxis -> Right-Hand 3D Circular Arc -> Viewer
+static TopoDS_Shape makeMomentShape(const gp_Pnt& centerPnt, const gp_Vec& momentVec,
+                                    double radius, double tubeRadius, double headRadius, double headLength)
+{
+    double mag = momentVec.Magnitude();
+    if (mag < 1e-6 || radius <= headLength) return TopoDS_Shape();
+
+    gp_Dir axisDir(momentVec);
+
+    // 1. Déterminer une base orthonormée directe (u, v, axisDir)
+    gp_Vec refVec(0.0, 0.0, 1.0);
+    if (std::abs(axisDir.Z()) > 0.85)
+    {
+        refVec = gp_Vec(1.0, 0.0, 0.0);
+    }
+    gp_Vec uVec = refVec.Crossed(gp_Vec(axisDir));
+    if (uVec.SquareMagnitude() < 1e-6)
+    {
+        refVec = gp_Vec(0.0, 1.0, 0.0);
+        uVec = refVec.Crossed(gp_Vec(axisDir));
+    }
+    uVec.Normalize();
+    gp_Vec vVec = gp_Vec(axisDir).Crossed(uVec);
+    vVec.Normalize();
+
+    // 2. Arc de tore discrétisé : angle total de 270 degrés (1.5 * pi)
+    // Parcouru dans le sens positif (règle de la main droite autour de axisDir)
+    const int numSegments = 16;
+    const double totalAngle = 1.5 * 3.14159265358979323846;
+    const double dTheta = totalAngle / numSegments;
+
+    BRep_Builder bb;
+    TopoDS_Compound comp;
+    bb.MakeCompound(comp);
+
+    gp_Pnt prevPnt;
+    for (int i = 0; i <= numSegments; ++i)
+    {
+        double theta = i * dTheta;
+        gp_Vec radialVec = uVec * std::cos(theta) + vVec * std::sin(theta);
+        gp_Pnt curPnt = centerPnt.Translated(radialVec * radius);
+
+        gp_Ax2 sphAx(curPnt, axisDir);
+        BRepPrimAPI_MakeSphere sph(sphAx, tubeRadius);
+        bb.Add(comp, sph.Shape());
+
+        if (i > 0)
+        {
+            gp_Vec segVec(prevPnt, curPnt);
+            double segLen = segVec.Magnitude();
+            if (segLen > 1e-5)
+            {
+                gp_Ax2 segAx(prevPnt, gp_Dir(segVec));
+                BRepPrimAPI_MakeCylinder cyl(segAx, tubeRadius, segLen);
+                bb.Add(comp, cyl.Shape());
+            }
+        }
+        prevPnt = curPnt;
+    }
+
+    // 3. Tête de flèche à l'extrémité de l'arc (i = numSegments)
+    // Vecteur tangent unitaire T = d(radialVec)/dTheta = -sin(theta)*u + cos(theta)*v
+    double endTheta = totalAngle;
+    gp_Vec tangent = -uVec * std::sin(endTheta) + vVec * std::cos(endTheta);
+    tangent.Normalize();
+
+    gp_Ax2 coneAx(prevPnt, gp_Dir(tangent));
+    BRepPrimAPI_MakeCone cone(coneAx, headRadius, 0.0, headLength);
+    bb.Add(comp, cone.Shape());
+
     return comp;
 }
 } // namespace
@@ -1454,43 +1566,113 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
 
     gp_Pnt p0(node->x(), node->y(), node->z());
 
+    std::vector<Handle(AIS_Shape)> loadAisShapes;
+    double scale = (m_loadScale > 0.05) ? m_loadScale : 1.0;
+
     // 1. Vecteur force
+    // [CONVENTION]
+    // Force vector is defined in the selected coordinate system.
+    // Positive/negative sign determines the vector direction.
+    // Do not invert the vector in the renderer.
+    //
+    // [TRACEABILITY]
+    // NodalLoad::forces -> CoordinateSystem -> ForceVector -> Viewer
     gp_Vec fVec(nl->fx(), nl->fy(), nl->fz());
     double mag = fVec.Magnitude();
 
-    if (mag > 1e-6)
+    if (mag > 1e-6 && m_forcesVisible)
     {
         gp_Dir fDir(fVec);
-        double arrowLen = std::clamp(0.6 + mag * 0.02, 0.8, 2.5);
-        TopoDS_Shape arrow = makeArrowShape(p0, fDir, arrowLen, 0.04, 0.10, 0.25);
+        double arrowLen = std::clamp((0.6 + mag * 0.02) * scale, 0.8 * scale, 2.5 * scale);
+        double shaftR = 0.035 * scale;
+        double headR = 0.09 * scale;
+        double headL = 0.22 * scale;
+
+        TopoDS_Shape arrow = makeLoadArrowShape(p0, fDir, arrowLen, shaftR, headR, headL);
         if (!arrow.IsNull())
         {
             Handle(AIS_Shape) aisLoad = new AIS_Shape(arrow);
             aisLoad->SetColor(Quantity_NOC_RED);
             aisLoad->SetMaterial(Graphic3d_NOM_PLASTIC);
             aisLoad->SetDisplayMode(AIS_Shaded);
-            m_nodalLoadShapes[loadId] = aisLoad;
             if (m_loadsVisible)
             {
                 m_context->Display(aisLoad, false);
             }
+            if (m_selectionManager)
+            {
+                m_selectionManager->registerNodalLoad(loadId, aisLoad);
+            }
+            loadAisShapes.push_back(aisLoad);
         }
     }
 
-    // 2. Texte de valeur
+    // 2. Vecteur moment (Règle de la main droite)
+    // [CONVENTION]
+    // Moment direction follows the right-hand rule around the corresponding coordinate axis.
+    // Mx > 0 : positive rotation around X
+    // My > 0 : positive rotation around Y
+    // Mz > 0 : positive rotation around Z
+    //
+    // [TRACEABILITY]
+    // NodalLoad::moments -> CoordinateSystem -> RotationAxis -> Right-Hand 3D Circular Arc -> Viewer
+    gp_Vec mVec(nl->mx(), nl->my(), nl->mz());
+    double mMag = mVec.Magnitude();
+
+    if (mMag > 1e-6 && m_momentsVisible)
+    {
+        double arcRadius = std::clamp((0.35 + mMag * 0.015) * scale, 0.35 * scale, 1.2 * scale);
+        double tubeR = 0.025 * scale;
+        double headR = 0.065 * scale;
+        double headL = 0.16 * scale;
+
+        TopoDS_Shape mMoment = makeMomentShape(p0, mVec, arcRadius, tubeR, headR, headL);
+        if (!mMoment.IsNull())
+        {
+            Handle(AIS_Shape) aisMoment = new AIS_Shape(mMoment);
+            // Couleur distincte pour le moment : Violet / Magenta
+            aisMoment->SetColor(Quantity_Color(0.85, 0.35, 0.95, Quantity_TOC_RGB));
+            aisMoment->SetMaterial(Graphic3d_NOM_PLASTIC);
+            aisMoment->SetDisplayMode(AIS_Shaded);
+            if (m_loadsVisible)
+            {
+                m_context->Display(aisMoment, false);
+            }
+            if (m_selectionManager)
+            {
+                m_selectionManager->registerNodalLoad(loadId, aisMoment);
+            }
+            loadAisShapes.push_back(aisMoment);
+        }
+    }
+
+    if (!loadAisShapes.empty())
+    {
+        m_nodalLoadShapes[loadId] = loadAisShapes;
+    }
+
+    // 3. Texte de valeur
     Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
     QString valTxt;
-    if (mag > 1e-6) valTxt = QString("F = %1 kN").arg(QString::number(mag, 'f', 1));
-    if (nl->hasMoment())
+    if (mag > 1e-6)
     {
-        double mMag = nl->momentMagnitude();
+        valTxt = QString("F = %1 kN").arg(QString::number(mag, 'f', 1));
+        if (std::abs(nl->fx()) > 1e-6) valTxt += QString(" (Fx=%1)").arg(QString::number(nl->fx(), 'f', 1));
+        if (std::abs(nl->fy()) > 1e-6) valTxt += QString(" (Fy=%1)").arg(QString::number(nl->fy(), 'f', 1));
+        if (std::abs(nl->fz()) > 1e-6) valTxt += QString(" (Fz=%1)").arg(QString::number(nl->fz(), 'f', 1));
+    }
+    if (mMag > 1e-6)
+    {
         if (!valTxt.isEmpty()) valTxt += "\n";
         valTxt += QString("M = %1 kNm").arg(QString::number(mMag, 'f', 1));
+        if (std::abs(nl->mx()) > 1e-6) valTxt += QString(" (Mx=%1)").arg(QString::number(nl->mx(), 'f', 1));
+        if (std::abs(nl->my()) > 1e-6) valTxt += QString(" (My=%1)").arg(QString::number(nl->my(), 'f', 1));
+        if (std::abs(nl->mz()) > 1e-6) valTxt += QString(" (Mz=%1)").arg(QString::number(nl->mz(), 'f', 1));
     }
     if (valTxt.isEmpty()) valTxt = QString("NL#%1").arg(loadId);
 
     aisLabel->SetText(TCollection_ExtendedString(valTxt.toUtf8().constData(), true));
-    aisLabel->SetPosition(gp_Pnt(p0.X(), p0.Y(), p0.Z() + 0.35));
+    aisLabel->SetPosition(gp_Pnt(p0.X(), p0.Y(), p0.Z() + (0.35 * scale)));
     aisLabel->SetColor(m_isDarkMode ? Quantity_Color(1.0, 0.8, 0.2, Quantity_TOC_RGB) : Quantity_Color(0.8, 0.4, 0.0, Quantity_TOC_RGB));
     aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
     aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
@@ -1517,8 +1699,18 @@ void OccView::removeNodalLoadShape(int loadId, bool redrawImmediately)
     auto itS = m_nodalLoadShapes.find(loadId);
     if (itS != m_nodalLoadShapes.end())
     {
-        if (!m_context.IsNull()) m_context->Remove(itS->second, false);
+        if (!m_context.IsNull())
+        {
+            for (auto& s : itS->second)
+            {
+                if (!s.IsNull()) m_context->Remove(s, false);
+            }
+        }
         m_nodalLoadShapes.erase(itS);
+    }
+    if (m_selectionManager)
+    {
+        m_selectionManager->unregisterNodalLoad(loadId);
     }
     auto itL = m_nodalLoadLabels.find(loadId);
     if (itL != m_nodalLoadLabels.end())
@@ -1570,47 +1762,60 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
     if (len < 1e-4) return;
 
     // Direction de la charge
+    // [CONVENTION]
+    // Sign and coordinate system determine true physical orientation.
+    // Negative q reverses the vector direction.
+    //
+    // [TRACEABILITY]
+    // MemberLoad -> CoordinateSystem/LocalFrame -> DirectionVector -> Viewer
     gp_Vec dirVec(0.0, 0.0, -1.0);
-    if (ml->direction() == TSA::Model::LoadDirection::GlobalX) dirVec = gp_Vec(1.0, 0.0, 0.0);
-    else if (ml->direction() == TSA::Model::LoadDirection::GlobalY) dirVec = gp_Vec(0.0, 1.0, 0.0);
-    else if (ml->direction() == TSA::Model::LoadDirection::GlobalZ) dirVec = gp_Vec(0.0, 0.0, 1.0);
+    double qMag = ml->q1();
+    double sign = (qMag < 0.0) ? -1.0 : 1.0;
+
+    if (ml->direction() == TSA::Model::LoadDirection::GlobalX) dirVec = gp_Vec(1.0, 0.0, 0.0) * sign;
+    else if (ml->direction() == TSA::Model::LoadDirection::GlobalY) dirVec = gp_Vec(0.0, 1.0, 0.0) * sign;
+    else if (ml->direction() == TSA::Model::LoadDirection::GlobalZ) dirVec = gp_Vec(0.0, 0.0, 1.0) * sign;
     else if (ml->direction() == TSA::Model::LoadDirection::Gravity) dirVec = gp_Vec(0.0, 0.0, -1.0);
     else if (ml->direction() == TSA::Model::LoadDirection::LocalX)
     {
         gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
-        dirVec = gp_Vec(frame.XDirection());
+        dirVec = gp_Vec(frame.XDirection()) * sign;
     }
     else if (ml->direction() == TSA::Model::LoadDirection::LocalY)
     {
         gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
-        dirVec = gp_Vec(frame.YDirection());
+        dirVec = gp_Vec(frame.YDirection()) * sign;
     }
     else if (ml->direction() == TSA::Model::LoadDirection::LocalZ)
     {
         gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
-        dirVec = gp_Vec(frame.Direction());
+        dirVec = gp_Vec(frame.Direction()) * sign;
     }
     if (dirVec.SquareMagnitude() > 1e-6) dirVec.Normalize();
 
-    // Flèches réparties le long de la barre
+    double scale = (m_loadScale > 0.05) ? m_loadScale : 1.0;
     std::vector<Handle(AIS_Shape)> shapes;
     int numArrows = 4;
-    double arrowH = 0.6;
+    double arrowH = 0.6 * scale;
 
     for (int i = 0; i <= numArrows; ++i)
     {
         double t = static_cast<double>(i) / static_cast<double>(numArrows);
         gp_Pnt pt = p1.Translated(vAxis * t);
-        TopoDS_Shape arr = makeArrowShape(pt, dirVec, arrowH, 0.025, 0.07, 0.16);
+        TopoDS_Shape arr = makeArrowShape(pt, dirVec, arrowH, 0.025 * scale, 0.07 * scale, 0.16 * scale);
         if (!arr.IsNull())
         {
             Handle(AIS_Shape) aisArr = new AIS_Shape(arr);
             aisArr->SetColor(Quantity_NOC_CYAN);
             aisArr->SetMaterial(Graphic3d_NOM_PLASTIC);
             aisArr->SetDisplayMode(AIS_Shaded);
-            if (m_loadsVisible)
+            if (m_loadsVisible && m_forcesVisible)
             {
                 m_context->Display(aisArr, false);
+            }
+            if (m_selectionManager)
+            {
+                m_selectionManager->registerMemberLoad(loadId, aisArr);
             }
             shapes.push_back(aisArr);
         }
@@ -1663,6 +1868,10 @@ void OccView::removeMemberLoadShape(int loadId, bool redrawImmediately)
         }
         m_memberLoadShapes.erase(itS);
     }
+    if (m_selectionManager)
+    {
+        m_selectionManager->unregisterMemberLoad(loadId);
+    }
     auto itL = m_memberLoadLabels.find(loadId);
     if (itL != m_memberLoadLabels.end())
     {
@@ -1697,9 +1906,12 @@ void OccView::updateAllLoadShapes()
 void OccView::clearLoadShapes()
 {
     if (m_context.IsNull()) return;
-    for (auto& [id, s] : m_nodalLoadShapes)
+    for (auto& [id, shapes] : m_nodalLoadShapes)
     {
-        if (!s.IsNull()) m_context->Remove(s, false);
+        for (auto& s : shapes)
+        {
+            if (!s.IsNull()) m_context->Remove(s, false);
+        }
     }
     m_nodalLoadShapes.clear();
 
@@ -1724,6 +1936,7 @@ void OccView::clearLoadShapes()
     }
     m_memberLoadLabels.clear();
 }
+
 
 void OccView::updateSupportShape(int nodeId, bool redrawImmediately)
 {
