@@ -28,7 +28,7 @@ Structural Model (src/Model : Elements, Loads, Combinations, Sections, Materials
 
 | Module | Rôle | Document dédié |
 |---|---|---|
-| `src/Model` | Source de vérité métier (éléments, sections, matériaux, nœuds, charges) | `MODEL.md` |
+| `src/Model` | Source de vérité métier (éléments, sections, matériaux, nœuds, charges) — découpé en `Model.cpp`, `Model_Transformations.cpp` et `Model_Snapshots.cpp` (ISO 25010 Modularité) | `MODEL.md` |
 | `src/Geometry` | Construction des `TopoDS_Shape` depuis le modèle et les résultats | `OCCT.md` |
 | `src/Viewer` | Viewer OCCT (AIS/V3d), sélection 3D, apparence, visualiseur de résultats | `OCCT.md` |
 | `src/UI` | Ribbon, Dock, Properties, ModelTree, Dialogs, Widgets, Theme, Ruler, Port, Diagrams | `UI.md` |
@@ -39,7 +39,7 @@ Structural Model (src/Model : Elements, Loads, Combinations, Sections, Materials
 | `src/Coordinate` | `CoordinateSystem`, `Point3D`, `LevelManager`/`Level`, coordonnées cylindriques | `COORDINATES.md` |
 | `src/Grid` | Grilles 3D paramétriques, accrochage (snap), rendu de grille | `TODO: VERIFY IN SOURCE` |
 | `src/ExtensionSystem` | Système d'extensions dynamique TSALib (sections/matériaux) | `docs/TSALIB_SYSTEM.md` (existant) |
-| `src/IO` | Sérialisation du format fichier `.tsa` | `docs/TSA_FILE_FORMAT.md` (existant) |
+| `src/IO` | Sérialisation/désérialisation modulaire du format `.tsa` (`TSAFile.cpp`, `TSAFile_BinaryUtils.h`, `TSAFileWriter_Chunks.cpp`, `TSAFileReader_Chunks.cpp`) | `docs/TSA_FILE_FORMAT.md` (existant) |
 | `src/Standards` | Traçabilité des exigences normatives (ISO 25010, ISO 12207, ISO 29119, Eurocodes, Annexes Nationales, ModelValidator) | `ARCHITECTURE.md` |
 | `src/Diagnostics` | Diagnostics/télémétrie internes | `docs/TSA_DIAGNOSTICS.md` (existant) |
 | `src/Interaction` | Interactions utilisateur dans le viewport 3D | `TODO: VERIFY IN SOURCE` |

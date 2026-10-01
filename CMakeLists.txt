@@ -384,6 +384,8 @@ set(MODEL_CORE_SOURCES
     src/Model/TrussMember.cpp
     src/Model/Model.h
     src/Model/Model.cpp
+    src/Model/Model_Transformations.cpp
+    src/Model/Model_Snapshots.cpp
     src/Model/ModelDiff.h
     src/Model/ModelDiff.cpp
     src/Model/StructuralClipboard.h
@@ -503,8 +505,11 @@ set(INTERACTION_SOURCES
 # --- Format de fichier TSA (sauvegarde / chargement) — [CORE] ----------------
 set(IO_SOURCES
     src/IO/TSAFileFormat.h
+    src/IO/TSAFile_BinaryUtils.h
     src/IO/TSAFile.h
     src/IO/TSAFile.cpp
+    src/IO/TSAFileWriter_Chunks.cpp
+    src/IO/TSAFileReader_Chunks.cpp
     src/IO/TSAPreviewGenerator.h
     src/IO/TSAPreviewGenerator.cpp
 )
