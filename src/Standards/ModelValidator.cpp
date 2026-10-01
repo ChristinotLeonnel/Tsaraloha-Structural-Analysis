@@ -10,6 +10,7 @@
 #include "../Model/Section.h"
 #include "../Model/Material.h"
 #include "../Analysis/LoadValidation.h"
+#include "../Analysis/OpenSeesAnalysisBuilder.h"
 
 #include <cmath>
 #include <sstream>
@@ -302,6 +303,109 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
     for (const auto& warn : loadRep.warnings())
     {
         report.addWarning("Charges", warn);
+    }
+
+    return report;
+}
+
+ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Model& model, const TSA::Analysis::AnalysisParameters& params)
+{
+    // 1. Validation de base géométrique et physique du modèle
+    ModelValidationReport report = validate(model);
+
+    // 2. Vérification de la présence d'éléments porteurs
+    size_t totalElements = model.beams().size() + model.columns().size() +
+                           model.trussMembers().size() + model.cables().size();
+    if (totalElements == 0)
+    {
+        report.addError("Modèle Calcul",
+            "Aucun élément structural filaire (Poutre, Poteau, Treillis ou Câble) n'est présent pour le calcul.",
+            0, "EN 1990");
+    }
+
+    // 3. Détection des nœuds orphelins (ni appui, ni charge, ni relié à aucun élément)
+    std::set<int> connectedNodes;
+    for (const auto& [id, b] : model.beams()) { connectedNodes.insert(b.startNodeId()); connectedNodes.insert(b.endNodeId()); }
+    for (const auto& [id, c] : model.columns()) { connectedNodes.insert(c.startNodeId()); connectedNodes.insert(c.endNodeId()); }
+    for (const auto& [id, t] : model.trussMembers()) { connectedNodes.insert(t.startNodeId()); connectedNodes.insert(t.endNodeId()); }
+    for (const auto& [id, cb] : model.cables()) { connectedNodes.insert(cb.startNodeId()); connectedNodes.insert(cb.endNodeId()); }
+    for (const auto& [id, s] : model.slabs()) { for (int nid : s.nodeIds()) connectedNodes.insert(nid); }
+    for (const auto& [id, w] : model.walls()) { connectedNodes.insert(w.startNodeId()); connectedNodes.insert(w.endNodeId()); }
+    for (const auto& [id, f] : model.foundations()) { connectedNodes.insert(f.nodeId()); }
+
+    const auto& lm = model.loadManager();
+    std::set<int> loadedNodes;
+    for (const auto& [id, nl] : lm.nodalLoads()) loadedNodes.insert(nl.nodeId());
+
+    for (const auto& [id, n] : model.nodes())
+    {
+        bool isConnected = connectedNodes.find(id) != connectedNodes.end();
+        bool isSupported = n.support().isSupported() || n.supportType() != TSA::Model::SupportType::Free;
+        bool isLoaded = loadedNodes.find(id) != loadedNodes.end();
+
+        if (!isConnected && !isSupported && !isLoaded)
+        {
+            report.addWarning("Nœuds Orphelins",
+                "Le nœud N" + std::to_string(id) + " est isolé (non connecté, non chargé, sans appui).",
+                id, "ISO/IEC 25010");
+        }
+    }
+
+    // 4. Règles spécifiques selon le type d'analyse
+    if (params.type == TSA::Analysis::AnalysisType::Modal)
+    {
+        if (params.numEigenmodes <= 0)
+        {
+            report.addError("Analyse Modale", "Le nombre de modes propres demandé doit être supérieur ou égal à 1.", 0, "RDM");
+        }
+
+        // Vérification de la masse : au moins un élément doit avoir un matériau de densité > 0
+        bool hasMass = false;
+        auto checkMatMass = [&](const TSA::Model::Material& m) {
+            if (m.density > 0.0) hasMass = true;
+        };
+        for (const auto& [id, b] : model.beams()) checkMatMass(b.material());
+        for (const auto& [id, c] : model.columns()) checkMatMass(c.material());
+        for (const auto& [id, t] : model.trussMembers()) checkMatMass(t.material());
+        for (const auto& [id, cb] : model.cables()) checkMatMass(cb.material());
+
+        if (!hasMass && totalElements > 0)
+        {
+            report.addError("Analyse Modale",
+                "Tous les matériaux ont une masse volumique nulle. L'analyse modale requiert une matrice de masse non nulle.",
+                0, "RDM / Dynamique");
+        }
+    }
+    else
+    {
+        // Analyse statique (linéaire ou non-linéaire)
+        // Vérification du cas ou combinaison cible
+        if (params.targetCombinationId > 0)
+        {
+            const auto* combo = lm.getCombination(params.targetCombinationId);
+            if (!combo)
+            {
+                report.addError("Combinaisons",
+                    "La combinaison ciblée pour le calcul (ID " + std::to_string(params.targetCombinationId) + ") n'existe pas.",
+                    params.targetCombinationId, "EN 1990");
+            }
+            else if (combo->caseFactors().empty())
+            {
+                report.addError("Combinaisons",
+                    "La combinaison ciblée '" + combo->name() + "' ne contient aucun cas de charge pondéré.",
+                    params.targetCombinationId, "EN 1990");
+            }
+        }
+        else if (params.targetLoadCaseId > 0)
+        {
+            const auto* lc = lm.getLoadCase(params.targetLoadCaseId);
+            if (!lc)
+            {
+                report.addError("Charges",
+                    "Le cas de charge ciblé pour le calcul (ID " + std::to_string(params.targetLoadCaseId) + ") n'existe pas.",
+                    params.targetLoadCaseId, "EN 1991");
+            }
+        }
     }
 
     return report;

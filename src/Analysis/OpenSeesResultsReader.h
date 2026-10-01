@@ -26,15 +26,18 @@ public:
 private:
     static bool readDisplacements(const std::string& filePath,
                                  const CalculationSnapshot& snapshot,
-                                 ResultsModel& outResults);
+                                 ResultsModel& outResults,
+                                 bool* hasNonFinite = nullptr);
 
     static bool readReactions(const std::string& filePath,
                               const CalculationSnapshot& snapshot,
-                              ResultsModel& outResults);
+                              ResultsModel& outResults,
+                              bool* hasNonFinite = nullptr);
 
     static bool readElementForces(const std::string& filePath,
                                   const CalculationSnapshot& snapshot,
-                                  ResultsModel& outResults);
+                                  ResultsModel& outResults,
+                                  bool* hasNonFinite = nullptr);
 
     static void parseModalOutput(const std::string& solverStdOut,
                                  ResultsModel& outResults);

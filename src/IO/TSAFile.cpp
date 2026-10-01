@@ -2,6 +2,8 @@
 #include "TSAFile_BinaryUtils.h"
 #include "TSAPreviewGenerator.h"
 #include "../Model/MaterialLibrary.h"
+#include "../Standards/ModelValidator.h"
+#include "../Diagnostics/Logger.h"
 
 #include <QByteArray>
 #include <QBuffer>
@@ -642,6 +644,22 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
 
     // Application dans le modèle -> déclenche automatiquement onModelCleared() chez tous les observateurs (OccView, ModelTree)
     model.restoreSnapshot(snapshot);
+
+    // Validation normative post-chargement (ISO/IEC 25010 - Intégrité et robustesse)
+    auto report = TSA::Standards::ModelValidator::validate(model);
+    if (!report.isValid())
+    {
+        TSA_LOG_WARN("TSAFileReader", "IntegrityWarning",
+                     "Le projet chargé comporte " + std::to_string(report.errorCount()) + " anomalie(s) normative(s).");
+        for (const auto& issue : report.issues())
+        {
+            if (issue.severity == TSA::Standards::ValidationSeverity::Error)
+            {
+                TSA_LOG_WARN("TSAFileReader", "ModelValidationError",
+                             "[" + issue.category + "] " + issue.message + " (Entité: " + std::to_string(issue.entityId) + ")");
+            }
+        }
+    }
 
     return true;
 }

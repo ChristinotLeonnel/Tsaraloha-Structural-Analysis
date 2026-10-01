@@ -24,16 +24,32 @@ std::vector<std::string> readAllLines(const std::string& path)
     return lines;
 }
 
-std::vector<double> parseDoubles(const std::string& line)
+std::vector<double> parseDoubles(const std::string& line, bool* hasNonFinite = nullptr)
 {
     std::vector<double> vals;
     std::istringstream iss(line);
-    double v = 0.0;
-    while (iss >> v)
+    std::string token;
+    while (iss >> token)
     {
-        if (std::isnan(v) || std::isinf(v))
+        char* endPtr = nullptr;
+        double v = std::strtod(token.c_str(), &endPtr);
+        if (endPtr == token.c_str())
         {
-            v = 0.0;
+            std::string lower = token;
+            std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+            if (lower.find("nan") != std::string::npos || lower.find("inf") != std::string::npos || lower.find("ind") != std::string::npos)
+            {
+                if (hasNonFinite) *hasNonFinite = true;
+                v = 0.0;
+            }
+        }
+        else
+        {
+            if (std::isnan(v) || std::isinf(v))
+            {
+                if (hasNonFinite) *hasNonFinite = true;
+                v = 0.0;
+            }
         }
         vals.push_back(v);
     }
@@ -69,9 +85,21 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
         return outResults.isValid();
     }
 
-    bool hasDisp = readDisplacements(dispPath, snapshot, outResults);
-    bool hasReact = readReactions(reactPath, snapshot, outResults);
-    bool hasForces = readElementForces(forcePath, snapshot, outResults);
+    bool nonFiniteFound = false;
+    bool hasDisp = readDisplacements(dispPath, snapshot, outResults, &nonFiniteFound);
+    bool hasReact = readReactions(reactPath, snapshot, outResults, &nonFiniteFound);
+    bool hasForces = readElementForces(forcePath, snapshot, outResults, &nonFiniteFound);
+
+    if (nonFiniteFound)
+    {
+        if (errorMessage)
+        {
+            *errorMessage = "Instabilité numérique ou matrice de rigidité singulière : des valeurs infinies ou indéterminées (NaN/Inf) ont été détectées dans la réponse structurale OpenSees.";
+        }
+        outResults.appendLog("\n[ERREUR NORMATIVE] Instabilité numérique détectée : les déplacements ou réactions contiennent des valeurs non finies (NaN/Inf).\n");
+        outResults.setValid(false);
+        return false;
+    }
 
     computeGlobalEquilibrium(snapshot, params, outResults);
     outResults.computeSummary();
@@ -92,14 +120,15 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
 
 bool OpenSeesResultsReader::readDisplacements(const std::string& filePath,
                                              const CalculationSnapshot& snapshot,
-                                             ResultsModel& outResults)
+                                             ResultsModel& outResults,
+                                             bool* hasNonFinite)
 {
     auto lines = readAllLines(filePath);
     if (lines.empty()) return false;
 
     // Dernier pas de calcul
     const auto& lastLine = lines.back();
-    auto vals = parseDoubles(lastLine);
+    auto vals = parseDoubles(lastLine, hasNonFinite);
 
     size_t idx = 0;
     for (const auto& [nodeId, _] : snapshot.nodes())
@@ -123,7 +152,7 @@ bool OpenSeesResultsReader::readDisplacements(const std::string& filePath,
     {
         for (size_t stepIdx = 0; stepIdx < lines.size(); ++stepIdx)
         {
-            auto stepVals = parseDoubles(lines[stepIdx]);
+            auto stepVals = parseDoubles(lines[stepIdx], hasNonFinite);
             TimeHistoryStep thStep;
             thStep.time = static_cast<double>(stepIdx);
 
@@ -158,7 +187,8 @@ bool OpenSeesResultsReader::readDisplacements(const std::string& filePath,
 
 bool OpenSeesResultsReader::readReactions(const std::string& filePath,
                                          const CalculationSnapshot& snapshot,
-                                         ResultsModel& outResults)
+                                         ResultsModel& outResults,
+                                         bool* hasNonFinite)
 {
     auto lines = readAllLines(filePath);
     if (lines.empty()) return false;
@@ -187,7 +217,7 @@ bool OpenSeesResultsReader::readReactions(const std::string& filePath,
         return reactions;
     };
 
-    auto lastReactions = parseReactionsLine(parseDoubles(lines.back()));
+    auto lastReactions = parseReactionsLine(parseDoubles(lines.back(), hasNonFinite));
     for (const auto& [nodeId, react] : lastReactions)
     {
         outResults.setNodeReaction(nodeId, react);
@@ -198,7 +228,7 @@ bool OpenSeesResultsReader::readReactions(const std::string& filePath,
     {
         for (size_t stepIdx = 0; stepIdx < steps.size() && stepIdx < lines.size(); ++stepIdx)
         {
-            steps[stepIdx].reactions = parseReactionsLine(parseDoubles(lines[stepIdx]));
+            steps[stepIdx].reactions = parseReactionsLine(parseDoubles(lines[stepIdx], hasNonFinite));
         }
     }
 
@@ -207,7 +237,8 @@ bool OpenSeesResultsReader::readReactions(const std::string& filePath,
 
 bool OpenSeesResultsReader::readElementForces(const std::string& filePath,
                                              const CalculationSnapshot& snapshot,
-                                             ResultsModel& outResults)
+                                             ResultsModel& outResults,
+                                             bool* hasNonFinite)
 {
     auto lines = readAllLines(filePath);
     if (lines.empty()) return false;
@@ -369,7 +400,7 @@ bool OpenSeesResultsReader::readElementForces(const std::string& filePath,
         return elementRes;
     };
 
-    auto lastElements = parseElementsLine(parseDoubles(lines.back()));
+    auto lastElements = parseElementsLine(parseDoubles(lines.back(), hasNonFinite));
     for (const auto& [elemId, res] : lastElements)
     {
         outResults.setElementResults(elemId, res);
@@ -380,7 +411,7 @@ bool OpenSeesResultsReader::readElementForces(const std::string& filePath,
     {
         for (size_t stepIdx = 0; stepIdx < steps.size() && stepIdx < lines.size(); ++stepIdx)
         {
-            steps[stepIdx].elementResults = parseElementsLine(parseDoubles(lines[stepIdx]));
+            steps[stepIdx].elementResults = parseElementsLine(parseDoubles(lines[stepIdx], hasNonFinite));
         }
     }
 

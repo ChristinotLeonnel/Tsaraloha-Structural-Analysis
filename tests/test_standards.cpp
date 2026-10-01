@@ -5,6 +5,14 @@
 #include "../src/Standards/ExternalLibraryCatalog.h"
 #include "../src/Standards/DataDefinition.h"
 #include "../src/Standards/ModelValidator.h"
+#include "../src/Analysis/OpenSeesSolver.h"
+#include "../src/Analysis/OpenSeesResultsReader.h"
+#include "../src/Analysis/CalculationSnapshot.h"
+#include "../src/Analysis/ResultsModel.h"
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
+#include <QDateTime>
 
 using namespace TSA::Standards;
 
@@ -182,6 +190,117 @@ bool runSuite_Standards(int& passed)
         invalidMat.nu = 0.65;
         std::string matErr;
         assert(!ModelValidator::validateMaterial(invalidMat, &matErr));
+
+        passed++;
+        std::cout << "PASSED" << std::endl;
+    }
+
+    // Test 6 : Validation préalable avant calcul (ModelValidator::validateForAnalysis)
+    {
+        std::cout << "Test Standards.6 : ModelValidator::validateForAnalysis pre-analysis guards... ";
+        
+        TSA::Model::Model emptyModel;
+        TSA::Analysis::AnalysisParameters params;
+        params.type = TSA::Analysis::AnalysisType::LinearStatic;
+        auto repEmpty = ModelValidator::validateForAnalysis(emptyModel, params);
+        assert(!repEmpty.isValid());
+
+        // Modèle sans aucun appui
+        TSA::Model::Model unstableModel;
+        int n1 = unstableModel.addNode(0.0, 0.0, 0.0);
+        int n2 = unstableModel.addNode(4.0, 0.0, 0.0);
+        unstableModel.addBar(n1, n2, TSA::Model::Section::rectangular(0.3, 0.5), TSA::Model::Material::concreteC25_30());
+        auto repUnstable = ModelValidator::validateForAnalysis(unstableModel, params);
+        assert(!repUnstable.isValid());
+        bool hasSupportIssue = false;
+        for (const auto& iss : repUnstable.issues())
+        {
+            if (iss.category == "Conditions aux Limites") hasSupportIssue = true;
+        }
+        assert(hasSupportIssue);
+
+        // Modèle stable mais cas de charge cible inexistant
+        unstableModel.getNode(n1)->setSupportType(TSA::Model::SupportType::Fixed);
+        params.targetLoadCaseId = 999;
+        auto repBadLC = ModelValidator::validateForAnalysis(unstableModel, params);
+        assert(!repBadLC.isValid());
+        bool hasLCIssue = false;
+        for (const auto& iss : repBadLC.issues())
+        {
+            if (iss.category == "Charges") hasLCIssue = true;
+        }
+        assert(hasLCIssue);
+
+        // Analyse modale avec masse nulle
+        TSA::Analysis::AnalysisParameters modalParams;
+        modalParams.type = TSA::Analysis::AnalysisType::Modal;
+        TSA::Model::Material zeroMassMat = TSA::Model::Material::concreteC25_30();
+        zeroMassMat.density = 0.0;
+        zeroMassMat.syncMechanical();
+        TSA::Model::Model modalModel;
+        int mn1 = modalModel.addNode(0.0, 0.0, 0.0);
+        int mn2 = modalModel.addNode(3.0, 0.0, 0.0);
+        modalModel.getNode(mn1)->setSupportType(TSA::Model::SupportType::Fixed);
+        modalModel.addBar(mn1, mn2, TSA::Model::Section::rectangular(0.2, 0.2), zeroMassMat);
+        auto repModalZeroMass = ModelValidator::validateForAnalysis(modalModel, modalParams);
+        assert(!repModalZeroMass.isValid());
+        bool hasMassIssue = false;
+        for (const auto& iss : repModalZeroMass.issues())
+        {
+            if (iss.category == "Analyse Modale") hasMassIssue = true;
+        }
+        assert(hasMassIssue);
+
+        passed++;
+        std::cout << "PASSED" << std::endl;
+    }
+
+    // Test 7 : Blocage solveur OpenSees et détection de singularités numériques (NaN/Inf)
+    {
+        std::cout << "Test Standards.7 : OpenSeesSolver pre-check and OpenSeesResultsReader singularity detection... ";
+
+        // Solveur bloque le calcul d'un modèle non contraint
+        TSA::Model::Model unstableModel;
+        int n1 = unstableModel.addNode(0.0, 0.0, 0.0);
+        int n2 = unstableModel.addNode(4.0, 0.0, 0.0);
+        unstableModel.addBar(n1, n2, TSA::Model::Section::rectangular(0.3, 0.5), TSA::Model::Material::concreteC25_30());
+        TSA::Analysis::OpenSeesSolver solver;
+        TSA::Analysis::AnalysisParameters params;
+        QString solverErr;
+        bool ok = solver.solveSynchronous(unstableModel, params, &solverErr);
+        assert(!ok);
+        assert(solverErr.contains("validation normative avant calcul"));
+
+        // Détection de singularité numérique (NaN/Inf) dans OpenSeesResultsReader
+        QString tmpDir = QDir::tempPath() + "/tsa_singularity_test_" + QString::number(QDateTime::currentMSecsSinceEpoch());
+        QDir().mkpath(tmpDir);
+
+        QString dispFile = tmpDir + "/displacements.out";
+        QFile f(dispFile);
+        if (f.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            QTextStream out(&f);
+            out << "0.0 0.0 0.0 0.0 0.0 0.0 NaN 0.0 1.5 0.0 0.0 0.0\n";
+            f.close();
+        }
+
+        unstableModel.getNode(n1)->setSupportType(TSA::Model::SupportType::Fixed);
+        auto snap = TSA::Analysis::CalculationSnapshot::capture(unstableModel);
+        TSA::Analysis::AnalysisParameters readParams;
+        readParams.dispOutputFile = "displacements.out";
+        readParams.reactOutputFile = "reactions.out";
+        readParams.forceOutputFile = "forces.out";
+
+        TSA::Analysis::ResultsModel res;
+        std::string readerErr;
+        bool readOk = TSA::Analysis::OpenSeesResultsReader::readResults(tmpDir.toStdString(), snap, readParams, "", res, &readerErr);
+        assert(!readOk);
+        assert(!res.isValid());
+        assert(readerErr.find("Instabilité numérique") != std::string::npos);
+
+        // Nettoyage
+        QFile::remove(dispFile);
+        QDir().rmdir(tmpDir);
 
         passed++;
         std::cout << "PASSED" << std::endl;

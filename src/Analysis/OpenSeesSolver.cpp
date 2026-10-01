@@ -1,6 +1,8 @@
 #include "OpenSeesSolver.h"
 #include "OpenSeesResultsReader.h"
 #include "../Model/Model.h"
+#include "../Standards/ModelValidator.h"
+#include "../Diagnostics/Logger.h"
 
 #include <QDir>
 #include <QFile>
@@ -40,8 +42,35 @@ bool OpenSeesSolver::solveSynchronous(const TSA::Model::Model& model,
     m_stopRequested = false;
     emit analysisStarted();
 
-    // 1. Capture snapshot immuable (sécurité modèle TSA)
-    emit progressChanged(10, tr("Génération du snapshot calculatoire..."));
+    // 1. Validation pré-calcul normative (ISO/IEC 25010 §4.2.5, EN 1990)
+    emit progressChanged(5, tr("Validation normative et physique du modèle..."));
+    auto report = TSA::Standards::ModelValidator::validateForAnalysis(model, params);
+    if (!report.isValid())
+    {
+        m_isRunning = false;
+        QString errDetails = tr("Échec de la validation normative avant calcul :\n") + report.summary();
+        for (const auto& err : report.formattedErrors())
+        {
+            errDetails += "\n  • " + QString::fromStdString(err);
+        }
+        if (errorMessage) *errorMessage = errDetails;
+        TSA_LOG_ERROR("OpenSeesSolver", "PreAnalysisValidationError", errDetails.toStdString());
+        emit logReceived(QString("[ERREUR NORMATIVE] Échec de validation du modèle avant calcul :\n%1").arg(errDetails));
+        emit analysisFinished(false, errDetails);
+        return false;
+    }
+
+    if (report.hasWarnings())
+    {
+        for (const auto& warn : report.formattedWarnings())
+        {
+            TSA_LOG_WARN("OpenSeesSolver", "PreAnalysisWarning", warn);
+            emit logReceived(QString("[AVERTISSEMENT] %1").arg(QString::fromStdString(warn)));
+        }
+    }
+
+    // 2. Capture snapshot immuable (sécurité modèle TSA)
+    emit progressChanged(15, tr("Génération du snapshot calculatoire..."));
     CalculationSnapshot snapshot = CalculationSnapshot::capture(model);
 
     bool ok = executeWorkflow(snapshot, params, errorMessage);
@@ -60,7 +89,34 @@ void OpenSeesSolver::solveAsync(const TSA::Model::Model& model,
     m_stopRequested = false;
 
     emit analysisStarted();
-    emit progressChanged(5, tr("Initialisation de l'analyse asynchrone..."));
+    emit progressChanged(5, tr("Validation normative et physique du modèle..."));
+
+    // Validation pré-calcul sur le thread principal
+    auto report = TSA::Standards::ModelValidator::validateForAnalysis(model, params);
+    if (!report.isValid())
+    {
+        m_isRunning = false;
+        QString errDetails = tr("Échec de la validation normative avant calcul :\n") + report.summary();
+        for (const auto& err : report.formattedErrors())
+        {
+            errDetails += "\n  • " + QString::fromStdString(err);
+        }
+        TSA_LOG_ERROR("OpenSeesSolver", "PreAnalysisValidationError", errDetails.toStdString());
+        emit logReceived(QString("[ERREUR NORMATIVE] Échec de validation du modèle avant calcul :\n%1").arg(errDetails));
+        emit analysisFinished(false, errDetails);
+        return;
+    }
+
+    if (report.hasWarnings())
+    {
+        for (const auto& warn : report.formattedWarnings())
+        {
+            TSA_LOG_WARN("OpenSeesSolver", "PreAnalysisWarning", warn);
+            emit logReceived(QString("[AVERTISSEMENT] %1").arg(QString::fromStdString(warn)));
+        }
+    }
+
+    emit progressChanged(10, tr("Initialisation de l'analyse asynchrone..."));
 
     // Capture immédiate du snapshot sur le thread principal pour éviter tout accès concurrent
     CalculationSnapshot snapshot = CalculationSnapshot::capture(model);
@@ -80,8 +136,26 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
                                      const AnalysisParameters& params,
                                      QString* errorMessage)
 {
+    // Contrôle des bornes du snapshot
+    if (snapshot.nodeCount() == 0)
+    {
+        if (errorMessage) *errorMessage = tr("Le snapshot calculatoire ne contient aucun nœud.");
+        emit logReceived("[ERREUR] Le snapshot calculatoire ne contient aucun nœud.");
+        return false;
+    }
+    if (snapshot.elementCount() == 0)
+    {
+        if (errorMessage) *errorMessage = tr("Le snapshot calculatoire ne contient aucun élément structural.");
+        emit logReceived("[ERREUR] Le snapshot calculatoire ne contient aucun élément structural.");
+        return false;
+    }
+
+    TSA_LOG_INFO("OpenSeesSolver", "ExecutionWorkflowStarted",
+                 "Nodes: " + std::to_string(snapshot.nodeCount()) +
+                 ", Elements: " + std::to_string(snapshot.elementCount()));
+
     // 1. Vérification et disponibilité d'OpenSees
-    emit progressChanged(15, tr("Vérification de l'environnement OpenSees..."));
+    emit progressChanged(20, tr("Vérification de l'environnement OpenSees..."));
     QString opsErr;
     if (!OpenSeesManager::instance().ensureAvailable(&opsErr))
     {
