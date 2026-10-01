@@ -324,14 +324,14 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
 
     double forceScale = params.useKiloNewtons ? 1.0 : 1000.0;
 
-    auto writeLoads = [&](int patternId, const std::string& patternName, double factor) {
+    auto writeLoads = [&](int patternId, const std::string& patternName, int filterCaseId, double factor, bool includeSW) {
         tcl << "pattern Plain " << patternId << " 1 {\n";
         tcl << "  # Pattern " << patternName << " (facteur = " << factor << ")\n";
 
         // Charges nodales
         for (const auto& nl : snapshot.nodalLoads())
         {
-            if (params.targetLoadCaseId > 0 && nl.loadCaseId() != params.targetLoadCaseId) continue;
+            if (filterCaseId > 0 && nl.loadCaseId() != filterCaseId) continue;
 
             double fx = nl.fx() * factor * forceScale;
             double fy = nl.fy() * factor * forceScale;
@@ -347,7 +347,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
         // Charges sur barres résolues dans leurs repères locaux
         for (const auto& ml : snapshot.memberLoads())
         {
-            if (params.targetLoadCaseId > 0 && ml.loadCaseId() != params.targetLoadCaseId) continue;
+            if (filterCaseId > 0 && ml.loadCaseId() != filterCaseId) continue;
 
             const auto* el = snapshot.getElement(ml.elementId());
             if (!el) continue;
@@ -397,7 +397,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
         }
 
         // Poids propre automatique décomposé
-        if (params.includeSelfWeight)
+        if (includeSW)
         {
             for (const auto& [id, el] : snapshot.elements())
             {
@@ -444,13 +444,20 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
             int pId = 1;
             for (const auto& [caseId, factor] : it->second.caseFactors())
             {
-                writeLoads(pId++, "Combo Case " + std::to_string(caseId), factor);
+                bool includeSW = false;
+                auto lcIt = snapshot.loadCases().find(caseId);
+                if (lcIt != snapshot.loadCases().end())
+                {
+                    includeSW = lcIt->second.isSelfWeightIncluded();
+                }
+                writeLoads(pId++, "Combo Case " + std::to_string(caseId), caseId, factor, includeSW);
             }
         }
     }
     else
     {
-        writeLoads(1, "Cas Principal", 1.0);
+        int filterCaseId = (params.targetLoadCaseId > 0) ? params.targetLoadCaseId : 0;
+        writeLoads(1, "Cas Principal", filterCaseId, 1.0, params.includeSelfWeight);
     }
 
     return tcl.str();

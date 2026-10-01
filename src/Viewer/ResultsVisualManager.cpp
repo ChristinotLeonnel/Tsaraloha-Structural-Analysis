@@ -552,6 +552,43 @@ void ResultsVisualManager::updateDeformedShapes()
         }
         catch (...) {}
     }
+
+    // 4. Câbles
+    for (const auto& [cableId, cable] : m_model->cables())
+    {
+        const auto* n1 = m_model->getNode(cable.startNodeId());
+        const auto* n2 = m_model->getNode(cable.endNodeId());
+        if (!n1 || !n2) continue;
+
+        gp_Pnt p1(n1->x(), n1->y(), n1->z());
+        gp_Pnt p2(n2->x(), n2->y(), n2->z());
+
+        const auto* d1 = m_results->getNodeDisplacement(cable.startNodeId());
+        const auto* d2 = m_results->getNodeDisplacement(cable.endNodeId());
+        TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
+        TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
+
+        gp_Pnt defP1 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p1, disp1, m_deformationScale);
+        gp_Pnt defP2 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p2, disp2, m_deformationScale);
+
+        try
+        {
+            BRepBuilderAPI_MakeEdge edge(defP1, defP2);
+            if (edge.IsDone())
+            {
+                Handle(AIS_Shape) ais = new AIS_Shape(edge.Shape());
+                ais->SetColor(Quantity_NOC_ORANGE);
+                ais->SetWidth(2.0);
+                if (m_displayMode == DeformedDisplayMode::Both)
+                {
+                    ais->SetTransparency(0.2);
+                }
+                ctx->Display(ais, Standard_False);
+                m_deformedElementShapes[300000 + cableId] = ais;
+            }
+        }
+        catch (...) {}
+    }
 }
 
 void ResultsVisualManager::clearDeformedShapes()
@@ -626,7 +663,20 @@ void ResultsVisualManager::updateDiagramShapes()
                     p2 = gp_Pnt(n2->x(), n2->y(), n2->z());
                     rot = 0.0;
                 }
-                else continue;
+                else
+                {
+                    const auto* cable = m_model->getCable(elId);
+                    if (cable)
+                    {
+                        const auto* n1 = m_model->getNode(cable->startNodeId());
+                        const auto* n2 = m_model->getNode(cable->endNodeId());
+                        if (!n1 || !n2) continue;
+                        p1 = gp_Pnt(n1->x(), n1->y(), n1->z());
+                        p2 = gp_Pnt(n2->x(), n2->y(), n2->z());
+                        rot = 0.0;
+                    }
+                    else continue;
+                }
             }
         }
 
@@ -783,7 +833,20 @@ void ResultsVisualManager::updateReactionShapes()
         Handle(AIS_TextLabel) lbl = new AIS_TextLabel();
         gp_Pnt labelPos = p.Translated(-dir * (arrowLen + 0.1));
         lbl->SetPosition(labelPos);
-        lbl->SetText(TCollection_ExtendedString(QString("Rz: %1 kN").arg(react.rz, 0, 'f', 1).toUtf8().constData()));
+        QString lblStr;
+        if (std::abs(react.rx) < 0.1 && std::abs(react.ry) < 0.1)
+        {
+            lblStr = QString("Rz: %1 kN").arg(react.rz, 0, 'f', 1);
+        }
+        else
+        {
+            lblStr = QString("R: %1 kN (Rx=%2, Ry=%3, Rz=%4)")
+                .arg(fMag, 0, 'f', 1)
+                .arg(react.rx, 0, 'f', 1)
+                .arg(react.ry, 0, 'f', 1)
+                .arg(react.rz, 0, 'f', 1);
+        }
+        lbl->SetText(TCollection_ExtendedString(lblStr.toUtf8().constData()));
         lbl->SetColor(Quantity_NOC_LIMEGREEN);
         lbl->SetHeight(12.0);
         ctx->Display(lbl, Standard_False);

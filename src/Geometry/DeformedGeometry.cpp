@@ -51,13 +51,13 @@ TopoDS_Shape DeformedGeometry::createDeformedCenterline(
     gp_Pnt p1Def = computeDeformedPoint(p1, d1, scaleFactor);
     gp_Pnt p2Def = computeDeformedPoint(p2, d2, scaleFactor);
 
-    gp_Vec vOrig(p1, p2);
-    double L = vOrig.Magnitude();
-    if (L < 1e-6) return TopoDS_Shape();
+    gp_Vec vDef(p1Def, p2Def);
+    double LDef = vDef.Magnitude();
+    if (LDef < 1e-6) return TopoDS_Shape();
 
-    // Tangentes initiales
-    gp_Vec t1 = vOrig;
-    gp_Vec t2 = vOrig;
+    // Tangentes initiales sur la corde déformée
+    gp_Vec t1 = vDef;
+    gp_Vec t2 = vDef;
 
     // Prise en compte des rotations nodales amplifiées sur les tangentes
     // theta x/y/z créent une rotation de la direction
@@ -121,9 +121,9 @@ TopoDS_Shape DeformedGeometry::createDeformedBeamShape(
         return TopoDS_Shape();
     }
 
-    gp_Vec vOrig(p1, p2);
-    double L = vOrig.Magnitude();
-    if (L < 1e-6) return TopoDS_Shape();
+    gp_Vec vDef(p1Def, p2Def);
+    double LDef = vDef.Magnitude();
+    if (LDef < 1e-6) return TopoDS_Shape();
 
     // Vérifie si des rotations notables sont présentes
     double rotMag1 = std::sqrt(d1.rx * d1.rx + d1.ry * d1.ry + d1.rz * d1.rz) * scaleFactor;
@@ -138,8 +138,8 @@ TopoDS_Shape DeformedGeometry::createDeformedBeamShape(
 
     // Discrétisation cubique d'Hermite pour afficher la flèche/courbure
     const int numSegments = 6;
-    gp_Vec t1 = vOrig;
-    gp_Vec t2 = vOrig;
+    gp_Vec t1 = vDef;
+    gp_Vec t2 = vDef;
     gp_Vec rot1(d1.rx * scaleFactor, d1.ry * scaleFactor, d1.rz * scaleFactor);
     gp_Vec rot2(d2.rx * scaleFactor, d2.ry * scaleFactor, d2.rz * scaleFactor);
     t1 += rot1.Crossed(t1);

@@ -106,6 +106,8 @@ NDCDocument NDCGenerator::generate(
         std::map<std::string, TSA::Model::Section> uniqueSections;
         for (const auto& [id, b] : model.beams()) uniqueSections[b.section().name] = b.section();
         for (const auto& [id, c] : model.columns()) uniqueSections[c.section().name] = c.section();
+        for (const auto& [id, tr] : model.trussMembers()) uniqueSections[tr.section().name] = tr.section();
+        for (const auto& [id, cb] : model.cables()) uniqueSections[cb.section().name] = cb.section();
 
         for (const auto& [name, sec] : uniqueSections)
         {
@@ -146,11 +148,9 @@ NDCDocument NDCGenerator::generate(
 
         for (const auto& [id, n] : model.nodes())
         {
-            QString supStr = "Libre";
-            QString fixStr = "0 0 0 0 0 0";
-            if (n.supportType() == TSA::Model::SupportType::Fixed) { supStr = "Encastrement"; fixStr = "1 1 1 1 1 1"; }
-            else if (n.supportType() == TSA::Model::SupportType::Pinned) { supStr = "Articulation"; fixStr = "1 1 1 1 0 0"; }
-            else if (n.supportType() == TSA::Model::SupportType::Roller) { supStr = "Appui Simple"; fixStr = "0 0 1 1 0 0"; }
+            const auto& supp = n.support();
+            QString supStr = QString::fromStdString(supp.typeName());
+            QString fixStr = supp.isFree() ? QStringLiteral("Libre") : QString::fromStdString(supp.dofSummary());
 
             tNodes.rows.push_back({
                 QString::number(id),
@@ -199,6 +199,36 @@ NDCDocument NDCGenerator::generate(
                 QString::number(len, 'f', 3),
                 QString::fromStdString(col.section().name),
                 QString::fromStdString(col.material().name)
+            });
+        }
+        for (const auto& [id, tr] : model.trussMembers())
+        {
+            const auto* n1 = model.getNode(tr.startNodeId());
+            const auto* n2 = model.getNode(tr.endNodeId());
+            double len = (n1 && n2) ? std::sqrt(std::pow(n2->x()-n1->x(),2) + std::pow(n2->y()-n1->y(),2) + std::pow(n2->z()-n1->z(),2)) : 0.0;
+            tElems.rows.push_back({
+                QString::number(id),
+                "Treillis",
+                QString::number(tr.startNodeId()),
+                QString::number(tr.endNodeId()),
+                QString::number(len, 'f', 3),
+                QString::fromStdString(tr.section().name),
+                QString::fromStdString(tr.material().name)
+            });
+        }
+        for (const auto& [id, cb] : model.cables())
+        {
+            const auto* n1 = model.getNode(cb.startNodeId());
+            const auto* n2 = model.getNode(cb.endNodeId());
+            double len = (n1 && n2) ? std::sqrt(std::pow(n2->x()-n1->x(),2) + std::pow(n2->y()-n1->y(),2) + std::pow(n2->z()-n1->z(),2)) : 0.0;
+            tElems.rows.push_back({
+                QString::number(id),
+                "Câble",
+                QString::number(cb.startNodeId()),
+                QString::number(cb.endNodeId()),
+                QString::number(len, 'f', 3),
+                QString::fromStdString(cb.section().name),
+                QString::fromStdString(cb.material().name)
             });
         }
         sElems.tables.push_back(tElems);

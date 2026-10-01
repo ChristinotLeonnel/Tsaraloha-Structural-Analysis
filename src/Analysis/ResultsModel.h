@@ -70,6 +70,9 @@ struct StationForces
     double ux = 0.0;        ///< Déplacement local u(x)
     double uy = 0.0;        ///< Déplacement local v(x)
     double uz = 0.0;        ///< Déplacement local w(x)
+    double rx = 0.0;        ///< Rotation locale rx(x)
+    double ry = 0.0;        ///< Rotation locale ry(x)
+    double rz = 0.0;        ///< Rotation locale rz(x)
 };
 
 /**

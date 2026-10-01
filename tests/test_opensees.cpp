@@ -438,5 +438,178 @@ bool runSuite_OpenSees(int& passed)
         passed++;
     }
 
+    // TEST 77: Load Combination Factoring (1.35*G + 1.50*Q)
+    {
+        Model model;
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        model.getNode(n1)->setSupportType(SupportType::Fixed);
+        int n2 = model.addNode(4.0, 0.0, 0.0);
+
+        Section sec = Section::ipe(200);
+        Material mat = Material::steelS235();
+        int b1 = model.addBar(n1, n2, sec, mat, BarRole::Beam);
+
+        auto& lm = model.loadManager();
+        int lc1 = lm.addLoadCase(LoadCase(1, "Dead_G", LoadCaseCategory::Dead, false, 1.0));
+        int lc2 = lm.addLoadCase(LoadCase(2, "Live_Q", LoadCaseCategory::Live, false, 1.0));
+
+        // Nodal load on node 2: 10 kN along X for Case 1, 20 kN along X for Case 2
+        lm.addNodalLoad(NodalLoad(0, n2, lc1, 10.0, 0.0, 0.0, 0.0, 0.0, 0.0, LoadCoordSystem::Global, "G_10kN"));
+        lm.addNodalLoad(NodalLoad(0, n2, lc2, 20.0, 0.0, 0.0, 0.0, 0.0, 0.0, LoadCoordSystem::Global, "Q_20kN"));
+
+        // Combination: 1.35 * G + 1.50 * Q = 1.35 * 10 + 1.50 * 20 = 13.5 + 30.0 = 43.5 kN
+        std::map<int, double> factors = { {lc1, 1.35}, {lc2, 1.50} };
+        int comboId = lm.addCombination(LoadCombination(1, "ELU_Comb", LoadCombinationType::ULS_Fundamental, factors, "1.35G + 1.50Q"));
+
+        OpenSeesSolver solver;
+        AnalysisParameters params;
+        params.type = AnalysisType::LinearStatic;
+        params.useKiloNewtons = true;
+        params.includeSelfWeight = false;
+        params.targetCombinationId = comboId;
+
+        QString err;
+        bool ok = solver.solveSynchronous(model, params, &err);
+        TEST_CHECK(ok, "Solver execution failed for load combination");
+
+        const auto& res = solver.results();
+        const auto* eb = res.getElementResults(b1);
+        TEST_CHECK(eb != nullptr, "Element results must be present for combination");
+        TEST_CHECK(std::abs(eb->startForces.N - 43.5) < 0.5, "Combination normal force must equal 43.5 kN (1.35*10 + 1.50*20)");
+        TEST_CHECK(std::abs(eb->endForces.N - 43.5) < 0.5, "End normal force must equal 43.5 kN");
+
+        // Réaction au nœud 1
+        const auto* r1 = res.getNodeReaction(n1);
+        TEST_CHECK(r1 != nullptr, "Reaction at support node 1 must exist");
+        TEST_CHECK(std::abs(r1->rx - (-43.5)) < 0.5, "Reaction Rx at support must equal -43.5 kN to balance the combination");
+
+        passed++;
+    }
+
+    // TEST 78: Global Equilibrium with Member Uniform Loads (No Nodal Loads)
+    {
+        Model model;
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        model.getNode(n1)->setSupportType(SupportType::Pinned);
+        int n2 = model.addNode(6.0, 0.0, 0.0);
+        model.getNode(n2)->setSupportType(SupportType::Roller);
+
+        Section sec = Section::ipe(300);
+        Material mat = Material::steelS355();
+        int b1 = model.addBar(n1, n2, sec, mat, BarRole::Beam);
+
+        auto& lm = model.loadManager();
+        int lcId = lm.addLoadCase(LoadCase(1, "UDL_Case", LoadCaseCategory::Live, false, 1.0));
+        // Uniform load q = 25 kN/m downwards along GlobalZ -> Total applied force = 25 * 6 = 150 kN
+        lm.addMemberLoad(MemberLoad::uniform(b1, lcId, 25.0, LoadDirection::GlobalZ, "UDL_25kNm"));
+
+        OpenSeesSolver solver;
+        AnalysisParameters params;
+        params.type = AnalysisType::LinearStatic;
+        params.useKiloNewtons = true;
+        params.includeSelfWeight = false;
+        params.targetLoadCaseId = lcId;
+
+        QString err;
+        bool ok = solver.solveSynchronous(model, params, &err);
+        TEST_CHECK(ok, "Solver execution failed for member uniform load equilibrium");
+
+        const auto& res = solver.results();
+        const auto& eq = res.equilibrium();
+        TEST_CHECK(std::abs(eq.appliedFz - (-150.0)) < 1.0, "Total applied vertical force must equal -150 kN from member load");
+        TEST_CHECK(std::abs(eq.reactionFz - 150.0) < 1.0, "Total reaction vertical force must equal +150 kN");
+        TEST_CHECK(eq.isBalanced(0.05), "Global equilibrium must balance member uniform loads");
+
+        passed++;
+    }
+
+    // TEST 79: ElementResults Stations Local Displacements & Rotations
+    {
+        Model model;
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        model.getNode(n1)->setSupportType(SupportType::Fixed); // Cantilever
+        int n2 = model.addNode(5.0, 0.0, 0.0);
+
+        Section sec = Section::ipe(240);
+        Material mat = Material::steelS235();
+        int b1 = model.addBar(n1, n2, sec, mat, BarRole::Beam);
+
+        auto& lm = model.loadManager();
+        int lcId = lm.addLoadCase(LoadCase(1, "TipLoad", LoadCaseCategory::Live, false, 1.0));
+        // Tip load Fz = -10 kN
+        lm.addNodalLoad(NodalLoad(0, n2, lcId, 0.0, 0.0, -10.0, 0.0, 0.0, 0.0, LoadCoordSystem::Global, "Tip_10kN"));
+
+        OpenSeesSolver solver;
+        AnalysisParameters params;
+        params.type = AnalysisType::LinearStatic;
+        params.useKiloNewtons = true;
+        params.includeSelfWeight = false;
+        params.targetLoadCaseId = lcId;
+
+        QString err;
+        bool ok = solver.solveSynchronous(model, params, &err);
+        TEST_CHECK(ok, "Solver execution failed for cantilever beam");
+
+        const auto& res = solver.results();
+        const auto* eb = res.getElementResults(b1);
+        TEST_CHECK(eb != nullptr, "Element results must be present");
+        TEST_CHECK(std::abs(eb->startForces.uz) < 1e-6, "Deflection at fixed end must be 0");
+        TEST_CHECK(eb->endForces.uz < -1e-4, "Deflection at tip must be negative");
+
+        // Intermediate stations: deflection must monotonically decrease from fixed end to tip
+        TEST_CHECK(!eb->intermediateStations.empty(), "Intermediate stations must exist");
+        double prevUz = eb->startForces.uz;
+        for (const auto& st : eb->intermediateStations)
+        {
+            TEST_CHECK(st.uz <= prevUz + 1e-9, "Deflection must decrease monotonically towards tip");
+            prevUz = st.uz;
+        }
+
+        passed++;
+    }
+
+    // TEST 80: Comprehensive NDC Document Generation with Cables and Trusses
+    {
+        Model model;
+        int n1 = model.addNode(0.0, 0.0, 0.0);
+        int n2 = model.addNode(4.0, 0.0, 0.0);
+        int n3 = model.addNode(4.0, 0.0, 3.0);
+        int n4 = model.addNode(0.0, 0.0, 3.0);
+
+        model.getNode(n1)->setSupportType(SupportType::Fixed);
+        model.getNode(n2)->setSupportType(SupportType::Pinned);
+
+        model.addColumn(n1, n4, 0.30, 0.30);
+        model.addBeam(n4, n3, 0.20, 0.40);
+        model.addTrussMember(n1, n3, 0.10);
+        model.addCable(n2, n4, 0.020);
+
+        auto& lm = model.loadManager();
+        int lcId = lm.addLoadCase(LoadCase(1, "Charge_Test", LoadCaseCategory::Dead, false, 1.0));
+        lm.addNodalLoad(NodalLoad(0, n3, lcId, 0.0, 0.0, -20.0, 0.0, 0.0, 0.0));
+
+        OpenSeesSolver solver;
+        AnalysisParameters params;
+        params.type = AnalysisType::LinearStatic;
+        params.useKiloNewtons = true;
+        params.includeSelfWeight = false;
+        params.targetLoadCaseId = lcId;
+
+        QString err;
+        bool ok = solver.solveSynchronous(model, params, &err);
+        TEST_CHECK(ok, "Solver execution failed for 4-element structure");
+
+        auto resultsPtr = std::make_shared<ResultsModel>(solver.results());
+        TSA::NDC::NDCDocument doc = TSA::NDC::NDCGenerator::generate(model, resultsPtr, "Tour Mixte", "Christinot");
+
+        QString html = doc.toHtml();
+        TEST_CHECK(html.contains("Poutre"), "NDC HTML must contain Poutre");
+        TEST_CHECK(html.contains("Poteau"), "NDC HTML must contain Poteau");
+        TEST_CHECK(html.contains("Treillis"), "NDC HTML must contain Treillis");
+        TEST_CHECK(html.contains("Câble"), "NDC HTML must contain Câble");
+
+        passed++;
+    }
+
     return true;
 }

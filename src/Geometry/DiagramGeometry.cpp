@@ -75,9 +75,9 @@ double DiagramGeometry::getStationValue(const TSA::Analysis::StationForces& st, 
     case DiagramType::DeflectionUz: return st.uz * 1000.0; // en mm
     case DiagramType::DeflectionUres:
         return std::sqrt(st.ux * st.ux + st.uy * st.uy + st.uz * st.uz) * 1000.0; // en mm
-    case DiagramType::RotationRx:   return 0.0;
-    case DiagramType::RotationRy:   return 0.0;
-    case DiagramType::RotationRz:   return 0.0;
+    case DiagramType::RotationRx:   return st.rx;
+    case DiagramType::RotationRy:   return st.ry;
+    case DiagramType::RotationRz:   return st.rz;
     case DiagramType::None:
     default:                        return 0.0;
     }

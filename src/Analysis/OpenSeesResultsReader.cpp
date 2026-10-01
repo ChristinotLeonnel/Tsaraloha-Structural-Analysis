@@ -1,4 +1,5 @@
 #include "OpenSeesResultsReader.h"
+#include "LoadResolver.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -221,6 +222,39 @@ bool OpenSeesResultsReader::readElementForces(const std::string& filePath,
             res.elementId = elemId;
             res.length = el.length;
 
+            // Récupération des déplacements nodaux aux extrémités
+            const auto* n1 = snapshot.getNode(el.startNodeId);
+            const auto* n2 = snapshot.getNode(el.endNodeId);
+            if (n1 && n2)
+            {
+                gp_Pnt p1(n1->x, n1->y, n1->z);
+                gp_Pnt p2(n2->x, n2->y, n2->z);
+                const auto* d1 = outResults.getNodeDisplacement(el.startNodeId);
+                const auto* d2 = outResults.getNodeDisplacement(el.endNodeId);
+                if (d1)
+                {
+                    auto locD1 = LoadResolver::decomposeGlobalVectorToLocal(gp_Vec(d1->ux, d1->uy, d1->uz), p1, p2, el.rotation);
+                    res.startForces.ux = locD1.wx;
+                    res.startForces.uy = locD1.wy;
+                    res.startForces.uz = locD1.wz;
+                    auto locR1 = LoadResolver::decomposeGlobalVectorToLocal(gp_Vec(d1->rx, d1->ry, d1->rz), p1, p2, el.rotation);
+                    res.startForces.rx = locR1.wx;
+                    res.startForces.ry = locR1.wy;
+                    res.startForces.rz = locR1.wz;
+                }
+                if (d2)
+                {
+                    auto locD2 = LoadResolver::decomposeGlobalVectorToLocal(gp_Vec(d2->ux, d2->uy, d2->uz), p1, p2, el.rotation);
+                    res.endForces.ux = locD2.wx;
+                    res.endForces.uy = locD2.wy;
+                    res.endForces.uz = locD2.wz;
+                    auto locR2 = LoadResolver::decomposeGlobalVectorToLocal(gp_Vec(d2->rx, d2->ry, d2->rz), p1, p2, el.rotation);
+                    res.endForces.rx = locR2.wx;
+                    res.endForces.ry = locR2.wy;
+                    res.endForces.rz = locR2.wz;
+                }
+            }
+
             if (el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable)
             {
                 if (idx < vals.size())
@@ -230,6 +264,19 @@ bool OpenSeesResultsReader::readElementForces(const std::string& filePath,
                     res.startForces.N = axial;
                     res.endForces.position = el.length;
                     res.endForces.N = axial;
+
+                    const int numStations = 5;
+                    for (int s = 1; s < numStations; ++s)
+                    {
+                        double t = static_cast<double>(s) / numStations;
+                        StationForces sf;
+                        sf.position = t * el.length;
+                        sf.N = axial;
+                        sf.ux = (1.0 - t) * res.startForces.ux + t * res.endForces.ux;
+                        sf.uy = (1.0 - t) * res.startForces.uy + t * res.endForces.uy;
+                        sf.uz = (1.0 - t) * res.startForces.uz + t * res.endForces.uz;
+                        res.intermediateStations.push_back(sf);
+                    }
                 }
             }
             else
@@ -270,6 +317,13 @@ bool OpenSeesResultsReader::readElementForces(const std::string& filePath,
                         sf.Mx = (1.0 - t) * res.startForces.Mx + t * res.endForces.Mx;
                         sf.My = (1.0 - t) * res.startForces.My + t * res.endForces.My;
                         sf.Mz = (1.0 - t) * res.startForces.Mz + t * res.endForces.Mz;
+
+                        sf.ux = (1.0 - t) * res.startForces.ux + t * res.endForces.ux;
+                        sf.uy = (1.0 - t) * res.startForces.uy + t * res.endForces.uy;
+                        sf.uz = (1.0 - t) * res.startForces.uz + t * res.endForces.uz;
+                        sf.rx = (1.0 - t) * res.startForces.rx + t * res.endForces.rx;
+                        sf.ry = (1.0 - t) * res.startForces.ry + t * res.endForces.ry;
+                        sf.rz = (1.0 - t) * res.startForces.rz + t * res.endForces.rz;
 
                         // Superposition isostatique des charges sur barres
                         for (const auto& ml : snapshot.memberLoads())
@@ -363,26 +417,74 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
 {
     GlobalEquilibrium eq;
 
-    // Somme des charges nodales
-    for (const auto& nl : snapshot.nodalLoads())
-    {
-        if (params.targetLoadCaseId > 0 && nl.loadCaseId() != params.targetLoadCaseId) continue;
-        eq.appliedFx += nl.fx();
-        eq.appliedFy += nl.fy();
-        eq.appliedFz += nl.fz();
-    }
-
-    // Poids propre
-    if (params.includeSelfWeight)
-    {
-        double g = 9.81;
-        for (const auto& [_, el] : snapshot.elements())
+    auto accumulateLoads = [&](int targetCaseId, double factor, bool includeSW) {
+        // 1. Charges nodales
+        for (const auto& nl : snapshot.nodalLoads())
         {
-            double A = el.section.area();
-            double rho = el.material.density;
-            double W = A * rho * g * el.length * (params.useKiloNewtons ? 1e-3 : 1.0);
-            eq.appliedFz -= W;
+            if (targetCaseId > 0 && nl.loadCaseId() != targetCaseId) continue;
+            eq.appliedFx += nl.fx() * factor;
+            eq.appliedFy += nl.fy() * factor;
+            eq.appliedFz += nl.fz() * factor;
         }
+
+        // 2. Charges sur barres
+        for (const auto& ml : snapshot.memberLoads())
+        {
+            if (targetCaseId > 0 && ml.loadCaseId() != targetCaseId) continue;
+
+            const auto* el = snapshot.getElement(ml.elementId());
+            if (!el) continue;
+
+            LocalMemberLoadComponents comp = LoadResolver::resolveMemberLoadToLocal(ml, snapshot);
+            const auto* n1 = snapshot.getNode(el->startNodeId);
+            const auto* n2 = snapshot.getNode(el->endNodeId);
+            if (!n1 || !n2) continue;
+
+            gp_Pnt p1(n1->x, n1->y, n1->z);
+            gp_Pnt p2(n2->x, n2->y, n2->z);
+            gp_Vec gVec = LoadResolver::localVectorToGlobal(comp.wx, comp.wy, comp.wz, p1, p2, el->rotation);
+
+            double mult = (ml.type() == TSA::Model::LoadType::MemberPoint) ? 1.0 : el->length;
+            eq.appliedFx += gVec.X() * mult * factor;
+            eq.appliedFy += gVec.Y() * mult * factor;
+            eq.appliedFz += gVec.Z() * mult * factor;
+        }
+
+        // 3. Poids propre
+        if (includeSW)
+        {
+            double g = 9.81;
+            for (const auto& [_, el] : snapshot.elements())
+            {
+                double A = el.section.area();
+                double rho = el.material.density;
+                double W = A * rho * g * el.length * (params.useKiloNewtons ? 1e-3 : 1.0);
+                eq.appliedFz -= W * factor;
+            }
+        }
+    };
+
+    if (params.targetCombinationId > 0)
+    {
+        auto it = snapshot.combinations().find(params.targetCombinationId);
+        if (it != snapshot.combinations().end())
+        {
+            for (const auto& [caseId, factor] : it->second.caseFactors())
+            {
+                bool includeSW = false;
+                auto lcIt = snapshot.loadCases().find(caseId);
+                if (lcIt != snapshot.loadCases().end())
+                {
+                    includeSW = lcIt->second.isSelfWeightIncluded();
+                }
+                accumulateLoads(caseId, factor, includeSW);
+            }
+        }
+    }
+    else
+    {
+        int filterCaseId = (params.targetLoadCaseId > 0) ? params.targetLoadCaseId : 0;
+        accumulateLoads(filterCaseId, 1.0, params.includeSelfWeight);
     }
 
     // Somme des réactions aux appuis
