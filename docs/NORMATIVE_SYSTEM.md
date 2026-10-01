@@ -2,7 +2,7 @@
 ## Spécification et Référence d'Architecture
 
 > **Identifiant du document :** DOC-TSA-NORM-001  
-> **Version du document :** 1.0.0  
+> **Version du document :** 1.1.0  
 > **Version logicielle TSA :** v0.1.0-alpha  
 > **Date de publication :** 2026-10-01  
 > **Statut :** Approuvé & Actif  
@@ -191,7 +191,7 @@ Pour maintenir la lisibilité sans surcharge artificielle, les marqueurs normali
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
 | **REQ-SW-ARCH-001** | Architecture | ISO/IEC 25010 | §4.2.7 | Découplage strict des couches : UI $\to$ Command $\to$ Model $\to$ Geometry $\to$ OCCT | `MainWindow_Actions.cpp`, `OccView.cpp` | `TSA_CommandsUndoTests` | **IMPLEMENTED** |
 | **REQ-SW-ARCH-002** | Architecture | ISO/IEC 25010 | §4.2.7 | Modèle structural comme unique source de vérité (`IModelObserver`) | `Model.h`, `OccView.h` | `TSA_ModelElementsTests` | **IMPLEMENTED** |
-| **REQ-SW-MOD-001** | Architecture | ISO/IEC 25010 | §4.2.7 | Surveillance SRP des modules > 1000 lignes avec plan de refactorisation | `Model.cpp`, `TSAFile.cpp` | `TSA_AllTests` | **PARTIAL** |
+| **REQ-SW-MOD-001** | Architecture | ISO/IEC 25010 | §4.2.7 | Surveillance SRP des modules > 1000 lignes et découplage modulaire | `Model.cpp`, `TSAFile.cpp` | `TSA_AllTests` | **IMPLEMENTED** |
 | **REQ-SW-TEST-001** | Tests | ISO/IEC/IEEE 29119 | Part. 2/3 | Stratégie de tests automatisés (16 suites CTest, non-régression) | `tests/` | `TSA_AllTests` | **IMPLEMENTED** |
 | **REQ-SW-DOC-001** | Documentation | IEEE Std 1063 | Clause 5 | Documentation technique et raccourcis synchronisés sans écart | `CommandCatalog.cpp`, `shortcuts.txt` | `check_shortcuts.py` | **IMPLEMENTED** |
 | **REQ-EXT-LIB-001** | Architecture | ISO/IEC 25010 | §4.2.7 | Inventaire et isolation des bibliothèques externes (Qt, OCCT, OpenSees) | `ExternalLibraryCatalog.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
@@ -211,3 +211,5 @@ Pour maintenir la lisibilité sans surcharge artificielle, les marqueurs normali
 | **REQ-NDC-GEN-001** | Rapport | IEEE Std 1063 | Justification | Note de calcul réglementaire certifiée HTML / Texte brut | `NDCGenerator.cpp` | `TSA_AllTests` | **IMPLEMENTED** |
 | **REQ-RES-META-001** | Résultats | ISO/IEC 25010 | §4.2.5 | Métadonnées d'exécution certifiées (Annexe Nationale, OpenSees, résidu max) | `ResultsModel.h`, `OpenSeesSolver.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
 | **REQ-VV-BENCH-001** | Vérification & Validation | ISO/IEC/IEEE 29119 | Part. 2/3 | Benchmarks analytiques fermés (Euler-Bernoulli, Timoshenko, Navier) tol. <= 2% | `AnalyticalBenchmark.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
+| **REQ-VIS-OCCT-001** | Visualisation 3D | OCCT 8.0 / C++20 | API Moderne | Conformité OCCT 8.0 sans dépréciation (`false` standard au lieu de `Standard_False`) | `ResultsVisualManager.cpp`, `CableGeometry3D.cpp` | `TSA_ViewerTests` | **IMPLEMENTED** |
+| **REQ-VIS-NUM-001** | Visualisation 3D | ISO/IEC 25010 | §4.2.5 | Robustesse géométrique défensive (gardes NaN/Inf, échelles négatives, déformées et diagrammes) | `DiagramGeometry.cpp`, `DeformedGeometry.cpp` | `TSA_OpenSeesTests` | **IMPLEMENTED** |

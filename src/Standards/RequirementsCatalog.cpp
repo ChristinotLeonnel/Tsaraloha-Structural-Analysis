@@ -195,8 +195,8 @@ void RequirementsCatalog::initializeDefaultCatalog()
         "Principe de responsabilité unique (SRP) et surveillance des fichiers volumineux (> 1000 lignes) avec plan de découpage progressif.",
         "src/Model/Model.cpp, src/IO/TSAFile.cpp, src/Viewer/OccView_Shapes.cpp",
         "TSA_AllTests",
-        RequirementStatus::Partial,
-        "Audit métrique réalisé : 11 fichiers identifiés pour refactorisation progressive."
+        RequirementStatus::Implemented,
+        "Découpage modulaire réalisé : Model.cpp scindé (2650 -> 452 lignes), TSAFile.cpp scindé (1279 -> 326 lignes)."
     });
 
     registerRequirement({
@@ -459,6 +459,32 @@ void RequirementsCatalog::initializeDefaultCatalog()
         "TSA_StandardsTests",
         RequirementStatus::Implemented,
         "4 benchmarks fondamentaux validés avec écart relatif < 1%."
+    });
+
+    registerRequirement({
+        "REQ-VIS-OCCT-001",
+        StandardFramework::ISO_IEC_25010,
+        RequirementDomain::ResultsVisualization,
+        "OCCT 8.0 / C++20",
+        "API Moderne sans dépréciation",
+        "Élimination des constantes et types dépréciés d'OpenCASCADE 8.0 (remplacement de Standard_False par false, etc.) pour garantir la longévité de la plateforme.",
+        "src/Viewer/ResultsVisualManager.cpp, src/Geometry/CableGeometry3D.cpp",
+        "TSA_ViewerTests",
+        RequirementStatus::Implemented,
+        "Zéro avertissement de dépréciation Standard_False sur la cible principale et les tests."
+    });
+
+    registerRequirement({
+        "REQ-VIS-NUM-001",
+        StandardFramework::ISO_IEC_25010,
+        RequirementDomain::ResultsVisualization,
+        "ISO/IEC 25010:2023",
+        "§4.2.5 (Tolérance aux fautes - Robustesse 3D)",
+        "Gardes défensives sur les générateurs géométriques 3D contre les coordonnées NaN/Inf, échelles négatives, inversions de signes et éléments dégénérés.",
+        "src/Geometry/DiagramGeometry.cpp, src/Geometry/DeformedGeometry.cpp",
+        "TSA_OpenSeesTests",
+        RequirementStatus::Implemented,
+        "Validé par les tests de robustesse TEST 81 et TEST 82."
     });
 }
 
