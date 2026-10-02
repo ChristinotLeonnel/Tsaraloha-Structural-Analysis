@@ -21,6 +21,11 @@ class Model;
 
 class OccView;
 
+namespace TSA::NDC
+{
+struct ExtremumPoint;
+}
+
 namespace TSA::Viewer
 {
 
@@ -108,6 +113,10 @@ public:
     void setLegendVisible(bool visible);
     QString legendSummaryText() const;
 
+    // Marqueur 3D d'extremum (Note de Calcul)
+    void showExtremumMarker(const TSA::NDC::ExtremumPoint& pt);
+    void clearExtremumMarker();
+
     // Nettoyage et actualisation
     void updateAllVisuals();
     void clearAllVisuals();
@@ -163,6 +172,8 @@ private:
     std::map<int, std::vector<Handle(AIS_TextLabel)>> m_diagramLabels;
     std::map<int, Handle(AIS_Shape)> m_reactionShapes;
     std::map<int, Handle(AIS_TextLabel)> m_reactionLabels;
+    Handle(AIS_Shape) m_extremumMarkerShape;
+    Handle(AIS_TextLabel) m_extremumLabel;
     Handle(AIS_TextLabel) m_legendLabel;
 
     void updateLegend();

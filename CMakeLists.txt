@@ -223,6 +223,8 @@ set(UI_WIDGETS_SOURCES
     src/UI/Diagrams/Diagram2DWidget.cpp
     src/NDC/NDCViewerWidget.h
     src/NDC/NDCViewerWidget.cpp
+    src/NDC/ReportConfigDialog.h
+    src/NDC/ReportConfigDialog.cpp
     src/UI/Port/PortTypes.h
     src/UI/Port/PortWidget.h
     src/UI/Port/PortWidget.cpp
@@ -431,10 +433,20 @@ set(LOAD_CORE_SOURCES
 set(NDC_CORE_SOURCES
     src/NDC/NDCDocumentModel.h
     src/NDC/NDCDocumentModel.cpp
+    src/NDC/ReportConfiguration.h
+    src/NDC/ReportConfiguration.cpp
+    src/NDC/ReportTemplate.h
+    src/NDC/ReportTemplate.cpp
+    src/NDC/NormativeReferenceDetector.h
+    src/NDC/NormativeReferenceDetector.cpp
+    src/NDC/ResultAnalyzer.h
+    src/NDC/ResultAnalyzer.cpp
     src/NDC/NDCGenerator.h
     src/NDC/NDCGenerator.cpp
     src/NDC/NDCExporter.h
     src/NDC/NDCExporter.cpp
+    src/NDC/ReportManager.h
+    src/NDC/ReportManager.cpp
 )
 
 # --- Câbles : modèle et normes de calcul — [CORE] -----------------------------
@@ -755,6 +767,7 @@ set(TEST_SOURCES
     tests/test_opensees.cpp
     tests/test_supports.cpp
     tests/test_standards.cpp
+    tests/test_ndc_report.cpp
     resources/resources.qrc
 )
 

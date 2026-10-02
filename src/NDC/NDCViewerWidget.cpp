@@ -1,6 +1,7 @@
 #include "NDCViewerWidget.h"
 #include "NDCGenerator.h"
 #include "NDCExporter.h"
+#include "ReportConfigDialog.h"
 #include "../Model/Model.h"
 
 #include <QVBoxLayout>
@@ -45,6 +46,9 @@ void NDCViewerWidget::setupUi()
     m_btnZoomOut = new QPushButton(tr("A-"), toolbar);
     m_btnZoomOut->setToolTip(tr("Réduire le texte"));
 
+    m_btnConfigure = new QPushButton(tr("⚙ Personnaliser..."), toolbar);
+    m_btnConfigure->setToolTip(tr("Configurer la mise en page, les chapitres et les métadonnées"));
+
     m_btnExportPdf = new QPushButton(tr("Exporter PDF..."), toolbar);
     m_btnExportPdf->setStyleSheet("font-weight: 600; color: #1a56db;");
     m_btnExportHtml = new QPushButton(tr("Exporter HTML..."), toolbar);
@@ -57,6 +61,7 @@ void NDCViewerWidget::setupUi()
     tbLayout->addWidget(m_btnZoomIn);
     tbLayout->addWidget(m_btnZoomOut);
     tbLayout->addStretch();
+    tbLayout->addWidget(m_btnConfigure);
     tbLayout->addWidget(m_btnRefresh);
     tbLayout->addWidget(m_btnExportHtml);
     tbLayout->addWidget(m_btnExportPdf);
@@ -87,20 +92,30 @@ void NDCViewerWidget::setupUi()
     connect(m_btnFindNext, &QPushButton::clicked, this, &NDCViewerWidget::onFindNext);
     connect(m_btnZoomIn, &QPushButton::clicked, this, &NDCViewerWidget::onZoomIn);
     connect(m_btnZoomOut, &QPushButton::clicked, this, &NDCViewerWidget::onZoomOut);
+    connect(m_btnConfigure, &QPushButton::clicked, this, &NDCViewerWidget::onConfigureClicked);
     connect(m_btnExportPdf, &QPushButton::clicked, this, &NDCViewerWidget::onExportPdf);
     connect(m_btnExportHtml, &QPushButton::clicked, this, &NDCViewerWidget::onExportHtml);
     connect(m_btnRefresh, &QPushButton::clicked, this, &NDCViewerWidget::refreshDocument);
+    connect(m_browser, &QTextBrowser::anchorClicked, this, &NDCViewerWidget::onAnchorClicked);
 }
 
 void NDCViewerWidget::setModel(TSA::Model::Model* model)
 {
     m_model = model;
+    m_reportManager.setModel(model);
     refreshDocument();
 }
 
 void NDCViewerWidget::setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
 {
     m_results = results;
+    m_reportManager.setResultsModel(results);
+    refreshDocument();
+}
+
+void NDCViewerWidget::setConfiguration(const ReportConfiguration& config)
+{
+    m_reportManager.setConfiguration(config);
     refreshDocument();
 }
 
@@ -108,7 +123,7 @@ void NDCViewerWidget::refreshDocument()
 {
     if (!m_model) return;
 
-    m_document = NDCGenerator::generate(*m_model, m_results);
+    m_document = m_reportManager.generateReport();
     m_browser->setHtml(m_document.toHtml());
     populateToc();
 }
@@ -195,7 +210,7 @@ void NDCViewerWidget::onExportPdf()
     if (fileName.isEmpty()) return;
 
     QString error;
-    if (NDCExporter::exportToPdf(m_document, fileName, &error))
+    if (m_reportManager.exportPdf(fileName, &error))
     {
         QMessageBox::information(
             this,
@@ -225,7 +240,7 @@ void NDCViewerWidget::onExportHtml()
     if (fileName.isEmpty()) return;
 
     QString error;
-    if (NDCExporter::exportToHtml(m_document, fileName, &error))
+    if (m_reportManager.exportHtml(fileName, &error))
     {
         QMessageBox::information(
             this,
@@ -240,6 +255,46 @@ void NDCViewerWidget::onExportHtml()
             tr("Échec de l'export HTML"),
             tr("Une erreur est survenue lors de l'export HTML :\n%1").arg(error)
         );
+    }
+}
+
+void NDCViewerWidget::onConfigureClicked()
+{
+    ReportConfigDialog dlg(m_reportManager.configuration(), this);
+    if (dlg.exec() == QDialog::Accepted)
+    {
+        m_reportManager.setConfiguration(dlg.configuration());
+        refreshDocument();
+    }
+}
+
+void NDCViewerWidget::onAnchorClicked(const QUrl& url)
+{
+    if (url.scheme() == "tsa")
+    {
+        if (url.host() == "element")
+        {
+            QUrlQuery q(url);
+            bool ok = false;
+            int elemId = q.queryItemValue("id").toInt(&ok);
+            if (ok && elemId > 0)
+            {
+                emit elementSelected(elemId);
+            }
+        }
+    }
+    else
+    {
+        QString fragment = url.fragment();
+        if (fragment.isEmpty())
+        {
+            fragment = url.toString();
+            if (fragment.startsWith("#")) fragment.remove(0, 1);
+        }
+        if (!fragment.isEmpty())
+        {
+            m_browser->scrollToAnchor(fragment);
+        }
     }
 }
 

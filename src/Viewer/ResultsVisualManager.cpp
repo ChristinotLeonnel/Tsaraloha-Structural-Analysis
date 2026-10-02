@@ -17,9 +17,11 @@
 #include <Quantity_Color.hxx>
 #include <BRepPrimAPI_MakeCylinder.hxx>
 #include <BRepPrimAPI_MakeCone.hxx>
+#include <BRepPrimAPI_MakeSphere.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRep_Builder.hxx>
 #include <TopoDS_Compound.hxx>
+#include "../NDC/ResultAnalyzer.h"
 #include <cmath>
 #include <algorithm>
 
@@ -382,6 +384,7 @@ void ResultsVisualManager::clearAllVisuals()
     clearDeformedShapes();
     clearDiagramShapes();
     clearReactionShapes();
+    clearExtremumMarker();
     clearLegend();
     if (m_occView && m_occView->view())
     {
@@ -871,6 +874,99 @@ void ResultsVisualManager::clearReactionShapes()
     }
     m_reactionShapes.clear();
     m_reactionLabels.clear();
+}
+
+void ResultsVisualManager::showExtremumMarker(const TSA::NDC::ExtremumPoint& pt)
+{
+    auto ctx = context();
+    if (!ctx) return;
+
+    clearExtremumMarker();
+
+    // 1. Marqueur 3D : sphère rouge vive positionnée aux coordonnées globales réelles
+    double radius = 0.12; // 12 cm de rayon
+    BRepPrimAPI_MakeSphere sphere(pt.globalCoords, radius);
+    TopoDS_Shape shape = sphere.Shape();
+
+    m_extremumMarkerShape = new AIS_Shape(shape);
+    m_extremumMarkerShape->SetDisplayMode(AIS_Shaded);
+    m_extremumMarkerShape->SetColor(Quantity_NOC_RED);
+    m_extremumMarkerShape->SetMaterial(Graphic3d_NOM_PLASTIC);
+
+    ctx->Display(m_extremumMarkerShape, false);
+
+    // 2. Étiquette textuelle 3D flottante avec détails précis
+    m_extremumLabel = new AIS_TextLabel();
+    QString labelText = QString("%1: %2 %3\nx = %4 m (ID: %5)")
+                            .arg(pt.quantityName)
+                            .arg(pt.value, 0, 'f', 2)
+                            .arg(pt.unit)
+                            .arg(pt.localPositionX, 0, 'f', 2)
+                            .arg(pt.elementId);
+    if (!pt.loadCaseOrCombo.isEmpty())
+    {
+        labelText += QString(" [%1]").arg(pt.loadCaseOrCombo);
+    }
+
+    m_extremumLabel->SetText(TCollection_ExtendedString(labelText.toUtf8().constData(), true));
+    gp_Pnt labelPos = pt.globalCoords.Translated(gp_Vec(0.0, 0.0, radius * 2.5));
+    m_extremumLabel->SetPosition(labelPos);
+    m_extremumLabel->SetColor(Quantity_NOC_YELLOW);
+    m_extremumLabel->SetHeight(15.0);
+
+    ctx->Display(m_extremumLabel, false);
+
+    // 3. Mise en surbrillance de l'élément porteur dans OccView et centrage caméra
+    if (m_occView && pt.elementId > 0)
+    {
+        if (pt.elementType == "Poutre")
+        {
+            m_occView->highlightBeam(pt.elementId);
+        }
+        else if (pt.elementType == "Poteau")
+        {
+            m_occView->highlightColumn(pt.elementId);
+        }
+        else if (pt.elementType == "Treillis")
+        {
+            m_occView->highlightTrussMember(pt.elementId);
+        }
+        else if (pt.elementType == "Câble")
+        {
+            m_occView->highlightCable(pt.elementId);
+        }
+        else
+        {
+            m_occView->highlightBeam(pt.elementId);
+        }
+        m_occView->fitSelection();
+    }
+
+    if (m_occView && m_occView->view())
+    {
+        m_occView->view()->Update();
+    }
+}
+
+void ResultsVisualManager::clearExtremumMarker()
+{
+    auto ctx = context();
+    if (!ctx) return;
+
+    if (!m_extremumMarkerShape.IsNull())
+    {
+        ctx->Remove(m_extremumMarkerShape, false);
+        m_extremumMarkerShape.Nullify();
+    }
+    if (!m_extremumLabel.IsNull())
+    {
+        ctx->Remove(m_extremumLabel, false);
+        m_extremumLabel.Nullify();
+    }
+    if (m_occView && m_occView->view())
+    {
+        m_occView->view()->Update();
+    }
 }
 
 } // namespace TSA::Viewer

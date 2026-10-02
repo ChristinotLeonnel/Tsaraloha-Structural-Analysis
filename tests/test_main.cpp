@@ -5,14 +5,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 94;
+    int expectedTotal = 108;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards]" << std::endl;
+            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc]" << std::endl;
             return 0;
         }
     }
@@ -83,8 +83,12 @@ int main(int argc, char* argv[])
         if (!runSuite_Supports(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "standards" || suiteFilter == "normative") {
-        std::cout << "\n--- [Suite 15/15] Normative Requirements, Annexes & Model Validation (Tests 76-84) ---" << std::endl;
+        std::cout << "\n--- [Suite 15/16] Normative Requirements, Annexes & Model Validation (Tests 76-84) ---" << std::endl;
         if (!runSuite_Standards(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "ndc" || suiteFilter == "report") {
+        std::cout << "\n--- [Suite 16/16] Professional NDC Report, Eurocodes & Extrema (Tests 85-89) ---" << std::endl;
+        if (!runSuite_NDCReport(passed)) allOk = false;
     }
 
     std::cout << "\n=================================================" << std::endl;
