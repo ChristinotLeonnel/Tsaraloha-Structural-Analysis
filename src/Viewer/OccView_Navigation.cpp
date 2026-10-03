@@ -1,4 +1,5 @@
 #include "OccView.h"
+#include "../Coordinate/GeometryTolerance.h"
 #include "SelectionManager.h"
 #include "../Model/Model.h"
 #include "../Model/Beam.h"
@@ -820,7 +821,7 @@ bool OccView::isIsolationActive() const noexcept
 
 double OccView::isolationTolerance() const noexcept
 {
-    return m_mode2DActive ? 0.05 : m_workPlane.isolationDistance();
+    return m_mode2DActive ? TSA::Coordinate::GeometryTolerance::planeMembership : m_workPlane.isolationDistance();
 }
 
 bool OccView::keepNodeUnderIsolation(int nodeId) const

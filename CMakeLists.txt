@@ -269,6 +269,7 @@ set(COORDINATE_SOURCES
     src/Coordinate/CylindricalCoordinates.h
     src/Coordinate/CylindricalCoordinates.cpp
     src/Coordinate/WorkPlane.h
+    src/Coordinate/GeometryTolerance.h
     src/Coordinate/WorkPlane.cpp
     src/Coordinate/WorkPlaneCoordinateSystem.h
     src/Coordinate/WorkPlaneCoordinateSystem.cpp
@@ -391,6 +392,8 @@ set(MODEL_CORE_SOURCES
     src/Model/ModelDiff.cpp
     src/Model/StructuralClipboard.h
     src/Model/StructuralClipboard.cpp
+    src/Model/SelectionQuery.h
+    src/Model/SelectionQuery.cpp
 )
 
 # --- Système de chargement et solveur OpenSees — [CORE] ------------------------

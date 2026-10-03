@@ -1,4 +1,5 @@
 #include "CoordinateSystem.h"
+#include "GeometryTolerance.h"
 #include "../Model/Model.h"
 #include <algorithm>
 #include <cmath>
@@ -368,7 +369,7 @@ void CoordinateSystem::deserializeFromJson(const std::string& json)
 std::vector<DetectedPlaneInfo> CoordinateSystem::detectStructuralPlanes(WorkPlaneAxis axis, const TSA::Model::Model* model) const
 {
     std::vector<DetectedPlaneInfo> result;
-    const double tol = 0.05; // 5 cm de tolérance pour le regroupement de plans proches
+    const double tol = GeometryTolerance::planeMembership; // regroupement des plans proches
 
     auto formatOffset = [](double val) {
         std::ostringstream oss;

@@ -1,3 +1,4 @@
+#include "../Coordinate/GeometryTolerance.h"
 #include "MainWindow.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
@@ -832,6 +833,55 @@ void MainWindow::createMenus()
     editMenu->addAction(m_actionRotate3D);
     editMenu->addSeparator();
     editMenu->addAction(m_actionSelectAll);
+    {
+        using TSA::Model::ElementKind;
+        namespace SQ = TSA::Model::SelectionQuery;
+
+        QAction* invertAct = editMenu->addAction(tr("&Inverser la sélection"));
+        invertAct->setShortcut(QKeySequence("Ctrl+I"));
+        connect(invertAct, &QAction::triggered, this, [this]() {
+            if (!m_model || !m_selectionManager) return;
+            applyElementSelection(SQ::invert(*m_model, m_selectionManager->selectedElements()), tr("Sélection inversée"));
+        });
+
+        QMenu* byType = editMenu->addMenu(tr("Sélectionner par &type"));
+        const std::pair<QString, ElementKind> kinds[] = {
+            { tr("Nœuds"), ElementKind::Node }, { tr("Poutres"), ElementKind::Beam },
+            { tr("Poteaux"), ElementKind::Column }, { tr("Dalles"), ElementKind::Slab },
+            { tr("Voiles"), ElementKind::Wall }, { tr("Fondations"), ElementKind::Foundation },
+            { tr("Barres de treillis"), ElementKind::TrussMember }, { tr("Câbles"), ElementKind::Cable } };
+        for (const auto& [label, kind] : kinds)
+        {
+            connect(byType->addAction(label), &QAction::triggered, this, [this, label = label, kind = kind]() {
+                if (m_model) applyElementSelection(SQ::byKind(*m_model, kind), label);
+            });
+        }
+
+        QAction* sameSection = editMenu->addAction(tr("Même &section que la sélection"));
+        connect(sameSection, &QAction::triggered, this, [this]() {
+            if (!m_model || !m_selectionManager) return;
+            applyElementSelection(SQ::sameSection(*m_model, m_selectionManager->selectedElements()), tr("Même section"));
+        });
+        QAction* sameMaterial = editMenu->addAction(tr("Même &matériau que la sélection"));
+        connect(sameMaterial, &QAction::triggered, this, [this]() {
+            if (!m_model || !m_selectionManager) return;
+            applyElementSelection(SQ::sameMaterial(*m_model, m_selectionManager->selectedElements()), tr("Même matériau"));
+        });
+        QAction* onLevel = editMenu->addAction(tr("Éléments du &niveau actif"));
+        connect(onLevel, &QAction::triggered, this, [this]() {
+            if (!m_model || !m_viewportContainer) return;
+            applyElementSelection(SQ::atElevation(*m_model, m_viewportContainer->activeLevelElevation(),
+                                                  TSA::Coordinate::GeometryTolerance::planeMembership),
+                                  tr("Niveau actif"));
+        });
+        QAction* onPlane = editMenu->addAction(tr("Éléments du &plan de travail actif"));
+        connect(onPlane, &QAction::triggered, this, [this]() {
+            if (!m_model || !m_occView) return;
+            applyElementSelection(SQ::onWorkPlane(*m_model, m_occView->activeWorkPlane(),
+                                                  TSA::Coordinate::GeometryTolerance::planeMembership),
+                                  tr("Plan de travail actif"));
+        });
+    }
     editMenu->addSeparator();
     editMenu->addAction(m_actionDelete);
 
@@ -1734,6 +1784,29 @@ void MainWindow::createDockWindows()
         if (m_statusInfo)
         {
             m_statusInfo->setText(tr("Ready"));
+        }
+    });
+
+    // Sélection ensembliste (tout sélectionner, inverser, par type...) : surbrillance de tout
+    // l'ensemble en une passe, propriétés de l'élément principal, arbre désélectionné (sélectionner
+    // des milliers d'items dans l'arbre serait coûteux et illisible).
+    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::multipleSelectionChanged, this, [this]() {
+        m_modelTree->clearTreeSelection();
+        m_occView->detachManipulator();
+        m_occView->clearSelectedElementLocalAxes();
+        m_occView->highlightSelection();
+        const int id = m_selectionManager->primarySelectedId();
+        switch (m_selectionManager->currentSelectionType())
+        {
+        case TSA::Viewer::SelectionType::Node: m_propertyPanel->showNodeProperties(id); break;
+        case TSA::Viewer::SelectionType::Beam: m_propertyPanel->showBeamProperties(id); break;
+        case TSA::Viewer::SelectionType::Column: m_propertyPanel->showColumnProperties(id); break;
+        case TSA::Viewer::SelectionType::Slab: m_propertyPanel->showSlabProperties(id); break;
+        case TSA::Viewer::SelectionType::Wall: m_propertyPanel->showWallProperties(id); break;
+        case TSA::Viewer::SelectionType::Foundation: m_propertyPanel->showFoundationProperties(id); break;
+        case TSA::Viewer::SelectionType::TrussMember: m_propertyPanel->showTrussMemberProperties(id); break;
+        case TSA::Viewer::SelectionType::Cable: m_propertyPanel->showCableProperties(id); break;
+        default: m_propertyPanel->clearProperties(); break;
         }
     });
 

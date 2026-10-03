@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include "../Model/SelectionQuery.h"
 #include <QPointer>
 #include <memory>
 #include <vector>
@@ -90,6 +91,8 @@ private slots:
     void onFitAll();
     void onResetView();
     void onActionSelectAll();
+    /// Applique une sélection ensembliste (SelectionQuery) et resynchronise viewport / panneaux.
+    void applyElementSelection(const TSA::Model::ElementSet& elements, const QString& description);
 
     // Grille 3D & Niveaux
     void onNewGrid();

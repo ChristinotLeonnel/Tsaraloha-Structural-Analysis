@@ -910,60 +910,22 @@ void MainWindow::onActionDeleteSelected()
 
 void MainWindow::onActionSelectAll()
 {
-    if (!m_selectionManager || !m_model)
+    if (!m_model)
         return;
+    applyElementSelection(TSA::Model::SelectionQuery::all(*m_model), tr("Tout sélectionné"));
+}
 
-    m_selectionManager->clearSelection();
-
-    // Sélectionner tous les nœuds
-    for (const auto& [id, node] : m_model->nodes())
-    {
-        m_selectionManager->selectNode(id, true);
-    }
-    // Sélectionner toutes les poutres
-    for (const auto& [id, beam] : m_model->beams())
-    {
-        m_selectionManager->selectBeam(id, true);
-    }
-    // Sélectionner tous les poteaux
-    for (const auto& [id, col] : m_model->columns())
-    {
-        m_selectionManager->selectColumn(id, true);
-    }
-    // Sélectionner toutes les dalles
-    for (const auto& [id, slab] : m_model->slabs())
-    {
-        m_selectionManager->selectSlab(id, true);
-    }
-    // Sélectionner tous les voiles
-    for (const auto& [id, wall] : m_model->walls())
-    {
-        m_selectionManager->selectWall(id, true);
-    }
-    // Sélectionner toutes les fondations
-    for (const auto& [id, f] : m_model->foundations())
-    {
-        m_selectionManager->selectFoundation(id, true);
-    }
-    // Sélectionner toutes les barres de treillis
-    for (const auto& [id, tr] : m_model->trussMembers())
-    {
-        m_selectionManager->selectTrussMember(id, true);
-    }
-    // Sélectionner tous les câbles
-    for (const auto& [id, c] : m_model->cables())
-    {
-        m_selectionManager->selectCable(id, true);
-    }
-
-    size_t total = m_selectionManager->totalSelectedCount();
-    if (m_occView)
-    {
-        m_occView->update();
-    }
+void MainWindow::applyElementSelection(const TSA::Model::ElementSet& elements, const QString& description)
+{
+    if (!m_selectionManager)
+        return;
+    // Une seule mise à jour : auparavant « Tout sélectionner » appelait selectX() par élément,
+    // chacun émettant ses signaux et redessinant le viewport (gel sur les grands modèles), et
+    // seul le dernier élément restait en surbrillance.
+    m_selectionManager->selectElements(elements);
     if (m_statusInfo)
     {
-        m_statusInfo->setText(tr("Tout sélectionné : %1 élément(s)").arg(total));
+        m_statusInfo->setText(tr("%1 : %2 élément(s)").arg(description).arg(m_selectionManager->totalSelectedCount()));
     }
 }
 

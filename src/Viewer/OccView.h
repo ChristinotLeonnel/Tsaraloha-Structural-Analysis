@@ -113,6 +113,8 @@ public:
     void highlightTrussMember(int memberId);
     void highlightCable(int cableId);
     void clearHighlight();
+    /// Surbrillance de toute la sélection courante du SelectionManager, en une passe et un redraw.
+    void highlightSelection();
 
     TSA::Viewer::SelectionManager* selectionManager() const { return m_selectionManager; }
 
