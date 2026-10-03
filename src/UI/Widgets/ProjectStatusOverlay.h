@@ -4,9 +4,7 @@
 #include <QImage>
 #include <memory>
 
-namespace TSA::Model {
-class Model;
-}
+#include "../../Model/Model.h"
 
 namespace TSA::Grid {
 class GridManager;
@@ -47,18 +45,18 @@ private:
 };
 
 /**
- * @brief Overlay HUD professionnel "ÉTAT DU PROJET" et Logo TSA
- * s'affichant en incrustation sur le viewport 3D conformément aux standards CAO.
+ * @brief Panneau CAD "ÉTAT DU PROJET" professionnel
+ * observant directement le modèle structural unique source de vérité.
  */
-class ProjectStatusOverlay : public QWidget
+class ProjectStatusOverlay : public QWidget, public TSA::Model::IModelObserver
 {
     Q_OBJECT
 
 public:
     explicit ProjectStatusOverlay(OccView* occView, QWidget* parent = nullptr);
-    ~ProjectStatusOverlay() override = default;
+    ~ProjectStatusOverlay() override;
 
-    void setModel(const TSA::Model::Model* model);
+    void setModel(TSA::Model::Model* model);
     void setGridManager(const TSA::Grid::GridManager* gridManager);
     void setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
     void setProjectInfo(const QString& projectName, const QString& filePath);
@@ -68,6 +66,33 @@ public:
 
     bool isCollapsed() const { return m_isCollapsed; }
     void setCollapsed(bool collapsed);
+
+    // TSA::Model::IModelObserver implementation
+    void onNodeAdded(const TSA::Model::Node&) override { refreshStatus(); }
+    void onNodeModified(const TSA::Model::Node&) override { refreshStatus(); }
+    void onNodeRemoved(int) override { refreshStatus(); }
+    void onBeamAdded(const TSA::Model::Beam&) override { refreshStatus(); }
+    void onBeamModified(const TSA::Model::Beam&) override { refreshStatus(); }
+    void onBeamRemoved(int) override { refreshStatus(); }
+    void onColumnAdded(const TSA::Model::Column&) override { refreshStatus(); }
+    void onColumnModified(const TSA::Model::Column&) override { refreshStatus(); }
+    void onColumnRemoved(int) override { refreshStatus(); }
+    void onSlabAdded(const TSA::Model::Slab&) override { refreshStatus(); }
+    void onSlabModified(const TSA::Model::Slab&) override { refreshStatus(); }
+    void onSlabRemoved(int) override { refreshStatus(); }
+    void onWallAdded(const TSA::Model::Wall&) override { refreshStatus(); }
+    void onWallModified(const TSA::Model::Wall&) override { refreshStatus(); }
+    void onWallRemoved(int) override { refreshStatus(); }
+    void onFoundationAdded(const TSA::Model::Foundation&) override { refreshStatus(); }
+    void onFoundationModified(const TSA::Model::Foundation&) override { refreshStatus(); }
+    void onFoundationRemoved(int) override { refreshStatus(); }
+    void onCableAdded(const TSA::Model::Cable&) override { refreshStatus(); }
+    void onCableModified(const TSA::Model::Cable&) override { refreshStatus(); }
+    void onCableRemoved(int) override { refreshStatus(); }
+    void onTrussMemberAdded(const TSA::Model::TrussMember&) override { refreshStatus(); }
+    void onTrussMemberModified(const TSA::Model::TrussMember&) override { refreshStatus(); }
+    void onTrussMemberRemoved(int) override { refreshStatus(); }
+    void onModelCleared() override { refreshStatus(); }
 
 signals:
     void overlayToggled(bool visible);
@@ -84,7 +109,7 @@ private:
 
 private:
     OccView* m_occView = nullptr;
-    const TSA::Model::Model* m_model = nullptr;
+    TSA::Model::Model* m_model = nullptr;
     const TSA::Grid::GridManager* m_gridManager = nullptr;
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
 

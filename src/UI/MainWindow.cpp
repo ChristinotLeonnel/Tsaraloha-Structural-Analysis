@@ -33,6 +33,7 @@
 #include "../Diagnostics/DiagnosticReport.h"
 #include "Theme/ThemeManager.h"
 #include "Dialogs/HelpDialog.h"
+#include "Widgets/ProjectStatusOverlay.h"
 #include "Dialogs/StructurePresetDialog.h"
 #include "Dialogs/BarCreationDialog.h"
 #include "Dialogs/CableCreationDialog.h"
@@ -1370,11 +1371,17 @@ void MainWindow::onActionNew()
     if (m_selectionManager)
         m_selectionManager->clearSelection();
 
+    if (m_projectStatusWidget)
+    {
+        m_projectStatusWidget->setModel(m_model.get());
+        m_projectStatusWidget->setProjectInfo(tr("Nouveau Projet"), "");
+        m_projectStatusWidget->refreshStatus();
+    }
+
     if (m_occView)
     {
-        m_occView->setProjectInfo(tr("Nouveau Projet"), "");
         m_occView->rebuildGrid();
-        m_occView->resetView();
+        m_occView->viewIsometric();
     }
 
     if (m_viewportContainer && m_model && m_model->levelManager())
@@ -1535,11 +1542,17 @@ bool MainWindow::loadFile(const QString& path)
         projName = QFileInfo(path).baseName();
     }
 
+    if (m_projectStatusWidget)
+    {
+        m_projectStatusWidget->setModel(m_model.get());
+        m_projectStatusWidget->setProjectInfo(projName, path);
+        m_projectStatusWidget->refreshStatus();
+    }
+
     if (m_occView)
     {
-        m_occView->setProjectInfo(projName, path);
         m_occView->rebuildGrid();
-        m_occView->fitAll();
+        m_occView->fitModel();
     }
 
     if (m_viewportContainer && m_model->levelManager())
@@ -1611,6 +1624,16 @@ void MainWindow::applyTheme(bool dark)
     if (m_occView)
     {
         m_occView->setDarkMode(dark);
+    }
+
+    if (m_projectStatusWidget)
+    {
+        m_projectStatusWidget->setDarkMode(dark);
+    }
+
+    if (m_statusLogo)
+    {
+        m_statusLogo->setDarkMode(dark);
     }
 
     if (m_consoleDock)

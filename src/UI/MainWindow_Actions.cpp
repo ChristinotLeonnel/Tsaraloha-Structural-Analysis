@@ -22,6 +22,7 @@
 #include "Dialogs/CableCreationDialog.h"
 #include "Theme/ThemeManager.h"
 #include "WindowManager/WindowManager.h"
+#include "Widgets/ProjectStatusOverlay.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -1260,6 +1261,21 @@ void MainWindow::createDockWindows()
     tabifyDockWidget(m_propertiesDock, m_projectionViewDock);
     m_propertiesDock->raise();
 
+    // 5. Dock droit tabifié : ÉTAT DU PROJET
+    m_projectStatusDock = new QDockWidget(tr("ÉTAT DU PROJET"), this);
+    m_projectStatusDock->setObjectName("ProjectStatusDock");
+    m_projectStatusDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    m_projectStatusWidget = new TSA::UI::ProjectStatusOverlay(m_occView, m_projectStatusDock);
+    m_projectStatusWidget->setModel(m_model.get());
+    m_projectStatusWidget->setGridManager(m_gridManager.get());
+    m_projectStatusDock->setWidget(m_projectStatusWidget);
+    m_projectStatusDock->setMinimumWidth(280);
+    m_projectStatusDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
+    addDockWidget(Qt::RightDockWidgetArea, m_projectStatusDock);
+    tabifyDockWidget(m_propertiesDock, m_projectStatusDock);
+    m_propertiesDock->raise();
+
     if (m_occView)
     {
         connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::standardViewRequested,
@@ -1794,6 +1810,10 @@ void MainWindow::createStatusBar()
 
     m_statusInfo = new QLabel(tr("Prêt"), this);
     bar->addPermanentWidget(m_statusInfo);
+
+    m_statusLogo = new TSA::UI::TSALogoOverlay(this);
+    m_statusLogo->setDarkMode(TSA::UI::ThemeManager::instance().isDarkMode());
+    bar->addPermanentWidget(m_statusLogo);
 
     // Synchronisation du plan de travail et de l'historique caméra
     connect(m_occView, &OccView::workPlaneChanged, this, &MainWindow::onWorkPlaneChanged);

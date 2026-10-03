@@ -19,7 +19,6 @@
 #include "../Geometry/FoundationGeometry.h"
 #include "../Geometry/CableGeometry3D.h"
 #include "../Geometry/SupportGeometry.h"
-#include "../UI/Widgets/ProjectStatusOverlay.h"
 
 #include <AIS_Shape.hxx>
 #include <AIS_TextLabel.hxx>
@@ -705,12 +704,6 @@ void OccView::rebuildAllShapes()
 
     m_context->UpdateCurrentViewer();
     fitAll();
-
-    if (m_projectStatusOverlay)
-    {
-        m_projectStatusOverlay->refreshStatus();
-    }
-    updateOverlayPositions();
 }
 
 void OccView::updateNodeShape(int nodeId, bool redrawImmediately)

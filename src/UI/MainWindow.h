@@ -43,6 +43,8 @@ namespace TSA::UI
     class ProjectionViewDock;
     class ResultsDockWidget;
     class WindowManager;
+    class ProjectStatusOverlay;
+    class TSALogoOverlay;
 }
 
 class OccView;
@@ -180,6 +182,8 @@ private:
     TSA::UI::LogConsoleDock* m_consoleDock = nullptr;
     TSA::UI::ProjectionViewDock* m_projectionViewDock = nullptr;
     TSA::UI::ResultsDockWidget* m_resultsDock = nullptr;
+    QDockWidget* m_projectStatusDock = nullptr;
+    TSA::UI::ProjectStatusOverlay* m_projectStatusWidget = nullptr;
     TSA::Analysis::AnalysisParameters m_lastAnalysisParams;
 
     QLabel*  m_statusProject = nullptr;
@@ -189,6 +193,7 @@ private:
     QLabel*  m_statusCoordinates = nullptr;
     QLabel*  m_statusCoordinatesLocal = nullptr;
     QLabel*  m_statusInfo = nullptr;
+    TSA::UI::TSALogoOverlay* m_statusLogo = nullptr;
 
     // Actions Fichier
     QAction* m_actionNew = nullptr;

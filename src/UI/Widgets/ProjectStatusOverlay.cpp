@@ -201,14 +201,29 @@ ProjectStatusOverlay::ProjectStatusOverlay(OccView* occView, QWidget* parent)
     : QWidget(parent)
     , m_occView(occView)
 {
-    setAttribute(Qt::WA_NativeWindow, true);
     setupUi();
     updateTheme();
 }
 
-void ProjectStatusOverlay::setModel(const TSA::Model::Model* model)
+ProjectStatusOverlay::~ProjectStatusOverlay()
 {
+    if (m_model)
+    {
+        m_model->removeObserver(this);
+    }
+}
+
+void ProjectStatusOverlay::setModel(TSA::Model::Model* model)
+{
+    if (m_model)
+    {
+        m_model->removeObserver(this);
+    }
     m_model = model;
+    if (m_model)
+    {
+        m_model->addObserver(this);
+    }
     if (m_minimap) m_minimap->setModel(model);
     refreshStatus();
 }
@@ -478,9 +493,8 @@ void ProjectStatusOverlay::updateTheme()
 TSALogoOverlay::TSALogoOverlay(QWidget* parent)
     : QWidget(parent)
 {
-    setFixedSize(96, 38);
+    setFixedSize(125, 22);
     setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    setAttribute(Qt::WA_NativeWindow, true);
 }
 
 void TSALogoOverlay::setDarkMode(bool dark)
@@ -495,33 +509,33 @@ void TSALogoOverlay::paintEvent(QPaintEvent* /*event*/)
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
-    // Fond badge très discret
-    QColor bg = m_isDarkMode ? QColor(15, 23, 42, 140) : QColor(255, 255, 255, 160);
-    QColor border = m_isDarkMode ? QColor(51, 65, 85, 120) : QColor(203, 213, 225, 140);
+    // Fond badge discret pour barre d'état
+    QColor bg = m_isDarkMode ? QColor(30, 41, 59, 140) : QColor(241, 245, 249, 160);
+    QColor border = m_isDarkMode ? QColor(51, 65, 85, 160) : QColor(203, 213, 225, 180);
 
     painter.setBrush(bg);
     painter.setPen(QPen(border, 1.0));
-    painter.drawRoundedRect(QRectF(1, 1, width() - 2, height() - 2), 4, 4);
+    painter.drawRoundedRect(QRectF(1, 1, width() - 2, height() - 2), 3, 3);
 
     // Rendu vectoriel du logo officiel TSA depuis resources.qrc
     QString logoPath = m_isDarkMode ? ":/icons/TSA_light.svg" : ":/icons/TSA.svg";
     QSvgRenderer renderer(logoPath);
     if (renderer.isValid())
     {
-        QRectF iconRect(6, 6, 26, 26);
+        QRectF iconRect(4, 3, 16, 16);
         renderer.render(&painter, iconRect);
     }
 
     // Libellé officiel TSA
     painter.setPen(m_isDarkMode ? QColor(241, 245, 249, 220) : QColor(15, 23, 42, 220));
-    QFont font("Segoe UI", 9, QFont::Bold);
+    QFont font("Segoe UI", 8, QFont::Bold);
     painter.setFont(font);
-    painter.drawText(QRectF(36, 5, 56, 16), Qt::AlignLeft | Qt::AlignVCenter, "TSA");
+    painter.drawText(QRectF(24, 1, 30, 20), Qt::AlignLeft | Qt::AlignVCenter, "TSA");
 
-    painter.setPen(m_isDarkMode ? QColor(148, 163, 184, 180) : QColor(100, 116, 139, 180));
-    QFont subFont("Segoe UI", 6, QFont::DemiBold);
+    painter.setPen(m_isDarkMode ? QColor(148, 163, 184, 200) : QColor(100, 116, 139, 200));
+    QFont subFont("Segoe UI", 7, QFont::Normal);
     painter.setFont(subFont);
-    painter.drawText(QRectF(36, 20, 56, 12), Qt::AlignLeft | Qt::AlignVCenter, "STRUCTURAL");
+    painter.drawText(QRectF(52, 1, 70, 20), Qt::AlignLeft | Qt::AlignVCenter, "CAD v1.0");
 }
 
 } // namespace TSA::UI
