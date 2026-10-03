@@ -5,6 +5,7 @@
 #include "../Coordinate/WorkPlane.h"
 #include "../Coordinate/WorkPlaneManager.h"
 #include "../Coordinate/LevelManager.h"
+#include "../Coordinate/CoordinateSystem.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
 #include "ModelTree/ModelTreeWidget.h"
@@ -22,6 +23,9 @@
 #include "Dialogs/CableCreationDialog.h"
 #include "Theme/ThemeManager.h"
 #include "WindowManager/WindowManager.h"
+#include "Widgets/ProjectStatusOverlay.h"
+#include "Diagrams/Diagram2DWidget.h"
+#include "../NDC/NDCViewerWidget.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -778,21 +782,6 @@ void MainWindow::createActions()
     m_actionNoteDeCalcul->setShortcut(QKeySequence(Qt::Key_F8));
     connect(m_actionNoteDeCalcul, &QAction::triggered, this, &MainWindow::onActionNoteDeCalcul);
 
-    m_actionPortSingle = new QAction(tr("Vue &Unique (1)"), this);
-    connect(m_actionPortSingle, &QAction::triggered, this, &MainWindow::onPortLayoutSingle);
-
-    m_actionPortSplitH = new QAction(tr("Double &Horizontale (2 H)"), this);
-    connect(m_actionPortSplitH, &QAction::triggered, this, &MainWindow::onPortLayoutSplitH);
-
-    m_actionPortSplitV = new QAction(tr("Double &Verticale (2 V)"), this);
-    connect(m_actionPortSplitV, &QAction::triggered, this, &MainWindow::onPortLayoutSplitV);
-
-    m_actionPortGrid2x2 = new QAction(tr("&Grille 2x2 (4 Vues)"), this);
-    connect(m_actionPortGrid2x2, &QAction::triggered, this, &MainWindow::onPortLayoutGrid2x2);
-
-    m_actionPortTabbed = new QAction(tr("&Onglets"), this);
-    connect(m_actionPortTabbed, &QAction::triggered, this, &MainWindow::onPortLayoutTabbed);
-
     m_actionResultsDisp = new QAction(tr("Déformée && &Déplacements"), this);
     m_actionResultsDisp->setIcon(QIcon(":/icons/results_disp.svg"));
     m_actionResultsDisp->setToolTip(tr("Afficher la déformée amplifiée et les déplacements nodaux"));
@@ -935,13 +924,6 @@ void MainWindow::createMenus()
     camSub->addAction(m_actionFitAll);
     resMenu->addSeparator();
     resMenu->addAction(m_actionNoteDeCalcul);
-    resMenu->addSeparator();
-    QMenu* portSub = resMenu->addMenu(tr("Disposition Multi-Vues"));
-    portSub->addAction(m_actionPortSingle);
-    portSub->addAction(m_actionPortSplitH);
-    portSub->addAction(m_actionPortSplitV);
-    portSub->addAction(m_actionPortGrid2x2);
-    portSub->addAction(m_actionPortTabbed);
 
     // 7. Menu Affichage
     QMenu* viewMenu = menuBar()->addMenu(tr("&Affichage"));
@@ -1116,12 +1098,6 @@ void MainWindow::createRibbon()
     acts.actionFitDeformed = m_actionFitDeformed;
     acts.actionOpenNDC = m_actionNoteDeCalcul;
 
-    acts.actionPortSingle = m_actionPortSingle;
-    acts.actionPortSplitH = m_actionPortSplitH;
-    acts.actionPortSplitV = m_actionPortSplitV;
-    acts.actionPortGrid2x2 = m_actionPortGrid2x2;
-    acts.actionPortTabbed = m_actionPortTabbed;
-
     acts.actionView3D = m_actionView3D;
     acts.actionViewXY = m_actionViewXY;
     acts.actionViewXZ = m_actionViewXZ;
@@ -1260,12 +1236,29 @@ void MainWindow::createDockWindows()
     tabifyDockWidget(m_propertiesDock, m_projectionViewDock);
     m_propertiesDock->raise();
 
+    // 5. Dock droit tabifié : ÉTAT DU PROJET
+    m_projectStatusDock = new QDockWidget(tr("ÉTAT DU PROJET"), this);
+    m_projectStatusDock->setObjectName("ProjectStatusDock");
+    m_projectStatusDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    m_projectStatusWidget = new TSA::UI::ProjectStatusOverlay(m_occView, m_projectStatusDock);
+    m_projectStatusWidget->setModel(m_model.get());
+    m_projectStatusWidget->setGridManager(m_gridManager.get());
+    m_projectStatusDock->setWidget(m_projectStatusWidget);
+    m_projectStatusDock->setMinimumWidth(280);
+    m_projectStatusDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
+    addDockWidget(Qt::RightDockWidgetArea, m_projectStatusDock);
+    tabifyDockWidget(m_propertiesDock, m_projectStatusDock);
+    m_propertiesDock->raise();
+
     if (m_occView)
     {
         connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::standardViewRequested,
                 m_occView, &OccView::applyStandardView);
         connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::projectionModeRequested,
                 m_occView, &OccView::setProjectionMode);
+        connect(m_occView, &OccView::projectionModeChanged,
+                m_projectionViewDock, &TSA::UI::ProjectionViewDock::syncProjectionMode);
         connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::projectionDirectionRequested,
                 m_occView, &OccView::setProjectionDirection);
         connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::alignViewToWorkPlaneRequested,
@@ -1337,6 +1330,35 @@ void MainWindow::createDockWindows()
     m_consoleDock = new TSA::UI::LogConsoleDock(this);
     m_consoleDock->toggleViewAction()->setIcon(QIcon(":/icons/console.svg"));
     addDockWidget(Qt::BottomDockWidgetArea, m_consoleDock);
+
+    // 7. Dock inférieur tabifié : DIAGRAMMES 2D & COURBES
+    m_diagramDock = new QDockWidget(tr("DIAGRAMMES 2D"), this);
+    m_diagramDock->setObjectName("DiagramDock");
+    m_diagramDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::RightDockWidgetArea);
+    m_diagramWidget = new TSA::UI::Diagram2DWidget(m_diagramDock);
+    m_diagramWidget->setModel(m_model.get());
+    m_diagramDock->setWidget(m_diagramWidget);
+    m_diagramDock->toggleViewAction()->setIcon(QIcon(":/icons/results_force.svg"));
+    addDockWidget(Qt::BottomDockWidgetArea, m_diagramDock);
+    if (m_consoleDock)
+    {
+        tabifyDockWidget(m_consoleDock, m_diagramDock);
+        m_consoleDock->raise();
+    }
+    m_diagramDock->hide();
+
+    // 8. Dock droit tabifié : NOTE DE CALCUL (NDC)
+    m_ndcDock = new QDockWidget(tr("NOTE DE CALCUL"), this);
+    m_ndcDock->setObjectName("NdcDock");
+    m_ndcDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    m_ndcWidget = new TSA::NDC::NDCViewerWidget(m_ndcDock);
+    m_ndcWidget->setModel(m_model.get());
+    m_ndcDock->setWidget(m_ndcWidget);
+    m_ndcDock->toggleViewAction()->setIcon(QIcon(":/icons/ndc_report.svg"));
+    addDockWidget(Qt::RightDockWidgetArea, m_ndcDock);
+    tabifyDockWidget(m_propertiesDock, m_ndcDock);
+    m_propertiesDock->raise();
+    m_ndcDock->hide();
 
     connect(m_consoleDock, &TSA::UI::LogConsoleDock::commandEntered, this, [this](const QString& cmd) {
         QString c = cmd.toUpper().trimmed();
@@ -1441,6 +1463,17 @@ void MainWindow::createDockWindows()
         m_selectionManager->clearSelection();
         m_occView->clearHighlight();
         m_propertyPanel->showLevelProperties(levelId);
+    });
+
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::workPlaneSelected, this, [this](int axis, double offset, const QString& name) {
+        if (m_viewportContainer)
+        {
+            m_viewportContainer->setActivePlane(static_cast<TSA::Coordinate::WorkPlaneAxis>(axis), offset);
+        }
+        else if (m_occView)
+        {
+            m_occView->setWorkPlaneAxisAndOffset(static_cast<TSA::Coordinate::WorkPlaneAxis>(axis), offset, name.toStdString());
+        }
     });
 
     connect(m_modelTree, &TSA::UI::ModelTreeWidget::nodeSelected, this, [this](int nodeId) {
@@ -1643,6 +1676,39 @@ void MainWindow::createDockWindows()
         }
     });
 
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::loadSelected, this, [this](int loadId) {
+        m_selectionManager->clearSelection();
+        m_occView->clearHighlight();
+        m_propertyPanel->showMemberLoadProperties(loadId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Charge #%1 sélectionnée").arg(loadId));
+        }
+    });
+
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::supportSelected, this, [this](int nodeId) {
+        m_selectionManager->clearSelection();
+        m_selectionManager->selectNode(nodeId);
+        m_occView->highlightNode(nodeId);
+        m_propertyPanel->showNodeProperties(nodeId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Appui sur Nœud N%1 sélectionné").arg(nodeId));
+        }
+    });
+
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::resultsSelected, this, [this]() {
+        if (m_resultsDock)
+        {
+            m_resultsDock->show();
+            m_resultsDock->raise();
+        }
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Résultats d'analyse"));
+        }
+    });
+
     connect(m_propertyPanel, &TSA::UI::PropertyPanel::elementModified, this, [this]() {
         m_modelTree->refreshAll();
         m_occView->update();
@@ -1720,26 +1786,67 @@ void MainWindow::createStatusBar()
 {
     QStatusBar* bar = statusBar();
 
+    // 1. Nom du fichier / Projet .tsa
+    // IMPORTANT : le QStatusBar impose comme largeur minimale la somme des tailles minimales
+    // de ses widgets. Tout label dont le texte varie doit donc avoir une largeur stable
+    // (setFixedWidth) ou une politique Ignored, sinon la fenêtre s'agrandit toute seule.
+    m_statusProject = new QLabel(tr("Sans titre.tsa"), this);
+    m_statusProject->setStyleSheet("font-weight: bold; color: #38bdf8; padding: 2px 10px; border-right: 1px solid #475569;");
+    m_statusProject->setMinimumWidth(120);
+    m_statusProject->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    bar->addWidget(m_statusProject);
+
+    // 2. Vue actuelle (ISO, Dessus, etc.)
+    m_statusView = new QLabel(tr("Vue ISO"), this);
+    m_statusView->setStyleSheet("font-weight: 500; color: #a78bfa; padding: 2px 10px; border-right: 1px solid #475569;");
+    bar->addWidget(m_statusView);
+
+    // 3. Unités de calcul et de modélisation
+    m_statusUnits = new QLabel(tr("kN, m"), this);
+    m_statusUnits->setStyleSheet("font-weight: 500; color: #34d399; padding: 2px 10px; border-right: 1px solid #475569;");
+    bar->addWidget(m_statusUnits);
+
+    // 4. Niveau actif
+    m_statusLevel = new QLabel(tr("Niveau : Tous"), this);
+    m_statusLevel->setStyleSheet("font-weight: 500; color: #fbbf24; padding: 2px 10px; border-right: 1px solid #475569;");
+    m_statusLevel->setMinimumWidth(110);
+    m_statusLevel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    bar->addWidget(m_statusLevel);
+
+    // 5. Coordonnées globales X, Y, Z
     m_statusCoordinates = new QLabel(tr("X: 0.000 m   Y: 0.000 m   Z: 0.000 m"), this);
-    m_statusCoordinates->setMinimumWidth(260);
+    m_statusCoordinates->setFixedWidth(330);
     m_statusCoordinates->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; padding: 2px 8px;");
     bar->addWidget(m_statusCoordinates);
 
     m_statusCoordinatesLocal = new QLabel(tr("Xwp: 0.000 m   Ywp: 0.000 m"), this);
-    m_statusCoordinatesLocal->setMinimumWidth(220);
+    m_statusCoordinatesLocal->setFixedWidth(250);
     m_statusCoordinatesLocal->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; padding: 2px 8px; color: #a78bfa;");
     bar->addWidget(m_statusCoordinatesLocal);
 
     m_statusWorkPlane = new QLabel(tr("Plan: XY (Z=0.00 m)"), this);
     m_statusWorkPlane->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #38bdf8; font-weight: bold;");
+    m_statusWorkPlane->setMinimumWidth(160);
+    m_statusWorkPlane->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     bar->addWidget(m_statusWorkPlane);
 
     m_statusSnap = new QLabel(tr("SNAP: ACTIF"), this);
     m_statusSnap->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #4ade80; font-weight: bold;");
+    m_statusSnap->setMinimumWidth(110);
+    m_statusSnap->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     bar->addWidget(m_statusSnap);
 
-    m_statusInfo = new QLabel(tr("Ready"), this);
-    bar->addPermanentWidget(m_statusInfo);
+    // Message d'information (survol, niveau actif...) : texte libre et potentiellement long
+    // => ne doit jamais contribuer à la largeur minimale de la fenêtre.
+    m_statusInfo = new QLabel(tr("Prêt"), this);
+    m_statusInfo->setMinimumWidth(150);
+    m_statusInfo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_statusInfo->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    bar->addPermanentWidget(m_statusInfo, 1);
+
+    m_statusLogo = new TSA::UI::TSALogoOverlay(this);
+    m_statusLogo->setDarkMode(TSA::UI::ThemeManager::instance().isDarkMode());
+    bar->addPermanentWidget(m_statusLogo);
 
     // Synchronisation du plan de travail et de l'historique caméra
     connect(m_occView, &OccView::workPlaneChanged, this, &MainWindow::onWorkPlaneChanged);
@@ -1751,9 +1858,25 @@ void MainWindow::createStatusBar()
     if (m_viewportContainer)
     {
         connect(m_viewportContainer, &TSA::UI::ViewportContainer::activeLevelChanged, this, [this](double elev, const QString& name) {
+            if (m_statusLevel)
+            {
+                m_statusLevel->setText(tr("Niveau : %1").arg(name.isEmpty() ? tr("Tous") : name));
+            }
             if (m_statusInfo)
             {
                 m_statusInfo->setText(tr("Niveau actif : %1 (Z=%2 m)").arg(name).arg(elev, 0, 'f', 2));
+            }
+        });
+
+        connect(m_viewportContainer, &TSA::UI::ViewportContainer::activeWorkPlaneChanged, this, [this](TSA::Coordinate::WorkPlaneAxis axis, double offset, const QString& name) {
+            QString axisStr = (axis == TSA::Coordinate::WorkPlaneAxis::Z) ? "Plan Z" : ((axis == TSA::Coordinate::WorkPlaneAxis::X) ? "Coupe X" : "Coupe Y");
+            if (m_statusLevel)
+            {
+                m_statusLevel->setText(tr("%1 : %2").arg(axisStr).arg(name.isEmpty() ? tr("Tous") : name));
+            }
+            if (m_statusInfo)
+            {
+                m_statusInfo->setText(tr("%1 actif : %2 (offset=%3 m)").arg(axisStr).arg(name).arg(offset, 0, 'f', 2));
             }
         });
     }

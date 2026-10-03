@@ -557,9 +557,14 @@ void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
     }
 
     emit workPlaneChanged(m_workPlane);
-    if (m_projectionManager.is2D())
+    if (m_mode2DActive || m_projectionManager.is2D())
     {
         m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
+        updateElementIsolation();
+        if (!m_view.IsNull())
+        {
+            m_view->FitAll();
+        }
     }
     if (!m_view.IsNull())
         m_view->Redraw();
@@ -574,6 +579,15 @@ void OccView::setWorkPlaneElevation(double elevation)
     m_gridRenderer.setActiveLevelElevation(elevation, grid, m_context);
     applyWorkPlaneTransformation();
     emit workPlaneChanged(m_workPlane);
+    if (m_mode2DActive || m_projectionManager.is2D())
+    {
+        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
+        updateElementIsolation();
+        if (!m_view.IsNull())
+        {
+            m_view->FitAll();
+        }
+    }
     if (!m_view.IsNull())
         m_view->Redraw();
 }
@@ -591,8 +605,36 @@ void OccView::setWorkPlaneType(TSA::Coordinate::WorkPlaneType type, double offse
     m_gridRenderer.setActiveLevelElevation(m_activeLevelZ, grid, m_context);
     applyWorkPlaneTransformation();
     emit workPlaneChanged(m_workPlane);
+    if (m_mode2DActive || m_projectionManager.is2D())
+    {
+        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
+        updateElementIsolation();
+        if (!m_view.IsNull())
+        {
+            m_view->FitAll();
+        }
+    }
     if (!m_view.IsNull())
         m_view->Redraw();
+}
+
+void OccView::setWorkPlaneAxisAndOffset(TSA::Coordinate::WorkPlaneAxis axis, double offset, const std::string& name)
+{
+    TSA::Coordinate::WorkPlaneType type = TSA::Coordinate::WorkPlaneType::GlobalXY;
+    std::string defaultName = "Plan Z";
+    if (axis == TSA::Coordinate::WorkPlaneAxis::X)
+    {
+        type = TSA::Coordinate::WorkPlaneType::GlobalYZ;
+        defaultName = "Coupe X";
+    }
+    else if (axis == TSA::Coordinate::WorkPlaneAxis::Y)
+    {
+        type = TSA::Coordinate::WorkPlaneType::GlobalXZ;
+        defaultName = "Coupe Y";
+    }
+
+    TSA::Coordinate::WorkPlane wp(type, name.empty() ? defaultName : name, offset);
+    setActiveWorkPlane(wp);
 }
 
 void OccView::setWorkPlaneVisible(bool visible)
@@ -727,10 +769,7 @@ void OccView::applyWorkPlaneTransformation()
         m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
     }
 
-    if (m_workPlane.isIsolated())
-    {
-        updateElementIsolation();
-    }
+    updateElementIsolation(); // applique, met à jour ou lève l'isolation (no-op si jamais appliquée)
 
     if (!m_view.IsNull())
     {
@@ -747,19 +786,226 @@ void OccView::setWorkPlaneIsolation(bool isolated, double distance)
         m_view->Redraw();
 }
 
+void OccView::savePre2DVisibility()
+{
+    // Seuls les drapeaux d'affichage sont mémorisés. La visibilité de chaque objet AIS se déduit
+    // entièrement de ces drapeaux et de l'isolation (voir updateElementIsolation). Mémoriser les
+    // handles AIS eux-mêmes était fragile : toute forme recréée ou supprimée pendant le mode 2D
+    // (modification, Undo, suppression) laissait un handle périmé qui était RÉAFFICHÉ en sortie
+    // du mode 2D (objet fantôme non sélectionnable, impossible à supprimer).
+    m_pre2DNodesVisible = m_nodesVisible;
+    m_pre2DNodeLabelsVisible = m_nodeLabelsVisible;
+    m_pre2DSupportsVisible = m_supportsVisible;
+    m_pre2DLoadsVisible = m_loadsVisible;
+    m_pre2DWorkPlaneAxesVisible = m_workPlaneAxesVisible;
+}
+
+void OccView::restorePre2DVisibility()
+{
+    m_nodesVisible = m_pre2DNodesVisible;
+    m_nodeLabelsVisible = m_pre2DNodeLabelsVisible;
+    m_supportsVisible = m_pre2DSupportsVisible;
+    m_loadsVisible = m_pre2DLoadsVisible;
+    m_workPlaneAxesVisible = m_pre2DWorkPlaneAxesVisible;
+
+    // m_mode2DActive est déjà faux : recalcul complet (restaure tout, ou conserve l'isolation
+    // de proximité du WorkPlane si elle est active).
+    updateElementIsolation();
+}
+
+bool OccView::isIsolationActive() const noexcept
+{
+    return m_mode2DActive || m_workPlane.isIsolated();
+}
+
+double OccView::isolationTolerance() const noexcept
+{
+    return m_mode2DActive ? 0.05 : m_workPlane.isolationDistance();
+}
+
+bool OccView::keepNodeUnderIsolation(int nodeId) const
+{
+    return !isIsolationActive() || isNodeOnActiveWorkPlane(nodeId, isolationTolerance());
+}
+
+bool OccView::keepLinearUnderIsolation(int startNodeId, int endNodeId) const
+{
+    return !isIsolationActive() || isLinearElementOnActiveWorkPlane(startNodeId, endNodeId, isolationTolerance());
+}
+
+bool OccView::keepSurfaceUnderIsolation(const std::vector<int>& nodeIds) const
+{
+    return !isIsolationActive() || isSurfaceElementOnActiveWorkPlane(nodeIds, isolationTolerance());
+}
+
+bool OccView::reapplyIsolationIfActive()
+{
+    if (!isIsolationActive() && !m_isolationApplied)
+        return false;
+    updateElementIsolation();
+    return true;
+}
+
+bool OccView::isPointOnActiveWorkPlane(const gp_Pnt& pt, double tol) const
+{
+    return std::abs(m_workPlane.distanceTo(pt)) <= tol;
+}
+
+bool OccView::isNodeOnActiveWorkPlane(int nodeId, double tol) const
+{
+    if (!m_model) return false;
+    const auto* n = m_model->getNode(nodeId);
+    if (!n) return false;
+    return isPointOnActiveWorkPlane(gp_Pnt(n->x(), n->y(), n->z()), tol);
+}
+
+bool OccView::isLinearElementOnActiveWorkPlane(int startNodeId, int endNodeId, double tol) const
+{
+    if (!m_model) return false;
+    const auto* n1 = m_model->getNode(startNodeId);
+    const auto* n2 = m_model->getNode(endNodeId);
+    if (!n1 || !n2) return false;
+
+    gp_Pnt p1(n1->x(), n1->y(), n1->z());
+    gp_Pnt p2(n2->x(), n2->y(), n2->z());
+
+    double u1 = 0, v1 = 0, w1 = 0;
+    double u2 = 0, v2 = 0, w2 = 0;
+    m_workPlane.toLocal(p1, u1, v1, w1);
+    m_workPlane.toLocal(p2, u2, v2, w2);
+
+    if (std::abs(w1) <= tol || std::abs(w2) <= tol)
+        return true;
+
+    if ((w1 < -tol && w2 > tol) || (w1 > tol && w2 < -tol))
+        return true;
+
+    return false;
+}
+
+bool OccView::isSurfaceElementOnActiveWorkPlane(const std::vector<int>& nodeIds, double tol) const
+{
+    if (!m_model || nodeIds.empty()) return false;
+
+    double minW = 1e12;
+    double maxW = -1e12;
+    bool hasNodeOnPlane = false;
+
+    for (int nid : nodeIds)
+    {
+        const auto* n = m_model->getNode(nid);
+        if (!n) continue;
+        gp_Pnt p(n->x(), n->y(), n->z());
+        double u = 0, v = 0, w = 0;
+        m_workPlane.toLocal(p, u, v, w);
+
+        if (std::abs(w) <= tol)
+        {
+            hasNodeOnPlane = true;
+        }
+        if (w < minW) minW = w;
+        if (w > maxW) maxW = w;
+    }
+
+    if (hasNodeOnPlane) return true;
+    if (minW < -tol && maxW > tol) return true;
+
+    return false;
+}
+
+void OccView::setMode2D(bool enabled)
+{
+    if (m_mode2DActive == enabled)
+    {
+        if (enabled && !m_view.IsNull())
+        {
+            m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
+            updateElementIsolation();
+            m_view->FitAll();
+            m_view->Redraw();
+        }
+        return;
+    }
+
+    m_mode2DActive = enabled;
+
+    if (m_mode2DActive)
+    {
+        // 1. Sauvegarder la caméra 3D courante et le type de projection
+        if (!m_view.IsNull() && !m_view->Camera().IsNull())
+        {
+            m_savedCamera3D = new Graphic3d_Camera(m_view->Camera());
+        }
+        m_savedWasOrtho = m_viewManager.isOrthographic();
+
+        // 2. Sauvegarder l'état exact de visibilité non-destructif de tous les objets
+        savePre2DVisibility();
+
+        // 3. Basculer en projection orthographique
+        m_viewManager.setOrthographic(true, m_view);
+
+        // 4. Orienter la caméra perpendiculairement au plan de travail actif
+        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
+
+        // 5. Afficher le plan de travail clairement
+        m_workPlaneVisible = true;
+        m_workPlane.setIsVisible(true);
+        updateWorkPlaneVisual();
+
+        // 6. Isoler les éléments du plan actif
+        updateElementIsolation();
+
+        // 7. Centrage automatique & Fit All restreint au contenu pertinent du plan
+        if (!m_view.IsNull())
+        {
+            m_view->FitAll();
+            m_view->Redraw();
+        }
+
+        m_projectionManager.setMode(TSA::Viewer::ProjectionMode::TwoD);
+    }
+    else
+    {
+        // 1. Restaurer la caméra 3D précédente
+        if (!m_savedCamera3D.IsNull() && !m_view.IsNull() && !m_view->Camera().IsNull())
+        {
+            m_view->Camera()->Copy(m_savedCamera3D);
+            m_savedCamera3D.Nullify();
+        }
+        m_viewManager.setOrthographic(m_savedWasOrtho, m_view);
+
+        // 2. Restaurer l'état de visibilité non-destructif initial
+        restorePre2DVisibility();
+
+        m_projectionManager.setMode(TSA::Viewer::ProjectionMode::ThreeD);
+
+        if (!m_view.IsNull())
+        {
+            m_view->Redraw();
+        }
+    }
+
+    emit mode2DChanged(m_mode2DActive);
+    emit projectionModeChanged(m_mode2DActive ? TSA::Viewer::ProjectionMode::TwoD : TSA::Viewer::ProjectionMode::ThreeD);
+    emit viewCameraChanged();
+}
+
 void OccView::updateElementIsolation()
 {
     if (m_context.IsNull() || !m_model)
         return;
 
-    bool isolate = m_workPlane.isIsolated();
-    double maxDist = m_workPlane.isolationDistance();
+    const bool isolate = isIsolationActive();
+    // Rien n'a été masqué par l'isolation et elle reste inactive : aucun travail.
+    if (!isolate && !m_isolationApplied)
+        return;
+    // Quand l'isolation vient d'être désactivée (case « Isoler le plan » décochée, sortie du
+    // mode 2D), cette passe réaffiche tout selon les seuls drapeaux d'affichage. Auparavant la
+    // fonction sortait immédiatement et les éléments masqués le restaient définitivement.
+    m_isolationApplied = isolate;
 
-    auto isNearPlane = [&](double x, double y, double z) {
-        if (!isolate) return true;
-        double d = std::abs(m_workPlane.distanceTo(gp_Pnt(x, y, z)));
-        return d <= maxDist;
-    };
+    const double tol = isolationTolerance();
+    auto linearKept = [&](int a, int b) { return !isolate || isLinearElementOnActiveWorkPlane(a, b, tol); };
 
     auto setShapeVisibility = [&](const Handle(AIS_InteractiveObject)& shape, bool visible) {
         if (shape.IsNull()) return;
@@ -775,93 +1021,111 @@ void OccView::updateElementIsolation()
         }
     };
 
+    // Cache : chaque nœud n'est testé qu'une fois par passe (nœuds, appuis, fondations, charges).
+    std::map<int, bool> nodeOnPlane;
+    auto nodeKept = [&](int nodeId) {
+        if (!isolate) return true;
+        auto it = nodeOnPlane.find(nodeId);
+        if (it != nodeOnPlane.end()) return it->second;
+        const bool k = isNodeOnActiveWorkPlane(nodeId, tol);
+        nodeOnPlane.emplace(nodeId, k);
+        return k;
+    };
+
+    // 1. Nœuds & libellés (filtre d'affichage des nœuds + isolation)
     for (const auto& [nid, shape] : m_nodeShapes)
     {
-        const auto* n = m_model->getNode(nid);
-        if (n)
+        const bool keep = isNodeVisibleByFilter(nid) && nodeKept(nid);
+        setShapeVisibility(shape, keep);
+        auto itLbl = m_nodeLabels.find(nid);
+        if (itLbl != m_nodeLabels.end())
+            setShapeVisibility(itLbl->second, keep && m_nodeLabelsVisible);
+    }
+
+    // 2. Appuis & libellés (n'étaient pas filtrés : symboles d'appui hors plan visibles en 2D)
+    for (const auto& [nid, shape] : m_supportShapes)
+        setShapeVisibility(shape, m_supportsVisible && nodeKept(nid));
+    for (const auto& [nid, lbl] : m_supportLabels)
+        setShapeVisibility(lbl, m_supportsVisible && m_supportLabelsVisible && nodeKept(nid));
+
+    // 3. Éléments linéaires
+    for (const auto& [id, shape] : m_beamShapes)
+    {
+        const auto* e = m_model->getBeam(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+    }
+    for (const auto& [id, shape] : m_columnShapes)
+    {
+        const auto* e = m_model->getColumn(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+    }
+    for (const auto& [id, shape] : m_trussShapes)
+    {
+        const auto* e = m_model->getTrussMember(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+    }
+    for (const auto& [id, shape] : m_cableShapes)
+    {
+        const auto* e = m_model->getCable(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+    }
+    for (const auto& [id, shape] : m_wallShapes)
+    {
+        const auto* e = m_model->getWall(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+    }
+
+    // 4. Éléments surfaciques & fondations
+    for (const auto& [id, shape] : m_slabShapes)
+    {
+        const auto* e = m_model->getSlab(id);
+        setShapeVisibility(shape, e && (!isolate || isSurfaceElementOnActiveWorkPlane(e->nodeIds(), tol)));
+    }
+    for (const auto& [id, shape] : m_foundationShapes)
+    {
+        const auto* e = m_model->getFoundation(id);
+        setShapeVisibility(shape, e && nodeKept(e->nodeId()));
+    }
+
+    // 5. Charges nodales
+    for (const auto& [nlId, shapes] : m_nodalLoadShapes)
+    {
+        const auto* nl = m_model->loadManager().getNodalLoad(nlId);
+        const bool keep = nl && m_loadsVisible && nodeKept(nl->nodeId());
+        for (const auto& sh : shapes)
+            setShapeVisibility(sh, keep);
+        auto itLbl = m_nodalLoadLabels.find(nlId);
+        if (itLbl != m_nodalLoadLabels.end())
+            setShapeVisibility(itLbl->second, keep && m_loadValuesVisible);
+    }
+
+    // 6. Charges sur barres : l'élément porteur dépend de targetType (poutre, poteau, treillis,
+    //    câble). Auparavant seuls poutres/poteaux étaient testés, avec confusion possible entre
+    //    une poutre et un poteau portant le même identifiant.
+    for (const auto& [mlId, shapes] : m_memberLoadShapes)
+    {
+        const auto* ml = m_model->loadManager().getMemberLoad(mlId);
+        bool keep = false;
+        if (ml && m_loadsVisible)
         {
-            bool keep = isNearPlane(n->x(), n->y(), n->z());
-            setShapeVisibility(shape, keep && m_nodesVisible);
-            auto itLbl = m_nodeLabels.find(nid);
-            if (itLbl != m_nodeLabels.end() && !itLbl->second.IsNull())
+            int a = -1, b = -1;
+            auto take = [&](const auto* host) {
+                if (host) { a = host->startNodeId(); b = host->endNodeId(); }
+            };
+            switch (ml->targetType())
             {
-                setShapeVisibility(itLbl->second, keep && m_nodesVisible && m_nodeLabelsVisible);
+            case TSA::Model::MemberTargetType::Beam:   take(m_model->getBeam(ml->elementId())); break;
+            case TSA::Model::MemberTargetType::Column: take(m_model->getColumn(ml->elementId())); break;
+            case TSA::Model::MemberTargetType::Truss:  take(m_model->getTrussMember(ml->elementId())); break;
+            case TSA::Model::MemberTargetType::Cable:  take(m_model->getCable(ml->elementId())); break;
             }
+            keep = a > 0 && b > 0 && linearKept(a, b);
         }
-    }
-
-    for (const auto& [bid, shape] : m_beamShapes)
-    {
-        const auto* b = m_model->getBeam(bid);
-        if (b)
-        {
-            const auto* n1 = m_model->getNode(b->startNodeId());
-            const auto* n2 = m_model->getNode(b->endNodeId());
-            bool keep = !isolate || (n1 && n2 && (isNearPlane(n1->x(), n1->y(), n1->z()) || isNearPlane(n2->x(), n2->y(), n2->z())));
-            setShapeVisibility(shape, keep);
-        }
-    }
-
-    for (const auto& [cid, shape] : m_columnShapes)
-    {
-        const auto* col = m_model->getColumn(cid);
-        if (col)
-        {
-            const auto* n1 = m_model->getNode(col->startNodeId());
-            const auto* n2 = m_model->getNode(col->endNodeId());
-            bool keep = !isolate || (n1 && n2 && (isNearPlane(n1->x(), n1->y(), n1->z()) || isNearPlane(n2->x(), n2->y(), n2->z())));
-            setShapeVisibility(shape, keep);
-        }
-    }
-
-    for (const auto& [sid, shape] : m_slabShapes)
-    {
-        const auto* slab = m_model->getSlab(sid);
-        if (slab)
-        {
-            bool keep = !isolate;
-            if (isolate)
-            {
-                for (int nid : slab->nodeIds())
-                {
-                    const auto* n = m_model->getNode(nid);
-                    if (n && isNearPlane(n->x(), n->y(), n->z())) { keep = true; break; }
-                }
-            }
-            setShapeVisibility(shape, keep);
-        }
-    }
-
-    for (const auto& [wid, shape] : m_wallShapes)
-    {
-        const auto* wall = m_model->getWall(wid);
-        if (wall)
-        {
-            bool keep = !isolate;
-            if (isolate)
-            {
-                const auto* n1 = m_model->getNode(wall->startNodeId());
-                const auto* n2 = m_model->getNode(wall->endNodeId());
-                if ((n1 && isNearPlane(n1->x(), n1->y(), n1->z())) ||
-                    (n2 && isNearPlane(n2->x(), n2->y(), n2->z())))
-                {
-                    keep = true;
-                }
-            }
-            setShapeVisibility(shape, keep);
-        }
-    }
-
-    for (const auto& [kid, shape] : m_cableShapes)
-    {
-        const auto* cab = m_model->getCable(kid);
-        if (cab)
-        {
-            const auto* n1 = m_model->getNode(cab->startNodeId());
-            const auto* n2 = m_model->getNode(cab->endNodeId());
-            bool keep = !isolate || (n1 && n2 && (isNearPlane(n1->x(), n1->y(), n1->z()) || isNearPlane(n2->x(), n2->y(), n2->z())));
-            setShapeVisibility(shape, keep);
-        }
+        for (const auto& sh : shapes)
+            setShapeVisibility(sh, keep);
+        auto itLbl = m_memberLoadLabels.find(mlId);
+        if (itLbl != m_memberLoadLabels.end())
+            setShapeVisibility(itLbl->second, keep && m_loadValuesVisible);
     }
 }
 
@@ -996,6 +1260,7 @@ void OccView::updateWorkPlaneVisual()
 
     if (!m_workPlaneVisible || !m_workPlane.isVisible())
     {
+        updateElementIsolation(); // un plan masqué peut rester isolant (ou cesser de l'être)
         if (!m_view.IsNull())
             m_view->Redraw();
         return;
@@ -1113,10 +1378,7 @@ void OccView::updateWorkPlaneVisual()
         attachManipulatorToWorkPlane();
     }
 
-    if (m_workPlane.isIsolated())
-    {
-        updateElementIsolation();
-    }
+    updateElementIsolation(); // applique, met à jour ou lève l'isolation (no-op si jamais appliquée)
 
     if (!m_view.IsNull())
     {
@@ -1365,6 +1627,13 @@ void OccView::setDarkMode(bool dark)
 
     if (!m_view.IsNull())
     {
+        m_view->TriedronDisplay(
+            Aspect_TOTP_LEFT_LOWER,
+            dark ? Quantity_NOC_WHITE : Quantity_NOC_BLACK,
+            0.1,
+            V3d_ZBUFFER
+        );
+
         if (dark)
         {
             Quantity_Color topColor(0.12, 0.14, 0.18, Quantity_TOC_RGB);
@@ -1490,6 +1759,15 @@ void OccView::setActiveLevelElevation(double z)
         TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
         applyWorkPlaneTransformation(); // simple transformation locale des objets AIS du plan, sans reconstruction
         emit workPlaneChanged(m_workPlane);
+    }
+    if (m_mode2DActive)
+    {
+        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
+        updateElementIsolation();
+        if (!m_view.IsNull())
+        {
+            m_view->FitAll();
+        }
     }
     if (!m_view.IsNull())
     {
@@ -1636,6 +1914,7 @@ void OccView::updateNodeVisibilities()
                 m_context->Erase(lbl, false);
         }
     }
+    reapplyIsolationIfActive(); // le filtre de nœuds ne doit pas réafficher les nœuds hors plan
     m_context->UpdateCurrentViewer();
     if (!m_view.IsNull())
     {
@@ -1708,6 +1987,7 @@ void OccView::setLoadsVisible(bool visible)
                 else m_context->Erase(lbl, false);
             }
         }
+        reapplyIsolationIfActive();
         m_context->UpdateCurrentViewer();
         if (!m_view.IsNull())
         {
@@ -1761,6 +2041,7 @@ void OccView::setLoadValuesVisible(bool visible)
                 else m_context->Erase(lbl, false);
             }
         }
+        reapplyIsolationIfActive();
         m_context->UpdateCurrentViewer();
         if (!m_view.IsNull())
         {
@@ -1805,12 +2086,7 @@ void OccView::pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)
 void OccView::setProjectionMode(TSA::Viewer::ProjectionMode mode)
 {
     m_projectionManager.setMode(mode);
-    if (mode == TSA::Viewer::ProjectionMode::TwoD)
-    {
-        m_viewManager.setOrthographic(true, m_view);
-        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
-    }
-    emit projectionModeChanged(mode);
+    setMode2D(mode == TSA::Viewer::ProjectionMode::TwoD);
 }
 
 void OccView::setProjectionDirection(TSA::Viewer::ProjectionDirection dir)

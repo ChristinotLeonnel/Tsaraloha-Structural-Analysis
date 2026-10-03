@@ -207,7 +207,7 @@ Pour maintenir la lisibilité sans surcharge artificielle, les marqueurs normali
 | **REQ-CALC-EC3-001** | Eurocodes | EN 1993 | Tab. 3.1 | Aciers S235/S355 et profilés normalisés IPE/HEA/HEB/UPN | `Section.cpp`, `Material.cpp` | `TSA_ModelElementsTests` | **IMPLEMENTED** |
 | **REQ-CALC-EC3-002** | Eurocodes | EN 1993 | §6.3 | Justification des barres aux instabilités (flambement, déversement) | `SteelDesignEC3.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
 | **REQ-CALC-CAB-001** | Câbles | EN 1993-1-11 | §5 & §6 | Câbles tendus, module d'Ernst, haubans, rentrée de mors | `CableStandards.cpp` | `TSA_CablesTests` | **IMPLEMENTED** |
-| **REQ-UI-PORT-001** | Ergonomie | ISO/IEC 25010 | §4.2.4 | Espace multi-ports réactif sans duplication mémoire du modèle | `PortAreaWidget.cpp` | `TSA_WindowManagerTests` | **IMPLEMENTED** |
+| **REQ-UI-PORT-001** | Ergonomie | ISO/IEC 25010 | §4.2.4 | Espace de travail CAD direct avec Viewport 3D principal unique | `ViewportContainer.cpp` | `TSA_WindowManagerTests` | **IMPLEMENTED** |
 | **REQ-NDC-GEN-001** | Rapport | IEEE Std 1063 | Justification | Note de calcul réglementaire certifiée HTML / Texte brut | `NDCGenerator.cpp` | `TSA_AllTests` | **IMPLEMENTED** |
 | **REQ-RES-META-001** | Résultats | ISO/IEC 25010 | §4.2.5 | Métadonnées d'exécution certifiées (Annexe Nationale, OpenSees, résidu max) | `ResultsModel.h`, `OpenSeesSolver.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |
 | **REQ-VV-BENCH-001** | Vérification & Validation | ISO/IEC/IEEE 29119 | Part. 2/3 | Benchmarks analytiques fermés (Euler-Bernoulli, Timoshenko, Navier) tol. <= 2% | `AnalyticalBenchmark.cpp` | `TSA_StandardsTests` | **IMPLEMENTED** |

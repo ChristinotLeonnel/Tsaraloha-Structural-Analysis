@@ -87,6 +87,12 @@ public:
 
     virtual void onModelDiffApplied(const ModelDiff& /*diff*/) {}
     virtual void onModelCleared() {}
+
+    /// Le modèle est en cours de destruction : l'observateur doit oublier son pointeur (et ne plus
+    /// appeler removeObserver). Sans cette notification, un observateur détruit après le modèle
+    /// (widget enfant de MainWindow détruit par ~QWidget, après les membres de MainWindow)
+    /// appelait removeObserver() sur un modèle libéré : violation d'accès à chaque fermeture.
+    virtual void onModelDestroyed() {}
 };
 
 class Model
@@ -104,6 +110,9 @@ public:
 
     TSA::Coordinate::WorkPlaneManager* workPlaneManager() { return m_workPlaneManager.get(); }
     const TSA::Coordinate::WorkPlaneManager* workPlaneManager() const { return m_workPlaneManager.get(); }
+
+    // Détection des plans de travail structurels (Z, X, Y)
+    std::vector<TSA::Coordinate::DetectedPlaneInfo> detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis axis) const;
 
     // Observateurs
     void addObserver(IModelObserver* observer);

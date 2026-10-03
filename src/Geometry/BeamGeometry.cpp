@@ -120,6 +120,7 @@ TopoDS_Shape BeamGeometry::createBeamShape(
         {
             gp_Ax2 axes(pA, gp_Dir(nZ), gp_Dir(nX));
             BRepPrimAPI_MakeCylinder cyl(axes, radius, length);
+            cyl.Build(); // construction paresseuse en OCCT : IsDone() est faux avant Build()
             if (cyl.IsDone() && !cyl.Shape().IsNull())
             {
                 return cyl.Shape();
@@ -291,6 +292,7 @@ TopoDS_Shape BeamGeometry::createBeamShape(
         {
             gp_Ax2 axes(pA, gp_Dir(nZ), gp_Dir(nX));
             BRepPrimAPI_MakeCylinder cyl(axes, ro, length);
+            cyl.Build(); // construction paresseuse en OCCT : IsDone() est faux avant Build()
             if (cyl.IsDone() && !cyl.Shape().IsNull())
             {
                 return cyl.Shape();
@@ -577,6 +579,10 @@ TopoDS_Shape BeamGeometry::createNodeShape(
 {
     gp_Pnt pt(node.x(), node.y(), node.z());
     BRepPrimAPI_MakeSphere sphere(pt, radius);
+    // La construction des primitives OCCT est paresseuse (Build() est appelé par Shape()) :
+    // tester IsDone() sans Build() préalable renvoyait toujours faux -> forme nulle, et aucun
+    // nœud n'était jamais affiché dans le viewport.
+    sphere.Build();
     if (!sphere.IsDone())
     {
         return TopoDS_Shape();

@@ -713,5 +713,56 @@ bool runSuite_Viewer(int& passed)
     }
 
 
+    // -------------------------------------------------------------------------
+    // TEST 93: Géométrie des nœuds (sphère OCCT non nulle)
+    // Régression : createNodeShape() testait IsDone() avant Shape() ; la construction des
+    // primitives OCCT étant paresseuse, la forme était toujours nulle -> aucun nœud affiché.
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 93: Forme 3D des nœuds ---" << std::endl;
+        TSA::Model::Node node(1, 2.0, 3.0, 4.0);
+        TopoDS_Shape sphere = TSA::Geometry::BeamGeometry::createNodeShape(node, 0.12);
+        TEST_CHECK(!sphere.IsNull(), "Test 93: la sphère du nœud n'est pas nulle");
+        Bnd_Box box;
+        BRepBndLib::Add(sphere, box);
+        double xmin, ymin, zmin, xmax, ymax, zmax;
+        box.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+        TEST_CHECK(approxEqual((xmin + xmax) * 0.5, 2.0, 1e-3) && approxEqual((zmin + zmax) * 0.5, 4.0, 1e-3),
+                   "Test 93: sphère centrée sur le nœud");
+        TEST_CHECK(approxEqual(xmax - xmin, 0.24, 1e-2), "Test 93: diamètre = 2 x rayon");
+        std::cout << "[PASS] Test 93: Forme 3D des nœuds" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 94: Primitives OCCT des builders (IsDone() avant Shape())
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 94: Primitives OCCT des builders ---" << std::endl;
+        TSA::Model::Node a(1, 0.0, 0.0, 0.0), b(2, 0.0, 0.0, 3.0);
+        // Comportement OCCT documenté par ce test : construction paresseuse des primitives.
+        BRepPrimAPI_MakeBox lazyBox(gp_Pnt(0, 0, 0), gp_Pnt(1, 1, 1));
+        BRepPrimAPI_MakeCylinder lazyCyl(gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1)), 0.2, 1.0);
+        std::cout << "  [OCCT] IsDone() avant Build() : box=" << lazyBox.IsDone()
+                  << " cylinder=" << lazyCyl.IsDone() << std::endl;
+        lazyBox.Build();
+        lazyCyl.Build();
+        TEST_CHECK(lazyBox.IsDone() && lazyCyl.IsDone(), "Test 94: primitives construites après Build()");
+
+        TSA::Model::Section circ = TSA::Model::Section::circular(0.40);
+        TopoDS_Shape col = TSA::Geometry::BeamGeometry::createBeamShape(a, b, circ, 0.0);
+        TEST_CHECK(!col.IsNull(), "Test 94: poteau circulaire non nul");
+        bool hasCyl = false;
+        for (TopExp_Explorer exp(col, TopAbs_FACE); exp.More() && !hasCyl; exp.Next())
+        {
+            Handle(Geom_Surface) surf = BRep_Tool::Surface(TopoDS::Face(exp.Current()));
+            hasCyl = !Handle(Geom_CylindricalSurface)::DownCast(surf).IsNull();
+        }
+        TEST_CHECK(hasCyl, "Test 94: le poteau circulaire est un vrai cylindre");
+        std::cout << "[PASS] Test 94: Primitives OCCT des builders" << std::endl;
+        passed++;
+    }
+
     return true;
 }
+

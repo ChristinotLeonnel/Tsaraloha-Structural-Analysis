@@ -4,7 +4,7 @@
 **Format :** TSA Binary Project File  
 **Extension native :** `.tsa`  
 **Magic Signature :** `TSAF` (`0x46415354` en little-endian)  
-**Version actuelle :** Spécification 1.0 (Major = 1, Minor = 0)  
+**Version actuelle :** Spécification 1.1 (Major = 1, Minor = 1) — ajout non cassant du chunk `LOAD` (2026-10-03)  
 
 ---
 
@@ -99,7 +99,7 @@ struct ChunkHeader {
 | `SECT` (`0x54434553`) | `CHUNK_SECT` | Catalogue de sections personnalisées |
 | `MATE` (`0x4554414D`) | `CHUNK_MATE` | Bibliothèque de matériaux personnalisés |
 | `SUPP` (`0x50505553`) | `CHUNK_SUPP` | Conditions aux limites et appuis nodaux |
-| `LOAD` (`0x44414F4C`) | `CHUNK_LOAD` | Cas de charges, combinaisons, charges nodales & linéiques |
+| `LOAD` (`0x44414F4C`) | `CHUNK_LOAD` | Cas de charges, combinaisons, charges nodales & linéiques — **écrit et lu depuis la spécification 1.1** (voir §5.x) |
 | `ANLY` (`0x594C4E41`) | `CHUNK_ANLY` | Paramètres et réglages de l'analyse par éléments finis (MEF) |
 | `RSLT` (`0x544C5352`) | `CHUNK_RSLT` | Résultats de calcul (déplacements, efforts internes N, Vy, Vz, Mt, My, Mz) |
 
@@ -150,6 +150,32 @@ Chaque élément filaire sérialise :
 
 ---
 
+### 5.x Charges (`CHUNK_LOAD`, spécification 1.1)
+
+Avant la spécification 1.1, ce chunk était déclaré mais **jamais écrit ni lu** : les cas de charge,
+combinaisons, charges nodales et charges sur barres étaient perdus à chaque enregistrement, et un
+projet rouvert ne contenait plus aucun cas de charge.
+
+Le chunk commence par une version de disposition interne (`LOAD_CHUNK_LAYOUT_VERSION`, actuellement 1),
+indépendante de la version du format. `elementCount` = nombre de charges nodales + charges sur barres.
+
+| Champ | Type | Description |
+| :--- | :--- | :--- |
+| `layoutVersion` | `uint32_t` | Version de disposition du chunk (1) |
+| `activeLoadCaseId`, `nextNodalLoadId`, `nextMemberLoadId`, `nextLoadCaseId`, `nextCombinationId` | 5 × `int32_t` | État du `LoadManager` |
+| `nCases` puis `nCases` × { `id` i32, `name` str, `category` u8, `selfWeight` u8, `selfWeightFactor` f64, `description` str } | | Cas de charge (`LoadCaseCategory`) |
+| `nCombos` puis `nCombos` × { `id` i32, `name` str, `type` u8, `nFactors` u32 × { `caseId` i32, `factor` f64 } } | | Combinaisons (`LoadCombinationType`) |
+| `nNodal` puis `nNodal` × { `id`, `nodeId`, `caseId` i32, `fx fy fz mx my mz` 6 × f64, `coordSys` u8, `name` str } | | Charges nodales |
+| `nMember` puis `nMember` × { `id`, `elementId`, `caseId` i32, `type` u8, `q1 q2` f64, `direction` u8, `coordSys` u8, `x1 x2` f64, `relative` u8, `name` str, `targetType` u8 } | | Charges sur barres (`MemberTargetType` : poutre, poteau, treillis, câble) |
+
+Règles du lecteur : toute valeur d'énumération hors plage ou tout enregistrement tronqué rejette le
+fichier avec un message explicite ; les compteurs `next*Id` sont relevés au-delà du plus grand
+identifiant lu. **Compatibilité :** un fichier 1.0 (sans chunk `LOAD`) se charge avec les cas et
+combinaisons Eurocodes par défaut (`LoadManager::resetToDefaults`) ; un lecteur 1.0 ignore le chunk
+`LOAD` d'un fichier 1.1 (chunk inconnu sauté grâce à `chunkSize`).
+
+---
+
 ## 6. Système d'Intégrité et Sécurité du Lecteur
 
 Pour prévenir toute corruption de mémoire ou exploitation par fichier malveillant, le lecteur `TSAFileReader` applique un protocole d'assainissement strict :
@@ -163,6 +189,7 @@ Pour prévenir toute corruption de mémoire ou exploitation par fichier malveill
    - Nombre maximal de barres : 500 000 (`MAX_SAFE_BARS`).
    - Longueur maximale de chaîne de caractères : 65 536 caractères (`MAX_SAFE_STRING_LENGTH`).
 6. **Isolation Atomique :** La reconstruction utilise un snapshot `ModelStateSnapshot`. En cas d'erreur de lecture, le modèle en mémoire n'est pas pollué.
+7. **Écriture atomique (depuis 1.1) :** l'enregistrement passe par `QSaveFile` (fichier temporaire puis renommage à `commit()`). Une erreur d'écriture (disque plein, droits, crash) laisse le fichier existant intact. Le CRC32 est calculé par table (résultat identique à l'implémentation bit à bit d'origine).
 
 ---
 

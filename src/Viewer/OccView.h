@@ -65,6 +65,7 @@ public:
 
     // Liaison avec le modèle et la sélection
     void setModel(TSA::Model::Model* model);
+    TSA::Model::Model* model() const noexcept { return m_model; }
     void setSelectionManager(TSA::Viewer::SelectionManager* selectionManager);
     void rebuildAllShapes();
 
@@ -150,6 +151,7 @@ public:
     void setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp);
     void setWorkPlaneElevation(double elevation);
     void setWorkPlaneType(TSA::Coordinate::WorkPlaneType type, double offset = 0.0);
+    void setWorkPlaneAxisAndOffset(TSA::Coordinate::WorkPlaneAxis axis, double offset, const std::string& name = "");
     void setWorkPlaneVisible(bool visible);
     bool isWorkPlaneVisible() const { return m_workPlaneVisible; }
     void viewNormalToWorkPlane();
@@ -188,6 +190,17 @@ public:
     void applyWorkPlaneTransformation();
     void setWorkPlaneIsolation(bool isolated, double distance = 1.0);
     void updateElementIsolation();
+
+    // Mode 2D CAO & Isolation Automatique du Plan de Travail
+    bool isMode2D() const noexcept { return m_mode2DActive; }
+    void setMode2D(bool enabled);
+    void toggleMode2D() { setMode2D(!m_mode2DActive); }
+
+    // Prédicats géométriques d'appartenance au plan actif (tolérance en mètres)
+    bool isPointOnActiveWorkPlane(const gp_Pnt& pt, double tol = 0.05) const;
+    bool isNodeOnActiveWorkPlane(int nodeId, double tol = 0.05) const;
+    bool isLinearElementOnActiveWorkPlane(int startNodeId, int endNodeId, double tol = 0.05) const;
+    bool isSurfaceElementOnActiveWorkPlane(const std::vector<int>& nodeIds, double tol = 0.05) const;
 
     // Repère Local des Éléments Structuraux (LCS - Règle 10 & 11)
     void setShowLocalAxes(bool show);
@@ -387,6 +400,7 @@ signals:
     void workPlaneAxesVisibleChanged(bool visible);
     void gizmoSizeChanged(double size);
     void mouseLocalCoordinatesChanged(double xwp, double ywp);
+    void mode2DChanged(bool active);
 
 protected:
     // IModelObserver overrides
@@ -437,6 +451,7 @@ protected:
 
     void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;
+    void onModelDestroyed() override { m_model = nullptr; }
 
 protected:
     QPaintEngine* paintEngine() const override { return nullptr; }
@@ -567,6 +582,29 @@ private:
     Handle(AIS_Manipulator) m_manipulator;
     bool m_isManipulatingWorkPlane = false;
     TSA::Coordinate::WorkPlane m_manipulatorStartWp;
+
+    // Mode 2D CAO & Isolation Automatique non-destructive
+    bool m_mode2DActive = false;
+    Handle(Graphic3d_Camera) m_savedCamera3D;
+    bool m_savedWasOrtho = false;
+    bool m_pre2DNodesVisible = true;
+    bool m_pre2DNodeLabelsVisible = false;
+    bool m_pre2DSupportsVisible = true;
+    bool m_pre2DLoadsVisible = true;
+    bool m_pre2DWorkPlaneAxesVisible = true;
+    void savePre2DVisibility();
+    void restorePre2DVisibility();
+
+    // Isolation (mode 2D ou « Isoler le plan ») : la visibilité de chaque objet est recalculée à
+    // partir des drapeaux d'affichage et de l'appartenance au plan actif.
+    bool m_isolationApplied = false; ///< Vrai si la dernière passe d'isolation a masqué des objets
+    bool isIsolationActive() const noexcept;
+    double isolationTolerance() const noexcept;
+    bool keepNodeUnderIsolation(int nodeId) const;
+    bool keepLinearUnderIsolation(int startNodeId, int endNodeId) const;
+    bool keepSurfaceUnderIsolation(const std::vector<int>& nodeIds) const;
+    /// Repasse l'isolation si elle est (ou était) appliquée ; retourne vrai si une passe a eu lieu.
+    bool reapplyIsolationIfActive();
 
     // Repère local de l'élément sélectionné
     Handle(AIS_Shape) m_elementLocalAxesShape;

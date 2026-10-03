@@ -409,23 +409,6 @@ RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& a
     ndcPanel->addLargeAction(actNdc);
     tab->addPanel(ndcPanel);
 
-    // Espace Multi-Vues (Multi-Port)
-    if (acts.actionPortSingle || acts.actionPortSplitH || acts.actionPortSplitV || acts.actionPortGrid2x2 || acts.actionPortTabbed)
-    {
-        auto* portPanel = new RibbonPanel(QObject::tr("Espace Multi-Vues"), tab);
-        std::vector<QAction*> portCol1;
-        std::vector<QAction*> portCol2;
-        if (acts.actionPortSingle) portCol1.push_back(acts.actionPortSingle);
-        if (acts.actionPortSplitH) portCol1.push_back(acts.actionPortSplitH);
-        if (acts.actionPortSplitV) portCol1.push_back(acts.actionPortSplitV);
-        if (acts.actionPortGrid2x2) portCol2.push_back(acts.actionPortGrid2x2);
-        if (acts.actionPortTabbed) portCol2.push_back(acts.actionPortTabbed);
-
-        if (!portCol1.empty()) portPanel->addSmallColumn(portCol1);
-        if (!portCol2.empty()) portPanel->addSmallColumn(portCol2);
-        tab->addPanel(portPanel);
-    }
-
     return tab;
 }
 

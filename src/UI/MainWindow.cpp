@@ -14,8 +14,6 @@
 #include "Dialogs/WorkPlaneDialog.h"
 #include "Dialogs/SectionCutDialog.h"
 #include "Ruler/ViewportContainer.h"
-#include "Port/PortAreaWidget.h"
-#include "Port/PortTypes.h"
 #include "Diagrams/Diagram2DWidget.h"
 #include "../NDC/NDCViewerWidget.h"
 #include "../Analysis/OpenSeesSolver.h"
@@ -33,6 +31,7 @@
 #include "../Diagnostics/DiagnosticReport.h"
 #include "Theme/ThemeManager.h"
 #include "Dialogs/HelpDialog.h"
+#include "Widgets/ProjectStatusOverlay.h"
 #include "Dialogs/StructurePresetDialog.h"
 #include "Dialogs/BarCreationDialog.h"
 #include "Dialogs/CableCreationDialog.h"
@@ -59,6 +58,7 @@
 #include <QMimeData>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QElapsedTimer>
 #include <QLabel>
 #include <QAction>
 #include <QActionGroup>
@@ -144,9 +144,13 @@ MainWindow::MainWindow(QWidget* parent)
     m_occView->setCreationPresets(m_presets);
 
     m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
-    if (m_portArea)
+    if (m_diagramWidget)
     {
-        m_portArea->setModel(m_model.get());
+        m_diagramWidget->setModel(m_model.get());
+    }
+    if (m_ndcWidget)
+    {
+        m_ndcWidget->setModel(m_model.get());
     }
 
     connect(m_gridManager.get(), &TSA::Grid::GridManager::gridAdded, this, [this]() {
@@ -226,12 +230,12 @@ void MainWindow::setupUi()
 
     setDockNestingEnabled(true);
 
-    // Widget central : Espace de travail multi-ports intégrant le Viewport OpenCASCADE entouré des règles graduées
+    // Widget central : Viewport OpenCASCADE entouré des règles graduées (style Robot)
     m_occView = new OccView(this);
     m_occView->setSelectionManager(m_selectionManager.get());
     m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
-    m_portArea = new TSA::UI::PortAreaWidget(m_occView, m_viewportContainer, this);
-    setCentralWidget(m_portArea);
+    m_viewportContainer->setModel(m_model.get());
+    setCentralWidget(m_viewportContainer);
 
     createActions();
     createDockWindows();
@@ -1064,41 +1068,49 @@ void MainWindow::onNextView()
 void MainWindow::onActionViewHome()
 {
     if (m_occView) m_occView->viewHome();
+    if (m_statusView) m_statusView->setText(tr("Vue ISO"));
 }
 
 void MainWindow::onActionViewTop()
 {
     if (m_occView) m_occView->viewTop();
+    if (m_statusView) m_statusView->setText(tr("Vue Dessus (XY)"));
 }
 
 void MainWindow::onActionViewBottom()
 {
     if (m_occView) m_occView->viewBottom();
+    if (m_statusView) m_statusView->setText(tr("Vue Dessous"));
 }
 
 void MainWindow::onActionViewFront()
 {
     if (m_occView) m_occView->viewFront();
+    if (m_statusView) m_statusView->setText(tr("Vue Face (XZ)"));
 }
 
 void MainWindow::onActionViewBack()
 {
     if (m_occView) m_occView->viewBack();
+    if (m_statusView) m_statusView->setText(tr("Vue Arrière"));
 }
 
 void MainWindow::onActionViewLeft()
 {
     if (m_occView) m_occView->viewLeft();
+    if (m_statusView) m_statusView->setText(tr("Vue Gauche (YZ)"));
 }
 
 void MainWindow::onActionViewRight()
 {
     if (m_occView) m_occView->viewRight();
+    if (m_statusView) m_statusView->setText(tr("Vue Droite"));
 }
 
 void MainWindow::onActionViewIsometric()
 {
     if (m_occView) m_occView->viewIsometric();
+    if (m_statusView) m_statusView->setText(tr("Vue ISO"));
 }
 
 void MainWindow::onRotate2DLeft()
@@ -1246,24 +1258,28 @@ void MainWindow::onActionViewXY()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXY);
+    if (m_statusView) m_statusView->setText(tr("Plan XY"));
 }
 
 void MainWindow::onActionViewYZ()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanYZ);
+    if (m_statusView) m_statusView->setText(tr("Plan YZ"));
 }
 
 void MainWindow::onActionViewXZ()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXZ);
+    if (m_statusView) m_statusView->setText(tr("Plan XZ"));
 }
 
 void MainWindow::onActionView3D()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::Perspective3D);
+    if (m_statusView) m_statusView->setText(tr("Vue 3D"));
 }
 
 void MainWindow::onActionCoordSystem()
@@ -1357,9 +1373,60 @@ void MainWindow::onActionNew()
 
     if (m_selectionManager)
         m_selectionManager->clearSelection();
+
+    if (m_projectStatusWidget)
+    {
+        m_projectStatusWidget->setModel(m_model.get());
+        m_projectStatusWidget->setProjectInfo(tr("Nouveau Projet"), "");
+        m_projectStatusWidget->refreshStatus();
+    }
+
     if (m_occView)
     {
         m_occView->rebuildGrid();
+        m_occView->viewIsometric();
+    }
+
+    if (m_viewportContainer && m_model && m_model->levelManager())
+    {
+        m_viewportContainer->updateLevelsList(
+            m_model->levelManager()->elevationList(),
+            m_model->levelManager()->levelNames()
+        );
+    }
+
+    if (m_modelTree)
+    {
+        m_modelTree->setProjectName(tr("Nouveau projet.tsa"));
+        m_modelTree->refreshAll();
+    }
+
+    if (m_diagramWidget)
+    {
+        m_diagramWidget->setModel(m_model.get());
+        m_diagramWidget->setResultsModel(nullptr);
+    }
+    if (m_ndcWidget)
+    {
+        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setResultsModel(nullptr);
+    }
+
+    if (m_statusProject)
+    {
+        m_statusProject->setText(tr("Nouveau projet.tsa"));
+    }
+    if (m_statusView)
+    {
+        m_statusView->setText(tr("Vue ISO"));
+    }
+    if (m_statusUnits)
+    {
+        m_statusUnits->setText(tr("kN, m"));
+    }
+    if (m_statusLevel)
+    {
+        m_statusLevel->setText(tr("Niveau : Tous"));
     }
 
     if (m_consoleDock)
@@ -1464,9 +1531,15 @@ bool MainWindow::loadFile(const QString& path)
     if (!m_model)
         return false;
 
+    QElapsedTimer loadTimer;
+    loadTimer.start();
+
     QString errorMsg;
     bool ok = m_projectManager ? m_projectManager->openProject(path, *m_model, m_gridManager.get(), &errorMsg)
                                : false;
+    const qint64 openMs = loadTimer.elapsed();
+    qint64 lastLap = openMs;
+    std::string laps;
     if (!ok)
     {
         QMessageBox::critical(this, tr("Erreur de chargement"),
@@ -1481,9 +1554,72 @@ bool MainWindow::loadFile(const QString& path)
     {
         m_selectionManager->clearSelection();
     }
+
+    QString fileName = QFileInfo(path).fileName();
+    QString projName = m_projectManager ? m_projectManager->projectName() : QString();
+    if (projName.isEmpty())
+    {
+        projName = QFileInfo(path).baseName();
+    }
+
+    if (m_projectStatusWidget)
+    {
+        m_projectStatusWidget->setModel(m_model.get());
+        m_projectStatusWidget->setProjectInfo(projName, path);
+        m_projectStatusWidget->refreshStatus();
+    }
+
+    laps += " | sélection+état=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
     if (m_occView)
     {
         m_occView->rebuildGrid();
+        m_occView->fitModel();
+    }
+
+    laps += " | grilles+cadrage=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
+    if (m_viewportContainer && m_model->levelManager())
+    {
+        m_viewportContainer->updateLevelsList(
+            m_model->levelManager()->elevationList(),
+            m_model->levelManager()->levelNames()
+        );
+    }
+
+    laps += " | niveaux/plans=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
+    if (m_modelTree)
+    {
+        m_modelTree->setProjectName(fileName);
+        m_modelTree->refreshAll();
+    }
+
+    laps += " | arbre=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
+    if (m_diagramWidget)
+    {
+        m_diagramWidget->setModel(m_model.get());
+        m_diagramWidget->setResultsModel(nullptr);
+    }
+    if (m_ndcWidget)
+    {
+        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setResultsModel(nullptr);
+    }
+
+    laps += " | diagrammes+NDC=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
+    if (m_statusProject)
+    {
+        m_statusProject->setText(fileName);
+    }
+    if (m_statusView)
+    {
+        m_statusView->setText(tr("Vue ISO"));
+    }
+    if (m_statusUnits)
+    {
+        m_statusUnits->setText(tr("kN, m"));
+    }
+    if (m_statusLevel)
+    {
+        m_statusLevel->setText(tr("Niveau : Tous"));
     }
 
     if (m_consoleDock)
@@ -1497,8 +1633,15 @@ bool MainWindow::loadFile(const QString& path)
             .arg(m_model->beams().size())
             .arg(m_model->columns().size())
             .arg(m_model->slabs().size())
-            .arg(QFileInfo(path).fileName()));
+            .arg(fileName));
     }
+
+    TSA_LOG_INFO("MainWindow", "ProjectLoadTiming",
+                 "Ouverture " + fileName.toStdString() + " : lecture+modèle+3D = " + std::to_string(openMs) +
+                 " ms, total (arbre, grilles, UI inclus) = " + std::to_string(loadTimer.elapsed()) + " ms" + laps + " (" +
+                 std::to_string(m_model->nodes().size()) + " nœuds, " +
+                 std::to_string(m_model->beams().size() + m_model->columns().size()) + " barres)");
+    TSA::Diagnostics::Logger::instance().flush(); // événement ponctuel : rendre la mesure lisible immédiatement
     return true;
 }
 
@@ -1524,6 +1667,16 @@ void MainWindow::applyTheme(bool dark)
     if (m_occView)
     {
         m_occView->setDarkMode(dark);
+    }
+
+    if (m_projectStatusWidget)
+    {
+        m_projectStatusWidget->setDarkMode(dark);
+    }
+
+    if (m_statusLogo)
+    {
+        m_statusLogo->setDarkMode(dark);
     }
 
     if (m_consoleDock)

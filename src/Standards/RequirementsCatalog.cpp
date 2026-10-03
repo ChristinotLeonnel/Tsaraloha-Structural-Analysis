@@ -404,19 +404,19 @@ void RequirementsCatalog::initializeDefaultCatalog()
     });
 
     // =========================================================================
-    // 5. ERGONOMIE MULTIPORT ET ÉDITION DE NOTE DE CALCUL
+    // 5. ERGONOMIE VIEWPORT 3D UNIQUE ET ÉDITION DE NOTE DE CALCUL
     // =========================================================================
     registerRequirement({
         "REQ-UI-PORT-001",
         StandardFramework::ISO_IEC_25010,
         RequirementDomain::ResultsVisualization,
         "ISO/IEC 25010:2023",
-        "§4.2.4 (Utilisabilité - Espace de travail multi-ports)",
-        "Disposition fluide et réactive de vues 3D, déformées, diagrammes 2D et note de calcul partageant une structure de données unique sans clonage mémoire.",
-        "src/UI/Port/PortAreaWidget.cpp",
+        "§4.2.4 (Utilisabilité - Espace de travail avec Viewport 3D Unique)",
+        "Disposition fluide et réactive avec un viewport 3D principal unique, règles métriques et sélecteur d'étage sans surcharge multi-contexte.",
+        "src/UI/Ruler/ViewportContainer.cpp",
         "TSA_WindowManagerTests",
         RequirementStatus::Implemented,
-        "Vérifié sous 5 modes d'affichage multi-ports."
+        "Vérifié sous viewport 3D unique et conteneur de règles."
     });
 
     registerRequirement({

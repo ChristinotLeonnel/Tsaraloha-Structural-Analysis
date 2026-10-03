@@ -20,9 +20,13 @@ public:
   ~ModelTreeWidget() override;
 
   void setGridManager(TSA::Grid::GridManager *gridManager);
+  void setProjectName(const QString &name);
   void refreshAll();
   void refreshLevels();
   void refreshGrids();
+  void refreshLoads();
+  void refreshSupports();
+  void refreshResults();
 
   void selectNodeItem(int nodeId);
   void selectBeamItem(int beamId);
@@ -36,6 +40,7 @@ public:
 
 signals:
   void levelSelected(const QString &levelId);
+  void workPlaneSelected(int axis, double offset, const QString &name);
   void nodeSelected(int nodeId);
   void beamSelected(int beamId);
   void columnSelected(int columnId);
@@ -44,6 +49,9 @@ signals:
   void foundationSelected(int foundationId);
   void trussMemberSelected(int memberId);
   void cableSelected(int cableId);
+  void loadSelected(int loadId);
+  void supportSelected(int nodeId);
+  void resultsSelected();
   void selectionCleared();
 
 protected:
@@ -82,6 +90,7 @@ protected:
 
   void onModelDiffApplied(const TSA::Model::ModelDiff &diff) override;
   void onModelCleared() override;
+  void onModelDestroyed() override { m_model = nullptr; }
 
 private slots:
   void onItemSelectionChanged();
@@ -95,6 +104,8 @@ private:
   TSA::Grid::GridManager *m_gridManager = nullptr;
   QTreeWidget *m_tree = nullptr;
 
+  QString m_projectName;
+  QTreeWidgetItem *m_projectRootItem = nullptr;
   QTreeWidgetItem *m_levelsCategory = nullptr;
   QTreeWidgetItem *m_gridsCategory = nullptr;
   QTreeWidgetItem *m_nodesCategory = nullptr;
@@ -105,6 +116,9 @@ private:
   QTreeWidgetItem *m_foundationsCategory = nullptr;
   QTreeWidgetItem *m_trussCategory = nullptr;
   QTreeWidgetItem *m_cablesCategory = nullptr;
+  QTreeWidgetItem *m_loadsCategory = nullptr;
+  QTreeWidgetItem *m_supportsCategory = nullptr;
+  QTreeWidgetItem *m_resultsCategory = nullptr;
 };
 
 } // namespace TSA::UI

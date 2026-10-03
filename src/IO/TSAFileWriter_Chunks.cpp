@@ -479,4 +479,93 @@ void TSAFileWriter::writeSnapshotChunk(std::vector<uint8_t>& buffer,
     buffer.insert(buffer.end(), chunkData.begin(), chunkData.end());
 }
 
+// -----------------------------------------------------------------------------
+// CHUNK 'LOAD' : cas de charges, combinaisons, charges nodales et charges sur barres.
+// Disposition (version de disposition 1, en tête du chunk pour les évolutions futures) :
+//   u32 layoutVersion | i32 activeCase | i32 nextNodal | i32 nextMember | i32 nextCase | i32 nextCombo
+//   u32 nCases  x { i32 id, str name, u8 category, u8 selfWeight, f64 selfWeightFactor, str description }
+//   u32 nCombos x { i32 id, str name, u8 type, u32 nFactors x { i32 caseId, f64 factor } }
+//   u32 nNodal  x { i32 id, i32 nodeId, i32 caseId, f64 fx fy fz mx my mz, u8 coordSys, str name }
+//   u32 nMember x { i32 id, i32 elementId, i32 caseId, u8 type, f64 q1 q2, u8 direction, u8 coordSys,
+//                   f64 x1 x2, u8 relative, str name, u8 targetType }
+// -----------------------------------------------------------------------------
+void TSAFileWriter::writeLoadChunk(std::vector<uint8_t>& buffer, const TSA::Model::LoadManager::LoadSnapshot& loads)
+{
+    std::vector<uint8_t> chunkData;
+    writeU32(chunkData, LOAD_CHUNK_LAYOUT_VERSION);
+    writeI32(chunkData, loads.activeLoadCaseId);
+    writeI32(chunkData, loads.nextNodalLoadId);
+    writeI32(chunkData, loads.nextMemberLoadId);
+    writeI32(chunkData, loads.nextLoadCaseId);
+    writeI32(chunkData, loads.nextCombinationId);
+
+    writeU32(chunkData, static_cast<uint32_t>(loads.loadCases.size()));
+    for (const auto& [id, lc] : loads.loadCases)
+    {
+        writeI32(chunkData, id);
+        writeString(chunkData, lc.name());
+        writeU8(chunkData, static_cast<uint8_t>(lc.category()));
+        writeU8(chunkData, lc.isSelfWeightIncluded() ? 1 : 0);
+        writeDouble(chunkData, lc.selfWeightFactor());
+        writeString(chunkData, lc.description());
+    }
+
+    writeU32(chunkData, static_cast<uint32_t>(loads.combinations.size()));
+    for (const auto& [id, combo] : loads.combinations)
+    {
+        writeI32(chunkData, id);
+        writeString(chunkData, combo.name());
+        writeU8(chunkData, static_cast<uint8_t>(combo.type()));
+        writeU32(chunkData, static_cast<uint32_t>(combo.caseFactors().size()));
+        for (const auto& [caseId, factor] : combo.caseFactors())
+        {
+            writeI32(chunkData, caseId);
+            writeDouble(chunkData, factor);
+        }
+    }
+
+    writeU32(chunkData, static_cast<uint32_t>(loads.nodalLoads.size()));
+    for (const auto& [id, nl] : loads.nodalLoads)
+    {
+        writeI32(chunkData, id);
+        writeI32(chunkData, nl.nodeId());
+        writeI32(chunkData, nl.loadCaseId());
+        writeDouble(chunkData, nl.fx());
+        writeDouble(chunkData, nl.fy());
+        writeDouble(chunkData, nl.fz());
+        writeDouble(chunkData, nl.mx());
+        writeDouble(chunkData, nl.my());
+        writeDouble(chunkData, nl.mz());
+        writeU8(chunkData, static_cast<uint8_t>(nl.coordSystem()));
+        writeString(chunkData, nl.name());
+    }
+
+    writeU32(chunkData, static_cast<uint32_t>(loads.memberLoads.size()));
+    for (const auto& [id, ml] : loads.memberLoads)
+    {
+        writeI32(chunkData, id);
+        writeI32(chunkData, ml.elementId());
+        writeI32(chunkData, ml.loadCaseId());
+        writeU8(chunkData, static_cast<uint8_t>(ml.type()));
+        writeDouble(chunkData, ml.q1());
+        writeDouble(chunkData, ml.q2());
+        writeU8(chunkData, static_cast<uint8_t>(ml.direction()));
+        writeU8(chunkData, static_cast<uint8_t>(ml.coordSystem()));
+        writeDouble(chunkData, ml.x1());
+        writeDouble(chunkData, ml.x2());
+        writeU8(chunkData, ml.isRelativePosition() ? 1 : 0);
+        writeString(chunkData, ml.name());
+        writeU8(chunkData, static_cast<uint8_t>(ml.targetType()));
+    }
+
+    TSAChunkHeader ch;
+    ch.chunkId = CHUNK_LOAD;
+    ch.chunkSize = static_cast<uint32_t>(chunkData.size());
+    ch.elementCount = static_cast<uint32_t>(loads.nodalLoads.size() + loads.memberLoads.size());
+
+    const uint8_t* chBytes = reinterpret_cast<const uint8_t*>(&ch);
+    buffer.insert(buffer.end(), chBytes, chBytes + sizeof(ch));
+    buffer.insert(buffer.end(), chunkData.begin(), chunkData.end());
+}
+
 } // namespace TSA::IO

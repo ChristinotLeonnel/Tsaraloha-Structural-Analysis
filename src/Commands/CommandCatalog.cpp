@@ -286,13 +286,13 @@ void CommandCatalog::initializeStandardCatalog() {
                    "Basculer en mode plein écran", "F11",
                    ":/icons/fullscreen.svg", CommandCategory::View});
   registerCommand({"cmd.coord.workplane_xy", "Plan de Travail XY",
-                   "Activer le plan de travail horizontal XY", "",
+                   "Activer le plan de travail horizontal XY", "Alt+Z",
                    ":/icons/view/view_top.svg", CommandCategory::View});
   registerCommand({"cmd.coord.workplane_xz", "Plan de Travail XZ",
-                   "Activer le plan de travail vertical frontal XZ", "",
+                   "Activer le plan de travail vertical frontal XZ", "Alt+Y",
                    ":/icons/view/view_front.svg", CommandCategory::View});
   registerCommand({"cmd.coord.workplane_yz", "Plan de Travail YZ",
-                   "Activer le plan de travail vertical latéral YZ", "",
+                   "Activer le plan de travail vertical latéral YZ", "Alt+X",
                    ":/icons/view/view_side.svg", CommandCategory::View});
   registerCommand({"cmd.coord.workplane_level", "Plan de Travail Étage",
                    "Aligner le plan de travail sur l'étage actif", "",

@@ -53,6 +53,15 @@ private:
     int m_beamId = -1;
     bool m_isLoading = false;
 
+    // En-tête Récapitulatif CAO (Règle Métier & Standards)
+    QLabel* m_lblCadType = nullptr;
+    QLabel* m_lblCadId = nullptr;
+    QLabel* m_lblCadNodes = nullptr;
+    QLabel* m_lblCadSection = nullptr;
+    QLabel* m_lblCadMaterial = nullptr;
+    QLabel* m_lblCadLength = nullptr;
+    QLabel* m_lblCadLevel = nullptr;
+
     QLineEdit* m_editName = nullptr;
     QComboBox* m_comboRole = nullptr;
     QComboBox* m_comboSectionType = nullptr;

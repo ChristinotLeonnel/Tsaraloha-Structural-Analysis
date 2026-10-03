@@ -23,7 +23,14 @@ Model::Model()
     }
 }
 
-Model::~Model() = default;
+Model::~Model()
+{
+    const auto observers = m_observers; // copie : un observateur peut modifier la liste
+    for (auto* obs : observers)
+    {
+        obs->onModelDestroyed();
+    }
+}
 
 TSA::Coordinate::LevelManager* Model::levelManager()
 {
@@ -33,6 +40,13 @@ TSA::Coordinate::LevelManager* Model::levelManager()
 const TSA::Coordinate::LevelManager* Model::levelManager() const
 {
     return m_coordinateSystem ? m_coordinateSystem->levelManager() : nullptr;
+}
+
+std::vector<TSA::Coordinate::DetectedPlaneInfo> Model::detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis axis) const
+{
+    if (m_coordinateSystem)
+        return m_coordinateSystem->detectStructuralPlanes(axis, this);
+    return {};
 }
 
 void Model::addObserver(IModelObserver* observer)

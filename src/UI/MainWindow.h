@@ -27,7 +27,7 @@ namespace TSA::UI
     class ModelTreeWidget;
     class PropertyPanel;
     class ViewportContainer;
-    class PortAreaWidget;
+    class Diagram2DWidget;
     class SectionCutDialog;
     class RibbonBar;
     class VisibilityDock;
@@ -43,6 +43,13 @@ namespace TSA::UI
     class ProjectionViewDock;
     class ResultsDockWidget;
     class WindowManager;
+    class ProjectStatusOverlay;
+    class TSALogoOverlay;
+}
+
+namespace TSA::NDC
+{
+    class NDCViewerWidget;
 }
 
 class OccView;
@@ -166,7 +173,10 @@ private:
 
     OccView* m_occView = nullptr;
     TSA::UI::ViewportContainer* m_viewportContainer = nullptr;
-    TSA::UI::PortAreaWidget* m_portArea = nullptr;
+    QDockWidget* m_diagramDock = nullptr;
+    TSA::UI::Diagram2DWidget* m_diagramWidget = nullptr;
+    QDockWidget* m_ndcDock = nullptr;
+    TSA::NDC::NDCViewerWidget* m_ndcWidget = nullptr;
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
     std::unique_ptr<TSA::Analysis::OpenSeesSolver> m_openSeesSolver;
     TSA::UI::ModelTreeWidget* m_modelTree = nullptr;
@@ -180,11 +190,18 @@ private:
     TSA::UI::LogConsoleDock* m_consoleDock = nullptr;
     TSA::UI::ProjectionViewDock* m_projectionViewDock = nullptr;
     TSA::UI::ResultsDockWidget* m_resultsDock = nullptr;
+    QDockWidget* m_projectStatusDock = nullptr;
+    TSA::UI::ProjectStatusOverlay* m_projectStatusWidget = nullptr;
     TSA::Analysis::AnalysisParameters m_lastAnalysisParams;
 
+    QLabel*  m_statusProject = nullptr;
+    QLabel*  m_statusView = nullptr;
+    QLabel*  m_statusUnits = nullptr;
+    QLabel*  m_statusLevel = nullptr;
     QLabel*  m_statusCoordinates = nullptr;
     QLabel*  m_statusCoordinatesLocal = nullptr;
     QLabel*  m_statusInfo = nullptr;
+    TSA::UI::TSALogoOverlay* m_statusLogo = nullptr;
 
     // Actions Fichier
     QAction* m_actionNew = nullptr;
@@ -349,12 +366,6 @@ private:
     QAction* m_actionFitDeformed = nullptr;
     QAction* m_actionNoteDeCalcul = nullptr;
 
-    QAction* m_actionPortSingle = nullptr;
-    QAction* m_actionPortSplitH = nullptr;
-    QAction* m_actionPortSplitV = nullptr;
-    QAction* m_actionPortGrid2x2 = nullptr;
-    QAction* m_actionPortTabbed = nullptr;
-
     QAction* m_actionMeasure = nullptr;
 
     TSA::UI::SectionCutDialog* m_sectionCutDialog = nullptr;
@@ -416,11 +427,6 @@ private slots:
     void onFitModel();
     void onFitResults();
     void onFitDeformed();
-    void onPortLayoutSingle();
-    void onPortLayoutSplitH();
-    void onPortLayoutSplitV();
-    void onPortLayoutGrid2x2();
-    void onPortLayoutTabbed();
 
     // Slots Outils Métier
     void onActionWall();

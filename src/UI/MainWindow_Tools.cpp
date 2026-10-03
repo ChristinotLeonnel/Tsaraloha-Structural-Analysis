@@ -7,7 +7,6 @@
 #include "Dialogs/NodalLoadDialog.h"
 #include "Dialogs/MemberLoadDialog.h"
 #include "Dialogs/LoadCaseDialog.h"
-#include "Port/PortAreaWidget.h"
 #include "Diagrams/Diagram2DWidget.h"
 #include "../NDC/NDCViewerWidget.h"
 #include "../Analysis/OpenSeesSolver.h"
@@ -719,7 +718,8 @@ void MainWindow::onActionRunSolve()
     m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
 
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
-    if (m_portArea) m_portArea->setResultsModel(m_resultsModel);
+    if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
+    if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
     if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
     if (m_resultsDock)
     {
@@ -824,7 +824,8 @@ void MainWindow::onActionModal()
             m_occView->resultsVisual()->startModalAnimation(1, 1.0);
         }
     }
-    if (m_portArea) m_portArea->setResultsModel(m_resultsModel);
+    if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
+    if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
     if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
 
     QString msgSummary = tr("Analyse Modale OpenSees Terminée :\n\n");
@@ -885,33 +886,36 @@ void MainWindow::onActionPushover()
 
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
     if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
-    if (m_portArea)
+    if (m_diagramWidget)
     {
-        m_portArea->setResultsModel(m_resultsModel);
-        m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitHorizontal);
-        if (m_portArea->diagramWidget())
-        {
-            m_portArea->diagramWidget()->setViewMode(TSA::UI::Diagram2DWidget::ViewMode::PushoverCapacity);
-        }
+        m_diagramWidget->setModel(m_model.get());
+        m_diagramWidget->setResultsModel(m_resultsModel);
+        m_diagramWidget->setViewMode(TSA::UI::Diagram2DWidget::ViewMode::PushoverCapacity);
+    }
+    if (m_diagramDock)
+    {
+        m_diagramDock->show();
+        m_diagramDock->raise();
     }
 
     if (m_consoleDock)
     {
-        m_consoleDock->appendLog(tr("Calcul Pushover terminé avec succès. Courbe de capacité affichée dans le port 2D."), "SUCCESS");
+        m_consoleDock->appendLog(tr("Calcul Pushover terminé avec succès. Courbe de capacité affichée dans le panneau 2D."), "SUCCESS");
     }
 }
 
 void MainWindow::onActionNoteDeCalcul()
 {
-    if (m_portArea)
+    if (m_ndcWidget)
     {
-        if (m_portArea->ndcWidget())
-        {
-            m_portArea->ndcWidget()->setModel(m_model.get());
-            m_portArea->ndcWidget()->setResultsModel(m_resultsModel);
-        }
-        m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitHorizontal);
-        m_portArea->port(1)->setPortType(TSA::UI::PortType::CalculationNote);
+        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setResultsModel(m_resultsModel);
+        m_ndcWidget->refreshDocument(); // une seule génération (setModel/setResultsModel sont différés)
+    }
+    if (m_ndcDock)
+    {
+        m_ndcDock->show();
+        m_ndcDock->raise();
     }
 }
 
@@ -937,9 +941,9 @@ void MainWindow::onActionDiagramMz()
     {
         m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMz);
     }
-    if (m_portArea && m_portArea->diagramWidget())
+    if (m_diagramWidget)
     {
-        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::BendingMz);
+        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::BendingMz);
     }
 }
 
@@ -949,9 +953,9 @@ void MainWindow::onActionDiagramMy()
     {
         m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
     }
-    if (m_portArea && m_portArea->diagramWidget())
+    if (m_diagramWidget)
     {
-        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
+        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
     }
 }
 
@@ -961,9 +965,9 @@ void MainWindow::onActionDiagramMx()
     {
         m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
     }
-    if (m_portArea && m_portArea->diagramWidget())
+    if (m_diagramWidget)
     {
-        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
+        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
     }
 }
 
@@ -973,9 +977,9 @@ void MainWindow::onActionDiagramVz()
     {
         m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVz);
     }
-    if (m_portArea && m_portArea->diagramWidget())
+    if (m_diagramWidget)
     {
-        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVz);
+        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::ShearForceVz);
     }
 }
 
@@ -985,9 +989,9 @@ void MainWindow::onActionDiagramVy()
     {
         m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVy);
     }
-    if (m_portArea && m_portArea->diagramWidget())
+    if (m_diagramWidget)
     {
-        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::ShearForceVy);
+        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::ShearForceVy);
     }
 }
 
@@ -997,9 +1001,9 @@ void MainWindow::onActionDiagramN()
     {
         m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::AxialForceN);
     }
-    if (m_portArea && m_portArea->diagramWidget())
+    if (m_diagramWidget)
     {
-        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::AxialForceN);
+        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::AxialForceN);
     }
 }
 
@@ -1009,9 +1013,9 @@ void MainWindow::onActionDiagramDeflection()
     {
         m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::DeflectionUz);
     }
-    if (m_portArea && m_portArea->diagramWidget())
+    if (m_diagramWidget)
     {
-        m_portArea->diagramWidget()->setDiagramType(TSA::Geometry::DiagramType::DeflectionUz);
+        m_diagramWidget->setDiagramType(TSA::Geometry::DiagramType::DeflectionUz);
     }
 }
 
@@ -1036,31 +1040,6 @@ void MainWindow::onFitResults()
 void MainWindow::onFitDeformed()
 {
     if (m_occView) m_occView->fitDeformed();
-}
-
-void MainWindow::onPortLayoutSingle()
-{
-    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::Single);
-}
-
-void MainWindow::onPortLayoutSplitH()
-{
-    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitHorizontal);
-}
-
-void MainWindow::onPortLayoutSplitV()
-{
-    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::SplitVertical);
-}
-
-void MainWindow::onPortLayoutGrid2x2()
-{
-    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::Grid2x2);
-}
-
-void MainWindow::onPortLayoutTabbed()
-{
-    if (m_portArea) m_portArea->setLayoutMode(TSA::UI::PortLayout::Tabbed);
 }
 
 void MainWindow::onActionResultsDisp()

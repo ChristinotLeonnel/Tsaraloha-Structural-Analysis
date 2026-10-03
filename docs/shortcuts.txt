@@ -116,9 +116,9 @@ Legende des touches :
   7. PLAN DE TRAVAIL (WorkPlane)
 ================================================================================
 
-  [aucun]             Plan de Travail XY (horizontal)
-  [aucun]             Plan de Travail XZ (vertical frontal)
-  [aucun]             Plan de Travail YZ (vertical lateral)
+  Alt+Z               Plan de Travail XY (horizontal)
+  Alt+Y               Plan de Travail XZ (vertical frontal)
+  Alt+X               Plan de Travail YZ (vertical lateral)
   [aucun]             Plan de Travail Etage (niveau actif)
 
 ================================================================================

@@ -19,6 +19,7 @@
 #include "../Geometry/FoundationGeometry.h"
 #include "../Geometry/CableGeometry3D.h"
 #include "../Geometry/SupportGeometry.h"
+#include "../Diagnostics/Logger.h"
 
 #include <AIS_Shape.hxx>
 #include <AIS_TextLabel.hxx>
@@ -37,6 +38,7 @@
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <gp_Pnt.hxx>
 #include <QColor>
+#include <QElapsedTimer>
 #include "../Model/Load/LoadManager.h"
 #include "../Analysis/LoadResolver.h"
 #include <BRepPrimAPI_MakeCylinder.hxx>
@@ -312,11 +314,15 @@ void OccView::onCableRemoved(int cableId)
 void OccView::onNodalLoadAdded(int loadId)
 {
     updateNodalLoadShape(loadId);
+    if (reapplyIsolationIfActive() && !m_view.IsNull())
+        m_view->Redraw();
 }
 
 void OccView::onNodalLoadModified(int loadId)
 {
     updateNodalLoadShape(loadId);
+    if (reapplyIsolationIfActive() && !m_view.IsNull())
+        m_view->Redraw();
 }
 
 void OccView::onNodalLoadRemoved(int loadId)
@@ -327,11 +333,15 @@ void OccView::onNodalLoadRemoved(int loadId)
 void OccView::onMemberLoadAdded(int loadId)
 {
     updateMemberLoadShape(loadId);
+    if (reapplyIsolationIfActive() && !m_view.IsNull())
+        m_view->Redraw();
 }
 
 void OccView::onMemberLoadModified(int loadId)
 {
     updateMemberLoadShape(loadId);
+    if (reapplyIsolationIfActive() && !m_view.IsNull())
+        m_view->Redraw();
 }
 
 void OccView::onMemberLoadRemoved(int loadId)
@@ -575,6 +585,9 @@ void OccView::rebuildAllShapes()
     if (m_context.IsNull())
         return;
 
+    QElapsedTimer rebuildTimer;
+    rebuildTimer.start();
+
     // Nettoyer tous les objets existants
     clearLoadShapes();
     for (auto& [id, aisShape] : m_nodeShapes)
@@ -651,46 +664,54 @@ void OccView::rebuildAllShapes()
     if (!m_model)
         return;
 
+    // Reconstruction en une seule passe : redrawImmediately = false partout.
+    // Auparavant, updateNodeShape(id) (redraw = true) reconstruisait en plus toutes les barres
+    // connectées au nœud, puis forçait UpdateCurrentViewer + ZFitAll + Redraw : chaque barre était
+    // construite ~3 fois et la scène redessinée une fois par nœud et par élément
+    // (41,7 s pour 1 408 barres en Debug). Ici chaque forme est construite une seule fois et la vue
+    // n'est mise à jour qu'une fois, en fin de fonction.
+
     // 1. Créer les formes des nœuds
     for (const auto& [nodeId, node] : m_model->nodes())
     {
-        updateNodeShape(nodeId);
+        updateNodeShape(nodeId, false);
     }
+    const size_t nodeShapesBuilt = m_nodeShapes.size();
 
     // 2. Créer les formes des poutres
     for (const auto& [beamId, beam] : m_model->beams())
     {
-        updateBeamShape(beamId);
+        updateBeamShape(beamId, false);
     }
 
     // 3. Créer les formes des poteaux
     for (const auto& [columnId, col] : m_model->columns())
     {
-        updateColumnShape(columnId);
+        updateColumnShape(columnId, false);
     }
 
     // 4. Créer les formes des dalles
     for (const auto& [slabId, slab] : m_model->slabs())
     {
-        updateSlabShape(slabId);
+        updateSlabShape(slabId, false);
     }
 
     // 5. Créer les formes des voiles
     for (const auto& [wallId, wall] : m_model->walls())
     {
-        updateWallShape(wallId);
+        updateWallShape(wallId, false);
     }
 
     // 6. Créer les formes des fondations
     for (const auto& [fId, f] : m_model->foundations())
     {
-        updateFoundationShape(fId);
+        updateFoundationShape(fId, false);
     }
 
     // 7. Créer les formes des treillis
     for (const auto& [trId, tr] : m_model->trussMembers())
     {
-        updateTrussMemberShape(trId);
+        updateTrussMemberShape(trId, false);
     }
 
     // 8. Créer les formes des câbles
@@ -704,6 +725,13 @@ void OccView::rebuildAllShapes()
 
     m_context->UpdateCurrentViewer();
     fitAll();
+
+    TSA_LOG_INFO("OccView", "RebuildAllShapesTiming",
+                 "Reconstruction 3D complète : " + std::to_string(rebuildTimer.elapsed()) + " ms (" +
+                 std::to_string(m_nodeShapes.size()) + " nœuds [" + std::to_string(nodeShapesBuilt) + " après la passe nœuds / " +
+                 std::to_string(m_model->nodes().size()) + " dans le modèle], " +
+                 std::to_string(m_beamShapes.size() + m_columnShapes.size() + m_trussShapes.size() + m_cableShapes.size()) +
+                 " barres, " + std::to_string(m_slabShapes.size() + m_wallShapes.size()) + " surfaces)");
 }
 
 void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
@@ -761,7 +789,7 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
         aisNode->SetDisplayMode(AIS_Shaded);
 
         m_nodeShapes[nodeId] = aisNode;
-        if (isNodeVisibleByFilter(nodeId))
+        if (isNodeVisibleByFilter(nodeId) && keepNodeUnderIsolation(nodeId))
         {
             m_context->Display(aisNode, false);
         }
@@ -772,7 +800,7 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
             if (wasSelected)
             {
                 m_selectionManager->selectNode(nodeId, true);
-                if (isNodeVisibleByFilter(nodeId))
+                if (isNodeVisibleByFilter(nodeId) && keepNodeUnderIsolation(nodeId))
                 {
                     m_context->SetSelected(aisNode, false);
                 }
@@ -801,7 +829,7 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
 
     m_context->Display(aisLabel, false);
     m_context->Deactivate(aisLabel);
-    if (!m_nodeLabelsVisible || !isNodeVisibleByFilter(nodeId))
+    if (!m_nodeLabelsVisible || !isNodeVisibleByFilter(nodeId) || !keepNodeUnderIsolation(nodeId))
     {
         m_context->Erase(aisLabel, false);
     }
@@ -946,7 +974,11 @@ void OccView::updateBeamShape(int beamId, bool redrawImmediately)
         Handle(AIS_Shape) aisBeam = new AIS_Shape(shape);
         TSA::Viewer::MaterialVisual::instance().applyToShape(aisBeam, beam->material(), beam->color(), m_renderDisplayMode);
 
-        m_context->Display(aisBeam, false);
+        const bool shown = keepLinearUnderIsolation(beam->startNodeId(), beam->endNodeId());
+        if (shown)
+        {
+            m_context->Display(aisBeam, false);
+        }
         m_beamShapes[beamId] = aisBeam;
         if (m_selectionManager)
         {
@@ -954,7 +986,10 @@ void OccView::updateBeamShape(int beamId, bool redrawImmediately)
             if (wasSelected)
             {
                 m_selectionManager->selectBeam(beamId, true);
-                m_context->SetSelected(aisBeam, false);
+                if (shown)
+                {
+                    m_context->SetSelected(aisBeam, false);
+                }
             }
         }
     }
@@ -1007,7 +1042,11 @@ void OccView::updateColumnShape(int columnId, bool redrawImmediately)
         Handle(AIS_Shape) aisCol = new AIS_Shape(shape);
         TSA::Viewer::MaterialVisual::instance().applyToShape(aisCol, col->material(), col->color(), m_renderDisplayMode);
 
-        m_context->Display(aisCol, false);
+        const bool shown = keepLinearUnderIsolation(col->startNodeId(), col->endNodeId());
+        if (shown)
+        {
+            m_context->Display(aisCol, false);
+        }
         m_columnShapes[columnId] = aisCol;
         if (m_selectionManager)
         {
@@ -1015,7 +1054,10 @@ void OccView::updateColumnShape(int columnId, bool redrawImmediately)
             if (wasSelected)
             {
                 m_selectionManager->selectColumn(columnId, true);
-                m_context->SetSelected(aisCol, false);
+                if (shown)
+                {
+                    m_context->SetSelected(aisCol, false);
+                }
             }
         }
     }
@@ -1073,7 +1115,11 @@ void OccView::updateSlabShape(int slabId, bool redrawImmediately)
         Handle(AIS_Shape) aisSlab = new AIS_Shape(shape);
         TSA::Viewer::MaterialVisual::instance().applyToShape(aisSlab, slab->material(), slab->color(), m_renderDisplayMode, 0.35);
 
-        m_context->Display(aisSlab, false);
+        const bool shown = keepSurfaceUnderIsolation(slab->nodeIds());
+        if (shown)
+        {
+            m_context->Display(aisSlab, false);
+        }
         m_slabShapes[slabId] = aisSlab;
         if (m_selectionManager)
         {
@@ -1081,7 +1127,10 @@ void OccView::updateSlabShape(int slabId, bool redrawImmediately)
             if (wasSelected)
             {
                 m_selectionManager->selectSlab(slabId, true);
-                m_context->SetSelected(aisSlab, false);
+                if (shown)
+                {
+                    m_context->SetSelected(aisSlab, false);
+                }
             }
         }
     }
@@ -1130,7 +1179,11 @@ void OccView::updateWallShape(int wallId, bool redrawImmediately)
         Handle(AIS_Shape) aisWall = new AIS_Shape(shape);
         TSA::Viewer::MaterialVisual::instance().applyToShape(aisWall, wall->material(), wall->color(), m_renderDisplayMode, 0.25);
 
-        m_context->Display(aisWall, false);
+        const bool shown = keepLinearUnderIsolation(wall->startNodeId(), wall->endNodeId());
+        if (shown)
+        {
+            m_context->Display(aisWall, false);
+        }
         m_wallShapes[wallId] = aisWall;
         if (m_selectionManager)
         {
@@ -1138,7 +1191,10 @@ void OccView::updateWallShape(int wallId, bool redrawImmediately)
             if (wasSelected)
             {
                 m_selectionManager->selectWall(wallId, true);
-                m_context->SetSelected(aisWall, false);
+                if (shown)
+                {
+                    m_context->SetSelected(aisWall, false);
+                }
             }
         }
     }
@@ -1186,7 +1242,11 @@ void OccView::updateFoundationShape(int foundationId, bool redrawImmediately)
         Handle(AIS_Shape) aisF = new AIS_Shape(shape);
         TSA::Viewer::MaterialVisual::instance().applyToShape(aisF, f->material(), f->color(), m_renderDisplayMode);
 
-        m_context->Display(aisF, false);
+        const bool shown = keepNodeUnderIsolation(f->nodeId());
+        if (shown)
+        {
+            m_context->Display(aisF, false);
+        }
         m_foundationShapes[foundationId] = aisF;
         if (m_selectionManager)
         {
@@ -1194,7 +1254,10 @@ void OccView::updateFoundationShape(int foundationId, bool redrawImmediately)
             if (wasSelected)
             {
                 m_selectionManager->selectFoundation(foundationId, true);
-                m_context->SetSelected(aisF, false);
+                if (shown)
+                {
+                    m_context->SetSelected(aisF, false);
+                }
             }
         }
     }
@@ -1245,7 +1308,11 @@ void OccView::updateTrussMemberShape(int memberId, bool redrawImmediately)
         Handle(AIS_Shape) aisTr = new AIS_Shape(shape);
         TSA::Viewer::MaterialVisual::instance().applyToShape(aisTr, tr->material(), tr->color(), m_renderDisplayMode);
 
-        m_context->Display(aisTr, false);
+        const bool shown = keepLinearUnderIsolation(tr->startNodeId(), tr->endNodeId());
+        if (shown)
+        {
+            m_context->Display(aisTr, false);
+        }
         m_trussShapes[memberId] = aisTr;
         if (m_selectionManager)
         {
@@ -1253,7 +1320,10 @@ void OccView::updateTrussMemberShape(int memberId, bool redrawImmediately)
             if (wasSelected)
             {
                 m_selectionManager->selectTrussMember(memberId, true);
-                m_context->SetSelected(aisTr, false);
+                if (shown)
+                {
+                    m_context->SetSelected(aisTr, false);
+                }
             }
         }
     }
@@ -1297,7 +1367,11 @@ void OccView::updateCableShape(int cableId, bool redrawImmediately)
         Handle(AIS_Shape) aisCable = new AIS_Shape(shape);
         TSA::Viewer::MaterialVisual::instance().applyToShape(aisCable, cable->material(), cable->color(), m_renderDisplayMode);
 
-        m_context->Display(aisCable, false);
+        const bool shown = keepLinearUnderIsolation(cable->startNodeId(), cable->endNodeId());
+        if (shown)
+        {
+            m_context->Display(aisCable, false);
+        }
         m_cableShapes[cableId] = aisCable;
         if (m_selectionManager)
         {
@@ -1305,7 +1379,10 @@ void OccView::updateCableShape(int cableId, bool redrawImmediately)
             if (wasSelected)
             {
                 m_selectionManager->selectCable(cableId, true);
-                m_context->SetSelected(aisCable, false);
+                if (shown)
+                {
+                    m_context->SetSelected(aisCable, false);
+                }
             }
         }
     }
@@ -1897,6 +1974,9 @@ void OccView::updateAllLoadShapes()
     {
         updateMemberLoadShape(id, false);
     }
+    // Dernière étape de onModelDiffApplied() et de rebuildAllShapes() : une seule passe
+    // d'isolation couvre ainsi les éléments et les charges recréés (no-op hors isolation).
+    reapplyIsolationIfActive();
     if (!m_context.IsNull())
     {
         m_context->UpdateCurrentViewer();
@@ -2025,7 +2105,7 @@ void OccView::updateSupportShape(int nodeId, bool redrawImmediately)
         aisSupport->SetDisplayMode(AIS_Shaded);
 
         m_supportShapes[nodeId] = aisSupport;
-        if (m_supportsVisible)
+        if (m_supportsVisible && keepNodeUnderIsolation(nodeId))
         {
             m_context->Display(aisSupport, false);
         }
@@ -2049,7 +2129,7 @@ void OccView::updateSupportShape(int nodeId, bool redrawImmediately)
 
     m_context->Display(aisLabel, false);
     m_context->Deactivate(aisLabel);
-    if (!m_supportLabelsVisible || !m_supportsVisible)
+    if (!m_supportLabelsVisible || !m_supportsVisible || !keepNodeUnderIsolation(nodeId))
     {
         m_context->Erase(aisLabel, false);
     }
@@ -2113,6 +2193,7 @@ void OccView::setSupportsVisible(bool visible)
             m_context->Erase(lbl, false);
     }
 
+    reapplyIsolationIfActive();
     m_context->UpdateCurrentViewer();
 }
 
@@ -2129,6 +2210,7 @@ void OccView::setSupportLabelsVisible(bool visible)
             m_context->Erase(lbl, false);
     }
 
+    reapplyIsolationIfActive();
     m_context->UpdateCurrentViewer();
 }
 

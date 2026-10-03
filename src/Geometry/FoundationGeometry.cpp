@@ -26,6 +26,7 @@ TopoDS_Shape FoundationGeometry::createFoundationShape(
     gp_Pnt pMax(minX + widthA, minY + lengthB, node.z());
 
     BRepPrimAPI_MakeBox box(pMin, pMax);
+    box.Build(); // construction paresseuse en OCCT : IsDone() est faux avant Build()
     if (!box.IsDone())
         return TopoDS_Shape();
 

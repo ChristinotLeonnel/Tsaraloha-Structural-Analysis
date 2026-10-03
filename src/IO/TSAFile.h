@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Model/Load/LoadManager.h"
 #include "TSAFileFormat.h"
 #include "../Model/Model.h"
 #include "../Grid/GridManager.h"
@@ -94,6 +95,7 @@ private:
     void writeSnapshotChunk(std::vector<uint8_t>& buffer,
                             const std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot>& snapshots,
                             const std::map<std::string, TSA::ExtensionSystem::DefinitionReference>& references);
+    void writeLoadChunk(std::vector<uint8_t>& buffer, const TSA::Model::LoadManager::LoadSnapshot& loads);
 
 private:
     bool m_useCompression = true;
@@ -155,6 +157,8 @@ private:
                            std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot>& snapshots,
                            std::map<std::string, TSA::ExtensionSystem::DefinitionReference>& references,
                            std::string* errorMessage);
+    bool readLoadChunk(const uint8_t* data, size_t size, TSA::Model::LoadManager::LoadSnapshot& loads,
+                       std::string* errorMessage);
 
 private:
     std::shared_ptr<ICompressionProvider> m_compressor;

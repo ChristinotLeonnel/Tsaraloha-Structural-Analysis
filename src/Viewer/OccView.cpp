@@ -271,8 +271,9 @@ void OccView::paintEvent(QPaintEvent* /*event*/)
     }
 }
 
-void OccView::resizeEvent(QResizeEvent* /*event*/)
+void OccView::resizeEvent(QResizeEvent* event)
 {
+    QWidget::resizeEvent(event);
     if (!m_view.IsNull())
     {
         m_view->MustBeResized();
@@ -642,6 +643,9 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
         for (const auto& [nId, node] : m_model->nodes())
         {
             gp_Pnt p(node.x(), node.y(), node.z());
+            if (m_mode2DActive && std::abs(m_workPlane.distanceTo(p)) > 0.05)
+                continue;
+
             gp_Vec toP(eyePnt, p);
             if (toP.Dot(viewDir) < 0.0)
                 continue;
@@ -740,6 +744,9 @@ bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, dou
             for (const auto& inter : grid->cartesian()->intersections())
             {
                 const gp_Pnt& p = inter.point;
+                if (m_mode2DActive && std::abs(m_workPlane.distanceTo(p)) > 0.05)
+                    continue;
+
                 gp_Vec toP(eyePnt, p);
                 if (toP.Dot(viewDir) < 0.0)
                     continue;
