@@ -5,6 +5,7 @@
 #include "../Coordinate/WorkPlane.h"
 #include "../Coordinate/WorkPlaneManager.h"
 #include "../Coordinate/LevelManager.h"
+#include "../Coordinate/CoordinateSystem.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
 #include "ModelTree/ModelTreeWidget.h"
@@ -1464,6 +1465,17 @@ void MainWindow::createDockWindows()
         m_propertyPanel->showLevelProperties(levelId);
     });
 
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::workPlaneSelected, this, [this](int axis, double offset, const QString& name) {
+        if (m_viewportContainer)
+        {
+            m_viewportContainer->setActivePlane(static_cast<TSA::Coordinate::WorkPlaneAxis>(axis), offset);
+        }
+        else if (m_occView)
+        {
+            m_occView->setWorkPlaneAxisAndOffset(static_cast<TSA::Coordinate::WorkPlaneAxis>(axis), offset, name.toStdString());
+        }
+    });
+
     connect(m_modelTree, &TSA::UI::ModelTreeWidget::nodeSelected, this, [this](int nodeId) {
         m_selectionManager->selectNode(nodeId);
         m_occView->highlightNode(nodeId);
@@ -1853,6 +1865,18 @@ void MainWindow::createStatusBar()
             if (m_statusInfo)
             {
                 m_statusInfo->setText(tr("Niveau actif : %1 (Z=%2 m)").arg(name).arg(elev, 0, 'f', 2));
+            }
+        });
+
+        connect(m_viewportContainer, &TSA::UI::ViewportContainer::activeWorkPlaneChanged, this, [this](TSA::Coordinate::WorkPlaneAxis axis, double offset, const QString& name) {
+            QString axisStr = (axis == TSA::Coordinate::WorkPlaneAxis::Z) ? "Plan Z" : ((axis == TSA::Coordinate::WorkPlaneAxis::X) ? "Coupe X" : "Coupe Y");
+            if (m_statusLevel)
+            {
+                m_statusLevel->setText(tr("%1 : %2").arg(axisStr).arg(name.isEmpty() ? tr("Tous") : name));
+            }
+            if (m_statusInfo)
+            {
+                m_statusInfo->setText(tr("%1 actif : %2 (offset=%3 m)").arg(axisStr).arg(name).arg(offset, 0, 'f', 2));
             }
         });
     }

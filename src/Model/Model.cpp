@@ -35,6 +35,13 @@ const TSA::Coordinate::LevelManager* Model::levelManager() const
     return m_coordinateSystem ? m_coordinateSystem->levelManager() : nullptr;
 }
 
+std::vector<TSA::Coordinate::DetectedPlaneInfo> Model::detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis axis) const
+{
+    if (m_coordinateSystem)
+        return m_coordinateSystem->detectStructuralPlanes(axis, this);
+    return {};
+}
+
 void Model::addObserver(IModelObserver* observer)
 {
     if (observer && std::find(m_observers.begin(), m_observers.end(), observer) == m_observers.end())

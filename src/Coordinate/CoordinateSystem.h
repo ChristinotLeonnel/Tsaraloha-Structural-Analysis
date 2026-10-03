@@ -7,8 +7,28 @@
 #include <string>
 #include <memory>
 
+namespace TSA::Model
+{
+class Model;
+}
+
 namespace TSA::Coordinate
 {
+
+enum class WorkPlaneAxis
+{
+    Z = 0, // Horizontal XY (planchers / niveaux)
+    X = 1, // Vertical YZ (coupes transversales)
+    Y = 2  // Vertical XZ (coupes longitudinales)
+};
+
+struct DetectedPlaneInfo
+{
+    WorkPlaneAxis axis = WorkPlaneAxis::Z;
+    double offset = 0.0;
+    std::string name; // ex: "R+1 (Z = 3.00 m)", "Axe 2 (X = 5.00 m)", etc.
+    std::string id;   // identifiant unique
+};
 
 class CoordinateSystem : public QObject
 {
@@ -17,6 +37,9 @@ class CoordinateSystem : public QObject
 public:
     explicit CoordinateSystem(QObject* parent = nullptr);
     ~CoordinateSystem() override = default;
+
+    // Détection automatique des plans structurels selon l'axe X, Y ou Z
+    std::vector<DetectedPlaneInfo> detectStructuralPlanes(WorkPlaneAxis axis, const TSA::Model::Model* model = nullptr) const;
 
     // --- Coordonnées X ---
     const std::vector<double>& xPositions() const { return m_xPositions; }

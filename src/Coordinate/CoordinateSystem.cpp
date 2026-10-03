@@ -1,6 +1,9 @@
 #include "CoordinateSystem.h"
+#include "../Model/Model.h"
 #include <algorithm>
 #include <cmath>
+#include <sstream>
+#include <iomanip>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -360,6 +363,165 @@ void CoordinateSystem::deserializeFromJson(const std::string& json)
 
     synchronizeLabels();
     emit coordinatesChanged();
+}
+
+std::vector<DetectedPlaneInfo> CoordinateSystem::detectStructuralPlanes(WorkPlaneAxis axis, const TSA::Model::Model* model) const
+{
+    std::vector<DetectedPlaneInfo> result;
+    const double tol = 0.05; // 5 cm de tolérance pour le regroupement de plans proches
+
+    auto formatOffset = [](double val) {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << val;
+        return oss.str();
+    };
+
+    if (axis == WorkPlaneAxis::Z)
+    {
+        // 1. Niveaux existants du LevelManager
+        if (m_levelManager && !m_levelManager->isEmpty())
+        {
+            for (const auto& lvl : m_levelManager->levels())
+            {
+                DetectedPlaneInfo info;
+                info.axis = WorkPlaneAxis::Z;
+                info.offset = lvl.elevation;
+                info.name = lvl.name.empty() ? ("Z = " + formatOffset(lvl.elevation) + " m") : lvl.name;
+                info.id = lvl.id;
+                result.push_back(info);
+            }
+        }
+        else
+        {
+            // Collecter les Z uniques des nœuds du modèle
+            std::vector<double> zVals;
+            if (model)
+            {
+                for (const auto& [nid, node] : model->nodes())
+                {
+                    double z = node.z();
+                    bool found = false;
+                    for (double existing : zVals)
+                    {
+                        if (std::abs(existing - z) <= tol) { found = true; break; }
+                    }
+                    if (!found) zVals.push_back(z);
+                }
+            }
+            std::sort(zVals.begin(), zVals.end());
+            if (zVals.empty()) zVals.push_back(0.0);
+
+            for (size_t i = 0; i < zVals.size(); ++i)
+            {
+                DetectedPlaneInfo info;
+                info.axis = WorkPlaneAxis::Z;
+                info.offset = zVals[i];
+                info.name = "Niveau Z = " + formatOffset(zVals[i]) + " m";
+                info.id = "z_" + std::to_string(i);
+                result.push_back(info);
+            }
+        }
+    }
+    else if (axis == WorkPlaneAxis::X)
+    {
+        // 1. Positions X de la grille cartésienne
+        std::vector<std::pair<double, std::string>> xVals;
+        for (size_t i = 0; i < m_xPositions.size(); ++i)
+        {
+            std::string label = (i < m_xLabels.size() && !m_xLabels[i].empty())
+                ? (m_xLabels[i] + " (X = " + formatOffset(m_xPositions[i]) + " m)")
+                : ("Axe X = " + formatOffset(m_xPositions[i]) + " m");
+            xVals.push_back({ m_xPositions[i], label });
+        }
+
+        // 2. Coordonnées X des nœuds du modèle
+        if (model)
+        {
+            for (const auto& [nid, node] : model->nodes())
+            {
+                double x = node.x();
+                bool found = false;
+                for (const auto& existing : xVals)
+                {
+                    if (std::abs(existing.first - x) <= tol) { found = true; break; }
+                }
+                if (!found)
+                {
+                    xVals.push_back({ x, "Axe X = " + formatOffset(x) + " m" });
+                }
+            }
+        }
+
+        std::sort(xVals.begin(), xVals.end(), [](const auto& a, const auto& b) {
+            return a.first < b.first;
+        });
+
+        if (xVals.empty())
+        {
+            xVals.push_back({ 0.0, "Axe X = 0.00 m" });
+        }
+
+        for (size_t i = 0; i < xVals.size(); ++i)
+        {
+            DetectedPlaneInfo info;
+            info.axis = WorkPlaneAxis::X;
+            info.offset = xVals[i].first;
+            info.name = xVals[i].second;
+            info.id = "x_" + std::to_string(i);
+            result.push_back(info);
+        }
+    }
+    else if (axis == WorkPlaneAxis::Y)
+    {
+        // 1. Positions Y de la grille cartésienne
+        std::vector<std::pair<double, std::string>> yVals;
+        for (size_t i = 0; i < m_yPositions.size(); ++i)
+        {
+            std::string label = (i < m_yLabels.size() && !m_yLabels[i].empty())
+                ? (m_yLabels[i] + " (Y = " + formatOffset(m_yPositions[i]) + " m)")
+                : ("Axe Y = " + formatOffset(m_yPositions[i]) + " m");
+            yVals.push_back({ m_yPositions[i], label });
+        }
+
+        // 2. Coordonnées Y des nœuds du modèle
+        if (model)
+        {
+            for (const auto& [nid, node] : model->nodes())
+            {
+                double y = node.y();
+                bool found = false;
+                for (const auto& existing : yVals)
+                {
+                    if (std::abs(existing.first - y) <= tol) { found = true; break; }
+                }
+                if (!found)
+                {
+                    yVals.push_back({ y, "Axe Y = " + formatOffset(y) + " m" });
+                }
+            }
+        }
+
+        std::sort(yVals.begin(), yVals.end(), [](const auto& a, const auto& b) {
+            return a.first < b.first;
+        });
+
+        if (yVals.empty())
+        {
+            yVals.push_back({ 0.0, "Axe Y = 0.00 m" });
+        }
+
+        for (size_t i = 0; i < yVals.size(); ++i)
+        {
+            DetectedPlaneInfo info;
+            info.axis = WorkPlaneAxis::Y;
+            info.offset = yVals[i].first;
+            info.name = yVals[i].second;
+            info.id = "y_" + std::to_string(i);
+            result.push_back(info);
+        }
+    }
+
+    return result;
 }
 
 } // namespace TSA::Coordinate

@@ -105,6 +105,9 @@ public:
     TSA::Coordinate::WorkPlaneManager* workPlaneManager() { return m_workPlaneManager.get(); }
     const TSA::Coordinate::WorkPlaneManager* workPlaneManager() const { return m_workPlaneManager.get(); }
 
+    // Détection des plans de travail structurels (Z, X, Y)
+    std::vector<TSA::Coordinate::DetectedPlaneInfo> detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis axis) const;
+
     // Observateurs
     void addObserver(IModelObserver* observer);
     void removeObserver(IModelObserver* observer);

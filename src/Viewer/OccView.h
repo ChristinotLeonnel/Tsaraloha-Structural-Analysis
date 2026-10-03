@@ -65,6 +65,7 @@ public:
 
     // Liaison avec le modèle et la sélection
     void setModel(TSA::Model::Model* model);
+    TSA::Model::Model* model() const noexcept { return m_model; }
     void setSelectionManager(TSA::Viewer::SelectionManager* selectionManager);
     void rebuildAllShapes();
 
@@ -150,6 +151,7 @@ public:
     void setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp);
     void setWorkPlaneElevation(double elevation);
     void setWorkPlaneType(TSA::Coordinate::WorkPlaneType type, double offset = 0.0);
+    void setWorkPlaneAxisAndOffset(TSA::Coordinate::WorkPlaneAxis axis, double offset, const std::string& name = "");
     void setWorkPlaneVisible(bool visible);
     bool isWorkPlaneVisible() const { return m_workPlaneVisible; }
     void viewNormalToWorkPlane();

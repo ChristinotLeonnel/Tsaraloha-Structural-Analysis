@@ -233,6 +233,7 @@ void MainWindow::setupUi()
     m_occView = new OccView(this);
     m_occView->setSelectionManager(m_selectionManager.get());
     m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
+    m_viewportContainer->setModel(m_model.get());
     setCentralWidget(m_viewportContainer);
 
     createActions();

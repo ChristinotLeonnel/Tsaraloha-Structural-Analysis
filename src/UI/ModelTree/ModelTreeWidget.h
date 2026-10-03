@@ -40,6 +40,7 @@ public:
 
 signals:
   void levelSelected(const QString &levelId);
+  void workPlaneSelected(int axis, double offset, const QString &name);
   void nodeSelected(int nodeId);
   void beamSelected(int beamId);
   void columnSelected(int columnId);

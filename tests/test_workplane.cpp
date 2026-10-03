@@ -969,5 +969,160 @@ bool runSuite_WorkPlane(int& passed)
         passed++;
     }
 
+    // Test 55: X-Y-Z Structural WorkPlanes Auto-Detection, Selection, Camera Normal & 2D Isolation
+    {
+        std::cout << "\n[Test 55] X-Y-Z Structural WorkPlanes Auto-Detection, Selection, Camera Normal & 2D Isolation..." << std::endl;
+
+        // Subtest 55.1: Détection automatique des plans structurels X, Y et Z depuis le modèle
+        {
+            Model model;
+            // Réinitialiser les niveaux et coordonnées par défaut du modèle pour le test
+            model.levelManager()->clear();
+            model.levelManager()->addLevel("RDC", 0.0);
+            model.levelManager()->addLevel("R+1", 3.20);
+            model.levelManager()->addLevel("R+2", 6.40);
+
+            model.coordinateSystem()->setXPositions({});
+            model.coordinateSystem()->setYPositions({});
+
+            // Nœuds du modèle définissant un portique 3D
+            // Trame X = 0, 5, 10 m
+            // Trame Y = 0, 4, 8 m
+            model.addNode(0.0, 0.0, 0.0);
+            model.addNode(5.0, 0.0, 0.0);
+            model.addNode(10.0, 0.0, 0.0);
+
+            model.addNode(0.0, 4.0, 3.20);
+            model.addNode(5.0, 4.0, 3.20);
+            model.addNode(10.0, 4.0, 3.20);
+
+            model.addNode(0.0, 8.0, 6.40);
+            model.addNode(5.0, 8.0, 6.40);
+            model.addNode(10.0, 8.0, 6.40);
+
+            // Nœud proche pour tester la tolérance de regroupement (tolérance = 5 cm = 0.05 m)
+            model.addNode(5.02, 4.01, 3.21); // doit être regroupé avec X=5, Y=4, Z=3.2
+
+            // Détection suivant Z
+            auto zPlanes = model.detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis::Z);
+            TEST_CHECK(zPlanes.size() == 3, "Subtest 55.1: Exactly 3 Z levels detected");
+            TEST_CHECK(approxEqual(zPlanes[0].offset, 0.0) && zPlanes[0].name == "RDC", "Subtest 55.1: Level 0 is RDC (Z=0.00 m)");
+            TEST_CHECK(approxEqual(zPlanes[1].offset, 3.20) && zPlanes[1].name == "R+1", "Subtest 55.1: Level 1 is R+1 (Z=3.20 m)");
+            TEST_CHECK(approxEqual(zPlanes[2].offset, 6.40) && zPlanes[2].name == "R+2", "Subtest 55.1: Level 2 is R+2 (Z=6.40 m)");
+
+            // Détection suivant X
+            auto xPlanes = model.detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis::X);
+            TEST_CHECK(xPlanes.size() == 3, "Subtest 55.1: Exactly 3 X cuts detected (5.02m clustered with 5.0m)");
+            TEST_CHECK(approxEqual(xPlanes[0].offset, 0.0), "Subtest 55.1: First X cut is at X=0.00 m");
+            TEST_CHECK(approxEqual(xPlanes[1].offset, 5.0), "Subtest 55.1: Second X cut is at X=5.00 m");
+            TEST_CHECK(approxEqual(xPlanes[2].offset, 10.0), "Subtest 55.1: Third X cut is at X=10.00 m");
+
+            // Détection suivant Y
+            auto yPlanes = model.detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis::Y);
+            TEST_CHECK(yPlanes.size() == 3, "Subtest 55.1: Exactly 3 Y cuts detected (4.01m clustered with 4.0m)");
+            TEST_CHECK(approxEqual(yPlanes[0].offset, 0.0), "Subtest 55.1: First Y cut is at Y=0.00 m");
+            TEST_CHECK(approxEqual(yPlanes[1].offset, 4.0), "Subtest 55.1: Second Y cut is at Y=4.00 m");
+            TEST_CHECK(approxEqual(yPlanes[2].offset, 8.0), "Subtest 55.1: Third Y cut is at Y=8.00 m");
+
+            std::cout << "  [PASS] Subtest 55.1: Structural Plane Auto-Detection along Z, X, Y Verified" << std::endl;
+        }
+
+        // Subtest 55.2: Alignement géométrique, Normale caméra et Vecteur Haut pour Z, X, Y
+        {
+            // Plan horizontal Z (XY)
+            WorkPlane wpZ = WorkPlane::xy(3.20, "R+1");
+            TEST_CHECK(wpZ.type() == WorkPlaneType::GlobalXY, "Subtest 55.2: wpZ type is GlobalXY");
+            TEST_CHECK(approxEqual(wpZ.normal().Z(), 1.0), "Subtest 55.2: Normal to Z plane is +Z (Top View)");
+            TEST_CHECK(approxEqual(wpZ.yDirection().Y(), 1.0), "Subtest 55.2: Up vector for Z plane is +Y");
+
+            // Plan vertical X (YZ) - Coupe transversale
+            WorkPlane wpX = WorkPlane::yz(5.0, "Coupe X=5.00");
+            TEST_CHECK(wpX.type() == WorkPlaneType::GlobalYZ, "Subtest 55.2: wpX type is GlobalYZ");
+            TEST_CHECK(approxEqual(wpX.normal().X(), 1.0), "Subtest 55.2: Normal to X plane is +X (Side View)");
+            TEST_CHECK(approxEqual(wpX.yDirection().Z(), 1.0), "Subtest 55.2: Up vector for X plane is +Z (Vertical)");
+            TEST_CHECK(approxEqual(wpX.xDirection().Y(), 1.0), "Subtest 55.2: Local horizontal axis is +Y");
+
+            // Plan vertical Y (XZ) - Coupe longitudinale
+            WorkPlane wpY = WorkPlane::xz(4.0, "Coupe Y=4.00");
+            TEST_CHECK(wpY.type() == WorkPlaneType::GlobalXZ, "Subtest 55.2: wpY type is GlobalXZ");
+            TEST_CHECK(approxEqual(std::abs(wpY.normal().Y()), 1.0), "Subtest 55.2: Normal to Y plane is Y axis (Front View)");
+            TEST_CHECK(approxEqual(wpY.yDirection().Z(), 1.0), "Subtest 55.2: Up vector for Y plane is +Z (Vertical)");
+            TEST_CHECK(approxEqual(wpY.xDirection().X(), 1.0), "Subtest 55.2: Local horizontal axis is +X");
+
+            std::cout << "  [PASS] Subtest 55.2: Camera Normal & Up Vector for Z, X, Y Verified" << std::endl;
+        }
+
+        // Subtest 55.3: Isolation 2D géométrique sur coupes verticales X, Y et plans horizontaux Z
+        {
+            const double tol = 0.05;
+
+            // Élément 1 : Poutre sur Y=0, Z=3.20 de X=0 à X=5 (dans coupe Y=0 et plan Z=3.2)
+            gp_Pnt b1_start(0.0, 0.0, 3.20);
+            gp_Pnt b1_end(5.0, 0.0, 3.20);
+
+            // Élément 2 : Poteau sur X=5, Y=4 de Z=0 à Z=3.20 (dans coupe X=5 et coupe Y=4)
+            gp_Pnt c1_start(5.0, 4.0, 0.0);
+            gp_Pnt c1_end(5.0, 4.0, 3.20);
+
+            auto isSegmentInPlane = [&](const WorkPlane& wp, const gp_Pnt& p1, const gp_Pnt& p2) {
+                double u1=0, v1=0, w1=0, u2=0, v2=0, w2=0;
+                wp.toLocal(p1, u1, v1, w1);
+                wp.toLocal(p2, u2, v2, w2);
+                if (std::abs(w1) <= tol || std::abs(w2) <= tol) return true;
+                if ((w1 < -tol && w2 > tol) || (w1 > tol && w2 < -tol)) return true;
+                return false;
+            };
+
+            WorkPlane wpZ32 = WorkPlane::xy(3.20, "R+1");
+            WorkPlane wpZ0 = WorkPlane::xy(0.0, "RDC");
+            WorkPlane wpX5 = WorkPlane::yz(5.0, "Coupe X=5");
+            WorkPlane wpX0 = WorkPlane::yz(0.0, "Coupe X=0");
+            WorkPlane wpY0 = WorkPlane::xz(0.0, "Coupe Y=0");
+            WorkPlane wpY4 = WorkPlane::xz(4.0, "Coupe Y=4");
+
+            // Test Z
+            TEST_CHECK(isSegmentInPlane(wpZ32, b1_start, b1_end), "Subtest 55.3: Beam 1 is visible on floor Z=3.20");
+            TEST_CHECK(!isSegmentInPlane(wpZ0, b1_start, b1_end), "Subtest 55.3: Beam 1 is isolated on floor Z=0.00");
+
+            // Test X (Coupe YZ à X=5)
+            TEST_CHECK(isSegmentInPlane(wpX5, c1_start, c1_end), "Subtest 55.3: Column 1 is visible in vertical cut X=5.00");
+            TEST_CHECK(isSegmentInPlane(wpX5, b1_start, b1_end), "Subtest 55.3: Beam 1 touches X=5.00 so is visible");
+            TEST_CHECK(!isSegmentInPlane(wpX0, c1_start, c1_end), "Subtest 55.3: Column 1 (at X=5) is isolated in cut X=0.00");
+
+            // Test Y (Coupe XZ à Y=4)
+            TEST_CHECK(isSegmentInPlane(wpY4, c1_start, c1_end), "Subtest 55.3: Column 1 is visible in vertical cut Y=4.00");
+            TEST_CHECK(!isSegmentInPlane(wpY4, b1_start, b1_end), "Subtest 55.3: Beam 1 (at Y=0) is isolated in cut Y=4.00");
+            TEST_CHECK(isSegmentInPlane(wpY0, b1_start, b1_end), "Subtest 55.3: Beam 1 is visible in cut Y=0.00");
+
+            std::cout << "  [PASS] Subtest 55.3: 2D Geometric Element Isolation across X, Y, Z Verified" << std::endl;
+        }
+
+        // Subtest 55.4: Navigation rapide et commutation d'axe bidirectionnelle
+        {
+            WorkPlane wp = WorkPlane::xy(0.0);
+            TEST_CHECK(wp.isHorizontal(), "Subtest 55.4: Initial workplane is horizontal");
+
+            // Bascule vers X (YZ)
+            wp = WorkPlane::yz(5.0, "Coupe X");
+            TEST_CHECK(!wp.isHorizontal(), "Subtest 55.4: Vertical X plane is not horizontal");
+            TEST_CHECK(approxEqual(wp.origin().X(), 5.0), "Subtest 55.4: Origin X is 5.0m");
+
+            // Bascule vers Y (XZ)
+            wp = WorkPlane::xz(4.0, "Coupe Y");
+            TEST_CHECK(!wp.isHorizontal(), "Subtest 55.4: Vertical Y plane is not horizontal");
+            TEST_CHECK(approxEqual(wp.origin().Y(), 4.0), "Subtest 55.4: Origin Y is 4.0m");
+
+            // Retour vers Z (XY)
+            wp = WorkPlane::xy(3.20, "R+1");
+            TEST_CHECK(wp.isHorizontal(), "Subtest 55.4: Returned to horizontal Z plane");
+            TEST_CHECK(approxEqual(wp.origin().Z(), 3.20), "Subtest 55.4: Origin Z is 3.20m");
+
+            std::cout << "  [PASS] Subtest 55.4: Rapid Navigation and Axis Switching Verified" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 55: X-Y-Z Structural WorkPlanes Auto-Detection, Selection, Camera Normal & 2D Isolation Passed Successfully!" << std::endl;
+        passed++;
+    }
+
     return true;
 }

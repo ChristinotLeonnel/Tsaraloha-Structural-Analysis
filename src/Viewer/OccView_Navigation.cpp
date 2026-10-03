@@ -618,6 +618,25 @@ void OccView::setWorkPlaneType(TSA::Coordinate::WorkPlaneType type, double offse
         m_view->Redraw();
 }
 
+void OccView::setWorkPlaneAxisAndOffset(TSA::Coordinate::WorkPlaneAxis axis, double offset, const std::string& name)
+{
+    TSA::Coordinate::WorkPlaneType type = TSA::Coordinate::WorkPlaneType::GlobalXY;
+    std::string defaultName = "Plan Z";
+    if (axis == TSA::Coordinate::WorkPlaneAxis::X)
+    {
+        type = TSA::Coordinate::WorkPlaneType::GlobalYZ;
+        defaultName = "Coupe X";
+    }
+    else if (axis == TSA::Coordinate::WorkPlaneAxis::Y)
+    {
+        type = TSA::Coordinate::WorkPlaneType::GlobalXZ;
+        defaultName = "Coupe Y";
+    }
+
+    TSA::Coordinate::WorkPlane wp(type, name.empty() ? defaultName : name, offset);
+    setActiveWorkPlane(wp);
+}
+
 void OccView::setWorkPlaneVisible(bool visible)
 {
     if (m_workPlaneVisible == visible)

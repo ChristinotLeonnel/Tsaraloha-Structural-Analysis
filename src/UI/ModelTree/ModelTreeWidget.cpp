@@ -10,7 +10,9 @@ namespace TSA::UI
 enum ItemRole
 {
     TypeRole = Qt::UserRole + 1,
-    IdRole = Qt::UserRole + 2
+    IdRole = Qt::UserRole + 2,
+    AxisRole = Qt::UserRole + 3,
+    OffsetRole = Qt::UserRole + 4
 };
 
 enum ItemType
@@ -29,7 +31,8 @@ enum ItemType
     TypeLoad = 11,
     TypeSupport = 12,
     TypeResult = 13,
-    TypeProject = 14
+    TypeProject = 14,
+    TypeWorkPlane = 15
 };
 
 ModelTreeWidget::ModelTreeWidget(TSA::Model::Model* model, QWidget* parent)
@@ -109,7 +112,7 @@ void ModelTreeWidget::createRootCategories()
     m_projectRootItem->setIcon(0, QIcon(":/icons/file/file_open.svg"));
     m_projectRootItem->setExpanded(true);
 
-    m_levelsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Niveaux"), "" });
+    m_levelsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Plans de travail / Niveaux"), "" });
     m_levelsCategory->setData(0, TypeRole, TypeCategory);
     m_levelsCategory->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
     m_levelsCategory->setExpanded(true);
@@ -185,22 +188,62 @@ void ModelTreeWidget::refreshLevels()
         delete m_levelsCategory->takeChild(0);
     }
 
-    if (!m_model || !m_model->levelManager())
+    if (!m_model)
         return;
 
-    for (const auto& lvl : m_model->levelManager()->levels())
-    {
-        QString name = QString::fromStdString(lvl.name);
-        QString details = QString("Z = %1 m%2")
-            .arg(lvl.elevation, 0, 'f', 2)
-            .arg(lvl.visible ? "" : tr(" (Masqué)"));
+    // 1. Z (Niveaux horizontaux)
+    auto zPlanes = m_model->detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis::Z);
+    auto* catZ = new QTreeWidgetItem(m_levelsCategory, { tr("Z (Niveaux horizontaux)"), QString("[%1]").arg(zPlanes.size()) });
+    catZ->setData(0, TypeRole, TypeCategory);
+    catZ->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
+    catZ->setExpanded(true);
 
-        auto* item = new QTreeWidgetItem(m_levelsCategory, { name, details });
-        item->setData(0, TypeRole, TypeLevel);
-        item->setData(0, IdRole, QString::fromStdString(lvl.id));
+    for (const auto& plane : zPlanes)
+    {
+        auto* item = new QTreeWidgetItem(catZ, { QString::fromStdString(plane.name), QString("Z = %1 m").arg(plane.offset, 0, 'f', 2) });
+        item->setData(0, TypeRole, TypeWorkPlane);
+        item->setData(0, IdRole, QString::fromStdString(plane.id));
+        item->setData(0, AxisRole, static_cast<int>(TSA::Coordinate::WorkPlaneAxis::Z));
+        item->setData(0, OffsetRole, plane.offset);
+        item->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
     }
 
-    m_levelsCategory->setText(1, QString("[%1]").arg(m_levelsCategory->childCount()));
+    // 2. X (Coupes verticales YZ)
+    auto xPlanes = m_model->detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis::X);
+    auto* catX = new QTreeWidgetItem(m_levelsCategory, { tr("X (Coupes YZ)"), QString("[%1]").arg(xPlanes.size()) });
+    catX->setData(0, TypeRole, TypeCategory);
+    catX->setIcon(0, QIcon(":/icons/view/coord_system.svg"));
+    catX->setExpanded(false);
+
+    for (const auto& plane : xPlanes)
+    {
+        auto* item = new QTreeWidgetItem(catX, { QString::fromStdString(plane.name), QString("X = %1 m").arg(plane.offset, 0, 'f', 2) });
+        item->setData(0, TypeRole, TypeWorkPlane);
+        item->setData(0, IdRole, QString::fromStdString(plane.id));
+        item->setData(0, AxisRole, static_cast<int>(TSA::Coordinate::WorkPlaneAxis::X));
+        item->setData(0, OffsetRole, plane.offset);
+        item->setIcon(0, QIcon(":/icons/view/coord_system.svg"));
+    }
+
+    // 3. Y (Coupes verticales XZ)
+    auto yPlanes = m_model->detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis::Y);
+    auto* catY = new QTreeWidgetItem(m_levelsCategory, { tr("Y (Coupes XZ)"), QString("[%1]").arg(yPlanes.size()) });
+    catY->setData(0, TypeRole, TypeCategory);
+    catY->setIcon(0, QIcon(":/icons/view/coord_system.svg"));
+    catY->setExpanded(false);
+
+    for (const auto& plane : yPlanes)
+    {
+        auto* item = new QTreeWidgetItem(catY, { QString::fromStdString(plane.name), QString("Y = %1 m").arg(plane.offset, 0, 'f', 2) });
+        item->setData(0, TypeRole, TypeWorkPlane);
+        item->setData(0, IdRole, QString::fromStdString(plane.id));
+        item->setData(0, AxisRole, static_cast<int>(TSA::Coordinate::WorkPlaneAxis::Y));
+        item->setData(0, OffsetRole, plane.offset);
+        item->setIcon(0, QIcon(":/icons/view/coord_system.svg"));
+    }
+
+    size_t total = zPlanes.size() + xPlanes.size() + yPlanes.size();
+    m_levelsCategory->setText(1, QString("[%1]").arg(total));
 }
 
 void ModelTreeWidget::refreshGrids()
@@ -1023,6 +1066,18 @@ void ModelTreeWidget::onItemSelectionChanged()
     case TypeLevel:
         emit levelSelected(item->data(0, IdRole).toString());
         break;
+    case TypeWorkPlane:
+    {
+        int axis = item->data(0, AxisRole).toInt();
+        double offset = item->data(0, OffsetRole).toDouble();
+        QString name = item->text(0);
+        emit workPlaneSelected(axis, offset, name);
+        if (axis == static_cast<int>(TSA::Coordinate::WorkPlaneAxis::Z))
+        {
+            emit levelSelected(item->data(0, IdRole).toString());
+        }
+        break;
+    }
     case TypeNode:
         emit nodeSelected(item->data(0, IdRole).toInt());
         break;
