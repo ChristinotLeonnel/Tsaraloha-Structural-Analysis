@@ -72,6 +72,8 @@
 
 #include "Geometry/CableGeometry3D.h"
 #include "Geometry/BeamGeometry.h"
+#include <BRepPrimAPI_MakeBox.hxx>
+#include <BRepPrimAPI_MakeCylinder.hxx>
 
 #include "Grid/CableGrid.h"
 #include "Grid/CartesianGrid.h"
