@@ -12,7 +12,7 @@
 #include "../Analysis/OpenSeesAnalysisBuilder.h"
 
 namespace TSA::Model { class Model; }
-namespace TSA::Analysis { class ResultsModel; class OpenSeesSolver; }
+namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Project { class ProjectManager; }
 namespace TSA::Viewer { class SelectionManager; }
@@ -178,6 +178,10 @@ private:
     QDockWidget* m_ndcDock = nullptr;
     TSA::NDC::NDCViewerWidget* m_ndcWidget = nullptr;
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
+    /// Invalide les résultats dès que le modèle diverge de la révision analysée (déclaré après
+    /// m_model : détruit avant lui).
+    std::unique_ptr<TSA::Analysis::ResultsValidityGuard> m_resultsGuard;
+    void onResultsBecameStale();
     std::unique_ptr<TSA::Analysis::OpenSeesSolver> m_openSeesSolver;
     TSA::UI::ModelTreeWidget* m_modelTree = nullptr;
     TSA::UI::PropertyPanel*   m_propertyPanel = nullptr;

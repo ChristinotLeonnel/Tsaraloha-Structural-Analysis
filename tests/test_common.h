@@ -50,6 +50,8 @@
 #include "Coordinate/CoordinateTransformationService.h"
 
 #include "Model/Model.h"
+#include "Analysis/ResultsModel.h"
+#include "Analysis/ResultsValidityGuard.h"
 #include "Model/ModelDiff.h"
 #include "Model/Material.h"
 #include "Model/MaterialLibrary.h"

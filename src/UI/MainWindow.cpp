@@ -25,9 +25,11 @@
 #include "Dock/VisibilityDock.h"
 #include "Dock/StructuralElementsDock.h"
 #include "Dock/LogConsoleDock.h"
+#include "Dock/ResultsDockWidget.h"
 #include "Dock/ProjectionViewDock.h"
 #include "WindowManager/WindowManager.h"
 #include "../Diagnostics/Logger.h"
+#include "../Analysis/ResultsValidityGuard.h"
 #include "../Diagnostics/DiagnosticReport.h"
 #include "Theme/ThemeManager.h"
 #include "Dialogs/HelpDialog.h"
@@ -59,6 +61,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QElapsedTimer>
+#include <QTimer>
 #include <QLabel>
 #include <QAction>
 #include <QActionGroup>
@@ -88,6 +91,12 @@ MainWindow::MainWindow(QWidget* parent)
     , m_projectManager(std::make_unique<TSA::Project::ProjectManager>(this))
     , m_windowManager(std::make_unique<TSA::UI::WindowManager>(this, this))
 {
+    m_resultsGuard = std::make_unique<TSA::Analysis::ResultsValidityGuard>(m_model.get());
+    m_resultsGuard->setStaleCallback([this]() {
+        // Différé : on est au milieu d'une notification du modèle ; ne pas toucher aux vues ici.
+        QTimer::singleShot(0, this, &MainWindow::onResultsBecameStale);
+    });
+
     // Grille 3D initiale : synchronisée avec le système de coordonnées et de niveaux unifié
     m_gridManager->clearAllGrids();
 
@@ -221,6 +230,32 @@ MainWindow::MainWindow(QWidget* parent)
 }
 
 MainWindow::~MainWindow() = default;
+
+void MainWindow::onResultsBecameStale()
+{
+    if (!m_resultsModel || m_resultsModel->isValid())
+        return;
+
+    // Les consommateurs vérifient déjà ResultsModel::isValid() : il suffit de les rafraîchir.
+    if (m_occView && m_occView->resultsVisual())
+    {
+        m_occView->resultsVisual()->clearAllVisuals();
+        m_occView->update();
+    }
+    if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
+    if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
+    if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
+    if (m_resultsDock) m_resultsDock->setResultsModel(m_resultsModel);
+
+    if (m_consoleDock)
+    {
+        m_consoleDock->appendLog(tr("Modèle modifié depuis le dernier calcul : résultats obsolètes, relancez l'analyse."), "WARN");
+    }
+    if (m_statusInfo)
+    {
+        m_statusInfo->setText(tr("Résultats obsolètes — recalcul nécessaire"));
+    }
+}
 
 void MainWindow::setupUi()
 {

@@ -418,6 +418,8 @@ set(LOAD_CORE_SOURCES
     src/Analysis/CalculationSnapshot.cpp
     src/Analysis/ResultsModel.h
     src/Analysis/ResultsModel.cpp
+    src/Analysis/ResultsValidityGuard.h
+    src/Analysis/ResultsValidityGuard.cpp
     src/Analysis/OpenSeesAnalysisBuilder.h
     src/Analysis/OpenSeesAnalysisBuilder.cpp
     src/Analysis/OpenSeesResultsReader.h

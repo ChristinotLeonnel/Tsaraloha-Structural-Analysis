@@ -802,5 +802,53 @@ bool runSuite_Model(int& passed)
     }
 
 
+    // -------------------------------------------------------------------------
+    // TEST 95: Révision du modèle & invalidation des résultats (ResultsValidityGuard)
+    // Régression : ResultsModel::invalidate() n'était jamais appelé ; des résultats périmés
+    // restaient présentés comme valides après une modification du modèle.
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 95: Invalidation des résultats après modification ---" << std::endl;
+        Model m;
+        int n1 = m.addNode(0.0, 0.0, 0.0);
+        int n2 = m.addNode(5.0, 0.0, 0.0);
+        int b1 = m.addBeam(n1, n2);
+
+        const auto r0 = m.revision();
+        m.notifyBeamModified(b1);
+        TEST_CHECK(m.revision() > r0, "Test 95: une notification augmente la révision");
+
+        auto results = std::make_shared<TSA::Analysis::ResultsModel>();
+        results->setValid(true);
+        TSA::Analysis::ResultsValidityGuard guard(&m);
+        int staleCalls = 0;
+        guard.setStaleCallback([&]() { ++staleCalls; });
+        guard.trackResults(results);
+        TEST_CHECK(guard.resultsUpToDate(), "Test 95: résultats à jour juste après l'analyse");
+
+        m.pushUndoState("Modification test");
+        m.getBeam(b1)->setRotation(15.0);
+        m.notifyBeamModified(b1);
+        TEST_CHECK(!results->isValid(), "Test 95: résultats invalidés après modification");
+        TEST_CHECK(!guard.resultsUpToDate(), "Test 95: le garde signale des résultats périmés");
+        TEST_CHECK(staleCalls == 1, "Test 95: rappel 'obsolète' appelé une seule fois");
+
+        // Undo ramène la géométrie, mais pas la validité : il faut relancer le calcul
+        TEST_CHECK(m.undo(), "Test 95: undo");
+        TEST_CHECK(!results->isValid() && staleCalls == 1, "Test 95: un Undo ne revalide pas les résultats");
+
+        // Nouvelle analyse : de nouveau à jour, puis une modification de charge invalide aussi
+        auto results2 = std::make_shared<TSA::Analysis::ResultsModel>();
+        results2->setValid(true);
+        guard.trackResults(results2);
+        TEST_CHECK(guard.resultsUpToDate(), "Test 95: nouvelle analyse à jour");
+        m.pushUndoState("Combinaison");
+        m.loadManager().getCombination(1)->setFactor(2, 1.2);
+        TEST_CHECK(!results2->isValid(), "Test 95: modifier une combinaison (via pushUndoState) invalide");
+        std::cout << "[PASS] Test 95: Invalidation des résultats" << std::endl;
+        passed++;
+    }
+
     return true;
 }
+
