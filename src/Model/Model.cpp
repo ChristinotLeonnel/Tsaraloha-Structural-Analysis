@@ -23,7 +23,14 @@ Model::Model()
     }
 }
 
-Model::~Model() = default;
+Model::~Model()
+{
+    const auto observers = m_observers; // copie : un observateur peut modifier la liste
+    for (auto* obs : observers)
+    {
+        obs->onModelDestroyed();
+    }
+}
 
 TSA::Coordinate::LevelManager* Model::levelManager()
 {

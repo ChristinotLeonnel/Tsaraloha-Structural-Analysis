@@ -90,6 +90,7 @@ protected:
 
   void onModelDiffApplied(const TSA::Model::ModelDiff &diff) override;
   void onModelCleared() override;
+  void onModelDestroyed() override { m_model = nullptr; }
 
 private slots:
   void onItemSelectionChanged();

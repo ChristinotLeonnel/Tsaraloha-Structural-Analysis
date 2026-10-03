@@ -93,6 +93,7 @@ public:
     void onTrussMemberModified(const TSA::Model::TrussMember&) override { refreshStatus(); }
     void onTrussMemberRemoved(int) override { refreshStatus(); }
     void onModelCleared() override { refreshStatus(); }
+    void onModelDestroyed() override { m_model = nullptr; }
 
 signals:
     void overlayToggled(bool visible);
