@@ -409,6 +409,28 @@ bool Model::isNodeFree(int nodeId) const
     return true;
 }
 
+bool Model::wouldCollapseConnectedElement(int nodeId, double x, double y, double z, double tol) const
+{
+    auto coincides = [&](int otherId) {
+        if (otherId == nodeId) return true;
+        const Node* o = getNode(otherId);
+        if (!o) return false;
+        const double dx = o->x() - x, dy = o->y() - y, dz = o->z() - z;
+        return dx * dx + dy * dy + dz * dz <= tol * tol;
+    };
+    auto checkLinear = [&](int a, int b) {
+        if (a == nodeId) return coincides(b);
+        if (b == nodeId) return coincides(a);
+        return false;
+    };
+    for (const auto& [id, e] : m_beams) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    for (const auto& [id, e] : m_columns) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    for (const auto& [id, e] : m_trussMembers) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    for (const auto& [id, e] : m_cables) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    for (const auto& [id, e] : m_walls) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    return false;
+}
+
 std::vector<int> Model::freeNodeIds() const
 {
     std::set<int> connectedNodes;

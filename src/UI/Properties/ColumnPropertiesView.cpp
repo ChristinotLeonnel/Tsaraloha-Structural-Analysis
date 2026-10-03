@@ -1,4 +1,5 @@
 #include "ColumnPropertiesView.h"
+#include "../../UndoRedo/UndoManager.h"
 #include "../Widgets/SectionPreviewWidget.h"
 #include "../../Model/Model.h"
 #include "../../Model/Column.h"
@@ -311,7 +312,11 @@ void ColumnPropertiesView::applyChanges()
     auto* col = m_model->getColumn(m_columnId);
     if (!col) return;
 
-    m_model->pushUndoState(tr("Modification Poteau %1").arg(m_columnId).toStdString());
+    const std::string undoName = tr("Modification Poteau %1").arg(m_columnId).toStdString();
+    // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
+    const std::string oldSection = col->section().name;
+    const std::string oldMaterial = col->material().name;
+    m_model->pushUndoState(undoName, undoName);
 
     col->setName(m_editName->text().toStdString());
 
@@ -333,6 +338,15 @@ void ColumnPropertiesView::applyChanges()
         m_previewWidget->setRotation(col->rotation());
     }
 
+    if (auto* um = m_model->undoManager())
+    {
+        if (col->section().name != oldSection)
+            um->addRecord({ "modify_property", "Column", m_columnId, "section", oldSection, col->section().name,
+                            { "geometry", "stiffness", "self_weight", "results_invalidated" } });
+        if (col->material().name != oldMaterial)
+            um->addRecord({ "modify_property", "Column", m_columnId, "material", oldMaterial, col->material().name,
+                            { "stiffness", "self_weight", "results_invalidated" } });
+    }
     m_model->notifyColumnModified(m_columnId);
     emit elementModified();
 }

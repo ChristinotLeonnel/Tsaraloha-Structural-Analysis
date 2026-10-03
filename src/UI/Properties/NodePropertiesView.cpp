@@ -1,4 +1,6 @@
 #include "NodePropertiesView.h"
+#include "../../UndoRedo/UndoManager.h"
+#include <QMessageBox>
 #include "../../Model/Model.h"
 #include "../../Model/Node.h"
 #include "../../Analysis/ResultsModel.h"
@@ -503,7 +505,21 @@ void NodePropertiesView::applyChanges()
     auto* node = m_model->getNode(m_nodeId);
     if (!node) return;
 
-    m_model->pushUndoState(tr("Modification Nœud %1").arg(m_nodeId).toStdString());
+    // Validation géométrique AVANT toute modification : refuser un déplacement qui rendrait un
+    // élément connecté de longueur nulle (géométrie OCCT dégénérée, matrice de rigidité singulière).
+    if (m_model->wouldCollapseConnectedElement(m_nodeId, m_spinX->value(), m_spinY->value(), m_spinZ->value()))
+    {
+        QMessageBox::warning(this, tr("Coordonnées refusées"),
+                             tr("Ces coordonnées confondraient le nœud %1 avec l'autre extrémité d'un élément connecté "
+                                "(longueur nulle). La modification n'a pas été appliquée.").arg(m_nodeId));
+        refreshView();
+        return;
+    }
+
+    const double oldX = node->x(), oldY = node->y(), oldZ = node->z();
+    const std::string undoName = tr("Modification Nœud %1").arg(m_nodeId).toStdString();
+    // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
+    m_model->pushUndoState(undoName, undoName);
 
     node->setName(m_editName->text().toStdString());
     node->setCoordinates(m_spinX->value(), m_spinY->value(), m_spinZ->value());
@@ -511,6 +527,16 @@ void NodePropertiesView::applyChanges()
 
     TSA::Model::SupportDefinition supp = buildSupportFromUi();
     node->setSupport(supp);
+
+    if (auto* um = m_model->undoManager();
+        um && (oldX != node->x() || oldY != node->y() || oldZ != node->z()))
+    {
+        auto fmt = [](double x, double y, double z) {
+            return QString("(%1, %2, %3) m").arg(x, 0, 'f', 3).arg(y, 0, 'f', 3).arg(z, 0, 'f', 3).toStdString();
+        };
+        um->addRecord({ "modify_property", "Node", m_nodeId, "coordinates", fmt(oldX, oldY, oldZ),
+                        fmt(node->x(), node->y(), node->z()), { "geometry", "connected_elements", "results_invalidated" } });
+    }
 
     m_model->notifyNodeModified(m_nodeId);
     emit elementModified();

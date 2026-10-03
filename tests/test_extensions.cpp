@@ -72,15 +72,19 @@ bool runSuite_Extensions(int& passed)
             logger.setDeveloperModeEnabled(false);
             TEST_CHECK(!logger.isDeveloperModeEnabled(), "Subtest 37.4: Developer mode is disabled");
 
-            size_t countBefore = logger.recentEntries().size();
+            // Vérification par le DERNIER message et non par la taille : le tampon circulaire peut
+            // être plein (taille constante) lorsque la suite complète a déjà beaucoup journalisé.
+            auto lastMessage = [&logger]() {
+                const auto entries = logger.recentEntries();
+                return entries.empty() ? std::string() : entries.back().message;
+            };
             TSA_LOG_TRACE("TestModule", "TraceEvent", "Message trace filtre");
-            size_t countAfter = logger.recentEntries().size();
-            TEST_CHECK(countBefore == countAfter, "Subtest 37.4: Trace message skipped when dev mode disabled");
+            TEST_CHECK(lastMessage() != "Message trace filtre", "Subtest 37.4: Trace message skipped when dev mode disabled");
 
             logger.setDeveloperModeEnabled(true);
             TEST_CHECK(logger.isDeveloperModeEnabled(), "Subtest 37.4: Developer mode is enabled");
             TSA_LOG_TRACE("TestModule", "TraceEvent", "Message trace autorise");
-            TEST_CHECK(logger.recentEntries().size() == countAfter + 1, "Subtest 37.4: Trace message accepted when dev mode enabled");
+            TEST_CHECK(lastMessage() == "Message trace autorise", "Subtest 37.4: Trace message accepted when dev mode enabled");
 
             std::cout << "  [PASS] Subtest 37.4: Developer Mode Filtering Verified" << std::endl;
         }

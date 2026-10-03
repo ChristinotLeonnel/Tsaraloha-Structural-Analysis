@@ -105,6 +105,7 @@
 
 #include "UndoRedo/UndoManager.h"
 #include "UndoRedo/CommandManager.h"
+#include "UndoRedo/EditTransaction.h"
 
 #include "Interaction/InteractionManager.h"
 

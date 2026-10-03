@@ -152,7 +152,9 @@ void FoundationPropertiesView::applyChanges()
     auto* f = m_model->getFoundation(m_foundationId);
     if (!f) return;
 
-    m_model->pushUndoState(tr("Modification Fondation %1").arg(m_foundationId).toStdString());
+    const std::string undoName = tr("Modification Fondation %1").arg(m_foundationId).toStdString();
+    // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
+    m_model->pushUndoState(undoName, undoName);
 
     f->setName(m_editName->text().toStdString());
     f->setFoundationType(static_cast<TSA::Model::FoundationType>(m_comboType->currentData().toInt()));

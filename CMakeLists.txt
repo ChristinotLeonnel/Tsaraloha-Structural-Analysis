@@ -505,6 +505,8 @@ set(COMMANDS_SOURCES
 set(UNDOREDO_SOURCES
     src/UndoRedo/UndoManager.h
     src/UndoRedo/UndoManager.cpp
+    src/UndoRedo/EditRecord.h
+    src/UndoRedo/EditTransaction.h
     src/UndoRedo/CommandManager.h
     src/UndoRedo/CommandManager.cpp
 )

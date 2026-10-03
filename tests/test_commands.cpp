@@ -651,5 +651,147 @@ bool runSuite_Commands(int& passed)
     }
 
 
+    // -------------------------------------------------------------------------
+    // TEST 96: Transactions d'édition, historique structuré, commandes en échec
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 96: Transactions d'édition & historique ---" << std::endl;
+        using TSA::UndoRedo::EditTransaction;
+        using TSA::UndoRedo::EditRecord;
+
+        Model m;
+        std::vector<int> cols;
+        for (int i = 0; i < 20; ++i)
+        {
+            int a = m.addNode(i * 5.0, 0.0, 0.0);
+            int b = m.addNode(i * 5.0, 0.0, 3.0);
+            cols.push_back(m.addColumn(a, b));
+        }
+        m.clearUndoRedo();
+        auto* um = m.undoManager();
+
+        // 1. Opération composée : 20 modifications -> UNE entrée Undo, avec enregistrements
+        {
+            EditTransaction tx(m, "Rotation de 20 poteaux");
+            for (int id : cols)
+            {
+                m.pushUndoState("absorbée");           // appel imbriqué : ne doit pas créer d'entrée
+                m.getColumn(id)->setRotation(90.0);
+                m.notifyColumnModified(id);
+                tx.record(EditRecord{ "modify_property", "Column", id, "rotation", "0°", "90°", { "geometry", "stiffness" } });
+            }
+            tx.commit();
+        }
+        TEST_CHECK(um->undoCount() == 1, "Test 96: une transaction = une seule entrée Undo");
+        auto hist = um->undoHistory();
+        TEST_CHECK(hist.size() == 1 && hist[0].records.size() == 20 && hist[0].actionName == "Rotation de 20 poteaux",
+                   "Test 96: historique structuré (20 enregistrements)");
+        TEST_CHECK(hist[0].records[0].toText().find("rotation : 0° → 90°") != std::string::npos,
+                   "Test 96: résumé lisible de l'enregistrement");
+        TEST_CHECK(!hist[0].timestamp.empty(), "Test 96: horodatage présent");
+
+        TEST_CHECK(m.undo(), "Test 96: undo de la transaction");
+        bool allBack = true;
+        for (int id : cols) allBack = allBack && approxEqual(m.getColumn(id)->rotation(), 0.0);
+        TEST_CHECK(allBack, "Test 96: les 20 poteaux reviennent à 0° en un seul Undo");
+        TEST_CHECK(m.redo(), "Test 96: redo");
+        TEST_CHECK(approxEqual(m.getColumn(cols.back())->rotation(), 90.0), "Test 96: redo réapplique 90°");
+
+        // 2. Rollback explicite : modèle restauré, aucune entrée
+        const size_t before = um->undoCount();
+        {
+            EditTransaction tx(m, "Suppression avortée");
+            m.removeColumn(cols[0]);
+            TEST_CHECK(m.getColumn(cols[0]) == nullptr, "Test 96: suppression appliquée dans la transaction");
+            tx.rollback();
+        }
+        TEST_CHECK(m.getColumn(cols[0]) != nullptr, "Test 96: rollback restaure l'élément supprimé");
+        TEST_CHECK(um->undoCount() == before, "Test 96: rollback ne crée pas d'entrée Undo");
+
+        // 3. Sortie sans commit (exception / retour anticipé) -> rollback automatique
+        try
+        {
+            EditTransaction tx(m, "Exception");
+            m.getColumn(cols[1])->setRotation(45.0);
+            throw std::runtime_error("validation échouée");
+        }
+        catch (const std::exception&) {}
+        TEST_CHECK(approxEqual(m.getColumn(cols[1])->rotation(), 90.0), "Test 96: rollback automatique à la destruction");
+
+        // 4. Transactions imbriquées absorbées
+        {
+            EditTransaction outer(m, "Externe");
+            {
+                EditTransaction inner(m, "Interne");
+                m.getColumn(cols[2])->setRotation(10.0);
+                inner.commit();
+            }
+            m.getColumn(cols[3])->setRotation(20.0);
+            outer.commit();
+        }
+        TEST_CHECK(um->undoCount() == before + 1 && um->lastUndoActionName() == "Externe",
+                   "Test 96: transaction imbriquée absorbée (une seule entrée)");
+
+        // 5. Commande en échec : aucune entrée Undo vide, modèle intact
+        struct FailingCommand : TSA::Commands::ICommand
+        {
+            Model& model; int id;
+            FailingCommand(Model& mm, int i) : model(mm), id(i) {}
+            bool execute() override { model.getColumn(id)->setRotation(-30.0); return false; }
+            bool undo() override { return true; }
+            std::string name() const override { return "Commande en échec"; }
+        };
+        TSA::UndoRedo::CommandManager cm(&m, um);
+        const size_t beforeCmd = um->undoCount();
+        TEST_CHECK(!cm.executeCommand(std::make_unique<FailingCommand>(m, cols[4])), "Test 96: la commande échoue");
+        TEST_CHECK(um->undoCount() == beforeCmd, "Test 96: pas d'entrée Undo pour une commande en échec");
+        TEST_CHECK(approxEqual(m.getColumn(cols[4])->rotation(), 90.0), "Test 96: modification partielle annulée");
+
+        std::cout << "[PASS] Test 96: Transactions d'édition & historique" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 97: Édition de propriétés — coalescence Undo & validation géométrique
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 97: Coalescence Undo & validation géométrique ---" << std::endl;
+        Model m;
+        int n1 = m.addNode(0.0, 0.0, 0.0);
+        int n2 = m.addNode(6.0, 0.0, 0.0);
+        int n3 = m.addNode(6.0, 0.0, 3.0);
+        int b1 = m.addBeam(n1, n2);
+        m.addColumn(n2, n3);
+        m.clearUndoRedo();
+        auto* um = m.undoManager();
+
+        // Crans successifs d'un spinbox sur la même poutre -> une seule entrée
+        for (double rot : { 5.0, 10.0, 15.0, 20.0 })
+        {
+            m.pushUndoState("Modification Barre 1", "Modification Barre 1");
+            m.getBeam(b1)->setRotation(rot);
+            m.notifyBeamModified(b1);
+        }
+        TEST_CHECK(um->undoCount() == 1, "Test 97: 4 crans successifs = 1 entrée Undo");
+        TEST_CHECK(m.undo() && approxEqual(m.getBeam(b1)->rotation(), 0.0), "Test 97: un Undo revient à la valeur initiale");
+        TEST_CHECK(m.redo() && approxEqual(m.getBeam(b1)->rotation(), 20.0), "Test 97: Redo revient à la valeur finale");
+
+        // Une autre action entre deux éditions casse la coalescence
+        m.pushUndoState("Modification Barre 1", "Modification Barre 1");
+        m.pushUndoState("Autre action");
+        m.pushUndoState("Modification Barre 1", "Modification Barre 1");
+        TEST_CHECK(um->undoCount() == 4, "Test 97: pas de coalescence à travers une autre action");
+
+        // Validation : un nœud ne peut pas rejoindre l'autre extrémité d'un élément connecté
+        TEST_CHECK(m.wouldCollapseConnectedElement(n1, 6.0, 0.0, 0.0), "Test 97: n1 sur n2 -> poutre de longueur nulle");
+        TEST_CHECK(m.wouldCollapseConnectedElement(n3, 6.0, 0.0, 0.0), "Test 97: n3 sur n2 -> poteau de longueur nulle");
+        TEST_CHECK(!m.wouldCollapseConnectedElement(n1, 1.0, 0.0, 0.0), "Test 97: déplacement valide accepté");
+        TEST_CHECK(!m.wouldCollapseConnectedElement(n1, 6.0, 0.0, 3.0), "Test 97: n1 sur n3 (non connectés) accepté");
+
+        std::cout << "[PASS] Test 97: Coalescence Undo & validation géométrique" << std::endl;
+        passed++;
+    }
+
     return true;
 }
+

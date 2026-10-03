@@ -157,7 +157,9 @@ void SlabPropertiesView::applyChanges()
     auto* slab = m_model->getSlab(m_slabId);
     if (!slab) return;
 
-    m_model->pushUndoState(tr("Modification Dalle %1").arg(m_slabId).toStdString());
+    const std::string undoName = tr("Modification Dalle %1").arg(m_slabId).toStdString();
+    // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
+    m_model->pushUndoState(undoName, undoName);
 
     slab->setName(m_editName->text().toStdString());
     slab->setThickness(m_spinThickness->value());

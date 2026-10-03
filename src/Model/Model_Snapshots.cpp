@@ -6,7 +6,7 @@
 namespace TSA::Model
 {
 
-void Model::pushUndoState(const std::string& actionName)
+void Model::pushUndoState(const std::string& actionName, const std::string& coalesceKey)
 {
     if (!actionName.empty())
     {
@@ -15,7 +15,7 @@ void Model::pushUndoState(const std::string& actionName)
     }
     if (m_undoManager)
     {
-        m_undoManager->pushState(*this, actionName);
+        m_undoManager->pushState(*this, actionName, coalesceKey);
     }
 }
 

@@ -137,6 +137,9 @@ public:
 
     // Identification des nœuds (libres vs connectés, appuis)
     bool isNodeFree(int nodeId) const;
+    /// Vrai si placer le nœud en (x, y, z) rendrait un élément connecté de longueur quasi nulle
+    /// (extrémités confondues à tol près) : modification à refuser.
+    bool wouldCollapseConnectedElement(int nodeId, double x, double y, double z, double tol = 1e-6) const;
     std::vector<int> freeNodeIds() const;
     std::vector<int> supportedNodeIds() const;
 
@@ -256,7 +259,7 @@ public:
     const LoadManager& loadManager() const noexcept { return m_loadManager; }
 
     // Historique Undo / Redo (Ctrl+Z / Ctrl+Y)
-    void pushUndoState(const std::string& actionName = "");
+    void pushUndoState(const std::string& actionName = "", const std::string& coalesceKey = "");
     bool canUndo() const;
     bool canRedo() const;
     bool undo();

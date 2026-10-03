@@ -1710,7 +1710,8 @@ void MainWindow::createDockWindows()
     });
 
     connect(m_propertyPanel, &TSA::UI::PropertyPanel::elementModified, this, [this]() {
-        m_modelTree->refreshAll();
+        // L'arbre est observateur du modèle (notify*Modified met à jour la ligne concernée) :
+        // pas de reconstruction complète à chaque édition de propriété.
         m_occView->update();
         updateUndoRedoActions();
     });
