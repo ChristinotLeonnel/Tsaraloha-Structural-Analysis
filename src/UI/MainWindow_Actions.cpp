@@ -1770,8 +1770,13 @@ void MainWindow::createStatusBar()
     QStatusBar* bar = statusBar();
 
     // 1. Nom du fichier / Projet .tsa
+    // IMPORTANT : le QStatusBar impose comme largeur minimale la somme des tailles minimales
+    // de ses widgets. Tout label dont le texte varie doit donc avoir une largeur stable
+    // (setFixedWidth) ou une politique Ignored, sinon la fenêtre s'agrandit toute seule.
     m_statusProject = new QLabel(tr("Sans titre.tsa"), this);
     m_statusProject->setStyleSheet("font-weight: bold; color: #38bdf8; padding: 2px 10px; border-right: 1px solid #475569;");
+    m_statusProject->setMinimumWidth(120);
+    m_statusProject->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     bar->addWidget(m_statusProject);
 
     // 2. Vue actuelle (ISO, Dessus, etc.)
@@ -1787,29 +1792,40 @@ void MainWindow::createStatusBar()
     // 4. Niveau actif
     m_statusLevel = new QLabel(tr("Niveau : Tous"), this);
     m_statusLevel->setStyleSheet("font-weight: 500; color: #fbbf24; padding: 2px 10px; border-right: 1px solid #475569;");
+    m_statusLevel->setMinimumWidth(110);
+    m_statusLevel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     bar->addWidget(m_statusLevel);
 
     // 5. Coordonnées globales X, Y, Z
     m_statusCoordinates = new QLabel(tr("X: 0.000 m   Y: 0.000 m   Z: 0.000 m"), this);
-    m_statusCoordinates->setMinimumWidth(250);
+    m_statusCoordinates->setFixedWidth(330);
     m_statusCoordinates->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; padding: 2px 8px;");
     bar->addWidget(m_statusCoordinates);
 
     m_statusCoordinatesLocal = new QLabel(tr("Xwp: 0.000 m   Ywp: 0.000 m"), this);
-    m_statusCoordinatesLocal->setMinimumWidth(200);
+    m_statusCoordinatesLocal->setFixedWidth(250);
     m_statusCoordinatesLocal->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; padding: 2px 8px; color: #a78bfa;");
     bar->addWidget(m_statusCoordinatesLocal);
 
     m_statusWorkPlane = new QLabel(tr("Plan: XY (Z=0.00 m)"), this);
     m_statusWorkPlane->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #38bdf8; font-weight: bold;");
+    m_statusWorkPlane->setMinimumWidth(160);
+    m_statusWorkPlane->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     bar->addWidget(m_statusWorkPlane);
 
     m_statusSnap = new QLabel(tr("SNAP: ACTIF"), this);
     m_statusSnap->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #4ade80; font-weight: bold;");
+    m_statusSnap->setMinimumWidth(110);
+    m_statusSnap->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     bar->addWidget(m_statusSnap);
 
+    // Message d'information (survol, niveau actif...) : texte libre et potentiellement long
+    // => ne doit jamais contribuer à la largeur minimale de la fenêtre.
     m_statusInfo = new QLabel(tr("Prêt"), this);
-    bar->addPermanentWidget(m_statusInfo);
+    m_statusInfo->setMinimumWidth(150);
+    m_statusInfo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_statusInfo->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    bar->addPermanentWidget(m_statusInfo, 1);
 
     m_statusLogo = new TSA::UI::TSALogoOverlay(this);
     m_statusLogo->setDarkMode(TSA::UI::ThemeManager::instance().isDarkMode());
