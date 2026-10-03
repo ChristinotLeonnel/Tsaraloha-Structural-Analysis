@@ -16,7 +16,10 @@ constexpr uint32_t TSA_FILE_MAGIC = 0x46415354;
 // Versioning du format
 // -----------------------------------------------------------------------------
 constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 1;
-constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 0;
+constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 1; // 1.1 : ajout du chunk LOAD (non cassant)
+
+// Version de disposition interne du chunk LOAD (indépendante de la version du format)
+constexpr uint32_t LOAD_CHUNK_LAYOUT_VERSION = 1;
 
 // Application Version
 constexpr uint32_t TSA_APP_VERSION_MAJOR = 1;
@@ -113,19 +116,36 @@ struct TSAChunkHeader
 // -----------------------------------------------------------------------------
 // Calcul de la somme de contrôle CRC32 (Standard IEEE 802.3)
 // -----------------------------------------------------------------------------
+namespace Detail
+{
+inline const uint32_t* crc32Table()
+{
+    // Table du polynôme réfléchi 0xEDB88320, construite une seule fois (initialisation statique
+    // thread-safe en C++11).
+    static const auto table = [] {
+        struct Table { uint32_t v[256]; } t{};
+        for (uint32_t i = 0; i < 256; ++i)
+        {
+            uint32_t c = i;
+            for (int j = 0; j < 8; ++j)
+                c = (c & 1) ? ((c >> 1) ^ 0xEDB88320u) : (c >> 1);
+            t.v[i] = c;
+        }
+        return t;
+    }();
+    return table.v;
+}
+} // namespace Detail
+
 inline uint32_t computeCRC32(const uint8_t* data, size_t length)
 {
+    // Variante par table (un accès table par octet au lieu de 8 itérations) : résultat identique
+    // à l'implémentation bit à bit d'origine, fichiers existants inchangés.
+    const uint32_t* table = Detail::crc32Table();
     uint32_t crc = 0xFFFFFFFF;
     for (size_t i = 0; i < length; ++i)
     {
-        crc ^= data[i];
-        for (int j = 0; j < 8; ++j)
-        {
-            if (crc & 1)
-                crc = (crc >> 1) ^ 0xEDB88320;
-            else
-                crc >>= 1;
-        }
+        crc = table[(crc ^ data[i]) & 0xFFu] ^ (crc >> 8);
     }
     return ~crc;
 }

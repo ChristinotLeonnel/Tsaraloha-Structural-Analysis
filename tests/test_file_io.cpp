@@ -668,6 +668,208 @@ bool runSuite_FileIO(int& passed)
         passed++;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 90: Stress .tsa — portiques 3D volumineux (Save / Load chronométrés)
+    // Les fichiers générés (build/test_tsa_data/stress_*.tsa) servent aussi de
+    // jeux d'essai pour mesurer l'ouverture dans l'application (log ProjectLoadTiming).
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 90: Stress .tsa (portiques 3D volumineux) ---" << std::endl;
+        const std::string tmpDir = "./build/test_tsa_data/";
+        std::filesystem::create_directories(tmpDir);
+
+        auto buildFrame = [](Model& m, int nx, int ny, int stories) {
+            const double span = 5.0;
+            const double storyHeight = 3.0;
+            std::vector<int> ids(static_cast<size_t>(nx * ny * (stories + 1)));
+            auto idx = [&](int i, int j, int k) { return static_cast<size_t>((k * ny + j) * nx + i); };
+            for (int k = 0; k <= stories; ++k)
+                for (int j = 0; j < ny; ++j)
+                    for (int i = 0; i < nx; ++i)
+                        ids[idx(i, j, k)] = m.addNode(i * span, j * span, k * storyHeight);
+            for (int k = 0; k < stories; ++k)
+                for (int j = 0; j < ny; ++j)
+                    for (int i = 0; i < nx; ++i)
+                        m.addColumn(ids[idx(i, j, k)], ids[idx(i, j, k + 1)]);
+            for (int k = 1; k <= stories; ++k)
+                for (int j = 0; j < ny; ++j)
+                    for (int i = 0; i < nx; ++i)
+                    {
+                        if (i + 1 < nx) m.addBeam(ids[idx(i, j, k)], ids[idx(i + 1, j, k)]);
+                        if (j + 1 < ny) m.addBeam(ids[idx(i, j, k)], ids[idx(i, j + 1, k)]);
+                    }
+        };
+
+        struct StressCase { const char* name; int nx; int ny; int stories; };
+        const StressCase cases[] = { { "stress_1400", 8, 8, 8 }, { "stress_4900", 12, 12, 12 } };
+        for (const auto& c : cases)
+        {
+            Model m;
+            buildFrame(m, c.nx, c.ny, c.stories);
+            const size_t bars = m.beams().size() + m.columns().size();
+            const std::string file = tmpDir + c.name + ".tsa";
+
+            std::string err;
+            auto t0 = std::chrono::steady_clock::now();
+            bool saved = TSAProjectIO::saveToFile(QString::fromStdString(file), m, nullptr, &err);
+            auto t1 = std::chrono::steady_clock::now();
+            TEST_CHECK(saved, "Test 90: sauvegarde du modèle de stress");
+
+            Model reloaded;
+            bool loaded = TSAProjectIO::loadFromFile(QString::fromStdString(file), reloaded, nullptr, &err);
+            auto t2 = std::chrono::steady_clock::now();
+            TEST_CHECK(loaded, "Test 90: chargement du modèle de stress");
+            TEST_CHECK(reloaded.nodes().size() == m.nodes().size(), "Test 90: nombre de nœuds conservé");
+            TEST_CHECK(reloaded.beams().size() == m.beams().size(), "Test 90: nombre de poutres conservé");
+            TEST_CHECK(reloaded.columns().size() == m.columns().size(), "Test 90: nombre de poteaux conservé");
+
+            const auto saveMs = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+            const auto loadMs = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+            std::cout << "  [Stress] " << c.name << " : " << m.nodes().size() << " nœuds, " << bars
+                      << " barres | Save = " << saveMs << " ms | Load = " << loadMs << " ms | "
+                      << std::filesystem::file_size(file) / 1024 << " Kio" << std::endl;
+        }
+
+        std::cout << "[PASS] Test 90: Stress .tsa Save/Load" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 91: Persistance des charges (chunk LOAD, format 1.1) & compatibilité 1.0
+    // Régression : les cas de charge, combinaisons, charges nodales et charges sur barres
+    // n'étaient jamais écrits ; un projet rouvert n'avait plus AUCUN cas de charge.
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 91: Persistance des charges (.tsa 1.1) ---" << std::endl;
+        const std::string tmpDir = "./build/test_tsa_data/";
+        std::filesystem::create_directories(tmpDir);
+        const std::string file = tmpDir + "test_loads_roundtrip.tsa";
+
+        Model m;
+        int n1 = m.addNode(0.0, 0.0, 0.0);
+        int n2 = m.addNode(6.0, 0.0, 0.0);
+        int n3 = m.addNode(6.0, 0.0, 3.0);
+        int b1 = m.addBeam(n1, n2);
+        int c1 = m.addColumn(n2, n3);
+
+        auto& lm = m.loadManager();
+        int customCase = lm.addLoadCase(LoadCase(0, "Q_toiture", LoadCaseCategory::Live, false, 1.0, "Entretien toiture"));
+        LoadCombination combo(0, "ELU perso", LoadCombinationType::ULS_Fundamental);
+        combo.setFactor(1, 1.35);
+        combo.setFactor(customCase, 1.5);
+        int comboId = lm.addCombination(combo);
+        int nlId = lm.addNodalLoad(NodalLoad(0, n3, customCase, 10.0, -2.5, -30.0, 0.5, 1.5, -4.0, LoadCoordSystem::Global, "P_tete"));
+        int mlId = lm.addMemberLoad(MemberLoad::trapezoidal(0, b1, 1, -5.0, -8.0, 0.1, 0.9, LoadDirection::GlobalZ,
+                                                             LoadCoordSystem::Global, true, "q_trap"));
+        MemberLoad colLoad = MemberLoad::uniform(0, c1, customCase, 2.0, LoadDirection::GlobalX, LoadCoordSystem::Global,
+                                                 "vent_poteau", MemberTargetType::Column);
+        int colLoadId = lm.addMemberLoad(colLoad);
+        lm.setActiveLoadCaseId(customCase);
+
+        std::string err;
+        TEST_CHECK(TSAProjectIO::saveToFile(QString::fromStdString(file), m, nullptr, &err), "Test 91: sauvegarde avec charges");
+
+        Model r;
+        TEST_CHECK(TSAProjectIO::loadFromFile(QString::fromStdString(file), r, nullptr, &err), "Test 91: rechargement avec charges");
+        const auto& rl = r.loadManager();
+        TEST_CHECK(rl.loadCases().size() == lm.loadCases().size(), "Test 91: nombre de cas de charge conservé");
+        TEST_CHECK(rl.combinations().size() == lm.combinations().size(), "Test 91: nombre de combinaisons conservé");
+        TEST_CHECK(rl.activeLoadCaseId() == customCase, "Test 91: cas actif conservé");
+
+        const auto* lc = rl.getLoadCase(customCase);
+        TEST_CHECK(lc && lc->name() == "Q_toiture" && lc->category() == LoadCaseCategory::Live &&
+                   lc->description() == "Entretien toiture", "Test 91: cas personnalisé conservé");
+        TEST_CHECK(rl.getLoadCase(1) && rl.getLoadCase(1)->isSelfWeightIncluded(), "Test 91: poids propre du cas G conservé");
+
+        const auto* rc = rl.getCombination(comboId);
+        TEST_CHECK(rc && rc->name() == "ELU perso" && approxEqual(rc->factor(1), 1.35) && approxEqual(rc->factor(customCase), 1.5),
+                   "Test 91: facteurs de combinaison conservés");
+
+        const auto* rn = rl.getNodalLoad(nlId);
+        TEST_CHECK(rn && rn->nodeId() == n3 && rn->loadCaseId() == customCase && rn->name() == "P_tete", "Test 91: charge nodale conservée");
+        TEST_CHECK(approxEqual(rn->fx(), 10.0) && approxEqual(rn->fy(), -2.5) && approxEqual(rn->fz(), -30.0) &&
+                   approxEqual(rn->mx(), 0.5) && approxEqual(rn->my(), 1.5) && approxEqual(rn->mz(), -4.0),
+                   "Test 91: composantes de la charge nodale exactes");
+
+        const auto* rm = rl.getMemberLoad(mlId);
+        TEST_CHECK(rm && rm->elementId() == b1 && rm->type() == LoadType::MemberLinear && rm->isRelativePosition() &&
+                   approxEqual(rm->q1(), -5.0) && approxEqual(rm->q2(), -8.0) && approxEqual(rm->x1(), 0.1) &&
+                   approxEqual(rm->x2(), 0.9) && rm->direction() == LoadDirection::GlobalZ,
+                   "Test 91: charge trapézoïdale conservée");
+        const auto* rcl = rl.getMemberLoad(colLoadId);
+        TEST_CHECK(rcl && rcl->targetType() == MemberTargetType::Column && rcl->elementId() == c1,
+                   "Test 91: cible (poteau) de la charge sur barre conservée");
+
+        // Les identifiants suivants ne doivent pas entrer en collision avec les charges rechargées
+        Model& rw = r;
+        int nextNl = rw.loadManager().addNodalLoad(NodalLoad(0, n1, 1, 0.0, 0.0, -1.0));
+        TEST_CHECK(nextNl > nlId, "Test 91: pas de collision d'identifiant après rechargement");
+
+        // --- Compatibilité : fichier 1.0 sans chunk LOAD -> cas Eurocodes par défaut
+        const std::string legacyFile = tmpDir + "test_loads_legacy_v10.tsa";
+        TEST_CHECK(TSAProjectIO::saveProject(QString::fromStdString(file), m, nullptr, "legacy", "tests", false, QImage(), nullptr),
+                   "Test 91: sauvegarde non compressée");
+        {
+            std::ifstream in(file, std::ios::binary);
+            std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            TSAFileHeader h;
+            std::memcpy(&h, bytes.data(), sizeof(h));
+            std::vector<uint8_t> payload;
+            size_t off = sizeof(h);
+            bool sawLoad = false;
+            while (off + sizeof(TSAChunkHeader) <= bytes.size())
+            {
+                TSAChunkHeader ch;
+                std::memcpy(&ch, bytes.data() + off, sizeof(ch));
+                const size_t total = sizeof(ch) + ch.chunkSize;
+                if (ch.chunkId == CHUNK_LOAD) sawLoad = true;
+                else payload.insert(payload.end(), bytes.begin() + off, bytes.begin() + off + total);
+                off += total;
+            }
+            TEST_CHECK(sawLoad, "Test 91: le chunk LOAD est bien écrit");
+            h.versionMinor = 0;
+            h.checksumCRC32 = computeCRC32(payload.data(), payload.size());
+            h.uncompressedSize = payload.size();
+            h.fileSize = sizeof(h) + payload.size();
+            std::ofstream out(legacyFile, std::ios::binary | std::ios::trunc);
+            out.write(reinterpret_cast<const char*>(&h), sizeof(h));
+            out.write(reinterpret_cast<const char*>(payload.data()), static_cast<std::streamsize>(payload.size()));
+        }
+        Model legacy;
+        TEST_CHECK(TSAProjectIO::loadFromFile(QString::fromStdString(legacyFile), legacy, nullptr, &err), "Test 91: fichier 1.0 lisible");
+        TEST_CHECK(legacy.beams().size() == 1 && legacy.columns().size() == 1, "Test 91: géométrie du fichier 1.0 intacte");
+        TEST_CHECK(legacy.loadManager().loadCases().size() == 5, "Test 91: fichier 1.0 -> 5 cas Eurocodes par défaut (G, Q, W, S, E)");
+        TEST_CHECK(!legacy.loadManager().combinations().empty(), "Test 91: fichier 1.0 -> combinaisons par défaut");
+        TEST_CHECK(legacy.loadManager().nodalLoads().empty() && legacy.loadManager().memberLoads().empty(),
+                   "Test 91: fichier 1.0 -> aucune charge fantôme");
+
+        // --- Sauvegarde atomique : réécrire par-dessus un fichier existant reste valide
+        TEST_CHECK(TSAProjectIO::saveToFile(QString::fromStdString(file), r, nullptr, &err), "Test 91: réécriture du fichier existant");
+        Model again;
+        TEST_CHECK(TSAProjectIO::loadFromFile(QString::fromStdString(file), again, nullptr, &err) &&
+                   again.loadManager().memberLoads().size() == r.loadManager().memberLoads().size(),
+                   "Test 91: fichier réécrit valide");
+        // Échec d'écriture (dossier inexistant) : erreur explicite, pas d'exception
+        TEST_CHECK(!TSAProjectIO::saveToFile(QString::fromStdString(tmpDir + "dossier_inexistant/x.tsa"), r, nullptr, &err) && !err.empty(),
+                   "Test 91: échec d'écriture signalé");
+
+        std::cout << "[PASS] Test 91: Persistance des charges & compatibilité .tsa 1.0" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 92: CRC32 par table == CRC32 IEEE 802.3 de référence
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 92: CRC32 (table) ---" << std::endl;
+        const std::string sample = "123456789";
+        TEST_CHECK(computeCRC32(reinterpret_cast<const uint8_t*>(sample.data()), sample.size()) == 0xCBF43926u,
+                   "Test 92: valeur de contrôle CRC-32/ISO-HDLC de '123456789'");
+        TEST_CHECK(computeCRC32(nullptr, 0) == 0u, "Test 92: CRC d'un tampon vide");
+        std::cout << "[PASS] Test 92: CRC32" << std::endl;
+        passed++;
+    }
+
 
     return true;
 }

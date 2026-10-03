@@ -5,6 +5,7 @@
 #include "../Standards/ModelValidator.h"
 #include "../Diagnostics/Logger.h"
 
+#include <QSaveFile>
 #include <QByteArray>
 #include <QBuffer>
 #include <QDateTime>
@@ -132,6 +133,7 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     writeFoundationChunk(payload, model.foundations());
     writeTrussChunk(payload, model.trussMembers());
     writeCableChunk(payload, model.cables());
+    writeLoadChunk(payload, model.loadManager().createSnapshot());
 
     // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> snapshotsToSave = model.calculationSnapshots();
@@ -267,24 +269,32 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
         safeStrCopy(header.creationTimestamp, sizeof(header.creationTimestamp), nowStr);
     }
 
-    // 6. Écriture atomique dans le fichier
-    std::ofstream out(filePath, std::ios::binary);
-    if (!out.is_open())
+    // 6. Écriture atomique : QSaveFile écrit dans un fichier temporaire du même dossier puis le
+    //    renomme sur la cible à commit(). Auparavant le fichier existant était tronqué puis réécrit
+    //    en place : un crash, un disque plein ou une coupure pendant la sauvegarde détruisait le
+    //    projet de l'utilisateur.
+    QSaveFile out(QString::fromStdString(filePath));
+    if (!out.open(QIODevice::WriteOnly))
     {
-        if (errorMessage) *errorMessage = "Impossible de créer le fichier .tsa : " + filePath;
+        if (errorMessage) *errorMessage = "Impossible de créer le fichier .tsa : " + filePath + " (" + out.errorString().toStdString() + ")";
         return false;
     }
 
-    out.write(reinterpret_cast<const char*>(&header), sizeof(header));
-    if (!processedData.empty())
+    bool written = out.write(reinterpret_cast<const char*>(&header), sizeof(header)) == static_cast<qint64>(sizeof(header));
+    if (written && !processedData.empty())
     {
-        out.write(reinterpret_cast<const char*>(processedData.data()), processedData.size());
+        written = out.write(reinterpret_cast<const char*>(processedData.data()), static_cast<qint64>(processedData.size())) ==
+                  static_cast<qint64>(processedData.size());
     }
-    out.close();
-
-    if (!out.good())
+    if (!written)
     {
-        if (errorMessage) *errorMessage = "Erreur d'écriture lors de la finalisation du fichier .tsa.";
+        out.cancelWriting();
+        if (errorMessage) *errorMessage = "Erreur d'écriture du fichier .tsa (" + out.errorString().toStdString() + "). Le fichier existant est conservé.";
+        return false;
+    }
+    if (!out.commit())
+    {
+        if (errorMessage) *errorMessage = "Erreur lors de la finalisation du fichier .tsa (" + out.errorString().toStdString() + "). Le fichier existant est conservé.";
         return false;
     }
 
@@ -534,6 +544,8 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::map<int, TSA::Model::Cable> loadedCables;
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> loadedSnapshots;
     std::map<std::string, TSA::ExtensionSystem::DefinitionReference> loadedReferences;
+    TSA::Model::LoadManager::LoadSnapshot loadedLoads;
+    bool hasLoadChunk = false;
 
     while (offset + sizeof(TSAChunkHeader) <= size)
     {
@@ -600,6 +612,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         case CHUNK_SNAP:
             if (!readSnapshotChunk(chunkBytes, chunkLen, ch.elementCount, loadedSnapshots, loadedReferences, errorMessage)) return false;
             break;
+        case CHUNK_LOAD:
+            if (!readLoadChunk(chunkBytes, chunkLen, loadedLoads, errorMessage)) return false;
+            hasLoadChunk = true;
+            break;
         default:
             // Chunk inconnu (version future) : ignoré en toute sécurité grâce à chunkSize
             break;
@@ -618,6 +634,17 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     snapshot.foundations = std::move(loadedFoundations);
     snapshot.trussMembers = std::move(loadedTrussMembers);
     snapshot.cables = std::move(loadedCables);
+    if (hasLoadChunk)
+    {
+        snapshot.loadSnapshot = std::move(loadedLoads);
+    }
+    else
+    {
+        // Fichier antérieur au format 1.1 (aucun chunk LOAD) : cas de charge et combinaisons
+        // Eurocodes par défaut, comme pour un nouveau projet. Auparavant le modèle chargé se
+        // retrouvait sans AUCUN cas de charge (snapshot de charges vide).
+        snapshot.loadSnapshot = TSA::Model::LoadManager().createSnapshot();
+    }
     snapshot.calculationSnapshots = std::move(loadedSnapshots);
     snapshot.definitionReferences = std::move(loadedReferences);
 

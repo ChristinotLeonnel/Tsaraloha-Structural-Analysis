@@ -605,4 +605,123 @@ bool TSAFileReader::readSnapshotChunk(const uint8_t* data, size_t size, uint32_t
     return true;
 }
 
+bool TSAFileReader::readLoadChunk(const uint8_t* data, size_t size, TSA::Model::LoadManager::LoadSnapshot& loads,
+                                  std::string* errorMessage)
+{
+    using namespace TSA::Model;
+    auto fail = [&](const char* what) {
+        if (errorMessage) *errorMessage = std::string("Chunk LOAD invalide : ") + what;
+        return false;
+    };
+
+    size_t off = 0;
+    uint32_t layout = 0;
+    if (!readU32(data, size, off, layout)) return fail("en-tête tronqué");
+    if (layout != LOAD_CHUNK_LAYOUT_VERSION) return fail("version de disposition inconnue");
+
+    LoadManager::LoadSnapshot snap;
+    int32_t activeCase = 0, nextNodal = 0, nextMember = 0, nextCase = 0, nextCombo = 0;
+    if (!readI32(data, size, off, activeCase) || !readI32(data, size, off, nextNodal) ||
+        !readI32(data, size, off, nextMember) || !readI32(data, size, off, nextCase) ||
+        !readI32(data, size, off, nextCombo))
+        return fail("compteurs tronqués");
+
+    uint32_t n = 0;
+    // --- Cas de charge
+    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail("nombre de cas de charge");
+    for (uint32_t i = 0; i < n; ++i)
+    {
+        int32_t id = 0;
+        std::string name, desc;
+        uint8_t cat = 0, sw = 0;
+        double swFactor = 1.0;
+        if (!readI32(data, size, off, id) || !readString(data, size, off, name) ||
+            !readU8(data, size, off, cat) || !readU8(data, size, off, sw) ||
+            !readDouble(data, size, off, swFactor) || !readString(data, size, off, desc))
+            return fail("cas de charge tronqué");
+        if (cat > static_cast<uint8_t>(LoadCaseCategory::Custom)) return fail("catégorie de cas inconnue");
+        snap.loadCases[id] = LoadCase(id, name, static_cast<LoadCaseCategory>(cat), sw != 0, swFactor, desc);
+    }
+
+    // --- Combinaisons
+    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail("nombre de combinaisons");
+    for (uint32_t i = 0; i < n; ++i)
+    {
+        int32_t id = 0;
+        std::string name;
+        uint8_t type = 0;
+        uint32_t nf = 0;
+        if (!readI32(data, size, off, id) || !readString(data, size, off, name) ||
+            !readU8(data, size, off, type) || !readU32(data, size, off, nf))
+            return fail("combinaison tronquée");
+        if (type > static_cast<uint8_t>(LoadCombinationType::Custom)) return fail("type de combinaison inconnu");
+        if (nf > MAX_SAFE_ELEMENTS) return fail("nombre de facteurs");
+        std::map<int, double> factors;
+        for (uint32_t k = 0; k < nf; ++k)
+        {
+            int32_t caseId = 0;
+            double f = 0.0;
+            if (!readI32(data, size, off, caseId) || !readDouble(data, size, off, f)) return fail("facteur tronqué");
+            factors[caseId] = f;
+        }
+        snap.combinations[id] = LoadCombination(id, name, static_cast<LoadCombinationType>(type), factors);
+    }
+
+    // --- Charges nodales
+    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail("nombre de charges nodales");
+    for (uint32_t i = 0; i < n; ++i)
+    {
+        int32_t id = 0, nodeId = 0, caseId = 0;
+        double v[6] = {};
+        uint8_t cs = 0;
+        std::string name;
+        if (!readI32(data, size, off, id) || !readI32(data, size, off, nodeId) || !readI32(data, size, off, caseId))
+            return fail("charge nodale tronquée");
+        for (double& x : v)
+            if (!readDouble(data, size, off, x)) return fail("charge nodale tronquée");
+        if (!readU8(data, size, off, cs) || !readString(data, size, off, name)) return fail("charge nodale tronquée");
+        if (cs > static_cast<uint8_t>(LoadCoordSystem::Local)) return fail("repère de charge inconnu");
+        snap.nodalLoads[id] = NodalLoad(id, nodeId, caseId, v[0], v[1], v[2], v[3], v[4], v[5],
+                                        static_cast<LoadCoordSystem>(cs), name);
+    }
+
+    // --- Charges sur barres
+    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail("nombre de charges sur barres");
+    for (uint32_t i = 0; i < n; ++i)
+    {
+        int32_t id = 0, elemId = 0, caseId = 0;
+        uint8_t type = 0, dir = 0, cs = 0, rel = 0, target = 0;
+        double q1 = 0, q2 = 0, x1 = 0, x2 = 0;
+        std::string name;
+        if (!readI32(data, size, off, id) || !readI32(data, size, off, elemId) || !readI32(data, size, off, caseId) ||
+            !readU8(data, size, off, type) || !readDouble(data, size, off, q1) || !readDouble(data, size, off, q2) ||
+            !readU8(data, size, off, dir) || !readU8(data, size, off, cs) ||
+            !readDouble(data, size, off, x1) || !readDouble(data, size, off, x2) ||
+            !readU8(data, size, off, rel) || !readString(data, size, off, name) || !readU8(data, size, off, target))
+            return fail("charge sur barre tronquée");
+        if (type > static_cast<uint8_t>(LoadType::SelfWeight) || dir > static_cast<uint8_t>(LoadDirection::LocalZ) ||
+            cs > static_cast<uint8_t>(LoadCoordSystem::Local) || target > static_cast<uint8_t>(MemberTargetType::Cable))
+            return fail("énumération de charge sur barre inconnue");
+        snap.memberLoads[id] = MemberLoad(id, elemId, caseId, static_cast<LoadType>(type), q1, q2,
+                                          static_cast<LoadDirection>(dir), static_cast<LoadCoordSystem>(cs),
+                                          x1, x2, rel != 0, name, static_cast<MemberTargetType>(target));
+    }
+
+    // Compteurs : jamais inférieurs au plus grand identifiant lu (protection contre les collisions)
+    auto nextAfter = [](const auto& map, int32_t stored) {
+        int maxId = 0;
+        for (const auto& [id, _] : map) maxId = std::max(maxId, id);
+        return std::max<int>(stored, maxId + 1);
+    };
+    snap.nextNodalLoadId = nextAfter(snap.nodalLoads, nextNodal);
+    snap.nextMemberLoadId = nextAfter(snap.memberLoads, nextMember);
+    snap.nextLoadCaseId = nextAfter(snap.loadCases, nextCase);
+    snap.nextCombinationId = nextAfter(snap.combinations, nextCombo);
+    snap.activeLoadCaseId = snap.loadCases.count(activeCase) ? activeCase
+                          : (snap.loadCases.empty() ? 1 : snap.loadCases.begin()->first);
+
+    loads = std::move(snap);
+    return true;
+}
+
 } // namespace TSA::IO
