@@ -769,10 +769,7 @@ void OccView::applyWorkPlaneTransformation()
         m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
     }
 
-    if (m_workPlane.isIsolated())
-    {
-        updateElementIsolation();
-    }
+    updateElementIsolation(); // applique, met à jour ou lève l'isolation (no-op si jamais appliquée)
 
     if (!m_view.IsNull())
     {
@@ -791,33 +788,11 @@ void OccView::setWorkPlaneIsolation(bool isolated, double distance)
 
 void OccView::savePre2DVisibility()
 {
-    m_pre2DVisibility.clear();
-    if (m_context.IsNull())
-        return;
-
-    auto saveObj = [&](const Handle(AIS_InteractiveObject)& obj) {
-        if (!obj.IsNull())
-        {
-            m_pre2DVisibility[obj] = m_context->IsDisplayed(obj);
-        }
-    };
-
-    for (const auto& [nid, s] : m_nodeShapes) saveObj(s);
-    for (const auto& [nid, l] : m_nodeLabels) saveObj(l);
-    for (const auto& [sid, s] : m_supportShapes) saveObj(s);
-    for (const auto& [sid, l] : m_supportLabels) saveObj(l);
-    for (const auto& [bid, s] : m_beamShapes) saveObj(s);
-    for (const auto& [cid, s] : m_columnShapes) saveObj(s);
-    for (const auto& [sid, s] : m_slabShapes) saveObj(s);
-    for (const auto& [wid, s] : m_wallShapes) saveObj(s);
-    for (const auto& [fid, s] : m_foundationShapes) saveObj(s);
-    for (const auto& [tid, s] : m_trussShapes) saveObj(s);
-    for (const auto& [kid, s] : m_cableShapes) saveObj(s);
-    for (const auto& [nlId, list] : m_nodalLoadShapes) { for (const auto& s : list) saveObj(s); }
-    for (const auto& [nlId, l] : m_nodalLoadLabels) saveObj(l);
-    for (const auto& [mlId, list] : m_memberLoadShapes) { for (const auto& s : list) saveObj(s); }
-    for (const auto& [mlId, l] : m_memberLoadLabels) saveObj(l);
-
+    // Seuls les drapeaux d'affichage sont mémorisés. La visibilité de chaque objet AIS se déduit
+    // entièrement de ces drapeaux et de l'isolation (voir updateElementIsolation). Mémoriser les
+    // handles AIS eux-mêmes était fragile : toute forme recréée ou supprimée pendant le mode 2D
+    // (modification, Undo, suppression) laissait un handle périmé qui était RÉAFFICHÉ en sortie
+    // du mode 2D (objet fantôme non sélectionnable, impossible à supprimer).
     m_pre2DNodesVisible = m_nodesVisible;
     m_pre2DNodeLabelsVisible = m_nodeLabelsVisible;
     m_pre2DSupportsVisible = m_supportsVisible;
@@ -827,30 +802,48 @@ void OccView::savePre2DVisibility()
 
 void OccView::restorePre2DVisibility()
 {
-    if (m_context.IsNull())
-        return;
-
-    for (const auto& [obj, wasDisplayed] : m_pre2DVisibility)
-    {
-        if (obj.IsNull()) continue;
-        if (wasDisplayed)
-        {
-            if (!m_context->IsDisplayed(obj))
-                m_context->Display(obj, false);
-        }
-        else
-        {
-            if (m_context->IsDisplayed(obj))
-                m_context->Erase(obj, false);
-        }
-    }
-    m_pre2DVisibility.clear();
-
     m_nodesVisible = m_pre2DNodesVisible;
     m_nodeLabelsVisible = m_pre2DNodeLabelsVisible;
     m_supportsVisible = m_pre2DSupportsVisible;
     m_loadsVisible = m_pre2DLoadsVisible;
     m_workPlaneAxesVisible = m_pre2DWorkPlaneAxesVisible;
+
+    // m_mode2DActive est déjà faux : recalcul complet (restaure tout, ou conserve l'isolation
+    // de proximité du WorkPlane si elle est active).
+    updateElementIsolation();
+}
+
+bool OccView::isIsolationActive() const noexcept
+{
+    return m_mode2DActive || m_workPlane.isIsolated();
+}
+
+double OccView::isolationTolerance() const noexcept
+{
+    return m_mode2DActive ? 0.05 : m_workPlane.isolationDistance();
+}
+
+bool OccView::keepNodeUnderIsolation(int nodeId) const
+{
+    return !isIsolationActive() || isNodeOnActiveWorkPlane(nodeId, isolationTolerance());
+}
+
+bool OccView::keepLinearUnderIsolation(int startNodeId, int endNodeId) const
+{
+    return !isIsolationActive() || isLinearElementOnActiveWorkPlane(startNodeId, endNodeId, isolationTolerance());
+}
+
+bool OccView::keepSurfaceUnderIsolation(const std::vector<int>& nodeIds) const
+{
+    return !isIsolationActive() || isSurfaceElementOnActiveWorkPlane(nodeIds, isolationTolerance());
+}
+
+bool OccView::reapplyIsolationIfActive()
+{
+    if (!isIsolationActive() && !m_isolationApplied)
+        return false;
+    updateElementIsolation();
+    return true;
 }
 
 bool OccView::isPointOnActiveWorkPlane(const gp_Pnt& pt, double tol) const
@@ -1002,23 +995,17 @@ void OccView::updateElementIsolation()
     if (m_context.IsNull() || !m_model)
         return;
 
-    bool isolate = m_mode2DActive || m_workPlane.isIsolated();
-    if (!isolate)
+    const bool isolate = isIsolationActive();
+    // Rien n'a été masqué par l'isolation et elle reste inactive : aucun travail.
+    if (!isolate && !m_isolationApplied)
         return;
+    // Quand l'isolation vient d'être désactivée (case « Isoler le plan » décochée, sortie du
+    // mode 2D), cette passe réaffiche tout selon les seuls drapeaux d'affichage. Auparavant la
+    // fonction sortait immédiatement et les éléments masqués le restaient définitivement.
+    m_isolationApplied = isolate;
 
-    const double tol = m_mode2DActive ? 0.05 : m_workPlane.isolationDistance();
-
-    auto wasPre2DVisible = [&](const Handle(AIS_InteractiveObject)& shape) -> bool {
-        if (m_mode2DActive && !m_pre2DVisibility.empty())
-        {
-            auto it = m_pre2DVisibility.find(shape);
-            if (it != m_pre2DVisibility.end())
-            {
-                return it->second;
-            }
-        }
-        return true;
-    };
+    const double tol = isolationTolerance();
+    auto linearKept = [&](int a, int b) { return !isolate || isLinearElementOnActiveWorkPlane(a, b, tol); };
 
     auto setShapeVisibility = [&](const Handle(AIS_InteractiveObject)& shape, bool visible) {
         if (shape.IsNull()) return;
@@ -1034,145 +1021,111 @@ void OccView::updateElementIsolation()
         }
     };
 
-    // 1. Nœuds & Libellés
+    // Cache : chaque nœud n'est testé qu'une fois par passe (nœuds, appuis, fondations, charges).
+    std::map<int, bool> nodeOnPlane;
+    auto nodeKept = [&](int nodeId) {
+        if (!isolate) return true;
+        auto it = nodeOnPlane.find(nodeId);
+        if (it != nodeOnPlane.end()) return it->second;
+        const bool k = isNodeOnActiveWorkPlane(nodeId, tol);
+        nodeOnPlane.emplace(nodeId, k);
+        return k;
+    };
+
+    // 1. Nœuds & libellés (filtre d'affichage des nœuds + isolation)
     for (const auto& [nid, shape] : m_nodeShapes)
     {
-        bool keep = wasPre2DVisible(shape) && isNodeOnActiveWorkPlane(nid, tol) && m_nodesVisible;
+        const bool keep = isNodeVisibleByFilter(nid) && nodeKept(nid);
         setShapeVisibility(shape, keep);
-
         auto itLbl = m_nodeLabels.find(nid);
-        if (itLbl != m_nodeLabels.end() && !itLbl->second.IsNull())
-        {
-            bool keepLbl = wasPre2DVisible(itLbl->second) && keep && m_nodeLabelsVisible;
-            setShapeVisibility(itLbl->second, keepLbl);
-        }
+        if (itLbl != m_nodeLabels.end())
+            setShapeVisibility(itLbl->second, keep && m_nodeLabelsVisible);
     }
 
-    // 2. Poutres
-    for (const auto& [bid, shape] : m_beamShapes)
+    // 2. Appuis & libellés (n'étaient pas filtrés : symboles d'appui hors plan visibles en 2D)
+    for (const auto& [nid, shape] : m_supportShapes)
+        setShapeVisibility(shape, m_supportsVisible && nodeKept(nid));
+    for (const auto& [nid, lbl] : m_supportLabels)
+        setShapeVisibility(lbl, m_supportsVisible && m_supportLabelsVisible && nodeKept(nid));
+
+    // 3. Éléments linéaires
+    for (const auto& [id, shape] : m_beamShapes)
     {
-        const auto* b = m_model->getBeam(bid);
-        bool keep = false;
-        if (b && wasPre2DVisible(shape))
-        {
-            keep = isLinearElementOnActiveWorkPlane(b->startNodeId(), b->endNodeId(), tol);
-        }
-        setShapeVisibility(shape, keep);
+        const auto* e = m_model->getBeam(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
     }
-
-    // 3. Poteaux
-    for (const auto& [cid, shape] : m_columnShapes)
+    for (const auto& [id, shape] : m_columnShapes)
     {
-        const auto* col = m_model->getColumn(cid);
-        bool keep = false;
-        if (col && wasPre2DVisible(shape))
-        {
-            keep = isLinearElementOnActiveWorkPlane(col->startNodeId(), col->endNodeId(), tol);
-        }
-        setShapeVisibility(shape, keep);
+        const auto* e = m_model->getColumn(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
     }
-
-    // 4. Dalles
-    for (const auto& [sid, shape] : m_slabShapes)
+    for (const auto& [id, shape] : m_trussShapes)
     {
-        const auto* slab = m_model->getSlab(sid);
-        bool keep = false;
-        if (slab && wasPre2DVisible(shape))
-        {
-            keep = isSurfaceElementOnActiveWorkPlane(slab->nodeIds(), tol);
-        }
-        setShapeVisibility(shape, keep);
+        const auto* e = m_model->getTrussMember(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
     }
-
-    // 5. Voiles
-    for (const auto& [wid, shape] : m_wallShapes)
+    for (const auto& [id, shape] : m_cableShapes)
     {
-        const auto* wall = m_model->getWall(wid);
-        bool keep = false;
-        if (wall && wasPre2DVisible(shape))
-        {
-            keep = isLinearElementOnActiveWorkPlane(wall->startNodeId(), wall->endNodeId(), tol);
-        }
-        setShapeVisibility(shape, keep);
+        const auto* e = m_model->getCable(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
     }
-
-    // 6. Fondations
-    for (const auto& [fid, shape] : m_foundationShapes)
+    for (const auto& [id, shape] : m_wallShapes)
     {
-        const auto* f = m_model->getFoundation(fid);
-        bool keep = false;
-        if (f && wasPre2DVisible(shape))
-        {
-            keep = isNodeOnActiveWorkPlane(f->nodeId(), tol);
-        }
-        setShapeVisibility(shape, keep);
+        const auto* e = m_model->getWall(id);
+        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
     }
 
-    // 7. Treillis
-    for (const auto& [trId, shape] : m_trussShapes)
+    // 4. Éléments surfaciques & fondations
+    for (const auto& [id, shape] : m_slabShapes)
     {
-        const auto* tr = m_model->getTrussMember(trId);
-        bool keep = false;
-        if (tr && wasPre2DVisible(shape))
-        {
-            keep = isLinearElementOnActiveWorkPlane(tr->startNodeId(), tr->endNodeId(), tol);
-        }
-        setShapeVisibility(shape, keep);
+        const auto* e = m_model->getSlab(id);
+        setShapeVisibility(shape, e && (!isolate || isSurfaceElementOnActiveWorkPlane(e->nodeIds(), tol)));
     }
-
-    // 8. Câbles
-    for (const auto& [kid, shape] : m_cableShapes)
+    for (const auto& [id, shape] : m_foundationShapes)
     {
-        const auto* cab = m_model->getCable(kid);
-        bool keep = false;
-        if (cab && wasPre2DVisible(shape))
-        {
-            keep = isLinearElementOnActiveWorkPlane(cab->startNodeId(), cab->endNodeId(), tol);
-        }
-        setShapeVisibility(shape, keep);
+        const auto* e = m_model->getFoundation(id);
+        setShapeVisibility(shape, e && nodeKept(e->nodeId()));
     }
 
-    // 9. Charges nodales
+    // 5. Charges nodales
     for (const auto& [nlId, shapes] : m_nodalLoadShapes)
     {
         const auto* nl = m_model->loadManager().getNodalLoad(nlId);
-        bool keep = false;
-        if (nl && m_loadsVisible)
-        {
-            keep = isNodeOnActiveWorkPlane(nl->nodeId(), tol);
-        }
-        for (const auto& s : shapes)
-        {
-            setShapeVisibility(s, keep && wasPre2DVisible(s));
-        }
+        const bool keep = nl && m_loadsVisible && nodeKept(nl->nodeId());
+        for (const auto& sh : shapes)
+            setShapeVisibility(sh, keep);
         auto itLbl = m_nodalLoadLabels.find(nlId);
         if (itLbl != m_nodalLoadLabels.end())
-        {
-            setShapeVisibility(itLbl->second, keep && m_loadValuesVisible && wasPre2DVisible(itLbl->second));
-        }
+            setShapeVisibility(itLbl->second, keep && m_loadValuesVisible);
     }
 
-    // 10. Charges linéiques
+    // 6. Charges sur barres : l'élément porteur dépend de targetType (poutre, poteau, treillis,
+    //    câble). Auparavant seuls poutres/poteaux étaient testés, avec confusion possible entre
+    //    une poutre et un poteau portant le même identifiant.
     for (const auto& [mlId, shapes] : m_memberLoadShapes)
     {
         const auto* ml = m_model->loadManager().getMemberLoad(mlId);
         bool keep = false;
         if (ml && m_loadsVisible)
         {
-            const auto* b = m_model->getBeam(ml->elementId());
-            const auto* c = m_model->getColumn(ml->elementId());
-            if (b) keep = isLinearElementOnActiveWorkPlane(b->startNodeId(), b->endNodeId(), tol);
-            else if (c) keep = isLinearElementOnActiveWorkPlane(c->startNodeId(), c->endNodeId(), tol);
+            int a = -1, b = -1;
+            auto take = [&](const auto* host) {
+                if (host) { a = host->startNodeId(); b = host->endNodeId(); }
+            };
+            switch (ml->targetType())
+            {
+            case TSA::Model::MemberTargetType::Beam:   take(m_model->getBeam(ml->elementId())); break;
+            case TSA::Model::MemberTargetType::Column: take(m_model->getColumn(ml->elementId())); break;
+            case TSA::Model::MemberTargetType::Truss:  take(m_model->getTrussMember(ml->elementId())); break;
+            case TSA::Model::MemberTargetType::Cable:  take(m_model->getCable(ml->elementId())); break;
+            }
+            keep = a > 0 && b > 0 && linearKept(a, b);
         }
-        for (const auto& s : shapes)
-        {
-            setShapeVisibility(s, keep && wasPre2DVisible(s));
-        }
+        for (const auto& sh : shapes)
+            setShapeVisibility(sh, keep);
         auto itLbl = m_memberLoadLabels.find(mlId);
         if (itLbl != m_memberLoadLabels.end())
-        {
-            setShapeVisibility(itLbl->second, keep && m_loadValuesVisible && wasPre2DVisible(itLbl->second));
-        }
+            setShapeVisibility(itLbl->second, keep && m_loadValuesVisible);
     }
 }
 
@@ -1307,6 +1260,7 @@ void OccView::updateWorkPlaneVisual()
 
     if (!m_workPlaneVisible || !m_workPlane.isVisible())
     {
+        updateElementIsolation(); // un plan masqué peut rester isolant (ou cesser de l'être)
         if (!m_view.IsNull())
             m_view->Redraw();
         return;
@@ -1424,10 +1378,7 @@ void OccView::updateWorkPlaneVisual()
         attachManipulatorToWorkPlane();
     }
 
-    if (m_workPlane.isIsolated())
-    {
-        updateElementIsolation();
-    }
+    updateElementIsolation(); // applique, met à jour ou lève l'isolation (no-op si jamais appliquée)
 
     if (!m_view.IsNull())
     {
@@ -1963,6 +1914,7 @@ void OccView::updateNodeVisibilities()
                 m_context->Erase(lbl, false);
         }
     }
+    reapplyIsolationIfActive(); // le filtre de nœuds ne doit pas réafficher les nœuds hors plan
     m_context->UpdateCurrentViewer();
     if (!m_view.IsNull())
     {
@@ -2035,6 +1987,7 @@ void OccView::setLoadsVisible(bool visible)
                 else m_context->Erase(lbl, false);
             }
         }
+        reapplyIsolationIfActive();
         m_context->UpdateCurrentViewer();
         if (!m_view.IsNull())
         {
@@ -2088,6 +2041,7 @@ void OccView::setLoadValuesVisible(bool visible)
                 else m_context->Erase(lbl, false);
             }
         }
+        reapplyIsolationIfActive();
         m_context->UpdateCurrentViewer();
         if (!m_view.IsNull())
         {

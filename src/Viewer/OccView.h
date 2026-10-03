@@ -451,6 +451,7 @@ protected:
 
     void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;
+    void onModelDestroyed() override { m_model = nullptr; }
 
 protected:
     QPaintEngine* paintEngine() const override { return nullptr; }
@@ -586,7 +587,6 @@ private:
     bool m_mode2DActive = false;
     Handle(Graphic3d_Camera) m_savedCamera3D;
     bool m_savedWasOrtho = false;
-    std::map<Handle(AIS_InteractiveObject), bool> m_pre2DVisibility;
     bool m_pre2DNodesVisible = true;
     bool m_pre2DNodeLabelsVisible = false;
     bool m_pre2DSupportsVisible = true;
@@ -594,6 +594,17 @@ private:
     bool m_pre2DWorkPlaneAxesVisible = true;
     void savePre2DVisibility();
     void restorePre2DVisibility();
+
+    // Isolation (mode 2D ou « Isoler le plan ») : la visibilité de chaque objet est recalculée à
+    // partir des drapeaux d'affichage et de l'appartenance au plan actif.
+    bool m_isolationApplied = false; ///< Vrai si la dernière passe d'isolation a masqué des objets
+    bool isIsolationActive() const noexcept;
+    double isolationTolerance() const noexcept;
+    bool keepNodeUnderIsolation(int nodeId) const;
+    bool keepLinearUnderIsolation(int startNodeId, int endNodeId) const;
+    bool keepSurfaceUnderIsolation(const std::vector<int>& nodeIds) const;
+    /// Repasse l'isolation si elle est (ou était) appliquée ; retourne vrai si une passe a eu lieu.
+    bool reapplyIsolationIfActive();
 
     // Repère local de l'élément sélectionné
     Handle(AIS_Shape) m_elementLocalAxesShape;

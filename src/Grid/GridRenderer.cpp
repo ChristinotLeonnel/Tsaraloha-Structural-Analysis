@@ -1,3 +1,4 @@
+#include <gp_Trsf.hxx>
 #include "GridRenderer.h"
 
 #include <BRep_Builder.hxx>
@@ -636,11 +637,6 @@ void GridRenderer::showSnapMarker(const GridSnapResult& snap, const Handle(AIS_I
         return;
     }
 
-    double sz = 0.10;
-    gp_Pnt minP(snap.point.X() - sz, snap.point.Y() - sz, snap.point.Z() - sz);
-    gp_Pnt maxP(snap.point.X() + sz, snap.point.Y() + sz, snap.point.Z() + sz);
-    TopoDS_Shape boxShape = BRepPrimAPI_MakeBox(minP, maxP).Shape();
-
     Quantity_Color markerColor;
     switch (snap.type)
     {
@@ -673,25 +669,34 @@ void GridRenderer::showSnapMarker(const GridSnapResult& snap, const Handle(AIS_I
         break;
     }
 
+    // Le cube est construit UNE fois (centré sur l'origine) puis simplement translaté :
+    // auparavant chaque mouvement de souris reconstruisait un BRep + sa triangulation.
     if (m_snapMarkerShape.IsNull())
     {
+        const double sz = 0.10;
+        TopoDS_Shape boxShape = BRepPrimAPI_MakeBox(gp_Pnt(-sz, -sz, -sz), gp_Pnt(sz, sz, sz)).Shape();
         m_snapMarkerShape = new AIS_Shape(boxShape);
         m_snapMarkerShape->SetDisplayMode(AIS_Shaded);
-        m_snapMarkerShape->SetColor(markerColor);
-        context->Display(m_snapMarkerShape, false);
     }
-    else
+
+    gp_Trsf trsf;
+    trsf.SetTranslation(gp_Vec(snap.point.XYZ()));
+    m_snapMarkerShape->SetLocalTransformation(trsf);
+
+    Quantity_Color currentColor;
+    m_snapMarkerShape->Color(currentColor);
+    if (!m_snapMarkerShape->HasColor() || !currentColor.IsEqual(markerColor))
     {
-        m_snapMarkerShape->SetShape(boxShape);
         m_snapMarkerShape->SetColor(markerColor);
-        if (!context->IsDisplayed(m_snapMarkerShape))
-        {
-            context->Display(m_snapMarkerShape, false);
-        }
-        else
-        {
-            context->Redisplay(m_snapMarkerShape, false);
-        }
+    }
+
+    if (!context->IsDisplayed(m_snapMarkerShape))
+    {
+        // Mode de sélection -1 : purement visuel. Affiché avec la sélection active, le cube
+        // (0,2 m), situé exactement sous le curseur, était détecté par MoveTo à la place de
+        // l'objet survolé : un câble ou une barre fine accrochés en extrémité/milieu étaient
+        // alors impossibles à sélectionner (le clic sélectionnait le marqueur).
+        context->Display(m_snapMarkerShape, AIS_Shaded, -1, false);
     }
 }
 
