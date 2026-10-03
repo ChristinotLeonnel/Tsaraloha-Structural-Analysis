@@ -95,13 +95,6 @@ struct RibbonActions
     QAction* actionFitDeformed = nullptr;
     QAction* actionOpenNDC = nullptr;
 
-    // Multi-Port Workspace
-    QAction* actionPortSingle = nullptr;
-    QAction* actionPortSplitH = nullptr;
-    QAction* actionPortSplitV = nullptr;
-    QAction* actionPortGrid2x2 = nullptr;
-    QAction* actionPortTabbed = nullptr;
-
     // 6. Édition & Transformations
     QAction* actionSelectMode = nullptr;
     QAction* actionMove3D = nullptr;

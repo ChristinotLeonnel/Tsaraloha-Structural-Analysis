@@ -14,8 +14,6 @@
 #include "Dialogs/WorkPlaneDialog.h"
 #include "Dialogs/SectionCutDialog.h"
 #include "Ruler/ViewportContainer.h"
-#include "Port/PortAreaWidget.h"
-#include "Port/PortTypes.h"
 #include "Diagrams/Diagram2DWidget.h"
 #include "../NDC/NDCViewerWidget.h"
 #include "../Analysis/OpenSeesSolver.h"
@@ -145,9 +143,13 @@ MainWindow::MainWindow(QWidget* parent)
     m_occView->setCreationPresets(m_presets);
 
     m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
-    if (m_portArea)
+    if (m_diagramWidget)
     {
-        m_portArea->setModel(m_model.get());
+        m_diagramWidget->setModel(m_model.get());
+    }
+    if (m_ndcWidget)
+    {
+        m_ndcWidget->setModel(m_model.get());
     }
 
     connect(m_gridManager.get(), &TSA::Grid::GridManager::gridAdded, this, [this]() {
@@ -227,12 +229,11 @@ void MainWindow::setupUi()
 
     setDockNestingEnabled(true);
 
-    // Widget central : Espace de travail multi-ports intégrant le Viewport OpenCASCADE entouré des règles graduées
+    // Widget central : Viewport OpenCASCADE entouré des règles graduées (style Robot)
     m_occView = new OccView(this);
     m_occView->setSelectionManager(m_selectionManager.get());
     m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
-    m_portArea = new TSA::UI::PortAreaWidget(m_occView, m_viewportContainer, this);
-    setCentralWidget(m_portArea);
+    setCentralWidget(m_viewportContainer);
 
     createActions();
     createDockWindows();
@@ -1398,6 +1399,17 @@ void MainWindow::onActionNew()
         m_modelTree->refreshAll();
     }
 
+    if (m_diagramWidget)
+    {
+        m_diagramWidget->setModel(m_model.get());
+        m_diagramWidget->setResultsModel(nullptr);
+    }
+    if (m_ndcWidget)
+    {
+        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setResultsModel(nullptr);
+    }
+
     if (m_statusProject)
     {
         m_statusProject->setText(tr("Nouveau projet.tsa"));
@@ -1567,6 +1579,17 @@ bool MainWindow::loadFile(const QString& path)
     {
         m_modelTree->setProjectName(fileName);
         m_modelTree->refreshAll();
+    }
+
+    if (m_diagramWidget)
+    {
+        m_diagramWidget->setModel(m_model.get());
+        m_diagramWidget->setResultsModel(nullptr);
+    }
+    if (m_ndcWidget)
+    {
+        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setResultsModel(nullptr);
     }
 
     if (m_statusProject)

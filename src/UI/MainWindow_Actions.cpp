@@ -23,6 +23,8 @@
 #include "Theme/ThemeManager.h"
 #include "WindowManager/WindowManager.h"
 #include "Widgets/ProjectStatusOverlay.h"
+#include "Diagrams/Diagram2DWidget.h"
+#include "../NDC/NDCViewerWidget.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -779,21 +781,6 @@ void MainWindow::createActions()
     m_actionNoteDeCalcul->setShortcut(QKeySequence(Qt::Key_F8));
     connect(m_actionNoteDeCalcul, &QAction::triggered, this, &MainWindow::onActionNoteDeCalcul);
 
-    m_actionPortSingle = new QAction(tr("Vue &Unique (1)"), this);
-    connect(m_actionPortSingle, &QAction::triggered, this, &MainWindow::onPortLayoutSingle);
-
-    m_actionPortSplitH = new QAction(tr("Double &Horizontale (2 H)"), this);
-    connect(m_actionPortSplitH, &QAction::triggered, this, &MainWindow::onPortLayoutSplitH);
-
-    m_actionPortSplitV = new QAction(tr("Double &Verticale (2 V)"), this);
-    connect(m_actionPortSplitV, &QAction::triggered, this, &MainWindow::onPortLayoutSplitV);
-
-    m_actionPortGrid2x2 = new QAction(tr("&Grille 2x2 (4 Vues)"), this);
-    connect(m_actionPortGrid2x2, &QAction::triggered, this, &MainWindow::onPortLayoutGrid2x2);
-
-    m_actionPortTabbed = new QAction(tr("&Onglets"), this);
-    connect(m_actionPortTabbed, &QAction::triggered, this, &MainWindow::onPortLayoutTabbed);
-
     m_actionResultsDisp = new QAction(tr("Déformée && &Déplacements"), this);
     m_actionResultsDisp->setIcon(QIcon(":/icons/results_disp.svg"));
     m_actionResultsDisp->setToolTip(tr("Afficher la déformée amplifiée et les déplacements nodaux"));
@@ -936,13 +923,6 @@ void MainWindow::createMenus()
     camSub->addAction(m_actionFitAll);
     resMenu->addSeparator();
     resMenu->addAction(m_actionNoteDeCalcul);
-    resMenu->addSeparator();
-    QMenu* portSub = resMenu->addMenu(tr("Disposition Multi-Vues"));
-    portSub->addAction(m_actionPortSingle);
-    portSub->addAction(m_actionPortSplitH);
-    portSub->addAction(m_actionPortSplitV);
-    portSub->addAction(m_actionPortGrid2x2);
-    portSub->addAction(m_actionPortTabbed);
 
     // 7. Menu Affichage
     QMenu* viewMenu = menuBar()->addMenu(tr("&Affichage"));
@@ -1116,12 +1096,6 @@ void MainWindow::createRibbon()
     acts.actionFitResults = m_actionFitResults;
     acts.actionFitDeformed = m_actionFitDeformed;
     acts.actionOpenNDC = m_actionNoteDeCalcul;
-
-    acts.actionPortSingle = m_actionPortSingle;
-    acts.actionPortSplitH = m_actionPortSplitH;
-    acts.actionPortSplitV = m_actionPortSplitV;
-    acts.actionPortGrid2x2 = m_actionPortGrid2x2;
-    acts.actionPortTabbed = m_actionPortTabbed;
 
     acts.actionView3D = m_actionView3D;
     acts.actionViewXY = m_actionViewXY;
@@ -1353,6 +1327,35 @@ void MainWindow::createDockWindows()
     m_consoleDock = new TSA::UI::LogConsoleDock(this);
     m_consoleDock->toggleViewAction()->setIcon(QIcon(":/icons/console.svg"));
     addDockWidget(Qt::BottomDockWidgetArea, m_consoleDock);
+
+    // 7. Dock inférieur tabifié : DIAGRAMMES 2D & COURBES
+    m_diagramDock = new QDockWidget(tr("DIAGRAMMES 2D"), this);
+    m_diagramDock->setObjectName("DiagramDock");
+    m_diagramDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::RightDockWidgetArea);
+    m_diagramWidget = new TSA::UI::Diagram2DWidget(m_diagramDock);
+    m_diagramWidget->setModel(m_model.get());
+    m_diagramDock->setWidget(m_diagramWidget);
+    m_diagramDock->toggleViewAction()->setIcon(QIcon(":/icons/results_force.svg"));
+    addDockWidget(Qt::BottomDockWidgetArea, m_diagramDock);
+    if (m_consoleDock)
+    {
+        tabifyDockWidget(m_consoleDock, m_diagramDock);
+        m_consoleDock->raise();
+    }
+    m_diagramDock->hide();
+
+    // 8. Dock droit tabifié : NOTE DE CALCUL (NDC)
+    m_ndcDock = new QDockWidget(tr("NOTE DE CALCUL"), this);
+    m_ndcDock->setObjectName("NdcDock");
+    m_ndcDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    m_ndcWidget = new TSA::NDC::NDCViewerWidget(m_ndcDock);
+    m_ndcWidget->setModel(m_model.get());
+    m_ndcDock->setWidget(m_ndcWidget);
+    m_ndcDock->toggleViewAction()->setIcon(QIcon(":/icons/ndc_report.svg"));
+    addDockWidget(Qt::RightDockWidgetArea, m_ndcDock);
+    tabifyDockWidget(m_propertiesDock, m_ndcDock);
+    m_propertiesDock->raise();
+    m_ndcDock->hide();
 
     connect(m_consoleDock, &TSA::UI::LogConsoleDock::commandEntered, this, [this](const QString& cmd) {
         QString c = cmd.toUpper().trimmed();

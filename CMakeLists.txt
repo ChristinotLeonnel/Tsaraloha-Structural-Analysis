@@ -225,11 +225,6 @@ set(UI_WIDGETS_SOURCES
     src/NDC/NDCViewerWidget.cpp
     src/NDC/ReportConfigDialog.h
     src/NDC/ReportConfigDialog.cpp
-    src/UI/Port/PortTypes.h
-    src/UI/Port/PortWidget.h
-    src/UI/Port/PortWidget.cpp
-    src/UI/Port/PortAreaWidget.h
-    src/UI/Port/PortAreaWidget.cpp
     src/UI/Widgets/ProjectStatusOverlay.h
     src/UI/Widgets/ProjectStatusOverlay.cpp
 )
