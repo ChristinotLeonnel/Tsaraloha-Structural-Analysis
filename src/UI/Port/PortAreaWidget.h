@@ -75,17 +75,21 @@ private slots:
     void onPortTypeChanged(int portId, PortType newType);
     void onPortMaximizeRequested(int portId);
     void onPortActivated(int portId);
+    void onAddPortRequested(int portId);
+    void onClosePortRequested(int portId);
     void onPrimaryCameraChanged();
 
 private:
     void setupUi();
     void applyLayout();
+    void updateLayoutButtons();
     void attachContentToPort(PortWidget* port, PortType type);
 
 private:
     OccView* m_primaryOccView = nullptr;
     ViewportContainer* m_primaryContainer = nullptr;
     Diagram2DWidget* m_diagramWidget = nullptr;
+    Diagram2DWidget* m_diagramWidget2 = nullptr;
     TSA::NDC::NDCViewerWidget* m_ndcWidget = nullptr;
 
     TSA::Model::Model* m_model = nullptr;
@@ -97,6 +101,16 @@ private:
     bool m_syncCameras = false;
 
     std::array<PortWidget*, 4> m_ports{};
+
+    // Barre d'outils des ports CAD
+    QWidget* m_portBar = nullptr;
+    QPushButton* m_btnSingle = nullptr;
+    QPushButton* m_btnSplitH = nullptr;
+    QPushButton* m_btnSplitV = nullptr;
+    QPushButton* m_btnGrid2x2 = nullptr;
+    QPushButton* m_btnTabbed = nullptr;
+    QPushButton* m_btnBarAdd = nullptr;
+    QCheckBox* m_chkSyncCameras = nullptr;
 
     // Conteneurs de disposition
     QVBoxLayout* m_rootLayout = nullptr;

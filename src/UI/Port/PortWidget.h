@@ -37,10 +37,15 @@ public:
     bool isPortMaximized() const { return m_isMaximized; }
     void setPortMaximized(bool max);
 
+    QPushButton* addPortButton() const { return m_btnAddPort; }
+    void setCanClose(bool canClose);
+
 signals:
     void portTypeChanged(int portId, PortType newType);
     void maximizeRequested(int portId);
     void portActivated(int portId);
+    void addPortRequested(int portId);
+    void closePortRequested(int portId);
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
@@ -62,7 +67,9 @@ private:
     QWidget* m_header = nullptr;
     QLabel* m_lblTitle = nullptr;
     QComboBox* m_typeCombo = nullptr;
+    QPushButton* m_btnAddPort = nullptr;
     QPushButton* m_btnMaximize = nullptr;
+    QPushButton* m_btnClosePort = nullptr;
 
     QVBoxLayout* m_mainLayout = nullptr;
     QWidget* m_contentWidget = nullptr;

@@ -42,20 +42,52 @@ void PortWidget::setupUi()
     int idx = m_typeCombo->findData(static_cast<int>(m_portType));
     if (idx >= 0) m_typeCombo->setCurrentIndex(idx);
 
+    m_btnAddPort = new QPushButton("+", m_header);
+    m_btnAddPort->setFixedSize(22, 20);
+    m_btnAddPort->setToolTip(tr("Ajouter un autre port / vue (+)"));
+    m_btnAddPort->setCursor(Qt::PointingHandCursor);
+    m_btnAddPort->setStyleSheet(
+        "QPushButton { background-color: #2563eb; color: #ffffff; border: none; border-radius: 3px; font-weight: bold; font-size: 14px; line-height: 18px; }"
+        "QPushButton:hover { background-color: #3b82f6; }"
+        "QPushButton:pressed { background-color: #1d4ed8; }"
+    );
+
     m_btnMaximize = new QPushButton("🗖", m_header);
     m_btnMaximize->setFixedSize(22, 20);
     m_btnMaximize->setToolTip(tr("Plein écran / Restaurer le port"));
     m_btnMaximize->setStyleSheet("QPushButton { background-color: transparent; color: #94a3b8; border: none; font-size: 12px; } QPushButton:hover { color: #f8fafc; background-color: #3b3b4a; }");
 
+    m_btnClosePort = new QPushButton("✕", m_header);
+    m_btnClosePort->setFixedSize(22, 20);
+    m_btnClosePort->setToolTip(tr("Fermer ce port"));
+    m_btnClosePort->setCursor(Qt::PointingHandCursor);
+    m_btnClosePort->setStyleSheet(
+        "QPushButton { background-color: transparent; color: #94a3b8; border: none; font-size: 11px; }"
+        "QPushButton:hover { color: #f87171; background-color: rgba(239, 68, 68, 0.2); border-radius: 3px; }"
+    );
+    m_btnClosePort->setVisible(false);
+
     hLayout->addWidget(m_lblTitle);
     hLayout->addWidget(m_typeCombo);
     hLayout->addStretch();
+    hLayout->addWidget(m_btnAddPort);
     hLayout->addWidget(m_btnMaximize);
+    hLayout->addWidget(m_btnClosePort);
 
     m_mainLayout->addWidget(m_header);
 
     connect(m_typeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PortWidget::onTypeComboChanged);
+    connect(m_btnAddPort, &QPushButton::clicked, this, [this]() { emit addPortRequested(m_portId); });
     connect(m_btnMaximize, &QPushButton::clicked, this, &PortWidget::onMaximizeClicked);
+    connect(m_btnClosePort, &QPushButton::clicked, this, [this]() { emit closePortRequested(m_portId); });
+}
+
+void PortWidget::setCanClose(bool canClose)
+{
+    if (m_btnClosePort)
+    {
+        m_btnClosePort->setVisible(canClose);
+    }
 }
 
 void PortWidget::setContentWidget(QWidget* widget)
