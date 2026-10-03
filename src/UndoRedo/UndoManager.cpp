@@ -26,10 +26,37 @@ std::string UndoManager::nowTimestamp()
     return buf;
 }
 
+size_t UndoManager::estimateSnapshotBytes(const TSA::Model::Model::ModelStateSnapshot& snap) noexcept
+{
+    // Objets stockés + nœud de std::map (~48 o). Estimation basse (chaînes longues non comptées).
+    constexpr size_t mapNode = 48;
+    return snap.nodes.size() * (sizeof(TSA::Model::Node) + mapNode) +
+           snap.beams.size() * (sizeof(TSA::Model::Beam) + mapNode) +
+           snap.columns.size() * (sizeof(TSA::Model::Column) + mapNode) +
+           snap.slabs.size() * (sizeof(TSA::Model::Slab) + mapNode) +
+           snap.walls.size() * (sizeof(TSA::Model::Wall) + mapNode) +
+           snap.foundations.size() * (sizeof(TSA::Model::Foundation) + mapNode) +
+           snap.trussMembers.size() * (sizeof(TSA::Model::TrussMember) + mapNode) +
+           snap.cables.size() * (sizeof(TSA::Model::Cable) + mapNode);
+}
+
+size_t UndoManager::approxMemoryBytes() const noexcept
+{
+    size_t total = 0;
+    for (const auto& e : m_undoStack) total += e.approxBytes;
+    for (const auto& e : m_redoStack) total += e.approxBytes;
+    return total;
+}
+
 void UndoManager::pushEntry(HistoryEntry&& entry, TSA::Model::Model& model)
 {
+    entry.approxBytes = estimateSnapshotBytes(entry.snapshot);
     m_undoStack.push_back(std::move(entry));
     while (m_undoStack.size() > m_maxSteps)
+    {
+        m_undoStack.pop_front();
+    }
+    while (m_undoStack.size() > 1 && approxMemoryBytes() > m_memoryBudgetBytes)
     {
         m_undoStack.pop_front();
     }
@@ -90,6 +117,7 @@ bool UndoManager::undo(TSA::Model::Model& model)
     redoEntry.snapshot = model.createSnapshot(target.snapshot.actionName);
     redoEntry.timestamp = target.timestamp;
     redoEntry.records = target.records;
+    redoEntry.approxBytes = estimateSnapshotBytes(redoEntry.snapshot);
 
     restore(model, redoEntry.snapshot, target.snapshot);
     m_redoStack.push_back(std::move(redoEntry));
@@ -108,6 +136,7 @@ bool UndoManager::redo(TSA::Model::Model& model)
     undoEntry.snapshot = model.createSnapshot(target.snapshot.actionName);
     undoEntry.timestamp = target.timestamp;
     undoEntry.records = target.records;
+    undoEntry.approxBytes = estimateSnapshotBytes(undoEntry.snapshot);
 
     restore(model, undoEntry.snapshot, target.snapshot);
     m_undoStack.push_back(std::move(undoEntry));

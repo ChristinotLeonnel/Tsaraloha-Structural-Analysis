@@ -792,6 +792,115 @@ bool runSuite_Commands(int& passed)
         passed++;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 100: Mesures du système d'édition sur un grand modèle (4 896 barres)
+    // Mesures informatives (pas de seuil bloquant) : base des décisions de performance.
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 100: Mesures d'édition (grand modèle) ---" << std::endl;
+        using Clock = std::chrono::steady_clock;
+        auto ms = [](Clock::time_point a, Clock::time_point b) {
+            return std::chrono::duration<double, std::milli>(b - a).count();
+        };
+
+        Model m;
+        const int nx = 12, ny = 12, stories = 12;
+        std::vector<int> ids(static_cast<size_t>(nx * ny * (stories + 1)));
+        auto idx = [&](int i, int j, int k) { return static_cast<size_t>((k * ny + j) * nx + i); };
+        for (int k = 0; k <= stories; ++k)
+            for (int j = 0; j < ny; ++j)
+                for (int i = 0; i < nx; ++i)
+                    ids[idx(i, j, k)] = m.addNode(i * 5.0, j * 5.0, k * 3.0);
+        std::vector<int> columns;
+        for (int k = 0; k < stories; ++k)
+            for (int j = 0; j < ny; ++j)
+                for (int i = 0; i < nx; ++i)
+                    columns.push_back(m.addColumn(ids[idx(i, j, k)], ids[idx(i, j, k + 1)]));
+        for (int k = 1; k <= stories; ++k)
+            for (int j = 0; j < ny; ++j)
+                for (int i = 0; i < nx; ++i)
+                {
+                    if (i + 1 < nx) m.addBeam(ids[idx(i, j, k)], ids[idx(i + 1, j, k)]);
+                    if (j + 1 < ny) m.addBeam(ids[idx(i, j, k)], ids[idx(i, j + 1, k)]);
+                }
+        m.clearUndoRedo();
+        const size_t bars = m.beams().size() + m.columns().size();
+
+        auto t0 = Clock::now();
+        auto snap = m.createSnapshot("mesure");
+        auto t1 = Clock::now();
+        const double snapshotMs = ms(t0, t1);
+
+        // Édition d'une propriété (entrée Undo complète + notification)
+        t0 = Clock::now();
+        m.pushUndoState("Modification Poteau", "Modification Poteau 1");
+        m.getColumn(columns.front())->setRotation(90.0);
+        m.notifyColumnModified(columns.front());
+        t1 = Clock::now();
+        const double editMs = ms(t0, t1);
+
+        // Cran suivant du même champ : coalescé (aucun snapshot)
+        t0 = Clock::now();
+        m.pushUndoState("Modification Poteau", "Modification Poteau 1");
+        m.getColumn(columns.front())->setRotation(45.0);
+        t1 = Clock::now();
+        const double coalescedMs = ms(t0, t1);
+
+        t0 = Clock::now();
+        TEST_CHECK(m.undo(), "Test 100: undo");
+        t1 = Clock::now();
+        const double undoMs = ms(t0, t1);
+        TEST_CHECK(approxEqual(m.getColumn(columns.front())->rotation(), 0.0), "Test 100: undo correct");
+
+        // Transaction : rotation de tous les poteaux (1 728) en une seule entrée
+        t0 = Clock::now();
+        {
+            TSA::UndoRedo::EditTransaction tx(m, "Rotation de tous les poteaux");
+            for (int id : columns) m.getColumn(id)->setRotation(30.0);
+            tx.commit();
+        }
+        t1 = Clock::now();
+        const double txMs = ms(t0, t1);
+        TEST_CHECK(m.undoManager()->lastUndoActionName() == "Rotation de tous les poteaux", "Test 100: transaction enregistrée");
+
+        t0 = Clock::now();
+        auto all = TSA::Model::SelectionQuery::all(m);
+        auto inv = TSA::Model::SelectionQuery::invert(m, all);
+        auto lvl = TSA::Model::SelectionQuery::atElevation(m, 18.0, TSA::Coordinate::GeometryTolerance::planeMembership);
+        t1 = Clock::now();
+        const double queryMs = ms(t0, t1);
+        TEST_CHECK(inv.empty() && !lvl.nodes.empty(), "Test 100: requêtes cohérentes");
+
+        std::cout << "  [Mesure] " << m.nodes().size() << " nœuds, " << bars << " barres" << std::endl;
+        std::cout << "  [Mesure] snapshot complet          : " << snapshotMs << " ms" << std::endl;
+        std::cout << "  [Mesure] édition + entrée Undo      : " << editMs << " ms" << std::endl;
+        std::cout << "  [Mesure] cran coalescé              : " << coalescedMs << " ms" << std::endl;
+        std::cout << "  [Mesure] undo (diff + application)  : " << undoMs << " ms" << std::endl;
+        std::cout << "  [Mesure] transaction 1 728 poteaux  : " << txMs << " ms" << std::endl;
+        std::cout << "  [Mesure] requêtes tout/inverse/niveau: " << queryMs << " ms" << std::endl;
+        // Estimation mémoire d'un snapshot : objets stockés + nœuds de std::map (~48 o chacun).
+        const double approxSnapshotBytes =
+            static_cast<double>(snap.nodes.size()) * (sizeof(TSA::Model::Node) + 48) +
+            static_cast<double>(snap.beams.size()) * (sizeof(TSA::Model::Beam) + 48) +
+            static_cast<double>(snap.columns.size()) * (sizeof(TSA::Model::Column) + 48);
+        std::cout << "  [Mesure] sizeof Node/Beam/Column     : " << sizeof(TSA::Model::Node) << " / "
+                  << sizeof(TSA::Model::Beam) << " / " << sizeof(TSA::Model::Column) << " octets" << std::endl;
+        std::cout << "  [Mesure] snapshot ~" << approxSnapshotBytes / (1024.0 * 1024.0) << " Mio ; 50 niveaux d'Undo ~"
+                  << 50.0 * approxSnapshotBytes / (1024.0 * 1024.0) << " Mio" << std::endl;
+        // Budget mémoire : avec un budget de 2 snapshots, l'historique est borné
+        auto* um100 = m.undoManager();
+        um100->setMemoryBudgetBytes(2 * TSA::UndoRedo::UndoManager::estimateSnapshotBytes(snap) + 1);
+        for (int i = 0; i < 6; ++i)
+        {
+            m.pushUndoState("Pas " + std::to_string(i));
+            m.getColumn(columns[static_cast<size_t>(i)])->setRotation(5.0 * i);
+        }
+        TEST_CHECK(um100->undoCount() == 2, "Test 100: historique borné par le budget mémoire");
+        TEST_CHECK(um100->lastUndoActionName() == "Pas 5", "Test 100: l'entrée la plus récente est conservée");
+        std::cout << "[PASS] Test 100: Mesures d'édition" << std::endl;
+        passed++;
+    }
+
     return true;
 }
 

@@ -49,6 +49,15 @@ public:
     size_t maxSteps() const noexcept { return m_maxSteps; }
     void setMaxSteps(size_t steps) { m_maxSteps = steps; }
 
+    /// Budget mémoire de l'historique (snapshots complets) : au-delà, les entrées les plus
+    /// anciennes sont libérées (la plus récente est toujours conservée). Mesure : ~3,2 Mio par
+    /// snapshot pour 4 896 barres, soit ~160 Mio pour 50 niveaux ; sans budget, un modèle 10x
+    /// plus grand dépasserait 1,5 Gio.
+    void setMemoryBudgetBytes(size_t bytes) noexcept { m_memoryBudgetBytes = bytes; }
+    size_t memoryBudgetBytes() const noexcept { return m_memoryBudgetBytes; }
+    size_t approxMemoryBytes() const noexcept;
+    static size_t estimateSnapshotBytes(const TSA::Model::Model::ModelStateSnapshot& snap) noexcept;
+
     // --- Transactions -------------------------------------------------------
     void beginTransaction(TSA::Model::Model& model, const std::string& actionName);
     void commitTransaction(TSA::Model::Model& model);
@@ -71,6 +80,7 @@ private:
         std::vector<EditRecord> records;
         std::string coalesceKey;
         std::chrono::steady_clock::time_point lastPush{};
+        size_t approxBytes = 0;
     };
 
     void pushEntry(HistoryEntry&& entry, TSA::Model::Model& model);
@@ -81,6 +91,7 @@ private:
     std::deque<HistoryEntry> m_undoStack;
     std::deque<HistoryEntry> m_redoStack;
     size_t m_maxSteps = 50;
+    size_t m_memoryBudgetBytes = 512ull * 1024ull * 1024ull;
 
     int m_transactionDepth = 0;
     HistoryEntry m_transaction; ///< snapshot de début + enregistrements de la transaction ouverte
