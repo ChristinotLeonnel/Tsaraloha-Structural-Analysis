@@ -433,7 +433,9 @@ void PortAreaWidget::onAddPortRequested(int portId)
         senderBtn = m_btnBarAdd;
     }
 
-    QMenu menu(this);
+    // Le menu doit avoir la fenêtre principale comme parent : PortAreaWidget possède un handle
+    // natif (imposé par l'OccView natif) et Qt exige un parent transitoire de niveau supérieur.
+    QMenu menu(window());
     menu.setStyleSheet(
         "QMenu { background-color: #1e293b; color: #f8fafc; border: 1px solid #475569; padding: 4px; border-radius: 5px; font-size: 11px; }"
         "QMenu::item { padding: 6px 20px 6px 12px; border-radius: 3px; }"
