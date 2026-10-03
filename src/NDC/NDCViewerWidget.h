@@ -43,6 +43,7 @@ public:
     void setModel(TSA::Model::Model* model);
     void setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
 
+    /// Régénère immédiatement la note (demande explicite : bouton, menu, configuration).
     void refreshDocument();
     const NDCDocument& document() const { return m_document; }
 
@@ -70,15 +71,26 @@ private slots:
     void onConfigureClicked();
     void onAnchorClicked(const QUrl& url);
 
+protected:
+    void showEvent(QShowEvent* event) override;
+
 private:
     void setupUi();
     void populateToc();
+    /// Le modèle / les résultats / la configuration ont changé : régénération différée.
+    /// La génération complète (HTML + QTextBrowser::setHtml) coûtait ~13 s par appel sur un
+    /// modèle de 1 400 barres en Debug, et était déclenchée deux fois à chaque ouverture de
+    /// projet, même dock NDC fermé. Elle n'a désormais lieu que si le widget est visible, une
+    /// seule fois par rafale de changements, ou à son prochain affichage.
+    void requestRefresh();
 
 private:
     TSA::Model::Model* m_model = nullptr;
     std::shared_ptr<TSA::Analysis::ResultsModel> m_results;
     NDCDocument m_document;
     ReportManager m_reportManager;
+    bool m_documentDirty = true;
+    bool m_refreshPending = false;
 
     QSplitter* m_splitter = nullptr;
     QTreeWidget* m_tocTree = nullptr;

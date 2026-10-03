@@ -58,6 +58,7 @@
 #include <QMimeData>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QElapsedTimer>
 #include <QLabel>
 #include <QAction>
 #include <QActionGroup>
@@ -1530,9 +1531,15 @@ bool MainWindow::loadFile(const QString& path)
     if (!m_model)
         return false;
 
+    QElapsedTimer loadTimer;
+    loadTimer.start();
+
     QString errorMsg;
     bool ok = m_projectManager ? m_projectManager->openProject(path, *m_model, m_gridManager.get(), &errorMsg)
                                : false;
+    const qint64 openMs = loadTimer.elapsed();
+    qint64 lastLap = openMs;
+    std::string laps;
     if (!ok)
     {
         QMessageBox::critical(this, tr("Erreur de chargement"),
@@ -1562,12 +1569,14 @@ bool MainWindow::loadFile(const QString& path)
         m_projectStatusWidget->refreshStatus();
     }
 
+    laps += " | sélection+état=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
     if (m_occView)
     {
         m_occView->rebuildGrid();
         m_occView->fitModel();
     }
 
+    laps += " | grilles+cadrage=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
     if (m_viewportContainer && m_model->levelManager())
     {
         m_viewportContainer->updateLevelsList(
@@ -1576,12 +1585,14 @@ bool MainWindow::loadFile(const QString& path)
         );
     }
 
+    laps += " | niveaux/plans=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
     if (m_modelTree)
     {
         m_modelTree->setProjectName(fileName);
         m_modelTree->refreshAll();
     }
 
+    laps += " | arbre=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
     if (m_diagramWidget)
     {
         m_diagramWidget->setModel(m_model.get());
@@ -1593,6 +1604,7 @@ bool MainWindow::loadFile(const QString& path)
         m_ndcWidget->setResultsModel(nullptr);
     }
 
+    laps += " | diagrammes+NDC=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
     if (m_statusProject)
     {
         m_statusProject->setText(fileName);
@@ -1623,6 +1635,13 @@ bool MainWindow::loadFile(const QString& path)
             .arg(m_model->slabs().size())
             .arg(fileName));
     }
+
+    TSA_LOG_INFO("MainWindow", "ProjectLoadTiming",
+                 "Ouverture " + fileName.toStdString() + " : lecture+modèle+3D = " + std::to_string(openMs) +
+                 " ms, total (arbre, grilles, UI inclus) = " + std::to_string(loadTimer.elapsed()) + " ms" + laps + " (" +
+                 std::to_string(m_model->nodes().size()) + " nœuds, " +
+                 std::to_string(m_model->beams().size() + m_model->columns().size()) + " barres)");
+    TSA::Diagnostics::Logger::instance().flush(); // événement ponctuel : rendre la mesure lisible immédiatement
     return true;
 }
 

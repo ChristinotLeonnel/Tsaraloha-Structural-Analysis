@@ -5,6 +5,8 @@
 #include "../Model/Model.h"
 
 #include <QVBoxLayout>
+#include <QTimer>
+#include <QShowEvent>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QFileDialog>
@@ -103,26 +105,47 @@ void NDCViewerWidget::setModel(TSA::Model::Model* model)
 {
     m_model = model;
     m_reportManager.setModel(model);
-    refreshDocument();
+    requestRefresh();
 }
 
 void NDCViewerWidget::setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
 {
     m_results = results;
     m_reportManager.setResultsModel(results);
-    refreshDocument();
+    requestRefresh();
 }
 
 void NDCViewerWidget::setConfiguration(const ReportConfiguration& config)
 {
     m_reportManager.setConfiguration(config);
-    refreshDocument();
+    requestRefresh();
+}
+
+void NDCViewerWidget::requestRefresh()
+{
+    m_documentDirty = true;
+    if (!isVisible() || m_refreshPending)
+        return; // régénérée au prochain affichage, ou déjà programmée
+    m_refreshPending = true;
+    QTimer::singleShot(0, this, [this]() {
+        m_refreshPending = false;
+        if (m_documentDirty && isVisible())
+            refreshDocument();
+    });
+}
+
+void NDCViewerWidget::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    if (m_documentDirty)
+        requestRefresh();
 }
 
 void NDCViewerWidget::refreshDocument()
 {
     if (!m_model) return;
 
+    m_documentDirty = false;
     m_document = m_reportManager.generateReport();
     m_browser->setHtml(m_document.toHtml());
     populateToc();

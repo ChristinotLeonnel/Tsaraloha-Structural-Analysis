@@ -910,7 +910,7 @@ void MainWindow::onActionNoteDeCalcul()
     {
         m_ndcWidget->setModel(m_model.get());
         m_ndcWidget->setResultsModel(m_resultsModel);
-        m_ndcWidget->refreshDocument();
+        m_ndcWidget->refreshDocument(); // une seule génération (setModel/setResultsModel sont différés)
     }
     if (m_ndcDock)
     {
