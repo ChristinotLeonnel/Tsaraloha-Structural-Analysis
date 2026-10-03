@@ -48,6 +48,15 @@ private:
     int m_columnId = -1;
     bool m_isLoading = false;
 
+    // En-tête Récapitulatif CAO
+    QLabel* m_lblCadType = nullptr;
+    QLabel* m_lblCadId = nullptr;
+    QLabel* m_lblCadNodes = nullptr;
+    QLabel* m_lblCadSection = nullptr;
+    QLabel* m_lblCadMaterial = nullptr;
+    QLabel* m_lblCadLength = nullptr;
+    QLabel* m_lblCadLevel = nullptr;
+
     QLineEdit* m_editName = nullptr;
     QComboBox* m_comboSectionType = nullptr;
     QComboBox* m_comboMaterial = nullptr;

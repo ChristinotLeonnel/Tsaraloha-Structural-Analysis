@@ -15,6 +15,7 @@
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
 #include "../UI/Theme/ThemeManager.h"
+#include "../UI/Widgets/ProjectStatusOverlay.h"
 #include "../Coordinate/CoordinateTransformationService.h"
 #include "../Commands/ModifyCommands.h"
 #include <gp_Trsf.hxx>
@@ -93,6 +94,15 @@ OccView::OccView(QWidget* parent)
             if (!m_view.IsNull()) m_view->Redraw();
         });
     }
+
+    m_projectStatusOverlay = new TSA::UI::ProjectStatusOverlay(this, this);
+    m_logoOverlay = new TSA::UI::TSALogoOverlay(this);
+    m_projectStatusOverlay->show();
+    m_logoOverlay->show();
+
+    connect(m_projectStatusOverlay, &TSA::UI::ProjectStatusOverlay::overlayToggled, this, [this](bool) {
+        updateOverlayPositions();
+    });
 }
 
 OccView::~OccView()
@@ -117,6 +127,7 @@ void OccView::showEvent(QShowEvent* event)
         updateWorkPlaneVisual();
         fitAll();
     }
+    updateOverlayPositions();
 }
 
 void OccView::initOcc()
@@ -235,6 +246,10 @@ void OccView::setModel(TSA::Model::Model* model)
     {
         m_resultsVisual->setModel(model);
     }
+    if (m_projectStatusOverlay)
+    {
+        m_projectStatusOverlay->setModel(model);
+    }
     if (m_model)
     {
         m_model->addObserver(this);
@@ -250,6 +265,50 @@ void OccView::setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>
     if (m_resultsVisual)
     {
         m_resultsVisual->setResultsModel(results);
+    }
+    if (m_projectStatusOverlay)
+    {
+        m_projectStatusOverlay->setResultsModel(results);
+    }
+}
+
+void OccView::setProjectInfo(const QString& name, const QString& path)
+{
+    if (m_projectStatusOverlay)
+    {
+        m_projectStatusOverlay->setProjectInfo(name, path);
+    }
+}
+
+void OccView::updateOverlayPositions()
+{
+    if (!isVisible())
+        return;
+
+    int rightMargin = 16;
+    int bottomMargin = 12;
+
+    if (m_logoOverlay)
+    {
+        int logoW = m_logoOverlay->width();
+        int logoH = m_logoOverlay->height();
+        int x = width() - logoW - rightMargin;
+        int y = height() - logoH - bottomMargin;
+        m_logoOverlay->move(std::max(0, x), std::max(0, y));
+        m_logoOverlay->raise();
+    }
+
+    if (m_projectStatusOverlay)
+    {
+        int cardW = m_projectStatusOverlay->sizeHint().width();
+        if (cardW < 220) cardW = 220;
+        int cardH = m_projectStatusOverlay->sizeHint().height();
+        int logoOffset = m_logoOverlay ? (m_logoOverlay->height() + 18) : 50;
+        int x = width() - cardW - rightMargin;
+        int y = height() - cardH - logoOffset;
+        m_projectStatusOverlay->resize(cardW, cardH);
+        m_projectStatusOverlay->move(std::max(0, x), std::max(0, y));
+        m_projectStatusOverlay->raise();
     }
 }
 
@@ -271,13 +330,15 @@ void OccView::paintEvent(QPaintEvent* /*event*/)
     }
 }
 
-void OccView::resizeEvent(QResizeEvent* /*event*/)
+void OccView::resizeEvent(QResizeEvent* event)
 {
+    QWidget::resizeEvent(event);
     if (!m_view.IsNull())
     {
         m_view->MustBeResized();
         emit viewCameraChanged();
     }
+    updateOverlayPositions();
 }
 
 

@@ -44,6 +44,43 @@ void BeamPropertiesView::setupUi()
     mainLayout->setContentsMargins(4, 4, 4, 4);
     mainLayout->setSpacing(8);
 
+    // 0. Récapitulatif CAO professionnel (conforme Robot SA / Revit)
+    auto* grpCad = new QGroupBox(tr("ÉLÉMENT"), this);
+    grpCad->setStyleSheet("QGroupBox { font-weight: bold; color: #38bdf8; border: 1px solid #334155; margin-top: 6px; padding-top: 8px; border-radius: 4px; }");
+    auto* formCad = new QFormLayout(grpCad);
+    formCad->setContentsMargins(8, 8, 8, 8);
+    formCad->setSpacing(4);
+
+    m_lblCadType = new QLabel(tr("Poutre"), grpCad);
+    m_lblCadType->setStyleSheet("font-weight: bold; color: #f8fafc;");
+    formCad->addRow(tr("Type :"), m_lblCadType);
+
+    m_lblCadId = new QLabel("B-0", grpCad);
+    m_lblCadId->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; color: #38bdf8;");
+    formCad->addRow(tr("ID :"), m_lblCadId);
+
+    m_lblCadNodes = new QLabel("N1 → N2", grpCad);
+    m_lblCadNodes->setStyleSheet("font-family: Consolas, monospace; color: #94a3b8;");
+    formCad->addRow(tr("Nœuds :"), m_lblCadNodes);
+
+    m_lblCadSection = new QLabel("-", grpCad);
+    m_lblCadSection->setStyleSheet("font-weight: bold; color: #f8fafc;");
+    formCad->addRow(tr("Section :"), m_lblCadSection);
+
+    m_lblCadMaterial = new QLabel("-", grpCad);
+    m_lblCadMaterial->setStyleSheet("font-weight: 500; color: #cbd5e1;");
+    formCad->addRow(tr("Matériau :"), m_lblCadMaterial);
+
+    m_lblCadLength = new QLabel("0.00 m", grpCad);
+    m_lblCadLength->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; color: #34d399;");
+    formCad->addRow(tr("Longueur :"), m_lblCadLength);
+
+    m_lblCadLevel = new QLabel("-", grpCad);
+    m_lblCadLevel->setStyleSheet("color: #fbbf24; font-weight: 500;");
+    formCad->addRow(tr("Niveau :"), m_lblCadLevel);
+
+    mainLayout->addWidget(grpCad);
+
     // 1. Général & Rôle
     auto* grpGen = new QGroupBox(tr("Général & Rôle"), this);
     auto* formGen = new QFormLayout(grpGen);
@@ -287,12 +324,50 @@ void BeamPropertiesView::refreshView()
     setEnabled(true);
     m_isLoading = true;
 
+    // Mise à jour de l'en-tête CAO (propriétés réelles du modèle)
+    m_lblCadId->setText(QString("B-%1").arg(m_beamId));
+    m_lblCadType->setText(beam->role() == TSA::Model::BarRole::Column ? tr("Poteau") : tr("Poutre"));
+
+    const auto* startN = m_model->getNode(beam->startNodeId());
+    const auto* endN = m_model->getNode(beam->endNodeId());
+    if (startN && endN)
+    {
+        m_lblCadNodes->setText(QString("N%1 → N%2").arg(beam->startNodeId()).arg(beam->endNodeId()));
+        double dx = endN->x() - startN->x();
+        double dy = endN->y() - startN->y();
+        double dz = endN->z() - startN->z();
+        double len = std::sqrt(dx * dx + dy * dy + dz * dz);
+        m_lblCadLength->setText(QString("%1 m").arg(len, 0, 'f', 2));
+
+        if (!startN->levelId().empty())
+        {
+            m_lblCadLevel->setText(QString::fromStdString(startN->levelId()));
+        }
+        else if (m_model->levelManager())
+        {
+            const auto* lvl = m_model->levelManager()->findLevelAtElevation(startN->z());
+            m_lblCadLevel->setText(lvl ? QString::fromStdString(lvl->name) : QString("Z = %1 m").arg(startN->z(), 0, 'f', 2));
+        }
+        else
+        {
+            m_lblCadLevel->setText(QString("Z = %1 m").arg(startN->z(), 0, 'f', 2));
+        }
+    }
+    else
+    {
+        m_lblCadNodes->setText(QString("N%1 → N%2").arg(beam->startNodeId()).arg(beam->endNodeId()));
+        m_lblCadLength->setText(QString("%1 m").arg(beam->length(*m_model), 0, 'f', 2));
+        m_lblCadLevel->setText("-");
+    }
+
+    const auto& sec = beam->section();
+    m_lblCadSection->setText(QString::fromStdString(sec.name.empty() ? "Section personnalisée" : sec.name));
+    m_lblCadMaterial->setText(QString::fromStdString(beam->material().name.empty() ? "S355" : beam->material().name));
+
     m_editName->setText(QString::fromStdString(beam->name()));
 
     int rIdx = m_comboRole->findData(static_cast<int>(beam->role()));
     if (rIdx >= 0) m_comboRole->setCurrentIndex(rIdx);
-
-    const auto& sec = beam->section();
     int sIdx = m_comboSectionType->findData(static_cast<int>(sec.shape));
     if (sIdx >= 0) m_comboSectionType->setCurrentIndex(sIdx);
     updateSectionVisibility(static_cast<int>(sec.shape));

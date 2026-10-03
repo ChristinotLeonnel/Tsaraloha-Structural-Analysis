@@ -75,15 +75,22 @@ bool ProjectManager::openProject(const QString& filePath,
                                  TSA::Grid::GridManager* gridManager,
                                  QString* outError)
 {
-    std::string err;
-    bool ok = TSA::IO::TSAProjectIO::loadFromFile(filePath, model, gridManager, &err);
+    QString qErr;
+    QImage thumbnail;
+    bool ok = TSA::IO::TSAProjectIO::loadProject(filePath, model, gridManager,
+                                                 &m_projectName, &m_author, &thumbnail, &qErr);
     if (!ok)
     {
         if (outError)
         {
-            *outError = QString::fromStdString(err);
+            *outError = qErr;
         }
         return false;
+    }
+
+    if (m_projectName.trimmed().isEmpty())
+    {
+        m_projectName = QFileInfo(filePath).baseName();
     }
 
     m_currentFilePath = filePath;

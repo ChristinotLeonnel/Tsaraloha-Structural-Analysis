@@ -230,6 +230,8 @@ set(UI_WIDGETS_SOURCES
     src/UI/Port/PortWidget.cpp
     src/UI/Port/PortAreaWidget.h
     src/UI/Port/PortAreaWidget.cpp
+    src/UI/Widgets/ProjectStatusOverlay.h
+    src/UI/Widgets/ProjectStatusOverlay.cpp
 )
 
 # --- Ruban (Ribbon UI) ---------------------------------------------------------

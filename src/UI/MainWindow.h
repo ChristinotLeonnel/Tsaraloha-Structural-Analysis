@@ -182,6 +182,10 @@ private:
     TSA::UI::ResultsDockWidget* m_resultsDock = nullptr;
     TSA::Analysis::AnalysisParameters m_lastAnalysisParams;
 
+    QLabel*  m_statusProject = nullptr;
+    QLabel*  m_statusView = nullptr;
+    QLabel*  m_statusUnits = nullptr;
+    QLabel*  m_statusLevel = nullptr;
     QLabel*  m_statusCoordinates = nullptr;
     QLabel*  m_statusCoordinatesLocal = nullptr;
     QLabel*  m_statusInfo = nullptr;

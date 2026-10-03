@@ -13,6 +13,7 @@
 #include "../Coordinate/AxisColorConfig.h"
 #include "ResultsVisualManager.h"
 #include "../Analysis/ResultsModel.h"
+#include "../UI/Widgets/ProjectStatusOverlay.h"
 
 #include <AIS_Shape.hxx>
 #include <AIS_InteractiveContext.hxx>
@@ -1362,9 +1363,18 @@ void OccView::setDarkMode(bool dark)
 {
     m_isDarkMode = dark;
     m_gridRenderer.setDarkMode(dark);
+    if (m_projectStatusOverlay) m_projectStatusOverlay->setDarkMode(dark);
+    if (m_logoOverlay) m_logoOverlay->setDarkMode(dark);
 
     if (!m_view.IsNull())
     {
+        m_view->TriedronDisplay(
+            Aspect_TOTP_LEFT_LOWER,
+            dark ? Quantity_NOC_WHITE : Quantity_NOC_BLACK,
+            0.1,
+            V3d_ZBUFFER
+        );
+
         if (dark)
         {
             Quantity_Color topColor(0.12, 0.14, 0.18, Quantity_TOC_RGB);
@@ -1417,6 +1427,7 @@ void OccView::setDarkMode(bool dark)
     }
 
     rebuildGrid();
+    updateOverlayPositions();
 
     if (!m_view.IsNull())
     {
@@ -1434,6 +1445,10 @@ void OccView::setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::Gri
     m_gridManager = gridManager;
     m_gridSnapManager = snapManager;
     m_snapManager.setGridSnapManager(snapManager);
+    if (m_projectStatusOverlay)
+    {
+        m_projectStatusOverlay->setGridManager(gridManager);
+    }
 
     if (m_gridManager)
     {

@@ -1064,41 +1064,49 @@ void MainWindow::onNextView()
 void MainWindow::onActionViewHome()
 {
     if (m_occView) m_occView->viewHome();
+    if (m_statusView) m_statusView->setText(tr("Vue ISO"));
 }
 
 void MainWindow::onActionViewTop()
 {
     if (m_occView) m_occView->viewTop();
+    if (m_statusView) m_statusView->setText(tr("Vue Dessus (XY)"));
 }
 
 void MainWindow::onActionViewBottom()
 {
     if (m_occView) m_occView->viewBottom();
+    if (m_statusView) m_statusView->setText(tr("Vue Dessous"));
 }
 
 void MainWindow::onActionViewFront()
 {
     if (m_occView) m_occView->viewFront();
+    if (m_statusView) m_statusView->setText(tr("Vue Face (XZ)"));
 }
 
 void MainWindow::onActionViewBack()
 {
     if (m_occView) m_occView->viewBack();
+    if (m_statusView) m_statusView->setText(tr("Vue Arrière"));
 }
 
 void MainWindow::onActionViewLeft()
 {
     if (m_occView) m_occView->viewLeft();
+    if (m_statusView) m_statusView->setText(tr("Vue Gauche (YZ)"));
 }
 
 void MainWindow::onActionViewRight()
 {
     if (m_occView) m_occView->viewRight();
+    if (m_statusView) m_statusView->setText(tr("Vue Droite"));
 }
 
 void MainWindow::onActionViewIsometric()
 {
     if (m_occView) m_occView->viewIsometric();
+    if (m_statusView) m_statusView->setText(tr("Vue ISO"));
 }
 
 void MainWindow::onRotate2DLeft()
@@ -1246,24 +1254,28 @@ void MainWindow::onActionViewXY()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXY);
+    if (m_statusView) m_statusView->setText(tr("Plan XY"));
 }
 
 void MainWindow::onActionViewYZ()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanYZ);
+    if (m_statusView) m_statusView->setText(tr("Plan YZ"));
 }
 
 void MainWindow::onActionViewXZ()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXZ);
+    if (m_statusView) m_statusView->setText(tr("Plan XZ"));
 }
 
 void MainWindow::onActionView3D()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::Perspective3D);
+    if (m_statusView) m_statusView->setText(tr("Vue 3D"));
 }
 
 void MainWindow::onActionCoordSystem()
@@ -1357,9 +1369,43 @@ void MainWindow::onActionNew()
 
     if (m_selectionManager)
         m_selectionManager->clearSelection();
+
     if (m_occView)
     {
+        m_occView->setProjectInfo(tr("Nouveau Projet"), "");
         m_occView->rebuildGrid();
+        m_occView->resetView();
+    }
+
+    if (m_viewportContainer && m_model && m_model->levelManager())
+    {
+        m_viewportContainer->updateLevelsList(
+            m_model->levelManager()->elevationList(),
+            m_model->levelManager()->levelNames()
+        );
+    }
+
+    if (m_modelTree)
+    {
+        m_modelTree->setProjectName(tr("Nouveau projet.tsa"));
+        m_modelTree->refreshAll();
+    }
+
+    if (m_statusProject)
+    {
+        m_statusProject->setText(tr("Nouveau projet.tsa"));
+    }
+    if (m_statusView)
+    {
+        m_statusView->setText(tr("Vue ISO"));
+    }
+    if (m_statusUnits)
+    {
+        m_statusUnits->setText(tr("kN, m"));
+    }
+    if (m_statusLevel)
+    {
+        m_statusLevel->setText(tr("Niveau : Tous"));
     }
 
     if (m_consoleDock)
@@ -1481,9 +1527,50 @@ bool MainWindow::loadFile(const QString& path)
     {
         m_selectionManager->clearSelection();
     }
+
+    QString fileName = QFileInfo(path).fileName();
+    QString projName = m_projectManager ? m_projectManager->projectName() : QString();
+    if (projName.isEmpty())
+    {
+        projName = QFileInfo(path).baseName();
+    }
+
     if (m_occView)
     {
+        m_occView->setProjectInfo(projName, path);
         m_occView->rebuildGrid();
+        m_occView->fitAll();
+    }
+
+    if (m_viewportContainer && m_model->levelManager())
+    {
+        m_viewportContainer->updateLevelsList(
+            m_model->levelManager()->elevationList(),
+            m_model->levelManager()->levelNames()
+        );
+    }
+
+    if (m_modelTree)
+    {
+        m_modelTree->setProjectName(fileName);
+        m_modelTree->refreshAll();
+    }
+
+    if (m_statusProject)
+    {
+        m_statusProject->setText(fileName);
+    }
+    if (m_statusView)
+    {
+        m_statusView->setText(tr("Vue ISO"));
+    }
+    if (m_statusUnits)
+    {
+        m_statusUnits->setText(tr("kN, m"));
+    }
+    if (m_statusLevel)
+    {
+        m_statusLevel->setText(tr("Niveau : Tous"));
     }
 
     if (m_consoleDock)
@@ -1497,7 +1584,7 @@ bool MainWindow::loadFile(const QString& path)
             .arg(m_model->beams().size())
             .arg(m_model->columns().size())
             .arg(m_model->slabs().size())
-            .arg(QFileInfo(path).fileName()));
+            .arg(fileName));
     }
     return true;
 }

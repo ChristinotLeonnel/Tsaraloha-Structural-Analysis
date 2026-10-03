@@ -1643,6 +1643,39 @@ void MainWindow::createDockWindows()
         }
     });
 
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::loadSelected, this, [this](int loadId) {
+        m_selectionManager->clearSelection();
+        m_occView->clearHighlight();
+        m_propertyPanel->showMemberLoadProperties(loadId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Charge #%1 sélectionnée").arg(loadId));
+        }
+    });
+
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::supportSelected, this, [this](int nodeId) {
+        m_selectionManager->clearSelection();
+        m_selectionManager->selectNode(nodeId);
+        m_occView->highlightNode(nodeId);
+        m_propertyPanel->showNodeProperties(nodeId);
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Appui sur Nœud N%1 sélectionné").arg(nodeId));
+        }
+    });
+
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::resultsSelected, this, [this]() {
+        if (m_resultsDock)
+        {
+            m_resultsDock->show();
+            m_resultsDock->raise();
+        }
+        if (m_statusInfo)
+        {
+            m_statusInfo->setText(tr("Résultats d'analyse"));
+        }
+    });
+
     connect(m_propertyPanel, &TSA::UI::PropertyPanel::elementModified, this, [this]() {
         m_modelTree->refreshAll();
         m_occView->update();
@@ -1720,13 +1753,34 @@ void MainWindow::createStatusBar()
 {
     QStatusBar* bar = statusBar();
 
+    // 1. Nom du fichier / Projet .tsa
+    m_statusProject = new QLabel(tr("Sans titre.tsa"), this);
+    m_statusProject->setStyleSheet("font-weight: bold; color: #38bdf8; padding: 2px 10px; border-right: 1px solid #475569;");
+    bar->addWidget(m_statusProject);
+
+    // 2. Vue actuelle (ISO, Dessus, etc.)
+    m_statusView = new QLabel(tr("Vue ISO"), this);
+    m_statusView->setStyleSheet("font-weight: 500; color: #a78bfa; padding: 2px 10px; border-right: 1px solid #475569;");
+    bar->addWidget(m_statusView);
+
+    // 3. Unités de calcul et de modélisation
+    m_statusUnits = new QLabel(tr("kN, m"), this);
+    m_statusUnits->setStyleSheet("font-weight: 500; color: #34d399; padding: 2px 10px; border-right: 1px solid #475569;");
+    bar->addWidget(m_statusUnits);
+
+    // 4. Niveau actif
+    m_statusLevel = new QLabel(tr("Niveau : Tous"), this);
+    m_statusLevel->setStyleSheet("font-weight: 500; color: #fbbf24; padding: 2px 10px; border-right: 1px solid #475569;");
+    bar->addWidget(m_statusLevel);
+
+    // 5. Coordonnées globales X, Y, Z
     m_statusCoordinates = new QLabel(tr("X: 0.000 m   Y: 0.000 m   Z: 0.000 m"), this);
-    m_statusCoordinates->setMinimumWidth(260);
+    m_statusCoordinates->setMinimumWidth(250);
     m_statusCoordinates->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; padding: 2px 8px;");
     bar->addWidget(m_statusCoordinates);
 
     m_statusCoordinatesLocal = new QLabel(tr("Xwp: 0.000 m   Ywp: 0.000 m"), this);
-    m_statusCoordinatesLocal->setMinimumWidth(220);
+    m_statusCoordinatesLocal->setMinimumWidth(200);
     m_statusCoordinatesLocal->setStyleSheet("font-family: Consolas, monospace; font-weight: bold; padding: 2px 8px; color: #a78bfa;");
     bar->addWidget(m_statusCoordinatesLocal);
 
@@ -1738,7 +1792,7 @@ void MainWindow::createStatusBar()
     m_statusSnap->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #4ade80; font-weight: bold;");
     bar->addWidget(m_statusSnap);
 
-    m_statusInfo = new QLabel(tr("Ready"), this);
+    m_statusInfo = new QLabel(tr("Prêt"), this);
     bar->addPermanentWidget(m_statusInfo);
 
     // Synchronisation du plan de travail et de l'historique caméra
@@ -1751,6 +1805,10 @@ void MainWindow::createStatusBar()
     if (m_viewportContainer)
     {
         connect(m_viewportContainer, &TSA::UI::ViewportContainer::activeLevelChanged, this, [this](double elev, const QString& name) {
+            if (m_statusLevel)
+            {
+                m_statusLevel->setText(tr("Niveau : %1").arg(name.isEmpty() ? tr("Tous") : name));
+            }
             if (m_statusInfo)
             {
                 m_statusInfo->setText(tr("Niveau actif : %1 (Z=%2 m)").arg(name).arg(elev, 0, 'f', 2));

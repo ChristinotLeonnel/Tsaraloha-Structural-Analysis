@@ -50,6 +50,11 @@ namespace TSA::Grid
 #include "ProjectionManager.h"
 #include "ViewManager.h"
 #include "../Grid/SnapManager.h"
+namespace TSA::UI
+{
+    class ProjectStatusOverlay;
+    class TSALogoOverlay;
+}
 
 class OccView : public QWidget, public TSA::Model::IModelObserver
 {
@@ -58,6 +63,11 @@ class OccView : public QWidget, public TSA::Model::IModelObserver
 public:
     explicit OccView(QWidget* parent = nullptr);
     ~OccView() override;
+
+    TSA::UI::ProjectStatusOverlay* projectStatusOverlay() const { return m_projectStatusOverlay; }
+    TSA::UI::TSALogoOverlay* logoOverlay() const { return m_logoOverlay; }
+    void setProjectInfo(const QString& name, const QString& path);
+    void updateOverlayPositions();
 
     const Handle(AIS_InteractiveContext)& context() const { return m_context; }
     const Handle(V3d_View)& view() const { return m_view; }
@@ -603,4 +613,7 @@ private:
     TSA::Model::BarProperties m_currentBarProps;
     TSA::Viewer::RenderDisplayMode m_renderDisplayMode = TSA::Viewer::RenderDisplayMode::Materials;
     std::unique_ptr<TSA::Viewer::ResultsVisualManager> m_resultsVisual;
+
+    TSA::UI::ProjectStatusOverlay* m_projectStatusOverlay = nullptr;
+    TSA::UI::TSALogoOverlay* m_logoOverlay = nullptr;
 };

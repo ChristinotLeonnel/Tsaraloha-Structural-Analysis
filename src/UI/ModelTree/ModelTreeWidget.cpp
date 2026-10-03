@@ -25,7 +25,11 @@ enum ItemType
     TypeWall = 7,
     TypeFoundation = 8,
     TypeTruss = 9,
-    TypeCable = 10
+    TypeCable = 10,
+    TypeLoad = 11,
+    TypeSupport = 12,
+    TypeResult = 13,
+    TypeProject = 14
 };
 
 ModelTreeWidget::ModelTreeWidget(TSA::Model::Model* model, QWidget* parent)
@@ -86,49 +90,89 @@ void ModelTreeWidget::setupUi()
     connect(m_tree, &QTreeWidget::itemSelectionChanged, this, &ModelTreeWidget::onItemSelectionChanged);
 }
 
+void ModelTreeWidget::setProjectName(const QString& name)
+{
+    m_projectName = name;
+    if (m_projectRootItem)
+    {
+        m_projectRootItem->setText(0, m_projectName.isEmpty() ? tr("Projet.tsa") : m_projectName);
+    }
+}
+
 void ModelTreeWidget::createRootCategories()
 {
     m_tree->clear();
 
-    m_levelsCategory = new QTreeWidgetItem(m_tree, { tr("Levels"), "" });
+    QString rootText = m_projectName.isEmpty() ? tr("Projet.tsa") : m_projectName;
+    m_projectRootItem = new QTreeWidgetItem(m_tree, { rootText, "" });
+    m_projectRootItem->setData(0, TypeRole, TypeProject);
+    m_projectRootItem->setIcon(0, QIcon(":/icons/file/file_open.svg"));
+    m_projectRootItem->setExpanded(true);
+
+    m_levelsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Niveaux"), "" });
     m_levelsCategory->setData(0, TypeRole, TypeCategory);
+    m_levelsCategory->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
     m_levelsCategory->setExpanded(true);
 
-    m_gridsCategory = new QTreeWidgetItem(m_tree, { tr("Grids"), "" });
+    m_gridsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Grilles"), "" });
     m_gridsCategory->setData(0, TypeRole, TypeCategory);
+    m_gridsCategory->setIcon(0, QIcon(":/icons/modeling/grid_cartesian.svg"));
     m_gridsCategory->setExpanded(true);
 
-    m_nodesCategory = new QTreeWidgetItem(m_tree, { tr("Nodes"), "" });
+    m_nodesCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Nœuds"), "" });
     m_nodesCategory->setData(0, TypeRole, TypeCategory);
+    m_nodesCategory->setIcon(0, QIcon(":/icons/modeling/draw_node.svg"));
     m_nodesCategory->setExpanded(true);
 
-    m_beamsCategory = new QTreeWidgetItem(m_tree, { tr("Beams"), "" });
+    m_beamsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Poutres"), "" });
     m_beamsCategory->setData(0, TypeRole, TypeCategory);
+    m_beamsCategory->setIcon(0, QIcon(":/icons/modeling/draw_beam.svg"));
     m_beamsCategory->setExpanded(true);
 
-    m_columnsCategory = new QTreeWidgetItem(m_tree, { tr("Columns"), "" });
+    m_columnsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Poteaux"), "" });
     m_columnsCategory->setData(0, TypeRole, TypeCategory);
+    m_columnsCategory->setIcon(0, QIcon(":/icons/modeling/draw_column.svg"));
     m_columnsCategory->setExpanded(true);
 
-    m_slabsCategory = new QTreeWidgetItem(m_tree, { tr("Slabs"), "" });
+    m_slabsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Dalles"), "" });
     m_slabsCategory->setData(0, TypeRole, TypeCategory);
+    m_slabsCategory->setIcon(0, QIcon(":/icons/modeling/draw_slab.svg"));
     m_slabsCategory->setExpanded(true);
 
-    m_wallsCategory = new QTreeWidgetItem(m_tree, { tr("Walls"), "" });
+    m_wallsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Voiles"), "" });
     m_wallsCategory->setData(0, TypeRole, TypeCategory);
+    m_wallsCategory->setIcon(0, QIcon(":/icons/modeling/draw_wall.svg"));
     m_wallsCategory->setExpanded(true);
 
-    m_foundationsCategory = new QTreeWidgetItem(m_tree, { tr("Foundations"), "" });
+    m_foundationsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Fondations"), "" });
     m_foundationsCategory->setData(0, TypeRole, TypeCategory);
+    m_foundationsCategory->setIcon(0, QIcon(":/icons/modeling/struct_foundation.svg"));
     m_foundationsCategory->setExpanded(true);
 
-    m_trussCategory = new QTreeWidgetItem(m_tree, { tr("Truss / Braces"), "" });
+    m_trussCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Treillis / Barres"), "" });
     m_trussCategory->setData(0, TypeRole, TypeCategory);
-    m_trussCategory->setExpanded(true);
+    m_trussCategory->setIcon(0, QIcon(":/icons/modeling/struct_truss.svg"));
+    m_trussCategory->setExpanded(false);
 
-    m_cablesCategory = new QTreeWidgetItem(m_tree, { tr("Cables"), "" });
+    m_cablesCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Câbles"), "" });
     m_cablesCategory->setData(0, TypeRole, TypeCategory);
-    m_cablesCategory->setExpanded(true);
+    m_cablesCategory->setIcon(0, QIcon(":/icons/modeling/draw_cable.svg"));
+    m_cablesCategory->setExpanded(false);
+
+    m_loadsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Charges"), "" });
+    m_loadsCategory->setData(0, TypeRole, TypeCategory);
+    m_loadsCategory->setIcon(0, QIcon(":/icons/modeling/load_dist.svg"));
+    m_loadsCategory->setExpanded(true);
+
+    m_supportsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Appuis"), "" });
+    m_supportsCategory->setData(0, TypeRole, TypeCategory);
+    m_supportsCategory->setIcon(0, QIcon(":/icons/modeling/support_fixed.svg"));
+    m_supportsCategory->setExpanded(true);
+
+    m_resultsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Résultats"), "" });
+    m_resultsCategory->setData(0, TypeRole, TypeCategory);
+    m_resultsCategory->setIcon(0, QIcon(":/icons/view/view_3d.svg"));
+    m_resultsCategory->setExpanded(false);
 }
 
 void ModelTreeWidget::refreshLevels()
@@ -196,6 +240,9 @@ void ModelTreeWidget::refreshAll()
 
     refreshLevels();
     refreshGrids();
+    refreshLoads();
+    refreshSupports();
+    refreshResults();
 
     if (!m_model)
         return;
@@ -232,6 +279,127 @@ void ModelTreeWidget::refreshAll()
     {
         onCableAdded(cab);
     }
+}
+
+void ModelTreeWidget::refreshLoads()
+{
+    if (!m_loadsCategory)
+        return;
+
+    while (m_loadsCategory->childCount() > 0)
+    {
+        delete m_loadsCategory->takeChild(0);
+    }
+
+    if (!m_model)
+        return;
+
+    const auto& lm = m_model->loadManager();
+    for (const auto& [id, load] : lm.nodalLoads())
+    {
+        QString name = QString("Charge Nodale #%1 (Nœud %2)").arg(id).arg(load.nodeId());
+        QString details = QString("F=[%1, %2, %3] kN")
+            .arg(load.fx(), 0, 'f', 1)
+            .arg(load.fy(), 0, 'f', 1)
+            .arg(load.fz(), 0, 'f', 1);
+
+        auto* item = new QTreeWidgetItem(m_loadsCategory, { name, details });
+        item->setData(0, TypeRole, TypeLoad);
+        item->setData(0, IdRole, id);
+        item->setIcon(0, QIcon(":/icons/modeling/load_point.svg"));
+    }
+
+    for (const auto& [id, load] : lm.memberLoads())
+    {
+        QString name = QString("Charge Barre #%1 (Élém %2)").arg(id).arg(load.elementId());
+        QString details = QString("q=%1 kN/m").arg(load.q1(), 0, 'f', 1);
+
+        auto* item = new QTreeWidgetItem(m_loadsCategory, { name, details });
+        item->setData(0, TypeRole, TypeLoad);
+        item->setData(0, IdRole, id);
+        item->setIcon(0, QIcon(":/icons/modeling/load_dist.svg"));
+    }
+
+    m_loadsCategory->setText(1, QString("[%1]").arg(m_loadsCategory->childCount()));
+}
+
+void ModelTreeWidget::refreshSupports()
+{
+    if (!m_supportsCategory)
+        return;
+
+    while (m_supportsCategory->childCount() > 0)
+    {
+        delete m_supportsCategory->takeChild(0);
+    }
+
+    if (!m_model)
+        return;
+
+    for (int nid : m_model->supportedNodeIds())
+    {
+        const auto* n = m_model->getNode(nid);
+        if (!n) continue;
+
+        QString typeStr = tr("Appui");
+        QString iconPath = ":/icons/modeling/support_pinned.svg";
+        if (n->support().isFixed())
+        {
+            typeStr = tr("Encastrement");
+            iconPath = ":/icons/modeling/support_fixed.svg";
+        }
+        else if (n->support().isPinned())
+        {
+            typeStr = tr("Articulation");
+            iconPath = ":/icons/modeling/support_pinned.svg";
+        }
+        else if (n->support().isRoller())
+        {
+            typeStr = tr("Appui Simple");
+            iconPath = ":/icons/modeling/support_roller.svg";
+        }
+
+        QString name = QString("%1 (Nœud %2)").arg(typeStr).arg(nid);
+        QString details = QString("(%1, %2, %3)")
+            .arg(n->x(), 0, 'f', 2)
+            .arg(n->y(), 0, 'f', 2)
+            .arg(n->z(), 0, 'f', 2);
+
+        auto* item = new QTreeWidgetItem(m_supportsCategory, { name, details });
+        item->setData(0, TypeRole, TypeSupport);
+        item->setData(0, IdRole, nid);
+        item->setIcon(0, QIcon(iconPath));
+    }
+
+    m_supportsCategory->setText(1, QString("[%1]").arg(m_supportsCategory->childCount()));
+}
+
+void ModelTreeWidget::refreshResults()
+{
+    if (!m_resultsCategory)
+        return;
+
+    while (m_resultsCategory->childCount() > 0)
+    {
+        delete m_resultsCategory->takeChild(0);
+    }
+
+    auto* itemDisp = new QTreeWidgetItem(m_resultsCategory, { tr("Déplacements"), tr("Nœuds & Déformée 3D") });
+    itemDisp->setData(0, TypeRole, TypeResult);
+    itemDisp->setData(0, IdRole, 1);
+    itemDisp->setIcon(0, QIcon(":/icons/view/view_3d.svg"));
+
+    auto* itemForces = new QTreeWidgetItem(m_resultsCategory, { tr("Diagrammes d'Efforts"), tr("N, Vy, Vz, Mx, My, Mz") });
+    itemForces->setData(0, TypeRole, TypeResult);
+    itemForces->setData(0, IdRole, 2);
+    itemForces->setIcon(0, QIcon(":/icons/modeling/load_moment.svg"));
+
+    auto* itemReact = new QTreeWidgetItem(m_resultsCategory, { tr("Réactions d'Appuis"), tr("Forces & Moments") });
+    itemReact->setData(0, TypeRole, TypeResult);
+    itemReact->setData(0, IdRole, 3);
+    itemReact->setIcon(0, QIcon(":/icons/modeling/support_fixed.svg"));
+
+    m_resultsCategory->setText(1, QString("[%1]").arg(m_resultsCategory->childCount()));
 }
 
 void ModelTreeWidget::selectNodeItem(int nodeId)
@@ -878,6 +1046,16 @@ void ModelTreeWidget::onItemSelectionChanged()
         break;
     case TypeCable:
         emit cableSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeLoad:
+        emit loadSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeSupport:
+        emit supportSelected(item->data(0, IdRole).toInt());
+        emit nodeSelected(item->data(0, IdRole).toInt());
+        break;
+    case TypeResult:
+        emit resultsSelected();
         break;
     default:
         emit selectionCleared();
