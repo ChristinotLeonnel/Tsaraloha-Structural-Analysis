@@ -157,8 +157,38 @@ static void createMiniDump(EXCEPTION_POINTERS* ep, const std::string& dumpPath)
     }
 }
 
+struct CrashReportJob
+{
+    const char* reason;
+    EXCEPTION_POINTERS* ep;
+};
+
+static DWORD WINAPI crashReportThreadProc(LPVOID param)
+{
+    auto* job = static_cast<CrashReportJob*>(param);
+    CrashHandler::writeCrashReport(job->reason, job->ep);
+    return 0;
+}
+
 static LONG WINAPI TSAUnhandledExceptionFilter(EXCEPTION_POINTERS* ep)
 {
+    const bool isStackOverflow = ep && ep->ExceptionRecord &&
+                                 ep->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW;
+    if (isStackOverflow)
+    {
+        // Pile épuisée : le rapport (StackWalk64, MiniDumpWriteDump, flux) ne peut pas s'exécuter
+        // sur ce thread sans provoquer une seconde violation d'accès (rapports vides observés).
+        // On le délègue à un thread disposant d'une pile neuve.
+        CrashReportJob job{ "Débordement de pile (récursion infinie probable)", ep };
+        HANDLE th = CreateThread(nullptr, 1024 * 1024, crashReportThreadProc, &job, 0, nullptr);
+        if (th)
+        {
+            WaitForSingleObject(th, 30000);
+            CloseHandle(th);
+        }
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
+
     CrashHandler::writeCrashReport("Unhandled Exception (Crash natif détecté)", ep);
 
     std::string msg = "TSA a rencontré un problème critique inattendu.\n\n"
@@ -166,7 +196,16 @@ static LONG WINAPI TSAUnhandledExceptionFilter(EXCEPTION_POINTERS* ep)
                       + Logger::instance().logsDirectory() + "\\tsa_crash.log\n\n"
                       "L'application va maintenant se fermer.";
 
-    MessageBoxA(NULL, msg.c_str(), "TSA - Arrêt d'urgence suite à une anomalie critique", MB_OK | MB_ICONERROR | MB_TASKMODAL);
+    // Les chaînes du projet sont en UTF-8 (/utf-8) : MessageBoxA les interprétait dans la page de
+    // code ANSI (« ArrÃªt d'urgence... »). Conversion explicite vers UTF-16 pour MessageBoxW.
+    auto toWide = [](const std::string& utf8) {
+        const int n = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
+        std::wstring w(n > 0 ? static_cast<size_t>(n) : 0, L'\0');
+        if (n > 0) MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, w.data(), n);
+        return w;
+    };
+    MessageBoxW(NULL, toWide(msg).c_str(), toWide("TSA - Arrêt d'urgence suite à une anomalie critique").c_str(),
+                MB_OK | MB_ICONERROR | MB_TASKMODAL);
 
     if (s_previousFilter)
     {

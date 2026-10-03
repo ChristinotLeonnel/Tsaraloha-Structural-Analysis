@@ -4,6 +4,7 @@
 #include "../../Model/Model.h"
 #include "../Theme/ThemeManager.h"
 
+#include <QScopedValueRollback>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -439,11 +440,17 @@ void ViewportContainer::onPlanComboChanged(int index)
     if (!m_planCombo || index < 0 || index >= m_planCombo->count())
         return;
 
+    // Écho synchrone de notre propre application du plan (OccView::workPlaneChanged -> MainWindow
+    // -> setActiveLevelElevation) : les combos sont déjà à jour, ne pas réappliquer le plan.
+    if (m_isApplyingPlane)
+        return;
+
     double offset = m_planCombo->itemData(index).toDouble();
     QString text = m_planCombo->itemText(index);
 
     if (m_occView)
     {
+        const QScopedValueRollback<bool> applying(m_isApplyingPlane, true);
         m_occView->setWorkPlaneAxisAndOffset(m_currentAxis, offset, text.toStdString());
         if (m_currentAxis == TSA::Coordinate::WorkPlaneAxis::Z)
         {

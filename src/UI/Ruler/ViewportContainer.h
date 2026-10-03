@@ -104,6 +104,10 @@ private:
   QLabel *m_lblHint = nullptr;
 
   TSA::Coordinate::WorkPlaneAxis m_currentAxis = TSA::Coordinate::WorkPlaneAxis::Z;
+  /// Garde de réentrance : vrai pendant que onPlanComboChanged() pousse le plan vers OccView.
+  /// OccView réémet alors workPlaneChanged -> MainWindow::onWorkPlaneChanged -> setActiveLevelElevation(),
+  /// qui rappelait onPlanComboChanged() : boucle infinie et débordement de pile au démarrage.
+  bool m_isApplyingPlane = false;
   std::vector<TSA::Coordinate::DetectedPlaneInfo> m_currentPlanes;
 
   // Données héritées pour compatibilité updateLevelsList
