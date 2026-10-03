@@ -39,6 +39,9 @@
         "value": "host=x64",
         "strategy": "external"
       },
+      "environment": {
+        "VSLANG": "1033"
+      },
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "cl",
         "Qt6_DIR": "C:/Qt/6.11.2/msvc2022_64/lib/cmake/Qt6",

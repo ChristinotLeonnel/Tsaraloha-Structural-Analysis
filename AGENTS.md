@@ -543,6 +543,16 @@ précompilés est limité. À activer seulement après mesure.
 
 ### Points connus
 
+- **Dépendances d'en-têtes Ninja + MSVC francisé (critique, constaté le 2026-10-03)** : le préfixe
+  `/showIncludes` (« Remarque : inclusion du fichier : ») contient une espace insécable encodée selon
+  la page de code de la console (`0xFF` en CP850, `C2 A0` en 65001). Si `cmake --preset` et
+  `cmake --build` tournent sous des pages de code différentes, Ninja n'enregistre **aucune**
+  dépendance d'en-tête (`ninja -t deps <obj>` → `#deps 0`) : modifier un `.h` ne recompile pas les
+  `.cpp` qui l'incluent → objets périmés, dispositions mémoire incohérentes, crashs aléatoires.
+  Après tout changement d'en-tête partagé en cas de doute : vérifier `ninja -t deps`, sinon
+  reconfigurer (supprimer `CMakeCache.txt` + `CMakeFiles/`) depuis la même console que les builds.
+  Remède durable : pack de langue anglais de Visual Studio (les presets `ninja-*` fixent
+  `VSLANG=1033`). `CMakeLists.txt` émet un avertissement si le préfixe détecté n'est pas ASCII.
 - Les includes OCCT sont déclarés `SYSTEM` (compilation plus rapide, pas d'avertissements `/W4`
   provenant d'OCCT).
 - Avertissements de dépréciation OCCT 8.0 encore présents dans le code du projet

@@ -607,6 +607,22 @@ set(SOURCES
 # =============================================================================
 option(TSA_BUILD_TESTS "Compiler la suite de tests TSA_Tests" ON)
 
+# Dépendances d'en-têtes Ninja + MSVC : Ninja reconnaît les lignes /showIncludes grâce au préfixe
+# détecté à la configuration. Avec un MSVC localisé (« Remarque : inclusion du fichier : »), ce
+# préfixe contient une espace insécable dont l'encodage dépend de la page de code de la console
+# (0xFF en CP850, C2 A0 en UTF-8/65001). Si la configuration et le build ne tournent pas sous la
+# même page de code, AUCUNE dépendance d'en-tête n'est enregistrée : modifier un .h ne recompile
+# pas les .cpp qui l'incluent, d'où des objets périmés (dispositions mémoire incohérentes, crashs
+# aléatoires). Remède durable : pack de langue anglais de MSVC + VSLANG=1033 (presets ninja-*).
+if(CMAKE_GENERATOR MATCHES "Ninja" AND MSVC AND CMAKE_CXX_CL_SHOWINCLUDES_PREFIX MATCHES "[^	 -~]")
+    message(WARNING
+        "Préfixe /showIncludes localisé détecté (non ASCII) : « ${CMAKE_CXX_CL_SHOWINCLUDES_PREFIX} ».
+"
+        "Lancez la configuration ET les builds depuis des consoles de MÊME page de code (chcp), sinon "
+        "Ninja n'enregistre aucune dépendance d'en-tête (vérification : ninja -t deps <fichier.obj>). "
+        "Solution pérenne : installer le pack de langue anglais de Visual Studio (VSLANG=1033).")
+endif()
+
 # ccache (optionnel, ignoré avec les générateurs Visual Studio).
 # Avec MSVC, ccache exige des infos de debug embarquées (/Z7) et son support
 # des en-têtes précompilés est limité : à activer seulement si vous le testez.
