@@ -192,46 +192,48 @@ int Model::addColumnBetweenLevels(int levelStartIndex, int levelEndIndex, double
 
 void Model::onLevelElevationChanged(const std::string& levelId, double oldElevation, double newElevation)
 {
-    std::set<int> modifiedNodeIds;
-
+    // Règle : seuls les nœuds explicitement RATTACHÉS au niveau (levelId) le suivent. Auparavant
+    // tout nœud non rattaché situé à l'ancienne cote était aussi déplacé (et rattaché d'office),
+    // ce qui pouvait emporter silencieusement des nœuds qui ne devaient pas bouger.
+    ModelDiff diff;
+    std::set<int> moved;
     for (auto& [id, node] : m_nodes)
     {
-        if (node.levelId() == levelId || (node.levelId().empty() && std::abs(node.z() - oldElevation) < 1e-3))
+        if (!levelId.empty() && node.levelId() == levelId)
         {
             node.setZ(newElevation);
-            node.setLevelId(levelId);
-            modifiedNodeIds.insert(id);
-            notifyNodeModified(id);
+            moved.insert(id);
+            diff.modifiedNodeIds.push_back(id);
         }
     }
+    if (moved.empty())
+        return;
 
-    for (const auto& [bId, beam] : m_beams)
+    auto touches = [&moved](int a, int b) { return moved.count(a) || moved.count(b); };
+    for (const auto& [id, e] : m_beams) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedBeamIds.push_back(id);
+    for (const auto& [id, e] : m_columns) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedColumnIds.push_back(id);
+    for (const auto& [id, e] : m_trussMembers) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedTrussMemberIds.push_back(id);
+    for (const auto& [id, e] : m_cables) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedCableIds.push_back(id);
+    for (const auto& [id, e] : m_walls) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedWallIds.push_back(id);
+    for (const auto& [id, e] : m_foundations) if (moved.count(e.nodeId())) diff.modifiedFoundationIds.push_back(id);
+    for (const auto& [id, e] : m_slabs)
     {
-        if (modifiedNodeIds.count(beam.startNodeId()) || modifiedNodeIds.count(beam.endNodeId()))
+        for (int nId : e.nodeIds())
         {
-            notifyBeamModified(bId);
-        }
-    }
-
-    for (const auto& [cId, col] : m_columns)
-    {
-        if (modifiedNodeIds.count(col.startNodeId()) || modifiedNodeIds.count(col.endNodeId()))
-        {
-            notifyColumnModified(cId);
-        }
-    }
-
-    for (const auto& [sId, slab] : m_slabs)
-    {
-        for (int nId : slab.nodeIds())
-        {
-            if (modifiedNodeIds.count(nId))
+            if (moved.count(nId))
             {
-                notifySlabModified(sId);
+                diff.modifiedSlabIds.push_back(id);
                 break;
             }
         }
     }
+
+    m_isModified = true;
+    TSA_LOG_INFO("Model", "LevelElevationChanged",
+                 "Niveau " + levelId + " : " + std::to_string(oldElevation) + " -> " + std::to_string(newElevation) +
+                 " m, " + std::to_string(moved.size()) + " nœud(s) rattaché(s) déplacé(s)");
+    // Une seule notification groupée (au lieu d'une reconstruction 3D + redraw par nœud).
+    notifyModelDiffApplied(diff);
 }
 
 bool Model::removeNode(int nodeId)

@@ -897,6 +897,38 @@ bool runSuite_Model(int& passed)
         passed++;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 99: Modification de l'élévation d'un niveau
+    // Règle : seuls les nœuds rattachés au niveau le suivent (aucun déplacement silencieux).
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 99: Élévation de niveau ---" << std::endl;
+        Model m;
+        auto* lm = m.levelManager();
+        TEST_CHECK(lm != nullptr, "Test 99: gestionnaire de niveaux présent");
+        lm->clear();
+        auto* lvl = lm->addLevel("R+1", 3.0);
+        TEST_CHECK(lvl != nullptr, "Test 99: niveau R+1 créé");
+        const std::string lvlId = lvl->id;
+
+        int base = m.addNode(0.0, 0.0, 0.0);
+        int attached = m.addNode(0.0, 0.0, 3.0);            // rattaché automatiquement (cote du niveau)
+        int loose = m.addNode(5.0, 0.0, 3.0, "", "libre");
+        m.getNode(loose)->setLevelId("");                  // explicitement non rattaché
+        int col = m.addColumn(base, attached);
+        TEST_CHECK(m.getNode(attached)->levelId() == lvlId, "Test 99: nœud à la cote du niveau rattaché à la création");
+
+        const auto rev = m.revision();
+        TEST_CHECK(lm->setLevelElevation(lvlId, 3.2), "Test 99: élévation modifiée");
+        TEST_CHECK(approxEqual(m.getNode(attached)->z(), 3.2), "Test 99: le nœud rattaché suit le niveau");
+        TEST_CHECK(approxEqual(m.getNode(loose)->z(), 3.0), "Test 99: le nœud non rattaché ne bouge pas");
+        TEST_CHECK(m.getNode(loose)->levelId().empty(), "Test 99: pas de rattachement d'office");
+        TEST_CHECK(approxEqual(m.getColumn(col)->length(m), 3.2), "Test 99: poteau connecté rallongé");
+        TEST_CHECK(m.revision() > rev, "Test 99: révision incrémentée (résultats invalidés)");
+        std::cout << "[PASS] Test 99: Élévation de niveau" << std::endl;
+        passed++;
+    }
+
     return true;
 }
 
