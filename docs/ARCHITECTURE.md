@@ -68,6 +68,9 @@ tests), `docs/TSALIB_SYSTEM.md`, `docs/TSA_DIAGNOSTICS.md`, `docs/TSA_FILE_FORMA
 `ROADMAP.md` complètent cet ensemble avec une vue orientée agents IA/architecture — ils ne
 remplacent aucun de ces documents existants.
 
+Système d'édition (Undo/Redo transactionnel, historique structuré, invalidation des résultats,
+requêtes de sélection) : `docs/EDIT_SYSTEM.md`.
+
 ## Normes Internationales & Documentation
 
 Le développement et la documentation de TSA respectent le cadre normatif international :

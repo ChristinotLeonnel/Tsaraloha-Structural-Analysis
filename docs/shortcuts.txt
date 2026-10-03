@@ -57,6 +57,7 @@ Legende des touches :
   Ctrl+V              Coller les elements du presse-papier
   Suppr               Supprimer les elements selectionnes
   Ctrl+A              Tout Selectionner
+  Ctrl+Alt+I          Inverser la selection
   Echap               Mode Selection / Effacer la selection
 
 ================================================================================

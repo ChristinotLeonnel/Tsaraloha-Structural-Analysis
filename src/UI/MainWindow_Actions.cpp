@@ -838,7 +838,7 @@ void MainWindow::createMenus()
         namespace SQ = TSA::Model::SelectionQuery;
 
         QAction* invertAct = editMenu->addAction(tr("&Inverser la sélection"));
-        invertAct->setShortcut(QKeySequence("Ctrl+I"));
+        invertAct->setShortcut(QKeySequence("Ctrl+Alt+I")); // Ctrl+I = isolation par coupe (CommandCatalog)
         connect(invertAct, &QAction::triggered, this, [this]() {
             if (!m_model || !m_selectionManager) return;
             applyElementSelection(SQ::invert(*m_model, m_selectionManager->selectedElements()), tr("Sélection inversée"));
