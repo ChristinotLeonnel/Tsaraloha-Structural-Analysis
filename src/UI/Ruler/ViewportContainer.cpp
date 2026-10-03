@@ -80,6 +80,34 @@ void ViewportContainer::setupUi()
 
     topLayout->addSpacing(8);
 
+    m_chkMode2D = new QCheckBox(tr("2D"), m_topBar);
+    m_chkMode2D->setToolTip(tr("Mode 2D CAO : Isoler automatiquement le plan de travail actif avec vue orthogonale"));
+    m_chkMode2D->setChecked(m_occView ? m_occView->isMode2D() : false);
+    m_chkMode2D->setStyleSheet(
+        "QCheckBox { font-weight: 700; color: #58A6FF; spacing: 4px; padding: 1px 6px; border: 1px solid #30363D; border-radius: 3px; background: #212830; }"
+        "QCheckBox:hover { border-color: #58A6FF; background: #262C36; }"
+        "QCheckBox:checked { background: #1F3A5A; border-color: #58A6FF; color: #79C0FF; }"
+    );
+    topLayout->addWidget(m_chkMode2D);
+
+    m_lblMode2DBadge = new QLabel(m_topBar);
+    m_lblMode2DBadge->setStyleSheet(
+        "background: #1F3A5A; color: #79C0FF; border: 1px solid #388BFD; border-radius: 3px; padding: 1px 8px; font-size: 11px; font-weight: 600;"
+    );
+    m_lblMode2DBadge->setVisible(false);
+    topLayout->addWidget(m_lblMode2DBadge);
+
+    connect(m_chkMode2D, &QCheckBox::toggled, this, [this](bool on) {
+        if (m_occView)
+        {
+            m_occView->setMode2D(on);
+        }
+        updateMode2DBadge(on);
+        emit mode2DChanged(on);
+    });
+
+    topLayout->addSpacing(8);
+
     auto* lblHint = new QLabel(tr("Plan de dessin actif en hauteur"), m_topBar);
     lblHint->setStyleSheet("color: #8B949E; font-weight: normal; font-style: italic;");
     topLayout->addWidget(lblHint);
@@ -125,6 +153,20 @@ void ViewportContainer::setupUi()
     {
         connect(m_occView, &OccView::viewPlaneModeChanged, this, [this](OccView::ViewPlaneMode) {
             updateRulers();
+        });
+        connect(m_occView, &OccView::mode2DChanged, this, [this](bool active) {
+            if (m_chkMode2D && m_chkMode2D->isChecked() != active)
+            {
+                QSignalBlocker blocker(m_chkMode2D);
+                m_chkMode2D->setChecked(active);
+            }
+            updateMode2DBadge(active);
+        });
+        connect(m_occView, &OccView::workPlaneChanged, this, [this](const TSA::Coordinate::WorkPlane&) {
+            if (m_occView && m_occView->isMode2D())
+            {
+                updateMode2DBadge(true);
+            }
         });
     }
 }
@@ -245,7 +287,59 @@ void ViewportContainer::onLevelComboChanged(int index)
     }
 
     updateRulers();
+    if (m_occView && m_occView->isMode2D())
+    {
+        updateMode2DBadge(true);
+    }
     emit activeLevelChanged(elev, text);
+}
+
+void ViewportContainer::setMode2D(bool enabled)
+{
+    if (m_chkMode2D)
+    {
+        m_chkMode2D->setChecked(enabled);
+    }
+    else if (m_occView)
+    {
+        m_occView->setMode2D(enabled);
+    }
+}
+
+bool ViewportContainer::isMode2D() const
+{
+    if (m_chkMode2D)
+        return m_chkMode2D->isChecked();
+    return m_occView ? m_occView->isMode2D() : false;
+}
+
+void ViewportContainer::updateMode2DBadge(bool active)
+{
+    if (!m_lblMode2DBadge)
+        return;
+
+    if (!active)
+    {
+        m_lblMode2DBadge->setVisible(false);
+        return;
+    }
+
+    QString planName;
+    if (m_levelCombo && m_levelCombo->currentIndex() >= 0)
+    {
+        planName = m_levelCombo->currentText();
+    }
+    if (planName.isEmpty() && m_occView)
+    {
+        planName = QString::fromStdString(m_occView->activeWorkPlane().name());
+    }
+    if (planName.isEmpty())
+    {
+        planName = tr("Niveau actif");
+    }
+
+    m_lblMode2DBadge->setText(QString("☑ 2D | Plan : %1 | Vue : Orthogonale").arg(planName));
+    m_lblMode2DBadge->setVisible(true);
 }
 
 void ViewportContainer::onLevelUp()

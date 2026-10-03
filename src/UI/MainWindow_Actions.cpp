@@ -1256,6 +1256,8 @@ void MainWindow::createDockWindows()
                 m_occView, &OccView::applyStandardView);
         connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::projectionModeRequested,
                 m_occView, &OccView::setProjectionMode);
+        connect(m_occView, &OccView::projectionModeChanged,
+                m_projectionViewDock, &TSA::UI::ProjectionViewDock::syncProjectionMode);
         connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::projectionDirectionRequested,
                 m_occView, &OccView::setProjectionDirection);
         connect(m_projectionViewDock, &TSA::UI::ProjectionViewDock::alignViewToWorkPlaneRequested,

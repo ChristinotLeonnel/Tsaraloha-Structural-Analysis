@@ -37,12 +37,17 @@ public:
   void setActiveLevelIndex(int index);
   void setActiveLevelElevation(double elevation);
 
+  void setMode2D(bool enabled);
+  bool isMode2D() const;
+
 signals:
   void activeLevelChanged(double elevation, const QString &name);
+  void mode2DChanged(bool active);
 
 public slots:
   void updateRulers();
   void updateTheme(bool isDark);
+  void updateMode2DBadge(bool active);
 
 private slots:
   void onMouseMovedInViewport(int px, int py);
@@ -63,6 +68,8 @@ private:
   QWidget *m_topCornerRight = nullptr;
 
   QWidget *m_topBar = nullptr;
+  QCheckBox *m_chkMode2D = nullptr;
+  QLabel *m_lblMode2DBadge = nullptr;
   QComboBox *m_levelCombo = nullptr;
   QPushButton *m_btnLevelUp = nullptr;
   QPushButton *m_btnLevelDown = nullptr;

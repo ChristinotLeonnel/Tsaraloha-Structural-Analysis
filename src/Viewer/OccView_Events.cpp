@@ -583,8 +583,15 @@ void OccView::mousePressEvent(QMouseEvent* event)
     else if (event->button() == Qt::RightButton)
     {
         pushCameraHistory();
-        m_currentAction = CurrentAction::Rotation;
-        m_view->StartRotation(px, py);
+        if (m_mode2DActive)
+        {
+            m_currentAction = CurrentAction::Pan;
+        }
+        else
+        {
+            m_currentAction = CurrentAction::Rotation;
+            m_view->StartRotation(px, py);
+        }
     }
     else if (event->button() == Qt::MiddleButton)
     {
@@ -699,10 +706,24 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
                     if (m_context->HasDetected())
                     {
                         Handle(AIS_InteractiveObject) obj = m_context->DetectedInteractive();
-                        m_context->SelectDetected(multi ? AIS_SelectionScheme_XOR : AIS_SelectionScheme_Replace);
-                        if (m_selectionManager)
+                        if (m_mode2DActive && (obj == m_workPlaneShape || obj == m_workPlaneTrihedron || obj == m_workPlaneOriginShape))
                         {
-                            m_selectionManager->selectObject(obj, multi);
+                            if (!multi)
+                            {
+                                m_context->ClearSelected(false);
+                                if (m_selectionManager)
+                                {
+                                    m_selectionManager->clearSelection();
+                                }
+                            }
+                        }
+                        else
+                        {
+                            m_context->SelectDetected(multi ? AIS_SelectionScheme_XOR : AIS_SelectionScheme_Replace);
+                            if (m_selectionManager)
+                            {
+                                m_selectionManager->selectObject(obj, multi);
+                            }
                         }
                     }
                     else
@@ -938,7 +959,16 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
     switch (m_currentAction)
     {
     case CurrentAction::Rotation:
-        m_view->Rotation(px, py);
+        if (m_mode2DActive)
+        {
+            m_view->Pan(px - m_lastMousePos.x(),
+                        m_lastMousePos.y() - py);
+            m_lastMousePos = p;
+        }
+        else
+        {
+            m_view->Rotation(px, py);
+        }
         emit viewCameraChanged();
         break;
 

@@ -189,6 +189,17 @@ public:
     void setWorkPlaneIsolation(bool isolated, double distance = 1.0);
     void updateElementIsolation();
 
+    // Mode 2D CAO & Isolation Automatique du Plan de Travail
+    bool isMode2D() const noexcept { return m_mode2DActive; }
+    void setMode2D(bool enabled);
+    void toggleMode2D() { setMode2D(!m_mode2DActive); }
+
+    // Prédicats géométriques d'appartenance au plan actif (tolérance en mètres)
+    bool isPointOnActiveWorkPlane(const gp_Pnt& pt, double tol = 0.05) const;
+    bool isNodeOnActiveWorkPlane(int nodeId, double tol = 0.05) const;
+    bool isLinearElementOnActiveWorkPlane(int startNodeId, int endNodeId, double tol = 0.05) const;
+    bool isSurfaceElementOnActiveWorkPlane(const std::vector<int>& nodeIds, double tol = 0.05) const;
+
     // Repère Local des Éléments Structuraux (LCS - Règle 10 & 11)
     void setShowLocalAxes(bool show);
     bool showLocalAxes() const { return m_showLocalAxes; }
@@ -387,6 +398,7 @@ signals:
     void workPlaneAxesVisibleChanged(bool visible);
     void gizmoSizeChanged(double size);
     void mouseLocalCoordinatesChanged(double xwp, double ywp);
+    void mode2DChanged(bool active);
 
 protected:
     // IModelObserver overrides
@@ -567,6 +579,19 @@ private:
     Handle(AIS_Manipulator) m_manipulator;
     bool m_isManipulatingWorkPlane = false;
     TSA::Coordinate::WorkPlane m_manipulatorStartWp;
+
+    // Mode 2D CAO & Isolation Automatique non-destructive
+    bool m_mode2DActive = false;
+    Handle(Graphic3d_Camera) m_savedCamera3D;
+    bool m_savedWasOrtho = false;
+    std::map<Handle(AIS_InteractiveObject), bool> m_pre2DVisibility;
+    bool m_pre2DNodesVisible = true;
+    bool m_pre2DNodeLabelsVisible = false;
+    bool m_pre2DSupportsVisible = true;
+    bool m_pre2DLoadsVisible = true;
+    bool m_pre2DWorkPlaneAxesVisible = true;
+    void savePre2DVisibility();
+    void restorePre2DVisibility();
 
     // Repère local de l'élément sélectionné
     Handle(AIS_Shape) m_elementLocalAxesShape;
