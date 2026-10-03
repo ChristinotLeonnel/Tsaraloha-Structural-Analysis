@@ -269,6 +269,7 @@ set(COORDINATE_SOURCES
     src/Coordinate/CylindricalCoordinates.h
     src/Coordinate/CylindricalCoordinates.cpp
     src/Coordinate/WorkPlane.h
+    src/Coordinate/GeometryTolerance.h
     src/Coordinate/WorkPlane.cpp
     src/Coordinate/WorkPlaneCoordinateSystem.h
     src/Coordinate/WorkPlaneCoordinateSystem.cpp
@@ -391,6 +392,8 @@ set(MODEL_CORE_SOURCES
     src/Model/ModelDiff.cpp
     src/Model/StructuralClipboard.h
     src/Model/StructuralClipboard.cpp
+    src/Model/SelectionQuery.h
+    src/Model/SelectionQuery.cpp
 )
 
 # --- Système de chargement et solveur OpenSees — [CORE] ------------------------
@@ -418,6 +421,8 @@ set(LOAD_CORE_SOURCES
     src/Analysis/CalculationSnapshot.cpp
     src/Analysis/ResultsModel.h
     src/Analysis/ResultsModel.cpp
+    src/Analysis/ResultsValidityGuard.h
+    src/Analysis/ResultsValidityGuard.cpp
     src/Analysis/OpenSeesAnalysisBuilder.h
     src/Analysis/OpenSeesAnalysisBuilder.cpp
     src/Analysis/OpenSeesResultsReader.h
@@ -503,6 +508,8 @@ set(COMMANDS_SOURCES
 set(UNDOREDO_SOURCES
     src/UndoRedo/UndoManager.h
     src/UndoRedo/UndoManager.cpp
+    src/UndoRedo/EditRecord.h
+    src/UndoRedo/EditTransaction.h
     src/UndoRedo/CommandManager.h
     src/UndoRedo/CommandManager.cpp
 )

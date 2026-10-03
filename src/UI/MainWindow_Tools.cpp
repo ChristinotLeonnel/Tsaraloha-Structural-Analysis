@@ -1,3 +1,4 @@
+#include "../Analysis/ResultsValidityGuard.h"
 #include "MainWindow.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
@@ -716,6 +717,7 @@ void MainWindow::onActionRunSolve()
     }
 
     m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
+    if (m_resultsGuard) m_resultsGuard->trackResults(m_resultsModel);
 
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
     if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
@@ -815,6 +817,7 @@ void MainWindow::onActionModal()
     }
 
     m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
+    if (m_resultsGuard) m_resultsGuard->trackResults(m_resultsModel);
 
     if (m_occView)
     {
@@ -883,6 +886,7 @@ void MainWindow::onActionPushover()
     }
 
     m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
+    if (m_resultsGuard) m_resultsGuard->trackResults(m_resultsModel);
 
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
     if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);

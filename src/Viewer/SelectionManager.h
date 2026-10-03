@@ -5,6 +5,7 @@
 #include <set>
 #include <vector>
 #include <AIS_InteractiveObject.hxx>
+#include "../Model/SelectionQuery.h"
 
 namespace TSA::Viewer
 {
@@ -106,6 +107,9 @@ public:
     int selectedWorkPlaneId() const { return (m_selectionType == SelectionType::WorkPlane) ? m_primaryId : -1; }
 
     bool hasSelection() const { return m_selectionType != SelectionType::None; }
+
+    /// Éléments structuraux sélectionnés (hors charges et plan de travail).
+    TSA::Model::ElementSet selectedElements() const;
     size_t totalSelectedCount() const {
         return m_selectedNodes.size() + m_selectedBeams.size() + m_selectedColumns.size() +
                m_selectedSlabs.size() + m_selectedWalls.size() + m_selectedFoundations.size() +
@@ -128,6 +132,10 @@ public slots:
     void selectMemberLoad(int loadId, bool multiSelect = false);
     void selectObject(const Handle(AIS_InteractiveObject)& obj, bool multiSelect = false);
     void setMultipleObjectsSelected(const std::vector<Handle(AIS_InteractiveObject)>& objects, bool multiSelect = false);
+    /// Sélection ensembliste (tout sélectionner, inverser, par type/section/matériau/niveau/plan).
+    /// Un seul selectionChanged() ; multipleSelectionChanged() si plus d'un élément. Remplace les
+    /// boucles de selectX() qui émettaient un signal (et un redraw du viewport) par élément.
+    void selectElements(const TSA::Model::ElementSet& elements, bool addToSelection = false);
     void clearSelection();
 
 signals:
@@ -144,6 +152,8 @@ signals:
     void nodalLoadSelected(int loadId);
     void memberLoadSelected(int loadId);
     void selectionCleared();
+    /// Émis après une sélection ensembliste de plusieurs éléments (selectElements).
+    void multipleSelectionChanged();
 
 private:
     std::map<int, Handle(AIS_InteractiveObject)> m_nodeToObj;

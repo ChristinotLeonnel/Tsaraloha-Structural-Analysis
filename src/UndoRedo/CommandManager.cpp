@@ -1,5 +1,6 @@
 #include "CommandManager.h"
 #include "UndoManager.h"
+#include "EditTransaction.h"
 #include "../Model/Model.h"
 #include "../Diagnostics/Logger.h"
 
@@ -23,9 +24,38 @@ bool CommandManager::executeCommand(std::unique_ptr<TSA::Commands::ICommand> com
 
     if (m_undoManager && m_model)
     {
-        m_undoManager->pushState(*m_model, cmdName);
+        // Transaction : une seule entrée Undo, créée uniquement si la commande réussit.
+        // Auparavant le snapshot était empilé AVANT execute() : un échec laissait une entrée
+        // Undo vide, et un échec partiel laissait le modèle à moitié modifié.
+        EditTransaction tx(*m_model, cmdName);
+        bool success = false;
+        try
+        {
+            success = command->execute();
+        }
+        catch (const std::exception& e)
+        {
+            TSA_LOG_ERROR("Command", "CommandException", cmdName + " : " + e.what());
+        }
+        catch (...)
+        {
+            TSA_LOG_ERROR("Command", "CommandException", cmdName + " : exception non standard");
+        }
+
+        if (!success)
+        {
+            tx.rollback();
+            TSA_LOG_ERROR("Command", "CommandFailed", "Échec de la commande (modèle restauré) : " + cmdName);
+            return false;
+        }
+        tx.commit();
+        TSA_LOG_INFO("Command", "CommandCompleted", "Commande exécutée avec succès : " + cmdName);
+        // L'historique par snapshots fait foi : l'objet commande n'est plus conservé (la pile
+        // m_undoCommands grossissait sans limite sans jamais servir dans ce mode).
+        return true;
     }
 
+    // Mode sans UndoManager : historique par commandes (execute / undo).
     bool success = command->execute();
     if (success)
     {

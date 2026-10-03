@@ -802,5 +802,133 @@ bool runSuite_Model(int& passed)
     }
 
 
+    // -------------------------------------------------------------------------
+    // TEST 95: Révision du modèle & invalidation des résultats (ResultsValidityGuard)
+    // Régression : ResultsModel::invalidate() n'était jamais appelé ; des résultats périmés
+    // restaient présentés comme valides après une modification du modèle.
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 95: Invalidation des résultats après modification ---" << std::endl;
+        Model m;
+        int n1 = m.addNode(0.0, 0.0, 0.0);
+        int n2 = m.addNode(5.0, 0.0, 0.0);
+        int b1 = m.addBeam(n1, n2);
+
+        const auto r0 = m.revision();
+        m.notifyBeamModified(b1);
+        TEST_CHECK(m.revision() > r0, "Test 95: une notification augmente la révision");
+
+        auto results = std::make_shared<TSA::Analysis::ResultsModel>();
+        results->setValid(true);
+        TSA::Analysis::ResultsValidityGuard guard(&m);
+        int staleCalls = 0;
+        guard.setStaleCallback([&]() { ++staleCalls; });
+        guard.trackResults(results);
+        TEST_CHECK(guard.resultsUpToDate(), "Test 95: résultats à jour juste après l'analyse");
+
+        m.pushUndoState("Modification test");
+        m.getBeam(b1)->setRotation(15.0);
+        m.notifyBeamModified(b1);
+        TEST_CHECK(!results->isValid(), "Test 95: résultats invalidés après modification");
+        TEST_CHECK(!guard.resultsUpToDate(), "Test 95: le garde signale des résultats périmés");
+        TEST_CHECK(staleCalls == 1, "Test 95: rappel 'obsolète' appelé une seule fois");
+
+        // Undo ramène la géométrie, mais pas la validité : il faut relancer le calcul
+        TEST_CHECK(m.undo(), "Test 95: undo");
+        TEST_CHECK(!results->isValid() && staleCalls == 1, "Test 95: un Undo ne revalide pas les résultats");
+
+        // Nouvelle analyse : de nouveau à jour, puis une modification de charge invalide aussi
+        auto results2 = std::make_shared<TSA::Analysis::ResultsModel>();
+        results2->setValid(true);
+        guard.trackResults(results2);
+        TEST_CHECK(guard.resultsUpToDate(), "Test 95: nouvelle analyse à jour");
+        m.pushUndoState("Combinaison");
+        m.loadManager().getCombination(1)->setFactor(2, 1.2);
+        TEST_CHECK(!results2->isValid(), "Test 95: modifier une combinaison (via pushUndoState) invalide");
+        std::cout << "[PASS] Test 95: Invalidation des résultats" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 98: Requêtes de sélection (SelectionQuery)
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 98: Requêtes de sélection ---" << std::endl;
+        namespace SQ = TSA::Model::SelectionQuery;
+        Model m;
+        // Portique : 2 poteaux (x = 0 et x = 6), une poutre en tête à z = 3, une poutre au sol
+        int a = m.addNode(0.0, 0.0, 0.0), b = m.addNode(6.0, 0.0, 0.0);
+        int c = m.addNode(0.0, 0.0, 3.0), d = m.addNode(6.0, 0.0, 3.0);
+        int col1 = m.addColumn(a, c, 0.30, 0.30);
+        int col2 = m.addColumn(b, d, 0.40, 0.40);
+        int beamTop = m.addBeam(c, d, 0.30, 0.50);
+        int beamLow = m.addBeam(a, b, 0.30, 0.50);
+
+        auto all = SQ::all(m);
+        TEST_CHECK(all.nodes.size() == 4 && all.columns.size() == 2 && all.beams.size() == 2, "Test 98: tout le modèle");
+
+        TSA::Model::ElementSet current;
+        current.beams = { beamTop };
+        auto inv = SQ::invert(m, current);
+        TEST_CHECK(inv.size() == all.size() - 1 && !inv.beams.count(beamTop) && inv.beams.count(beamLow), "Test 98: inversion");
+
+        TEST_CHECK(SQ::byKind(m, TSA::Model::ElementKind::Column).columns.size() == 2 &&
+                   SQ::byKind(m, TSA::Model::ElementKind::Column).size() == 2, "Test 98: par type");
+
+        auto sec = SQ::sameSection(m, current);
+        TEST_CHECK(sec.beams.size() == 2 && sec.columns.empty(), "Test 98: même section (les 2 poutres 30x50)");
+        TSA::Model::ElementSet refCol; refCol.columns = { col1 };
+        auto secCol = SQ::sameSection(m, refCol);
+        TEST_CHECK(secCol.columns.size() == 1 && secCol.columns.count(col1), "Test 98: poteau 30x30 seul de sa section");
+
+        TEST_CHECK(SQ::sameMaterial(m, current).size() == 4, "Test 98: même matériau (béton par défaut)");
+
+        auto lvl = SQ::atElevation(m, 3.0, TSA::Coordinate::GeometryTolerance::planeMembership);
+        TEST_CHECK(lvl.nodes.size() == 2 && lvl.beams.size() == 1 && lvl.beams.count(beamTop) && lvl.columns.empty(),
+                   "Test 98: niveau z = 3 m (2 nœuds, poutre de tête, pas les poteaux)");
+
+        TSA::Coordinate::WorkPlane planeX(TSA::Coordinate::WorkPlaneType::GlobalYZ, "X = 6", 6.0);
+        auto onX = SQ::onWorkPlane(m, planeX, TSA::Coordinate::GeometryTolerance::planeMembership);
+        TEST_CHECK(onX.nodes.size() == 2 && onX.columns.size() == 1 && onX.columns.count(col2) && onX.beams.empty(),
+                   "Test 98: plan X = 6 m (poteau 2 entier, poutres traversantes exclues)");
+
+        TEST_CHECK(SQ::invert(m, all).empty() && SQ::sameSection(m, {}).empty(), "Test 98: cas limites");
+        std::cout << "[PASS] Test 98: Requêtes de sélection" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 99: Modification de l'élévation d'un niveau
+    // Règle : seuls les nœuds rattachés au niveau le suivent (aucun déplacement silencieux).
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 99: Élévation de niveau ---" << std::endl;
+        Model m;
+        auto* lm = m.levelManager();
+        TEST_CHECK(lm != nullptr, "Test 99: gestionnaire de niveaux présent");
+        lm->clear();
+        auto* lvl = lm->addLevel("R+1", 3.0);
+        TEST_CHECK(lvl != nullptr, "Test 99: niveau R+1 créé");
+        const std::string lvlId = lvl->id;
+
+        int base = m.addNode(0.0, 0.0, 0.0);
+        int attached = m.addNode(0.0, 0.0, 3.0);            // rattaché automatiquement (cote du niveau)
+        int loose = m.addNode(5.0, 0.0, 3.0, "", "libre");
+        m.getNode(loose)->setLevelId("");                  // explicitement non rattaché
+        int col = m.addColumn(base, attached);
+        TEST_CHECK(m.getNode(attached)->levelId() == lvlId, "Test 99: nœud à la cote du niveau rattaché à la création");
+
+        const auto rev = m.revision();
+        TEST_CHECK(lm->setLevelElevation(lvlId, 3.2), "Test 99: élévation modifiée");
+        TEST_CHECK(approxEqual(m.getNode(attached)->z(), 3.2), "Test 99: le nœud rattaché suit le niveau");
+        TEST_CHECK(approxEqual(m.getNode(loose)->z(), 3.0), "Test 99: le nœud non rattaché ne bouge pas");
+        TEST_CHECK(m.getNode(loose)->levelId().empty(), "Test 99: pas de rattachement d'office");
+        TEST_CHECK(approxEqual(m.getColumn(col)->length(m), 3.2), "Test 99: poteau connecté rallongé");
+        TEST_CHECK(m.revision() > rev, "Test 99: révision incrémentée (résultats invalidés)");
+        std::cout << "[PASS] Test 99: Élévation de niveau" << std::endl;
+        passed++;
+    }
+
     return true;
 }
+

@@ -153,7 +153,9 @@ void TrussMemberPropertiesView::applyChanges()
     auto* trm = m_model->getTrussMember(m_memberId);
     if (!trm) return;
 
-    m_model->pushUndoState(tr("Modification Treillis %1").arg(m_memberId).toStdString());
+    const std::string undoName = tr("Modification Treillis %1").arg(m_memberId).toStdString();
+    // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
+    m_model->pushUndoState(undoName, undoName);
 
     trm->setName(m_editName->text().toStdString());
     trm->setRole(static_cast<TSA::Model::TrussMemberRole>(m_comboRole->currentData().toInt()));

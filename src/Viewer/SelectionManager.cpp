@@ -823,4 +823,95 @@ void SelectionManager::clearSelection()
     emit selectionChanged();
 }
 
+TSA::Model::ElementSet SelectionManager::selectedElements() const
+{
+    TSA::Model::ElementSet e;
+    e.nodes = m_selectedNodes;
+    e.beams = m_selectedBeams;
+    e.columns = m_selectedColumns;
+    e.slabs = m_selectedSlabs;
+    e.walls = m_selectedWalls;
+    e.foundations = m_selectedFoundations;
+    e.trussMembers = m_selectedTrussMembers;
+    e.cables = m_selectedCables;
+    return e;
+}
+
+void SelectionManager::selectElements(const TSA::Model::ElementSet& elements, bool addToSelection)
+{
+    if (!addToSelection)
+    {
+        m_selectedNodes.clear();
+        m_selectedBeams.clear();
+        m_selectedColumns.clear();
+        m_selectedSlabs.clear();
+        m_selectedWalls.clear();
+        m_selectedFoundations.clear();
+        m_selectedTrussMembers.clear();
+        m_selectedCables.clear();
+        m_selectedNodalLoads.clear();
+        m_selectedMemberLoads.clear();
+        m_primaryId = -1;
+        m_selectionType = SelectionType::None;
+    }
+
+    m_selectedNodes.insert(elements.nodes.begin(), elements.nodes.end());
+    m_selectedBeams.insert(elements.beams.begin(), elements.beams.end());
+    m_selectedColumns.insert(elements.columns.begin(), elements.columns.end());
+    m_selectedSlabs.insert(elements.slabs.begin(), elements.slabs.end());
+    m_selectedWalls.insert(elements.walls.begin(), elements.walls.end());
+    m_selectedFoundations.insert(elements.foundations.begin(), elements.foundations.end());
+    m_selectedTrussMembers.insert(elements.trussMembers.begin(), elements.trussMembers.end());
+    m_selectedCables.insert(elements.cables.begin(), elements.cables.end());
+
+    // Élément principal (propriétés affichées) : premier élément par ordre de priorité habituel.
+    if (m_primaryId < 0)
+    {
+        auto pick = [this](const std::set<int>& ids, SelectionType type) {
+            if (m_primaryId < 0 && !ids.empty())
+            {
+                m_primaryId = *ids.begin();
+                m_selectionType = type;
+            }
+        };
+        pick(m_selectedBeams, SelectionType::Beam);
+        pick(m_selectedColumns, SelectionType::Column);
+        pick(m_selectedSlabs, SelectionType::Slab);
+        pick(m_selectedWalls, SelectionType::Wall);
+        pick(m_selectedFoundations, SelectionType::Foundation);
+        pick(m_selectedTrussMembers, SelectionType::TrussMember);
+        pick(m_selectedCables, SelectionType::Cable);
+        pick(m_selectedNodes, SelectionType::Node);
+    }
+
+    const size_t total = totalSelectedCount();
+    if (total == 0)
+    {
+        m_selectionType = SelectionType::None;
+        m_primaryId = -1;
+        emit selectionCleared();
+    }
+    else if (total == 1)
+    {
+        // Comportement identique à un clic simple (propriétés, arbre, surbrillance).
+        switch (m_selectionType)
+        {
+        case SelectionType::Node: emit nodeSelected(m_primaryId); break;
+        case SelectionType::Beam: emit beamSelected(m_primaryId); break;
+        case SelectionType::Column: emit columnSelected(m_primaryId); break;
+        case SelectionType::Slab: emit slabSelected(m_primaryId); break;
+        case SelectionType::Wall: emit wallSelected(m_primaryId); break;
+        case SelectionType::Foundation: emit foundationSelected(m_primaryId); break;
+        case SelectionType::TrussMember: emit trussMemberSelected(m_primaryId); break;
+        case SelectionType::Cable: emit cableSelected(m_primaryId); break;
+        default: break;
+        }
+    }
+    else
+    {
+        emit multipleSelectionChanged();
+    }
+    emit selectionChanged();
+}
+
 } // namespace TSA::Viewer

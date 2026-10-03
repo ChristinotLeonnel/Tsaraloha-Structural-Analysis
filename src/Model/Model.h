@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 // ============================================================
 // NORMATIVE REFERENCE
 // Standard   : ISO/IEC 25010:2023 §4.2.7 (Maintainability - Modularity)
@@ -88,6 +90,11 @@ public:
     virtual void onModelDiffApplied(const ModelDiff& /*diff*/) {}
     virtual void onModelCleared() {}
 
+    /// Une modification quelconque du modèle vient d'avoir lieu (ou va avoir lieu : appelée aussi
+    /// par pushUndoState). Point d'accroche générique, ex. invalidation des résultats de calcul.
+    /// Peut être appelée plusieurs fois pour une même opération : rester peu coûteux.
+    virtual void onModelEdited() {}
+
     /// Le modèle est en cours de destruction : l'observateur doit oublier son pointeur (et ne plus
     /// appeler removeObserver). Sans cette notification, un observateur détruit après le modèle
     /// (widget enfant de MainWindow détruit par ~QWidget, après les membres de MainWindow)
@@ -130,6 +137,9 @@ public:
 
     // Identification des nœuds (libres vs connectés, appuis)
     bool isNodeFree(int nodeId) const;
+    /// Vrai si placer le nœud en (x, y, z) rendrait un élément connecté de longueur quasi nulle
+    /// (extrémités confondues à tol près) : modification à refuser.
+    bool wouldCollapseConnectedElement(int nodeId, double x, double y, double z, double tol = 1e-6) const;
     std::vector<int> freeNodeIds() const;
     std::vector<int> supportedNodeIds() const;
 
@@ -249,7 +259,7 @@ public:
     const LoadManager& loadManager() const noexcept { return m_loadManager; }
 
     // Historique Undo / Redo (Ctrl+Z / Ctrl+Y)
-    void pushUndoState(const std::string& actionName = "");
+    void pushUndoState(const std::string& actionName = "", const std::string& coalesceKey = "");
     bool canUndo() const;
     bool canRedo() const;
     bool undo();
@@ -291,7 +301,15 @@ public:
 
     // État de modification du document (Dirty state)
     bool isModified() const { return m_isModified; }
-    void setModified(bool modified) { m_isModified = modified; }
+    void setModified(bool modified)
+    {
+        m_isModified = modified;
+        if (modified) bumpRevision();
+    }
+
+    /// Révision du modèle : augmente à chaque modification notifiée (jamais décrémentée, y compris
+    /// par Undo). Permet de savoir si des résultats de calcul correspondent encore au modèle.
+    std::uint64_t revision() const noexcept { return m_revision; }
 
     // Réinitialisation
     void clear();
@@ -339,6 +357,8 @@ private:
     LoadManager m_loadManager;
 
     std::vector<IModelObserver*> m_observers;
+    std::uint64_t m_revision = 0;
+    void bumpRevision();
 
     std::unique_ptr<TSA::UndoRedo::UndoManager> m_undoManager;
 

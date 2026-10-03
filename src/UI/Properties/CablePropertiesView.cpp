@@ -258,7 +258,9 @@ void CablePropertiesView::applyChanges()
     auto* cable = m_model->getCable(m_cableId);
     if (!cable) return;
 
-    m_model->pushUndoState(tr("Modification Câble %1").arg(m_cableId).toStdString());
+    const std::string undoName = tr("Modification Câble %1").arg(m_cableId).toStdString();
+    // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
+    m_model->pushUndoState(undoName, undoName);
 
     cable->setName(m_editName->text().toStdString());
     cable->setType(static_cast<TSA::Model::CableType>(m_comboType->currentData().toInt()));

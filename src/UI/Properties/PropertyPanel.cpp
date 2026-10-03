@@ -1,4 +1,5 @@
 #include "PropertyPanel.h"
+#include <QAbstractSpinBox>
 #include "NodePropertiesView.h"
 #include "BeamPropertiesView.h"
 #include "ColumnPropertiesView.h"
@@ -166,6 +167,14 @@ void PropertyPanel::setupUi()
 
     mainLayout->addWidget(scrollArea);
     clearProperties();
+
+    // Les vues appliquent leurs modifications sur valueChanged : sans suivi clavier, une valeur
+    // n'est validée qu'à Entrée / perte du focus / cran de flèche (taper « 0.45 » appliquait
+    // auparavant 0, 0.4 puis 0.45 : géométries intermédiaires et entrées Undo parasites).
+    for (QAbstractSpinBox* spin : m_stack->findChildren<QAbstractSpinBox*>())
+    {
+        spin->setKeyboardTracking(false);
+    }
 }
 
 void PropertyPanel::clearProperties()

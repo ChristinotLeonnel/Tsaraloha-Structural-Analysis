@@ -50,6 +50,10 @@
 #include "Coordinate/CoordinateTransformationService.h"
 
 #include "Model/Model.h"
+#include "Model/SelectionQuery.h"
+#include "Coordinate/GeometryTolerance.h"
+#include "Analysis/ResultsModel.h"
+#include "Analysis/ResultsValidityGuard.h"
 #include "Model/ModelDiff.h"
 #include "Model/Material.h"
 #include "Model/MaterialLibrary.h"
@@ -103,6 +107,7 @@
 
 #include "UndoRedo/UndoManager.h"
 #include "UndoRedo/CommandManager.h"
+#include "UndoRedo/EditTransaction.h"
 
 #include "Interaction/InteractionManager.h"
 

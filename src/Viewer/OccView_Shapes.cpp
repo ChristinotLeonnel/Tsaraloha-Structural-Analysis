@@ -580,6 +580,38 @@ void OccView::clearHighlight()
     }
 }
 
+void OccView::highlightSelection()
+{
+    if (m_context.IsNull() || !m_selectionManager)
+        return;
+
+    m_context->ClearSelected(false);
+    auto addAll = [this](const std::set<int>& ids, const std::map<int, Handle(AIS_Shape)>& shapes) {
+        for (int id : ids)
+        {
+            auto it = shapes.find(id);
+            if (it != shapes.end() && !it->second.IsNull() && m_context->IsDisplayed(it->second))
+            {
+                m_context->AddOrRemoveSelected(it->second, false);
+            }
+        }
+    };
+    addAll(m_selectionManager->selectedNodes(), m_nodeShapes);
+    addAll(m_selectionManager->selectedBeams(), m_beamShapes);
+    addAll(m_selectionManager->selectedColumns(), m_columnShapes);
+    addAll(m_selectionManager->selectedSlabs(), m_slabShapes);
+    addAll(m_selectionManager->selectedWalls(), m_wallShapes);
+    addAll(m_selectionManager->selectedFoundations(), m_foundationShapes);
+    addAll(m_selectionManager->selectedTrussMembers(), m_trussShapes);
+    addAll(m_selectionManager->selectedCables(), m_cableShapes);
+
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+}
+
 void OccView::rebuildAllShapes()
 {
     if (m_context.IsNull())

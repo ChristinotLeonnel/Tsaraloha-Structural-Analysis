@@ -151,7 +151,9 @@ void WallPropertiesView::applyChanges()
     auto* wall = m_model->getWall(m_wallId);
     if (!wall) return;
 
-    m_model->pushUndoState(tr("Modification Voile %1").arg(m_wallId).toStdString());
+    const std::string undoName = tr("Modification Voile %1").arg(m_wallId).toStdString();
+    // Clé de coalescence = nom : crans successifs sur le même objet -> une seule entrée Undo
+    m_model->pushUndoState(undoName, undoName);
 
     wall->setName(m_editName->text().toStdString());
     wall->setThickness(m_spinThickness->value());

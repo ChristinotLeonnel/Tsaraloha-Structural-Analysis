@@ -156,6 +156,24 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.select.clear", "Effacer Sélection",
                    "Désélectionner tous les éléments", "", "",
                    CommandCategory::Selection});
+  registerCommand({"cmd.select.invert", "Inverser la Sélection",
+                   "Sélectionner tous les éléments non sélectionnés", "Ctrl+Alt+I", "",
+                   CommandCategory::Selection});
+  registerCommand({"cmd.select.by_type", "Sélectionner par Type",
+                   "Sélectionner tous les éléments d'un type (nœuds, poutres, poteaux...)", "", "",
+                   CommandCategory::Selection});
+  registerCommand({"cmd.select.same_section", "Même Section",
+                   "Sélectionner les barres de même section que la sélection", "", "",
+                   CommandCategory::Selection});
+  registerCommand({"cmd.select.same_material", "Même Matériau",
+                   "Sélectionner les éléments de même matériau que la sélection", "", "",
+                   CommandCategory::Selection});
+  registerCommand({"cmd.select.active_level", "Éléments du Niveau Actif",
+                   "Sélectionner les éléments situés sur le niveau actif", "", "",
+                   CommandCategory::Selection});
+  registerCommand({"cmd.select.active_workplane", "Éléments du Plan de Travail",
+                   "Sélectionner les éléments entièrement contenus dans le plan de travail actif", "", "",
+                   CommandCategory::Selection});
 
   // --- 6. PROPERTIES ---
   registerCommand({"cmd.properties.panel", "Panneau Propriétés",

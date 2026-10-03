@@ -32,6 +32,15 @@ Model::~Model()
     }
 }
 
+void Model::bumpRevision()
+{
+    ++m_revision;
+    for (auto* obs : m_observers)
+    {
+        obs->onModelEdited();
+    }
+}
+
 TSA::Coordinate::LevelManager* Model::levelManager()
 {
     return m_coordinateSystem ? m_coordinateSystem->levelManager() : nullptr;
@@ -81,6 +90,7 @@ int Model::addNode(double x, double y, double z, const std::string& levelId, con
     Node node(id, x, y, z, actualLvlId, name);
     auto it = m_nodes.emplace(id, node).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onNodeAdded(it->second);
@@ -111,6 +121,7 @@ bool Model::addNodeWithId(int id, double x, double y, double z, const std::strin
         m_nextNodeId = id + 1;
     }
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onNodeAdded(it->second);
@@ -181,46 +192,48 @@ int Model::addColumnBetweenLevels(int levelStartIndex, int levelEndIndex, double
 
 void Model::onLevelElevationChanged(const std::string& levelId, double oldElevation, double newElevation)
 {
-    std::set<int> modifiedNodeIds;
-
+    // Règle : seuls les nœuds explicitement RATTACHÉS au niveau (levelId) le suivent. Auparavant
+    // tout nœud non rattaché situé à l'ancienne cote était aussi déplacé (et rattaché d'office),
+    // ce qui pouvait emporter silencieusement des nœuds qui ne devaient pas bouger.
+    ModelDiff diff;
+    std::set<int> moved;
     for (auto& [id, node] : m_nodes)
     {
-        if (node.levelId() == levelId || (node.levelId().empty() && std::abs(node.z() - oldElevation) < 1e-3))
+        if (!levelId.empty() && node.levelId() == levelId)
         {
             node.setZ(newElevation);
-            node.setLevelId(levelId);
-            modifiedNodeIds.insert(id);
-            notifyNodeModified(id);
+            moved.insert(id);
+            diff.modifiedNodeIds.push_back(id);
         }
     }
+    if (moved.empty())
+        return;
 
-    for (const auto& [bId, beam] : m_beams)
+    auto touches = [&moved](int a, int b) { return moved.count(a) || moved.count(b); };
+    for (const auto& [id, e] : m_beams) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedBeamIds.push_back(id);
+    for (const auto& [id, e] : m_columns) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedColumnIds.push_back(id);
+    for (const auto& [id, e] : m_trussMembers) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedTrussMemberIds.push_back(id);
+    for (const auto& [id, e] : m_cables) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedCableIds.push_back(id);
+    for (const auto& [id, e] : m_walls) if (touches(e.startNodeId(), e.endNodeId())) diff.modifiedWallIds.push_back(id);
+    for (const auto& [id, e] : m_foundations) if (moved.count(e.nodeId())) diff.modifiedFoundationIds.push_back(id);
+    for (const auto& [id, e] : m_slabs)
     {
-        if (modifiedNodeIds.count(beam.startNodeId()) || modifiedNodeIds.count(beam.endNodeId()))
+        for (int nId : e.nodeIds())
         {
-            notifyBeamModified(bId);
-        }
-    }
-
-    for (const auto& [cId, col] : m_columns)
-    {
-        if (modifiedNodeIds.count(col.startNodeId()) || modifiedNodeIds.count(col.endNodeId()))
-        {
-            notifyColumnModified(cId);
-        }
-    }
-
-    for (const auto& [sId, slab] : m_slabs)
-    {
-        for (int nId : slab.nodeIds())
-        {
-            if (modifiedNodeIds.count(nId))
+            if (moved.count(nId))
             {
-                notifySlabModified(sId);
+                diff.modifiedSlabIds.push_back(id);
                 break;
             }
         }
     }
+
+    m_isModified = true;
+    TSA_LOG_INFO("Model", "LevelElevationChanged",
+                 "Niveau " + levelId + " : " + std::to_string(oldElevation) + " -> " + std::to_string(newElevation) +
+                 " m, " + std::to_string(moved.size()) + " nœud(s) rattaché(s) déplacé(s)");
+    // Une seule notification groupée (au lieu d'une reconstruction 3D + redraw par nœud).
+    notifyModelDiffApplied(diff);
 }
 
 bool Model::removeNode(int nodeId)
@@ -327,6 +340,7 @@ bool Model::removeNode(int nodeId)
     std::vector<int> removedNodalLoads = m_loadManager.removeNodalLoadsForNode(nodeId);
     for (int loadId : removedNodalLoads)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onNodalLoadRemoved(loadId);
@@ -336,6 +350,7 @@ bool Model::removeNode(int nodeId)
 
     m_nodes.erase(it);
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onNodeRemoved(nodeId);
@@ -396,6 +411,28 @@ bool Model::isNodeFree(int nodeId) const
     return true;
 }
 
+bool Model::wouldCollapseConnectedElement(int nodeId, double x, double y, double z, double tol) const
+{
+    auto coincides = [&](int otherId) {
+        if (otherId == nodeId) return true;
+        const Node* o = getNode(otherId);
+        if (!o) return false;
+        const double dx = o->x() - x, dy = o->y() - y, dz = o->z() - z;
+        return dx * dx + dy * dy + dz * dz <= tol * tol;
+    };
+    auto checkLinear = [&](int a, int b) {
+        if (a == nodeId) return coincides(b);
+        if (b == nodeId) return coincides(a);
+        return false;
+    };
+    for (const auto& [id, e] : m_beams) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    for (const auto& [id, e] : m_columns) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    for (const auto& [id, e] : m_trussMembers) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    for (const auto& [id, e] : m_cables) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    for (const auto& [id, e] : m_walls) if (checkLinear(e.startNodeId(), e.endNodeId())) return true;
+    return false;
+}
+
 std::vector<int> Model::freeNodeIds() const
 {
     std::set<int> connectedNodes;
@@ -447,6 +484,7 @@ int Model::addBeam(int startNodeId, int endNodeId, double width, double height, 
     Beam beam(id, startNodeId, endNodeId, width, height, name);
     auto it = m_beams.emplace(id, beam).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onBeamAdded(it->second);
@@ -471,6 +509,7 @@ bool Model::addBeamWithId(int id, int startNodeId, int endNodeId, double width, 
         m_nextBeamId = id + 1;
     }
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onBeamAdded(it->second);
@@ -495,6 +534,7 @@ int Model::addBar(int startNodeId, int endNodeId, const Section& section, const 
     Beam bar(id, startNodeId, endNodeId, section, material, role, rotation, name);
     auto it = m_beams.emplace(id, bar).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onBeamAdded(it->second);
@@ -528,6 +568,7 @@ int Model::addBar(const BarProperties& props, int startNodeId, int endNodeId)
 
     auto it = m_beams.emplace(id, bar).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onBeamAdded(it->second);
@@ -547,6 +588,7 @@ bool Model::removeBeam(int beamId)
     std::vector<int> removedMemberLoads = m_loadManager.removeMemberLoadsForElement(beamId, MemberTargetType::Beam);
     for (int loadId : removedMemberLoads)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onMemberLoadRemoved(loadId);
@@ -556,6 +598,7 @@ bool Model::removeBeam(int beamId)
 
     m_beams.erase(it);
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onBeamRemoved(beamId);
@@ -581,6 +624,7 @@ void Model::notifyNodeModified(int nodeId)
     const Node* node = getNode(nodeId);
     if (node)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onNodeModified(*node);
@@ -593,6 +637,7 @@ void Model::notifyBeamModified(int beamId)
     const Beam* beam = getBeam(beamId);
     if (beam)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onBeamModified(*beam);
@@ -605,6 +650,7 @@ void Model::notifyColumnModified(int columnId)
     const Column* col = getColumn(columnId);
     if (col)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onColumnModified(*col);
@@ -617,6 +663,7 @@ void Model::notifySlabModified(int slabId)
     const Slab* slab = getSlab(slabId);
     if (slab)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onSlabModified(*slab);
@@ -640,6 +687,7 @@ int Model::addColumn(int startNodeId, int endNodeId, double width, double height
     Column col(id, startNodeId, endNodeId, width, height, name);
     auto it = m_columns.emplace(id, col).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onColumnAdded(it->second);
@@ -664,6 +712,7 @@ int Model::addColumn(int startNodeId, int endNodeId, const Section& section, con
     Column col(id, startNodeId, endNodeId, section, material, rotation, name);
     auto it = m_columns.emplace(id, col).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onColumnAdded(it->second);
@@ -688,6 +737,7 @@ bool Model::addColumnWithId(int id, int startNodeId, int endNodeId, double width
         m_nextColumnId = id + 1;
     }
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onColumnAdded(it->second);
@@ -707,6 +757,7 @@ bool Model::removeColumn(int columnId)
     std::vector<int> removedMemberLoads = m_loadManager.removeMemberLoadsForElement(columnId, MemberTargetType::Column);
     for (int loadId : removedMemberLoads)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onMemberLoadRemoved(loadId);
@@ -716,6 +767,7 @@ bool Model::removeColumn(int columnId)
 
     m_columns.erase(it);
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onColumnRemoved(columnId);
@@ -760,6 +812,7 @@ int Model::addSlab(const std::vector<int>& nodeIds, double thickness, const std:
     Slab slab(id, nodeIds, thickness, name, type);
     auto it = m_slabs.emplace(id, slab).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onSlabAdded(it->second);
@@ -790,6 +843,7 @@ bool Model::addSlabWithId(int id, const std::vector<int>& nodeIds, double thickn
         m_nextSlabId = id + 1;
     }
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onSlabAdded(it->second);
@@ -808,6 +862,7 @@ bool Model::removeSlab(int slabId)
 
     m_slabs.erase(it);
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onSlabRemoved(slabId);
@@ -833,6 +888,7 @@ void Model::notifyWallModified(int wallId)
     const Wall* w = getWall(wallId);
     if (w)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onWallModified(*w);
@@ -856,6 +912,7 @@ int Model::addWall(int startNodeId, int endNodeId, double height, double thickne
     Wall wall(id, startNodeId, endNodeId, height, thickness, name);
     auto it = m_walls.emplace(id, wall).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onWallAdded(it->second);
@@ -880,6 +937,7 @@ bool Model::addWallWithId(int id, int startNodeId, int endNodeId, double height,
         m_nextWallId = id + 1;
     }
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onWallAdded(it->second);
@@ -898,6 +956,7 @@ bool Model::removeWall(int wallId)
 
     m_walls.erase(it);
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onWallRemoved(wallId);
@@ -923,6 +982,7 @@ void Model::notifyFoundationModified(int foundationId)
     const Foundation* f = getFoundation(foundationId);
     if (f)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onFoundationModified(*f);
@@ -946,6 +1006,7 @@ int Model::addFoundation(int nodeId, double widthA, double lengthB, double heigh
     Foundation f(id, nodeId, widthA, lengthB, heightH, name, type);
     auto it = m_foundations.emplace(id, f).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onFoundationAdded(it->second);
@@ -968,6 +1029,7 @@ bool Model::addFoundationWithId(int id, int nodeId, double widthA, double length
         m_nextFoundationId = id + 1;
     }
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onFoundationAdded(it->second);
@@ -986,6 +1048,7 @@ bool Model::removeFoundation(int foundationId)
 
     m_foundations.erase(it);
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onFoundationRemoved(foundationId);
@@ -1011,6 +1074,7 @@ void Model::notifyTrussMemberModified(int memberId)
     const TrussMember* tr = getTrussMember(memberId);
     if (tr)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onTrussMemberModified(*tr);
@@ -1034,6 +1098,7 @@ int Model::addTrussMember(int startNodeId, int endNodeId, double diameterOrWidth
     TrussMember member(id, startNodeId, endNodeId, diameterOrWidth, name, role);
     auto it = m_trussMembers.emplace(id, member).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onTrussMemberAdded(it->second);
@@ -1058,6 +1123,7 @@ bool Model::addTrussMemberWithId(int id, int startNodeId, int endNodeId, double 
         m_nextTrussMemberId = id + 1;
     }
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onTrussMemberAdded(it->second);
@@ -1077,6 +1143,7 @@ bool Model::removeTrussMember(int memberId)
     std::vector<int> removedMemberLoads = m_loadManager.removeMemberLoadsForElement(memberId, MemberTargetType::Truss);
     for (int loadId : removedMemberLoads)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onMemberLoadRemoved(loadId);
@@ -1086,6 +1153,7 @@ bool Model::removeTrussMember(int memberId)
 
     m_trussMembers.erase(it);
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onTrussMemberRemoved(memberId);
@@ -1111,6 +1179,7 @@ void Model::notifyCableModified(int cableId)
     const Cable* c = getCable(cableId);
     if (c)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onCableModified(*c);
@@ -1120,6 +1189,7 @@ void Model::notifyCableModified(int cableId)
 
 void Model::notifyNodalLoadAdded(int loadId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onNodalLoadAdded(loadId);
@@ -1129,6 +1199,7 @@ void Model::notifyNodalLoadAdded(int loadId)
 
 void Model::notifyNodalLoadModified(int loadId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onNodalLoadModified(loadId);
@@ -1138,6 +1209,7 @@ void Model::notifyNodalLoadModified(int loadId)
 
 void Model::notifyNodalLoadRemoved(int loadId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onNodalLoadRemoved(loadId);
@@ -1147,6 +1219,7 @@ void Model::notifyNodalLoadRemoved(int loadId)
 
 void Model::notifyMemberLoadAdded(int loadId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onMemberLoadAdded(loadId);
@@ -1156,6 +1229,7 @@ void Model::notifyMemberLoadAdded(int loadId)
 
 void Model::notifyMemberLoadModified(int loadId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onMemberLoadModified(loadId);
@@ -1165,6 +1239,7 @@ void Model::notifyMemberLoadModified(int loadId)
 
 void Model::notifyMemberLoadRemoved(int loadId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onMemberLoadRemoved(loadId);
@@ -1174,6 +1249,7 @@ void Model::notifyMemberLoadRemoved(int loadId)
 
 void Model::notifyLoadAdded(int loadId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onLoadAdded(loadId);
@@ -1182,6 +1258,7 @@ void Model::notifyLoadAdded(int loadId)
 
 void Model::notifyLoadModified(int loadId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onLoadModified(loadId);
@@ -1190,6 +1267,7 @@ void Model::notifyLoadModified(int loadId)
 
 void Model::notifyLoadRemoved(int loadId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onLoadRemoved(loadId);
@@ -1198,6 +1276,7 @@ void Model::notifyLoadRemoved(int loadId)
 
 void Model::notifyLoadCaseChanged(int caseId)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onLoadCaseChanged(caseId);
@@ -1239,6 +1318,7 @@ int Model::addCable(int startNodeId, int endNodeId, const CableDefinition& defin
 
     auto it = m_cables.emplace(id, cable).first;
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onCableAdded(it->second);
@@ -1266,6 +1346,7 @@ bool Model::addCableWithId(int id, int startNodeId, int endNodeId, const CableDe
         m_nextCableId = id + 1;
     }
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onCableAdded(it->second);
@@ -1285,6 +1366,7 @@ bool Model::removeCable(int cableId)
     std::vector<int> removedMemberLoads = m_loadManager.removeMemberLoadsForElement(cableId, MemberTargetType::Cable);
     for (int loadId : removedMemberLoads)
     {
+        bumpRevision();
         for (auto* obs : m_observers)
         {
             obs->onMemberLoadRemoved(loadId);
@@ -1294,6 +1376,7 @@ bool Model::removeCable(int cableId)
 
     m_cables.erase(it);
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onCableRemoved(cableId);

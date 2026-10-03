@@ -6,7 +6,7 @@
 namespace TSA::Model
 {
 
-void Model::pushUndoState(const std::string& actionName)
+void Model::pushUndoState(const std::string& actionName, const std::string& coalesceKey)
 {
     if (!actionName.empty())
     {
@@ -15,7 +15,7 @@ void Model::pushUndoState(const std::string& actionName)
     }
     if (m_undoManager)
     {
-        m_undoManager->pushState(*this, actionName);
+        m_undoManager->pushState(*this, actionName, coalesceKey);
     }
 }
 
@@ -119,6 +119,7 @@ void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
 
 void Model::notifyModelDiffApplied(const ModelDiff& diff)
 {
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onModelDiffApplied(diff);
@@ -129,6 +130,7 @@ void Model::restoreSnapshot(const Model::ModelStateSnapshot& snapshot)
 {
     applySnapshotData(snapshot);
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onModelCleared();
@@ -205,6 +207,7 @@ void Model::clear()
         m_workPlaneManager->resetToDefault();
     }
 
+    bumpRevision();
     for (auto* obs : m_observers)
     {
         obs->onModelCleared();
