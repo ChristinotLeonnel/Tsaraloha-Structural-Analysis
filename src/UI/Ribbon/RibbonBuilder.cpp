@@ -15,13 +15,20 @@ void RibbonBuilder::buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWid
 {
     if (!bar) return;
 
+    // Barre d'accès rapide : les commandes de tous les jours, quel que soit l'onglet actif.
+    bar->setQuickAccess({ acts.actionNew, acts.actionOpen, acts.actionSave,
+                          acts.actionUndo, acts.actionRedo,
+                          acts.actionSelectMode, acts.actionFitAll, acts.actionView3D,
+                          acts.actionRunSolve });
+
+    // Ordre : fichier → modèle → modification → structure → charges → analyse → résultats → vues → outils.
     buildHomeTab(bar, acts, parentWindow);
     buildModelingTab(bar, acts, parentWindow);
+    buildEditTab(bar, acts, parentWindow);
     buildStructureTab(bar, acts, parentWindow);
     buildLoadsTab(bar, acts, parentWindow);
     buildAnalysisTab(bar, acts, parentWindow);
     buildResultsTab(bar, acts, parentWindow);
-    buildEditTab(bar, acts, parentWindow);
     buildViewTab(bar, acts, parentWindow);
     buildToolsTab(bar, acts, parentWindow);
 }
@@ -45,6 +52,11 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
         filePanel->addInternalSeparator();
         filePanel->addSmallColumn(fileSub);
     }
+    if (acts.actionStartPage)
+    {
+        filePanel->addInternalSeparator();
+        filePanel->addLargeAction(acts.actionStartPage);
+    }
     tab->addPanel(filePanel);
 
     // Groupe Historique & Presse-papier
@@ -64,34 +76,89 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
     }
     tab->addPanel(clipPanel);
 
-    // Groupe Accès Rapide
-    auto* quickPanel = new RibbonPanel(QObject::tr("Accès Rapide"), tab);
-    if (acts.actionSelectMode) quickPanel->addLargeAction(acts.actionSelectMode);
-    if (acts.actionDrawBeam)
+    // Édition courante
+    auto* editPanel = new RibbonPanel(QObject::tr("Édition"), tab);
+    if (acts.actionSelectMode) editPanel->addLargeAction(acts.actionSelectMode);
+    std::vector<QAction*> editCol;
+    if (acts.actionMove3D) editCol.push_back(acts.actionMove3D);
+    if (acts.actionCopy3D) editCol.push_back(acts.actionCopy3D);
+    if (acts.actionDelete) editCol.push_back(acts.actionDelete);
+    if (!editCol.empty())
     {
-        quickPanel->addInternalSeparator();
-        quickPanel->addLargeAction(acts.actionDrawBeam);
+        editPanel->addInternalSeparator();
+        editPanel->addSmallColumn(editCol);
     }
-    if (acts.actionDrawColumn) quickPanel->addLargeAction(acts.actionDrawColumn);
-    if (acts.actionDrawSlab) quickPanel->addLargeAction(acts.actionDrawSlab);
-    if (acts.actionRunSolve)
-    {
-        quickPanel->addInternalSeparator();
-        quickPanel->addLargeAction(acts.actionRunSolve);
-    }
-    if (acts.actionResultsDock) quickPanel->addLargeAction(acts.actionResultsDock);
-    tab->addPanel(quickPanel);
+    tab->addPanel(editPanel);
 
-    // Groupe Vue Rapide
-    auto* viewPanel = new RibbonPanel(QObject::tr("Vue 3D"), tab);
+    // Modélisation : éléments structuraux principaux
+    auto* modelPanel = new RibbonPanel(QObject::tr("Structure"), tab);
+    if (acts.actionDrawBeam) modelPanel->addLargeAction(acts.actionDrawBeam);
+    if (acts.actionDrawColumn) modelPanel->addLargeAction(acts.actionDrawColumn);
+    if (acts.actionDrawSlab) modelPanel->addLargeAction(acts.actionDrawSlab);
+    if (acts.actionDrawWall) modelPanel->addLargeAction(acts.actionDrawWall);
+    std::vector<QAction*> modelCol;
+    if (acts.actionDrawNode) modelCol.push_back(acts.actionDrawNode);
+    if (acts.actionFooting) modelCol.push_back(acts.actionFooting);
+    if (acts.actionDrawCable) modelCol.push_back(acts.actionDrawCable);
+    if (!modelCol.empty())
+    {
+        modelPanel->addInternalSeparator();
+        modelPanel->addSmallColumn(modelCol);
+    }
+    tab->addPanel(modelPanel);
+
+    // Appuis & charges
+    auto* bcPanel = new RibbonPanel(QObject::tr("Appuis & Charges"), tab);
+    if (acts.actionFixed) bcPanel->addLargeAction(acts.actionFixed);
+    if (acts.actionPointLoad) bcPanel->addLargeAction(acts.actionPointLoad);
+    if (acts.actionDistLoad) bcPanel->addLargeAction(acts.actionDistLoad);
+    std::vector<QAction*> bcCol;
+    if (acts.actionPinned) bcCol.push_back(acts.actionPinned);
+    if (acts.actionRoller) bcCol.push_back(acts.actionRoller);
+    if (acts.actionLoadCases) bcCol.push_back(acts.actionLoadCases);
+    if (!bcCol.empty())
+    {
+        bcPanel->addInternalSeparator();
+        bcPanel->addSmallColumn(bcCol);
+    }
+    tab->addPanel(bcPanel);
+
+    // Analyse & résultats
+    auto* calcPanel = new RibbonPanel(QObject::tr("Analyse"), tab);
+    if (acts.actionMeshGen) calcPanel->addLargeAction(acts.actionMeshGen);
+    if (acts.actionRunSolve) calcPanel->addLargeAction(acts.actionRunSolve);
+    if (acts.actionResultsDock) calcPanel->addLargeAction(acts.actionResultsDock);
+    std::vector<QAction*> calcCol;
+    if (acts.actionAnalysisConfig) calcCol.push_back(acts.actionAnalysisConfig);
+    if (acts.actionDeformedToggle) calcCol.push_back(acts.actionDeformedToggle);
+    if (acts.actionOpenNDC) calcCol.push_back(acts.actionOpenNDC);
+    if (!calcCol.empty())
+    {
+        calcPanel->addInternalSeparator();
+        calcPanel->addSmallColumn(calcCol);
+    }
+    tab->addPanel(calcPanel);
+
+    // Vue
+    auto* viewPanel = new RibbonPanel(QObject::tr("Vue"), tab);
     if (acts.actionView3D) viewPanel->addLargeAction(acts.actionView3D);
     std::vector<QAction*> vCol;
     if (acts.actionFitAll) vCol.push_back(acts.actionFitAll);
+    if (acts.actionFitSelection) vCol.push_back(acts.actionFitSelection);
     if (acts.actionResetView) vCol.push_back(acts.actionResetView);
     if (!vCol.empty())
     {
         viewPanel->addInternalSeparator();
         viewPanel->addSmallColumn(vCol);
+    }
+    std::vector<QAction*> panelCol;
+    if (acts.actionToggleModelTree) panelCol.push_back(acts.actionToggleModelTree);
+    if (acts.actionToggleProperties) panelCol.push_back(acts.actionToggleProperties);
+    if (acts.actionToggleVisibility) panelCol.push_back(acts.actionToggleVisibility);
+    if (!panelCol.empty())
+    {
+        viewPanel->addInternalSeparator();
+        viewPanel->addSmallColumn(panelCol);
     }
     tab->addPanel(viewPanel);
 
@@ -103,7 +170,7 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
 // -----------------------------------------------------------------------------
 RibbonTab* RibbonBuilder::buildModelingTab(RibbonBar* bar, const RibbonActions& acts, QWidget* /*parentWindow*/)
 {
-    auto* tab = bar->addTab(QObject::tr("Modélisation"));
+    auto* tab = bar->addTab(QObject::tr("Modèle"));
 
     // Éléments Filaires (1D)
     auto* beamPanel = new RibbonPanel(QObject::tr("Éléments Filaires (1D)"), tab);
@@ -157,6 +224,22 @@ RibbonTab* RibbonBuilder::buildModelingTab(RibbonBar* bar, const RibbonActions& 
         gridPanel->addSmallColumn(gSub);
     }
     tab->addPanel(gridPanel);
+
+    // Appuis (aussi accessibles depuis l'onglet Structure)
+    if (acts.actionFixed || acts.actionPinned || acts.actionRoller)
+    {
+        auto* supPanel = new RibbonPanel(QObject::tr("Appuis"), tab);
+        if (acts.actionFixed) supPanel->addLargeAction(acts.actionFixed);
+        std::vector<QAction*> supCol;
+        if (acts.actionPinned) supCol.push_back(acts.actionPinned);
+        if (acts.actionRoller) supCol.push_back(acts.actionRoller);
+        if (!supCol.empty())
+        {
+            supPanel->addInternalSeparator();
+            supPanel->addSmallColumn(supCol);
+        }
+        tab->addPanel(supPanel);
+    }
 
     // Paramètres
     if (acts.actionStructurePresets)
@@ -302,6 +385,23 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
     }
     tab->addPanel(paramPanel);
 
+    // Groupe IA : vérification et analyse du modèle par l'assistant
+    if (acts.actionAICheck || acts.actionAIAnalyze)
+    {
+        auto* aiPanel = new RibbonPanel(QObject::tr("Co-Engineering"), tab);
+        if (acts.actionAICheck) aiPanel->addLargeAction(acts.actionAICheck);
+        std::vector<QAction*> aiCol;
+        if (acts.actionAIAnalyze) aiCol.push_back(acts.actionAIAnalyze);
+        if (acts.actionAIExplain) aiCol.push_back(acts.actionAIExplain);
+        if (acts.actionAIAssistant) aiCol.push_back(acts.actionAIAssistant);
+        if (!aiCol.empty())
+        {
+            aiPanel->addInternalSeparator();
+            aiPanel->addSmallColumn(aiCol);
+        }
+        tab->addPanel(aiPanel);
+    }
+
     // Groupe 4 : Résultats Rapides (Panneau)
     if (acts.actionResultsDock)
     {
@@ -417,7 +517,7 @@ RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& a
 // -----------------------------------------------------------------------------
 RibbonTab* RibbonBuilder::buildEditTab(RibbonBar* bar, const RibbonActions& acts, QWidget* /*parentWindow*/)
 {
-    auto* tab = bar->addTab(QObject::tr("Édition"));
+    auto* tab = bar->addTab(QObject::tr("Modifier"));
 
     // Sélection
     auto* selPanel = new RibbonPanel(QObject::tr("Sélection"), tab);
@@ -641,6 +741,28 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
 RibbonTab* RibbonBuilder::buildToolsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow)
 {
     auto* tab = bar->addTab(QObject::tr("Outils"));
+
+    // IA Co-Engineering
+    if (acts.actionAIAssistant)
+    {
+        auto* aiPanel = new RibbonPanel(QObject::tr("IA Co-Engineering"), tab);
+        aiPanel->addLargeAction(acts.actionAIAssistant);
+        std::vector<QAction*> aiCol;
+        if (acts.actionAIAnalyze) aiCol.push_back(acts.actionAIAnalyze);
+        if (acts.actionAICheck) aiCol.push_back(acts.actionAICheck);
+        if (acts.actionAIExplain) aiCol.push_back(acts.actionAIExplain);
+        if (!aiCol.empty())
+        {
+            aiPanel->addInternalSeparator();
+            aiPanel->addSmallColumn(aiCol);
+        }
+        if (acts.actionAIConfig)
+        {
+            aiPanel->addInternalSeparator();
+            aiPanel->addSmallColumn({ acts.actionAIConfig });
+        }
+        tab->addPanel(aiPanel);
+    }
 
     // Mesures
     auto* actMeasure = acts.actionMeasure ? acts.actionMeasure : new QAction(QIcon(":/icons/measure.svg"), QObject::tr("Mesurer 3D"), parentWindow);

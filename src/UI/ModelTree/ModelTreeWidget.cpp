@@ -3,6 +3,12 @@
 #include "../../Grid/GridManager.h"
 #include <QVBoxLayout>
 #include <QHeaderView>
+#include <functional>
+#include <QLineEdit>
+#include <QToolButton>
+#include <QHBoxLayout>
+#include <QMenu>
+#include <QAction>
 
 namespace TSA::UI
 {
@@ -79,10 +85,33 @@ void ModelTreeWidget::setupUi()
 {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(2, 2, 2, 2);
+    layout->setSpacing(4);
+
+    // Barre de recherche + développer / réduire
+    auto* bar = new QHBoxLayout();
+    bar->setSpacing(3);
+    m_search = new QLineEdit(this);
+    m_search->setPlaceholderText(tr("Rechercher dans le modèle (ex. P12, IPE)…"));
+    m_search->setClearButtonEnabled(true);
+    bar->addWidget(m_search, 1);
+    auto* btnExpand = new QToolButton(this);
+    btnExpand->setText(QStringLiteral("＋"));
+    btnExpand->setToolTip(tr("Tout développer"));
+    auto* btnCollapse = new QToolButton(this);
+    btnCollapse->setText(QStringLiteral("－"));
+    btnCollapse->setToolTip(tr("Tout réduire (sauf le projet)"));
+    bar->addWidget(btnExpand);
+    bar->addWidget(btnCollapse);
+    layout->addLayout(bar);
 
     m_tree = new QTreeWidget(this);
     m_tree->setHeaderLabels({ tr("Element"), tr("Details") });
+    // Colonne « Element » assez large pour les noms de catégories ; « Details » prend le reste.
+    m_tree->header()->setSectionResizeMode(0, QHeaderView::Interactive);
+    m_tree->header()->resizeSection(0, 200);
     m_tree->header()->setStretchLastSection(true);
+    m_tree->setTextElideMode(Qt::ElideMiddle);
+    m_tree->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_tree->setAnimated(true);
     m_tree->setAlternatingRowColors(true);
 
@@ -90,7 +119,78 @@ void ModelTreeWidget::setupUi()
 
     createRootCategories();
 
+    connect(m_search, &QLineEdit::textChanged, this, &ModelTreeWidget::applyFilter);
+    connect(btnExpand, &QToolButton::clicked, m_tree, &QTreeWidget::expandAll);
+    connect(btnCollapse, &QToolButton::clicked, this, [this] {
+        m_tree->collapseAll();
+        if (m_projectRootItem) m_projectRootItem->setExpanded(true);
+    });
+
+    m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_tree, &QTreeWidget::customContextMenuRequested, this, &ModelTreeWidget::showContextMenu);
+
     connect(m_tree, &QTreeWidget::itemSelectionChanged, this, &ModelTreeWidget::onItemSelectionChanged);
+}
+
+void ModelTreeWidget::setContextActions(const QList<QAction*>& actions)
+{
+    m_contextActions = actions;
+}
+
+// Filtre : un élément reste visible s'il correspond, si l'un de ses descendants correspond,
+// ou si son parent (catégorie) correspond lui-même.
+void ModelTreeWidget::applyFilter(const QString& text)
+{
+    const QString needle = text.trimmed();
+    std::function<bool(QTreeWidgetItem*, bool)> visit = [&](QTreeWidgetItem* item, bool parentMatches) -> bool {
+        const bool selfMatches = needle.isEmpty()
+            || item->text(0).contains(needle, Qt::CaseInsensitive)
+            || item->text(1).contains(needle, Qt::CaseInsensitive);
+        bool anyChild = false;
+        for (int i = 0; i < item->childCount(); ++i)
+            anyChild = visit(item->child(i), parentMatches || selfMatches) || anyChild;
+        const bool show = needle.isEmpty() || selfMatches || parentMatches || anyChild;
+        item->setHidden(!show);
+        if (!needle.isEmpty() && anyChild) item->setExpanded(true);
+        return show;
+    };
+    m_tree->setUpdatesEnabled(false);
+    for (int i = 0; i < m_tree->topLevelItemCount(); ++i)
+        visit(m_tree->topLevelItem(i), false);
+    m_tree->setUpdatesEnabled(true);
+}
+
+void ModelTreeWidget::showContextMenu(const QPoint& pos)
+{
+    auto* item = m_tree->itemAt(pos);
+    QMenu menu(this);
+    const int type = item ? item->data(0, TypeRole).toInt() : TypeProject;
+
+    // Déplacer / Copier / Supprimer n'ont de sens que pour les éléments structuraux.
+    const bool isElement = item && (type == TypeNode || type == TypeBeam || type == TypeColumn || type == TypeSlab
+                                    || type == TypeWall || type == TypeFoundation || type == TypeTruss || type == TypeCable);
+    if (isElement)
+    {
+        // Sélection via le mécanisme existant (signaux de sélection → viewport, propriétés).
+        m_tree->setCurrentItem(item);
+        for (auto* act : m_contextActions)
+        {
+            if (act) menu.addAction(act);
+            else menu.addSeparator(); // nullptr = séparateur
+        }
+        if (!menu.isEmpty()) menu.addSeparator();
+    }
+    if (item && item->childCount() > 0)
+    {
+        menu.addAction(item->isExpanded() ? tr("Réduire") : tr("Développer"), this,
+                       [item] { item->setExpanded(!item->isExpanded()); });
+    }
+    menu.addAction(tr("Tout développer"), m_tree, &QTreeWidget::expandAll);
+    menu.addAction(tr("Tout réduire"), this, [this] {
+        m_tree->collapseAll();
+        if (m_projectRootItem) m_projectRootItem->setExpanded(true);
+    });
+    menu.exec(m_tree->viewport()->mapToGlobal(pos));
 }
 
 void ModelTreeWidget::setProjectName(const QString& name)
@@ -623,11 +723,10 @@ void ModelTreeWidget::onNodeRemoved(int nodeId)
 void ModelTreeWidget::onBeamAdded(const TSA::Model::Beam& beam)
 {
     QString label = QString::fromStdString(beam.formattedName());
-    QString desc = QString("N%1 -> N%2 (%3x%4 m)")
+    QString desc = QString("N%1 -> N%2 (%3)")
         .arg(beam.startNodeId())
         .arg(beam.endNodeId())
-        .arg(beam.width(), 0, 'f', 2)
-        .arg(beam.height(), 0, 'f', 2);
+        .arg(QString::fromStdString(beam.section().name));
 
     auto* item = new QTreeWidgetItem(m_beamsCategory, { label, desc });
     item->setData(0, TypeRole, TypeBeam);
@@ -644,11 +743,10 @@ void ModelTreeWidget::onBeamModified(const TSA::Model::Beam& beam)
         if (child->data(0, IdRole).toInt() == beam.id())
         {
             child->setText(0, QString::fromStdString(beam.formattedName()));
-            child->setText(1, QString("N%1 -> N%2 (%3x%4 m)")
+            child->setText(1, QString("N%1 -> N%2 (%3)")
                 .arg(beam.startNodeId())
                 .arg(beam.endNodeId())
-                .arg(beam.width(), 0, 'f', 2)
-                .arg(beam.height(), 0, 'f', 2));
+        .arg(QString::fromStdString(beam.section().name)));
             break;
         }
     }
@@ -671,11 +769,10 @@ void ModelTreeWidget::onBeamRemoved(int beamId)
 void ModelTreeWidget::onColumnAdded(const TSA::Model::Column& column)
 {
     QString label = QString::fromStdString(column.formattedName());
-    QString desc = QString("N%1 -> N%2 (%3x%4 m)")
+    QString desc = QString("N%1 -> N%2 (%3)")
         .arg(column.startNodeId())
         .arg(column.endNodeId())
-        .arg(column.width(), 0, 'f', 2)
-        .arg(column.height(), 0, 'f', 2);
+        .arg(QString::fromStdString(column.section().name));
 
     auto* item = new QTreeWidgetItem(m_columnsCategory, { label, desc });
     item->setData(0, TypeRole, TypeColumn);
@@ -692,11 +789,10 @@ void ModelTreeWidget::onColumnModified(const TSA::Model::Column& column)
         if (child->data(0, IdRole).toInt() == column.id())
         {
             child->setText(0, QString::fromStdString(column.formattedName()));
-            child->setText(1, QString("N%1 -> N%2 (%3x%4 m)")
+            child->setText(1, QString("N%1 -> N%2 (%3)")
                 .arg(column.startNodeId())
                 .arg(column.endNodeId())
-                .arg(column.width(), 0, 'f', 2)
-                .arg(column.height(), 0, 'f', 2));
+        .arg(QString::fromStdString(column.section().name)));
             break;
         }
     }

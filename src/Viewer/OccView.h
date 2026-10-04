@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QWidget>
+#include <QJsonObject>
 #include <QPoint>
 #include <map>
 
@@ -193,6 +194,15 @@ public:
     void setWorkPlaneIsolation(bool isolated, double distance = 1.0);
     void updateElementIsolation();
 
+    // Filtre d'affichage par famille d'éléments (dock Calques & Visibilité). S'applique dans
+    // updateElementIsolation() : aucune autre mécanique de visibilité n'est créée.
+    enum class ElementCategory { Beams, Columns, Slabs, Walls, Foundations, Trusses, Cables };
+    void setElementCategoryVisible(ElementCategory category, bool visible);
+    bool isElementCategoryVisible(ElementCategory category) const noexcept
+    {
+        return (m_hiddenElementCategories & (1u << static_cast<unsigned>(category))) == 0;
+    }
+
     // Mode 2D CAO & Isolation Automatique du Plan de Travail
     bool isMode2D() const noexcept { return m_mode2DActive; }
     void setMode2D(bool enabled);
@@ -211,6 +221,12 @@ public:
     void clearSelectedElementLocalAxes();
 
     QImage captureViewImage(int width = 512, int height = 512);
+
+    // État de vue persistant (aperçus « dernier état », réouverture du projet) :
+    // caméra OCCT réelle (eye, center, up, scale, projection) et principaux drapeaux d'affichage.
+    QJsonObject cameraState() const;
+    bool applyCameraState(const QJsonObject& state);
+    QJsonObject viewState() const;
 
     // Intégration du système de Grille 3D paramétrique
     void setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::GridSnapManager* snapManager);
@@ -503,6 +519,7 @@ private:
     std::map<int, Handle(AIS_TextLabel)> m_supportLabels;
     bool m_supportsVisible = true;
     bool m_supportLabelsVisible = false;
+    unsigned m_hiddenElementCategories = 0; // masque de bits ElementCategory masquées
     std::map<int, Handle(AIS_Shape)> m_beamShapes;
     std::map<int, Handle(AIS_Shape)> m_columnShapes;
     std::map<int, Handle(AIS_Shape)> m_slabShapes;

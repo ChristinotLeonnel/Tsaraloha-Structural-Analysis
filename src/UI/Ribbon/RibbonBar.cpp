@@ -5,6 +5,9 @@
 #include <QVBoxLayout>
 #include <QTabWidget>
 #include <QTabBar>
+#include <QHBoxLayout>
+#include <QFrame>
+#include "RibbonButton.h"
 
 namespace TSA::UI
 {
@@ -32,6 +35,29 @@ void RibbonBar::setupUi()
     m_tabWidget->setStyleSheet(ThemeManager::instance().ribbonTabWidgetStyleSheet());
 
     layout->addWidget(m_tabWidget);
+}
+
+void RibbonBar::setQuickAccess(const std::vector<QAction*>& actions)
+{
+    auto* host = new QWidget(m_tabWidget);
+    auto* row = new QHBoxLayout(host);
+    row->setContentsMargins(6, 0, 6, 0);
+    row->setSpacing(1);
+
+    for (auto* act : actions)
+    {
+        if (!act) continue;
+        auto* btn = new RibbonButton(act, RibbonButtonSize::Small, host);
+        btn->setIconOnly(true);
+        row->addWidget(btn);
+    }
+    auto* sep = new QFrame(host);
+    sep->setFrameShape(QFrame::VLine);
+    sep->setFixedWidth(1);
+    sep->setStyleSheet(ThemeManager::instance().ribbonSeparatorStyleSheet());
+    row->addWidget(sep);
+
+    m_tabWidget->setCornerWidget(host, Qt::TopLeftCorner);
 }
 
 void RibbonBar::updateTheme(bool /*isDark*/)

@@ -1,9 +1,12 @@
 #pragma once
 
 #include <QDockWidget>
+#include <vector>
 
 class QCheckBox;
 class QAction;
+class QGroupBox;
+class QLineEdit;
 
 namespace TSA::UI
 {
@@ -27,8 +30,14 @@ public:
     void bindLoadsVisibleAction(QAction* act);
     void bindLoadValuesVisibleAction(QAction* act);
 
+signals:
+    // Famille d'éléments (valeur de OccView::ElementCategory) affichée / masquée.
+    void elementCategoryToggled(int category, bool visible);
+
 private:
     void setupUi();
+    void applyFilter(const QString& text);
+    void setAllStructureVisible(bool visible);
 
 private:
     QCheckBox* m_chkGrid = nullptr;
@@ -45,6 +54,12 @@ private:
     QCheckBox* m_chkBeams = nullptr;
     QCheckBox* m_chkColumns = nullptr;
     QCheckBox* m_chkSlabs = nullptr;
+
+    QLineEdit* m_filter = nullptr;
+    QGroupBox* m_guidesGroup = nullptr;
+    QGroupBox* m_modelGroup = nullptr;
+    std::vector<QCheckBox*> m_allChecks;        // toutes les cases (filtre de recherche)
+    std::vector<QCheckBox*> m_structureChecks;  // cases du groupe « Composants » (Tout afficher / masquer)
 };
 
 } // namespace TSA::UI

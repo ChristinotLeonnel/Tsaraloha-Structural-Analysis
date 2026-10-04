@@ -5,6 +5,11 @@
 #include <QGroupBox>
 #include <QCheckBox>
 #include <QAction>
+#include <QLineEdit>
+#include <QScrollArea>
+#include <QPushButton>
+#include <QHBoxLayout>
+#include "../../Viewer/OccView.h"
 
 namespace TSA::UI
 {
@@ -22,77 +27,102 @@ void VisibilityDock::setupUi()
     auto* container = new QWidget(this);
     auto* mainLayout = new QVBoxLayout(container);
     mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(12);
+    mainLayout->setSpacing(10);
+
+    // Recherche + actions globales
+    m_filter = new QLineEdit(container);
+    m_filter->setPlaceholderText(tr("Rechercher un calque…"));
+    m_filter->setClearButtonEnabled(true);
+    mainLayout->addWidget(m_filter);
+
+    auto* bulk = new QHBoxLayout();
+    bulk->setSpacing(6);
+    auto* btnShowAll = new QPushButton(tr("Tout afficher"), container);
+    btnShowAll->setToolTip(tr("Affiche toutes les familles d'éléments de structure"));
+    auto* btnHideAll = new QPushButton(tr("Tout masquer"), container);
+    btnHideAll->setToolTip(tr("Masque toutes les familles d'éléments de structure (guides et repères inchangés)"));
+    bulk->addWidget(btnShowAll);
+    bulk->addWidget(btnHideAll);
+    mainLayout->addLayout(bulk);
+    connect(btnShowAll, &QPushButton::clicked, this, [this] { setAllStructureVisible(true); });
+    connect(btnHideAll, &QPushButton::clicked, this, [this] { setAllStructureVisible(false); });
+    connect(m_filter, &QLineEdit::textChanged, this, &VisibilityDock::applyFilter);
+
+    auto addCheck = [this](QGroupBox* group, const QString& text, bool checked, bool structure) {
+        auto* chk = new QCheckBox(text, group);
+        chk->setChecked(checked);
+        group->layout()->addWidget(chk);
+        m_allChecks.push_back(chk);
+        if (structure) m_structureChecks.push_back(chk);
+        return chk;
+    };
 
     // Groupe Guides & Repères
-    auto* guidesGroup = new QGroupBox(tr("Guides & Repères 3D"), container);
-    auto* guidesLayout = new QVBoxLayout(guidesGroup);
+    m_guidesGroup = new QGroupBox(tr("Guides & Repères 3D"), container);
+    auto* guidesLayout = new QVBoxLayout(m_guidesGroup);
     guidesLayout->setSpacing(6);
-
-    m_chkGrid = new QCheckBox(tr("Grille 3D (G)"), guidesGroup);
-    m_chkGrid->setChecked(true);
-    guidesLayout->addWidget(m_chkGrid);
-
-    m_chkLevels = new QCheckBox(tr("Plans d'étages & Altimétrie"), guidesGroup);
-    m_chkLevels->setChecked(true);
-    guidesLayout->addWidget(m_chkLevels);
-
-    m_chkLabels = new QCheckBox(tr("Bulles & Libellés d'axes"), guidesGroup);
-    m_chkLabels->setChecked(true);
-    guidesLayout->addWidget(m_chkLabels);
-
-    m_chkRulers = new QCheckBox(tr("Règles graduées du viewport"), guidesGroup);
-    m_chkRulers->setChecked(true);
-    guidesLayout->addWidget(m_chkRulers);
-
-    m_chkCoords = new QCheckBox(tr("Repères locaux (LCS)"), guidesGroup);
-    m_chkCoords->setChecked(false);
-    guidesLayout->addWidget(m_chkCoords);
-
-    m_chkWorkPlane = new QCheckBox(tr("Plan de travail 3D (W)"), guidesGroup);
-    m_chkWorkPlane->setChecked(true);
-    guidesLayout->addWidget(m_chkWorkPlane);
-
-    mainLayout->addWidget(guidesGroup);
+    m_chkGrid = addCheck(m_guidesGroup, tr("Grille 3D (G)"), true, false);
+    m_chkLevels = addCheck(m_guidesGroup, tr("Plans d'étages & Altimétrie"), true, false);
+    m_chkLabels = addCheck(m_guidesGroup, tr("Bulles & Libellés d'axes"), true, false);
+    m_chkRulers = addCheck(m_guidesGroup, tr("Règles graduées du viewport"), true, false);
+    m_chkCoords = addCheck(m_guidesGroup, tr("Repères locaux (LCS)"), false, false);
+    m_chkWorkPlane = addCheck(m_guidesGroup, tr("Plan de travail 3D (W)"), true, false);
+    mainLayout->addWidget(m_guidesGroup);
 
     // Groupe Modèle & Structure
-    auto* modelGroup = new QGroupBox(tr("Composants de Structure"), container);
-    auto* modelLayout = new QVBoxLayout(modelGroup);
+    m_modelGroup = new QGroupBox(tr("Composants de Structure"), container);
+    auto* modelLayout = new QVBoxLayout(m_modelGroup);
     modelLayout->setSpacing(6);
+    m_chkNodes = addCheck(m_modelGroup, tr("Nœuds structurels"), true, true);
+    m_chkNodeLabels = addCheck(m_modelGroup, tr("Numéros des nœuds (labels 3D)"), false, false);
+    m_chkLoads = addCheck(m_modelGroup, tr("Charges & Actions (3D)"), true, true);
+    m_chkLoadValues = addCheck(m_modelGroup, tr("Valeurs des charges (kN, kN/m)"), true, false);
 
-    m_chkNodes = new QCheckBox(tr("Nœuds structurels"), modelGroup);
-    m_chkNodes->setChecked(true);
-    modelLayout->addWidget(m_chkNodes);
-
-    m_chkNodeLabels = new QCheckBox(tr("Numéros des nœuds (labels 3D)"), modelGroup);
-    m_chkNodeLabels->setChecked(false);
-    modelLayout->addWidget(m_chkNodeLabels);
-
-    m_chkLoads = new QCheckBox(tr("Charges & Actions (3D)"), modelGroup);
-    m_chkLoads->setChecked(true);
-    modelLayout->addWidget(m_chkLoads);
-
-    m_chkLoadValues = new QCheckBox(tr("Valeurs des charges (kN, kN/m)"), modelGroup);
-    m_chkLoadValues->setChecked(true);
-    modelLayout->addWidget(m_chkLoadValues);
-
-    m_chkBeams = new QCheckBox(tr("Poutres"), modelGroup);
-    m_chkBeams->setChecked(true);
-    modelLayout->addWidget(m_chkBeams);
-
-    m_chkColumns = new QCheckBox(tr("Poteaux"), modelGroup);
-    m_chkColumns->setChecked(true);
-    modelLayout->addWidget(m_chkColumns);
-
-    m_chkSlabs = new QCheckBox(tr("Dalles / Planchers"), modelGroup);
-    m_chkSlabs->setChecked(true);
-    modelLayout->addWidget(m_chkSlabs);
-
-    mainLayout->addWidget(modelGroup);
+    using Cat = OccView::ElementCategory;
+    auto addElement = [&](const QString& text, Cat cat) {
+        auto* chk = addCheck(m_modelGroup, text, true, true);
+        connect(chk, &QCheckBox::toggled, this, [this, cat](bool on) { emit elementCategoryToggled(static_cast<int>(cat), on); });
+        return chk;
+    };
+    m_chkBeams = addElement(tr("Poutres"), Cat::Beams);
+    m_chkColumns = addElement(tr("Poteaux"), Cat::Columns);
+    m_chkSlabs = addElement(tr("Dalles / Planchers"), Cat::Slabs);
+    addElement(tr("Voiles"), Cat::Walls);
+    addElement(tr("Fondations"), Cat::Foundations);
+    addElement(tr("Treillis"), Cat::Trusses);
+    addElement(tr("Câbles"), Cat::Cables);
+    mainLayout->addWidget(m_modelGroup);
     mainLayout->addStretch();
 
-    setWidget(container);
+    // Défilement vertical : la liste des familles ne doit jamais être coupée dans un dock bas.
+    auto* scroll = new QScrollArea(this);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setWidget(container);
+    setWidget(scroll);
     setMinimumWidth(240);
+}
+
+void VisibilityDock::setAllStructureVisible(bool visible)
+{
+    for (auto* chk : m_structureChecks) chk->setChecked(visible);
+}
+
+void VisibilityDock::applyFilter(const QString& text)
+{
+    const QString needle = text.trimmed();
+    for (auto* group : { m_guidesGroup, m_modelGroup })
+    {
+        bool any = false;
+        for (auto* chk : group->findChildren<QCheckBox*>())
+        {
+            const bool show = needle.isEmpty() || chk->text().contains(needle, Qt::CaseInsensitive);
+            chk->setVisible(show);
+            any = any || show;
+        }
+        group->setVisible(any);
+    }
 }
 
 void VisibilityDock::bindGridVisibleAction(QAction* act)

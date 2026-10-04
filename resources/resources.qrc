@@ -280,4 +280,7 @@
         <file alias="load_distributed.svg">icons/modeling/load_dist.svg</file>
         <file alias="results_forces.svg">icons/analysis/results_force.svg</file>
     </qresource>
+    <qresource prefix="/ai">
+        <file alias="model_registry.json">ai/model_registry.json</file>
+    </qresource>
 </RCC>

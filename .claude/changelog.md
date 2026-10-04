@@ -2,6 +2,88 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-04 (Projets récents & aperçus du dernier état)
+
+### Added
+- Page d'accueil « Projets récents » (`UI/Home/StartPage`, cartes avec aperçu réel, survol, menu
+  contextuel) dans un `QStackedWidget` central partagé avec l'unique viewport.
+- `Project/RecentProjects` (QSettings) et `Project/ModelPreviewCache` (PNG 480×270 + métadonnées :
+  caméra, état d'affichage, révision ; repli sur le chunk THMB du .tsa).
+- `OccView::cameraState / applyCameraState / viewState` ; caméra restaurée à la réouverture.
+- Capture différée (2,5 s) sur changement de révision ou de caméra, écriture hors thread UI.
+- Tests 124–126 (suite `preview`) ; total 147/147. docs/PROJECT_PREVIEWS.md.
+
+### Fixed
+- Barre d'état : chevauchement des libellés en 1920 px (somme des largeurs minimales trop grande
+  après l'ajout des compteurs et de l'indicateur IA) — compteurs sans minimum, texte court,
+  indicateur IA plafonné. Compilé ; non revérifié visuellement (TSA ouvert par l'utilisateur).
+
+## 2026-10-04 (IA Co-Engineering)
+
+### Added
+- Module `src/AI` [CORE] : HardwareProfiler (CPUID, RAM, `llama-server --list-devices`), ModelRegistry +
+  ModelSelector (mémoire poids + KV, GPU/hybride/CPU, contexte complet prioritaire, mesures prioritaires),
+  ModelManager (inventaire TSA/HF/LM Studio, téléchargement asynchrone + SHA-256), OpenAICompatibleProvider
+  (SSE, outils, annulation, délai), LocalLlamaServer (+ Job Object), EngineeringContextBuilder,
+  AIToolRegistry (liste blanche, propositions + Undo), StructuralChecker, EngineeringKnowledgeBase (BM25),
+  AISettings (DPAPI), AILog (métadonnées), AIOrchestrator (routage LOCAL/CLOUD/AUTO, accord Cloud,
+  boucle d'outils, diagnostic, auto-benchmark).
+- UI : AICoEngineeringDock, AIRuntimeDialog (non modal), MainWindow_AI.cpp, ruban, barre d'état.
+- `resources/ai/model_registry.json` (7 modèles Qwen3, données vérifiées), docs/AI_COENGINEERING.md.
+- Tests 112–123 (suite `ai`) ; total 144/144.
+
+### Fixed
+- Arbre du modèle : nom de section au lieu de « largeur×hauteur » (faux pour les sections circulaires).
+
+## 2026-10-04 (UI — docks, arbre, barre d'état)
+
+### Added
+
+- Dock « Calques & Visibilité » : recherche, boutons Tout afficher / Tout masquer (famille structure),
+  défilement vertical, familles Voiles / Fondations / Treillis / Câbles. Les cases Poutres / Poteaux /
+  Dalles étaient auparavant branchées sur rien : elles pilotent maintenant
+  `OccView::setElementCategoryVisible` (masque de bits appliqué dans `updateElementIsolation`,
+  même mécanisme que l'isolation du plan de travail — pas de second système de visibilité).
+- Arbre du modèle : barre de recherche, boutons développer/réduire, menu contextuel (actions existantes
+  Cadrer sélection / Déplacer / Copier / Supprimer, branchées via `setContextActions`).
+- Barre d'état : compteurs Nœuds / Éléments / Sélection (relus toutes les 500 ms, tailles de maps).
+- Ruban : libellé complet (2 lignes) pour les panneaux repliés.
+
+### Non vérifié (première passe)
+- Pas de clic simulé possible dans cet environnement : filtre, Tout masquer, menu contextuel et compteurs
+  validés par compilation, démarrage et rendu, pas par interaction. À tester manuellement.
+- Limite : un élément créé alors qu'une famille est masquée n'est masqué qu'à la prochaine passe
+  d'`updateElementIsolation`.
+
+### Vérifié par UI Automation (PowerShell + System.Windows.Automation, Qt expose l'accessibilité)
+- Tout masquer / Tout afficher : cases décochées puis recochées, nœuds/poutres/poteaux disparaissent puis
+  reviennent dans le viewport (captures). Filtre de l'arbre : « Étage » ne garde que les 2 étages.
+  Compteurs d'état : « Nœuds : 8   Éléments : 4   Sélection : 0 » (projet test_section_audit.tsa).
+- Corrigés après observation : colonne « Element » de l'arbre tronquée (largeur 200 + dock ≥ 380 px) ;
+  texte d'invite du dock Propriétés rogné (pages du QStackedWidget en politique Ignored) ;
+  AnalysisConfigDialog étirait ses groupes et dépassait l'écran (stretch + hauteur minimale).
+- Non vérifié : sélection d'un élément (UIA n'active pas la sélection de QTreeWidget), menu contextuel
+  clic droit, Propriétés d'un élément, dock Résultats.
+
+## 2026-10-04 (UI — ruban responsive)
+
+### Changed
+
+- Ruban (`src/UI/Ribbon/`) sans défilement horizontal : `RibbonTab` n'utilise plus de `QScrollArea`.
+  À la resize il choisit pour chaque panneau un mode (`RibbonPanelMode`) : Full → IconOnly (petits
+  boutons réduits à l'icône) → Collapsed (un bouton déroulant portant le titre, menu = actions du panneau,
+  repli de droite à gauche) → menu « Plus » (derniers panneaux en sous-menus).
+- `RibbonPanel` : colonnes de petits boutons limitées à 3 ; boutons larges à largeur libre et libellé sur
+  deux lignes ; actions mémorisées pour construire les menus de repli.
+- `RibbonButton` : infobulle riche (nom en gras, description, « Raccourci : X » extrait de l'action).
+- `RibbonBar::setQuickAccess` : barre d'accès rapide (icônes) dans le coin gauche de la rangée d'onglets
+  (Nouveau, Ouvrir, Enregistrer, Annuler, Rétablir, Sélection, Cadrer tout, 3D, Calcul).
+- Onglets : Accueil, Modèle, Modifier, Structure, Charges, Analyse, Résultats, Affichage, Outils.
+  Accueil densifié (édition, structure, appuis & charges, analyse, vue, panneaux) ; panneau « Appuis »
+  ajouté à Modèle. Aucune nouvelle commande : uniquement des QAction existantes.
+- Vérifié : build OK, 132/132 tests, lancement + captures à 1536 px et 1000 px (pas de scroll, repli
+  progressif). Pas de test GUI automatisé.
+
 ## 2026-10-04
 
 ### Added

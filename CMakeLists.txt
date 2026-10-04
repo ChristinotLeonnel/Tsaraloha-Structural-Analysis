@@ -13,7 +13,7 @@ set(CMAKE_AUTOUIC ON)
 # =============================================================================
 # Configuration Qt 6
 # =============================================================================
-find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Svg)
+find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Svg Network)
 
 # =============================================================================
 # Configuration OpenCASCADE (OCCT) et dépendances tierces
@@ -443,6 +443,38 @@ set(LOAD_CORE_SOURCES
     src/Analysis/OpenSeesSolver.cpp
 )
 
+# --- IA Co-Engineering (matériel, modèles, fournisseurs, contexte, outils, RAG) — [CORE] ---
+set(AI_CORE_SOURCES
+    src/AI/Hardware/HardwareProfiler.h
+    src/AI/Hardware/HardwareProfiler.cpp
+    src/AI/Models/ModelRegistry.h
+    src/AI/Models/ModelRegistry.cpp
+    src/AI/Models/ModelManager.h
+    src/AI/Models/ModelManager.cpp
+    src/AI/Providers/AIProvider.h
+    src/AI/Providers/OpenAICompatibleProvider.h
+    src/AI/Providers/OpenAICompatibleProvider.cpp
+    src/AI/Providers/LocalLlamaServer.h
+    src/AI/Providers/LocalLlamaServer.cpp
+    src/AI/Providers/ProcessLifetime.h
+    src/AI/Providers/ProcessLifetime.cpp
+    src/AI/Checker/StructuralChecker.h
+    src/AI/Checker/StructuralChecker.cpp
+    src/AI/Context/EngineeringContext.h
+    src/AI/Context/EngineeringContext.cpp
+    src/AI/Tools/AIToolRegistry.h
+    src/AI/Tools/AIToolRegistry.cpp
+    src/AI/RAG/EngineeringKnowledgeBase.h
+    src/AI/RAG/EngineeringKnowledgeBase.cpp
+    src/AI/Core/AISettings.h
+    src/AI/Core/AISettings.cpp
+    src/AI/Core/SecretStore.cpp
+    src/AI/Core/AILog.h
+    src/AI/Core/AILog.cpp
+    src/AI/Core/AIOrchestrator.h
+    src/AI/Core/AIOrchestrator.cpp
+)
+
 # --- Note de Calcul (NDC) — [CORE] ---------------------------------------------
 set(NDC_CORE_SOURCES
     src/NDC/NDCDocumentModel.h
@@ -498,6 +530,10 @@ set(CABLE_GEOMETRY_SOURCES
 set(PROJECT_SOURCES
     src/Project/ProjectManager.h
     src/Project/ProjectManager.cpp
+    src/Project/RecentProjects.h
+    src/Project/RecentProjects.cpp
+    src/Project/ModelPreviewCache.h
+    src/Project/ModelPreviewCache.cpp
 )
 
 # --- Commandes (pattern Command pour undo/redo) — [CORE] ---------------------
@@ -591,6 +627,7 @@ set(CORE_SOURCES
     ${MODEL_CORE_SOURCES}
     ${LOAD_CORE_SOURCES}
     ${NDC_CORE_SOURCES}
+    ${AI_CORE_SOURCES}
     ${CABLE_SOURCES}
     ${CABLE_GEOMETRY_SOURCES}
     ${PROJECT_SOURCES}
@@ -602,7 +639,20 @@ set(CORE_SOURCES
 )
 
 # --- Liste complète des sources de l'exécutable principal --------------------
+# --- IA Co-Engineering : interface (panneau, configuration) ---
+set(UI_AI_SOURCES
+    src/UI/AI/AICoEngineeringDock.h
+    src/UI/AI/AICoEngineeringDock.cpp
+    src/UI/AI/AIRuntimeDialog.h
+    src/UI/AI/AIRuntimeDialog.cpp
+    src/UI/MainWindow_AI.cpp
+    src/UI/MainWindow_Preview.cpp
+    src/UI/Home/StartPage.h
+    src/UI/Home/StartPage.cpp
+)
+
 set(SOURCES
+    ${UI_AI_SOURCES}
     ${APP_SOURCES}
     ${UI_MAINWINDOW_SOURCES}
     ${UI_MODELTREE_SOURCES}
@@ -709,6 +759,7 @@ target_link_libraries(TSA_Core PUBLIC
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
+    Qt6::Network
     ${OCCT_LIBS}
 )
 
@@ -736,7 +787,7 @@ target_precompile_headers(TSA_Core PRIVATE
 )
 
 if(WIN32)
-    target_link_libraries(TSA_Core PUBLIC DbgHelp)
+    target_link_libraries(TSA_Core PUBLIC DbgHelp Crypt32)
 endif()
 
 # Fichiers qui utilisent directement l'API Win32 (MessageBox, shell, dbghelp...) :
@@ -745,6 +796,9 @@ endif()
 set_source_files_properties(
     src/Diagnostics/CrashHandler.cpp
     src/Platform/WindowsAssociation.cpp
+    src/AI/Hardware/HardwareProfiler.cpp
+    src/AI/Core/SecretStore.cpp
+    src/AI/Providers/ProcessLifetime.cpp
     PROPERTIES SKIP_PRECOMPILE_HEADERS ON
 )
 
@@ -801,6 +855,8 @@ set(TEST_SOURCES
     tests/test_standards.cpp
     tests/test_ndc_report.cpp
     tests/test_opensees_extraction.cpp
+    tests/test_ai.cpp
+    tests/test_preview.cpp
     resources/resources.qrc
 )
 

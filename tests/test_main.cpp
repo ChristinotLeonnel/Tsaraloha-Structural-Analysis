@@ -5,14 +5,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 132;
+    int expectedTotal = 147;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction]" << std::endl;
+            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview]" << std::endl;
             return 0;
         }
     }
@@ -93,6 +93,14 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "extraction" || suiteFilter == "matrices") {
         std::cout << "\n--- [Suite 17/17] OpenSees Extraction: mapping, K, U, F, transformations (Tests 105-111) ---" << std::endl;
         if (!runSuite_Extraction(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "ai") {
+        std::cout << "\n--- [Suite 18/18] AI Co-Engineering: matériel, modèles, vérification, contexte, outils (Tests 112-123) ---" << std::endl;
+        if (!runSuite_AI(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "preview") {
+        std::cout << "\n--- [Suite 19/19] Projets récents et aperçus du dernier état (Tests 124-126) ---" << std::endl;
+        if (!runSuite_Preview(passed)) allOk = false;
     }
 
     std::cout << "\n=================================================" << std::endl;

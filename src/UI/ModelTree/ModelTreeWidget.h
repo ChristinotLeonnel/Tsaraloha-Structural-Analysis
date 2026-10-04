@@ -4,6 +4,10 @@
 #include "../../Model/Model.h"
 #include <QTreeWidget>
 #include <QWidget>
+#include <QList>
+
+class QAction;
+class QLineEdit;
 
 
 namespace TSA::Grid {
@@ -37,6 +41,10 @@ public:
   void selectTrussMemberItem(int memberId);
   void selectCableItem(int cableId);
   void clearTreeSelection();
+
+  // Commandes existantes proposées dans le menu contextuel d'un élément (cadrage, copie,
+  // suppression…) ; le clic droit sélectionne d'abord l'élément, puis le menu agit sur la sélection.
+  void setContextActions(const QList<QAction *> &actions);
 
 signals:
   void levelSelected(const QString &levelId);
@@ -97,12 +105,16 @@ private slots:
 
 private:
   void setupUi();
+  void applyFilter(const QString &text);
+  void showContextMenu(const QPoint &pos);
   void createRootCategories();
 
 private:
   TSA::Model::Model *m_model = nullptr;
   TSA::Grid::GridManager *m_gridManager = nullptr;
   QTreeWidget *m_tree = nullptr;
+  QLineEdit *m_search = nullptr;
+  QList<QAction *> m_contextActions;
 
   QString m_projectName;
   QTreeWidgetItem *m_projectRootItem = nullptr;

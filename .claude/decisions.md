@@ -100,6 +100,23 @@ Reason: OpenSees 3.8.0 n'expose la matrice du système que pour FullGeneral (den
 l'obtenir modifierait le calcul.
 Status: ACTIVE (2026-10-04) — voir docs/OPENSEES_RESULTS.md
 
+## ADR-015
+Title: IA de co-ingénierie — moteur local externe, protocole unique, outils en liste blanche
+Decision: module `src/AI` [CORE] + `src/UI/AI`. Inférence locale par `llama-server` (llama.cpp) lancé
+en processus séparé (même principe qu'OpenSees), écoute 127.0.0.1 uniquement, rattaché à TSA par un
+Job Object Windows. Un seul client `OpenAICompatibleProvider` (Chat Completions + SSE + outils) sert
+llama-server, Ollama et les Cloud compatibles (OpenAI, Gemini) : pas de SDK fournisseur. Le LLM ne
+modifie jamais le modèle : outils de lecture + outils `propose_*` qui produisent une `ActionProposal`
+appliquée seulement après acceptation (pushUndoState + notify*Modified). Contrôles du modèle
+déterministes (`StructuralChecker`) indépendants du LLM. Modèles décrits par
+`resources/ai/model_registry.json` (aucun nom codé ailleurs) ; choix par `ModelSelector`, corrigé par
+mesures réelles (auto-benchmark) prioritaires sur les heuristiques.
+Reason: pas de liaison C++ à llama.cpp ni de CUDA à distribuer ; un plantage ou une saturation mémoire
+du moteur IA n'affecte ni l'UI ni le solveur ; backends GPU choisis par le moteur (Vulkan/CUDA/HIP).
+Mesure réelle du 2026-10-04 : RTX 3050 via Vulkan 4,4 j/s contre CPU 40,8 j/s → « GPU détecté » ≠
+« GPU plus rapide ».
+Status: ACTIVE (2026-10-04) — voir docs/AI_COENGINEERING.md
+
 ## ADR-012
 Title: Performance — mises à jour locales
 Decision: modification d'un élément → `update*Shape` de cet élément (et éléments connectés pour un
