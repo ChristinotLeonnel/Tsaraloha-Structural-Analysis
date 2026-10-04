@@ -83,6 +83,9 @@ Legende des touches :
   Ctrl+D              Copie 3D / Copie numerique parametrique
   Ctrl+R              Rotation 3D (interactive)
   [aucun]             Deplacer vers l'Origine (0,0,0)
+  [aucun]             Symetrie / copie miroir par rapport a un plan X, Y ou Z (console : MIRROR, MI)
+  [aucun]             Diviser les poutres/poteaux selectionnes en N troncons (console : SPLIT, DIVIDE)
+  [aucun]             Fusionner les noeuds confondus a tolerance pres (console : MERGE, FUSION)
 
 ================================================================================
   5. AFFICHAGE - NAVIGATION 3D

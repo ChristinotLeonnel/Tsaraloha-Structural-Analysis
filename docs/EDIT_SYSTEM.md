@@ -103,7 +103,23 @@ Les éléments connectés sont mis à jour par une seule notification groupée. 
 niveaux ne font pas partie des snapshots Undo ; annuler une modification d'élévation de niveau
 n'est pas encore pris en charge.
 
-## 7. Tests
+## 7. Opérations topologiques (`src/Model/Model_Topology.cpp`)
+
+Menu Édition / ruban Édition « Symétrie & Topologie » ; chaque opération = une `EditTransaction`.
+
+- **Symétrie** `Model::mirrorElements` : plan X, Y ou Z = constante ; copie (les nœuds du plan
+  sont partagés, un élément entièrement sur le plan n'est pas dupliqué) ou retournement en place.
+  L'ordre du contour des dalles est inversé pour conserver leur orientation.
+- **Division de barres** `Model::splitBeam` / `splitColumn` : N tronçons égaux ; l'élément
+  d'origine devient le premier tronçon (ses charges et son id sont conservés), les relâchements ne
+  restent qu'aux extrémités, les charges constantes sur toute la portée sont recopiées. Refus si la
+  barre porte une charge ponctuelle, partielle ou trapézoïdale (pas de redistribution implicite).
+- **Fusion de nœuds** `Model::findCoincidentNodes` / `mergeCoincidentNodes` : hachage spatial
+  O(N log N) ; le plus petit id est conservé ; éléments, fondations, charges nodales et appuis
+  reportés ; éléments de longueur nulle et dalles < 3 sommets supprimés.
+  `ModelValidator` utilise la même détection (avant : comparaison O(N²)).
+
+## 8. Tests
 
 | Test | Couverture |
 | :--- | :--- |
@@ -113,3 +129,7 @@ n'est pas encore pris en charge.
 | 98 | Requêtes de sélection |
 | 99 | Élévation de niveau (nœuds rattachés uniquement) |
 | 100 | Mesures sur 4 896 barres, budget mémoire de l'historique |
+| 101 | Symétrie (copie avec nœuds partagés, retournement, dalles) |
+| 102 | Division de poutres / poteaux, relâchements, charges, refus |
+| 103 | Fusion des nœuds confondus (appuis, fondations, charges, éléments dégénérés) |
+| 104 | Division dans une transaction : une entrée Undo, restauration exacte |
