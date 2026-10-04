@@ -1,0 +1,135 @@
+<svg width="880" height="220" viewBox="0 0 880 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="banner_bg" x1="0" y1="0" x2="880" y2="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B1120"/>
+      <stop offset="50%" stop-color="#070B14"/>
+      <stop offset="100%" stop-color="#04060A"/>
+    </linearGradient>
+
+    <!-- Logo Gradients -->
+    <linearGradient id="logo_bg" x1="40" y1="30" x2="200" y2="190" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#111B33"/>
+      <stop offset="100%" stop-color="#070B14"/>
+    </linearGradient>
+    <linearGradient id="wing_l" x1="70" y1="74" x2="116" y2="102" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F2FE"/>
+      <stop offset="100%" stop-color="#0072FF"/>
+    </linearGradient>
+    <linearGradient id="wing_r" x1="124" y1="74" x2="170" y2="102" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2979FF"/>
+      <stop offset="100%" stop-color="#1565C0"/>
+    </linearGradient>
+    <linearGradient id="stem_g" x1="120" y1="109" x2="120" y2="163" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00B0FF"/>
+      <stop offset="50%" stop-color="#0072FF"/>
+      <stop offset="100%" stop-color="#0D47A1"/>
+    </linearGradient>
+
+    <!-- Text Title Gradient -->
+    <linearGradient id="title_grad" x1="230" y1="50" x2="520" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="40%" stop-color="#00F2FE"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+
+    <!-- Accent Line Gradient -->
+    <linearGradient id="accent_line" x1="230" y1="0" x2="820" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F2FE" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#3B82F6" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#1E293B" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="logo_glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#0072FF" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Banner Background Card -->
+  <rect width="880" height="220" rx="16" fill="url(#banner_bg)"/>
+  <rect x="1" y="1" width="878" height="218" rx="15" stroke="#1E293B" stroke-width="1.5"/>
+
+  <!-- Subtle Perspective Grid / CAD Texture -->
+  <g opacity="0.07" stroke="#38BDF8" stroke-width="1">
+    <line x1="230" y1="20" x2="860" y2="20" />
+    <line x1="230" y1="60" x2="860" y2="60" />
+    <line x1="230" y1="100" x2="860" y2="100" />
+    <line x1="230" y1="140" x2="860" y2="140" />
+    <line x1="230" y1="180" x2="860" y2="180" />
+    <line x1="330" y1="10" x2="330" y2="210" />
+    <line x1="450" y1="10" x2="450" y2="210" />
+    <line x1="570" y1="10" x2="570" y2="210" />
+    <line x1="690" y1="10" x2="690" y2="210" />
+    <line x1="810" y1="10" x2="810" y2="210" />
+  </g>
+
+  <!-- Logo Squircle Base (Left) -->
+  <rect x="40" y="30" width="160" height="160" rx="36" fill="url(#logo_bg)"/>
+  <rect x="41" y="31" width="158" height="158" rx="35" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="1.5"/>
+
+  <!-- Logo T-Vector Triad (Scale 0.3125, translate x=40, y=30) -->
+  <g filter="url(#logo_glow)">
+    <!-- Aile Gauche (96->70, 140->73.75, 244->116.25, 230->101.875, 154->88.125, 96->70, 172->83.75) -->
+    <polygon points="70,74 116,74 116,102 88,102 70,84" fill="url(#wing_l)"/>
+    <!-- Aile Droite (268->123.75, 416->170, 358->151.875) -->
+    <polygon points="124,74 170,74 170,84 152,102 124,102" fill="url(#wing_r)"/>
+    <!-- Fût Central (226->110.6, 286->129.4, 276->126.25, 400->155, 256->120, 424->162.5, 236->113.75) -->
+    <polygon points="111,109 129,109 126,155 120,163 114,155" fill="url(#stem_g)"/>
+    <!-- Nexus Central -->
+    <polygon points="120,99 123,104 120,108 117,104" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Typography / Content (Right Side) -->
+  <!-- Main Title "TSA" -->
+  <text x="230" y="82" fill="url(#title_grad)" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="52" font-weight="900" letter-spacing="-1">TSA</text>
+
+  <!-- Subtitle / Full Name -->
+  <text x="355" y="65" fill="#F8FAFC" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="0.5">Tsaraloha Structural Analysis</text>
+  <text x="355" y="85" fill="#94A3B8" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="2.5">ENGINEERING CAD &amp; FEA PLATFORM</text>
+
+  <!-- Glowing Accent Line -->
+  <line x1="230" y1="108" x2="840" y2="108" stroke="url(#accent_line)" stroke-width="2"/>
+
+  <!-- Description Line -->
+  <text x="230" y="136" fill="#CBD5E1" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="500">
+    Logiciel de modélisation 3D exacte B-Rep et d'analyse structurelle par éléments finis
+  </text>
+
+  <!-- Tech Pill Tags -->
+  <!-- Pill 1: C++20 -->
+  <g transform="translate(230, 156)">
+    <rect width="66" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="33" y="16" fill="#38BDF8" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">C++20</text>
+  </g>
+
+  <!-- Pill 2: Qt 6 -->
+  <g transform="translate(304, 156)">
+    <rect width="56" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="28" y="16" fill="#4ADE80" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Qt 6</text>
+  </g>
+
+  <!-- Pill 3: OpenCASCADE -->
+  <g transform="translate(368, 156)">
+    <rect width="118" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="59" y="16" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">OpenCASCADE</text>
+  </g>
+
+  <!-- Pill 4: OpenSees FEA -->
+  <g transform="translate(494, 156)">
+    <rect width="112" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="56" y="16" fill="#F472B6" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">OpenSees FEA</text>
+  </g>
+
+  <!-- Pill 5: Eurocodes -->
+  <g transform="translate(614, 156)">
+    <rect width="90" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="45" y="16" fill="#FBBF24" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Eurocodes</text>
+  </g>
+
+  <!-- Pill 6: Windows x64 -->
+  <g transform="translate(712, 156)">
+    <rect width="102" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="51" y="16" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Windows x64</text>
+  </g>
+</svg>
