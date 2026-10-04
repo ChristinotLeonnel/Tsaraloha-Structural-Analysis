@@ -117,6 +117,18 @@ Mesure réelle du 2026-10-04 : RTX 3050 via Vulkan 4,4 j/s contre CPU 40,8 j/s �
 « GPU plus rapide ».
 Status: ACTIVE (2026-10-04) — voir docs/AI_COENGINEERING.md
 
+## ADR-016
+Title: Miniatures Explorateur — aperçu non compressé dans le .tsa, lu par une DLL autonome
+Decision: format 1.2 : bloc PRVW (32 o) + PNG du viewport après le payload (`header.fileSize` = fin du
+payload, déjà présent dans l'en-tête). `TSAThumbnailProvider.dll` (C++/Win32, CRT statique, sans Qt ni
+OCCT) lit en-tête + PNG via IStream, met à l'échelle avec WIC ; enregistrement HKCU par TSA à chaque
+lancement (DllRegisterServer) ou HKLM par installeur (DllInstall "machine").
+Reason: pas de décompression ni de zlib 1.2.8 (vulnérable) dans le processus des miniatures ; temps
+constant ; un seul moteur de rendu (le viewport). Le lecteur TSA n'honorait pas `payloadOffset` : un bloc
+avant le payload aurait cassé les fichiers existants.
+Consequence: une version de TSA < 1.2 refuse les fichiers 1.2 (CRC) ; les fichiers ≤ 1.1 restent lisibles.
+Status: ACTIVE (2026-10-04) — voir docs/THUMBNAIL_PROVIDER.md
+
 ## ADR-012
 Title: Performance — mises à jour locales
 Decision: modification d'un élément → `update*Shape` de cet élément (et éléments connectés pour un

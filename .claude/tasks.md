@@ -40,6 +40,13 @@ Last Updated: 2026-10-04. Uniquement des tâches réellement identifiées (voir 
 - [ ] Vérifier visuellement la barre d'état après correction du chevauchement (1920 px et 1536 px).
 - [ ] Option : masquer cube de navigation / trièdre pendant la capture d'aperçu.
 
+## Miniatures Explorateur (ADR-016)
+
+- [ ] Installeur (Inno Setup / WiX) : copier TSAThumbnailProvider.dll à côté de TSA.exe, `regsvr32 /i:machine /n`
+      à l'installation, `/u /i:machine /n` à la désinstallation.
+- [ ] Vérifier après redémarrage de Windows et dans une fenêtre Explorateur (Très grandes icônes).
+- [ ] Signer numériquement TSA.exe et la DLL (confiance SmartScreen / antivirus).
+
 ## LOW
 
 - [ ] BUG-017 — Contrôle d'équilibre en moments.

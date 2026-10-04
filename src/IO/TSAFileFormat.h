@@ -16,7 +16,7 @@ constexpr uint32_t TSA_FILE_MAGIC = 0x46415354;
 // Versioning du format
 // -----------------------------------------------------------------------------
 constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 1;
-constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 1; // 1.1 : ajout du chunk LOAD (non cassant)
+constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 2; // 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h)
 
 // Version de disposition interne du chunk LOAD (indépendante de la version du format)
 constexpr uint32_t LOAD_CHUNK_LAYOUT_VERSION = 1;
@@ -36,7 +36,8 @@ enum TSAFileFlags : uint32_t
     FLAG_ENCRYPTED  = 0x00000002, // Données protégées / chiffrées
     FLAG_HAS_MESH      = 0x00000004, // Contient un maillage EF pré-généré
     FLAG_HAS_RESULT    = 0x00000008, // Contient des résultats de calcul EF
-    FLAG_HAS_THUMBNAIL = 0x00000010  // Contient une miniature 3D embarquée (PNG)
+    FLAG_HAS_THUMBNAIL = 0x00000010, // Contient une miniature 3D embarquée (PNG, chunk THMB)
+    FLAG_HAS_PREVIEW_BLOCK = 0x00000020 // 1.2 : aperçu PNG non compressé après le payload (Explorateur Windows)
 };
 
 // -----------------------------------------------------------------------------
@@ -96,7 +97,7 @@ struct TSAFileHeader
     char creationTimestamp[24] = "";
     char lastModifiedTimestamp[24] = "";
 
-    // Zone de réserve d'extensibilité (alignement à 256 octets)
+    // Zone de réserve d'extensibilité (en-tête packé : 272 octets au total)
     uint8_t reserved[40] = {0};
 };
 

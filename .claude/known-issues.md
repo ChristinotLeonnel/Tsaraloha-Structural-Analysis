@@ -160,6 +160,20 @@ modèle compact ; le diagnostic signale l'écart mesure/estimation.
 Impact: MEDIUM (qualité des réponses limitée sur machine chargée)
 Status: OPEN (contournement : fermer les applications lourdes ; modèle plus léger)
 
+## BUG-022
+Area: IO / compatibilité
+Problem: une version de TSA antérieure au format 1.2 ne peut pas ouvrir un fichier 1.2 (bloc d'aperçu lu
+comme payload → CRC invalide). Lecture des anciens formats par la version courante : OK (test 127).
+Impact: MEDIUM si des versions antérieures sont distribuées ; nul en développement.
+Status: OPEN (documenté, ADR-016)
+
+## BUG-023
+Area: Platform / Explorateur
+Problem: après désinstallation de l'extension, les miniatures déjà en cache Windows (thumbcache) restent
+visibles tant que les fichiers ne changent pas. Constaté via IShellItemImageFactory.
+Impact: LOW (comportement Windows ; Nettoyage de disque › Miniatures)
+Status: OPEN (documenté)
+
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |

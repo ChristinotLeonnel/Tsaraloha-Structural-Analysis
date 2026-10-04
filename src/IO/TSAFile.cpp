@@ -1,6 +1,7 @@
 #include "TSAFile.h"
 #include "TSAFile_BinaryUtils.h"
 #include "TSAPreviewGenerator.h"
+#include "TSAPreviewBlock.h"
 #include "../Model/MaterialLibrary.h"
 #include "../Standards/ModelValidator.h"
 #include "../Diagnostics/Logger.h"
@@ -204,6 +205,11 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     if (!pngBytes.isEmpty())
     {
         flags |= FLAG_HAS_THUMBNAIL;
+        // Aperçu lisible par l'Explorateur sans décompression — jamais pour un fichier protégé par
+        // mot de passe (l'image du modèle ne doit pas être lisible en clair).
+        const bool willEncrypt = m_useEncryption && !m_password.empty() && m_encryptor;
+        if (!willEncrypt && static_cast<uint64_t>(pngBytes.size()) <= TSA_PREVIEW_MAX_BYTES)
+            flags |= FLAG_HAS_PREVIEW_BLOCK;
     }
     std::vector<uint8_t> processedData;
 
@@ -237,7 +243,7 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     // 4. Calcul de l'intégrité CRC32 sur le payload final écrit
     uint32_t crc = computeCRC32(processedData.data(), processedData.size());
 
-    // 5. Préparation du Header 256 octets
+    // 5. Préparation du Header (272 octets, packé)
     TSAFileHeader header;
     header.magic = TSA_FILE_MAGIC;
     header.versionMajor = TSA_FORMAT_VERSION_MAJOR;
@@ -285,6 +291,18 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     {
         written = out.write(reinterpret_cast<const char*>(processedData.data()), static_cast<qint64>(processedData.size())) ==
                   static_cast<qint64>(processedData.size());
+    }
+    // Bloc d'aperçu (format 1.2) après le payload : header.fileSize marque la fin du payload.
+    if (written && (flags & FLAG_HAS_PREVIEW_BLOCK))
+    {
+        QImage previewImage;
+        previewImage.loadFromData(pngBytes, "PNG");
+        TSAPreviewBlockHeader block;
+        block.width = static_cast<uint32_t>(previewImage.width());
+        block.height = static_cast<uint32_t>(previewImage.height());
+        block.dataSize = static_cast<uint32_t>(pngBytes.size());
+        written = out.write(reinterpret_cast<const char*>(&block), sizeof(block)) == static_cast<qint64>(sizeof(block))
+               && out.write(pngBytes) == pngBytes.size();
     }
     if (!written)
     {
@@ -392,7 +410,12 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
         return false;
     }
 
-    size_t payloadSize = static_cast<size_t>(totalSize - sizeof(TSAFileHeader));
+    // Fichiers ≥ 1.2 : un bloc d'aperçu suit le payload, dont la fin est header.fileSize.
+    // Fichiers antérieurs : header.fileSize vaut la taille totale (comportement inchangé).
+    const uint64_t payloadEnd = (header.fileSize >= sizeof(TSAFileHeader) && header.fileSize <= static_cast<uint64_t>(totalSize))
+                                    ? header.fileSize
+                                    : static_cast<uint64_t>(totalSize);
+    size_t payloadSize = static_cast<size_t>(payloadEnd - sizeof(TSAFileHeader));
     if (payloadSize > MAX_SAFE_PAYLOAD_SIZE)
     {
         if (errorMessage) *errorMessage = "Taille du payload excessive (dépassement limite de sécurité de 1 Go).";
@@ -463,8 +486,33 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     return parsePayload(uncompressedData.data(), uncompressedData.size(), model, gridManager, outProjectName, outAuthor, outThumbnail, errorMessage);
 }
 
+bool TSAFileReader::extractPreviewBlock(const std::string& filePath, QImage& outImage)
+{
+    std::ifstream in(filePath, std::ios::binary | std::ios::ate);
+    if (!in.is_open()) return false;
+    const uint64_t length = static_cast<uint64_t>(in.tellg());
+    if (length < sizeof(TSAFileHeader)) return false;
+    in.seekg(0, std::ios::beg);
+    TSAFileHeader header;
+    if (!in.read(reinterpret_cast<char*>(&header), sizeof(header))) return false;
+    uint64_t blockOffset = 0;
+    if (!locatePreviewBlock(header, length, &blockOffset)) return false;
+    in.seekg(static_cast<std::streamoff>(blockOffset), std::ios::beg);
+    TSAPreviewBlockHeader block;
+    if (!in.read(reinterpret_cast<char*>(&block), sizeof(block))) return false;
+    TSAPreviewLocation where;
+    if (!validatePreviewBlock(block, blockOffset, length, &where)) return false;
+    QByteArray png(static_cast<qsizetype>(where.imageSize), Qt::Uninitialized);
+    in.seekg(static_cast<std::streamoff>(where.imageOffset), std::ios::beg);
+    if (!in.read(png.data(), png.size())) return false;
+    return outImage.loadFromData(png, "PNG");
+}
+
 bool TSAFileReader::extractThumbnail(const std::string& filePath, QImage& outThumbnail, std::string* errorMessage)
 {
+    // Format ≥ 1.2 : bloc d'aperçu direct (pas de décompression).
+    if (extractPreviewBlock(filePath, outThumbnail)) return true;
+
     TSAFileHeader header;
     if (!readHeader(filePath, header, errorMessage))
     {

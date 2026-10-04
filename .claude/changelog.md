@@ -2,6 +2,30 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-04 (Miniatures Explorateur Windows)
+
+### Added
+- `TSAThumbnailProvider.dll` (src/ShellExtension) : IThumbnailProvider + IInitializeWithStream, CRT statique,
+  dépendances système uniquement ; DllRegisterServer (HKCU) / DllInstall("machine") (HKLM).
+- Format .tsa 1.2 : bloc d'aperçu PNG non compressé après le payload (src/IO/TSAPreviewBlock.h) ;
+  `TSAFileReader::extractPreviewBlock` ; lecteur limité à `header.fileSize`.
+- TSA : enregistrement de l'extension à chaque lancement, `SHChangeNotify(SHCNE_UPDATEITEM)` après
+  enregistrement ; capture 640×480 sans cube de navigation ni trièdre.
+- Tests 127–129 (suite `thumbnail`) ; total 150/150. docs/THUMBNAIL_PROVIDER.md.
+
+### Fixed
+- Test 91 : parcours des chunks jusqu'à `header.fileSize` (et non la fin du fichier).
+- Fichier protégé par mot de passe : aucun aperçu écrit en clair.
+- Commentaires : l'en-tête .tsa fait 272 octets (et non 256).
+
+### Vérifié via le Shell (IShellItemImageFactory, pipeline et cache de l'Explorateur)
+- Building.tsa enregistré par TSA : miniature 256×192 (≈10 ms) ; vue A puis vue B → B affichée.
+- 32 / 96 / 256 / 1024 px : 32×24, 96×72, 256×192, 1024×768.
+- Fichier 1.1 et fichier corrompu : WTS_E_FAILEDEXTRACTION (icône TSA), sans plantage.
+- Désinstallation : clés supprimées ; regsvr32 (utilisateur) et --register-associations OK.
+Non testé : redémarrage Windows, enregistrement HKLM (droits administrateur), installeur (aucun dans le
+dépôt), affichage visuel dans une fenêtre de l'Explorateur (poste utilisé par l'utilisateur).
+
 ## 2026-10-04 (Projets récents & aperçus du dernier état)
 
 ### Added

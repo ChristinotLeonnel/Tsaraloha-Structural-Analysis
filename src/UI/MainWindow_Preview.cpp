@@ -12,6 +12,7 @@
 #include "../Project/ModelPreviewCache.h"
 #include "../Project/ProjectManager.h"
 #include "../Project/RecentProjects.h"
+#include "../Platform/WindowsAssociation.h"
 #include "../Viewer/OccView.h"
 #include "../Model/Model.h"
 
@@ -177,6 +178,7 @@ void MainWindow::onProjectFileOpened(const QString& path)
 void MainWindow::onProjectFileSaved(const QString& path)
 {
     TSA::Project::RecentProjects().touch(path);
+    TSA::Platform::WindowsAssociation::notifyFileUpdated(path); // miniature Explorateur à jour
     capturePreview(false);
 }
 

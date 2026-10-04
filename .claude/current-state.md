@@ -12,7 +12,7 @@ Warnings: 2 × C4996 (`TColgp_HArray1OfPnt` déprécié, src/Geometry/CableGeome
 Note: MSVC francisé → avertissement CMake sur le préfixe /showIncludes (BUG-011).
 
 ## Tests
-Status: IMPLEMENTED — 147/147 PASS (`TSA_TestSuite.exe`, 17 suites ; tests 101–111 ajoutés le 2026-10-04 ;
+Status: IMPLEMENTED — 150/150 PASS (`TSA_TestSuite.exe`, 17 suites ; tests 101–111 ajoutés le 2026-10-04 ;
 suite `extraction` = validation numérique contre le binaire OpenSees 3.8.0)
 Non couvert : comportement GUI (OccView, docks, mode 2D) — vérifications manuelles uniquement.
 
@@ -22,6 +22,10 @@ rangée d'onglets, infobulles riches. Limite : `ThemeManager::ribbonScrollStyleS
 pas de commandes Wireframe/Shaded/Offset/Trim… (inexistantes dans TSA, donc non ajoutées) ; fenêtre < ~700 px non vérifiée.
 Status: IMPLEMENTED — MainWindow + ruban + docks (arbre, visibilité, éléments, propriétés,
 résultats, console, projection, diagrammes, NDC), WindowManager (layouts).
+
+## Miniatures Explorateur
+Status: IMPLEMENTED (2026-10-04) — TSAThumbnailProvider.dll + format 1.2. Vérifié par le Shell
+(IShellItemImageFactory) et par tests 127–129. Non vérifié : redémarrage, HKLM, installeur.
 
 ## Projets récents / aperçus
 Status: IMPLEMENTED (2026-10-04) — accueil « Projets récents », aperçus capturés dans le viewport réel,
