@@ -109,7 +109,7 @@ bool runSuite_OpenSees(int& passed)
         TEST_CHECK(std::abs(r2->rz - 5.0) < 0.2, "Reaction at N2 must equal 5.0 kN");
 
         // Moment fléchissant max analytique : P * L / 4 = 10 * 5 / 4 = 12.5 kNm
-        const auto* eb = res.getElementResults(b1);
+        const auto* eb = res.getElementResults(TSA::Analysis::StructuralElementKind::Beam, b1);
         TEST_CHECK(eb != nullptr, "Element results must be present");
         double maxM = eb->maxBendingMoment();
         TEST_CHECK(std::abs(maxM - 12.5) < 0.5, "Maximum bending moment must be close to 12.5 kNm");
@@ -424,7 +424,7 @@ bool runSuite_OpenSees(int& passed)
         TEST_CHECK(ok, "Solver execution failed for bar in axial tension");
 
         const auto& res = solver.results();
-        const auto* eb = res.getElementResults(b1);
+        const auto* eb = res.getElementResults(TSA::Analysis::StructuralElementKind::Beam, b1);
         TEST_CHECK(eb != nullptr, "Element results must be present for beam");
         TEST_CHECK(std::abs(eb->startForces.N - 50.0) < 1.0, "Start normal force must be ~50 kN in tension");
         TEST_CHECK(std::abs(eb->endForces.N - 50.0) < 1.0, "End normal force must be ~50 kN in tension");
@@ -474,7 +474,7 @@ bool runSuite_OpenSees(int& passed)
         TEST_CHECK(ok, "Solver execution failed for load combination");
 
         const auto& res = solver.results();
-        const auto* eb = res.getElementResults(b1);
+        const auto* eb = res.getElementResults(TSA::Analysis::StructuralElementKind::Beam, b1);
         TEST_CHECK(eb != nullptr, "Element results must be present for combination");
         TEST_CHECK(std::abs(eb->startForces.N - 43.5) < 0.5, "Combination normal force must equal 43.5 kN (1.35*10 + 1.50*20)");
         TEST_CHECK(std::abs(eb->endForces.N - 43.5) < 0.5, "End normal force must equal 43.5 kN");
@@ -552,7 +552,7 @@ bool runSuite_OpenSees(int& passed)
         TEST_CHECK(ok, "Solver execution failed for cantilever beam");
 
         const auto& res = solver.results();
-        const auto* eb = res.getElementResults(b1);
+        const auto* eb = res.getElementResults(TSA::Analysis::StructuralElementKind::Beam, b1);
         TEST_CHECK(eb != nullptr, "Element results must be present");
         TEST_CHECK(std::abs(eb->startForces.uz) < 1e-6, "Deflection at fixed end must be 0");
         TEST_CHECK(eb->endForces.uz < -1e-4, "Deflection at tip must be negative");

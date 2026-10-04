@@ -1,3 +1,4 @@
+#include "Dock/AnalysisDataDock.h"
 #include "../Analysis/ResultsValidityGuard.h"
 #include "MainWindow.h"
 #include "../Viewer/OccView.h"
@@ -30,6 +31,28 @@
 // =========================================================================
 // Outils Métier & Ingénierie des Structures
 // =========================================================================
+
+namespace
+{
+/// Dalles et voiles ne sont pas maillés : ils ne sont pas transmis à OpenSees (BUG-002).
+/// L'utilisateur doit le savoir avant de lancer un calcul. Retourne false s'il annule.
+bool confirmPlanarElementsExcluded(QWidget* parent, const TSA::Model::Model& model)
+{
+    const size_t slabs = model.slabs().size();
+    const size_t walls = model.walls().size();
+    if (slabs == 0 && walls == 0)
+        return true;
+    const auto reply = QMessageBox::warning(parent,
+        QObject::tr("Dalles et voiles non calculés"),
+        QObject::tr("Le modèle contient %1 dalle(s) et %2 voile(s).\n\n"
+                    "TSA ne maille pas encore ces éléments : ils ne sont PAS transmis à OpenSees "
+                    "(ni leur rigidité, ni leurs charges). Seuls les éléments filaires (poutres, "
+                    "poteaux, treillis, câbles) sont calculés.\n\n"
+                    "Lancer quand même le calcul ?").arg(slabs).arg(walls),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    return reply == QMessageBox::Yes;
+}
+} // namespace
 
 void MainWindow::onActionWall()
 {
@@ -525,7 +548,7 @@ void MainWindow::onActionDistLoad()
         }
         else if (!m_selectionManager->selectedColumns().empty())
         {
-            dlg.setTargetElementId(*m_selectionManager->selectedColumns().begin());
+            dlg.setTargetElementId(*m_selectionManager->selectedColumns().begin(), TSA::Model::MemberTargetType::Column);
         }
     }
     dlg.exec();
@@ -605,24 +628,27 @@ void MainWindow::onActionMeshGen()
 
     if (m_consoleDock)
     {
-        m_consoleDock->appendLog(tr("--- GÉNÉRATION DU MAILLAGE ÉLÉMENTS FINIS (h = %1 m) ---").arg(hMesh), "SYS");
+        m_consoleDock->appendLog(tr("--- ESTIMATION DU MAILLAGE ÉLÉMENTS FINIS (h = %1 m) ---").arg(hMesh), "SYS");
         m_consoleDock->appendLog(tr("  - Éléments 1D (Poutres & Poteaux Hermite) : %1").arg(beamElems + colElems), "INFO");
         m_consoleDock->appendLog(tr("  - Éléments 2D (Dalles / Coques DKT)       : %1").arg(slabElems), "INFO");
         m_consoleDock->appendLog(tr("  - Nœuds du maillage discrétisé             : %1").arg(meshNodes), "INFO");
-        m_consoleDock->appendLog(tr("  - Degrés de liberté (DDL) assemblés        : %1").arg(dofs), "SUCCESS");
+        m_consoleDock->appendLog(tr("  - Degrés de liberté (DDL) estimés          : %1").arg(dofs), "INFO");
+        m_consoleDock->appendLog(tr("  ! Aucun maillage n'est réellement généré : dalles et voiles ne sont pas transmis au calcul."), "WARN");
     }
 
     QMessageBox::information(this, tr("Maillage Éléments Finis"),
-        tr("Maillage généré avec succès !\n\n"
-           "• Éléments finis totaux : %1\n"
+        tr("Estimation indicative (aucun maillage n'est généré) :\n\n"
+           "• Éléments finis estimés : %1\n"
            "• Nœuds de discrétisation : %2\n"
            "• Degrés de liberté (DDL) : %3\n"
-           "• Discrétisation spatiale : h = %4 m")
+           "• Discrétisation spatiale : h = %4 m\n\n"
+           "Le mailleur de dalles / voiles n'est pas encore disponible : ces éléments "
+           "ne participent pas au calcul OpenSees.")
         .arg(totalElems).arg(meshNodes).arg(dofs).arg(hMesh));
 
     if (m_statusInfo)
     {
-        m_statusInfo->setText(tr("Maillage EF généré : %1 éléments, %2 DDL").arg(totalElems).arg(dofs));
+        m_statusInfo->setText(tr("Maillage EF estimé : %1 éléments, %2 DDL (non généré)").arg(totalElems).arg(dofs));
     }
 }
 
@@ -676,6 +702,9 @@ void MainWindow::onActionRunSolve()
         }
     }
 
+    if (!confirmPlanarElementsExcluded(this, *m_model))
+        return;
+
     TSA::Analysis::AnalysisParameters params = m_lastAnalysisParams;
     params.useKiloNewtons = true;
     params.includeSelfWeight = true;
@@ -723,6 +752,7 @@ void MainWindow::onActionRunSolve()
     if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
     if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
     if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
+    if (m_analysisDataDock) m_analysisDataDock->setResultsModel(m_resultsModel);
     if (m_resultsDock)
     {
         m_resultsDock->setResultsModel(m_resultsModel);
@@ -793,6 +823,8 @@ void MainWindow::onActionModal()
     {
         m_consoleDock->appendLog(tr("--- ANALYSE MODALE DYNAMIQUE OPENSEES ([K - ω²M]{Φ} = 0) ---"), "SYS");
     }
+    if (!confirmPlanarElementsExcluded(this, *m_model))
+        return;
 
     TSA::Analysis::AnalysisParameters params;
     params.type = TSA::Analysis::AnalysisType::Modal;
@@ -830,6 +862,7 @@ void MainWindow::onActionModal()
     if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
     if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
     if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
+    if (m_analysisDataDock) m_analysisDataDock->setResultsModel(m_resultsModel);
 
     QString msgSummary = tr("Analyse Modale OpenSees Terminée :\n\n");
     for (const auto& m : m_resultsModel->modalModes())
@@ -859,6 +892,8 @@ void MainWindow::onActionPushover()
         QMessageBox::warning(this, tr("Pushover"), tr("Le modèle ne contient aucun élément."));
         return;
     }
+    if (!confirmPlanarElementsExcluded(this, *m_model))
+        return;
 
     if (m_consoleDock)
     {
@@ -890,6 +925,7 @@ void MainWindow::onActionPushover()
 
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
     if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
+    if (m_analysisDataDock) m_analysisDataDock->setResultsModel(m_resultsModel);
     if (m_diagramWidget)
     {
         m_diagramWidget->setModel(m_model.get());

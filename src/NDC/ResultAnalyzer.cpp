@@ -101,31 +101,32 @@ MostStressedSummary ResultAnalyzer::analyzeExtrema(
     double maxDefl = 0.0; // en mm
 
     // 1. Parcours de tous les éléments
-    for (const auto& [elId, elRes] : results->allElementResults())
+    for (const auto& [key, elRes] : results->allElementResults())
     {
+        const int elId = key.id;
         QString elType = QStringLiteral("Barre");
         QString secName, matName;
         int sNodeId = 0, eNodeId = 0;
 
-        if (const auto* b = model.getBeam(elId)) {
+        if (const auto* b = key.kind == TSA::Analysis::StructuralElementKind::Beam ? model.getBeam(elId) : nullptr) {
             elType = QStringLiteral("Poutre");
             secName = QString::fromStdString(b->section().name);
             matName = QString::fromStdString(b->material().name);
             sNodeId = b->startNodeId();
             eNodeId = b->endNodeId();
-        } else if (const auto* col = model.getColumn(elId)) {
+        } else if (const auto* col = key.kind == TSA::Analysis::StructuralElementKind::Column ? model.getColumn(elId) : nullptr) {
             elType = QStringLiteral("Poteau");
             secName = QString::fromStdString(col->section().name);
             matName = QString::fromStdString(col->material().name);
             sNodeId = col->startNodeId();
             eNodeId = col->endNodeId();
-        } else if (const auto* tr = model.getTrussMember(elId)) {
+        } else if (const auto* tr = key.kind == TSA::Analysis::StructuralElementKind::Truss ? model.getTrussMember(elId) : nullptr) {
             elType = QStringLiteral("Treillis");
             secName = QString::fromStdString(tr->section().name);
             matName = QString::fromStdString(tr->material().name);
             sNodeId = tr->startNodeId();
             eNodeId = tr->endNodeId();
-        } else if (const auto* cb = model.getCable(elId)) {
+        } else if (const auto* cb = key.kind == TSA::Analysis::StructuralElementKind::Cable ? model.getCable(elId) : nullptr) {
             elType = QStringLiteral("Câble");
             secName = QString::fromStdString(cb->section().name);
             matName = QString::fromStdString(cb->material().name);

@@ -8,10 +8,14 @@
 namespace TSA::Analysis
 {
 
+class OpenSeesModelMap;
+
 /**
  * @brief Lecteur et désérialiseur des fichiers de résultats générés par OpenSees.
  * Reconstitue les déplacements nodaux, réactions aux appuis, efforts intérieurs aux barres,
- * modes propres et synthèses d'équilibre.
+ * modes propres et synthèses d'équilibre. L'ordre des colonnes de chaque fichier est celui
+ * d'OpenSeesModelMap (le même que celui utilisé pour écrire les recorders) ; toute ligne dont
+ * la taille ne correspond pas est rejetée (mapping incohérent) plutôt que lue décalée.
  */
 class OpenSeesResultsReader
 {
@@ -23,22 +27,25 @@ public:
                             ResultsModel& outResults,
                             std::string* errorMessage = nullptr);
 
-private:
-    static bool readDisplacements(const std::string& filePath,
-                                 const CalculationSnapshot& snapshot,
-                                 ResultsModel& outResults,
-                                 bool* hasNonFinite = nullptr);
+    static bool readResults(const std::string& workingDirectory,
+                            const CalculationSnapshot& snapshot,
+                            const OpenSeesModelMap& map,
+                            const AnalysisParameters& params,
+                            const std::string& solverStdOut,
+                            ResultsModel& outResults,
+                            std::string* errorMessage = nullptr);
 
-    static bool readReactions(const std::string& filePath,
-                              const CalculationSnapshot& snapshot,
-                              ResultsModel& outResults,
-                              bool* hasNonFinite = nullptr);
-
-    static bool readElementForces(const std::string& filePath,
+    /// Lit les sorties du passage « matrices » (mapping DDL, rigidités basiques, K_global) et
+    /// remplit outResults.advanced(). Retourne false si le mapping DDL est absent ou incohérent.
+    static bool readMatrixResults(const std::string& workingDirectory,
                                   const CalculationSnapshot& snapshot,
+                                  const OpenSeesModelMap& map,
+                                  const AnalysisParameters& params,
+                                  bool globalStiffnessRequested,
                                   ResultsModel& outResults,
-                                  bool* hasNonFinite = nullptr);
+                                  std::string* errorMessage = nullptr);
 
+private:
     static void parseModalOutput(const std::string& solverStdOut,
                                  ResultsModel& outResults);
 

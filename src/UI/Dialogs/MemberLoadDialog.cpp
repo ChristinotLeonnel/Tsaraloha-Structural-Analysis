@@ -183,18 +183,21 @@ void MemberLoadDialog::populateElements()
             double len = b.length(*m_model);
             QString txt = QString("Poutre B%1 - L=%2 m [%3]").arg(id).arg(QString::number(len, 'f', 2)).arg(QString::fromStdString(b.section().name));
             m_comboElement->addItem(txt, id);
+            m_comboElement->setItemData(m_comboElement->count() - 1, static_cast<int>(TSA::Model::MemberTargetType::Beam), Qt::UserRole + 1);
         }
         for (const auto& [id, col] : m_model->columns())
         {
             double len = col.length(*m_model);
             QString txt = QString("Poteau C%1 - L=%2 m [%3]").arg(id).arg(QString::number(len, 'f', 2)).arg(QString::fromStdString(col.section().name));
             m_comboElement->addItem(txt, id);
+            m_comboElement->setItemData(m_comboElement->count() - 1, static_cast<int>(TSA::Model::MemberTargetType::Column), Qt::UserRole + 1);
         }
         for (const auto& [id, tr] : m_model->trussMembers())
         {
             double len = tr.length(*m_model);
             QString txt = QString("Treillis T%1 - L=%2 m").arg(id).arg(QString::number(len, 'f', 2));
             m_comboElement->addItem(txt, id);
+            m_comboElement->setItemData(m_comboElement->count() - 1, static_cast<int>(TSA::Model::MemberTargetType::Truss), Qt::UserRole + 1);
         }
     }
     m_comboElement->blockSignals(false);
@@ -216,14 +219,23 @@ void MemberLoadDialog::populateLoadCases()
     }
 }
 
-void MemberLoadDialog::setTargetElementId(int elemId)
+void MemberLoadDialog::setTargetElementId(int elemId, TSA::Model::MemberTargetType target)
 {
-    int idx = m_comboElement->findData(elemId);
-    if (idx >= 0)
+    for (int i = 0; i < m_comboElement->count(); ++i)
     {
-        m_comboElement->setCurrentIndex(idx);
+        if (m_comboElement->itemData(i).toInt() == elemId
+            && m_comboElement->itemData(i, Qt::UserRole + 1).toInt() == static_cast<int>(target))
+        {
+            m_comboElement->setCurrentIndex(i);
+            break;
+        }
     }
     updateElementInfoDisplay();
+}
+
+TSA::Model::MemberTargetType MemberLoadDialog::currentTarget() const
+{
+    return static_cast<TSA::Model::MemberTargetType>(m_comboElement->currentData(Qt::UserRole + 1).toInt());
 }
 
 void MemberLoadDialog::onElementSelectionChanged(int /*index*/)
@@ -234,9 +246,10 @@ void MemberLoadDialog::onElementSelectionChanged(int /*index*/)
 void MemberLoadDialog::updateElementInfoDisplay()
 {
     int elemId = m_comboElement->currentData().toInt();
+    const auto target = currentTarget();
     if (m_model)
     {
-        const auto* b = m_model->getBeam(elemId);
+        const auto* b = target == TSA::Model::MemberTargetType::Beam ? m_model->getBeam(elemId) : nullptr;
         if (b)
         {
             m_lblElementInfo->setText(tr("Poutre | Longueur : %1 m | Section : %2 | Matériau : %3")
@@ -247,7 +260,7 @@ void MemberLoadDialog::updateElementInfoDisplay()
             return;
         }
 
-        const auto* col = m_model->getColumn(elemId);
+        const auto* col = target == TSA::Model::MemberTargetType::Column ? m_model->getColumn(elemId) : nullptr;
         if (col)
         {
             m_lblElementInfo->setText(tr("Poteau | Longueur : %1 m | Section : %2 | Matériau : %3")
@@ -255,6 +268,14 @@ void MemberLoadDialog::updateElementInfoDisplay()
                 .arg(QString::fromStdString(col->section().name))
                 .arg(QString::fromStdString(col->material().name)));
             m_spinX2->setValue(col->length(*m_model));
+            return;
+        }
+
+        const auto* truss = target == TSA::Model::MemberTargetType::Truss ? m_model->getTrussMember(elemId) : nullptr;
+        if (truss)
+        {
+            m_lblElementInfo->setText(tr("Treillis | Longueur : %1 m").arg(QString::number(truss->length(*m_model), 'f', 2)));
+            m_spinX2->setValue(truss->length(*m_model));
             return;
         }
     }
@@ -324,7 +345,7 @@ void MemberLoadDialog::onApplyClicked()
                      dir == TSA::Model::LoadDirection::LocalZ) ?
                      TSA::Model::LoadCoordSystem::Local : TSA::Model::LoadCoordSystem::Global;
 
-    TSA::Model::MemberLoad ml(0, elemId, loadCaseId, type, q1, q2, dir, coordSys, x1, x2, false, name);
+    TSA::Model::MemberLoad ml(0, elemId, loadCaseId, type, q1, q2, dir, coordSys, x1, x2, false, name, currentTarget());
     int newId = m_model->loadManager().addMemberLoad(ml);
 
     m_model->notifyMemberLoadAdded(newId);

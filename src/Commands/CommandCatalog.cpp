@@ -141,6 +141,15 @@ void CommandCatalog::initializeStandardCatalog() {
                    "Déplacer les éléments par incréments dX, dY, dZ",
                    "Ctrl+Shift+M", ":/icons/move.svg",
                    CommandCategory::Modify});
+  registerCommand({"cmd.modify.mirror", "Symétrie (Miroir)",
+                   "Copier ou retourner la sélection par symétrie / plan X, Y ou Z", "",
+                   ":/icons/edit/mirror.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.split_bars", "Diviser les barres",
+                   "Diviser les poutres et poteaux sélectionnés en N tronçons égaux", "",
+                   ":/icons/structure/struct_split.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.merge_nodes", "Fusionner les nœuds confondus",
+                   "Fusionner les nœuds géométriquement confondus du modèle", "",
+                   ":/icons/structure/struct_merge.svg", CommandCategory::Modify});
   registerCommand({"cmd.modify.move_origin", "Déplacer vers Origine",
                    "Repositionner la sélection sur l'origine (0,0,0)", "",
                    ":/icons/structure/struct_move.svg",

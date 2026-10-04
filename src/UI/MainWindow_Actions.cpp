@@ -1,3 +1,4 @@
+#include "Dock/AnalysisDataDock.h"
 #include "../Coordinate/GeometryTolerance.h"
 #include "MainWindow.h"
 #include "../Viewer/OccView.h"
@@ -570,6 +571,21 @@ void MainWindow::createActions()
     m_actionRotate3D->setCheckable(true);
     connect(m_actionRotate3D, &QAction::triggered, this, &MainWindow::onActionRotate3D);
 
+    m_actionMirror = new QAction(tr("&Symétrie (Miroir)..."), this);
+    m_actionMirror->setIcon(QIcon(":/icons/edit/mirror.svg"));
+    m_actionMirror->setToolTip(tr("Copier ou retourner la sélection par symétrie par rapport à un plan X, Y ou Z"));
+    connect(m_actionMirror, &QAction::triggered, this, &MainWindow::onActionMirror);
+
+    m_actionSplitBars = new QAction(tr("&Diviser les barres..."), this);
+    m_actionSplitBars->setIcon(QIcon(":/icons/structure/struct_split.svg"));
+    m_actionSplitBars->setToolTip(tr("Diviser les poutres et poteaux sélectionnés en N tronçons égaux"));
+    connect(m_actionSplitBars, &QAction::triggered, this, &MainWindow::onActionSplitBars);
+
+    m_actionMergeNodes = new QAction(tr("&Fusionner les nœuds confondus..."), this);
+    m_actionMergeNodes->setIcon(QIcon(":/icons/structure/struct_merge.svg"));
+    m_actionMergeNodes->setToolTip(tr("Fusionner les nœuds géométriquement confondus (éléments, appuis et charges reportés)"));
+    connect(m_actionMergeNodes, &QAction::triggered, this, &MainWindow::onActionMergeNodes);
+
     m_actionMoveOrigin = new QAction(tr("Déplacer l'&Origine 3D..."), this);
     m_actionMoveOrigin->setIcon(makeOriginMoveIcon());
     m_actionMoveOrigin->setToolTip(tr("Positionner le repère global / la grille 3D par clic ou snap"));
@@ -831,6 +847,10 @@ void MainWindow::createMenus()
     editMenu->addAction(m_actionCopy3D);
     editMenu->addAction(m_actionCopy);
     editMenu->addAction(m_actionRotate3D);
+    editMenu->addAction(m_actionMirror);
+    editMenu->addSeparator();
+    editMenu->addAction(m_actionSplitBars);
+    editMenu->addAction(m_actionMergeNodes);
     editMenu->addSeparator();
     editMenu->addAction(m_actionSelectAll);
     {
@@ -950,6 +970,7 @@ void MainWindow::createMenus()
     // 6. Menu Résultats
     QMenu* resMenu = menuBar()->addMenu(tr("&Résultats"));
     if (m_resultsDock) resMenu->addAction(m_resultsDock->toggleViewAction());
+    if (m_analysisDataDock) resMenu->addAction(m_analysisDataDock->toggleViewAction());
     resMenu->addSeparator();
     resMenu->addAction(m_actionDeformedToggle);
     QMenu* diagSub = resMenu->addMenu(tr("Diagrammes d'Efforts 3D"));
@@ -1080,6 +1101,9 @@ void MainWindow::createRibbon()
     acts.actionCopy3D = m_actionCopy3D;
     acts.actionCopy = m_actionCopy;
     acts.actionRotate3D = m_actionRotate3D;
+    acts.actionMirror = m_actionMirror;
+    acts.actionSplitBars = m_actionSplitBars;
+    acts.actionMergeNodes = m_actionMergeNodes;
     acts.actionMoveOrigin = m_actionMoveOrigin;
     acts.actionDelete = m_actionDelete;
 
@@ -1338,6 +1362,13 @@ void MainWindow::createDockWindows()
     m_resultsDock->toggleViewAction()->setIcon(QIcon(":/icons/results_disp.svg"));
     addDockWidget(Qt::RightDockWidgetArea, m_resultsDock);
     tabifyDockWidget(m_propertiesDock, m_resultsDock);
+
+    // Données numériques du calcul (matrices, DDL, forces brutes, export) : dock dédié,
+    // le viewport n'affiche pas ces informations.
+    m_analysisDataDock = new TSA::UI::AnalysisDataDock(this);
+    m_analysisDataDock->setModel(m_model.get());
+    addDockWidget(Qt::BottomDockWidgetArea, m_analysisDataDock);
+    m_analysisDataDock->hide();
     m_propertiesDock->raise();
 
     if (m_occView)
@@ -1492,6 +1523,9 @@ void MainWindow::createDockWindows()
         else if (c == "DEL" || c == "DELETE") onActionDeleteSelected();
         else if (c == "MOVE" || c == "M") onActionMove();
         else if (c == "COPY") onActionCopy();
+        else if (c == "MIRROR" || c == "MI") onActionMirror();
+        else if (c == "SPLIT" || c == "DIVIDE") onActionSplitBars();
+        else if (c == "MERGE" || c == "FUSION") onActionMergeNodes();
         else if (c == "THEME") onToggleTheme();
         else if (c == "DARK") {
             if (!TSA::UI::ThemeManager::instance().isDarkMode()) onToggleTheme();
@@ -1502,7 +1536,7 @@ void MainWindow::createDockWindows()
         else if (c == "HELP" || c == "AIDE" || c == "?") onActionHelp();
         else if (c == "DIAG" || c == "REPORT" || c == "DIAGNOSTIC") onActionExportDiagnosticReport();
         else {
-            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, SEISMIC, MESH, SOLVE, MODAL, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, THEME, DIAG, HELP").arg(cmd), "WARN");
+            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, SEISMIC, MESH, SOLVE, MODAL, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, MIRROR, SPLIT, MERGE, THEME, DIAG, HELP").arg(cmd), "WARN");
         }
     });
 
@@ -1849,6 +1883,13 @@ void MainWindow::createDockWindows()
         m_windowManager->registerDock(
             "work_planes", tr("Plans de travail & Vues"), tr("Modélisation"), m_projectionViewDock,
             Qt::RightDockWidgetArea, true, QKeySequence("Ctrl+4"), QIcon(":/icons/view_normal_workplane.svg"));
+
+        if (m_analysisDataDock)
+        {
+            m_windowManager->registerDock(
+                "analysis_data", tr("Données d'analyse (OpenSees)"), tr("Résultats"), m_analysisDataDock,
+                Qt::BottomDockWidgetArea, false, QKeySequence(), QIcon(":/icons/results_disp.svg"));
+        }
 
         m_windowManager->registerDock(
             "console", tr("Console & Messages"), tr("Outils"), m_consoleDock,

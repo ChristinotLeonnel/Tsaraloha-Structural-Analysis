@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../Analysis/AnalysisTypes.h"
 #include <QWidget>
 #include <QPainter>
 #include <QComboBox>
@@ -42,7 +43,7 @@ public:
     void setModel(TSA::Model::Model* model);
     void setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
 
-    void setSelectedElement(int elementId);
+    void setSelectedElement(int elementId, TSA::Analysis::StructuralElementKind kind = TSA::Analysis::StructuralElementKind::Beam);
     int selectedElement() const { return m_currentElementId; }
 
     void setDiagramType(TSA::Geometry::DiagramType type);
@@ -81,6 +82,8 @@ private:
     ViewMode m_viewMode = ViewMode::MemberForces;
     TSA::Geometry::DiagramType m_currentType = TSA::Geometry::DiagramType::BendingMz;
     int m_currentElementId = 0;
+    TSA::Analysis::StructuralElementKind m_currentElementKind = TSA::Analysis::StructuralElementKind::Beam; ///< ids poutre/poteau non uniques entre familles
+    int findElementItem(TSA::Analysis::StructuralElementKind kind, int id) const;
 
     // Commandes UI
     QWidget* m_toolbar = nullptr;

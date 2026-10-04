@@ -2,6 +2,8 @@
 #include "OpenSeesResultsReader.h"
 #include "../Model/Model.h"
 #include "../Standards/ModelValidator.h"
+#include "OpenSeesModelMap.h"
+#include <QElapsedTimer>
 #include "../Standards/NationalAnnexConfig.h"
 #include "../Diagnostics/Logger.h"
 
@@ -179,8 +181,20 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     AnalysisParameters localParams = params;
     localParams.workingDir = workDirPath.toStdString();
 
+    // Correspondance TSA ↔ OpenSees unique, partagée par le script et la lecture des résultats.
+    const OpenSeesModelMap opsMap = OpenSeesModelMap::build(snapshot, localParams);
+    const auto mapErrors = opsMap.validate(snapshot);
+    if (!mapErrors.empty())
+    {
+        QString details = tr("Correspondance TSA/OpenSees incohérente :");
+        for (const auto& e : mapErrors) details += "\n  • " + QString::fromStdString(e);
+        if (errorMessage) *errorMessage = details;
+        emit logReceived("[ERREUR] " + details);
+        return false;
+    }
+
     emit progressChanged(25, tr("Génération du script d'analyse Tcl..."));
-    std::string script = OpenSeesAnalysisBuilder::buildScript(snapshot, localParams);
+    std::string script = OpenSeesAnalysisBuilder::buildScript(snapshot, opsMap, localParams);
 
     QString scriptFilePath = workDirPath + "/model.tcl";
     QFile scriptFile(scriptFilePath);
@@ -276,6 +290,7 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     std::string readErr;
     bool readOk = OpenSeesResultsReader::readResults(workDirPath.toStdString(),
                                                    snapshot,
+                                                   opsMap,
                                                    localParams,
                                                    (stdOutLog + "\n" + stdErrLog).toStdString(),
                                                    m_results,
@@ -285,6 +300,67 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     {
         if (errorMessage) *errorMessage = QString::fromStdString(readErr);
         return false;
+    }
+
+    // 5. Passage « matrices » (mode Advanced uniquement) : script séparé, l'analyse principale
+    //    et son solveur ne sont pas modifiés. Un échec ici n'invalide pas les résultats courants.
+    if (params.type != AnalysisType::Modal && localParams.extractionLevel == ExtractionLevel::Advanced)
+    {
+        emit progressChanged(90, tr("Extraction des matrices de rigidité (passage séparé)..."));
+        const bool withK = opsMap.estimatedFreeDofs() <= localParams.maxGlobalStiffnessDofs;
+        const std::string mscript = OpenSeesAnalysisBuilder::buildMatrixScript(snapshot, opsMap, localParams, withK);
+        QFile mfile(workDirPath + "/" + QString::fromStdString(localParams.matrixScriptFile));
+        QString matrixErr;
+        bool matrixOk = false;
+        QElapsedTimer timer;
+        timer.start();
+        if (mfile.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            mfile.write(mscript.c_str(), static_cast<qint64>(mscript.size()));
+            mfile.close();
+            QProcess mproc;
+            mproc.setWorkingDirectory(workDirPath);
+            mproc.setProgram(exePath);
+            mproc.setArguments(QStringList() << QString::fromStdString(localParams.matrixScriptFile));
+            mproc.start();
+            if (mproc.waitForStarted(5000))
+            {
+                while (mproc.state() == QProcess::Running && !m_stopRequested)
+                    mproc.waitForFinished(100);
+                if (m_stopRequested) mproc.kill();
+                // OpenSees 3.8.0 peut écrire les « puts » Tcl sur l'un ou l'autre flux.
+                const QString out = QString::fromUtf8(mproc.readAllStandardOutput());
+                const QString errOut = QString::fromUtf8(mproc.readAllStandardError());
+                if (out.contains("TSA_OPS_MATRICES_DONE") || errOut.contains("TSA_OPS_MATRICES_DONE"))
+                {
+                    std::string rerr;
+                    matrixOk = OpenSeesResultsReader::readMatrixResults(workDirPath.toStdString(), snapshot, opsMap,
+                                                                        localParams, withK, m_results, &rerr);
+                    matrixErr = QString::fromStdString(rerr);
+                }
+                else
+                {
+                    matrixErr = tr("le passage matrices ne s'est pas terminé : %1").arg(errOut.trimmed().right(800));
+                }
+            }
+            else
+            {
+                matrixErr = mproc.errorString();
+            }
+        }
+        m_results.advanced().matrixRunDurationMs = static_cast<double>(timer.elapsed());
+        if (!matrixOk)
+        {
+            m_results.advanced().warnings.push_back("Extraction des matrices impossible : " + matrixErr.toStdString());
+            emit logReceived(QString("[AVERTISSEMENT] Extraction des matrices impossible : %1").arg(matrixErr));
+        }
+        else
+        {
+            emit logReceived(QString("[TSA] Matrices extraites en %1 ms (%2 équations, K_global %3).")
+                .arg(m_results.advanced().matrixRunDurationMs)
+                .arg(m_results.advanced().dofMap.equationCount())
+                .arg(m_results.advanced().hasGlobalStiffness ? tr("disponible") : tr("non extraite")));
+        }
     }
 
     // Traçabilité des métadonnées normatives d'exécution

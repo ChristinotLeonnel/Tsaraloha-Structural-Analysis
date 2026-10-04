@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AnalysisTypes.h"
+
 #include <string>
 #include <vector>
 #include <map>
@@ -80,8 +82,12 @@ struct StationForces
  */
 struct ElementResults
 {
-    int elementId = 0;
+    int elementId = 0;                  ///< identifiant TSA (unique dans sa famille seulement)
+    StructuralElementKind kind = StructuralElementKind::Beam;
+    int opsTag = 0;                     ///< tag de l'élément dans le modèle OpenSees
     double length = 0.0;
+
+    ElementKey key() const { return { kind, elementId }; }
     StationForces startForces; // Station i (x = 0)
     StationForces endForces;   // Station j (x = L)
     std::vector<StationForces> intermediateStations; // Profil discrétisé
@@ -134,7 +140,7 @@ struct StepResults
     double factorOrTime = 0.0;
     std::map<int, NodeDisplacement> displacements;
     std::map<int, NodeReaction> reactions;
-    std::map<int, ElementResults> elementResults;
+    std::map<ElementKey, ElementResults> elementResults;
 };
 
 /**
@@ -142,6 +148,8 @@ struct StepResults
  */
 struct GlobalEquilibrium
 {
+    /// Résultantes des charges appliquées et des réactions, dans les unités du calcul
+    /// (UnitSystem du ResultsModel). Convention : Σ F_ext + Σ R ≈ 0.
     double appliedFx = 0.0;
     double appliedFy = 0.0;
     double appliedFz = 0.0;
@@ -176,6 +184,79 @@ struct AnalysisExecutionMetadata
     int totalNodes = 0;
     int totalElements = 0;
     double executionDurationMs = 0.0;
+
+    // Configuration réelle du système OpenSees (traçabilité des matrices)
+    std::string modelBuilder = "BasicBuilder -ndm 3 -ndf 6";
+    std::string systemSolver;
+    std::string constraintHandler;
+    std::string numberer = "RCM";
+    std::string geomTransf;
+    double relativeEquilibriumResidual = 0.0;   ///< |Σ F + Σ R| / |Σ F|
+    ExtractionLevel extractionLevel = ExtractionLevel::Light;
+};
+
+/// Efforts élémentaires bruts fournis par OpenSees (mode ADVANCED), sans post-traitement.
+/// Ordre des 12 composantes : [Fx Fy Fz Mx My Mz]_i puis _j.
+///  - local  : forces exercées sur l'élément, repère local (ElasticBeam3d « localForce » ;
+///             treillis/câbles : T · global, transformation exacte)
+///  - global : forces exercées sur l'élément, repère global (« globalForce », tous éléments)
+///  - basic  : ElasticBeam3d [N, Mz_i, Mz_j, My_i, My_j, T] ; treillis/câbles [N] (traction > 0)
+struct ElementForceSet
+{
+    ElementKey key;
+    int opsTag = 0;
+    std::vector<double> local;
+    std::vector<double> global;
+    std::vector<double> basic;
+    std::vector<std::string> basicLabels;
+    std::string localSource;
+};
+
+/// Matrices de rigidité d'un élément, avec leurs métadonnées de traçabilité.
+struct ElementMatrices
+{
+    ElementKey key;
+    int opsTag = 0;
+    std::string opsClass;             ///< "elasticBeamColumn", "truss", "corotTruss"
+    int nodeI = 0;
+    int nodeJ = 0;
+    double length = 0.0;
+    std::array<double, 9> rotation {}; ///< lignes : axes locaux x, y, z dans le repère global
+    bool available = false;
+    std::string unavailableReason;
+    DenseMatrix kBasic;  MatrixMetadata kBasicMeta;
+    DenseMatrix kLocal;  MatrixMetadata kLocalMeta;
+    DenseMatrix kGlobal; MatrixMetadata kGlobalMeta;
+};
+
+/// Appui élastique modélisé par un élément zeroLength (nœud auxiliaire fixe).
+struct SpringSupportInfo
+{
+    int nodeId = 0;           ///< nœud TSA
+    int auxNodeTag = 0;       ///< nœud OpenSees auxiliaire (entièrement fixé)
+    int elementTag = 0;       ///< élément zeroLength
+    std::vector<int> dofs;    ///< 0..5
+    std::vector<double> stiffness;
+};
+
+/// Résultats avancés (optionnels) : présents seulement si ExtractionLevel::Advanced.
+struct AdvancedResults
+{
+    bool available = false;
+    DofMap dofMap;
+    bool hasGlobalStiffness = false;
+    SparseMatrix kGlobal;
+    MatrixMetadata kGlobalMeta;
+    std::string kGlobalUnavailableReason;
+    std::map<ElementKey, ElementMatrices> elementMatrices;
+    std::map<ElementKey, ElementForceSet> elementForces;
+    std::vector<SpringSupportInfo> springs;
+    std::vector<std::string> warnings;
+    double matrixRunDurationMs = 0.0;
+
+    std::size_t memoryBytes() const;
+    /// Vecteur U_global dans l'ordre des équations (DDL libres uniquement).
+    std::vector<double> globalDisplacementVector(const std::map<int, NodeDisplacement>& displacements) const;
 };
 
 /**
@@ -191,12 +272,15 @@ struct ResultsSummary
 
     double maxTension = 0.0;
     int maxTensionElementId = 0;
+    StructuralElementKind maxTensionElementKind = StructuralElementKind::Beam;
 
     double maxCompression = 0.0;
     int maxCompressionElementId = 0;
+    StructuralElementKind maxCompressionElementKind = StructuralElementKind::Beam;
 
     double maxBendingMoment = 0.0;
     int maxBendingMomentElementId = 0;
+    StructuralElementKind maxBendingMomentElementKind = StructuralElementKind::Beam;
 
     double fundamentalPeriod = 0.0;
     double fundamentalFrequency = 0.0;
@@ -246,10 +330,19 @@ public:
 
     bool hasResults() const { return m_isValid && (!m_displacements.empty() || !m_elementResults.empty()); }
 
-    // Résultats des éléments
-    void setElementResults(int elemId, const ElementResults& res);
-    const ElementResults* getElementResults(int elemId) const;
-    const std::map<int, ElementResults>& allElementResults() const { return m_elementResults; }
+    // Résultats des éléments : toujours désignés par (famille, id TSA)
+    void setElementResults(const ElementResults& res);
+    const ElementResults* getElementResults(StructuralElementKind kind, int elemId) const;
+    const ElementResults* getElementResults(const ElementKey& key) const;
+    const std::map<ElementKey, ElementResults>& allElementResults() const { return m_elementResults; }
+
+    // Unités des valeurs stockées (celles du script OpenSees, aucune conversion)
+    const UnitSystem& units() const { return m_units; }
+    void setUnits(const UnitSystem& u) { m_units = u; }
+
+    // Résultats avancés (matrices, mapping DDL, forces brutes) — vides en mode Light
+    const AdvancedResults& advanced() const { return m_advanced; }
+    AdvancedResults& advanced() { return m_advanced; }
 
     // Modes propres
     void addModalMode(const ModalMode& mode);
@@ -300,7 +393,9 @@ private:
 
     std::map<int, NodeDisplacement> m_displacements;
     std::map<int, NodeReaction> m_reactions;
-    std::map<int, ElementResults> m_elementResults;
+    std::map<ElementKey, ElementResults> m_elementResults;
+    UnitSystem m_units;
+    AdvancedResults m_advanced;
     std::vector<ModalMode> m_modalModes;
     std::vector<PushoverStep> m_pushoverSteps;
     std::vector<TimeHistoryStep> m_timeHistorySteps;
@@ -309,7 +404,7 @@ private:
     int m_activeStep = -1;
     std::map<int, NodeDisplacement> m_finalDisplacements;
     std::map<int, NodeReaction> m_finalReactions;
-    std::map<int, ElementResults> m_finalElementResults;
+    std::map<ElementKey, ElementResults> m_finalElementResults;
 
     GlobalEquilibrium m_equilibrium;
     ResultsSummary m_summary;

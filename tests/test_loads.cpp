@@ -316,7 +316,7 @@ bool runSuite_Loads(int& passed)
                    "Subtest 62.6: Load pattern present");
         TEST_CHECK(tclScript.find("eleLoad -ele") != std::string::npos,
                    "Subtest 62.7: Member load eleLoad command present");
-        TEST_CHECK(tclScript.find("load 3 20.000") != std::string::npos,
+        TEST_CHECK(tclScript.find("load 3 20 0 0 0 0 0") != std::string::npos, // 17 chiffres significatifs (plus de format fixe)
                    "Subtest 62.8: Nodal load command present");
         TEST_CHECK(tclScript.find("analysis Static") != std::string::npos,
                    "Subtest 62.9: Static analysis solver block present");

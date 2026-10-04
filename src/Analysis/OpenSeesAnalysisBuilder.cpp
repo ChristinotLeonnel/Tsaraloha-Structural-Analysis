@@ -1,4 +1,5 @@
 #include "OpenSeesAnalysisBuilder.h"
+#include "OpenSeesModelMap.h"
 #include "LoadResolver.h"
 #include <sstream>
 #include <iomanip>
@@ -7,34 +8,127 @@
 namespace TSA::Analysis
 {
 
+namespace
+{
+int springMaterialCount(const OpenSeesModelMap& map)
+{
+    int n = 0;
+    for (const auto& s : map.springs()) n += static_cast<int>(s.dofs.size());
+    return n;
+}
+
+std::string recorderPrecision()
+{
+    return " -precision " + std::to_string(kRecorderPrecision);
+}
+} // namespace
+
+std::string OpenSeesAnalysisBuilder::joinTags(const std::vector<int>& tags)
+{
+    std::string s;
+    for (int t : tags)
+    {
+        if (!s.empty()) s += ' ';
+        s += std::to_string(t);
+    }
+    return s;
+}
+
 std::string OpenSeesAnalysisBuilder::buildScript(const CalculationSnapshot& snapshot,
                                                 const AnalysisParameters& params)
 {
+    return buildScript(snapshot, OpenSeesModelMap::build(snapshot, params), params);
+}
+
+std::string OpenSeesAnalysisBuilder::buildScript(const CalculationSnapshot& snapshot,
+                                                const OpenSeesModelMap& map,
+                                                const AnalysisParameters& params)
+{
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(12);
+    tcl << std::setprecision(17); // 17 chiffres significatifs : aller-retour double exact (std::fixed tronquait les inerties)
 
     tcl << "# ==============================================================================\n";
     tcl << "# TSA (Tsaraloha Structural Analysis) — Modèle de Calcul OpenSees\n";
     tcl << "# Unités : " << (params.useKiloNewtons ? "kN, m, kPa, kNm" : "N, m, Pa, Nm") << "\n";
+    tcl << "# Tags d'éléments : uniques (1..N), correspondance TSA ↔ OpenSees dans OpenSeesModelMap\n";
     tcl << "# ==============================================================================\n\n";
 
     tcl << "wipe\n";
     tcl << "model BasicBuilder -ndm 3 -ndf 6\n\n";
 
     tcl << buildNodes(snapshot);
-    tcl << buildBoundaryConditions(snapshot);
-    tcl << buildElements(snapshot, params);
-    tcl << buildRecorders(snapshot, params);
+    tcl << buildBoundaryConditions(snapshot, map);
+    tcl << buildElements(snapshot, map, params);
+    tcl << buildRecorders(map, params);
     tcl << buildLoads(snapshot, params);
     tcl << buildAnalysisCommands(snapshot, params);
 
     return tcl.str();
 }
 
+std::string OpenSeesAnalysisBuilder::buildMatrixScript(const CalculationSnapshot& snapshot,
+                                                      const OpenSeesModelMap& map,
+                                                      const AnalysisParameters& params,
+                                                      bool withGlobalStiffness)
+{
+    std::ostringstream tcl;
+    tcl << "# ==============================================================================\n";
+    tcl << "# TSA — Passage « matrices » (mode Advanced) : aucune charge, aucune résolution.\n";
+    tcl << "# Rigidités à l'état de référence non déformé (= rigidité linéaire pour des éléments\n";
+    tcl << "# élastiques en transformation Linear).\n";
+    tcl << "# ==============================================================================\n\n";
+    tcl << "wipe\n";
+    tcl << "model BasicBuilder -ndm 3 -ndf 6\n\n";
+    tcl << buildNodes(snapshot);
+    tcl << buildBoundaryConditions(snapshot, map);
+    tcl << buildElements(snapshot, map, params);
+
+    if (!map.basicStiffnessBeamTags().empty())
+    {
+        tcl << "recorder Element -file \"" << params.beamBasicStiffnessOutputFile << "\"" << recorderPrecision()
+            << " -ele " << joinTags(map.basicStiffnessBeamTags()) << " basicStiffness\n";
+    }
+    if (!map.basicStiffnessTrussTags().empty())
+    {
+        tcl << "recorder Element -file \"" << params.trussBasicStiffnessOutputFile << "\"" << recorderPrecision()
+            << " -ele " << joinTags(map.basicStiffnessTrussTags()) << " basicStiffness\n";
+    }
+
+    // Même gestion des contraintes et même numérotation que l'analyse principale.
+    tcl << "constraints " << toTclString(params.constraintHandler) << "\n";
+    tcl << "numberer RCM\n";
+    tcl << "system " << (withGlobalStiffness ? "FullGeneral" : "BandGeneral") << "\n";
+    tcl << "test NormDispIncr 1e-8 10\n";
+    tcl << "algorithm Linear\n";
+    tcl << "integrator LoadControl 0.0\n";
+    tcl << "analysis Static\n";
+    tcl << "initialize\n";
+    tcl << "record\n\n";
+
+    tcl << "set tsaDofFile [open \"" << params.dofMapOutputFile << "\" w]\n";
+    tcl << "foreach tsaNode {" << joinTags(map.structuralNodeTags()) << "} {\n";
+    tcl << "  puts $tsaDofFile \"$tsaNode [nodeDOFs $tsaNode]\"\n";
+    tcl << "}\n";
+    tcl << "close $tsaDofFile\n";
+
+    if (withGlobalStiffness)
+    {
+        // printA -ret : %.10e (11 chiffres significatifs) ; la sortie fichier de printA ignore
+        // -precision dans OpenSees 3.8.0 (6 chiffres) : non utilisée.
+        tcl << "set tsaK [printA -ret]\n";
+        tcl << "set tsaKFile [open \"" << params.globalStiffnessOutputFile << "\" w]\n";
+        tcl << "puts $tsaKFile $tsaK\n";
+        tcl << "close $tsaKFile\n";
+    }
+    tcl << "puts \"TSA_OPS_MATRICES_DONE\"\n";
+    tcl << "wipe\n";
+    return tcl.str();
+}
+
 std::string OpenSeesAnalysisBuilder::buildNodes(const CalculationSnapshot& snapshot)
 {
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(12);
+    tcl << std::setprecision(17); // 17 chiffres significatifs : aller-retour double exact (std::fixed tronquait les inerties)
     tcl << "# ------------------------------------------------------------------------------\n";
     tcl << "# Nœuds structuraux (node $nodeTag $x $y $z)\n";
     tcl << "# ------------------------------------------------------------------------------\n";
@@ -54,8 +148,14 @@ std::string OpenSeesAnalysisBuilder::buildNodes(const CalculationSnapshot& snaps
 
 std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSnapshot& snapshot)
 {
+    return buildBoundaryConditions(snapshot, OpenSeesModelMap::build(snapshot, AnalysisParameters{}));
+}
+
+std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSnapshot& snapshot,
+                                                            const OpenSeesModelMap& map)
+{
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(12);
+    tcl << std::setprecision(17); // 17 chiffres significatifs : aller-retour double exact (std::fixed tronquait les inerties)
     tcl << "# ------------------------------------------------------------------------------\n";
     tcl << "# Conditions aux limites (fix $nodeTag $u1 $u2 $u3 $r1 $r2 $r3)\n";
     tcl << "# ------------------------------------------------------------------------------\n";
@@ -75,61 +175,34 @@ std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSn
     }
     tcl << "\n";
 
-    // Appuis élastiques (ressorts) : uniaxialMaterial Elastic + element zeroLength
-    // Les DDL de type Spring ne sont pas bloqués par "fix" mais modélisés par des
-    // éléments zeroLength attachés à un nœud fixe auxiliaire.
-    bool hasAnySpring = false;
-    for (const auto& [id, n] : snapshot.nodes())
-    {
-        if (n.kTx > 0.0 || n.kTy > 0.0 || n.kTz > 0.0 ||
-            n.kRx > 0.0 || n.kRy > 0.0 || n.kRz > 0.0)
-        {
-            hasAnySpring = true;
-            break;
-        }
-    }
-
-    if (hasAnySpring)
+    // Appuis élastiques : nœud auxiliaire entièrement fixé + zeroLength (uniaxialMaterial Elastic
+    // par DDL). Tags fournis par OpenSeesModelMap (au-delà des tags TSA : aucune collision).
+    if (!map.springs().empty())
     {
         tcl << "# ------------------------------------------------------------------------------\n";
         tcl << "# Appuis élastiques (ressorts via zeroLength)\n";
         tcl << "# ------------------------------------------------------------------------------\n";
 
-        int springMatTag = 90000;
-        int springElemTag = 90000;
-        int auxNodeTag = 90000;
-
-        for (const auto& [id, n] : snapshot.nodes())
+        int matTag = 1;
+        for (const auto& s : map.springs())
         {
-            double stiffnesses[6] = { n.kTx, n.kTy, n.kTz, n.kRx, n.kRy, n.kRz };
-            bool hasSpring = false;
-            for (int d = 0; d < 6; ++d)
-            {
-                if (stiffnesses[d] > 0.0) { hasSpring = true; break; }
-            }
-            if (!hasSpring) continue;
+            const auto* n = snapshot.getNode(s.nodeId);
+            if (!n) continue;
+            tcl << "node " << s.auxNodeTag << " " << n->x << " " << n->y << " " << n->z
+                << " ;# auxiliaire ressort N" << s.nodeId << "\n";
+            tcl << "fix " << s.auxNodeTag << " 1 1 1 1 1 1\n";
 
-            // Nœud auxiliaire fixe au même emplacement
-            int auxId = auxNodeTag++;
-            tcl << "node " << auxId << " " << n.x << " " << n.y << " " << n.z << "\n";
-            tcl << "fix " << auxId << " 1 1 1 1 1 1\n";
-
-            // Matériaux et élément zeroLength par DDL actif
             std::string matTags;
             std::string dirs;
-            for (int d = 0; d < 6; ++d)
+            for (std::size_t i = 0; i < s.dofs.size(); ++i)
             {
-                if (stiffnesses[d] > 0.0)
-                {
-                    int matId = springMatTag++;
-                    tcl << "uniaxialMaterial Elastic " << matId << " " << stiffnesses[d] << "\n";
-                    if (!matTags.empty()) { matTags += " "; dirs += " "; }
-                    matTags += std::to_string(matId);
-                    dirs += std::to_string(d + 1);
-                }
+                const int m = matTag++;
+                tcl << "uniaxialMaterial Elastic " << m << " " << s.stiffness[i] << "\n";
+                if (!matTags.empty()) { matTags += " "; dirs += " "; }
+                matTags += std::to_string(m);
+                dirs += std::to_string(s.dofs[i] + 1);
             }
-
-            tcl << "element zeroLength " << springElemTag++ << " " << auxId << " " << id
+            tcl << "element zeroLength " << s.elementTag << " " << s.auxNodeTag << " " << s.nodeId
                 << " -mat " << matTags << " -dir " << dirs << "\n";
         }
         tcl << "\n";
@@ -138,121 +211,79 @@ std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSn
     return tcl.str();
 }
 
-std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& snapshot, bool useKiloNewtons)
-{
-    AnalysisParameters p;
-    p.useKiloNewtons = useKiloNewtons;
-    return buildElements(snapshot, p);
-}
-
-std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& snapshot, const AnalysisParameters& params)
+std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& snapshot,
+                                                  const OpenSeesModelMap& map,
+                                                  const AnalysisParameters& params)
 {
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(12);
+    tcl << std::setprecision(17); // 17 chiffres significatifs : aller-retour double exact (std::fixed tronquait les inerties)
     tcl << "# ------------------------------------------------------------------------------\n";
     tcl << "# Repères locaux & Transformations géométriques (geomTransf " << toTclString(params.geomTransf) << ")\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
-    int transfTag = 1;
-    std::map<int, int> elemToTransf;
-
-    for (const auto& [id, el] : snapshot.elements())
+    for (const auto& e : map.elements())
     {
-        if (el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable) continue;
-
-        const auto* n1 = snapshot.getNode(el.startNodeId);
-        const auto* n2 = snapshot.getNode(el.endNodeId);
-        if (!n1 || !n2) continue;
-
-        gp_Pnt p1(n1->x, n1->y, n1->z);
-        gp_Pnt p2(n2->x, n2->y, n2->z);
-
-        gp_Ax3 frame = LoadResolver::computeElementLocalAxes(p1, p2, el.rotation);
-        gp_Dir dirZ = frame.Direction();
-
-        int tag = transfTag++;
-        elemToTransf[id] = tag;
-        tcl << "geomTransf " << toTclString(params.geomTransf) << " " << tag << " "
-            << dirZ.X() << " " << dirZ.Y() << " " << dirZ.Z()
-            << " ;# Element #" << id << "\n";
+        if (!e.isBeamColumn()) continue;
+        tcl << "geomTransf " << toTclString(params.geomTransf) << " " << e.transfTag << " "
+            << e.vecxz[0] << " " << e.vecxz[1] << " " << e.vecxz[2]
+            << " ;# " << e.key.label() << "\n";
     }
     tcl << "\n";
 
     tcl << "# ------------------------------------------------------------------------------\n";
-    tcl << "# Éléments finis (elasticBeamColumn & treillis formulation)\n";
+    tcl << "# Éléments finis (elasticBeamColumn, truss, corotTruss) — commentaire = élément TSA\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
-    double scaleForce = params.useKiloNewtons ? 1e-3 : 1.0;
-    int trussMatTag = 80000;
+    const double scaleForce = params.useKiloNewtons ? 1e-3 : 1.0;
+    // Les tags de matériaux 1..S sont pris par les ressorts (buildBoundaryConditions).
+    int matTag = springMaterialCount(map) + 1;
 
-    for (const auto& [id, el] : snapshot.elements())
+    for (const auto& e : map.elements())
     {
-        if (el.type == SnapshotElement::ElementType::Truss)
-        {
-            double A = el.section.area();
-            double E = el.material.mechanical.youngModulus * scaleForce;
+        const auto* el = snapshot.getElementByTag(e.tag);
+        if (!el) continue;
 
-            switch (params.trussFormulation)
-            {
-            case TrussFormulation::CorotTruss:
-            case TrussFormulation::CorotTrussSection:
-            {
-                int matId = trussMatTag++;
-                tcl << "uniaxialMaterial Elastic " << matId << " " << E << "\n";
-                tcl << "element corotTruss " << id << " " << el.startNodeId << " " << el.endNodeId << " "
-                    << A << " " << matId << " ;# Treillis corotationnel\n";
-                break;
-            }
-            case TrussFormulation::TrussSection:
-            case TrussFormulation::Truss:
-            default:
-            {
-                tcl << "element truss " << id << " " << el.startNodeId << " " << el.endNodeId << " "
-                    << A << " " << E << " ;# Treillis standard\n";
-                break;
-            }
-            }
-        }
-        else if (el.type == SnapshotElement::ElementType::Cable)
-        {
-            double A = el.section.area();
-            double E = el.material.mechanical.youngModulus * scaleForce;
-            if (A < 1e-8) A = 1e-4; // Sécurité section minimale câble
+        const double A = el->section.area();
+        const double E = el->material.mechanical.youngModulus * scaleForce;
 
-            int matId = trussMatTag++;
-            if (el.initialTension > 1e-4)
+        if (el->type == SnapshotElement::ElementType::Cable)
+        {
+            double Ac = A;
+            if (Ac < 1e-8) Ac = 1e-4; // Sécurité section minimale câble
+            const int baseMat = matTag++;
+            tcl << "uniaxialMaterial Elastic " << baseMat << " " << E << "\n";
+            int mat = baseMat;
+            if (el->initialTension > 1e-4)
             {
                 // Précontrainte / Tension initiale du câble (InitStrain: eps0 = T0 / (E * A))
-                double t0_scaled = el.initialTension * (params.useKiloNewtons ? 1.0 : 1000.0);
-                double eps0 = t0_scaled / (E * A);
-                int baseMatId = matId;
-                int preMatId = trussMatTag++;
-                tcl << "uniaxialMaterial Elastic " << baseMatId << " " << E << "\n";
-                tcl << "uniaxialMaterial InitStrain " << preMatId << " " << baseMatId << " " << eps0 << "\n";
-                tcl << "element corotTruss " << id << " " << el.startNodeId << " " << el.endNodeId << " "
-                    << A << " " << preMatId << " ;# Câble corotationnel précontraint\n";
+                const double t0Scaled = el->initialTension * (params.useKiloNewtons ? 1.0 : 1000.0);
+                const double eps0 = t0Scaled / (E * Ac);
+                mat = matTag++;
+                tcl << "uniaxialMaterial InitStrain " << mat << " " << baseMat << " " << eps0 << "\n";
             }
-            else
-            {
-                tcl << "uniaxialMaterial Elastic " << matId << " " << E << "\n";
-                tcl << "element corotTruss " << id << " " << el.startNodeId << " " << el.endNodeId << " "
-                    << A << " " << matId << " ;# Câble corotationnel (sans flexion)\n";
-            }
+            tcl << "element corotTruss " << e.tag << " " << e.nodeI << " " << e.nodeJ << " "
+                << Ac << " " << mat << " ;# " << e.key.label() << " câble\n";
+        }
+        else if (el->type == SnapshotElement::ElementType::Truss)
+        {
+            // OpenSees 3.8.0 : element truss|corotTruss $tag $iNode $jNode $A $matTag
+            // (la forme « $A $E » est refusée : « Invalid matTag »).
+            const int mat = matTag++;
+            tcl << "uniaxialMaterial Elastic " << mat << " " << E << "\n";
+            tcl << "element " << e.opsClass << " " << e.tag << " " << e.nodeI << " " << e.nodeJ << " "
+                << A << " " << mat << " ;# " << e.key.label() << "\n";
         }
         else
         {
-            double A = el.section.area();
-            double E = el.material.mechanical.youngModulus * scaleForce;
-            double nu = el.material.mechanical.poissonRatio;
-            double G = E / (2.0 * (1.0 + nu));
-            double J = el.section.it();
-            double Iy = el.section.iy();
-            double Iz = el.section.iz();
-            int tTag = elemToTransf.count(id) ? elemToTransf[id] : 1;
-            double massDens = A * el.material.density * (params.useKiloNewtons ? 1e-3 : 1.0);
-            tcl << "element elasticBeamColumn " << id << " " << el.startNodeId << " " << el.endNodeId << " "
-                << A << " " << E << " " << G << " " << J << " " << Iy << " " << Iz << " " << tTag
-                << " -mass " << massDens << " ;# " << el.section.name << "\n";
+            const double nu = el->material.mechanical.poissonRatio;
+            const double G = E / (2.0 * (1.0 + nu));
+            const double J = el->section.it();
+            const double Iy = el->section.iy();
+            const double Iz = el->section.iz();
+            const double massDens = A * el->material.density * (params.useKiloNewtons ? 1e-3 : 1.0);
+            tcl << "element elasticBeamColumn " << e.tag << " " << e.nodeI << " " << e.nodeJ << " "
+                << A << " " << E << " " << G << " " << J << " " << Iy << " " << Iz << " " << e.transfTag
+                << " -mass " << massDens << " ;# " << e.key.label() << " " << el->section.name << "\n";
         }
     }
     tcl << "\n";
@@ -260,51 +291,50 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
     return tcl.str();
 }
 
-std::string OpenSeesAnalysisBuilder::buildRecorders(const CalculationSnapshot& snapshot,
+std::string OpenSeesAnalysisBuilder::buildRecorders(const OpenSeesModelMap& map,
                                                    const AnalysisParameters& params)
 {
     std::ostringstream tcl;
     tcl << "# ------------------------------------------------------------------------------\n";
-    tcl << "# Enregistreurs de résultats (recorders)\n";
+    tcl << "# Enregistreurs de résultats (recorders) — " << kRecorderPrecision << " chiffres significatifs\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
-    // 1. Déplacements à tous les nœuds
-    std::string allNodes;
-    for (const auto& [id, _] : snapshot.nodes())
+    if (!map.structuralNodeTags().empty())
     {
-        allNodes += std::to_string(id) + " ";
+        tcl << "recorder Node -file \"" << params.dispOutputFile << "\"" << recorderPrecision()
+            << " -node " << joinTags(map.structuralNodeTags()) << " -dof 1 2 3 4 5 6 disp\n";
     }
-    if (!allNodes.empty())
+    // Réactions : nœuds fixés puis nœuds auxiliaires des ressorts (reportées sur le nœud TSA).
+    if (!map.reactionNodeTags().empty())
     {
-        tcl << "recorder Node -file \"" << params.dispOutputFile
-            << "\" -node " << allNodes << "-dof 1 2 3 4 5 6 disp\n";
+        tcl << "recorder Node -file \"" << params.reactOutputFile << "\"" << recorderPrecision()
+            << " -node " << joinTags(map.reactionNodeTags()) << " -dof 1 2 3 4 5 6 reaction\n";
     }
-
-    // 2. Réactions aux appuis
-    std::string supportNodes;
-    for (const auto& [id, n] : snapshot.nodes())
+    // ElasticBeam3d localForce : 12 valeurs [N Vy Vz T My Mz]_i,j (forces sur l'élément, repère local).
+    if (!map.beamColumnTags().empty())
     {
-        if (n.fixTx || n.fixTy || n.fixTz || n.fixRx || n.fixRy || n.fixRz)
+        tcl << "recorder Element -file \"" << params.forceOutputFile << "\"" << recorderPrecision()
+            << " -ele " << joinTags(map.beamColumnTags()) << " localForce\n";
+    }
+    // Truss / CorotTruss basicForce : 1 valeur (effort normal, traction > 0). « localForce » n'est
+    // pas utilisable : 12 valeurs pour Truss, aucune réponse pour CorotTruss (OpenSees 3.8.0).
+    if (!map.axialTags().empty())
+    {
+        tcl << "recorder Element -file \"" << params.axialOutputFile << "\"" << recorderPrecision()
+            << " -ele " << joinTags(map.axialTags()) << " basicForce\n";
+    }
+    if (params.extractionLevel == ExtractionLevel::Advanced)
+    {
+        if (!map.allElementTags().empty())
         {
-            supportNodes += std::to_string(id) + " ";
+            tcl << "recorder Element -file \"" << params.globalForceOutputFile << "\"" << recorderPrecision()
+                << " -ele " << joinTags(map.allElementTags()) << " globalForce\n";
         }
-    }
-    if (!supportNodes.empty())
-    {
-        tcl << "recorder Node -file \"" << params.reactOutputFile
-            << "\" -node " << supportNodes << "-dof 1 2 3 4 5 6 reaction\n";
-    }
-
-    // 3. Efforts dans les éléments
-    std::string allElements;
-    for (const auto& [id, _] : snapshot.elements())
-    {
-        allElements += std::to_string(id) + " ";
-    }
-    if (!allElements.empty())
-    {
-        tcl << "recorder Element -file \"" << params.forceOutputFile
-            << "\" -ele " << allElements << "localForce\n";
+        if (!map.beamColumnTags().empty())
+        {
+            tcl << "recorder Element -file \"" << params.basicForceOutputFile << "\"" << recorderPrecision()
+                << " -ele " << joinTags(map.beamColumnTags()) << " basicForce\n";
+        }
     }
     tcl << "\n";
 
@@ -315,7 +345,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                                                const AnalysisParameters& params)
 {
     std::ostringstream tcl;
-    tcl << std::fixed << std::setprecision(12);
+    tcl << std::setprecision(17); // 17 chiffres significatifs : aller-retour double exact (std::fixed tronquait les inerties)
     tcl << "# ------------------------------------------------------------------------------\n";
     tcl << "# Chargements appliqués\n";
     tcl << "# ------------------------------------------------------------------------------\n";
@@ -349,7 +379,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
         {
             if (filterCaseId > 0 && ml.loadCaseId() != filterCaseId) continue;
 
-            const auto* el = snapshot.getElement(ml.elementId());
+            const auto* el = snapshot.findElementForLoad(ml);
             if (!el) continue;
 
             LocalMemberLoadComponents comp = LoadResolver::resolveMemberLoadToLocal(ml, snapshot);
@@ -367,8 +397,9 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                     double hfx = gVec.X() * totalMult;
                     double hfy = gVec.Y() * totalMult;
                     double hfz = gVec.Z() * totalMult;
-                    tcl << "  load " << el->startNodeId << " " << hfx << " " << hfy << " " << hfz << " 0 0 0\n";
-                    tcl << "  load " << el->endNodeId << " " << hfx << " " << hfy << " " << hfz << " 0 0 0\n";
+                    const std::string who = (el->type == SnapshotElement::ElementType::Truss ? "Treillis #" : "Câble #") + std::to_string(el->id);
+                    tcl << "  load " << el->startNodeId << " " << hfx << " " << hfy << " " << hfz << " 0 0 0 ;# " << who << " (charge → nœuds)\n";
+                    tcl << "  load " << el->endNodeId << " " << hfx << " " << hfy << " " << hfz << " 0 0 0 ;# " << who << " (charge → nœuds)\n";
                 }
             }
             else if (ml.type() == TSA::Model::LoadType::MemberPoint)
@@ -382,7 +413,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                     pos /= el->length;
                 }
                 // eleLoad -ele $tag -type -beamPoint $Py $Pz $xL $Px
-                tcl << "  eleLoad -ele " << ml.elementId() << " -type -beamPoint "
+                tcl << "  eleLoad -ele " << el->tag << " -type -beamPoint "
                     << py << " " << pz << " " << pos << " " << px << "\n";
             }
             else
@@ -391,7 +422,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                 double wy = comp.wy * factor * forceScale;
                 double wz = comp.wz * factor * forceScale;
                 // eleLoad -ele $tag -type -beamUniform $Wy $Wz $Wx
-                tcl << "  eleLoad -ele " << ml.elementId() << " -type -beamUniform "
+                tcl << "  eleLoad -ele " << el->tag << " -type -beamUniform "
                     << wy << " " << wz << " " << wx << "\n";
             }
         }
@@ -399,7 +430,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
         // Poids propre automatique décomposé
         if (includeSW)
         {
-            for (const auto& [id, el] : snapshot.elements())
+            for (const auto& [tag, el] : snapshot.elements())
             {
                 double A = el.section.area();
                 double rho = el.material.density; // kg/m3
@@ -411,8 +442,9 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                     if (el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable)
                     {
                         double halfW = linWeight * el.length * 0.5;
-                        tcl << "  load " << el.startNodeId << " 0 0 " << (-halfW) << " 0 0 0\n";
-                        tcl << "  load " << el.endNodeId << " 0 0 " << (-halfW) << " 0 0 0\n";
+                        const std::string who = (el.type == SnapshotElement::ElementType::Truss ? "Poids propre treillis #" : "Poids propre câble #") + std::to_string(el.id);
+                        tcl << "  load " << el.startNodeId << " 0 0 " << (-halfW) << " 0 0 0 ;# " << who << "\n";
+                        tcl << "  load " << el.endNodeId << " 0 0 " << (-halfW) << " 0 0 0 ;# " << who << "\n";
                     }
                     else
                     {
@@ -425,7 +457,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                             LocalMemberLoadComponents swComp = LoadResolver::decomposeGlobalVectorToLocal(
                                 gp_Vec(0.0, 0.0, -linWeight), p1, p2, el.rotation
                             );
-                            tcl << "  eleLoad -ele " << id << " -type -beamUniform "
+                            tcl << "  eleLoad -ele " << tag << " -type -beamUniform "
                                 << swComp.wy << " " << swComp.wz << " " << swComp.wx << " ;# Poids propre\n";
                         }
                     }

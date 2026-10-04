@@ -82,6 +82,8 @@ void ResultsModel::clear()
     m_finalDisplacements.clear();
     m_finalReactions.clear();
     m_finalElementResults.clear();
+    m_advanced = AdvancedResults{};
+    m_units = UnitSystem{};
     m_activeStep = -1;
     m_equilibrium = GlobalEquilibrium{};
     m_summary = ResultsSummary{};
@@ -132,15 +134,46 @@ const NodeReaction* ResultsModel::getNodeReaction(int nodeId) const
     return it != m_reactions.end() ? &it->second : nullptr;
 }
 
-void ResultsModel::setElementResults(int elemId, const ElementResults& res)
+void ResultsModel::setElementResults(const ElementResults& res)
 {
-    m_elementResults[elemId] = res;
+    m_elementResults[res.key()] = res;
 }
 
-const ElementResults* ResultsModel::getElementResults(int elemId) const
+const ElementResults* ResultsModel::getElementResults(StructuralElementKind kind, int elemId) const
 {
-    auto it = m_elementResults.find(elemId);
+    return getElementResults(ElementKey{ kind, elemId });
+}
+
+const ElementResults* ResultsModel::getElementResults(const ElementKey& key) const
+{
+    auto it = m_elementResults.find(key);
     return it != m_elementResults.end() ? &it->second : nullptr;
+}
+
+std::size_t AdvancedResults::memoryBytes() const
+{
+    std::size_t bytes = kGlobal.memoryBytes();
+    bytes += dofMap.equations.size() * sizeof(DofEquation);
+    for (const auto& [k, m] : elementMatrices)
+        bytes += (m.kBasic.data.size() + m.kLocal.data.size() + m.kGlobal.data.size()) * sizeof(double);
+    for (const auto& [k, f] : elementForces)
+        bytes += (f.local.size() + f.global.size() + f.basic.size()) * sizeof(double);
+    return bytes;
+}
+
+std::vector<double> AdvancedResults::globalDisplacementVector(const std::map<int, NodeDisplacement>& displacements) const
+{
+    std::vector<double> u(static_cast<std::size_t>(dofMap.equationCount()), 0.0);
+    for (const auto& eq : dofMap.equations)
+    {
+        auto it = displacements.find(eq.nodeId);
+        if (it == displacements.end()) continue;
+        const NodeDisplacement& d = it->second;
+        const double comp[6] = { d.ux, d.uy, d.uz, d.rx, d.ry, d.rz };
+        if (eq.dof >= 0 && eq.dof < 6)
+            u[eq.equation] = comp[eq.dof];
+    }
+    return u;
 }
 
 void ResultsModel::addModalMode(const ModalMode& mode)
@@ -235,27 +268,30 @@ void ResultsModel::computeSummary()
     }
 
     // 3. Efforts maximaux dans les éléments
-    for (const auto& [elemId, res] : m_elementResults)
+    for (const auto& [key, res] : m_elementResults)
     {
         double maxN = res.maxNormalForce();
         if (maxN > m_summary.maxTension)
         {
             m_summary.maxTension = maxN;
-            m_summary.maxTensionElementId = elemId;
+            m_summary.maxTensionElementId = key.id;
+            m_summary.maxTensionElementKind = key.kind;
         }
 
         double minN = res.minNormalForce();
         if (minN < m_summary.maxCompression)
         {
             m_summary.maxCompression = minN;
-            m_summary.maxCompressionElementId = elemId;
+            m_summary.maxCompressionElementId = key.id;
+            m_summary.maxCompressionElementKind = key.kind;
         }
 
         double maxM = res.maxBendingMoment();
         if (maxM > m_summary.maxBendingMoment)
         {
             m_summary.maxBendingMoment = maxM;
-            m_summary.maxBendingMomentElementId = elemId;
+            m_summary.maxBendingMomentElementId = key.id;
+            m_summary.maxBendingMomentElementKind = key.kind;
         }
     }
 

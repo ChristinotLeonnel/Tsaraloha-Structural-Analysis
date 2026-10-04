@@ -102,6 +102,9 @@ struct RibbonActions
     QAction* actionCopy3D = nullptr;
     QAction* actionCopy = nullptr;
     QAction* actionRotate3D = nullptr;
+    QAction* actionMirror = nullptr;
+    QAction* actionSplitBars = nullptr;
+    QAction* actionMergeNodes = nullptr;
     QAction* actionMoveOrigin = nullptr;
     QAction* actionDelete = nullptr;
 

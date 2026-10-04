@@ -351,7 +351,7 @@ void ResultsDockWidget::updateSummaryText()
 
         for (const auto& [bId, beam] : m_model->beams())
         {
-            const auto* elemRes = m_resultsModel->getElementResults(bId);
+            const auto* elemRes = m_resultsModel->getElementResults(TSA::Analysis::StructuralElementKind::Beam, bId);
             if (!elemRes) continue;
 
             if (beam.material().type == TSA::Model::MaterialType::Concrete ||
@@ -388,7 +388,7 @@ void ResultsDockWidget::updateSummaryText()
 
         for (const auto& [colId, col] : m_model->columns())
         {
-            const auto* elemRes = m_resultsModel->getElementResults(colId);
+            const auto* elemRes = m_resultsModel->getElementResults(TSA::Analysis::StructuralElementKind::Column, colId);
             if (!elemRes) continue;
 
             if (col.material().type == TSA::Model::MaterialType::Steel ||

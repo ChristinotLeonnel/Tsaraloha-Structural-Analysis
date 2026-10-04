@@ -1,3 +1,4 @@
+#include "Dock/AnalysisDataDock.h"
 #include "MainWindow.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
@@ -245,6 +246,7 @@ void MainWindow::onResultsBecameStale()
     if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
     if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
     if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
+    if (m_analysisDataDock) m_analysisDataDock->setResultsModel(m_resultsModel);
     if (m_resultsDock) m_resultsDock->setResultsModel(m_resultsModel);
 
     if (m_consoleDock)
@@ -1408,6 +1410,7 @@ void MainWindow::onActionNew()
         m_ndcWidget->setModel(m_model.get());
         m_ndcWidget->setResultsModel(nullptr);
     }
+    if (m_analysisDataDock) m_analysisDataDock->setResultsModel(nullptr);
 
     if (m_statusProject)
     {
@@ -1600,6 +1603,7 @@ bool MainWindow::loadFile(const QString& path)
         m_ndcWidget->setModel(m_model.get());
         m_ndcWidget->setResultsModel(nullptr);
     }
+    if (m_analysisDataDock) m_analysisDataDock->setResultsModel(nullptr);
 
     laps += " | diagrammes+NDC=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
     if (m_statusProject)

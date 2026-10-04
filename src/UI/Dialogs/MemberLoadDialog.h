@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDialog>
+#include "../../Model/Load/LoadEnums.h"
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QLineEdit>
@@ -37,7 +38,8 @@ public:
                              QWidget* parent = nullptr);
     ~MemberLoadDialog() override = default;
 
-    void setTargetElementId(int elemId);
+    /// Préselection : les ids ne sont uniques que par famille (poutre 1 ≠ poteau 1).
+    void setTargetElementId(int elemId, TSA::Model::MemberTargetType target = TSA::Model::MemberTargetType::Beam);
 
 private slots:
     void onElementSelectionChanged(int index);
@@ -49,6 +51,7 @@ private:
     void populateElements();
     void populateLoadCases();
     void updateElementInfoDisplay();
+    TSA::Model::MemberTargetType currentTarget() const;
 
     TSA::Model::Model* m_model = nullptr;
     TSA::Viewer::SelectionManager* m_selectionManager = nullptr;

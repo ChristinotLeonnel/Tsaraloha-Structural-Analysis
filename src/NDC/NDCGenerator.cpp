@@ -568,7 +568,7 @@ NDCDocument NDCGenerator::generate(
                 const auto* n2 = model.getNode(b.endNodeId());
                 if (!n1 || !n2) continue;
                 double L = std::sqrt(std::pow(n2->x()-n1->x(),2) + std::pow(n2->y()-n1->y(),2) + std::pow(n2->z()-n1->z(),2));
-                const auto* elRes = results->getElementResults(bId);
+                const auto* elRes = results->getElementResults(TSA::Analysis::StructuralElementKind::Beam, bId);
                 double fmax = 0.0;
                 double xpos = L * 0.5;
                 if (elRes)
@@ -624,8 +624,8 @@ NDCDocument NDCGenerator::generate(
         tForces.headers = {QStringLiteral("Élément ID"), QStringLiteral("Type"), QStringLiteral("N_min (kN)"), QStringLiteral("N_max (kN)"), QStringLiteral("Vz_max (kN)"), QStringLiteral("Mz_min (kNm)"), QStringLiteral("Mz_max (kNm)")};
         tForces.columnAlignments = {QStringLiteral("center"), QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right")};
 
-        auto appendRow = [&](int elId, const QString& typeName) {
-            const auto* r = results->getElementResults(elId);
+        auto appendRow = [&](TSA::Analysis::StructuralElementKind kind, int elId, const QString& typeName) {
+            const auto* r = results->getElementResults(kind, elId);
             if (r)
             {
                 double mzMin = std::min(r->startForces.Mz, r->endForces.Mz);
@@ -650,10 +650,10 @@ NDCDocument NDCGenerator::generate(
             }
         };
 
-        for (const auto& [id, b] : model.beams()) appendRow(id, QStringLiteral("Poutre"));
-        for (const auto& [id, c] : model.columns()) appendRow(id, QStringLiteral("Poteau"));
-        for (const auto& [id, tr] : model.trussMembers()) appendRow(id, QStringLiteral("Treillis"));
-        for (const auto& [id, cb] : model.cables()) appendRow(id, QStringLiteral("Câble"));
+        for (const auto& [id, b] : model.beams()) appendRow(TSA::Analysis::StructuralElementKind::Beam, id, QStringLiteral("Poutre"));
+        for (const auto& [id, c] : model.columns()) appendRow(TSA::Analysis::StructuralElementKind::Column, id, QStringLiteral("Poteau"));
+        for (const auto& [id, tr] : model.trussMembers()) appendRow(TSA::Analysis::StructuralElementKind::Truss, id, QStringLiteral("Treillis"));
+        for (const auto& [id, cb] : model.cables()) appendRow(TSA::Analysis::StructuralElementKind::Cable, id, QStringLiteral("Câble"));
 
         sForces.tables.push_back(tForces);
         ch.sections.push_back(sForces);
@@ -750,7 +750,7 @@ NDCDocument NDCGenerator::generate(
             for (const auto& [bId, b] : model.beams())
             {
                 if (b.material().type != TSA::Model::MaterialType::Concrete && b.material().type != TSA::Model::MaterialType::ReinforcedConcrete) continue;
-                const auto* elRes = results->getElementResults(bId);
+                const auto* elRes = results->getElementResults(TSA::Analysis::StructuralElementKind::Beam, bId);
                 if (!elRes) continue;
 
                 double Med = std::max(elRes->maxBendingMoment(), 0.01);
@@ -797,7 +797,7 @@ NDCDocument NDCGenerator::generate(
             for (const auto& [colId, col] : model.columns())
             {
                 if (col.material().type != TSA::Model::MaterialType::Steel && col.material().type != TSA::Model::MaterialType::GalvanizedSteel) continue;
-                const auto* elRes = results->getElementResults(colId);
+                const auto* elRes = results->getElementResults(TSA::Analysis::StructuralElementKind::Column, colId);
                 if (!elRes) continue;
 
                 double Ned = std::max(std::abs(elRes->minNormalForce()), std::abs(elRes->maxNormalForce())) * 1000.0;

@@ -1,4 +1,5 @@
 #include "ModelValidator.h"
+#include "../Analysis/CalculationSnapshot.h"
 #include "../Model/Model.h"
 #include "../Model/Node.h"
 #include "../Model/Beam.h"
@@ -174,7 +175,14 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
     }
 
     bool hasSupport = false;
-    std::map<int, TSA::Coordinate::Point3D> nodeCoords;
+
+    // Doublons géométriques (tolérance 1 mm), hachage spatial : O(N log N) au lieu de O(N²).
+    for (const auto& [dupId, keeperId] : model.findCoincidentNodes(1e-3))
+    {
+        report.addWarning("Nœuds",
+            "Nœud géométriquement coïncident avec le nœud " + std::to_string(keeperId) +
+            " (distance < 1 mm). Utiliser « Fusionner les nœuds confondus ».", dupId);
+    }
 
     for (const auto& [id, n] : nodes)
     {
@@ -184,18 +192,6 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
             report.addError("Nœuds", nodeErr, id, "ISO/IEC 25010 §4.2.5");
         }
 
-        // Vérification des doublons géométriques (tolérance 1 mm = 1e-3 m)
-        TSA::Coordinate::Point3D pt(n.x(), n.y(), n.z());
-        for (const auto& [existingId, existingPt] : nodeCoords)
-        {
-            if (pt.distance(existingPt) < 1e-3)
-            {
-                report.addWarning("Nœuds",
-                    "Nœud géométriquement coïncident avec le nœud " + std::to_string(existingId) +
-                    " (distance < 1 mm).", id);
-            }
-        }
-        nodeCoords[id] = pt;
 
         // Détection des appuis
         if (n.support().isSupported() || n.supportType() != TSA::Model::SupportType::Free)
@@ -321,6 +317,30 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
         report.addError("Modèle Calcul",
             "Aucun élément structural filaire (Poutre, Poteau, Treillis ou Câble) n'est présent pour le calcul.",
             0, "EN 1990");
+    }
+
+    // 2b. Dalles et voiles : pas de maillage EF, non transmis au solveur (BUG-002)
+    if (!model.slabs().empty() || !model.walls().empty())
+    {
+        report.addWarning("Modèle Calcul",
+            std::to_string(model.slabs().size()) + " dalle(s) et " + std::to_string(model.walls().size()) +
+            " voile(s) ne sont pas pris en compte par le calcul (ni rigidité, ni charges) : "
+            "seuls les éléments filaires sont transmis à OpenSees.", 0, "EN 1990 §5.1");
+    }
+
+    // 2c. Charges sur barre : chaque charge doit désigner un élément calculé (famille + id).
+    {
+        const auto snap = TSA::Analysis::CalculationSnapshot::capture(model);
+        for (const auto& ml : snap.memberLoads())
+        {
+            if (!snap.findElementForLoad(ml))
+            {
+                report.addWarning("Charges",
+                    "La charge sur barre #" + std::to_string(ml.id()) + " (élément " + std::to_string(ml.elementId())
+                    + ") ne désigne aucun élément calculé de façon univoque : elle sera ignorée par le calcul.",
+                    ml.id(), "EN 1991");
+            }
+        }
     }
 
     // 3. Détection des nœuds orphelins (ni appui, ni charge, ni relié à aucun élément)

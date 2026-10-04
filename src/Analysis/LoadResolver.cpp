@@ -156,7 +156,7 @@ LocalMemberLoadComponents LoadResolver::resolveMemberLoadToLocal(const TSA::Mode
 {
     LocalMemberLoadComponents result;
 
-    const auto* el = snapshot.getElement(load.elementId());
+    const auto* el = snapshot.findElementForLoad(load);
     if (!el) return result;
 
     const auto* n1 = snapshot.getNode(el->startNodeId);
