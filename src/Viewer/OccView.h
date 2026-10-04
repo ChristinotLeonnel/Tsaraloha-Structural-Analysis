@@ -220,7 +220,9 @@ public:
     void updateSelectedElementLocalAxes();
     void clearSelectedElementLocalAxes();
 
-    QImage captureViewImage(int width = 512, int height = 512);
+    /// Rendu hors écran du viewport réel (miniature .tsa, aperçus). Le cube de navigation et le
+    /// trièdre, aides d'interface, sont masqués pendant la capture puis réaffichés.
+    QImage captureViewImage(int width = 512, int height = 512, bool hideNavigationAids = true);
 
     // État de vue persistant (aperçus « dernier état », réouverture du projet) :
     // caméra OCCT réelle (eye, center, up, scale, projection) et principaux drapeaux d'affichage.

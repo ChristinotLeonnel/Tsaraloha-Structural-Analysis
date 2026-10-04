@@ -857,6 +857,7 @@ set(TEST_SOURCES
     tests/test_opensees_extraction.cpp
     tests/test_ai.cpp
     tests/test_preview.cpp
+    tests/test_thumbnail_provider.cpp
     resources/resources.qrc
 )
 
@@ -866,6 +867,31 @@ target_include_directories(TSA_Tests PRIVATE tests)
 target_precompile_headers(TSA_Tests REUSE_FROM TSA_Core)
 target_link_libraries(TSA_Tests PRIVATE TSA_Core)
 set_target_properties(TSA_Tests PROPERTIES OUTPUT_NAME "TSA_TestSuite")
+
+# =============================================================================
+# Extension Explorateur Windows : miniatures des fichiers .tsa
+# -----------------------------------------------------------------------------
+# DLL autonome chargée par l'Explorateur : ni Qt, ni OpenCASCADE, runtime C statique (aucune
+# dépendance à installer). Placée à côté de TSA.exe, enregistrée par TSA au lancement (HKCU) ou par
+# l'installeur (regsvr32 /i:machine). Voir docs/THUMBNAIL_PROVIDER.md.
+# =============================================================================
+if(WIN32)
+    add_library(TSAThumbnailProvider SHARED
+        src/ShellExtension/TSAThumbnailProvider.cpp
+        src/ShellExtension/TSAThumbnailProvider.def
+        src/IO/TSAPreviewBlock.h
+        src/IO/TSAFileFormat.h
+    )
+    target_compile_features(TSAThumbnailProvider PRIVATE cxx_std_20)
+    target_compile_definitions(TSAThumbnailProvider PRIVATE UNICODE _UNICODE)
+    set_target_properties(TSAThumbnailProvider PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    target_link_libraries(TSAThumbnailProvider PRIVATE windowscodecs shlwapi ole32 shell32 advapi32)
+    add_dependencies(${PROJECT_NAME} TSAThumbnailProvider)
+    add_dependencies(TSA_Tests TSAThumbnailProvider)
+    target_link_libraries(TSA_Tests PRIVATE shlwapi ole32)
+    set_source_files_properties(tests/test_thumbnail_provider.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+endif()
 
 # Tests complets et suites thématiques enregistrés sous CTest
 add_test(NAME TSA_AllTests COMMAND TSA_Tests)

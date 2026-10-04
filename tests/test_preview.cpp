@@ -29,9 +29,7 @@ QString touchFile(const QTemporaryDir& dir, const QString& name)
 {
     const QString path = dir.filePath(name);
     QFile f(path);
-    f.open(QIODevice::WriteOnly);
-    f.write("tsa");
-    f.close();
+    if (f.open(QIODevice::WriteOnly)) f.write("tsa");
     return path;
 }
 
@@ -102,7 +100,7 @@ bool runSuite_Preview(int& passed)
 
         // Fichier modifié ailleurs après la capture : le cache est ignoré (pas de miniature embarquée ici).
         QFile f(project);
-        f.open(QIODevice::ReadWrite);
+        TEST_CHECK(f.open(QIODevice::ReadWrite), "Test 125: ouverture");
         f.setFileTime(QDateTime::currentDateTime().addSecs(120), QFileDevice::FileModificationTime);
         f.close();
         TEST_CHECK(cache.preview(project, &src).isNull() && src == PreviewSource::None, "Test 125: cache périmé ignoré");

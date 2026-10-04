@@ -817,17 +817,21 @@ bool runSuite_FileIO(int& passed)
             std::vector<uint8_t> payload;
             size_t off = sizeof(h);
             bool sawLoad = false;
-            while (off + sizeof(TSAChunkHeader) <= bytes.size())
+            // Le payload s'arrête à header.fileSize (format 1.2 : bloc d'aperçu ensuite).
+            const size_t payloadEnd = std::min<size_t>(bytes.size(), static_cast<size_t>(h.fileSize));
+            while (off + sizeof(TSAChunkHeader) <= payloadEnd)
             {
                 TSAChunkHeader ch;
                 std::memcpy(&ch, bytes.data() + off, sizeof(ch));
                 const size_t total = sizeof(ch) + ch.chunkSize;
+                if (off + total > payloadEnd) break;
                 if (ch.chunkId == CHUNK_LOAD) sawLoad = true;
                 else payload.insert(payload.end(), bytes.begin() + off, bytes.begin() + off + total);
                 off += total;
             }
             TEST_CHECK(sawLoad, "Test 91: le chunk LOAD est bien écrit");
             h.versionMinor = 0;
+            h.flags &= ~FLAG_HAS_PREVIEW_BLOCK; // un fichier 1.0 n'a pas de bloc d'aperçu
             h.checksumCRC32 = computeCRC32(payload.data(), payload.size());
             h.uncompressedSize = payload.size();
             h.fileSize = sizeof(h) + payload.size();

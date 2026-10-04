@@ -1504,7 +1504,7 @@ bool MainWindow::saveFile(const QString& path)
     QImage thumbnail;
     if (m_occView)
     {
-        thumbnail = m_occView->captureViewImage(512, 512);
+        thumbnail = m_occView->captureViewImage(640, 480); // viewport réel, 4:3
     }
 
     QString errorMsg;

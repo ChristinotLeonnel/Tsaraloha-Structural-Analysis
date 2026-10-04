@@ -34,6 +34,18 @@ public:
      * @brief Vérifie si .tsa est déjà associé à TSA.exe
      */
     static bool isFileAssociationRegistered();
+
+    /**
+     * @brief Enregistre / retire l'extension Explorateur TSAThumbnailProvider.dll (HKCU) placée à
+     *        côté de TSA.exe : miniature du dernier état du modèle pour les fichiers .tsa.
+     */
+    static bool registerThumbnailProvider();
+    static bool unregisterThumbnailProvider();
+
+    /**
+     * @brief Signale à l'Explorateur qu'un fichier a changé (invalidation de sa miniature en cache).
+     */
+    static void notifyFileUpdated(const QString& filePath);
 };
 
 } // namespace TSA::Platform

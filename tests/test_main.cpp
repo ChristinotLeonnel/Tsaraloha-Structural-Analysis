@@ -5,14 +5,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 147;
+    int expectedTotal = 150;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview]" << std::endl;
+            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail]" << std::endl;
             return 0;
         }
     }
@@ -102,6 +102,12 @@ int main(int argc, char* argv[])
         std::cout << "\n--- [Suite 19/19] Projets récents et aperçus du dernier état (Tests 124-126) ---" << std::endl;
         if (!runSuite_Preview(passed)) allOk = false;
     }
+#ifdef _WIN32
+    if (suiteFilter == "all" || suiteFilter == "thumbnail") {
+        std::cout << "\n--- [Suite 20/20] Miniatures Explorateur : format 1.2 et TSAThumbnailProvider.dll (Tests 127-129) ---" << std::endl;
+        if (!runSuite_Thumbnail(passed)) allOk = false;
+    }
+#endif
 
     std::cout << "\n=================================================" << std::endl;
     if (suiteFilter == "all") {

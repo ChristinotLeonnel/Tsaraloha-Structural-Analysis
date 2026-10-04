@@ -1428,12 +1428,23 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
 }
 
 
-QImage OccView::captureViewImage(int width, int height)
+QImage OccView::captureViewImage(int width, int height, bool hideNavigationAids)
 {
     if (m_view.IsNull())
     {
         return QImage();
     }
+
+    const bool cubeShown = hideNavigationAids && !m_context.IsNull() && !m_viewCube.IsNull() && m_context->IsDisplayed(m_viewCube);
+    if (cubeShown) m_context->Erase(m_viewCube, false);
+    if (hideNavigationAids) m_view->TriedronErase();
+    auto restoreAids = [&] {
+        if (!hideNavigationAids) return;
+        m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, m_isDarkMode ? Quantity_NOC_WHITE : Quantity_NOC_BLACK, 0.1,
+                                V3d_ZBUFFER); // mêmes réglages que setDarkMode()
+        if (cubeShown) m_context->Display(m_viewCube, false);
+        m_view->Redraw();
+    };
 
     try
     {
@@ -1442,12 +1453,15 @@ QImage OccView::captureViewImage(int width, int height)
         {
             QImage img(pixmap.Data(), static_cast<int>(pixmap.Width()), static_cast<int>(pixmap.Height()),
                        static_cast<int>(pixmap.SizeRowBytes()), QImage::Format_RGB888);
-            return img.copy();
+            QImage result = img.copy();
+            restoreAids();
+            return result;
         }
     }
     catch (...)
     {
     }
+    restoreAids();
 
     return grab().toImage().scaled(width, height, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 }

@@ -175,3 +175,4 @@ bool runSuite_NDCReport(int& passed);
 bool runSuite_Extraction(int& passed);
 bool runSuite_AI(int& passed);
 bool runSuite_Preview(int& passed);
+bool runSuite_Thumbnail(int& passed);

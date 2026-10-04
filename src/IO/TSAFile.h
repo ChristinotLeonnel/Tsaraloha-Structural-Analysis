@@ -130,6 +130,8 @@ public:
     // Lecture uniquement du Header pour inspection préalable
     static bool readHeader(const std::string& filePath, TSAFileHeader& header, std::string* errorMessage = nullptr);
     static bool extractThumbnail(const std::string& filePath, QImage& outThumbnail, std::string* errorMessage = nullptr);
+    /// Format ≥ 1.2 : aperçu non compressé placé après le payload (lecture directe, sans décompression).
+    static bool extractPreviewBlock(const std::string& filePath, QImage& outImage);
 
 private:
     bool parsePayload(const uint8_t* data, size_t size,
