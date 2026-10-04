@@ -7,11 +7,20 @@
 #include "Ruler/ViewportContainer.h"
 #include "../UndoRedo/CommandManager.h"
 #include "../Commands/ModifyCommands.h"
+#include "../UndoRedo/EditTransaction.h"
 
 #include <QMessageBox>
 #include <QStatusBar>
 #include <QLabel>
 #include <QAction>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDoubleSpinBox>
+#include <QFormLayout>
+#include <QInputDialog>
+#include <algorithm>
 #include <set>
 
 // =========================================================================
@@ -305,5 +314,216 @@ void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
             .arg(target.Z(), 0, 'f', 2)
             .arg(res.nodeIds.size() + res.beamIds.size() + res.columnIds.size() + res.slabIds.size()));
     }
+    updateUndoRedoActions();
+}
+
+// =========================================================================
+// Symétrie, division de barres, fusion de nœuds
+// =========================================================================
+
+void MainWindow::onActionMirror()
+{
+    if (!m_model || !m_selectionManager || !m_selectionManager->hasSelection())
+    {
+        QMessageBox::information(this, tr("Symétrie"),
+            tr("Veuillez d'abord sélectionner les éléments à symétriser (nœuds, poutres, poteaux, dalles ou câbles)."));
+        return;
+    }
+
+    const std::set<int> selNodes = m_selectionManager->selectedNodes();
+    const std::set<int> selBeams = m_selectionManager->selectedBeams();
+    const std::set<int> selColumns = m_selectionManager->selectedColumns();
+    const std::set<int> selSlabs = m_selectionManager->selectedSlabs();
+    const std::set<int> selCables = m_selectionManager->selectedCables();
+
+    // Boîte englobante de la sélection : sert à proposer la position du plan.
+    std::set<int> nodeIds = selNodes;
+    for (int id : selBeams) if (const auto* b = m_model->getBeam(id)) { nodeIds.insert(b->startNodeId()); nodeIds.insert(b->endNodeId()); }
+    for (int id : selColumns) if (const auto* c = m_model->getColumn(id)) { nodeIds.insert(c->startNodeId()); nodeIds.insert(c->endNodeId()); }
+    for (int id : selSlabs) if (const auto* sl = m_model->getSlab(id)) nodeIds.insert(sl->nodeIds().begin(), sl->nodeIds().end());
+    for (int id : selCables) if (const auto* c = m_model->getCable(id)) { nodeIds.insert(c->startNodeId()); nodeIds.insert(c->endNodeId()); }
+    if (nodeIds.empty())
+    {
+        QMessageBox::information(this, tr("Symétrie"), tr("La sélection ne contient aucun élément symétrisable."));
+        return;
+    }
+    double hi[3] = { -1e300, -1e300, -1e300 };
+    for (int id : nodeIds)
+    {
+        if (const auto* n = m_model->getNode(id))
+        {
+            hi[0] = std::max(hi[0], n->x());
+            hi[1] = std::max(hi[1], n->y());
+            hi[2] = std::max(hi[2], n->z());
+        }
+    }
+
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Symétrie (Miroir)"));
+    auto* form = new QFormLayout(&dlg);
+    auto* planeCombo = new QComboBox(&dlg);
+    planeCombo->addItem(tr("Plan YZ  (X = constante)"));
+    planeCombo->addItem(tr("Plan XZ  (Y = constante)"));
+    planeCombo->addItem(tr("Plan XY  (Z = constante)"));
+    auto* coordSpin = new QDoubleSpinBox(&dlg);
+    coordSpin->setRange(-1e6, 1e6);
+    coordSpin->setDecimals(3);
+    coordSpin->setSuffix(tr(" m"));
+    auto* keepCheck = new QCheckBox(tr("Conserver l'original (copie miroir)"), &dlg);
+    keepCheck->setChecked(true);
+    // Par défaut : plan au bord maximal de la sélection (copie accolée, nœuds du bord partagés).
+    auto updateCoord = [planeCombo, coordSpin, &hi]() { coordSpin->setValue(hi[planeCombo->currentIndex()]); };
+    QObject::connect(planeCombo, &QComboBox::currentIndexChanged, &dlg, updateCoord);
+    updateCoord();
+    form->addRow(tr("Plan de symétrie :"), planeCombo);
+    form->addRow(tr("Position du plan :"), coordSpin);
+    form->addRow(keepCheck);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    form->addRow(buttons);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    const int axis = planeCombo->currentIndex();
+    const double c = coordSpin->value();
+    const bool keep = keepCheck->isChecked();
+    const gp_Pnt planePoint(axis == 0 ? c : 0.0, axis == 1 ? c : 0.0, axis == 2 ? c : 0.0);
+    const gp_Dir normal(axis == 0 ? 1.0 : 0.0, axis == 1 ? 1.0 : 0.0, axis == 2 ? 1.0 : 0.0);
+    const char axisName = "XYZ"[axis];
+
+    TSA::UndoRedo::EditTransaction tx(*m_model, (keep ? tr("Copie miroir") : tr("Symétrie")).toStdString());
+    const auto ids = m_model->mirrorElements(selNodes, selBeams, selColumns, selSlabs,
+                                             planePoint, normal, keep, selCables);
+    if (ids.empty())
+    {
+        tx.rollback();
+        if (m_statusInfo) m_statusInfo->setText(tr("Symétrie : aucun élément modifié (sélection entièrement sur le plan)."));
+        return;
+    }
+    tx.record({ keep ? "create" : "move", "Selection", -1, "mirror", "",
+                std::string(1, axisName) + " = " + QString::number(c, 'f', 3).toStdString() + " m",
+                { "geometry", "results_invalidated" } });
+    tx.commit();
+
+    if (m_modelTree) m_modelTree->refreshAll();
+    if (m_occView) m_occView->update();
+    if (m_statusInfo)
+    {
+        m_statusInfo->setText(keep
+            ? tr("Copie miroir (%1 = %2 m) : %3 élément(s) créé(s)").arg(QChar(axisName)).arg(c, 0, 'f', 3).arg(ids.size())
+            : tr("Symétrie (%1 = %2 m) : %3 nœud(s) déplacé(s)").arg(QChar(axisName)).arg(c, 0, 'f', 3).arg(ids.size()));
+    }
+    updateUndoRedoActions();
+}
+
+void MainWindow::onActionSplitBars()
+{
+    if (!m_model || !m_selectionManager)
+        return;
+
+    const std::set<int> beams = m_selectionManager->selectedBeams();
+    const std::set<int> columns = m_selectionManager->selectedColumns();
+    if (beams.empty() && columns.empty())
+    {
+        QMessageBox::information(this, tr("Diviser les barres"),
+            tr("Veuillez d'abord sélectionner les poutres et/ou poteaux à diviser."));
+        return;
+    }
+
+    bool ok = false;
+    const int segments = QInputDialog::getInt(this, tr("Diviser les barres"),
+        tr("Nombre de tronçons égaux pour %1 barre(s) :").arg(beams.size() + columns.size()),
+        2, 2, 100, 1, &ok);
+    if (!ok)
+        return;
+
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Division de barres").toStdString());
+    int splitCount = 0;
+    QStringList refused;
+    for (int id : beams)
+    {
+        if (!m_model->splitBeam(id, segments).empty())
+        {
+            ++splitCount;
+            tx.record({ "split", "Beam", id, "segments", "1", std::to_string(segments), { "geometry", "results_invalidated" } });
+        }
+        else
+        {
+            refused << tr("Poutre %1").arg(id);
+        }
+    }
+    for (int id : columns)
+    {
+        if (!m_model->splitColumn(id, segments).empty())
+        {
+            ++splitCount;
+            tx.record({ "split", "Column", id, "segments", "1", std::to_string(segments), { "geometry", "results_invalidated" } });
+        }
+        else
+        {
+            refused << tr("Poteau %1").arg(id);
+        }
+    }
+
+    if (splitCount == 0)
+    {
+        tx.rollback();
+    }
+    else
+    {
+        tx.commit();
+        m_selectionManager->clearSelection();
+        if (m_modelTree) m_modelTree->refreshAll();
+        if (m_occView) m_occView->update();
+        if (m_statusInfo)
+            m_statusInfo->setText(tr("Division : %1 barre(s) divisée(s) en %2 tronçons").arg(splitCount).arg(segments));
+    }
+    if (!refused.isEmpty())
+    {
+        QMessageBox::warning(this, tr("Diviser les barres"),
+            tr("Barres non divisées (longueur nulle, ou charge ponctuelle / partielle / trapézoïdale "
+               "qui ne peut pas être répartie sans ambiguïté) :\n%1").arg(refused.join(", ")));
+    }
+    updateUndoRedoActions();
+}
+
+void MainWindow::onActionMergeNodes()
+{
+    if (!m_model)
+        return;
+
+    bool ok = false;
+    const double tolMm = QInputDialog::getDouble(this, tr("Fusionner les nœuds confondus"),
+        tr("Tolérance de fusion (mm) :"), 1.0, 0.001, 1000.0, 3, &ok);
+    if (!ok)
+        return;
+    const double tol = tolMm / 1000.0;
+
+    const auto duplicates = m_model->findCoincidentNodes(tol);
+    if (duplicates.empty())
+    {
+        QMessageBox::information(this, tr("Fusionner les nœuds confondus"),
+            tr("Aucun nœud confondu à %1 mm près.").arg(tolMm));
+        return;
+    }
+    if (QMessageBox::question(this, tr("Fusionner les nœuds confondus"),
+            tr("%1 nœud(s) confondu(s) seront fusionnés avec le nœud de plus petit numéro.\n"
+               "Les éléments, appuis et charges sont reportés ; les éléments devenus de longueur "
+               "nulle sont supprimés.\n\nContinuer ?").arg(duplicates.size())) != QMessageBox::Yes)
+        return;
+
+    if (m_selectionManager) m_selectionManager->clearSelection();
+
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Fusion de nœuds").toStdString());
+    const int merged = m_model->mergeCoincidentNodes(tol);
+    for (const auto& [dupId, keeperId] : duplicates)
+        tx.record({ "merge", "Node", dupId, "node", std::to_string(dupId), std::to_string(keeperId), { "topology", "results_invalidated" } });
+    tx.commit();
+
+    if (m_modelTree) m_modelTree->refreshAll();
+    if (m_occView) m_occView->update();
+    if (m_statusInfo)
+        m_statusInfo->setText(tr("Fusion : %1 nœud(s) supprimé(s) (tolérance %2 mm)").arg(merged).arg(tolMm));
     updateUndoRedoActions();
 }

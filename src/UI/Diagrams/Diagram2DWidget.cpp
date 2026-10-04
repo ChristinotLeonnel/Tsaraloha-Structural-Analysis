@@ -113,6 +113,7 @@ void Diagram2DWidget::updateElementList()
             const auto* n2 = m_model->getNode(beam.endNodeId());
             double len = (n1 && n2) ? std::sqrt(std::pow(n2->x()-n1->x(),2) + std::pow(n2->y()-n1->y(),2) + std::pow(n2->z()-n1->z(),2)) : 0.0;
             m_elementCombo->addItem(tr("Poutre #%1 (L = %2 m)").arg(id).arg(len, 0, 'f', 2), id);
+            m_elementCombo->setItemData(m_elementCombo->count() - 1, static_cast<int>(TSA::Analysis::StructuralElementKind::Beam), Qt::UserRole + 1);
         }
         for (const auto& [id, col] : m_model->columns())
         {
@@ -120,12 +121,13 @@ void Diagram2DWidget::updateElementList()
             const auto* n2 = m_model->getNode(col.endNodeId());
             double len = (n1 && n2) ? std::sqrt(std::pow(n2->x()-n1->x(),2) + std::pow(n2->y()-n1->y(),2) + std::pow(n2->z()-n1->z(),2)) : 0.0;
             m_elementCombo->addItem(tr("Poteau #%1 (H = %2 m)").arg(id).arg(len, 0, 'f', 2), id);
+            m_elementCombo->setItemData(m_elementCombo->count() - 1, static_cast<int>(TSA::Analysis::StructuralElementKind::Column), Qt::UserRole + 1);
         }
     }
 
     if (m_elementCombo->count() > 0)
     {
-        int idx = m_elementCombo->findData(m_currentElementId);
+        int idx = findElementItem(m_currentElementKind, m_currentElementId);
         if (idx >= 0)
         {
             m_elementCombo->setCurrentIndex(idx);
@@ -133,17 +135,30 @@ void Diagram2DWidget::updateElementList()
         else
         {
             m_currentElementId = m_elementCombo->itemData(0).toInt();
+            m_currentElementKind = static_cast<TSA::Analysis::StructuralElementKind>(m_elementCombo->itemData(0, Qt::UserRole + 1).toInt());
             m_elementCombo->setCurrentIndex(0);
         }
     }
     m_elementCombo->blockSignals(false);
 }
 
-void Diagram2DWidget::setSelectedElement(int elementId)
+int Diagram2DWidget::findElementItem(TSA::Analysis::StructuralElementKind kind, int id) const
 {
-    if (m_currentElementId == elementId) return;
+    for (int i = 0; i < m_elementCombo->count(); ++i)
+    {
+        if (m_elementCombo->itemData(i).toInt() == id
+            && m_elementCombo->itemData(i, Qt::UserRole + 1).toInt() == static_cast<int>(kind))
+            return i;
+    }
+    return -1;
+}
+
+void Diagram2DWidget::setSelectedElement(int elementId, TSA::Analysis::StructuralElementKind kind)
+{
+    if (m_currentElementId == elementId && m_currentElementKind == kind) return;
     m_currentElementId = elementId;
-    int idx = m_elementCombo->findData(elementId);
+    m_currentElementKind = kind;
+    int idx = findElementItem(kind, elementId);
     if (idx >= 0)
     {
         m_elementCombo->blockSignals(true);
@@ -187,6 +202,7 @@ void Diagram2DWidget::onModeComboChanged(int index)
 void Diagram2DWidget::onElementComboChanged(int index)
 {
     m_currentElementId = m_elementCombo->itemData(index).toInt();
+    m_currentElementKind = static_cast<TSA::Analysis::StructuralElementKind>(m_elementCombo->itemData(index, Qt::UserRole + 1).toInt());
     update();
 }
 
@@ -243,7 +259,7 @@ void Diagram2DWidget::mouseMoveEvent(QMouseEvent* event)
         // Récupérer la valeur interpolée
         if (m_results && m_results->isValid())
         {
-            const auto* eb = m_results->getElementResults(m_currentElementId);
+            const auto* eb = m_results->getElementResults(m_currentElementKind, m_currentElementId);
             if (eb)
             {
                 auto stations = getAllStations(*eb);
@@ -273,10 +289,10 @@ void Diagram2DWidget::mouseMoveEvent(QMouseEvent* event)
         if (m_model)
         {
             int sId = 0, eId = 0;
-            const auto* b = m_model->getBeam(m_currentElementId);
+            const auto* b = m_currentElementKind == TSA::Analysis::StructuralElementKind::Beam ? m_model->getBeam(m_currentElementId) : nullptr;
             if (b) { sId = b->startNodeId(); eId = b->endNodeId(); }
             else {
-                const auto* c = m_model->getColumn(m_currentElementId);
+                const auto* c = m_currentElementKind == TSA::Analysis::StructuralElementKind::Column ? m_model->getColumn(m_currentElementId) : nullptr;
                 if (c) { sId = c->startNodeId(); eId = c->endNodeId(); }
             }
             const auto* n1 = m_model->getNode(sId);
@@ -344,7 +360,7 @@ void Diagram2DWidget::drawMemberForces(QPainter& p, const QRect& plotRect)
         return;
     }
 
-    const auto* eb = m_results->getElementResults(m_currentElementId);
+    const auto* eb = m_results->getElementResults(m_currentElementKind, m_currentElementId);
     if (!eb)
     {
         p.setPen(QColor(160, 160, 170));
@@ -365,10 +381,10 @@ void Diagram2DWidget::drawMemberForces(QPainter& p, const QRect& plotRect)
     if (m_model)
     {
         int sId = 0, eId = 0;
-        const auto* b = m_model->getBeam(m_currentElementId);
+        const auto* b = m_currentElementKind == TSA::Analysis::StructuralElementKind::Beam ? m_model->getBeam(m_currentElementId) : nullptr;
         if (b) { sId = b->startNodeId(); eId = b->endNodeId(); }
         else {
-            const auto* c = m_model->getColumn(m_currentElementId);
+            const auto* c = m_currentElementKind == TSA::Analysis::StructuralElementKind::Column ? m_model->getColumn(m_currentElementId) : nullptr;
             if (c) { sId = c->startNodeId(); eId = c->endNodeId(); }
         }
         const auto* n1 = m_model->getNode(sId);

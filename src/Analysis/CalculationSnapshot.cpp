@@ -56,6 +56,15 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
         snap.m_nodes[id] = sn;
     }
 
+    // Tags OpenSees uniques : les ids TSA de familles différentes peuvent coïncider
+    // (poutre 1 et poteau 1) et ne doivent jamais s'écraser.
+    int nextTag = 1;
+    auto registerElement = [&](SnapshotElement& elem) {
+        elem.tag = nextTag++;
+        snap.m_tagByKey[elem.key()] = elem.tag;
+        snap.m_elements[elem.tag] = elem;
+    };
+
     auto computeLength = [&](int n1, int n2) -> double {
         auto it1 = snap.m_nodes.find(n1);
         auto it2 = snap.m_nodes.find(n2);
@@ -78,7 +87,7 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
         elem.section = b.section();
         elem.material = b.material();
         elem.length = computeLength(elem.startNodeId, elem.endNodeId);
-        snap.m_elements[id] = elem;
+        registerElement(elem);
     }
 
     // 3. Capture des Poteaux (Columns)
@@ -93,7 +102,7 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
         elem.section = col.section();
         elem.material = col.material();
         elem.length = computeLength(elem.startNodeId, elem.endNodeId);
-        snap.m_elements[id] = elem;
+        registerElement(elem);
     }
 
     // 4. Capture des Bielles / Treillis (TrussMembers)
@@ -108,7 +117,7 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
         elem.section = tr.section();
         elem.material = tr.material();
         elem.length = computeLength(elem.startNodeId, elem.endNodeId);
-        snap.m_elements[id] = elem;
+        registerElement(elem);
     }
 
     // 5. Capture des Câbles
@@ -124,7 +133,7 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
         elem.material = cb.material();
         elem.initialTension = cb.initialTension();
         elem.length = computeLength(elem.startNodeId, elem.endNodeId);
-        snap.m_elements[id] = elem;
+        registerElement(elem);
     }
 
     // 6. Capture des Charges & Cas de Charges
@@ -149,10 +158,52 @@ const SnapshotNode* CalculationSnapshot::getNode(int id) const
     return it != m_nodes.end() ? &it->second : nullptr;
 }
 
-const SnapshotElement* CalculationSnapshot::getElement(int id) const
+const SnapshotElement* CalculationSnapshot::getElementByTag(int tag) const
 {
-    auto it = m_elements.find(id);
+    auto it = m_elements.find(tag);
     return it != m_elements.end() ? &it->second : nullptr;
+}
+
+const SnapshotElement* CalculationSnapshot::findElement(StructuralElementKind kind, int id) const
+{
+    auto it = m_tagByKey.find(ElementKey{ kind, id });
+    return it != m_tagByKey.end() ? getElementByTag(it->second) : nullptr;
+}
+
+StructuralElementKind CalculationSnapshot::kindOf(TSA::Model::MemberTargetType t)
+{
+    switch (t)
+    {
+    case TSA::Model::MemberTargetType::Column: return StructuralElementKind::Column;
+    case TSA::Model::MemberTargetType::Truss: return StructuralElementKind::Truss;
+    case TSA::Model::MemberTargetType::Cable: return StructuralElementKind::Cable;
+    case TSA::Model::MemberTargetType::Beam:
+    default: return StructuralElementKind::Beam;
+    }
+}
+
+const SnapshotElement* CalculationSnapshot::findElementForLoad(const TSA::Model::MemberLoad& load) const
+{
+    if (const auto* e = findElement(kindOf(load.targetType()), load.elementId()))
+        return e;
+    if (load.targetType() != TSA::Model::MemberTargetType::Beam)
+        return nullptr;
+
+    // Compatibilité : avant le 2026-10-04, MemberLoadDialog n'enregistrait pas la famille cible
+    // (toujours « Beam »). Une telle charge, sans poutre de cet id, est rattachée à l'unique
+    // élément d'une autre famille portant cet id ; s'il y en a plusieurs, elle est ignorée
+    // (ambiguïté signalée par ModelValidator::validateForAnalysis).
+    const SnapshotElement* found = nullptr;
+    int matches = 0;
+    for (auto kind : { StructuralElementKind::Column, StructuralElementKind::Truss, StructuralElementKind::Cable })
+    {
+        if (const auto* e = findElement(kind, load.elementId()))
+        {
+            found = e;
+            ++matches;
+        }
+    }
+    return matches == 1 ? found : nullptr;
 }
 
 } // namespace TSA::Analysis

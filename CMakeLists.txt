@@ -256,6 +256,8 @@ set(UI_DOCK_SOURCES
     src/UI/Dock/ProjectionViewDock.cpp
     src/UI/Dock/ResultsDockWidget.h
     src/UI/Dock/ResultsDockWidget.cpp
+    src/UI/Dock/AnalysisDataDock.h
+    src/UI/Dock/AnalysisDataDock.cpp
 )
 
 # --- Systèmes de coordonnées et plans de travail — [CORE] --------------------
@@ -387,6 +389,7 @@ set(MODEL_CORE_SOURCES
     src/Model/Model.h
     src/Model/Model.cpp
     src/Model/Model_Transformations.cpp
+    src/Model/Model_Topology.cpp
     src/Model/Model_Snapshots.cpp
     src/Model/ModelDiff.h
     src/Model/ModelDiff.cpp
@@ -421,6 +424,15 @@ set(LOAD_CORE_SOURCES
     src/Analysis/CalculationSnapshot.cpp
     src/Analysis/ResultsModel.h
     src/Analysis/ResultsModel.cpp
+    src/Analysis/AnalysisTypes.h
+    src/Analysis/ElementTransformation.h
+    src/Analysis/ElementTransformation.cpp
+    src/Analysis/OpenSeesModelMap.h
+    src/Analysis/OpenSeesModelMap.cpp
+    src/Analysis/ResultsContext.h
+    src/Analysis/ResultsContext.cpp
+    src/Analysis/ResultsExport.h
+    src/Analysis/ResultsExport.cpp
     src/Analysis/ResultsValidityGuard.h
     src/Analysis/ResultsValidityGuard.cpp
     src/Analysis/OpenSeesAnalysisBuilder.h
@@ -788,6 +800,7 @@ set(TEST_SOURCES
     tests/test_supports.cpp
     tests/test_standards.cpp
     tests/test_ndc_report.cpp
+    tests/test_opensees_extraction.cpp
     resources/resources.qrc
 )
 

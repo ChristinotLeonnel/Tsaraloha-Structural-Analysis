@@ -83,6 +83,10 @@ private:
     QCheckBox* m_checkKiloNewtons = nullptr;
     QCheckBox* m_checkSaveAllSteps = nullptr;
 
+    // Extraction des résultats (Light / Advanced)
+    QComboBox* m_comboExtraction = nullptr;
+    QSpinBox* m_spinMaxStiffnessDofs = nullptr;
+
     // Widgets conteneurs dynamiques
     QGroupBox* m_groupNonlinear = nullptr;
     QGroupBox* m_groupDispControl = nullptr;

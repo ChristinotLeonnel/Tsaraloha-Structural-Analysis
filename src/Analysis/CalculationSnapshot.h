@@ -17,6 +17,7 @@
 #include "../Model/Load/MemberLoad.h"
 #include "../Model/Load/LoadCase.h"
 #include "../Model/Load/LoadCombination.h"
+#include "AnalysisTypes.h"
 
 #include <map>
 #include <vector>
@@ -61,10 +62,13 @@ struct SnapshotNode
  */
 struct SnapshotElement
 {
-    enum class ElementType { Beam, Column, Truss, Cable };
+    using ElementType = StructuralElementKind;
 
-    int id = 0;
+    int id = 0;          ///< identifiant TSA (unique dans sa famille seulement)
+    int tag = 0;         ///< tag OpenSees unique (1..N, ordre Beam, Column, Truss, Cable)
     ElementType type = ElementType::Beam;
+
+    ElementKey key() const { return { type, id }; }
     int startNodeId = 0;
     int endNodeId = 0;
     double rotation = 0.0;
@@ -97,17 +101,26 @@ public:
     const std::map<int, TSA::Model::LoadCombination>& combinations() const { return m_combinations; }
 
     const SnapshotNode* getNode(int id) const;
-    const SnapshotElement* getElement(int id) const;
+    /// Élément par tag OpenSees (clé de elements()).
+    const SnapshotElement* getElementByTag(int tag) const;
+    /// Élément par identité TSA (famille, id).
+    const SnapshotElement* findElement(StructuralElementKind kind, int id) const;
+    const SnapshotElement* findElement(const ElementKey& key) const { return findElement(key.kind, key.id); }
+    /// Élément porteur d'une charge sur barre (MemberLoad::targetType + elementId).
+    const SnapshotElement* findElementForLoad(const TSA::Model::MemberLoad& load) const;
+
+    static StructuralElementKind kindOf(TSA::Model::MemberTargetType t);
 
     size_t nodeCount() const { return m_nodes.size(); }
     size_t elementCount() const { return m_elements.size(); }
 
     bool hasNode(int id) const { return m_nodes.find(id) != m_nodes.end(); }
-    bool hasElement(int id) const { return m_elements.find(id) != m_elements.end(); }
+    bool hasElement(StructuralElementKind kind, int id) const { return findElement(kind, id) != nullptr; }
 
 private:
     std::map<int, SnapshotNode> m_nodes;
-    std::map<int, SnapshotElement> m_elements;
+    std::map<int, SnapshotElement> m_elements;          ///< clé : tag OpenSees unique
+    std::map<ElementKey, int> m_tagByKey;
     std::vector<TSA::Model::NodalLoad> m_nodalLoads;
     std::vector<TSA::Model::MemberLoad> m_memberLoads;
     std::map<int, TSA::Model::LoadCase> m_loadCases;

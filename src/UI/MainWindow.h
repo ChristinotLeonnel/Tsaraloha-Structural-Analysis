@@ -43,6 +43,7 @@ namespace TSA::UI
     class WorkPlaneDialog;
     class ProjectionViewDock;
     class ResultsDockWidget;
+    class AnalysisDataDock;
     class WindowManager;
     class ProjectStatusOverlay;
     class TSALogoOverlay;
@@ -197,6 +198,7 @@ private:
     TSA::UI::LogConsoleDock* m_consoleDock = nullptr;
     TSA::UI::ProjectionViewDock* m_projectionViewDock = nullptr;
     TSA::UI::ResultsDockWidget* m_resultsDock = nullptr;
+    TSA::UI::AnalysisDataDock* m_analysisDataDock = nullptr;
     QDockWidget* m_projectStatusDock = nullptr;
     TSA::UI::ProjectStatusOverlay* m_projectStatusWidget = nullptr;
     TSA::Analysis::AnalysisParameters m_lastAnalysisParams;
@@ -281,6 +283,9 @@ private:
     QAction* m_actionMoveOrigin = nullptr;
     QAction* m_actionCopyClipboard = nullptr;
     QAction* m_actionPasteClipboard = nullptr;
+    QAction* m_actionMirror = nullptr;
+    QAction* m_actionSplitBars = nullptr;
+    QAction* m_actionMergeNodes = nullptr;
 
     TSA::Model::StructuralClipboard m_clipboard;
 
@@ -468,6 +473,9 @@ private slots:
     void onActionMoveOrigin();
     void onActionCopyClipboard();
     void onActionPasteClipboard();
+    void onActionMirror();
+    void onActionSplitBars();
+    void onActionMergeNodes();
 
     void onPointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& target, bool isCopy);
     void onPointToPointRotateRequested(const gp_Pnt& center, double angleRad, bool isCopy);

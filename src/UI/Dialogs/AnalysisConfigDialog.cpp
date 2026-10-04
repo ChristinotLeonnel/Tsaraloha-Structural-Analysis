@@ -158,6 +158,21 @@ void AnalysisConfigDialog::setupUi()
     m_comboConstraints->addItem(tr("Lagrange (Multiplicateurs de Lagrange)"), static_cast<int>(TSA::Analysis::ConstraintHandler::Lagrange));
     formSystem->addRow(tr("Gestion des contraintes :"), m_comboConstraints);
 
+    m_comboExtraction = new QComboBox(groupSystem);
+    m_comboExtraction->addItem(tr("LIGHT — déplacements, réactions, efforts"), static_cast<int>(TSA::Analysis::ExtractionLevel::Light));
+    m_comboExtraction->addItem(tr("ADVANCED — + matrices de rigidité, mapping DDL, forces brutes"), static_cast<int>(TSA::Analysis::ExtractionLevel::Advanced));
+    m_comboExtraction->setToolTip(tr("ADVANCED lance un second passage OpenSees (sans charge) pour extraire K_global, "
+                                     "les rigidités élémentaires et la numérotation des DDL. Le solveur de l'analyse n'est pas modifié."));
+    formSystem->addRow(tr("Extraction des résultats :"), m_comboExtraction);
+
+    m_spinMaxStiffnessDofs = new QSpinBox(groupSystem);
+    m_spinMaxStiffnessDofs->setRange(0, 20000);
+    m_spinMaxStiffnessDofs->setValue(1500);
+    m_spinMaxStiffnessDofs->setSuffix(tr(" DDL"));
+    m_spinMaxStiffnessDofs->setToolTip(tr("K_global n'est extraite que sous ce nombre de DDL libres : OpenSees 3.8.0 ne "
+                                          "l'expose qu'en système dense FullGeneral (mémoire n²)."));
+    formSystem->addRow(tr("Plafond K_global :"), m_spinMaxStiffnessDofs);
+
     mainLayout->addWidget(groupSystem);
 
     // 6. Options globales
@@ -287,6 +302,8 @@ void AnalysisConfigDialog::onValidateAndSolve()
     m_params.includeSelfWeight = m_checkSelfWeight->isChecked();
     m_params.useKiloNewtons = m_checkKiloNewtons->isChecked();
     m_params.saveAllSteps = m_checkSaveAllSteps->isChecked();
+    m_params.extractionLevel = static_cast<TSA::Analysis::ExtractionLevel>(m_comboExtraction->currentData().toInt());
+    m_params.maxGlobalStiffnessDofs = m_spinMaxStiffnessDofs->value();
 
     accept();
 }
@@ -336,6 +353,9 @@ void AnalysisConfigDialog::setParameters(const TSA::Analysis::AnalysisParameters
     m_checkSelfWeight->setChecked(params.includeSelfWeight);
     m_checkKiloNewtons->setChecked(params.useKiloNewtons);
     m_checkSaveAllSteps->setChecked(params.saveAllSteps);
+    const int exIdx = m_comboExtraction->findData(static_cast<int>(params.extractionLevel));
+    if (exIdx >= 0) m_comboExtraction->setCurrentIndex(exIdx);
+    m_spinMaxStiffnessDofs->setValue(params.maxGlobalStiffnessDofs);
 
     updateFormVisibility();
 }

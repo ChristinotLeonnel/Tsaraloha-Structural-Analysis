@@ -3,6 +3,7 @@
 #include "CalculationSnapshot.h"
 #include "ResultsModel.h"
 #include <string>
+#include <vector>
 
 namespace TSA::Analysis
 {
@@ -94,12 +95,31 @@ struct AnalysisParameters
     // Gestion des résultats
     bool saveAllSteps = true;       ///< Enregistrer tous les incréments
 
-    // Fichiers recorders
+    // Niveau d'extraction : Light (défaut) ou Advanced (matrices, mapping DDL, forces brutes)
+    ExtractionLevel extractionLevel = ExtractionLevel::Light;
+    /// K_global n'est extraite (system FullGeneral, matrice dense n×n dans OpenSees) que si le
+    /// nombre de DDL libres estimé est inférieur ou égal à ce plafond.
+    int maxGlobalStiffnessDofs = 1500;
+
+    // Fichiers recorders (analyse principale)
     std::string workingDir = ".";
     std::string dispOutputFile = "node_disp.out";
     std::string reactOutputFile = "node_react.out";
-    std::string forceOutputFile = "ele_forces.out";
+    std::string forceOutputFile = "ele_forces.out";          ///< poutres/poteaux : localForce (12)
+    std::string axialOutputFile = "ele_axial.out";           ///< treillis/câbles : basicForce (1)
+    std::string globalForceOutputFile = "ele_global.out";    ///< Advanced : globalForce (12)
+    std::string basicForceOutputFile = "ele_basic.out";      ///< Advanced : poutres basicForce (6)
+
+    // Passage « matrices » (Advanced, script séparé, état de référence non déformé)
+    std::string matrixScriptFile = "matrices.tcl";
+    std::string dofMapOutputFile = "dof_map.out";
+    std::string globalStiffnessOutputFile = "k_global.out";
+    std::string beamBasicStiffnessOutputFile = "kb_beam.out";
+    std::string trussBasicStiffnessOutputFile = "kb_truss.out";
 };
+
+/// Chiffres significatifs demandés aux recorders OpenSees (-precision).
+constexpr int kRecorderPrecision = 16;
 
 inline const char* algorithmToTcl(NonlinearAlgorithm algo)
 {
@@ -194,19 +214,37 @@ inline const char* toTclString(GeomTransfType gt)
  * @brief Constructeur de scripts OpenSees modulaire et multi-analyses.
  * Traduit le snapshot calculatoire figé en code Tcl vérifiable avec recorders et diagnostics.
  */
+class OpenSeesModelMap;
+
 class OpenSeesAnalysisBuilder
 {
 public:
     static std::string buildScript(const CalculationSnapshot& snapshot,
                                    const AnalysisParameters& params);
+    static std::string buildScript(const CalculationSnapshot& snapshot,
+                                   const OpenSeesModelMap& map,
+                                   const AnalysisParameters& params);
+
+    /// Script du passage « matrices » (mode Advanced) : même modèle (nœuds, appuis, ressorts,
+    /// éléments, handler, numberer), sans charge ni résolution : `initialize` numérote les DDL
+    /// à l'état de référence, puis export du mapping (nodeDOFs), des rigidités basiques
+    /// (recorder basicStiffness) et, si withGlobalStiffness, de la matrice du système
+    /// (system FullGeneral + printA -ret, seul système exposant sa matrice dans OpenSees 3.8.0).
+    static std::string buildMatrixScript(const CalculationSnapshot& snapshot,
+                                         const OpenSeesModelMap& map,
+                                         const AnalysisParameters& params,
+                                         bool withGlobalStiffness);
 
     static std::string buildNodes(const CalculationSnapshot& snapshot);
+    static std::string buildBoundaryConditions(const CalculationSnapshot& snapshot, const OpenSeesModelMap& map);
     static std::string buildBoundaryConditions(const CalculationSnapshot& snapshot);
-    static std::string buildElements(const CalculationSnapshot& snapshot, const AnalysisParameters& params);
-    static std::string buildElements(const CalculationSnapshot& snapshot, bool useKiloNewtons);
-    static std::string buildRecorders(const CalculationSnapshot& snapshot, const AnalysisParameters& params);
+    static std::string buildElements(const CalculationSnapshot& snapshot, const OpenSeesModelMap& map, const AnalysisParameters& params);
+    static std::string buildRecorders(const OpenSeesModelMap& map, const AnalysisParameters& params);
     static std::string buildLoads(const CalculationSnapshot& snapshot, const AnalysisParameters& params);
     static std::string buildAnalysisCommands(const CalculationSnapshot& snapshot, const AnalysisParameters& params);
+
+    /// Liste Tcl d'entiers "1 2 3".
+    static std::string joinTags(const std::vector<int>& tags);
 };
 
 } // namespace TSA::Analysis

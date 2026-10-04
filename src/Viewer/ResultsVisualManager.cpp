@@ -624,15 +624,16 @@ void ResultsVisualManager::updateDiagramShapes()
         return;
     }
 
-    for (const auto& [elId, elemRes] : m_results->allElementResults())
+    for (const auto& [elKey, elemRes] : m_results->allElementResults())
     {
+        const int elId = elKey.id;
         auto stations = getAllStations(elemRes);
         if (stations.empty()) continue;
 
         gp_Pnt p1, p2;
         double rot = 0.0;
 
-        const auto* b = m_model->getBeam(elId);
+        const auto* b = elKey.kind == TSA::Analysis::StructuralElementKind::Beam ? m_model->getBeam(elId) : nullptr;
         if (b)
         {
             const auto* n1 = m_model->getNode(b->startNodeId());
@@ -644,7 +645,7 @@ void ResultsVisualManager::updateDiagramShapes()
         }
         else
         {
-            const auto* col = m_model->getColumn(elId);
+            const auto* col = elKey.kind == TSA::Analysis::StructuralElementKind::Column ? m_model->getColumn(elId) : nullptr;
             if (col)
             {
                 const auto* n1 = m_model->getNode(col->startNodeId());
@@ -656,7 +657,7 @@ void ResultsVisualManager::updateDiagramShapes()
             }
             else
             {
-                const auto* truss = m_model->getTrussMember(elId);
+                const auto* truss = elKey.kind == TSA::Analysis::StructuralElementKind::Truss ? m_model->getTrussMember(elId) : nullptr;
                 if (truss)
                 {
                     const auto* n1 = m_model->getNode(truss->startNodeId());
@@ -668,7 +669,7 @@ void ResultsVisualManager::updateDiagramShapes()
                 }
                 else
                 {
-                    const auto* cable = m_model->getCable(elId);
+                    const auto* cable = elKey.kind == TSA::Analysis::StructuralElementKind::Cable ? m_model->getCable(elId) : nullptr;
                     if (cable)
                     {
                         const auto* n1 = m_model->getNode(cable->startNodeId());

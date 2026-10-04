@@ -172,3 +172,4 @@ bool runSuite_OpenSees(int& passed);
 bool runSuite_Supports(int& passed);
 bool runSuite_Standards(int& passed);
 bool runSuite_NDCReport(int& passed);
+bool runSuite_Extraction(int& passed);

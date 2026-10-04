@@ -447,6 +447,22 @@ RibbonTab* RibbonBuilder::buildEditTab(RibbonBar* bar, const RibbonActions& acts
     }
     tab->addPanel(copyPanel);
 
+    // Symétrie & Topologie
+    std::vector<QAction*> topoCol;
+    if (acts.actionSplitBars) topoCol.push_back(acts.actionSplitBars);
+    if (acts.actionMergeNodes) topoCol.push_back(acts.actionMergeNodes);
+    if (acts.actionMirror || !topoCol.empty())
+    {
+        auto* topoPanel = new RibbonPanel(QObject::tr("Symétrie & Topologie"), tab);
+        if (acts.actionMirror) topoPanel->addLargeAction(acts.actionMirror);
+        if (!topoCol.empty())
+        {
+            topoPanel->addInternalSeparator();
+            topoPanel->addSmallColumn(topoCol);
+        }
+        tab->addPanel(topoPanel);
+    }
+
     // Repère de Travail
     if (acts.actionMoveOrigin)
     {

@@ -230,6 +230,37 @@ public:
                                           double angleRad, int repetitions = 1,
                                           const std::set<int>& cableIds = {});
 
+    // Topologie : symétrie, division de barres, fusion de nœuds (Model_Topology.cpp)
+    /// Symétrie par rapport au plan (planePoint, planeNormal).
+    /// keepOriginal = true : copie miroir, les nœuds situés sur le plan (à planeTol près) sont
+    /// partagés et un élément entièrement sur le plan n'est pas dupliqué ; retourne les ids créés.
+    /// keepOriginal = false : les nœuds sont déplacés ; retourne les ids des nœuds déplacés.
+    /// L'ordre des nœuds des dalles est inversé pour conserver leur orientation.
+    std::vector<int> mirrorElements(const std::set<int>& nodeIds,
+                                    const std::set<int>& beamIds,
+                                    const std::set<int>& columnIds,
+                                    const std::set<int>& slabIds,
+                                    const gp_Pnt& planePoint, const gp_Dir& planeNormal,
+                                    bool keepOriginal,
+                                    const std::set<int>& cableIds = {},
+                                    double planeTol = 1e-6);
+
+    /// Divise une poutre en `segments` tronçons égaux. La poutre d'origine devient le premier
+    /// tronçon (relâchement de fin reporté sur le dernier), les charges réparties uniformes sur
+    /// toute la portée sont recopiées sur chaque tronçon. Retourne les ids de tous les tronçons
+    /// (origine en tête), vide si refus : segments < 2, barre absente ou de longueur nulle, charge
+    /// ponctuelle / partielle / trapézoïdale sur la barre (non redistribuable sans ambiguïté).
+    std::vector<int> splitBeam(int beamId, int segments);
+    /// Idem pour un poteau.
+    std::vector<int> splitColumn(int columnId, int segments);
+
+    /// Nœuds géométriquement confondus à `tol` près : doublon → nœud conservé (plus petit id).
+    std::map<int, int> findCoincidentNodes(double tol = 1e-3) const;
+    /// Fusionne les nœuds confondus : éléments, fondations, charges nodales et appuis reportés sur
+    /// le nœud conservé ; éléments devenus de longueur nulle (et dalles < 3 nœuds) supprimés.
+    /// Retourne le nombre de nœuds supprimés.
+    int mergeCoincidentNodes(double tol = 1e-3);
+
     struct ModelStateSnapshot
     {
         std::map<int, Node> nodes;

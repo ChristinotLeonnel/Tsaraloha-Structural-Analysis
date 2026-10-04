@@ -929,6 +929,157 @@ bool runSuite_Model(int& passed)
         passed++;
     }
 
+
+    // -------------------------------------------------------------------------
+    // TEST 101: Symétrie (miroir) — copie avec nœuds partagés sur le plan, et retournement
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 101: Symétrie ---" << std::endl;
+        Model m;
+        int a = m.addNode(0.0, 0.0, 0.0);
+        int b = m.addNode(4.0, 0.0, 0.0);
+        int c = m.addNode(4.0, 0.0, 3.0);
+        int beam = m.addBeam(a, b);
+        int col = m.addColumn(b, c, 0.40, 0.40);
+        m.getBeam(beam)->setRotation(15.0);
+        const size_t nodes0 = m.nodes().size();
+
+        // Plan X = 4 : b et c sont sur le plan (partagés), seul a est dupliqué en x = 8.
+        auto created = m.mirrorElements({}, { beam }, { col }, {}, gp_Pnt(4.0, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0), true);
+        TEST_CHECK(m.nodes().size() == nodes0 + 1, "Test 101: un seul nœud créé (nœuds du plan partagés)");
+        TEST_CHECK(m.beams().size() == 2, "Test 101: poutre symétrisée");
+        TEST_CHECK(m.columns().size() == 1, "Test 101: poteau sur le plan non dupliqué");
+        const Beam* mb = nullptr;
+        for (const auto& [id, bm] : m.beams()) if (id != beam) mb = &bm;
+        TEST_CHECK(mb && mb->endNodeId() == b, "Test 101: la copie rejoint le nœud partagé");
+        const Node* na = mb ? m.getNode(mb->startNodeId()) : nullptr;
+        TEST_CHECK(na && approxEqual(na->x(), 8.0) && approxEqual(na->z(), 0.0), "Test 101: image de (0,0,0) en (8,0,0)");
+        TEST_CHECK(mb && approxEqual(mb->rotation(), 15.0), "Test 101: propriétés recopiées");
+        TEST_CHECK(created.size() == 2, "Test 101: ids créés = 1 nœud + 1 poutre");
+
+        // Retournement (sans copie) par rapport au plan X = 0 : seul b, c bougent.
+        auto moved = m.mirrorElements({}, {}, { col }, {}, gp_Pnt(0.0, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0), false);
+        TEST_CHECK(moved.size() == 2 && approxEqual(m.getNode(c)->x(), -4.0), "Test 101: retournement des nœuds du poteau");
+
+        // Dalle : l'ordre du contour est inversé pour garder l'orientation.
+        Model m2;
+        int s1 = m2.addNode(0, 0, 0), s2 = m2.addNode(2, 0, 0), s3 = m2.addNode(2, 2, 0), s4 = m2.addNode(0, 2, 0);
+        int slab = m2.addSlab({ s1, s2, s3, s4 });
+        m2.mirrorElements({}, {}, {}, { slab }, gp_Pnt(2.0, 0.0, 0.0), gp_Dir(1.0, 0.0, 0.0), true);
+        TEST_CHECK(m2.slabs().size() == 2 && m2.nodes().size() == 6, "Test 101: dalle symétrisée, bord commun partagé");
+        std::cout << "[PASS] Test 101: Symétrie" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 102: Division de barres
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 102: Division de barres ---" << std::endl;
+        Model m;
+        int a = m.addNode(0.0, 0.0, 0.0);
+        int b = m.addNode(6.0, 0.0, 0.0);
+        int beam = m.addBeam(a, b, 0.30, 0.60);
+        EndRelease pinned; pinned.my = true; pinned.mz = true;
+        m.getBeam(beam)->setStartRelease(pinned);
+        m.getBeam(beam)->setEndRelease(pinned);
+        m.loadManager().addMemberLoad(MemberLoad::uniform(beam, 1, -10.0));
+
+        auto parts = m.splitBeam(beam, 3);
+        TEST_CHECK(parts.size() == 3 && parts.front() == beam, "Test 102: 3 tronçons, l'original en tête");
+        TEST_CHECK(m.beams().size() == 3 && m.nodes().size() == 4, "Test 102: 2 nœuds intermédiaires créés");
+        double total = 0.0;
+        for (int id : parts) total += m.getBeam(id)->length(m);
+        TEST_CHECK(approxEqual(total, 6.0) && approxEqual(m.getBeam(beam)->length(m), 2.0), "Test 102: longueurs égales, total conservé");
+        TEST_CHECK(m.getBeam(parts.back())->endNodeId() == b, "Test 102: le dernier tronçon finit au nœud d'origine");
+        TEST_CHECK(m.getBeam(beam)->startRelease().my && !m.getBeam(beam)->endRelease().my &&
+                   m.getBeam(parts.back())->endRelease().my && !m.getBeam(parts[1])->startRelease().my,
+                   "Test 102: relâchements conservés aux seules extrémités");
+        TEST_CHECK(approxEqual(m.getBeam(parts[1])->section().height, 0.60), "Test 102: section recopiée");
+        int loadsOnParts = 0;
+        for (const auto& [id, ml] : m.loadManager().memberLoads())
+            if (std::find(parts.begin(), parts.end(), ml.elementId()) != parts.end() && approxEqual(ml.q1(), -10.0)) ++loadsOnParts;
+        TEST_CHECK(loadsOnParts == 3, "Test 102: charge uniforme reportée sur chaque tronçon");
+
+        // Refus : charge ponctuelle (non redistribuable sans ambiguïté), aucun changement.
+        int c = m.addNode(0.0, 5.0, 0.0), d = m.addNode(6.0, 5.0, 0.0);
+        int beam2 = m.addBeam(c, d);
+        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(beam2, 1, -5.0, 2.0));
+        const size_t beamsBefore = m.beams().size();
+        TEST_CHECK(m.splitBeam(beam2, 2).empty() && m.beams().size() == beamsBefore, "Test 102: refus avec charge ponctuelle");
+        TEST_CHECK(m.splitBeam(beam2, 1).empty(), "Test 102: refus pour moins de 2 tronçons");
+
+        int col = m.addColumn(a, m.addNode(0.0, 0.0, 3.0));
+        auto colParts = m.splitColumn(col, 2);
+        TEST_CHECK(colParts.size() == 2 && approxEqual(m.getColumn(col)->length(m), 1.5), "Test 102: division d'un poteau");
+        std::cout << "[PASS] Test 102: Division de barres" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 103: Fusion des nœuds confondus
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 103: Fusion des nœuds confondus ---" << std::endl;
+        Model m;
+        int a = m.addNode(0.0, 0.0, 0.0);
+        int b = m.addNode(5.0, 0.0, 0.0);
+        int b2 = m.addNode(5.0004, 0.0, 0.0);      // doublon de b à 0,4 mm
+        int c = m.addNode(10.0, 0.0, 0.0);
+        int far = m.addNode(5.01, 0.0, 0.0);       // 1 cm : pas un doublon
+        m.getNode(b2)->setSupport(SupportDefinition::pinned());
+        int beam1 = m.addBeam(a, b);
+        int beam2 = m.addBeam(b2, c);
+        int degenerate = m.addBeam(b, b2);         // deviendra de longueur nulle
+        int foot = m.addFoundation(b2);
+        int nl = m.loadManager().addNodalLoad(NodalLoad(0, b2, 1, 0.0, 0.0, -20.0));
+
+        auto dup = m.findCoincidentNodes(1e-3);
+        TEST_CHECK(dup.size() == 1 && dup.count(b2) && dup.at(b2) == b, "Test 103: un doublon détecté (b2 → b)");
+
+        TEST_CHECK(m.mergeCoincidentNodes(1e-3) == 1, "Test 103: un nœud fusionné");
+        TEST_CHECK(!m.getNode(b2) && m.getNode(far), "Test 103: doublon supprimé, nœud voisin conservé");
+        TEST_CHECK(m.getBeam(beam1) && m.getBeam(beam2) && m.getBeam(beam2)->startNodeId() == b, "Test 103: barre reconnectée");
+        TEST_CHECK(!m.getBeam(degenerate), "Test 103: barre de longueur nulle supprimée");
+        TEST_CHECK(m.getNode(b)->support().isSupported(), "Test 103: appui reporté sur le nœud conservé");
+        TEST_CHECK(m.getFoundation(foot) && m.getFoundation(foot)->nodeId() == b, "Test 103: fondation reportée");
+        TEST_CHECK(m.loadManager().getNodalLoad(nl) && m.loadManager().getNodalLoad(nl)->nodeId() == b, "Test 103: charge nodale reportée");
+        TEST_CHECK(m.findCoincidentNodes(1e-3).empty() && m.mergeCoincidentNodes(1e-3) == 0, "Test 103: idempotent");
+
+        // Dalle dont deux sommets fusionnent → triangle conservé.
+        Model m2;
+        int p1 = m2.addNode(0, 0, 0), p2 = m2.addNode(3, 0, 0), p3 = m2.addNode(3, 0.0002, 0), p4 = m2.addNode(0, 3, 0);
+        int slab = m2.addSlab({ p1, p2, p3, p4 });
+        m2.mergeCoincidentNodes(1e-3);
+        TEST_CHECK(m2.getSlab(slab) && m2.getSlab(slab)->nodeIds().size() == 3, "Test 103: contour de dalle compacté");
+        std::cout << "[PASS] Test 103: Fusion des nœuds confondus" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 104: Transactions d'édition topologique — une seule entrée Undo, restauration exacte
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 104: Undo des opérations topologiques ---" << std::endl;
+        Model m;
+        int a = m.addNode(0.0, 0.0, 0.0);
+        int b = m.addNode(4.0, 0.0, 0.0);
+        int beam = m.addBeam(a, b);
+        m.clearUndoRedo();
+        {
+            TSA::UndoRedo::EditTransaction tx(m, "Division de barres");
+            TEST_CHECK(m.splitBeam(beam, 4).size() == 4, "Test 104: division");
+            tx.commit();
+        }
+        TEST_CHECK(m.beams().size() == 4 && m.canUndo(), "Test 104: état divisé, annulable");
+        TEST_CHECK(m.undo(), "Test 104: undo");
+        TEST_CHECK(m.beams().size() == 1 && m.nodes().size() == 2 && m.getBeam(beam)->endNodeId() == b,
+                   "Test 104: barre d'origine restaurée");
+        TEST_CHECK(!m.canUndo(), "Test 104: une seule entrée d'historique");
+        std::cout << "[PASS] Test 104: Undo des opérations topologiques" << std::endl;
+        passed++;
+    }
+
     return true;
 }
 
