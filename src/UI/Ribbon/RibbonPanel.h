@@ -15,6 +15,14 @@ namespace TSA::UI
 
 class RibbonButton;
 
+// Niveaux de densité d'un panneau, du plus riche au plus compact.
+enum class RibbonPanelMode
+{
+    Full,       // libellés complets
+    IconOnly,   // petits boutons réduits à leur icône (infobulle conservée)
+    Collapsed   // un seul bouton déroulant portant le titre du panneau
+};
+
 class RibbonPanel : public QWidget
 {
     Q_OBJECT
@@ -41,11 +49,31 @@ public:
 
     void updateTheme(bool isDark);
 
-private:
-    void setupUi();
+    // Responsive : le RibbonTab choisit le mode selon la largeur disponible.
+    void setMode(RibbonPanelMode mode);
+    RibbonPanelMode mode() const { return m_mode; }
+    int widthForMode(RibbonPanelMode mode);
+    bool hasCompactableButtons() const { return !m_smallButtons.empty(); }
+
+    // Menu reprenant toutes les commandes du panneau (bouton replié, menu « Plus »).
+    // Le menu est créé à la demande, parenté à  parent.
+    QMenu* buildOverflowMenu(QWidget* parent) const;
+    bool isEmptyPanel() const { return m_entries.empty(); }
 
 private:
+    void setupUi();
+    void trackAction(QAction* action);
+    void trackSeparator();
+
+private:
+    struct Entry { QAction* action = nullptr; }; // action == nullptr : séparateur de groupe
+
     QString m_title;
+    RibbonPanelMode m_mode = RibbonPanelMode::Full;
+    QWidget* m_contentHost = nullptr;
+    RibbonButton* m_collapsedButton = nullptr;
+    std::vector<Entry> m_entries;
+    std::vector<RibbonButton*> m_smallButtons;
     QHBoxLayout* m_contentLayout = nullptr;
     QLabel* m_lblTitle = nullptr;
     std::vector<QWidget*> m_separators;

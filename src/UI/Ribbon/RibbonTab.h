@@ -4,13 +4,20 @@
 #include <vector>
 
 class QHBoxLayout;
-class QScrollArea;
+class QMenu;
 
 namespace TSA::UI
 {
 
 class RibbonPanel;
+class RibbonButton;
 
+// Un onglet du ruban : une rangée de panneaux qui s'adapte à la largeur disponible
+// (jamais de défilement horizontal) :
+//   1. panneaux complets ;
+//   2. petits boutons réduits à leur icône ;
+//   3. panneaux repliés en bouton déroulant, en partant de la droite ;
+//   4. à défaut, les derniers panneaux passent dans le menu « Plus ».
 class RibbonTab : public QWidget
 {
     Q_OBJECT
@@ -23,14 +30,24 @@ public:
 
     void updateTheme(bool isDark);
 
-private:
-    void setupUi();
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
+
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
 
 private:
-    QScrollArea* m_scrollArea = nullptr;
+    void setupUi();
+    void relayout();
+
+private:
     QWidget* m_container = nullptr;
     QHBoxLayout* m_panelLayout = nullptr;
+    RibbonButton* m_moreButton = nullptr;
     std::vector<RibbonPanel*> m_panels;
+    bool m_inRelayout = false;
+    int m_lastWidth = -1;
 };
 
 } // namespace TSA::UI

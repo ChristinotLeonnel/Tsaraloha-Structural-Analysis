@@ -1,3 +1,4 @@
+#include <QJsonArray>
 #include "OccView.h"
 #include "../Coordinate/GeometryTolerance.h"
 #include "SelectionManager.h"
@@ -991,22 +992,35 @@ void OccView::setMode2D(bool enabled)
     emit viewCameraChanged();
 }
 
+void OccView::setElementCategoryVisible(ElementCategory category, bool visible)
+{
+    const unsigned bit = 1u << static_cast<unsigned>(category);
+    const unsigned before = m_hiddenElementCategories;
+    m_hiddenElementCategories = visible ? (m_hiddenElementCategories & ~bit) : (m_hiddenElementCategories | bit);
+    if (before == m_hiddenElementCategories) return;
+
+    m_isolationApplied = true; // force la passe même sans isolation de plan
+    updateElementIsolation();
+    if (!m_view.IsNull()) m_view->Redraw();
+}
+
 void OccView::updateElementIsolation()
 {
     if (m_context.IsNull() || !m_model)
         return;
 
     const bool isolate = isIsolationActive();
-    // Rien n'a été masqué par l'isolation et elle reste inactive : aucun travail.
-    if (!isolate && !m_isolationApplied)
+    // Rien n'a été masqué (isolation ou filtre de familles) et rien n'est actif : aucun travail.
+    if (!isolate && !m_isolationApplied && m_hiddenElementCategories == 0)
         return;
     // Quand l'isolation vient d'être désactivée (case « Isoler le plan » décochée, sortie du
     // mode 2D), cette passe réaffiche tout selon les seuls drapeaux d'affichage. Auparavant la
     // fonction sortait immédiatement et les éléments masqués le restaient définitivement.
-    m_isolationApplied = isolate;
+    m_isolationApplied = isolate || m_hiddenElementCategories != 0;
 
     const double tol = isolationTolerance();
     auto linearKept = [&](int a, int b) { return !isolate || isLinearElementOnActiveWorkPlane(a, b, tol); };
+    auto catOn = [&](ElementCategory c) { return isElementCategoryVisible(c); };
 
     auto setShapeVisibility = [&](const Handle(AIS_InteractiveObject)& shape, bool visible) {
         if (shape.IsNull()) return;
@@ -1053,39 +1067,39 @@ void OccView::updateElementIsolation()
     for (const auto& [id, shape] : m_beamShapes)
     {
         const auto* e = m_model->getBeam(id);
-        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Beams) && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_columnShapes)
     {
         const auto* e = m_model->getColumn(id);
-        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Columns) && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_trussShapes)
     {
         const auto* e = m_model->getTrussMember(id);
-        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Trusses) && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_cableShapes)
     {
         const auto* e = m_model->getCable(id);
-        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Cables) && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_wallShapes)
     {
         const auto* e = m_model->getWall(id);
-        setShapeVisibility(shape, e && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Walls) && linearKept(e->startNodeId(), e->endNodeId()));
     }
 
     // 4. Éléments surfaciques & fondations
     for (const auto& [id, shape] : m_slabShapes)
     {
         const auto* e = m_model->getSlab(id);
-        setShapeVisibility(shape, e && (!isolate || isSurfaceElementOnActiveWorkPlane(e->nodeIds(), tol)));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Slabs) && (!isolate || isSurfaceElementOnActiveWorkPlane(e->nodeIds(), tol)));
     }
     for (const auto& [id, shape] : m_foundationShapes)
     {
         const auto* e = m_model->getFoundation(id);
-        setShapeVisibility(shape, e && nodeKept(e->nodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Foundations) && nodeKept(e->nodeId()));
     }
 
     // 5. Charges nodales
@@ -2120,4 +2134,59 @@ void OccView::setGizmoSize(double size)
     m_gizmoSize = size;
     updateWorkPlaneVisual();
     emit gizmoSizeChanged(size);
+}
+
+// -----------------------------------------------------------------------------
+// État de vue persistant (aperçus de projet, réouverture)
+// -----------------------------------------------------------------------------
+
+QJsonObject OccView::cameraState() const
+{
+    if (m_view.IsNull() || m_view->Camera().IsNull()) return {};
+    const Handle(Graphic3d_Camera)& cam = m_view->Camera();
+    const gp_Pnt eye = cam->Eye();
+    const gp_Pnt center = cam->Center();
+    const gp_Dir up = cam->Up();
+    return QJsonObject{
+        { "eye", QJsonArray{ eye.X(), eye.Y(), eye.Z() } },
+        { "center", QJsonArray{ center.X(), center.Y(), center.Z() } },
+        { "up", QJsonArray{ up.X(), up.Y(), up.Z() } },
+        { "scale", cam->Scale() },
+        { "projection", cam->ProjectionType() == Graphic3d_Camera::Projection_Orthographic ? "orthographic" : "perspective" } };
+}
+
+bool OccView::applyCameraState(const QJsonObject& state)
+{
+    if (m_view.IsNull() || m_view->Camera().IsNull()) return false;
+    const QJsonArray eye = state["eye"].toArray(), center = state["center"].toArray(), up = state["up"].toArray();
+    if (eye.size() != 3 || center.size() != 3 || up.size() != 3 || !(state["scale"].toDouble() > 0.0)) return false;
+    const gp_Vec upVec(up[0].toDouble(), up[1].toDouble(), up[2].toDouble());
+    const gp_Pnt e(eye[0].toDouble(), eye[1].toDouble(), eye[2].toDouble());
+    const gp_Pnt c(center[0].toDouble(), center[1].toDouble(), center[2].toDouble());
+    if (upVec.Magnitude() < 1e-9 || e.Distance(c) < 1e-9) return false;
+
+    m_viewManager.setOrthographic(state["projection"].toString() == "orthographic", m_view);
+    const Handle(Graphic3d_Camera)& cam = m_view->Camera();
+    cam->SetEye(e);
+    cam->SetCenter(c);
+    cam->SetUp(gp_Dir(upVec));
+    cam->SetScale(state["scale"].toDouble());
+    m_view->ZFitAll();
+    m_view->Redraw();
+    emit viewCameraChanged();
+    return true;
+}
+
+QJsonObject OccView::viewState() const
+{
+    return QJsonObject{
+        { "mode2D", m_mode2DActive },
+        { "isolation", isIsolationActive() },
+        { "gridVisible", isGridVisible() },
+        { "levelsVisible", areGridLevelsVisible() },
+        { "nodesVisible", m_nodesVisible },
+        { "loadsVisible", m_loadsVisible },
+        { "supportsVisible", m_supportsVisible },
+        { "workPlaneVisible", m_workPlaneVisible },
+        { "hiddenElementCategories", static_cast<int>(m_hiddenElementCategories) } };
 }

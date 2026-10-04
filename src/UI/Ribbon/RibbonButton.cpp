@@ -3,8 +3,12 @@
 #include <QAction>
 #include <QMenu>
 #include <QPainter>
+#include <QHelpEvent>
+#include <QToolTip>
+#include <QKeySequence>
 #include <QRegularExpression>
 #include <algorithm>
+#include <cstdlib>
 
 namespace TSA::UI
 {
@@ -60,6 +64,18 @@ static QIcon generateFallbackIcon(const QString& rawText, bool isLarge)
     return QIcon(pix);
 }
 
+// Libellé sur deux lignes pour les grands boutons : « Dessiner Poutre » → « Dessiner / Poutre ».
+static QString wrapLabel(const QString& text)
+{
+    if (text.length() <= 9 || text.contains(QLatin1Char('\n'))) return text;
+    const int mid = text.length() / 2;
+    int best = -1;
+    for (int i = 0; i < text.length(); ++i)
+        if (text[i] == ' ' && (best < 0 || std::abs(i - mid) < std::abs(best - mid))) best = i;
+    if (best < 0) return text;
+    return text.left(best) + QLatin1Char('\n') + text.mid(best + 1);
+}
+
 RibbonButton::RibbonButton(QAction* action, RibbonButtonSize size, QWidget* parent)
     : QToolButton(parent)
     , m_size(size)
@@ -96,6 +112,56 @@ void RibbonButton::setRibbonSize(RibbonButtonSize size)
     initStyle();
 }
 
+void RibbonButton::setIconOnly(bool iconOnly)
+{
+    if (m_iconOnly == iconOnly) return;
+    m_iconOnly = iconOnly;
+    initStyle();
+}
+
+// Infobulle d'ingénieur : nom de la commande en gras, description, puis raccourci.
+QString RibbonButton::richToolTip() const
+{
+    QString name = defaultAction() ? defaultAction()->text() : text();
+    name.remove('&');
+    if (name.endsWith("...")) name.chop(3);
+    name = name.trimmed();
+
+    QString desc = defaultAction() ? defaultAction()->toolTip() : toolTip();
+    QString shortcut = (defaultAction() && !defaultAction()->shortcut().isEmpty())
+        ? defaultAction()->shortcut().toString(QKeySequence::NativeText)
+        : QString();
+
+    // Les infobulles existantes se terminent souvent par « (Ctrl+N) » : on l'extrait.
+    static const QRegularExpression trailingKey(QStringLiteral(R"(\s*\(([^()]+)\)\s*(\.\.\.)?$)"));
+    const auto m = trailingKey.match(desc);
+    // Une parenthèse finale n'est un raccourci que si elle ressemble à une touche (« Ctrl+N », « F »).
+    static const QRegularExpression keyLike(QStringLiteral(R"(^[\w+\-]{1,16}$)"));
+    if (m.hasMatch() && keyLike.match(m.captured(1)).hasMatch())
+    {
+        if (shortcut.isEmpty()) shortcut = m.captured(1);
+        desc.truncate(m.capturedStart());
+    }
+    desc = desc.trimmed();
+    if (desc.compare(name, Qt::CaseInsensitive) == 0) desc.clear();
+
+    QString html = QStringLiteral("<b>%1</b>").arg(name.toHtmlEscaped());
+    if (!desc.isEmpty()) html += QStringLiteral("<br/>%1").arg(desc.toHtmlEscaped());
+    if (!shortcut.isEmpty()) html += QStringLiteral("<br/><i>Raccourci : %1</i>").arg(shortcut.toHtmlEscaped());
+    return html;
+}
+
+bool RibbonButton::event(QEvent* e)
+{
+    if (e->type() == QEvent::ToolTip)
+    {
+        auto* he = static_cast<QHelpEvent*>(e);
+        QToolTip::showText(he->globalPos(), richToolTip(), this);
+        return true;
+    }
+    return QToolButton::event(e);
+}
+
 void RibbonButton::updateTheme(bool /*isDark*/)
 {
     initStyle();
@@ -108,16 +174,31 @@ void RibbonButton::initStyle()
 
     if (m_size == RibbonButtonSize::Large)
     {
+        // Largeur dictée par le libellé (pas de coupure), hauteur fixe.
         setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
         setIconSize(QSize(28, 28));
-        setFixedSize(54, 66);
+        setMinimumWidth(50);
+        setMaximumWidth(QWIDGETSIZE_MAX);
+        setFixedHeight(66);
+        if (auto* act = defaultAction()) setText(wrapLabel(act->text()));
+        else setText(wrapLabel(text()));
         setStyleSheet(ThemeManager::instance().ribbonButtonLargeStyleSheet());
     }
     else // Small / Compact
     {
-        setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
         setIconSize(QSize(16, 16));
         setFixedHeight(21);
+        if (m_iconOnly)
+        {
+            setToolButtonStyle(Qt::ToolButtonIconOnly);
+            setFixedWidth(26);
+        }
+        else
+        {
+            setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+            setMinimumWidth(0);
+            setMaximumWidth(QWIDGETSIZE_MAX);
+        }
         setStyleSheet(ThemeManager::instance().ribbonButtonSmallStyleSheet());
     }
 }

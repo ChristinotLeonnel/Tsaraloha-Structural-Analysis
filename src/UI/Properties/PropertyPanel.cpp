@@ -175,6 +175,20 @@ void PropertyPanel::setupUi()
     {
         spin->setKeyboardTracking(false);
     }
+
+    // Un QStackedWidget prend la taille de sa page la plus large : la page vide (texte d'invite)
+    // était rognée à droite. Seule la page courante contribue à la taille.
+    auto fitToCurrentPage = [this](int current) {
+        for (int i = 0; i < m_stack->count(); ++i)
+        {
+            auto* page = m_stack->widget(i);
+            page->setSizePolicy(i == current ? QSizePolicy::Preferred : QSizePolicy::Ignored,
+                                i == current ? QSizePolicy::Preferred : QSizePolicy::Ignored);
+        }
+        m_stack->updateGeometry();
+    };
+    connect(m_stack, &QStackedWidget::currentChanged, this, fitToCurrentPage);
+    fitToCurrentPage(m_stack->currentIndex());
 }
 
 void PropertyPanel::clearProperties()

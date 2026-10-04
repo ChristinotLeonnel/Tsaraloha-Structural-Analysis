@@ -4,6 +4,8 @@
 #include <QString>
 #include <vector>
 
+class QAction;
+
 class QTabWidget;
 class QVBoxLayout;
 
@@ -22,6 +24,10 @@ public:
     RibbonTab* addTab(const QString& title);
     int currentTabIndex() const;
     void setCurrentTabIndex(int index);
+
+    // Barre d'accès rapide (coin gauche de la rangée d'onglets) : icônes seules, toujours visibles.
+    // Une action nulle est ignorée ; une action nulle précédée d'un groupe n'ajoute pas de séparateur.
+    void setQuickAccess(const std::vector<QAction*>& actions);
 
     void updateTheme(bool isDark);
 

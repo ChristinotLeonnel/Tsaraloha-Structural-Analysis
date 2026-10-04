@@ -16,6 +16,7 @@ struct RibbonActions
 {
     // 1. Accueil & Fichier
     QAction* actionNew = nullptr;
+    QAction* actionStartPage = nullptr;
     QAction* actionOpen = nullptr;
     QAction* actionSave = nullptr;
     QAction* actionSaveAs = nullptr;
@@ -162,6 +163,13 @@ struct RibbonActions
     QAction* actionHelp = nullptr;
     QAction* actionShortcuts = nullptr;
     QAction* actionAbout = nullptr;
+
+    // 9. IA Co-Engineering
+    QAction* actionAIAssistant = nullptr;
+    QAction* actionAIConfig = nullptr;
+    QAction* actionAICheck = nullptr;
+    QAction* actionAIAnalyze = nullptr;
+    QAction* actionAIExplain = nullptr;
 };
 
 class RibbonBuilder

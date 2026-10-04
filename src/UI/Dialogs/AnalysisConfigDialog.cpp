@@ -16,7 +16,7 @@ AnalysisConfigDialog::AnalysisConfigDialog(const TSA::Model::Model* model, QWidg
 {
     setWindowTitle(tr("Configuration du Calcul Structural OpenSees"));
     setMinimumWidth(520);
-    resize(540, 680);
+    resize(540, 420); // hauteur minimale : le layout impose la taille utile (groupes conditionnels)
 
     setupUi();
     populateCombos();
@@ -174,6 +174,7 @@ void AnalysisConfigDialog::setupUi()
     formSystem->addRow(tr("Plafond K_global :"), m_spinMaxStiffnessDofs);
 
     mainLayout->addWidget(groupSystem);
+    mainLayout->addStretch(1); // les groupes gardent leur hauteur naturelle (pas d'espace vide étiré)
 
     // 6. Options globales
     auto* optLayout = new QHBoxLayout();
