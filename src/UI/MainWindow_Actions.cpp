@@ -33,6 +33,7 @@
 #include <QMenu>
 #include <QToolBar>
 #include <QStatusBar>
+#include <QTimer>
 #include <QAction>
 #include <QActionGroup>
 #include <QDockWidget>
@@ -826,6 +827,7 @@ void MainWindow::createMenus()
     QMenu* fileMenu = menuBar()->addMenu(tr("&Fichier"));
     fileMenu->addAction(m_actionNew);
     fileMenu->addAction(m_actionOpen);
+    if (m_actionStartPage) fileMenu->addAction(m_actionStartPage);
     fileMenu->addAction(m_actionSave);
     fileMenu->addAction(m_actionSaveAs);
     fileMenu->addSeparator();
@@ -1085,6 +1087,7 @@ void MainWindow::createRibbon()
 
     TSA::UI::RibbonActions acts;
     acts.actionNew = m_actionNew;
+    acts.actionStartPage = m_actionStartPage;
     acts.actionOpen = m_actionOpen;
     acts.actionSave = m_actionSave;
     acts.actionSaveAs = m_actionSaveAs;
@@ -1225,6 +1228,12 @@ void MainWindow::createRibbon()
     acts.actionShortcuts = m_actionShortcuts;
     acts.actionAbout = m_actionAbout;
 
+    acts.actionAIAssistant = m_actionAIAssistant;
+    acts.actionAIConfig = m_actionAIConfig;
+    acts.actionAICheck = m_actionAICheck;
+    acts.actionAIAnalyze = m_actionAIAnalyze;
+    acts.actionAIExplain = m_actionAIExplain;
+
     TSA::UI::RibbonBuilder::buildAllTabs(m_ribbonBar, acts, this);
 
     // Intégration en tant que barre d'outils supérieure fixe non-flottante façon AutoCAD Ribbon
@@ -1260,6 +1269,7 @@ void MainWindow::createDockWindows()
     m_visibilityDock->toggleViewAction()->setIcon(QIcon(":/icons/visibility.svg"));
     addDockWidget(Qt::LeftDockWidgetArea, m_visibilityDock);
     tabifyDockWidget(m_modelTreeDock, m_visibilityDock);
+    m_modelTreeDock->setMinimumWidth(380); // l'arbre (nom + détails) tient sans troncature
     m_modelTreeDock->raise();
 
     m_visibilityDock->bindGridVisibleAction(m_actionGridVisible);
@@ -1272,6 +1282,10 @@ void MainWindow::createDockWindows()
     m_visibilityDock->bindRulersVisibleAction(m_actionRulersVisible);
     m_visibilityDock->bindCoordSystemAction(m_actionCoordSystem);
     m_visibilityDock->bindWorkPlaneVisibleAction(m_actionWorkPlaneVisible);
+    connect(m_visibilityDock, &TSA::UI::VisibilityDock::elementCategoryToggled, this, [this](int category, bool visible) {
+        if (m_occView)
+            m_occView->setElementCategoryVisible(static_cast<OccView::ElementCategory>(category), visible);
+    });
 
     // 3. Dock gauche ongletisé : ÉLÉMENTS STRUCTURAUX (Volet de dessin)
     m_elementsDock = new TSA::UI::StructuralElementsDock(this);
@@ -1895,6 +1909,21 @@ void MainWindow::createDockWindows()
             "console", tr("Console & Messages"), tr("Outils"), m_consoleDock,
             Qt::BottomDockWidgetArea, true, QKeySequence(Qt::Key_F2), QIcon(":/icons/console.svg"));
     }
+
+    createAIComponents();
+}
+
+void MainWindow::updateStatusCounts()
+{
+    if (!m_statusCounts || !m_model) return;
+    const size_t elements = m_model->beams().size() + m_model->columns().size() + m_model->slabs().size()
+        + m_model->walls().size() + m_model->foundations().size() + m_model->trussMembers().size()
+        + m_model->cables().size();
+    const size_t selected = m_selectionManager ? m_selectionManager->totalSelectedCount() : 0;
+    const QString text = tr("%1 nœuds · %2 élém. · %3 sél.")
+        .arg(m_model->nodes().size()).arg(elements).arg(selected);
+    if (m_statusCounts->text() != text) m_statusCounts->setText(text);
+    onModelRevisionPolled(); // même minuteur : détection des changements du modèle pour l'aperçu
 }
 
 void MainWindow::createStatusBar()
@@ -1951,6 +1980,22 @@ void MainWindow::createStatusBar()
     m_statusSnap->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     bar->addWidget(m_statusSnap);
 
+    // 6. Compteurs du modèle et de la sélection : valeurs réelles, relues à intervalle court
+    //    (lecture de tailles de maps uniquement) plutôt que reliées à chaque signal du modèle.
+    m_statusCounts = new QLabel(this);
+    m_statusCounts->setStyleSheet("font-weight: 500; padding: 2px 10px; border-left: 1px solid #475569;");
+    m_statusCounts->setToolTip(tr("Nœuds · Éléments (poutres, poteaux, dalles, voiles, fondations, treillis, câbles) · Sélection"));
+    // Aucune largeur minimale imposée : la barre d'état ne doit jamais faire chevaucher ses
+    // libellés (la somme des minima dépassait la largeur disponible en 1920 px à 125 %).
+    m_statusCounts->setMinimumWidth(0);
+    m_statusCounts->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    bar->addWidget(m_statusCounts);
+    auto* countsTimer = new QTimer(this);
+    countsTimer->setInterval(500);
+    connect(countsTimer, &QTimer::timeout, this, &MainWindow::updateStatusCounts);
+    countsTimer->start();
+    updateStatusCounts();
+
     // Message d'information (survol, niveau actif...) : texte libre et potentiellement long
     // => ne doit jamais contribuer à la largeur minimale de la fenêtre.
     m_statusInfo = new QLabel(tr("Prêt"), this);
@@ -1958,6 +2003,8 @@ void MainWindow::createStatusBar()
     m_statusInfo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     m_statusInfo->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     bar->addPermanentWidget(m_statusInfo, 1);
+
+    createAIStatusWidget(bar);
 
     m_statusLogo = new TSA::UI::TSALogoOverlay(this);
     m_statusLogo->setDarkMode(TSA::UI::ThemeManager::instance().isDarkMode());

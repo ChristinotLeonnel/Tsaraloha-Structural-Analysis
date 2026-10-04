@@ -272,13 +272,14 @@ void MainWindow::setupUi()
     m_occView->setSelectionManager(m_selectionManager.get());
     m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
     m_viewportContainer->setModel(m_model.get());
-    setCentralWidget(m_viewportContainer);
+    createStartPage(); // zone centrale : accueil « Projets récents » / viewport unique
 
     createActions();
     createDockWindows();
     createMenus();
     createRibbon();
     createStatusBar();
+    connectPreviewTriggers();
 }
 
 
@@ -1343,6 +1344,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 {
     if (maybeSave())
     {
+        capturePreview(true); // dernier état du modèle pour la page d'accueil
         if (m_windowManager)
         {
             m_windowManager->saveLayout();
@@ -1359,6 +1361,8 @@ void MainWindow::onActionNew()
 {
     if (!maybeSave())
         return;
+    capturePreview(true);
+    showViewport();
 
     if (m_projectManager && m_model)
     {
@@ -1514,6 +1518,7 @@ bool MainWindow::saveFile(const QString& path)
     }
 
     updateWindowTitle();
+    onProjectFileSaved(targetPath);
 
     if (m_consoleDock)
     {
@@ -1530,6 +1535,8 @@ bool MainWindow::loadFile(const QString& path)
 {
     if (!m_model)
         return false;
+    capturePreview(true); // dernier état du projet que l'on quitte
+    showViewport();       // initialise le viewport OCCT avant le chargement
 
     QElapsedTimer loadTimer;
     loadTimer.start();
@@ -1636,6 +1643,8 @@ bool MainWindow::loadFile(const QString& path)
             .arg(m_model->slabs().size())
             .arg(fileName));
     }
+
+    onProjectFileOpened(path);
 
     TSA_LOG_INFO("MainWindow", "ProjectLoadTiming",
                  "Ouverture " + fileName.toStdString() + " : lecture+modèle+3D = " + std::to_string(openMs) +

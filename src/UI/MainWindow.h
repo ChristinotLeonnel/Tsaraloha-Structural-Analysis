@@ -13,6 +13,8 @@
 #include "../Analysis/OpenSeesAnalysisBuilder.h"
 
 namespace TSA::Model { class Model; }
+namespace TSA::AI { class AIOrchestrator; }
+namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; class StartPage; }
 namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Project { class ProjectManager; }
@@ -57,6 +59,10 @@ namespace TSA::NDC
 class OccView;
 class QAction;
 class QActionGroup;
+class QToolButton;
+class QStackedWidget;
+class QTimer;
+class QStatusBar;
 class QLabel;
 class QDockWidget;
 
@@ -326,6 +332,41 @@ private:
 
     QLabel* m_statusWorkPlane = nullptr;
     QLabel* m_statusSnap = nullptr;
+    QLabel* m_statusCounts = nullptr; // Nœuds / Éléments / Sélection (rafraîchi par minuteur)
+    void updateStatusCounts();
+
+    // Page d'accueil « Projets récents » et aperçus du dernier état (MainWindow_Preview.cpp)
+    void createStartPage();
+    void connectPreviewTriggers();
+    void showStartPage();
+    void showViewport();
+    bool isViewportShown() const;
+    void schedulePreviewCapture(int delayMs = 0);
+    void capturePreview(bool synchronousWrite);
+    void onModelRevisionPolled();
+    void onProjectFileOpened(const QString& path);
+    void onProjectFileSaved(const QString& path);
+    void showRecentProjectMenu(const QString& path, const QPoint& globalPos);
+    QStackedWidget* m_centralStack = nullptr;
+    TSA::UI::StartPage* m_startPage = nullptr;
+    QTimer* m_previewTimer = nullptr;
+    QAction* m_actionStartPage = nullptr;
+    quint64 m_lastPolledRevision = 0;
+
+    // IA Co-Engineering (MainWindow_AI.cpp)
+    void createAIComponents();
+    void createAIStatusWidget(QStatusBar* bar);
+    void updateAIStatusWidget();
+    void openAIConfig(int page);
+    TSA::AI::AIOrchestrator* m_aiOrchestrator = nullptr;
+    TSA::UI::AICoEngineeringDock* m_aiDock = nullptr;
+    TSA::UI::AIRuntimeDialog* m_aiDialog = nullptr;
+    QToolButton* m_statusAI = nullptr;
+    QAction* m_actionAIAssistant = nullptr;
+    QAction* m_actionAIConfig = nullptr;
+    QAction* m_actionAICheck = nullptr;
+    QAction* m_actionAIAnalyze = nullptr;
+    QAction* m_actionAIExplain = nullptr;
 
     // Actions Thème & Aide
     QAction* m_actionToggleTheme = nullptr;
