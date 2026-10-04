@@ -12,13 +12,31 @@ Warnings: 2 × C4996 (`TColgp_HArray1OfPnt` déprécié, src/Geometry/CableGeome
 Note: MSVC francisé → avertissement CMake sur le préfixe /showIncludes (BUG-011).
 
 ## Tests
-Status: IMPLEMENTED — 132/132 PASS (`TSA_TestSuite.exe`, 17 suites ; tests 101–111 ajoutés le 2026-10-04 ;
+Status: IMPLEMENTED — 147/147 PASS (`TSA_TestSuite.exe`, 17 suites ; tests 101–111 ajoutés le 2026-10-04 ;
 suite `extraction` = validation numérique contre le binaire OpenSees 3.8.0)
 Non couvert : comportement GUI (OccView, docks, mode 2D) — vérifications manuelles uniquement.
 
 ## UI
+Ruban : responsive sans scroll (Full → IconOnly → Collapsed → « Plus »), barre d'accès rapide dans la
+rangée d'onglets, infobulles riches. Limite : `ThemeManager::ribbonScrollStyleSheet` devenu inutilisé ;
+pas de commandes Wireframe/Shaded/Offset/Trim… (inexistantes dans TSA, donc non ajoutées) ; fenêtre < ~700 px non vérifiée.
 Status: IMPLEMENTED — MainWindow + ruban + docks (arbre, visibilité, éléments, propriétés,
 résultats, console, projection, diagrammes, NDC), WindowManager (layouts).
+
+## Projets récents / aperçus
+Status: IMPLEMENTED (2026-10-04) — accueil « Projets récents », aperçus capturés dans le viewport réel,
+cache + métadonnées, caméra restaurée. Vérifié dans l'application : cartes affichées avec les vrais
+aperçus, recapture après changement de caméra, message « Dernière vue du projet restaurée ».
+PARTIAL : état d'affichage (viewState) mémorisé mais non restauré. Voir docs/PROJECT_PREVIEWS.md.
+
+## AI Co-Engineering
+Status: IMPLEMENTED (première itération, 2026-10-04) — `src/AI` (matériel, registre/sélection, gestion
+des modèles, fournisseurs, contexte, outils, vérification, RAG, orchestrateur) + `src/UI/AI` (panneau,
+configuration non modale, indicateur barre d'état, ruban Outils/Analyse, menu contextuel de l'arbre).
+Vérifié dans l'application (UI Automation) : détection matérielle réelle, téléchargement + SHA-256,
+démarrage llama-server, diagnostic, auto-benchmark (CPU 40,8 / Vulkan 4,4 j/s), « Vérifier la
+structure » et question libre (réponses fondées sur les données du .tsa). Tests 112–123.
+MISSING : What-If, rapport IA. Voir docs/AI_COENGINEERING.md.
 
 ## Viewport
 Status: IMPLEMENTED — viewport unique `OccView` (multi-port supprimé), mises à jour incrémentales,

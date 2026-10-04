@@ -24,6 +24,22 @@ Last Updated: 2026-10-04. Uniquement des tâches réellement identifiées (voir 
 - [ ] BUG-016 — Diagrammes intermédiaires exacts (sectionForce ou reconstruction M(x)/V(x) depuis basicForce + charges locales).
 - [ ] Vérification manuelle GUI : dock « Données d'analyse », configuration LIGHT/ADVANCED, export, charge sur poteau via MemberLoadDialog.
 
+## IA Co-Engineering (ADR-015)
+
+- [ ] What-If : `SimulationScenario` (copie du modèle via snapshot, calcul, comparaison, jamais d'écrasement).
+- [ ] Rapport d'ingénierie IA (15 sections, citations des données TSA, réutiliser le moteur NDC).
+- [ ] « Expliquer avec l'IA » depuis les docks Propriétés et Résultats (actuellement : arbre + ruban).
+- [ ] Distribution : embarquer une build llama.cpp testée dans `<app>/ai/llama` (détectée en priorité) ;
+      aujourd'hui : llama.cpp installé via winget.
+- [ ] Évaluer la qualité des réponses avec Qwen3 4B/8B sur une machine non saturée (BUG-021).
+- [ ] BUG-020 — charger les traductions Qt (qtbase_fr).
+
+## Projets récents / aperçus
+
+- [ ] Restaurer aussi l'état d'affichage (viewState) via les actions de l'interface (grille, calques, 2D).
+- [ ] Vérifier visuellement la barre d'état après correction du chevauchement (1920 px et 1536 px).
+- [ ] Option : masquer cube de navigation / trièdre pendant la capture d'aperçu.
+
 ## LOW
 
 - [ ] BUG-017 — Contrôle d'équilibre en moments.

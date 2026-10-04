@@ -144,6 +144,22 @@ Problem: nœuds reliés uniquement à des treillis/câbles en modèle -ndf 6 : D
 Impact: UNKNOWN
 Status: OPEN (à vérifier par un test OpenSees)
 
+## BUG-020
+Area: AI / UI
+Problem: textes des boutons standard Qt (QMessageBox « Yes / No ») en anglais : aucune traduction Qt
+(qtbase_fr) n'est chargée par l'application. Observé dans la confirmation de téléchargement de modèle.
+Impact: LOW (cosmétique, toutes les boîtes standard de TSA)
+Status: OPEN
+
+## BUG-021
+Area: AI / performance
+Problem: sur le poste de développement (AutoCAD, Revit, Chrome ouverts, ≈3 Go de RAM libre), Qwen3 4B
+Q5_K_M tombe à ≈1,3 jeton/s (CPU comme GPU) : pages du modèle évincées. Le chargement en `--no-mmap`
+ne termine pas en 4 min. Le sélecteur en tient compte (RAM libre mesurée) et recommande alors un
+modèle compact ; le diagnostic signale l'écart mesure/estimation.
+Impact: MEDIUM (qualité des réponses limitée sur machine chargée)
+Status: OPEN (contournement : fermer les applications lourdes ; modèle plus léger)
+
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |
@@ -170,4 +186,5 @@ Status: OPEN (à vérifier par un test OpenSees)
 | FIX-020 | Contrôle d'équilibre : charges non converties en N (useKiloNewtons = false) | facteurs identiques à buildLoads | test 110 |
 | FIX-021 | MemberLoadDialog n'enregistrait pas la famille cible (charges sur poteau/treillis stockées « Beam ») | targetType + compatibilité des anciens fichiers | test 105 |
 | FIX-022 | Export Tcl (OpenSeesAdapter) : générateur parallèle avec les mêmes défauts | délègue à OpenSeesAnalysisBuilder | tests 62, 64 |
+| FIX-024 | Arbre du modèle : poutres/poteaux affichés « 0.30x0.30 m » pour des sections circulaires (Circ D20) — champs largeur×hauteur non significatifs | nom de section affiché | vérifié dans le .tsa (zlib) + capture |
 | FIX-023 | « Maillage EF » affichait un maillage généré inexistant ; dalles/voiles non signalés avant calcul | estimation + confirmation (BUG-002 mitigé) | revue de code |
