@@ -206,6 +206,8 @@ QString InteractionManager::promptText() const
         return tr("Nouvelle Origine : Cliquez le point devenant la nouvelle origine (0,0,0) (Échap = Annuler)");
     case InteractionMode::Paste3D:
         return tr("Coller 3D : Cliquez le point d'insertion pour les éléments du presse-papier (Échap = Annuler)");
+    case InteractionMode::ModelingTool:
+        return QString();   // invite fournie par l'outil actif (ModelingTool::prompt)
     }
     return QString();
 }

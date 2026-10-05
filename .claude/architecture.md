@@ -1,6 +1,6 @@
 # Architecture (réelle) — TSA
 
-Last Updated: 2026-10-03 (main @ 81e34cf). Code > documentation.
+Last Updated: 2026-10-05 (analyse multi-moteurs, branche feature/multi-engine-analysis). Code > documentation.
 
 ## 1. Cibles CMake
 
@@ -37,6 +37,8 @@ avant de référencer une classe depuis les tests (TSA_Tests ne lie que TSA_Core
 | Arbre / docks | src/UI/ModelTree, src/UI/Dock | `ModelTreeWidget` (observer), `VisibilityDock`, `ResultsDockWidget`, `LogConsoleDock`, `ProjectionViewDock`, `StructuralElementsDock`, `ViewportContainer` (règles, combos plan X/Y/Z, bouton 2D) | ModelTreeWidget.cpp, Ruler/ViewportContainer.cpp | Model, OccView |
 | Fichier .tsa | src/IO, src/Project | `TSAFileWriter`, `TSAFileReader`, `TSAProjectIO`, `ProjectManager`, `TSAPreviewGenerator` | TSAFile.cpp, TSAFile{Reader,Writer}_Chunks.cpp, TSAFileFormat.h | Model snapshot, GridManager, QSaveFile, zlib (qCompress) |
 | Calcul | src/Analysis | `CalculationSnapshot`, `OpenSeesAnalysisBuilder` (Tcl), `OpenSeesSolver`, `OpenSeesManager`, `OpenSeesResultsReader`, `ResultsModel`, `ResultsValidityGuard`, `LoadResolver` | OpenSeesSolver.cpp | QProcess (OpenSees externe) |
+| Outils de modification / dessin | src/Interaction/Tools, src/Viewer/OccView_Tools.cpp, src/UI/Tools, src/UI/MainWindow_ModelingTools.cpp | `ModelingTool`, `ModelingToolRegistry`, `ToolContext`, `ModelingToolDialog` | Tools/ModifyTools.cpp, Tools/DrawTools.cpp | Model (move/transform/copy/mirror/split/merge), EditTransaction ; docs/MODELING_TOOLS.md |
+| Analyse multi-moteurs | src/Analysis/Engine, src/Analysis/Engines, src/UI/Analysis | `AnalysisContext`, `AnalysisScope`, `AnalysisScopeResolver`, `AnalysisModel`, `AnalysisMapping`, `AnalysisModelExtractor`, `AnalysisEngine`, `AnalysisCapabilities`, `AnalysisEngineRegistry`, `AnalysisManager`, `OpenSeesEngine`, `Custom2DEngine` (+ `Custom2D::ISolver`, `Custom2DAdapter`), `AnalysisDialog`, `AnalysisEngineOptionsRegistry`, `OpenSeesOptionsWidget`, `ElementResultsPanel` | Engine/AnalysisManager.cpp, Engines/BuiltInEngines.cpp | Model, GridManager, SelectionQuery, CalculationSnapshot, ResultsModel ; docs/ANALYSIS_ENGINES.md |
 | IA Co-Engineering | src/AI, src/UI/AI | `AIOrchestrator`, `IAIProvider`/`OpenAICompatibleProvider`, `LocalLlamaServer`, `HardwareProfiler`, `ModelRegistry`/`ModelSelector`, `ModelManager`, `EngineeringContextBuilder`, `AIToolRegistry`, `StructuralChecker`, `EngineeringKnowledgeBase`, `AICoEngineeringDock`, `AIRuntimeDialog` | AI/Core/AIOrchestrator.cpp, UI/MainWindow_AI.cpp | Model, ResultsModel, LoadValidation, SelectionManager, Qt Network, llama-server (processus externe) |
 | Résultats 3D | src/Viewer | `ResultsVisualManager` (déformée, diagrammes, réactions, modal) | ResultsVisualManager.cpp | ResultsModel, OccView context |
 | Note de calcul | src/NDC | `NDCGenerator`, `ReportManager`, `NDCViewerWidget`, `NDCExporter` | NDCGenerator.cpp | ResultsModel, Standards |
@@ -81,6 +83,17 @@ Class: TSAFileWriter / TSAFileReader / TSAProjectIO
 Responsibility: format binaire .tsa 1.1 (en-tête 256 o, chunks FourCC, zlib, CRC32 table, QSaveFile)
 Status: stable
 
+Component: Analysis engines (multi-moteurs)
+Class: AnalysisManager + AnalysisEngineRegistry + AnalysisEngine (OpenSeesEngine, Custom2DEngine)
+File: src/Analysis/Engine/*, src/Analysis/Engines/*, src/UI/Analysis/*
+Responsibility: contexte → portée (grille/niveau/WorkPlane/sélection) → AnalysisModel dérivé (CalculationSnapshot
+  restreint + AnalysisMapping + plan 2D) → validation générique (capacités) + moteur → run → ResultsModel (ids TSA)
+Dependencies: Model, GridManager (lecture), SelectionQuery, CalculationSnapshot, ResultsModel, ModelValidator
+Used by: MainWindow (onActionAnalysisConfig / onActionRunSolve → runAnalysis → publishResults), tests suite engines
+Status: stable (Custom2D : adaptateur prêt, solveur non connecté — aucun calcul)
+Notes: ajouter un moteur = adaptateur + ligne dans registerBuiltInEngines (+ panneau d'options facultatif).
+  Les raccourcis Modal / Pushover du ruban appellent encore OpenSeesSolver directement.
+
 Component: Calculation
 Class: OpenSeesSolver (+ CalculationSnapshot, OpenSeesModelMap, OpenSeesAnalysisBuilder, OpenSeesResultsReader,
        ElementTransformation, ResultsExport, ResultsContext)
@@ -98,7 +111,9 @@ Status: partiel (barres/treillis/câbles/appuis ; pas de dalles ni voiles ; exé
 Undo : UndoManager::undo → ModelDiff::compute → applySnapshotData → notifyModelDiffApplied (mise à jour ciblée)
 Ouverture .tsa : MainWindow::loadFile → ProjectManager::openProject → TSAFileReader → Model::restoreSnapshot
   → onModelCleared → OccView::rebuildAllShapes (une passe) ; log ProjectLoadTiming
-Calcul : MainWindow_Tools → OpenSeesSolver::solveSynchronous → ResultsModel → ResultsValidityGuard::trackResults
+Calcul (F5 / fenêtre Analysis) : MainWindow::runAnalysis(AnalysisContext) → AnalysisManager::prepare (portée → AnalysisModel → validation)
+  → AnalysisManager::run → AnalysisEngine::run (OpenSeesEngine → OpenSeesSolver::solveSnapshot) → ResultsModel → publishResults
+Calcul modal / pushover (ruban) : MainWindow_Tools → OpenSeesSolver::solveSynchronous → ResultsModel → ResultsValidityGuard::trackResults
 Sélection : clic/fenêtre (OccView_Events) → SelectionManager → signaux → MainWindow (arbre, propriétés, highlight)
 ```
 

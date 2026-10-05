@@ -1,3 +1,4 @@
+#include "../Interaction/Tools/ModelingTool.h"
 #include "Dock/AnalysisDataDock.h"
 #include "../Coordinate/GeometryTolerance.h"
 #include "MainWindow.h"
@@ -572,9 +573,11 @@ void MainWindow::createActions()
     m_actionRotate3D->setCheckable(true);
     connect(m_actionRotate3D, &QAction::triggered, this, &MainWindow::onActionRotate3D);
 
+    createModelingToolActions();
+
     m_actionMirror = new QAction(tr("&Symétrie (Miroir)..."), this);
     m_actionMirror->setIcon(QIcon(":/icons/edit/mirror.svg"));
-    m_actionMirror->setToolTip(tr("Copier ou retourner la sélection par symétrie par rapport à un plan X, Y ou Z"));
+    m_actionMirror->setToolTip(tr("Symétrie par rapport à un axe cliqué dans la vue 3D (Ctrl au 2e clic : retourner sans copier)"));
     connect(m_actionMirror, &QAction::triggered, this, &MainWindow::onActionMirror);
 
     m_actionSplitBars = new QAction(tr("&Diviser les barres..."), this);
@@ -714,14 +717,14 @@ void MainWindow::createActions()
     m_actionMeshGen->setToolTip(tr("Discrétiser les barres et dalles en éléments finis"));
     connect(m_actionMeshGen, &QAction::triggered, this, &MainWindow::onActionMeshGen);
 
-    m_actionAnalysisConfig = new QAction(tr("&Paramètres de Résolution..."), this);
+    m_actionAnalysisConfig = new QAction(tr("&Analyse (moteur, portée)..."), this);
     m_actionAnalysisConfig->setIcon(QIcon(":/icons/analysis_settings.svg"));
-    m_actionAnalysisConfig->setToolTip(tr("Configurer la méthode de résolution, l'algorithme et l'intégrateur EF"));
+    m_actionAnalysisConfig->setToolTip(tr("Choisir le moteur de calcul, la portée (axe de grille, niveau, plan de travail), le chargement et les options du moteur"));
     connect(m_actionAnalysisConfig, &QAction::triggered, this, &MainWindow::onActionAnalysisConfig);
 
     m_actionRunSolve = new QAction(tr("&Lancer le Calcul Structurel"), this);
     m_actionRunSolve->setIcon(QIcon(":/icons/analysis_run.svg"));
-    m_actionRunSolve->setToolTip(tr("Lancer la résolution par éléments finis [K]{u} = {F} (F5)"));
+    m_actionRunSolve->setToolTip(tr("Lancer le calcul avec le moteur et la portée configurés (F5)"));
     m_actionRunSolve->setShortcut(QKeySequence(Qt::Key_F5));
     connect(m_actionRunSolve, &QAction::triggered, this, &MainWindow::onActionRunSolve);
 
@@ -853,6 +856,16 @@ void MainWindow::createMenus()
     editMenu->addSeparator();
     editMenu->addAction(m_actionSplitBars);
     editMenu->addAction(m_actionMergeNodes);
+    {
+        auto* modifyMenu = editMenu->addMenu(QIcon(":/icons/tools/trim.svg"), tr("Outils de modification"));
+        auto* drawMenu = editMenu->addMenu(QIcon(":/icons/tools/beam_chain.svg"), tr("Outils de dessin"));
+        for (const auto& tool : m_toolRegistry->instances())
+        {
+            QAction* a = m_toolActions[tool->id()];
+            (tool->category() == TSA::Interaction::ToolCategory::Draw ? drawMenu : modifyMenu)->addAction(a);
+        }
+        editMenu->addAction(m_actionToolInputViewport);
+    }
     editMenu->addSeparator();
     editMenu->addAction(m_actionSelectAll);
     {
@@ -1107,6 +1120,11 @@ void MainWindow::createRibbon()
     acts.actionMirror = m_actionMirror;
     acts.actionSplitBars = m_actionSplitBars;
     acts.actionMergeNodes = m_actionMergeNodes;
+    acts.actionToolInputMode = m_actionToolInputViewport;
+    for (const char* id : { "scale", "array_linear", "array_polar", "offset", "split_at", "intersect", "extend", "trim" })
+        if (m_toolActions.count(id)) acts.advancedModifyTools.push_back(m_toolActions[id]);
+    for (const auto& tool : m_toolRegistry->instances())
+        if (tool->category() == TSA::Interaction::ToolCategory::Draw) acts.drawTools.push_back(m_toolActions[tool->id()]);
     acts.actionMoveOrigin = m_actionMoveOrigin;
     acts.actionDelete = m_actionDelete;
 
@@ -1901,7 +1919,7 @@ void MainWindow::createDockWindows()
         if (m_analysisDataDock)
         {
             m_windowManager->registerDock(
-                "analysis_data", tr("Données d'analyse (OpenSees)"), tr("Résultats"), m_analysisDataDock,
+                "analysis_data", tr("Données d'analyse"), tr("Résultats"), m_analysisDataDock,
                 Qt::BottomDockWidgetArea, false, QKeySequence(), QIcon(":/icons/results_disp.svg"));
         }
 
@@ -2161,6 +2179,14 @@ void MainWindow::createStatusBar()
         case OccView::InteractionMode::DrawHanger:
             if (m_actionDrawCable) m_actionDrawCable->setChecked(true);
             break;
+        case OccView::InteractionMode::ModelingTool:
+            if (auto* tool = m_occView->activeModelingTool())
+            {
+                QAction* legacy = tool->id() == "move" ? m_actionMove3D : tool->id() == "copy" ? m_actionCopy3D
+                                : tool->id() == "rotate" ? m_actionRotate3D : nullptr;
+                if (legacy) legacy->setChecked(true);
+            }
+            break;
         case OccView::InteractionMode::DrawFoundation:
         case OccView::InteractionMode::DrawTruss:
         case OccView::InteractionMode::Paste3D:
@@ -2171,6 +2197,7 @@ void MainWindow::createStatusBar()
         }
     });
 
+    connect(m_occView, &OccView::modelingToolReady, this, &MainWindow::applyActiveModelingTool);
     connect(m_occView, &OccView::pointToPointMoveRequested, this, &MainWindow::onPointToPointMoveRequested);
     connect(m_occView, &OccView::pointToPointRotateRequested, this, &MainWindow::onPointToPointRotateRequested);
     connect(m_occView, &OccView::originMoveRequested, this, &MainWindow::onOriginMoveRequested);

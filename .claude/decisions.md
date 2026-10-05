@@ -1,6 +1,6 @@
 # Architecture Decisions
 
-Last Updated: 2026-10-03. Décisions constatées dans le code ou prises lors des sessions de 2026-10-03.
+Last Updated: 2026-10-05. Décisions constatées dans le code ou prises lors des sessions de 2026-10-03.
 
 ## ADR-001
 Title: Viewport unique
@@ -135,3 +135,46 @@ Decision: modification d'un élément → `update*Shape` de cet élément (et é
 nœud), sans `rebuildAllShapes` ; reconstruction complète réservée à l'ouverture / reset, en une
 passe et un redraw ; génération NDC différée tant que le dock n'est pas visible.
 Status: ACTIVE
+
+## ADR-017
+Title: Analyse multi-moteurs — moteurs interchangeables derrière AnalysisEngine
+Decision: le calcul passe par `AnalysisManager` : `AnalysisContext` (moteur, dimension, type, portée, chargement,
+réglages communs, réglages JSON par moteur) → `AnalysisScopeResolver` (grille / niveau / WorkPlane / sélection, sans
+nouveau système de coordonnées : GridDefinition, LevelManager, WorkPlaneManager, SelectionQuery, planeMembership) →
+`AnalysisModel` DÉRIVÉ (une capture `CalculationSnapshot` restreinte, `AnalysisMapping` TSA ↔ indices, plan 2D)
+→ validation générique pilotée par `AnalysisCapabilities` + `AnalysisEngine::validate` → `AnalysisEngine::run` →
+`ResultsModel` indexé par ids TSA (l'adaptateur remappe). Le registre (`registerBuiltInEngines`) et le registre des
+panneaux d'options (`registerBuiltInEngineOptions`, côté UI : le cœur ne dépend pas des widgets) sont les seuls points
+d'ajout d'un moteur. OpenSees est adapté sans réécriture (`OpenSeesSolver::solveSnapshot`). Custom2D : contrat
+`Custom2D::ISolver` en données planes pures ; sans solveur connecté, indisponible et aucun résultat.
+Reason: éviter les `if (engine == …)` dans TSA ; le modèle TSA reste la seule source de vérité ; OpenSees n'est plus
+la définition de l'architecture d'analyse.
+Consequences: `SnapshotNode::definedFix` (blocages définis, distincts des blocages anti-singularité 3D) ;
+`ResultAvailability` / `EngineResultTable` dans ResultsModel ; `AnalysisConfigDialog` remplacé par
+`AnalysisDialog` + `OpenSeesOptionsWidget`. Pas de cache d'AnalysisModel (extraction O(N), grilles hors révision).
+Status: ACTIVE (2026-10-05) — voir docs/ANALYSIS_ENGINES.md
+
+## ADR-018
+Title: Outils de modification / dessin — un cadre, deux modes de saisie
+Decision: chaque outil est un `TSA::Interaction::ModelingTool` (cœur, testable) : paramètres typés + étapes de saisie
+3D (`nextPick` Point/Barre, `addPick`, `acceptValue`, `finish`, `preview`) + `apply(model, ctx)` qui n'utilise que
+les paramètres et les cibles. La vue (`OccView_Tools.cpp`, mode `InteractionMode::ModelingTool`) ne fait que saisie
+et aperçu ; la fenêtre (`ModelingToolDialog`) est générée depuis les paramètres ; MainWindow exécute dans une
+`EditTransaction`. Saisie 3D par défaut (QSettings), fenêtre en option. Registre `registerBuiltInModelingTools`.
+Reason: demande utilisateur (modification directement en 3D, fenêtre optionnelle) sans dupliquer la logique métier
+par mode ni ajouter de branches à OccView_Events.
+Consequences: TransformDialog supprimé ; anciens modes Move3D/Copy3D/Rotate3D inatteignables (BUG-026) ;
+`Model::splitBarAt`, `Model::transformNodes` ajoutés.
+Status: ACTIVE (2026-10-05) — voir docs/MODELING_TOOLS.md
+
+## ADR-019
+Title: Moteur Custom2D = MetDeDeplacement (bibliothèque autonome dans thirdparty, suivie par git)
+Decision: le modèle de l'utilisateur (méthode des rotations, entrée JSON « dessin ») est réécrit en bibliothèque C++20
+sans dépendance (`mdd`) : forme matricielle générale de la méthode des déplacements, mêmes formules de base (4EI/L,
+report 1/2, encastrement parfait), courbes RDM exactes et déformée par la ligne élastique. TSA la relie par
+`MetDeDeplacementSolver` (combinaisons, poids propre, conventions). L'ancien code est conservé dans legacy/ (non
+compilé). Les courbes transitent par `ResultsModel::planarCurves` (générique 2D) vers la NDC.
+Reason: demande utilisateur (adapter et optimiser le modèle, courbes 2D dans la NDC, déformée RDM) ; l'entrée
+« dessin » et les heuristiques d'étage n'étaient pas transposables au modèle TSA.
+Consequences: thirdparty/MetDeDeplacement suivi (exception .gitignore), TSA_Core lié à MetDeDeplacement.
+Status: ACTIVE (2026-10-05)

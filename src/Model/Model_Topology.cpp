@@ -1,4 +1,5 @@
 #include "Model.h"
+#include "ModelElementCopy.h"
 
 #include <algorithm>
 #include <array>
@@ -11,38 +12,6 @@ namespace TSA::Model
 
 namespace
 {
-
-void copyBeamAttributes(const Beam& src, Beam& dst)
-{
-    dst.setRole(src.role());
-    dst.setSection(src.section());
-    dst.setMaterial(src.material());
-    dst.setRotation(src.rotation());
-    dst.setEccentricity(src.eccentricity());
-    dst.setStartRelease(src.startRelease());
-    dst.setEndRelease(src.endRelease());
-    dst.setColor(src.color());
-}
-
-void copyColumnAttributes(const Column& src, Column& dst)
-{
-    dst.setSection(src.section());
-    dst.setMaterial(src.material());
-    dst.setRotation(src.rotation());
-    dst.setColor(src.color());
-}
-
-void copyCableAttributes(const Cable& src, Cable& dst)
-{
-    dst.setType(src.type());
-    dst.setSection(src.section());
-    dst.setMaterial(src.material());
-    dst.setPrestress(src.prestress());
-    dst.setAnalysisProperties(src.analysisProperties());
-    dst.setStartAnchor(src.startAnchor());
-    dst.setEndAnchor(src.endAnchor());
-    dst.setColor(src.color());
-}
 
 /// Charges sur barre recopiables telles quelles sur chaque tronçon : intensité constante sur
 /// toute la portée. Retourne false si une charge de l'élément ne l'est pas (division refusée).
@@ -346,6 +315,89 @@ std::vector<int> Model::splitColumn(int columnId, int segments)
         result.push_back(id);
     }
     return result;
+}
+
+int Model::splitBarAt(ElementKind kind, int id, double t, int nodeId, int* newBarId)
+{
+    if (newBarId) *newBarId = 0;
+    constexpr double kEnd = 1e-6;
+    if (t <= kEnd || t >= 1.0 - kEnd) return 0;
+
+    int startId = 0, endId = 0;
+    MemberTargetType target = MemberTargetType::Beam;
+    switch (kind)
+    {
+    case ElementKind::Beam: if (const auto* b = getBeam(id)) { startId = b->startNodeId(); endId = b->endNodeId(); } break;
+    case ElementKind::Column: if (const auto* c = getColumn(id)) { startId = c->startNodeId(); endId = c->endNodeId(); } target = MemberTargetType::Column; break;
+    case ElementKind::TrussMember: if (const auto* m = getTrussMember(id)) { startId = m->startNodeId(); endId = m->endNodeId(); } target = MemberTargetType::Truss; break;
+    default: return 0;
+    }
+    const auto* s = getNode(startId);
+    const auto* e = getNode(endId);
+    if (!s || !e) return 0;
+    if (nodeId == startId || nodeId == endId) return 0;
+
+    const gp_Pnt ps(s->x(), s->y(), s->z()), pe(e->x(), e->y(), e->z());
+    const double length = ps.Distance(pe);
+    if (length < 1e-6) return 0;
+
+    std::vector<MemberLoad> loads;
+    if (!collectSplittableLoads(m_loadManager, id, target, length, loads)) return 0;
+
+    const int mid = (nodeId > 0 && getNode(nodeId)) ? nodeId
+        : addNode(ps.X() + (pe.X() - ps.X()) * t, ps.Y() + (pe.Y() - ps.Y()) * t, ps.Z() + (pe.Z() - ps.Z()) * t);
+
+    int created = 0;
+    switch (kind)
+    {
+    case ElementKind::Beam:
+    {
+        const Beam original = *getBeam(id);
+        if (auto* first = getBeam(id)) { first->setEndNodeId(mid); first->setEndRelease(EndRelease{}); notifyBeamModified(id); }
+        created = addBeam(mid, endId, original.width(), original.height());
+        if (auto* nb = getBeam(created)) { copyBeamAttributes(original, *nb); nb->setStartRelease(EndRelease{}); notifyBeamModified(created); }
+        break;
+    }
+    case ElementKind::Column:
+    {
+        const Column original = *getColumn(id);
+        if (auto* first = getColumn(id)) { first->setEndNodeId(mid); notifyColumnModified(id); }
+        created = addColumn(mid, endId, original.width(), original.height());
+        if (auto* nc = getColumn(created)) { copyColumnAttributes(original, *nc); notifyColumnModified(created); }
+        break;
+    }
+    default:
+    {
+        const TrussMember original = *getTrussMember(id);
+        if (auto* first = getTrussMember(id)) { first->setEndNodeId(mid); notifyTrussMemberModified(id); }
+        created = addTrussMember(mid, endId, 0.10, original.name(), original.role());
+        if (auto* nt = getTrussMember(created)) { copyTrussAttributes(original, *nt); notifyTrussMemberModified(created); }
+        break;
+    }
+    }
+    for (MemberLoad ml : loads)
+    {
+        ml.setId(0);
+        ml.setElementId(created);
+        notifyMemberLoadAdded(m_loadManager.addMemberLoad(ml));
+    }
+    if (newBarId) *newBarId = created;
+    return mid;
+}
+
+bool Model::transformNodes(const std::set<int>& nodeIds, const gp_Trsf& trsf)
+{
+    bool any = false;
+    for (int nid : nodeIds)
+    {
+        auto* n = getNode(nid);
+        if (!n) continue;
+        const gp_Pnt p = gp_Pnt(n->x(), n->y(), n->z()).Transformed(trsf);
+        n->setCoordinates(p.X(), p.Y(), p.Z());
+        notifyNodeModified(nid);
+        any = true;
+    }
+    return any;
 }
 
 // -----------------------------------------------------------------------------

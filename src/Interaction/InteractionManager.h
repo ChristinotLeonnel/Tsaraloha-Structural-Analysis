@@ -31,7 +31,8 @@ enum class InteractionMode
     Copy3D,
     Rotate3D,
     MoveOrigin3D,
-    Paste3D
+    Paste3D,
+    ModelingTool   ///< outil de modification / dessin (TSA::Interaction::ModelingTool)
 };
 
 enum class SelectionMode

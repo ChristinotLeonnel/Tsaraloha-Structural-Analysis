@@ -24,7 +24,7 @@ Technologies constatées :
 UI (src/UI)  →  Commands / UndoRedo (src/Commands, src/UndoRedo)  →  Model (src/Model, source de vérité)
                                                                        ├→ Geometry (src/Geometry) → Viewer OCCT (src/Viewer)
                                                                        ├→ IO .tsa (src/IO)
-                                                                       └→ Analysis OpenSees (src/Analysis) → Results → NDC (src/NDC)
+                                                                       └→ Analysis multi-moteurs (src/Analysis/Engine : AnalysisManager → OpenSees | Custom2D) → Results → NDC (src/NDC)
 Transversal : Coordinate (niveaux, WorkPlanes), Grid, ExtensionSystem (TSALib), Diagnostics, Standards
 ```
 Synchronisation modèle → vues : `TSA::Model::IModelObserver` (OccView, ModelTreeWidget,
@@ -82,7 +82,8 @@ build-ninja-debug\TSA_TestSuite.exe            # toutes les suites ; --suite=io|
 → `changelog.md`
 
 Documentation projet existante (ne pas dupliquer) : `docs/ARCHITECTURE.md`, `docs/EDIT_SYSTEM.md`,
-`docs/TSA_FILE_FORMAT.md`, `docs/MODEL.md`, `docs/OCCT.md`, `docs/UI.md`, `docs/shortcuts.txt`.
+`docs/TSA_FILE_FORMAT.md`, `docs/MODEL.md`, `docs/OCCT.md`, `docs/UI.md`, `docs/shortcuts.txt`,
+`docs/ANALYSIS_ENGINES.md` (moteurs d'analyse : ajouter un moteur sans toucher à l'UI).
 
 ## FUTURE SESSION RULE
 

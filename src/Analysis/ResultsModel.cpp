@@ -83,12 +83,28 @@ void ResultsModel::clear()
     m_finalReactions.clear();
     m_finalElementResults.clear();
     m_advanced = AdvancedResults{};
+    m_availability = ResultAvailability{};
+    m_engineTables.clear();
+    m_planarCurves.clear();
     m_units = UnitSystem{};
     m_activeStep = -1;
     m_equilibrium = GlobalEquilibrium{};
     m_summary = ResultsSummary{};
     m_executionMetadata = AnalysisExecutionMetadata{};
     m_journalLog.clear();
+}
+
+ResultAvailability ResultsModel::availabilityFromData() const
+{
+    ResultAvailability a;
+    a.displacements = !m_displacements.empty();
+    a.reactions = !m_reactions.empty();
+    a.elementForces = !m_elementResults.empty();
+    a.modal = !m_modalModes.empty();
+    a.dofMapping = m_advanced.available && !m_advanced.dofMap.empty();
+    a.globalStiffness = m_advanced.available && m_advanced.hasGlobalStiffness;
+    a.elementStiffness = m_advanced.available && !m_advanced.elementMatrices.empty();
+    return a;
 }
 
 void ResultsModel::invalidate()

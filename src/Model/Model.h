@@ -19,6 +19,7 @@
 #include "Foundation.h"
 #include "TrussMember.h"
 #include "Cable/Cable.h"
+#include "SelectionQuery.h"
 #include "Load/LoadManager.h"
 #include "../Coordinate/CoordinateSystem.h"
 #include "../Coordinate/WorkPlaneManager.h"
@@ -30,6 +31,7 @@
 #include <memory>
 #include <gp_Pnt.hxx>
 #include <gp_Dir.hxx>
+#include <gp_Trsf.hxx>
 
 namespace TSA::UndoRedo { class UndoManager; }
 
@@ -221,14 +223,16 @@ public:
                                   const std::set<int>& columnIds,
                                   const std::set<int>& slabIds,
                                   double dx, double dy, double dz, int repetitions = 1,
-                                  const std::set<int>& cableIds = {});
+                                  const std::set<int>& cableIds = {},
+                                  const std::set<int>& trussIds = {});
     std::vector<int> copyAndRotateElements(const std::set<int>& nodeIds,
                                           const std::set<int>& beamIds,
                                           const std::set<int>& columnIds,
                                           const std::set<int>& slabIds,
                                           const gp_Pnt& center, const gp_Dir& axis,
                                           double angleRad, int repetitions = 1,
-                                          const std::set<int>& cableIds = {});
+                                          const std::set<int>& cableIds = {},
+                                          const std::set<int>& trussIds = {});
 
     // Topologie : symétrie, division de barres, fusion de nœuds (Model_Topology.cpp)
     /// Symétrie par rapport au plan (planePoint, planeNormal).
@@ -253,6 +257,16 @@ public:
     std::vector<int> splitBeam(int beamId, int segments);
     /// Idem pour un poteau.
     std::vector<int> splitColumn(int columnId, int segments);
+
+    /// Divise une barre (poutre, poteau ou treillis) au paramètre t ∈ ]0, 1[ (0 = nœud de début).
+    /// nodeId > 0 : ce nœud existant devient le point de division (il doit être sur la barre,
+    /// sinon il est utilisé tel quel) ; sinon un nœud est créé en p(t). La barre d'origine devient
+    /// le tronçon de début, une nouvelle barre (mêmes attributs) le tronçon de fin. Charges : mêmes
+    /// règles que splitBeam. Retourne le nœud de division (0 si refus) ; *newBarId = tronçon créé.
+    int splitBarAt(ElementKind kind, int id, double t, int nodeId = 0, int* newBarId = nullptr);
+
+    /// Applique une transformation géométrique quelconque aux nœuds (échelle, rotation, translation).
+    bool transformNodes(const std::set<int>& nodeIds, const gp_Trsf& trsf);
 
     /// Nœuds géométriquement confondus à `tol` près : doublon → nœud conservé (plus petit id).
     std::map<int, int> findCoincidentNodes(double tol = 1e-3) const;

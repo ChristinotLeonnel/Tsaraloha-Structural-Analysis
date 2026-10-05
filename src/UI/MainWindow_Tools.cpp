@@ -15,7 +15,9 @@
 #include "../Analysis/OpenSeesManager.h"
 #include "../Analysis/ResultsModel.h"
 #include "../Viewer/ResultsVisualManager.h"
-#include "Dialogs/AnalysisConfigDialog.h"
+#include "Analysis/AnalysisDialog.h"
+#include "Analysis/AnalysisEngineOptions.h"
+#include "../Analysis/Engine/AnalysisManager.h"
 #include "Dock/ResultsDockWidget.h"
 #include "Properties/PropertyPanel.h"
 
@@ -654,100 +656,153 @@ void MainWindow::onActionMeshGen()
 
 void MainWindow::onActionAnalysisConfig()
 {
-    TSA::UI::AnalysisConfigDialog dlg(m_model.get(), this);
-    dlg.setParameters(m_lastAnalysisParams);
-    if (dlg.exec() == QDialog::Accepted)
+    if (!m_model || !m_analysisManager) return;
+    const TSA::Model::ElementSet selection = m_selectionManager ? m_selectionManager->selectedElements()
+                                                                : TSA::Model::ElementSet{};
+    TSA::UI::AnalysisDialog dlg(*m_analysisManager, *m_engineOptions, m_model.get(), m_gridManager.get(), selection, this);
+    dlg.setContext(m_analysisContext);
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    m_analysisContext = dlg.context();
+    if (m_consoleDock)
     {
-        m_lastAnalysisParams = dlg.parameters();
-        if (m_consoleDock)
-        {
-            m_consoleDock->appendLog(tr("Paramètres de résolution mis à jour (Algorithme: %1, Intégrateur: %2)")
-                                         .arg(QString::fromStdString(TSA::Analysis::algorithmToTcl(m_lastAnalysisParams.algorithm)))
-                                         .arg(QString::fromStdString(TSA::Analysis::integratorToTcl(m_lastAnalysisParams.integrator))), "INFO");
-        }
+        const auto* engine = m_engineRegistry->engine(m_analysisContext.engineId);
+        m_consoleDock->appendLog(tr("Analyse configurée : moteur %1")
+                                     .arg(engine ? QString::fromStdString(engine->info().name) : tr("inconnu")), "INFO");
     }
+    if (dlg.runRequested()) runAnalysis(m_analysisContext);
 }
 
 void MainWindow::onActionRunSolve()
 {
-    if (!m_model || m_model->nodes().empty() || (m_model->beams().empty() && m_model->columns().empty() && m_model->trussMembers().empty()))
+    runAnalysis(m_analysisContext);
+}
+
+bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
+{
+    using namespace TSA::Analysis;
+    if (!m_model || !m_analysisManager) return false;
+
+    AnalysisEngine* engine = m_engineRegistry->engine(context.engineId);
+    if (!engine)
     {
-        QMessageBox::warning(this, tr("Solveur"), tr("Impossible de lancer le calcul : le modèle ne contient aucun élément structural."));
-        return;
+        QMessageBox::warning(this, tr("Analyse"), tr("Aucun moteur d'analyse sélectionné."));
+        return false;
+    }
+    const QString engineName = QString::fromStdString(engine->info().name);
+
+    // 1. Disponibilité (installation proposée si le moteur sait se provisionner).
+    const EngineAvailability avail = engine->availability();
+    if (!avail.available)
+    {
+        if (!avail.canProvision)
+        {
+            QMessageBox::warning(this, tr("Moteur %1 indisponible").arg(engineName), QString::fromStdString(avail.message));
+            return false;
+        }
+        const auto reply = QMessageBox::question(this, tr("Moteur %1 indisponible").arg(engineName),
+            tr("%1\n\nVoulez-vous l'installer automatiquement ?").arg(QString::fromStdString(avail.message)),
+            QMessageBox::Yes | QMessageBox::No);
+        if (reply != QMessageBox::Yes) return false;
+        std::string err;
+        if (!engine->provision(&err))
+        {
+            QMessageBox::critical(this, tr("Installation impossible"), QString::fromStdString(err));
+            return false;
+        }
     }
 
-    auto& opsMgr = TSA::Analysis::OpenSeesManager::instance();
-    if (!opsMgr.isAvailable())
-    {
-        QMessageBox::StandardButton reply = QMessageBox::question(
-            this,
-            tr("OpenSees Non Détecté"),
-            tr("L'exécutable OpenSees est requis pour effectuer les calculs structurels.\n\n"
-               "Voulez-vous lancer le téléchargement automatique de la version officielle Windows ?"),
-            QMessageBox::Yes | QMessageBox::No
-        );
-
-        if (reply == QMessageBox::Yes)
-        {
-            QString dlErr;
-            if (!opsMgr.downloadAndInstall(nullptr, &dlErr))
-            {
-                QMessageBox::critical(this, tr("Échec du Téléchargement"), tr("Impossible de télécharger OpenSees :\n%1").arg(dlErr));
-                return;
-            }
-        }
-        else
-        {
-            return;
-        }
-    }
-
-    if (!confirmPlanarElementsExcluded(this, *m_model))
-        return;
-
-    TSA::Analysis::AnalysisParameters params = m_lastAnalysisParams;
-    params.useKiloNewtons = true;
-    params.includeSelfWeight = true;
-
+    // 2. Préparation : portée → modèle d'analyse → validation (générique + moteur).
+    const PreparedAnalysis prepared = m_analysisManager->prepare(*m_model, m_gridManager.get(), context);
     if (m_consoleDock)
     {
-        QString aName = (params.type == TSA::Analysis::AnalysisType::NonLinearStatic)
-                            ? tr("STATIQUE NON LINÉAIRE")
-                            : (params.type == TSA::Analysis::AnalysisType::Modal ? tr("MODALE") : tr("STATIQUE LINÉAIRE"));
-        m_consoleDock->appendLog(tr("--- CALCUL OPENSEES [%1] ---").arg(aName), "SYS");
-        m_consoleDock->appendLog(tr("Algorithme: %1 | Intégrateur: %2 | Solveur: %3")
-                                     .arg(QString::fromStdString(TSA::Analysis::algorithmToTcl(params.algorithm)))
-                                     .arg(QString::fromStdString(TSA::Analysis::integratorToTcl(params.integrator)))
-                                     .arg(QString::fromStdString(TSA::Analysis::systemSolverToTcl(params.systemSolver))), "INFO");
-        m_consoleDock->appendLog(tr("Modèle source : %1 nœuds, %2 poutres, %3 poteaux, %4 barres de treillis")
-                                .arg(m_model->nodes().size())
-                                .arg(m_model->beams().size())
-                                .arg(m_model->columns().size())
-                                .arg(m_model->trussMembers().size()), "INFO");
+        m_consoleDock->appendLog(tr("--- CALCUL %1 — %2 ---").arg(engineName.toUpper(),
+                                     QString::fromStdString(prepared.model.scopeLabel)), "SYS");
+        for (const auto& m : prepared.validation.messages())
+        {
+            const char* level = m.severity == ValidationSeverity::Error ? "ERROR"
+                              : m.severity == ValidationSeverity::Warning ? "WARN" : "INFO";
+            m_consoleDock->appendLog(QString::fromStdString(m.text), level);
+        }
     }
-
-    if (!m_openSeesSolver)
+    if (!prepared.canRun())
     {
-        m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
+        QStringList errors;
+        for (const auto& e : prepared.validation.texts(ValidationSeverity::Error)) errors << QString::fromStdString(e);
+        QMessageBox::critical(this, tr("Analyse impossible"),
+                              tr("Le modèle d'analyse n'est pas valide :\n\n• %1").arg(errors.join("\n• ")));
+        return false;
+    }
+    if (prepared.validation.hasWarnings())
+    {
+        QStringList warnings;
+        for (const auto& w : prepared.validation.texts(ValidationSeverity::Warning)) warnings << QString::fromStdString(w);
+        const auto reply = QMessageBox::warning(this, tr("Avertissements avant calcul"),
+            tr("%1\n\nLancer quand même le calcul ?").arg("• " + warnings.join("\n• ")),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (reply != QMessageBox::Yes) return false;
     }
 
-    QString solveErr;
-    bool ok = m_openSeesSolver->solveSynchronous(*m_model, params, &solveErr);
-
-    if (!ok)
+    // 3. Calcul (synchrone sur le thread UI : BUG-001).
+    AnalysisRunCallbacks callbacks;
+    callbacks.log = [this](const std::string& line) {
+        if (m_consoleDock) m_consoleDock->appendLog(QString::fromStdString(line), "INFO");
+    };
+    callbacks.progress = [this](int pct, const std::string& status) {
+        if (m_statusInfo) m_statusInfo->setText(QStringLiteral("%1 % — %2").arg(pct).arg(QString::fromStdString(status)));
+    };
+    AnalysisRunResult result = m_analysisManager->run(context, prepared, callbacks);
+    if (!result.success)
     {
         if (m_consoleDock)
         {
-            m_consoleDock->appendLog(tr("Échec du calcul OpenSees : %1").arg(solveErr), "ERROR");
-            m_consoleDock->appendLog(QString::fromStdString(m_openSeesSolver->results().journalLog()), "ERROR");
+            m_consoleDock->appendLog(tr("Échec du calcul %1 : %2").arg(engineName, QString::fromStdString(result.message)), "ERROR");
+            if (!result.results.journalLog().empty())
+                m_consoleDock->appendLog(QString::fromStdString(result.results.journalLog()), "ERROR");
         }
-        QMessageBox::critical(this, tr("Erreur Solveur OpenSees"), tr("Le calcul a échoué :\n%1").arg(solveErr));
-        return;
+        QMessageBox::critical(this, tr("Erreur du moteur %1").arg(engineName),
+                              tr("Le calcul a échoué :\n%1").arg(QString::fromStdString(result.message)));
+        return false;
     }
 
-    m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
-    if (m_resultsGuard) m_resultsGuard->trackResults(m_resultsModel);
+    // 4. Publication (résultats déjà remappés sur les identifiants TSA par l'adaptateur).
+    publishResults(std::make_shared<ResultsModel>(std::move(result.results)));
 
+    const auto& meta = m_resultsModel->executionMetadata();
+    QString summary = tr("Moteur : %1%2\nPortée : %3\n")
+                          .arg(engineName)
+                          .arg(meta.solverVersion.empty() ? QString() : " " + QString::fromStdString(meta.solverVersion))
+                          .arg(QString::fromStdString(prepared.model.scopeLabel));
+    if (context.type == AnalysisType::Modal)
+    {
+        for (const auto& m : m_resultsModel->modalModes())
+            summary += tr("\nMode %1 : f = %2 Hz | T = %3 s").arg(m.modeNumber).arg(m.frequency, 0, 'f', 3).arg(m.period, 0, 'f', 3);
+        if (m_occView && m_occView->resultsVisual() && !m_resultsModel->modalModes().empty())
+            m_occView->resultsVisual()->startModalAnimation(1, 1.0);
+    }
+    else
+    {
+        const auto ext = m_resultsModel->summary();
+        const auto eq = m_resultsModel->equilibrium();
+        summary += tr("\n• Déplacement max : %1 mm (nœud N%2)\n• Moment max : %3 kNm (barre #%4)\n"
+                      "• Traction max : %5 kN\n• Réaction verticale totale : %6 kN")
+                       .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3).arg(ext.maxDisplacementNodeId)
+                       .arg(ext.maxBendingMoment, 0, 'f', 2).arg(ext.maxBendingMomentElementId)
+                       .arg(ext.maxTension, 0, 'f', 2).arg(eq.reactionFz, 0, 'f', 2);
+        if (m_statusInfo)
+            m_statusInfo->setText(tr("%1 OK : δ_max = %2 mm, M_max = %3 kNm")
+                                      .arg(engineName).arg(ext.maxDisplacement * 1000.0, 0, 'f', 2)
+                                      .arg(ext.maxBendingMoment, 0, 'f', 1));
+    }
+    if (m_consoleDock) m_consoleDock->appendLog(summary, "SUCCESS");
+    QMessageBox::information(this, tr("Calcul terminé"), summary);
+    return true;
+}
+
+void MainWindow::publishResults(const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
+{
+    m_resultsModel = results;
+    if (m_resultsGuard) m_resultsGuard->trackResults(m_resultsModel);
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
     if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
     if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
@@ -756,52 +811,10 @@ void MainWindow::onActionRunSolve()
     if (m_resultsDock)
     {
         m_resultsDock->setResultsModel(m_resultsModel);
-        if (m_occView && m_occView->resultsVisual())
-        {
-            m_resultsDock->syncFromVisualManager(m_occView->resultsVisual());
-        }
+        if (m_occView && m_occView->resultsVisual()) m_resultsDock->syncFromVisualManager(m_occView->resultsVisual());
         m_resultsDock->show();
         m_resultsDock->raise();
     }
-
-    const auto& ext = m_resultsModel->summary();
-    const auto& eq = m_resultsModel->equilibrium();
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("RÉSULTATS OPENSEES STATIQUES :"), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Réaction verticale totale Rz = %1 kN").arg(eq.reactionFz, 0, 'f', 2), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Flèche maximale absolue δ_max = %1 mm (Nœud #%2)")
-                                .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3)
-                                .arg(ext.maxDisplacementNodeId), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Moment fléchissant max M_max = %1 kNm (Barre #%2)")
-                                .arg(ext.maxBendingMoment, 0, 'f', 2)
-                                .arg(ext.maxBendingMomentElementId), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Traction max N_max           = %1 kN").arg(ext.maxTension, 0, 'f', 2), "SUCCESS");
-        m_consoleDock->appendLog(tr("  • Équilibre global statique     : %1").arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("DÉSÉQUILIBRE")), "SUCCESS");
-    }
-
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("OpenSees Statique OK : δ_max = %1 mm, M_max = %2 kNm")
-                              .arg(ext.maxDisplacement * 1000.0, 0, 'f', 2)
-                              .arg(ext.maxBendingMoment, 0, 'f', 1));
-    }
-
-    QMessageBox::information(this, tr("Calcul OpenSees Terminé"),
-        tr("Calcul éléments finis OpenSees terminé avec succès !\n\n"
-           "• Déplacement vertical max : %1 mm (Nœud #%2)\n"
-           "• Moment fléchissant max   : %3 kNm (Barre #%4)\n"
-           "• Traction maximale        : %5 kN\n"
-           "• Réaction verticale totale Rz : %6 kN\n"
-           "• Équilibre global          : %7")
-        .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3)
-        .arg(ext.maxDisplacementNodeId)
-        .arg(ext.maxBendingMoment, 0, 'f', 2)
-        .arg(ext.maxBendingMomentElementId)
-        .arg(ext.maxTension, 0, 'f', 2)
-        .arg(eq.reactionFz, 0, 'f', 2)
-        .arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("VÉRIFIER")));
 }
 
 void MainWindow::onActionModal()

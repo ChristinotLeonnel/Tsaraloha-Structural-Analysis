@@ -8,11 +8,31 @@ namespace TSA::Analysis
 
 CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
 {
+    return capture(model, nullptr);
+}
+
+CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model, const TSA::Model::ElementSet* scope)
+{
     CalculationSnapshot snap;
+
+    // Portée : barres retenues, puis nœuds qu'elles relient (un nœud isolé n'est pas calculable).
+    std::set<int> scopedNodes;
+    if (scope)
+    {
+        auto collect = [&](const auto& items, const std::set<int>& ids) {
+            for (const auto& [id, e] : items)
+                if (ids.count(id)) { scopedNodes.insert(e.startNodeId()); scopedNodes.insert(e.endNodeId()); }
+        };
+        collect(model.beams(), scope->beams);
+        collect(model.columns(), scope->columns);
+        collect(model.trussMembers(), scope->trussMembers);
+        collect(model.cables(), scope->cables);
+    }
 
     // 1. Capture des Nœuds
     for (const auto& [id, n] : model.nodes())
     {
+        if (scope && !scopedNodes.count(id)) continue;
         SnapshotNode sn;
         sn.id = id;
         sn.name = n.name();
@@ -29,6 +49,7 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
         sn.fixRx = (supp.rx() == TSA::Model::DOFState::Fixed);
         sn.fixRy = (supp.ry() == TSA::Model::DOFState::Fixed);
         sn.fixRz = (supp.rz() == TSA::Model::DOFState::Fixed);
+        sn.definedFix = { sn.fixTx, sn.fixTy, sn.fixTz, sn.fixRx, sn.fixRy, sn.fixRz };
 
         // Anti-singularité 3D : pour les appuis articulés (pinned) et rouleaux (roller),
         // la rotation de forage (drill, Rx) est libre par définition mais crée une
@@ -78,12 +99,15 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
     // 2. Capture des Poutres (Beams)
     for (const auto& [id, b] : model.beams())
     {
+        if (scope && !scope->beams.count(id)) continue;
         SnapshotElement elem;
         elem.id = id;
         elem.type = SnapshotElement::ElementType::Beam;
         elem.startNodeId = b.startNodeId();
         elem.endNodeId = b.endNodeId();
         elem.rotation = b.rotation();
+        elem.startRelease = b.startRelease();
+        elem.endRelease = b.endRelease();
         elem.section = b.section();
         elem.material = b.material();
         elem.length = computeLength(elem.startNodeId, elem.endNodeId);
@@ -93,6 +117,7 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
     // 3. Capture des Poteaux (Columns)
     for (const auto& [id, col] : model.columns())
     {
+        if (scope && !scope->columns.count(id)) continue;
         SnapshotElement elem;
         elem.id = id;
         elem.type = SnapshotElement::ElementType::Column;
@@ -108,6 +133,7 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
     // 4. Capture des Bielles / Treillis (TrussMembers)
     for (const auto& [id, tr] : model.trussMembers())
     {
+        if (scope && !scope->trussMembers.count(id)) continue;
         SnapshotElement elem;
         elem.id = id;
         elem.type = SnapshotElement::ElementType::Truss;
@@ -123,6 +149,7 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
     // 5. Capture des Câbles
     for (const auto& [id, cb] : model.cables())
     {
+        if (scope && !scope->cables.count(id)) continue;
         SnapshotElement elem;
         elem.id = id;
         elem.type = SnapshotElement::ElementType::Cable;
@@ -140,10 +167,12 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
     const auto& lm = model.loadManager();
     for (const auto& [_, nl] : lm.nodalLoads())
     {
+        if (scope && !snap.hasNode(nl.nodeId())) continue;
         snap.m_nodalLoads.push_back(nl);
     }
     for (const auto& [_, ml] : lm.memberLoads())
     {
+        if (scope && !snap.findElementForLoad(ml)) continue;
         snap.m_memberLoads.push_back(ml);
     }
     snap.m_loadCases = lm.loadCases();

@@ -84,6 +84,27 @@ bool OpenSeesSolver::solveSynchronous(const TSA::Model::Model& model,
     return ok;
 }
 
+bool OpenSeesSolver::solveSnapshot(const CalculationSnapshot& snapshot,
+                                   const AnalysisParameters& params,
+                                   QString* errorMessage)
+{
+    if (m_isRunning)
+    {
+        if (errorMessage) *errorMessage = tr("Un calcul OpenSees est déjà en cours.");
+        return false;
+    }
+    m_isRunning = true;
+    m_stopRequested = false;
+    m_results.clear();
+    emit analysisStarted();
+
+    const bool ok = executeWorkflow(snapshot, params, errorMessage);
+    m_isRunning = false;
+    emit analysisFinished(ok, ok ? tr("Calcul OpenSees achevé avec succès.")
+                                 : (errorMessage ? *errorMessage : tr("Échec du calcul.")));
+    return ok;
+}
+
 void OpenSeesSolver::solveAsync(const TSA::Model::Model& model,
                                const AnalysisParameters& params)
 {
@@ -383,6 +404,7 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
         meta.loadCombinationType = (params.type == AnalysisType::Modal) ? "Analyse Modale" : "Statique Linéaire";
     }
     m_results.setExecutionMetadata(meta);
+    m_results.setAvailability(m_results.availabilityFromData());
 
     emit progressChanged(100, tr("Calcul et post-traitement terminés avec succès."));
     return true;

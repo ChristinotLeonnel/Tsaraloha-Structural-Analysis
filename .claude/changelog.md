@@ -2,6 +2,72 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-05 (Moteur 2D MetDeDeplacement — ADR-019)
+
+### Added
+- `thirdparty/MetDeDeplacement` réécrit en bibliothèque autonome (mdd 2.0.0) : méthode des déplacements plane,
+  rotules par condensation, treillis, ressorts, charges trapézoïdales / ponctuelles / nodales, Cholesky bande +
+  Cuthill–McKee inverse, courbes N/V/M exactes, déformée EI v''=M, valeurs caractéristiques. Ancien code → legacy/
+  (NOTES.md : analyse, 8 défauts constatés). Suivi par git (exception .gitignore).
+- `MetDeDeplacementSolver` (Custom2D::ISolver) branché dans registerBuiltInEngines ; `Custom2D::Features`,
+  `Custom2DOptionsWidget` (inextensible, points par courbe) ; rotules transmises par le snapshot.
+- `ResultsModel::planarCurves`, métadonnées `calculationMethod` ; chapitre NDC « Courbes RDM par barre »
+  (NDCPlanarCurves : méthode, formules, tableau, figures N/V/M/déformée) ; introduction NDC fidèle au moteur.
+- Tests 150–159 (suite `mdd`) ; total 180/180.
+
+### Changed
+- Tests 130, 135, 137 : Custom2D désormais disponible (version 2.0.0, treillis, panneau d'options).
+
+## 2026-10-05 (Outils de modification / dessin en 3D — ADR-018)
+
+### Fixed
+- Fermeture : 2 assertions Qt « class destructor may have already run » (AIOrchestrator → MainWindow
+  pendant la destruction) ; ~MainWindow coupe les connexions enfants → fenêtre.
+- Copie 3D d'une section circulaire affichée rectangulaire (attributs posés sans notification) ; copie du rôle,
+  des treillis et des appuis ; rotation-copie 3D sans effet ; nœuds des câbles/treillis ignorés par le
+  déplacement 3D ; collage de câbles/dalles sans notification. Test 139.
+
+### Added
+- `src/Interaction/Tools` : `ModelingTool`, registre, 14 outils de modification, 6 outils de dessin.
+- `OccView_Tools.cpp` (mode `ModelingTool` : clics, barre sous le curseur, aperçu, saisie clavier),
+  `ModelingToolDialog` (fenêtre générique), `MainWindow_ModelingTools.cpp`, bouton « Saisie dans la vue 3D »,
+  panneaux « Outils de modification » (Modifier) et « Dessin rapide » (Modèle), sous-menus Édition, icônes.
+- `Model::splitBarAt`, `Model::transformNodes`, `ModelElementCopy.h`.
+- Tests 140–149 (suite `tools`) ; total 170/170. docs/MODELING_TOOLS.md.
+
+### Changed
+- M, Copie 3D, Ctrl+R, Symétrie, Diviser, Fusionner : passent par les outils (3D par défaut) ; Ctrl+Maj+M / Ctrl+D :
+  fenêtre de paramètres.
+
+### Removed
+- `TransformDialog` (remplacé par la fenêtre générique).
+
+## 2026-10-05 (Analyse multi-moteurs — ADR-017)
+
+### Added
+- `src/Analysis/Engine` : `AnalysisContext` (+ JSON versionné), `AnalysisScope`, `AnalysisScopeResolver` (axes de
+  grille cartésienne, niveaux, plans de travail, sélection, restriction par niveau), `AnalysisModel`,
+  `AnalysisMapping`, `AnalysisModelExtractor`, `AnalysisEngine` / `EngineInfo` / `AnalysisCapabilities`,
+  `AnalysisEngineRegistry`, `AnalysisManager` (validation générique pilotée par capacités), `ValidationResult`.
+- `src/Analysis/Engines` : `OpenSeesEngine` (chemin OpenSees existant), `Custom2DEngine` + `Custom2D::ISolver`
+  (contrat du solveur 2D) + `Custom2DAdapter` (conversion plane et remappage des résultats), `registerBuiltInEngines`.
+- `src/UI/Analysis` : `AnalysisDialog` (fenêtre commune), `AnalysisEngineOptionsWidget` / registre de fabriques,
+  `OpenSeesOptionsWidget`. `ElementResultsPanel` (Propriétés : efforts de la barre sélectionnée, moteur, portée).
+- `CalculationSnapshot::capture(model, ElementSet*)`, `SnapshotNode::definedFix`, `OpenSeesSolver::solveSnapshot`.
+- `ResultsModel` : `ResultAvailability`, `EngineResultTable`, métadonnées engineId / analysisScope / analysisDimension.
+- Tests 130–138 (suite `engines`) ; total 159/159. docs/ANALYSIS_ENGINES.md.
+
+### Changed
+- « Paramètres de résolution » → « Analyse (moteur, portée)... » ouvre `AnalysisDialog` ; F5 calcule le dernier
+  contexte via `MainWindow::runAnalysis` (disponibilité / installation, validation, avertissements, publication).
+- Dock « Données d'analyse » : titre neutre, onglets selon les catégories fournies, tables propres au moteur.
+
+### Removed
+- `src/UI/Dialogs/AnalysisConfigDialog.*` (aucun autre appelant ; contenu repris par `OpenSeesOptionsWidget`).
+
+### Observed
+- BUG-024 : pushover / temporel générés comme statique linéaire par le générateur OpenSees (non déclarés).
+
 ## 2026-10-04 (Miniatures Explorateur Windows)
 
 ### Added

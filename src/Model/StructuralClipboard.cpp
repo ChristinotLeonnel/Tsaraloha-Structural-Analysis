@@ -248,6 +248,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             if (s)
             {
                 s->setMaterial(cs.material);
+                model.notifySlabModified(sId);   // vue créée à l'ajout avec le matériau par défaut
             }
             result.slabIds.push_back(sId);
         }
@@ -270,6 +271,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                 nc->setStartAnchor(ccab.startAnchor);
                 nc->setEndAnchor(ccab.endAnchor);
                 nc->setColor(ccab.color);
+                model.notifyCableModified(cId);  // vue créée à l'ajout avec la section par défaut
             }
             result.cableIds.push_back(cId);
         }

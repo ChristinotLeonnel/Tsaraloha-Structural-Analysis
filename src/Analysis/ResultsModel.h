@@ -174,6 +174,10 @@ struct AnalysisExecutionMetadata
 {
     std::string solverEngine = "OpenSees";
     std::string solverVersion = "3.8.0";
+    std::string engineId;               ///< identifiant du moteur (registre), ex. "opensees", "custom2d"
+    std::string analysisScope;          ///< portée calculée, ex. « Axe B (Grille 1) » ; vide = modèle complet
+    std::string analysisDimension;      ///< "2d" ou "3d"
+    std::string calculationMethod;      ///< méthode du moteur (texte de la note de calcul)
     std::string nationalAnnex = "France NF (NF EN 1990/NA)";
     std::string normativeFramework = "EN 1990:2002+A1:2005 / ISO/IEC 25010";
     std::string loadCombinationType = "Statique Linéaire";
@@ -237,6 +241,53 @@ struct SpringSupportInfo
     int elementTag = 0;       ///< élément zeroLength
     std::vector<int> dofs;    ///< 0..5
     std::vector<double> stiffness;
+};
+
+/// Catégories de résultats réellement fournies par le moteur pour CE calcul (capacité déclarée ET
+/// données présentes). L'UI des résultats n'affiche que ces catégories.
+struct ResultAvailability
+{
+    bool displacements = false;
+    bool reactions = false;
+    bool elementForces = false;
+    bool modal = false;
+    bool elementStiffness = false;
+    bool globalStiffness = false;
+    bool dofMapping = false;
+};
+
+/// Table de résultats propre à un moteur (résultats qui n'ont pas d'équivalent commun).
+/// Les lignes portent déjà les identifiants TSA (remappés par l'adaptateur).
+struct EngineResultTable
+{
+    std::string engineId;
+    std::string title;
+    std::vector<std::string> columns;
+    std::vector<std::vector<std::string>> rows;
+};
+
+/// Courbes d'une barre calculée dans un plan (moteur 2D), convention RDM :
+/// N > 0 en traction, M > 0 tend la fibre y' < 0 (fibre inférieure d'une poutre parcourue de
+/// gauche à droite), V = dM/dx ; u, v : déplacements locaux axial / transversal (m).
+struct PlanarCurvePoint
+{
+    double x = 0.0, N = 0.0, V = 0.0, M = 0.0, u = 0.0, v = 0.0;
+};
+
+struct PlanarMemberCurves
+{
+    ElementKey key;
+    double length = 0.0;
+    std::vector<PlanarCurvePoint> points;
+    // Valeurs caractéristiques (fournies par le moteur)
+    double Mi = 0.0, Mj = 0.0;
+    bool hasSpanExtremum = false;
+    double xSpanExtremum = 0.0, MSpanExtremum = 0.0;
+    double Mmax = 0.0, xMmax = 0.0, Mmin = 0.0, xMmin = 0.0;
+    std::vector<double> momentZeros;
+    double Vi = 0.0, Vj = 0.0, Nmin = 0.0, Nmax = 0.0;
+    double deflectionMax = 0.0, xDeflectionMax = 0.0;   ///< écart signé à la corde
+    double rotationI = 0.0, rotationJ = 0.0;
 };
 
 /// Résultats avancés (optionnels) : présents seulement si ExtractionLevel::Advanced.
@@ -378,6 +429,20 @@ public:
     AnalysisExecutionMetadata& executionMetadata() noexcept { return m_executionMetadata; }
     void setExecutionMetadata(const AnalysisExecutionMetadata& meta) { m_executionMetadata = meta; }
 
+    // Disponibilité des catégories de résultats (renseignée par AnalysisManager)
+    const ResultAvailability& availability() const { return m_availability; }
+    void setAvailability(const ResultAvailability& a) { m_availability = a; }
+    /// Disponibilité constatée sur les données présentes (aucune catégorie vide n'est annoncée).
+    ResultAvailability availabilityFromData() const;
+
+    // Courbes N, V, M et déformée des barres d'un calcul plan (vide pour un calcul 3D)
+    const std::map<ElementKey, PlanarMemberCurves>& planarCurves() const { return m_planarCurves; }
+    void setPlanarCurves(const PlanarMemberCurves& c) { m_planarCurves[c.key] = c; }
+
+    // Résultats propres au moteur
+    const std::vector<EngineResultTable>& engineTables() const { return m_engineTables; }
+    void addEngineTable(const EngineResultTable& t) { m_engineTables.push_back(t); }
+
     // Journal d'analyse
     void appendLog(const std::string& line) { m_journalLog += line + "\n"; }
     const std::string& journalLog() const { return m_journalLog; }
@@ -396,6 +461,9 @@ private:
     std::map<ElementKey, ElementResults> m_elementResults;
     UnitSystem m_units;
     AdvancedResults m_advanced;
+    ResultAvailability m_availability;
+    std::vector<EngineResultTable> m_engineTables;
+    std::map<ElementKey, PlanarMemberCurves> m_planarCurves;
     std::vector<ModalMode> m_modalModes;
     std::vector<PushoverStep> m_pushoverSteps;
     std::vector<TimeHistoryStep> m_timeHistorySteps;

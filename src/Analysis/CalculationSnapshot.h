@@ -18,6 +18,9 @@
 #include "../Model/Load/LoadCase.h"
 #include "../Model/Load/LoadCombination.h"
 #include "AnalysisTypes.h"
+#include "../Model/SelectionQuery.h"
+
+#include <array>
 
 #include <map>
 #include <vector>
@@ -55,6 +58,10 @@ struct SnapshotNode
     double kRx = 0.0;
     double kRy = 0.0;
     double kRz = 0.0;
+    /// Blocages tels que définis par l'utilisateur (Tx, Ty, Tz, Rx, Ry, Rz), AVANT les blocages
+    /// anti-singularité propres au calcul 3D appliqués à fix* (rotation de forage des appuis
+    /// articulés, Ty des appuis glissants). Un moteur 2D doit utiliser ceux-ci.
+    std::array<bool, 6> definedFix { false, false, false, false, false, false };
 };
 
 /**
@@ -65,7 +72,7 @@ struct SnapshotElement
     using ElementType = StructuralElementKind;
 
     int id = 0;          ///< identifiant TSA (unique dans sa famille seulement)
-    int tag = 0;         ///< tag OpenSees unique (1..N, ordre Beam, Column, Truss, Cable)
+    int tag = 0;         ///< indice d'analyse unique 1..N (ordre Beam, Column, Truss, Cable) ; = tag OpenSees
     ElementType type = ElementType::Beam;
 
     ElementKey key() const { return { type, id }; }
@@ -76,6 +83,10 @@ struct SnapshotElement
     TSA::Model::Section section;
     TSA::Model::Material material;
     double initialTension = 0.0; // Pour les câbles
+    /// Relâchements d'extrémité (poutres). Transmis aux moteurs qui les gèrent (Custom2D) ;
+    /// le générateur OpenSees ne les exploite pas (BUG-027).
+    TSA::Model::EndRelease startRelease;
+    TSA::Model::EndRelease endRelease;
 };
 
 /**
@@ -92,6 +103,13 @@ public:
      * @brief Capture l'état instantané complet du modèle TSA.
      */
     static CalculationSnapshot capture(const TSA::Model::Model& model);
+
+    /**
+     * @brief Capture restreinte à une portée : barres de la portée, nœuds qu'elles relient,
+     * charges appliquées à ces nœuds / barres, tous les cas et combinaisons.
+     * @param scope nullptr = tout le modèle (identique à capture(model)).
+     */
+    static CalculationSnapshot capture(const TSA::Model::Model& model, const TSA::Model::ElementSet* scope);
 
     const std::map<int, SnapshotNode>& nodes() const { return m_nodes; }
     const std::map<int, SnapshotElement>& elements() const { return m_elements; }
