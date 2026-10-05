@@ -1,6 +1,6 @@
 # Current State
 
-Last Updated: 2026-10-04 — main @ 81e34cf + modifications non commitées (topologie, extraction OpenSees)
+Last Updated: 2026-10-05 — branche feature/multi-engine-analysis (analyse multi-moteurs)
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
@@ -12,7 +12,10 @@ Warnings: 2 × C4996 (`TColgp_HArray1OfPnt` déprécié, src/Geometry/CableGeome
 Note: MSVC francisé → avertissement CMake sur le préfixe /showIncludes (BUG-011).
 
 ## Tests
-Status: IMPLEMENTED — 150/150 PASS (`TSA_TestSuite.exe`, 17 suites ; tests 101–111 ajoutés le 2026-10-04 ;
+Status: IMPLEMENTED — 180/180 PASS (suite `mdd` 150–159 le 2026-10-05) ;
+170/170 avant (suite `tools` 140–149 et test 139 ajoutés le 2026-10-05) ;
+159/159 avant (`TSA_TestSuite.exe` ; suite `engines` tests 130–138 ajoutée le 2026-10-05 ;
+tests 101–111 ajoutés le 2026-10-04 ;
 suite `extraction` = validation numérique contre le binaire OpenSees 3.8.0)
 Non couvert : comportement GUI (OccView, docks, mode 2D) — vérifications manuelles uniquement.
 
@@ -67,6 +70,15 @@ tolérance centralisée `GeometryTolerance::planeMembership`, isolation « Isole
 Status: IMPLEMENTED — caméra orthographique normale au plan, isolation recalculée depuis les
 drapeaux (plus de fantômes), snap projeté. Vérifié par le code ; pas de test GUI automatisé.
 
+## Modeling tools (outils de modification / dessin)
+Status: IMPLEMENTED (2026-10-05) — cadre `TSA::Interaction::ModelingTool` : 14 outils de modification (déplacer,
+copier, rotation, symétrie, échelle, réseaux linéaire/polaire, décaler, diviser en N / au point, intersecter,
+prolonger, ajuster, fusionner) et 6 de dessin (chaîne, rectangle, portique, contreventement X, arc, poteaux sur
+grille). Saisie dans la vue 3D par défaut (clics, valeur clavier, aperçu), fenêtre générique en option
+(bouton « Saisie dans la vue 3D », Maj + clic). Tests 140–149 ; vérifié dans l'application : panneaux du ruban,
+outil Rectangle par deux clics réels. Non vérifié en GUI : les 19 autres outils (testés au niveau modèle).
+Voir docs/MODELING_TOOLS.md.
+
 ## Editing
 Status: PARTIAL — propriétés, déplacement/rotation/copie, suppression, presse-papier, transactions,
 symétrie (copie / retournement, plans X/Y/Z), division de poutres/poteaux en N tronçons, fusion des
@@ -91,8 +103,20 @@ docs/OPENSEES_RESULTS.md. Dalles et voiles non transmis au calcul (pas de mailla
 signalé (avertissement ModelValidator + confirmation avant calcul ; « Maillage EF » présenté comme
 estimation). Exécution synchrone sur le thread UI.
 
+## Analysis engines (multi-moteurs)
+Status: IMPLEMENTED (2026-10-05) — `AnalysisEngine` / registre / `AnalysisManager` ; portées : modèle complet,
+sélection, axe de grille cartésienne (A, B…, 1, 2…, grille tournée incluse), niveau, plan de travail, restriction
+par niveau ; extraction 2D ; validation pilotée par capacités ; fenêtre Analysis commune (F5 = dernier contexte).
+OpenSees : via `OpenSeesEngine` (résultats identiques au chemin historique, test 136).
+Custom2D : IMPLEMENTED (2026-10-05) — solveur MetDeDeplacement 2 (thirdparty/MetDeDeplacement, méthode des
+déplacements plane, rotules, treillis, ressorts, courbes N/V/M + déformée EI v''=M) ; résultats identiques à OpenSees
+sur un portique plan (test 158) ; chapitre NDC « Courbes RDM par barre » (test 159). Vérifié dans l'application : la fenêtre s'ouvre (OpenSees 3.8.0
+détecté, capacités, portée, chargement). Non vérifié en GUI : calcul lancé depuis la fenêtre, panneau Propriétés.
+PARTIAL : contexte non persisté dans le .tsa (BUG-013) ; Modal / Pushover du ruban encore en appel direct d'OpenSees.
+
 ## Results
-Status: IMPLEMENTED — ResultsModel (éléments indexés par (famille, id)), déformée/diagrammes/réactions 3D,
+Status: IMPLEMENTED — ResultsModel (éléments indexés par (famille, id), moteur / portée tracés, catégories
+disponibles, tables propres au moteur), déformée/diagrammes/réactions 3D,
 diagrammes 2D, NDC, dock « Données d'analyse » (tables, K globale, matrices élémentaires, contexte IA JSON),
 export CSV/JSON/TXT (`ResultsExport`) ; invalidation automatique (ResultsValidityGuard).
 PARTIAL — stations intermédiaires des diagrammes approchées (BUG-016) ; équilibre contrôlé en forces seulement.

@@ -1,3 +1,5 @@
+#include "../Analysis/Engine/AnalysisManager.h"
+#include "Analysis/AnalysisEngineOptions.h"
 #include "Dock/AnalysisDataDock.h"
 #include "MainWindow.h"
 #include "../Viewer/OccView.h"
@@ -8,7 +10,6 @@
 #include "../Grid/GridSnapManager.h"
 #include "ModelTree/ModelTreeWidget.h"
 #include "Properties/PropertyPanel.h"
-#include "Dialogs/TransformDialog.h"
 #include "Dialogs/GridDialog.h"
 #include "Dialogs/GridSettingsDialog.h"
 #include "Dialogs/LevelDialog.h"
@@ -154,6 +155,12 @@ MainWindow::MainWindow(QWidget* parent)
     m_occView->setCreationPresets(m_presets);
 
     m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
+    m_engineRegistry = std::make_unique<TSA::Analysis::AnalysisEngineRegistry>();
+    TSA::Analysis::registerBuiltInEngines(*m_engineRegistry);
+    m_analysisManager = std::make_unique<TSA::Analysis::AnalysisManager>(*m_engineRegistry);
+    m_engineOptions = std::make_unique<TSA::UI::AnalysisEngineOptionsRegistry>();
+    TSA::UI::registerBuiltInEngineOptions(*m_engineOptions);
+    if (!m_engineRegistry->ids().empty()) m_analysisContext.engineId = m_engineRegistry->ids().front();
     if (m_diagramWidget)
     {
         m_diagramWidget->setModel(m_model.get());
@@ -230,7 +237,16 @@ MainWindow::MainWindow(QWidget* parent)
     updateWindowTitle();
 }
 
-MainWindow::~MainWindow() = default;
+MainWindow::~MainWindow()
+{
+    // Les enfants QObject (orchestrateur IA, docks, vue…) sont détruits APRÈS ce destructeur, par
+    // ~QObject : un signal qu'ils émettent alors vers un slot ou une lambda de MainWindow
+    // s'exécuterait sur une fenêtre déjà détruite (assertion Qt « Called object is not of the
+    // correct type »). Constaté : ~AIOrchestrator arrête llama-server → deux stateChanged →
+    // statusChanged → updateAIStatusWidget. Toutes ces connexions sont coupées ici.
+    for (QObject* child : findChildren<QObject*>())
+        QObject::disconnect(child, nullptr, this, nullptr);
+}
 
 void MainWindow::onResultsBecameStale()
 {
@@ -788,86 +804,12 @@ void MainWindow::onActionNewSlab()
 
 void MainWindow::onActionMove()
 {
-    if (!m_selectionManager || !m_selectionManager->hasSelection())
-    {
-        QMessageBox::information(this, tr("Move"), tr("Please select at least one element to move."));
-        return;
-    }
-
-    TSA::UI::TransformDialog dlg(TSA::UI::TransformMode::Move, this);
-    if (dlg.exec() != QDialog::Accepted)
-        return;
-
-    double dx = dlg.deltaX();
-    double dy = dlg.deltaY();
-    double dz = dlg.deltaZ();
-
-    std::set<int> nodesToMove = m_selectionManager->selectedNodes();
-    for (int bId : m_selectionManager->selectedBeams())
-    {
-        const auto* b = m_model->getBeam(bId);
-        if (b) { nodesToMove.insert(b->startNodeId()); nodesToMove.insert(b->endNodeId()); }
-    }
-    for (int cId : m_selectionManager->selectedColumns())
-    {
-        const auto* c = m_model->getColumn(cId);
-        if (c) { nodesToMove.insert(c->startNodeId()); nodesToMove.insert(c->endNodeId()); }
-    }
-    for (int sId : m_selectionManager->selectedSlabs())
-    {
-        const auto* s = m_model->getSlab(sId);
-        if (s)
-        {
-            for (int nid : s->nodeIds()) nodesToMove.insert(nid);
-        }
-    }
-    for (int cId : m_selectionManager->selectedCables())
-    {
-        const auto* c = m_model->getCable(cId);
-        if (c) { nodesToMove.insert(c->startNodeId()); nodesToMove.insert(c->endNodeId()); }
-    }
-
-    if (m_model->moveNodes(nodesToMove, dx, dy, dz))
-    {
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Moved %1 node(s) by (%2, %3, %4) m")
-                .arg(nodesToMove.size()).arg(dx).arg(dy).arg(dz));
-        }
-    }
+    startModelingTool("move", m_toolInputInViewport);   // « numérique » : toujours par fenêtre
 }
 
 void MainWindow::onActionCopy()
 {
-    if (!m_selectionManager || !m_selectionManager->hasSelection())
-    {
-        QMessageBox::information(this, tr("Copy"), tr("Please select at least one element to copy."));
-        return;
-    }
-
-    TSA::UI::TransformDialog dlg(TSA::UI::TransformMode::Copy, this);
-    if (dlg.exec() != QDialog::Accepted)
-        return;
-
-    double dx = dlg.deltaX();
-    double dy = dlg.deltaY();
-    double dz = dlg.deltaZ();
-    int reps = dlg.repetitions();
-
-    auto newIds = m_model->copyElements(
-        m_selectionManager->selectedNodes(),
-        m_selectionManager->selectedBeams(),
-        m_selectionManager->selectedColumns(),
-        m_selectionManager->selectedSlabs(),
-        dx, dy, dz, reps,
-        m_selectionManager->selectedCables()
-    );
-
-    if (!newIds.empty() && m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Duplicated selection: %1 new element(s) created (%2 repetition(s))")
-            .arg(newIds.size()).arg(reps));
-    }
+    startModelingTool("copy", m_toolInputInViewport);   // « numérique » : toujours par fenêtre
 }
 
 void MainWindow::onActionDeleteSelected()

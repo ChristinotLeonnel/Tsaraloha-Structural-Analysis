@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Interaction/Tools/ModelingTool.h"
 #include <QWidget>
 #include <QJsonObject>
 #include <QPoint>
@@ -361,6 +362,14 @@ public:
     void pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)>& onPicked,
                      const std::function<void()>& onCancelled = nullptr);
 
+    // Outils de modification / dessin en saisie 3D (OccView_Tools.cpp). L'outil appartient à
+    // l'appelant ; la vue ne fait que la saisie et l'aperçu.
+    void startModelingTool(TSA::Interaction::ModelingTool* tool, const TSA::Interaction::ToolContext& ctx);
+    /// Après exécution de l'opération : poursuivre (nouvelle saisie) ou revenir à la sélection.
+    void modelingToolApplied(bool continueTool);
+    void setModelingToolSelection(const TSA::Model::ElementSet& selection);
+    TSA::Interaction::ModelingTool* activeModelingTool() const { return m_activeTool; }
+
 signals:
     void fileDropped(const QString& filePath);
     void mouseCoordinatesChanged(double x, double y, double z);
@@ -409,6 +418,8 @@ signals:
     void originMoveRequested(const gp_Pnt& newOrigin);
     void pasteAtPointRequested(const gp_Pnt& target);
     void elementCreated();
+    /// L'outil actif a toutes ses données : exécuter l'opération.
+    void modelingToolReady();
 
     // Signaux Navigation & Modélisation CAO avancée
     void cameraHistoryChanged(bool hasPrev, bool hasNext);
@@ -646,6 +657,18 @@ private:
     std::unique_ptr<TSA::Interaction::InteractionManager> m_interactionManager;
     std::vector<int> m_drawingNodeIds;
     std::vector<gp_Pnt> m_drawingPoints;
+
+    // Outil de modification / dessin actif (OccView_Tools.cpp)
+    TSA::Interaction::ModelingTool* m_activeTool = nullptr;
+    TSA::Interaction::ToolContext m_toolCtx;
+    QString m_toolInput;
+    Handle(AIS_Shape) m_toolPreviewShape;
+    void handleModelingToolClick(const QPoint& p, Qt::KeyboardModifiers modifiers);
+    void updateModelingToolPreview(const gp_Pnt& cursor);
+    bool handleModelingToolKey(QKeyEvent* event);
+    bool pickBarAt(const QPoint& p, TSA::Interaction::ToolPick& pick);
+    void clearModelingToolPreview();
+    void emitModelingToolPrompt();
     Handle(AIS_Shape) m_rubberBandShape;
     Handle(AIS_RubberBand) m_selectRubberBand;
     std::vector<Handle(AIS_Shape)> m_previewGhostShapes;

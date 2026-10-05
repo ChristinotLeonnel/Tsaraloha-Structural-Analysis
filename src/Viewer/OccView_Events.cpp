@@ -119,6 +119,12 @@ void OccView::mousePressEvent(QMouseEvent* event)
             }
         }
 
+        if (interactionMode() == InteractionMode::ModelingTool)
+        {
+            handleModelingToolClick(p, event->modifiers());
+            return;
+        }
+
         if (interactionMode() == InteractionMode::Select)
         {
             // En mode sélection, on attend le mouvement pour distinguer un clic d'un glissé fenêtre/capture
@@ -992,6 +998,10 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
             {
                 updateRubberBand(gp_Pnt(wx, wy, wz));
             }
+            if (interactionMode() == InteractionMode::ModelingTool)
+            {
+                updateModelingToolPreview(gp_Pnt(wx, wy, wz));
+            }
 
             // Détection survol d'objets pour affichage des propriétés et infobulles
             AIS_StatusOfDetection status = m_context->MoveTo(px, py, m_view, true);
@@ -1227,6 +1237,9 @@ void OccView::wheelEvent(QWheelEvent* event)
 
 void OccView::keyPressEvent(QKeyEvent* event)
 {
+    if (interactionMode() == InteractionMode::ModelingTool && handleModelingToolKey(event))
+        return;
+
     if (m_currentAction == CurrentAction::WindowSelect)
     {
         if (!m_selectRubberBand.IsNull() && !m_context.IsNull() && m_context->IsDisplayed(m_selectRubberBand))

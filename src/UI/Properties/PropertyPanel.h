@@ -20,6 +20,7 @@ class FoundationPropertiesView;
 class TrussMemberPropertiesView;
 class WorkPlanePropertiesView;
 class LoadPropertiesView;
+class ElementResultsPanel;
 }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Analysis { class ResultsModel; }
@@ -120,6 +121,7 @@ private:
     TrussMemberPropertiesView* m_trussView = nullptr;
     WorkPlanePropertiesView* m_workPlaneView = nullptr;
     LoadPropertiesView* m_loadView = nullptr;
+    ElementResultsPanel* m_elementResults = nullptr;   ///< résultats de la barre sélectionnée (tout moteur)
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
 };
 

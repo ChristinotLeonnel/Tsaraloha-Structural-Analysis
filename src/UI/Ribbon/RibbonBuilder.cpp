@@ -188,6 +188,19 @@ RibbonTab* RibbonBuilder::buildModelingTab(RibbonBar* bar, const RibbonActions& 
     }
     tab->addPanel(beamPanel);
 
+    // Dessin rapide (registre des outils de dessin)
+    if (!acts.drawTools.empty())
+    {
+        auto* drawPanel = new RibbonPanel(QObject::tr("Dessin rapide"), tab);
+        for (std::size_t i = 0; i < acts.drawTools.size(); i += 3)
+        {
+            if (i) drawPanel->addInternalSeparator();
+            std::vector<QAction*> col(acts.drawTools.begin() + i, acts.drawTools.begin() + std::min(i + 3, acts.drawTools.size()));
+            drawPanel->addSmallColumn(col);
+        }
+        tab->addPanel(drawPanel);
+    }
+
     // Éléments Surfaciques (2D)
     auto* surfPanel = new RibbonPanel(QObject::tr("Éléments Surfaciques (2D)"), tab);
     if (acts.actionDrawSlab) surfPanel->addLargeAction(acts.actionDrawSlab);
@@ -561,6 +574,21 @@ RibbonTab* RibbonBuilder::buildEditTab(RibbonBar* bar, const RibbonActions& acts
             topoPanel->addSmallColumn(topoCol);
         }
         tab->addPanel(topoPanel);
+    }
+
+    // Outils de modification avancés (registre des outils) + mode de saisie
+    if (!acts.advancedModifyTools.empty() || acts.actionToolInputMode)
+    {
+        auto* toolsPanel = new RibbonPanel(QObject::tr("Outils de modification"), tab);
+        if (acts.actionToolInputMode) toolsPanel->addLargeAction(acts.actionToolInputMode);
+        for (std::size_t i = 0; i < acts.advancedModifyTools.size(); i += 3)
+        {
+            toolsPanel->addInternalSeparator();
+            std::vector<QAction*> col(acts.advancedModifyTools.begin() + i,
+                                      acts.advancedModifyTools.begin() + std::min(i + 3, acts.advancedModifyTools.size()));
+            toolsPanel->addSmallColumn(col);
+        }
+        tab->addPanel(toolsPanel);
     }
 
     // Repère de Travail

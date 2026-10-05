@@ -1,3 +1,4 @@
+#include "ElementResultsPanel.h"
 #include "PropertyPanel.h"
 #include <QAbstractSpinBox>
 #include "NodePropertiesView.h"
@@ -83,6 +84,10 @@ void PropertyPanel::setResultsModel(const std::shared_ptr<class TSA::Analysis::R
     {
         m_nodeView->setResultsModel(results);
     }
+    if (m_elementResults)
+    {
+        m_elementResults->setResultsModel(results);
+    }
 }
 
 void PropertyPanel::setupUi()
@@ -162,6 +167,13 @@ void PropertyPanel::setupUi()
     m_stack->addWidget(m_loadView); // Index 10
 
     containerLayout->addWidget(m_stack);
+    m_elementResults = new ElementResultsPanel(scrollContainer);
+    containerLayout->addWidget(m_elementResults);
+    connect(m_stack, &QStackedWidget::currentChanged, this, [this]() {
+        auto* w = m_stack->currentWidget();
+        if (w != m_beamView && w != m_columnView && w != m_trussView && w != m_cableView)
+            m_elementResults->showElement(std::nullopt);
+    });
     scrollContainer->setLayout(containerLayout);
     scrollArea->setWidget(scrollContainer);
 
@@ -215,6 +227,7 @@ void PropertyPanel::showBeamProperties(int beamId)
     m_titleLabel->setText(tr("PROPRIÉTÉS DE LA POUTRE B%1").arg(beamId));
     m_beamView->setElementId(beamId);
     m_stack->setCurrentWidget(m_beamView);
+    m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Beam, beamId });
 }
 
 void PropertyPanel::showColumnProperties(int columnId)
@@ -222,6 +235,7 @@ void PropertyPanel::showColumnProperties(int columnId)
     m_titleLabel->setText(tr("PROPRIÉTÉS DU POTEAU C%1").arg(columnId));
     m_columnView->setElementId(columnId);
     m_stack->setCurrentWidget(m_columnView);
+    m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Column, columnId });
 }
 
 void PropertyPanel::showCableProperties(int cableId)
@@ -229,6 +243,7 @@ void PropertyPanel::showCableProperties(int cableId)
     m_titleLabel->setText(tr("PROPRIÉTÉS DU CÂBLE K%1").arg(cableId));
     m_cableView->setElementId(cableId);
     m_stack->setCurrentWidget(m_cableView);
+    m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Cable, cableId });
 }
 
 void PropertyPanel::showSlabProperties(int slabId)
@@ -257,6 +272,7 @@ void PropertyPanel::showTrussMemberProperties(int memberId)
     m_titleLabel->setText(tr("PROPRIÉTÉS DU TREILLIS T%1").arg(memberId));
     m_trussView->setElementId(memberId);
     m_stack->setCurrentWidget(m_trussView);
+    m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Truss, memberId });
 }
 
 void PropertyPanel::showWorkPlaneProperties(int workPlaneId)

@@ -64,6 +64,7 @@ set(UI_MAINWINDOW_SOURCES
     src/UI/MainWindow_Actions.cpp
     src/UI/MainWindow_Tools.cpp
     src/UI/MainWindow_Transform.cpp
+    src/UI/MainWindow_ModelingTools.cpp
 )
 
 # --- Arbre du modèle ----------------------------------------------------------
@@ -77,6 +78,8 @@ set(UI_PROPERTIES_SOURCES
     src/UI/Properties/IElementPropertyView.h
     src/UI/Properties/PropertyPanel.h
     src/UI/Properties/PropertyPanel.cpp
+    src/UI/Properties/ElementResultsPanel.h
+    src/UI/Properties/ElementResultsPanel.cpp
     src/UI/Properties/NodePropertiesView.h
     src/UI/Properties/NodePropertiesView.cpp
     src/UI/Properties/BeamPropertiesView.h
@@ -101,8 +104,6 @@ set(UI_PROPERTIES_SOURCES
 
 # --- Boîtes de dialogue -------------------------------------------------------
 set(UI_DIALOGS_SOURCES
-    src/UI/Dialogs/TransformDialog.h
-    src/UI/Dialogs/TransformDialog.cpp
     src/UI/Dialogs/GridDialog.h
     src/UI/Dialogs/GridDialog.cpp
     src/UI/Dialogs/GridSettingsDialog.h
@@ -139,12 +140,27 @@ set(UI_DIALOGS_SOURCES
     src/UI/Dialogs/MemberLoadDialog.cpp
     src/UI/Dialogs/LoadCaseDialog.h
     src/UI/Dialogs/LoadCaseDialog.cpp
-    src/UI/Dialogs/AnalysisConfigDialog.h
-    src/UI/Dialogs/AnalysisConfigDialog.cpp
 )
 
 # Cette boîte de dialogue dépend d'ExtensionManager, testé indépendamment de
 # l'UI : on l'isole pour pouvoir la réutiliser dans CORE_SOURCES. — [CORE]
+# Fenêtre Analysis multi-moteurs et panneaux d'options par moteur — [CORE] (testée par TSA_Tests)
+set(UI_TOOLS_SOURCES
+    src/UI/Tools/ModelingToolDialog.h
+    src/UI/Tools/ModelingToolDialog.cpp
+)
+
+set(UI_ANALYSIS_SOURCES
+    src/UI/Analysis/AnalysisEngineOptions.h
+    src/UI/Analysis/AnalysisEngineOptions.cpp
+    src/UI/Analysis/OpenSeesOptionsWidget.h
+    src/UI/Analysis/OpenSeesOptionsWidget.cpp
+    src/UI/Analysis/Custom2DOptionsWidget.h
+    src/UI/Analysis/Custom2DOptionsWidget.cpp
+    src/UI/Analysis/AnalysisDialog.h
+    src/UI/Analysis/AnalysisDialog.cpp
+)
+
 set(UI_EXTENSIONMANAGERDIALOG_SOURCES
     src/UI/Dialogs/ExtensionManagerDialog.h
     src/UI/Dialogs/ExtensionManagerDialog.cpp
@@ -321,6 +337,7 @@ set(VIEWER_MAIN_SOURCES
     src/Viewer/OccView_Shapes.cpp
     src/Viewer/OccView_Navigation.cpp
     src/Viewer/OccView_Events.cpp
+    src/Viewer/OccView_Tools.cpp
     src/Viewer/SelectionManager.h
     src/Viewer/SelectionManager.cpp
     src/Viewer/ResultsVisualManager.h
@@ -443,6 +460,30 @@ set(LOAD_CORE_SOURCES
     src/Analysis/OpenSeesSolver.cpp
 )
 
+# --- Analyse multi-moteurs (contexte, portée, modèle d'analyse, registre, adaptateurs) — [CORE] ---
+set(ANALYSIS_ENGINE_SOURCES
+    src/Analysis/Engine/AnalysisValidation.h
+    src/Analysis/Engine/AnalysisContext.h
+    src/Analysis/Engine/AnalysisContext.cpp
+    src/Analysis/Engine/AnalysisModel.h
+    src/Analysis/Engine/AnalysisModel.cpp
+    src/Analysis/Engine/AnalysisEngine.h
+    src/Analysis/Engine/AnalysisEngineRegistry.h
+    src/Analysis/Engine/AnalysisEngineRegistry.cpp
+    src/Analysis/Engine/AnalysisManager.h
+    src/Analysis/Engine/AnalysisManager.cpp
+    src/Analysis/Engines/BuiltInEngines.cpp
+    src/Analysis/Engines/OpenSees/OpenSeesEngine.h
+    src/Analysis/Engines/OpenSees/OpenSeesEngine.cpp
+    src/Analysis/Engines/Custom2D/Custom2DSolver.h
+    src/Analysis/Engines/Custom2D/Custom2DAdapter.h
+    src/Analysis/Engines/Custom2D/Custom2DAdapter.cpp
+    src/Analysis/Engines/Custom2D/Custom2DEngine.h
+    src/Analysis/Engines/Custom2D/Custom2DEngine.cpp
+    src/Analysis/Engines/Custom2D/MetDeDeplacementSolver.h
+    src/Analysis/Engines/Custom2D/MetDeDeplacementSolver.cpp
+)
+
 # --- IA Co-Engineering (matériel, modèles, fournisseurs, contexte, outils, RAG) — [CORE] ---
 set(AI_CORE_SOURCES
     src/AI/Hardware/HardwareProfiler.h
@@ -493,6 +534,8 @@ set(NDC_CORE_SOURCES
     src/NDC/NDCExporter.cpp
     src/NDC/ReportManager.h
     src/NDC/ReportManager.cpp
+    src/NDC/NDCPlanarCurves.h
+    src/NDC/NDCPlanarCurves.cpp
 )
 
 # --- Câbles : modèle et normes de calcul — [CORE] -----------------------------
@@ -566,6 +609,12 @@ set(UNDOREDO_SOURCES
 set(INTERACTION_SOURCES
     src/Interaction/InteractionManager.h
     src/Interaction/InteractionManager.cpp
+    src/Interaction/Tools/ModelingTool.h
+    src/Interaction/Tools/ModelingTool.cpp
+    src/Interaction/Tools/ModifyTools.h
+    src/Interaction/Tools/ModifyTools.cpp
+    src/Interaction/Tools/DrawTools.cpp
+    src/Model/ModelElementCopy.h
 )
 
 # --- Format de fichier TSA (sauvegarde / chargement) — [CORE] ----------------
@@ -617,6 +666,8 @@ set(RESOURCES_SOURCES
 set(CORE_SOURCES
     ${DIAGNOSTICS_SOURCES}
     ${UI_EXTENSIONMANAGERDIALOG_SOURCES}
+    ${UI_ANALYSIS_SOURCES}
+    ${UI_TOOLS_SOURCES}
     ${UI_WINDOWMANAGER_SOURCES}
     ${EXTENSIONSYSTEM_SOURCES}
     ${LIBRARY_SOURCES}
@@ -626,6 +677,7 @@ set(CORE_SOURCES
     ${GEOMETRY_CORE_SOURCES}
     ${MODEL_CORE_SOURCES}
     ${LOAD_CORE_SOURCES}
+    ${ANALYSIS_ENGINE_SOURCES}
     ${NDC_CORE_SOURCES}
     ${AI_CORE_SOURCES}
     ${CABLE_SOURCES}
@@ -753,9 +805,13 @@ endfunction()
 # Bibliothèque OBJECT : les .obj sont réutilisés tels quels par les deux cibles
 # (pas de risque de perdre des initialisations statiques comme avec une .lib).
 # =============================================================================
+# Moteur 2D « méthode des déplacements » (bibliothèque autonome du même auteur)
+add_subdirectory(thirdparty/MetDeDeplacement)
+
 add_library(TSA_Core OBJECT ${CORE_SOURCES})
 tsa_apply_common_settings(TSA_Core)
 target_link_libraries(TSA_Core PUBLIC
+    MetDeDeplacement
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -858,6 +914,9 @@ set(TEST_SOURCES
     tests/test_ai.cpp
     tests/test_preview.cpp
     tests/test_thumbnail_provider.cpp
+    tests/test_analysis_engines.cpp
+    tests/test_modeling_tools.cpp
+    tests/test_met_de_deplacement.cpp
     resources/resources.qrc
 )
 

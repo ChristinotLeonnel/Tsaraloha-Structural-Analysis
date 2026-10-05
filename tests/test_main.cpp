@@ -5,14 +5,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 150;
+    int expectedTotal = 180;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail]" << std::endl;
+            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd]" << std::endl;
             return 0;
         }
     }
@@ -101,6 +101,18 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "preview") {
         std::cout << "\n--- [Suite 19/19] Projets récents et aperçus du dernier état (Tests 124-126) ---" << std::endl;
         if (!runSuite_Preview(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "engines" || suiteFilter == "analysis") {
+        std::cout << "\n--- [Suite 21/21] Analyse multi-moteurs : registre, portée, extraction 2D, validation, UI, remappage (Tests 130-138) ---" << std::endl;
+        if (!runSuite_Engines(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "tools" || suiteFilter == "modeling") {
+        std::cout << "\n--- [Suite 22/22] Outils de modification et de dessin (Tests 140-149) ---" << std::endl;
+        if (!runSuite_ModelingTools(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "mdd" || suiteFilter == "custom2d") {
+        std::cout << "\n--- [Suite 23/23] Moteur 2D MetDeDeplacement : formules RDM, rotules, treillis, OpenSees (Tests 150-159) ---" << std::endl;
+        if (!runSuite_MetDeDeplacement(passed)) allOk = false;
     }
 #ifdef _WIN32
     if (suiteFilter == "all" || suiteFilter == "thumbnail") {

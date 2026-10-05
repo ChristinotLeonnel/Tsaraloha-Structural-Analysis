@@ -5,18 +5,21 @@
 #include <QPointer>
 #include <memory>
 #include <vector>
+#include <map>
+#include <string>
 #include <gp_Pnt.hxx>
 #include <gp_Dir.hxx>
 #include "../Model/CreationPresets.h"
 #include "../Model/Beam.h"
 #include "../Model/StructuralClipboard.h"
-#include "../Analysis/OpenSeesAnalysisBuilder.h"
+#include "../Analysis/Engine/AnalysisContext.h"
 
 namespace TSA::Model { class Model; }
 namespace TSA::AI { class AIOrchestrator; }
 namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; class StartPage; }
-namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; }
+namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; }
 namespace TSA::Coordinate { class WorkPlane; }
+namespace TSA::Interaction { class ModelingTool; class ModelingToolRegistry; struct ToolContext; }
 namespace TSA::Project { class ProjectManager; }
 namespace TSA::Viewer { class SelectionManager; }
 namespace TSA::UndoRedo { class CommandManager; }
@@ -49,6 +52,7 @@ namespace TSA::UI
     class WindowManager;
     class ProjectStatusOverlay;
     class TSALogoOverlay;
+    class AnalysisEngineOptionsRegistry;
 }
 
 namespace TSA::NDC
@@ -207,7 +211,27 @@ private:
     TSA::UI::AnalysisDataDock* m_analysisDataDock = nullptr;
     QDockWidget* m_projectStatusDock = nullptr;
     TSA::UI::ProjectStatusOverlay* m_projectStatusWidget = nullptr;
-    TSA::Analysis::AnalysisParameters m_lastAnalysisParams;
+    // Analyse multi-moteurs : registre des moteurs, orchestration commune, panneaux d'options et
+    // dernier contexte d'analyse choisi (moteur, portée, chargement, réglages par moteur).
+    std::unique_ptr<TSA::Analysis::AnalysisEngineRegistry> m_engineRegistry;
+    std::unique_ptr<TSA::Analysis::AnalysisManager> m_analysisManager;
+    std::unique_ptr<TSA::UI::AnalysisEngineOptionsRegistry> m_engineOptions;
+    TSA::Analysis::AnalysisContext m_analysisContext;
+    /// Calcule le contexte avec le moteur choisi (disponibilité, validation, calcul, publication).
+    bool runAnalysis(const TSA::Analysis::AnalysisContext& context);
+    // Outils de modification / dessin (MainWindow_ModelingTools.cpp)
+    std::unique_ptr<TSA::Interaction::ModelingToolRegistry> m_toolRegistry;
+    std::unique_ptr<TSA::Interaction::ModelingTool> m_activeTool;
+    std::map<std::string, QAction*> m_toolActions;
+    QAction* m_actionToolInputViewport = nullptr;
+    bool m_toolInputInViewport = true;
+    void createModelingToolActions();
+    /// swapInputMode : utiliser l'autre mode de saisie (Maj + clic, ou action « numérique »).
+    void startModelingTool(const std::string& id, bool swapInputMode = false);
+    void applyActiveModelingTool();
+    TSA::Interaction::ToolContext modelingToolContext() const;
+    /// Diffuse un jeu de résultats à toutes les vues (viewport, docks, propriétés, NDC).
+    void publishResults(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
 
     QLabel*  m_statusProject = nullptr;
     QLabel*  m_statusView = nullptr;

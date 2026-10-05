@@ -176,3 +176,6 @@ bool runSuite_Extraction(int& passed);
 bool runSuite_AI(int& passed);
 bool runSuite_Preview(int& passed);
 bool runSuite_Thumbnail(int& passed);
+bool runSuite_Engines(int& passed);
+bool runSuite_ModelingTools(int& passed);
+bool runSuite_MetDeDeplacement(int& passed);

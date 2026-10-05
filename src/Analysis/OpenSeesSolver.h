@@ -43,6 +43,14 @@ public:
                           QString* errorMessage = nullptr);
 
     /**
+     * @brief Calcul synchrone d'un snapshot déjà préparé (portée, validation faites par
+     * AnalysisManager). Même workflow que solveSynchronous, sans recapture ni ModelValidator.
+     */
+    bool solveSnapshot(const CalculationSnapshot& snapshot,
+                       const AnalysisParameters& params,
+                       QString* errorMessage = nullptr);
+
+    /**
      * @brief Lance l'analyse de manière asynchrone dans un thread de travail (l'UI Qt reste 100% fluide).
      */
     void solveAsync(const TSA::Model::Model& model,

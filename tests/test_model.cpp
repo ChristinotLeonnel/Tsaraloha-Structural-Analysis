@@ -1080,6 +1080,49 @@ bool runSuite_Model(int& passed)
         passed++;
     }
 
+    // TEST 139 : copie par translation / rotation — la vue reçoit la section réelle de la copie
+    // (régression : une copie de section circulaire s'affichait rectangulaire en 3D, car les
+    // attributs étaient posés après l'ajout sans notification).
+    {
+        struct SectionObserver : IModelObserver
+        {
+            std::map<int, SectionShape> beamShape, trussShape;
+            void onBeamAdded(const Beam& b) override { beamShape[b.id()] = b.section().shape; }
+            void onBeamModified(const Beam& b) override { beamShape[b.id()] = b.section().shape; }
+            void onTrussMemberAdded(const TrussMember& t) override { trussShape[t.id()] = t.section().shape; }
+            void onTrussMemberModified(const TrussMember& t) override { trussShape[t.id()] = t.section().shape; }
+        } obs;
+
+        Model m;
+        m.addObserver(&obs);
+        const int a = m.addNode(0, 0, 0), b = m.addNode(5, 0, 0);
+        m.getNode(a)->setSupport(SupportDefinition::pinned());
+        const int beam = m.addBar(a, b, Section::circular(0.3, "C300"), Material::steelS235(), BarRole::Beam);
+        const int truss = m.addTrussMember(a, b, 0.05);
+        m.getTrussMember(truss)->setSection(Section::circular(0.08, "T80"));
+
+        const auto ids = m.copyElements({}, { beam }, {}, {}, 0, 3, 0, 2, {}, { truss });
+        TEST_CHECK(m.beams().size() == 3 && m.trussMembers().size() == 3, "Test 139: 2 copies de la poutre et du treillis");
+        for (const auto& [id, bm] : m.beams())
+        {
+            TEST_CHECK(bm.section().shape == SectionShape::Circular && bm.section().name == "C300", "Test 139: section copiée");
+            TEST_CHECK(obs.beamShape.at(id) == SectionShape::Circular, "Test 139: la vue a reçu la section circulaire");
+        }
+        for (const auto& [id, t] : m.trussMembers())
+            TEST_CHECK(obs.trussShape.at(id) == SectionShape::Circular, "Test 139: treillis copié avec sa section");
+        int pinnedCopies = 0;
+        for (const auto& [id, n] : m.nodes()) pinnedCopies += (id != a && n.support().isPinned()) ? 1 : 0;
+        TEST_CHECK(pinnedCopies == 2, "Test 139: appuis des nœuds copiés");
+
+        const auto rot = m.copyAndRotateElements({}, { beam }, {}, {}, gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1), M_PI / 2, 1);
+        TEST_CHECK(!rot.empty(), "Test 139: copie-rotation");
+        for (const auto& [id, bm] : m.beams())
+            TEST_CHECK(obs.beamShape.at(id) == SectionShape::Circular, "Test 139: copie-rotation vue circulaire");
+        m.removeObserver(&obs);
+        std::cout << "[PASS] Test 139: Copie — attributs et vues synchronisés" << std::endl;
+        passed++;
+    }
+
     return true;
 }
 

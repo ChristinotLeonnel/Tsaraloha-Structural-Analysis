@@ -1,6 +1,6 @@
 # Tasks
 
-Last Updated: 2026-10-04. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-10-05. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
 ## CRITICAL
 
@@ -23,6 +23,29 @@ Last Updated: 2026-10-04. Uniquement des tâches réellement identifiées (voir 
 
 - [ ] BUG-016 — Diagrammes intermédiaires exacts (sectionForce ou reconstruction M(x)/V(x) depuis basicForce + charges locales).
 - [ ] Vérification manuelle GUI : dock « Données d'analyse », configuration LIGHT/ADVANCED, export, charge sur poteau via MemberLoadDialog.
+
+## Outils de modification / dessin (ADR-018)
+
+- [ ] BUG-026 — Supprimer les anciens modes Move3D / Copy3D / Rotate3D devenus inatteignables.
+- [ ] Vérification manuelle GUI des 19 outils autres que Rectangle (Prolonger / Ajuster / Décaler en particulier).
+- [ ] Étendre Symétrie aux treillis (mirrorElements ne les gère pas) ; saisie d'un axe de rotation autre que la
+      normale du plan de travail en mode 3D.
+- [ ] Accrochage « milieu de barre » et « perpendiculaire » pour la saisie des outils.
+
+## Moteur 2D MetDeDeplacement (ADR-019)
+
+- [ ] Vérification manuelle GUI : calcul Custom2D depuis la fenêtre Analysis sur un axe de grille, NDC affichée.
+- [ ] BUG-027 — transmettre les relâchements d'extrémité à OpenSees (rotules de barre).
+- [ ] Option : importer les anciens fichiers JSON « dessin » (legacy) dans le modèle TSA, si l'utilisateur le souhaite.
+- [ ] Déformée viewport : exploiter les déplacements le long des barres (stations u, v) pour une déformée courbe.
+
+## Analyse multi-moteurs (ADR-017)
+
+- [ ] Persister `AnalysisContext` dans le .tsa (chunk dédié, version mineure) — BUG-013.
+- [ ] Router Modal / Pushover du ruban par `runAnalysis` (après BUG-024 pour le pushover).
+- [ ] Vérification manuelle GUI : calcul depuis la fenêtre Analysis (OpenSees, portée axe), panneau « Résultats
+      d'analyse » des Propriétés, onglets masqués du dock « Données d'analyse ».
+- [ ] BUG-024 — Implémenter réellement pushover / temporel dans le générateur OpenSees (ou retirer l'action).
 
 ## IA Co-Engineering (ADR-015)
 
@@ -62,6 +85,10 @@ Last Updated: 2026-10-04. Uniquement des tâches réellement identifiées (voir 
 - [ ] Fichiers > 2 000 lignes (OccView_Navigation.cpp, OccView_Shapes.cpp, MainWindow_Actions.cpp) : analyse de découpage avant d'y ajouter des responsabilités.
 
 ## COMPLETED
+
+- [x] Outils de modification / dessin en saisie 3D (fenêtre optionnelle), 20 outils ; correction de la copie (section affichée) (2026-10-05, tests 139–149).
+
+- [x] Architecture d'analyse multi-moteurs : contexte, portée par grille/niveau/WorkPlane, AnalysisModel dérivé, mapping, registre, OpenSeesEngine, Custom2DEngine (adaptateur), fenêtre Analysis commune, résultats pilotés par capacités (2026-10-05, tests 130–138).
 
 - [x] Extraction avancée OpenSees : mapping TSA↔OpenSees, U/R/forces local-global-basic, matrices élémentaires et K_global, export, contexte IA, dock ; corrections FIX-015 à FIX-022 (2026-10-04, tests 105–111, non commité).
 

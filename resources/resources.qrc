@@ -102,6 +102,21 @@
         <file alias="structure/struct_align.svg">icons/structure/struct_align.svg</file>
         <file alias="structure/struct_connect.svg">icons/structure/struct_connect.svg</file>
         <file alias="structure/struct_split.svg">icons/structure/struct_split.svg</file>
+        <file alias="tools/array_linear.svg">icons/tools/array_linear.svg</file>
+        <file alias="tools/array_polar.svg">icons/tools/array_polar.svg</file>
+        <file alias="tools/beam_arc.svg">icons/tools/beam_arc.svg</file>
+        <file alias="tools/beam_chain.svg">icons/tools/beam_chain.svg</file>
+        <file alias="tools/beam_rectangle.svg">icons/tools/beam_rectangle.svg</file>
+        <file alias="tools/extend.svg">icons/tools/extend.svg</file>
+        <file alias="tools/grid_columns.svg">icons/tools/grid_columns.svg</file>
+        <file alias="tools/input_viewport.svg">icons/tools/input_viewport.svg</file>
+        <file alias="tools/intersect.svg">icons/tools/intersect.svg</file>
+        <file alias="tools/offset.svg">icons/tools/offset.svg</file>
+        <file alias="tools/portal.svg">icons/tools/portal.svg</file>
+        <file alias="tools/scale.svg">icons/tools/scale.svg</file>
+        <file alias="tools/split_at.svg">icons/tools/split_at.svg</file>
+        <file alias="tools/trim.svg">icons/tools/trim.svg</file>
+        <file alias="tools/x_bracing.svg">icons/tools/x_bracing.svg</file>
         <file alias="structure/struct_merge.svg">icons/structure/struct_merge.svg</file>
 
         <!-- 7. Calculs & Analyse (Analysis) -->

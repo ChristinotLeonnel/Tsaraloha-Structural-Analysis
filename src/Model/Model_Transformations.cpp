@@ -1,4 +1,9 @@
 #include "Model.h"
+#include "ModelElementCopy.h"
+
+#include <functional>
+#include <map>
+#include <gp_Vec.hxx>
 
 #include <algorithm>
 #include <cmath>
@@ -7,6 +12,107 @@
 
 namespace TSA::Model
 {
+
+namespace
+{
+/// Copie transformée d'une sélection, répétée `repetitions` fois (transformation de l'étape k
+/// fournie par trsfOf(k)). Les nœuds copiés gardent leurs appuis ; chaque élément copié reçoit
+/// TOUS les attributs de l'original (section, matériau, rôle, relâchements…) puis est notifié :
+/// à l'ajout, les vues ont construit la forme avec les valeurs par défaut (ex. section
+/// rectangulaire affichée pour une copie de section circulaire).
+std::vector<int> copyTransformed(Model& m,
+                                 const std::set<int>& nodeIds, const std::set<int>& beamIds,
+                                 const std::set<int>& columnIds, const std::set<int>& slabIds,
+                                 const std::set<int>& cableIds, const std::set<int>& trussIds,
+                                 int repetitions, const std::function<gp_Trsf(int)>& trsfOf)
+{
+    std::vector<int> created;
+    if (repetitions < 1)
+        return created;
+
+    std::set<int> allNodeIds = nodeIds;
+    auto addEnds = [&](int a, int b) { allNodeIds.insert(a); allNodeIds.insert(b); };
+    for (int id : beamIds) if (const auto* e = m.getBeam(id)) addEnds(e->startNodeId(), e->endNodeId());
+    for (int id : columnIds) if (const auto* e = m.getColumn(id)) addEnds(e->startNodeId(), e->endNodeId());
+    for (int id : cableIds) if (const auto* e = m.getCable(id)) addEnds(e->startNodeId(), e->endNodeId());
+    for (int id : trussIds) if (const auto* e = m.getTrussMember(id)) addEnds(e->startNodeId(), e->endNodeId());
+    for (int id : slabIds) if (const auto* e = m.getSlab(id)) allNodeIds.insert(e->nodeIds().begin(), e->nodeIds().end());
+
+    for (int step = 1; step <= repetitions; ++step)
+    {
+        const gp_Trsf trsf = trsfOf(step);
+        std::map<int, int> newNode;
+        for (int nid : allNodeIds)
+        {
+            const auto* n = m.getNode(nid);
+            if (!n) continue;
+            const SupportDefinition support = n->support();
+            const gp_Pnt p = gp_Pnt(n->x(), n->y(), n->z()).Transformed(trsf);
+            const int id = m.addNode(p.X(), p.Y(), p.Z());
+            if (auto* nn = m.getNode(id))
+            {
+                nn->setSupport(support);
+                m.notifyNodeModified(id);
+            }
+            newNode[nid] = id;
+            created.push_back(id);
+        }
+
+        for (int id : beamIds)
+        {
+            const auto* src = m.getBeam(id);
+            if (!src) continue;
+            const Beam o = *src;
+            const int nid = m.addBeam(newNode[o.startNodeId()], newNode[o.endNodeId()], o.width(), o.height());
+            if (auto* e = m.getBeam(nid)) { copyBeamAttributes(o, *e); m.notifyBeamModified(nid); }
+            created.push_back(nid);
+        }
+        for (int id : columnIds)
+        {
+            const auto* src = m.getColumn(id);
+            if (!src) continue;
+            const Column o = *src;
+            const int nid = m.addColumn(newNode[o.startNodeId()], newNode[o.endNodeId()], o.width(), o.height());
+            if (auto* e = m.getColumn(nid)) { copyColumnAttributes(o, *e); m.notifyColumnModified(nid); }
+            created.push_back(nid);
+        }
+        for (int id : trussIds)
+        {
+            const auto* src = m.getTrussMember(id);
+            if (!src) continue;
+            const TrussMember o = *src;
+            const int nid = m.addTrussMember(newNode[o.startNodeId()], newNode[o.endNodeId()], 0.10, o.name(), o.role());
+            if (auto* e = m.getTrussMember(nid)) { copyTrussAttributes(o, *e); m.notifyTrussMemberModified(nid); }
+            created.push_back(nid);
+        }
+        for (int id : slabIds)
+        {
+            const auto* src = m.getSlab(id);
+            if (!src) continue;
+            const Slab o = *src;
+            std::vector<int> nids;
+            for (int n : o.nodeIds()) nids.push_back(newNode[n]);
+            // Une transformation qui inverse l'orientation (symétrie) n'est pas utilisée ici :
+            // translation et rotation conservent le sens de parcours du contour.
+            const int nid = m.addSlab(nids, o.thickness());
+            if (auto* e = m.getSlab(nid)) { copySlabAttributes(o, *e); m.notifySlabModified(nid); }
+            created.push_back(nid);
+        }
+        for (int id : cableIds)
+        {
+            const auto* src = m.getCable(id);
+            if (!src) continue;
+            const Cable o = *src;
+            const int nid = m.addCable(newNode[o.startNodeId()], newNode[o.endNodeId()], o.definition(), o.name(),
+                                       o.geometryMode(), o.sag());
+            if (auto* e = m.getCable(nid)) { copyCableAttributes(o, *e); m.notifyCableModified(nid); }
+            created.push_back(nid);
+        }
+    }
+    return created;
+}
+} // namespace
+
 
 bool Model::moveNodes(const std::set<int>& nodeIds, double dx, double dy, double dz)
 {
@@ -31,143 +137,15 @@ std::vector<int> Model::copyElements(const std::set<int>& nodeIds,
                                      const std::set<int>& columnIds,
                                      const std::set<int>& slabIds,
                                      double dx, double dy, double dz, int repetitions,
-                                     const std::set<int>& cableIds)
+                                     const std::set<int>& cableIds,
+                                     const std::set<int>& trussIds)
 {
-    std::vector<int> newElementIds;
-    if (repetitions < 1)
-        return newElementIds;
-
-    // Déterminer l'ensemble de tous les nœuds impliqués (explicites + connectés aux barres/dalles/câbles)
-    std::set<int> allNodeIds = nodeIds;
-    for (int bId : beamIds)
-    {
-        const auto* b = getBeam(bId);
-        if (b) { allNodeIds.insert(b->startNodeId()); allNodeIds.insert(b->endNodeId()); }
-    }
-    for (int cId : columnIds)
-    {
-        const auto* c = getColumn(cId);
-        if (c) { allNodeIds.insert(c->startNodeId()); allNodeIds.insert(c->endNodeId()); }
-    }
-    for (int sId : slabIds)
-    {
-        const auto* s = getSlab(sId);
-        if (s)
-        {
-            for (int nid : s->nodeIds()) allNodeIds.insert(nid);
-        }
-    }
-    for (int cId : cableIds)
-    {
-        const auto* c = getCable(cId);
-        if (c) { allNodeIds.insert(c->startNodeId()); allNodeIds.insert(c->endNodeId()); }
-    }
-
-    for (int step = 1; step <= repetitions; ++step)
-    {
-        double curDx = dx * step;
-        double curDy = dy * step;
-        double curDz = dz * step;
-
-        std::map<int, int> oldToNewNodes;
-        for (int oldNid : allNodeIds)
-        {
-            const auto* origNode = getNode(oldNid);
-            if (origNode)
-            {
-                int newNid = addNode(origNode->x() + curDx, origNode->y() + curDy, origNode->z() + curDz);
-                oldToNewNodes[oldNid] = newNid;
-                newElementIds.push_back(newNid);
-            }
-        }
-
-        for (int bId : beamIds)
-        {
-            const auto* origBeam = getBeam(bId);
-            if (origBeam)
-            {
-                int newStart = oldToNewNodes[origBeam->startNodeId()];
-                int newEnd = oldToNewNodes[origBeam->endNodeId()];
-                int newBId = addBeam(newStart, newEnd, origBeam->width(), origBeam->height());
-                if (auto* nb = getBeam(newBId))
-                {
-                    nb->setSection(origBeam->section());
-                    nb->setMaterial(origBeam->material());
-                    nb->setRotation(origBeam->rotation());
-                    nb->setEccentricity(origBeam->eccentricity());
-                    nb->setStartRelease(origBeam->startRelease());
-                    nb->setEndRelease(origBeam->endRelease());
-                    nb->setColor(origBeam->color());
-                }
-                newElementIds.push_back(newBId);
-            }
-        }
-
-        for (int cId : columnIds)
-        {
-            const auto* origCol = getColumn(cId);
-            if (origCol)
-            {
-                int newStart = oldToNewNodes[origCol->startNodeId()];
-                int newEnd = oldToNewNodes[origCol->endNodeId()];
-                int newCId = addColumn(newStart, newEnd, origCol->width(), origCol->height());
-                if (auto* nc = getColumn(newCId))
-                {
-                    nc->setSection(origCol->section());
-                    nc->setMaterial(origCol->material());
-                    nc->setRotation(origCol->rotation());
-                    nc->setColor(origCol->color());
-                }
-                newElementIds.push_back(newCId);
-            }
-        }
-
-        for (int sId : slabIds)
-        {
-            const auto* origSlab = getSlab(sId);
-            if (origSlab)
-            {
-                std::vector<int> newSlabNodes;
-                for (int nid : origSlab->nodeIds())
-                {
-                    newSlabNodes.push_back(oldToNewNodes[nid]);
-                }
-                int newSId = addSlab(newSlabNodes, origSlab->thickness());
-                if (auto* ns = getSlab(newSId))
-                {
-                    ns->setMaterial(origSlab->material());
-                    ns->setSlabType(origSlab->slabType());
-                    ns->setColor(origSlab->color());
-                }
-                newElementIds.push_back(newSId);
-            }
-        }
-
-        for (int cId : cableIds)
-        {
-            const auto* origCable = getCable(cId);
-            if (origCable)
-            {
-                int newStart = oldToNewNodes[origCable->startNodeId()];
-                int newEnd = oldToNewNodes[origCable->endNodeId()];
-                int newCId = addCable(newStart, newEnd, origCable->definition(), origCable->name(), origCable->geometryMode(), origCable->sag());
-                if (auto* nc = getCable(newCId))
-                {
-                    nc->setType(origCable->type());
-                    nc->setSection(origCable->section());
-                    nc->setMaterial(origCable->material());
-                    nc->setPrestress(origCable->prestress());
-                    nc->setAnalysisProperties(origCable->analysisProperties());
-                    nc->setStartAnchor(origCable->startAnchor());
-                    nc->setEndAnchor(origCable->endAnchor());
-                    nc->setColor(origCable->color());
-                }
-                newElementIds.push_back(newCId);
-            }
-        }
-    }
-
-    return newElementIds;
+    return copyTransformed(*this, nodeIds, beamIds, columnIds, slabIds, cableIds, trussIds, repetitions,
+                           [&](int step) {
+                               gp_Trsf t;
+                               t.SetTranslation(gp_Vec(dx * step, dy * step, dz * step));
+                               return t;
+                           });
 }
 
 bool Model::rotateNodes(const std::set<int>& nodeIds, const gp_Pnt& center, const gp_Dir& axis, double angleRad)
@@ -198,144 +176,17 @@ std::vector<int> Model::copyAndRotateElements(const std::set<int>& nodeIds,
                                               const std::set<int>& slabIds,
                                               const gp_Pnt& center, const gp_Dir& axis,
                                               double angleRad, int repetitions,
-                                              const std::set<int>& cableIds)
+                                              const std::set<int>& cableIds,
+                                              const std::set<int>& trussIds)
 {
-    std::vector<int> newElementIds;
-    if (repetitions < 1 || std::abs(angleRad) < 1e-7)
-        return newElementIds;
-
-    std::set<int> allNodeIds = nodeIds;
-    for (int bId : beamIds)
-    {
-        const auto* b = getBeam(bId);
-        if (b) { allNodeIds.insert(b->startNodeId()); allNodeIds.insert(b->endNodeId()); }
-    }
-    for (int cId : columnIds)
-    {
-        const auto* c = getColumn(cId);
-        if (c) { allNodeIds.insert(c->startNodeId()); allNodeIds.insert(c->endNodeId()); }
-    }
-    for (int sId : slabIds)
-    {
-        const auto* s = getSlab(sId);
-        if (s)
-        {
-            for (int nid : s->nodeIds()) allNodeIds.insert(nid);
-        }
-    }
-    for (int cId : cableIds)
-    {
-        const auto* c = getCable(cId);
-        if (c) { allNodeIds.insert(c->startNodeId()); allNodeIds.insert(c->endNodeId()); }
-    }
-
-    for (int step = 1; step <= repetitions; ++step)
-    {
-        double curAngle = angleRad * step;
-        gp_Trsf trsf;
-        trsf.SetRotation(gp_Ax1(center, axis), curAngle);
-
-        std::map<int, int> oldToNewNodes;
-        for (int oldNid : allNodeIds)
-        {
-            const auto* origNode = getNode(oldNid);
-            if (origNode)
-            {
-                gp_Pnt p(origNode->x(), origNode->y(), origNode->z());
-                p.Transform(trsf);
-                int newNid = addNode(p.X(), p.Y(), p.Z());
-                oldToNewNodes[oldNid] = newNid;
-                newElementIds.push_back(newNid);
-            }
-        }
-
-        for (int bId : beamIds)
-        {
-            const auto* origBeam = getBeam(bId);
-            if (origBeam)
-            {
-                int newStart = oldToNewNodes[origBeam->startNodeId()];
-                int newEnd = oldToNewNodes[origBeam->endNodeId()];
-                int newBId = addBeam(newStart, newEnd, origBeam->width(), origBeam->height());
-                if (auto* nb = getBeam(newBId))
-                {
-                    nb->setSection(origBeam->section());
-                    nb->setMaterial(origBeam->material());
-                    nb->setRotation(origBeam->rotation());
-                    nb->setEccentricity(origBeam->eccentricity());
-                    nb->setStartRelease(origBeam->startRelease());
-                    nb->setEndRelease(origBeam->endRelease());
-                    nb->setColor(origBeam->color());
-                }
-                newElementIds.push_back(newBId);
-            }
-        }
-
-        for (int cId : columnIds)
-        {
-            const auto* origCol = getColumn(cId);
-            if (origCol)
-            {
-                int newStart = oldToNewNodes[origCol->startNodeId()];
-                int newEnd = oldToNewNodes[origCol->endNodeId()];
-                int newCId = addColumn(newStart, newEnd, origCol->width(), origCol->height());
-                if (auto* nc = getColumn(newCId))
-                {
-                    nc->setSection(origCol->section());
-                    nc->setMaterial(origCol->material());
-                    nc->setRotation(origCol->rotation());
-                    nc->setColor(origCol->color());
-                }
-                newElementIds.push_back(newCId);
-            }
-        }
-
-        for (int sId : slabIds)
-        {
-            const auto* origSlab = getSlab(sId);
-            if (origSlab)
-            {
-                std::vector<int> newSlabNodes;
-                for (int nid : origSlab->nodeIds())
-                {
-                    newSlabNodes.push_back(oldToNewNodes[nid]);
-                }
-                int newSId = addSlab(newSlabNodes, origSlab->thickness());
-                if (auto* ns = getSlab(newSId))
-                {
-                    ns->setMaterial(origSlab->material());
-                    ns->setSlabType(origSlab->slabType());
-                    ns->setColor(origSlab->color());
-                }
-                newElementIds.push_back(newSId);
-            }
-        }
-
-        for (int cId : cableIds)
-        {
-            const auto* origCable = getCable(cId);
-            if (origCable)
-            {
-                int newStart = oldToNewNodes[origCable->startNodeId()];
-                int newEnd = oldToNewNodes[origCable->endNodeId()];
-                int newCId = addCable(newStart, newEnd, origCable->definition(), origCable->name(), origCable->geometryMode(), origCable->sag());
-                if (auto* nc = getCable(newCId))
-                {
-                    nc->setType(origCable->type());
-                    nc->setSection(origCable->section());
-                    nc->setMaterial(origCable->material());
-                    nc->setPrestress(origCable->prestress());
-                    nc->setAnalysisProperties(origCable->analysisProperties());
-                    nc->setStartAnchor(origCable->startAnchor());
-                    nc->setEndAnchor(origCable->endAnchor());
-                    nc->setColor(origCable->color());
-                }
-                newElementIds.push_back(newCId);
-            }
-        }
-    }
-
-    return newElementIds;
+    if (std::abs(angleRad) < 1e-7)
+        return {};
+    return copyTransformed(*this, nodeIds, beamIds, columnIds, slabIds, cableIds, trussIds, repetitions,
+                           [&](int step) {
+                               gp_Trsf t;
+                               t.SetRotation(gp_Ax1(center, axis), angleRad * step);
+                               return t;
+                           });
 }
 
 } // namespace TSA::Model

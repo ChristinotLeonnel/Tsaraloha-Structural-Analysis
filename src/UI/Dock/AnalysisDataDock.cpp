@@ -119,7 +119,7 @@ QString metaText(const MatrixMetadata& m)
 } // namespace
 
 AnalysisDataDock::AnalysisDataDock(QWidget* parent)
-    : QDockWidget(tr("Données d'analyse (OpenSees)"), parent)
+    : QDockWidget(tr("Données d'analyse"), parent)
 {
     setObjectName("AnalysisDataDock");
     auto* root = new QWidget(this);
@@ -232,7 +232,11 @@ void AnalysisDataDock::refresh()
         const auto& u = m_results->units();
         const auto& adv = m_results->advanced();
         const auto& meta = m_results->executionMetadata();
-        m_status->setText(tr("%1 | %2 | unités %3, %4 | équilibre : résidu relatif %5%6")
+        QString engine = QString::fromStdString(meta.solverEngine);
+        if (!meta.solverVersion.empty()) engine += " " + QString::fromStdString(meta.solverVersion);
+        if (!meta.analysisScope.empty()) engine += tr(" — portée : %1").arg(QString::fromStdString(meta.analysisScope));
+        m_status->setText(tr("Moteur %1\n%2 | %3 | unités %4, %5 | équilibre : résidu relatif %6%7")
+            .arg(engine)
             .arg(m_results->isValid() ? tr("Résultats valides") : tr("RÉSULTATS OBSOLÈTES OU INVALIDES"))
             .arg(adv.available ? "ADVANCED" : "LIGHT")
             .arg(QString::fromStdString(u.force), QString::fromStdString(u.length))
@@ -245,6 +249,48 @@ void AnalysisDataDock::refresh()
     fillDofMap();
     fillGlobalStiffness();
     fillElementList();
+    fillEngineTables();
+    updateTabsFromAvailability();
+}
+
+void AnalysisDataDock::updateTabsFromAvailability()
+{
+    // Seules les catégories réellement fournies par le moteur pour ce calcul sont affichées.
+    const bool any = m_results != nullptr;
+    const ResultAvailability a = any ? m_results->availability() : ResultAvailability{};
+    const bool adv = any && m_results->advanced().available;
+    m_tabs->setTabVisible(m_tabs->indexOf(m_dispTable), !any || a.displacements);
+    m_tabs->setTabVisible(m_tabs->indexOf(m_reactTable), !any || a.reactions);
+    m_tabs->setTabVisible(m_tabs->indexOf(m_forceTable->parentWidget()), !any || a.elementForces);
+    m_tabs->setTabVisible(m_tabs->indexOf(m_dofTable), !any || a.dofMapping);
+    m_tabs->setTabVisible(m_tabs->indexOf(m_kView->parentWidget()), !any || a.globalStiffness);
+    m_tabs->setTabVisible(m_tabs->indexOf(m_elementText->parentWidget()), !any || a.elementStiffness || adv);
+    // Repères bruts (local / global / basique) : uniquement avec les forces avancées du moteur.
+    if (!adv) m_forceSystem->setCurrentIndex(0);
+    m_forceSystem->setEnabled(adv);
+}
+
+void AnalysisDataDock::fillEngineTables()
+{
+    for (QWidget* w : m_engineTabs)
+    {
+        m_tabs->removeTab(m_tabs->indexOf(w));
+        delete w;
+    }
+    m_engineTabs.clear();
+    if (!m_results) return;
+    for (const auto& t : m_results->engineTables())
+    {
+        QStringList headers;
+        for (const auto& c : t.columns) headers << QString::fromStdString(c);
+        auto* table = makeTable(m_tabs, headers);
+        table->setRowCount(static_cast<int>(t.rows.size()));
+        for (int r = 0; r < static_cast<int>(t.rows.size()); ++r)
+            for (int c = 0; c < static_cast<int>(t.rows[r].size()); ++c)
+                setCell(table, r, c, QString::fromStdString(t.rows[r][c]));
+        m_tabs->addTab(table, QString::fromStdString(t.title));
+        m_engineTabs.push_back(table);
+    }
 }
 
 void AnalysisDataDock::fillDisplacements()

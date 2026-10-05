@@ -2,6 +2,7 @@
 
 #include <QDockWidget>
 #include <memory>
+#include <vector>
 
 class QComboBox;
 class QLabel;
@@ -47,6 +48,8 @@ private:
     void showElement(int index);
     void showNodeContext();
     void exportData();
+    void updateTabsFromAvailability();
+    void fillEngineTables();
 
     TSA::Model::Model* m_model = nullptr;
     std::shared_ptr<TSA::Analysis::ResultsModel> m_results;
@@ -65,6 +68,7 @@ private:
     QPlainTextEdit* m_elementText = nullptr;
     QSpinBox* m_nodeSpin = nullptr;
     QPlainTextEdit* m_contextText = nullptr;
+    std::vector<QWidget*> m_engineTabs;   ///< onglets des tables propres au moteur (recréés à chaque calcul)
 };
 
 } // namespace TSA::UI

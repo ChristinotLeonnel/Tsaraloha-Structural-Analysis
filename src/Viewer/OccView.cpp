@@ -390,6 +390,8 @@ void OccView::setInteractionMode(InteractionMode mode)
         cancelCurrentDrawing();
         m_interactionManager->setMode(mode);
     }
+    if (mode != InteractionMode::ModelingTool)
+        m_activeTool = nullptr;   // l'outil appartient à MainWindow : la vue l'oublie simplement
 
     switch (interactionMode())
     {
@@ -541,6 +543,11 @@ void OccView::resetCurrentSlabContour()
 
 void OccView::cancelCurrentDrawing()
 {
+    if (interactionMode() == InteractionMode::ModelingTool)
+    {
+        clearModelingToolPreview();
+        m_toolInput.clear();
+    }
     if (m_isManipulatingWorkPlane)
     {
         m_isManipulatingWorkPlane = false;

@@ -1,3 +1,4 @@
+#include "NDCPlanarCurves.h"
 #include "NDCGenerator.h"
 #include "NormativeReferenceDetector.h"
 #include "ResultAnalyzer.h"
@@ -93,10 +94,22 @@ NDCDocument NDCGenerator::generate(
     NDCDocument doc;
     doc.config = config;
 
-    auto vInfo = TSA::Analysis::OpenSeesManager::instance().versionInfo();
-    if (vInfo.isValid)
+    // Moteur réellement utilisé pour les résultats (OpenSees, Custom2D…), sinon OpenSees détecté.
+    const bool hasResultsMeta = results && !results->executionMetadata().engineId.empty();
+    const bool planar = hasResultsMeta && results->executionMetadata().analysisDimension == "2d";
+    if (hasResultsMeta && results->executionMetadata().engineId != "opensees")
     {
-        doc.softwareVersion = QString("TSA v1.0.0 (Moteur EF : OpenSees v%1.%2.%3)").arg(vInfo.major).arg(vInfo.minor).arg(vInfo.patch);
+        const auto& m = results->executionMetadata();
+        doc.softwareVersion = QString("TSA v1.0.0 (Moteur : %1%2)").arg(QString::fromStdString(m.solverEngine),
+            m.solverVersion.empty() ? QString() : QString(" v") + QString::fromStdString(m.solverVersion));
+    }
+    else
+    {
+        auto vInfo = TSA::Analysis::OpenSeesManager::instance().versionInfo();
+        if (vInfo.isValid)
+        {
+            doc.softwareVersion = QString("TSA v1.0.0 (Moteur EF : OpenSees v%1.%2.%3)").arg(vInfo.major).arg(vInfo.minor).arg(vInfo.patch);
+        }
     }
 
     int chapNum = 1;
@@ -122,17 +135,30 @@ NDCDocument NDCGenerator::generate(
 
         NDCSection s1;
         s1.title = QStringLiteral("Objet du Document");
+        const QString engineName = hasResultsMeta ? QString::fromStdString(results->executionMetadata().solverEngine)
+                                                  : QStringLiteral("OpenSees");
         s1.paragraphs.push_back(QStringLiteral("Le présent rapport technique constitue la Note de Calcul justificative de dimensionnement "
                                                "et de vérification de la structure modélisée dans l'environnement TSA (Tsaraloha Structural Analysis). "
-                                               "Les analyses numériques de résistance, de déformabilité et de comportement dynamique sont exécutées "
-                                               "par le solveur aux éléments finis OpenSees."));
+                                               "Les analyses numériques sont exécutées par le moteur de calcul %1.").arg(engineName));
 
         NDCSection s2;
         s2.title = QStringLiteral("Modélisation Numérique par Éléments Finis");
-        s2.paragraphs.push_back(QStringLiteral("La structure est discrétisée en modèle tridimensionnel à 6 degrés de liberté par nœud "
-                                               "(trois translations X, Y, Z et trois rotations Rx, Ry, Rz). Les éléments barres (poutres, poteaux, "
-                                               "treillis et câbles) sont formulés selon la théorie de Navier-Bernoulli avec prise en compte "
-                                               "de la flexion biaxiale, de l'effort normal, de l'effort tranchant et de la torsion."));
+        if (planar)
+        {
+            const auto& m = results->executionMetadata();
+            s2.paragraphs.push_back(QStringLiteral("La structure est étudiée dans son plan%1 : modèle plan à 3 degrés de liberté par nœud "
+                                                   "(deux translations et une rotation). Les barres sont formulées selon la théorie de "
+                                                   "Navier-Bernoulli (flexion dans le plan et effort normal). Méthode : %2.")
+                                        .arg(m.analysisScope.empty() ? QString() : QStringLiteral(" (%1)").arg(QString::fromStdString(m.analysisScope)),
+                                             QString::fromStdString(m.calculationMethod.empty() ? "méthode des déplacements" : m.calculationMethod)));
+        }
+        else
+        {
+            s2.paragraphs.push_back(QStringLiteral("La structure est discrétisée en modèle tridimensionnel à 6 degrés de liberté par nœud "
+                                                   "(trois translations X, Y, Z et trois rotations Rx, Ry, Rz). Les éléments barres (poutres, poteaux, "
+                                                   "treillis et câbles) sont formulés selon la théorie de Navier-Bernoulli avec prise en compte "
+                                                   "de la flexion biaxiale, de l'effort normal, de l'effort tranchant et de la torsion."));
+        }
 
         ch.sections.push_back(s1);
         ch.sections.push_back(s2);
@@ -659,6 +685,15 @@ NDCDocument NDCGenerator::generate(
         ch.sections.push_back(sForces);
 
         doc.addChapter(ch);
+    }
+
+    // =========================================================================
+    // CHAPITRE : COURBES RDM PAR BARRE (calcul plan : N, V, M, déformée)
+    // =========================================================================
+    if ((config.includeBendingMoment || config.includeShearForce || config.includeAxialForce || config.includeDeflections)
+        && results && results->isValid())
+    {
+        appendPlanarCurvesChapter(doc, *results, chapNum, tableNum, figureNum);
     }
 
     // =========================================================================

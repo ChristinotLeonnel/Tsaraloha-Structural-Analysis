@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-10-04. Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-05. Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
 
@@ -109,6 +109,8 @@ Status: OPEN — contournement : renommer TSA.exe ; disparaissent au redémarrag
 Area: .tsa
 Problem: Chunks `SETT` (paramètres d'analyse) et `RSLT` (résultats) déclarés mais non écrits :
 paramètres et résultats non persistés (recalcul nécessaire après réouverture).
+Notes (2026-10-05): le contexte d'analyse multi-moteurs (`AnalysisContext::toJson`, schéma versionné, réglages par
+moteur) est prêt à être écrit dans un chunk ; non branché (MainWindow::m_analysisContext vit pour la session).
 Impact: LOW
 Status: OPEN
 
@@ -174,6 +176,43 @@ visibles tant que les fichiers ne changent pas. Constaté via IShellItemImageFac
 Impact: LOW (comportement Windows ; Nettoyage de disque › Miniatures)
 Status: OPEN (documenté)
 
+## BUG-024
+Area: Calculation / OpenSees
+Problem: `OpenSeesAnalysisBuilder::buildAnalysisCommands` ne traite que Modal et NonLinearStatic ; les types
+`Pushover` et `DynamicTimeHistory` tombent dans la branche statique linéaire (`algorithm Linear`, un pas), et
+`OpenSeesResultsReader` ne lit pas de pas de pushover. L'action « Analyse Pushover » du ruban lance donc un calcul
+statique linéaire.
+Reproduction: lire src/Analysis/OpenSeesAnalysisBuilder.cpp (buildAnalysisCommands) ; constaté le 2026-10-05.
+Impact: MEDIUM
+Status: OPEN — mitigé : `OpenSeesEngine::capabilities()` ne déclare ni pushover ni temporel, la fenêtre Analysis
+ne les propose plus. Le raccourci ruban (appel direct d'OpenSeesSolver) reste inchangé.
+Related files: src/Analysis/OpenSeesAnalysisBuilder.cpp, src/UI/MainWindow_Tools.cpp (onActionPushover)
+
+## BUG-025
+Area: Tests GUI (UI Automation)
+Problem: un `Invoke` UIA sur une action qui ouvre une fenêtre modale (`exec()`) ne rend pas la main et bloque les
+requêtes UIA suivantes vers TSA (timeouts) ; l'application reste réactive.
+Notes: vérification de la fenêtre Analysis faite par capture d'écran (Invoke lancé dans un job séparé).
+Impact: LOW (outillage de test)
+Status: OPEN
+
+## BUG-026
+Area: Viewport / Code mort
+Problem: les modes `InteractionMode::Move3D / Copy3D / Rotate3D` (branches d'OccView_Events, updateTransformPreview,
+signaux pointToPoint*, MainWindow::onPointToPoint*Requested) ne sont plus déclenchés : les actions M, Copie 3D et
+Ctrl+R lancent désormais les outils `move` / `copy` / `rotate`. Code conservé mais inatteignable.
+Impact: LOW
+Status: OPEN — à supprimer (vérifier InteractionManager::isTransformMode et la synchro des boutons).
+
+## BUG-027
+Area: Calculation / OpenSees
+Problem: les relâchements d'extrémité des poutres (EndRelease) ne sont pas transmis au script OpenSees (aucun
+traitement dans OpenSeesAnalysisBuilder) : une rotule de barre est calculée comme un encastrement. Le snapshot les
+porte depuis le 2026-10-05 (utilisés par Custom2D).
+Impact: MEDIUM
+Status: OPEN
+Related files: src/Analysis/OpenSeesAnalysisBuilder.cpp, src/Analysis/CalculationSnapshot.h
+
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |
@@ -202,3 +241,20 @@ Status: OPEN (documenté)
 | FIX-022 | Export Tcl (OpenSeesAdapter) : générateur parallèle avec les mêmes défauts | délègue à OpenSeesAnalysisBuilder | tests 62, 64 |
 | FIX-024 | Arbre du modèle : poutres/poteaux affichés « 0.30x0.30 m » pour des sections circulaires (Circ D20) — champs largeur×hauteur non significatifs | nom de section affiché | vérifié dans le .tsa (zlib) + capture |
 | FIX-023 | « Maillage EF » affichait un maillage généré inexistant ; dalles/voiles non signalés avant calcul | estimation + confirmation (BUG-002 mitigé) | revue de code |
+
+## FIX-2026-10-05-COPY
+Area: Model / Viewport
+Problem: copie 3D (et copie-rotation, collage de câbles/dalles) d'une section circulaire affichée rectangulaire :
+`copyElements` créait la poutre avec la section par défaut (vue construite à l'ajout) puis posait la section sans
+`notify*Modified`. Aussi : rôle de barre, treillis et appuis non copiés ; rotation-copie 3D sans effet ; nœuds des
+câbles/treillis ignorés par le déplacement / la rotation 3D.
+Status: FIXED — chemin unique `copyTransformed` (Model_Transformations.cpp, `ModelElementCopy.h`), test 139
+(observateur : la vue reçoit la section circulaire), tests 141–143.
+
+## FIX-2026-10-05-CLOSE
+Area: Fermeture / IA
+Problem: deux assertions Qt « Called object is not of the correct type (class destructor may have already run) »
+à la fermeture quand llama-server tourne : AIOrchestrator (enfant de MainWindow) est détruit après ~MainWindow ;
+son destructeur arrête le serveur → 2 × stateChanged → statusChanged → MainWindow::updateAIStatusWidget.
+Status: FIXED — ~MainWindow coupe toutes les connexions enfants → MainWindow (slots et lambdas). Vérifié : lancement,
+llama-server actif, WM_CLOSE → sortie code 0 sans dialogue (avant : 2 dialogues « Debug Error! »).
