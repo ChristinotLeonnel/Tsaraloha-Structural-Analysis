@@ -33,6 +33,7 @@
 #include <QMenuBar>
 #include <QMenu>
 #include <functional>
+#include <QLayout>
 #include <QToolBar>
 #include <QStatusBar>
 #include <QTimer>
@@ -1991,18 +1992,64 @@ void MainWindow::updateStatusCounts()
     onModelRevisionPolled(); // même minuteur : détection des changements du modèle pour l'aperçu
 }
 
+bool MainWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == statusBar() && (event->type() == QEvent::Resize || event->type() == QEvent::Show))
+        QTimer::singleShot(0, this, &MainWindow::fitStatusBar); // après la mise en page en cours
+    return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::fitStatusBar()
+{
+    // La somme des largeurs minimales des indicateurs (≈ 1 500 px) dépasse souvent la place
+    // disponible : au lieu d'écraser les libellés les uns sur les autres, les indicateurs
+    // secondaires sont retirés du moins utile au plus utile, puis réaffichés quand la place revient.
+    QStatusBar* bar = statusBar();
+    if (!bar || !m_statusCoordinates) return;
+    const QList<QWidget*> all = { m_statusProject, m_statusView, m_statusUnits, m_statusLevel, m_statusCoordinates,
+                                  m_statusCoordinatesLocal, m_statusWorkPlane, m_statusSnap, m_statusCounts, m_statusInfo,
+                                  m_statusAI, m_statusLogo };
+    const QList<QWidget*> optional = { m_statusCoordinatesLocal, m_statusUnits, m_statusView, m_statusWorkPlane,
+                                       m_statusSnap, m_statusLogo, m_statusCounts, m_statusLevel };
+    auto minWidth = [](QWidget* w) {
+        if (w->sizePolicy().horizontalPolicy() == QSizePolicy::Ignored) return w->minimumWidth();
+        return std::max(w->minimumWidth(), w->minimumSizeHint().width());
+    };
+    constexpr int kSpacing = 8;
+    int needed = 24; // marges + poignée de redimensionnement
+    for (QWidget* w : all)
+        if (w) needed += minWidth(w) + kSpacing;
+
+    const int available = bar->width();
+    for (QWidget* w : optional)
+    {
+        if (!w) continue;
+        const bool fits = needed <= available;
+        if (!fits) needed -= minWidth(w) + kSpacing;
+        if (w->isHidden() == fits) w->setVisible(fits);
+    }
+    // QStatusBar traite lui-même LayoutRequest sans repositionner ses widgets (seul un redimensionnement
+    // le fait) : sans cette mise en page explicite, les indicateurs restants resteraient superposés.
+    if (QLayout* layout = bar->layout())
+    {
+        layout->invalidate();
+        layout->activate();
+    }
+}
+
 void MainWindow::createStatusBar()
 {
     QStatusBar* bar = statusBar();
 
     // 1. Nom du fichier / Projet .tsa
     // IMPORTANT : le QStatusBar impose comme largeur minimale la somme des tailles minimales
-    // de ses widgets. Tout label dont le texte varie doit donc avoir une largeur stable
-    // (setFixedWidth) ou une politique Ignored, sinon la fenêtre s'agrandit toute seule.
+    // de ses widgets. Tout label dont le texte varie a une largeur fixe (texte trop long rogné).
+    // Pas de politique Ignored : QStatusBar donne alors une case de largeur nulle à ces labels
+    // et ils se superposent, quelle que soit la place libre. fitStatusBar() masque les
+    // indicateurs secondaires quand la largeur manque.
     m_statusProject = new QLabel(tr("Sans titre.tsa"), this);
     m_statusProject->setStyleSheet("font-weight: bold; color: #38bdf8; padding: 2px 10px; border-right: 1px solid #475569;");
-    m_statusProject->setMinimumWidth(120);
-    m_statusProject->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_statusProject->setFixedWidth(180);
     bar->addWidget(m_statusProject);
 
     // 2. Vue actuelle (ISO, Dessus, etc.)
@@ -2018,8 +2065,7 @@ void MainWindow::createStatusBar()
     // 4. Niveau actif
     m_statusLevel = new QLabel(tr("Niveau : Tous"), this);
     m_statusLevel->setStyleSheet("font-weight: 500; color: #fbbf24; padding: 2px 10px; border-right: 1px solid #475569;");
-    m_statusLevel->setMinimumWidth(110);
-    m_statusLevel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_statusLevel->setFixedWidth(170);
     bar->addWidget(m_statusLevel);
 
     // 5. Coordonnées globales X, Y, Z
@@ -2035,14 +2081,12 @@ void MainWindow::createStatusBar()
 
     m_statusWorkPlane = new QLabel(tr("Plan: XY (Z=0.00 m)"), this);
     m_statusWorkPlane->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #38bdf8; font-weight: bold;");
-    m_statusWorkPlane->setMinimumWidth(160);
-    m_statusWorkPlane->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_statusWorkPlane->setFixedWidth(180);
     bar->addWidget(m_statusWorkPlane);
 
     m_statusSnap = new QLabel(tr("SNAP: ACTIF"), this);
     m_statusSnap->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #4ade80; font-weight: bold;");
-    m_statusSnap->setMinimumWidth(110);
-    m_statusSnap->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_statusSnap->setFixedWidth(110);
     bar->addWidget(m_statusSnap);
 
     // 6. Compteurs du modèle et de la sélection : valeurs réelles, relues à intervalle court
@@ -2050,10 +2094,7 @@ void MainWindow::createStatusBar()
     m_statusCounts = new QLabel(this);
     m_statusCounts->setStyleSheet("font-weight: 500; padding: 2px 10px; border-left: 1px solid #475569;");
     m_statusCounts->setToolTip(tr("Nœuds · Éléments (poutres, poteaux, dalles, voiles, fondations, treillis, câbles) · Sélection"));
-    // Aucune largeur minimale imposée : la barre d'état ne doit jamais faire chevaucher ses
-    // libellés (la somme des minima dépassait la largeur disponible en 1920 px à 125 %).
-    m_statusCounts->setMinimumWidth(0);
-    m_statusCounts->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_statusCounts->setFixedWidth(200);
     bar->addWidget(m_statusCounts);
     auto* countsTimer = new QTimer(this);
     countsTimer->setInterval(500);
@@ -2074,6 +2115,7 @@ void MainWindow::createStatusBar()
     m_statusLogo = new TSA::UI::TSALogoOverlay(this);
     m_statusLogo->setDarkMode(TSA::UI::ThemeManager::instance().isDarkMode());
     bar->addPermanentWidget(m_statusLogo);
+    bar->installEventFilter(this); // largeur adaptative : voir fitStatusBar()
 
     // Synchronisation du plan de travail et de l'historique caméra
     connect(m_occView, &OccView::workPlaneChanged, this, &MainWindow::onWorkPlaneChanged);

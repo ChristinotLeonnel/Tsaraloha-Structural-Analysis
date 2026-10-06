@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 #include <gp_Pnt.hxx>
 #include <gp_Dir.hxx>
@@ -16,7 +17,7 @@
 #include "../Model/StructuralClipboard.h"
 #include "../Analysis/Engine/AnalysisContext.h"
 
-namespace TSA::Model { class Model; }
+namespace TSA::Model { class Model; class SupportDefinition; }
 namespace TSA::AI { class AIOrchestrator; }
 namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct NewProjectSettings; enum class ProjectTemplate; }
 namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; }
@@ -391,6 +392,8 @@ private:
     QLabel* m_statusSnap = nullptr;
     QLabel* m_statusCounts = nullptr; // Nœuds / Éléments / Sélection (rafraîchi par minuteur)
     void updateStatusCounts();
+    /// Masque / réaffiche les indicateurs secondaires de la barre d'état selon la largeur disponible.
+    void fitStatusBar();
 
     // Aperçus du dernier état du modèle pour le Start Center (MainWindow_Preview.cpp)
     void createPreviewCapture();
@@ -545,6 +548,8 @@ private slots:
     void onActionFixed();
     void onActionPinned();
     void onActionRoller();
+    /// Assigne une condition d'appui à des nœuds (une entrée Annuler, notification du modèle).
+    void assignSupport(const std::set<int>& nodeIds, const TSA::Model::SupportDefinition& support, const QString& label);
     void onActionPointLoad();
     void onActionDistLoad();
     void onActionMoment();
@@ -579,6 +584,7 @@ private slots:
     void onPasteAtPointRequested(const gp_Pnt& target);
 
 protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dropEvent(QDropEvent* event) override;
 };

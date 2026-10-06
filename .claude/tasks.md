@@ -17,8 +17,7 @@ Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir 
 ## Fenêtre / Start Center (ADR-021)
 
 - [x] AppShell, barre de titre, Start Center, Nouveau projet, Fermer le projet (essais GUI 2026-10-06).
-- [ ] BUG-030 : brancher Encastrement / Articulation / Appui simple du menu Structure sur l'assignation réelle.
-- [ ] BUG-032 : barre d'état compacte (indicateurs repliables) pour supprimer le chevauchement < 1 680 px.
+- [x] BUG-030, BUG-031, BUG-032, BUG-034 et redimensionnement par les bords en mode Workspace (2026-10-06).
 - [ ] BUG-033 : vérifier multi-écrans / DPI mixte ; Snap layouts Windows 11 (HTMAXBUTTON).
 
 ## CRITICAL

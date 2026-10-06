@@ -2,6 +2,19 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-06 (correction des bugs relevés par les tests Start Center : BUG-030 à 034)
+
+### Fixed
+- BUG-030 : Encastrement / Articulation / Appui simple (menu Structure, commandes FIXED / PINNED / ROLLER) assignent
+  réellement l'appui (`MainWindow::assignSupport`, une entrée Annuler).
+- BUG-031 : suppression / Annuler / Rétablir en masse — viewport redessiné une fois par rafale
+  (`OccView::scheduleRedraw`), arbre purgé en une passe (`ModelTreeWidget::queueRemoval/flushRemovals`).
+  stress_4900 : suppression 6 min → 17 s (Debug).
+- BUG-032 : barre d'état sans chevauchement (largeurs fixes, `fitStatusBar` adaptatif) ; la page cachée du shell
+  n'impose plus sa taille minimale.
+- BUG-034 : statistiques nœuds / appuis du dock Résultats rafraîchies à l'ouverture et à chaque modification.
+- Fenêtre : redimensionnement par les bords en mode Workspace (filtre natif `ResizeBorderFilter`).
+
 ## 2026-10-06 (Start Center et barre de titre, logique AutoCAD — ADR-021)
 
 ### Added

@@ -474,18 +474,7 @@ void MainWindow::onActionFixed()
         return;
     }
 
-    QStringList idsStr;
-    for (int id : targetNodes) idsStr << QString("#%1").arg(id);
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Liaison Encastrement (6 DDL: Tx=Ty=Tz=Rx=Ry=Rz=0) assignée à %1 nœud(s) : %2")
-            .arg(targetNodes.size()).arg(idsStr.join(", ")), "SUCCESS");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Encastrement assigné (%1 nœuds)").arg(targetNodes.size()));
-    }
+    assignSupport(targetNodes, TSA::Model::SupportDefinition::fixed(), tr("Encastrement (6 DDL bloqués)"));
 }
 
 void MainWindow::onActionPinned()
@@ -496,16 +485,7 @@ void MainWindow::onActionPinned()
         QMessageBox::information(this, tr("Appui Articulé"), tr("Veuillez sélectionner au moins un nœud."));
         return;
     }
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Liaison Articulation (Rotule 3D, 3 DDL: Tx=Ty=Tz=0, Rx,Ry,Rz libres) assignée à %1 nœud(s)")
-            .arg(targetNodes.size()), "SUCCESS");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Articulation assignée (%1 nœuds)").arg(targetNodes.size()));
-    }
+    assignSupport(targetNodes, TSA::Model::SupportDefinition::pinned(), tr("Articulation (Tx, Ty, Tz bloqués)"));
 }
 
 void MainWindow::onActionRoller()
@@ -516,16 +496,32 @@ void MainWindow::onActionRoller()
         QMessageBox::information(this, tr("Appui Simple"), tr("Veuillez sélectionner au moins un nœud."));
         return;
     }
+    assignSupport(targetNodes, TSA::Model::SupportDefinition::roller(), tr("Appui simple (Tz bloqué)"));
+}
+
+void MainWindow::assignSupport(const std::set<int>& nodeIds, const TSA::Model::SupportDefinition& support, const QString& label)
+{
+    if (!m_model || nodeIds.empty()) return;
+
+    // Une seule entrée Annuler pour tout le lot, puis notification par nœud (vues, invalidation des résultats).
+    m_model->pushUndoState(tr("Appui : %1").arg(label).toStdString());
+    QStringList ids;
+    for (int id : nodeIds)
+    {
+        if (auto* node = m_model->getNode(id))
+        {
+            node->setSupport(support);
+            m_model->notifyNodeModified(id);
+            ids << QString("#%1").arg(id);
+        }
+    }
+    updateUndoRedoActions();
+    updateWindowTitle();
 
     if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Liaison Appui Simple (Rouleau, 1 DDL: Tz=0, Tx,Ty libres) assignée à %1 nœud(s)")
-            .arg(targetNodes.size()), "SUCCESS");
-    }
+        m_consoleDock->appendLog(tr("%1 assigné à %2 nœud(s) : %3").arg(label).arg(ids.size()).arg(ids.join(", ")), "SUCCESS");
     if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Appui simple assigné (%1 nœuds)").arg(targetNodes.size()));
-    }
+        m_statusInfo->setText(tr("%1 assigné (%2 nœud(s))").arg(label).arg(ids.size()));
 }
 
 void MainWindow::onActionPointLoad()

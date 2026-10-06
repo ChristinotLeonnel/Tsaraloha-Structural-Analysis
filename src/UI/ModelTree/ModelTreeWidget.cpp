@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QAction>
+#include <QTimer>
 
 namespace TSA::UI
 {
@@ -141,6 +142,7 @@ void ModelTreeWidget::setContextActions(const QList<QAction*>& actions)
 // ou si son parent (catégorie) correspond lui-même.
 void ModelTreeWidget::applyFilter(const QString& text)
 {
+    flushRemovals();
     const QString needle = text.trimmed();
     std::function<bool(QTreeWidgetItem*, bool)> visit = [&](QTreeWidgetItem* item, bool parentMatches) -> bool {
         const bool selfMatches = needle.isEmpty()
@@ -378,6 +380,7 @@ void ModelTreeWidget::refreshGrids()
 
 void ModelTreeWidget::refreshAll()
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     createRootCategories();
 
@@ -426,6 +429,7 @@ void ModelTreeWidget::refreshAll()
 
 void ModelTreeWidget::refreshLoads()
 {
+    flushRemovals();
     if (!m_loadsCategory)
         return;
 
@@ -468,6 +472,7 @@ void ModelTreeWidget::refreshLoads()
 
 void ModelTreeWidget::refreshSupports()
 {
+    flushRemovals();
     if (!m_supportsCategory)
         return;
 
@@ -547,6 +552,7 @@ void ModelTreeWidget::refreshResults()
 
 void ModelTreeWidget::selectNodeItem(int nodeId)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
     for (int i = 0; i < m_nodesCategory->childCount(); ++i)
@@ -563,6 +569,7 @@ void ModelTreeWidget::selectNodeItem(int nodeId)
 
 void ModelTreeWidget::selectBeamItem(int beamId)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
     for (int i = 0; i < m_beamsCategory->childCount(); ++i)
@@ -579,6 +586,7 @@ void ModelTreeWidget::selectBeamItem(int beamId)
 
 void ModelTreeWidget::selectColumnItem(int columnId)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
     for (int i = 0; i < m_columnsCategory->childCount(); ++i)
@@ -595,6 +603,7 @@ void ModelTreeWidget::selectColumnItem(int columnId)
 
 void ModelTreeWidget::selectSlabItem(int slabId)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
     for (int i = 0; i < m_slabsCategory->childCount(); ++i)
@@ -611,6 +620,7 @@ void ModelTreeWidget::selectSlabItem(int slabId)
 
 void ModelTreeWidget::selectWallItem(int wallId)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
     for (int i = 0; i < m_wallsCategory->childCount(); ++i)
@@ -627,6 +637,7 @@ void ModelTreeWidget::selectWallItem(int wallId)
 
 void ModelTreeWidget::selectFoundationItem(int foundationId)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
     for (int i = 0; i < m_foundationsCategory->childCount(); ++i)
@@ -643,6 +654,7 @@ void ModelTreeWidget::selectFoundationItem(int foundationId)
 
 void ModelTreeWidget::selectTrussMemberItem(int memberId)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
     for (int i = 0; i < m_trussCategory->childCount(); ++i)
@@ -659,6 +671,7 @@ void ModelTreeWidget::selectTrussMemberItem(int memberId)
 
 void ModelTreeWidget::selectCableItem(int cableId)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
     if (!m_cablesCategory) return;
@@ -682,6 +695,7 @@ void ModelTreeWidget::clearTreeSelection()
 
 void ModelTreeWidget::onNodeAdded(const TSA::Model::Node& node)
 {
+    flushRemovals();
     QString label = QString::fromStdString(node.formattedName());
     QString desc = QString("(%1, %2, %3) m").arg(node.x(), 0, 'f', 2).arg(node.y(), 0, 'f', 2).arg(node.z(), 0, 'f', 2);
 
@@ -693,6 +707,7 @@ void ModelTreeWidget::onNodeAdded(const TSA::Model::Node& node)
 
 void ModelTreeWidget::onNodeModified(const TSA::Model::Node& node)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     for (int i = 0; i < m_nodesCategory->childCount(); ++i)
     {
@@ -708,20 +723,12 @@ void ModelTreeWidget::onNodeModified(const TSA::Model::Node& node)
 
 void ModelTreeWidget::onNodeRemoved(int nodeId)
 {
-    for (int i = 0; i < m_nodesCategory->childCount(); ++i)
-    {
-        auto* child = m_nodesCategory->child(i);
-        if (child->data(0, IdRole).toInt() == nodeId)
-        {
-            delete m_nodesCategory->takeChild(i);
-            break;
-        }
-    }
-    m_nodesCategory->setText(1, QString("[%1]").arg(m_nodesCategory->childCount()));
+    queueRemoval(m_nodesCategory, nodeId);
 }
 
 void ModelTreeWidget::onBeamAdded(const TSA::Model::Beam& beam)
 {
+    flushRemovals();
     QString label = QString::fromStdString(beam.formattedName());
     QString desc = QString("N%1 -> N%2 (%3)")
         .arg(beam.startNodeId())
@@ -736,6 +743,7 @@ void ModelTreeWidget::onBeamAdded(const TSA::Model::Beam& beam)
 
 void ModelTreeWidget::onBeamModified(const TSA::Model::Beam& beam)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     for (int i = 0; i < m_beamsCategory->childCount(); ++i)
     {
@@ -754,20 +762,12 @@ void ModelTreeWidget::onBeamModified(const TSA::Model::Beam& beam)
 
 void ModelTreeWidget::onBeamRemoved(int beamId)
 {
-    for (int i = 0; i < m_beamsCategory->childCount(); ++i)
-    {
-        auto* child = m_beamsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == beamId)
-        {
-            delete m_beamsCategory->takeChild(i);
-            break;
-        }
-    }
-    m_beamsCategory->setText(1, QString("[%1]").arg(m_beamsCategory->childCount()));
+    queueRemoval(m_beamsCategory, beamId);
 }
 
 void ModelTreeWidget::onColumnAdded(const TSA::Model::Column& column)
 {
+    flushRemovals();
     QString label = QString::fromStdString(column.formattedName());
     QString desc = QString("N%1 -> N%2 (%3)")
         .arg(column.startNodeId())
@@ -782,6 +782,7 @@ void ModelTreeWidget::onColumnAdded(const TSA::Model::Column& column)
 
 void ModelTreeWidget::onColumnModified(const TSA::Model::Column& column)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     for (int i = 0; i < m_columnsCategory->childCount(); ++i)
     {
@@ -800,20 +801,12 @@ void ModelTreeWidget::onColumnModified(const TSA::Model::Column& column)
 
 void ModelTreeWidget::onColumnRemoved(int columnId)
 {
-    for (int i = 0; i < m_columnsCategory->childCount(); ++i)
-    {
-        auto* child = m_columnsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == columnId)
-        {
-            delete m_columnsCategory->takeChild(i);
-            break;
-        }
-    }
-    m_columnsCategory->setText(1, QString("[%1]").arg(m_columnsCategory->childCount()));
+    queueRemoval(m_columnsCategory, columnId);
 }
 
 void ModelTreeWidget::onSlabAdded(const TSA::Model::Slab& slab)
 {
+    flushRemovals();
     QString label = QString::fromStdString(slab.formattedName());
     QString desc = QString("%1 nodes, e=%2 m")
         .arg(slab.nodeIds().size())
@@ -827,6 +820,7 @@ void ModelTreeWidget::onSlabAdded(const TSA::Model::Slab& slab)
 
 void ModelTreeWidget::onSlabModified(const TSA::Model::Slab& slab)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     for (int i = 0; i < m_slabsCategory->childCount(); ++i)
     {
@@ -844,20 +838,12 @@ void ModelTreeWidget::onSlabModified(const TSA::Model::Slab& slab)
 
 void ModelTreeWidget::onSlabRemoved(int slabId)
 {
-    for (int i = 0; i < m_slabsCategory->childCount(); ++i)
-    {
-        auto* child = m_slabsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == slabId)
-        {
-            delete m_slabsCategory->takeChild(i);
-            break;
-        }
-    }
-    m_slabsCategory->setText(1, QString("[%1]").arg(m_slabsCategory->childCount()));
+    queueRemoval(m_slabsCategory, slabId);
 }
 
 void ModelTreeWidget::onWallAdded(const TSA::Model::Wall& wall)
 {
+    flushRemovals();
     QString label = QString::fromStdString(wall.formattedName());
     QString desc = QString("N%1 -> N%2 (H=%3 m, e=%4 m)")
         .arg(wall.startNodeId())
@@ -873,6 +859,7 @@ void ModelTreeWidget::onWallAdded(const TSA::Model::Wall& wall)
 
 void ModelTreeWidget::onWallModified(const TSA::Model::Wall& wall)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     for (int i = 0; i < m_wallsCategory->childCount(); ++i)
     {
@@ -892,20 +879,12 @@ void ModelTreeWidget::onWallModified(const TSA::Model::Wall& wall)
 
 void ModelTreeWidget::onWallRemoved(int wallId)
 {
-    for (int i = 0; i < m_wallsCategory->childCount(); ++i)
-    {
-        auto* child = m_wallsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == wallId)
-        {
-            delete m_wallsCategory->takeChild(i);
-            break;
-        }
-    }
-    m_wallsCategory->setText(1, QString("[%1]").arg(m_wallsCategory->childCount()));
+    queueRemoval(m_wallsCategory, wallId);
 }
 
 void ModelTreeWidget::onFoundationAdded(const TSA::Model::Foundation& foundation)
 {
+    flushRemovals();
     QString label = QString::fromStdString(foundation.formattedName());
     QString desc = QString("Node N%1 (%2x%3x%4 m)")
         .arg(foundation.nodeId())
@@ -921,6 +900,7 @@ void ModelTreeWidget::onFoundationAdded(const TSA::Model::Foundation& foundation
 
 void ModelTreeWidget::onFoundationModified(const TSA::Model::Foundation& foundation)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     for (int i = 0; i < m_foundationsCategory->childCount(); ++i)
     {
@@ -940,20 +920,12 @@ void ModelTreeWidget::onFoundationModified(const TSA::Model::Foundation& foundat
 
 void ModelTreeWidget::onFoundationRemoved(int foundationId)
 {
-    for (int i = 0; i < m_foundationsCategory->childCount(); ++i)
-    {
-        auto* child = m_foundationsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == foundationId)
-        {
-            delete m_foundationsCategory->takeChild(i);
-            break;
-        }
-    }
-    m_foundationsCategory->setText(1, QString("[%1]").arg(m_foundationsCategory->childCount()));
+    queueRemoval(m_foundationsCategory, foundationId);
 }
 
 void ModelTreeWidget::onTrussMemberAdded(const TSA::Model::TrussMember& member)
 {
+    flushRemovals();
     QString label = QString::fromStdString(member.formattedName());
     QString desc = QString("N%1 -> N%2 (D=%3 m)")
         .arg(member.startNodeId())
@@ -968,6 +940,7 @@ void ModelTreeWidget::onTrussMemberAdded(const TSA::Model::TrussMember& member)
 
 void ModelTreeWidget::onTrussMemberModified(const TSA::Model::TrussMember& member)
 {
+    flushRemovals();
     QSignalBlocker blocker(m_tree);
     for (int i = 0; i < m_trussCategory->childCount(); ++i)
     {
@@ -986,20 +959,12 @@ void ModelTreeWidget::onTrussMemberModified(const TSA::Model::TrussMember& membe
 
 void ModelTreeWidget::onTrussMemberRemoved(int memberId)
 {
-    for (int i = 0; i < m_trussCategory->childCount(); ++i)
-    {
-        auto* child = m_trussCategory->child(i);
-        if (child->data(0, IdRole).toInt() == memberId)
-        {
-            delete m_trussCategory->takeChild(i);
-            break;
-        }
-    }
-    m_trussCategory->setText(1, QString("[%1]").arg(m_trussCategory->childCount()));
+    queueRemoval(m_trussCategory, memberId);
 }
 
 void ModelTreeWidget::onCableAdded(const TSA::Model::Cable& cable)
 {
+    flushRemovals();
     if (!m_cablesCategory) return;
     QString label = QString::fromStdString(cable.formattedName());
     QString desc = QString("N%1 -> N%2 | L=%3m | Ø%4mm")
@@ -1017,6 +982,7 @@ void ModelTreeWidget::onCableAdded(const TSA::Model::Cable& cable)
 
 void ModelTreeWidget::onCableModified(const TSA::Model::Cable& cable)
 {
+    flushRemovals();
     if (!m_cablesCategory) return;
     QSignalBlocker blocker(m_tree);
     for (int i = 0; i < m_cablesCategory->childCount(); ++i)
@@ -1037,17 +1003,7 @@ void ModelTreeWidget::onCableModified(const TSA::Model::Cable& cable)
 
 void ModelTreeWidget::onCableRemoved(int cableId)
 {
-    if (!m_cablesCategory) return;
-    for (int i = 0; i < m_cablesCategory->childCount(); ++i)
-    {
-        auto* child = m_cablesCategory->child(i);
-        if (child->data(0, IdRole).toInt() == cableId)
-        {
-            delete m_cablesCategory->takeChild(i);
-            break;
-        }
-    }
-    m_cablesCategory->setText(1, QString("[%1]").arg(m_cablesCategory->childCount()));
+    queueRemoval(m_cablesCategory, cableId);
 }
 
 void ModelTreeWidget::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
@@ -1138,6 +1094,40 @@ void ModelTreeWidget::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
     {
         onCableRemoved(id);
     }
+}
+
+void ModelTreeWidget::queueRemoval(QTreeWidgetItem* category, int id)
+{
+    m_pendingRemovals[category].insert(id);
+    if (!m_removalTimer)
+    {
+        m_removalTimer = new QTimer(this);
+        m_removalTimer->setSingleShot(true);
+        connect(m_removalTimer, &QTimer::timeout, this, &ModelTreeWidget::flushRemovals);
+    }
+    if (!m_removalTimer->isActive()) m_removalTimer->start(0);
+}
+
+void ModelTreeWidget::flushRemovals()
+{
+    if (m_pendingRemovals.isEmpty()) return;
+    if (m_removalTimer) m_removalTimer->stop();
+
+    QSignalBlocker blocker(m_tree);
+    m_tree->setUpdatesEnabled(false);
+    for (auto it = m_pendingRemovals.cbegin(); it != m_pendingRemovals.cend(); ++it)
+    {
+        QTreeWidgetItem* category = it.key();
+        const QSet<int>& ids = it.value();
+        for (int i = category->childCount() - 1; i >= 0; --i)
+        {
+            if (ids.contains(category->child(i)->data(0, IdRole).toInt()))
+                delete category->takeChild(i);
+        }
+        category->setText(1, QString("[%1]").arg(category->childCount()));
+    }
+    m_pendingRemovals.clear();
+    m_tree->setUpdatesEnabled(true);
 }
 
 void ModelTreeWidget::onModelCleared()

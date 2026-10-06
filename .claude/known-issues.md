@@ -231,105 +231,22 @@ Impact: LOW
 Status: OPEN
 Related files: src/Model/StructuralClipboard.cpp, src/BIM/Core/BimModel.cpp
 
-## BUG-030
-Area: UI / Structure
-Problem: `MainWindow::onActionFixed` / `onActionPinned` (menu Structure ▸ Conditions d'Appuis) n'assignent aucun appui :
-ils écrivent seulement dans la console et la barre d'état (« Encastrement assigné (1 nœuds) ») ; le calcul répond
-ensuite « Aucun appui ». Les appuis réels passent par le panneau Propriétés du nœud (`NodePropertiesView`) ou
-`NewNodeDialog`. Constaté le 2026-10-06 en test GUI (préexistant, hors tâche Start Center).
-Impact: MEDIUM (commande trompeuse)
-Status: OPEN
-Related files: src/UI/MainWindow_Tools.cpp (onActionFixed, onActionPinned…)
-
-## BUG-031
-Area: Performance / Suppression
-Problem: Ctrl+A puis Suppr sur stress_4900.tsa (6 768 éléments) gèle l'interface ≈ 6 min en Debug ; Annuler ≈ 30 s.
-Chemin `DeleteElementsCommand` inchangé par la tâche Start Center (préexistant). Release non mesuré.
-Impact: MEDIUM
-Status: OPEN
-Related files: src/Commands/ModifyCommands.cpp, src/Viewer/OccView_Shapes.cpp
-
-## BUG-032
-Area: UI / Workspace
-Problem: les minima cumulés des panneaux du workspace (barre d'état ≈ 1 680 px logiques, docks + barre du viewport
-≈ 1 520 px) dépassent un écran 1920 px à 125 % : la fenêtre s'élargissait hors écran à l'ouverture d'un projet.
-Contournement en place : minimum explicite 960 × 560 du workspace (AppShell). Conséquence : sous ≈ 1 680 px les textes
-de la barre d'état se chevauchent (coordonnées, plan, snap) et la largeur minimale du Start Center devient celle du
-workspace une fois celui-ci créé.
-Impact: LOW
-Status: OPEN (contourné)
-Related files: src/UI/MainWindow_Actions.cpp (createStatusBar), src/UI/Shell/AppShell.cpp
-
 ## BUG-033
 Area: UI / Fenêtre
-Problem: non vérifié : DPI différent par écran (un seul écran disponible, 125 %), Windows 11 « Snap layouts » au survol
-du bouton Agrandir (non géré : HTMAXBUTTON non renvoyé), redimensionnement par un bord recouvert directement par le
-viewport OCCT natif (le bord n'est alors pas dans la fenêtre AppShell).
+Problem: non vérifiable sur le poste de test (un seul écran à 125 %, Windows 10) : DPI différent par écran et
+Windows 11 « Snap layouts » au survol du bouton Agrandir (HTMAXBUTTON non renvoyé : le renvoyer exigerait de gérer
+les clics non clients du bouton). Le redimensionnement par les bords couverts par les fenêtres natives du workspace
+est corrigé (voir FIX-2026-10-06-RESIZE).
 Impact: LOW
-Status: OPEN (à vérifier)
+Status: OPEN (à vérifier sur Windows 11 / multi-écrans)
 Related files: src/UI/Shell/AppShell.cpp
-
-## BUG-034
-Area: UI / Résultats
-Problem: le dock Résultats affiche « Nœuds : 0 | Libres : 0 | Appuis : 0 » après ouverture d'un projet :
-`ResultsDockWidget::updateNodeStats` n'est appelé qu'à `setModel` (modèle encore vide) — préexistant.
-Impact: LOW
-Status: OPEN
-Related files: src/UI/Dock/ResultsDockWidget.cpp
 
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |
-| FIX-001 | Crash au démarrage : boucle de signaux WorkPlane (débordement de pile) | garde de réentrance ViewportContainer | démarrages répétés OK (e767a81) |
-| FIX-002 | Crash à la fermeture : observateurs → Model libéré | `IModelObserver::onModelDestroyed` | fermetures code 0 (ec977db) |
-| FIX-003 | Charges non sauvegardées dans .tsa | chunk LOAD, format 1.1 | test 91 (4012e3a) |
-| FIX-004 | Sauvegarde non atomique | QSaveFile | test 91 |
-| FIX-005 | Nœuds et fondations jamais affichés (IsDone avant Build) | Build() explicite | tests 93–94 (87c59f9) |
-| FIX-006 | Fantômes / éléments masqués en mode 2D et isolation | visibilité recalculée | revue de code (3dd90cc) |
-| FIX-007 | Reconstruction 3D en O(N·M) avec redraw par nœud | passe unique | 41,7 s → 2,5 s (1 408 barres) |
-| FIX-008 | NDC régénérée 2× à chaque ouverture | génération différée | 27 s → 0,26 s |
-| FIX-009 | Résultats jamais invalidés | ResultsValidityGuard + Model::revision | test 95 (79b07f4) |
-| FIX-010 | Propriétés appliquées à chaque frappe, entrées Undo parasites | keyboardTracking off + coalescence | test 97 (712c442) |
-| FIX-011 | Commande en échec → entrée Undo vide | CommandManager transactionnel | test 96 |
-| FIX-012 | Ctrl+A : signal + redraw par élément, un seul surligné | selectElements + highlightSelection | 154 ms sur 4 896 barres (386ff32) |
-| FIX-013 | Élévation de niveau : déplacement silencieux de nœuds non rattachés | règle levelId | test 99 (46a22ac) |
-| FIX-014 | Marqueur d'accrochage sélectionnable | mode de sélection -1 | revue de code |
-| FIX-015 | Poutre N et poteau N (ids par famille) confondus dans CalculationSnapshot : un élément retiré du calcul | tags OpenSees uniques + ElementKey | test 105 |
-| FIX-016 | `element truss $A $E` refusé par OpenSees 3.8.0 (« Invalid matTag ») : tout modèle avec treillis échouait | uniaxialMaterial + matTag | test 105 |
-| FIX-017 | Efforts lus décalés (Truss localForce = 12 valeurs, CorotTruss = 0, lecteur supposait 1) | recorders séparés, basicForce, contrôle des tailles | tests 105–108 |
-| FIX-018 | Script Tcl en `std::fixed` 12 décimales : inerties tronquées (~3·10⁻⁷ relatif) | 17 chiffres significatifs | test 107 |
-| FIX-019 | Réactions des ressorts non enregistrées (nœuds auxiliaires) : équilibre faux avec appuis élastiques ; tags auxiliaires 90000 pouvant collisionner | report sur le nœud TSA, tags > max | test 108 |
-| FIX-020 | Contrôle d'équilibre : charges non converties en N (useKiloNewtons = false) | facteurs identiques à buildLoads | test 110 |
-| FIX-021 | MemberLoadDialog n'enregistrait pas la famille cible (charges sur poteau/treillis stockées « Beam ») | targetType + compatibilité des anciens fichiers | test 105 |
-| FIX-022 | Export Tcl (OpenSeesAdapter) : générateur parallèle avec les mêmes défauts | délègue à OpenSeesAnalysisBuilder | tests 62, 64 |
-| FIX-024 | Arbre du modèle : poutres/poteaux affichés « 0.30x0.30 m » pour des sections circulaires (Circ D20) — champs largeur×hauteur non significatifs | nom de section affiché | vérifié dans le .tsa (zlib) + capture |
-| FIX-023 | « Maillage EF » affichait un maillage généré inexistant ; dalles/voiles non signalés avant calcul | estimation + confirmation (BUG-002 mitigé) | revue de code |
-
-## FIX-2026-10-05-COPY
-Area: Model / Viewport
-Problem: copie 3D (et copie-rotation, collage de câbles/dalles) d'une section circulaire affichée rectangulaire :
-`copyElements` créait la poutre avec la section par défaut (vue construite à l'ajout) puis posait la section sans
-`notify*Modified`. Aussi : rôle de barre, treillis et appuis non copiés ; rotation-copie 3D sans effet ; nœuds des
-câbles/treillis ignorés par le déplacement / la rotation 3D.
-Status: FIXED — chemin unique `copyTransformed` (Model_Transformations.cpp, `ModelElementCopy.h`), test 139
-(observateur : la vue reçoit la section circulaire), tests 141–143.
-
-## FIX-2026-10-05-CLOSE
-Area: Fermeture / IA
-Problem: deux assertions Qt « Called object is not of the correct type (class destructor may have already run) »
-à la fermeture quand llama-server tourne : AIOrchestrator (enfant de MainWindow) est détruit après ~MainWindow ;
-son destructeur arrête le serveur → 2 × stateChanged → statusChanged → MainWindow::updateAIStatusWidget.
-Status: FIXED — ~MainWindow coupe toutes les connexions enfants → MainWindow (slots et lambdas). Vérifié : lancement,
-llama-server actif, WM_CLOSE → sortie code 0 sans dialogue (avant : 2 dialogues « Debug Error! »).
-
-## FIX-2026-10-06-DEFORMED
-Area: Viewer / Résultats 3D
-Problem: décocher « Afficher la Déformée 3D » (ou changer de diagramme, d'échelle, de réactions, de légende) ne
-faisait pas disparaître la déformée : `ResultsVisualManager` retire/affiche ses AIS avec `false` (sans redessin) et
-`visualStateChanged` n'est connecté nulle part → l'écran gardait l'ancienne image. De plus, le preset d'échelle
-« Auto » ne régénérait pas les formes, la légende (« DÉFORMÉE : … ») n'était pas rafraîchie, et la case du ruban
-restait décochée quand le dock Résultats réactivait la déformée (combo « Déformée 3D »).
-Status: CODE CORRIGÉ — `ResultsVisualManager::redrawView()` appelé par chaque setter / animation modale ;
-`updateLegend()` sur déformée / diagramme / échelles ; `onActionToggleDeformed` synchronise `m_actionDeformedToggle`.
-Build + 204/204 PASS ; vérification visuelle dans l'application encore à faire.
+| BUG-030 | Menu Structure ▸ Conditions d'Appuis : Encastrement / Articulation / Appui simple n'assignaient rien | `MainWindow::assignSupport` (pushUndoState + setSupport + notifyNodeModified) | GUI 2026-10-06 : appui assigné, dock « Appuis : 1 », calcul OpenSees OK (δ_max 28,63 mm, équilibre conforme) |
+| BUG-031 | Suppression de 6 768 éléments ≈ 6 min (Debug) : un redessin complet du viewport et une recherche linéaire dans l'arbre par élément | `OccView::scheduleRedraw` (un redessin par rafale), `ModelTreeWidget::queueRemoval/flushRemovals` (une passe par catégorie) | GUI stress_4900 : suppression 17 s, Rétablir ≈ 21 s, Annuler ≈ 17 s (≈ 30 s avant), modèle restauré sans doublon |
+| BUG-032 | Barre d'état : libellés superposés à toute largeur | cause : politique `Ignored` → case de largeur nulle dans QStatusBar ; largeurs fixes + `fitStatusBar` (masquage par priorité, mise en page forcée car QStatusBar ignore LayoutRequest) ; page cachée sans taille minimale | captures à 3 largeurs, plus de chevauchement |
+| BUG-034 | Dock Résultats : « Nœuds : 0 » après ouverture | `updateNodeStats` public, appelé à l'ouverture et à chaque révision du modèle | GUI : « Nœuds : 2 », puis « Appuis : 1 » après assignation |
+| FIX-2026-10-06-RESIZE | Bords de fenêtre non redimensionnables là où le workspace (fenêtres natives, ancêtres du viewport OCCT) recouvre la bordure | filtre natif `ResizeBorderFilter` : HTTRANSPARENT sur la bordure pour les fenêtres enfants | GUI : bords droit, gauche et bas en mode Workspace |

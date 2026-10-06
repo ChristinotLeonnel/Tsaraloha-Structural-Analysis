@@ -21,6 +21,8 @@
 #include "../Geometry/SupportGeometry.h"
 #include "../Diagnostics/Logger.h"
 
+#include <QTimer>
+
 #include <AIS_Shape.hxx>
 #include <AIS_TextLabel.hxx>
 #include <Font_FontAspect.hxx>
@@ -201,9 +203,31 @@ void OccView::onNodeModified(const TSA::Model::Node& node)
     updateNodeShape(node.id());
 }
 
+void OccView::scheduleRedraw()
+{
+    // Suppressions en lot (Supprimer, Annuler…) : un seul redessin après la dernière notification
+    // au lieu d'un rendu complet de la scène par élément retiré.
+    if (!m_redrawTimer)
+    {
+        m_redrawTimer = new QTimer(this);
+        m_redrawTimer->setSingleShot(true);
+        connect(m_redrawTimer, &QTimer::timeout, this, [this] {
+            if (m_context.IsNull()) return;
+            m_context->UpdateCurrentViewer();
+            if (!m_view.IsNull())
+            {
+                m_view->ZFitAll();
+                m_view->Redraw();
+            }
+        });
+    }
+    if (!m_redrawTimer->isActive()) m_redrawTimer->start(0);
+}
+
 void OccView::onNodeRemoved(int nodeId)
 {
-    removeNodeShape(nodeId);
+    removeNodeShape(nodeId, false);
+    scheduleRedraw();
 }
 
 void OccView::onBeamAdded(const TSA::Model::Beam& beam)
@@ -218,7 +242,8 @@ void OccView::onBeamModified(const TSA::Model::Beam& beam)
 
 void OccView::onBeamRemoved(int beamId)
 {
-    removeBeamShape(beamId);
+    removeBeamShape(beamId, false);
+    scheduleRedraw();
 }
 
 void OccView::onColumnAdded(const TSA::Model::Column& column)
@@ -233,7 +258,8 @@ void OccView::onColumnModified(const TSA::Model::Column& column)
 
 void OccView::onColumnRemoved(int columnId)
 {
-    removeColumnShape(columnId);
+    removeColumnShape(columnId, false);
+    scheduleRedraw();
 }
 
 void OccView::onSlabAdded(const TSA::Model::Slab& slab)
@@ -248,7 +274,8 @@ void OccView::onSlabModified(const TSA::Model::Slab& slab)
 
 void OccView::onSlabRemoved(int slabId)
 {
-    removeSlabShape(slabId);
+    removeSlabShape(slabId, false);
+    scheduleRedraw();
 }
 
 void OccView::onWallAdded(const TSA::Model::Wall& wall)
@@ -263,7 +290,8 @@ void OccView::onWallModified(const TSA::Model::Wall& wall)
 
 void OccView::onWallRemoved(int wallId)
 {
-    removeWallShape(wallId);
+    removeWallShape(wallId, false);
+    scheduleRedraw();
 }
 
 void OccView::onFoundationAdded(const TSA::Model::Foundation& foundation)
@@ -278,7 +306,8 @@ void OccView::onFoundationModified(const TSA::Model::Foundation& foundation)
 
 void OccView::onFoundationRemoved(int foundationId)
 {
-    removeFoundationShape(foundationId);
+    removeFoundationShape(foundationId, false);
+    scheduleRedraw();
 }
 
 void OccView::onTrussMemberAdded(const TSA::Model::TrussMember& member)
@@ -293,7 +322,8 @@ void OccView::onTrussMemberModified(const TSA::Model::TrussMember& member)
 
 void OccView::onTrussMemberRemoved(int memberId)
 {
-    removeTrussMemberShape(memberId);
+    removeTrussMemberShape(memberId, false);
+    scheduleRedraw();
 }
 
 void OccView::onCableAdded(const TSA::Model::Cable& cable)
@@ -308,7 +338,8 @@ void OccView::onCableModified(const TSA::Model::Cable& cable)
 
 void OccView::onCableRemoved(int cableId)
 {
-    removeCableShape(cableId);
+    removeCableShape(cableId, false);
+    scheduleRedraw();
 }
 
 void OccView::onNodalLoadAdded(int loadId)
@@ -327,7 +358,8 @@ void OccView::onNodalLoadModified(int loadId)
 
 void OccView::onNodalLoadRemoved(int loadId)
 {
-    removeNodalLoadShape(loadId);
+    removeNodalLoadShape(loadId, false);
+    scheduleRedraw();
 }
 
 void OccView::onMemberLoadAdded(int loadId)
@@ -346,7 +378,8 @@ void OccView::onMemberLoadModified(int loadId)
 
 void OccView::onMemberLoadRemoved(int loadId)
 {
-    removeMemberLoadShape(loadId);
+    removeMemberLoadShape(loadId, false);
+    scheduleRedraw();
 }
 
 void OccView::onLoadAdded(int /*loadId*/)
