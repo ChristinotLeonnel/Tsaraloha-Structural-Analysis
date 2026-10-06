@@ -12,6 +12,7 @@
 #include "../Platform/WindowsAssociation.h"
 #include "../Viewer/OccView.h"
 #include "../Model/Model.h"
+#include "Dock/ResultsDockWidget.h"
 
 #include <QFileInfo>
 #include <QThread>
@@ -44,6 +45,7 @@ void MainWindow::onModelRevisionPolled()
     if (rev == m_lastPolledRevision) return;
     m_lastPolledRevision = rev;
     schedulePreviewCapture();
+    if (m_resultsDock) m_resultsDock->updateNodeStats();
 }
 
 void MainWindow::capturePreview(bool synchronousWrite)
@@ -89,6 +91,7 @@ void MainWindow::onProjectFileOpened(const QString& path)
 {
     TSA::Project::RecentProjects().touch(path);
     m_lastPolledRevision = m_model ? m_model->revision() : 0;
+    if (m_resultsDock) m_resultsDock->updateNodeStats();
     // Réouverture : dernière caméra connue, si le fichier n'a pas été modifié ailleurs depuis.
     TSA::Project::ModelPreviewCache cache;
     if (const auto meta = cache.metadata(path); meta && m_occView)

@@ -9,8 +9,11 @@
 #include <QHash>
 #include <QWidget>
 
+#include <memory>
+
 class MainWindow;
 class QAction;
+class QAbstractNativeEventFilter;
 class QMenu;
 class QShortcut;
 class QStackedWidget;
@@ -73,6 +76,7 @@ private:
 
     // Cadre natif Windows sans barre de titre système (ancrage, animations, redimensionnement conservés).
     void applyNativeFrame();
+    void installResizeBorderFilter();
     void updateMaximizedMargins();
 
 private:
@@ -97,6 +101,7 @@ private:
     QHash<QAction*, QAction*> m_proxyTargets; // action de la barre de titre → action du workspace
 
     bool m_nativeFrameApplied = false;
+    std::unique_ptr<QAbstractNativeEventFilter> m_resizeFilter;
     bool m_wasMaximizedBeforeFullScreen = false;
 };
 

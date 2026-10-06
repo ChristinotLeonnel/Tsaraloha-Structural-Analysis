@@ -53,6 +53,8 @@ namespace TSA::Grid
 #include "ViewManager.h"
 #include "../Grid/SnapManager.h"
 
+class QTimer;
+
 class OccView : public QWidget, public TSA::Model::IModelObserver
 {
     Q_OBJECT
@@ -99,6 +101,8 @@ public:
     void removeFoundationShape(int foundationId, bool redrawImmediately = true);
     void removeTrussMemberShape(int memberId, bool redrawImmediately = true);
     void removeCableShape(int cableId, bool redrawImmediately = true);
+    /// Redessin différé et regroupé (une seule passe pour une rafale de notifications).
+    void scheduleRedraw();
 
     void setSupportsVisible(bool visible);
     bool areSupportsVisible() const { return m_supportsVisible; }
@@ -691,4 +695,5 @@ private:
     TSA::Model::BarProperties m_currentBarProps;
     TSA::Viewer::RenderDisplayMode m_renderDisplayMode = TSA::Viewer::RenderDisplayMode::Materials;
     std::unique_ptr<TSA::Viewer::ResultsVisualManager> m_resultsVisual;
+    QTimer* m_redrawTimer = nullptr;
 };

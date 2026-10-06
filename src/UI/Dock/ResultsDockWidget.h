@@ -46,6 +46,8 @@ public:
     void setModel(TSA::Model::Model* model);
     void setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
     void syncFromVisualManager(TSA::Viewer::ResultsVisualManager* visualMgr);
+    /// Recompte nœuds / nœuds libres / appuis (à appeler quand le modèle change).
+    void updateNodeStats();
 
 signals:
     void deformedToggled(bool visible);
@@ -88,7 +90,6 @@ private:
     void setupUi();
     void updateSummaryText();
     void updateStepControls();
-    void updateNodeStats();
 
 private:
     TSA::Model::Model* m_model = nullptr;

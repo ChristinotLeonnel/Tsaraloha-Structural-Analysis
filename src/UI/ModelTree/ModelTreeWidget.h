@@ -4,7 +4,11 @@
 #include "../../Model/Model.h"
 #include <QTreeWidget>
 #include <QWidget>
+#include <QHash>
 #include <QList>
+#include <QSet>
+
+class QTimer;
 
 class QAction;
 class QLineEdit;
@@ -111,6 +115,11 @@ private:
 
 private:
   TSA::Model::Model *m_model = nullptr;
+  // Suppressions regroupées : appliquées en une passe (fin de rafale ou avant toute autre mise à jour).
+  QHash<QTreeWidgetItem *, QSet<int>> m_pendingRemovals;
+  QTimer *m_removalTimer = nullptr;
+  void queueRemoval(QTreeWidgetItem *category, int id);
+  void flushRemovals();
   TSA::Grid::GridManager *m_gridManager = nullptr;
   QTreeWidget *m_tree = nullptr;
   QLineEdit *m_search = nullptr;

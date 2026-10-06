@@ -26,6 +26,8 @@
 #include <QFileInfo>
 #include <QMenu>
 #include <QMimeData>
+#include <QAbstractNativeEventFilter>
+#include <QPointer>
 #include <QScreen>
 #include <QSettings>
 #include <QShortcut>
@@ -84,11 +86,15 @@ AppShell::AppShell(QWidget* parent)
     connect(m_startCenter, &StartCenter::openRequested, this, &AppShell::openProjectFile);
 
     createActions();
+    installResizeBorderFilter();
     restoreShellGeometry();
     showStartCenter();
 }
 
-AppShell::~AppShell() = default;
+AppShell::~AppShell()
+{
+    if (m_resizeFilter) qApp->removeNativeEventFilter(m_resizeFilter.get());
+}
 
 void AppShell::createActions()
 {
@@ -217,6 +223,9 @@ void AppShell::setMode(ApplicationMode mode)
         m_startCenter->refresh();
         m_stack->setCurrentWidget(m_startCenter);
     }
+    // La page cachée n'impose pas sa taille minimale (QStackedLayout prend le maximum des pages).
+    if (m_workspace)
+        m_workspace->setMinimumSize(mode == ApplicationMode::ProjectWorkspace ? kWorkspaceMinimumSize : QSize(1, 1));
     syncProxyActions();
     updateTitle();
 }
@@ -426,7 +435,57 @@ int frameThickness(HWND hwnd)
     const UINT dpi = GetDpiForWindow(hwnd);
     return GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
 }
+
+/// Code de redimensionnement (HTLEFT, HTTOPRIGHT…) si le point est sur la bordure de la fenêtre, sinon 0.
+LRESULT resizeHitTest(HWND root, POINT pt)
+{
+    if (IsZoomed(root)) return 0;
+    RECT wr;
+    GetWindowRect(root, &wr);
+    const int b = frameThickness(root);
+    const bool left = pt.x < wr.left + b, right = pt.x >= wr.right - b;
+    const bool top = pt.y < wr.top + b, bottom = pt.y >= wr.bottom - b;
+    if (top && left) return HTTOPLEFT;
+    if (top && right) return HTTOPRIGHT;
+    if (bottom && left) return HTBOTTOMLEFT;
+    if (bottom && right) return HTBOTTOMRIGHT;
+    if (left) return HTLEFT;
+    if (right) return HTRIGHT;
+    if (bottom) return HTBOTTOM;
+    if (top) return HTTOP;
+    return 0;
+}
+
+// Le viewport OCCT est une fenêtre native : Qt rend aussi natifs ses ancêtres (workspace, pile de
+// pages). Ces fenêtres enfants reçoivent WM_NCHITTEST sur les bords d'AppShell et répondraient
+// HTCLIENT : sur la bordure, elles deviennent transparentes et Windows interroge AppShell.
+class ResizeBorderFilter : public QAbstractNativeEventFilter
+{
+public:
+    explicit ResizeBorderFilter(QWidget* shell) : m_shell(shell) {}
+
+    bool nativeEventFilter(const QByteArray& /*eventType*/, void* message, qintptr* result) override
+    {
+        const MSG* msg = static_cast<const MSG*>(message);
+        if (msg->message != WM_NCHITTEST || !m_shell || m_shell->isFullScreen()) return false;
+        const HWND root = reinterpret_cast<HWND>(m_shell->winId());
+        if (msg->hwnd == root || GetAncestor(msg->hwnd, GA_ROOT) != root) return false;
+        const POINT pt{ GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam) };
+        if (resizeHitTest(root, pt) == 0) return false;
+        *result = HTTRANSPARENT;
+        return true;
+    }
+
+private:
+    QPointer<QWidget> m_shell;
+};
 } // namespace
+
+void AppShell::installResizeBorderFilter()
+{
+    m_resizeFilter = std::make_unique<ResizeBorderFilter>(this);
+    qApp->installNativeEventFilter(m_resizeFilter.get());
+}
 
 void AppShell::applyNativeFrame()
 {
@@ -483,19 +542,10 @@ bool AppShell::nativeEvent(const QByteArray& eventType, void* message, qintptr* 
         RECT wr;
         GetWindowRect(msg->hwnd, &wr);
 
-        if (!isMaximized())
+        if (const LRESULT edge = resizeHitTest(msg->hwnd, pt))
         {
-            const int b = frameThickness(msg->hwnd);
-            const bool left = pt.x < wr.left + b, right = pt.x >= wr.right - b;
-            const bool top = pt.y < wr.top + b, bottom = pt.y >= wr.bottom - b;
-            if (top && left) { *result = HTTOPLEFT; return true; }
-            if (top && right) { *result = HTTOPRIGHT; return true; }
-            if (bottom && left) { *result = HTBOTTOMLEFT; return true; }
-            if (bottom && right) { *result = HTBOTTOMRIGHT; return true; }
-            if (left) { *result = HTLEFT; return true; }
-            if (right) { *result = HTRIGHT; return true; }
-            if (bottom) { *result = HTBOTTOM; return true; }
-            if (top) { *result = HTTOP; return true; }
+            *result = edge;
+            return true;
         }
 
         // Pixels écran → coordonnées logiques de la fenêtre (la fenêtre entière est zone cliente).
@@ -518,6 +568,7 @@ bool AppShell::nativeEvent(const QByteArray& eventType, void* message, qintptr* 
 
 #else
 
+void AppShell::installResizeBorderFilter() {}
 void AppShell::applyNativeFrame() {}
 void AppShell::updateMaximizedMargins() {}
 
