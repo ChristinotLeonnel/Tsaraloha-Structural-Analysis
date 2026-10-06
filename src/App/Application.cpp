@@ -1,5 +1,5 @@
 #include "Application.h"
-#include "../UI/MainWindow.h"
+#include "../UI/Shell/AppShell.h"
 #include "../UI/Theme/ThemeManager.h"
 #include "../Platform/WindowsAssociation.h"
 
@@ -103,8 +103,9 @@ bool Application::init()
         }
     }
 
-    m_mainWindow = std::make_unique<MainWindow>();
-    m_mainWindow->show();
+    // Lancement : Start Center seul ; le workspace de modélisation est créé à l'ouverture d'un projet.
+    m_shell = std::make_unique<TSA::UI::AppShell>();
+    m_shell->show();
 
     for (int i = 1; i < args.size(); ++i)
     {
@@ -115,7 +116,7 @@ bool Application::init()
         }
         if (arg.endsWith(".tsa", Qt::CaseInsensitive))
         {
-            m_mainWindow->loadFile(arg);
+            m_shell->openProjectFile(arg);
             break;
         }
     }

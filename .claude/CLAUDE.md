@@ -27,6 +27,8 @@ UI (src/UI)  →  Commands / UndoRedo (src/Commands, src/UndoRedo)  →  Model (
                                                                        └→ Analysis multi-moteurs (src/Analysis/Engine : AnalysisManager → OpenSees | Custom2D) → Results → NDC (src/NDC)
 Transversal : Coordinate (niveaux, WorkPlanes), Grid, ExtensionSystem (TSALib), Diagnostics, Standards
 ```
+Fenêtre : `AppShell` (src/UI/Shell, ADR-021) = barre de titre + Start Center (lancement) | `MainWindow` (workspace,
+créé au premier projet).
 Synchronisation modèle → vues : `TSA::Model::IModelObserver` (OccView, ModelTreeWidget,
 PropertyPanel, ProjectStatusOverlay, ResultsValidityGuard). Détails : `architecture.md`.
 

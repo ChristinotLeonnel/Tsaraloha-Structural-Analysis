@@ -32,6 +32,7 @@
 
 #include <QMenuBar>
 #include <QMenu>
+#include <functional>
 #include <QToolBar>
 #include <QStatusBar>
 #include <QTimer>
@@ -92,11 +93,16 @@ void MainWindow::createActions()
     m_actionSaveAs->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
     connect(m_actionSaveAs, &QAction::triggered, this, &MainWindow::onActionSaveAs);
 
+    m_actionCloseProject = new QAction(tr("&Fermer le projet"), this);
+    m_actionCloseProject->setIcon(QIcon(":/icons/file/file_close.svg"));
+    m_actionCloseProject->setToolTip(tr("Fermer le projet et revenir au Start Center"));
+    connect(m_actionCloseProject, &QAction::triggered, this, &MainWindow::closeProjectRequested);
+
     m_actionExit = new QAction(tr("&Quitter"), this);
     m_actionExit->setIcon(QIcon(":/icons/file_exit.svg"));
     m_actionExit->setToolTip(tr("Quitter l'application (Alt+F4)"));
     m_actionExit->setShortcut(QKeySequence::Quit);
-    connect(m_actionExit, &QAction::triggered, this, &QWidget::close);
+    connect(m_actionExit, &QAction::triggered, this, &MainWindow::exitRequested);
 
     // Actions Édition & Transformation
     m_actionMove = new QAction(tr("Translation &Numérique (Dialogue)..."), this);
@@ -843,9 +849,9 @@ void MainWindow::createMenus()
     QMenu* fileMenu = menuBar()->addMenu(tr("&Fichier"));
     fileMenu->addAction(m_actionNew);
     fileMenu->addAction(m_actionOpen);
-    if (m_actionStartPage) fileMenu->addAction(m_actionStartPage);
     fileMenu->addAction(m_actionSave);
     fileMenu->addAction(m_actionSaveAs);
+    fileMenu->addAction(m_actionCloseProject);
     fileMenu->addSeparator();
     fileMenu->addAction(m_actionImportIfc);
     fileMenu->addAction(m_actionExportIfc);
@@ -1109,6 +1115,27 @@ void MainWindow::createMenus()
     helpMenu->addAction(m_actionExportDiagnostic);
     helpMenu->addSeparator();
     helpMenu->addAction(m_actionAbout);
+
+    // Ces menus sont présentés par le menu d'application de la barre de titre (AppShell) : pas de
+    // barre de menus sous le titre. Les actions qui n'apparaissent que dans un menu sont attachées
+    // au workspace pour que leur raccourci clavier reste actif.
+    menuBar()->setVisible(false);
+    std::function<void(QMenu*)> attachShortcuts = [&](QMenu* menu) {
+        for (QAction* a : menu->actions())
+        {
+            if (QMenu* sub = QMenu::menuInAction(a)) attachShortcuts(sub);
+            else if (!a->shortcut().isEmpty() && !actions().contains(a)) addAction(a);
+        }
+    };
+    for (QMenu* menu : applicationMenus()) attachShortcuts(menu);
+}
+
+QList<QMenu*> MainWindow::applicationMenus() const
+{
+    QList<QMenu*> menus;
+    for (QAction* a : menuBar()->actions())
+        if (QMenu* menu = QMenu::menuInAction(a)) menus << menu;
+    return menus;
 }
 
 void MainWindow::createRibbon()
@@ -1117,7 +1144,7 @@ void MainWindow::createRibbon()
 
     TSA::UI::RibbonActions acts;
     acts.actionNew = m_actionNew;
-    acts.actionStartPage = m_actionStartPage;
+    acts.actionCloseProject = m_actionCloseProject;
     acts.actionOpen = m_actionOpen;
     acts.actionSave = m_actionSave;
     acts.actionSaveAs = m_actionSaveAs;

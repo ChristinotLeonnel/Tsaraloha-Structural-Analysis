@@ -733,8 +733,14 @@ set(UI_AI_SOURCES
     src/UI/AI/AIRuntimeDialog.cpp
     src/UI/MainWindow_AI.cpp
     src/UI/MainWindow_Preview.cpp
-    src/UI/Home/StartPage.h
-    src/UI/Home/StartPage.cpp
+    src/UI/Home/StartCenter.h
+    src/UI/Home/StartCenter.cpp
+    src/UI/Home/NewProjectDialog.h
+    src/UI/Home/NewProjectDialog.cpp
+    src/UI/Shell/AppShell.h
+    src/UI/Shell/AppShell.cpp
+    src/UI/Shell/TitleBar.h
+    src/UI/Shell/TitleBar.cpp
 )
 
 set(SOURCES
@@ -889,6 +895,7 @@ set_source_files_properties(
     src/AI/Hardware/HardwareProfiler.cpp
     src/AI/Core/SecretStore.cpp
     src/AI/Providers/ProcessLifetime.cpp
+    src/UI/Shell/AppShell.cpp
     PROPERTIES SKIP_PRECOMPILE_HEADERS ON
 )
 
@@ -903,6 +910,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     TSA_Core
     Qt6::Svg
 )
+if(WIN32)
+    # AppShell : barre de titre personnalisée (ombre DWM de la fenêtre sans cadre système)
+    target_link_libraries(${PROJECT_NAME} PRIVATE dwmapi)
+endif()
 
 # Propriétés spécifiques MSVC / Windows
 if(MSVC)

@@ -8,6 +8,8 @@
 
 ```text
 src/UI/
+├── Shell          — AppShell (fenêtre unique, modes Start Center / Workspace), TitleBar (barre de titre)
+├── Home           — StartCenter (accueil, projets récents), NewProjectDialog
 ├── Ribbon         — ruban de commandes (barre d'outils principale)
 ├── Dock           — panneaux ancrables (Visibility, Elements, Console, ProjectionView)
 ├── WindowManager  — gestionnaire centralisé des fenêtres, docks, profils et menu Fenêtres
@@ -96,3 +98,27 @@ Système centralisé de gestion des fenêtres, panneaux et profils de dispositio
   - Raccourcis centralisés (`Ctrl+1` Vue 3D, `Ctrl+2` Propriétés, `Ctrl+3` Navigateur, `Ctrl+4` Plans de travail, `Ctrl+5` Résultats 3D, `F2` Console).
   - Extensibilité : tout nouveau panneau s'enregistre via `registerDock()` sans modification manuelle du menu.
 
+## Fenêtre et cycle de vie (AppShell, ADR-021)
+
+```text
+Application ─► AppShell (seule fenêtre top-level, sans cadre système)
+               ├── TitleBar : [TSA ▾][Nouveau][Ouvrir][Enregistrer] | [Annuler][Rétablir]   titre   [Fermer le projet][Thème][_][□][×]
+               └── QStackedWidget
+                   ├── StartCenter       — mode StartCenter (seul créé au lancement)
+                   └── MainWindow        — mode ProjectWorkspace (ruban, docks, viewport, barre d'état),
+                                           créé au premier projet ouvert / créé, puis conservé et vidé à la fermeture
+```
+
+- `ApplicationMode { StartCenter, ProjectWorkspace }` ; `AppShell::createNewProject / openProject /
+  openProjectFile / closeProject` ; changer de mode = changer de page (pas de `hide()` par widget).
+- `MainWindow` est une page (`Qt::Widget`) : ses actions Nouveau / Ouvrir / Fermer le projet / Quitter / Plein écran
+  émettent des signaux traités par AppShell ; `createProject`, `closeProject`, `prepareToClose` portent la logique
+  du modèle. Sa barre de menus n'est pas affichée : ses menus sont présentés par le bouton TSA de la barre de titre
+  (les raccourcis des actions présentes uniquement dans un menu sont attachés au workspace).
+- Barre de titre native Windows : `WM_NCCALCSIZE` (toute la fenêtre est zone cliente) + `WM_NCHITTEST`
+  (`HTCAPTION` hors boutons, bords redimensionnables) → déplacement, double-clic, ancrage (snap), animations et menu
+  système restent ceux de Windows. Agrandie, la fenêtre rentre son contenu du débordement du cadre.
+- Géométrie de la fenêtre : `QSettings` « Shell/geometry » ; disposition des docks : `LayoutManager` (inchangé,
+  sans géométrie quand la fenêtre principale est embarquée).
+- Taille minimale du workspace : 960 × 560 px logiques (les minima cumulés des panneaux dépassaient la largeur d'un
+  écran 1920 px à 125 %).

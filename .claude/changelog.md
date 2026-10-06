@@ -2,6 +2,28 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-06 (Start Center et barre de titre, logique AutoCAD — ADR-021)
+
+### Added
+- `src/UI/Shell` : `AppShell` (fenêtre unique, `ApplicationMode`, cadre natif Win32, géométrie « Shell/geometry »),
+  `TitleBar` (bouton d'application TSA + menus du workspace, accès rapide Nouveau / Ouvrir / Enregistrer / Annuler /
+  Rétablir, titre centré, Fermer le projet, thème, boutons de fenêtre).
+- `src/UI/Home/StartCenter` (remplace StartPage) : logo, Nouveau projet, Ouvrir, projets récents (aperçu, nom,
+  chemin, date d'ouverture), recherche, tri, sélection / double-clic, menu contextuel (dont « Retirer des projets
+  récents » sans supprimer le fichier) ; `NewProjectDialog` (nom, emplacement, template).
+- `MainWindow::createProject / closeProject / prepareToClose / resetWorkspace`, action « Fermer le projet ».
+
+### Changed
+- Lancement : Start Center seul ; le workspace (viewport, ruban, docks, barre d'état) est créé au premier projet.
+- `MainWindow` embarquée (`Qt::Widget`) ; barre de menus non affichée (menus dans le bouton TSA) ; Nouveau / Ouvrir /
+  Quitter / plein écran passent par AppShell ; accès rapide du ruban réduit (fichier / historique dans le titre).
+- `LayoutManager` ne sauve / restaure la géométrie que si la fenêtre principale est top-level.
+- Menus : entrées désactivées grisées (ThemeManager).
+
+### Known
+- BUG-030 à BUG-034 (stubs d'appuis, suppression massive lente, barre d'état trop large, DPI mixte non vérifié,
+  statistiques nœuds du dock Résultats).
+
 ## 2026-10-06 (Résultats 3D : déformée masquée réellement)
 
 ### Fixed

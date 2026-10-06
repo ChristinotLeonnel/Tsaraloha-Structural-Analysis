@@ -22,8 +22,9 @@ avant de référencer une classe depuis les tests (TSA_Tests ne lie que TSA_Core
 
 | Subsystem | Directory | Main classes | Important files | Dependencies |
 | :--- | :--- | :--- | :--- | :--- |
-| Bootstrap | src/App, src/main.cpp | `Application` | App/Application.cpp | Logger, CrashHandler, MainWindow |
-| Main window | src/UI | `MainWindow` (monolithique, 4 fichiers) | MainWindow.cpp, MainWindow_Actions.cpp (menus, docks, connexions), MainWindow_Tools.cpp (analyse, NDC), MainWindow_Transform.cpp | quasiment tout |
+| Bootstrap | src/App, src/main.cpp | `Application` | App/Application.cpp | Logger, CrashHandler, AppShell |
+| Fenêtre / cycle de vie (ADR-021) | src/UI/Shell, src/UI/Home | `AppShell` (modes `ApplicationMode` StartCenter / ProjectWorkspace, cadre natif Win32), `TitleBar`, `StartCenter`, `ProjectCard`, `NewProjectDialog` | Shell/AppShell.cpp, Home/StartCenter.cpp | MainWindow (créé à la demande), RecentProjects, ModelPreviewCache, dwmapi |
+| Workspace (main window) | src/UI | `MainWindow` (monolithique ; page de AppShell, `Qt::Widget`) | MainWindow.cpp, MainWindow_Actions.cpp (menus, docks, connexions), MainWindow_Tools.cpp (analyse, NDC), MainWindow_Transform.cpp | quasiment tout |
 | Viewport 3D | src/Viewer | `OccView` (QWidget + IModelObserver) | OccView.cpp (init, picking/snap), OccView_Shapes.cpp (formes AIS), OccView_Navigation.cpp (caméra, WorkPlane, 2D, isolation, visibilité), OccView_Events.cpp (souris/clavier) | AIS_InteractiveContext, Geometry, SelectionManager, GridRenderer |
 | Caméra / projection | src/Viewer | `ViewManager`, `ProjectionManager` | ViewManager.cpp, ProjectionManager.cpp | V3d_View |
 | Sélection | src/Viewer, src/Model | `SelectionManager` (QObject), `SelectionQuery` (fonctions), `ElementSet` | SelectionManager.cpp, Model/SelectionQuery.cpp | AIS handles ↔ ids |
