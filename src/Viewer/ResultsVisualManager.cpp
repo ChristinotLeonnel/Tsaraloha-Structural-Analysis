@@ -104,6 +104,8 @@ void ResultsVisualManager::setDeformedVisible(bool visible)
     if (m_deformedVisible == visible) return;
     m_deformedVisible = visible;
     updateDeformedShapes();
+    updateLegend();
+    redrawView();
     emit visualStateChanged();
 }
 
@@ -112,6 +114,7 @@ void ResultsVisualManager::setDeformedDisplayMode(DeformedDisplayMode mode)
     if (m_displayMode == mode) return;
     m_displayMode = mode;
     updateDeformedShapes();
+    redrawView();
     emit visualStateChanged();
 }
 
@@ -120,6 +123,8 @@ void ResultsVisualManager::setDeformationScale(double scale)
     if (std::abs(m_deformationScale - scale) < 1e-4) return;
     m_deformationScale = scale;
     updateDeformedShapes();
+    updateLegend();
+    redrawView();
     emit visualStateChanged();
 }
 
@@ -159,7 +164,13 @@ void ResultsVisualManager::setDeformationScalePreset(ScalePreset preset, double 
     m_deformationPreset = preset;
     switch (preset)
     {
-    case ScalePreset::Auto:   autoComputeDeformationScale(); break;
+    case ScalePreset::Auto:
+        autoComputeDeformationScale();
+        updateDeformedShapes();
+        updateLegend();
+        redrawView();
+        emit visualStateChanged();
+        break;
     case ScalePreset::X1:     setDeformationScale(1.0); break;
     case ScalePreset::X10:    setDeformationScale(10.0); break;
     case ScalePreset::X100:   setDeformationScale(100.0); break;
@@ -175,6 +186,8 @@ void ResultsVisualManager::setDiagramType(TSA::Geometry::DiagramType type)
     m_diagramType = type;
     autoComputeDiagramScale();
     updateDiagramShapes();
+    updateLegend();
+    redrawView();
     emit visualStateChanged();
 }
 
@@ -183,6 +196,8 @@ void ResultsVisualManager::setDiagramScale(double scale)
     if (std::abs(m_diagramScale - scale) < 1e-6) return;
     m_diagramScale = scale;
     updateDiagramShapes();
+    updateLegend();
+    redrawView();
     emit visualStateChanged();
 }
 
@@ -191,7 +206,13 @@ void ResultsVisualManager::setDiagramScalePreset(ScalePreset preset, double cust
     m_diagramPreset = preset;
     switch (preset)
     {
-    case ScalePreset::Auto:   autoComputeDiagramScale(); break;
+    case ScalePreset::Auto:
+        autoComputeDiagramScale();
+        updateDiagramShapes();
+        updateLegend();
+        redrawView();
+        emit visualStateChanged();
+        break;
     case ScalePreset::X1:     setDiagramScale(1.0); break;
     case ScalePreset::X10:    setDiagramScale(10.0); break;
     case ScalePreset::X100:   setDiagramScale(100.0); break;
@@ -219,6 +240,7 @@ void ResultsVisualManager::setLegendVisible(bool visible)
     if (m_legendVisible == visible) return;
     m_legendVisible = visible;
     updateLegend();
+    redrawView();
     emit visualStateChanged();
 }
 
@@ -284,6 +306,7 @@ void ResultsVisualManager::setDiagramLabelsVisible(bool visible)
     if (m_diagramLabelsVisible == visible) return;
     m_diagramLabelsVisible = visible;
     updateDiagramShapes();
+    redrawView();
     emit visualStateChanged();
 }
 
@@ -292,6 +315,7 @@ void ResultsVisualManager::setReactionsVisible(bool visible)
     if (m_reactionsVisible == visible) return;
     m_reactionsVisible = visible;
     updateReactionShapes();
+    redrawView();
     emit visualStateChanged();
 }
 
@@ -302,6 +326,7 @@ void ResultsVisualManager::startModalAnimation(int modeIndex, double speed)
     m_modalPhase = 0.0;
     m_modalAnimationTimer.start(30); // ~33 FPS
     updateDeformedShapes();
+    redrawView();
 }
 
 void ResultsVisualManager::stopModalAnimation()
@@ -309,6 +334,7 @@ void ResultsVisualManager::stopModalAnimation()
     m_modalAnimationTimer.stop();
     m_modalPhase = 0.0;
     updateDeformedShapes();
+    redrawView();
 }
 
 void ResultsVisualManager::onModalTimerTick()
@@ -320,6 +346,7 @@ void ResultsVisualManager::onModalTimerTick()
     }
     emit modalPhaseChanged(m_modalPhase);
     updateDeformedShapes();
+    redrawView();
 }
 
 void ResultsVisualManager::clearLegend()
@@ -373,10 +400,7 @@ void ResultsVisualManager::updateAllVisuals()
     updateDiagramShapes();
     updateReactionShapes();
     updateLegend();
-    if (m_occView && m_occView->view())
-    {
-        m_occView->view()->Update();
-    }
+    redrawView();
 }
 
 void ResultsVisualManager::clearAllVisuals()
@@ -386,6 +410,13 @@ void ResultsVisualManager::clearAllVisuals()
     clearReactionShapes();
     clearExtremumMarker();
     clearLegend();
+    redrawView();
+}
+
+void ResultsVisualManager::redrawView()
+{
+    // Les Display/Remove AIS sont faits sans mise à jour immédiate (false) : sans ce redessin,
+    // une déformée ou un diagramme masqué reste à l'écran jusqu'au prochain rafraîchissement fortuit.
     if (m_occView && m_occView->view())
     {
         m_occView->view()->Update();

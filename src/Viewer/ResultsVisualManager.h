@@ -139,6 +139,7 @@ private:
     void clearReactionShapes();
 
     Handle(AIS_InteractiveContext) context() const;
+    void redrawView();
 
 private:
     OccView* m_occView = nullptr;
