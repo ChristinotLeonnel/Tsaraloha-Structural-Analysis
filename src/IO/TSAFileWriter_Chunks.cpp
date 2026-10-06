@@ -13,6 +13,8 @@
 #include "../Model/Cable/Cable.h"
 #include "../Model/Cable/CableDefinition.h"
 
+#include <QJsonDocument>
+
 #include <vector>
 #include <map>
 #include <string>
@@ -566,6 +568,22 @@ void TSAFileWriter::writeLoadChunk(std::vector<uint8_t>& buffer, const TSA::Mode
     const uint8_t* chBytes = reinterpret_cast<const uint8_t*>(&ch);
     buffer.insert(buffer.end(), chBytes, chBytes + sizeof(ch));
     buffer.insert(buffer.end(), chunkData.begin(), chunkData.end());
+}
+
+void TSAFileWriter::writeBimChunk(std::vector<uint8_t>& buffer, const TSA::BIM::BimModel& bim)
+{
+    // JSON UTF-8 versionné (champ "schema") : la couche BIM évolue sans casser le format binaire.
+    const QByteArray json = QJsonDocument(bim.toJson()).toJson(QJsonDocument::Compact);
+
+    TSAChunkHeader ch;
+    ch.chunkId = CHUNK_BIMM;
+    ch.chunkSize = static_cast<uint32_t>(json.size());
+    ch.elementCount = static_cast<uint32_t>(bim.elements().size());
+
+    const uint8_t* chBytes = reinterpret_cast<const uint8_t*>(&ch);
+    buffer.insert(buffer.end(), chBytes, chBytes + sizeof(ch));
+    buffer.insert(buffer.end(), reinterpret_cast<const uint8_t*>(json.constData()),
+                  reinterpret_cast<const uint8_t*>(json.constData()) + json.size());
 }
 
 } // namespace TSA::IO

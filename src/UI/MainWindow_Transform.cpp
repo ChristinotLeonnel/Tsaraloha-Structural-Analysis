@@ -8,6 +8,8 @@
 #include "../UndoRedo/CommandManager.h"
 #include "../Commands/ModifyCommands.h"
 #include "../UndoRedo/EditTransaction.h"
+#include "Tools/ModelCleanupDialog.h"
+#include "Dock/LogConsoleDock.h"
 
 #include <QMessageBox>
 #include <QStatusBar>
@@ -291,4 +293,48 @@ void MainWindow::onActionSplitBars()
 void MainWindow::onActionMergeNodes()
 {
     startModelingTool("merge_nodes");
+}
+
+// =========================================================================
+// Nettoyage topologique du modèle
+// =========================================================================
+
+std::string MainWindow::applyModelCleanup(const TSA::Model::CleanupOptions& options)
+{
+    if (!m_model) return {};
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Nettoyage du modèle").toStdString());
+    const TSA::Model::CleanupReport report = TSA::Model::ModelCleanup::clean(*m_model, options);
+    if (!report.changed())
+    {
+        tx.rollback();
+        return {};
+    }
+    tx.record({ "modify", "Model", -1, "cleanup", "", report.summary(), { "topology", "results_invalidated" } });
+    tx.commit();
+
+    if (m_consoleDock)
+    {
+        m_consoleDock->appendLog(tr("--- NETTOYAGE DU MODÈLE ---"), "SYS");
+        for (const auto& d : report.details) m_consoleDock->appendLog(QString::fromStdString(d), "INFO");
+        for (const auto& d : report.refused) m_consoleDock->appendLog(QString::fromStdString(d), "WARN");
+        for (const auto& d : report.warnings) m_consoleDock->appendLog(QString::fromStdString(d), "WARN");
+        m_consoleDock->appendLog(QString::fromStdString(report.summary()), "SUCCESS");
+    }
+    if (m_selectionManager) m_selectionManager->clearSelection();
+    if (m_modelTree) m_modelTree->refreshAll();
+    if (m_occView) m_occView->update();
+    if (m_statusInfo) m_statusInfo->setText(tr("Nettoyage : %1").arg(QString::fromStdString(report.summary())));
+    updateUndoRedoActions();
+    return report.summary();
+}
+
+void MainWindow::onActionCleanModel()
+{
+    if (!m_model) return;
+    TSA::UI::ModelCleanupDialog dlg(*m_model, this);
+    if (dlg.exec() != QDialog::Accepted) return;
+    const std::string summary = applyModelCleanup(dlg.options());
+    if (!summary.empty())
+        QMessageBox::information(this, tr("Nettoyage du modèle"),
+                                 tr("%1\n\nAnnulable par Ctrl+Z ; le détail est dans la console.").arg(QString::fromStdString(summary)));
 }

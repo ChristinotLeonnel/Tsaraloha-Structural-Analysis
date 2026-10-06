@@ -9,6 +9,7 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include <QDoubleSpinBox>
+#include <QGridLayout>
 #include <QLabel>
 #include <QMessageBox>
 #include <QInputDialog>
@@ -110,6 +111,36 @@ void GridSettingsDialog::setupUi()
     optGrid->addWidget(m_infoLabel, 3, 0, 1, 2);
 
     mainLayout->addWidget(optionsGroup);
+
+    // 3. Types d'accrochage (OSNAP) : filtre du moteur d'accrochage écran, effet immédiat
+    auto* osnapGroup = new QGroupBox(tr("Types d'accrochage (F3 : objets, S : grilles)"), this);
+    auto* osnapGrid = new QGridLayout(osnapGroup);
+    using TSA::Grid::SnapMode;
+    const std::pair<QString, SnapMode> modes[] = {
+        { tr("Nœud"), SnapMode::Node },             { tr("Extrémité"), SnapMode::Endpoint },
+        { tr("Milieu"), SnapMode::Midpoint },       { tr("Intersection"), SnapMode::Intersection },
+        { tr("Centre"), SnapMode::Center },         { tr("Perpendiculaire"), SnapMode::Perpendicular },
+        { tr("Proche (le long d'un élément)"), SnapMode::Nearest }, { tr("Face (dalle, voile)"), SnapMode::Face },
+        { tr("Grille (nœuds et axes)"), SnapMode::Grid },
+    };
+    int idx = 0;
+    for (const auto& [text, mode] : modes)
+    {
+        auto* chk = new QCheckBox(text, osnapGroup);
+        chk->setChecked(!m_snapManager || m_snapManager->isModeActive(mode));
+        osnapGrid->addWidget(chk, idx / 3, idx % 3);
+        ++idx;
+        m_snapModeChecks.push_back({ chk, mode });
+        connect(chk, &QCheckBox::toggled, this, [this, mode](bool on) {
+            if (m_snapManager) m_snapManager->setModeActive(mode, on);
+        });
+    }
+    auto* osnapHint = new QLabel(tr("Ouverture constante à l'écran ; priorité : nœud / extrémité > intersection > milieu > "
+                                    "centre / perpendiculaire > grille > suivis (proche, axe, face)."), osnapGroup);
+    osnapHint->setWordWrap(true);
+    osnapHint->setStyleSheet("color: #8b95a5; font-style: italic;");
+    osnapGrid->addWidget(osnapHint, (idx + 2) / 3, 0, 1, 3);
+    mainLayout->addWidget(osnapGroup);
 
     // 3. Barre d'actions inférieure (Live Sync, Appliquer, Fermer)
     m_chkLiveSync = new QCheckBox(tr("Synchronisation en direct (temps réel)"), this);

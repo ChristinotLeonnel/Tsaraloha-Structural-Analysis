@@ -54,7 +54,17 @@ enum class GridSnapType
     Center,
     Perpendicular,
     Nearest,
-    Element
+    Element,
+    Face          ///< point d'une face (dalle, voile) sous le curseur
+};
+
+/// Origine d'un point d'accrochage (choix du libellé et de la couleur du marqueur).
+enum class SnapSource
+{
+    None,
+    Model,      ///< élément structurel (nœud, barre, dalle, voile…)
+    Grid,       ///< grille (intersection, axe, arc, origine)
+    WorkPlane   ///< pas du plan de travail
 };
 
 enum class SnapMode : uint32_t
@@ -70,6 +80,7 @@ enum class SnapMode : uint32_t
     Nearest       = 1 << 7,
     Axis          = 1 << 8,
     Level         = 1 << 9,
+    Face          = 1 << 10,
     All           = 0xFFFFFFFF
 };
 
@@ -94,6 +105,10 @@ struct GridSnapResult
     double distance = 1e9;
     std::string description;
     int targetEntityId = -1;
+    SnapSource source = SnapSource::None;
+    int targetKind = -1;            ///< TSA::Model::ElementKind de la cible (-1 : aucune)
+    double screenDistance = 1e9;    ///< distance au curseur en pixels (moteur SnapEngine)
+    double depth = 0.0;             ///< profondeur le long du rayon de visée
 };
 
 } // namespace TSA::Grid

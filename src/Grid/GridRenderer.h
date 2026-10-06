@@ -2,6 +2,7 @@
 
 #include "GridSystem.h"
 #include "GridLabelRenderer.h"
+#include "SnapMarker.h"
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_Point.hxx>
@@ -49,6 +50,8 @@ public:
     // Marqueur visuel interactif de Snapping (aimantation temps réel)
     void showSnapMarker(const GridSnapResult& snap, const Handle(AIS_InteractiveContext)& context);
     void hideSnapMarker(const Handle(AIS_InteractiveContext)& context);
+    /// Échelle des pixels du marqueur (devicePixelRatio de la vue).
+    void setSnapMarkerPixelScale(double scale);
 
     // Niveau actif pour le dessin en hauteur
     void setActiveLevelElevation(double z, const GridSystem* gridSystem, const Handle(AIS_InteractiveContext)& context);
@@ -79,8 +82,9 @@ private:
     // Rendu des libellés et bulles
     GridLabelRenderer m_labelRenderer;
 
-    // Marqueur dynamique d'aimantation (Snap)
-    Handle(AIS_Shape) m_snapMarkerShape;
+    // Marqueur dynamique d'aimantation (Snap) : symbole + libellé en pixels (SnapMarker)
+    Handle(SnapMarker) m_snapMarkerShape;
+    double m_snapMarkerScale = 1.0;
 };
 
 } // namespace TSA::Grid

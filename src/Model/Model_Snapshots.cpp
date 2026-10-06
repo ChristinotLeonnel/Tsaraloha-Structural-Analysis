@@ -70,6 +70,8 @@ const TSA::UndoRedo::UndoManager* Model::undoManager() const
 Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) const
 {
     ModelStateSnapshot snap;
+    syncBim(); // l'état BIM capturé doit couvrir tous les éléments (GlobalId stables à l'Annuler)
+    snap.bim = m_bim;
     snap.nodes = m_nodes;
     snap.beams = m_beams;
     snap.columns = m_columns;
@@ -106,6 +108,8 @@ void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
     m_loadManager.applySnapshot(snapshot.loadSnapshot);
     m_calculationSnapshots = snapshot.calculationSnapshots;
     m_definitionReferences = snapshot.definitionReferences;
+    m_bim = snapshot.bim;
+    m_bimSignature = ~0ull;
     m_nextNodeId = snapshot.nextNodeId;
     m_nextBeamId = snapshot.nextBeamId;
     m_nextColumnId = snapshot.nextColumnId;
@@ -178,8 +182,50 @@ void Model::clearCalculationSnapshots()
     m_isModified = true;
 }
 
+std::uint64_t Model::bimSignature() const
+{
+    // La révision suffit pour les modifications notifiées ; les tailles et compteurs couvrent
+    // les mutations directes (chargement, outils internes) qui ne notifient pas.
+    std::uint64_t h = m_revision;
+    auto mix = [&h](std::uint64_t v) { h = (h ^ v) * 1099511628211ull; };
+    mix(m_nodes.size()); mix(m_beams.size()); mix(m_columns.size()); mix(m_slabs.size());
+    mix(m_walls.size()); mix(m_foundations.size()); mix(m_trussMembers.size()); mix(m_cables.size());
+    mix(m_nextNodeId); mix(m_nextBeamId); mix(m_nextColumnId); mix(m_nextSlabId); mix(m_nextWallId);
+    mix(m_nextFoundationId); mix(m_nextTrussMemberId); mix(m_nextCableId);
+    if (const auto* lm = levelManager()) mix(lm->levels().size());
+    return h;
+}
+
+void Model::syncBim() const
+{
+    const std::uint64_t sig = bimSignature();
+    if (sig == m_bimSignature) return;
+    m_bim.synchronize(*this);
+    m_bimSignature = sig;
+}
+
+const TSA::BIM::BimModel& Model::bim() const
+{
+    syncBim();
+    return m_bim;
+}
+
+TSA::BIM::BimModel& Model::bimForEdit()
+{
+    syncBim();
+    return m_bim;
+}
+
+void Model::setBim(const TSA::BIM::BimModel& bim)
+{
+    m_bim = bim;
+    m_bimSignature = ~0ull;
+}
+
 void Model::clear()
 {
+    m_bim = TSA::BIM::BimModel();
+    m_bimSignature = ~0ull;
     m_calculationSnapshots.clear();
     m_definitionReferences.clear();
     m_cables.clear();

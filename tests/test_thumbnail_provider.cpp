@@ -134,7 +134,7 @@ bool runSuite_Thumbnail(int& passed)
 
         TSA::IO::TSAFileHeader h;
         TEST_CHECK(TSA::IO::TSAFileReader::readHeader(path.toStdString(), h), "Test 127: en-tête");
-        TEST_CHECK(h.versionMinor == 2 && (h.flags & TSA::IO::FLAG_HAS_PREVIEW_BLOCK), "Test 127: format 1.2 avec bloc d'aperçu");
+        TEST_CHECK(h.versionMinor >= 2 && (h.flags & TSA::IO::FLAG_HAS_PREVIEW_BLOCK), "Test 127: format 1.2 avec bloc d'aperçu");
         QImage preview;
         TEST_CHECK(TSA::IO::TSAFileReader::extractPreviewBlock(path.toStdString(), preview) && preview.size() == QSize(640, 480),
                    "Test 127: aperçu lu sans décompression");

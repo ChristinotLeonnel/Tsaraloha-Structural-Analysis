@@ -6,6 +6,7 @@
 #include "ModifyTools.h"
 
 #include "../../Model/Model.h"
+#include "../../Model/ModelCleanup.h"
 
 #include <gp_Ax1.hxx>
 #include <gp_Ax2.hxx>
@@ -688,36 +689,10 @@ public:
 private:
     static bool intersectPair(Model& m, const BarRef& a, const BarRef& b, double tol, std::vector<BarRef>& bars)
     {
-        gp_Pnt a1, a2, b1, b2;
-        int as = 0, ae = 0, bs = 0, be = 0;
-        if (!ToolGeometry::barEnds(m, a, a1, a2, &as, &ae) || !ToolGeometry::barEnds(m, b, b1, b2, &bs, &be)) return false;
-        double ta = 0, tb = 0;
-        if (!ToolGeometry::closestParameters(a1, a2, b1, b2, ta, tb)) return false;
-        const double ea = tol / std::max(a1.Distance(a2), 1e-9), eb = tol / std::max(b1.Distance(b2), 1e-9);
-        if (ta < -ea || ta > 1 + ea || tb < -eb || tb > 1 + eb) return false;
-        const gp_Pnt pa = a1.Translated(gp_Vec(a1, a2) * ta), pb = b1.Translated(gp_Vec(b1, b2) * tb);
-        if (pa.Distance(pb) > tol) return false;
-        const bool aEnd = ta <= ea || ta >= 1 - ea, bEnd = tb <= eb || tb >= 1 - eb;
-        if (aEnd && bEnd) return false;   // déjà reliées par une extrémité (ou simplement en contact)
-
-        // Croisement : nœud créé sur a puis b divisée sur ce nœud. Jonction en T : la barre
-        // traversée est divisée sur le nœud d'extrémité existant de l'autre (les éléments déjà
-        // reliés à ce nœud restent reliés).
-        int created = 0;
-        int node = 0;
-        if (aEnd) node = ta <= ea ? as : ae;
-        else if (bEnd) node = tb <= eb ? bs : be;
-        if (!aEnd)
-        {
-            node = m.splitBarAt(a.kind, a.id, ta, node, &created);
-            if (!node) return false;
-            bars.push_back({ a.kind, created });
-        }
-        if (!bEnd)
-        {
-            if (!m.splitBarAt(b.kind, b.id, tb, node, &created)) return false;
-            bars.push_back({ b.kind, created });
-        }
+        // Logique commune au nettoyage du modèle (ModelCleanup::connectCrossingBars).
+        std::vector<std::pair<ElementKind, int>> created;
+        if (!TSA::Model::ModelCleanup::connectCrossingBars(m, a.kind, a.id, b.kind, b.id, tol, &created)) return false;
+        for (const auto& [k, id] : created) bars.push_back({ k, id });
         return true;
     }
 };

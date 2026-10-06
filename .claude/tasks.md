@@ -1,6 +1,18 @@
 # Tasks
 
-Last Updated: 2026-10-05. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## BIM (ADR-020, docs/BIM_ARCHITECTURE.md)
+
+- [x] Phases 1–3 : noyau BIM, identifiants stables, mapping physique → analytique, chunk BIMM (tests 170–176).
+- [x] Export IFC 4.3 (STEP) + validation IfcOpenShell ; import IFC ; test aller-retour (tests 177–180).
+- [ ] BUG-028 : charges / combinaisons IFC (IfcStructuralLoadGroup…), relâchements, unités dérivées, grilles.
+- [ ] Repère de grille « B-3 » des produits (information BIM, GridManager hors Model).
+- [ ] Validation BIM pré-calcul, sous-ensemble IDS, abstraction BCF, API IA contrôlée.
+- [x] UI : actions Exporter / Importer IFC (essai GUI 2026-10-06).
+- [ ] UI : propriétés BIM (GlobalId, catégorie, Psets) dans le panneau Propriétés.
+- [ ] BUG-029 : transmettre les métadonnées BIM au collage (`StructuralClipboard`).
+- [ ] Docs restantes : BIM_GUIDELINES.md, AI_API.md, VERSIONING.md (IFC_MAPPING.md fait).
 
 ## CRITICAL
 
@@ -31,6 +43,12 @@ Last Updated: 2026-10-05. Uniquement des tâches réellement identifiées (voir 
 - [ ] Étendre Symétrie aux treillis (mirrorElements ne les gère pas) ; saisie d'un axe de rotation autre que la
       normale du plan de travail en mode 3D.
 - [ ] Accrochage « milieu de barre » et « perpendiculaire » pour la saisie des outils.
+
+## Nettoyage du modèle
+
+- [ ] Vérification manuelle GUI : « Nettoyer puis calculer » sur un vrai projet (nœuds confondus importés).
+- [ ] Étendre aux câbles (extrémités confondues : déjà couvert par la fusion) et aux voiles / dalles (nœuds sur arêtes).
+- [ ] Option : nettoyage limité à la sélection ; surbrillance des nœuds signalés « à vérifier ».
 
 ## Moteur 2D MetDeDeplacement (ADR-019)
 

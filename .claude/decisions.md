@@ -178,3 +178,18 @@ Reason: demande utilisateur (adapter et optimiser le modèle, courbes 2D dans la
 « dessin » et les heuristiques d'étage n'étaient pas transposables au modèle TSA.
 Consequences: thirdparty/MetDeDeplacement suivi (exception .gitignore), TSA_Core lié à MetDeDeplacement.
 Status: ACTIVE (2026-10-05)
+
+## ADR-020
+Title: Couche BIM additive dans le Model (physique ↔ analytique 1:N, GlobalId distincts des id internes)
+Decision: les éléments TSA existants restent le modèle analytique (solveurs inchangés). `TSA::BIM::BimModel`
+(src/BIM/Core) porte les produits physiques (catégorie / PredefinedType IFC 4.3, GlobalId, Psets, classifications,
+étage) et leur liste ordonnée d'éléments analytiques. Il est membre de `Model` (mutable, synchronisé paresseusement,
+idempotent), capturé dans `ModelStateSnapshot` (synchronisé avant capture → GlobalId stables à l'Annuler), persisté
+dans le chunk JSON versionné `BIMM` (format 1.3, facultatif). Division → même produit ; copie → nouveau produit.
+Reason: mission BIM/openBIM (ISO 19650, IFC 4.3, IDS, BCF) avec les priorités stabilité > séparation BIM/analyse >
+identifiants stables ; un modèle physique séparé dupliquerait la géométrie et casserait outils, undo et solveurs.
+Consequences: tout nouvel outil qui divise / copie des éléments appelle `bimForEdit().attachSplit/registerCopies`.
+Les mutations directes non notifiées restent couvertes par la signature de synchronisation. Pas de revendication de
+conformité ISO / buildingSMART.
+Status: ACTIVE (2026-10-06)
+

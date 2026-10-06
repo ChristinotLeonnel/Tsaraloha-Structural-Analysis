@@ -6,7 +6,6 @@
 #include <TopoDS_Edge.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
-#include <BRepPrimAPI_MakeBox.hxx>
 #include <gp_Circ.hxx>
 #include <gp_Ax2.hxx>
 #include <Quantity_Color.hxx>
@@ -637,67 +636,33 @@ void GridRenderer::showSnapMarker(const GridSnapResult& snap, const Handle(AIS_I
         return;
     }
 
-    Quantity_Color markerColor;
-    switch (snap.type)
-    {
-    case GridSnapType::Endpoint:
-        markerColor = Quantity_NOC_ORANGE;
-        break;
-    case GridSnapType::Midpoint:
-        markerColor = Quantity_NOC_YELLOW;
-        break;
-    case GridSnapType::Center:
-        markerColor = Quantity_NOC_MAGENTA;
-        break;
-    case GridSnapType::Intersection:
-        markerColor = Quantity_NOC_SPRINGGREEN;
-        break;
-    case GridSnapType::Perpendicular:
-        markerColor = Quantity_NOC_CYAN1;
-        break;
-    case GridSnapType::Nearest:
-        markerColor = Quantity_NOC_DEEPSKYBLUE1;
-        break;
-    case GridSnapType::Node:
-        markerColor = Quantity_NOC_INDIANRED1;
-        break;
-    case GridSnapType::Circle:
-        markerColor = Quantity_NOC_GOLD;
-        break;
-    default:
-        markerColor = Quantity_NOC_CYAN1;
-        break;
-    }
-
-    // Le cube est construit UNE fois (centré sur l'origine) puis simplement translaté :
-    // auparavant chaque mouvement de souris reconstruisait un BRep + sa triangulation.
+    // Objet unique, créé une fois : un déplacement ne change que l'ancre (persistance) ; la
+    // présentation n'est recalculée que si le type ou le libellé changent.
     if (m_snapMarkerShape.IsNull())
     {
-        const double sz = 0.10;
-        TopoDS_Shape boxShape = BRepPrimAPI_MakeBox(gp_Pnt(-sz, -sz, -sz), gp_Pnt(sz, sz, sz)).Shape();
-        m_snapMarkerShape = new AIS_Shape(boxShape);
-        m_snapMarkerShape->SetDisplayMode(AIS_Shaded);
+        m_snapMarkerShape = new SnapMarker();
+        m_snapMarkerShape->setPixelScale(m_snapMarkerScale);
     }
-
-    gp_Trsf trsf;
-    trsf.SetTranslation(gp_Vec(snap.point.XYZ()));
-    m_snapMarkerShape->SetLocalTransformation(trsf);
-
-    Quantity_Color currentColor;
-    m_snapMarkerShape->Color(currentColor);
-    if (!m_snapMarkerShape->HasColor() || !currentColor.IsEqual(markerColor))
-    {
-        m_snapMarkerShape->SetColor(markerColor);
-    }
+    const bool changed = m_snapMarkerShape->setSnap(snap);
 
     if (!context->IsDisplayed(m_snapMarkerShape))
     {
-        // Mode de sélection -1 : purement visuel. Affiché avec la sélection active, le cube
-        // (0,2 m), situé exactement sous le curseur, était détecté par MoveTo à la place de
-        // l'objet survolé : un câble ou une barre fine accrochés en extrémité/milieu étaient
-        // alors impossibles à sélectionner (le clic sélectionnait le marqueur).
-        context->Display(m_snapMarkerShape, AIS_Shaded, -1, false);
+        // Mode de sélection -1 : purement visuel (le marqueur sous le curseur ne doit jamais être
+        // détecté par MoveTo à la place de l'objet survolé). Calque Topmost : jamais masqué par la
+        // géométrie, sans fausser la profondeur des autres objets.
+        context->Display(m_snapMarkerShape, 0, -1, false);
+        context->SetZLayer(m_snapMarkerShape, Graphic3d_ZLayerId_Topmost);
     }
+    else if (changed)
+    {
+        context->Redisplay(m_snapMarkerShape, false);
+    }
+}
+
+void GridRenderer::setSnapMarkerPixelScale(double scale)
+{
+    m_snapMarkerScale = scale;
+    if (!m_snapMarkerShape.IsNull()) m_snapMarkerShape->setPixelScale(scale);
 }
 
 void GridRenderer::hideSnapMarker(const Handle(AIS_InteractiveContext)& context)

@@ -135,6 +135,7 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     writeTrussChunk(payload, model.trussMembers());
     writeCableChunk(payload, model.cables());
     writeLoadChunk(payload, model.loadManager().createSnapshot());
+    writeBimChunk(payload, model.bim());
 
     // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> snapshotsToSave = model.calculationSnapshots();
@@ -594,6 +595,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::map<std::string, TSA::ExtensionSystem::DefinitionReference> loadedReferences;
     TSA::Model::LoadManager::LoadSnapshot loadedLoads;
     bool hasLoadChunk = false;
+    TSA::BIM::BimModel loadedBim;
 
     while (offset + sizeof(TSAChunkHeader) <= size)
     {
@@ -664,6 +666,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             if (!readLoadChunk(chunkBytes, chunkLen, loadedLoads, errorMessage)) return false;
             hasLoadChunk = true;
             break;
+        case CHUNK_BIMM:
+            // Facultatif : sans lui (fichier ≤ 1.2), les GlobalId sont attribués au chargement
+            readBimChunk(chunkBytes, chunkLen, loadedBim, errorMessage);
+            break;
         default:
             // Chunk inconnu (version future) : ignoré en toute sécurité grâce à chunkSize
             break;
@@ -695,6 +701,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     }
     snapshot.calculationSnapshots = std::move(loadedSnapshots);
     snapshot.definitionReferences = std::move(loadedReferences);
+    snapshot.bim = std::move(loadedBim);
 
     // Calcul des identifiants suivants
     int maxN = 0, maxB = 0, maxC = 0, maxS = 0, maxW = 0, maxF = 0, maxT = 0, maxCab = 0;

@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 #include "../Model/SelectionQuery.h"
+#include "../Model/ModelCleanup.h"
 #include <QPointer>
 #include <memory>
 #include <vector>
@@ -230,6 +231,8 @@ private:
     void startModelingTool(const std::string& id, bool swapInputMode = false);
     void applyActiveModelingTool();
     TSA::Interaction::ToolContext modelingToolContext() const;
+    /// Nettoyage topologique en une transaction ; retourne le bilan (vide si rien n'a changé).
+    std::string applyModelCleanup(const TSA::Model::CleanupOptions& options);
     /// Diffuse un jeu de résultats à toutes les vues (viewport, docks, propriétés, NDC).
     void publishResults(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
 
@@ -314,6 +317,9 @@ private:
     QAction* m_actionCopyClipboard = nullptr;
     QAction* m_actionPasteClipboard = nullptr;
     QAction* m_actionMirror = nullptr;
+    QAction* m_actionCleanModel = nullptr;
+    QAction* m_actionExportIfc = nullptr;   ///< Exporter IFC 4.3 (src/BIM/IFC)
+    QAction* m_actionImportIfc = nullptr;
     QAction* m_actionSplitBars = nullptr;
     QAction* m_actionMergeNodes = nullptr;
 
@@ -539,6 +545,9 @@ private slots:
     void onActionCopyClipboard();
     void onActionPasteClipboard();
     void onActionMirror();
+    void onActionCleanModel();
+    void onActionExportIfc();
+    void onActionImportIfc();
     void onActionSplitBars();
     void onActionMergeNodes();
 

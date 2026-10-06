@@ -27,6 +27,7 @@
 #include <AIS_Trihedron.hxx>
 #include <Geom_Axis2Placement.hxx>
 #include <Graphic3d_TransformPers.hxx>
+#include <QCursor>
 #include <Prs3d_DatumParts.hxx>
 #include <Prs3d_DatumMode.hxx>
 #include <TCollection_ExtendedString.hxx>
@@ -1813,6 +1814,30 @@ bool OccView::isGridVisible() const
     return m_gridVisible;
 }
 
+void OccView::refreshSnapAtCursor()
+{
+    if (m_context.IsNull() || m_view.IsNull())
+        return;
+    if (!m_snapToGrid && !m_snapToObject)
+    {
+        setLastSnap(TSA::Grid::GridSnapResult());
+        m_isCursorSnapped = false;
+        m_gridRenderer.hideSnapMarker(m_context);
+    }
+    else if (rect().contains(mapFromGlobal(QCursor::pos())))
+    {
+        double x = 0.0, y = 0.0, z = 0.0;
+        int nodeId = -1;
+        getPointUnderCursor(m_lastMousePos, x, y, z, nodeId);
+    }
+    else
+    {
+        m_gridRenderer.hideSnapMarker(m_context);
+    }
+    m_snapMarkerDirty = false;
+    m_view->Redraw();
+}
+
 void OccView::setGridSnapEnabled(bool enabled)
 {
     m_snapToGrid = enabled;
@@ -1820,14 +1845,7 @@ void OccView::setGridSnapEnabled(bool enabled)
     {
         m_gridSnapManager->setSnapEnabled(enabled);
     }
-    if (!enabled && !m_context.IsNull())
-    {
-        m_gridRenderer.hideSnapMarker(m_context);
-        if (!m_view.IsNull())
-        {
-            m_view->Redraw();
-        }
-    }
+    refreshSnapAtCursor();   // ON/OFF instantané : marqueur recalculé sans attendre un mouvement
     emit gridSnapChanged(enabled);
 }
 
@@ -1839,14 +1857,7 @@ bool OccView::isGridSnapEnabled() const
 void OccView::setObjectSnapEnabled(bool enabled)
 {
     m_snapToObject = enabled;
-    if (!enabled && !m_snapToGrid && !m_context.IsNull())
-    {
-        m_gridRenderer.hideSnapMarker(m_context);
-        if (!m_view.IsNull())
-        {
-            m_view->Redraw();
-        }
-    }
+    refreshSnapAtCursor();
     emit objectSnapChanged(enabled);
 }
 

@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-10-05. Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-06. Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
 
@@ -213,6 +213,24 @@ Impact: MEDIUM
 Status: OPEN
 Related files: src/Analysis/OpenSeesAnalysisBuilder.cpp, src/Analysis/CalculationSnapshot.h
 
+## BUG-028
+Area: BIM / IFC
+Problem: export IFC partiel — charges / cas / combinaisons, relâchements d'extrémité, excentrements, appuis orientés et
+grilles non exportés ; unités dérivées (module, masse volumique) non déclarées ; GlobalId des relations et Psets
+recréés à chaque export ; fondations sans objet analytique IFC. Liste tenue à jour dans docs/IFC_MAPPING.md §4.
+Impact: MEDIUM (échange incomplet, pas de perte dans le .tsa)
+Status: OPEN
+Related files: src/BIM/IFC/IfcExporter.cpp, docs/IFC_MAPPING.md
+
+## BUG-029
+Area: BIM / Presse-papiers
+Problem: le collage (`StructuralClipboard`) ne transmet pas les métadonnées BIM (nom, Psets, classification, regroupement
+1:N) : chaque élément collé reçoit un produit physique 1:1 par la synchronisation. Copier / Répéter (copyTransformed)
+les transmet (registerCopies).
+Impact: LOW
+Status: OPEN
+Related files: src/Model/StructuralClipboard.cpp, src/BIM/Core/BimModel.cpp
+
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |
@@ -258,3 +276,14 @@ Problem: deux assertions Qt « Called object is not of the correct type (class d
 son destructeur arrête le serveur → 2 × stateChanged → statusChanged → MainWindow::updateAIStatusWidget.
 Status: FIXED — ~MainWindow coupe toutes les connexions enfants → MainWindow (slots et lambdas). Vérifié : lancement,
 llama-server actif, WM_CLOSE → sortie code 0 sans dialogue (avant : 2 dialogues « Debug Error! »).
+
+## FIX-2026-10-06-DEFORMED
+Area: Viewer / Résultats 3D
+Problem: décocher « Afficher la Déformée 3D » (ou changer de diagramme, d'échelle, de réactions, de légende) ne
+faisait pas disparaître la déformée : `ResultsVisualManager` retire/affiche ses AIS avec `false` (sans redessin) et
+`visualStateChanged` n'est connecté nulle part → l'écran gardait l'ancienne image. De plus, le preset d'échelle
+« Auto » ne régénérait pas les formes, la légende (« DÉFORMÉE : … ») n'était pas rafraîchie, et la case du ruban
+restait décochée quand le dock Résultats réactivait la déformée (combo « Déformée 3D »).
+Status: CODE CORRIGÉ — `ResultsVisualManager::redrawView()` appelé par chaque setter / animation modale ;
+`updateLegend()` sur déformée / diagramme / échelles ; `onActionToggleDeformed` synchronise `m_actionDeformedToggle`.
+Build + 204/204 PASS ; vérification visuelle dans l'application encore à faire.

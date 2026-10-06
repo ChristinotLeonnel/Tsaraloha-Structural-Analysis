@@ -1006,6 +1006,13 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
             // Détection survol d'objets pour affichage des propriétés et infobulles
             AIS_StatusOfDetection status = m_context->MoveTo(px, py, m_view, true);
             bool objectDetected = (status != AIS_SOD_Nothing && m_context->HasDetected());
+            // MoveTo ne redessine que la couche immédiate (surbrillance) : le marqueur d'accrochage,
+            // dans la couche principale, n'était pas rafraîchi au survol d'un objet.
+            if (m_snapMarkerDirty)
+            {
+                m_snapMarkerDirty = false;
+                m_view->Redraw();
+            }
 
             if (m_interactionManager && m_interactionManager->hasActiveSelectionRequest())
             {

@@ -13,6 +13,10 @@
 #include "../Model/Cable/Cable.h"
 #include "../Model/Cable/CableDefinition.h"
 
+#include "../Diagnostics/Logger.h"
+
+#include <QJsonDocument>
+
 #include <vector>
 #include <map>
 #include <string>
@@ -721,6 +725,22 @@ bool TSAFileReader::readLoadChunk(const uint8_t* data, size_t size, TSA::Model::
                           : (snap.loadCases.empty() ? 1 : snap.loadCases.begin()->first);
 
     loads = std::move(snap);
+    return true;
+}
+
+bool TSAFileReader::readBimChunk(const uint8_t* data, size_t size, TSA::BIM::BimModel& outBim, std::string* /*errorMessage*/)
+{
+    QJsonParseError err {};
+    const QJsonDocument doc = QJsonDocument::fromJson(
+        QByteArray(reinterpret_cast<const char*>(data), static_cast<qsizetype>(size)), &err);
+    if (err.error != QJsonParseError::NoError || !doc.isObject() || !TSA::BIM::BimModel::fromJson(doc.object(), outBim))
+    {
+        // Couche BIM illisible (schéma futur, corruption) : le modèle analytique reste valide,
+        // les identifiants BIM seront régénérés. Jamais bloquant.
+        TSA_LOG_WARN("TSAFileReader", "BimChunk", "Chunk BIMM ignoré (illisible ou version future).");
+        outBim = TSA::BIM::BimModel();
+        return false;
+    }
     return true;
 }
 

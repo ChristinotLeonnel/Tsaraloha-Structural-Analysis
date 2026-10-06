@@ -24,6 +24,7 @@
 #include "../Coordinate/CoordinateSystem.h"
 #include "../Coordinate/WorkPlaneManager.h"
 #include "../ExtensionSystem/ExtensionTypes.h"
+#include "../BIM/Core/BimModel.h"
 
 #include <map>
 #include <vector>
@@ -288,6 +289,7 @@ public:
         LoadManager::LoadSnapshot loadSnapshot;
         std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> calculationSnapshots;
         std::map<std::string, TSA::ExtensionSystem::DefinitionReference> definitionReferences;
+        TSA::BIM::BimModel bim;   ///< couche BIM (produits physiques, GlobalId) synchronisée
         int nextNodeId = 1;
         int nextBeamId = 1;
         int nextColumnId = 1;
@@ -369,6 +371,16 @@ public:
     void removeCalculationSnapshot(const std::string& key);
     void clearCalculationSnapshots();
 
+    // Couche BIM (docs/BIM_ARCHITECTURE.md) : produits physiques, structure spatiale, GlobalId.
+    // Synchronisée paresseusement avec le modèle analytique (aucun produit n'est perdu ni
+    // recréé : les identifiants restent stables à travers Annuler / Rétablir et la sauvegarde).
+    const TSA::BIM::BimModel& bim() const;
+    /// Accès en écriture (synchronisé). L'appelant encadre la modification par pushUndoState /
+    /// EditTransaction puis setModified(true).
+    TSA::BIM::BimModel& bimForEdit();
+    /// Remplace la couche BIM (chargement .tsa) ; la synchronisation complète ce qui manque.
+    void setBim(const TSA::BIM::BimModel& bim);
+
     // Générateurs d'identifiants
     int nextNodeId() const { return m_nextNodeId; }
     int nextBeamId() const { return m_nextBeamId; }
@@ -400,6 +412,11 @@ private:
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> m_calculationSnapshots;
     std::map<std::string, TSA::ExtensionSystem::DefinitionReference> m_definitionReferences;
     LoadManager m_loadManager;
+
+    mutable TSA::BIM::BimModel m_bim;
+    mutable std::uint64_t m_bimSignature = ~0ull;
+    std::uint64_t bimSignature() const;
+    void syncBim() const;
 
     std::vector<IModelObserver*> m_observers;
     std::uint64_t m_revision = 0;

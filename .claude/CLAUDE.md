@@ -83,7 +83,9 @@ build-ninja-debug\TSA_TestSuite.exe            # toutes les suites ; --suite=io|
 
 Documentation projet existante (ne pas dupliquer) : `docs/ARCHITECTURE.md`, `docs/EDIT_SYSTEM.md`,
 `docs/TSA_FILE_FORMAT.md`, `docs/MODEL.md`, `docs/OCCT.md`, `docs/UI.md`, `docs/shortcuts.txt`,
-`docs/ANALYSIS_ENGINES.md` (moteurs d'analyse : ajouter un moteur sans toucher à l'UI).
+`docs/ANALYSIS_ENGINES.md` (moteurs d'analyse : ajouter un moteur sans toucher à l'UI),
+`docs/BIM_ARCHITECTURE.md` (couche BIM, plan en 13 phases), `docs/ANALYTICAL_MODEL.md` (physique ↔ analytique 1:N),
+`docs/IFC_MAPPING.md` (export / import IFC, limites).
 
 ## FUTURE SESSION RULE
 

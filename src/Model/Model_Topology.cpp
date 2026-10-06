@@ -229,6 +229,7 @@ std::vector<int> Model::splitBeam(int beamId, int segments)
                                 ps.Z() + (pe.Z() - ps.Z()) * t));
     }
 
+    syncBim();
     std::vector<int> result{ beamId };
     if (auto* first = getBeam(beamId))
     {
@@ -249,6 +250,7 @@ std::vector<int> Model::splitBeam(int beamId, int segments)
             if (k != segments - 1) nb->setEndRelease(EndRelease{});
             notifyBeamModified(id);
         }
+        m_bim.attachSplit({ ElementKind::Beam, result.back() }, { ElementKind::Beam, id });
         for (MemberLoad ml : loads)
         {
             ml.setId(0);
@@ -289,6 +291,7 @@ std::vector<int> Model::splitColumn(int columnId, int segments)
                                 ps.Z() + (pe.Z() - ps.Z()) * t));
     }
 
+    syncBim();
     std::vector<int> result{ columnId };
     if (auto* first = getColumn(columnId))
     {
@@ -306,6 +309,7 @@ std::vector<int> Model::splitColumn(int columnId, int segments)
             copyColumnAttributes(original, *nc);
             notifyColumnModified(id);
         }
+        m_bim.attachSplit({ ElementKind::Column, result.back() }, { ElementKind::Column, id });
         for (MemberLoad ml : loads)
         {
             ml.setId(0);
@@ -347,6 +351,7 @@ int Model::splitBarAt(ElementKind kind, int id, double t, int nodeId, int* newBa
     const int mid = (nodeId > 0 && getNode(nodeId)) ? nodeId
         : addNode(ps.X() + (pe.X() - ps.X()) * t, ps.Y() + (pe.Y() - ps.Y()) * t, ps.Z() + (pe.Z() - ps.Z()) * t);
 
+    syncBim();
     int created = 0;
     switch (kind)
     {
@@ -381,6 +386,7 @@ int Model::splitBarAt(ElementKind kind, int id, double t, int nodeId, int* newBa
         ml.setElementId(created);
         notifyMemberLoadAdded(m_loadManager.addMemberLoad(ml));
     }
+    m_bim.attachSplit({ kind, id }, { kind, created });   // une poutre physique, N barres
     if (newBarId) *newBarId = created;
     return mid;
 }

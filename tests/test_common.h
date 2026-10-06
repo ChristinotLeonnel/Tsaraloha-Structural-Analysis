@@ -179,3 +179,6 @@ bool runSuite_Thumbnail(int& passed);
 bool runSuite_Engines(int& passed);
 bool runSuite_ModelingTools(int& passed);
 bool runSuite_MetDeDeplacement(int& passed);
+bool runSuite_ModelCleanup(int& passed);
+bool runSuite_Bim(int& passed);
+bool runSuite_Snap(int& passed);

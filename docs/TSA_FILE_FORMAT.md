@@ -4,7 +4,7 @@
 **Format :** TSA Binary Project File  
 **Extension native :** `.tsa`  
 **Magic Signature :** `TSAF` (`0x46415354` en little-endian)  
-**Version actuelle :** Spécification 1.1 (Major = 1, Minor = 1) — ajout non cassant du chunk `LOAD` (2026-10-03)  
+**Version actuelle :** Spécification 1.3 (Major = 1, Minor = 3) — 1.1 : chunk `LOAD` (2026-10-03) ; 1.2 : bloc d'aperçu ; 1.3 : chunk `BIMM` (2026-10-06), ajouts non cassants  
 
 ---
 
@@ -100,6 +100,7 @@ struct ChunkHeader {
 | `MATE` (`0x4554414D`) | `CHUNK_MATE` | Bibliothèque de matériaux personnalisés |
 | `SUPP` (`0x50505553`) | `CHUNK_SUPP` | Conditions aux limites et appuis nodaux |
 | `LOAD` (`0x44414F4C`) | `CHUNK_LOAD` | Cas de charges, combinaisons, charges nodales & linéiques — **écrit et lu depuis la spécification 1.1** (voir §5.x) |
+| `BIMM` (`0x4D4D4942`) | `CHUNK_BIMM` | Couche BIM : produits physiques, GlobalId IFC, Psets, classifications, mapping physique → analytique — **spécification 1.3** (voir §5.y) |
 | `ANLY` (`0x594C4E41`) | `CHUNK_ANLY` | Paramètres et réglages de l'analyse par éléments finis (MEF) |
 | `RSLT` (`0x544C5352`) | `CHUNK_RSLT` | Résultats de calcul (déplacements, efforts internes N, Vy, Vz, Mt, My, Mz) |
 
@@ -173,6 +174,19 @@ fichier avec un message explicite ; les compteurs `next*Id` sont relevés au-del
 identifiant lu. **Compatibilité :** un fichier 1.0 (sans chunk `LOAD`) se charge avec les cas et
 combinaisons Eurocodes par défaut (`LoadManager::resetToDefaults`) ; un lecteur 1.0 ignore le chunk
 `LOAD` d'un fichier 1.1 (chunk inconnu sauté grâce à `chunkSize`).
+
+### 5.y Couche BIM (`CHUNK_BIMM`, spécification 1.3)
+
+Contenu : document JSON UTF-8 compact (`TSA::BIM::BimModel::toJson`), versionné par le champ `schema`
+(actuellement 1). `elementCount` = nombre de produits physiques. Clés principales : `project`, `site`,
+`building` (`guid`, `name`, `description`), `storeys` (id de niveau → GlobalId), `elements[]`
+(`id` interne, `guid` IFC, `category`, `predefinedType`, `name`, `objectType`, `tag`, `description`,
+`storey`, `analytical` = liste ordonnée `"beam:12"`, `"column:3"`…, `psets[]`, `classifications[]`),
+`analytical` (clé `"node:7"` → GlobalId de l'objet analytique), `nextId`.
+
+Règles : chunk facultatif et jamais bloquant — absent (fichier ≤ 1.2), illisible ou de schéma futur,
+il est ignoré (avertissement journalisé) et les GlobalId sont attribués au chargement puis
+enregistrés à la sauvegarde suivante. Un lecteur ≤ 1.2 saute le chunk grâce à `chunkSize`.
 
 ---
 

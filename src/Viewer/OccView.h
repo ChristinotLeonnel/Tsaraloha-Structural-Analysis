@@ -284,7 +284,10 @@ public:
     void setSectionPlaneVisible(bool visible);
     bool isSectionPlaneVisible() const { return m_sectionPlaneVisible; }
 
-    // Détection 3D intelligente sous le curseur
+    // Détection 3D intelligente sous le curseur : moteur d'accrochage écran (SnapEngine)
+    static constexpr double kSnapApertureLogicalPx = 14.0;   ///< ouverture d'accrochage (pixels logiques)
+    TSA::Grid::GridSnapResult computeSnap(int px, int py) const;
+    const TSA::Grid::GridSnapResult& lastSnapResult() const noexcept { return m_lastSnapResult; }
     bool findNearest3DPoint(int px, int py, double& outX, double& outY, double& outZ,
                             int& outNodeId, QString& outDesc, TSA::Grid::GridSnapType& outType) const;
 
@@ -650,6 +653,9 @@ private:
 
     // Marqueur visuel interactif d'accrochage (Snap Marker)
     TSA::Grid::GridSnapResult m_lastSnapResult;
+    bool m_snapMarkerDirty = false;   ///< marqueur modifié : un Redraw est dû (MoveTo ne redessine que la couche immédiate)
+    void setLastSnap(const TSA::Grid::GridSnapResult& snap);
+    void refreshSnapAtCursor();   ///< recalcule le marqueur à la position courante (bascule F3 / S)
     Handle(AIS_Shape) m_snapMarkerShape;
     void updateSnapMarker(const TSA::Grid::GridSnapResult& snap);
     void clearSnapMarker();

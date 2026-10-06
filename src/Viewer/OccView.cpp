@@ -14,6 +14,7 @@
 #include "../Geometry/CableGeometry3D.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
+#include "../Grid/SnapEngine.h"
 #include "../UI/Theme/ThemeManager.h"
 #include "../Coordinate/CoordinateTransformationService.h"
 #include "../Commands/ModifyCommands.h"
@@ -624,434 +625,146 @@ void OccView::cancelCurrentDrawing()
     }
 }
 
+TSA::Grid::GridSnapResult OccView::computeSnap(int px, int py) const
+{
+    TSA::Grid::GridSnapResult none;
+    if (m_view.IsNull() || (!m_snapToObject && !m_snapToGrid))
+        return none;
+    const Handle(Graphic3d_Camera)& cam = m_view->Camera();
+    int winW = 0, winH = 0;
+    if (!m_view->Window().IsNull()) m_view->Window()->Size(winW, winH);
+    if (cam.IsNull() || winW <= 0 || winH <= 0)
+        return none;
+
+    // Rayon de visée passant par le curseur (perspective comme orthographique)
+    double xEye = 0.0, yEye = 0.0, zEye = 0.0, xDir = 0.0, yDir = 0.0, zDir = 0.0;
+    m_view->ConvertWithProj(px, py, xEye, yEye, zEye, xDir, yDir, zDir);
+    if (std::abs(xDir) + std::abs(yDir) + std::abs(zDir) < 1e-12)
+        return none;
+
+    TSA::Grid::SnapQuery q;
+    q.cursorX = px;
+    q.cursorY = py;
+    q.rayOrigin = gp_Pnt(xEye, yEye, zEye);
+    q.rayDir = gp_Dir(xDir, yDir, zDir);
+    q.radiusPx = kSnapApertureLogicalPx * devicePixelRatioF();   // ouverture constante à l'écran
+    q.modes = m_gridSnapManager ? m_gridSnapManager->activeModes() : TSA::Grid::SnapMode::All;
+    q.objects = m_snapToObject;
+    q.grids = m_snapToGrid;
+    if (!m_drawingPoints.empty())
+    {
+        q.hasReference = true;   // perpendiculaire depuis le point précédent du tracé
+        q.reference = m_drawingPoints.back();
+    }
+
+    // Projection monde → pixels de la fenêtre de rendu (même repère que la souris)
+    const bool ortho = cam->IsOrthographic();
+    const gp_Pnt eye = cam->Eye();
+    const gp_Dir viewDir = cam->Direction();
+    q.project = [&cam, ortho, eye, viewDir, winW, winH](const gp_Pnt& p, double& sx, double& sy) {
+        if (!ortho && gp_Vec(eye, p).Dot(gp_Vec(viewDir)) <= 0.0)
+            return false;   // derrière l'observateur
+        const gp_Pnt ndc = cam->Project(p);
+        sx = (ndc.X() + 1.0) * 0.5 * winW;
+        sy = (1.0 - ndc.Y()) * 0.5 * winH;
+        return std::isfinite(sx) && std::isfinite(sy);
+    };
+    // Seuls les objets affichés sont accrochables (calques, filtre de nœuds, isolation / mode 2D)
+    q.acceptElement = [this](int kind, int id) {
+        using K = TSA::Model::ElementKind;
+        if (!m_model) return false;
+        switch (static_cast<K>(kind))
+        {
+        case K::Node: return isNodeVisibleByFilter(id) && keepNodeUnderIsolation(id);
+        case K::Beam:
+            if (const auto* e = m_model->getBeam(id))
+                return isElementCategoryVisible(ElementCategory::Beams) && keepLinearUnderIsolation(e->startNodeId(), e->endNodeId());
+            return false;
+        case K::Column:
+            if (const auto* e = m_model->getColumn(id))
+                return isElementCategoryVisible(ElementCategory::Columns) && keepLinearUnderIsolation(e->startNodeId(), e->endNodeId());
+            return false;
+        case K::TrussMember:
+            if (const auto* e = m_model->getTrussMember(id))
+                return isElementCategoryVisible(ElementCategory::Trusses) && keepLinearUnderIsolation(e->startNodeId(), e->endNodeId());
+            return false;
+        case K::Cable:
+            if (const auto* e = m_model->getCable(id))
+                return isElementCategoryVisible(ElementCategory::Cables) && keepLinearUnderIsolation(e->startNodeId(), e->endNodeId());
+            return false;
+        case K::Slab:
+            if (const auto* e = m_model->getSlab(id))
+                return isElementCategoryVisible(ElementCategory::Slabs) && keepSurfaceUnderIsolation(e->nodeIds());
+            return false;
+        case K::Wall:
+            if (const auto* e = m_model->getWall(id))
+                return isElementCategoryVisible(ElementCategory::Walls) && keepLinearUnderIsolation(e->startNodeId(), e->endNodeId());
+            return false;
+        default: return true;
+        }
+    };
+    if (m_mode2DActive)
+        q.acceptPoint = [this](const gp_Pnt& p) { return std::abs(m_workPlane.distanceTo(p)) <= 0.05; };
+
+    TSA::Grid::SnapEngine engine(q);
+    if (m_model) engine.collectModel(*m_model);
+    // TRACE TEMPORAIRE (diagnostic vue de face)
+    if (qEnvironmentVariableIsSet("TSA_SNAP_TRACE"))
+    {
+        FILE* f = std::fopen(qgetenv("TSA_SNAP_TRACE").constData(), "a");
+        if (f)
+        {
+            double sx = 0, sy = 0;
+            const bool ok = m_model && !m_model->nodes().empty() && q.project(gp_Pnt(m_model->nodes().begin()->second.x(), m_model->nodes().begin()->second.y(), m_model->nodes().begin()->second.z()), sx, sy);
+            const auto rr = engine.result();
+            std::fprintf(f, "px=%d py=%d win=%dx%d ortho=%d eye=(%.3f %.3f %.3f) dir=(%.3f %.3f %.3f) n1->(%d %.1f %.1f) snapped=%d type=%d %s\n",
+                         px, py, winW, winH, ortho ? 1 : 0, xEye, yEye, zEye, xDir, yDir, zDir, ok ? 1 : 0, sx, sy, rr.snapped ? 1 : 0, static_cast<int>(rr.type), rr.description.c_str());
+            std::fclose(f);
+        }
+    }
+
+    // Grilles visibles (la grille active en tête)
+    std::vector<const TSA::Grid::GridSystem*> grids;
+    if (m_gridManager)
+    {
+        const TSA::Grid::GridSystem* active = m_gridManager->activeGrid();
+        if (active && active->isVisible()) grids.push_back(active);
+        for (const auto& g : m_gridManager->grids())
+            if (g && g.get() != active && g->isVisible()) grids.push_back(g.get());
+    }
+    engine.collectGrids(grids);
+    return engine.result();
+}
+
 bool OccView::findNearest3DPoint(int px, int py, double& outX, double& outY, double& outZ,
                                 int& outNodeId, QString& outDesc, TSA::Grid::GridSnapType& outType) const
 {
-    outNodeId = -1;
-    outType = TSA::Grid::GridSnapType::None;
-    if (m_view.IsNull())
+    const TSA::Grid::GridSnapResult r = computeSnap(px, py);
+    outNodeId = (r.snapped && r.type == TSA::Grid::GridSnapType::Node) ? r.targetEntityId : -1;
+    outType = r.snapped ? r.type : TSA::Grid::GridSnapType::None;
+    if (!r.snapped)
         return false;
+    outX = r.point.X();
+    outY = r.point.Y();
+    outZ = r.point.Z();
+    outDesc = QString::fromStdString(r.description);
+    return true;
+}
 
-    double xEye = 0.0, yEye = 0.0, zEye = 0.0;
-    double xDir = 0.0, yDir = 0.0, zDir = 0.0;
-    m_view->ConvertWithProj(px, py, xEye, yEye, zEye, xDir, yDir, zDir);
-    gp_Pnt eyePnt(xEye, yEye, zEye);
-    gp_Dir viewDir(xDir, yDir, zDir);
-
-    const double screenPixelRadius = 18.0; // 18 pixels d'aimantation écran
-    double bestNodeDist2 = screenPixelRadius * screenPixelRadius;
-    bool foundNode = false;
-    gp_Pnt bestNodePnt;
-    int bestNodeId = -1;
-
-    // 1. Détection prioritaire N°1 : Nœuds structuraux réels du modèle dans l'espace 3D
-    if (m_model)
-    {
-        for (const auto& [nId, node] : m_model->nodes())
-        {
-            gp_Pnt p(node.x(), node.y(), node.z());
-            if (m_mode2DActive && std::abs(m_workPlane.distanceTo(p)) > 0.05)
-                continue;
-
-            gp_Vec toP(eyePnt, p);
-            if (toP.Dot(viewDir) < 0.0)
-                continue;
-
-            int sx = 0, sy = 0;
-            m_view->Convert(p.X(), p.Y(), p.Z(), sx, sy);
-            double dx = sx - px;
-            double dy = sy - py;
-            double dist2 = dx * dx + dy * dy;
-            if (dist2 <= bestNodeDist2)
-            {
-                bestNodeDist2 = dist2;
-                bestNodePnt = p;
-                bestNodeId = nId;
-                foundNode = true;
-            }
-        }
-    }
-
-    if (foundNode)
-    {
-        outX = bestNodePnt.X();
-        outY = bestNodePnt.Y();
-        outZ = bestNodePnt.Z();
-        outNodeId = bestNodeId;
-        outType = TSA::Grid::GridSnapType::Node;
-        outDesc = QString("Nœud N%1 (%2, %3, %4 m)")
-            .arg(bestNodeId)
-            .arg(outX, 0, 'f', 2)
-            .arg(outY, 0, 'f', 2)
-            .arg(outZ, 0, 'f', 2);
-        return true;
-    }
-
-    // 1b. Détection Object Snap analytique (Extrémité, Milieu, Centre, Perpendiculaire, Le plus proche)
-    if (m_gridSnapManager && m_model)
-    {
-        double wx = 0.0, wy = 0.0, wz = 0.0;
-        if (pixelToWorldPlane(px, py, wx, wy, wz))
-        {
-            auto objSnap = m_gridSnapManager->findObjectSnap(gp_Pnt(wx, wy, wz), m_model, 0.80);
-            if (objSnap.snapped)
-            {
-                int sx = 0, sy = 0;
-                m_view->Convert(objSnap.point.X(), objSnap.point.Y(), objSnap.point.Z(), sx, sy);
-                double dx = sx - px;
-                double dy = sy - py;
-                if (dx * dx + dy * dy <= screenPixelRadius * screenPixelRadius)
-                {
-                    outX = objSnap.point.X();
-                    outY = objSnap.point.Y();
-                    outZ = objSnap.point.Z();
-                    outNodeId = -1;
-                    outType = objSnap.type;
-                    outDesc = QString::fromStdString(objSnap.description);
-                    return true;
-                }
-            }
-        }
-    }
-
-    // Récupérer toutes les grilles visibles (la grille active en tête de liste)
-    std::vector<const TSA::Grid::GridSystem*> visibleGrids;
-    const TSA::Grid::GridSystem* activeGrid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
-    if (activeGrid && activeGrid->isVisible())
-    {
-        visibleGrids.push_back(activeGrid);
-    }
-    if (m_gridManager)
-    {
-        for (const auto& g : m_gridManager->grids())
-        {
-            if (g && g.get() != activeGrid && g->isVisible())
-            {
-                visibleGrids.push_back(g.get());
-            }
-        }
-    }
-
-    if (visibleGrids.empty())
-    {
-        return false;
-    }
-
-    // 2. Détection prioritaire N°2 : Intersections 3D & Origines des grilles (tous étages et montants verticaux)
-    double bestGridDist2 = screenPixelRadius * screenPixelRadius;
-    bool foundGridInter = false;
-    gp_Pnt bestGridPnt;
-    QString bestGridLabel;
-    TSA::Grid::GridSnapType bestGridType = TSA::Grid::GridSnapType::Intersection;
-
-    for (const auto* grid : visibleGrids)
-    {
-        if (grid->cartesian())
-        {
-            for (const auto& inter : grid->cartesian()->intersections())
-            {
-                const gp_Pnt& p = inter.point;
-                if (m_mode2DActive && std::abs(m_workPlane.distanceTo(p)) > 0.05)
-                    continue;
-
-                gp_Vec toP(eyePnt, p);
-                if (toP.Dot(viewDir) < 0.0)
-                    continue;
-
-                int sx = 0, sy = 0;
-                m_view->Convert(p.X(), p.Y(), p.Z(), sx, sy);
-                double dx = sx - px;
-                double dy = sy - py;
-                double dist2 = dx * dx + dy * dy;
-                if (dist2 <= bestGridDist2)
-                {
-                    bestGridDist2 = dist2;
-                    bestGridPnt = p;
-                    foundGridInter = true;
-                    bestGridType = TSA::Grid::GridSnapType::Intersection;
-                    bestGridLabel = QString("Grille (%1, %2, Z=%3 m)")
-                        .arg(QString::fromStdString(inter.labelX))
-                        .arg(QString::fromStdString(inter.labelY))
-                        .arg(p.Z(), 0, 'f', 2);
-                }
-            }
-        }
-        else if (grid->cylindrical())
-        {
-            const gp_Pnt& orig = grid->definition().origin();
-            const auto& zLevels = grid->definition().zLevels();
-            std::vector<double> levels = zLevels.empty() ? std::vector<double>{ 0.0 } : zLevels;
-
-            // Centre de la grille à chaque niveau Z
-            for (double zOffset : levels)
-            {
-                gp_Pnt centerPt(orig.X(), orig.Y(), orig.Z() + zOffset);
-                gp_Vec toP(eyePnt, centerPt);
-                if (toP.Dot(viewDir) < 0.0)
-                    continue;
-
-                int sx = 0, sy = 0;
-                m_view->Convert(centerPt.X(), centerPt.Y(), centerPt.Z(), sx, sy);
-                double dx = sx - px;
-                double dy = sy - py;
-                double dist2 = dx * dx + dy * dy;
-                if (dist2 <= bestGridDist2)
-                {
-                    bestGridDist2 = dist2;
-                    bestGridPnt = centerPt;
-                    foundGridInter = true;
-                    bestGridType = TSA::Grid::GridSnapType::Origin;
-                    bestGridLabel = QString("Centre Grille Cylindrique (%1, %2, %3 m)")
-                        .arg(centerPt.X(), 0, 'f', 2)
-                        .arg(centerPt.Y(), 0, 'f', 2)
-                        .arg(centerPt.Z(), 0, 'f', 2);
-                }
-            }
-
-            // Intersections (Rayons x Angles)
-            for (const auto& inter : grid->cylindrical()->intersections())
-            {
-                const gp_Pnt& p = inter.point;
-                gp_Vec toP(eyePnt, p);
-                if (toP.Dot(viewDir) < 0.0)
-                    continue;
-
-                int sx = 0, sy = 0;
-                m_view->Convert(p.X(), p.Y(), p.Z(), sx, sy);
-                double dx = sx - px;
-                double dy = sy - py;
-                double dist2 = dx * dx + dy * dy;
-                if (dist2 <= bestGridDist2)
-                {
-                    bestGridDist2 = dist2;
-                    bestGridPnt = p;
-                    foundGridInter = true;
-                    bestGridType = TSA::Grid::GridSnapType::Intersection;
-                    bestGridLabel = QString("Grille Cylindrique (R=%1 m, %2°)")
-                        .arg(inter.radius, 0, 'f', 2)
-                        .arg(inter.angleDeg, 0, 'f', 1);
-                }
-            }
-        }
-        else if (grid->arbitrary())
-        {
-            for (const auto& p : grid->arbitrary()->intersections())
-            {
-                gp_Vec toP(eyePnt, p);
-                if (toP.Dot(viewDir) < 0.0)
-                    continue;
-
-                int sx = 0, sy = 0;
-                m_view->Convert(p.X(), p.Y(), p.Z(), sx, sy);
-                double dx = sx - px;
-                double dy = sy - py;
-                double dist2 = dx * dx + dy * dy;
-                if (dist2 <= bestGridDist2)
-                {
-                    bestGridDist2 = dist2;
-                    bestGridPnt = p;
-                    foundGridInter = true;
-                    bestGridType = TSA::Grid::GridSnapType::Intersection;
-                    bestGridLabel = QString("Intersection Arbitraire (%1, %2, %3 m)")
-                        .arg(p.X(), 0, 'f', 2)
-                        .arg(p.Y(), 0, 'f', 2)
-                        .arg(p.Z(), 0, 'f', 2);
-                }
-            }
-        }
-    }
-
-    if (foundGridInter)
-    {
-        outX = bestGridPnt.X();
-        outY = bestGridPnt.Y();
-        outZ = bestGridPnt.Z();
-        outType = bestGridType;
-        outDesc = bestGridLabel;
-        return true;
-    }
-
-    // 3. Détection prioritaire N°3 : Lignes radiales (Cylindrique) et axes de grille (Cartésien)
-    double bestLineDist2 = screenPixelRadius * screenPixelRadius;
-    bool foundLine = false;
-    gp_Pnt bestLinePnt;
-    QString bestLineLabel;
-    TSA::Grid::GridSnapType bestLineType = TSA::Grid::GridSnapType::None;
-
-    for (const auto* grid : visibleGrids)
-    {
-        if (grid->cylindrical())
-        {
-            for (const auto& rad : grid->cylindrical()->radialLines())
-            {
-                int sx1 = 0, sy1 = 0, sx2 = 0, sy2 = 0;
-                m_view->Convert(rad.start.X(), rad.start.Y(), rad.start.Z(), sx1, sy1);
-                m_view->Convert(rad.end.X(), rad.end.Y(), rad.end.Z(), sx2, sy2);
-
-                double vLineX = sx2 - sx1;
-                double vLineY = sy2 - sy1;
-                double len2 = vLineX * vLineX + vLineY * vLineY;
-                if (len2 < 1.0) continue;
-
-                double vPtX = px - sx1;
-                double vPtY = py - sy1;
-                double t = (vPtX * vLineX + vPtY * vLineY) / len2;
-                t = std::clamp(t, 0.0, 1.0);
-
-                double projScreenX = sx1 + t * vLineX;
-                double projScreenY = sy1 + t * vLineY;
-                double d2 = (projScreenX - px) * (projScreenX - px) + (projScreenY - py) * (projScreenY - py);
-
-                if (d2 <= bestLineDist2)
-                {
-                    bestLineDist2 = d2;
-                    gp_Vec v3D(rad.start, rad.end);
-                    bestLinePnt = rad.start.Translated(v3D * t);
-                    foundLine = true;
-                    bestLineType = TSA::Grid::GridSnapType::RadialLine;
-                    bestLineLabel = QString("Rayon Polaire %1 (%2°)")
-                        .arg(QString::fromStdString(rad.label))
-                        .arg(rad.angleDeg, 0, 'f', 1);
-                }
-            }
-        }
-        else if (grid->cartesian())
-        {
-            for (const auto& line : grid->cartesian()->allLines())
-            {
-                int sx1 = 0, sy1 = 0, sx2 = 0, sy2 = 0;
-                m_view->Convert(line.start.X(), line.start.Y(), line.start.Z(), sx1, sy1);
-                m_view->Convert(line.end.X(), line.end.Y(), line.end.Z(), sx2, sy2);
-
-                double vLineX = sx2 - sx1;
-                double vLineY = sy2 - sy1;
-                double len2 = vLineX * vLineX + vLineY * vLineY;
-                if (len2 < 1.0) continue;
-
-                double vPtX = px - sx1;
-                double vPtY = py - sy1;
-                double t = (vPtX * vLineX + vPtY * vLineY) / len2;
-                t = std::clamp(t, 0.0, 1.0);
-
-                double projScreenX = sx1 + t * vLineX;
-                double projScreenY = sy1 + t * vLineY;
-                double d2 = (projScreenX - px) * (projScreenX - px) + (projScreenY - py) * (projScreenY - py);
-
-                if (d2 <= bestLineDist2)
-                {
-                    bestLineDist2 = d2;
-                    gp_Vec v3D(line.start, line.end);
-                    bestLinePnt = line.start.Translated(v3D * t);
-                    foundLine = true;
-                    bestLineType = TSA::Grid::GridSnapType::AxisLine;
-                    bestLineLabel = QString("Axe Grille %1: %2")
-                        .arg(line.isXAxis ? "X" : "Y")
-                        .arg(QString::fromStdString(line.label));
-                }
-            }
-        }
-    }
-
-    if (foundLine)
-    {
-        outX = bestLinePnt.X();
-        outY = bestLinePnt.Y();
-        outZ = bestLinePnt.Z();
-        outType = bestLineType;
-        outDesc = bestLineLabel;
-        return true;
-    }
-
-    // 4. Détection prioritaire N°4 : Arcs concentriques (Cylindrique)
-    double bestArcDist2 = screenPixelRadius * screenPixelRadius;
-    bool foundArc = false;
-    gp_Pnt bestArcPnt;
-    QString bestArcLabel;
-
-    constexpr double RAD_TO_DEG_LOCAL = 180.0 / 3.14159265358979323846;
-
-    for (const auto* grid : visibleGrids)
-    {
-        if (grid->cylindrical())
-        {
-            const auto& orig = grid->definition().origin();
-            double rotDeg = grid->definition().rotationDeg();
-
-            for (const auto& circ : grid->cylindrical()->circles())
-            {
-                if (circ.radius <= 1e-4) continue;
-
-                if (std::abs(viewDir.Z()) > 1e-6)
-                {
-                    double tRay = (circ.zLevel - eyePnt.Z()) / viewDir.Z();
-                    if (tRay > 0.0)
-                    {
-                        gp_Pnt planePnt = eyePnt.Translated(gp_Vec(viewDir) * tRay);
-                        double dx = planePnt.X() - circ.center.X();
-                        double dy = planePnt.Y() - circ.center.Y();
-                        double curR = std::hypot(dx, dy);
-                        if (curR > 1e-4)
-                        {
-                            double rad = std::atan2(dy, dx);
-                            double angleDeg = rad * RAD_TO_DEG_LOCAL - rotDeg;
-                            while (angleDeg < 0.0) angleDeg += 360.0;
-                            while (angleDeg >= 360.0) angleDeg -= 360.0;
-
-                            double snapAngle = angleDeg;
-                            if (!circ.isFullCircle())
-                            {
-                                double start = circ.startAngleDeg;
-                                while (start < 0.0) start += 360.0;
-                                while (start >= 360.0) start -= 360.0;
-
-                                double delta = angleDeg - start;
-                                while (delta < 0.0) delta += 360.0;
-                                while (delta >= 360.0) delta -= 360.0;
-
-                                if (delta > circ.totalAngleDeg + 1e-4)
-                                {
-                                    double toStart = 360.0 - delta;
-                                    double toEnd = delta - circ.totalAngleDeg;
-                                    snapAngle = (toStart < toEnd) ? circ.startAngleDeg : (circ.startAngleDeg + circ.totalAngleDeg);
-                                }
-                            }
-
-                            gp_Pnt pArc = grid->cylindrical()->polarToWorld(circ.radius, snapAngle, circ.zLevel - orig.Z());
-                            int sx = 0, sy = 0;
-                            m_view->Convert(pArc.X(), pArc.Y(), pArc.Z(), sx, sy);
-                            double d2 = (sx - px) * (sx - px) + (sy - py) * (sy - py);
-                            if (d2 <= bestArcDist2)
-                            {
-                                bestArcDist2 = d2;
-                                bestArcPnt = pArc;
-                                foundArc = true;
-                                bestArcLabel = QString("Arc Polaire %1 (R=%2 m, %3°)")
-                                    .arg(QString::fromStdString(circ.label))
-                                    .arg(circ.radius, 0, 'f', 2)
-                                    .arg(snapAngle, 0, 'f', 1);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (foundArc)
-    {
-        outX = bestArcPnt.X();
-        outY = bestArcPnt.Y();
-        outZ = bestArcPnt.Z();
-        outType = TSA::Grid::GridSnapType::Circle;
-        outDesc = bestArcLabel;
-        return true;
-    }
-
-    return false;
+void OccView::setLastSnap(const TSA::Grid::GridSnapResult& snap)
+{
+    const auto& prev = m_lastSnapResult;
+    if (snap.snapped != prev.snapped
+        || (snap.snapped && (snap.type != prev.type || snap.source != prev.source || snap.description != prev.description
+                             || snap.point.SquareDistance(prev.point) > 1e-18)))
+        m_snapMarkerDirty = true;
+    m_lastSnapResult = snap;
 }
 
 bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double& y, double& z, int& detectedNodeId)
 {
+    // Point unique utilisé par l'aperçu (survol) ET par le clic : ce que l'utilisateur voit
+    // (marqueur placé sur SnapResult.point) est exactement ce qui sera créé.
     detectedNodeId = -1;
     m_isCursorSnapped = false;
     if (m_view.IsNull())
@@ -1059,86 +772,53 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
 
     const int px = mousePixelPos.x();
     const int py = mousePixelPos.y();
+    m_gridRenderer.setSnapMarkerPixelScale(devicePixelRatioF());
 
-    // 1. Détection 3D sous le curseur (Proximité écran 18px sur nœuds structuraux, intersections, axes ou arcs)
-    if (m_snapToObject)
+    // 1. Accrochage écran : nœuds, barres, faces, intersections, grilles (SnapEngine)
+    TSA::Grid::GridSnapResult snap = computeSnap(px, py);
+    if (snap.snapped && m_projectionManager.is2D())
     {
-        QString snapDesc;
-        TSA::Grid::GridSnapType snapType = TSA::Grid::GridSnapType::None;
-        if (findNearest3DPoint(px, py, x, y, z, detectedNodeId, snapDesc, snapType))
+        const gp_Pnt projected = m_projectionManager.projectPoint(snap.point, m_workPlane);
+        if (snap.point.Distance(projected) > 1e-4)
         {
-            if (m_projectionManager.is2D())
-            {
-                gp_Pnt pWorld(x, y, z);
-                gp_Pnt pProj = m_projectionManager.projectPoint(pWorld, m_workPlane);
-                x = pProj.X();
-                y = pProj.Y();
-                z = pProj.Z();
-                if (pWorld.Distance(pProj) > 1e-4)
-                {
-                    detectedNodeId = -1;
-                }
-            }
-            m_isCursorSnapped = true;
-            TSA::Grid::GridSnapResult snapRes;
-            snapRes.snapped = true;
-            snapRes.point = gp_Pnt(x, y, z);
-            snapRes.type = snapType;
-            snapRes.description = snapDesc.toStdString();
-            m_gridRenderer.showSnapMarker(snapRes, m_context);
-            emit objectHovered(snapDesc);
-            return true;
+            snap.point = projected;   // projeté sur le plan 2D : ce n'est plus le nœud lui-même
+            snap.targetEntityId = -1;
+            snap.type = TSA::Grid::GridSnapType::Nearest;
         }
     }
 
-    // 2. Si aucun point 3D direct n'est détecté, projection sur le plan de référence actif
     double wx = 0.0, wy = 0.0, wz = 0.0;
-    if (!pixelToWorldPlane(px, py, wx, wy, wz))
+    if (!snap.snapped)
     {
-        m_gridRenderer.hideSnapMarker(m_context);
-        return false;
-    }
-
-    // 3. Accrochage magnétique aux grilles et au WorkPlane si activé
-    if (m_snapToGrid)
-    {
-        gp_Pnt rawPnt(wx, wy, wz);
-        TSA::Grid::GridSnapResult snapRes = m_snapManager.findWorkPlaneSnap(rawPnt, m_workPlane, m_model);
-        if (!snapRes.snapped && m_gridSnapManager && m_gridManager)
+        // 2. Aucun objet sous le curseur : point du plan de travail, arrondi au pas de sa grille
+        if (!pixelToWorldPlane(px, py, wx, wy, wz))
         {
-            snapRes = m_gridSnapManager->findSnap(rawPnt, m_gridManager, m_model);
-        }
-
-        if (snapRes.snapped)
-        {
-            m_isCursorSnapped = true;
-            wx = snapRes.point.X();
-            wy = snapRes.point.Y();
-            wz = snapRes.point.Z();
-            if (snapRes.type == TSA::Grid::GridSnapType::Node && m_model)
-            {
-                for (const auto& [nId, n] : m_model->nodes())
-                {
-                    if (std::abs(n.x() - wx) < 1e-4 && std::abs(n.y() - wy) < 1e-4 && std::abs(n.z() - wz) < 1e-4)
-                    {
-                        detectedNodeId = nId;
-                        break;
-                    }
-                }
-            }
-            m_gridRenderer.showSnapMarker(snapRes, m_context);
-            emit objectHovered(QString::fromStdString(snapRes.description));
-        }
-        else
-        {
+            setLastSnap(TSA::Grid::GridSnapResult());
             m_gridRenderer.hideSnapMarker(m_context);
+            return false;
+        }
+        if (m_snapToGrid)
+        {
+            snap = m_snapManager.snapToWorkPlaneGrid(gp_Pnt(wx, wy, wz), m_workPlane);
+            snap.source = TSA::Grid::SnapSource::WorkPlane;
         }
     }
-    else
+
+    setLastSnap(snap);
+    if (snap.snapped)
     {
-        m_gridRenderer.hideSnapMarker(m_context);
+        m_isCursorSnapped = true;
+        x = snap.point.X();
+        y = snap.point.Y();
+        z = snap.point.Z();
+        if (snap.type == TSA::Grid::GridSnapType::Node)
+            detectedNodeId = snap.targetEntityId;
+        m_gridRenderer.showSnapMarker(snap, m_context);
+        emit objectHovered(QString::fromStdString(snap.description));
+        return true;
     }
 
+    m_gridRenderer.hideSnapMarker(m_context);
     x = wx;
     y = wy;
     z = wz;

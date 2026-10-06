@@ -52,6 +52,14 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
         filePanel->addInternalSeparator();
         filePanel->addSmallColumn(fileSub);
     }
+    if (acts.actionImportIfc || acts.actionExportIfc)
+    {
+        std::vector<QAction*> ifcSub;
+        if (acts.actionImportIfc) ifcSub.push_back(acts.actionImportIfc);
+        if (acts.actionExportIfc) ifcSub.push_back(acts.actionExportIfc);
+        filePanel->addInternalSeparator();
+        filePanel->addSmallColumn(ifcSub);
+    }
     if (acts.actionStartPage)
     {
         filePanel->addInternalSeparator();
@@ -564,6 +572,7 @@ RibbonTab* RibbonBuilder::buildEditTab(RibbonBar* bar, const RibbonActions& acts
     std::vector<QAction*> topoCol;
     if (acts.actionSplitBars) topoCol.push_back(acts.actionSplitBars);
     if (acts.actionMergeNodes) topoCol.push_back(acts.actionMergeNodes);
+    if (acts.actionCleanModel) topoCol.push_back(acts.actionCleanModel);
     if (acts.actionMirror || !topoCol.empty())
     {
         auto* topoPanel = new RibbonPanel(QObject::tr("Symétrie & Topologie"), tab);
