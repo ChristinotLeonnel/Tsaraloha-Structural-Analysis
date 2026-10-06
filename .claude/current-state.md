@@ -1,6 +1,6 @@
 # Current State
 
-Last Updated: 2026-10-05 — branche feature/multi-engine-analysis (analyse multi-moteurs)
+Last Updated: 2026-10-06 — branche feature/bim-core (couche BIM, IFC export / import)
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
@@ -12,7 +12,9 @@ Warnings: 2 × C4996 (`TColgp_HArray1OfPnt` déprécié, src/Geometry/CableGeome
 Note: MSVC francisé → avertissement CMake sur le préfixe /showIncludes (BUG-011).
 
 ## Tests
-Status: IMPLEMENTED — 180/180 PASS (suite `mdd` 150–159 le 2026-10-05) ;
+Status: IMPLEMENTED — 197/197 PASS (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
+186/186 avant (suite `cleanup` 160–165 le 2026-10-05) ;
+180/180 avant (suite `mdd` 150–159 le 2026-10-05) ;
 170/170 avant (suite `tools` 140–149 et test 139 ajoutés le 2026-10-05) ;
 159/159 avant (`TSA_TestSuite.exe` ; suite `engines` tests 130–138 ajoutée le 2026-10-05 ;
 tests 101–111 ajoutés le 2026-10-04 ;
@@ -79,6 +81,13 @@ grille). Saisie dans la vue 3D par défaut (clics, valeur clavier, aperçu), fen
 outil Rectangle par deux clics réels. Non vérifié en GUI : les 19 autres outils (testés au niveau modèle).
 Voir docs/MODELING_TOOLS.md.
 
+## Model cleanup (nettoyage topologique)
+Status: IMPLEMENTED (2026-10-05) — `TSA::Model::ModelCleanup` : fusion des nœuds confondus, barres en double (charges
+reportées), raccordement des nœuds posés sur une barre (division), croisements (option, désactivée par défaut),
+nœuds parasites. Bilan sans modification (analyze sur copie), application en une transaction. Fenêtre « Nettoyer le
+modèle » (Modifier › Symétrie & Topologie, menu Édition) ; proposé automatiquement avant chaque calcul (F5 / fenêtre
+Analysis) si le bilan n'est pas vide. Vérifié dans l'application : fenêtre et bilan. Tests 160–165.
+
 ## Editing
 Status: PARTIAL — propriétés, déplacement/rotation/copie, suppression, presse-papier, transactions,
 symétrie (copie / retournement, plans X/Y/Z), division de poutres/poteaux en N tronçons, fusion des
@@ -139,3 +148,15 @@ Status: PARTIAL — mesures de référence : voir changelog 2026-10-03 et test 1
 ## Threading
 Status: PARTIAL — threads uniquement pour OpenSees (`QThread::create` dans OpenSeesSolver/Manager,
 chemin asynchrone) ; l'UI utilise `solveSynchronous` (bloquant).
+
+## Couche BIM (ADR-020)
+Status: PARTIAL — phases 1–3, 8, 9 et 4 (sauf repère de grille) de docs/BIM_ARCHITECTURE.md (2026-10-06).
+IMPLEMENTED : `src/BIM/Core` (BimTypes, IfcGuid, BimModel), `src/Core/Units.h` ; `Model::bim()` (sync paresseuse),
+`bimForEdit()`, `setBim()` ; snapshot Undo ; hooks division / copie ; chunk `.tsa` BIMM (format 1.3).
+IFC (`src/BIM/IFC`) : StepWriter/StepReader, IfcMapper, IfcGeometryMapper, IfcPropertyMapper, IfcRelationshipMapper,
+IfcExporter (IFC4X3_ADD2, physique + analytique), IfcImporter (IFC2X3/4/4X3, analytique ou déduit de la géométrie,
+unités du fichier). UI : Fichier > Importer / Exporter IFC, ruban Accueil > Projet (MainWindow_Bim.cpp).
+Preuves : tests 170–180 ; IfcOpenShell 0.9 validate = 0 anomalie, 13/13 géométries ; essai GUI 2026-10-06 (import du
+fichier IfcOpenShell puis export, fichier exporté valide).
+MISSING : validation BIM pré-calcul, IDS, BCF, API IA, propriétés BIM dans le panneau Propriétés, AnalysisRun /
+historique des versions, charges IFC (BUG-028), métadonnées au collage (BUG-029).

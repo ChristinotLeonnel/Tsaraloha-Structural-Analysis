@@ -585,6 +585,19 @@ void MainWindow::createActions()
     m_actionSplitBars->setToolTip(tr("Diviser les poutres et poteaux sélectionnés en N tronçons égaux"));
     connect(m_actionSplitBars, &QAction::triggered, this, &MainWindow::onActionSplitBars);
 
+    m_actionCleanModel = new QAction(QIcon(":/icons/structure/struct_merge.svg"), tr("&Nettoyer le modèle..."), this);
+    m_actionCleanModel->setToolTip(tr("Fusionner les nœuds confondus, supprimer les nœuds parasites et les barres en double, "
+                                      "raccorder les nœuds posés sur des barres (bilan avant application)"));
+    connect(m_actionCleanModel, &QAction::triggered, this, &MainWindow::onActionCleanModel);
+
+    // Échange openBIM (IFC 4.3) : logique dans src/BIM/IFC, l'interface ne fait que relier
+    m_actionExportIfc = new QAction(QIcon(":/icons/file/file_export.svg"), tr("Exporter &IFC..."), this);
+    m_actionExportIfc->setToolTip(tr("Exporter le modèle au format IFC 4.3 (produits physiques, modèle analytique, matériaux, profils, Psets)"));
+    connect(m_actionExportIfc, &QAction::triggered, this, &MainWindow::onActionExportIfc);
+    m_actionImportIfc = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer I&FC..."), this);
+    m_actionImportIfc->setToolTip(tr("Créer un projet depuis un fichier IFC (IFC2X3, IFC4, IFC4X3) : modèle analytique ou déduit de la géométrie"));
+    connect(m_actionImportIfc, &QAction::triggered, this, &MainWindow::onActionImportIfc);
+
     m_actionMergeNodes = new QAction(tr("&Fusionner les nœuds confondus..."), this);
     m_actionMergeNodes->setIcon(QIcon(":/icons/structure/struct_merge.svg"));
     m_actionMergeNodes->setToolTip(tr("Fusionner les nœuds géométriquement confondus (éléments, appuis et charges reportés)"));
@@ -834,6 +847,9 @@ void MainWindow::createMenus()
     fileMenu->addAction(m_actionSave);
     fileMenu->addAction(m_actionSaveAs);
     fileMenu->addSeparator();
+    fileMenu->addAction(m_actionImportIfc);
+    fileMenu->addAction(m_actionExportIfc);
+    fileMenu->addSeparator();
     fileMenu->addAction(m_actionExit);
 
     // 2. Menu Édition
@@ -856,6 +872,7 @@ void MainWindow::createMenus()
     editMenu->addSeparator();
     editMenu->addAction(m_actionSplitBars);
     editMenu->addAction(m_actionMergeNodes);
+    editMenu->addAction(m_actionCleanModel);
     {
         auto* modifyMenu = editMenu->addMenu(QIcon(":/icons/tools/trim.svg"), tr("Outils de modification"));
         auto* drawMenu = editMenu->addMenu(QIcon(":/icons/tools/beam_chain.svg"), tr("Outils de dessin"));
@@ -1120,6 +1137,9 @@ void MainWindow::createRibbon()
     acts.actionMirror = m_actionMirror;
     acts.actionSplitBars = m_actionSplitBars;
     acts.actionMergeNodes = m_actionMergeNodes;
+    acts.actionCleanModel = m_actionCleanModel;
+    acts.actionImportIfc = m_actionImportIfc;
+    acts.actionExportIfc = m_actionExportIfc;
     acts.actionToolInputMode = m_actionToolInputViewport;
     for (const char* id : { "scale", "array_linear", "array_polar", "offset", "split_at", "intersect", "extend", "trim" })
         if (m_toolActions.count(id)) acts.advancedModifyTools.push_back(m_toolActions[id]);

@@ -107,6 +107,9 @@ struct RibbonActions
     QAction* actionMirror = nullptr;
     QAction* actionSplitBars = nullptr;
     QAction* actionMergeNodes = nullptr;
+    QAction* actionCleanModel = nullptr;
+    QAction* actionImportIfc = nullptr;
+    QAction* actionExportIfc = nullptr;
     QAction* actionToolInputMode = nullptr;             ///< saisie 3D / fenêtre des outils
     std::vector<QAction*> advancedModifyTools;           ///< outils de modification (registre)
     std::vector<QAction*> drawTools;                     ///< outils de dessin (registre)

@@ -42,6 +42,7 @@ std::vector<int> copyTransformed(Model& m,
     {
         const gp_Trsf trsf = trsfOf(step);
         std::map<int, int> newNode;
+        std::vector<std::pair<TSA::BIM::AnalyticalRef, TSA::BIM::AnalyticalRef>> bimCopies;
         for (int nid : allNodeIds)
         {
             const auto* n = m.getNode(nid);
@@ -65,6 +66,7 @@ std::vector<int> copyTransformed(Model& m,
             const Beam o = *src;
             const int nid = m.addBeam(newNode[o.startNodeId()], newNode[o.endNodeId()], o.width(), o.height());
             if (auto* e = m.getBeam(nid)) { copyBeamAttributes(o, *e); m.notifyBeamModified(nid); }
+            bimCopies.push_back({ { ElementKind::Beam, id }, { ElementKind::Beam, nid } });
             created.push_back(nid);
         }
         for (int id : columnIds)
@@ -74,6 +76,7 @@ std::vector<int> copyTransformed(Model& m,
             const Column o = *src;
             const int nid = m.addColumn(newNode[o.startNodeId()], newNode[o.endNodeId()], o.width(), o.height());
             if (auto* e = m.getColumn(nid)) { copyColumnAttributes(o, *e); m.notifyColumnModified(nid); }
+            bimCopies.push_back({ { ElementKind::Column, id }, { ElementKind::Column, nid } });
             created.push_back(nid);
         }
         for (int id : trussIds)
@@ -83,6 +86,7 @@ std::vector<int> copyTransformed(Model& m,
             const TrussMember o = *src;
             const int nid = m.addTrussMember(newNode[o.startNodeId()], newNode[o.endNodeId()], 0.10, o.name(), o.role());
             if (auto* e = m.getTrussMember(nid)) { copyTrussAttributes(o, *e); m.notifyTrussMemberModified(nid); }
+            bimCopies.push_back({ { ElementKind::TrussMember, id }, { ElementKind::TrussMember, nid } });
             created.push_back(nid);
         }
         for (int id : slabIds)
@@ -96,6 +100,7 @@ std::vector<int> copyTransformed(Model& m,
             // translation et rotation conservent le sens de parcours du contour.
             const int nid = m.addSlab(nids, o.thickness());
             if (auto* e = m.getSlab(nid)) { copySlabAttributes(o, *e); m.notifySlabModified(nid); }
+            bimCopies.push_back({ { ElementKind::Slab, id }, { ElementKind::Slab, nid } });
             created.push_back(nid);
         }
         for (int id : cableIds)
@@ -106,8 +111,11 @@ std::vector<int> copyTransformed(Model& m,
             const int nid = m.addCable(newNode[o.startNodeId()], newNode[o.endNodeId()], o.definition(), o.name(),
                                        o.geometryMode(), o.sag());
             if (auto* e = m.getCable(nid)) { copyCableAttributes(o, *e); m.notifyCableModified(nid); }
+            bimCopies.push_back({ { ElementKind::Cable, id }, { ElementKind::Cable, nid } });
             created.push_back(nid);
         }
+        // Les copies d'une poutre physique divisée forment une nouvelle poutre physique
+        m.bimForEdit().registerCopies(bimCopies);
     }
     return created;
 }

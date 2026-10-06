@@ -64,6 +64,7 @@ set(UI_MAINWINDOW_SOURCES
     src/UI/MainWindow_Actions.cpp
     src/UI/MainWindow_Tools.cpp
     src/UI/MainWindow_Transform.cpp
+    src/UI/MainWindow_Bim.cpp
     src/UI/MainWindow_ModelingTools.cpp
 )
 
@@ -148,6 +149,8 @@ set(UI_DIALOGS_SOURCES
 set(UI_TOOLS_SOURCES
     src/UI/Tools/ModelingToolDialog.h
     src/UI/Tools/ModelingToolDialog.cpp
+    src/UI/Tools/ModelCleanupDialog.h
+    src/UI/Tools/ModelCleanupDialog.cpp
 )
 
 set(UI_ANALYSIS_SOURCES
@@ -314,6 +317,8 @@ set(GRID_CORE_SOURCES
     src/Grid/ArbitraryGrid.cpp
     src/Grid/GridSnapManager.h
     src/Grid/GridSnapManager.cpp
+    src/Grid/SnapEngine.h
+    src/Grid/SnapEngine.cpp
     src/Grid/SnapManager.h
     src/Grid/SnapManager.cpp
     src/Grid/GridSystem.h
@@ -328,6 +333,8 @@ set(GRID_RENDERING_SOURCES
     src/Grid/GridLabelRenderer.cpp
     src/Grid/GridRenderer.h
     src/Grid/GridRenderer.cpp
+    src/Grid/SnapMarker.h
+    src/Grid/SnapMarker.cpp
 )
 
 # --- Viewer 3D OCCT (UI uniquement) --------------------------------------------
@@ -407,6 +414,33 @@ set(MODEL_CORE_SOURCES
     src/Model/Model.cpp
     src/Model/Model_Transformations.cpp
     src/Model/Model_Topology.cpp
+    src/Model/ModelCleanup.h
+    src/Model/ModelCleanup.cpp
+    # Couche BIM (docs/BIM_ARCHITECTURE.md)
+    src/Core/Units.h
+    src/BIM/Core/BimTypes.h
+    src/BIM/Core/BimTypes.cpp
+    src/BIM/Core/IfcGuid.h
+    src/BIM/Core/IfcGuid.cpp
+    src/BIM/Core/BimModel.h
+    src/BIM/Core/BimModel.cpp
+    src/BIM/IFC/IfcStepWriter.h
+    src/BIM/IFC/IfcStepWriter.cpp
+    src/BIM/IFC/IfcExportContext.h
+    src/BIM/IFC/IfcMapper.h
+    src/BIM/IFC/IfcMapper.cpp
+    src/BIM/IFC/IfcGeometryMapper.h
+    src/BIM/IFC/IfcGeometryMapper.cpp
+    src/BIM/IFC/IfcPropertyMapper.h
+    src/BIM/IFC/IfcPropertyMapper.cpp
+    src/BIM/IFC/IfcRelationshipMapper.h
+    src/BIM/IFC/IfcRelationshipMapper.cpp
+    src/BIM/IFC/IfcExporter.h
+    src/BIM/IFC/IfcExporter.cpp
+    src/BIM/IFC/IfcStepReader.h
+    src/BIM/IFC/IfcStepReader.cpp
+    src/BIM/IFC/IfcImporter.h
+    src/BIM/IFC/IfcImporter.cpp
     src/Model/Model_Snapshots.cpp
     src/Model/ModelDiff.h
     src/Model/ModelDiff.cpp
@@ -917,6 +951,9 @@ set(TEST_SOURCES
     tests/test_analysis_engines.cpp
     tests/test_modeling_tools.cpp
     tests/test_met_de_deplacement.cpp
+    tests/test_model_cleanup.cpp
+    tests/test_bim.cpp
+    tests/test_snap.cpp
     resources/resources.qrc
 )
 

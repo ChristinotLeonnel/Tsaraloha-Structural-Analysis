@@ -25,6 +25,7 @@
 #include <QMessageBox>
 #include <QLineEdit>
 #include <QLabel>
+#include <QSignalBlocker>
 #include <cmath>
 #include <sstream>
 #include <set>
@@ -712,6 +713,26 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
         }
     }
 
+    // 1 bis. Topologie : nœuds confondus, nœuds sur barres, doublons, nœuds parasites faussent le
+    //        calcul ou la validation → nettoyage proposé (bilan calculé sans modifier le modèle).
+    {
+        const TSA::Model::CleanupReport check = TSA::Model::ModelCleanup::analyze(*m_model);
+        if (check.changed())
+        {
+            QMessageBox box(QMessageBox::Question, tr("Nettoyage du modèle recommandé"),
+                            tr("Le modèle présente des défauts de topologie :\n\n%1\n\n"
+                               "Les corriger avant le calcul ? (annulable par Ctrl+Z)").arg(QString::fromStdString(check.summary())),
+                            QMessageBox::NoButton, this);
+            auto* cleanBtn = box.addButton(tr("Nettoyer puis calculer"), QMessageBox::AcceptRole);
+            box.addButton(tr("Calculer sans nettoyer"), QMessageBox::DestructiveRole);
+            auto* cancelBtn = box.addButton(QMessageBox::Cancel);
+            box.setDefaultButton(cleanBtn);
+            box.exec();
+            if (box.clickedButton() == cancelBtn) return false;
+            if (box.clickedButton() == cleanBtn) applyModelCleanup({});
+        }
+    }
+
     // 2. Préparation : portée → modèle d'analyse → validation (générique + moteur).
     const PreparedAnalysis prepared = m_analysisManager->prepare(*m_model, m_gridManager.get(), context);
     if (m_consoleDock)
@@ -974,6 +995,12 @@ void MainWindow::onActionNoteDeCalcul()
 
 void MainWindow::onActionToggleDeformed(bool checked)
 {
+    // Garder la case du ruban/menu cohérente quand l'appel vient du dock Résultats.
+    if (m_actionDeformedToggle && m_actionDeformedToggle->isChecked() != checked)
+    {
+        QSignalBlocker blocker(m_actionDeformedToggle);
+        m_actionDeformedToggle->setChecked(checked);
+    }
     if (m_occView && m_occView->resultsVisual())
     {
         m_occView->resultsVisual()->setDeformedVisible(checked);

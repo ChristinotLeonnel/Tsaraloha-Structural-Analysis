@@ -4,6 +4,9 @@
 #include "../../Grid/GridManager.h"
 #include "../../Grid/GridSnapManager.h"
 
+#include <utility>
+#include <vector>
+
 class QListWidget;
 class QPushButton;
 class QCheckBox;
@@ -67,6 +70,8 @@ private:
     QCheckBox* m_labelsCheck = nullptr;
     QCheckBox* m_intersectionsCheck = nullptr;
     QDoubleSpinBox* m_snapToleranceSpin = nullptr;
+    /// Types d'accrochage objet (SnapMode) : appliqués immédiatement au GridSnapManager
+    std::vector<std::pair<QCheckBox*, TSA::Grid::SnapMode>> m_snapModeChecks;
 
     QCheckBox* m_chkLiveSync = nullptr;
     QPushButton* m_btnApply = nullptr;

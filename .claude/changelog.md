@@ -2,6 +2,45 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-06 (Résultats 3D : déformée masquée réellement)
+
+### Fixed
+- Déformée 3D restant à l'écran après l'avoir décochée : redessin du viewport après chaque changement d'état de
+  `ResultsVisualManager` (déformée, mode, échelles, diagrammes, réactions, légende, animation modale) ; preset Auto
+  régénère les formes ; légende rafraîchie ; case ruban synchronisée avec le dock (FIX-2026-10-06-DEFORMED).
+
+## 2026-10-06 (IFC 4.3 : export, import, aller-retour)
+
+### Added
+- `src/BIM/IFC` : IfcStepWriter / IfcStepReader (ISO 10303-21), IfcMapper (entités, types prédéfinis, profils,
+  matériaux), IfcGeometryMapper (SweptSolid + axe, repère du viewport), IfcPropertyMapper (Psets standard,
+  Pset_TSA_Structural, Psets saisis), IfcRelationshipMapper, IfcExporter (IFC4X3_ADD2 : spatial, produits, modèle
+  analytique, IfcRelAssignsToProduct), IfcImporter (unités, analytique ou géométrie, IfcIndexedPolyCurve).
+- `BimModel::insert`, `setAnalyticalGlobalId`, `defaultProductName/Tag` ; GlobalId du modèle analytique persistant.
+- UI : Fichier > Importer IFC… / Exporter IFC…, ruban Accueil > Projet (`MainWindow_Bim.cpp`).
+- Tests 177–180 ; fixture `tests/data/ifcopenshell_fixture.ifc` (IfcOpenShell 0.9, mm) ; 197/197.
+- docs/IFC_MAPPING.md ; statut des phases dans docs/BIM_ARCHITECTURE.md.
+
+## 2026-10-06 (Couche BIM — phases 1–3, ADR-020)
+
+### Added
+- docs/BIM_ARCHITECTURE.md (état actuel, écarts BIM, plan en 13 phases), docs/ANALYTICAL_MODEL.md.
+- `src/Core/Units.h` (unités centralisées), `src/BIM/Core` : BimTypes (catégories ↔ entités IFC 4.3), IfcGuid
+  (GlobalId 22 car.), BimModel (produits physiques, mapping physique → analytique 1:N, structure spatiale, Psets,
+  classifications, JSON versionné).
+- `Model::bim()` / `bimForEdit()` / `setBim()` ; BIM dans `ModelStateSnapshot` ; hooks splitBeam / splitColumn /
+  splitBarAt / copyTransformed.
+- Chunk `.tsa` `BIMM` ; format 1.3 (docs/TSA_FILE_FORMAT.md §5.y).
+- Tests 170–176 (suite `bim`) ; test 127 accepte un format ≥ 1.2 ; 193/193.
+
+## 2026-10-05 (Nettoyage du modèle)
+
+### Added
+- `src/Model/ModelCleanup.*` : analyze (copie) / clean ; `connectCrossingBars` partagé avec l'outil Intersecter.
+- `ModelCleanupDialog` (opérations, tolérance, bilan détaillé : corrections, refus, points à vérifier).
+- Action « Nettoyer le modèle... » (ruban Modifier, menu Édition) ; proposition « Nettoyer puis calculer » avant calcul.
+- Tests 160–165 (suite `cleanup`), dont un portique instable (traverse non reliée) calculable après nettoyage ; 186/186.
+
 ## 2026-10-05 (Moteur 2D MetDeDeplacement — ADR-019)
 
 ### Added
