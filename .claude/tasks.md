@@ -14,6 +14,13 @@ Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir 
 - [ ] BUG-029 : transmettre les métadonnées BIM au collage (`StructuralClipboard`).
 - [ ] Docs restantes : BIM_GUIDELINES.md, AI_API.md, VERSIONING.md (IFC_MAPPING.md fait).
 
+## Fenêtre / Start Center (ADR-021)
+
+- [x] AppShell, barre de titre, Start Center, Nouveau projet, Fermer le projet (essais GUI 2026-10-06).
+- [ ] BUG-030 : brancher Encastrement / Articulation / Appui simple du menu Structure sur l'assignation réelle.
+- [ ] BUG-032 : barre d'état compacte (indicateurs repliables) pour supprimer le chevauchement < 1 680 px.
+- [ ] BUG-033 : vérifier multi-écrans / DPI mixte ; Snap layouts Windows 11 (HTMAXBUTTON).
+
 ## CRITICAL
 
 - [ ] (aucune tâche critique ouverte)

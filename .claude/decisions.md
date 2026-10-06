@@ -193,3 +193,18 @@ Les mutations directes non notifiées restent couvertes par la signature de sync
 conformité ISO / buildingSMART.
 Status: ACTIVE (2026-10-06)
 
+## ADR-021
+Title: Fenêtre unique AppShell : Start Center au lancement, workspace créé à la demande, barre de titre personnalisée
+Decision: `TSA::UI::AppShell` (src/UI/Shell) est la seule fenêtre top-level : `TitleBar` + `QStackedWidget`
+{`StartCenter`, `MainWindow`}. `ApplicationMode` StartCenter / ProjectWorkspace. `MainWindow` devient le workspace,
+construit au premier projet ouvert ou créé (pas au lancement), conservé ensuite et vidé par `closeProject()`
+(`resetWorkspace`). Les commandes de cycle de vie (Nouveau, Ouvrir, Fermer, Quitter, plein écran) remontent par
+signaux à AppShell. Barre de titre sans cadre système mais avec le style WS_OVERLAPPEDWINDOW conservé
+(WM_NCCALCSIZE / WM_NCHITTEST) pour garder le comportement Windows natif.
+Reason: démarrage sans charger viewport / docks / ruban (fenêtre visible < 1 s), séparation nette accueil ↔
+modélisation sans masquer les widgets un à un, commandes principales sur la ligne du titre (logique AutoCAD).
+Recréer MainWindow à chaque projet aurait réinitialisé OCCT et des dizaines de connexions pour un gain nul.
+Consequences: ne jamais utiliser `MainWindow::close()` / `isFullScreen()` / `setWindowTitle` comme fenêtre (c'est une
+page) : passer par les signaux ou `window()`. Nouveau code de cycle de vie dans AppShell. Le Start Center n'est
+affiché que sans projet ouvert. Code Win32 limité à AppShell.cpp (exclu du PCH, lien dwmapi).
+Status: ACTIVE (2026-10-06)

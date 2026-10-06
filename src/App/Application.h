@@ -3,7 +3,7 @@
 #include <QApplication>
 #include <memory>
 
-class MainWindow;
+namespace TSA::UI { class AppShell; }
 
 class Application : public QApplication
 {
@@ -16,5 +16,5 @@ public:
     bool init();
 
 private:
-    std::unique_ptr<MainWindow> m_mainWindow;
+    std::unique_ptr<TSA::UI::AppShell> m_shell;
 };

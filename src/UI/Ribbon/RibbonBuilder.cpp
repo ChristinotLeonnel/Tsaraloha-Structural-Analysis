@@ -16,9 +16,8 @@ void RibbonBuilder::buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWid
     if (!bar) return;
 
     // Barre d'accès rapide : les commandes de tous les jours, quel que soit l'onglet actif.
-    bar->setQuickAccess({ acts.actionNew, acts.actionOpen, acts.actionSave,
-                          acts.actionUndo, acts.actionRedo,
-                          acts.actionSelectMode, acts.actionFitAll, acts.actionView3D,
+    // Nouveau, Ouvrir, Enregistrer, Annuler et Rétablir sont dans la barre de titre (AppShell).
+    bar->setQuickAccess({ acts.actionSelectMode, acts.actionFitAll, acts.actionView3D,
                           acts.actionRunSolve });
 
     // Ordre : fichier → modèle → modification → structure → charges → analyse → résultats → vues → outils.
@@ -60,10 +59,10 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
         filePanel->addInternalSeparator();
         filePanel->addSmallColumn(ifcSub);
     }
-    if (acts.actionStartPage)
+    if (acts.actionCloseProject)
     {
         filePanel->addInternalSeparator();
-        filePanel->addLargeAction(acts.actionStartPage);
+        filePanel->addLargeAction(acts.actionCloseProject);
     }
     tab->addPanel(filePanel);
 

@@ -17,7 +17,7 @@ struct RibbonActions
 {
     // 1. Accueil & Fichier
     QAction* actionNew = nullptr;
-    QAction* actionStartPage = nullptr;
+    QAction* actionCloseProject = nullptr;
     QAction* actionOpen = nullptr;
     QAction* actionSave = nullptr;
     QAction* actionSaveAs = nullptr;

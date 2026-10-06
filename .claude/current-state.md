@@ -21,6 +21,17 @@ tests 101–111 ajoutés le 2026-10-04 ;
 suite `extraction` = validation numérique contre le binaire OpenSees 3.8.0)
 Non couvert : comportement GUI (OccView, docks, mode 2D) — vérifications manuelles uniquement.
 
+## Fenêtre / Start Center (ADR-021)
+Status: IMPLEMENTED (2026-10-06, branche feature/start-center) — `AppShell` + `TitleBar` + `StartCenter` +
+`NewProjectDialog` ; workspace (`MainWindow`) créé au premier projet. Vérifié dans l'application (Debug, 125 %) :
+lancement → Start Center seul (fenêtre < 1 s), Nouveau projet (dialogue, fichier créé, workspace, récents), Ouvrir
+(Ctrl+O, stress_4900), projet récent (simple clic = sélection, double-clic = ouverture, vue restaurée), Fermer le projet
+(prompt Enregistrer / Ne pas enregistrer / Annuler) → Start Center, fermeture code propre, ligne de commande
+`TSA.exe fichier.tsa`, recherche / tri / « Retirer des projets récents » (fichier conservé), menu d'application,
+thème clair/sombre, agrandir / restaurer / réduire / déplacer / double-clic / redimensionnement bords et coins,
+Annuler / Rétablir de la barre de titre. Non vérifié : multi-écrans / DPI mixte, Snap layouts Win11 (BUG-033) ;
+calcul GUI bloqué par BUG-030 (moteurs couverts par la suite de tests).
+
 ## UI
 Ruban : responsive sans scroll (Full → IconOnly → Collapsed → « Plus »), barre d'accès rapide dans la
 rangée d'onglets, infobulles riches. Limite : `ThemeManager::ribbonScrollStyleSheet` devenu inutilisé ;

@@ -51,6 +51,7 @@
 #include "../Commands/CreateElementCommands.h"
 #include "../Commands/ModifyCommands.h"
 #include "../Commands/CommandCatalog.h"
+#include "Home/NewProjectDialog.h"
 
 #include <QMenuBar>
 #include <QToolBar>
@@ -64,6 +65,7 @@
 #include <QFileInfo>
 #include <QElapsedTimer>
 #include <QTimer>
+#include <QSignalBlocker>
 #include <QLabel>
 #include <QAction>
 #include <QActionGroup>
@@ -93,6 +95,9 @@ MainWindow::MainWindow(QWidget* parent)
     , m_projectManager(std::make_unique<TSA::Project::ProjectManager>(this))
     , m_windowManager(std::make_unique<TSA::UI::WindowManager>(this, this))
 {
+    // QMainWindow est toujours créée comme fenêtre : embarquée dans AppShell, c'est une page.
+    if (parent) setWindowFlags(Qt::Widget);
+
     m_resultsGuard = std::make_unique<TSA::Analysis::ResultsValidityGuard>(m_model.get());
     m_resultsGuard->setStaleCallback([this]() {
         // Différé : on est au milieu d'une notification du modèle ; ne pas toucher aux vues ici.
@@ -278,9 +283,6 @@ void MainWindow::onResultsBecameStale()
 void MainWindow::setupUi()
 {
     setWindowTitle(tr("TSA - 3D Structural Modeler"));
-    setWindowIcon(QIcon(":/icons/TSA.ico"));
-    resize(1440, 880);
-
     setDockNestingEnabled(true);
 
     // Widget central : Viewport OpenCASCADE entouré des règles graduées (style Robot)
@@ -288,14 +290,14 @@ void MainWindow::setupUi()
     m_occView->setSelectionManager(m_selectionManager.get());
     m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
     m_viewportContainer->setModel(m_model.get());
-    createStartPage(); // zone centrale : accueil « Projets récents » / viewport unique
+    setCentralWidget(m_viewportContainer);
+    createPreviewCapture();
 
     createActions();
     createDockWindows();
     createMenus();
     createRibbon();
     createStatusBar();
-    connectPreviewTriggers();
 }
 
 
@@ -1282,29 +1284,53 @@ bool MainWindow::maybeSave()
     return true; // Discard
 }
 
-void MainWindow::closeEvent(QCloseEvent* event)
+bool MainWindow::prepareToClose()
 {
-    if (maybeSave())
+    if (!maybeSave())
+        return false;
+    capturePreview(true); // dernier état du modèle pour le Start Center
+    if (m_windowManager)
     {
-        capturePreview(true); // dernier état du modèle pour la page d'accueil
-        if (m_windowManager)
-        {
-            m_windowManager->saveLayout();
-        }
-        event->accept();
+        m_windowManager->saveLayout();
     }
-    else
-    {
-        event->ignore();
-    }
+    return true;
 }
 
 void MainWindow::onActionNew()
 {
+    emit newProjectRequested(); // boîte « Nouveau projet » gérée par AppShell
+}
+
+bool MainWindow::createProject(const TSA::UI::NewProjectSettings& settings)
+{
+    resetWorkspace(settings.projectTemplate);
+    if (m_projectManager) m_projectManager->setProjectName(settings.name);
+    const QString path = settings.filePath();
+    if (!saveFile(path))
+        return false;
+
+    const QString fileName = QFileInfo(path).fileName();
+    if (m_modelTree) m_modelTree->setProjectName(fileName);
+    if (m_statusProject) m_statusProject->setText(fileName);
+    if (m_projectStatusWidget) m_projectStatusWidget->setProjectInfo(settings.name, path);
+    if (m_consoleDock) m_consoleDock->appendLog(tr("Nouveau projet créé : %1").arg(path), "SYS");
+    return true;
+}
+
+bool MainWindow::closeProject()
+{
     if (!maybeSave())
-        return;
-    capturePreview(true);
-    showViewport();
+        return false;
+    capturePreview(true); // dernier état du projet pour sa carte du Start Center
+    resetWorkspace(TSA::UI::ProjectTemplate::GeneralStructure);
+    if (m_consoleDock) m_consoleDock->appendLog(tr("Projet fermé."), "SYS");
+    return true;
+}
+
+void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
+{
+    if (m_occView)
+        m_occView->setInteractionMode(OccView::InteractionMode::Select);
 
     if (m_projectManager && m_model)
     {
@@ -1315,9 +1341,18 @@ void MainWindow::onActionNew()
         m_model->clear();
         m_model->clearUndoRedo();
     }
+    if (projectTemplate == TSA::UI::ProjectTemplate::Empty && m_gridManager)
+        m_gridManager->clearAllGrids();
+
+    // Résultats du projet précédent : jamais affichés sur un autre modèle.
+    m_resultsModel.reset();
+    if (m_occView) m_occView->setResultsModel(nullptr);
+    if (m_resultsDock) m_resultsDock->setResultsModel(nullptr);
+    if (m_propertyPanel) m_propertyPanel->setResultsModel(nullptr);
 
     if (m_selectionManager)
         m_selectionManager->clearSelection();
+    updateUndoRedoActions();
 
     if (m_projectStatusWidget)
     {
@@ -1387,23 +1422,7 @@ void MainWindow::onActionNew()
 
 void MainWindow::onActionOpen()
 {
-    if (!maybeSave())
-        return;
-
-    QString initialDir = (m_projectManager && m_projectManager->hasFilePath())
-        ? QFileInfo(m_projectManager->currentFilePath()).absolutePath()
-        : QString();
-    QString filePath = QFileDialog::getOpenFileName(
-        this,
-        tr("Ouvrir un projet TSA"),
-        initialDir,
-        tr("TSA Project (*.tsa);;Tous les fichiers (*.*)")
-    );
-
-    if (filePath.isEmpty())
-        return;
-
-    loadFile(filePath);
+    emit openProjectRequested(); // même parcours que depuis le Start Center (AppShell)
 }
 
 void MainWindow::onActionSave()
@@ -1478,7 +1497,6 @@ bool MainWindow::loadFile(const QString& path)
     if (!m_model)
         return false;
     capturePreview(true); // dernier état du projet que l'on quitte
-    showViewport();       // initialise le viewport OCCT avant le chargement
 
     QElapsedTimer loadTimer;
     loadTimer.start();
@@ -1765,56 +1783,22 @@ void MainWindow::onToggleDarkMode(bool checked)
 
 void MainWindow::onToggleFullScreen(bool checked)
 {
-    if (checked)
-    {
-        if (!isFullScreen())
-        {
-            m_wasMaximizedBeforeFullScreen = isMaximized();
-            showFullScreen();
-            if (statusBar())
-                statusBar()->showMessage(tr("Mode plein écran activé (F11 pour quitter)"), 3000);
-        }
-    }
-    else
-    {
-        if (isFullScreen())
-        {
-            if (m_wasMaximizedBeforeFullScreen)
-                showMaximized();
-            else
-                showNormal();
-            if (statusBar())
-                statusBar()->showMessage(tr("Mode fenêtre rétabli"), 2000);
-        }
-    }
+    // La fenêtre est AppShell : c'est elle qui passe en plein écran (puis appelle setFullScreenState).
+    emit fullScreenRequested(checked);
+    if (statusBar())
+        statusBar()->showMessage(checked ? tr("Mode plein écran activé (F11 pour quitter)") : tr("Mode fenêtre rétabli"), 3000);
 }
 
-void MainWindow::changeEvent(QEvent* event)
+void MainWindow::setFullScreenState(bool fullScreen)
 {
-    QMainWindow::changeEvent(event);
-    if (event->type() == QEvent::WindowStateChange)
+    if (!m_actionFullScreen) return;
+    if (m_actionFullScreen->isChecked() != fullScreen)
     {
-        bool full = isFullScreen();
-        if (m_actionFullScreen && m_actionFullScreen->isChecked() != full)
-        {
-            m_actionFullScreen->blockSignals(true);
-            m_actionFullScreen->setChecked(full);
-            m_actionFullScreen->blockSignals(false);
-        }
-        if (m_actionFullScreen)
-        {
-            if (full)
-            {
-                m_actionFullScreen->setText(tr("&Quitter le plein écran"));
-                m_actionFullScreen->setToolTip(tr("Quitter le mode plein écran (F11)"));
-            }
-            else
-            {
-                m_actionFullScreen->setText(tr("Mode &Plein écran"));
-                m_actionFullScreen->setToolTip(tr("Basculer en mode plein écran (F11)"));
-            }
-        }
+        QSignalBlocker blocker(m_actionFullScreen);
+        m_actionFullScreen->setChecked(fullScreen);
     }
+    m_actionFullScreen->setText(fullScreen ? tr("&Quitter le plein écran") : tr("Mode &Plein écran"));
+    m_actionFullScreen->setToolTip(fullScreen ? tr("Quitter le mode plein écran (F11)") : tr("Basculer en mode plein écran (F11)"));
 }
 
 

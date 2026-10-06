@@ -126,7 +126,8 @@ void LayoutManager::saveToSettings(const QString& group)
     QSettings settings("Tsaraloha", "TSA");
     settings.beginGroup(group);
     settings.setValue("version", LayoutVersion);
-    settings.setValue("geometry", m_mainWindow->saveGeometry());
+    // Embarquée dans AppShell, la fenêtre principale n'a pas de géométrie propre (AppShell la mémorise).
+    if (m_mainWindow->isWindow()) settings.setValue("geometry", m_mainWindow->saveGeometry());
     settings.setValue("windowState", m_mainWindow->saveState(LayoutVersion));
     settings.setValue("currentProfile", m_currentProfile);
 
@@ -160,7 +161,7 @@ bool LayoutManager::restoreFromSettings(const QString& group)
     }
 
     const QByteArray geometry = settings.value("geometry").toByteArray();
-    if (!geometry.isEmpty())
+    if (!geometry.isEmpty() && m_mainWindow->isWindow())
     {
         m_mainWindow->restoreGeometry(geometry);
     }

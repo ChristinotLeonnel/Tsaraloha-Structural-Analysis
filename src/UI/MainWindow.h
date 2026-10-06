@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include "../Model/SelectionQuery.h"
 #include "../Model/ModelCleanup.h"
+#include <QImage>
 #include <QPointer>
 #include <memory>
 #include <vector>
@@ -17,7 +18,7 @@
 
 namespace TSA::Model { class Model; }
 namespace TSA::AI { class AIOrchestrator; }
-namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; class StartPage; }
+namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct NewProjectSettings; enum class ProjectTemplate; }
 namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Interaction { class ModelingTool; class ModelingToolRegistry; struct ToolContext; }
@@ -65,12 +66,14 @@ class OccView;
 class QAction;
 class QActionGroup;
 class QToolButton;
-class QStackedWidget;
+class QMenu;
 class QTimer;
 class QStatusBar;
 class QLabel;
 class QDockWidget;
 
+/// ProjectWorkspace de TSA : viewport, ruban, docks et barre d'état d'un projet ouvert.
+/// Embarqué dans TSA::UI::AppShell (page du mode Workspace) ; créé au premier projet ouvert ou créé.
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -98,6 +101,31 @@ public:
     bool saveFile(const QString& filePath);
     bool maybeSave();
     void updateWindowTitle();
+
+    // Cycle de vie du projet (piloté par AppShell)
+    /// Initialise un modèle selon le gabarit puis crée le fichier .tsa (ajouté aux projets récents).
+    bool createProject(const TSA::UI::NewProjectSettings& settings);
+    /// Propose d'enregistrer, mémorise l'aperçu puis décharge le projet (modèle, résultats, sélection).
+    bool closeProject();
+    /// Fermeture de l'application : enregistrement éventuel, aperçu et disposition des panneaux.
+    bool prepareToClose();
+
+    QAction* actionSave() const { return m_actionSave; }
+    QAction* actionSaveAs() const { return m_actionSaveAs; }
+    QAction* actionUndo() const { return m_actionUndo; }
+    QAction* actionRedo() const { return m_actionRedo; }
+    /// Menus classiques (Fichier, Édition…), présentés dans le menu d'application de la barre de titre.
+    QList<QMenu*> applicationMenus() const;
+    /// Synchronise l'action « Plein écran » avec l'état de la fenêtre hôte.
+    void setFullScreenState(bool fullScreen);
+
+signals:
+    void newProjectRequested();
+    void openProjectRequested();
+    void closeProjectRequested();
+    void exitRequested();
+    void fullScreenRequested(bool fullScreen);
+    void previewCaptured(const QString& path, const QImage& image);
 
 private slots:
     void onFitAll();
@@ -276,7 +304,6 @@ private:
     QAction* m_actionRulersVisible = nullptr;
     QAction* m_actionDarkMode = nullptr;
     QAction* m_actionFullScreen = nullptr;
-    bool m_wasMaximizedBeforeFullScreen = false;
 
     // Actions Modes d'interaction / Dessin 3D
     QActionGroup* m_drawModeGroup = nullptr;
@@ -365,22 +392,17 @@ private:
     QLabel* m_statusCounts = nullptr; // Nœuds / Éléments / Sélection (rafraîchi par minuteur)
     void updateStatusCounts();
 
-    // Page d'accueil « Projets récents » et aperçus du dernier état (MainWindow_Preview.cpp)
-    void createStartPage();
-    void connectPreviewTriggers();
-    void showStartPage();
-    void showViewport();
-    bool isViewportShown() const;
+    // Aperçus du dernier état du modèle pour le Start Center (MainWindow_Preview.cpp)
+    void createPreviewCapture();
     void schedulePreviewCapture(int delayMs = 0);
     void capturePreview(bool synchronousWrite);
     void onModelRevisionPolled();
     void onProjectFileOpened(const QString& path);
     void onProjectFileSaved(const QString& path);
-    void showRecentProjectMenu(const QString& path, const QPoint& globalPos);
-    QStackedWidget* m_centralStack = nullptr;
-    TSA::UI::StartPage* m_startPage = nullptr;
+    /// Remet le workspace sur un projet vierge (modèle, grille selon le gabarit, résultats, vues).
+    void resetWorkspace(TSA::UI::ProjectTemplate projectTemplate);
     QTimer* m_previewTimer = nullptr;
-    QAction* m_actionStartPage = nullptr;
+    QAction* m_actionCloseProject = nullptr;
     quint64 m_lastPolledRevision = 0;
 
     // IA Co-Engineering (MainWindow_AI.cpp)
@@ -557,8 +579,6 @@ private slots:
     void onPasteAtPointRequested(const gp_Pnt& target);
 
 protected:
-    void changeEvent(QEvent* event) override;
-    void closeEvent(QCloseEvent* event) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dropEvent(QDropEvent* event) override;
 };

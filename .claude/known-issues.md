@@ -231,6 +231,52 @@ Impact: LOW
 Status: OPEN
 Related files: src/Model/StructuralClipboard.cpp, src/BIM/Core/BimModel.cpp
 
+## BUG-030
+Area: UI / Structure
+Problem: `MainWindow::onActionFixed` / `onActionPinned` (menu Structure ▸ Conditions d'Appuis) n'assignent aucun appui :
+ils écrivent seulement dans la console et la barre d'état (« Encastrement assigné (1 nœuds) ») ; le calcul répond
+ensuite « Aucun appui ». Les appuis réels passent par le panneau Propriétés du nœud (`NodePropertiesView`) ou
+`NewNodeDialog`. Constaté le 2026-10-06 en test GUI (préexistant, hors tâche Start Center).
+Impact: MEDIUM (commande trompeuse)
+Status: OPEN
+Related files: src/UI/MainWindow_Tools.cpp (onActionFixed, onActionPinned…)
+
+## BUG-031
+Area: Performance / Suppression
+Problem: Ctrl+A puis Suppr sur stress_4900.tsa (6 768 éléments) gèle l'interface ≈ 6 min en Debug ; Annuler ≈ 30 s.
+Chemin `DeleteElementsCommand` inchangé par la tâche Start Center (préexistant). Release non mesuré.
+Impact: MEDIUM
+Status: OPEN
+Related files: src/Commands/ModifyCommands.cpp, src/Viewer/OccView_Shapes.cpp
+
+## BUG-032
+Area: UI / Workspace
+Problem: les minima cumulés des panneaux du workspace (barre d'état ≈ 1 680 px logiques, docks + barre du viewport
+≈ 1 520 px) dépassent un écran 1920 px à 125 % : la fenêtre s'élargissait hors écran à l'ouverture d'un projet.
+Contournement en place : minimum explicite 960 × 560 du workspace (AppShell). Conséquence : sous ≈ 1 680 px les textes
+de la barre d'état se chevauchent (coordonnées, plan, snap) et la largeur minimale du Start Center devient celle du
+workspace une fois celui-ci créé.
+Impact: LOW
+Status: OPEN (contourné)
+Related files: src/UI/MainWindow_Actions.cpp (createStatusBar), src/UI/Shell/AppShell.cpp
+
+## BUG-033
+Area: UI / Fenêtre
+Problem: non vérifié : DPI différent par écran (un seul écran disponible, 125 %), Windows 11 « Snap layouts » au survol
+du bouton Agrandir (non géré : HTMAXBUTTON non renvoyé), redimensionnement par un bord recouvert directement par le
+viewport OCCT natif (le bord n'est alors pas dans la fenêtre AppShell).
+Impact: LOW
+Status: OPEN (à vérifier)
+Related files: src/UI/Shell/AppShell.cpp
+
+## BUG-034
+Area: UI / Résultats
+Problem: le dock Résultats affiche « Nœuds : 0 | Libres : 0 | Appuis : 0 » après ouverture d'un projet :
+`ResultsDockWidget::updateNodeStats` n'est appelé qu'à `setModel` (modèle encore vide) — préexistant.
+Impact: LOW
+Status: OPEN
+Related files: src/UI/Dock/ResultsDockWidget.cpp
+
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |
