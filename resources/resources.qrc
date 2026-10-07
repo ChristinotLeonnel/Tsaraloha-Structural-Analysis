@@ -187,7 +187,7 @@
         <file alias="file_open.svg">icons/file/file_open.svg</file>
         <file alias="file_save.svg">icons/file/file_save.svg</file>
         <file alias="file_save_as.svg">icons/file/file_save_as.svg</file>
-        <file alias="file_tsa.svg">icons/file/file_save_as.svg</file>
+        <file alias="file_tsa.svg">icons/file_tsa.svg</file>
         <file alias="file_close.svg">icons/file/file_close.svg</file>
         <file alias="file_import.svg">icons/file/file_import.svg</file>
         <file alias="file_export.svg">icons/file/file_export.svg</file>
