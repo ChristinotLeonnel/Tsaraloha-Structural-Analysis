@@ -2,16 +2,10 @@
 
 #include <QString>
 #include <vector>
-#include <memory>
 
 namespace TSA::Model
 {
 class Model;
-}
-
-namespace TSA::Analysis
-{
-class ResultsModel;
 }
 
 namespace TSA::NDC
@@ -58,18 +52,12 @@ public:
     /**
      * @brief Détecte la liste exhaustive des normes appliquées au modèle et aux résultats.
      */
-    static std::vector<StandardReference> detectApplicableStandards(
-        const TSA::Model::Model& model,
-        const std::shared_ptr<TSA::Analysis::ResultsModel>& results = nullptr
-    );
+    static std::vector<StandardReference> detectApplicableStandards(const TSA::Model::Model& model);
 
     /**
      * @brief Génère la webographie et bibliographie officielle et certifiée pour le rapport.
      */
-    static std::vector<BibliographicReference> generateBibliography(
-        const TSA::Model::Model& model,
-        const std::shared_ptr<TSA::Analysis::ResultsModel>& results = nullptr
-    );
+    static std::vector<BibliographicReference> generateBibliography(const TSA::Model::Model& model);
 };
 
 } // namespace TSA::NDC

@@ -87,6 +87,10 @@ public:
     /// Copie : les copies d'éléments d'un même produit forment un nouveau produit (métadonnées
     /// copiées, nouveaux identifiants).
     void registerCopies(const std::vector<std::pair<AnalyticalRef, AnalyticalRef>>& originalToCopy);
+    /// Collage : chaque groupe (produit modèle, éléments collés dans l'ordre de l'axe) devient un
+    /// nouveau produit aux métadonnées du modèle (catégorie, Psets, classifications…), avec de
+    /// nouveaux identifiants ; nom, repère et étage imposé ne sont pas repris.
+    void registerPasted(const std::vector<std::pair<PhysicalElement, std::vector<AnalyticalRef>>>& groups);
     /// Regroupe des éléments analytiques en un seul produit physique (le premier produit est
     /// conservé, les autres produits vidés sont supprimés). Retourne l'id du produit.
     int group(const std::vector<AnalyticalRef>& refs);

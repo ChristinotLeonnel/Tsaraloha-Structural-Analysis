@@ -65,6 +65,7 @@ MostStressedSummary ResultAnalyzer::analyzeExtrema(
         return summary;
     }
 
+    TSA::Analysis::StructuralElementKind currentKind = TSA::Analysis::StructuralElementKind::Beam;
     auto fillExtremum = [&](ExtremumPoint& pt, const QString& qName, double val, const QString& unit,
                             int elId, const QString& elType, const QString& sec, const QString& mat,
                             double x, double L, const gp_Pnt& coords) {
@@ -74,6 +75,7 @@ MostStressedSummary ResultAnalyzer::analyzeExtrema(
         pt.unit = unit;
         pt.elementId = elId;
         pt.elementType = elType;
+        pt.elementKind = currentKind;
         pt.sectionName = sec;
         pt.materialName = mat;
         pt.localPositionX = x;
@@ -104,6 +106,7 @@ MostStressedSummary ResultAnalyzer::analyzeExtrema(
     for (const auto& [key, elRes] : results->allElementResults())
     {
         const int elId = key.id;
+        currentKind = key.kind;
         QString elType = QStringLiteral("Barre");
         QString secName, matName;
         int sNodeId = 0, eNodeId = 0;

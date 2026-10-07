@@ -55,13 +55,18 @@ double ElementResults::maxShearForce() const
     return val;
 }
 
+double GlobalEquilibrium::relativeMomentResidual() const
+{
+    const double err = std::sqrt(errorMx() * errorMx() + errorMy() * errorMy() + errorMz() * errorMz());
+    return momentScale > 1e-12 ? err / momentScale : 0.0;
+}
+
 bool GlobalEquilibrium::isBalanced(double tol) const
 {
     double totalF = std::sqrt(appliedFx * appliedFx + appliedFy * appliedFy + appliedFz * appliedFz);
-    if (totalF < 1e-6) return true;
-
-    double err = std::sqrt(errorFx() * errorFx() + errorFy() * errorFy() + errorFz() * errorFz());
-    return (err / totalF) <= tol;
+    const double err = std::sqrt(errorFx() * errorFx() + errorFy() * errorFy() + errorFz() * errorFz());
+    const bool forcesOk = totalF < 1e-6 || (err / totalF) <= tol;
+    return forcesOk && relativeMomentResidual() <= tol;
 }
 
 ResultsModel::ResultsModel()
@@ -75,9 +80,6 @@ void ResultsModel::clear()
     m_displacements.clear();
     m_reactions.clear();
     m_elementResults.clear();
-    m_modalModes.clear();
-    m_pushoverSteps.clear();
-    m_timeHistorySteps.clear();
     m_stepResults.clear();
     m_finalDisplacements.clear();
     m_finalReactions.clear();
@@ -100,7 +102,6 @@ ResultAvailability ResultsModel::availabilityFromData() const
     a.displacements = !m_displacements.empty();
     a.reactions = !m_reactions.empty();
     a.elementForces = !m_elementResults.empty();
-    a.modal = !m_modalModes.empty();
     a.dofMapping = m_advanced.available && !m_advanced.dofMap.empty();
     a.globalStiffness = m_advanced.available && m_advanced.hasGlobalStiffness;
     a.elementStiffness = m_advanced.available && !m_advanced.elementMatrices.empty();
@@ -190,30 +191,6 @@ std::vector<double> AdvancedResults::globalDisplacementVector(const std::map<int
             u[eq.equation] = comp[eq.dof];
     }
     return u;
-}
-
-void ResultsModel::addModalMode(const ModalMode& mode)
-{
-    m_modalModes.push_back(mode);
-}
-
-const ModalMode* ResultsModel::getModalMode(int modeNumber) const
-{
-    for (const auto& m : m_modalModes)
-    {
-        if (m.modeNumber == modeNumber) return &m;
-    }
-    return nullptr;
-}
-
-void ResultsModel::addPushoverStep(const PushoverStep& step)
-{
-    m_pushoverSteps.push_back(step);
-}
-
-void ResultsModel::addTimeHistoryStep(const TimeHistoryStep& step)
-{
-    m_timeHistorySteps.push_back(step);
 }
 
 void ResultsModel::addStepResults(const StepResults& step)
@@ -311,12 +288,6 @@ void ResultsModel::computeSummary()
         }
     }
 
-    // 4. Modal
-    if (!m_modalModes.empty())
-    {
-        m_summary.fundamentalPeriod = m_modalModes.front().period;
-        m_summary.fundamentalFrequency = m_modalModes.front().frequency;
-    }
 }
 
 } // namespace TSA::Analysis

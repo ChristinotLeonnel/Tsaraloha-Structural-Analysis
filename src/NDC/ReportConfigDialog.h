@@ -89,7 +89,6 @@ private:
     QCheckBox* m_chkExtrema = nullptr;
     QCheckBox* m_chkDetailedTables = nullptr;
     QCheckBox* m_chkEurocode = nullptr;
-    QCheckBox* m_chkModal = nullptr;
     QCheckBox* m_chkWarn = nullptr;
     QCheckBox* m_chkConclusion = nullptr;
     QCheckBox* m_chkBiblio = nullptr;

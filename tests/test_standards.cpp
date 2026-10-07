@@ -235,26 +235,6 @@ bool runSuite_Standards(int& passed)
         }
         assert(hasLCIssue);
 
-        // Analyse modale avec masse nulle
-        TSA::Analysis::AnalysisParameters modalParams;
-        modalParams.type = TSA::Analysis::AnalysisType::Modal;
-        TSA::Model::Material zeroMassMat = TSA::Model::Material::concreteC25_30();
-        zeroMassMat.density = 0.0;
-        zeroMassMat.syncMechanical();
-        TSA::Model::Model modalModel;
-        int mn1 = modalModel.addNode(0.0, 0.0, 0.0);
-        int mn2 = modalModel.addNode(3.0, 0.0, 0.0);
-        modalModel.getNode(mn1)->setSupportType(TSA::Model::SupportType::Fixed);
-        modalModel.addBar(mn1, mn2, TSA::Model::Section::rectangular(0.2, 0.2), zeroMassMat);
-        auto repModalZeroMass = ModelValidator::validateForAnalysis(modalModel, modalParams);
-        assert(!repModalZeroMass.isValid());
-        bool hasMassIssue = false;
-        for (const auto& iss : repModalZeroMass.issues())
-        {
-            if (iss.category == "Analyse Modale") hasMassIssue = true;
-        }
-        assert(hasMassIssue);
-
         passed++;
         std::cout << "PASSED" << std::endl;
     }
@@ -297,7 +277,7 @@ bool runSuite_Standards(int& passed)
 
         TSA::Analysis::ResultsModel res;
         std::string readerErr;
-        bool readOk = TSA::Analysis::OpenSeesResultsReader::readResults(tmpDir.toStdString(), snap, readParams, "", res, &readerErr);
+        bool readOk = TSA::Analysis::OpenSeesResultsReader::readResults(tmpDir.toStdString(), snap, readParams, res, &readerErr);
         assert(!readOk);
         assert(!res.isValid());
         assert(readerErr.find("Instabilité numérique") != std::string::npos);

@@ -349,8 +349,6 @@ RibbonTab* RibbonBuilder::buildLoadsTab(RibbonBar* bar, const RibbonActions& act
     {
         casesPanel->addLargeAction(acts.actionLoadCases);
     }
-    auto* actSeismic = acts.actionSeismic ? acts.actionSeismic : new QAction(QIcon(":/icons/load_seismic.svg"), QObject::tr("Séisme (EC8)"), parentWindow);
-    casesPanel->addLargeAction(actSeismic);
     tab->addPanel(casesPanel);
 
     // Groupe 4 : Affichage 3D des Charges
@@ -389,12 +387,7 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
     // Groupe 2 : Résolution & Solveur EF
     auto* solvPanel = new RibbonPanel(QObject::tr("Solveur EF"), tab);
     auto* actRun = acts.actionRunSolve ? acts.actionRunSolve : new QAction(QIcon(":/icons/analysis_run.svg"), QObject::tr("Calcul Statique"), parentWindow);
-    auto* actModal = acts.actionModal ? acts.actionModal : new QAction(QIcon(":/icons/analysis_modal.svg"), QObject::tr("Analyse Modale"), parentWindow);
-    auto* actPush = acts.actionPushover ? acts.actionPushover : new QAction(QIcon(":/icons/analysis_pushover.svg"), QObject::tr("Pushover"), parentWindow);
-
     solvPanel->addLargeAction(actRun);
-    solvPanel->addInternalSeparator();
-    solvPanel->addSmallColumn({ actModal, actPush });
     tab->addPanel(solvPanel);
 
     // Groupe 3 : Configuration & Paramètres

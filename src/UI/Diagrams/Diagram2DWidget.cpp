@@ -47,11 +47,6 @@ void Diagram2DWidget::setupUi()
     tbLayout->setContentsMargins(4, 2, 4, 2);
     tbLayout->setSpacing(6);
 
-    m_modeCombo = new QComboBox(m_toolbar);
-    m_modeCombo->addItem(tr("Efforts Internes Barres (M, V, N)"), static_cast<int>(ViewMode::MemberForces));
-    m_modeCombo->addItem(tr("Courbe de Capacité Pushover"), static_cast<int>(ViewMode::PushoverCapacity));
-    m_modeCombo->addItem(tr("Spectre des Modes Propres"), static_cast<int>(ViewMode::ModalSpectrum));
-
     m_elementCombo = new QComboBox(m_toolbar);
     m_elementCombo->setMinimumWidth(160);
 
@@ -67,8 +62,6 @@ void Diagram2DWidget::setupUi()
     m_lblStatus = new QLabel(tr("Prêt"), m_toolbar);
     m_lblStatus->setStyleSheet("color: #a0a0b0; font-size: 11px;");
 
-    tbLayout->addWidget(new QLabel(tr("Mode :"), m_toolbar));
-    tbLayout->addWidget(m_modeCombo);
     tbLayout->addWidget(new QLabel(tr("Élément :"), m_toolbar));
     tbLayout->addWidget(m_elementCombo);
     tbLayout->addWidget(new QLabel(tr("Grandeur :"), m_toolbar));
@@ -80,7 +73,6 @@ void Diagram2DWidget::setupUi()
     mainLayout->addWidget(m_toolbar);
     mainLayout->addStretch(1);
 
-    connect(m_modeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Diagram2DWidget::onModeComboChanged);
     connect(m_elementCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Diagram2DWidget::onElementComboChanged);
     connect(m_typeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &Diagram2DWidget::onTypeComboChanged);
     connect(m_btnResetZoom, &QPushButton::clicked, this, &Diagram2DWidget::onResetZoom);
@@ -181,24 +173,6 @@ void Diagram2DWidget::setDiagramType(TSA::Geometry::DiagramType type)
     update();
 }
 
-void Diagram2DWidget::setViewMode(ViewMode mode)
-{
-    m_viewMode = mode;
-    m_modeCombo->blockSignals(true);
-    m_modeCombo->setCurrentIndex(static_cast<int>(mode));
-    m_modeCombo->blockSignals(false);
-
-    bool isMember = (mode == ViewMode::MemberForces);
-    m_elementCombo->setVisible(isMember);
-    m_typeCombo->setVisible(isMember);
-    update();
-}
-
-void Diagram2DWidget::onModeComboChanged(int index)
-{
-    setViewMode(static_cast<ViewMode>(m_modeCombo->itemData(index).toInt()));
-}
-
 void Diagram2DWidget::onElementComboChanged(int index)
 {
     m_currentElementId = m_elementCombo->itemData(index).toInt();
@@ -248,7 +222,7 @@ void Diagram2DWidget::leaveEvent(QEvent* /*event*/)
 void Diagram2DWidget::mouseMoveEvent(QMouseEvent* event)
 {
     QRect plotRect = rect().adjusted(65, 45, -25, -35);
-    if (plotRect.contains(event->pos()) && m_viewMode == ViewMode::MemberForces)
+    if (plotRect.contains(event->pos()))
     {
         m_hasHoverCursor = true;
         m_hoverPixel = event->pos();
@@ -337,18 +311,7 @@ void Diagram2DWidget::paintEvent(QPaintEvent* /*event*/)
     p.setPen(QPen(QColor(60, 60, 70), 1));
     p.drawRect(plotRect);
 
-    if (m_viewMode == ViewMode::MemberForces)
-    {
-        drawMemberForces(p, plotRect);
-    }
-    else if (m_viewMode == ViewMode::PushoverCapacity)
-    {
-        drawPushoverCurve(p, plotRect);
-    }
-    else if (m_viewMode == ViewMode::ModalSpectrum)
-    {
-        drawModalSpectrum(p, plotRect);
-    }
+    drawMemberForces(p, plotRect);
 }
 
 void Diagram2DWidget::drawMemberForces(QPainter& p, const QRect& plotRect)
@@ -510,84 +473,6 @@ void Diagram2DWidget::drawMemberForces(QPainter& p, const QRect& plotRect)
         p.setBrush(QColor(255, 230, 80));
         p.setPen(QPen(QColor(0, 0, 0), 1));
         p.drawEllipse(QPoint(m_hoverPixel.x(), curY), 5, 5);
-    }
-}
-
-void Diagram2DWidget::drawPushoverCurve(QPainter& p, const QRect& plotRect)
-{
-    if (!m_results || m_results->pushoverSteps().empty())
-    {
-        p.setPen(QColor(160, 160, 170));
-        p.drawText(plotRect, Qt::AlignCenter, tr("Aucune courbe Pushover disponible.\nExécutez une analyse non-linéaire Pushover pour afficher la courbe de capacité."));
-        return;
-    }
-
-    const auto& steps = m_results->pushoverSteps();
-    double maxDrift = 0.0, maxVb = 0.0;
-    for (const auto& s : steps)
-    {
-        if (s.topDisplacement > maxDrift) maxDrift = s.topDisplacement;
-        if (s.baseShear > maxVb) maxVb = s.baseShear;
-    }
-    if (maxDrift < 1e-6) maxDrift = 0.05;
-    if (maxVb < 1e-6) maxVb = 100.0;
-
-    maxDrift *= 1.15;
-    maxVb *= 1.15;
-
-    auto toX = [&](double d) { return plotRect.left() + static_cast<int>((d / maxDrift) * plotRect.width()); };
-    auto toY = [&](double v) { return plotRect.bottom() - static_cast<int>((v / maxVb) * plotRect.height()); };
-
-    QPainterPath path;
-    for (size_t i = 0; i < steps.size(); ++i)
-    {
-        int px = toX(steps[i].topDisplacement);
-        int py = toY(steps[i].baseShear);
-        if (i == 0) path.moveTo(px, py);
-        else path.lineTo(px, py);
-    }
-
-    p.setPen(QPen(QColor(70, 200, 120), 2));
-    p.drawPath(path);
-
-    p.setPen(QColor(200, 200, 210));
-    p.drawText(plotRect.left(), plotRect.top() + 15, tr("Effort tranchant à la base Vb (kN)"));
-    p.drawText(plotRect.right() - 120, plotRect.bottom() - 5, tr("Déplacement sommet Delta (m)"));
-}
-
-void Diagram2DWidget::drawModalSpectrum(QPainter& p, const QRect& plotRect)
-{
-    if (!m_results || m_results->modalModes().empty())
-    {
-        p.setPen(QColor(160, 160, 170));
-        p.drawText(plotRect, Qt::AlignCenter, tr("Aucun mode propre disponible.\nLancez une analyse modale (F6) pour visualiser les fréquences et périodes."));
-        return;
-    }
-
-    const auto& modes = m_results->modalModes();
-    int nModes = static_cast<int>(modes.size());
-    int barWidth = std::max(20, (plotRect.width() - 40) / (nModes * 2));
-
-    double maxFreq = 0.0;
-    for (const auto& m : modes)
-    {
-        if (m.frequency > maxFreq) maxFreq = m.frequency;
-    }
-    if (maxFreq < 1e-4) maxFreq = 10.0;
-    maxFreq *= 1.25;
-
-    for (int i = 0; i < nModes; ++i)
-    {
-        int bx = plotRect.left() + 30 + i * (barWidth * 2);
-        int barHeight = static_cast<int>((modes[i].frequency / maxFreq) * (plotRect.height() - 40));
-        int by = plotRect.bottom() - barHeight;
-
-        QRect barRect(bx, by, barWidth, barHeight);
-        p.fillRect(barRect, QColor(70, 160, 240));
-
-        p.setPen(QColor(220, 220, 230));
-        p.drawText(QRect(bx - 10, plotRect.bottom() + 4, barWidth + 20, 20), Qt::AlignCenter, QString("M%1").arg(modes[i].modeNumber));
-        p.drawText(QRect(bx - 20, by - 20, barWidth + 40, 20), Qt::AlignCenter, QString("%1 Hz").arg(modes[i].frequency, 0, 'f', 2));
     }
 }
 

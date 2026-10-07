@@ -6,6 +6,7 @@
 #include <memory>
 #include <QString>
 #include <gp_Pnt.hxx>
+#include "../Analysis/AnalysisTypes.h"
 
 namespace TSA::Model
 {
@@ -35,6 +36,7 @@ struct ExtremumPoint
     
     int elementId = 0;          ///< ID de l'élément (0 si nodal pur)
     QString elementType;        ///< "Poutre", "Poteau", "Treillis", "Câble"
+    TSA::Analysis::StructuralElementKind elementKind = TSA::Analysis::StructuralElementKind::Beam;
     QString sectionName;        ///< Nom du profilé assigné
     QString materialName;       ///< Nom du matériau
     

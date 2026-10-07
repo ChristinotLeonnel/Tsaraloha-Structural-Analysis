@@ -82,6 +82,7 @@ private:
     void writeProjectChunk(std::vector<uint8_t>& buffer, const std::string& projectName, const std::string& author);
     void writeThumbnailChunk(std::vector<uint8_t>& buffer, const QByteArray& pngData);
     void writeBimChunk(std::vector<uint8_t>& buffer, const TSA::BIM::BimModel& bim);
+    void writeSettingsChunk(std::vector<uint8_t>& buffer, const std::string& json);
     void writeCoordinateChunk(std::vector<uint8_t>& buffer, const TSA::Coordinate::CoordinateSystem* cs);
     void writeGridChunk(std::vector<uint8_t>& buffer, const TSA::Grid::GridManager* gm);
     void writeNodeChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Node>& nodes);

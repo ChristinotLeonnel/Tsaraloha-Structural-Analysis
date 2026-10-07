@@ -21,7 +21,8 @@
 #include <TopoDS_Wire.hxx>
 #include <TopoDS_Face.hxx>
 #include <GeomAPI_Interpolate.hxx>
-#include <TColgp_HArray1OfPnt.hxx>
+#include <NCollection_HArray1.hxx>
+#include <gp_Pnt.hxx>
 
 #include <cmath>
 #include <algorithm>
@@ -168,7 +169,7 @@ TopoDS_Shape CableGeometry3D::createCurvedCable(
     try
     {
         const int nPts = static_cast<int>(points.size());
-        Handle(TColgp_HArray1OfPnt) hPoints = new TColgp_HArray1OfPnt(1, nPts);
+        Handle(NCollection_HArray1<gp_Pnt>) hPoints = new NCollection_HArray1<gp_Pnt>(1, nPts);
         for (int i = 0; i < nPts; ++i)
         {
             hPoints->SetValue(i + 1, points[i]);

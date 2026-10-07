@@ -103,7 +103,7 @@ public:
     /// Valide individuellement un nœud géométrique 3D
     static bool validateNode(const TSA::Model::Node& node, std::string* errorMsg = nullptr);
 
-    /// Valide le modèle avec les contraintes spécifiques à l'analyse demandée (statique, modale, P-Delta)
+    /// Valide le modèle avec les contraintes spécifiques à l'analyse demandée (statique linéaire ou non linéaire)
     static ModelValidationReport validateForAnalysis(const TSA::Model::Model& model, const TSA::Analysis::AnalysisParameters& params);
 };
 

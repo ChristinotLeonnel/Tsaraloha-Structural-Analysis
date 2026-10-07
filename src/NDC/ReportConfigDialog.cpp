@@ -133,7 +133,6 @@ void ReportConfigDialog::setupUi()
     m_chkExtrema = new QCheckBox(tr("Synthèse & Localisation 3D Extrema"), this);
     m_chkDetailedTables = new QCheckBox(tr("Tableaux Détaillés par Barre"), this);
     m_chkEurocode = new QCheckBox(tr("Vérifications Eurocodes (EC2 / EC3)"), this);
-    m_chkModal = new QCheckBox(tr("Analyse Dynamique Modale"), this);
     m_chkWarn = new QCheckBox(tr("Avertissements & Limitations"), this);
     m_chkConclusion = new QCheckBox(tr("Conclusion & Déclaration"), this);
     m_chkBiblio = new QCheckBox(tr("Bibliographie & Webographie"), this);
@@ -162,10 +161,9 @@ void ReportConfigDialog::setupUi()
     gridSec->addWidget(m_chkExtrema, 6, 1);
     gridSec->addWidget(m_chkDetailedTables, 7, 1);
     gridSec->addWidget(m_chkEurocode, 8, 1);
-    gridSec->addWidget(m_chkModal, 9, 1);
-    gridSec->addWidget(m_chkWarn, 10, 1);
-    gridSec->addWidget(m_chkConclusion, 11, 1);
-    gridSec->addWidget(m_chkBiblio, 12, 1);
+    gridSec->addWidget(m_chkWarn, 9, 1);
+    gridSec->addWidget(m_chkConclusion, 10, 1);
+    gridSec->addWidget(m_chkBiblio, 11, 1);
 
     tabs->addTab(tabSections, tr("Sections & Résultats"));
 
@@ -258,7 +256,6 @@ void ReportConfigDialog::loadFromConfig(const ReportConfiguration& cfg)
     m_chkExtrema->setChecked(cfg.includeMostStressedSummary);
     m_chkDetailedTables->setChecked(cfg.includeDetailedElementTables);
     m_chkEurocode->setChecked(cfg.includeEurocodeDesignChecks);
-    m_chkModal->setChecked(cfg.includeModalAnalysis);
     m_chkWarn->setChecked(cfg.includeWarningsAndLimitations);
     m_chkConclusion->setChecked(cfg.includeConclusion);
     m_chkBiblio->setChecked(cfg.includeBibliography);
@@ -313,7 +310,6 @@ ReportConfiguration ReportConfigDialog::configuration() const
     cfg.includeExtremaSpatialTable = m_chkExtrema->isChecked();
     cfg.includeDetailedElementTables = m_chkDetailedTables->isChecked();
     cfg.includeEurocodeDesignChecks = m_chkEurocode->isChecked();
-    cfg.includeModalAnalysis = m_chkModal->isChecked();
     cfg.includeWarningsAndLimitations = m_chkWarn->isChecked();
     cfg.includeConclusion = m_chkConclusion->isChecked();
     cfg.includeBibliography = m_chkBiblio->isChecked();

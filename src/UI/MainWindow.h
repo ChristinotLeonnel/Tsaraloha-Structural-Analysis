@@ -249,12 +249,16 @@ private:
     TSA::Analysis::AnalysisContext m_analysisContext;
     /// Calcule le contexte avec le moteur choisi (disponibilité, validation, calcul, publication).
     bool runAnalysis(const TSA::Analysis::AnalysisContext& context);
+    // Paramètres d'analyse ↔ modèle (chunk SETT du .tsa, BUG-013)
+    void storeAnalysisContextInModel();
+    void restoreAnalysisContextFromModel();
     // Outils de modification / dessin (MainWindow_ModelingTools.cpp)
     std::unique_ptr<TSA::Interaction::ModelingToolRegistry> m_toolRegistry;
     std::unique_ptr<TSA::Interaction::ModelingTool> m_activeTool;
     std::map<std::string, QAction*> m_toolActions;
     QAction* m_actionToolInputViewport = nullptr;
     bool m_toolInputInViewport = true;
+    bool m_analysisRunning = false; ///< calcul en cours dans un thread de travail (fermeture refusée)
     void createModelingToolActions();
     /// swapInputMode : utiliser l'autre mode de saisie (Maj + clic, ou action « numérique »).
     void startModelingTool(const std::string& id, bool swapInputMode = false);
@@ -449,12 +453,9 @@ private:
     QAction* m_actionDistLoad = nullptr;
     QAction* m_actionMoment = nullptr;
     QAction* m_actionLoadCases = nullptr;
-    QAction* m_actionSeismic = nullptr;
     QAction* m_actionMeshGen = nullptr;
     QAction* m_actionAnalysisConfig = nullptr;
     QAction* m_actionRunSolve = nullptr;
-    QAction* m_actionModal = nullptr;
-    QAction* m_actionPushover = nullptr;
 
     QAction* m_actionResultsDisp = nullptr;
     QAction* m_actionResultsForces = nullptr;
@@ -520,7 +521,6 @@ private slots:
     void onActionExportDiagnosticReport();
 
     // Slots Résultats, Note de Calcul et Multi-Port
-    void onActionPushover();
     void onActionNoteDeCalcul();
     void onActionToggleDeformed(bool checked);
     void onActionToggleReactions(bool checked);
@@ -554,11 +554,9 @@ private slots:
     void onActionDistLoad();
     void onActionMoment();
     void onActionLoadCases();
-    void onActionSeismic();
     void onActionMeshGen();
     void onActionAnalysisConfig();
     void onActionRunSolve();
-    void onActionModal();
     void onActionResultsDisp();
     void onActionResultsForces();
     void onActionResultsStress();
@@ -578,8 +576,6 @@ private slots:
     void onActionSplitBars();
     void onActionMergeNodes();
 
-    void onPointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& target, bool isCopy);
-    void onPointToPointRotateRequested(const gp_Pnt& center, double angleRad, bool isCopy);
     void onOriginMoveRequested(const gp_Pnt& newOrigin);
     void onPasteAtPointRequested(const gp_Pnt& target);
 

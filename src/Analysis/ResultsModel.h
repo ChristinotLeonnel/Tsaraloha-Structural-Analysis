@@ -11,13 +11,11 @@
 namespace TSA::Analysis
 {
 
+/// TSA se limite au calcul statique (linéaire, ou non linéaire par incréments de charge).
 enum class AnalysisType
 {
     LinearStatic,
-    NonLinearStatic,
-    Modal,
-    DynamicTimeHistory,
-    Pushover
+    NonLinearStatic
 };
 
 /**
@@ -59,6 +57,10 @@ struct NodeReaction
 /**
  * @brief Efforts intérieurs en une station le long d'une barre (repère local).
  */
+/// Efforts et déplacements en une station d'une barre, repère local (x de i vers j).
+/// Convention RDM commune à tous les moteurs : N > 0 en traction ; My, Mz > 0 quand la fibre située du
+/// côté négatif de l'axe local (z < 0, resp. y < 0) est tendue (moment de travée positif sous une charge
+/// dirigée vers −z / −y) ; Vy = dMz/dx, Vz = dMy/dx ; Mx : torsion, face positive.
 struct StationForces
 {
     double position = 0.0;  ///< Position le long de l'élément (0.0 <= x <= L)
@@ -99,40 +101,7 @@ struct ElementResults
 };
 
 /**
- * @brief Caractéristiques d'un mode propre de vibration.
- */
-struct ModalMode
-{
-    int modeNumber = 1;
-    double eigenvalue = 0.0;       ///< lambda = omega^2
-    double omega = 0.0;            ///< Pulsation propre (rad/s)
-    double frequency = 0.0;        ///< Fréquence propre (Hz)
-    double period = 0.0;           ///< Période propre (s)
-    std::map<int, NodeDisplacement> shape; ///< Forme modale normalisée par nœud
-};
-
-/**
- * @brief Point de la courbe de capacité Pushover.
- */
-struct PushoverStep
-{
-    int stepNumber = 0;
-    double topDisplacement = 0.0;  ///< Déplacement au sommet (m)
-    double baseShear = 0.0;        ///< Effort tranchant à la base (kN)
-    double loadFactor = 0.0;
-};
-
-/**
- * @brief Pas de temps pour analyse dynamique temporelle.
- */
-struct TimeHistoryStep
-{
-    double time = 0.0;
-    std::map<int, NodeDisplacement> displacements;
-};
-
-/**
- * @brief Résultats d'un incrément / pas de calcul (analyse non-linéaire ou temporelle).
+ * @brief Résultats d'un incrément de charge (analyse statique non linéaire).
  */
 struct StepResults
 {
@@ -156,13 +125,24 @@ struct GlobalEquilibrium
     double reactionFx = 0.0;
     double reactionFy = 0.0;
     double reactionFz = 0.0;
+    /// Moments autour de l'origine globale (charges : r × F + M nodaux ; réactions : r × R + M_R).
+    double appliedMx = 0.0, appliedMy = 0.0, appliedMz = 0.0;
+    double reactionMx = 0.0, reactionMy = 0.0, reactionMz = 0.0;
+    /// Échelle de référence des moments (Σ |r × F| + Σ |M| des charges) pour le contrôle relatif.
+    double momentScale = 0.0;
 
     double errorFx() const { return appliedFx + reactionFx; }
     double errorFy() const { return appliedFy + reactionFy; }
     double errorFz() const { return appliedFz + reactionFz; }
+    double errorMx() const { return appliedMx + reactionMx; }
+    double errorMy() const { return appliedMy + reactionMy; }
+    double errorMz() const { return appliedMz + reactionMz; }
     double maxError() const {
         return std::max({ std::abs(errorFx()), std::abs(errorFy()), std::abs(errorFz()) });
     }
+    /// |Σ M + Σ M_R| / échelle des moments (0 si aucune charge).
+    double relativeMomentResidual() const;
+    /// Équilibre des forces ET des moments, en relatif.
     bool isBalanced(double tol = 1e-3) const;
 };
 
@@ -196,6 +176,7 @@ struct AnalysisExecutionMetadata
     std::string numberer = "RCM";
     std::string geomTransf;
     double relativeEquilibriumResidual = 0.0;   ///< |Σ F + Σ R| / |Σ F|
+    double relativeMomentResidual = 0.0;        ///< |Σ M + Σ M_R| / échelle des moments (autour de l'origine)
     ExtractionLevel extractionLevel = ExtractionLevel::Light;
 };
 
@@ -250,7 +231,6 @@ struct ResultAvailability
     bool displacements = false;
     bool reactions = false;
     bool elementForces = false;
-    bool modal = false;
     bool elementStiffness = false;
     bool globalStiffness = false;
     bool dofMapping = false;
@@ -333,8 +313,6 @@ struct ResultsSummary
     int maxBendingMomentElementId = 0;
     StructuralElementKind maxBendingMomentElementKind = StructuralElementKind::Beam;
 
-    double fundamentalPeriod = 0.0;
-    double fundamentalFrequency = 0.0;
 };
 
 /**
@@ -395,19 +373,6 @@ public:
     const AdvancedResults& advanced() const { return m_advanced; }
     AdvancedResults& advanced() { return m_advanced; }
 
-    // Modes propres
-    void addModalMode(const ModalMode& mode);
-    const std::vector<ModalMode>& modalModes() const { return m_modalModes; }
-    const ModalMode* getModalMode(int modeNumber) const;
-
-    // Pushover
-    void addPushoverStep(const PushoverStep& step);
-    const std::vector<PushoverStep>& pushoverSteps() const { return m_pushoverSteps; }
-
-    // Time History
-    void addTimeHistoryStep(const TimeHistoryStep& step);
-    const std::vector<TimeHistoryStep>& timeHistorySteps() const { return m_timeHistorySteps; }
-
     // Pas et Incréments non-linéaires
     void addStepResults(const StepResults& step);
     const std::vector<StepResults>& allStepResults() const { return m_stepResults; }
@@ -464,9 +429,6 @@ private:
     ResultAvailability m_availability;
     std::vector<EngineResultTable> m_engineTables;
     std::map<ElementKey, PlanarMemberCurves> m_planarCurves;
-    std::vector<ModalMode> m_modalModes;
-    std::vector<PushoverStep> m_pushoverSteps;
-    std::vector<TimeHistoryStep> m_timeHistorySteps;
     std::vector<StepResults> m_stepResults;
 
     int m_activeStep = -1;

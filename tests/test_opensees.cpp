@@ -161,42 +161,6 @@ bool runSuite_OpenSees(int& passed)
         passed++;
     }
 
-    // TEST 69: Modal Analysis
-    {
-        Model model;
-        int n1 = model.addNode(0.0, 0.0, 0.0);
-        model.getNode(n1)->setSupportType(SupportType::Fixed);
-        int n2 = model.addNode(0.0, 0.0, 4.0); // Poteau console 4m
-
-        Section sec = Section::rectangular(0.30, 0.30);
-        Material mat = Material::concreteC25_30();
-        model.addBar(n1, n2, sec, mat, BarRole::Column);
-
-        OpenSeesSolver solver;
-        AnalysisParameters params;
-        params.type = AnalysisType::Modal;
-        params.numEigenmodes = 3;
-
-        QString err;
-        bool ok = solver.solveSynchronous(model, params, &err);
-        if (!ok) {
-            std::cout << "  Modal error: " << err.toStdString() << "\n";
-            std::cout << "  Modal journal log: \n" << solver.results().journalLog() << "\n";
-        }
-        TEST_CHECK(ok, "Modal analysis solve failed");
-
-        const auto& res = solver.results();
-        TEST_CHECK(res.isValid(), "Modal ResultsModel must be valid");
-        TEST_CHECK(!res.modalModes().empty(), "Modal modes list must not be empty");
-
-        for (const auto& m : res.modalModes())
-        {
-            TEST_CHECK(m.frequency > 0.0, "Mode frequency must be positive");
-            TEST_CHECK(m.period > 0.0, "Mode period must be positive");
-        }
-        passed++;
-    }
-
     // TEST 70: 3D Deformed Geometry Generation (Displacement amplification)
     {
         gp_Pnt p1(0.0, 0.0, 0.0);
@@ -642,11 +606,6 @@ bool runSuite_OpenSees(int& passed)
         // Sphere with invalid radius
         TopoDS_Shape sph = TSA::Geometry::DeformedGeometry::createDeformedNodeSphere(p1, dNan, 1.0, -1.0);
         TEST_CHECK(!sph.IsNull(), "createDeformedNodeSphere with negative radius defaults safely to standard sphere");
-
-        // Modal deformed beam shape with NaN scale and phase
-        TopoDS_Shape modalShape = TSA::Geometry::DeformedGeometry::createModalDeformedBeamShape(
-            p1, p2, dNan, dInf, sec, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity());
-        TEST_CHECK(!modalShape.IsNull(), "createModalDeformedBeamShape handles NaN/Inf modal scale and phase safely");
 
         passed++;
     }

@@ -62,21 +62,6 @@ public:
         double scaleFactor,
         double rotationDeg = 0.0
     );
-
-    /**
-     * @brief Construit une barre déformée pour un mode propre dynamique à un instant de phase donné.
-     * Déplacement modal : phi * cos(phase).
-     */
-    static TopoDS_Shape createModalDeformedBeamShape(
-        const gp_Pnt& p1,
-        const gp_Pnt& p2,
-        const TSA::Analysis::NodeDisplacement& phi1,
-        const TSA::Analysis::NodeDisplacement& phi2,
-        const TSA::Model::Section& section,
-        double modalScale,
-        double phaseRad,
-        double rotationDeg = 0.0
-    );
 };
 
 } // namespace TSA::Geometry

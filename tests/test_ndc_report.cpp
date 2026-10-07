@@ -127,7 +127,6 @@ bool runSuite_NDCReport(int& passed)
         cfg.primaryColor = "#0055bb";
         cfg.includeExtremaSpatialTable = true;
         cfg.includeDetailedElementTables = true;
-        cfg.includeModalAnalysis = true;
         cfg.includeEurocodeDesignChecks = true;
 
         QString tmpPath = QDir::tempPath() + "/test_roundtrip.tsareport";

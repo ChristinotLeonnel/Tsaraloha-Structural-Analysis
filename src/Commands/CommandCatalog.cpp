@@ -226,9 +226,6 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.loads.moment", "Moment",
                    "Appliquer un moment fléchissant", "",
                    ":/icons/load_moment.svg", CommandCategory::Loads});
-  registerCommand({"cmd.loads.seismic", "Action Sismique",
-                   "Définir le spectre de réponse sismique (EC8)", "",
-                   ":/icons/load_seismic.svg", CommandCategory::Loads});
 
   // --- 10. ANALYSIS ---
   registerCommand({"cmd.analysis.mesh", "Générer Maillage",
@@ -237,9 +234,6 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.analysis.solve", "Calcul Statique",
                    "Lancer la résolution statique linéaire [K]{u}={F}", "F5",
                    ":/icons/analysis_run.svg", CommandCategory::Analysis});
-  registerCommand({"cmd.analysis.modal", "Analyse Modale",
-                   "Calculer les fréquences et modes propres", "",
-                   ":/icons/analysis_modal.svg", CommandCategory::Analysis});
 
   // --- 11. RESULTS ---
   registerCommand({"cmd.results.displacements", "Déplacements",
@@ -351,7 +345,7 @@ void CommandCatalog::initializeStandardCatalog() {
                    "Afficher les informations de version et crédits", "",
                    ":/icons/common/about.svg", CommandCategory::Settings});
 
-  // --- 14. ISOLATION 3D ---
+  // --- 14. ISOLATION 3D --- (menu Affichage ▸ Isolation 3D, OccView::isolateElements…)
   registerCommand({"cmd.isolate.selection", "Isoler la Sélection",
                    "Masquer tous les objets sauf la sélection", "I", "",
                    CommandCategory::View});
@@ -362,23 +356,9 @@ void CommandCatalog::initializeStandardCatalog() {
                    "Isoler les objets situés sur le plan de travail actif",
                    "Alt+W", ":/icons/view/view_top.svg",
                    CommandCategory::View});
-  registerCommand({"cmd.isolate.section", "Isoler par Coupe",
-                   "Isoler les objets d'une tranche entre deux plans parallèles",
-                   "Ctrl+I", ":/icons/view/section_cut.svg",
-                   CommandCategory::View});
-  registerCommand({"cmd.isolate.projection", "Isoler par Projection",
-                   "Isoler les objets dont la projection tombe dans une fenêtre",
-                   "Ctrl+Shift+I", ":/icons/view/zoom_window.svg",
-                   CommandCategory::View});
-  registerCommand({"cmd.isolate.volume", "Isoler par Volume",
-                   "Isoler les objets contenus dans une boîte 3D", "", "",
-                   CommandCategory::View});
   registerCommand({"cmd.isolate.hide", "Masquer la Sélection",
                    "Masquer les éléments sélectionnés", "H", "",
                    CommandCategory::View});
-  registerCommand({"cmd.isolate.ghost", "Estomper les Autres",
-                   "Basculer entre masquer et estomper les objets non isolés",
-                   "Shift+I", "", CommandCategory::View});
   registerCommand({"cmd.isolate.invert", "Inverser l'Isolation",
                    "Échanger objets visibles et objets masqués", "", "",
                    CommandCategory::View});

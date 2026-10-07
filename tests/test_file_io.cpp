@@ -1,4 +1,6 @@
 #include "test_common.h"
+#include "Analysis/Engine/AnalysisContext.h"
+#include <QJsonDocument>
 
 bool runSuite_FileIO(int& passed)
 {
@@ -874,6 +876,44 @@ bool runSuite_FileIO(int& passed)
         passed++;
     }
 
+
+    // TEST 189 : paramètres d'analyse persistés (chunk SETT, format 1.4) — BUG-013
+    {
+        const std::string tmpDir = "./build/test_tsa_data/";
+        std::filesystem::create_directories(tmpDir);
+        const std::string file = tmpDir + "test_settings_roundtrip.tsa";
+
+        TSA::Analysis::AnalysisContext ctx;
+        ctx.engineId = "custom2d";
+        ctx.combinationId = 3;
+        ctx.common.includeSelfWeight = false;
+        ctx.loadCaseIds = { 1, 2 };
+        Model m;
+        m.addNode(0, 0, 0);
+        m.setAnalysisSettingsJson(QJsonDocument(ctx.toJson()).toJson(QJsonDocument::Compact).toStdString());
+        std::string err;
+        TEST_CHECK(TSAProjectIO::saveToFile(QString::fromStdString(file), m, nullptr, &err), "Test 189: sauvegarde avec paramètres");
+
+        Model r;
+        r.setAnalysisSettingsJson("{\"stale\":true}");   // un projet précédent ne doit pas déteindre
+        TEST_CHECK(TSAProjectIO::loadFromFile(QString::fromStdString(file), r, nullptr, &err), "Test 189: rechargement");
+        bool ok = false;
+        const auto back = TSA::Analysis::AnalysisContext::fromJson(
+            QJsonDocument::fromJson(QByteArray::fromStdString(r.analysisSettingsJson())).object(), &ok);
+        TEST_CHECK(ok && back.engineId == "custom2d" && back.combinationId == 3 && !back.common.includeSelfWeight
+                       && back.loadCaseIds == std::vector<int>({ 1, 2 }),
+                   "Test 189: paramètres relus à l'identique");
+
+        Model plain;
+        plain.addNode(0, 0, 0);
+        const std::string file2 = tmpDir + "test_settings_none.tsa";
+        TEST_CHECK(TSAProjectIO::saveToFile(QString::fromStdString(file2), plain, nullptr, &err)
+                       && TSAProjectIO::loadFromFile(QString::fromStdString(file2), r, nullptr, &err)
+                       && r.analysisSettingsJson().empty(),
+                   "Test 189: sans chunk SETT → réglages par défaut");
+        std::cout << "[PASS] Test 189: Paramètres d'analyse persistés (.tsa 1.4)" << std::endl;
+        ++passed;
+    }
 
     return true;
 }

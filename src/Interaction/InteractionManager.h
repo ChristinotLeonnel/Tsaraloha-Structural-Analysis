@@ -27,9 +27,6 @@ enum class InteractionMode
     DrawStayCable,
     DrawSuspensionCable,
     DrawHanger,
-    Move3D,
-    Copy3D,
-    Rotate3D,
     MoveOrigin3D,
     Paste3D,
     ModelingTool   ///< outil de modification / dessin (TSA::Interaction::ModelingTool)
@@ -85,6 +82,7 @@ public:
     void setMode(InteractionMode mode);
 
     bool isDrawingMode() const noexcept;
+    /// Saisie d'un point de transformation (déplacement de l'origine, collage).
     bool isTransformMode() const noexcept;
 
     // --- Gestionnaire de requête de sélection 3D non-bloquante ---

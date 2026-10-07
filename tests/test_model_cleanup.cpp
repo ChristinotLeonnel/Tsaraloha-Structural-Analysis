@@ -1,11 +1,15 @@
-// Suite « cleanup » : nettoyage topologique du modèle (tests 160-165).
+// Suite « cleanup » : nettoyage topologique du modèle (tests 160-165) arbre du modèle (166), édition groupée (191).
 
 #include "test_common.h"
 
 #include "Analysis/Engine/AnalysisManager.h"
 #include "Model/Load/LoadManager.h"
 #include "Model/ModelCleanup.h"
+#include "Model/MultiEditSession.h"
+#include "UI/ModelTree/ModelTreeWidget.h"
 #include "UI/Tools/ModelCleanupDialog.h"
+#include <QCoreApplication>
+#include <QTreeWidget>
 #include "UndoRedo/EditTransaction.h"
 
 using namespace TSA::Model;
@@ -164,6 +168,98 @@ bool runSuite_ModelCleanup(int& passed)
         const auto after = mgr.run(ctx, mgr.prepare(m, &gm, ctx));
         TEST_CHECK(after.success && after.results.hasResults(), "Test 165: après nettoyage, calcul réussi");
         std::cout << "[PASS] Test 165: Erreur de calcul évitée par le nettoyage" << std::endl;
+        ++passed;
+    }
+    // TEST 191 : édition groupée — seuls les champs modifiés sont reportés (BUG-005)
+    {
+        Model m;
+        std::vector<int> beams;
+        for (int i = 0; i < 4; ++i)
+        {
+            const int a = m.addNode(0, i, 3), b = m.addNode(6, i, 3);
+            beams.push_back(bar(m, a, b));
+        }
+        m.getBeam(beams[2])->setRotation(90.0);          // propriété propre à B3, à préserver
+        m.getBeam(beams[3])->setName("Linteau");
+        MultiEditSession session;
+        session.begin(m, ElementKind::Beam, beams[0], { beams[0], beams[1], beams[2] });
+        TEST_CHECK(session.active() && session.count() == 3, "Test 191: session active sur 3 poutres");
+
+        // Comme la vue : un état Annuler, puis modification de l'élément principal seul.
+        m.pushUndoState("Modification Barre");
+        auto* primary = m.getBeam(beams[0]);
+        primary->setSection(Section::ipe(400));
+        primary->setName("Principale");
+        EndRelease hinge; hinge.mz = true; hinge.my = true;
+        primary->setEndRelease(hinge);
+        const ModelDiff diff = session.propagate(m);
+        TEST_CHECK(diff.modifiedBeamIds.size() == 2, "Test 191: 2 poutres reportées");
+        TEST_CHECK(m.getBeam(beams[1])->section().name == primary->section().name
+                       && m.getBeam(beams[2])->section().name == primary->section().name
+                       && m.getBeam(beams[2])->endRelease().mz,
+                   "Test 191: section et relâchement reportés");
+        TEST_CHECK(std::abs(m.getBeam(beams[2])->rotation() - 90.0) < 1e-12 && m.getBeam(beams[1])->name() != "Principale",
+                   "Test 191: rotation non modifiée et nom conservés");
+        TEST_CHECK(m.getBeam(beams[3])->section().name != primary->section().name, "Test 191: poutre non sélectionnée intacte");
+        TEST_CHECK(session.propagate(m).isEmpty(), "Test 191: second report sans changement → rien");
+        TEST_CHECK(m.undo() && m.getBeam(beams[1])->section().name == m.getBeam(beams[3])->section().name,
+                   "Test 191: une seule entrée Annuler rétablit toutes les poutres");
+
+        // Nœuds : l'appui est reporté, jamais les coordonnées
+        MultiEditSession nodes;
+        nodes.begin(m, ElementKind::Node, 1, { 1, 3, 5 });
+        m.getNode(1)->setSupport(SupportDefinition::fixed());
+        m.getNode(1)->setX(42.0);
+        nodes.propagate(m);
+        TEST_CHECK(m.getNode(3)->support() == SupportDefinition::fixed() && m.getNode(5)->support() == SupportDefinition::fixed()
+                       && std::abs(m.getNode(3)->x()) < 1e-12,
+                   "Test 191: appui reporté, coordonnées conservées");
+        std::cout << "[PASS] Test 191: Édition groupée (champs modifiés uniquement)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 166 : arbre du modèle indexé (BUG-007) — ajout, modification, suppression en rafale, reconstruction
+    {
+        Model m;
+        TSA::UI::ModelTreeWidget tree(&m);
+        auto* view = tree.findChild<QTreeWidget*>();
+        auto beamsCategory = [&]() -> QTreeWidgetItem* {
+            const auto found = view->findItems(QStringLiteral("Poutres"), Qt::MatchExactly | Qt::MatchRecursive);
+            return found.isEmpty() ? nullptr : found.first();
+        };
+        std::vector<int> beams;
+        int prev = m.addNode(0, 0, 0);
+        for (int i = 1; i <= 2000; ++i)
+        {
+            const int next = m.addNode(i, 0, 0);
+            beams.push_back(bar(m, prev, next));
+            prev = next;
+        }
+        TEST_CHECK(beamsCategory() && beamsCategory()->childCount() == 2000, "Test 166: 2000 poutres dans l'arbre");
+
+        m.getBeam(beams[1500])->setSection(Section::ipe(400));
+        m.notifyBeamModified(beams[1500]);
+        const auto t0 = std::chrono::steady_clock::now();
+        for (int i = 0; i < 1500; ++i) m.removeBeam(beams[i]);
+        QCoreApplication::processEvents();   // suppressions regroupées (minuteur 0 ms)
+        const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+        TEST_CHECK(beamsCategory()->childCount() == 500, "Test 166: 1500 suppressions appliquées");
+        TEST_CHECK(beamsCategory()->child(0)->data(0, Qt::UserRole + 2).toInt() == beams[1500],
+                   "Test 166: ordre conservé (IdRole = Qt::UserRole + 2)");
+        bool modifiedFound = false;
+        for (int i = 0; i < beamsCategory()->childCount(); ++i)
+            if (beamsCategory()->child(i)->text(1).contains(QStringLiteral("400"))) modifiedFound = true;
+        TEST_CHECK(modifiedFound, "Test 166: modification répercutée par l'index");
+
+        tree.refreshAll();   // reconstruction : l'index est rebâti, plus aucun pointeur périmé
+        m.getBeam(beams[1999])->setSection(Section::ipe(400));
+        m.notifyBeamModified(beams[1999]);
+        m.removeBeam(beams[1998]);
+        tree.selectBeamItem(beams[1999]);   // vide la file de suppressions puis cherche par l'index
+        TEST_CHECK(beamsCategory()->childCount() == 499 && !view->selectedItems().isEmpty()
+                       && view->selectedItems().first()->text(1).contains(QStringLiteral("400")),
+                   "Test 166: après reconstruction, recherche et suppression cohérentes");
+        std::cout << "[PASS] Test 166: Arbre du modèle indexé (1500 suppressions en " << ms << " ms)" << std::endl;
         ++passed;
     }
     return true;

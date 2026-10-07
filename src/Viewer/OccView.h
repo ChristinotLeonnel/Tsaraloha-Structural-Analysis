@@ -48,6 +48,8 @@ namespace TSA::Grid
 #include <Graphic3d_ClipPlane.hxx>
 #include <Graphic3d_Camera.hxx>
 #include <gp_Ax3.hxx>
+#include <optional>
+#include "../Model/SelectionQuery.h"
 #include "MaterialVisual.h"
 #include "ProjectionManager.h"
 #include "ViewManager.h"
@@ -198,6 +200,16 @@ public:
     void applyWorkPlaneTransformation();
     void setWorkPlaneIsolation(bool isolated, double distance = 1.0);
     void updateElementIsolation();
+
+    // Isolation par éléments (commandes « Isoler la sélection », « Masquer la sélection »…). Même
+    // passe de visibilité que le plan de travail et les calques (updateElementIsolation). Chaque
+    // opération empile l'état précédent : undoElementIsolation() y revient.
+    void isolateElements(const TSA::Model::ElementSet& elements);
+    void hideElements(const TSA::Model::ElementSet& elements);
+    void invertElementIsolation();
+    bool undoElementIsolation();
+    void showAllElements();
+    bool hasElementIsolation() const noexcept { return m_isolatedElements.has_value() || m_hiddenElements.size() > 0; }
 
     // Filtre d'affichage par famille d'éléments (dock Calques & Visibilité). S'applique dans
     // updateElementIsolation() : aucune autre mécanique de visibilité n'est créée.
@@ -420,8 +432,6 @@ signals:
     void wallCreated(int wallId);
 
     // Signaux de manipulation 3D directe
-    void pointToPointMoveRequested(const gp_Pnt& base, const gp_Pnt& target, bool isCopy);
-    void pointToPointRotateRequested(const gp_Pnt& center, double angleRad, bool isCopy);
     void originMoveRequested(const gp_Pnt& newOrigin);
     void pasteAtPointRequested(const gp_Pnt& target);
     void elementCreated();
@@ -514,9 +524,8 @@ private:
     bool getPointUnderCursor(const QPoint& mousePixelPos, double& x, double& y, double& z, int& detectedNodeId);
     void updateRubberBand(const gp_Pnt& currentPnt);
     void clearRubberBand();
-    void updateTransformPreview(const gp_Pnt& currentPnt);
     void clearTransformPreview();
-    void buildTransformPreviewGhosts(InteractionMode mode);
+    void buildTransformPreviewGhosts();
     int getOrCreateNode(double x, double y, double z, int existingNodeId);
     void updateClipPlaneEquation();
     void updateSectionPlaneVisual();
@@ -637,6 +646,10 @@ private:
     // Isolation (mode 2D ou « Isoler le plan ») : la visibilité de chaque objet est recalculée à
     // partir des drapeaux d'affichage et de l'appartenance au plan actif.
     bool m_isolationApplied = false; ///< Vrai si la dernière passe d'isolation a masqué des objets
+    std::optional<TSA::Model::ElementSet> m_isolatedElements; ///< seuls ces éléments (et leurs nœuds) restent visibles
+    TSA::Model::ElementSet m_hiddenElements;                  ///< éléments masqués par l'utilisateur
+    std::vector<std::pair<std::optional<TSA::Model::ElementSet>, TSA::Model::ElementSet>> m_elementIsolationHistory;
+    void pushElementIsolationState();
     bool isIsolationActive() const noexcept;
     double isolationTolerance() const noexcept;
     bool keepNodeUnderIsolation(int nodeId) const;
@@ -683,13 +696,8 @@ private:
     Handle(AIS_RubberBand) m_selectRubberBand;
     std::vector<Handle(AIS_Shape)> m_previewGhostShapes;
     bool m_previewGhostsBuilt = false;
-    InteractionMode m_previewGhostMode = InteractionMode::Select;
     size_t m_previewGhostBuildCount = 0; ///< Nombre de fantômes créés (mesure : doit rester constant pendant un déplacement de souris)
 
-    gp_Pnt m_basePoint3D;
-    gp_Pnt m_centerPoint3D;
-    bool m_hasBasePoint = false;
-    bool m_hasCenterPoint = false;
 
     TSA::Model::StructurePresets m_presets;
     TSA::Model::BarProperties m_currentBarProps;

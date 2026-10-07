@@ -6,6 +6,7 @@
 #include <cstddef>
 #include "Beam.h"
 #include "Cable/Cable.h"
+#include "../BIM/Core/BimModel.h"
 
 namespace TSA::Model
 {
@@ -21,6 +22,7 @@ struct ClipboardNode
 
 struct ClipboardBeam
 {
+    int originalId = 0;
     int originalStartNodeId = 0;
     int originalEndNodeId = 0;
     BarProperties props;
@@ -28,6 +30,7 @@ struct ClipboardBeam
 
 struct ClipboardColumn
 {
+    int originalId = 0;
     int originalStartNodeId = 0;
     int originalEndNodeId = 0;
     BarProperties props;
@@ -35,6 +38,7 @@ struct ClipboardColumn
 
 struct ClipboardSlab
 {
+    int originalId = 0;
     std::vector<int> originalNodeIds;
     double thickness = 0.20;
     Material material = Material::concreteC25_30();
@@ -42,6 +46,7 @@ struct ClipboardSlab
 
 struct ClipboardCable
 {
+    int originalId = 0;
     int originalStartNodeId = 0;
     int originalEndNodeId = 0;
     CableDefinition definition;
@@ -123,6 +128,9 @@ private:
     std::vector<ClipboardColumn> m_columns;
     std::vector<ClipboardSlab> m_slabs;
     std::vector<ClipboardCable> m_cables;
+    /// Produits physiques (métadonnées BIM, regroupement 1:N) des éléments copiés : le collage
+    /// reforme un produit par produit source (BUG-029).
+    std::vector<TSA::BIM::PhysicalElement> m_bimProducts;
 };
 
 } // namespace TSA::Model

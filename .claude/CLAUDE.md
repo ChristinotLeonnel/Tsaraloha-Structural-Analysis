@@ -60,6 +60,9 @@ cmd /c "`"$vcvars`" >nul && cmake --preset ninja-debug && cmake --build --preset
 build-ninja-debug\TSA_TestSuite.exe            # toutes les suites ; --suite=io|model|commands|viewer...
 ```
 - `-j 4` : au-delà, erreurs transitoires « mémoire virtuelle pour PCH » (C3859) sur ce poste.
+- MSVC francisé : CMake génère `build-*/msvc_codepage.cmd` (page de code de la console qui configure). Après une
+  modification d'en-tête, contrôler `ninja -t deps <obj>` (#deps > 0) ; sinon reconfigurer puis `--clean-first`.
+- Périmètre : calcul statique seul (ADR-022) ; le dynamique est archivé sur `archive/dynamique`.
 - `LNK1168 impossible d'ouvrir TSA.exe` : un clone WER d'un ancien crash verrouille l'exe ;
   renommer `TSA.exe` en `TSA_running_<hhmmss>.exe` puis relier (les clones disparaissent au
   redémarrage de Windows).

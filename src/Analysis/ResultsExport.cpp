@@ -106,6 +106,7 @@ QJsonObject datasetJson(const ResultsModel& r, ResultsDataset ds)
     m["model"] = QString::fromStdString(meta.modelBuilder);
     m["extraction"] = meta.extractionLevel == ExtractionLevel::Advanced ? "ADVANCED" : "LIGHT";
     m["equilibriumRelativeResidual"] = meta.relativeEquilibriumResidual;
+    m["momentEquilibriumRelativeResidual"] = meta.relativeMomentResidual;
     root["metadata"] = m;
 
     const bool all = ds == ResultsDataset::All;

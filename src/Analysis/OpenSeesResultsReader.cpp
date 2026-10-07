@@ -2,6 +2,7 @@
 #include "OpenSeesModelMap.h"
 #include "ElementTransformation.h"
 #include "LoadResolver.h"
+#include "OpenSeesAnalysisBuilder.h"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -146,17 +147,150 @@ void fillLocalDisplacements(ElementResults& res, const SnapshotElement& el, cons
     }
 }
 
+/// Efforts intérieurs exacts le long d'une poutre / d'un poteau élastique (BUG-016), convention RDM de
+/// ResultsModel (voir StationForces) : N > 0 en traction, My / Mz > 0 quand la fibre du côté négatif de
+/// l'axe local est tendue, V = dM/dx. Obtenus par équilibre du tronçon [0, x] : efforts d'extrémité i
+/// (exercés sur l'élément, localForce OpenSees) + charges réellement appliquées (même liste que le
+/// script). La déformée est obtenue par double intégration de la courbure exacte (κ = M / EI), calée
+/// sur les déplacements des deux nœuds : exacte en élasticité linéaire, y compris avec rotules.
+void fillBeamStations(ElementResults& res, const SnapshotElement& el, const double rawI[6],
+                      const std::vector<BeamElementLoad>& loads, double loadFactor, double stiffnessScale)
+{
+    const double L = el.length;
+    if (L <= 1e-9) return;
+
+    auto internalAt = [&](double x) {
+        double fx = rawI[0], fy = rawI[1], fz = rawI[2];
+        double my = rawI[4] + x * rawI[2];
+        double mz = rawI[5] - x * rawI[1];
+        for (const auto& l : loads)
+        {
+            const double wx = l.wx * loadFactor, wy = l.wy * loadFactor, wz = l.wz * loadFactor;
+            if (l.kind == BeamElementLoad::Kind::Point)
+            {
+                const double a = std::clamp(l.relativePosition, 0.0, 1.0) * L;
+                if (a >= x) continue;
+                fx += wx; fy += wy; fz += wz;
+                my += (x - a) * wz;
+                mz -= (x - a) * wy;
+            }
+            else if (l.kind == BeamElementLoad::Kind::Uniform)
+            {
+                fx += wx * x; fy += wy * x; fz += wz * x;
+                my += wz * x * x * 0.5;
+                mz -= wy * x * x * 0.5;
+            }
+            else
+            {
+                // Charge linéaire sur [a, b] : part comprise dans [a, min(x, b)], Gauss à 2 points (exact).
+                const double a = std::clamp(l.relativePosition, 0.0, 1.0) * L;
+                const double b = std::clamp(l.relativeEnd, 0.0, 1.0) * L;
+                const double c = std::min(x, b);
+                if (c <= a || b <= a) continue;
+                const double mid = 0.5 * (a + c), half = 0.5 * (c - a);
+                for (const double g : { -0.5773502691896258, 0.5773502691896258 })
+                {
+                    const double xi = mid + half * g;
+                    const double t = (xi - a) / (b - a);
+                    const double qx = (wx + (l.wxB * loadFactor - wx) * t) * half;
+                    const double qy = (wy + (l.wyB * loadFactor - wy) * t) * half;
+                    const double qz = (wz + (l.wzB * loadFactor - wz) * t) * half;
+                    fx += qx; fy += qy; fz += qz;
+                    my += (x - xi) * qz;
+                    mz -= (x - xi) * qy;
+                }
+            }
+        }
+        // fx..mz : résultante des forces exercées sur le tronçon [0, x] (hors coupure).
+        StationForces sf;
+        sf.position = x;
+        sf.N = -fx;
+        sf.Vy = fy;
+        sf.Vz = fz;
+        sf.Mx = -rawI[3];
+        sf.My = my;
+        sf.Mz = -mz;
+        return sf;
+    };
+
+    // Stations : 20 intervalles réguliers + points d'application des charges ponctuelles (extrema).
+    std::vector<double> xs;
+    const int numStations = 20;
+    for (int s = 1; s < numStations; ++s) xs.push_back(L * s / numStations);
+    auto addBreakpoint = [&](double rel) {
+        const double a = std::clamp(rel, 0.0, 1.0) * L;
+        if (a <= 1e-9 * L || a >= L * (1.0 - 1e-9)) return;
+        if (std::none_of(xs.begin(), xs.end(), [&](double x) { return std::abs(x - a) <= 1e-6 * L; })) xs.push_back(a);
+    };
+    for (const auto& l : loads)
+    {
+        if (l.kind == BeamElementLoad::Kind::Uniform) continue;
+        addBreakpoint(l.relativePosition);
+        if (l.kind == BeamElementLoad::Kind::Linear) addBreakpoint(l.relativeEnd);
+    }
+    std::sort(xs.begin(), xs.end());
+
+    // Déformée : double intégration de la courbure sur une grille fine.
+    const double E = el.material.mechanical.youngModulus * stiffnessScale;
+    const double EIz = E * el.section.iz();
+    const double EIy = E * el.section.iy();
+    const double EA = E * el.section.area();
+    const int n = 400;
+    const double dx = L / n;
+    std::vector<double> sV(n + 1, 0.0), gV(n + 1, 0.0), sW(n + 1, 0.0), gW(n + 1, 0.0), hU(n + 1, 0.0);
+    StationForces prev = internalAt(0.0);
+    for (int i = 1; i <= n; ++i)
+    {
+        const StationForces cur = internalAt(i * dx);
+        const double kv0 = EIz > 0.0 ? prev.Mz / EIz : 0.0, kv1 = EIz > 0.0 ? cur.Mz / EIz : 0.0; // v'' = Mz / EIz
+        const double kw0 = EIy > 0.0 ? prev.My / EIy : 0.0, kw1 = EIy > 0.0 ? cur.My / EIy : 0.0; // w'' = My / EIy
+        const double e0 = EA > 0.0 ? prev.N / EA : 0.0, e1 = EA > 0.0 ? cur.N / EA : 0.0;
+        sV[i] = sV[i - 1] + 0.5 * (kv0 + kv1) * dx;
+        gV[i] = gV[i - 1] + 0.5 * (sV[i - 1] + sV[i]) * dx;
+        sW[i] = sW[i - 1] + 0.5 * (kw0 + kw1) * dx;
+        gW[i] = gW[i - 1] + 0.5 * (sW[i - 1] + sW[i]) * dx;
+        hU[i] = hU[i - 1] + 0.5 * (e0 + e1) * dx;
+        prev = cur;
+    }
+    auto sample = [&](const std::vector<double>& arr, double x) {
+        const double t = std::clamp(x / dx, 0.0, static_cast<double>(n));
+        const int i = std::min(static_cast<int>(t), n - 1);
+        return arr[i] + (arr[i + 1] - arr[i]) * (t - i);
+    };
+
+    const StationForces& a = res.startForces;
+    const StationForces& b = res.endForces;
+    for (double x : xs)
+    {
+        StationForces sf = internalAt(x);
+        const double t = x / L;
+        sf.uy = a.uy + (b.uy - a.uy) * t + sample(gV, x) - gV[n] * t;
+        sf.uz = a.uz + (b.uz - a.uz) * t + sample(gW, x) - gW[n] * t;
+        sf.ux = a.ux + (b.ux - a.ux - hU[n]) * t + sample(hU, x);
+        sf.rz = (b.uy - a.uy) / L + sample(sV, x) - gV[n] / L;    // θz = v'
+        sf.ry = -((b.uz - a.uz) / L + sample(sW, x) - gW[n] / L); // θy = −w'
+        sf.rx = a.rx + (b.rx - a.rx) * t;
+        res.intermediateStations.push_back(sf);
+    }
+}
+
 /// Efforts d'éléments d'un pas : poutres/poteaux depuis localForce (12), treillis/câbles depuis
-/// basicForce (1). Les stations intermédiaires conservent le post-traitement historique de TSA.
+/// basicForce (1). loads = charges eleLoad appliquées (nullptr : extrémités seules, aucune station
+/// inventée, ex. pilotage en déplacement dont le facteur de charge n'est pas connu).
 std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapshot& snapshot,
                                                          const OpenSeesModelMap& map,
+                                                         const AnalysisParameters& params,
                                                          const std::vector<double>* beamRow,
                                                          const std::vector<double>* axialRow,
-                                                         const std::map<int, NodeDisplacement>& disps)
+                                                         const std::map<int, NodeDisplacement>& disps,
+                                                         const std::map<int, std::vector<BeamElementLoad>>* loads,
+                                                         double loadFactor)
 {
     std::map<ElementKey, ElementResults> out;
     std::size_t beamIdx = 0;
     std::size_t axialIdx = 0;
+    const double stiffnessScale = params.useKiloNewtons ? 1e-3 : 1.0; // même échelle que buildElements
+    static const std::vector<BeamElementLoad> kNoLoad;
 
     for (const auto& e : map.elements())
     {
@@ -179,17 +313,20 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
             res.endForces.position = el->length;
             res.endForces.N = axial;
 
-            const int numStations = 5;
-            for (int s = 1; s < numStations; ++s)
+            if (loads)
             {
-                const double t = static_cast<double>(s) / numStations;
-                StationForces sf;
-                sf.position = t * el->length;
-                sf.N = axial;
-                sf.ux = (1.0 - t) * res.startForces.ux + t * res.endForces.ux;
-                sf.uy = (1.0 - t) * res.startForces.uy + t * res.endForces.uy;
-                sf.uz = (1.0 - t) * res.startForces.uz + t * res.endForces.uz;
-                res.intermediateStations.push_back(sf);
+                const int numStations = 5;
+                for (int s = 1; s < numStations; ++s)
+                {
+                    const double t = static_cast<double>(s) / numStations;
+                    StationForces sf;
+                    sf.position = t * el->length;
+                    sf.N = axial;
+                    sf.ux = (1.0 - t) * res.startForces.ux + t * res.endForces.ux;
+                    sf.uy = (1.0 - t) * res.startForces.uy + t * res.endForces.uy;
+                    sf.uz = (1.0 - t) * res.startForces.uz + t * res.endForces.uz;
+                    res.intermediateStations.push_back(sf);
+                }
             }
         }
         else
@@ -198,66 +335,47 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
             const auto& v = *beamRow;
             const std::size_t idx = beamIdx;
             beamIdx += 12;
-            // ElasticBeam3d localForce : [N Vy Vz T My Mz]_i puis _j (forces sur l'élément).
-            res.startForces.position = 0.0;
-            res.startForces.N = -v[idx]; // Convention RDM : traction > 0
-            res.startForces.Vy = v[idx + 1];
-            res.startForces.Vz = v[idx + 2];
-            res.startForces.Mx = v[idx + 3];
-            res.startForces.My = v[idx + 4];
-            res.startForces.Mz = v[idx + 5];
-
-            res.endForces.position = el->length;
-            res.endForces.N = v[idx + 6];
-            res.endForces.Vy = v[idx + 7];
-            res.endForces.Vz = v[idx + 8];
-            res.endForces.Mx = v[idx + 9];
-            res.endForces.My = v[idx + 10];
-            res.endForces.Mz = v[idx + 11];
-
-            // Interpolation et superposition des charges sur barre (M0, V0) — post-traitement
-            // historique, voir known-issues (BUG-016) : non utilisé par l'extraction avancée.
-            const int numStations = 20;
-            const double L = el->length;
-            for (int s = 1; s < numStations; ++s)
+            // ElasticBeam3d localForce : [N Vy Vz T My Mz]_i puis _j (forces exercées SUR l'élément).
+            // Les charges linéaires sont appliquées aux nœuds (forces d'encastrement parfait) : leurs
+            // forces d'encastrement s'ajoutent à celles calculées par OpenSees.
+            // Convention RDM (voir fillBeamStations) : en i, efforts intérieurs = −(forces sur l'élément),
+            // en j = +(forces sur l'élément), puis My, Vy, Vz exprimés de sorte que M > 0 tende la fibre
+            // du côté négatif de l'axe local et V = dM/dx.
+            double rawI[6] = { v[idx], v[idx + 1], v[idx + 2], v[idx + 3], v[idx + 4], v[idx + 5] };
+            double rawJ[6] = { v[idx + 6], v[idx + 7], v[idx + 8], v[idx + 9], v[idx + 10], v[idx + 11] };
+            const std::vector<BeamElementLoad>* elementLoads = &kNoLoad;
+            if (loads)
             {
-                const double t = static_cast<double>(s) / numStations;
-                const double x = t * L;
-                StationForces sf;
-                sf.position = x;
-                sf.N = (1.0 - t) * res.startForces.N + t * res.endForces.N;
-                sf.Vy = (1.0 - t) * res.startForces.Vy + t * res.endForces.Vy;
-                sf.Vz = (1.0 - t) * res.startForces.Vz + t * res.endForces.Vz;
-                sf.Mx = (1.0 - t) * res.startForces.Mx + t * res.endForces.Mx;
-                sf.My = (1.0 - t) * res.startForces.My + t * res.endForces.My;
-                sf.Mz = (1.0 - t) * res.startForces.Mz + t * res.endForces.Mz;
-
-                sf.ux = (1.0 - t) * res.startForces.ux + t * res.endForces.ux;
-                sf.uy = (1.0 - t) * res.startForces.uy + t * res.endForces.uy;
-                sf.uz = (1.0 - t) * res.startForces.uz + t * res.endForces.uz;
-                sf.rx = (1.0 - t) * res.startForces.rx + t * res.endForces.rx;
-                sf.ry = (1.0 - t) * res.startForces.ry + t * res.endForces.ry;
-                sf.rz = (1.0 - t) * res.startForces.rz + t * res.endForces.rz;
-
-                for (const auto& ml : snapshot.memberLoads())
+                if (auto it = loads->find(e.tag); it != loads->end()) elementLoads = &it->second;
+                for (const auto& l : *elementLoads)
                 {
-                    if (snapshot.findElementForLoad(ml) != el) continue;
-                    if (ml.type() == TSA::Model::LoadType::MemberPoint)
+                    if (l.kind != BeamElementLoad::Kind::Linear) continue;
+                    double fI[6], fJ[6];
+                    l.fixedEndForces(el->length, fI, fJ);
+                    for (int k = 0; k < 6; ++k)
                     {
-                        const double p = ml.q1();
-                        double a = ml.isRelativePosition() ? (ml.x1() * L) : ml.x1();
-                        a = std::clamp(a, 0.0, L);
-                        sf.My += (x <= a) ? p * (1.0 - a / L) * x : p * a * (1.0 - x / L);
-                    }
-                    else
-                    {
-                        const double q = ml.q1();
-                        sf.My += (q * x * (L - x)) * 0.5;
-                        sf.Vz += q * (0.5 * L - x);
+                        rawI[k] += fI[k] * loadFactor;
+                        rawJ[k] += fJ[k] * loadFactor;
                     }
                 }
-                res.intermediateStations.push_back(sf);
             }
+            res.startForces.position = 0.0;
+            res.startForces.N = -rawI[0];
+            res.startForces.Vy = rawI[1];
+            res.startForces.Vz = rawI[2];
+            res.startForces.Mx = -rawI[3];
+            res.startForces.My = rawI[4];
+            res.startForces.Mz = -rawI[5];
+
+            res.endForces.position = el->length;
+            res.endForces.N = rawJ[0];
+            res.endForces.Vy = -rawJ[1];
+            res.endForces.Vz = -rawJ[2];
+            res.endForces.Mx = rawJ[3];
+            res.endForces.My = -rawJ[4];
+            res.endForces.Mz = rawJ[5];
+
+            if (loads) fillBeamStations(res, *el, rawI, *elementLoads, loadFactor, stiffnessScale);
         }
         out[res.key()] = res;
     }
@@ -291,19 +409,17 @@ const char* kElementDofOrdering = "[UX UY UZ RX RY RZ]_i puis [UX UY UZ RX RY RZ
 bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
                                        const CalculationSnapshot& snapshot,
                                        const AnalysisParameters& params,
-                                       const std::string& solverStdOut,
                                        ResultsModel& outResults,
                                        std::string* errorMessage)
 {
     return readResults(workingDirectory, snapshot, OpenSeesModelMap::build(snapshot, params), params,
-                       solverStdOut, outResults, errorMessage);
+                       outResults, errorMessage);
 }
 
 bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
                                        const CalculationSnapshot& snapshot,
                                        const OpenSeesModelMap& map,
                                        const AnalysisParameters& params,
-                                       const std::string& solverStdOut,
                                        ResultsModel& outResults,
                                        std::string* errorMessage)
 {
@@ -316,14 +432,6 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
     outResults.setAnalysisType(params.type);
     outResults.setUnits(UnitSystem::fromKiloNewtons(params.useKiloNewtons));
     outResults.updateTimestamp();
-
-    if (params.type == AnalysisType::Modal)
-    {
-        parseModalOutput(solverStdOut, outResults);
-        outResults.setValid(!outResults.modalModes().empty());
-        outResults.computeSummary();
-        return outResults.isValid();
-    }
 
     const std::string dir = workingDirectory + "/";
     ReadContext ctx;
@@ -365,12 +473,24 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
 
     const bool hasBeams = map.beamColumnTags().empty() || !beamRows.empty();
     const bool hasAxial = map.axialTags().empty() || !axialRows.empty();
+    // Charges réellement appliquées (même liste que le script) et facteur de charge de chaque pas :
+    // statique linéaire λ = 1 ; non linéaire en pilotage par la charge λ = pas × incrément. Les autres
+    // pilotages (déplacement, longueur d'arc) ne connaissent pas λ : extrémités seules.
+    const auto appliedLoads = OpenSeesAnalysisBuilder::beamElementLoads(snapshot, params);
+    const bool loadFactorKnown = params.type == AnalysisType::LinearStatic || params.integratorType == IntegratorType::LoadControl;
+    const double loadStep = params.stepSize > 0.0 ? params.stepSize : 1.0 / std::max(1, params.numSteps);
+    auto loadFactorOfStep = [&](std::size_t stepIdx) {
+        return params.type == AnalysisType::LinearStatic ? 1.0 : static_cast<double>(stepIdx + 1) * loadStep;
+    };
+    const auto* stationLoads = loadFactorKnown ? &appliedLoads : nullptr;
+
     if (!map.elements().empty() && hasBeams && hasAxial)
     {
-        const auto finalElements = buildElementResults(snapshot, map,
+        const std::size_t lastStep = dispRows.empty() ? 0 : dispRows.size() - 1;
+        const auto finalElements = buildElementResults(snapshot, map, params,
                                                        beamRows.empty() ? nullptr : &beamRows.back(),
                                                        axialRows.empty() ? nullptr : &axialRows.back(),
-                                                       outResults.allDisplacements());
+                                                       outResults.allDisplacements(), stationLoads, loadFactorOfStep(lastStep));
         for (const auto& [key, res] : finalElements)
             outResults.setElementResults(res);
     }
@@ -380,25 +500,22 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
     {
         for (std::size_t stepIdx = 0; stepIdx < dispRows.size(); ++stepIdx)
         {
-            TimeHistoryStep thStep;
-            thStep.time = static_cast<double>(stepIdx);
             StepResults stepRes;
             stepRes.stepNumber = static_cast<int>(stepIdx + 1);
-            stepRes.factorOrTime = static_cast<double>(stepIdx + 1) / static_cast<double>(dispRows.size());
+            stepRes.factorOrTime = loadFactorKnown ? loadFactorOfStep(stepIdx)
+                                                   : static_cast<double>(stepIdx + 1) / static_cast<double>(dispRows.size());
             stepRes.displacements = parseDisplacements(dispRows[stepIdx], map);
-            thStep.displacements = stepRes.displacements;
             if (stepIdx < reactRows.size())
                 stepRes.reactions = parseReactions(reactRows[stepIdx], map);
             const bool beamOk = map.beamColumnTags().empty() || stepIdx < beamRows.size();
             const bool axialOk = map.axialTags().empty() || stepIdx < axialRows.size();
             if (beamOk && axialOk)
             {
-                stepRes.elementResults = buildElementResults(snapshot, map,
+                stepRes.elementResults = buildElementResults(snapshot, map, params,
                     stepIdx < beamRows.size() ? &beamRows[stepIdx] : nullptr,
                     stepIdx < axialRows.size() ? &axialRows[stepIdx] : nullptr,
-                    stepRes.displacements);
+                    stepRes.displacements, stationLoads, loadFactorOfStep(stepIdx));
             }
-            outResults.addTimeHistoryStep(thStep);
             outResults.addStepResults(stepRes);
         }
     }
@@ -682,30 +799,6 @@ bool OpenSeesResultsReader::readMatrixResults(const std::string& workingDirector
     return true;
 }
 
-void OpenSeesResultsReader::parseModalOutput(const std::string& solverStdOut,
-                                            ResultsModel& outResults)
-{
-    std::regex rx("MODE\\s+(\\d+)\\s+LAMBDA\\s+([0-9.eE+-]+)");
-    auto words_begin = std::sregex_iterator(solverStdOut.begin(), solverStdOut.end(), rx);
-    auto words_end = std::sregex_iterator();
-
-    for (std::sregex_iterator i = words_begin; i != words_end; ++i)
-    {
-        std::smatch match = *i;
-        int modeNum = std::stoi(match[1].str());
-        double lambda = std::stod(match[2].str());
-
-        ModalMode mode;
-        mode.modeNumber = modeNum;
-        mode.eigenvalue = lambda;
-        mode.omega = (lambda > 0.0) ? std::sqrt(lambda) : 0.0;
-        mode.frequency = mode.omega / (2.0 * 3.141592653589793);
-        mode.period = (mode.frequency > 1e-6) ? (1.0 / mode.frequency) : 0.0;
-
-        outResults.addModalMode(mode);
-    }
-}
-
 void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& snapshot,
                                                     const AnalysisParameters& params,
                                                     ResultsModel& outResults)
@@ -714,35 +807,48 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
     // Mêmes facteurs d'échelle que buildLoads : charges TSA en kN → unités du script.
     const double forceScale = params.useKiloNewtons ? 1.0 : 1000.0;
 
+    // Force F appliquée au point P : résultante et moment r × F autour de l'origine.
+    auto addForce = [&](const gp_Pnt& P, const gp_Vec& F) {
+        eq.appliedFx += F.X();
+        eq.appliedFy += F.Y();
+        eq.appliedFz += F.Z();
+        const gp_Vec m = gp_Vec(P.XYZ()).Crossed(F);
+        eq.appliedMx += m.X();
+        eq.appliedMy += m.Y();
+        eq.appliedMz += m.Z();
+        eq.momentScale += m.Magnitude();
+    };
+    auto pointOnElement = [&](const SnapshotElement& el, double x) {
+        const auto* n1 = snapshot.getNode(el.startNodeId);
+        const auto* n2 = snapshot.getNode(el.endNodeId);
+        if (!n1 || !n2) return gp_Pnt();
+        const double t = el.length > 1e-12 ? x / el.length : 0.5;
+        return gp_Pnt(n1->x + (n2->x - n1->x) * t, n1->y + (n2->y - n1->y) * t, n1->z + (n2->z - n1->z) * t);
+    };
+
     auto accumulateLoads = [&](int targetCaseId, double factor, bool includeSW) {
         for (const auto& nl : snapshot.nodalLoads())
         {
             if (targetCaseId > 0 && nl.loadCaseId() != targetCaseId) continue;
-            eq.appliedFx += nl.fx() * factor * forceScale;
-            eq.appliedFy += nl.fy() * factor * forceScale;
-            eq.appliedFz += nl.fz() * factor * forceScale;
+            const auto* n = snapshot.getNode(nl.nodeId());
+            const gp_Pnt P = n ? gp_Pnt(n->x, n->y, n->z) : gp_Pnt();
+            const double k = factor * forceScale;
+            addForce(P, gp_Vec(nl.fx() * k, nl.fy() * k, nl.fz() * k));
+            eq.appliedMx += nl.mx() * k;
+            eq.appliedMy += nl.my() * k;
+            eq.appliedMz += nl.mz() * k;
+            eq.momentScale += std::sqrt(nl.mx() * nl.mx() + nl.my() * nl.my() + nl.mz() * nl.mz()) * std::abs(k);
         }
 
         for (const auto& ml : snapshot.memberLoads())
         {
             if (targetCaseId > 0 && ml.loadCaseId() != targetCaseId) continue;
 
+            // Résultante réelle (charge ponctuelle, uniforme, partielle ou trapézoïdale), en son centre.
+            const MemberLoadResultant res = memberLoadResultant(ml, snapshot);
             const auto* el = snapshot.findElementForLoad(ml);
             if (!el) continue;
-
-            LocalMemberLoadComponents comp = LoadResolver::resolveMemberLoadToLocal(ml, snapshot);
-            const auto* n1 = snapshot.getNode(el->startNodeId);
-            const auto* n2 = snapshot.getNode(el->endNodeId);
-            if (!n1 || !n2) continue;
-
-            gp_Pnt p1(n1->x, n1->y, n1->z);
-            gp_Pnt p2(n2->x, n2->y, n2->z);
-            gp_Vec gVec = LoadResolver::localVectorToGlobal(comp.wx, comp.wy, comp.wz, p1, p2, el->rotation);
-
-            double mult = (ml.type() == TSA::Model::LoadType::MemberPoint) ? 1.0 : el->length;
-            eq.appliedFx += gVec.X() * mult * factor * forceScale;
-            eq.appliedFy += gVec.Y() * mult * factor * forceScale;
-            eq.appliedFz += gVec.Z() * mult * factor * forceScale;
+            addForce(pointOnElement(*el, res.centroid), res.force * (factor * forceScale));
         }
 
         if (includeSW)
@@ -752,7 +858,7 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
             {
                 const double W = el.section.area() * el.material.density * g * el.length
                                * (params.useKiloNewtons ? 1e-3 : 1.0);
-                eq.appliedFz -= W * factor;
+                addForce(pointOnElement(el, 0.5 * el.length), gp_Vec(0.0, 0.0, -W * factor));
             }
         }
     };
@@ -781,11 +887,16 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
     }
 
     // Somme des réactions (appuis fixes + ressorts reportés sur leur nœud TSA)
-    for (const auto& [_, r] : outResults.allReactions())
+    for (const auto& [nodeId, r] : outResults.allReactions())
     {
         eq.reactionFx += r.rx;
         eq.reactionFy += r.ry;
         eq.reactionFz += r.rz;
+        const auto* n = snapshot.getNode(nodeId);
+        const gp_Vec m = n ? gp_Vec(n->x, n->y, n->z).Crossed(gp_Vec(r.rx, r.ry, r.rz)) : gp_Vec();
+        eq.reactionMx += m.X() + r.mx;
+        eq.reactionMy += m.Y() + r.my;
+        eq.reactionMz += m.Z() + r.mz;
     }
 
     outResults.setEquilibrium(eq);
@@ -796,6 +907,7 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
     const double applied = std::sqrt(eq.appliedFx * eq.appliedFx + eq.appliedFy * eq.appliedFy + eq.appliedFz * eq.appliedFz);
     const double err = std::sqrt(eq.errorFx() * eq.errorFx() + eq.errorFy() * eq.errorFy() + eq.errorFz() * eq.errorFz());
     meta.relativeEquilibriumResidual = applied > 0.0 ? err / applied : err;
+    meta.relativeMomentResidual = eq.relativeMomentResidual();
     meta.totalNodes = static_cast<int>(snapshot.nodeCount());
     meta.totalElements = static_cast<int>(snapshot.elementCount());
     meta.systemSolver = toTclString(params.systemSolver);

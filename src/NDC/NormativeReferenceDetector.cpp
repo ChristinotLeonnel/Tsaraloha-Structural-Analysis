@@ -12,9 +12,7 @@
 namespace TSA::NDC
 {
 
-std::vector<StandardReference> NormativeReferenceDetector::detectApplicableStandards(
-    const TSA::Model::Model& model,
-    const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
+std::vector<StandardReference> NormativeReferenceDetector::detectApplicableStandards(const TSA::Model::Model& model)
 {
     std::vector<StandardReference> standards;
 
@@ -164,10 +162,6 @@ std::vector<StandardReference> NormativeReferenceDetector::detectApplicableStand
             break;
         }
     }
-    if (results && (results->analysisType() == TSA::Analysis::AnalysisType::Modal || !results->modalModes().empty()))
-    {
-        hasSeismic = true;
-    }
 
     if (hasSeismic)
     {
@@ -175,7 +169,7 @@ std::vector<StandardReference> NormativeReferenceDetector::detectApplicableStand
             QStringLiteral("EN 1998-1"),
             QStringLiteral("Eurocode 8 — Calcul des structures pour leur résistance aux séismes — Partie 1 : Règles générales, actions sismiques et règles pour les bâtiments (EN 1998-1:2004)"),
             QStringLiteral("Séisme"),
-            QStringLiteral("Analyse modale spectrale et comportement dynamique des structures sous sollicitation sismique."),
+            QStringLiteral("Actions sismiques appliquées comme cas de charge statiques (forces latérales équivalentes) et combinaison sismique."),
             QStringLiteral("https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-8")
         });
     }
@@ -183,9 +177,7 @@ std::vector<StandardReference> NormativeReferenceDetector::detectApplicableStand
     return standards;
 }
 
-std::vector<BibliographicReference> NormativeReferenceDetector::generateBibliography(
-    const TSA::Model::Model& model,
-    const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
+std::vector<BibliographicReference> NormativeReferenceDetector::generateBibliography(const TSA::Model::Model& model)
 {
     std::vector<BibliographicReference> refs;
     QString currentDate = QDate::currentDate().toString("yyyy-MM-dd");
@@ -203,7 +195,7 @@ std::vector<BibliographicReference> NormativeReferenceDetector::generateBibliogr
         QStringLiteral("Principes fondamentaux de sécurité, états limites et combinaisons d'actions.")
     });
 
-    auto applicableStds = detectApplicableStandards(model, results);
+    auto applicableStds = detectApplicableStandards(model);
     for (const auto& stdItem : applicableStds)
     {
         if (stdItem.code == "EN 1992-1-1")

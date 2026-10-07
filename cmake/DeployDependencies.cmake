@@ -41,6 +41,15 @@ if(WINDEPLOYQT_EXECUTABLE AND EXISTS "${WINDEPLOYQT_EXECUTABLE}" AND EXISTS "${T
     if(NOT WINDEPLOY_RES EQUAL 0)
         message(WARNING "windeployqt a retourné le code : ${WINDEPLOY_RES}")
     endif()
+
+    # Traduction française des textes standard de Qt (boutons Enregistrer / Annuler, boîtes de
+    # fichiers…) : seule qtbase_fr est déployée (BUG-020).
+    get_filename_component(QT_BIN_DIR "${WINDEPLOYQT_EXECUTABLE}" DIRECTORY)
+    set(QT_FR_QM "${QT_BIN_DIR}/../translations/qtbase_fr.qm")
+    if(EXISTS "${QT_FR_QM}")
+        file(COPY "${QT_FR_QM}" DESTINATION "${TARGET_DIR}/translations")
+        message(STATUS "Qt : traduction française (qtbase_fr.qm) déployée.")
+    endif()
 endif()
 
 # 4. Déploiement des extensions TSALib

@@ -390,6 +390,8 @@ void GridSettingsDialog::onDuplicateGrid()
         return;
 
     std::string id = item->data(Qt::UserRole).toString().toStdString();
+    if (m_occView && m_occView->model())
+        m_occView->model()->pushUndoState(tr("Dupliquer la grille").toStdString());
     auto* dup = m_gridManager->duplicateGrid(id);
     if (dup)
     {
@@ -467,6 +469,8 @@ void GridSettingsDialog::onDeleteGrid()
     if (QMessageBox::question(this, tr("Confirmer la suppression"),
                               tr("Voulez-vous vraiment supprimer cette grille ?")) == QMessageBox::Yes)
     {
+        if (m_occView && m_occView->model())
+            m_occView->model()->pushUndoState(tr("Supprimer la grille").toStdString());
         m_gridManager->removeGrid(id);
         refreshGridList();
     }

@@ -1,6 +1,6 @@
 # Tasks
 
-Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir known-issues.md).
 
 ## BIM (ADR-020, docs/BIM_ARCHITECTURE.md)
 
@@ -11,7 +11,7 @@ Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir 
 - [ ] Validation BIM pré-calcul, sous-ensemble IDS, abstraction BCF, API IA contrôlée.
 - [x] UI : actions Exporter / Importer IFC (essai GUI 2026-10-06).
 - [ ] UI : propriétés BIM (GlobalId, catégorie, Psets) dans le panneau Propriétés.
-- [ ] BUG-029 : transmettre les métadonnées BIM au collage (`StructuralClipboard`).
+- [x] BUG-029 : métadonnées BIM au collage (test 190, 2026-10-07).
 - [ ] Docs restantes : BIM_GUIDELINES.md, AI_API.md, VERSIONING.md (IFC_MAPPING.md fait).
 
 ## Fenêtre / Start Center (ADR-021)
@@ -20,6 +20,12 @@ Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir 
 - [x] BUG-030, BUG-031, BUG-032, BUG-034 et redimensionnement par les bords en mode Workspace (2026-10-06).
 - [ ] BUG-033 : vérifier multi-écrans / DPI mixte ; Snap layouts Windows 11 (HTMAXBUTTON).
 
+## Statique seul (ADR-022, branche feature/static-only)
+
+- [x] Retrait du modal / pushover / temporel (code, UI, NDC, tests) ; archive `archive/dynamique` + tag `v0.2.0-dynamique` (locaux).
+- [ ] Commit, fusion dans `main`, push (et push de `archive/dynamique` + tag) — sur accord de l'utilisateur.
+- [ ] Vérifications GUI : ruban sans entrées dynamiques, calcul statique depuis F5, progression / Annuler.
+
 ## CRITICAL
 
 - [ ] (aucune tâche critique ouverte)
@@ -27,24 +33,24 @@ Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir 
 ## HIGH
 
 - [ ] BUG-002 — Mailler dalles/voiles pour le calcul (l'avertissement explicite avant calcul est fait le 2026-10-04).
-- [ ] BUG-011 — Installer le pack de langue anglais de Visual Studio (action utilisateur) puis reconfigurer ; vérifier `ninja -t deps`.
+- [x] BUG-011 — lanceur généré à la page de code de la génération (2026-10-07, `ninja -t deps` vérifié).
 
 ## MEDIUM
 
-- [ ] BUG-001 — Calcul OpenSees non bloquant (évaluer `OpenSeesSolver::solveAsync` existant) avec progression et annulation.
-- [ ] BUG-003 — Inclure niveaux / grilles / WorkPlanes dans l'historique Undo (sans redéclencher `levelElevationChanged` à la restauration).
-- [ ] BUG-004 / BUG-009 — Brancher ou retirer les commandes d'isolation `cmd.isolate.*` et le module `src/View3D/Isolation`.
-- [ ] BUG-005 — Édition multi-objets dans le panneau Propriétés (via `EditTransaction`).
+- [x] BUG-001 — calcul en thread + progression annulable (code) ; [ ] vérifier en GUI : progression, Annuler, fermeture refusée pendant le calcul.
+- [x] BUG-003 — niveaux / axes / grilles annulables (test 188) ; plans de travail volontairement hors historique.
+- [x] BUG-004 / BUG-009 — isolation branchée, module mort supprimé ; [ ] vérifier en GUI (I, H, Alt+H, Ctrl+H, Alt+I, Alt+W).
+- [x] BUG-005 — édition groupée (test 191) ; [ ] vérifier le panneau en GUI (sélection de 3 poutres, changer la section).
 - [ ] Vérifications manuelles GUI non automatisées : enchaînement Z→X→Y, entrée/sortie mode 2D, sélection d'un câble fin, Undo après édition de propriété, message « résultats obsolètes ».
 - [ ] Édition géométrique manquante : division à un nœud existant / aux intersections, symétrie par plan quelconque, ouvertures dalles/voiles, grips viewport.
 - [ ] Vérification manuelle GUI : Symétrie, Diviser les barres, Fusionner les nœuds (menu Édition / ruban), Undo de chacune.
 
-- [ ] BUG-016 — Diagrammes intermédiaires exacts (sectionForce ou reconstruction M(x)/V(x) depuis basicForce + charges locales).
+- [x] BUG-016 — stations exactes + déformée intégrée (tests 181–184).
 - [ ] Vérification manuelle GUI : dock « Données d'analyse », configuration LIGHT/ADVANCED, export, charge sur poteau via MemberLoadDialog.
 
 ## Outils de modification / dessin (ADR-018)
 
-- [ ] BUG-026 — Supprimer les anciens modes Move3D / Copy3D / Rotate3D devenus inatteignables.
+- [x] BUG-026 — anciens modes Move3D / Copy3D / Rotate3D supprimés.
 - [ ] Vérification manuelle GUI des 19 outils autres que Rectangle (Prolonger / Ajuster / Décaler en particulier).
 - [ ] Étendre Symétrie aux treillis (mirrorElements ne les gère pas) ; saisie d'un axe de rotation autre que la
       normale du plan de travail en mode 3D.
@@ -59,17 +65,17 @@ Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir 
 ## Moteur 2D MetDeDeplacement (ADR-019)
 
 - [ ] Vérification manuelle GUI : calcul Custom2D depuis la fenêtre Analysis sur un axe de grille, NDC affichée.
-- [ ] BUG-027 — transmettre les relâchements d'extrémité à OpenSees (rotules de barre).
+- [x] BUG-027 — rotules transmises à OpenSees (test 183).
 - [ ] Option : importer les anciens fichiers JSON « dessin » (legacy) dans le modèle TSA, si l'utilisateur le souhaite.
 - [ ] Déformée viewport : exploiter les déplacements le long des barres (stations u, v) pour une déformée courbe.
 
 ## Analyse multi-moteurs (ADR-017)
 
-- [ ] Persister `AnalysisContext` dans le .tsa (chunk dédié, version mineure) — BUG-013.
-- [ ] Router Modal / Pushover du ruban par `runAnalysis` (après BUG-024 pour le pushover).
+- [x] `AnalysisContext` persisté (chunk SETT, format 1.4, test 189).
+- [x] Modal / Pushover retirés (ADR-022).
 - [ ] Vérification manuelle GUI : calcul depuis la fenêtre Analysis (OpenSees, portée axe), panneau « Résultats
       d'analyse » des Propriétés, onglets masqués du dock « Données d'analyse ».
-- [ ] BUG-024 — Implémenter réellement pushover / temporel dans le générateur OpenSees (ou retirer l'action).
+- [x] BUG-024 — retiré avec le dynamique (ADR-022).
 
 ## IA Co-Engineering (ADR-015)
 
@@ -79,7 +85,7 @@ Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir 
 - [ ] Distribution : embarquer une build llama.cpp testée dans `<app>/ai/llama` (détectée en priorité) ;
       aujourd'hui : llama.cpp installé via winget.
 - [ ] Évaluer la qualité des réponses avec Qwen3 4B/8B sur une machine non saturée (BUG-021).
-- [ ] BUG-020 — charger les traductions Qt (qtbase_fr).
+- [x] BUG-020 — qtbase_fr déployée et chargée ; [ ] vérifier les boutons en GUI.
 
 ## Projets récents / aperçus
 
@@ -96,16 +102,17 @@ Last Updated: 2026-10-06. Uniquement des tâches réellement identifiées (voir 
 
 ## LOW
 
-- [ ] BUG-017 — Contrôle d'équilibre en moments.
-- [ ] BUG-018 — Famille dans les liens `tsa://element` de la NDC.
-- [ ] BUG-019 — Tester un nœud relié uniquement à des treillis en -ndf 6.
+- [x] BUG-017 — équilibre en moments.
+- [x] BUG-018 — liens NDC avec famille ; [ ] vérifier le clic en GUI.
+- [x] BUG-019 — nœuds de treillis purs (test 184).
 - [ ] Persistance optionnelle des résultats avancés (lié à BUG-013).
 
 - [ ] BUG-006 — Ajouter des `EditRecord` aux appels directs de `pushUndoState` (dialogues, viewport).
-- [ ] BUG-007 — Index id → item dans `ModelTreeWidget`.
+- [x] BUG-007 — index id → item (test 166).
 - [ ] BUG-008 — Mesurer l'ouverture en Release ; partager la géométrie des sphères de nœuds si nécessaire.
-- [ ] BUG-010 — Remplacer `TColgp_HArray1OfPnt` par `NCollection_HArray1<gp_Pnt>`.
-- [ ] BUG-013 — Persister paramètres d'analyse / résultats (chunks SETT / RSLT) si souhaité.
+- [x] BUG-010 — `NCollection_HArray1<gp_Pnt>`.
+- [ ] BUG-013 — résultats (RSLT) non persistés ; paramètres faits (SETT).
+- [ ] BUG-035 — test 20 sensible au temps (médiane de 3 essais ou seuil Debug).
 - [ ] Fichiers > 2 000 lignes (OccView_Navigation.cpp, OccView_Shapes.cpp, MainWindow_Actions.cpp) : analyse de découpage avant d'y ajouter des responsabilités.
 
 ## COMPLETED

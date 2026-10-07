@@ -1,6 +1,8 @@
 #include "OpenSeesAnalysisBuilder.h"
 #include "OpenSeesModelMap.h"
 #include "LoadResolver.h"
+#include <algorithm>
+#include <set>
 #include <sstream>
 #include <iomanip>
 #include <cmath>
@@ -160,18 +162,32 @@ std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSn
     tcl << "# Conditions aux limites (fix $nodeTag $u1 $u2 $u3 $r1 $r2 $r3)\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
+    // Nœuds reliés uniquement à des treillis / câbles : en -ndf 6, leurs rotations n'ont aucune
+    // rigidité (matrice singulière, BUG-019). Elles sont bloquées, sauf si un ressort y agit ; un moment
+    // nodal sur un tel nœud ne serait pas repris (ModelValidator l'indique).
+    std::set<int> frameNodes, axialNodes;
+    for (const auto& [tag, el] : snapshot.elements())
+    {
+        const bool axial = el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable;
+        (axial ? axialNodes : frameNodes).insert(el.startNodeId);
+        (axial ? axialNodes : frameNodes).insert(el.endNodeId);
+    }
+    std::map<int, std::set<int>> springDofs;
+    for (const auto& sp : map.springs())
+        springDofs[sp.nodeId].insert(sp.dofs.begin(), sp.dofs.end());
+
     for (const auto& [id, n] : snapshot.nodes())
     {
-        if (n.fixTx || n.fixTy || n.fixTz || n.fixRx || n.fixRy || n.fixRz)
-        {
-            tcl << "fix " << id << " "
-                << (n.fixTx ? 1 : 0) << " "
-                << (n.fixTy ? 1 : 0) << " "
-                << (n.fixTz ? 1 : 0) << " "
-                << (n.fixRx ? 1 : 0) << " "
-                << (n.fixRy ? 1 : 0) << " "
-                << (n.fixRz ? 1 : 0) << "\n";
-        }
+        const bool lockRotations = axialNodes.count(id) && !frameNodes.count(id);
+        auto rotation = [&](bool fixed, int dof) {
+            return fixed || (lockRotations && !springDofs[id].count(dof));
+        };
+        const bool fixes[6] = { n.fixTx, n.fixTy, n.fixTz, rotation(n.fixRx, 3), rotation(n.fixRy, 4), rotation(n.fixRz, 5) };
+        if (std::none_of(std::begin(fixes), std::end(fixes), [](bool f) { return f; })) continue;
+        tcl << "fix " << id;
+        for (bool f : fixes) tcl << " " << (f ? 1 : 0);
+        if (lockRotations && !(n.fixRx && n.fixRy && n.fixRz)) tcl << " ;# rotations bloquées : nœud relié uniquement à des barres articulées";
+        tcl << "\n";
     }
     tcl << "\n";
 
@@ -283,7 +299,14 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
             const double massDens = A * el->material.density * (params.useKiloNewtons ? 1e-3 : 1.0);
             tcl << "element elasticBeamColumn " << e.tag << " " << e.nodeI << " " << e.nodeJ << " "
                 << A << " " << E << " " << G << " " << J << " " << Iy << " " << Iz << " " << e.transfTag
-                << " -mass " << massDens << " ;# " << e.key.label() << " " << el->section.name << "\n";
+                << " -mass " << massDens;
+            // Rotules d'extrémité (moments de flexion) : code 1 = nœud i, 2 = nœud j, 3 = les deux.
+            // Les autres relâchements (N, V, T) ne sont pas proposés par elasticBeamColumn (ModelValidator).
+            const int releaseY = (el->startRelease.my ? 1 : 0) + (el->endRelease.my ? 2 : 0);
+            const int releaseZ = (el->startRelease.mz ? 1 : 0) + (el->endRelease.mz ? 2 : 0);
+            if (releaseY) tcl << " -releasey " << releaseY;
+            if (releaseZ) tcl << " -releasez " << releaseZ;
+            tcl << " ;# " << e.key.label() << " " << el->section.name << "\n";
         }
     }
     tcl << "\n";
@@ -341,133 +364,99 @@ std::string OpenSeesAnalysisBuilder::buildRecorders(const OpenSeesModelMap& map,
     return tcl.str();
 }
 
-std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snapshot,
-                                               const AnalysisParameters& params)
+void BeamElementLoad::fixedEndForces(double length, double atI[6], double atJ[6]) const
 {
-    std::ostringstream tcl;
-    tcl << std::setprecision(17); // 17 chiffres significatifs : aller-retour double exact (std::fixed tronquait les inerties)
-    tcl << "# ------------------------------------------------------------------------------\n";
-    tcl << "# Chargements appliqués\n";
-    tcl << "# ------------------------------------------------------------------------------\n";
+    for (int k = 0; k < 6; ++k) atI[k] = atJ[k] = 0.0;
+    const double L = length;
+    if (L <= 1e-12) return;
 
-    tcl << "timeSeries Linear 1\n";
-
-    double forceScale = params.useKiloNewtons ? 1.0 : 1000.0;
-
-    auto writeLoads = [&](int patternId, const std::string& patternName, int filterCaseId, double factor, bool includeSW) {
-        tcl << "pattern Plain " << patternId << " 1 {\n";
-        tcl << "  # Pattern " << patternName << " (facteur = " << factor << ")\n";
-
-        // Charges nodales
-        for (const auto& nl : snapshot.nodalLoads())
-        {
-            if (filterCaseId > 0 && nl.loadCaseId() != filterCaseId) continue;
-
-            double fx = nl.fx() * factor * forceScale;
-            double fy = nl.fy() * factor * forceScale;
-            double fz = nl.fz() * factor * forceScale;
-            double mx = nl.mx() * factor * forceScale;
-            double my = nl.my() * factor * forceScale;
-            double mz = nl.mz() * factor * forceScale;
-
-            tcl << "  load " << nl.nodeId() << " " << fx << " " << fy << " " << fz << " "
-                << mx << " " << my << " " << mz << " ;# " << nl.name() << "\n";
-        }
-
-        // Charges sur barres résolues dans leurs repères locaux
-        for (const auto& ml : snapshot.memberLoads())
-        {
-            if (filterCaseId > 0 && ml.loadCaseId() != filterCaseId) continue;
-
-            const auto* el = snapshot.findElementForLoad(ml);
-            if (!el) continue;
-
-            LocalMemberLoadComponents comp = LoadResolver::resolveMemberLoadToLocal(ml, snapshot);
-
-            if (el->type == SnapshotElement::ElementType::Truss || el->type == SnapshotElement::ElementType::Cable)
-            {
-                const auto* n1 = snapshot.getNode(el->startNodeId);
-                const auto* n2 = snapshot.getNode(el->endNodeId);
-                if (n1 && n2)
-                {
-                    gp_Pnt p1(n1->x, n1->y, n1->z);
-                    gp_Pnt p2(n2->x, n2->y, n2->z);
-                    gp_Vec gVec = LoadResolver::localVectorToGlobal(comp.wx, comp.wy, comp.wz, p1, p2, el->rotation);
-                    double totalMult = factor * forceScale * (ml.type() == TSA::Model::LoadType::MemberPoint ? 1.0 : el->length) * 0.5;
-                    double hfx = gVec.X() * totalMult;
-                    double hfy = gVec.Y() * totalMult;
-                    double hfz = gVec.Z() * totalMult;
-                    const std::string who = (el->type == SnapshotElement::ElementType::Truss ? "Treillis #" : "Câble #") + std::to_string(el->id);
-                    tcl << "  load " << el->startNodeId << " " << hfx << " " << hfy << " " << hfz << " 0 0 0 ;# " << who << " (charge → nœuds)\n";
-                    tcl << "  load " << el->endNodeId << " " << hfx << " " << hfy << " " << hfz << " 0 0 0 ;# " << who << " (charge → nœuds)\n";
-                }
-            }
-            else if (ml.type() == TSA::Model::LoadType::MemberPoint)
-            {
-                double px = comp.wx * factor * forceScale;
-                double py = comp.wy * factor * forceScale;
-                double pz = comp.wz * factor * forceScale;
-                double pos = ml.x1();
-                if (!ml.isRelativePosition() && el->length > 1e-4)
-                {
-                    pos /= el->length;
-                }
-                // eleLoad -ele $tag -type -beamPoint $Py $Pz $xL $Px
-                tcl << "  eleLoad -ele " << el->tag << " -type -beamPoint "
-                    << py << " " << pz << " " << pos << " " << px << "\n";
-            }
-            else
-            {
-                double wx = comp.wx * factor * forceScale;
-                double wy = comp.wy * factor * forceScale;
-                double wz = comp.wz * factor * forceScale;
-                // eleLoad -ele $tag -type -beamUniform $Wy $Wz $Wx
-                tcl << "  eleLoad -ele " << el->tag << " -type -beamUniform "
-                    << wy << " " << wz << " " << wx << "\n";
-            }
-        }
-
-        // Poids propre automatique décomposé
-        if (includeSW)
-        {
-            for (const auto& [tag, el] : snapshot.elements())
-            {
-                double A = el.section.area();
-                double rho = el.material.density; // kg/m3
-                double g = 9.81;
-                double linWeight = A * rho * g * (params.useKiloNewtons ? 1e-3 : 1.0) * factor;
-
-                if (linWeight > 1e-5)
-                {
-                    if (el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable)
-                    {
-                        double halfW = linWeight * el.length * 0.5;
-                        const std::string who = (el.type == SnapshotElement::ElementType::Truss ? "Poids propre treillis #" : "Poids propre câble #") + std::to_string(el.id);
-                        tcl << "  load " << el.startNodeId << " 0 0 " << (-halfW) << " 0 0 0 ;# " << who << "\n";
-                        tcl << "  load " << el.endNodeId << " 0 0 " << (-halfW) << " 0 0 0 ;# " << who << "\n";
-                    }
-                    else
-                    {
-                        const auto* n1 = snapshot.getNode(el.startNodeId);
-                        const auto* n2 = snapshot.getNode(el.endNodeId);
-                        if (n1 && n2)
-                        {
-                            gp_Pnt p1(n1->x, n1->y, n1->z);
-                            gp_Pnt p2(n2->x, n2->y, n2->z);
-                            LocalMemberLoadComponents swComp = LoadResolver::decomposeGlobalVectorToLocal(
-                                gp_Vec(0.0, 0.0, -linWeight), p1, p2, el.rotation
-                            );
-                            tcl << "  eleLoad -ele " << tag << " -type -beamUniform "
-                                << swComp.wy << " " << swComp.wz << " " << swComp.wx << " ;# Poids propre\n";
-                        }
-                    }
-                }
-            }
-        }
-
-        tcl << "}\n\n";
+    // Charge ponctuelle (px, py, pz) en x = s sur une barre bi-encastrée : réactions exercées SUR la
+    // barre (mêmes signes que les efforts d'encastrement d'ElasticBeam3d dans OpenSees).
+    auto addPoint = [&](double px, double py, double pz, double s) {
+        s = std::clamp(s, 0.0, L);
+        const double a = s, b = L - s, L2 = L * L, L3 = L2 * L;
+        atI[0] -= px * b / L;
+        atJ[0] -= px * a / L;
+        const double ryJ = -py * a * a * (a + 3.0 * b) / L3;  // flexion dans le plan x-y (moments Mz)
+        atJ[1] += ryJ;
+        atI[1] += -py - ryJ;
+        atI[5] -= py * a * b * b / L2;
+        atJ[5] += py * a * a * b / L2;
+        const double rzJ = -pz * a * a * (a + 3.0 * b) / L3;  // flexion dans le plan x-z (moments My)
+        atJ[2] += rzJ;
+        atI[2] += -pz - rzJ;
+        atI[4] += pz * a * b * b / L2;
+        atJ[4] -= pz * a * a * b / L2;
     };
 
+    if (kind == Kind::Point)
+    {
+        addPoint(wx, wy, wz, relativePosition * L);
+        return;
+    }
+    // Charge répartie linéaire : intégrale de Gauss à 4 points, exacte (intégrande de degré 4).
+    const bool linear = kind == Kind::Linear;
+    const double a = linear ? relativePosition * L : 0.0;
+    const double b = linear ? relativeEnd * L : L;
+    if (b <= a) return;
+    const double xB = linear ? wxB : wx, yB = linear ? wyB : wy, zB = linear ? wzB : wz;
+    static const double kNodes[4] = { -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526 };
+    static const double kWeights[4] = { 0.3478548451374538, 0.6521451548625461, 0.6521451548625461, 0.3478548451374538 };
+    const double mid = 0.5 * (a + b), half = 0.5 * (b - a);
+    for (int g = 0; g < 4; ++g)
+    {
+        const double t = 0.5 * (kNodes[g] + 1.0); // 0 en a, 1 en b
+        const double w = kWeights[g] * half;
+        addPoint((wx + (xB - wx) * t) * w, (wy + (yB - wy) * t) * w, (wz + (zB - wz) * t) * w, mid + half * kNodes[g]);
+    }
+}
+
+MemberLoadResultant memberLoadResultant(const TSA::Model::MemberLoad& ml, const CalculationSnapshot& snapshot)
+{
+    MemberLoadResultant r;
+    const auto* el = snapshot.findElementForLoad(ml);
+    const auto* n1 = el ? snapshot.getNode(el->startNodeId) : nullptr;
+    const auto* n2 = el ? snapshot.getNode(el->endNodeId) : nullptr;
+    if (!n1 || !n2 || ml.type() == TSA::Model::LoadType::MemberMoment) return r; // moment réparti : pas de force
+
+    const gp_Pnt p1(n1->x, n1->y, n1->z), p2(n2->x, n2->y, n2->z);
+    auto globalIntensity = [&](double q) {
+        TSA::Model::MemberLoad at = ml;
+        at.setQ1(q);
+        const LocalMemberLoadComponents c = LoadResolver::resolveMemberLoadToLocal(at, snapshot);
+        return LoadResolver::localVectorToGlobal(c.wx, c.wy, c.wz, p1, p2, el->rotation);
+    };
+    const double L = el->length;
+    auto absolute = [&](double x) { return std::clamp(ml.isRelativePosition() ? x * L : x, 0.0, L); };
+    switch (ml.type())
+    {
+    case TSA::Model::LoadType::MemberPoint:
+        r.force = globalIntensity(ml.q1());
+        r.centroid = absolute(ml.x1());
+        break;
+    case TSA::Model::LoadType::MemberLinear:
+    {
+        const double a = absolute(ml.x1());
+        const double b = ml.x2() > ml.x1() ? absolute(ml.x2()) : L;
+        const double span = std::max(0.0, b - a);
+        const gp_Vec va = globalIntensity(ml.q1()), vb = globalIntensity(ml.q2());
+        r.force = (va + vb) * (0.5 * span);
+        const double ma = va.Magnitude(), mb = vb.Magnitude();
+        r.centroid = a + (ma + mb > 1e-12 ? span * (ma + 2.0 * mb) / (3.0 * (ma + mb)) : 0.5 * span);
+        break;
+    }
+    default:
+        r.force = globalIntensity(ml.q1()) * L;
+        r.centroid = 0.5 * L;
+        break;
+    }
+    return r;
+}
+
+std::vector<LoadPatternSpec> OpenSeesAnalysisBuilder::loadPatterns(const CalculationSnapshot& snapshot,
+                                                                   const AnalysisParameters& params)
+{
+    std::vector<LoadPatternSpec> patterns;
     if (params.targetCombinationId > 0)
     {
         auto it = snapshot.combinations().find(params.targetCombinationId);
@@ -482,14 +471,214 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
                 {
                     includeSW = lcIt->second.isSelfWeightIncluded();
                 }
-                writeLoads(pId++, "Combo Case " + std::to_string(caseId), caseId, factor, includeSW);
+                patterns.push_back({ pId++, "Combo Case " + std::to_string(caseId), caseId, factor, includeSW });
             }
         }
     }
     else
     {
-        int filterCaseId = (params.targetLoadCaseId > 0) ? params.targetLoadCaseId : 0;
-        writeLoads(1, "Cas Principal", filterCaseId, 1.0, params.includeSelfWeight);
+        const int filterCaseId = (params.targetLoadCaseId > 0) ? params.targetLoadCaseId : 0;
+        patterns.push_back({ 1, "Cas Principal", filterCaseId, 1.0, params.includeSelfWeight });
+    }
+    return patterns;
+}
+
+std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElementLoads(const CalculationSnapshot& snapshot,
+                                                                                     const AnalysisParameters& params,
+                                                                                     const LoadPatternSpec& pattern)
+{
+    std::map<int, std::vector<BeamElementLoad>> loads;
+    const double forceScale = params.useKiloNewtons ? 1.0 : 1000.0;
+
+    // Charges sur barres résolues dans leurs repères locaux
+    for (const auto& ml : snapshot.memberLoads())
+    {
+        if (pattern.caseId > 0 && ml.loadCaseId() != pattern.caseId) continue;
+        const auto* el = snapshot.findElementForLoad(ml);
+        if (!el || el->type == SnapshotElement::ElementType::Truss || el->type == SnapshotElement::ElementType::Cable) continue;
+        if (ml.type() == TSA::Model::LoadType::MemberMoment) continue; // non transmis (ModelValidator l'indique)
+
+        const double scale = pattern.factor * forceScale;
+        const LocalMemberLoadComponents comp = LoadResolver::resolveMemberLoadToLocal(ml, snapshot);
+        BeamElementLoad load;
+        load.wx = comp.wx * scale;
+        load.wy = comp.wy * scale;
+        load.wz = comp.wz * scale;
+        const double L = el->length;
+        auto relative = [&](double x) {
+            if (!ml.isRelativePosition()) x = L > 1e-4 ? x / L : 0.0;
+            return std::clamp(x, 0.0, 1.0);
+        };
+        if (ml.type() == TSA::Model::LoadType::MemberPoint)
+        {
+            load.kind = BeamElementLoad::Kind::Point;
+            load.relativePosition = relative(ml.x1());
+        }
+        else if (ml.type() == TSA::Model::LoadType::MemberLinear)
+        {
+            // Même lecture des positions que le moteur Custom2D : x2 <= x1 → jusqu'au nœud j.
+            TSA::Model::MemberLoad atEnd = ml;
+            atEnd.setQ1(ml.q2());
+            const LocalMemberLoadComponents compB = LoadResolver::resolveMemberLoadToLocal(atEnd, snapshot);
+            load.kind = BeamElementLoad::Kind::Linear;
+            load.relativePosition = relative(ml.x1());
+            load.relativeEnd = ml.x2() > ml.x1() ? relative(ml.x2()) : 1.0;
+            load.wxB = compB.wx * scale;
+            load.wyB = compB.wy * scale;
+            load.wzB = compB.wz * scale;
+            load.comment = "Charge trapézoïdale (forces d'encastrement parfait)";
+        }
+        loads[el->tag].push_back(load);
+    }
+
+    // Poids propre automatique décomposé (poutres et poteaux ; treillis et câbles : aux nœuds)
+    if (pattern.includeSelfWeight)
+    {
+        for (const auto& [tag, el] : snapshot.elements())
+        {
+            if (el.type == SnapshotElement::ElementType::Truss || el.type == SnapshotElement::ElementType::Cable) continue;
+            const double linWeight = el.section.area() * el.material.density * 9.81 * (params.useKiloNewtons ? 1e-3 : 1.0) * pattern.factor;
+            if (linWeight <= 1e-5) continue;
+            const auto* n1 = snapshot.getNode(el.startNodeId);
+            const auto* n2 = snapshot.getNode(el.endNodeId);
+            if (!n1 || !n2) continue;
+            const LocalMemberLoadComponents sw = LoadResolver::decomposeGlobalVectorToLocal(
+                gp_Vec(0.0, 0.0, -linWeight), gp_Pnt(n1->x, n1->y, n1->z), gp_Pnt(n2->x, n2->y, n2->z), el.rotation);
+            BeamElementLoad load;
+            load.wx = sw.wx;
+            load.wy = sw.wy;
+            load.wz = sw.wz;
+            load.comment = "Poids propre";
+            loads[tag].push_back(load);
+        }
+    }
+    return loads;
+}
+
+std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElementLoads(const CalculationSnapshot& snapshot,
+                                                                                     const AnalysisParameters& params)
+{
+    std::map<int, std::vector<BeamElementLoad>> all;
+    for (const auto& pattern : loadPatterns(snapshot, params))
+        for (auto& [tag, list] : beamElementLoads(snapshot, params, pattern))
+            all[tag].insert(all[tag].end(), list.begin(), list.end());
+    return all;
+}
+
+std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snapshot,
+                                               const AnalysisParameters& params)
+{
+    std::ostringstream tcl;
+    tcl << std::setprecision(17); // 17 chiffres significatifs : aller-retour double exact (std::fixed tronquait les inerties)
+    tcl << "# ------------------------------------------------------------------------------\n";
+    tcl << "# Chargements appliqués\n";
+    tcl << "# ------------------------------------------------------------------------------\n";
+
+    tcl << "timeSeries Linear 1\n";
+
+    const double forceScale = params.useKiloNewtons ? 1.0 : 1000.0;
+
+    for (const auto& pattern : loadPatterns(snapshot, params))
+    {
+        const double factor = pattern.factor;
+        tcl << "pattern Plain " << pattern.id << " 1 {\n";
+        tcl << "  # Pattern " << pattern.name << " (facteur = " << factor << ")\n";
+
+        // Charges nodales
+        for (const auto& nl : snapshot.nodalLoads())
+        {
+            if (pattern.caseId > 0 && nl.loadCaseId() != pattern.caseId) continue;
+
+            double fx = nl.fx() * factor * forceScale;
+            double fy = nl.fy() * factor * forceScale;
+            double fz = nl.fz() * factor * forceScale;
+            double mx = nl.mx() * factor * forceScale;
+            double my = nl.my() * factor * forceScale;
+            double mz = nl.mz() * factor * forceScale;
+
+            tcl << "  load " << nl.nodeId() << " " << fx << " " << fy << " " << fz << " "
+                << mx << " " << my << " " << mz << " ;# " << nl.name() << "\n";
+        }
+
+        // Charges sur treillis et câbles : réparties pour moitié sur chaque nœud
+        for (const auto& ml : snapshot.memberLoads())
+        {
+            if (pattern.caseId > 0 && ml.loadCaseId() != pattern.caseId) continue;
+            const auto* el = snapshot.findElementForLoad(ml);
+            if (!el || (el->type != SnapshotElement::ElementType::Truss && el->type != SnapshotElement::ElementType::Cable)) continue;
+            const auto* n1 = snapshot.getNode(el->startNodeId);
+            const auto* n2 = snapshot.getNode(el->endNodeId);
+            if (!n1 || !n2) continue;
+
+            // Une barre articulée ne reprend pas de charge transversale : la résultante est répartie
+            // sur ses deux nœuds par la règle du levier (position du centre de la charge).
+            const MemberLoadResultant res = memberLoadResultant(ml, snapshot);
+            const gp_Vec total = res.force * (factor * forceScale);
+            const double t = el->length > 1e-9 ? std::clamp(res.centroid / el->length, 0.0, 1.0) : 0.5;
+            const gp_Vec atI = total * (1.0 - t), atJ = total * t;
+            const std::string who = (el->type == SnapshotElement::ElementType::Truss ? "Treillis #" : "Câble #") + std::to_string(el->id);
+            tcl << "  load " << el->startNodeId << " " << atI.X() << " " << atI.Y() << " " << atI.Z() << " 0 0 0 ;# " << who << " (charge → nœuds)\n";
+            tcl << "  load " << el->endNodeId << " " << atJ.X() << " " << atJ.Y() << " " << atJ.Z() << " 0 0 0 ;# " << who << " (charge → nœuds)\n";
+        }
+
+        // Poids propre des treillis et câbles : aux nœuds
+        if (pattern.includeSelfWeight)
+        {
+            for (const auto& [tag, el] : snapshot.elements())
+            {
+                if (el.type != SnapshotElement::ElementType::Truss && el.type != SnapshotElement::ElementType::Cable) continue;
+                const double linWeight = el.section.area() * el.material.density * 9.81 * (params.useKiloNewtons ? 1e-3 : 1.0) * factor;
+                if (linWeight <= 1e-5) continue;
+                const double halfW = linWeight * el.length * 0.5;
+                const std::string who = (el.type == SnapshotElement::ElementType::Truss ? "Poids propre treillis #" : "Poids propre câble #") + std::to_string(el.id);
+                tcl << "  load " << el.startNodeId << " 0 0 " << (-halfW) << " 0 0 0 ;# " << who << "\n";
+                tcl << "  load " << el.endNodeId << " 0 0 " << (-halfW) << " 0 0 0 ;# " << who << "\n";
+            }
+        }
+
+        // Poutres et poteaux : eleLoad (même liste que la reconstruction des efforts le long des barres)
+        for (const auto& [tag, list] : beamElementLoads(snapshot, params, pattern))
+        {
+            const auto* el = snapshot.getElementByTag(tag);
+            for (const auto& load : list)
+            {
+                if (load.kind == BeamElementLoad::Kind::Linear)
+                {
+                    // Forces nodales équivalentes = −(forces d'encastrement parfait), en repère global.
+                    const auto* n1 = el ? snapshot.getNode(el->startNodeId) : nullptr;
+                    const auto* n2 = el ? snapshot.getNode(el->endNodeId) : nullptr;
+                    if (!n1 || !n2) continue;
+                    const gp_Pnt p1(n1->x, n1->y, n1->z), p2(n2->x, n2->y, n2->z);
+                    double atI[6], atJ[6];
+                    load.fixedEndForces(el->length, atI, atJ);
+                    auto writeNodalLoad = [&](int nodeId, const double f[6]) {
+                        const gp_Vec F = LoadResolver::localVectorToGlobal(-f[0], -f[1], -f[2], p1, p2, el->rotation);
+                        const gp_Vec M = LoadResolver::localVectorToGlobal(-f[3], -f[4], -f[5], p1, p2, el->rotation);
+                        tcl << "  load " << nodeId << " " << F.X() << " " << F.Y() << " " << F.Z() << " "
+                            << M.X() << " " << M.Y() << " " << M.Z() << " ;# Élément " << tag << " : " << load.comment << "\n";
+                    };
+                    writeNodalLoad(el->startNodeId, atI);
+                    writeNodalLoad(el->endNodeId, atJ);
+                    continue;
+                }
+                if (load.point())
+                {
+                    // eleLoad -ele $tag -type -beamPoint $Py $Pz $xL $Px
+                    tcl << "  eleLoad -ele " << tag << " -type -beamPoint "
+                        << load.wy << " " << load.wz << " " << load.relativePosition << " " << load.wx;
+                }
+                else
+                {
+                    // eleLoad -ele $tag -type -beamUniform $Wy $Wz $Wx
+                    tcl << "  eleLoad -ele " << tag << " -type -beamUniform "
+                        << load.wy << " " << load.wz << " " << load.wx;
+                }
+                if (!load.comment.empty()) tcl << " ;# " << load.comment;
+                tcl << "\n";
+            }
+        }
+
+        tcl << "}\n\n";
     }
 
     return tcl.str();
@@ -503,18 +692,7 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
     tcl << "# Résolution du calcul structural\n";
     tcl << "# ------------------------------------------------------------------------------\n";
 
-    if (params.type == AnalysisType::Modal)
-    {
-        tcl << "set numModes " << params.numEigenmodes << "\n";
-        tcl << "set eigenvalues [eigen -fullGenLapack $numModes]\n";
-        tcl << "puts \"TSA_OPS_MODAL_START\"\n";
-        tcl << "for {set i 0} {$i < $numModes} {incr i} {\n";
-        tcl << "  set lambda [lindex $eigenvalues $i]\n";
-        tcl << "  puts [format \"MODE %d LAMBDA %e\" [expr {$i+1}] $lambda]\n";
-        tcl << "}\n";
-        tcl << "puts \"TSA_OPS_MODAL_END\"\n";
-    }
-    else if (params.type == AnalysisType::NonLinearStatic)
+    if (params.type == AnalysisType::NonLinearStatic)
     {
         tcl << "constraints " << toTclString(params.constraintHandler) << "\n";
         tcl << "numberer RCM\n";

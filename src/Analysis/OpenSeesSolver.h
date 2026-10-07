@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QString>
 #include <QProcess>
+#include <atomic>
 #include <memory>
 
 namespace TSA::Model
@@ -57,7 +58,8 @@ public:
                     const AnalysisParameters& params = {});
 
     /**
-     * @brief Interrompt le calcul en cours si actif.
+     * @brief Demande l'interruption du calcul en cours. Appelable depuis n'importe quel thread :
+     * le processus OpenSees est arrêté par le thread qui exécute le calcul.
      */
     void stop();
 
@@ -73,7 +75,7 @@ private:
                          QString* errorMessage);
 
     bool m_isRunning = false;
-    bool m_stopRequested = false;
+    std::atomic<bool> m_stopRequested { false };
     QProcess* m_process = nullptr;
     ResultsModel m_results;
 };

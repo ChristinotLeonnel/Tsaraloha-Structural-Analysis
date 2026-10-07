@@ -1,6 +1,6 @@
 # Current State
 
-Last Updated: 2026-10-06 — branche feature/bim-core (couche BIM, IFC export / import)
+Last Updated: 2026-10-07 — branche feature/static-only (statique seul, ADR-022 ; corrections BUG-001 à 029)
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
@@ -8,11 +8,14 @@ Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans l
 Status: IMPLEMENTED — PASS (preset ninja-debug, -j 4)
 Compiler: MSVC 19.51 (VS 18 2026 Community), C++20
 Qt: 6.11.2 · OpenCASCADE: 8.0.1 · CMake: 4.3.3 (min 3.20)
-Warnings: 2 × C4996 (`TColgp_HArray1OfPnt` déprécié, src/Geometry/CableGeometry3D.cpp:171)
-Note: MSVC francisé → avertissement CMake sur le préfixe /showIncludes (BUG-011).
+Warnings: aucun connu (C4996 corrigé, BUG-010).
+Note: MSVC francisé → lanceur généré `build-*/msvc_codepage.cmd` (page de code de la génération imposée à cl) :
+dépendances d'en-têtes Ninja fiables quelle que soit la console (BUG-011, vérifié `ninja -t deps`).
 
 ## Tests
-Status: IMPLEMENTED — 197/197 PASS (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
+Status: IMPLEMENTED — 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
+188 niveaux/grilles annulables, 189 chunk SETT, 190 collage BIM, 191 édition groupée) ; test 20 sensible au temps (BUG-035) ;
+197/197 avant (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
 186/186 avant (suite `cleanup` 160–165 le 2026-10-05) ;
 180/180 avant (suite `mdd` 150–159 le 2026-10-05) ;
 170/170 avant (suite `tools` 140–149 et test 139 ajoutés le 2026-10-05) ;
@@ -72,8 +75,13 @@ par type, même section, même matériau, niveau actif, plan de travail actif.
 PARTIAL — sélection par propriété arbitraire / par proximité : MISSING.
 
 ## Properties
-Status: PARTIAL — une vue par type, validation (bornes + longueur nulle pour les nœuds),
-coalescence Undo ; édition multi-objets MISSING (seul l'élément principal est affiché).
+Status: IMPLEMENTED — une vue par type, validation, coalescence Undo ; édition groupée (2026-10-07,
+`MultiEditSession`, test 191) : en sélection multiple, les champs modifiés de l'élément principal sont reportés aux
+éléments du même type (câbles exclus). Panneau non vérifié en GUI.
+
+## Isolation 3D
+Status: IMPLEMENTED (code, 2026-10-07) — menu Affichage ▸ Isolation 3D (isoler sélection / type / plan de travail,
+masquer, inverser, précédente, tout afficher) dans `OccView::updateElementIsolation`. Non vérifié en GUI.
 
 ## WorkPlanes
 Status: IMPLEMENTED — plans X/Y/Z détectés depuis le modèle (`CoordinateSystem::detectStructuralPlanes`),
@@ -107,47 +115,37 @@ MISSING : division d'une barre à un nœud existant / intersection de barres, sy
 quelconque, ouvertures de dalles/voiles, poignées (grips) dans le viewport.
 
 ## Undo/Redo
-Status: PARTIAL — snapshots + transactions + historique structuré + budget mémoire ;
-niveaux, grilles et WorkPlanes hors snapshot (non annulables).
+Status: IMPLEMENTED — snapshots + transactions + historique structuré + budget mémoire ; niveaux, axes et grilles
+dans l'instantané depuis le 2026-10-07 (test 188). Plans de travail : état d'affichage, non annulés (choix assumé).
 
 ## Loads
 Status: IMPLEMENTED — cas, combinaisons, charges nodales et sur barres (poutre/poteau/treillis/câble),
 persistés dans le chunk LOAD (.tsa 1.1). Charges surfaciques / thermiques : MISSING.
 
 ## Structural Calculation
-Status: PARTIAL — OpenSees 3.8.0 externe (Tcl, QProcess) ; statique, modal, pushover pour barres, treillis,
-câbles, appuis/ressorts. Correspondance TSA↔OpenSees centralisée (`OpenSeesModelMap`, tags uniques) depuis le
-2026-10-04 (avant : poutre N et poteau N se confondaient, treillis refusés par OpenSees, efforts lus décalés).
-Mode ADVANCED : mapping DDL, k_basic/k_local/K_e, K_global (printA, ≤ 1 500 DDL), forces local/global/basic —
-docs/OPENSEES_RESULTS.md. Dalles et voiles non transmis au calcul (pas de maillage) : désormais
-signalé (avertissement ModelValidator + confirmation avant calcul ; « Maillage EF » présenté comme
-estimation). Exécution synchrone sur le thread UI.
+Status: PARTIAL — **statique seul** (ADR-022 : modal / pushover / temporel retirés, archive `archive/dynamique`).
+OpenSees 3.8.0 externe (Tcl, QProcess) pour barres, treillis, câbles, appuis/ressorts ; rotules `-releasey/-releasez`
+(BUG-027) ; charges trapézoïdales par forces d'encastrement parfait ; nœuds de treillis purs stabilisés (BUG-019).
+Calcul dans un thread de travail avec progression annulable (BUG-001, à vérifier en GUI). Dalles et voiles non
+transmis (BUG-002, avertissement avant calcul).
 
 ## Analysis engines (multi-moteurs)
 Status: IMPLEMENTED (2026-10-05) — `AnalysisEngine` / registre / `AnalysisManager` ; portées : modèle complet,
-sélection, axe de grille cartésienne (A, B…, 1, 2…, grille tournée incluse), niveau, plan de travail, restriction
-par niveau ; extraction 2D ; validation pilotée par capacités ; fenêtre Analysis commune (F5 = dernier contexte).
-OpenSees : via `OpenSeesEngine` (résultats identiques au chemin historique, test 136).
-Custom2D : IMPLEMENTED (2026-10-05) — solveur MetDeDeplacement 2 (thirdparty/MetDeDeplacement, méthode des
-déplacements plane, rotules, treillis, ressorts, courbes N/V/M + déformée EI v''=M) ; résultats identiques à OpenSees
-sur un portique plan (test 158) ; chapitre NDC « Courbes RDM par barre » (test 159). Vérifié dans l'application : la fenêtre s'ouvre (OpenSees 3.8.0
-détecté, capacités, portée, chargement). Non vérifié en GUI : calcul lancé depuis la fenêtre, panneau Propriétés.
-PARTIAL : contexte non persisté dans le .tsa (BUG-013) ; Modal / Pushover du ruban encore en appel direct d'OpenSees.
+sélection, axe de grille, niveau, plan de travail ; OpenSees et Custom2D (MetDeDeplacement 2). Types : statique linéaire
+et non linéaire. Contexte persisté dans le .tsa (chunk SETT, 2026-10-07, test 189).
 
 ## Results
-Status: IMPLEMENTED — ResultsModel (éléments indexés par (famille, id), moteur / portée tracés, catégories
-disponibles, tables propres au moteur), déformée/diagrammes/réactions 3D,
-diagrammes 2D, NDC, dock « Données d'analyse » (tables, K globale, matrices élémentaires, contexte IA JSON),
-export CSV/JSON/TXT (`ResultsExport`) ; invalidation automatique (ResultsValidityGuard).
-PARTIAL — stations intermédiaires des diagrammes approchées (BUG-016) ; équilibre contrôlé en forces seulement.
+Status: IMPLEMENTED — ResultsModel en convention RDM (N > 0 traction, M > 0 fibre négative tendue, V = dM/dx),
+stations exactes par équilibre du tronçon, déformée par double intégration de la courbure (tests 181–184) ; équilibre
+contrôlé en forces ET moments (BUG-017) ; déformée / diagrammes / réactions 3D, diagrammes 2D, NDC (liens avec famille,
+BUG-018), dock « Données d'analyse », export, invalidation automatique. Résultats non enregistrés dans le .tsa (BUG-013).
 
 ## Meshing
 Status: MISSING — aucun mailleur EF pour dalles/voiles.
 
 ## .tsa
-Status: IMPLEMENTED — format 1.1 (chunks PROJ, THMB, COOR, GRID, NODE, SUPP, BARS, COLS, SLAB,
-WALL, FNDN, TRUS, CABL, LOAD, SNAP), zlib, CRC32, écriture atomique (QSaveFile), lecture 1.0.
-Chunks déclarés non utilisés : SETT, RSLT (résultats non persistés).
+Status: IMPLEMENTED — format 1.4 (PROJ, THMB, COOR, GRID, NODE, SUPP, BARS, COLS, SLAB, WALL, FNDN, TRUS, CABL,
+LOAD, SNAP, BIMM, SETT), zlib, CRC32, écriture atomique, lecture des formats antérieurs. RSLT non écrit.
 
 ## Import/Export
 Status: PARTIAL — export NDC PDF/HTML, export rapport de diagnostic ; import/export CAO
@@ -157,8 +155,8 @@ Status: PARTIAL — export NDC PDF/HTML, export rapport de diagnostic ; import/e
 Status: PARTIAL — mesures de référence : voir changelog 2026-10-03 et test 100.
 
 ## Threading
-Status: PARTIAL — threads uniquement pour OpenSees (`QThread::create` dans OpenSeesSolver/Manager,
-chemin asynchrone) ; l'UI utilise `solveSynchronous` (bloquant).
+Status: PARTIAL — calcul (AnalysisManager) dans un `QThread::create` lancé par `MainWindow::runAnalysis`, rappels
+renvoyés au thread UI ; reste de l'application mono-thread.
 
 ## Couche BIM (ADR-020)
 Status: PARTIAL — phases 1–3, 8, 9 et 4 (sauf repère de grille) de docs/BIM_ARCHITECTURE.md (2026-10-06).
@@ -170,4 +168,4 @@ unités du fichier). UI : Fichier > Importer / Exporter IFC, ruban Accueil > Pro
 Preuves : tests 170–180 ; IfcOpenShell 0.9 validate = 0 anomalie, 13/13 géométries ; essai GUI 2026-10-06 (import du
 fichier IfcOpenShell puis export, fichier exporté valide).
 MISSING : validation BIM pré-calcul, IDS, BCF, API IA, propriétés BIM dans le panneau Propriétés, AnalysisRun /
-historique des versions, charges IFC (BUG-028), métadonnées au collage (BUG-029).
+historique des versions, charges IFC (BUG-028). Collage : métadonnées transmises (BUG-029, test 190).

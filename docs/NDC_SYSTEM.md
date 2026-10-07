@@ -59,8 +59,6 @@ Le `NDCGenerator` assemble automatiquement un rapport composé de 9 chapitres ri
    - Comparaison avec les flèches admissibles réglementaires (statut Conforme / Non-conforme).
 8. **Chapitre 8 : Enveloppe des Sollicitations Internes**
    - Tableau synthétique des efforts normaux extrêmes ($N_{\max}, N_{\min}$), efforts tranchants ($V_{\max}$) et moments fléchissants ($M_{\max}$) par élément.
-9. **Chapitre 9 : Analyse Dynamique & Modes Propres (si calculé)**
-   - Fréquences propres $f_i$ (Hz), périodes $T_i$ (s), pulsations $\omega_i$ (rad/s) et pourcentages de masses modales participantes.
 
 ---
 

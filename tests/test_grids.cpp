@@ -1,4 +1,5 @@
 #include "test_common.h"
+#include "UndoRedo/EditTransaction.h"
 
 bool runSuite_Grids(int& passed)
 {
@@ -717,6 +718,59 @@ bool runSuite_Grids(int& passed)
     }
 
     // =========================================================================
+
+    // TEST 188 : niveaux et grilles dans l'historique Annuler / Rétablir (BUG-003)
+    {
+        TSA::Model::Model m;
+        GridManager gm;
+        gm.clearAllGrids();
+        m.setGridManager(&gm);
+        GridDefinition def("G", GridType::Cartesian);
+        def.setXPositions({ 0.0, 5.0 });
+        def.setYPositions({ 0.0, 5.0 });
+        const std::string g1 = gm.addGrid(def)->id();
+        gm.setActiveGridId(g1);
+
+        auto* lm = m.levelManager();
+        const std::string lvl = lm->addLevel("R+1", 3.0)->id;
+        const int n = m.addNode(0, 0, 3.0);
+        m.getNode(n)->setLevelId(lvl);
+
+        // Élévation de niveau : le nœud rattaché suit ; Annuler rétablit niveau ET nœud.
+        m.pushUndoState("Élévation R+1");
+        lm->setLevelElevation(lvl, 4.0);
+        TEST_CHECK(std::abs(m.getNode(n)->z() - 4.0) < 1e-9, "Test 188: nœud rattaché déplacé avec le niveau");
+        TEST_CHECK(m.undo(), "Test 188: Annuler disponible");
+        TEST_CHECK(std::abs(lm->getLevel(lvl)->elevation - 3.0) < 1e-9 && std::abs(m.getNode(n)->z() - 3.0) < 1e-9,
+                   "Test 188: Annuler rétablit le niveau et le nœud");
+        TEST_CHECK(m.redo() && std::abs(lm->getLevel(lvl)->elevation - 4.0) < 1e-9 && std::abs(m.getNode(n)->z() - 4.0) < 1e-9,
+                   "Test 188: Rétablir réapplique les deux");
+
+        // Grille ajoutée puis annulée ; l'affichage courant (visibilité) n'est pas remis en arrière.
+        m.pushUndoState("Créer une grille");
+        GridDefinition def2("G2", GridType::Cartesian);
+        def2.setXPositions({ 0.0, 8.0 });
+        def2.setYPositions({ 0.0, 8.0 });
+        gm.addGrid(def2);
+        gm.setGridVisible(g1, false);
+        TEST_CHECK(gm.grids().size() == 2, "Test 188: deux grilles");
+        TEST_CHECK(m.undo() && gm.grids().size() == 1 && gm.getGrid(g1), "Test 188: Annuler supprime la grille créée");
+        TEST_CHECK(!gm.getGrid(g1)->isVisible() && gm.activeGridId() == g1, "Test 188: visibilité et grille active conservées");
+        TEST_CHECK(m.redo() && gm.grids().size() == 2, "Test 188: Rétablir recrée la grille");
+
+        // Transaction sans changement : aucune entrée, aucune notification (résultats préservés).
+        const size_t before = m.undoManager()->undoCount();
+        const auto revision = m.revision();
+        {
+            TSA::UndoRedo::EditTransaction tx(m, "Modifier les niveaux");
+            tx.discardUnchanged();
+        }
+        TEST_CHECK(m.undoManager()->undoCount() == before && m.revision() == revision && m.canUndo(),
+                   "Test 188: fenêtre des niveaux fermée sans changement → historique intact");
+        m.setGridManager(nullptr);
+        std::cout << "[PASS] Test 188: Niveaux et grilles annulables" << std::endl;
+        passed++;
+    }
 
     return true;
 }

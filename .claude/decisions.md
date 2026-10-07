@@ -208,3 +208,16 @@ Consequences: ne jamais utiliser `MainWindow::close()` / `isFullScreen()` / `set
 page) : passer par les signaux ou `window()`. Nouveau code de cycle de vie dans AppShell. Le Start Center n'est
 affiché que sans projet ouvert. Code Win32 limité à AppShell.cpp (exclu du PCH, lien dwmapi).
 Status: ACTIVE (2026-10-06)
+
+## ADR-022
+Title: TSA se limite au calcul statique ; le dynamique est archivé
+Decision: modal, pushover et temporel sont retirés du code (types d'analyse, résultats, OpenSees, NDC, UI). La version
+qui les contenait est figée sur la branche `archive/dynamique` (tag `v0.2.0-dynamique`) ; `main` devient la ligne
+statique. Conservés : catégorie de charge E (séisme) et combinaisons sismiques (statique équivalent possible).
+Convention des efforts de `ResultsModel` : RDM (N > 0 traction ; My, Mz > 0 quand la fibre du côté négatif de l'axe
+local est tendue ; Vy = dMz/dx, Vz = dMy/dx), commune à OpenSees et Custom2D.
+Reason: le dynamique n'était pas fiable (pushover calculé comme du statique, BUG-024) et coûtait du temps de maintenance
+sur chaque évolution du modèle ; l'utilisateur se concentre sur le statique.
+Consequences: réintroduire du dynamique = repartir de `archive/dynamique` sur une branche dédiée, en adaptant la
+convention RDM. Un ancien contexte JSON de type dynamique est relu comme statique linéaire.
+Status: ACTIVE (2026-10-07)

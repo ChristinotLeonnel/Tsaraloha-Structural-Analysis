@@ -14,6 +14,8 @@
 #include "../Coordinate/CoordinateTransformationService.h"
 #include "../Coordinate/AxisColorConfig.h"
 #include "ResultsVisualManager.h"
+#include "../Model/SelectionQuery.h"
+#include <tuple>
 #include "../Analysis/ResultsModel.h"
 
 #include <AIS_Shape.hxx>
@@ -780,6 +782,88 @@ void OccView::applyWorkPlaneTransformation()
     }
 }
 
+void OccView::pushElementIsolationState()
+{
+    m_elementIsolationHistory.emplace_back(m_isolatedElements, m_hiddenElements);
+}
+
+void OccView::isolateElements(const TSA::Model::ElementSet& elements)
+{
+    if (elements.size() == 0) return;
+    pushElementIsolationState();
+    m_isolatedElements = elements;
+    m_hiddenElements = {};
+    updateElementIsolation();
+    if (!m_view.IsNull()) m_view->Redraw();
+}
+
+void OccView::hideElements(const TSA::Model::ElementSet& elements)
+{
+    if (elements.size() == 0) return;
+    pushElementIsolationState();
+    auto merge = [](std::set<int>& into, const std::set<int>& from) { into.insert(from.begin(), from.end()); };
+    merge(m_hiddenElements.nodes, elements.nodes);
+    merge(m_hiddenElements.beams, elements.beams);
+    merge(m_hiddenElements.columns, elements.columns);
+    merge(m_hiddenElements.slabs, elements.slabs);
+    merge(m_hiddenElements.walls, elements.walls);
+    merge(m_hiddenElements.foundations, elements.foundations);
+    merge(m_hiddenElements.trussMembers, elements.trussMembers);
+    merge(m_hiddenElements.cables, elements.cables);
+    updateElementIsolation();
+    if (!m_view.IsNull()) m_view->Redraw();
+}
+
+void OccView::invertElementIsolation()
+{
+    if (!m_model || !hasElementIsolation()) return;
+    // Visible ⇔ masqué : on isole exactement ce que la passe courante masque.
+    TSA::Model::ElementSet all = TSA::Model::SelectionQuery::all(*m_model);
+    TSA::Model::ElementSet inverted;
+    const TSA::Model::ElementSet noIsolation;
+    const TSA::Model::ElementSet& iso = m_isolatedElements ? *m_isolatedElements : noIsolation;
+    auto invert = [&](const std::set<int>& every, const std::set<int>& isolated, const std::set<int>& hidden, std::set<int>& out) {
+        for (int id : every)
+        {
+            const bool visible = !hidden.count(id) && (!m_isolatedElements || isolated.count(id));
+            if (!visible) out.insert(id);
+        }
+    };
+    invert(all.beams, iso.beams, m_hiddenElements.beams, inverted.beams);
+    invert(all.columns, iso.columns, m_hiddenElements.columns, inverted.columns);
+    invert(all.slabs, iso.slabs, m_hiddenElements.slabs, inverted.slabs);
+    invert(all.walls, iso.walls, m_hiddenElements.walls, inverted.walls);
+    invert(all.foundations, iso.foundations, m_hiddenElements.foundations, inverted.foundations);
+    invert(all.trussMembers, iso.trussMembers, m_hiddenElements.trussMembers, inverted.trussMembers);
+    invert(all.cables, iso.cables, m_hiddenElements.cables, inverted.cables);
+    if (inverted.size() == 0) return;
+    pushElementIsolationState();
+    m_isolatedElements = inverted;
+    m_hiddenElements = {};
+    updateElementIsolation();
+    if (!m_view.IsNull()) m_view->Redraw();
+}
+
+bool OccView::undoElementIsolation()
+{
+    if (m_elementIsolationHistory.empty()) return false;
+    std::tie(m_isolatedElements, m_hiddenElements) = m_elementIsolationHistory.back();
+    m_elementIsolationHistory.pop_back();
+    updateElementIsolation();
+    if (!m_view.IsNull()) m_view->Redraw();
+    return true;
+}
+
+void OccView::showAllElements()
+{
+    if (!hasElementIsolation()) return;
+    pushElementIsolationState();
+    m_isolatedElements.reset();
+    m_hiddenElements = {};
+    updateElementIsolation();
+    if (!m_view.IsNull()) m_view->Redraw();
+}
+
 void OccView::setWorkPlaneIsolation(bool isolated, double distance)
 {
     m_workPlane.setIsIsolated(isolated);
@@ -1011,13 +1095,36 @@ void OccView::updateElementIsolation()
         return;
 
     const bool isolate = isIsolationActive();
+    const bool byElements = hasElementIsolation();
     // Rien n'a été masqué (isolation ou filtre de familles) et rien n'est actif : aucun travail.
-    if (!isolate && !m_isolationApplied && m_hiddenElementCategories == 0)
+    if (!isolate && !byElements && !m_isolationApplied && m_hiddenElementCategories == 0)
         return;
     // Quand l'isolation vient d'être désactivée (case « Isoler le plan » décochée, sortie du
     // mode 2D), cette passe réaffiche tout selon les seuls drapeaux d'affichage. Auparavant la
     // fonction sortait immédiatement et les éléments masqués le restaient définitivement.
-    m_isolationApplied = isolate || m_hiddenElementCategories != 0;
+    m_isolationApplied = isolate || byElements || m_hiddenElementCategories != 0;
+
+    // Isolation / masquage par éléments : un élément est visible s'il n'est pas masqué et, si une
+    // isolation est active, s'il en fait partie. Un nœud isolé suit l'élément (ou est isolé lui-même).
+    auto userKept = [&](const std::set<int>& isolated, const std::set<int>& hidden, int id) {
+        if (hidden.count(id)) return false;
+        return !m_isolatedElements || isolated.count(id) > 0;
+    };
+    const TSA::Model::ElementSet noIsolation;
+    const TSA::Model::ElementSet& iso = m_isolatedElements ? *m_isolatedElements : noIsolation;
+    std::set<int> isolatedNodes = iso.nodes;
+    if (m_isolatedElements)
+    {
+        auto addEnds = [&](int a, int b) { isolatedNodes.insert(a); isolatedNodes.insert(b); };
+        for (int id : iso.beams) if (const auto* e = m_model->getBeam(id)) addEnds(e->startNodeId(), e->endNodeId());
+        for (int id : iso.columns) if (const auto* e = m_model->getColumn(id)) addEnds(e->startNodeId(), e->endNodeId());
+        for (int id : iso.trussMembers) if (const auto* e = m_model->getTrussMember(id)) addEnds(e->startNodeId(), e->endNodeId());
+        for (int id : iso.cables) if (const auto* e = m_model->getCable(id)) addEnds(e->startNodeId(), e->endNodeId());
+        for (int id : iso.walls) if (const auto* e = m_model->getWall(id)) addEnds(e->startNodeId(), e->endNodeId());
+        for (int id : iso.slabs) if (const auto* e = m_model->getSlab(id)) isolatedNodes.insert(e->nodeIds().begin(), e->nodeIds().end());
+        for (int id : iso.foundations) if (const auto* e = m_model->getFoundation(id)) isolatedNodes.insert(e->nodeId());
+    }
+    auto nodeUserKept = [&](int nodeId) { return userKept(isolatedNodes, m_hiddenElements.nodes, nodeId); };
 
     const double tol = isolationTolerance();
     auto linearKept = [&](int a, int b) { return !isolate || isLinearElementOnActiveWorkPlane(a, b, tol); };
@@ -1040,6 +1147,7 @@ void OccView::updateElementIsolation()
     // Cache : chaque nœud n'est testé qu'une fois par passe (nœuds, appuis, fondations, charges).
     std::map<int, bool> nodeOnPlane;
     auto nodeKept = [&](int nodeId) {
+        if (!nodeUserKept(nodeId)) return false;
         if (!isolate) return true;
         auto it = nodeOnPlane.find(nodeId);
         if (it != nodeOnPlane.end()) return it->second;
@@ -1068,39 +1176,46 @@ void OccView::updateElementIsolation()
     for (const auto& [id, shape] : m_beamShapes)
     {
         const auto* e = m_model->getBeam(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Beams) && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Beams) && userKept(iso.beams, m_hiddenElements.beams, id)
+                                      && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_columnShapes)
     {
         const auto* e = m_model->getColumn(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Columns) && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Columns) && userKept(iso.columns, m_hiddenElements.columns, id)
+                                      && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_trussShapes)
     {
         const auto* e = m_model->getTrussMember(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Trusses) && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Trusses) && userKept(iso.trussMembers, m_hiddenElements.trussMembers, id)
+                                      && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_cableShapes)
     {
         const auto* e = m_model->getCable(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Cables) && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Cables) && userKept(iso.cables, m_hiddenElements.cables, id)
+                                      && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_wallShapes)
     {
         const auto* e = m_model->getWall(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Walls) && linearKept(e->startNodeId(), e->endNodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Walls) && userKept(iso.walls, m_hiddenElements.walls, id)
+                                      && linearKept(e->startNodeId(), e->endNodeId()));
     }
 
     // 4. Éléments surfaciques & fondations
     for (const auto& [id, shape] : m_slabShapes)
     {
         const auto* e = m_model->getSlab(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Slabs) && (!isolate || isSurfaceElementOnActiveWorkPlane(e->nodeIds(), tol)));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Slabs) && userKept(iso.slabs, m_hiddenElements.slabs, id)
+                                      && (!isolate || isSurfaceElementOnActiveWorkPlane(e->nodeIds(), tol)));
     }
     for (const auto& [id, shape] : m_foundationShapes)
     {
         const auto* e = m_model->getFoundation(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Foundations) && nodeKept(e->nodeId()));
+        setShapeVisibility(shape, e && catOn(ElementCategory::Foundations) && userKept(iso.foundations, m_hiddenElements.foundations, id)
+                                      && nodeKept(e->nodeId()));
     }
 
     // 5. Charges nodales

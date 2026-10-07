@@ -371,60 +371,73 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
         }
     }
 
-    // 4. Règles spécifiques selon le type d'analyse
-    if (params.type == TSA::Analysis::AnalysisType::Modal)
+    // 4. Données que les moteurs de calcul ne transmettent pas (jamais ignorées en silence)
+    for (const auto& [id, b] : model.beams())
     {
-        if (params.numEigenmodes <= 0)
+        auto unsupported = [](const TSA::Model::EndRelease& r) { return r.fx || r.fy || r.fz || r.mx; };
+        if (unsupported(b.startRelease()) || unsupported(b.endRelease()))
         {
-            report.addError("Analyse Modale", "Le nombre de modes propres demandé doit être supérieur ou égal à 1.", 0, "RDM");
-        }
-
-        // Vérification de la masse : au moins un élément doit avoir un matériau de densité > 0
-        bool hasMass = false;
-        auto checkMatMass = [&](const TSA::Model::Material& m) {
-            if (m.density > 0.0) hasMass = true;
-        };
-        for (const auto& [id, b] : model.beams()) checkMatMass(b.material());
-        for (const auto& [id, c] : model.columns()) checkMatMass(c.material());
-        for (const auto& [id, t] : model.trussMembers()) checkMatMass(t.material());
-        for (const auto& [id, cb] : model.cables()) checkMatMass(cb.material());
-
-        if (!hasMass && totalElements > 0)
-        {
-            report.addError("Analyse Modale",
-                "Tous les matériaux ont une masse volumique nulle. L'analyse modale requiert une matrice de masse non nulle.",
-                0, "RDM / Dynamique");
+            report.addWarning("Relâchements",
+                "La poutre #" + std::to_string(id) + " a un relâchement d'effort normal, d'effort tranchant ou de torsion : "
+                "il est ignoré par le calcul (seules les rotules de flexion My / Mz sont transmises).",
+                id, "RDM");
         }
     }
-    else
     {
-        // Analyse statique (linéaire ou non-linéaire)
-        // Vérification du cas ou combinaison cible
-        if (params.targetCombinationId > 0)
+        // Nœuds reliés uniquement à des barres articulées : rotations bloquées au calcul (BUG-019),
+        // un moment nodal y serait repris par l'appui fictif et non par la structure.
+        std::set<int> frameNodes, axialNodes;
+        for (const auto& [id, b] : model.beams()) { frameNodes.insert(b.startNodeId()); frameNodes.insert(b.endNodeId()); }
+        for (const auto& [id, c] : model.columns()) { frameNodes.insert(c.startNodeId()); frameNodes.insert(c.endNodeId()); }
+        for (const auto& [id, t] : model.trussMembers()) { axialNodes.insert(t.startNodeId()); axialNodes.insert(t.endNodeId()); }
+        for (const auto& [id, c] : model.cables()) { axialNodes.insert(c.startNodeId()); axialNodes.insert(c.endNodeId()); }
+        for (const auto& [loadId, nl] : lm.nodalLoads())
         {
-            const auto* combo = lm.getCombination(params.targetCombinationId);
-            if (!combo)
+            const bool hasMoment = std::abs(nl.mx()) > 1e-12 || std::abs(nl.my()) > 1e-12 || std::abs(nl.mz()) > 1e-12;
+            if (hasMoment && axialNodes.count(nl.nodeId()) && !frameNodes.count(nl.nodeId()))
             {
-                report.addError("Combinaisons",
-                    "La combinaison ciblée pour le calcul (ID " + std::to_string(params.targetCombinationId) + ") n'existe pas.",
-                    params.targetCombinationId, "EN 1990");
-            }
-            else if (combo->caseFactors().empty())
-            {
-                report.addError("Combinaisons",
-                    "La combinaison ciblée '" + combo->name() + "' ne contient aucun cas de charge pondéré.",
-                    params.targetCombinationId, "EN 1990");
+                report.addWarning("Charges",
+                    "Le nœud N" + std::to_string(nl.nodeId()) + " n'est relié qu'à des treillis / câbles : le moment nodal de la charge « "
+                    + nl.name() + " » ne peut pas être repris par la structure (ignoré).",
+                    nl.nodeId(), "RDM");
             }
         }
-        else if (params.targetLoadCaseId > 0)
+    }
+    for (const auto& [loadId, ml] : lm.memberLoads())
+    {
+        if (ml.type() == TSA::Model::LoadType::MemberMoment)
         {
-            const auto* lc = lm.getLoadCase(params.targetLoadCaseId);
-            if (!lc)
-            {
-                report.addError("Charges",
-                    "Le cas de charge ciblé pour le calcul (ID " + std::to_string(params.targetLoadCaseId) + ") n'existe pas.",
-                    params.targetLoadCaseId, "EN 1991");
-            }
+            report.addWarning("Charges",
+                "La charge sur barre « " + ml.name() + " » est un moment réparti : ce type de charge n'est pas pris en compte par le calcul.",
+                loadId, "EN 1991");
+        }
+    }
+
+    // 5. Cas de charge ou combinaison ciblés (calcul statique)
+    if (params.targetCombinationId > 0)
+    {
+        const auto* combo = lm.getCombination(params.targetCombinationId);
+        if (!combo)
+        {
+            report.addError("Combinaisons",
+                "La combinaison ciblée pour le calcul (ID " + std::to_string(params.targetCombinationId) + ") n'existe pas.",
+                params.targetCombinationId, "EN 1990");
+        }
+        else if (combo->caseFactors().empty())
+        {
+            report.addError("Combinaisons",
+                "La combinaison ciblée '" + combo->name() + "' ne contient aucun cas de charge pondéré.",
+                params.targetCombinationId, "EN 1990");
+        }
+    }
+    else if (params.targetLoadCaseId > 0)
+    {
+        const auto* lc = lm.getLoadCase(params.targetLoadCaseId);
+        if (!lc)
+        {
+            report.addError("Charges",
+                "Le cas de charge ciblé pour le calcul (ID " + std::to_string(params.targetLoadCaseId) + ") n'existe pas.",
+                params.targetLoadCaseId, "EN 1991");
         }
     }
 

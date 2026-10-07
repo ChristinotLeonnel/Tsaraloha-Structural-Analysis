@@ -322,17 +322,19 @@ ResultsModel mapResults(const AnalysisContext& context, const AnalysisModel& mod
         er.opsTag = 0;
         er.length = el->length;
 
-        // Convention ResultsModel (identique au lecteur OpenSees) : N intérieur (traction > 0),
-        // tranchants et moments = forces d'extrémité exercées sur la barre, axes locaux.
-        auto fill = [&](StationForces& s, double pos, double N, double V, double M) {
+        // Convention RDM de ResultsModel (identique au lecteur OpenSees) : N > 0 en traction, M > 0
+        // quand la fibre du côté négatif de l'axe local est tendue, V = dM/dx. Entrées en convention
+        // « face positive » du contrat solveur (stations ; extrémité i = −forces sur la barre en i,
+        // extrémité j = +forces en j) : continuité aux nœuds (BUG-016).
+        auto fill = [&](StationForces& s, double pos, double N, double faceV, double faceM) {
             s.position = pos;
             s.N = N;
-            s.Vy = V * ty;
-            s.Vz = V * tz;
-            s.My = M * ny;
-            s.Mz = M * nz;
+            s.Vy = -faceV * ty;
+            s.Vz = -faceV * tz;
+            s.My = -faceM * ny;
+            s.Mz = faceM * nz;
         };
-        fill(er.startForces, 0.0, -ef.fxI, ef.fyI, ef.mzI);
+        fill(er.startForces, 0.0, -ef.fxI, -ef.fyI, -ef.mzI);
         fill(er.endForces, el->length, ef.fxJ, ef.fyJ, ef.mzJ);
 
         // Déplacements locaux aux extrémités, déduits des déplacements nodaux calculés.

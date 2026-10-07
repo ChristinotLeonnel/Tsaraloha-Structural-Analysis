@@ -127,15 +127,15 @@ void PropertyPanel::setupUi()
 
     // Vues spécialisées par élément structural métier (Règle 14)
     m_nodeView = new NodePropertiesView(m_model, m_stack);
-    connect(m_nodeView, &IElementPropertyView::elementModified, this, &PropertyPanel::elementModified);
+    connect(m_nodeView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
     m_stack->addWidget(m_nodeView); // Index 1
 
     m_beamView = new BeamPropertiesView(m_model, m_stack);
-    connect(m_beamView, &IElementPropertyView::elementModified, this, &PropertyPanel::elementModified);
+    connect(m_beamView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
     m_stack->addWidget(m_beamView); // Index 2
 
     m_columnView = new ColumnPropertiesView(m_model, m_stack);
-    connect(m_columnView, &IElementPropertyView::elementModified, this, &PropertyPanel::elementModified);
+    connect(m_columnView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
     m_stack->addWidget(m_columnView); // Index 3
 
     m_cableView = new CablePropertiesView(m_model, m_stack);
@@ -143,19 +143,19 @@ void PropertyPanel::setupUi()
     m_stack->addWidget(m_cableView); // Index 4
 
     m_slabView = new SlabPropertiesView(m_model, m_stack);
-    connect(m_slabView, &IElementPropertyView::elementModified, this, &PropertyPanel::elementModified);
+    connect(m_slabView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
     m_stack->addWidget(m_slabView); // Index 5
 
     m_wallView = new WallPropertiesView(m_model, m_stack);
-    connect(m_wallView, &IElementPropertyView::elementModified, this, &PropertyPanel::elementModified);
+    connect(m_wallView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
     m_stack->addWidget(m_wallView); // Index 6
 
     m_foundationView = new FoundationPropertiesView(m_model, m_stack);
-    connect(m_foundationView, &IElementPropertyView::elementModified, this, &PropertyPanel::elementModified);
+    connect(m_foundationView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
     m_stack->addWidget(m_foundationView); // Index 7
 
     m_trussView = new TrussMemberPropertiesView(m_model, m_stack);
-    connect(m_trussView, &IElementPropertyView::elementModified, this, &PropertyPanel::elementModified);
+    connect(m_trussView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
     m_stack->addWidget(m_trussView); // Index 8
 
     m_workPlaneView = new WorkPlanePropertiesView(m_model, m_stack);
@@ -205,18 +205,21 @@ void PropertyPanel::setupUi()
 
 void PropertyPanel::clearProperties()
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS STRUCTURALES"));
     m_stack->setCurrentWidget(m_emptyView);
 }
 
 void PropertyPanel::showLevelProperties(const QString& levelId)
 {
+    endMultiEdit();
     clearProperties();
     m_titleLabel->setText(tr("PROPRIÉTÉS DU NIVEAU : %1").arg(levelId));
 }
 
 void PropertyPanel::showNodeProperties(int nodeId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DU NŒUD N%1").arg(nodeId));
     m_nodeView->setElementId(nodeId);
     m_stack->setCurrentWidget(m_nodeView);
@@ -224,6 +227,7 @@ void PropertyPanel::showNodeProperties(int nodeId)
 
 void PropertyPanel::showBeamProperties(int beamId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DE LA POUTRE B%1").arg(beamId));
     m_beamView->setElementId(beamId);
     m_stack->setCurrentWidget(m_beamView);
@@ -232,6 +236,7 @@ void PropertyPanel::showBeamProperties(int beamId)
 
 void PropertyPanel::showColumnProperties(int columnId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DU POTEAU C%1").arg(columnId));
     m_columnView->setElementId(columnId);
     m_stack->setCurrentWidget(m_columnView);
@@ -240,6 +245,7 @@ void PropertyPanel::showColumnProperties(int columnId)
 
 void PropertyPanel::showCableProperties(int cableId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DU CÂBLE K%1").arg(cableId));
     m_cableView->setElementId(cableId);
     m_stack->setCurrentWidget(m_cableView);
@@ -248,6 +254,7 @@ void PropertyPanel::showCableProperties(int cableId)
 
 void PropertyPanel::showSlabProperties(int slabId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DE LA DALLE S%1").arg(slabId));
     m_slabView->setElementId(slabId);
     m_stack->setCurrentWidget(m_slabView);
@@ -255,6 +262,7 @@ void PropertyPanel::showSlabProperties(int slabId)
 
 void PropertyPanel::showWallProperties(int wallId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DU VOILE W%1").arg(wallId));
     m_wallView->setElementId(wallId);
     m_stack->setCurrentWidget(m_wallView);
@@ -262,6 +270,7 @@ void PropertyPanel::showWallProperties(int wallId)
 
 void PropertyPanel::showFoundationProperties(int foundationId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DE LA FONDATION F%1").arg(foundationId));
     m_foundationView->setElementId(foundationId);
     m_stack->setCurrentWidget(m_foundationView);
@@ -269,6 +278,7 @@ void PropertyPanel::showFoundationProperties(int foundationId)
 
 void PropertyPanel::showTrussMemberProperties(int memberId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DU TREILLIS T%1").arg(memberId));
     m_trussView->setElementId(memberId);
     m_stack->setCurrentWidget(m_trussView);
@@ -277,6 +287,7 @@ void PropertyPanel::showTrussMemberProperties(int memberId)
 
 void PropertyPanel::showWorkPlaneProperties(int workPlaneId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DU PLAN DE TRAVAIL WP%1").arg(workPlaneId));
     if (m_model && m_model->workPlaneManager())
     {
@@ -291,6 +302,7 @@ void PropertyPanel::showWorkPlaneProperties(int workPlaneId)
 
 void PropertyPanel::showNodalLoadProperties(int loadId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DE LA CHARGE NODALE #%1").arg(loadId));
     m_loadView->setNodalLoadId(loadId);
     m_stack->setCurrentWidget(m_loadView);
@@ -298,6 +310,7 @@ void PropertyPanel::showNodalLoadProperties(int loadId)
 
 void PropertyPanel::showMemberLoadProperties(int loadId)
 {
+    endMultiEdit();
     m_titleLabel->setText(tr("PROPRIÉTÉS DE LA CHARGE SUR BARRE #%1").arg(loadId));
     m_loadView->setMemberLoadId(loadId);
     m_stack->setCurrentWidget(m_loadView);
@@ -489,6 +502,7 @@ void PropertyPanel::onMemberLoadRemoved(int loadId)
 
 void PropertyPanel::onModelDiffApplied(const TSA::Model::ModelDiff& /*diff*/)
 {
+    if (m_model && m_multiEdit.active()) m_multiEdit.resync(*m_model);   // Annuler / Rétablir
     // Rafraîchir la vue active si son élément a été affecté
     if (m_stack->currentWidget() == m_beamView) m_beamView->refreshView();
     else if (m_stack->currentWidget() == m_columnView) m_columnView->refreshView();
@@ -504,6 +518,46 @@ void PropertyPanel::onModelDiffApplied(const TSA::Model::ModelDiff& /*diff*/)
 void PropertyPanel::onModelCleared()
 {
     clearProperties();
+}
+
+void PropertyPanel::setMultiSelection(TSA::Model::ElementKind kind, int primaryId, const std::set<int>& sameKindIds)
+{
+    if (!m_model) return;
+    m_multiEdit.begin(*m_model, kind, primaryId, sameKindIds);
+    if (!m_multiEdit.active()) return;
+
+    QString family;
+    switch (kind)
+    {
+    case TSA::Model::ElementKind::Node: family = tr("NŒUDS (appuis)"); break;
+    case TSA::Model::ElementKind::Beam: family = tr("POUTRES"); break;
+    case TSA::Model::ElementKind::Column: family = tr("POTEAUX"); break;
+    case TSA::Model::ElementKind::Slab: family = tr("DALLES"); break;
+    case TSA::Model::ElementKind::Wall: family = tr("VOILES"); break;
+    case TSA::Model::ElementKind::Foundation: family = tr("FONDATIONS"); break;
+    case TSA::Model::ElementKind::TrussMember: family = tr("BARRES DE TREILLIS"); break;
+    default: break;
+    }
+    m_titleLabel->setText(tr("ÉDITION GROUPÉE : %1 %2").arg(m_multiEdit.count()).arg(family));
+    m_titleLabel->setToolTip(tr("Les champs modifiés ici sont appliqués aux %1 éléments sélectionnés de ce type "
+                                "(nom et géométrie exceptés). Annuler (Ctrl+Z) les rétablit tous.")
+                                 .arg(m_multiEdit.count()));
+}
+
+void PropertyPanel::endMultiEdit()
+{
+    m_multiEdit.clear();
+    if (m_titleLabel) m_titleLabel->setToolTip(QString());
+}
+
+void PropertyPanel::onViewModified()
+{
+    if (m_model && m_multiEdit.active())
+    {
+        const TSA::Model::ModelDiff diff = m_multiEdit.propagate(*m_model);
+        if (!diff.isEmpty()) m_model->notifyModelDiffApplied(diff);
+    }
+    emit elementModified();
 }
 
 } // namespace TSA::UI

@@ -2,6 +2,30 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-07 (statique seul — ADR-022 — et correction des bugs connus, branche feature/static-only)
+
+### Removed
+- Analyse modale, pushover et temporel : types d'analyse, résultats (modes, pas), générateur / lecteur OpenSees,
+  chapitre NDC, actions et commandes (ruban, menus, console SEISMIC / MODAL), animation modale, mode du diagramme 2D.
+  Archive : branche `archive/dynamique` + tag `v0.2.0-dynamique`.
+- Modes Move3D / Copy3D / Rotate3D (BUG-026) ; module mort `src/View3D/Isolation`, `tests/isolation` (BUG-009).
+
+### Fixed
+- Résultats en convention RDM, stations exactes, déformée intégrée, charges trapézoïdales (FEP), rotules OpenSees,
+  nœuds de treillis purs, équilibre en moments (BUG-016, 017, 019, 027) — tests 181–184.
+- Calcul en thread de travail, progression annulable (BUG-001) ; liens NDC avec famille (BUG-018) ; traduction Qt
+  française (BUG-020) ; C4996 (BUG-010).
+- Isolation 3D branchée (BUG-004) ; arbre du modèle indexé (BUG-007, test 166) ; niveaux / axes / grilles annulables
+  (BUG-003, test 188) ; paramètres d'analyse enregistrés, format 1.4 chunk SETT (BUG-013 partiel, test 189) ;
+  métadonnées BIM au collage (BUG-029, test 190) ; édition groupée dans le panneau Propriétés (BUG-005, test 191).
+- BUG-011 réapparu (reconfiguration en CP850 alors que le lanceur imposait UTF-8 → aucune dépendance d'en-tête,
+  objets périmés, segfault du test 18) : lanceur généré à la page de code de la génération.
+
+### Added
+- `Model::setGridManager`, `ModelStateSnapshot::coordinatesJson / gridsJson`, `UndoManager::discardUnchangedTransaction`
+  / `EditTransaction::discardUnchanged`, `Model::analysisSettingsJson`, `BimModel::registerPasted`,
+  `TSA::Model::MultiEditSession`, `PropertyPanel::setMultiSelection`. `ModelTreeWidget` passe dans TSA_Core (testé).
+
 ## 2026-10-06 (correction des bugs relevés par les tests Start Center : BUG-030 à 034)
 
 ### Fixed

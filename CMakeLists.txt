@@ -68,7 +68,7 @@ set(UI_MAINWINDOW_SOURCES
     src/UI/MainWindow_ModelingTools.cpp
 )
 
-# --- Arbre du modèle ----------------------------------------------------------
+# --- Arbre du modèle — [CORE] (testé par TSA_Tests, suite cleanup) ------------
 set(UI_MODELTREE_SOURCES
     src/UI/ModelTree/ModelTreeWidget.h
     src/UI/ModelTree/ModelTreeWidget.cpp
@@ -416,6 +416,8 @@ set(MODEL_CORE_SOURCES
     src/Model/Model_Topology.cpp
     src/Model/ModelCleanup.h
     src/Model/ModelCleanup.cpp
+    src/Model/MultiEditSession.h
+    src/Model/MultiEditSession.cpp
     # Couche BIM (docs/BIM_ARCHITECTURE.md)
     src/Core/Units.h
     src/BIM/Core/BimTypes.h
@@ -702,6 +704,7 @@ set(CORE_SOURCES
     ${UI_EXTENSIONMANAGERDIALOG_SOURCES}
     ${UI_ANALYSIS_SOURCES}
     ${UI_TOOLS_SOURCES}
+    ${UI_MODELTREE_SOURCES}
     ${UI_WINDOWMANAGER_SOURCES}
     ${EXTENSIONSYSTEM_SOURCES}
     ${LIBRARY_SOURCES}
@@ -747,7 +750,6 @@ set(SOURCES
     ${UI_AI_SOURCES}
     ${APP_SOURCES}
     ${UI_MAINWINDOW_SOURCES}
-    ${UI_MODELTREE_SOURCES}
     ${UI_PROPERTIES_SOURCES}
     ${UI_DIALOGS_SOURCES}
     ${UI_THEME_SOURCES}
@@ -770,18 +772,24 @@ option(TSA_BUILD_TESTS "Compiler la suite de tests TSA_Tests" ON)
 
 # Dépendances d'en-têtes Ninja + MSVC : Ninja reconnaît les lignes /showIncludes grâce au préfixe
 # détecté à la configuration. Avec un MSVC localisé (« Remarque : inclusion du fichier : »), ce
-# préfixe contient une espace insécable dont l'encodage dépend de la page de code de la console
-# (0xFF en CP850, C2 A0 en UTF-8/65001). Si la configuration et le build ne tournent pas sous la
-# même page de code, AUCUNE dépendance d'en-tête n'est enregistrée : modifier un .h ne recompile
-# pas les .cpp qui l'incluent, d'où des objets périmés (dispositions mémoire incohérentes, crashs
-# aléatoires). Remède durable : pack de langue anglais de MSVC + VSLANG=1033 (presets ninja-*).
+# préfixe contient une espace insécable que CMake écrit dans rules.ninja dans la page de code de la
+# console qui GÉNÈRE (0xFF en CP850, C2 A0 en UTF-8), et que cl.exe écrit dans celle de la console qui
+# COMPILE. Si elles diffèrent, AUCUNE dépendance d'en-tête n'est enregistrée et modifier un .h ne
+# recompile pas les .cpp qui l'incluent (BUG-011, réapparu le 2026-10-06 après une reconfiguration
+# lancée en CP850 alors que le lanceur imposait UTF-8).
+# Correction : à chaque génération, la page de code active est relevée et le lanceur généré
+# (msvc_codepage.cmd) l'impose à chaque compilation : les deux restent toujours accordées.
+set(TSA_COMPILER_LAUNCHERS)
 if(CMAKE_GENERATOR MATCHES "Ninja" AND MSVC AND CMAKE_CXX_CL_SHOWINCLUDES_PREFIX MATCHES "[^	 -~]")
-    message(WARNING
-        "Préfixe /showIncludes localisé détecté (non ASCII) : « ${CMAKE_CXX_CL_SHOWINCLUDES_PREFIX} ».
-"
-        "Lancez la configuration ET les builds depuis des consoles de MÊME page de code (chcp), sinon "
-        "Ninja n'enregistre aucune dépendance d'en-tête (vérification : ninja -t deps <fichier.obj>). "
-        "Solution pérenne : installer le pack de langue anglais de Visual Studio (VSLANG=1033).")
+    execute_process(COMMAND cmd /c chcp OUTPUT_VARIABLE _tsa_chcp ERROR_QUIET)
+    string(REGEX MATCH "[0-9]+" TSA_CONSOLE_CODEPAGE "${_tsa_chcp}")
+    if(NOT TSA_CONSOLE_CODEPAGE)
+        set(TSA_CONSOLE_CODEPAGE 65001)
+    endif()
+    configure_file("${CMAKE_SOURCE_DIR}/cmake/msvc_codepage.cmd.in" "${CMAKE_BINARY_DIR}/msvc_codepage.cmd"
+                   @ONLY NEWLINE_STYLE CRLF)
+    list(APPEND TSA_COMPILER_LAUNCHERS "${CMAKE_BINARY_DIR}/msvc_codepage.cmd")
+    message(STATUS "MSVC localisé : compilation via msvc_codepage.cmd (page de code ${TSA_CONSOLE_CODEPAGE})")
 endif()
 
 # ccache (optionnel, ignoré avec les générateurs Visual Studio).
@@ -791,13 +799,16 @@ option(TSA_USE_CCACHE "Utiliser ccache comme lanceur de compilation (Ninja)" OFF
 if(TSA_USE_CCACHE AND NOT CMAKE_GENERATOR MATCHES "Visual Studio")
     find_program(CCACHE_PROGRAM ccache)
     if(CCACHE_PROGRAM)
-        set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+        list(APPEND TSA_COMPILER_LAUNCHERS "${CCACHE_PROGRAM}")
         if(MSVC)
             set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
             cmake_policy(SET CMP0141 NEW)
         endif()
         message(STATUS "ccache activé : ${CCACHE_PROGRAM}")
     endif()
+endif()
+if(TSA_COMPILER_LAUNCHERS)
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${TSA_COMPILER_LAUNCHERS})
 endif()
 
 # Modules OCCT nécessaires pour l'affichage 3D et primitives de base

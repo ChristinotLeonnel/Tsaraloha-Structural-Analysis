@@ -136,6 +136,10 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     writeCableChunk(payload, model.cables());
     writeLoadChunk(payload, model.loadManager().createSnapshot());
     writeBimChunk(payload, model.bim());
+    if (!model.analysisSettingsJson().empty())
+    {
+        writeSettingsChunk(payload, model.analysisSettingsJson());
+    }
 
     // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> snapshotsToSave = model.calculationSnapshots();
@@ -596,6 +600,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     TSA::Model::LoadManager::LoadSnapshot loadedLoads;
     bool hasLoadChunk = false;
     TSA::BIM::BimModel loadedBim;
+    std::string loadedSettings;
 
     while (offset + sizeof(TSAChunkHeader) <= size)
     {
@@ -670,6 +675,11 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             // Facultatif : sans lui (fichier ≤ 1.2), les GlobalId sont attribués au chargement
             readBimChunk(chunkBytes, chunkLen, loadedBim, errorMessage);
             break;
+        case CHUNK_SETT:
+            // Facultatif (format ≥ 1.4) : sans lui, réglages d'analyse par défaut. Le contenu est
+            // validé à la relecture par AnalysisContext::fromJson (lecture tolérante).
+            loadedSettings.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
         default:
             // Chunk inconnu (version future) : ignoré en toute sécurité grâce à chunkSize
             break;
@@ -726,6 +736,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
 
     // Application dans le modèle -> déclenche automatiquement onModelCleared() chez tous les observateurs (OccView, ModelTree)
     model.restoreSnapshot(snapshot);
+    model.setAnalysisSettingsJson(loadedSettings);
 
     // Validation normative post-chargement (ISO/IEC 25010 - Intégrité et robustesse)
     auto report = TSA::Standards::ModelValidator::validate(model);
