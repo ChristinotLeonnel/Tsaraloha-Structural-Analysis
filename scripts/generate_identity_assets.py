@@ -1,356 +1,279 @@
 import os
-import math
-import numpy as np
+import shutil
 from PIL import Image, ImageDraw
 
-def create_linear_gradient_mask(width, height, p1, p2, color1, color2):
-    """Génère un gradient linéaire 2D RGBA interpolé entre p1(x,y) et p2(x,y)."""
-    x1, y1 = p1
-    x2, y2 = p2
-    dx = x2 - x1
-    dy = y2 - y1
-    len_sq = dx * dx + dy * dy
-    if len_sq == 0:
-        len_sq = 1.0
+# Master Polygons (512x512 coordinate space, Hazel-style T Monogram from TSA Web)
+P_TL = [(138.0, 72.5), (188.0, 72.5), (104.0, 148.5), (54.0, 148.5)]
+P_BODY = [
+    (218.0, 72.5), (458.0, 72.5), (374.0, 148.5), (322.0, 148.5),
+    (322.0, 292.5), (246.0, 361.5), (246.0, 148.5), (134.0, 148.5)
+]
+P_FOOT = [(322.0, 320.5), (322.0, 370.5), (246.0, 439.5), (246.0, 389.5)]
+MASTER_POLYS = [P_TL, P_BODY, P_FOOT]
 
-    y_coords, x_coords = np.mgrid[0:height, 0:width]
-    # Projection scalaire orthogonale
-    proj = ((x_coords - x1) * dx + (y_coords - y1) * dy) / len_sq
-    proj = np.clip(proj, 0.0, 1.0)
+FILL_HAZEL = "#D3D7DA"
+STROKE_HAZEL = "#000000"
+STROKE_WIDTH = 8.0
 
-    r = color1[0] + proj * (color2[0] - color1[0])
-    g = color1[1] + proj * (color2[1] - color1[1])
-    b = color1[2] + proj * (color2[2] - color1[2])
-    a = color1[3] + proj * (color2[3] - color1[3]) if len(color1) > 3 else 255.0
+BASE_DIR_TSA = r"e:\Book\Dev\TSA"
+BASE_DIR_TSA_WEB = r"e:\Book\Dev\TSA Web"
 
-    grad_arr = np.dstack((r, g, b, a)).astype(np.uint8)
-    return Image.fromarray(grad_arr, mode="RGBA")
+RESOURCES_DIR = os.path.join(BASE_DIR_TSA, "resources")
+ICONS_DIR = os.path.join(RESOURCES_DIR, "icons")
+PNG_DIR = os.path.join(ICONS_DIR, "png")
+BRANDING_DIR = os.path.join(RESOURCES_DIR, "branding")
 
-def render_tsa_master(size=1024, mode="dark_badge", transparent_bg=False):
-    """
-    Rendu master supersamplé (4x) du symbole TSA.
-    Modes disponibles :
-    - 'dark_badge' : Fond sombre squircle navy titane + gradient cyan/cobalt
-    - 'light_badge': Fond clair squircle platinum + gradient cobalt/sapphire
-    - 'glyph_tech' : Sans fond (transparent) + gradient cyan/cobalt vibrant
-    - 'monochrome_white': Sans fond + blanc pur
-    - 'monochrome_black': Sans fond + noir/ardoise profonde
-    """
+for d in [RESOURCES_DIR, ICONS_DIR, PNG_DIR, BRANDING_DIR]:
+    os.makedirs(d, exist_ok=True)
+
+def render_logo_image(size=512, bg_color=None, fill=FILL_HAZEL, stroke=STROKE_HAZEL, stroke_w=STROKE_WIDTH, squircle=False):
+    """Renders the master T symbol at exact size with 4x supersampling."""
     scale = 4
     canvas_size = size * scale
-    s = canvas_size / 512.0
+    ratio = size / 512.0
+    sw = stroke_w * ratio * scale
 
-    master = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
+    img = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
 
-    # 1. Fond Squircle (si badge)
-    if not transparent_bg:
-        rx = int(112 * s)
-        bg_layer = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
-        bg_draw = ImageDraw.Draw(bg_layer)
+    if bg_color:
+        if squircle:
+            rx = int(112 * ratio * scale)
+            draw.rounded_rectangle([0, 0, canvas_size - 1, canvas_size - 1], radius=rx, fill=bg_color)
+            border_col = (255, 255, 255, 30) if bg_color in ["#0B1120", "#0E162A", (11, 17, 32, 255)] else (0, 0, 0, 25)
+            draw.rounded_rectangle([0, 0, canvas_size - 1, canvas_size - 1], radius=rx, outline=border_col, width=max(1, int(2.5 * ratio * scale)))
+        else:
+            draw.rectangle([0, 0, canvas_size - 1, canvas_size - 1], fill=bg_color)
 
-        if mode == "dark_badge":
-            # Gradient fond sombre profond (Navy tech #0C1222 -> #060913)
-            bg_grad = create_linear_gradient_mask(
-                canvas_size, canvas_size,
-                (0, 0), (canvas_size, canvas_size),
-                (14, 22, 42, 255), (6, 9, 19, 255)
-            )
-            # Masque squircle
-            mask = Image.new("L", (canvas_size, canvas_size), 0)
-            ImageDraw.Draw(mask).rounded_rectangle(
-                [0, 0, canvas_size - 1, canvas_size - 1], radius=rx, fill=255
-            )
-            master.paste(bg_grad, (0, 0), mask)
+    for poly in MASTER_POLYS:
+        scaled_poly = [(pt[0] * ratio * scale, pt[1] * ratio * scale) for pt in poly]
+        draw.polygon(scaled_poly, fill=fill, outline=stroke, width=max(1, int(round(sw))))
 
-            # Liseré subtil de bordure technologique
-            border_mask = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
-            ImageDraw.Draw(border_mask).rounded_rectangle(
-                [0, 0, canvas_size - 1, canvas_size - 1],
-                radius=rx, outline=(255, 255, 255, 30), width=max(1, int(2.5 * s))
-            )
-            master.alpha_composite(border_mask)
+    return img.resize((size, size), Image.Resampling.LANCZOS)
 
-        elif mode == "light_badge":
-            bg_grad = create_linear_gradient_mask(
-                canvas_size, canvas_size,
-                (0, 0), (canvas_size, canvas_size),
-                (255, 255, 255, 255), (241, 245, 249, 255)
-            )
-            mask = Image.new("L", (canvas_size, canvas_size), 0)
-            ImageDraw.Draw(mask).rounded_rectangle(
-                [0, 0, canvas_size - 1, canvas_size - 1], radius=rx, fill=255
-            )
-            master.paste(bg_grad, (0, 0), mask)
+def generate_svg_files():
+    print("--- 1. Écriture des SVG officiels TSA depuis TSA Web ---")
 
-            border_mask = Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0))
-            ImageDraw.Draw(border_mask).rounded_rectangle(
-                [0, 0, canvas_size - 1, canvas_size - 1],
-                radius=rx, outline=(0, 0, 0, 25), width=max(1, int(2.5 * s))
-            )
-            master.alpha_composite(border_mask)
+    # 1.1 TSA_glyph.svg : Monogramme T transparent officiel pur
+    svg_glyph = f'''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="138.0,72.5 188.0,72.5 104.0,148.5 54.0,148.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="{STROKE_WIDTH}"/>
+    <polygon points="218.0,72.5 458.0,72.5 374.0,148.5 322.0,148.5 322.0,292.5 246.0,361.5 246.0,148.5 134.0,148.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="{STROKE_WIDTH}"/>
+    <polygon points="322.0,320.5 322.0,370.5 246.0,439.5 246.0,389.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="{STROKE_WIDTH}"/>
+  </g>
+</svg>'''
+    with open(os.path.join(ICONS_DIR, "TSA_glyph.svg"), "w", encoding="utf-8") as f:
+        f.write(svg_glyph)
+    with open(os.path.join(BRANDING_DIR, "TSA_Glyph.svg"), "w", encoding="utf-8") as f:
+        f.write(svg_glyph)
 
-    # 2. Coordonnées géométriques du symbole T-Vector Triad
-    # Aile Gauche (Vecteur X / Cisaillement)
-    poly_left = [
-        (96 * s, 140 * s),
-        (244 * s, 140 * s),
-        (244 * s, 230 * s),
-        (154 * s, 230 * s),
-        (96 * s, 172 * s)
-    ]
-
-    # Aile Droite (Vecteur Y / Moment)
-    poly_right = [
-        (268 * s, 140 * s),
-        (416 * s, 140 * s),
-        (416 * s, 172 * s),
-        (358 * s, 230 * s),
-        (268 * s, 230 * s)
-    ]
-
-    # Fût Central (Vecteur Z / Stabilité & Ancrage)
-    poly_stem = [
-        (226 * s, 254 * s),
-        (286 * s, 254 * s),
-        (276 * s, 400 * s),
-        (256 * s, 424 * s),
-        (236 * s, 400 * s)
-    ]
-
-    # Nœud Central Nexus (Point nodal losange)
-    poly_nexus = [
-        (256 * s, 222 * s),
-        (266 * s, 236 * s),
-        (256 * s, 250 * s),
-        (246 * s, 236 * s)
-    ]
-
-    # Rendu de chaque facette polygonale avec son gradient dédié
-    def draw_faceted_poly(poly, col_start, col_end, p_start, p_end):
-        mask = Image.new("L", (canvas_size, canvas_size), 0)
-        ImageDraw.Draw(mask).polygon(poly, fill=255)
-        grad = create_linear_gradient_mask(
-            canvas_size, canvas_size,
-            (p_start[0] * s, p_start[1] * s),
-            (p_end[0] * s, p_end[1] * s),
-            col_start, col_end
-        )
-        master.paste(grad, (0, 0), mask)
-
-    if mode in ["dark_badge", "glyph_tech"]:
-        # Aile gauche : Cyan vibrant (#00F2FE -> #0072FF)
-        draw_faceted_poly(poly_left, (0, 242, 254, 255), (0, 114, 255, 255), (96, 140), (244, 230))
-        # Aile droite : Cobalt royal (#2979FF -> #1565C0)
-        draw_faceted_poly(poly_right, (41, 121, 255, 255), (21, 101, 192, 255), (268, 140), (416, 230))
-        # Fût central : Indigo technique (#00B0FF -> #0D47A1)
-        draw_faceted_poly(poly_stem, (0, 176, 255, 255), (13, 71, 161, 255), (256, 254), (256, 424))
-        # Nœud central : Blanc éclatant avec lueur (#FFFFFF)
-        nexus_mask = Image.new("L", (canvas_size, canvas_size), 0)
-        ImageDraw.Draw(nexus_mask).polygon(poly_nexus, fill=255)
-        nexus_color = Image.new("RGBA", (canvas_size, canvas_size), (255, 255, 255, 250))
-        master.paste(nexus_color, (0, 0), nexus_mask)
-
-    elif mode == "light_badge":
-        # Couleurs adaptées au fond blanc/clair
-        draw_faceted_poly(poly_left, (0, 160, 255, 255), (0, 80, 210, 255), (96, 140), (244, 230))
-        draw_faceted_poly(poly_right, (0, 100, 230, 255), (10, 50, 170, 255), (268, 140), (416, 230))
-        draw_faceted_poly(poly_stem, (0, 130, 245, 255), (5, 40, 150, 255), (256, 254), (256, 424))
-        nexus_mask = Image.new("L", (canvas_size, canvas_size), 0)
-        ImageDraw.Draw(nexus_mask).polygon(poly_nexus, fill=255)
-        nexus_color = Image.new("RGBA", (canvas_size, canvas_size), (15, 23, 42, 255))
-        master.paste(nexus_color, (0, 0), nexus_mask)
-
-    elif mode == "monochrome_white":
-        for poly in [poly_left, poly_right, poly_stem]:
-            m = Image.new("L", (canvas_size, canvas_size), 0)
-            ImageDraw.Draw(m).polygon(poly, fill=255)
-            master.paste(Image.new("RGBA", (canvas_size, canvas_size), (255, 255, 255, 255)), (0, 0), m)
-        # Nœud évidé
-        nm = Image.new("L", (canvas_size, canvas_size), 0)
-        ImageDraw.Draw(nm).polygon(poly_nexus, fill=255)
-        master.paste(Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0)), (0, 0), nm)
-
-    elif mode == "monochrome_black":
-        for poly in [poly_left, poly_right, poly_stem]:
-            m = Image.new("L", (canvas_size, canvas_size), 0)
-            ImageDraw.Draw(m).polygon(poly, fill=255)
-            master.paste(Image.new("RGBA", (canvas_size, canvas_size), (15, 23, 42, 255)), (0, 0), m)
-        nm = Image.new("L", (canvas_size, canvas_size), 0)
-        ImageDraw.Draw(nm).polygon(poly_nexus, fill=255)
-        master.paste(Image.new("RGBA", (canvas_size, canvas_size), (0, 0, 0, 0)), (0, 0), nm)
-
-    # Réduction Lanczos pour anti-aliasing parfait
-    return master.resize((size, size), Image.Resampling.LANCZOS)
-
-def generate_all_identity_assets():
-    icons_dir = r"e:\Book\Dev\TSA\resources\icons"
-    png_dir = os.path.join(icons_dir, "png")
-    os.makedirs(png_dir, exist_ok=True)
-
-    print("--- 1. Génération des PNG multi-résolutions ---")
-    sizes = [16, 24, 32, 48, 64, 128, 256, 512, 1024]
-    
-    ico_images = []
-    for sz in sizes:
-        img_badge = render_tsa_master(sz, mode="dark_badge", transparent_bg=False)
-        img_badge.save(os.path.join(png_dir, f"TSA_app_{sz}x{sz}.png"))
-        
-        # Pour les tailles standards Windows .ico
-        if sz <= 256:
-            ico_images.append(img_badge)
-
-        # Glyphe transparent
-        img_glyph = render_tsa_master(sz, mode="glyph_tech", transparent_bg=True)
-        img_glyph.save(os.path.join(png_dir, f"TSA_glyph_{sz}x{sz}.png"))
-
-    # Sauvegarder également les masters 512 dans le dossier icons
-    render_tsa_master(512, mode="dark_badge").save(os.path.join(icons_dir, "TSA_dark.png"))
-    render_tsa_master(512, mode="light_badge").save(os.path.join(icons_dir, "TSA_light.png"))
-    render_tsa_master(512, mode="glyph_tech", transparent_bg=True).save(os.path.join(icons_dir, "TSA_glyph.png"))
-    render_tsa_master(512, mode="monochrome_white", transparent_bg=True).save(os.path.join(icons_dir, "TSA_mono_white.png"))
-    render_tsa_master(512, mode="monochrome_black", transparent_bg=True).save(os.path.join(icons_dir, "TSA_mono_dark.png"))
-
-    print("--- 2. Génération du package Windows ICO multi-résolution ---")
-    # Windows requiert : 16, 24, 32, 48, 64, 128, 256
-    ico_path_icons = os.path.join(icons_dir, "TSA.ico")
-    ico_sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
-    
-    # img256 est l'image principale
-    img256 = [img for img in ico_images if img.size == (256, 256)][0]
-    other_imgs = [img for img in ico_images if img.size != (256, 256)]
-    img256.save(ico_path_icons, format="ICO", sizes=ico_sizes, append_images=other_imgs)
-    print(f"ICO généré avec succès : {ico_path_icons}")
-
-    # Synchroniser aussi dans resources/TSA.ico si présent
-    root_ico = os.path.join(r"e:\Book\Dev\TSA\resources", "TSA.ico")
-    img256.save(root_ico, format="ICO", sizes=ico_sizes, append_images=other_imgs)
-    print(f"ICO synchronisé : {root_ico}")
-
-    print("--- 3. Écriture des SVG vectoriels officiels ---")
-    write_official_svgs(icons_dir)
-
-def write_official_svgs(icons_dir):
-    # SVG 1 : TSA.svg officiel (Badge sombre haute définition avec squircle)
-    svg_badge = '''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+    # 1.2 TSA.svg : Badge officiel squircle sombre (Navy/Titane)
+    svg_dark_badge = f'''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="tsa_bg_grad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#0E162A"/>
       <stop offset="100%" stop-color="#060913"/>
     </linearGradient>
-    <linearGradient id="tsa_wing_left" x1="96" y1="140" x2="244" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#00F2FE"/>
-      <stop offset="100%" stop-color="#0072FF"/>
-    </linearGradient>
-    <linearGradient id="tsa_wing_right" x1="268" y1="140" x2="416" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#2979FF"/>
-      <stop offset="100%" stop-color="#1565C0"/>
-    </linearGradient>
-    <linearGradient id="tsa_stem_grad" x1="256" y1="254" x2="256" y2="424" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#00B0FF"/>
-      <stop offset="50%" stop-color="#0072FF"/>
-      <stop offset="100%" stop-color="#0D47A1"/>
-    </linearGradient>
-    <filter id="tsa_glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0066FF" flood-opacity="0.35"/>
-    </filter>
   </defs>
-
   <!-- Fond squircle tech -->
   <rect width="512" height="512" rx="112" fill="url(#tsa_bg_grad)"/>
   <rect x="1" y="1" width="510" height="510" rx="111" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="2"/>
-
-  <!-- Symbole T-Vector Triad -->
-  <g filter="url(#tsa_glow)">
-    <!-- Aile Gauche (Vecteur X) -->
-    <polygon points="96,140 244,140 244,230 154,230 96,172" fill="url(#tsa_wing_left)"/>
-
-    <!-- Aile Droite (Vecteur Y) -->
-    <polygon points="268,140 416,140 416,172 358,230 268,230" fill="url(#tsa_wing_right)"/>
-
-    <!-- Fût Central (Vecteur Z / Ancrage) -->
-    <polygon points="226,254 286,254 276,400 256,424 236,400" fill="url(#tsa_stem_grad)"/>
-
-    <!-- Nœud Central Nexus (Losange d'articulation) -->
-    <polygon points="256,222 266,236 256,250 246,236" fill="#FFFFFF"/>
+  <!-- Symbole T Hazel officiel -->
+  <g stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="138.0,72.5 188.0,72.5 104.0,148.5 54.0,148.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="{STROKE_WIDTH}"/>
+    <polygon points="218.0,72.5 458.0,72.5 374.0,148.5 322.0,148.5 322.0,292.5 246.0,361.5 246.0,148.5 134.0,148.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="{STROKE_WIDTH}"/>
+    <polygon points="322.0,320.5 322.0,370.5 246.0,439.5 246.0,389.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="{STROKE_WIDTH}"/>
   </g>
 </svg>'''
-    with open(os.path.join(icons_dir, "TSA.svg"), "w", encoding="utf-8") as f:
-        f.write(svg_badge)
+    with open(os.path.join(ICONS_DIR, "TSA.svg"), "w", encoding="utf-8") as f:
+        f.write(svg_dark_badge)
+    with open(os.path.join(BRANDING_DIR, "TSA_Logo.svg"), "w", encoding="utf-8") as f:
+        f.write(svg_dark_badge)
 
-    # SVG 2 : TSA_glyph.svg (Symbole seul transparent pour UI, Ribbon, Boutons)
-    svg_glyph = '''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="tsa_glyph_left" x1="96" y1="140" x2="244" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#00F2FE"/>
-      <stop offset="100%" stop-color="#0072FF"/>
-    </linearGradient>
-    <linearGradient id="tsa_glyph_right" x1="268" y1="140" x2="416" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#2979FF"/>
-      <stop offset="100%" stop-color="#1565C0"/>
-    </linearGradient>
-    <linearGradient id="tsa_glyph_stem" x1="256" y1="254" x2="256" y2="424" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#00B0FF"/>
-      <stop offset="50%" stop-color="#0072FF"/>
-      <stop offset="100%" stop-color="#0D47A1"/>
-    </linearGradient>
-  </defs>
-
-  <g>
-    <polygon points="96,140 244,140 244,230 154,230 96,172" fill="url(#tsa_glyph_left)"/>
-    <polygon points="268,140 416,140 416,172 358,230 268,230" fill="url(#tsa_glyph_right)"/>
-    <polygon points="226,254 286,254 276,400 256,424 236,400" fill="url(#tsa_glyph_stem)"/>
-    <polygon points="256,222 266,236 256,250 246,236" fill="#FFFFFF"/>
-  </g>
-</svg>'''
-    with open(os.path.join(icons_dir, "TSA_glyph.svg"), "w", encoding="utf-8") as f:
-        f.write(svg_glyph)
-
-    # SVG 3 : TSA_light.svg (Version claire)
-    svg_light = '''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+    # 1.3 TSA_light.svg : Badge officiel squircle clair (Platinum/Blanc)
+    svg_light_badge = f'''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="tsa_bg_light" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#FFFFFF"/>
       <stop offset="100%" stop-color="#F1F5F9"/>
     </linearGradient>
-    <linearGradient id="tsa_light_left" x1="96" y1="140" x2="244" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0284C7"/>
-      <stop offset="100%" stop-color="#0369A1"/>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#tsa_bg_light)"/>
+  <rect x="1" y="1" width="510" height="510" rx="111" stroke="#000000" stroke-opacity="0.08" stroke-width="2"/>
+  <g stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="138.0,72.5 188.0,72.5 104.0,148.5 54.0,148.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="{STROKE_WIDTH}"/>
+    <polygon points="218.0,72.5 458.0,72.5 374.0,148.5 322.0,148.5 322.0,292.5 246.0,361.5 246.0,148.5 134.0,148.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="{STROKE_WIDTH}"/>
+    <polygon points="322.0,320.5 322.0,370.5 246.0,439.5 246.0,389.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="{STROKE_WIDTH}"/>
+  </g>
+</svg>'''
+    with open(os.path.join(ICONS_DIR, "TSA_light.svg"), "w", encoding="utf-8") as f:
+        f.write(svg_light_badge)
+
+    # 1.4 TSA_monochrome.svg : Variante monochrome
+    svg_mono = '''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke-linejoin="round" stroke-linecap="round" fill="currentColor" stroke="currentColor">
+    <polygon points="138.0,72.5 188.0,72.5 104.0,148.5 54.0,148.5"/>
+    <polygon points="218.0,72.5 458.0,72.5 374.0,148.5 322.0,148.5 322.0,292.5 246.0,361.5 246.0,148.5 134.0,148.5"/>
+    <polygon points="322.0,320.5 322.0,370.5 246.0,439.5 246.0,389.5"/>
+  </g>
+</svg>'''
+    with open(os.path.join(ICONS_DIR, "TSA_monochrome.svg"), "w", encoding="utf-8") as f:
+        f.write(svg_mono)
+
+    # 1.5 file_tsa.svg : Icône officielle document .TSA issue de TSA Web
+    src_ext_svg = os.path.join(BASE_DIR_TSA_WEB, "TSA-File-Extension-512.svg")
+    dst_ext_svg = os.path.join(ICONS_DIR, "file_tsa.svg")
+    if os.path.exists(src_ext_svg):
+        shutil.copy2(src_ext_svg, dst_ext_svg)
+        print("Copié file_tsa.svg depuis TSA Web:", dst_ext_svg)
+
+    # 1.6 TSA_Banner.svg : Bannière modernisée intégrant le monogramme T officiel Hazel
+    svg_banner = f'''<svg width="880" height="220" viewBox="0 0 880 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="banner_bg" x1="0" y1="0" x2="880" y2="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B1120"/>
+      <stop offset="50%" stop-color="#070B14"/>
+      <stop offset="100%" stop-color="#04060A"/>
     </linearGradient>
-    <linearGradient id="tsa_light_right" x1="268" y1="140" x2="416" y2="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#2563EB"/>
-      <stop offset="100%" stop-color="#1D4ED8"/>
+
+    <!-- Logo Box Gradient -->
+    <linearGradient id="logo_bg" x1="40" y1="30" x2="200" y2="190" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#111B33"/>
+      <stop offset="100%" stop-color="#070B14"/>
     </linearGradient>
-    <linearGradient id="tsa_light_stem" x1="256" y1="254" x2="256" y2="424" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0284C7"/>
-      <stop offset="100%" stop-color="#1E3A8A"/>
+
+    <!-- Text Title Gradient -->
+    <linearGradient id="title_grad" x1="230" y1="50" x2="520" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="40%" stop-color="#00F2FE"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+
+    <!-- Accent Line Gradient -->
+    <linearGradient id="accent_line" x1="230" y1="0" x2="820" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F2FE" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#3B82F6" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#1E293B" stop-opacity="0"/>
     </linearGradient>
   </defs>
 
-  <rect width="512" height="512" rx="112" fill="url(#tsa_bg_light)"/>
-  <rect x="1" y="1" width="510" height="510" rx="111" stroke="#000000" stroke-opacity="0.08" stroke-width="2"/>
+  <!-- Banner Background Card -->
+  <rect width="880" height="220" rx="16" fill="url(#banner_bg)"/>
+  <rect x="1" y="1" width="878" height="218" rx="15" stroke="#1E293B" stroke-width="1.5"/>
 
-  <g>
-    <polygon points="96,140 244,140 244,230 154,230 96,172" fill="url(#tsa_light_left)"/>
-    <polygon points="268,140 416,140 416,172 358,230 268,230" fill="url(#tsa_light_right)"/>
-    <polygon points="226,254 286,254 276,400 256,424 236,400" fill="url(#tsa_light_stem)"/>
-    <polygon points="256,222 266,236 256,250 246,236" fill="#0F172A"/>
+  <!-- Subtle Perspective Grid / CAD Texture -->
+  <g opacity="0.07" stroke="#38BDF8" stroke-width="1">
+    <line x1="230" y1="20" x2="860" y2="20" />
+    <line x1="230" y1="60" x2="860" y2="60" />
+    <line x1="230" y1="100" x2="860" y2="100" />
+    <line x1="230" y1="140" x2="860" y2="140" />
+    <line x1="230" y1="180" x2="860" y2="180" />
+    <line x1="330" y1="10" x2="330" y2="210" />
+    <line x1="450" y1="10" x2="450" y2="210" />
+    <line x1="570" y1="10" x2="570" y2="210" />
+    <line x1="690" y1="10" x2="690" y2="210" />
+    <line x1="810" y1="10" x2="810" y2="210" />
+  </g>
+
+  <!-- Logo Squircle Base (Left) -->
+  <rect x="40" y="30" width="160" height="160" rx="36" fill="url(#logo_bg)"/>
+  <rect x="41" y="31" width="158" height="158" rx="35" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="1.5"/>
+
+  <!-- Official Hazel T Symbol (Scale 0.25, centered in 160x160 box: translate 56, 46) -->
+  <g transform="translate(56, 46) scale(0.25)" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="138.0,72.5 188.0,72.5 104.0,148.5 54.0,148.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="10.0"/>
+    <polygon points="218.0,72.5 458.0,72.5 374.0,148.5 322.0,148.5 322.0,292.5 246.0,361.5 246.0,148.5 134.0,148.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="10.0"/>
+    <polygon points="322.0,320.5 322.0,370.5 246.0,439.5 246.0,389.5" fill="{FILL_HAZEL}" stroke="{STROKE_HAZEL}" stroke-width="10.0"/>
+  </g>
+
+  <!-- Typography / Content (Right Side) -->
+  <!-- Main Title "TSA" -->
+  <text x="230" y="82" fill="url(#title_grad)" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="52" font-weight="900" letter-spacing="-1">TSA</text>
+
+  <!-- Subtitle / Full Name -->
+  <text x="355" y="65" fill="#F8FAFC" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="0.5">Tsaraloha Structural Analysis</text>
+  <text x="355" y="85" fill="#94A3B8" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="2.5">ENGINEERING CAD &amp; FEA PLATFORM</text>
+
+  <!-- Glowing Accent Line -->
+  <line x1="230" y1="108" x2="840" y2="108" stroke="url(#accent_line)" stroke-width="2"/>
+
+  <!-- Description Line -->
+  <text x="230" y="136" fill="#CBD5E1" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="500">
+    Logiciel de modélisation 3D exacte B-Rep et d'analyse structurelle par éléments finis
+  </text>
+
+  <!-- Tech Pill Tags -->
+  <g transform="translate(230, 156)">
+    <rect width="66" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="33" y="16" fill="#38BDF8" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">C++20</text>
+  </g>
+  <g transform="translate(304, 156)">
+    <rect width="56" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="28" y="16" fill="#4ADE80" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Qt 6</text>
+  </g>
+  <g transform="translate(368, 156)">
+    <rect width="118" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="59" y="16" fill="#60A5FA" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">OpenCASCADE</text>
+  </g>
+  <g transform="translate(494, 156)">
+    <rect width="112" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="56" y="16" fill="#F472B6" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">OpenSees FEA</text>
+  </g>
+  <g transform="translate(614, 156)">
+    <rect width="90" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="45" y="16" fill="#FBBF24" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Eurocodes</text>
+  </g>
+  <g transform="translate(712, 156)">
+    <rect width="102" height="24" rx="6" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+    <text x="51" y="16" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Windows x64</text>
   </g>
 </svg>'''
-    with open(os.path.join(icons_dir, "TSA_light.svg"), "w", encoding="utf-8") as f:
-        f.write(svg_light)
+    with open(os.path.join(BRANDING_DIR, "TSA_Banner.svg"), "w", encoding="utf-8") as f:
+        f.write(svg_banner)
 
-    # SVG 4 : TSA_monochrome.svg (Noir sur transparent)
-    svg_mono = '''<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <g fill="currentColor">
-    <polygon points="96,140 244,140 244,230 154,230 96,172"/>
-    <polygon points="268,140 416,140 416,172 358,230 268,230"/>
-    <polygon points="226,254 286,254 276,400 256,424 236,400"/>
-  </g>
-</svg>'''
-    with open(os.path.join(icons_dir, "TSA_monochrome.svg"), "w", encoding="utf-8") as f:
-        f.write(svg_mono)
+def generate_png_and_ico_files():
+    print("--- 2. Génération des PNG et du package ICO multi-résolutions ---")
+    sizes = [16, 24, 32, 48, 64, 128, 256, 512, 1024]
 
-    print("SVG vectoriels officiels écrits avec succès dans", icons_dir)
+    # Copier TSA.ico depuis TSA Web directement
+    src_ico = os.path.join(BASE_DIR_TSA_WEB, "TSA.ico")
+    dst_ico_res = os.path.join(RESOURCES_DIR, "TSA.ico")
+    dst_ico_icons = os.path.join(ICONS_DIR, "TSA.ico")
+    if os.path.exists(src_ico):
+        shutil.copy2(src_ico, dst_ico_res)
+        shutil.copy2(src_ico, dst_ico_icons)
+        print("Copié TSA.ico vers resources et resources/icons.")
+
+    # Rendu des PNG multi-résolutions
+    for sz in sizes:
+        img_app = render_logo_image(sz, bg_color="#0B1120", squircle=True)
+        img_app.save(os.path.join(PNG_DIR, f"TSA_app_{sz}x{sz}.png"))
+
+        img_glyph = render_logo_image(sz, bg_color=None)
+        img_glyph.save(os.path.join(PNG_DIR, f"TSA_glyph_{sz}x{sz}.png"))
+
+    # Rendu des masters 512 dans icons
+    render_logo_image(512, bg_color="#0B1120", squircle=True).save(os.path.join(ICONS_DIR, "TSA_dark.png"))
+    render_logo_image(512, bg_color="#FFFFFF", squircle=True).save(os.path.join(ICONS_DIR, "TSA_light.png"))
+    render_logo_image(512, bg_color=None).save(os.path.join(ICONS_DIR, "TSA_glyph.png"))
+    render_logo_image(512, bg_color=None, fill="#FFFFFF", stroke="#FFFFFF").save(os.path.join(ICONS_DIR, "TSA_mono_white.png"))
+    render_logo_image(512, bg_color=None, fill="#0F172A", stroke="#0F172A").save(os.path.join(ICONS_DIR, "TSA_mono_dark.png"))
+
+    # Branding masters
+    render_logo_image(512, bg_color="#0B1120", squircle=True).save(os.path.join(BRANDING_DIR, "TSA_Logo_Dark.png"))
+    render_logo_image(512, bg_color="#FFFFFF", squircle=True).save(os.path.join(BRANDING_DIR, "TSA_Logo_Light.png"))
+    render_logo_image(512, bg_color=None).save(os.path.join(BRANDING_DIR, "TSA_Glyph_Transparent.png"))
+
+    src_sq = os.path.join(BASE_DIR_TSA_WEB, "branding", "TSA-Logo-Text-Square.png")
+    if os.path.exists(src_sq):
+        shutil.copy2(src_sq, os.path.join(BRANDING_DIR, "TSA_Logo_Square.png"))
+    else:
+        render_logo_image(512, bg_color="#0B1120", squircle=True).save(os.path.join(BRANDING_DIR, "TSA_Logo_Square.png"))
+
+    print("PNG et icônes générés avec succès !")
 
 if __name__ == "__main__":
-    generate_all_identity_assets()
+    generate_svg_files()
+    generate_png_and_ico_files()
+    print("Toutes les icônes de TSA ont été mises à jour avec celles de TSA Web !")
