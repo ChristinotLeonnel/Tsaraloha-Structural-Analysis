@@ -33,7 +33,7 @@ lancement → Start Center seul (fenêtre < 1 s), Nouveau projet (dialogue, fich
 `TSA.exe fichier.tsa`, recherche / tri / « Retirer des projets récents » (fichier conservé), menu d'application,
 thème clair/sombre, agrandir / restaurer / réduire / déplacer / double-clic / redimensionnement bords et coins,
 Annuler / Rétablir de la barre de titre, redimensionnement par les bords en mode Workspace, calcul OpenSees depuis
-l'interface (appuis via le menu Structure). Non vérifié : multi-écrans / DPI mixte, Snap layouts Win11 (BUG-033).
+l'interface (appuis via le menu Structure). Réduire depuis l'état agrandi : crash corrigé le 2026-10-07 (FIX-2026-10-07-MINIMIZE). Non vérifié : multi-écrans / DPI mixte, Snap layouts Win11 (BUG-033).
 
 ## UI
 Ruban : responsive sans scroll (Full → IconOnly → Collapsed → « Plus »), barre d'accès rapide dans la

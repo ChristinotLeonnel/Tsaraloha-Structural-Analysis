@@ -18,6 +18,7 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 
 - [x] AppShell, barre de titre, Start Center, Nouveau projet, Fermer le projet (essais GUI 2026-10-06).
 - [x] BUG-030, BUG-031, BUG-032, BUG-034 et redimensionnement par les bords en mode Workspace (2026-10-06).
+- [x] Crash en réduisant la fenêtre agrandie (FIX-2026-10-07-MINIMIZE, 2026-10-07).
 - [ ] BUG-033 : vérifier multi-écrans / DPI mixte ; Snap layouts Windows 11 (HTMAXBUTTON).
 
 ## Statique seul (ADR-022, branche feature/static-only)
