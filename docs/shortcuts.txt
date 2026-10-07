@@ -198,11 +198,7 @@ Legende des touches :
   I                   Isoler la Selection (masque le reste)
   Alt+I               Isoler par Type (meme type que la selection)
   Alt+W               Isoler sur le Plan de Travail
-  Ctrl+I              Isoler par Coupe (tranche entre deux plans)
-  Ctrl+Shift+I        Isoler par Projection (fenetre dans la vue)
-  [aucun]             Isoler par Volume (boite 3D)
   H                   Masquer la Selection
-  Shift+I             Estomper les autres (bascule masquer / estomper)
   [aucun]             Inverser l'Isolation
   Ctrl+H              Isolation Precedente (annule la derniere isolation)
   Alt+H               Tout Afficher (fin de l'isolation)

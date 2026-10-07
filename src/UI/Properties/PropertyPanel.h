@@ -2,6 +2,7 @@
 
 #include <QWidget>
 #include "../../Model/Model.h"
+#include "../../Model/MultiEditSession.h"
 
 class QLabel;
 class QStackedWidget;
@@ -58,6 +59,10 @@ public slots:
     void showMemberLoadProperties(int loadId);
     void setWorkPlane(const TSA::Coordinate::WorkPlane& wp);
     void clearProperties();
+    /// Sélection multiple : la vue affichée (élément principal) édite aussi les autres éléments du
+    /// même type (champs modifiés seulement). À appeler après show*Properties(primaryId).
+    void setMultiSelection(TSA::Model::ElementKind kind, int primaryId, const std::set<int>& sameKindIds);
+    const TSA::Model::MultiEditSession& multiEdit() const { return m_multiEdit; }
     void refreshLibraryLists();
 
     WorkPlanePropertiesView* workPlaneView() const { return m_workPlaneView; }
@@ -103,6 +108,8 @@ protected:
 
 private:
     void setupUi();
+    void onViewModified();   ///< report de l'édition groupée, puis elementModified
+    void endMultiEdit();
 
     TSA::Model::Model* m_model = nullptr;
 
@@ -123,6 +130,7 @@ private:
     LoadPropertiesView* m_loadView = nullptr;
     ElementResultsPanel* m_elementResults = nullptr;   ///< résultats de la barre sélectionnée (tout moteur)
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
+    TSA::Model::MultiEditSession m_multiEdit;
 };
 
 } // namespace TSA::UI

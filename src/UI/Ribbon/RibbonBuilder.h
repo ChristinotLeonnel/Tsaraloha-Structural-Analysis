@@ -65,7 +65,6 @@ struct RibbonActions
     QAction* actionDistLoad = nullptr;
     QAction* actionMoment = nullptr;
     QAction* actionLoadCases = nullptr;
-    QAction* actionSeismic = nullptr;
     QAction* actionLoadsVisible = nullptr;
     QAction* actionForcesVisible = nullptr;
     QAction* actionMomentsVisible = nullptr;
@@ -75,8 +74,6 @@ struct RibbonActions
     QAction* actionMeshGen = nullptr;
     QAction* actionAnalysisConfig = nullptr;
     QAction* actionRunSolve = nullptr;
-    QAction* actionModal = nullptr;
-    QAction* actionPushover = nullptr;
 
     QAction* actionResultsDock = nullptr;
     QAction* actionResultsDisp = nullptr;

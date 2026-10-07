@@ -56,9 +56,6 @@ struct AnalysisCapabilities
     // Types d'analyse
     bool supportsStatic = false;
     bool supportsNonlinear = false;
-    bool supportsModal = false;
-    bool supportsDynamic = false;
-    bool supportsPushover = false;
     bool supportsBuckling = false;
 
     // Résultats que le moteur sait produire
@@ -78,9 +75,6 @@ struct AnalysisCapabilities
         {
         case AnalysisType::LinearStatic: return supportsStatic;
         case AnalysisType::NonLinearStatic: return supportsNonlinear;
-        case AnalysisType::Modal: return supportsModal;
-        case AnalysisType::DynamicTimeHistory: return supportsDynamic;
-        case AnalysisType::Pushover: return supportsPushover;
         }
         return false;
     }

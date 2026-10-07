@@ -13,7 +13,7 @@ class OpenSeesModelMap;
 /**
  * @brief Lecteur et désérialiseur des fichiers de résultats générés par OpenSees.
  * Reconstitue les déplacements nodaux, réactions aux appuis, efforts intérieurs aux barres,
- * modes propres et synthèses d'équilibre. L'ordre des colonnes de chaque fichier est celui
+ * et synthèses d'équilibre. L'ordre des colonnes de chaque fichier est celui
  * d'OpenSeesModelMap (le même que celui utilisé pour écrire les recorders) ; toute ligne dont
  * la taille ne correspond pas est rejetée (mapping incohérent) plutôt que lue décalée.
  */
@@ -23,7 +23,6 @@ public:
     static bool readResults(const std::string& workingDirectory,
                             const CalculationSnapshot& snapshot,
                             const AnalysisParameters& params,
-                            const std::string& solverStdOut,
                             ResultsModel& outResults,
                             std::string* errorMessage = nullptr);
 
@@ -31,7 +30,6 @@ public:
                             const CalculationSnapshot& snapshot,
                             const OpenSeesModelMap& map,
                             const AnalysisParameters& params,
-                            const std::string& solverStdOut,
                             ResultsModel& outResults,
                             std::string* errorMessage = nullptr);
 
@@ -46,9 +44,6 @@ public:
                                   std::string* errorMessage = nullptr);
 
 private:
-    static void parseModalOutput(const std::string& solverStdOut,
-                                 ResultsModel& outResults);
-
     static void computeGlobalEquilibrium(const CalculationSnapshot& snapshot,
                                          const AnalysisParameters& params,
                                          ResultsModel& outResults);

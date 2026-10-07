@@ -154,8 +154,9 @@ Le temps de compilation de TSA est optimisé pour les développeurs C++ exigeant
 * **Analyses Disponibles** :
   * Statique linéaire : $[K]\{u\} = \{F\}$.
   * Statique non-linéaire au second ordre (effets $P\text{-}\Delta$, non-linéarités géométriques).
-  * Analyse modale dynamique (pulsations $\omega$, fréquences propres $f$, périodes fondamentales $T$, vecteurs de modes propres).
-  * Analyse Pushover (poussée progressive non-linéaire incrémentale).
+  * Périmètre : calcul **statique** uniquement. Le modal, le pushover et le temporel ont été retirés
+    (ADR-022) ; la version qui les contenait est archivée sur la branche `archive/dynamique`
+    (tag `v0.2.0-dynamique`).
 * **Algorithmes de Résolution Numérique** : Newton-Raphson standard, Newton avec recherche linéaire (*NewtonLineSearch*), Newton modifié, *Krylov-Newton*, *BFGS*, *Broyden*, *SecantNewton*.
 * **Intégrateurs de Charge & Déplacement** : *LoadControl*, *DisplacementControl*, Longueur d'arc (*Arc-Length* / algorithme de Crisfield), Norme de déplacement non équilibré minimale (*MinUnbalDispNorm*).
 * **Formulations Avancées** : Éléments standards et corotatifs (*corotTruss*) pour la stabilité en grands déplacements.
@@ -187,7 +188,7 @@ L'interface graphique est conçue autour d'un **Ruban moderne à 8 onglets conte
 | **1. Accueil** | **Projet** (Nouveau, Ouvrir, Enregistrer, Enregistrer sous), **Historique** (Annuler, Rétablir, Copier, Coller), **Accès Rapide** (Sélection, Poutre, Poteau, Dalle, Calcul Statique, Panneau Résultats 3D), **Vue 3D** (Vue 3D, Cadrer tout, Réinitialiser vue). |
 | **2. Modélisation** | **Éléments Filaires (1D)** (Poutre, Poteau, Câble, Barre générique, Treillis automatique), **Éléments Surfaciques (2D)** (Dalle/Plancher, Voile/Mur, Semelle), **Nœuds & Primitives** (Placer Nœud, Cube), **Trame & Niveaux** (Créer Grille, Gestionnaire de Grilles, Gestionnaire d'Étages/Niveaux), **Préréglages**. |
 | **3. Structure** | **Sections & Profilés** (Profilé I/H, Rectangulaire, Circulaire), **Matériaux** (Béton Armé EC2, Acier Structural EC3), **Conditions d'Appuis** (Encastrement, Articulation, Appui Simple), **Bibliothèques & TSALib** (Gestionnaire d'extensions TSALib, Catalogue de sections). |
-| **4. Calcul** | **Actions & Charges** (Force Ponctuelle, Charge Répartie, Moment, Séisme EC8, Cas & Combinaisons), **Discrétisation** (Générer Maillage EF), **Solveur** (Calcul Statique, Analyse Modale, Pushover, Paramètres de Calcul & Solveurs OpenSees). |
+| **4. Calcul** | **Actions & Charges** (Force Ponctuelle, Charge Répartie, Moment, Cas & Combinaisons), **Discrétisation** (Générer Maillage EF), **Solveur** (Calcul Statique, Paramètres de Calcul & Solveurs OpenSees). |
 | **5. Résultats** | **Panneau** (Ouvrir le panneau Résultats 3D), **Déformée 3D** (Activer/Masquer déformée), **Diagrammes 3D** ($M_z, M_y, M_x$, $V_z, V_y, N$, Flèches $U_z/U_{res}$, Masquer), **Réactions** (Afficher réactions 3D), **Cadrage** (Cadrer Déformée, Cadrer Résultats, Cadrer Modèle, Cadrer Tout), **Note de Calcul** (Inspecteur NDC), **Espace Multi-Vues** (1 vue, 2H, 2V, 2x2, Onglets). |
 | **6. Édition** | **Sélection** (Mode sélection, Tout sélectionner), **Déplacement** (Déplacement 3D, Translation relative), **Copie & Duplication** (Copie 3D, Rotation 3D), **Repère** (Déplacer l'origine), **Presse-papier** (Copier, Coller), **Suppression** (Supprimer éléments sélectionnés). |
 | **7. Affichage** | **Projections** (Vue 3D, Dessus, Dessous, Face, Arrière, Gauche, Droite, Isométrique, Accueil), **Navigation** (Zoom étendu, Zoom sélection, Zoom fenêtre, Zoom +/-, Historique vue précédente/suivante), **Plans & Coupes** (Vue normale au plan, Plans XY, XZ, YZ, Plan d'étage, Plan personnalisé, Coupes 3D), **Aides Visuelles** (Grille, Niveaux, Règles, Nœuds, Étiquettes, Magnétisme grille/objets, Plein écran), **Fenêtres & Docks** (Arbre du Modèle, Propriétés, Résultats 3D, Visibilité, Console). |
@@ -330,7 +331,7 @@ TSA/
 │   └── icons/                  # Jeu d'icônes SVG pour le Ruban et les outils CAO
 ├── scripts/                    # Scripts PowerShell d'orchestration et détection d'outils
 ├── src/                        # Code source C++20 de l'application
-│   ├── Analysis/               # Solveurs EF (OpenSees, modale, pushover, résultats)
+│   ├── Analysis/               # Solveurs EF statiques (OpenSees, Custom2D, résultats)
 │   ├── App/                    # Classe d'application principale et initialisation
 │   ├── Commands/               # Commandes CAO réversibles (ICommand)
 │   ├── Coordinate/             # Points 3D, niveaux d'étages et plans de travail

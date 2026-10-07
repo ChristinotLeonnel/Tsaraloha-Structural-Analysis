@@ -48,6 +48,7 @@
 #include "../Project/ProjectManager.h"
 #include "../IO/TSAFile.h"
 #include "../UndoRedo/CommandManager.h"
+#include "../UndoRedo/EditTransaction.h"
 #include "../Commands/CreateElementCommands.h"
 #include "../Commands/ModifyCommands.h"
 #include "../Commands/CommandCatalog.h"
@@ -103,6 +104,9 @@ MainWindow::MainWindow(QWidget* parent)
         // Différé : on est au milieu d'une notification du modèle ; ne pas toucher aux vues ici.
         QTimer::singleShot(0, this, &MainWindow::onResultsBecameStale);
     });
+
+    // Grilles rattachées au modèle : leurs définitions entrent dans l'historique Annuler (BUG-003).
+    m_model->setGridManager(m_gridManager.get());
 
     // Grille 3D initiale : synchronisée avec le système de coordonnées et de niveaux unifié
     m_gridManager->clearAllGrids();
@@ -251,6 +255,7 @@ MainWindow::~MainWindow()
     // statusChanged → updateAIStatusWidget. Toutes ces connexions sont coupées ici.
     for (QObject* child : findChildren<QObject*>())
         QObject::disconnect(child, nullptr, this, nullptr);
+    if (m_model) m_model->setGridManager(nullptr);
 }
 
 void MainWindow::onResultsBecameStale()
@@ -598,8 +603,17 @@ void MainWindow::onManageLevels()
     if (!m_model || !m_model->levelManager())
         return;
 
+    // Une seule entrée Annuler pour tout ce qui est fait dans la fenêtre (niveaux + nœuds rattachés
+    // déplacés), aucune si rien n'a changé (BUG-003).
+    const std::string before = m_model->coordinateSystem() ? m_model->coordinateSystem()->serializeToJson() : std::string();
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Modifier les niveaux").toStdString());
     TSA::UI::LevelDialog dlg(m_model->levelManager(), this);
     dlg.exec();
+    if (m_model->coordinateSystem() && m_model->coordinateSystem()->serializeToJson() != before)
+        tx.commit();
+    else
+        tx.discardUnchanged();
+    updateUndoRedoActions();
 }
 
 void MainWindow::onToggleLevelsVisible(bool checked)
@@ -1286,6 +1300,11 @@ bool MainWindow::maybeSave()
 
 bool MainWindow::prepareToClose()
 {
+    if (m_analysisRunning)
+    {
+        QMessageBox::information(this, tr("Calcul en cours"), tr("Un calcul est en cours : annulez-le ou attendez sa fin avant de quitter."));
+        return false;
+    }
     if (!maybeSave())
         return false;
     capturePreview(true); // dernier état du modèle pour le Start Center
@@ -1319,6 +1338,11 @@ bool MainWindow::createProject(const TSA::UI::NewProjectSettings& settings)
 
 bool MainWindow::closeProject()
 {
+    if (m_analysisRunning)
+    {
+        QMessageBox::information(this, tr("Calcul en cours"), tr("Un calcul est en cours : annulez-le ou attendez sa fin avant de fermer le projet."));
+        return false;
+    }
     if (!maybeSave())
         return false;
     capturePreview(true); // dernier état du projet pour sa carte du Start Center
@@ -1343,6 +1367,7 @@ void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
     }
     if (projectTemplate == TSA::UI::ProjectTemplate::Empty && m_gridManager)
         m_gridManager->clearAllGrids();
+    restoreAnalysisContextFromModel();   // nouveau projet : réglages d'analyse par défaut
 
     // Résultats du projet précédent : jamais affichés sur un autre modèle.
     m_resultsModel.reset();
@@ -1515,6 +1540,7 @@ bool MainWindow::loadFile(const QString& path)
     }
 
     m_model->clearUndoRedo();
+    restoreAnalysisContextFromModel();
     updateWindowTitle();
 
     if (m_selectionManager)

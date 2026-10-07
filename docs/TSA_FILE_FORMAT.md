@@ -4,7 +4,7 @@
 **Format :** TSA Binary Project File  
 **Extension native :** `.tsa`  
 **Magic Signature :** `TSAF` (`0x46415354` en little-endian)  
-**Version actuelle :** Spécification 1.3 (Major = 1, Minor = 3) — 1.1 : chunk `LOAD` (2026-10-03) ; 1.2 : bloc d'aperçu ; 1.3 : chunk `BIMM` (2026-10-06), ajouts non cassants  
+**Version actuelle :** Spécification 1.4 (Major = 1, Minor = 4) — 1.1 : chunk `LOAD` (2026-10-03) ; 1.2 : bloc d'aperçu ; 1.3 : chunk `BIMM` (2026-10-06) ; 1.4 : chunk `SETT` (2026-10-06), ajouts non cassants  
 
 ---
 
@@ -101,7 +101,7 @@ struct ChunkHeader {
 | `SUPP` (`0x50505553`) | `CHUNK_SUPP` | Conditions aux limites et appuis nodaux |
 | `LOAD` (`0x44414F4C`) | `CHUNK_LOAD` | Cas de charges, combinaisons, charges nodales & linéiques — **écrit et lu depuis la spécification 1.1** (voir §5.x) |
 | `BIMM` (`0x4D4D4942`) | `CHUNK_BIMM` | Couche BIM : produits physiques, GlobalId IFC, Psets, classifications, mapping physique → analytique — **spécification 1.3** (voir §5.y) |
-| `ANLY` (`0x594C4E41`) | `CHUNK_ANLY` | Paramètres et réglages de l'analyse par éléments finis (MEF) |
+| `SETT` (`0x54544553`) | `CHUNK_SETT` | Paramètres d'analyse (`AnalysisContext`) — **spécification 1.4** (voir §5.z) |
 | `RSLT` (`0x544C5352`) | `CHUNK_RSLT` | Résultats de calcul (déplacements, efforts internes N, Vy, Vz, Mt, My, Mz) |
 
 ---
@@ -187,6 +187,18 @@ Contenu : document JSON UTF-8 compact (`TSA::BIM::BimModel::toJson`), versionné
 Règles : chunk facultatif et jamais bloquant — absent (fichier ≤ 1.2), illisible ou de schéma futur,
 il est ignoré (avertissement journalisé) et les GlobalId sont attribués au chargement puis
 enregistrés à la sauvegarde suivante. Un lecteur ≤ 1.2 saute le chunk grâce à `chunkSize`.
+
+### 5.z Paramètres d'analyse (`CHUNK_SETT`, spécification 1.4)
+
+Contenu : document JSON UTF-8 compact (`TSA::Analysis::AnalysisContext::toJson`), versionné par le
+champ `schemaVersion` (actuellement 1) : moteur, dimension, type d'analyse, portée, cas / combinaison,
+poids propre, réglages par moteur. `elementCount` = 1. Écrit seulement si des paramètres ont été
+définis (fenêtre Analyse) ; conservé par le modèle comme JSON opaque (`Model::analysisSettingsJson`).
+
+Règles : facultatif et jamais bloquant — absent (fichier ≤ 1.3), illisible ou de schéma futur, la
+fenêtre principale revient aux réglages par défaut (avertissement dans la console) ; un moteur
+absent de l'installation est remplacé par le premier moteur disponible. Les **résultats** (`RSLT`)
+ne sont toujours pas enregistrés : un projet rouvert doit être recalculé.
 
 ---
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QObject>
-#include <QTimer>
 #include <memory>
 #include <map>
 #include <vector>
@@ -50,7 +49,7 @@ enum class ScalePreset
 /**
  * @brief Gestionnaire de visualisation 3D des résultats de calcul OpenSees dans le viewport OCCT.
  * Responsable du rendu de la déformée (amplification, superposition), des diagrammes 3D (N, V, M),
- * des flèches de réaction aux appuis, et de l'animation dynamique des modes propres.
+ * et des flèches de réaction aux appuis.
  */
 class ResultsVisualManager : public QObject
 {
@@ -98,12 +97,6 @@ public:
     bool areReactionsVisible() const { return m_reactionsVisible; }
     void setReactionsVisible(bool visible);
 
-    // Animation Modale
-    bool isModalAnimationRunning() const { return m_modalAnimationTimer.isActive(); }
-    void startModalAnimation(int modeIndex, double speed = 1.0);
-    void stopModalAnimation();
-    int activeModalModeIndex() const { return m_activeModalModeIndex; }
-
     // Étape active (Incrément non-linéaire)
     int activeStep() const;
     void setActiveStep(int step);
@@ -123,10 +116,6 @@ public:
 
 signals:
     void visualStateChanged();
-    void modalPhaseChanged(double phaseRad);
-
-private slots:
-    void onModalTimerTick();
 
 private:
     void updateDeformedShapes();
@@ -155,12 +144,6 @@ private:
     bool m_diagramLabelsVisible = true;
 
     bool m_reactionsVisible = true;
-
-    // Animation modale
-    QTimer m_modalAnimationTimer;
-    int m_activeModalModeIndex = 0;
-    double m_modalPhase = 0.0;
-    double m_modalSpeed = 1.0;
 
     ScalePreset m_deformationPreset = ScalePreset::Auto;
     ScalePreset m_diagramPreset = ScalePreset::Auto;

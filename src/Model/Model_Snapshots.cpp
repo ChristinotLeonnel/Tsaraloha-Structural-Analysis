@@ -1,4 +1,5 @@
 #include "Model.h"
+#include "../Grid/GridManager.h"
 #include "ModelDiff.h"
 #include "../UndoRedo/UndoManager.h"
 #include "../Diagnostics/Logger.h"
@@ -83,6 +84,8 @@ Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) c
     snap.loadSnapshot = m_loadManager.createSnapshot();
     snap.calculationSnapshots = m_calculationSnapshots;
     snap.definitionReferences = m_definitionReferences;
+    if (m_coordinateSystem) snap.coordinatesJson = m_coordinateSystem->serializeToJson();
+    if (m_gridManager) snap.gridsJson = m_gridManager->serializeToJson();
     snap.nextNodeId = m_nextNodeId;
     snap.nextBeamId = m_nextBeamId;
     snap.nextColumnId = m_nextColumnId;
@@ -110,6 +113,39 @@ void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
     m_definitionReferences = snapshot.definitionReferences;
     m_bim = snapshot.bim;
     m_bimSignature = ~0ull;
+    // Niveaux / axes / grilles : rétablis seulement s'ils diffèrent (leurs signaux mettent à jour
+    // l'arbre, la vue 3D et les règles). La désérialisation des niveaux n'émet pas
+    // levelElevationChanged : les nœuds, déjà restaurés ci-dessus, ne sont pas déplacés une 2e fois.
+    if (m_coordinateSystem && !snapshot.coordinatesJson.empty()
+        && snapshot.coordinatesJson != m_coordinateSystem->serializeToJson())
+    {
+        m_coordinateSystem->deserializeFromJson(snapshot.coordinatesJson);
+    }
+    if (m_gridManager && !snapshot.gridsJson.empty() && snapshot.gridsJson != m_gridManager->serializeToJson())
+    {
+        // Seule la définition des grilles est historisée : visibilité, étiquettes, intersections et
+        // grille active restent l'affichage courant (comme la caméra).
+        struct Display { bool visible, labels, intersections; };
+        std::map<std::string, Display> display;
+        for (const auto& g : m_gridManager->grids())
+            display[g->id()] = { g->isVisible(), g->showLabels(), g->showIntersections() };
+        const std::string activeId = m_gridManager->activeGridId();
+
+        m_gridManager->deserializeFromJson(snapshot.gridsJson);
+
+        for (const auto& [id, d] : display)
+        {
+            auto* g = m_gridManager->getGrid(id);
+            if (!g || (g->isVisible() == d.visible && g->showLabels() == d.labels && g->showIntersections() == d.intersections))
+                continue;
+            g->setVisible(d.visible);
+            g->setShowLabels(d.labels);
+            g->setShowIntersections(d.intersections);
+            m_gridManager->updateGrid(id, g->definition());
+        }
+        if (m_gridManager->getGrid(activeId) && m_gridManager->activeGridId() != activeId)
+            m_gridManager->setActiveGridId(activeId);
+    }
     m_nextNodeId = snapshot.nextNodeId;
     m_nextBeamId = snapshot.nextBeamId;
     m_nextColumnId = snapshot.nextColumnId;
@@ -224,6 +260,7 @@ void Model::setBim(const TSA::BIM::BimModel& bim)
 
 void Model::clear()
 {
+    m_analysisSettingsJson.clear();
     m_bim = TSA::BIM::BimModel();
     m_bimSignature = ~0ull;
     m_calculationSnapshots.clear();

@@ -120,6 +120,10 @@ private:
   QTimer *m_removalTimer = nullptr;
   void queueRemoval(QTreeWidgetItem *category, int id);
   void flushRemovals();
+  // Index id → item par catégorie d'éléments (BUG-007) : tenu à jour à la création (on*Added), à la
+  // suppression (flushRemovals) et à la reconstruction (createRootCategories).
+  QHash<QTreeWidgetItem *, QHash<int, QTreeWidgetItem *>> m_itemIndex;
+  QTreeWidgetItem *findElementItem(QTreeWidgetItem *category, int id) const;
   TSA::Grid::GridManager *m_gridManager = nullptr;
   QTreeWidget *m_tree = nullptr;
   QLineEdit *m_search = nullptr;

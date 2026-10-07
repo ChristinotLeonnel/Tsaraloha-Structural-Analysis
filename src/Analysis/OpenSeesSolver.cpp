@@ -29,12 +29,9 @@ OpenSeesSolver::~OpenSeesSolver()
 
 void OpenSeesSolver::stop()
 {
+    // Le QProcess appartient au thread de calcul : on ne le manipule pas d'ici, la boucle d'attente
+    // du calcul (attente par tranches de 100 ms) voit la demande et arrête le processus.
     m_stopRequested = true;
-    if (m_process && m_process->state() != QProcess::NotRunning)
-    {
-        m_process->kill();
-        m_process->waitForFinished(1000);
-    }
 }
 
 bool OpenSeesSolver::solveSynchronous(const TSA::Model::Model& model,
@@ -313,7 +310,6 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
                                                    snapshot,
                                                    opsMap,
                                                    localParams,
-                                                   (stdOutLog + "\n" + stdErrLog).toStdString(),
                                                    m_results,
                                                    &readErr);
 
@@ -325,7 +321,7 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
 
     // 5. Passage « matrices » (mode Advanced uniquement) : script séparé, l'analyse principale
     //    et son solveur ne sont pas modifiés. Un échec ici n'invalide pas les résultats courants.
-    if (params.type != AnalysisType::Modal && localParams.extractionLevel == ExtractionLevel::Advanced)
+    if (localParams.extractionLevel == ExtractionLevel::Advanced)
     {
         emit progressChanged(90, tr("Extraction des matrices de rigidité (passage séparé)..."));
         const bool withK = opsMap.estimatedFreeDofs() <= localParams.maxGlobalStiffnessDofs;
@@ -401,7 +397,7 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     }
     else
     {
-        meta.loadCombinationType = (params.type == AnalysisType::Modal) ? "Analyse Modale" : "Statique Linéaire";
+        meta.loadCombinationType = "Statique Linéaire";
     }
     m_results.setExecutionMetadata(meta);
     m_results.setAvailability(m_results.availabilityFromData());

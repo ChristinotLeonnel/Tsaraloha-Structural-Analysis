@@ -103,7 +103,6 @@ struct ReportConfiguration
     bool includeEnvelopes = true;                 ///< Enveloppes min / max / absmax
     bool includeDetailedElementTables = true;     ///< Tableaux barres par barres
     bool includeEurocodeDesignChecks = true;      ///< Vérifications normatives EC2 / EC3
-    bool includeModalAnalysis = true;             ///< Analyse dynamique modale si disponible
     bool includeWarningsAndLimitations = true;    ///< Avertissements et limitations
     bool includeConclusion = true;                ///< Conclusion factuelle
     bool includeBibliography = true;              ///< Webographie et bibliographie vérifiée

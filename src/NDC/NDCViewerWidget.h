@@ -12,6 +12,7 @@
 #include <QUrlQuery>
 #include "NDCDocumentModel.h"
 #include "ReportManager.h"
+#include "../Analysis/AnalysisTypes.h"
 
 namespace TSA::Model
 {
@@ -54,9 +55,10 @@ public:
 
 signals:
     /**
-     * @brief Émis lorsque l'utilisateur clique sur un lien hypertexte renvoyant à un élément structural.
+     * @brief Émis lorsque l'utilisateur clique sur un lien hypertexte renvoyant à un élément structural
+     * (tsa://element?kind=beam|column|truss|cable&id=N : les identifiants sont uniques par famille).
      */
-    void elementSelected(int elementId);
+    void elementSelected(TSA::Analysis::StructuralElementKind kind, int elementId);
 
 private slots:
     void onTocItemClicked(QTreeWidgetItem* item, int column);

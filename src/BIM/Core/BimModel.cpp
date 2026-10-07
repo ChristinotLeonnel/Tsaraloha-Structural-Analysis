@@ -394,35 +394,52 @@ void BimModel::registerCopies(const std::vector<std::pair<AnalyticalRef, Analyti
         if (o.kind != ElementKind::Node) copyOf[o] = c;
     if (copyOf.empty()) return;
 
-    // Retire les copies de tout produit existant (créé par une synchronisation intermédiaire)
-    for (auto it = m_elements.begin(); it != m_elements.end();)
-    {
-        auto& an = it->second.analytical;
-        an.erase(std::remove_if(an.begin(), an.end(),
-                                [&](const AnalyticalRef& r) {
-                                    return std::any_of(copyOf.begin(), copyOf.end(), [&](const auto& p) { return p.second == r; });
-                                }),
-                 an.end());
-        it = an.empty() ? m_elements.erase(it) : std::next(it);
-    }
-    rebuildIndex();
-
-    // Un nouveau produit par produit source, mêmes métadonnées, éléments dans le même ordre
+    // Un groupe par produit source, éléments dans l'ordre du produit
+    std::vector<std::pair<PhysicalElement, std::vector<AnalyticalRef>>> groups;
     std::set<int> done;
     for (const auto& [orig, copy] : copyOf)
     {
         auto src = m_index.find(orig);
         if (src == m_index.end() || done.count(src->second)) continue;
         done.insert(src->second);
-        PhysicalElement e = m_elements[src->second];
-        e.name.clear();
-        e.tag.clear();
-        e.storeyLevelId.clear();
+        const PhysicalElement& e = m_elements[src->second];
         std::vector<AnalyticalRef> copies;
         for (const auto& r : e.analytical)
             if (auto c = copyOf.find(r); c != copyOf.end()) copies.push_back(c->second);
-        e.analytical = std::move(copies);
-        create(e);
+        groups.emplace_back(e, std::move(copies));
+    }
+    registerPasted(groups);
+}
+
+void BimModel::registerPasted(const std::vector<std::pair<PhysicalElement, std::vector<AnalyticalRef>>>& groups)
+{
+    std::set<AnalyticalRef> adopted;
+    for (const auto& [templ, refs] : groups)
+        for (const auto& r : refs)
+            if (r.kind != ElementKind::Node) adopted.insert(r);
+    if (adopted.empty()) return;
+
+    // Retire les éléments adoptés de tout produit existant (créé par une synchronisation intermédiaire)
+    for (auto it = m_elements.begin(); it != m_elements.end();)
+    {
+        auto& an = it->second.analytical;
+        an.erase(std::remove_if(an.begin(), an.end(), [&](const AnalyticalRef& r) { return adopted.count(r) > 0; }),
+                 an.end());
+        it = an.empty() ? m_elements.erase(it) : std::next(it);
+    }
+    rebuildIndex();
+
+    // Un nouveau produit par groupe : mêmes métadonnées, nouveaux identifiants
+    for (const auto& [templ, refs] : groups)
+    {
+        PhysicalElement e = templ;
+        e.name.clear();
+        e.tag.clear();
+        e.storeyLevelId.clear();
+        e.analytical.clear();
+        for (const auto& r : refs)
+            if (r.kind != ElementKind::Node) e.analytical.push_back(r);
+        if (!e.analytical.empty()) create(e);
     }
     rebuildIndex();
 }

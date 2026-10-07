@@ -1,19 +1,8 @@
 # Known Issues
 
-Last Updated: 2026-10-06. Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-07 (branche feature/static-only). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
-
-## BUG-001
-Area: Calculation / UI
-Problem: Le calcul OpenSees est lancé par `OpenSeesSolver::solveSynchronous` depuis
-MainWindow_Tools.cpp (3 appels) : boucle `waitForFinished(100)` sur le thread UI. L'interface est
-gelée pendant le calcul et `m_stopRequested` ne peut pas être positionné (pas de traitement d'événements).
-Reproduction: lancer un calcul sur un grand modèle ; la fenêtre ne répond plus jusqu'à la fin.
-Impact: MEDIUM
-Status: OPEN
-Related files: src/Analysis/OpenSeesSolver.cpp, src/UI/MainWindow_Tools.cpp
-Notes: un chemin `solveAsync` (QThread) existe déjà : à évaluer avant toute modification.
 
 ## BUG-002
 Area: Calculation
@@ -22,36 +11,9 @@ Problem: Dalles et voiles ne sont pas transmis au calcul (`CalculationSnapshot` 
 Reproduction: modèle avec dalle chargée → la dalle n'apparaît pas dans le script Tcl.
 Impact: HIGH (limitation fonctionnelle à signaler à l'utilisateur)
 Status: OPEN — mitigé le 2026-10-04 : avertissement `ModelValidator::validateForAnalysis`, confirmation
-avant calcul statique/modal/pushover (`confirmPlanarElementsExcluded`, MainWindow_Tools.cpp), et
+avant calcul (`confirmPlanarElementsExcluded`, MainWindow_Tools.cpp), et
 `onActionMeshGen` n'affirme plus avoir généré un maillage (il ne fait qu'une estimation).
 Related files: src/Analysis/CalculationSnapshot.cpp, src/Analysis/OpenSeesAnalysisBuilder.cpp
-
-## BUG-003
-Area: Undo/Redo
-Problem: Niveaux, grilles et WorkPlanes ne font pas partie de `ModelStateSnapshot` : leurs
-modifications ne sont pas annulables, et un Undo après une modification d'élévation de niveau
-restaure les nœuds sans le niveau.
-Impact: MEDIUM
-Status: OPEN
-Related files: src/Model/Model.h (ModelStateSnapshot), src/Coordinate/LevelManager.*, src/UndoRedo/UndoManager.cpp
-
-## BUG-004
-Area: Commands / Shortcuts
-Problem: Commandes d'isolation déclarées dans CommandCatalog (`cmd.isolate.same_type` Alt+I,
-`cmd.isolate.workplane` Alt+W, `cmd.isolate.section` Ctrl+I, `cmd.isolate.projection` Ctrl+Shift+I)
-et documentées dans docs/shortcuts.txt, mais branchées nulle part (aucune référence hors du
-catalogue). Le module `src/View3D/Isolation` qui devait les porter n'est pas compilé.
-Impact: MEDIUM (raccourcis documentés inopérants)
-Status: OPEN
-Related files: src/Commands/CommandCatalog.cpp, src/View3D/Isolation/*, tests/isolation/*
-
-## BUG-005
-Area: Properties
-Problem: Édition multi-objets absente : en sélection multiple, seul l'élément principal est
-affiché/modifiable.
-Impact: MEDIUM
-Status: OPEN
-Related files: src/UI/Properties/PropertyPanel.cpp, src/UI/MainWindow_Actions.cpp (multipleSelectionChanged)
 
 ## BUG-006
 Area: Undo/Redo
@@ -59,14 +21,6 @@ Problem: 37 points d'entrée appellent `Model::pushUndoState` directement (dialo
 MainWindow_Transform) : fonctionnels, mais sans `EditRecord` (historique structuré incomplet).
 Impact: LOW
 Status: OPEN
-
-## BUG-007
-Area: Performance / Model Tree
-Problem: `ModelTreeWidget::on*Modified/Removed` recherchent l'item par parcours linéaire des enfants
-(O(N) par notification) ; coûteux lors de grosses modifications groupées.
-Impact: LOW
-Status: OPEN
-Related files: src/UI/ModelTree/ModelTreeWidget.cpp
 
 ## BUG-008
 Area: Viewport / Performance
@@ -76,82 +30,12 @@ Impact: LOW
 Status: OPEN
 Notes: piste : partager la géométrie des sphères de nœuds (TopLoc_Location).
 
-## BUG-009
-Area: Code mort
-Problem: `src/View3D/Isolation/*` et `tests/isolation/*` absents de CMakeLists.txt (jamais compilés).
-Impact: LOW
-Status: OPEN (décision à prendre : brancher pour BUG-004 ou supprimer)
-
-## BUG-010
-Area: Geometry
-Problem: Avertissement C4996 `TColgp_HArray1OfPnt` déprécié (OCCT 8.0).
-Impact: LOW
-Status: OPEN
-Related files: src/Geometry/CableGeometry3D.cpp:171
-
-## BUG-011
-Area: Build
-Problem: MSVC francisé : préfixe /showIncludes avec espace insécable dépendant de la page de code
-(0xFF en CP850, C2 A0 en 65001). Si configure et build ne tournent pas sous la même page de code,
-Ninja n'enregistre aucune dépendance d'en-tête → objets périmés, crashs aléatoires.
-Impact: HIGH (contenu, pas résolu)
-Status: OPEN — mitigé (avertissement CMake, VSLANG=1033 dans les presets, AGENTS.md)
-Notes: vérifier `ninja -t deps <obj>` ; solution durable : pack de langue anglais de Visual Studio.
-
 ## BUG-012
 Area: Environment
 Problem: Processus TSA.exe « clones WER » bloqués (anciens crashs) qui verrouillent l'exécutable
 (LNK1168) ; non terminables (accès refusé).
 Impact: LOW
 Status: OPEN — contournement : renommer TSA.exe ; disparaissent au redémarrage.
-
-## BUG-013
-Area: .tsa
-Problem: Chunks `SETT` (paramètres d'analyse) et `RSLT` (résultats) déclarés mais non écrits :
-paramètres et résultats non persistés (recalcul nécessaire après réouverture).
-Notes (2026-10-05): le contexte d'analyse multi-moteurs (`AnalysisContext::toJson`, schéma versionné, réglages par
-moteur) est prêt à être écrit dans un chunk ; non branché (MainWindow::m_analysisContext vit pour la session).
-Impact: LOW
-Status: OPEN
-
-## BUG-016
-Area: Results / Diagrams
-Problem: `buildElementResults` (OpenSeesResultsReader) construit les stations intermédiaires par interpolation
-linéaire des efforts d'extrémité + superposition de `q1` brut (sans direction, axe local ni unités ; ajouté à
-My seulement). Les diagrammes intermédiaires (et maxBendingMoment / NDC qui les lisent) sont donc approchés,
-voire faux pour des charges non gravitaires ou en N. Comportement historique, conservé tel quel.
-Impact: HIGH (exactitude des diagrammes et de la NDC)
-Status: OPEN — les valeurs d'extrémité et les forces brutes (ADVANCED) sont exactes.
-Related files: src/Analysis/OpenSeesResultsReader.cpp (buildElementResults)
-Notes: piste exacte : enregistrer `sectionForce` aux points d'intégration ou reconstruire M(x), V(x) à partir
-de basicForce + charges eleLoad résolues en local (même LoadResolver que buildLoads).
-
-## BUG-017
-Area: Calculation
-Problem: Équilibre contrôlé en forces uniquement (ΣF + ΣR) ; pas de contrôle des moments.
-Impact: LOW
-Status: OPEN
-
-## BUG-018
-Area: NDC
-Problem: liens `tsa://element?id=N` de la NDC sans famille (poutre N / poteau N ambigus).
-Impact: LOW
-Status: OPEN
-Related files: src/NDC/NDCGenerator.cpp
-
-## BUG-019
-Area: Calculation
-Problem: nœuds reliés uniquement à des treillis/câbles en modèle -ndf 6 : DDL de rotation sans rigidité
-(singularité possible). Non vérifié.
-Impact: UNKNOWN
-Status: OPEN (à vérifier par un test OpenSees)
-
-## BUG-020
-Area: AI / UI
-Problem: textes des boutons standard Qt (QMessageBox « Yes / No ») en anglais : aucune traduction Qt
-(qtbase_fr) n'est chargée par l'application. Observé dans la confirmation de téléchargement de modèle.
-Impact: LOW (cosmétique, toutes les boîtes standard de TSA)
-Status: OPEN
 
 ## BUG-021
 Area: AI / performance
@@ -176,18 +60,6 @@ visibles tant que les fichiers ne changent pas. Constaté via IShellItemImageFac
 Impact: LOW (comportement Windows ; Nettoyage de disque › Miniatures)
 Status: OPEN (documenté)
 
-## BUG-024
-Area: Calculation / OpenSees
-Problem: `OpenSeesAnalysisBuilder::buildAnalysisCommands` ne traite que Modal et NonLinearStatic ; les types
-`Pushover` et `DynamicTimeHistory` tombent dans la branche statique linéaire (`algorithm Linear`, un pas), et
-`OpenSeesResultsReader` ne lit pas de pas de pushover. L'action « Analyse Pushover » du ruban lance donc un calcul
-statique linéaire.
-Reproduction: lire src/Analysis/OpenSeesAnalysisBuilder.cpp (buildAnalysisCommands) ; constaté le 2026-10-05.
-Impact: MEDIUM
-Status: OPEN — mitigé : `OpenSeesEngine::capabilities()` ne déclare ni pushover ni temporel, la fenêtre Analysis
-ne les propose plus. Le raccourci ruban (appel direct d'OpenSeesSolver) reste inchangé.
-Related files: src/Analysis/OpenSeesAnalysisBuilder.cpp, src/UI/MainWindow_Tools.cpp (onActionPushover)
-
 ## BUG-025
 Area: Tests GUI (UI Automation)
 Problem: un `Invoke` UIA sur une action qui ouvre une fenêtre modale (`exec()`) ne rend pas la main et bloque les
@@ -195,23 +67,6 @@ requêtes UIA suivantes vers TSA (timeouts) ; l'application reste réactive.
 Notes: vérification de la fenêtre Analysis faite par capture d'écran (Invoke lancé dans un job séparé).
 Impact: LOW (outillage de test)
 Status: OPEN
-
-## BUG-026
-Area: Viewport / Code mort
-Problem: les modes `InteractionMode::Move3D / Copy3D / Rotate3D` (branches d'OccView_Events, updateTransformPreview,
-signaux pointToPoint*, MainWindow::onPointToPoint*Requested) ne sont plus déclenchés : les actions M, Copie 3D et
-Ctrl+R lancent désormais les outils `move` / `copy` / `rotate`. Code conservé mais inatteignable.
-Impact: LOW
-Status: OPEN — à supprimer (vérifier InteractionManager::isTransformMode et la synchro des boutons).
-
-## BUG-027
-Area: Calculation / OpenSees
-Problem: les relâchements d'extrémité des poutres (EndRelease) ne sont pas transmis au script OpenSees (aucun
-traitement dans OpenSeesAnalysisBuilder) : une rotule de barre est calculée comme un encastrement. Le snapshot les
-porte depuis le 2026-10-05 (utilisés par Custom2D).
-Impact: MEDIUM
-Status: OPEN
-Related files: src/Analysis/OpenSeesAnalysisBuilder.cpp, src/Analysis/CalculationSnapshot.h
 
 ## BUG-028
 Area: BIM / IFC
@@ -221,15 +76,6 @@ recréés à chaque export ; fondations sans objet analytique IFC. Liste tenue �
 Impact: MEDIUM (échange incomplet, pas de perte dans le .tsa)
 Status: OPEN
 Related files: src/BIM/IFC/IfcExporter.cpp, docs/IFC_MAPPING.md
-
-## BUG-029
-Area: BIM / Presse-papiers
-Problem: le collage (`StructuralClipboard`) ne transmet pas les métadonnées BIM (nom, Psets, classification, regroupement
-1:N) : chaque élément collé reçoit un produit physique 1:1 par la synchronisation. Copier / Répéter (copyTransformed)
-les transmet (registerCopies).
-Impact: LOW
-Status: OPEN
-Related files: src/Model/StructuralClipboard.cpp, src/BIM/Core/BimModel.cpp
 
 ## BUG-033
 Area: UI / Fenêtre
@@ -241,10 +87,42 @@ Impact: LOW
 Status: OPEN (à vérifier sur Windows 11 / multi-écrans)
 Related files: src/UI/Shell/AppShell.cpp
 
+## BUG-013
+Area: .tsa
+Problem: les résultats de calcul (chunk `RSLT`) ne sont pas enregistrés : un projet rouvert doit être recalculé.
+Les paramètres d'analyse, eux, sont persistés depuis le 2026-10-07 (chunk `SETT`, format 1.4, test 189).
+Impact: LOW
+Status: PARTIAL (paramètres FIXED, résultats OPEN)
+
+## BUG-035
+Area: Tests
+Problem: test 20 (« Undo diff computation is fast < 350 ms in Debug », 5 000 barres) mesure ≈ 280 ms ; il a dépassé
+le seuil une fois sous charge (suite complète, 2026-10-06) puis est repassé 4 fois sur 4. Un échec interrompt la
+suite `commands` (tests 25, 50, 96, 97, 100 non exécutés).
+Impact: LOW (faux négatif possible)
+Status: OPEN — piste : mesurer la médiane de 3 essais, ou relever le seuil en Debug.
+Related files: tests/test_commands.cpp:370
+
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |
+| BUG-001 | Calcul OpenSees bloquant (thread UI gelé, arrêt impossible) | calcul dans un `QThread::create`, `QProgressDialog` annulable (`AnalysisManager::cancel`), `std::atomic` d'arrêt dans `OpenSeesSolver`, mutex dans `OpenSeesEngine`, fermeture du projet refusée pendant un calcul | compilation + 212/212 ; **vérification GUI à faire** (progression, Annuler) |
+| BUG-003 | Niveaux / axes / grilles hors historique Annuler ; Annuler après élévation de niveau rétablissait les nœuds sans le niveau | `ModelStateSnapshot::coordinatesJson / gridsJson` (CoordinateSystem + GridManager rattaché par `Model::setGridManager`), restauration seulement si différent, état d'affichage des grilles conservé ; fenêtre Niveaux = une `EditTransaction` (`discardUnchanged` sans changement) ; `pushUndoState` avant création / modification / duplication / suppression de grille. Plans de travail : état d'affichage, volontairement non annulés | test 188 |
+| BUG-004 / BUG-009 | Commandes `cmd.isolate.*` non branchées ; module `src/View3D/Isolation` jamais compilé | menu Affichage ▸ Isolation 3D (I, Alt+I, Alt+W, H, inverser, Ctrl+H, Alt+H) dans la passe unique `OccView::updateElementIsolation` ; module mort, `tests/isolation` supprimés ; section / projection / volume / estomper retirés du catalogue (projection était en conflit avec Ctrl+Shift+I) | compilation, `check_shortcuts --strict` ; **vérification GUI à faire** |
+| BUG-005 | Pas d'édition multi-objets | `TSA::Model::MultiEditSession` (seuls les champs modifiés de l'élément principal sont reportés ; nom, nœuds, coordonnées jamais) ; `PropertyPanel::setMultiSelection`, titre « ÉDITION GROUPÉE » ; nœuds (appuis), poutres, poteaux, treillis, dalles, voiles, fondations ; câbles exclus | test 191 (report, une entrée Annuler) ; **panneau à vérifier en GUI** |
+| BUG-007 | Recherche linéaire d'item dans l'arbre du modèle | index id → item par catégorie (`ModelTreeWidget::m_itemIndex`) ; suppression groupée par l'index ; câbles modifiés sous la garde `m_model` | test 166 (2 000 poutres, 1 500 suppressions ≈ 60 ms) |
+| BUG-010 | C4996 `TColgp_HArray1OfPnt` | `NCollection_HArray1<gp_Pnt>` | compilation sans l'avertissement |
+| BUG-011 | Aucune dépendance d'en-tête Ninja (MSVC francisé) | lanceur **généré** `build/msvc_codepage.cmd` : la page de code active à la génération (celle dans laquelle CMake écrit le préfixe de rules.ninja) est imposée à chaque `cl`. Le lanceur fixe UTF-8 précédent cassait dès qu'on reconfigurait en CP850 (constaté le 2026-10-06 : objets périmés → segfault du test 18) | rules.ninja `FF` + `chcp 850`, ou `C2 A0` + `chcp 65001` ; `ninja -t deps` Model.cpp.obj = 51 en-têtes après recompilation complète |
+| BUG-016 | Stations intermédiaires approchées | équilibre exact du tronçon [0, x] à partir des efforts en i et des charges ; déformée par double intégration de la courbure ; convention RDM | tests 181–184, test NDC |
+| BUG-017 | Équilibre contrôlé en forces seulement | `GlobalEquilibrium` : moments appliqués / réactions, `relativeMomentResidual` | test 110 étendu, 182 |
+| BUG-018 | Liens NDC `tsa://element` sans famille | `kind=` dans le lien, `ExtremumPoint::elementKind`, sélection + cadrage | compilation ; **clic dans la NDC à vérifier en GUI** |
+| BUG-019 | Nœuds reliés seulement à des treillis : rotations sans rigidité | rotations bloquées (sauf ressort sur ce DDL) | test 184 (trépied) |
+| BUG-020 | Boutons Qt en anglais | `qtbase_fr.qm` déployé dans `translations/`, `QTranslator` installé | fichier présent dans build-ninja-debug/translations ; **affichage à vérifier en GUI** |
+| BUG-024 | Pushover / temporel calculés comme du statique | supprimés avec tout le dynamique (ADR-022) | — |
+| BUG-026 | Modes Move3D / Copy3D / Rotate3D inatteignables | supprimés (InteractionManager, OccView, MainWindow) | compilation, test 26 (MoveOrigin3D) |
+| BUG-027 | Relâchements d'extrémité non transmis à OpenSees | `-releasey` / `-releasez` ; avertissement pour N / V / T non transmis | test 183 (rotule) |
+| BUG-029 | Collage sans métadonnées BIM | `StructuralClipboard` mémorise les produits physiques ; `BimModel::registerPasted` (registerCopies factorisé) | test 190 |
 | BUG-030 | Menu Structure ▸ Conditions d'Appuis : Encastrement / Articulation / Appui simple n'assignaient rien | `MainWindow::assignSupport` (pushUndoState + setSupport + notifyNodeModified) | GUI 2026-10-06 : appui assigné, dock « Appuis : 1 », calcul OpenSees OK (δ_max 28,63 mm, équilibre conforme) |
 | BUG-031 | Suppression de 6 768 éléments ≈ 6 min (Debug) : un redessin complet du viewport et une recherche linéaire dans l'arbre par élément | `OccView::scheduleRedraw` (un redessin par rafale), `ModelTreeWidget::queueRemoval/flushRemovals` (une passe par catégorie) | GUI stress_4900 : suppression 17 s, Rétablir ≈ 21 s, Annuler ≈ 17 s (≈ 30 s avant), modèle restauré sans doublon |
 | BUG-032 | Barre d'état : libellés superposés à toute largeur | cause : politique `Ignored` → case de largeur nulle dans QStatusBar ; largeurs fixes + `fitStatusBar` (masquage par priorité, mise en page forcée car QStatusBar ignore LayoutRequest) ; page cachée sans taille minimale | captures à 3 largeurs, plus de chevauchement |

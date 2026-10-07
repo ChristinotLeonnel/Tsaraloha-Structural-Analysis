@@ -151,7 +151,7 @@ void OccView::updateModelingToolPreview(const gp_Pnt& cursor)
     // Fantômes de la sélection (construits une fois, puis transformation locale)
     if (preview.selectionTransform && m_selectionManager)
     {
-        if (!m_previewGhostsBuilt) buildTransformPreviewGhosts(InteractionMode::Move3D);
+        if (!m_previewGhostsBuilt) buildTransformPreviewGhosts();
         for (auto& ghost : m_previewGhostShapes)
             if (!ghost.IsNull()) ghost->SetLocalTransformation(*preview.selectionTransform);
     }

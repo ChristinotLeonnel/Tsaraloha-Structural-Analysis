@@ -77,7 +77,6 @@ QJsonObject ReportConfiguration::toJson() const
     chObj["includeEnvelopes"] = includeEnvelopes;
     chObj["includeDetailedElementTables"] = includeDetailedElementTables;
     chObj["includeEurocodeDesignChecks"] = includeEurocodeDesignChecks;
-    chObj["includeModalAnalysis"] = includeModalAnalysis;
     chObj["includeWarningsAndLimitations"] = includeWarningsAndLimitations;
     chObj["includeConclusion"] = includeConclusion;
     chObj["includeBibliography"] = includeBibliography;
@@ -172,7 +171,6 @@ void ReportConfiguration::fromJson(const QJsonObject& json)
         if (ch.contains("includeEnvelopes")) includeEnvelopes = ch["includeEnvelopes"].toBool();
         if (ch.contains("includeDetailedElementTables")) includeDetailedElementTables = ch["includeDetailedElementTables"].toBool();
         if (ch.contains("includeEurocodeDesignChecks")) includeEurocodeDesignChecks = ch["includeEurocodeDesignChecks"].toBool();
-        if (ch.contains("includeModalAnalysis")) includeModalAnalysis = ch["includeModalAnalysis"].toBool();
         if (ch.contains("includeWarningsAndLimitations")) includeWarningsAndLimitations = ch["includeWarningsAndLimitations"].toBool();
         if (ch.contains("includeConclusion")) includeConclusion = ch["includeConclusion"].toBool();
         if (ch.contains("includeBibliography")) includeBibliography = ch["includeBibliography"].toBool();

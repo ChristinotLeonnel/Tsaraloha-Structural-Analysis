@@ -77,6 +77,18 @@ public:
         }
     }
 
+    /// Fin sans effet quand l'appelant a vérifié que rien n'a changé (voir
+    /// UndoManager::discardUnchangedTransaction) : ni entrée Annuler, ni notification.
+    void discardUnchanged()
+    {
+        if (m_done) return;
+        m_done = true;
+        if (m_undo)
+        {
+            m_undo->discardUnchangedTransaction();
+        }
+    }
+
     void rollback()
     {
         if (m_done) return;

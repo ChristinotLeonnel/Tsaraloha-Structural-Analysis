@@ -16,7 +16,7 @@ src/UI/
 ├── Properties     — PropertyPanel.h/.cpp (panneau de propriétés contextuel)
 ├── ModelTree      — ModelTreeWidget.h/.cpp (arbre du modèle)
 ├── Port           — PortAreaWidget, PortWidget, PortTypes (espace de travail multi-ports)
-├── Diagrams       — Diagram2DWidget (diagrammes interactifs 2D des sollicitations N, V, M, courbes pushover)
+├── Diagrams       — Diagram2DWidget (diagrammes interactifs 2D des sollicitations N, V, M)
 ├── Dialogs        — boîtes de dialogue
 ├── Widgets        — widgets réutilisables
 ├── Theme          — feuilles de style / thèmes (QSS)
@@ -39,8 +39,8 @@ Architecture en Ruban structurée en 9 onglets métier :
 1. **Accueil** : Gestion du projet/fichiers, historique Undo/Redo, presse-papier, accès rapide (tracé, solveur, résultats 3D) et vue 3D.
 2. **Modélisation** : Éléments filaires (poutres, poteaux, câbles, treillis paramétriques), surfaciques (dalles, voiles, semelles), nœuds/primitives et trames/niveaux.
 3. **Structure** : Catalogues de sections (I/H, rectangulaire, circulaire), matériaux (béton EC2, acier EC3), conditions d'appuis 3D (encastrements, rotules, appuis simples) et bibliothèques TSALib.
-4. **Charges** : Actions ponctuelles (force, moment), charges linéiques réparties et trapézoïdales, cas de charges & combinaisons normalisées (Eurocodes), séisme EC8 et visibilité 3D dédiée (forces, moments, étiquettes).
-5. **Analyse** : Discrétisation et maillage éléments finis, solveur OpenSees (calcul statique linéaire/non-linéaire, analyse modale, pushover), paramètres d'analyse et accès rapide aux résultats.
+4. **Charges** : Actions ponctuelles (force, moment), charges linéiques réparties et trapézoïdales, cas de charges & combinaisons normalisées (Eurocodes) et visibilité 3D dédiée (forces, moments, étiquettes).
+5. **Analyse** : Discrétisation et maillage éléments finis, solveur OpenSees (calcul statique linéaire/non-linéaire), paramètres d'analyse et accès rapide aux résultats.
 6. **Résultats** : Panneau dock de résultats 3D, déformée amplifiée, 4 familles de diagrammes 3D ($M, V, N, U, R$), réactions vectorielles 3D, cadrage caméra contextuel, note de calcul (NDC) et multiport.
 7. **Édition** : Outils de sélection, déplacement 3D, duplication/copie 3D, repère d'origine et suppression.
 8. **Affichage** : Projections standards 2D/3D, navigation caméra, plans de travail & coupes 3D, aides visuelles (grilles, niveaux, nœuds) et bascule des panneaux docks.
@@ -51,14 +51,14 @@ Architecture en Ruban structurée en 9 onglets métier :
 Panneau latéral de pilotage des résultats 3D issu du solveur OpenSees :
 - **Grandeur affichée** : Déformée 3D seule ou combinée avec l'une des 4 familles de diagrammes 3D ($M_z, M_y, M_x$, $V_z, V_y$, $N$, $U_x, U_y, U_z, U_{res}$, $R_x, R_y, R_z$).
 - **Contrôle d'échelle** : Mode automatique basé sur l'envergure $L_{span}$ de la structure, presets ($\times 1, \times 10, \times 100, \times 1000, \times 10000$) ou facteur personnalisé.
-- **Incréments temporels & non-linéaires** : Slider et spinbox pour naviguer entre les pas de calcul avec affichage dynamique du facteur de charge $\lambda$.
+- **Incréments non-linéaires** : Slider et spinbox pour naviguer entre les pas de calcul avec affichage dynamique du facteur de charge $\lambda$.
 - **Filtre des nœuds** : Visibilité conditionnelle (tous, nœuds libres non connectés, appuis).
 - **Raccourcis caméra** : Cadrer modèle, cadrer résultats, cadrer déformée, cadrer sélection.
 
 ## `AnalysisConfigDialog` (`src/UI/Dialogs`)
 
 Dialogue de configuration avancée de la résolution mécanique :
-- Sélection du type d'analyse : Statique linéaire, Statique non-linéaire, Dynamique, Modale.
+- Sélection du type d'analyse : Statique linéaire, Statique non-linéaire.
 - Algorithmes non-linéaires : Newton-Raphson standard, LineSearch, ModifiedNewton, Krylov-Newton, BFGS, Broyden, SecantNewton.
 - Intégrateurs numériques : LoadControl, DisplacementControl, ArcLength (Crisfield), MinUnbalDispNorm.
 - Filtrage contextuel dynamique des paramètres incompatibles en direct.

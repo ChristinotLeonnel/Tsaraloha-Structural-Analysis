@@ -21,22 +21,15 @@ namespace TSA::UI
 {
 
 /**
- * @brief Widget interactif 2D de visualisation des diagrammes d'efforts (M, V, N) et courbes OpenSees.
- * Permet d'inspecter les valeurs à n'importe quel point le long de l'élément au survol de la souris,
- * d'afficher les extrêmes, et de visualiser les courbes de capacité Pushover et spectres modaux.
+ * @brief Widget interactif 2D de visualisation des diagrammes d'efforts (M, V, N, T) le long d'une barre.
+ * Permet d'inspecter les valeurs à n'importe quel point le long de l'élément au survol de la souris
+ * et d'afficher les extrêmes.
  */
 class Diagram2DWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    enum class ViewMode
-    {
-        MemberForces,       ///< Diagrammes le long d'une barre (M, V, N, T)
-        PushoverCapacity,   ///< Courbe de capacité Pushover Vb vs Delta
-        ModalSpectrum       ///< Spectre des fréquences et périodes modales
-    };
-
     explicit Diagram2DWidget(QWidget* parent = nullptr);
     ~Diagram2DWidget() override = default;
 
@@ -49,8 +42,6 @@ public:
     void setDiagramType(TSA::Geometry::DiagramType type);
     TSA::Geometry::DiagramType diagramType() const { return m_currentType; }
 
-    void setViewMode(ViewMode mode);
-    ViewMode viewMode() const { return m_viewMode; }
 
 signals:
     void elementInspected(int elementId, double posNorm, double forceValue);
@@ -65,21 +56,17 @@ protected:
 private slots:
     void onElementComboChanged(int index);
     void onTypeComboChanged(int index);
-    void onModeComboChanged(int index);
     void onResetZoom();
 
 private:
     void setupUi();
     void updateElementList();
     void drawMemberForces(QPainter& p, const QRect& plotRect);
-    void drawPushoverCurve(QPainter& p, const QRect& plotRect);
-    void drawModalSpectrum(QPainter& p, const QRect& plotRect);
 
 private:
     TSA::Model::Model* m_model = nullptr;
     std::shared_ptr<TSA::Analysis::ResultsModel> m_results;
 
-    ViewMode m_viewMode = ViewMode::MemberForces;
     TSA::Geometry::DiagramType m_currentType = TSA::Geometry::DiagramType::BendingMz;
     int m_currentElementId = 0;
     TSA::Analysis::StructuralElementKind m_currentElementKind = TSA::Analysis::StructuralElementKind::Beam; ///< ids poutre/poteau non uniques entre familles
@@ -87,7 +74,6 @@ private:
 
     // Commandes UI
     QWidget* m_toolbar = nullptr;
-    QComboBox* m_modeCombo = nullptr;
     QComboBox* m_elementCombo = nullptr;
     QComboBox* m_typeCombo = nullptr;
     QPushButton* m_btnResetZoom = nullptr;

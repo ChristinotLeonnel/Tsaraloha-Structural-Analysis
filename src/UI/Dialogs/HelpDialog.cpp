@@ -282,7 +282,7 @@ QString HelpDialog::getHelpContent(int topicIndex) const
             "<li><b>Profilés & Matériaux :</b> Définissez et assignez des sections transversales (IPE, HEA, béton armé) et les matériaux (Béton C25/30, Acier S355).</li>"
             "<li><b>Appuis & Liaisons :</b> Fixez les conditions aux limites (encastrements, articulations, appuis simples).</li>"
             "<li><b>Cas de Charges :</b> Appliquez des charges nodales, linéiques réparties, surfaciques ou moments.</li>"
-            "<li><b>Analyse Éléments Finis :</b> Lancez le solveur statique ou modal pour inspecter les déformées, contraintes et diagrammes d'efforts (M, N, V).</li>"
+            "<li><b>Analyse Éléments Finis :</b> Lancez le solveur statique pour inspecter les déformées, contraintes et diagrammes d'efforts (M, N, V).</li>"
             "</ol>"
             "</div>";
 
@@ -392,7 +392,7 @@ QString HelpDialog::getHelpContent(int topicIndex) const
         return style +
             "<h2>⚙️ Analyse & Résultats Éléments Finis</h2>"
             "<div class='card'>"
-            "<h3>Calcul Statique & Modal</h3>"
+            "<h3>Calcul Statique</h3>"
             "<p>Le solveur matriciel résout le système d'équations globales :</p>"
             "<p align='center'><code>[K] · {U} = {F}</code></p>"
             "<ul>"

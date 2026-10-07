@@ -69,8 +69,6 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
         v.addError("Moteur", "Le moteur " + engine + " ne calcule pas en " + dimensionLabel(context.dimension) + ".");
     if (!caps.supportsAnalysisType(context.type))
         v.addError("Moteur", "Le moteur " + engine + " ne propose pas ce type d'analyse.");
-    if (context.type == AnalysisType::Modal && context.common.modeCount < 1)
-        v.addError("Analyse", "Le nombre de modes propres demandé doit être supérieur ou égal à 1.");
 
     // 2. Plan d'une analyse 2D
     if (context.dimension == AnalysisDimension::Plane2D)
@@ -171,14 +169,11 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
     for (int id : context.loadCaseIds)
         if (!snap.loadCases().count(id)) v.addError("Charges", "Cas de charge #" + std::to_string(id) + " introuvable.");
 
-    if (context.type != AnalysisType::Modal)
-    {
-        const bool anyLoad = !snap.nodalLoads().empty() || !snap.memberLoads().empty();
-        if (!anyLoad && !context.common.includeSelfWeight)
-            v.addWarning("Charges", "Aucune charge dans la portée et poids propre désactivé : résultats nuls.");
-        else
-            v.addInfo("Charges", "Charges valides.");
-    }
+    const bool anyLoad = !snap.nodalLoads().empty() || !snap.memberLoads().empty();
+    if (!anyLoad && !context.common.includeSelfWeight)
+        v.addWarning("Charges", "Aucune charge dans la portée et poids propre désactivé : résultats nuls.");
+    else
+        v.addInfo("Charges", "Charges valides.");
     if (model.droppedNodalLoads + model.droppedMemberLoads > 0 && !model.entireModel)
         v.addInfo("Charges", std::to_string(model.droppedNodalLoads + model.droppedMemberLoads)
                                  + " charge(s) appliquée(s) hors portée ne sont pas transmises.");
@@ -214,7 +209,6 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
     {
         AnalysisParameters common;
         common.type = context.type;
-        common.numEigenmodes = context.common.modeCount;
         common.includeSelfWeight = context.common.includeSelfWeight;
         const auto report = TSA::Standards::ModelValidator::validateForAnalysis(model, common);
         for (const auto& e : report.formattedErrors()) p.validation.addError("Modèle", e);
@@ -267,7 +261,6 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
     a.displacements &= caps.providesDisplacements;
     a.reactions &= caps.providesReactions;
     a.elementForces &= caps.providesElementForces;
-    a.modal &= caps.supportsModal;
     a.elementStiffness &= caps.providesElementStiffness;
     a.globalStiffness &= caps.providesGlobalStiffness;
     a.dofMapping &= caps.providesDofMapping;

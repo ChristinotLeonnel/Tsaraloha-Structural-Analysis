@@ -235,13 +235,14 @@ void AnalysisDataDock::refresh()
         QString engine = QString::fromStdString(meta.solverEngine);
         if (!meta.solverVersion.empty()) engine += " " + QString::fromStdString(meta.solverVersion);
         if (!meta.analysisScope.empty()) engine += tr(" — portée : %1").arg(QString::fromStdString(meta.analysisScope));
-        m_status->setText(tr("Moteur %1\n%2 | %3 | unités %4, %5 | équilibre : résidu relatif %6%7")
+        m_status->setText(tr("Moteur %1\n%2 | %3 | unités %4, %5 | équilibre : résidu relatif forces %6, moments %8%7")
             .arg(engine)
             .arg(m_results->isValid() ? tr("Résultats valides") : tr("RÉSULTATS OBSOLÈTES OU INVALIDES"))
             .arg(adv.available ? "ADVANCED" : "LIGHT")
             .arg(QString::fromStdString(u.force), QString::fromStdString(u.length))
             .arg(meta.relativeEquilibriumResidual, 0, 'g', 3)
-            .arg(adv.warnings.empty() ? QString() : "\n⚠ " + QString::fromStdString(adv.warnings.front())));
+            .arg(adv.warnings.empty() ? QString() : "\n⚠ " + QString::fromStdString(adv.warnings.front()))
+            .arg(meta.relativeMomentResidual, 0, 'g', 3));
     }
     fillDisplacements();
     fillReactions();

@@ -7,6 +7,9 @@
 #include "../Diagnostics/CrashHandler.h"
 
 #include <QStyleFactory>
+#include <QLibraryInfo>
+#include <QLocale>
+#include <QTranslator>
 #include <QDir>
 #include <QIcon>
 
@@ -42,6 +45,17 @@ Application::Application(int& argc, char** argv)
     // Association explicite pour afficher l'icône sur la barre des tâches de Windows
     initWindowsAppUserModelID();
 #endif
+
+    // Textes standard de Qt en français (boutons « Enregistrer », « Annuler », boîtes de fichiers…) :
+    // traduction déployée à côté de l'exécutable, sinon celle de l'installation Qt (BUG-020).
+    auto* qtTranslator = new QTranslator(this);
+    if (qtTranslator->load(QLocale(QLocale::French), QStringLiteral("qtbase"), QStringLiteral("_"),
+                           applicationDirPath() + QStringLiteral("/translations"))
+        || qtTranslator->load(QLocale(QLocale::French), QStringLiteral("qtbase"), QStringLiteral("_"),
+                              QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
+    {
+        installTranslator(qtTranslator);
+    }
 
     setApplicationName("TSA");
     setOrganizationName("TSA Engineering");

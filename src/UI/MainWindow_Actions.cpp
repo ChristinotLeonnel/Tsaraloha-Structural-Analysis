@@ -727,10 +727,6 @@ void MainWindow::createActions()
     m_actionLoadCases->setToolTip(tr("Gérer les cas de charges, combinaisons Eurocodes et export OpenSees"));
     connect(m_actionLoadCases, &QAction::triggered, this, &MainWindow::onActionLoadCases);
 
-    m_actionSeismic = new QAction(tr("Action &Sismique (Eurocode 8)..."), this);
-    m_actionSeismic->setIcon(QIcon(":/icons/load_seismic.svg"));
-    m_actionSeismic->setToolTip(tr("Définir le spectre sismique réglementaire"));
-    connect(m_actionSeismic, &QAction::triggered, this, &MainWindow::onActionSeismic);
 
     m_actionMeshGen = new QAction(tr("&Générer le Maillage EF..."), this);
     m_actionMeshGen->setIcon(QIcon(":/icons/mesh_generate.svg"));
@@ -748,15 +744,7 @@ void MainWindow::createActions()
     m_actionRunSolve->setShortcut(QKeySequence(Qt::Key_F5));
     connect(m_actionRunSolve, &QAction::triggered, this, &MainWindow::onActionRunSolve);
 
-    m_actionModal = new QAction(tr("Analyse &Modale Dynamique..."), this);
-    m_actionModal->setIcon(QIcon(":/icons/analysis_modal.svg"));
-    m_actionModal->setToolTip(tr("Calculer les modes propres et fréquences de vibration"));
-    connect(m_actionModal, &QAction::triggered, this, &MainWindow::onActionModal);
 
-    m_actionPushover = new QAction(tr("Analyse &Pushover Non-Linéaire..."), this);
-    m_actionPushover->setIcon(QIcon(":/icons/analysis_pushover.svg"));
-    m_actionPushover->setToolTip(tr("Exécuter une analyse statique non-linéaire (Pushover)"));
-    connect(m_actionPushover, &QAction::triggered, this, &MainWindow::onActionPushover);
 
     m_actionDeformedToggle = new QAction(tr("Afficher la &Déformée 3D"), this);
     m_actionDeformedToggle->setCheckable(true);
@@ -897,7 +885,7 @@ void MainWindow::createMenus()
         namespace SQ = TSA::Model::SelectionQuery;
 
         QAction* invertAct = editMenu->addAction(tr("&Inverser la sélection"));
-        invertAct->setShortcut(QKeySequence("Ctrl+Alt+I")); // Ctrl+I = isolation par coupe (CommandCatalog)
+        invertAct->setShortcut(QKeySequence("Ctrl+Alt+I"));
         connect(invertAct, &QAction::triggered, this, [this]() {
             if (!m_model || !m_selectionManager) return;
             applyElementSelection(SQ::invert(*m_model, m_selectionManager->selectedElements()), tr("Sélection inversée"));
@@ -995,7 +983,6 @@ void MainWindow::createMenus()
     loadSubMenu->addAction(m_actionPointLoad);
     loadSubMenu->addAction(m_actionDistLoad);
     loadSubMenu->addAction(m_actionMoment);
-    loadSubMenu->addAction(m_actionSeismic);
     loadSubMenu->addSeparator();
     loadSubMenu->addAction(m_actionLoadCases);
     analysisMenu->addSeparator();
@@ -1003,8 +990,6 @@ void MainWindow::createMenus()
     analysisMenu->addSeparator();
     analysisMenu->addAction(m_actionAnalysisConfig);
     analysisMenu->addAction(m_actionRunSolve);
-    analysisMenu->addAction(m_actionModal);
-    analysisMenu->addAction(m_actionPushover);
 
     // 6. Menu Résultats
     QMenu* resMenu = menuBar()->addMenu(tr("&Résultats"));
@@ -1074,6 +1059,70 @@ void MainWindow::createMenus()
     wpSub->addAction(m_actionWorkPlaneVisible);
     wpSub->addSeparator();
     wpSub->addAction(m_actionWorkPlaneCustom);
+
+    // Isolation 3D (cmd.isolate.* du catalogue) : même passe de visibilité que le plan de travail.
+    QMenu* isoSub = viewMenu->addMenu(tr("Isolation 3D"));
+    auto addIsolation = [&](const QString& text, const QString& shortcut, auto slot) {
+        QAction* a = isoSub->addAction(text, this, slot);
+        if (!shortcut.isEmpty()) a->setShortcut(QKeySequence(shortcut));
+        a->setShortcutContext(Qt::WindowShortcut);
+        return a;
+    };
+    addIsolation(tr("Isoler la sélection"), QStringLiteral("I"), [this] {
+        if (!m_occView || !m_selectionManager) return;
+        const auto sel = m_selectionManager->selectedElements();
+        if (sel.size() == 0) { if (m_statusInfo) m_statusInfo->setText(tr("Isolation : sélectionnez d'abord des éléments")); return; }
+        m_occView->isolateElements(sel);
+        if (m_statusInfo) m_statusInfo->setText(tr("Isolation : %1 élément(s) — Alt+H pour tout afficher").arg(sel.size()));
+    });
+    addIsolation(tr("Isoler par type"), QStringLiteral("Alt+I"), [this] {
+        if (!m_occView || !m_selectionManager || !m_model) return;
+        using TSA::Model::ElementKind;
+        const auto sel = m_selectionManager->selectedElements();
+        TSA::Model::ElementSet sameType;
+        auto addKind = [&](bool present, ElementKind kind) {
+            if (!present) return;
+            const auto set = TSA::Model::SelectionQuery::byKind(*m_model, kind);
+            sameType.nodes.insert(set.nodes.begin(), set.nodes.end());
+            sameType.beams.insert(set.beams.begin(), set.beams.end());
+            sameType.columns.insert(set.columns.begin(), set.columns.end());
+            sameType.slabs.insert(set.slabs.begin(), set.slabs.end());
+            sameType.walls.insert(set.walls.begin(), set.walls.end());
+            sameType.foundations.insert(set.foundations.begin(), set.foundations.end());
+            sameType.trussMembers.insert(set.trussMembers.begin(), set.trussMembers.end());
+            sameType.cables.insert(set.cables.begin(), set.cables.end());
+        };
+        addKind(!sel.beams.empty(), ElementKind::Beam);
+        addKind(!sel.columns.empty(), ElementKind::Column);
+        addKind(!sel.slabs.empty(), ElementKind::Slab);
+        addKind(!sel.walls.empty(), ElementKind::Wall);
+        addKind(!sel.foundations.empty(), ElementKind::Foundation);
+        addKind(!sel.trussMembers.empty(), ElementKind::TrussMember);
+        addKind(!sel.cables.empty(), ElementKind::Cable);
+        if (sameType.size() == 0) { if (m_statusInfo) m_statusInfo->setText(tr("Isolation par type : sélectionnez un élément du type voulu")); return; }
+        m_occView->isolateElements(sameType);
+        if (m_statusInfo) m_statusInfo->setText(tr("Isolation par type : %1 élément(s)").arg(sameType.size()));
+    });
+    addIsolation(tr("Isoler le plan de travail"), QStringLiteral("Alt+W"), [this] {
+        if (!m_occView) return;
+        const bool on = !m_occView->activeWorkPlane().isIsolated();
+        m_occView->setWorkPlaneIsolation(on, m_occView->activeWorkPlane().isolationDistance());
+        if (m_statusInfo) m_statusInfo->setText(on ? tr("Plan de travail isolé") : tr("Isolation du plan de travail désactivée"));
+    });
+    isoSub->addSeparator();
+    addIsolation(tr("Masquer la sélection"), QStringLiteral("H"), [this] {
+        if (!m_occView || !m_selectionManager) return;
+        const auto sel = m_selectionManager->selectedElements();
+        m_occView->hideElements(sel);
+        m_selectionManager->clearSelection();
+    });
+    addIsolation(tr("Inverser l'isolation"), QString(), [this] { if (m_occView) m_occView->invertElementIsolation(); });
+    addIsolation(tr("Isolation précédente"), QStringLiteral("Ctrl+H"), [this] { if (m_occView) m_occView->undoElementIsolation(); });
+    addIsolation(tr("Tout afficher"), QStringLiteral("Alt+H"), [this] {
+        if (!m_occView) return;
+        m_occView->showAllElements();
+        if (m_statusInfo) m_statusInfo->setText(tr("Isolation terminée : tous les éléments sont affichés"));
+    });
 
     viewMenu->addSeparator();
     viewMenu->addAction(m_actionCoordSystem);
@@ -1209,7 +1258,6 @@ void MainWindow::createRibbon()
     acts.actionPointLoad = m_actionPointLoad;
     acts.actionDistLoad = m_actionDistLoad;
     acts.actionMoment = m_actionMoment;
-    acts.actionSeismic = m_actionSeismic;
     acts.actionLoadCases = m_actionLoadCases;
     acts.actionLoadsVisible = m_actionLoadsVisible;
     acts.actionForcesVisible = m_actionForcesVisible;
@@ -1219,8 +1267,6 @@ void MainWindow::createRibbon()
     acts.actionMeshGen = m_actionMeshGen;
     acts.actionAnalysisConfig = m_actionAnalysisConfig;
     acts.actionRunSolve = m_actionRunSolve;
-    acts.actionModal = m_actionModal;
-    acts.actionPushover = m_actionPushover;
 
     acts.actionResultsDock = m_resultsDock ? m_resultsDock->toggleViewAction() : nullptr;
     acts.actionResultsDisp = m_actionResultsDisp;
@@ -1520,6 +1566,20 @@ void MainWindow::createDockWindows()
     tabifyDockWidget(m_propertiesDock, m_ndcDock);
     m_propertiesDock->raise();
     m_ndcDock->hide();
+    // Lien d'élément de la note de calcul : sélection et cadrage dans la vue 3D.
+    connect(m_ndcWidget, &TSA::NDC::NDCViewerWidget::elementSelected, this,
+            [this](TSA::Analysis::StructuralElementKind kind, int id) {
+                TSA::Model::ElementSet set;
+                switch (kind)
+                {
+                case TSA::Analysis::StructuralElementKind::Column: set.columns.insert(id); break;
+                case TSA::Analysis::StructuralElementKind::Truss: set.trussMembers.insert(id); break;
+                case TSA::Analysis::StructuralElementKind::Cable: set.cables.insert(id); break;
+                default: set.beams.insert(id); break;
+                }
+                applyElementSelection(set, tr("Élément de la note de calcul"));
+                onFitSelection();
+            });
 
     connect(m_consoleDock, &TSA::UI::LogConsoleDock::commandEntered, this, [this](const QString& cmd) {
         QString c = cmd.toUpper().trimmed();
@@ -1589,10 +1649,8 @@ void MainWindow::createDockWindows()
         else if (c == "DISTLOAD" || c == "QLOAD") onActionDistLoad();
         else if (c == "MOMENT") onActionMoment();
         else if (c == "CAS" || c == "LOADCASE" || c == "COMBINAISON" || c == "OPENSEES") onActionLoadCases();
-        else if (c == "SEISMIC" || c == "SEISME") onActionSeismic();
         else if (c == "MESH" || c == "MAILLAGE") onActionMeshGen();
         else if (c == "SOLVE" || c == "CALC" || c == "RUN") onActionRunSolve();
-        else if (c == "MODAL" || c == "FREQ") onActionModal();
         else if (c == "DISP" || c == "DEPLACEMENT") onActionResultsDisp();
         else if (c == "FORCES" || c == "DIAGRAM") onActionResultsForces();
         else if (c == "STRESS" || c == "CONTRAINTE") onActionResultsStress();
@@ -1616,7 +1674,7 @@ void MainWindow::createDockWindows()
         else if (c == "HELP" || c == "AIDE" || c == "?") onActionHelp();
         else if (c == "DIAG" || c == "REPORT" || c == "DIAGNOSTIC") onActionExportDiagnosticReport();
         else {
-            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, SEISMIC, MESH, SOLVE, MODAL, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, MIRROR, SPLIT, MERGE, THEME, DIAG, HELP").arg(cmd), "WARN");
+            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, MESH, SOLVE, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, MIRROR, SPLIT, MERGE, THEME, DIAG, HELP").arg(cmd), "WARN");
         }
     });
 
@@ -1921,6 +1979,19 @@ void MainWindow::createDockWindows()
         case TSA::Viewer::SelectionType::TrussMember: m_propertyPanel->showTrussMemberProperties(id); break;
         case TSA::Viewer::SelectionType::Cable: m_propertyPanel->showCableProperties(id); break;
         default: m_propertyPanel->clearProperties(); break;
+        }
+        // Édition groupée des éléments du même type que l'élément principal (BUG-005)
+        const TSA::Model::ElementSet sel = m_selectionManager->selectedElements();
+        switch (m_selectionManager->currentSelectionType())
+        {
+        case TSA::Viewer::SelectionType::Node: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Node, id, sel.nodes); break;
+        case TSA::Viewer::SelectionType::Beam: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Beam, id, sel.beams); break;
+        case TSA::Viewer::SelectionType::Column: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Column, id, sel.columns); break;
+        case TSA::Viewer::SelectionType::Slab: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Slab, id, sel.slabs); break;
+        case TSA::Viewer::SelectionType::Wall: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Wall, id, sel.walls); break;
+        case TSA::Viewer::SelectionType::Foundation: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Foundation, id, sel.foundations); break;
+        case TSA::Viewer::SelectionType::TrussMember: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::TrussMember, id, sel.trussMembers); break;
+        default: break;
         }
     });
 
@@ -2250,15 +2321,6 @@ void MainWindow::createStatusBar()
         case OccView::InteractionMode::DrawWall:
             if (m_actionDrawWall) m_actionDrawWall->setChecked(true);
             break;
-        case OccView::InteractionMode::Move3D:
-            if (m_actionMove3D) m_actionMove3D->setChecked(true);
-            break;
-        case OccView::InteractionMode::Copy3D:
-            if (m_actionCopy3D) m_actionCopy3D->setChecked(true);
-            break;
-        case OccView::InteractionMode::Rotate3D:
-            if (m_actionRotate3D) m_actionRotate3D->setChecked(true);
-            break;
         case OccView::InteractionMode::MoveOrigin3D:
             if (m_actionMoveOrigin) m_actionMoveOrigin->setChecked(true);
             break;
@@ -2287,8 +2349,6 @@ void MainWindow::createStatusBar()
     });
 
     connect(m_occView, &OccView::modelingToolReady, this, &MainWindow::applyActiveModelingTool);
-    connect(m_occView, &OccView::pointToPointMoveRequested, this, &MainWindow::onPointToPointMoveRequested);
-    connect(m_occView, &OccView::pointToPointRotateRequested, this, &MainWindow::onPointToPointRotateRequested);
     connect(m_occView, &OccView::originMoveRequested, this, &MainWindow::onOriginMoveRequested);
     connect(m_occView, &OccView::pasteAtPointRequested, this, &MainWindow::onPasteAtPointRequested);
 

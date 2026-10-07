@@ -102,7 +102,7 @@ bool runSuite_Extraction(int& passed)
         m.getNode(a)->setSupport(SupportDefinition::fixed());
         m.getNode(d)->setSupport(SupportDefinition::fixed());
         int col1 = m.addColumn(a, b, Section::heb(200), Material::steelS235());
-        int col2 = m.addColumn(d, c, Section::heb(200), Material::steelS235());
+        [[maybe_unused]] int col2 = m.addColumn(d, c, Section::heb(200), Material::steelS235());
         int beam1 = m.addBar(b, c, Section::ipe(300), Material::steelS235(), BarRole::Beam);
         int truss1 = m.addTrussMember(a, c, 0.05);
         TEST_CHECK(beam1 == 1 && col1 == 1 && truss1 == 1, "Test 105: ids TSA identiques entre familles (cas critique)");
@@ -442,6 +442,13 @@ bool runSuite_Extraction(int& passed)
             const double resid = r.executionMetadata().relativeEquilibriumResidual;
             std::cout << "  unités " << r.units().force << " : résidu relatif = " << resid << std::endl;
             TEST_CHECK(resid < 1e-9, "Test 110: Σ F_ext + Σ R ≈ 0 (tolérance relative 1e-9)");
+            const auto& eqm = r.equilibrium();
+            std::cout << "  résidu relatif des moments = " << r.executionMetadata().relativeMomentResidual
+                      << " (ΣM charges = " << eqm.appliedMx << ", " << eqm.appliedMy << ", " << eqm.appliedMz
+                      << " ; ΣM réactions = " << eqm.reactionMx << ", " << eqm.reactionMy << ", " << eqm.reactionMz
+                      << " ; échelle " << eqm.momentScale << ")" << std::endl;
+            TEST_CHECK(eqm.momentScale > 0.0, "Test 110: moments des charges pris en compte");
+            TEST_CHECK(r.executionMetadata().relativeMomentResidual < 1e-9, "Test 110: Σ M_ext + Σ M_R ≈ 0 autour de l'origine (BUG-017)");
             TEST_CHECK(r.units().force == (kN ? "kN" : "N"), "Test 110: unités déclarées");
             TEST_CHECK(r.advanced().elementMatrices.empty() && !r.advanced().available, "Test 110: mode Light sans matrices");
         }
@@ -536,6 +543,169 @@ bool runSuite_Extraction(int& passed)
                    "Test 111: contexte IA — rigidité diagonale du DDL");
         TEST_CHECK(ctx["displacement"].toObject()["UZ"].toDouble() < 0.0, "Test 111: contexte IA — déplacement");
         std::cout << "[PASS] Test 111: Exports et contexte IA" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 181 : efforts et déformée exacts en travée (BUG-016) — poutre encastrée / appuyée, q uniforme
+    // M(0) = −qL²/8, M(L/2) = +qL²/16 (convention RDM : travée positive), flèche(L/2) = qL⁴ / (192 EI)
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 181: Efforts et déformée exacts en travée ---" << std::endl;
+        const double L = 6.0, q = 10.0;
+        Model m;
+        int n1 = m.addNode(0, 0, 0), n2 = m.addNode(L, 0, 0);
+        m.getNode(n1)->setSupport(SupportDefinition::fixed());
+        m.getNode(n2)->setSupport(SupportDefinition::pinned());
+        const Section sec = Section::rectangular(0.4, 0.4); // Iy = Iz : plan de flexion indifférent
+        const Material mat = Material::steelS235();
+        int bb = m.addBar(n1, n2, sec, mat, BarRole::Beam);
+        int lc = addCase(m);
+        m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, q));
+        AnalysisParameters p;
+        p.includeSelfWeight = false;
+        ResultsModel r;
+        TEST_CHECK(runSolve(m, p, r), "Test 181: calcul");
+        const auto* er = r.getElementResults(StructuralElementKind::Beam, bb);
+        TEST_CHECK(er != nullptr, "Test 181: résultats de la barre");
+        if (er)
+        {
+            auto bending = [](const StationForces& s) { return std::abs(s.My) > std::abs(s.Mz) ? s.My : s.Mz; };
+            const StationForces* mid = nullptr;
+            for (const auto& s : er->intermediateStations)
+                if (std::abs(s.position - 0.5 * L) < 1e-9) mid = &s;
+            TEST_CHECK(mid != nullptr, "Test 181: station à mi-portée");
+            TEST_CHECK(relClose(bending(er->startForces), -q * L * L / 8.0, 1e-6), "Test 181: M(0) = −qL²/8 (encastrement)");
+            TEST_CHECK(std::abs(bending(er->endForces)) < 1e-6, "Test 181: M(L) = 0 (appui simple)");
+            if (mid)
+            {
+                TEST_CHECK(relClose(bending(*mid), q * L * L / 16.0, 1e-6), "Test 181: M(L/2) = +qL²/16 (ancien calcul : faux)");
+                const double EI = mat.mechanical.youngModulus * 1e-3 * sec.iy();
+                const double defl = std::hypot(mid->uy, mid->uz);
+                std::cout << "  M(L/2) = " << bending(*mid) << " kN·m, flèche(L/2) = " << defl * 1000.0 << " mm (théorie "
+                          << q * std::pow(L, 4) / (192.0 * EI) * 1000.0 << " mm)" << std::endl;
+                TEST_CHECK(relClose(defl, q * std::pow(L, 4) / (192.0 * EI), 1e-4), "Test 181: flèche(L/2) = qL⁴ / (192 EI)");
+            }
+            // Continuité : la dernière station rejoint l'extrémité j (même convention partout).
+            const auto& last = er->intermediateStations.back();
+            const double xLast = last.position;
+            const double mAtLast = 3.0 * q * L / 8.0 * (L - xLast) - q * (L - xLast) * (L - xLast) / 2.0;
+            TEST_CHECK(relClose(bending(last), mAtLast, 1e-6), "Test 181: M(x) exact près de l'appui");
+        }
+        std::cout << "[PASS] Test 181: Efforts et déformée exacts en travée" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 182 : charge trapézoïdale (triangulaire) sur console — forces d'encastrement parfait
+    // R = qL/2, M(0) = −qL²/3, M(L/2) = −(q/L)(L³/3 − (L/2)L²/2 + (L/2)³/6), flèche bout = 11 qL⁴ / (120 EI)
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 182: Charge trapézoïdale (console) ---" << std::endl;
+        const double L = 4.0, q = 12.0;
+        Model m;
+        int n1 = m.addNode(0, 0, 0), n2 = m.addNode(L, 0, 0);
+        m.getNode(n1)->setSupport(SupportDefinition::fixed());
+        const Section sec = Section::rectangular(0.4, 0.4);
+        const Material mat = Material::steelS235();
+        int bb = m.addBar(n1, n2, sec, mat, BarRole::Beam);
+        int lc = addCase(m);
+        m.loadManager().addMemberLoad(MemberLoad::trapezoidal(bb, lc, 0.0, q, 0.0, L, LoadDirection::Gravity));
+        AnalysisParameters p;
+        p.includeSelfWeight = false;
+        ResultsModel r;
+        TEST_CHECK(runSolve(m, p, r), "Test 182: calcul");
+        const auto* r1 = r.getNodeReaction(n1);
+        TEST_CHECK(r1 && relClose(r1->rz, q * L / 2.0, 1e-9), "Test 182: réaction = qL/2 (et non qL)");
+        TEST_CHECK(r.executionMetadata().relativeEquilibriumResidual < 1e-9, "Test 182: équilibre avec la vraie résultante");
+        const auto* er = r.getElementResults(StructuralElementKind::Beam, bb);
+        TEST_CHECK(er != nullptr, "Test 182: résultats de la barre");
+        if (er)
+        {
+            auto bending = [](const StationForces& s) { return std::abs(s.My) > std::abs(s.Mz) ? s.My : s.Mz; };
+            TEST_CHECK(relClose(bending(er->startForces), -q * L * L / 3.0, 1e-9), "Test 182: M(0) = −qL²/3");
+            TEST_CHECK(std::abs(bending(er->endForces)) < 1e-9, "Test 182: M(L) = 0 (bord libre)");
+            const double x = 0.5 * L;
+            const double mMid = -(q / L) * (L * L * L / 3.0 - x * L * L / 2.0 + x * x * x / 6.0);
+            for (const auto& s : er->intermediateStations)
+                if (std::abs(s.position - x) < 1e-9)
+                    TEST_CHECK(relClose(bending(s), mMid, 1e-9), "Test 182: M(L/2) exact sous charge triangulaire");
+            const double EI = mat.mechanical.youngModulus * 1e-3 * sec.iy();
+            const auto* d2 = r.getNodeDisplacement(n2);
+            TEST_CHECK(d2 && relClose(std::abs(d2->uz), 11.0 * q * std::pow(L, 4) / (120.0 * EI), 1e-9),
+                       "Test 182: flèche en bout = 11 qL⁴ / (120 EI)");
+        }
+        std::cout << "[PASS] Test 182: Charge trapézoïdale" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 183 : rotule d'extrémité transmise à OpenSees (BUG-027)
+    // Nœud i encastré + rotule de flexion en i, nœud j articulé : poutre sur deux appuis.
+    // M(0) = 0 (et non −qL²/8), M(L/2) = qL²/8, flèche(L/2) = 5 qL⁴ / (384 EI)
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 183: Rotule d'extrémité (OpenSees) ---" << std::endl;
+        const double L = 6.0, q = 10.0;
+        Model m;
+        int n1 = m.addNode(0, 0, 0), n2 = m.addNode(L, 0, 0);
+        m.getNode(n1)->setSupport(SupportDefinition::fixed());
+        m.getNode(n2)->setSupport(SupportDefinition::pinned());
+        const Section sec = Section::rectangular(0.4, 0.4);
+        const Material mat = Material::steelS235();
+        int bb = m.addBar(n1, n2, sec, mat, BarRole::Beam);
+        EndRelease hinge;
+        hinge.my = hinge.mz = true;
+        m.getBeam(bb)->setStartRelease(hinge);
+        int lc = addCase(m);
+        m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, q));
+        AnalysisParameters p;
+        p.includeSelfWeight = false;
+        ResultsModel r;
+        TEST_CHECK(runSolve(m, p, r), "Test 183: calcul");
+        const auto* er = r.getElementResults(StructuralElementKind::Beam, bb);
+        TEST_CHECK(er != nullptr, "Test 183: résultats de la barre");
+        if (er)
+        {
+            auto bending = [](const StationForces& s) { return std::abs(s.My) > std::abs(s.Mz) ? s.My : s.Mz; };
+            TEST_CHECK(std::abs(bending(er->startForces)) < 1e-6, "Test 183: M(0) = 0 à la rotule (encastrement neutralisé)");
+            for (const auto& s : er->intermediateStations)
+            {
+                if (std::abs(s.position - 0.5 * L) > 1e-9) continue;
+                TEST_CHECK(relClose(bending(s), q * L * L / 8.0, 1e-6), "Test 183: M(L/2) = qL²/8");
+                const double EI = mat.mechanical.youngModulus * 1e-3 * sec.iy();
+                TEST_CHECK(relClose(std::hypot(s.uy, s.uz), 5.0 * q * std::pow(L, 4) / (384.0 * EI), 1e-4),
+                           "Test 183: flèche(L/2) = 5 qL⁴ / (384 EI) malgré la rotation nodale nulle en i");
+            }
+        }
+        std::cout << "[PASS] Test 183: Rotule d'extrémité" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 184 : nœud relié uniquement à des barres articulées (BUG-019)
+    // Trépied de treillis : le sommet n'a aucune rigidité en rotation (ndf 6) ; le calcul échouait
+    // (matrice singulière). Ses rotations sont désormais bloquées : ΣN·cos = P.
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 184: Nœud de treillis seul (rotations) ---" << std::endl;
+        Model m;
+        int a = m.addNode(0, 0, 0), b = m.addNode(4, 0, 0), c = m.addNode(2, 3, 0), top = m.addNode(2, 1, 3);
+        for (int n : { a, b, c }) m.getNode(n)->setSupport(SupportDefinition::pinned());
+        for (int n : { a, b, c }) m.addTrussMember(n, top, 0.05);
+        int lc = addCase(m);
+        m.loadManager().addNodalLoad(NodalLoad(0, top, lc, 0.0, 0.0, -30.0));
+        AnalysisParameters p;
+        p.includeSelfWeight = false;
+        ResultsModel r;
+        TEST_CHECK(runSolve(m, p, r), "Test 184: calcul du trépied (échouait : matrice singulière)");
+        double sumRz = 0.0;
+        for (int n : { a, b, c })
+            if (const auto* rr = r.getNodeReaction(n)) sumRz += rr->rz;
+        TEST_CHECK(relClose(sumRz, 30.0, 1e-9), "Test 184: Σ réactions verticales = P");
+        const auto* d = r.getNodeDisplacement(top);
+        TEST_CHECK(d && d->uz < 0.0, "Test 184: le sommet descend");
+        std::cout << "[PASS] Test 184: Nœud de treillis seul" << std::endl;
         passed++;
     }
 

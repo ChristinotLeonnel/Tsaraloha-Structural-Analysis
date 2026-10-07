@@ -38,7 +38,6 @@ ReportConfiguration ReportTemplate::createTemplate(ReportTemplateType type)
         config.includeEnvelopes = true;
         config.includeDetailedElementTables = true;
         config.includeEurocodeDesignChecks = true;
-        config.includeModalAnalysis = true;
         config.includeWarningsAndLimitations = true;
         config.includeConclusion = true;
         config.includeBibliography = true;
@@ -74,7 +73,6 @@ ReportConfiguration ReportTemplate::createTemplate(ReportTemplateType type)
         config.includeEnvelopes = true;
         config.includeDetailedElementTables = false;
         config.includeEurocodeDesignChecks = true;
-        config.includeModalAnalysis = true;
         config.includeWarningsAndLimitations = true;
         config.includeConclusion = true;
         config.includeBibliography = true;
@@ -110,7 +108,6 @@ ReportConfiguration ReportTemplate::createTemplate(ReportTemplateType type)
         config.includeEnvelopes = true;
         config.includeDetailedElementTables = true;
         config.includeEurocodeDesignChecks = false;
-        config.includeModalAnalysis = true;
         config.includeWarningsAndLimitations = true;
         config.includeConclusion = true;
         config.includeBibliography = true;
@@ -145,7 +142,6 @@ ReportConfiguration ReportTemplate::createTemplate(ReportTemplateType type)
         config.includeEnvelopes = false;
         config.includeDetailedElementTables = false;
         config.includeEurocodeDesignChecks = false;
-        config.includeModalAnalysis = false;
         config.includeWarningsAndLimitations = false;
         config.includeConclusion = true;
         config.includeBibliography = false;

@@ -2,6 +2,7 @@
 
 #include "CalculationSnapshot.h"
 #include "ResultsModel.h"
+#include <map>
 #include <string>
 #include <vector>
 
@@ -88,9 +89,6 @@ struct AnalysisParameters
     int controlNodeId = 1;
     int controlDof = 3;             ///< 1=UX, 2=UY, 3=UZ
     double dispIncrement = -0.001;  ///< Incrément de déplacement par pas (m)
-
-    // Modal
-    int numEigenmodes = 3;
 
     // Gestion des résultats
     bool saveAllSteps = true;       ///< Enregistrer tous les incréments
@@ -216,9 +214,61 @@ inline const char* toTclString(GeomTransfType gt)
  */
 class OpenSeesModelMap;
 
+/// Motif de chargement OpenSees (pattern Plain) : un par cas d'une combinaison, ou un seul motif.
+struct LoadPatternSpec
+{
+    int id = 1;
+    std::string name;
+    int caseId = 0;                  ///< 0 = tous les cas
+    double factor = 1.0;
+    bool includeSelfWeight = false;
+};
+
+/// Charge appliquée à une poutre / un poteau, en repère local, en unités du script et facteur du
+/// motif inclus. Une seule source pour le script ET la reconstruction des efforts le long des barres
+/// (OpenSeesResultsReader) : ce qui est calculé est exactement ce qui est affiché.
+///  - Uniform : eleLoad -beamUniform (toute la longueur) ;
+///  - Point   : eleLoad -beamPoint ;
+///  - Linear  : charge linéaire variable (trapézoïdale) sur [a, b] — non gérée par eleLoad en 3D dans
+///    OpenSees 3.8.0 : appliquée aux nœuds par ses forces d'encastrement parfait (fixedEndForces),
+///    que le lecteur ajoute aux efforts d'extrémité calculés par OpenSees.
+struct BeamElementLoad
+{
+    enum class Kind { Uniform, Point, Linear };
+    Kind kind = Kind::Uniform;
+    double wx = 0.0, wy = 0.0, wz = 0.0;     ///< intensité (Uniform), force (Point), intensité en a (Linear)
+    double wxB = 0.0, wyB = 0.0, wzB = 0.0;  ///< intensité en b (Linear)
+    double relativePosition = 0.0;           ///< Point : x / L ; Linear : a / L
+    double relativeEnd = 1.0;                ///< Linear : b / L
+    std::string comment;
+
+    bool point() const { return kind == Kind::Point; }
+    /// Forces d'encastrement parfait (barre bi-encastrée) exercées SUR la barre en i et en j,
+    /// repère local [Fx Fy Fz Mx My Mz].
+    void fixedEndForces(double length, double atI[6], double atJ[6]) const;
+};
+
+/// Résultante d'une charge sur barre en repère global (unités de la charge, sans facteur) et position
+/// de son centre depuis le nœud i. Intensités q1 et q2 résolues séparément, comme pour le calcul.
+struct MemberLoadResultant
+{
+    gp_Vec force;
+    double centroid = 0.0;
+};
+MemberLoadResultant memberLoadResultant(const TSA::Model::MemberLoad& load, const CalculationSnapshot& snapshot);
+
 class OpenSeesAnalysisBuilder
 {
 public:
+    static std::vector<LoadPatternSpec> loadPatterns(const CalculationSnapshot& snapshot, const AnalysisParameters& params);
+    /// Charges eleLoad d'un motif, par tag d'élément poutre/poteau (treillis et câbles : charges aux nœuds).
+    static std::map<int, std::vector<BeamElementLoad>> beamElementLoads(const CalculationSnapshot& snapshot,
+                                                                        const AnalysisParameters& params,
+                                                                        const LoadPatternSpec& pattern);
+    /// Charges eleLoad de tous les motifs (calcul linéaire : superposition), par tag d'élément.
+    static std::map<int, std::vector<BeamElementLoad>> beamElementLoads(const CalculationSnapshot& snapshot,
+                                                                        const AnalysisParameters& params);
+
     static std::string buildScript(const CalculationSnapshot& snapshot,
                                    const AnalysisParameters& params);
     static std::string buildScript(const CalculationSnapshot& snapshot,

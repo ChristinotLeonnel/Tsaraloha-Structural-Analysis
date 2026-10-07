@@ -15,7 +15,6 @@ class QGroupBox;
 class QLabel;
 class QListWidget;
 class QPushButton;
-class QSpinBox;
 class QVBoxLayout;
 
 namespace TSA::Model
@@ -96,7 +95,6 @@ private:
     QComboBox* m_levelCombo = nullptr;
     QComboBox* m_loadCombo = nullptr;
     QCheckBox* m_selfWeight = nullptr;
-    QSpinBox* m_modeCount = nullptr;
     QGroupBox* m_optionsGroup = nullptr;
     QVBoxLayout* m_optionsLayout = nullptr;
     QLabel* m_noOptionsLabel = nullptr;

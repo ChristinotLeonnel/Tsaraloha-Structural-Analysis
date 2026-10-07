@@ -65,7 +65,6 @@ ResultsVisualManager::ResultsVisualManager(OccView* occView, QObject* parent)
     : QObject(parent)
     , m_occView(occView)
 {
-    connect(&m_modalAnimationTimer, &QTimer::timeout, this, &ResultsVisualManager::onModalTimerTick);
 }
 
 ResultsVisualManager::~ResultsVisualManager()
@@ -319,36 +318,6 @@ void ResultsVisualManager::setReactionsVisible(bool visible)
     emit visualStateChanged();
 }
 
-void ResultsVisualManager::startModalAnimation(int modeIndex, double speed)
-{
-    m_activeModalModeIndex = modeIndex;
-    m_modalSpeed = speed > 0.0 ? speed : 1.0;
-    m_modalPhase = 0.0;
-    m_modalAnimationTimer.start(30); // ~33 FPS
-    updateDeformedShapes();
-    redrawView();
-}
-
-void ResultsVisualManager::stopModalAnimation()
-{
-    m_modalAnimationTimer.stop();
-    m_modalPhase = 0.0;
-    updateDeformedShapes();
-    redrawView();
-}
-
-void ResultsVisualManager::onModalTimerTick()
-{
-    m_modalPhase += 0.12 * m_modalSpeed;
-    if (m_modalPhase > 2.0 * M_PI)
-    {
-        m_modalPhase -= 2.0 * M_PI;
-    }
-    emit modalPhaseChanged(m_modalPhase);
-    updateDeformedShapes();
-    redrawView();
-}
-
 void ResultsVisualManager::clearLegend()
 {
     auto ctx = context();
@@ -436,24 +405,6 @@ void ResultsVisualManager::updateDeformedShapes()
         return;
     }
 
-    bool isModal = isModalAnimationRunning() && !m_results->modalModes().empty();
-    const TSA::Analysis::ModalMode* activeMode = nullptr;
-    if (isModal)
-    {
-        for (const auto& m : m_results->modalModes())
-        {
-            if (m.modeNumber == m_activeModalModeIndex)
-            {
-                activeMode = &m;
-                break;
-            }
-        }
-        if (!activeMode && !m_results->modalModes().empty())
-        {
-            activeMode = &m_results->modalModes().front();
-        }
-    }
-
     // 1. Poutres et barres
     for (const auto& [beamId, beam] : m_model->beams())
     {
@@ -466,28 +417,14 @@ void ResultsVisualManager::updateDeformedShapes()
 
         TopoDS_Shape shape;
 
-        if (activeMode)
-        {
-            auto it1 = activeMode->shape.find(beam.startNodeId());
-            auto it2 = activeMode->shape.find(beam.endNodeId());
-            TSA::Analysis::NodeDisplacement phi1 = (it1 != activeMode->shape.end()) ? it1->second : TSA::Analysis::NodeDisplacement{};
-            TSA::Analysis::NodeDisplacement phi2 = (it2 != activeMode->shape.end()) ? it2->second : TSA::Analysis::NodeDisplacement{};
+        const auto* d1 = m_results->getNodeDisplacement(beam.startNodeId());
+        const auto* d2 = m_results->getNodeDisplacement(beam.endNodeId());
+        TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
+        TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
 
-            shape = TSA::Geometry::DeformedGeometry::createModalDeformedBeamShape(
-                p1, p2, phi1, phi2, beam.section(), m_deformationScale, m_modalPhase, beam.rotation()
-            );
-        }
-        else
-        {
-            const auto* d1 = m_results->getNodeDisplacement(beam.startNodeId());
-            const auto* d2 = m_results->getNodeDisplacement(beam.endNodeId());
-            TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
-            TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
-
-            shape = TSA::Geometry::DeformedGeometry::createDeformedBeamShape(
-                p1, p2, disp1, disp2, beam.section(), m_deformationScale, beam.rotation()
-            );
-        }
+        shape = TSA::Geometry::DeformedGeometry::createDeformedBeamShape(
+            p1, p2, disp1, disp2, beam.section(), m_deformationScale, beam.rotation()
+        );
 
         if (!shape.IsNull())
         {
@@ -514,28 +451,14 @@ void ResultsVisualManager::updateDeformedShapes()
 
         TopoDS_Shape shape;
 
-        if (activeMode)
-        {
-            auto it1 = activeMode->shape.find(col.startNodeId());
-            auto it2 = activeMode->shape.find(col.endNodeId());
-            TSA::Analysis::NodeDisplacement phi1 = (it1 != activeMode->shape.end()) ? it1->second : TSA::Analysis::NodeDisplacement{};
-            TSA::Analysis::NodeDisplacement phi2 = (it2 != activeMode->shape.end()) ? it2->second : TSA::Analysis::NodeDisplacement{};
+        const auto* d1 = m_results->getNodeDisplacement(col.startNodeId());
+        const auto* d2 = m_results->getNodeDisplacement(col.endNodeId());
+        TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
+        TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
 
-            shape = TSA::Geometry::DeformedGeometry::createModalDeformedBeamShape(
-                p1, p2, phi1, phi2, col.section(), m_deformationScale, m_modalPhase, col.rotation()
-            );
-        }
-        else
-        {
-            const auto* d1 = m_results->getNodeDisplacement(col.startNodeId());
-            const auto* d2 = m_results->getNodeDisplacement(col.endNodeId());
-            TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
-            TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
-
-            shape = TSA::Geometry::DeformedGeometry::createDeformedBeamShape(
-                p1, p2, disp1, disp2, col.section(), m_deformationScale, col.rotation()
-            );
-        }
+        shape = TSA::Geometry::DeformedGeometry::createDeformedBeamShape(
+            p1, p2, disp1, disp2, col.section(), m_deformationScale, col.rotation()
+        );
 
         if (!shape.IsNull())
         {

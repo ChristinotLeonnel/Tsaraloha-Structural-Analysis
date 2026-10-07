@@ -26,6 +26,12 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QSignalBlocker>
+#include <QProgressDialog>
+#include <QEventLoop>
+#include <QThread>
+#include <QJsonDocument>
+#include <QPointer>
+#include <algorithm>
 #include <cmath>
 #include <sstream>
 #include <set>
@@ -571,39 +577,6 @@ void MainWindow::onActionLoadCases()
     dlg.exec();
 }
 
-void MainWindow::onActionSeismic()
-{
-    bool ok = false;
-    double ag = QInputDialog::getDouble(this, tr("Paramètres Sismiques Eurocode 8"), tr("Accélération de référence ag (g) :"), 0.25, 0.01, 1.5, 2, &ok);
-    if (!ok) return;
-
-    QStringList soils = { tr("Sol A (Roche, S = 1.0)"), tr("Sol B (Sable/Gravier dense, S = 1.20)"), tr("Sol C (Argile compacte, S = 1.15)"), tr("Sol D (Sol meuble, S = 1.35)") };
-    QString soil = QInputDialog::getItem(this, tr("Classe de Sol"), tr("Type de sol :"), soils, 2, false, &ok);
-    if (!ok) return;
-
-    double q = QInputDialog::getDouble(this, tr("Coefficient de Comportement"), tr("Facteur de ductilité q :"), 3.5, 1.0, 6.0, 1, &ok);
-    if (!ok) return;
-
-    double s = 1.15;
-    if (soil.contains("Sol A")) s = 1.0;
-    else if (soil.contains("Sol B")) s = 1.20;
-    else if (soil.contains("Sol D")) s = 1.35;
-
-    double sd = (2.5 / q) * ag * s;
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("--- SPECTRE SISMIQUE EUROCODE 8 (EN 1998-1) ---"), "SYS");
-        m_consoleDock->appendLog(tr("Zone sismique : ag = %1 g | %2 | Facteur q = %3").arg(ag).arg(soil).arg(q), "INFO");
-        m_consoleDock->appendLog(tr("Accélération spectrale de calcul Sd(T1) = %1 g (%2 m/s²)")
-            .arg(sd, 0, 'f', 3).arg(sd * 9.81, 0, 'f', 2), "SUCCESS");
-    }
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Spectre sismique EC8 : ag=%1g, q=%2, Sd=%3g").arg(ag).arg(q).arg(sd, 0, 'f', 3));
-    }
-}
-
 void MainWindow::onActionMeshGen()
 {
     if (!m_model) return;
@@ -661,6 +634,7 @@ void MainWindow::onActionAnalysisConfig()
     if (dlg.exec() != QDialog::Accepted) return;
 
     m_analysisContext = dlg.context();
+    storeAnalysisContextInModel();
     if (m_consoleDock)
     {
         const auto* engine = m_engineRegistry->engine(m_analysisContext.engineId);
@@ -668,6 +642,34 @@ void MainWindow::onActionAnalysisConfig()
                                      .arg(engine ? QString::fromStdString(engine->info().name) : tr("inconnu")), "INFO");
     }
     if (dlg.runRequested()) runAnalysis(m_analysisContext);
+}
+
+void MainWindow::storeAnalysisContextInModel()
+{
+    if (!m_model) return;
+    const std::string json = QJsonDocument(m_analysisContext.toJson()).toJson(QJsonDocument::Compact).toStdString();
+    if (json == m_model->analysisSettingsJson()) return;
+    m_model->setAnalysisSettingsJson(json);
+    m_model->setModified(true);   // réglages enregistrés avec le projet
+    updateWindowTitle();
+}
+
+void MainWindow::restoreAnalysisContextFromModel()
+{
+    TSA::Analysis::AnalysisContext context;
+    bool ok = false;
+    if (m_model && !m_model->analysisSettingsJson().empty())
+    {
+        const QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(m_model->analysisSettingsJson()));
+        if (doc.isObject()) context = TSA::Analysis::AnalysisContext::fromJson(doc.object(), &ok);
+        if (!ok && m_consoleDock)
+            m_consoleDock->appendLog(tr("Paramètres d'analyse du projet illisibles : réglages par défaut."), "WARN");
+    }
+    if (!ok) context = TSA::Analysis::AnalysisContext();
+    // Moteur absent de cette installation : premier moteur disponible.
+    if (m_engineRegistry && !m_engineRegistry->engine(context.engineId) && !m_engineRegistry->ids().empty())
+        context.engineId = m_engineRegistry->ids().front();
+    m_analysisContext = context;
 }
 
 void MainWindow::onActionRunSolve()
@@ -760,15 +762,50 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
         if (reply != QMessageBox::Yes) return false;
     }
 
-    // 3. Calcul (synchrone sur le thread UI : BUG-001).
+    // 3. Calcul dans un thread de travail : l'interface reste réactive et le calcul est annulable.
+    //    Le moteur ne lit que le snapshot préparé ; journal et progression reviennent au thread UI.
+    QPointer<QProgressDialog> progress = new QProgressDialog(tr("Calcul %1 en cours…").arg(engineName), tr("Annuler"), 0, 100, this);
+    progress->setWindowTitle(tr("Calcul"));
+    progress->setWindowModality(Qt::WindowModal);
+    progress->setMinimumDuration(400);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
+    progress->setValue(0);
+
+    QPointer<MainWindow> self(this);
     AnalysisRunCallbacks callbacks;
-    callbacks.log = [this](const std::string& line) {
-        if (m_consoleDock) m_consoleDock->appendLog(QString::fromStdString(line), "INFO");
+    callbacks.log = [self](const std::string& line) {
+        QMetaObject::invokeMethod(qApp, [self, text = QString::fromStdString(line)] {
+            if (self && self->m_consoleDock) self->m_consoleDock->appendLog(text, "INFO");
+        }, Qt::QueuedConnection);
     };
-    callbacks.progress = [this](int pct, const std::string& status) {
-        if (m_statusInfo) m_statusInfo->setText(QStringLiteral("%1 % — %2").arg(pct).arg(QString::fromStdString(status)));
+    callbacks.progress = [self, progress](int pct, const std::string& status) {
+        QMetaObject::invokeMethod(qApp, [self, progress, pct, text = QString::fromStdString(status)] {
+            if (progress)
+            {
+                progress->setValue(std::clamp(pct, 0, 99));
+                progress->setLabelText(text);
+            }
+            if (self && self->m_statusInfo) self->m_statusInfo->setText(QStringLiteral("%1 % — %2").arg(pct).arg(text));
+        }, Qt::QueuedConnection);
     };
-    AnalysisRunResult result = m_analysisManager->run(context, prepared, callbacks);
+
+    AnalysisRunResult result;
+    m_analysisRunning = true;
+    QEventLoop loop;
+    QThread* worker = QThread::create([&] { result = m_analysisManager->run(context, prepared, callbacks); });
+    connect(worker, &QThread::finished, &loop, &QEventLoop::quit);
+    connect(progress, &QProgressDialog::canceled, this, [this, progress, id = context.engineId] {
+        m_analysisManager->cancel(id);
+        if (progress) progress->setLabelText(tr("Annulation du calcul…"));
+    });
+    worker->start();
+    loop.exec();
+    worker->wait();
+    delete worker;
+    m_analysisRunning = false;
+    if (progress) progress->deleteLater();
+
     if (!result.success)
     {
         if (m_consoleDock)
@@ -790,27 +827,17 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
                           .arg(engineName)
                           .arg(meta.solverVersion.empty() ? QString() : " " + QString::fromStdString(meta.solverVersion))
                           .arg(QString::fromStdString(prepared.model.scopeLabel));
-    if (context.type == AnalysisType::Modal)
-    {
-        for (const auto& m : m_resultsModel->modalModes())
-            summary += tr("\nMode %1 : f = %2 Hz | T = %3 s").arg(m.modeNumber).arg(m.frequency, 0, 'f', 3).arg(m.period, 0, 'f', 3);
-        if (m_occView && m_occView->resultsVisual() && !m_resultsModel->modalModes().empty())
-            m_occView->resultsVisual()->startModalAnimation(1, 1.0);
-    }
-    else
-    {
-        const auto ext = m_resultsModel->summary();
-        const auto eq = m_resultsModel->equilibrium();
-        summary += tr("\n• Déplacement max : %1 mm (nœud N%2)\n• Moment max : %3 kNm (barre #%4)\n"
-                      "• Traction max : %5 kN\n• Réaction verticale totale : %6 kN")
-                       .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3).arg(ext.maxDisplacementNodeId)
-                       .arg(ext.maxBendingMoment, 0, 'f', 2).arg(ext.maxBendingMomentElementId)
-                       .arg(ext.maxTension, 0, 'f', 2).arg(eq.reactionFz, 0, 'f', 2);
-        if (m_statusInfo)
-            m_statusInfo->setText(tr("%1 OK : δ_max = %2 mm, M_max = %3 kNm")
-                                      .arg(engineName).arg(ext.maxDisplacement * 1000.0, 0, 'f', 2)
-                                      .arg(ext.maxBendingMoment, 0, 'f', 1));
-    }
+    const auto ext = m_resultsModel->summary();
+    const auto eq = m_resultsModel->equilibrium();
+    summary += tr("\n• Déplacement max : %1 mm (nœud N%2)\n• Moment max : %3 kNm (barre #%4)\n"
+                  "• Traction max : %5 kN\n• Réaction verticale totale : %6 kN")
+                   .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3).arg(ext.maxDisplacementNodeId)
+                   .arg(ext.maxBendingMoment, 0, 'f', 2).arg(ext.maxBendingMomentElementId)
+                   .arg(ext.maxTension, 0, 'f', 2).arg(eq.reactionFz, 0, 'f', 2);
+    if (m_statusInfo)
+        m_statusInfo->setText(tr("%1 OK : δ_max = %2 mm, M_max = %3 kNm")
+                                  .arg(engineName).arg(ext.maxDisplacement * 1000.0, 0, 'f', 2)
+                                  .arg(ext.maxBendingMoment, 0, 'f', 1));
     if (m_consoleDock) m_consoleDock->appendLog(summary, "SUCCESS");
     QMessageBox::information(this, tr("Calcul terminé"), summary);
     return true;
@@ -831,146 +858,6 @@ void MainWindow::publishResults(const std::shared_ptr<TSA::Analysis::ResultsMode
         if (m_occView && m_occView->resultsVisual()) m_resultsDock->syncFromVisualManager(m_occView->resultsVisual());
         m_resultsDock->show();
         m_resultsDock->raise();
-    }
-}
-
-void MainWindow::onActionModal()
-{
-    if (!m_model || m_model->nodes().empty() || (m_model->beams().empty() && m_model->columns().empty()))
-    {
-        QMessageBox::warning(this, tr("Analyse Modale"), tr("Impossible de lancer le calcul : le modèle ne contient aucun élément."));
-        return;
-    }
-
-    auto& opsMgr = TSA::Analysis::OpenSeesManager::instance();
-    if (!opsMgr.isAvailable())
-    {
-        QMessageBox::warning(this, tr("OpenSees Requis"), tr("OpenSees n'est pas détecté. Veuillez le configurer ou le télécharger."));
-        return;
-    }
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("--- ANALYSE MODALE DYNAMIQUE OPENSEES ([K - ω²M]{Φ} = 0) ---"), "SYS");
-    }
-    if (!confirmPlanarElementsExcluded(this, *m_model))
-        return;
-
-    TSA::Analysis::AnalysisParameters params;
-    params.type = TSA::Analysis::AnalysisType::Modal;
-    params.numEigenmodes = 6;
-
-    if (!m_openSeesSolver)
-    {
-        m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
-    }
-
-    QString solveErr;
-    bool ok = m_openSeesSolver->solveSynchronous(*m_model, params, &solveErr);
-
-    if (!ok)
-    {
-        if (m_consoleDock)
-        {
-            m_consoleDock->appendLog(tr("Échec de l'analyse modale : %1").arg(solveErr), "ERROR");
-        }
-        QMessageBox::critical(this, tr("Erreur Analyse Modale"), tr("L'analyse modale a échoué :\n%1").arg(solveErr));
-        return;
-    }
-
-    m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
-    if (m_resultsGuard) m_resultsGuard->trackResults(m_resultsModel);
-
-    if (m_occView)
-    {
-        m_occView->setResultsModel(m_resultsModel);
-        if (m_occView->resultsVisual())
-        {
-            m_occView->resultsVisual()->startModalAnimation(1, 1.0);
-        }
-    }
-    if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
-    if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
-    if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
-    if (m_analysisDataDock) m_analysisDataDock->setResultsModel(m_resultsModel);
-
-    QString msgSummary = tr("Analyse Modale OpenSees Terminée :\n\n");
-    for (const auto& m : m_resultsModel->modalModes())
-    {
-        QString line = tr("Mode %1 : f = %2 Hz | T = %3 s | omega = %4 rad/s")
-                       .arg(m.modeNumber)
-                       .arg(m.frequency, 0, 'f', 3)
-                       .arg(m.period, 0, 'f', 3)
-                       .arg(m.omega, 0, 'f', 2);
-        if (m_consoleDock) m_consoleDock->appendLog(line, "INFO");
-        msgSummary += line + "\n";
-    }
-
-    if (m_statusInfo && !m_resultsModel->modalModes().empty())
-    {
-        const auto& m1 = m_resultsModel->modalModes().front();
-        m_statusInfo->setText(tr("Modal OK : Mode 1: T = %1 s (f = %2 Hz)").arg(m1.period, 0, 'f', 3).arg(m1.frequency, 0, 'f', 2));
-    }
-
-    QMessageBox::information(this, tr("Analyse Modale OpenSees"), msgSummary);
-}
-
-void MainWindow::onActionPushover()
-{
-    if (!m_model || m_model->nodes().empty())
-    {
-        QMessageBox::warning(this, tr("Pushover"), tr("Le modèle ne contient aucun élément."));
-        return;
-    }
-    if (!confirmPlanarElementsExcluded(this, *m_model))
-        return;
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("--- ANALYSE NON-LINÉAIRE STATIQUE (PUSHOVER) OPENSEES ---"), "SYS");
-    }
-
-    TSA::Analysis::AnalysisParameters params;
-    params.type = TSA::Analysis::AnalysisType::Pushover;
-    params.numSteps = 30;
-    params.tolerance = 1e-4;
-
-    if (!m_openSeesSolver)
-    {
-        m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
-    }
-
-    QString solveErr;
-    bool ok = m_openSeesSolver->solveSynchronous(*m_model, params, &solveErr);
-
-    if (!ok)
-    {
-        if (m_consoleDock) m_consoleDock->appendLog(tr("Échec du calcul Pushover : %1").arg(solveErr), "ERROR");
-        QMessageBox::critical(this, tr("Erreur Pushover"), tr("L'analyse Pushover a échoué :\n%1").arg(solveErr));
-        return;
-    }
-
-    m_resultsModel = std::make_shared<TSA::Analysis::ResultsModel>(m_openSeesSolver->results());
-    if (m_resultsGuard) m_resultsGuard->trackResults(m_resultsModel);
-
-    if (m_occView) m_occView->setResultsModel(m_resultsModel);
-    if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);
-    if (m_analysisDataDock) m_analysisDataDock->setResultsModel(m_resultsModel);
-    if (m_diagramWidget)
-    {
-        m_diagramWidget->setModel(m_model.get());
-        m_diagramWidget->setResultsModel(m_resultsModel);
-        m_diagramWidget->setViewMode(TSA::UI::Diagram2DWidget::ViewMode::PushoverCapacity);
-    }
-    if (m_diagramDock)
-    {
-        m_diagramDock->show();
-        m_diagramDock->raise();
-    }
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Calcul Pushover terminé avec succès. Courbe de capacité affichée dans le panneau 2D."), "SUCCESS");
     }
 }
 

@@ -71,7 +71,6 @@ struct AnalysisScope
 struct CommonAnalysisSettings
 {
     bool includeSelfWeight = true;
-    int modeCount = 6;              ///< analyse modale : nombre de modes demandés
 };
 
 struct AnalysisContext

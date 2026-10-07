@@ -15,8 +15,8 @@ DeformedGeometry, DiagramGeometry, SupportGeometry) + `CABLE_GEOMETRY_SOURCES` (
 Viewer : `VIEWER_CORE_SOURCES` (MaterialVisual, TextureManager, ProjectionManager, ViewManager).
 Exe uniquement : UI ; `VIEWER_MAIN_SOURCES` (OccView*, **SelectionManager**, ResultsVisualManager) ;
 `GEOMETRY_MAIN_SOURCES` (SlabGeometry, WallGeometry, FoundationGeometry). Vérifier `CMakeLists.txt`
-avant de référencer une classe depuis les tests (TSA_Tests ne lie que TSA_Core). `src/View3D/Isolation/*` et `tests/isolation/*` ne sont
-**pas compilés** (code mort).
+avant de référencer une classe depuis les tests (TSA_Tests ne lie que TSA_Core). `ModelTreeWidget` est dans TSA_Core (testé, 2026-10-07).
+Isolation 3D : `OccView::isolateElements / hideElements…` dans la passe `updateElementIsolation` (module View3D supprimé).
 
 ## 2. Cartographie des sous-systèmes
 

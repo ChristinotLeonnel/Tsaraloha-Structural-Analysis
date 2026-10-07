@@ -89,8 +89,8 @@ sections/matériaux, coques (`planarElementPolicy` : `Reject` → erreur explici
 Réutilise sans modification le chemin existant via `OpenSeesSolver::solveSnapshot` (même workflow que
 `solveSynchronous`, sur le snapshot de la portée). `parametersFromContext` traduit contexte + bloc JSON
 d'options en `AnalysisParameters`. Version lue sur l'exécutable (jamais inventée). Capacités : 3D,
-barres/treillis/câbles/ressorts, statique, non linéaire, modal, matrices en mode ADVANCED. Pushover et
-temporel non déclarés (le générateur produit un statique linéaire : BUG-024).
+barres/treillis/câbles/ressorts, statique linéaire et non linéaire, matrices en mode ADVANCED. Le
+modal, le pushover et le temporel ont été retirés (ADR-022, branche `archive/dynamique`).
 
 ### Custom2D (`custom2d`)
 Emplacement d'intégration du solveur 2D personnalisé. Contrat dans `Custom2DSolver.h` (`Custom2D::ISolver`,

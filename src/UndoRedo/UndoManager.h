@@ -62,6 +62,9 @@ public:
     void beginTransaction(TSA::Model::Model& model, const std::string& actionName);
     void commitTransaction(TSA::Model::Model& model);
     void rollbackTransaction(TSA::Model::Model& model);
+    /// Clôt la transaction SANS entrée ni restauration : réservé au cas où l'appelant a vérifié
+    /// que rien n'a changé (un rollback notifierait un différentiel vide et invaliderait les résultats).
+    void discardUnchangedTransaction() noexcept;
     bool inTransaction() const noexcept { return m_transactionDepth > 0; }
 
     // --- Historique structuré ------------------------------------------------

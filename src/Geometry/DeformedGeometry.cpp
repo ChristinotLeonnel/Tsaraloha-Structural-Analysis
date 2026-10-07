@@ -234,42 +234,4 @@ TopoDS_Shape DeformedGeometry::createDeformedBeamShape(
     return BeamGeometry::createBeamShape(nA, nB, section, rotationDeg);
 }
 
-TopoDS_Shape DeformedGeometry::createModalDeformedBeamShape(
-    const gp_Pnt& p1,
-    const gp_Pnt& p2,
-    const TSA::Analysis::NodeDisplacement& phi1,
-    const TSA::Analysis::NodeDisplacement& phi2,
-    const TSA::Model::Section& section,
-    double modalScale,
-    double phaseRad,
-    double rotationDeg)
-{
-    if (std::isnan(modalScale) || std::isinf(modalScale)) modalScale = 0.0;
-    if (std::isnan(phaseRad) || std::isinf(phaseRad)) phaseRad = 0.0;
-
-    double c = std::cos(phaseRad);
-
-    auto cleanVal = [](double v) {
-        return (std::isnan(v) || std::isinf(v)) ? 0.0 : v;
-    };
-
-    TSA::Analysis::NodeDisplacement d1;
-    d1.ux = cleanVal(phi1.ux) * c;
-    d1.uy = cleanVal(phi1.uy) * c;
-    d1.uz = cleanVal(phi1.uz) * c;
-    d1.rx = cleanVal(phi1.rx) * c;
-    d1.ry = cleanVal(phi1.ry) * c;
-    d1.rz = cleanVal(phi1.rz) * c;
-
-    TSA::Analysis::NodeDisplacement d2;
-    d2.ux = cleanVal(phi2.ux) * c;
-    d2.uy = cleanVal(phi2.uy) * c;
-    d2.uz = cleanVal(phi2.uz) * c;
-    d2.rx = cleanVal(phi2.rx) * c;
-    d2.ry = cleanVal(phi2.ry) * c;
-    d2.rz = cleanVal(phi2.rz) * c;
-
-    return createDeformedBeamShape(p1, p2, d1, d2, section, modalScale, rotationDeg);
-}
-
 } // namespace TSA::Geometry

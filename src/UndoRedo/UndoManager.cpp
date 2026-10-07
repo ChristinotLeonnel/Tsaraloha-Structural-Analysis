@@ -37,7 +37,8 @@ size_t UndoManager::estimateSnapshotBytes(const TSA::Model::Model::ModelStateSna
            snap.walls.size() * (sizeof(TSA::Model::Wall) + mapNode) +
            snap.foundations.size() * (sizeof(TSA::Model::Foundation) + mapNode) +
            snap.trussMembers.size() * (sizeof(TSA::Model::TrussMember) + mapNode) +
-           snap.cables.size() * (sizeof(TSA::Model::Cable) + mapNode);
+           snap.cables.size() * (sizeof(TSA::Model::Cable) + mapNode) +
+           snap.coordinatesJson.size() + snap.gridsJson.size();
 }
 
 size_t UndoManager::approxMemoryBytes() const noexcept
@@ -192,6 +193,15 @@ void UndoManager::rollbackTransaction(TSA::Model::Model& model)
     m_transactionDepth = 0;
     const auto current = model.createSnapshot(m_transaction.snapshot.actionName);
     restore(model, current, m_transaction.snapshot);
+    m_transaction = HistoryEntry{};
+}
+
+void UndoManager::discardUnchangedTransaction() noexcept
+{
+    if (m_transactionDepth == 0)
+        return;
+    if (--m_transactionDepth > 0)
+        return;
     m_transaction = HistoryEntry{};
 }
 

@@ -300,9 +300,15 @@ void NDCViewerWidget::onAnchorClicked(const QUrl& url)
             QUrlQuery q(url);
             bool ok = false;
             int elemId = q.queryItemValue("id").toInt(&ok);
+            const QString kind = q.queryItemValue("kind");
+            using TSA::Analysis::StructuralElementKind;
+            const StructuralElementKind k = kind == QLatin1String("column") ? StructuralElementKind::Column
+                                          : kind == QLatin1String("truss")  ? StructuralElementKind::Truss
+                                          : kind == QLatin1String("cable")  ? StructuralElementKind::Cable
+                                                                            : StructuralElementKind::Beam;
             if (ok && elemId > 0)
             {
-                emit elementSelected(elemId);
+                emit elementSelected(k, elemId);
             }
         }
     }

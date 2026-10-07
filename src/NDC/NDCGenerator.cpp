@@ -30,6 +30,21 @@ namespace TSA::NDC
 
 namespace
 {
+/// Famille d'élément des liens tsa://element (les identifiants ne sont uniques que par famille).
+QString elementKindKey(TSA::Analysis::StructuralElementKind kind)
+{
+    switch (kind)
+    {
+    case TSA::Analysis::StructuralElementKind::Column: return QStringLiteral("column");
+    case TSA::Analysis::StructuralElementKind::Truss: return QStringLiteral("truss");
+    case TSA::Analysis::StructuralElementKind::Cable: return QStringLiteral("cable");
+    default: return QStringLiteral("beam");
+    }
+}
+} // namespace
+
+namespace
+{
 static QString sectionShapeToQString(TSA::Model::SectionShape shape)
 {
     switch (shape)
@@ -194,7 +209,7 @@ NDCDocument NDCGenerator::generate(
         sStd.paragraphs.push_back(QStringLiteral("Les normes européennes (Eurocodes) applicables à la présente structure ont été détectées "
                                                  "automatiquement selon la nature des éléments, des matériaux et des actions définies :"));
 
-        auto detectedStandards = NormativeReferenceDetector::detectApplicableStandards(model, results);
+        auto detectedStandards = NormativeReferenceDetector::detectApplicableStandards(model);
         NDCTable tStd;
         tStd.number = tableNum++;
         tStd.caption = QStringLiteral("Normes européennes applicables au projet");
@@ -615,7 +630,7 @@ NDCDocument NDCGenerator::generate(
                 bool ok = (fAbsMm <= limitMm);
 
                 tDefl.rows.push_back({
-                    QString("<a href=\"tsa://element?id=%1\">Poutre #%1</a>").arg(bId),
+                    QString("<a href=\"tsa://element?kind=beam&id=%1\">Poutre #%1</a>").arg(bId),
                     QString::number(L, 'f', 2),
                     QString::number(fAbsMm, 'f', 2),
                     QString::number(xpos, 'f', 2),
@@ -665,7 +680,7 @@ NDCDocument NDCGenerator::generate(
                 }
 
                 tForces.rows.push_back({
-                    QString("<a href=\"tsa://element?id=%1\">%2 #%1</a>").arg(elId).arg(typeName),
+                    QString("<a href=\"tsa://element?kind=%3&id=%1\">%2 #%1</a>").arg(elId).arg(typeName).arg(elementKindKey(kind)),
                     typeName,
                     QString::number(r->minNormalForce(), 'f', 2),
                     QString::number(r->maxNormalForce(), 'f', 2),
@@ -721,7 +736,7 @@ NDCDocument NDCGenerator::generate(
         auto addCritRow = [&](const ExtremumPoint& pt) {
             if (pt.elementId <= 0 && pt.nodeId <= 0) return;
             QString elLink = (pt.elementId > 0)
-                ? QString("<a href=\"tsa://element?id=%1\">%2 #%1</a>").arg(pt.elementId).arg(pt.elementType)
+                ? QString("<a href=\"tsa://element?kind=%3&id=%1\">%2 #%1</a>").arg(pt.elementId).arg(pt.elementType).arg(elementKindKey(pt.elementKind))
                 : QString("Nœud #%1").arg(pt.nodeId);
             QString coordsStr = QString("(%1, %2, %3)").arg(pt.globalCoords.X(), 0, 'f', 2).arg(pt.globalCoords.Y(), 0, 'f', 2).arg(pt.globalCoords.Z(), 0, 'f', 2);
             tCrit.rows.push_back({
@@ -794,7 +809,7 @@ NDCDocument NDCGenerator::generate(
                 bool ok = (maxRatio <= 100.0 && check.valid);
 
                 tEC2.rows.push_back({
-                    QString("<a href=\"tsa://element?id=%1\">Poutre #%1</a>").arg(bId),
+                    QString("<a href=\"tsa://element?kind=beam&id=%1\">Poutre #%1</a>").arg(bId),
                     QString::fromStdString(b.section().name),
                     QString::number(Med, 'f', 1),
                     QString::number(check.As_provided * 1e4, 'f', 2),
@@ -845,7 +860,7 @@ NDCDocument NDCGenerator::generate(
                 bool ok = (eta <= 100.0 && chk.pass);
 
                 tEC3.rows.push_back({
-                    QString("<a href=\"tsa://element?id=%1\">Poteau #%1</a>").arg(colId),
+                    QString("<a href=\"tsa://element?kind=column&id=%1\">Poteau #%1</a>").arg(colId),
                     QStringLiteral("Poteau"),
                     QString::fromStdString(col.section().name),
                     QString::number(Ned / 1000.0, 'f', 1),
@@ -859,41 +874,6 @@ NDCDocument NDCGenerator::generate(
             sEC3.tables.push_back(tEC3);
             ch.sections.push_back(sEC3);
         }
-
-        doc.addChapter(ch);
-    }
-
-    // =========================================================================
-    // CHAPITRE : ANALYSE DYNAMIQUE MODALE (SI APPLICABLE)
-    // =========================================================================
-    if (config.includeModalAnalysis && results && !results->modalModes().empty())
-    {
-        NDCChapter ch;
-        ch.number = chapNum++;
-        ch.title = QStringLiteral("Analyse Dynamique Modale & Fréquences Propres");
-
-        NDCSection sModal;
-        sModal.title = QStringLiteral("Fréquences et Périodes Propres de la Structure");
-        sModal.paragraphs.push_back(QStringLiteral("Résultats du calcul aux valeurs propres (Eigen Analysis) exécuté par OpenSees :"));
-
-        NDCTable tModal;
-        tModal.number = tableNum++;
-        tModal.caption = QStringLiteral("Modes propres de vibration et périodes structurales");
-        tModal.headers = {QStringLiteral("Mode #"), QStringLiteral("Valeur Propre λ (rad²/s²)"), QStringLiteral("Pulsation ω (rad/s)"), QStringLiteral("Fréquence f (Hz)"), QStringLiteral("Période T (s)")};
-        tModal.columnAlignments = {QStringLiteral("center"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right")};
-
-        for (const auto& m : results->modalModes())
-        {
-            tModal.rows.push_back({
-                QString::number(m.modeNumber),
-                QString::number(m.eigenvalue, 'f', 2),
-                QString::number(m.omega, 'f', 2),
-                QString::number(m.frequency, 'f', 3),
-                QString::number(m.period, 'f', 3)
-            });
-        }
-        sModal.tables.push_back(tModal);
-        ch.sections.push_back(sModal);
 
         doc.addChapter(ch);
     }
@@ -930,7 +910,7 @@ NDCDocument NDCGenerator::generate(
         sBib.paragraphs.push_back(QStringLiteral("Liste officielle et certifiée (ISO 690 / IEEE Std 1063) des textes réglementaires, ouvrages de référence "
                                                  "et documentations scientifiques d'éléments finis appliqués à la présente note :"));
 
-        auto bibEntries = NormativeReferenceDetector::generateBibliography(model, results);
+        auto bibEntries = NormativeReferenceDetector::generateBibliography(model);
         NDCTable tBib;
         tBib.number = tableNum++;
         tBib.caption = QStringLiteral("Références bibliographiques et liens officiels vérifiés");

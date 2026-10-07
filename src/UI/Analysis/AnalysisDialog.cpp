@@ -15,7 +15,6 @@
 #include <QListWidget>
 #include <QPushButton>
 #include <QScrollArea>
-#include <QSpinBox>
 #include <QVBoxLayout>
 
 namespace TSA::UI
@@ -33,9 +32,6 @@ QString typeLabel(AnalysisType t)
     {
     case AnalysisType::LinearStatic: return QObject::tr("Statique linéaire");
     case AnalysisType::NonLinearStatic: return QObject::tr("Statique non linéaire");
-    case AnalysisType::Modal: return QObject::tr("Modale (vibrations propres)");
-    case AnalysisType::DynamicTimeHistory: return QObject::tr("Dynamique temporelle");
-    case AnalysisType::Pushover: return QObject::tr("Pushover");
     }
     return {};
 }
@@ -53,7 +49,7 @@ QString capabilityText(const AnalysisCapabilities& c)
         row(QObject::tr("Poutres/poteaux"), c.supportsFrame), row(QObject::tr("Treillis"), c.supportsTruss),
         row(QObject::tr("Câbles"), c.supportsCable), row(QObject::tr("Coques (dalles/voiles)"), c.supportsShell),
         row(QObject::tr("Ressorts"), c.supportsSprings), row(QObject::tr("Statique"), c.supportsStatic),
-        row(QObject::tr("Non linéaire"), c.supportsNonlinear), row(QObject::tr("Modale"), c.supportsModal),
+        row(QObject::tr("Non linéaire"), c.supportsNonlinear),
         row(QObject::tr("Déplacements"), c.providesDisplacements), row(QObject::tr("Réactions"), c.providesReactions),
         row(QObject::tr("Efforts"), c.providesElementForces), row(QObject::tr("K globale"), c.providesGlobalStiffness),
     };
@@ -133,9 +129,6 @@ void AnalysisDialog::buildUi()
     fc->addRow(tr("Chargement :"), m_loadCombo);
     m_selfWeight = new QCheckBox(tr("Inclure le poids propre"), groupCommon);
     fc->addRow(QString(), m_selfWeight);
-    m_modeCount = new QSpinBox(groupCommon);
-    m_modeCount->setRange(1, 50);
-    fc->addRow(tr("Modes propres :"), m_modeCount);
     lay->addWidget(groupCommon);
 
     m_optionsGroup = new QGroupBox(content);
@@ -176,7 +169,6 @@ void AnalysisDialog::buildUi()
     connect(m_engineCombo, &QComboBox::currentIndexChanged, this, [this]() { if (!m_updating) onEngineChanged(); });
     connect(m_typeCombo, &QComboBox::currentIndexChanged, this, [this]() {
         if (m_updating) return;
-        m_modeCount->setEnabled(m_typeCombo->currentData().toInt() == static_cast<int>(AnalysisType::Modal));
         syncCommonToOptions();
     });
     connect(m_scopeCombo, &QComboBox::currentIndexChanged, this, [this]() {
@@ -296,7 +288,6 @@ void AnalysisDialog::setContext(const AnalysisContext& context)
     }
     m_loadCombo->setCurrentIndex(lo);
     m_selfWeight->setChecked(m_context.common.includeSelfWeight);
-    m_modeCount->setValue(m_context.common.modeCount);
     m_updating = false;
 
     m_shownEngine.clear();   // force la reconstruction du panneau d'options
@@ -360,12 +351,10 @@ void AnalysisDialog::refreshEngineDependentWidgets()
 
     const int wantedType = static_cast<int>(m_context.type);
     m_typeCombo->clear();
-    for (auto t : { AnalysisType::LinearStatic, AnalysisType::NonLinearStatic, AnalysisType::Modal,
-                    AnalysisType::DynamicTimeHistory, AnalysisType::Pushover })
+    for (auto t : { AnalysisType::LinearStatic, AnalysisType::NonLinearStatic })
         if (caps.supportsAnalysisType(t)) m_typeCombo->addItem(typeLabel(t), static_cast<int>(t));
     const int ti = m_typeCombo->findData(wantedType);
     m_typeCombo->setCurrentIndex(ti >= 0 ? ti : 0);
-    m_modeCount->setEnabled(m_typeCombo->currentData().toInt() == static_cast<int>(AnalysisType::Modal));
     m_updating = false;
 
     // Pas de bouton inutilisable : calcul possible si le moteur est disponible ou installable.
@@ -402,7 +391,6 @@ AnalysisContext AnalysisDialog::context() const
         for (const auto& id : lk.mid(6).split(',', Qt::SkipEmptyParts)) c.loadCaseIds.push_back(id.toInt());
 
     c.common.includeSelfWeight = m_selfWeight->isChecked();
-    c.common.modeCount = m_modeCount->value();
     if (m_optionsWidget) c.engineSettings[c.engineId] = m_optionsWidget->saveSettings();
     return c;
 }

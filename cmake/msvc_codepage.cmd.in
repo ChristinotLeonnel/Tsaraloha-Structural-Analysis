@@ -1,0 +1,8 @@
+@echo off
+rem Lanceur de compilation MSVC (Ninja), genere par CMake (cmake/msvc_codepage.cmd.in).
+rem Le prefixe /showIncludes localise ("Remarque : inclusion du fichier :") contient une espace
+rem insecable. CMake l ecrit dans rules.ninja dans la page de code de la console qui a genere le
+rem build (@TSA_CONSOLE_CODEPAGE@) ; cl.exe doit l ecrire dans la meme, sinon Ninja n enregistre
+rem aucune dependance d en-tete (BUG-011).
+chcp @TSA_CONSOLE_CODEPAGE@ >nul 2>&1
+%*

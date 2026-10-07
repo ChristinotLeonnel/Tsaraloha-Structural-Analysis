@@ -5,6 +5,8 @@
 #include "Column.h"
 #include "Slab.h"
 #include <algorithm>
+#include <map>
+#include <set>
 #include <unordered_set>
 
 namespace TSA::Model
@@ -21,6 +23,7 @@ void StructuralClipboard::clear() noexcept
     m_columns.clear();
     m_slabs.clear();
     m_cables.clear();
+    m_bimProducts.clear();
 }
 
 void StructuralClipboard::copyFrom(const Model& model,
@@ -129,6 +132,7 @@ void StructuralClipboard::copyFrom(const Model& model,
         if (b)
         {
             ClipboardBeam cb;
+            cb.originalId = bId;
             cb.originalStartNodeId = b->startNodeId();
             cb.originalEndNodeId = b->endNodeId();
             cb.props = b->properties();
@@ -142,6 +146,7 @@ void StructuralClipboard::copyFrom(const Model& model,
         if (c)
         {
             ClipboardColumn cc;
+            cc.originalId = cId;
             cc.originalStartNodeId = c->startNodeId();
             cc.originalEndNodeId = c->endNodeId();
             cc.props = c->properties();
@@ -155,6 +160,7 @@ void StructuralClipboard::copyFrom(const Model& model,
         if (s)
         {
             ClipboardSlab cs;
+            cs.originalId = sId;
             cs.originalNodeIds = s->nodeIds();
             cs.thickness = s->thickness();
             cs.material = s->material();
@@ -168,6 +174,7 @@ void StructuralClipboard::copyFrom(const Model& model,
         if (c)
         {
             ClipboardCable ccab;
+            ccab.originalId = cabId;
             ccab.originalStartNodeId = c->startNodeId();
             ccab.originalEndNodeId = c->endNodeId();
             ccab.definition = c->definition();
@@ -185,6 +192,19 @@ void StructuralClipboard::copyFrom(const Model& model,
             m_cables.push_back(ccab);
         }
     }
+
+    // Produits physiques des éléments copiés (une seule fois par produit)
+    using TSA::BIM::AnalyticalRef;
+    const auto& bim = model.bim();
+    std::set<int> seenProducts;
+    auto captureProduct = [&](ElementKind kind, int id) {
+        if (const auto* p = bim.physicalOf(AnalyticalRef{ kind, id }); p && seenProducts.insert(p->id).second)
+            m_bimProducts.push_back(*p);
+    };
+    for (const auto& e : m_beams) captureProduct(ElementKind::Beam, e.originalId);
+    for (const auto& e : m_columns) captureProduct(ElementKind::Column, e.originalId);
+    for (const auto& e : m_slabs) captureProduct(ElementKind::Slab, e.originalId);
+    for (const auto& e : m_cables) captureProduct(ElementKind::Cable, e.originalId);
 }
 
 PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double targetY, double targetZ) const
@@ -194,6 +214,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         return result;
 
     std::unordered_map<int, int> nodeMap;
+    std::map<TSA::BIM::AnalyticalRef, TSA::BIM::AnalyticalRef> pasted;   // original → collé
 
     for (const auto& cn : m_nodes)
     {
@@ -214,6 +235,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             BarProperties p = cb.props;
             int bId = model.addBar(p, itS->second, itE->second);
             result.beamIds.push_back(bId);
+            pasted[{ ElementKind::Beam, cb.originalId }] = { ElementKind::Beam, bId };
         }
     }
 
@@ -226,6 +248,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             BarProperties p = cc.props;
             int cId = model.addColumn(itS->second, itE->second, p.section, p.material, p.rotation, p.name);
             result.columnIds.push_back(cId);
+            pasted[{ ElementKind::Column, cc.originalId }] = { ElementKind::Column, cId };
         }
     }
 
@@ -244,6 +267,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         if (sNodes.size() >= 3)
         {
             int sId = model.addSlab(sNodes, cs.thickness);
+            pasted[{ ElementKind::Slab, cs.originalId }] = { ElementKind::Slab, sId };
             auto* s = model.getSlab(sId);
             if (s)
             {
@@ -274,7 +298,22 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                 model.notifyCableModified(cId);  // vue créée à l'ajout avec la section par défaut
             }
             result.cableIds.push_back(cId);
+            pasted[{ ElementKind::Cable, ccab.originalId }] = { ElementKind::Cable, cId };
         }
+    }
+
+    // Métadonnées BIM : un produit par produit source, éléments dans l'ordre de l'axe (BUG-029)
+    if (!pasted.empty() && !m_bimProducts.empty())
+    {
+        std::vector<std::pair<TSA::BIM::PhysicalElement, std::vector<TSA::BIM::AnalyticalRef>>> groups;
+        for (const auto& product : m_bimProducts)
+        {
+            std::vector<TSA::BIM::AnalyticalRef> refs;
+            for (const auto& r : product.analytical)
+                if (auto it = pasted.find(r); it != pasted.end()) refs.push_back(it->second);
+            if (!refs.empty()) groups.emplace_back(product, std::move(refs));
+        }
+        model.bimForEdit().registerPasted(groups);
     }
 
     return result;

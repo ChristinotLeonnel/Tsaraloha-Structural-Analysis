@@ -39,9 +39,6 @@ AnalysisCapabilities OpenSeesEngine::capabilities() const
     c.planarElementPolicy = UnsupportedElementPolicy::ExcludeWithWarning;   // comportement historique (BUG-002)
     c.supportsStatic = true;
     c.supportsNonlinear = true;          // NonLinearStatic (algorithme / intégrateur configurables)
-    c.supportsModal = true;              // eigen -fullGenLapack
-    // Pushover et temporel : le générateur produit aujourd'hui un calcul statique linéaire pour
-    // ces types (BUG-017) → non déclarés.
     c.providesDisplacements = true;
     c.providesReactions = true;
     c.providesElementForces = true;
@@ -128,7 +125,6 @@ AnalysisParameters OpenSeesEngine::parametersFromContext(const AnalysisContext& 
     // Partie commune
     p.type = context.type;
     p.includeSelfWeight = context.common.includeSelfWeight;
-    p.numEigenmodes = context.common.modeCount;
     p.targetCombinationId = context.combinationId;
     p.targetLoadCaseId = (context.combinationId <= 0 && context.loadCaseIds.size() == 1) ? context.loadCaseIds.front() : 0;
     return p;
@@ -157,23 +153,29 @@ AnalysisRunResult OpenSeesEngine::run(const AnalysisContext& context, const Anal
                                       const AnalysisRunCallbacks& callbacks)
 {
     AnalysisRunResult r;
-    m_solver = std::make_unique<OpenSeesSolver>();
+    OpenSeesSolver* solver = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(m_solverMutex);
+        m_solver = std::make_unique<OpenSeesSolver>();
+        solver = m_solver.get();
+    }
     if (callbacks.progress)
-        QObject::connect(m_solver.get(), &OpenSeesSolver::progressChanged,
+        QObject::connect(solver, &OpenSeesSolver::progressChanged,
                          [cb = callbacks.progress](int pct, const QString& s) { cb(pct, s.toStdString()); });
     if (callbacks.log)
-        QObject::connect(m_solver.get(), &OpenSeesSolver::logReceived,
+        QObject::connect(solver, &OpenSeesSolver::logReceived,
                          [cb = callbacks.log](const QString& l) { cb(l.toStdString()); });
 
     QString err;
-    r.success = m_solver->solveSnapshot(model.snapshot, parametersFromContext(context), &err);
+    r.success = solver->solveSnapshot(model.snapshot, parametersFromContext(context), &err);
     r.message = r.success ? "Calcul OpenSees terminé." : err.toStdString();
-    r.results = m_solver->results();
+    r.results = solver->results();
     return r;
 }
 
 void OpenSeesEngine::cancel()
 {
+    std::lock_guard<std::mutex> lock(m_solverMutex);
     if (m_solver) m_solver->stop();
 }
 

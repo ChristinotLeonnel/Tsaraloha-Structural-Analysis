@@ -10,6 +10,7 @@
 #include "BIM/IFC/IfcStepWriter.h"
 #include "Coordinate/LevelManager.h"
 #include "IO/TSAFile.h"
+#include "Model/StructuralClipboard.h"
 
 #include <QJsonObject>
 
@@ -547,6 +548,44 @@ END-ISO-10303-21;
         TEST_CHECK(ps && ps->properties.count("FireRating") && ps->properties.at("FireRating").text == "R30" && p->name == "B-101",
                    "Test 180: Pset_BeamCommon saisi conservé (FireRating, Reference)");
         std::cout << "[PASS] Test 180: Import d'un fichier IfcOpenShell (" << r.summary() << ")" << std::endl;
+        ++passed;
+    }
+
+    // TEST 190 : Copier / Coller transmet les métadonnées BIM et le regroupement 1:N (BUG-029)
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 3), b = m.addNode(9, 0, 3);
+        const int beam = bar(m, a, b);
+        const auto parts = m.splitBeam(beam, 3);
+        {
+            auto& bim = m.bimForEdit();
+            const int pid = bim.physicalOf(beamRef(beam))->id;
+            auto* e = bim.element(pid);
+            e->name = "Poutre file A";
+            e->objectType = "IPE300 S235";
+            TSA::BIM::PropertySet pset;
+            pset.name = "Pset_BeamCommon";
+            e->propertySets.push_back(pset);
+            e->classifications.push_back({ "Uniclass 2015", "Ss_20_10_75", "Poutres" });
+        }
+        const std::string srcGuid = m.bim().physicalOf(beamRef(beam))->globalId;
+
+        StructuralClipboard clip;
+        std::set<int> beams(parts.begin(), parts.end());
+        clip.copyFrom(m, std::set<int>{}, beams, std::set<int>{}, std::set<int>{});
+        const PasteResult r = clip.pasteTo(m, 0.0, 6.0, 3.0);
+        TEST_CHECK(r.beamIds.size() == 3, "Test 190: 3 barres collées");
+        TEST_CHECK(m.bim().elements().size() == 2, "Test 190: le collage forme UN nouveau produit (pas 3 produits 1:1)");
+        const auto* p = m.bim().physicalOf(beamRef(r.beamIds.front()));
+        TEST_CHECK(p && p->analytical.size() == 3 && p->globalId != srcGuid, "Test 190: 3 éléments analytiques, nouveau GlobalId");
+        TEST_CHECK(p && p->objectType == "IPE300 S235" && p->propertySets.size() == 1 && p->classifications.size() == 1
+                       && p->name.empty(),
+                   "Test 190: Psets et classification transmis, nom non repris");
+        bool ordered = p != nullptr;
+        for (size_t i = 0; ordered && i < 3; ++i) ordered = p->analytical[i] == beamRef(r.beamIds[i]);
+        TEST_CHECK(ordered, "Test 190: éléments collés dans l'ordre de l'axe");
+        TEST_CHECK(m.bim().physicalOf(beamRef(beam))->globalId == srcGuid, "Test 190: produit source intact");
+        std::cout << "[PASS] Test 190: Coller conserve les métadonnées BIM" << std::endl;
         ++passed;
     }
 

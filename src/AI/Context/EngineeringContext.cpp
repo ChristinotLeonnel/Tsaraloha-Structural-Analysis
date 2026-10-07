@@ -337,7 +337,6 @@ QJsonObject EngineeringContextBuilder::resultsSummary(const EngineeringSources& 
         { "maxCompression", QJsonObject{ { "value", sig(s.maxCompression) }, { "element", kindPrefix(s.maxCompressionElementKind) + QString::number(s.maxCompressionElementId) } } },
         { "maxReaction", QJsonObject{ { "value", sig(s.maxReactionForce) }, { "node", QStringLiteral("N%1").arg(s.maxReactionNodeId) } } },
         { "sumReactions", QJsonObject{ { "RX", sig(sumRx) }, { "RY", sig(sumRy) }, { "RZ", sig(sumRz) } } },
-        { "modal", r->modalModes().empty() ? QJsonValue() : QJsonValue(QJsonObject{ { "T1_s", sig(s.fundamentalPeriod) }, { "f1_Hz", sig(s.fundamentalFrequency) } }) },
     };
 }
 

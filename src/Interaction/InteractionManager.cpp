@@ -43,17 +43,7 @@ bool InteractionManager::isDrawingMode() const noexcept
 
 bool InteractionManager::isTransformMode() const noexcept
 {
-    switch (m_mode)
-    {
-    case InteractionMode::Move3D:
-    case InteractionMode::Copy3D:
-    case InteractionMode::Rotate3D:
-    case InteractionMode::MoveOrigin3D:
-    case InteractionMode::Paste3D:
-        return true;
-    default:
-        return false;
-    }
+    return m_mode == InteractionMode::MoveOrigin3D || m_mode == InteractionMode::Paste3D;
 }
 
 void InteractionManager::setStartPoint(const gp_Pnt& pt, int nodeId)
@@ -193,15 +183,6 @@ QString InteractionManager::promptText() const
         return m_hasStartPoint
             ? tr("Nœud de Tablier : Cliquez le nœud de suspension sur le tablier (Échap = Annuler)")
             : tr("Câble Principal : Cliquez le point d'attache haut sur le câble porteur (Échap = Annuler)");
-    case InteractionMode::Move3D:
-    case InteractionMode::Copy3D:
-        return m_hasStartPoint
-            ? tr("Point cible : Cliquez le point d'arrivée pour la transformation (Échap = Annuler)")
-            : tr("Point de base : Cliquez le point de référence de départ (Échap = Annuler)");
-    case InteractionMode::Rotate3D:
-        return m_hasStartPoint
-            ? tr("Point de direction : Cliquez le point définissant l'angle de rotation (Échap = Annuler)")
-            : tr("Centre de rotation : Cliquez le centre du pivot (Échap = Annuler)");
     case InteractionMode::MoveOrigin3D:
         return tr("Nouvelle Origine : Cliquez le point devenant la nouvelle origine (0,0,0) (Échap = Annuler)");
     case InteractionMode::Paste3D:

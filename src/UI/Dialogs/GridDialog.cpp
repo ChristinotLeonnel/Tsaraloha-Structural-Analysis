@@ -1312,6 +1312,10 @@ void GridDialog::onApply()
         return;
     }
 
+    // Historique : grille et niveaux qui en découlent sont annulables (BUG-003).
+    if (auto* model = m_model ? m_model : (m_occView ? m_occView->model() : nullptr))
+        model->pushUndoState(m_isEditMode ? tr("Modifier la grille").toStdString() : tr("Créer une grille").toStdString());
+
     // Mettre à jour la grille existante ou ajouter une nouvelle grille dans le GridManager
     if (m_gridManager)
     {

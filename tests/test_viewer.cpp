@@ -26,8 +26,8 @@ bool runSuite_Viewer(int& passed)
         TEST_CHECK(interactMgr.hasStartPoint(), "Test 26: hasStartPoint true after setStartPoint");
         TEST_CHECK(interactMgr.startNodeId() == 42, "Test 26: start node ID is 42");
 
-        interactMgr.setMode(TSA::Interaction::InteractionMode::Move3D);
-        TEST_CHECK(interactMgr.isTransformMode(), "Test 26: Move3D is a transform mode");
+        interactMgr.setMode(TSA::Interaction::InteractionMode::MoveOrigin3D);
+        TEST_CHECK(interactMgr.isTransformMode(), "Test 26: MoveOrigin3D is a transform mode");
         TEST_CHECK(!interactMgr.hasStartPoint(), "Test 26: drawing state reset on mode change");
 
         std::cout << "[PASS] Test 26: 3D Interaction State Manager Validated Successfully!" << std::endl;

@@ -35,6 +35,7 @@
 #include <gp_Trsf.hxx>
 
 namespace TSA::UndoRedo { class UndoManager; }
+namespace TSA::Grid { class GridManager; }
 
 namespace TSA::Model
 {
@@ -117,6 +118,11 @@ public:
 
     TSA::Coordinate::LevelManager* levelManager();
     const TSA::Coordinate::LevelManager* levelManager() const;
+
+    /// Grilles du projet (possédées par la fenêtre principale) : rattachées pour que l'historique
+    /// Annuler / Rétablir les couvre. nullptr = grilles hors historique.
+    void setGridManager(TSA::Grid::GridManager* gridManager) noexcept { m_gridManager = gridManager; }
+    TSA::Grid::GridManager* gridManager() const noexcept { return m_gridManager; }
 
     TSA::Coordinate::WorkPlaneManager* workPlaneManager() { return m_workPlaneManager.get(); }
     const TSA::Coordinate::WorkPlaneManager* workPlaneManager() const { return m_workPlaneManager.get(); }
@@ -290,6 +296,11 @@ public:
         std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> calculationSnapshots;
         std::map<std::string, TSA::ExtensionSystem::DefinitionReference> definitionReferences;
         TSA::BIM::BimModel bim;   ///< couche BIM (produits physiques, GlobalId) synchronisée
+        // Données de définition hors éléments (BUG-003) : axes X/Y et niveaux (CoordinateSystem), grilles
+        // (GridManager rattaché). Vide = non capturé : la restauration laisse alors l'état courant.
+        // Les plans de travail sont un état d'affichage (comme la caméra) : ils ne sont pas annulés.
+        std::string coordinatesJson;
+        std::string gridsJson;
         int nextNodeId = 1;
         int nextBeamId = 1;
         int nextColumnId = 1;
@@ -347,6 +358,12 @@ public:
     void notifyLoadCaseChanged(int caseId);
 
     // État de modification du document (Dirty state)
+    /// Paramètres d'analyse du projet (AnalysisContext::toJson, schéma versionné), persistés dans le
+    /// chunk SETT du .tsa. JSON opaque pour le modèle (pas de dépendance vers Analysis) ; état de
+    /// configuration, hors historique Annuler. Vide = réglages par défaut.
+    const std::string& analysisSettingsJson() const noexcept { return m_analysisSettingsJson; }
+    void setAnalysisSettingsJson(const std::string& json) { m_analysisSettingsJson = json; }
+
     bool isModified() const { return m_isModified; }
     void setModified(bool modified)
     {
@@ -426,7 +443,9 @@ private:
 
     std::shared_ptr<TSA::Coordinate::CoordinateSystem> m_coordinateSystem;
     std::unique_ptr<TSA::Coordinate::WorkPlaneManager> m_workPlaneManager;
+    TSA::Grid::GridManager* m_gridManager = nullptr; ///< non possédé (voir setGridManager)
     bool m_isModified = false;
+    std::string m_analysisSettingsJson;
 };
 
 } // namespace TSA::Model

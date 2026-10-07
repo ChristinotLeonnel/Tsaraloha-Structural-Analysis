@@ -144,17 +144,17 @@ bool runSuite_Engines(int& passed)
         TEST_CHECK(os.supports3D && !os.supports2D, "Test 131: OpenSees 3D uniquement (ndm 3)");
         TEST_CHECK(os.supportsFrame && os.supportsTruss && os.supportsCable && os.supportsSprings && !os.supportsShell,
                    "Test 131: OpenSees éléments filaires, pas de coques");
-        TEST_CHECK(os.supportsStatic && os.supportsNonlinear && os.supportsModal && !os.supportsPushover && !os.supportsDynamic,
-                   "Test 131: OpenSees types réellement générés (pas de pushover / temporel : BUG-017)");
+        TEST_CHECK(os.supportsStatic && os.supportsNonlinear,
+                   "Test 131: OpenSees statique linéaire et non linéaire (TSA : calcul statique uniquement)");
         TEST_CHECK(os.planarElementPolicy == UnsupportedElementPolicy::ExcludeWithWarning, "Test 131: OpenSees exclut dalles/voiles avec avertissement");
 
         const auto c2 = Custom2DEngine().capabilities();
         TEST_CHECK(c2.supports2D && !c2.supports3D && c2.supportsFrame && !c2.supportsShell && c2.supportsStatic,
                    "Test 131: Custom2D ossature plane statique");
-        TEST_CHECK(!c2.supportsModal && !c2.supportsNonlinear && !c2.supportsDynamic && !c2.providesGlobalStiffness,
+        TEST_CHECK(!c2.supportsNonlinear && !c2.providesGlobalStiffness,
                    "Test 131: Custom2D ne déclare rien d'autre");
         TEST_CHECK(c2.planarElementPolicy == UnsupportedElementPolicy::Reject, "Test 131: Custom2D refuse les coques");
-        TEST_CHECK(c2.supportsAnalysisType(AnalysisType::LinearStatic) && !c2.supportsAnalysisType(AnalysisType::Modal),
+        TEST_CHECK(c2.supportsAnalysisType(AnalysisType::LinearStatic) && !c2.supportsAnalysisType(AnalysisType::NonLinearStatic),
                    "Test 131: supportsAnalysisType");
         TEST_CHECK(!Custom2DEngine().availability().available && Custom2DEngine(std::make_unique<IndexEchoSolver>()).availability().available,
                    "Test 131: Custom2D disponible seulement avec un solveur connecté");
@@ -319,9 +319,9 @@ bool runSuite_Engines(int& passed)
         in3d.dimension = AnalysisDimension::Space3D;
         TEST_CHECK(hasError(mgr.prepare(m, &gm, in3d).validation, "ne calcule pas en 3D"), "Test 135: dimension non supportée");
 
-        AnalysisContext modal = custom2dContext(gid, "B");
-        modal.type = AnalysisType::Modal;
-        TEST_CHECK(hasError(mgr.prepare(m, &gm, modal).validation, "type d'analyse"), "Test 135: type non supporté");
+        AnalysisContext nonlinear = custom2dContext(gid, "B");
+        nonlinear.type = AnalysisType::NonLinearStatic;
+        TEST_CHECK(hasError(mgr.prepare(m, &gm, nonlinear).validation, "type d'analyse"), "Test 135: type non supporté");
 
         AnalysisContext unknown = custom2dContext(gid, "B");
         unknown.engineId = "moteur-x";
@@ -417,9 +417,8 @@ bool runSuite_Engines(int& passed)
         TEST_CHECK(dlg.offeredDimensions() == std::vector<AnalysisDimension>({ AnalysisDimension::Space3D }),
                    "Test 137: dimensions d'OpenSees");
         const auto osTypes = dlg.offeredAnalysisTypes();
-        TEST_CHECK(std::find(osTypes.begin(), osTypes.end(), AnalysisType::Modal) != osTypes.end() &&
-                   std::find(osTypes.begin(), osTypes.end(), AnalysisType::Pushover) == osTypes.end(),
-                   "Test 137: types filtrés par capacités");
+        TEST_CHECK(osTypes == std::vector<AnalysisType>({ AnalysisType::LinearStatic, AnalysisType::NonLinearStatic }),
+                   "Test 137: types filtrés par capacités (statique uniquement)");
         const QJsonObject osSettings = dlg.context().settingsFor("opensees");
         TEST_CHECK(!osSettings.isEmpty(), "Test 137: réglages OpenSees produits par son panneau");
 
@@ -505,7 +504,7 @@ bool runSuite_Engines(int& passed)
         TEST_CHECK(er->intermediateStations.empty(), "Test 138: aucune station inventée");
 
         const auto& av = res.availability();
-        TEST_CHECK(av.displacements && av.reactions && av.elementForces && !av.globalStiffness && !av.modal,
+        TEST_CHECK(av.displacements && av.reactions && av.elementForces && !av.globalStiffness,
                    "Test 138: catégories de résultats = capacités ∧ données");
         TEST_CHECK(res.executionMetadata().engineId == "custom2d" && res.executionMetadata().solverEngine == "Custom2D" &&
                    res.executionMetadata().analysisDimension == "2d", "Test 138: traçabilité du moteur");

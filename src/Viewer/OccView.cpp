@@ -448,22 +448,6 @@ void OccView::setInteractionMode(InteractionMode mode)
         setCursor(Qt::CrossCursor);
         emit drawingPromptChanged(tr("Mode Dessin Suspente : Cliquez sur le câble porteur ou nœud supérieur"));
         break;
-    case InteractionMode::Move3D:
-        setCursor(Qt::CrossCursor);
-        m_hasBasePoint = false;
-        emit drawingPromptChanged(tr("Déplacement 3D : Cliquez sur le point de base"));
-        break;
-    case InteractionMode::Copy3D:
-        setCursor(Qt::CrossCursor);
-        m_hasBasePoint = false;
-        emit drawingPromptChanged(tr("Copie 3D (Translation) : Cliquez sur le point de base"));
-        break;
-    case InteractionMode::Rotate3D:
-        setCursor(Qt::CrossCursor);
-        m_hasCenterPoint = false;
-        m_hasBasePoint = false;
-        emit drawingPromptChanged(tr("Rotation 3D : Cliquez sur le centre de rotation"));
-        break;
     case InteractionMode::MoveOrigin3D:
         setCursor(Qt::CrossCursor);
         emit drawingPromptChanged(tr("Déplacer le Repère 3D : Cliquez sur le nouvel emplacement de l'origine"));
@@ -560,8 +544,6 @@ void OccView::cancelCurrentDrawing()
     clearRubberBand();
     m_drawingNodeIds.clear();
     m_drawingPoints.clear();
-    m_hasBasePoint = false;
-    m_hasCenterPoint = false;
 
     switch (interactionMode())
     {
@@ -604,15 +586,6 @@ void OccView::cancelCurrentDrawing()
         break;
     case InteractionMode::DrawHanger:
         emit drawingPromptChanged(tr("Mode Dessin Suspente : Cliquez sur le câble porteur ou nœud supérieur"));
-        break;
-    case InteractionMode::Move3D:
-        emit drawingPromptChanged(tr("Déplacement 3D : Cliquez sur le point de base"));
-        break;
-    case InteractionMode::Copy3D:
-        emit drawingPromptChanged(tr("Copie 3D (Translation) : Cliquez sur le point de base"));
-        break;
-    case InteractionMode::Rotate3D:
-        emit drawingPromptChanged(tr("Rotation 3D : Cliquez sur le centre de rotation"));
         break;
     case InteractionMode::MoveOrigin3D:
         emit drawingPromptChanged(tr("Déplacer le Repère 3D : Cliquez sur le nouvel emplacement de l'origine"));
@@ -708,20 +681,6 @@ TSA::Grid::GridSnapResult OccView::computeSnap(int px, int py) const
 
     TSA::Grid::SnapEngine engine(q);
     if (m_model) engine.collectModel(*m_model);
-    // TRACE TEMPORAIRE (diagnostic vue de face)
-    if (qEnvironmentVariableIsSet("TSA_SNAP_TRACE"))
-    {
-        FILE* f = std::fopen(qgetenv("TSA_SNAP_TRACE").constData(), "a");
-        if (f)
-        {
-            double sx = 0, sy = 0;
-            const bool ok = m_model && !m_model->nodes().empty() && q.project(gp_Pnt(m_model->nodes().begin()->second.x(), m_model->nodes().begin()->second.y(), m_model->nodes().begin()->second.z()), sx, sy);
-            const auto rr = engine.result();
-            std::fprintf(f, "px=%d py=%d win=%dx%d ortho=%d eye=(%.3f %.3f %.3f) dir=(%.3f %.3f %.3f) n1->(%d %.1f %.1f) snapped=%d type=%d %s\n",
-                         px, py, winW, winH, ortho ? 1 : 0, xEye, yEye, zEye, xDir, yDir, zDir, ok ? 1 : 0, sx, sy, rr.snapped ? 1 : 0, static_cast<int>(rr.type), rr.description.c_str());
-            std::fclose(f);
-        }
-    }
 
     // Grilles visibles (la grille active en tête)
     std::vector<const TSA::Grid::GridSystem*> grids;
@@ -866,13 +825,11 @@ void OccView::clearTransformPreview()
     m_previewGhostShapes.clear();
 }
 
-void OccView::buildTransformPreviewGhosts(InteractionMode mode)
+void OccView::buildTransformPreviewGhosts()
 {
-    // Les fantômes sont construits UNE SEULE FOIS à la position d'origine ;
-    // le déplacement/la rotation de l'aperçu est ensuite appliqué par une
-    // transformation locale (voir updateTransformPreview).
-    const bool isRotation = (mode == InteractionMode::Rotate3D);
-    const Quantity_Color barColor = isRotation ? Quantity_NOC_ORANGE : Quantity_NOC_CYAN;
+    // Les fantômes sont construits UNE SEULE FOIS à la position d'origine ; l'aperçu de l'outil
+    // en cours leur applique ensuite une transformation locale.
+    const Quantity_Color barColor = Quantity_NOC_CYAN;
 
     auto addGhost = [&](const TopoDS_Shape& s, double transparency, const Quantity_Color& color)
     {
@@ -908,65 +865,15 @@ void OccView::buildTransformPreviewGhosts(InteractionMode mode)
                  0.4, barColor);
     }
 
-    // Nœuds isolés : uniquement pour Déplacer / Copier (comportement inchangé)
-    if (!isRotation)
+    // Nœuds isolés sélectionnés
+    for (int nId : m_selectionManager->selectedNodes())
     {
-        for (int nId : m_selectionManager->selectedNodes())
-        {
-            const auto* node = m_model->getNode(nId);
-            if (!node) continue;
-            addGhost(TSA::Geometry::BeamGeometry::createNodeShape(*node, 0.10), 0.3, barColor);
-        }
+        const auto* node = m_model->getNode(nId);
+        if (!node) continue;
+        addGhost(TSA::Geometry::BeamGeometry::createNodeShape(*node, 0.10), 0.3, barColor);
     }
 
-    m_previewGhostMode = mode;
     m_previewGhostsBuilt = true;
-}
-
-void OccView::updateTransformPreview(const gp_Pnt& currentPnt)
-{
-    if (!m_model || !m_selectionManager || m_context.IsNull())
-        return;
-
-    const InteractionMode mode = interactionMode();
-    gp_Trsf trsf;
-
-    if (mode == InteractionMode::Move3D || mode == InteractionMode::Copy3D)
-    {
-        if (!m_hasBasePoint) { clearTransformPreview(); return; }
-        gp_Vec delta(m_basePoint3D, currentPnt);
-        if (delta.Magnitude() < 1e-4) { clearTransformPreview(); return; }
-        trsf.SetTranslation(delta);
-    }
-    else if (mode == InteractionMode::Rotate3D)
-    {
-        if (!m_hasCenterPoint || !m_hasBasePoint) { clearTransformPreview(); return; }
-        const double a1 = std::atan2(m_basePoint3D.Y() - m_centerPoint3D.Y(),
-                                     m_basePoint3D.X() - m_centerPoint3D.X());
-        const double a2 = std::atan2(currentPnt.Y() - m_centerPoint3D.Y(),
-                                     currentPnt.X() - m_centerPoint3D.X());
-        const double angleRad = a2 - a1;
-        if (std::abs(angleRad) < 1e-4) { clearTransformPreview(); return; }
-        trsf.SetRotation(gp_Ax1(m_centerPoint3D, gp_Dir(0.0, 0.0, 1.0)), angleRad);
-    }
-    else
-    {
-        clearTransformPreview();
-        return;
-    }
-
-    if (!m_previewGhostsBuilt || m_previewGhostMode != mode || m_previewGhostShapes.empty())
-    {
-        clearTransformPreview();
-        buildTransformPreviewGhosts(mode);
-    }
-
-    // Mise à jour ciblée : simple transformation locale, sans recréer ni géométrie ni AIS_Shape
-    for (auto& ghost : m_previewGhostShapes)
-    {
-        if (!ghost.IsNull())
-            ghost->SetLocalTransformation(trsf);
-    }
 }
 
 void OccView::clearRubberBand()
@@ -1016,20 +923,6 @@ void OccView::updateRubberBand(const gp_Pnt& currentPnt)
         {
             shape = BRepBuilderAPI_MakeEdge(pStart, currentPnt).Edge();
         }
-    }
-    else if (interactionMode() == InteractionMode::Move3D ||
-             interactionMode() == InteractionMode::Copy3D ||
-             interactionMode() == InteractionMode::Rotate3D)
-    {
-        if (m_drawingPoints.empty())
-            return;
-
-        const gp_Pnt& pStart = m_drawingPoints.back();
-        if (pStart.Distance(currentPnt) < 1e-4)
-            return;
-
-        shape = BRepBuilderAPI_MakeEdge(pStart, currentPnt).Edge();
-        updateTransformPreview(currentPnt);
     }
     else if (interactionMode() == InteractionMode::DrawSlab)
     {

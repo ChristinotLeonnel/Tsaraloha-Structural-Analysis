@@ -8,6 +8,7 @@
 #include "../../OpenSeesAnalysisBuilder.h"   // AnalysisParameters
 
 #include <memory>
+#include <mutex>
 #include <optional>
 
 namespace TSA::Analysis
@@ -39,6 +40,7 @@ public:
     static AnalysisParameters parametersFromContext(const AnalysisContext& context);
 
 private:
+    std::mutex m_solverMutex;                ///< run() (thread de calcul) et cancel() (thread UI)
     std::unique_ptr<OpenSeesSolver> m_solver;
     mutable std::optional<std::string> m_version;   ///< lue une fois sur l'exécutable
 };

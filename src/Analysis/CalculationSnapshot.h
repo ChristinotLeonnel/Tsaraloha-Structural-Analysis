@@ -83,8 +83,8 @@ struct SnapshotElement
     TSA::Model::Section section;
     TSA::Model::Material material;
     double initialTension = 0.0; // Pour les câbles
-    /// Relâchements d'extrémité (poutres). Transmis aux moteurs qui les gèrent (Custom2D) ;
-    /// le générateur OpenSees ne les exploite pas (BUG-027).
+    /// Relâchements d'extrémité (poutres). Rotules de flexion (my, mz) transmises à OpenSees
+    /// (-releasey / -releasez) et à Custom2D ; les autres relâchements sont signalés par ModelValidator.
     TSA::Model::EndRelease startRelease;
     TSA::Model::EndRelease endRelease;
 };

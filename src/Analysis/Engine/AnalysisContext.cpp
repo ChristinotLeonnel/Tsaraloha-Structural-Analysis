@@ -26,9 +26,6 @@ const char* keyFromEnum(E value, const std::pair<E, const char*> (&table)[N])
 const std::pair<AnalysisType, const char*> kTypes[] = {
     { AnalysisType::LinearStatic, "linear_static" },
     { AnalysisType::NonLinearStatic, "nonlinear_static" },
-    { AnalysisType::Modal, "modal" },
-    { AnalysisType::DynamicTimeHistory, "time_history" },
-    { AnalysisType::Pushover, "pushover" },
 };
 const std::pair<ScopeType, const char*> kScopes[] = {
     { ScopeType::EntireModel, "entire_model" },
@@ -108,7 +105,7 @@ QJsonObject AnalysisContext::toJson() const
         { "scope", scopeJson },
         { "loadCases", cases },
         { "combinationId", combinationId },
-        { "common", QJsonObject{ { "includeSelfWeight", common.includeSelfWeight }, { "modeCount", common.modeCount } } },
+        { "common", QJsonObject{ { "includeSelfWeight", common.includeSelfWeight } } },
         { "engineSettings", engines },
     };
 }
@@ -145,7 +142,6 @@ AnalysisContext AnalysisContext::fromJson(const QJsonObject& json, bool* ok)
 
     const QJsonObject common = json.value("common").toObject();
     c.common.includeSelfWeight = common.value("includeSelfWeight").toBool(true);
-    c.common.modeCount = common.value("modeCount").toInt(6);
 
     const QJsonObject engines = json.value("engineSettings").toObject();
     for (auto it = engines.begin(); it != engines.end(); ++it)

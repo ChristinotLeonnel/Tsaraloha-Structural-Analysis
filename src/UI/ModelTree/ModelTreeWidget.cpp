@@ -207,6 +207,7 @@ void ModelTreeWidget::setProjectName(const QString& name)
 void ModelTreeWidget::createRootCategories()
 {
     m_tree->clear();
+    m_itemIndex.clear();
 
     QString rootText = m_projectName.isEmpty() ? tr("Projet.tsa") : m_projectName;
     m_projectRootItem = new QTreeWidgetItem(m_tree, { rootText, "" });
@@ -555,15 +556,10 @@ void ModelTreeWidget::selectNodeItem(int nodeId)
     flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
-    for (int i = 0; i < m_nodesCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_nodesCategory, nodeId))
     {
-        auto* child = m_nodesCategory->child(i);
-        if (child->data(0, IdRole).toInt() == nodeId)
-        {
-            child->setSelected(true);
-            m_tree->scrollToItem(child);
-            break;
-        }
+        child->setSelected(true);
+        m_tree->scrollToItem(child);
     }
 }
 
@@ -572,15 +568,10 @@ void ModelTreeWidget::selectBeamItem(int beamId)
     flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
-    for (int i = 0; i < m_beamsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_beamsCategory, beamId))
     {
-        auto* child = m_beamsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == beamId)
-        {
-            child->setSelected(true);
-            m_tree->scrollToItem(child);
-            break;
-        }
+        child->setSelected(true);
+        m_tree->scrollToItem(child);
     }
 }
 
@@ -589,15 +580,10 @@ void ModelTreeWidget::selectColumnItem(int columnId)
     flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
-    for (int i = 0; i < m_columnsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_columnsCategory, columnId))
     {
-        auto* child = m_columnsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == columnId)
-        {
-            child->setSelected(true);
-            m_tree->scrollToItem(child);
-            break;
-        }
+        child->setSelected(true);
+        m_tree->scrollToItem(child);
     }
 }
 
@@ -606,15 +592,10 @@ void ModelTreeWidget::selectSlabItem(int slabId)
     flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
-    for (int i = 0; i < m_slabsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_slabsCategory, slabId))
     {
-        auto* child = m_slabsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == slabId)
-        {
-            child->setSelected(true);
-            m_tree->scrollToItem(child);
-            break;
-        }
+        child->setSelected(true);
+        m_tree->scrollToItem(child);
     }
 }
 
@@ -623,15 +604,10 @@ void ModelTreeWidget::selectWallItem(int wallId)
     flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
-    for (int i = 0; i < m_wallsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_wallsCategory, wallId))
     {
-        auto* child = m_wallsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == wallId)
-        {
-            child->setSelected(true);
-            m_tree->scrollToItem(child);
-            break;
-        }
+        child->setSelected(true);
+        m_tree->scrollToItem(child);
     }
 }
 
@@ -640,15 +616,10 @@ void ModelTreeWidget::selectFoundationItem(int foundationId)
     flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
-    for (int i = 0; i < m_foundationsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_foundationsCategory, foundationId))
     {
-        auto* child = m_foundationsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == foundationId)
-        {
-            child->setSelected(true);
-            m_tree->scrollToItem(child);
-            break;
-        }
+        child->setSelected(true);
+        m_tree->scrollToItem(child);
     }
 }
 
@@ -657,15 +628,10 @@ void ModelTreeWidget::selectTrussMemberItem(int memberId)
     flushRemovals();
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
-    for (int i = 0; i < m_trussCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_trussCategory, memberId))
     {
-        auto* child = m_trussCategory->child(i);
-        if (child->data(0, IdRole).toInt() == memberId)
-        {
-            child->setSelected(true);
-            m_tree->scrollToItem(child);
-            break;
-        }
+        child->setSelected(true);
+        m_tree->scrollToItem(child);
     }
 }
 
@@ -675,15 +641,10 @@ void ModelTreeWidget::selectCableItem(int cableId)
     QSignalBlocker blocker(m_tree);
     m_tree->clearSelection();
     if (!m_cablesCategory) return;
-    for (int i = 0; i < m_cablesCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_cablesCategory, cableId))
     {
-        auto* child = m_cablesCategory->child(i);
-        if (child->data(0, IdRole).toInt() == cableId)
-        {
-            child->setSelected(true);
-            m_tree->scrollToItem(child);
-            break;
-        }
+        child->setSelected(true);
+        m_tree->scrollToItem(child);
     }
 }
 
@@ -702,6 +663,7 @@ void ModelTreeWidget::onNodeAdded(const TSA::Model::Node& node)
     auto* item = new QTreeWidgetItem(m_nodesCategory, { label, desc });
     item->setData(0, TypeRole, TypeNode);
     item->setData(0, IdRole, node.id());
+    m_itemIndex[m_nodesCategory].insert(node.id(), item);
     m_nodesCategory->setText(1, QString("[%1]").arg(m_nodesCategory->childCount()));
 }
 
@@ -709,15 +671,10 @@ void ModelTreeWidget::onNodeModified(const TSA::Model::Node& node)
 {
     flushRemovals();
     QSignalBlocker blocker(m_tree);
-    for (int i = 0; i < m_nodesCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_nodesCategory, node.id()))
     {
-        auto* child = m_nodesCategory->child(i);
-        if (child->data(0, IdRole).toInt() == node.id())
-        {
-            child->setText(0, QString::fromStdString(node.formattedName()));
-            child->setText(1, QString("(%1, %2, %3) m").arg(node.x(), 0, 'f', 2).arg(node.y(), 0, 'f', 2).arg(node.z(), 0, 'f', 2));
-            break;
-        }
+        child->setText(0, QString::fromStdString(node.formattedName()));
+        child->setText(1, QString("(%1, %2, %3) m").arg(node.x(), 0, 'f', 2).arg(node.y(), 0, 'f', 2).arg(node.z(), 0, 'f', 2));
     }
 }
 
@@ -738,6 +695,7 @@ void ModelTreeWidget::onBeamAdded(const TSA::Model::Beam& beam)
     auto* item = new QTreeWidgetItem(m_beamsCategory, { label, desc });
     item->setData(0, TypeRole, TypeBeam);
     item->setData(0, IdRole, beam.id());
+    m_itemIndex[m_beamsCategory].insert(beam.id(), item);
     m_beamsCategory->setText(1, QString("[%1]").arg(m_beamsCategory->childCount()));
 }
 
@@ -745,18 +703,13 @@ void ModelTreeWidget::onBeamModified(const TSA::Model::Beam& beam)
 {
     flushRemovals();
     QSignalBlocker blocker(m_tree);
-    for (int i = 0; i < m_beamsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_beamsCategory, beam.id()))
     {
-        auto* child = m_beamsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == beam.id())
-        {
-            child->setText(0, QString::fromStdString(beam.formattedName()));
-            child->setText(1, QString("N%1 -> N%2 (%3)")
-                .arg(beam.startNodeId())
-                .arg(beam.endNodeId())
-        .arg(QString::fromStdString(beam.section().name)));
-            break;
-        }
+        child->setText(0, QString::fromStdString(beam.formattedName()));
+        child->setText(1, QString("N%1 -> N%2 (%3)")
+            .arg(beam.startNodeId())
+            .arg(beam.endNodeId())
+    .arg(QString::fromStdString(beam.section().name)));
     }
 }
 
@@ -777,6 +730,7 @@ void ModelTreeWidget::onColumnAdded(const TSA::Model::Column& column)
     auto* item = new QTreeWidgetItem(m_columnsCategory, { label, desc });
     item->setData(0, TypeRole, TypeColumn);
     item->setData(0, IdRole, column.id());
+    m_itemIndex[m_columnsCategory].insert(column.id(), item);
     m_columnsCategory->setText(1, QString("[%1]").arg(m_columnsCategory->childCount()));
 }
 
@@ -784,18 +738,13 @@ void ModelTreeWidget::onColumnModified(const TSA::Model::Column& column)
 {
     flushRemovals();
     QSignalBlocker blocker(m_tree);
-    for (int i = 0; i < m_columnsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_columnsCategory, column.id()))
     {
-        auto* child = m_columnsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == column.id())
-        {
-            child->setText(0, QString::fromStdString(column.formattedName()));
-            child->setText(1, QString("N%1 -> N%2 (%3)")
-                .arg(column.startNodeId())
-                .arg(column.endNodeId())
-        .arg(QString::fromStdString(column.section().name)));
-            break;
-        }
+        child->setText(0, QString::fromStdString(column.formattedName()));
+        child->setText(1, QString("N%1 -> N%2 (%3)")
+            .arg(column.startNodeId())
+            .arg(column.endNodeId())
+    .arg(QString::fromStdString(column.section().name)));
     }
 }
 
@@ -815,6 +764,7 @@ void ModelTreeWidget::onSlabAdded(const TSA::Model::Slab& slab)
     auto* item = new QTreeWidgetItem(m_slabsCategory, { label, desc });
     item->setData(0, TypeRole, TypeSlab);
     item->setData(0, IdRole, slab.id());
+    m_itemIndex[m_slabsCategory].insert(slab.id(), item);
     m_slabsCategory->setText(1, QString("[%1]").arg(m_slabsCategory->childCount()));
 }
 
@@ -822,17 +772,12 @@ void ModelTreeWidget::onSlabModified(const TSA::Model::Slab& slab)
 {
     flushRemovals();
     QSignalBlocker blocker(m_tree);
-    for (int i = 0; i < m_slabsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_slabsCategory, slab.id()))
     {
-        auto* child = m_slabsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == slab.id())
-        {
-            child->setText(0, QString::fromStdString(slab.formattedName()));
-            child->setText(1, QString("%1 nodes, e=%2 m")
-                .arg(slab.nodeIds().size())
-                .arg(slab.thickness(), 0, 'f', 2));
-            break;
-        }
+        child->setText(0, QString::fromStdString(slab.formattedName()));
+        child->setText(1, QString("%1 nodes, e=%2 m")
+            .arg(slab.nodeIds().size())
+            .arg(slab.thickness(), 0, 'f', 2));
     }
 }
 
@@ -854,6 +799,7 @@ void ModelTreeWidget::onWallAdded(const TSA::Model::Wall& wall)
     auto* item = new QTreeWidgetItem(m_wallsCategory, { label, desc });
     item->setData(0, TypeRole, TypeWall);
     item->setData(0, IdRole, wall.id());
+    m_itemIndex[m_wallsCategory].insert(wall.id(), item);
     m_wallsCategory->setText(1, QString("[%1]").arg(m_wallsCategory->childCount()));
 }
 
@@ -861,19 +807,14 @@ void ModelTreeWidget::onWallModified(const TSA::Model::Wall& wall)
 {
     flushRemovals();
     QSignalBlocker blocker(m_tree);
-    for (int i = 0; i < m_wallsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_wallsCategory, wall.id()))
     {
-        auto* child = m_wallsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == wall.id())
-        {
-            child->setText(0, QString::fromStdString(wall.formattedName()));
-            child->setText(1, QString("N%1 -> N%2 (H=%3 m, e=%4 m)")
-                .arg(wall.startNodeId())
-                .arg(wall.endNodeId())
-                .arg(wall.height(), 0, 'f', 2)
-                .arg(wall.thickness(), 0, 'f', 2));
-            break;
-        }
+        child->setText(0, QString::fromStdString(wall.formattedName()));
+        child->setText(1, QString("N%1 -> N%2 (H=%3 m, e=%4 m)")
+            .arg(wall.startNodeId())
+            .arg(wall.endNodeId())
+            .arg(wall.height(), 0, 'f', 2)
+            .arg(wall.thickness(), 0, 'f', 2));
     }
 }
 
@@ -895,6 +836,7 @@ void ModelTreeWidget::onFoundationAdded(const TSA::Model::Foundation& foundation
     auto* item = new QTreeWidgetItem(m_foundationsCategory, { label, desc });
     item->setData(0, TypeRole, TypeFoundation);
     item->setData(0, IdRole, foundation.id());
+    m_itemIndex[m_foundationsCategory].insert(foundation.id(), item);
     m_foundationsCategory->setText(1, QString("[%1]").arg(m_foundationsCategory->childCount()));
 }
 
@@ -902,19 +844,14 @@ void ModelTreeWidget::onFoundationModified(const TSA::Model::Foundation& foundat
 {
     flushRemovals();
     QSignalBlocker blocker(m_tree);
-    for (int i = 0; i < m_foundationsCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_foundationsCategory, foundation.id()))
     {
-        auto* child = m_foundationsCategory->child(i);
-        if (child->data(0, IdRole).toInt() == foundation.id())
-        {
-            child->setText(0, QString::fromStdString(foundation.formattedName()));
-            child->setText(1, QString("Node N%1 (%2x%3x%4 m)")
-                .arg(foundation.nodeId())
-                .arg(foundation.widthA(), 0, 'f', 2)
-                .arg(foundation.lengthB(), 0, 'f', 2)
-                .arg(foundation.heightH(), 0, 'f', 2));
-            break;
-        }
+        child->setText(0, QString::fromStdString(foundation.formattedName()));
+        child->setText(1, QString("Node N%1 (%2x%3x%4 m)")
+            .arg(foundation.nodeId())
+            .arg(foundation.widthA(), 0, 'f', 2)
+            .arg(foundation.lengthB(), 0, 'f', 2)
+            .arg(foundation.heightH(), 0, 'f', 2));
     }
 }
 
@@ -935,6 +872,7 @@ void ModelTreeWidget::onTrussMemberAdded(const TSA::Model::TrussMember& member)
     auto* item = new QTreeWidgetItem(m_trussCategory, { label, desc });
     item->setData(0, TypeRole, TypeTruss);
     item->setData(0, IdRole, member.id());
+    m_itemIndex[m_trussCategory].insert(member.id(), item);
     m_trussCategory->setText(1, QString("[%1]").arg(m_trussCategory->childCount()));
 }
 
@@ -942,18 +880,13 @@ void ModelTreeWidget::onTrussMemberModified(const TSA::Model::TrussMember& membe
 {
     flushRemovals();
     QSignalBlocker blocker(m_tree);
-    for (int i = 0; i < m_trussCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_trussCategory, member.id()))
     {
-        auto* child = m_trussCategory->child(i);
-        if (child->data(0, IdRole).toInt() == member.id())
-        {
-            child->setText(0, QString::fromStdString(member.formattedName()));
-            child->setText(1, QString("N%1 -> N%2 (D=%3 m)")
-                .arg(member.startNodeId())
-                .arg(member.endNodeId())
-                .arg(member.section().diameter, 0, 'f', 2));
-            break;
-        }
+        child->setText(0, QString::fromStdString(member.formattedName()));
+        child->setText(1, QString("N%1 -> N%2 (D=%3 m)")
+            .arg(member.startNodeId())
+            .arg(member.endNodeId())
+            .arg(member.section().diameter, 0, 'f', 2));
     }
 }
 
@@ -976,6 +909,7 @@ void ModelTreeWidget::onCableAdded(const TSA::Model::Cable& cable)
     auto* item = new QTreeWidgetItem(m_cablesCategory, { label, desc });
     item->setData(0, TypeRole, TypeCable);
     item->setData(0, IdRole, cable.id());
+    m_itemIndex[m_cablesCategory].insert(cable.id(), item);
     item->setIcon(0, QIcon(":/icons/draw_cable.svg"));
     m_cablesCategory->setText(1, QString("[%1]").arg(m_cablesCategory->childCount()));
 }
@@ -985,19 +919,14 @@ void ModelTreeWidget::onCableModified(const TSA::Model::Cable& cable)
     flushRemovals();
     if (!m_cablesCategory) return;
     QSignalBlocker blocker(m_tree);
-    for (int i = 0; i < m_cablesCategory->childCount(); ++i)
+    if (auto* child = findElementItem(m_cablesCategory, cable.id()))
     {
-        auto* child = m_cablesCategory->child(i);
-        if (child->data(0, IdRole).toInt() == cable.id())
-        {
-            child->setText(0, QString::fromStdString(cable.formattedName()));
-            child->setText(1, QString("N%1 -> N%2 | L=%3m | Ø%4mm")
-                .arg(cable.startNodeId())
-                .arg(cable.endNodeId())
-                .arg(m_model ? cable.length(*m_model) : cable.length(), 0, 'f', 2)
-                .arg(cable.diameter() * 1000.0, 0, 'f', 1));
-            break;
-        }
+        child->setText(0, QString::fromStdString(cable.formattedName()));
+        child->setText(1, QString("N%1 -> N%2 | L=%3m | Ø%4mm")
+            .arg(cable.startNodeId())
+            .arg(cable.endNodeId())
+            .arg(m_model ? cable.length(*m_model) : cable.length(), 0, 'f', 2)
+            .arg(cable.diameter() * 1000.0, 0, 'f', 1));
     }
 }
 
@@ -1085,15 +1014,18 @@ void ModelTreeWidget::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
         {
             if (const auto* t = m_model->getTrussMember(id)) onTrussMemberModified(*t);
         }
+        for (int id : diff.modifiedCableIds)
+        {
+            if (const auto* c = m_model->getCable(id)) onCableModified(*c);
+        }
     }
-    for (int id : diff.modifiedCableIds)
-    {
-        if (const auto* c = m_model->getCable(id)) onCableModified(*c);
-    }
-    for (int id : diff.deletedCableIds)
-    {
-        onCableRemoved(id);
-    }
+}
+
+QTreeWidgetItem* ModelTreeWidget::findElementItem(QTreeWidgetItem* category, int id) const
+{
+    if (!category) return nullptr;
+    const auto it = m_itemIndex.constFind(category);
+    return it == m_itemIndex.cend() ? nullptr : it->value(id, nullptr);
 }
 
 void ModelTreeWidget::queueRemoval(QTreeWidgetItem* category, int id)
@@ -1118,11 +1050,11 @@ void ModelTreeWidget::flushRemovals()
     for (auto it = m_pendingRemovals.cbegin(); it != m_pendingRemovals.cend(); ++it)
     {
         QTreeWidgetItem* category = it.key();
-        const QSet<int>& ids = it.value();
-        for (int i = category->childCount() - 1; i >= 0; --i)
+        auto& index = m_itemIndex[category];
+        for (int id : it.value())
         {
-            if (ids.contains(category->child(i)->data(0, IdRole).toInt()))
-                delete category->takeChild(i);
+            // ~QTreeWidgetItem détache l'item de sa catégorie.
+            if (QTreeWidgetItem* item = index.take(id)) delete item;
         }
         category->setText(1, QString("[%1]").arg(category->childCount()));
     }
