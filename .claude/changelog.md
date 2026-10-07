@@ -2,6 +2,12 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-07 (crash à la réduction de la fenêtre, branche fix/minimize-crash)
+
+### Fixed
+- Réduire la fenêtre agrandie faisait planter TSA (marges d'agrandissement calculées sur la position (-32000, -32000)
+  de la fenêtre réduite) — `AppShell::updateMaximizedMargins` (FIX-2026-10-07-MINIMIZE).
+
 ## 2026-10-07 (statique seul — ADR-022 — et correction des bugs connus, branche feature/static-only)
 
 ### Removed

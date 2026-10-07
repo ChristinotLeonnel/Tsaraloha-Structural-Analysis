@@ -504,17 +504,24 @@ void AppShell::updateMaximizedMargins()
 {
     // Agrandie, une fenêtre à bordure redimensionnable déborde de l'écran de l'épaisseur du cadre :
     // le contenu est rentré d'autant pour que la barre de titre et les bords restent visibles.
+    // Réduite, la fenêtre est placée par Windows en (-32000, -32000) tout en gardant l'état « agrandie » :
+    // les marges calculées vaudraient ~32000 px et imposeraient une taille minimale géante (crash
+    // CreateDIBSection). On conserve alors les marges courantes, réappliquées à la restauration.
+    HWND hwnd = reinterpret_cast<HWND>(winId());
+    if (isMinimized() || IsIconic(hwnd)) return;
     QMargins margins;
     if (isMaximized() && !isFullScreen())
     {
-        HWND hwnd = reinterpret_cast<HWND>(winId());
         RECT wr;
         MONITORINFO mi{};
         mi.cbSize = sizeof(mi);
         if (GetWindowRect(hwnd, &wr) && GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mi))
         {
             const qreal dpr = devicePixelRatioF();
-            auto toLogical = [dpr](long px) { return px > 0 ? static_cast<int>(std::ceil(px / dpr)) : 0; };
+            // Débordement attendu = épaisseur du cadre (quelques pixels) ; toute valeur aberrante est ignorée.
+            constexpr long kMaxFrameOverflowPx = 64;
+            auto toLogical = [dpr](long px)
+            { return px > 0 && px <= kMaxFrameOverflowPx ? static_cast<int>(std::ceil(px / dpr)) : 0; };
             margins = QMargins(toLogical(mi.rcWork.left - wr.left), toLogical(mi.rcWork.top - wr.top),
                                toLogical(wr.right - mi.rcWork.right), toLogical(wr.bottom - mi.rcWork.bottom));
         }
