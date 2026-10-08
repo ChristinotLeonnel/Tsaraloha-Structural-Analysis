@@ -12,6 +12,7 @@
 // graphique (TSA::Viewer::SelectionManager) et appartient à la fenêtre.
 
 #include <memory>
+#include <string>
 
 class QObject;
 
@@ -52,6 +53,15 @@ public:
     TSA::Grid::GridSnapManager& gridSnap() { return *m_gridSnap; }
     ProjectManager& project() { return *m_project; }
     const ProjectManager& project() const { return *m_project; }
+
+    // Historique : gestionnaire de commandes d'abord, sinon historique du modèle (EditTransaction).
+    bool canUndo() const;
+    bool canRedo() const;
+    /// Annule la dernière action ; *actionName reçoit son libellé. Faux si rien n'a été annulé.
+    bool undo(std::string* actionName = nullptr);
+    bool redo(std::string* actionName = nullptr);
+    /// Modifications non enregistrées (modèle modifié ou historique non vide).
+    bool hasUnsavedChanges() const;
 
 private:
     // Ordre de destruction inverse : projet, accrochage, grilles, commandes, puis le modèle.

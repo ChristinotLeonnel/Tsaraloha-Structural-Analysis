@@ -1272,7 +1272,7 @@ void MainWindow::updateWindowTitle()
 {
     if (m_projectManager)
     {
-        bool modified = (m_model && (m_model->isModified() || m_model->canUndo()));
+        bool modified = m_session->hasUnsavedChanges();
         m_projectManager->setModified(modified);
         setWindowTitle(m_projectManager->windowTitle());
     }
@@ -1280,7 +1280,7 @@ void MainWindow::updateWindowTitle()
 
 bool MainWindow::maybeSave()
 {
-    if (!m_model || (!m_model->isModified() && !m_model->canUndo()))
+    if (!m_session->hasUnsavedChanges())
         return true;
 
     const QMessageBox::StandardButton ret = QMessageBox::warning(
@@ -1726,45 +1726,21 @@ void MainWindow::onActionAbout()
 
 void MainWindow::onActionUndo()
 {
-    if (m_commandManager && m_commandManager->canUndo())
+    std::string actionName;
+    if (m_session->undo(&actionName))
     {
-        std::string actionName = m_model ? m_model->lastUndoActionName() : "";
-        if (m_commandManager->undo())
-        {
-            updateUndoRedoActions();
-            statusBar()->showMessage(tr("Action annulée : %1 (Ctrl+Z)").arg(QString::fromStdString(actionName)), 3000);
-        }
-    }
-    else if (m_model && m_model->canUndo())
-    {
-        std::string actionName = m_model->lastUndoActionName();
-        if (m_model->undo())
-        {
-            updateUndoRedoActions();
-            statusBar()->showMessage(tr("Action annulée : %1 (Ctrl+Z)").arg(QString::fromStdString(actionName)), 3000);
-        }
+        updateUndoRedoActions();
+        statusBar()->showMessage(tr("Action annulée : %1 (Ctrl+Z)").arg(QString::fromStdString(actionName)), 3000);
     }
 }
 
 void MainWindow::onActionRedo()
 {
-    if (m_commandManager && m_commandManager->canRedo())
+    std::string actionName;
+    if (m_session->redo(&actionName))
     {
-        std::string actionName = m_model ? m_model->lastRedoActionName() : "";
-        if (m_commandManager->redo())
-        {
-            updateUndoRedoActions();
-            statusBar()->showMessage(tr("Action rétablie : %1 (Ctrl+Y)").arg(QString::fromStdString(actionName)), 3000);
-        }
-    }
-    else if (m_model && m_model->canRedo())
-    {
-        std::string actionName = m_model->lastRedoActionName();
-        if (m_model->redo())
-        {
-            updateUndoRedoActions();
-            statusBar()->showMessage(tr("Action rétablie : %1 (Ctrl+Y)").arg(QString::fromStdString(actionName)), 3000);
-        }
+        updateUndoRedoActions();
+        statusBar()->showMessage(tr("Action rétablie : %1 (Ctrl+Y)").arg(QString::fromStdString(actionName)), 3000);
     }
 }
 
@@ -1773,7 +1749,7 @@ void MainWindow::updateUndoRedoActions()
     if (!m_model) return;
     if (m_actionUndo)
     {
-        bool canU = (m_commandManager && m_commandManager->canUndo()) || (m_model && m_model->canUndo());
+        bool canU = m_session->canUndo();
         m_actionUndo->setEnabled(canU);
         if (canU && !m_model->lastUndoActionName().empty())
         {
@@ -1788,7 +1764,7 @@ void MainWindow::updateUndoRedoActions()
     }
     if (m_actionRedo)
     {
-        bool canR = (m_commandManager && m_commandManager->canRedo()) || (m_model && m_model->canRedo());
+        bool canR = m_session->canRedo();
         m_actionRedo->setEnabled(canR);
         if (canR && !m_model->lastRedoActionName().empty())
         {
