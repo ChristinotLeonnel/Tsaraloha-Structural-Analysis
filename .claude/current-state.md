@@ -9,8 +9,11 @@ Status: IMPLEMENTED (phases 1 à 6, 2026-10-08, branche feature/tsaraloha-shared
 Model / Graphics / Widgets, ProjectSession, SelectionSynchronizer, EcosystemApplication, cœur scientifique
 tsalab_science (dépôt TSALab), registre de commandes. TSALab.exe = IDE propre sur ces bibliothèques.
 Blueprint : moteur + éditeur partagés (docs/BLUEPRINT.md), vérifié dans TSALab (exemple portique exécuté).
-MISSING (phases 7 à 8) : Analysis Manager partagé (le calcul est encore orchestré par
-MainWindow), Matrix / Results viewers, débogueur, profileur, plugins, IA sur Blueprint, OpenSees dans tsalab_science.
+Phase 7 IMPLEMENTED : AnalysisController dans ProjectSession (MainWindow n'orchestre plus le calcul),
+AnalysisManagerPanel partagé, portée « plan du modèle », export K·U = F par Custom2D (dock Données d'analyse,
+onglet K·U = F ; SOLVER LAB), commandes analysis.run / results.summary / results.node_displacement.
+Vérifié : tests 196 (TSA), L7 (TSALab), GUI TSALab (portique : calcul, synthèse, SOLVER LAB LU / Cholesky / GC).
+MISSING (phase 8) : débogueur, plugins, IA sur Blueprint, OpenSees dans tsalab_science.
 
 ## Build
 Status: IMPLEMENTED — PASS (preset ninja-debug, -j 4)
@@ -21,7 +24,7 @@ Note: MSVC francisé → lanceur généré `build-*/msvc_codepage.cmd` (page de 
 dépendances d'en-têtes Ninja fiables quelle que soit la console (BUG-011, vérifié `ninja -t deps`).
 
 ## Tests
-Status: IMPLEMENTED — 216/216 PASS le 2026-10-08 (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
+Status: IMPLEMENTED — 217/217 PASS le 2026-10-08 (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
 188 niveaux/grilles annulables, 189 chunk SETT, 190 collage BIM, 191 édition groupée) ; test 20 sensible au temps (BUG-035) ;
 197/197 avant (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
 186/186 avant (suite `cleanup` 160–165 le 2026-10-05) ;

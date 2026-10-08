@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 216;
+    int expectedTotal = 217;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {

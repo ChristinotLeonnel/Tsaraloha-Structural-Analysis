@@ -1,6 +1,7 @@
 #include "ProjectSession.h"
 
 #include "ProjectManager.h"
+#include "../Analysis/AnalysisController.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
 #include "../Model/Model.h"
@@ -15,6 +16,7 @@ ProjectSession::ProjectSession(QObject* owner)
     , m_grids(std::make_unique<TSA::Grid::GridManager>())
     , m_gridSnap(std::make_unique<TSA::Grid::GridSnapManager>())
     , m_project(std::make_unique<ProjectManager>(owner))
+    , m_analysis(std::make_unique<TSA::Analysis::AnalysisController>(m_model.get(), m_grids.get()))
 {
 }
 

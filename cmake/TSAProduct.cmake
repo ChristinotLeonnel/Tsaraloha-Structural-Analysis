@@ -154,6 +154,8 @@ set(UI_ANALYSIS_SOURCES
     ${TSA_ROOT}/src/UI/Analysis/Custom2DOptionsWidget.cpp
     ${TSA_ROOT}/src/UI/Analysis/AnalysisDialog.h
     ${TSA_ROOT}/src/UI/Analysis/AnalysisDialog.cpp
+    ${TSA_ROOT}/src/UI/Analysis/AnalysisManagerPanel.h
+    ${TSA_ROOT}/src/UI/Analysis/AnalysisManagerPanel.cpp
 )
 
 set(UI_EXTENSIONMANAGERDIALOG_SOURCES
@@ -488,6 +490,8 @@ set(LOAD_CORE_SOURCES
     ${TSA_ROOT}/src/Analysis/ResultsExport.cpp
     ${TSA_ROOT}/src/Analysis/ResultsValidityGuard.h
     ${TSA_ROOT}/src/Analysis/ResultsValidityGuard.cpp
+    ${TSA_ROOT}/src/Analysis/AnalysisController.h
+    ${TSA_ROOT}/src/Analysis/AnalysisController.cpp
     ${TSA_ROOT}/src/Analysis/OpenSeesAnalysisBuilder.h
     ${TSA_ROOT}/src/Analysis/OpenSeesAnalysisBuilder.cpp
     ${TSA_ROOT}/src/Analysis/OpenSeesResultsReader.h

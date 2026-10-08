@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <set>
 #include <sstream>
 
@@ -255,6 +256,7 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
     const QJsonObject opts = context.settingsFor("custom2d");
     in.options.axialStiffnessFactor = opts.value("inextensible").toBool(false) ? 1.0e4 : 1.0;
     in.options.curvePoints = std::clamp(opts.value("curvePoints").toInt(41), 3, 2001);
+    in.options.exportSystem = opts.value("exportSystem").toBool(false);
 
     in.request.type = context.type == AnalysisType::NonLinearStatic ? Custom2D::AnalysisType::NonLinearStatic
                                                                     : Custom2D::AnalysisType::LinearStatic;
@@ -267,6 +269,60 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
     if (context.common.includeSelfWeight && std::abs(g.Dot(vec(pl.n))) > kAligned)
         warn("La pesanteur n'est pas contenue dans le plan : seule sa projection dans le plan est appliquée.");
     return in;
+}
+
+static void mapLinearSystem(const AnalysisModel& model, const LinearSystem& sys, AdvancedResults& adv)
+{
+    adv.available = true;
+    DofMap& map = adv.dofMap;
+    map.ndm = 2;
+    map.ndf = 3;
+    map.dofLabels = { "U", "V", "RN" };   // repère du plan d'analyse : u (portée), v, rotation autour de n
+    map.nodeEquations.clear();
+    map.equations.clear();
+    map.numberer = "MetDeDeplacement (ordre des nœuds)";
+    map.constraintHandler = "DDL bloqués éliminés";
+    map.source = "Custom2D : système résolu exporté par le solveur";
+    for (int eq = 0; eq < sys.equations && eq < static_cast<int>(sys.dofs.size()); ++eq)
+    {
+        const int nodeId = model.mapping.tsaNode(sys.dofs[static_cast<std::size_t>(eq)].first);
+        const int dof = sys.dofs[static_cast<std::size_t>(eq)].second;
+        map.equations.push_back({ eq, nodeId, dof });
+        auto& eqs = map.nodeEquations[nodeId];
+        if (eqs.empty()) eqs.assign(3, -1);
+        if (dof >= 0 && dof < 3) eqs[static_cast<std::size_t>(dof)] = eq;
+    }
+
+    // K : coefficients (ligne, colonne) cumulés, triés, sans doublon (format COO de SparseMatrix).
+    std::map<std::pair<int, int>, double> k;
+    for (const auto& e : sys.stiffness) k[{ e.row, e.col }] += e.value;
+    SparseMatrix& K = adv.kGlobal;
+    K = SparseMatrix {};
+    K.rows = K.cols = sys.equations;
+    for (const auto& [rc, v] : k)
+    {
+        if (v == 0.0) continue;
+        K.rowIndex.push_back(rc.first);
+        K.colIndex.push_back(rc.second);
+        K.values.push_back(v);
+    }
+    adv.hasGlobalStiffness = true;
+    adv.loadVector = sys.loads;
+    adv.displacementVector = sys.displacements;
+
+    MatrixMetadata& meta = adv.kGlobalMeta;
+    meta.name = "K_global";
+    meta.source = "Custom2D (MetDeDeplacement) : matrice assemblée par le solveur";
+    meta.matrixType = "Rigidité élastique linéaire";
+    meta.coordinateSystem = "Plan d'analyse (u, v, θn), DDL libres";
+    meta.dofOrdering = "Équations numérotées par le solveur (voir l'onglet DDL)";
+    meta.constraints = "DDL bloqués éliminés ; appuis élastiques ajoutés à la diagonale";
+    meta.solver = "Bande symétrique (Cholesky)";
+    meta.storage = "sparse COO";
+    meta.units = "kN/m, kN, kN·m/rad";
+    meta.symmetric = true;
+    meta.exact = true;
+    meta.significantDigits = 15;
 }
 
 ResultsModel mapResults(const AnalysisContext& context, const AnalysisModel& model, const Output& out)
@@ -415,8 +471,55 @@ ResultsModel mapResults(const AnalysisContext& context, const AnalysisModel& mod
         r.addEngineTable(et);
     }
 
+    if (out.system.available)
+        mapLinearSystem(model, out.system, r.advanced());
+    else if (context.settingsFor("custom2d").value("exportSystem").toBool(false))
+    {
+        // Export demandé mais aucun système : structure sans DDL libre (tous les nœuds bloqués).
+        r.advanced().available = true;
+        r.advanced().kGlobalUnavailableReason = "aucun degré de liberté libre (tous les nœuds sont bloqués) : K·U = F est vide.";
+    }
+
     if (unknown)
         r.appendLog("[Custom2D] " + std::to_string(unknown) + " résultat(s) d'indice inconnu ignoré(s).");
+
+    // Équilibre global : réactions réelles (3D global). Le solveur contrôle lui-même |Σ charges + Σ réactions|
+    // (equilibriumResidual) : la résultante des charges vaut −Σ R à ce résidu près. Les moments ne sont pas
+    // contrôlés par le solveur : aucune valeur n'est inventée (échelle des moments nulle, signalé au journal).
+    if (out.equilibriumResidual >= 0.0)
+    {
+        GlobalEquilibrium eq;
+        for (const auto& [nodeId, re] : r.allReactions())
+        {
+            eq.reactionFx += re.rx;
+            eq.reactionFy += re.ry;
+            eq.reactionFz += re.rz;
+        }
+        eq.appliedFx = -eq.reactionFx;
+        eq.appliedFy = -eq.reactionFy;
+        eq.appliedFz = -eq.reactionFz;
+        r.setEquilibrium(eq);
+        std::ostringstream o;
+        o << "[Custom2D] Équilibre des forces contrôlé par le solveur (résidu " << out.equilibriumResidual
+          << " kN) ; équilibre des moments non contrôlé.";
+        r.appendLog(o.str());
+    }
+
+    // Chargement calculé (traçabilité, SOLVER LAB, note de calcul).
+    std::string loading = "Tous les cas";
+    if (context.combinationId > 0)
+    {
+        const auto it = snap.combinations().find(context.combinationId);
+        loading = it != snap.combinations().end() ? it->second.name() : "Combinaison " + std::to_string(context.combinationId);
+    }
+    else if (context.loadCaseIds.size() == 1)
+    {
+        const auto it = snap.loadCases().find(context.loadCaseIds.front());
+        loading = it != snap.loadCases().end() ? it->second.name() : "Cas " + std::to_string(context.loadCaseIds.front());
+    }
+    else if (!context.loadCaseIds.empty())
+        loading = std::to_string(context.loadCaseIds.size()) + " cas superposés";
+    r.setCaseOrComboName(loading);
 
     auto& meta = r.executionMetadata();
     meta.modelBuilder = "Ossature plane 2D (ux, uy, θz)";

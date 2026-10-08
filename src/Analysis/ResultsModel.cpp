@@ -171,6 +171,7 @@ std::size_t AdvancedResults::memoryBytes() const
 {
     std::size_t bytes = kGlobal.memoryBytes();
     bytes += dofMap.equations.size() * sizeof(DofEquation);
+    bytes += (loadVector.size() + displacementVector.size()) * sizeof(double);
     for (const auto& [k, m] : elementMatrices)
         bytes += (m.kBasic.data.size() + m.kLocal.data.size() + m.kGlobal.data.size()) * sizeof(double);
     for (const auto& [k, f] : elementForces)

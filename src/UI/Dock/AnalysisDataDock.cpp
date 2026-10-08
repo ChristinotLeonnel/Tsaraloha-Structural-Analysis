@@ -24,6 +24,9 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 
+#include <algorithm>
+#include <cmath>
+
 namespace TSA::UI
 {
 
@@ -175,6 +178,16 @@ AnalysisDataDock::AnalysisDataDock(QWidget* parent)
     kLay->addWidget(m_kView, 1);
     m_tabs->addTab(kPage, tr("K globale"));
 
+    auto* sysPage = new QWidget(m_tabs);
+    auto* sysLay = new QVBoxLayout(sysPage);
+    sysLay->setContentsMargins(0, 0, 0, 0);
+    m_systemMeta = new QLabel(sysPage);
+    m_systemMeta->setWordWrap(true);
+    sysLay->addWidget(m_systemMeta);
+    m_systemTable = makeTable(sysPage, { tr("Équation"), tr("DDL"), "F", "U", "(K·U)", tr("Résidu K·U − F") });
+    sysLay->addWidget(m_systemTable, 1);
+    m_tabs->addTab(sysPage, tr("K·U = F"));
+
     auto* elPage = new QWidget(m_tabs);
     auto* elLay = new QVBoxLayout(elPage);
     elLay->setContentsMargins(0, 0, 0, 0);
@@ -249,6 +262,7 @@ void AnalysisDataDock::refresh()
     fillForces();
     fillDofMap();
     fillGlobalStiffness();
+    fillSystemVectors();
     fillElementList();
     fillEngineTables();
     updateTabsFromAvailability();
@@ -265,6 +279,8 @@ void AnalysisDataDock::updateTabsFromAvailability()
     m_tabs->setTabVisible(m_tabs->indexOf(m_forceTable->parentWidget()), !any || a.elementForces);
     m_tabs->setTabVisible(m_tabs->indexOf(m_dofTable), !any || a.dofMapping);
     m_tabs->setTabVisible(m_tabs->indexOf(m_kView->parentWidget()), !any || a.globalStiffness);
+    m_tabs->setTabVisible(m_tabs->indexOf(m_systemTable->parentWidget()),
+                          !any || (a.globalStiffness && !m_results->advanced().loadVector.empty()));
     m_tabs->setTabVisible(m_tabs->indexOf(m_elementText->parentWidget()), !any || a.elementStiffness || adv);
     // Repères bruts (local / global / basique) : uniquement avec les forces avancées du moteur.
     if (!adv) m_forceSystem->setCurrentIndex(0);
@@ -435,6 +451,44 @@ void AnalysisDataDock::fillGlobalStiffness()
     m_kMeta->setText(tr("%1 × %1, %2 coefficients non nuls\n").arg(adv.kGlobal.rows).arg(adv.kGlobal.nonZeros())
                      + metaText(adv.kGlobalMeta));
     m_kModel->setMatrix(&adv.kGlobal, &adv.dofMap);
+}
+
+void AnalysisDataDock::fillSystemVectors()
+{
+    m_systemTable->setRowCount(0);
+    const AdvancedResults* adv = m_results ? &m_results->advanced() : nullptr;
+    if (!adv || !adv->available || adv->loadVector.empty())
+    {
+        m_systemMeta->setText(tr("Vecteurs F et U fournis par les moteurs qui exportent leur système résolu "
+                                 "(Custom2D : option « Exporter le système K·U = F »)."));
+        return;
+    }
+    const auto& F = adv->loadVector;
+    const auto& U = adv->displacementVector;
+    const int n = static_cast<int>(F.size());
+    std::vector<double> KU;
+    if (adv->hasGlobalStiffness && static_cast<int>(U.size()) == adv->kGlobal.cols) KU = adv->kGlobal.multiply(U);
+    double maxResidual = 0.0, maxLoad = 0.0;
+    m_systemTable->setRowCount(n);
+    for (int i = 0; i < n; ++i)
+    {
+        setCell(m_systemTable, i, 0, QString::number(i));
+        setCell(m_systemTable, i, 1, QString::fromStdString(adv->dofMap.equationLabel(i)));
+        setNum(m_systemTable, i, 2, F[static_cast<std::size_t>(i)]);
+        if (i < static_cast<int>(U.size())) setNum(m_systemTable, i, 3, U[static_cast<std::size_t>(i)]);
+        if (i < static_cast<int>(KU.size()))
+        {
+            const double r = KU[static_cast<std::size_t>(i)] - F[static_cast<std::size_t>(i)];
+            setNum(m_systemTable, i, 4, KU[static_cast<std::size_t>(i)]);
+            setNum(m_systemTable, i, 5, r);
+            maxResidual = std::max(maxResidual, std::abs(r));
+        }
+        maxLoad = std::max(maxLoad, std::abs(F[static_cast<std::size_t>(i)]));
+    }
+    m_systemMeta->setText(tr("%1 équation(s). Résidu max |K·U − F| = %2 (relatif %3). Les réactions R sont dans "
+                             "l'onglet Réactions.")
+                              .arg(n).arg(maxResidual, 0, 'g', 3)
+                              .arg(maxLoad > 0.0 ? maxResidual / maxLoad : 0.0, 0, 'g', 3));
 }
 
 void AnalysisDataDock::fillElementList()

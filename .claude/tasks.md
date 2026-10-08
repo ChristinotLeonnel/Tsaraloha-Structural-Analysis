@@ -33,10 +33,10 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 - [ ] Commit / fusion : branches feature/tsaraloha-shared-libs (TSA) et feature/scientific-ide (TSALab) ENSEMBLE.
 - [x] Console de TSA : commandes du registre (identifiant à point) et COMMANDES (2026-10-08). Les raccourcis (FIT, ISO…) restent.
 - [ ] Outils IA (AIToolRegistry) : outils de lecture adossés au registre de commandes.
-- [ ] Phase 6 : Blueprint — runtime typé (données / exécution, nœuds = commandes du registre + science), .tsbp,
-      éditeur (QGraphicsView) dans TSALab.
-- [ ] Phase 7 : AnalysisController partagé (extraire de MainWindow le lancement en thread + publication des
-      résultats) ; Analysis Manager, Matrix viewer (K M F U R), Results viewer dans TSALab ; SOLVER LAB branché.
+- [x] Phase 6 : Blueprint — runtime typé, .tsbp, éditeur dans TSALab (2026-10-08).
+- [x] Phase 7 : AnalysisController (session), AnalysisManagerPanel, K·U = F (Custom2D), espaces Analyse / Résultats /
+      Recherche de TSALab, commandes analysis.run / results.* (2026-10-08). M et C : sans objet (statique seul, ADR-022).
+- [ ] TSA : proposer l'AnalysisManagerPanel dans un dock (aujourd'hui fenêtre Analysis + ruban).
 - [ ] Phase 8 : débogueur / profileur Blueprint, API de plugins, IA sur Blueprint, moteur OpenSees dans tsalab_science.
 - [ ] BUG-036 (cache CMake). [x] BUG-037 corrigé.
 

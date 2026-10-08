@@ -2,6 +2,23 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-08 (Analysis Manager — ADR-024 phase 7, branche feature/tsaraloha-shared-libs)
+
+### Added
+- AnalysisController (src/Analysis, dans ProjectSession) : registre des moteurs, réglages du projet, calcul en thread
+  de travail (start / cancel / runBlocking), publication et invalidation des résultats.
+- AnalysisManagerPanel (src/UI/Analysis) : moteurs et capacités, réglages, validation, calcul, synthèse.
+- Portée d'analyse « plan du modèle » (ScopeType::ModelPlane, JSON `model_plane`).
+- Custom2D : option « Exporter le système K·U = F » (K COO, F, U, DDL) ; dock Données d'analyse : onglet K·U = F.
+- Commandes analysis.run, results.summary, results.node_displacement (console, Blueprint, IA).
+- Test 196 (217/217).
+
+### Changed
+- MainWindow : plus de registre / manager / garde de résultats propres ; runAnalysis délègue au contrôleur.
+
+### Fixed
+- BUG-038 : équilibre global et nom du cas des résultats Custom2D.
+
 ## 2026-10-08 (Blueprint — ADR-024 phase 6, branche feature/tsaraloha-shared-libs)
 
 ### Added

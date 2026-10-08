@@ -174,7 +174,8 @@ void AnalysisDialog::buildUi()
     connect(m_scopeCombo, &QComboBox::currentIndexChanged, this, [this]() {
         const int i = m_scopeCombo->currentIndex();
         const bool restrictable = i >= 0 && i < static_cast<int>(m_scopes.size()) &&
-                                  m_scopes[i].type != ScopeType::EntireModel && m_scopes[i].type != ScopeType::Level;
+                                  m_scopes[i].type != ScopeType::EntireModel && m_scopes[i].type != ScopeType::Level &&
+                                  m_scopes[i].type != ScopeType::ModelPlane;
         m_levelCombo->setEnabled(restrictable);
         // Une portée plane appelle naturellement une analyse 2D si le moteur la propose.
         if (!m_updating && i >= 0 && i < static_cast<int>(m_scopes.size()) && !m_scopes[i].isPlanar())

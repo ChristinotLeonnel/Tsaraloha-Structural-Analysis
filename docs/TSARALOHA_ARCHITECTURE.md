@@ -80,5 +80,5 @@ leur périmètre est défini dans `cmake/TSAProduct.cmake`. Les deux dépôts so
 | 4 | `tsalab_science` : numerics, Custom2D/MetDeDeplacement déplacés, validation ; TSA l'utilise  — **fait**| 13 |
 | 5 | Registre de commandes exécutables partagé (UI, Blueprint, IA, console)  — **fait**| 9 |
 | 6 | Blueprint : runtime typé (données / exécution), sérialisation `.tsbp`, éditeur — **fait** (docs/BLUEPRINT.md) | 10–11, 16–21 |
-| 7 | Analysis Manager, Matrix viewer, Results viewer | 14–15 |
+| 7 | AnalysisController (session), Analysis Manager partagé, système K·U = F (matrix viewer = dock Données d'analyse), espaces Analyse / Résultats / Recherche de TSALab — **fait** | 14–15 |
 | 8 | Débogueur, profileur, API de plugins, IA sur les Blueprints, OpenSees dans tsalab_science | 16–18 |

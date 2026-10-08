@@ -38,7 +38,7 @@ Statut : phase 6 de `docs/TSARALOHA_ARCHITECTURE.md` (ADR-024), 2026-10-08. Mote
 | Logique | ET, OU, NON |
 | Flux | Si, Séquence, Pour, Tant que |
 | Texte / Débogage | Concaténer, Afficher |
-| Projet (Modèle, Charges, Requêtes) | **une commande du registre central = un nœud** (`cmd.<id>`), généré automatiquement |
+| Projet (Modèle, Charges, Requêtes, Analyse, Résultats) | **une commande du registre central = un nœud** (`cmd.<id>`), généré automatiquement — dont `analysis.run` (Calculer) et `results.summary` / `results.node_displacement` |
 | TSALab | Banc de validation (cœur scientifique) |
 
 Ajouter une commande au registre (`src/Automation/CommandRegistry.cpp`) la rend disponible dans le Blueprint, la
@@ -54,5 +54,5 @@ signalé à la validation (plugins absents).
 ## Limites actuelles (à venir : phases 7–8)
 
 Pas de débogueur pas à pas (points d'arrêt), pas d'Annuler dans l'éditeur lui-même (l'exécution, elle, passe par
-l'historique du projet), pas de nœuds d'analyse (Assemble / Solve / Get Displacement) tant que le calcul n'est pas
-sorti de MainWindow (AnalysisController, phase 7), pas d'exécution hors du thread de l'interface.
+l'historique du projet), pas d'exécution hors du thread de l'interface. Le calcul (`analysis.run`) est synchrone dans
+un Blueprint (contrôleur partagé, `runBlocking`).

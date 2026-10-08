@@ -148,6 +148,64 @@ TSA::Model::ElementSet onPlane(const TSA::Model::Model& model, const AnalysisPla
     return TSA::Model::SelectionQuery::onWorkPlane(model, wp, kTol);
 }
 
+/// Plan contenant tous les nœuds du modèle. Vertical d'abord (nœuds alignés en plan : contient la pesanteur,
+/// cas d'une poutre, d'un portique, d'un treillis), sinon horizontal (même cote).
+/// Vertical : u = direction horizontale du plan (composante dominante positive), v = +Z, n = u × v.
+std::optional<AnalysisPlane> modelPlane(const TSA::Model::Model& model, std::string* error, std::string* label)
+{
+    const auto& nodes = model.nodes();
+    if (nodes.size() < 2)
+    {
+        if (error) *error = "Le modèle doit contenir au moins deux nœuds pour définir un plan.";
+        return std::nullopt;
+    }
+    const auto& first = nodes.begin()->second;
+    const double x0 = first.x(), y0 = first.y(), z0 = first.z();
+
+    bool horizontal = true;
+    double far = 0.0, dx = 0.0, dy = 0.0;
+    for (const auto& [id, n] : nodes)
+    {
+        horizontal &= std::abs(n.z() - z0) <= kTol;
+        const double ex = n.x() - x0, ey = n.y() - y0, d = std::hypot(ex, ey);
+        if (d > far) { far = d; dx = ex; dy = ey; }
+    }
+    double ux = 1.0, uy = 0.0;
+    if (far > kTol)
+    {
+        ux = dx / far;
+        uy = dy / far;
+        if (std::abs(ux) >= std::abs(uy) ? ux < 0.0 : uy < 0.0) { ux = -ux; uy = -uy; }
+    }
+    bool vertical = true;
+    for (const auto& [id, n] : nodes)
+        vertical &= std::abs(ux * (n.y() - y0) - uy * (n.x() - x0)) <= kTol;
+
+    AnalysisPlane p;
+    if (vertical)
+    {
+        p.origin = gp_Pnt(x0, y0, 0);
+        p.u = gp_Dir(ux, uy, 0);
+        p.v = gp_Dir(0, 0, 1);
+        p.n = p.u.Crossed(p.v);
+        if (label)
+            *label = std::abs(uy) <= 1e-9 ? "Plan du modèle (vertical XZ)"
+                   : std::abs(ux) <= 1e-9 ? "Plan du modèle (vertical YZ)" : "Plan du modèle (vertical)";
+        return p;
+    }
+    if (horizontal)
+    {
+        p.origin = gp_Pnt(0, 0, z0);
+        p.u = gp_Dir(1, 0, 0);
+        p.v = gp_Dir(0, 1, 0);
+        p.n = gp_Dir(0, 0, 1);
+        if (label) *label = "Plan du modèle (horizontal, z = " + formatElevation(z0) + ")";
+        return p;
+    }
+    if (error) *error = "Le modèle n'est pas plan : choisir un axe de grille, un niveau ou un plan de travail.";
+    return std::nullopt;
+}
+
 template <typename Map>
 std::set<int> existing(const std::set<int>& ids, const Map& items)
 {
@@ -248,6 +306,15 @@ ResolvedScope AnalysisScopeResolver::resolve(const TSA::Model::Model& model,
         r.elements = TSA::Model::SelectionQuery::onWorkPlane(model, *wp, kTol);
         break;
     }
+
+    case ScopeType::ModelPlane:
+    {
+        auto plane = modelPlane(model, &r.error, &r.label);
+        if (!plane) return r;
+        r.plane = plane;
+        r.elements = TSA::Model::SelectionQuery::all(model);
+        break;
+    }
     }
 
     // Restriction par niveau d'une portée (ex. axe B ∩ niveau 2) : intersection avec la cote.
@@ -273,6 +340,14 @@ std::vector<AnalysisScopeResolver::ScopeOption> AnalysisScopeResolver::available
 {
     std::vector<ScopeOption> out;
     out.push_back({ AnalysisScope{}, "Modèle complet" });
+    // Modèle plan (portique, poutre, treillis dessinés sans grille) : calculable par un moteur 2D tel quel.
+    std::string planeLabel;
+    if (modelPlane(model, nullptr, &planeLabel))
+    {
+        AnalysisScope s;
+        s.type = ScopeType::ModelPlane;
+        out.push_back({ s, planeLabel });
+    }
 
     if (grids)
     {

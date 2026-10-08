@@ -32,7 +32,7 @@
 #include "Dock/ProjectionViewDock.h"
 #include "WindowManager/WindowManager.h"
 #include "../Diagnostics/Logger.h"
-#include "../Analysis/ResultsValidityGuard.h"
+#include "../Analysis/AnalysisController.h"
 #include "../Diagnostics/DiagnosticReport.h"
 #include "Theme/ThemeManager.h"
 #include "Dialogs/HelpDialog.h"
@@ -102,11 +102,11 @@ MainWindow::MainWindow(QWidget* parent)
     // QMainWindow est toujours créée comme fenêtre : embarquée dans AppShell, c'est une page.
     if (parent) setWindowFlags(Qt::Widget);
 
-    m_resultsGuard = std::make_unique<TSA::Analysis::ResultsValidityGuard>(m_model);
-    m_resultsGuard->setStaleCallback([this]() {
-        // Différé : on est au milieu d'une notification du modèle ; ne pas toucher aux vues ici.
-        QTimer::singleShot(0, this, &MainWindow::onResultsBecameStale);
-    });
+    // Contrôleur d'analyse partagé (session) : résultats publiés et invalidation (déjà différée hors
+    // de la notification du modèle).
+    m_analysis = &m_session->analysis();
+    connect(m_analysis, &TSA::Analysis::AnalysisController::resultsChanged, this, &MainWindow::onAnalysisResultsChanged);
+    connect(m_analysis, &TSA::Analysis::AnalysisController::resultsBecameStale, this, &MainWindow::onResultsBecameStale);
 
     // Grilles rattachées au modèle : leurs définitions entrent dans l'historique Annuler (BUG-003).
     m_model->setGridManager(m_gridManager);
@@ -167,12 +167,8 @@ MainWindow::MainWindow(QWidget* parent)
     m_occView->setCreationPresets(m_presets);
 
     m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
-    m_engineRegistry = std::make_unique<TSA::Analysis::AnalysisEngineRegistry>();
-    TSA::Analysis::registerBuiltInEngines(*m_engineRegistry);
-    m_analysisManager = std::make_unique<TSA::Analysis::AnalysisManager>(*m_engineRegistry);
     m_engineOptions = std::make_unique<TSA::UI::AnalysisEngineOptionsRegistry>();
     TSA::UI::registerBuiltInEngineOptions(*m_engineOptions);
-    if (!m_engineRegistry->ids().empty()) m_analysisContext.engineId = m_engineRegistry->ids().front();
     if (m_diagramWidget)
     {
         m_diagramWidget->setModel(m_model);
@@ -1303,7 +1299,7 @@ bool MainWindow::maybeSave()
 
 bool MainWindow::prepareToClose()
 {
-    if (m_analysisRunning)
+    if (m_analysis->isRunning())
     {
         QMessageBox::information(this, tr("Calcul en cours"), tr("Un calcul est en cours : annulez-le ou attendez sa fin avant de quitter."));
         return false;
@@ -1341,7 +1337,7 @@ bool MainWindow::createProject(const TSA::UI::NewProjectSettings& settings)
 
 bool MainWindow::closeProject()
 {
-    if (m_analysisRunning)
+    if (m_analysis->isRunning())
     {
         QMessageBox::information(this, tr("Calcul en cours"), tr("Un calcul est en cours : annulez-le ou attendez sa fin avant de fermer le projet."));
         return false;
@@ -1373,11 +1369,7 @@ void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
     restoreAnalysisContextFromModel();   // nouveau projet : réglages d'analyse par défaut
 
     // Résultats du projet précédent : jamais affichés sur un autre modèle.
-    m_resultsModel.reset();
-    emit resultsChanged();
-    if (m_occView) m_occView->setResultsModel(nullptr);
-    if (m_resultsDock) m_resultsDock->setResultsModel(nullptr);
-    if (m_propertyPanel) m_propertyPanel->setResultsModel(nullptr);
+    m_analysis->clearResults();
 
     if (m_selectionManager)
         m_selectionManager->clearSelection();

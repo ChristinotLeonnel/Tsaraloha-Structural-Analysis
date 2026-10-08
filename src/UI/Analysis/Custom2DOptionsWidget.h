@@ -9,7 +9,8 @@ namespace TSA::UI
 {
 
 /// Options du solveur 2D (méthode des déplacements) : hypothèse d'inextensibilité des barres
-/// (méthode des rotations classique) et finesse des courbes d'efforts / déformée.
+/// (méthode des rotations classique), finesse des courbes d'efforts / déformée et export du système
+/// résolu K·U = F (dock « Données du calcul »).
 class Custom2DOptionsWidget final : public AnalysisEngineOptionsWidget
 {
 public:
@@ -20,6 +21,7 @@ public:
 private:
     QCheckBox* m_inextensible = nullptr;
     QSpinBox* m_curvePoints = nullptr;
+    QCheckBox* m_exportSystem = nullptr;
 };
 
 } // namespace TSA::UI

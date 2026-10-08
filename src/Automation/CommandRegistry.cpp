@@ -1,5 +1,7 @@
 #include "CommandRegistry.h"
 
+#include "../Analysis/AnalysisController.h"
+#include "../Analysis/ResultsModel.h"
 #include "../Model/Beam.h"
 #include "../Model/Column.h"
 #include "../Model/Load/LoadCase.h"
@@ -358,6 +360,131 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 if (!n) return fail("Nœud N" + std::to_string(id) + " inexistant.");
                 const Point3 p { n->x(), n->y(), n->z() };
                 return done("N" + std::to_string(id) + " : " + formatValue(p), { { "position", p } });
+            });
+
+    // --- Analyse (contrôleur partagé de la session) ----------------------------------------------
+    reg.add({ "analysis.run", "Calculer", "Analyse",
+              "Calcule le modèle avec les réglages d'analyse du projet ; moteur et axe de grille facultatifs "
+              "(« custom2d » + axe « B » : portique plan de l'axe B ; axe « * » : modèle complet ; axe « plan » : plan "
+              "du modèle, s'il est plan). Les réglages "
+              "modifiés sont enregistrés avec le projet. Calcul synchrone : les résultats sont publiés à la fin.",
+              { optional(param("engine", "Moteur", VT::Text), std::string()),
+                optional(param("axis", "Axe de grille", VT::Text), std::string()),
+                optional(param("export_system", "Exporter K·U = F", VT::Bool), false) },
+              { param("max_displacement", "Déplacement max", VT::Real, Q::Length),
+                param("max_moment", "Moment max", VT::Real, Q::Moment),
+                param("equations", "Équations", VT::Integer) }, false },
+            [](auto& s, const Arguments& a) {
+                using namespace TSA::Analysis;
+                AnalysisController& ac = s.analysis();
+                if (ac.isRunning()) return fail("Un calcul est déjà en cours.");
+                AnalysisContext ctx = ac.context();
+                const std::string engineId = text(a, "engine");
+                if (!engineId.empty())
+                {
+                    if (!ac.registry().engine(engineId)) return fail("Moteur « " + engineId + " » inconnu.");
+                    ctx.engineId = engineId;
+                }
+                const std::string axis = text(a, "axis");
+                if (axis == "*")
+                {
+                    ctx.scope = AnalysisScope {};
+                }
+                else if (upper(axis) == "PLAN")
+                {
+                    ctx.scope = AnalysisScope {};
+                    ctx.scope.type = ScopeType::ModelPlane;
+                }
+                else if (!axis.empty())
+                {
+                    bool found = false;
+                    for (const auto& o : AnalysisScopeResolver::availableScopes(s.model(), &s.grids()))
+                        if (o.scope.type == ScopeType::GridAxis && upper(o.scope.axisLabel) == upper(axis))
+                        {
+                            ctx.scope = o.scope;
+                            found = true;
+                            break;
+                        }
+                    if (!found) return fail("Axe de grille « " + axis + " » introuvable.");
+                }
+                const AnalysisEngine* engine = ac.registry().engine(ctx.engineId);
+                if (!engine) return fail("Aucun moteur d'analyse sélectionné.");
+                const AnalysisCapabilities caps = engine->capabilities();
+                // Dimension : celle que le moteur sait calculer (plan pour un moteur 2D seul).
+                if (!caps.supportsDimension(ctx.dimension))
+                    ctx.dimension = caps.supports2D ? AnalysisDimension::Plane2D : AnalysisDimension::Space3D;
+                if (std::get<bool>(a.at("export_system")))
+                {
+                    QJsonObject settings = ctx.settingsFor(ctx.engineId);
+                    settings.insert("exportSystem", true);
+                    ctx.engineSettings[ctx.engineId] = settings;
+                }
+                ac.setContext(ctx);
+                ac.storeContextInModel();
+
+                const PreparedAnalysis prepared = ac.prepare(ctx);
+                if (!prepared.canRun())
+                {
+                    std::string why;
+                    for (const auto& e : prepared.validation.texts(ValidationSeverity::Error)) why += (why.empty() ? "" : " ; ") + e;
+                    return fail("Analyse impossible : " + (why.empty() ? std::string("modèle d'analyse non extrait.") : why));
+                }
+                const AnalysisRunResult run = ac.runBlocking(ctx, prepared);
+                if (!run.success || !ac.results()) return fail("Échec du calcul : " + run.message);
+                const ResultsModel& r = *ac.results();
+                const double toKN = r.units().force == "N" ? 1.0e-3 : 1.0;
+                const ResultsSummary sum = r.summary();
+                const long long equations = r.advanced().available ? r.advanced().dofMap.equationCount() : 0;
+                std::ostringstream o;
+                o << engine->info().name << " : δmax = " << sum.maxDisplacement * 1000.0 << " mm (N" << sum.maxDisplacementNodeId
+                  << "), Mmax = " << sum.maxBendingMoment * toKN << " kN·m";
+                if (equations > 0) o << ", " << equations << " équation(s)";
+                return done(o.str(), { { "max_displacement", sum.maxDisplacement },
+                                       { "max_moment", sum.maxBendingMoment * toKN },
+                                       { "equations", equations } });
+            });
+
+    reg.add({ "results.summary", "Résumé des résultats", "Résultats",
+              "Valeurs extrêmes du dernier calcul (déplacement, moment, réaction verticale totale) et validité.",
+              {},
+              { param("max_displacement", "Déplacement max", VT::Real, Q::Length),
+                param("max_displacement_node", "Nœud du déplacement max", VT::Integer),
+                param("max_moment", "Moment max", VT::Real, Q::Moment),
+                param("reaction_fz", "Réaction verticale totale", VT::Real, Q::Force),
+                param("up_to_date", "À jour", VT::Bool) }, false },
+            [](auto& s, const Arguments&) {
+                const auto r = s.analysis().results();
+                if (!r) return fail("Aucun résultat : lancez d'abord un calcul (analysis.run).");
+                const double toKN = r->units().force == "N" ? 1.0e-3 : 1.0;
+                const auto sum = r->summary();
+                const bool upToDate = s.analysis().resultsUpToDate();
+                std::ostringstream o;
+                o << "δmax = " << sum.maxDisplacement * 1000.0 << " mm (N" << sum.maxDisplacementNodeId << "), Mmax = "
+                  << sum.maxBendingMoment * toKN << " kN·m, ΣRz = " << r->equilibrium().reactionFz * toKN << " kN"
+                  << (upToDate ? "" : " — RÉSULTATS OBSOLÈTES");
+                return done(o.str(), { { "max_displacement", sum.maxDisplacement },
+                                       { "max_displacement_node", static_cast<long long>(sum.maxDisplacementNodeId) },
+                                       { "max_moment", sum.maxBendingMoment * toKN },
+                                       { "reaction_fz", r->equilibrium().reactionFz * toKN },
+                                       { "up_to_date", upToDate } });
+            });
+
+    reg.add({ "results.node_displacement", "Déplacement d'un nœud", "Résultats",
+              "Translation (m) et rotation (rad) calculées d'un nœud, repère global.",
+              { param("id", "Nœud", VT::Integer) },
+              { param("displacement", "Translation", VT::Point3, Q::Length),
+                param("rotation", "Rotation (rad)", VT::Point3),
+                param("magnitude", "Norme", VT::Real, Q::Length) }, false },
+            [](auto& s, const Arguments& a) {
+                const auto r = s.analysis().results();
+                if (!r) return fail("Aucun résultat : lancez d'abord un calcul (analysis.run).");
+                const int id = static_cast<int>(integer(a, "id"));
+                if (!r->getNodeDisplacement(id)) return fail("Aucun résultat pour le nœud N" + std::to_string(id) + ".");
+                const auto d = r->nodeDisplacement(id);
+                const Point3 u { d.ux, d.uy, d.uz }, rot { d.rx, d.ry, d.rz };
+                const double norm = std::sqrt(d.ux * d.ux + d.uy * d.uy + d.uz * d.uz);
+                return done("N" + std::to_string(id) + " : u = " + formatValue(u) + " m, |u| = " + formatValue(norm * 1000.0) + " mm",
+                            { { "displacement", u }, { "rotation", rot }, { "magnitude", norm } });
             });
 }
 

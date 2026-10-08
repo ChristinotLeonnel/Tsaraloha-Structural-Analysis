@@ -8,7 +8,7 @@
 #include "ModelTree/ModelTreeWidget.h"
 #include "WindowManager/WindowManager.h"
 #include "../AI/Core/AIOrchestrator.h"
-#include "../Analysis/ResultsValidityGuard.h"
+#include "../Analysis/AnalysisController.h"
 #include "../Project/ProjectManager.h"
 #include "../Viewer/SelectionManager.h"
 
@@ -29,7 +29,7 @@ void MainWindow::createAIComponents()
         TSA::AI::EngineeringSources src;
         src.model = m_model;
         src.results = m_resultsModel.get();
-        src.resultsUpToDate = m_resultsGuard ? m_resultsGuard->resultsUpToDate() : true;
+        src.resultsUpToDate = m_analysis ? m_analysis->resultsUpToDate() : true;
         if (m_projectManager)
         {
             src.projectName = m_projectManager->projectName();

@@ -20,7 +20,7 @@
 namespace TSA::Model { class Model; class SupportDefinition; }
 namespace TSA::AI { class AIOrchestrator; }
 namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct NewProjectSettings; enum class ProjectTemplate; }
-namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; }
+namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; class AnalysisController; }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Interaction { class ModelingTool; class ModelingToolRegistry; struct ToolContext; }
 namespace TSA::Project { class ProjectManager; class ProjectSession; }
@@ -229,10 +229,8 @@ private:
     TSA::UI::Diagram2DWidget* m_diagramWidget = nullptr;
     QDockWidget* m_ndcDock = nullptr;
     TSA::NDC::NDCViewerWidget* m_ndcWidget = nullptr;
+    /// Résultats courants du contrôleur d'analyse (copie du pointeur pour les vues de la fenêtre).
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
-    /// Invalide les résultats dès que le modèle diverge de la révision analysée (déclaré après
-    /// m_model : détruit avant lui).
-    std::unique_ptr<TSA::Analysis::ResultsValidityGuard> m_resultsGuard;
     void onResultsBecameStale();
     std::unique_ptr<TSA::Analysis::OpenSeesSolver> m_openSeesSolver;
     TSA::UI::ModelTreeWidget* m_modelTree = nullptr;
@@ -249,12 +247,10 @@ private:
     TSA::UI::AnalysisDataDock* m_analysisDataDock = nullptr;
     QDockWidget* m_projectStatusDock = nullptr;
     TSA::UI::ProjectStatusOverlay* m_projectStatusWidget = nullptr;
-    // Analyse multi-moteurs : registre des moteurs, orchestration commune, panneaux d'options et
-    // dernier contexte d'analyse choisi (moteur, portée, chargement, réglages par moteur).
-    std::unique_ptr<TSA::Analysis::AnalysisEngineRegistry> m_engineRegistry;
-    std::unique_ptr<TSA::Analysis::AnalysisManager> m_analysisManager;
+    // Analyse multi-moteurs : contrôleur partagé de la session (moteurs, réglages du projet, calcul en
+    // tâche de fond, résultats, invalidation) et panneaux d'options des moteurs (propres à l'interface).
+    TSA::Analysis::AnalysisController* m_analysis = nullptr;
     std::unique_ptr<TSA::UI::AnalysisEngineOptionsRegistry> m_engineOptions;
-    TSA::Analysis::AnalysisContext m_analysisContext;
     /// Calcule le contexte avec le moteur choisi (disponibilité, validation, calcul, publication).
     bool runAnalysis(const TSA::Analysis::AnalysisContext& context);
     // Paramètres d'analyse ↔ modèle (chunk SETT du .tsa, BUG-013)
@@ -266,7 +262,6 @@ private:
     std::map<std::string, QAction*> m_toolActions;
     QAction* m_actionToolInputViewport = nullptr;
     bool m_toolInputInViewport = true;
-    bool m_analysisRunning = false; ///< calcul en cours dans un thread de travail (fermeture refusée)
     void createModelingToolActions();
     /// swapInputMode : utiliser l'autre mode de saisie (Maj + clic, ou action « numérique »).
     void startModelingTool(const std::string& id, bool swapInputMode = false);
@@ -274,8 +269,8 @@ private:
     TSA::Interaction::ToolContext modelingToolContext() const;
     /// Nettoyage topologique en une transaction ; retourne le bilan (vide si rien n'a changé).
     std::string applyModelCleanup(const TSA::Model::CleanupOptions& options);
-    /// Diffuse un jeu de résultats à toutes les vues (viewport, docks, propriétés, NDC).
-    void publishResults(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
+    /// Diffuse les résultats du contrôleur d'analyse à toutes les vues (viewport, docks, propriétés, NDC).
+    void onAnalysisResultsChanged();
 
     QLabel*  m_statusProject = nullptr;
     QLabel*  m_statusView = nullptr;

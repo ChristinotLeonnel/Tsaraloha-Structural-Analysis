@@ -255,6 +255,10 @@ Decision: (référence : docs/TSARALOHA_ARCHITECTURE.md, options A/B/C comparée
   tsalab::planar dont MetDeDeplacement, banc de validation, outil tsalab-bench). TSA le lie (moteur custom2d :
   Custom2DSolver.h n'est plus qu'un pont vers tsalab::planar).
 - TSALab.exe : fenêtre IDE propre (LabMainWindow) sur ces bibliothèques, sans copie ni enveloppe de MainWindow.
+- Phase 7 : le calcul appartient à la session (ProjectSession::analysis() = AnalysisController : moteurs, réglages
+  du projet, thread de travail, publication et invalidation des résultats) ; MainWindow et LabMainWindow n'en sont
+  que des vues ; la console, le Blueprint et l'IA calculent par les commandes analysis.run / results.*. Le
+  « matrix viewer » est le dock Données d'analyse existant, alimenté aussi par Custom2D (exportSystem).
 Reason: mission « ne jamais développer deux fois le moteur graphique » ; TSA avait déjà la structure C (viewport
 indépendant de MainWindow, 0 violation de couche) : la formaliser évite d'écrire une abstraction de scène
 (options A/B) qui aurait déplacé la duplication.

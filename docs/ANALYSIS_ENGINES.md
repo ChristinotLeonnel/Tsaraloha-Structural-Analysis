@@ -5,9 +5,12 @@ Le modèle TSA, l'UI, les résultats et le format `.tsa` ne dépendent d'aucun m
 un adaptateur derrière l'interface `TSA::Analysis::AnalysisEngine`.
 
 ```text
-UI Analysis (AnalysisDialog)          MainWindow::runAnalysis
-        │ AnalysisContext                    │
-        ▼                                    ▼
+UI Analysis (AnalysisDialog, AnalysisManagerPanel)   console / Blueprint / IA (analysis.run)
+        │ AnalysisContext                                  │
+        ▼                                                  ▼
+   AnalysisController (src/Analysis, session : réglages du projet, thread de travail, publication,
+        │               invalidation des résultats) — MainWindow (TSA) et LabMainWindow (TSALab) n'en sont que des vues
+        ▼
              AnalysisManager (src/Analysis/Engine)
    ┌──────────────┬──────────────────┬──────────────────────┐
    │ ScopeResolver│ ModelExtractor   │ validation générique │
@@ -34,13 +37,16 @@ UI Analysis (AnalysisDialog)          MainWindow::runAnalysis
 | Interface moteur, `EngineInfo`, `AnalysisCapabilities`, disponibilité | `src/Analysis/Engine/AnalysisEngine.h` |
 | Registre | `src/Analysis/Engine/AnalysisEngineRegistry.*` |
 | Orchestration + validation générique | `src/Analysis/Engine/AnalysisManager.*` |
+| Contrôleur partagé (session) : moteurs, réglages du projet, calcul en tâche de fond, résultats | `src/Analysis/AnalysisController.*` (`ProjectSession::analysis()`) |
+| Gestionnaire d'analyse (panneau partagé : moteurs, réglages, validation, calcul, synthèse) | `src/UI/Analysis/AnalysisManagerPanel.*` |
+| Commandes `analysis.run`, `results.summary`, `results.node_displacement` (console, Blueprint, IA) | `src/Automation/CommandRegistry.cpp` |
 | Enregistrement des moteurs intégrés | `src/Analysis/Engines/BuiltInEngines.cpp` |
 | Adaptateur OpenSees | `src/Analysis/Engines/OpenSees/OpenSeesEngine.*` |
 | Contrat du solveur 2D, conversion, moteur | `src/Analysis/Engines/Custom2D/*` |
 | Panneaux d'options par moteur (+ registre de fabriques) | `src/UI/Analysis/AnalysisEngineOptions.*`, `OpenSeesOptionsWidget.*` |
 | Fenêtre Analysis commune | `src/UI/Analysis/AnalysisDialog.*` |
 | Résultats de la barre sélectionnée (Propriétés) | `src/UI/Properties/ElementResultsPanel.*` |
-| Tests | `tests/test_analysis_engines.cpp` (suite `engines`, tests 130-138) |
+| Tests | `tests/test_analysis_engines.cpp` (suite `engines`, tests 130-138, 196) ; TSALab `lab/Tests` (L7) |
 
 ## Portée (AnalysisScope)
 
@@ -51,6 +57,7 @@ UI Analysis (AnalysisDialog)          MainWindow::runAnalysis
 | Axe de grille (« A », « B », « 1 »…) | `GridDefinition` : positions, libellés, origine, rotation (même transformation que `CartesianGrid`) | vertical, u le long de l'axe, v = +Z |
 | Niveau | `LevelManager` + `SelectionQuery::atElevation` | horizontal |
 | Plan de travail | `WorkPlaneManager` + `SelectionQuery::onWorkPlane` | axes du WorkPlane |
+| Plan du modèle (`model_plane`) | tous les nœuds du modèle, plan détecté à chaque résolution | vertical si les nœuds sont alignés en plan (u horizontal, v = +Z), sinon horizontal (même cote) ; refusé si le modèle n'est pas plan |
 
 Appartenance au plan : `GeometryTolerance::planeMembership` (ADR-008) — un élément est retenu si tous
 ses nœuds sont dans le plan. Une portée peut être restreinte à un niveau (intersection, ex. « Axe B ∩
@@ -104,7 +111,11 @@ Solveur branché : premier de `tsalab::planar::createBuiltInSolvers()`, **MetDeD
 (`TSALab/science/engines/MetDeDeplacement`, méthode des déplacements, pont `tsalab::planar::MetDeDeplacementSolver`,
 validé par le banc `tsalab-bench` : solution analytique + validation croisée K·U = F) — rotules (relâchements My/Mz de la poutre selon l'axe parallèle à la
 normale du plan), treillis, ressorts, combinaisons (mêmes règles qu'OpenSees), poids propre. Options
-propres : barres inextensibles, points par courbe. Résultats : courbes N, V, M, déformée par barre
+propres : barres inextensibles, points par courbe, **export du système** (`exportSystem`) : K globale (COO),
+F, U et numérotation des DDL (`AdvancedResults::kGlobal / loadVector / displacementVector / dofMap`, DDL U, V, RN
+du plan) affichés par le dock « Données d'analyse » (onglets K globale, K·U = F, DDL) et rejoués par SOLVER LAB
+(TSALab) ; sans DDL libre, la raison est donnée (`kGlobalUnavailableReason`). Équilibre global : réactions réelles,
+résultante des charges = −ΣR au résidu contrôlé par le solveur près ; moments non contrôlés (signalé au journal). Résultats : courbes N, V, M, déformée par barre
 (`ResultsModel::planarCurves`) écrites dans la note de calcul (chapitre « Courbes RDM par barre »).
 Un `Custom2DEngine` construit sans solveur reste indisponible (calcul refusé, aucun résultat).
 
@@ -138,6 +149,16 @@ les efforts de la barre sélectionnée avec le moteur et la portée.
 
 ## Persistance
 
-`AnalysisContext::toJson / fromJson` (schéma versionné `schemaVersion`, lecture tolérante) est prêt à
-être stocké dans le `.tsa` ; il ne l'est pas encore (BUG-013) : le contexte vit pour la session, comme
-les paramètres d'analyse avant ce changement.
+`AnalysisContext::toJson / fromJson` (schéma versionné `schemaVersion`, lecture tolérante) est enregistré avec le
+projet (chunk SETT, BUG-013 corrigé) par `AnalysisController::storeContextInModel` et relu par
+`restoreContextFromModel` (moteur absent de l'installation → premier moteur disponible).
+
+## Contrôleur d'analyse partagé (ADR-024, phase 7)
+
+`TSA::Analysis::AnalysisController` (couche modèle, Qt Core) appartient à `ProjectSession` : registre des moteurs,
+`AnalysisManager`, contexte du projet, `start()` (thread de travail, signaux `started / progressChanged / logMessage /
+finished`), `cancel()`, `runBlocking()` (tests, scripts, Blueprint), `results()` + `ResultsValidityGuard`
+(`resultsChanged`, `resultsBecameStale` différé). Les questions à l'utilisateur (installation d'un moteur, nettoyage,
+avertissements) restent dans l'application. TSA (`MainWindow::runAnalysis`) et TSALab (`AnalysisManagerPanel`)
+l'utilisent ; la console, le Blueprint et l'IA passent par les commandes `analysis.run` (moteur, axe de grille,
+« * » modèle complet, « plan » plan du modèle, export du système) et `results.*`.
