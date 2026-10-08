@@ -113,6 +113,15 @@ Impact: MEDIUM (comportement des exceptions faux, sans erreur de compilation)
 Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapeaux (212/212 vérifié). Contrôle rapide :
 `Select-String build-ninja-debug\CMakeCache.txt -Pattern "^CMAKE_CXX_FLAGS:"` doit contenir /EHsc.
 
+## BUG-037
+Area: Calcul — MetDeDeplacement (TSALab/science/engines/MetDeDeplacement)
+Problem: une ossature sans aucun DDL libre (ex. poutre d'une seule barre encastrée aux deux extrémités) est
+refusée (« Tous les degrés de liberté sont bloqués : rien à calculer ») alors que la solution est déterminée
+(efforts d'encastrement parfait, réactions). Trouvé par le banc de validation tsalab-bench le 2026-10-08.
+Impact: LOW (contournement : un nœud intermédiaire) ; un modèle TSA réel de ce type échoue en Custom2D.
+Status: OPEN — piste : traiter neq == 0 comme un cas valide (U = 0, efforts = encastrement parfait).
+Related files: TSALab/science/engines/MetDeDeplacement/src/Solver.cpp
+
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |

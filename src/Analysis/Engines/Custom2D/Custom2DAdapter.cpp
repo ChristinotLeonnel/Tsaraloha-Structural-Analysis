@@ -256,7 +256,8 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
     in.options.axialStiffnessFactor = opts.value("inextensible").toBool(false) ? 1.0e4 : 1.0;
     in.options.curvePoints = std::clamp(opts.value("curvePoints").toInt(41), 3, 2001);
 
-    in.request.type = context.type;
+    in.request.type = context.type == AnalysisType::NonLinearStatic ? Custom2D::AnalysisType::NonLinearStatic
+                                                                    : Custom2D::AnalysisType::LinearStatic;
     in.request.loadCaseIds = context.loadCaseIds;
     in.request.combinationId = context.combinationId;
     in.request.includeSelfWeight = context.common.includeSelfWeight;

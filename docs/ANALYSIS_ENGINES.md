@@ -93,13 +93,16 @@ barres/treillis/câbles/ressorts, statique linéaire et non linéaire, matrices 
 modal, le pushover et le temporel ont été retirés (ADR-022, branche `archive/dynamique`).
 
 ### Custom2D (`custom2d`)
-Emplacement d'intégration du solveur 2D personnalisé. Contrat dans `Custom2DSolver.h` (`Custom2D::ISolver`,
-`Input`, `Output`) : données planes pures, indices contigus, unités kN / m / kPa, conventions de signe
+Emplacement d'intégration des solveurs d'ossatures planes du cœur scientifique **TSALab** (ADR-024,
+`docs/TSARALOHA_ARCHITECTURE.md`). Contrat : `tsalab::planar` (`TSALab/science/include/tsalab/planar/
+PlanarSolver.h`, alias `Custom2D::` dans TSA via `Custom2DSolver.h` ; `ISolver`, `Input`, `Output`, système
+`K·U = F` exportable) : données planes pures, indices contigus, unités kN / m / kPa, conventions de signe
 documentées. `Custom2DAdapter` convertit (projection des nœuds, appuis, ressorts, inertie de flexion
 dans le plan, charges ; pertes signalées) et remappe les résultats (déplacements et réactions en 3D
 global ; efforts dans les axes locaux des résultats OpenSees ; tables propres remappées sur les ids TSA).
-Solveur branché : **MetDeDeplacement 2** (`thirdparty/MetDeDeplacement`, méthode des déplacements,
-pont `MetDeDeplacementSolver`) — rotules (relâchements My/Mz de la poutre selon l'axe parallèle à la
+Solveur branché : premier de `tsalab::planar::createBuiltInSolvers()`, **MetDeDeplacement 2**
+(`TSALab/science/engines/MetDeDeplacement`, méthode des déplacements, pont `tsalab::planar::MetDeDeplacementSolver`,
+validé par le banc `tsalab-bench` : solution analytique + validation croisée K·U = F) — rotules (relâchements My/Mz de la poutre selon l'axe parallèle à la
 normale du plan), treillis, ressorts, combinaisons (mêmes règles qu'OpenSees), poids propre. Options
 propres : barres inextensibles, points par courbe. Résultats : courbes N, V, M, déformée par barre
 (`ResultsModel::planarCurves`) écrites dans la note de calcul (chapitre « Courbes RDM par barre »).
@@ -108,9 +111,10 @@ Un `Custom2DEngine` construit sans solveur reste indisponible (calcul refusé, a
 Brancher le solveur :
 
 ```cpp
-class MySolver final : public TSA::Analysis::Custom2D::ISolver { /* name, version, solve */ };
-// src/Analysis/Engines/BuiltInEngines.cpp
-registry.registerEngine(std::make_unique<Custom2DEngine>(std::make_unique<MySolver>()));
+// Dans le cœur scientifique TSALab (sans Qt) : TSALab/science
+class MySolver final : public tsalab::planar::ISolver { /* name, version, solve, features */ };
+// tsalab::planar::createBuiltInSolvers() : ajouter le solveur ; puis l'ajouter au banc de validation
+// (tsalab-bench) — TSA et TSALab le reçoivent sans autre modification.
 ```
 Puis mettre à jour `Custom2DEngine::capabilities()` selon ce que le solveur fait réellement.
 

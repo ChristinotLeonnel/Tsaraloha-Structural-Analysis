@@ -11,6 +11,13 @@
 #   tsa_add_product(NAME TSA PRODUCT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/product RESOURCES …)
 
 get_filename_component(TSA_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+# Cœur scientifique : dépôt TSALab voisin (TSALab/science).
+set(TSALAB_ROOT_DIR "${TSA_ROOT}/../TSALab" CACHE PATH "Racine du dépôt TSALab (cœur scientifique tsalab_science)")
+get_filename_component(TSALAB_ROOT_DIR "${TSALAB_ROOT_DIR}" ABSOLUTE)
+# Outils et tests du cœur scientifique : compilés par TSALab, pas par défaut dans le build de TSA.
+if(NOT DEFINED TSALAB_SCIENCE_TOOLS)
+    set(TSALAB_SCIENCE_TOOLS OFF CACHE BOOL "Compiler tsalab-bench et les tests du cœur scientifique")
+endif()
 
 # =============================================================================
 # Fichiers sources — regroupés par module
@@ -505,8 +512,6 @@ set(ANALYSIS_ENGINE_SOURCES
     ${TSA_ROOT}/src/Analysis/Engines/Custom2D/Custom2DAdapter.cpp
     ${TSA_ROOT}/src/Analysis/Engines/Custom2D/Custom2DEngine.h
     ${TSA_ROOT}/src/Analysis/Engines/Custom2D/Custom2DEngine.cpp
-    ${TSA_ROOT}/src/Analysis/Engines/Custom2D/MetDeDeplacementSolver.h
-    ${TSA_ROOT}/src/Analysis/Engines/Custom2D/MetDeDeplacementSolver.cpp
 )
 
 # --- IA Co-Engineering (matériel, modèles, fournisseurs, contexte, outils, RAG) — [CORE] ---
@@ -944,9 +949,15 @@ function(tsaraloha_add_shared_libraries)
         endforeach()
     endforeach()
 
-    if(NOT TARGET MetDeDeplacement)
-        # Moteur 2D « méthode des déplacements » (bibliothèque autonome du même auteur)
-        add_subdirectory(${TSA_ROOT}/thirdparty/MetDeDeplacement ${CMAKE_BINARY_DIR}/thirdparty/MetDeDeplacement)
+    # Cœur scientifique (dépôt TSALab, C++ pur) : numerics, solveurs d'ossatures planes (MetDeDeplacement),
+    # validation. Utilisé par les deux applications (moteur « custom2d » de TSA, laboratoire de TSALab).
+    if(NOT TARGET tsalab_science)
+        if(NOT EXISTS "${TSALAB_ROOT_DIR}/science/CMakeLists.txt")
+            message(FATAL_ERROR "Cœur scientifique TSALab introuvable dans « ${TSALAB_ROOT_DIR} ».
+"
+                                "Cloner le dépôt TSALab à côté de TSA (../TSALab) ou indiquer -DTSALAB_ROOT_DIR=<chemin>.")
+        endif()
+        add_subdirectory(${TSALAB_ROOT_DIR}/science ${CMAKE_BINARY_DIR}/tsalab_science)
     endif()
 
     # Bibliothèques OBJECT : les .obj sont réutilisés tels quels par les exécutables et les tests
@@ -954,7 +965,7 @@ function(tsaraloha_add_shared_libraries)
     add_library(${model} OBJECT ${TSARALOHA_MODEL_SOURCES} ${P_MODEL_SOURCES})
     tsa_apply_common_settings(${model} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
     target_link_libraries(${model} PUBLIC
-        MetDeDeplacement
+        tsalab_science
         Qt6::Core
         Qt6::Gui
         Qt6::Widgets

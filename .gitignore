@@ -14,8 +14,6 @@ cmake-build-*/
 opencascade-*/
 3rdparty-*/
 thirdparty/*
-# Moteur 2D du projet (sources propres, compilées avec TSA) : suivi.
-!thirdparty/MetDeDeplacement/
 
 # Fichiers et dossiers Visual Studio / MSVC
 .vs/
