@@ -1,17 +1,23 @@
-// Suite « engines » : architecture d'analyse multi-moteurs (tests 130-138).
+// Suite « engines » : architecture d'analyse multi-moteurs (tests 130-138, 196).
 // Registre, capacités, contexte, extraction 2D par axe de grille, mapping, validation pilotée par
 // les capacités, non-régression OpenSees, fenêtre Analysis commune, remappage des résultats.
 
 #include "test_common.h"
 
+#include "Analysis/AnalysisController.h"
 #include "Analysis/Engine/AnalysisManager.h"
+#include "Automation/CommandRegistry.h"
 #include "Analysis/Engines/Custom2D/Custom2DAdapter.h"
 #include "Analysis/Engines/Custom2D/Custom2DEngine.h"
 #include "Analysis/Engines/OpenSees/OpenSeesEngine.h"
 #include "Analysis/OpenSeesSolver.h"
 #include "Model/Load/LoadManager.h"
+#include "Project/ProjectSession.h"
 #include "UI/Analysis/AnalysisDialog.h"
 #include "UI/Analysis/AnalysisEngineOptions.h"
+
+#include <QEventLoop>
+#include <QTimer>
 
 using namespace TSA::Analysis;
 
@@ -513,6 +519,141 @@ bool runSuite_Engines(int& passed)
         for (const auto& row : res.engineTables()[0].rows) labelled |= row[0] == beamKey.label();
         TEST_CHECK(labelled, "Test 138: table propre remappée sur les identifiants TSA");
         std::cout << "[PASS] Test 138: Remappage des résultats Custom2D" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 196 : contrôleur d'analyse partagé (session) — calcul en tâche de fond, système K·U = F,
+    // réglages enregistrés avec le projet, invalidation des résultats
+    // -------------------------------------------------------------------------
+    {
+        TSA::Project::ProjectSession session;
+        Model& m = session.model();
+        const std::string gid = addGrid(session.grids());
+        Frames f = buildFrames(m, false);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        m.loadManager().addNodalLoad(NodalLoad(0, f.nodes['B'][1], lc, 10.0, 0.0, -20.0));
+
+        AnalysisController& ac = session.analysis();
+        TEST_CHECK(ac.registry().hasEngine("opensees") && ac.registry().hasEngine("custom2d"),
+                   "Test 196: moteurs intégrés enregistrés par le contrôleur");
+        TEST_CHECK(ac.manager().registry().engine("custom2d")->capabilities().providesGlobalStiffness,
+                   "Test 196: Custom2D déclare la matrice de rigidité (solveur MetDeDeplacement)");
+
+        AnalysisContext c = custom2dContext(gid, "B");
+        c.engineSettings["custom2d"] = QJsonObject { { "exportSystem", true } };
+        ac.setContext(c);
+        TEST_CHECK(ac.storeContextInModel() && !m.analysisSettingsJson().empty(), "Test 196: réglages enregistrés dans le modèle");
+        ac.setContext(AnalysisContext());
+        TEST_CHECK(ac.restoreContextFromModel() && ac.context().engineId == "custom2d" && ac.context().scope == c.scope,
+                   "Test 196: réglages relus depuis le modèle");
+
+        // Calcul asynchrone : la main revient tout de suite, fin signalée par finished().
+        bool done = false, ok = false;
+        int progressEvents = 0, resultsEvents = 0;
+        QEventLoop loop;
+        QObject::connect(&ac, &AnalysisController::progressChanged, &loop, [&](int, const QString&) { ++progressEvents; });
+        QObject::connect(&ac, &AnalysisController::resultsChanged, &loop, [&] { ++resultsEvents; });
+        QObject::connect(&ac, &AnalysisController::finished, &loop, [&](bool success, const QString&) {
+            done = true;
+            ok = success;
+            loop.quit();
+        });
+        QString error;
+        TEST_CHECK(ac.start(&error), "Test 196: calcul lancé en tâche de fond");
+        TEST_CHECK(ac.isRunning() && !ac.start(), "Test 196: un seul calcul à la fois");
+        QTimer::singleShot(30000, &loop, &QEventLoop::quit);
+        loop.exec();
+        TEST_CHECK(done && ok && !ac.isRunning(), "Test 196: calcul terminé avec succès");
+        TEST_CHECK(progressEvents > 0 && resultsEvents == 1, "Test 196: progression puis publication des résultats");
+
+        const auto res = ac.results();
+        TEST_CHECK(res && res->isValid() && ac.resultsUpToDate() && res->allDisplacements().size() == 4,
+                   "Test 196: résultats publiés (portique B)");
+        const auto& adv = res->advanced();
+        TEST_CHECK(res->availability().globalStiffness && res->availability().dofMapping && adv.hasGlobalStiffness,
+                   "Test 196: K globale et DDL disponibles");
+        // Portique bi-encastré : 2 nœuds libres × 3 DDL.
+        TEST_CHECK(adv.kGlobal.rows == 6 && adv.dofMap.equationCount() == 6 && adv.loadVector.size() == 6 &&
+                   adv.displacementVector.size() == 6, "Test 196: 6 équations (2 nœuds libres × 3 DDL)");
+        bool symmetric = true;
+        for (std::size_t q = 0; q < adv.kGlobal.values.size(); ++q)
+            symmetric &= approxEqual(adv.kGlobal.at(adv.kGlobal.colIndex[q], adv.kGlobal.rowIndex[q]), adv.kGlobal.values[q], 1e-9);
+        TEST_CHECK(symmetric, "Test 196: K symétrique");
+        const std::vector<double> ku = adv.kGlobal.multiply(adv.displacementVector);
+        double residual = 0.0, scale = 0.0;
+        for (std::size_t i = 0; i < ku.size(); ++i)
+        {
+            residual = std::max(residual, std::abs(ku[i] - adv.loadVector[i]));
+            scale = std::max(scale, std::abs(adv.loadVector[i]));
+        }
+        TEST_CHECK(scale > 0.0 && residual <= 1e-8 * scale, "Test 196: K·U = F vérifié");
+        bool mapped = true;
+        for (const auto& e : adv.dofMap.equations) mapped &= e.nodeId == f.nodes['B'][1] || e.nodeId == f.nodes['B'][2];
+        TEST_CHECK(mapped, "Test 196: équations rattachées aux nœuds TSA libres");
+
+        // Modification du modèle : résultats invalidés, signal différé émis une fois.
+        int stale = 0;
+        QObject::connect(&ac, &AnalysisController::resultsBecameStale, &loop, [&] { ++stale; });
+        m.pushUndoState("Déplacer", "");
+        m.getNode(f.nodes['B'][1])->setCoordinates(0.0, 5.0, 3.5);
+        m.notifyNodeModified(f.nodes['B'][1]);
+        QCoreApplication::processEvents();
+        QCoreApplication::processEvents();
+        TEST_CHECK(!res->isValid() && !ac.resultsUpToDate() && stale == 1, "Test 196: résultats invalidés après modification");
+
+        // Calcul synchrone (scripts, Blueprint) et oubli des résultats.
+        const auto sync = ac.runBlocking(ac.context(), ac.prepare());
+        TEST_CHECK(sync.success && ac.results() && ac.results()->isValid(), "Test 196: calcul synchrone publié");
+        ac.clearResults();
+        TEST_CHECK(!ac.results() && !ac.resultsUpToDate(), "Test 196: résultats oubliés (nouveau projet)");
+
+        // Commandes du registre central (console, Blueprint, IA) : calcul et lecture des résultats.
+        using TSA::Automation::executeCommandLine;
+        const auto& reg = TSA::Automation::CommandRegistry::builtIn();
+        TEST_CHECK(!executeCommandLine(reg, session, "results.summary").ok, "Test 196: aucun résultat → requête refusée");
+        TEST_CHECK(!executeCommandLine(reg, session, "analysis.run axis=Z").ok, "Test 196: axe inconnu refusé");
+        TEST_CHECK(!executeCommandLine(reg, session, "analysis.run engine=inconnu").ok, "Test 196: moteur inconnu refusé");
+        const auto runCmd = executeCommandLine(reg, session, "analysis.run engine=custom2d axis=A export_system=true");
+        TEST_CHECK(runCmd.ok && std::get<long long>(runCmd.outputs.at("equations")) == 6 &&
+                   std::get<double>(runCmd.outputs.at("max_displacement")) == 0.0,
+                   "Test 196: analysis.run (axe A, non chargé : déplacements nuls)");
+        TEST_CHECK(session.analysis().context().scope.axisLabel == "A", "Test 196: portée enregistrée dans les réglages");
+        const auto runB = executeCommandLine(reg, session, "analysis.run axis=B");
+        const auto sum = executeCommandLine(reg, session, "results.summary");
+        TEST_CHECK(runB.ok && sum.ok && std::get<double>(sum.outputs.at("max_displacement")) > 0.0 &&
+                   std::get<bool>(sum.outputs.at("up_to_date")), "Test 196: results.summary après calcul de l'axe B");
+        const auto nd = executeCommandLine(reg, session, "results.node_displacement id=" + std::to_string(f.nodes['B'][1]));
+        TEST_CHECK(nd.ok && std::get<double>(nd.outputs.at("magnitude")) > 0.0, "Test 196: results.node_displacement");
+        TEST_CHECK(!executeCommandLine(reg, session, "results.node_displacement id=" + std::to_string(f.nodes['A'][1])).ok,
+                   "Test 196: nœud hors portée refusé");
+
+        // Modèle plan sans grille (console) : portée « plan du modèle », calculable en 2D tel quel.
+        TSA::Project::ProjectSession plain;
+        Model& pm = plain.model();
+        plain.grids().clearAllGrids();
+        const int a = pm.addNode(0, 0, 0), b = pm.addNode(4, 0, 0);
+        pm.getNode(a)->setSupport(SupportDefinition::fixed());
+        const int cb = pm.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        const int plc = pm.loadManager().addLoadCase(LoadCase(0, "P", LoadCaseCategory::Live));
+        pm.loadManager().addNodalLoad(NodalLoad(0, b, plc, 0.0, 0.0, -10.0));
+        bool offered = false;
+        for (const auto& o : AnalysisScopeResolver::availableScopes(pm, &plain.grids()))
+            offered |= o.scope.type == ScopeType::ModelPlane && o.label == "Plan du modèle (vertical XZ)";
+        TEST_CHECK(offered, "Test 196: portée « plan du modèle » proposée (poutre colinéaire → plan vertical)");
+        AnalysisContext noWeight = plain.analysis().context();
+        noWeight.common.includeSelfWeight = false;   // charge d'extrémité seule (solution analytique)
+        plain.analysis().setContext(noWeight);
+        const auto cons = executeCommandLine(reg, plain, "analysis.run engine=custom2d axis=plan");
+        TEST_CHECK(cons.ok, "Test 196: console calculée sans grille (" << cons.message << ")");
+        const auto* bar = pm.getBeam(cb);
+        const double EI = bar->material().mechanical.E() * 1e-3 * bar->section().iy();   // E en Pa → kN/m², EI en kN·m²
+        const double expected = 10.0 * 64.0 / (3.0 * EI);
+        TEST_CHECK(std::abs(std::get<double>(cons.outputs.at("max_displacement")) - expected) <= 1e-3 * expected,
+                   "Test 196: flèche de la console = P·L³ / 3EI");
+        TEST_CHECK(std::abs(std::get<double>(cons.outputs.at("max_moment")) - 40.0) <= 1e-6,
+                   "Test 196: moment d'encastrement = P·L");
+        std::cout << "[PASS] Test 196: Contrôleur d'analyse partagé" << std::endl;
         ++passed;
     }
     return true;

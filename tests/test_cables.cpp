@@ -1,4 +1,5 @@
 #include "test_common.h"
+#include "App/ProductInfo.h"
 
 bool runSuite_Cables(int& passed)
 {
@@ -363,7 +364,7 @@ bool runSuite_Cables(int& passed)
 
         // 44.1: Catalogue des 19 Câbles & Torons Eurocodes / ASTM sur disque
         {
-            QString cablesDir = "e:/Book/Dev/TSA/Extensions/TSALib/Cables";
+            QString cablesDir = TSA::Product::sourceDirectory() + "/Extensions/TSALib/Cables";
             TEST_CHECK(QDir(cablesDir).exists(), "Subtest 44.1: Repertoire Cables existe");
 
             QStringList expectedCables = {
@@ -411,7 +412,7 @@ bool runSuite_Cables(int& passed)
         // 44.2: Découverte & Indexation dans LibraryRegistry via LibraryManager / LibraryLoader
         {
             auto& extLibMgr = TSA::ExtensionSystem::LibraryManager::instance();
-            extLibMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            extLibMgr.addSearchPath(TSA::Product::sourceDirectory() + "/Extensions");
             extLibMgr.discover();
             extLibMgr.load("org.tsaraloha.tsalib");
 

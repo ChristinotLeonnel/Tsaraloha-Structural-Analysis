@@ -34,6 +34,13 @@ PropertyPanel, ProjectStatusOverlay, ResultsValidityGuard). Détails : `architec
 
 ## Important Rules
 
+- **Écosystème Tsaraloha (ADR-024, `docs/TSARALOHA_ARCHITECTURE.md`)** : `src/` = bibliothèques partagées avec
+  TSALab (`../TSALab`) en couches model < graphics < widgets < app, contrôlées par `tools/check_layers.py`.
+  Avant toute classe : chercher l'existant, puis réutiliser → refactorer → extraire en composant partagé.
+  Aucun littéral d'identité dans `src/` (`<ProductIdentity.h>`, `App/ProductInfo.h`). Calcul scientifique =
+  `TSALab/science` (C++ pur). Commandes métier = `Automation/CommandRegistry`. Après une modification de `src/`,
+  compiler et tester TSA puis TSALab (pas en parallèle).
+
 - Travailler avec l'architecture existante ; pas d'architecture ni de système parallèle
   (un seul SelectionManager, un seul UndoManager, un seul viewport `OccView`).
 - Chercher la classe / fonction existante avant d'en créer une (Grep sur `src/`).

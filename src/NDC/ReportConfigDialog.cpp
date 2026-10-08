@@ -1,4 +1,5 @@
 #include "ReportConfigDialog.h"
+#include "App/ProductInfo.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -87,7 +88,7 @@ void ReportConfigDialog::setupUi()
     m_spinMarginBottom->setRange(5.0, 50.0);
     m_spinMarginBottom->setSuffix(" mm");
 
-    m_chkShowLogo = new QCheckBox(tr("Afficher le logo officiel TSA"), this);
+    m_chkShowLogo = new QCheckBox(tr("Afficher le logo officiel %1").arg(TSA::Product::name()), this);
     m_editPrimaryColor = new QLineEdit(this);
     m_spinFontSize = new QSpinBox(this);
     m_spinFontSize->setRange(8, 16);

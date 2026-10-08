@@ -32,6 +32,8 @@ AnalysisCapabilities Custom2DEngine::capabilities() const
     c.providesDisplacements = true;
     c.providesReactions = true;
     c.providesElementForces = true;
+    c.providesGlobalStiffness = f.linearSystem;   // option « exportSystem » (dock Données du calcul)
+    c.providesDofMapping = f.linearSystem;
     return c;
 }
 

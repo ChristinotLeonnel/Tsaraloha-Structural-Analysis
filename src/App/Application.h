@@ -1,11 +1,13 @@
 #pragma once
 
-#include <QApplication>
+#include "../UI/Common/EcosystemApplication.h"
+
 #include <memory>
 
 namespace TSA::UI { class AppShell; }
 
-class Application : public QApplication
+/// Application TSA : initialisation commune de l'écosystème (EcosystemApplication) + fenêtre AppShell.
+class Application : public TSA::UI::EcosystemApplication
 {
     Q_OBJECT
 

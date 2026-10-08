@@ -1,4 +1,5 @@
 #include "NDCPlanarCurves.h"
+#include "App/ProductInfo.h"
 #include "NDCGenerator.h"
 #include "NormativeReferenceDetector.h"
 #include "ResultAnalyzer.h"
@@ -115,7 +116,7 @@ NDCDocument NDCGenerator::generate(
     if (hasResultsMeta && results->executionMetadata().engineId != "opensees")
     {
         const auto& m = results->executionMetadata();
-        doc.softwareVersion = QString("TSA v1.0.0 (Moteur : %1%2)").arg(QString::fromStdString(m.solverEngine),
+        doc.softwareVersion = QString("%1 v%2 (Moteur : %3%4)").arg(TSA::Product::name(), TSA::Product::kReportVersion, QString::fromStdString(m.solverEngine),
             m.solverVersion.empty() ? QString() : QString(" v") + QString::fromStdString(m.solverVersion));
     }
     else
@@ -123,7 +124,7 @@ NDCDocument NDCGenerator::generate(
         auto vInfo = TSA::Analysis::OpenSeesManager::instance().versionInfo();
         if (vInfo.isValid)
         {
-            doc.softwareVersion = QString("TSA v1.0.0 (Moteur EF : OpenSees v%1.%2.%3)").arg(vInfo.major).arg(vInfo.minor).arg(vInfo.patch);
+            doc.softwareVersion = QString("%1 v%2 (Moteur EF : OpenSees v%3.%4.%5)").arg(TSA::Product::name(), TSA::Product::kReportVersion).arg(vInfo.major).arg(vInfo.minor).arg(vInfo.patch);
         }
     }
 
@@ -153,8 +154,8 @@ NDCDocument NDCGenerator::generate(
         const QString engineName = hasResultsMeta ? QString::fromStdString(results->executionMetadata().solverEngine)
                                                   : QStringLiteral("OpenSees");
         s1.paragraphs.push_back(QStringLiteral("Le présent rapport technique constitue la Note de Calcul justificative de dimensionnement "
-                                               "et de vérification de la structure modélisée dans l'environnement TSA (Tsaraloha Structural Analysis). "
-                                               "Les analyses numériques sont exécutées par le moteur de calcul %1.").arg(engineName));
+                                               "et de vérification de la structure modélisée dans l'environnement %2. "
+                                               "Les analyses numériques sont exécutées par le moteur de calcul %1.").arg(engineName, TSA::Product::displayName()));
 
         NDCSection s2;
         s2.title = QStringLiteral("Modélisation Numérique par Éléments Finis");
@@ -548,7 +549,7 @@ NDCDocument NDCGenerator::generate(
         }
         else
         {
-            sSnap.paragraphs.push_back(QStringLiteral("Les rendus graphiques 3D haute définition sont générés en direct par le viewport OCCT de TSA."));
+            sSnap.paragraphs.push_back(QStringLiteral("Les rendus graphiques 3D haute définition sont générés en direct par le viewport OCCT de %1.").arg(TSA::Product::name()));
         }
 
         ch.sections.push_back(sSnap);

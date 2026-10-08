@@ -1,4 +1,5 @@
 #include "StartCenter.h"
+#include "App/ProductInfo.h"
 
 #include "../Theme/ThemeManager.h"
 #include "../../Project/ModelPreviewCache.h"
@@ -124,7 +125,7 @@ QPixmap ProjectCard::placeholder(const QString& format)
     g.setColorAt(0, QColor(0x1C, 0x23, 0x2B));
     g.setColorAt(1, QColor(0x12, 0x17, 0x1D));
     p.fillRect(pix.rect(), g);
-    QSvgRenderer logo(QStringLiteral(":/icons/TSA_glyph.svg"));
+    QSvgRenderer logo(QString::fromLatin1(TSA::Product::kGlyphSvg));
     if (logo.isValid())
         logo.render(&p, QRectF(kImageWidth / 2.0 - 26, kImageHeight / 2.0 - 40, 52, 52));
     p.setPen(QColor(0x8B, 0x94, 0x9E));
@@ -223,41 +224,47 @@ StartCenter::StartCenter(QWidget* parent)
     setAutoFillBackground(true);
 
     // Contenu centré, largeur limitée : lisible sur grand écran comme en fenêtre réduite.
-    auto* outer = new QHBoxLayout(this);
-    outer->setContentsMargins(24, 0, 24, 0);
+    m_outer = new QHBoxLayout(this);
+    m_outer->setContentsMargins(24, 0, 24, 0);
     auto* content = new QWidget(this);
     content->setMaximumWidth(kContentMaxWidth);
-    outer->addStretch();
-    outer->addWidget(content, 100);
-    outer->addStretch();
+    m_outer->addStretch();
+    m_outer->addWidget(content, 100);
+    m_outer->addStretch();
 
     auto* root = new QVBoxLayout(content);
     root->setContentsMargins(0, 36, 0, 20);
     root->setSpacing(0);
 
     // Identité + actions principales
-    m_logo = new QLabel(content);
-    m_logo->setPixmap(QIcon(":/icons/TSA.svg").pixmap(72, 72));
-    m_logo->setAlignment(Qt::AlignCenter);
-    root->addWidget(m_logo);
-    root->addSpacing(8);
+    m_identity = new QWidget(content);
+    auto* identity = new QVBoxLayout(m_identity);
+    identity->setContentsMargins(0, 0, 0, 0);
+    identity->setSpacing(0);
+    root->addWidget(m_identity);
 
-    auto* title = new QLabel(QStringLiteral("TSA"), content);
+    m_logo = new QLabel(m_identity);
+    m_logo->setPixmap(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)).pixmap(72, 72));
+    m_logo->setAlignment(Qt::AlignCenter);
+    identity->addWidget(m_logo);
+    identity->addSpacing(8);
+
+    auto* title = new QLabel(TSA::Product::name(), m_identity);
     title->setObjectName("StartCenterTitle");
     title->setAlignment(Qt::AlignCenter);
-    root->addWidget(title);
-    auto* subtitle = new QLabel(tr("Structural Analysis"), content);
+    identity->addWidget(title);
+    auto* subtitle = new QLabel(QString::fromUtf8(TSA::Product::kStartCenterSubtitle), m_identity);
     subtitle->setObjectName("StartCenterSubtitle");
     subtitle->setAlignment(Qt::AlignCenter);
-    root->addWidget(subtitle);
-    root->addSpacing(22);
+    identity->addWidget(subtitle);
+    identity->addSpacing(22);
 
-    m_btnNew = new QPushButton(QIcon(":/icons/file_new.svg"), tr("Nouveau projet"), content);
+    m_btnNew = new QPushButton(QIcon(":/icons/file_new.svg"), tr("Nouveau projet"), m_identity);
     m_btnNew->setObjectName("StartCenterPrimary");
-    m_btnOpen = new QPushButton(QIcon(":/icons/file_open.svg"), tr("Ouvrir un projet"), content);
+    m_btnOpen = new QPushButton(QIcon(":/icons/file_open.svg"), tr("Ouvrir un projet"), m_identity);
     m_btnOpen->setObjectName("StartCenterSecondary");
-    m_btnNew->setToolTip(tr("Créer un projet TSA (Ctrl+N)"));
-    m_btnOpen->setToolTip(tr("Ouvrir un fichier .tsa (Ctrl+O)"));
+    m_btnNew->setToolTip(tr("Créer un projet %1 (Ctrl+N)").arg(TSA::Product::name()));
+    m_btnOpen->setToolTip(tr("Ouvrir un fichier %1 (Ctrl+O)").arg(TSA::Product::projectExtension()));
     for (auto* b : { m_btnNew, m_btnOpen })
     {
         b->setFixedSize(280, 40);
@@ -267,12 +274,12 @@ StartCenter::StartCenter(QWidget* parent)
         row->addStretch();
         row->addWidget(b);
         row->addStretch();
-        root->addLayout(row);
-        root->addSpacing(8);
+        identity->addLayout(row);
+        identity->addSpacing(8);
     }
     connect(m_btnNew, &QPushButton::clicked, this, &StartCenter::newProjectRequested);
     connect(m_btnOpen, &QPushButton::clicked, this, &StartCenter::openDialogRequested);
-    root->addSpacing(22);
+    identity->addSpacing(22);
 
     // Projets récents : titre, recherche, tri
     auto* header = new QHBoxLayout();
@@ -397,7 +404,8 @@ void StartCenter::applyFilter()
                      : filter.isEmpty() ? tr("(%1)").arg(m_cards.size())
                                         : tr("(%1 sur %2)").arg(m_visible.size()).arg(m_cards.size()));
     m_empty->setText(m_cards.isEmpty()
-                         ? tr("Aucun projet récent.\nCréez un nouveau projet ou ouvrez un fichier .tsa : son aperçu apparaîtra ici.")
+                         ? tr("Aucun projet récent.\nCréez un nouveau projet ou ouvrez un fichier %1 : son aperçu apparaîtra ici.")
+                               .arg(TSA::Product::projectExtension())
                          : tr("Aucun projet ne correspond à « %1 ».").arg(filter));
     m_empty->setVisible(m_visible.isEmpty());
     m_scroll->setVisible(!m_visible.isEmpty());
@@ -524,7 +532,7 @@ void StartCenter::showCardMenu(const QString& path, const QPoint& globalPos)
     }
     else if (chosen == actRefresh)
     {
-        cache.remove(path); // repli sur la miniature embarquée dans le .tsa
+        cache.remove(path); // repli sur la miniature embarquée dans le fichier
     }
     else if (chosen == actRename)
     {
@@ -532,7 +540,9 @@ void StartCenter::showCardMenu(const QString& path, const QPoint& globalPos)
         QString name = QInputDialog::getText(this, tr("Renommer le projet"), tr("Nouveau nom :"), QLineEdit::Normal,
                                              fi.completeBaseName(), &ok).trimmed();
         if (!ok || name.isEmpty()) return;
-        if (!name.endsWith(".tsa", Qt::CaseInsensitive)) name += ".tsa";
+        // Renommer conserve l'extension du fichier (format natif ou format importé).
+        const QString suffix = QStringLiteral(".") + fi.suffix();
+        if (!name.endsWith(suffix, Qt::CaseInsensitive)) name += suffix;
         const QString target = fi.absoluteDir().filePath(name);
         if (QFileInfo::exists(target) || !QFile::rename(path, target))
         {
@@ -544,9 +554,10 @@ void StartCenter::showCardMenu(const QString& path, const QPoint& globalPos)
     }
     else if (chosen == actDuplicate)
     {
-        QString target = fi.absoluteDir().filePath(fi.completeBaseName() + tr(" - copie.tsa"));
+        const QString suffix = QStringLiteral(".") + fi.suffix();
+        QString target = fi.absoluteDir().filePath(fi.completeBaseName() + tr(" - copie") + suffix);
         for (int i = 2; QFileInfo::exists(target); ++i)
-            target = fi.absoluteDir().filePath(fi.completeBaseName() + tr(" - copie (%1).tsa").arg(i));
+            target = fi.absoluteDir().filePath(fi.completeBaseName() + tr(" - copie (%1)").arg(i) + suffix);
         if (!QFile::copy(path, target))
         {
             QMessageBox::warning(this, tr("Dupliquer"), tr("Copie impossible vers %1").arg(target));
@@ -591,7 +602,7 @@ void StartCenter::showCardMenu(const QString& path, const QPoint& globalPos)
                         .arg(meta->cameraState["projection"].toString() == "orthographic" ? tr("orthographique") : tr("perspective"),
                              meta->viewState["mode2D"].toBool() ? tr(" · plan 2D") : QString());
         text += tr("<br>Source de l'aperçu : %1")
-                    .arg(source == TSA::Project::PreviewSource::Cache ? tr("dernier état capturé dans TSA")
+                    .arg(source == TSA::Project::PreviewSource::Cache ? tr("dernier état capturé dans %1").arg(TSA::Product::name())
                          : source == TSA::Project::PreviewSource::Embedded ? tr("miniature enregistrée dans le fichier")
                                                                            : tr("aucune"));
         QMessageBox::information(this, tr("Propriétés du projet"), text);

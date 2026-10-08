@@ -1,4 +1,5 @@
 #include "AIOrchestrator.h"
+#include "App/ProductInfo.h"
 
 #include "AILog.h"
 #include "../../Analysis/ResultsModel.h"
@@ -339,7 +340,7 @@ QString AIOrchestrator::runtimeDetails() const
 QString AIOrchestrator::systemPrompt()
 {
     return QStringLiteral(
-        "Tu es l'assistant de co-ingénierie intégré à TSA (Tsaraloha Structural Analysis), logiciel de modélisation et "
+        "Tu es l'assistant de co-ingénierie intégré à %1, %2 de modélisation et "
         "d'analyse de structures (calcul OpenSees). Tu aides un ingénieur structure ; tu n'es pas une autorité.\n"
         "Règles impératives :\n"
         "1. N'utilise que les données fournies par TSA (bloc CONTEXTE TSA et résultats d'outils). Si une donnée manque, "
@@ -353,7 +354,8 @@ QString AIOrchestrator::systemPrompt()
         "Sinon indique que la vérification normative reste à faire par l'ingénieur.\n"
         "6. Si les résultats sont absents ou obsolètes (upToDate=false), signale-le avant toute interprétation.\n"
         "7. Réponds en français, de façon concise et structurée (titres courts, listes). Termine par « Confiance : "
-        "élevée / moyenne / faible » avec une justification d'une ligne.");
+        "élevée / moyenne / faible » avec une justification d'une ligne.")
+        .arg(TSA::Product::displayName(), QString::fromUtf8(TSA::Product::kKind));
 }
 
 QString AIOrchestrator::deterministicAnalysis(const EngineeringSources& src)
@@ -774,6 +776,12 @@ bool AIOrchestrator::acceptProposal(const QString& proposalId, QString* error)
     {
         emit proposalResolved(p.id, true, QStringLiteral("Calcul lancé par l'ingénieur."));
         emit runAnalysisRequested();
+        return true;
+    }
+    if (p.tool == "propose_blueprint")
+    {
+        emit proposalResolved(p.id, true, QStringLiteral("Blueprint accepté : %1").arg(p.title));
+        emit blueprintAccepted(p.arguments.value("title").toString(), p.arguments.value("script").toString());
         return true;
     }
     EngineeringSources src = m_sources ? m_sources() : EngineeringSources{};

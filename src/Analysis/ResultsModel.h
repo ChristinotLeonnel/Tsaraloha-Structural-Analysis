@@ -279,6 +279,10 @@ struct AdvancedResults
     SparseMatrix kGlobal;
     MatrixMetadata kGlobalMeta;
     std::string kGlobalUnavailableReason;
+    /// Second membre F et solution U du système K·U = F, dans l'ordre des équations (moteurs qui
+    /// exportent leur système résolu, ex. Custom2D) ; vides sinon.
+    std::vector<double> loadVector;
+    std::vector<double> displacementVector;
     std::map<ElementKey, ElementMatrices> elementMatrices;
     std::map<ElementKey, ElementForceSet> elementForces;
     std::vector<SpringSupportInfo> springs;

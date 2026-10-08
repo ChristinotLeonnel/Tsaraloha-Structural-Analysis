@@ -1,4 +1,5 @@
 #include "ModelTreeWidget.h"
+#include "App/ProductInfo.h"
 #include "../../Model/ModelDiff.h"
 #include "../../Grid/GridManager.h"
 #include <QVBoxLayout>
@@ -200,7 +201,7 @@ void ModelTreeWidget::setProjectName(const QString& name)
     m_projectName = name;
     if (m_projectRootItem)
     {
-        m_projectRootItem->setText(0, m_projectName.isEmpty() ? tr("Projet.tsa") : m_projectName);
+        m_projectRootItem->setText(0, m_projectName.isEmpty() ? tr("Projet") + TSA::Product::projectExtension() : m_projectName);
     }
 }
 
@@ -209,7 +210,7 @@ void ModelTreeWidget::createRootCategories()
     m_tree->clear();
     m_itemIndex.clear();
 
-    QString rootText = m_projectName.isEmpty() ? tr("Projet.tsa") : m_projectName;
+    QString rootText = m_projectName.isEmpty() ? tr("Projet") + TSA::Product::projectExtension() : m_projectName;
     m_projectRootItem = new QTreeWidgetItem(m_tree, { rootText, "" });
     m_projectRootItem->setData(0, TypeRole, TypeProject);
     m_projectRootItem->setIcon(0, QIcon(":/icons/file/file_open.svg"));
@@ -426,6 +427,16 @@ void ModelTreeWidget::refreshAll()
     {
         onCableAdded(cab);
     }
+}
+
+void ModelTreeWidget::scheduleLoadsRefresh()
+{
+    if (m_loadsRefreshPending) return;
+    m_loadsRefreshPending = true;
+    QTimer::singleShot(0, this, [this] {
+        m_loadsRefreshPending = false;
+        refreshLoads();
+    });
 }
 
 void ModelTreeWidget::refreshLoads()

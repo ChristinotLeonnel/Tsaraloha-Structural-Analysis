@@ -12,6 +12,7 @@
 
 class QComboBox;
 class QGridLayout;
+class QHBoxLayout;
 class QLabel;
 class QLineEdit;
 class QPushButton;
@@ -96,6 +97,8 @@ private:
     void showCardMenu(const QString& path, const QPoint& globalPos);
 
 private:
+    QHBoxLayout* m_outer = nullptr;
+    QWidget* m_identity = nullptr; // logo, titre, Nouveau / Ouvrir
     QLabel* m_logo = nullptr;
     QLineEdit* m_search = nullptr;
     QComboBox* m_sort = nullptr;

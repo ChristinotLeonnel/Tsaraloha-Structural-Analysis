@@ -1,4 +1,5 @@
 #include "LogConsoleDock.h"
+#include "App/ProductInfo.h"
 #include "../../Diagnostics/Logger.h"
 
 #include <QWidget>
@@ -114,7 +115,7 @@ void LogConsoleDock::setupUi()
 
     updateTheme(ThemeManager::instance().isDarkMode());
 
-    appendLog(tr("TSA Structural Analysis Modeler initialisé avec succès."), "SYS", "App");
+    appendLog(QString::fromUtf8(TSA::Product::kConsoleBanner), "SYS", "App");
     appendLog(tr("Moteur graphique OpenCASCADE 8.0 actif."), "SYS", "OCCT");
 }
 

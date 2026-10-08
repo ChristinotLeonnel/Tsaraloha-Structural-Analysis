@@ -221,3 +221,53 @@ sur chaque évolution du modèle ; l'utilisateur se concentre sur le statique.
 Consequences: réintroduire du dynamique = repartir de `archive/dynamique` sur une branche dédiée, en adaptant la
 convention RDM. Un ancien contexte JSON de type dynamique est relu comme statique linéaire.
 Status: ACTIVE (2026-10-07)
+
+## ADR-023
+Title: Base technique commune TSA / TSALab : TSALab compile les sources de TSA, sans copie
+Decision: les sources de `src/` et `tests/` de TSA sont la base commune des deux produits. Ce qui distingue un produit
+(nom, version, extension, signature de fichier, ProgID, CLSID, QSettings, icônes, textes d'identité) est lu dans
+`<ProductIdentity.h>` / `<ProductShellIds.h>` du dossier `product/` du produit compilé (TSA : `TSA/product`,
+TSALab : `TSALab/product`), via `src/App/ProductInfo.h`. La construction (listes de sources, Core, exe, tests, DLL,
+déploiement) est la fonction `tsa_add_product` de `cmake/TSAProduct.cmake`, appelée par les deux CMakeLists. Les
+ajouts propres à un produit passent par des points d'extension (`TSA::Product::configureShell`,
+`StartCenter::setLaunchPanel`, `AppShell::setWorkspaceDecorator`, `runProductSuites`) et des sources dans des
+dossiers qui ne masquent jamais un chemin de `src/` (vérifié par `tsa_add_product`, FATAL_ERROR sinon).
+Reason: TSALab était une copie intégrale de TSA (~470 fichiers identiques) : chaque correction devait être faite deux
+fois. Désormais un bug corrigé dans TSA l'est dans TSALab à la recompilation.
+Consequences: modifier `src/` impacte les deux produits : compiler et tester TSA (212 tests) ET TSALab (212 + suite
+`lab`). Ne jamais réintroduire de littéral d'identité dans `src/` (passer par ProductIdentity). Ne jamais copier un
+fichier commun dans TSALab : ajouter un point d'extension dans TSA. Les SDK (OCCT, 3rdparty, OpenSees, Extensions/)
+sont ceux du dépôt TSA. TSA conserve ses emplacements QSettings, son format (.tsa, TSAF) et ses textes (sauf trois messages rendus neutres : échec d'ouverture, projet chargé, signature non reconnue).
+Status: SUPERSEDED par ADR-024 (2026-10-08) — l'identité produit (product/, ProductInfo.h) est conservée ; TSALab ne compile plus TSA comme un produit enveloppant MainWindow.
+
+## ADR-024
+Title: Écosystème Tsaraloha : bibliothèques partagées TSA / TSALab et cœur scientifique sans Qt
+Decision: (référence : docs/TSARALOHA_ARCHITECTURE.md, options A/B/C comparées, C retenue)
+- Sources dans TSA/src, découpées en couches contrôlées par tools/check_layers.py (test CTest) :
+  <P>_Model (sans widget) < <P>_Graphics (viewport OCCT, géométrie, outils, grilles, thème)
+  < <P>_Widgets (arbre, propriétés, docks, dialogues, fenêtre Analysis, dispositions, IA, NDC,
+  SelectionSynchronizer, EcosystemApplication) < application (TSA : MainWindow, ruban, AppShell, Start Center).
+- tsaraloha_add_shared_libraries(PREFIX P PRODUCT_DIR …) (cmake/TSAProduct.cmake) compile ces
+  bibliothèques avec l'identité du produit ; TSA (tsa_add_product) et TSALab (son propre CMakeLists) les lient.
+- ProjectSession (modèle, commandes, grilles, projet, historique) sort de MainWindow : une fenêtre possède une
+  session et y branche des vues partagées.
+- Cœur scientifique tsalab_science dans le dépôt TSALab (science/, C++ pur : numerics, solveurs plans
+  tsalab::planar dont MetDeDeplacement, banc de validation, outil tsalab-bench). TSA le lie (moteur custom2d :
+  Custom2DSolver.h n'est plus qu'un pont vers tsalab::planar).
+- TSALab.exe : fenêtre IDE propre (LabMainWindow) sur ces bibliothèques, sans copie ni enveloppe de MainWindow.
+- Phase 7 : le calcul appartient à la session (ProjectSession::analysis() = AnalysisController : moteurs, réglages
+  du projet, thread de travail, publication et invalidation des résultats) ; MainWindow et LabMainWindow n'en sont
+  que des vues ; la console, le Blueprint et l'IA calculent par les commandes analysis.run / results.*. Le
+  « matrix viewer » est le dock Données d'analyse existant, alimenté aussi par Custom2D (exportSystem).
+- Phase 8 : plugins = DLL sur une API en C++ standard (src/Plugins/PluginApi.h) qui n'ajoute que des commandes
+  (composées des commandes existantes) et des nœuds aux registres globaux ; jamais d'accès direct au modèle.
+  Blueprint modifiable par l'IA = script de commandes (texte vérifié) ↔ graphe ; aucune exécution sans acceptation.
+  OpenSees est aussi un solveur plan du cœur scientifique (référence du banc), sans remplacer le moteur opensees de TSA.
+Reason: mission « ne jamais développer deux fois le moteur graphique » ; TSA avait déjà la structure C (viewport
+indépendant de MainWindow, 0 violation de couche) : la formaliser évite d'écrire une abstraction de scène
+(options A/B) qui aurait déplacé la duplication.
+Consequences: les deux dépôts sont clonés côte à côte (TSA_ROOT_DIR / TSALAB_ROOT_DIR). Toute modification de
+TSA/src se vérifie sur TSA (212 tests) ET TSALab (tests du laboratoire + tsalab_science_tests + tsalab-bench).
+Un besoin d'une application = composant partagé ou point d'extension, jamais une copie. La science n'inclut
+ni Qt ni OCCT ni le modèle TSA ; l'interface n'appelle jamais un solveur directement (adaptateurs).
+Status: ACTIVE (2026-10-08)

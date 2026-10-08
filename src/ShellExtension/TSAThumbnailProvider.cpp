@@ -1,4 +1,6 @@
-// TSAThumbnailProvider.dll — miniatures des fichiers .tsa dans l'Explorateur Windows.
+// TSAThumbnailProvider.dll — miniatures des fichiers projet dans l'Explorateur Windows.
+// Source commune à TSA et TSALab : CLSID, extension et ProgID viennent de <ProductShellIds.h> (dossier
+// product/ du produit compilé) ; le nom de la DLL est fixé par CMake (<Produit>ThumbnailProvider.dll).
 //
 // Extension Shell (IThumbnailProvider + IInitializeWithStream) volontairement minimale :
 //  - aucune dépendance Qt / OpenCASCADE / solveur ; runtime C statique : fonctionne sur tout poste ;
@@ -26,6 +28,8 @@
 
 #include "../IO/TSAPreviewBlock.h"
 
+#include <ProductShellIds.h>
+
 #include <atomic>
 #include <new>
 #include <string>
@@ -34,12 +38,11 @@
 namespace
 {
 
-// {5BA6698A-ED79-442D-92EE-31DA2704C07D}
-constexpr CLSID CLSID_TSAThumbnailProvider = { 0x5ba6698a, 0xed79, 0x442d, { 0x92, 0xee, 0x31, 0xda, 0x27, 0x04, 0xc0, 0x7d } };
-constexpr wchar_t kClsidString[] = L"{5BA6698A-ED79-442D-92EE-31DA2704C07D}";
+constexpr CLSID CLSID_TSAThumbnailProvider = TSA::Product::Shell::kThumbnailProviderClsid;
+constexpr const wchar_t* kClsidString = TSA::Product::Shell::kThumbnailProviderClsidString;
 constexpr wchar_t kThumbnailHandlerKey[] = L"{e357fccd-a995-4576-b01f-234630154e96}"; // IThumbnailProvider
-constexpr wchar_t kExtension[] = L".tsa";
-constexpr wchar_t kProgId[] = L"TSA.Project";
+constexpr const wchar_t* kExtension = TSA::Product::Shell::kExtension;
+constexpr const wchar_t* kProgId = TSA::Product::Shell::kProgId;
 
 HINSTANCE g_module = nullptr;
 std::atomic<long> g_objects{ 0 };
@@ -303,7 +306,7 @@ HRESULT registerServer(HKEY root)
 
     const std::wstring classes = L"Software\\Classes\\";
     const std::wstring clsidKey = classes + L"CLSID\\" + kClsidString;
-    bool ok = setString(root, clsidKey, nullptr, L"TSA Thumbnail Provider")
+    bool ok = setString(root, clsidKey, nullptr, TSA::Product::Shell::kThumbnailProviderName)
            && setString(root, clsidKey + L"\\InprocServer32", nullptr, path)
            && setString(root, clsidKey + L"\\InprocServer32", L"ThreadingModel", L"Apartment");
     // Gestionnaire sur l'extension et sur le ProgID (selon la façon dont l'Explorateur résout le type).

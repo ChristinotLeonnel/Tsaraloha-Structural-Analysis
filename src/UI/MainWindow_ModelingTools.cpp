@@ -100,7 +100,7 @@ TSA::Interaction::ToolContext MainWindow::modelingToolContext() const
         ctx.planeX = wp.axisX();
     }
     ctx.presets = m_presets;
-    ctx.grids = m_gridManager.get();
+    ctx.grids = m_gridManager;
     return ctx;
 }
 

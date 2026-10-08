@@ -99,7 +99,7 @@ Correspondance avec l'arborescence demandée (le dépôt garde sa structure `src
 | /core/materials, /core/profiles | src/Model (Material, Section) + src/BIM/Core/Catalogs |
 | /core/loads, /core/results | src/Model/Load, src/Analysis (Results, AnalysisRun) |
 | /ifc/import, /ifc/export, /ifc/mapping | src/BIM/IFC |
-| /solver | src/Analysis/Engines + thirdparty/MetDeDeplacement (inchangés) |
+| /solver | src/Analysis/Engines + TSALab/science (cœur scientifique) |
 | /validation/bim, /ids, /model | src/BIM/Validation, src/Standards/ModelValidator, src/Model/ModelCleanup |
 | /ui | src/UI |
 | unités | src/Core/Units.h |

@@ -54,7 +54,7 @@ struct TSAPreviewLocation
 /// récente ou sans aperçu : l'appelant affiche alors l'icône par défaut.
 inline bool locatePreviewBlock(const TSAFileHeader& header, uint64_t streamLength, uint64_t* blockOffset)
 {
-    if (header.magic != TSA_FILE_MAGIC) return false;
+    if (!isReadableFileMagic(header.magic)) return false;
     if (header.versionMajor > TSA_FORMAT_VERSION_MAJOR) return false;
     if ((header.flags & FLAG_HAS_PREVIEW_BLOCK) == 0) return false;
     if (header.payloadOffset < sizeof(TSAFileHeader) || header.fileSize < header.payloadOffset) return false;

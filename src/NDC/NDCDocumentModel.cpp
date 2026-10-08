@@ -1,4 +1,5 @@
 #include "NDCDocumentModel.h"
+#include "App/ProductInfo.h"
 #include <QDate>
 #include <QFile>
 #include <QTextStream>
@@ -49,7 +50,7 @@ std::vector<NDCTable> NDCDocument::allTables() const
 
 QString NDCDocument::getTsaLogoSvg()
 {
-    QFile file(":/icons/TSA.svg");
+    QFile file(QString::fromLatin1(TSA::Product::kIconSvg));
     if (file.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         return QString::fromUtf8(file.readAll());
@@ -189,7 +190,7 @@ QString NDCDocument::toHtml() const
         ts << "  </div>\n";
 
         ts << "  <div class=\"cover-footer\">\n";
-        ts << "    <div>TSA v1.0.0 — Conforme aux exigences IEEE Std 1063 & Eurocodes</div>\n";
+        ts << "    <div>" << TSA::Product::name() << " v" << TSA::Product::kReportVersion << " — Conforme aux exigences IEEE Std 1063 & Eurocodes</div>\n";
         ts << "    <div>Document certifié d'analyse structurale</div>\n";
         ts << "  </div>\n";
         ts << "</div>\n";

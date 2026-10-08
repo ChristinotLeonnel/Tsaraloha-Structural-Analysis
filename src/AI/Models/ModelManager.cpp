@@ -1,4 +1,5 @@
 #include "ModelManager.h"
+#include "App/ProductInfo.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -39,7 +40,7 @@ QList<QPair<QString, QString>> ModelManager::searchLocations()
 {
     const QString home = QDir::homePath();
     return {
-        { modelsDirectory(), QStringLiteral("TSA") },
+        { modelsDirectory(), QString::fromLatin1(TSA::Product::kAiModelsSource) },
         { home + "/.cache/huggingface/hub", QStringLiteral("Cache Hugging Face") },
         { home + "/.lmstudio/models", QStringLiteral("LM Studio") },
         { home + "/.cache/lm-studio/models", QStringLiteral("LM Studio") },
@@ -70,10 +71,10 @@ std::vector<InstalledModel> ModelManager::scanInstalled() const
             m.fileName = name;
             m.sizeBytes = fi.size();
             m.source = source;
-            m.removable = (source == QStringLiteral("TSA"));
+            m.removable = (source == QLatin1String(TSA::Product::kAiModelsSource));
             m.spec = m_registry ? m_registry->findByFileName(name) : nullptr;
             if (m.spec) m.sizeMatchesRegistry = (m.sizeBytes == m.spec->fileSizeBytes);
-            if (!m.spec && source == QStringLiteral("TSA")) m.source = QStringLiteral("Personnalisé");
+            if (!m.spec && source == QLatin1String(TSA::Product::kAiModelsSource)) m.source = QStringLiteral("Personnalisé");
             result.push_back(m);
         }
     }
@@ -124,7 +125,7 @@ bool ModelManager::startDownload(const QString& modelId, QString* error)
 
     QNetworkRequest req{ QUrl(spec->downloadUrl()) };
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-    req.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("TSA-Structural-Analysis"));
+    req.setHeader(QNetworkRequest::UserAgentHeader, QString::fromLatin1(TSA::Product::kHttpUserAgent));
     m_reply = m_network->get(req);
     connect(m_reply, &QNetworkReply::readyRead, this, &ModelManager::onReadyRead);
     connect(m_reply, &QNetworkReply::finished, this, &ModelManager::onFinished);
@@ -215,7 +216,7 @@ bool ModelManager::removeModel(const InstalledModel& model, QString* error)
 {
     if (!model.removable)
     {
-        if (error) *error = QStringLiteral("Ce fichier appartient à une autre application (%1) : TSA ne le supprime pas.").arg(model.source);
+        if (error) *error = QStringLiteral("Ce fichier appartient à une autre application (%1) : %2 ne le supprime pas.").arg(model.source, TSA::Product::name());
         return false;
     }
     if (!QFile::remove(model.path))

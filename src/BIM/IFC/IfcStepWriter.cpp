@@ -1,4 +1,5 @@
 #include "IfcStepWriter.h"
+#include "App/ProductInfo.h"
 
 #include <QDateTime>
 #include <QString>
@@ -93,7 +94,7 @@ std::string IfcStepWriter::document(const StepHeader& h) const
     out += "ISO-10303-21;\nHEADER;\n";
     out += "FILE_DESCRIPTION(('ViewDefinition [" + h.viewDefinition + "]'),'2;1');\n";
     out += "FILE_NAME(" + str(h.fileName) + "," + str(stamp) + ",(" + str(h.author) + "),(" + str(h.organization)
-        + "),'TSA STEP writer','TSA - Tsaraloha Structural Analysis','');\n";
+        + "),'" + std::string(TSA::Product::kName) + " STEP writer','" + TSA::Product::kIfcOriginatingSystem + "','');\n";
     out += "FILE_SCHEMA(('" + h.schema + "'));\nENDSEC;\nDATA;\n";
     for (const auto& l : m_lines)
     {

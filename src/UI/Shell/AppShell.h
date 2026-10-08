@@ -1,6 +1,6 @@
 #pragma once
 
-// Fenêtre unique de TSA : barre de titre personnalisée + deux modes exclusifs.
+// Fenêtre unique du produit (TSA, TSALab) : barre de titre personnalisée + deux modes exclusifs.
 //   StartCenter      : écran d'accueil seul (créé au lancement) ;
 //   ProjectWorkspace : MainWindow (viewport, ruban, docks, barre d'état), créé au premier projet
 //                      ouvert ou créé, puis conservé et vidé à la fermeture du projet.
@@ -46,9 +46,14 @@ public:
 
     void createNewProject();
     void openProject();
-    /// Ouvre un fichier .tsa (projets récents, glisser-déposer, ligne de commande).
+    /// Ouvre un fichier projet du produit (projets récents, glisser-déposer, ligne de commande).
     bool openProjectFile(const QString& path);
     bool closeProject();
+    bool isProjectOpen() const { return m_mode == ApplicationMode::ProjectWorkspace; }
+
+    StartCenter* startCenter() const { return m_startCenter; }
+    /// Workspace de modélisation (nul tant qu'aucun projet n'a été ouvert ou créé).
+    MainWindow* workspace() const { return m_workspace; }
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -63,7 +68,6 @@ protected:
 
 private:
     MainWindow* ensureWorkspace();
-    bool isProjectOpen() const { return m_mode == ApplicationMode::ProjectWorkspace; }
     bool loadIntoWorkspace(const QString& path);
     void setMode(ApplicationMode mode);
     void updateTitle();

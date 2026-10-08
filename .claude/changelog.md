@@ -2,6 +2,93 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-08 (Débogueur, plugins, IA sur Blueprint — ADR-024 phase 8)
+
+### Added
+- Blueprint : Debugger / BreakpointDebugger, Runner::requestStop, NodeDefinition::usesProject ; éditeur : points
+  d'arrêt, Déboguer, Pas à pas, Continuer, Arrêter, valeurs produites, Annuler / Rétablir du graphe, exécution en tâche
+  de fond des graphes sans accès au projet, menu Script.
+- BlueprintScript : script de commandes ↔ Blueprint (variables, liens de données), description pour l'IA.
+- CommandRegistry : parseCommandLine, tokenizeCommandLine, parseArgument, formatArgument ; registres globaux modifiables.
+- IA : outils list_commands et propose_blueprint ; TSA exécute un Blueprint accepté (une entrée Annuler par commande).
+- Plugins : src/Plugins (PluginApi.h, PluginManager), chargement au démarrage (EcosystemApplication), docs/PLUGINS.md.
+- Tests 197–198 (219/219).
+
+## 2026-10-08 (Analysis Manager — ADR-024 phase 7, branche feature/tsaraloha-shared-libs)
+
+### Added
+- AnalysisController (src/Analysis, dans ProjectSession) : registre des moteurs, réglages du projet, calcul en thread
+  de travail (start / cancel / runBlocking), publication et invalidation des résultats.
+- AnalysisManagerPanel (src/UI/Analysis) : moteurs et capacités, réglages, validation, calcul, synthèse.
+- Portée d'analyse « plan du modèle » (ScopeType::ModelPlane, JSON `model_plane`).
+- Custom2D : option « Exporter le système K·U = F » (K COO, F, U, DDL) ; dock Données d'analyse : onglet K·U = F.
+- Commandes analysis.run, results.summary, results.node_displacement (console, Blueprint, IA).
+- Test 196 (217/217).
+
+### Changed
+- MainWindow : plus de registre / manager / garde de résultats propres ; runAnalysis délègue au contrôleur.
+
+### Fixed
+- BUG-038 : équilibre global et nom du cas des résultats Custom2D.
+
+## 2026-10-08 (Blueprint — ADR-024 phase 6, branche feature/tsaraloha-shared-libs)
+
+### Added
+- Blueprint (docs/BLUEPRINT.md) : moteur partagé src/Blueprint (graphe typé, flux de données / d'exécution, nœuds purs
+  évalués à la demande, Si / Séquence / Pour / Tant que, paramètres nommés et reconstruction paramétrique, validation,
+  garde-fous, profileur), une commande du registre = un nœud (cmd.*), nœud TSALab « Banc de validation » ; fichier
+  .tsbp versionné ; éditeur partagé src/UI/Blueprint (palette, scène, liens à la souris, valeurs, exécution, profil).
+- Tests 193–195 (suite blueprint) : 216/216.
+- Console de TSA : commandes du registre central (identifiant à point) et « COMMANDES ».
+
+### Fixed
+- BUG-037 (MetDeDeplacement sans DDL libre) dans TSALab/science.
+
+## 2026-10-08 (écosystème Tsaraloha — ADR-024, branche feature/tsaraloha-shared-libs)
+
+### Changed
+- Bibliothèques partagées <P>_Model / <P>_Graphics / <P>_Widgets (cmake/TSAProduct.cmake), contrôle des couches
+  tools/check_layers.py (CTest). ProjectSession (modèle, commandes, grilles, projet, historique) hors de MainWindow.
+- Composants partagés extraits de MainWindow / Application : SelectionSynchronizer, EcosystemApplication.
+- Moteur custom2d : solveur du cœur scientifique TSALab (tsalab::planar, MetDeDeplacement déplacé dans TSALab/science).
+- Retrait des points d'extension « TSALab enveloppe MainWindow » (configureShell, setLaunchPanel, décorateur).
+
+### Added
+- Automation/CommandRegistry : registre central de commandes typées (nœuds, poutres, poteaux, appuis, cas, charges,
+  requêtes), une entrée Annuler par commande, ligne de commande ; test 192 (suite automation).
+- docs/TSARALOHA_ARCHITECTURE.md (analyse, options A/B/C, architecture, feuille de route).
+
+### Fixed
+- Arbre du modèle : la section Charges suit les ajouts / suppressions de charges et de cas (observateur), dans TSA
+  comme dans TSALab (vérifié dans l'interface de TSALab).
+
+### Verified
+- TSA 213/213 ; TSALab : application 2/2, cœur scientifique 5/5, tsalab-bench 6/6 ; 0 violation de couche ;
+  TSA ouvre un projet en argument ; TSALab ouvre un .tsa, exécute des commandes console (captures d'écran).
+
+## 2026-10-08 (base commune TSA / TSALab — ADR-023, branche feature/shared-core)
+
+### Changed
+- Identité produit sortie du code : `product/ProductIdentity.h` + `ProductShellIds.h` (constantes), `src/App/ProductInfo.h`
+  (helpers Qt). ~40 fichiers de `src/` n'écrivent plus « TSA » / « .tsa » / « TSA Engineering » en dur (titres, QSettings,
+  association Windows, signature de fichier, NDC, IFC, logs, rapports de crash, IA, DLL de miniatures, tests).
+- Chemins absolus `E:/Book/Dev/TSA/...` (OpenSees, Extensions, textures, tests) remplacés par `TSA_SOURCE_DIR` (CMake).
+- CMake : listes de sources et cibles déplacées dans `cmake/TSAProduct.cmake` (`tsa_add_product`) ; `CMakeLists.txt`
+  réduit à la configuration + appel. SDK (OCCT, 3rdparty) localisés depuis la racine TSA (`TSA_DEPS_ROOT`).
+- Textes neutres : « Échec de l'ouverture du projet », « Projet chargé avec succès », « signature non reconnue ».
+
+### Added
+- Points d'extension : `TSA::Product::configureShell` (product/ProductHooks.cpp), `StartCenter::setLaunchPanel`,
+  `AppShell::setWorkspaceDecorator` / `workspaceCreated` / `startCenter()` / `workspace()`,
+  `MainWindow::resultsModel()` / signal `resultsChanged`, `runProductSuites` / `productExpectedTests` (tests).
+- Format : `NATIVE_FILE_MAGIC`, `isReadableFileMagic` (format importé optionnel, utilisé par TSALab).
+- `MainWindow::saveFile` : un fichier d'un format importé n'est jamais réécrit (sans effet pour TSA).
+- Start Center : renommer / dupliquer conserve l'extension du fichier.
+
+### Verified
+- TSA : 212/212 après reconfiguration `--fresh` (le cache local avait perdu `CMAKE_CXX_FLAGS` → pas de /EHsc,
+  test 96 en échec ; voir known-issues BUG-036).
+
 ## 2026-10-07 (crash à la réduction de la fenêtre, branche fix/minimize-crash)
 
 ### Fixed

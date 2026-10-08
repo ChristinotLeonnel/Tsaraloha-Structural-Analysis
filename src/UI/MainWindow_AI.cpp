@@ -8,7 +8,11 @@
 #include "ModelTree/ModelTreeWidget.h"
 #include "WindowManager/WindowManager.h"
 #include "../AI/Core/AIOrchestrator.h"
-#include "../Analysis/ResultsValidityGuard.h"
+#include "../Analysis/AnalysisController.h"
+#include "../Automation/CommandRegistry.h"
+#include "../Blueprint/BlueprintScript.h"
+#include "../Viewer/OccView.h"
+#include "Dock/LogConsoleDock.h"
 #include "../Project/ProjectManager.h"
 #include "../Viewer/SelectionManager.h"
 
@@ -27,9 +31,9 @@ void MainWindow::createAIComponents()
     // Source unique des données : le modèle TSA, ses résultats, la sélection courante.
     m_aiOrchestrator->setSourcesProvider([this] {
         TSA::AI::EngineeringSources src;
-        src.model = m_model.get();
+        src.model = m_model;
         src.results = m_resultsModel.get();
-        src.resultsUpToDate = m_resultsGuard ? m_resultsGuard->resultsUpToDate() : true;
+        src.resultsUpToDate = m_analysis ? m_analysis->resultsUpToDate() : true;
         if (m_projectManager)
         {
             src.projectName = m_projectManager->projectName();
@@ -91,6 +95,25 @@ void MainWindow::createAIComponents()
     // « Lancer le calcul » proposé par l'IA et accepté : la commande existante est déclenchée.
     connect(m_aiOrchestrator, &TSA::AI::AIOrchestrator::runAnalysisRequested, this, [this] {
         if (m_actionRunSolve) m_actionRunSolve->trigger();
+    });
+    // Blueprint proposé par l'IA et accepté par l'ingénieur : exécuté sur le projet (une entrée Annuler par commande).
+    connect(m_aiOrchestrator, &TSA::AI::AIOrchestrator::blueprintAccepted, this, [this](const QString& title, const QString& script) {
+        TSA::Blueprint::Graph graph;
+        std::string error;
+        const auto& library = TSA::Blueprint::NodeLibrary::standard();
+        if (!TSA::Blueprint::fromCommandScript(script.toStdString(), library, TSA::Automation::CommandRegistry::builtIn(), graph, &error))
+        {
+            if (m_consoleDock) m_consoleDock->appendLog(tr("Blueprint « %1 » refusé : %2").arg(title, QString::fromStdString(error)), "ERROR");
+            return;
+        }
+        const auto report = TSA::Blueprint::Runner(library, graph, m_session.get()).run();
+        if (m_consoleDock)
+        {
+            for (const auto& line : report.log) m_consoleDock->appendLog(QString::fromStdString(line), "INFO");
+            m_consoleDock->appendLog(tr("Blueprint « %1 » : %2").arg(title, QString::fromStdString(report.message)), report.ok ? "SUCCESS" : "ERROR");
+        }
+        updateUndoRedoActions();
+        if (m_occView) m_occView->update();
     });
     connect(m_aiOrchestrator, &TSA::AI::AIOrchestrator::statusChanged, this, &MainWindow::updateAIStatusWidget);
     connect(m_aiOrchestrator, &TSA::AI::AIOrchestrator::hardwareReady, this, [this] {

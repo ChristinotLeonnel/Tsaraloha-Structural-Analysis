@@ -27,6 +27,23 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 - [ ] Commit, fusion dans `main`, push (et push de `archive/dynamique` + tag) — sur accord de l'utilisateur.
 - [ ] Vérifications GUI : ruban sans entrées dynamiques, calcul statique depuis F5, progression / Annuler.
 
+## Écosystème Tsaraloha (ADR-024) — feuille de route
+
+- [x] Phases 1–6 : bibliothèques partagées, ProjectSession, IDE TSALab, cœur scientifique, registre de commandes, Blueprint.
+- [ ] Commit / fusion : branches feature/tsaraloha-shared-libs (TSA) et feature/scientific-ide (TSALab) ENSEMBLE.
+- [x] Console de TSA : commandes du registre (identifiant à point) et COMMANDES (2026-10-08). Les raccourcis (FIT, ISO…) restent.
+- [ ] Outils IA (AIToolRegistry) : outils de lecture adossés au registre de commandes.
+- [x] Phase 6 : Blueprint — runtime typé, .tsbp, éditeur dans TSALab (2026-10-08).
+- [x] Phase 7 : AnalysisController (session), AnalysisManagerPanel, K·U = F (Custom2D), espaces Analyse / Résultats /
+      Recherche de TSALab, commandes analysis.run / results.* (2026-10-08). M et C : sans objet (statique seul, ADR-022).
+- [ ] TSA : proposer l'AnalysisManagerPanel dans un dock (aujourd'hui fenêtre Analysis + ruban).
+- [x] Phase 8 : débogueur Blueprint, tâche de fond, historique de l'éditeur, API de plugins, IA sur Blueprint (script,
+      propose_blueprint), OpenSees dans tsalab_science (2026-10-08).
+- [ ] Vérifier en GUI avec un modèle de langage configuré : propose_blueprint de bout en bout (TSA et TSALab).
+- [ ] OpenSeesPlanarSolver : rotules et charges partielles / trapézoïdales (eleLoad partiel selon la version d'OpenSees).
+- [ ] Plugins : signature / liste blanche des DLL avant diffusion hors poste de développement.
+- [ ] BUG-036 (cache CMake). [x] BUG-037 corrigé.
+
 ## CRITICAL
 
 - [ ] (aucune tâche critique ouverte)

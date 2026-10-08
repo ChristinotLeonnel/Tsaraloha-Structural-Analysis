@@ -1,4 +1,5 @@
 #include "BarCreationDialog.h"
+#include "App/ProductInfo.h"
 #include "SectionCustomizationDialog.h"
 #include "../../Library/LibraryManager.h"
 #include "../../Model/Model.h"
@@ -199,7 +200,7 @@ void BarCreationDialog::setupUi()
     m_btnClose = new QPushButton(tr("Fermer"), this);
     m_btnClose->setIcon(QIcon(":/icons/cancel.svg"));
     m_btnHelp = new QPushButton(tr("Aide"), this);
-    m_btnHelp->setIcon(QIcon(":/icons/TSA.svg"));
+    m_btnHelp->setIcon(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)));
 
     btnLayout->addWidget(m_btnAdd);
     btnLayout->addWidget(m_btnClose);

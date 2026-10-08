@@ -1,4 +1,5 @@
 #include "GridDialog.h"
+#include "App/ProductInfo.h"
 #include "GridAdvancedSettingsDialog.h"
 #include "../../Grid/GridManager.h"
 #include "../../Model/Model.h"
@@ -459,7 +460,7 @@ void GridDialog::setupUi()
     m_btnClose->setFixedHeight(26);
 
     m_btnHelp = new QPushButton(tr("Aide"), this);
-    m_btnHelp->setIcon(QIcon(":/icons/TSA.svg"));
+    m_btnHelp->setIcon(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)));
     m_btnHelp->setFixedHeight(26);
 
     bottomLayout2->addWidget(m_btnApply);

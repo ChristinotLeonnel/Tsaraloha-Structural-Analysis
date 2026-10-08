@@ -33,7 +33,8 @@ enum class ScopeType
     SelectedElements,   ///< éléments sélectionnés (SelectionManager → ElementSet)
     GridAxis,           ///< plan vertical d'un axe de grille (« A », « B », « 1 », « 2 »…)
     Level,              ///< plan horizontal d'un niveau (LevelManager)
-    WorkPlane           ///< plan de travail (WorkPlaneManager)
+    WorkPlane,          ///< plan de travail (WorkPlaneManager)
+    ModelPlane          ///< plan contenant tout le modèle (détecté : vertical quelconque ou horizontal)
 };
 
 /// Direction de l'axe de grille : les lignes X (« 1, 2, 3… ») sont à x = cte, les lignes Y
@@ -63,7 +64,11 @@ struct AnalysisScope
     std::set<int> nodes, beams, columns, trussMembers, cables, slabs, walls, foundations;
 
     bool hasLevelRestriction() const { return type != ScopeType::Level && !levelId.empty(); }
-    bool isPlanar() const { return type == ScopeType::GridAxis || type == ScopeType::Level || type == ScopeType::WorkPlane; }
+    bool isPlanar() const
+    {
+        return type == ScopeType::GridAxis || type == ScopeType::Level || type == ScopeType::WorkPlane
+            || type == ScopeType::ModelPlane;
+    }
     bool operator==(const AnalysisScope& o) const;
 };
 

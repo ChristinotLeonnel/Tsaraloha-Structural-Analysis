@@ -1,5 +1,5 @@
 #include "Dock/AnalysisDataDock.h"
-#include "../Analysis/ResultsValidityGuard.h"
+#include "../Analysis/AnalysisController.h"
 #include "MainWindow.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
@@ -533,7 +533,7 @@ void MainWindow::assignSupport(const std::set<int>& nodeIds, const TSA::Model::S
 void MainWindow::onActionPointLoad()
 {
     if (!m_model) return;
-    TSA::UI::NodalLoadDialog dlg(m_model.get(), m_selectionManager.get(), m_occView, this);
+    TSA::UI::NodalLoadDialog dlg(m_model, m_selectionManager.get(), m_occView, this);
     if (m_selectionManager && !m_selectionManager->selectedNodes().empty())
     {
         dlg.setTargetNodeId(*m_selectionManager->selectedNodes().begin());
@@ -544,7 +544,7 @@ void MainWindow::onActionPointLoad()
 void MainWindow::onActionDistLoad()
 {
     if (!m_model) return;
-    TSA::UI::MemberLoadDialog dlg(m_model.get(), m_selectionManager.get(), m_occView, this);
+    TSA::UI::MemberLoadDialog dlg(m_model, m_selectionManager.get(), m_occView, this);
     if (m_selectionManager)
     {
         if (!m_selectionManager->selectedBeams().empty())
@@ -562,7 +562,7 @@ void MainWindow::onActionDistLoad()
 void MainWindow::onActionMoment()
 {
     if (!m_model) return;
-    TSA::UI::NodalLoadDialog dlg(m_model.get(), m_selectionManager.get(), m_occView, this);
+    TSA::UI::NodalLoadDialog dlg(m_model, m_selectionManager.get(), m_occView, this);
     if (m_selectionManager && !m_selectionManager->selectedNodes().empty())
     {
         dlg.setTargetNodeId(*m_selectionManager->selectedNodes().begin());
@@ -573,7 +573,7 @@ void MainWindow::onActionMoment()
 void MainWindow::onActionLoadCases()
 {
     if (!m_model) return;
-    TSA::UI::LoadCaseDialog dlg(m_model.get(), this);
+    TSA::UI::LoadCaseDialog dlg(m_model, this);
     dlg.exec();
 }
 
@@ -626,63 +626,47 @@ void MainWindow::onActionMeshGen()
 
 void MainWindow::onActionAnalysisConfig()
 {
-    if (!m_model || !m_analysisManager) return;
+    if (!m_model || !m_analysis) return;
     const TSA::Model::ElementSet selection = m_selectionManager ? m_selectionManager->selectedElements()
                                                                 : TSA::Model::ElementSet{};
-    TSA::UI::AnalysisDialog dlg(*m_analysisManager, *m_engineOptions, m_model.get(), m_gridManager.get(), selection, this);
-    dlg.setContext(m_analysisContext);
+    TSA::UI::AnalysisDialog dlg(m_analysis->manager(), *m_engineOptions, m_model, m_gridManager, selection, this);
+    dlg.setContext(m_analysis->context());
     if (dlg.exec() != QDialog::Accepted) return;
 
-    m_analysisContext = dlg.context();
+    m_analysis->setContext(dlg.context());
     storeAnalysisContextInModel();
     if (m_consoleDock)
     {
-        const auto* engine = m_engineRegistry->engine(m_analysisContext.engineId);
+        const auto* engine = m_analysis->registry().engine(m_analysis->context().engineId);
         m_consoleDock->appendLog(tr("Analyse configurée : moteur %1")
                                      .arg(engine ? QString::fromStdString(engine->info().name) : tr("inconnu")), "INFO");
     }
-    if (dlg.runRequested()) runAnalysis(m_analysisContext);
+    if (dlg.runRequested()) runAnalysis(m_analysis->context());
 }
 
 void MainWindow::storeAnalysisContextInModel()
 {
-    if (!m_model) return;
-    const std::string json = QJsonDocument(m_analysisContext.toJson()).toJson(QJsonDocument::Compact).toStdString();
-    if (json == m_model->analysisSettingsJson()) return;
-    m_model->setAnalysisSettingsJson(json);
-    m_model->setModified(true);   // réglages enregistrés avec le projet
-    updateWindowTitle();
+    if (m_analysis && m_analysis->storeContextInModel()) updateWindowTitle();
 }
 
 void MainWindow::restoreAnalysisContextFromModel()
 {
-    TSA::Analysis::AnalysisContext context;
-    bool ok = false;
-    if (m_model && !m_model->analysisSettingsJson().empty())
-    {
-        const QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(m_model->analysisSettingsJson()));
-        if (doc.isObject()) context = TSA::Analysis::AnalysisContext::fromJson(doc.object(), &ok);
-        if (!ok && m_consoleDock)
-            m_consoleDock->appendLog(tr("Paramètres d'analyse du projet illisibles : réglages par défaut."), "WARN");
-    }
-    if (!ok) context = TSA::Analysis::AnalysisContext();
-    // Moteur absent de cette installation : premier moteur disponible.
-    if (m_engineRegistry && !m_engineRegistry->engine(context.engineId) && !m_engineRegistry->ids().empty())
-        context.engineId = m_engineRegistry->ids().front();
-    m_analysisContext = context;
+    if (m_analysis && !m_analysis->restoreContextFromModel() && m_consoleDock)
+        m_consoleDock->appendLog(tr("Paramètres d'analyse du projet illisibles : réglages par défaut."), "WARN");
 }
 
 void MainWindow::onActionRunSolve()
 {
-    runAnalysis(m_analysisContext);
+    runAnalysis(m_analysis->context());
 }
 
 bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
 {
     using namespace TSA::Analysis;
-    if (!m_model || !m_analysisManager) return false;
+    if (!m_model || !m_analysis) return false;
+    if (m_analysis->isRunning()) return false;
 
-    AnalysisEngine* engine = m_engineRegistry->engine(context.engineId);
+    AnalysisEngine* engine = m_analysis->registry().engine(context.engineId);
     if (!engine)
     {
         QMessageBox::warning(this, tr("Analyse"), tr("Aucun moteur d'analyse sélectionné."));
@@ -732,7 +716,7 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
     }
 
     // 2. Préparation : portée → modèle d'analyse → validation (générique + moteur).
-    const PreparedAnalysis prepared = m_analysisManager->prepare(*m_model, m_gridManager.get(), context);
+    const PreparedAnalysis prepared = m_analysis->prepare(context);
     if (m_consoleDock)
     {
         m_consoleDock->appendLog(tr("--- CALCUL %1 — %2 ---").arg(engineName.toUpper(),
@@ -772,55 +756,56 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
     progress->setAutoReset(false);
     progress->setValue(0);
 
-    QPointer<MainWindow> self(this);
-    AnalysisRunCallbacks callbacks;
-    callbacks.log = [self](const std::string& line) {
-        QMetaObject::invokeMethod(qApp, [self, text = QString::fromStdString(line)] {
-            if (self && self->m_consoleDock) self->m_consoleDock->appendLog(text, "INFO");
-        }, Qt::QueuedConnection);
-    };
-    callbacks.progress = [self, progress](int pct, const std::string& status) {
-        QMetaObject::invokeMethod(qApp, [self, progress, pct, text = QString::fromStdString(status)] {
+    // Calcul par le contrôleur partagé (thread de travail) ; une boucle locale attend sa fin pour garder
+    // le déroulé séquentiel de cette commande (résumé, message) sans bloquer l'interface.
+    QEventLoop loop;
+    bool success = false;
+    QString message;
+    const auto logConn = connect(m_analysis, &AnalysisController::logMessage, this, [this](const QString& line) {
+        if (m_consoleDock) m_consoleDock->appendLog(line, "INFO");
+    });
+    const auto progressConn = connect(m_analysis, &AnalysisController::progressChanged, this,
+        [this, progress](int pct, const QString& status) {
             if (progress)
             {
                 progress->setValue(std::clamp(pct, 0, 99));
-                progress->setLabelText(text);
+                progress->setLabelText(status);
             }
-            if (self && self->m_statusInfo) self->m_statusInfo->setText(QStringLiteral("%1 % — %2").arg(pct).arg(text));
-        }, Qt::QueuedConnection);
-    };
-
-    AnalysisRunResult result;
-    m_analysisRunning = true;
-    QEventLoop loop;
-    QThread* worker = QThread::create([&] { result = m_analysisManager->run(context, prepared, callbacks); });
-    connect(worker, &QThread::finished, &loop, &QEventLoop::quit);
-    connect(progress, &QProgressDialog::canceled, this, [this, progress, id = context.engineId] {
-        m_analysisManager->cancel(id);
+            if (m_statusInfo) m_statusInfo->setText(QStringLiteral("%1 % — %2").arg(pct).arg(status));
+        });
+    const auto finishedConn = connect(m_analysis, &AnalysisController::finished, &loop,
+        [&loop, &success, &message](bool ok, const QString& text) {
+            success = ok;
+            message = text;
+            loop.quit();
+        });
+    connect(progress, &QProgressDialog::canceled, this, [this, progress] {
+        m_analysis->cancel();
         if (progress) progress->setLabelText(tr("Annulation du calcul…"));
     });
-    worker->start();
-    loop.exec();
-    worker->wait();
-    delete worker;
-    m_analysisRunning = false;
+    if (m_analysis->start(context, prepared)) loop.exec();
+    else message = tr("Le calcul n'a pas pu être lancé.");
+    disconnect(logConn);
+    disconnect(progressConn);
+    disconnect(finishedConn);
     if (progress) progress->deleteLater();
 
-    if (!result.success)
+    if (!success)
     {
         if (m_consoleDock)
         {
-            m_consoleDock->appendLog(tr("Échec du calcul %1 : %2").arg(engineName, QString::fromStdString(result.message)), "ERROR");
-            if (!result.results.journalLog().empty())
-                m_consoleDock->appendLog(QString::fromStdString(result.results.journalLog()), "ERROR");
+            m_consoleDock->appendLog(tr("Échec du calcul %1 : %2").arg(engineName, message), "ERROR");
+            const std::string& journal = m_analysis->lastRun().results.journalLog();
+            if (!journal.empty()) m_consoleDock->appendLog(QString::fromStdString(journal), "ERROR");
         }
         QMessageBox::critical(this, tr("Erreur du moteur %1").arg(engineName),
-                              tr("Le calcul a échoué :\n%1").arg(QString::fromStdString(result.message)));
+                              tr("Le calcul a échoué :\n%1").arg(message));
         return false;
     }
 
-    // 4. Publication (résultats déjà remappés sur les identifiants TSA par l'adaptateur).
-    publishResults(std::make_shared<ResultsModel>(std::move(result.results)));
+    // 4. Résultats publiés par le contrôleur (déjà remappés sur les identifiants TSA par l'adaptateur) :
+    //    les vues sont mises à jour par onAnalysisResultsChanged().
+    if (!m_resultsModel) return false;
 
     const auto& meta = m_resultsModel->executionMetadata();
     QString summary = tr("Moteur : %1%2\nPortée : %3\n")
@@ -843,10 +828,10 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
     return true;
 }
 
-void MainWindow::publishResults(const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
+void MainWindow::onAnalysisResultsChanged()
 {
-    m_resultsModel = results;
-    if (m_resultsGuard) m_resultsGuard->trackResults(m_resultsModel);
+    m_resultsModel = m_analysis->results();
+    emit resultsChanged();
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
     if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
     if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
@@ -855,6 +840,7 @@ void MainWindow::publishResults(const std::shared_ptr<TSA::Analysis::ResultsMode
     if (m_resultsDock)
     {
         m_resultsDock->setResultsModel(m_resultsModel);
+        if (!m_resultsModel) return;
         if (m_occView && m_occView->resultsVisual()) m_resultsDock->syncFromVisualManager(m_occView->resultsVisual());
         m_resultsDock->show();
         m_resultsDock->raise();
@@ -865,7 +851,7 @@ void MainWindow::onActionNoteDeCalcul()
 {
     if (m_ndcWidget)
     {
-        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setModel(m_model);
         m_ndcWidget->setResultsModel(m_resultsModel);
         m_ndcWidget->refreshDocument(); // une seule génération (setModel/setResultsModel sont différés)
     }

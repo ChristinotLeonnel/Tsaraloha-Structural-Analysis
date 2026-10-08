@@ -103,6 +103,8 @@ signals:
     void proposalResolved(const QString& proposalId, bool applied, const QString& message);
     void cloudConsentRequested(const QString& reason);
     void runAnalysisRequested();
+    /// Blueprint proposé par l'IA et accepté : l'application l'exécute ou l'ouvre dans l'éditeur.
+    void blueprintAccepted(const QString& title, const QString& script);
     void modelChanged(); // modèle appliqué modifié (résultats à invalider : géré par le modèle)
     void diagnosticsProgress(const QString& line);
     void diagnosticsFinished(bool ok, const QString& summary);

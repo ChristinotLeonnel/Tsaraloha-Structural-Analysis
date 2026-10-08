@@ -10,11 +10,14 @@ cmake_minimum_required(VERSION 3.20)
 option(TSA_AUTO_DOWNLOAD_DEPS "Telecharger automatiquement OpenCASCADE et 3rdparty s'ils sont absents" ON)
 set(TSA_OCCT_VERSION "8.0.1" CACHE STRING "Version d'OpenCASCADE a utiliser")
 
+# SDK partagés (OCCT, 3rdparty) : racine de la base commune TSA, aussi utilisée par TSALab.
+get_filename_component(TSA_DEPS_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+
 function(setup_external_dependencies)
     set(OCCT_FOLDER_NAME "opencascade-${TSA_OCCT_VERSION}-vc14-64")
-    set(LOCAL_OCCT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${OCCT_FOLDER_NAME}")
+    set(LOCAL_OCCT_DIR "${TSA_DEPS_ROOT}/${OCCT_FOLDER_NAME}")
     set(LOCAL_OCCT_CMAKE "${LOCAL_OCCT_DIR}/cmake")
-    set(LOCAL_3RDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty-vc14-64")
+    set(LOCAL_3RDPARTY_DIR "${TSA_DEPS_ROOT}/3rdparty-vc14-64")
 
     # -------------------------------------------------------------------------
     # 1. Verification de la presence d'OpenCASCADE
@@ -43,8 +46,8 @@ function(setup_external_dependencies)
         endif()
 
         message(STATUS "==================================================================")
-        message(STATUS "[TSA] OpenCASCADE ${TSA_OCCT_VERSION} introuvable localement.")
-        message(STATUS "[TSA] Telechargement automatique depuis GitHub Releases...")
+        message(STATUS "[${PROJECT_NAME}] OpenCASCADE ${TSA_OCCT_VERSION} introuvable localement.")
+        message(STATUS "[${PROJECT_NAME}] Telechargement automatique depuis GitHub Releases...")
         message(STATUS "==================================================================")
 
         set(OCCT_URL "https://github.com/Open-Cascade-SAS/OCCT/releases/download/V${TSA_OCCT_VERSION}/opencascade-release-no-pch.zip")
@@ -55,7 +58,7 @@ function(setup_external_dependencies)
         file(MAKE_DIRECTORY "${DOWNLOAD_DIR}")
         file(MAKE_DIRECTORY "${EXTRACT_STAGE}")
 
-        message(STATUS "[TSA] Telechargement de ${OCCT_URL} ...")
+        message(STATUS "[${PROJECT_NAME}] Telechargement de ${OCCT_URL} ...")
         file(DOWNLOAD
             "${OCCT_URL}"
             "${OUTER_ZIP}"
@@ -69,15 +72,15 @@ function(setup_external_dependencies)
             message(FATAL_ERROR "Echec du telechargement d'OpenCASCADE : ${OCCT_DL_MSG}\n${OCCT_DL_LOG}")
         endif()
 
-        message(STATUS "[TSA] Extraction de l'archive principale...")
+        message(STATUS "[${PROJECT_NAME}] Extraction de l'archive principale...")
         file(ARCHIVE_EXTRACT INPUT "${OUTER_ZIP}" DESTINATION "${EXTRACT_STAGE}")
 
         # L'archive officielle GitHub contient l'archive imbriquee opencascade-8.0.1-vc14-64.zip
         file(GLOB INNER_OCCT_ZIPS "${EXTRACT_STAGE}/*.zip")
         if(INNER_OCCT_ZIPS)
             list(GET INNER_OCCT_ZIPS 0 INNER_ZIP)
-            message(STATUS "[TSA] Decompression du package SDK vers ${CMAKE_CURRENT_SOURCE_DIR} ...")
-            file(ARCHIVE_EXTRACT INPUT "${INNER_ZIP}" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
+            message(STATUS "[${PROJECT_NAME}] Decompression du package SDK vers ${TSA_DEPS_ROOT} ...")
+            file(ARCHIVE_EXTRACT INPUT "${INNER_ZIP}" DESTINATION "${TSA_DEPS_ROOT}")
         else()
             execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory "${EXTRACT_STAGE}" "${LOCAL_OCCT_DIR}")
         endif()
@@ -86,7 +89,7 @@ function(setup_external_dependencies)
         file(REMOVE_RECURSE "${DOWNLOAD_DIR}")
 
         if(EXISTS "${LOCAL_OCCT_CMAKE}/OpenCASCADEConfig.cmake")
-            message(STATUS "[TSA] OpenCASCADE ${TSA_OCCT_VERSION} installe avec succes dans ${LOCAL_OCCT_DIR} !")
+            message(STATUS "[${PROJECT_NAME}] OpenCASCADE ${TSA_OCCT_VERSION} installe avec succes dans ${LOCAL_OCCT_DIR} !")
             set(OpenCASCADE_DIR "${LOCAL_OCCT_CMAKE}" CACHE PATH "Path to OpenCASCADE CMake config" FORCE)
         else()
             message(FATAL_ERROR "Echec de l'installation d'OpenCASCADE : ${LOCAL_OCCT_CMAKE}/OpenCASCADEConfig.cmake est introuvable apres extraction.")
@@ -104,8 +107,8 @@ function(setup_external_dependencies)
             )
         else()
             message(STATUS "==================================================================")
-            message(STATUS "[TSA] Dependances 3rdparty introuvables.")
-            message(STATUS "[TSA] Telechargement automatique de 3rdparty-vc14-64...")
+            message(STATUS "[${PROJECT_NAME}] Dependances 3rdparty introuvables.")
+            message(STATUS "[${PROJECT_NAME}] Telechargement automatique de 3rdparty-vc14-64...")
             message(STATUS "==================================================================")
 
             set(TP_URL "https://github.com/Open-Cascade-SAS/OCCT/releases/download/V${TSA_OCCT_VERSION}/3rdparty-vc14-64.zip")
@@ -118,7 +121,7 @@ function(setup_external_dependencies)
             file(MAKE_DIRECTORY "${EXTRACT_STAGE}")
             file(MAKE_DIRECTORY "${FINAL_STAGE}")
 
-            message(STATUS "[TSA] Telechargement de ${TP_URL} ...")
+            message(STATUS "[${PROJECT_NAME}] Telechargement de ${TP_URL} ...")
             file(DOWNLOAD
                 "${TP_URL}"
                 "${OUTER_TP_ZIP}"
@@ -132,13 +135,13 @@ function(setup_external_dependencies)
                 message(FATAL_ERROR "Echec du telechargement des dependances 3rdparty : ${TP_DL_MSG}\n${TP_DL_LOG}")
             endif()
 
-            message(STATUS "[TSA] Extraction de l'archive 3rdparty...")
+            message(STATUS "[${PROJECT_NAME}] Extraction de l'archive 3rdparty...")
             file(ARCHIVE_EXTRACT INPUT "${OUTER_TP_ZIP}" DESTINATION "${EXTRACT_STAGE}")
 
             file(GLOB INNER_TP_ZIPS "${EXTRACT_STAGE}/*.zip")
             if(INNER_TP_ZIPS)
                 list(GET INNER_TP_ZIPS 0 INNER_ZIP)
-                message(STATUS "[TSA] Decompression des bibliotheques 3rdparty...")
+                message(STATUS "[${PROJECT_NAME}] Decompression des bibliotheques 3rdparty...")
                 file(ARCHIVE_EXTRACT INPUT "${INNER_ZIP}" DESTINATION "${FINAL_STAGE}")
             else()
                 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory "${EXTRACT_STAGE}" "${FINAL_STAGE}")
@@ -152,7 +155,7 @@ function(setup_external_dependencies)
             endif()
 
             file(REMOVE_RECURSE "${DOWNLOAD_DIR}")
-            message(STATUS "[TSA] Dependances 3rdparty installees avec succes dans ${LOCAL_3RDPARTY_DIR} !")
+            message(STATUS "[${PROJECT_NAME}] Dependances 3rdparty installees avec succes dans ${LOCAL_3RDPARTY_DIR} !")
         endif()
     else()
         message(STATUS "Dependances 3rdparty detectees localement: ${LOCAL_3RDPARTY_DIR}")

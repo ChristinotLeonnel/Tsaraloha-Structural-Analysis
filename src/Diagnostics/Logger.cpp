@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include <ProductIdentity.h>
 
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -173,10 +174,10 @@ bool Logger::init(const std::string& baseDir)
 
     // Écrire l'en-tête de session
     m_fileStream << "================================================================================\n";
-    m_fileStream << "TSA LOG SESSION STARTED\n";
+    m_fileStream << TSA::Product::kName << " LOG SESSION STARTED\n";
     m_fileStream << "Session ID   : " << m_sessionId << "\n";
     m_fileStream << "Start Time   : " << currentIsoTimestamp() << "\n";
-    m_fileStream << "Application  : TSA (Tsaraloha Structural Analysis) v0.1.0\n";
+    m_fileStream << "Application  : " << TSA::Product::kName << " (" << TSA::Product::kLongName << ") v" << TSA::Product::kVersion << "\n";
     m_fileStream << "OS Version   : " << QSysInfo::prettyProductName().toStdString() << " (" << QSysInfo::currentCpuArchitecture().toStdString() << ")\n";
     m_fileStream << "Qt Version   : " << qVersion() << "\n";
     m_fileStream << "OCCT Version : 8.0.1\n";
@@ -205,7 +206,7 @@ void Logger::shutdown()
     if (m_fileStream.is_open())
     {
         m_fileStream << "\n================================================================================\n";
-        m_fileStream << "TSA LOG SESSION CLOSED : " << currentIsoTimestamp() << "\n";
+        m_fileStream << TSA::Product::kName << " LOG SESSION CLOSED : " << currentIsoTimestamp() << "\n";
         m_fileStream << "================================================================================\n";
         m_fileStream.flush();
         m_fileStream.close();

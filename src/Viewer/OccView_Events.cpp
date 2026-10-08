@@ -1,4 +1,5 @@
 #include "OccView.h"
+#include "App/ProductInfo.h"
 #include "SelectionManager.h"
 #include "../Model/Model.h"
 #include "../Model/ModelDiff.h"
@@ -1253,7 +1254,7 @@ void OccView::dragEnterEvent(QDragEnterEvent* event)
     {
         for (const QUrl& url : event->mimeData()->urls())
         {
-            if (url.toLocalFile().endsWith(".tsa", Qt::CaseInsensitive))
+            if (TSA::Product::isOpenableProjectFile(url.toLocalFile()))
             {
                 event->acceptProposedAction();
                 return;
@@ -1270,7 +1271,7 @@ void OccView::dropEvent(QDropEvent* event)
         for (const QUrl& url : event->mimeData()->urls())
         {
             QString filePath = url.toLocalFile();
-            if (filePath.endsWith(".tsa", Qt::CaseInsensitive))
+            if (TSA::Product::isOpenableProjectFile(filePath))
             {
                 event->acceptProposedAction();
                 emit fileDropped(filePath);

@@ -33,6 +33,7 @@ const std::pair<ScopeType, const char*> kScopes[] = {
     { ScopeType::GridAxis, "grid_axis" },
     { ScopeType::Level, "level" },
     { ScopeType::WorkPlane, "work_plane" },
+    { ScopeType::ModelPlane, "model_plane" },
 };
 const std::pair<AnalysisDimension, const char*> kDims[] = {
     { AnalysisDimension::Space3D, "3d" },

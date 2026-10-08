@@ -20,10 +20,10 @@
 namespace TSA::Model { class Model; class SupportDefinition; }
 namespace TSA::AI { class AIOrchestrator; }
 namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct NewProjectSettings; enum class ProjectTemplate; }
-namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; }
+namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; class AnalysisController; }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Interaction { class ModelingTool; class ModelingToolRegistry; struct ToolContext; }
-namespace TSA::Project { class ProjectManager; }
+namespace TSA::Project { class ProjectManager; class ProjectSession; }
 namespace TSA::Viewer { class SelectionManager; }
 namespace TSA::UndoRedo { class CommandManager; }
 namespace TSA::Grid
@@ -83,17 +83,20 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
-    TSA::Model::Model* model() { return m_model.get(); }
-    const TSA::Model::Model* model() const { return m_model.get(); }
+    TSA::Model::Model* model() { return m_model; }
+    const TSA::Model::Model* model() const { return m_model; }
 
-    TSA::UndoRedo::CommandManager* commandManager() { return m_commandManager.get(); }
-    const TSA::UndoRedo::CommandManager* commandManager() const { return m_commandManager.get(); }
+    /// Résultats du dernier calcul (nul si aucun) ; voir le signal resultsChanged().
+    std::shared_ptr<const TSA::Analysis::ResultsModel> resultsModel() const { return m_resultsModel; }
 
-    TSA::Grid::GridManager* gridManager() { return m_gridManager.get(); }
-    const TSA::Grid::GridManager* gridManager() const { return m_gridManager.get(); }
+    TSA::UndoRedo::CommandManager* commandManager() { return m_commandManager; }
+    const TSA::UndoRedo::CommandManager* commandManager() const { return m_commandManager; }
 
-    TSA::Project::ProjectManager* projectManager() { return m_projectManager.get(); }
-    const TSA::Project::ProjectManager* projectManager() const { return m_projectManager.get(); }
+    TSA::Grid::GridManager* gridManager() { return m_gridManager; }
+    const TSA::Grid::GridManager* gridManager() const { return m_gridManager; }
+
+    TSA::Project::ProjectManager* projectManager() { return m_projectManager; }
+    const TSA::Project::ProjectManager* projectManager() const { return m_projectManager; }
 
     TSA::UI::WindowManager* windowManager() { return m_windowManager.get(); }
     const TSA::UI::WindowManager* windowManager() const { return m_windowManager.get(); }
@@ -127,6 +130,8 @@ signals:
     void exitRequested();
     void fullScreenRequested(bool fullScreen);
     void previewCaptured(const QString& path, const QImage& image);
+    /// Nouveaux résultats publiés après un calcul, ou résultats effacés (projet fermé / rechargé).
+    void resultsChanged();
 
 private slots:
     void onFitAll();
@@ -208,11 +213,14 @@ private:
     void applyTheme(bool dark);
 
 private:
-    std::unique_ptr<TSA::Model::Model> m_model;
-    std::unique_ptr<TSA::UndoRedo::CommandManager> m_commandManager;
+    /// Projet ouvert : modèle, commandes, grilles, fichier (base partagée avec TSALab, ADR-024).
+    /// Déclarée en premier : détruite en dernier, après les vues qui l'observent.
+    std::unique_ptr<TSA::Project::ProjectSession> m_session;
+    TSA::Model::Model* m_model = nullptr;                    ///< = &m_session->model()
+    TSA::UndoRedo::CommandManager* m_commandManager = nullptr;
     std::unique_ptr<TSA::Viewer::SelectionManager> m_selectionManager;
-    std::unique_ptr<TSA::Grid::GridManager> m_gridManager;
-    std::unique_ptr<TSA::Grid::GridSnapManager> m_gridSnapManager;
+    TSA::Grid::GridManager* m_gridManager = nullptr;
+    TSA::Grid::GridSnapManager* m_gridSnapManager = nullptr;
     std::unique_ptr<TSA::UI::WindowManager> m_windowManager;
 
     OccView* m_occView = nullptr;
@@ -221,10 +229,8 @@ private:
     TSA::UI::Diagram2DWidget* m_diagramWidget = nullptr;
     QDockWidget* m_ndcDock = nullptr;
     TSA::NDC::NDCViewerWidget* m_ndcWidget = nullptr;
+    /// Résultats courants du contrôleur d'analyse (copie du pointeur pour les vues de la fenêtre).
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
-    /// Invalide les résultats dès que le modèle diverge de la révision analysée (déclaré après
-    /// m_model : détruit avant lui).
-    std::unique_ptr<TSA::Analysis::ResultsValidityGuard> m_resultsGuard;
     void onResultsBecameStale();
     std::unique_ptr<TSA::Analysis::OpenSeesSolver> m_openSeesSolver;
     TSA::UI::ModelTreeWidget* m_modelTree = nullptr;
@@ -241,12 +247,10 @@ private:
     TSA::UI::AnalysisDataDock* m_analysisDataDock = nullptr;
     QDockWidget* m_projectStatusDock = nullptr;
     TSA::UI::ProjectStatusOverlay* m_projectStatusWidget = nullptr;
-    // Analyse multi-moteurs : registre des moteurs, orchestration commune, panneaux d'options et
-    // dernier contexte d'analyse choisi (moteur, portée, chargement, réglages par moteur).
-    std::unique_ptr<TSA::Analysis::AnalysisEngineRegistry> m_engineRegistry;
-    std::unique_ptr<TSA::Analysis::AnalysisManager> m_analysisManager;
+    // Analyse multi-moteurs : contrôleur partagé de la session (moteurs, réglages du projet, calcul en
+    // tâche de fond, résultats, invalidation) et panneaux d'options des moteurs (propres à l'interface).
+    TSA::Analysis::AnalysisController* m_analysis = nullptr;
     std::unique_ptr<TSA::UI::AnalysisEngineOptionsRegistry> m_engineOptions;
-    TSA::Analysis::AnalysisContext m_analysisContext;
     /// Calcule le contexte avec le moteur choisi (disponibilité, validation, calcul, publication).
     bool runAnalysis(const TSA::Analysis::AnalysisContext& context);
     // Paramètres d'analyse ↔ modèle (chunk SETT du .tsa, BUG-013)
@@ -258,7 +262,6 @@ private:
     std::map<std::string, QAction*> m_toolActions;
     QAction* m_actionToolInputViewport = nullptr;
     bool m_toolInputInViewport = true;
-    bool m_analysisRunning = false; ///< calcul en cours dans un thread de travail (fermeture refusée)
     void createModelingToolActions();
     /// swapInputMode : utiliser l'autre mode de saisie (Maj + clic, ou action « numérique »).
     void startModelingTool(const std::string& id, bool swapInputMode = false);
@@ -266,8 +269,8 @@ private:
     TSA::Interaction::ToolContext modelingToolContext() const;
     /// Nettoyage topologique en une transaction ; retourne le bilan (vide si rien n'a changé).
     std::string applyModelCleanup(const TSA::Model::CleanupOptions& options);
-    /// Diffuse un jeu de résultats à toutes les vues (viewport, docks, propriétés, NDC).
-    void publishResults(const std::shared_ptr<TSA::Analysis::ResultsModel>& results);
+    /// Diffuse les résultats du contrôleur d'analyse à toutes les vues (viewport, docks, propriétés, NDC).
+    void onAnalysisResultsChanged();
 
     QLabel*  m_statusProject = nullptr;
     QLabel*  m_statusView = nullptr;
@@ -284,7 +287,7 @@ private:
     QAction* m_actionSave = nullptr;
     QAction* m_actionSaveAs = nullptr;
     QAction* m_actionExit = nullptr;
-    std::unique_ptr<TSA::Project::ProjectManager> m_projectManager;
+    TSA::Project::ProjectManager* m_projectManager = nullptr;  ///< = &m_session->project()
 
     QAction* m_actionFitAll = nullptr;
     QAction* m_actionResetView = nullptr;

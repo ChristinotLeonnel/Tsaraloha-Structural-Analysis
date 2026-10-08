@@ -1,4 +1,8 @@
 #include "../Interaction/Tools/ModelingTool.h"
+#include "Common/SelectionSynchronizer.h"
+#include "../Automation/CommandRegistry.h"
+#include "../Project/ProjectSession.h"
+#include "App/ProductInfo.h"
 #include "Dock/AnalysisDataDock.h"
 #include "../Coordinate/GeometryTolerance.h"
 #include "MainWindow.h"
@@ -625,7 +629,7 @@ void MainWindow::createActions()
     m_actionToggleTheme->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
     connect(m_actionToggleTheme, &QAction::triggered, this, &MainWindow::onToggleTheme);
 
-    m_actionHelp = new QAction(tr("&Aide Complète TSA..."), this);
+    m_actionHelp = new QAction(tr("&Aide Complète %1...").arg(TSA::Product::name()), this);
     m_actionHelp->setIcon(makeHelpIcon());
     m_actionHelp->setToolTip(tr("Ouvrir le centre d'aide, guide et documentation"));
     connect(m_actionHelp, &QAction::triggered, this, &MainWindow::onActionHelp);
@@ -636,7 +640,7 @@ void MainWindow::createActions()
     m_actionShortcuts->setShortcut(QKeySequence::HelpContents);
     connect(m_actionShortcuts, &QAction::triggered, this, &MainWindow::onActionShortcuts);
 
-    m_actionAbout = new QAction(tr("À &propos de TSA..."), this);
+    m_actionAbout = new QAction(tr("À &propos de %1...").arg(TSA::Product::name()), this);
     m_actionAbout->setIcon(makeAboutIcon());
     m_actionAbout->setToolTip(tr("Informations sur l'application, OpenCASCADE et crédits"));
     connect(m_actionAbout, &QAction::triggered, this, &MainWindow::onActionAbout);
@@ -1370,7 +1374,7 @@ void MainWindow::createDockWindows()
     m_modelTreeDock->setObjectName("ModelTreeDock");
     m_modelTreeDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
-    m_modelTree = new TSA::UI::ModelTreeWidget(m_model.get(), m_modelTreeDock);
+    m_modelTree = new TSA::UI::ModelTreeWidget(m_model, m_modelTreeDock);
     m_modelTreeDock->setWidget(m_modelTree);
     m_modelTreeDock->setMinimumWidth(280);
     m_modelTreeDock->toggleViewAction()->setIcon(QIcon(":/icons/model_tree.svg"));
@@ -1421,7 +1425,7 @@ void MainWindow::createDockWindows()
     m_propertiesDock->setObjectName("PropertiesDock");
     m_propertiesDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
-    m_propertyPanel = new TSA::UI::PropertyPanel(m_model.get(), m_propertiesDock);
+    m_propertyPanel = new TSA::UI::PropertyPanel(m_model, m_propertiesDock);
     m_propertiesDock->setWidget(m_propertyPanel);
     m_propertiesDock->setMinimumWidth(280);
     m_propertiesDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
@@ -1430,7 +1434,7 @@ void MainWindow::createDockWindows()
 
     // 4. Dock droit : PROJECTION & VUE (WorkPlane, 2D/3D, Caméra)
     m_projectionViewDock = new TSA::UI::ProjectionViewDock(this);
-    m_projectionViewDock->setModel(m_model.get());
+    m_projectionViewDock->setModel(m_model);
     m_projectionViewDock->toggleViewAction()->setIcon(QIcon(":/icons/view_normal_workplane.svg"));
     addDockWidget(Qt::RightDockWidgetArea, m_projectionViewDock);
     tabifyDockWidget(m_propertiesDock, m_projectionViewDock);
@@ -1442,8 +1446,8 @@ void MainWindow::createDockWindows()
     m_projectStatusDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
     m_projectStatusWidget = new TSA::UI::ProjectStatusOverlay(m_occView, m_projectStatusDock);
-    m_projectStatusWidget->setModel(m_model.get());
-    m_projectStatusWidget->setGridManager(m_gridManager.get());
+    m_projectStatusWidget->setModel(m_model);
+    m_projectStatusWidget->setGridManager(m_gridManager);
     m_projectStatusDock->setWidget(m_projectStatusWidget);
     m_projectStatusDock->setMinimumWidth(280);
     m_projectStatusDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
@@ -1484,7 +1488,7 @@ void MainWindow::createDockWindows()
 
     // 5. Dock droit : RÉSULTATS STRUCTURAUX 3D
     m_resultsDock = new TSA::UI::ResultsDockWidget(this);
-    m_resultsDock->setModel(m_model.get());
+    m_resultsDock->setModel(m_model);
     m_resultsDock->toggleViewAction()->setIcon(QIcon(":/icons/results_disp.svg"));
     addDockWidget(Qt::RightDockWidgetArea, m_resultsDock);
     tabifyDockWidget(m_propertiesDock, m_resultsDock);
@@ -1492,7 +1496,7 @@ void MainWindow::createDockWindows()
     // Données numériques du calcul (matrices, DDL, forces brutes, export) : dock dédié,
     // le viewport n'affiche pas ces informations.
     m_analysisDataDock = new TSA::UI::AnalysisDataDock(this);
-    m_analysisDataDock->setModel(m_model.get());
+    m_analysisDataDock->setModel(m_model);
     addDockWidget(Qt::BottomDockWidgetArea, m_analysisDataDock);
     m_analysisDataDock->hide();
     m_propertiesDock->raise();
@@ -1543,7 +1547,7 @@ void MainWindow::createDockWindows()
     m_diagramDock->setObjectName("DiagramDock");
     m_diagramDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::RightDockWidgetArea);
     m_diagramWidget = new TSA::UI::Diagram2DWidget(m_diagramDock);
-    m_diagramWidget->setModel(m_model.get());
+    m_diagramWidget->setModel(m_model);
     m_diagramDock->setWidget(m_diagramWidget);
     m_diagramDock->toggleViewAction()->setIcon(QIcon(":/icons/results_force.svg"));
     addDockWidget(Qt::BottomDockWidgetArea, m_diagramDock);
@@ -1559,7 +1563,7 @@ void MainWindow::createDockWindows()
     m_ndcDock->setObjectName("NdcDock");
     m_ndcDock->setAllowedAreas(Qt::AllDockWidgetAreas);
     m_ndcWidget = new TSA::NDC::NDCViewerWidget(m_ndcDock);
-    m_ndcWidget->setModel(m_model.get());
+    m_ndcWidget->setModel(m_model);
     m_ndcDock->setWidget(m_ndcWidget);
     m_ndcDock->toggleViewAction()->setIcon(QIcon(":/icons/ndc_report.svg"));
     addDockWidget(Qt::RightDockWidgetArea, m_ndcDock);
@@ -1582,6 +1586,36 @@ void MainWindow::createDockWindows()
             });
 
     connect(m_consoleDock, &TSA::UI::LogConsoleDock::commandEntered, this, [this](const QString& cmd) {
+        // Commandes métier du registre central partagé avec TSALab, le Blueprint et l'IA
+        // (identifiant à point : « model.create_node position=0,0,3 »).
+        const QString trimmedCmd = cmd.trimmed();
+        if (trimmedCmd.section(QLatin1Char(' '), 0, 0).contains(QLatin1Char('.')))
+        {
+            const auto r = TSA::Automation::executeCommandLine(TSA::Automation::CommandRegistry::builtIn(), *m_session,
+                                                               trimmedCmd.toStdString());
+            m_consoleDock->appendLog(QString::fromStdString(r.message), r.ok ? "SYS" : "ERROR");
+            if (r.ok)
+            {
+                updateUndoRedoActions();
+                if (m_occView) m_occView->update();
+            }
+            return;
+        }
+        if (trimmedCmd.compare(QLatin1String("COMMANDES"), Qt::CaseInsensitive) == 0
+            || trimmedCmd.compare(QLatin1String("COMMANDS"), Qt::CaseInsensitive) == 0)
+        {
+            for (const auto* spec : TSA::Automation::CommandRegistry::builtIn().commands())
+            {
+                QStringList params;
+                for (const auto& p : spec->parameters)
+                    params << QString::fromStdString((p.required ? "" : "[") + p.name + "=<" + TSA::Automation::typeName(p.type) + ">"
+                                                     + (p.required ? "" : "]"));
+                m_consoleDock->appendLog(QStringLiteral("%1 — %2 : %3").arg(QString::fromStdString(spec->id),
+                                                                         QString::fromStdString(spec->title), params.join(' ')),
+                                         "INFO");
+            }
+            return;
+        }
         QString c = cmd.toUpper().trimmed();
         if (c == "FIT") onFitAll();
         else if (c == "FITSEL" || c == "FS") onFitSelection();
@@ -1674,339 +1708,34 @@ void MainWindow::createDockWindows()
         else if (c == "HELP" || c == "AIDE" || c == "?") onActionHelp();
         else if (c == "DIAG" || c == "REPORT" || c == "DIAGNOSTIC") onActionExportDiagnosticReport();
         else {
-            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, MESH, SOLVE, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, MIRROR, SPLIT, MERGE, THEME, DIAG, HELP").arg(cmd), "WARN");
+            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, MESH, SOLVE, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, MIRROR, SPLIT, MERGE, THEME, DIAG, HELP ; commandes du registre (model.create_node …) : COMMANDES").arg(cmd), "WARN");
         }
     });
 
     connect(m_consoleDock, &TSA::UI::LogConsoleDock::exportReportRequested, this, &MainWindow::onActionExportDiagnosticReport);
 
-    // 1. Sélection depuis le MODEL TREE
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::levelSelected, this, [this](const QString& levelId) {
-        m_selectionManager->clearSelection();
-        m_occView->clearHighlight();
-        m_propertyPanel->showLevelProperties(levelId);
+    // Sélection ↔ viewport ↔ arbre ↔ propriétés : composant partagé avec TSALab (ADR-024).
+    auto* sync = new TSA::UI::SelectionSynchronizer(m_model, m_selectionManager.get(), m_occView, m_modelTree,
+                                                    m_propertyPanel, m_viewportContainer, this);
+    connect(sync, &TSA::UI::SelectionSynchronizer::statusMessage, this, [this](const QString& text) {
+        if (m_statusInfo) m_statusInfo->setText(text);
     });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::workPlaneSelected, this, [this](int axis, double offset, const QString& name) {
-        if (m_viewportContainer)
-        {
-            m_viewportContainer->setActivePlane(static_cast<TSA::Coordinate::WorkPlaneAxis>(axis), offset);
-        }
-        else if (m_occView)
-        {
-            m_occView->setWorkPlaneAxisAndOffset(static_cast<TSA::Coordinate::WorkPlaneAxis>(axis), offset, name.toStdString());
-        }
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::nodeSelected, this, [this](int nodeId) {
-        m_selectionManager->selectNode(nodeId);
-        m_occView->highlightNode(nodeId);
-        m_propertyPanel->showNodeProperties(nodeId);
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::beamSelected, this, [this](int beamId) {
-        m_selectionManager->selectBeam(beamId);
-        m_occView->highlightBeam(beamId);
-        m_propertyPanel->showBeamProperties(beamId);
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::columnSelected, this, [this](int columnId) {
-        m_selectionManager->selectColumn(columnId);
-        m_occView->highlightColumn(columnId);
-        m_propertyPanel->showColumnProperties(columnId);
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::slabSelected, this, [this](int slabId) {
-        m_selectionManager->selectSlab(slabId);
-        m_occView->highlightSlab(slabId);
-        m_propertyPanel->showSlabProperties(slabId);
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::wallSelected, this, [this](int wallId) {
-        m_selectionManager->selectWall(wallId);
-        m_occView->highlightWall(wallId);
-        m_propertyPanel->showWallProperties(wallId);
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::foundationSelected, this, [this](int fId) {
-        m_selectionManager->selectFoundation(fId);
-        m_occView->highlightFoundation(fId);
-        m_propertyPanel->showFoundationProperties(fId);
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::trussMemberSelected, this, [this](int trId) {
-        m_selectionManager->selectTrussMember(trId);
-        m_occView->highlightTrussMember(trId);
-        m_propertyPanel->showTrussMemberProperties(trId);
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::selectionCleared, this, [this]() {
-        m_selectionManager->clearSelection();
-        m_occView->clearHighlight();
-        m_propertyPanel->clearProperties();
-    });
-
-    // 2. Sélection depuis le VIEWPORT 3D (clic souris)
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::nodeSelected, this, [this](int nodeId) {
-        m_modelTree->selectNodeItem(nodeId);
-        m_occView->highlightNode(nodeId);
-        m_occView->detachManipulator();
-        m_occView->clearSelectedElementLocalAxes();
-        m_propertyPanel->showNodeProperties(nodeId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Selected Node %1").arg(nodeId));
-        }
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::beamSelected, this, [this](int beamId) {
-        m_modelTree->selectBeamItem(beamId);
-        m_occView->highlightBeam(beamId);
-        m_occView->detachManipulator();
-        m_occView->updateSelectedElementLocalAxes();
-        m_propertyPanel->showBeamProperties(beamId);
+    connect(sync, &TSA::UI::SelectionSynchronizer::beamActivated, this, [this](int beamId) {
         if (m_barDialog && m_barDialog->isVisible() && m_model)
-        {
-            if (const auto* b = m_model->getBeam(beamId))
-            {
-                m_barDialog->loadFromBar(*b);
-            }
-        }
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Selected Beam %1").arg(beamId));
-        }
+            if (const auto* b = m_model->getBeam(beamId)) m_barDialog->loadFromBar(*b);
     });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::columnSelected, this, [this](int columnId) {
-        m_modelTree->selectColumnItem(columnId);
-        m_occView->highlightColumn(columnId);
-        m_occView->detachManipulator();
-        m_occView->updateSelectedElementLocalAxes();
-        m_propertyPanel->showColumnProperties(columnId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Selected Column %1").arg(columnId));
-        }
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::slabSelected, this, [this](int slabId) {
-        m_modelTree->selectSlabItem(slabId);
-        m_occView->highlightSlab(slabId);
-        m_occView->detachManipulator();
-        m_occView->clearSelectedElementLocalAxes();
-        m_propertyPanel->showSlabProperties(slabId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Selected Slab %1").arg(slabId));
-        }
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::wallSelected, this, [this](int wallId) {
-        m_modelTree->selectWallItem(wallId);
-        m_occView->highlightWall(wallId);
-        m_occView->detachManipulator();
-        m_occView->clearSelectedElementLocalAxes();
-        m_propertyPanel->showWallProperties(wallId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Selected Wall %1").arg(wallId));
-        }
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::foundationSelected, this, [this](int fId) {
-        m_modelTree->selectFoundationItem(fId);
-        m_occView->highlightFoundation(fId);
-        m_occView->detachManipulator();
-        m_occView->clearSelectedElementLocalAxes();
-        m_propertyPanel->showFoundationProperties(fId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Selected Foundation %1").arg(fId));
-        }
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::trussMemberSelected, this, [this](int trId) {
-        m_modelTree->selectTrussMemberItem(trId);
-        m_occView->highlightTrussMember(trId);
-        m_occView->detachManipulator();
-        m_occView->updateSelectedElementLocalAxes();
-        m_propertyPanel->showTrussMemberProperties(trId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Selected Truss Member %1").arg(trId));
-        }
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::cableSelected, this, [this](int cableId) {
-        m_modelTree->selectCableItem(cableId);
-        m_occView->highlightCable(cableId);
-        m_occView->detachManipulator();
-        m_occView->updateSelectedElementLocalAxes();
-        m_propertyPanel->showCableProperties(cableId);
+    connect(sync, &TSA::UI::SelectionSynchronizer::cableActivated, this, [this](int cableId) {
         if (m_cableDialog && m_cableDialog->isVisible() && m_model)
-        {
-            if (const auto* c = m_model->getCable(cableId))
-            {
-                m_cableDialog->loadFromCable(*c);
-            }
-        }
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Câble sélectionné C%1").arg(cableId));
-        }
+            if (const auto* c = m_model->getCable(cableId)) m_cableDialog->loadFromCable(*c);
     });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::workPlaneSelected, this, [this](int wpId) {
-        m_propertyPanel->showWorkPlaneProperties(wpId);
-        m_occView->attachManipulatorToWorkPlane();
-        m_occView->clearSelectedElementLocalAxes();
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Plan de travail WP%1 sélectionné (Manipulateur 3D interactif)").arg(wpId));
-        }
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::nodalLoadSelected, this, [this](int loadId) {
-        m_occView->detachManipulator();
-        m_occView->clearSelectedElementLocalAxes();
-        m_propertyPanel->showNodalLoadProperties(loadId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Charge Nodale #%1 sélectionnée").arg(loadId));
-        }
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::memberLoadSelected, this, [this](int loadId) {
-        m_occView->detachManipulator();
-        m_occView->clearSelectedElementLocalAxes();
-        m_propertyPanel->showMemberLoadProperties(loadId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Charge sur Barre #%1 sélectionnée").arg(loadId));
-        }
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::cableSelected, this, [this](int cableId) {
-        m_selectionManager->clearSelection();
-        m_selectionManager->selectCable(cableId);
-        m_occView->highlightCable(cableId);
-        m_propertyPanel->showCableProperties(cableId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Câble sélectionné C%1").arg(cableId));
-        }
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::loadSelected, this, [this](int loadId) {
-        m_selectionManager->clearSelection();
-        m_occView->clearHighlight();
-        m_propertyPanel->showMemberLoadProperties(loadId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Charge #%1 sélectionnée").arg(loadId));
-        }
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::supportSelected, this, [this](int nodeId) {
-        m_selectionManager->clearSelection();
-        m_selectionManager->selectNode(nodeId);
-        m_occView->highlightNode(nodeId);
-        m_propertyPanel->showNodeProperties(nodeId);
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Appui sur Nœud N%1 sélectionné").arg(nodeId));
-        }
-    });
-
-    connect(m_modelTree, &TSA::UI::ModelTreeWidget::resultsSelected, this, [this]() {
+    connect(sync, &TSA::UI::SelectionSynchronizer::resultsRequested, this, [this]() {
         if (m_resultsDock)
         {
             m_resultsDock->show();
             m_resultsDock->raise();
         }
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Résultats d'analyse"));
-        }
     });
-
-    connect(m_propertyPanel, &TSA::UI::PropertyPanel::elementModified, this, [this]() {
-        // L'arbre est observateur du modèle (notify*Modified met à jour la ligne concernée) :
-        // pas de reconstruction complète à chaque édition de propriété.
-        m_occView->update();
-        updateUndoRedoActions();
-    });
-
-    connect(m_propertyPanel, &TSA::UI::PropertyPanel::workPlaneModified, this, [this](const TSA::Coordinate::WorkPlane& wp) {
-        if (m_model && m_model->workPlaneManager())
-        {
-            m_model->workPlaneManager()->updateWorkPlane(wp);
-        }
-        m_occView->setActiveWorkPlane(wp);
-        updateUndoRedoActions();
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::selectionCleared, this, [this]() {
-        m_modelTree->clearTreeSelection();
-        m_occView->clearHighlight();
-        m_occView->detachManipulator();
-        m_occView->clearSelectedElementLocalAxes();
-        m_propertyPanel->clearProperties();
-        if (m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Ready"));
-        }
-    });
-
-    // Sélection ensembliste (tout sélectionner, inverser, par type...) : surbrillance de tout
-    // l'ensemble en une passe, propriétés de l'élément principal, arbre désélectionné (sélectionner
-    // des milliers d'items dans l'arbre serait coûteux et illisible).
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::multipleSelectionChanged, this, [this]() {
-        m_modelTree->clearTreeSelection();
-        m_occView->detachManipulator();
-        m_occView->clearSelectedElementLocalAxes();
-        m_occView->highlightSelection();
-        const int id = m_selectionManager->primarySelectedId();
-        switch (m_selectionManager->currentSelectionType())
-        {
-        case TSA::Viewer::SelectionType::Node: m_propertyPanel->showNodeProperties(id); break;
-        case TSA::Viewer::SelectionType::Beam: m_propertyPanel->showBeamProperties(id); break;
-        case TSA::Viewer::SelectionType::Column: m_propertyPanel->showColumnProperties(id); break;
-        case TSA::Viewer::SelectionType::Slab: m_propertyPanel->showSlabProperties(id); break;
-        case TSA::Viewer::SelectionType::Wall: m_propertyPanel->showWallProperties(id); break;
-        case TSA::Viewer::SelectionType::Foundation: m_propertyPanel->showFoundationProperties(id); break;
-        case TSA::Viewer::SelectionType::TrussMember: m_propertyPanel->showTrussMemberProperties(id); break;
-        case TSA::Viewer::SelectionType::Cable: m_propertyPanel->showCableProperties(id); break;
-        default: m_propertyPanel->clearProperties(); break;
-        }
-        // Édition groupée des éléments du même type que l'élément principal (BUG-005)
-        const TSA::Model::ElementSet sel = m_selectionManager->selectedElements();
-        switch (m_selectionManager->currentSelectionType())
-        {
-        case TSA::Viewer::SelectionType::Node: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Node, id, sel.nodes); break;
-        case TSA::Viewer::SelectionType::Beam: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Beam, id, sel.beams); break;
-        case TSA::Viewer::SelectionType::Column: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Column, id, sel.columns); break;
-        case TSA::Viewer::SelectionType::Slab: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Slab, id, sel.slabs); break;
-        case TSA::Viewer::SelectionType::Wall: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Wall, id, sel.walls); break;
-        case TSA::Viewer::SelectionType::Foundation: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::Foundation, id, sel.foundations); break;
-        case TSA::Viewer::SelectionType::TrussMember: m_propertyPanel->setMultiSelection(TSA::Model::ElementKind::TrussMember, id, sel.trussMembers); break;
-        default: break;
-        }
-    });
-
-    connect(m_selectionManager.get(), &TSA::Viewer::SelectionManager::selectionChanged, this, [this]() {
-        size_t total = m_selectionManager->totalSelectedCount();
-        if (total > 1 && m_statusInfo)
-        {
-            m_statusInfo->setText(tr("Sélection multiple : %1 éléments (%2 nœuds, %3 poutres, %4 poteaux, %5 dalles)")
-                .arg(total)
-                .arg(m_selectionManager->selectedNodes().size())
-                .arg(m_selectionManager->selectedBeams().size())
-                .arg(m_selectionManager->selectedColumns().size())
-                .arg(m_selectionManager->selectedSlabs().size()));
-        }
-    });
+    connect(sync, &TSA::UI::SelectionSynchronizer::modelEdited, this, &MainWindow::updateUndoRedoActions);
 
     // Enregistrement centralisé de toutes les fenêtres et panneaux dans WindowManager
     if (m_windowManager)
@@ -2118,7 +1847,7 @@ void MainWindow::createStatusBar()
     // Pas de politique Ignored : QStatusBar donne alors une case de largeur nulle à ces labels
     // et ils se superposent, quelle que soit la place libre. fitStatusBar() masque les
     // indicateurs secondaires quand la largeur manque.
-    m_statusProject = new QLabel(tr("Sans titre.tsa"), this);
+    m_statusProject = new QLabel(tr("Sans titre") + TSA::Product::projectExtension(), this);
     m_statusProject->setStyleSheet("font-weight: bold; color: #38bdf8; padding: 2px 10px; border-right: 1px solid #475569;");
     m_statusProject->setFixedWidth(180);
     bar->addWidget(m_statusProject);

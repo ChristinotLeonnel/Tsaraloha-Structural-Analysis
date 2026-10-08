@@ -74,8 +74,8 @@ public:
     bool saveToFile(const std::string& filePath,
                     const TSA::Model::Model& model,
                     const TSA::Grid::GridManager* gridManager = nullptr,
-                    const std::string& projectName = "Projet TSA",
-                    const std::string& author = "TSA User",
+                    const std::string& projectName = TSA::Product::kDefaultProjectName,
+                    const std::string& author = TSA::Product::kDefaultAuthor,
                     std::string* errorMessage = nullptr);
 
 private:
