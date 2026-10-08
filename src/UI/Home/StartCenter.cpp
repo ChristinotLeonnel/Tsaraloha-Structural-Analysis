@@ -236,7 +236,7 @@ StartCenter::StartCenter(QWidget* parent)
     root->setContentsMargins(0, 36, 0, 20);
     root->setSpacing(0);
 
-    // Identité + actions principales (remplaçables par un panneau produit, voir setLaunchPanel)
+    // Identité + actions principales
     m_identity = new QWidget(content);
     auto* identity = new QVBoxLayout(m_identity);
     identity->setContentsMargins(0, 0, 0, 0);
@@ -335,19 +335,6 @@ StartCenter::StartCenter(QWidget* parent)
 
     connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, &StartCenter::applyTheme);
     applyTheme(ThemeManager::instance().isDarkMode());
-}
-
-void StartCenter::setLaunchPanel(QWidget* panel)
-{
-    if (!panel || panel == m_launchPanel) return;
-    if (m_launchPanel) m_launchPanel->deleteLater();
-    m_launchPanel = panel;
-    panel->setParent(this);
-    m_identity->hide();
-    // Panneau collé au bord gauche, projets récents à sa droite.
-    m_outer->setContentsMargins(0, 0, 24, 0);
-    m_outer->insertWidget(0, panel);
-    m_outer->insertSpacing(1, 32);
 }
 
 void StartCenter::applyTheme(bool dark)

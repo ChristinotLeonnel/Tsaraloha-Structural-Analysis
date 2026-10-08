@@ -4,7 +4,7 @@
   model     (<P>_Model)    : tout src/ sauf les couches ci-dessous ; aucun widget Qt
   graphics  (<P>_Graphics) : Viewer, Geometry, Interaction, rendu des grilles, UI/Theme, UI/Ruler
   widgets   (<P>_Widgets)  : composants d'interface partagés (reste de UI/, widgets NDC)
-  app       (TSA)          : MainWindow, ruban, AppShell, Start Center, App/Application, main, Platform
+  app       (TSA)          : MainWindow, ruban, AppShell, Start Center, App/Application, main
 
 Règle : une couche n'inclut que des fichiers de sa couche ou des couches inférieures
 (model < graphics < widgets < app). Les widgets Qt sont interdits dans model.
@@ -22,7 +22,7 @@ GRAPHICS_PREFIXES = (
 )
 APP_PREFIXES = (
     "UI/MainWindow", "UI/Ribbon/", "UI/Shell/", "UI/Home/",
-    "App/Application", "main.cpp", "Platform/", "ShellExtension/",
+    "App/Application", "main.cpp", "ShellExtension/",
 )
 WIDGETS_PREFIXES = ("UI/", "NDC/NDCViewerWidget", "NDC/ReportConfigDialog")
 # Fichiers d'en-tête de la couche modèle placés sous App/ (identité produit, sans widget).

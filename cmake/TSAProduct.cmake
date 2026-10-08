@@ -3,7 +3,7 @@
 # TSA (ce dépôt) et TSALab (dépôt voisin) compilent les MÊMES sources (src/, tests/) : un bug corrigé
 # ici l'est pour les deux. Ce qui distingue un produit (nom, extension, signature de fichier, icônes,
 # panneaux propres…) est fourni par son dossier product/ (ProductIdentity.h, ProductShellIds.h,
-# ProductHooks.cpp, ProductTests.cpp) et, pour TSALab, par ses sources propres (OVERLAY_DIRS).
+# ) et, pour TSALab, par ses sources propres (OVERLAY_DIRS).
 #
 # Utilisation (après find_package(Qt6 …) et find_package(OpenCASCADE …)) :
 #   include(<racine TSA>/cmake/TSAProduct.cmake)
@@ -27,7 +27,6 @@ set(APP_SOURCES
     ${TSA_ROOT}/src/App/Application.h
     ${TSA_ROOT}/src/App/Application.cpp
     ${TSA_ROOT}/src/App/ProductInfo.h
-    ${TSA_ROOT}/src/App/ProductHooks.h
 )
 
 # --- Diagnostics (logs, crash handler, rapports) — [CORE] -------------------
@@ -220,6 +219,10 @@ set(UI_RULER_SOURCES
 
 # --- Widgets divers ------------------------------------------------------------
 set(UI_WIDGETS_SOURCES
+    ${TSA_ROOT}/src/UI/Common/EcosystemApplication.h
+    ${TSA_ROOT}/src/UI/Common/EcosystemApplication.cpp
+    ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.h
+    ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.cpp
     ${TSA_ROOT}/src/UI/Widgets/SectionPreviewWidget.h
     ${TSA_ROOT}/src/UI/Widgets/SectionPreviewWidget.cpp
     ${TSA_ROOT}/src/UI/Widgets/PointSelector.h
@@ -711,12 +714,12 @@ set(TSARALOHA_MODEL_SOURCES
     ${TSA_ROOT}/src/Library/CableLibrary.cpp
     ${TSA_ROOT}/src/Model/ModelElementCopy.h
     ${TSA_ROOT}/src/App/ProductInfo.h
-    ${TSA_ROOT}/src/App/ProductHooks.h
     ${PROJECT_SOURCES}
     ${COMMANDS_SOURCES}
     ${UNDOREDO_SOURCES}
     ${IO_SOURCES}
     ${STANDARDS_SOURCES}
+    ${PLATFORM_SOURCES}
 )
 
 set(TSARALOHA_GRAPHICS_SOURCES
@@ -767,11 +770,10 @@ set(_tsa_all_ui_sources
     ${UI_RIBBON_SOURCES}
     ${UI_DOCK_SOURCES}
     ${MODEL_PRESETS_SOURCES}
-    ${PLATFORM_SOURCES}
     ${RESOURCES_SOURCES}
 )
 # Fenêtre propre à TSA (même découpage que tools/check_layers.py, couche « app »)
-set(_tsa_app_regex "/src/(UI/(MainWindow|Ribbon/|Shell/|Home/)|App/Application|main\\.cpp|Platform/)|/resources/")
+set(_tsa_app_regex "/src/(UI/(MainWindow|Ribbon/|Shell/|Home/)|App/Application|main\\.cpp)|/resources/")
 set(TSA_APP_SOURCES ${_tsa_all_ui_sources})
 list(FILTER TSA_APP_SOURCES INCLUDE REGEX "${_tsa_app_regex}")
 set(TSARALOHA_WIDGETS_SOURCES ${_tsa_all_ui_sources})
@@ -813,6 +815,7 @@ set(TSA_NO_PCH_SOURCES
     ${TSA_ROOT}/src/AI/Core/SecretStore.cpp
     ${TSA_ROOT}/src/AI/Providers/ProcessLifetime.cpp
     ${TSA_ROOT}/src/UI/Shell/AppShell.cpp
+    ${TSA_ROOT}/src/UI/Common/EcosystemApplication.cpp
 )
 
 set(TSA_TEST_SOURCES
@@ -1061,7 +1064,7 @@ function(tsa_add_product)
 
     tsaraloha_add_shared_libraries(PREFIX ${name} PRODUCT_DIR ${P_PRODUCT_DIR})
 
-    add_executable(${name} ${TSA_APP_SOURCES} ${P_PRODUCT_DIR}/ProductHooks.cpp ${P_RESOURCES})
+    add_executable(${name} ${TSA_APP_SOURCES} ${P_RESOURCES})
     tsa_apply_common_settings(${name} ${P_PRODUCT_DIR})
     target_precompile_headers(${name} REUSE_FROM ${model})
     target_link_libraries(${name} PRIVATE ${model} ${graphics} ${widgets} Qt6::Svg)
@@ -1079,7 +1082,7 @@ function(tsa_add_product)
     # --- Tests unitaires : bibliothèques partagées -------------------------
     if(TSA_BUILD_TESTS)
         enable_testing()
-        add_executable(${tests} ${TSA_TEST_SOURCES} ${P_PRODUCT_DIR}/ProductTests.cpp)
+        add_executable(${tests} ${TSA_TEST_SOURCES})
         tsa_apply_common_settings(${tests} ${P_PRODUCT_DIR})
         target_include_directories(${tests} PRIVATE ${TSA_ROOT}/tests)
         target_precompile_headers(${tests} REUSE_FROM ${model})

@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 212 + productExpectedTests();
+    int expectedTotal = 212;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -133,7 +133,6 @@ int main(int argc, char* argv[])
         if (!runSuite_Thumbnail(passed)) allOk = false;
     }
 #endif
-    if (!runProductSuites(suiteFilter, passed)) allOk = false;
 
     std::cout << "\n=================================================" << std::endl;
     if (suiteFilter == "all") {

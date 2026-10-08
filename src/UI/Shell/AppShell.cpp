@@ -184,9 +184,7 @@ MainWindow* AppShell::ensureWorkspace()
     // La somme des minima des panneaux (barre d'état ≈ 1 680 px, docks + barre du viewport ≈ 1 520 px)
     // pousserait la fenêtre hors de l'écran : le workspace se contente d'un minimum raisonnable.
     m_workspace->setMinimumSize(kWorkspaceMinimumSize);
-    m_workspacePage = m_workspaceDecorator ? m_workspaceDecorator(m_workspace, m_stack) : nullptr;
-    if (!m_workspacePage) m_workspacePage = m_workspace;
-    m_stack->addWidget(m_workspacePage);
+    m_stack->addWidget(m_workspace);
 
     connect(m_workspace, &MainWindow::newProjectRequested, this, &AppShell::createNewProject);
     connect(m_workspace, &MainWindow::openProjectRequested, this, &AppShell::openProject);
@@ -210,7 +208,6 @@ MainWindow* AppShell::ensureWorkspace()
     bindToWorkspace(m_actSaveAs, m_workspace->actionSaveAs());
     bindToWorkspace(m_actUndo, m_workspace->actionUndo());
     bindToWorkspace(m_actRedo, m_workspace->actionRedo());
-    emit workspaceCreated(m_workspace);
     QApplication::restoreOverrideCursor();
     return m_workspace;
 }
@@ -221,8 +218,7 @@ void AppShell::setMode(ApplicationMode mode)
     if (mode == ApplicationMode::ProjectWorkspace)
     {
         // Le viewport doit être visible (OCCT initialisé) avant tout chargement ou capture.
-        ensureWorkspace();
-        m_stack->setCurrentWidget(m_workspacePage);
+        m_stack->setCurrentWidget(ensureWorkspace());
     }
     else
     {
