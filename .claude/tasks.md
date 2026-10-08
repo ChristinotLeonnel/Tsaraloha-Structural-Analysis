@@ -30,7 +30,7 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 ## Écosystème Tsaraloha (ADR-024) — feuille de route
 
 - [x] Phases 1–6 : bibliothèques partagées, ProjectSession, IDE TSALab, cœur scientifique, registre de commandes, Blueprint.
-- [ ] Commit / fusion : branches feature/tsaraloha-shared-libs (TSA) et feature/scientific-ide (TSALab) ENSEMBLE.
+- [x] Fusion dans main (locale, 2026-10-08) : feature/tsaraloha-shared-libs (TSA) et feature/scientific-ide (TSALab). Push : sur demande.
 - [x] Console de TSA : commandes du registre (identifiant à point) et COMMANDES (2026-10-08). Les raccourcis (FIT, ISO…) restent.
 - [ ] Outils IA (AIToolRegistry) : outils de lecture adossés au registre de commandes.
 - [x] Phase 6 : Blueprint — runtime typé, .tsbp, éditeur dans TSALab (2026-10-08).
