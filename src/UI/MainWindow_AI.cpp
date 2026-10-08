@@ -27,7 +27,7 @@ void MainWindow::createAIComponents()
     // Source unique des données : le modèle TSA, ses résultats, la sélection courante.
     m_aiOrchestrator->setSourcesProvider([this] {
         TSA::AI::EngineeringSources src;
-        src.model = m_model.get();
+        src.model = m_model;
         src.results = m_resultsModel.get();
         src.resultsUpToDate = m_resultsGuard ? m_resultsGuard->resultsUpToDate() : true;
         if (m_projectManager)

@@ -533,7 +533,7 @@ void MainWindow::assignSupport(const std::set<int>& nodeIds, const TSA::Model::S
 void MainWindow::onActionPointLoad()
 {
     if (!m_model) return;
-    TSA::UI::NodalLoadDialog dlg(m_model.get(), m_selectionManager.get(), m_occView, this);
+    TSA::UI::NodalLoadDialog dlg(m_model, m_selectionManager.get(), m_occView, this);
     if (m_selectionManager && !m_selectionManager->selectedNodes().empty())
     {
         dlg.setTargetNodeId(*m_selectionManager->selectedNodes().begin());
@@ -544,7 +544,7 @@ void MainWindow::onActionPointLoad()
 void MainWindow::onActionDistLoad()
 {
     if (!m_model) return;
-    TSA::UI::MemberLoadDialog dlg(m_model.get(), m_selectionManager.get(), m_occView, this);
+    TSA::UI::MemberLoadDialog dlg(m_model, m_selectionManager.get(), m_occView, this);
     if (m_selectionManager)
     {
         if (!m_selectionManager->selectedBeams().empty())
@@ -562,7 +562,7 @@ void MainWindow::onActionDistLoad()
 void MainWindow::onActionMoment()
 {
     if (!m_model) return;
-    TSA::UI::NodalLoadDialog dlg(m_model.get(), m_selectionManager.get(), m_occView, this);
+    TSA::UI::NodalLoadDialog dlg(m_model, m_selectionManager.get(), m_occView, this);
     if (m_selectionManager && !m_selectionManager->selectedNodes().empty())
     {
         dlg.setTargetNodeId(*m_selectionManager->selectedNodes().begin());
@@ -573,7 +573,7 @@ void MainWindow::onActionMoment()
 void MainWindow::onActionLoadCases()
 {
     if (!m_model) return;
-    TSA::UI::LoadCaseDialog dlg(m_model.get(), this);
+    TSA::UI::LoadCaseDialog dlg(m_model, this);
     dlg.exec();
 }
 
@@ -629,7 +629,7 @@ void MainWindow::onActionAnalysisConfig()
     if (!m_model || !m_analysisManager) return;
     const TSA::Model::ElementSet selection = m_selectionManager ? m_selectionManager->selectedElements()
                                                                 : TSA::Model::ElementSet{};
-    TSA::UI::AnalysisDialog dlg(*m_analysisManager, *m_engineOptions, m_model.get(), m_gridManager.get(), selection, this);
+    TSA::UI::AnalysisDialog dlg(*m_analysisManager, *m_engineOptions, m_model, m_gridManager, selection, this);
     dlg.setContext(m_analysisContext);
     if (dlg.exec() != QDialog::Accepted) return;
 
@@ -732,7 +732,7 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
     }
 
     // 2. Préparation : portée → modèle d'analyse → validation (générique + moteur).
-    const PreparedAnalysis prepared = m_analysisManager->prepare(*m_model, m_gridManager.get(), context);
+    const PreparedAnalysis prepared = m_analysisManager->prepare(*m_model, m_gridManager, context);
     if (m_consoleDock)
     {
         m_consoleDock->appendLog(tr("--- CALCUL %1 — %2 ---").arg(engineName.toUpper(),
@@ -866,7 +866,7 @@ void MainWindow::onActionNoteDeCalcul()
 {
     if (m_ndcWidget)
     {
-        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setModel(m_model);
         m_ndcWidget->setResultsModel(m_resultsModel);
         m_ndcWidget->refreshDocument(); // une seule génération (setModel/setResultsModel sont différés)
     }

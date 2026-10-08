@@ -47,6 +47,7 @@
 #include "Dialogs/NodeSelectionDialog.h"
 #include "../Library/LibraryManager.h"
 #include "../Project/ProjectManager.h"
+#include "../Project/ProjectSession.h"
 #include "../IO/TSAFile.h"
 #include "../UndoRedo/CommandManager.h"
 #include "../UndoRedo/EditTransaction.h"
@@ -89,25 +90,26 @@ static inline QIcon makeThemeIcon(bool dark) { return QIcon(dark ? ":/icons/comm
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
-    , m_model(std::make_unique<TSA::Model::Model>())
-    , m_commandManager(std::make_unique<TSA::UndoRedo::CommandManager>(m_model.get(), m_model->undoManager()))
+    , m_session(std::make_unique<TSA::Project::ProjectSession>(this))
+    , m_model(&m_session->model())
+    , m_commandManager(&m_session->commands())
     , m_selectionManager(std::make_unique<TSA::Viewer::SelectionManager>(this))
-    , m_gridManager(std::make_unique<TSA::Grid::GridManager>())
-    , m_gridSnapManager(std::make_unique<TSA::Grid::GridSnapManager>())
-    , m_projectManager(std::make_unique<TSA::Project::ProjectManager>(this))
+    , m_gridManager(&m_session->grids())
+    , m_gridSnapManager(&m_session->gridSnap())
+    , m_projectManager(&m_session->project())
     , m_windowManager(std::make_unique<TSA::UI::WindowManager>(this, this))
 {
     // QMainWindow est toujours créée comme fenêtre : embarquée dans AppShell, c'est une page.
     if (parent) setWindowFlags(Qt::Widget);
 
-    m_resultsGuard = std::make_unique<TSA::Analysis::ResultsValidityGuard>(m_model.get());
+    m_resultsGuard = std::make_unique<TSA::Analysis::ResultsValidityGuard>(m_model);
     m_resultsGuard->setStaleCallback([this]() {
         // Différé : on est au milieu d'une notification du modèle ; ne pas toucher aux vues ici.
         QTimer::singleShot(0, this, &MainWindow::onResultsBecameStale);
     });
 
     // Grilles rattachées au modèle : leurs définitions entrent dans l'historique Annuler (BUG-003).
-    m_model->setGridManager(m_gridManager.get());
+    m_model->setGridManager(m_gridManager);
 
     // Grille 3D initiale : synchronisée avec le système de coordonnées et de niveaux unifié
     m_gridManager->clearAllGrids();
@@ -160,8 +162,8 @@ MainWindow::MainWindow(QWidget* parent)
         );
     }
 
-    m_occView->setModel(m_model.get());
-    m_occView->setGridManager(m_gridManager.get(), m_gridSnapManager.get());
+    m_occView->setModel(m_model);
+    m_occView->setGridManager(m_gridManager, m_gridSnapManager);
     m_occView->setCreationPresets(m_presets);
 
     m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
@@ -173,30 +175,30 @@ MainWindow::MainWindow(QWidget* parent)
     if (!m_engineRegistry->ids().empty()) m_analysisContext.engineId = m_engineRegistry->ids().front();
     if (m_diagramWidget)
     {
-        m_diagramWidget->setModel(m_model.get());
+        m_diagramWidget->setModel(m_model);
     }
     if (m_ndcWidget)
     {
-        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setModel(m_model);
     }
 
-    connect(m_gridManager.get(), &TSA::Grid::GridManager::gridAdded, this, [this]() {
+    connect(m_gridManager, &TSA::Grid::GridManager::gridAdded, this, [this]() {
         m_occView->rebuildGrid();
     });
-    connect(m_gridManager.get(), &TSA::Grid::GridManager::gridRemoved, this, [this]() {
+    connect(m_gridManager, &TSA::Grid::GridManager::gridRemoved, this, [this]() {
         m_occView->rebuildGrid();
     });
-    connect(m_gridManager.get(), &TSA::Grid::GridManager::gridModified, this, [this]() {
+    connect(m_gridManager, &TSA::Grid::GridManager::gridModified, this, [this]() {
         m_occView->rebuildGrid();
     });
-    connect(m_gridManager.get(), &TSA::Grid::GridManager::activeGridChanged, this, [this]() {
+    connect(m_gridManager, &TSA::Grid::GridManager::activeGridChanged, this, [this]() {
         m_occView->rebuildGrid();
     });
-    connect(m_gridManager.get(), &TSA::Grid::GridManager::gridVisibilityChanged, this, [this]() {
+    connect(m_gridManager, &TSA::Grid::GridManager::gridVisibilityChanged, this, [this]() {
         m_occView->rebuildGrid();
     });
 
-    m_modelTree->setGridManager(m_gridManager.get());
+    m_modelTree->setGridManager(m_gridManager);
     m_modelTree->refreshAll();
 
     m_sectionCutDialog = new TSA::UI::SectionCutDialog(this);
@@ -227,7 +229,7 @@ MainWindow::MainWindow(QWidget* parent)
     setAcceptDrops(true);
     if (m_projectManager)
     {
-        connect(m_projectManager.get(), &TSA::Project::ProjectManager::projectTitleChanged, this, &MainWindow::setWindowTitle);
+        connect(m_projectManager, &TSA::Project::ProjectManager::projectTitleChanged, this, &MainWindow::setWindowTitle);
     }
     if (m_occView)
     {
@@ -295,7 +297,7 @@ void MainWindow::setupUi()
     m_occView = new OccView(this);
     m_occView->setSelectionManager(m_selectionManager.get());
     m_viewportContainer = new TSA::UI::ViewportContainer(m_occView, this);
-    m_viewportContainer->setModel(m_model.get());
+    m_viewportContainer->setModel(m_model);
     setCentralWidget(m_viewportContainer);
     createPreviewCapture();
 
@@ -328,7 +330,7 @@ void MainWindow::openBarCreationDialog(TSA::Model::BarRole role)
     if (!m_occView) return;
     if (!m_barDialog)
     {
-        m_barDialog = new TSA::UI::BarCreationDialog(m_model.get(), m_occView, this);
+        m_barDialog = new TSA::UI::BarCreationDialog(m_model, m_occView, this);
         connect(m_barDialog, &TSA::UI::BarCreationDialog::barPropertiesChanged, this, [this](const TSA::Model::BarProperties& p) {
             if (m_occView) m_occView->setCurrentBarProperties(p);
         });
@@ -376,7 +378,7 @@ void MainWindow::openCableCreationDialog()
     if (!m_occView) return;
     if (!m_cableDialog)
     {
-        m_cableDialog = new TSA::UI::CableCreationDialog(m_model.get(), m_occView, this);
+        m_cableDialog = new TSA::UI::CableCreationDialog(m_model, m_occView, this);
         connect(m_occView, &OccView::cableFirstPointPicked, m_cableDialog, &TSA::UI::CableCreationDialog::onFirstPointPicked);
         connect(m_occView, &OccView::cableSecondPointPicked, m_cableDialog, &TSA::UI::CableCreationDialog::onSecondPointPicked);
         connect(m_occView, &OccView::cableDrawingCancelled, m_cableDialog, &TSA::UI::CableCreationDialog::onDrawingCancelled);
@@ -435,7 +437,7 @@ void MainWindow::openSurfaceCreationDialog(int surfaceType)
     if (!m_occView) return;
     if (!m_surfaceDialog)
     {
-        m_surfaceDialog = new TSA::UI::SurfaceCreationDialog(m_model.get(), m_occView, this);
+        m_surfaceDialog = new TSA::UI::SurfaceCreationDialog(m_model, m_occView, this);
         connect(m_occView, &OccView::slabNodePicked, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onSlabNodePicked);
         connect(m_occView, &OccView::slabCreated, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onSlabCreated);
         connect(m_occView, &OccView::slabDrawingCancelled, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onSlabDrawingCancelled);
@@ -502,7 +504,7 @@ void MainWindow::onActionStructurePresets()
 
 void MainWindow::onActionLibrary(int tabIndex)
 {
-    TSA::UI::LibraryDialog dlg(m_model.get(), this);
+    TSA::UI::LibraryDialog dlg(m_model, this);
     dlg.selectTab(tabIndex);
     connect(&dlg, &TSA::UI::LibraryDialog::sectionLibraryUpdated, this, [this]() {
         if (m_propertyPanel) m_propertyPanel->refreshLibraryLists();
@@ -552,7 +554,7 @@ void MainWindow::onNewGrid()
         return;
     }
 
-    m_gridDialog = new TSA::UI::GridDialog(m_gridManager.get(), m_model.get(), m_occView, this);
+    m_gridDialog = new TSA::UI::GridDialog(m_gridManager, m_model, m_occView, this);
     m_gridDialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(m_gridDialog, &TSA::UI::GridDialog::gridDefinitionApplied, this, [this](const TSA::Grid::GridDefinition& /*def*/) {
         m_occView->rebuildGrid();
@@ -591,7 +593,7 @@ void MainWindow::onGridManagerDialog()
             return;
         }
 
-        m_gridSettingsDialog = new TSA::UI::GridSettingsDialog(m_gridManager.get(), m_gridSnapManager.get(), m_occView, this);
+        m_gridSettingsDialog = new TSA::UI::GridSettingsDialog(m_gridManager, m_gridSnapManager, m_occView, this);
         m_gridSettingsDialog->setAttribute(Qt::WA_DeleteOnClose);
         m_gridSettingsDialog->show();
         m_gridSettingsDialog->raise();
@@ -788,7 +790,7 @@ void MainWindow::onToggleLoadValuesVisible(bool checked)
 
 void MainWindow::onActionNewNode()
 {
-    TSA::UI::NewNodeDialog dlg(m_model.get(), m_occView, m_selectionManager.get(), this);
+    TSA::UI::NewNodeDialog dlg(m_model, m_occView, m_selectionManager.get(), this);
     if (dlg.exec() == QDialog::Accepted)
     {
         int newId = dlg.createdNodeId();
@@ -1359,7 +1361,7 @@ void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
 
     if (m_projectManager && m_model)
     {
-        m_projectManager->newProject(*m_model, m_gridManager.get());
+        m_projectManager->newProject(*m_model, m_gridManager);
     }
     else if (m_model)
     {
@@ -1383,7 +1385,7 @@ void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
 
     if (m_projectStatusWidget)
     {
-        m_projectStatusWidget->setModel(m_model.get());
+        m_projectStatusWidget->setModel(m_model);
         m_projectStatusWidget->setProjectInfo(tr("Nouveau Projet"), "");
         m_projectStatusWidget->refreshStatus();
     }
@@ -1410,12 +1412,12 @@ void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
 
     if (m_diagramWidget)
     {
-        m_diagramWidget->setModel(m_model.get());
+        m_diagramWidget->setModel(m_model);
         m_diagramWidget->setResultsModel(nullptr);
     }
     if (m_ndcWidget)
     {
-        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setModel(m_model);
         m_ndcWidget->setResultsModel(nullptr);
     }
     if (m_analysisDataDock) m_analysisDataDock->setResultsModel(nullptr);
@@ -1497,7 +1499,7 @@ bool MainWindow::saveFile(const QString& path)
     }
 
     QString errorMsg;
-    bool ok = m_projectManager ? m_projectManager->saveProject(targetPath, *m_model, m_gridManager.get(), thumbnail, &errorMsg)
+    bool ok = m_projectManager ? m_projectManager->saveProject(targetPath, *m_model, m_gridManager, thumbnail, &errorMsg)
                                : false;
     if (!ok)
     {
@@ -1530,7 +1532,7 @@ bool MainWindow::loadFile(const QString& path)
     loadTimer.start();
 
     QString errorMsg;
-    bool ok = m_projectManager ? m_projectManager->openProject(path, *m_model, m_gridManager.get(), &errorMsg)
+    bool ok = m_projectManager ? m_projectManager->openProject(path, *m_model, m_gridManager, &errorMsg)
                                : false;
     const qint64 openMs = loadTimer.elapsed();
     qint64 lastLap = openMs;
@@ -1560,7 +1562,7 @@ bool MainWindow::loadFile(const QString& path)
 
     if (m_projectStatusWidget)
     {
-        m_projectStatusWidget->setModel(m_model.get());
+        m_projectStatusWidget->setModel(m_model);
         m_projectStatusWidget->setProjectInfo(projName, path);
         m_projectStatusWidget->refreshStatus();
     }
@@ -1591,12 +1593,12 @@ bool MainWindow::loadFile(const QString& path)
     laps += " | arbre=" + std::to_string(loadTimer.elapsed() - lastLap) + " ms"; lastLap = loadTimer.elapsed();
     if (m_diagramWidget)
     {
-        m_diagramWidget->setModel(m_model.get());
+        m_diagramWidget->setModel(m_model);
         m_diagramWidget->setResultsModel(nullptr);
     }
     if (m_ndcWidget)
     {
-        m_ndcWidget->setModel(m_model.get());
+        m_ndcWidget->setModel(m_model);
         m_ndcWidget->setResultsModel(nullptr);
     }
     if (m_analysisDataDock) m_analysisDataDock->setResultsModel(nullptr);
@@ -1871,7 +1873,7 @@ void MainWindow::dropEvent(QDropEvent* event)
 void MainWindow::onActionExportDiagnosticReport()
 {
     TSA_LOG_INFO("UI", "DiagnosticReportExportInitiated", "Export manuel du rapport de diagnostic demandé");
-    std::string reportPath = TSA::Diagnostics::DiagnosticReport::exportReport(m_model.get());
+    std::string reportPath = TSA::Diagnostics::DiagnosticReport::exportReport(m_model);
     if (!reportPath.empty())
     {
         QMessageBox::information(this, tr("Rapport de Diagnostic %1").arg(TSA::Product::name()),

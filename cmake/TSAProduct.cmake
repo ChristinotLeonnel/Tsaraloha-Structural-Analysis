@@ -593,6 +593,8 @@ set(CABLE_GEOMETRY_SOURCES
 
 # --- Gestion de projet — [CORE] -----------------------------------------------
 set(PROJECT_SOURCES
+    ${TSA_ROOT}/src/Project/ProjectSession.h
+    ${TSA_ROOT}/src/Project/ProjectSession.cpp
     ${TSA_ROOT}/src/Project/ProjectManager.h
     ${TSA_ROOT}/src/Project/ProjectManager.cpp
     ${TSA_ROOT}/src/Project/RecentProjects.h
@@ -683,37 +685,56 @@ set(RESOURCES_SOURCES
     ${TSA_ROOT}/resources/resources.qrc
 )
 
-# --- Regroupement des modules "métier", partagés avec les tests unitaires ----
-set(CORE_SOURCES
+# =============================================================================
+# Regroupement par couche (docs/TSARALOHA_ARCHITECTURE.md, ADR-024 ; contrôlé par tools/check_layers.py)
+#   TSARALOHA_MODEL_SOURCES    -> <P>_Model    : modèle de projet, sans widget (partagé TSA / TSALab)
+#   TSARALOHA_GRAPHICS_SOURCES -> <P>_Graphics : viewport, géométrie, outils, grilles (rendu), thème
+#   TSARALOHA_WIDGETS_SOURCES  -> <P>_Widgets  : composants d'interface partagés (arbre, propriétés, docks,
+#                                                dialogues, fenêtre Analysis, dispositions, IA, NDC)
+#   TSA_APP_SOURCES            -> TSA          : fenêtre de TSA (MainWindow, ruban, AppShell, Start Center)
+# =============================================================================
+set(TSARALOHA_MODEL_SOURCES
     ${DIAGNOSTICS_SOURCES}
-    ${UI_EXTENSIONMANAGERDIALOG_SOURCES}
-    ${UI_ANALYSIS_SOURCES}
-    ${UI_TOOLS_SOURCES}
-    ${UI_MODELTREE_SOURCES}
-    ${UI_WINDOWMANAGER_SOURCES}
     ${EXTENSIONSYSTEM_SOURCES}
     ${LIBRARY_SOURCES}
     ${COORDINATE_SOURCES}
     ${GRID_CORE_SOURCES}
-    ${VIEWER_CORE_SOURCES}
-    ${GEOMETRY_CORE_SOURCES}
     ${MODEL_CORE_SOURCES}
     ${LOAD_CORE_SOURCES}
     ${ANALYSIS_ENGINE_SOURCES}
     ${NDC_CORE_SOURCES}
     ${AI_CORE_SOURCES}
     ${CABLE_SOURCES}
-    ${CABLE_GEOMETRY_SOURCES}
+    ${TSA_ROOT}/src/Grid/CableGrid.h
+    ${TSA_ROOT}/src/Grid/CableGrid.cpp
+    ${TSA_ROOT}/src/Library/CableLibrary.h
+    ${TSA_ROOT}/src/Library/CableLibrary.cpp
+    ${TSA_ROOT}/src/Model/ModelElementCopy.h
+    ${TSA_ROOT}/src/App/ProductInfo.h
+    ${TSA_ROOT}/src/App/ProductHooks.h
     ${PROJECT_SOURCES}
     ${COMMANDS_SOURCES}
     ${UNDOREDO_SOURCES}
-    ${INTERACTION_SOURCES}
     ${IO_SOURCES}
     ${STANDARDS_SOURCES}
 )
 
-# --- Liste complète des sources de l'exécutable principal --------------------
-# --- IA Co-Engineering : interface (panneau, configuration) ---
+set(TSARALOHA_GRAPHICS_SOURCES
+    ${VIEWER_CORE_SOURCES}
+    ${VIEWER_MAIN_SOURCES}
+    ${GEOMETRY_CORE_SOURCES}
+    ${GEOMETRY_MAIN_SOURCES}
+    ${TSA_ROOT}/src/Geometry/CableGeometry3D.h
+    ${TSA_ROOT}/src/Geometry/CableGeometry3D.cpp
+    ${GRID_RENDERING_SOURCES}
+    ${INTERACTION_SOURCES}
+    ${UI_THEME_SOURCES}
+    ${UI_RULER_SOURCES}
+)
+list(REMOVE_ITEM TSARALOHA_GRAPHICS_SOURCES ${TSA_ROOT}/src/Model/ModelElementCopy.h)
+
+
+# --- IA Co-Engineering : interface (panneau, configuration), Start Center, fenêtre ---
 set(UI_AI_SOURCES
     ${TSA_ROOT}/src/UI/AI/AICoEngineeringDock.h
     ${TSA_ROOT}/src/UI/AI/AICoEngineeringDock.cpp
@@ -731,24 +752,30 @@ set(UI_AI_SOURCES
     ${TSA_ROOT}/src/UI/Shell/TitleBar.cpp
 )
 
-set(SOURCES
+set(_tsa_all_ui_sources
+    ${UI_EXTENSIONMANAGERDIALOG_SOURCES}
+    ${UI_ANALYSIS_SOURCES}
+    ${UI_TOOLS_SOURCES}
+    ${UI_MODELTREE_SOURCES}
+    ${UI_WINDOWMANAGER_SOURCES}
     ${UI_AI_SOURCES}
     ${APP_SOURCES}
     ${UI_MAINWINDOW_SOURCES}
     ${UI_PROPERTIES_SOURCES}
     ${UI_DIALOGS_SOURCES}
-    ${UI_THEME_SOURCES}
-    ${UI_RULER_SOURCES}
     ${UI_WIDGETS_SOURCES}
     ${UI_RIBBON_SOURCES}
     ${UI_DOCK_SOURCES}
     ${MODEL_PRESETS_SOURCES}
-    ${GRID_RENDERING_SOURCES}
-    ${VIEWER_MAIN_SOURCES}
-    ${GEOMETRY_MAIN_SOURCES}
     ${PLATFORM_SOURCES}
     ${RESOURCES_SOURCES}
 )
+# Fenêtre propre à TSA (même découpage que tools/check_layers.py, couche « app »)
+set(_tsa_app_regex "/src/(UI/(MainWindow|Ribbon/|Shell/|Home/)|App/Application|main\\.cpp|Platform/)|/resources/")
+set(TSA_APP_SOURCES ${_tsa_all_ui_sources})
+list(FILTER TSA_APP_SOURCES INCLUDE REGEX "${_tsa_app_regex}")
+set(TSARALOHA_WIDGETS_SOURCES ${_tsa_all_ui_sources})
+list(FILTER TSARALOHA_WIDGETS_SOURCES EXCLUDE REGEX "${_tsa_app_regex}")
 
 # =============================================================================
 # Options de build
@@ -888,23 +915,19 @@ function(tsa_apply_common_settings target product_dir)
 endfunction()
 
 # =============================================================================
-# tsa_add_product : construit un produit (TSA, TSALab) sur la base technique commune.
-# -----------------------------------------------------------------------------
-#   NAME                <nom>      cibles <nom>, <nom>_Core, <nom>_Tests (<nom>_TestSuite.exe),
-#                                  <nom>ThumbnailProvider (DLL Explorateur)
-#   PRODUCT_DIR         <dossier>  ProductIdentity.h, ProductShellIds.h, ProductHooks.cpp, ProductTests.cpp
-#   OVERLAY_DIRS        <dossiers> sources propres au produit (ajoutées au chemin d'inclusion)
-#   RESOURCES           <fichiers> ressources propres (.qrc, .rc) de l'exécutable
-#   CORE_SOURCES        <fichiers> sources propres compilées dans <nom>_Core (donc testables)
-#   APP_SOURCES         <fichiers> sources propres de l'interface (exécutable seulement)
-#   TEST_SOURCES        <fichiers> tests propres au produit (en plus des suites communes)
+# Bibliothèques partagées TSA / TSALab, compilées avec l'identité du produit (PRODUCT_DIR) :
+#   <PREFIX>_Model    (OBJECT) : TSARALOHA_MODEL_SOURCES (+ MODEL_SOURCES du produit) — porte le PCH
+#   <PREFIX>_Graphics (OBJECT) : TSARALOHA_GRAPHICS_SOURCES
+#   <PREFIX>_Widgets  (OBJECT) : TSARALOHA_WIDGETS_SOURCES
+# Une cible qui les utilise les lie toutes (les objets d'une OBJECT ne sont pas transitifs) :
+#   target_link_libraries(<cible> PRIVATE <PREFIX>_Model <PREFIX>_Graphics <PREFIX>_Widgets)
+#   target_precompile_headers(<cible> REUSE_FROM <PREFIX>_Model)
 # =============================================================================
-function(tsa_add_product)
-    cmake_parse_arguments(P "" "NAME;PRODUCT_DIR" "OVERLAY_DIRS;RESOURCES;CORE_SOURCES;APP_SOURCES;TEST_SOURCES" ${ARGN})
-    set(name ${P_NAME})
-    set(core ${name}_Core)
-    set(tests ${name}_Tests)
-    set(thumbs ${name}ThumbnailProvider)
+function(tsaraloha_add_shared_libraries)
+    cmake_parse_arguments(P "" "PREFIX;PRODUCT_DIR" "OVERLAY_DIRS;MODEL_SOURCES" ${ARGN})
+    set(model ${P_PREFIX}_Model)
+    set(graphics ${P_PREFIX}_Graphics)
+    set(widgets ${P_PREFIX}_Widgets)
 
     # Un dossier propre au produit ne doit jamais masquer un fichier commun : avec MSVC, un
     # #include "X/Y.h" peut se résoudre différemment selon le fichier qui l'inclut (ODR).
@@ -912,23 +935,22 @@ function(tsa_add_product)
         file(GLOB_RECURSE _own RELATIVE "${_overlay}" "${_overlay}/*")
         foreach(_f IN LISTS _own)
             if(EXISTS "${TSA_ROOT}/src/${_f}")
-                message(FATAL_ERROR "${name} : ${_overlay}/${_f} masque le fichier commun ${TSA_ROOT}/src/${_f}. "
+                message(FATAL_ERROR "${P_PREFIX} : ${_overlay}/${_f} masque le fichier commun ${TSA_ROOT}/src/${_f}. "
                                     "Corriger le fichier commun (ou y ajouter un point d'extension) au lieu de le copier.")
             endif()
         endforeach()
     endforeach()
 
-    # --- Core : logique "métier", compilée UNE SEULE FOIS --------------------------------------
-    # Bibliothèque OBJECT : les .obj sont réutilisés tels quels par l'exécutable et les tests
-    # (pas de risque de perdre des initialisations statiques comme avec une .lib).
     if(NOT TARGET MetDeDeplacement)
         # Moteur 2D « méthode des déplacements » (bibliothèque autonome du même auteur)
         add_subdirectory(${TSA_ROOT}/thirdparty/MetDeDeplacement ${CMAKE_BINARY_DIR}/thirdparty/MetDeDeplacement)
     endif()
 
-    add_library(${core} OBJECT ${CORE_SOURCES} ${P_CORE_SOURCES})
-    tsa_apply_common_settings(${core} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
-    target_link_libraries(${core} PUBLIC
+    # Bibliothèques OBJECT : les .obj sont réutilisés tels quels par les exécutables et les tests
+    # (pas de risque de perdre des initialisations statiques comme avec une .lib).
+    add_library(${model} OBJECT ${TSARALOHA_MODEL_SOURCES} ${P_MODEL_SOURCES})
+    tsa_apply_common_settings(${model} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
+    target_link_libraries(${model} PUBLIC
         MetDeDeplacement
         Qt6::Core
         Qt6::Gui
@@ -936,10 +958,13 @@ function(tsa_add_product)
         Qt6::Network
         ${OCCT_LIBS}
     )
+    if(WIN32)
+        target_link_libraries(${model} PUBLIC DbgHelp Crypt32)
+    endif()
 
     # En-têtes précompilés : Qt et OCCT sont très lourds à parser.
     # Les autres cibles réutilisent ce PCH (REUSE_FROM).
-    target_precompile_headers(${core} PRIVATE
+    target_precompile_headers(${model} PRIVATE
         <QtCore/QtCore>
         <QtGui/QtGui>
         <QtWidgets/QtWidgets>
@@ -960,63 +985,105 @@ function(tsa_add_product)
         <functional>
     )
 
-    if(WIN32)
-        target_link_libraries(${core} PUBLIC DbgHelp Crypt32)
-    endif()
+    add_library(${graphics} OBJECT ${TSARALOHA_GRAPHICS_SOURCES})
+    tsa_apply_common_settings(${graphics} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
+    target_precompile_headers(${graphics} REUSE_FROM ${model})
+    target_link_libraries(${graphics} PUBLIC ${model} Qt6::Svg)
+
+    add_library(${widgets} OBJECT ${TSARALOHA_WIDGETS_SOURCES})
+    tsa_apply_common_settings(${widgets} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
+    target_precompile_headers(${widgets} REUSE_FROM ${model})
+    target_link_libraries(${widgets} PUBLIC ${model} ${graphics})
+
     set_source_files_properties(${TSA_NO_PCH_SOURCES} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+endfunction()
 
-    # --- Exécutable principal --------------------------------------------------------------------
-    add_executable(${name} ${SOURCES} ${P_PRODUCT_DIR}/ProductHooks.cpp ${P_APP_SOURCES} ${P_RESOURCES})
-    tsa_apply_common_settings(${name} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
-    target_precompile_headers(${name} REUSE_FROM ${core})
-    target_link_libraries(${name} PRIVATE ${core} Qt6::Svg)
-    if(WIN32)
-        # AppShell : barre de titre personnalisée (ombre DWM de la fenêtre sans cadre système)
-        target_link_libraries(${name} PRIVATE dwmapi)
+# Extension Explorateur Windows (miniatures des fichiers projet du produit) : DLL autonome chargée par
+# l'Explorateur, ni Qt ni OpenCASCADE, runtime C statique. Voir docs/THUMBNAIL_PROVIDER.md.
+function(tsaraloha_add_thumbnail_provider target product_dir)
+    if(NOT WIN32)
+        return()
     endif()
+    add_library(${target} SHARED
+        ${TSA_ROOT}/src/ShellExtension/TSAThumbnailProvider.cpp
+        ${TSA_ROOT}/src/ShellExtension/TSAThumbnailProvider.def
+        ${TSA_ROOT}/src/IO/TSAPreviewBlock.h
+        ${TSA_ROOT}/src/IO/TSAFileFormat.h
+    )
+    target_include_directories(${target} PRIVATE ${product_dir})
+    target_compile_features(${target} PRIVATE cxx_std_20)
+    target_compile_definitions(${target} PRIVATE UNICODE _UNICODE)
+    set_target_properties(${target} PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    target_link_libraries(${target} PRIVATE windowscodecs shlwapi ole32 shell32 advapi32)
+endfunction()
 
-    # Propriétés spécifiques MSVC / Windows
+# Exécutable Qt d'une application de l'écosystème : sous-système Windows et déploiement des DLL
+# (Qt, OCCT, 3rdparty, Extensions/ de la base commune) à côté de l'exécutable.
+function(tsaraloha_configure_application target)
     if(MSVC)
-        # Sous-système Windows :
-        # - Mode Debug : conserve la console cmd pour afficher les logs (qDebug, std::cout, diagnostics)
-        # - Mode Release / RelWithDebInfo / MinSizeRel : mode fenêtré pur sans console cmd
-        target_link_options(${name} PRIVATE
+        # Debug : console conservée pour les journaux ; autres configurations : fenêtré pur.
+        target_link_options(${target} PRIVATE
             $<$<CONFIG:Debug>:/SUBSYSTEM:CONSOLE>
             $<$<NOT:$<CONFIG:Debug>>:/SUBSYSTEM:WINDOWS>
             $<$<NOT:$<CONFIG:Debug>>:/ENTRY:mainCRTStartup>
         )
     endif()
-
-    # --- Extension Explorateur Windows : miniatures des fichiers projet ----------------------------
-    # DLL autonome chargée par l'Explorateur : ni Qt, ni OpenCASCADE, runtime C statique (aucune
-    # dépendance à installer). Placée à côté de l'exécutable, enregistrée par lui au lancement (HKCU)
-    # ou par l'installeur (regsvr32 /i:machine). Voir docs/THUMBNAIL_PROVIDER.md.
     if(WIN32)
-        add_library(${thumbs} SHARED
-            ${TSA_ROOT}/src/ShellExtension/TSAThumbnailProvider.cpp
-            ${TSA_ROOT}/src/ShellExtension/TSAThumbnailProvider.def
-            ${TSA_ROOT}/src/IO/TSAPreviewBlock.h
-            ${TSA_ROOT}/src/IO/TSAFileFormat.h
+        get_target_property(_qmake_loc Qt6::qmake IMPORTED_LOCATION)
+        get_filename_component(_qt_bin_dir "${_qmake_loc}" DIRECTORY)
+        find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
+        add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND}
+                -DTARGET_DIR=$<TARGET_FILE_DIR:${target}>
+                -DSOURCE_DIR=${TSA_ROOT}
+                -DTARGET_FILE=$<TARGET_FILE:${target}>
+                -DWINDEPLOYQT_EXECUTABLE=${WINDEPLOYQT_EXECUTABLE}
+                -P "${TSA_ROOT}/cmake/DeployDependencies.cmake"
+            COMMENT "Copie automatique de toutes les DLLs (Qt, OCCT, 3rdparty) vers le dossier du .exe..."
         )
-        target_include_directories(${thumbs} PRIVATE ${P_PRODUCT_DIR})
-        target_compile_features(${thumbs} PRIVATE cxx_std_20)
-        target_compile_definitions(${thumbs} PRIVATE UNICODE _UNICODE)
-        set_target_properties(${thumbs} PROPERTIES
-            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-        target_link_libraries(${thumbs} PRIVATE windowscodecs shlwapi ole32 shell32 advapi32)
+    endif()
+endfunction()
+
+# =============================================================================
+# tsa_add_product : application TSA (ruban, AppShell, Start Center) sur les bibliothèques partagées.
+#   NAME <nom>  PRODUCT_DIR <dossier>  RESOURCES <.qrc/.rc>
+# Cibles : <nom>_Model, <nom>_Graphics, <nom>_Widgets, <nom>, <nom>_Tests (<nom>_TestSuite.exe),
+#          <nom>ThumbnailProvider.
+# =============================================================================
+function(tsa_add_product)
+    cmake_parse_arguments(P "" "NAME;PRODUCT_DIR" "RESOURCES" ${ARGN})
+    set(name ${P_NAME})
+    set(model ${name}_Model)
+    set(graphics ${name}_Graphics)
+    set(widgets ${name}_Widgets)
+    set(tests ${name}_Tests)
+    set(thumbs ${name}ThumbnailProvider)
+
+    tsaraloha_add_shared_libraries(PREFIX ${name} PRODUCT_DIR ${P_PRODUCT_DIR})
+
+    add_executable(${name} ${TSA_APP_SOURCES} ${P_PRODUCT_DIR}/ProductHooks.cpp ${P_RESOURCES})
+    tsa_apply_common_settings(${name} ${P_PRODUCT_DIR})
+    target_precompile_headers(${name} REUSE_FROM ${model})
+    target_link_libraries(${name} PRIVATE ${model} ${graphics} ${widgets} Qt6::Svg)
+    if(WIN32)
+        # AppShell : barre de titre personnalisée (ombre DWM de la fenêtre sans cadre système)
+        target_link_libraries(${name} PRIVATE dwmapi)
+    endif()
+    tsaraloha_configure_application(${name})
+
+    tsaraloha_add_thumbnail_provider(${thumbs} ${P_PRODUCT_DIR})
+    if(TARGET ${thumbs})
         add_dependencies(${name} ${thumbs})
     endif()
 
-    # --- Tests unitaires ---------------------------------------------------------------------------
-    # Réutilise le Core : les tests ne compilent que la logique "métier", sans les fichiers
-    # spécifiques à l'UI (fenêtres, dialogues, rendu du viewer...).
+    # --- Tests unitaires : bibliothèques partagées -------------------------
     if(TSA_BUILD_TESTS)
         enable_testing()
-        add_executable(${tests} ${TSA_TEST_SOURCES} ${P_PRODUCT_DIR}/ProductTests.cpp ${P_TEST_SOURCES})
-        tsa_apply_common_settings(${tests} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
+        add_executable(${tests} ${TSA_TEST_SOURCES} ${P_PRODUCT_DIR}/ProductTests.cpp)
+        tsa_apply_common_settings(${tests} ${P_PRODUCT_DIR})
         target_include_directories(${tests} PRIVATE ${TSA_ROOT}/tests)
-        target_precompile_headers(${tests} REUSE_FROM ${core})
-        target_link_libraries(${tests} PRIVATE ${core})
+        target_precompile_headers(${tests} REUSE_FROM ${model})
+        target_link_libraries(${tests} PRIVATE ${model} ${graphics} ${widgets})
         set_target_properties(${tests} PROPERTIES OUTPUT_NAME "${name}_TestSuite")
         if(WIN32)
             add_dependencies(${tests} ${thumbs})
@@ -1030,23 +1097,10 @@ function(tsa_add_product)
                        loads opensees supports standards)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
-    endif()
-
-    # --- Déploiement automatique des DLLs et dépendances dans le dossier de l'exécutable ----------
-    if(WIN32)
-        # Localisation de windeployqt pour Qt 6
-        get_target_property(_qmake_loc Qt6::qmake IMPORTED_LOCATION)
-        get_filename_component(_qt_bin_dir "${_qmake_loc}" DIRECTORY)
-        find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
-
-        add_custom_command(TARGET ${name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND}
-                -DTARGET_DIR=$<TARGET_FILE_DIR:${name}>
-                -DSOURCE_DIR=${TSA_ROOT}
-                -DTARGET_FILE=$<TARGET_FILE:${name}>
-                -DWINDEPLOYQT_EXECUTABLE=${WINDEPLOYQT_EXECUTABLE}
-                -P "${TSA_ROOT}/cmake/DeployDependencies.cmake"
-            COMMENT "Copie automatique de toutes les DLLs (Qt, OCCT, 3rdparty) vers le dossier du .exe..."
-        )
+        # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)
+        find_package(Python3 COMPONENTS Interpreter QUIET)
+        if(Python3_FOUND)
+            add_test(NAME ${name}_Layers COMMAND Python3::Interpreter ${TSA_ROOT}/tools/check_layers.py ${TSA_ROOT}/src)
+        endif()
     endif()
 endfunction()

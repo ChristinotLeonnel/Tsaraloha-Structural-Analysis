@@ -23,7 +23,7 @@ namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct New
 namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Interaction { class ModelingTool; class ModelingToolRegistry; struct ToolContext; }
-namespace TSA::Project { class ProjectManager; }
+namespace TSA::Project { class ProjectManager; class ProjectSession; }
 namespace TSA::Viewer { class SelectionManager; }
 namespace TSA::UndoRedo { class CommandManager; }
 namespace TSA::Grid
@@ -83,20 +83,20 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
-    TSA::Model::Model* model() { return m_model.get(); }
-    const TSA::Model::Model* model() const { return m_model.get(); }
+    TSA::Model::Model* model() { return m_model; }
+    const TSA::Model::Model* model() const { return m_model; }
 
     /// Résultats du dernier calcul (nul si aucun) ; voir le signal resultsChanged().
     std::shared_ptr<const TSA::Analysis::ResultsModel> resultsModel() const { return m_resultsModel; }
 
-    TSA::UndoRedo::CommandManager* commandManager() { return m_commandManager.get(); }
-    const TSA::UndoRedo::CommandManager* commandManager() const { return m_commandManager.get(); }
+    TSA::UndoRedo::CommandManager* commandManager() { return m_commandManager; }
+    const TSA::UndoRedo::CommandManager* commandManager() const { return m_commandManager; }
 
-    TSA::Grid::GridManager* gridManager() { return m_gridManager.get(); }
-    const TSA::Grid::GridManager* gridManager() const { return m_gridManager.get(); }
+    TSA::Grid::GridManager* gridManager() { return m_gridManager; }
+    const TSA::Grid::GridManager* gridManager() const { return m_gridManager; }
 
-    TSA::Project::ProjectManager* projectManager() { return m_projectManager.get(); }
-    const TSA::Project::ProjectManager* projectManager() const { return m_projectManager.get(); }
+    TSA::Project::ProjectManager* projectManager() { return m_projectManager; }
+    const TSA::Project::ProjectManager* projectManager() const { return m_projectManager; }
 
     TSA::UI::WindowManager* windowManager() { return m_windowManager.get(); }
     const TSA::UI::WindowManager* windowManager() const { return m_windowManager.get(); }
@@ -213,11 +213,14 @@ private:
     void applyTheme(bool dark);
 
 private:
-    std::unique_ptr<TSA::Model::Model> m_model;
-    std::unique_ptr<TSA::UndoRedo::CommandManager> m_commandManager;
+    /// Projet ouvert : modèle, commandes, grilles, fichier (base partagée avec TSALab, ADR-024).
+    /// Déclarée en premier : détruite en dernier, après les vues qui l'observent.
+    std::unique_ptr<TSA::Project::ProjectSession> m_session;
+    TSA::Model::Model* m_model = nullptr;                    ///< = &m_session->model()
+    TSA::UndoRedo::CommandManager* m_commandManager = nullptr;
     std::unique_ptr<TSA::Viewer::SelectionManager> m_selectionManager;
-    std::unique_ptr<TSA::Grid::GridManager> m_gridManager;
-    std::unique_ptr<TSA::Grid::GridSnapManager> m_gridSnapManager;
+    TSA::Grid::GridManager* m_gridManager = nullptr;
+    TSA::Grid::GridSnapManager* m_gridSnapManager = nullptr;
     std::unique_ptr<TSA::UI::WindowManager> m_windowManager;
 
     OccView* m_occView = nullptr;
@@ -289,7 +292,7 @@ private:
     QAction* m_actionSave = nullptr;
     QAction* m_actionSaveAs = nullptr;
     QAction* m_actionExit = nullptr;
-    std::unique_ptr<TSA::Project::ProjectManager> m_projectManager;
+    TSA::Project::ProjectManager* m_projectManager = nullptr;  ///< = &m_session->project()
 
     QAction* m_actionFitAll = nullptr;
     QAction* m_actionResetView = nullptr;

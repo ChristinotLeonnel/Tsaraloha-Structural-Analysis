@@ -1371,7 +1371,7 @@ void MainWindow::createDockWindows()
     m_modelTreeDock->setObjectName("ModelTreeDock");
     m_modelTreeDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
-    m_modelTree = new TSA::UI::ModelTreeWidget(m_model.get(), m_modelTreeDock);
+    m_modelTree = new TSA::UI::ModelTreeWidget(m_model, m_modelTreeDock);
     m_modelTreeDock->setWidget(m_modelTree);
     m_modelTreeDock->setMinimumWidth(280);
     m_modelTreeDock->toggleViewAction()->setIcon(QIcon(":/icons/model_tree.svg"));
@@ -1422,7 +1422,7 @@ void MainWindow::createDockWindows()
     m_propertiesDock->setObjectName("PropertiesDock");
     m_propertiesDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
-    m_propertyPanel = new TSA::UI::PropertyPanel(m_model.get(), m_propertiesDock);
+    m_propertyPanel = new TSA::UI::PropertyPanel(m_model, m_propertiesDock);
     m_propertiesDock->setWidget(m_propertyPanel);
     m_propertiesDock->setMinimumWidth(280);
     m_propertiesDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
@@ -1431,7 +1431,7 @@ void MainWindow::createDockWindows()
 
     // 4. Dock droit : PROJECTION & VUE (WorkPlane, 2D/3D, Caméra)
     m_projectionViewDock = new TSA::UI::ProjectionViewDock(this);
-    m_projectionViewDock->setModel(m_model.get());
+    m_projectionViewDock->setModel(m_model);
     m_projectionViewDock->toggleViewAction()->setIcon(QIcon(":/icons/view_normal_workplane.svg"));
     addDockWidget(Qt::RightDockWidgetArea, m_projectionViewDock);
     tabifyDockWidget(m_propertiesDock, m_projectionViewDock);
@@ -1443,8 +1443,8 @@ void MainWindow::createDockWindows()
     m_projectStatusDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
     m_projectStatusWidget = new TSA::UI::ProjectStatusOverlay(m_occView, m_projectStatusDock);
-    m_projectStatusWidget->setModel(m_model.get());
-    m_projectStatusWidget->setGridManager(m_gridManager.get());
+    m_projectStatusWidget->setModel(m_model);
+    m_projectStatusWidget->setGridManager(m_gridManager);
     m_projectStatusDock->setWidget(m_projectStatusWidget);
     m_projectStatusDock->setMinimumWidth(280);
     m_projectStatusDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
@@ -1485,7 +1485,7 @@ void MainWindow::createDockWindows()
 
     // 5. Dock droit : RÉSULTATS STRUCTURAUX 3D
     m_resultsDock = new TSA::UI::ResultsDockWidget(this);
-    m_resultsDock->setModel(m_model.get());
+    m_resultsDock->setModel(m_model);
     m_resultsDock->toggleViewAction()->setIcon(QIcon(":/icons/results_disp.svg"));
     addDockWidget(Qt::RightDockWidgetArea, m_resultsDock);
     tabifyDockWidget(m_propertiesDock, m_resultsDock);
@@ -1493,7 +1493,7 @@ void MainWindow::createDockWindows()
     // Données numériques du calcul (matrices, DDL, forces brutes, export) : dock dédié,
     // le viewport n'affiche pas ces informations.
     m_analysisDataDock = new TSA::UI::AnalysisDataDock(this);
-    m_analysisDataDock->setModel(m_model.get());
+    m_analysisDataDock->setModel(m_model);
     addDockWidget(Qt::BottomDockWidgetArea, m_analysisDataDock);
     m_analysisDataDock->hide();
     m_propertiesDock->raise();
@@ -1544,7 +1544,7 @@ void MainWindow::createDockWindows()
     m_diagramDock->setObjectName("DiagramDock");
     m_diagramDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::RightDockWidgetArea);
     m_diagramWidget = new TSA::UI::Diagram2DWidget(m_diagramDock);
-    m_diagramWidget->setModel(m_model.get());
+    m_diagramWidget->setModel(m_model);
     m_diagramDock->setWidget(m_diagramWidget);
     m_diagramDock->toggleViewAction()->setIcon(QIcon(":/icons/results_force.svg"));
     addDockWidget(Qt::BottomDockWidgetArea, m_diagramDock);
@@ -1560,7 +1560,7 @@ void MainWindow::createDockWindows()
     m_ndcDock->setObjectName("NdcDock");
     m_ndcDock->setAllowedAreas(Qt::AllDockWidgetAreas);
     m_ndcWidget = new TSA::NDC::NDCViewerWidget(m_ndcDock);
-    m_ndcWidget->setModel(m_model.get());
+    m_ndcWidget->setModel(m_model);
     m_ndcDock->setWidget(m_ndcWidget);
     m_ndcDock->toggleViewAction()->setIcon(QIcon(":/icons/ndc_report.svg"));
     addDockWidget(Qt::RightDockWidgetArea, m_ndcDock);
