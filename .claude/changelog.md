@@ -2,6 +2,28 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-08 (écosystème Tsaraloha — ADR-024, branche feature/tsaraloha-shared-libs)
+
+### Changed
+- Bibliothèques partagées <P>_Model / <P>_Graphics / <P>_Widgets (cmake/TSAProduct.cmake), contrôle des couches
+  tools/check_layers.py (CTest). ProjectSession (modèle, commandes, grilles, projet, historique) hors de MainWindow.
+- Composants partagés extraits de MainWindow / Application : SelectionSynchronizer, EcosystemApplication.
+- Moteur custom2d : solveur du cœur scientifique TSALab (tsalab::planar, MetDeDeplacement déplacé dans TSALab/science).
+- Retrait des points d'extension « TSALab enveloppe MainWindow » (configureShell, setLaunchPanel, décorateur).
+
+### Added
+- Automation/CommandRegistry : registre central de commandes typées (nœuds, poutres, poteaux, appuis, cas, charges,
+  requêtes), une entrée Annuler par commande, ligne de commande ; test 192 (suite automation).
+- docs/TSARALOHA_ARCHITECTURE.md (analyse, options A/B/C, architecture, feuille de route).
+
+### Fixed
+- Arbre du modèle : la section Charges suit les ajouts / suppressions de charges et de cas (observateur), dans TSA
+  comme dans TSALab (vérifié dans l'interface de TSALab).
+
+### Verified
+- TSA 213/213 ; TSALab : application 2/2, cœur scientifique 5/5, tsalab-bench 6/6 ; 0 violation de couche ;
+  TSA ouvre un projet en argument ; TSALab ouvre un .tsa, exécute des commandes console (captures d'écran).
+
 ## 2026-10-08 (base commune TSA / TSALab — ADR-023, branche feature/shared-core)
 
 ### Changed

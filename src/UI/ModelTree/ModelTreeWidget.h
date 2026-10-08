@@ -100,6 +100,15 @@ protected:
   void onCableModified(const TSA::Model::Cable &cable) override;
   void onCableRemoved(int cableId) override;
 
+  // Charges et cas : section « Charges » reconstruite une fois par boucle d'événements (ajouts groupés).
+  void onNodalLoadAdded(int) override { scheduleLoadsRefresh(); }
+  void onNodalLoadModified(int) override { scheduleLoadsRefresh(); }
+  void onNodalLoadRemoved(int) override { scheduleLoadsRefresh(); }
+  void onMemberLoadAdded(int) override { scheduleLoadsRefresh(); }
+  void onMemberLoadModified(int) override { scheduleLoadsRefresh(); }
+  void onMemberLoadRemoved(int) override { scheduleLoadsRefresh(); }
+  void onLoadCaseChanged(int) override { scheduleLoadsRefresh(); }
+
   void onModelDiffApplied(const TSA::Model::ModelDiff &diff) override;
   void onModelCleared() override;
   void onModelDestroyed() override { m_model = nullptr; }
@@ -118,6 +127,8 @@ private:
   // Suppressions regroupées : appliquées en une passe (fin de rafale ou avant toute autre mise à jour).
   QHash<QTreeWidgetItem *, QSet<int>> m_pendingRemovals;
   QTimer *m_removalTimer = nullptr;
+  bool m_loadsRefreshPending = false;
+  void scheduleLoadsRefresh();
   void queueRemoval(QTreeWidgetItem *category, int id);
   void flushRemovals();
   // Index id → item par catégorie d'éléments (BUG-007) : tenu à jour à la création (on*Added), à la

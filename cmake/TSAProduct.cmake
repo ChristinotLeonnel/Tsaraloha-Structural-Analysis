@@ -702,6 +702,8 @@ set(RESOURCES_SOURCES
 #   TSA_APP_SOURCES            -> TSA          : fenêtre de TSA (MainWindow, ruban, AppShell, Start Center)
 # =============================================================================
 set(TSARALOHA_MODEL_SOURCES
+    ${TSA_ROOT}/src/Automation/CommandRegistry.h
+    ${TSA_ROOT}/src/Automation/CommandRegistry.cpp
     ${DIAGNOSTICS_SOURCES}
     ${EXTENSIONSYSTEM_SOURCES}
     ${LIBRARY_SOURCES}
@@ -852,6 +854,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_model_cleanup.cpp
     ${TSA_ROOT}/tests/test_bim.cpp
     ${TSA_ROOT}/tests/test_snap.cpp
+    ${TSA_ROOT}/tests/test_automation.cpp
     ${TSA_ROOT}/resources/resources.qrc
 )
 

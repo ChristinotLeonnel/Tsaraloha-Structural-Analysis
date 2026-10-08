@@ -429,6 +429,16 @@ void ModelTreeWidget::refreshAll()
     }
 }
 
+void ModelTreeWidget::scheduleLoadsRefresh()
+{
+    if (m_loadsRefreshPending) return;
+    m_loadsRefreshPending = true;
+    QTimer::singleShot(0, this, [this] {
+        m_loadsRefreshPending = false;
+        refreshLoads();
+    });
+}
+
 void ModelTreeWidget::refreshLoads()
 {
     flushRemovals();

@@ -27,11 +27,18 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 - [ ] Commit, fusion dans `main`, push (et push de `archive/dynamique` + tag) — sur accord de l'utilisateur.
 - [ ] Vérifications GUI : ruban sans entrées dynamiques, calcul statique depuis F5, progression / Annuler.
 
-## Base commune TSA / TSALab (ADR-023)
+## Écosystème Tsaraloha (ADR-024) — feuille de route
 
-- [ ] Commit de feature/shared-core (TSA) et feature/shared-tsa-core (TSALab), fusion ensemble — sur accord.
-- [ ] Vérifier en GUI que TSA est inchangé (titres, Start Center, Enregistrer sous, association .tsa).
-- [ ] BUG-036 : comprendre la perte de CMAKE_CXX_FLAGS dans le cache.
+- [x] Phases 1–5 : bibliothèques partagées, ProjectSession, IDE TSALab, cœur scientifique, registre de commandes.
+- [ ] Commit / fusion : branches feature/tsaraloha-shared-libs (TSA) et feature/scientific-ide (TSALab) ENSEMBLE.
+- [ ] Console de TSA : router ses commandes (BEAM, NODE…) vers Automation::CommandRegistry (aujourd'hui dans MainWindow).
+- [ ] Outils IA (AIToolRegistry) : outils de lecture adossés au registre de commandes.
+- [ ] Phase 6 : Blueprint — runtime typé (données / exécution, nœuds = commandes du registre + science), .tsbp,
+      éditeur (QGraphicsView) dans TSALab.
+- [ ] Phase 7 : AnalysisController partagé (extraire de MainWindow le lancement en thread + publication des
+      résultats) ; Analysis Manager, Matrix viewer (K M F U R), Results viewer dans TSALab ; SOLVER LAB branché.
+- [ ] Phase 8 : débogueur / profileur Blueprint, API de plugins, IA sur Blueprint, moteur OpenSees dans tsalab_science.
+- [ ] BUG-036 (cache CMake), BUG-037 (MetDeDeplacement sans DDL libre).
 
 ## CRITICAL
 

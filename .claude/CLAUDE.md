@@ -34,10 +34,12 @@ PropertyPanel, ProjectStatusOverlay, ResultsValidityGuard). Détails : `architec
 
 ## Important Rules
 
-- **Base commune TSA / TSALab (ADR-023)** : `src/` et `tests/` sont aussi compilés par TSALab (`../TSALab`). Aucun
-  littéral d'identité (« TSA », « .tsa », QSettings, chemins absolus) dans `src/` : passer par `<ProductIdentity.h>` /
-  `App/ProductInfo.h`. Cibles et sources : `cmake/TSAProduct.cmake`. Après une modification de `src/`, compiler et
-  tester les DEUX produits (pas en parallèle). Ne jamais copier un fichier commun dans TSALab : point d'extension.
+- **Écosystème Tsaraloha (ADR-024, `docs/TSARALOHA_ARCHITECTURE.md`)** : `src/` = bibliothèques partagées avec
+  TSALab (`../TSALab`) en couches model < graphics < widgets < app, contrôlées par `tools/check_layers.py`.
+  Avant toute classe : chercher l'existant, puis réutiliser → refactorer → extraire en composant partagé.
+  Aucun littéral d'identité dans `src/` (`<ProductIdentity.h>`, `App/ProductInfo.h`). Calcul scientifique =
+  `TSALab/science` (C++ pur). Commandes métier = `Automation/CommandRegistry`. Après une modification de `src/`,
+  compiler et tester TSA puis TSALab (pas en parallèle).
 
 - Travailler avec l'architecture existante ; pas d'architecture ni de système parallèle
   (un seul SelectionManager, un seul UndoManager, un seul viewport `OccView`).
