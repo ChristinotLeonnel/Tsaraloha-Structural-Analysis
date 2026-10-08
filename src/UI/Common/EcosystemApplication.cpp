@@ -1,5 +1,7 @@
 #include "EcosystemApplication.h"
 
+#include "../../Plugins/PluginManager.h"
+
 #include "App/ProductInfo.h"
 #include "../Theme/ThemeManager.h"
 #include "../../Diagnostics/CrashHandler.h"
@@ -89,6 +91,15 @@ EcosystemApplication::EcosystemApplication(int& argc, char** argv)
             qputenv("CSF_OCCTShadersPath", (resDir.absolutePath() + "/OpenGl").toLocal8Bit());
         }
     }
+
+    // Plugins (<dossier de l'application>/plugins) : commandes et nœuds Blueprint ajoutés aux registres
+    // globaux avant toute fenêtre (console, Blueprint et IA les voient comme les commandes intégrées).
+    auto& plugins = TSA::Plugins::PluginManager::instance();
+    plugins.loadDirectory(TSA::Plugins::PluginManager::defaultDirectory());
+    for (const auto& p : plugins.plugins())
+        TSA_LOG_INFO("App", p.loaded ? "PluginLoaded" : "PluginRejected",
+                     (p.loaded ? "Plugin chargé : " + p.info.name + " " + p.info.version
+                               : "Plugin refusé : " + p.path.toStdString() + " — " + p.error.toStdString()));
 }
 
 EcosystemApplication::~EcosystemApplication()

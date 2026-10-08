@@ -1,6 +1,8 @@
 #include "AIToolRegistry.h"
 
 #include "../RAG/EngineeringKnowledgeBase.h"
+#include "../../Automation/CommandRegistry.h"
+#include "../../Blueprint/BlueprintScript.h"
 #include "../../Model/Model.h"
 
 #include <QJsonDocument>
@@ -66,7 +68,7 @@ QStringList AIToolRegistry::whitelist()
 {
     return { "get_project_info", "list_members", "list_nodes", "get_object", "list_load_cases",
              "list_load_combinations", "list_loads", "get_results_summary", "check_model", "search_knowledge",
-             "propose_section_change", "propose_run_analysis" };
+             "propose_section_change", "propose_run_analysis", "list_commands", "propose_blueprint" };
 }
 
 ToolKind AIToolRegistry::kindOf(const QString& tool)
@@ -102,6 +104,16 @@ QJsonArray AIToolRegistry::toolDefinitions() const
              { "rationale", prop("string", "Justification technique") } }, { "type", "ids", "section", "rationale" }),
         fn("propose_run_analysis", "PROPOSE à l'ingénieur de lancer le calcul OpenSees (résultats absents ou obsolètes).",
            { { "rationale", prop("string", "Pourquoi le calcul est utile") } }, { "rationale" }),
+        fn("list_commands", "Commandes du registre central (identifiant, paramètres typés et unités, sorties) utilisables dans un "
+                            "script de Blueprint (propose_blueprint).", {}),
+        fn("propose_blueprint",
+           "PROPOSE à l'ingénieur un Blueprint : script de commandes du registre central, une par ligne "
+           "(« id nom=valeur … » ; point « x,y,z » en m ; texte avec espaces entre guillemets). « a = commande … » nomme "
+           "une commande ; « a.id » réutilise sa sortie « id » (ex. start=a.id). Le script est vérifié ; rien n'est "
+           "exécuté sans l'accord de l'ingénieur (une entrée Annuler par commande).",
+           { { "title", prop("string", "Titre court du Blueprint") },
+             { "script", prop("string", "Script de commandes, une par ligne") },
+             { "rationale", prop("string", "Ce que le Blueprint construit et pourquoi") } }, { "title", "script", "rationale" }),
     };
     return tools;
 }
@@ -259,6 +271,55 @@ ToolOutcome AIToolRegistry::execute(const QString& name, const QString& argument
     }
     else if (name == "propose_section_change")
         return proposeSectionChange(args, src);
+    else if (name == "list_commands")
+    {
+        QJsonArray list;
+        for (const auto* spec : TSA::Automation::CommandRegistry::builtIn().commands())
+        {
+            auto params = [](const std::vector<TSA::Automation::ParameterSpec>& specs, bool inputs) {
+                QJsonArray a;
+                for (const auto& p : specs)
+                {
+                    QJsonObject o { { "name", QString::fromStdString(p.name) },
+                                    { "type", QString::fromUtf8(TSA::Automation::typeName(p.type)) } };
+                    if (const char* unit = TSA::Automation::quantityUnit(p.quantity); unit && *unit) o["unit"] = QString::fromUtf8(unit);
+                    if (inputs) o["required"] = p.required;
+                    a.append(o);
+                }
+                return a;
+            };
+            list.append(QJsonObject { { "id", QString::fromStdString(spec->id) }, { "title", QString::fromStdString(spec->title) },
+                                      { "description", QString::fromStdString(spec->description) },
+                                      { "parameters", params(spec->parameters, true) }, { "outputs", params(spec->outputs, false) },
+                                      { "modifies_model", spec->modifiesModel } });
+        }
+        out.data = QJsonObject { { "commands", list } };
+    }
+    else if (name == "propose_blueprint")
+    {
+        const QString script = args.value("script").toString();
+        TSA::Blueprint::Graph graph;
+        std::string error;
+        if (!TSA::Blueprint::fromCommandScript(script.toStdString(), TSA::Blueprint::NodeLibrary::standard(),
+                                               TSA::Automation::CommandRegistry::builtIn(), graph, &error))
+        {
+            out.ok = false;
+            out.error = QStringLiteral("Script invalide (%1). Corriger le script (voir list_commands).").arg(QString::fromStdString(error));
+            return out;
+        }
+        int commands = 0;
+        for (const auto& [id, n] : graph.nodes()) commands += n.type.rfind("cmd.", 0) == 0 ? 1 : 0;
+        ActionProposal p;
+        p.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        p.tool = name;
+        p.title = QStringLiteral("Blueprint : %1").arg(args.value("title").toString());
+        p.rationale = args.value("rationale").toString();
+        p.arguments = QJsonObject { { "title", args.value("title").toString() }, { "script", script } };
+        p.impacts << QStringLiteral("%1 commande(s) exécutée(s) sur le projet, une entrée Annuler par commande.").arg(commands)
+                  << QStringLiteral("Les résultats de calcul existants deviennent obsolètes si le modèle change.");
+        out.data = QJsonObject { { "proposal", p.title }, { "commands", commands } };
+        out.proposal = p;
+    }
     else if (name == "propose_run_analysis")
     {
         ActionProposal p;

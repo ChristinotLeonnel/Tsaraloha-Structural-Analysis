@@ -1,11 +1,16 @@
-// Suite « blueprint » : programmation visuelle (ADR-024, phase 6) — tests 193 à 195.
+// Suite « blueprint » : programmation visuelle (ADR-024, phases 6 et 8) — tests 193 à 195, 197, 198.
 #include "test_common.h"
 
+#include "AI/Tools/AIToolRegistry.h"
+#include "Automation/CommandRegistry.h"
 #include "Blueprint/BlueprintFile.h"
+#include "Blueprint/BlueprintScript.h"
 #include "Blueprint/BlueprintRuntime.h"
 #include "Model/Load/LoadManager.h"
 #include "Project/ProjectSession.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QTemporaryDir>
 
 namespace
@@ -160,6 +165,148 @@ bool runSuite_Blueprint(int& passed)
                        && !lib.validate(tmp).empty(),
                    "Test 195: nœud inconnu chargé puis signalé à la validation");
         std::cout << "[PASS] Test 195: fichier .tsbp" << std::endl;
+        ++passed;
+    }
+
+    // TEST 197 : débogueur — points d'arrêt, pas à pas, valeurs produites, interruption, arrêt demandé
+    {
+        int summary = 0, loop = 0;
+        const Graph g = portalBlueprint(lib, summary, loop);
+        TEST_CHECK(lib.usesProject(g), "Test 197: graphe à commandes = exécution dans le thread de l'interface");
+
+        // Point d'arrêt sur le résumé : une seule pause, après les 4 créations de nœuds.
+        {
+            TSA::Project::ProjectSession session;
+            Runner runner(lib, g, &session);
+            int pauses = 0, pausedNode = 0;
+            std::size_t nodesAtPause = 0, outputsAtPause = 0;
+            BreakpointDebugger dbg([&](const DebugState& s) {
+                ++pauses;
+                pausedNode = s.node;
+                nodesAtPause = session.model().nodes().size();
+                outputsAtPause = s.outputs ? s.outputs->size() : 0;
+                return DebugAction::Continue;
+            }, { summary });
+            runner.setDebugger(&dbg);
+            const auto r = runner.run();
+            TEST_CHECK(pausedNode == summary, "Test 197: pause sur le nœud du point d'arrêt");
+            TEST_CHECK(r.ok && pauses == 1 && nodesAtPause == 4 && outputsAtPause > 0,
+                       "Test 197: arrêt au point d'arrêt, projet et valeurs visibles pendant la pause");
+        }
+        // Pas à pas depuis le début : une pause par nœud d'action (Pour, 4 × créer, résumé).
+        {
+            TSA::Project::ProjectSession session;
+            Runner runner(lib, g, &session);
+            std::vector<int> visited;
+            BreakpointDebugger dbg([&](const DebugState& s) { visited.push_back(s.node); return DebugAction::Step; }, {}, true);
+            runner.setDebugger(&dbg);
+            TEST_CHECK(runner.run().ok, "Test 197: exécution pas à pas");
+            TEST_CHECK(visited.size() == 7 && visited[1] == loop && visited.back() == summary,
+                       "Test 197: Début, Pour, 4 créations, résumé visités dans l'ordre");
+        }
+        // Interruption pendant une pause : aucune modification après l'arrêt.
+        {
+            TSA::Project::ProjectSession session;
+            Runner runner(lib, g, &session);
+            int created = 0;
+            BreakpointDebugger dbg([&](const DebugState& s) {
+                const auto* n = g.node(s.node);
+                if (n && n->type == "cmd.model.create_node" && ++created == 3) return DebugAction::Abort;
+                return DebugAction::Step;
+            }, {}, true);
+            runner.setDebugger(&dbg);
+            const auto r = runner.run();
+            TEST_CHECK(!r.ok && r.message.find("interrompue") != std::string::npos && session.model().nodes().size() == 2,
+                       "Test 197: interruption au 3e nœud (2 nœuds créés)");
+        }
+        // Arrêt demandé (autre thread) : l'exécution s'arrête avant le nœud suivant.
+        {
+            TSA::Project::ProjectSession session;
+            Runner runner(lib, g, &session);
+            runner.requestStop();
+            const auto r = runner.run();   // run() réarme l'arrêt : exécution complète
+            TEST_CHECK(r.ok, "Test 197: un arrêt demandé avant run() n'affecte pas l'exécution suivante");
+            TSA::Project::ProjectSession other;
+            Runner stopped(lib, g, &other);
+            BreakpointDebugger dbg2([&](const DebugState&) {
+                stopped.requestStop();
+                return DebugAction::Continue;
+            }, { loop });
+            stopped.setDebugger(&dbg2);
+            const auto r2 = stopped.run();
+            TEST_CHECK(!r2.ok && r2.message.find("arrêtée") != std::string::npos && other.model().nodes().empty(),
+                       "Test 197: arrêt demandé pendant l'exécution");
+        }
+        // Graphe sans accès au projet : exécutable en tâche de fond.
+        Graph pure;
+        const int s = pure.addNode("event.start");
+        const int print = pure.addNode("debug.print");
+        pure.setValue(print, "value", std::string("bonjour"));
+        std::string why;
+        TEST_CHECK(lib.connect(pure, { s, "then", print, "exec" }, &why) && !lib.usesProject(pure), "Test 197: graphe pur détecté");
+        std::cout << "[PASS] Test 197: débogueur Blueprint" << std::endl;
+        ++passed;
+    }
+
+    // TEST 198 : pont texte ↔ Blueprint (scripts, IA) et proposition de Blueprint par l'IA
+    {
+        const auto& commands = TSA::Automation::CommandRegistry::builtIn();
+        const std::string script =
+            "# portique\n"
+            "a = model.create_node position=0,0,0\n"
+            "b = model.create_node position=0,0,3\n"
+            "c = model.create_node position=6,0,3\n"
+            "model.create_column start=a.id end=b.id\n"
+            "poutre = model.create_beam start=b.id end=c.id section=\"IPE 300\"\n"
+            "cas = loads.create_case name=Exploitation category=live\n"
+            "loads.add_uniform beam=poutre.id case=cas.id q=12.5\n";
+        Graph g;
+        std::string error;
+        TEST_CHECK(fromCommandScript(script, lib, commands, g, &error), "Test 198: script → Blueprint (" << error << ")");
+        TEST_CHECK(g.nodes().size() == 8 && lib.validate(g).empty(), "Test 198: Début + 7 commandes, graphe valide");
+        int dataLinks = 0;
+        for (const auto& l : g.links()) dataLinks += l.fromPin == "id" ? 1 : 0;
+        TEST_CHECK(dataLinks == 6, "Test 198: références « a.id » → liens de données");
+
+        TSA::Project::ProjectSession session;
+        const auto r = Runner(lib, g, &session).run();
+        const auto& m = session.model();
+        TEST_CHECK(r.ok && m.nodes().size() == 3 && m.beams().size() == 2 && m.loadManager().memberLoads().size() == 1,
+                   "Test 198: Blueprint du script exécuté (3 nœuds, poteau + poutre, charge)");
+
+        // Aller-retour : le script régénéré redonne le même graphe exécutable.
+        std::vector<std::string> warnings;
+        const std::string back = toCommandScript(g, lib, &warnings);
+        Graph g2;
+        TEST_CHECK(warnings.empty() && fromCommandScript(back, lib, commands, g2, &error) && g2.nodes().size() == g.nodes().size()
+                       && g2.links().size() == g.links().size(),
+                   "Test 198: Blueprint → script → Blueprint (" << error << ")");
+        TEST_CHECK(back.find("section=\"IPE 300\"") != std::string::npos && back.find("=n") != std::string::npos,
+                   "Test 198: valeurs et références réécrites");
+        TEST_CHECK(describe(g, lib).find("Créer une poutre") != std::string::npos, "Test 198: description pour l'IA");
+
+        Graph bad;
+        TEST_CHECK(!fromCommandScript("model.create_beam start=x.id end=2", lib, commands, bad, &error), "Test 198: référence inconnue refusée");
+        TEST_CHECK(!fromCommandScript("model.inconnue a=1", lib, commands, bad, &error) && error.find("ligne 1") != std::string::npos,
+                   "Test 198: commande inconnue refusée avec le numéro de ligne");
+        warnings.clear();
+        int s0 = 0, l0 = 0;
+        toCommandScript(portalBlueprint(lib, s0, l0), lib, &warnings);
+        TEST_CHECK(!warnings.empty(), "Test 198: boucle non exprimable en script signalée");
+
+        // IA : proposition vérifiée, rien n'est exécuté avant l'acceptation.
+        TSA::Project::ProjectSession ai;
+        TSA::AI::AIToolRegistry tools([&] { TSA::AI::EngineeringSources src; src.model = &ai.model(); return src; }, nullptr);
+        const auto list = tools.execute("list_commands", "{}");
+        TEST_CHECK(list.ok && list.data["commands"].toArray().size() >= 10, "Test 198: list_commands");
+        QJsonObject args { { "title", "Portique" }, { "script", QString::fromStdString(script) }, { "rationale", "test" } };
+        const auto prop = tools.execute("propose_blueprint", QString::fromUtf8(QJsonDocument(args).toJson()));
+        TEST_CHECK(prop.ok && prop.proposal && prop.proposal->tool == "propose_blueprint" && ai.model().nodes().empty(),
+                   "Test 198: propose_blueprint crée une proposition sans exécuter");
+        args["script"] = "model.create_beam start=1";
+        const auto badProp = tools.execute("propose_blueprint", QString::fromUtf8(QJsonDocument(args).toJson()));
+        TEST_CHECK(!badProp.ok && badProp.error.contains("Script invalide"), "Test 198: script invalide renvoyé à l'IA");
+        std::cout << "[PASS] Test 198: script de commandes ↔ Blueprint, proposition de l'IA" << std::endl;
         ++passed;
     }
     return true;

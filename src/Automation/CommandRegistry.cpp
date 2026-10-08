@@ -490,7 +490,12 @@ void registerBuiltInCommands(CommandRegistry& reg)
 
 const CommandRegistry& CommandRegistry::builtIn()
 {
-    static const CommandRegistry registry = [] {
+    return global();
+}
+
+CommandRegistry& CommandRegistry::global()
+{
+    static CommandRegistry registry = [] {
         CommandRegistry r;
         registerBuiltInCommands(r);
         return r;
@@ -575,30 +580,83 @@ bool parseValue(const std::string& raw, ValueType type, Value& out)
 }
 } // namespace
 
-CommandResult executeCommandLine(const CommandRegistry& registry, TSA::Project::ProjectSession& session, const std::string& line)
+bool parseCommandLine(const CommandRegistry& registry, const std::string& line, std::string& commandId, Arguments& args,
+                      std::string* errorOut)
 {
-    std::string error;
-    const auto tokens = tokenize(line, &error);
-    if (!error.empty()) return fail(error);
-    if (tokens.empty()) return fail("Ligne vide.");
+    auto error = [errorOut](const std::string& e) {
+        if (errorOut) *errorOut = e;
+        return false;
+    };
+    std::string tokError;
+    const auto tokens = tokenize(line, &tokError);
+    if (!tokError.empty()) return error(tokError);
+    if (tokens.empty()) return error("Ligne vide.");
     const CommandSpec* spec = registry.find(tokens[0]);
-    if (!spec) return fail("Commande inconnue : « " + tokens[0] + " ». Tapez « help » pour la liste.");
+    if (!spec) return error("Commande inconnue : « " + tokens[0] + " ». Tapez « help » pour la liste.");
 
-    Arguments args;
+    args.clear();
     for (std::size_t i = 1; i < tokens.size(); ++i)
     {
         const auto eq = tokens[i].find('=');
-        if (eq == std::string::npos) return fail("Argument « " + tokens[i] + " » : syntaxe nom=valeur attendue.");
+        if (eq == std::string::npos) return error("Argument « " + tokens[i] + " » : syntaxe nom=valeur attendue.");
         const std::string name = tokens[i].substr(0, eq), raw = tokens[i].substr(eq + 1);
         const auto p = std::find_if(spec->parameters.begin(), spec->parameters.end(),
                                     [&](const ParameterSpec& s) { return s.name == name; });
-        if (p == spec->parameters.end()) return fail("Paramètre inconnu « " + name + " » pour " + spec->id + ".");
+        if (p == spec->parameters.end()) return error("Paramètre inconnu « " + name + " » pour " + spec->id + ".");
         Value v;
         if (!parseValue(raw, p->type, v))
-            return fail("Paramètre « " + name + " » : " + typeName(p->type) + " attendu, reçu « " + raw + " ».");
+            return error("Paramètre « " + name + " » : " + typeName(p->type) + " attendu, reçu « " + raw + " ».");
         args[name] = v;
     }
-    return registry.execute(session, spec->id, std::move(args));
+    commandId = spec->id;
+    return true;
+}
+
+CommandResult executeCommandLine(const CommandRegistry& registry, TSA::Project::ProjectSession& session, const std::string& line)
+{
+    std::string id, error;
+    Arguments args;
+    if (!parseCommandLine(registry, line, id, args, &error)) return fail(error);
+    return registry.execute(session, id, std::move(args));
+}
+
+bool tokenizeCommandLine(const std::string& line, std::vector<std::string>& tokens, std::string* error)
+{
+    std::string e;
+    tokens = tokenize(line, &e);
+    if (error) *error = e;
+    return e.empty();
+}
+
+bool parseArgument(const std::string& raw, ValueType type, Value& out)
+{
+    return parseValue(raw, type, out);
+}
+
+std::string formatArgument(const Value& v)
+{
+    std::ostringstream o;
+    o.precision(15);
+    if (std::holds_alternative<bool>(v)) o << (std::get<bool>(v) ? "true" : "false");
+    else if (std::holds_alternative<long long>(v)) o << std::get<long long>(v);
+    else if (std::holds_alternative<double>(v)) o << std::get<double>(v);
+    else if (std::holds_alternative<std::string>(v))
+    {
+        const std::string& s = std::get<std::string>(v);
+        const bool quote = s.empty() || s.find_first_of(" \t=") != std::string::npos;
+        o << (quote ? "\"" + s + "\"" : s);
+    }
+    else if (std::holds_alternative<Point3>(v))
+    {
+        const auto& p = std::get<Point3>(v);
+        o << p[0] << ',' << p[1] << ',' << p[2];
+    }
+    else if (std::holds_alternative<std::vector<int>>(v))
+    {
+        const auto& ids = std::get<std::vector<int>>(v);
+        for (std::size_t i = 0; i < ids.size(); ++i) o << (i ? "," : "") << ids[i];
+    }
+    return o.str();
 }
 
 std::string formatValue(const Value& v)

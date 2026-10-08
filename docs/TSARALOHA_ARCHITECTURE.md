@@ -81,4 +81,4 @@ leur périmètre est défini dans `cmake/TSAProduct.cmake`. Les deux dépôts so
 | 5 | Registre de commandes exécutables partagé (UI, Blueprint, IA, console)  — **fait**| 9 |
 | 6 | Blueprint : runtime typé (données / exécution), sérialisation `.tsbp`, éditeur — **fait** (docs/BLUEPRINT.md) | 10–11, 16–21 |
 | 7 | AnalysisController (session), Analysis Manager partagé, système K·U = F (matrix viewer = dock Données d'analyse), espaces Analyse / Résultats / Recherche de TSALab — **fait** | 14–15 |
-| 8 | Débogueur, profileur, API de plugins, IA sur les Blueprints, OpenSees dans tsalab_science | 16–18 |
+| 8 | Débogueur Blueprint, exécution en tâche de fond, historique de l'éditeur, API de plugins (docs/PLUGINS.md), IA sur les Blueprints (script ↔ graphe, propose_blueprint), OpenSees dans tsalab_science (validation croisée) — **fait** | 16–18 |

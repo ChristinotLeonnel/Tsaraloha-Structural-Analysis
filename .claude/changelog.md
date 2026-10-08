@@ -2,6 +2,18 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-08 (Débogueur, plugins, IA sur Blueprint — ADR-024 phase 8)
+
+### Added
+- Blueprint : Debugger / BreakpointDebugger, Runner::requestStop, NodeDefinition::usesProject ; éditeur : points
+  d'arrêt, Déboguer, Pas à pas, Continuer, Arrêter, valeurs produites, Annuler / Rétablir du graphe, exécution en tâche
+  de fond des graphes sans accès au projet, menu Script.
+- BlueprintScript : script de commandes ↔ Blueprint (variables, liens de données), description pour l'IA.
+- CommandRegistry : parseCommandLine, tokenizeCommandLine, parseArgument, formatArgument ; registres globaux modifiables.
+- IA : outils list_commands et propose_blueprint ; TSA exécute un Blueprint accepté (une entrée Annuler par commande).
+- Plugins : src/Plugins (PluginApi.h, PluginManager), chargement au démarrage (EcosystemApplication), docs/PLUGINS.md.
+- Tests 197–198 (219/219).
+
 ## 2026-10-08 (Analysis Manager — ADR-024 phase 7, branche feature/tsaraloha-shared-libs)
 
 ### Added

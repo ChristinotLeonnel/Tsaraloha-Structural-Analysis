@@ -97,8 +97,10 @@ public:
     /// défaut puis exécute. Commande modifiante : transaction annulée si la commande échoue.
     CommandResult execute(TSA::Project::ProjectSession& session, const std::string& id, Arguments args) const;
 
-    /// Registre des commandes intégrées (registerBuiltInCommands), partagé par toute l'application.
+    /// Registre des commandes intégrées (registerBuiltInCommands) et des plugins, partagé par toute l'application.
     static const CommandRegistry& builtIn();
+    /// Même registre, modifiable (chargement des plugins au démarrage).
+    static CommandRegistry& global();
 
 private:
     struct Entry
@@ -120,6 +122,16 @@ void registerBuiltInCommands(CommandRegistry& registry);
 /// Analyse puis exécute une ligne. Les erreurs de syntaxe ou d'arguments sont rendues dans le résultat.
 CommandResult executeCommandLine(const CommandRegistry& registry, TSA::Project::ProjectSession& session,
                                  const std::string& line);
+
+/// Analyse une ligne sans l'exécuter (scripts, Blueprint, IA) : commande connue, arguments typés.
+bool parseCommandLine(const CommandRegistry& registry, const std::string& line, std::string& commandId, Arguments& args,
+                      std::string* error = nullptr);
+/// Découpe une ligne en jetons (texte entre guillemets = un jeton).
+bool tokenizeCommandLine(const std::string& line, std::vector<std::string>& tokens, std::string* error = nullptr);
+/// Valeur brute d'un argument selon son type (« true », « 3 », « 0,0,3 », « 1,2 », texte).
+bool parseArgument(const std::string& raw, ValueType type, Value& out);
+/// Valeur écrite dans la syntaxe de la ligne de commande, relisible par parseArgument (« 0,0,3 », « "IPE 300" »).
+std::string formatArgument(const Value& value);
 
 /// Valeur lisible (« 1,2,3 », « 0, 0, 3 », « vrai »).
 std::string formatValue(const Value& value);

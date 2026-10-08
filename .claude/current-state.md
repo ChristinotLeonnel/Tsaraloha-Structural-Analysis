@@ -13,7 +13,10 @@ Phase 7 IMPLEMENTED : AnalysisController dans ProjectSession (MainWindow n'orche
 AnalysisManagerPanel partagé, portée « plan du modèle », export K·U = F par Custom2D (dock Données d'analyse,
 onglet K·U = F ; SOLVER LAB), commandes analysis.run / results.summary / results.node_displacement.
 Vérifié : tests 196 (TSA), L7 (TSALab), GUI TSALab (portique : calcul, synthèse, SOLVER LAB LU / Cholesky / GC).
-MISSING (phase 8) : débogueur, plugins, IA sur Blueprint, OpenSees dans tsalab_science.
+Phase 8 IMPLEMENTED (2026-10-08) : débogueur Blueprint (points d'arrêt, pas à pas, valeurs, arrêt), exécution en
+tâche de fond des graphes sans accès au projet, historique de l'éditeur, script de commandes ↔ Blueprint, outils IA
+list_commands / propose_blueprint, API de plugins (docs/PLUGINS.md, PluginManager chargé par EcosystemApplication),
+OpenSees dans tsalab_science (OpenSeesPlanarSolver, validation croisée 14/14). Tests 197–198 (TSA), L8 (TSALab), S6.
 
 ## Build
 Status: IMPLEMENTED — PASS (preset ninja-debug, -j 4)
@@ -24,7 +27,7 @@ Note: MSVC francisé → lanceur généré `build-*/msvc_codepage.cmd` (page de 
 dépendances d'en-têtes Ninja fiables quelle que soit la console (BUG-011, vérifié `ninja -t deps`).
 
 ## Tests
-Status: IMPLEMENTED — 217/217 PASS le 2026-10-08 (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
+Status: IMPLEMENTED — 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
 188 niveaux/grilles annulables, 189 chunk SETT, 190 collage BIM, 191 édition groupée) ; test 20 sensible au temps (BUG-035) ;
 197/197 avant (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
 186/186 avant (suite `cleanup` 160–165 le 2026-10-05) ;

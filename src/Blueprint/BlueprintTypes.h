@@ -51,6 +51,9 @@ struct NodeDefinition
     std::vector<PinSpec> inputs;
     std::vector<PinSpec> outputs;
     bool pure = false;           ///< sans broche d'exécution : évalué à la demande
+    /// Lit ou modifie le projet (commandes du registre) : le graphe doit alors s'exécuter dans le thread de
+    /// l'interface (les vues observent le modèle). Sinon, il peut s'exécuter en tâche de fond.
+    bool usesProject = false;
 
     const PinSpec* input(const std::string& name) const;
     const PinSpec* output(const std::string& name) const;

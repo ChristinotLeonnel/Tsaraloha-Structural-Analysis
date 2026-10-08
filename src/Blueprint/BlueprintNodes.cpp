@@ -206,46 +206,7 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
             });
 
     // --- Commandes du registre central : une commande = un nœud d'action -----------------------------
-    for (const auto* spec : commands.commands())
-    {
-        NodeDefinition d;
-        d.id = "cmd." + spec->id;
-        d.title = spec->title;
-        d.category = spec->category;
-        d.description = spec->description + " (commande « " + spec->id + " »)";
-        d.pure = false;
-        d.inputs.push_back(execIn());
-        for (const auto& p : spec->parameters)
-        {
-            PinSpec pin = data(p.name, p.label, p.type, p.required ? Value {} : p.defaultValue, p.quantity);
-            pin.required = p.required;
-            d.inputs.push_back(pin);
-        }
-        d.outputs.push_back(execOut());
-        for (const auto& o : spec->outputs) d.outputs.push_back(data(o.name, o.label, o.type, {}, o.quantity));
-        const std::string commandId = spec->id;
-        lib.add(std::move(d), [&commands, commandId](ExecutionContext& c) {
-            if (!c.session()) return c.fail("aucun projet ouvert");
-            const auto* spec = commands.find(commandId);
-            TSA::Automation::Arguments args;
-            for (const auto& p : spec->parameters)
-            {
-                if (c.hasValue(p.name))
-                {
-                    const Value v = c.input(p.name);
-                    if (c.failed()) return false;
-                    args[p.name] = v;
-                }
-                else if (p.required)
-                    return c.fail("paramètre requis « " + p.label + " » non renseigné");
-            }
-            const auto r = commands.execute(*c.session(), commandId, args);
-            c.log(r.message);
-            if (!r.ok) return c.fail(r.message);
-            for (const auto& [name, value] : r.outputs) c.setOutput(name, value);
-            return c.fire("then");
-        });
-    }
+    for (const auto* spec : commands.commands()) registerCommandNode(lib, commands, spec->id);
 
     // --- TSALab : science (cœur scientifique, sans Qt) -----------------------------------------------
     lib.add(def("science.validation_bench", "Banc de validation", "TSALab",
@@ -259,13 +220,62 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
                 for (const auto& solver : tsalab::planar::createBuiltInSolvers())
                     for (const auto& b : tsalab::validation::planarBenchmarks())
                         reports.push_back(tsalab::validation::runBenchmark(b, *solver));
-                long long passed = 0;
-                for (const auto& r : reports) passed += r.passed ? 1 : 0;
+                long long passed = 0, total = 0;
+                for (const auto& r : reports)
+                {
+                    if (r.skipped) continue;   // solveur indisponible sur ce poste (ex. OpenSees absent)
+                    ++total;
+                    passed += r.passed ? 1 : 0;
+                }
                 c.setOutput("passed", passed);
-                c.setOutput("total", static_cast<long long>(reports.size()));
+                c.setOutput("total", total);
                 c.setOutput("report", tsalab::validation::formatReport(reports));
                 return c.fire("then");
             });
+}
+
+bool registerCommandNode(NodeLibrary& lib, const TSA::Automation::CommandRegistry& commands, const std::string& id)
+{
+    const auto* spec = commands.find(id);
+    if (!spec) return false;
+    NodeDefinition d;
+    d.id = "cmd." + spec->id;
+    d.title = spec->title;
+    d.category = spec->category;
+    d.description = spec->description + " (commande « " + spec->id + " »)";
+    d.pure = false;
+    d.usesProject = true;
+    d.inputs.push_back(execIn());
+    for (const auto& p : spec->parameters)
+    {
+        PinSpec pin = data(p.name, p.label, p.type, p.required ? Value {} : p.defaultValue, p.quantity);
+        pin.required = p.required;
+        d.inputs.push_back(pin);
+    }
+    d.outputs.push_back(execOut());
+    for (const auto& o : spec->outputs) d.outputs.push_back(data(o.name, o.label, o.type, {}, o.quantity));
+    const std::string commandId = spec->id;
+    return lib.add(std::move(d), [&commands, commandId](ExecutionContext& c) {
+        if (!c.session()) return c.fail("aucun projet ouvert");
+        const auto* spec = commands.find(commandId);
+        TSA::Automation::Arguments args;
+        for (const auto& p : spec->parameters)
+        {
+            if (c.hasValue(p.name))
+            {
+                const Value v = c.input(p.name);
+                if (c.failed()) return false;
+                args[p.name] = v;
+            }
+            else if (p.required)
+                return c.fail("paramètre requis « " + p.label + " » non renseigné");
+        }
+        const auto r = commands.execute(*c.session(), commandId, args);
+        c.log(r.message);
+        if (!r.ok) return c.fail(r.message);
+        for (const auto& [name, value] : r.outputs) c.setOutput(name, value);
+        return c.fire("then");
+    });
 }
 
 } // namespace TSA::Blueprint

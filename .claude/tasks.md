@@ -37,7 +37,11 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 - [x] Phase 7 : AnalysisController (session), AnalysisManagerPanel, K·U = F (Custom2D), espaces Analyse / Résultats /
       Recherche de TSALab, commandes analysis.run / results.* (2026-10-08). M et C : sans objet (statique seul, ADR-022).
 - [ ] TSA : proposer l'AnalysisManagerPanel dans un dock (aujourd'hui fenêtre Analysis + ruban).
-- [ ] Phase 8 : débogueur / profileur Blueprint, API de plugins, IA sur Blueprint, moteur OpenSees dans tsalab_science.
+- [x] Phase 8 : débogueur Blueprint, tâche de fond, historique de l'éditeur, API de plugins, IA sur Blueprint (script,
+      propose_blueprint), OpenSees dans tsalab_science (2026-10-08).
+- [ ] Vérifier en GUI avec un modèle de langage configuré : propose_blueprint de bout en bout (TSA et TSALab).
+- [ ] OpenSeesPlanarSolver : rotules et charges partielles / trapézoïdales (eleLoad partiel selon la version d'OpenSees).
+- [ ] Plugins : signature / liste blanche des DLL avant diffusion hors poste de développement.
 - [ ] BUG-036 (cache CMake). [x] BUG-037 corrigé.
 
 ## CRITICAL

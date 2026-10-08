@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 217;
+    int expectedTotal = 219;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Automation(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "blueprint") {
-        std::cout << "--- [Suite 28/28] Blueprint : programmation visuelle (Tests 193-195) ---" << std::endl;
+        std::cout << "--- [Suite 28/28] Blueprint : programmation visuelle, débogueur, scripts (Tests 193-195, 197-198) ---" << std::endl;
         if (!runSuite_Blueprint(passed)) allOk = false;
     }
 #ifdef _WIN32

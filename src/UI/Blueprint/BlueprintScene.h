@@ -7,13 +7,15 @@
 //   - liens : courbes de Bézier (blanches pour l'exécution, couleur du type pour les données) ;
 //   - tirer depuis une broche crée un lien (contrôlé par NodeLibrary::connect) ;
 //   - Suppr retire les nœuds / liens sélectionnés ;
-//   - après une exécution : profil (exécutions, temps) sur chaque nœud, nœud en erreur surligné.
+//   - après une exécution : profil (exécutions, temps) sur chaque nœud, nœud en erreur surligné ;
+//   - débogage : points d'arrêt (pastille rouge), nœud en pause surligné, édition bloquée pendant l'exécution.
 
 #include "Blueprint/BlueprintRuntime.h"
 
 #include <QGraphicsScene>
 
 #include <map>
+#include <set>
 
 class QGraphicsPathItem;
 
@@ -42,6 +44,16 @@ public:
     /// Nœud sélectionné seul (0 sinon).
     int selectedNode() const;
 
+    // Débogage
+    void setBreakpoints(const std::set<int>& breakpoints);
+    bool hasBreakpoint(int id) const { return m_breakpoints.count(id) > 0; }
+    /// Nœud en pause (0 : aucun), surligné et rendu visible.
+    void setActiveNode(int id);
+    int activeNode() const { return m_activeNode; }
+    /// Édition (déplacement, liens, suppression) autorisée ; bloquée pendant une exécution.
+    void setEditable(bool editable);
+    bool isEditable() const { return m_editable; }
+
     // Interne (éléments) : position déplacée, broche à une position de scène.
     void nodeMoved(int id, const QPointF& pos);
     QPointF pinPosition(int node, const std::string& pin, bool output) const;
@@ -49,6 +61,8 @@ public:
 signals:
     void message(const QString& text);
     void graphChanged();
+    /// Des nœuds ont été déplacés à la souris (fin du glisser).
+    void nodesMoved();
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
@@ -72,6 +86,10 @@ private:
     std::vector<QGraphicsPathItem*> m_links;
     QGraphicsPathItem* m_dragLine = nullptr;
     PinHit m_dragFrom;
+    std::set<int> m_breakpoints;
+    int m_activeNode = 0;
+    bool m_editable = true;
+    bool m_moved = false;
 };
 
 /// Couleur d'un type de donnée (broches, liens).

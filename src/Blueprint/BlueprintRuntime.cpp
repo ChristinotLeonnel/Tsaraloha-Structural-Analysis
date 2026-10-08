@@ -145,12 +145,24 @@ std::vector<Issue> NodeLibrary::validate(const Graph& g) const
 
 const NodeLibrary& NodeLibrary::standard()
 {
-    static const NodeLibrary library = [] {
+    return global();
+}
+
+NodeLibrary& NodeLibrary::global()
+{
+    static NodeLibrary library = [] {
         NodeLibrary l;
         registerStandardNodes(l, TSA::Automation::CommandRegistry::builtIn());
         return l;
     }();
     return library;
+}
+
+bool NodeLibrary::usesProject(const Graph& g) const
+{
+    for (const auto& [id, n] : g.nodes())
+        if (const auto* d = find(n.type); d && d->usesProject) return true;
+    return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -163,6 +175,8 @@ struct Runner::State
     const Graph& graph;
     TSA::Project::ProjectSession* session = nullptr;
     ExecutionLimits limits;
+    Debugger* debugger = nullptr;
+    std::atomic<bool> stopRequested { false };
     std::map<std::string, Value> overrides;
     std::map<int, std::map<std::string, Value>> outputs;
     std::set<int> evaluating;
@@ -191,10 +205,20 @@ struct Runner::State
     {
         if (failed) return false;
         if (++report.steps > limits.maxSteps) return fail(id, "nombre maximal d'étapes atteint (" + std::to_string(limits.maxSteps) + ")");
+        if (stopRequested.load()) return fail(id, "exécution arrêtée par l'utilisateur");
         const NodeInstance* n = graph.node(id);
         const NodeDefinition* def = n ? library.find(n->type) : nullptr;
         const NodeExecutor* exec = n ? library.executor(n->type) : nullptr;
         if (!n || !def || !exec) return fail(id, "nœud ou type inconnu");
+        if (debugger && !def->pure)
+        {
+            DebugState ds;
+            ds.node = id;
+            ds.step = report.steps - 1;
+            ds.outputs = &outputs;
+            ds.log = &report.log;
+            if (debugger->beforeNode(ds) == DebugAction::Abort) return fail(id, "exécution interrompue (débogueur)");
+        }
 
         const auto t0 = Clock::now();
         const double savedChild = childMs;
@@ -239,6 +263,24 @@ Runner::Runner(const NodeLibrary& library, const Graph& graph, TSA::Project::Pro
 
 Runner::~Runner() = default;
 
+void Runner::setDebugger(Debugger* debugger)
+{
+    m_state->debugger = debugger;
+}
+
+void Runner::requestStop()
+{
+    m_state->stopRequested = true;
+}
+
+DebugAction BreakpointDebugger::beforeNode(const DebugState& state)
+{
+    if (!m_stepping && !m_breakpoints.count(state.node)) return DebugAction::Continue;
+    const DebugAction a = m_onPause ? m_onPause(state) : DebugAction::Continue;
+    m_stepping = a == DebugAction::Step;
+    return a;
+}
+
 ExecutionReport Runner::run(const std::map<std::string, Value>& parameterOverrides)
 {
     State& s = *m_state;
@@ -246,6 +288,7 @@ ExecutionReport Runner::run(const std::map<std::string, Value>& parameterOverrid
     s.outputs.clear();
     s.report = {};
     s.failed = false;
+    s.stopRequested = false;
     const auto t0 = Clock::now();
 
     const auto issues = s.library.validate(s.graph);

@@ -9,12 +9,16 @@
 // une entrée Annuler par commande, vues notifiées par le modèle.
 // Garde-fous : nombre d'étapes et d'itérations bornés, erreur explicite avec le nœud fautif.
 // Profilage : nombre d'exécutions et temps cumulé par nœud.
+// Débogage : un Debugger (facultatif) est consulté avant chaque nœud d'action ; il peut suspendre
+// l'exécution (point d'arrêt, pas à pas), inspecter les valeurs déjà produites, ou l'interrompre.
 
 #include "BlueprintGraph.h"
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <set>
 
 namespace TSA::Project
 {
@@ -51,9 +55,14 @@ public:
     /// Types inconnus, liens invalides, entrées requises non renseignées, cycles de données.
     std::vector<Issue> validate(const Graph& g) const;
 
+    /// Vrai si un nœud du graphe lit ou modifie le projet (exécution obligatoire dans le thread de l'interface).
+    bool usesProject(const Graph& g) const;
+
     /// Bibliothèque standard : événements, paramètres, math, logique, flux, texte, débogage,
-    /// commandes du registre central (cmd.*), nœuds scientifiques TSALab (science.*).
+    /// commandes du registre central (cmd.*), nœuds scientifiques TSALab (science.*), nœuds des plugins.
     static const NodeLibrary& standard();
+    /// Bibliothèque standard modifiable (chargement des plugins au démarrage, avant toute exécution).
+    static NodeLibrary& global();
 
 private:
     struct Entry
@@ -66,6 +75,8 @@ private:
 };
 
 void registerStandardNodes(NodeLibrary& library, const TSA::Automation::CommandRegistry& commands);
+/// Nœud d'action d'une commande du registre (« cmd.<id> ») ; faux si la commande est inconnue ou le nœud existe.
+bool registerCommandNode(NodeLibrary& library, const TSA::Automation::CommandRegistry& commands, const std::string& commandId);
 
 struct NodeStats
 {
@@ -90,6 +101,48 @@ struct ExecutionLimits
     int maxIterations = 100000;            ///< tours d'une boucle
 };
 
+/// Ce que voit un débogueur quand l'exécution atteint un nœud d'action.
+struct DebugState
+{
+    int node = 0;                                                   ///< nœud sur le point d'être exécuté
+    int step = 0;                                                   ///< étapes déjà exécutées
+    const std::map<int, std::map<std::string, Value>>* outputs = nullptr;   ///< sorties déjà publiées
+    const std::vector<std::string>* log = nullptr;
+};
+
+enum class DebugAction
+{
+    Continue,   ///< reprendre jusqu'au prochain point d'arrêt
+    Step,       ///< exécuter ce nœud puis s'arrêter au nœud d'action suivant
+    Abort       ///< interrompre l'exécution (erreur « interrompue »)
+};
+
+class Debugger
+{
+public:
+    virtual ~Debugger() = default;
+    /// Appelé avant chaque nœud d'action (pas les nœuds purs).
+    virtual DebugAction beforeNode(const DebugState& state) = 0;
+};
+
+/// Débogueur à points d'arrêt : onPause est appelé (et peut bloquer, ex. boucle d'événements de
+/// l'interface) quand un point d'arrêt est atteint ou en pas à pas.
+class BreakpointDebugger final : public Debugger
+{
+public:
+    using PauseHandler = std::function<DebugAction(const DebugState&)>;
+    explicit BreakpointDebugger(PauseHandler onPause, std::set<int> breakpoints = {}, bool stepFromStart = false)
+        : m_onPause(std::move(onPause)), m_breakpoints(std::move(breakpoints)), m_stepping(stepFromStart) {}
+
+    void setBreakpoints(std::set<int> breakpoints) { m_breakpoints = std::move(breakpoints); }
+    DebugAction beforeNode(const DebugState& state) override;
+
+private:
+    PauseHandler m_onPause;
+    std::set<int> m_breakpoints;
+    bool m_stepping = false;
+};
+
 class Runner
 {
 public:
@@ -100,6 +153,10 @@ public:
     /// Valide puis exécute à partir de chaque « event.start ». Les paramètres (param.*) peuvent être
     /// surchargés par nom (reconstruction paramétrique sans modifier le graphe).
     ExecutionReport run(const std::map<std::string, Value>& parameterOverrides = {});
+    /// Débogueur consulté avant chaque nœud d'action (nul : aucun). Non possédé.
+    void setDebugger(Debugger* debugger);
+    /// Demande l'arrêt (appelable depuis un autre thread) : l'exécution s'arrête avant le nœud suivant.
+    void requestStop();
 
 private:
     friend class ExecutionContext;

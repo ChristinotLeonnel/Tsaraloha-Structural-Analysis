@@ -720,6 +720,11 @@ set(TSARALOHA_MODEL_SOURCES
     ${TSA_ROOT}/src/Blueprint/BlueprintNodes.cpp
     ${TSA_ROOT}/src/Blueprint/BlueprintFile.h
     ${TSA_ROOT}/src/Blueprint/BlueprintFile.cpp
+    ${TSA_ROOT}/src/Blueprint/BlueprintScript.h
+    ${TSA_ROOT}/src/Blueprint/BlueprintScript.cpp
+    ${TSA_ROOT}/src/Plugins/PluginApi.h
+    ${TSA_ROOT}/src/Plugins/PluginManager.h
+    ${TSA_ROOT}/src/Plugins/PluginManager.cpp
     ${DIAGNOSTICS_SOURCES}
     ${EXTENSIONSYSTEM_SOURCES}
     ${LIBRARY_SOURCES}

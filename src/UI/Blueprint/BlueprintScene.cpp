@@ -1,5 +1,7 @@
 #include "BlueprintScene.h"
 
+#include <QGraphicsView>
+
 #include <QGraphicsItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsSceneMouseEvent>
@@ -115,7 +117,9 @@ public:
         const auto* d = definition();
         const double h = kHeader + rows() * kRow + 6;
         p->setRenderHint(QPainter::Antialiasing);
-        QPen border(m_failed ? QColor("#FF5252") : isSelected() ? QColor("#FFC107") : QColor("#11151A"), m_failed || isSelected() ? 2.5 : 1.0);
+        const bool active = m_scene.activeNode() == m_id;
+        QPen border(active ? QColor("#00E5FF") : m_failed ? QColor("#FF5252") : isSelected() ? QColor("#FFC107") : QColor("#11151A"),
+                    active ? 3.5 : m_failed || isSelected() ? 2.5 : 1.0);
         p->setPen(border);
         p->setBrush(QColor(38, 42, 49, 240));
         p->drawRoundedRect(QRectF(0, 0, kWidth, h), 6, 6);
@@ -130,6 +134,12 @@ public:
         p->setFont(f);
         p->drawText(QRectF(8, 0, kWidth - 16, kHeader), Qt::AlignVCenter | Qt::AlignLeft,
                     d ? QString::fromStdString(d->title) : QStringLiteral("Inconnu : %1").arg(QString::fromStdString(n->type)));
+        if (m_scene.hasBreakpoint(m_id))
+        {
+            p->setPen(QPen(Qt::white, 1.0));
+            p->setBrush(QColor("#E53935"));
+            p->drawEllipse(QPointF(kWidth - 10, kHeader / 2), 5, 5);
+        }
         if (!d) return;
 
         f.setBold(false);
@@ -219,6 +229,7 @@ void BlueprintScene::rebuild()
     for (const auto& [id, n] : m_graph.nodes())
     {
         auto* item = new BlueprintNodeItem(*this, id);
+        item->setFlag(QGraphicsItem::ItemIsMovable, m_editable);
         addItem(item);
         m_items[id] = item;
     }
@@ -268,8 +279,29 @@ int BlueprintScene::addNode(const std::string& type, const QPointF& pos)
     return id;
 }
 
+void BlueprintScene::setBreakpoints(const std::set<int>& breakpoints)
+{
+    m_breakpoints = breakpoints;
+    for (auto& [id, item] : m_items) item->update();
+}
+
+void BlueprintScene::setActiveNode(int id)
+{
+    m_activeNode = id;
+    for (auto& [nid, item] : m_items) item->update();
+    if (const auto it = m_items.find(id); it != m_items.end())
+        for (QGraphicsView* v : views()) v->ensureVisible(it->second, 80, 80);
+}
+
+void BlueprintScene::setEditable(bool editable)
+{
+    m_editable = editable;
+    for (auto& [id, item] : m_items) item->setFlag(QGraphicsItem::ItemIsMovable, editable);
+}
+
 void BlueprintScene::nodeMoved(int id, const QPointF& pos)
 {
+    m_moved = true;
     if (auto* n = m_graph.node(id))
     {
         n->x = pos.x();
@@ -351,8 +383,9 @@ bool BlueprintScene::pinAt(const QPointF& scenePos, PinHit& hit) const
 
 void BlueprintScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    m_moved = false;
     PinHit hit;
-    if (event->button() == Qt::LeftButton && pinAt(event->scenePos(), hit))
+    if (m_editable && event->button() == Qt::LeftButton && pinAt(event->scenePos(), hit))
     {
         m_dragFrom = hit;
         m_dragLine = addPath(QPainterPath(), QPen(QColor("#FFC107"), 2, Qt::DashLine));
@@ -398,11 +431,16 @@ void BlueprintScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         return;
     }
     QGraphicsScene::mouseReleaseEvent(event);
+    if (m_moved)
+    {
+        m_moved = false;
+        emit nodesMoved();
+    }
 }
 
 void BlueprintScene::keyPressEvent(QKeyEvent* event)
 {
-    if (event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace)
+    if (m_editable && (event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace))
     {
         deleteSelection();
         event->accept();

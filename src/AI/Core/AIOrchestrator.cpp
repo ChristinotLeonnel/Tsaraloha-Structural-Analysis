@@ -778,6 +778,12 @@ bool AIOrchestrator::acceptProposal(const QString& proposalId, QString* error)
         emit runAnalysisRequested();
         return true;
     }
+    if (p.tool == "propose_blueprint")
+    {
+        emit proposalResolved(p.id, true, QStringLiteral("Blueprint accepté : %1").arg(p.title));
+        emit blueprintAccepted(p.arguments.value("title").toString(), p.arguments.value("script").toString());
+        return true;
+    }
     EngineeringSources src = m_sources ? m_sources() : EngineeringSources{};
     auto* model = const_cast<TSA::Model::Model*>(src.model); // modification explicitement acceptée
     QString err;

@@ -2,23 +2,32 @@
 
 #include "BlueprintScene.h"
 #include "Blueprint/BlueprintFile.h"
+#include "Blueprint/BlueprintScript.h"
+#include "Automation/CommandRegistry.h"
 
+#include <QApplication>
 #include <QCheckBox>
+#include <QClipboard>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QFormLayout>
 #include <QGraphicsView>
 #include <QHBoxLayout>
+#include <QEventLoop>
 #include <QHeaderView>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QScrollBar>
 #include <QSpinBox>
 #include <QSplitter>
+#include <QThread>
 #include <QTimer>
 #include <QToolBar>
+#include <QToolButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWheelEvent>
@@ -106,11 +115,49 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     });
     bar->addAction(QIcon(":/icons/file_save.svg"), tr("Enregistrer le Blueprint"), this, &BlueprintEditor::save);
     bar->addSeparator();
-    bar->addAction(tr("Valider"), this, &BlueprintEditor::validate);
-    QAction* runAct = bar->addAction(tr("▶  Exécuter"), this, &BlueprintEditor::run);
-    runAct->setToolTip(tr("Exécuter le Blueprint sur le projet ouvert (une entrée Annuler par commande)"));
-    bar->addSeparator();
+    m_actUndo = bar->addAction(QIcon(":/icons/undo.svg"), tr("Annuler (graphe)"), this, &BlueprintEditor::undo);
+    m_actRedo = bar->addAction(QIcon(":/icons/redo.svg"), tr("Rétablir (graphe)"), this, &BlueprintEditor::redo);
+    m_actUndo->setToolTip(tr("Annuler la dernière modification du Blueprint (l'historique du projet est distinct)"));
     bar->addAction(tr("Supprimer"), this, [this] { m_scene->deleteSelection(); });
+    bar->addSeparator();
+    bar->addAction(tr("Valider"), this, &BlueprintEditor::validate);
+    m_actRun = bar->addAction(tr("▶  Exécuter"), this, &BlueprintEditor::run);
+    m_actRun->setToolTip(tr("Exécuter le Blueprint sur le projet ouvert (une entrée Annuler par commande) ; un Blueprint "
+                            "sans accès au projet s'exécute en tâche de fond"));
+    m_actDebug = bar->addAction(tr("Déboguer"), this, &BlueprintEditor::debug);
+    m_actDebug->setToolTip(tr("Exécuter en s'arrêtant aux points d'arrêt (au premier nœud s'il n'y en a aucun)"));
+    m_actStep = bar->addAction(tr("Pas à pas"), this, &BlueprintEditor::step);
+    m_actContinue = bar->addAction(tr("Continuer"), this, &BlueprintEditor::continueExecution);
+    m_actStop = bar->addAction(tr("■ Arrêter"), this, &BlueprintEditor::stop);
+    m_actBreakpoint = bar->addAction(tr("● Point d'arrêt"), this, [this] { toggleBreakpoint(m_scene->selectedNode()); });
+    m_actBreakpoint->setToolTip(tr("Ajouter / retirer un point d'arrêt sur le nœud sélectionné"));
+    bar->addSeparator();
+    auto* scriptMenu = new QMenu(this);
+    scriptMenu->addAction(tr("Importer un script de commandes…"), this, [this] {
+        bool ok = false;
+        const QString text = QInputDialog::getMultiLineText(this, tr("Script de commandes"),
+            tr("Une commande du registre par ligne ; « a = commande … » nomme une commande, « a.id » réutilise sa sortie :"),
+            QStringLiteral("a = model.create_node position=0,0,0\nb = model.create_node position=6,0,0\n"
+                           "model.create_beam start=a.id end=b.id section=\"IPE 300\""), &ok);
+        if (!ok) return;
+        QString error;
+        if (!importScript(text, &error)) QMessageBox::warning(this, tr("Script de commandes"), error);
+    });
+    scriptMenu->addAction(tr("Copier en script de commandes"), this, [this] {
+        QStringList warnings;
+        QApplication::clipboard()->setText(exportScript(&warnings));
+        emit logMessage(tr("Script de commandes copié dans le presse-papiers."), "SYS");
+        for (const QString& w : warnings) emit logMessage(tr("Script : %1").arg(w), "WARN");
+    });
+    scriptMenu->addAction(tr("Copier la description (contexte pour l'IA)"), this, [this] {
+        QApplication::clipboard()->setText(describeGraph());
+        emit logMessage(tr("Description du Blueprint copiée dans le presse-papiers."), "SYS");
+    });
+    auto* scriptButton = new QToolButton(bar);
+    scriptButton->setText(tr("Script"));
+    scriptButton->setMenu(scriptMenu);
+    scriptButton->setPopupMode(QToolButton::InstantPopup);
+    bar->addWidget(scriptButton);
     root->addWidget(bar);
 
     auto* split = new QSplitter(Qt::Horizontal, this);
@@ -140,7 +187,12 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     m_view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
     connect(m_scene, &BlueprintScene::message, this, [this](const QString& t) { emit logMessage(t, "WARN"); });
     connect(m_scene, &QGraphicsScene::selectionChanged, this, &BlueprintEditor::showNodeProperties);
-    connect(m_scene, &BlueprintScene::graphChanged, this, [this] { m_scene->showReport(nullptr); showNodeProperties(); });
+    connect(m_scene, &BlueprintScene::graphChanged, this, [this] {
+        m_scene->showReport(nullptr);
+        showNodeProperties();
+        recordChange();
+    });
+    connect(m_scene, &BlueprintScene::nodesMoved, this, [this] { recordChange(); });
 
     // Valeurs du nœud sélectionné
     auto* right = new QWidget(split);
@@ -157,6 +209,14 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     m_properties = new QFormLayout(m_propertiesHost);
     rightLay->addWidget(m_propertiesHost);
     rightLay->addStretch();
+    auto* watchTitle = new QLabel(tr("Valeurs produites (débogueur)"), right);
+    watchTitle->setStyleSheet("font-weight: 700;");
+    rightLay->addWidget(watchTitle);
+    m_watch = new QTreeWidget(right);
+    m_watch->setColumnCount(2);
+    m_watch->setHeaderLabels({ tr("Nœud / sortie"), tr("Valeur") });
+    m_watch->setMinimumHeight(160);
+    rightLay->addWidget(m_watch, 1);
 
     split->setStretchFactor(0, 0);
     split->setStretchFactor(1, 1);
@@ -166,7 +226,12 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     newBlueprint();
 }
 
-BlueprintEditor::~BlueprintEditor() = default;
+BlueprintEditor::~BlueprintEditor()
+{
+    // Fenêtre fermée pendant une pause : l'exécution est interrompue proprement.
+    if (m_pauseLoop) m_pauseLoop->exit(2);
+    if (m_runner) m_runner->requestStop();
+}
 
 void BlueprintEditor::buildPalette()
 {
@@ -219,9 +284,12 @@ void BlueprintEditor::newBlueprint()
     m_graph.name = tr("Nouveau Blueprint").toStdString();
     m_graph.addNode("event.start", -300, 0);
     m_file.clear();
+    m_breakpoints.clear();
+    m_scene->setBreakpoints(m_breakpoints);
     m_scene->rebuild();
     m_view->centerOn(0, 0);
     showNodeProperties();
+    resetHistory();
 }
 
 bool BlueprintEditor::open(const QString& path)
@@ -235,7 +303,10 @@ bool BlueprintEditor::open(const QString& path)
     }
     m_graph = std::move(loaded);
     m_file = path;
+    m_breakpoints.clear();
+    m_scene->setBreakpoints(m_breakpoints);
     m_scene->rebuild();
+    resetHistory();
     QTimer::singleShot(0, this, &BlueprintEditor::fitGraph);   // après affichage de l'onglet (taille réelle)
     emit logMessage(tr("Blueprint ouvert : %1").arg(path), "SYS");
     validate();
@@ -260,9 +331,12 @@ void BlueprintEditor::setGraph(Graph graph)
 {
     m_graph = std::move(graph);
     m_file.clear();
+    m_breakpoints.clear();
+    m_scene->setBreakpoints(m_breakpoints);
     m_scene->rebuild();
     QTimer::singleShot(0, this, &BlueprintEditor::fitGraph);   // après affichage de l'onglet (taille réelle)
     showNodeProperties();
+    resetHistory();
     validate();
 }
 
@@ -304,19 +378,233 @@ void BlueprintEditor::validate()
 
 bool BlueprintEditor::run()
 {
+    return execute(false, false);
+}
+
+bool BlueprintEditor::debug()
+{
+    return execute(true, m_breakpoints.empty());
+}
+
+bool BlueprintEditor::execute(bool debugging, bool stepFromStart)
+{
+    if (m_running) return false;
     if (!m_session)
     {
         emit logMessage(tr("Aucun projet ouvert : le Blueprint ne peut pas être exécuté."), "ERROR");
         return false;
     }
-    Runner runner(m_library, m_graph, m_session);
-    const ExecutionReport report = runner.run();
+    ExecutionReport report;
+    const bool background = !debugging && !m_library.usesProject(m_graph);
+    setRunning(true);
+    if (background)
+    {
+        // Aucun accès au projet : exécution dans un thread de travail sur une copie du graphe ; la boucle
+        // locale garde l'interface réactive (Arrêter reste utilisable).
+        const Graph copy = m_graph;
+        Runner runner(m_library, copy, nullptr);
+        m_runner = &runner;
+        QEventLoop loop;
+        QThread* worker = QThread::create([&runner, &report] { report = runner.run(); });
+        connect(worker, &QThread::finished, &loop, &QEventLoop::quit);
+        worker->start();
+        loop.exec();
+        worker->wait();
+        delete worker;
+        m_runner = nullptr;
+        emit logMessage(tr("Blueprint exécuté en tâche de fond (aucun accès au projet)."), "INFO");
+    }
+    else
+    {
+        Runner runner(m_library, m_graph, m_session);
+        BreakpointDebugger debugger([this](const DebugState& s) { return pause(s); }, m_breakpoints, stepFromStart);
+        if (debugging)
+        {
+            runner.setDebugger(&debugger);
+            m_debugger = &debugger;
+        }
+        m_runner = &runner;
+        report = runner.run();
+        m_runner = nullptr;
+        m_debugger = nullptr;
+    }
+    m_scene->setActiveNode(0);
+    setRunning(false);
     for (const auto& line : report.log) emit logMessage(QString::fromStdString(line), "INFO");
     emit logMessage(tr("Blueprint : %1 (%2 ms)").arg(QString::fromStdString(report.message)).arg(report.milliseconds, 0, 'f', 1),
                     report.ok ? "SYS" : "ERROR");
     m_scene->showReport(&report);
-    emit projectModified();
+    if (!background) emit projectModified();
     return report.ok;
+}
+
+DebugAction BlueprintEditor::pause(const DebugState& state)
+{
+    m_scene->setActiveNode(state.node);
+    showWatch(state.outputs);
+    const NodeInstance* n = m_graph.node(state.node);
+    const NodeDefinition* d = n ? m_library.find(n->type) : nullptr;
+    emit logMessage(tr("Débogueur : pause avant « %1 » (#%2), %3 étape(s) exécutée(s).")
+                        .arg(d ? QString::fromStdString(d->title) : QStringLiteral("?")).arg(state.node).arg(state.step),
+                    "INFO");
+    emit projectModified();   // vues à jour pendant la pause (commandes déjà exécutées)
+    QEventLoop loop;
+    m_pauseLoop = &loop;
+    updateActions();
+    const int code = loop.exec();
+    m_pauseLoop = nullptr;
+    updateActions();
+    return code == 1 ? DebugAction::Step : code == 2 ? DebugAction::Abort : DebugAction::Continue;
+}
+
+void BlueprintEditor::showWatch(const std::map<int, std::map<std::string, Value>>* outputs)
+{
+    m_watch->clear();
+    if (!outputs) return;
+    for (const auto& [id, pins] : *outputs)
+    {
+        const NodeInstance* n = m_graph.node(id);
+        const NodeDefinition* d = n ? m_library.find(n->type) : nullptr;
+        auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(d->title) : QString()) });
+        for (const auto& [pin, v] : pins)
+            new QTreeWidgetItem(item, { QString::fromStdString(pin), QString::fromStdString(toText(v)) });
+        item->setExpanded(true);
+    }
+    m_watch->resizeColumnToContents(0);
+}
+
+void BlueprintEditor::continueExecution()
+{
+    if (m_pauseLoop) m_pauseLoop->exit(0);
+}
+
+void BlueprintEditor::step()
+{
+    if (m_pauseLoop) m_pauseLoop->exit(1);
+    else if (!m_running) execute(true, true);
+}
+
+void BlueprintEditor::stop()
+{
+    if (m_pauseLoop) m_pauseLoop->exit(2);
+    else if (m_runner) m_runner->requestStop();
+}
+
+int BlueprintEditor::selectedNode() const
+{
+    return m_scene->selectedNode();
+}
+
+void BlueprintEditor::toggleBreakpoint(int node)
+{
+    if (!node || !m_graph.node(node)) return;
+    if (!m_breakpoints.erase(node)) m_breakpoints.insert(node);
+    m_scene->setBreakpoints(m_breakpoints);
+    if (m_debugger) m_debugger->setBreakpoints(m_breakpoints);
+}
+
+void BlueprintEditor::setRunning(bool running)
+{
+    m_running = running;
+    m_scene->setEditable(!running);
+    m_palette->setEnabled(!running);
+    m_propertiesHost->setEnabled(!running);
+    if (!running) m_watch->clear();
+    updateActions();
+}
+
+void BlueprintEditor::updateActions()
+{
+    if (!m_actRun) return;
+    const bool paused = m_pauseLoop != nullptr;
+    m_actRun->setEnabled(!m_running);
+    m_actDebug->setEnabled(!m_running);
+    m_actStep->setEnabled(!m_running || paused);
+    m_actContinue->setEnabled(paused);
+    m_actStop->setEnabled(m_running);
+    m_actUndo->setEnabled(!m_running && canUndo());
+    m_actRedo->setEnabled(!m_running && canRedo());
+}
+
+void BlueprintEditor::recordChange(const QString& coalesceKey)
+{
+    // Valeur modifiée en continu (saisie, roulette) : une seule entrée par champ tant qu'on ne change pas d'action.
+    if (!coalesceKey.isEmpty() && coalesceKey == m_lastKey)
+    {
+        m_snapshot = m_graph;
+        return;
+    }
+    m_lastKey = coalesceKey;
+    m_undo.push_back(m_snapshot);
+    if (m_undo.size() > 200) m_undo.erase(m_undo.begin());
+    m_redo.clear();
+    m_snapshot = m_graph;
+    updateActions();
+}
+
+void BlueprintEditor::resetHistory()
+{
+    m_undo.clear();
+    m_redo.clear();
+    m_snapshot = m_graph;
+    m_lastKey.clear();
+    updateActions();
+}
+
+void BlueprintEditor::undo()
+{
+    if (m_running || m_undo.empty()) return;
+    m_redo.push_back(m_graph);
+    m_graph = std::move(m_undo.back());
+    m_undo.pop_back();
+    m_snapshot = m_graph;
+    m_lastKey.clear();
+    m_scene->rebuild();
+    m_scene->showReport(nullptr);
+    showNodeProperties();
+    updateActions();
+}
+
+void BlueprintEditor::redo()
+{
+    if (m_running || m_redo.empty()) return;
+    m_undo.push_back(m_graph);
+    m_graph = std::move(m_redo.back());
+    m_redo.pop_back();
+    m_snapshot = m_graph;
+    m_lastKey.clear();
+    m_scene->rebuild();
+    m_scene->showReport(nullptr);
+    showNodeProperties();
+    updateActions();
+}
+
+bool BlueprintEditor::importScript(const QString& script, QString* error)
+{
+    Graph g;
+    std::string why;
+    if (!fromCommandScript(script.toStdString(), m_library, TSA::Automation::CommandRegistry::builtIn(), g, &why))
+    {
+        if (error) *error = tr("Script invalide : %1").arg(QString::fromStdString(why));
+        return false;
+    }
+    setGraph(std::move(g));
+    emit logMessage(tr("Blueprint créé depuis un script de commandes (%1 nœud(s)).").arg(m_graph.nodes().size()), "SYS");
+    return true;
+}
+
+QString BlueprintEditor::exportScript(QStringList* warnings) const
+{
+    std::vector<std::string> w;
+    const QString s = QString::fromStdString(toCommandScript(m_graph, m_library, &w));
+    if (warnings)
+        for (const auto& x : w) warnings->append(QString::fromStdString(x));
+    return s;
+}
+
+QString BlueprintEditor::describeGraph() const
+{
+    return QString::fromStdString(describe(m_graph, m_library));
 }
 
 void BlueprintEditor::showNodeProperties()
@@ -349,6 +637,7 @@ void BlueprintEditor::showNodeProperties()
         auto set = [this, id, pinName](const Value& value) {
             m_graph.setValue(id, pinName, value);
             m_scene->refreshNode(id);
+            recordChange(QStringLiteral("%1:%2").arg(id).arg(QString::fromStdString(pinName)));
         };
         QString label = QString::fromStdString(pin.label);
         if (const char* unit = TSA::Automation::quantityUnit(pin.quantity); unit[0]) label += QStringLiteral(" (%1)").arg(QString::fromUtf8(unit));

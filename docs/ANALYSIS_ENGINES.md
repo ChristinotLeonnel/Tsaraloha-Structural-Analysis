@@ -119,6 +119,14 @@ résultante des charges = −ΣR au résidu contrôlé par le solveur près ; mo
 (`ResultsModel::planarCurves`) écrites dans la note de calcul (chapitre « Courbes RDM par barre »).
 Un `Custom2DEngine` construit sans solveur reste indisponible (calcul refusé, aucun résultat).
 
+Second solveur plan du cœur scientifique : `tsalab::planar::OpenSeesPlanarSolver` (C++ pur : script Tcl 2D
+elasticBeamColumn / truss / zeroLength, processus OpenSees sans fenêtre, post-traitement des barres commun avec
+MetDeDeplacement). Il sert de référence indépendante au banc (`tsalab-bench` : 14/14, test S6 : déplacements,
+réactions et efforts identiques à 1e-6 sur les 7 benchmarks) ; il n'est pas le solveur du moteur custom2d. Exécutable :
+`setOpenSeesExecutable` (TSA lui transmet celui d'OpenSeesManager), sinon `TSALAB_OPENSEES`, sinon celui des dépôts ;
+absent, il est ignoré et signalé. Non pris en charge (refus explicite) : rotules de barres fléchies, charges réparties
+partielles ou trapézoïdales sur barre fléchie, export de K. `TSALAB_OPENSEES_KEEP=1` conserve script et résultats.
+
 Brancher le solveur :
 
 ```cpp

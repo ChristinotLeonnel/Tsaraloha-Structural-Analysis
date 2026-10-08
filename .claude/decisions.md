@@ -259,6 +259,10 @@ Decision: (référence : docs/TSARALOHA_ARCHITECTURE.md, options A/B/C comparée
   du projet, thread de travail, publication et invalidation des résultats) ; MainWindow et LabMainWindow n'en sont
   que des vues ; la console, le Blueprint et l'IA calculent par les commandes analysis.run / results.*. Le
   « matrix viewer » est le dock Données d'analyse existant, alimenté aussi par Custom2D (exportSystem).
+- Phase 8 : plugins = DLL sur une API en C++ standard (src/Plugins/PluginApi.h) qui n'ajoute que des commandes
+  (composées des commandes existantes) et des nœuds aux registres globaux ; jamais d'accès direct au modèle.
+  Blueprint modifiable par l'IA = script de commandes (texte vérifié) ↔ graphe ; aucune exécution sans acceptation.
+  OpenSees est aussi un solveur plan du cœur scientifique (référence du banc), sans remplacer le moteur opensees de TSA.
 Reason: mission « ne jamais développer deux fois le moteur graphique » ; TSA avait déjà la structure C (viewport
 indépendant de MainWindow, 0 violation de couche) : la formaliser évite d'écrire une abstraction de scène
 (options A/B) qui aurait déplacé la duplication.
