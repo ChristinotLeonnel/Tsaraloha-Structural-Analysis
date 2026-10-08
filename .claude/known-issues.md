@@ -113,19 +113,11 @@ Impact: MEDIUM (comportement des exceptions faux, sans erreur de compilation)
 Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapeaux (212/212 vérifié). Contrôle rapide :
 `Select-String build-ninja-debug\CMakeCache.txt -Pattern "^CMAKE_CXX_FLAGS:"` doit contenir /EHsc.
 
-## BUG-037
-Area: Calcul — MetDeDeplacement (TSALab/science/engines/MetDeDeplacement)
-Problem: une ossature sans aucun DDL libre (ex. poutre d'une seule barre encastrée aux deux extrémités) est
-refusée (« Tous les degrés de liberté sont bloqués : rien à calculer ») alors que la solution est déterminée
-(efforts d'encastrement parfait, réactions). Trouvé par le banc de validation tsalab-bench le 2026-10-08.
-Impact: LOW (contournement : un nœud intermédiaire) ; un modèle TSA réel de ce type échoue en Custom2D.
-Status: OPEN — piste : traiter neq == 0 comme un cas valide (U = 0, efforts = encastrement parfait).
-Related files: TSALab/science/engines/MetDeDeplacement/src/Solver.cpp
-
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |
+| BUG-037 | MetDeDeplacement refusait une ossature sans DDL libre | neq == 0 accepté : U = 0, efforts d'encastrement parfait (TSALab/science) | benchmark « fixed-fixed-single-bar » (7/7, 2026-10-08) |
 | BUG-001 | Calcul OpenSees bloquant (thread UI gelé, arrêt impossible) | calcul dans un `QThread::create`, `QProgressDialog` annulable (`AnalysisManager::cancel`), `std::atomic` d'arrêt dans `OpenSeesSolver`, mutex dans `OpenSeesEngine`, fermeture du projet refusée pendant un calcul | compilation + 212/212 ; **vérification GUI à faire** (progression, Annuler) |
 | BUG-003 | Niveaux / axes / grilles hors historique Annuler ; Annuler après élévation de niveau rétablissait les nœuds sans le niveau | `ModelStateSnapshot::coordinatesJson / gridsJson` (CoordinateSystem + GridManager rattaché par `Model::setGridManager`), restauration seulement si différent, état d'affichage des grilles conservé ; fenêtre Niveaux = une `EditTransaction` (`discardUnchanged` sans changement) ; `pushUndoState` avant création / modification / duplication / suppression de grille. Plans de travail : état d'affichage, volontairement non annulés | test 188 |
 | BUG-004 / BUG-009 | Commandes `cmd.isolate.*` non branchées ; module `src/View3D/Isolation` jamais compilé | menu Affichage ▸ Isolation 3D (I, Alt+I, Alt+W, H, inverser, Ctrl+H, Alt+H) dans la passe unique `OccView::updateElementIsolation` ; module mort, `tests/isolation` supprimés ; section / projection / volume / estomper retirés du catalogue (projection était en conflit avec Ctrl+Shift+I) | compilation, `check_shortcuts --strict` ; **vérification GUI à faire** |

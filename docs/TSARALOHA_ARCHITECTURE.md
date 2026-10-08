@@ -74,11 +74,11 @@ leur périmètre est défini dans `cmake/TSAProduct.cmake`. Les deux dépôts so
 
 | Phase | Contenu | Étapes de la mission |
 | :--- | :--- | :--- |
-| 1 | Bibliothèques `tsaraloha_model` / `tsaraloha_graphics` explicites, contrôle des couches | 1–6 |
-| 2 | `ProjectSession` : assemblage modèle/commandes/sélection/grilles/projet hors de MainWindow | 6 |
-| 3 | TSALab.exe : fenêtre IDE propre (docks, workspace Model sur le viewport partagé) | 7–8, 12 |
-| 4 | `tsalab_science` : numerics, Custom2D/MetDeDeplacement déplacés, validation ; TSA l'utilise | 13 |
-| 5 | Registre de commandes exécutables partagé (UI, Blueprint, IA, console) | 9 |
-| 6 | Blueprint : runtime typé (données / exécution), sérialisation `.tsbp`, éditeur | 10–11, 16–21 |
+| 1 | Bibliothèques `tsaraloha_model` / `tsaraloha_graphics` explicites, contrôle des couches  — **fait**| 1–6 |
+| 2 | `ProjectSession` : assemblage modèle/commandes/sélection/grilles/projet hors de MainWindow  — **fait**| 6 |
+| 3 | TSALab.exe : fenêtre IDE propre (docks, workspace Model sur le viewport partagé)  — **fait**| 7–8, 12 |
+| 4 | `tsalab_science` : numerics, Custom2D/MetDeDeplacement déplacés, validation ; TSA l'utilise  — **fait**| 13 |
+| 5 | Registre de commandes exécutables partagé (UI, Blueprint, IA, console)  — **fait**| 9 |
+| 6 | Blueprint : runtime typé (données / exécution), sérialisation `.tsbp`, éditeur — **fait** (docs/BLUEPRINT.md) | 10–11, 16–21 |
 | 7 | Analysis Manager, Matrix viewer, Results viewer | 14–15 |
 | 8 | Débogueur, profileur, API de plugins, IA sur les Blueprints, OpenSees dans tsalab_science | 16–18 |

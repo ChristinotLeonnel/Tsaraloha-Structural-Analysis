@@ -5,10 +5,11 @@ Last Updated: 2026-10-07 — branche feature/static-only (statique seul, ADR-022
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
 ## Écosystème Tsaraloha (ADR-024, docs/TSARALOHA_ARCHITECTURE.md)
-Status: IMPLEMENTED (phases 1 à 5, 2026-10-08, branche feature/tsaraloha-shared-libs) — bibliothèques partagées
+Status: IMPLEMENTED (phases 1 à 6, 2026-10-08, branche feature/tsaraloha-shared-libs) — bibliothèques partagées
 Model / Graphics / Widgets, ProjectSession, SelectionSynchronizer, EcosystemApplication, cœur scientifique
 tsalab_science (dépôt TSALab), registre de commandes. TSALab.exe = IDE propre sur ces bibliothèques.
-MISSING (phases 6 à 8) : Blueprint (runtime, éditeur), Analysis Manager partagé (le calcul est encore orchestré par
+Blueprint : moteur + éditeur partagés (docs/BLUEPRINT.md), vérifié dans TSALab (exemple portique exécuté).
+MISSING (phases 7 à 8) : Analysis Manager partagé (le calcul est encore orchestré par
 MainWindow), Matrix / Results viewers, débogueur, profileur, plugins, IA sur Blueprint, OpenSees dans tsalab_science.
 
 ## Build
@@ -20,7 +21,7 @@ Note: MSVC francisé → lanceur généré `build-*/msvc_codepage.cmd` (page de 
 dépendances d'en-têtes Ninja fiables quelle que soit la console (BUG-011, vérifié `ninja -t deps`).
 
 ## Tests
-Status: IMPLEMENTED — 213/213 PASS le 2026-10-08 (test 192 registre de commandes) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
+Status: IMPLEMENTED — 216/216 PASS le 2026-10-08 (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
 188 niveaux/grilles annulables, 189 chunk SETT, 190 collage BIM, 191 édition groupée) ; test 20 sensible au temps (BUG-035) ;
 197/197 avant (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
 186/186 avant (suite `cleanup` 160–165 le 2026-10-05) ;

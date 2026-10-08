@@ -183,3 +183,4 @@ bool runSuite_ModelCleanup(int& passed);
 bool runSuite_Bim(int& passed);
 bool runSuite_Snap(int& passed);
 bool runSuite_Automation(int& passed);
+bool runSuite_Blueprint(int& passed);

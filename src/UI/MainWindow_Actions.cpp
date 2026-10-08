@@ -1,5 +1,7 @@
 #include "../Interaction/Tools/ModelingTool.h"
 #include "Common/SelectionSynchronizer.h"
+#include "../Automation/CommandRegistry.h"
+#include "../Project/ProjectSession.h"
 #include "App/ProductInfo.h"
 #include "Dock/AnalysisDataDock.h"
 #include "../Coordinate/GeometryTolerance.h"
@@ -1584,6 +1586,36 @@ void MainWindow::createDockWindows()
             });
 
     connect(m_consoleDock, &TSA::UI::LogConsoleDock::commandEntered, this, [this](const QString& cmd) {
+        // Commandes métier du registre central partagé avec TSALab, le Blueprint et l'IA
+        // (identifiant à point : « model.create_node position=0,0,3 »).
+        const QString trimmedCmd = cmd.trimmed();
+        if (trimmedCmd.section(QLatin1Char(' '), 0, 0).contains(QLatin1Char('.')))
+        {
+            const auto r = TSA::Automation::executeCommandLine(TSA::Automation::CommandRegistry::builtIn(), *m_session,
+                                                               trimmedCmd.toStdString());
+            m_consoleDock->appendLog(QString::fromStdString(r.message), r.ok ? "SYS" : "ERROR");
+            if (r.ok)
+            {
+                updateUndoRedoActions();
+                if (m_occView) m_occView->update();
+            }
+            return;
+        }
+        if (trimmedCmd.compare(QLatin1String("COMMANDES"), Qt::CaseInsensitive) == 0
+            || trimmedCmd.compare(QLatin1String("COMMANDS"), Qt::CaseInsensitive) == 0)
+        {
+            for (const auto* spec : TSA::Automation::CommandRegistry::builtIn().commands())
+            {
+                QStringList params;
+                for (const auto& p : spec->parameters)
+                    params << QString::fromStdString((p.required ? "" : "[") + p.name + "=<" + TSA::Automation::typeName(p.type) + ">"
+                                                     + (p.required ? "" : "]"));
+                m_consoleDock->appendLog(QStringLiteral("%1 — %2 : %3").arg(QString::fromStdString(spec->id),
+                                                                         QString::fromStdString(spec->title), params.join(' ')),
+                                         "INFO");
+            }
+            return;
+        }
         QString c = cmd.toUpper().trimmed();
         if (c == "FIT") onFitAll();
         else if (c == "FITSEL" || c == "FS") onFitSelection();
@@ -1676,7 +1708,7 @@ void MainWindow::createDockWindows()
         else if (c == "HELP" || c == "AIDE" || c == "?") onActionHelp();
         else if (c == "DIAG" || c == "REPORT" || c == "DIAGNOSTIC") onActionExportDiagnosticReport();
         else {
-            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, MESH, SOLVE, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, MIRROR, SPLIT, MERGE, THEME, DIAG, HELP").arg(cmd), "WARN");
+            m_consoleDock->appendLog(tr("Commande inconnue : '%1'. Commandes supportées : BEAM, COLUMN, SLAB, WALL, TRUSS, FOOTING, SECI, SECRECT, SECCIRC, CONCRETE, STEEL, FIXED, PINNED, ROLLER, LOAD, DISTLOAD, MOMENT, MESH, SOLVE, DISP, FORCES, STRESS, MEASURE, FIT, RESET, GRID, DEL, MOVE, COPY, MIRROR, SPLIT, MERGE, THEME, DIAG, HELP ; commandes du registre (model.create_node …) : COMMANDES").arg(cmd), "WARN");
         }
     });
 

@@ -226,6 +226,10 @@ set(UI_RULER_SOURCES
 
 # --- Widgets divers ------------------------------------------------------------
 set(UI_WIDGETS_SOURCES
+    ${TSA_ROOT}/src/UI/Blueprint/BlueprintScene.h
+    ${TSA_ROOT}/src/UI/Blueprint/BlueprintScene.cpp
+    ${TSA_ROOT}/src/UI/Blueprint/BlueprintEditor.h
+    ${TSA_ROOT}/src/UI/Blueprint/BlueprintEditor.cpp
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.h
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.cpp
     ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.h
@@ -704,6 +708,14 @@ set(RESOURCES_SOURCES
 set(TSARALOHA_MODEL_SOURCES
     ${TSA_ROOT}/src/Automation/CommandRegistry.h
     ${TSA_ROOT}/src/Automation/CommandRegistry.cpp
+    ${TSA_ROOT}/src/Blueprint/BlueprintTypes.h
+    ${TSA_ROOT}/src/Blueprint/BlueprintGraph.h
+    ${TSA_ROOT}/src/Blueprint/BlueprintGraph.cpp
+    ${TSA_ROOT}/src/Blueprint/BlueprintRuntime.h
+    ${TSA_ROOT}/src/Blueprint/BlueprintRuntime.cpp
+    ${TSA_ROOT}/src/Blueprint/BlueprintNodes.cpp
+    ${TSA_ROOT}/src/Blueprint/BlueprintFile.h
+    ${TSA_ROOT}/src/Blueprint/BlueprintFile.cpp
     ${DIAGNOSTICS_SOURCES}
     ${EXTENSIONSYSTEM_SOURCES}
     ${LIBRARY_SOURCES}
@@ -855,6 +867,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_bim.cpp
     ${TSA_ROOT}/tests/test_snap.cpp
     ${TSA_ROOT}/tests/test_automation.cpp
+    ${TSA_ROOT}/tests/test_blueprint.cpp
     ${TSA_ROOT}/resources/resources.qrc
 )
 

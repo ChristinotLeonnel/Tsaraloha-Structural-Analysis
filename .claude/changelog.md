@@ -2,6 +2,19 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-08 (Blueprint — ADR-024 phase 6, branche feature/tsaraloha-shared-libs)
+
+### Added
+- Blueprint (docs/BLUEPRINT.md) : moteur partagé src/Blueprint (graphe typé, flux de données / d'exécution, nœuds purs
+  évalués à la demande, Si / Séquence / Pour / Tant que, paramètres nommés et reconstruction paramétrique, validation,
+  garde-fous, profileur), une commande du registre = un nœud (cmd.*), nœud TSALab « Banc de validation » ; fichier
+  .tsbp versionné ; éditeur partagé src/UI/Blueprint (palette, scène, liens à la souris, valeurs, exécution, profil).
+- Tests 193–195 (suite blueprint) : 216/216.
+- Console de TSA : commandes du registre central (identifiant à point) et « COMMANDES ».
+
+### Fixed
+- BUG-037 (MetDeDeplacement sans DDL libre) dans TSALab/science.
+
 ## 2026-10-08 (écosystème Tsaraloha — ADR-024, branche feature/tsaraloha-shared-libs)
 
 ### Changed

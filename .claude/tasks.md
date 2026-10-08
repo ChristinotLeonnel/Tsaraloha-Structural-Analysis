@@ -29,16 +29,16 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 
 ## Écosystème Tsaraloha (ADR-024) — feuille de route
 
-- [x] Phases 1–5 : bibliothèques partagées, ProjectSession, IDE TSALab, cœur scientifique, registre de commandes.
+- [x] Phases 1–6 : bibliothèques partagées, ProjectSession, IDE TSALab, cœur scientifique, registre de commandes, Blueprint.
 - [ ] Commit / fusion : branches feature/tsaraloha-shared-libs (TSA) et feature/scientific-ide (TSALab) ENSEMBLE.
-- [ ] Console de TSA : router ses commandes (BEAM, NODE…) vers Automation::CommandRegistry (aujourd'hui dans MainWindow).
+- [x] Console de TSA : commandes du registre (identifiant à point) et COMMANDES (2026-10-08). Les raccourcis (FIT, ISO…) restent.
 - [ ] Outils IA (AIToolRegistry) : outils de lecture adossés au registre de commandes.
 - [ ] Phase 6 : Blueprint — runtime typé (données / exécution, nœuds = commandes du registre + science), .tsbp,
       éditeur (QGraphicsView) dans TSALab.
 - [ ] Phase 7 : AnalysisController partagé (extraire de MainWindow le lancement en thread + publication des
       résultats) ; Analysis Manager, Matrix viewer (K M F U R), Results viewer dans TSALab ; SOLVER LAB branché.
 - [ ] Phase 8 : débogueur / profileur Blueprint, API de plugins, IA sur Blueprint, moteur OpenSees dans tsalab_science.
-- [ ] BUG-036 (cache CMake), BUG-037 (MetDeDeplacement sans DDL libre).
+- [ ] BUG-036 (cache CMake). [x] BUG-037 corrigé.
 
 ## CRITICAL
 
