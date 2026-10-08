@@ -1,4 +1,5 @@
 #include "TextureManager.h"
+#include "App/ProductInfo.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -58,9 +59,10 @@ void TextureManager::initialize(const QString& applicationDirPath)
     if (QDir(curTex).exists() && !m_searchPaths.contains(curTex))
         m_searchPaths.append(curTex);
 
-    // 3. Répertoire direct e:/Book/Dev/TSA/Extensions/TSALib/Textures
-    QString devTex = "e:/Book/Dev/TSA/Extensions/TSALib/Textures";
-    if (QDir(devTex).exists() && !m_searchPaths.contains(devTex))
+    // 3. Sources communes (poste de développement) : Extensions/TSALib/Textures
+    const QString devTex = TSA::Product::sourceDirectory().isEmpty() ? QString()
+        : TSA::Product::sourceDirectory() + "/Extensions/TSALib/Textures";
+    if (!devTex.isEmpty() && QDir(devTex).exists() && !m_searchPaths.contains(devTex))
         m_searchPaths.append(devTex);
 
     // 4. Dossier utilisateur %APPDATA%/TSA/Textures

@@ -1,4 +1,5 @@
 #include "../Interaction/Tools/ModelingTool.h"
+#include "App/ProductInfo.h"
 #include "Dock/AnalysisDataDock.h"
 #include "../Coordinate/GeometryTolerance.h"
 #include "MainWindow.h"
@@ -625,7 +626,7 @@ void MainWindow::createActions()
     m_actionToggleTheme->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
     connect(m_actionToggleTheme, &QAction::triggered, this, &MainWindow::onToggleTheme);
 
-    m_actionHelp = new QAction(tr("&Aide Complète TSA..."), this);
+    m_actionHelp = new QAction(tr("&Aide Complète %1...").arg(TSA::Product::name()), this);
     m_actionHelp->setIcon(makeHelpIcon());
     m_actionHelp->setToolTip(tr("Ouvrir le centre d'aide, guide et documentation"));
     connect(m_actionHelp, &QAction::triggered, this, &MainWindow::onActionHelp);
@@ -636,7 +637,7 @@ void MainWindow::createActions()
     m_actionShortcuts->setShortcut(QKeySequence::HelpContents);
     connect(m_actionShortcuts, &QAction::triggered, this, &MainWindow::onActionShortcuts);
 
-    m_actionAbout = new QAction(tr("À &propos de TSA..."), this);
+    m_actionAbout = new QAction(tr("À &propos de %1...").arg(TSA::Product::name()), this);
     m_actionAbout->setIcon(makeAboutIcon());
     m_actionAbout->setToolTip(tr("Informations sur l'application, OpenCASCADE et crédits"));
     connect(m_actionAbout, &QAction::triggered, this, &MainWindow::onActionAbout);
@@ -2118,7 +2119,7 @@ void MainWindow::createStatusBar()
     // Pas de politique Ignored : QStatusBar donne alors une case de largeur nulle à ces labels
     // et ils se superposent, quelle que soit la place libre. fitStatusBar() masque les
     // indicateurs secondaires quand la largeur manque.
-    m_statusProject = new QLabel(tr("Sans titre.tsa"), this);
+    m_statusProject = new QLabel(tr("Sans titre") + TSA::Product::projectExtension(), this);
     m_statusProject->setStyleSheet("font-weight: bold; color: #38bdf8; padding: 2px 10px; border-right: 1px solid #475569;");
     m_statusProject->setFixedWidth(180);
     bar->addWidget(m_statusProject);

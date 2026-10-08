@@ -250,7 +250,7 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
 
     // 5. Préparation du Header (272 octets, packé)
     TSAFileHeader header;
-    header.magic = TSA_FILE_MAGIC;
+    header.magic = NATIVE_FILE_MAGIC;
     header.versionMajor = TSA_FORMAT_VERSION_MAJOR;
     header.versionMinor = TSA_FORMAT_VERSION_MINOR;
     header.appVersionMajor = TSA_APP_VERSION_MAJOR;
@@ -349,9 +349,11 @@ bool TSAFileReader::readHeader(const std::string& filePath, TSAFileHeader& heade
         return false;
     }
 
-    if (header.magic != TSA_FILE_MAGIC)
+    if (!isReadableFileMagic(header.magic))
     {
-        if (errorMessage) *errorMessage = "Ce fichier n'est pas un fichier de projet TSA valide (signature magique invalide).";
+        if (errorMessage)
+            *errorMessage = std::string("Ce fichier n'est pas un fichier de projet ") + TSA::Product::kName
+                            + " valide (signature magique invalide).";
         return false;
     }
 
@@ -359,7 +361,7 @@ bool TSAFileReader::readHeader(const std::string& filePath, TSAFileHeader& heade
     {
         if (errorMessage)
         {
-            *errorMessage = "Ce projet TSA a été créé avec une version plus récente du logiciel (v" +
+            *errorMessage = std::string("Ce projet ") + TSA::Product::kName + " a été créé avec une version plus récente du logiciel (v" +
                             std::to_string(header.versionMajor) + "." + std::to_string(header.versionMinor) +
                             ") et ne peut pas être ouvert par cette version.";
         }
@@ -398,9 +400,9 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     TSAFileHeader header;
     in.read(reinterpret_cast<char*>(&header), sizeof(header));
 
-    if (header.magic != TSA_FILE_MAGIC)
+    if (!isReadableFileMagic(header.magic))
     {
-        if (errorMessage) *errorMessage = "Format de fichier invalide (signature TSAF non reconnue).";
+        if (errorMessage) *errorMessage = "Format de fichier invalide (signature non reconnue).";
         return false;
     }
 
@@ -408,9 +410,9 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     {
         if (errorMessage)
         {
-            *errorMessage = "Ce projet TSA a été créé avec une version plus récente (Format v" +
+            *errorMessage = std::string("Ce projet ") + TSA::Product::kName + " a été créé avec une version plus récente (Format v" +
                             std::to_string(header.versionMajor) + "." + std::to_string(header.versionMinor) +
-                            "). Veuillez mettre à jour TSA.";
+                            "). Veuillez mettre à jour " + TSA::Product::kName + ".";
         }
         return false;
     }

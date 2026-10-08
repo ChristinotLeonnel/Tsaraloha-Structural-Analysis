@@ -4,6 +4,10 @@ Last Updated: 2026-10-07 — branche feature/static-only (statique seul, ADR-022
 
 Légende : IMPLEMENTED · PARTIAL · BROKEN · MISSING · UNKNOWN (preuve dans le code ou test exigée).
 
+## Base commune TSA / TSALab (ADR-023)
+Status: IMPLEMENTED (2026-10-08, branche feature/shared-core, non commitée) — identité dans product/, cibles dans
+cmake/TSAProduct.cmake. Vérifié : TSA 212/212, TSALab 217/217 (même code), TSALab démarre sur son Start Center.
+
 ## Build
 Status: IMPLEMENTED — PASS (preset ninja-debug, -j 4)
 Compiler: MSVC 19.51 (VS 18 2026 Community), C++20

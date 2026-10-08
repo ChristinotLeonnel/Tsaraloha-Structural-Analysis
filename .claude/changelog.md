@@ -2,6 +2,29 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-08 (base commune TSA / TSALab — ADR-023, branche feature/shared-core)
+
+### Changed
+- Identité produit sortie du code : `product/ProductIdentity.h` + `ProductShellIds.h` (constantes), `src/App/ProductInfo.h`
+  (helpers Qt). ~40 fichiers de `src/` n'écrivent plus « TSA » / « .tsa » / « TSA Engineering » en dur (titres, QSettings,
+  association Windows, signature de fichier, NDC, IFC, logs, rapports de crash, IA, DLL de miniatures, tests).
+- Chemins absolus `E:/Book/Dev/TSA/...` (OpenSees, Extensions, textures, tests) remplacés par `TSA_SOURCE_DIR` (CMake).
+- CMake : listes de sources et cibles déplacées dans `cmake/TSAProduct.cmake` (`tsa_add_product`) ; `CMakeLists.txt`
+  réduit à la configuration + appel. SDK (OCCT, 3rdparty) localisés depuis la racine TSA (`TSA_DEPS_ROOT`).
+- Textes neutres : « Échec de l'ouverture du projet », « Projet chargé avec succès », « signature non reconnue ».
+
+### Added
+- Points d'extension : `TSA::Product::configureShell` (product/ProductHooks.cpp), `StartCenter::setLaunchPanel`,
+  `AppShell::setWorkspaceDecorator` / `workspaceCreated` / `startCenter()` / `workspace()`,
+  `MainWindow::resultsModel()` / signal `resultsChanged`, `runProductSuites` / `productExpectedTests` (tests).
+- Format : `NATIVE_FILE_MAGIC`, `isReadableFileMagic` (format importé optionnel, utilisé par TSALab).
+- `MainWindow::saveFile` : un fichier d'un format importé n'est jamais réécrit (sans effet pour TSA).
+- Start Center : renommer / dupliquer conserve l'extension du fichier.
+
+### Verified
+- TSA : 212/212 après reconfiguration `--fresh` (le cache local avait perdu `CMAKE_CXX_FLAGS` → pas de /EHsc,
+  test 96 en échec ; voir known-issues BUG-036).
+
 ## 2026-10-07 (crash à la réduction de la fenêtre, branche fix/minimize-crash)
 
 ### Fixed

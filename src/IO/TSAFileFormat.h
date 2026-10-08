@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <ProductIdentity.h>
 #include <string>
 #include <vector>
 
@@ -8,9 +9,19 @@ namespace TSA::IO
 {
 
 // -----------------------------------------------------------------------------
-// Magic Signature: 'TSAF' (TSA File) en Little-Endian = 0x46415354
+// Signatures (Little-Endian) : 'TSAF' (TSA File) = 0x46415354.
+// Chaque produit écrit sa signature native (<ProductIdentity.h> : TSA → TSAF, TSALab → TSLB) et
+// peut lire un format importé (TSALab lit les .tsa de TSA sans jamais les réécrire). Même conteneur
+// à chunks pour tous les produits.
 // -----------------------------------------------------------------------------
 constexpr uint32_t TSA_FILE_MAGIC = 0x46415354;
+constexpr uint32_t NATIVE_FILE_MAGIC = TSA::Product::kNativeFileMagic;
+
+/// Signature lisible par le produit compilé (native, ou format importé s'il y en a un).
+constexpr bool isReadableFileMagic(uint32_t magic)
+{
+    return magic == NATIVE_FILE_MAGIC || (TSA::Product::kLegacyFileMagic != 0 && magic == TSA::Product::kLegacyFileMagic);
+}
 
 // -----------------------------------------------------------------------------
 // Versioning du format
@@ -79,7 +90,7 @@ constexpr uint32_t CHUNK_BIMM = 0x4D4D4942; // 'BIMM' : Couche BIM (produits phy
  */
 struct TSAFileHeader
 {
-    uint32_t magic = TSA_FILE_MAGIC;
+    uint32_t magic = NATIVE_FILE_MAGIC;
     uint16_t versionMajor = TSA_FORMAT_VERSION_MAJOR;
     uint16_t versionMinor = TSA_FORMAT_VERSION_MINOR;
     uint32_t appVersionMajor = TSA_APP_VERSION_MAJOR;

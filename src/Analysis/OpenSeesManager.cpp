@@ -1,4 +1,5 @@
 #include "OpenSeesManager.h"
+#include "App/ProductInfo.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -34,9 +35,11 @@ QString OpenSeesManager::defaultSearchDirectory()
     QString appDir = QCoreApplication::applicationDirPath();
     QStringList candidates = {
         appDir + "/thirdparty/OpenSees",
-        appDir + "/../thirdparty/OpenSees",
-        "E:/Book/Dev/TSA/thirdparty/OpenSees"
+        appDir + "/../thirdparty/OpenSees"
     };
+
+    if (!TSA::Product::sourceDirectory().isEmpty())
+        candidates << TSA::Product::sourceDirectory() + "/thirdparty/OpenSees";
 
     for (const auto& path : candidates)
     {
@@ -47,7 +50,8 @@ QString OpenSeesManager::defaultSearchDirectory()
         }
     }
 
-    return "E:/Book/Dev/TSA/thirdparty/OpenSees";
+    return TSA::Product::sourceDirectory().isEmpty() ? QDir::cleanPath(appDir + "/thirdparty/OpenSees")
+                                                     : TSA::Product::sourceDirectory() + "/thirdparty/OpenSees";
 }
 
 QString OpenSeesManager::officialDownloadUrl()
@@ -57,13 +61,13 @@ QString OpenSeesManager::officialDownloadUrl()
 
 void OpenSeesManager::loadSettings()
 {
-    QSettings settings("TSA", "TSA_StructuralAnalysis");
+    QSettings settings(TSA::Product::kOpenSeesSettingsOrganization, TSA::Product::kOpenSeesSettingsApplication);
     m_customPath = settings.value("OpenSees/ExecutablePath", "").toString();
 }
 
 void OpenSeesManager::saveSettings()
 {
-    QSettings settings("TSA", "TSA_StructuralAnalysis");
+    QSettings settings(TSA::Product::kOpenSeesSettingsOrganization, TSA::Product::kOpenSeesSettingsApplication);
     settings.setValue("OpenSees/ExecutablePath", m_customPath);
 }
 

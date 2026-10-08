@@ -1,4 +1,5 @@
 #include "AIRuntimeDialog.h"
+#include "App/ProductInfo.h"
 
 #include "../../AI/Core/AILog.h"
 
@@ -36,7 +37,7 @@ AIRuntimeDialog::AIRuntimeDialog(AIOrchestrator* orchestrator, QWidget* parent)
     : QDialog(parent)
     , m_ai(orchestrator)
 {
-    setWindowTitle(tr("Configuration IA — TSA Co-Engineering"));
+    setWindowTitle(tr("Configuration IA — %1 Co-Engineering").arg(TSA::Product::name()));
     resize(760, 600);
     auto* layout = new QVBoxLayout(this);
     m_tabs = new QTabWidget(this);
@@ -264,8 +265,8 @@ QWidget* AIRuntimeDialog::buildModelsPage()
     row->addStretch();
     row->addWidget(m_btnCancelDownload);
     l->addLayout(row);
-    auto* note = new QLabel(tr("Dossier TSA : %1. Les modèles GGUF déjà présents (cache Hugging Face, LM Studio) sont réutilisés sans copie.")
-                                .arg(ModelManager::modelsDirectory()), page);
+    auto* note = new QLabel(tr("Dossier %2 : %1. Les modèles GGUF déjà présents (cache Hugging Face, LM Studio) sont réutilisés sans copie.")
+                                .arg(ModelManager::modelsDirectory(), TSA::Product::name()), page);
     note->setWordWrap(true);
     note->setStyleSheet("color: gray;");
     l->addWidget(note);
@@ -311,7 +312,7 @@ QWidget* AIRuntimeDialog::buildModelsPage()
         const bool installed = row >= 0 && !m_models->item(row, 0)->data(Qt::UserRole + 1).toString().isEmpty();
         const bool inRegistry = row >= 0 && !m_models->item(row, 0)->data(Qt::UserRole).toString().isEmpty();
         m_btnDownload->setEnabled(row >= 0 && !installed && inRegistry && !m_ai->modelManager()->isDownloading());
-        m_btnRemove->setEnabled(installed && m_models->item(row, 5)->text() == "TSA");
+        m_btnRemove->setEnabled(installed && m_models->item(row, 5)->text() == QLatin1String(TSA::Product::kAiModelsSource));
         m_btnDefault->setEnabled(installed);
     });
     return page;
@@ -407,7 +408,7 @@ QWidget* AIRuntimeDialog::buildPrivacyPage()
         m_device->addItem(QStringLiteral("%1 — %2").arg(g.deviceId, g.name), g.deviceId);
     m_device->setCurrentIndex(std::max(0, m_device->findData(s.deviceId)));
     lf->addRow(tr("Périphérique :"), m_device);
-    m_chkAutoStart = new QCheckBox(tr("Démarrer le moteur IA local au lancement de TSA"), localBox);
+    m_chkAutoStart = new QCheckBox(tr("Démarrer le moteur IA local au lancement de %1").arg(TSA::Product::name()), localBox);
     m_chkAutoStart->setChecked(s.autoStartLocal);
     lf->addRow(m_chkAutoStart);
     l->addWidget(localBox);
@@ -416,7 +417,7 @@ QWidget* AIRuntimeDialog::buildPrivacyPage()
     auto* pl = new QVBoxLayout(privacy);
     m_chkAlwaysAsk = new QCheckBox(tr("Toujours demander avant d'utiliser le Cloud"), privacy);
     m_chkAlwaysAsk->setChecked(s.alwaysAskBeforeCloud);
-    m_chkNeverFiles = new QCheckBox(tr("Ne jamais envoyer les fichiers projet (.tsa)"), privacy);
+    m_chkNeverFiles = new QCheckBox(tr("Ne jamais envoyer les fichiers projet (%1)").arg(TSA::Product::projectExtension()), privacy);
     m_chkNeverFiles->setChecked(true);
     m_chkNeverFiles->setEnabled(false);
     m_chkNeverFiles->setToolTip(tr("Garanti par conception : seules des données structurées choisies par TSA peuvent être envoyées."));

@@ -27,6 +27,12 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 - [ ] Commit, fusion dans `main`, push (et push de `archive/dynamique` + tag) — sur accord de l'utilisateur.
 - [ ] Vérifications GUI : ruban sans entrées dynamiques, calcul statique depuis F5, progression / Annuler.
 
+## Base commune TSA / TSALab (ADR-023)
+
+- [ ] Commit de feature/shared-core (TSA) et feature/shared-tsa-core (TSALab), fusion ensemble — sur accord.
+- [ ] Vérifier en GUI que TSA est inchangé (titres, Start Center, Enregistrer sous, association .tsa).
+- [ ] BUG-036 : comprendre la perte de CMAKE_CXX_FLAGS dans le cache.
+
 ## CRITICAL
 
 - [ ] (aucune tâche critique ouverte)

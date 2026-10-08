@@ -846,6 +846,7 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
 void MainWindow::publishResults(const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
 {
     m_resultsModel = results;
+    emit resultsChanged();
     if (m_resultsGuard) m_resultsGuard->trackResults(m_resultsModel);
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
     if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);

@@ -1,4 +1,5 @@
 #include "ProjectStatusOverlay.h"
+#include "App/ProductInfo.h"
 #include "../../Model/Model.h"
 #include "../../Grid/GridManager.h"
 #include "../../Analysis/ResultsModel.h"
@@ -517,8 +518,8 @@ void TSALogoOverlay::paintEvent(QPaintEvent* /*event*/)
     painter.setPen(QPen(border, 1.0));
     painter.drawRoundedRect(QRectF(1, 1, width() - 2, height() - 2), 3, 3);
 
-    // Rendu vectoriel du logo officiel TSA depuis resources.qrc
-    QString logoPath = m_isDarkMode ? ":/icons/TSA_light.svg" : ":/icons/TSA.svg";
+    // Rendu vectoriel du logo officiel du produit depuis resources.qrc
+    QString logoPath = QString::fromLatin1(m_isDarkMode ? TSA::Product::kIconSvgOnDark : TSA::Product::kIconSvg);
     QSvgRenderer renderer(logoPath);
     if (renderer.isValid())
     {
@@ -526,16 +527,19 @@ void TSALogoOverlay::paintEvent(QPaintEvent* /*event*/)
         renderer.render(&painter, iconRect);
     }
 
-    // Libellé officiel TSA
+    // Libellé officiel du produit
     painter.setPen(m_isDarkMode ? QColor(241, 245, 249, 220) : QColor(15, 23, 42, 220));
     QFont font("Segoe UI", 8, QFont::Bold);
     painter.setFont(font);
-    painter.drawText(QRectF(24, 1, 30, 20), Qt::AlignLeft | Qt::AlignVCenter, "TSA");
+    const QString productName = TSA::Product::name();
+    const qreal nameWidth = QFontMetricsF(font).horizontalAdvance(productName);
+    painter.drawText(QRectF(24, 1, nameWidth + 2, 20), Qt::AlignLeft | Qt::AlignVCenter, productName);
+    const qreal badgeX = std::max<qreal>(52, 24 + nameWidth + 6);
 
     painter.setPen(m_isDarkMode ? QColor(148, 163, 184, 200) : QColor(100, 116, 139, 200));
     QFont subFont("Segoe UI", 7, QFont::Normal);
     painter.setFont(subFont);
-    painter.drawText(QRectF(52, 1, 70, 20), Qt::AlignLeft | Qt::AlignVCenter, "CAD v1.0");
+    painter.drawText(QRectF(badgeX, 1, 70, 20), Qt::AlignLeft | Qt::AlignVCenter, QString::fromLatin1(TSA::Product::kBadgeVersion));
 }
 
 } // namespace TSA::UI

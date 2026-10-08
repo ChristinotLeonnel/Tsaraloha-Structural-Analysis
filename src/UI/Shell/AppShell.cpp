@@ -8,6 +8,8 @@
 
 #include "AppShell.h"
 
+#include "../../App/ProductInfo.h"
+
 #include "TitleBar.h"
 #include "../MainWindow.h"
 #include "../Home/NewProjectDialog.h"
@@ -49,7 +51,7 @@ QString firstTsaUrl(const QMimeData* mime)
 {
     if (!mime || !mime->hasUrls()) return QString();
     for (const QUrl& url : mime->urls())
-        if (url.toLocalFile().endsWith(".tsa", Qt::CaseInsensitive)) return url.toLocalFile();
+        if (TSA::Product::isOpenableProjectFile(url.toLocalFile())) return url.toLocalFile();
     return QString();
 }
 
@@ -64,7 +66,7 @@ AppShell::AppShell(QWidget* parent)
 {
     setObjectName("TSAAppShell");
     setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::WindowSystemMenuHint | Qt::WindowMinMaxButtonsHint);
-    setWindowIcon(QIcon(":/icons/TSA.ico"));
+    setWindowIcon(QIcon(QString::fromLatin1(TSA::Product::kIconIco)));
     setAutoFillBackground(true);
     setAcceptDrops(true);
 
@@ -106,7 +108,7 @@ void AppShell::createActions()
     m_actRedo = new QAction(QIcon(":/icons/redo.svg"), tr("Rétablir"), this);
     m_actCloseProject = new QAction(QIcon(":/icons/file/file_close.svg"), tr("Fermer le projet"), this);
     m_actTheme = new QAction(themeIcon(ThemeManager::instance().isDarkMode()), tr("Thème clair / sombre"), this);
-    m_actExit = new QAction(QIcon(":/icons/file_exit.svg"), tr("Quitter TSA"), this);
+    m_actExit = new QAction(QIcon(":/icons/file_exit.svg"), tr("Quitter %1").arg(TSA::Product::name()), this);
 
     m_actNew->setToolTip(tr("Nouveau projet (Ctrl+N)"));
     m_actOpen->setToolTip(tr("Ouvrir un projet (Ctrl+O)"));
@@ -182,7 +184,9 @@ MainWindow* AppShell::ensureWorkspace()
     // La somme des minima des panneaux (barre d'état ≈ 1 680 px, docks + barre du viewport ≈ 1 520 px)
     // pousserait la fenêtre hors de l'écran : le workspace se contente d'un minimum raisonnable.
     m_workspace->setMinimumSize(kWorkspaceMinimumSize);
-    m_stack->addWidget(m_workspace);
+    m_workspacePage = m_workspaceDecorator ? m_workspaceDecorator(m_workspace, m_stack) : nullptr;
+    if (!m_workspacePage) m_workspacePage = m_workspace;
+    m_stack->addWidget(m_workspacePage);
 
     connect(m_workspace, &MainWindow::newProjectRequested, this, &AppShell::createNewProject);
     connect(m_workspace, &MainWindow::openProjectRequested, this, &AppShell::openProject);
@@ -206,6 +210,7 @@ MainWindow* AppShell::ensureWorkspace()
     bindToWorkspace(m_actSaveAs, m_workspace->actionSaveAs());
     bindToWorkspace(m_actUndo, m_workspace->actionUndo());
     bindToWorkspace(m_actRedo, m_workspace->actionRedo());
+    emit workspaceCreated(m_workspace);
     QApplication::restoreOverrideCursor();
     return m_workspace;
 }
@@ -216,7 +221,8 @@ void AppShell::setMode(ApplicationMode mode)
     if (mode == ApplicationMode::ProjectWorkspace)
     {
         // Le viewport doit être visible (OCCT initialisé) avant tout chargement ou capture.
-        m_stack->setCurrentWidget(ensureWorkspace());
+        ensureWorkspace();
+        m_stack->setCurrentWidget(m_workspacePage);
     }
     else
     {
@@ -243,8 +249,8 @@ void AppShell::showProjectWorkspace()
 void AppShell::updateTitle()
 {
     const QString title = isProjectOpen() && m_workspace && !m_workspace->windowTitle().isEmpty()
-        ? QString(m_workspace->windowTitle()).replace(QStringLiteral("TSA - "), QStringLiteral("TSA — "))
-        : tr("TSA — Start Center");
+        ? QString(m_workspace->windowTitle()).replace(TSA::Product::name() + QStringLiteral(" - "), TSA::Product::name() + QStringLiteral(" — "))
+        : tr("%1 — Start Center").arg(TSA::Product::name());
     setWindowTitle(title);
     m_titleBar->setTitle(title);
 }
@@ -272,8 +278,8 @@ void AppShell::openProject()
     QString initialDir;
     const auto recent = TSA::Project::RecentProjects().list(false);
     if (!recent.isEmpty()) initialDir = QFileInfo(recent.first().path).absolutePath();
-    const QString path = QFileDialog::getOpenFileName(this, tr("Ouvrir un projet TSA"), initialDir,
-                                                      tr("TSA Project (*.tsa);;Tous les fichiers (*.*)"));
+    const QString path = QFileDialog::getOpenFileName(this, tr("Ouvrir un projet %1").arg(TSA::Product::name()), initialDir,
+                                                      TSA::Product::openFileFilter());
     if (path.isEmpty()) return;
     loadIntoWorkspace(path);
 }

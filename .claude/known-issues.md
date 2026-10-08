@@ -103,6 +103,16 @@ Impact: LOW (faux négatif possible)
 Status: OPEN — piste : mesurer la médiane de 3 essais, ou relever le seuil en Debug.
 Related files: tests/test_commands.cpp:370
 
+## BUG-036
+Area: Build (cache CMake local)
+Problem: le 2026-10-08, `build-ninja-debug/CMakeCache.txt` avait `CMAKE_CXX_FLAGS` (et `_DEBUG`…) vides : compilation
+sans /EHsc ni /Zi /Od (avertissements C4530) et test 96 en échec (destructeurs non appelés pendant le déroulement d'une
+exception → pas de rollback automatique de l'EditTransaction). Cause exacte non identifiée (une configuration lancée
+alors que vcvars64.bat signalait « vswhere.exe non reconnu » est suspecte).
+Impact: MEDIUM (comportement des exceptions faux, sans erreur de compilation)
+Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapeaux (212/212 vérifié). Contrôle rapide :
+`Select-String build-ninja-debug\CMakeCache.txt -Pattern "^CMAKE_CXX_FLAGS:"` doit contenir /EHsc.
+
 ## Corrigés (historique)
 
 | ID | Problème | Correction | Preuve |

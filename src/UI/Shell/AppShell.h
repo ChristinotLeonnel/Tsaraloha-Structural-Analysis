@@ -1,14 +1,17 @@
 #pragma once
 
-// Fenêtre unique de TSA : barre de titre personnalisée + deux modes exclusifs.
+// Fenêtre unique du produit (TSA, TSALab) : barre de titre personnalisée + deux modes exclusifs.
 //   StartCenter      : écran d'accueil seul (créé au lancement) ;
 //   ProjectWorkspace : MainWindow (viewport, ruban, docks, barre d'état), créé au premier projet
 //                      ouvert ou créé, puis conservé et vidé à la fermeture du projet.
 // Cycle de vie : Start Center → Nouveau / Ouvrir / Projet récent → Workspace → Fermer → Start Center.
+// Points d'extension produit (TSA::Product::configureShell) : startCenter()->setLaunchPanel(),
+// setWorkspaceDecorator(), signal workspaceCreated().
 
 #include <QHash>
 #include <QWidget>
 
+#include <functional>
 #include <memory>
 
 class MainWindow;
@@ -46,9 +49,24 @@ public:
 
     void createNewProject();
     void openProject();
-    /// Ouvre un fichier .tsa (projets récents, glisser-déposer, ligne de commande).
+    /// Ouvre un fichier projet du produit (projets récents, glisser-déposer, ligne de commande).
     bool openProjectFile(const QString& path);
     bool closeProject();
+    bool isProjectOpen() const { return m_mode == ApplicationMode::ProjectWorkspace; }
+
+    StartCenter* startCenter() const { return m_startCenter; }
+    /// Workspace de modélisation (nul tant qu'aucun projet n'a été ouvert ou créé).
+    MainWindow* workspace() const { return m_workspace; }
+
+    /// Point d'extension produit : construit la page affichée en mode Workspace autour du MainWindow
+    /// (ex. rail des espaces de TSALab). Le décorateur reçoit le MainWindow et la pile parente, et
+    /// renvoie la page qui le contient. À définir avant la création du workspace.
+    using WorkspaceDecorator = std::function<QWidget*(MainWindow* workspace, QWidget* parent)>;
+    void setWorkspaceDecorator(WorkspaceDecorator decorator) { m_workspaceDecorator = std::move(decorator); }
+
+signals:
+    /// Émis une fois, à la création du workspace (premier projet ouvert ou créé).
+    void workspaceCreated(MainWindow* workspace);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -63,7 +81,6 @@ protected:
 
 private:
     MainWindow* ensureWorkspace();
-    bool isProjectOpen() const { return m_mode == ApplicationMode::ProjectWorkspace; }
     bool loadIntoWorkspace(const QString& path);
     void setMode(ApplicationMode mode);
     void updateTitle();
@@ -86,6 +103,8 @@ private:
     QStackedWidget* m_stack = nullptr;
     StartCenter* m_startCenter = nullptr;
     MainWindow* m_workspace = nullptr;
+    QWidget* m_workspacePage = nullptr; // m_workspace, ou la page produit qui le contient
+    WorkspaceDecorator m_workspaceDecorator;
 
     QAction* m_actNew = nullptr;
     QAction* m_actOpen = nullptr;

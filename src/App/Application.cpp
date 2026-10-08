@@ -1,4 +1,6 @@
 #include "Application.h"
+#include "ProductHooks.h"
+#include "App/ProductInfo.h"
 #include "../UI/Shell/AppShell.h"
 #include "../UI/Theme/ThemeManager.h"
 #include "../Platform/WindowsAssociation.h"
@@ -24,7 +26,7 @@ static void initWindowsAppUserModelID()
         SetAppIdFunc pFunc = reinterpret_cast<SetAppIdFunc>(GetProcAddress(hShell, "SetCurrentProcessExplicitAppUserModelID"));
         if (pFunc)
         {
-            pFunc(L"TSAEngineering.TSA.StructuralModeler.1.0");
+            pFunc(TSA::Product::kAppUserModelId);
         }
         FreeLibrary(hShell);
     }
@@ -39,7 +41,8 @@ Application::Application(int& argc, char** argv)
     TSA::Diagnostics::Logger::installQtMessageHandler();
     TSA::Diagnostics::CrashHandler::install();
 
-    TSA_LOG_INFO("App", "ApplicationStarted", "Démarrage de l'application TSA v0.1.0");
+    TSA_LOG_INFO("App", "ApplicationStarted",
+                 std::string("Démarrage de l'application ") + TSA::Product::kName + " v" + TSA::Product::kVersion);
 
 #ifdef _WIN32
     // Association explicite pour afficher l'icône sur la barre des tâches de Windows
@@ -57,13 +60,15 @@ Application::Application(int& argc, char** argv)
         installTranslator(qtTranslator);
     }
 
-    setApplicationName("TSA");
-    setOrganizationName("TSA Engineering");
-    setApplicationVersion("0.1.0");
+    setApplicationName(TSA::Product::name());
+    setOrganizationName(QString::fromLatin1(TSA::Product::kOrganizationName));
+    if (TSA::Product::kOrganizationDomain[0] != '\0')
+        setOrganizationDomain(QString::fromLatin1(TSA::Product::kOrganizationDomain));
+    setApplicationVersion(TSA::Product::version());
 
     QIcon appIcon;
-    appIcon.addFile(":/icons/TSA.ico");
-    appIcon.addFile(":/icons/TSA.svg");
+    appIcon.addFile(QString::fromLatin1(TSA::Product::kIconIco));
+    appIcon.addFile(QString::fromLatin1(TSA::Product::kIconSvg));
     setWindowIcon(appIcon);
 
     // Thème moderne AutoCAD 2024 Dark pour logiciel technique
@@ -76,6 +81,8 @@ Application::Application(int& argc, char** argv)
     {
         QString appDir = applicationDirPath();
         QDir resDir(appDir + "/../../opencascade-8.0.1-vc14-64/src");
+        if (!resDir.exists() && !TSA::Product::sourceDirectory().isEmpty()) // SDK de la base commune (TSALab)
+            resDir.setPath(TSA::Product::sourceDirectory() + "/opencascade-8.0.1-vc14-64/src");
         if (resDir.exists())
         {
             qputenv("CSF_OCCTResourcePath", resDir.absolutePath().toLocal8Bit());
@@ -86,7 +93,7 @@ Application::Application(int& argc, char** argv)
 
 Application::~Application()
 {
-    TSA_LOG_INFO("App", "ApplicationClosing", "Fermeture normale de l'application TSA");
+    TSA_LOG_INFO("App", "ApplicationClosing", std::string("Fermeture normale de l'application ") + TSA::Product::kName);
     TSA::Diagnostics::CrashHandler::uninstall();
     TSA::Diagnostics::Logger::instance().shutdown();
 }
@@ -94,7 +101,7 @@ Application::~Application()
 bool Application::init()
 {
 #ifdef _WIN32
-    // Enregistrement automatique de l'association .tsa pour l'utilisateur courant (Robot SA style)
+    // Enregistrement automatique de l'association de l'extension native pour l'utilisateur courant
     TSA::Platform::WindowsAssociation::registerFileAssociation();
 #endif
 
@@ -119,6 +126,7 @@ bool Application::init()
 
     // Lancement : Start Center seul ; le workspace de modélisation est créé à l'ouverture d'un projet.
     m_shell = std::make_unique<TSA::UI::AppShell>();
+    TSA::Product::configureShell(*m_shell); // extensions propres au produit (TSALab : laboratoire)
     m_shell->show();
 
     for (int i = 1; i < args.size(); ++i)
@@ -128,7 +136,7 @@ bool Application::init()
         {
             arg = arg.mid(1, arg.length() - 2);
         }
-        if (arg.endsWith(".tsa", Qt::CaseInsensitive))
+        if (TSA::Product::isOpenableProjectFile(arg))
         {
             m_shell->openProjectFile(arg);
             break;

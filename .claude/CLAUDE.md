@@ -34,6 +34,11 @@ PropertyPanel, ProjectStatusOverlay, ResultsValidityGuard). Détails : `architec
 
 ## Important Rules
 
+- **Base commune TSA / TSALab (ADR-023)** : `src/` et `tests/` sont aussi compilés par TSALab (`../TSALab`). Aucun
+  littéral d'identité (« TSA », « .tsa », QSettings, chemins absolus) dans `src/` : passer par `<ProductIdentity.h>` /
+  `App/ProductInfo.h`. Cibles et sources : `cmake/TSAProduct.cmake`. Après une modification de `src/`, compiler et
+  tester les DEUX produits (pas en parallèle). Ne jamais copier un fichier commun dans TSALab : point d'extension.
+
 - Travailler avec l'architecture existante ; pas d'architecture ni de système parallèle
   (un seul SelectionManager, un seul UndoManager, un seul viewport `OccView`).
 - Chercher la classe / fonction existante avant d'en créer une (Grep sur `src/`).

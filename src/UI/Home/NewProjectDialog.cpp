@@ -1,4 +1,5 @@
 #include "NewProjectDialog.h"
+#include "App/ProductInfo.h"
 
 #include <QComboBox>
 #include <QDir>
@@ -24,7 +25,7 @@ const char* kLastDirectoryKey = "StartCenter/lastProjectDirectory";
 
 QString NewProjectSettings::filePath() const
 {
-    return QDir(directory).filePath(name + QStringLiteral(".tsa"));
+    return QDir(directory).filePath(name + TSA::Product::projectExtension());
 }
 
 NewProjectDialog::NewProjectDialog(QWidget* parent)
@@ -92,7 +93,8 @@ NewProjectSettings NewProjectDialog::settings() const
 {
     NewProjectSettings s;
     s.name = m_name->text().trimmed();
-    if (s.name.endsWith(QStringLiteral(".tsa"), Qt::CaseInsensitive)) s.name.chop(4);
+    if (s.name.endsWith(TSA::Product::projectExtension(), Qt::CaseInsensitive))
+        s.name.chop(TSA::Product::projectExtension().size());
     s.directory = QDir::cleanPath(QDir::fromNativeSeparators(m_directory->text().trimmed()));
     s.projectTemplate = static_cast<ProjectTemplate>(m_template->currentData().toInt());
     return s;
@@ -116,7 +118,7 @@ void NewProjectDialog::validate()
     else if (s.directory.isEmpty() || QDir::isRelativePath(s.directory))
         error = tr("Choisissez un emplacement (chemin absolu).");
     else if (QFileInfo::exists(s.filePath()))
-        error = tr("Un projet « %1.tsa » existe déjà à cet emplacement.").arg(s.name);
+        error = tr("Un projet « %1%2 » existe déjà à cet emplacement.").arg(s.name, TSA::Product::projectExtension());
 
     m_target->setText(s.name.isEmpty() || s.directory.isEmpty()
                           ? QString()
@@ -143,14 +145,14 @@ QString NewProjectDialog::defaultDirectory()
 {
     const QString last = QSettings().value(kLastDirectoryKey).toString();
     if (!last.isEmpty() && QFileInfo(last).isDir()) return last;
-    return QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(QStringLiteral("TSA"));
+    return QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(QString::fromLatin1(TSA::Product::kDocumentsFolder));
 }
 
 QString NewProjectDialog::uniqueName(const QString& directory)
 {
     const QDir dir(directory);
     QString name = tr("Projet 1");
-    for (int i = 2; QFileInfo::exists(dir.filePath(name + QStringLiteral(".tsa"))); ++i)
+    for (int i = 2; QFileInfo::exists(dir.filePath(name + TSA::Product::projectExtension())); ++i)
         name = tr("Projet %1").arg(i);
     return name;
 }

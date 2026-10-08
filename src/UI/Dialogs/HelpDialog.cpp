@@ -1,4 +1,5 @@
 #include "HelpDialog.h"
+#include "App/ProductInfo.h"
 #include "../Theme/ThemeManager.h"
 
 #include <QHBoxLayout>
@@ -25,7 +26,7 @@ HelpDialog::HelpDialog(QWidget* parent)
 
 void HelpDialog::setupUi()
 {
-    setWindowTitle(tr("Aide & Documentation - TSA Structural Modeler"));
+    setWindowTitle(tr("Aide & Documentation - %1").arg(TSA::Product::kMainWindowTitle));
     resize(860, 620);
     setMinimumSize(700, 500);
 
@@ -37,7 +38,7 @@ void HelpDialog::setupUi()
     auto* topHeader = new QHBoxLayout();
     topHeader->setSpacing(10);
 
-    auto* titleLabel = new QLabel(tr("📖 <b>Centre d'Aide & Documentation TSA</b>"), this);
+    auto* titleLabel = new QLabel(tr("📖 <b>Centre d'Aide & Documentation %1</b>").arg(TSA::Product::name()), this);
     titleLabel->setStyleSheet("font-size: 14px;");
     topHeader->addWidget(titleLabel);
 
@@ -71,7 +72,7 @@ void HelpDialog::setupUi()
     addTopic(tr("🎥 Vues, Caméra & Coupes"));
     addTopic(tr("⌨️ Raccourcis & Console"));
     addTopic(tr("⚙️ Analyse & Résultats EF"));
-    addTopic(tr("ℹ️ À Propos de TSA"));
+    addTopic(tr("ℹ️ À Propos de %1").arg(TSA::Product::name()));
 
     connect(m_topicsList, &QListWidget::currentRowChanged, this, &HelpDialog::onTopicChanged);
 
@@ -413,9 +414,10 @@ QString HelpDialog::getHelpContent(int topicIndex) const
     case 6: // À Propos de TSA
     default:
         return style +
-            "<h2>ℹ️ À Propos de Tsaraloha Structural Analysis (TSA)</h2>"
+            QStringLiteral("<h2>ℹ️ À Propos de %1 (%2)</h2>").arg(TSA::Product::longName(), TSA::Product::name())
+            + QString::fromUtf8(TSA::Product::kAboutIntroHtml) +
             "<div class='card'>"
-            "<p><b>TSA - Plateforme de Conception & Calcul de Structures 3D</b></p>"
+            "<p><b>" + QString::fromUtf8(TSA::Product::kPlatformLabel) + "</b></p>"
             "<p>Développé pour les ingénieurs de génie civil, bureaux d'études et architectes recherchant la puissance de calcul allié à l'ergonomie CAO moderne.</p>"
             "<ul>"
             "<li><b>Version :</b> 1.0.0 (Release 2026)</li>"

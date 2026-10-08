@@ -221,3 +221,21 @@ sur chaque évolution du modèle ; l'utilisateur se concentre sur le statique.
 Consequences: réintroduire du dynamique = repartir de `archive/dynamique` sur une branche dédiée, en adaptant la
 convention RDM. Un ancien contexte JSON de type dynamique est relu comme statique linéaire.
 Status: ACTIVE (2026-10-07)
+
+## ADR-023
+Title: Base technique commune TSA / TSALab : TSALab compile les sources de TSA, sans copie
+Decision: les sources de `src/` et `tests/` de TSA sont la base commune des deux produits. Ce qui distingue un produit
+(nom, version, extension, signature de fichier, ProgID, CLSID, QSettings, icônes, textes d'identité) est lu dans
+`<ProductIdentity.h>` / `<ProductShellIds.h>` du dossier `product/` du produit compilé (TSA : `TSA/product`,
+TSALab : `TSALab/product`), via `src/App/ProductInfo.h`. La construction (listes de sources, Core, exe, tests, DLL,
+déploiement) est la fonction `tsa_add_product` de `cmake/TSAProduct.cmake`, appelée par les deux CMakeLists. Les
+ajouts propres à un produit passent par des points d'extension (`TSA::Product::configureShell`,
+`StartCenter::setLaunchPanel`, `AppShell::setWorkspaceDecorator`, `runProductSuites`) et des sources dans des
+dossiers qui ne masquent jamais un chemin de `src/` (vérifié par `tsa_add_product`, FATAL_ERROR sinon).
+Reason: TSALab était une copie intégrale de TSA (~470 fichiers identiques) : chaque correction devait être faite deux
+fois. Désormais un bug corrigé dans TSA l'est dans TSALab à la recompilation.
+Consequences: modifier `src/` impacte les deux produits : compiler et tester TSA (212 tests) ET TSALab (212 + suite
+`lab`). Ne jamais réintroduire de littéral d'identité dans `src/` (passer par ProductIdentity). Ne jamais copier un
+fichier commun dans TSALab : ajouter un point d'extension dans TSA. Les SDK (OCCT, 3rdparty, OpenSees, Extensions/)
+sont ceux du dépôt TSA. TSA conserve ses emplacements QSettings, son format (.tsa, TSAF) et ses textes (sauf trois messages rendus neutres : échec d'ouverture, projet chargé, signature non reconnue).
+Status: ACTIVE (2026-10-08)

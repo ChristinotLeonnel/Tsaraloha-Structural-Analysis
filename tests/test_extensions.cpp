@@ -1,4 +1,5 @@
 #include "test_common.h"
+#include "App/ProductInfo.h"
 
 bool runSuite_Extensions(int& passed)
 {
@@ -469,7 +470,7 @@ bool runSuite_Extensions(int& passed)
             (void)extMgr;
             auto& libMgr = TSA::ExtensionSystem::LibraryManager::instance();
 
-            libMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            libMgr.addSearchPath(TSA::Product::sourceDirectory() + "/Extensions");
             TEST_CHECK(!libMgr.searchPaths().isEmpty(), "Subtest 39.6: Search paths registered");
 
             // Test de résilience : discovery sur chemin existant/inexistant ne plante jamais
@@ -491,7 +492,7 @@ bool runSuite_Extensions(int& passed)
 
         // 41.1: Verification de l'ensemble des 16 fiches materiaux JSON externes
         {
-            QString matDir = "e:/Book/Dev/TSA/Extensions/TSALib/Materials";
+            QString matDir = TSA::Product::sourceDirectory() + "/Extensions/TSALib/Materials";
             TEST_CHECK(QDir(matDir).exists(), "Subtest 41.1: Repertoire Materials existe");
 
             QStringList expectedMaterials = {
@@ -538,7 +539,7 @@ bool runSuite_Extensions(int& passed)
         // 41.2: Chargement d'extension & Indexation dans LibraryRegistry
         {
             auto& libMgr = TSA::ExtensionSystem::LibraryManager::instance();
-            libMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            libMgr.addSearchPath(TSA::Product::sourceDirectory() + "/Extensions");
             libMgr.discover();
             bool loaded = libMgr.load("org.tsaraloha.tsalib");
             TEST_CHECK(loaded, "Subtest 41.2: Chargement de l'extension TSALib reussi");
@@ -642,7 +643,7 @@ bool runSuite_Extensions(int& passed)
 
         // 42.1: Verification de l'ensemble des 14 textures PNG externes et de textures.json
         {
-            QString texDir = "e:/Book/Dev/TSA/Extensions/TSALib/Textures";
+            QString texDir = TSA::Product::sourceDirectory() + "/Extensions/TSALib/Textures";
             TEST_CHECK(QDir(texDir).exists(), "Subtest 42.1: Repertoire Textures existe");
 
             QString manifestPath = texDir + "/textures.json";
@@ -679,8 +680,8 @@ bool runSuite_Extensions(int& passed)
         // 42.2: TextureManager - Decouverte, Catalogue & Resolution
         {
             auto& texMgr = TSA::Viewer::TextureManager::instance();
-            texMgr.initialize("e:/Book/Dev/TSA");
-            texMgr.addSearchPath("e:/Book/Dev/TSA/Extensions/TSALib/Textures");
+            texMgr.initialize(TSA::Product::sourceDirectory());
+            texMgr.addSearchPath(TSA::Product::sourceDirectory() + "/Extensions/TSALib/Textures");
 
             TEST_CHECK(texMgr.count() >= 14, "Subtest 42.2: Au moins 14 textures indexees par TextureManager");
 
@@ -774,8 +775,8 @@ bool runSuite_Extensions(int& passed)
 
         // 43.1: Catalogue des Sections & Profilés Eurocodes sur disque (22 définitions JSON)
         {
-            QString sectionsDir = "e:/Book/Dev/TSA/Extensions/TSALib/Sections";
-            QString profilesDir = "e:/Book/Dev/TSA/Extensions/TSALib/Profiles";
+            QString sectionsDir = TSA::Product::sourceDirectory() + "/Extensions/TSALib/Sections";
+            QString profilesDir = TSA::Product::sourceDirectory() + "/Extensions/TSALib/Profiles";
 
             TEST_CHECK(QDir(sectionsDir).exists(), "Subtest 43.1: Repertoire Sections existe");
             TEST_CHECK(QDir(profilesDir).exists(), "Subtest 43.1: Repertoire Profiles existe");
@@ -831,7 +832,7 @@ bool runSuite_Extensions(int& passed)
         // 43.2: Découverte & Indexation dans LibraryRegistry via LibraryManager / LibraryLoader
         {
             auto& extLibMgr = TSA::ExtensionSystem::LibraryManager::instance();
-            extLibMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            extLibMgr.addSearchPath(TSA::Product::sourceDirectory() + "/Extensions");
             extLibMgr.discover();
             extLibMgr.load("org.tsaraloha.tsalib");
 
@@ -995,7 +996,7 @@ bool runSuite_Extensions(int& passed)
         reg.clear();
 
         TSA::ExtensionSystem::LibraryManager testLibMgr;
-        testLibMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+        testLibMgr.addSearchPath(TSA::Product::sourceDirectory() + "/Extensions");
 
         auto t0 = std::chrono::high_resolution_clock::now();
         auto manifests = testLibMgr.discover();
@@ -1224,7 +1225,7 @@ bool runSuite_Extensions(int& passed)
     {
         std::cout << "\n--- TEST 48: TSALib Phase 11 - Packaging .tsalib, Distribution & Validation Globale Finale ---" << std::endl;
 
-        QString sourceDir = "e:/Book/Dev/TSA/Extensions/TSALib";
+        QString sourceDir = TSA::Product::sourceDirectory() + "/Extensions/TSALib";
         if (!QDir(sourceDir).exists())
         {
             sourceDir = QDir::currentPath() + "/Extensions/TSALib";

@@ -1,4 +1,5 @@
 #include "TSAPreviewGenerator.h"
+#include "App/ProductInfo.h"
 #include "../Model/Model.h"
 
 #include <QPainter>
@@ -94,7 +95,7 @@ QImage TSAPreviewGenerator::generateThumbnail(const TSA::Model::Model& model,
             f.setPointSize(14);
             f.setBold(true);
             painter.setFont(f);
-            painter.drawText(QRect(0, 0, width, height), Qt::AlignCenter, "TSA — Projet Structurel");
+            painter.drawText(QRect(0, 0, width, height), Qt::AlignCenter, TSA::Product::name() + QStringLiteral(" — Projet Structurel"));
         }
         return img;
     }
@@ -275,7 +276,7 @@ QImage TSAPreviewGenerator::generateThumbnail(const TSA::Model::Model& model,
         badgeFont.setPointSize(10);
         badgeFont.setBold(true);
         painter.setFont(badgeFont);
-        painter.drawText(QRect(badgeX, badgeY, badgeW, badgeH), Qt::AlignCenter, "TSA 3D");
+        painter.drawText(QRect(badgeX, badgeY, badgeW, badgeH), Qt::AlignCenter, QString::fromUtf8(TSA::Product::kPreviewBadge));
 
         // Angle supérieur gauche : statistiques du modèle
         painter.setPen(QColor(148, 163, 184));

@@ -12,6 +12,7 @@
 
 class QComboBox;
 class QGridLayout;
+class QHBoxLayout;
 class QLabel;
 class QLineEdit;
 class QPushButton;
@@ -78,6 +79,11 @@ public:
     /// Remplace l'aperçu d'une carte (nouvelle capture du dernier état du modèle).
     void updatePreview(const QString& path, const QImage& image);
 
+    /// Point d'extension produit : remplace le bloc d'identité et d'actions (logo, Nouveau, Ouvrir)
+    /// par un panneau fourni, placé à gauche des projets récents (ex. colonne « laboratoire » de
+    /// TSALab). Le panneau devient enfant du Start Center et gère lui-même son style.
+    void setLaunchPanel(QWidget* panel);
+
 signals:
     void newProjectRequested();
     void openDialogRequested();
@@ -96,6 +102,9 @@ private:
     void showCardMenu(const QString& path, const QPoint& globalPos);
 
 private:
+    QHBoxLayout* m_outer = nullptr;
+    QWidget* m_identity = nullptr; // logo, titre, Nouveau / Ouvrir (masqué par setLaunchPanel)
+    QWidget* m_launchPanel = nullptr;
     QLabel* m_logo = nullptr;
     QLineEdit* m_search = nullptr;
     QComboBox* m_sort = nullptr;

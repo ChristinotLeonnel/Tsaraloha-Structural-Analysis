@@ -1,4 +1,5 @@
 #include "LayoutManager.h"
+#include "App/ProductInfo.h"
 #include <QSettings>
 #include <QDockWidget>
 
@@ -123,7 +124,7 @@ void LayoutManager::saveToSettings(const QString& group)
         return;
     }
 
-    QSettings settings("Tsaraloha", "TSA");
+    QSettings settings(TSA::Product::kLayoutSettingsOrganization, TSA::Product::kLayoutSettingsApplication);
     settings.beginGroup(group);
     settings.setValue("version", LayoutVersion);
     // Embarquée dans AppShell, la fenêtre principale n'a pas de géométrie propre (AppShell la mémorise).
@@ -149,7 +150,7 @@ bool LayoutManager::restoreFromSettings(const QString& group)
         return false;
     }
 
-    QSettings settings("Tsaraloha", "TSA");
+    QSettings settings(TSA::Product::kLayoutSettingsOrganization, TSA::Product::kLayoutSettingsApplication);
     settings.beginGroup(group);
 
     const int version = settings.value("version", 0).toInt();

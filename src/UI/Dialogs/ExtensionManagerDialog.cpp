@@ -1,4 +1,5 @@
 #include "ExtensionManagerDialog.h"
+#include "App/ProductInfo.h"
 #include "../../ExtensionSystem/LibraryManager.h"
 #include "../../ExtensionSystem/LibraryRegistry.h"
 #include "../../ExtensionSystem/LibraryCache.h"
@@ -983,8 +984,8 @@ void ExtensionManagerDialog::onExportExtension()
 
 void ExtensionManagerDialog::onOpenExtensionsFolder()
 {
-    QString path = "e:/Book/Dev/TSA/Extensions";
-    if (!QDir(path).exists())
+    QString path = TSA::Product::sourceDirectory() + "/Extensions";
+    if (TSA::Product::sourceDirectory().isEmpty() || !QDir(path).exists())
     {
         path = QDir::currentPath() + "/Extensions";
     }

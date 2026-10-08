@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include "App/ProductInfo.h"
 #include <QStringList>
 #include <vector>
 #include <memory>
@@ -71,7 +72,7 @@ public:
     NDCDocument();
 
     ReportConfiguration config;
-    QString softwareVersion = "TSA v1.0.0 (Moteur EF : OpenSees v3.8.0)";
+    QString softwareVersion = QStringLiteral("%1 v%2 (Moteur EF : OpenSees v3.8.0)").arg(TSA::Product::name(), TSA::Product::kReportVersion);
     QString standardReference = "Eurocodes (EN 1990, EN 1991, EN 1992, EN 1993, EN 1998)";
 
     std::vector<NDCChapter> chapters;

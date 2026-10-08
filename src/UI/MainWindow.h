@@ -86,6 +86,9 @@ public:
     TSA::Model::Model* model() { return m_model.get(); }
     const TSA::Model::Model* model() const { return m_model.get(); }
 
+    /// Résultats du dernier calcul (nul si aucun) ; voir le signal resultsChanged().
+    std::shared_ptr<const TSA::Analysis::ResultsModel> resultsModel() const { return m_resultsModel; }
+
     TSA::UndoRedo::CommandManager* commandManager() { return m_commandManager.get(); }
     const TSA::UndoRedo::CommandManager* commandManager() const { return m_commandManager.get(); }
 
@@ -127,6 +130,8 @@ signals:
     void exitRequested();
     void fullScreenRequested(bool fullScreen);
     void previewCaptured(const QString& path, const QImage& image);
+    /// Nouveaux résultats publiés après un calcul, ou résultats effacés (projet fermé / rechargé).
+    void resultsChanged();
 
 private slots:
     void onFitAll();

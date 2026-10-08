@@ -1,4 +1,5 @@
 #include "LibraryDialog.h"
+#include "App/ProductInfo.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -16,7 +17,7 @@ LibraryDialog::LibraryDialog(TSA::Model::Model* model, QWidget* parent)
     : QDialog(parent)
     , m_model(model)
 {
-    setWindowTitle(tr("Bibliothèque Personnalisée TSA"));
+    setWindowTitle(tr("Bibliothèque Personnalisée %1").arg(TSA::Product::name()));
     resize(820, 560);
     setupUi();
 }

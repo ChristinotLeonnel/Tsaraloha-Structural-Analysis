@@ -1,24 +1,25 @@
 #include "test_common.h"
+#include <ProductIdentity.h>
 #include <cstring>
 
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 212;
+    int expectedTotal = 212 + productExpectedTests();
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: TSA_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|snap]" << std::endl;
+            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|snap]" << std::endl;
             return 0;
         }
     }
 
     std::cout << "=================================================" << std::endl;
-    std::cout << "TSA Unit Tests: Modular Verification Suite" << std::endl;
+    std::cout << TSA::Product::kName << " Unit Tests: Modular Verification Suite" << std::endl;
     if (suiteFilter != "all") {
         std::cout << "Filtering by suite: " << suiteFilter << std::endl;
     }
@@ -128,10 +129,11 @@ int main(int argc, char* argv[])
     }
 #ifdef _WIN32
     if (suiteFilter == "all" || suiteFilter == "thumbnail") {
-        std::cout << "\n--- [Suite 20/20] Miniatures Explorateur : format 1.2 et TSAThumbnailProvider.dll (Tests 127-129) ---" << std::endl;
+        std::cout << "\n--- [Suite 20/20] Miniatures Explorateur : format 1.2 et " << TSA::Product::kThumbnailProviderDll << " (Tests 127-129) ---" << std::endl;
         if (!runSuite_Thumbnail(passed)) allOk = false;
     }
 #endif
+    if (!runProductSuites(suiteFilter, passed)) allOk = false;
 
     std::cout << "\n=================================================" << std::endl;
     if (suiteFilter == "all") {

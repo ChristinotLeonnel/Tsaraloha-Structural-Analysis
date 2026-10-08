@@ -182,3 +182,8 @@ bool runSuite_MetDeDeplacement(int& passed);
 bool runSuite_ModelCleanup(int& passed);
 bool runSuite_Bim(int& passed);
 bool runSuite_Snap(int& passed);
+
+// Suites propres au produit compilé (product/ProductTests.cpp de chaque produit ; TSA : aucune).
+// productExpectedTests() : nombre de tests ajoutés au total attendu de la suite complète.
+int productExpectedTests();
+bool runProductSuites(const std::string& suiteFilter, int& passed);

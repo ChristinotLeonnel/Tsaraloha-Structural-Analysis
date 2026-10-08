@@ -1,21 +1,32 @@
 # Architecture (réelle) — TSA
 
-Last Updated: 2026-10-05 (analyse multi-moteurs, branche feature/multi-engine-analysis). Code > documentation.
+Last Updated: 2026-10-08 (base commune TSA / TSALab, branche feature/shared-core). Code > documentation.
 
-## 1. Cibles CMake
+## 1. Cibles CMake — base commune TSA / TSALab (ADR-023)
+
+Listes de sources et cibles dans `cmake/TSAProduct.cmake` (fonction `tsa_add_product`) ; `CMakeLists.txt` ne fait
+que trouver Qt / OCCT puis appeler `tsa_add_product(NAME TSA PRODUCT_DIR product RESOURCES resources/TSA.rc)`.
+TSALab (dépôt voisin `../TSA` → `TSA_ROOT_DIR`) appelle la même fonction avec son `product/` et ses sources `lab/`.
 
 ```text
-TSA_Core  (bibliothèque OBJECT, CORE_SOURCES, PCH Qt/OCCT/STL partagé)
- ├── TSA          (exe : UI, viewer, rendu, plateforme, ressources) — src/main.cpp → Application
- └── TSA_Tests    (exe TSA_TestSuite : tests/*.cpp, suites --suite=...)
+<P>_Core  (bibliothèque OBJECT, CORE_SOURCES + CORE_SOURCES du produit, PCH Qt/OCCT/STL partagé)
+ ├── <P>                  (exe : UI, viewer, rendu, plateforme, ressources) — src/main.cpp → Application
+ │                        + product/ProductHooks.cpp (configureShell : extensions du produit)
+ ├── <P>_Tests            (exe <P>_TestSuite : tests/*.cpp + product/ProductTests.cpp)
+ └── <P>ThumbnailProvider (DLL Explorateur, src/ShellExtension, sans Qt)
 ```
+Identité produit : `<ProductIdentity.h>` (C++ pur, chevrons, dossier product/ du produit compilé) et
+`src/App/ProductInfo.h` (helpers Qt : extension, filtres, QSettings, `sourceDirectory()` = `TSA_SOURCE_DIR`).
+Aucun littéral « TSA » / « .tsa » / chemin absolu dans src/ pour ces usages.
+Points d'extension : `StartCenter::setLaunchPanel`, `AppShell::setWorkspaceDecorator` / `workspaceCreated`,
+`MainWindow::resultsModel()` / `resultsChanged`, `runProductSuites` (tests).
 Fichiers [CORE] : Model (dont SelectionQuery), Coordinate, Grid (logique), Commands, UndoRedo, IO,
 Analysis, NDC, Standards, ExtensionSystem ; Geometry : `GEOMETRY_CORE_SOURCES` (BeamGeometry,
 DeformedGeometry, DiagramGeometry, SupportGeometry) + `CABLE_GEOMETRY_SOURCES` (CableGeometry3D) ;
 Viewer : `VIEWER_CORE_SOURCES` (MaterialVisual, TextureManager, ProjectionManager, ViewManager).
 Exe uniquement : UI ; `VIEWER_MAIN_SOURCES` (OccView*, **SelectionManager**, ResultsVisualManager) ;
 `GEOMETRY_MAIN_SOURCES` (SlabGeometry, WallGeometry, FoundationGeometry). Vérifier `CMakeLists.txt`
-avant de référencer une classe depuis les tests (TSA_Tests ne lie que TSA_Core). `ModelTreeWidget` est dans TSA_Core (testé, 2026-10-07).
+avant de référencer une classe depuis les tests (`cmake/TSAProduct.cmake` ; TSA_Tests ne lie que TSA_Core). `ModelTreeWidget` est dans TSA_Core (testé, 2026-10-07).
 Isolation 3D : `OccView::isolateElements / hideElements…` dans la passe `updateElementIsolation` (module View3D supprimé).
 
 ## 2. Cartographie des sous-systèmes

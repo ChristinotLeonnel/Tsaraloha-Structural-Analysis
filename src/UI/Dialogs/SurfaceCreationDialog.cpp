@@ -1,4 +1,5 @@
 #include "SurfaceCreationDialog.h"
+#include "App/ProductInfo.h"
 #include "../../Model/Model.h"
 #include "../../Viewer/OccView.h"
 #include <QVBoxLayout>
@@ -244,7 +245,7 @@ void SurfaceCreationDialog::setupUi()
     m_btnClose->setIcon(QIcon(":/icons/cancel.svg"));
 
     m_btnHelp = new QPushButton(tr("Aide"), this);
-    m_btnHelp->setIcon(QIcon(":/icons/TSA.svg"));
+    m_btnHelp->setIcon(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)));
 
     btnLayout->addWidget(m_btnAdd);
     btnLayout->addWidget(m_btnClose);

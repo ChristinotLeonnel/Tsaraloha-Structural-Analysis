@@ -1,4 +1,5 @@
 #include "WindowsAssociation.h"
+#include "App/ProductInfo.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -34,26 +35,32 @@ bool WindowsAssociation::registerFileAssociation(const QString& executablePath)
     // Enregistrement dans HKCU\Software\Classes (ne requiert pas de privilèges Administrateur)
     QSettings reg("HKEY_CURRENT_USER\\Software\\Classes", QSettings::NativeFormat);
 
-    // 1. Association de l'extension .tsa au ProgID TSA.Project
-    reg.setValue(".tsa/.", "TSA.Project");
-    reg.setValue(".tsa/Content Type", "application/x-tsa-project");
-    reg.setValue(".tsa/PerceivedType", "document");
-    reg.setValue(".tsa/OpenWithProgids/TSA.Project", "");
+    // Extension native et ProgID du produit compilé (<ProductIdentity.h>) : TSA → .tsa / TSA.Project,
+    // TSALab → .tsalab / TSALab.Project. Un produit ne touche jamais à l'extension de l'autre.
+    using namespace TSA::Product;
+    const QString ext = QString::fromLatin1(kProjectExtension);
+    const QString progId = QString::fromLatin1(kProgId);
 
-    // 2. Définition du ProgID TSA.Project
-    reg.setValue("TSA.Project/.", "TSA Project File");
-    reg.setValue("TSA.Project/FriendlyTypeName", "TSA Project File");
-    
-    // Icône personnalisée associée au fichier (icône principale de l'exécutable TSA.exe)
-    reg.setValue("TSA.Project/DefaultIcon/.", QString("\"%1\",0").arg(appPath));
+    // 1. Association de l'extension native au ProgID du produit
+    reg.setValue(ext + "/.", progId);
+    reg.setValue(ext + "/Content Type", kProjectContentType);
+    reg.setValue(ext + "/PerceivedType", "document");
+    reg.setValue(ext + "/OpenWithProgids/" + progId, "");
+
+    // 2. Définition du ProgID
+    reg.setValue(progId + "/.", kProjectFriendlyName);
+    reg.setValue(progId + "/FriendlyTypeName", kProjectFriendlyName);
+
+    // Icône personnalisée associée au fichier (icône principale de l'exécutable)
+    reg.setValue(progId + "/DefaultIcon/.", QString("\"%1\",0").arg(appPath));
 
     // Commande shell pour l'ouverture par double-clic
-    reg.setValue("TSA.Project/shell/open/.", "Ouvrir avec TSA");
-    reg.setValue("TSA.Project/shell/open/command/.", "\"" + appPath + "\" \"%1\"");
+    reg.setValue(progId + "/shell/open/.", QStringLiteral("Ouvrir avec %1").arg(TSA::Product::name()));
+    reg.setValue(progId + "/shell/open/command/.", "\"" + appPath + "\" \"%1\"");
 
     reg.sync();
 
-    // 3. Miniatures dans l'Explorateur (extension TSAThumbnailProvider.dll livrée à côté de TSA.exe).
+    // 3. Miniatures dans l'Explorateur (extension <Produit>ThumbnailProvider.dll livrée à côté de l'exécutable).
     //    Réenregistrée à chaque lancement : suit un déplacement de l'installation, persiste après
     //    redémarrage (registre), sans droits administrateur.
     registerThumbnailProvider();
@@ -72,8 +79,8 @@ bool WindowsAssociation::unregisterFileAssociation()
 #else
     unregisterThumbnailProvider();
     QSettings reg("HKEY_CURRENT_USER\\Software\\Classes", QSettings::NativeFormat);
-    reg.remove(".tsa");
-    reg.remove("TSA.Project");
+    reg.remove(QString::fromLatin1(TSA::Product::kProjectExtension));
+    reg.remove(QString::fromLatin1(TSA::Product::kProgId));
     reg.sync();
 
     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
@@ -87,7 +94,7 @@ namespace
 // Appelle une fonction d'enregistrement exportée par l'extension (une seule implémentation : la DLL).
 bool callThumbnailProviderExport(const char* exportName)
 {
-    const QString dll = QDir::toNativeSeparators(QCoreApplication::applicationDirPath() + "/TSAThumbnailProvider.dll");
+    const QString dll = QDir::toNativeSeparators(QCoreApplication::applicationDirPath() + "/" + TSA::Product::kThumbnailProviderDll);
     if (!QFileInfo::exists(dll)) return false;
     HMODULE module = LoadLibraryExW(reinterpret_cast<LPCWSTR>(dll.utf16()), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
     if (!module) return false;
@@ -135,8 +142,8 @@ bool WindowsAssociation::isFileAssociationRegistered()
     return false;
 #else
     QSettings reg("HKEY_CURRENT_USER\\Software\\Classes", QSettings::NativeFormat);
-    QString progId = reg.value(".tsa/.").toString();
-    return (progId == "TSA.Project");
+    const QString progId = reg.value(QString::fromLatin1(TSA::Product::kProjectExtension) + "/.").toString();
+    return (progId == QString::fromLatin1(TSA::Product::kProgId));
 #endif
 }
 

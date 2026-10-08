@@ -1,4 +1,5 @@
 #include "ProjectManager.h"
+#include "App/ProductInfo.h"
 #include "../Model/Model.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridDefinition.h"
@@ -29,7 +30,7 @@ QString ProjectManager::windowTitle() const
     {
         name += " *";
     }
-    return QString("TSA - %1").arg(name);
+    return QString("%1 - %2").arg(TSA::Product::name(), name);
 }
 
 void ProjectManager::setModified(bool modified)

@@ -1,4 +1,5 @@
 #include "test_common.h"
+#include "App/ProductInfo.h"
 #include "Analysis/Engine/AnalysisContext.h"
 #include <QJsonDocument>
 
@@ -418,7 +419,7 @@ bool runSuite_FileIO(int& passed)
 
         // 40.1: TSALib manifest.json Existence & Semantics
         {
-            QString manifestPath = "e:/Book/Dev/TSA/Extensions/TSALib/manifest.json";
+            QString manifestPath = TSA::Product::sourceDirectory() + "/Extensions/TSALib/manifest.json";
             TEST_CHECK(QFile::exists(manifestPath), "Subtest 40.1: Extensions/TSALib/manifest.json exists on disk");
 
             QFile f(manifestPath);
@@ -443,7 +444,7 @@ bool runSuite_FileIO(int& passed)
         // 40.2: LibraryValidator Full Directory Validation
         {
             TSA::ExtensionSystem::LibraryValidator validator;
-            auto valRes = validator.validateExtensionDirectory("e:/Book/Dev/TSA/Extensions/TSALib");
+            auto valRes = validator.validateExtensionDirectory(TSA::Product::sourceDirectory() + "/Extensions/TSALib");
             TEST_CHECK(valRes.valid, "Subtest 40.2: Extensions/TSALib directory validates without errors");
 
             std::cout << "  [PASS] Subtest 40.2: LibraryValidator Full Directory Validation Verified" << std::endl;
@@ -451,7 +452,7 @@ bool runSuite_FileIO(int& passed)
 
         // 40.3: Standards Directory & Reference Specifications
         {
-            QString standardsDir = "e:/Book/Dev/TSA/Extensions/TSALib/Standards";
+            QString standardsDir = TSA::Product::sourceDirectory() + "/Extensions/TSALib/Standards";
             TEST_CHECK(QDir(standardsDir).exists(), "Subtest 40.3: Standards directory exists");
 
             QString en1990 = standardsDir + "/EN1990.json";
@@ -476,7 +477,7 @@ bool runSuite_FileIO(int& passed)
         // 40.4: LibraryManager Auto-Discovery of TSALib on Disk
         {
             auto& libMgr = TSA::ExtensionSystem::LibraryManager::instance();
-            libMgr.addSearchPath("e:/Book/Dev/TSA/Extensions");
+            libMgr.addSearchPath(TSA::Product::sourceDirectory() + "/Extensions");
             auto discovered = libMgr.discover();
 
             bool foundTSALib = false;
@@ -592,7 +593,7 @@ bool runSuite_FileIO(int& passed)
         // Verification de la presence du header valide
         TSA::IO::TSAFileHeader header;
         TEST_CHECK(TSA::IO::TSAFileReader::readHeader(testFilePath, header), "Subtest 45.2: En-tete binaire lisible");
-        TEST_CHECK(header.magic == TSA::IO::TSA_FILE_MAGIC, "Subtest 45.2: Magic TSAF valide");
+        TEST_CHECK(header.magic == TSA::IO::NATIVE_FILE_MAGIC, "Subtest 45.2: Magic native du produit valide");
         TEST_CHECK(header.checksumCRC32 != 0, "Subtest 45.2: Checksum CRC32 present");
         std::cout << "  [PASS] Subtest 45.2: Serialisation Binaire avec CHUNK_SNAP Validee" << std::endl;
 
