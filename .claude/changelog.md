@@ -2,6 +2,13 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Panneau poutre : relâchements retirés)
+
+### Removed
+- Groupe « Relâchements aux Extrémités (Rotules) » retiré du panneau de propriétés des poutres (demande utilisateur).
+  Les relâchements déjà présents sur une barre (fichier .tsa, import IFC) ne sont ni modifiés ni effacés par le panneau et
+  restent transmis au calcul OpenSees (BUG-027) ; ils ne sont plus visibles ni modifiables dans ce panneau.
+
 ## 2026-10-09 (Barres : nœuds d'extrémité et appuis dans le panneau)
 
 ### Added

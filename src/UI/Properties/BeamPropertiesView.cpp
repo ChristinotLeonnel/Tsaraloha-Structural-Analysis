@@ -7,12 +7,10 @@
 
 #include <QVBoxLayout>
 #include <QFormLayout>
-#include <QGridLayout>
 #include <QGroupBox>
 #include <QLineEdit>
 #include <QDoubleSpinBox>
 #include <QComboBox>
-#include <QCheckBox>
 #include <QPushButton>
 #include <QLabel>
 #include <QColorDialog>
@@ -189,51 +187,7 @@ void BeamPropertiesView::setupUi()
 
     mainLayout->addWidget(grpSec);
 
-    // 3. Relâchements (Rotules)
-    auto* grpRel = new QGroupBox(tr("Relâchements aux Extrémités (Rotules)"), this);
-    auto* gridRel = new QGridLayout(grpRel);
-    gridRel->setContentsMargins(8, 8, 8, 8);
-    gridRel->setSpacing(6);
-
-    gridRel->addWidget(new QLabel(tr("Début :")), 0, 0);
-    m_chkStartUx = new QCheckBox("Ux", grpRel);
-    m_chkStartUy = new QCheckBox("Uy", grpRel);
-    m_chkStartUz = new QCheckBox("Uz", grpRel);
-    m_chkStartRx = new QCheckBox("Rx", grpRel);
-    m_chkStartRy = new QCheckBox("Ry", grpRel);
-    m_chkStartRz = new QCheckBox("Rz", grpRel);
-    gridRel->addWidget(m_chkStartUx, 0, 1);
-    gridRel->addWidget(m_chkStartUy, 0, 2);
-    gridRel->addWidget(m_chkStartUz, 0, 3);
-    gridRel->addWidget(m_chkStartRx, 0, 4);
-    gridRel->addWidget(m_chkStartRy, 0, 5);
-    gridRel->addWidget(m_chkStartRz, 0, 6);
-
-    gridRel->addWidget(new QLabel(tr("Fin :")), 1, 0);
-    m_chkEndUx = new QCheckBox("Ux", grpRel);
-    m_chkEndUy = new QCheckBox("Uy", grpRel);
-    m_chkEndUz = new QCheckBox("Uz", grpRel);
-    m_chkEndRx = new QCheckBox("Rx", grpRel);
-    m_chkEndRy = new QCheckBox("Ry", grpRel);
-    m_chkEndRz = new QCheckBox("Rz", grpRel);
-    gridRel->addWidget(m_chkEndUx, 1, 1);
-    gridRel->addWidget(m_chkEndUy, 1, 2);
-    gridRel->addWidget(m_chkEndUz, 1, 3);
-    gridRel->addWidget(m_chkEndRx, 1, 4);
-    gridRel->addWidget(m_chkEndRy, 1, 5);
-    gridRel->addWidget(m_chkEndRz, 1, 6);
-
-    auto connectRel = [this](QCheckBox* c) {
-        connect(c, &QCheckBox::toggled, this, &BeamPropertiesView::onWidgetChanged);
-    };
-    connectRel(m_chkStartUx); connectRel(m_chkStartUy); connectRel(m_chkStartUz);
-    connectRel(m_chkStartRx); connectRel(m_chkStartRy); connectRel(m_chkStartRz);
-    connectRel(m_chkEndUx); connectRel(m_chkEndUy); connectRel(m_chkEndUz);
-    connectRel(m_chkEndRx); connectRel(m_chkEndRy); connectRel(m_chkEndRz);
-
-    mainLayout->addWidget(grpRel);
-
-    // 4. Couleur
+    // 3. Couleur
     auto* grpCol = new QGroupBox(tr("Affichage"), this);
     auto* formCol = new QFormLayout(grpCol);
     m_btnColor = new QPushButton(grpCol);
@@ -391,14 +345,6 @@ void BeamPropertiesView::refreshView()
     int mIdx = m_comboMaterial->findData(beam->material().id);
     if (mIdx >= 0) m_comboMaterial->setCurrentIndex(mIdx);
 
-    const auto& sr = beam->startRelease();
-    m_chkStartUx->setChecked(sr.fx); m_chkStartUy->setChecked(sr.fy); m_chkStartUz->setChecked(sr.fz);
-    m_chkStartRx->setChecked(sr.mx); m_chkStartRy->setChecked(sr.my); m_chkStartRz->setChecked(sr.mz);
-
-    const auto& er = beam->endRelease();
-    m_chkEndUx->setChecked(er.fx); m_chkEndUy->setChecked(er.fy); m_chkEndUz->setChecked(er.fz);
-    m_chkEndRx->setChecked(er.mx); m_chkEndRy->setChecked(er.my); m_chkEndRz->setChecked(er.mz);
-
     if (m_previewWidget)
     {
         m_previewWidget->setSection(sec);
@@ -455,15 +401,7 @@ void BeamPropertiesView::applyChanges()
     }
     beam->setRotation(m_spinRotation->value());
 
-    TSA::Model::EndRelease sr;
-    sr.fx = m_chkStartUx->isChecked(); sr.fy = m_chkStartUy->isChecked(); sr.fz = m_chkStartUz->isChecked();
-    sr.mx = m_chkStartRx->isChecked(); sr.my = m_chkStartRy->isChecked(); sr.mz = m_chkStartRz->isChecked();
-    beam->setStartRelease(sr);
-
-    TSA::Model::EndRelease er;
-    er.fx = m_chkEndUx->isChecked(); er.fy = m_chkEndUy->isChecked(); er.fz = m_chkEndUz->isChecked();
-    er.mx = m_chkEndRx->isChecked(); er.my = m_chkEndRy->isChecked(); er.mz = m_chkEndRz->isChecked();
-    beam->setEndRelease(er);
+    // Relâchements d'extrémité : retirés du panneau, ceux de la barre (fichier, import IFC) sont conservés.
 
     beam->setColor(m_colorHex.toStdString());
 
