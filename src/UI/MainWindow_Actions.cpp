@@ -114,12 +114,14 @@ void MainWindow::createActions()
     m_actionMove->setIcon(QIcon(":/icons/move.svg"));
     m_actionMove->setToolTip(tr("Translation numérique par incréments dX, dY, dZ (Ctrl+Shift+M)..."));
     m_actionMove->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_M));
+    m_actionMove->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionMove, &QAction::triggered, this, &MainWindow::onActionMove);
 
     m_actionCopy = new QAction(tr("&Copie Numérique (Répétition)..."), this);
     m_actionCopy->setIcon(QIcon(":/icons/copy.svg"));
     m_actionCopy->setToolTip(tr("Copie numérique paramétrique avec répétitions multiples (Ctrl+D)..."));
     m_actionCopy->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_D));
+    m_actionCopy->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionCopy, &QAction::triggered, this, &MainWindow::onActionCopy);
 
     m_actionDelete = new QAction(tr("&Supprimer"), this);
@@ -448,6 +450,11 @@ void MainWindow::createActions()
 
     // Modes d'interaction / Dessin 3D
     m_drawModeGroup = new QActionGroup(this);
+    // Facultatif : aucun bouton de mode n'est coloré pendant une commande qui n'en a pas (outil de
+    // modification, déplacement de l'origine). Après un clic, l'état est ramené au mode réel (un
+    // clic sur le bouton déjà actif ne doit pas le décolorer).
+    m_drawModeGroup->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
+    connect(m_drawModeGroup, &QActionGroup::triggered, this, [this] { syncToolActionStates(); });
 
     m_actionSelectMode = new QAction(tr("&Sélection"), this);
     m_actionSelectMode->setIcon(QIcon(":/icons/select.svg"));
@@ -589,11 +596,13 @@ void MainWindow::createActions()
     m_actionMirror = new QAction(tr("&Symétrie (Miroir)..."), this);
     m_actionMirror->setIcon(QIcon(":/icons/edit/mirror.svg"));
     m_actionMirror->setToolTip(tr("Symétrie par rapport à un axe cliqué dans la vue 3D (Ctrl au 2e clic : retourner sans copier)"));
+    m_actionMirror->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionMirror, &QAction::triggered, this, &MainWindow::onActionMirror);
 
     m_actionSplitBars = new QAction(tr("&Diviser les barres..."), this);
     m_actionSplitBars->setIcon(QIcon(":/icons/structure/struct_split.svg"));
     m_actionSplitBars->setToolTip(tr("Diviser les poutres et poteaux sélectionnés en N tronçons égaux"));
+    m_actionSplitBars->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionSplitBars, &QAction::triggered, this, &MainWindow::onActionSplitBars);
 
     m_actionCleanModel = new QAction(QIcon(":/icons/structure/struct_merge.svg"), tr("&Nettoyer le modèle..."), this);
@@ -612,6 +621,7 @@ void MainWindow::createActions()
     m_actionMergeNodes = new QAction(tr("&Fusionner les nœuds confondus..."), this);
     m_actionMergeNodes->setIcon(QIcon(":/icons/structure/struct_merge.svg"));
     m_actionMergeNodes->setToolTip(tr("Fusionner les nœuds géométriquement confondus (éléments, appuis et charges reportés)"));
+    m_actionMergeNodes->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionMergeNodes, &QAction::triggered, this, &MainWindow::onActionMergeNodes);
 
     m_actionMoveOrigin = new QAction(tr("Déplacer l'&Origine 3D..."), this);
@@ -2026,56 +2036,8 @@ void MainWindow::createStatusBar()
         if (m_actionObjectSnap) m_actionObjectSnap->setChecked(enabled);
     });
 
-    connect(m_occView, &OccView::interactionModeChanged, this, [this](OccView::InteractionMode mode) {
-        switch (mode)
-        {
-        case OccView::InteractionMode::Select:
-            if (m_actionSelectMode) m_actionSelectMode->setChecked(true);
-            break;
-        case OccView::InteractionMode::DrawNode:
-            if (m_actionDrawNode) m_actionDrawNode->setChecked(true);
-            break;
-        case OccView::InteractionMode::DrawBar:
-            if (m_actionDrawBar) m_actionDrawBar->setChecked(true);
-            break;
-        case OccView::InteractionMode::DrawBeam:
-            if (m_actionDrawBeam) m_actionDrawBeam->setChecked(true);
-            break;
-        case OccView::InteractionMode::DrawColumn:
-            if (m_actionDrawColumn) m_actionDrawColumn->setChecked(true);
-            break;
-        case OccView::InteractionMode::DrawSlab:
-            if (m_actionDrawSlab) m_actionDrawSlab->setChecked(true);
-            break;
-        case OccView::InteractionMode::DrawWall:
-            if (m_actionDrawWall) m_actionDrawWall->setChecked(true);
-            break;
-        case OccView::InteractionMode::MoveOrigin3D:
-            if (m_actionMoveOrigin) m_actionMoveOrigin->setChecked(true);
-            break;
-        case OccView::InteractionMode::DrawCable:
-        case OccView::InteractionMode::DrawStayCable:
-        case OccView::InteractionMode::DrawSuspensionCable:
-        case OccView::InteractionMode::DrawHanger:
-            if (m_actionDrawCable) m_actionDrawCable->setChecked(true);
-            break;
-        case OccView::InteractionMode::ModelingTool:
-            if (auto* tool = m_occView->activeModelingTool())
-            {
-                QAction* legacy = tool->id() == "move" ? m_actionMove3D : tool->id() == "copy" ? m_actionCopy3D
-                                : tool->id() == "rotate" ? m_actionRotate3D : nullptr;
-                if (legacy) legacy->setChecked(true);
-            }
-            break;
-        case OccView::InteractionMode::DrawFoundation:
-        case OccView::InteractionMode::DrawTruss:
-        case OccView::InteractionMode::Paste3D:
-            // Pas de QAction checkable dédiée pour ces modes
-            break;
-        default:
-            break;
-        }
-    });
+    // Un seul endroit décide de la couleur des boutons de commande : le mode réel de la vue.
+    connect(m_occView, &OccView::interactionModeChanged, this, [this](OccView::InteractionMode) { syncToolActionStates(); });
 
     connect(m_occView, &OccView::modelingToolReady, this, &MainWindow::applyActiveModelingTool);
     connect(m_occView, &OccView::originMoveRequested, this, &MainWindow::onOriginMoveRequested);

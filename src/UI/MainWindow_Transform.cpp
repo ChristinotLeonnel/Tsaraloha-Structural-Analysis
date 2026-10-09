@@ -48,17 +48,17 @@ std::set<int> selectionNodeClosure(const TSA::Model::Model& model, const TSA::Vi
 
 void MainWindow::onActionMove3D()
 {
-    startModelingTool("move");
+    startModelingTool("move", false, m_actionMove3D);
 }
 
 void MainWindow::onActionCopy3D()
 {
-    startModelingTool("copy");
+    startModelingTool("copy", false, m_actionCopy3D);
 }
 
 void MainWindow::onActionRotate3D()
 {
-    startModelingTool("rotate");
+    startModelingTool("rotate", false, m_actionRotate3D);
 }
 
 void MainWindow::onActionMoveOrigin()
@@ -178,17 +178,17 @@ void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
 
 void MainWindow::onActionMirror()
 {
-    startModelingTool("mirror");
+    startModelingTool("mirror", false, m_actionMirror);
 }
 
 void MainWindow::onActionSplitBars()
 {
-    startModelingTool("split");
+    startModelingTool("split", false, m_actionSplitBars);
 }
 
 void MainWindow::onActionMergeNodes()
 {
-    startModelingTool("merge_nodes");
+    startModelingTool("merge_nodes", false, m_actionMergeNodes);
 }
 
 // =========================================================================

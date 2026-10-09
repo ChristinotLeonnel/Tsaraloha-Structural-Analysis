@@ -2,6 +2,12 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Boutons de commande : couleur = commande active)
+
+### Fixed
+- BUG-056 : les boutons de l'onglet Modifier (et les boutons de mode) ne sont colorés que pendant leur commande ; annulée
+  (Échap), terminée ou refusée, la couleur disparaît. Libellés des grands boutons conservés.
+
 ## 2026-10-09 (Fenêtres de tracé : reprise automatique de la commande)
 
 ### Changed

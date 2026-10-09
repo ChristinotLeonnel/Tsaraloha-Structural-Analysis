@@ -29,6 +29,7 @@ public:
 
 protected:
     bool event(QEvent* e) override;
+    void actionEvent(QActionEvent* e) override;
 
 private:
     void initStyle();
