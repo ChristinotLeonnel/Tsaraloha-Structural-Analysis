@@ -92,14 +92,12 @@ void MemberLoadDialog::setupUI()
     m_spinQ1 = new QDoubleSpinBox(this);
     m_spinQ1->setRange(-10000.0, 10000.0);
     m_spinQ1->setDecimals(2);
-    m_spinQ1->setValue(-15.0); // Préréglage standard
     m_spinQ1->setSuffix(" kN/m");
 
     m_lblQ2 = new QLabel(tr("Intensité q2 (fin) :"), this);
     m_spinQ2 = new QDoubleSpinBox(this);
     m_spinQ2->setRange(-10000.0, 10000.0);
     m_spinQ2->setDecimals(2);
-    m_spinQ2->setValue(-15.0);
     m_spinQ2->setSuffix(" kN/m");
     m_lblQ2->setVisible(false);
     m_spinQ2->setVisible(false);
@@ -130,19 +128,7 @@ void MemberLoadDialog::setupUI()
     valGrid->addWidget(m_lblX2, 1, 2);
     valGrid->addWidget(m_spinX2, 1, 3);
 
-    // Boutons de préréglage
-    auto* presetLayout = new QHBoxLayout();
-    auto* btnPre10 = new QPushButton("-10 kN/m", this);
-    auto* btnPre25 = new QPushButton("-25 kN/m", this);
-    auto* btnPre50 = new QPushButton("-50 kN/m", this);
-    presetLayout->addWidget(btnPre10);
-    presetLayout->addWidget(btnPre25);
-    presetLayout->addWidget(btnPre50);
-    valGrid->addLayout(presetLayout, 2, 0, 1, 4);
-
-    connect(btnPre10, &QPushButton::clicked, this, [this]() { m_spinQ1->setValue(-10.0); });
-    connect(btnPre25, &QPushButton::clicked, this, [this]() { m_spinQ1->setValue(-25.0); });
-    connect(btnPre50, &QPushButton::clicked, this, [this]() { m_spinQ1->setValue(-50.0); });
+    // Aucune valeur ni préréglage chiffré : l'intensité part de zéro.
 
     mainLayout->addWidget(groupVal);
 

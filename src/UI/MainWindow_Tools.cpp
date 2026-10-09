@@ -559,17 +559,6 @@ void MainWindow::onActionDistLoad()
     dlg.exec();
 }
 
-void MainWindow::onActionMoment()
-{
-    if (!m_model) return;
-    TSA::UI::NodalLoadDialog dlg(m_model, m_selectionManager.get(), m_occView, this);
-    if (m_selectionManager && !m_selectionManager->selectedNodes().empty())
-    {
-        dlg.setTargetNodeId(*m_selectionManager->selectedNodes().begin());
-    }
-    dlg.exec();
-}
-
 void MainWindow::onActionLoadCases()
 {
     if (!m_model) return;

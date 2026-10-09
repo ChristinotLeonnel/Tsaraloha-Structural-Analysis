@@ -22,7 +22,7 @@ NodalLoadDialog::NodalLoadDialog(TSA::Model::Model* model,
     , m_selectionManager(selectionManager)
     , m_occView(occView)
 {
-    setWindowTitle(tr("Application d'une Charge Nodale"));
+    setWindowTitle(tr("Charge nodale : force et couple"));
     resize(460, 480);
     setupUI();
     populateNodes();
@@ -90,7 +90,6 @@ void NodalLoadDialog::setupUI()
     m_spinFz->setRange(-100000.0, 100000.0);
     m_spinFz->setDecimals(2);
     m_spinFz->setSuffix(" kN");
-    m_spinFz->setValue(-50.0); // Préréglage usuel gravité
 
     forcesLayout->addWidget(new QLabel(tr("Fx :"), this), 0, 0);
     forcesLayout->addWidget(m_spinFx, 0, 1);
@@ -99,24 +98,12 @@ void NodalLoadDialog::setupUI()
     forcesLayout->addWidget(new QLabel(tr("Fz (↓) :"), this), 1, 0);
     forcesLayout->addWidget(m_spinFz, 1, 1);
 
-    // Boutons de préréglage rapide
-    auto* presetLayout = new QHBoxLayout();
-    auto* btnPreset10 = new QPushButton("-10 kN", this);
-    auto* btnPreset50 = new QPushButton("-50 kN", this);
-    auto* btnPreset100 = new QPushButton("-100 kN", this);
-    presetLayout->addWidget(btnPreset10);
-    presetLayout->addWidget(btnPreset50);
-    presetLayout->addWidget(btnPreset100);
-    forcesLayout->addLayout(presetLayout, 1, 2, 1, 2);
-
-    connect(btnPreset10, &QPushButton::clicked, this, [this]() { m_spinFz->setValue(-10.0); });
-    connect(btnPreset50, &QPushButton::clicked, this, [this]() { m_spinFz->setValue(-50.0); });
-    connect(btnPreset100, &QPushButton::clicked, this, [this]() { m_spinFz->setValue(-100.0); });
+    // Aucune valeur ni préréglage chiffré : toutes les composantes partent de zéro.
 
     mainLayout->addWidget(groupForces);
 
     // 4. Groupe Moments (Mx, My, Mz en kNm)
-    auto* groupMoments = new QGroupBox(tr("Moments nodaux (kNm)"), this);
+    auto* groupMoments = new QGroupBox(tr("Couple nodal (kNm)"), this);
     auto* momentsLayout = new QGridLayout(groupMoments);
 
     m_spinMx = new QDoubleSpinBox(this);

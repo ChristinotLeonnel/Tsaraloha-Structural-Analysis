@@ -52,6 +52,7 @@
         <file alias="modeling/load_point.svg">icons/modeling/load_point.svg</file>
         <file alias="modeling/load_dist.svg">icons/modeling/load_dist.svg</file>
         <file alias="modeling/load_moment.svg">icons/modeling/load_moment.svg</file>
+        <file alias="modeling/load_force_couple.svg">icons/modeling/load_force_couple.svg</file>
         <file alias="modeling/load_seismic.svg">icons/modeling/load_seismic.svg</file>
         <file alias="modeling/grid_cartesian.svg">icons/modeling/grid_cartesian.svg</file>
         <file alias="modeling/grid_cylindrical.svg">icons/modeling/grid_cylindrical.svg</file>
@@ -215,6 +216,7 @@
         <file alias="load_point.svg">icons/modeling/load_point.svg</file>
         <file alias="load_dist.svg">icons/modeling/load_dist.svg</file>
         <file alias="load_moment.svg">icons/modeling/load_moment.svg</file>
+        <file alias="load_force_couple.svg">icons/modeling/load_force_couple.svg</file>
         <file alias="load_seismic.svg">icons/modeling/load_seismic.svg</file>
         <file alias="support_fixed.svg">icons/modeling/support_fixed.svg</file>
         <file alias="support_pinned.svg">icons/modeling/support_pinned.svg</file>

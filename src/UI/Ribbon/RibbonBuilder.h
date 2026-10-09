@@ -63,7 +63,6 @@ struct RibbonActions
     // 4. Charges & Actions
     QAction* actionPointLoad = nullptr;
     QAction* actionDistLoad = nullptr;
-    QAction* actionMoment = nullptr;
     QAction* actionLoadCases = nullptr;
     QAction* actionLoadsVisible = nullptr;
     QAction* actionForcesVisible = nullptr;

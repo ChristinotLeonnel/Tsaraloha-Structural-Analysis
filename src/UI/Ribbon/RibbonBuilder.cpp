@@ -331,10 +331,8 @@ RibbonTab* RibbonBuilder::buildLoadsTab(RibbonBar* bar, const RibbonActions& act
 
     // Groupe 1 : Actions Ponctuelles
     auto* ptPanel = new RibbonPanel(QObject::tr("Actions Ponctuelles"), tab);
-    auto* actPointLoad = acts.actionPointLoad ? acts.actionPointLoad : new QAction(QIcon(":/icons/load_point.svg"), QObject::tr("Force Ponctuelle"), parentWindow);
-    auto* actMoment = acts.actionMoment ? acts.actionMoment : new QAction(QIcon(":/icons/load_moment.svg"), QObject::tr("Moment"), parentWindow);
+    auto* actPointLoad = acts.actionPointLoad ? acts.actionPointLoad : new QAction(QIcon(":/icons/load_force_couple.svg"), QObject::tr("Force et Couple"), parentWindow);
     ptPanel->addLargeAction(actPointLoad);
-    ptPanel->addLargeAction(actMoment);
     tab->addPanel(ptPanel);
 
     // Groupe 2 : Actions Réparties
