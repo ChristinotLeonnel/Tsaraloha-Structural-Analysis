@@ -9,6 +9,7 @@
 #include "WindowManager/WindowManager.h"
 #include "../AI/Core/AIOrchestrator.h"
 #include "../Analysis/AnalysisController.h"
+#include "../Automation/AutomationServer.h"
 #include "../Automation/CommandRegistry.h"
 #include "../Blueprint/BlueprintScript.h"
 #include "../Viewer/OccView.h"
@@ -28,8 +29,9 @@ void MainWindow::createAIComponents()
 {
     m_aiOrchestrator = new TSA::AI::AIOrchestrator(this);
 
-    // Source unique des données : le modèle TSA, ses résultats, la sélection courante.
-    m_aiOrchestrator->setSourcesProvider([this] {
+    // Source unique des données : le modèle TSA, ses résultats, la sélection courante (partagée avec le
+    // serveur d'automatisation MCP).
+    const auto sourcesProvider = [this] {
         TSA::AI::EngineeringSources src;
         src.model = m_model;
         src.results = m_resultsModel.get();
@@ -57,7 +59,32 @@ void MainWindow::createAIComponents()
             add("foundation", sel.foundations);
         }
         return src;
+    };
+    m_aiOrchestrator->setSourcesProvider(sourcesProvider);
+
+    // Serveur d'automatisation (pont MCP : Claude Code co-ingénieur, docs/MCP.md) : projet ouvert, en direct.
+    m_automation = new TSA::Automation::AutomationServer(m_session.get(), this);
+    m_automation->setSourcesProvider(sourcesProvider);
+    m_automation->setProjectInfoProvider([this] {
+        QJsonObject o;
+        if (m_projectManager)
+        {
+            o["project"] = m_projectManager->projectName();
+            if (m_projectManager->hasFilePath()) o["path"] = m_projectManager->currentFilePath();
+        }
+        return o;
     });
+    connect(m_automation, &TSA::Automation::AutomationServer::projectModified, this, [this] {
+        updateUndoRedoActions();
+        updateWindowTitle();
+        if (m_occView) m_occView->update();
+    });
+    connect(m_automation, &TSA::Automation::AutomationServer::logMessage, this, [this](const QString& text, const QString& type) {
+        if (m_consoleDock) m_consoleDock->appendLog(text, type);
+    });
+    QString automationError;
+    if (!m_automation->start(TSA::Automation::AutomationServer::defaultName(), &automationError) && m_consoleDock)
+        m_consoleDock->appendLog(tr("Serveur d'automatisation (MCP) indisponible : %1").arg(automationError), "WARN");
 
     m_aiDock = new TSA::UI::AICoEngineeringDock(m_aiOrchestrator, this);
     m_aiDock->toggleViewAction()->setIcon(QIcon(":/icons/analysis_run.svg"));

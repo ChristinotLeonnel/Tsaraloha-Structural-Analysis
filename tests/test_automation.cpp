@@ -1,11 +1,20 @@
-// Suite « automation » : registre central des commandes exécutables (ADR-024, phase 5) — test 192.
+// Suite « automation » : registre central des commandes exécutables (ADR-024, phase 5) — test 192 ;
+// serveur d'automatisation et pont MCP (Claude Code co-ingénieur) — test 200.
 // Une même commande sert l'interface, le Blueprint, l'IA et la console : création par ligne de
 // commande, typage des arguments, une entrée Annuler par commande, échec sans effet sur le modèle.
 #include "test_common.h"
 
+#include "Automation/AutomationServer.h"
 #include "Automation/CommandRegistry.h"
 #include "Model/Load/LoadManager.h"
 #include "Project/ProjectSession.h"
+
+#include <QCoreApplication>
+#include <QElapsedTimer>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QProcess>
+#include <QThread>
 
 bool runSuite_Automation(int& passed)
 {
@@ -69,6 +78,84 @@ bool runSuite_Automation(int& passed)
                    "Test 192: Annuler cas, appui puis poutre");
         TEST_CHECK(session.redo() && session.model().beams().size() == 1, "Test 192: Rétablir la poutre");
         std::cout << "[PASS] Test 192: registre de commandes (ligne de commande, typage, Annuler)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 200 : serveur d'automatisation (projet ouvert) et pont MCP tsaraloha-mcp (Claude Code)
+    {
+        TSA::Project::ProjectSession session;
+        AutomationServer server(&session);
+        auto call = [&](const QString& method, const QJsonObject& params = {}) {
+            return server.handle(QJsonObject { { "method", method }, { "params", params } });
+        };
+
+        // Appels directs (thread de l'interface)
+        const auto list = call("list_commands").value("result").toObject().value("commands").toArray();
+        TEST_CHECK(list.size() >= 10, "Test 200: list_commands");
+        const auto n1 = call("execute", { { "command", "model.create_node" }, { "arguments", QJsonObject { { "position", QJsonArray { 0, 0, 0 } } } } });
+        const auto n2 = call("execute", { { "command", "model.create_node" }, { "arguments", QJsonObject { { "position", "6,0,0" } } } });
+        TEST_CHECK(n1.value("result").toObject().value("ok").toBool() && n2.value("result").toObject().value("ok").toBool()
+                       && session.model().nodes().size() == 2,
+                   "Test 200: execute (point JSON ou texte)");
+        const int id1 = n1.value("result").toObject().value("outputs").toObject().value("id").toInt();
+        const int id2 = n2.value("result").toObject().value("outputs").toObject().value("id").toInt();
+        const auto beam = call("execute_line", { { "line", QStringLiteral("model.create_beam start=%1 end=%2 section=\"IPE 300\"").arg(id1).arg(id2) } });
+        TEST_CHECK(beam.value("result").toObject().value("ok").toBool() && session.model().beams().size() == 1, "Test 200: execute_line");
+        TEST_CHECK(call("execute", { { "command", "model.inconnue" } }).contains("error"), "Test 200: commande inconnue refusée");
+        TEST_CHECK(call("execute", { { "command", "model.create_node" }, { "arguments", QJsonObject { { "position", true } } } }).contains("error"),
+                   "Test 200: argument mal typé refusé");
+        const auto script = call("run_script", { { "script", "a = model.create_node position=0,0,3\nquery.model_summary" } });
+        TEST_CHECK(script.value("result").toObject().value("ok").toBool() && session.model().nodes().size() == 3, "Test 200: run_script");
+        const auto info = call("read_tool", { { "tool", "get_project_info" } });
+        TEST_CHECK(info.contains("result"), "Test 200: outil de lecture de l'IA");
+        TEST_CHECK(call("read_tool", { { "tool", "propose_section_change" } }).contains("error"), "Test 200: proposition refusée (lecture seule)");
+        TEST_CHECK(call("model_summary").value("result").isObject(), "Test 200: contexte d'ingénierie");
+        TEST_CHECK(call("undo").value("result").toObject().value("ok").toBool() && session.model().nodes().size() == 2,
+                   "Test 200: undo (le script est annulable)");
+
+        // Pont MCP réel : JSON-RPC sur stdin / stdout, relayé par le canal local.
+        const QString channel = QStringLiteral("testsuite%1").arg(QCoreApplication::applicationPid());
+        QString error;
+        TEST_CHECK(server.start(QStringLiteral("tsaraloha-") + channel, &error), "Test 200: canal local (" << error.toStdString() << ")");
+        QProcess bridge;
+        bridge.start(QStringLiteral(TSARALOHA_MCP_EXE), { QStringLiteral("--app"), channel });
+        TEST_CHECK(bridge.waitForStarted(5000), "Test 200: tsaraloha-mcp démarré");
+        int rpcId = 0;
+        auto rpc = [&](const QString& method, const QJsonObject& params) {
+            const QJsonObject msg { { "jsonrpc", "2.0" }, { "id", ++rpcId }, { "method", method }, { "params", params } };
+            bridge.write(QJsonDocument(msg).toJson(QJsonDocument::Compact) + '\n');
+            QElapsedTimer t;
+            t.start();
+            // Le serveur vit dans ce processus : la boucle d'événements doit tourner pendant l'attente.
+            while (!bridge.canReadLine() && t.elapsed() < 20000)
+            {
+                QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+                bridge.waitForReadyRead(10);
+            }
+            return QJsonDocument::fromJson(bridge.readLine()).object();
+        };
+        const auto init = rpc("initialize", { { "protocolVersion", "2025-06-18" }, { "capabilities", QJsonObject {} },
+                                              { "clientInfo", QJsonObject { { "name", "test" }, { "version", "1" } } } });
+        TEST_CHECK(init.value("result").toObject().value("serverInfo").toObject().value("name").toString() == "tsaraloha",
+                   "Test 200: MCP initialize");
+        bridge.write("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n");
+        const auto tools = rpc("tools/list", {}).value("result").toObject().value("tools").toArray();
+        TEST_CHECK(tools.size() == 8, "Test 200: MCP tools/list (8 outils)");
+        const auto status = rpc("tools/call", { { "name", "tsaraloha_status" }, { "arguments", QJsonObject {} } }).value("result").toObject();
+        TEST_CHECK(!status.value("isError").toBool() && status.value("content").toArray()[0].toObject().value("text").toString().contains("TSA"),
+                   "Test 200: MCP tsaraloha_status");
+        const auto created = rpc("tools/call", { { "name", "execute_command" },
+                                                 { "arguments", QJsonObject { { "command", "model.create_node" },
+                                                                              { "arguments", QJsonObject { { "position", QJsonArray { 9, 0, 0 } } } } } } })
+                                 .value("result").toObject();
+        TEST_CHECK(!created.value("isError").toBool() && session.model().nodes().size() == 3, "Test 200: MCP execute_command modifie le projet");
+        const auto refused = rpc("tools/call", { { "name", "execute_command" }, { "arguments", QJsonObject { { "command", "model.create_beam" },
+                                                 { "arguments", QJsonObject { { "start", 1 }, { "end", 999 } } } } } }).value("result").toObject();
+        TEST_CHECK(refused.value("isError").toBool(), "Test 200: MCP échec métier signalé comme erreur d'outil");
+        bridge.closeWriteChannel();
+        TEST_CHECK(bridge.waitForFinished(5000), "Test 200: tsaraloha-mcp se termine à la fin de l'entrée");
+        server.stop();
+        std::cout << "[PASS] Test 200: serveur d'automatisation et pont MCP" << std::endl;
         ++passed;
     }
     return true;

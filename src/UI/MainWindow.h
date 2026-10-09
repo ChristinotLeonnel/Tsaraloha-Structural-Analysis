@@ -19,6 +19,7 @@
 
 namespace TSA::Model { class Model; class SupportDefinition; }
 namespace TSA::AI { class AIOrchestrator; }
+namespace TSA::Automation { class AutomationServer; }
 namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct NewProjectSettings; enum class ProjectTemplate; }
 namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; class AnalysisController; }
 namespace TSA::Coordinate { class WorkPlane; }
@@ -421,6 +422,7 @@ private:
     void updateAIStatusWidget();
     void openAIConfig(int page);
     TSA::AI::AIOrchestrator* m_aiOrchestrator = nullptr;
+    TSA::Automation::AutomationServer* m_automation = nullptr;   ///< pont MCP (Claude Code), docs/MCP.md
     TSA::UI::AICoEngineeringDock* m_aiDock = nullptr;
     TSA::UI::AIRuntimeDialog* m_aiDialog = nullptr;
     QToolButton* m_statusAI = nullptr;

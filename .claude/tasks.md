@@ -100,6 +100,8 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 - [x] Fournisseur Cloud « Anthropic Claude » (préréglage `anthropic`, point d'accès compatible OpenAI) — 2026-10-09.
 - [ ] Vérifier le fournisseur Anthropic Claude en conditions réelles avec une clé API (console.anthropic.com) :
       discussion complète, appels d'outils en streaming ; la couche de compatibilité OpenAI est en bêta chez Anthropic.
+- [x] Claude Code co-ingénieur par MCP (AutomationServer + tsaraloha-mcp.exe, docs/MCP.md) — 2026-10-09.
+- [ ] MCP : enregistrer un projet / ouvrir un fichier (aujourd'hui : l'ingénieur enregistre), captures du viewport.
 - [ ] What-If : `SimulationScenario` (copie du modèle via snapshot, calcul, comparaison, jamais d'écrasement).
 - [ ] Rapport d'ingénierie IA (15 sections, citations des données TSA, réutiliser le moteur NDC).
 - [ ] « Expliquer avec l'IA » depuis les docks Propriétés et Résultats (actuellement : arbre + ruban).

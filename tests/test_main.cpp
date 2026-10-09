@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 220;
+    int expectedTotal = 221;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Snap(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "automation") {
-        std::cout << "\n--- [Suite 27/27] Registre central des commandes (Test 192) ---" << std::endl;
+        std::cout << "\n--- [Suite 27/27] Registre central des commandes (Tests 192, 200) ---" << std::endl;
         if (!runSuite_Automation(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "blueprint") {
