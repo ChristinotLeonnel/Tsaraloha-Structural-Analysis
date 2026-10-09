@@ -6,6 +6,21 @@
 #include <cmath>
 #include <algorithm>
 
+namespace
+{
+/// Nombre d'intervalles entre la première et la dernière graduation, ou -1 (rien à dessiner).
+/// Indice entier plutôt que « v += step » : avec des cotes très grandes devant le pas, l'addition
+/// flottante ne progresse plus (v + step == v) et la boucle de dessin ne se terminait jamais.
+int tickIndexCount(double minVal, double maxVal, double step)
+{
+    const double first = std::floor(minVal / step);
+    const double last = std::ceil(maxVal / step);
+    if (!std::isfinite(first) || !std::isfinite(last) || last < first)
+        return -1;
+    return static_cast<int>(std::min(last - first, 2000.0));
+}
+} // namespace
+
 namespace TSA::UI
 {
 
@@ -109,16 +124,17 @@ void HorizontalRulerWidget::paintEvent(QPaintEvent* /*event*/)
     double step = calculateNiceStep(rawStep);
     if (step <= 0.0) step = 1.0;
 
-    double startVal = std::floor(minVal / step) * step;
-    double endVal = std::ceil(maxVal / step) * step;
+    const int tickCount = tickIndexCount(minVal, maxVal, step);
+    const double firstTick = std::floor(minVal / step);
 
     QFont font = p.font();
     font.setPointSize(7);
     p.setFont(font);
 
     // Dessin des graduations principales et secondaires
-    for (double v = startVal; v <= endVal + 0.5 * step; v += step)
+    for (int i = 0; i <= tickCount; ++i)
     {
+        const double v = (firstTick + i) * step;
         int px = 0, py = 0;
         m_occView->worldToPixel(v, wy0, wz0, px, py);
 
@@ -246,15 +262,16 @@ void VerticalRulerWidget::paintEvent(QPaintEvent* /*event*/)
     double step = calculateNiceStep(rawStep);
     if (step <= 0.0) step = 1.0;
 
-    double startVal = std::floor(minVal / step) * step;
-    double endVal = std::ceil(maxVal / step) * step;
+    const int tickCount = tickIndexCount(minVal, maxVal, step);
+    const double firstTick = std::floor(minVal / step);
 
     QFont font = p.font();
     font.setPointSize(7);
     p.setFont(font);
 
-    for (double v = startVal; v <= endVal + 0.5 * step; v += step)
+    for (int i = 0; i <= tickCount; ++i)
     {
+        const double v = (firstTick + i) * step;
         int px = 0, py = 0;
         // On projette sur Z
         m_occView->worldToPixel(wx0, wy0, v, px, py);
