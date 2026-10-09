@@ -2,6 +2,13 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Correction de la fermeture de TSALab)
+
+### Fixed
+- BUG-039 : assertion Qt à la fermeture de TSALab quand des nœuds Blueprint étaient sélectionnés (signal de la
+  scène vers un éditeur déjà détruit). ~BlueprintEditor coupe les connexions de ses enfants ; ~LabMainWindow aussi.
+- Test 199 (220/220).
+
 ## 2026-10-08 (Débogueur, plugins, IA sur Blueprint — ADR-024 phase 8)
 
 ### Added
