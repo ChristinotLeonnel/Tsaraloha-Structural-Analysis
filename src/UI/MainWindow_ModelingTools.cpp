@@ -13,6 +13,7 @@
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 
+#include <QSignalBlocker>
 #include <QAction>
 #include <QApplication>
 #include <QLabel>
@@ -80,9 +81,10 @@ void MainWindow::createModelingToolActions()
         if (!tool->supportsDialog()) tip += tr("\n(Saisie dans la vue 3D uniquement.)");
         action->setToolTip(tip);
         action->setStatusTip(tip);
-        connect(action, &QAction::triggered, this, [this, id]() {
+        action->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
+        connect(action, &QAction::triggered, this, [this, id, action]() {
             const bool shift = QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier);
-            startModelingTool(id, shift);
+            startModelingTool(id, shift, action);
         });
         m_toolActions[id] = action;
     }
@@ -104,20 +106,79 @@ TSA::Interaction::ToolContext MainWindow::modelingToolContext() const
     return ctx;
 }
 
-void MainWindow::startModelingTool(const std::string& id, bool swapInputMode)
+void MainWindow::startModelingTool(const std::string& id, bool swapInputMode, QAction* launcher)
+{
+    startModelingToolImpl(id, swapInputMode, launcher);
+    // Toutes les issues (refus faute de sélection, fenêtre fermée, application immédiate) : un clic sur
+    // un bouton cochable l'a basculé, son état est ramené à celui de la commande.
+    syncToolActionStates();
+}
+
+void MainWindow::syncToolActionStates()
+{
+    const bool viewportTool = m_occView && m_activeTool
+                              && m_occView->interactionMode() == OccView::InteractionMode::ModelingTool
+                              && m_occView->activeModelingTool() == m_activeTool.get();
+    const bool running = viewportTool || (m_toolDialogRunning && m_activeTool);
+    if (!running) m_toolLauncher = nullptr;
+
+    auto show = [](QAction* a, bool on) {
+        if (!a || !a->isCheckable() || a->isChecked() == on) return;
+        const QSignalBlocker block(a);
+        a->setChecked(on);
+    };
+    std::vector<QAction*> launchers = { m_actionMove3D, m_actionCopy3D, m_actionRotate3D, m_actionMove, m_actionCopy,
+                                        m_actionMirror, m_actionSplitBars, m_actionMergeNodes };
+    for (const auto& [toolId, action] : m_toolActions) launchers.push_back(action);
+    for (QAction* a : launchers) show(a, running && a == m_toolLauncher);
+
+    show(m_actionMoveOrigin, m_occView && m_occView->interactionMode() == OccView::InteractionMode::MoveOrigin3D);
+
+    // Boutons de mode (groupe exclusif facultatif) : signaux non bloqués, le groupe tient son état à jour.
+    QAction* modeAction = nullptr;
+    if (m_occView)
+    {
+        switch (m_occView->interactionMode())
+        {
+        case OccView::InteractionMode::Select: modeAction = m_actionSelectMode; break;
+        case OccView::InteractionMode::DrawNode: modeAction = m_actionDrawNode; break;
+        case OccView::InteractionMode::DrawBar: modeAction = m_actionDrawBar; break;
+        case OccView::InteractionMode::DrawBeam: modeAction = m_actionDrawBeam; break;
+        case OccView::InteractionMode::DrawColumn: modeAction = m_actionDrawColumn; break;
+        case OccView::InteractionMode::DrawSlab: modeAction = m_actionDrawSlab; break;
+        case OccView::InteractionMode::DrawWall: modeAction = m_actionDrawWall; break;
+        case OccView::InteractionMode::DrawCable:
+        case OccView::InteractionMode::DrawStayCable:
+        case OccView::InteractionMode::DrawSuspensionCable:
+        case OccView::InteractionMode::DrawHanger: modeAction = m_actionDrawCable; break;
+        default: break;   // outils, origine, fondation, treillis, collage : aucun bouton de mode
+        }
+    }
+    for (QAction* a : { m_actionSelectMode, m_actionDrawNode, m_actionDrawBar, m_actionDrawBeam, m_actionDrawColumn,
+                        m_actionDrawCable, m_actionDrawSlab, m_actionDrawWall })
+        if (a && a != modeAction && a->isChecked()) a->setChecked(false);
+    if (modeAction && !modeAction->isChecked()) modeAction->setChecked(true);
+}
+
+void MainWindow::startModelingToolImpl(const std::string& id, bool swapInputMode, QAction* launcher)
 {
     if (!m_model || !m_toolRegistry) return;
     if (m_occView && m_occView->activeModelingTool())
         m_occView->setInteractionMode(OccView::InteractionMode::Select);   // la vue lâche l'outil courant
     m_activeTool = m_toolRegistry->create(id);
     if (!m_activeTool) return;
+    // Après le relâchement de l'outil précédent (qui remet le bouton précédent à zéro).
+    if (!launcher)
+        if (const auto it = m_toolActions.find(id); it != m_toolActions.end()) launcher = it->second;
+    m_toolLauncher = launcher;
 
     const TSA::Interaction::ToolContext ctx = modelingToolContext();
     const QString name = QString::fromStdString(m_activeTool->name());
     if (m_activeTool->needsSelection() && ctx.selection.empty())
     {
-        QMessageBox::information(this, name, tr("Sélectionnez d'abord les éléments à traiter, puis relancez « %1 ».").arg(name));
         m_activeTool.reset();
+        syncToolActionStates();   // bouton décoloré avant le message : la commande n'a pas démarré
+        QMessageBox::information(this, name, tr("Sélectionnez d'abord les éléments à traiter, puis relancez « %1 ».").arg(name));
         return;
     }
     m_activeTool->prepare(ctx);
@@ -130,7 +191,11 @@ void MainWindow::startModelingTool(const std::string& id, bool swapInputMode)
     }
 
     TSA::UI::ModelingToolDialog dlg(*m_activeTool, this);
-    if (dlg.exec() == QDialog::Accepted) applyActiveModelingTool();
+    m_toolDialogRunning = true;
+    syncToolActionStates();   // bouton coloré pendant la saisie dans la fenêtre
+    const bool accepted = dlg.exec() == QDialog::Accepted;
+    m_toolDialogRunning = false;
+    if (accepted) applyActiveModelingTool();
     m_activeTool.reset();
 }
 

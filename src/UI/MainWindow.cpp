@@ -848,12 +848,12 @@ void MainWindow::onActionNewSlab()
 
 void MainWindow::onActionMove()
 {
-    startModelingTool("move", m_toolInputInViewport);   // « numérique » : toujours par fenêtre
+    startModelingTool("move", m_toolInputInViewport, m_actionMove);   // « numérique » : toujours par fenêtre
 }
 
 void MainWindow::onActionCopy()
 {
-    startModelingTool("copy", m_toolInputInViewport);   // « numérique » : toujours par fenêtre
+    startModelingTool("copy", m_toolInputInViewport, m_actionCopy);   // « numérique » : toujours par fenêtre
 }
 
 void MainWindow::onActionDeleteSelected()

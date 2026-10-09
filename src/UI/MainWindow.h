@@ -270,11 +270,19 @@ private:
     std::unique_ptr<TSA::Interaction::ModelingToolRegistry> m_toolRegistry;
     std::unique_ptr<TSA::Interaction::ModelingTool> m_activeTool;
     std::map<std::string, QAction*> m_toolActions;
+    QAction* m_toolLauncher = nullptr;     // bouton de la commande d'outil en cours
+    bool m_toolDialogRunning = false;      // outil piloté par sa fenêtre de paramètres (modale)
     QAction* m_actionToolInputViewport = nullptr;
     bool m_toolInputInViewport = true;
     void createModelingToolActions();
     /// swapInputMode : utiliser l'autre mode de saisie (Maj + clic, ou action « numérique »).
-    void startModelingTool(const std::string& id, bool swapInputMode = false);
+    /// launcher : bouton qui lance l'outil (coloré tant que la commande est active) ; par défaut
+    /// celui du registre des outils.
+    void startModelingTool(const std::string& id, bool swapInputMode = false, QAction* launcher = nullptr);
+    void startModelingToolImpl(const std::string& id, bool swapInputMode, QAction* launcher);
+    /// État coloré des boutons de commande (outils de modification, déplacement de l'origine) =
+    /// commande réellement active : décoloré dès qu'elle est terminée ou annulée (Échap).
+    void syncToolActionStates();
     void applyActiveModelingTool();
     TSA::Interaction::ToolContext modelingToolContext() const;
     /// Nettoyage topologique en une transaction ; retourne le bilan (vide si rien n'a changé).

@@ -3,6 +3,7 @@
 #include <QAction>
 #include <QMenu>
 #include <QPainter>
+#include <QActionEvent>
 #include <QHelpEvent>
 #include <QToolTip>
 #include <QKeySequence>
@@ -160,6 +161,20 @@ bool RibbonButton::event(QEvent* e)
         return true;
     }
     return QToolButton::event(e);
+}
+
+// QToolButton remet le texte brut de l'action à chaque changement de celle-ci (cochée, activée…) :
+// le libellé sur deux lignes des grands boutons était perdu, le bouton s'élargissait et le ruban
+// se réorganisait. Le libellé du ruban est rétabli.
+void RibbonButton::actionEvent(QActionEvent* e)
+{
+    QToolButton::actionEvent(e);
+    if (e->type() != QEvent::ActionChanged || m_size != RibbonButtonSize::Large) return;
+    if (auto* act = defaultAction(); act && e->action() == act)
+    {
+        const QString label = wrapLabel(act->text());
+        if (text() != label) setText(label);
+    }
 }
 
 void RibbonButton::updateTheme(bool /*isDark*/)
