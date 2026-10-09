@@ -231,6 +231,11 @@ BlueprintEditor::~BlueprintEditor()
     // Fenêtre fermée pendant une pause : l'exécution est interrompue proprement.
     if (m_pauseLoop) m_pauseLoop->exit(2);
     if (m_runner) m_runner->requestStop();
+    // La scène (enfant QObject) est détruite APRÈS ce destructeur, par ~QObject : en se vidant elle émet
+    // selectionChanged, qui appellerait showNodeProperties sur un éditeur déjà détruit (assertion Qt
+    // « Called object is not of the correct type » à la fermeture, BUG-039). Connexions coupées ici.
+    for (QObject* child : findChildren<QObject*>())
+        QObject::disconnect(child, nullptr, this, nullptr);
 }
 
 void BlueprintEditor::buildPalette()

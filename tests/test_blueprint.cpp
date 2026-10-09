@@ -1,4 +1,4 @@
-// Suite « blueprint » : programmation visuelle (ADR-024, phases 6 et 8) — tests 193 à 195, 197, 198.
+// Suite « blueprint » : programmation visuelle (ADR-024, phases 6 et 8) — tests 193 à 195, 197 à 199.
 #include "test_common.h"
 
 #include "AI/Tools/AIToolRegistry.h"
@@ -8,6 +8,11 @@
 #include "Blueprint/BlueprintRuntime.h"
 #include "Model/Load/LoadManager.h"
 #include "Project/ProjectSession.h"
+#include "UI/Blueprint/BlueprintEditor.h"
+
+#include <QGraphicsItem>
+#include <QGraphicsScene>
+#include <QGraphicsView>
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -307,6 +312,30 @@ bool runSuite_Blueprint(int& passed)
         const auto badProp = tools.execute("propose_blueprint", QString::fromUtf8(QJsonDocument(args).toJson()));
         TEST_CHECK(!badProp.ok && badProp.error.contains("Script invalide"), "Test 198: script invalide renvoyé à l'IA");
         std::cout << "[PASS] Test 198: script de commandes ↔ Blueprint, proposition de l'IA" << std::endl;
+        ++passed;
+    }
+
+    // TEST 199 : fermeture de l'éditeur avec un nœud sélectionné (BUG-039). La scène, enfant de l'éditeur,
+    // est détruite après lui ; en se vidant elle émet selectionChanged : aucun slot de l'éditeur ne doit
+    // être appelé (sinon assertion Qt « Called object is not of the correct type » à la fermeture de TSALab).
+    {
+        int summary = 0, loop = 0;
+        TSA::Project::ProjectSession session;
+        auto* editor = new TSA::UI::BlueprintEditor();
+        editor->setSession(&session);
+        editor->setGraph(portalBlueprint(lib, summary, loop));
+        auto* view = editor->findChild<QGraphicsView*>();
+        TEST_CHECK(view && view->scene(), "Test 199: scène de l'éditeur");
+        int selected = 0;
+        for (QGraphicsItem* item : view->scene()->items())
+            if (item->flags() & QGraphicsItem::ItemIsSelectable)
+            {
+                item->setSelected(true);
+                ++selected;
+            }
+        TEST_CHECK(selected > 0 && !view->scene()->selectedItems().isEmpty(), "Test 199: nœuds sélectionnés");
+        delete editor;   // avant correction : assertion Qt (arrêt du programme)
+        std::cout << "[PASS] Test 199: fermeture de l'éditeur Blueprint avec une sélection" << std::endl;
         ++passed;
     }
     return true;
