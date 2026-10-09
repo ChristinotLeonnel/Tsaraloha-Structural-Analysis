@@ -5,6 +5,7 @@
 #include "../Model/MaterialLibrary.h"
 #include "../Standards/ModelValidator.h"
 #include "../Diagnostics/Logger.h"
+#include "../Core/Utf8Path.h"
 
 #include <QSaveFile>
 #include <QByteArray>
@@ -335,7 +336,7 @@ TSAFileReader::TSAFileReader()
 
 bool TSAFileReader::readHeader(const std::string& filePath, TSAFileHeader& header, std::string* errorMessage)
 {
-    std::ifstream in(filePath, std::ios::binary);
+    std::ifstream in(TSA::Core::utf8Path(filePath), std::ios::binary);
     if (!in.is_open())
     {
         if (errorMessage) *errorMessage = "Fichier introuvable ou inaccessible : " + filePath;
@@ -381,7 +382,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
                                 std::string* errorMessage)
 {
     // 1. Ouvrir le fichier
-    std::ifstream in(filePath, std::ios::binary | std::ios::ate);
+    std::ifstream in(TSA::Core::utf8Path(filePath), std::ios::binary | std::ios::ate);
     if (!in.is_open())
     {
         if (errorMessage) *errorMessage = "Fichier introuvable : " + filePath;
@@ -495,7 +496,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
 
 bool TSAFileReader::extractPreviewBlock(const std::string& filePath, QImage& outImage)
 {
-    std::ifstream in(filePath, std::ios::binary | std::ios::ate);
+    std::ifstream in(TSA::Core::utf8Path(filePath), std::ios::binary | std::ios::ate);
     if (!in.is_open()) return false;
     const uint64_t length = static_cast<uint64_t>(in.tellg());
     if (length < sizeof(TSAFileHeader)) return false;
@@ -526,7 +527,7 @@ bool TSAFileReader::extractThumbnail(const std::string& filePath, QImage& outThu
         return false;
     }
 
-    std::ifstream in(filePath, std::ios::binary);
+    std::ifstream in(TSA::Core::utf8Path(filePath), std::ios::binary);
     if (!in.is_open())
     {
         if (errorMessage) *errorMessage = "Fichier introuvable : " + filePath;
@@ -603,6 +604,8 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     bool hasLoadChunk = false;
     TSA::BIM::BimModel loadedBim;
     std::string loadedSettings;
+    std::string loadedCoordinates, loadedGrids;
+    bool hasCoordinates = false, hasGrids = false;
 
     while (offset + sizeof(TSAChunkHeader) <= size)
     {
@@ -627,17 +630,16 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         case CHUNK_THMB:
             readThumbnailChunk(chunkBytes, chunkLen, outThumbnail, errorMessage);
             break;
+        // COOR / GRID : appliqués seulement après la lecture complète. Auparavant ils l'étaient tout de
+        // suite : un chunk suivant illisible faisait échouer l'ouverture, mais le projet resté ouvert
+        // avait déjà reçu les niveaux et les grilles du fichier rejeté.
         case CHUNK_COOR:
-            if (model.coordinateSystem())
-            {
-                if (!readCoordinateChunk(chunkBytes, chunkLen, model.coordinateSystem(), errorMessage)) return false;
-            }
+            if (!Detail::readChunkText(chunkBytes, chunkLen, loadedCoordinates)) return false;
+            hasCoordinates = true;
             break;
         case CHUNK_GRID:
-            if (gridManager)
-            {
-                if (!readGridChunk(chunkBytes, chunkLen, gridManager, errorMessage)) return false;
-            }
+            if (!Detail::readChunkText(chunkBytes, chunkLen, loadedGrids)) return false;
+            hasGrids = true;
             break;
         case CHUNK_NODE:
             if (!readNodeChunk(chunkBytes, chunkLen, ch.elementCount, loadedNodes, errorMessage)) return false;
@@ -735,6 +737,9 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     snapshot.nextTrussMemberId = maxT + 1;
     snapshot.nextCableId = maxCab + 1;
     snapshot.actionName = "Chargement Projet .tsa";
+
+    if (hasCoordinates && model.coordinateSystem()) model.coordinateSystem()->deserializeFromJson(loadedCoordinates);
+    if (hasGrids && gridManager) gridManager->deserializeFromJson(loadedGrids);
 
     // Application dans le modèle -> déclenche automatiquement onModelCleared() chez tous les observateurs (OccView, ModelTree)
     model.restoreSnapshot(snapshot);

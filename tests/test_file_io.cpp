@@ -916,5 +916,104 @@ bool runSuite_FileIO(int& passed)
         ++passed;
     }
 
+    // TEST 201 : audit 2026-10-09 — chemins non ASCII, chaînes ≥ 64 Kio, nom / auteur du projet
+    {
+        const QString dir = QDir::currentPath() + QString::fromUtf8("/build/test_tsa_data/Études Bâtiment");
+        QDir().mkpath(dir);
+        const QString file = dir + QString::fromUtf8("/Pont à poutres.tsa");
+        QFile::remove(file);
+
+        // 1. Chemin accentué : enregistré par QSaveFile, relu par std::ifstream (page de code ANSI auparavant)
+        Model m;
+        const int a = m.addNode(0, 0, 0);
+        const int b = m.addNode(6, 0, 0);
+        m.addBeam(a, b);
+        std::string err;
+        TEST_CHECK(TSAProjectIO::saveToFile(file, m, nullptr, &err), "Test 201: enregistrement sous un chemin accentué");
+        Model r;
+        err.clear();
+        TEST_CHECK(TSAProjectIO::loadFromFile(file, r, nullptr, &err) && r.nodes().size() == 2 && r.beams().size() == 1,
+                   "Test 201: réouverture depuis un chemin accentué (" + err + ")");
+        TEST_CHECK(TSAProjectIO::isTSAFile(file), "Test 201: en-tête lisible depuis un chemin accentué");
+        QImage thumb;
+        TEST_CHECK(TSAProjectIO::extractThumbnail(file, thumb) && !thumb.isNull(), "Test 201: aperçu lisible depuis un chemin accentué");
+
+        // Chemin ASCII pour les points 2 et 3 : indépendants du point 1
+        const QString plain = QDir::currentPath() + "/build/test_tsa_data/test_audit_201.tsa";
+
+        // 2. Chunk GRID de plus de 64 Kio : était écrit avec une longueur 0 (grille perdue)
+        TSA::Grid::GridManager grids;
+        TSA::Grid::GridDefinition def("Grande grille", TSA::Grid::GridType::Cartesian);
+        std::vector<double> xs;
+        for (int i = 0; i < 6000; ++i) xs.push_back(0.123456789 * i);
+        def.setXPositions(xs);
+        def.setYPositions({ 0.0, 5.0 });
+        grids.clearAllGrids();
+        grids.addGrid(def);
+        TEST_CHECK(grids.serializeToJson().size() > 0xFFFF, "Test 201: JSON de grille > 64 Kio (pré-condition)");
+        TEST_CHECK(TSAProjectIO::saveToFile(plain, m, &grids, &err), "Test 201: enregistrement d'une grande grille");
+        TSA::Grid::GridManager back;
+        back.clearAllGrids();
+        TEST_CHECK(TSAProjectIO::loadFromFile(plain, r, &back, &err) && back.grids().size() == 1
+                       && back.grids().front()->definition().xPositions().size() == xs.size(),
+                   "Test 201: grande grille relue en entier");
+
+        // 3. Nom et auteur du projet conservés par ProjectManager::saveProject (enregistrés vides auparavant)
+        TSA::Project::ProjectManager pm;
+        pm.setProjectName(QString::fromUtf8("Passerelle Analakely"));
+        QString qerr;
+        TEST_CHECK(pm.saveProject(plain, m, nullptr, QImage(), &qerr), "Test 201: enregistrement par ProjectManager");
+        TSA::Project::ProjectManager reopened;
+        Model r2;
+        TEST_CHECK(reopened.openProject(plain, r2, nullptr, &qerr)
+                       && reopened.projectName() == QString::fromUtf8("Passerelle Analakely"),
+                   "Test 201: nom du projet relu (" + reopened.projectName().toStdString() + ")");
+
+        // 4. Ouverture refusée : le projet ouvert ne reçoit pas les grilles du fichier rejeté
+        {
+            TSA::Grid::GridManager rejectedGrids;
+            rejectedGrids.clearAllGrids();
+            rejectedGrids.addGrid(TSA::Grid::GridDefinition("Rejetée", TSA::Grid::GridType::Cartesian));
+            const std::string json = rejectedGrids.serializeToJson();
+
+            std::vector<uint8_t> payload;
+            auto appendChunk = [&payload](uint32_t id, uint32_t count, const std::vector<uint8_t>& body) {
+                TSA::IO::TSAChunkHeader ch;
+                ch.chunkId = id;
+                ch.chunkSize = static_cast<uint32_t>(body.size());
+                ch.elementCount = count;
+                const auto* p = reinterpret_cast<const uint8_t*>(&ch);
+                payload.insert(payload.end(), p, p + sizeof(ch));
+                payload.insert(payload.end(), body.begin(), body.end());
+            };
+            std::vector<uint8_t> gridBody { static_cast<uint8_t>(json.size() & 0xFF), static_cast<uint8_t>(json.size() >> 8) };
+            gridBody.insert(gridBody.end(), json.begin(), json.end());
+            appendChunk(TSA::IO::CHUNK_GRID, 1, gridBody);
+            appendChunk(TSA::IO::CHUNK_NODE, 1, {}); // un nœud annoncé, aucun octet : illisible
+
+            TSA::IO::TSAFileHeader header;   // CRC 0 : non contrôlé, le défaut est dans la structure
+            header.fileSize = sizeof(header) + payload.size();
+            header.uncompressedSize = payload.size();
+            const QString broken = QDir::currentPath() + "/build/test_tsa_data/test_audit_201_broken.tsa";
+            QFile f(broken);
+            TEST_CHECK(f.open(QIODevice::WriteOnly | QIODevice::Truncate), "Test 201: écriture du fichier défectueux");
+            f.write(reinterpret_cast<const char*>(&header), sizeof(header));
+            f.write(reinterpret_cast<const char*>(payload.data()), static_cast<qint64>(payload.size()));
+            f.close();
+
+            TSA::Grid::GridManager live;
+            live.clearAllGrids();
+            live.addGrid(TSA::Grid::GridDefinition("Courante", TSA::Grid::GridType::Cartesian));
+            Model current;
+            current.addNode(1, 2, 3);
+            TEST_CHECK(!TSAProjectIO::loadFromFile(broken, current, &live, &err), "Test 201: fichier défectueux refusé");
+            TEST_CHECK(live.grids().size() == 1 && live.grids().front()->definition().name() == "Courante" && current.nodes().size() == 1,
+                       "Test 201: projet ouvert intact après un échec d'ouverture");
+        }
+
+        std::cout << "[PASS] Test 201: Chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique (.tsa)" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

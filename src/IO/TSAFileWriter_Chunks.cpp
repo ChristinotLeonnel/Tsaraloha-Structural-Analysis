@@ -72,7 +72,7 @@ void TSAFileWriter::writeCoordinateChunk(std::vector<uint8_t>& buffer, const TSA
     if (!cs) return;
     std::string json = cs->serializeToJson();
     std::vector<uint8_t> chunkData;
-    writeString(chunkData, json);
+    writeChunkText(chunkData, json);
 
     TSAChunkHeader ch;
     ch.chunkId = CHUNK_COOR;
@@ -89,7 +89,7 @@ void TSAFileWriter::writeGridChunk(std::vector<uint8_t>& buffer, const TSA::Grid
     if (!gm) return;
     std::string json = gm->serializeToJson();
     std::vector<uint8_t> chunkData;
-    writeString(chunkData, json);
+    writeChunkText(chunkData, json);
 
     TSAChunkHeader ch;
     ch.chunkId = CHUNK_GRID;

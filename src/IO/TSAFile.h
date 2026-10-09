@@ -147,8 +147,6 @@ private:
     bool readProjectChunk(const uint8_t* data, size_t size, std::string* outProjectName, std::string* outAuthor, std::string* errorMessage);
     bool readThumbnailChunk(const uint8_t* data, size_t size, QImage* outThumbnail, std::string* errorMessage);
     bool readBimChunk(const uint8_t* data, size_t size, TSA::BIM::BimModel& outBim, std::string* errorMessage);
-    bool readCoordinateChunk(const uint8_t* data, size_t size, TSA::Coordinate::CoordinateSystem* cs, std::string* errorMessage);
-    bool readGridChunk(const uint8_t* data, size_t size, TSA::Grid::GridManager* gm, std::string* errorMessage);
     bool readNodeChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Node>& nodes, std::string* errorMessage);
     bool readSupportChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Node>& nodes, std::string* errorMessage);
     bool readBarChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Beam>& beams, std::string* errorMessage);

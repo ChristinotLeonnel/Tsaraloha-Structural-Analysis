@@ -6,6 +6,7 @@
 #include "../Model/Model.h"
 #include "../Model/Load/LoadManager.h"
 #include "../Coordinate/CoordinateTransformationService.h"
+#include "../Core/Utf8Path.h"
 
 #include <fstream>
 #include <sstream>
@@ -49,7 +50,7 @@ bool OpenSeesAdapter::exportToFile(const std::string& filePath,
                                    const OpenSeesOptions& options)
 {
     std::string script = generateTclScript(model, options);
-    std::ofstream ofs(filePath);
+    std::ofstream ofs(TSA::Core::utf8Path(filePath));
     if (!ofs.is_open())
     {
         return false;

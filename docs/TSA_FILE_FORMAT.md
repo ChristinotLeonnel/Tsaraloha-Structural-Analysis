@@ -104,6 +104,11 @@ struct ChunkHeader {
 | `SETT` (`0x54544553`) | `CHUNK_SETT` | Paramètres d'analyse (`AnalysisContext`) — **spécification 1.4** (voir §5.z) |
 | `RSLT` (`0x544C5352`) | `CHUNK_RSLT` | Résultats de calcul (déplacements, efforts internes N, Vy, Vz, Mt, My, Mz) |
 
+**COOR / GRID** : un JSON UTF-8 préfixé de sa longueur (u16). Au-delà de 65 535 octets, préfixe `0` puis le JSON
+jusqu'à la fin du chunk (`writeChunkText` / `readChunkText`, 2026-10-09, BUG-041). Une version antérieure lit alors
+un JSON vide (comportement d'avant la correction) ; aucun fichier existant n'est réinterprété. Les chaînes courtes
+(noms…) sont limitées à 65 535 octets, tronquées sur une frontière UTF-8.
+
 ---
 
 ## 5. Spécification des Enregistrements Structuraux

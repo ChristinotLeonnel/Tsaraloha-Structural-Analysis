@@ -109,13 +109,16 @@ bool ProjectManager::saveProject(const QString& filePath,
                                  const QImage& thumbnail,
                                  QString* outError)
 {
-    std::string err;
-    bool ok = TSA::IO::TSAProjectIO::saveToFile(filePath, model, gridManager, thumbnail, &err);
+    // Nom et auteur du projet réécrits dans le chunk PROJ : auparavant une chaîne vide était
+    // enregistrée, et le nom saisi dans « Nouveau projet » était perdu à la réouverture.
+    QString err;
+    bool ok = TSA::IO::TSAProjectIO::saveProject(filePath, model, gridManager, m_projectName, m_author,
+                                                 true, thumbnail, &err);
     if (!ok)
     {
         if (outError)
         {
-            *outError = QString::fromStdString(err);
+            *outError = err;
         }
         return false;
     }

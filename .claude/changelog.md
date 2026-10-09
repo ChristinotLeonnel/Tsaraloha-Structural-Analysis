@@ -2,6 +2,23 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Audit et corrections : persistance .tsa, chemins non ASCII)
+
+### Fixed
+- BUG-040 : un projet enregistré sous un chemin contenant « é », « â »… ne se rouvrait pas (« Fichier introuvable ») :
+  `std::ifstream` sur une chaîne UTF-8 = page de code ANSI sous MSVC. `TSA::Core::utf8Path` (src/Core/Utf8Path.h)
+  pour les 4 ouvertures .tsa (TSAFile.cpp), le lecteur de résultats OpenSees et l'export Tcl.
+- BUG-041 : `writeString` bornait à 65 536 puis castait en u16 → toute chaîne ≥ 64 Kio écrite vide ; les chunks
+  COOR / GRID (JSON) perdaient niveaux / grilles. Borne 65 535 sur frontière UTF-8 ; `writeChunkText` /
+  `readChunkText` : au-delà, préfixe 0 + JSON jusqu'à la fin du chunk (format inchangé pour < 64 Kio, rétrocompatible).
+- BUG-042 : `ProjectManager::saveProject` écrivait un nom et un auteur vides (nom saisi dans « Nouveau projet » perdu
+  à la réouverture).
+- BUG-043 : ouverture refusée après lecture des chunks COOR / GRID → le projet resté ouvert avait reçu les niveaux et
+  grilles du fichier rejeté. Application différée après la lecture complète.
+- AutomationServer : identifiant non entier dans une liste (`[3.7]`) refusé au lieu d'être converti en 0 (latent :
+  aucune commande intégrée n'a de paramètre IdList).
+- Test 201 (reproduit les 4 bugs sur le code d'origine). 222 tests.
+
 ## 2026-10-09 (Claude Code co-ingénieur : serveur MCP)
 
 ### Added
