@@ -2,6 +2,32 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Audit QA : analyse en tâche de fond, JSON des grilles, note de calcul)
+
+### Fixed
+- BUG-049 : annulation d'un calcul OpenSees perdue si elle arrivait avant la création du solveur (ou avant la remise à
+  zéro de son drapeau d'arrêt dans `solveSnapshot`). Drapeau partagé `AnalysisRunCallbacks::cancelRequested`, armé par
+  `AnalysisController::cancel` avant l'appel au moteur et relu par `OpenSeesEngine::run` après création du solveur.
+  `OpenSeesSolver::m_isRunning` atomique (écrit par le thread de calcul). Test 205.
+- BUG-050 : résultats calculés sur un état antérieur du modèle publiés « à jour » (panneau d'analyse non modal, projet
+  ouvert pendant le calcul). Révision mémorisée au lancement, `ResultsValidityGuard::trackResults(résultats, révision)`.
+  Ouvrir / créer / glisser un projet est refusé pendant un calcul (`MainWindow::confirmNoRunningAnalysis`). Test 206.
+- BUG-051 : JSON des grilles (chunk GRID et historique Annuler) écrit à la main : nom tronqué à la première virgule,
+  JSON invalide sur un guillemet, réels à 6 chiffres significatifs. QJsonDocument (format compact dans le .tsa) ; ancien
+  analyseur conservé pour relire un JSON invalide des versions précédentes. Test 207.
+- BUG-052 : note de calcul d'une structure bois sans EN 1995-1-1 (Eurocode 5). Test NDC.
+- BUG-053 : graduation des règles du viewport par indice entier borné (boucle flottante sans fin pour de grandes cotes).
+- BUG-035 : test 20 évalué sur le meilleur de 3 annulations (seuil inchangé).
+
+### Changed
+- Une annulation volontaire du calcul est journalisée (avertissement, barre d'état) au lieu d'une boîte d'erreur critique.
+- Total attendu de la suite : 228 tests.
+
+### Vérifications
+- Build ninja-debug complet sans avertissement (/W4) ; 228/228 PASS ; TSA.exe démarre (Start Center) et se ferme (code 0).
+- clang-tidy (bugprone, clang-analyzer, performance) sur 266 fichiers de src : à l'origine de BUG-052 et BUG-053 ; les
+  autres signalements examinés sont des faux positifs ou des choix délibérés (gardes OCCT, copie nécessaire avant erase).
+
 ## 2026-10-09 (Grille : repères par vue ; déformée continue)
 
 ### Fixed
