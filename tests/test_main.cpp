@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 225;
+    int expectedTotal = 228;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Commands(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "grids" || suiteFilter == "grid") {
-        std::cout << "\n--- [Suite 5/9] Grids & Snapping Systems (Tests 30-33) ---" << std::endl;
+        std::cout << "\n--- [Suite 5/9] Grids & Snapping Systems (Tests 30-33, 202, 207) ---" << std::endl;
         if (!runSuite_Grids(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "viewer") {
