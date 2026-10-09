@@ -2,6 +2,14 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Ruban : disposition stable d'un passage à l'autre)
+
+### Fixed
+- BUG-054 : les onglets du ruban se réorganisaient à chaque visite (groupes repliés puis dépliés, icônes déplacées) sans
+  changement de taille. Largeurs mesurées une fois par mode après polissage explicite (`RibbonPanel::measureWidths`),
+  disposition fonction de la seule largeur disponible (`RibbonTab::relayout(int)`), largeur de la pile d'onglets prise
+  à l'affichage. L'adaptation à la taille de la fenêtre (icônes seules, groupes repliés, menu « Plus ») est conservée.
+
 ## 2026-10-09 (Audit QA : analyse en tâche de fond, JSON des grilles, note de calcul)
 
 ### Fixed

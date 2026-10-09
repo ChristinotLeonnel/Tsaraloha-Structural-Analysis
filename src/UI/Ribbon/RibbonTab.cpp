@@ -7,6 +7,7 @@
 #include <QMenu>
 #include <QResizeEvent>
 #include <QIcon>
+#include <QTimer>
 
 namespace TSA::UI
 {
@@ -55,6 +56,11 @@ void RibbonTab::updateTheme(bool /*isDark*/)
     {
         m_container->setStyleSheet(ThemeManager::instance().ribbonContainerStyleSheet());
     }
+    // Après les autres réceptions de themeChanged (boutons, panneaux) : nouvelles largeurs.
+    for (auto* p : m_panels) p->invalidateWidths();
+    QTimer::singleShot(0, this, [this] {
+        if (isVisible()) relayout(availableWidth());
+    });
 }
 
 void RibbonTab::addPanel(RibbonPanel* panel)
@@ -75,26 +81,56 @@ QSize RibbonTab::minimumSizeHint() const
     return QSize(200, 94);
 }
 
+int RibbonTab::availableWidth() const
+{
+    // Un onglet masqué garde la largeur qu'il avait à son dernier affichage (la pile d'onglets ne
+    // redimensionne que la page courante) : à l'affichage, la largeur de la pile fait foi.
+    if (const QWidget* stack = parentWidget(); stack && stack->width() > 0)
+        return stack->contentsRect().width();
+    return width();
+}
+
 void RibbonTab::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
-    if (event->size().width() != m_lastWidth) relayout();
+    if (event->size().width() != m_lastWidth) relayout(event->size().width());
 }
 
 void RibbonTab::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
-    relayout();
+    const int w = availableWidth();
+    if (w != m_lastWidth) relayout(w);
+    if (!m_verified)
+    {
+        m_verified = true;
+        QTimer::singleShot(0, this, &RibbonTab::verifyMeasurements);
+    }
 }
 
-void RibbonTab::relayout()
+void RibbonTab::verifyMeasurements()
+{
+    std::vector<int> before;
+    for (auto* p : m_panels)
+        for (auto mode : { RibbonPanelMode::Full, RibbonPanelMode::IconOnly, RibbonPanelMode::Collapsed })
+            before.push_back(p->widthForMode(mode));
+    for (auto* p : m_panels) p->invalidateWidths();
+    std::vector<int> after;
+    for (auto* p : m_panels)
+        for (auto mode : { RibbonPanelMode::Full, RibbonPanelMode::IconOnly, RibbonPanelMode::Collapsed })
+            after.push_back(p->widthForMode(mode));
+    if (after != before && isVisible()) relayout(availableWidth());
+}
+
+void RibbonTab::relayout(int width)
 {
     if (m_inRelayout || m_panels.empty()) return;
     m_inRelayout = true;
-    m_lastWidth = width();
+    m_lastWidth = width;
+    ensurePolished();   // styles appliqués avant toute mesure (sans effet s'ils le sont déjà)
 
     const int spacing = m_panelLayout->spacing();
-    const int available = width() - 2 * kMargin;
+    const int available = width - 2 * kMargin;
 
     // Réinitialise : tout visible, mode complet.
     for (auto* p : m_panels)
