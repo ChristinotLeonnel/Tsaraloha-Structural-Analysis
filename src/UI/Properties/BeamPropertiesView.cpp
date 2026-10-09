@@ -81,6 +81,9 @@ void BeamPropertiesView::setupUi()
     formCad->addRow(tr("Niveau :"), m_lblCadLevel);
 
     mainLayout->addWidget(grpCad);
+    m_endNodes = new MemberEndNodesWidget(this);
+    connect(m_endNodes, &MemberEndNodesWidget::nodeRequested, this, &IElementPropertyView::nodeRequested);
+    mainLayout->addWidget(m_endNodes);
 
     // 1. Général & Rôle
     auto* grpGen = new QGroupBox(tr("Général & Rôle"), this);
@@ -331,6 +334,10 @@ void BeamPropertiesView::refreshView()
 
     const auto* startN = m_model->getNode(beam->startNodeId());
     const auto* endN = m_model->getNode(beam->endNodeId());
+    const bool vertical = beam->role() == TSA::Model::BarRole::Column;
+    m_endNodes->setModel(m_model);
+    m_endNodes->setEndLabels(vertical ? tr("Pied :") : tr("Début :"), vertical ? tr("Tête :") : tr("Fin :"));
+    m_endNodes->setNodes(beam->startNodeId(), beam->endNodeId());
     if (startN && endN)
     {
         m_lblCadNodes->setText(QString("N%1 → N%2").arg(beam->startNodeId()).arg(beam->endNodeId()));

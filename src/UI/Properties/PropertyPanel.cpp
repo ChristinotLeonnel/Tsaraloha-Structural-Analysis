@@ -132,9 +132,11 @@ void PropertyPanel::setupUi()
 
     m_beamView = new BeamPropertiesView(m_model, m_stack);
     connect(m_beamView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
+    connect(m_beamView, &IElementPropertyView::nodeRequested, this, &PropertyPanel::showNodeProperties);
     m_stack->addWidget(m_beamView); // Index 2
 
     m_columnView = new ColumnPropertiesView(m_model, m_stack);
+    connect(m_columnView, &IElementPropertyView::nodeRequested, this, &PropertyPanel::showNodeProperties);
     connect(m_columnView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
     m_stack->addWidget(m_columnView); // Index 3
 
@@ -155,6 +157,7 @@ void PropertyPanel::setupUi()
     m_stack->addWidget(m_foundationView); // Index 7
 
     m_trussView = new TrussMemberPropertiesView(m_model, m_stack);
+    connect(m_trussView, &IElementPropertyView::nodeRequested, this, &PropertyPanel::showNodeProperties);
     connect(m_trussView, &IElementPropertyView::elementModified, this, &PropertyPanel::onViewModified);
     m_stack->addWidget(m_trussView); // Index 8
 
@@ -341,6 +344,27 @@ void PropertyPanel::onNodeModified(const TSA::Model::Node& node)
     if (m_stack->currentWidget() == m_nodeView && m_nodeView->elementId() == node.id())
     {
         m_nodeView->refreshView();
+        return;
+    }
+    // Barre affichée dont un nœud a changé (appui, coordonnées) : ses nœuds d'extrémité et sa
+    // longueur sont relus. Sans cela, l'appui posé sur le nœud n'apparaissait qu'au changement de sélection.
+    if (!m_model) return;
+    QWidget* current = m_stack->currentWidget();
+    auto uses = [&node](int start, int end) { return node.id() == start || node.id() == end; };
+    if (current == m_beamView)
+    {
+        if (const auto* b = m_model->getBeam(m_beamView->elementId()); b && uses(b->startNodeId(), b->endNodeId()))
+            m_beamView->refreshView();
+    }
+    else if (current == m_columnView)
+    {
+        if (const auto* c = m_model->getColumn(m_columnView->elementId()); c && uses(c->startNodeId(), c->endNodeId()))
+            m_columnView->refreshView();
+    }
+    else if (current == m_trussView)
+    {
+        if (const auto* t = m_model->getTrussMember(m_trussView->elementId()); t && uses(t->startNodeId(), t->endNodeId()))
+            m_trussView->refreshView();
     }
 }
 

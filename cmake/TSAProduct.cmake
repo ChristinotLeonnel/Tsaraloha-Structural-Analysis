@@ -73,6 +73,8 @@ set(UI_PROPERTIES_SOURCES
     ${TSA_ROOT}/src/UI/Properties/PropertyPanel.cpp
     ${TSA_ROOT}/src/UI/Properties/ElementResultsPanel.h
     ${TSA_ROOT}/src/UI/Properties/ElementResultsPanel.cpp
+    ${TSA_ROOT}/src/UI/Properties/MemberEndNodesWidget.h
+    ${TSA_ROOT}/src/UI/Properties/MemberEndNodesWidget.cpp
     ${TSA_ROOT}/src/UI/Properties/NodePropertiesView.h
     ${TSA_ROOT}/src/UI/Properties/NodePropertiesView.cpp
     ${TSA_ROOT}/src/UI/Properties/BeamPropertiesView.h

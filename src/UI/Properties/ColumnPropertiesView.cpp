@@ -80,6 +80,9 @@ void ColumnPropertiesView::setupUi()
     formCad->addRow(tr("Niveau :"), m_lblCadLevel);
 
     mainLayout->addWidget(grpCad);
+    m_endNodes = new MemberEndNodesWidget(this);
+    connect(m_endNodes, &MemberEndNodesWidget::nodeRequested, this, &IElementPropertyView::nodeRequested);
+    mainLayout->addWidget(m_endNodes);
 
     // 1. Général
     auto* grpGen = new QGroupBox(tr("Général & Matériau"), this);
@@ -225,6 +228,9 @@ void ColumnPropertiesView::refreshView()
     m_lblCadId->setText(QString("C-%1").arg(m_columnId));
     m_lblCadType->setText(tr("Poteau"));
 
+    m_endNodes->setModel(m_model);
+    m_endNodes->setEndLabels(tr("Pied :"), tr("Tête :"));
+    m_endNodes->setNodes(col->startNodeId(), col->endNodeId());
     const auto* startN = m_model->getNode(col->startNodeId());
     const auto* endN = m_model->getNode(col->endNodeId());
     if (startN && endN)

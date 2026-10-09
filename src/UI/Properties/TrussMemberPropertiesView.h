@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IElementPropertyView.h"
+#include "MemberEndNodesWidget.h"
 #include "../../Model/TrussMember.h"
 
 class QLineEdit;
@@ -32,6 +33,7 @@ private slots:
     void pickColor();
 
 private:
+    MemberEndNodesWidget* m_endNodes = nullptr;   // nœuds d'extrémité (appuis), lus dans le modèle
     void setupUi();
 
     TSA::Model::Model* m_model = nullptr;
