@@ -1096,13 +1096,14 @@ void OccView::updateElementIsolation()
 
     const bool isolate = isIsolationActive();
     const bool byElements = hasElementIsolation();
+    const bool hideForResults = m_resultsStructureDisplay == ResultsStructureDisplay::Hidden;
     // Rien n'a été masqué (isolation ou filtre de familles) et rien n'est actif : aucun travail.
-    if (!isolate && !byElements && !m_isolationApplied && m_hiddenElementCategories == 0)
+    if (!isolate && !byElements && !m_isolationApplied && m_hiddenElementCategories == 0 && !hideForResults)
         return;
     // Quand l'isolation vient d'être désactivée (case « Isoler le plan » décochée, sortie du
     // mode 2D), cette passe réaffiche tout selon les seuls drapeaux d'affichage. Auparavant la
     // fonction sortait immédiatement et les éléments masqués le restaient définitivement.
-    m_isolationApplied = isolate || byElements || m_hiddenElementCategories != 0;
+    m_isolationApplied = isolate || byElements || m_hiddenElementCategories != 0 || hideForResults;
 
     // Isolation / masquage par éléments : un élément est visible s'il n'est pas masqué et, si une
     // isolation est active, s'il en fait partie. Un nœud isolé suit l'élément (ou est isolé lui-même).
@@ -1159,7 +1160,7 @@ void OccView::updateElementIsolation()
     // 1. Nœuds & libellés (filtre d'affichage des nœuds + isolation)
     for (const auto& [nid, shape] : m_nodeShapes)
     {
-        const bool keep = isNodeVisibleByFilter(nid) && nodeKept(nid);
+        const bool keep = !hideForResults && isNodeVisibleByFilter(nid) && nodeKept(nid);
         setShapeVisibility(shape, keep);
         auto itLbl = m_nodeLabels.find(nid);
         if (itLbl != m_nodeLabels.end())
@@ -1176,25 +1177,25 @@ void OccView::updateElementIsolation()
     for (const auto& [id, shape] : m_beamShapes)
     {
         const auto* e = m_model->getBeam(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Beams) && userKept(iso.beams, m_hiddenElements.beams, id)
+        setShapeVisibility(shape, e && !hideForResults && catOn(ElementCategory::Beams) && userKept(iso.beams, m_hiddenElements.beams, id)
                                       && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_columnShapes)
     {
         const auto* e = m_model->getColumn(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Columns) && userKept(iso.columns, m_hiddenElements.columns, id)
+        setShapeVisibility(shape, e && !hideForResults && catOn(ElementCategory::Columns) && userKept(iso.columns, m_hiddenElements.columns, id)
                                       && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_trussShapes)
     {
         const auto* e = m_model->getTrussMember(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Trusses) && userKept(iso.trussMembers, m_hiddenElements.trussMembers, id)
+        setShapeVisibility(shape, e && !hideForResults && catOn(ElementCategory::Trusses) && userKept(iso.trussMembers, m_hiddenElements.trussMembers, id)
                                       && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_cableShapes)
     {
         const auto* e = m_model->getCable(id);
-        setShapeVisibility(shape, e && catOn(ElementCategory::Cables) && userKept(iso.cables, m_hiddenElements.cables, id)
+        setShapeVisibility(shape, e && !hideForResults && catOn(ElementCategory::Cables) && userKept(iso.cables, m_hiddenElements.cables, id)
                                       && linearKept(e->startNodeId(), e->endNodeId()));
     }
     for (const auto& [id, shape] : m_wallShapes)
@@ -1258,6 +1259,43 @@ void OccView::updateElementIsolation()
         if (itLbl != m_memberLoadLabels.end())
             setShapeVisibility(itLbl->second, keep && m_loadValuesVisible);
     }
+}
+
+void OccView::setResultsStructureDisplay(ResultsStructureDisplay mode)
+{
+    if (mode == m_resultsStructureDisplay)
+        return;
+    const ResultsStructureDisplay previous = m_resultsStructureDisplay;
+    m_resultsStructureDisplay = mode;
+    if (m_context.IsNull())
+        return;
+
+    // Atténuation : transparence des barres et nœuds d'origine, valeurs initiales restaurées ensuite.
+    if (previous == ResultsStructureDisplay::Ghosted)
+    {
+        for (auto& [ptr, saved] : m_resultsGhostSaved)
+            m_context->SetTransparency(saved.first, saved.second, false);
+        m_resultsGhostSaved.clear();
+    }
+    if (mode == ResultsStructureDisplay::Ghosted)
+    {
+        auto ghost = [this](const auto& shapes) {
+            for (const auto& [id, shape] : shapes)
+            {
+                if (shape.IsNull()) continue;
+                m_resultsGhostSaved.emplace(shape.get(), std::make_pair(Handle(AIS_InteractiveObject)(shape), shape->Transparency()));
+                m_context->SetTransparency(shape, 0.8, false);
+            }
+        };
+        ghost(m_beamShapes);
+        ghost(m_columnShapes);
+        ghost(m_trussShapes);
+        ghost(m_cableShapes);
+        ghost(m_nodeShapes);
+    }
+    updateElementIsolation(); // masquage (déformée seule) dans la passe de visibilité unique
+    if (!m_view.IsNull())
+        m_view->Redraw();
 }
 
 void OccView::setShowLocalAxes(bool show)
@@ -1853,6 +1891,7 @@ void OccView::rebuildGrid()
         return;
 
     m_gridRenderer.clearGrid(m_context);
+    updateGridLabelView(); // vue courante pour les repères des grilles reconstruites ci-dessous
 
     if (m_gridVisible && m_gridManager)
     {
@@ -1872,6 +1911,31 @@ void OccView::rebuildGrid()
     }
 }
 
+void OccView::updateGridLabelView()
+{
+    if (m_context.IsNull() || m_view.IsNull() || m_view->Camera().IsNull() || !m_gridManager)
+        return;
+
+    // Repère de la grille active (rotation) pour classer la visée ; les autres grilles suivent la
+    // même catégorie (cas courant : grilles parallèles).
+    const TSA::Grid::GridSystem* active = m_gridManager->activeGrid();
+    const double rotation = active ? active->definition().rotationDeg() : 0.0;
+    TSA::Grid::GridLabelView view;
+    view.kind = TSA::Grid::classifyGridView(m_view->Camera()->Direction(), rotation);
+    view.hasActiveLevel = true;
+    view.activeLevelZ = m_activeLevelZ;
+    if (view.sameLayoutAs(m_gridRenderer.labelView()))
+        return;
+
+    m_gridRenderer.setLabelView(view);
+    if (!m_gridVisible)
+        return;
+    for (const auto& grid : m_gridManager->grids())
+        if (grid && grid->isVisible())
+            m_gridRenderer.refreshLabels(*grid, m_context);
+    m_view->Redraw();
+}
+
 void OccView::setActiveLevelElevation(double z)
 {
     m_activeLevelZ = z;
@@ -1884,6 +1948,7 @@ void OccView::setActiveLevelElevation(double z)
 
     const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
     m_gridRenderer.setActiveLevelElevation(z, grid, m_context);
+    updateGridLabelView(); // en plan, les repères suivent le niveau actif
 
     if (moved)
     {

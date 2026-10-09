@@ -38,6 +38,7 @@ GridAdvancedSettingsDialog::GridAdvancedSettingsDialog(
     m_spnExtension->setValue(displaySettings.extension > 0.0 ? displaySettings.extension : 1.2);
     m_spnBubbleRadius->setValue(displaySettings.bubbleRadius > 0.0 ? displaySettings.bubbleRadius : 0.40);
     m_chkShowBubbles->setChecked(displaySettings.showBubbles);
+    m_chkLabelsBothEnds->setChecked(displaySettings.labelsBothEnds);
 
     int styleIdx = m_cmbLineStyle->findData(QString::fromStdString(displaySettings.lineStyle));
     if (styleIdx >= 0)
@@ -118,6 +119,9 @@ void GridAdvancedSettingsDialog::setupUi()
     formGeom->addRow(tr("Débord / Extension des lignes :"), m_spnExtension);
     formGeom->addRow(tr("Rayon des bulles :"), m_spnBubbleRadius);
     formGeom->addRow("", m_chkShowBubbles);
+    m_chkLabelsBothEnds = new QCheckBox(tr("Repères aux deux extrémités des axes"), this);
+    m_chkLabelsBothEnds->setToolTip(tr("Par défaut, chaque axe n'est repéré qu'une fois par vue."));
+    formGeom->addRow("", m_chkLabelsBothEnds);
     mainLayout->addWidget(grpGeom);
 
     // Groupe Affichage / Style
@@ -178,6 +182,7 @@ TSA::Grid::GridDisplaySettings GridAdvancedSettingsDialog::displaySettings() con
     ds.extension = m_spnExtension->value();
     ds.bubbleRadius = m_spnBubbleRadius->value();
     ds.showBubbles = m_chkShowBubbles->isChecked();
+    ds.labelsBothEnds = m_chkLabelsBothEnds->isChecked();
     ds.lineStyle = m_cmbLineStyle->currentData().toString().toStdString();
     ds.lineWidth = m_spnLineWidth->value();
     ds.lineColor = m_selectedColor.toStdString();

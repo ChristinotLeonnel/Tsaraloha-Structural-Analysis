@@ -52,6 +52,7 @@ private:
     QDoubleSpinBox* m_spnExtension = nullptr;
     QDoubleSpinBox* m_spnBubbleRadius = nullptr;
     QCheckBox* m_chkShowBubbles = nullptr;
+    QCheckBox* m_chkLabelsBothEnds = nullptr;
 
     QComboBox* m_cmbLineStyle = nullptr;
     QDoubleSpinBox* m_spnLineWidth = nullptr;

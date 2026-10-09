@@ -250,6 +250,15 @@ public:
     // Intégration du système de Grille 3D paramétrique
     void setGridManager(TSA::Grid::GridManager* gridManager, TSA::Grid::GridSnapManager* snapManager);
     void rebuildGrid();
+    /// Repères d'axes adaptés à la vue courante (plan / élévation / 3D) : recalculés seulement quand la
+    /// catégorie de vue ou le niveau actif (en plan) change. Appelé à chaque viewCameraChanged.
+    void updateGridLabelView();
+
+    /// Structure d'origine pendant l'affichage de la déformée : normale, atténuée (déformée + initiale)
+    /// ou masquée (déformée seule). Barres et nœuds ; appliqué dans la passe de visibilité unique.
+    enum class ResultsStructureDisplay { Normal, Ghosted, Hidden };
+    void setResultsStructureDisplay(ResultsStructureDisplay mode);
+    ResultsStructureDisplay resultsStructureDisplay() const { return m_resultsStructureDisplay; }
 
     void setGridVisible(bool visible);
     bool isGridVisible() const;
@@ -645,6 +654,8 @@ private:
 
     // Isolation (mode 2D ou « Isoler le plan ») : la visibilité de chaque objet est recalculée à
     // partir des drapeaux d'affichage et de l'appartenance au plan actif.
+    ResultsStructureDisplay m_resultsStructureDisplay = ResultsStructureDisplay::Normal;
+    std::map<const AIS_InteractiveObject*, std::pair<Handle(AIS_InteractiveObject), double>> m_resultsGhostSaved;
     bool m_isolationApplied = false; ///< Vrai si la dernière passe d'isolation a masqué des objets
     std::optional<TSA::Model::ElementSet> m_isolatedElements; ///< seuls ces éléments (et leurs nœuds) restent visibles
     TSA::Model::ElementSet m_hiddenElements;                  ///< éléments masqués par l'utilisateur

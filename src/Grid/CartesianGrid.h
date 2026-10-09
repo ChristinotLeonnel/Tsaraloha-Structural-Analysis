@@ -77,6 +77,13 @@ public:
     // Calcul du point de snap le plus proche
     GridSnapResult findClosestSnap(const gp_Pnt& worldPoint, double snapToleranceWorld) const;
 
+    /// Repère de la grille (origine + rotation autour de Z) : coordonnées locales → globales.
+    gp_Pnt localToWorld(double lx, double ly, double lz) const;
+    /// Direction horizontale locale (dx, dy) → globale.
+    gp_Dir localDirToWorld(double dx, double dy) const;
+    /// Débord effectif des axes au-delà de la grille (position des bulles d'extrémité).
+    double effectiveExtension() const { return m_extension > 0.1 ? m_extension : 1.2; }
+
 private:
     void computeGeometry();
 

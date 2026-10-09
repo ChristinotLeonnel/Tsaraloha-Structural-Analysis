@@ -6,6 +6,10 @@
 #include "Analysis/ResultsExport.h"
 #include "Analysis/ResultsContext.h"
 #include "Analysis/LoadResolver.h"
+#include "Geometry/DeformedGeometry.h"
+
+#include <Poly_Triangulation.hxx>
+#include <limits>
 
 #include <QElapsedTimer>
 #include <QJsonArray>
@@ -706,6 +710,225 @@ bool runSuite_Extraction(int& passed)
         const auto* d = r.getNodeDisplacement(top);
         TEST_CHECK(d && d->uz < 0.0, "Test 184: le sommet descend");
         std::cout << "[PASS] Test 184: Nœud de treillis seul" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 203 : déformée continue construite sur les résultats réels (OpenSees)
+    // Poutre sur deux appuis (q), console (P en bout), poteau (F latérale), portique ; cas limites.
+    // -------------------------------------------------------------------------
+    {
+        using TSA::Geometry::DeformedAxis;
+        using TSA::Geometry::DeformedAxisSource;
+        using TSA::Geometry::DeformedGeometry;
+        std::cout << "\n--- TEST 203: Déformée continue (résultats du solveur) ---" << std::endl;
+        auto axisOf = [](const Model& m, const ResultsModel& r, int bar, bool useStations) {
+            const auto* b = m.getBeam(bar);
+            const auto* n1 = m.getNode(b->startNodeId());
+            const auto* n2 = m.getNode(b->endNodeId());
+            return DeformedGeometry::computeMemberAxis(gp_Pnt(n1->x(), n1->y(), n1->z()), gp_Pnt(n2->x(), n2->y(), n2->z()),
+                                                       b->rotation(), r.getNodeDisplacement(b->startNodeId()),
+                                                       r.getNodeDisplacement(b->endNodeId()),
+                                                       useStations ? r.getElementResults(StructuralElementKind::Beam, bar) : nullptr, true);
+        };
+        auto sameVec = [](const gp_Vec& u, const NodeDisplacement& d) {
+            return std::abs(u.X() - d.ux) < 1e-15 && std::abs(u.Y() - d.uy) < 1e-15 && std::abs(u.Z() - d.uz) < 1e-15;
+        };
+
+        // 1. Poutre sur deux appuis, q uniforme (rotule en i comme le test 183) : v(x) = q x (L³ − 2L x² + x³) / 24EI
+        {
+            const double L = 6.0, q = 10.0;
+            Model m;
+            int n1 = m.addNode(0, 0, 0), n2 = m.addNode(L, 0, 0);
+            m.getNode(n1)->setSupport(SupportDefinition::fixed());
+            m.getNode(n2)->setSupport(SupportDefinition::pinned());
+            const Section sec = Section::rectangular(0.4, 0.4);
+            const Material mat = Material::steelS235();
+            int bb = m.addBar(n1, n2, sec, mat, BarRole::Beam);
+            EndRelease hinge;
+            hinge.my = hinge.mz = true;
+            m.getBeam(bb)->setStartRelease(hinge);
+            int lc = addCase(m);
+            m.loadManager().addMemberLoad(MemberLoad::uniform(bb, lc, q));
+            AnalysisParameters p;
+            p.includeSelfWeight = false;
+            ResultsModel r;
+            TEST_CHECK(runSolve(m, p, r), "Test 203: calcul poutre sur deux appuis");
+            const double EI = mat.mechanical.youngModulus * 1e-3 * sec.iy();
+            const DeformedAxis axis = axisOf(m, r, bb, true);
+            TEST_CHECK(axis.valid && axis.source == DeformedAxisSource::SolverStations && axis.size() >= 21,
+                       "Test 203: axe construit sur les stations du solveur");
+            TEST_CHECK(sameVec(axis.displacement.front(), r.nodeDisplacement(n1)) && sameVec(axis.displacement.back(), r.nodeDisplacement(n2)),
+                       "Test 203: extrémités = déplacements nodaux exacts");
+            const double vmax = 5.0 * q * std::pow(L, 4) / (384.0 * EI);
+            double worst = 0.0;
+            for (std::size_t i = 0; i < axis.size(); ++i)
+            {
+                const double x = axis.x[i];
+                const double v = q * x * (L * L * L - 2.0 * L * x * x + x * x * x) / (24.0 * EI);
+                worst = std::max(worst, std::abs(axis.displacement[i].Z() + v)); // flèche vers −Z
+            }
+            TEST_CHECK(worst < 1e-4 * vmax, "Test 203: toute la courbe = flèche théorique (écart " + std::to_string(worst / vmax) + " × v_max)");
+            // L'interpolation nodale seule ignore la charge en travée (ici rotation nodale nulle en i) :
+            // c'est pourquoi les stations du solveur sont prioritaires.
+            const DeformedAxis nodal = axisOf(m, r, bb, false);
+            TEST_CHECK(nodal.valid && nodal.source == DeformedAxisSource::CubicHermite, "Test 203: repli Hermite disponible");
+
+            // Facteur d'amplification : x_vis = x0 + s·u, résultats inchangés
+            const std::size_t mid = axis.size() / 2;
+            TEST_CHECK(axis.pointAt(mid, 0.0).Distance(axis.initial[mid]) < 1e-15
+                           && std::abs(axis.pointAt(mid, 250.0).Z() - 250.0 * axis.displacement[mid].Z()) < 1e-12,
+                       "Test 203: échelle appliquée à l'affichage seulement");
+
+            // Barre continue : une seule face triangulée (pas d'empilement de prismes), dans la bonne enveloppe
+            const TopoDS_Shape solid = DeformedGeometry::createMemberSolid(axis, sec, 0.0, 100.0);
+            int faces = 0;
+            for (TopExp_Explorer ex(solid, TopAbs_FACE); ex.More(); ex.Next()) ++faces;
+            TopLoc_Location loc;
+            const auto tri = solid.IsNull() ? Handle(Poly_Triangulation)() : BRep_Tool::Triangulation(TopoDS::Face(solid), loc);
+            TEST_CHECK(faces == 1 && !tri.IsNull() && tri->NbTriangles() > 0, "Test 203: barre déformée = un seul objet continu");
+            Bnd_Box box;
+            BRepBndLib::Add(solid, box);
+            double xmin, ymin, zmin, xmax, ymax, zmax;
+            box.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+            TEST_CHECK(std::abs(zmin - (-100.0 * vmax - 0.2)) < 0.02 * (100.0 * vmax) && std::abs(zmax - 0.2) < 1e-3,
+                       "Test 203: enveloppe = section ± flèche amplifiée");
+        }
+
+        // 2. Console, P en bout (−Z) : stations ET Hermite = P x² (3L − x) / 6EI
+        {
+            const double L = 4.0, P = 12.0;
+            Model m;
+            int n1 = m.addNode(0, 0, 0), n2 = m.addNode(L, 0, 0);
+            m.getNode(n1)->setSupport(SupportDefinition::fixed());
+            const Section sec = Section::ipe(240);
+            const Material mat = Material::steelS235();
+            int b = m.addBar(n1, n2, sec, mat, BarRole::Beam);
+            int lc = addCase(m);
+            m.loadManager().addNodalLoad(NodalLoad(0, n2, lc, 0.0, 0.0, -P));
+            AnalysisParameters p;
+            p.includeSelfWeight = false;
+            ResultsModel r;
+            TEST_CHECK(runSolve(m, p, r), "Test 203: calcul console");
+            const double EI = mat.mechanical.youngModulus * 1e-3 * sec.iy();
+            for (bool stations : { true, false })
+            {
+                const DeformedAxis axis = axisOf(m, r, b, stations);
+                double worst = 0.0;
+                for (std::size_t i = 0; i < axis.size(); ++i)
+                {
+                    const double x = axis.x[i];
+                    worst = std::max(worst, std::abs(axis.displacement[i].Z() + P * x * x * (3.0 * L - x) / (6.0 * EI)));
+                }
+                const double tip = P * L * L * L / (3.0 * EI);
+                TEST_CHECK(axis.valid && worst < 1e-6 * tip,
+                           std::string("Test 203: console, courbe exacte (") + (stations ? "stations" : "Hermite") + ")");
+            }
+        }
+
+        // 3. Poteau vertical encastré, F latérale (+X) en tête : orientation locale/globale
+        {
+            const double H = 3.0, F = 5.0;
+            Model m;
+            int n1 = m.addNode(0, 0, 0), n2 = m.addNode(0, 0, H);
+            m.getNode(n1)->setSupport(SupportDefinition::fixed());
+            const Section sec = Section::rectangular(0.3, 0.3); // Iy = Iz
+            const Material mat = Material::steelS235();
+            int c = m.addBar(n1, n2, sec, mat, BarRole::Column);
+            int lc = addCase(m);
+            m.loadManager().addNodalLoad(NodalLoad(0, n2, lc, F, 0.0, 0.0));
+            AnalysisParameters p;
+            p.includeSelfWeight = false;
+            ResultsModel r;
+            TEST_CHECK(runSolve(m, p, r), "Test 203: calcul poteau");
+            const double EI = mat.mechanical.youngModulus * 1e-3 * sec.iy();
+            for (bool stations : { true, false })
+            {
+                const DeformedAxis axis = axisOf(m, r, c, stations);
+                double worst = 0.0;
+                for (std::size_t i = 0; i < axis.size(); ++i)
+                {
+                    const double z = axis.x[i];
+                    worst = std::max(worst, std::abs(axis.displacement[i].X() - F * z * z * (3.0 * H - z) / (6.0 * EI))
+                                                + std::abs(axis.displacement[i].Y()));
+                }
+                TEST_CHECK(axis.valid && worst < 1e-6 * F * H * H * H / (3.0 * EI),
+                           std::string("Test 203: poteau, axe courbé vers +X (") + (stations ? "stations" : "Hermite") + ")");
+            }
+        }
+
+        // 4. Portique : continuité aux nœuds communs poteau / traverse
+        {
+            Model m;
+            int a = m.addNode(0, 0, 0), b = m.addNode(0, 0, 4), c = m.addNode(6, 0, 4), d = m.addNode(6, 0, 0);
+            m.getNode(a)->setSupport(SupportDefinition::fixed());
+            m.getNode(d)->setSupport(SupportDefinition::fixed());
+            const Section sec = Section::ipe(300);
+            const Material mat = Material::steelS235();
+            int c1 = m.addBar(a, b, sec, mat, BarRole::Column);
+            int tr = m.addBar(b, c, sec, mat, BarRole::Beam);
+            int c2 = m.addBar(d, c, sec, mat, BarRole::Column);
+            int lc = addCase(m);
+            m.loadManager().addNodalLoad(NodalLoad(0, b, lc, 10.0, 0.0, 0.0));
+            m.loadManager().addMemberLoad(MemberLoad::uniform(tr, lc, 15.0));
+            AnalysisParameters p;
+            p.includeSelfWeight = false;
+            ResultsModel r;
+            TEST_CHECK(runSolve(m, p, r), "Test 203: calcul portique");
+            const DeformedAxis left = axisOf(m, r, c1, true), beam = axisOf(m, r, tr, true), right = axisOf(m, r, c2, true);
+            TEST_CHECK(left.valid && beam.valid && right.valid, "Test 203: trois barres déformées");
+            TEST_CHECK(left.pointAt(left.size() - 1, 50.0).Distance(beam.pointAt(0, 50.0)) < 1e-12
+                           && right.pointAt(right.size() - 1, 50.0).Distance(beam.pointAt(beam.size() - 1, 50.0)) < 1e-12,
+                       "Test 203: poteaux et traverse restent connectés (même nœud)");
+            // Continuité de la courbe : pas de saut entre deux points voisins (≤ 1/5 du déplacement maximal)
+            double maxU = 0.0, maxJump = 0.0;
+            for (const auto* ax : { &left, &beam, &right })
+                for (std::size_t i = 0; i < ax->size(); ++i)
+                {
+                    maxU = std::max(maxU, ax->displacement[i].Magnitude());
+                    if (i > 0) maxJump = std::max(maxJump, (ax->displacement[i] - ax->displacement[i - 1]).Magnitude());
+                }
+            TEST_CHECK(maxU > 0.0 && maxJump < 0.2 * maxU, "Test 203: courbe continue (saut maximal entre stations)");
+        }
+
+        // 5. Cas limites : déplacement nul, valeurs non finies, déplacement absent, résultats périmés
+        {
+            const gp_Pnt p1(0, 0, 0), p2(5, 0, 0);
+            const NodeDisplacement zero {};
+            const DeformedAxis still = DeformedGeometry::computeMemberAxis(p1, p2, 0.0, &zero, &zero, nullptr, true);
+            bool allZero = still.valid;
+            for (const auto& u : still.displacement) allZero = allZero && u.Magnitude() == 0.0;
+            TEST_CHECK(allZero, "Test 203: élément sans déplacement = géométrie initiale");
+
+            NodeDisplacement bad {};
+            bad.ry = std::numeric_limits<double>::quiet_NaN();
+            const DeformedAxis nan = DeformedGeometry::computeMemberAxis(p1, p2, 0.0, &zero, &bad, nullptr, true);
+            TEST_CHECK(!nan.valid && !nan.problem.empty() && DeformedGeometry::createMemberSolid(nan, Section::ipe(200), 0.0, 10.0).IsNull(),
+                       "Test 203: rotation non finie → aucune déformée inventée");
+            TEST_CHECK(!DeformedGeometry::computeMemberAxis(p1, p2, 0.0, &zero, nullptr, nullptr, true).valid,
+                       "Test 203: déplacement absent → invalide");
+
+            ElementResults stale;
+            stale.length = 4.0; // la barre mesure 5 m : résultats d'une autre géométrie
+            StationForces s;
+            s.position = 2.0;
+            s.uz = -1.0;
+            stale.intermediateStations.push_back(s);
+            const DeformedAxis fallback = DeformedGeometry::computeMemberAxis(p1, p2, 0.0, &zero, &zero, &stale, true);
+            TEST_CHECK(fallback.valid && fallback.source == DeformedAxisSource::CubicHermite,
+                       "Test 203: stations périmées ignorées");
+
+            const DeformedAxis truss = DeformedGeometry::computeMemberAxis(p1, p2, 0.0, &zero, &zero, nullptr, false);
+            TEST_CHECK(truss.valid && truss.source == DeformedAxisSource::Linear && truss.size() == 2,
+                       "Test 203: barre articulée = interpolation linéaire");
+
+            // Toutes les formes de section produisent une barre continue
+            for (const Section& sec : { Section::rectangular(0.2, 0.4), Section::ipe(200), Section::circular(0.3), Section::upn(160),
+                                        Section::angle(0.1, 0.1, 0.01), Section::tSection(0.2, 0.15, 0.01, 0.015),
+                                        Section::boxHollow(0.2, 0.3, 0.01), Section::pipe(0.2, 0.01) })
+                TEST_CHECK(!DeformedGeometry::createMemberSolid(still, sec, 15.0, 1.0).IsNull(), "Test 203: barre continue pour " + sec.name);
+        }
+        std::cout << "[PASS] Test 203: Déformée continue (stations du solveur, Hermite, portique, cas limites)" << std::endl;
         passed++;
     }
 

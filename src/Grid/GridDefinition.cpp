@@ -517,7 +517,8 @@ std::string GridDefinition::toJson() const
         << "\", \"lineWidth\": " << m_displaySettings.lineWidth
         << ", \"extension\": " << m_displaySettings.extension
         << ", \"bubbleRadius\": " << m_displaySettings.bubbleRadius
-        << ", \"showBubbles\": " << (m_displaySettings.showBubbles ? "true" : "false") << "}\n";
+        << ", \"showBubbles\": " << (m_displaySettings.showBubbles ? "true" : "false")
+        << ", \"labelsBothEnds\": " << (m_displaySettings.labelsBothEnds ? "true" : "false") << "}\n";
     oss << "}";
     return oss.str();
 }
@@ -833,6 +834,8 @@ GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
             if (!br.empty()) { try { ds.bubbleRadius = std::stod(br); } catch (...) {} }
             std::string sb = findDsField("showBubbles");
             if (!sb.empty()) ds.showBubbles = (sb == "true");
+            std::string be = findDsField("labelsBothEnds");
+            if (!be.empty()) ds.labelsBothEnds = (be == "true");
 
             def.setDisplaySettings(ds);
         }
