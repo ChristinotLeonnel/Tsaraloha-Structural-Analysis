@@ -2,6 +2,13 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Barres : nœuds d'extrémité et appuis dans le panneau)
+
+### Added
+- BUG-057 : le panneau d'une poutre, d'un poteau ou d'une barre de treillis montre ses nœuds d'extrémité (coordonnées,
+  appui), mis à jour dès qu'un nœud change ; l'appui s'y règle directement (Libre, Encastrement, Articulation, Appui
+  simple), les autres appuis restent réglables dans le nœud.
+
 ## 2026-10-09 (Boutons de commande : couleur = commande active)
 
 ### Fixed
