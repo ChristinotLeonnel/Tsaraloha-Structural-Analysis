@@ -16,6 +16,8 @@
 #include <QObject>
 #include <QString>
 
+#include <atomic>
+#include <cstdint>
 #include <memory>
 
 class QThread;
@@ -84,6 +86,8 @@ public:
     bool resultsUpToDate() const;
     /// Rend des résultats courants (suivis par le garde de validité) et émet resultsChanged().
     void publishResults(const std::shared_ptr<ResultsModel>& results);
+    /// Résultats d'un calcul lancé sur la révision analyzedRevision du modèle.
+    void publishResults(const std::shared_ptr<ResultsModel>& results, std::uint64_t analyzedRevision);
     /// Oublie les résultats (nouveau projet, projet fermé) et émet resultsChanged().
     void clearResults();
 
@@ -112,6 +116,11 @@ private:
     QThread* m_worker = nullptr;
     EngineId m_runningEngine;
     std::shared_ptr<AnalysisRunResult> m_lastRun;
+    /// Révision du modèle au lancement du calcul en tâche de fond : le modèle peut être modifié
+    /// (panneau d'analyse non modal, ouverture d'un autre projet) pendant que le thread calcule.
+    std::uint64_t m_runRevision = 0;
+    /// Armé par cancel(), remplacé à chaque start() : partagé avec le thread de calcul.
+    std::shared_ptr<std::atomic<bool>> m_cancelFlag = std::make_shared<std::atomic<bool>>(false);
 };
 
 } // namespace TSA::Analysis

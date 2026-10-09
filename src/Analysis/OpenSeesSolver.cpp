@@ -90,12 +90,14 @@ bool OpenSeesSolver::solveSnapshot(const CalculationSnapshot& snapshot,
         if (errorMessage) *errorMessage = tr("Un calcul OpenSees est déjà en cours.");
         return false;
     }
+    // m_stopRequested n'est PAS remis à zéro ici : un stop() reçu entre la création du solveur et
+    // cet appel doit interrompre le calcul. Il est réarmé à la fin, pour un éventuel calcul suivant.
     m_isRunning = true;
-    m_stopRequested = false;
     m_results.clear();
     emit analysisStarted();
 
     const bool ok = executeWorkflow(snapshot, params, errorMessage);
+    m_stopRequested = false;
     m_isRunning = false;
     emit analysisFinished(ok, ok ? tr("Calcul OpenSees achevé avec succès.")
                                  : (errorMessage ? *errorMessage : tr("Échec du calcul.")));
@@ -157,6 +159,12 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
                                      const AnalysisParameters& params,
                                      QString* errorMessage)
 {
+    if (m_stopRequested)
+    {
+        if (errorMessage) *errorMessage = tr("Calcul interrompu par l'utilisateur.");
+        return false;
+    }
+
     // Contrôle des bornes du snapshot
     if (snapshot.nodeCount() == 0)
     {

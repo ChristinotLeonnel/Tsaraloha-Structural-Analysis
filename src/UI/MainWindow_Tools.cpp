@@ -760,6 +760,7 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
     // le déroulé séquentiel de cette commande (résumé, message) sans bloquer l'interface.
     QEventLoop loop;
     bool success = false;
+    bool cancelledByUser = false;
     QString message;
     const auto logConn = connect(m_analysis, &AnalysisController::logMessage, this, [this](const QString& line) {
         if (m_consoleDock) m_consoleDock->appendLog(line, "INFO");
@@ -779,7 +780,8 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
             message = text;
             loop.quit();
         });
-    connect(progress, &QProgressDialog::canceled, this, [this, progress] {
+    connect(progress, &QProgressDialog::canceled, this, [this, progress, &cancelledByUser] {
+        cancelledByUser = true;
         m_analysis->cancel();
         if (progress) progress->setLabelText(tr("Annulation du calcul…"));
     });
@@ -790,6 +792,13 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
     disconnect(finishedConn);
     if (progress) progress->deleteLater();
 
+    if (!success && cancelledByUser)
+    {
+        // Interruption demandée : ce n'est pas une erreur du moteur, aucune boîte critique.
+        if (m_consoleDock) m_consoleDock->appendLog(tr("Calcul %1 annulé : %2").arg(engineName, message), "WARN");
+        if (m_statusInfo) m_statusInfo->setText(tr("Calcul %1 annulé").arg(engineName));
+        return false;
+    }
     if (!success)
     {
         if (m_consoleDock)

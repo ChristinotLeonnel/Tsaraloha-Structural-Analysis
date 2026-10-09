@@ -1,4 +1,4 @@
-// Suite « engines » : architecture d'analyse multi-moteurs (tests 130-138, 196).
+// Suite « engines » : architecture d'analyse multi-moteurs (tests 130-138, 196, 205-206).
 // Registre, capacités, contexte, extraction 2D par axe de grille, mapping, validation pilotée par
 // les capacités, non-régression OpenSees, fenêtre Analysis commune, remappage des résultats.
 
@@ -654,6 +654,102 @@ bool runSuite_Engines(int& passed)
         TEST_CHECK(std::abs(std::get<double>(cons.outputs.at("max_moment")) - 40.0) <= 1e-6,
                    "Test 196: moment d'encastrement = P·L");
         std::cout << "[PASS] Test 196: Contrôleur d'analyse partagé" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 205 : annulation reçue avant que le moteur ait créé son solveur (course d'annulation).
+    // Avant correction, OpenSeesSolver::solveSnapshot remettait le drapeau d'arrêt à zéro et
+    // OpenSeesEngine::cancel() ne trouvait pas encore le solveur : le calcul allait à son terme.
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        GridManager gm;
+        addGrid(gm);
+        Frames f = buildFrames(m, false);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        m.loadManager().addNodalLoad(NodalLoad(0, f.nodes['A'][1], lc, 10.0, 0.0, -20.0));
+
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext c;
+        c.engineId = "opensees";
+        c.common.includeSelfWeight = false;
+        const auto prep = mgr.prepare(m, &gm, c);
+        TEST_CHECK(prep.canRun(), "Test 205: modèle calculable");
+
+        AnalysisRunCallbacks cancelled;
+        cancelled.cancelRequested = [] { return true; };
+        const auto stopped = mgr.run(c, prep, cancelled);
+        TEST_CHECK(!stopped.success && stopped.message.find("interrompu") != std::string::npos
+                       && !stopped.results.hasResults(),
+                   "Test 205: annulation antérieure au solveur respectée (" << stopped.message << ")");
+
+        const auto normal = mgr.run(c, prep, AnalysisRunCallbacks{});
+        TEST_CHECK(normal.success, "Test 205: calcul suivant non affecté");
+
+        // Solveur réutilisé : stop() avant solveSnapshot interrompt, puis le drapeau est réarmé.
+        OpenSeesSolver solver;
+        const CalculationSnapshot snap = CalculationSnapshot::capture(m);
+        AnalysisParameters params;
+        params.includeSelfWeight = false;
+        QString err;
+        solver.stop();
+        TEST_CHECK(!solver.solveSnapshot(snap, params, &err) && err.contains(QStringLiteral("interrompu")),
+                   "Test 205: stop() avant solveSnapshot respecté");
+        TEST_CHECK(!solver.isRunning(), "Test 205: solveur au repos après interruption");
+        TEST_CHECK(solver.solveSnapshot(snap, params, &err), "Test 205: drapeau réarmé pour le calcul suivant (" << err.toStdString() << ")");
+        std::cout << "[PASS] Test 205: Annulation d'un calcul avant création du solveur" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 206 : modèle modifié pendant un calcul en tâche de fond. Avant correction, les résultats
+    // (calculés sur l'état d'avant) étaient publiés « à jour » : le garde prenait la révision du
+    // modèle à la publication et non au lancement (panneau d'analyse non modal).
+    // -------------------------------------------------------------------------
+    {
+        TSA::Project::ProjectSession session;
+        Model& m = session.model();
+        const std::string gid = addGrid(session.grids());
+        Frames f = buildFrames(m, false);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        m.loadManager().addNodalLoad(NodalLoad(0, f.nodes['B'][1], lc, 10.0, 0.0, -20.0));
+        AnalysisController& ac = session.analysis();
+        ac.setContext(custom2dContext(gid, "B"));
+
+        bool done = false, ok = false;
+        int stale = 0;
+        QEventLoop loop;
+        QObject::connect(&ac, &AnalysisController::resultsBecameStale, &loop, [&] { ++stale; });
+        QObject::connect(&ac, &AnalysisController::finished, &loop, [&](bool success, const QString&) {
+            done = true;
+            ok = success;
+            loop.quit();
+        });
+        QString error;
+        TEST_CHECK(ac.start(&error), "Test 206: calcul lancé (" << error.toStdString() << ")");
+        // Modification pendant le calcul : la fin du thread n'est traitée qu'à loop.exec().
+        m.pushUndoState("Déplacer", "");
+        m.getNode(f.nodes['B'][1])->setCoordinates(0.0, 5.0, 3.5);
+        m.notifyNodeModified(f.nodes['B'][1]);
+        QTimer::singleShot(30000, &loop, &QEventLoop::quit);
+        loop.exec();
+        QCoreApplication::processEvents();
+        QCoreApplication::processEvents();
+        TEST_CHECK(done && ok, "Test 206: calcul terminé");
+        TEST_CHECK(ac.results() && !ac.results()->isValid() && !ac.resultsUpToDate(),
+                   "Test 206: résultats d'un état antérieur publiés comme obsolètes");
+        TEST_CHECK(stale == 1, "Test 206: signal d'obsolescence émis une fois");
+
+        // Sans modification pendant le calcul : résultats à jour (comportement inchangé).
+        done = false;
+        TEST_CHECK(ac.start(&error), "Test 206: second calcul lancé");
+        loop.exec();
+        TEST_CHECK(done && ok && ac.results() && ac.results()->isValid() && ac.resultsUpToDate(),
+                   "Test 206: calcul sans modification concurrente à jour");
+        std::cout << "[PASS] Test 206: Modèle modifié pendant un calcul en tâche de fond" << std::endl;
         ++passed;
     }
     return true;

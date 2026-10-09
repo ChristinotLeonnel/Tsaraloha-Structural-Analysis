@@ -35,8 +35,14 @@ void ResultsValidityGuard::setModel(TSA::Model::Model* model)
 
 void ResultsValidityGuard::trackResults(const std::shared_ptr<ResultsModel>& results)
 {
+    trackResults(results, m_model ? m_model->revision() : 0);
+}
+
+void ResultsValidityGuard::trackResults(const std::shared_ptr<ResultsModel>& results, std::uint64_t analyzedRevision)
+{
     m_results = results;
-    m_analyzedRevision = m_model ? m_model->revision() : 0;
+    m_analyzedRevision = analyzedRevision;
+    onModelEdited();   // modèle modifié pendant le calcul : invalidation immédiate
 }
 
 void ResultsValidityGuard::clearResults()
