@@ -74,7 +74,8 @@ bool fromJson(const QJsonValue& j, ValueType type, Value& out)
         std::vector<int> ids;
         for (const auto& x : j.toArray())
         {
-            if (!x.isDouble()) return false;
+            // toInt() rend 0 pour un non-entier (3.7 → identifiant 0) : refusé comme pour Integer
+            if (!x.isDouble() || x.toDouble() != static_cast<double>(x.toInt())) return false;
             ids.push_back(x.toInt());
         }
         out = ids;

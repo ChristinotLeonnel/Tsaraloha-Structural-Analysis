@@ -27,7 +27,7 @@ Note: MSVC francisé → lanceur généré `build-*/msvc_codepage.cmd` (page de 
 dépendances d'en-têtes Ninja fiables quelle que soit la console (BUG-011, vérifié `ninja -t deps`).
 
 ## Tests
-Status: IMPLEMENTED — 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
+Status: IMPLEMENTED — 222/222 PASS le 2026-10-09 (test 201 : chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique ; TSALab 5/5, science 6/6, banc 14/14) ; 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
 188 niveaux/grilles annulables, 189 chunk SETT, 190 collage BIM, 191 édition groupée) ; test 20 sensible au temps (BUG-035) ;
 197/197 avant (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
 186/186 avant (suite `cleanup` 160–165 le 2026-10-05) ;
@@ -164,7 +164,7 @@ BUG-018), dock « Données d'analyse », export, invalidation automatique. Résu
 Status: MISSING — aucun mailleur EF pour dalles/voiles.
 
 ## .tsa
-Status: IMPLEMENTED — format 1.4 (PROJ, THMB, COOR, GRID, NODE, SUPP, BARS, COLS, SLAB, WALL, FNDN, TRUS, CABL,
+Status: IMPLEMENTED — chemins non ASCII, JSON COOR/GRID > 64 Kio, nom/auteur et ouverture atomique corrigés le 2026-10-09 (BUG-040 à 043) ; format 1.4 (PROJ, THMB, COOR, GRID, NODE, SUPP, BARS, COLS, SLAB, WALL, FNDN, TRUS, CABL,
 LOAD, SNAP, BIMM, SETT), zlib, CRC32, écriture atomique, lecture des formats antérieurs. RSLT non écrit.
 
 ## Import/Export

@@ -3,6 +3,7 @@
 #include "ElementTransformation.h"
 #include "LoadResolver.h"
 #include "OpenSeesAnalysisBuilder.h"
+#include "../Core/Utf8Path.h"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -18,7 +19,7 @@ namespace
 std::vector<std::string> readAllLines(const std::string& path)
 {
     std::vector<std::string> lines;
-    std::ifstream ifs(path);
+    std::ifstream ifs(TSA::Core::utf8Path(path));
     if (!ifs.is_open()) return lines;
     std::string line;
     while (std::getline(ifs, line))

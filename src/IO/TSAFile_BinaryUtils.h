@@ -55,10 +55,30 @@ inline void writeDouble(std::vector<uint8_t>& buf, double val)
 
 inline void writeString(std::vector<uint8_t>& buf, const std::string& str)
 {
-    uint16_t len = static_cast<uint16_t>(std::min<size_t>(str.size(), MAX_SAFE_STRING_LEN));
-    writeU16(buf, len);
-    buf.insert(buf.end(), str.begin(), str.begin() + len);
+    // Longueur sur 16 bits : au plus 65 535 octets. Auparavant la borne était MAX_SAFE_STRING_LEN
+    // (65 536), convertie en 0 par le cast : toute chaîne ≥ 64 Kio était enregistrée vide.
+    size_t len = std::min<size_t>(str.size(), 0xFFFF);
+    while (len > 0 && len < str.size() && (static_cast<uint8_t>(str[len]) & 0xC0) == 0x80)
+        --len; // ne pas couper un caractère UTF-8
+    writeU16(buf, static_cast<uint16_t>(len));
+    buf.insert(buf.end(), str.begin(), str.begin() + static_cast<std::ptrdiff_t>(len));
 }
+
+/// Chaîne JSON occupant un chunk entier (COOR, GRID). Format d'origine : préfixe u16 + octets.
+/// Au-delà de 65 535 octets : préfixe 0 puis le JSON jusqu'à la fin du chunk (une version antérieure
+/// y lit une chaîne vide, comme avant cette extension ; aucun fichier existant n'est réinterprété :
+/// un préfixe 0 y était toujours suivi d'un chunk de 2 octets).
+inline void writeChunkText(std::vector<uint8_t>& buf, const std::string& text)
+{
+    if (text.size() <= 0xFFFF)
+    {
+        writeString(buf, text);
+        return;
+    }
+    writeU16(buf, 0);
+    buf.insert(buf.end(), text.begin(), text.end());
+}
+
 
 inline bool readU8(const uint8_t* data, size_t size, size_t& offset, uint8_t& val)
 {
@@ -123,6 +143,20 @@ inline bool readString(const uint8_t* data, size_t size, size_t& offset, std::st
     str.assign(reinterpret_cast<const char*>(data + offset), len);
     offset += len;
     return true;
+}
+
+inline bool readChunkText(const uint8_t* data, size_t size, std::string& text)
+{
+    size_t offset = 0;
+    uint16_t len = 0;
+    if (!readU16(data, size, offset, len)) return false;
+    if (len == 0 && size > 2)
+    {
+        text.assign(reinterpret_cast<const char*>(data + 2), size - 2);
+        return true;
+    }
+    offset = 0;
+    return readString(data, size, offset, text);
 }
 
 // Sérialisation Section

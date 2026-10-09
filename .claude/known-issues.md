@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-10-07 (branche feature/static-only). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-09 (audit, branche fix/audit-2026-10-09). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
 
@@ -117,6 +117,10 @@ Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapea
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |
+| BUG-040 | Projet sous un chemin non ASCII (« Études/Pont à poutres.tsa ») enregistré mais impossible à rouvrir : `std::ifstream` reçoit de l'UTF-8 interprété en ANSI ; idem résultats OpenSees si %TEMP% contient un accent | `TSA::Core::utf8Path` (src/Core/Utf8Path.h) dans TSAFile.cpp, OpenSeesResultsReader, OpenSeesAdapter | test 201 (échec reproduit sur le code d'origine : « Fichier introuvable ») |
+| BUG-041 | Chaîne ≥ 64 Kio écrite avec une longueur 0 (cast u16 de 65 536) : JSON COOR / GRID perdu | borne 65 535 (frontière UTF-8) ; `writeChunkText` / `readChunkText` (préfixe 0 + JSON jusqu'à la fin du chunk) | test 201 (grille de 6 000 axes ; perdue avant correction) |
+| BUG-042 | Nom / auteur du projet enregistrés vides par `ProjectManager::saveProject` | transmis à `TSAProjectIO::saveProject` | test 201 (nom relu vide avant correction) |
+| BUG-043 | Ouverture refusée : niveaux / grilles du fichier rejeté déjà appliqués au projet resté ouvert | COOR / GRID appliqués après lecture complète (`TSAFileReader::parsePayload`) | test 201 (fichier GRID valide + NODE tronqué) |
 | BUG-039 | TSALab : assertion Qt à la fermeture (« Called object is not of the correct type ») si des nœuds Blueprint étaient sélectionnés : la scène, détruite après l'éditeur, émettait selectionChanged vers BlueprintEditor::showNodeProperties | ~BlueprintEditor et ~LabMainWindow coupent les connexions de leurs enfants vers eux (même règle que ~MainWindow) | test 199 (erreur de segmentation avant correction) ; GUI 2026-10-09 : exemple portique, 5 nœuds sélectionnés, fermeture normale sans assertion |
 | BUG-038 | Résultats Custom2D : équilibre global vide (réaction totale 0 kN affichée, « Équilibre : CONFORME » sans contrôle) et cas calculé sans nom | réactions sommées, résultante des charges = −ΣR au résidu du solveur près, moments déclarés non contrôlés ; `caseOrComboName` renseigné | GUI TSALab 2026-10-08 : portique plan, réaction totale 77,9 kN, SOLVER LAB « cas Tous les cas » |
 | BUG-037 | MetDeDeplacement refusait une ossature sans DDL libre | neq == 0 accepté : U = 0, efforts d'encastrement parfait (TSALab/science) | benchmark « fixed-fixed-single-bar » (7/7, 2026-10-08) |

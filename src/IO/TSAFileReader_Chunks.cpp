@@ -62,26 +62,6 @@ bool TSAFileReader::readThumbnailChunk(const uint8_t* data, size_t size, QImage*
     return false;
 }
 
-bool TSAFileReader::readCoordinateChunk(const uint8_t* data, size_t size, TSA::Coordinate::CoordinateSystem* cs, std::string* /*errorMessage*/)
-{
-    if (!cs) return true;
-    size_t off = 0;
-    std::string json;
-    if (!readString(data, size, off, json)) return false;
-    cs->deserializeFromJson(json);
-    return true;
-}
-
-bool TSAFileReader::readGridChunk(const uint8_t* data, size_t size, TSA::Grid::GridManager* gm, std::string* /*errorMessage*/)
-{
-    if (!gm) return true;
-    size_t off = 0;
-    std::string json;
-    if (!readString(data, size, off, json)) return false;
-    gm->deserializeFromJson(json);
-    return true;
-}
-
 bool TSAFileReader::readNodeChunk(const uint8_t* data, size_t size, uint32_t count, std::map<int, TSA::Model::Node>& nodes, std::string* errorMessage)
 {
     if (count > MAX_SAFE_NODES)
