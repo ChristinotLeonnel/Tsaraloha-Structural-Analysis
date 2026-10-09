@@ -2,6 +2,17 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Claude Code co-ingénieur : serveur MCP)
+
+### Added
+- AutomationServer (src/Automation, base commune) : canal local `tsaraloha-<produit>` réservé au compte Windows,
+  commandes du registre, scripts → Blueprint, outils de lecture de l'IA, contexte d'ingénierie, Annuler / Rétablir.
+  Démarré par MainWindow (TSA) et LabMainWindow (TSALab) ; actions visibles en direct, console « MCP › … ».
+- tools/mcp/TsaralohaMcp.cpp → `tsaraloha-mcp.exe` (serveur MCP stdio, 8 outils), cible CMake
+  `tsaraloha_add_mcp_bridge`. Claude Code (compte de l'utilisateur, sans clé API) pilote TSA / TSALab. docs/MCP.md.
+- Test 200 (dialogue MCP réel avec le pont) : 221/221. Vérifié en conditions réelles : TSALab ouvert, portique
+  construit par run_command_script, calcul analysis.run, results.summary (Mmax 37,2 kN·m, ΣRz 77,9 kN).
+
 ## 2026-10-09 (Correction de la fermeture de TSALab)
 
 ### Fixed

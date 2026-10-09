@@ -712,6 +712,8 @@ set(RESOURCES_SOURCES
 set(TSARALOHA_MODEL_SOURCES
     ${TSA_ROOT}/src/Automation/CommandRegistry.h
     ${TSA_ROOT}/src/Automation/CommandRegistry.cpp
+    ${TSA_ROOT}/src/Automation/AutomationServer.h
+    ${TSA_ROOT}/src/Automation/AutomationServer.cpp
     ${TSA_ROOT}/src/Blueprint/BlueprintTypes.h
     ${TSA_ROOT}/src/Blueprint/BlueprintGraph.h
     ${TSA_ROOT}/src/Blueprint/BlueprintGraph.cpp
@@ -1056,6 +1058,20 @@ function(tsaraloha_add_thumbnail_provider target product_dir)
     target_link_libraries(${target} PRIVATE windowscodecs shlwapi ole32 shell32 advapi32)
 endfunction()
 
+# Pont MCP (tsaraloha-mcp.exe) : serveur Model Context Protocol (stdio) lancé par Claude Code ou tout client MCP,
+# relayé vers l'AutomationServer de TSA / TSALab ouvert sur le poste. Qt Core + Network seulement ; placé à côté
+# de l'application (mêmes DLL Qt). Voir docs/MCP.md.
+function(tsaraloha_add_mcp_bridge target)
+    add_executable(${target} ${TSA_ROOT}/tools/mcp/TsaralohaMcp.cpp)
+    target_compile_features(${target} PRIVATE cxx_std_20)
+    target_link_libraries(${target} PRIVATE Qt6::Core Qt6::Network)
+    set_target_properties(${target} PROPERTIES OUTPUT_NAME "tsaraloha-mcp")
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /utf-8)
+        target_link_options(${target} PRIVATE /SUBSYSTEM:CONSOLE)
+    endif()
+endfunction()
+
 # Exécutable Qt d'une application de l'écosystème : sous-système Windows et déploiement des DLL
 # (Qt, OCCT, 3rdparty, Extensions/ de la base commune) à côté de l'exécutable.
 function(tsaraloha_configure_application target)
@@ -1114,6 +1130,8 @@ function(tsa_add_product)
     if(TARGET ${thumbs})
         add_dependencies(${name} ${thumbs})
     endif()
+    tsaraloha_add_mcp_bridge(${name}_Mcp)
+    add_dependencies(${name} ${name}_Mcp)
 
     # --- Tests unitaires : bibliothèques partagées -------------------------
     if(TSA_BUILD_TESTS)
@@ -1124,6 +1142,8 @@ function(tsa_add_product)
         target_precompile_headers(${tests} REUSE_FROM ${model})
         target_link_libraries(${tests} PRIVATE ${model} ${graphics} ${widgets})
         set_target_properties(${tests} PROPERTIES OUTPUT_NAME "${name}_TestSuite")
+        add_dependencies(${tests} ${name}_Mcp)
+        target_compile_definitions(${tests} PRIVATE TSARALOHA_MCP_EXE="$<TARGET_FILE:${name}_Mcp>")
         if(WIN32)
             add_dependencies(${tests} ${thumbs})
             target_link_libraries(${tests} PRIVATE shlwapi ole32)

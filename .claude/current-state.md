@@ -77,6 +77,8 @@ Fournisseur Cloud « Anthropic Claude » ajouté le 2026-10-09 (préréglage `an
 « compatible OpenAI » officiel d'Anthropic, même `OpenAICompatibleProvider` que OpenAI/Gemini/Ollama,
 aucun code propre à Anthropic) ; préréglage vérifié dans la boîte de dialogue (UI Automation), jamais
 appelé en vrai (nécessite une clé API Anthropic de l'utilisateur, non fournie à Claude).
+Claude Code co-ingénieur (2026-10-09) : AutomationServer + pont MCP `tsaraloha-mcp.exe` (docs/MCP.md), test 200,
+vérifié en conditions réelles sur TSALab ; serveurs « tsa » et « tsalab » enregistrés dans Claude Code (portée utilisateur).
 MISSING : What-If, rapport IA. Voir docs/AI_COENGINEERING.md.
 
 ## Viewport
