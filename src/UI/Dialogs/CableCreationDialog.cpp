@@ -1,4 +1,5 @@
 #include "CableCreationDialog.h"
+#include <QEvent>
 #include "../../Model/Model.h"
 #include "../../Model/MaterialLibrary.h"
 #include "../../Viewer/OccView.h"
@@ -688,6 +689,12 @@ bool CableCreationDialog::parseCoordinates(const QString& text, double& x, doubl
 QString CableCreationDialog::formatPoint(const gp_Pnt& pt) const
 {
     return QString("%1 %2 %3").arg(pt.X(), 0, 'f', 2).arg(pt.Y(), 0, 'f', 2).arg(pt.Z(), 0, 'f', 2);
+}
+
+bool CableCreationDialog::event(QEvent* event)
+{
+    if (event->type() == QEvent::WindowActivate) emit drawingResumeRequested();
+    return QDialog::event(event);
 }
 
 void CableCreationDialog::closeEvent(QCloseEvent* event)

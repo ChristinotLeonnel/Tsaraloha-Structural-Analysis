@@ -1,4 +1,5 @@
 #include "BarCreationDialog.h"
+#include <QEvent>
 #include "App/ProductInfo.h"
 #include "SectionCustomizationDialog.h"
 #include "../../Library/LibraryManager.h"
@@ -630,6 +631,12 @@ QString BarCreationDialog::formatPoint(const gp_Pnt& pt) const
 void BarCreationDialog::emitPropertiesChanged()
 {
     emit barPropertiesChanged(currentProperties());
+}
+
+bool BarCreationDialog::event(QEvent* event)
+{
+    if (event->type() == QEvent::WindowActivate) emit drawingResumeRequested();
+    return QDialog::event(event);
 }
 
 void BarCreationDialog::closeEvent(QCloseEvent* event)

@@ -1,4 +1,5 @@
 #include "SurfaceCreationDialog.h"
+#include <QEvent>
 #include "App/ProductInfo.h"
 #include "../../Model/Model.h"
 #include "../../Viewer/OccView.h"
@@ -615,6 +616,12 @@ void SurfaceCreationDialog::onHelpClicked()
            "• Cliquez sur le 1er point de base, puis sur le second dans la vue 3D.<br>"
            "• Si <b>Étirer</b> est coché, le tracé s'enchaîne pour le voile suivant.<br>"
            "• Ou entrez les coordonnées / n° de nœuds d'origine et d'extrémité puis cliquez <b>Ajouter</b>."));
+}
+
+bool SurfaceCreationDialog::event(QEvent* event)
+{
+    if (event->type() == QEvent::WindowActivate) emit drawingResumeRequested();
+    return QDialog::event(event);
 }
 
 void SurfaceCreationDialog::closeEvent(QCloseEvent* event)

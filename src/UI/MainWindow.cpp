@@ -333,25 +333,13 @@ void MainWindow::openBarCreationDialog(TSA::Model::BarRole role)
         connect(m_occView, &OccView::barFirstPointPicked, m_barDialog, &TSA::UI::BarCreationDialog::onFirstPointPicked);
         connect(m_occView, &OccView::barSecondPointPicked, m_barDialog, &TSA::UI::BarCreationDialog::onSecondPointPicked);
         connect(m_occView, &OccView::barDrawingCancelled, m_barDialog, &TSA::UI::BarCreationDialog::onDrawingCancelled);
+        connect(m_barDialog, &TSA::UI::BarCreationDialog::drawingResumeRequested, this, [this] {
+            if (m_barDialog && m_barDialog->isVisible()) activateBarDrawing(m_barDialog->currentProperties().role);
+        });
     }
 
     m_barDialog->setRole(role);
-    m_occView->setCurrentBarProperties(m_barDialog->currentProperties());
-    if (role == TSA::Model::BarRole::Beam)
-    {
-        m_occView->setInteractionMode(OccView::InteractionMode::DrawBeam);
-        if (m_actionDrawBeam) m_actionDrawBeam->setChecked(true);
-    }
-    else if (role == TSA::Model::BarRole::Column)
-    {
-        m_occView->setInteractionMode(OccView::InteractionMode::DrawColumn);
-        if (m_actionDrawColumn) m_actionDrawColumn->setChecked(true);
-    }
-    else
-    {
-        m_occView->setInteractionMode(OccView::InteractionMode::DrawBar);
-        if (m_actionDrawBar) m_actionDrawBar->setChecked(true);
-    }
+    activateBarDrawing(role);
 
     m_barDialog->showNormal();
     m_barDialog->raise();
@@ -369,6 +357,50 @@ void MainWindow::openBarCreationDialog(TSA::Model::BarRole role)
     }
 }
 
+void MainWindow::activateBarDrawing(TSA::Model::BarRole role)
+{
+    if (!m_occView) return;
+    if (m_barDialog) m_occView->setCurrentBarProperties(m_barDialog->currentProperties());
+    // setInteractionMode ne fait rien si le mode est déjà actif : un tracé en cours n'est pas interrompu.
+    if (role == TSA::Model::BarRole::Beam)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawBeam);
+        if (m_actionDrawBeam) m_actionDrawBeam->setChecked(true);
+    }
+    else if (role == TSA::Model::BarRole::Column)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawColumn);
+        if (m_actionDrawColumn) m_actionDrawColumn->setChecked(true);
+    }
+    else
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawBar);
+        if (m_actionDrawBar) m_actionDrawBar->setChecked(true);
+    }
+}
+
+void MainWindow::activateCableDrawing()
+{
+    if (!m_occView) return;
+    m_occView->setInteractionMode(OccView::InteractionMode::DrawCable);
+    if (m_actionDrawCable) m_actionDrawCable->setChecked(true);
+}
+
+void MainWindow::activateSurfaceDrawing(int surfaceType)
+{
+    if (!m_occView) return;
+    if (surfaceType == 0)
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawSlab);
+        if (m_actionDrawSlab) m_actionDrawSlab->setChecked(true);
+    }
+    else
+    {
+        m_occView->setInteractionMode(OccView::InteractionMode::DrawWall);
+        if (m_actionDrawWall) m_actionDrawWall->setChecked(true);
+    }
+}
+
 void MainWindow::openCableCreationDialog()
 {
     if (!m_occView) return;
@@ -382,10 +414,12 @@ void MainWindow::openCableCreationDialog()
             if (m_statusInfo) m_statusInfo->setText(tr("Câble C%1 créé avec succès").arg(cableId));
             updateUndoRedoActions();
         });
+        connect(m_cableDialog, &TSA::UI::CableCreationDialog::drawingResumeRequested, this, [this] {
+            if (m_cableDialog && m_cableDialog->isVisible()) activateCableDrawing();
+        });
     }
 
-    m_occView->setInteractionMode(OccView::InteractionMode::DrawCable);
-    if (m_actionDrawCable) m_actionDrawCable->setChecked(true);
+    activateCableDrawing();
 
     m_cableDialog->showNormal();
     m_cableDialog->raise();
@@ -441,19 +475,14 @@ void MainWindow::openSurfaceCreationDialog(int surfaceType)
         connect(m_occView, &OccView::wallSecondPointPicked, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onWallSecondPointPicked);
         connect(m_occView, &OccView::wallDrawingCancelled, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onWallDrawingCancelled);
         connect(m_occView, &OccView::wallCreated, m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::onWallCreated);
+        connect(m_surfaceDialog, &TSA::UI::SurfaceCreationDialog::drawingResumeRequested, this, [this] {
+            if (m_surfaceDialog && m_surfaceDialog->isVisible())
+                activateSurfaceDrawing(static_cast<int>(m_surfaceDialog->currentSurfaceType()));
+        });
     }
 
     m_surfaceDialog->setSurfaceType(static_cast<TSA::UI::SurfaceCreationDialog::SurfaceType>(surfaceType));
-    if (surfaceType == 0)
-    {
-        m_occView->setInteractionMode(OccView::InteractionMode::DrawSlab);
-        if (m_actionDrawSlab) m_actionDrawSlab->setChecked(true);
-    }
-    else
-    {
-        m_occView->setInteractionMode(OccView::InteractionMode::DrawWall);
-        if (m_actionDrawWall) m_actionDrawWall->setChecked(true);
-    }
+    activateSurfaceDrawing(surfaceType);
 
     m_surfaceDialog->showNormal();
     m_surfaceDialog->raise();
