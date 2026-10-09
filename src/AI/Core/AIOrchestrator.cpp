@@ -225,6 +225,7 @@ void AIOrchestrator::reloadCloudProvider()
     const auto& c = m_settings.cloud;
     QString base = c.baseUrl;
     if (base.isEmpty() && c.preset == "gemini") base = QStringLiteral("https://generativelanguage.googleapis.com/v1beta/openai");
+    if (base.isEmpty() && c.preset == "anthropic") base = QStringLiteral("https://api.anthropic.com/v1");
     if (base.isEmpty() && c.preset == "ollama") base = QStringLiteral("http://127.0.0.1:11434/v1");
     if (base.isEmpty() || c.model.isEmpty()) { emit statusChanged(); return; }
 
@@ -236,8 +237,10 @@ void AIOrchestrator::reloadCloudProvider()
     cfg.apiKey = AISettings::loadApiKey();
     // Ollama tourne sur la machine : traité comme local (aucune donnée ne sort du poste).
     cfg.locality = c.preset == "ollama" ? ProviderLocality::Local : ProviderLocality::Cloud;
-    cfg.backendLabel = c.preset == "ollama" ? QStringLiteral("Ollama") : c.preset;
-    cfg.contextTokens = 32768;
+    cfg.backendLabel = c.preset == "ollama" ? QStringLiteral("Ollama") : c.preset == "anthropic" ? QStringLiteral("Anthropic") : c.preset;
+    // Anthropic (Claude) : point d'accès « compatible OpenAI » officiel (bêta), même protocole Chat
+    // Completions que les autres fournisseurs Cloud ; contexte réellement supporté par ces modèles.
+    cfg.contextTokens = c.preset == "anthropic" ? 200000 : 32768;
     m_cloudProvider = new OpenAICompatibleProvider(cfg, this);
     connect(m_cloudProvider, &IAIProvider::contentDelta, this, [this](quint64 id, const QString& t) {
         if (id == m_requestId) emit assistantDelta(t);

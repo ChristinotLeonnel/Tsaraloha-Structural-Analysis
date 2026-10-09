@@ -15,7 +15,7 @@ AIMode aiModeFromKey(const QString& key);
 
 struct CloudSettings
 {
-    QString preset = QStringLiteral("openai-compatible"); // openai-compatible, gemini, ollama
+    QString preset = QStringLiteral("openai-compatible"); // openai-compatible, gemini, anthropic, ollama
     QString baseUrl;
     QString model;
     bool hasApiKey = false; // la clé elle-même n'est lue qu'à la demande (SecretStore)

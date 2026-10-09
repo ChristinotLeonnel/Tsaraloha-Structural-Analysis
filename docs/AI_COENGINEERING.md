@@ -20,7 +20,7 @@ AIOrchestrator (src/AI/Core)   routage LOCAL/CLOUD/AUTO · confidentialité · c
               ├── OpenAICompatibleProvider  protocole Chat Completions (SSE, outils)
               │     ├── llama-server local (LocalLlamaServer, processus séparé)
               │     ├── Ollama (local, optionnel)
-              │     └── Cloud compatible OpenAI / Gemini (optionnel, avec accord)
+              │     └── Cloud compatible OpenAI / Gemini / Anthropic Claude (optionnel, avec accord)
               └── HardwareProfiler + ModelRegistry/ModelSelector + ModelManager (src/AI/Hardware, Models)
 ```
 
@@ -52,6 +52,17 @@ Windows (`KILL_ON_JOB_CLOSE`) : il ne reste pas en mémoire si TSA se ferme ou p
   fichiers `.tsa` ne sont jamais envoyés ; seules des données structurées choisies par TSA le sont.
 - Clé API chiffrée avec DPAPI (compte Windows). Journal (`<AppData>/ai/logs`) : métadonnées
   uniquement (fournisseur, modèle, latence, jetons, erreurs), jamais le contenu.
+
+### Fournisseur Cloud « Anthropic Claude »
+
+Configuration › Fournisseur Cloud › préréglage « Anthropic Claude ». TSA s'adresse au point d'accès
+**« compatible OpenAI »** d'Anthropic (`https://api.anthropic.com/v1`, bêta officielle) avec le même
+protocole Chat Completions que les autres fournisseurs Cloud (`OpenAICompatibleProvider`) : aucun
+code spécifique à Anthropic, aucun SDK propriétaire. Modèle : identifiant Anthropic (ex.
+`claude-sonnet-5-5`) ; clé API : `console.anthropic.com`. Cette couche de compatibilité étant en
+bêta côté Anthropic, certaines options avancées d'Anthropic (hors du strict format OpenAI) restent
+indisponibles tant qu'on passe par ce point d'accès ; à vérifier au cas par cas si un comportement
+inattendu apparaît.
 
 ## Outils de l'assistant (liste blanche)
 
