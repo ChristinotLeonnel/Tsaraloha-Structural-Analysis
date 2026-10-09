@@ -57,6 +57,12 @@ public:
     void setActiveLevelElevation(double z, const GridSystem* gridSystem, const Handle(AIS_InteractiveContext)& context);
     double activeLevelElevation() const { return m_activeLevelZ; }
 
+    // Repères d'axes selon la vue (plan, élévation, 3D) : voir GridLabelLayout.h
+    const GridLabelView& labelView() const { return m_labelView; }
+    void setLabelView(const GridLabelView& view) { m_labelView = view; }
+    /// Recalcule les seuls repères d'une grille déjà rendue (changement de vue, sans reconstruire les lignes).
+    void refreshLabels(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
+
     // Mode sombre / clair
     void setDarkMode(bool dark) { m_isDarkMode = dark; m_labelRenderer.setDarkMode(dark); }
     bool isDarkMode() const { return m_isDarkMode; }
@@ -75,6 +81,7 @@ private:
     bool m_levelsVisible = true;
     bool m_isDarkMode = true;
     double m_activeLevelZ = 0.0;
+    GridLabelView m_labelView;
 
     // Représentations 3D AIS indexées par l'ID unique de la grille
     std::unordered_map<std::string, PerGridRenderObjects> m_gridObjectsMap;

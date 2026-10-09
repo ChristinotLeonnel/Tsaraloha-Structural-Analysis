@@ -27,7 +27,7 @@ Note: MSVC francisé → lanceur généré `build-*/msvc_codepage.cmd` (page de 
 dépendances d'en-têtes Ninja fiables quelle que soit la console (BUG-011, vérifié `ninja -t deps`).
 
 ## Tests
-Status: IMPLEMENTED — 222/222 PASS le 2026-10-09 (test 201 : chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique ; TSALab 5/5, science 6/6, banc 14/14) ; 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
+Status: IMPLEMENTED — 225/225 PASS le 2026-10-09 (202 repères de grille, 203–204 déformée continue) ; 222/222 PASS le 2026-10-09 (test 201 : chemins accentués, chunk > 64 Kio, nom du projet, ouverture atomique ; TSALab 5/5, science 6/6, banc 14/14) ; 219/219 PASS le 2026-10-08 (197 débogueur Blueprint, 198 script ↔ Blueprint + IA) ; 217/217 avant (196 contrôleur d'analyse) ; 216/216 avant (192 registre de commandes, 193–195 Blueprint) ; 212/212 PASS le 2026-10-07 (ajouts : 166 arbre indexé, 181–184 extraction exacte,
 188 niveaux/grilles annulables, 189 chunk SETT, 190 collage BIM, 191 édition groupée) ; test 20 sensible au temps (BUG-035) ;
 197/197 avant (suite `bim` 170–180 le 2026-10-06, dont IFC 177–180) ;
 186/186 avant (suite `cleanup` 160–165 le 2026-10-05) ;
@@ -103,6 +103,9 @@ Status: IMPLEMENTED — une vue par type, validation, coalescence Undo ; éditio
 Status: IMPLEMENTED (code, 2026-10-07) — menu Affichage ▸ Isolation 3D (isoler sélection / type / plan de travail,
 masquer, inverser, précédente, tout afficher) dans `OccView::updateElementIsolation`. Non vérifié en GUI.
 
+## Repères de grille
+Status: IMPLEMENTED (2026-10-09) — `src/Grid/GridLabelLayout` : une occurrence par axe selon la vue (plan / élévation ∥ X ou Y / 3D), option deux extrémités. Non vérifié : grilles cylindriques en GUI, ViewCube animé.
+
 ## WorkPlanes
 Status: IMPLEMENTED — plans X/Y/Z détectés depuis le modèle (`CoordinateSystem::detectStructuralPlanes`),
 tolérance centralisée `GeometryTolerance::planeMembership`, isolation « Isoler le plan ».
@@ -155,7 +158,7 @@ sélection, axe de grille, niveau, plan de travail ; OpenSees et Custom2D (MetDe
 et non linéaire. Contexte persisté dans le .tsa (chunk SETT, 2026-10-07, test 189).
 
 ## Results
-Status: IMPLEMENTED — ResultsModel en convention RDM (N > 0 traction, M > 0 fibre négative tendue, V = dM/dx),
+Status: IMPLEMENTED — déformée continue sur les stations du solveur (repli Hermite), structure initiale atténuée / masquée, échelle manuelle conservée (2026-10-09, BUG-045 à 048) ; ResultsModel en convention RDM (N > 0 traction, M > 0 fibre négative tendue, V = dM/dx),
 stations exactes par équilibre du tronçon, déformée par double intégration de la courbure (tests 181–184) ; équilibre
 contrôlé en forces ET moments (BUG-017) ; déformée / diagrammes / réactions 3D, diagrammes 2D, NDC (liens avec famille,
 BUG-018), dock « Données d'analyse », export, invalidation automatique. Résultats non enregistrés dans le .tsa (BUG-013).

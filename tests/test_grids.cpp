@@ -1,5 +1,7 @@
 #include "test_common.h"
 #include "UndoRedo/EditTransaction.h"
+#include "Grid/GridLabelLayout.h"
+#include <set>
 
 bool runSuite_Grids(int& passed)
 {
@@ -769,6 +771,104 @@ bool runSuite_Grids(int& passed)
                    "Test 188: fenêtre des niveaux fermée sans changement → historique intact");
         m.setGridManager(nullptr);
         std::cout << "[PASS] Test 188: Niveaux et grilles annulables" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 202 : repères d'axes selon la vue (GridLabelLayout) — une occurrence par axe et par vue
+    // -------------------------------------------------------------------------
+    {
+        std::cout << "\n--- TEST 202: Repères de grille par vue ---" << std::endl;
+        GridDefinition def("Bâtiment", GridType::Cartesian);
+        def.setXPositions({ 0.0, 5.0, 10.0, 15.0 });
+        def.setYPositions({ 0.0, 6.0, 12.0 });
+        def.setZLevels({ 0.0, 3.0, 6.0, 9.0, 12.0 });
+        CartesianGrid grid(def);
+        const double ext = grid.effectiveExtension();
+
+        // Cause de la répétition : les ancres de géométrie existent à chaque niveau et aux deux extrémités.
+        TEST_CHECK(grid.labelAnchors().size() == 5u * (2u * 4u + 2u * 3u), "Test 202: 70 ancres géométriques (5 niveaux × 2 extrémités)");
+
+        // Classification de la visée (direction œil → cible)
+        TEST_CHECK(classifyGridView(gp_Dir(0, 0, -1), 0.0) == GridViewKind::Plan, "Test 202: vue de dessus = plan");
+        TEST_CHECK(classifyGridView(gp_Dir(0, 1, 0), 0.0) == GridViewKind::ElevationAlongY, "Test 202: vue de face = élévation ∥ Y");
+        TEST_CHECK(classifyGridView(gp_Dir(-1, 0, 0), 0.0) == GridViewKind::ElevationAlongX, "Test 202: vue de côté = élévation ∥ X");
+        TEST_CHECK(classifyGridView(gp_Dir(-1, 1, -1), 0.0) == GridViewKind::Axonometric, "Test 202: isométrie = 3D");
+        TEST_CHECK(classifyGridView(gp_Dir(0, 1, 0), 90.0) == GridViewKind::ElevationAlongX, "Test 202: grille tournée de 90° prise en compte");
+
+        auto axisLabels = [](const std::vector<PlacedGridLabel>& v, char family) {
+            std::vector<const PlacedGridLabel*> out;
+            for (const auto& l : v) if (l.family == family) out.push_back(&l);
+            return out;
+        };
+        auto uniqueTexts = [](const std::vector<const PlacedGridLabel*>& v) {
+            std::set<std::string> s;
+            for (const auto* l : v) s.insert(l->text);
+            return s.size() == v.size();
+        };
+
+        // Plan au niveau +6 m : 4 lettres + 3 chiffres, une fois chacun, au niveau actif, sur leur axe
+        GridLabelView plan;
+        plan.kind = GridViewKind::Plan;
+        plan.hasActiveLevel = true;
+        plan.activeLevelZ = 6.2;
+        const auto p = layoutCartesianLabels(grid, plan);
+        const auto px = axisLabels(p, 'X'), py = axisLabels(p, 'Y');
+        TEST_CHECK(px.size() == 4 && py.size() == 3 && axisLabels(p, 'Z').empty(), "Test 202: plan = 4 lettres + 3 chiffres, sans pile de niveaux");
+        TEST_CHECK(uniqueTexts(px) && uniqueTexts(py), "Test 202: plan sans doublon");
+        bool aligned = true;
+        for (std::size_t i = 0; i < px.size(); ++i)
+            aligned = aligned && std::abs(px[i]->position.X() - def.xPositions()[i]) < 1e-9 && std::abs(px[i]->position.Y() + ext) < 1e-9
+                      && std::abs(px[i]->position.Z() - 6.0) < 1e-9 && px[i]->text == def.getXLabel(i);
+        for (std::size_t j = 0; j < py.size(); ++j)
+            aligned = aligned && std::abs(py[j]->position.Y() - def.yPositions()[j]) < 1e-9 && std::abs(py[j]->position.X() + ext) < 1e-9
+                      && py[j]->text == def.getYLabel(j);
+        TEST_CHECK(aligned, "Test 202: repères alignés sur leur ligne, au niveau actif");
+
+        // Élévation de face (visée ∥ Y) : seules les lettres, au-dessus du dernier niveau
+        GridLabelView front;
+        front.kind = GridViewKind::ElevationAlongY;
+        const auto f = layoutCartesianLabels(grid, front);
+        const auto fx = axisLabels(f, 'X');
+        TEST_CHECK(fx.size() == 4 && axisLabels(f, 'Y').empty() && axisLabels(f, 'Z').size() == 5, "Test 202: élévation ∥ Y = lettres + 5 niveaux");
+        TEST_CHECK(uniqueTexts(fx) && std::all_of(fx.begin(), fx.end(), [&](const auto* l) { return std::abs(l->position.Z() - (12.0 + ext)) < 1e-9; }),
+                   "Test 202: lettres une seule fois, au-dessus du dernier niveau");
+        TEST_CHECK(std::abs(fx[0]->bubbleNormal.Y()) > 0.999, "Test 202: bulle face à la vue (normale ∥ Y)");
+
+        GridLabelView side;
+        side.kind = GridViewKind::ElevationAlongX;
+        const auto s = layoutCartesianLabels(grid, side);
+        TEST_CHECK(axisLabels(s, 'Y').size() == 3 && axisLabels(s, 'X').empty() && uniqueTexts(axisLabels(s, 'Y')),
+                   "Test 202: élévation ∥ X = chiffres seulement");
+
+        // 3D : les deux familles au niveau le plus bas, aucune copie par étage
+        GridLabelView iso;
+        const auto a = layoutCartesianLabels(grid, iso);
+        const auto ax = axisLabels(a, 'X'), ay = axisLabels(a, 'Y');
+        TEST_CHECK(ax.size() == 4 && ay.size() == 3 && uniqueTexts(ax) && uniqueTexts(ay), "Test 202: 3D = 7 repères");
+        TEST_CHECK(std::all_of(ax.begin(), ax.end(), [](const auto* l) { return std::abs(l->position.Z()) < 1e-9; }),
+                   "Test 202: 3D au niveau le plus bas");
+
+        // Seconde extrémité : seulement sur demande explicite, conservée par le JSON de la grille
+        GridDisplaySettings ds = def.displaySettings();
+        ds.labelsBothEnds = true;
+        def.setDisplaySettings(ds);
+        const GridDefinition reread = GridDefinition::fromJson(def.toJson());
+        TEST_CHECK(reread.displaySettings().labelsBothEnds, "Test 202: option « deux extrémités » relue");
+        CartesianGrid both(reread);
+        TEST_CHECK(layoutCartesianLabels(both, plan).size() == 14 && axisLabels(layoutCartesianLabels(both, front), 'X').size() == 8,
+                   "Test 202: deux extrémités = 2 occurrences par axe");
+
+        // Grille tournée : repère toujours sur sa ligne (repère local de la grille)
+        GridDefinition rotDef = GridDefinition::fromJson(def.toJson());
+        rotDef.setRotationDeg(30.0);
+        CartesianGrid rotated(rotDef);
+        const auto rotatedPlan = layoutCartesianLabels(rotated, plan);
+        const auto rp = axisLabels(rotatedPlan, 'X');
+        const gp_Pnt expectedB = rotated.localToWorld(5.0, -rotated.effectiveExtension(), 6.0);
+        TEST_CHECK(rp.size() == 8 && rp[2]->text == def.getXLabel(1) && rp[2]->position.Distance(expectedB) < 1e-9,
+                   "Test 202: grille tournée, repère B sur sa ligne");
+        std::cout << "[PASS] Test 202: Repères de grille par vue (plan, élévations, 3D)" << std::endl;
         passed++;
     }
 

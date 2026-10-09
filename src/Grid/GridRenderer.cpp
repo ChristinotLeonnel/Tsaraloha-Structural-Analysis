@@ -193,10 +193,20 @@ void GridRenderer::renderGrid(const GridSystem& gridSystem, const Handle(AIS_Int
 
     if (m_labelsVisible && gridSystem.showLabels())
     {
-        m_labelRenderer.updateLabels(gridSystem, context);
+        m_labelRenderer.updateLabels(gridSystem, context, m_labelView);
     }
 
     m_gridObjectsMap[id] = std::move(objs);
+}
+
+void GridRenderer::refreshLabels(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context)
+{
+    if (context.IsNull() || !m_gridObjectsMap.count(gridSystem.id()))
+        return;
+    if (m_gridVisible && m_labelsVisible && gridSystem.showLabels())
+        m_labelRenderer.updateLabels(gridSystem, context, m_labelView);
+    else
+        m_labelRenderer.removeLabels(gridSystem.id(), context);
 }
 
 void GridRenderer::renderCartesian(const GridSystem& gridSystem, PerGridRenderObjects& objs, const Handle(AIS_InteractiveContext)& context)

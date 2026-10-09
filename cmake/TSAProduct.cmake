@@ -327,6 +327,8 @@ set(GRID_CORE_SOURCES
     ${TSA_ROOT}/src/Grid/GridSystem.cpp
     ${TSA_ROOT}/src/Grid/GridManager.h
     ${TSA_ROOT}/src/Grid/GridManager.cpp
+    ${TSA_ROOT}/src/Grid/GridLabelLayout.h
+    ${TSA_ROOT}/src/Grid/GridLabelLayout.cpp
 )
 
 # --- Grilles : rendu visuel (nécessite le viewer OCCT, UI uniquement) --------

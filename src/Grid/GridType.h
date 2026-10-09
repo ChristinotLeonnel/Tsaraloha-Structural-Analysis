@@ -37,6 +37,7 @@ struct GridDisplaySettings
     double extension = 1.50;       // Débordement au-delà des limites en mètres
     double bubbleRadius = 0.40;    // Rayon de la bulle d'axe en mètres
     bool showBubbles = true;
+    bool labelsBothEnds = false;   // repère aussi à la seconde extrémité de chaque axe (sinon une seule occurrence par vue)
 };
 
 enum class GridSnapType

@@ -2,6 +2,36 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Grille : repères par vue ; déformée continue)
+
+### Fixed
+- BUG-044 : repères d'axes répétés à chaque niveau et aux deux extrémités (CartesianGrid générait niveaux × (2 nX + 2 nY)
+  ancres, toutes dessinées ; bulles toujours couchées en XY, vues par la tranche en élévation). Nouveau
+  `src/Grid/GridLabelLayout` (classification de la visée dans le repère de la grille, choix et placement) : plan = niveau
+  actif, élévation ∥ Y = lettres seules au-dessus du dernier niveau, élévation ∥ X = chiffres seuls, 3D = niveau le plus
+  bas ; une occurrence par axe (option `labelsBothEnds`, JSON + case « Repères aux deux extrémités »). Bulle face à la vue.
+  `OccView::updateGridLabelView` sur viewCameraChanged / niveau actif, recalcul seulement si la catégorie de vue change.
+  Cylindrique : un seul niveau d'étiquettes.
+- BUG-045 : déformée en « empilement de blocs » (6 prismes droits indépendants par barre) et interpolation nodale seule
+  (flèche en travée sous-estimée de 20 % pour q uniforme, nulle sur deux appuis). `DeformedGeometry::computeMemberAxis` :
+  stations du moteur (OpenSees : double intégration de M/EI ; Custom2D : courbes MetDeDeplacement) dans le repère local du
+  solveur, repli Hermite cubique Euler-Bernoulli (θz = v', θy = −w'), linéaire pour treillis / câbles ; invalide (jamais
+  inventée) si déplacement absent ou non fini. `createMemberSolid` : section balayée en un seul maillage triangulé
+  (transport minimal du repère, pas de torsion artificielle). Axes non amplifiés mis en cache : changer l'échelle ne
+  recalcule que l'affichage.
+- BUG-046 : « Déformée seule » / « Les deux » ne différaient que par la transparence de la déformée (structure d'origine
+  toujours opaque). `OccView::setResultsStructureDisplay` : atténuée (Les deux, défaut) ou masquée dans la passe
+  `updateElementIsolation`.
+- BUG-047 : un nouveau calcul écrasait le facteur d'échelle choisi (×1, ×100, manuel) par l'échelle automatique.
+- BUG-048 : échelle automatique fondée sur les seuls nœuds (poutre sur deux appuis → ×1, déformée invisible).
+- Légende : « échelle réelle » / « amplifiée pour l'affichage, résultats inchangés », origine des courbes, barres sans
+  déformée.
+
+### Changed
+- `BeamGeometry::sectionFrame` / `sectionOutline` : repère et contours de section partagés par la barre droite et la
+  barre déformée (cas polygonaux de createBeamShape factorisés).
+- Tests 202 (grids), 203 (extraction, OpenSees réel), 204 (mdd, Custom2D) : 225/225.
+
 ## 2026-10-09 (Audit et corrections : persistance .tsa, chemins non ASCII)
 
 ### Fixed

@@ -27,34 +27,78 @@
 namespace TSA::Geometry
 {
 
-TopoDS_Shape BeamGeometry::createBeamShape(
-    const TSA::Model::Node& startNode,
-    const TSA::Model::Node& endNode,
-    const TSA::Model::Section& section,
-    double rotationDegrees,
-    TSA::Model::BarEccentricity eccentricity)
+namespace
 {
-    gp_Pnt pA(startNode.x(), startNode.y(), startNode.z());
-    gp_Pnt pB(endNode.x(), endNode.y(), endNode.z());
+double circularRadius(const TSA::Model::Section& section)
+{
+    return std::max(0.001, (section.diameter > 0.0 ? section.diameter : section.width) / 2.0);
+}
 
-    gp_Vec vAB(pA, pB);
-    double length = vAB.Magnitude();
-    if (length < 1e-4)
+void pipeRadii(const TSA::Model::Section& section, double& ro, double& ri)
+{
+    ro = std::max(0.005, (section.diameter > 0.0 ? section.diameter : section.width) / 2.0);
+    const double tw = (section.tw > 0.0 && section.tw < ro) ? section.tw : std::min(0.01, ro * 0.2);
+    ri = ro - tw;
+}
+
+std::vector<gp_XY> circlePoints(double radius, int n)
+{
+    std::vector<gp_XY> pts;
+    for (int i = 0; i < n; ++i)
     {
-        return TopoDS_Shape();
+        const double a = 2.0 * M_PI * i / n;
+        pts.emplace_back(radius * std::cos(a), radius * std::sin(a));
     }
+    return pts;
+}
 
-    gp_Vec dirZ = vAB / length; // Direction longitudinale
+/// Prisme d'un contour plan (outer + vide éventuel) dans le repère (x, y) de la section en pA.
+TopoDS_Shape prismFromOutline(const BeamGeometry::SectionOutline& outline, const gp_Pnt& pA, const gp_Vec& x,
+                              const gp_Vec& y, const gp_Vec& vAB)
+{
+    if (outline.outer.size() < 3) return TopoDS_Shape();
+    try
+    {
+        BRepBuilderAPI_MakePolygon outer;
+        for (const auto& p : outline.outer) outer.Add(pA.Translated(x * p.X() + y * p.Y()));
+        outer.Close();
+        if (!outer.IsDone()) return TopoDS_Shape();
+        BRepBuilderAPI_MakeFace face(outer.Wire());
+        if (face.IsDone() && outline.inner.size() >= 3)
+        {
+            BRepBuilderAPI_MakePolygon inner; // parcouru en sens inverse : vide de la section
+            for (auto it = outline.inner.rbegin(); it != outline.inner.rend(); ++it)
+                inner.Add(pA.Translated(x * it->X() + y * it->Y()));
+            inner.Close();
+            if (inner.IsDone()) face.Add(inner.Wire());
+        }
+        if (!face.IsDone()) return TopoDS_Shape();
+        BRepPrimAPI_MakePrism prism(face.Face(), vAB);
+        if (prism.IsDone()) return prism.Shape();
+    }
+    catch (...)
+    {
+    }
+    return TopoDS_Shape();
+}
+} // namespace
 
-    // 1. Repère local de référence (dirX0, dirY0)
-    gp_Vec globalZ(0.0, 0.0, 1.0);
+BeamGeometry::SectionFrame BeamGeometry::sectionFrame(const gp_Pnt& a, const gp_Pnt& b, double rotationDegrees)
+{
+    SectionFrame f;
+    const gp_Vec vAB(a, b);
+    const double length = vAB.Magnitude();
+    if (length < 1e-4) return f;
+    const gp_Vec dirZ = vAB / length; // Direction longitudinale
+
+    // Repère local de référence (dirX0, dirY0)
+    const gp_Vec globalZ(0.0, 0.0, 1.0);
     gp_Vec dirX0;
     gp_Vec dirY0;
-
     if (std::abs(dirZ.Dot(globalZ)) > 0.999)
     {
         // Quasi-verticale (poteau vertical selon Z)
-        gp_Vec refX(1.0, 0.0, 0.0);
+        const gp_Vec refX(1.0, 0.0, 0.0);
         dirY0 = dirZ.Crossed(refX);
         dirY0.Normalize();
         dirX0 = dirY0.Crossed(dirZ);
@@ -69,13 +113,146 @@ TopoDS_Shape BeamGeometry::createBeamShape(
         dirY0.Normalize();
     }
 
-    // 2. Application de l'angle de rotation bêta dans le plan de la section
-    double rad = rotationDegrees * (M_PI / 180.0);
-    double cosB = std::cos(rad);
-    double sinB = std::sin(rad);
+    // Angle de rotation bêta dans le plan de la section
+    const double rad = rotationDegrees * (M_PI / 180.0);
+    f.x = dirX0 * std::cos(rad) + dirY0 * std::sin(rad);
+    f.y = -dirX0 * std::sin(rad) + dirY0 * std::cos(rad);
+    f.z = dirZ;
+    f.valid = true;
+    return f;
+}
 
-    gp_Vec dirX = dirX0 * cosB + dirY0 * sinB;
-    gp_Vec dirY = -dirX0 * sinB + dirY0 * cosB;
+BeamGeometry::SectionOutline BeamGeometry::sectionOutline(const TSA::Model::Section& section)
+{
+    SectionOutline o;
+    auto set = [&o](std::initializer_list<std::pair<double, double>> pts) {
+        for (const auto& [u, v] : pts) o.outer.emplace_back(u, v);
+    };
+
+    switch (section.shape)
+    {
+    case TSA::Model::SectionShape::Circular:
+        o.outer = circlePoints(circularRadius(section), 48);
+        o.smooth = true;
+        break;
+
+    case TSA::Model::SectionShape::Pipe:
+    {
+        double ro = 0.0, ri = 0.0;
+        pipeRadii(section, ro, ri);
+        o.outer = circlePoints(ro, 48);
+        if (ri > 0.001) o.inner = circlePoints(ri, 48);
+        o.smooth = true;
+        break;
+    }
+
+    case TSA::Model::SectionShape::IShape:
+    {
+        const double b = std::max(0.03, section.width);
+        const double h = std::max(0.05, section.height);
+        const double tw = (section.tw > 0.0 && section.tw < b) ? section.tw : std::max(0.005, b * 0.08);
+        const double tf = (section.tf > 0.0 && 2.0 * section.tf < h) ? section.tf : std::max(0.008, h * 0.10);
+        const double b2 = b / 2.0, h2 = h / 2.0, w2 = tw / 2.0, hin = h2 - tf;
+        // 12 sommets du profil en I (x = largeur, y = hauteur)
+        set({ { b2, h2 }, { -b2, h2 }, { -b2, hin }, { -w2, hin }, { -w2, -hin }, { -b2, -hin },
+              { -b2, -h2 }, { b2, -h2 }, { b2, -hin }, { w2, -hin }, { w2, hin }, { b2, hin } });
+        break;
+    }
+
+    case TSA::Model::SectionShape::BoxHollow:
+    {
+        const double b = std::max(0.03, section.width);
+        const double h = std::max(0.03, section.height);
+        const double tw = (section.tw > 0.0 && 2.0 * section.tw < b) ? section.tw : 0.01;
+        const double tf = (section.tf > 0.0 && 2.0 * section.tf < h) ? section.tf : 0.01;
+        const double b2 = b / 2.0, h2 = h / 2.0, ib2 = b2 - tw, ih2 = h2 - tf;
+        set({ { -b2, -h2 }, { b2, -h2 }, { b2, h2 }, { -b2, h2 } });
+        if (ib2 > 0.005 && ih2 > 0.005)
+            o.inner = { gp_XY(-ib2, -ih2), gp_XY(ib2, -ih2), gp_XY(ib2, ih2), gp_XY(-ib2, ih2) };
+        break;
+    }
+
+    case TSA::Model::SectionShape::UPN:
+    {
+        const double b = std::max(0.02, section.width);
+        const double h = std::max(0.04, section.height);
+        const double tw = (section.tw > 0.0 && section.tw < b) ? section.tw : std::max(0.005, b * 0.10);
+        const double tf = (section.tf > 0.0 && 2.0 * section.tf < h) ? section.tf : std::max(0.007, h * 0.10);
+        const double b2 = b / 2.0, h2 = h / 2.0;
+        set({ { -b2, -h2 }, { b2, -h2 }, { b2, -h2 + tf }, { -b2 + tw, -h2 + tf },
+              { -b2 + tw, h2 - tf }, { b2, h2 - tf }, { b2, h2 }, { -b2, h2 } });
+        break;
+    }
+
+    case TSA::Model::SectionShape::Angle:
+    {
+        const double b = std::max(0.02, section.width);
+        const double h = std::max(0.02, section.height);
+        const double t = (section.tw > 0.0 && section.tw < std::min(b, h)) ? section.tw : std::max(0.005, std::min(b, h) * 0.12);
+        const double b2 = b / 2.0, h2 = h / 2.0;
+        set({ { -b2, -h2 }, { b2, -h2 }, { b2, -h2 + t }, { -b2 + t, -h2 + t }, { -b2 + t, h2 }, { -b2, h2 } });
+        break;
+    }
+
+    case TSA::Model::SectionShape::TSection:
+    {
+        const double b = std::max(0.02, section.width);
+        const double h = std::max(0.02, section.height);
+        const double tw = (section.tw > 0.0 && section.tw < b) ? section.tw : std::max(0.005, b * 0.10);
+        const double tf = (section.tf > 0.0 && section.tf < h) ? section.tf : std::max(0.007, h * 0.12);
+        const double b2 = b / 2.0, h2 = h / 2.0, tw2 = tw / 2.0;
+        set({ { -tw2, -h2 }, { tw2, -h2 }, { tw2, h2 - tf }, { b2, h2 - tf },
+              { b2, h2 }, { -b2, h2 }, { -b2, h2 - tf }, { -tw2, h2 - tf } });
+        break;
+    }
+
+    case TSA::Model::SectionShape::Rectangular:
+    default:
+    {
+        const double halfW = std::max(0.005, section.width) / 2.0;
+        const double halfH = std::max(0.005, section.height) / 2.0;
+        set({ { -halfW, -halfH }, { halfW, -halfH }, { halfW, halfH }, { -halfW, halfH } });
+        break;
+    }
+    }
+
+    // Sens trigonométrique (aire signée > 0) ; les deux contours sont inversés ensemble (correspondance).
+    double area = 0.0;
+    for (std::size_t i = 0; i < o.outer.size(); ++i)
+    {
+        const gp_XY& p = o.outer[i];
+        const gp_XY& q = o.outer[(i + 1) % o.outer.size()];
+        area += p.X() * q.Y() - q.X() * p.Y();
+    }
+    if (area < 0.0)
+    {
+        std::reverse(o.outer.begin(), o.outer.end());
+        std::reverse(o.inner.begin(), o.inner.end());
+    }
+    return o;
+}
+
+TopoDS_Shape BeamGeometry::createBeamShape(
+    const TSA::Model::Node& startNode,
+    const TSA::Model::Node& endNode,
+    const TSA::Model::Section& section,
+    double rotationDegrees,
+    TSA::Model::BarEccentricity eccentricity)
+{
+    gp_Pnt pA(startNode.x(), startNode.y(), startNode.z());
+    gp_Pnt pB(endNode.x(), endNode.y(), endNode.z());
+
+    gp_Vec vAB(pA, pB);
+    double length = vAB.Magnitude();
+    // 1-2. Repère de la section (largeur x, hauteur y, axe z) avec la rotation bêta
+    const SectionFrame frame = sectionFrame(pA, pB, rotationDegrees);
+    if (!frame.valid)
+    {
+        return TopoDS_Shape();
+    }
+    const gp_Vec dirZ = frame.z;
+    const gp_Vec dirX = frame.x;
+    const gp_Vec dirY = frame.y;
 
     // 2.5 Décalage d'excentrement dans le plan de la section (dirX, dirY)
     if (eccentricity == TSA::Model::BarEccentricity::TopFlange)
@@ -100,7 +277,7 @@ TopoDS_Shape BeamGeometry::createBeamShape(
     {
     case TSA::Model::SectionShape::Circular:
     {
-        double radius = std::max(0.001, (section.diameter > 0.0 ? section.diameter : section.width) / 2.0);
+        double radius = circularRadius(section);
 
         // 1. Ré-orthogonalisation stricte pour garantir la validité mathématique de gp_Ax2
         gp_Vec nZ = dirZ;
@@ -195,9 +372,8 @@ TopoDS_Shape BeamGeometry::createBeamShape(
 
     case TSA::Model::SectionShape::Pipe:
     {
-        double ro = std::max(0.005, (section.diameter > 0.0 ? section.diameter : section.width) / 2.0);
-        double tw = (section.tw > 0.0 && section.tw < ro) ? section.tw : std::min(0.01, ro * 0.2);
-        double ri = ro - tw;
+        double ro = 0.0, ri = 0.0;
+        pipeRadii(section, ro, ri);
 
         gp_Vec nZ = dirZ;
         nZ.Normalize();
@@ -305,262 +481,10 @@ TopoDS_Shape BeamGeometry::createBeamShape(
         return TopoDS_Shape();
     }
 
-    case TSA::Model::SectionShape::IShape:
-    {
-        double b = std::max(0.03, section.width);
-        double h = std::max(0.05, section.height);
-        double tw = (section.tw > 0.0 && section.tw < b) ? section.tw : std::max(0.005, b * 0.08);
-        double tf = (section.tf > 0.0 && 2.0 * section.tf < h) ? section.tf : std::max(0.008, h * 0.10);
-
-        double b2 = b / 2.0;
-        double h2 = h / 2.0;
-        double w2 = tw / 2.0;
-        double hin = h2 - tf;
-
-        // 12 sommets du profil en I dans le plan local (dirX=largeur, dirY=hauteur)
-        std::vector<std::pair<double, double>> pts2D = {
-            {  b2,  h2 },
-            { -b2,  h2 },
-            { -b2,  hin },
-            { -w2,  hin },
-            { -w2, -hin },
-            { -b2, -hin },
-            { -b2, -h2 },
-            {  b2, -h2 },
-            {  b2, -hin },
-            {  w2, -hin },
-            {  w2,  hin },
-            {  b2,  hin }
-        };
-
-        BRepBuilderAPI_MakePolygon poly;
-        for (const auto& pt : pts2D)
-        {
-            gp_Pnt p3d = pA.Translated(dirX * pt.first + dirY * pt.second);
-            poly.Add(p3d);
-        }
-        poly.Close();
-
-        if (poly.IsDone())
-        {
-            BRepBuilderAPI_MakeFace faceMaker(poly.Wire());
-            if (faceMaker.IsDone())
-            {
-                BRepPrimAPI_MakePrism prism(faceMaker.Face(), vAB);
-                if (prism.IsDone())
-                {
-                    return prism.Shape();
-                }
-            }
-        }
-        break;
-    }
-
-    case TSA::Model::SectionShape::BoxHollow:
-    {
-        double b = std::max(0.03, section.width);
-        double h = std::max(0.03, section.height);
-        double tw = (section.tw > 0.0 && 2.0 * section.tw < b) ? section.tw : 0.01;
-        double tf = (section.tf > 0.0 && 2.0 * section.tf < h) ? section.tf : 0.01;
-
-        double b2 = b / 2.0;
-        double h2 = h / 2.0;
-        double ib2 = b2 - tw;
-        double ih2 = h2 - tf;
-
-        BRepBuilderAPI_MakePolygon polyExt;
-        polyExt.Add(pA.Translated(-dirX * b2 - dirY * h2));
-        polyExt.Add(pA.Translated( dirX * b2 - dirY * h2));
-        polyExt.Add(pA.Translated( dirX * b2 + dirY * h2));
-        polyExt.Add(pA.Translated(-dirX * b2 + dirY * h2));
-        polyExt.Close();
-
-        if (polyExt.IsDone() && ib2 > 0.005 && ih2 > 0.005)
-        {
-            BRepBuilderAPI_MakePolygon polyInt;
-            polyInt.Add(pA.Translated(-dirX * ib2 + dirY * ih2));
-            polyInt.Add(pA.Translated( dirX * ib2 + dirY * ih2));
-            polyInt.Add(pA.Translated( dirX * ib2 - dirY * ih2));
-            polyInt.Add(pA.Translated(-dirX * ib2 - dirY * ih2));
-            polyInt.Close();
-
-            if (polyInt.IsDone())
-            {
-                BRepBuilderAPI_MakeFace faceMaker(polyExt.Wire());
-                faceMaker.Add(polyInt.Wire());
-                if (faceMaker.IsDone())
-                {
-                    BRepPrimAPI_MakePrism prism(faceMaker.Face(), vAB);
-                    if (prism.IsDone()) return prism.Shape();
-                }
-            }
-        }
-        break;
-    }
-
-    case TSA::Model::SectionShape::UPN:
-    {
-        double b = std::max(0.02, section.width);
-        double h = std::max(0.04, section.height);
-        double tw = (section.tw > 0.0 && section.tw < b) ? section.tw : std::max(0.005, b * 0.10);
-        double tf = (section.tf > 0.0 && 2.0 * section.tf < h) ? section.tf : std::max(0.007, h * 0.10);
-
-        double b2 = b / 2.0;
-        double h2 = h / 2.0;
-
-        std::vector<std::pair<double, double>> pts2D = {
-            { -b2, -h2 },
-            {  b2, -h2 },
-            {  b2, -h2 + tf },
-            { -b2 + tw, -h2 + tf },
-            { -b2 + tw,  h2 - tf },
-            {  b2,  h2 - tf },
-            {  b2,  h2 },
-            { -b2,  h2 }
-        };
-
-        BRepBuilderAPI_MakePolygon poly;
-        for (const auto& pt : pts2D)
-        {
-            poly.Add(pA.Translated(dirX * pt.first + dirY * pt.second));
-        }
-        poly.Close();
-
-        if (poly.IsDone())
-        {
-            BRepBuilderAPI_MakeFace faceMaker(poly.Wire());
-            if (faceMaker.IsDone())
-            {
-                BRepPrimAPI_MakePrism prism(faceMaker.Face(), vAB);
-                if (prism.IsDone()) return prism.Shape();
-            }
-        }
-        break;
-    }
-
-    case TSA::Model::SectionShape::Angle:
-    {
-        double b = std::max(0.02, section.width);
-        double h = std::max(0.02, section.height);
-        double t = (section.tw > 0.0 && section.tw < std::min(b, h)) ? section.tw : std::max(0.005, std::min(b, h) * 0.12);
-
-        double b2 = b / 2.0;
-        double h2 = h / 2.0;
-
-        std::vector<std::pair<double, double>> pts2D = {
-            { -b2, -h2 },
-            {  b2, -h2 },
-            {  b2, -h2 + t },
-            { -b2 + t, -h2 + t },
-            { -b2 + t,  h2 },
-            { -b2,  h2 }
-        };
-
-        BRepBuilderAPI_MakePolygon poly;
-        for (const auto& pt : pts2D)
-        {
-            poly.Add(pA.Translated(dirX * pt.first + dirY * pt.second));
-        }
-        poly.Close();
-
-        if (poly.IsDone())
-        {
-            BRepBuilderAPI_MakeFace faceMaker(poly.Wire());
-            if (faceMaker.IsDone())
-            {
-                BRepPrimAPI_MakePrism prism(faceMaker.Face(), vAB);
-                if (prism.IsDone()) return prism.Shape();
-            }
-        }
-        break;
-    }
-
-    case TSA::Model::SectionShape::TSection:
-    {
-        double b = std::max(0.02, section.width);
-        double h = std::max(0.02, section.height);
-        double tw = (section.tw > 0.0 && section.tw < b) ? section.tw : std::max(0.005, b * 0.10);
-        double tf = (section.tf > 0.0 && section.tf < h) ? section.tf : std::max(0.007, h * 0.12);
-
-        double b2 = b / 2.0;
-        double h2 = h / 2.0;
-        double tw2 = tw / 2.0;
-
-        std::vector<std::pair<double, double>> pts2D = {
-            { -tw2, -h2 },
-            {  tw2, -h2 },
-            {  tw2,  h2 - tf },
-            {   b2,  h2 - tf },
-            {   b2,  h2 },
-            {  -b2,  h2 },
-            {  -b2,  h2 - tf },
-            { -tw2,  h2 - tf }
-        };
-
-        BRepBuilderAPI_MakePolygon poly;
-        for (const auto& pt : pts2D)
-        {
-            poly.Add(pA.Translated(dirX * pt.first + dirY * pt.second));
-        }
-        poly.Close();
-
-        if (poly.IsDone())
-        {
-            BRepBuilderAPI_MakeFace faceMaker(poly.Wire());
-            if (faceMaker.IsDone())
-            {
-                BRepPrimAPI_MakePrism prism(faceMaker.Face(), vAB);
-                if (prism.IsDone()) return prism.Shape();
-            }
-        }
-        break;
-    }
-
-    case TSA::Model::SectionShape::Rectangular:
     default:
-    {
-        double halfW = std::max(0.005, section.width) / 2.0;
-        double halfH = std::max(0.005, section.height) / 2.0;
-
-        gp_Pnt c1 = pA.Translated(-dirX * halfW - dirY * halfH);
-        gp_Pnt c2 = pA.Translated( dirX * halfW - dirY * halfH);
-        gp_Pnt c3 = pA.Translated( dirX * halfW + dirY * halfH);
-        gp_Pnt c4 = pA.Translated(-dirX * halfW + dirY * halfH);
-
-        BRepBuilderAPI_MakePolygon poly;
-        poly.Add(c1);
-        poly.Add(c2);
-        poly.Add(c3);
-        poly.Add(c4);
-        poly.Close();
-
-        if (!poly.IsDone())
-        {
-            return TopoDS_Shape();
-        }
-
-        gp_Pln pln(pA, gp_Dir(dirZ));
-        BRepBuilderAPI_MakeFace faceMaker(pln, poly.Wire());
-        if (!faceMaker.IsDone())
-        {
-            faceMaker = BRepBuilderAPI_MakeFace(poly.Wire());
-        }
-        if (!faceMaker.IsDone())
-        {
-            return TopoDS_Shape();
-        }
-
-        BRepPrimAPI_MakePrism prism(faceMaker.Face(), vAB);
-        if (!prism.IsDone())
-        {
-            return TopoDS_Shape();
-        }
-
-        return prism.Shape();
+        // Profils polygonaux (I, caisson, U, cornière, T, rectangle) : contour partagé avec la déformée.
+        return prismFromOutline(sectionOutline(section), pA, dirX, dirY, vAB);
     }
-    }
-
-    return TopoDS_Shape();
 }
 
 TopoDS_Shape BeamGeometry::createBeamShape(

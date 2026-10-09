@@ -10,6 +10,7 @@
 #include "Model/Load/LoadManager.h"
 #include "NDC/NDCGenerator.h"
 #include "NDC/NDCPlanarCurves.h"
+#include "Geometry/DeformedGeometry.h"
 
 #include <chrono>
 
@@ -333,6 +334,60 @@ bool runSuite_MetDeDeplacement(int& passed)
         TEST_CHECK(html.contains(QStringLiteral("EI·v''(x) = M(x)")) && html.contains(QStringLiteral("Custom2D"))
                    && html.contains(QStringLiteral("3 degrés de liberté")), "Test 159: formules RDM et moteur réel dans la note");
         std::cout << "[PASS] Test 159: Note de calcul — courbes du moteur 2D" << std::endl;
+        ++passed;
+    }
+
+    // TEST 204 : déformée continue construite sur les stations du moteur Custom2D (MetDeDeplacement)
+    // Poutre sur deux appuis, q = 10 kN/m, L = 6 m : v(x) = q x (L³ − 2L x² + x³) / 24EI sur toute la courbe.
+    {
+        using namespace TSA::Analysis;
+        Model model;
+        GridManager gm;
+        gm.clearAllGrids();
+        GridDefinition def("G", GridType::Cartesian);
+        def.setXPositions({ 0, 6 });
+        def.setYPositions({ 0 });
+        const std::string gid = gm.addGrid(def)->id();
+        const double span = 6.0, q204 = 10.0;
+        const int a = model.addNode(0, 0, 0), b = model.addNode(span, 0, 0);
+        model.getNode(a)->setSupport(SupportDefinition::pinned());
+        model.getNode(b)->setSupport(SupportDefinition::pinned());
+        const Section sec = Section::ipe(300);
+        const Material mat = Material::steelS235();
+        const int bm = model.addBar(a, b, sec, mat, BarRole::Beam);
+        const int lc = model.loadManager().addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead));
+        model.loadManager().addMemberLoad(MemberLoad::uniform(bm, lc, q204));
+
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext c;
+        c.engineId = "custom2d";
+        c.dimension = AnalysisDimension::Plane2D;
+        c.common.includeSelfWeight = false;
+        c.scope.type = ScopeType::GridAxis;
+        c.scope.gridId = gid;
+        c.scope.axisLabel = "A";
+        const auto run = mgr.run(c, mgr.prepare(model, &gm, c));
+        TEST_CHECK(run.success, "Test 204: calcul Custom2D");
+        const ResultsModel& r = run.results;
+        const auto axis = TSA::Geometry::DeformedGeometry::computeMemberAxis(
+            gp_Pnt(0, 0, 0), gp_Pnt(span, 0, 0), 0.0, r.getNodeDisplacement(a), r.getNodeDisplacement(b),
+            r.getElementResults(StructuralElementKind::Beam, bm), true);
+        TEST_CHECK(axis.valid && axis.source == TSA::Geometry::DeformedAxisSource::SolverStations && axis.size() > 10,
+                   "Test 204: axe construit sur les stations de Custom2D");
+        const double EIb = mat.mechanical.youngModulus * 1e-3 * sec.iy();
+        const double vmax = 5.0 * q204 * std::pow(span, 4) / (384.0 * EIb);
+        double worst = 0.0;
+        for (std::size_t i = 0; i < axis.size(); ++i)
+        {
+            const double x = axis.x[i];
+            const double v = q204 * x * (span * span * span - 2.0 * span * x * x + x * x * x) / (24.0 * EIb);
+            worst = std::max(worst, std::abs(axis.displacement[i].Z() + v) + std::abs(axis.displacement[i].Y()));
+        }
+        TEST_CHECK(worst < 1e-3 * vmax, "Test 204: courbe Custom2D = flèche théorique, continue aux appuis (écart "
+                                            + std::to_string(worst / vmax) + " × v_max)");
+        std::cout << "[PASS] Test 204: Déformée continue — stations Custom2D" << std::endl;
         ++passed;
     }
     return true;

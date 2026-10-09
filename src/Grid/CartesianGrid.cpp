@@ -63,23 +63,8 @@ void CartesianGrid::computeGeometry()
     auto minMaxY = std::minmax_element(yPos.begin(), yPos.end());
     auto minMaxZ = std::minmax_element(levels.begin(), levels.end());
 
-    double rotRad = m_definition.rotationDeg() * M_PI / 180.0;
-    double cosR = std::cos(rotRad);
-    double sinR = std::sin(rotRad);
-
-    auto transformPnt = [&](double dx, double dy, double dz) -> gp_Pnt {
-        double rx = dx * cosR - dy * sinR;
-        double ry = dx * sinR + dy * cosR;
-        return gp_Pnt(orig.X() + rx, orig.Y() + ry, orig.Z() + dz);
-    };
-
-    auto transformDir = [&](double dx, double dy, double dz) -> gp_Dir {
-        double rx = dx * cosR - dy * sinR;
-        double ry = dx * sinR + dy * cosR;
-        double len = std::hypot(rx, ry);
-        if (len < 1e-8) return gp_Dir(0, 0, dz >= 0 ? 1 : -1);
-        return gp_Dir(rx / len, ry / len, dz);
-    };
+    auto transformPnt = [this](double dx, double dy, double dz) { return localToWorld(dx, dy, dz); };
+    auto transformDir = [this](double dx, double dy, double /*dz*/) { return localDirToWorld(dx, dy); };
 
     double minLx = *minMaxX.first;
     double maxLx = *minMaxX.second;
@@ -103,7 +88,7 @@ void CartesianGrid::computeGeometry()
         m_extension = m_definition.displaySettings().extension;
     }
 
-    double ext = m_extension > 0.1 ? m_extension : 1.2;
+    double ext = effectiveExtension();
     double startLy = minLy - ext;
     double endLy   = maxLy + ext;
     double startLx = minLx - ext;
@@ -271,6 +256,24 @@ void CartesianGrid::computeGeometry()
     TSA_LOG_DEBUG("Grid", "CartesianGridRebuildCompleted",
         "Grille '" + m_definition.name() + "' reconstruite - Lignes: " + std::to_string(m_allLines.size()) +
         ", Intersections: " + std::to_string(m_intersections.size()));
+}
+
+gp_Pnt CartesianGrid::localToWorld(double lx, double ly, double lz) const
+{
+    const double rotRad = m_definition.rotationDeg() * M_PI / 180.0;
+    const double cosR = std::cos(rotRad);
+    const double sinR = std::sin(rotRad);
+    const gp_Pnt& orig = m_definition.origin();
+    return gp_Pnt(orig.X() + lx * cosR - ly * sinR, orig.Y() + lx * sinR + ly * cosR, orig.Z() + lz);
+}
+
+gp_Dir CartesianGrid::localDirToWorld(double dx, double dy) const
+{
+    const double rotRad = m_definition.rotationDeg() * M_PI / 180.0;
+    const double rx = dx * std::cos(rotRad) - dy * std::sin(rotRad);
+    const double ry = dx * std::sin(rotRad) + dy * std::cos(rotRad);
+    if (std::hypot(rx, ry) < 1e-8) return gp_Dir(0, 0, 1);
+    return gp_Dir(rx, ry, 0.0);
 }
 
 GridSnapResult CartesianGrid::findClosestSnap(const gp_Pnt& worldPoint, double snapToleranceWorld) const

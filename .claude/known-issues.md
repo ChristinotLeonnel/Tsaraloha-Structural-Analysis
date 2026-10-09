@@ -117,6 +117,11 @@ Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapea
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |
+| BUG-044 | Lettres / chiffres de grille répétés à chaque niveau et sur toutes les élévations | `GridLabelLayout` (repères choisis selon la visée, une occurrence par axe), `OccView::updateGridLabelView` | test 202 ; GUI 2026-10-09 : face (1-4 au-dessus du dernier niveau), dessus (1-4 et A-D une fois), isométrie (niveau bas seul) |
+| BUG-045 | Déformée en empilement de prismes ; flèche en travée ignorée (Hermite nodal seul) | `DeformedGeometry::computeMemberAxis` (stations du solveur) + `createMemberSolid` (maillage continu) | tests 203 (OpenSees : 2 appuis, console, poteau, portique, cas limites), 204 (Custom2D) ; GUI : portique courbé continu |
+| BUG-046 | « Déformée seule » laissait la structure d'origine opaque (indiscernable de « Les deux ») | `OccView::setResultsStructureDisplay` (atténuée / masquée) | GUI : structure initiale atténuée sous la déformée ; mode « déformée seule » vérifié par le code seulement |
+| BUG-047 | Facteur d'échelle manuel écrasé à chaque calcul | auto seulement si préréglage Auto | code (setResultsModel) ; non vérifié en GUI |
+| BUG-048 | Échelle auto nulle pour une poutre sur deux appuis (nœuds immobiles) | maximum sur les axes déformés (stations) | code ; test 203 couvre les stations |
 | BUG-040 | Projet sous un chemin non ASCII (« Études/Pont à poutres.tsa ») enregistré mais impossible à rouvrir : `std::ifstream` reçoit de l'UTF-8 interprété en ANSI ; idem résultats OpenSees si %TEMP% contient un accent | `TSA::Core::utf8Path` (src/Core/Utf8Path.h) dans TSAFile.cpp, OpenSeesResultsReader, OpenSeesAdapter | test 201 (échec reproduit sur le code d'origine : « Fichier introuvable ») |
 | BUG-041 | Chaîne ≥ 64 Kio écrite avec une longueur 0 (cast u16 de 65 536) : JSON COOR / GRID perdu | borne 65 535 (frontière UTF-8) ; `writeChunkText` / `readChunkText` (préfixe 0 + JSON jusqu'à la fin du chunk) | test 201 (grille de 6 000 axes ; perdue avant correction) |
 | BUG-042 | Nom / auteur du projet enregistrés vides par `ProjectManager::saveProject` | transmis à `TSAProjectIO::saveProject` | test 201 (nom relu vide avant correction) |

@@ -120,6 +120,10 @@ signals:
 private:
     void updateDeformedShapes();
     void clearDeformedShapes();
+    /// Axes déformés NON amplifiés, calculés une fois par résultat (un changement d'échelle ne
+    /// reconstruit que la géométrie d'affichage).
+    void rebuildDeformedAxes();
+    void applyStructureDisplay(bool deformedShown);
 
     void updateDiagramShapes();
     void clearDiagramShapes();
@@ -136,7 +140,8 @@ private:
     std::shared_ptr<TSA::Analysis::ResultsModel> m_results;
 
     bool m_deformedVisible = true;
-    DeformedDisplayMode m_displayMode = DeformedDisplayMode::DeformedOnly;
+    // Déformée et structure initiale atténuée : les deux restent lisibles et distinctes.
+    DeformedDisplayMode m_displayMode = DeformedDisplayMode::Both;
     double m_deformationScale = 50.0;
 
     TSA::Geometry::DiagramType m_diagramType = TSA::Geometry::DiagramType::None;
@@ -148,6 +153,15 @@ private:
     ScalePreset m_deformationPreset = ScalePreset::Auto;
     ScalePreset m_diagramPreset = ScalePreset::Auto;
     bool m_legendVisible = true;
+
+    // Axes déformés (données de visualisation, jamais réinjectées dans le modèle)
+    std::map<TSA::Analysis::ElementKey, TSA::Geometry::DeformedAxis> m_deformedAxes;
+    bool m_deformedAxesValid = false;
+    bool m_shuttingDown = false;
+    int m_axesFromStations = 0;
+    int m_axesFromHermite = 0;
+    int m_axesInvalid = 0;
+    std::string m_firstAxisProblem;
 
     // Objets OCCT affichés
     std::map<int, Handle(AIS_Shape)> m_deformedElementShapes;

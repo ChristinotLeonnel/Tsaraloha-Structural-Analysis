@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GridSystem.h"
+#include "GridLabelLayout.h"
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_TextLabel.hxx>
 #include <AIS_Shape.hxx>
@@ -23,7 +24,7 @@ public:
     GridLabelRenderer();
     ~GridLabelRenderer() = default;
 
-    void updateLabels(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context);
+    void updateLabels(const GridSystem& gridSystem, const Handle(AIS_InteractiveContext)& context, const GridLabelView& view);
     void removeLabels(const std::string& gridId, const Handle(AIS_InteractiveContext)& context);
     void removeAllLabels(const Handle(AIS_InteractiveContext)& context);
     void setGridLabelsVisible(const std::string& gridId, bool visible, const Handle(AIS_InteractiveContext)& context);

@@ -73,6 +73,9 @@ OccView::OccView(QWidget* parent)
     setFocusPolicy(Qt::StrongFocus);
     setAcceptDrops(true);
 
+    // Repères de grille : une seule logique de visibilité pour toutes les vues (GridLabelLayout).
+    connect(this, &OccView::viewCameraChanged, this, &OccView::updateGridLabelView);
+
     if (m_interactionManager)
     {
         connect(m_interactionManager.get(), &TSA::Interaction::InteractionManager::modeChanged, this, [this](TSA::Interaction::InteractionMode mode) {

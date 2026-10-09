@@ -69,6 +69,7 @@ ResultsVisualManager::ResultsVisualManager(OccView* occView, QObject* parent)
 
 ResultsVisualManager::~ResultsVisualManager()
 {
+    m_shuttingDown = true; // la vue propriétaire est en cours de destruction : ne plus la piloter
     clearAllVisuals();
 }
 
@@ -80,14 +81,17 @@ Handle(AIS_InteractiveContext) ResultsVisualManager::context() const
 void ResultsVisualManager::setModel(TSA::Model::Model* model)
 {
     m_model = model;
+    m_deformedAxesValid = false;
 }
 
 void ResultsVisualManager::setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
 {
     m_results = results;
+    m_deformedAxesValid = false;
     if (m_results && m_results->isValid())
     {
-        autoComputeDeformationScale();
+        // Un facteur choisi par l'utilisateur (×1, ×100, manuel) est conservé d'un calcul à l'autre.
+        if (m_deformationPreset == ScalePreset::Auto) autoComputeDeformationScale();
         autoComputeDiagramScale();
     }
     updateAllVisuals();
@@ -131,12 +135,18 @@ void ResultsVisualManager::autoComputeDeformationScale()
 {
     if (!m_results || !m_model || m_results->allDisplacements().empty()) return;
 
+    // Plus grand déplacement réellement calculé : nœuds ET points le long des barres (une poutre sur
+    // deux appuis n'a aucun déplacement nodal, sa flèche est en travée).
     double maxU = 0.0;
     for (const auto& [id, d] : m_results->allDisplacements())
     {
         double u = d.translationMagnitude();
-        if (u > maxU) maxU = u;
+        if (std::isfinite(u) && u > maxU) maxU = u;
     }
+    if (!m_deformedAxesValid) rebuildDeformedAxes();
+    for (const auto& [key, axis] : m_deformedAxes)
+        for (const auto& u : axis.displacement)
+            if (axis.valid) maxU = std::max(maxU, u.Magnitude());
 
     if (maxU < 1e-9)
     {
@@ -230,6 +240,7 @@ void ResultsVisualManager::setActiveStep(int step)
 {
     if (!m_results) return;
     m_results->setActiveStep(step);
+    m_deformedAxesValid = false;
     updateAllVisuals();
     emit visualStateChanged();
 }
@@ -251,10 +262,18 @@ QString ResultsVisualManager::legendSummaryText() const
     if (m_deformedVisible)
     {
         const auto& sum = m_results->summary();
-        text += QString("DÉFORMÉE : δ_max = %1 mm (Nœud #%2) | Échelle ×%3\n")
+        const bool trueScale = std::abs(m_deformationScale - 1.0) < 1e-9;
+        text += QString("DÉFORMÉE : δ_max = %1 mm (Nœud #%2) | Échelle ×%3 %4\n")
             .arg(sum.maxDisplacement * 1000.0, 0, 'f', 2)
             .arg(sum.maxDisplacementNodeId)
-            .arg(m_deformationScale, 0, 'f', 1);
+            .arg(m_deformationScale, 0, 'g', 4)
+            .arg(trueScale ? QString("(échelle réelle)") : QString("(amplifiée pour l'affichage, résultats inchangés)"));
+        if (m_axesFromStations + m_axesFromHermite > 0)
+            text += QString("Courbe des barres : %1 depuis les stations du solveur, %2 par interpolation cubique nodale\n")
+                        .arg(m_axesFromStations).arg(m_axesFromHermite);
+        if (m_axesInvalid > 0)
+            text += QString("⚠ %1 barre(s) sans déformée (%2)\n")
+                        .arg(m_axesInvalid).arg(QString::fromStdString(m_firstAxisProblem));
     }
     if (m_diagramType != TSA::Geometry::DiagramType::None)
     {
@@ -375,6 +394,7 @@ void ResultsVisualManager::updateAllVisuals()
 void ResultsVisualManager::clearAllVisuals()
 {
     clearDeformedShapes();
+    applyStructureDisplay(false); // structure d'origine rétablie (opacité, visibilité)
     clearDiagramShapes();
     clearReactionShapes();
     clearExtremumMarker();
@@ -392,159 +412,103 @@ void ResultsVisualManager::redrawView()
     }
 }
 
+void ResultsVisualManager::rebuildDeformedAxes()
+{
+    using TSA::Analysis::StructuralElementKind;
+    m_deformedAxes.clear();
+    m_axesFromStations = m_axesFromHermite = m_axesInvalid = 0;
+    m_firstAxisProblem.clear();
+    m_deformedAxesValid = true;
+    if (!m_results || !m_results->isValid() || !m_model) return;
+
+    auto build = [&](StructuralElementKind kind, int id, int startId, int endId, double beta, bool flexural) {
+        const auto* n1 = m_model->getNode(startId);
+        const auto* n2 = m_model->getNode(endId);
+        if (!n1 || !n2) return;
+        auto axis = TSA::Geometry::DeformedGeometry::computeMemberAxis(
+            gp_Pnt(n1->x(), n1->y(), n1->z()), gp_Pnt(n2->x(), n2->y(), n2->z()), beta,
+            m_results->getNodeDisplacement(startId), m_results->getNodeDisplacement(endId),
+            m_results->getElementResults(kind, id), flexural);
+        if (!axis.valid)
+        {
+            ++m_axesInvalid;
+            if (m_firstAxisProblem.empty())
+                m_firstAxisProblem = std::string(TSA::Analysis::elementKindName(kind)) + " " + std::to_string(id) + " : " + axis.problem;
+        }
+        else if (axis.source == TSA::Geometry::DeformedAxisSource::SolverStations) ++m_axesFromStations;
+        else if (axis.source == TSA::Geometry::DeformedAxisSource::CubicHermite) ++m_axesFromHermite;
+        m_deformedAxes[{ kind, id }] = std::move(axis);
+    };
+
+    for (const auto& [id, b] : m_model->beams()) build(StructuralElementKind::Beam, id, b.startNodeId(), b.endNodeId(), b.rotation(), true);
+    for (const auto& [id, c] : m_model->columns()) build(StructuralElementKind::Column, id, c.startNodeId(), c.endNodeId(), c.rotation(), true);
+    for (const auto& [id, t] : m_model->trussMembers()) build(StructuralElementKind::Truss, id, t.startNodeId(), t.endNodeId(), 0.0, false);
+    for (const auto& [id, c] : m_model->cables()) build(StructuralElementKind::Cable, id, c.startNodeId(), c.endNodeId(), 0.0, false);
+}
+
+void ResultsVisualManager::applyStructureDisplay(bool deformedShown)
+{
+    if (!m_occView || m_shuttingDown) return;
+    using SD = OccView::ResultsStructureDisplay;
+    SD mode = SD::Normal;
+    if (deformedShown)
+        mode = m_displayMode == DeformedDisplayMode::DeformedOnly ? SD::Hidden : SD::Ghosted;
+    m_occView->setResultsStructureDisplay(mode);
+}
+
 void ResultsVisualManager::updateDeformedShapes()
 {
+    using TSA::Analysis::StructuralElementKind;
     auto ctx = context();
     if (!ctx) return;
 
     clearDeformedShapes();
 
-    if (!m_deformedVisible || !m_results || !m_results->isValid() || !m_model ||
-        m_displayMode == DeformedDisplayMode::UndeformedOnly)
+    const bool show = m_deformedVisible && m_results && m_results->isValid() && m_model &&
+                      m_displayMode != DeformedDisplayMode::UndeformedOnly;
+    applyStructureDisplay(show);
+    if (!show) return;
+    if (!m_deformedAxesValid) rebuildDeformedAxes();
+
+    // Une barre = un objet continu (axe déformé balayé par la section) ; barres articulées : polyligne.
+    for (const auto& [key, axis] : m_deformedAxes)
     {
-        return;
-    }
-
-    // 1. Poutres et barres
-    for (const auto& [beamId, beam] : m_model->beams())
-    {
-        const auto* n1 = m_model->getNode(beam.startNodeId());
-        const auto* n2 = m_model->getNode(beam.endNodeId());
-        if (!n1 || !n2) continue;
-
-        gp_Pnt p1(n1->x(), n1->y(), n1->z());
-        gp_Pnt p2(n2->x(), n2->y(), n2->z());
-
+        if (!axis.valid) continue; // signalé dans la légende, jamais remplacé par une forme inventée
         TopoDS_Shape shape;
-
-        const auto* d1 = m_results->getNodeDisplacement(beam.startNodeId());
-        const auto* d2 = m_results->getNodeDisplacement(beam.endNodeId());
-        TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
-        TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
-
-        shape = TSA::Geometry::DeformedGeometry::createDeformedBeamShape(
-            p1, p2, disp1, disp2, beam.section(), m_deformationScale, beam.rotation()
-        );
-
-        if (!shape.IsNull())
+        bool solid = false;
+        int mapKey = key.id;
+        if (key.kind == StructuralElementKind::Beam || key.kind == StructuralElementKind::Column)
         {
-            Handle(AIS_Shape) ais = new AIS_Shape(shape);
-            ais->SetColor(Quantity_NOC_CYAN1);
-            if (m_displayMode == DeformedDisplayMode::Both)
+            const TSA::Model::Section* section = nullptr;
+            double rotation = 0.0;
+            if (key.kind == StructuralElementKind::Beam)
             {
-                ais->SetTransparency(0.2);
+                if (const auto* b = m_model->getBeam(key.id)) { section = &b->section(); rotation = b->rotation(); }
             }
-            ctx->Display(ais, false);
-            m_deformedElementShapes[beamId] = ais;
+            else
+            {
+                mapKey = 100000 + key.id;
+                if (const auto* c = m_model->getColumn(key.id)) { section = &c->section(); rotation = c->rotation(); }
+            }
+            if (section) shape = TSA::Geometry::DeformedGeometry::createMemberSolid(axis, *section, rotation, m_deformationScale);
+            solid = !shape.IsNull();
+            if (!solid) shape = TSA::Geometry::DeformedGeometry::createAxisWire(axis, m_deformationScale);
         }
-    }
-
-    // 2. Poteaux
-    for (const auto& [colId, col] : m_model->columns())
-    {
-        const auto* n1 = m_model->getNode(col.startNodeId());
-        const auto* n2 = m_model->getNode(col.endNodeId());
-        if (!n1 || !n2) continue;
-
-        gp_Pnt p1(n1->x(), n1->y(), n1->z());
-        gp_Pnt p2(n2->x(), n2->y(), n2->z());
-
-        TopoDS_Shape shape;
-
-        const auto* d1 = m_results->getNodeDisplacement(col.startNodeId());
-        const auto* d2 = m_results->getNodeDisplacement(col.endNodeId());
-        TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
-        TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
-
-        shape = TSA::Geometry::DeformedGeometry::createDeformedBeamShape(
-            p1, p2, disp1, disp2, col.section(), m_deformationScale, col.rotation()
-        );
-
-        if (!shape.IsNull())
+        else
         {
-            Handle(AIS_Shape) ais = new AIS_Shape(shape);
-            ais->SetColor(Quantity_NOC_CYAN1);
-            if (m_displayMode == DeformedDisplayMode::Both)
-            {
-                ais->SetTransparency(0.2);
-            }
-            ctx->Display(ais, false);
-            m_deformedElementShapes[100000 + colId] = ais;
+            mapKey = (key.kind == StructuralElementKind::Truss ? 200000 : 300000) + key.id;
+            shape = TSA::Geometry::DeformedGeometry::createAxisWire(axis, m_deformationScale);
         }
-    }
+        if (shape.IsNull()) continue;
 
-    // 3. Treillis (Truss members)
-    for (const auto& [trussId, truss] : m_model->trussMembers())
-    {
-        const auto* n1 = m_model->getNode(truss.startNodeId());
-        const auto* n2 = m_model->getNode(truss.endNodeId());
-        if (!n1 || !n2) continue;
-
-        gp_Pnt p1(n1->x(), n1->y(), n1->z());
-        gp_Pnt p2(n2->x(), n2->y(), n2->z());
-
-        const auto* d1 = m_results->getNodeDisplacement(truss.startNodeId());
-        const auto* d2 = m_results->getNodeDisplacement(truss.endNodeId());
-        TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
-        TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
-
-        gp_Pnt defP1 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p1, disp1, m_deformationScale);
-        gp_Pnt defP2 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p2, disp2, m_deformationScale);
-
-        try
-        {
-            BRepBuilderAPI_MakeEdge edge(defP1, defP2);
-            if (edge.IsDone())
-            {
-                Handle(AIS_Shape) ais = new AIS_Shape(edge.Shape());
-                ais->SetColor(Quantity_NOC_CYAN1);
-                ais->SetWidth(2.5);
-                if (m_displayMode == DeformedDisplayMode::Both)
-                {
-                    ais->SetTransparency(0.2);
-                }
-                ctx->Display(ais, false);
-                m_deformedElementShapes[200000 + trussId] = ais;
-            }
-        }
-        catch (...) {}
-    }
-
-    // 4. Câbles
-    for (const auto& [cableId, cable] : m_model->cables())
-    {
-        const auto* n1 = m_model->getNode(cable.startNodeId());
-        const auto* n2 = m_model->getNode(cable.endNodeId());
-        if (!n1 || !n2) continue;
-
-        gp_Pnt p1(n1->x(), n1->y(), n1->z());
-        gp_Pnt p2(n2->x(), n2->y(), n2->z());
-
-        const auto* d1 = m_results->getNodeDisplacement(cable.startNodeId());
-        const auto* d2 = m_results->getNodeDisplacement(cable.endNodeId());
-        TSA::Analysis::NodeDisplacement disp1 = d1 ? *d1 : TSA::Analysis::NodeDisplacement{};
-        TSA::Analysis::NodeDisplacement disp2 = d2 ? *d2 : TSA::Analysis::NodeDisplacement{};
-
-        gp_Pnt defP1 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p1, disp1, m_deformationScale);
-        gp_Pnt defP2 = TSA::Geometry::DeformedGeometry::computeDeformedPoint(p2, disp2, m_deformationScale);
-
-        try
-        {
-            BRepBuilderAPI_MakeEdge edge(defP1, defP2);
-            if (edge.IsDone())
-            {
-                Handle(AIS_Shape) ais = new AIS_Shape(edge.Shape());
-                ais->SetColor(Quantity_NOC_ORANGE);
-                ais->SetWidth(2.0);
-                if (m_displayMode == DeformedDisplayMode::Both)
-                {
-                    ais->SetTransparency(0.2);
-                }
-                ctx->Display(ais, false);
-                m_deformedElementShapes[300000 + cableId] = ais;
-            }
-        }
-        catch (...) {}
+        Handle(AIS_Shape) ais = new AIS_Shape(shape);
+        ais->SetColor(key.kind == StructuralElementKind::Cable ? Quantity_NOC_ORANGE : Quantity_NOC_CYAN1);
+        if (solid)
+            ais->SetDisplayMode(AIS_Shaded);
+        else
+            ais->SetWidth(key.kind == StructuralElementKind::Cable ? 2.0 : 2.5);
+        ctx->Display(ais, false);
+        m_deformedElementShapes[mapKey] = ais;
     }
 }
 
