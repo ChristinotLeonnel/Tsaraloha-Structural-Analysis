@@ -208,6 +208,21 @@ bool runSuite_NDCReport(int& passed)
         TEST_CHECK(hasEN1992, "EN 1992 (Calcul des structures en béton) must be detected");
         TEST_CHECK(hasEN1993, "EN 1993 (Calcul des structures en acier) must be detected");
 
+        // Structure bois : EN 1995 cité (le bois était détecté mais jamais rapporté).
+        {
+            Model timber;
+            const int t1 = timber.addNode(0.0, 0.0, 0.0);
+            const int t2 = timber.addNode(4.0, 0.0, 0.0);
+            timber.addBar(t1, t2, Section::rectangular(0.10, 0.20), Material::timberC24(), BarRole::Beam);
+            bool hasEN1995 = false;
+            for (const auto& r : NormativeReferenceDetector::detectApplicableStandards(timber))
+                hasEN1995 |= r.code == "EN 1995-1-1";
+            bool citesEN1995 = false;
+            for (const auto& entry : NormativeReferenceDetector::generateBibliography(timber))
+                citesEN1995 |= entry.citationKey == "[CEN-EN1995]";
+            TEST_CHECK(hasEN1995 && citesEN1995, "EN 1995 (Calcul des structures en bois) must be detected and cited");
+        }
+
         auto bib = NormativeReferenceDetector::generateBibliography(model);
         TEST_CHECK(!bib.empty(), "Official bibliography must be generated");
         bool hasEurocodeRef = false;
