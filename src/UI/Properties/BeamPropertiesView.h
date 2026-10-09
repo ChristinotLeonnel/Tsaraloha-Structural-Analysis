@@ -8,7 +8,6 @@
 class QLineEdit;
 class QDoubleSpinBox;
 class QComboBox;
-class QCheckBox;
 class QPushButton;
 class QLabel;
 class QGroupBox;
@@ -21,7 +20,7 @@ class SectionPreviewWidget;
 /**
  * @brief Vue de propriétés spécialisée pour les Poutres et barres linéaires (Règle 14).
  * Spécifiquement dédiée aux paramètres mécaniques et géométriques des poutres :
- * Sections normalisées Eurocodes / personnalisées, matériau, relâchements d'extrémités,
+ * Sections normalisées Eurocodes / personnalisées, matériau, nœuds d'extrémité,
  * orientation d'angle gamma, excentrements et prévisualisation 2D B-Rep.
  */
 class BeamPropertiesView : public IElementPropertyView
@@ -83,20 +82,6 @@ private:
     QDoubleSpinBox* m_spinEy = nullptr;
     QDoubleSpinBox* m_spinEz = nullptr;
 
-    // Relâchements (Rotules)
-    QCheckBox* m_chkStartUx = nullptr;
-    QCheckBox* m_chkStartUy = nullptr;
-    QCheckBox* m_chkStartUz = nullptr;
-    QCheckBox* m_chkStartRx = nullptr;
-    QCheckBox* m_chkStartRy = nullptr;
-    QCheckBox* m_chkStartRz = nullptr;
-
-    QCheckBox* m_chkEndUx = nullptr;
-    QCheckBox* m_chkEndUy = nullptr;
-    QCheckBox* m_chkEndUz = nullptr;
-    QCheckBox* m_chkEndRx = nullptr;
-    QCheckBox* m_chkEndRy = nullptr;
-    QCheckBox* m_chkEndRz = nullptr;
 
     // Prévisualisation & Propriétés calculées
     SectionPreviewWidget* m_previewWidget = nullptr;
