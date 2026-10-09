@@ -63,10 +63,14 @@ public slots:
     void onDrawingCancelled();
 
 signals:
+    /// La fenêtre redevient active (clic, retour depuis le viewport) : la commande de tracé
+    /// qu'elle pilote doit reprendre si elle a été annulée par Échap entre-temps.
+    void drawingResumeRequested();
     void cableCreated(int cableId);
     void cableModified(int cableId);
 
 protected:
+    bool event(QEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 

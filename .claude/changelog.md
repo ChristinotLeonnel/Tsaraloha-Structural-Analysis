@@ -2,6 +2,12 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Fenêtres de tracé : reprise automatique de la commande)
+
+### Changed
+- BUG-055 : revenir dans une fenêtre de tracé ouverte (barres, câbles, surfaces) après Échap relance sa commande, sans la
+  fermer ni la rouvrir. Échap annule toujours la commande en cours.
+
 ## 2026-10-09 (Ruban : disposition stable d'un passage à l'autre)
 
 ### Fixed

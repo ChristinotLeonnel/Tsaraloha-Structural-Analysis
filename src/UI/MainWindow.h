@@ -181,6 +181,11 @@ private slots:
     void onActionLibrary(int tabIndex = 0);
     void onActionExtensionManager();
     void openBarCreationDialog(TSA::Model::BarRole role = TSA::Model::BarRole::Beam);
+    // Mode de tracé du viewport (et bouton du ruban) piloté par une fenêtre de tracé : à son
+    // ouverture et quand elle redevient active après une annulation par Échap.
+    void activateBarDrawing(TSA::Model::BarRole role);
+    void activateCableDrawing();
+    void activateSurfaceDrawing(int surfaceType);
     void openCableCreationDialog();
     void openSurfaceCreationDialog(int surfaceType = 0);
 

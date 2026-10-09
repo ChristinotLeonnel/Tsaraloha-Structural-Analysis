@@ -64,10 +64,14 @@ public slots:
     void onWallCreated(int wallId);
 
 signals:
+    /// La fenêtre redevient active (clic, retour depuis le viewport) : la commande de tracé
+    /// qu'elle pilote doit reprendre si elle a été annulée par Échap entre-temps.
+    void drawingResumeRequested();
     void surfaceTypeChanged(SurfaceType type);
     void surfaceCreated(int id, SurfaceType type);
 
 protected:
+    bool event(QEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
