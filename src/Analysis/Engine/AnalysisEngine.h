@@ -96,6 +96,10 @@ struct AnalysisRunCallbacks
 {
     std::function<void(int percent, const std::string& status)> progress;
     std::function<void(const std::string& line)> log;
+    /// Annulation demandée par l'appelant (lisible depuis le thread de calcul). Un moteur dont le
+    /// solveur est créé dans run() doit le consulter après cette création : un cancel() reçu avant
+    /// ne trouve pas encore le solveur et serait sinon perdu.
+    std::function<bool()> cancelRequested;
 };
 
 struct AnalysisRunResult

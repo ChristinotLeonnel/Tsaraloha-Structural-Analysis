@@ -253,7 +253,7 @@ void AppShell::updateTitle()
 
 void AppShell::createNewProject()
 {
-    if (isProjectOpen() && !m_workspace->maybeSave()) return;
+    if (isProjectOpen() && (!m_workspace->confirmNoRunningAnalysis(tr("créer un projet")) || !m_workspace->maybeSave())) return;
 
     NewProjectDialog dialog(this);
     if (dialog.exec() != QDialog::Accepted) return;
@@ -269,7 +269,7 @@ void AppShell::createNewProject()
 
 void AppShell::openProject()
 {
-    if (isProjectOpen() && !m_workspace->maybeSave()) return;
+    if (isProjectOpen() && (!m_workspace->confirmNoRunningAnalysis(tr("ouvrir un autre projet")) || !m_workspace->maybeSave())) return;
 
     QString initialDir;
     const auto recent = TSA::Project::RecentProjects().list(false);
@@ -289,7 +289,7 @@ bool AppShell::openProjectFile(const QString& path)
         if (pm && pm->hasFilePath()
             && TSA::Project::RecentProjects::normalize(pm->currentFilePath()).compare(TSA::Project::RecentProjects::normalize(path), Qt::CaseInsensitive) == 0)
             return true; // déjà ouvert
-        if (!m_workspace->maybeSave()) return false;
+        if (!m_workspace->confirmNoRunningAnalysis(tr("ouvrir un autre projet")) || !m_workspace->maybeSave()) return false;
     }
     return loadIntoWorkspace(path);
 }

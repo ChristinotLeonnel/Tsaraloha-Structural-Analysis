@@ -128,6 +128,18 @@ std::vector<StandardReference> NormativeReferenceDetector::detectApplicableStand
         });
     }
 
+    // EN 1995-1-1 (Eurocode 5 - Bois) : le bois était détecté mais jamais cité.
+    if (hasTimber)
+    {
+        standards.push_back({
+            QStringLiteral("EN 1995-1-1"),
+            QStringLiteral("Eurocode 5 — Conception et calcul des structures en bois — Partie 1-1 : Généralités — Règles communes et règles pour les bâtiments (EN 1995-1-1:2004)"),
+            QStringLiteral("Bois"),
+            QStringLiteral("Vérification des éléments en bois massif ou lamellé-collé (résistance, classes de service, durée de chargement)."),
+            QStringLiteral("https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-5")
+        });
+    }
+
     // EN 1993-1-11 (Câbles)
     if (!model.cables().empty())
     {
@@ -224,6 +236,20 @@ std::vector<BibliographicReference> NormativeReferenceDetector::generateBibliogr
                 QStringLiteral("https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-3"),
                 currentDate,
                 QStringLiteral("Vérification des sections de classe 1 à 4 et instabilités globales.")
+            });
+        }
+        else if (stdItem.code == "EN 1995-1-1")
+        {
+            refs.push_back({
+                QStringLiteral("[CEN-EN1995]"),
+                QStringLiteral("CEN"),
+                QStringLiteral("NF EN 1995-1-1:2004 — Eurocode 5 : Conception et calcul des structures en bois — Partie 1-1"),
+                QStringLiteral("Bruxelles : CEN"),
+                2004,
+                QStringLiteral("Eurocode 5"),
+                QStringLiteral("https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-5"),
+                currentDate,
+                QStringLiteral("Résistance des éléments en bois selon la classe de service et la durée de chargement.")
             });
         }
         else if (stdItem.code == "EN 1998-1")

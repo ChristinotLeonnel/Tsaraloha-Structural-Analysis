@@ -114,6 +114,10 @@ public:
     bool closeProject();
     /// Fermeture de l'application : enregistrement éventuel, aperçu et disposition des panneaux.
     bool prepareToClose();
+    /// Faux (avec un message) si un calcul tourne : le projet ne peut alors être ni remplacé ni
+    /// fermé, ses résultats seraient publiés sur un autre modèle. action : « quitter », « ouvrir un
+    /// autre projet »…
+    bool confirmNoRunningAnalysis(const QString& action);
 
     QAction* actionSave() const { return m_actionSave; }
     QAction* actionSaveAs() const { return m_actionSaveAs; }

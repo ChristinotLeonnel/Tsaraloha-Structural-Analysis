@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+class QJsonObject;
+
 namespace TSA::Grid
 {
 
@@ -142,9 +144,15 @@ public:
 
     // --- Sérialisation JSON ---
     std::string toJson() const;
+    /// JSON valide (QJsonDocument) ; sinon relu par l'ancien analyseur (fichiers antérieurs).
     static GridDefinition fromJson(const std::string& json);
+    QJsonObject toJsonObject() const;
+    static GridDefinition fromJsonObject(const QJsonObject& object);
 
 private:
+    /// Analyseur historique, écrit à la main : seulement pour un JSON que QJsonDocument refuse.
+    static GridDefinition fromLegacyJson(const std::string& json);
+
     void ensureLabelsSynchronized();
 
 private:

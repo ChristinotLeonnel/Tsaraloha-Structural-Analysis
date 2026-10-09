@@ -159,6 +159,8 @@ AnalysisRunResult OpenSeesEngine::run(const AnalysisContext& context, const Anal
         m_solver = std::make_unique<OpenSeesSolver>();
         solver = m_solver.get();
     }
+    // Annulation reçue avant la création du solveur : cancel() n'a rien trouvé à arrêter.
+    if (callbacks.cancelRequested && callbacks.cancelRequested()) solver->stop();
     if (callbacks.progress)
         QObject::connect(solver, &OpenSeesSolver::progressChanged,
                          [cb = callbacks.progress](int pct, const QString& s) { cb(pct, s.toStdString()); });

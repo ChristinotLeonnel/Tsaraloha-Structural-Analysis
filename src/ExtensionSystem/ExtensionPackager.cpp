@@ -72,8 +72,6 @@ bool ExtensionPackager::createPackage(const QString& sourceDirectory,
         return false;
     }
 
-    ExtensionManifest manifest = *optManifest;
-
     // 2. Scan récursif des fichiers
     struct FileEntry
     {

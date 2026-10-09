@@ -86,6 +86,7 @@ AnalysisRunCallbacks AnalysisController::makeCallbacks()
     // Appelés depuis le thread de travail : émission directe, mise en file par les connexions.
     AnalysisRunCallbacks callbacks;
     callbacks.log = [this](const std::string& line) { emit logMessage(QString::fromStdString(line)); };
+    callbacks.cancelRequested = [flag = m_cancelFlag] { return flag->load(); };
     callbacks.progress = [this](int pct, const std::string& status) {
         emit progressChanged(pct, QString::fromStdString(status));
     };
@@ -99,6 +100,8 @@ bool AnalysisController::start(const AnalysisContext& context, const PreparedAna
     if (!engine) return false;
 
     m_runningEngine = context.engineId;
+    m_cancelFlag = std::make_shared<std::atomic<bool>>(false);
+    m_runRevision = m_model ? m_model->revision() : 0;
     auto job = std::make_shared<const PreparedAnalysis>(prepared);
     auto result = std::make_shared<AnalysisRunResult>();
     m_lastRun = result;
@@ -140,7 +143,10 @@ bool AnalysisController::start(QString* error)
 
 void AnalysisController::cancel()
 {
-    if (m_worker) m_manager->cancel(m_runningEngine);
+    if (!m_worker) return;
+    // Le drapeau d'abord : si le moteur n'a pas encore créé son solveur, il le lira ensuite.
+    m_cancelFlag->store(true);
+    m_manager->cancel(m_runningEngine);
 }
 
 void AnalysisController::onWorkerFinished()
@@ -151,7 +157,7 @@ void AnalysisController::onWorkerFinished()
     m_worker = nullptr;
 
     AnalysisRunResult& r = *m_lastRun;
-    if (r.success) publishResults(std::make_shared<ResultsModel>(std::move(r.results)));
+    if (r.success) publishResults(std::make_shared<ResultsModel>(std::move(r.results)), m_runRevision);
     emit finished(r.success, QString::fromStdString(r.message));
 }
 
@@ -164,6 +170,7 @@ AnalysisRunResult AnalysisController::runBlocking(const AnalysisContext& context
         return busy;
     }
     m_runningEngine = context.engineId;
+    m_cancelFlag = std::make_shared<std::atomic<bool>>(false);
     *m_lastRun = m_manager->run(context, prepared, makeCallbacks());
     AnalysisRunResult summary;
     summary.success = m_lastRun->success;
@@ -180,8 +187,13 @@ bool AnalysisController::resultsUpToDate() const
 
 void AnalysisController::publishResults(const std::shared_ptr<ResultsModel>& results)
 {
+    publishResults(results, m_model ? m_model->revision() : 0);
+}
+
+void AnalysisController::publishResults(const std::shared_ptr<ResultsModel>& results, std::uint64_t analyzedRevision)
+{
     m_results = results;
-    if (m_results) m_guard->trackResults(m_results);
+    if (m_results) m_guard->trackResults(m_results, analyzedRevision);
     else m_guard->clearResults();
     emit resultsChanged();
 }

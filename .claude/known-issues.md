@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-10-09 (audit, branche fix/audit-2026-10-09). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-09 (audit QA, branche fix/audit-qa-2026-10-09). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
 
@@ -94,15 +94,6 @@ Les paramètres d'analyse, eux, sont persistés depuis le 2026-10-07 (chunk `SET
 Impact: LOW
 Status: PARTIAL (paramètres FIXED, résultats OPEN)
 
-## BUG-035
-Area: Tests
-Problem: test 20 (« Undo diff computation is fast < 350 ms in Debug », 5 000 barres) mesure ≈ 280 ms ; il a dépassé
-le seuil une fois sous charge (suite complète, 2026-10-06) puis est repassé 4 fois sur 4. Un échec interrompt la
-suite `commands` (tests 25, 50, 96, 97, 100 non exécutés).
-Impact: LOW (faux négatif possible)
-Status: OPEN — piste : mesurer la médiane de 3 essais, ou relever le seuil en Debug.
-Related files: tests/test_commands.cpp:370
-
 ## BUG-036
 Area: Build (cache CMake local)
 Problem: le 2026-10-08, `build-ninja-debug/CMakeCache.txt` avait `CMAKE_CXX_FLAGS` (et `_DEBUG`…) vides : compilation
@@ -117,6 +108,12 @@ Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapea
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |
+| BUG-049 | Annulation d'un calcul OpenSees perdue si demandée avant que le moteur ait créé son solveur, ou avant que `solveSnapshot` remette son drapeau d'arrêt à zéro : le calcul allait à son terme | drapeau partagé `AnalysisRunCallbacks::cancelRequested` armé par `AnalysisController::cancel` puis lu par `OpenSeesEngine::run` après création du solveur ; `solveSnapshot` ne réarme le drapeau qu'en fin de calcul ; `m_isRunning` atomique | test 205 (compile seulement avec la correction : l'API d'annulation n'existait pas) |
+| BUG-050 | Résultats calculés sur un état antérieur publiés « à jour » : le garde de validité prenait la révision du modèle à la publication, pas au lancement (modèle modifié depuis le panneau d'analyse non modal, ou projet ouvert / créé pendant le calcul depuis le Start Center ou un glisser-déposer) | `AnalysisController` mémorise la révision au lancement, `ResultsValidityGuard::trackResults(results, révision)` invalide aussitôt ; ouvrir / créer / glisser un projet refusé pendant un calcul (`MainWindow::confirmNoRunningAnalysis`, message commun avec quitter / fermer) | test 206 (échec reproduit sur le code d'origine) ; GUI 2026-10-09 : Ctrl+O et icône Ouvrir sans effet pendant un calcul lancé par F5 (fenêtre de progression modale) — la garde n'est donc atteignable que par un appel direct ; annulation (portique 5 006 barres, non linéaire 200 pas) : « Calcul OpenSees annulé » en barre d'état, aucune boîte d'erreur, aucun résultat publié, 2 essais |
+| BUG-051 | JSON des grilles (chunk GRID, historique Annuler) écrit à la main : nom tronqué à la première virgule (« Bâtiment A, aile Est » relu « Bâtiment A »), JSON invalide sur un guillemet, réels à 6 chiffres significatifs (origine 500 123,456 m relue 500 123 m) | `GridDefinition::toJsonObject / fromJsonObject` et `GridManager::serializeToJson` par QJsonDocument (chaînes échappées, réels relus à l'identique) ; ancien analyseur conservé en secours pour un JSON invalide écrit par les versions précédentes | test 207 (échec reproduit sur le code d'origine : nom relu « Bâtiment A ») ; ancien format valide et invalide relus |
+| BUG-052 | Note de calcul : bois détecté (`hasTimber`) mais EN 1995-1-1 (Eurocode 5) jamais cité ni mis en bibliographie | entrée EN 1995-1-1 + référence [CEN-EN1995] | test NDC (structure en C24) ; signalé par clang-analyzer (valeur jamais lue) |
+| BUG-053 | Règles graduées du viewport : boucle `for (double v = …; v += step)` sans fin si les cotes sont très grandes devant le pas (v + step == v) | indice entier borné (`tickIndexCount`), mêmes graduations | code (clang-tidy bugprone-float-loop-counter) ; GUI 2026-10-09 : règles horizontale et verticale graduées normalement (−9 à 8 m, 1 à 11 m) |
+| BUG-035 | Test 20 : seuil de 350 ms sur une mesure unique, dépassé une fois sous charge | seuil évalué sur le meilleur de 3 annulations (seuil inchangé) | suite `commands` : meilleur ≈ 175 ms en Debug |
 | BUG-044 | Lettres / chiffres de grille répétés à chaque niveau et sur toutes les élévations | `GridLabelLayout` (repères choisis selon la visée, une occurrence par axe), `OccView::updateGridLabelView` | test 202 ; GUI 2026-10-09 : face (1-4 au-dessus du dernier niveau), dessus (1-4 et A-D une fois), isométrie (niveau bas seul) |
 | BUG-045 | Déformée en empilement de prismes ; flèche en travée ignorée (Hermite nodal seul) | `DeformedGeometry::computeMemberAxis` (stations du solveur) + `createMemberSolid` (maillage continu) | tests 203 (OpenSees : 2 appuis, console, poteau, portique, cas limites), 204 (Custom2D) ; GUI : portique courbé continu |
 | BUG-046 | « Déformée seule » laissait la structure d'origine opaque (indiscernable de « Les deux ») | `OccView::setResultsStructureDisplay` (atténuée / masquée) | GUI : structure initiale atténuée sous la déformée ; mode « déformée seule » vérifié par le code seulement |

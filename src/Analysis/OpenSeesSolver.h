@@ -74,7 +74,7 @@ private:
                          const AnalysisParameters& params,
                          QString* errorMessage);
 
-    bool m_isRunning = false;
+    std::atomic<bool> m_isRunning { false };   // écrit par le thread de calcul (solveAsync)
     std::atomic<bool> m_stopRequested { false };
     QProcess* m_process = nullptr;
     ResultsModel m_results;

@@ -230,7 +230,7 @@ MainWindow::MainWindow(QWidget* parent)
     if (m_occView)
     {
         connect(m_occView, &OccView::fileDropped, this, [this](const QString& filePath) {
-            if (maybeSave())
+            if (confirmNoRunningAnalysis(tr("ouvrir un autre projet")) && maybeSave())
             {
                 loadFile(filePath);
             }
@@ -1297,13 +1297,19 @@ bool MainWindow::maybeSave()
     return true; // Discard
 }
 
+bool MainWindow::confirmNoRunningAnalysis(const QString& action)
+{
+    if (!m_analysis->isRunning())
+        return true;
+    QMessageBox::information(this, tr("Calcul en cours"),
+                             tr("Un calcul est en cours : annulez-le ou attendez sa fin avant de %1.").arg(action));
+    return false;
+}
+
 bool MainWindow::prepareToClose()
 {
-    if (m_analysis->isRunning())
-    {
-        QMessageBox::information(this, tr("Calcul en cours"), tr("Un calcul est en cours : annulez-le ou attendez sa fin avant de quitter."));
+    if (!confirmNoRunningAnalysis(tr("quitter")))
         return false;
-    }
     if (!maybeSave())
         return false;
     capturePreview(true); // dernier état du modèle pour le Start Center
@@ -1321,6 +1327,8 @@ void MainWindow::onActionNew()
 
 bool MainWindow::createProject(const TSA::UI::NewProjectSettings& settings)
 {
+    if (!confirmNoRunningAnalysis(tr("créer un projet")))
+        return false;
     resetWorkspace(settings.projectTemplate);
     if (m_projectManager) m_projectManager->setProjectName(settings.name);
     const QString path = settings.filePath();
@@ -1337,11 +1345,8 @@ bool MainWindow::createProject(const TSA::UI::NewProjectSettings& settings)
 
 bool MainWindow::closeProject()
 {
-    if (m_analysis->isRunning())
-    {
-        QMessageBox::information(this, tr("Calcul en cours"), tr("Un calcul est en cours : annulez-le ou attendez sa fin avant de fermer le projet."));
+    if (!confirmNoRunningAnalysis(tr("fermer le projet")))
         return false;
-    }
     if (!maybeSave())
         return false;
     capturePreview(true); // dernier état du projet pour sa carte du Start Center
@@ -1516,7 +1521,7 @@ bool MainWindow::saveFile(const QString& path)
 
 bool MainWindow::loadFile(const QString& path)
 {
-    if (!m_model)
+    if (!m_model || !confirmNoRunningAnalysis(tr("ouvrir un autre projet")))
         return false;
     capturePreview(true); // dernier état du projet que l'on quitte
 
@@ -1827,7 +1832,7 @@ void MainWindow::dropEvent(QDropEvent* event)
             if (TSA::Product::isOpenableProjectFile(path))
             {
                 event->acceptProposedAction();
-                if (maybeSave())
+                if (confirmNoRunningAnalysis(tr("ouvrir un autre projet")) && maybeSave())
                 {
                     loadFile(path);
                 }

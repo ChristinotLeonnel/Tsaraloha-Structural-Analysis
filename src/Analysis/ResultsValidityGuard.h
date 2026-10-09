@@ -40,6 +40,9 @@ public:
     /// À appeler juste après une analyse réussie : les résultats correspondent à la révision
     /// actuelle du modèle.
     void trackResults(const std::shared_ptr<ResultsModel>& results);
+    /// Résultats calculés sur la révision analyzedRevision (capturée au lancement d'un calcul en
+    /// tâche de fond) : marqués obsolètes tout de suite si le modèle a changé depuis.
+    void trackResults(const std::shared_ptr<ResultsModel>& results, std::uint64_t analyzedRevision);
     void clearResults();
 
     void setStaleCallback(StaleCallback callback) { m_onStale = std::move(callback); }
