@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IElementPropertyView.h"
+#include "MemberEndNodesWidget.h"
 #include "../../Model/Section.h"
 #include "../../Model/Column.h"
 
@@ -40,6 +41,7 @@ private slots:
     void pickColor();
 
 private:
+    MemberEndNodesWidget* m_endNodes = nullptr;   // nœuds d'extrémité (appuis), lus dans le modèle
     void setupUi();
     void updateSectionVisibility(int secType);
     TSA::Model::Section getSectionFromUi() const;

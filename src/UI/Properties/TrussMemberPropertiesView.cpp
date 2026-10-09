@@ -80,6 +80,9 @@ void TrussMemberPropertiesView::setupUi()
     form->addRow(tr("Couleur d'affichage :"), m_btnColor);
 
     mainLayout->addWidget(grp);
+    m_endNodes = new MemberEndNodesWidget(this);
+    connect(m_endNodes, &MemberEndNodesWidget::nodeRequested, this, &IElementPropertyView::nodeRequested);
+    mainLayout->addWidget(m_endNodes);
     mainLayout->addStretch();
 }
 
@@ -123,6 +126,8 @@ void TrussMemberPropertiesView::refreshView()
     if (mIdx >= 0) m_comboMaterial->setCurrentIndex(mIdx);
 
     m_lblNodes->setText(QString("N%1 → N%2").arg(trm->startNodeId()).arg(trm->endNodeId()));
+    m_endNodes->setModel(m_model);
+    m_endNodes->setNodes(trm->startNodeId(), trm->endNodeId());
 
     m_colorHex = QString::fromStdString(trm->color().empty() ? "#EF4444" : trm->color());
     m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));

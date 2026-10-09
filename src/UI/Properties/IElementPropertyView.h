@@ -29,6 +29,8 @@ public:
 
 signals:
     void elementModified();
+    /// Afficher les propriétés d'un nœud de l'élément (bloc « Nœuds d'extrémité »).
+    void nodeRequested(int nodeId);
 };
 
 } // namespace TSA::UI
