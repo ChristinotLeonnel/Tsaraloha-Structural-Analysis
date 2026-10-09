@@ -433,12 +433,15 @@ QWidget* AIRuntimeDialog::buildPrivacyPage()
     m_cloudPreset = new QComboBox(cloud);
     m_cloudPreset->addItem(tr("Compatible OpenAI (URL personnalisée)"), "openai-compatible");
     m_cloudPreset->addItem(tr("Google Gemini (point d'accès compatible OpenAI)"), "gemini");
+    m_cloudPreset->addItem(tr("Anthropic Claude (point d'accès compatible OpenAI)"), "anthropic");
     m_cloudPreset->addItem(tr("Ollama (local, sur ce poste)"), "ollama");
     m_cloudPreset->setCurrentIndex(std::max(0, m_cloudPreset->findData(s.cloud.preset)));
+    m_cloudPreset->setToolTip(tr("Anthropic : point d'accès « compatible OpenAI » officiel (bêta) — même protocole que les "
+                                 "autres fournisseurs Cloud, clé API Anthropic (console.anthropic.com)."));
     m_cloudUrl = new QLineEdit(s.cloud.baseUrl, cloud);
     m_cloudUrl->setPlaceholderText("https://…/v1");
     m_cloudModel = new QLineEdit(s.cloud.model, cloud);
-    m_cloudModel->setPlaceholderText(tr("nom du modèle chez le fournisseur"));
+    m_cloudModel->setPlaceholderText(tr("ex. claude-sonnet-5-5, gpt-..., gemini-..."));
     m_cloudKey = new QLineEdit(cloud);
     m_cloudKey->setEchoMode(QLineEdit::Password);
     m_cloudKey->setPlaceholderText(s.cloud.hasApiKey ? tr("•••••• (enregistrée, chiffrée) — laisser vide pour conserver") : tr("clé API"));

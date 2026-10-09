@@ -97,6 +97,9 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 
 ## IA Co-Engineering (ADR-015)
 
+- [x] Fournisseur Cloud « Anthropic Claude » (préréglage `anthropic`, point d'accès compatible OpenAI) — 2026-10-09.
+- [ ] Vérifier le fournisseur Anthropic Claude en conditions réelles avec une clé API (console.anthropic.com) :
+      discussion complète, appels d'outils en streaming ; la couche de compatibilité OpenAI est en bêta chez Anthropic.
 - [ ] What-If : `SimulationScenario` (copie du modèle via snapshot, calcul, comparaison, jamais d'écrasement).
 - [ ] Rapport d'ingénierie IA (15 sections, citations des données TSA, réutiliser le moteur NDC).
 - [ ] « Expliquer avec l'IA » depuis les docks Propriétés et Résultats (actuellement : arbre + ruban).

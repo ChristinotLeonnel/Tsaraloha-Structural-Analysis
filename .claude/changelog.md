@@ -9,6 +9,18 @@ Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord)
   scène vers un éditeur déjà détruit). ~BlueprintEditor coupe les connexions de ses enfants ; ~LabMainWindow aussi.
 - Test 199 (220/220).
 
+## 2026-10-09 (Fournisseur Cloud Anthropic Claude pour l'IA Co-Engineering)
+
+### Added
+- Préréglage Cloud « Anthropic Claude (point d'accès compatible OpenAI) » dans `AIOrchestrator::reloadCloudProvider`
+  (URL par défaut `https://api.anthropic.com/v1`, `contextTokens` 200000) et dans la boîte de dialogue IA
+  (`AIRuntimeDialog`, combo Fournisseur). Réutilise `OpenAICompatibleProvider` (protocole Chat Completions,
+  déjà partagé par OpenAI/Gemini/Ollama) : aucun code ni dépendance propre à Anthropic.
+- Modèle utilisable par TSA **et** TSALab (AIOrchestrator est dans `src/AI`, partagé par les deux applications).
+- Documenté dans `docs/AI_COENGINEERING.md`. Tests : 219/219 (TSA, dont `test_ai.cpp`) et 5/5 (TSALab) inchangés.
+- Non vérifié en conditions réelles (aucune clé API Anthropic fournie) : à confirmer par l'utilisateur avec sa
+  propre clé (console.anthropic.com) ; la couche de compatibilité OpenAI d'Anthropic est en bêta côté Anthropic.
+
 ## 2026-10-08 (Débogueur, plugins, IA sur Blueprint — ADR-024 phase 8)
 
 ### Added

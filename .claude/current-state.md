@@ -73,6 +73,10 @@ configuration non modale, indicateur barre d'état, ruban Outils/Analyse, menu c
 Vérifié dans l'application (UI Automation) : détection matérielle réelle, téléchargement + SHA-256,
 démarrage llama-server, diagnostic, auto-benchmark (CPU 40,8 / Vulkan 4,4 j/s), « Vérifier la
 structure » et question libre (réponses fondées sur les données du .tsa). Tests 112–123.
+Fournisseur Cloud « Anthropic Claude » ajouté le 2026-10-09 (préréglage `anthropic`, point d'accès
+« compatible OpenAI » officiel d'Anthropic, même `OpenAICompatibleProvider` que OpenAI/Gemini/Ollama,
+aucun code propre à Anthropic) ; préréglage vérifié dans la boîte de dialogue (UI Automation), jamais
+appelé en vrai (nécessite une clé API Anthropic de l'utilisateur, non fournie à Claude).
 MISSING : What-If, rapport IA. Voir docs/AI_COENGINEERING.md.
 
 ## Viewport
