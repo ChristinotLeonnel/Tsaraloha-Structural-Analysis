@@ -1,5 +1,12 @@
 #include "GridDefinition.h"
 
+#include <QByteArray>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QString>
+
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
@@ -406,121 +413,243 @@ void GridDefinition::generateCylindrical(int radiusCount, double radiusSpacing,
     ensureLabelsSynchronized();
 }
 
-static std::string vectorToJsonArray(const std::vector<double>& vec)
+namespace
 {
-    std::ostringstream oss;
-    oss << "[";
-    for (size_t i = 0; i < vec.size(); ++i)
-    {
-        oss << vec[i];
-        if (i + 1 < vec.size()) oss << ", ";
-    }
-    oss << "]";
-    return oss.str();
+QJsonArray toJsonArray(const std::vector<double>& values)
+{
+    QJsonArray a;
+    for (double v : values) a.append(v);
+    return a;
 }
 
-static std::string stringVectorToJsonArray(const std::vector<std::string>& vec)
+QJsonArray toJsonArray(const std::vector<std::string>& values)
 {
-    std::ostringstream oss;
-    oss << "[";
-    for (size_t i = 0; i < vec.size(); ++i)
-    {
-        oss << "\"" << vec[i] << "\"";
-        if (i + 1 < vec.size()) oss << ", ";
-    }
-    oss << "]";
-    return oss.str();
+    QJsonArray a;
+    for (const auto& v : values) a.append(QString::fromStdString(v));
+    return a;
 }
 
-static std::string boolVectorToJsonArray(const std::vector<bool>& vec)
+QJsonArray toJsonArray(const std::vector<bool>& values)
 {
-    std::ostringstream oss;
-    oss << "[";
-    for (size_t i = 0; i < vec.size(); ++i)
+    QJsonArray a;
+    for (bool v : values) a.append(v);
+    return a;
+}
+
+QJsonArray toJsonArray(const gp_Pnt& p)
+{
+    return QJsonArray { p.X(), p.Y(), p.Z() };
+}
+
+std::vector<double> doublesFrom(const QJsonValue& v)
+{
+    std::vector<double> out;
+    for (const auto& e : v.toArray()) out.push_back(e.toDouble());
+    return out;
+}
+
+std::vector<std::string> stringsFrom(const QJsonValue& v)
+{
+    std::vector<std::string> out;
+    for (const auto& e : v.toArray()) out.push_back(e.toString().toStdString());
+    return out;
+}
+
+std::vector<bool> boolsFrom(const QJsonValue& v)
+{
+    std::vector<bool> out;
+    for (const auto& e : v.toArray()) out.push_back(e.toBool());
+    return out;
+}
+
+gp_Pnt pointFrom(const QJsonValue& v, const gp_Pnt& fallback)
+{
+    const QJsonArray a = v.toArray();
+    return a.size() >= 3 ? gp_Pnt(a[0].toDouble(), a[1].toDouble(), a[2].toDouble()) : fallback;
+}
+
+const char* typeKey(GridType type)
+{
+    if (type == GridType::Cylindrical) return "Cylindrical";
+    if (type == GridType::Arbitrary) return "Arbitrary";
+    return "Cartesian";
+}
+} // namespace
+
+// Sérialisation par QJsonDocument. L'ancienne écriture à la main n'échappait pas les chaînes (un nom
+// « Bâtiment A, aile Est » était relu « Bâtiment A », un guillemet rendait le JSON invalide) et
+// écrivait les nombres avec 6 chiffres significatifs (origine 500 123,456 m relue 500 123 m).
+// QJsonDocument échappe les chaînes et écrit les réels au plus court qui se relit à l'identique.
+QJsonObject GridDefinition::toJsonObject() const
+{
+    QJsonObject o;
+    o["id"] = QString::fromStdString(m_id);
+    o["name"] = QString::fromStdString(m_name);
+    o["type"] = QString::fromLatin1(typeKey(m_type));
+    o["origin"] = toJsonArray(m_origin);
+    o["rotationDeg"] = m_rotationDeg;
+    o["isVisible"] = m_isVisible;
+    o["isActive"] = m_isActive;
+    o["showLabels"] = m_showLabels;
+    o["showIntersections"] = m_showIntersections;
+
+    if (m_type == GridType::Cartesian)
     {
-        oss << (vec[i] ? "true" : "false");
-        if (i + 1 < vec.size()) oss << ", ";
+        o["xPositions"] = toJsonArray(m_xPositions);
+        o["yPositions"] = toJsonArray(m_yPositions);
+        o["xLabels"] = toJsonArray(m_xLabels);
+        o["yLabels"] = toJsonArray(m_yLabels);
+        o["xIsBold"] = toJsonArray(m_xIsBold);
+        o["yIsBold"] = toJsonArray(m_yIsBold);
     }
-    oss << "]";
-    return oss.str();
+    else if (m_type == GridType::Cylindrical)
+    {
+        o["radii"] = toJsonArray(m_radii);
+        o["angles"] = toJsonArray(m_angles);
+        o["startAngleDeg"] = m_startAngleDeg;
+        o["totalAngleDeg"] = m_totalAngleDeg;
+        o["angularDivisions"] = m_angularDivisions;
+        o["radiusLabels"] = toJsonArray(m_radiusLabels);
+        o["angleLabels"] = toJsonArray(m_angleLabels);
+        QJsonArray patterns;
+        for (const auto& pat : m_angularPatterns)
+            patterns.append(QJsonObject { { "startAngle", pat.startAngle },
+                                          { "repeatCount", pat.repeatCount },
+                                          { "angleStep", pat.angleStep } });
+        o["angularPatterns"] = patterns;
+    }
+    else
+    {
+        QJsonArray lines;
+        for (const auto& line : m_arbitraryLines)
+            lines.append(QJsonObject { { "label", QString::fromStdString(line.label) },
+                                       { "type", QString::fromStdString(line.type) },
+                                       { "isBold", line.isBold },
+                                       { "p1", toJsonArray(line.p1) },
+                                       { "p2", toJsonArray(line.p2) } });
+        o["arbitraryLines"] = lines;
+    }
+
+    o["zLevels"] = toJsonArray(m_zLevels);
+    o["zLabels"] = toJsonArray(m_zLabels);
+    o["zIsBold"] = toJsonArray(m_zIsBold);
+    o["displaySettings"] = QJsonObject {
+        { "lineColor", QString::fromStdString(m_displaySettings.lineColor) },
+        { "lineStyle", QString::fromStdString(m_displaySettings.lineStyle) },
+        { "lineWidth", m_displaySettings.lineWidth },
+        { "extension", m_displaySettings.extension },
+        { "bubbleRadius", m_displaySettings.bubbleRadius },
+        { "showBubbles", m_displaySettings.showBubbles },
+        { "labelsBothEnds", m_displaySettings.labelsBothEnds } };
+    return o;
 }
 
 std::string GridDefinition::toJson() const
 {
-    std::ostringstream oss;
-    oss << "{\n";
-    oss << "  \"id\": \"" << m_id << "\",\n";
-    oss << "  \"name\": \"" << m_name << "\",\n";
-    std::string typeStr = "Cartesian";
-    if (m_type == GridType::Cylindrical) typeStr = "Cylindrical";
-    else if (m_type == GridType::Arbitrary) typeStr = "Arbitrary";
-    oss << "  \"type\": \"" << typeStr << "\",\n";
-    oss << "  \"origin\": [" << m_origin.X() << ", " << m_origin.Y() << ", " << m_origin.Z() << "],\n";
-    oss << "  \"rotationDeg\": " << m_rotationDeg << ",\n";
-    oss << "  \"isVisible\": " << (m_isVisible ? "true" : "false") << ",\n";
-    oss << "  \"isActive\": " << (m_isActive ? "true" : "false") << ",\n";
-    oss << "  \"showLabels\": " << (m_showLabels ? "true" : "false") << ",\n";
-    oss << "  \"showIntersections\": " << (m_showIntersections ? "true" : "false") << ",\n";
+    // Indenté (lisible) ; GridManager écrit le format compact dans le .tsa et l'historique.
+    return QJsonDocument(toJsonObject()).toJson(QJsonDocument::Indented).toStdString();
+}
 
-    if (m_type == GridType::Cartesian)
+GridDefinition GridDefinition::fromJsonObject(const QJsonObject& o)
+{
+    // Même ordre d'appel des mutateurs que l'ancienne lecture : les positions synchronisent des
+    // libellés par défaut que les libellés enregistrés remplacent ensuite.
+    GridDefinition def;
+    const QString id = o.value("id").toString();
+    if (!id.isEmpty()) def.setId(id.toStdString());
+    const QString name = o.value("name").toString();
+    if (!name.isEmpty()) def.setName(name.toStdString());
+
+    const QString type = o.value("type").toString();
+    const GridType parsedType = type == "Cylindrical" ? GridType::Cylindrical
+                              : type == "Arbitrary"   ? GridType::Arbitrary
+                                                      : GridType::Cartesian;
+    def.setType(parsedType);
+
+    const QJsonArray origin = o.value("origin").toArray();
+    if (origin.size() == 3)
+        def.setOrigin(origin[0].toDouble(), origin[1].toDouble(), origin[2].toDouble());
+    if (o.contains("rotationDeg")) def.setRotationDeg(o.value("rotationDeg").toDouble());
+    if (o.contains("isVisible")) def.setVisible(o.value("isVisible").toBool());
+    if (o.contains("isActive")) def.setActive(o.value("isActive").toBool());
+    if (o.contains("showLabels")) def.setShowLabels(o.value("showLabels").toBool());
+    if (o.contains("showIntersections")) def.setShowIntersections(o.value("showIntersections").toBool());
+
+    if (parsedType == GridType::Cartesian)
     {
-        oss << "  \"xPositions\": " << vectorToJsonArray(m_xPositions) << ",\n";
-        oss << "  \"yPositions\": " << vectorToJsonArray(m_yPositions) << ",\n";
-        oss << "  \"xLabels\": " << stringVectorToJsonArray(m_xLabels) << ",\n";
-        oss << "  \"yLabels\": " << stringVectorToJsonArray(m_yLabels) << ",\n";
-        oss << "  \"xIsBold\": " << boolVectorToJsonArray(m_xIsBold) << ",\n";
-        oss << "  \"yIsBold\": " << boolVectorToJsonArray(m_yIsBold) << ",\n";
+        def.setXPositions(doublesFrom(o.value("xPositions")));
+        def.setXLabels(stringsFrom(o.value("xLabels")));
+        def.setXIsBold(boolsFrom(o.value("xIsBold")));
+        def.setYPositions(doublesFrom(o.value("yPositions")));
+        def.setYLabels(stringsFrom(o.value("yLabels")));
+        def.setYIsBold(boolsFrom(o.value("yIsBold")));
     }
-    else if (m_type == GridType::Cylindrical)
+    else if (parsedType == GridType::Cylindrical)
     {
-        oss << "  \"radii\": " << vectorToJsonArray(m_radii) << ",\n";
-        oss << "  \"angles\": " << vectorToJsonArray(m_angles) << ",\n";
-        oss << "  \"startAngleDeg\": " << m_startAngleDeg << ",\n";
-        oss << "  \"totalAngleDeg\": " << m_totalAngleDeg << ",\n";
-        oss << "  \"angularDivisions\": " << m_angularDivisions << ",\n";
-        oss << "  \"radiusLabels\": " << stringVectorToJsonArray(m_radiusLabels) << ",\n";
-        oss << "  \"angleLabels\": " << stringVectorToJsonArray(m_angleLabels) << ",\n";
-        oss << "  \"angularPatterns\": [\n";
-        for (size_t i = 0; i < m_angularPatterns.size(); ++i)
+        def.setRadii(doublesFrom(o.value("radii")));
+        def.setRadiusLabels(stringsFrom(o.value("radiusLabels")));
+        def.setAngles(doublesFrom(o.value("angles")));
+        def.setAngleLabels(stringsFrom(o.value("angleLabels")));
+        if (o.contains("startAngleDeg")) def.setStartAngleDeg(o.value("startAngleDeg").toDouble());
+        if (o.contains("totalAngleDeg")) def.setTotalAngleDeg(o.value("totalAngleDeg").toDouble());
+        if (o.contains("angularDivisions")) def.setAngularDivisions(o.value("angularDivisions").toInt());
+        std::vector<AngularPattern> pats;
+        for (const auto& v : o.value("angularPatterns").toArray())
         {
-            const auto& p = m_angularPatterns[i];
-            oss << "    {\"startAngle\": " << p.startAngle
-                << ", \"repeatCount\": " << p.repeatCount
-                << ", \"angleStep\": " << p.angleStep << "}";
-            if (i + 1 < m_angularPatterns.size()) oss << ",";
-            oss << "\n";
+            const QJsonObject po = v.toObject();
+            AngularPattern pat;
+            pat.startAngle = po.value("startAngle").toDouble();
+            pat.repeatCount = po.value("repeatCount").toInt();
+            pat.angleStep = po.value("angleStep").toDouble();
+            pats.push_back(pat);
         }
-        oss << "  ],\n";
+        if (!pats.empty()) def.setAngularPatterns(pats);
     }
-    else // Arbitrary
+    else
     {
-        oss << "  \"arbitraryLines\": [\n";
-        for (size_t i = 0; i < m_arbitraryLines.size(); ++i)
+        for (const auto& v : o.value("arbitraryLines").toArray())
         {
-            const auto& line = m_arbitraryLines[i];
-            oss << "    {\"label\": \"" << line.label << "\", "
-                << "\"type\": \"" << line.type << "\", "
-                << "\"isBold\": " << (line.isBold ? "true" : "false") << ", "
-                << "\"p1\": [" << line.p1.X() << ", " << line.p1.Y() << ", " << line.p1.Z() << "], "
-                << "\"p2\": [" << line.p2.X() << ", " << line.p2.Y() << ", " << line.p2.Z() << "]}";
-            if (i + 1 < m_arbitraryLines.size()) oss << ",";
-            oss << "\n";
+            const QJsonObject lo = v.toObject();
+            ArbitraryLine line;
+            line.label = lo.value("label").toString().toStdString();
+            line.type = lo.value("type").toString().toStdString();
+            if (line.type.empty()) line.type = "droite";
+            line.isBold = lo.value("isBold").toBool();
+            line.p1 = pointFrom(lo.value("p1"), line.p1);
+            line.p2 = pointFrom(lo.value("p2"), line.p2);
+            def.addArbitraryLine(line);
         }
-        oss << "  ],\n";
     }
 
-    oss << "  \"zLevels\": " << vectorToJsonArray(m_zLevels) << ",\n";
-    oss << "  \"zLabels\": " << stringVectorToJsonArray(m_zLabels) << ",\n";
-    oss << "  \"zIsBold\": " << boolVectorToJsonArray(m_zIsBold) << ",\n";
-    oss << "  \"displaySettings\": {\"lineColor\": \"" << m_displaySettings.lineColor
-        << "\", \"lineStyle\": \"" << m_displaySettings.lineStyle
-        << "\", \"lineWidth\": " << m_displaySettings.lineWidth
-        << ", \"extension\": " << m_displaySettings.extension
-        << ", \"bubbleRadius\": " << m_displaySettings.bubbleRadius
-        << ", \"showBubbles\": " << (m_displaySettings.showBubbles ? "true" : "false")
-        << ", \"labelsBothEnds\": " << (m_displaySettings.labelsBothEnds ? "true" : "false") << "}\n";
-    oss << "}";
-    return oss.str();
+    def.setZLevels(doublesFrom(o.value("zLevels")));
+    def.setZLabels(stringsFrom(o.value("zLabels")));
+    def.setZIsBold(boolsFrom(o.value("zIsBold")));
+
+    if (o.contains("displaySettings"))
+    {
+        const QJsonObject d = o.value("displaySettings").toObject();
+        GridDisplaySettings ds;
+        if (const QString c = d.value("lineColor").toString(); !c.isEmpty()) ds.lineColor = c.toStdString();
+        if (const QString st = d.value("lineStyle").toString(); !st.isEmpty()) ds.lineStyle = st.toStdString();
+        ds.lineWidth = d.value("lineWidth").toDouble(ds.lineWidth);
+        ds.extension = d.value("extension").toDouble(ds.extension);
+        ds.bubbleRadius = d.value("bubbleRadius").toDouble(ds.bubbleRadius);
+        ds.showBubbles = d.value("showBubbles").toBool(ds.showBubbles);
+        ds.labelsBothEnds = d.value("labelsBothEnds").toBool(ds.labelsBothEnds);
+        def.setDisplaySettings(ds);
+    }
+    return def;
+}
+
+GridDefinition GridDefinition::fromJson(const std::string& json)
+{
+    QJsonParseError error {};
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(json), &error);
+    if (error.error == QJsonParseError::NoError && doc.isObject())
+        return fromJsonObject(doc.object());
+    // Fichier écrit par l'ancien sérialiseur avec un guillemet non échappé : JSON invalide, relu
+    // comme auparavant pour ne pas perdre la grille.
+    return fromLegacyJson(json);
 }
 
 static std::vector<double> parseDoubleArray(const std::string& json, const std::string& field)
@@ -589,7 +718,7 @@ static std::vector<std::string> parseStringArray(const std::string& json, const 
     return result;
 }
 
-GridDefinition GridDefinition::fromJson(const std::string& jsonStr)
+GridDefinition GridDefinition::fromLegacyJson(const std::string& jsonStr)
 {
     GridDefinition def;
     auto findField = [&jsonStr](const std::string& field) -> std::string {

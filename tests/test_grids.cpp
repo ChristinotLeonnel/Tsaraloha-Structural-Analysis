@@ -872,5 +872,99 @@ bool runSuite_Grids(int& passed)
         passed++;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 207 : JSON des grilles (chunk GRID du .tsa et historique Annuler). L'ancien sérialiseur
+    // écrit à la main tronquait un nom à la première virgule, cassait le JSON sur un guillemet et
+    // arrondissait les réels à 6 chiffres significatifs (origine géoréférencée décalée de 0,456 m).
+    // -------------------------------------------------------------------------
+    {
+        GridManager gm;
+        gm.clearAllGrids();
+        GridDefinition def("Bâtiment A, aile \"Est\"", GridType::Cartesian);
+        def.setOrigin(500123.456, 7650321.789, 12.3456789);
+        def.setRotationDeg(33.333333333333);
+        def.setXPositions({ 0.0, 6.123456789, 12.25 });
+        def.setYPositions({ 0.0, 4.2 });
+        def.setXLabels({ "A,1", "B\"2", "C\\3" });
+        def.setYLabels({ "1", "2" });
+        def.setXIsBold({ true, false, true });
+        def.setZLevels({ 0.0, 3.14159265358979 });
+        GridDisplaySettings ds;
+        ds.lineColor = "#7A8494";
+        ds.lineWidth = 1.75;
+        def.setDisplaySettings(ds);
+        const std::string gid = gm.addGrid(def)->id();
+
+        GridDefinition arb("Lignes, libres", GridType::Arbitrary);
+        ArbitraryLine line;
+        line.label = "L, \"1\"";
+        line.type = "segment";
+        line.p1 = gp_Pnt(500000.125, 0.0, 0.0);
+        line.p2 = gp_Pnt(500010.375, 5.5, 0.0);
+        arb.addArbitraryLine(line);
+        gm.addGrid(arb);
+
+        GridManager back;
+        back.deserializeFromJson(gm.serializeToJson());
+        const auto* g = back.getGrid(gid);
+        TEST_CHECK(g != nullptr && back.grids().size() == 2, "Test 207: deux grilles relues");
+        if (g)
+        {
+            const auto& d = g->definition();
+            TEST_CHECK(d.name() == def.name(), "Test 207: nom avec virgule et guillemets conservé (" << d.name() << ")");
+            TEST_CHECK(d.origin().X() == 500123.456 && d.origin().Y() == 7650321.789 && d.origin().Z() == 12.3456789,
+                       "Test 207: origine géoréférencée relue à l'identique");
+            TEST_CHECK(d.rotationDeg() == 33.333333333333, "Test 207: rotation relue à l'identique");
+            TEST_CHECK(d.xPositions() == def.xPositions() && d.zLevels() == def.zLevels(), "Test 207: positions exactes");
+            TEST_CHECK(d.xLabels() == def.xLabels() && d.yLabels() == def.yLabels(), "Test 207: libellés échappés conservés");
+            TEST_CHECK(d.xIsBold() == def.xIsBold(), "Test 207: axes en gras conservés");
+            TEST_CHECK(d.displaySettings().lineColor == "#7A8494" && d.displaySettings().lineWidth == 1.75,
+                       "Test 207: affichage conservé");
+        }
+        bool arbOk = false;
+        for (const auto& sys : back.grids())
+        {
+            const auto& d = sys->definition();
+            if (d.type() != GridType::Arbitrary) continue;
+            arbOk = d.name() == "Lignes, libres" && d.arbitraryLines().size() == 1
+                    && d.arbitraryLines()[0].label == line.label && d.arbitraryLines()[0].type == "segment"
+                    && d.arbitraryLines()[0].p1.X() == 500000.125 && d.arbitraryLines()[0].p2.X() == 500010.375;
+        }
+        TEST_CHECK(arbOk, "Test 207: ligne arbitraire (libellé, type, points) conservée");
+        TEST_CHECK(back.serializeToJson() == gm.serializeToJson(), "Test 207: sérialisation stable (comparaison des instantanés Annuler)");
+
+        // Ancien format valide (écrit par les versions précédentes) : relu par QJsonDocument.
+        const std::string legacyValid =
+            "{\n  \"activeGridId\": \"g1\",\n  \"grids\": [\n{\n  \"id\": \"g1\",\n  \"name\": \"Grille 1\",\n"
+            "  \"type\": \"Cartesian\",\n  \"origin\": [1, 2, 0],\n  \"rotationDeg\": 0,\n  \"isVisible\": true,\n"
+            "  \"isActive\": true,\n  \"showLabels\": true,\n  \"showIntersections\": false,\n"
+            "  \"xPositions\": [0, 5, 10],\n  \"yPositions\": [0, 4],\n  \"xLabels\": [\"A\", \"B\", \"C\"],\n"
+            "  \"yLabels\": [\"1\", \"2\"],\n  \"xIsBold\": [false, true, false],\n  \"yIsBold\": [false, false],\n"
+            "  \"zLevels\": [0, 3],\n  \"zLabels\": [\"RDC\", \"N1\"],\n  \"zIsBold\": [false, false],\n"
+            "  \"displaySettings\": {\"lineColor\": \"\", \"lineStyle\": \"dashed\", \"lineWidth\": 1, \"extension\": 1.5, "
+            "\"bubbleRadius\": 0.4, \"showBubbles\": true, \"labelsBothEnds\": false}\n}\n  ]\n}";
+        GridManager oldValid;
+        oldValid.deserializeFromJson(legacyValid);
+        const auto* g1 = oldValid.getGrid("g1");
+        TEST_CHECK(g1 && g1->definition().xPositions() == std::vector<double>({ 0.0, 5.0, 10.0 })
+                       && g1->definition().xLabels() == std::vector<std::string>({ "A", "B", "C" })
+                       && g1->definition().xIsBold() == std::vector<bool>({ false, true, false })
+                       && g1->definition().zLabels() == std::vector<std::string>({ "RDC", "N1" })
+                       && g1->definition().origin().X() == 1.0 && g1->definition().displaySettings().lineStyle == "dashed",
+                   "Test 207: ancien format relu");
+
+        // Ancien format invalide (guillemet non échappé) : analyseur historique en secours.
+        std::string legacyBroken = legacyValid;
+        legacyBroken.replace(legacyBroken.find("\"Grille 1\""), 10, "\"Grille \"Nord\"\"");
+        GridManager oldBroken;
+        oldBroken.deserializeFromJson(legacyBroken);
+        const auto* gb = oldBroken.getGrid("g1");
+        TEST_CHECK(gb && gb->definition().name() == "Grille \"Nord\""
+                       && gb->definition().xPositions() == std::vector<double>({ 0.0, 5.0, 10.0 }),
+                   "Test 207: JSON invalide de l'ancien sérialiseur relu par l'analyseur historique");
+        std::cout << "[PASS] Test 207: JSON des grilles (échappement, précision, ancien format)" << std::endl;
+        passed++;
+    }
+
     return true;
 }

@@ -59,6 +59,9 @@ signals:
     void gridVisibilityChanged(const std::string& id, bool visible);
 
 private:
+    /// Analyseur historique : seulement pour un JSON que QJsonDocument refuse (fichiers antérieurs).
+    void deserializeLegacyJson(const std::string& json);
+
     std::vector<std::unique_ptr<GridSystem>> m_grids;
     std::string m_activeGridId;
     std::optional<GridDefinition> m_clipboardGrid;

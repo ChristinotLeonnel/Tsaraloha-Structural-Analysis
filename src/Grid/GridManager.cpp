@@ -1,4 +1,11 @@
 #include "GridManager.h"
+
+#include <QByteArray>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QString>
+
 #include <algorithm>
 #include <sstream>
 
@@ -196,19 +203,36 @@ void GridManager::setAllGridsVisible(bool visible)
 
 std::string GridManager::serializeToJson() const
 {
-    std::ostringstream oss;
-    oss << "{\n  \"activeGridId\": \"" << m_activeGridId << "\",\n";
-    oss << "  \"grids\": [\n";
-    for (size_t i = 0; i < m_grids.size(); ++i)
-    {
-        oss << m_grids[i]->definition().toJson();
-        if (i + 1 < m_grids.size()) oss << ",\n";
-    }
-    oss << "\n  ]\n}";
-    return oss.str();
+    // QJsonDocument : chaînes échappées, réels relus à l'identique (voir GridDefinition::toJsonObject).
+    QJsonArray grids;
+    for (const auto& grid : m_grids)
+        grids.append(grid->definition().toJsonObject());
+    const QJsonObject root { { "activeGridId", QString::fromStdString(m_activeGridId) }, { "grids", grids } };
+    return QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
 }
 
 void GridManager::deserializeFromJson(const std::string& json)
+{
+    QJsonParseError error {};
+    const QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(json), &error);
+    if (error.error != QJsonParseError::NoError || !doc.isObject())
+    {
+        deserializeLegacyJson(json);   // ancien sérialiseur, chaîne non échappée
+        return;
+    }
+    const QJsonObject root = doc.object();
+    if (!root.contains("grids"))
+        return;
+    clearAllGrids();
+    for (const auto& v : root.value("grids").toArray())
+        if (v.isObject())
+            addGrid(GridDefinition::fromJsonObject(v.toObject()));
+    const std::string activeId = root.value("activeGridId").toString().toStdString();
+    if (!activeId.empty() && getGrid(activeId))
+        setActiveGridId(activeId);
+}
+
+void GridManager::deserializeLegacyJson(const std::string& json)
 {
     // Auparavant : fonction vide, aucune grille sauvegardée n'était jamais rechargée.
     auto findField = [&json](const std::string& field) -> std::string {
