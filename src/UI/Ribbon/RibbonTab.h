@@ -39,7 +39,12 @@ protected:
 
 private:
     void setupUi();
-    void relayout();
+    /// Disposition pour la largeur donnée (fonction de la seule largeur, largeurs en cache).
+    void relayout(int width);
+    int availableWidth() const;
+    /// Contrôle unique après le premier affichage : si une largeur mesurée a changé (polissage
+    /// différé par Qt), la disposition est recalculée tout de suite plutôt qu'au passage suivant.
+    void verifyMeasurements();
 
 private:
     QWidget* m_container = nullptr;
@@ -47,6 +52,7 @@ private:
     RibbonButton* m_moreButton = nullptr;
     std::vector<RibbonPanel*> m_panels;
     bool m_inRelayout = false;
+    bool m_verified = false;
     int m_lastWidth = -1;
 };
 

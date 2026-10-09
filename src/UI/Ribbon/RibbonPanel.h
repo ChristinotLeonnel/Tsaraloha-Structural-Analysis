@@ -52,7 +52,11 @@ public:
     // Responsive : le RibbonTab choisit le mode selon la largeur disponible.
     void setMode(RibbonPanelMode mode);
     RibbonPanelMode mode() const { return m_mode; }
+    /// Largeur du panneau dans ce mode, mesurée une fois puis mise en cache : la disposition du
+    /// ruban ne dépend ainsi que de la largeur disponible (même largeur → même disposition).
     int widthForMode(RibbonPanelMode mode);
+    /// Oublie les largeurs mesurées (thème, police, style changés). Vrai si un cache existait.
+    bool invalidateWidths();
     bool hasCompactableButtons() const { return !m_smallButtons.empty(); }
 
     // Menu reprenant toutes les commandes du panneau (bouton replié, menu « Plus »).
@@ -60,10 +64,14 @@ public:
     QMenu* buildOverflowMenu(QWidget* parent) const;
     bool isEmptyPanel() const { return m_entries.empty(); }
 
+protected:
+    void changeEvent(QEvent* event) override;
+
 private:
     void setupUi();
     void trackAction(QAction* action);
     void trackSeparator();
+    void measureWidths();
 
 private:
     struct Entry { QAction* action = nullptr; }; // action == nullptr : séparateur de groupe
@@ -77,6 +85,9 @@ private:
     QHBoxLayout* m_contentLayout = nullptr;
     QLabel* m_lblTitle = nullptr;
     std::vector<QWidget*> m_separators;
+    int m_widths[3] = { 0, 0, 0 };   // indexé par RibbonPanelMode
+    bool m_widthsValid = false;
+    bool m_measuring = false;
 };
 
 } // namespace TSA::UI

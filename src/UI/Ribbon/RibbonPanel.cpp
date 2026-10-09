@@ -8,7 +8,9 @@
 #include <QFrame>
 #include <QMenu>
 #include <QAction>
+#include <QEvent>
 #include <QIcon>
+#include <QLayout>
 
 namespace TSA::UI
 {
@@ -49,6 +51,7 @@ void RibbonPanel::setupUi()
 
 void RibbonPanel::updateTheme(bool /*isDark*/)
 {
+    invalidateWidths();   // les feuilles de style des boutons changent aussi
     setStyleSheet(ThemeManager::instance().ribbonPanelStyleSheet());
     if (m_lblTitle)
     {
@@ -173,6 +176,7 @@ void RibbonPanel::setMode(RibbonPanelMode mode)
         m_collapsedButton->setToolTip(m_title);
         m_collapsedButton->setMenu(buildOverflowMenu(m_collapsedButton));
         static_cast<QVBoxLayout*>(layout())->insertWidget(0, m_collapsedButton, 1);
+        m_collapsedButton->ensurePolished();
     }
     if (m_collapsedButton) m_collapsedButton->setVisible(collapsed);
 
@@ -183,12 +187,52 @@ void RibbonPanel::setMode(RibbonPanelMode mode)
 
 int RibbonPanel::widthForMode(RibbonPanelMode mode)
 {
+    if (!m_widthsValid) measureWidths();
+    return m_widths[static_cast<int>(mode)];
+}
+
+bool RibbonPanel::invalidateWidths()
+{
+    const bool had = m_widthsValid;
+    m_widthsValid = false;
+    return had;
+}
+
+void RibbonPanel::changeEvent(QEvent* event)
+{
+    QWidget::changeEvent(event);
+    if (!m_measuring && (event->type() == QEvent::FontChange || event->type() == QEvent::StyleChange))
+        invalidateWidths();
+}
+
+// Mesure des trois modes. Cause du défaut corrigé (onglets qui se réorganisaient à chaque passage) :
+// la largeur était mesurée à chaque affichage sur des boutons pas encore « polis » (feuille de style
+// non appliquée) et à travers des tailles mises en cache par Qt (QToolButton, éléments de layout),
+// rafraîchies peu à peu au fil des affichages. Ici : polissage explicite, caches de taille
+// invalidés, puis une seule mesure par mode, conservée.
+void RibbonPanel::measureWidths()
+{
+    m_measuring = true;
+    ensurePolished();   // ce panneau et tous ses descendants, même masqués
+
+    auto refresh = [this] {
+        for (auto* w : findChildren<QWidget*>()) w->updateGeometry();   // vide le cache des éléments de layout
+        for (auto* l : findChildren<QLayout*>()) l->invalidate();
+        layout()->invalidate();
+        layout()->activate();
+    };
+
     const RibbonPanelMode previous = m_mode;
-    setMode(mode);
-    layout()->activate();
-    const int w = sizeHint().width();
+    for (RibbonPanelMode mode : { RibbonPanelMode::Full, RibbonPanelMode::IconOnly, RibbonPanelMode::Collapsed })
+    {
+        setMode(mode);
+        refresh();
+        m_widths[static_cast<int>(mode)] = sizeHint().width();
+    }
     setMode(previous);
-    return w;
+    refresh();
+    m_widthsValid = true;
+    m_measuring = false;
 }
 
 QMenu* RibbonPanel::buildOverflowMenu(QWidget* parent) const
