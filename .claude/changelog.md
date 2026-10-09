@@ -2,6 +2,15 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-09 (Charges : valeurs à zéro, force et couple réunis)
+
+### Changed
+- Fenêtres de charge nodale et de charge sur barre : plus de valeur par défaut (Fz = −50 kN, q = −15 kN/m) ni de boutons de
+  préréglage chiffrés ; tout part de zéro (une charge entièrement nulle reste refusée avec un message).
+- Onglet Charges : « Force Ponctuelle » et « Moment Nodal » (qui ouvraient déjà la même fenêtre) remplacés par un seul
+  bouton « Force et Couple » (icône `load_force_couple.svg`) ; fenêtre « Charge nodale : force et couple », groupe
+  « Couple nodal (kNm) ». La commande texte MOMENT ouvre cette même fenêtre.
+
 ## 2026-10-09 (Panneau poutre : relâchements retirés)
 
 ### Removed

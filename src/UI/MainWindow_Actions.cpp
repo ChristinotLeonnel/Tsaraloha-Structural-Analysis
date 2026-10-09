@@ -721,20 +721,16 @@ void MainWindow::createActions()
     m_actionExtensionManager->setToolTip(tr("Gérer les extensions, explorer les catalogues Eurocodes (matériaux, sections, câbles, textures) et recharger à chaud"));
     connect(m_actionExtensionManager, &QAction::triggered, this, &MainWindow::onActionExtensionManager);
 
-    m_actionPointLoad = new QAction(tr("&Force Ponctuelle..."), this);
-    m_actionPointLoad->setIcon(QIcon(":/icons/load_point.svg"));
-    m_actionPointLoad->setToolTip(tr("Appliquer une force ponctuelle (Fx, Fy, Fz)"));
+    // Force ponctuelle et moment nodal réunis : une seule fenêtre (force Fx, Fy, Fz et couple Mx, My, Mz).
+    m_actionPointLoad = new QAction(tr("&Force et Couple..."), this);
+    m_actionPointLoad->setIcon(QIcon(":/icons/load_force_couple.svg"));
+    m_actionPointLoad->setToolTip(tr("Appliquer en un nœud une force (Fx, Fy, Fz) et/ou un couple (Mx, My, Mz)"));
     connect(m_actionPointLoad, &QAction::triggered, this, &MainWindow::onActionPointLoad);
 
     m_actionDistLoad = new QAction(tr("Charge &Linéique Répartie..."), this);
     m_actionDistLoad->setIcon(QIcon(":/icons/load_dist.svg"));
     m_actionDistLoad->setToolTip(tr("Appliquer une charge répartie q sur les poutres"));
     connect(m_actionDistLoad, &QAction::triggered, this, &MainWindow::onActionDistLoad);
-
-    m_actionMoment = new QAction(tr("&Moment Nodal..."), this);
-    m_actionMoment->setIcon(QIcon(":/icons/load_moment.svg"));
-    m_actionMoment->setToolTip(tr("Appliquer un moment fléchissant ou de torsion"));
-    connect(m_actionMoment, &QAction::triggered, this, &MainWindow::onActionMoment);
 
     m_actionLoadCases = new QAction(tr("&Cas de Charges && Combinaisons..."), this);
     m_actionLoadCases->setIcon(QIcon(":/icons/analysis_modal.svg"));
@@ -996,7 +992,6 @@ void MainWindow::createMenus()
     QMenu* loadSubMenu = analysisMenu->addMenu(tr("Charges && Actions"));
     loadSubMenu->addAction(m_actionPointLoad);
     loadSubMenu->addAction(m_actionDistLoad);
-    loadSubMenu->addAction(m_actionMoment);
     loadSubMenu->addSeparator();
     loadSubMenu->addAction(m_actionLoadCases);
     analysisMenu->addSeparator();
@@ -1271,7 +1266,6 @@ void MainWindow::createRibbon()
 
     acts.actionPointLoad = m_actionPointLoad;
     acts.actionDistLoad = m_actionDistLoad;
-    acts.actionMoment = m_actionMoment;
     acts.actionLoadCases = m_actionLoadCases;
     acts.actionLoadsVisible = m_actionLoadsVisible;
     acts.actionForcesVisible = m_actionForcesVisible;
@@ -1691,7 +1685,7 @@ void MainWindow::createDockWindows()
         else if (c == "ROLLER" || c == "APPUI") onActionRoller();
         else if (c == "LOAD" || c == "FORCE" || c == "CHARGE") onActionPointLoad();
         else if (c == "DISTLOAD" || c == "QLOAD") onActionDistLoad();
-        else if (c == "MOMENT") onActionMoment();
+        else if (c == "MOMENT") onActionPointLoad();   // même fenêtre : force et couple
         else if (c == "CAS" || c == "LOADCASE" || c == "COMBINAISON" || c == "OPENSEES") onActionLoadCases();
         else if (c == "MESH" || c == "MAILLAGE") onActionMeshGen();
         else if (c == "SOLVE" || c == "CALC" || c == "RUN") onActionRunSolve();

@@ -473,7 +473,6 @@ private:
 
     QAction* m_actionPointLoad = nullptr;
     QAction* m_actionDistLoad = nullptr;
-    QAction* m_actionMoment = nullptr;
     QAction* m_actionLoadCases = nullptr;
     QAction* m_actionMeshGen = nullptr;
     QAction* m_actionAnalysisConfig = nullptr;
@@ -574,7 +573,6 @@ private slots:
     void assignSupport(const std::set<int>& nodeIds, const TSA::Model::SupportDefinition& support, const QString& label);
     void onActionPointLoad();
     void onActionDistLoad();
-    void onActionMoment();
     void onActionLoadCases();
     void onActionMeshGen();
     void onActionAnalysisConfig();
