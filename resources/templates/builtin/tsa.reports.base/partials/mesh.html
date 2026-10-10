@@ -1,0 +1,17 @@
+<h2>Maillage de calcul</h2>
+{{#mesh.available}}
+<p>Maillage transmis au moteur {{mesh.engine}}{{#mesh.description}} : {{mesh.description}}{{/mesh.description}}.</p>
+<table>
+<tr><th>Nœuds du maillage</th><td class="num">{{mesh.nodes}}</td><th>dont nœuds propres au moteur</th><td class="num">{{mesh.internalNodes}}</td></tr>
+<tr><th>Éléments finis</th><td class="num">{{mesh.cells}}</td><th></th><td></td></tr>
+</table>
+<table>
+<tr><th>Type d'élément</th><th>Nombre</th></tr>
+{{#mesh.byType}}
+<tr><td>{{type}}</td><td class="num">{{count}}</td></tr>
+{{/mesh.byType}}
+</table>
+{{/mesh.available}}
+{{^mesh.available}}
+<p class="na">Maillage non disponible : {{mesh.reason}}.</p>
+{{/mesh.available}}

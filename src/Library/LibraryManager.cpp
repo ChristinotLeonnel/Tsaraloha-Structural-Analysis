@@ -1,4 +1,5 @@
 #include "LibraryManager.h"
+#include "../Core/AppPaths.h"
 #include "../Model/MaterialLibrary.h"
 #include <QStandardPaths>
 #include <QDir>
@@ -47,11 +48,7 @@ LibraryManager& LibraryManager::instance()
 
 LibraryManager::LibraryManager()
 {
-    QString baseDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-    if (baseDir.isEmpty())
-    {
-        baseDir = QDir::currentPath();
-    }
+    const QString baseDir = TSA::Core::AppPaths::userDataDir(); // jamais le répertoire courant
     m_libraryDir = baseDir + "/Library";
     QDir().mkpath(m_libraryDir);
 

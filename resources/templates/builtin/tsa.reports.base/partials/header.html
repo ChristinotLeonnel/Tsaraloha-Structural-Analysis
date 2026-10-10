@@ -1,0 +1,8 @@
+{{#options.showHeader}}
+<div class="header">
+{{#options.logo}}
+<img class="logo" src="{{options.logo}}" alt="logo"><br>
+{{/options.logo}}
+{{#options.headerText}}{{options.headerText}}{{/options.headerText}}{{^options.headerText}}{{project.organization}} — {{project.title}}{{/options.headerText}}
+</div>
+{{/options.showHeader}}

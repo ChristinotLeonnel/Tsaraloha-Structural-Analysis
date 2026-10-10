@@ -1,0 +1,18 @@
+{
+  "format": "TSA3D",
+  "version": "1.0",
+  "metadata": { "name": "Propriétés personnalisées et extensions", "custom": { "chantier": "Lot 3" } },
+  "extensions": { "com.exemple.planning": { "phase": 2, "livraison": "2027-03" } },
+  "com.exemple.bloc": { "note": "bloc de premier niveau inconnu de TSA : conservé" },
+  "materials": [ { "id": "S235", "type": "steel", "E": 210e9, "nu": 0.3, "density": 7850 } ],
+  "sections": [ { "id": "R", "shape": "rectangular", "dimensions": { "b": 0.2, "h": 0.4 } } ],
+  "nodes": [
+    { "id": "pt-a", "position": [0, 0, 0], "properties": { "repère": "A1" }, "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+    { "id": "pt-b", "position": [4, 0, 0], "extensions": { "com.exemple.survey": { "précision_mm": 2 } } }
+  ],
+  "members": [
+    { "id": "poutre-1", "type": "beam", "nodes": ["pt-a", "pt-b"], "section": "R", "material": "S235",
+      "properties": { "fournisseur": "Atelier X", "lot": 3 }, "com.exemple.couleurPlan": "#336699" }
+  ],
+  "groups": [ { "id": "g1", "name": "Lot 3", "objects": ["poutre-1", "pt-a"] } ]
+}

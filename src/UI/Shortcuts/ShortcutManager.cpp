@@ -1,6 +1,7 @@
 #include "ShortcutManager.h"
 
 #include "../../Commands/CommandCatalog.h"
+#include "../../Core/AppPaths.h"
 
 #include <QAbstractSpinBox>
 #include <QAction>
@@ -307,6 +308,25 @@ bool ShortcutManager::reload()
         m_lastErrors << QStringLiteral("Configuration refusée : la dernière configuration valide reste active.");
         emit configRejected(m_lastErrors);
         return false;
+    }
+    // Format plus ancien : sauvegarde de l'original puis réécriture au format actuel (réglages conservés).
+    // Un format plus récent n'est jamais réécrit (avertissement seulement).
+    if (parsed.formatVersion < shortcutFormatVersion() && text.contains(QStringLiteral("tsa-shortcuts")))
+    {
+        QString berr;
+        const QString backup = TSA::Core::AppPaths::backupFile(m_path, QStringLiteral("v%1").arg(parsed.formatVersion), &berr);
+        if (backup.isEmpty())
+            m_lastWarnings << QStringLiteral("Migration du format reportée : %1").arg(berr);
+        else
+        {
+            QList<CommandDefinition> defs = catalogDefinitions();
+            QString werr;
+            if (writeFile(formatConfig(defs, parsed.settings), &werr))
+                m_lastWarnings << QStringLiteral("Format %1 → %2 : ancienne version sauvegardée dans %3")
+                                      .arg(parsed.formatVersion).arg(shortcutFormatVersion()).arg(QDir::toNativeSeparators(backup));
+            else
+                m_lastWarnings << werr;
+        }
     }
     QStringList errors;
     if (!applySettings(parsed.settings, &errors))

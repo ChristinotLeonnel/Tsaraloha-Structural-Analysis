@@ -1,4 +1,5 @@
 #include "OpenSeesManager.h"
+#include "../Core/AppPaths.h"
 #include "App/ProductInfo.h"
 
 #include <QCoreApplication>
@@ -31,27 +32,9 @@ OpenSeesManager::OpenSeesManager(QObject* parent)
 
 QString OpenSeesManager::defaultSearchDirectory()
 {
-    // Recherche relative à l'exécutable ou au dossier projet TSA
-    QString appDir = QCoreApplication::applicationDirPath();
-    QStringList candidates = {
-        appDir + "/thirdparty/OpenSees",
-        appDir + "/../thirdparty/OpenSees"
-    };
-
-    if (!TSA::Product::sourceDirectory().isEmpty())
-        candidates << TSA::Product::sourceDirectory() + "/thirdparty/OpenSees";
-
-    for (const auto& path : candidates)
-    {
-        QDir dir(path);
-        if (dir.exists())
-        {
-            return QDir::cleanPath(dir.absolutePath());
-        }
-    }
-
-    return TSA::Product::sourceDirectory().isEmpty() ? QDir::cleanPath(appDir + "/thirdparty/OpenSees")
-                                                     : TSA::Product::sourceDirectory() + "/thirdparty/OpenSees";
+    // Paquet : <app>/engines/OpenSees ; anciennes installations : <app>/thirdparty/OpenSees ;
+    // développement : sources (Core/AppPaths, docs/DEPLOYMENT.md).
+    return TSA::Core::AppPaths::openSeesDir();
 }
 
 QString OpenSeesManager::officialDownloadUrl()

@@ -1,61 +1,55 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Paramètres attendus passés via -D :
-# TARGET_DIR : Répertoire de l'exécutable (ex: build/Release ou build/Debug)
-# SOURCE_DIR : Répertoire racine du projet
-# TARGET_FILE : Chemin complet vers TSA.exe
-# WINDEPLOYQT_EXECUTABLE : Chemin vers windeployqt.exe (optionnel)
+# Déploiement de DÉVELOPPEMENT (après chaque compilation) : les DLL nécessaires à côté de l'exécutable pour
+# le lancer depuis le dossier de compilation. Le paquet distribuable est produit par PackageTSA.cmake
+# (cible package_<produit>), dans un dossier propre.
+#
+# Paramètres (-D) : TARGET_DIR, SOURCE_DIR, TARGET_FILE, WINDEPLOYQT_EXECUTABLE (facultatif)
 
 if(NOT TARGET_DIR)
     message(FATAL_ERROR "TARGET_DIR non défini.")
 endif()
+include("${CMAKE_CURRENT_LIST_DIR}/RuntimeDependencies.cmake")
 
-message(STATUS "=== Déploiement automatique des dépendances vers : ${TARGET_DIR} ===")
+message(STATUS "=== Déploiement des dépendances vers : ${TARGET_DIR} ===")
 
-# 1. Copie des DLLs OpenCASCADE
-file(GLOB OCCT_DLLS "${SOURCE_DIR}/opencascade-8.0.1-vc14-64/win64/vc14/bin/*.dll")
-if(OCCT_DLLS)
-    file(COPY ${OCCT_DLLS} DESTINATION "${TARGET_DIR}")
-    list(LENGTH OCCT_DLLS OCCT_COUNT)
-    message(STATUS "OpenCASCADE : ${OCCT_COUNT} DLLs copiées avec succès.")
+# 1. DLL importées (OCCT, FreeType, FreeImage, TBB, ffmpeg, OpenVR, jemalloc, runtime MSVC) : seules celles
+#    réellement nécessaires, résolues par dumpbin. Qt est laissé à windeployqt.
+tsa_runtime_search_dirs(search_dirs "${SOURCE_DIR}")
+if(EXISTS "${TARGET_FILE}")
+    tsa_copy_runtime_dependencies(
+        BINARIES "${TARGET_FILE}"
+        DESTINATION "${TARGET_DIR}"
+        SEARCH_DIRS ${search_dirs}
+        EXCLUDE_REGEXES "^[Qq]t6"
+        RESULT_VAR copied
+        UNRESOLVED_VAR unresolved)
+    list(LENGTH copied n)
+    message(STATUS "Dépendances résolues copiées : ${n}")
+    if(unresolved)
+        message(WARNING "DLL introuvables : ${unresolved}")
+    endif()
 endif()
 
-# 2. Copie des DLLs 3rdparty (FreeType, TBB, FreeImage, Jemalloc, etc.)
-file(GLOB_RECURSE TP_DLLS "${SOURCE_DIR}/3rdparty-vc14-64/*.dll")
-if(TP_DLLS)
-    file(COPY ${TP_DLLS} DESTINATION "${TARGET_DIR}")
-    list(LENGTH TP_DLLS TP_COUNT)
-    message(STATUS "3rdparty : ${TP_COUNT} DLLs copiées avec succès.")
-endif()
-
-# 3. Déploiement Qt via windeployqt
+# 2. Déploiement Qt via windeployqt
 if(WINDEPLOYQT_EXECUTABLE AND EXISTS "${WINDEPLOYQT_EXECUTABLE}" AND EXISTS "${TARGET_FILE}")
-    message(STATUS "Exécution de windeployqt sur ${TARGET_FILE}...")
     execute_process(
-        COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-            --no-translations
-            --compiler-runtime
-            "${TARGET_FILE}"
-        RESULT_VARIABLE WINDEPLOY_RES
-    )
+        COMMAND "${WINDEPLOYQT_EXECUTABLE}" --no-translations --no-compiler-runtime --no-opengl-sw "${TARGET_FILE}"
+        RESULT_VARIABLE WINDEPLOY_RES OUTPUT_QUIET)
     if(NOT WINDEPLOY_RES EQUAL 0)
         message(WARNING "windeployqt a retourné le code : ${WINDEPLOY_RES}")
     endif()
-
-    # Traduction française des textes standard de Qt (boutons Enregistrer / Annuler, boîtes de
-    # fichiers…) : seule qtbase_fr est déployée (BUG-020).
+    # Traduction française des textes standard de Qt (BUG-020) : seule qtbase_fr est déployée.
     get_filename_component(QT_BIN_DIR "${WINDEPLOYQT_EXECUTABLE}" DIRECTORY)
     set(QT_FR_QM "${QT_BIN_DIR}/../translations/qtbase_fr.qm")
     if(EXISTS "${QT_FR_QM}")
         file(COPY "${QT_FR_QM}" DESTINATION "${TARGET_DIR}/translations")
-        message(STATUS "Qt : traduction française (qtbase_fr.qm) déployée.")
     endif()
 endif()
 
-# 4. Déploiement des extensions TSALib
+# 3. Bibliothèques TSALib
 if(EXISTS "${SOURCE_DIR}/Extensions")
     file(COPY "${SOURCE_DIR}/Extensions" DESTINATION "${TARGET_DIR}")
-    message(STATUS "TSALib : Dossier Extensions déployé avec succès vers ${TARGET_DIR}.")
 endif()
 
-message(STATUS "=== Déploiement terminé. L'exécutable peut être lancé directement ! ===")
+message(STATUS "=== Déploiement terminé ===")

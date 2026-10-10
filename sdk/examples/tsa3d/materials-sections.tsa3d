@@ -1,0 +1,32 @@
+{
+  "format": "TSA3D",
+  "version": "1.0",
+  "metadata": { "name": "Matériaux et sections (unités mm, N, MPa)" },
+  "units": { "length": "mm", "force": "N", "stress": "MPa" },
+  "materials": [
+    { "id": "S235", "type": "steel", "E": 210000, "nu": 0.3, "density": 7850, "fk": 235, "library": { "source": "EN 10025-2", "ref": "S235" } },
+    { "id": "C25", "type": "concrete", "E": 31000, "nu": 0.2, "density": 2500, "fk": 25, "library": { "source": "EN 1992-1-1", "ref": "C25/30" } },
+    { "id": "GL24h", "type": "timber", "E": 11500, "nu": 0.3, "density": 420, "fk": 24, "library": { "source": "EN 14080", "ref": "GL24h" } }
+  ],
+  "sections": [
+    { "id": "rect", "shape": "rectangular", "dimensions": { "b": 300, "h": 500 } },
+    { "id": "round", "shape": "circular", "dimensions": { "d": 400 } },
+    { "id": "tube", "shape": "pipe", "dimensions": { "d": 168.3, "tw": 8 } },
+    { "id": "box", "shape": "box", "dimensions": { "b": 200, "h": 300, "tw": 10, "tf": 10 } },
+    { "id": "upn", "shape": "channel", "dimensions": { "b": 75, "h": 200, "tw": 8.5, "tf": 11.5 } },
+    { "id": "corniere", "shape": "angle", "dimensions": { "b": 100, "h": 100, "tw": 10 } },
+    { "id": "te", "shape": "tee", "dimensions": { "b": 120, "h": 120, "tw": 11, "tf": 11 } }
+  ],
+  "nodes": [
+    { "id": "a", "position": [0, 0, 0], "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+    { "id": "b", "position": [4000, 0, 0] },
+    { "id": "c", "position": [8000, 0, 0] },
+    { "id": "d", "position": [8000, 0, 3000] }
+  ],
+  "members": [
+    { "id": "m1", "type": "beam", "nodes": ["a", "b"], "section": "rect", "material": "C25" },
+    { "id": "m2", "type": "beam", "nodes": ["b", "c"], "section": "box", "material": "S235" },
+    { "id": "m3", "type": "column", "nodes": ["c", "d"], "section": "round", "material": "C25" },
+    { "id": "m4", "type": "truss", "nodes": ["a", "d"], "section": "tube", "material": "S235", "truss": { "role": "diagonal" } }
+  ]
+}

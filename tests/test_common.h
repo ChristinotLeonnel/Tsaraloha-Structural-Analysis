@@ -191,3 +191,7 @@ bool runSuite_Topology(int& passed);
 bool runSuite_Dimensions(int& passed);
 bool runSuite_DisplayModes(int& passed);
 bool runSuite_Shortcuts(int& passed);
+bool runSuite_Tsa3d(int& passed);
+bool runSuite_Modules(int& passed);
+bool runSuite_Templates(int& passed);
+bool runSuite_Deployment(int& passed);

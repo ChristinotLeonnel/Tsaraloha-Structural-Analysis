@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include "../Core/AppPaths.h"
 #include <ProductIdentity.h>
 
 #if defined(_WIN32)
@@ -120,25 +121,9 @@ bool Logger::init(const std::string& baseDir)
     }
     else
     {
-        QString appDir = QCoreApplication::applicationDirPath();
-        if (appDir.isEmpty())
-        {
-            m_logsDirectory = "logs";
-        }
-        else
-        {
-            // Si on est dans build/Release, enregistrer à la racine du projet ou dans appDir/logs
-            QDir d(appDir);
-            if (d.exists("../logs") || d.exists("../../logs"))
-            {
-                if (d.exists("../../logs")) m_logsDirectory = QDir(appDir + "/../../logs").absolutePath().toStdString();
-                else m_logsDirectory = QDir(appDir + "/../logs").absolutePath().toStdString();
-            }
-            else
-            {
-                m_logsDirectory = (appDir + "/logs").toStdString();
-            }
-        }
+        // Développement : logs/ du dossier de compilation ; installation : données utilisateur (le dossier
+        // de l'application n'est pas inscriptible sous Program Files). Voir Core/AppPaths.
+        m_logsDirectory = TSA::Core::AppPaths::logsDir().toStdString();
     }
 
     try
@@ -148,10 +133,10 @@ bool Logger::init(const std::string& baseDir)
     }
     catch (...)
     {
-        // En cas d'erreur de permissions, tenter dans le répertoire courant
-        m_logsDirectory = "logs";
+        // Permissions refusées : dossier temporaire de l'utilisateur (jamais le répertoire courant).
+        m_logsDirectory = (QDir::tempPath() + "/TSA/logs").toStdString();
         try {
-            fs::create_directories("logs/sessions");
+            fs::create_directories(m_logsDirectory + "/sessions");
         } catch (...) {}
     }
 

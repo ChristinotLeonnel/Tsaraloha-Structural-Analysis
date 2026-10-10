@@ -103,13 +103,17 @@ void MainWindow::setupShortcuts()
         { "cmd.results.fit_model", m_actionFitModel }, { "cmd.results.fit_results", m_actionFitResults },
         { "cmd.results.fit_deformed", m_actionFitDeformed }, { "cmd.results.displacements", m_actionResultsDisp },
         { "cmd.results.forces", m_actionResultsForces }, { "cmd.results.stresses", m_actionResultsStress },
-        { "cmd.report.ndc", m_actionNoteDeCalcul }, { "cmd.bim.import_ifc", m_actionImportIfc }, { "cmd.bim.export_ifc", m_actionExportIfc },
+        { "cmd.report.ndc", m_actionNoteDeCalcul },
+        { "cmd.report.templates", m_actionReportTemplates }, { "cmd.bim.import_ifc", m_actionImportIfc }, { "cmd.bim.export_ifc", m_actionExportIfc },
+        { "cmd.bim.import_tsa3d", m_actionImportTsa3d }, { "cmd.bim.export_tsa3d", m_actionExportTsa3d },
+        { "cmd.bim.import_module", m_actionImportViaModule },
         // Fenêtres
         { "cmd.window.results", m_resultsDock ? m_resultsDock->toggleViewAction() : nullptr },
         // Outils, paramètres, aide
         { "cmd.ai.assistant", m_actionAIAssistant }, { "cmd.ai.config", m_actionAIConfig }, { "cmd.ai.check", m_actionAICheck },
         { "cmd.ai.analyze", m_actionAIAnalyze }, { "cmd.ai.explain", m_actionAIExplain }, { "cmd.settings.theme", m_actionToggleTheme },
         { "cmd.help.shortcuts", m_actionShortcuts }, { "cmd.help.shortcut_editor", m_actionShortcutEditor },
+        { "cmd.help.modules", m_actionModules },
         { "cmd.help.full", m_actionHelp }, { "cmd.help.online_docs", m_actionOnlineDocs },
         { "cmd.help.report_problem", m_actionReportProblem }, { "cmd.help.about", m_actionAbout },
     };

@@ -1,0 +1,6 @@
+{{#results.available}}
+<p class="status">Résultats {{results.status}} — {{results.analysisType}}, {{results.case}} ({{results.engine}}{{#results.timestamp}}, {{results.timestamp}}{{/results.timestamp}}). Unités : {{results.units.force}}, {{results.units.moment}}.</p>
+{{/results.available}}
+{{^results.available}}
+<p class="na">Résultats non disponibles : {{results.reason}}.</p>
+{{/results.available}}

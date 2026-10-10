@@ -1,0 +1,15 @@
+{{#results.available}}
+<h3>Déplacements nodaux</h3>
+{{#results.displacements.available}}
+<p>Déplacement maximal : <b>{{results.displacements.max.value}}</b> au nœud {{results.displacements.max.node}}.</p>
+<table>
+<tr><th>Nœud</th><th>ux ({{results.displacements.unit}})</th><th>uy ({{results.displacements.unit}})</th><th>uz ({{results.displacements.unit}})</th><th>|u| ({{results.displacements.unit}})</th></tr>
+{{#results.displacements.rows}}
+<tr><td>{{node}}</td><td class="num">{{ux}}</td><td class="num">{{uy}}</td><td class="num">{{uz}}</td><td class="num">{{magnitude}}</td></tr>
+{{/results.displacements.rows}}
+</table>
+{{/results.displacements.available}}
+{{^results.displacements.available}}
+<p class="na">Déplacements non disponibles : {{results.displacements.reason}}.</p>
+{{/results.displacements.available}}
+{{/results.available}}

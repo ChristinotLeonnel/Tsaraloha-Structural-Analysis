@@ -27,7 +27,7 @@ constexpr bool isReadableFileMagic(uint32_t magic)
 // Versioning du format
 // -----------------------------------------------------------------------------
 constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 1;
-constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 6; // 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS
+constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 7; // 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
 
 // Version de disposition interne du chunk LOAD (indépendante de la version du format)
 constexpr uint32_t LOAD_CHUNK_LAYOUT_VERSION = 1;
@@ -80,6 +80,7 @@ constexpr uint32_t CHUNK_CABL = 0x4C424143; // 'CABL' : Câbles, haubans, suspen
 constexpr uint32_t CHUNK_LOAD = 0x44414F4C; // 'LOAD' : Cas de charges, combinaisons & chargements
 constexpr uint32_t CHUNK_SETT = 0x54544553; // 'SETT' : Paramètres d'analyse (AnalysisContext) — JSON UTF-8 versionné (1.4)
 constexpr uint32_t CHUNK_TOPO = 0x4F504F54; // 'TOPO' : Topologie et numérotation (TopologySettings) — JSON UTF-8 versionné (1.5)
+constexpr uint32_t CHUNK_XTND = 0x444E5458; // 'XTND' : données d'échange non interprétées (TSA3D) — JSON UTF-8 opaque (1.7)
 constexpr uint32_t CHUNK_DIMS = 0x534D4944; // 'DIMS' : Cotations 3D (DimensionSet : style + ancrages) — JSON UTF-8 versionné (1.6)
 constexpr uint32_t CHUNK_RSLT = 0x544C5352; // 'RSLT' : Résultats de calcul EF (déplacements, efforts, contraintes)
 constexpr uint32_t CHUNK_SNAP = 0x50414E53; // 'SNAP' : Snapshots mécaniques immuables de calcul et métadonnées d'extensions

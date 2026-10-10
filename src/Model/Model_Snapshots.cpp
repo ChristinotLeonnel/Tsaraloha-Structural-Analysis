@@ -295,6 +295,7 @@ void Model::clear()
 {
     m_analysisSettingsJson.clear();
     m_topologySettingsJson.clear();
+    m_exchangeExtensionsJson.clear();
     m_dimensions = TSA::Annotation::DimensionSet();
     m_bim = TSA::BIM::BimModel();
     m_bimSignature = ~0ull;

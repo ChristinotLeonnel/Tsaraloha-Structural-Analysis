@@ -1,0 +1,17 @@
+{{! Rapport des poteaux }}
+{{> head}}
+<body>
+{{> header}}
+{{> title}}
+{{> resultsStatus}}
+<h2>Poteaux</h2>
+{{^model.columns}}
+<p class="na">Aucun poteau dans le modèle.</p>
+{{/model.columns}}
+{{#model.columns}}
+{{> member}}
+{{/model.columns}}
+{{> limits}}
+{{> footer}}
+</body>
+</html>

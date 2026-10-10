@@ -1,0 +1,22 @@
+{{! Vérification des éléments }}
+{{> head}}
+<body>
+{{> header}}
+{{> title}}
+<h2>Vérification des éléments</h2>
+{{#verification.available}}
+<table>
+<tr><th>Élément</th><th>Critère</th><th>Taux</th><th>Statut</th></tr>
+{{#verification.rows}}
+<tr><td>{{element}}</td><td>{{criterion}}</td><td class="num">{{ratio}}</td><td>{{status}}</td></tr>
+{{/verification.rows}}
+</table>
+{{/verification.available}}
+{{^verification.available}}
+<p class="na">Vérifications non disponibles : {{verification.reason}}.</p>
+{{/verification.available}}
+{{> resultsStatus}}
+{{> limits}}
+{{> footer}}
+</body>
+</html>

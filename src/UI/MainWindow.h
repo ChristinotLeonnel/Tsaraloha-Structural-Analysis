@@ -482,6 +482,10 @@ private:
     QAction* m_actionOnlineDocs = nullptr;    ///< documentation en ligne (TSA Web)
     QAction* m_actionReportProblem = nullptr; ///< procédure de signalement (TSA Web)
     QAction* m_actionShortcuts = nullptr;
+    QAction* m_actionImportTsa3d = nullptr;
+    QAction* m_actionImportViaModule = nullptr;
+    QAction* m_actionModules = nullptr;
+    QAction* m_actionExportTsa3d = nullptr;
     QAction* m_actionShortcutEditor = nullptr;   ///< Aide > Personnaliser les raccourcis
     QAction* m_actionAbout = nullptr;
     QAction* m_actionExportDiagnostic = nullptr;
@@ -529,6 +533,7 @@ private:
     QAction* m_actionFitResults = nullptr;
     QAction* m_actionFitDeformed = nullptr;
     QAction* m_actionNoteDeCalcul = nullptr;
+    QAction* m_actionReportTemplates = nullptr;
 
     QAction* m_actionMeasure = nullptr;
 
@@ -573,11 +578,17 @@ private slots:
     void onActionHelp();
     void onActionShortcuts();
     void onActionShortcutEditor();
+    void onActionImportTsa3d();
+    void onActionExportTsa3d();
+    void onActionImportViaModule();
+    void onActionModules();
+    void importTsa3dFile(const QString& path, const QString& sourceLabel);
     void onActionAbout();
     void onActionExportDiagnosticReport();
 
     // Slots Résultats, Note de Calcul et Multi-Port
     void onActionNoteDeCalcul();
+    void onActionReportTemplates();
     void onActionToggleDeformed(bool checked);
     void onActionToggleReactions(bool checked);
     void onActionDiagramMz();

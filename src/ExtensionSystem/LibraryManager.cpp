@@ -1,4 +1,5 @@
 #include "LibraryManager.h"
+#include "../Core/AppPaths.h"
 #include "ExtensionPackager.h"
 #include "../Model/MaterialLibrary.h"
 #include "../Library/LibraryManager.h"
@@ -32,23 +33,15 @@ void LibraryManager::initialize(const QString& applicationDirPath)
     {
         appDir = QCoreApplication::applicationDirPath();
     }
-    if (appDir.isEmpty())
-    {
-        appDir = QDir::currentPath();
-    }
+    // 1. Extensions livrées avec l'application (<app>/Extensions, ou sources en développement)
+    addSearchPath(appDir.isEmpty() ? TSA::Core::AppPaths::shippedExtensionsDir() : QDir(appDir).filePath("Extensions"));
 
-    // 1. Répertoire d'extensions de l'application : ./Extensions/
-    addSearchPath(QDir(appDir).filePath("Extensions"));
+    // 2. Extensions de l'utilisateur (<données>/Extensions) : seul emplacement d'installation
+    addSearchPath(TSA::Core::AppPaths::userExtensionsDir());
 
-    // 2. Répertoire d'extensions utilisateur : %APPDATA%/TSA/Extensions
-    QString userDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-    if (!userDir.isEmpty())
-    {
-        addSearchPath(QDir(userDir).filePath("Extensions"));
-    }
-
-    // 3. Répertoire racine du projet de développement (si présent)
-    addSearchPath(QDir::currentPath() + "/Extensions");
+    // 3. Sources de développement (jamais le répertoire courant, imprévisible)
+    if (!TSA::Core::AppPaths::developmentSourceDir().isEmpty())
+        addSearchPath(TSA::Core::AppPaths::developmentSourceDir() + "/Extensions");
 
     discover();
 }

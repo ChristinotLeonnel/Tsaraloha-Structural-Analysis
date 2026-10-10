@@ -1,6 +1,9 @@
 #include "EcosystemApplication.h"
+#include "../../Core/AppPaths.h"
 
+#include "../../Modules/ModuleRegistry.h"
 #include "../../Plugins/PluginManager.h"
+#include "../../Templates/TemplateRepository.h"
 
 #include "App/ProductInfo.h"
 #include "../Theme/ThemeManager.h"
@@ -37,6 +40,18 @@ void initWindowsAppUserModelID()
 
 namespace TSA::UI
 {
+
+TSA::Modules::ModuleHostServices EcosystemApplication::moduleHostServices()
+{
+    TSA::Modules::ModuleHostServices s;
+    s.loadPlugin = [](const QString& dll, QString* error) { return TSA::Plugins::PluginManager::instance().loadFile(dll, error); };
+    s.stopPlugin = [](const QString& dll) { TSA::Plugins::PluginManager::instance().shutdownFile(dll); };
+    s.registerTemplate = [](const QString& path, const QString& moduleId, QString* error) {
+        return TSA::Templates::TemplateRepository::instance().registerModulePackage(path, moduleId, error);
+    };
+    s.unregisterTemplates = [](const QString& moduleId) { TSA::Templates::TemplateRepository::instance().unregisterModule(moduleId); };
+    return s;
+}
 
 EcosystemApplication::EcosystemApplication(int& argc, char** argv)
     : QApplication(argc, argv)
@@ -82,9 +97,8 @@ EcosystemApplication::EcosystemApplication(int& argc, char** argv)
     // Configuration automatique de l'environnement OpenCASCADE (ressources et shaders)
     if (qEnvironmentVariableIsEmpty("CSF_OCCTResourcePath"))
     {
-        QDir resDir(applicationDirPath() + "/../../opencascade-8.0.1-vc14-64/src");
-        if (!resDir.exists() && !TSA::Product::sourceDirectory().isEmpty()) // SDK de la base commune
-            resDir.setPath(TSA::Product::sourceDirectory() + "/opencascade-8.0.1-vc14-64/src");
+        // Paquet : <app>/resources/occt ; développement : SDK OCCT des sources (Core/AppPaths).
+        QDir resDir(TSA::Core::AppPaths::occtResourcesDir());
         if (resDir.exists())
         {
             qputenv("CSF_OCCTResourcePath", resDir.absolutePath().toLocal8Bit());
@@ -100,6 +114,23 @@ EcosystemApplication::EcosystemApplication(int& argc, char** argv)
         TSA_LOG_INFO("App", p.loaded ? "PluginLoaded" : "PluginRejected",
                      (p.loaded ? "Plugin chargé : " + p.info.name + " " + p.info.version
                                : "Plugin refusé : " + p.path.toStdString() + " — " + p.error.toStdString()));
+
+    // Modules (docs/SDK.md) : livrés (<app>/modules, approuvés) et utilisateur (<données>/modules, activés
+    // seulement après approbation). Arrêt dans l'ordre inverse à la fermeture, avant la notification des plugins.
+    auto& modules = TSA::Modules::ModuleRegistry::instance();
+    modules.setHost(TSA::Product::name(), TSA::Product::version());
+    modules.discover({ TSA::Core::AppPaths::shippedModulesDir() }, { TSA::Core::AppPaths::userModulesDir() });
+    modules.activate(moduleHostServices());
+    for (const auto& m : modules.modules())
+        TSA_LOG_INFO("App", "Module",
+                     QStringLiteral("Module %1 %2 : %3%4")
+                         .arg(m.manifest.id, m.manifest.version.toString(), TSA::Modules::moduleStateName(m.state),
+                              m.messages.isEmpty() ? QString() : QStringLiteral(" — ") + m.messages.join(QStringLiteral(" ; ")))
+                         .toStdString());
+    connect(this, &QCoreApplication::aboutToQuit, this, [] {
+        TSA::Modules::ModuleRegistry::instance().shutdown(moduleHostServices());
+        TSA::Plugins::PluginManager::instance().shutdownAll();
+    });
 }
 
 EcosystemApplication::~EcosystemApplication()

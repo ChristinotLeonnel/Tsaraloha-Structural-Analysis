@@ -1,0 +1,18 @@
+{
+  "id": "societe.rapport-simple",
+  "name": "Rapport simple (exemple du SDK)",
+  "version": "1.0.0",
+  "description": "Exemple minimal de template : synthèse du modèle et des réactions, données absentes signalées.",
+  "author": "Exemple SDK",
+  "license": "CC0-1.0",
+  "engine": "tsa-template/1",
+  "dataSchema": "tsa-report-data/1",
+  "applications": ["TSA", "TSALab"],
+  "reports": [
+    { "id": "synthese", "name": "Synthèse", "entry": "main.html", "requires": ["project.title", "model.counts", "results"] }
+  ],
+  "options": [
+    { "id": "accent", "label": "Couleur d'accent", "type": "color", "default": "#0f766e" },
+    { "id": "showReactions", "label": "Afficher les réactions", "type": "bool", "default": true }
+  ]
+}

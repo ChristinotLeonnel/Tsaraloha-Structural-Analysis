@@ -1,0 +1,14 @@
+{{#results.available}}
+<h3>Efforts dans les barres (extrema sur les stations calculées)</h3>
+{{#results.memberForces.available}}
+<table>
+<tr><th>Barre</th><th>Type</th><th>N max</th><th>N min</th><th>|Vy|</th><th>|Vz|</th><th>|T|</th><th>|My|</th><th>|Mz|</th></tr>
+{{#results.memberForces.rows}}
+<tr><td>{{ref}}</td><td>{{familyLabel}}</td><td class="num">{{results.Nmax}}</td><td class="num">{{results.Nmin}}</td><td class="num">{{results.Vy}}</td><td class="num">{{results.Vz}}</td><td class="num">{{results.T}}</td><td class="num">{{results.My}}</td><td class="num">{{results.Mz}}</td></tr>
+{{/results.memberForces.rows}}
+</table>
+{{/results.memberForces.available}}
+{{^results.memberForces.available}}
+<p class="na">Efforts non disponibles : {{results.memberForces.reason}}.</p>
+{{/results.memberForces.available}}
+{{/results.available}}

@@ -1,0 +1,33 @@
+{{! Exemple de template (docs/TEMPLATES.md §8). Données : schéma « tsa-report-data/1 ». }}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>{{project.title}} — synthèse</title>
+{{> style}}
+</head>
+<body>
+<h1>{{project.title}}</h1>
+<p>{{model.counts.nodes}} nœuds, {{model.counts.members}} barres, {{model.counts.supports}} appuis, {{model.counts.loadCases}} cas de charge.</p>
+{{#results.available}}
+<p>Résultats {{results.status}} ({{results.case}}).</p>
+{{#options.showReactions}}
+{{#results.reactions.available}}
+<table>
+<tr><th>Nœud</th><th>Fx</th><th>Fy</th><th>Fz</th></tr>
+{{#results.reactions.rows}}
+<tr><td>{{node}}</td><td>{{fx}}</td><td>{{fy}}</td><td>{{fz}}</td></tr>
+{{/results.reactions.rows}}
+</table>
+{{/results.reactions.available}}
+{{^results.reactions.available}}
+<p class="na">Réactions non disponibles : {{results.reactions.reason}}.</p>
+{{/results.reactions.available}}
+{{/options.showReactions}}
+{{/results.available}}
+{{^results.available}}
+<p class="na">Résultats non disponibles : {{results.reason}}.</p>
+{{/results.available}}
+<p class="small">{{application.name}} {{application.version}} · {{template.id}} {{template.version}} · {{generated}}</p>
+</body>
+</html>

@@ -25,6 +25,8 @@ struct LoadedPlugin
     std::vector<std::string> commands;   ///< commandes ajoutées
     std::vector<std::string> nodes;      ///< nœuds ajoutés (hors nœuds des commandes)
     QStringList log;                     ///< messages du plugin (IPluginHost::log)
+    void (*shutdown)() = nullptr;        ///< point d'arrêt FACULTATIF « tsaraloha_plugin_shutdown » (ABI inchangée)
+    bool stopped = false;
 };
 
 class PluginManager
@@ -38,6 +40,10 @@ public:
     bool loadFile(const QString& path, QString* error = nullptr);
 
     const std::vector<LoadedPlugin>& plugins() const { return m_plugins; }
+    /// Appelle une fois le point d'arrêt facultatif de chaque plugin chargé (fermeture de l'application ou
+    /// désactivation d'un module). Les DLL restent chargées (fonctions référencées par les registres).
+    void shutdownAll();
+    bool shutdownFile(const QString& path);
     /// Dossier standard : <dossier de l'application>/plugins.
     static QString defaultDirectory();
 

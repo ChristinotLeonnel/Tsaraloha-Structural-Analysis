@@ -1,0 +1,45 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <!-- Templates intégrés (docs/TEMPLATES.md) : un dossier par paquet (manifest.json + fichiers).
+         Liste régénérée par tools/update_templates_qrc.py ; contrôlée par le test 283. -->
+    <qresource prefix="/templates">
+        <file alias="builtin/tsa.ndc.standard/main.html">templates/builtin/tsa.ndc.standard/main.html</file>
+        <file alias="builtin/tsa.ndc.standard/manifest.json">templates/builtin/tsa.ndc.standard/manifest.json</file>
+        <file alias="builtin/tsa.ndc.standard/partials/cover.html">templates/builtin/tsa.ndc.standard/partials/cover.html</file>
+        <file alias="builtin/tsa.ndc.standard/partials/figure.html">templates/builtin/tsa.ndc.standard/partials/figure.html</file>
+        <file alias="builtin/tsa.ndc.standard/partials/style.html">templates/builtin/tsa.ndc.standard/partials/style.html</file>
+        <file alias="builtin/tsa.ndc.standard/partials/table.html">templates/builtin/tsa.ndc.standard/partials/table.html</file>
+        <file alias="builtin/tsa.ndc.standard/partials/toc.html">templates/builtin/tsa.ndc.standard/partials/toc.html</file>
+        <file alias="builtin/tsa.reports.base/manifest.json">templates/builtin/tsa.reports.base/manifest.json</file>
+        <file alias="builtin/tsa.reports.base/partials/counts.html">templates/builtin/tsa.reports.base/partials/counts.html</file>
+        <file alias="builtin/tsa.reports.base/partials/displacements.html">templates/builtin/tsa.reports.base/partials/displacements.html</file>
+        <file alias="builtin/tsa.reports.base/partials/footer.html">templates/builtin/tsa.reports.base/partials/footer.html</file>
+        <file alias="builtin/tsa.reports.base/partials/forces.html">templates/builtin/tsa.reports.base/partials/forces.html</file>
+        <file alias="builtin/tsa.reports.base/partials/geometry.html">templates/builtin/tsa.reports.base/partials/geometry.html</file>
+        <file alias="builtin/tsa.reports.base/partials/head.html">templates/builtin/tsa.reports.base/partials/head.html</file>
+        <file alias="builtin/tsa.reports.base/partials/header.html">templates/builtin/tsa.reports.base/partials/header.html</file>
+        <file alias="builtin/tsa.reports.base/partials/limits.html">templates/builtin/tsa.reports.base/partials/limits.html</file>
+        <file alias="builtin/tsa.reports.base/partials/loads.html">templates/builtin/tsa.reports.base/partials/loads.html</file>
+        <file alias="builtin/tsa.reports.base/partials/materials.html">templates/builtin/tsa.reports.base/partials/materials.html</file>
+        <file alias="builtin/tsa.reports.base/partials/member.html">templates/builtin/tsa.reports.base/partials/member.html</file>
+        <file alias="builtin/tsa.reports.base/partials/membersTable.html">templates/builtin/tsa.reports.base/partials/membersTable.html</file>
+        <file alias="builtin/tsa.reports.base/partials/mesh.html">templates/builtin/tsa.reports.base/partials/mesh.html</file>
+        <file alias="builtin/tsa.reports.base/partials/project.html">templates/builtin/tsa.reports.base/partials/project.html</file>
+        <file alias="builtin/tsa.reports.base/partials/reactions.html">templates/builtin/tsa.reports.base/partials/reactions.html</file>
+        <file alias="builtin/tsa.reports.base/partials/resultsStatus.html">templates/builtin/tsa.reports.base/partials/resultsStatus.html</file>
+        <file alias="builtin/tsa.reports.base/partials/sections.html">templates/builtin/tsa.reports.base/partials/sections.html</file>
+        <file alias="builtin/tsa.reports.base/partials/style.html">templates/builtin/tsa.reports.base/partials/style.html</file>
+        <file alias="builtin/tsa.reports.base/partials/supports.html">templates/builtin/tsa.reports.base/partials/supports.html</file>
+        <file alias="builtin/tsa.reports.base/partials/title.html">templates/builtin/tsa.reports.base/partials/title.html</file>
+        <file alias="builtin/tsa.reports.base/reports/beam.html">templates/builtin/tsa.reports.base/reports/beam.html</file>
+        <file alias="builtin/tsa.reports.base/reports/column.html">templates/builtin/tsa.reports.base/reports/column.html</file>
+        <file alias="builtin/tsa.reports.base/reports/displacements-forces.html">templates/builtin/tsa.reports.base/reports/displacements-forces.html</file>
+        <file alias="builtin/tsa.reports.base/reports/general.html">templates/builtin/tsa.reports.base/reports/general.html</file>
+        <file alias="builtin/tsa.reports.base/reports/mesh.html">templates/builtin/tsa.reports.base/reports/mesh.html</file>
+        <file alias="builtin/tsa.reports.base/reports/modal.html">templates/builtin/tsa.reports.base/reports/modal.html</file>
+        <file alias="builtin/tsa.reports.base/reports/plane-2d.html">templates/builtin/tsa.reports.base/reports/plane-2d.html</file>
+        <file alias="builtin/tsa.reports.base/reports/portal.html">templates/builtin/tsa.reports.base/reports/portal.html</file>
+        <file alias="builtin/tsa.reports.base/reports/structure-3d.html">templates/builtin/tsa.reports.base/reports/structure-3d.html</file>
+        <file alias="builtin/tsa.reports.base/reports/verification.html">templates/builtin/tsa.reports.base/reports/verification.html</file>
+    </qresource>
+</RCC>

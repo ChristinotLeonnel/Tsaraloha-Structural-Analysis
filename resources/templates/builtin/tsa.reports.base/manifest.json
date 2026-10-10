@@ -1,0 +1,166 @@
+{
+  "id": "tsa.reports.base",
+  "name": "Rapports de base",
+  "version": "1.0.0",
+  "description": "Rapports structurés à partir du modèle et des résultats : général, poutres, poteaux, portique, 2D, 3D, maillage, modal, déplacements et efforts, vérification. Les données absentes sont signalées, jamais inventées.",
+  "author": "Tsaraloha",
+  "license": "Identique à l'application",
+  "engine": "tsa-template/1",
+  "dataSchema": "tsa-report-data/1",
+  "applications": [
+    "TSA",
+    "TSALab"
+  ],
+  "reports": [
+    {
+      "id": "general",
+      "name": "Rapport général",
+      "description": "Projet, modèle, charges, résultats disponibles, maillage et limites.",
+      "entry": "reports/general.html",
+      "requires": [
+        "project.title",
+        "model",
+        "results"
+      ]
+    },
+    {
+      "id": "beam",
+      "name": "Rapport des poutres",
+      "description": "Une fiche par poutre : géométrie, section, matériau, efforts extrêmes.",
+      "entry": "reports/beam.html",
+      "requires": [
+        "project.title",
+        "model.beams",
+        "results"
+      ]
+    },
+    {
+      "id": "column",
+      "name": "Rapport des poteaux",
+      "description": "Une fiche par poteau : géométrie, section, matériau, efforts extrêmes.",
+      "entry": "reports/column.html",
+      "requires": [
+        "project.title",
+        "model.columns",
+        "results"
+      ]
+    },
+    {
+      "id": "portal",
+      "name": "Rapport de portique",
+      "description": "Poteaux, traverses, appuis, charges, réactions, déplacements et efforts d'un portique.",
+      "entry": "reports/portal.html",
+      "requires": [
+        "project.title",
+        "model",
+        "results"
+      ]
+    },
+    {
+      "id": "plane-2d",
+      "name": "Rapport de structure plane (2D)",
+      "description": "Structure contenue dans un plan : géométrie, barres, charges, résultats.",
+      "entry": "reports/plane-2d.html",
+      "requires": [
+        "project.title",
+        "model",
+        "results"
+      ]
+    },
+    {
+      "id": "structure-3d",
+      "name": "Rapport de structure 3D",
+      "description": "Structure tridimensionnelle : niveaux, barres, appuis, charges, résultats.",
+      "entry": "reports/structure-3d.html",
+      "requires": [
+        "project.title",
+        "model",
+        "results"
+      ]
+    },
+    {
+      "id": "mesh",
+      "name": "Rapport de maillage",
+      "description": "Maillage réellement transmis au moteur de calcul.",
+      "entry": "reports/mesh.html",
+      "requires": [
+        "project.title",
+        "mesh"
+      ]
+    },
+    {
+      "id": "modal",
+      "name": "Rapport d'analyse modale",
+      "description": "Modes propres, fréquences et masses modales (si le moteur les fournit).",
+      "entry": "reports/modal.html",
+      "requires": [
+        "project.title",
+        "modal"
+      ]
+    },
+    {
+      "id": "displacements-forces",
+      "name": "Déplacements et efforts",
+      "description": "Tableaux complets des déplacements, réactions et efforts du dernier calcul.",
+      "entry": "reports/displacements-forces.html",
+      "requires": [
+        "project.title",
+        "results"
+      ]
+    },
+    {
+      "id": "verification",
+      "name": "Vérification des éléments",
+      "description": "Vérifications réglementaires par élément (si disponibles dans les résultats).",
+      "entry": "reports/verification.html",
+      "requires": [
+        "project.title",
+        "verification"
+      ]
+    }
+  ],
+  "options": [
+    {
+      "id": "documentTitle",
+      "label": "Titre du document (vide : titre du rapport)",
+      "type": "text",
+      "default": ""
+    },
+    {
+      "id": "primaryColor",
+      "label": "Couleur des titres",
+      "type": "color",
+      "default": "#1a56db"
+    },
+    {
+      "id": "logo",
+      "label": "Logo (en-tête)",
+      "type": "image",
+      "default": ""
+    },
+    {
+      "id": "showHeader",
+      "label": "En-tête",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "id": "headerText",
+      "label": "Texte d'en-tête (vide : bureau d'études — projet)",
+      "type": "text",
+      "default": ""
+    },
+    {
+      "id": "showFooter",
+      "label": "Pied de page",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "id": "footerText",
+      "label": "Texte de pied de page",
+      "type": "text",
+      "default": ""
+    }
+  ]
+}

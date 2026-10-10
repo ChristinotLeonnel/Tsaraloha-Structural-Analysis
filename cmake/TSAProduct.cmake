@@ -61,6 +61,8 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Dimensions.cpp
     ${TSA_ROOT}/src/UI/MainWindow_DisplayMode.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Shortcuts.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_Tsa3d.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_Reports.cpp
     ${TSA_ROOT}/src/UI/MainWindow_ModelingTools.cpp
 )
 
@@ -179,6 +181,10 @@ set(UI_ANALYSIS_SOURCES
 set(UI_EXTENSIONMANAGERDIALOG_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/ExtensionManagerDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/ExtensionManagerDialog.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/ModulesDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/ModulesDialog.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/ReportTemplatesDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/ReportTemplatesDialog.cpp
 )
 
 # --- Gestionnaire centralisé des fenêtres et disposition (Window Manager) — [CORE] ---
@@ -451,6 +457,21 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Model/MultiEditSession.cpp
     # Couche BIM (docs/BIM_ARCHITECTURE.md)
     ${TSA_ROOT}/src/Core/Units.h
+    ${TSA_ROOT}/src/Core/AppPaths.h
+    ${TSA_ROOT}/src/Core/AppPaths.cpp
+    ${TSA_ROOT}/src/Modules/ModuleRegistry.h
+    ${TSA_ROOT}/src/Modules/ModuleRegistry.cpp
+    # Templates de documents et rapports (docs/TEMPLATES.md)
+    ${TSA_ROOT}/src/Templates/TemplateEngine.h
+    ${TSA_ROOT}/src/Templates/TemplateEngine.cpp
+    ${TSA_ROOT}/src/Templates/TemplatePackage.h
+    ${TSA_ROOT}/src/Templates/TemplatePackage.cpp
+    ${TSA_ROOT}/src/Templates/TemplateRepository.h
+    ${TSA_ROOT}/src/Templates/TemplateRepository.cpp
+    ${TSA_ROOT}/src/Reports/ReportDataBuilder.h
+    ${TSA_ROOT}/src/Reports/ReportDataBuilder.cpp
+    ${TSA_ROOT}/src/Reports/DocumentRenderer.h
+    ${TSA_ROOT}/src/Reports/DocumentRenderer.cpp
     ${TSA_ROOT}/src/BIM/Core/BimTypes.h
     ${TSA_ROOT}/src/BIM/Core/BimTypes.cpp
     ${TSA_ROOT}/src/BIM/Core/IfcGuid.h
@@ -603,6 +624,8 @@ set(NDC_CORE_SOURCES
     ${TSA_ROOT}/src/NDC/NDCGenerator.cpp
     ${TSA_ROOT}/src/NDC/NDCExporter.h
     ${TSA_ROOT}/src/NDC/NDCExporter.cpp
+    ${TSA_ROOT}/src/NDC/NDCTemplateData.h
+    ${TSA_ROOT}/src/NDC/NDCTemplateData.cpp
     ${TSA_ROOT}/src/NDC/ReportManager.h
     ${TSA_ROOT}/src/NDC/ReportManager.cpp
     ${TSA_ROOT}/src/NDC/NDCPlanarCurves.h
@@ -698,6 +721,12 @@ set(IO_SOURCES
     ${TSA_ROOT}/src/IO/TSAFile_BinaryUtils.h
     ${TSA_ROOT}/src/IO/TSAFile.h
     ${TSA_ROOT}/src/IO/TSAFile.cpp
+    ${TSA_ROOT}/src/IO/Tsa3d/Tsa3d.h
+    ${TSA_ROOT}/src/IO/Tsa3d/Tsa3dInternal.h
+    ${TSA_ROOT}/src/IO/Tsa3d/Tsa3dCommon.cpp
+    ${TSA_ROOT}/src/IO/Tsa3d/Tsa3dValidate.cpp
+    ${TSA_ROOT}/src/IO/Tsa3d/Tsa3dExport.cpp
+    ${TSA_ROOT}/src/IO/Tsa3d/Tsa3dImport.cpp
     ${TSA_ROOT}/src/IO/TSAFileWriter_Chunks.cpp
     ${TSA_ROOT}/src/IO/TSAFileReader_Chunks.cpp
     ${TSA_ROOT}/src/IO/TSAPreviewGenerator.h
@@ -734,6 +763,7 @@ set(PLATFORM_SOURCES
 # --- Ressources (icônes, .rc Windows) -----------------------------------------
 set(RESOURCES_SOURCES
     ${TSA_ROOT}/resources/resources.qrc
+    ${TSA_ROOT}/resources/templates.qrc
 )
 
 # =============================================================================
@@ -935,7 +965,12 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_display_modes.cpp
     ${TSA_ROOT}/tests/test_shortcuts.cpp
     ${TSA_ROOT}/tests/test_blueprint.cpp
+    ${TSA_ROOT}/tests/test_tsa3d.cpp
+    ${TSA_ROOT}/tests/test_modules.cpp
+    ${TSA_ROOT}/tests/test_templates.cpp
+    ${TSA_ROOT}/tests/test_deployment.cpp
     ${TSA_ROOT}/resources/resources.qrc
+    ${TSA_ROOT}/resources/templates.qrc
 )
 
 # Lanceurs de compilation (page de code MSVC, ccache) : à appeler une fois, avant les cibles.
@@ -1155,6 +1190,85 @@ function(tsaraloha_configure_application target)
     endif()
 endfunction()
 
+# Outils et exemples du SDK (docs/SDK.md) : construits avec le produit pour garantir qu'ils compilent.
+#   tsa3d-validate        validateur TSA3D en ligne de commande (Qt Core seul), livré dans le paquet
+#   tsa-template          validation, emballage et rendu de templates (Qt Core seul), livré dans le paquet
+#   tsa3d_generator_example  programme externe C++17 sans Qt ni TSA produisant un fichier TSA3D
+#   tsa3d_roundtrip_example  programme C++/Qt utilisant la bibliothèque TSA (lecture, modèle, export)
+#   sample_csv2tsa3d      convertisseur du module d'exemple (processus séparé, modules/sample.csvimport)
+function(tsaraloha_add_sdk_tools product model product_dir)
+    if(TARGET tsa3d-validate)
+        return()
+    endif()
+    add_executable(tsa3d-validate ${TSA_ROOT}/sdk/tools/tsa3d-validate/main.cpp
+        ${TSA_ROOT}/src/IO/Tsa3d/Tsa3dCommon.cpp ${TSA_ROOT}/src/IO/Tsa3d/Tsa3dValidate.cpp)
+    target_compile_features(tsa3d-validate PRIVATE cxx_std_20)
+    target_include_directories(tsa3d-validate PRIVATE ${TSA_ROOT}/src ${product_dir})
+    target_link_libraries(tsa3d-validate PRIVATE Qt6::Core)
+    add_executable(tsa-template ${TSA_ROOT}/sdk/tools/tsa-template/main.cpp
+        ${TSA_ROOT}/src/Templates/TemplateEngine.cpp ${TSA_ROOT}/src/Templates/TemplatePackage.cpp)
+    target_compile_features(tsa-template PRIVATE cxx_std_20)
+    target_include_directories(tsa-template PRIVATE ${TSA_ROOT}/src)
+    target_link_libraries(tsa-template PRIVATE Qt6::Core)
+    add_executable(tsa3d_generator_example ${TSA_ROOT}/sdk/examples/tsa3d-generator/portal_generator.cpp)
+    target_compile_features(tsa3d_generator_example PRIVATE cxx_std_17)
+    add_executable(tsa3d_roundtrip_example ${TSA_ROOT}/sdk/examples/tsa3d-roundtrip/main.cpp)
+    tsa_apply_common_settings(tsa3d_roundtrip_example ${product_dir})
+    target_link_libraries(tsa3d_roundtrip_example PRIVATE ${model})
+    add_executable(sample_csv2tsa3d ${TSA_ROOT}/sdk/modules/sample.csvimport/src/csv2tsa3d.cpp)
+    target_compile_features(sample_csv2tsa3d PRIVATE cxx_std_17)
+    foreach(t tsa3d-validate tsa-template tsa3d_generator_example tsa3d_roundtrip_example sample_csv2tsa3d)
+        if(MSVC)
+            target_compile_options(${t} PRIVATE /utf-8)
+            target_link_options(${t} PRIVATE /SUBSYSTEM:CONSOLE)
+        endif()
+    endforeach()
+    set_target_properties(tsa3d_generator_example tsa3d_roundtrip_example PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sdk)
+    # Module d'exemple assemblé dans <build>/modules/sample.csvimport (manifeste, exemples, bin/) : c'est la
+    # disposition livrée (AppPaths::shippedModulesDir), utilisée telle quelle en développement et par le paquet.
+    # Runtime C statique : le convertisseur est lancé dans un processus séparé, sans les DLL de l'hôte.
+    set(_mod ${CMAKE_BINARY_DIR}/modules/sample.csvimport)
+    set_target_properties(sample_csv2tsa3d tsa3d_generator_example PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set_target_properties(sample_csv2tsa3d PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${_mod}/bin)
+    add_custom_command(TARGET sample_csv2tsa3d POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TSA_ROOT}/sdk/modules/sample.csvimport/module.json ${_mod}/module.json
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${TSA_ROOT}/sdk/modules/sample.csvimport/examples ${_mod}/examples
+        COMMENT "Module d'exemple sample.csvimport assemblé")
+    add_dependencies(${product} sample_csv2tsa3d)
+    add_dependencies(${product} tsa3d-validate tsa-template)
+endfunction()
+
+# Paquet distribuable autonome : cible package_<produit> (cmake/PackageTSA.cmake, docs/DEPLOYMENT.md).
+# Dossier produit : <build>/dist/<produit> ; à vérifier avec tools/verify_package.py.
+set(TSA_VCREDIST_DIR "$ENV{VCToolsRedistDir}" CACHE PATH "Runtime MSVC redistribuable (VCToolsRedistDir)")
+option(TSA_PACKAGE_OPENSEES "Inclure OpenSees (thirdparty/OpenSees) dans le paquet — vérifier sa licence" ON)
+function(tsaraloha_add_package_target target binaries)
+    if(NOT WIN32)
+        return()
+    endif()
+    get_target_property(_qmake_loc Qt6::qmake IMPORTED_LOCATION)
+    get_filename_component(_qt_bin_dir "${_qmake_loc}" DIRECTORY)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
+    list(REMOVE_ITEM binaries "${target}.exe")
+    string(REPLACE ";" "|" _extra "${binaries}")
+    add_custom_target(package_${target}
+        COMMAND ${CMAKE_COMMAND}
+            -DBUILD_DIR=$<TARGET_FILE_DIR:${target}>
+            -DSOURCE_DIR=${TSA_ROOT}
+            -DDIST_DIR=${CMAKE_BINARY_DIR}/dist/${target}
+            -DPRODUCT=${target}
+            -DVERSION=${PROJECT_VERSION}
+            -DCONFIG=$<CONFIG>
+            -DWINDEPLOYQT_EXECUTABLE=${WINDEPLOYQT_EXECUTABLE}
+            -DVCREDIST_DIR=${TSA_VCREDIST_DIR}
+            -DPACKAGE_OPENSEES=${TSA_PACKAGE_OPENSEES}
+            "-DEXTRA_EXECUTABLES=${_extra}"
+            -P "${TSA_ROOT}/cmake/PackageTSA.cmake"
+        DEPENDS ${target}
+        COMMENT "Paquet distribuable ${target} → ${CMAKE_BINARY_DIR}/dist/${target}"
+        VERBATIM)
+endfunction()
+
 # =============================================================================
 # tsa_add_product : application TSA (ruban, AppShell, Start Center) sur les bibliothèques partagées.
 #   NAME <nom>  PRODUCT_DIR <dossier>  RESOURCES <.qrc/.rc>
@@ -1183,6 +1297,8 @@ function(tsa_add_product)
     tsaraloha_configure_application(${name})
 
     tsaraloha_add_thumbnail_provider(${thumbs} ${P_PRODUCT_DIR})
+    tsaraloha_add_sdk_tools(${name} ${model} ${P_PRODUCT_DIR})
+    tsaraloha_add_package_target(${name} "${name}.exe;tsaraloha-mcp.exe;tsa3d-validate.exe;tsa-template.exe;${thumbs}.dll")
     if(TARGET ${thumbs})
         add_dependencies(${name} ${thumbs})
     endif()
@@ -1204,7 +1320,8 @@ function(tsa_add_product)
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:Qt6::Test> $<TARGET_FILE_DIR:${tests}>)
         endif()
         set_target_properties(${tests} PROPERTIES OUTPUT_NAME "${name}_TestSuite")
-        add_dependencies(${tests} ${name}_Mcp)
+        add_dependencies(${tests} ${name}_Mcp sample_csv2tsa3d)
+        target_compile_definitions(${tests} PRIVATE TSA_SAMPLE_MODULE_DIR="${CMAKE_BINARY_DIR}/modules/sample.csvimport")
         target_compile_definitions(${tests} PRIVATE TSARALOHA_MCP_EXE="$<TARGET_FILE:${name}_Mcp>")
         if(WIN32)
             add_dependencies(${tests} ${thumbs})
@@ -1215,7 +1332,7 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards)
+                       loads opensees supports standards tsa3d modules templates deployment)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

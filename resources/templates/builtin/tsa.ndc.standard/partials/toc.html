@@ -1,0 +1,21 @@
+<div class="toc-box">
+  <div class="toc-title">TABLE DES MATIÈRES</div>
+{{#chapters}}
+  <div class="toc-item"><strong><a href="#chap_{{number}}">{{number}}. {{{title}}}</a></strong></div>
+{{#tocSections}}
+  <div class="toc-item toc-sec"><a href="#sec_{{chapter}}_{{index}}">{{chapter}}.{{index}} {{{title}}}</a></div>
+{{/tocSections}}
+{{/chapters}}
+{{#show.lof}}
+  <div class="toc-title" style="margin-top: 30px;">LISTE DES FIGURES</div>
+{{#allFigures}}
+  <div class="toc-item"><a href="#fig_{{number}}">Figure {{number}} — {{{caption}}}</a></div>
+{{/allFigures}}
+{{/show.lof}}
+{{#show.lot}}
+  <div class="toc-title" style="margin-top: 30px;">LISTE DES TABLEAUX</div>
+{{#allTables}}
+  <div class="toc-item"><a href="#tbl_{{number}}">Tableau {{number}} — {{{caption}}}</a></div>
+{{/allTables}}
+{{/show.lot}}
+</div>

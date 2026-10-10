@@ -1,0 +1,28 @@
+{
+  "schema": "tsa-module/1",
+  "id": "sample.csvimport",
+  "name": "Import CSV (exemple du SDK)",
+  "version": "1.0.0",
+  "description": "Convertit un fichier CSV de nœuds et de barres en TSA3D, importé ensuite par l'hôte. Exemple de module à convertisseur en processus séparé.",
+  "publisher": "Tsaraloha — exemple SDK",
+  "license": "MIT",
+  "hosts": [
+    { "application": "TSA", "min": "0.1.0" },
+    { "application": "TSALab", "min": "0.1.0" }
+  ],
+  "dependencies": [],
+  "capabilities": ["process"],
+  "dataTypes": ["TSA3D/1"],
+  "entryPoints": {
+    "importers": [
+      {
+        "id": "sample.csvimport.csv",
+        "title": "Nœuds et barres (CSV)",
+        "extensions": ["csv"],
+        "command": "bin/sample_csv2tsa3d.exe",
+        "arguments": ["{input}", "{output}"]
+      }
+    ]
+  },
+  "resources": ["examples/portique.csv"]
+}

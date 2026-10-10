@@ -147,7 +147,7 @@ void NDCViewerWidget::refreshDocument()
 
     m_documentDirty = false;
     m_document = m_reportManager.generateReport();
-    m_browser->setHtml(m_document.toHtml());
+    m_browser->setHtml(NDCExporter::renderHtml(m_document));
     populateToc();
 }
 
@@ -218,7 +218,7 @@ void NDCViewerWidget::onZoomOut()
 
 void NDCViewerWidget::onResetZoom()
 {
-    m_browser->setHtml(m_document.toHtml());
+    m_browser->setHtml(NDCExporter::renderHtml(m_document));
 }
 
 void NDCViewerWidget::onExportPdf()

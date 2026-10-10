@@ -50,7 +50,11 @@ struct ParseResult
     ShortcutSettings settings;      ///< commandes connues présentes dans le fichier
     QStringList errors;             ///< syntaxe, combinaison invalide, état invalide, identifiant en double
     QStringList warnings;           ///< identifiant inconnu, version de format plus récente
+    int formatVersion = 0;          ///< version déclarée par l'en-tête « # format: tsa-shortcuts N » (0 : absente)
 };
+
+/// Version actuelle du format de shortcut.txt.
+int shortcutFormatVersion();
 
 struct Conflict
 {

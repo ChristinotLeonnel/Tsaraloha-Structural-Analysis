@@ -1,0 +1,33 @@
+{{! Rapport de portique }}
+{{> head}}
+<body>
+{{> header}}
+{{> title}}
+{{^model.geometry.planar}}
+<p class="na">Le modèle n'est pas plan : le rapport présente l'ensemble des poteaux et des poutres.</p>
+{{/model.geometry.planar}}
+{{> geometry}}
+{{> supports}}
+<h2>Poteaux</h2>
+{{^model.columns}}
+<p class="na">Aucun poteau.</p>
+{{/model.columns}}
+{{#model.columns}}
+{{> member}}
+{{/model.columns}}
+<h2>Traverses</h2>
+{{^model.beams}}
+<p class="na">Aucune poutre.</p>
+{{/model.beams}}
+{{#model.beams}}
+{{> member}}
+{{/model.beams}}
+{{> loads}}
+<h2>Résultats</h2>
+{{> resultsStatus}}
+{{> reactions}}
+{{> displacements}}
+{{> limits}}
+{{> footer}}
+</body>
+</html>

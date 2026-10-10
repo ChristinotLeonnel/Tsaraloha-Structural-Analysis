@@ -1,0 +1,36 @@
+<div class="cover-container">
+  <div class="cover-header">
+    <div>
+      <div class="cover-brand">TSARALOHA STRUCTURAL ANALYSIS</div>
+      <div style="font-size: 10pt; color: #64748b;">Logiciel d'Ingénierie Structurale & Calcul aux Éléments Finis</div>
+    </div>
+{{#show.logo}}
+    <div class="cover-logo">{{{logoSvg}}}</div>
+{{/show.logo}}
+  </div>
+  <div class="cover-title-box">
+    <div class="cover-main-title">NOTE DE CALCUL DE STRUCTURE</div>
+    <div class="cover-sub-title">{{{project.title}}}</div>
+{{#project.description}}
+    <p style="font-size: 11pt; color: #64748b; max-width: 700px; margin: 0 auto 15px auto;">{{{project.description}}}</p>
+{{/project.description}}
+    <div class="cover-status-badge">{{{project.status}}}</div>
+  </div>
+  <div class="cover-meta-grid">
+    <div class="cover-meta-item"><strong>Projet N° :</strong> {{{project.number}}}</div>
+    <div class="cover-meta-item"><strong>Document N° :</strong> {{{project.documentNumber}}}</div>
+    <div class="cover-meta-item"><strong>Indice de Révision :</strong> {{{project.revision}}}</div>
+    <div class="cover-meta-item"><strong>Date d'Émission :</strong> {{{project.date}}}</div>
+    <div class="cover-meta-item"><strong>Auteur / Ingénieur :</strong> {{{project.engineer}}}</div>
+    <div class="cover-meta-item"><strong>Bureau d'Études :</strong> {{{project.organization}}}</div>
+    <div class="cover-meta-item"><strong>Maître d'Ouvrage :</strong> {{{project.client}}}</div>
+    <div class="cover-meta-item"><strong>Normes de Référence :</strong> {{{project.standards}}}</div>
+    <div style="grid-column: span 2; margin-top: 6px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+      <strong>Plateforme de Calcul :</strong> {{{project.software}}}
+    </div>
+  </div>
+  <div class="cover-footer">
+    <div>{{{product.name}}} v{{{product.reportVersion}}} — Conforme aux exigences IEEE Std 1063 & Eurocodes</div>
+    <div>Document certifié d'analyse structurale</div>
+  </div>
+</div>

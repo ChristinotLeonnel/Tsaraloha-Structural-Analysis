@@ -97,6 +97,11 @@ QString padRight(const QString& s, int width)
 }
 } // namespace
 
+int shortcutFormatVersion()
+{
+    return kFormatVersion;
+}
+
 bool scopesOverlap(const QString& a, const QString& b)
 {
     if (a == b) return true;
@@ -185,6 +190,7 @@ ParseResult parseConfig(const QString& text, const QSet<QString>& knownIds)
         if (trimmed.startsWith(QLatin1Char('#')))
         {
             const auto m = formatRe.match(trimmed);
+            if (m.hasMatch() && m.captured(1) == kFormatTag) r.formatVersion = m.captured(2).toInt();
             if (m.hasMatch() && m.captured(1) == kFormatTag && m.captured(2).toInt() > kFormatVersion)
                 r.warnings << QStringLiteral("%1 : format %2 plus récent que celui de cette version (%3)")
                                   .arg(where, m.captured(2)).arg(kFormatVersion);

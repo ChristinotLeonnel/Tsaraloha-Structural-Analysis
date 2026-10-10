@@ -259,11 +259,15 @@ cmd.results.stresses                |                       | on   |            
 [Rapports]
 # identifiant                       | raccourci(s)          | état | par défaut            | description
 cmd.report.ndc                      | F8                    | on   | F8                    | Note de calcul — Ouvrir la note de calcul
+cmd.report.templates                |                       | on   |                       | Documents par templates — Rapports et notes produits par templates : aperçu, options, export, gestion
 
 [BIM et échanges de données]
 # identifiant                       | raccourci(s)          | état | par défaut            | description
 cmd.bim.export_ifc                  | Ctrl+E                | on   | Ctrl+E                | Exporter IFC — Exporter le modèle en IFC
+cmd.bim.export_tsa3d                |                       | on   |                       | Exporter TSA3D — Exporter le modèle au format d'échange TSA3D
 cmd.bim.import_ifc                  | Ctrl+I                | on   | Ctrl+I                | Importer IFC — Importer un modèle IFC
+cmd.bim.import_module               |                       | on   |                       | Importer via un module — Convertir un fichier avec un module puis l'importer (TSA3D)
+cmd.bim.import_tsa3d                |                       | on   |                       | Importer TSA3D — Créer un projet depuis un fichier TSA3D (format d'échange)
 
 [Modèle]
 # identifiant                       | raccourci(s)          | état | par défaut            | description
@@ -297,6 +301,7 @@ cmd.settings.theme                  | Ctrl+T                | on   | Ctrl+T     
 # identifiant                       | raccourci(s)          | état | par défaut            | description
 cmd.help.about                      |                       | on   |                       | À propos — Informations de version
 cmd.help.full                       | Shift+F1              | on   | Shift+F1              | Aide complète — Ouvrir le centre d'aide
+cmd.help.modules                    |                       | on   |                       | Modules — Gérer les modules installés (état, approbation)
 cmd.help.online_docs                |                       | on   |                       | Documentation en ligne — Ouvrir la documentation en ligne
 cmd.help.report_problem             |                       | on   |                       | Signaler un problème — Signaler un problème
 cmd.help.shortcut_editor            | Ctrl+F1               | on   | Ctrl+F1               | Personnaliser les raccourcis — Ouvrir l'éditeur des raccourcis clavier

@@ -8,6 +8,11 @@
 
 #include <QApplication>
 
+namespace TSA::Modules
+{
+struct ModuleHostServices;
+}
+
 namespace TSA::UI
 {
 
@@ -26,6 +31,10 @@ public:
     /// options --register-associations / --unregister-associations.
     /// @return faux si l'application doit se terminer (option d'association traitée).
     bool registerPlatformIntegration();
+
+    /// Services de l'hôte offerts aux modules (plugins, templates) : activation au démarrage, arrêt à la fermeture,
+    /// réactivation après approbation (dialogue Modules).
+    static TSA::Modules::ModuleHostServices moduleHostServices();
 };
 
 } // namespace TSA::UI

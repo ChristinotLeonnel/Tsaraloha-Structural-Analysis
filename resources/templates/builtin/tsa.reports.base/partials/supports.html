@@ -1,0 +1,10 @@
+<h2>Appuis</h2>
+{{^model.supports}}
+<p class="na">Aucun appui défini : la structure n'est pas tenue.</p>
+{{/model.supports}}
+<table>
+<tr><th>Nœud</th><th>X (m)</th><th>Y (m)</th><th>Z (m)</th><th>Liaison</th></tr>
+{{#model.supports}}
+<tr><td>{{id}}</td><td class="num">{{x}}</td><td class="num">{{y}}</td><td class="num">{{z}}</td><td>{{support}}</td></tr>
+{{/model.supports}}
+</table>

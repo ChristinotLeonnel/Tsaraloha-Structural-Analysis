@@ -1,0 +1,15 @@
+<h3>{{familyLabel}} {{ref}}{{#name}} — {{name}}{{/name}}</h3>
+<table>
+<tr><th>Nœuds</th><td>{{nodeI}} → {{nodeJ}}</td><th>Longueur</th><td class="num">{{length}}</td></tr>
+<tr><th>Section</th><td>{{section}}</td><th>Matériau</th><td>{{material}}</td></tr>
+</table>
+{{#results.available}}
+<table>
+<tr><th>N max</th><th>N min</th><th>|Vy|</th><th>|Vz|</th><th>|T|</th><th>|My|</th><th>|Mz|</th><th>Flèche locale max</th></tr>
+<tr><td class="num">{{results.Nmax}}</td><td class="num">{{results.Nmin}}</td><td class="num">{{results.Vy}}</td><td class="num">{{results.Vz}}</td><td class="num">{{results.T}}</td><td class="num">{{results.My}}</td><td class="num">{{results.Mz}}</td><td class="num">{{results.deflection}}</td></tr>
+</table>
+<p class="muted">Extrema sur {{results.stations}} stations calculées ; efforts non vérifiés réglementairement.</p>
+{{/results.available}}
+{{^results.available}}
+<p class="na">Efforts non disponibles : {{results.reason}}.</p>
+{{/results.available}}

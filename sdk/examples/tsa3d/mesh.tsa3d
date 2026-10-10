@@ -1,0 +1,24 @@
+{
+  "format": "TSA3D",
+  "version": "1.0",
+  "metadata": { "name": "Maillage : une poutre subdivisée en deux éléments finis" },
+  "materials": [ { "id": "S235", "type": "steel", "E": 210e9, "nu": 0.3, "density": 7850 } ],
+  "sections": [ { "id": "R", "shape": "rectangular", "dimensions": { "b": 0.2, "h": 0.4 } } ],
+  "nodes": [
+    { "id": "N1", "position": [0, 0, 0], "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+    { "id": "N2", "position": [6, 0, 0] }
+  ],
+  "members": [ { "id": "B1", "type": "beam", "nodes": ["N1", "N2"], "section": "R", "material": "S235" } ],
+  "mesh": {
+    "source": { "engine": "mailleur-exemple", "description": "2 éléments linéaires par barre" },
+    "nodes": [
+      { "id": "m1", "position": [0, 0, 0], "origin": "N1" },
+      { "id": "m2", "position": [3, 0, 0], "origin": null, "role": "subdivision" },
+      { "id": "m3", "position": [6, 0, 0], "origin": "N2" }
+    ],
+    "elements": [
+      { "id": "e1", "type": "line2", "nodes": ["m1", "m2"], "origin": "B1", "class": "beam" },
+      { "id": "e2", "type": "line2", "nodes": ["m2", "m3"], "origin": "B1", "class": "beam" }
+    ]
+  }
+}
