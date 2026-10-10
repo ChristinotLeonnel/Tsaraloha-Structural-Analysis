@@ -244,6 +244,24 @@ bool Model::removeNode(int nodeId)
         return false;
     }
 
+    // Cotations associées : la référence devient invalide (signalée, réassociable) ; la dernière position
+    // connue du nœud est conservée pour que la cotation reste affichable. Aucun pointeur n'est conservé.
+    std::vector<int> orphanedDimensions;
+    for (auto& [dimId, dim] : m_dimensions.items)
+    {
+        bool touched = false;
+        for (auto& a : dim.anchors)
+        {
+            if (a.nodeId == nodeId && !a.orphaned)
+            {
+                a.point = { it->second.x(), it->second.y(), it->second.z() };
+                a.orphaned = true;
+                touched = true;
+            }
+        }
+        if (touched) orphanedDimensions.push_back(dimId);
+    }
+
     // Supprimer d'abord les poutres, poteaux et dalles connectés à ce nœud
     std::vector<int> connectedBeams;
     for (const auto& [beamId, beam] : m_beams)
@@ -353,6 +371,7 @@ bool Model::removeNode(int nodeId)
     bumpRevision();
     for (auto* obs : m_observers)
     {
+        if (!orphanedDimensions.empty()) obs->onDimensionsChanged(orphanedDimensions);
         obs->onNodeRemoved(nodeId);
     }
 

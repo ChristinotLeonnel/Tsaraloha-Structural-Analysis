@@ -26,7 +26,8 @@ enum class SelectionType
     Cable,
     WorkPlane,
     NodalLoad,
-    MemberLoad
+    MemberLoad,
+    Dimension   ///< cotation 3D (annotation)
 };
 
 class SelectionManager : public QObject
@@ -50,6 +51,8 @@ public:
     void registerWorkPlane(int workPlaneId, const Handle(AIS_InteractiveObject)& obj);
     void registerNodalLoad(int loadId, const Handle(AIS_InteractiveObject)& obj);
     void registerMemberLoad(int loadId, const Handle(AIS_InteractiveObject)& obj);
+    /// Cotation : plusieurs objets graphiques (lignes, texte) pour un même identifiant.
+    void registerDimension(int dimensionId, const Handle(AIS_InteractiveObject)& obj);
 
     void unregisterNode(int nodeId);
     void unregisterSupport(int nodeId);
@@ -63,6 +66,7 @@ public:
     void unregisterWorkPlane(int workPlaneId);
     void unregisterNodalLoad(int loadId);
     void unregisterMemberLoad(int loadId);
+    void unregisterDimension(int dimensionId);
 
     void clearRegistry();
 
@@ -79,6 +83,9 @@ public:
     int getWorkPlaneId(const Handle(AIS_InteractiveObject)& obj) const;
     int getNodalLoadId(const Handle(AIS_InteractiveObject)& obj) const;
     int getMemberLoadId(const Handle(AIS_InteractiveObject)& obj) const;
+    int getDimensionId(const Handle(AIS_InteractiveObject)& obj) const;
+    /// Objet d'un élément du modèle (nœud, barre, surface, charge...), cotations exclues.
+    bool isModelObject(const Handle(AIS_InteractiveObject)& obj) const;
 
     Handle(AIS_InteractiveObject) getNodeObject(int nodeId) const;
     Handle(AIS_InteractiveObject) getSupportObject(int nodeId) const;
@@ -106,6 +113,7 @@ public:
     const std::set<int>& selectedCables() const { return m_selectedCables; }
     const std::set<int>& selectedNodalLoads() const { return m_selectedNodalLoads; }
     const std::set<int>& selectedMemberLoads() const { return m_selectedMemberLoads; }
+    const std::set<int>& selectedDimensions() const { return m_selectedDimensions; }
     bool isWorkPlaneSelected() const { return m_selectionType == SelectionType::WorkPlane; }
     int selectedWorkPlaneId() const { return (m_selectionType == SelectionType::WorkPlane) ? m_primaryId : -1; }
 
@@ -117,7 +125,7 @@ public:
         return m_selectedNodes.size() + m_selectedBeams.size() + m_selectedColumns.size() +
                m_selectedSlabs.size() + m_selectedWalls.size() + m_selectedFoundations.size() +
                m_selectedTrussMembers.size() + m_selectedCables.size() +
-               m_selectedNodalLoads.size() + m_selectedMemberLoads.size() +
+               m_selectedNodalLoads.size() + m_selectedMemberLoads.size() + m_selectedDimensions.size() +
                (isWorkPlaneSelected() ? 1 : 0);
     }
 
@@ -133,6 +141,7 @@ public slots:
     void selectWorkPlane(int workPlaneId, bool multiSelect = false);
     void selectNodalLoad(int loadId, bool multiSelect = false);
     void selectMemberLoad(int loadId, bool multiSelect = false);
+    void selectDimension(int dimensionId, bool multiSelect = false);
     void selectObject(const Handle(AIS_InteractiveObject)& obj, bool multiSelect = false);
     void setMultipleObjectsSelected(const std::vector<Handle(AIS_InteractiveObject)>& objects, bool multiSelect = false);
     /// Sélection ensembliste (tout sélectionner, inverser, par type/section/matériau/niveau/plan).
@@ -171,6 +180,7 @@ signals:
     void workPlaneSelected(int workPlaneId);
     void nodalLoadSelected(int loadId);
     void memberLoadSelected(int loadId);
+    void dimensionSelected(int dimensionId);
     void selectionCleared();
     /// Émis après une sélection ensembliste de plusieurs éléments (selectElements).
     void multipleSelectionChanged();
@@ -225,6 +235,9 @@ private:
     std::map<int, std::vector<Handle(AIS_InteractiveObject)>> m_memberLoadToObjs;
     std::map<Handle(AIS_InteractiveObject), int> m_objToMemberLoad;
 
+    std::map<int, std::vector<Handle(AIS_InteractiveObject)>> m_dimensionToObjs;
+    std::map<Handle(AIS_InteractiveObject), int> m_objToDimension;
+
     SelectionType m_selectionType = SelectionType::None;
     int m_primaryId = -1;
     std::set<int> m_selectedNodes;
@@ -237,6 +250,7 @@ private:
     std::set<int> m_selectedCables;
     std::set<int> m_selectedNodalLoads;
     std::set<int> m_selectedMemberLoads;
+    std::set<int> m_selectedDimensions;
 };
 
 } // namespace TSA::Viewer

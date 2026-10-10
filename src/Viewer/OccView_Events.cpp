@@ -632,7 +632,8 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
 
                     if (m_context->HasDetected())
                     {
-                        Handle(AIS_InteractiveObject) obj = m_context->DetectedInteractive();
+                        Handle(AIS_InteractiveObject) obj = detectedPreferringModel();
+                        const bool preferred = obj != m_context->DetectedInteractive();
                         if (m_mode2DActive && (obj == m_workPlaneShape || obj == m_workPlaneTrihedron || obj == m_workPlaneOriginShape))
                         {
                             if (!multi)
@@ -653,7 +654,8 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
                         }
                         else
                         {
-                            m_context->SelectDetected(AIS_SelectionScheme_Replace);
+                            if (preferred) m_context->SetSelected(obj, false);
+                            else m_context->SelectDetected(AIS_SelectionScheme_Replace);
                             if (m_selectionManager)
                             {
                                 m_selectionManager->selectObject(obj, false);

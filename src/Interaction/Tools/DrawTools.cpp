@@ -2,6 +2,7 @@
 // arc de poutres, poteaux aux intersections de grille. Les éléments reprennent les préréglages
 // de création (sections, matériaux, angle β) ; les nœuds existants sont réutilisés (1 mm).
 
+#include "DimensionTools.h"
 #include "ModifyTools.h"
 
 #include "../../Grid/GridManager.h"
@@ -433,6 +434,7 @@ void registerBuiltInModelingTools(ModelingToolRegistry& registry)
 {
     registerModifyTools(registry);
     registerDrawTools(registry);
+    registerDimensionTools(registry);
 }
 
 } // namespace TSA::Interaction

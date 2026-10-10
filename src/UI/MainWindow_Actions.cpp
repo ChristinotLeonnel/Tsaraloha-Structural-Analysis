@@ -593,6 +593,7 @@ void MainWindow::createActions()
     connect(m_actionRotate3D, &QAction::triggered, this, &MainWindow::onActionRotate3D);
 
     createModelingToolActions();
+    createDimensionActions();
 
     m_actionMirror = new QAction(tr("&Symétrie (Miroir)..."), this);
     m_actionMirror->setIcon(QIcon(":/icons/edit/mirror.svg"));
@@ -932,6 +933,7 @@ void MainWindow::createMenus()
         for (const auto& tool : m_toolRegistry->instances())
         {
             QAction* a = m_toolActions[tool->id()];
+            if (tool->category() == TSA::Interaction::ToolCategory::Annotate) continue;
             (tool->category() == TSA::Interaction::ToolCategory::Draw ? drawMenu : modifyMenu)->addAction(a);
         }
         editMenu->addAction(m_actionToolInputViewport);
@@ -1003,6 +1005,19 @@ void MainWindow::createMenus()
     surfSub->addAction(m_actionDrawSlab);
     surfSub->addAction(m_actionDrawWall);
     surfSub->addAction(m_actionFooting);
+
+    {
+        QMenu* dimSub = modelMenu->addMenu(QIcon(":/icons/dimensions/dim_aligned.svg"), tr("Cotation"));
+        for (const auto& tool : m_toolRegistry->instances())
+            if (tool->category() == TSA::Interaction::ToolCategory::Annotate) dimSub->addAction(m_toolActions[tool->id()]);
+        dimSub->addSeparator();
+        dimSub->addAction(m_actionEditDimension);
+        dimSub->addAction(m_actionDeleteDimensions);
+        dimSub->addAction(m_actionCleanDimensions);
+        dimSub->addSeparator();
+        dimSub->addAction(m_actionDimensionsVisible);
+        dimSub->addAction(m_actionDimensionStyle);
+    }
 
     modelMenu->addSeparator();
     modelMenu->addAction(m_actionDrawNode);
@@ -1284,6 +1299,10 @@ void MainWindow::createRibbon()
         if (m_toolActions.count(id)) acts.advancedModifyTools.push_back(m_toolActions[id]);
     for (const auto& tool : m_toolRegistry->instances())
         if (tool->category() == TSA::Interaction::ToolCategory::Draw) acts.drawTools.push_back(m_toolActions[tool->id()]);
+    for (const auto& tool : m_toolRegistry->instances())
+        if (tool->category() == TSA::Interaction::ToolCategory::Annotate) acts.dimensionTools[tool->id()] = m_toolActions[tool->id()];
+    acts.dimensionCommands = { m_actionEditDimension, m_actionDeleteDimensions, m_actionCleanDimensions, m_actionDimensionsVisible,
+                               m_actionDimensionStyle };
     acts.actionMoveOrigin = m_actionMoveOrigin;
     acts.actionDelete = m_actionDelete;
 

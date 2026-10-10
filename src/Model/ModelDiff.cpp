@@ -171,6 +171,7 @@ bool isCableDifferent(const Cable& a, const Cable& b, const std::set<int>& moved
 ModelDiff ModelDiff::compute(const Model::ModelStateSnapshot& before, const Model::ModelStateSnapshot& after)
 {
     ModelDiff diff;
+    diff.dimensionsChanged = !(before.dimensions == after.dimensions);
     std::set<int> movedNodes;
 
     // 1. Nœuds

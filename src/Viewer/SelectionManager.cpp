@@ -96,6 +96,45 @@ void SelectionManager::registerMemberLoad(int loadId, const Handle(AIS_Interacti
     m_objToMemberLoad[obj] = loadId;
 }
 
+void SelectionManager::registerDimension(int dimensionId, const Handle(AIS_InteractiveObject)& obj)
+{
+    if (obj.IsNull()) return;
+    m_dimensionToObjs[dimensionId].push_back(obj);
+    m_objToDimension[obj] = dimensionId;
+}
+
+void SelectionManager::unregisterDimension(int dimensionId)
+{
+    auto it = m_dimensionToObjs.find(dimensionId);
+    if (it != m_dimensionToObjs.end())
+    {
+        for (const auto& obj : it->second) m_objToDimension.erase(obj);
+        m_dimensionToObjs.erase(it);
+    }
+}
+
+int SelectionManager::getDimensionId(const Handle(AIS_InteractiveObject)& obj) const
+{
+    auto it = m_objToDimension.find(obj);
+    return (it != m_objToDimension.end()) ? it->second : -1;
+}
+
+bool SelectionManager::isModelObject(const Handle(AIS_InteractiveObject)& obj) const
+{
+    const SelectionType type = elementOf(obj).first;
+    return type != SelectionType::None && type != SelectionType::Dimension;
+}
+
+void SelectionManager::selectDimension(int dimensionId, bool multiSelect)
+{
+    if (!multiSelect) clearElementSets();
+    m_selectedDimensions.insert(dimensionId);
+    m_selectionType = SelectionType::Dimension;
+    m_primaryId = dimensionId;
+    emit dimensionSelected(dimensionId);
+    emit selectionChanged();
+}
+
 void SelectionManager::unregisterWorkPlane(int workPlaneId)
 {
     auto it = m_workPlaneToObj.find(workPlaneId);
@@ -262,6 +301,8 @@ void SelectionManager::clearRegistry()
     m_objToNodalLoad.clear();
     m_memberLoadToObjs.clear();
     m_objToMemberLoad.clear();
+    m_dimensionToObjs.clear();
+    m_objToDimension.clear();
 }
 
 int SelectionManager::getNodeId(const Handle(AIS_InteractiveObject)& obj) const
@@ -431,6 +472,7 @@ void SelectionManager::selectNode(int nodeId, bool multiSelect)
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
         m_selectedCables.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedNodes.insert(nodeId);
     m_selectionType = SelectionType::Node;
@@ -452,6 +494,7 @@ void SelectionManager::selectBeam(int beamId, bool multiSelect)
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
         m_selectedCables.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedBeams.insert(beamId);
     m_selectionType = SelectionType::Beam;
@@ -473,6 +516,7 @@ void SelectionManager::selectColumn(int columnId, bool multiSelect)
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
         m_selectedCables.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedColumns.insert(columnId);
     m_selectionType = SelectionType::Column;
@@ -494,6 +538,7 @@ void SelectionManager::selectSlab(int slabId, bool multiSelect)
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
         m_selectedCables.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedSlabs.insert(slabId);
     m_selectionType = SelectionType::Slab;
@@ -515,6 +560,7 @@ void SelectionManager::selectWall(int wallId, bool multiSelect)
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
         m_selectedCables.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedWalls.insert(wallId);
     m_selectionType = SelectionType::Wall;
@@ -536,6 +582,7 @@ void SelectionManager::selectFoundation(int foundationId, bool multiSelect)
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
         m_selectedCables.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedFoundations.insert(foundationId);
     m_selectionType = SelectionType::Foundation;
@@ -557,6 +604,7 @@ void SelectionManager::selectTrussMember(int memberId, bool multiSelect)
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
         m_selectedCables.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedTrussMembers.insert(memberId);
     m_selectionType = SelectionType::TrussMember;
@@ -578,6 +626,7 @@ void SelectionManager::selectCable(int cableId, bool multiSelect)
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
         m_selectedCables.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedCables.insert(cableId);
     m_selectionType = SelectionType::Cable;
@@ -599,6 +648,7 @@ void SelectionManager::selectWorkPlane(int workPlaneId, bool multiSelect)
         m_selectedFoundations.clear();
         m_selectedTrussMembers.clear();
         m_selectedCables.clear();
+        m_selectedDimensions.clear();
     }
     m_selectionType = SelectionType::WorkPlane;
     m_primaryId = workPlaneId;
@@ -621,6 +671,7 @@ void SelectionManager::selectNodalLoad(int loadId, bool multiSelect)
         m_selectedCables.clear();
         m_selectedNodalLoads.clear();
         m_selectedMemberLoads.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedNodalLoads.insert(loadId);
     m_selectionType = SelectionType::NodalLoad;
@@ -644,6 +695,7 @@ void SelectionManager::selectMemberLoad(int loadId, bool multiSelect)
         m_selectedCables.clear();
         m_selectedNodalLoads.clear();
         m_selectedMemberLoads.clear();
+        m_selectedDimensions.clear();
     }
     m_selectedMemberLoads.insert(loadId);
     m_selectionType = SelectionType::MemberLoad;
@@ -660,6 +712,9 @@ void SelectionManager::selectObject(const Handle(AIS_InteractiveObject)& obj, bo
         clearSelection();
         return;
     }
+
+    int dimId = getDimensionId(obj);
+    if (dimId > 0) { selectDimension(dimId, multiSelect); return; }
 
     int wpId = getWorkPlaneId(obj);
     if (wpId > 0) { selectWorkPlane(wpId, multiSelect); return; }
@@ -733,6 +788,7 @@ void SelectionManager::clearSelection()
     m_selectedCables.clear();
     m_selectedNodalLoads.clear();
     m_selectedMemberLoads.clear();
+    m_selectedDimensions.clear();
     m_primaryId = -1;
     m_selectionType = SelectionType::None;
 
@@ -829,6 +885,7 @@ bool SelectionManager::pruneMissing(const TSA::Model::Model& model)
     prune(m_selectedCables, [&](int id) { return model.getCable(id) != nullptr; });
     prune(m_selectedNodalLoads, [&](int id) { return model.loadManager().getNodalLoad(id) != nullptr; });
     prune(m_selectedMemberLoads, [&](int id) { return model.loadManager().getMemberLoad(id) != nullptr; });
+    prune(m_selectedDimensions, [&](int id) { return model.dimensions().items.count(id) > 0; });
     if (!changed) return false;
     if (m_primaryId < 0) m_selectionType = SelectionType::None;
     choosePrimaryIfNeeded();
@@ -860,6 +917,7 @@ std::set<int>* SelectionManager::selectionSet(SelectionType type)
     case SelectionType::Cable: return &m_selectedCables;
     case SelectionType::NodalLoad: return &m_selectedNodalLoads;
     case SelectionType::MemberLoad: return &m_selectedMemberLoads;
+    case SelectionType::Dimension: return &m_selectedDimensions;
     default: return nullptr;
     }
 }
@@ -868,6 +926,7 @@ std::pair<SelectionType, int> SelectionManager::elementOf(const Handle(AIS_Inter
 {
     if (obj.IsNull()) return { SelectionType::None, -1 };
     // Même ordre de recherche que selectObject.
+    if (int id = getDimensionId(obj); id > 0) return { SelectionType::Dimension, id };
     if (int id = getBeamId(obj); id > 0) return { SelectionType::Beam, id };
     if (int id = getColumnId(obj); id > 0) return { SelectionType::Column, id };
     if (int id = getSlabId(obj); id > 0) return { SelectionType::Slab, id };
@@ -893,6 +952,7 @@ void SelectionManager::clearElementSets()
     m_selectedCables.clear();
     m_selectedNodalLoads.clear();
     m_selectedMemberLoads.clear();
+    m_selectedDimensions.clear();
     m_primaryId = -1;
     m_selectionType = SelectionType::None;
 }
@@ -917,6 +977,7 @@ void SelectionManager::choosePrimaryIfNeeded()
     pick(m_selectedNodes, SelectionType::Node);
     pick(m_selectedNodalLoads, SelectionType::NodalLoad);
     pick(m_selectedMemberLoads, SelectionType::MemberLoad);
+    pick(m_selectedDimensions, SelectionType::Dimension);
 }
 
 void SelectionManager::notifySelectionSetChanged()
@@ -943,6 +1004,7 @@ void SelectionManager::notifySelectionSetChanged()
         case SelectionType::Cable: emit cableSelected(m_primaryId); break;
         case SelectionType::NodalLoad: emit nodalLoadSelected(m_primaryId); break;
         case SelectionType::MemberLoad: emit memberLoadSelected(m_primaryId); break;
+        case SelectionType::Dimension: emit dimensionSelected(m_primaryId); break;
         default: break;
         }
     }

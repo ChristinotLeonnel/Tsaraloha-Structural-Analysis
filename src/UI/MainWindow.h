@@ -383,6 +383,13 @@ private:
     TSA::Topology::NumberingInput topologyNumberingInput() const;
     void applyTopologyDisplay(const TSA::Topology::TopologySettings& settings);
     void applyTopologyDisplayFromModel();
+    void createDimensionActions();
+    void syncDimensionActions();
+    QAction* m_actionDimensionsVisible = nullptr;
+    QAction* m_actionEditDimension = nullptr;
+    QAction* m_actionDeleteDimensions = nullptr;
+    QAction* m_actionDimensionStyle = nullptr;
+    QAction* m_actionCleanDimensions = nullptr;
     QAction* m_actionTopology = nullptr;    ///< Paramètres du projet → Topologie et numérotation
     QAction* m_actionImportIfc = nullptr;
     QAction* m_actionSplitBars = nullptr;
@@ -614,6 +621,12 @@ private slots:
     void onActionExportIfc();
     /// Paramètres du projet → Topologie et numérotation.
     void onActionTopologySettings();
+    // Cotations 3D (MainWindow_Dimensions.cpp)
+    void onToggleDimensionsVisible(bool visible);
+    void onEditDimension();
+    void onDeleteDimensions();
+    void onDimensionStyle();
+    void onCleanDimensions();
     void onActionImportIfc();
     void onActionSplitBars();
     void onActionMergeNodes();

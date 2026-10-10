@@ -79,11 +79,14 @@ struct ModelDiff
     std::vector<int> modifiedCableIds;
     std::vector<int> deletedCableIds;
 
+    /// Cotations différentes entre les deux états (vues : reconstruction des cotations).
+    bool dimensionsChanged = false;
+
     bool isEmpty() const
     {
         return nodes.isEmpty() && beams.isEmpty() && columns.isEmpty() &&
                slabs.isEmpty() && walls.isEmpty() && foundations.isEmpty() &&
-               trussMembers.isEmpty() && cables.isEmpty();
+               trussMembers.isEmpty() && cables.isEmpty() && !dimensionsChanged;
     }
 
     size_t totalChanges() const

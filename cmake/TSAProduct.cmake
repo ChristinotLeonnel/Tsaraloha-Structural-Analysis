@@ -58,6 +58,7 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Transform.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Bim.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Topology.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_Dimensions.cpp
     ${TSA_ROOT}/src/UI/MainWindow_ModelingTools.cpp
 )
 
@@ -100,6 +101,8 @@ set(UI_PROPERTIES_SOURCES
 
 # --- Boîtes de dialogue -------------------------------------------------------
 set(UI_DIALOGS_SOURCES
+    ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.h
+    ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.cpp
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.cpp
     ${TSA_ROOT}/src/UI/HelpLauncher.h
@@ -364,6 +367,8 @@ set(VIEWER_MAIN_SOURCES
 
 # --- Matériaux visuels, projection et navigation de vue — [CORE] --------------
 set(VIEWER_CORE_SOURCES
+    ${TSA_ROOT}/src/Viewer/DimensionRenderer.h
+    ${TSA_ROOT}/src/Viewer/DimensionRenderer.cpp
     ${TSA_ROOT}/src/Viewer/MaterialVisual.h
     ${TSA_ROOT}/src/Viewer/MaterialVisual.cpp
     ${TSA_ROOT}/src/Viewer/TextureManager.h
@@ -667,6 +672,8 @@ set(INTERACTION_SOURCES
     ${TSA_ROOT}/src/Interaction/Tools/ModifyTools.h
     ${TSA_ROOT}/src/Interaction/Tools/ModifyTools.cpp
     ${TSA_ROOT}/src/Interaction/Tools/DrawTools.cpp
+    ${TSA_ROOT}/src/Interaction/Tools/DimensionTools.h
+    ${TSA_ROOT}/src/Interaction/Tools/DimensionTools.cpp
     ${TSA_ROOT}/src/Model/ModelElementCopy.h
 )
 
@@ -723,6 +730,12 @@ set(RESOURCES_SOURCES
 #   TSA_APP_SOURCES            -> TSA          : fenêtre de TSA (MainWindow, ruban, AppShell, Start Center)
 # =============================================================================
 set(TSARALOHA_MODEL_SOURCES
+    ${TSA_ROOT}/src/Annotation/Dimension.h
+    ${TSA_ROOT}/src/Annotation/Dimension.cpp
+    ${TSA_ROOT}/src/Annotation/DimensionGeometry.h
+    ${TSA_ROOT}/src/Annotation/DimensionGeometry.cpp
+    ${TSA_ROOT}/src/Annotation/DimensionService.h
+    ${TSA_ROOT}/src/Annotation/DimensionService.cpp
     ${TSA_ROOT}/src/Topology/TopologySettings.h
     ${TSA_ROOT}/src/Topology/TopologySettings.cpp
     ${TSA_ROOT}/src/Topology/NumberingStrategies.h
@@ -903,6 +916,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_appearance.cpp
     ${TSA_ROOT}/tests/test_group_edit.cpp
     ${TSA_ROOT}/tests/test_topology.cpp
+    ${TSA_ROOT}/tests/test_dimensions.cpp
     ${TSA_ROOT}/tests/test_blueprint.cpp
     ${TSA_ROOT}/resources/resources.qrc
 )

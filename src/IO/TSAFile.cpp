@@ -145,6 +145,10 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     {
         writeJsonChunk(payload, CHUNK_TOPO, model.topologySettingsJson());
     }
+    if (!model.dimensions().items.empty() || !(model.dimensions().style == TSA::Annotation::DimensionStyle()))
+    {
+        writeJsonChunk(payload, CHUNK_DIMS, model.dimensions().toJson());
+    }
 
     // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> snapshotsToSave = model.calculationSnapshots();
@@ -609,6 +613,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     TSA::BIM::BimModel loadedBim;
     std::string loadedSettings;
     std::string loadedTopology;
+    std::string loadedDimensions;
     std::string loadedCoordinates, loadedGrids;
     bool hasCoordinates = false, hasGrids = false;
 
@@ -694,6 +699,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             // tolérante par TopologySettings::fromJson.
             loadedTopology.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
+        case CHUNK_DIMS:
+            // Facultatif (format ≥ 1.6) : sans lui (anciens projets), aucune cotation.
+            loadedDimensions.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
         default:
             // Chunk inconnu (version future) : ignoré en toute sécurité grâce à chunkSize
             break;
@@ -752,6 +761,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     if (hasGrids && gridManager) gridManager->deserializeFromJson(loadedGrids);
 
     // Application dans le modèle -> déclenche automatiquement onModelCleared() chez tous les observateurs (OccView, ModelTree)
+    snapshot.dimensions = TSA::Annotation::DimensionSet::fromJson(loadedDimensions);
     model.restoreSnapshot(snapshot);
     model.setAnalysisSettingsJson(loadedSettings);
     model.setTopologySettingsJson(loadedTopology);

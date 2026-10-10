@@ -2,6 +2,20 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Cotations 3D)
+
+### Added
+- Ruban Outils > Cotation et menu Modélisation > Cotation : cotations alignée, linéaire (axe automatique),
+  horizontale, X, Y, Z, angulaire, de niveau, en chaîne, cumulée ; modifier, supprimer (Suppr), supprimer les
+  invalides, afficher / masquer, style (unité, décimales, arrondi, texte, flèches, lignes d'attache, référence des
+  niveaux, couleur, texte dans le plan). Rayon / diamètre non proposés (pas de géométrie circulaire).
+- Saisie par les outils du registre (accrochage, aperçu, décalage au clavier) ; points accrochés aux nœuds
+  associatifs (valeur recalculée au déplacement) ; nœud supprimé → référence invalide en rouge, réassociable ou
+  supprimable ; Annuler / Rétablir.
+- Rendu OCCT : calque supérieur, flèches et texte à taille constante, texte face à la caméra ou dans le plan.
+- Annotations seulement : révision du modèle inchangée (résultats conservés), absentes du calcul.
+- Chunk DIMS (format 1.6) ; anciens projets ouverts sans cotation. docs/DIMENSIONS.md. Tests 237-249 (total 270).
+
 ## 2026-10-10 (Topologie et numérotation des nœuds et des éléments)
 
 ### Added

@@ -48,6 +48,16 @@ QString iconFor(const std::string& id)
         { "draw_x_bracing", ":/icons/tools/x_bracing.svg" },
         { "draw_beam_arc", ":/icons/tools/beam_arc.svg" },
         { "draw_grid_columns", ":/icons/tools/grid_columns.svg" },
+        { "dim_aligned", ":/icons/dimensions/dim_aligned.svg" },
+        { "dim_linear", ":/icons/dimensions/dim_linear.svg" },
+        { "dim_horizontal", ":/icons/dimensions/dim_horizontal.svg" },
+        { "dim_x", ":/icons/dimensions/dim_x.svg" },
+        { "dim_y", ":/icons/dimensions/dim_y.svg" },
+        { "dim_z", ":/icons/dimensions/dim_z.svg" },
+        { "dim_angular", ":/icons/dimensions/dim_angular.svg" },
+        { "dim_level", ":/icons/dimensions/dim_level.svg" },
+        { "dim_chain", ":/icons/dimensions/dim_chain.svg" },
+        { "dim_cumulative", ":/icons/dimensions/dim_cumulative.svg" },
     };
     auto it = icons.find(id);
     return it != icons.end() ? it->second : QString();
@@ -205,6 +215,20 @@ void MainWindow::applyActiveModelingTool()
     const bool fromViewport = m_occView && m_occView->activeModelingTool() == m_activeTool.get();
     const TSA::Interaction::ToolContext ctx = modelingToolContext();
     const QString name = QString::fromStdString(m_activeTool->name());
+
+    if (m_activeTool->category() == TSA::Interaction::ToolCategory::Annotate)
+    {
+        // Cotation : annotation ajoutée par Annotation::addDimension (sa propre entrée Annuler, révision
+        // inchangée : les résultats de calcul restent valides). Pas de transaction géométrique.
+        const TSA::Interaction::ToolResult result = m_activeTool->apply(*m_model, ctx);
+        const QString message = QString::fromStdString(result.message);
+        if (m_consoleDock) m_consoleDock->appendLog(QStringLiteral("%1 : %2").arg(name, message), result.success ? "INFO" : "WARN");
+        if (m_statusInfo) m_statusInfo->setText(QStringLiteral("%1 : %2").arg(name, message));
+        updateUndoRedoActions();
+        updateWindowTitle();
+        if (fromViewport) m_occView->modelingToolApplied(true);
+        return;
+    }
 
     TSA::UndoRedo::EditTransaction tx(*m_model, m_activeTool->name());
     const TSA::Interaction::ToolResult result = m_activeTool->apply(*m_model, ctx);

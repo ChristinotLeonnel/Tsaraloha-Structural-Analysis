@@ -29,6 +29,7 @@ namespace TSA::Viewer
 {
     class SelectionManager;
     class ResultsVisualManager;
+    class DimensionRenderer;
 }
 
 namespace TSA::Grid
@@ -516,6 +517,21 @@ protected:
 
     void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;
+    void onDimensionsChanged(const std::vector<int>& ids) override;
+
+public:
+    /// Rendu des cotations 3D (src/Viewer/DimensionRenderer) ; reconstruit toutes les cotations.
+    void rebuildDimensions();
+    TSA::Viewer::DimensionRenderer* dimensionRenderer() const { return m_dimensionRenderer.get(); }
+
+private:
+    /// Cotations qui suivent ces nœuds (déplacés) : mises à jour.
+    void refreshDimensionsForNodes(const std::vector<int>& nodeIds);
+    /// Objet détecté au clic ; une cotation cède la place à un élément du modèle détecté au même endroit
+    /// (lignes d'attache au ras des nœuds, ligne de cote croisant une barre).
+    Handle(AIS_InteractiveObject) detectedPreferringModel();
+
+protected:
     /// Après toute modification : sélection débarrassée des éléments supprimés (différé, regroupé).
     void onModelEdited() override;
     void onModelDestroyed() override { m_model = nullptr; }
@@ -733,5 +749,6 @@ private:
     void finishBarSegment(int endNodeId, bool created);
     TSA::Viewer::RenderDisplayMode m_renderDisplayMode = TSA::Viewer::RenderDisplayMode::Materials;
     std::unique_ptr<TSA::Viewer::ResultsVisualManager> m_resultsVisual;
+    std::unique_ptr<TSA::Viewer::DimensionRenderer> m_dimensionRenderer;
     QTimer* m_redrawTimer = nullptr;
 };
