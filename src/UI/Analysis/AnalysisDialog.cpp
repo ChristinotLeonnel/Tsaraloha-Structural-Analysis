@@ -1,6 +1,7 @@
 #include "AnalysisDialog.h"
 
 #include "AnalysisEngineOptions.h"
+#include "../HelpLauncher.h"
 #include "../../Coordinate/LevelManager.h"
 #include "../../Model/Load/LoadManager.h"
 #include "../../Model/Model.h"
@@ -152,6 +153,7 @@ void AnalysisDialog::buildUi()
     m_runButton->setDefault(true);
     auto* ok = new QPushButton(tr("Enregistrer et fermer"), this);
     auto* cancel = new QPushButton(tr("Annuler"), this);
+    if (auto* help = TSA::UI::createHelpButton(this, QStringLiteral("analysis.overview"))) buttons->addWidget(help);
     buttons->addWidget(validate);
     buttons->addStretch(1);
     buttons->addWidget(cancel);

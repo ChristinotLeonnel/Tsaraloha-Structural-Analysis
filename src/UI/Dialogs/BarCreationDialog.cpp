@@ -1,4 +1,5 @@
 #include "BarCreationDialog.h"
+#include "../HelpLauncher.h"
 #include <QEvent>
 #include "App/ProductInfo.h"
 #include "SectionCustomizationDialog.h"
@@ -201,6 +202,8 @@ void BarCreationDialog::setupUi()
     m_btnClose = new QPushButton(tr("Fermer"), this);
     m_btnClose->setIcon(QIcon(":/icons/cancel.svg"));
     m_btnHelp = new QPushButton(tr("Aide"), this);
+    m_btnHelp->setObjectName(QStringLiteral("helpButton"));
+    m_btnHelp->setProperty("helpTopic", QStringLiteral("model.members"));
     m_btnHelp->setIcon(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)));
 
     btnLayout->addWidget(m_btnAdd);
@@ -578,6 +581,8 @@ void BarCreationDialog::onCustomSectionRequested()
 
 void BarCreationDialog::onHelpClicked()
 {
+    // Documentation en ligne ; l'aide locale ci-dessous reste le repli d'un produit sans site d'aide.
+    if (TSA::UI::openHelpTopic(this, QStringLiteral("model.members")) != TSA::UI::HelpOpenResult::NotConfigured) return;
     QMessageBox::information(this, tr("Aide - Outil Barres"),
         tr("<b>Outil de création de Barres (type Robot Structural Analysis) :</b><br><br>"
            "1. Choisissez le <b>Type</b> (Poutre, Poteau, Diagonale, etc.), la <b>Section</b> et l'<b>Angle γ</b>.<br>"

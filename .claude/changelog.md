@@ -2,6 +2,20 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Aide contextuelle vers la documentation en ligne)
+
+### Added
+- Registre central des identifiants d'aide (`src/Help/HelpTopics.cpp`, 33 entrées) et construction des adresses de la
+  documentation en ligne : HTTPS et domaine officiel uniquement (`kDocsBaseUrl` de `product/ProductIdentity.h`), seuls
+  la langue et la version de TSA transmises, identifiant inconnu → accueil `/docs`. TSALab : `kDocsBaseUrl` vide, les
+  fenêtres gardent leur aide locale.
+- `src/UI/HelpLauncher` : ouverture par `QDesktopServices::openUrl`, message non bloquant avec l'adresse si le navigateur
+  ne s'ouvre pas ; boutons Aide (charges sur barre, charges nodales, cas de charge, analyse) ; menu Aide et ruban :
+  « Documentation en ligne », « Signaler un problème ». Tests 214-218 (suite `help`, total 239).
+
+### Fixed
+- BUG-064 : bouton Aide de la fenêtre Grille relié (il était créé sans connexion).
+
 ## 2026-10-10 (Sélection multiple Ctrl + clic)
 
 ### Fixed

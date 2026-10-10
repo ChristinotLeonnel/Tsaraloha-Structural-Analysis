@@ -33,6 +33,7 @@
 #include "Widgets/ProjectStatusOverlay.h"
 #include "Diagrams/Diagram2DWidget.h"
 #include "../NDC/NDCViewerWidget.h"
+#include "HelpLauncher.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -644,6 +645,22 @@ void MainWindow::createActions()
     m_actionHelp->setToolTip(tr("Ouvrir le centre d'aide, guide et documentation"));
     connect(m_actionHelp, &QAction::triggered, this, &MainWindow::onActionHelp);
 
+    // Documentation en ligne (TSA Web) : identifiants d'aide de src/Help/HelpTopics.cpp. Absentes si
+    // le produit n'a pas de site d'aide configuré (ProductIdentity.h : kDocsBaseUrl vide).
+    if (TSA::UI::isOnlineHelpAvailable())
+    {
+        m_actionOnlineDocs = new QAction(tr("&Documentation en ligne..."), this);
+        m_actionOnlineDocs->setIcon(makeHelpIcon());
+        m_actionOnlineDocs->setToolTip(tr("Ouvrir la documentation de %1 dans le navigateur").arg(TSA::Product::name()));
+        connect(m_actionOnlineDocs, &QAction::triggered, this,
+                [this]() { TSA::UI::openHelpTopic(this, QStringLiteral("general.overview")); });
+
+        m_actionReportProblem = new QAction(tr("&Signaler un problème..."), this);
+        m_actionReportProblem->setToolTip(tr("Procédure de signalement d'un bug (documentation en ligne)"));
+        connect(m_actionReportProblem, &QAction::triggered, this,
+                [this]() { TSA::UI::openHelpTopic(this, QStringLiteral("troubleshooting.report")); });
+    }
+
     m_actionShortcuts = new QAction(tr("&Raccourcis Clavier..."), this);
     m_actionShortcuts->setIcon(makeShortcutsIcon());
     m_actionShortcuts->setToolTip(tr("Afficher la liste des raccourcis clavier et commandes console (F1)"));
@@ -1193,8 +1210,10 @@ void MainWindow::createMenus()
 
     // 10. Menu Aide
     QMenu* helpMenu = menuBar()->addMenu(tr("&Aide"));
+    if (m_actionOnlineDocs) helpMenu->addAction(m_actionOnlineDocs);
     helpMenu->addAction(m_actionHelp);
     helpMenu->addAction(m_actionShortcuts);
+    if (m_actionReportProblem) helpMenu->addAction(m_actionReportProblem);
     helpMenu->addSeparator();
     helpMenu->addAction(m_actionExportDiagnostic);
     helpMenu->addSeparator();
@@ -1374,6 +1393,7 @@ void MainWindow::createRibbon()
     acts.actionMeasure = m_actionMeasure;
     acts.actionToggleTheme = m_actionToggleTheme;
     acts.actionHelp = m_actionHelp;
+    acts.actionOnlineDocs = m_actionOnlineDocs;
     acts.actionShortcuts = m_actionShortcuts;
     acts.actionAbout = m_actionAbout;
 

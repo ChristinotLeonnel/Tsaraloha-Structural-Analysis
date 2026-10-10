@@ -28,6 +28,10 @@ inline constexpr char kConsoleBanner[] = "TSA Structural Analysis Modeler initia
 inline constexpr char kStartCenterSubtitle[] = "Structural Analysis";
 inline constexpr char kAboutIntroHtml[] = "";                             // paragraphe « À propos » propre au produit
 inline constexpr char kPlatformLabel[] = "TSA - Plateforme de Conception & Calcul de Structures 3D";
+// Documentation en ligne officielle (TSA Web, GitHub Pages) : seule destination autorisée des boutons
+// Aide (src/Help/HelpTopics). Adresse reprise de la configuration du site (src/config/deployment.json
+// du dépôt Tsaraloha-Web) ; HTTPS obligatoire, sans barre oblique finale.
+inline constexpr char kDocsBaseUrl[] = "https://christinotleonnel.github.io/Tsaraloha-Web";
 inline constexpr char kHttpUserAgent[] = "TSA-Structural-Analysis";
 inline constexpr char kIfcOriginatingSystem[] = "TSA - Tsaraloha Structural Analysis";
 inline constexpr char kPreviewBadge[] = "TSA 3D";

@@ -99,6 +99,8 @@ set(UI_PROPERTIES_SOURCES
 
 # --- Boîtes de dialogue -------------------------------------------------------
 set(UI_DIALOGS_SOURCES
+    ${TSA_ROOT}/src/UI/HelpLauncher.h
+    ${TSA_ROOT}/src/UI/HelpLauncher.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/GridDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridSettingsDialog.h
@@ -718,6 +720,8 @@ set(RESOURCES_SOURCES
 #   TSA_APP_SOURCES            -> TSA          : fenêtre de TSA (MainWindow, ruban, AppShell, Start Center)
 # =============================================================================
 set(TSARALOHA_MODEL_SOURCES
+    ${TSA_ROOT}/src/Help/HelpTopics.h
+    ${TSA_ROOT}/src/Help/HelpTopics.cpp
     ${TSA_ROOT}/src/Automation/CommandRegistry.h
     ${TSA_ROOT}/src/Automation/CommandRegistry.cpp
     ${TSA_ROOT}/src/Automation/AutomationServer.h
@@ -886,6 +890,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_bim.cpp
     ${TSA_ROOT}/tests/test_snap.cpp
     ${TSA_ROOT}/tests/test_automation.cpp
+    ${TSA_ROOT}/tests/test_help.cpp
     ${TSA_ROOT}/tests/test_blueprint.cpp
     ${TSA_ROOT}/resources/resources.qrc
 )

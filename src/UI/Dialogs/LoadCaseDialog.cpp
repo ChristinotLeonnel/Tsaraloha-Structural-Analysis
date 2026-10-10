@@ -1,4 +1,5 @@
 #include "LoadCaseDialog.h"
+#include "../HelpLauncher.h"
 #include "../../Model/Model.h"
 #include "../../Model/Load/LoadManager.h"
 #include "../../Analysis/LoadValidation.h"
@@ -119,6 +120,7 @@ void LoadCaseDialog::setupUI()
 
     auto* bottomBtnLayout = new QHBoxLayout();
     auto* btnClose = new QPushButton(tr("Fermer"), this);
+    if (auto* help = TSA::UI::createHelpButton(this, QStringLiteral("loading.cases"))) bottomBtnLayout->addWidget(help);
     bottomBtnLayout->addStretch();
     bottomBtnLayout->addWidget(btnClose);
     mainLayout->addLayout(bottomBtnLayout);
