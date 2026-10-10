@@ -1,0 +1,12 @@
+{
+  "format": "TSA3D",
+  "version": "1.0",
+  "metadata": { "name": "Exemple minimal : une poutre" },
+  "materials": [ { "id": "S235", "type": "steel", "E": 210e9, "nu": 0.3, "density": 7850, "fk": 235e6 } ],
+  "sections": [ { "id": "IPE200", "shape": "i", "dimensions": { "b": 0.100, "h": 0.200, "tw": 0.0056, "tf": 0.0085 } } ],
+  "nodes": [
+    { "id": "N1", "position": [0, 0, 0], "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+    { "id": "N2", "position": [5, 0, 0] }
+  ],
+  "members": [ { "id": "B1", "type": "beam", "nodes": ["N1", "N2"], "section": "IPE200", "material": "S235" } ]
+}

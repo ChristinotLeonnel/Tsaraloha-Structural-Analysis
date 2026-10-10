@@ -73,6 +73,8 @@ struct ReportConfiguration
     QString customHeaderText = "TSA — Note de Calcul Structurale";
     bool enableFooter = true;
     bool enablePagination = true;      ///< Format "Page X sur Y"
+    /// Template de mise en page (schéma « tsa-ndc/1 », docs/TEMPLATES.md) ; introuvable ou invalide : générateur historique.
+    QString templateId = "tsa.ndc.standard";
 
     // =========================================================================
     // 3. SELECTION GRANULAIRE DES SECTIONS ET CONTENUS

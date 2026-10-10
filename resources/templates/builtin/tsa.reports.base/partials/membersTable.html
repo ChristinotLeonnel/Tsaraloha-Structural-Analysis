@@ -1,0 +1,6 @@
+<table>
+<tr><th>Barre</th><th>Type</th><th>Nœuds</th><th>Longueur</th><th>Section</th><th>Matériau</th></tr>
+{{#model.members}}
+<tr><td>{{ref}}</td><td>{{familyLabel}}</td><td>{{nodeI}} → {{nodeJ}}</td><td class="num">{{length}}</td><td>{{section}}</td><td>{{material}}</td></tr>
+{{/model.members}}
+</table>

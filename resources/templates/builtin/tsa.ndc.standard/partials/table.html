@@ -1,0 +1,21 @@
+<table id="tbl_{{number}}">
+<thead>
+<tr>
+{{#headers}}
+  <th style="text-align: {{{align}}};">{{{text}}}</th>
+{{/headers}}
+</tr>
+</thead>
+<tbody>
+{{#rows}}
+<tr>
+{{#cells}}
+  <td style="text-align: {{{align}}};">{{{text}}}</td>
+{{/cells}}
+</tr>
+{{/rows}}
+</tbody>
+</table>
+{{#caption}}
+<div class="caption">Tableau {{number}} — {{{caption}}}</div>
+{{/caption}}

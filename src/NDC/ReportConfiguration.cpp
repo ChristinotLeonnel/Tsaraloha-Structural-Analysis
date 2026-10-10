@@ -47,6 +47,7 @@ QJsonObject ReportConfiguration::toJson() const
     styleObj["customHeaderText"] = customHeaderText;
     styleObj["enableFooter"] = enableFooter;
     styleObj["enablePagination"] = enablePagination;
+    styleObj["templateId"] = templateId;
     root["style"] = styleObj;
 
     // 3. Sélection des chapitres
@@ -140,6 +141,7 @@ void ReportConfiguration::fromJson(const QJsonObject& json)
         if (st.contains("customHeaderText")) customHeaderText = st["customHeaderText"].toString();
         if (st.contains("enableFooter")) enableFooter = st["enableFooter"].toBool();
         if (st.contains("enablePagination")) enablePagination = st["enablePagination"].toBool();
+        if (st.contains("templateId")) templateId = st["templateId"].toString();
     }
 
     if (json.contains("chapters") && json["chapters"].isObject())

@@ -442,7 +442,15 @@ void CommandCatalog::initializeStandardCatalog() {
                    ":/icons/results_stress.svg", CommandCategory::Results});
   registerCommand({"cmd.report.ndc", "Note de calcul", "Ouvrir la note de calcul", "F8",
                    "", CommandCategory::Documentation});
+  registerCommand({"cmd.report.templates", "Documents par templates", "Rapports et notes produits par templates : aperçu, options, export, gestion", "",
+                   "", CommandCategory::Documentation});
   registerCommand({"cmd.bim.import_ifc", "Importer IFC", "Importer un modèle IFC", "Ctrl+I",
+                   "", CommandCategory::Bim});
+  registerCommand({"cmd.bim.import_tsa3d", "Importer TSA3D", "Créer un projet depuis un fichier TSA3D (format d'échange)", "",
+                   "", CommandCategory::Bim});
+  registerCommand({"cmd.bim.export_tsa3d", "Exporter TSA3D", "Exporter le modèle au format d'échange TSA3D", "",
+                   "", CommandCategory::Bim});
+  registerCommand({"cmd.bim.import_module", "Importer via un module", "Convertir un fichier avec un module puis l'importer (TSA3D)", "",
                    "", CommandCategory::Bim});
   registerCommand({"cmd.bim.export_ifc", "Exporter IFC", "Exporter le modèle en IFC", "Ctrl+E",
                    "", CommandCategory::Bim});
@@ -477,6 +485,8 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.help.shortcuts", "Liste des raccourcis", "Afficher la liste des raccourcis clavier", "F1",
                    ":/icons/common/shortcuts.svg", CommandCategory::Help});
   registerCommand({"cmd.help.shortcut_editor", "Personnaliser les raccourcis", "Ouvrir l'éditeur des raccourcis clavier", "Ctrl+F1",
+                   "", CommandCategory::Help});
+  registerCommand({"cmd.help.modules", "Modules", "Gérer les modules installés (état, approbation)", "",
                    "", CommandCategory::Help});
   registerCommand({"cmd.help.full", "Aide complète", "Ouvrir le centre d'aide", "Shift+F1",
                    "", CommandCategory::Help});

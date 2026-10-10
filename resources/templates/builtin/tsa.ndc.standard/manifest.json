@@ -1,0 +1,14 @@
+{
+  "id": "tsa.ndc.standard",
+  "name": "Note de calcul standard",
+  "version": "1.0.0",
+  "description": "Note de calcul complète (couverture, sommaire, listes des figures et tableaux, chapitres du générateur). Reproduit la mise en page historique de TSA.",
+  "author": "Tsaraloha",
+  "license": "Identique à l'application",
+  "engine": "tsa-template/1",
+  "dataSchema": "tsa-ndc/1",
+  "applications": ["TSA", "TSALab"],
+  "reports": [
+    { "id": "ndc", "name": "Note de calcul", "entry": "main.html", "requires": ["project.title", "chapters", "page", "style", "show"] }
+  ]
+}

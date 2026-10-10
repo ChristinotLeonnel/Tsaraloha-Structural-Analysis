@@ -1,4 +1,5 @@
 #include "TextureManager.h"
+#include "../Core/AppPaths.h"
 #include "App/ProductInfo.h"
 #include <QDir>
 #include <QFile>
@@ -46,7 +47,7 @@ void TextureManager::initialize(const QString& applicationDirPath)
     }
     if (appDir.isEmpty())
     {
-        appDir = QDir::currentPath();
+        appDir = TSA::Core::AppPaths::shippedExtensionsDir() + "/..";
     }
 
     // 1. Extensions/TSALib/Textures local à l'application
@@ -54,10 +55,7 @@ void TextureManager::initialize(const QString& applicationDirPath)
     if (QDir(appTex).exists() && !m_searchPaths.contains(appTex))
         m_searchPaths.append(appTex);
 
-    // 2. Extensions/TSALib/Textures dans le répertoire de travail
-    QString curTex = QDir(QDir::currentPath()).filePath("Extensions/TSALib/Textures");
-    if (QDir(curTex).exists() && !m_searchPaths.contains(curTex))
-        m_searchPaths.append(curTex);
+    // 2. (Le répertoire courant n'est plus consulté : imprévisible selon le mode de lancement.)
 
     // 3. Sources communes (poste de développement) : Extensions/TSALib/Textures
     const QString devTex = TSA::Product::sourceDirectory().isEmpty() ? QString()

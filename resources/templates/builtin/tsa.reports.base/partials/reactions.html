@@ -1,0 +1,16 @@
+{{#results.available}}
+<h3>Réactions d'appui</h3>
+{{#results.reactions.available}}
+<table>
+<tr><th>Nœud</th><th>Fx</th><th>Fy</th><th>Fz</th><th>Mx</th><th>My</th><th>Mz</th></tr>
+{{#results.reactions.rows}}
+<tr><td>{{node}}</td><td class="num">{{fx}}</td><td class="num">{{fy}}</td><td class="num">{{fz}}</td><td class="num">{{mx}}</td><td class="num">{{my}}</td><td class="num">{{mz}}</td></tr>
+{{/results.reactions.rows}}
+<tr><th>Somme</th><td class="num">{{results.reactions.sum.fx}}</td><td class="num">{{results.reactions.sum.fy}}</td><td class="num">{{results.reactions.sum.fz}}</td><td></td><td></td><td></td></tr>
+</table>
+<p class="muted">Forces en {{results.reactions.forceUnit}}, moments en {{results.reactions.momentUnit}}.</p>
+{{/results.reactions.available}}
+{{^results.reactions.available}}
+<p class="na">Réactions non disponibles : {{results.reactions.reason}}.</p>
+{{/results.reactions.available}}
+{{/results.available}}

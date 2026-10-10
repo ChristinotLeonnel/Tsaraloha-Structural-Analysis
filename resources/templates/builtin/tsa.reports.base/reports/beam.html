@@ -1,0 +1,17 @@
+{{! Rapport des poutres }}
+{{> head}}
+<body>
+{{> header}}
+{{> title}}
+{{> resultsStatus}}
+<h2>Poutres</h2>
+{{^model.beams}}
+<p class="na">Aucune poutre dans le modèle.</p>
+{{/model.beams}}
+{{#model.beams}}
+{{> member}}
+{{/model.beams}}
+{{> limits}}
+{{> footer}}
+</body>
+</html>

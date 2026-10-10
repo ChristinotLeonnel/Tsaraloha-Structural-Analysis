@@ -1,4 +1,5 @@
 #include "ExtensionPackager.h"
+#include "../Core/AppPaths.h"
 #include "LibraryManager.h"
 #include <QFile>
 #include <QFileInfo>
@@ -285,15 +286,9 @@ bool ExtensionPackager::installPackage(const QString& packagePath,
     QString targetDir = destinationDir;
     if (targetDir.isEmpty())
     {
-        auto searchPaths = LibraryManager::instance().searchPaths();
-        if (!searchPaths.isEmpty())
-        {
-            targetDir = searchPaths.first();
-        }
-        else
-        {
-            targetDir = QDir::currentPath() + "/Extensions";
-        }
+        // Installation dans le dossier de l'utilisateur : le dossier de l'application peut être en
+        // lecture seule (Program Files) et serait remplacé par une mise à jour.
+        targetDir = TSA::Core::AppPaths::userExtensionsDir();
         targetDir = QDir(targetDir).filePath(QString::fromStdString(inspection.manifest.id));
     }
 

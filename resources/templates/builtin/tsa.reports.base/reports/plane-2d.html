@@ -1,0 +1,25 @@
+{{! Rapport de structure plane (2D) }}
+{{> head}}
+<body>
+{{> header}}
+{{> title}}
+{{#model.geometry.planar}}
+<p class="status">Structure plane dans le plan {{model.geometry.plane}}.</p>
+{{> geometry}}
+<h2>Barres</h2>
+{{> membersTable}}
+{{> supports}}
+{{> loads}}
+<h2>Résultats</h2>
+{{> resultsStatus}}
+{{> displacements}}
+{{> reactions}}
+{{> forces}}
+{{/model.geometry.planar}}
+{{^model.geometry.planar}}
+<p class="na">Rapport non applicable : le modèle n'est pas contenu dans un plan (encombrement {{model.geometry.dx}} × {{model.geometry.dy}} × {{model.geometry.dz}}). Utiliser le rapport 3D.</p>
+{{/model.geometry.planar}}
+{{> limits}}
+{{> footer}}
+</body>
+</html>

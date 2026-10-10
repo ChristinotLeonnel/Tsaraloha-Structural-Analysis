@@ -1,4 +1,5 @@
 #include "ExtensionManagerDialog.h"
+#include "../../Core/AppPaths.h"
 #include "App/ProductInfo.h"
 #include "../../ExtensionSystem/LibraryManager.h"
 #include "../../ExtensionSystem/LibraryRegistry.h"
@@ -984,12 +985,8 @@ void ExtensionManagerDialog::onExportExtension()
 
 void ExtensionManagerDialog::onOpenExtensionsFolder()
 {
-    QString path = TSA::Product::sourceDirectory() + "/Extensions";
-    if (TSA::Product::sourceDirectory().isEmpty() || !QDir(path).exists())
-    {
-        path = QDir::currentPath() + "/Extensions";
-    }
-    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    // Dossier où s'installent les extensions de l'utilisateur (conservé lors des mises à jour).
+    QDesktopServices::openUrl(QUrl::fromLocalFile(TSA::Core::AppPaths::userExtensionsDir()));
 }
 
 } // namespace TSA::UI

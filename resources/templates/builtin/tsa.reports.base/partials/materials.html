@@ -1,0 +1,10 @@
+<h2>Matériaux</h2>
+{{^model.materials}}
+<p class="na">Aucun matériau : le modèle ne contient pas de barre.</p>
+{{/model.materials}}
+<table>
+<tr><th>Matériau</th><th>E</th><th>ν</th><th>Masse volumique</th><th>Résistance fk</th></tr>
+{{#model.materials}}
+<tr><td>{{name}}</td><td class="num">{{E}}</td><td class="num">{{nu}}</td><td class="num">{{density}}</td><td class="num">{{fk}}</td></tr>
+{{/model.materials}}
+</table>

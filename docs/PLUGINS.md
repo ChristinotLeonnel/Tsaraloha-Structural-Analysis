@@ -48,4 +48,9 @@ Exemple complet : `TSALab/plugins/sample/SamplePlugin.cpp` (commande composée `
 - `kApiVersion` (actuellement 1) : une DLL d'une autre version est refusée, avec le motif.
 - Identifiants uniques, préfixés par celui du plugin ; un doublon est refusé.
 - Une DLL n'est jamais déchargée (ses fonctions restent référencées par les registres).
+- Arrêt (facultatif, 2026-10-10) : une DLL peut exporter `extern "C" void tsaraloha_plugin_shutdown()`, appelé une fois
+  à l'arrêt du module qui la fournit ou à la fermeture de l'application (`PluginManager::shutdownFile` / `shutdownAll`).
+  L'API reste en version 1 : un plugin sans ce point continue d'être chargé à l'identique.
+- Un plugin peut être livré par un **module** (`module.json`, capacité `plugin`) : il n'est alors chargé que si le module
+  est livré ou approuvé par l'utilisateur (docs/SDK.md §3).
 - Liste et refus : menu Aide ▸ Plugins chargés (TSALab), journal de session (`PluginLoaded` / `PluginRejected`).

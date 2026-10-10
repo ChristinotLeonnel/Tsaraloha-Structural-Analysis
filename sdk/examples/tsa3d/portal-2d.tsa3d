@@ -1,0 +1,40 @@
+{
+  "format": "TSA3D",
+  "version": "1.0",
+  "metadata": {
+    "name": "Portique plan 6 m x 4 m",
+    "description": "Deux poteaux encastrés, une traverse, charges G et Q, combinaison ELU",
+    "producer": { "name": "exemple-portique", "version": "1.0" }
+  },
+  "units": { "length": "m", "force": "kN", "stress": "Pa" },
+  "materials": [ { "id": "S355", "name": "Acier S355", "type": "steel", "E": 210e9, "nu": 0.3, "density": 7850, "fk": 355e6 } ],
+  "sections": [
+    { "id": "HEB200", "name": "HEB 200", "shape": "i", "dimensions": { "b": 0.200, "h": 0.200, "tw": 0.009, "tf": 0.015 } },
+    { "id": "IPE300", "name": "IPE 300", "shape": "i", "dimensions": { "b": 0.150, "h": 0.300, "tw": 0.0071, "tf": 0.0107 } }
+  ],
+  "nodes": [
+    { "id": "A", "name": "Pied gauche", "position": [0, 0, 0], "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+    { "id": "B", "name": "Tête gauche", "position": [0, 0, 4] },
+    { "id": "C", "name": "Tête droite", "position": [6, 0, 4] },
+    { "id": "D", "name": "Pied droit", "position": [6, 0, 0], "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } }
+  ],
+  "members": [
+    { "id": "P1", "type": "column", "nodes": ["A", "B"], "section": "HEB200", "material": "S355" },
+    { "id": "T1", "type": "beam", "role": "beam", "nodes": ["B", "C"], "section": "IPE300", "material": "S355" },
+    { "id": "P2", "type": "column", "nodes": ["D", "C"], "section": "HEB200", "material": "S355" }
+  ],
+  "loads": {
+    "cases": [
+      { "id": "G", "name": "Permanentes", "category": "dead", "selfWeight": true },
+      { "id": "Q", "name": "Exploitation", "category": "live" }
+    ],
+    "nodal": [ { "id": "H1", "node": "B", "case": "Q", "force": [15, 0, 0] } ],
+    "member": [
+      { "id": "q1", "member": "T1", "case": "G", "kind": "uniform", "direction": "gravity", "q1": 8 },
+      { "id": "q2", "member": "T1", "case": "Q", "kind": "uniform", "direction": "gravity", "q1": 10 }
+    ],
+    "combinations": [
+      { "id": "ELU1", "name": "1,35 G + 1,5 Q", "type": "ulsFundamental", "factors": [ { "case": "G", "factor": 1.35 }, { "case": "Q", "factor": 1.5 } ] }
+    ]
+  }
+}

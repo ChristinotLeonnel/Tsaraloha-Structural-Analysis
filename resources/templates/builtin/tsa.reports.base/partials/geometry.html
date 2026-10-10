@@ -1,0 +1,6 @@
+<h2>Géométrie</h2>
+<p>Encombrement : {{model.geometry.dx}} (X) × {{model.geometry.dy}} (Y) × {{model.geometry.dz}} (Z).
+{{#model.geometry.planar}}Modèle plan dans le plan {{model.geometry.plane}}.{{/model.geometry.planar}}{{^model.geometry.planar}}Modèle tridimensionnel.{{/model.geometry.planar}}</p>
+{{#model.levels}}
+{{#name}}<p class="muted">Niveau {{name}} : {{elevation}}</p>{{/name}}
+{{/model.levels}}

@@ -374,6 +374,10 @@ public:
     /// persistés dans le chunk TOPO du .tsa (format ≥ 1.5). Vide = valeurs par défaut (anciens projets).
     const std::string& topologySettingsJson() const noexcept { return m_topologySettingsJson; }
     void setTopologySettingsJson(const std::string& json) { m_topologySettingsJson = json; }
+    /// Données d'échange non interprétées par TSA (format TSA3D : champs et extensions inconnus d'un
+    /// fichier tiers), conservées pour être restituées à l'export ; JSON opaque persisté (chunk XTND, 1.7).
+    const std::string& exchangeExtensionsJson() const noexcept { return m_exchangeExtensionsJson; }
+    void setExchangeExtensionsJson(const std::string& json) { m_exchangeExtensionsJson = json; }
 
     /// Étiquettes (noms visibles) modifiées sans autre changement : observateurs notifiés par
     /// onModelDiffApplied, document marqué modifié, mais révision inchangée — les résultats de calcul
@@ -471,6 +475,7 @@ private:
     bool m_isModified = false;
     std::string m_analysisSettingsJson;
     std::string m_topologySettingsJson;
+    std::string m_exchangeExtensionsJson;
     TSA::Annotation::DimensionSet m_dimensions;
 };
 

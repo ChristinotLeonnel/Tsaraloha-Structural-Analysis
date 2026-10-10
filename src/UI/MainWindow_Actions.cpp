@@ -585,6 +585,18 @@ void MainWindow::createActions()
     m_actionImportIfc = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer I&FC..."), this);
     m_actionImportIfc->setToolTip(tr("Créer un projet depuis un fichier IFC (IFC2X3, IFC4, IFC4X3) : modèle analytique ou déduit de la géométrie"));
     connect(m_actionImportIfc, &QAction::triggered, this, &MainWindow::onActionImportIfc);
+    m_actionImportTsa3d = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer TSA&3D..."), this);
+    m_actionImportTsa3d->setToolTip(tr("Créer un projet depuis un fichier TSA3D (format d'échange documenté, validé avant import)"));
+    connect(m_actionImportTsa3d, &QAction::triggered, this, &MainWindow::onActionImportTsa3d);
+    m_actionExportTsa3d = new QAction(QIcon(":/icons/file/file_export.svg"), tr("Exporter TSA3&D..."), this);
+    m_actionExportTsa3d->setToolTip(tr("Exporter le modèle au format TSA3D (JSON versionné : géométrie, objets, charges, maillage)"));
+    connect(m_actionExportTsa3d, &QAction::triggered, this, &MainWindow::onActionExportTsa3d);
+    m_actionImportViaModule = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer via un &module..."), this);
+    m_actionImportViaModule->setToolTip(tr("Convertir un fichier avec un module (processus séparé) puis l'importer en TSA3D validé"));
+    connect(m_actionImportViaModule, &QAction::triggered, this, &MainWindow::onActionImportViaModule);
+    m_actionModules = new QAction(tr("&Modules..."), this);
+    m_actionModules->setToolTip(tr("Modules installés : état, compatibilité, approbation des modules utilisateur"));
+    connect(m_actionModules, &QAction::triggered, this, &MainWindow::onActionModules);
 
     m_actionMergeNodes = new QAction(tr("&Fusionner les nœuds confondus..."), this);
     m_actionMergeNodes->setIcon(QIcon(":/icons/structure/struct_merge.svg"));
@@ -826,6 +838,9 @@ void MainWindow::createActions()
     m_actionNoteDeCalcul->setIcon(QIcon(":/icons/ndc_report.svg"));
     m_actionNoteDeCalcul->setToolTip(tr("Ouvrir l'inspecteur et générateur de Note de Calcul (F8)"));
     connect(m_actionNoteDeCalcul, &QAction::triggered, this, &MainWindow::onActionNoteDeCalcul);
+    m_actionReportTemplates = new QAction(QIcon(":/icons/ndc_report.svg"), tr("&Documents par templates..."), this);
+    m_actionReportTemplates->setToolTip(tr("Rapports et notes de calcul produits par templates : aperçu, options, export HTML/PDF, import et personnalisation"));
+    connect(m_actionReportTemplates, &QAction::triggered, this, &MainWindow::onActionReportTemplates);
 
     m_actionResultsDisp = new QAction(tr("Déformée && &Déplacements"), this);
     m_actionResultsDisp->setIcon(QIcon(":/icons/results_disp.svg"));
@@ -859,6 +874,9 @@ void MainWindow::createMenus()
     fileMenu->addAction(m_actionCloseProject);
     fileMenu->addSeparator();
     fileMenu->addAction(m_actionImportIfc);
+    fileMenu->addAction(m_actionImportTsa3d);
+    fileMenu->addAction(m_actionExportTsa3d);
+    fileMenu->addAction(m_actionImportViaModule);
     fileMenu->addAction(m_actionExportIfc);
     fileMenu->addSeparator();
     QMenu* projectSettingsMenu = fileMenu->addMenu(tr("&Paramètres du projet"));
@@ -1061,6 +1079,7 @@ void MainWindow::createMenus()
     camSub->addAction(m_actionFitAll);
     resMenu->addSeparator();
     resMenu->addAction(m_actionNoteDeCalcul);
+    resMenu->addAction(m_actionReportTemplates);
 
     // 7. Menu Affichage
     QMenu* viewMenu = menuBar()->addMenu(tr("&Affichage"));
@@ -1209,6 +1228,7 @@ void MainWindow::createMenus()
     helpMenu->addAction(m_actionHelp);
     helpMenu->addAction(m_actionShortcuts);
     helpMenu->addAction(m_actionShortcutEditor);
+    helpMenu->addAction(m_actionModules);
     if (m_actionReportProblem) helpMenu->addAction(m_actionReportProblem);
     helpMenu->addSeparator();
     helpMenu->addAction(m_actionExportDiagnostic);

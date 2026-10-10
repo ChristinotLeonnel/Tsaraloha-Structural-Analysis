@@ -164,8 +164,33 @@ bool PluginManager::loadFile(const QString& path, QString* errorOut)
     if (!plugin->initialize(host, &error))
         return fail(QStringLiteral("initialisation refusée : %1").arg(QString::fromStdString(error)));
     record.loaded = true;
+    // Point d'arrêt facultatif (ajout compatible : kApiVersion inchangée, absent = rien à faire).
+    record.shutdown = reinterpret_cast<void (*)()>(library->resolve("tsaraloha_plugin_shutdown"));
     m_instances.push_back(std::move(plugin));
     return true;
+}
+
+bool PluginManager::shutdownFile(const QString& path)
+{
+    const QString canonical = QFileInfo(path).canonicalFilePath();
+    for (auto& p : m_plugins)
+        if ((p.path == canonical || p.path == path) && p.loaded && !p.stopped)
+        {
+            if (p.shutdown) p.shutdown();
+            p.stopped = true;
+            return true;
+        }
+    return false;
+}
+
+void PluginManager::shutdownAll()
+{
+    for (auto& p : m_plugins)
+        if (p.loaded && !p.stopped)
+        {
+            if (p.shutdown) p.shutdown();
+            p.stopped = true;
+        }
 }
 
 } // namespace TSA::Plugins

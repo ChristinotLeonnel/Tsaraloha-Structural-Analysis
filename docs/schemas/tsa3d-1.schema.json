@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsaraloha.example/schemas/tsa3d-1.schema.json",
+  "title": "TSA3D v1 — format d'échange 3D de TSA / TSALab",
+  "description": "Spécification : docs/TSA3D.md. Les contrôles de cohérence (identifiants uniques dans tout le document, références existantes, géométrie) sont faits par le validateur TSA (Tsa3d::validate, outil tsa3d-validate) ; ce schéma décrit la structure. Les champs non décrits sont autorisés et conservés par TSA.",
+  "type": "object",
+  "required": ["format", "version"],
+  "properties": {
+    "format": { "const": "TSA3D" },
+    "version": { "type": "string", "pattern": "^1(\\.\\d+){0,2}$", "description": "majeur.mineur ; majeur 1 pour ce schéma" },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "units": { "$ref": "#/$defs/units" },
+    "coordinateSystem": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "cartesian" },
+        "up": { "enum": ["Z"] },
+        "handedness": { "enum": ["right"] }
+      }
+    },
+    "materials": { "type": "array", "items": { "$ref": "#/$defs/material" } },
+    "sections": { "type": "array", "items": { "$ref": "#/$defs/section" } },
+    "levels": { "type": "array", "items": { "$ref": "#/$defs/level" } },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+    "members": { "type": "array", "items": { "$ref": "#/$defs/member" } },
+    "surfaces": { "type": "array", "items": { "$ref": "#/$defs/surface" } },
+    "foundations": { "type": "array", "items": { "$ref": "#/$defs/foundation" } },
+    "loads": { "$ref": "#/$defs/loads" },
+    "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } },
+    "analysis": { "type": "object", "properties": { "settings": { "type": "object" } } },
+    "mesh": { "$ref": "#/$defs/mesh" },
+    "results": { "$ref": "#/$defs/results" },
+    "extensions": { "$ref": "#/$defs/extensions" }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "description": "unique dans tout le document" },
+    "ref": { "type": "string", "minLength": 1 },
+    "vec3": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+    "positive": { "type": "number", "exclusiveMinimum": 0 },
+    "extensions": {
+      "type": "object",
+      "description": "Données d'un tiers, clés préfixées par un domaine inversé (ex. « com.societe.outil »), conservées par TSA",
+      "additionalProperties": true
+    },
+    "properties": { "type": "object", "description": "Propriétés libres clé → valeur, conservées par TSA" },
+    "common": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string" },
+        "globalId": { "type": "string", "description": "IfcGloballyUniqueId (22 caractères) de l'objet analytique" },
+        "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+        "properties": { "$ref": "#/$defs/properties" },
+        "extensions": { "$ref": "#/$defs/extensions" }
+      },
+      "required": ["id"]
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "created": { "type": "string", "format": "date-time" },
+        "modified": { "type": "string", "format": "date-time" },
+        "producer": { "type": "object", "properties": { "name": { "type": "string" }, "version": { "type": "string" } } },
+        "provenance": { "type": "object" },
+        "custom": { "type": "object" }
+      }
+    },
+    "units": {
+      "type": "object",
+      "description": "Absent : unités TSA (m, kN, Pa, kPa, deg)",
+      "properties": {
+        "length": { "enum": ["m", "cm", "mm"] },
+        "force": { "enum": ["kN", "N", "MN"] },
+        "stress": { "enum": ["Pa", "kPa", "MPa", "N/mm2", "GPa"] },
+        "pressure": { "enum": ["kPa", "kN/m2", "Pa", "N/m2", "MPa"] },
+        "angle": { "enum": ["deg", "rad"] },
+        "density": { "const": "kg/m3" }
+      }
+    },
+    "material": {
+      "allOf": [{ "$ref": "#/$defs/common" }],
+      "properties": {
+        "type": { "enum": ["concrete", "steel", "timber", "masonry", "custom", "reinforcedConcrete", "rebarSteel", "galvanizedSteel", "aluminum", "brick", "glass", "soil", "sand", "gravel", "rock"] },
+        "E": { "$ref": "#/$defs/positive" },
+        "nu": { "type": "number", "exclusiveMinimum": -1, "exclusiveMaximum": 0.5 },
+        "density": { "type": "number", "minimum": 0 },
+        "fk": { "type": "number", "minimum": 0 },
+        "thermalCoeff": { "type": "number" },
+        "library": { "type": "object", "properties": { "source": { "type": "string" }, "ref": { "type": "string" } } }
+      },
+      "required": ["E"]
+    },
+    "section": {
+      "allOf": [{ "$ref": "#/$defs/common" }],
+      "properties": {
+        "shape": { "enum": ["rectangular", "circular", "i", "pipe", "box", "channel", "angle", "tee"] },
+        "dimensions": {
+          "type": "object",
+          "properties": {
+            "b": { "$ref": "#/$defs/positive" }, "h": { "$ref": "#/$defs/positive" }, "d": { "$ref": "#/$defs/positive" },
+            "tw": { "$ref": "#/$defs/positive" }, "tf": { "$ref": "#/$defs/positive" }
+          }
+        },
+        "properties": {
+          "type": "object",
+          "description": "Informatif (A, Iy, Iz, It, Wy, Wz) : TSA recalcule à partir des dimensions",
+          "properties": { "A": { "type": "number" }, "Iy": { "type": "number" }, "Iz": { "type": "number" }, "It": { "type": "number" }, "Wy": { "type": "number" }, "Wz": { "type": "number" } }
+        },
+        "library": { "type": "object" }
+      },
+      "required": ["shape", "dimensions"]
+    },
+    "level": {
+      "type": "object",
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "type": "string" }, "elevation": { "type": "number" } },
+      "required": ["id", "elevation"]
+    },
+    "dof": { "enum": ["free", "fixed", "spring"] },
+    "support": {
+      "type": "object",
+      "properties": {
+        "tx": { "$ref": "#/$defs/dof" }, "ty": { "$ref": "#/$defs/dof" }, "tz": { "$ref": "#/$defs/dof" },
+        "rx": { "$ref": "#/$defs/dof" }, "ry": { "$ref": "#/$defs/dof" }, "rz": { "$ref": "#/$defs/dof" },
+        "stiffness": {
+          "type": "object",
+          "properties": { "kx": { "type": "number" }, "ky": { "type": "number" }, "kz": { "type": "number" }, "krx": { "type": "number" }, "kry": { "type": "number" }, "krz": { "type": "number" } }
+        },
+        "orientation": {
+          "type": "object",
+          "properties": { "type": { "enum": ["global", "member", "vector"] }, "direction": { "$ref": "#/$defs/vec3" }, "memberInternalId": { "type": "integer" } }
+        }
+      }
+    },
+    "node": {
+      "allOf": [{ "$ref": "#/$defs/common" }],
+      "properties": { "position": { "$ref": "#/$defs/vec3" }, "level": { "$ref": "#/$defs/ref" }, "support": { "$ref": "#/$defs/support" } },
+      "required": ["position"]
+    },
+    "release": {
+      "type": "object",
+      "properties": { "fx": { "type": "boolean" }, "fy": { "type": "boolean" }, "fz": { "type": "boolean" }, "mx": { "type": "boolean" }, "my": { "type": "boolean" }, "mz": { "type": "boolean" } }
+    },
+    "member": {
+      "allOf": [{ "$ref": "#/$defs/common" }],
+      "properties": {
+        "type": { "enum": ["beam", "column", "truss", "cable"] },
+        "role": { "enum": ["generic", "beam", "column", "brace", "tie", "truss", "steelMember", "cable"] },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/ref" }, "minItems": 2, "maxItems": 2 },
+        "section": { "$ref": "#/$defs/ref" },
+        "material": { "$ref": "#/$defs/ref" },
+        "rotation": { "type": "number", "description": "angle γ autour de l'axe de la barre" },
+        "eccentricity": { "enum": ["none", "topFlange", "bottomFlange", "leftFlange", "rightFlange"] },
+        "releases": { "type": "object", "properties": { "start": { "$ref": "#/$defs/release" }, "end": { "$ref": "#/$defs/release" } } },
+        "truss": { "type": "object", "properties": { "role": { "enum": ["topChord", "bottomChord", "vertical", "diagonal", "brace"] } } },
+        "cable": {
+          "type": "object",
+          "properties": {
+            "type": { "enum": ["generic", "strand", "wire", "prestressingBar", "stay", "suspension", "hanger", "externalPrestressing", "groundAnchor"] },
+            "geometry": { "enum": ["straight", "polyline", "parabolic", "catenary", "spline", "throughPoints"] },
+            "sag": { "type": "number" },
+            "initialTension": { "type": "number", "description": "unité de force du document" },
+            "tensionOnly": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["type", "nodes"]
+    },
+    "surface": {
+      "allOf": [{ "$ref": "#/$defs/common" }],
+      "properties": {
+        "type": { "enum": ["slab", "wall"] },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/ref" }, "minItems": 2 },
+        "thickness": { "$ref": "#/$defs/positive" },
+        "material": { "$ref": "#/$defs/ref" },
+        "slabType": { "enum": ["twoWay", "oneWay", "flat"] },
+        "height": { "$ref": "#/$defs/positive" },
+        "offset": { "type": "number" }
+      },
+      "required": ["type", "nodes", "thickness"]
+    },
+    "foundation": {
+      "allOf": [{ "$ref": "#/$defs/common" }],
+      "properties": {
+        "type": { "enum": ["isolated", "strip", "raft", "pile"] },
+        "node": { "$ref": "#/$defs/ref" },
+        "dimensions": { "type": "object", "properties": { "a": { "$ref": "#/$defs/positive" }, "b": { "$ref": "#/$defs/positive" }, "h": { "$ref": "#/$defs/positive" } }, "required": ["a", "b", "h"] },
+        "material": { "$ref": "#/$defs/ref" },
+        "soilBearingCapacity": { "type": "number", "description": "unité de pression du document (kPa par défaut)" }
+      },
+      "required": ["node", "dimensions"]
+    },
+    "loads": {
+      "type": "object",
+      "properties": {
+        "cases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "$ref": "#/$defs/id" }, "name": { "type": "string" },
+              "category": { "enum": ["dead", "live", "wind", "snow", "seismic", "temperature", "accidental", "custom"] },
+              "selfWeight": { "type": "boolean" }, "selfWeightFactor": { "type": "number" }, "description": { "type": "string" }
+            },
+            "required": ["id"]
+          }
+        },
+        "nodal": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "$ref": "#/$defs/id" }, "node": { "$ref": "#/$defs/ref" }, "case": { "$ref": "#/$defs/ref" },
+              "force": { "$ref": "#/$defs/vec3" }, "moment": { "$ref": "#/$defs/vec3" }, "coordinateSystem": { "enum": ["global", "local"] }
+            },
+            "required": ["id", "node", "case"]
+          }
+        },
+        "member": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "$ref": "#/$defs/id" }, "member": { "$ref": "#/$defs/ref" }, "case": { "$ref": "#/$defs/ref" },
+              "kind": { "enum": ["uniform", "trapezoidal", "point", "moment"] },
+              "direction": { "enum": ["globalX", "globalY", "globalZ", "gravity", "localX", "localY", "localZ"] },
+              "coordinateSystem": { "enum": ["global", "local"] },
+              "q1": { "type": "number" }, "q2": { "type": "number" }, "x1": { "type": "number" }, "x2": { "type": "number" },
+              "relative": { "type": "boolean" }
+            },
+            "required": ["id", "member", "case", "kind", "q1"]
+          }
+        },
+        "surface": { "type": "array", "description": "Réservé : non pris en charge par le modèle TSA actuel (conservé sans être appliqué)" },
+        "combinations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "$ref": "#/$defs/id" }, "name": { "type": "string" },
+              "type": { "enum": ["ulsFundamental", "ulsAccidental", "ulsSeismic", "slsCharacteristic", "slsFrequent", "slsQuasiPermanent", "custom"] },
+              "factors": { "type": "array", "items": { "type": "object", "properties": { "case": { "$ref": "#/$defs/ref" }, "factor": { "type": "number" } }, "required": ["case", "factor"] } },
+              "description": { "type": "string" }
+            },
+            "required": ["id", "factors"]
+          }
+        }
+      }
+    },
+    "group": {
+      "type": "object",
+      "properties": { "id": { "$ref": "#/$defs/id" }, "name": { "type": "string" }, "objects": { "type": "array", "items": { "$ref": "#/$defs/ref" } }, "tags": { "type": "array", "items": { "type": "string" } } },
+      "required": ["id"]
+    },
+    "mesh": {
+      "type": "object",
+      "description": "Maillage numérique (informatif) : jamais appliqué au modèle à l'import",
+      "properties": {
+        "source": { "type": "object", "properties": { "engine": { "type": "string" }, "description": { "type": "string" } } },
+        "nodes": {
+          "type": "array",
+          "items": { "type": "object", "properties": { "id": { "$ref": "#/$defs/id" }, "position": { "$ref": "#/$defs/vec3" }, "origin": { "type": ["string", "null"] }, "role": { "type": "string" } }, "required": ["id", "position"] }
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "$ref": "#/$defs/id" },
+              "type": { "enum": ["line2", "zeroLength", "tri3", "quad4", "tet4", "hex8"] },
+              "nodes": { "type": "array", "items": { "$ref": "#/$defs/ref" } },
+              "origin": { "type": ["string", "null"] }, "class": { "type": "string" }, "group": { "type": "string" }
+            },
+            "required": ["id", "type", "nodes"]
+          }
+        },
+        "groups": { "type": "array" }
+      }
+    },
+    "results": {
+      "type": "object",
+      "description": "Résultats exportés : jamais chargés comme résultats validés à l'import",
+      "properties": {
+        "status": { "type": "string" }, "engine": { "type": "string" }, "case": { "type": "string" }, "timestamp": { "type": "string" },
+        "displacements": { "type": "array", "items": { "type": "object", "properties": { "node": { "$ref": "#/$defs/ref" }, "u": { "$ref": "#/$defs/vec3" }, "r": { "$ref": "#/$defs/vec3" } } } },
+        "reactions": { "type": "array", "items": { "type": "object", "properties": { "node": { "$ref": "#/$defs/ref" }, "force": { "$ref": "#/$defs/vec3" }, "moment": { "$ref": "#/$defs/vec3" } } } }
+      }
+    }
+  }
+}

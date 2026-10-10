@@ -145,6 +145,11 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     {
         writeJsonChunk(payload, CHUNK_TOPO, model.topologySettingsJson());
     }
+    if (!model.exchangeExtensionsJson().empty())
+    {
+        // Facultatif (format ≥ 1.7) : données TSA3D non interprétées, restituées à l'export.
+        writeJsonChunk(payload, CHUNK_XTND, model.exchangeExtensionsJson());
+    }
     if (!model.dimensions().items.empty() || !(model.dimensions().style == TSA::Annotation::DimensionStyle()))
     {
         writeJsonChunk(payload, CHUNK_DIMS, model.dimensions().toJson());
@@ -613,6 +618,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     TSA::BIM::BimModel loadedBim;
     std::string loadedSettings;
     std::string loadedTopology;
+    std::string loadedExtensions;
     std::string loadedDimensions;
     std::string loadedCoordinates, loadedGrids;
     bool hasCoordinates = false, hasGrids = false;
@@ -694,6 +700,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             // validé à la relecture par AnalysisContext::fromJson (lecture tolérante).
             loadedSettings.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
+        case CHUNK_XTND:
+            if (chunkBytes && chunkLen > 0)
+                loadedExtensions.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
         case CHUNK_TOPO:
             // Facultatif (format ≥ 1.5) : sans lui (anciens projets), numérotation par défaut. Lecture
             // tolérante par TopologySettings::fromJson.
@@ -765,6 +775,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     model.restoreSnapshot(snapshot);
     model.setAnalysisSettingsJson(loadedSettings);
     model.setTopologySettingsJson(loadedTopology);
+    model.setExchangeExtensionsJson(loadedExtensions);
 
     // Validation normative post-chargement (ISO/IEC 25010 - Intégrité et robustesse)
     auto report = TSA::Standards::ModelValidator::validate(model);

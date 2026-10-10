@@ -285,7 +285,7 @@ bool runSuite_Dimensions(int& passed)
         std::string err;
         TEST_CHECK(writer.saveToFile(path, m, nullptr, "Cotes", "TSA Testing", &err), "Test 246: sauvegarde");
         TSA::IO::TSAFileHeader header;
-        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(path, header) && header.versionMinor == 6, "Test 246: format 1.6");
+        TEST_CHECK(TSA::IO::TSAFileReader::readHeader(path, header) && header.versionMinor >= 6, "Test 246: format ≥ 1.6 (chunk DIMS)");
         Model loaded;
         TSA::IO::TSAFileReader reader;
         TEST_CHECK(reader.loadFromFile(path, loaded, nullptr, "", nullptr, nullptr, nullptr, &err) && loaded.dimensions() == m.dimensions(),

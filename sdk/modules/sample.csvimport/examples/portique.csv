@@ -1,0 +1,15 @@
+# Portique simple : 2 poteaux encastrés, 1 traverse (unités m, kN, Pa)
+material,C25,concrete,31e9,0.2,2500,25e6
+section,P30,rectangular,0.30,0.30
+section,T30x50,rectangular,0.30,0.50
+node,A,0,0,0,fixed
+node,B,0,0,3.5
+node,C,6,0,3.5
+node,D,6,0,0,fixed
+member,P1,column,A,B,P30,C25
+member,P2,column,D,C,P30,C25
+member,T1,beam,B,C,T30x50,C25
+case,G,dead,selfweight
+case,Q,live
+uniform,q1,T1,Q,10
+nodal,H1,B,Q,15,0,0

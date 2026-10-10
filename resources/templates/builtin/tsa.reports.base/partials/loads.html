@@ -1,0 +1,35 @@
+<h2>Charges</h2>
+{{^model.loadCases}}
+<p class="na">Aucun cas de charge défini.</p>
+{{/model.loadCases}}
+<h3>Cas de charge</h3>
+<table>
+<tr><th>Cas</th><th>Catégorie</th><th>Poids propre</th></tr>
+{{#model.loadCases}}
+<tr><td>{{name}}</td><td>{{category}}</td><td>{{selfWeight}}</td></tr>
+{{/model.loadCases}}
+</table>
+<h3>Combinaisons</h3>
+{{^model.combinations}}
+<p class="muted">Aucune combinaison définie.</p>
+{{/model.combinations}}
+<table>
+<tr><th>Combinaison</th><th>Type</th><th>Expression</th></tr>
+{{#model.combinations}}
+<tr><td>{{name}}</td><td>{{type}}</td><td>{{expression}}</td></tr>
+{{/model.combinations}}
+</table>
+<h3>Charges nodales</h3>
+<table>
+<tr><th>Nœud</th><th>Cas</th><th>Forces</th><th>Moments</th></tr>
+{{#model.nodalLoads}}
+<tr><td>{{node}}</td><td>{{case}}</td><td class="num">{{F}}</td><td class="num">{{M}}</td></tr>
+{{/model.nodalLoads}}
+</table>
+<h3>Charges sur barres</h3>
+<table>
+<tr><th>Barre</th><th>Cas</th><th>Type</th><th>Valeur</th></tr>
+{{#model.memberLoads}}
+<tr><td>{{member}}</td><td>{{case}}</td><td>{{kind}}</td><td class="num">{{value}}</td></tr>
+{{/model.memberLoads}}
+</table>

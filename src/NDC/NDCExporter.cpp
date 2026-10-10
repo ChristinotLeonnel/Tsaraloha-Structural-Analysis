@@ -1,4 +1,7 @@
 #include "NDCExporter.h"
+#include "NDCTemplateData.h"
+#include "../Reports/DocumentRenderer.h"
+#include "../Templates/TemplateRepository.h"
 #include <QFile>
 #include <QTextStream>
 #include <QTextDocument>
@@ -9,6 +12,38 @@
 
 namespace TSA::NDC
 {
+
+QString NDCExporter::renderHtml(const NDCDocument& doc, QStringList* diagnostics, QString* templateUsed)
+{
+    const auto& repo = TSA::Templates::TemplateRepository::instance();
+    const QString id = doc.config.templateId.isEmpty() ? QStringLiteral("tsa.ndc.standard") : doc.config.templateId;
+    const auto* entry = repo.effective(id);
+    QStringList diag;
+    if (!entry)
+        diag << QStringLiteral("template « %1 » introuvable : générateur historique utilisé").arg(id);
+    else if (entry->package.manifest().dataSchema != QLatin1String("tsa-ndc/1") || entry->package.manifest().reports.empty())
+        diag << QStringLiteral("template « %1 » : schéma « tsa-ndc/1 » attendu : générateur historique utilisé").arg(id);
+    else
+    {
+        const auto& m = entry->package.manifest();
+        const auto r = TSA::Reports::DocumentRenderer::render(entry->package, m.reports.front().id, ndcTemplateData(doc));
+        for (const auto& v : r.missingVariables) diag << QStringLiteral("variable absente des données : %1").arg(v);
+        diag << r.warnings;
+        if (r.ok())
+        {
+            if (diagnostics) *diagnostics = diag;
+            if (templateUsed)
+                *templateUsed = QStringLiteral("%1 %2 (%3%4)").arg(m.id, m.version, TSA::Templates::templateOriginName(entry->origin),
+                                                                   entry->modified ? QStringLiteral(", modifié") : QString());
+            return r.output;
+        }
+        for (const auto& e : r.errors) diag << QStringLiteral("template « %1 » : %2").arg(id, e);
+        diag << QStringLiteral("générateur historique utilisé");
+    }
+    if (diagnostics) *diagnostics = diag;
+    if (templateUsed) *templateUsed = QStringLiteral("générateur historique");
+    return doc.toHtml();
+}
 
 bool NDCExporter::exportToHtml(const NDCDocument& doc, const QString& filePath, QString* error)
 {
@@ -21,7 +56,7 @@ bool NDCExporter::exportToHtml(const NDCDocument& doc, const QString& filePath, 
 
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
-    out << doc.toHtml();
+    out << renderHtml(doc);
     file.close();
     return true;
 }
@@ -37,7 +72,7 @@ bool NDCExporter::exportToPdf(const NDCDocument& doc, const QString& filePath, Q
         pdfWriter.setResolution(300);
 
         QTextDocument textDoc;
-        textDoc.setHtml(doc.toHtml());
+        textDoc.setHtml(renderHtml(doc));
         textDoc.print(&pdfWriter);
         return true;
     }

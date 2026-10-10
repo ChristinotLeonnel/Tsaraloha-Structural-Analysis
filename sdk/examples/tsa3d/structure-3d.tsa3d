@@ -1,0 +1,44 @@
+{
+  "format": "TSA3D",
+  "version": "1.0",
+  "metadata": { "name": "Bâtiment 3D : une travée, deux niveaux" },
+  "levels": [
+    { "id": "RDC", "name": "Rez-de-chaussée", "elevation": 0 },
+    { "id": "N1", "name": "Niveau 1", "elevation": 3.5 }
+  ],
+  "materials": [
+    { "id": "C30", "name": "Béton C30/37", "type": "concrete", "E": 33e9, "nu": 0.2, "density": 2500, "fk": 30e6 }
+  ],
+  "sections": [
+    { "id": "P30", "name": "Poteau 30x30", "shape": "rectangular", "dimensions": { "b": 0.30, "h": 0.30 } },
+    { "id": "P25x50", "name": "Poutre 25x50", "shape": "rectangular", "dimensions": { "b": 0.25, "h": 0.50 } }
+  ],
+  "nodes": [
+    { "id": "n1", "position": [0, 0, 0], "level": "RDC", "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+    { "id": "n2", "position": [5, 0, 0], "level": "RDC", "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+    { "id": "n3", "position": [5, 4, 0], "level": "RDC", "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "free", "ry": "free", "rz": "free" } },
+    { "id": "n4", "position": [0, 4, 0], "level": "RDC", "support": { "tx": "fixed", "ty": "fixed", "tz": "spring", "rx": "free", "ry": "free", "rz": "free", "stiffness": { "kz": 50000 } } },
+    { "id": "n5", "position": [0, 0, 3.5], "level": "N1" },
+    { "id": "n6", "position": [5, 0, 3.5], "level": "N1" },
+    { "id": "n7", "position": [5, 4, 3.5], "level": "N1" },
+    { "id": "n8", "position": [0, 4, 3.5], "level": "N1" }
+  ],
+  "members": [
+    { "id": "c1", "type": "column", "nodes": ["n1", "n5"], "section": "P30", "material": "C30" },
+    { "id": "c2", "type": "column", "nodes": ["n2", "n6"], "section": "P30", "material": "C30" },
+    { "id": "c3", "type": "column", "nodes": ["n3", "n7"], "section": "P30", "material": "C30" },
+    { "id": "c4", "type": "column", "nodes": ["n4", "n8"], "section": "P30", "material": "C30" },
+    { "id": "b1", "type": "beam", "nodes": ["n5", "n6"], "section": "P25x50", "material": "C30" },
+    { "id": "b2", "type": "beam", "nodes": ["n6", "n7"], "section": "P25x50", "material": "C30", "rotation": 0 },
+    { "id": "b3", "type": "beam", "nodes": ["n7", "n8"], "section": "P25x50", "material": "C30" },
+    { "id": "b4", "type": "beam", "nodes": ["n8", "n5"], "section": "P25x50", "material": "C30",
+      "releases": { "start": { "my": true, "mz": true }, "end": { "my": true, "mz": true } } }
+  ],
+  "surfaces": [
+    { "id": "dalle", "type": "slab", "nodes": ["n5", "n6", "n7", "n8"], "thickness": 0.20, "material": "C30", "slabType": "twoWay" },
+    { "id": "voile", "type": "wall", "nodes": ["n1", "n2"], "height": 3.5, "thickness": 0.18, "material": "C30" }
+  ],
+  "foundations": [
+    { "id": "s1", "type": "isolated", "node": "n1", "dimensions": { "a": 1.2, "b": 1.2, "h": 0.5 }, "material": "C30", "soilBearingCapacity": 250 }
+  ]
+}

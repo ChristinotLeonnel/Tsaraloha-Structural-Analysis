@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsaraloha.org/schemas/tsa-template-package-1.schema.json",
+  "title": "Paquet de templates Tsaraloha (.tsatemplate, tsa-template-package/1)",
+  "description": "docs/TEMPLATES.md §3. La validation de l'application (TemplatePackage::validate) ajoute les règles de sécurité (aucun script, aucune ressource externe), la syntaxe des templates et la présence des partiels.",
+  "type": "object",
+  "required": ["format", "manifest", "files"],
+  "properties": {
+    "format": { "const": "tsa-template-package/1" },
+    "manifest": {
+      "type": "object",
+      "required": ["id", "name", "version", "dataSchema", "reports"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(\\.[a-z0-9_-]+)+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$" },
+        "description": { "type": "string" },
+        "author": { "type": "string" },
+        "license": { "type": "string" },
+        "engine": { "type": "string", "pattern": "^tsa-template/\\d+$", "default": "tsa-template/1" },
+        "dataSchema": { "enum": ["tsa-report-data/1", "tsa-ndc/1"] },
+        "applications": { "type": "array", "items": { "enum": ["TSA", "TSALab"] } },
+        "reports": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "required": ["id", "name", "entry"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "entry": { "type": "string" },
+              "requires": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object", "required": ["id", "type"],
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string" },
+              "type": { "enum": ["text", "color", "bool", "number", "choice", "image"] },
+              "default": {},
+              "choices": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "basedOn": { "type": "string" },
+        "baseHash": { "type": "string" }
+      }
+    },
+    "files": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[^/\\\\:][^\\\\:]*\\.(html|htm|css|txt|md|svg|json|png|jpg|jpeg|gif)$" },
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "object", "required": ["text"], "properties": { "text": { "type": "string" } } },
+          { "type": "object", "required": ["base64"], "properties": { "base64": { "type": "string", "contentEncoding": "base64" } } }
+        ]
+      }
+    }
+  }
+}

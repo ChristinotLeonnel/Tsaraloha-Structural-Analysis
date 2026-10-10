@@ -1,0 +1,10 @@
+<h2>Projet</h2>
+<table>
+<tr><th>Projet</th><td>{{project.title}}</td><th>N° projet</th><td>{{project.number}}</td></tr>
+<tr><th>Document</th><td>{{project.documentNumber}}</td><th>Révision</th><td>{{project.revision}}</td></tr>
+<tr><th>Ingénieur</th><td>{{project.engineer}}</td><th>Bureau d'études</th><td>{{project.organization}}</td></tr>
+<tr><th>Maître d'ouvrage</th><td>{{project.client}}</td><th>Date</th><td>{{project.date}}</td></tr>
+</table>
+{{#project.description}}
+<p>{{project.description}}</p>
+{{/project.description}}
