@@ -2,6 +2,13 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Arbre : liste des appuis ; molette du panneau Propriétés)
+
+### Fixed
+- BUG-071 : la liste « Appuis » de l'arbre suit les appuis posés, retirés, les nœuds supprimés et Annuler.
+- BUG-072 : la molette fait défiler le panneau Propriétés sans changer la liste ou le champ survolé. Tests 223-224
+  (total 245).
+
 ## 2026-10-10 (« Étirer » et appui sur plusieurs nœuds)
 
 ### Fixed

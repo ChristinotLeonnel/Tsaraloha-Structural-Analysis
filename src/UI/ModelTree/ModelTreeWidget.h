@@ -129,6 +129,10 @@ private:
   QTimer *m_removalTimer = nullptr;
   bool m_loadsRefreshPending = false;
   void scheduleLoadsRefresh();
+  // Appuis : liste reconstruite après tout changement de nœud (appui posé, retiré, nœud supprimé,
+  // Annuler), une seule fois par rafale (BUG-071 : la liste n'était relue qu'au chargement).
+  bool m_supportsRefreshPending = false;
+  void scheduleSupportsRefresh();
   void queueRemoval(QTreeWidgetItem *category, int id);
   void flushRemovals();
   // Index id → item par catégorie d'éléments (BUG-007) : tenu à jour à la création (on*Added), à la

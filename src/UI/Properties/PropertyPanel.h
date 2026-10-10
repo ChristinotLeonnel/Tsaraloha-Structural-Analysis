@@ -39,6 +39,10 @@ class PropertyPanel : public QWidget, public TSA::Model::IModelObserver
 
 public:
     explicit PropertyPanel(TSA::Model::Model* model, QWidget* parent = nullptr);
+
+    /// Molette sur une liste ou un champ numérique sans le focus : fait défiler le panneau au lieu
+    /// de changer la valeur (BUG-072 : un appui changeait en faisant défiler les propriétés).
+    bool eventFilter(QObject* watched, QEvent* event) override;
     ~PropertyPanel() override;
 
     void setModel(TSA::Model::Model* model);
