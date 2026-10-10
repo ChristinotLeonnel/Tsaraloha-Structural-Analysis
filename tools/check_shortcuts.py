@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Verifie les raccourcis de src/Commands/CommandCatalog.cpp.
+"""Vérifie les raccourcis par défaut de src/Commands/CommandCatalog.cpp.
 
-Erreurs (exit 1) : raccourci partage par plusieurs commandes (ambigu sous Qt,
-aucune des commandes ne se declenche), nom de touche non portable.
-Avertissements : ecarts avec docs/shortcuts.txt (--strict pour les rendre bloquants).
+Erreurs (exit 1) : raccourci partagé par plusieurs commandes, raccourci qui commence une suite de touches
+d'une autre commande (« D » et « D, A » : Qt attendrait la touche suivante), nom de touche non portable.
+Avertissements : écarts avec la référence générée docs/shortcut.txt (--strict pour les rendre bloquants ;
+régénérer avec TSA_UPDATE_SHORTCUT_REFERENCE=1 TSA_TestSuite --suite=shortcuts).
 
 Usage : python tools/check_shortcuts.py [--strict]
 """
@@ -14,74 +15,91 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "src" / "Commands" / "CommandCatalog.cpp"
-DOCS = ROOT / "docs" / "shortcuts.txt"
+REFERENCE = ROOT / "docs" / "shortcut.txt"
+NON_PORTABLE = {"suppr", "echap", "échap", "maj"}
 
-# Noms francais -> noms portables Qt
-ALIASES = {
-    "suppr": "del",
-    "echap": "esc",
-    "num1": "num+1",
-    "num3": "num+3",
-    "num5": "num+5",
-    "num7": "num+7",
-}
-NON_PORTABLE = {"suppr", "echap"}
-
-CALL = re.compile(
-    r'registerCommand\(\{\s*"(cmd[^"]+)",\s*"(?:[^"\\]|\\.)*",\s*"(?:[^"\\]|\\.)*",\s*"([^"]*)"',
-    re.S,
-)
+CALL = re.compile(r'registerCommand\(\{"(cmd[^"]+)",\s*"(?:[^"\\]|\\.)*",\s*"(?:[^"\\]|\\.)*",\s*"([^"]*)"', re.S)
 
 
-def norm(seq: str) -> str:
-    parts = [ALIASES.get(p.strip().lower(), p.strip().lower()) for p in seq.split("+") if p.strip()]
-    return "+".join(parts) if parts else seq.strip().lower()
+def split_aliases(text):
+    out, cur = [], ""
+    for ch in text:
+        if ch == ";" and cur.strip() and not cur.strip().endswith("+"):
+            out.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        out.append(cur.strip())
+    return out
 
 
-def catalog_shortcuts():
+def norm(seq):
+    chords = []
+    for chord in seq.split(","):
+        parts = [p.strip().lower() for p in re.split(r"(?<!\+)\+(?!$)", chord.strip()) if p.strip()]
+        mods = sorted(p for p in parts if p in {"ctrl", "shift", "alt", "meta", "num"})
+        keys = [p for p in parts if p not in {"ctrl", "shift", "alt", "meta", "num"}]
+        chords.append("+".join(mods + keys))
+    return tuple(chords)
+
+
+def catalog():
     text = CATALOG.read_text(encoding="utf-8")
-    return {cid: sc for cid, sc in CALL.findall(text) if sc}
+    return {cid: split_aliases(sc) for cid, sc in CALL.findall(text)}
 
 
-def doc_shortcuts():
-    found = set()
-    for line in DOCS.read_text(encoding="utf-8-sig").splitlines():
-        if "RESUME RAPIDE" in line:
-            break
-        m = re.match(r"^  (\S.*?)\s{2,}(\S.*)$", line)
-        if not m or m.group(2).startswith("=") or m.group(1) == "[aucun]" or "alternatif" in m.group(2).lower():
+def reference():
+    found = {}
+    if not REFERENCE.exists():
+        return None
+    for line in REFERENCE.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("cmd."):
             continue
-        found.add(norm(m.group(1)))
+        fields = [f.strip() for f in line.split("|")]
+        found[fields[0]] = split_aliases(fields[3] if len(fields) > 3 else "")
     return found
 
 
-def main() -> int:
+def main():
     strict = "--strict" in sys.argv
-    cat = catalog_shortcuts()
+    cat = catalog()
     errors, warnings = [], []
-
+    entries = []
+    for cid, seqs in cat.items():
+        for s in seqs:
+            if any(p.strip().lower() in NON_PORTABLE for p in re.split(r"[+,]", s)):
+                errors.append(f"Nom de touche non portable '{s}' ({cid}) : utiliser Del, Esc, Shift")
+            entries.append((cid, s, norm(s)))
     by_key = defaultdict(list)
-    for cid, sc in cat.items():
-        by_key[norm(sc)].append(cid)
-        if any(p.strip().lower() in NON_PORTABLE for p in sc.split("+")):
-            errors.append(f"Nom de touche non portable '{sc}' ({cid}) : utiliser Del/Esc")
-    for key, ids in by_key.items():
-        if len(ids) > 1:
-            errors.append(f"Raccourci '{key}' partage par : {', '.join(ids)}")
+    for cid, s, n in entries:
+        by_key[n].append(cid)
+    for n, ids in by_key.items():
+        if len(set(ids)) > 1:
+            errors.append(f"Raccourci '{', '.join(n)}' partagé par : {', '.join(sorted(set(ids)))}")
+    for cid_a, sa, na in entries:
+        for cid_b, sb, nb in entries:
+            if cid_a != cid_b and len(na) < len(nb) and nb[:len(na)] == na:
+                errors.append(f"'{sa}' ({cid_a}) commence '{sb}' ({cid_b}) : '{sa}' ne se déclencherait jamais")
 
-    docs = doc_shortcuts()
-    cats = set(by_key)
-    for k in sorted(docs - cats):
-        warnings.append(f"Documente mais absent du catalogue : {k}")
-    for k in sorted(cats - docs):
-        warnings.append(f"Dans le catalogue mais non documente : {k}")
+    ref = reference()
+    if ref is None:
+        warnings.append(f"Référence absente : {REFERENCE.relative_to(ROOT)}")
+    else:
+        for cid in sorted(set(cat) - set(ref)):
+            warnings.append(f"Absente de docs/shortcut.txt : {cid}")
+        for cid in sorted(set(ref) - set(cat)):
+            warnings.append(f"Dans docs/shortcut.txt mais plus au catalogue : {cid}")
+        for cid in sorted(set(cat) & set(ref)):
+            if [norm(s) for s in cat[cid]] != [norm(s) for s in ref[cid]]:
+                warnings.append(f"Défaut différent pour {cid} : catalogue {cat[cid]} / référence {ref[cid]}")
 
     for e in errors:
         print("ERREUR :", e)
     for w in warnings:
         print("AVERT. :", w)
     if not errors and not warnings:
-        print("OK : raccourcis coherents.")
+        print(f"OK : {len(cat)} commandes, {len(entries)} raccourcis par défaut cohérents, référence à jour.")
     return 1 if errors or (strict and warnings) else 0
 
 

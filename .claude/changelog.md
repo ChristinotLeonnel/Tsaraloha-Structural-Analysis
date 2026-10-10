@@ -2,6 +2,25 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Raccourcis clavier : gestionnaire central, shortcut.txt, rechargement à chaud, éditeur)
+
+### Added
+- `ShortcutManager` : raccourcis de 211 commandes (identifiants stables `cmd.*` du `CommandCatalog`, désormais
+  utilisé à l'exécution), fichier utilisateur `shortcut.txt` (%LOCALAPPDATA%\TSA Engineering\TSA) créé s'il
+  manque, rechargé à chaud (QFileSystemWatcher), configuration invalide jamais appliquée, conflits exacts et
+  de préfixe détectés, alias, suites de touches façon AutoCAD (« D, A », « Z, W », « Q, N »…).
+- Aide > Personnaliser les raccourcis (Ctrl+F1) : recherche, catégories, enregistreur, conflits immédiats,
+  activation, restauration, ouverture du fichier ; F1 : liste générée des raccourcis actifs.
+- Nouveaux raccourcis (cotation D, charges Q, appuis A, sélection Ctrl+Alt, représentations Alt+1..4,
+  panneaux Ctrl+1..7, F9 / Maj+F9, Ctrl+F5, Ctrl+G, Ctrl+I / Ctrl+E IFC…) ; « Répéter la dernière commande »
+  (Ctrl+Entrée) ; les champs de saisie gardent leurs touches. docs/SHORTCUTS.md, docs/shortcut.txt (généré).
+  Tests 257-266 (total 287).
+
+### Fixed
+- Raccourcis dispersés (57 appels codés en dur) et documentation / aide divergentes (F10, Ctrl+I, « M »).
+- F / Maj+F / R traités aussi par la vue 3D : l'ancienne touche aurait survécu à une personnalisation.
+- `tools/check_shortcuts.py` : alias et suites de touches pris en compte, référence générée comparée.
+
 ## 2026-10-10 (Représentations du modèle : physique, filaire analytique, éléments finis, superposition)
 
 ### Added

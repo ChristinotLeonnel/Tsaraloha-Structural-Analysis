@@ -9,6 +9,7 @@
 class OccView;
 class QLabel;
 class QPushButton;
+class QAction;
 class QComboBox;
 class QCheckBox;
 
@@ -26,6 +27,10 @@ class ViewportContainer : public QWidget {
   Q_OBJECT
 
 public:
+  /// Actions des boutons rapides Z / X / Y (raccourcis posés par ShortcutManager : cmd.coord.axis_*).
+  QList<QAction *> quickAxisActions() const { return m_quickAxisActions; }
+  /// Infobulles des boutons rapides = celles de leurs actions (raccourci actuel).
+  void syncQuickAxisToolTips();
   explicit ViewportContainer(OccView *occView, QWidget *parent = nullptr);
   ~ViewportContainer() override = default;
 
@@ -92,6 +97,7 @@ private:
   QLabel *m_lblAxis = nullptr;
   QComboBox *m_axisCombo = nullptr;
   QPushButton *m_btnQuickZ = nullptr;
+  QList<QAction *> m_quickAxisActions;
   QPushButton *m_btnQuickX = nullptr;
   QPushButton *m_btnQuickY = nullptr;
   QLabel *m_lblPlan = nullptr;

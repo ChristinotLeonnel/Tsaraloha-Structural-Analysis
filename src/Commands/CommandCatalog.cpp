@@ -61,326 +61,431 @@ CommandCatalog::commandsInCategory(CommandCategory category) const {
 }
 
 void CommandCatalog::initializeStandardCatalog() {
-  // --- 1. FILE ---
-  registerCommand({"cmd.file.new", "Nouveau Projet",
-                   "Créer un nouveau projet vierge", "Ctrl+N",
+  // Source unique des commandes raccourcissables : libellé, description, raccourci(s) par défaut
+  // (plusieurs séparés par « ; »), catégorie. Les raccourcis effectifs sont ceux de
+  // ShortcutManager (shortcut.txt utilisateur, valeurs par défaut ci-dessous).
+  registerCommand({"cmd.file.new", "Nouveau projet", "Créer un nouveau projet vierge", "Ctrl+N",
                    ":/icons/common/file_new.svg", CommandCategory::File});
-  registerCommand({"cmd.file.open", "Ouvrir",
-                   "Ouvrir un projet existant (.tsa)", "Ctrl+O",
+  registerCommand({"cmd.file.open", "Ouvrir un projet", "Ouvrir un projet existant (.tsa)", "Ctrl+O",
                    ":/icons/common/file_open.svg", CommandCategory::File});
-  registerCommand({"cmd.file.save", "Enregistrer",
-                   "Enregistrer le projet actuel", "Ctrl+S",
+  registerCommand({"cmd.file.save", "Enregistrer", "Enregistrer le projet actuel", "Ctrl+S",
                    ":/icons/common/file_save.svg", CommandCategory::File});
-  registerCommand({"cmd.file.save_as", "Enregistrer sous",
-                   "Enregistrer sous un nouveau nom", "Ctrl+Shift+S",
+  registerCommand({"cmd.file.save_as", "Enregistrer sous", "Enregistrer le projet sous un nouveau nom", "Ctrl+Shift+S",
                    ":/icons/common/file_save_as.svg", CommandCategory::File});
-  registerCommand({"cmd.file.export_diagnostic", "Exporter Diagnostic",
-                   "Générer un rapport de diagnostic complet", "",
+  registerCommand({"cmd.file.close", "Fermer le projet", "Fermer le projet (demande d'enregistrement si modifié) et revenir au Start Center", "Ctrl+W; Ctrl+F4",
+                   "", CommandCategory::File});
+  registerCommand({"cmd.file.exit", "Quitter", "Quitter TSA (Alt+F4 reste géré par Windows)", "",
+                   "", CommandCategory::File});
+  registerCommand({"cmd.file.export_diagnostic", "Exporter le diagnostic", "Exporter un rapport de diagnostic technique", "",
                    ":/icons/common/diagnostic.svg", CommandCategory::File});
-  registerCommand({"cmd.file.exit", "Quitter", std::string("Quitter ") + TSA::Product::kName, "Alt+F4",
-                   ":/icons/common/exit.svg", CommandCategory::File});
-
-  // --- 2. EDIT ---
-  registerCommand({"cmd.edit.undo", "Annuler", "Annuler la dernière action",
-                   "Ctrl+Z", ":/icons/edit/undo.svg", CommandCategory::Edit});
-  registerCommand({"cmd.edit.redo", "Rétablir",
-                   "Rétablir la dernière action annulée", "Ctrl+Y",
+  registerCommand({"cmd.model.topology", "Topologie et numérotation", "Paramètres du projet : stratégies de numérotation des nœuds et des éléments", "",
+                   "", CommandCategory::Model});
+  registerCommand({"cmd.model.clean", "Nettoyer le modèle", "Détecter et corriger les défauts géométriques du modèle", "",
+                   "", CommandCategory::Model});
+  registerCommand({"cmd.edit.undo", "Annuler", "Annuler la dernière modification", "Ctrl+Z",
+                   ":/icons/edit/undo.svg", CommandCategory::Edit});
+  registerCommand({"cmd.edit.redo", "Rétablir", "Rétablir la modification annulée", "Ctrl+Y; Ctrl+Shift+Z",
                    ":/icons/edit/redo.svg", CommandCategory::Edit});
-  registerCommand({"cmd.edit.copy", "Copier",
-                   "Copier les éléments sélectionnés dans le presse-papier",
-                   "Ctrl+C", ":/icons/edit/copy.svg", CommandCategory::Edit});
-  registerCommand({"cmd.edit.paste", "Coller",
-                   "Coller les éléments du presse-papier", "Ctrl+V",
+  registerCommand({"cmd.edit.copy", "Copier", "Copier les éléments sélectionnés dans le presse-papier", "Ctrl+C; Ctrl+Ins",
+                   ":/icons/edit/copy.svg", CommandCategory::Edit});
+  registerCommand({"cmd.edit.paste", "Coller", "Coller les éléments du presse-papier en 3D", "Ctrl+V; Shift+Ins",
                    ":/icons/edit/paste.svg", CommandCategory::Edit});
-  registerCommand({"cmd.edit.delete", "Supprimer",
-                   "Supprimer les éléments sélectionnés", "Del",
+  registerCommand({"cmd.edit.delete", "Supprimer", "Supprimer les éléments, charges ou cotations sélectionnés", "Del",
                    ":/icons/edit/delete.svg", CommandCategory::Edit});
-
-  // --- 3. CREATE / DRAW ---
-  registerCommand({"cmd.create.node", "Nœud", "Créer un nœud structural en 3D",
-                   "N", ":/icons/structure/node.svg", CommandCategory::Create});
-  registerCommand({"cmd.create.beam", "Poutre",
-                   "Créer une poutre horizontale ou inclinée", "B",
-                   ":/icons/structure/beam.svg", CommandCategory::Create});
-  registerCommand({"cmd.create.column", "Poteau",
-                   "Créer un poteau vertical ou incliné", "C",
-                   ":/icons/structure/column.svg", CommandCategory::Create});
-  registerCommand({"cmd.create.cable", "Câble",
-                   "Créer un câble structural ou hauban", "Alt+C",
-                   ":/icons/structure/cable.svg", CommandCategory::Create});
-  registerCommand({"cmd.create.bar", "Barre",
-                   "Créer une barre générique (Robot SA style)", "",
-                   ":/icons/structure/bar.svg", CommandCategory::Create});
-  registerCommand({"cmd.create.truss", "Treillis",
-                   "Créer une barre de treillis ou diagonale", "",
-                   ":/icons/structure/truss.svg", CommandCategory::Create});
-  registerCommand({"cmd.create.slab", "Dalle",
-                   "Créer un panneau de dalle ou plancher", "L",
-                   ":/icons/structure/slab.svg", CommandCategory::Create});
-  registerCommand({"cmd.create.wall", "Voile", "Créer un voile ou mur porteur",
-                   "W", ":/icons/structure/wall.svg", CommandCategory::Create});
-  registerCommand({"cmd.create.foundation", "Fondation",
-                   "Créer une semelle isolée ou filante", "",
-                   ":/icons/structure/footing.svg", CommandCategory::Create});
-  registerCommand({"cmd.create.presets", "Structures Types",
-                   "Générer un portique, treillis ou tour type", "",
-                   ":/icons/structure/presets.svg", CommandCategory::Create});
-
-  // --- 4. MODIFY ---
-  registerCommand({"cmd.modify.move", "Déplacer 3D",
-                   "Déplacer les éléments sélectionnés point à point", "M",
-                   ":/icons/structure/struct_move.svg",
-                   CommandCategory::Modify});
-  registerCommand({"cmd.modify.copy", "Copier 3D",
-                   "Copier les éléments sélectionnés par translation", "Ctrl+D",
-                   ":/icons/structure/struct_copy.svg",
-                   CommandCategory::Modify});
-  registerCommand({"cmd.modify.rotate", "Rotation 3D",
-                   "Faire pivoter les éléments autour d'un axe", "Ctrl+R",
-                   ":/icons/edit/rotate.svg", CommandCategory::Modify});
-  registerCommand({"cmd.modify.translate", "Translation Numérique",
-                   "Déplacer les éléments par incréments dX, dY, dZ",
-                   "Ctrl+Shift+M", ":/icons/move.svg",
-                   CommandCategory::Modify});
-  registerCommand({"cmd.modify.mirror", "Symétrie (Miroir)",
-                   "Copier ou retourner la sélection par symétrie / plan X, Y ou Z", "",
-                   ":/icons/edit/mirror.svg", CommandCategory::Modify});
-  registerCommand({"cmd.modify.split_bars", "Diviser les barres",
-                   "Diviser les poutres et poteaux sélectionnés en N tronçons égaux", "",
-                   ":/icons/structure/struct_split.svg", CommandCategory::Modify});
-  registerCommand({"cmd.modify.merge_nodes", "Fusionner les nœuds confondus",
-                   "Fusionner les nœuds géométriquement confondus du modèle", "",
-                   ":/icons/structure/struct_merge.svg", CommandCategory::Modify});
-  registerCommand({"cmd.modify.move_origin", "Déplacer vers Origine",
-                   "Repositionner la sélection sur l'origine (0,0,0)", "",
-                   ":/icons/structure/struct_move.svg",
-                   CommandCategory::Modify});
-
-  // --- 5. SELECTION ---
-  registerCommand({"cmd.select.mode", "Sélectionner",
-                   "Activer le mode sélection souris standard", "Esc",
+  registerCommand({"cmd.edit.repeat", "Répéter la dernière commande", "Relancer la dernière commande de modélisation, de modification, de charge ou d'appui", "Ctrl+Return",
+                   "", CommandCategory::Edit});
+  registerCommand({"cmd.select.mode", "Mode sélection", "Revenir au mode sélection et annuler l'outil en cours", "Esc",
                    ":/icons/edit/select.svg", CommandCategory::Selection});
-  registerCommand({"cmd.select.all", "Tout Sélectionner",
-                   "Sélectionner tous les éléments du modèle", "Ctrl+A",
+  registerCommand({"cmd.select.all", "Tout sélectionner", "Sélectionner tous les éléments", "Ctrl+A",
                    ":/icons/edit/select_all.svg", CommandCategory::Selection});
-  registerCommand({"cmd.select.clear", "Effacer Sélection",
-                   "Désélectionner tous les éléments", "", "",
-                   CommandCategory::Selection});
-  registerCommand({"cmd.select.invert", "Inverser la Sélection",
-                   "Sélectionner tous les éléments non sélectionnés", "Ctrl+Alt+I", "",
-                   CommandCategory::Selection});
-  registerCommand({"cmd.select.by_type", "Sélectionner par Type",
-                   "Sélectionner tous les éléments d'un type (nœuds, poutres, poteaux...)", "", "",
-                   CommandCategory::Selection});
-  registerCommand({"cmd.select.same_section", "Même Section",
-                   "Sélectionner les barres de même section que la sélection", "", "",
-                   CommandCategory::Selection});
-  registerCommand({"cmd.select.same_material", "Même Matériau",
-                   "Sélectionner les éléments de même matériau que la sélection", "", "",
-                   CommandCategory::Selection});
-  registerCommand({"cmd.select.active_level", "Éléments du Niveau Actif",
-                   "Sélectionner les éléments situés sur le niveau actif", "", "",
-                   CommandCategory::Selection});
-  registerCommand({"cmd.select.active_workplane", "Éléments du Plan de Travail",
-                   "Sélectionner les éléments entièrement contenus dans le plan de travail actif", "", "",
-                   CommandCategory::Selection});
-
-  // --- 6. PROPERTIES ---
-  registerCommand({"cmd.properties.panel", "Panneau Propriétés",
-                   "Inspecter les propriétés de la sélection", "P",
-                   ":/icons/view/properties.svg", CommandCategory::Properties});
-
-  // --- 7. LIBRARIES ---
-  registerCommand({"cmd.library.sections", "Catalogue Profilés",
-                   "Consulter la bibliothèque de sections TSALib", "",
-                   ":/icons/structure/library.svg",
-                   CommandCategory::Libraries});
-  registerCommand({"cmd.library.materials", "Catalogue Matériaux",
-                   "Consulter les matériaux Eurocodes / ASTM", "",
-                   ":/icons/structure/materials.svg",
-                   CommandCategory::Libraries});
-  registerCommand({"cmd.library.cables", "Catalogue Câbles",
-                   "Consulter les torons et câbles clos TSALib", "",
-                   ":/icons/structure/cable_library.svg",
-                   CommandCategory::Libraries});
-  registerCommand({"cmd.library.manager", "Gestionnaire d'Extensions",
-                   "Gérer les packs et bibliothèques .tsalib", "",
-                   ":/icons/extension_manager.svg",
-                   CommandCategory::Libraries});
-
-  // --- 8. STRUCTURE (Grilles & Niveaux) ---
-  registerCommand({"cmd.struct.grid_dialog", "Gestionnaire de Grilles",
-                   "Créer et modifier les grilles 3D", "",
-                   ":/icons/grid/grid_manager.svg",
-                   CommandCategory::Structure});
-  registerCommand({"cmd.struct.levels", "Gestionnaire d'Étages",
-                   "Définir les étages et niveaux de référence", "Ctrl+L",
+  registerCommand({"cmd.select.invert", "Inverser la sélection", "Sélectionner les éléments non sélectionnés", "Ctrl+Alt+I",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.nodes", "Sélectionner les nœuds", "Sélectionner tous les nœuds", "Ctrl+Alt+N",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.beams", "Sélectionner les poutres", "Sélectionner toutes les poutres", "Ctrl+Alt+B",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.columns", "Sélectionner les poteaux", "Sélectionner tous les poteaux", "Ctrl+Alt+P",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.slabs", "Sélectionner les dalles", "Sélectionner toutes les dalles", "",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.walls", "Sélectionner les voiles", "Sélectionner tous les voiles", "",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.foundations", "Sélectionner les fondations", "Sélectionner toutes les fondations", "",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.truss", "Sélectionner les treillis", "Sélectionner toutes les barres de treillis", "",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.cables", "Sélectionner les câbles", "Sélectionner tous les câbles", "",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.same_section", "Même section", "Sélectionner les éléments de même section que la sélection", "Ctrl+Alt+S",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.same_material", "Même matériau", "Sélectionner les éléments de même matériau que la sélection", "Ctrl+Alt+M",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.active_level", "Éléments du niveau actif", "Sélectionner les éléments du niveau actif", "",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.select.active_workplane", "Éléments du plan de travail", "Sélectionner les éléments du plan de travail actif", "",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.isolate.selection", "Isoler la sélection", "Masquer tout sauf la sélection", "I",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.isolate.same_type", "Isoler par type", "Isoler les éléments du même type que la sélection", "Alt+I",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.isolate.workplane", "Isoler le plan de travail", "Isoler les éléments du plan de travail actif", "Alt+W",
+                   ":/icons/view/view_top.svg", CommandCategory::Selection});
+  registerCommand({"cmd.isolate.hide", "Masquer la sélection", "Masquer les éléments sélectionnés", "H",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.isolate.invert", "Inverser l'isolation", "Échanger objets visibles et objets masqués", "",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.isolate.undo", "Isolation précédente", "Annuler la dernière isolation", "Ctrl+H",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.isolate.show_all", "Tout afficher", "Mettre fin à l'isolation et réafficher tous les objets", "Alt+H",
+                   "", CommandCategory::Selection});
+  registerCommand({"cmd.create.node", "Dessiner un nœud", "Mode dessin : nœud structural", "N",
+                   ":/icons/structure/node.svg", CommandCategory::Create});
+  registerCommand({"cmd.create.node_dialog", "Nouveau nœud (coordonnées)", "Créer un nœud par saisie de ses coordonnées", "Ctrl+Shift+N",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.create.beam", "Dessiner une poutre", "Mode dessin : poutre", "B",
+                   ":/icons/structure/beam.svg", CommandCategory::Create});
+  registerCommand({"cmd.create.column", "Dessiner un poteau", "Mode dessin : poteau", "C",
+                   ":/icons/structure/column.svg", CommandCategory::Create});
+  registerCommand({"cmd.create.bar", "Outil barres", "Fenêtre de tracé des éléments filaires", "",
+                   ":/icons/structure/bar.svg", CommandCategory::Create});
+  registerCommand({"cmd.create.cable", "Dessiner un câble", "Mode dessin : câble / hauban", "Alt+C",
+                   ":/icons/structure/cable.svg", CommandCategory::Create});
+  registerCommand({"cmd.create.slab", "Dessiner une dalle", "Mode dessin : dalle", "L",
+                   ":/icons/structure/slab.svg", CommandCategory::Create});
+  registerCommand({"cmd.create.wall", "Dessiner un voile", "Mode dessin : voile", "W",
+                   ":/icons/structure/wall.svg", CommandCategory::Create});
+  registerCommand({"cmd.create.truss", "Treillis paramétrique", "Générer un treillis paramétrique (Warren, Pratt, Howe)", "",
+                   ":/icons/structure/truss.svg", CommandCategory::Create});
+  registerCommand({"cmd.create.foundation", "Semelle / fondation", "Créer une semelle ou une fondation", "",
+                   ":/icons/structure/footing.svg", CommandCategory::Create});
+  registerCommand({"cmd.create.cube", "Cube structurel 3D", "Générer un cube structurel paramétrique", "",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.create.presets", "Paramètres de modélisation", "Sections, matériaux et options utilisés par les outils de dessin", "",
+                   ":/icons/structure/presets.svg", CommandCategory::Create});
+  registerCommand({"cmd.support.fixed", "Encastrement", "Affecter un encastrement (6 DDL bloqués) aux nœuds sélectionnés", "A, E",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.support.pinned", "Articulation", "Affecter une articulation (rotule 3D) aux nœuds sélectionnés", "A, A",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.support.roller", "Appui simple", "Affecter un appui simple (rouleau) aux nœuds sélectionnés", "A, S",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.tool.draw_beam_chain", "Poutres en chaîne", "Outil de dessin : poutres enchaînées", "",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.tool.draw_beam_rectangle", "Rectangle de poutres", "Outil de dessin : quatre poutres en rectangle", "",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.tool.draw_portal", "Portique", "Outil de dessin : portique (deux poteaux, une traverse)", "",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.tool.draw_x_bracing", "Croix de contreventement", "Outil de dessin : croix de Saint-André", "",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.tool.draw_beam_arc", "Poutres en arc", "Outil de dessin : arc discrétisé en poutres", "",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.tool.draw_grid_columns", "Poteaux sur la grille", "Outil de dessin : poteaux aux intersections de la grille", "",
+                   "", CommandCategory::Create});
+  registerCommand({"cmd.modify.move", "Déplacer (3D)", "Déplacer la sélection point à point", "M",
+                   ":/icons/structure/struct_move.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.copy_3d", "Copier (3D)", "Copier la sélection point à point", "Ctrl+Shift+D",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.modify.copy", "Copie numérique", "Copie numérique avec répétition (dialogue)", "Ctrl+D",
+                   ":/icons/structure/struct_copy.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.translate", "Translation numérique", "Translation par dialogue (dX, dY, dZ)", "Ctrl+Shift+M",
+                   ":/icons/move.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.rotate", "Rotation (3D)", "Rotation de la sélection autour d'un axe", "Ctrl+R",
+                   ":/icons/edit/rotate.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.mirror", "Symétrie", "Symétrie / copie miroir (console : MIRROR, MI)", "",
+                   ":/icons/edit/mirror.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.split_bars", "Diviser les barres", "Diviser les barres sélectionnées en N tronçons (console : SPLIT)", "",
+                   ":/icons/structure/struct_split.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.merge_nodes", "Fusionner les nœuds", "Fusionner les nœuds confondus (console : MERGE)", "",
+                   ":/icons/structure/struct_merge.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.move_origin", "Déplacer l'origine", "Déplacer l'origine 3D", "",
+                   ":/icons/structure/struct_move.svg", CommandCategory::Modify});
+  registerCommand({"cmd.modify.viewport_input", "Saisie dans la vue 3D", "Piloter les outils directement dans la vue 3D (sinon par dialogue)", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.move", "Outil déplacer", "Outil de modification : déplacer", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.copy", "Outil copier", "Outil de modification : copier", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.array_linear", "Réseau linéaire", "Outil de modification : réseau linéaire", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.rotate", "Outil rotation", "Outil de modification : rotation", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.array_polar", "Réseau polaire", "Outil de modification : réseau polaire", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.mirror", "Outil symétrie", "Outil de modification : symétrie", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.scale", "Échelle", "Outil de modification : mise à l'échelle", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.split", "Diviser", "Outil de modification : diviser une barre", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.split_at", "Couper en un point", "Outil de modification : couper une barre en un point", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.intersect", "Intersection", "Outil de modification : couper deux barres à leur intersection", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.extend", "Prolonger", "Outil de modification : prolonger jusqu'à une limite (AutoCAD : EX)", "E, X",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.trim", "Ajuster", "Outil de modification : ajuster à une limite (AutoCAD : TR)", "T, R",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.offset", "Décaler", "Outil de modification : copie décalée (AutoCAD : O)", "O, F",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.merge_nodes", "Outil fusion de nœuds", "Outil de modification : fusionner des nœuds", "",
+                   "", CommandCategory::Modify});
+  registerCommand({"cmd.tool.dim_aligned", "Cotation alignée", "Cotation en vraie grandeur entre deux points (AutoCAD : DAL)", "D, A",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tool.dim_linear", "Cotation linéaire", "Cotation suivant X, Y ou Z selon le curseur (AutoCAD : DLI)", "D, L",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tool.dim_horizontal", "Cotation horizontale", "Cotation de la composante horizontale", "D, H",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tool.dim_x", "Cotation suivant X", "Cotation projetée sur X", "D, X",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tool.dim_y", "Cotation suivant Y", "Cotation projetée sur Y", "D, Y",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tool.dim_z", "Cotation suivant Z", "Cotation projetée sur Z", "D, Z",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tool.dim_angular", "Cotation angulaire", "Angle entre deux bras (AutoCAD : DAN)", "D, N",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tool.dim_level", "Cotation de niveau", "Niveau d'un point par rapport à la référence", "D, V",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tool.dim_chain", "Cotation en chaîne", "Cotes successives sur une ligne commune (AutoCAD : DCO)", "D, C",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tool.dim_cumulative", "Cotation cumulée", "Cotes depuis une origine commune (AutoCAD : DBA)", "D, B",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.dim.edit", "Modifier la cotation", "Modifier la cotation sélectionnée", "D, E",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.dim.delete", "Supprimer les cotations", "Supprimer les cotations sélectionnées", "",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.dim.visible", "Afficher les cotations", "Afficher ou masquer les cotations", "",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.dim.style", "Style des cotations", "Unités, précision, tailles et couleurs des cotations", "",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.dim.clean", "Supprimer les cotations invalides", "Supprimer les cotations dont un nœud a été supprimé", "",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.tools.measure", "Mesurer une distance", "Mesurer une distance 3D (AutoCAD : DI)", "D, I",
+                   "", CommandCategory::Annotation});
+  registerCommand({"cmd.display.grid", "Afficher la grille", "Afficher ou masquer la grille 3D", "G; F7",
+                   ":/icons/view/grid.svg", CommandCategory::Snap});
+  registerCommand({"cmd.snap.grid", "Magnétisme grille", "Activer ou désactiver le magnétisme de la grille (Snap)", "S",
+                   ":/icons/snap.svg", CommandCategory::Snap});
+  registerCommand({"cmd.snap.object_snap", "Accrochage objets", "Activer ou désactiver l'accrochage aux objets (OSNAP)", "F3",
+                   ":/icons/view/snap.svg", CommandCategory::Snap});
+  registerCommand({"cmd.display.levels", "Afficher les plans d'étages", "Afficher ou masquer les plans d'étages", "",
+                   "", CommandCategory::Snap});
+  registerCommand({"cmd.display.grid_labels", "Afficher les libellés d'axes", "Afficher ou masquer les libellés des axes de grille", "",
+                   "", CommandCategory::Snap});
+  registerCommand({"cmd.display.rulers", "Afficher les règles", "Afficher ou masquer les règles graduées", "",
+                   ":/icons/view/rulers.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.axis_z", "Plan horizontal Z", "Bandeau de la vue : plans horizontaux (niveaux)", "Alt+Z",
+                   "", CommandCategory::Snap});
+  registerCommand({"cmd.coord.axis_x", "Coupe verticale X", "Bandeau de la vue : coupes perpendiculaires à X", "Alt+X",
+                   "", CommandCategory::Snap});
+  registerCommand({"cmd.coord.axis_y", "Coupe verticale Y", "Bandeau de la vue : coupes perpendiculaires à Y", "Alt+Y",
+                   "", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_xy", "Plan de travail XY", "Plan de travail global horizontal XY", "",
+                   ":/icons/view/view_top.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_xz", "Plan de travail XZ", "Plan de travail global vertical XZ", "",
+                   ":/icons/view/view_front.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_yz", "Plan de travail YZ", "Plan de travail global vertical YZ", "",
+                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_level", "Plan de travail sur l'étage", "Plan de travail sur l'étage actif", "",
+                   ":/icons/structure/levels.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_custom", "Plan de travail personnalisé", "Définir un plan de travail personnalisé", "",
+                   "", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_visible", "Afficher le plan de travail", "Afficher ou masquer le plan de travail 3D", "",
+                   "", CommandCategory::Snap});
+  registerCommand({"cmd.view.normal_to_plane", "Vue normale au plan", "Orienter la caméra perpendiculairement au plan de travail", "Num+0",
+                   "", CommandCategory::Snap});
+  registerCommand({"cmd.struct.levels", "Étages et niveaux", "Gestionnaire des étages et niveaux", "Ctrl+L",
                    ":/icons/structure/levels.svg", CommandCategory::Structure});
-
-  // --- 9. LOADS ---
-  registerCommand({"cmd.loads.point", "Charge Ponctuelle",
-                   "Appliquer une force ponctuelle sur un nœud", "",
-                   ":/icons/load_point.svg", CommandCategory::Loads});
-  registerCommand({"cmd.loads.distributed", "Charge Répartie",
-                   "Appliquer une charge linéique sur une barre", "",
-                   ":/icons/load_distributed.svg", CommandCategory::Loads});
-  registerCommand({"cmd.loads.moment", "Moment",
-                   "Appliquer un moment fléchissant", "",
-                   ":/icons/load_moment.svg", CommandCategory::Loads});
-
-  // --- 10. ANALYSIS ---
-  registerCommand({"cmd.analysis.mesh", "Générer Maillage",
-                   "Générer le maillage éléments finis 1D/2D", "",
-                   ":/icons/analysis_mesh.svg", CommandCategory::Analysis});
-  registerCommand({"cmd.analysis.solve", "Calcul Statique",
-                   "Lancer la résolution statique linéaire [K]{u}={F}", "F5",
-                   ":/icons/analysis_run.svg", CommandCategory::Analysis});
-
-  // --- 11. RESULTS ---
-  registerCommand({"cmd.results.displacements", "Déplacements",
-                   "Afficher la déformée et les flèches", "",
-                   ":/icons/results_disp.svg", CommandCategory::Results});
-  registerCommand({"cmd.results.forces", "Efforts Internes",
-                   "Afficher les diagrammes de moments et tranchants", "",
-                   ":/icons/results_forces.svg", CommandCategory::Results});
-  registerCommand({"cmd.results.stresses", "Contraintes",
-                   "Afficher les cartes de contraintes de Von Mises", "",
-                   ":/icons/results_stress.svg", CommandCategory::Results});
-
-  // --- 12. VIEW & DISPLAY ---
-  registerCommand({"cmd.view.fit_all", "Tout Ajuster",
-                   "Cadrer toute la scène 3D", "F", ":/icons/view/fit_all.svg",
-                   CommandCategory::View});
-  registerCommand({"cmd.view.fit_selection", "Cadrer Sélection",
-                   "Cadrer la vue sur les éléments sélectionnés", "Shift+F",
+  registerCommand({"cmd.struct.grid_dialog", "Gestionnaire de grilles", "Créer, modifier et activer les grilles d'axes", "Ctrl+G",
+                   ":/icons/grid/grid_manager.svg", CommandCategory::Structure});
+  registerCommand({"cmd.struct.new_grid", "Nouvelle grille 3D", "Créer une nouvelle grille d'axes", "Ctrl+Shift+G",
+                   "", CommandCategory::Structure});
+  registerCommand({"cmd.view.fit_all", "Zoom étendu", "Cadrer tout le modèle (AutoCAD : Z, E)", "F; Z, E",
                    ":/icons/view/fit_all.svg", CommandCategory::View});
-  registerCommand({"cmd.view.zoom_in", "Zoom Avant", "Agrandir la vue", "+",
+  registerCommand({"cmd.view.fit_selection", "Zoom sur la sélection", "Cadrer la sélection", "Shift+F",
+                   ":/icons/view/fit_all.svg", CommandCategory::View});
+  registerCommand({"cmd.view.zoom_in", "Zoom avant", "Agrandir la vue", "+",
                    ":/icons/view/zoom_in.svg", CommandCategory::View});
-  registerCommand({"cmd.view.zoom_out", "Zoom Arrière", "Réduire la vue", "-",
+  registerCommand({"cmd.view.zoom_out", "Zoom arrière", "Réduire la vue", "-",
                    ":/icons/view/zoom_out.svg", CommandCategory::View});
-  registerCommand({"cmd.view.zoom_window", "Zoom Fenêtre",
-                   "Agrandir une région rectangulaire de la vue", "",
+  registerCommand({"cmd.view.zoom_window", "Zoom fenêtre", "Zoomer sur un rectangle tracé (AutoCAD : Z, W)", "Z, W",
                    ":/icons/view/zoom_window.svg", CommandCategory::View});
-  registerCommand({"cmd.view.prev", "Vue Précédente",
-                   "Restaurer l'orientation et zoom caméra précédents",
-                   "Alt+Left", ":/icons/edit/undo.svg", CommandCategory::View});
-  registerCommand({"cmd.view.next", "Vue Suivante",
-                   "Rétablir l'orientation et zoom caméra suivants",
-                   "Alt+Right", ":/icons/edit/redo.svg",
-                   CommandCategory::View});
-  registerCommand({"cmd.view.home", "Vue Initiale",
-                   "Réinitialiser la caméra en vue d'accueil 3D", "Home",
+  registerCommand({"cmd.view.prev", "Vue précédente", "Revenir à la vue précédente (AutoCAD : Z, P)", "Alt+Left; Z, P",
+                   ":/icons/edit/undo.svg", CommandCategory::View});
+  registerCommand({"cmd.view.next", "Vue suivante", "Revenir à la vue suivante", "Alt+Right",
+                   ":/icons/edit/redo.svg", CommandCategory::View});
+  registerCommand({"cmd.view.home", "Vue d'accueil", "Vue initiale du modèle", "Home",
                    ":/icons/view/view_3d.svg", CommandCategory::View});
-  registerCommand({"cmd.view.reset", "Réinitialiser Vue",
-                   "Réinitialiser l'orientation de caméra 3D", "R",
+  registerCommand({"cmd.view.reset", "Réinitialiser la vue", "Réinitialiser l'orientation de la caméra", "R",
                    ":/icons/view/view_iso.svg", CommandCategory::View});
-  registerCommand({"cmd.view.top", "Vue de Dessus",
-                   "Orienter la caméra vue de dessus (+Z)", "Num+7",
+  registerCommand({"cmd.view.top", "Vue de dessus", "Caméra vers -Z", "Num+7",
                    ":/icons/view/view_top.svg", CommandCategory::View});
-  registerCommand({"cmd.view.bottom", "Vue de Dessous",
-                   "Orienter la caméra vue de dessous (-Z)", "Ctrl+Num+7",
+  registerCommand({"cmd.view.bottom", "Vue de dessous", "Caméra vers +Z", "Ctrl+Num+7",
                    ":/icons/view/view_top.svg", CommandCategory::View});
-  registerCommand({"cmd.view.front", "Vue de Face",
-                   "Orienter la caméra vue de face (+Y)", "Num+1",
+  registerCommand({"cmd.view.front", "Vue de face", "Caméra vers +Y", "Num+1",
                    ":/icons/view/view_front.svg", CommandCategory::View});
-  registerCommand({"cmd.view.back", "Vue Arrière",
-                   "Orienter la caméra vue arrière (-Y)", "Ctrl+Num+1",
+  registerCommand({"cmd.view.back", "Vue arrière", "Caméra vers -Y", "Ctrl+Num+1",
                    ":/icons/view/view_front.svg", CommandCategory::View});
-  registerCommand({"cmd.view.left", "Vue Gauche",
-                   "Orienter la caméra vue gauche (-X)", "Num+3",
+  registerCommand({"cmd.view.left", "Vue de gauche", "Caméra vers +X", "Num+3",
                    ":/icons/view/view_side.svg", CommandCategory::View});
-  registerCommand({"cmd.view.right", "Vue Droite",
-                   "Orienter la caméra vue droite (+X)", "Ctrl+Num+3",
+  registerCommand({"cmd.view.right", "Vue de droite", "Caméra vers -X", "Ctrl+Num+3",
                    ":/icons/view/view_side.svg", CommandCategory::View});
-  registerCommand({"cmd.view.iso", "Vue 3D Isométrique",
-                   "Basculer en vue 3D axonométrique", "Num+5",
+  registerCommand({"cmd.view.iso", "Vue isométrique", "Vue 3D isométrique", "Num+5",
                    ":/icons/view/view_3d.svg", CommandCategory::View});
-  registerCommand({"cmd.view.xy", "Plan (XY)", "Basculer en vue de dessus", "",
-                   ":/icons/view/view_top.svg", CommandCategory::View});
-  registerCommand({"cmd.view.xz", "Façade (XZ)", "Basculer en vue de face", "",
-                   ":/icons/view/view_front.svg", CommandCategory::View});
-  registerCommand({"cmd.view.yz", "Pignon (YZ)", "Basculer en vue latérale", "",
-                   ":/icons/view/view_side.svg", CommandCategory::View});
-  registerCommand({"cmd.view.display_physical", "Modèle physique",
-                   "Afficher les éléments avec leurs sections volumiques", "",
-                   ":/icons/view/view_shaded.svg", CommandCategory::View});
-  registerCommand({"cmd.view.display_analytical", "Modèle filaire analytique",
-                   "Masquer les sections : axes des barres et nœuds (affichage seulement)", "",
-                   ":/icons/view/display_analytical.svg", CommandCategory::View});
-  registerCommand({"cmd.view.display_fe", "Modèle éléments finis",
-                   "Afficher le maillage réellement transmis au moteur lors du dernier calcul", "",
-                   ":/icons/view/display_fe.svg", CommandCategory::View});
-  registerCommand({"cmd.view.display_overlay", "Superposition physique / analytique",
-                   "Sections translucides et axes analytiques superposés", "",
-                   ":/icons/view/view_transparent.svg", CommandCategory::View});
-  registerCommand({"cmd.view.section_cut", "Plan de Coupe",
-                   "Activer le plan de coupe dynamique 3D", "",
-                   ":/icons/view/section_cut.svg", CommandCategory::View});
-  registerCommand({"cmd.view.fullscreen", "Plein Écran",
-                   "Basculer en mode plein écran", "F11",
-                   ":/icons/fullscreen.svg", CommandCategory::View});
-  registerCommand({"cmd.coord.workplane_xy", "Plan de Travail XY",
-                   "Activer le plan de travail horizontal XY", "Alt+Z",
-                   ":/icons/view/view_top.svg", CommandCategory::View});
-  registerCommand({"cmd.coord.workplane_xz", "Plan de Travail XZ",
-                   "Activer le plan de travail vertical frontal XZ", "Alt+Y",
-                   ":/icons/view/view_front.svg", CommandCategory::View});
-  registerCommand({"cmd.coord.workplane_yz", "Plan de Travail YZ",
-                   "Activer le plan de travail vertical latéral YZ", "Alt+X",
-                   ":/icons/view/view_side.svg", CommandCategory::View});
-  registerCommand({"cmd.coord.workplane_level", "Plan de Travail Étage",
-                   "Aligner le plan de travail sur l'étage actif", "",
-                   ":/icons/structure/levels.svg", CommandCategory::View});
-  registerCommand({"cmd.snap.grid", "Magnétisme Grille",
-                   "Activer ou désactiver l'accrochage magnétique à la grille",
-                   "S", ":/icons/snap.svg", CommandCategory::View});
-  registerCommand({"cmd.snap.object_snap", "Accrochage Objets (OSNAP)",
-                   "Activer/désactiver l'accrochage magnétique intelligent",
-                   "F3", ":/icons/view/snap.svg", CommandCategory::View});
-  registerCommand({"cmd.display.grid", "Afficher Grille",
-                   "Afficher ou masquer la grille 3D", "G",
-                   ":/icons/view/grid.svg", CommandCategory::Display});
-  registerCommand({"cmd.display.rulers", "Afficher Règles",
-                   "Afficher ou masquer les règles de projection", "",
-                   ":/icons/view/rulers.svg", CommandCategory::Display});
-
-  // --- 13. SETTINGS & HELP ---
-  registerCommand({"cmd.settings.theme", "Basculer Thème",
-                   "Alterner entre le thème sombre et clair", "Ctrl+T",
-                   ":/icons/common/theme_dark.svg", CommandCategory::Settings});
-  registerCommand({"cmd.help.help", std::string("Aide Complète ") + TSA::Product::kName,
-                   "Ouvrir le centre d'aide, guide et documentation", "",
-                   ":/icons/common/help.svg", CommandCategory::Settings});
-  registerCommand({"cmd.help.shortcuts", "Raccourcis Clavier",
-                   "Afficher la liste des raccourcis", "F1",
-                   ":/icons/common/shortcuts.svg", CommandCategory::Settings});
-  registerCommand({"cmd.help.about", std::string("À Propos de ") + TSA::Product::kName,
-                   "Afficher les informations de version et crédits", "",
-                   ":/icons/common/about.svg", CommandCategory::Settings});
-
-  // --- 14. ISOLATION 3D --- (menu Affichage ▸ Isolation 3D, OccView::isolateElements…)
-  registerCommand({"cmd.isolate.selection", "Isoler la Sélection",
-                   "Masquer tous les objets sauf la sélection", "I", "",
-                   CommandCategory::View});
-  registerCommand({"cmd.isolate.same_type", "Isoler par Type",
-                   "Isoler les objets du même type que la sélection", "Alt+I",
+  registerCommand({"cmd.view.3d", "Vue 3D axonométrique", "Revenir à la vue 3D axonométrique", "",
                    "", CommandCategory::View});
-  registerCommand({"cmd.isolate.workplane", "Isoler sur Plan de Travail",
-                   "Isoler les objets situés sur le plan de travail actif",
-                   "Alt+W", ":/icons/view/view_top.svg",
-                   CommandCategory::View});
-  registerCommand({"cmd.isolate.hide", "Masquer la Sélection",
-                   "Masquer les éléments sélectionnés", "H", "",
-                   CommandCategory::View});
-  registerCommand({"cmd.isolate.invert", "Inverser l'Isolation",
-                   "Échanger objets visibles et objets masqués", "", "",
-                   CommandCategory::View});
-  registerCommand({"cmd.isolate.undo", "Isolation Précédente",
-                   "Annuler la dernière isolation", "Ctrl+H", "",
-                   CommandCategory::View});
-  registerCommand({"cmd.isolate.show_all", "Tout Afficher",
-                   "Mettre fin à l'isolation et réafficher tous les objets",
-                   "Alt+H", "", CommandCategory::View});
+  registerCommand({"cmd.view.xy", "Plan XY", "Vue d'étage (plan XY)", "",
+                   ":/icons/view/view_top.svg", CommandCategory::View});
+  registerCommand({"cmd.view.xz", "Plan XZ", "Élévation de face (plan XZ)", "",
+                   ":/icons/view/view_front.svg", CommandCategory::View});
+  registerCommand({"cmd.view.yz", "Plan YZ", "Coupe latérale / pignon (plan YZ)", "",
+                   ":/icons/view/view_side.svg", CommandCategory::View});
+  registerCommand({"cmd.view.rotate_left", "Pivoter la vue 2D à gauche", "Rotation de la vue 2D de -15°", "",
+                   "", CommandCategory::View});
+  registerCommand({"cmd.view.rotate_right", "Pivoter la vue 2D à droite", "Rotation de la vue 2D de +15°", "",
+                   "", CommandCategory::View});
+  registerCommand({"cmd.view.section_cut", "Coupes de la structure", "Plan de coupe dynamique 3D", "",
+                   ":/icons/view/section_cut.svg", CommandCategory::View});
+  registerCommand({"cmd.view.coord_system", "Repère local / global", "Afficher le repère local ou global", "",
+                   "", CommandCategory::View});
+  registerCommand({"cmd.view.fullscreen", "Plein écran", "Basculer en mode plein écran", "F11",
+                   ":/icons/fullscreen.svg", CommandCategory::View});
+  registerCommand({"cmd.view.display_physical", "Modèle physique", "Représentation : sections volumiques", "Alt+1",
+                   ":/icons/view/view_shaded.svg", CommandCategory::View});
+  registerCommand({"cmd.view.display_analytical", "Modèle filaire analytique", "Représentation : axes des barres et nœuds", "Alt+2",
+                   ":/icons/view/display_analytical.svg", CommandCategory::View});
+  registerCommand({"cmd.view.display_fe", "Modèle éléments finis", "Représentation : maillage réellement transmis au moteur", "Alt+3",
+                   ":/icons/view/display_fe.svg", CommandCategory::View});
+  registerCommand({"cmd.view.display_overlay", "Superposition", "Représentation : sections translucides et axes", "Alt+4",
+                   ":/icons/view/view_transparent.svg", CommandCategory::View});
+  registerCommand({"cmd.display.nodes", "Afficher les nœuds", "Afficher ou masquer les nœuds", "",
+                   "", CommandCategory::Display});
+  registerCommand({"cmd.display.node_labels", "Afficher les numéros de nœuds", "Afficher ou masquer les étiquettes des nœuds", "",
+                   "", CommandCategory::Display});
+  registerCommand({"cmd.display.supports", "Afficher les appuis", "Afficher ou masquer les symboles d'appuis", "",
+                   "", CommandCategory::Display});
+  registerCommand({"cmd.display.support_labels", "Afficher les étiquettes d'appuis", "Afficher ou masquer les étiquettes d'appuis", "",
+                   "", CommandCategory::Display});
+  registerCommand({"cmd.display.loads", "Afficher les charges", "Afficher ou masquer les charges 3D", "Ctrl+Shift+L",
+                   "", CommandCategory::Display});
+  registerCommand({"cmd.display.forces", "Afficher les forces", "Afficher ou masquer les forces", "",
+                   "", CommandCategory::Display});
+  registerCommand({"cmd.display.moments", "Afficher les moments", "Afficher ou masquer les moments", "",
+                   "", CommandCategory::Display});
+  registerCommand({"cmd.display.load_values", "Afficher les valeurs des charges", "Afficher ou masquer les valeurs des charges", "",
+                   "", CommandCategory::Display});
+  registerCommand({"cmd.properties.panel", "Panneau Propriétés", "Afficher ou masquer le panneau Propriétés", "P",
+                   ":/icons/view/properties.svg", CommandCategory::Properties});
+  registerCommand({"cmd.library.custom", "Bibliothèque personnalisée", "Bibliothèque personnalisée de sections et matériaux", "Ctrl+B",
+                   "", CommandCategory::Libraries});
+  registerCommand({"cmd.library.manager", "Gestionnaire TSALib", "Gestionnaire d'extensions TSALib", "",
+                   ":/icons/extension_manager.svg", CommandCategory::Libraries});
+  registerCommand({"cmd.section.i", "Profilé en I/H", "Créer un profilé IPE / HEA / HEB", "",
+                   "", CommandCategory::Libraries});
+  registerCommand({"cmd.section.rect", "Section rectangulaire", "Créer une section rectangulaire", "",
+                   "", CommandCategory::Libraries});
+  registerCommand({"cmd.section.circ", "Section circulaire", "Créer une section circulaire", "",
+                   "", CommandCategory::Libraries});
+  registerCommand({"cmd.material.concrete", "Béton armé", "Matériau béton armé (C25/30)", "",
+                   "", CommandCategory::Libraries});
+  registerCommand({"cmd.material.steel", "Acier structural", "Matériau acier (S355)", "",
+                   "", CommandCategory::Libraries});
+  registerCommand({"cmd.loads.point", "Force et couple", "Charge nodale : force et moment", "Q, N",
+                   ":/icons/load_point.svg", CommandCategory::Loads});
+  registerCommand({"cmd.loads.distributed", "Charge uniforme", "Charge répartie uniforme sur barre", "Q, U",
+                   ":/icons/load_distributed.svg", CommandCategory::Loads});
+  registerCommand({"cmd.loads.trapezoidal", "Charge trapézoïdale", "Charge répartie trapézoïdale sur barre", "Q, T",
+                   "", CommandCategory::Loads});
+  registerCommand({"cmd.loads.bar_point", "Force ponctuelle sur barre", "Charge concentrée sur une barre", "Q, P",
+                   "", CommandCategory::Loads});
+  registerCommand({"cmd.loads.surface", "Charge surfacique", "Charge répartie sur surface", "Q, S",
+                   "", CommandCategory::Loads});
+  registerCommand({"cmd.loads.self_weight", "Poids propre", "Paramètres du poids propre", "Q, G",
+                   "", CommandCategory::Loads});
+  registerCommand({"cmd.loadcases.manager", "Cas de charges et combinaisons", "Gestionnaire des cas de charges et combinaisons", "Q, C",
+                   "", CommandCategory::LoadCases});
+  registerCommand({"cmd.analysis.mesh", "Générer le maillage EF", "Estimation du maillage (aucun maillage n'est généré : voir docs/DISPLAY_MODES.md)", "",
+                   ":/icons/analysis_mesh.svg", CommandCategory::Mesh});
+  registerCommand({"cmd.analysis.solve", "Lancer le calcul", "Lancer le calcul structurel (validations habituelles)", "F5",
+                   ":/icons/analysis_run.svg", CommandCategory::Analysis});
+  registerCommand({"cmd.analysis.config", "Paramètres d'analyse", "Moteur, portée, type d'analyse", "Ctrl+F5",
+                   "", CommandCategory::Analysis});
+  registerCommand({"cmd.results.deformed", "Afficher la déformée", "Afficher ou masquer la déformée 3D", "F9",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.reactions", "Afficher les réactions", "Afficher ou masquer les réactions d'appui", "Shift+F9",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.diagram_mz", "Diagramme Mz", "Diagramme du moment Mz", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.diagram_my", "Diagramme My", "Diagramme du moment My", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.diagram_mx", "Diagramme Mx", "Diagramme de torsion Mx", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.diagram_vz", "Diagramme Vz", "Diagramme de l'effort tranchant Vz", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.diagram_vy", "Diagramme Vy", "Diagramme de l'effort tranchant Vy", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.diagram_n", "Diagramme N", "Diagramme de l'effort normal", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.diagram_deflection", "Flèches", "Diagramme des flèches", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.diagram_none", "Masquer les diagrammes", "Masquer les diagrammes d'efforts", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.fit_model", "Cadrer le modèle", "Cadrer le modèle (résultats)", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.fit_results", "Cadrer les résultats", "Cadrer les résultats affichés", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.fit_deformed", "Cadrer la déformée", "Cadrer la déformée", "",
+                   "", CommandCategory::Results});
+  registerCommand({"cmd.results.displacements", "Déplacements", "Déformée et déplacements", "",
+                   ":/icons/results_disp.svg", CommandCategory::Results});
+  registerCommand({"cmd.results.forces", "Efforts internes", "Diagrammes des efforts (M, N, V)", "",
+                   ":/icons/results_forces.svg", CommandCategory::Results});
+  registerCommand({"cmd.results.stresses", "Contraintes", "Contraintes de Von Mises", "",
+                   ":/icons/results_stress.svg", CommandCategory::Results});
+  registerCommand({"cmd.report.ndc", "Note de calcul", "Ouvrir la note de calcul", "F8",
+                   "", CommandCategory::Documentation});
+  registerCommand({"cmd.bim.import_ifc", "Importer IFC", "Importer un modèle IFC", "Ctrl+I",
+                   "", CommandCategory::Bim});
+  registerCommand({"cmd.bim.export_ifc", "Exporter IFC", "Exporter le modèle en IFC", "Ctrl+E",
+                   "", CommandCategory::Bim});
+  registerCommand({"cmd.window.results", "Panneau Résultats", "Afficher ou masquer le panneau Résultats structuraux 3D", "Ctrl+1",
+                   "", CommandCategory::Workspace});
+  registerCommand({"cmd.window.properties", "Fenêtre Propriétés", "Afficher ou masquer la fenêtre Propriétés", "Ctrl+2",
+                   "", CommandCategory::Workspace});
+  registerCommand({"cmd.window.model_browser", "Navigateur du modèle", "Afficher ou masquer le navigateur du modèle", "Ctrl+3",
+                   "", CommandCategory::Workspace});
+  registerCommand({"cmd.window.work_planes", "Plans de travail et vues", "Afficher ou masquer le panneau des plans de travail", "Ctrl+4",
+                   "", CommandCategory::Workspace});
+  registerCommand({"cmd.window.visibility", "Calques et visibilité", "Afficher ou masquer le panneau Calques et visibilité", "Ctrl+5",
+                   "", CommandCategory::Workspace});
+  registerCommand({"cmd.window.elements", "Éléments structuraux", "Afficher ou masquer le panneau des éléments", "Ctrl+6",
+                   "", CommandCategory::Workspace});
+  registerCommand({"cmd.window.analysis_data", "Données d'analyse", "Afficher ou masquer le panneau des données d'analyse", "Ctrl+7",
+                   "", CommandCategory::Workspace});
+  registerCommand({"cmd.window.console", "Console et messages", "Afficher ou masquer la console", "F2",
+                   "", CommandCategory::Workspace});
+  registerCommand({"cmd.ai.assistant", "Assistant IA", "Ouvrir l'assistant de co-ingénierie", "Ctrl+Shift+I",
+                   "", CommandCategory::Tools});
+  registerCommand({"cmd.ai.config", "Configuration IA", "Paramètres de l'assistant IA", "",
+                   "", CommandCategory::Tools});
+  registerCommand({"cmd.ai.check", "Vérifier la structure (IA)", "Vérification de la structure par l'assistant", "",
+                   "", CommandCategory::Tools});
+  registerCommand({"cmd.ai.analyze", "Analyser le modèle (IA)", "Analyse du modèle par l'assistant", "",
+                   "", CommandCategory::Tools});
+  registerCommand({"cmd.ai.explain", "Expliquer avec l'IA", "Explication des résultats par l'assistant", "",
+                   "", CommandCategory::Tools});
+  registerCommand({"cmd.settings.theme", "Thème sombre / clair", "Basculer entre le thème sombre et le thème clair", "Ctrl+T",
+                   ":/icons/common/theme_dark.svg", CommandCategory::Settings});
+  registerCommand({"cmd.help.shortcuts", "Liste des raccourcis", "Afficher la liste des raccourcis clavier", "F1",
+                   ":/icons/common/shortcuts.svg", CommandCategory::Help});
+  registerCommand({"cmd.help.shortcut_editor", "Personnaliser les raccourcis", "Ouvrir l'éditeur des raccourcis clavier", "Ctrl+F1",
+                   "", CommandCategory::Help});
+  registerCommand({"cmd.help.full", "Aide complète", "Ouvrir le centre d'aide", "Shift+F1",
+                   "", CommandCategory::Help});
+  registerCommand({"cmd.help.online_docs", "Documentation en ligne", "Ouvrir la documentation en ligne", "",
+                   "", CommandCategory::Help});
+  registerCommand({"cmd.help.report_problem", "Signaler un problème", "Signaler un problème", "",
+                   "", CommandCategory::Help});
+  registerCommand({"cmd.help.about", "À propos", "Informations de version", "",
+                   "", CommandCategory::Help});
 }
 
 } // namespace TSA::Commands

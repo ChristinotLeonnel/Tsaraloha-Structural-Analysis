@@ -1,0 +1,303 @@
+# ==============================================================================================
+#  TSA — Tsaraloha Structural Analysis : raccourcis clavier (shortcut.txt)
+# ==============================================================================================
+#  Modifiez ce fichier puis enregistrez-le : TSA le relit aussitôt, sans redémarrage ni recompilation.
+#  Une configuration invalide n'est jamais appliquée : la précédente reste active et l'erreur est
+#  signalée dans la console de TSA. Éditeur intégré : Aide > Personnaliser les raccourcis (Ctrl+F1).
+#
+#  Colonnes : identifiant | raccourci(s) | état | par défaut | description
+#   - identifiant : stable, ne pas modifier (les libellés de l'interface peuvent changer) ;
+#   - raccourci(s) : « Ctrl+S », « Shift+F », « Num+7 », « F5 » ; plusieurs alias séparés par « ; » ;
+#     suite de touches façon AutoCAD : « D, A » (D puis A) ; vide ou « aucun » : pas de raccourci ;
+#     noms français acceptés : Maj, Suppr, Échap, Inser, Gauche, Droite, Haut, Bas, Entrée, Espace ;
+#   - état : on (actif) ou off (désactivé, le raccourci est conservé pour plus tard) ;
+#   - par défaut, description : pour information, ignorés à la lecture et régénérés.
+#  Une commande absente du fichier garde son raccourci par défaut ; une commande inconnue est ignorée.
+#  Deux commandes ne peuvent pas partager un raccourci, ni l'une commencer l'autre (« D » et « D, A ») :
+#  la configuration serait refusée. Alt+F4 (quitter) reste géré par Windows.
+#  Les champs de saisie gardent leurs touches (lettres, Ctrl+C, Ctrl+V, Ctrl+Z, Suppr…).
+# ==============================================================================================
+# format: tsa-shortcuts 1
+
+[Gestion des projets]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.file.close                      | Ctrl+W ; Ctrl+F4      | on   | Ctrl+W ; Ctrl+F4      | Fermer le projet — Fermer le projet (demande d'enregistrement si modifié) et revenir au Start Center
+cmd.file.exit                       |                       | on   |                       | Quitter — Quitter TSA (Alt+F4 reste géré par Windows)
+cmd.file.export_diagnostic          |                       | on   |                       | Exporter le diagnostic — Exporter un rapport de diagnostic technique
+cmd.file.new                        | Ctrl+N                | on   | Ctrl+N                | Nouveau projet — Créer un nouveau projet vierge
+cmd.file.open                       | Ctrl+O                | on   | Ctrl+O                | Ouvrir un projet — Ouvrir un projet existant (.tsa)
+cmd.file.save                       | Ctrl+S                | on   | Ctrl+S                | Enregistrer — Enregistrer le projet actuel
+cmd.file.save_as                    | Ctrl+Shift+S          | on   | Ctrl+Shift+S          | Enregistrer sous — Enregistrer le projet sous un nouveau nom
+
+[Édition]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.edit.copy                       | Ctrl+C ; Ctrl+Ins     | on   | Ctrl+C ; Ctrl+Ins     | Copier — Copier les éléments sélectionnés dans le presse-papier
+cmd.edit.delete                     | Del                   | on   | Del                   | Supprimer — Supprimer les éléments, charges ou cotations sélectionnés
+cmd.edit.paste                      | Ctrl+V ; Shift+Ins    | on   | Ctrl+V ; Shift+Ins    | Coller — Coller les éléments du presse-papier en 3D
+cmd.edit.redo                       | Ctrl+Y ; Ctrl+Shift+Z | on   | Ctrl+Y ; Ctrl+Shift+Z | Rétablir — Rétablir la modification annulée
+cmd.edit.repeat                     | Ctrl+Return           | on   | Ctrl+Return           | Répéter la dernière commande — Relancer la dernière commande de modélisation, de modification, de charge ou d'appui
+cmd.edit.undo                       | Ctrl+Z                | on   | Ctrl+Z                | Annuler — Annuler la dernière modification
+
+[Sélection et isolation]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.isolate.hide                    | H                     | on   | H                     | Masquer la sélection — Masquer les éléments sélectionnés
+cmd.isolate.invert                  |                       | on   |                       | Inverser l'isolation — Échanger objets visibles et objets masqués
+cmd.isolate.same_type               | Alt+I                 | on   | Alt+I                 | Isoler par type — Isoler les éléments du même type que la sélection
+cmd.isolate.selection               | I                     | on   | I                     | Isoler la sélection — Masquer tout sauf la sélection
+cmd.isolate.show_all                | Alt+H                 | on   | Alt+H                 | Tout afficher — Mettre fin à l'isolation et réafficher tous les objets
+cmd.isolate.undo                    | Ctrl+H                | on   | Ctrl+H                | Isolation précédente — Annuler la dernière isolation
+cmd.isolate.workplane               | Alt+W                 | on   | Alt+W                 | Isoler le plan de travail — Isoler les éléments du plan de travail actif
+cmd.select.active_level             |                       | on   |                       | Éléments du niveau actif — Sélectionner les éléments du niveau actif
+cmd.select.active_workplane         |                       | on   |                       | Éléments du plan de travail — Sélectionner les éléments du plan de travail actif
+cmd.select.all                      | Ctrl+A                | on   | Ctrl+A                | Tout sélectionner — Sélectionner tous les éléments
+cmd.select.beams                    | Ctrl+Alt+B            | on   | Ctrl+Alt+B            | Sélectionner les poutres — Sélectionner toutes les poutres
+cmd.select.cables                   |                       | on   |                       | Sélectionner les câbles — Sélectionner tous les câbles
+cmd.select.columns                  | Ctrl+Alt+P            | on   | Ctrl+Alt+P            | Sélectionner les poteaux — Sélectionner tous les poteaux
+cmd.select.foundations              |                       | on   |                       | Sélectionner les fondations — Sélectionner toutes les fondations
+cmd.select.invert                   | Ctrl+Alt+I            | on   | Ctrl+Alt+I            | Inverser la sélection — Sélectionner les éléments non sélectionnés
+cmd.select.mode                     | Esc                   | on   | Esc                   | Mode sélection — Revenir au mode sélection et annuler l'outil en cours
+cmd.select.nodes                    | Ctrl+Alt+N            | on   | Ctrl+Alt+N            | Sélectionner les nœuds — Sélectionner tous les nœuds
+cmd.select.same_material            | Ctrl+Alt+M            | on   | Ctrl+Alt+M            | Même matériau — Sélectionner les éléments de même matériau que la sélection
+cmd.select.same_section             | Ctrl+Alt+S            | on   | Ctrl+Alt+S            | Même section — Sélectionner les éléments de même section que la sélection
+cmd.select.slabs                    |                       | on   |                       | Sélectionner les dalles — Sélectionner toutes les dalles
+cmd.select.truss                    |                       | on   |                       | Sélectionner les treillis — Sélectionner toutes les barres de treillis
+cmd.select.walls                    |                       | on   |                       | Sélectionner les voiles — Sélectionner tous les voiles
+
+[Modélisation]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.create.bar                      |                       | on   |                       | Outil barres — Fenêtre de tracé des éléments filaires
+cmd.create.beam                     | B                     | on   | B                     | Dessiner une poutre — Mode dessin : poutre
+cmd.create.cable                    | Alt+C                 | on   | Alt+C                 | Dessiner un câble — Mode dessin : câble / hauban
+cmd.create.column                   | C                     | on   | C                     | Dessiner un poteau — Mode dessin : poteau
+cmd.create.cube                     |                       | on   |                       | Cube structurel 3D — Générer un cube structurel paramétrique
+cmd.create.foundation               |                       | on   |                       | Semelle / fondation — Créer une semelle ou une fondation
+cmd.create.node                     | N                     | on   | N                     | Dessiner un nœud — Mode dessin : nœud structural
+cmd.create.node_dialog              | Ctrl+Shift+N          | on   | Ctrl+Shift+N          | Nouveau nœud (coordonnées) — Créer un nœud par saisie de ses coordonnées
+cmd.create.presets                  |                       | on   |                       | Paramètres de modélisation — Sections, matériaux et options utilisés par les outils de dessin
+cmd.create.slab                     | L                     | on   | L                     | Dessiner une dalle — Mode dessin : dalle
+cmd.create.truss                    |                       | on   |                       | Treillis paramétrique — Générer un treillis paramétrique (Warren, Pratt, Howe)
+cmd.create.wall                     | W                     | on   | W                     | Dessiner un voile — Mode dessin : voile
+cmd.support.fixed                   | A, E                  | on   | A, E                  | Encastrement — Affecter un encastrement (6 DDL bloqués) aux nœuds sélectionnés
+cmd.support.pinned                  | A, A                  | on   | A, A                  | Articulation — Affecter une articulation (rotule 3D) aux nœuds sélectionnés
+cmd.support.roller                  | A, S                  | on   | A, S                  | Appui simple — Affecter un appui simple (rouleau) aux nœuds sélectionnés
+cmd.tool.draw_beam_arc              |                       | on   |                       | Poutres en arc — Outil de dessin : arc discrétisé en poutres
+cmd.tool.draw_beam_chain            |                       | on   |                       | Poutres en chaîne — Outil de dessin : poutres enchaînées
+cmd.tool.draw_beam_rectangle        |                       | on   |                       | Rectangle de poutres — Outil de dessin : quatre poutres en rectangle
+cmd.tool.draw_grid_columns          |                       | on   |                       | Poteaux sur la grille — Outil de dessin : poteaux aux intersections de la grille
+cmd.tool.draw_portal                |                       | on   |                       | Portique — Outil de dessin : portique (deux poteaux, une traverse)
+cmd.tool.draw_x_bracing             |                       | on   |                       | Croix de contreventement — Outil de dessin : croix de Saint-André
+
+[Modification et transformations]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.modify.copy                     | Ctrl+D                | on   | Ctrl+D                | Copie numérique — Copie numérique avec répétition (dialogue)
+cmd.modify.copy_3d                  | Ctrl+Shift+D          | on   | Ctrl+Shift+D          | Copier (3D) — Copier la sélection point à point
+cmd.modify.merge_nodes              |                       | on   |                       | Fusionner les nœuds — Fusionner les nœuds confondus (console : MERGE)
+cmd.modify.mirror                   |                       | on   |                       | Symétrie — Symétrie / copie miroir (console : MIRROR, MI)
+cmd.modify.move                     | M                     | on   | M                     | Déplacer (3D) — Déplacer la sélection point à point
+cmd.modify.move_origin              |                       | on   |                       | Déplacer l'origine — Déplacer l'origine 3D
+cmd.modify.rotate                   | Ctrl+R                | on   | Ctrl+R                | Rotation (3D) — Rotation de la sélection autour d'un axe
+cmd.modify.split_bars               |                       | on   |                       | Diviser les barres — Diviser les barres sélectionnées en N tronçons (console : SPLIT)
+cmd.modify.translate                | Ctrl+Shift+M          | on   | Ctrl+Shift+M          | Translation numérique — Translation par dialogue (dX, dY, dZ)
+cmd.modify.viewport_input           |                       | on   |                       | Saisie dans la vue 3D — Piloter les outils directement dans la vue 3D (sinon par dialogue)
+cmd.tool.array_linear               |                       | on   |                       | Réseau linéaire — Outil de modification : réseau linéaire
+cmd.tool.array_polar                |                       | on   |                       | Réseau polaire — Outil de modification : réseau polaire
+cmd.tool.copy                       |                       | on   |                       | Outil copier — Outil de modification : copier
+cmd.tool.extend                     | E, X                  | on   | E, X                  | Prolonger — Outil de modification : prolonger jusqu'à une limite (AutoCAD : EX)
+cmd.tool.intersect                  |                       | on   |                       | Intersection — Outil de modification : couper deux barres à leur intersection
+cmd.tool.merge_nodes                |                       | on   |                       | Outil fusion de nœuds — Outil de modification : fusionner des nœuds
+cmd.tool.mirror                     |                       | on   |                       | Outil symétrie — Outil de modification : symétrie
+cmd.tool.move                       |                       | on   |                       | Outil déplacer — Outil de modification : déplacer
+cmd.tool.offset                     | O, F                  | on   | O, F                  | Décaler — Outil de modification : copie décalée (AutoCAD : O)
+cmd.tool.rotate                     |                       | on   |                       | Outil rotation — Outil de modification : rotation
+cmd.tool.scale                      |                       | on   |                       | Échelle — Outil de modification : mise à l'échelle
+cmd.tool.split                      |                       | on   |                       | Diviser — Outil de modification : diviser une barre
+cmd.tool.split_at                   |                       | on   |                       | Couper en un point — Outil de modification : couper une barre en un point
+cmd.tool.trim                       | T, R                  | on   | T, R                  | Ajuster — Outil de modification : ajuster à une limite (AutoCAD : TR)
+
+[Cotation et mesure]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.dim.clean                       |                       | on   |                       | Supprimer les cotations invalides — Supprimer les cotations dont un nœud a été supprimé
+cmd.dim.delete                      |                       | on   |                       | Supprimer les cotations — Supprimer les cotations sélectionnées
+cmd.dim.edit                        | D, E                  | on   | D, E                  | Modifier la cotation — Modifier la cotation sélectionnée
+cmd.dim.style                       |                       | on   |                       | Style des cotations — Unités, précision, tailles et couleurs des cotations
+cmd.dim.visible                     |                       | on   |                       | Afficher les cotations — Afficher ou masquer les cotations
+cmd.tool.dim_aligned                | D, A                  | on   | D, A                  | Cotation alignée — Cotation en vraie grandeur entre deux points (AutoCAD : DAL)
+cmd.tool.dim_angular                | D, N                  | on   | D, N                  | Cotation angulaire — Angle entre deux bras (AutoCAD : DAN)
+cmd.tool.dim_chain                  | D, C                  | on   | D, C                  | Cotation en chaîne — Cotes successives sur une ligne commune (AutoCAD : DCO)
+cmd.tool.dim_cumulative             | D, B                  | on   | D, B                  | Cotation cumulée — Cotes depuis une origine commune (AutoCAD : DBA)
+cmd.tool.dim_horizontal             | D, H                  | on   | D, H                  | Cotation horizontale — Cotation de la composante horizontale
+cmd.tool.dim_level                  | D, V                  | on   | D, V                  | Cotation de niveau — Niveau d'un point par rapport à la référence
+cmd.tool.dim_linear                 | D, L                  | on   | D, L                  | Cotation linéaire — Cotation suivant X, Y ou Z selon le curseur (AutoCAD : DLI)
+cmd.tool.dim_x                      | D, X                  | on   | D, X                  | Cotation suivant X — Cotation projetée sur X
+cmd.tool.dim_y                      | D, Y                  | on   | D, Y                  | Cotation suivant Y — Cotation projetée sur Y
+cmd.tool.dim_z                      | D, Z                  | on   | D, Z                  | Cotation suivant Z — Cotation projetée sur Z
+cmd.tools.measure                   | D, I                  | on   | D, I                  | Mesurer une distance — Mesurer une distance 3D (AutoCAD : DI)
+
+[Grille, accrochage et plans de travail]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.coord.axis_x                    | Alt+X                 | on   | Alt+X                 | Coupe verticale X — Bandeau de la vue : coupes perpendiculaires à X
+cmd.coord.axis_y                    | Alt+Y                 | on   | Alt+Y                 | Coupe verticale Y — Bandeau de la vue : coupes perpendiculaires à Y
+cmd.coord.axis_z                    | Alt+Z                 | on   | Alt+Z                 | Plan horizontal Z — Bandeau de la vue : plans horizontaux (niveaux)
+cmd.coord.workplane_custom          |                       | on   |                       | Plan de travail personnalisé — Définir un plan de travail personnalisé
+cmd.coord.workplane_level           |                       | on   |                       | Plan de travail sur l'étage — Plan de travail sur l'étage actif
+cmd.coord.workplane_visible         |                       | on   |                       | Afficher le plan de travail — Afficher ou masquer le plan de travail 3D
+cmd.coord.workplane_xy              |                       | on   |                       | Plan de travail XY — Plan de travail global horizontal XY
+cmd.coord.workplane_xz              |                       | on   |                       | Plan de travail XZ — Plan de travail global vertical XZ
+cmd.coord.workplane_yz              |                       | on   |                       | Plan de travail YZ — Plan de travail global vertical YZ
+cmd.display.grid                    | G ; F7                | on   | G ; F7                | Afficher la grille — Afficher ou masquer la grille 3D
+cmd.display.grid_labels             |                       | on   |                       | Afficher les libellés d'axes — Afficher ou masquer les libellés des axes de grille
+cmd.display.levels                  |                       | on   |                       | Afficher les plans d'étages — Afficher ou masquer les plans d'étages
+cmd.display.rulers                  |                       | on   |                       | Afficher les règles — Afficher ou masquer les règles graduées
+cmd.snap.grid                       | S                     | on   | S                     | Magnétisme grille — Activer ou désactiver le magnétisme de la grille (Snap)
+cmd.snap.object_snap                | F3                    | on   | F3                    | Accrochage objets — Activer ou désactiver l'accrochage aux objets (OSNAP)
+cmd.view.normal_to_plane            | Num+0                 | on   | Num+0                 | Vue normale au plan — Orienter la caméra perpendiculairement au plan de travail
+
+[Grilles et niveaux]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.struct.grid_dialog              | Ctrl+G                | on   | Ctrl+G                | Gestionnaire de grilles — Créer, modifier et activer les grilles d'axes
+cmd.struct.levels                   | Ctrl+L                | on   | Ctrl+L                | Étages et niveaux — Gestionnaire des étages et niveaux
+cmd.struct.new_grid                 | Ctrl+Shift+G          | on   | Ctrl+Shift+G          | Nouvelle grille 3D — Créer une nouvelle grille d'axes
+
+[Navigation 2D et 3D]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.view.3d                         |                       | on   |                       | Vue 3D axonométrique — Revenir à la vue 3D axonométrique
+cmd.view.back                       | Ctrl+Num+1            | on   | Ctrl+Num+1            | Vue arrière — Caméra vers -Y
+cmd.view.bottom                     | Ctrl+Num+7            | on   | Ctrl+Num+7            | Vue de dessous — Caméra vers +Z
+cmd.view.coord_system               |                       | on   |                       | Repère local / global — Afficher le repère local ou global
+cmd.view.display_analytical         | Alt+2                 | on   | Alt+2                 | Modèle filaire analytique — Représentation : axes des barres et nœuds
+cmd.view.display_fe                 | Alt+3                 | on   | Alt+3                 | Modèle éléments finis — Représentation : maillage réellement transmis au moteur
+cmd.view.display_overlay            | Alt+4                 | on   | Alt+4                 | Superposition — Représentation : sections translucides et axes
+cmd.view.display_physical           | Alt+1                 | on   | Alt+1                 | Modèle physique — Représentation : sections volumiques
+cmd.view.fit_all                    | F ; Z, E              | on   | F ; Z, E              | Zoom étendu — Cadrer tout le modèle (AutoCAD : Z, E)
+cmd.view.fit_selection              | Shift+F               | on   | Shift+F               | Zoom sur la sélection — Cadrer la sélection
+cmd.view.front                      | Num+1                 | on   | Num+1                 | Vue de face — Caméra vers +Y
+cmd.view.fullscreen                 | F11                   | on   | F11                   | Plein écran — Basculer en mode plein écran
+cmd.view.home                       | Home                  | on   | Home                  | Vue d'accueil — Vue initiale du modèle
+cmd.view.iso                        | Num+5                 | on   | Num+5                 | Vue isométrique — Vue 3D isométrique
+cmd.view.left                       | Num+3                 | on   | Num+3                 | Vue de gauche — Caméra vers +X
+cmd.view.next                       | Alt+Right             | on   | Alt+Right             | Vue suivante — Revenir à la vue suivante
+cmd.view.prev                       | Alt+Left ; Z, P       | on   | Alt+Left ; Z, P       | Vue précédente — Revenir à la vue précédente (AutoCAD : Z, P)
+cmd.view.reset                      | R                     | on   | R                     | Réinitialiser la vue — Réinitialiser l'orientation de la caméra
+cmd.view.right                      | Ctrl+Num+3            | on   | Ctrl+Num+3            | Vue de droite — Caméra vers -X
+cmd.view.rotate_left                |                       | on   |                       | Pivoter la vue 2D à gauche — Rotation de la vue 2D de -15°
+cmd.view.rotate_right               |                       | on   |                       | Pivoter la vue 2D à droite — Rotation de la vue 2D de +15°
+cmd.view.section_cut                |                       | on   |                       | Coupes de la structure — Plan de coupe dynamique 3D
+cmd.view.top                        | Num+7                 | on   | Num+7                 | Vue de dessus — Caméra vers -Z
+cmd.view.xy                         |                       | on   |                       | Plan XY — Vue d'étage (plan XY)
+cmd.view.xz                         |                       | on   |                       | Plan XZ — Élévation de face (plan XZ)
+cmd.view.yz                         |                       | on   |                       | Plan YZ — Coupe latérale / pignon (plan YZ)
+cmd.view.zoom_in                    | +                     | on   | +                     | Zoom avant — Agrandir la vue
+cmd.view.zoom_out                   | -                     | on   | -                     | Zoom arrière — Réduire la vue
+cmd.view.zoom_window                | Z, W                  | on   | Z, W                  | Zoom fenêtre — Zoomer sur un rectangle tracé (AutoCAD : Z, W)
+
+[Affichage]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.display.forces                  |                       | on   |                       | Afficher les forces — Afficher ou masquer les forces
+cmd.display.load_values             |                       | on   |                       | Afficher les valeurs des charges — Afficher ou masquer les valeurs des charges
+cmd.display.loads                   | Ctrl+Shift+L          | on   | Ctrl+Shift+L          | Afficher les charges — Afficher ou masquer les charges 3D
+cmd.display.moments                 |                       | on   |                       | Afficher les moments — Afficher ou masquer les moments
+cmd.display.node_labels             |                       | on   |                       | Afficher les numéros de nœuds — Afficher ou masquer les étiquettes des nœuds
+cmd.display.nodes                   |                       | on   |                       | Afficher les nœuds — Afficher ou masquer les nœuds
+cmd.display.support_labels          |                       | on   |                       | Afficher les étiquettes d'appuis — Afficher ou masquer les étiquettes d'appuis
+cmd.display.supports                |                       | on   |                       | Afficher les appuis — Afficher ou masquer les symboles d'appuis
+
+[Propriétés]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.properties.panel                | P                     | on   | P                     | Panneau Propriétés — Afficher ou masquer le panneau Propriétés
+
+[Matériaux et sections]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.library.custom                  | Ctrl+B                | on   | Ctrl+B                | Bibliothèque personnalisée — Bibliothèque personnalisée de sections et matériaux
+cmd.library.manager                 |                       | on   |                       | Gestionnaire TSALib — Gestionnaire d'extensions TSALib
+cmd.material.concrete               |                       | on   |                       | Béton armé — Matériau béton armé (C25/30)
+cmd.material.steel                  |                       | on   |                       | Acier structural — Matériau acier (S355)
+cmd.section.circ                    |                       | on   |                       | Section circulaire — Créer une section circulaire
+cmd.section.i                       |                       | on   |                       | Profilé en I/H — Créer un profilé IPE / HEA / HEB
+cmd.section.rect                    |                       | on   |                       | Section rectangulaire — Créer une section rectangulaire
+
+[Maillage]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.analysis.mesh                   |                       | on   |                       | Générer le maillage EF — Estimation du maillage (aucun maillage n'est généré : voir docs/DISPLAY_MODES.md)
+
+[Charges]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.loads.bar_point                 | Q, P                  | on   | Q, P                  | Force ponctuelle sur barre — Charge concentrée sur une barre
+cmd.loads.distributed               | Q, U                  | on   | Q, U                  | Charge uniforme — Charge répartie uniforme sur barre
+cmd.loads.point                     | Q, N                  | on   | Q, N                  | Force et couple — Charge nodale : force et moment
+cmd.loads.self_weight               | Q, G                  | on   | Q, G                  | Poids propre — Paramètres du poids propre
+cmd.loads.surface                   | Q, S                  | on   | Q, S                  | Charge surfacique — Charge répartie sur surface
+cmd.loads.trapezoidal               | Q, T                  | on   | Q, T                  | Charge trapézoïdale — Charge répartie trapézoïdale sur barre
+
+[Cas de charge et combinaisons]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.loadcases.manager               | Q, C                  | on   | Q, C                  | Cas de charges et combinaisons — Gestionnaire des cas de charges et combinaisons
+
+[Analyse structurelle]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.analysis.config                 | Ctrl+F5               | on   | Ctrl+F5               | Paramètres d'analyse — Moteur, portée, type d'analyse
+cmd.analysis.solve                  | F5                    | on   | F5                    | Lancer le calcul — Lancer le calcul structurel (validations habituelles)
+
+[Résultats]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.results.deformed                | F9                    | on   | F9                    | Afficher la déformée — Afficher ou masquer la déformée 3D
+cmd.results.diagram_deflection      |                       | on   |                       | Flèches — Diagramme des flèches
+cmd.results.diagram_mx              |                       | on   |                       | Diagramme Mx — Diagramme de torsion Mx
+cmd.results.diagram_my              |                       | on   |                       | Diagramme My — Diagramme du moment My
+cmd.results.diagram_mz              |                       | on   |                       | Diagramme Mz — Diagramme du moment Mz
+cmd.results.diagram_n               |                       | on   |                       | Diagramme N — Diagramme de l'effort normal
+cmd.results.diagram_none            |                       | on   |                       | Masquer les diagrammes — Masquer les diagrammes d'efforts
+cmd.results.diagram_vy              |                       | on   |                       | Diagramme Vy — Diagramme de l'effort tranchant Vy
+cmd.results.diagram_vz              |                       | on   |                       | Diagramme Vz — Diagramme de l'effort tranchant Vz
+cmd.results.displacements           |                       | on   |                       | Déplacements — Déformée et déplacements
+cmd.results.fit_deformed            |                       | on   |                       | Cadrer la déformée — Cadrer la déformée
+cmd.results.fit_model               |                       | on   |                       | Cadrer le modèle — Cadrer le modèle (résultats)
+cmd.results.fit_results             |                       | on   |                       | Cadrer les résultats — Cadrer les résultats affichés
+cmd.results.forces                  |                       | on   |                       | Efforts internes — Diagrammes des efforts (M, N, V)
+cmd.results.reactions               | Shift+F9              | on   | Shift+F9              | Afficher les réactions — Afficher ou masquer les réactions d'appui
+cmd.results.stresses                |                       | on   |                       | Contraintes — Contraintes de Von Mises
+
+[Rapports]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.report.ndc                      | F8                    | on   | F8                    | Note de calcul — Ouvrir la note de calcul
+
+[BIM et échanges de données]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.bim.export_ifc                  | Ctrl+E                | on   | Ctrl+E                | Exporter IFC — Exporter le modèle en IFC
+cmd.bim.import_ifc                  | Ctrl+I                | on   | Ctrl+I                | Importer IFC — Importer un modèle IFC
+
+[Modèle]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.model.clean                     |                       | on   |                       | Nettoyer le modèle — Détecter et corriger les défauts géométriques du modèle
+cmd.model.topology                  |                       | on   |                       | Topologie et numérotation — Paramètres du projet : stratégies de numérotation des nœuds et des éléments
+
+[Fenêtres et panneaux]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.window.analysis_data            | Ctrl+7                | on   | Ctrl+7                | Données d'analyse — Afficher ou masquer le panneau des données d'analyse
+cmd.window.console                  | F2                    | on   | F2                    | Console et messages — Afficher ou masquer la console
+cmd.window.elements                 | Ctrl+6                | on   | Ctrl+6                | Éléments structuraux — Afficher ou masquer le panneau des éléments
+cmd.window.model_browser            | Ctrl+3                | on   | Ctrl+3                | Navigateur du modèle — Afficher ou masquer le navigateur du modèle
+cmd.window.properties               | Ctrl+2                | on   | Ctrl+2                | Fenêtre Propriétés — Afficher ou masquer la fenêtre Propriétés
+cmd.window.results                  | Ctrl+1                | on   | Ctrl+1                | Panneau Résultats — Afficher ou masquer le panneau Résultats structuraux 3D
+cmd.window.visibility               | Ctrl+5                | on   | Ctrl+5                | Calques et visibilité — Afficher ou masquer le panneau Calques et visibilité
+cmd.window.work_planes              | Ctrl+4                | on   | Ctrl+4                | Plans de travail et vues — Afficher ou masquer le panneau des plans de travail
+
+[Outils généraux]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.ai.analyze                      |                       | on   |                       | Analyser le modèle (IA) — Analyse du modèle par l'assistant
+cmd.ai.assistant                    | Ctrl+Shift+I          | on   | Ctrl+Shift+I          | Assistant IA — Ouvrir l'assistant de co-ingénierie
+cmd.ai.check                        |                       | on   |                       | Vérifier la structure (IA) — Vérification de la structure par l'assistant
+cmd.ai.config                       |                       | on   |                       | Configuration IA — Paramètres de l'assistant IA
+cmd.ai.explain                      |                       | on   |                       | Expliquer avec l'IA — Explication des résultats par l'assistant
+
+[Paramètres]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.settings.theme                  | Ctrl+T                | on   | Ctrl+T                | Thème sombre / clair — Basculer entre le thème sombre et le thème clair
+
+[Aide]
+# identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.help.about                      |                       | on   |                       | À propos — Informations de version
+cmd.help.full                       | Shift+F1              | on   | Shift+F1              | Aide complète — Ouvrir le centre d'aide
+cmd.help.online_docs                |                       | on   |                       | Documentation en ligne — Ouvrir la documentation en ligne
+cmd.help.report_problem             |                       | on   |                       | Signaler un problème — Signaler un problème
+cmd.help.shortcut_editor            | Ctrl+F1               | on   | Ctrl+F1               | Personnaliser les raccourcis — Ouvrir l'éditeur des raccourcis clavier
+cmd.help.shortcuts                  | F1                    | on   | F1                    | Liste des raccourcis — Afficher la liste des raccourcis clavier

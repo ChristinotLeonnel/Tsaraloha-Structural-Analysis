@@ -8,6 +8,7 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QAction>
 #include <QPushButton>
 #include <QComboBox>
 #include <QCheckBox>
@@ -72,19 +73,16 @@ void ViewportContainer::setupUi()
     m_btnQuickZ = new QPushButton("Z", m_topBar);
     m_btnQuickZ->setToolTip(tr("Activer plan horizontal Z (Alt+Z)"));
     m_btnQuickZ->setFixedSize(26, 22);
-    m_btnQuickZ->setShortcut(QKeySequence("Alt+Z"));
     topLayout->addWidget(m_btnQuickZ);
 
     m_btnQuickX = new QPushButton("X", m_topBar);
     m_btnQuickX->setToolTip(tr("Activer coupe verticale X (Alt+X)"));
     m_btnQuickX->setFixedSize(26, 22);
-    m_btnQuickX->setShortcut(QKeySequence("Alt+X"));
     topLayout->addWidget(m_btnQuickX);
 
     m_btnQuickY = new QPushButton("Y", m_topBar);
     m_btnQuickY->setToolTip(tr("Activer coupe verticale Y (Alt+Y)"));
     m_btnQuickY->setFixedSize(26, 22);
-    m_btnQuickY->setShortcut(QKeySequence("Alt+Y"));
     topLayout->addWidget(m_btnQuickY);
 
     topLayout->addSpacing(4);
@@ -165,6 +163,14 @@ void ViewportContainer::setupUi()
     connect(m_btnQuickZ, &QPushButton::clicked, this, [this]() { setWorkPlaneAxis(TSA::Coordinate::WorkPlaneAxis::Z); });
     connect(m_btnQuickX, &QPushButton::clicked, this, [this]() { setWorkPlaneAxis(TSA::Coordinate::WorkPlaneAxis::X); });
     connect(m_btnQuickY, &QPushButton::clicked, this, [this]() { setWorkPlaneAxis(TSA::Coordinate::WorkPlaneAxis::Y); });
+    // Raccourcis des boutons rapides : actions de la fenêtre (même effet qu'un clic), personnalisables.
+    for (QPushButton *btn : {m_btnQuickZ, m_btnQuickX, m_btnQuickY})
+    {
+        auto *act = new QAction(btn->toolTip(), this);
+        connect(act, &QAction::triggered, btn, &QPushButton::click);
+        addAction(act);
+        m_quickAxisActions << act;
+    }
 
     connect(m_planCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ViewportContainer::onPlanComboChanged);
     connect(m_btnPlanUp, &QPushButton::clicked, this, &ViewportContainer::onPlanUp);
@@ -352,6 +358,13 @@ void ViewportContainer::populatePlansForCurrentAxis()
     {
         onPlanComboChanged(m_planCombo->currentIndex());
     }
+}
+
+void ViewportContainer::syncQuickAxisToolTips()
+{
+    QPushButton *buttons[] = {m_btnQuickZ, m_btnQuickX, m_btnQuickY};
+    for (int i = 0; i < m_quickAxisActions.size() && i < 3; ++i)
+        buttons[i]->setToolTip(m_quickAxisActions[i]->toolTip());
 }
 
 void ViewportContainer::setWorkPlaneAxis(TSA::Coordinate::WorkPlaneAxis axis)
