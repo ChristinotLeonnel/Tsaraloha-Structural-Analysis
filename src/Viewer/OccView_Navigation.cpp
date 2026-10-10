@@ -1093,6 +1093,7 @@ void OccView::updateElementIsolation()
 {
     if (m_context.IsNull() || !m_model)
         return;
+    scheduleDisplayModeOverlays(); // axes superposés / maillage : suivent les éléments affichés
 
     const bool isolate = isIsolationActive();
     const bool byElements = hasElementIsolation();

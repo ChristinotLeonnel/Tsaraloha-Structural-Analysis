@@ -594,6 +594,7 @@ void MainWindow::createActions()
 
     createModelingToolActions();
     createDimensionActions();
+    createDisplayModeActions();
 
     m_actionMirror = new QAction(tr("&Symétrie (Miroir)..."), this);
     m_actionMirror->setIcon(QIcon(":/icons/edit/mirror.svg"));
@@ -1200,6 +1201,10 @@ void MainWindow::createMenus()
     });
 
     viewMenu->addSeparator();
+    {
+        QMenu* reprSub = viewMenu->addMenu(QIcon(":/icons/view/display_analytical.svg"), tr("Représentation du modèle"));
+        for (QAction* a : m_displayModeActions) reprSub->addAction(a);
+    }
     viewMenu->addAction(m_actionCoordSystem);
     viewMenu->addAction(m_actionSectionCut);
     viewMenu->addSeparator();
@@ -1301,6 +1306,7 @@ void MainWindow::createRibbon()
         if (tool->category() == TSA::Interaction::ToolCategory::Draw) acts.drawTools.push_back(m_toolActions[tool->id()]);
     for (const auto& tool : m_toolRegistry->instances())
         if (tool->category() == TSA::Interaction::ToolCategory::Annotate) acts.dimensionTools[tool->id()] = m_toolActions[tool->id()];
+    acts.modelDisplayModes = m_displayModeActions;
     acts.dimensionCommands = { m_actionEditDimension, m_actionDeleteDimensions, m_actionCleanDimensions, m_actionDimensionsVisible,
                                m_actionDimensionStyle };
     acts.actionMoveOrigin = m_actionMoveOrigin;

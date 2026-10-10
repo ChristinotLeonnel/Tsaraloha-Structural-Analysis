@@ -20,4 +20,8 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
 /// Les indices inconnus sont ignorés et signalés dans le journal des résultats.
 ResultsModel mapResults(const AnalysisContext& context, const AnalysisModel& model, const Output& output);
 
+/// Maillage de l'ossature plane réellement résolue (nœuds et éléments de l'entrée du solveur), placé
+/// aux coordonnées 3D des nœuds TSA (nœud sans origine TSA : repositionné depuis le plan).
+SolverMesh solverMesh(const AnalysisModel& model, const Input& input);
+
 } // namespace TSA::Analysis::Custom2D

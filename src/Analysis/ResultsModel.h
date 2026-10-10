@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AnalysisTypes.h"
+#include "SolverMesh.h"
 
 #include <string>
 #include <vector>
@@ -412,6 +413,10 @@ public:
     const std::vector<EngineResultTable>& engineTables() const { return m_engineTables; }
     void addEngineTable(const EngineResultTable& t) { m_engineTables.push_back(t); }
 
+    // Maillage numérique réellement transmis au moteur (vide si le moteur ne le fournit pas)
+    const SolverMesh& solverMesh() const { return m_solverMesh; }
+    void setSolverMesh(SolverMesh mesh) { m_solverMesh = std::move(mesh); }
+
     // Journal d'analyse
     void appendLog(const std::string& line) { m_journalLog += line + "\n"; }
     const std::string& journalLog() const { return m_journalLog; }
@@ -433,6 +438,7 @@ private:
     ResultAvailability m_availability;
     std::vector<EngineResultTable> m_engineTables;
     std::map<ElementKey, PlanarMemberCurves> m_planarCurves;
+    SolverMesh m_solverMesh;
     std::vector<StepResults> m_stepResults;
 
     int m_activeStep = -1;

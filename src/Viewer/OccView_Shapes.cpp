@@ -503,6 +503,7 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
 void OccView::onModelEdited()
 {
     if (m_selectionManager && m_model) m_selectionManager->schedulePrune(m_model);
+    scheduleDisplayModeOverlays();
 }
 
 void OccView::onModelCleared()
@@ -862,6 +863,9 @@ void OccView::rebuildAllShapes()
     // 10. Cotations (annotations)
     if (m_dimensionRenderer) m_dimensionRenderer->rebuildAll(*m_model);
 
+    // 11. Représentation : axes superposés / maillage du solveur
+    refreshDisplayModeOverlays();
+
     m_context->UpdateCurrentViewer();
     fitAll();
 
@@ -1031,37 +1035,37 @@ void OccView::setRenderDisplayMode(TSA::Viewer::RenderDisplayMode mode)
     for (const auto& [id, shape] : m_beamShapes)
     {
         const auto* b = m_model->getBeam(id);
-        if (b) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, b->material(), b->color(), m_renderDisplayMode);
+        if (b) styleLinearShape(shape, b->material(), b->color(), TSA::Viewer::analyticalKindOf(b->role()));
     }
     for (const auto& [id, shape] : m_columnShapes)
     {
         const auto* c = m_model->getColumn(id);
-        if (c) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, c->material(), c->color(), m_renderDisplayMode);
+        if (c) styleLinearShape(shape, c->material(), c->color(), TSA::Analysis::StructuralElementKind::Column);
     }
     for (const auto& [id, shape] : m_slabShapes)
     {
         const auto* s = m_model->getSlab(id);
-        if (s) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, s->material(), s->color(), m_renderDisplayMode, 0.35);
+        if (s) stylePlanarShape(shape, s->material(), s->color(), 0.35);
     }
     for (const auto& [id, shape] : m_wallShapes)
     {
         const auto* w = m_model->getWall(id);
-        if (w) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, w->material(), w->color(), m_renderDisplayMode, 0.25);
+        if (w) stylePlanarShape(shape, w->material(), w->color(), 0.25);
     }
     for (const auto& [id, shape] : m_foundationShapes)
     {
         const auto* f = m_model->getFoundation(id);
-        if (f) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, f->material(), f->color(), m_renderDisplayMode);
+        if (f) stylePlanarShape(shape, f->material(), f->color());
     }
     for (const auto& [id, shape] : m_trussShapes)
     {
         const auto* tr = m_model->getTrussMember(id);
-        if (tr) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, tr->material(), tr->color(), m_renderDisplayMode);
+        if (tr) styleLinearShape(shape, tr->material(), tr->color(), TSA::Analysis::StructuralElementKind::Truss);
     }
     for (const auto& [id, shape] : m_cableShapes)
     {
         const auto* c = m_model->getCable(id);
-        if (c) TSA::Viewer::MaterialVisual::instance().applyToShape(shape, c->material(), c->color(), m_renderDisplayMode);
+        if (c) styleLinearShape(shape, c->material(), c->color(), TSA::Analysis::StructuralElementKind::Cable);
     }
 
     m_context->UpdateCurrentViewer();
@@ -1101,15 +1105,16 @@ void OccView::updateBeamShape(int beamId, bool redrawImmediately)
     if (!nodeA || !nodeB)
         return;
 
-    // 2. Créer le nouveau solide 3D selon la forme réelle de la section et l'orientation
-    TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
-        *nodeA, *nodeB, beam->section(), beam->rotation(), beam->eccentricity()
-    );
+    // 2. Créer le nouveau solide 3D selon la forme réelle de la section et l'orientation (ou l'axe
+    //    analytique nœud à nœud dans les représentations filaires : même objet, même sélection)
+    TopoDS_Shape shape = linearAsAxis()
+        ? TSA::Viewer::analyticalAxisShape(gp_Pnt(nodeA->x(), nodeA->y(), nodeA->z()), gp_Pnt(nodeB->x(), nodeB->y(), nodeB->z()))
+        : TSA::Geometry::BeamGeometry::createBeamShape(*nodeA, *nodeB, beam->section(), beam->rotation(), beam->eccentricity());
 
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisBeam = new AIS_Shape(shape);
-        TSA::Viewer::MaterialVisual::instance().applyToShape(aisBeam, beam->material(), beam->color(), m_renderDisplayMode);
+        styleLinearShape(aisBeam, beam->material(), beam->color(), TSA::Viewer::analyticalKindOf(beam->role()));
 
         const bool shown = keepLinearUnderIsolation(beam->startNodeId(), beam->endNodeId());
         if (shown)
@@ -1170,14 +1175,14 @@ void OccView::updateColumnShape(int columnId, bool redrawImmediately)
     if (!nodeA || !nodeB)
         return;
 
-    TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
-        *nodeA, *nodeB, col->section(), col->rotation()
-    );
+    TopoDS_Shape shape = linearAsAxis()
+        ? TSA::Viewer::analyticalAxisShape(gp_Pnt(nodeA->x(), nodeA->y(), nodeA->z()), gp_Pnt(nodeB->x(), nodeB->y(), nodeB->z()))
+        : TSA::Geometry::BeamGeometry::createBeamShape(*nodeA, *nodeB, col->section(), col->rotation());
 
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisCol = new AIS_Shape(shape);
-        TSA::Viewer::MaterialVisual::instance().applyToShape(aisCol, col->material(), col->color(), m_renderDisplayMode);
+        styleLinearShape(aisCol, col->material(), col->color(), TSA::Analysis::StructuralElementKind::Column);
 
         const bool shown = keepLinearUnderIsolation(col->startNodeId(), col->endNodeId());
         if (shown)
@@ -1250,7 +1255,7 @@ void OccView::updateSlabShape(int slabId, bool redrawImmediately)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisSlab = new AIS_Shape(shape);
-        TSA::Viewer::MaterialVisual::instance().applyToShape(aisSlab, slab->material(), slab->color(), m_renderDisplayMode, 0.35);
+        stylePlanarShape(aisSlab, slab->material(), slab->color(), 0.35);
 
         const bool shown = keepSurfaceUnderIsolation(slab->nodeIds());
         if (shown)
@@ -1314,7 +1319,7 @@ void OccView::updateWallShape(int wallId, bool redrawImmediately)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisWall = new AIS_Shape(shape);
-        TSA::Viewer::MaterialVisual::instance().applyToShape(aisWall, wall->material(), wall->color(), m_renderDisplayMode, 0.25);
+        stylePlanarShape(aisWall, wall->material(), wall->color(), 0.25);
 
         const bool shown = keepLinearUnderIsolation(wall->startNodeId(), wall->endNodeId());
         if (shown)
@@ -1377,7 +1382,7 @@ void OccView::updateFoundationShape(int foundationId, bool redrawImmediately)
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisF = new AIS_Shape(shape);
-        TSA::Viewer::MaterialVisual::instance().applyToShape(aisF, f->material(), f->color(), m_renderDisplayMode);
+        stylePlanarShape(aisF, f->material(), f->color());
 
         const bool shown = keepNodeUnderIsolation(f->nodeId());
         if (shown)
@@ -1437,13 +1442,13 @@ void OccView::updateTrussMemberShape(int memberId, bool redrawImmediately)
     if (!nodeA || !nodeB)
         return;
 
-    TopoDS_Shape shape = TSA::Geometry::BeamGeometry::createBeamShape(
-        *nodeA, *nodeB, tr->section(), 0.0
-    );
+    TopoDS_Shape shape = linearAsAxis()
+        ? TSA::Viewer::analyticalAxisShape(gp_Pnt(nodeA->x(), nodeA->y(), nodeA->z()), gp_Pnt(nodeB->x(), nodeB->y(), nodeB->z()))
+        : TSA::Geometry::BeamGeometry::createBeamShape(*nodeA, *nodeB, tr->section(), 0.0);
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisTr = new AIS_Shape(shape);
-        TSA::Viewer::MaterialVisual::instance().applyToShape(aisTr, tr->material(), tr->color(), m_renderDisplayMode);
+        styleLinearShape(aisTr, tr->material(), tr->color(), TSA::Analysis::StructuralElementKind::Truss);
 
         const bool shown = keepLinearUnderIsolation(tr->startNodeId(), tr->endNodeId());
         if (shown)
@@ -1498,11 +1503,20 @@ void OccView::updateCableShape(int cableId, bool redrawImmediately)
         }
     }
 
-    TopoDS_Shape shape = TSA::Geometry::CableGeometry3D::createCableShape(*cable, *m_model, true);
+    // Câble : axe analytique = corde nœud à nœud (l'élément transmis au calcul), sinon géométrie 3D.
+    TopoDS_Shape shape;
+    if (linearAsAxis())
+    {
+        const auto* ca = m_model->getNode(cable->startNodeId());
+        const auto* cb = m_model->getNode(cable->endNodeId());
+        if (ca && cb) shape = TSA::Viewer::analyticalAxisShape(gp_Pnt(ca->x(), ca->y(), ca->z()), gp_Pnt(cb->x(), cb->y(), cb->z()));
+    }
+    else
+        shape = TSA::Geometry::CableGeometry3D::createCableShape(*cable, *m_model, true);
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisCable = new AIS_Shape(shape);
-        TSA::Viewer::MaterialVisual::instance().applyToShape(aisCable, cable->material(), cable->color(), m_renderDisplayMode);
+        styleLinearShape(aisCable, cable->material(), cable->color(), TSA::Analysis::StructuralElementKind::Cable);
 
         const bool shown = keepLinearUnderIsolation(cable->startNodeId(), cable->endNodeId());
         if (shown)

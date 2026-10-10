@@ -143,6 +143,8 @@ Puis mettre à jour `Custom2DEngine::capabilities()` selon ce que le solveur fai
    `run` reçoit l'`AnalysisModel` et rend un `ResultsModel` indexé par ids TSA (via `AnalysisMapping`).
 2. Une ligne dans `registerBuiltInEngines`.
 3. Facultatif : un `AnalysisEngineOptionsWidget` + une ligne dans `registerBuiltInEngineOptions`.
+4. Recommandé : joindre le maillage réellement transmis au solveur (`results.setSolverMesh`, structure
+   `SolverMesh`) ; le mode d'affichage « Modèle éléments finis » l'affiche (docs/DISPLAY_MODES.md).
 
 Aucune modification de la fenêtre Analysis, de MainWindow, de l'arbre, des propriétés, du ruban, des
 grilles, des WorkPlanes ni de la sélection.

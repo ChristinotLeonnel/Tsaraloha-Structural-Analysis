@@ -71,6 +71,10 @@ public:
     /// Incohérences détectées (tags dupliqués, nœuds manquants, axes indéfinis…). Vide = cohérent.
     std::vector<std::string> validate(const CalculationSnapshot& snapshot) const;
 
+    /// Maillage tel qu'écrit dans le script : un nœud OpenSees par nœud du snapshot, nœuds auxiliaires
+    /// des ressorts, un élément fini par barre (aucune subdivision), éléments zeroLength des ressorts.
+    SolverMesh solverMesh(const CalculationSnapshot& snapshot) const;
+
 private:
     std::vector<OpsElementEntry> m_elements;
     std::map<int, std::size_t> m_indexByTag;

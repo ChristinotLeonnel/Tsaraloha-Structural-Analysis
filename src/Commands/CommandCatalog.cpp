@@ -301,6 +301,18 @@ void CommandCatalog::initializeStandardCatalog() {
                    ":/icons/view/view_front.svg", CommandCategory::View});
   registerCommand({"cmd.view.yz", "Pignon (YZ)", "Basculer en vue latérale", "",
                    ":/icons/view/view_side.svg", CommandCategory::View});
+  registerCommand({"cmd.view.display_physical", "Modèle physique",
+                   "Afficher les éléments avec leurs sections volumiques", "",
+                   ":/icons/view/view_shaded.svg", CommandCategory::View});
+  registerCommand({"cmd.view.display_analytical", "Modèle filaire analytique",
+                   "Masquer les sections : axes des barres et nœuds (affichage seulement)", "",
+                   ":/icons/view/display_analytical.svg", CommandCategory::View});
+  registerCommand({"cmd.view.display_fe", "Modèle éléments finis",
+                   "Afficher le maillage réellement transmis au moteur lors du dernier calcul", "",
+                   ":/icons/view/display_fe.svg", CommandCategory::View});
+  registerCommand({"cmd.view.display_overlay", "Superposition physique / analytique",
+                   "Sections translucides et axes analytiques superposés", "",
+                   ":/icons/view/view_transparent.svg", CommandCategory::View});
   registerCommand({"cmd.view.section_cut", "Plan de Coupe",
                    "Activer le plan de coupe dynamique 3D", "",
                    ":/icons/view/section_cut.svg", CommandCategory::View});

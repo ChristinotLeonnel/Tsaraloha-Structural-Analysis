@@ -59,6 +59,7 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Bim.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Topology.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Dimensions.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_DisplayMode.cpp
     ${TSA_ROOT}/src/UI/MainWindow_ModelingTools.cpp
 )
 
@@ -356,6 +357,7 @@ set(VIEWER_MAIN_SOURCES
     ${TSA_ROOT}/src/Viewer/OccView.h
     ${TSA_ROOT}/src/Viewer/OccView.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Shapes.cpp
+    ${TSA_ROOT}/src/Viewer/OccView_DisplayMode.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Navigation.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Events.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Tools.cpp
@@ -369,6 +371,10 @@ set(VIEWER_MAIN_SOURCES
 set(VIEWER_CORE_SOURCES
     ${TSA_ROOT}/src/Viewer/DimensionRenderer.h
     ${TSA_ROOT}/src/Viewer/DimensionRenderer.cpp
+    ${TSA_ROOT}/src/Viewer/ModelDisplayMode.h
+    ${TSA_ROOT}/src/Viewer/ModelDisplayMode.cpp
+    ${TSA_ROOT}/src/Viewer/DisplayModeRenderers.h
+    ${TSA_ROOT}/src/Viewer/DisplayModeRenderers.cpp
     ${TSA_ROOT}/src/Viewer/MaterialVisual.h
     ${TSA_ROOT}/src/Viewer/MaterialVisual.cpp
     ${TSA_ROOT}/src/Viewer/TextureManager.h
@@ -497,6 +503,8 @@ set(LOAD_CORE_SOURCES
     ${TSA_ROOT}/src/Analysis/CalculationSnapshot.cpp
     ${TSA_ROOT}/src/Analysis/ResultsModel.h
     ${TSA_ROOT}/src/Analysis/ResultsModel.cpp
+    ${TSA_ROOT}/src/Analysis/SolverMesh.h
+    ${TSA_ROOT}/src/Analysis/SolverMesh.cpp
     ${TSA_ROOT}/src/Analysis/AnalysisTypes.h
     ${TSA_ROOT}/src/Analysis/ElementTransformation.h
     ${TSA_ROOT}/src/Analysis/ElementTransformation.cpp
@@ -917,6 +925,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_group_edit.cpp
     ${TSA_ROOT}/tests/test_topology.cpp
     ${TSA_ROOT}/tests/test_dimensions.cpp
+    ${TSA_ROOT}/tests/test_display_modes.cpp
     ${TSA_ROOT}/tests/test_blueprint.cpp
     ${TSA_ROOT}/resources/resources.qrc
 )

@@ -409,6 +409,7 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     }
     m_results.setExecutionMetadata(meta);
     m_results.setAvailability(m_results.availabilityFromData());
+    m_results.setSolverMesh(opsMap.solverMesh(snapshot)); // maillage réellement écrit dans model.tcl
 
     emit progressChanged(100, tr("Calcul et post-traitement terminés avec succès."));
     return true;

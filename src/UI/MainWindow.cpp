@@ -268,6 +268,7 @@ void MainWindow::onResultsBecameStale()
     if (m_occView && m_occView->resultsVisual())
     {
         m_occView->resultsVisual()->clearAllVisuals();
+        m_occView->refreshDisplayModeOverlays(); // maillage du solveur : plus présenté comme actuel
         m_occView->update();
     }
     if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
@@ -284,6 +285,7 @@ void MainWindow::onResultsBecameStale()
     {
         m_statusInfo->setText(tr("Résultats obsolètes — recalcul nécessaire"));
     }
+    if (m_occView && m_occView->modelDisplayMode() == TSA::Viewer::ModelDisplayMode::FiniteElement) reportModelDisplayMode();
 }
 
 void MainWindow::setupUi()

@@ -854,6 +854,7 @@ void MainWindow::onAnalysisResultsChanged()
     m_resultsModel = m_analysis->results();
     emit resultsChanged();
     if (m_occView) m_occView->setResultsModel(m_resultsModel);
+    if (m_occView && m_occView->modelDisplayMode() == TSA::Viewer::ModelDisplayMode::FiniteElement) reportModelDisplayMode();
     if (m_diagramWidget) m_diagramWidget->setResultsModel(m_resultsModel);
     if (m_ndcWidget) m_ndcWidget->setResultsModel(m_resultsModel);
     if (m_propertyPanel) m_propertyPanel->setResultsModel(m_resultsModel);

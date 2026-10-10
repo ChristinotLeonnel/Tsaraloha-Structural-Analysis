@@ -82,6 +82,7 @@ AnalysisRunResult Custom2DEngine::run(const AnalysisContext& context, const Anal
     }
     if (callbacks.progress) callbacks.progress(90, "Remappage des résultats vers le modèle TSA…");
     r.results = Custom2D::mapResults(context, model, output);
+    r.results.setSolverMesh(Custom2D::solverMesh(model, input));
     r.success = r.results.isValid();
     r.message = r.success ? "Calcul Custom2D terminé." : "Résultats Custom2D inexploitables.";
     return r;

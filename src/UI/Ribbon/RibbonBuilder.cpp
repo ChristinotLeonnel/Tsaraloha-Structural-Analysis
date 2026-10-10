@@ -669,6 +669,17 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     }
     tab->addPanel(projPanel);
 
+    // Représentation du modèle : physique, filaire analytique, éléments finis, superposition
+    if (acts.modelDisplayModes.size() == 4)
+    {
+        auto* reprPanel = new RibbonPanel(QObject::tr("Représentation"), tab);
+        reprPanel->addLargeAction(acts.modelDisplayModes[0]);
+        reprPanel->addLargeAction(acts.modelDisplayModes[1]);
+        reprPanel->addInternalSeparator();
+        reprPanel->addSmallColumn({ acts.modelDisplayModes[2], acts.modelDisplayModes[3] });
+        tab->addPanel(reprPanel);
+    }
+
     // Navigation & Cadrage
     auto* navPanel = new RibbonPanel(QObject::tr("Navigation"), tab);
     if (acts.actionFitAll) navPanel->addLargeAction(acts.actionFitAll);

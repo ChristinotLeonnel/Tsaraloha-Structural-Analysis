@@ -88,6 +88,7 @@ void ResultsModel::clear()
     m_availability = ResultAvailability{};
     m_engineTables.clear();
     m_planarCurves.clear();
+    m_solverMesh = SolverMesh{};
     m_units = UnitSystem{};
     m_activeStep = -1;
     m_equilibrium = GlobalEquilibrium{};

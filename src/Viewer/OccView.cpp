@@ -1,5 +1,6 @@
 #include "OccView.h"
 #include "DimensionRenderer.h"
+#include "DisplayModeRenderers.h"
 #include "SelectionManager.h"
 #include "ResultsVisualManager.h"
 #include "../Model/Model.h"
@@ -140,6 +141,8 @@ void OccView::initOcc()
     m_context = new AIS_InteractiveContext(m_viewer);
     m_context->SetPixelTolerance(8);
     m_dimensionRenderer = std::make_unique<TSA::Viewer::DimensionRenderer>(m_context, m_selectionManager);
+    m_analyticalRenderer = std::make_unique<TSA::Viewer::AnalyticalModelRenderer>(m_context);
+    m_meshRenderer = std::make_unique<TSA::Viewer::FiniteElementMeshRenderer>(m_context);
 
     // Style de surbrillance dynamique (survol souris) : Cyan éclatant
     m_context->HighlightStyle()->SetColor(Quantity_NOC_CYAN1);
@@ -258,6 +261,8 @@ void OccView::setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>
     {
         m_resultsVisual->setResultsModel(results);
     }
+    m_lastResults = results;
+    if (TSA::Viewer::DisplayPolicy::solverMesh(m_modelDisplayMode)) refreshDisplayModeOverlays();
 }
 
 void OccView::setSelectionManager(TSA::Viewer::SelectionManager* selectionManager)
