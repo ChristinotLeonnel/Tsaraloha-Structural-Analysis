@@ -196,7 +196,8 @@ bool TemplatePackage::fromJson(const QJsonObject& json, TemplatePackage* out, QS
     for (auto it = files.begin(); it != files.end(); ++it)
     {
         const QJsonObject f = it.value().toObject();
-        if (f.contains("text")) p.m_files.insert(it.key(), f.value("text").toString().toUtf8());
+        // Fins de ligne normalisées (LF) : un template édité ou extrait sous Windows (CRLF) produit le même document.
+        if (f.contains("text")) p.m_files.insert(it.key(), f.value("text").toString().replace(QStringLiteral("\r\n"), QStringLiteral("\n")).toUtf8());
         else if (f.contains("base64"))
         {
             const auto decoded = QByteArray::fromBase64Encoding(f.value("base64").toString().toLatin1(), QByteArray::AbortOnBase64DecodingErrors);

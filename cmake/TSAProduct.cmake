@@ -11,6 +11,7 @@
 #   tsa_add_product(NAME TSA PRODUCT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/product RESOURCES …)
 
 get_filename_component(TSA_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+include("${CMAKE_CURRENT_LIST_DIR}/Gmsh.cmake")
 # Cœur scientifique : dépôt TSALab voisin (TSALab/science).
 set(TSALAB_ROOT_DIR "${TSA_ROOT}/../TSALab" CACHE PATH "Racine du dépôt TSALab (cœur scientifique tsalab_science)")
 get_filename_component(TSALAB_ROOT_DIR "${TSALAB_ROOT_DIR}" ABSOLUTE)
@@ -63,6 +64,7 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Shortcuts.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Tsa3d.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Reports.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_Mesh.cpp
     ${TSA_ROOT}/src/UI/MainWindow_ModelingTools.cpp
 )
 
@@ -185,6 +187,12 @@ set(UI_EXTENSIONMANAGERDIALOG_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/ModulesDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/ReportTemplatesDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/ReportTemplatesDialog.cpp
+    ${TSA_ROOT}/src/UI/Mesh/MeshController.h
+    ${TSA_ROOT}/src/UI/Mesh/MeshController.cpp
+    ${TSA_ROOT}/src/UI/Mesh/MeshSettingsPanel.h
+    ${TSA_ROOT}/src/UI/Mesh/MeshSettingsPanel.cpp
+    ${TSA_ROOT}/src/UI/Mesh/MeshDialogs.h
+    ${TSA_ROOT}/src/UI/Mesh/MeshDialogs.cpp
 )
 
 # --- Gestionnaire centralisé des fenêtres et disposition (Window Manager) — [CORE] ---
@@ -370,6 +378,8 @@ set(VIEWER_MAIN_SOURCES
     ${TSA_ROOT}/src/Viewer/OccView.h
     ${TSA_ROOT}/src/Viewer/OccView.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Shapes.cpp
+    ${TSA_ROOT}/src/Viewer/MeshOverlay.h
+    ${TSA_ROOT}/src/Viewer/MeshOverlay.cpp
     ${TSA_ROOT}/src/Viewer/OccView_DisplayMode.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Navigation.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Events.cpp
@@ -461,6 +471,23 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Core/AppPaths.cpp
     ${TSA_ROOT}/src/Modules/ModuleRegistry.h
     ${TSA_ROOT}/src/Modules/ModuleRegistry.cpp
+    # Maillage (docs/MESH.md) : moteur Gmsh encapsulé dans Mesh/Gmsh/GmshMeshEngine
+    ${TSA_ROOT}/src/Mesh/MeshTypes.h
+    ${TSA_ROOT}/src/Mesh/MeshGeometry.h
+    ${TSA_ROOT}/src/Mesh/MeshGeometry.cpp
+    ${TSA_ROOT}/src/Mesh/MeshSizing.h
+    ${TSA_ROOT}/src/Mesh/MeshGenerator.h
+    ${TSA_ROOT}/src/Mesh/MeshGenerator.cpp
+    ${TSA_ROOT}/src/Mesh/MeshProject.h
+    ${TSA_ROOT}/src/Mesh/MeshProject.cpp
+    ${TSA_ROOT}/src/Mesh/MeshQuality.h
+    ${TSA_ROOT}/src/Mesh/MeshQuality.cpp
+    ${TSA_ROOT}/src/Mesh/SurfaceLoads.h
+    ${TSA_ROOT}/src/Mesh/SurfaceLoads.cpp
+    ${TSA_ROOT}/src/Mesh/Gmsh/GmshMeshEngine.h
+    ${TSA_ROOT}/src/Mesh/Gmsh/GmshMeshEngine.cpp
+    ${TSA_ROOT}/src/Mesh/Solvers/OpenSeesMeshAdapter.h
+    ${TSA_ROOT}/src/Mesh/Solvers/OpenSeesMeshAdapter.cpp
     # Templates de documents et rapports (docs/TEMPLATES.md)
     ${TSA_ROOT}/src/Templates/TemplateEngine.h
     ${TSA_ROOT}/src/Templates/TemplateEngine.cpp
@@ -969,6 +996,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_modules.cpp
     ${TSA_ROOT}/tests/test_templates.cpp
     ${TSA_ROOT}/tests/test_deployment.cpp
+    ${TSA_ROOT}/tests/test_mesh.cpp
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )
@@ -1093,6 +1121,11 @@ function(tsaraloha_add_shared_libraries)
     if(WIN32)
         target_link_libraries(${model} PUBLIC DbgHelp Crypt32)
     endif()
+    if(TARGET TSA::Gmsh)
+        target_link_libraries(${model} PUBLIC TSA::Gmsh)
+        # GmshMeshEngine inclut gmsh.h_cwrap (en-tête de 350 ko) : hors en-têtes précompilés
+        set_source_files_properties(${TSA_ROOT}/src/Mesh/Gmsh/GmshMeshEngine.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+    endif()
 
     # En-têtes précompilés : Qt et OCCT sont très lourds à parser.
     # Les autres cibles réutilisent ce PCH (REUSE_FROM).
@@ -1166,6 +1199,7 @@ endfunction()
 # Exécutable Qt d'une application de l'écosystème : sous-système Windows et déploiement des DLL
 # (Qt, OCCT, 3rdparty, Extensions/ de la base commune) à côté de l'exécutable.
 function(tsaraloha_configure_application target)
+    tsa_copy_gmsh_runtime(${target})
     if(MSVC)
         # Debug : console conservée pour les journaux ; autres configurations : fenêtré pur.
         target_link_options(${target} PRIVATE
@@ -1215,9 +1249,13 @@ function(tsaraloha_add_sdk_tools product model product_dir)
     add_executable(tsa3d_roundtrip_example ${TSA_ROOT}/sdk/examples/tsa3d-roundtrip/main.cpp)
     tsa_apply_common_settings(tsa3d_roundtrip_example ${product_dir})
     target_link_libraries(tsa3d_roundtrip_example PRIVATE ${model})
+    add_executable(tsa-mesh ${TSA_ROOT}/sdk/tools/tsa-mesh/main.cpp)
+    tsa_apply_common_settings(tsa-mesh ${product_dir})
+    target_link_libraries(tsa-mesh PRIVATE ${model})
+    tsa_copy_gmsh_runtime(tsa-mesh)
     add_executable(sample_csv2tsa3d ${TSA_ROOT}/sdk/modules/sample.csvimport/src/csv2tsa3d.cpp)
     target_compile_features(sample_csv2tsa3d PRIVATE cxx_std_17)
-    foreach(t tsa3d-validate tsa-template tsa3d_generator_example tsa3d_roundtrip_example sample_csv2tsa3d)
+    foreach(t tsa3d-validate tsa-template tsa-mesh tsa3d_generator_example tsa3d_roundtrip_example sample_csv2tsa3d)
         if(MSVC)
             target_compile_options(${t} PRIVATE /utf-8)
             target_link_options(${t} PRIVATE /SUBSYSTEM:CONSOLE)
@@ -1235,7 +1273,7 @@ function(tsaraloha_add_sdk_tools product model product_dir)
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${TSA_ROOT}/sdk/modules/sample.csvimport/examples ${_mod}/examples
         COMMENT "Module d'exemple sample.csvimport assemblé")
     add_dependencies(${product} sample_csv2tsa3d)
-    add_dependencies(${product} tsa3d-validate tsa-template)
+    add_dependencies(${product} tsa3d-validate tsa-template tsa-mesh)
 endfunction()
 
 # Paquet distribuable autonome : cible package_<produit> (cmake/PackageTSA.cmake, docs/DEPLOYMENT.md).
@@ -1262,6 +1300,8 @@ function(tsaraloha_add_package_target target binaries)
             -DWINDEPLOYQT_EXECUTABLE=${WINDEPLOYQT_EXECUTABLE}
             -DVCREDIST_DIR=${TSA_VCREDIST_DIR}
             -DPACKAGE_OPENSEES=${TSA_PACKAGE_OPENSEES}
+            "-DGMSH_DLL=$<$<BOOL:${TSA_PACKAGE_GMSH}>:${TSA_GMSH_DLL}>"
+            "-DGMSH_LICENSE_DIR=${TSA_GMSH_LICENSE_DIR}"
             "-DEXTRA_EXECUTABLES=${_extra}"
             -P "${TSA_ROOT}/cmake/PackageTSA.cmake"
         DEPENDS ${target}
@@ -1298,7 +1338,7 @@ function(tsa_add_product)
 
     tsaraloha_add_thumbnail_provider(${thumbs} ${P_PRODUCT_DIR})
     tsaraloha_add_sdk_tools(${name} ${model} ${P_PRODUCT_DIR})
-    tsaraloha_add_package_target(${name} "${name}.exe;tsaraloha-mcp.exe;tsa3d-validate.exe;tsa-template.exe;${thumbs}.dll")
+    tsaraloha_add_package_target(${name} "${name}.exe;tsaraloha-mcp.exe;tsa3d-validate.exe;tsa-template.exe;tsa-mesh.exe;${thumbs}.dll")
     if(TARGET ${thumbs})
         add_dependencies(${name} ${thumbs})
     endif()
@@ -1320,6 +1360,7 @@ function(tsa_add_product)
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:Qt6::Test> $<TARGET_FILE_DIR:${tests}>)
         endif()
         set_target_properties(${tests} PROPERTIES OUTPUT_NAME "${name}_TestSuite")
+        tsa_copy_gmsh_runtime(${tests})
         add_dependencies(${tests} ${name}_Mcp sample_csv2tsa3d)
         target_compile_definitions(${tests} PRIVATE TSA_SAMPLE_MODULE_DIR="${CMAKE_BINARY_DIR}/modules/sample.csvimport")
         target_compile_definitions(${tests} PRIVATE TSARALOHA_MCP_EXE="$<TARGET_FILE:${name}_Mcp>")
@@ -1332,7 +1373,7 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards tsa3d modules templates deployment)
+                       loads opensees supports standards tsa3d modules templates deployment mesh)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

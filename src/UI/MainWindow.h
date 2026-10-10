@@ -23,7 +23,7 @@ namespace TSA::Model { class Model; class SupportDefinition; enum class LoadType
 namespace TSA::AI { class AIOrchestrator; }
 namespace TSA::Automation { class AutomationServer; }
 namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct NewProjectSettings; enum class ProjectTemplate; }
-namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; class AnalysisController; }
+namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; class AnalysisController; class AnalysisEngine; }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Interaction { class ModelingTool; class ModelingToolRegistry; struct ToolContext; }
 namespace TSA::Project { class ProjectManager; class ProjectSession; }
@@ -63,6 +63,16 @@ namespace TSA::UI
     class AnalysisEngineOptionsRegistry;
 }
 
+namespace TSA::UI
+{
+class MeshController;
+class MeshSettingsPanel;
+class MeshQualityPanel;
+}
+namespace TSA::Viewer
+{
+class MeshOverlay;
+}
 namespace TSA::NDC
 {
     class NDCViewerWidget;
@@ -533,6 +543,26 @@ private:
     QAction* m_actionFitResults = nullptr;
     QAction* m_actionFitDeformed = nullptr;
     QAction* m_actionNoteDeCalcul = nullptr;
+    QAction* m_actionMeshSettings = nullptr;
+    QAction* m_actionMeshPreview = nullptr;
+    QAction* m_actionMeshRegenerate = nullptr;
+    QAction* m_actionMeshQuality = nullptr;
+    QAction* m_actionMeshShow = nullptr;
+    QAction* m_actionMeshLocal = nullptr;
+    QAction* m_actionMeshZone = nullptr;
+    QAction* m_actionMeshExport = nullptr;
+    QAction* m_actionMeshImport = nullptr;
+    QAction* m_actionMeshClear = nullptr;
+    QAction* m_actionSlabOpenings = nullptr;
+    TSA::UI::MeshController* m_meshController = nullptr;
+    TSA::UI::MeshSettingsPanel* m_meshPanel = nullptr;
+    TSA::UI::MeshQualityPanel* m_meshQualityPanel = nullptr;
+    QDockWidget* m_meshDock = nullptr;
+    QDockWidget* m_meshQualityDock = nullptr;
+    std::unique_ptr<TSA::Viewer::MeshOverlay> m_meshOverlay;
+    void setupMesh();
+    /// Maillage → contexte de calcul (subdivision des barres), après contrôle de compatibilité ; faux = calcul annulé.
+    bool applyMeshToAnalysis(TSA::Analysis::AnalysisContext& context, const TSA::Analysis::AnalysisEngine& engine);
     QAction* m_actionReportTemplates = nullptr;
 
     QAction* m_actionMeasure = nullptr;
@@ -588,6 +618,19 @@ private slots:
 
     // Slots Résultats, Note de Calcul et Multi-Port
     void onActionNoteDeCalcul();
+    void onActionMeshSettings();
+    void onActionMeshPreview();
+    void onActionMeshRegenerate();
+    void onActionMeshQuality();
+    void onActionMeshShow(bool on);
+    void onActionMeshLocal();
+    void onActionMeshZone();
+    void onActionMeshExport();
+    void onActionMeshImport();
+    void onActionMeshClear();
+    void onActionSlabOpenings();
+    void refreshMeshOverlay();
+    void onMeshModelChanged();
     void onActionReportTemplates();
     void onActionToggleDeformed(bool checked);
     void onActionToggleReactions(bool checked);

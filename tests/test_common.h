@@ -195,3 +195,4 @@ bool runSuite_Tsa3d(int& passed);
 bool runSuite_Modules(int& passed);
 bool runSuite_Templates(int& passed);
 bool runSuite_Deployment(int& passed);
+bool runSuite_Mesh(int& passed);

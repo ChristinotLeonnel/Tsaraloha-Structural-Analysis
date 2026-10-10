@@ -217,7 +217,18 @@ cmd.section.rect                    |                       | on   |            
 
 [Maillage]
 # identifiant                       | raccourci(s)          | état | par défaut            | description
-cmd.analysis.mesh                   |                       | on   |                       | Générer le maillage EF — Estimation du maillage (aucun maillage n'est généré : voir docs/DISPLAY_MODES.md)
+cmd.analysis.mesh                   |                       | on   |                       | Générer le maillage — Générer le maillage du projet avec Gmsh (enregistré, qualité contrôlée)
+cmd.mesh.clear                      |                       | on   |                       | Supprimer le maillage — Supprimer le maillage du projet (paramètres conservés)
+cmd.mesh.export                     |                       | on   |                       | Exporter le maillage — Exporter le maillage (msh, vtk, unv, inp, bdf, mesh)
+cmd.mesh.import                     |                       | on   |                       | Importer un maillage — Importer un maillage (Gmsh et formats lus par Gmsh)
+cmd.mesh.local                      |                       | on   |                       | Maillage local de la sélection — Paramètres de maillage des objets sélectionnés
+cmd.mesh.preview                    |                       | on   |                       | Aperçu du maillage — Maillage prévisionnel sans remplacer celui du projet
+cmd.mesh.quality                    |                       | on   |                       | Vérifier la qualité du maillage — Contrôle de qualité et liste des problèmes
+cmd.mesh.regenerate                 |                       | on   |                       | Régénérer le maillage — Régénérer avec les paramètres enregistrés
+cmd.mesh.settings                   |                       | on   |                       | Paramètres du maillage — Panneau de paramétrage du maillage (Gmsh)
+cmd.mesh.show                       |                       | on   |                       | Afficher le maillage — Afficher le maillage du projet dans la vue 3D
+cmd.mesh.zone                       |                       | on   |                       | Raffinement local — Zone de raffinement autour des nœuds sélectionnés
+cmd.model.slab_openings             |                       | on   |                       | Ouvertures de la dalle — Trémies de la dalle sélectionnée
 
 [Charges]
 # identifiant                       | raccourci(s)          | état | par défaut            | description

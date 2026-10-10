@@ -114,6 +114,8 @@ public:
     std::vector<int> outOfPlaneNodes;
     std::size_t droppedNodalLoads = 0;         ///< charges nodales hors portée
     std::size_t droppedMemberLoads = 0;        ///< charges sur barres hors portée
+    /// Barres subdivisées selon le maillage généré (vide : un élément fini par barre).
+    SubdivisionMap subdivisions;
 
     bool isPlanar() const { return dimension == AnalysisDimension::Plane2D && plane.has_value(); }
     bool hasPlanarElements() const { return !slabs.empty() || !walls.empty(); }

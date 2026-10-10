@@ -1,0 +1,7 @@
+# Fins de ligne figées : templates rendus octet par octet (test 282), données JSON et fichiers d'exemple.
+resources/templates/** text eol=lf
+sdk/examples/** text eol=lf
+docs/schemas/** text eol=lf
+*.png binary
+*.ico binary
+*.dll binary

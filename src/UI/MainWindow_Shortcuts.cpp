@@ -94,7 +94,11 @@ void MainWindow::setupShortcuts()
         { "cmd.loads.surface", m_actionSurfaceLoad }, { "cmd.loads.self_weight", m_actionSelfWeight },
         { "cmd.loadcases.manager", m_actionLoadCases },
         // Maillage, analyse, résultats, rapports, BIM
-        { "cmd.analysis.mesh", m_actionMeshGen }, { "cmd.analysis.solve", m_actionRunSolve }, { "cmd.analysis.config", m_actionAnalysisConfig },
+        { "cmd.analysis.mesh", m_actionMeshGen },
+        { "cmd.mesh.settings", m_actionMeshSettings }, { "cmd.mesh.preview", m_actionMeshPreview }, { "cmd.mesh.regenerate", m_actionMeshRegenerate },
+        { "cmd.mesh.quality", m_actionMeshQuality }, { "cmd.mesh.show", m_actionMeshShow }, { "cmd.mesh.local", m_actionMeshLocal },
+        { "cmd.mesh.zone", m_actionMeshZone }, { "cmd.mesh.export", m_actionMeshExport }, { "cmd.mesh.import", m_actionMeshImport },
+        { "cmd.mesh.clear", m_actionMeshClear }, { "cmd.model.slab_openings", m_actionSlabOpenings }, { "cmd.analysis.solve", m_actionRunSolve }, { "cmd.analysis.config", m_actionAnalysisConfig },
         { "cmd.results.deformed", m_actionDeformedToggle }, { "cmd.results.reactions", m_actionReactionsToggle },
         { "cmd.results.diagram_mz", m_actionDiagramMz }, { "cmd.results.diagram_my", m_actionDiagramMy },
         { "cmd.results.diagram_mx", m_actionDiagramMx }, { "cmd.results.diagram_vz", m_actionDiagramVz },

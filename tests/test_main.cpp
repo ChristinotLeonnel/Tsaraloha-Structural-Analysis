@@ -6,14 +6,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 309;
+    int expectedTotal = 320;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment]" << std::endl;
+            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh]" << std::endl;
             return 0;
         }
     }
@@ -183,6 +183,10 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "deployment") {
         std::cout << "\n--- [Suite 23/23] Déploiement (chemins, données utilisateur, shortcut.txt) ---" << std::endl;
         if (!runSuite_Deployment(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "mesh") {
+        std::cout << "\n--- [Suite 24/24] Maillage Gmsh (1D, 2D, 3D, groupes, OpenSees, charges) ---" << std::endl;
+        if (!runSuite_Mesh(passed)) allOk = false;
     }
 #endif
 

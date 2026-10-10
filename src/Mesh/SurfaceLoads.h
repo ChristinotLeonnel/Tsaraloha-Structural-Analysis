@@ -1,0 +1,55 @@
+#pragma once
+
+// Répartition d'une charge surfacique sur les éléments 2D d'une surface maillée (docs/MESH.md §K) :
+// charges nodales équivalentes COHÉRENTES (∫ Nᵢ p dA, intégration de Gauss sur les fonctions de forme des
+// éléments tri3, tri6, quad4, quad8), direction globale (X, Y, Z, gravité) ou normale locale, surface
+// réelle ou projetée. La résultante et le moment par rapport à l'origine sont contrôlés contre la valeur
+// analytique (aire nette de la surface, ouvertures déduites, et son centre) ; un écart, une surface non
+// maillée ou des éléments non pris en charge sont signalés : la charge n'est alors pas convertie.
+//
+// Gmsh n'est ici que le générateur du maillage : la charge est un objet TSA, la répartition un service TSA.
+
+#include "MeshGeometry.h"
+#include "MeshTypes.h"
+
+#include <string>
+#include <vector>
+
+namespace TSA::Mesh
+{
+
+struct SurfacePressure
+{
+    std::string surface;            ///< référence de la surface (SL2, W5)
+    double value = 0;               ///< kN/m²
+    enum class Direction
+    {
+        GlobalX,
+        GlobalY,
+        GlobalZ,
+        Gravity,        ///< −Z global
+        LocalNormal     ///< −N (normale de la surface, sens de sa définition) : une pression positive appuie sur la face
+    } direction = Direction::Gravity;
+    bool projected = false;         ///< direction globale : intensité rapportée à la surface projetée perpendiculairement à la direction
+};
+
+struct NodalForce
+{
+    int node = 0;                   ///< nœud du maillage
+    double fx = 0, fy = 0, fz = 0;  ///< kN
+};
+
+struct SurfaceLoadResult
+{
+    bool ok = false;
+    std::vector<NodalForce> forces;
+    std::size_t elements = 0;
+    P3 resultant, expectedResultant;          ///< kN
+    P3 moment, expectedMoment;                ///< kN·m, par rapport à l'origine
+    double resultantError = 0, momentError = 0;   ///< écarts relatifs
+    std::vector<std::string> errors, warnings;
+};
+
+SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& geometry, const SurfacePressure& load, double tolerance = 1e-6);
+
+} // namespace TSA::Mesh

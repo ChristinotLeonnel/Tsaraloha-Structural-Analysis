@@ -128,6 +128,12 @@ def main():
             manifest = json.load(f)
     except Exception as e:  # noqa: BLE001
         errors.append(f"MANIFEST.json illisible : {e}")
+    if manifest.get("gmshIncluded"):
+        dlls = [f for f in os.listdir(root) if f.lower().startswith("gmsh-") and f.lower().endswith(".dll")]
+        if not dlls:
+            errors.append("moteur de maillage Gmsh annoncé mais DLL absente")
+        if not os.path.exists(os.path.join(root, "licenses", "Gmsh", "LICENSE.txt")):
+            errors.append("licence de Gmsh absente : licenses/Gmsh/LICENSE.txt")
     if manifest.get("openSeesIncluded"):
         for r in ("engines/OpenSees/bin/OpenSees.exe", "engines/OpenSees/lib/tcl8.6/init.tcl"):
             if not os.path.exists(os.path.join(root, r)):

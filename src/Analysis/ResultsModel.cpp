@@ -293,3 +293,107 @@ void ResultsModel::computeSummary()
 }
 
 } // namespace TSA::Analysis
+
+namespace TSA::Analysis
+{
+
+namespace
+{
+void mergeElementMap(std::map<ElementKey, ElementResults>& results, const std::map<ElementKey, std::vector<std::pair<ElementKey, double>>>& parts)
+{
+    for (const auto& [parent, list] : parts)
+    {
+        std::vector<const ElementResults*> pieces;
+        for (const auto& [key, x0] : list)
+        {
+            auto it = results.find(key);
+            if (it == results.end()) break;
+            pieces.push_back(&it->second);
+        }
+        if (pieces.size() == list.size() && !pieces.empty())
+        {
+            ElementResults merged;
+            merged.kind = parent.kind;
+            merged.elementId = parent.id;
+            merged.opsTag = pieces.front()->opsTag;
+            double L = 0;
+            for (const auto* p : pieces) L += p->length;
+            merged.length = L;
+            merged.startForces = pieces.front()->startForces;
+            merged.startForces.position = 0.0;
+            for (std::size_t k = 0; k < pieces.size(); ++k)
+            {
+                const double x0 = list[k].second;
+                if (k > 0)
+                {
+                    StationForces s = pieces[k]->startForces;
+                    s.position = x0;
+                    merged.intermediateStations.push_back(s);
+                }
+                for (StationForces s : pieces[k]->intermediateStations)
+                {
+                    s.position += x0;
+                    merged.intermediateStations.push_back(s);
+                }
+                if (k + 1 < pieces.size())
+                {
+                    StationForces s = pieces[k]->endForces;
+                    s.position = x0 + pieces[k]->length;
+                    merged.intermediateStations.push_back(s);
+                }
+            }
+            merged.endForces = pieces.back()->endForces;
+            merged.endForces.position = L;
+            results[parent] = merged;
+        }
+        for (const auto& [key, x0] : list) results.erase(key);
+    }
+}
+} // namespace
+
+void ResultsModel::mergeSubdivisions(const std::map<ElementKey, std::vector<std::pair<ElementKey, double>>>& parts, const std::set<int>& internalNodes)
+{
+    if (parts.empty()) return;
+    mergeElementMap(m_elementResults, parts);
+    mergeElementMap(m_finalElementResults, parts);
+    for (auto& step : m_stepResults)
+    {
+        mergeElementMap(step.elementResults, parts);
+        for (int n : internalNodes) step.displacements.erase(n), step.reactions.erase(n);
+    }
+    for (int n : internalNodes)
+    {
+        m_displacements.erase(n);
+        m_reactions.erase(n);
+        m_finalDisplacements.erase(n);
+        m_finalReactions.erase(n);
+    }
+    // Matrices et efforts bruts par sous-élément : propres au système résolu, non rattachables à une barre.
+    std::size_t dropped = 0;
+    for (const auto& [parent, list] : parts)
+        for (const auto& [key, x0] : list)
+            dropped += m_advanced.elementMatrices.erase(key) + m_advanced.elementForces.erase(key);
+    if (dropped)
+        m_advanced.warnings.push_back("barres subdivisées selon le maillage : matrices et efforts bruts des sous-éléments non présentés par barre "
+                                      "(la matrice globale inclut les nœuds intermédiaires)");
+    // Maillage du solveur : nœuds intermédiaires et sous-éléments rattachés au modèle.
+    std::map<ElementKey, ElementKey> parentOf;
+    for (const auto& [parent, list] : parts)
+        for (const auto& [key, x0] : list) parentOf[key] = parent;
+    for (auto& [tag, node] : m_solverMesh.nodes)
+        if (internalNodes.count(node.tsaNodeId) || internalNodes.count(tag))
+        {
+            node.tsaNodeId = 0;
+            node.role = "subdivision (maillage TSA)";
+        }
+    for (auto& cell : m_solverMesh.cells)
+        if (cell.source)
+        {
+            auto it = parentOf.find(*cell.source);
+            if (it != parentOf.end()) cell.source = it->second;
+        }
+    if (!m_solverMesh.empty()) m_solverMesh.description += " ; barres subdivisées selon le maillage TSA";
+    computeSummary();
+}
+
+} // namespace TSA::Analysis

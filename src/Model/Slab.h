@@ -3,11 +3,21 @@
 #include "Material.h"
 #include <vector>
 #include <string>
+#include <utility>
 
 namespace TSA::Model
 {
 
 class Model;
+
+/// Ouverture (trémie) d'une dalle : polygone dans le repère local de la dalle (origine au premier nœud,
+/// u vers le deuxième nœud, n normale de Newell, v = n × u ; m). Suit la dalle quand ses nœuds bougent.
+struct SlabOpening
+{
+    std::string name;
+    std::string shape = "polygon";                      ///< rectangle, circle, polygon (information)
+    std::vector<std::pair<double, double>> polygon;     ///< (u, v), au moins 3 sommets
+};
 
 enum class SlabType
 {
@@ -49,6 +59,10 @@ public:
     const std::string& color() const { return m_color; }
     void setColor(const std::string& color) { m_color = color; }
 
+    /// Ouvertures (maillage, affichage) ; persistées dans le chunk OPNG du .tsa (format ≥ 1.8).
+    const std::vector<SlabOpening>& openings() const { return m_openings; }
+    void setOpenings(const std::vector<SlabOpening>& openings) { m_openings = openings; }
+
 private:
     int m_id = 0;
     std::string m_name;
@@ -57,6 +71,7 @@ private:
     Material m_material = Material::concreteC25_30();
     SlabType m_slabType = SlabType::TwoWay;
     std::string m_color;
+    std::vector<SlabOpening> m_openings;
 };
 
 } // namespace TSA::Model

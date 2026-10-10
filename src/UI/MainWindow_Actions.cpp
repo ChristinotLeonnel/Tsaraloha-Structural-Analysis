@@ -758,10 +758,40 @@ void MainWindow::createActions()
     connect(m_actionLoadCases, &QAction::triggered, this, &MainWindow::onActionLoadCases);
 
 
-    m_actionMeshGen = new QAction(tr("&Générer le Maillage EF..."), this);
-    m_actionMeshGen->setIcon(QIcon(":/icons/mesh_generate.svg"));
-    m_actionMeshGen->setToolTip(tr("Discrétiser les barres et dalles en éléments finis"));
+    m_actionMeshGen = new QAction(QIcon(":/icons/mesh_generate.svg"), tr("&Générer le maillage"), this);
+    m_actionMeshGen->setToolTip(tr("Génère le maillage du projet avec Gmsh (1D barres, 2D dalles et voiles, 3D semelles), l'enregistre et contrôle sa qualité"));
     connect(m_actionMeshGen, &QAction::triggered, this, &MainWindow::onActionMeshGen);
+    m_actionMeshSettings = new QAction(tr("Paramètres du maillage..."), this);
+    m_actionMeshSettings->setToolTip(tr("Panneau de paramétrage du maillage : tailles, algorithmes, raffinement, paramètres locaux, qualité, profils"));
+    connect(m_actionMeshSettings, &QAction::triggered, this, &MainWindow::onActionMeshSettings);
+    m_actionMeshPreview = new QAction(tr("Aperçu du maillage"), this);
+    m_actionMeshPreview->setToolTip(tr("Affiche le maillage prévisionnel sans remplacer celui du projet (second appel : retire l'aperçu)"));
+    connect(m_actionMeshPreview, &QAction::triggered, this, &MainWindow::onActionMeshPreview);
+    m_actionMeshRegenerate = new QAction(tr("Régénérer le maillage"), this);
+    m_actionMeshRegenerate->setToolTip(tr("Régénère le maillage avec les paramètres enregistrés (après une modification de la géométrie)"));
+    connect(m_actionMeshRegenerate, &QAction::triggered, this, &MainWindow::onActionMeshRegenerate);
+    m_actionMeshQuality = new QAction(tr("Vérifier la qualité du maillage"), this);
+    m_actionMeshQuality->setToolTip(tr("Contrôle de qualité : aspect, angles, jacobien, minSICN, éléments inversés, nœuds isolés, interfaces"));
+    connect(m_actionMeshQuality, &QAction::triggered, this, &MainWindow::onActionMeshQuality);
+    m_actionMeshShow = new QAction(tr("Afficher le maillage"), this);
+    m_actionMeshShow->setCheckable(true);
+    m_actionMeshShow->setToolTip(tr("Affiche le maillage du projet dans la vue 3D (éléments de qualité insuffisante en rouge)"));
+    connect(m_actionMeshShow, &QAction::toggled, this, &MainWindow::onActionMeshShow);
+    m_actionMeshLocal = new QAction(tr("Maillage local de la sélection..."), this);
+    m_actionMeshLocal->setToolTip(tr("Paramètres de maillage propres aux objets sélectionnés, sans modifier les autres"));
+    connect(m_actionMeshLocal, &QAction::triggered, this, &MainWindow::onActionMeshLocal);
+    m_actionMeshZone = new QAction(tr("Raffinement local autour de la sélection..."), this);
+    m_actionMeshZone->setToolTip(tr("Zone de raffinement autour des nœuds sélectionnés (appui, charge…)"));
+    connect(m_actionMeshZone, &QAction::triggered, this, &MainWindow::onActionMeshZone);
+    m_actionMeshExport = new QAction(tr("Exporter le maillage..."), this);
+    connect(m_actionMeshExport, &QAction::triggered, this, &MainWindow::onActionMeshExport);
+    m_actionMeshImport = new QAction(tr("Importer un maillage..."), this);
+    connect(m_actionMeshImport, &QAction::triggered, this, &MainWindow::onActionMeshImport);
+    m_actionMeshClear = new QAction(tr("Supprimer le maillage"), this);
+    connect(m_actionMeshClear, &QAction::triggered, this, &MainWindow::onActionMeshClear);
+    m_actionSlabOpenings = new QAction(tr("Ouvertures de la dalle..."), this);
+    m_actionSlabOpenings->setToolTip(tr("Trémies de la dalle sélectionnée (rectangles, cercles), prises en compte par le maillage"));
+    connect(m_actionSlabOpenings, &QAction::triggered, this, &MainWindow::onActionSlabOpenings);
 
     m_actionAnalysisConfig = new QAction(tr("&Analyse (moteur, portée)..."), this);
     m_actionAnalysisConfig->setIcon(QIcon(":/icons/analysis_settings.svg"));
@@ -989,6 +1019,7 @@ void MainWindow::createMenus()
     QMenu* surfSub = modelMenu->addMenu(tr("Éléments Surfaciques (2D)"));
     surfSub->addAction(m_actionDrawSlab);
     surfSub->addAction(m_actionDrawWall);
+    surfSub->addAction(m_actionSlabOpenings);
     surfSub->addAction(m_actionFooting);
 
     {
@@ -1046,7 +1077,23 @@ void MainWindow::createMenus()
     loadSubMenu->addSeparator();
     loadSubMenu->addAction(m_actionLoadCases);
     analysisMenu->addSeparator();
-    analysisMenu->addAction(m_actionMeshGen);
+    {
+        QMenu* meshSub = analysisMenu->addMenu(QIcon(":/icons/mesh_generate.svg"), tr("Maillage (Gmsh)"));
+        meshSub->addAction(m_actionMeshSettings);
+        meshSub->addSeparator();
+        meshSub->addAction(m_actionMeshPreview);
+        meshSub->addAction(m_actionMeshGen);
+        meshSub->addAction(m_actionMeshRegenerate);
+        meshSub->addAction(m_actionMeshQuality);
+        meshSub->addAction(m_actionMeshShow);
+        meshSub->addSeparator();
+        meshSub->addAction(m_actionMeshLocal);
+        meshSub->addAction(m_actionMeshZone);
+        meshSub->addSeparator();
+        meshSub->addAction(m_actionMeshImport);
+        meshSub->addAction(m_actionMeshExport);
+        meshSub->addAction(m_actionMeshClear);
+    }
     analysisMenu->addSeparator();
     analysisMenu->addAction(m_actionAnalysisConfig);
     analysisMenu->addAction(m_actionRunSolve);
@@ -1342,6 +1389,13 @@ void MainWindow::createRibbon()
     acts.actionLoadValuesVisible = m_actionLoadValuesVisible;
 
     acts.actionMeshGen = m_actionMeshGen;
+    acts.actionMeshSettings = m_actionMeshSettings;
+    acts.actionMeshPreview = m_actionMeshPreview;
+    acts.actionMeshQuality = m_actionMeshQuality;
+    acts.actionMeshRegenerate = m_actionMeshRegenerate;
+    acts.actionMeshLocal = m_actionMeshLocal;
+    acts.actionMeshZone = m_actionMeshZone;
+    acts.actionMeshShow = m_actionMeshShow;
     acts.actionAnalysisConfig = m_actionAnalysisConfig;
     acts.actionRunSolve = m_actionRunSolve;
 
@@ -1851,6 +1905,9 @@ void MainWindow::createDockWindows()
     }
 
     createAIComponents();
+
+    // Maillage (Gmsh) : panneau de paramètres, liste de qualité, affichage dans la vue 3D
+    setupMesh();
 }
 
 void MainWindow::updateStatusCounts()
