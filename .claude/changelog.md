@@ -2,6 +2,17 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Représentations du modèle : physique, filaire analytique, éléments finis, superposition)
+
+### Added
+- Ruban Affichage > Représentation et menu Affichage > Représentation du modèle : modèle physique, filaire
+  analytique (axes nœud à nœud colorés par famille, dalles / voiles en arêtes ; sélection, accrochage, appuis,
+  charges conservés), éléments finis (maillage réellement transmis au moteur au dernier calcul à jour),
+  superposition (sections translucides + axes). Visuel seulement : résultats et révision inchangés.
+- `SolverMesh` (structure neutre) joint aux résultats par OpenSees (`OpenSeesModelMap::solverMesh`) et Custom2D ;
+  messages explicites sans calcul, avec résultats obsolètes ou moteur sans maillage ; aucune subdivision
+  inventée (moteurs actuels : 1 élément fini par barre). docs/DISPLAY_MODES.md. Tests 250-256 (total 277).
+
 ## 2026-10-10 (Cotations 3D)
 
 ### Added

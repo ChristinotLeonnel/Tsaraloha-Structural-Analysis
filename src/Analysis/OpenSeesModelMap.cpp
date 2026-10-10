@@ -152,4 +152,38 @@ std::vector<std::string> OpenSeesModelMap::validate(const CalculationSnapshot& s
     return errors;
 }
 
+SolverMesh OpenSeesModelMap::solverMesh(const CalculationSnapshot& snapshot) const
+{
+    SolverMesh mesh;
+    mesh.engineId = "opensees";
+    mesh.description = "OpenSees : un élément fini par barre TSA (elasticBeamColumn, truss, corotTruss), "
+                       "nœuds du modèle ; ressorts d'appui : nœud auxiliaire fixé + zeroLength";
+    // Mêmes nœuds et éléments que buildNodes / buildElements / buildSupports (OpenSeesAnalysisBuilder).
+    for (const auto& [id, n] : snapshot.nodes())
+        mesh.nodes[id] = { id, n.x, n.y, n.z, id, std::string() };
+    for (const auto& e : m_elements)
+    {
+        SolverMeshCell c;
+        c.tag = e.tag;
+        c.type = SolverCellType::Line;
+        c.solverClass = e.opsClass;
+        c.nodes = { e.nodeI, e.nodeJ };
+        c.source = e.key;
+        mesh.cells.push_back(c);
+    }
+    for (const auto& s : m_springs)
+    {
+        const auto* n = snapshot.getNode(s.nodeId);
+        if (!n) continue;
+        mesh.nodes[s.auxNodeTag] = { s.auxNodeTag, n->x, n->y, n->z, 0, "auxiliaire (ressort N" + std::to_string(s.nodeId) + ")" };
+        SolverMeshCell c;
+        c.tag = s.elementTag;
+        c.type = SolverCellType::ZeroLength;
+        c.solverClass = "zeroLength";
+        c.nodes = { s.auxNodeTag, s.nodeId };
+        mesh.cells.push_back(c);
+    }
+    return mesh;
+}
+
 } // namespace TSA::Analysis

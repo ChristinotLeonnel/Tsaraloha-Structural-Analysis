@@ -94,6 +94,8 @@
         <file alias="view/view_wireframe.svg">icons/view/view_wireframe.svg</file>
         <file alias="view/view_shaded.svg">icons/view/view_shaded.svg</file>
         <file alias="view/view_transparent.svg">icons/view/view_transparent.svg</file>
+        <file alias="view/display_analytical.svg">icons/view/display_analytical.svg</file>
+        <file alias="view/display_fe.svg">icons/view/display_fe.svg</file>
         <file alias="view/visibility.svg">icons/view/visibility.svg</file>
         <file alias="view/fullscreen.svg">icons/view/fullscreen.svg</file>
 

@@ -519,4 +519,45 @@ ResultsModel mapResults(const AnalysisContext& context, const AnalysisModel& mod
     return r;
 }
 
+SolverMesh solverMesh(const AnalysisModel& model, const Input& input)
+{
+    SolverMesh mesh;
+    mesh.engineId = "custom2d";
+    mesh.description = "Custom2D : ossature plane, un élément (Frame / Truss) par barre de la portée";
+    if (!model.plane) return mesh; // pas de plan : buildInput n'a produit aucune entrée
+    const AnalysisPlane& pl = *model.plane;
+    for (const auto& n : input.nodes)
+    {
+        SolverMeshNode m;
+        m.tag = n.index;
+        m.tsaNodeId = model.mapping.tsaNode(n.index);
+        if (const auto* sn = m.tsaNodeId ? model.snapshot.getNode(m.tsaNodeId) : nullptr)
+        {
+            m.x = sn->x;
+            m.y = sn->y;
+            m.z = sn->z;
+        }
+        else
+        {
+            const gp_Pnt p = pl.origin.Translated(gp_Vec(pl.u) * n.x + gp_Vec(pl.v) * n.y);
+            m.x = p.X();
+            m.y = p.Y();
+            m.z = p.Z();
+            m.role = "nœud du solveur plan";
+        }
+        mesh.nodes[m.tag] = m;
+    }
+    for (const auto& e : input.elements)
+    {
+        SolverMeshCell c;
+        c.tag = e.index;
+        c.type = SolverCellType::Line;
+        c.solverClass = e.type == ElementType::Frame ? "Frame" : "Truss";
+        c.nodes = { e.nodeI, e.nodeJ };
+        c.source = model.mapping.tsaElement(e.index);
+        mesh.cells.push_back(c);
+    }
+    return mesh;
+}
+
 } // namespace TSA::Analysis::Custom2D

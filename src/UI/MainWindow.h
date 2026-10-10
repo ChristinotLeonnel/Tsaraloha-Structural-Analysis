@@ -384,6 +384,11 @@ private:
     void applyTopologyDisplay(const TSA::Topology::TopologySettings& settings);
     void applyTopologyDisplayFromModel();
     void createDimensionActions();
+    void createDisplayModeActions();
+    /// Message de la représentation active (mode Éléments finis : état du maillage du solveur).
+    void reportModelDisplayMode();
+    QActionGroup* m_displayModeGroup = nullptr;
+    std::vector<QAction*> m_displayModeActions;
     void syncDimensionActions();
     QAction* m_actionDimensionsVisible = nullptr;
     QAction* m_actionEditDimension = nullptr;
@@ -623,6 +628,8 @@ private slots:
     void onActionTopologySettings();
     // Cotations 3D (MainWindow_Dimensions.cpp)
     void onToggleDimensionsVisible(bool visible);
+    // Représentation du modèle (MainWindow_DisplayMode.cpp)
+    void onModelDisplayModeTriggered(QAction* action);
     void onEditDimension();
     void onDeleteDimensions();
     void onDimensionStyle();

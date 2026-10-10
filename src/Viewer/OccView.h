@@ -30,6 +30,8 @@ namespace TSA::Viewer
     class SelectionManager;
     class ResultsVisualManager;
     class DimensionRenderer;
+    class AnalyticalModelRenderer;
+    class FiniteElementMeshRenderer;
 }
 
 namespace TSA::Grid
@@ -51,6 +53,7 @@ namespace TSA::Grid
 #include <gp_Ax3.hxx>
 #include <optional>
 #include "../Model/SelectionQuery.h"
+#include "ModelDisplayMode.h"
 #include "MaterialVisual.h"
 #include "ProjectionManager.h"
 #include "ViewManager.h"
@@ -79,6 +82,15 @@ public:
     // Mode d'affichage et de rendu des matériaux
     TSA::Viewer::RenderDisplayMode renderDisplayMode() const { return m_renderDisplayMode; }
     void setRenderDisplayMode(TSA::Viewer::RenderDisplayMode mode);
+
+    // Représentation du modèle (physique, filaire analytique, éléments finis, superposition) :
+    // purement visuelle, conservée pendant la session (ModelDisplayMode.h).
+    TSA::Viewer::ModelDisplayMode modelDisplayMode() const { return m_modelDisplayMode; }
+    void setModelDisplayMode(TSA::Viewer::ModelDisplayMode mode);
+    /// État du maillage du solveur pour le mode Éléments finis (disponible, ou pourquoi il ne l'est pas).
+    TSA::Viewer::SolverMeshStatus solverMeshStatus() const;
+    /// Recalcule les axes superposés et le maillage affiché (résultats nouveaux ou obsolètes, isolation…).
+    void refreshDisplayModeOverlays();
 
     // Visualisation des résultats OpenSees (déformée, diagrammes 3D, réactions)
     TSA::Viewer::ResultsVisualManager* resultsVisual() const { return m_resultsVisual.get(); }
@@ -751,4 +763,20 @@ private:
     std::unique_ptr<TSA::Viewer::ResultsVisualManager> m_resultsVisual;
     std::unique_ptr<TSA::Viewer::DimensionRenderer> m_dimensionRenderer;
     QTimer* m_redrawTimer = nullptr;
+
+    // Représentation du modèle (OccView_DisplayMode.cpp)
+    TSA::Viewer::ModelDisplayMode m_modelDisplayMode = TSA::Viewer::ModelDisplayMode::Physical;
+    std::shared_ptr<const TSA::Analysis::ResultsModel> m_lastResults;
+    std::unique_ptr<TSA::Viewer::AnalyticalModelRenderer> m_analyticalRenderer;
+    std::unique_ptr<TSA::Viewer::FiniteElementMeshRenderer> m_meshRenderer;
+    bool m_displayOverlaysPending = false;
+    /// Barre : apparence selon le mode (axe analytique coloré par famille, ou section et matériau).
+    void styleLinearShape(const Handle(AIS_Shape)& ais, const TSA::Model::Material& material, const std::string& color,
+                          TSA::Analysis::StructuralElementKind kind);
+    /// Dalle, voile, fondation : solide (translucide en Superposition) ou arêtes seules (modes filaires).
+    void stylePlanarShape(const Handle(AIS_Shape)& ais, const TSA::Model::Material& material, const std::string& color,
+                          double defaultTransparency = 0.0);
+    bool linearAsAxis() const { return TSA::Viewer::DisplayPolicy::linearAsAxis(m_modelDisplayMode); }
+    /// Rafraîchissement différé (regroupé) des axes superposés et du maillage.
+    void scheduleDisplayModeOverlays();
 };
