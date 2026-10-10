@@ -1,4 +1,5 @@
 #include "test_common.h"
+#include "Viewer/SelectionManager.h"
 #include <QIcon>
 #include <QPixmap>
 #include <BRepBuilderAPI_Transform.hxx>
@@ -799,6 +800,60 @@ bool runSuite_Viewer(int& passed)
         mgr.completeSelection(hit);
         TEST_CHECK(selected && !mgr.hasActiveSelectionRequest(), "Test 208: demandeur ouvert, sélection transmise");
         std::cout << "[PASS] Test 208: Sélection 3D après fermeture de la fenêtre" << std::endl;
+        passed++;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 213 : sélection multiple Ctrl + clic (bascule) dans le gestionnaire de sélection unique
+    // -------------------------------------------------------------------------
+    {
+        using TSA::Viewer::SelectionManager;
+        using TSA::Viewer::SelectionType;
+        SelectionManager sel;
+        int multi = 0, cleared = 0, single = 0;
+        QObject::connect(&sel, &SelectionManager::multipleSelectionChanged, [&] { ++multi; });
+        QObject::connect(&sel, &SelectionManager::selectionCleared, [&] { ++cleared; });
+        QObject::connect(&sel, &SelectionManager::beamSelected, [&](int) { ++single; });
+
+        sel.selectBeam(1);                                   // 1. clic simple
+        TEST_CHECK(sel.selectedBeams() == std::set<int>({ 1 }), "Test 213: clic sur une barre la sélectionne");
+        sel.toggleElement(SelectionType::Beam, 2);           // 2. Ctrl + clic
+        TEST_CHECK(sel.selectedBeams() == std::set<int>({ 1, 2 }) && multi == 1, "Test 213: Ctrl + clic ajoute la deuxième barre");
+        sel.toggleElement(SelectionType::Beam, 3);           // 3.
+        TEST_CHECK(sel.selectedBeams() == std::set<int>({ 1, 2, 3 }) && sel.primarySelectedId() == 3,
+                   "Test 213: troisième barre ajoutée, devenue l'élément principal");
+        sel.toggleElement(SelectionType::Node, 7);           // types mélangés
+        TEST_CHECK(sel.totalSelectedCount() == 4 && sel.selectedNodes().count(7) == 1, "Test 213: nœud ajouté aux barres");
+        sel.toggleElement(SelectionType::Beam, 2);           // 4. Ctrl + clic sur une barre sélectionnée
+        TEST_CHECK(sel.selectedBeams() == std::set<int>({ 1, 3 }) && sel.selectedNodes().count(7) == 1,
+                   "Test 213: Ctrl + clic retire uniquement la barre cliquée");
+        sel.toggleElement(SelectionType::Node, 7);
+        sel.toggleElement(SelectionType::Beam, 3);
+        TEST_CHECK(sel.selectedBeams() == std::set<int>({ 1 }) && sel.primarySelectedId() == 1 && single >= 2,
+                   "Test 213: retour à un seul élément : signal de clic simple, élément principal restant");
+        sel.toggleElement(SelectionType::Beam, 5);
+        sel.selectBeam(9);                                   // 5. clic simple
+        TEST_CHECK(sel.selectedBeams() == std::set<int>({ 9 }) && sel.totalSelectedCount() == 1, "Test 213: clic simple remplace la sélection");
+        sel.toggleElement(SelectionType::Beam, 9);           // dernière barre retirée
+        TEST_CHECK(sel.totalSelectedCount() == 0 && cleared >= 1, "Test 213: retirer le dernier élément vide la sélection");
+        sel.toggleElement(SelectionType::WorkPlane, 1);
+        TEST_CHECK(sel.totalSelectedCount() == 0, "Test 213: plan de travail : bascule sans effet");
+
+        // 9. Éléments supprimés : retirés de la sélection (aucune référence périmée).
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(4, 0, 0), c = m.addNode(8, 0, 0);
+        const int b1 = m.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        const int b2 = m.addBar(b, c, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        sel.selectBeam(b1);
+        sel.toggleElement(SelectionType::Beam, b2);
+        sel.toggleElement(SelectionType::Node, c);
+        m.pushUndoState("suppr");
+        m.removeNode(c);                                     // supprime aussi la barre b2
+        TEST_CHECK(sel.pruneMissing(m) && sel.selectedBeams() == std::set<int>({ b1 }) && sel.selectedNodes().empty(),
+                   "Test 213: nœud et barre supprimés retirés de la sélection");
+        TEST_CHECK(!sel.pruneMissing(m), "Test 213: rien de plus à retirer");
+        TEST_CHECK(m.undo() && m.getBeam(b2) != nullptr, "Test 213: Annuler rétablit la barre (sélection inchangée)");
+        std::cout << "[PASS] Test 213: Sélection multiple Ctrl + clic" << std::endl;
         passed++;
     }
 

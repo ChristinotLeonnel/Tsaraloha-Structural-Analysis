@@ -512,6 +512,8 @@ protected:
 
     void onModelDiffApplied(const TSA::Model::ModelDiff& diff) override;
     void onModelCleared() override;
+    /// Après toute modification : sélection débarrassée des éléments supprimés (différé, regroupé).
+    void onModelEdited() override;
     void onModelDestroyed() override { m_model = nullptr; }
 
 protected:

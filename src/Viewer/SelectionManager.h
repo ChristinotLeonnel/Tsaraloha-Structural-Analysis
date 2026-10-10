@@ -3,9 +3,12 @@
 #include <QObject>
 #include <map>
 #include <set>
+#include <utility>
 #include <vector>
 #include <AIS_InteractiveObject.hxx>
 #include "../Model/SelectionQuery.h"
+
+namespace TSA::Model { class Model; }
 
 namespace TSA::Viewer
 {
@@ -137,6 +140,17 @@ public slots:
     /// boucles de selectX() qui émettaient un signal (et un redraw du viewport) par élément.
     void selectElements(const TSA::Model::ElementSet& elements, bool addToSelection = false);
     void clearSelection();
+    /// Ctrl + clic : retire l'élément s'il est sélectionné, l'ajoute sinon ; le reste de la sélection
+    /// est conservé. Faux si l'objet n'est pas un élément du modèle (grille, repère…) : rien ne change.
+    bool toggleObject(const Handle(AIS_InteractiveObject)& obj);
+    /// Même règle par identifiant stable (nœud, barre, poteau, dalle, voile, fondation, treillis,
+    /// câble, charge nodale, charge sur barre). Sans effet pour un plan de travail.
+    void toggleElement(SelectionType type, int id);
+    /// Retire les éléments qui n'existent plus dans le modèle (suppression, Annuler, nettoyage) :
+    /// aucune commande ne reçoit d'identifiant périmé. Vrai si la sélection a changé.
+    bool pruneMissing(const TSA::Model::Model& model);
+    /// pruneMissing différé et regroupé (une seule passe après une rafale de notifications du modèle).
+    void schedulePrune(const TSA::Model::Model* model);
 
 signals:
     void selectionChanged();
@@ -156,6 +170,19 @@ signals:
     void multipleSelectionChanged();
 
 private:
+    /// Ensemble des identifiants sélectionnés de ce type (nullptr : type non sélectionnable ainsi).
+    std::set<int>* selectionSet(SelectionType type);
+    /// Type et identifiant de l'élément représenté par un objet graphique ({None, -1} sinon).
+    std::pair<SelectionType, int> elementOf(const Handle(AIS_InteractiveObject)& obj) const;
+    void clearElementSets();
+    /// Élément principal (propriétés affichées) : premier élément restant, ordre de priorité habituel.
+    void choosePrimaryIfNeeded();
+    /// Signaux selon la taille de la sélection : aucun élément → selectionCleared ; un seul → signal
+    /// de son type (comme un clic simple) ; plusieurs → multipleSelectionChanged (surbrillance de tout
+    /// l'ensemble, édition groupée) ; puis selectionChanged.
+    void notifySelectionSetChanged();
+    bool m_prunePending = false;
+
     std::map<int, Handle(AIS_InteractiveObject)> m_nodeToObj;
     std::map<Handle(AIS_InteractiveObject), int> m_objToNode;
 
