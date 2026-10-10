@@ -447,6 +447,11 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
     }
 }
 
+void OccView::onModelEdited()
+{
+    if (m_selectionManager && m_model) m_selectionManager->schedulePrune(m_model);
+}
+
 void OccView::onModelCleared()
 {
     if (m_resultsVisual)
@@ -638,6 +643,18 @@ void OccView::highlightSelection()
     addAll(m_selectionManager->selectedFoundations(), m_foundationShapes);
     addAll(m_selectionManager->selectedTrussMembers(), m_trussShapes);
     addAll(m_selectionManager->selectedCables(), m_cableShapes);
+    // Charges : plusieurs objets graphiques par charge (flèches, enveloppe).
+    auto addLoads = [this](const std::set<int>& ids, const std::map<int, std::vector<Handle(AIS_Shape)>>& shapes) {
+        for (int id : ids)
+        {
+            auto it = shapes.find(id);
+            if (it == shapes.end()) continue;
+            for (const auto& ais : it->second)
+                if (!ais.IsNull() && m_context->IsDisplayed(ais)) m_context->AddOrRemoveSelected(ais, false);
+        }
+    };
+    addLoads(m_selectionManager->selectedNodalLoads(), m_nodalLoadShapes);
+    addLoads(m_selectionManager->selectedMemberLoads(), m_memberLoadShapes);
 
     m_context->UpdateCurrentViewer();
     if (!m_view.IsNull())

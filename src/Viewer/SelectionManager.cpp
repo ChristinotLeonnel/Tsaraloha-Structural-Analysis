@@ -1,4 +1,8 @@
 #include "SelectionManager.h"
+#include "../Model/Model.h"
+#include "../Model/Load/LoadManager.h"
+
+#include <QTimer>
 
 namespace TSA::Viewer
 {
@@ -695,108 +699,21 @@ void SelectionManager::selectObject(const Handle(AIS_InteractiveObject)& obj, bo
 
 void SelectionManager::setMultipleObjectsSelected(const std::vector<Handle(AIS_InteractiveObject)>& objects, bool multiSelect)
 {
+    // Auparavant : charges sélectionnées jamais vidées et aucun signal d'ensemble au-delà d'un élément
+    // (pas d'édition groupée après une sélection par rectangle).
     if (!multiSelect)
-    {
-        m_selectedNodes.clear();
-        m_selectedBeams.clear();
-        m_selectedColumns.clear();
-        m_selectedSlabs.clear();
-        m_selectedWalls.clear();
-        m_selectedFoundations.clear();
-        m_selectedTrussMembers.clear();
-        m_selectedCables.clear();
-        m_primaryId = -1;
-        m_selectionType = SelectionType::None;
-    }
-
+        clearElementSets();
     for (const auto& obj : objects)
     {
-        if (obj.IsNull()) continue;
-
-        int beamId = getBeamId(obj);
-        if (beamId > 0)
+        const auto [type, id] = elementOf(obj);
+        if (std::set<int>* ids = selectionSet(type))
         {
-            m_selectedBeams.insert(beamId);
-            if (m_primaryId < 0) { m_primaryId = beamId; m_selectionType = SelectionType::Beam; }
-            continue;
-        }
-
-        int colId = getColumnId(obj);
-        if (colId > 0)
-        {
-            m_selectedColumns.insert(colId);
-            if (m_primaryId < 0) { m_primaryId = colId; m_selectionType = SelectionType::Column; }
-            continue;
-        }
-
-        int slabId = getSlabId(obj);
-        if (slabId > 0)
-        {
-            m_selectedSlabs.insert(slabId);
-            if (m_primaryId < 0) { m_primaryId = slabId; m_selectionType = SelectionType::Slab; }
-            continue;
-        }
-
-        int wallId = getWallId(obj);
-        if (wallId > 0)
-        {
-            m_selectedWalls.insert(wallId);
-            if (m_primaryId < 0) { m_primaryId = wallId; m_selectionType = SelectionType::Wall; }
-            continue;
-        }
-
-        int fId = getFoundationId(obj);
-        if (fId > 0)
-        {
-            m_selectedFoundations.insert(fId);
-            if (m_primaryId < 0) { m_primaryId = fId; m_selectionType = SelectionType::Foundation; }
-            continue;
-        }
-
-        int trId = getTrussMemberId(obj);
-        if (trId > 0)
-        {
-            m_selectedTrussMembers.insert(trId);
-            if (m_primaryId < 0) { m_primaryId = trId; m_selectionType = SelectionType::TrussMember; }
-            continue;
-        }
-
-        int cableId = getCableId(obj);
-        if (cableId > 0)
-        {
-            m_selectedCables.insert(cableId);
-            if (m_primaryId < 0) { m_primaryId = cableId; m_selectionType = SelectionType::Cable; }
-            continue;
-        }
-
-        int nodeId = getNodeId(obj);
-        if (nodeId > 0)
-        {
-            m_selectedNodes.insert(nodeId);
-            if (m_primaryId < 0) { m_primaryId = nodeId; m_selectionType = SelectionType::Node; }
-            continue;
+            ids->insert(id);
+            if (m_primaryId < 0) { m_primaryId = id; m_selectionType = type; }
         }
     }
-
-    if (totalSelectedCount() == 0)
-    {
-        m_selectionType = SelectionType::None;
-        m_primaryId = -1;
-        emit selectionCleared();
-    }
-    else if (totalSelectedCount() == 1)
-    {
-        if (!m_selectedNodes.empty()) emit nodeSelected(*m_selectedNodes.begin());
-        else if (!m_selectedBeams.empty()) emit beamSelected(*m_selectedBeams.begin());
-        else if (!m_selectedColumns.empty()) emit columnSelected(*m_selectedColumns.begin());
-        else if (!m_selectedSlabs.empty()) emit slabSelected(*m_selectedSlabs.begin());
-        else if (!m_selectedWalls.empty()) emit wallSelected(*m_selectedWalls.begin());
-        else if (!m_selectedFoundations.empty()) emit foundationSelected(*m_selectedFoundations.begin());
-        else if (!m_selectedTrussMembers.empty()) emit trussMemberSelected(*m_selectedTrussMembers.begin());
-        else if (!m_selectedCables.empty()) emit cableSelected(*m_selectedCables.begin());
-    }
-
-    emit selectionChanged();
+    choosePrimaryIfNeeded();
+    notifySelectionSetChanged();
 }
 
 void SelectionManager::clearSelection()
@@ -840,20 +757,7 @@ TSA::Model::ElementSet SelectionManager::selectedElements() const
 void SelectionManager::selectElements(const TSA::Model::ElementSet& elements, bool addToSelection)
 {
     if (!addToSelection)
-    {
-        m_selectedNodes.clear();
-        m_selectedBeams.clear();
-        m_selectedColumns.clear();
-        m_selectedSlabs.clear();
-        m_selectedWalls.clear();
-        m_selectedFoundations.clear();
-        m_selectedTrussMembers.clear();
-        m_selectedCables.clear();
-        m_selectedNodalLoads.clear();
-        m_selectedMemberLoads.clear();
-        m_primaryId = -1;
-        m_selectionType = SelectionType::None;
-    }
+        clearElementSets();
 
     m_selectedNodes.insert(elements.nodes.begin(), elements.nodes.end());
     m_selectedBeams.insert(elements.beams.begin(), elements.beams.end());
@@ -864,26 +768,154 @@ void SelectionManager::selectElements(const TSA::Model::ElementSet& elements, bo
     m_selectedTrussMembers.insert(elements.trussMembers.begin(), elements.trussMembers.end());
     m_selectedCables.insert(elements.cables.begin(), elements.cables.end());
 
-    // Élément principal (propriétés affichées) : premier élément par ordre de priorité habituel.
-    if (m_primaryId < 0)
-    {
-        auto pick = [this](const std::set<int>& ids, SelectionType type) {
-            if (m_primaryId < 0 && !ids.empty())
-            {
-                m_primaryId = *ids.begin();
-                m_selectionType = type;
-            }
-        };
-        pick(m_selectedBeams, SelectionType::Beam);
-        pick(m_selectedColumns, SelectionType::Column);
-        pick(m_selectedSlabs, SelectionType::Slab);
-        pick(m_selectedWalls, SelectionType::Wall);
-        pick(m_selectedFoundations, SelectionType::Foundation);
-        pick(m_selectedTrussMembers, SelectionType::TrussMember);
-        pick(m_selectedCables, SelectionType::Cable);
-        pick(m_selectedNodes, SelectionType::Node);
-    }
+    choosePrimaryIfNeeded();
+    notifySelectionSetChanged();
+}
 
+bool SelectionManager::toggleObject(const Handle(AIS_InteractiveObject)& obj)
+{
+    const auto [type, id] = elementOf(obj);
+    if (!selectionSet(type)) return false;
+    toggleElement(type, id);
+    return true;
+}
+
+void SelectionManager::toggleElement(SelectionType type, int id)
+{
+    std::set<int>* ids = selectionSet(type);
+    if (!ids || id <= 0) return;
+    if (ids->erase(id) > 0)
+    {
+        if (m_selectionType == type && m_primaryId == id)
+        {
+            m_primaryId = -1;
+            m_selectionType = SelectionType::None;
+        }
+    }
+    else
+    {
+        ids->insert(id);
+        m_primaryId = id;   // le dernier élément ajouté devient l'élément principal (propriétés)
+        m_selectionType = type;
+    }
+    choosePrimaryIfNeeded();
+    notifySelectionSetChanged();
+}
+
+bool SelectionManager::pruneMissing(const TSA::Model::Model& model)
+{
+    bool changed = false;
+    auto prune = [&](std::set<int>& ids, auto exists) {
+        for (auto it = ids.begin(); it != ids.end();)
+        {
+            if (exists(*it)) { ++it; continue; }
+            if (m_primaryId == *it) m_primaryId = -1;
+            it = ids.erase(it);
+            changed = true;
+        }
+    };
+    prune(m_selectedNodes, [&](int id) { return model.getNode(id) != nullptr; });
+    prune(m_selectedBeams, [&](int id) { return model.getBeam(id) != nullptr; });
+    prune(m_selectedColumns, [&](int id) { return model.getColumn(id) != nullptr; });
+    prune(m_selectedSlabs, [&](int id) { return model.getSlab(id) != nullptr; });
+    prune(m_selectedWalls, [&](int id) { return model.getWall(id) != nullptr; });
+    prune(m_selectedFoundations, [&](int id) { return model.getFoundation(id) != nullptr; });
+    prune(m_selectedTrussMembers, [&](int id) { return model.getTrussMember(id) != nullptr; });
+    prune(m_selectedCables, [&](int id) { return model.getCable(id) != nullptr; });
+    prune(m_selectedNodalLoads, [&](int id) { return model.loadManager().getNodalLoad(id) != nullptr; });
+    prune(m_selectedMemberLoads, [&](int id) { return model.loadManager().getMemberLoad(id) != nullptr; });
+    if (!changed) return false;
+    if (m_primaryId < 0) m_selectionType = SelectionType::None;
+    choosePrimaryIfNeeded();
+    notifySelectionSetChanged();
+    return true;
+}
+
+void SelectionManager::schedulePrune(const TSA::Model::Model* model)
+{
+    if (!model || m_prunePending || totalSelectedCount() == 0) return;
+    m_prunePending = true;
+    QTimer::singleShot(0, this, [this, model] {
+        m_prunePending = false;
+        pruneMissing(*model);
+    });
+}
+
+std::set<int>* SelectionManager::selectionSet(SelectionType type)
+{
+    switch (type)
+    {
+    case SelectionType::Node: return &m_selectedNodes;
+    case SelectionType::Beam: return &m_selectedBeams;
+    case SelectionType::Column: return &m_selectedColumns;
+    case SelectionType::Slab: return &m_selectedSlabs;
+    case SelectionType::Wall: return &m_selectedWalls;
+    case SelectionType::Foundation: return &m_selectedFoundations;
+    case SelectionType::TrussMember: return &m_selectedTrussMembers;
+    case SelectionType::Cable: return &m_selectedCables;
+    case SelectionType::NodalLoad: return &m_selectedNodalLoads;
+    case SelectionType::MemberLoad: return &m_selectedMemberLoads;
+    default: return nullptr;
+    }
+}
+
+std::pair<SelectionType, int> SelectionManager::elementOf(const Handle(AIS_InteractiveObject)& obj) const
+{
+    if (obj.IsNull()) return { SelectionType::None, -1 };
+    // Même ordre de recherche que selectObject.
+    if (int id = getBeamId(obj); id > 0) return { SelectionType::Beam, id };
+    if (int id = getColumnId(obj); id > 0) return { SelectionType::Column, id };
+    if (int id = getSlabId(obj); id > 0) return { SelectionType::Slab, id };
+    if (int id = getWallId(obj); id > 0) return { SelectionType::Wall, id };
+    if (int id = getFoundationId(obj); id > 0) return { SelectionType::Foundation, id };
+    if (int id = getTrussMemberId(obj); id > 0) return { SelectionType::TrussMember, id };
+    if (int id = getCableId(obj); id > 0) return { SelectionType::Cable, id };
+    if (int id = getNodalLoadId(obj); id > 0) return { SelectionType::NodalLoad, id };
+    if (int id = getMemberLoadId(obj); id > 0) return { SelectionType::MemberLoad, id };
+    if (int id = getNodeId(obj); id > 0) return { SelectionType::Node, id };
+    return { SelectionType::None, -1 };
+}
+
+void SelectionManager::clearElementSets()
+{
+    m_selectedNodes.clear();
+    m_selectedBeams.clear();
+    m_selectedColumns.clear();
+    m_selectedSlabs.clear();
+    m_selectedWalls.clear();
+    m_selectedFoundations.clear();
+    m_selectedTrussMembers.clear();
+    m_selectedCables.clear();
+    m_selectedNodalLoads.clear();
+    m_selectedMemberLoads.clear();
+    m_primaryId = -1;
+    m_selectionType = SelectionType::None;
+}
+
+void SelectionManager::choosePrimaryIfNeeded()
+{
+    if (m_primaryId >= 0) return;
+    auto pick = [this](const std::set<int>& ids, SelectionType type) {
+        if (m_primaryId < 0 && !ids.empty())
+        {
+            m_primaryId = *ids.begin();
+            m_selectionType = type;
+        }
+    };
+    pick(m_selectedBeams, SelectionType::Beam);
+    pick(m_selectedColumns, SelectionType::Column);
+    pick(m_selectedSlabs, SelectionType::Slab);
+    pick(m_selectedWalls, SelectionType::Wall);
+    pick(m_selectedFoundations, SelectionType::Foundation);
+    pick(m_selectedTrussMembers, SelectionType::TrussMember);
+    pick(m_selectedCables, SelectionType::Cable);
+    pick(m_selectedNodes, SelectionType::Node);
+    pick(m_selectedNodalLoads, SelectionType::NodalLoad);
+    pick(m_selectedMemberLoads, SelectionType::MemberLoad);
+}
+
+void SelectionManager::notifySelectionSetChanged()
+{
     const size_t total = totalSelectedCount();
     if (total == 0)
     {
@@ -904,6 +936,8 @@ void SelectionManager::selectElements(const TSA::Model::ElementSet& elements, bo
         case SelectionType::Foundation: emit foundationSelected(m_primaryId); break;
         case SelectionType::TrussMember: emit trussMemberSelected(m_primaryId); break;
         case SelectionType::Cable: emit cableSelected(m_primaryId); break;
+        case SelectionType::NodalLoad: emit nodalLoadSelected(m_primaryId); break;
+        case SelectionType::MemberLoad: emit memberLoadSelected(m_primaryId); break;
         default: break;
         }
     }

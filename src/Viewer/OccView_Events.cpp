@@ -608,9 +608,11 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
                         selectedObjs.push_back(m_context->SelectedInteractive());
                     }
 
+                    // Le contexte contient déjà le résultat (remplacement, ou bascule XOR avec Ctrl) : la
+                    // sélection du modèle reprend exactement cet ensemble.
                     if (m_selectionManager)
                     {
-                        m_selectionManager->setMultipleObjectsSelected(selectedObjs, multi);
+                        m_selectionManager->setMultipleObjectsSelected(selectedObjs, false);
                     }
 
                     m_context->UpdateCurrentViewer();
@@ -644,12 +646,19 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
                                 }
                             }
                         }
+                        else if (multi)
+                        {
+                            // Ctrl + clic : bascule de l'élément dans la sélection (ajout ou retrait), les
+                            // autres sont conservés. La surbrillance suit le gestionnaire (une passe sur
+                            // tout l'ensemble), jamais l'inverse : affichage et sélection restent identiques.
+                            if (m_selectionManager) m_selectionManager->toggleObject(obj);
+                        }
                         else
                         {
-                            m_context->SelectDetected(multi ? AIS_SelectionScheme_XOR : AIS_SelectionScheme_Replace);
+                            m_context->SelectDetected(AIS_SelectionScheme_Replace);
                             if (m_selectionManager)
                             {
-                                m_selectionManager->selectObject(obj, multi);
+                                m_selectionManager->selectObject(obj, false);
                             }
                         }
                     }

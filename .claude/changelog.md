@@ -2,6 +2,12 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Sélection multiple Ctrl + clic)
+
+### Fixed
+- BUG-063 : Ctrl + clic ajoute ou retire un élément sans perdre les autres ; affichage, propriétés et commandes partagent le
+  même ensemble (gestionnaire unique) ; éléments supprimés retirés de la sélection. Test 213 (total 234).
+
 ## 2026-10-10 (Module de chargement : représentation, règles communes, interface)
 
 ### Fixed

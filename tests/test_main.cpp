@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 233;
+    int expectedTotal = 234;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Grids(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "viewer") {
-        std::cout << "\n--- [Suite 6/9] Viewer, Interaction & Materials (Tests 26-27, 34-35, 208) ---" << std::endl;
+        std::cout << "\n--- [Suite 6/9] Viewer, Interaction & Materials (Tests 26-27, 34-35, 208, 213) ---" << std::endl;
         if (!runSuite_Viewer(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "cables" || suiteFilter == "cable") {

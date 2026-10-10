@@ -223,6 +223,8 @@ void SelectionSynchronizer::connectViewport()
         case SelectionType::Foundation: m_properties->showFoundationProperties(id); break;
         case SelectionType::TrussMember: m_properties->showTrussMemberProperties(id); break;
         case SelectionType::Cable: m_properties->showCableProperties(id); break;
+        case SelectionType::NodalLoad: m_properties->showNodalLoadProperties(id); break;
+        case SelectionType::MemberLoad: m_properties->showMemberLoadProperties(id); break;
         default: m_properties->clearProperties(); break;
         }
         // Édition groupée des éléments du même type que l'élément principal (BUG-005)
