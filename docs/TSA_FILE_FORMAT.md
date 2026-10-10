@@ -4,7 +4,7 @@
 **Format :** TSA Binary Project File  
 **Extension native :** `.tsa`  
 **Magic Signature :** `TSAF` (`0x46415354` en little-endian)  
-**Version actuelle :** Spécification 1.4 (Major = 1, Minor = 4) — 1.1 : chunk `LOAD` (2026-10-03) ; 1.2 : bloc d'aperçu ; 1.3 : chunk `BIMM` (2026-10-06) ; 1.4 : chunk `SETT` (2026-10-06), ajouts non cassants  
+**Version actuelle :** Spécification 1.5 (Major = 1, Minor = 5) — 1.1 : chunk `LOAD` (2026-10-03) ; 1.2 : bloc d'aperçu ; 1.3 : chunk `BIMM` (2026-10-06) ; 1.4 : chunk `SETT` (2026-10-06) ; 1.5 : chunk `TOPO` (2026-10-10, topologie et numérotation, JSON UTF-8 `TopologySettings`, voir docs/TOPOLOGY.md), ajouts non cassants  
 
 ---
 
@@ -102,6 +102,7 @@ struct ChunkHeader {
 | `LOAD` (`0x44414F4C`) | `CHUNK_LOAD` | Cas de charges, combinaisons, charges nodales & linéiques — **écrit et lu depuis la spécification 1.1** (voir §5.x) |
 | `BIMM` (`0x4D4D4942`) | `CHUNK_BIMM` | Couche BIM : produits physiques, GlobalId IFC, Psets, classifications, mapping physique → analytique — **spécification 1.3** (voir §5.y) |
 | `SETT` (`0x54544553`) | `CHUNK_SETT` | Paramètres d'analyse (`AnalysisContext`) — **spécification 1.4** (voir §5.z) |
+| `TOPO` (`0x4F504F54`) | `CHUNK_TOPO` | Topologie et numérotation (`TopologySettings`, JSON UTF-8 versionné) — **spécification 1.5**, facultatif ; absent : valeurs par défaut (docs/TOPOLOGY.md) |
 | `RSLT` (`0x544C5352`) | `CHUNK_RSLT` | Résultats de calcul (déplacements, efforts internes N, Vy, Vz, Mt, My, Mz) |
 
 **COOR / GRID** : un JSON UTF-8 préfixé de sa longueur (u16). Au-delà de 65 535 octets, préfixe `0` puis le JSON

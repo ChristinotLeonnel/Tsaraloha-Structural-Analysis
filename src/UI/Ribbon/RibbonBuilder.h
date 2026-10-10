@@ -166,6 +166,7 @@ struct RibbonActions
 
     // 8. Outils & Préférences
     QAction* actionMeasure = nullptr;
+    QAction* actionTopology = nullptr;
     QAction* actionToggleTheme = nullptr;
     QAction* actionHelp = nullptr;
     QAction* actionOnlineDocs = nullptr;

@@ -586,6 +586,17 @@ void TSAFileWriter::writeBimChunk(std::vector<uint8_t>& buffer, const TSA::BIM::
                   reinterpret_cast<const uint8_t*>(json.constData()) + json.size());
 }
 
+void TSAFileWriter::writeJsonChunk(std::vector<uint8_t>& buffer, uint32_t chunkId, const std::string& json)
+{
+    TSAChunkHeader ch;
+    ch.chunkId = chunkId;
+    ch.chunkSize = static_cast<uint32_t>(json.size());
+    ch.elementCount = 1;
+    const uint8_t* chBytes = reinterpret_cast<const uint8_t*>(&ch);
+    buffer.insert(buffer.end(), chBytes, chBytes + sizeof(ch));
+    buffer.insert(buffer.end(), json.begin(), json.end());
+}
+
 void TSAFileWriter::writeSettingsChunk(std::vector<uint8_t>& buffer, const std::string& json)
 {
     // Paramètres d'analyse (AnalysisContext::toJson) : JSON UTF-8 versionné par son champ "schema".

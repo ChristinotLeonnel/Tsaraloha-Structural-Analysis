@@ -813,6 +813,14 @@ RibbonTab* RibbonBuilder::buildToolsTab(RibbonBar* bar, const RibbonActions& act
     measPanel->addLargeAction(actMeasure);
     tab->addPanel(measPanel);
 
+    // Paramètres du projet : topologie et numérotation
+    if (acts.actionTopology)
+    {
+        auto* projPanel = new RibbonPanel(QObject::tr("Projet"), tab);
+        projPanel->addLargeAction(acts.actionTopology);
+        tab->addPanel(projPanel);
+    }
+
     // Préférences & Thème
     if (acts.actionToggleTheme)
     {

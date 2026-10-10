@@ -31,8 +31,11 @@ public:
     /// @param coalesceKey si non vide, des appels successifs avec la même clé à moins de
     ///        COALESCE_WINDOW d'intervalle (et sans autre action entre eux) forment UNE seule entrée
     ///        (ex. crans successifs d'un spinbox de propriété sur le même objet).
+    /// @param contentChange false : changement d'étiquettes seulement (renumérotation) — le modèle n'est
+    ///        pas marqué modifié ici (révision inchangée, résultats de calcul conservés) ; l'appelant
+    ///        notifie par Model::notifyLabelsChanged.
     void pushState(TSA::Model::Model& model, const std::string& actionName = "",
-                   const std::string& coalesceKey = "");
+                   const std::string& coalesceKey = "", bool contentChange = true);
     static constexpr std::chrono::milliseconds COALESCE_WINDOW{ 2000 };
 
     bool canUndo() const noexcept { return !m_undoStack.empty() && m_transactionDepth == 0; }
@@ -86,7 +89,7 @@ private:
         size_t approxBytes = 0;
     };
 
-    void pushEntry(HistoryEntry&& entry, TSA::Model::Model& model);
+    void pushEntry(HistoryEntry&& entry, TSA::Model::Model& model, bool contentChange = true);
     static void restore(TSA::Model::Model& model, const TSA::Model::Model::ModelStateSnapshot& current,
                         const TSA::Model::Model::ModelStateSnapshot& target);
     static std::string nowTimestamp();

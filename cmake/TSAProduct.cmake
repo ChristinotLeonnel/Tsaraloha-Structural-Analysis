@@ -57,6 +57,7 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Tools.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Transform.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Bim.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_Topology.cpp
     ${TSA_ROOT}/src/UI/MainWindow_ModelingTools.cpp
 )
 
@@ -99,6 +100,8 @@ set(UI_PROPERTIES_SOURCES
 
 # --- Boîtes de dialogue -------------------------------------------------------
 set(UI_DIALOGS_SOURCES
+    ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.cpp
     ${TSA_ROOT}/src/UI/HelpLauncher.h
     ${TSA_ROOT}/src/UI/HelpLauncher.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridDialog.h
@@ -720,6 +723,12 @@ set(RESOURCES_SOURCES
 #   TSA_APP_SOURCES            -> TSA          : fenêtre de TSA (MainWindow, ruban, AppShell, Start Center)
 # =============================================================================
 set(TSARALOHA_MODEL_SOURCES
+    ${TSA_ROOT}/src/Topology/TopologySettings.h
+    ${TSA_ROOT}/src/Topology/TopologySettings.cpp
+    ${TSA_ROOT}/src/Topology/NumberingStrategies.h
+    ${TSA_ROOT}/src/Topology/NumberingStrategies.cpp
+    ${TSA_ROOT}/src/Topology/TopologyNumberingService.h
+    ${TSA_ROOT}/src/Topology/TopologyNumberingService.cpp
     ${TSA_ROOT}/src/Help/HelpTopics.h
     ${TSA_ROOT}/src/Help/HelpTopics.cpp
     ${TSA_ROOT}/src/Automation/CommandRegistry.h
@@ -893,6 +902,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_help.cpp
     ${TSA_ROOT}/tests/test_appearance.cpp
     ${TSA_ROOT}/tests/test_group_edit.cpp
+    ${TSA_ROOT}/tests/test_topology.cpp
     ${TSA_ROOT}/tests/test_blueprint.cpp
     ${TSA_ROOT}/resources/resources.qrc
 )

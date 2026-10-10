@@ -615,6 +615,12 @@ void MainWindow::createActions()
     m_actionExportIfc = new QAction(QIcon(":/icons/file/file_export.svg"), tr("Exporter &IFC..."), this);
     m_actionExportIfc->setToolTip(tr("Exporter le modèle au format IFC 4.3 (produits physiques, modèle analytique, matériaux, profils, Psets)"));
     connect(m_actionExportIfc, &QAction::triggered, this, &MainWindow::onActionExportIfc);
+    m_actionTopology = new QAction(tr("&Topologie et numérotation..."), this);
+    m_actionTopology->setToolTip(tr("Paramètres du projet : méthode de numérotation des nœuds et des éléments, "
+                                    "prévisualisation et renumérotation des étiquettes"));
+    m_actionTopology->setIcon(QIcon(":/icons/grid_labels.svg"));
+    connect(m_actionTopology, &QAction::triggered, this, &MainWindow::onActionTopologySettings);
+
     m_actionImportIfc = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer I&FC..."), this);
     m_actionImportIfc->setToolTip(tr("Créer un projet depuis un fichier IFC (IFC2X3, IFC4, IFC4X3) : modèle analytique ou déduit de la géométrie"));
     connect(m_actionImportIfc, &QAction::triggered, this, &MainWindow::onActionImportIfc);
@@ -893,6 +899,9 @@ void MainWindow::createMenus()
     fileMenu->addSeparator();
     fileMenu->addAction(m_actionImportIfc);
     fileMenu->addAction(m_actionExportIfc);
+    fileMenu->addSeparator();
+    QMenu* projectSettingsMenu = fileMenu->addMenu(tr("&Paramètres du projet"));
+    projectSettingsMenu->addAction(m_actionTopology);
     fileMenu->addSeparator();
     fileMenu->addAction(m_actionExit);
 
@@ -1393,6 +1402,7 @@ void MainWindow::createRibbon()
     acts.actionMeasure = m_actionMeasure;
     acts.actionToggleTheme = m_actionToggleTheme;
     acts.actionHelp = m_actionHelp;
+    acts.actionTopology = m_actionTopology;
     acts.actionOnlineDocs = m_actionOnlineDocs;
     acts.actionShortcuts = m_actionShortcuts;
     acts.actionAbout = m_actionAbout;

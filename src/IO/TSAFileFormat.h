@@ -27,7 +27,7 @@ constexpr bool isReadableFileMagic(uint32_t magic)
 // Versioning du format
 // -----------------------------------------------------------------------------
 constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 1;
-constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 4; // 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT
+constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 5; // 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO
 
 // Version de disposition interne du chunk LOAD (indépendante de la version du format)
 constexpr uint32_t LOAD_CHUNK_LAYOUT_VERSION = 1;
@@ -79,6 +79,7 @@ constexpr uint32_t CHUNK_TRUS = 0x53555254; // 'TRUS' : Barres de treillis & con
 constexpr uint32_t CHUNK_CABL = 0x4C424143; // 'CABL' : Câbles, haubans, suspentes et systèmes de tension
 constexpr uint32_t CHUNK_LOAD = 0x44414F4C; // 'LOAD' : Cas de charges, combinaisons & chargements
 constexpr uint32_t CHUNK_SETT = 0x54544553; // 'SETT' : Paramètres d'analyse (AnalysisContext) — JSON UTF-8 versionné (1.4)
+constexpr uint32_t CHUNK_TOPO = 0x4F504F54; // 'TOPO' : Topologie et numérotation (TopologySettings) — JSON UTF-8 versionné (1.5)
 constexpr uint32_t CHUNK_RSLT = 0x544C5352; // 'RSLT' : Résultats de calcul EF (déplacements, efforts, contraintes)
 constexpr uint32_t CHUNK_SNAP = 0x50414E53; // 'SNAP' : Snapshots mécaniques immuables de calcul et métadonnées d'extensions
 constexpr uint32_t CHUNK_BIMM = 0x4D4D4942; // 'BIMM' : Couche BIM (produits physiques, GlobalId, Psets, mapping physique → analytique) — JSON UTF-8 versionné (1.3)

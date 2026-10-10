@@ -22,6 +22,7 @@ constexpr std::array kTopics{
     HelpTopic{ "general.about",             "docs/getting-started/introduction" },
     HelpTopic{ "project.create",            "docs/getting-started/create-project" },
     HelpTopic{ "project.files",             "docs/getting-started/files" },
+    HelpTopic{ "project.topology",          "docs/modeling/numbering" },
     HelpTopic{ "ui.overview",               "docs/getting-started/interface" },
     HelpTopic{ "ui.shortcuts",              "docs/getting-started/interface" },
     HelpTopic{ "model.nodes",               "docs/modeling/nodes" },

@@ -212,6 +212,15 @@ void PropertyPanel::setupUi()
     fitToCurrentPage(m_stack->currentIndex());
 }
 
+namespace
+{
+QString entityTitle(const QString& what, const std::string& label, int id)
+{
+    if (label.empty()) return QStringLiteral("%1 #%2").arg(what).arg(id);
+    return QStringLiteral("%1 %2 (id %3)").arg(what, QString::fromStdString(label)).arg(id);
+}
+} // namespace
+
 void PropertyPanel::clearProperties()
 {
     endMultiEdit();
@@ -229,7 +238,7 @@ void PropertyPanel::showLevelProperties(const QString& levelId)
 void PropertyPanel::showNodeProperties(int nodeId)
 {
     endMultiEdit();
-    m_titleLabel->setText(tr("PROPRIÉTÉS DU NŒUD N%1").arg(nodeId));
+    m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU NŒUD"), m_model && m_model->getNode(nodeId) ? m_model->getNode(nodeId)->formattedName() : std::string(), nodeId));
     m_nodeView->setElementId(nodeId);
     m_stack->setCurrentWidget(m_nodeView);
 }
@@ -237,7 +246,7 @@ void PropertyPanel::showNodeProperties(int nodeId)
 void PropertyPanel::showBeamProperties(int beamId)
 {
     endMultiEdit();
-    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA POUTRE B%1").arg(beamId));
+    m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DE LA POUTRE"), m_model && m_model->getBeam(beamId) ? m_model->getBeam(beamId)->formattedName() : std::string(), beamId));
     m_beamView->setElementId(beamId);
     m_stack->setCurrentWidget(m_beamView);
     m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Beam, beamId });
@@ -246,7 +255,7 @@ void PropertyPanel::showBeamProperties(int beamId)
 void PropertyPanel::showColumnProperties(int columnId)
 {
     endMultiEdit();
-    m_titleLabel->setText(tr("PROPRIÉTÉS DU POTEAU C%1").arg(columnId));
+    m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU POTEAU"), m_model && m_model->getColumn(columnId) ? m_model->getColumn(columnId)->formattedName() : std::string(), columnId));
     m_columnView->setElementId(columnId);
     m_stack->setCurrentWidget(m_columnView);
     m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Column, columnId });
@@ -255,7 +264,7 @@ void PropertyPanel::showColumnProperties(int columnId)
 void PropertyPanel::showCableProperties(int cableId)
 {
     endMultiEdit();
-    m_titleLabel->setText(tr("PROPRIÉTÉS DU CÂBLE K%1").arg(cableId));
+    m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU CÂBLE"), m_model && m_model->getCable(cableId) ? m_model->getCable(cableId)->name() : std::string(), cableId));
     m_cableView->setElementId(cableId);
     m_stack->setCurrentWidget(m_cableView);
     m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Cable, cableId });
@@ -264,7 +273,7 @@ void PropertyPanel::showCableProperties(int cableId)
 void PropertyPanel::showSlabProperties(int slabId)
 {
     endMultiEdit();
-    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA DALLE S%1").arg(slabId));
+    m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DE LA DALLE"), m_model && m_model->getSlab(slabId) ? m_model->getSlab(slabId)->formattedName() : std::string(), slabId));
     m_slabView->setElementId(slabId);
     m_stack->setCurrentWidget(m_slabView);
 }
@@ -272,7 +281,7 @@ void PropertyPanel::showSlabProperties(int slabId)
 void PropertyPanel::showWallProperties(int wallId)
 {
     endMultiEdit();
-    m_titleLabel->setText(tr("PROPRIÉTÉS DU VOILE W%1").arg(wallId));
+    m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU VOILE"), m_model && m_model->getWall(wallId) ? m_model->getWall(wallId)->formattedName() : std::string(), wallId));
     m_wallView->setElementId(wallId);
     m_stack->setCurrentWidget(m_wallView);
 }
@@ -280,7 +289,7 @@ void PropertyPanel::showWallProperties(int wallId)
 void PropertyPanel::showFoundationProperties(int foundationId)
 {
     endMultiEdit();
-    m_titleLabel->setText(tr("PROPRIÉTÉS DE LA FONDATION F%1").arg(foundationId));
+    m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DE LA FONDATION"), m_model && m_model->getFoundation(foundationId) ? m_model->getFoundation(foundationId)->formattedName() : std::string(), foundationId));
     m_foundationView->setElementId(foundationId);
     m_stack->setCurrentWidget(m_foundationView);
 }
@@ -288,7 +297,7 @@ void PropertyPanel::showFoundationProperties(int foundationId)
 void PropertyPanel::showTrussMemberProperties(int memberId)
 {
     endMultiEdit();
-    m_titleLabel->setText(tr("PROPRIÉTÉS DU TREILLIS T%1").arg(memberId));
+    m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU TREILLIS"), m_model && m_model->getTrussMember(memberId) ? m_model->getTrussMember(memberId)->formattedName() : std::string(), memberId));
     m_trussView->setElementId(memberId);
     m_stack->setCurrentWidget(m_trussView);
     m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Truss, memberId });
