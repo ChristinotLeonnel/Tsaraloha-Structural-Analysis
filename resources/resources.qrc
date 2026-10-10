@@ -117,6 +117,21 @@
         <file alias="tools/scale.svg">icons/tools/scale.svg</file>
         <file alias="tools/split_at.svg">icons/tools/split_at.svg</file>
         <file alias="tools/trim.svg">icons/tools/trim.svg</file>
+        <file alias="dimensions/dim_aligned.svg">icons/dimensions/dim_aligned.svg</file>
+        <file alias="dimensions/dim_linear.svg">icons/dimensions/dim_linear.svg</file>
+        <file alias="dimensions/dim_horizontal.svg">icons/dimensions/dim_horizontal.svg</file>
+        <file alias="dimensions/dim_x.svg">icons/dimensions/dim_x.svg</file>
+        <file alias="dimensions/dim_y.svg">icons/dimensions/dim_y.svg</file>
+        <file alias="dimensions/dim_z.svg">icons/dimensions/dim_z.svg</file>
+        <file alias="dimensions/dim_angular.svg">icons/dimensions/dim_angular.svg</file>
+        <file alias="dimensions/dim_level.svg">icons/dimensions/dim_level.svg</file>
+        <file alias="dimensions/dim_chain.svg">icons/dimensions/dim_chain.svg</file>
+        <file alias="dimensions/dim_cumulative.svg">icons/dimensions/dim_cumulative.svg</file>
+        <file alias="dimensions/dim_edit.svg">icons/dimensions/dim_edit.svg</file>
+        <file alias="dimensions/dim_delete.svg">icons/dimensions/dim_delete.svg</file>
+        <file alias="dimensions/dim_visibility.svg">icons/dimensions/dim_visibility.svg</file>
+        <file alias="dimensions/dim_style.svg">icons/dimensions/dim_style.svg</file>
+        <file alias="dimensions/dim_clean.svg">icons/dimensions/dim_clean.svg</file>
         <file alias="tools/x_bracing.svg">icons/tools/x_bracing.svg</file>
         <file alias="structure/struct_merge.svg">icons/structure/struct_merge.svg</file>
 

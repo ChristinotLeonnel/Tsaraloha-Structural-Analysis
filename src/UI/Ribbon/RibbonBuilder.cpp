@@ -813,6 +813,37 @@ RibbonTab* RibbonBuilder::buildToolsTab(RibbonBar* bar, const RibbonActions& act
     measPanel->addLargeAction(actMeasure);
     tab->addPanel(measPanel);
 
+    // Cotation 3D (outils du registre + commandes)
+    if (!acts.dimensionTools.empty())
+    {
+        auto tool = [&](const char* id) -> QAction* {
+            auto it = acts.dimensionTools.find(id);
+            return it != acts.dimensionTools.end() ? it->second : nullptr;
+        };
+        auto* dimPanel = new RibbonPanel(QObject::tr("Cotation"), tab);
+        if (QAction* a = tool("dim_aligned")) dimPanel->addLargeAction(a);
+        if (QAction* a = tool("dim_linear")) dimPanel->addLargeAction(a);
+        auto column = [&](std::initializer_list<const char*> ids) {
+            std::vector<QAction*> col;
+            for (const char* id : ids)
+                if (QAction* a = tool(id)) col.push_back(a);
+            if (!col.empty()) dimPanel->addSmallColumn(col);
+        };
+        dimPanel->addInternalSeparator();
+        column({ "dim_x", "dim_y", "dim_z" });
+        column({ "dim_horizontal", "dim_angular", "dim_level" });
+        column({ "dim_chain", "dim_cumulative" });
+        if (!acts.dimensionCommands.empty())
+        {
+            dimPanel->addInternalSeparator();
+            std::vector<QAction*> first(acts.dimensionCommands.begin(), acts.dimensionCommands.begin() + std::min<size_t>(3, acts.dimensionCommands.size()));
+            dimPanel->addSmallColumn(first);
+            if (acts.dimensionCommands.size() > 3)
+                dimPanel->addSmallColumn(std::vector<QAction*>(acts.dimensionCommands.begin() + 3, acts.dimensionCommands.end()));
+        }
+        tab->addPanel(dimPanel);
+    }
+
     // Paramètres du projet : topologie et numérotation
     if (acts.actionTopology)
     {

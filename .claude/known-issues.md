@@ -4,6 +4,17 @@ Last Updated: 2026-10-09 (audit QA, branche fix/audit-qa-2026-10-09). Ne pas sup
 
 ## Ouverts
 
+## BUG-075
+Area: Sélection 3D / nœuds
+Problem: un clic simple sur un nœud dans la vue 3D ne le sélectionne pas (Propriétés vides, « 0 sél. »), avec ou
+sans cotation ; la sélection par l'arbre fonctionne. Hypothèse non vérifiée : l'objet détecté en premier sous le
+curseur est un axe de grille ou une étiquette (non enregistrés), d'où `clearSelection`.
+Reproduction: qa_topo.tsa, vue 3D, clic sur le nœud N8 → infobulle « Nœud N8 », aucun nœud sélectionné.
+Impact: MEDIUM (sélection des nœuds à la souris)
+Status: OPEN — constaté le 2026-10-10 pendant la vérification des cotations ; piste : étendre
+`OccView::detectedPreferringModel` à tout objet détecté non enregistré.
+Related files: src/Viewer/OccView_Events.cpp, src/Viewer/OccView_Shapes.cpp
+
 ## BUG-074
 Area: Document / état « modifié »
 Problem: après Ctrl+S, le titre garde « * » et la fermeture redemande d'enregistrer tant que l'historique Annuler

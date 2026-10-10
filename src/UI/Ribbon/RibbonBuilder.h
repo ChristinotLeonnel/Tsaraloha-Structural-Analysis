@@ -113,6 +113,8 @@ struct RibbonActions
     QAction* actionToolInputMode = nullptr;             ///< saisie 3D / fenêtre des outils
     std::vector<QAction*> advancedModifyTools;           ///< outils de modification (registre)
     std::vector<QAction*> drawTools;                     ///< outils de dessin (registre)
+    std::map<std::string, QAction*> dimensionTools;      ///< outils de cotation (registre, par identifiant)
+    std::vector<QAction*> dimensionCommands;             ///< modifier, supprimer, nettoyer, afficher, style
     QAction* actionMoveOrigin = nullptr;
     QAction* actionDelete = nullptr;
 

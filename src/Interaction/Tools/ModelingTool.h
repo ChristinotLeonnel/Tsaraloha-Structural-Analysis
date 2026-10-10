@@ -38,7 +38,8 @@ namespace TSA::Interaction
 enum class ToolCategory
 {
     Modify,
-    Draw
+    Draw,
+    Annotate   ///< cotations (annotations : ni géométrie ni calcul modifiés)
 };
 
 /// Ce que l'étape courante attend d'un clic dans la vue.

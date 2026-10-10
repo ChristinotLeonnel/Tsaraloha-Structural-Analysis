@@ -7,6 +7,7 @@
 #include "../Viewer/SelectionManager.h"
 #include "../Model/Model.h"
 #include "../Model/Load/MemberLoadCommands.h"
+#include "../Annotation/DimensionService.h"
 #include "../Coordinate/WorkPlane.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
@@ -885,13 +886,17 @@ void MainWindow::onActionDeleteSelected()
     const std::set<int> memberLoads = m_selectionManager->selectedMemberLoads();
     const int removedLoads = TSA::Model::removeLoads(*m_model, nodalLoads, memberLoads,
                                                      tr("Suppression de charge(s)").toStdString());
-    const size_t elementCount = total - nodalLoads.size() - memberLoads.size();
+    const std::set<int> dimensions = m_selectionManager->selectedDimensions();
+    const int removedDimensions = TSA::Annotation::removeDimensions(*m_model, dimensions);
+    const size_t elementCount = total - nodalLoads.size() - memberLoads.size() - dimensions.size();
     if (elementCount == 0)
     {
         m_selectionManager->clearSelection();
         if (m_occView) m_occView->clearHighlight();
         if (m_propertyPanel) m_propertyPanel->clearProperties();
-        if (m_statusInfo) m_statusInfo->setText(tr("%1 charge(s) supprimée(s)").arg(removedLoads));
+        if (m_statusInfo)
+            m_statusInfo->setText(removedDimensions && !removedLoads ? tr("%1 cotation(s) supprimée(s)").arg(removedDimensions)
+                                                                    : tr("%1 charge(s) supprimée(s)").arg(removedLoads));
         updateUndoRedoActions();
         return;
     }
@@ -1606,6 +1611,7 @@ bool MainWindow::loadFile(const QString& path)
     m_model->clearUndoRedo();
     restoreAnalysisContextFromModel();
     applyTopologyDisplayFromModel();
+    syncDimensionActions();
     updateWindowTitle();
 
     if (m_selectionManager)

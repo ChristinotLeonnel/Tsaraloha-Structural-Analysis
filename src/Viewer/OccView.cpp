@@ -1,4 +1,5 @@
 #include "OccView.h"
+#include "DimensionRenderer.h"
 #include "SelectionManager.h"
 #include "ResultsVisualManager.h"
 #include "../Model/Model.h"
@@ -138,6 +139,7 @@ void OccView::initOcc()
 
     m_context = new AIS_InteractiveContext(m_viewer);
     m_context->SetPixelTolerance(8);
+    m_dimensionRenderer = std::make_unique<TSA::Viewer::DimensionRenderer>(m_context, m_selectionManager);
 
     // Style de surbrillance dynamique (survol souris) : Cyan éclatant
     m_context->HighlightStyle()->SetColor(Quantity_NOC_CYAN1);
@@ -261,6 +263,18 @@ void OccView::setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>
 void OccView::setSelectionManager(TSA::Viewer::SelectionManager* selectionManager)
 {
     m_selectionManager = selectionManager;
+    if (m_dimensionRenderer) m_dimensionRenderer->setSelectionManager(selectionManager);
+    if (m_selectionManager)
+    {
+        // Surbrillance des cotations sélectionnées (objets hors des tables de formes structurelles).
+        connect(m_selectionManager, &TSA::Viewer::SelectionManager::selectionChanged, this, [this]() {
+            if (m_dimensionRenderer && m_model && m_selectionManager)
+            {
+                m_dimensionRenderer->setHighlighted(*m_model, m_selectionManager->selectedDimensions());
+                if (!m_view.IsNull()) m_view->Redraw();
+            }
+        });
+    }
     if (m_selectionManager && !m_workPlaneShape.IsNull())
     {
         m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneShape);

@@ -64,17 +64,18 @@ bool runSuite_ModelingTools(int& passed)
         ModelingToolRegistry r;
         registerBuiltInModelingTools(r);
         const auto ids = r.ids();
-        TEST_CHECK(ids.size() == 20, "Test 140: 14 outils de modification + 6 de dessin");
-        int draw = 0, viewportOnly = 0;
+        TEST_CHECK(ids.size() == 30, "Test 140: 14 outils de modification + 6 de dessin + 10 de cotation");
+        int draw = 0, viewportOnly = 0, annotate = 0;
         for (const auto& t : r.instances())
         {
             draw += t->category() == ToolCategory::Draw ? 1 : 0;
+            annotate += t->category() == ToolCategory::Annotate ? 1 : 0;
             viewportOnly += t->supportsDialog() ? 0 : 1;
             TEST_CHECK(!t->name().empty() && !t->prompt().empty(), "Test 140: nom et invite");
         }
-        TEST_CHECK(draw == 6 && viewportOnly == 3, "Test 140: catégories ; prolonger, ajuster, chaîne : 3D uniquement");
+        TEST_CHECK(draw == 6 && annotate == 10 && viewportOnly == 13, "Test 140: catégories ; prolonger, ajuster, chaîne et cotations : 3D uniquement");
         r.registerTool([] { return tool("move"); });
-        TEST_CHECK(r.ids().size() == 20, "Test 140: identifiant en double ignoré");
+        TEST_CHECK(r.ids().size() == 30, "Test 140: identifiant en double ignoré");
         std::cout << "[PASS] Test 140: Registre des outils" << std::endl;
         ++passed;
     }

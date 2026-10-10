@@ -20,6 +20,8 @@
 #include "../Geometry/CableGeometry3D.h"
 #include "../Geometry/SupportGeometry.h"
 #include "../Geometry/MemberLoadGlyph.h"
+#include "DimensionRenderer.h"
+#include "../Annotation/DimensionService.h"
 #include "../Diagnostics/Logger.h"
 
 #include <QTimer>
@@ -202,6 +204,49 @@ void OccView::onNodeAdded(const TSA::Model::Node& node)
 void OccView::onNodeModified(const TSA::Model::Node& node)
 {
     updateNodeShape(node.id());
+    refreshDimensionsForNodes({ node.id() });
+}
+
+void OccView::rebuildDimensions()
+{
+    if (m_dimensionRenderer && m_model)
+    {
+        m_dimensionRenderer->rebuildAll(*m_model);
+        if (!m_view.IsNull()) m_view->Redraw();
+    }
+}
+
+void OccView::refreshDimensionsForNodes(const std::vector<int>& nodeIds)
+{
+    if (!m_dimensionRenderer || !m_model || m_model->dimensions().items.empty()) return;
+    std::set<int> ids;
+    for (int n : nodeIds)
+        for (int d : TSA::Annotation::dimensionsReferencingNode(*m_model, n)) ids.insert(d);
+    for (int d : ids) m_dimensionRenderer->update(*m_model, d);
+    if (!ids.empty() && !m_context.IsNull()) m_context->UpdateCurrentViewer();
+}
+
+Handle(AIS_InteractiveObject) OccView::detectedPreferringModel()
+{
+    Handle(AIS_InteractiveObject) first = m_context->DetectedInteractive();
+    if (!m_selectionManager || m_selectionManager->getDimensionId(first) <= 0) return first;
+    for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
+    {
+        Handle(AIS_InteractiveObject) obj = m_context->DetectedCurrentObject();
+        if (!obj.IsNull() && m_selectionManager->isModelObject(obj)) return obj;
+    }
+    return first;
+}
+
+void OccView::onDimensionsChanged(const std::vector<int>& ids)
+{
+    if (!m_dimensionRenderer || !m_model) return;
+    if (ids.empty())
+        m_dimensionRenderer->rebuildAll(*m_model);
+    else
+        for (int id : ids) m_dimensionRenderer->update(*m_model, id);
+    if (!m_context.IsNull()) m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull()) m_view->Redraw();
 }
 
 void OccView::scheduleRedraw()
@@ -437,6 +482,14 @@ void OccView::onModelDiffApplied(const TSA::Model::ModelDiff& diff)
     for (int id : diff.modifiedTrussMemberIds) updateTrussMemberShape(id, false);
     for (int id : diff.modifiedCableIds) updateCableShape(id, false);
     updateAllLoadShapes();
+    // Cotations : rétablies par Annuler / Rétablir, ou nœuds associés déplacés.
+    if (diff.dimensionsChanged) { if (m_dimensionRenderer) m_dimensionRenderer->rebuildAll(*m_model); }
+    else
+    {
+        std::vector<int> moved = diff.modifiedNodeIds;
+        moved.insert(moved.end(), diff.deletedNodeIds.begin(), diff.deletedNodeIds.end());
+        refreshDimensionsForNodes(moved);
+    }
 
     // 3. Une SEULE passe d'actualisation de la vue graphique OCCT
     // AUCUN fitAll(), la caméra et le zoom sont rigoureusement préservés !
@@ -805,6 +858,9 @@ void OccView::rebuildAllShapes()
 
     // 9. Créer les formes des charges
     updateAllLoadShapes();
+
+    // 10. Cotations (annotations)
+    if (m_dimensionRenderer) m_dimensionRenderer->rebuildAll(*m_model);
 
     m_context->UpdateCurrentViewer();
     fitAll();

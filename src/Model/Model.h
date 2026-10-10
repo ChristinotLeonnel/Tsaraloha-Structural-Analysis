@@ -25,6 +25,7 @@
 #include "../Coordinate/WorkPlaneManager.h"
 #include "../ExtensionSystem/ExtensionTypes.h"
 #include "../BIM/Core/BimModel.h"
+#include "../Annotation/Dimension.h"
 
 #include <map>
 #include <vector>
@@ -92,6 +93,8 @@ public:
     virtual void onLoadCaseChanged(int /*caseId*/) {}
 
     virtual void onModelDiffApplied(const ModelDiff& /*diff*/) {}
+    /// Cotations ajoutées, modifiées ou supprimées (ids ; vide = toutes, ex. style ou rechargement).
+    virtual void onDimensionsChanged(const std::vector<int>& /*ids*/) {}
     virtual void onModelCleared() {}
 
     /// Une modification quelconque du modèle vient d'avoir lieu (ou va avoir lieu : appelée aussi
@@ -296,6 +299,7 @@ public:
         std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> calculationSnapshots;
         std::map<std::string, TSA::ExtensionSystem::DefinitionReference> definitionReferences;
         TSA::BIM::BimModel bim;   ///< couche BIM (produits physiques, GlobalId) synchronisée
+        TSA::Annotation::DimensionSet dimensions; ///< cotations (annotations, hors calcul)
         // Données de définition hors éléments (BUG-003) : axes X/Y et niveaux (CoordinateSystem), grilles
         // (GridManager rattaché). Vide = non capturé : la restauration laisse alors l'état courant.
         // Les plans de travail sont un état d'affichage (comme la caméra) : ils ne sont pas annulés.
@@ -375,6 +379,14 @@ public:
     /// onModelDiffApplied, document marqué modifié, mais révision inchangée — les résultats de calcul
     /// référencent les identifiants internes et restent valides après une renumérotation.
     void notifyLabelsChanged(const ModelDiff& diff);
+
+    /// Cotations 3D (annotations : jamais transmises au calcul). Modifiées par src/Annotation/DimensionService,
+    /// persistées dans le chunk DIMS du .tsa (format ≥ 1.6), comprises dans l'historique Annuler.
+    const TSA::Annotation::DimensionSet& dimensions() const noexcept { return m_dimensions; }
+    TSA::Annotation::DimensionSet& dimensionsForEdit() noexcept { return m_dimensions; }
+    void setDimensions(const TSA::Annotation::DimensionSet& set) { m_dimensions = set; }
+    /// Notifie les vues (ids vides = toutes) ; document modifié, révision inchangée (résultats conservés).
+    void notifyDimensionsChanged(const std::vector<int>& ids);
 
     bool isModified() const { return m_isModified; }
     void setModified(bool modified)
@@ -459,6 +471,7 @@ private:
     bool m_isModified = false;
     std::string m_analysisSettingsJson;
     std::string m_topologySettingsJson;
+    TSA::Annotation::DimensionSet m_dimensions;
 };
 
 } // namespace TSA::Model

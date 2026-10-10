@@ -86,6 +86,7 @@ Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) c
     ModelStateSnapshot snap;
     syncBim(); // l'état BIM capturé doit couvrir tous les éléments (GlobalId stables à l'Annuler)
     snap.bim = m_bim;
+    snap.dimensions = m_dimensions;
     snap.nodes = m_nodes;
     snap.beams = m_beams;
     snap.columns = m_columns;
@@ -113,6 +114,7 @@ Model::ModelStateSnapshot Model::createSnapshot(const std::string& actionName) c
 
 void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
 {
+    m_dimensions = snapshot.dimensions;
     m_nodes = snapshot.nodes;
     m_beams = snapshot.beams;
     m_columns = snapshot.columns;
@@ -168,6 +170,15 @@ void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
     m_nextTrussMemberId = snapshot.nextTrussMemberId;
     m_nextCableId = snapshot.nextCableId;
     m_isModified = true;
+}
+
+void Model::notifyDimensionsChanged(const std::vector<int>& ids)
+{
+    m_isModified = true; // annotations : révision inchangée, résultats de calcul conservés
+    for (auto* obs : m_observers)
+    {
+        obs->onDimensionsChanged(ids);
+    }
 }
 
 void Model::notifyLabelsChanged(const ModelDiff& diff)
@@ -284,6 +295,7 @@ void Model::clear()
 {
     m_analysisSettingsJson.clear();
     m_topologySettingsJson.clear();
+    m_dimensions = TSA::Annotation::DimensionSet();
     m_bim = TSA::BIM::BimModel();
     m_bimSignature = ~0ull;
     m_calculationSnapshots.clear();
