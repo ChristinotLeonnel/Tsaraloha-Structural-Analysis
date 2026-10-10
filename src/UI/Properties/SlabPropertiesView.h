@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../Model/Material.h"
+
 #include "IElementPropertyView.h"
 
 class QLineEdit;
@@ -43,7 +45,8 @@ private:
     QComboBox* m_comboType = nullptr;
     QLabel* m_lblNodes = nullptr;
     QPushButton* m_btnColor = nullptr;
-    QString m_colorHex = "#10B981";
+    QString m_colorHex; ///< couleur propre à l'élément ; vide : apparence du matériau
+    TSA::Model::Material m_colorMaterial; ///< matériau affiché quand aucune couleur propre n'est choisie
 };
 
 } // namespace TSA::UI

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../Model/Material.h"
+
 #include "IElementPropertyView.h"
 #include "../../Model/Foundation.h"
 
@@ -45,7 +47,8 @@ private:
     QDoubleSpinBox* m_spinHeightH = nullptr;
     QLabel* m_lblNode = nullptr;
     QPushButton* m_btnColor = nullptr;
-    QString m_colorHex = "#64748B";
+    QString m_colorHex; ///< couleur propre à l'élément ; vide : apparence du matériau
+    TSA::Model::Material m_colorMaterial; ///< matériau affiché quand aucune couleur propre n'est choisie
 };
 
 } // namespace TSA::UI

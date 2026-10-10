@@ -1,4 +1,5 @@
 #include "WallPropertiesView.h"
+#include "ElementColorField.h"
 #include "../../Model/Model.h"
 #include "../../Model/Wall.h"
 #include "../../Model/MaterialLibrary.h"
@@ -78,7 +79,11 @@ void WallPropertiesView::setupUi()
     m_btnColor = new QPushButton(grp);
     m_btnColor->setFixedHeight(24);
     connect(m_btnColor, &QPushButton::clicked, this, &WallPropertiesView::pickColor);
-    form->addRow(tr("Couleur d'affichage :"), m_btnColor);
+    form->addRow(tr("Couleur d'affichage :"), TSA::UI::ElementColor::row(m_btnColor, this, [this]() {
+        m_colorHex.clear();
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
+        applyChanges();
+    }));
 
     mainLayout->addWidget(grp);
     mainLayout->addStretch();
@@ -122,19 +127,20 @@ void WallPropertiesView::refreshView()
 
     m_lblNodes->setText(QString("N%1 → N%2").arg(wall->startNodeId()).arg(wall->endNodeId()));
 
-    m_colorHex = QString::fromStdString(wall->color().empty() ? "#9333EA" : wall->color());
-    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+    m_colorHex = QString::fromStdString(wall->color()); // vide : apparence du matériau
+    TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, wall->material());
+    m_colorMaterial = wall->material();
 
     m_isLoading = false;
 }
 
 void WallPropertiesView::pickColor()
 {
-    QColor c = QColorDialog::getColor(QColor(m_colorHex), this, tr("Couleur du Voile"));
+    QColor c = QColorDialog::getColor(TSA::UI::ElementColor::initial(m_btnColor), this, tr("Couleur du Voile"));
     if (c.isValid())
     {
         m_colorHex = c.name();
-        m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
         applyChanges();
     }
 }

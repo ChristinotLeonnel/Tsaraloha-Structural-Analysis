@@ -4,6 +4,7 @@
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Graphic3d_PBRMaterial.hxx>
 #include <Quantity_Color.hxx>
+#include <Graphic3d_Texture2D.hxx>
 #include <AIS_Shape.hxx>
 #include <QString>
 #include <string>
@@ -51,6 +52,11 @@ public:
     QString resolveTexturePath(const TSA::Model::Material& mat) const;
     bool hasTexture(const TSA::Model::Material& mat) const;
 
+    /// Texture d'un fichier, partagée par tous les objets qui l'utilisent (une seule ressource
+    /// graphique par fichier, quel que soit le nombre de barres). neutral : version en niveaux de
+    /// gris (grain du matériau seul), teintée par la couleur choisie par l'utilisateur.
+    occ::handle<Graphic3d_Texture2D> sharedTexture(const QString& filePath, bool neutral = false);
+
     // Utilitaire de parsing hexadécimal vers Quantity_Color OCCT
     static bool parseHexColor(const std::string& hex, Quantity_Color& outColor);
 
@@ -65,6 +71,7 @@ private:
 
 private:
     std::unordered_map<int, Graphic3d_MaterialAspect> m_aspectCache;
+    std::unordered_map<std::string, occ::handle<Graphic3d_Texture2D>> m_textureCache;
 };
 
 } // namespace TSA::Viewer

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../Model/Material.h"
+
 #include "IElementPropertyView.h"
 #include "MemberEndNodesWidget.h"
 #include "../../Model/Section.h"
@@ -90,7 +92,8 @@ private:
     QLabel* m_lblIz = nullptr;
 
     QPushButton* m_btnColor = nullptr;
-    QString m_colorHex = "#3B82F6";
+    QString m_colorHex; ///< couleur propre à l'élément ; vide : apparence du matériau
+    TSA::Model::Material m_colorMaterial; ///< matériau affiché quand aucune couleur propre n'est choisie
 };
 
 } // namespace TSA::UI

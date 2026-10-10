@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../Model/Material.h"
+
 #include "IElementPropertyView.h"
 #include "../../Model/Cable/CableTypes.h"
 
@@ -58,7 +60,8 @@ private:
     QCheckBox* m_chkTensionOnly = nullptr;
     QLabel* m_lblStandardInfo = nullptr;
     QPushButton* m_btnColor = nullptr;
-    QString m_colorHex = "#F59E0B";
+    QString m_colorHex; ///< couleur propre à l'élément ; vide : apparence du matériau
+    TSA::Model::Material m_colorMaterial; ///< matériau affiché quand aucune couleur propre n'est choisie
 };
 
 } // namespace TSA::UI

@@ -185,3 +185,4 @@ bool runSuite_Snap(int& passed);
 bool runSuite_Automation(int& passed);
 bool runSuite_Blueprint(int& passed);
 bool runSuite_Help(int& passed);
+bool runSuite_Appearance(int& passed);

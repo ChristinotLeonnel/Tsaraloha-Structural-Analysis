@@ -2,6 +2,18 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Apparence par matériau : textures, déformée, couleur utilisateur)
+
+### Added
+- Chaque matériau s'affiche avec sa propre texture (béton, acier, bois, brique…) en mode Matériaux ; la texture est
+  partagée entre tous les éléments du même matériau (une ressource graphique par fichier).
+- Propriétés : bouton « Matériau » qui efface la couleur propre à l'élément.
+
+### Fixed
+- BUG-067 : la déformée garde l'apparence des éléments (matériau ou couleur choisie) au lieu du cyan uniforme.
+- BUG-068 : valider le panneau Propriétés n'impose plus de couleur par défaut ; seule une couleur choisie par
+  l'utilisateur remplace celle du matériau, et teinte le grain de sa texture. Tests 220-221 (total 242).
+
 ## 2026-10-10 (Aperçu des projets à l'endroit)
 
 ### Fixed

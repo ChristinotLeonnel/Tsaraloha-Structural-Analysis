@@ -1,4 +1,5 @@
 #include "BeamPropertiesView.h"
+#include "ElementColorField.h"
 #include "../../UndoRedo/UndoManager.h"
 #include "../Widgets/SectionPreviewWidget.h"
 #include "../../Model/Model.h"
@@ -193,7 +194,11 @@ void BeamPropertiesView::setupUi()
     m_btnColor = new QPushButton(grpCol);
     m_btnColor->setFixedHeight(24);
     connect(m_btnColor, &QPushButton::clicked, this, &BeamPropertiesView::pickColor);
-    formCol->addRow(tr("Couleur de barre :"), m_btnColor);
+    formCol->addRow(tr("Couleur de barre :"), TSA::UI::ElementColor::row(m_btnColor, this, [this]() {
+        m_colorHex.clear();
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
+        applyChanges();
+    }));
     mainLayout->addWidget(grpCol);
 
     mainLayout->addStretch();
@@ -352,19 +357,20 @@ void BeamPropertiesView::refreshView()
     }
     updateCalculatedProperties(sec);
 
-    m_colorHex = QString::fromStdString(beam->color().empty() ? "#3B82F6" : beam->color());
-    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+    m_colorHex = QString::fromStdString(beam->color()); // vide : apparence du matériau
+    TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, beam->material());
+    m_colorMaterial = beam->material();
 
     m_isLoading = false;
 }
 
 void BeamPropertiesView::pickColor()
 {
-    QColor c = QColorDialog::getColor(QColor(m_colorHex), this, tr("Couleur de la Poutre"));
+    QColor c = QColorDialog::getColor(TSA::UI::ElementColor::initial(m_btnColor), this, tr("Couleur de la Poutre"));
     if (c.isValid())
     {
         m_colorHex = c.name();
-        m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
         applyChanges();
     }
 }
