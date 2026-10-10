@@ -387,8 +387,12 @@ public:
     void updateAllLoadShapes();
     void clearLoadShapes();
 
+    /// owner : objet dont les rappels dépendent (fenêtre, widget). Sa destruction annule la requête
+    /// sans appeler les rappels ; sans owner, un clic après la fermeture de la fenêtre appelait un
+    /// rappel sur un objet détruit (crash).
     void pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)>& onPicked,
-                     const std::function<void()>& onCancelled = nullptr);
+                     const std::function<void()>& onCancelled = nullptr,
+                     QObject* owner = nullptr);
 
     // Outils de modification / dessin en saisie 3D (OccView_Tools.cpp). L'outil appartient à
     // l'appelant ; la vue ne fait que la saisie et l'aperçu.

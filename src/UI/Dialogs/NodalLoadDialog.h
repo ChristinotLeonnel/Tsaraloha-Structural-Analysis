@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDialog>
+#include <QPointer>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QLineEdit>
@@ -35,7 +36,9 @@ public:
                              TSA::Viewer::SelectionManager* selectionManager = nullptr,
                              OccView* occView = nullptr,
                              QWidget* parent = nullptr);
-    ~NodalLoadDialog() override = default;
+    /// Annule une sélection 3D encore en attente (sinon le clic suivant dans la vue appelait ce
+    /// dialogue détruit : crash du 2026-10-09).
+    ~NodalLoadDialog() override;
 
     void setTargetNodeId(int nodeId);
 
@@ -52,7 +55,7 @@ private:
 
     TSA::Model::Model* m_model = nullptr;
     TSA::Viewer::SelectionManager* m_selectionManager = nullptr;
-    OccView* m_occView = nullptr;
+    QPointer<OccView> m_occView;   // la vue peut disparaître avant ce dialogue (fermeture)
 
     QComboBox* m_comboNode = nullptr;
     QPushButton* m_btnPick3D = nullptr;

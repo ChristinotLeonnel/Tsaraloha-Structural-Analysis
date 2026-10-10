@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QWidget>
+#include <QPointer>
 #include <gp_Pnt.hxx>
 #include <QString>
 #include <QRegularExpression>
@@ -33,7 +34,9 @@ class PointSelector : public QWidget
 public:
     explicit PointSelector(QWidget* parent = nullptr);
     explicit PointSelector(TSA::Model::Model* model, OccView* occView = nullptr, QWidget* parent = nullptr);
-    ~PointSelector() override = default;
+    /// Annule une sélection 3D encore en attente (signaux bloqués : le dialogue parent est peut-être
+    /// lui-même en cours de destruction).
+    ~PointSelector() override;
 
     void setModel(TSA::Model::Model* model);
     void setOccView(OccView* occView);
@@ -224,7 +227,7 @@ private:
 
 private:
     TSA::Model::Model* m_model = nullptr;
-    OccView* m_occView = nullptr;
+    QPointer<OccView> m_occView;   // la vue peut disparaître avant ce sélecteur (fermeture)
 
     gp_Pnt m_point = gp_Pnt(0.0, 0.0, 0.0);
     int m_nodeId = -1;

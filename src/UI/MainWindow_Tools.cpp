@@ -7,6 +7,7 @@
 #include "Ruler/ViewportContainer.h"
 #include "Dock/LogConsoleDock.h"
 #include "Dialogs/NodalLoadDialog.h"
+#include "Dialogs/NewNodeDialog.h"
 #include "Dialogs/MemberLoadDialog.h"
 #include "Dialogs/LoadCaseDialog.h"
 #include "Diagrams/Diagram2DWidget.h"
@@ -533,12 +534,28 @@ void MainWindow::assignSupport(const std::set<int>& nodeIds, const TSA::Model::S
 void MainWindow::onActionPointLoad()
 {
     if (!m_model) return;
-    TSA::UI::NodalLoadDialog dlg(m_model, m_selectionManager.get(), m_occView, this);
+    // Non modale : le bouton « Sélectionner 3D » de la fenêtre doit pouvoir cliquer dans la vue
+    // (en modal, la vue était bloquée ; fermer puis cliquer provoquait un crash).
+    if (!m_nodalLoadDialog)
+    {
+        m_nodalLoadDialog = new TSA::UI::NodalLoadDialog(m_model, m_selectionManager.get(), m_occView, this);
+        m_nodalLoadDialog->setAttribute(Qt::WA_DeleteOnClose);
+        m_nodalLoadDialog->setModal(false);
+    }
     if (m_selectionManager && !m_selectionManager->selectedNodes().empty())
     {
-        dlg.setTargetNodeId(*m_selectionManager->selectedNodes().begin());
+        m_nodalLoadDialog->setTargetNodeId(*m_selectionManager->selectedNodes().begin());
     }
-    dlg.exec();
+    m_nodalLoadDialog->show();
+    m_nodalLoadDialog->raise();
+    m_nodalLoadDialog->activateWindow();
+}
+
+void MainWindow::closeModelessToolDialogs()
+{
+    // Projet remplacé ou fermé : leurs listes (nœuds, cas de charge) appartiennent à l'ancien projet.
+    if (m_nodalLoadDialog) m_nodalLoadDialog->close();
+    if (m_newNodeDialog) m_newNodeDialog->close();
 }
 
 void MainWindow::onActionDistLoad()

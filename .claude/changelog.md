@@ -2,6 +2,13 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Crash de la sélection 3D après fermeture d'une fenêtre)
+
+### Fixed
+- BUG-058 : crash en cliquant dans la vue après avoir fermé la fenêtre de charge nodale pendant une « Sélection 3D ».
+  Le demandeur annule sa requête en se fermant ; les fenêtres Charge nodale et Nouveau nœud sont non modales, leur
+  bouton de clic 3D fonctionne désormais. Test 208 (total 229).
+
 ## 2026-10-09 (Charges : valeurs à zéro, force et couple réunis)
 
 ### Changed

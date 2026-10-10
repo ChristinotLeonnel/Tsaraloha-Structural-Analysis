@@ -200,6 +200,12 @@ void NodalLoadDialog::populateLoadCases()
     }
 }
 
+NodalLoadDialog::~NodalLoadDialog()
+{
+    if (m_occView && m_occView->interactionManager())
+        m_occView->interactionManager()->cancelSelectionRequestFrom(this);
+}
+
 void NodalLoadDialog::setTargetNodeId(int nodeId)
 {
     int idx = m_comboNode->findData(nodeId);
@@ -250,7 +256,7 @@ void NodalLoadDialog::onPick3DClicked()
         {
             QMessageBox::warning(this, tr("Sélection"), tr("Le point sélectionné n'est pas un nœud existant."));
         }
-    });
+    }, nullptr, this);   // requête annulée si la fenêtre est fermée avant le clic
 }
 
 void NodalLoadDialog::onApplyClicked()

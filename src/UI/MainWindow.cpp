@@ -815,20 +815,28 @@ void MainWindow::onToggleLoadValuesVisible(bool checked)
 
 void MainWindow::onActionNewNode()
 {
-    TSA::UI::NewNodeDialog dlg(m_model, m_occView, m_selectionManager.get(), this);
-    if (dlg.exec() == QDialog::Accepted)
+    // Non modale, comme la charge nodale : le clic 3D du sélecteur de point a besoin de la vue.
+    if (!m_newNodeDialog)
     {
-        int newId = dlg.createdNodeId();
-        if (m_statusInfo && newId > 0 && m_model)
-        {
-            const auto* n = m_model->getNode(newId);
-            if (n)
+        m_newNodeDialog = new TSA::UI::NewNodeDialog(m_model, m_occView, m_selectionManager.get(), this);
+        m_newNodeDialog->setAttribute(Qt::WA_DeleteOnClose);
+        m_newNodeDialog->setModal(false);
+        auto* dlg = m_newNodeDialog.data();
+        connect(dlg, &QDialog::accepted, this, [this, dlg] {
+            const int newId = dlg->createdNodeId();
+            if (m_statusInfo && newId > 0 && m_model)
             {
-                m_statusInfo->setText(tr("Nœud N%1 créé à (%2, %3, %4)")
-                    .arg(newId).arg(n->x(), 0, 'f', 2).arg(n->y(), 0, 'f', 2).arg(n->z(), 0, 'f', 2));
+                if (const auto* n = m_model->getNode(newId))
+                {
+                    m_statusInfo->setText(tr("Nœud N%1 créé à (%2, %3, %4)")
+                        .arg(newId).arg(n->x(), 0, 'f', 2).arg(n->y(), 0, 'f', 2).arg(n->z(), 0, 'f', 2));
+                }
             }
-        }
+        });
     }
+    m_newNodeDialog->show();
+    m_newNodeDialog->raise();
+    m_newNodeDialog->activateWindow();
 }
 
 void MainWindow::onActionNewBeam()
@@ -1386,6 +1394,7 @@ bool MainWindow::closeProject()
 
 void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
 {
+    closeModelessToolDialogs();
     if (m_occView)
         m_occView->setInteractionMode(OccView::InteractionMode::Select);
 
@@ -1552,6 +1561,7 @@ bool MainWindow::loadFile(const QString& path)
 {
     if (!m_model || !confirmNoRunningAnalysis(tr("ouvrir un autre projet")))
         return false;
+    closeModelessToolDialogs();
     capturePreview(true); // dernier état du projet que l'on quitte
 
     QElapsedTimer loadTimer;

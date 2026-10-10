@@ -763,6 +763,44 @@ bool runSuite_Viewer(int& passed)
         passed++;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 208 : sélection 3D dont le demandeur est fermé avant le clic (crash du 2026-10-09 :
+    // « Sélectionner 3D » de la charge nodale, fenêtre fermée, clic dans la vue → rappel sur une
+    // fenêtre détruite). Le demandeur annule sa requête dans son destructeur : le clic suivant
+    // n'appelle plus rien ; la requête d'un autre demandeur n'est jamais annulée à sa place.
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::Interaction;
+        InteractionManager mgr;
+        bool selected = false, cancelled = false;
+        auto makeRequest = [&](QObject* owner) {
+            SelectionRequest req;
+            req.mode = SelectionMode::SelectPoint;
+            req.sender = owner;
+            req.onSelected = [&](const SelectedEntity&) { selected = true; };
+            req.onCancelled = [&]() { cancelled = true; };
+            return req;
+        };
+        SelectedEntity hit;
+        hit.mode = SelectionMode::SelectPoint;
+        hit.entityId = 7;
+
+        QObject other;
+        QObject owner;
+        mgr.requestSelection(makeRequest(&owner));
+        TEST_CHECK(!mgr.cancelSelectionRequestFrom(&other) && mgr.hasActiveSelectionRequest() && !cancelled,
+                   "Test 208: la requête d'un autre demandeur n'est pas annulée");
+        TEST_CHECK(mgr.cancelSelectionRequestFrom(&owner) && cancelled && !mgr.hasActiveSelectionRequest(),
+                   "Test 208: annulation par le demandeur (fermeture), rappel appelé tant qu'il est intact");
+        mgr.completeSelection(hit);   // clic dans la vue après la fermeture
+        TEST_CHECK(!selected, "Test 208: le clic suivant n'appelle aucun rappel");
+
+        mgr.requestSelection(makeRequest(&owner));
+        mgr.completeSelection(hit);
+        TEST_CHECK(selected && !mgr.hasActiveSelectionRequest(), "Test 208: demandeur ouvert, sélection transmise");
+        std::cout << "[PASS] Test 208: Sélection 3D après fermeture de la fenêtre" << std::endl;
+        passed++;
+    }
+
     return true;
 }
-

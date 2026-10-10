@@ -135,6 +135,14 @@ void InteractionManager::cancelSelectionRequest()
     emit promptChanged(promptText());
 }
 
+bool InteractionManager::cancelSelectionRequestFrom(const QObject* sender)
+{
+    if (!sender || !m_activeRequest.has_value() || m_activeRequest->sender != sender)
+        return false;
+    cancelSelectionRequest();
+    return true;
+}
+
 QString InteractionManager::promptText() const
 {
     if (m_activeRequest.has_value())

@@ -2259,7 +2259,8 @@ void OccView::setLoadValuesVisible(bool visible)
 
 
 void OccView::pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)>& onPicked,
-                         const std::function<void()>& onCancelled)
+                         const std::function<void()>& onCancelled,
+                         QObject* owner)
 {
     if (!m_interactionManager)
         return;
@@ -2269,7 +2270,7 @@ void OccView::pickPoint3D(const std::function<void(const gp_Pnt& pt, int nodeId)
     req.targetField = tr("Sélection point 3D");
     req.snapEnabled = true;
     req.keepWindowOpen = true;
-    req.sender = this;
+    req.sender = owner ? owner : this;
     req.onSelected = [onPicked](const TSA::Interaction::SelectedEntity& entity) {
         if (onPicked)
         {

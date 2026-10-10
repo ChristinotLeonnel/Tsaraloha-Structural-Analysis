@@ -14,6 +14,15 @@
 namespace TSA::UI
 {
 
+PointSelector::~PointSelector()
+{
+    if (m_occView && m_occView->interactionManager())
+    {
+        blockSignals(true);
+        m_occView->interactionManager()->cancelSelectionRequestFrom(this);
+    }
+}
+
 PointSelector::PointSelector(QWidget* parent)
     : PointSelector(nullptr, nullptr, parent)
 {
@@ -202,8 +211,8 @@ void PointSelector::start3DPick()
             m_btnPick3D->setText(tr("📍 3D"));
             m_btnPick3D->setStyleSheet("");
             emit pickModeChanged(false);
-        }
-    );
+        },
+        this);   // requête annulée si le sélecteur (sa fenêtre) est détruit
 }
 
 void PointSelector::cancel3DPick()
