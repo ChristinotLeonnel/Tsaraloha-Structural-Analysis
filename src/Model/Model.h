@@ -378,6 +378,11 @@ public:
     /// fichier tiers), conservées pour être restituées à l'export ; JSON opaque persisté (chunk XTND, 1.7).
     const std::string& exchangeExtensionsJson() const noexcept { return m_exchangeExtensionsJson; }
     void setExchangeExtensionsJson(const std::string& json) { m_exchangeExtensionsJson = json; }
+    /// Maillage du projet (TSA::Mesh::MeshProject::toJson : paramètres globaux et locaux, zones, profil,
+    /// dernier maillage généré et son rapport), persisté dans le chunk MESH du .tsa (format ≥ 1.8).
+    /// Hors annuler / rétablir (comme les réglages d'analyse).
+    const std::string& meshProjectJson() const noexcept { return m_meshProjectJson; }
+    void setMeshProjectJson(const std::string& json) { m_meshProjectJson = json; }
 
     /// Étiquettes (noms visibles) modifiées sans autre changement : observateurs notifiés par
     /// onModelDiffApplied, document marqué modifié, mais révision inchangée — les résultats de calcul
@@ -476,6 +481,7 @@ private:
     std::string m_analysisSettingsJson;
     std::string m_topologySettingsJson;
     std::string m_exchangeExtensionsJson;
+    std::string m_meshProjectJson;
     TSA::Annotation::DimensionSet m_dimensions;
 };
 

@@ -46,6 +46,7 @@ AnalysisCapabilities OpenSeesEngine::capabilities() const
     c.providesGlobalStiffness = true;    // mode ADVANCED, sous plafond de DDL
     c.providesDofMapping = true;         // mode ADVANCED
     c.supportsCustomOptions = true;
+    c.supportsMesh = true;               // barres subdivisées (maillage 1D) : sous-éléments elasticBeamColumn
     return c;
 }
 

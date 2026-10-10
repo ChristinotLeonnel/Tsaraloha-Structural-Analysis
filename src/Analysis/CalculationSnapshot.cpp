@@ -1,6 +1,7 @@
 #include "CalculationSnapshot.h"
 #include "../Model/Model.h"
 #include "../Model/Load/LoadManager.h"
+#include <algorithm>
 #include <cmath>
 
 namespace TSA::Analysis
@@ -233,6 +234,157 @@ const SnapshotElement* CalculationSnapshot::findElementForLoad(const TSA::Model:
         }
     }
     return matches == 1 ? found : nullptr;
+}
+
+} // namespace TSA::Analysis
+
+namespace TSA::Analysis
+{
+
+std::size_t SubdivisionMap::subElementCount() const
+{
+    std::size_t n = 0;
+    for (const auto& [k, p] : parts) n += p.size();
+    return n;
+}
+
+CalculationSnapshot CalculationSnapshot::subdivided(const CalculationSnapshot& src, const std::map<ElementKey, std::vector<double>>& interior,
+                                                    SubdivisionMap* map, std::vector<std::string>* notes)
+{
+    CalculationSnapshot out;
+    out.m_nodes = src.m_nodes;
+    out.m_loadCases = src.m_loadCases;
+    out.m_combinations = src.m_combinations;
+    out.m_nodalLoads = src.m_nodalLoads;
+    SubdivisionMap m;
+    int nextNode = src.m_nodes.empty() ? 1 : src.m_nodes.rbegin()->first + 1;
+    int nextSub = SubdivisionMap::kSubElementIdBase;
+    int nextTag = 1;
+    int skippedAxial = 0;
+    for (const auto& [tag, el] : src.m_elements)
+    {
+        auto it = interior.find(el.key());
+        std::vector<double> s;
+        if (it != interior.end())
+            for (double v : it->second)
+                if (v > 1e-9 && v < 1.0 - 1e-9) s.push_back(v);
+        std::sort(s.begin(), s.end());
+        s.erase(std::unique(s.begin(), s.end(), [](double a, double b) { return std::abs(a - b) < 1e-9; }), s.end());
+        const bool flexural = el.type == StructuralElementKind::Beam || el.type == StructuralElementKind::Column;
+        if (!s.empty() && !flexural)
+        {
+            ++skippedAxial;
+            s.clear();
+        }
+        const SnapshotNode* a = src.getNode(el.startNodeId);
+        const SnapshotNode* b = src.getNode(el.endNodeId);
+        if (s.empty() || !a || !b)
+        {
+            SnapshotElement e = el;
+            e.tag = nextTag++;
+            out.m_tagByKey[e.key()] = e.tag;
+            out.m_elements[e.tag] = e;
+            continue;
+        }
+        std::vector<int> chain { el.startNodeId };
+        for (double v : s)
+        {
+            SnapshotNode n;
+            n.id = nextNode++;
+            n.x = a->x + (b->x - a->x) * v;
+            n.y = a->y + (b->y - a->y) * v;
+            n.z = a->z + (b->z - a->z) * v;
+            out.m_nodes[n.id] = n;
+            m.internalNodes.insert(n.id);
+            chain.push_back(n.id);
+        }
+        chain.push_back(el.endNodeId);
+        std::vector<double> rel { 0.0 };
+        rel.insert(rel.end(), s.begin(), s.end());
+        rel.push_back(1.0);
+        auto& parts = m.parts[el.key()];
+        for (std::size_t k = 0; k + 1 < chain.size(); ++k)
+        {
+            SnapshotElement e = el;
+            e.id = nextSub++;
+            e.tag = nextTag++;
+            e.startNodeId = chain[k];
+            e.endNodeId = chain[k + 1];
+            e.length = el.length * (rel[k + 1] - rel[k]);
+            e.startRelease = k == 0 ? el.startRelease : TSA::Model::EndRelease {};
+            e.endRelease = k + 2 == chain.size() ? el.endRelease : TSA::Model::EndRelease {};
+            out.m_tagByKey[e.key()] = e.tag;
+            out.m_elements[e.tag] = e;
+            parts.push_back({ e.key(), el.length * rel[k], el.length * rel[k + 1] });
+        }
+    }
+    // Charges sur barres : portions exactes sur chaque sous-élément.
+    for (const auto& load : src.m_memberLoads)
+    {
+        const SnapshotElement* el = src.findElementForLoad(load);
+        auto pit = el ? m.parts.find(el->key()) : m.parts.end();
+        if (pit == m.parts.end())
+        {
+            out.m_memberLoads.push_back(load);
+            continue;
+        }
+        const double L = el->length;
+        const auto range = load.appliedRange(L);
+        const double a = range.first, b = range.second;
+        if (load.type() == TSA::Model::LoadType::MemberPoint)
+        {
+            const double x = std::clamp(a, 0.0, L);
+            for (std::size_t k = 0; k < pit->second.size(); ++k)
+            {
+                const auto& part = pit->second[k];
+                const bool last = k + 1 == pit->second.size();
+                if (x >= part.x0 - 1e-12 && (x < part.x1 - 1e-12 || last))
+                {
+                    TSA::Model::MemberLoad l = load;
+                    l.setElementId(part.key.id);
+                    l.setRelativePosition(false);
+                    l.setX1(std::clamp(x - part.x0, 0.0, part.x1 - part.x0));
+                    l.setX2(0.0);
+                    out.m_memberLoads.push_back(l);
+                    break;
+                }
+            }
+            continue;
+        }
+        for (const auto& part : pit->second)
+        {
+            const double lo = std::max(a, part.x0), hi = std::min(b, part.x1);
+            if (hi - lo <= 1e-12) continue;
+            TSA::Model::MemberLoad l = load;
+            l.setElementId(part.key.id);
+            l.setRelativePosition(false);
+            const double q1 = load.intensityAt(lo, L), q2 = load.intensityAt(hi, L);
+            const double len = part.x1 - part.x0;
+            const bool full = lo - part.x0 < 1e-9 && part.x1 - hi < 1e-9;
+            if (full && std::abs(q1 - q2) < 1e-12 && load.type() != TSA::Model::LoadType::MemberMoment)
+            {
+                l.setType(TSA::Model::LoadType::MemberUniform);
+                l.setQ1(q1);
+                l.setQ2(q1);
+                l.setX1(0.0);
+                l.setX2(0.0);
+            }
+            else
+            {
+                if (load.type() != TSA::Model::LoadType::MemberMoment) l.setType(TSA::Model::LoadType::MemberLinear);
+                l.setQ1(q1);
+                l.setQ2(q2);
+                l.setX1(lo - part.x0);
+                l.setX2(std::min(hi - part.x0, len));
+            }
+            out.m_memberLoads.push_back(l);
+        }
+    }
+    if (skippedAxial && notes)
+        notes->push_back(std::to_string(skippedAxial) + " barre(s) de treillis ou câble(s) non subdivisée(s) : une chaîne de barres articulées "
+                                                         "serait un mécanisme (un seul élément transmis)");
+    if (map) *map = m;
+    return out;
 }
 
 } // namespace TSA::Analysis

@@ -106,7 +106,7 @@ QJsonObject AnalysisContext::toJson() const
         { "scope", scopeJson },
         { "loadCases", cases },
         { "combinationId", combinationId },
-        { "common", QJsonObject{ { "includeSelfWeight", common.includeSelfWeight } } },
+        { "common", QJsonObject{ { "includeSelfWeight", common.includeSelfWeight }, { "useGeneratedMesh", common.useGeneratedMesh } } },
         { "engineSettings", engines },
     };
 }
@@ -143,6 +143,7 @@ AnalysisContext AnalysisContext::fromJson(const QJsonObject& json, bool* ok)
 
     const QJsonObject common = json.value("common").toObject();
     c.common.includeSelfWeight = common.value("includeSelfWeight").toBool(true);
+    c.common.useGeneratedMesh = common.value("useGeneratedMesh").toBool(true);
 
     const QJsonObject engines = json.value("engineSettings").toObject();
     for (auto it = engines.begin(); it != engines.end(); ++it)

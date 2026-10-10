@@ -215,6 +215,31 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
         for (const auto& w : report.formattedWarnings()) p.validation.addWarning("Modèle", w);
     }
 
+    // Maillage 1D généré (paramètres du mailleur) → subdivision des barres, si le moteur la prend en charge
+    // et si l'option du solveur le demande. Jamais de transmission partielle silencieuse.
+    if (!context.memberSubdivisions.empty())
+    {
+        if (!context.common.useGeneratedMesh)
+            p.validation.addInfo("Maillage", "Maillage généré non transmis (option du calcul) : un élément fini par barre.");
+        else if (!engine->capabilities().supportsMesh)
+            p.validation.addWarning("Maillage", "Le moteur " + engine->info().name +
+                                                    " ne prend pas en charge les barres subdivisées : maillage non transmis, un élément fini par barre.");
+        else
+        {
+            std::vector<std::string> notes;
+            p.model.snapshot = CalculationSnapshot::subdivided(p.model.snapshot, context.memberSubdivisions, &p.model.subdivisions, &notes);
+            for (const auto& n : notes) p.validation.addWarning("Maillage", n);
+            // Les éléments sont renumérotés : correspondance reconstruite entièrement.
+            p.model.mapping = AnalysisMapping();
+            for (const auto& [id, node] : p.model.snapshot.nodes()) p.model.mapping.addNode(id);
+            for (const auto& [tag, el] : p.model.snapshot.elements()) p.model.mapping.addElement(el.key(), tag);
+            p.validation.addInfo("Maillage", std::to_string(p.model.subdivisions.parts.size()) + " barre(s) subdivisée(s) en " +
+                                                 std::to_string(p.model.subdivisions.subElementCount()) + " éléments finis (" +
+                                                 std::to_string(p.model.subdivisions.internalNodes.size()) + " nœuds intermédiaires)" +
+                                                 (context.meshLabel.empty() ? std::string() : " — " + context.meshLabel) + ".");
+        }
+    }
+
     p.validation.merge(engine->validate(context, p.model));
     return p;
 }
@@ -245,6 +270,16 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
 
     r = engine->run(context, prepared.model, callbacks);
     if (!r.success) return r;
+
+    // Barres subdivisées : résultats rattachés aux barres TSA (le reste de l'application ne voit jamais
+    // les sous-éléments ni les nœuds intermédiaires).
+    if (!prepared.model.subdivisions.empty())
+    {
+        std::map<ElementKey, std::vector<std::pair<ElementKey, double>>> parts;
+        for (const auto& [parent, list] : prepared.model.subdivisions.parts)
+            for (const auto& part : list) parts[parent].push_back({ part.key, part.x0 });
+        r.results.mergeSubdivisions(parts, prepared.model.subdivisions.internalNodes);
+    }
 
     // Traçabilité commune, renseignée ici pour qu'aucun moteur ne puisse l'omettre.
     const EngineInfo info = engine->info();

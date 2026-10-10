@@ -11,6 +11,7 @@
 #   tsa_add_product(NAME TSA PRODUCT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/product RESOURCES …)
 
 get_filename_component(TSA_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+include("${CMAKE_CURRENT_LIST_DIR}/Gmsh.cmake")
 # Cœur scientifique : dépôt TSALab voisin (TSALab/science).
 set(TSALAB_ROOT_DIR "${TSA_ROOT}/../TSALab" CACHE PATH "Racine du dépôt TSALab (cœur scientifique tsalab_science)")
 get_filename_component(TSALAB_ROOT_DIR "${TSALAB_ROOT_DIR}" ABSOLUTE)
@@ -461,6 +462,23 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Core/AppPaths.cpp
     ${TSA_ROOT}/src/Modules/ModuleRegistry.h
     ${TSA_ROOT}/src/Modules/ModuleRegistry.cpp
+    # Maillage (docs/MESH.md) : moteur Gmsh encapsulé dans Mesh/Gmsh/GmshMeshEngine
+    ${TSA_ROOT}/src/Mesh/MeshTypes.h
+    ${TSA_ROOT}/src/Mesh/MeshGeometry.h
+    ${TSA_ROOT}/src/Mesh/MeshGeometry.cpp
+    ${TSA_ROOT}/src/Mesh/MeshSizing.h
+    ${TSA_ROOT}/src/Mesh/MeshGenerator.h
+    ${TSA_ROOT}/src/Mesh/MeshGenerator.cpp
+    ${TSA_ROOT}/src/Mesh/MeshProject.h
+    ${TSA_ROOT}/src/Mesh/MeshProject.cpp
+    ${TSA_ROOT}/src/Mesh/MeshQuality.h
+    ${TSA_ROOT}/src/Mesh/MeshQuality.cpp
+    ${TSA_ROOT}/src/Mesh/SurfaceLoads.h
+    ${TSA_ROOT}/src/Mesh/SurfaceLoads.cpp
+    ${TSA_ROOT}/src/Mesh/Gmsh/GmshMeshEngine.h
+    ${TSA_ROOT}/src/Mesh/Gmsh/GmshMeshEngine.cpp
+    ${TSA_ROOT}/src/Mesh/Solvers/OpenSeesMeshAdapter.h
+    ${TSA_ROOT}/src/Mesh/Solvers/OpenSeesMeshAdapter.cpp
     # Templates de documents et rapports (docs/TEMPLATES.md)
     ${TSA_ROOT}/src/Templates/TemplateEngine.h
     ${TSA_ROOT}/src/Templates/TemplateEngine.cpp
@@ -969,6 +987,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_modules.cpp
     ${TSA_ROOT}/tests/test_templates.cpp
     ${TSA_ROOT}/tests/test_deployment.cpp
+    ${TSA_ROOT}/tests/test_mesh.cpp
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )
@@ -1093,6 +1112,11 @@ function(tsaraloha_add_shared_libraries)
     if(WIN32)
         target_link_libraries(${model} PUBLIC DbgHelp Crypt32)
     endif()
+    if(TARGET TSA::Gmsh)
+        target_link_libraries(${model} PUBLIC TSA::Gmsh)
+        # GmshMeshEngine inclut gmsh.h_cwrap (en-tête de 350 ko) : hors en-têtes précompilés
+        set_source_files_properties(${TSA_ROOT}/src/Mesh/Gmsh/GmshMeshEngine.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+    endif()
 
     # En-têtes précompilés : Qt et OCCT sont très lourds à parser.
     # Les autres cibles réutilisent ce PCH (REUSE_FROM).
@@ -1166,6 +1190,7 @@ endfunction()
 # Exécutable Qt d'une application de l'écosystème : sous-système Windows et déploiement des DLL
 # (Qt, OCCT, 3rdparty, Extensions/ de la base commune) à côté de l'exécutable.
 function(tsaraloha_configure_application target)
+    tsa_copy_gmsh_runtime(${target})
     if(MSVC)
         # Debug : console conservée pour les journaux ; autres configurations : fenêtré pur.
         target_link_options(${target} PRIVATE
@@ -1320,6 +1345,7 @@ function(tsa_add_product)
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:Qt6::Test> $<TARGET_FILE_DIR:${tests}>)
         endif()
         set_target_properties(${tests} PROPERTIES OUTPUT_NAME "${name}_TestSuite")
+        tsa_copy_gmsh_runtime(${tests})
         add_dependencies(${tests} ${name}_Mcp sample_csv2tsa3d)
         target_compile_definitions(${tests} PRIVATE TSA_SAMPLE_MODULE_DIR="${CMAKE_BINARY_DIR}/modules/sample.csvimport")
         target_compile_definitions(${tests} PRIVATE TSARALOHA_MCP_EXE="$<TARGET_FILE:${name}_Mcp>")
@@ -1332,7 +1358,7 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards tsa3d modules templates deployment)
+                       loads opensees supports standards tsa3d modules templates deployment mesh)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <cmath>
 #include <chrono>
 
@@ -416,6 +417,14 @@ public:
     // Maillage numérique réellement transmis au moteur (vide si le moteur ne le fournit pas)
     const SolverMesh& solverMesh() const { return m_solverMesh; }
     void setSolverMesh(SolverMesh mesh) { m_solverMesh = std::move(mesh); }
+
+    /// Recompose les résultats d'un calcul dont les barres ont été subdivisées selon le maillage
+    /// (CalculationSnapshot::subdivided) : efforts et stations des sous-éléments réunis sur la barre TSA
+    /// d'origine (abscisses de la barre), nœuds intermédiaires retirés des déplacements (leurs valeurs
+    /// restent dans les stations), maillage du solveur rattaché aux barres TSA. Les résultats ne
+    /// référencent ensuite que des objets du modèle.
+    /// @param parts barre TSA → (sous-élément, abscisse de début) dans l'ordre
+    void mergeSubdivisions(const std::map<ElementKey, std::vector<std::pair<ElementKey, double>>>& parts, const std::set<int>& internalNodes);
 
     // Journal d'analyse
     void appendLog(const std::string& line) { m_journalLog += line + "\n"; }

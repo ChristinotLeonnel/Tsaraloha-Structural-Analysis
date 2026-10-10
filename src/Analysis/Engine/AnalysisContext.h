@@ -76,6 +76,9 @@ struct AnalysisScope
 struct CommonAnalysisSettings
 {
     bool includeSelfWeight = true;
+    /// Transmettre le maillage 1D généré (barres subdivisées) aux moteurs qui le prennent en charge.
+    /// Option du SOLVEUR, distincte des paramètres du mailleur (docs/MESH.md §J).
+    bool useGeneratedMesh = true;
 };
 
 struct AnalysisContext
@@ -98,6 +101,11 @@ struct AnalysisContext
     /// Réglages propres à chaque moteur, conservés par moteur (changer de moteur dans l'UI ne perd
     /// pas les réglages de l'autre). Le contenu n'est interprété que par le moteur concerné.
     std::map<EngineId, QJsonObject> engineSettings;
+
+    /// Subdivision des barres issue du maillage généré (positions relatives intérieures par barre),
+    /// renseignée au moment du calcul depuis le maillage du projet ; jamais persistée avec le contexte.
+    std::map<ElementKey, std::vector<double>> memberSubdivisions;
+    std::string meshLabel;   ///< ex. « maillage du 10/10/2026, 120 éléments 1D »
 
     QJsonObject settingsFor(const EngineId& id) const
     {

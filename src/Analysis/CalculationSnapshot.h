@@ -21,6 +21,7 @@
 #include "../Model/SelectionQuery.h"
 
 #include <array>
+#include <set>
 
 #include <map>
 #include <vector>
@@ -89,6 +90,22 @@ struct SnapshotElement
     TSA::Model::EndRelease endRelease;
 };
 
+/// Correspondance d'une barre subdivisée selon le maillage (docs/MESH.md §J) : sous-éléments transmis au
+/// moteur (identifiants >= kSubElementIdBase, même famille) et nœuds intermédiaires (absents du modèle TSA).
+struct SubdivisionMap
+{
+    static constexpr int kSubElementIdBase = 1000000000;
+    struct Part
+    {
+        ElementKey key;          ///< sous-élément
+        double x0 = 0, x1 = 0;   ///< abscisses (m) sur la barre d'origine
+    };
+    std::map<ElementKey, std::vector<Part>> parts;   ///< barre TSA → sous-éléments dans l'ordre
+    std::set<int> internalNodes;
+    bool empty() const { return parts.empty(); }
+    std::size_t subElementCount() const;
+};
+
 /**
  * @brief Snapshot calculatoire immuable isolé du modèle utilisateur.
  * Garantit que les conversions et post-traitements OpenSees ne modifient
@@ -110,6 +127,16 @@ public:
      * @param scope nullptr = tout le modèle (identique à capture(model)).
      */
     static CalculationSnapshot capture(const TSA::Model::Model& model, const TSA::Model::ElementSet* scope);
+
+    /**
+     * @brief Snapshot dont les barres fléchies (poutres, poteaux) sont subdivisées aux positions relatives
+     * données (0 < s < 1) : nœuds intermédiaires libres, relâchements aux seules extrémités, charges sur
+     * barre réparties exactement sur les sous-éléments (portions de charges réparties, charge ponctuelle sur
+     * le sous-élément qui la porte). Treillis et câbles ne sont jamais subdivisés (mécanisme) : *notes le
+     * signale. Les identifiants des sous-éléments et des nœuds intermédiaires sont dans *map.
+     */
+    static CalculationSnapshot subdivided(const CalculationSnapshot& source, const std::map<ElementKey, std::vector<double>>& interiorPositions,
+                                          SubdivisionMap* map, std::vector<std::string>* notes = nullptr);
 
     const std::map<int, SnapshotNode>& nodes() const { return m_nodes; }
     const std::map<int, SnapshotElement>& elements() const { return m_elements; }

@@ -13,6 +13,9 @@
 #include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <cstring>
 #include <algorithm>
 #include <fstream>
@@ -149,6 +152,29 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     {
         // Facultatif (format ≥ 1.7) : données TSA3D non interprétées, restituées à l'export.
         writeJsonChunk(payload, CHUNK_XTND, model.exchangeExtensionsJson());
+    }
+    if (!model.meshProjectJson().empty())
+    {
+        // Facultatif (format ≥ 1.8) : paramètres et dernier maillage généré (docs/MESH.md).
+        writeJsonChunk(payload, CHUNK_MESH, model.meshProjectJson());
+    }
+    {
+        // Facultatif (format ≥ 1.8) : ouvertures des dalles, dans le repère local de chaque dalle.
+        QJsonObject slabs;
+        for (const auto& [id, slab] : model.slabs())
+        {
+            if (slab.openings().empty()) continue;
+            QJsonArray list;
+            for (const auto& o : slab.openings())
+            {
+                QJsonArray poly;
+                for (const auto& [u, v] : o.polygon) poly.append(QJsonArray { u, v });
+                list.append(QJsonObject { { "name", QString::fromStdString(o.name) }, { "shape", QString::fromStdString(o.shape) }, { "polygon", poly } });
+            }
+            slabs.insert(QString::number(id), list);
+        }
+        if (!slabs.isEmpty())
+            writeJsonChunk(payload, CHUNK_OPNG, QJsonDocument(QJsonObject { { "schema", 1 }, { "slabs", slabs } }).toJson(QJsonDocument::Compact).toStdString());
     }
     if (!model.dimensions().items.empty() || !(model.dimensions().style == TSA::Annotation::DimensionStyle()))
     {
@@ -620,6 +646,8 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::string loadedTopology;
     std::string loadedExtensions;
     std::string loadedDimensions;
+    std::string loadedMesh;
+    std::string loadedOpenings;
     std::string loadedCoordinates, loadedGrids;
     bool hasCoordinates = false, hasGrids = false;
 
@@ -709,6 +737,13 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             // tolérante par TopologySettings::fromJson.
             loadedTopology.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
+        case CHUNK_MESH:
+            // Facultatif (format ≥ 1.8) : lecture tolérante par TSA::Mesh::MeshProject::fromJson.
+            if (chunkBytes && chunkLen > 0) loadedMesh.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
+        case CHUNK_OPNG:
+            if (chunkBytes && chunkLen > 0) loadedOpenings.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
         case CHUNK_DIMS:
             // Facultatif (format ≥ 1.6) : sans lui (anciens projets), aucune cotation.
             loadedDimensions.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
@@ -726,6 +761,26 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     snapshot.nodes = std::move(loadedNodes);
     snapshot.beams = std::move(loadedBeams);
     snapshot.columns = std::move(loadedColumns);
+    if (!loadedOpenings.empty())
+    {
+        const QJsonObject slabs = QJsonDocument::fromJson(QByteArray::fromStdString(loadedOpenings)).object().value("slabs").toObject();
+        for (auto it = slabs.begin(); it != slabs.end(); ++it)
+        {
+            auto s = loadedSlabs.find(it.key().toInt());
+            if (s == loadedSlabs.end()) continue;
+            std::vector<TSA::Model::SlabOpening> openings;
+            for (const auto& v : it.value().toArray())
+            {
+                const QJsonObject o = v.toObject();
+                TSA::Model::SlabOpening op;
+                op.name = o.value("name").toString().toStdString();
+                op.shape = o.value("shape").toString("polygon").toStdString();
+                for (const auto& p : o.value("polygon").toArray()) op.polygon.emplace_back(p.toArray().at(0).toDouble(), p.toArray().at(1).toDouble());
+                if (op.polygon.size() >= 3) openings.push_back(op);
+            }
+            s->second.setOpenings(openings);
+        }
+    }
     snapshot.slabs = std::move(loadedSlabs);
     snapshot.walls = std::move(loadedWalls);
     snapshot.foundations = std::move(loadedFoundations);
@@ -776,6 +831,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     model.setAnalysisSettingsJson(loadedSettings);
     model.setTopologySettingsJson(loadedTopology);
     model.setExchangeExtensionsJson(loadedExtensions);
+    model.setMeshProjectJson(loadedMesh);
 
     // Validation normative post-chargement (ISO/IEC 25010 - Intégrité et robustesse)
     auto report = TSA::Standards::ModelValidator::validate(model);
