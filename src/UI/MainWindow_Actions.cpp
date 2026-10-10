@@ -6,6 +6,7 @@
 #include "Dock/AnalysisDataDock.h"
 #include "../Coordinate/GeometryTolerance.h"
 #include "MainWindow.h"
+#include "Shortcuts/ShortcutManager.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "../Model/Model.h"
@@ -78,25 +79,21 @@ void MainWindow::createActions()
     m_actionNew = new QAction(tr("&Nouveau Projet"), this);
     m_actionNew->setIcon(QIcon(":/icons/file_new.svg"));
     m_actionNew->setToolTip(tr("Nouveau Projet (Ctrl+N)"));
-    m_actionNew->setShortcut(QKeySequence::New);
     connect(m_actionNew, &QAction::triggered, this, &MainWindow::onActionNew);
 
     m_actionOpen = new QAction(tr("&Ouvrir..."), this);
     m_actionOpen->setIcon(QIcon(":/icons/file_open.svg"));
     m_actionOpen->setToolTip(tr("Ouvrir un projet existant (Ctrl+O)"));
-    m_actionOpen->setShortcut(QKeySequence::Open);
     connect(m_actionOpen, &QAction::triggered, this, &MainWindow::onActionOpen);
 
     m_actionSave = new QAction(tr("&Enregistrer"), this);
     m_actionSave->setIcon(QIcon(":/icons/file_save.svg"));
     m_actionSave->setToolTip(tr("Enregistrer le projet (Ctrl+S)"));
-    m_actionSave->setShortcut(QKeySequence::Save);
     connect(m_actionSave, &QAction::triggered, this, &MainWindow::onActionSave);
 
     m_actionSaveAs = new QAction(tr("Enregistrer &sous..."), this);
     m_actionSaveAs->setIcon(QIcon(":/icons/file/file_save_as.svg"));
     m_actionSaveAs->setToolTip(tr("Enregistrer le projet sous un nouveau nom (Ctrl+Shift+S)"));
-    m_actionSaveAs->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
     connect(m_actionSaveAs, &QAction::triggered, this, &MainWindow::onActionSaveAs);
 
     m_actionCloseProject = new QAction(tr("&Fermer le projet"), this);
@@ -107,34 +104,29 @@ void MainWindow::createActions()
     m_actionExit = new QAction(tr("&Quitter"), this);
     m_actionExit->setIcon(QIcon(":/icons/file_exit.svg"));
     m_actionExit->setToolTip(tr("Quitter l'application (Alt+F4)"));
-    m_actionExit->setShortcut(QKeySequence::Quit);
     connect(m_actionExit, &QAction::triggered, this, &MainWindow::exitRequested);
 
     // Actions Édition & Transformation
     m_actionMove = new QAction(tr("Translation &Numérique (Dialogue)..."), this);
     m_actionMove->setIcon(QIcon(":/icons/move.svg"));
     m_actionMove->setToolTip(tr("Translation numérique par incréments dX, dY, dZ (Ctrl+Shift+M)..."));
-    m_actionMove->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_M));
     m_actionMove->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionMove, &QAction::triggered, this, &MainWindow::onActionMove);
 
     m_actionCopy = new QAction(tr("&Copie Numérique (Répétition)..."), this);
     m_actionCopy->setIcon(QIcon(":/icons/copy.svg"));
     m_actionCopy->setToolTip(tr("Copie numérique paramétrique avec répétitions multiples (Ctrl+D)..."));
-    m_actionCopy->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_D));
     m_actionCopy->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionCopy, &QAction::triggered, this, &MainWindow::onActionCopy);
 
     m_actionDelete = new QAction(tr("&Supprimer"), this);
     m_actionDelete->setIcon(QIcon(":/icons/delete.svg"));
     m_actionDelete->setToolTip(tr("Supprimer les éléments sélectionnés (Suppr)"));
-    m_actionDelete->setShortcut(QKeySequence::Delete);
     connect(m_actionDelete, &QAction::triggered, this, &MainWindow::onActionDeleteSelected);
 
     m_actionSelectAll = new QAction(tr("&Tout Sélectionner"), this);
     m_actionSelectAll->setIcon(QIcon(":/icons/edit/select_all.svg"));
     m_actionSelectAll->setToolTip(tr("Sélectionner tous les éléments du modèle (Ctrl+A)"));
-    m_actionSelectAll->setShortcut(QKeySequence::SelectAll);
     connect(m_actionSelectAll, &QAction::triggered, this, &MainWindow::onActionSelectAll);
 
     // Actions Vues et Projections
@@ -172,31 +164,26 @@ void MainWindow::createActions()
     m_actionFitAll = new QAction(tr("&Zoom Étendu (Fit All)"), this);
     m_actionFitAll->setIcon(QIcon(":/icons/fit_all.svg"));
     m_actionFitAll->setToolTip(tr("Ajuster la vue à l'ensemble du modèle (F)"));
-    m_actionFitAll->setShortcut(QKeySequence(Qt::Key_F));
     connect(m_actionFitAll, &QAction::triggered, this, &MainWindow::onFitAll);
 
     m_actionResetView = new QAction(tr("&Réinitialiser Vue"), this);
     m_actionResetView->setIcon(QIcon(":/icons/view_iso.svg"));
     m_actionResetView->setToolTip(tr("Réinitialiser l'orientation de caméra 3D (R)"));
-    m_actionResetView->setShortcut(QKeySequence(Qt::Key_R));
     connect(m_actionResetView, &QAction::triggered, this, &MainWindow::onResetView);
 
     m_actionFitSelection = new QAction(tr("Zoom &Sélection (Fit Selection)"), this);
     m_actionFitSelection->setIcon(QIcon(":/icons/fit_all.svg"));
     m_actionFitSelection->setToolTip(tr("Cadrer la vue sur les éléments sélectionnés (Maj+F)"));
-    m_actionFitSelection->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_F));
     connect(m_actionFitSelection, &QAction::triggered, this, &MainWindow::onFitSelection);
 
     m_actionZoomIn = new QAction(tr("Zoom &Avant (+)"), this);
     m_actionZoomIn->setIcon(QIcon(":/icons/zoom_in.svg"));
     m_actionZoomIn->setToolTip(tr("Agrandir la vue (+)"));
-    m_actionZoomIn->setShortcut(QKeySequence(Qt::Key_Plus));
     connect(m_actionZoomIn, &QAction::triggered, this, &MainWindow::onZoomIn);
 
     m_actionZoomOut = new QAction(tr("Zoom A&rrière (-)"), this);
     m_actionZoomOut->setIcon(QIcon(":/icons/zoom_out.svg"));
     m_actionZoomOut->setToolTip(tr("Réduire la vue (-)"));
-    m_actionZoomOut->setShortcut(QKeySequence(Qt::Key_Minus));
     connect(m_actionZoomOut, &QAction::triggered, this, &MainWindow::onZoomOut);
 
     m_actionZoomWindow = new QAction(tr("Zoom &Fenêtre"), this);
@@ -217,63 +204,53 @@ void MainWindow::createActions()
     m_actionPreviousView = new QAction(tr("Vue &Précédente"), this);
     m_actionPreviousView->setIcon(QIcon(":/icons/edit/undo.svg"));
     m_actionPreviousView->setToolTip(tr("Revenir à la vue de caméra précédente (Alt+Gauche)"));
-    m_actionPreviousView->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Left));
     m_actionPreviousView->setEnabled(false);
     connect(m_actionPreviousView, &QAction::triggered, this, &MainWindow::onPreviousView);
 
     m_actionNextView = new QAction(tr("Vue &Suivante"), this);
     m_actionNextView->setIcon(QIcon(":/icons/edit/redo.svg"));
     m_actionNextView->setToolTip(tr("Rétablir la vue de caméra suivante (Alt+Droite)"));
-    m_actionNextView->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Right));
     m_actionNextView->setEnabled(false);
     connect(m_actionNextView, &QAction::triggered, this, &MainWindow::onNextView);
 
     m_actionViewHome = new QAction(tr("Vue d'&Accueil (Home)"), this);
     m_actionViewHome->setIcon(QIcon(":/icons/view_iso.svg"));
     m_actionViewHome->setToolTip(tr("Réorienter la caméra en vue d'accueil 3D (Home)"));
-    m_actionViewHome->setShortcut(QKeySequence(Qt::Key_Home));
     connect(m_actionViewHome, &QAction::triggered, this, &MainWindow::onActionViewHome);
 
     m_actionViewTop = new QAction(tr("Vue de &Dessus (Top)"), this);
     m_actionViewTop->setIcon(makePlanIcon(QColor(255, 140, 140), Qt::blue, Qt::darkGreen, "X", "Y"));
     m_actionViewTop->setToolTip(tr("Orienter la vue de dessus (Plan XY, +Z) (Num7)"));
-    m_actionViewTop->setShortcut(QKeySequence(Qt::KeypadModifier | Qt::Key_7));
     connect(m_actionViewTop, &QAction::triggered, this, &MainWindow::onActionViewTop);
 
     m_actionViewBottom = new QAction(tr("Vue de Dessou&s (Bottom)"), this);
     m_actionViewBottom->setIcon(makePlanIcon(QColor(200, 200, 200), Qt::blue, Qt::darkGreen, "X", "Y"));
     m_actionViewBottom->setToolTip(tr("Orienter la vue de dessous (-Z) (Ctrl+Num7)"));
-    m_actionViewBottom->setShortcut(QKeySequence(Qt::CTRL | Qt::KeypadModifier | Qt::Key_7));
     connect(m_actionViewBottom, &QAction::triggered, this, &MainWindow::onActionViewBottom);
 
     m_actionViewFront = new QAction(tr("Vue de &Face (Front)"), this);
     m_actionViewFront->setIcon(makePlanIcon(QColor(140, 230, 160), Qt::blue, Qt::red, "X", "Z"));
     m_actionViewFront->setToolTip(tr("Orienter la vue de face (Élévation XZ, -Y) (Num1)"));
-    m_actionViewFront->setShortcut(QKeySequence(Qt::KeypadModifier | Qt::Key_1));
     connect(m_actionViewFront, &QAction::triggered, this, &MainWindow::onActionViewFront);
 
     m_actionViewBack = new QAction(tr("Vue Arriè&re (Back)"), this);
     m_actionViewBack->setIcon(makePlanIcon(QColor(140, 200, 160), Qt::blue, Qt::red, "X", "Z"));
     m_actionViewBack->setToolTip(tr("Orienter la vue arrière (+Y) (Ctrl+Num1)"));
-    m_actionViewBack->setShortcut(QKeySequence(Qt::CTRL | Qt::KeypadModifier | Qt::Key_1));
     connect(m_actionViewBack, &QAction::triggered, this, &MainWindow::onActionViewBack);
 
     m_actionViewLeft = new QAction(tr("Vue &Gauche (Left)"), this);
     m_actionViewLeft->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
     m_actionViewLeft->setToolTip(tr("Orienter la vue gauche (-X) (Num3)"));
-    m_actionViewLeft->setShortcut(QKeySequence(Qt::KeypadModifier | Qt::Key_3));
     connect(m_actionViewLeft, &QAction::triggered, this, &MainWindow::onActionViewLeft);
 
     m_actionViewRight = new QAction(tr("Vue &Droite (Right)"), this);
     m_actionViewRight->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
     m_actionViewRight->setToolTip(tr("Orienter la vue droite (+X) (Ctrl+Num3)"));
-    m_actionViewRight->setShortcut(QKeySequence(Qt::CTRL | Qt::KeypadModifier | Qt::Key_3));
     connect(m_actionViewRight, &QAction::triggered, this, &MainWindow::onActionViewRight);
 
     m_actionViewIsometric = new QAction(tr("Vue &Isométrique"), this);
     m_actionViewIsometric->setIcon(make3DIsoIcon());
     m_actionViewIsometric->setToolTip(tr("Orienter la vue en projection axonométrique isométrique (Num5)"));
-    m_actionViewIsometric->setShortcut(QKeySequence(Qt::KeypadModifier | Qt::Key_5));
     connect(m_actionViewIsometric, &QAction::triggered, this, &MainWindow::onActionViewIsometric);
 
     m_workPlaneGroup = new QActionGroup(this);
@@ -339,7 +316,6 @@ void MainWindow::createActions()
     m_actionManageLevels = new QAction(tr("Gestion des &Étages / Niveaux..."), this);
     m_actionManageLevels->setIcon(QIcon(":/icons/levels.svg"));
     m_actionManageLevels->setToolTip(tr("Gérer les hauteurs d'étages, niveaux altimétriques et liaisons verticales (Ctrl+L)..."));
-    m_actionManageLevels->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_L));
     connect(m_actionManageLevels, &QAction::triggered, this, &MainWindow::onManageLevels);
 
     m_actionGridVisible = new QAction(tr("&Afficher Grille 3D"), this);
@@ -347,7 +323,6 @@ void MainWindow::createActions()
     m_actionGridVisible->setToolTip(tr("Activer ou masquer la grille 3D (G / F7)"));
     m_actionGridVisible->setCheckable(true);
     m_actionGridVisible->setChecked(true);
-    m_actionGridVisible->setShortcuts({ QKeySequence(Qt::Key_G), QKeySequence(Qt::Key_F7) });
     connect(m_actionGridVisible, &QAction::toggled, this, &MainWindow::onToggleGridVisible);
 
     m_actionLevelsVisible = new QAction(tr("Afficher Plans d'&Étages"), this);
@@ -362,7 +337,6 @@ void MainWindow::createActions()
     m_actionGridSnap->setToolTip(tr("Accrochage magnétique du curseur aux intersections de grille (S)"));
     m_actionGridSnap->setCheckable(true);
     m_actionGridSnap->setChecked(true);
-    m_actionGridSnap->setShortcut(QKeySequence(Qt::Key_S));
     connect(m_actionGridSnap, &QAction::toggled, this, &MainWindow::onToggleGridSnap);
 
     m_actionObjectSnap = new QAction(tr("Accrochage &Objets (OSNAP)"), this);
@@ -370,7 +344,6 @@ void MainWindow::createActions()
     m_actionObjectSnap->setToolTip(tr("Accrochage magnétique intelligent aux nœuds, milieux et extrémités (F3)"));
     m_actionObjectSnap->setCheckable(true);
     m_actionObjectSnap->setChecked(true);
-    m_actionObjectSnap->setShortcut(QKeySequence(Qt::Key_F3));
     connect(m_actionObjectSnap, &QAction::toggled, this, &MainWindow::onToggleObjectSnap);
 
     m_actionGridLabels = new QAction(tr("Afficher Libellés d'&Axes"), this);
@@ -445,7 +418,6 @@ void MainWindow::createActions()
     m_actionFullScreen = new QAction(tr("Mode &Plein écran"), this);
     m_actionFullScreen->setIcon(QIcon(":/icons/fullscreen.svg"));
     m_actionFullScreen->setToolTip(tr("Basculer en mode plein écran (F11)"));
-    m_actionFullScreen->setShortcut(QKeySequence(Qt::Key_F11));
     m_actionFullScreen->setCheckable(true);
     connect(m_actionFullScreen, &QAction::toggled, this, &MainWindow::onToggleFullScreen);
 
@@ -462,7 +434,6 @@ void MainWindow::createActions()
     m_actionSelectMode->setToolTip(tr("Mode Sélection - Sélection par clic ou fenêtre (Échap)"));
     m_actionSelectMode->setCheckable(true);
     m_actionSelectMode->setChecked(true);
-    m_actionSelectMode->setShortcut(QKeySequence(Qt::Key_Escape));
     m_actionSelectMode->setStatusTip(tr("Sélectionner et inspecter les éléments structuraux (Échap)"));
     connect(m_actionSelectMode, &QAction::triggered, this, &MainWindow::onModeSelect);
     m_drawModeGroup->addAction(m_actionSelectMode);
@@ -471,7 +442,6 @@ void MainWindow::createActions()
     m_actionDrawNode->setIcon(QIcon(":/icons/draw_node.svg"));
     m_actionDrawNode->setToolTip(tr("Dessiner un Nœud en 3D (N)"));
     m_actionDrawNode->setCheckable(true);
-    m_actionDrawNode->setShortcut(QKeySequence(Qt::Key_N));
     m_actionDrawNode->setStatusTip(tr("Cliquez en 3D ou sur la grille pour créer un Nœud (N)"));
     connect(m_actionDrawNode, &QAction::triggered, this, &MainWindow::onModeDrawNode);
     m_drawModeGroup->addAction(m_actionDrawNode);
@@ -487,7 +457,6 @@ void MainWindow::createActions()
     m_actionDrawBeam->setIcon(QIcon(":/icons/draw_beam.svg"));
     m_actionDrawBeam->setToolTip(tr("Dessiner une Poutre (B)"));
     m_actionDrawBeam->setCheckable(true);
-    m_actionDrawBeam->setShortcut(QKeySequence(Qt::Key_B));
     m_actionDrawBeam->setStatusTip(tr("Ouvre l'interface filaire préconfigurée en mode Poutre (B)"));
     connect(m_actionDrawBeam, &QAction::triggered, this, &MainWindow::onModeDrawBeam);
     m_drawModeGroup->addAction(m_actionDrawBeam);
@@ -496,7 +465,6 @@ void MainWindow::createActions()
     m_actionDrawColumn->setIcon(QIcon(":/icons/draw_column.svg"));
     m_actionDrawColumn->setToolTip(tr("Dessiner un Poteau (C)"));
     m_actionDrawColumn->setCheckable(true);
-    m_actionDrawColumn->setShortcut(QKeySequence(Qt::Key_C));
     m_actionDrawColumn->setStatusTip(tr("Ouvre l'interface filaire préconfigurée en mode Poteau (C)"));
     connect(m_actionDrawColumn, &QAction::triggered, this, &MainWindow::onModeDrawColumn);
     m_drawModeGroup->addAction(m_actionDrawColumn);
@@ -505,7 +473,6 @@ void MainWindow::createActions()
     m_actionDrawCable->setIcon(QIcon(":/icons/draw_cable.svg"));
     m_actionDrawCable->setToolTip(tr("Dessiner un Câble (Alt+C) - Élément filaire tendu"));
     m_actionDrawCable->setCheckable(true);
-    m_actionDrawCable->setShortcut(QKeySequence(Qt::ALT | Qt::Key_C));
     m_actionDrawCable->setStatusTip(tr("Active le mode dessin Câble reliant deux nœuds (Alt+C)"));
     connect(m_actionDrawCable, &QAction::triggered, this, &MainWindow::onModeDrawCable);
     m_drawModeGroup->addAction(m_actionDrawCable);
@@ -514,7 +481,6 @@ void MainWindow::createActions()
     m_actionDrawSlab->setIcon(QIcon(":/icons/draw_slab.svg"));
     m_actionDrawSlab->setToolTip(tr("Dessiner une Dalle (L)"));
     m_actionDrawSlab->setCheckable(true);
-    m_actionDrawSlab->setShortcut(QKeySequence(Qt::Key_L));
     m_actionDrawSlab->setStatusTip(tr("Ouvre l'interface surfacique en mode Dalle (L)"));
     connect(m_actionDrawSlab, &QAction::triggered, this, &MainWindow::onModeDrawSlab);
     m_drawModeGroup->addAction(m_actionDrawSlab);
@@ -523,7 +489,6 @@ void MainWindow::createActions()
     m_actionDrawWall->setIcon(QIcon(":/icons/struct_wall.svg"));
     m_actionDrawWall->setToolTip(tr("Dessiner un Voile (W)"));
     m_actionDrawWall->setCheckable(true);
-    m_actionDrawWall->setShortcut(QKeySequence(Qt::Key_W));
     m_actionDrawWall->setStatusTip(tr("Ouvre l'interface surfacique en mode Voile (W)"));
     connect(m_actionDrawWall, &QAction::triggered, this, &MainWindow::onModeDrawWall);
     m_drawModeGroup->addAction(m_actionDrawWall);
@@ -548,14 +513,12 @@ void MainWindow::createActions()
     m_actionUndo = new QAction(tr("&Annuler"), this);
     m_actionUndo->setIcon(makeUndoIcon());
     m_actionUndo->setToolTip(tr("Annuler la dernière action (Ctrl+Z)"));
-    m_actionUndo->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z));
     m_actionUndo->setEnabled(false);
     connect(m_actionUndo, &QAction::triggered, this, &MainWindow::onActionUndo);
 
     m_actionRedo = new QAction(tr("&Rétablir"), this);
     m_actionRedo->setIcon(makeRedoIcon());
     m_actionRedo->setToolTip(tr("Rétablir la dernière action annulée (Ctrl+Y)"));
-    m_actionRedo->setShortcuts({ QKeySequence(Qt::CTRL | Qt::Key_Y), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z) });
     m_actionRedo->setEnabled(false);
     connect(m_actionRedo, &QAction::triggered, this, &MainWindow::onActionRedo);
 
@@ -563,19 +526,16 @@ void MainWindow::createActions()
     m_actionCopyClipboard = new QAction(tr("&Copier (Presse-papier)"), this);
     m_actionCopyClipboard->setIcon(QIcon(":/icons/copy.svg"));
     m_actionCopyClipboard->setToolTip(tr("Copier la sélection dans le presse-papier structural (Ctrl+C)"));
-    m_actionCopyClipboard->setShortcut(QKeySequence::Copy);
     connect(m_actionCopyClipboard, &QAction::triggered, this, &MainWindow::onActionCopyClipboard);
 
     m_actionPasteClipboard = new QAction(tr("C&oller en 3D"), this);
     m_actionPasteClipboard->setIcon(QIcon(":/icons/edit/paste.svg"));
     m_actionPasteClipboard->setToolTip(tr("Coller les éléments copiés dans la vue 3D au clic souris (Ctrl+V)"));
-    m_actionPasteClipboard->setShortcut(QKeySequence::Paste);
     connect(m_actionPasteClipboard, &QAction::triggered, this, &MainWindow::onActionPasteClipboard);
 
     m_actionMove3D = new QAction(tr("&Déplacement 3D (Point à Point)..."), this);
     m_actionMove3D->setIcon(QIcon(":/icons/structure/struct_move.svg"));
     m_actionMove3D->setToolTip(tr("Déplacer interactivement les éléments dans la vue 3D (M)"));
-    m_actionMove3D->setShortcut(QKeySequence(Qt::Key_M));
     m_actionMove3D->setCheckable(true);
     connect(m_actionMove3D, &QAction::triggered, this, &MainWindow::onActionMove3D);
 
@@ -588,7 +548,6 @@ void MainWindow::createActions()
     m_actionRotate3D = new QAction(tr("&Rotation 3D..."), this);
     m_actionRotate3D->setIcon(makeRotateIcon());
     m_actionRotate3D->setToolTip(tr("Faire tourner les éléments sélectionnés autour d'un axe 3D (Ctrl+R)"));
-    m_actionRotate3D->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
     m_actionRotate3D->setCheckable(true);
     connect(m_actionRotate3D, &QAction::triggered, this, &MainWindow::onActionRotate3D);
 
@@ -645,7 +604,6 @@ void MainWindow::createActions()
     m_actionToggleTheme->setToolTip(tr("Basculer entre Mode Sombre (AutoCAD) et Mode Clair (Ctrl+T / F10)"));
     m_actionToggleTheme->setCheckable(true);
     m_actionToggleTheme->setChecked(true);
-    m_actionToggleTheme->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
     connect(m_actionToggleTheme, &QAction::triggered, this, &MainWindow::onToggleTheme);
 
     m_actionHelp = new QAction(tr("&Aide Complète %1...").arg(TSA::Product::name()), this);
@@ -672,8 +630,11 @@ void MainWindow::createActions()
     m_actionShortcuts = new QAction(tr("&Raccourcis Clavier..."), this);
     m_actionShortcuts->setIcon(makeShortcutsIcon());
     m_actionShortcuts->setToolTip(tr("Afficher la liste des raccourcis clavier et commandes console (F1)"));
-    m_actionShortcuts->setShortcut(QKeySequence::HelpContents);
     connect(m_actionShortcuts, &QAction::triggered, this, &MainWindow::onActionShortcuts);
+
+    m_actionShortcutEditor = new QAction(QIcon(":/icons/settings.svg"), tr("&Personnaliser les raccourcis..."), this);
+    m_actionShortcutEditor->setToolTip(tr("Modifier, désactiver ou rétablir les raccourcis clavier (fichier shortcut.txt)"));
+    connect(m_actionShortcutEditor, &QAction::triggered, this, &MainWindow::onActionShortcutEditor);
 
     m_actionAbout = new QAction(tr("À &propos de %1...").arg(TSA::Product::name()), this);
     m_actionAbout->setIcon(makeAboutIcon());
@@ -798,7 +759,6 @@ void MainWindow::createActions()
     m_actionRunSolve = new QAction(tr("&Lancer le Calcul Structurel"), this);
     m_actionRunSolve->setIcon(QIcon(":/icons/analysis_run.svg"));
     m_actionRunSolve->setToolTip(tr("Lancer le calcul avec le moteur et la portée configurés (F5)"));
-    m_actionRunSolve->setShortcut(QKeySequence(Qt::Key_F5));
     connect(m_actionRunSolve, &QAction::triggered, this, &MainWindow::onActionRunSolve);
 
 
@@ -865,7 +825,6 @@ void MainWindow::createActions()
     m_actionNoteDeCalcul = new QAction(tr("Note de &Calcul..."), this);
     m_actionNoteDeCalcul->setIcon(QIcon(":/icons/ndc_report.svg"));
     m_actionNoteDeCalcul->setToolTip(tr("Ouvrir l'inspecteur et générateur de Note de Calcul (F8)"));
-    m_actionNoteDeCalcul->setShortcut(QKeySequence(Qt::Key_F8));
     connect(m_actionNoteDeCalcul, &QAction::triggered, this, &MainWindow::onActionNoteDeCalcul);
 
     m_actionResultsDisp = new QAction(tr("Déformée && &Déplacements"), this);
@@ -911,6 +870,7 @@ void MainWindow::createMenus()
     QMenu* editMenu = menuBar()->addMenu(tr("&Édition"));
     editMenu->addAction(m_actionUndo);
     editMenu->addAction(m_actionRedo);
+    editMenu->addAction(TSA::UI::Shortcuts::ShortcutManager::instance().repeatAction());
     editMenu->addSeparator();
     editMenu->addAction(m_actionSelectMode);
     editMenu->addSeparator();
@@ -946,36 +906,41 @@ void MainWindow::createMenus()
         namespace SQ = TSA::Model::SelectionQuery;
 
         QAction* invertAct = editMenu->addAction(tr("&Inverser la sélection"));
-        invertAct->setShortcut(QKeySequence("Ctrl+Alt+I"));
+        bindShortcut("cmd.select.invert", invertAct);
         connect(invertAct, &QAction::triggered, this, [this]() {
             if (!m_model || !m_selectionManager) return;
             applyElementSelection(SQ::invert(*m_model, m_selectionManager->selectedElements()), tr("Sélection inversée"));
         });
 
         QMenu* byType = editMenu->addMenu(tr("Sélectionner par &type"));
-        const std::pair<QString, ElementKind> kinds[] = {
-            { tr("Nœuds"), ElementKind::Node }, { tr("Poutres"), ElementKind::Beam },
-            { tr("Poteaux"), ElementKind::Column }, { tr("Dalles"), ElementKind::Slab },
-            { tr("Voiles"), ElementKind::Wall }, { tr("Fondations"), ElementKind::Foundation },
-            { tr("Barres de treillis"), ElementKind::TrussMember }, { tr("Câbles"), ElementKind::Cable } };
-        for (const auto& [label, kind] : kinds)
+        const std::tuple<QString, ElementKind, const char*> kinds[] = {
+            { tr("Nœuds"), ElementKind::Node, "cmd.select.nodes" }, { tr("Poutres"), ElementKind::Beam, "cmd.select.beams" },
+            { tr("Poteaux"), ElementKind::Column, "cmd.select.columns" }, { tr("Dalles"), ElementKind::Slab, "cmd.select.slabs" },
+            { tr("Voiles"), ElementKind::Wall, "cmd.select.walls" }, { tr("Fondations"), ElementKind::Foundation, "cmd.select.foundations" },
+            { tr("Barres de treillis"), ElementKind::TrussMember, "cmd.select.truss" }, { tr("Câbles"), ElementKind::Cable, "cmd.select.cables" } };
+        for (const auto& [label, kind, id] : kinds)
         {
-            connect(byType->addAction(label), &QAction::triggered, this, [this, label = label, kind = kind]() {
+            QAction* a = byType->addAction(label);
+            bindShortcut(id, a);
+            connect(a, &QAction::triggered, this, [this, label = label, kind = kind]() {
                 if (m_model) applyElementSelection(SQ::byKind(*m_model, kind), label);
             });
         }
 
         QAction* sameSection = editMenu->addAction(tr("Même &section que la sélection"));
+        bindShortcut("cmd.select.same_section", sameSection);
         connect(sameSection, &QAction::triggered, this, [this]() {
             if (!m_model || !m_selectionManager) return;
             applyElementSelection(SQ::sameSection(*m_model, m_selectionManager->selectedElements()), tr("Même section"));
         });
         QAction* sameMaterial = editMenu->addAction(tr("Même &matériau que la sélection"));
+        bindShortcut("cmd.select.same_material", sameMaterial);
         connect(sameMaterial, &QAction::triggered, this, [this]() {
             if (!m_model || !m_selectionManager) return;
             applyElementSelection(SQ::sameMaterial(*m_model, m_selectionManager->selectedElements()), tr("Même matériau"));
         });
         QAction* onLevel = editMenu->addAction(tr("Éléments du &niveau actif"));
+        bindShortcut("cmd.select.active_level", onLevel);
         connect(onLevel, &QAction::triggered, this, [this]() {
             if (!m_model || !m_viewportContainer) return;
             applyElementSelection(SQ::atElevation(*m_model, m_viewportContainer->activeLevelElevation(),
@@ -983,6 +948,7 @@ void MainWindow::createMenus()
                                   tr("Niveau actif"));
         });
         QAction* onPlane = editMenu->addAction(tr("Éléments du &plan de travail actif"));
+        bindShortcut("cmd.select.active_workplane", onPlane);
         connect(onPlane, &QAction::triggered, this, [this]() {
             if (!m_model || !m_occView) return;
             applyElementSelection(SQ::onWorkPlane(*m_model, m_occView->activeWorkPlane(),
@@ -1138,20 +1104,20 @@ void MainWindow::createMenus()
 
     // Isolation 3D (cmd.isolate.* du catalogue) : même passe de visibilité que le plan de travail.
     QMenu* isoSub = viewMenu->addMenu(tr("Isolation 3D"));
-    auto addIsolation = [&](const QString& text, const QString& shortcut, auto slot) {
+    auto addIsolation = [&](const QString& text, const char* id, auto slot) {
         QAction* a = isoSub->addAction(text, this, slot);
-        if (!shortcut.isEmpty()) a->setShortcut(QKeySequence(shortcut));
         a->setShortcutContext(Qt::WindowShortcut);
+        bindShortcut(id, a); // raccourci : catalogue / shortcut.txt
         return a;
     };
-    addIsolation(tr("Isoler la sélection"), QStringLiteral("I"), [this] {
+    addIsolation(tr("Isoler la sélection"), "cmd.isolate.selection", [this] {
         if (!m_occView || !m_selectionManager) return;
         const auto sel = m_selectionManager->selectedElements();
         if (sel.size() == 0) { if (m_statusInfo) m_statusInfo->setText(tr("Isolation : sélectionnez d'abord des éléments")); return; }
         m_occView->isolateElements(sel);
         if (m_statusInfo) m_statusInfo->setText(tr("Isolation : %1 élément(s) — Alt+H pour tout afficher").arg(sel.size()));
     });
-    addIsolation(tr("Isoler par type"), QStringLiteral("Alt+I"), [this] {
+    addIsolation(tr("Isoler par type"), "cmd.isolate.same_type", [this] {
         if (!m_occView || !m_selectionManager || !m_model) return;
         using TSA::Model::ElementKind;
         const auto sel = m_selectionManager->selectedElements();
@@ -1179,22 +1145,22 @@ void MainWindow::createMenus()
         m_occView->isolateElements(sameType);
         if (m_statusInfo) m_statusInfo->setText(tr("Isolation par type : %1 élément(s)").arg(sameType.size()));
     });
-    addIsolation(tr("Isoler le plan de travail"), QStringLiteral("Alt+W"), [this] {
+    addIsolation(tr("Isoler le plan de travail"), "cmd.isolate.workplane", [this] {
         if (!m_occView) return;
         const bool on = !m_occView->activeWorkPlane().isIsolated();
         m_occView->setWorkPlaneIsolation(on, m_occView->activeWorkPlane().isolationDistance());
         if (m_statusInfo) m_statusInfo->setText(on ? tr("Plan de travail isolé") : tr("Isolation du plan de travail désactivée"));
     });
     isoSub->addSeparator();
-    addIsolation(tr("Masquer la sélection"), QStringLiteral("H"), [this] {
+    addIsolation(tr("Masquer la sélection"), "cmd.isolate.hide", [this] {
         if (!m_occView || !m_selectionManager) return;
         const auto sel = m_selectionManager->selectedElements();
         m_occView->hideElements(sel);
         m_selectionManager->clearSelection();
     });
-    addIsolation(tr("Inverser l'isolation"), QString(), [this] { if (m_occView) m_occView->invertElementIsolation(); });
-    addIsolation(tr("Isolation précédente"), QStringLiteral("Ctrl+H"), [this] { if (m_occView) m_occView->undoElementIsolation(); });
-    addIsolation(tr("Tout afficher"), QStringLiteral("Alt+H"), [this] {
+    addIsolation(tr("Inverser l'isolation"), "cmd.isolate.invert", [this] { if (m_occView) m_occView->invertElementIsolation(); });
+    addIsolation(tr("Isolation précédente"), "cmd.isolate.undo", [this] { if (m_occView) m_occView->undoElementIsolation(); });
+    addIsolation(tr("Tout afficher"), "cmd.isolate.show_all", [this] {
         if (!m_occView) return;
         m_occView->showAllElements();
         if (m_statusInfo) m_statusInfo->setText(tr("Isolation terminée : tous les éléments sont affichés"));
@@ -1242,6 +1208,7 @@ void MainWindow::createMenus()
     if (m_actionOnlineDocs) helpMenu->addAction(m_actionOnlineDocs);
     helpMenu->addAction(m_actionHelp);
     helpMenu->addAction(m_actionShortcuts);
+    helpMenu->addAction(m_actionShortcutEditor);
     if (m_actionReportProblem) helpMenu->addAction(m_actionReportProblem);
     helpMenu->addSeparator();
     helpMenu->addAction(m_actionExportDiagnostic);
@@ -1517,7 +1484,6 @@ void MainWindow::createDockWindows()
     m_propertiesDock->setWidget(m_propertyPanel);
     m_propertiesDock->setMinimumWidth(280);
     m_propertiesDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
-    m_propertiesDock->toggleViewAction()->setShortcut(QKeySequence(Qt::Key_P));
     addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
 
     // 4. Dock droit : PROJECTION & VUE (WorkPlane, 2D/3D, Caméra)
@@ -1834,7 +1800,7 @@ void MainWindow::createDockWindows()
 
         m_windowManager->registerDock(
             "model_browser", tr("Navigateur du modèle"), tr("Modélisation"), m_modelTreeDock,
-            Qt::LeftDockWidgetArea, true, QKeySequence("Ctrl+3"), QIcon(":/icons/model_tree.svg"));
+            Qt::LeftDockWidgetArea, true, QKeySequence(), QIcon(":/icons/model_tree.svg"));
 
         m_windowManager->registerDock(
             "visibility", tr("Calques & Visibilité"), tr("Affichage"), m_visibilityDock,
@@ -1846,11 +1812,11 @@ void MainWindow::createDockWindows()
 
         m_windowManager->registerDock(
             "properties", tr("Propriétés"), tr("Général"), m_propertiesDock,
-            Qt::RightDockWidgetArea, true, QKeySequence("Ctrl+2"), QIcon(":/icons/properties.svg"));
+            Qt::RightDockWidgetArea, true, QKeySequence(), QIcon(":/icons/properties.svg"));
 
         m_windowManager->registerDock(
             "work_planes", tr("Plans de travail & Vues"), tr("Modélisation"), m_projectionViewDock,
-            Qt::RightDockWidgetArea, true, QKeySequence("Ctrl+4"), QIcon(":/icons/view_normal_workplane.svg"));
+            Qt::RightDockWidgetArea, true, QKeySequence(), QIcon(":/icons/view_normal_workplane.svg"));
 
         if (m_analysisDataDock)
         {
@@ -1861,7 +1827,7 @@ void MainWindow::createDockWindows()
 
         m_windowManager->registerDock(
             "console", tr("Console & Messages"), tr("Outils"), m_consoleDock,
-            Qt::BottomDockWidgetArea, true, QKeySequence(Qt::Key_F2), QIcon(":/icons/console.svg"));
+            Qt::BottomDockWidgetArea, true, QKeySequence(), QIcon(":/icons/console.svg"));
     }
 
     createAIComponents();

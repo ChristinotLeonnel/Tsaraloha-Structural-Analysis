@@ -451,10 +451,10 @@ bool runSuite_Commands(int& passed)
 
         // 50.1: CommandCategory & Names
         {
-            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Create) == "Création / Dessin", "Subtest 50.1: Category Create string valid");
-            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Modify) == "Modification CAO", "Subtest 50.1: Category Modify string valid");
+            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Create) == "Modélisation", "Subtest 50.1: Category Create string valid");
+            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Modify) == "Modification et transformations", "Subtest 50.1: Category Modify string valid");
             TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Properties) == "Propriétés", "Subtest 50.1: Category Properties string valid");
-            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Analysis) == "Calculs / Analyse", "Subtest 50.1: Category Analysis string valid");
+            TEST_CHECK(TSA::Commands::categoryToString(TSA::Commands::CommandCategory::Analysis) == "Analyse structurelle", "Subtest 50.1: Category Analysis string valid");
             std::cout << "  [PASS] Subtest 50.1: CommandCategory Taxonomy & Localized Names Verified" << std::endl;
         }
 

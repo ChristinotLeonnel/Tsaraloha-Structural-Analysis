@@ -385,6 +385,9 @@ private:
     void applyTopologyDisplayFromModel();
     void createDimensionActions();
     void createDisplayModeActions();
+    // Raccourcis clavier (MainWindow_Shortcuts.cpp) : actions reliées au catalogue (ShortcutManager)
+    void bindShortcut(const char* id, QAction* action);
+    void setupShortcuts();
     /// Message de la représentation active (mode Éléments finis : état du maillage du solveur).
     void reportModelDisplayMode();
     QActionGroup* m_displayModeGroup = nullptr;
@@ -479,6 +482,7 @@ private:
     QAction* m_actionOnlineDocs = nullptr;    ///< documentation en ligne (TSA Web)
     QAction* m_actionReportProblem = nullptr; ///< procédure de signalement (TSA Web)
     QAction* m_actionShortcuts = nullptr;
+    QAction* m_actionShortcutEditor = nullptr;   ///< Aide > Personnaliser les raccourcis
     QAction* m_actionAbout = nullptr;
     QAction* m_actionExportDiagnostic = nullptr;
 
@@ -568,6 +572,7 @@ private slots:
     void onToggleTheme();
     void onActionHelp();
     void onActionShortcuts();
+    void onActionShortcutEditor();
     void onActionAbout();
     void onActionExportDiagnosticReport();
 

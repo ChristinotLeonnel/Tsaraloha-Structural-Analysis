@@ -306,6 +306,7 @@ void MainWindow::setupUi()
     createMenus();
     createRibbon();
     createStatusBar();
+    setupShortcuts(); // raccourcis : catalogue + shortcut.txt utilisateur (rechargé à chaud)
 }
 
 

@@ -1224,32 +1224,8 @@ void OccView::keyPressEvent(QKeyEvent* event)
             cancelCurrentDrawing();
         }
     }
-    else if (event->key() == Qt::Key_F)
-    {
-        if (event->modifiers() == Qt::ShiftModifier)
-        {
-            fitSelection();
-        }
-        else if (event->modifiers() == Qt::NoModifier)
-        {
-            fitAll();
-        }
-        else
-        {
-            QWidget::keyPressEvent(event);
-        }
-    }
-    else if (event->key() == Qt::Key_R)
-    {
-        if (event->modifiers() == Qt::NoModifier)
-        {
-            resetView();
-        }
-        else
-        {
-            QWidget::keyPressEvent(event);
-        }
-    }
+    // F (zoom étendu), Maj+F, R : raccourcis des actions (ShortcutManager, personnalisables). Les traiter
+    // ici ferait encore réagir l'ancienne touche après une personnalisation.
     else
     {
         QWidget::keyPressEvent(event);

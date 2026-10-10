@@ -98,7 +98,6 @@ void MainWindow::createAIComponents()
     m_actionAIAssistant = m_aiDock->toggleViewAction();
     m_actionAIAssistant->setText(tr("Assistant IA"));
     m_actionAIAssistant->setToolTip(tr("Assistant de co-ingénierie : lit le modèle réel, explique, vérifie et propose (Ctrl+Maj+I)"));
-    m_actionAIAssistant->setShortcut(QKeySequence("Ctrl+Shift+I"));
 
     m_actionAIConfig = new QAction(QIcon(":/icons/settings.svg"), tr("Configuration IA..."), this);
     m_actionAIConfig->setToolTip(tr("Matériel détecté, modèle recommandé, mode LOCAL/CLOUD/AUTO, confidentialité, diagnostic"));

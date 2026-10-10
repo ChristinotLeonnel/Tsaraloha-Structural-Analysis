@@ -7,6 +7,7 @@
 #endif
 
 #include "AppShell.h"
+#include "../Shortcuts/ShortcutManager.h"
 
 #include "../../App/ProductInfo.h"
 
@@ -124,12 +125,26 @@ void AppShell::createActions()
 
     // Raccourcis du Start Center (actifs dans ce mode seulement : dans le workspace, ce sont ceux
     // des actions du workspace, sinon Qt les jugerait ambigus).
-    for (auto [key, action] : { std::pair{ QKeySequence(QKeySequence::New), m_actNew }, std::pair{ QKeySequence(QKeySequence::Open), m_actOpen } })
+    // Touches = raccourcis actifs de cmd.file.new / cmd.file.open (ShortcutManager, personnalisables).
+    for (QAction* action : { m_actNew, m_actOpen })
     {
-        auto* sc = new QShortcut(key, this);
+        auto* sc = new QShortcut(this);
         connect(sc, &QShortcut::activated, action, &QAction::trigger);
         m_startCenterShortcuts << sc;
     }
+    auto syncStartCenterKeys = [this] {
+        auto& mgr = TSA::UI::Shortcuts::ShortcutManager::instance();
+        const char* ids[] = { "cmd.file.new", "cmd.file.open" };
+        for (int i = 0; i < m_startCenterShortcuts.size() && i < 2; ++i)
+        {
+            QList<QKeySequence> keys = mgr.effective(QString::fromLatin1(ids[i]));
+            if (keys.isEmpty() && !mgr.definition(QString::fromLatin1(ids[i]))) // gestionnaire pas encore chargé
+                keys = { i == 0 ? QKeySequence(QKeySequence::New) : QKeySequence(QKeySequence::Open) };
+            m_startCenterShortcuts[i]->setKeys(keys);
+        }
+    };
+    syncStartCenterKeys();
+    connect(&TSA::UI::Shortcuts::ShortcutManager::instance(), &TSA::UI::Shortcuts::ShortcutManager::shortcutsChanged, this, syncStartCenterKeys);
 
     m_titleBar->addQuickAccess(m_actNew);
     m_titleBar->addQuickAccess(m_actOpen);

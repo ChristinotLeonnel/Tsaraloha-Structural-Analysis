@@ -190,3 +190,4 @@ bool runSuite_GroupEdit(int& passed);
 bool runSuite_Topology(int& passed);
 bool runSuite_Dimensions(int& passed);
 bool runSuite_DisplayModes(int& passed);
+bool runSuite_Shortcuts(int& passed);

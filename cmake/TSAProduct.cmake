@@ -60,6 +60,7 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Topology.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Dimensions.cpp
     ${TSA_ROOT}/src/UI/MainWindow_DisplayMode.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_Shortcuts.cpp
     ${TSA_ROOT}/src/UI/MainWindow_ModelingTools.cpp
 )
 
@@ -102,6 +103,12 @@ set(UI_PROPERTIES_SOURCES
 
 # --- Boîtes de dialogue -------------------------------------------------------
 set(UI_DIALOGS_SOURCES
+    ${TSA_ROOT}/src/UI/Shortcuts/ShortcutConfig.h
+    ${TSA_ROOT}/src/UI/Shortcuts/ShortcutConfig.cpp
+    ${TSA_ROOT}/src/UI/Shortcuts/ShortcutManager.h
+    ${TSA_ROOT}/src/UI/Shortcuts/ShortcutManager.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/ShortcutEditorDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/ShortcutEditorDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.h
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.cpp
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.h
@@ -926,6 +933,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_topology.cpp
     ${TSA_ROOT}/tests/test_dimensions.cpp
     ${TSA_ROOT}/tests/test_display_modes.cpp
+    ${TSA_ROOT}/tests/test_shortcuts.cpp
     ${TSA_ROOT}/tests/test_blueprint.cpp
     ${TSA_ROOT}/resources/resources.qrc
 )
@@ -1189,6 +1197,12 @@ function(tsa_add_product)
         target_include_directories(${tests} PRIVATE ${TSA_ROOT}/tests)
         target_precompile_headers(${tests} REUSE_FROM ${model})
         target_link_libraries(${tests} PRIVATE ${model} ${graphics} ${widgets})
+        if(TARGET Qt6::Test)   # frappes clavier simulées (suite « shortcuts »)
+            target_link_libraries(${tests} PRIVATE Qt6::Test)
+            target_compile_definitions(${tests} PRIVATE TSA_HAVE_QTTEST=1)
+            add_custom_command(TARGET ${tests} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:Qt6::Test> $<TARGET_FILE_DIR:${tests}>)
+        endif()
         set_target_properties(${tests} PROPERTIES OUTPUT_NAME "${name}_TestSuite")
         add_dependencies(${tests} ${name}_Mcp)
         target_compile_definitions(${tests} PRIVATE TSARALOHA_MCP_EXE="$<TARGET_FILE:${name}_Mcp>")

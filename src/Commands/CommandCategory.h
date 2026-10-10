@@ -29,35 +29,60 @@ enum class CommandCategory
     Tools,          // Outils de mesure, calculatrices, vérificateurs géométriques
     Documentation,  // Notes de calcul, génération de rapports
     Workspace,      // Disposition des docks, environnement de travail
-    Settings        // Préférences, unités métriques, thèmes
+    Settings,       // Préférences, unités métriques, thèmes
+    Snap,           // Grille, accrochage et plans de travail
+    Mesh,           // Maillage éléments finis
+    Bim,            // BIM et échanges de données (IFC)
+    Annotation,     // Cotation et mesure
+    Help            // Aide, liste et personnalisation des raccourcis
 };
 
 inline std::string categoryToString(CommandCategory cat)
 {
     switch (cat)
     {
-    case CommandCategory::File:          return "Fichier";
+    case CommandCategory::File:          return "Gestion des projets";
     case CommandCategory::Edit:          return "Édition";
-    case CommandCategory::Create:        return "Création / Dessin";
-    case CommandCategory::Modify:        return "Modification CAO";
-    case CommandCategory::Selection:     return "Sélection";
+    case CommandCategory::Create:        return "Modélisation";
+    case CommandCategory::Modify:        return "Modification et transformations";
+    case CommandCategory::Selection:     return "Sélection et isolation";
     case CommandCategory::Properties:    return "Propriétés";
-    case CommandCategory::Libraries:     return "Bibliothèques";
-    case CommandCategory::Structure:     return "Structure";
+    case CommandCategory::Libraries:     return "Matériaux et sections";
+    case CommandCategory::Structure:     return "Grilles et niveaux";
     case CommandCategory::Loads:         return "Charges";
-    case CommandCategory::LoadCases:     return "Cas de Charges";
+    case CommandCategory::LoadCases:     return "Cas de charge et combinaisons";
     case CommandCategory::Model:         return "Modèle";
-    case CommandCategory::Analysis:      return "Calculs / Analyse";
+    case CommandCategory::Analysis:      return "Analyse structurelle";
     case CommandCategory::Results:       return "Résultats";
     case CommandCategory::Design:        return "Dimensionnement";
-    case CommandCategory::View:          return "Vue";
+    case CommandCategory::View:          return "Navigation 2D et 3D";
     case CommandCategory::Display:       return "Affichage";
-    case CommandCategory::Tools:         return "Outils";
-    case CommandCategory::Documentation: return "Documentation";
-    case CommandCategory::Workspace:     return "Espace de travail";
+    case CommandCategory::Tools:         return "Outils généraux";
+    case CommandCategory::Documentation: return "Rapports";
+    case CommandCategory::Workspace:     return "Fenêtres et panneaux";
     case CommandCategory::Settings:      return "Paramètres";
-    default:                             return "Général";
+    case CommandCategory::Snap:          return "Grille, accrochage et plans de travail";
+    case CommandCategory::Mesh:          return "Maillage";
+    case CommandCategory::Bim:           return "BIM et échanges de données";
+    case CommandCategory::Annotation:    return "Cotation et mesure";
+    case CommandCategory::Help:          return "Aide";
     }
+    return "Général";
+}
+
+/// Ordre des catégories (fichier shortcut.txt, éditeur des raccourcis).
+inline const CommandCategory* categoryOrder(std::size_t* count)
+{
+    static const CommandCategory order[] = {
+        CommandCategory::File,      CommandCategory::Edit,       CommandCategory::Selection, CommandCategory::Create,
+        CommandCategory::Modify,    CommandCategory::Annotation, CommandCategory::Snap,      CommandCategory::Structure,
+        CommandCategory::View,      CommandCategory::Display,    CommandCategory::Properties, CommandCategory::Libraries,
+        CommandCategory::Mesh,      CommandCategory::Loads,      CommandCategory::LoadCases, CommandCategory::Analysis,
+        CommandCategory::Results,   CommandCategory::Documentation, CommandCategory::Bim,    CommandCategory::Model,
+        CommandCategory::Design,    CommandCategory::Workspace,  CommandCategory::Tools,     CommandCategory::Settings,
+        CommandCategory::Help };
+    *count = sizeof(order) / sizeof(order[0]);
+    return order;
 }
 
 } // namespace TSA::Commands

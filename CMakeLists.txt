@@ -14,6 +14,7 @@ set(CMAKE_AUTOUIC ON)
 # Configuration Qt 6
 # =============================================================================
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Svg Network)
+find_package(Qt6 QUIET COMPONENTS Test)   # facultatif : tests des raccourcis (frappes simulées)
 
 # =============================================================================
 # Configuration OpenCASCADE (OCCT) et dépendances tierces
