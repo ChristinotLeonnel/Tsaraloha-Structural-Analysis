@@ -146,6 +146,12 @@ public slots:
     /// Même règle par identifiant stable (nœud, barre, poteau, dalle, voile, fondation, treillis,
     /// câble, charge nodale, charge sur barre). Sans effet pour un plan de travail.
     void toggleElement(SelectionType type, int id);
+
+    /// Remet un élément dans la sélection sans signal ni changement d'élément principal : la vue
+    /// recrée la forme d'un élément modifié (unregister retire l'élément de la sélection). Émettre
+    /// une sélection ici rouvrait le panneau sur ce seul élément et interrompait l'édition groupée
+    /// (BUG-070 : appui appliqué à un seul des nœuds sélectionnés).
+    void restoreSelected(SelectionType type, int id);
     /// Retire les éléments qui n'existent plus dans le modèle (suppression, Annuler, nettoyage) :
     /// aucune commande ne reçoit d'identifiant périmé. Vrai si la sélection a changé.
     bool pruneMissing(const TSA::Model::Model& model);

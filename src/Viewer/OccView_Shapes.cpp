@@ -882,10 +882,10 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
             m_selectionManager->registerNode(nodeId, aisNode);
             if (wasSelected)
             {
-                m_selectionManager->selectNode(nodeId, true);
+                m_selectionManager->restoreSelected(TSA::Viewer::SelectionType::Node, nodeId);
                 if (isNodeVisibleByFilter(nodeId) && keepNodeUnderIsolation(nodeId))
                 {
-                    m_context->SetSelected(aisNode, false);
+                    if (!m_context->IsSelected(aisNode)) m_context->AddOrRemoveSelected(aisNode, false);
                 }
             }
         }
@@ -1068,10 +1068,10 @@ void OccView::updateBeamShape(int beamId, bool redrawImmediately)
             m_selectionManager->registerBeam(beamId, aisBeam);
             if (wasSelected)
             {
-                m_selectionManager->selectBeam(beamId, true);
+                m_selectionManager->restoreSelected(TSA::Viewer::SelectionType::Beam, beamId);
                 if (shown)
                 {
-                    m_context->SetSelected(aisBeam, false);
+                    if (!m_context->IsSelected(aisBeam)) m_context->AddOrRemoveSelected(aisBeam, false);
                 }
             }
         }
@@ -1136,10 +1136,10 @@ void OccView::updateColumnShape(int columnId, bool redrawImmediately)
             m_selectionManager->registerColumn(columnId, aisCol);
             if (wasSelected)
             {
-                m_selectionManager->selectColumn(columnId, true);
+                m_selectionManager->restoreSelected(TSA::Viewer::SelectionType::Column, columnId);
                 if (shown)
                 {
-                    m_context->SetSelected(aisCol, false);
+                    if (!m_context->IsSelected(aisCol)) m_context->AddOrRemoveSelected(aisCol, false);
                 }
             }
         }
@@ -1209,10 +1209,10 @@ void OccView::updateSlabShape(int slabId, bool redrawImmediately)
             m_selectionManager->registerSlab(slabId, aisSlab);
             if (wasSelected)
             {
-                m_selectionManager->selectSlab(slabId, true);
+                m_selectionManager->restoreSelected(TSA::Viewer::SelectionType::Slab, slabId);
                 if (shown)
                 {
-                    m_context->SetSelected(aisSlab, false);
+                    if (!m_context->IsSelected(aisSlab)) m_context->AddOrRemoveSelected(aisSlab, false);
                 }
             }
         }
@@ -1273,10 +1273,10 @@ void OccView::updateWallShape(int wallId, bool redrawImmediately)
             m_selectionManager->registerWall(wallId, aisWall);
             if (wasSelected)
             {
-                m_selectionManager->selectWall(wallId, true);
+                m_selectionManager->restoreSelected(TSA::Viewer::SelectionType::Wall, wallId);
                 if (shown)
                 {
-                    m_context->SetSelected(aisWall, false);
+                    if (!m_context->IsSelected(aisWall)) m_context->AddOrRemoveSelected(aisWall, false);
                 }
             }
         }
@@ -1336,10 +1336,10 @@ void OccView::updateFoundationShape(int foundationId, bool redrawImmediately)
             m_selectionManager->registerFoundation(foundationId, aisF);
             if (wasSelected)
             {
-                m_selectionManager->selectFoundation(foundationId, true);
+                m_selectionManager->restoreSelected(TSA::Viewer::SelectionType::Foundation, foundationId);
                 if (shown)
                 {
-                    m_context->SetSelected(aisF, false);
+                    if (!m_context->IsSelected(aisF)) m_context->AddOrRemoveSelected(aisF, false);
                 }
             }
         }
@@ -1402,10 +1402,10 @@ void OccView::updateTrussMemberShape(int memberId, bool redrawImmediately)
             m_selectionManager->registerTrussMember(memberId, aisTr);
             if (wasSelected)
             {
-                m_selectionManager->selectTrussMember(memberId, true);
+                m_selectionManager->restoreSelected(TSA::Viewer::SelectionType::TrussMember, memberId);
                 if (shown)
                 {
-                    m_context->SetSelected(aisTr, false);
+                    if (!m_context->IsSelected(aisTr)) m_context->AddOrRemoveSelected(aisTr, false);
                 }
             }
         }
@@ -1461,10 +1461,10 @@ void OccView::updateCableShape(int cableId, bool redrawImmediately)
             m_selectionManager->registerCable(cableId, aisCable);
             if (wasSelected)
             {
-                m_selectionManager->selectCable(cableId, true);
+                m_selectionManager->restoreSelected(TSA::Viewer::SelectionType::Cable, cableId);
                 if (shown)
                 {
-                    m_context->SetSelected(aisCable, false);
+                    if (!m_context->IsSelected(aisCable)) m_context->AddOrRemoveSelected(aisCable, false);
                 }
             }
         }

@@ -340,6 +340,10 @@ public:
 
     const TSA::Model::BarProperties& currentBarProperties() const { return m_currentBarProps; }
     void setCurrentBarProperties(const TSA::Model::BarProperties& props);
+    /// « Étirer » (fenêtre de tracé des éléments filaires) : après une poutre ou un poteau, le nœud
+    /// d'arrivée devient le départ de l'élément suivant (BUG-069).
+    void setBarChainMode(bool chain) { m_barChainMode = chain; }
+    bool barChainMode() const { return m_barChainMode; }
     void startChainedBarDrawing(const gp_Pnt& originPt, int originNodeId);
 
     // Dessin d'éléments surfaciques (Dalles & Voiles)
@@ -723,6 +727,10 @@ private:
 
     TSA::Model::StructurePresets m_presets;
     TSA::Model::BarProperties m_currentBarProps;
+    bool m_barChainMode = true;
+    /// Fin d'un élément tracé en mode Poutre / Poteau : enchaîne depuis endNodeId (« Étirer ») ou
+    /// réinitialise le tracé.
+    void finishBarSegment(int endNodeId, bool created);
     TSA::Viewer::RenderDisplayMode m_renderDisplayMode = TSA::Viewer::RenderDisplayMode::Materials;
     std::unique_ptr<TSA::Viewer::ResultsVisualManager> m_resultsVisual;
     QTimer* m_redrawTimer = nullptr;

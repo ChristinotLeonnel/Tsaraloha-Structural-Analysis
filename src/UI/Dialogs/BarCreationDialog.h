@@ -50,6 +50,8 @@ signals:
     /// qu'elle pilote doit reprendre si elle a été annulée par Échap entre-temps.
     void drawingResumeRequested();
     void barPropertiesChanged(const TSA::Model::BarProperties& props);
+    /// Case « Étirer » cochée ou décochée.
+    void chainModeChanged(bool chain);
     void manualPointEntered(const gp_Pnt& pt, bool isFirstPoint);
     void barCreated(int barId);
 

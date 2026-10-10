@@ -2,6 +2,14 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (« Étirer » et appui sur plusieurs nœuds)
+
+### Fixed
+- BUG-069 : « Étirer » enchaîne aussi les poutres et les poteaux (le nœud d'arrivée devient le départ suivant).
+- BUG-070 : un appui (ou tout autre réglage) choisi dans les propriétés s'applique à tous les éléments sélectionnés
+  du même type ; l'édition groupée n'est plus interrompue par la reconstruction de la forme modifiée. Test 222
+  (total 243).
+
 ## 2026-10-10 (Apparence par matériau : textures, déformée, couleur utilisateur)
 
 ### Added

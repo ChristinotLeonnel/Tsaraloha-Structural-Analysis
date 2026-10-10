@@ -334,6 +334,7 @@ void MainWindow::openBarCreationDialog(TSA::Model::BarRole role)
         connect(m_occView, &OccView::barFirstPointPicked, m_barDialog, &TSA::UI::BarCreationDialog::onFirstPointPicked);
         connect(m_occView, &OccView::barSecondPointPicked, m_barDialog, &TSA::UI::BarCreationDialog::onSecondPointPicked);
         connect(m_occView, &OccView::barDrawingCancelled, m_barDialog, &TSA::UI::BarCreationDialog::onDrawingCancelled);
+        connect(m_barDialog, &TSA::UI::BarCreationDialog::chainModeChanged, m_occView, &OccView::setBarChainMode);
         connect(m_barDialog, &TSA::UI::BarCreationDialog::drawingResumeRequested, this, [this] {
             if (m_barDialog && m_barDialog->isVisible()) activateBarDrawing(m_barDialog->currentProperties().role);
         });
@@ -361,7 +362,11 @@ void MainWindow::openBarCreationDialog(TSA::Model::BarRole role)
 void MainWindow::activateBarDrawing(TSA::Model::BarRole role)
 {
     if (!m_occView) return;
-    if (m_barDialog) m_occView->setCurrentBarProperties(m_barDialog->currentProperties());
+    if (m_barDialog)
+    {
+        m_occView->setCurrentBarProperties(m_barDialog->currentProperties());
+        m_occView->setBarChainMode(m_barDialog->isChainMode());
+    }
     // setInteractionMode ne fait rien si le mode est déjà actif : un tracé en cours n'est pas interrompu.
     if (role == TSA::Model::BarRole::Beam)
     {
