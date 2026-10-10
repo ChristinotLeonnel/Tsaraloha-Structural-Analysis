@@ -560,8 +560,14 @@ void MainWindow::closeModelessToolDialogs()
 
 void MainWindow::onActionDistLoad()
 {
+    openMemberLoadDialog(TSA::Model::LoadType::MemberUniform);
+}
+
+void MainWindow::openMemberLoadDialog(TSA::Model::LoadType type)
+{
     if (!m_model) return;
     TSA::UI::MemberLoadDialog dlg(m_model, m_selectionManager.get(), m_occView, this);
+    dlg.setLoadType(type);
     if (m_selectionManager)
     {
         if (!m_selectionManager->selectedBeams().empty())

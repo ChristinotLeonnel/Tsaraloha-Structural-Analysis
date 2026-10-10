@@ -573,6 +573,11 @@ private:
     std::map<int, Handle(AIS_TextLabel)> m_nodalLoadLabels;
     std::map<int, std::vector<Handle(AIS_Shape)>> m_memberLoadShapes;
     std::map<int, Handle(AIS_TextLabel)> m_memberLoadLabels;
+    /// Longueur des flèches de charges réparties au dernier rendu (palier de zoom).
+    double m_memberLoadArrowLength = 0.0;
+    double memberLoadArrowLength() const;
+    /// Caméra modifiée : charges réparties redessinées seulement si le palier de zoom change.
+    void updateMemberLoadZoomScale();
     bool m_loadsVisible = true;
     bool m_forcesVisible = true;
     bool m_momentsVisible = true;

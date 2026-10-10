@@ -17,7 +17,7 @@
 #include "../Model/StructuralClipboard.h"
 #include "../Analysis/Engine/AnalysisContext.h"
 
-namespace TSA::Model { class Model; class SupportDefinition; }
+namespace TSA::Model { class Model; class SupportDefinition; enum class LoadType; }
 namespace TSA::AI { class AIOrchestrator; }
 namespace TSA::Automation { class AutomationServer; }
 namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct NewProjectSettings; enum class ProjectTemplate; }
@@ -479,6 +479,10 @@ private:
 
     QAction* m_actionPointLoad = nullptr;
     QAction* m_actionDistLoad = nullptr;
+    QAction* m_actionTrapLoad = nullptr;        // charge linéaire (triangulaire / trapézoïdale)
+    QAction* m_actionBarPointLoad = nullptr;    // force ponctuelle sur barre
+    QAction* m_actionSurfaceLoad = nullptr;     // désactivée : non transmise aux moteurs (BUG-002)
+    QAction* m_actionSelfWeight = nullptr;      // poids propre : réglé par cas de charge
     QAction* m_actionLoadCases = nullptr;
     QAction* m_actionMeshGen = nullptr;
     QAction* m_actionAnalysisConfig = nullptr;
@@ -579,6 +583,8 @@ private slots:
     void assignSupport(const std::set<int>& nodeIds, const TSA::Model::SupportDefinition& support, const QString& label);
     void onActionPointLoad();
     void onActionDistLoad();
+    /// Fenêtre de charge sur barre ouverte sur le type demandé (barre sélectionnée présélectionnée).
+    void openMemberLoadDialog(TSA::Model::LoadType type);
     void onActionLoadCases();
     void onActionMeshGen();
     void onActionAnalysisConfig();

@@ -217,6 +217,10 @@
         <file alias="load_dist.svg">icons/modeling/load_dist.svg</file>
         <file alias="load_moment.svg">icons/modeling/load_moment.svg</file>
         <file alias="load_force_couple.svg">icons/modeling/load_force_couple.svg</file>
+        <file alias="load_trapezoid.svg">icons/modeling/load_trapezoid.svg</file>
+        <file alias="load_bar_point.svg">icons/modeling/load_bar_point.svg</file>
+        <file alias="load_surface.svg">icons/modeling/load_surface.svg</file>
+        <file alias="load_selfweight.svg">icons/modeling/load_selfweight.svg</file>
         <file alias="load_seismic.svg">icons/modeling/load_seismic.svg</file>
         <file alias="support_fixed.svg">icons/modeling/support_fixed.svg</file>
         <file alias="support_pinned.svg">icons/modeling/support_pinned.svg</file>
