@@ -48,6 +48,8 @@ namespace TSA::UI
     class CableCreationDialog;
     class SurfaceCreationDialog;
     class GridDialog;
+    class NodalLoadDialog;
+    class NewNodeDialog;
     class GridSettingsDialog;
     class WorkPlaneDialog;
     class ProjectionViewDock;
@@ -344,6 +346,10 @@ private:
     QAction* m_actionStructurePresets = nullptr;
 
     TSA::UI::BarCreationDialog* m_barDialog = nullptr;
+    // Fenêtres non modales (leur bouton « Sélectionner 3D » a besoin de la vue) : une seule à la fois.
+    QPointer<TSA::UI::NodalLoadDialog> m_nodalLoadDialog;
+    QPointer<TSA::UI::NewNodeDialog> m_newNodeDialog;
+    void closeModelessToolDialogs();
     TSA::UI::CableCreationDialog* m_cableDialog = nullptr;
     TSA::UI::SurfaceCreationDialog* m_surfaceDialog = nullptr;
     TSA::Model::StructurePresets m_presets;

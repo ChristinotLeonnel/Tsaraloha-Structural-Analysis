@@ -92,6 +92,10 @@ public:
     void requestSelection(const SelectionRequest& request);
     void completeSelection(const SelectedEntity& result);
     void cancelSelectionRequest();
+    /// Annule la requête active seulement si elle vient de sender (rappel d'annulation appelé).
+    /// À appeler dans le destructeur du demandeur, tant qu'il est encore intact : le repli sur
+    /// QObject::destroyed appelle ses rappels alors qu'il est déjà en partie détruit.
+    bool cancelSelectionRequestFrom(const QObject* sender);
 
     // Préréglages et propriétés de création
     const TSA::Model::StructurePresets& presets() const noexcept { return m_presets; }
