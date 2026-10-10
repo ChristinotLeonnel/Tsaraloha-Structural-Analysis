@@ -2,6 +2,11 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Aperçu des projets à l'endroit)
+
+### Fixed
+- BUG-066 : l'aperçu enregistré dans le .tsa (miniature de l'Explorateur, Start Center) n'est plus à l'envers.
+
 ## 2026-10-10 (Suppression des charges dans la vue 3D)
 
 ### Fixed

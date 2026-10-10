@@ -1038,6 +1038,9 @@ QImage OccView::captureViewImage(int width, int height, bool hideNavigationAids)
             QImage img(pixmap.Data(), static_cast<int>(pixmap.Width()), static_cast<int>(pixmap.Height()),
                        static_cast<int>(pixmap.SizeRowBytes()), QImage::Format_RGB888);
             QImage result = img.copy();
+            // Lecture OpenGL : les lignes sont rangées du bas vers le haut. Sans ce retournement,
+            // l'aperçu du projet (miniature de l'Explorateur, Start Center) était à l'envers (BUG-066).
+            if (!pixmap.IsTopDown()) result.flip(Qt::Vertical);
             restoreAids();
             return result;
         }
