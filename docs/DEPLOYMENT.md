@@ -54,14 +54,14 @@ python tools/verify_package.py build-ninja-release/dist/TSA
 Le script `cmake/PackageTSA.cmake` construit un dossier **propre**, `build-ninja-release/dist/<produit>`. Le
 dossier de compilation n'est jamais réutilisé. Les étapes sont les suivantes :
 
-1. **Exécutables** : produit, `tsaraloha-mcp.exe`, `tsa3d-validate.exe`, `tsa-template.exe`, fournisseur de vignettes.
+1. **Exécutables** : produit, `tsaraloha-mcp.exe`, `tsa3d-validate.exe`, `tsa-template.exe`, `tsa-mesh.exe`, fournisseur de vignettes.
 2. **Qt** : `windeployqt --release --no-translations --no-compiler-runtime --no-opengl-sw --no-system-d3d-compiler --no-quick-import`, puis `translations/qtbase_fr.qm`.
+2 bis. **Gmsh** (option `TSA_PACKAGE_GMSH`, activée par défaut) : `gmsh-4.15.dll` à côté de l'exécutable (elle n'importe que des DLL système de Windows) et `licenses/Gmsh`. **Licence GPL** : voir `docs/THIRD_PARTY_LICENSES.md`. Sans la DLL, TSA démarre et le maillage est indisponible (chargement différé). Elle est copiée avant l'étape 3, qui analyse donc aussi ses importations.
 3. **Autres DLL** :
    - seules les DLL **réellement importées** sont copiées, récursivement (lecture des tables d'import avec `dumpbin`, `cmake/RuntimeDependencies.cmake`), depuis OCCT puis les dossiers `3rdparty-vc14-64/*/bin` (Qt 5 exclu) ;
    - une DLL introuvable autre que le runtime arrête le paquet avec une erreur.
 4. **Runtime MSVC** : les DLL `Microsoft.VC*.CRT` et `OpenMP` du dossier `VCToolsRedistDir` sont copiées à côté de l'exécutable (déploiement app-local autorisé pour le « Redistributable Code » de Visual Studio). En Debug, le runtime de débogage n'est pas redistribuable : le paquet Debug ne sert qu'aux essais.
 5. **Ressources OCCT** : `Shaders`, `Textures`, `StdResource`, `SHMessage`, `XSMessage`, `UnitsAPI`, `XSTEPResource`, `TObj`.
-6 bis. **Gmsh** (option `TSA_PACKAGE_GMSH`, activée par défaut) : `gmsh-4.15.dll` à côté de l'exécutable (elle n'importe que des DLL système de Windows) et `licenses/Gmsh`. **Licence GPL** : voir `docs/THIRD_PARTY_LICENSES.md`. Sans la DLL, TSA démarre et le maillage est indisponible (chargement différé).
 6. **OpenSees** (option `TSA_PACKAGE_OPENSEES`, activée par défaut) : `engines/OpenSees/bin` (exécutable, `libiomp5md.dll`, runtime) et `lib/tcl8.6`. **Vérifiez la licence avant toute diffusion** (§6).
 7. **Données livrées** :
    - `Extensions/` ;

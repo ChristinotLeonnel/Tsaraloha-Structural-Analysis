@@ -226,13 +226,23 @@ Le chunk `OPNG` contient les ouvertures des dalles.
 À la réouverture, les paramètres et le maillage sont restitués. Si la géométrie a changé (empreinte différente), le
 maillage est signalé **obsolète** : dans la barre d'état, dans le panneau et au lancement du calcul.
 
+**Ligne de commande.** `tsa-mesh` (livré dans le paquet) maille un projet `.tsa` ou un fichier d'échange `.tsa3d`
+avec les paramètres enregistrés dans le projet, et écrit le résultat dans le format déduit de l'extension (`msh`, `vtk`,
+`unv`, `inp`, `bdf`, `mesh`) :
+
+```
+tsa-mesh <projet.tsa | modèle.tsa3d> <sortie.msh> [taille globale m] [--3d] [--quads] [--order2]
+```
+
+Codes de sortie : 0 succès ; 1 échec (fichier illisible, Gmsh indisponible, maillage refusé) ; 2 usage.
+
 ## 10. Distribution et licence
 
 **Dépendances.** La DLL `gmsh-4.15.dll` (89 Mo) n'importe que des DLL système de Windows. `tools/verify_package.py`
 le contrôle. Elle embarque statiquement OpenCASCADE, FreeType et d'autres bibliothèques : ces symboles, internes à la
 DLL, n'entrent pas en conflit avec les DLL OCCT de TSA.
 
-**Paquet.** `package_TSA` copie la DLL et `licenses/Gmsh/LICENSE.txt` et `CREDITS.txt`. `MANIFEST.json` indique
+**Paquet.** `package_TSA` copie la DLL avant l'analyse des dépendances (étape 2 bis), puis `licenses/Gmsh/LICENSE.txt` et `CREDITS.txt`. `MANIFEST.json` indique
 `gmshIncluded`.
 
 **Licence : GNU GPL v2 ou ultérieure, avec exceptions.** Distribuer TSA lié à Gmsh impose le respect de la GPL pour

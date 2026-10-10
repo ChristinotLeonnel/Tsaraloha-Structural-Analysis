@@ -70,6 +70,22 @@ else()
     message(FATAL_ERROR "windeployqt introuvable")
 endif()
 
+# --- 2 bis. Moteur de maillage Gmsh (DLL chargée en différé par TSA) --------------------------------
+# Copiée avant l'étape 3 : ses propres dépendances sont ainsi analysées comme celles des autres DLL du paquet.
+# La DLL n'importe que des DLL système de Windows (vérifié par tools/verify_package.py). Licence GPL : le
+# paquet n'est diffusable que dans le respect de la GPL (ou sous licence commerciale des auteurs de Gmsh).
+if(GMSH_DLL AND EXISTS "${GMSH_DLL}")
+    message(WARNING "Gmsh inclus : licence GNU GPL v2 ou ultérieure. Distribuer TSA avec Gmsh impose le respect de la GPL "
+                    "pour l'ensemble (ou une licence commerciale de Gmsh). Vérifier avant diffusion (docs/THIRD_PARTY_LICENSES.md) "
+                    "ou configurer -DTSA_PACKAGE_GMSH=OFF (TSA démarre alors sans maillage).")
+    file(COPY "${GMSH_DLL}" DESTINATION "${DIST_DIR}")
+    foreach(f LICENSE.txt CREDITS.txt)
+        if(EXISTS "${GMSH_LICENSE_DIR}/${f}")
+            file(COPY "${GMSH_LICENSE_DIR}/${f}" DESTINATION "${DIST_DIR}/licenses/Gmsh")
+        endif()
+    endforeach()
+endif()
+
 # --- 3. Autres DLL réellement importées (exécutables et DLL du paquet, récursivement) --------------
 tsa_runtime_search_dirs(search_dirs "${SOURCE_DIR}")
 file(GLOB pkg_dlls "${DIST_DIR}/*.dll")
@@ -81,7 +97,8 @@ tsa_copy_runtime_dependencies(
     RESULT_VAR copied
     UNRESOLVED_VAR unresolved)
 foreach(u ${unresolved})
-    if(NOT u MATCHES "^(msvcp140|vcruntime140|concrt140|vcomp140)")
+    # gmsh-* : chargée en différé ; absente seulement si le paquet est construit sans Gmsh (TSA_PACKAGE_GMSH=OFF).
+    if(NOT u MATCHES "^(msvcp140|vcruntime140|concrt140|vcomp140|gmsh-)")
         message(FATAL_ERROR "DLL requise introuvable : ${u}")
     endif()
 endforeach()
@@ -121,21 +138,6 @@ if(PACKAGE_OPENSEES AND EXISTS "${SOURCE_DIR}/thirdparty/OpenSees/bin/OpenSees.e
     foreach(d ${crt_dirs})
         file(GLOB crt "${d}/*.dll")
         file(COPY ${crt} DESTINATION "${os}/bin")
-    endforeach()
-endif()
-
-# --- 6 bis. Moteur de maillage Gmsh (DLL chargée en différé par TSA) --------------------------------
-# La DLL n'importe que des DLL système de Windows (vérifié par tools/verify_package.py). Licence GPL : le
-# paquet n'est diffusable que dans le respect de la GPL (ou sous licence commerciale des auteurs de Gmsh).
-if(GMSH_DLL AND EXISTS "${GMSH_DLL}")
-    message(WARNING "Gmsh inclus : licence GNU GPL v2 ou ultérieure. Distribuer TSA avec Gmsh impose le respect de la GPL "
-                    "pour l'ensemble (ou une licence commerciale de Gmsh). Vérifier avant diffusion (docs/THIRD_PARTY_LICENSES.md) "
-                    "ou configurer -DTSA_PACKAGE_GMSH=OFF (TSA démarre alors sans maillage).")
-    file(COPY "${GMSH_DLL}" DESTINATION "${DIST_DIR}")
-    foreach(f LICENSE.txt CREDITS.txt)
-        if(EXISTS "${GMSH_LICENSE_DIR}/${f}")
-            file(COPY "${GMSH_LICENSE_DIR}/${f}" DESTINATION "${DIST_DIR}/licenses/Gmsh")
-        endif()
     endforeach()
 endif()
 
