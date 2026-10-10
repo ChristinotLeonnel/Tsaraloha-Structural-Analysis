@@ -61,6 +61,7 @@ dossier de compilation n'est jamais réutilisé. Les étapes sont les suivantes 
    - une DLL introuvable autre que le runtime arrête le paquet avec une erreur.
 4. **Runtime MSVC** : les DLL `Microsoft.VC*.CRT` et `OpenMP` du dossier `VCToolsRedistDir` sont copiées à côté de l'exécutable (déploiement app-local autorisé pour le « Redistributable Code » de Visual Studio). En Debug, le runtime de débogage n'est pas redistribuable : le paquet Debug ne sert qu'aux essais.
 5. **Ressources OCCT** : `Shaders`, `Textures`, `StdResource`, `SHMessage`, `XSMessage`, `UnitsAPI`, `XSTEPResource`, `TObj`.
+6 bis. **Gmsh** (option `TSA_PACKAGE_GMSH`, activée par défaut) : `gmsh-4.15.dll` à côté de l'exécutable (elle n'importe que des DLL système de Windows) et `licenses/Gmsh`. **Licence GPL** : voir `docs/THIRD_PARTY_LICENSES.md`. Sans la DLL, TSA démarre et le maillage est indisponible (chargement différé).
 6. **OpenSees** (option `TSA_PACKAGE_OPENSEES`, activée par défaut) : `engines/OpenSees/bin` (exécutable, `libiomp5md.dll`, runtime) et `lib/tcl8.6`. **Vérifiez la licence avant toute diffusion** (§6).
 7. **Données livrées** :
    - `Extensions/` ;

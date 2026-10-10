@@ -402,7 +402,29 @@ void CommandCatalog::initializeStandardCatalog() {
                    "", CommandCategory::Loads});
   registerCommand({"cmd.loadcases.manager", "Cas de charges et combinaisons", "Gestionnaire des cas de charges et combinaisons", "Q, C",
                    "", CommandCategory::LoadCases});
-  registerCommand({"cmd.analysis.mesh", "Générer le maillage EF", "Estimation du maillage (aucun maillage n'est généré : voir docs/DISPLAY_MODES.md)", "",
+  registerCommand({"cmd.mesh.settings", "Paramètres du maillage", "Panneau de paramétrage du maillage (Gmsh)", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.preview", "Aperçu du maillage", "Maillage prévisionnel sans remplacer celui du projet", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.regenerate", "Régénérer le maillage", "Régénérer avec les paramètres enregistrés", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.quality", "Vérifier la qualité du maillage", "Contrôle de qualité et liste des problèmes", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.show", "Afficher le maillage", "Afficher le maillage du projet dans la vue 3D", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.local", "Maillage local de la sélection", "Paramètres de maillage des objets sélectionnés", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.zone", "Raffinement local", "Zone de raffinement autour des nœuds sélectionnés", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.export", "Exporter le maillage", "Exporter le maillage (msh, vtk, unv, inp, bdf, mesh)", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.import", "Importer un maillage", "Importer un maillage (Gmsh et formats lus par Gmsh)", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.clear", "Supprimer le maillage", "Supprimer le maillage du projet (paramètres conservés)", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.model.slab_openings", "Ouvertures de la dalle", "Trémies de la dalle sélectionnée", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.analysis.mesh", "Générer le maillage", "Générer le maillage du projet avec Gmsh (enregistré, qualité contrôlée)", "",
                    ":/icons/analysis_mesh.svg", CommandCategory::Mesh});
   registerCommand({"cmd.analysis.solve", "Lancer le calcul", "Lancer le calcul structurel (validations habituelles)", "F5",
                    ":/icons/analysis_run.svg", CommandCategory::Analysis});

@@ -1,6 +1,7 @@
 #include "Dock/AnalysisDataDock.h"
 #include "../Analysis/AnalysisController.h"
 #include "MainWindow.h"
+#include "Mesh/MeshController.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "../Model/Model.h"
@@ -589,52 +590,7 @@ void MainWindow::onActionLoadCases()
     dlg.exec();
 }
 
-void MainWindow::onActionMeshGen()
-{
-    if (!m_model) return;
-
-    if (m_model->nodes().empty())
-    {
-        QMessageBox::information(this, tr("Maillage"), tr("Le modèle est vide. Ajoutez des éléments avant de générer le maillage."));
-        return;
-    }
-
-    bool ok = false;
-    double hMesh = QInputDialog::getDouble(this, tr("Générateur de Maillage EF"), tr("Taille cible des mailles h (m) :"), 0.50, 0.05, 5.0, 2, &ok);
-    if (!ok) return;
-
-    size_t beamElems = m_model->beams().size() * 4;
-    size_t colElems = m_model->columns().size() * 4;
-    size_t slabElems = m_model->slabs().size() * 16;
-    size_t totalElems = beamElems + colElems + slabElems;
-    size_t meshNodes = m_model->nodes().size() + totalElems * 2;
-    size_t dofs = meshNodes * 6;
-
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("--- ESTIMATION DU MAILLAGE ÉLÉMENTS FINIS (h = %1 m) ---").arg(hMesh), "SYS");
-        m_consoleDock->appendLog(tr("  - Éléments 1D (Poutres & Poteaux Hermite) : %1").arg(beamElems + colElems), "INFO");
-        m_consoleDock->appendLog(tr("  - Éléments 2D (Dalles / Coques DKT)       : %1").arg(slabElems), "INFO");
-        m_consoleDock->appendLog(tr("  - Nœuds du maillage discrétisé             : %1").arg(meshNodes), "INFO");
-        m_consoleDock->appendLog(tr("  - Degrés de liberté (DDL) estimés          : %1").arg(dofs), "INFO");
-        m_consoleDock->appendLog(tr("  ! Aucun maillage n'est réellement généré : dalles et voiles ne sont pas transmis au calcul."), "WARN");
-    }
-
-    QMessageBox::information(this, tr("Maillage Éléments Finis"),
-        tr("Estimation indicative (aucun maillage n'est généré) :\n\n"
-           "• Éléments finis estimés : %1\n"
-           "• Nœuds de discrétisation : %2\n"
-           "• Degrés de liberté (DDL) : %3\n"
-           "• Discrétisation spatiale : h = %4 m\n\n"
-           "Le mailleur de dalles / voiles n'est pas encore disponible : ces éléments "
-           "ne participent pas au calcul OpenSees.")
-        .arg(totalElems).arg(meshNodes).arg(dofs).arg(hMesh));
-
-    if (m_statusInfo)
-    {
-        m_statusInfo->setText(tr("Maillage EF estimé : %1 éléments, %2 DDL (non généré)").arg(totalElems).arg(dofs));
-    }
-}
+// onActionMeshGen : MainWindow_Mesh.cpp (génération Gmsh)
 
 void MainWindow::onActionAnalysisConfig()
 {
@@ -663,6 +619,7 @@ void MainWindow::storeAnalysisContextInModel()
 
 void MainWindow::restoreAnalysisContextFromModel()
 {
+    if (m_meshController) m_meshController->setModel(m_model);   // maillage du projet (chunk MESH)
     if (m_analysis && !m_analysis->restoreContextFromModel() && m_consoleDock)
         m_consoleDock->appendLog(tr("Paramètres d'analyse du projet illisibles : réglages par défaut."), "WARN");
 }
@@ -727,8 +684,12 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
         }
     }
 
+    // 1 ter. Maillage généré (Gmsh) → subdivision des barres, après contrôle de compatibilité avec le moteur.
+    AnalysisContext meshedContext = context;
+    if (!applyMeshToAnalysis(meshedContext, *engine)) return false;
+
     // 2. Préparation : portée → modèle d'analyse → validation (générique + moteur).
-    const PreparedAnalysis prepared = m_analysis->prepare(context);
+    const PreparedAnalysis prepared = m_analysis->prepare(meshedContext);
     if (m_consoleDock)
     {
         m_consoleDock->appendLog(tr("--- CALCUL %1 — %2 ---").arg(engineName.toUpper(),
@@ -797,7 +758,7 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
         m_analysis->cancel();
         if (progress) progress->setLabelText(tr("Annulation du calcul…"));
     });
-    if (m_analysis->start(context, prepared)) loop.exec();
+    if (m_analysis->start(meshedContext, prepared)) loop.exec();
     else message = tr("Le calcul n'a pas pu être lancé.");
     disconnect(logConn);
     disconnect(progressConn);

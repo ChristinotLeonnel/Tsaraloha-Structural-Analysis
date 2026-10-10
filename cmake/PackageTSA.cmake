@@ -77,7 +77,7 @@ tsa_copy_runtime_dependencies(
     BINARIES ${dist_binaries} ${pkg_dlls}
     DESTINATION "${DIST_DIR}"
     SEARCH_DIRS ${search_dirs}
-    EXCLUDE_REGEXES "^[Qq]t6" "^msvcp140" "^vcruntime140" "^concrt140" "^vccorlib140" "^vcomp140"
+    EXCLUDE_REGEXES "^[Qq]t6" "^gmsh-" "^msvcp140" "^vcruntime140" "^concrt140" "^vccorlib140" "^vcomp140"
     RESULT_VAR copied
     UNRESOLVED_VAR unresolved)
 foreach(u ${unresolved})
@@ -124,6 +124,21 @@ if(PACKAGE_OPENSEES AND EXISTS "${SOURCE_DIR}/thirdparty/OpenSees/bin/OpenSees.e
     endforeach()
 endif()
 
+# --- 6 bis. Moteur de maillage Gmsh (DLL chargée en différé par TSA) --------------------------------
+# La DLL n'importe que des DLL système de Windows (vérifié par tools/verify_package.py). Licence GPL : le
+# paquet n'est diffusable que dans le respect de la GPL (ou sous licence commerciale des auteurs de Gmsh).
+if(GMSH_DLL AND EXISTS "${GMSH_DLL}")
+    message(WARNING "Gmsh inclus : licence GNU GPL v2 ou ultérieure. Distribuer TSA avec Gmsh impose le respect de la GPL "
+                    "pour l'ensemble (ou une licence commerciale de Gmsh). Vérifier avant diffusion (docs/THIRD_PARTY_LICENSES.md) "
+                    "ou configurer -DTSA_PACKAGE_GMSH=OFF (TSA démarre alors sans maillage).")
+    file(COPY "${GMSH_DLL}" DESTINATION "${DIST_DIR}")
+    foreach(f LICENSE.txt CREDITS.txt)
+        if(EXISTS "${GMSH_LICENSE_DIR}/${f}")
+            file(COPY "${GMSH_LICENSE_DIR}/${f}" DESTINATION "${DIST_DIR}/licenses/Gmsh")
+        endif()
+    endforeach()
+endif()
+
 # --- 7. Données livrées -----------------------------------------------------------------------------
 if(EXISTS "${SOURCE_DIR}/Extensions")
     file(COPY "${SOURCE_DIR}/Extensions" DESTINATION "${DIST_DIR}")
@@ -137,7 +152,7 @@ foreach(m ${mods})
     endif()
 endforeach()
 file(MAKE_DIRECTORY "${DIST_DIR}/docs")
-foreach(doc shortcut.txt TSA3D.md DEPLOYMENT.md SDK.md TEMPLATES.md SHORTCUTS.md)
+foreach(doc shortcut.txt TSA3D.md DEPLOYMENT.md SDK.md TEMPLATES.md SHORTCUTS.md MESH.md)
     if(EXISTS "${SOURCE_DIR}/docs/${doc}")
         file(COPY "${SOURCE_DIR}/docs/${doc}" DESTINATION "${DIST_DIR}/docs")
     endif()
@@ -224,9 +239,15 @@ if(EXISTS "${DIST_DIR}/engines/OpenSees/bin/OpenSees.exe")
 else()
     set(os_json false)
 endif()
+file(GLOB _gmsh_in_dist "${DIST_DIR}/gmsh-*.dll")
+if(_gmsh_in_dist)
+    set(gmsh_json true)
+else()
+    set(gmsh_json false)
+endif()
 list(LENGTH all_files nfiles)
 string(JOIN ",\n" body ${entries})
 file(WRITE "${DIST_DIR}/MANIFEST.json"
-"{\n  \"product\": \"${PRODUCT}\",\n  \"version\": \"${VERSION}\",\n  \"configuration\": \"${CONFIG}\",\n  \"generated\": \"${now}\",\n  \"files\": ${nfiles},\n  \"totalBytes\": ${total},\n  \"openSeesIncluded\": ${os_json},\n  \"entries\": [\n${body}\n  ]\n}\n")
+"{\n  \"product\": \"${PRODUCT}\",\n  \"version\": \"${VERSION}\",\n  \"configuration\": \"${CONFIG}\",\n  \"generated\": \"${now}\",\n  \"files\": ${nfiles},\n  \"totalBytes\": ${total},\n  \"openSeesIncluded\": ${os_json},\n  \"gmshIncluded\": ${gmsh_json},\n  \"entries\": [\n${body}\n  ]\n}\n")
 math(EXPR mb "${total} / 1048576")
 message(STATUS "=== Paquet terminé : ${nfiles} fichiers, ${mb} Mo — vérifier : python tools/verify_package.py \"${DIST_DIR}\" ===")

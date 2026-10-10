@@ -16,9 +16,29 @@ toute diffusion, en particulier commerciale.
 | OpenVR | 1.14.15 | `openvr_api.dll` | BSD 3 clauses (Valve) | **absent du SDK : à ajouter** | mention et texte de licence |
 | jemalloc | (SDK OCCT) | `jemalloc.dll` | BSD 2 clauses | **absent du SDK : à ajouter** | mention et texte de licence |
 | Runtime Microsoft Visual C++ | 14.x (VS 2026) | `msvcp140*.dll`, `vcruntime140*.dll`, `concrt140.dll`, `vccorlib140.dll`, `vcomp140.dll` | licence Visual Studio, « Distributable Code » | référence ci-contre | redistribution app-local autorisée sans modification ; aucune version Debug distribuée |
+| **Gmsh** | 4.15.2 (SDK Windows64) | `gmsh-4.15.dll` (moteur de maillage, chargé en différé) | **GNU GPL v2 ou ultérieure**, avec exceptions (Netgen, METIS, OpenCASCADE, ParaView) | `licenses/Gmsh/LICENSE.txt`, `CREDITS.txt` | **voir ci-dessous** : la diffusion de TSA avec Gmsh impose la GPL pour l'ensemble, ou une licence commerciale |
 | OpenSees | (binaire de `thirdparty/OpenSees`) | `engines/OpenSees/bin/OpenSees.exe` | © The Regents of the University of California : usage **éducatif, de recherche et non lucratif** sans redevance ; **usage commercial soumis à accord** | **absent du dépôt : à ajouter** | **voir ci-dessous** |
 | Intel OpenMP | (fourni avec OpenSees) | `engines/OpenSees/bin/libiomp5md.dll` | licence de redistribution Intel | **absent : à ajouter** | redistribution sans modification |
 | Tcl | 8.6 | `engines/OpenSees/lib/tcl8.6` (scripts) | licence Tcl/Tk (type BSD) | **absent : à ajouter** | mention et texte |
+
+## Gmsh : licence GPL, point bloquant pour une diffusion non libre
+
+Le moteur de maillage, Gmsh, est distribué sous **GNU GPL version 2 ou ultérieure**. TSA appelle son API (DLL
+`gmsh-4.15.dll`, chargée en différé). Selon l'interprétation usuelle de la GPL, un programme lié à une
+bibliothèque GPL et distribué avec elle forme une œuvre combinée, qui doit être distribuée sous GPL : sources
+fournies, mêmes libertés.
+
+La DLL Gmsh embarque statiquement OpenCASCADE, FreeType, OpenBLAS, HDF5, MED, CGNS, FLTK… La licence et les crédits
+de Gmsh couvrent cette distribution (`CREDITS.txt`).
+
+Avant toute diffusion de TSA avec Gmsh, choisir l'une des options :
+
+1. **distribuer TSA sous une licence compatible avec la GPL**, avec ses sources ;
+2. **obtenir une licence commerciale** auprès des auteurs de Gmsh ;
+3. **diffuser sans Gmsh** (`-DTSA_PACKAGE_GMSH=OFF`) : TSA démarre, mais le maillage est indisponible. L'utilisateur peut éventuellement installer lui-même la DLL, ce qui ne change pas l'analyse juridique et doit être vérifié.
+
+Le script de packaging affiche cet avertissement à chaque paquet qui inclut Gmsh. **Ce point n'est pas tranché par le
+développement : c'est une décision de l'éditeur.**
 
 ## OpenSees : point bloquant pour une diffusion commerciale
 

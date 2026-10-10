@@ -75,6 +75,13 @@ struct RibbonActions
 
     // 5. Analyse & Calcul
     QAction* actionMeshGen = nullptr;
+    QAction* actionMeshSettings = nullptr;
+    QAction* actionMeshPreview = nullptr;
+    QAction* actionMeshQuality = nullptr;
+    QAction* actionMeshRegenerate = nullptr;
+    QAction* actionMeshLocal = nullptr;
+    QAction* actionMeshZone = nullptr;
+    QAction* actionMeshShow = nullptr;
     QAction* actionAnalysisConfig = nullptr;
     QAction* actionRunSolve = nullptr;
 

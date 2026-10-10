@@ -64,6 +64,7 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Shortcuts.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Tsa3d.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Reports.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_Mesh.cpp
     ${TSA_ROOT}/src/UI/MainWindow_ModelingTools.cpp
 )
 
@@ -186,6 +187,12 @@ set(UI_EXTENSIONMANAGERDIALOG_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/ModulesDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/ReportTemplatesDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/ReportTemplatesDialog.cpp
+    ${TSA_ROOT}/src/UI/Mesh/MeshController.h
+    ${TSA_ROOT}/src/UI/Mesh/MeshController.cpp
+    ${TSA_ROOT}/src/UI/Mesh/MeshSettingsPanel.h
+    ${TSA_ROOT}/src/UI/Mesh/MeshSettingsPanel.cpp
+    ${TSA_ROOT}/src/UI/Mesh/MeshDialogs.h
+    ${TSA_ROOT}/src/UI/Mesh/MeshDialogs.cpp
 )
 
 # --- Gestionnaire centralisé des fenêtres et disposition (Window Manager) — [CORE] ---
@@ -371,6 +378,8 @@ set(VIEWER_MAIN_SOURCES
     ${TSA_ROOT}/src/Viewer/OccView.h
     ${TSA_ROOT}/src/Viewer/OccView.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Shapes.cpp
+    ${TSA_ROOT}/src/Viewer/MeshOverlay.h
+    ${TSA_ROOT}/src/Viewer/MeshOverlay.cpp
     ${TSA_ROOT}/src/Viewer/OccView_DisplayMode.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Navigation.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Events.cpp
@@ -1287,6 +1296,8 @@ function(tsaraloha_add_package_target target binaries)
             -DWINDEPLOYQT_EXECUTABLE=${WINDEPLOYQT_EXECUTABLE}
             -DVCREDIST_DIR=${TSA_VCREDIST_DIR}
             -DPACKAGE_OPENSEES=${TSA_PACKAGE_OPENSEES}
+            "-DGMSH_DLL=$<$<BOOL:${TSA_PACKAGE_GMSH}>:${TSA_GMSH_DLL}>"
+            "-DGMSH_LICENSE_DIR=${TSA_GMSH_LICENSE_DIR}"
             "-DEXTRA_EXECUTABLES=${_extra}"
             -P "${TSA_ROOT}/cmake/PackageTSA.cmake"
         DEPENDS ${target}

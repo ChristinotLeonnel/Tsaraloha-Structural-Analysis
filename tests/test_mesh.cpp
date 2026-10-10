@@ -13,6 +13,12 @@
 #include "Mesh/MeshQuality.h"
 #include "Mesh/Solvers/OpenSeesMeshAdapter.h"
 #include "Mesh/SurfaceLoads.h"
+#include "UI/Mesh/MeshController.h"
+#include "UI/Mesh/MeshSettingsPanel.h"
+
+#include <QComboBox>
+#include <QEventLoop>
+#include <QTimer>
 
 #include <QTemporaryDir>
 
@@ -563,6 +569,63 @@ bool runSuite_Mesh(int& passed)
         SurfacePressure missing { "SL999", 1.0 };
         TEST_CHECK(!distributeSurfaceLoad(r.mesh, g, missing).ok, "Test 298: surface inconnue : charge non convertie, signalée");
         std::cout << "[PASS] Test 298: Charges surfaciques" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 299 : contrôleur et panneau — génération en arrière-plan (interface réactive), aperçu, obsolescence
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(30, 0, 0), c = m.addNode(30, 20, 0), d = m.addNode(0, 20, 0);
+        m.addSlab({ a, b, c, d }, 0.25);
+        TSA::UI::MeshController ctl;
+        ctl.setModel(&m);
+        ctl.settings().global.globalSize = 0.12;
+        ctl.settings().global.mesh3D = false;
+        ctl.settings().global.preferStructured = false;   // maillage non structuré : génération plus longue
+        ctl.commitSettings();
+        int ticks = 0;
+        QTimer timer;
+        QObject::connect(&timer, &QTimer::timeout, [&] { ++ticks; });
+        timer.start(5);
+        bool done = false, okGen = false;
+        QEventLoop loop;
+        QObject::connect(&ctl, &TSA::UI::MeshController::generationFinished, [&](bool, bool ok, const QString&) {
+            done = true;
+            okGen = ok;
+            loop.quit();
+        });
+        QTimer::singleShot(120000, &loop, &QEventLoop::quit);
+        TEST_CHECK(ctl.generate(false) && ctl.busy(), "Test 299: génération lancée dans un thread de travail");
+        loop.exec();
+        timer.stop();
+        TEST_CHECK(done && okGen && ctl.hasMesh() && ctl.project().mesh.countByDimension(2) > 30000,
+                   "Test 299: maillage de " << ctl.project().mesh.countByDimension(2) << " éléments 2D généré");
+        TEST_CHECK(ticks > 3, "Test 299: interface réactive pendant la génération (" << ticks << " événements traités)");
+        TEST_CHECK(!m.meshProjectJson().empty() && !ctl.stale() && ctl.quality().elements2D == ctl.project().mesh.countByDimension(2),
+                   "Test 299: maillage enregistré dans le projet, à jour, qualité contrôlée");
+        const auto elements = ctl.project().mesh.elements.size();
+        ctl.settings().global.globalSize = 2.0;
+        done = false;
+        TEST_CHECK(ctl.generate(true), "Test 299: aperçu lancé");
+        loop.exec();
+        TEST_CHECK(done && ctl.preview() && ctl.preview()->elements.size() < elements && ctl.project().mesh.elements.size() == elements,
+                   "Test 299: aperçu distinct, maillage du projet inchangé");
+        ctl.discardPreview();
+        m.getNode(c)->setCoordinates(31, 20, 0);
+        TEST_CHECK(ctl.stale() && TSA::UI::meshStatusText(ctl).contains(QStringLiteral("OBSOLÈTE")), "Test 299: géométrie modifiée → maillage signalé obsolète");
+        TSA::UI::MeshSettingsPanel panel(&ctl);
+        int algos = 0, volumes = 0;
+        for (auto* combo : panel.findChildren<QComboBox*>())
+        {
+            for (int i = 0; i < combo->count(); ++i)
+            {
+                algos += combo->itemText(i) == QStringLiteral("Frontal-Delaunay pour quadrangles");
+                volumes += combo->itemText(i).startsWith(QStringLiteral("Hexaèdres (transfini"));
+            }
+        }
+        TEST_CHECK(algos == 1 && volumes == 1, "Test 299: panneau : algorithmes Gmsh proposés, hexaèdres réservés aux volumes transfinis");
+        std::cout << "[PASS] Test 299: Contrôleur et panneau de maillage" << std::endl;
         ++passed;
     }
     return true;

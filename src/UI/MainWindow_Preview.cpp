@@ -45,6 +45,7 @@ void MainWindow::onModelRevisionPolled()
     if (rev == m_lastPolledRevision) return;
     m_lastPolledRevision = rev;
     schedulePreviewCapture();
+    onMeshModelChanged();
     if (m_resultsDock) m_resultsDock->updateNodeStats();
 }
 

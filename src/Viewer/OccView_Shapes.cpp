@@ -1,3 +1,4 @@
+#include "../Mesh/MeshGeometry.h"
 #include "OccView.h"
 #include "SelectionManager.h"
 #include "ResultsVisualManager.h"
@@ -1250,7 +1251,13 @@ void OccView::updateSlabShape(int slabId, bool redrawImmediately)
     if (contourNodes.size() < 3)
         return;
 
-    TopoDS_Shape shape = TSA::Geometry::SlabGeometry::createSlabShape(contourNodes, slab->thickness());
+    std::vector<std::vector<gp_Pnt>> holes;
+    for (const auto& h : TSA::Mesh::slabOpenings3D(*m_model, *slab))
+    {
+        holes.emplace_back();
+        for (const auto& p : h) holes.back().emplace_back(p.x, p.y, p.z);
+    }
+    TopoDS_Shape shape = TSA::Geometry::SlabGeometry::createSlabShape(contourNodes, slab->thickness(), holes);
 
     if (!shape.IsNull())
     {

@@ -396,6 +396,18 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
     auto* meshPanel = new RibbonPanel(QObject::tr("Discrétisation"), tab);
     auto* actGenMesh = acts.actionMeshGen ? acts.actionMeshGen : new QAction(QIcon(":/icons/mesh_generate.svg"), QObject::tr("Générer Maillage"), parentWindow);
     meshPanel->addLargeAction(actGenMesh);
+    std::vector<QAction*> meshCol1, meshCol2;
+    for (QAction* a : { acts.actionMeshSettings, acts.actionMeshPreview, acts.actionMeshQuality })
+        if (a) meshCol1.push_back(a);
+    for (QAction* a : { acts.actionMeshRegenerate, acts.actionMeshLocal, acts.actionMeshZone })
+        if (a) meshCol2.push_back(a);
+    if (!meshCol1.empty())
+    {
+        meshPanel->addInternalSeparator();
+        meshPanel->addSmallColumn(meshCol1);
+    }
+    if (!meshCol2.empty()) meshPanel->addSmallColumn(meshCol2);
+    if (acts.actionMeshShow) meshPanel->addSmallColumn({ acts.actionMeshShow });
     tab->addPanel(meshPanel);
 
     // Groupe 2 : Résolution & Solveur EF
