@@ -6,6 +6,7 @@
 
 #include "MemberLoad.h"
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -34,5 +35,11 @@ bool hasEquivalentMemberLoad(const Model& model, const MemberLoad& load);
 std::vector<int> applyMemberLoad(Model& model, const MemberLoad& prototype,
                                  const std::vector<MemberLoadTarget>& targets,
                                  const std::string& undoLabel, std::string* error = nullptr);
+
+/// Supprime les charges nodales et sur barres désignées (sélection de la vue 3D). Les identifiants
+/// introuvables sont ignorés. Une seule entrée Annuler si au moins une charge existe, une notification
+/// par charge supprimée ; retourne le nombre de charges supprimées (0 : modèle inchangé).
+int removeLoads(Model& model, const std::set<int>& nodalLoadIds, const std::set<int>& memberLoadIds,
+                const std::string& undoLabel);
 
 } // namespace TSA::Model

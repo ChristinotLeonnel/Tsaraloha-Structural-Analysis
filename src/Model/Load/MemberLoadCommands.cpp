@@ -89,4 +89,28 @@ std::vector<int> applyMemberLoad(Model& model, const MemberLoad& prototype,
     return ids;
 }
 
+int removeLoads(Model& model, const std::set<int>& nodalLoadIds, const std::set<int>& memberLoadIds,
+                const std::string& undoLabel)
+{
+    std::vector<int> nodal, member;
+    for (int id : nodalLoadIds)
+        if (model.loadManager().getNodalLoad(id)) nodal.push_back(id);
+    for (int id : memberLoadIds)
+        if (model.loadManager().getMemberLoad(id)) member.push_back(id);
+    if (nodal.empty() && member.empty()) return 0;
+
+    model.pushUndoState(undoLabel);
+    for (int id : nodal)
+    {
+        model.loadManager().removeNodalLoad(id);
+        model.notifyNodalLoadRemoved(id);
+    }
+    for (int id : member)
+    {
+        model.loadManager().removeMemberLoad(id);
+        model.notifyMemberLoadRemoved(id);
+    }
+    return static_cast<int>(nodal.size() + member.size());
+}
+
 } // namespace TSA::Model
