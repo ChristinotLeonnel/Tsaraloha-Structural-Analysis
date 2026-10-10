@@ -54,39 +54,15 @@ void projectSupport(const std::array<bool, 3>& fixed, const std::array<double, 3
     if (outFixed) outK = 0.0;
 }
 
-/// Direction globale unitaire d'une charge sur barre (même sémantique que LoadResolver) et
-/// signe de l'intensité (la gravité est toujours descendante).
+/// Direction unitaire de la charge : convention unique de LoadResolver (intensité 1).
 gp_Vec memberLoadDirection(const TSA::Model::MemberLoad& load, const gp_Pnt& p1, const gp_Pnt& p2, double rotation)
 {
-    using TSA::Model::LoadDirection;
-    if (load.coordSystem() == TSA::Model::LoadCoordSystem::Local)
-    {
-        switch (load.direction())
-        {
-        case LoadDirection::LocalX: return LoadResolver::localVectorToGlobal(1, 0, 0, p1, p2, rotation);
-        case LoadDirection::LocalY: return LoadResolver::localVectorToGlobal(0, 1, 0, p1, p2, rotation);
-        case LoadDirection::LocalZ: return LoadResolver::localVectorToGlobal(0, 0, 1, p1, p2, rotation);
-        default: return LoadResolver::localVectorToGlobal(0, 0, -1, p1, p2, rotation);
-        }
-    }
-    switch (load.direction())
-    {
-    case LoadDirection::GlobalX: return gp_Vec(1, 0, 0);
-    case LoadDirection::GlobalY: return gp_Vec(0, 1, 0);
-    case LoadDirection::GlobalZ: return gp_Vec(0, 0, 1);
-    default: return gp_Vec(0, 0, -1);   // Gravity
-    }
+    return LoadResolver::memberLoadVector(load, 1.0, p1, p2, rotation);
 }
 
-/// LoadResolver applique |q| (charge descendante / transversale par défaut) quand la direction
-/// n'est pas l'un des axes explicites du repère choisi.
 bool usesAbsoluteIntensity(const TSA::Model::MemberLoad& load)
 {
-    using TSA::Model::LoadDirection;
-    const auto d = load.direction();
-    if (load.coordSystem() == TSA::Model::LoadCoordSystem::Local)
-        return d != LoadDirection::LocalX && d != LoadDirection::LocalY && d != LoadDirection::LocalZ;
-    return d != LoadDirection::GlobalX && d != LoadDirection::GlobalY && d != LoadDirection::GlobalZ;
+    return LoadResolver::usesMagnitudeOnly(load);
 }
 } // namespace
 
@@ -219,8 +195,10 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
         l.element = el->tag;
         if (ml.type() == LoadType::MemberUniform)
         {
-            l.a = 0.0;
-            l.b = L;
+            // Intervalle commun aux moteurs et au rendu (toute la barre si non précisé).
+            const auto range = ml.appliedRange(L);
+            l.a = range.first;
+            l.b = range.second;
             l.px1 = l.px2 = ex * q1;
             l.py1 = l.py2 = ey * q1;
         }

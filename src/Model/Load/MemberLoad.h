@@ -3,6 +3,7 @@
 #include "LoadEnums.h"
 #include <string>
 #include <cmath>
+#include <utility>
 
 namespace TSA::Model
 {
@@ -169,6 +170,30 @@ public:
 
     MemberTargetType targetType() const noexcept { return m_targetType; }
     void setTargetType(MemberTargetType t) noexcept { m_targetType = t; }
+
+    // --- Règles communes (moteurs de calcul, rendu, validation) ------------------------------
+    /// Intervalle chargé [a, b] en mètres depuis le nœud i, borné à [0, L] :
+    ///  - ponctuelle : a = b = x1 ;
+    ///  - linéaire : [x1, x2] ; x2 <= x1 signifie « jusqu'au nœud j » (lecture historique des moteurs) ;
+    ///  - uniforme : [x1, x2] si x2 > x1, sinon toute la barre (anciens fichiers : x1 = x2 = 0).
+    /// Positions relatives (0..1) converties en mètres.
+    std::pair<double, double> appliedRange(double length) const;
+    /// Vrai si la charge répartie couvre toute la barre (à 1e-9 L près).
+    bool coversFullLength(double length) const;
+    /// Intensité signée à l'abscisse s (m) : q1 pour uniforme et ponctuelle ; interpolation linéaire
+    /// de q1 (en a) à q2 (en b) pour une charge linéaire. Le sens physique est donné par
+    /// LoadResolver::memberLoadVector.
+    double intensityAt(double s, double length) const;
+    /// Message d'erreur en français, vide si la charge est valide pour une barre de longueur L :
+    /// valeurs finies, intensité non nulle, positions dans la barre, intervalle non vide.
+    std::string validate(double length) const;
+    /// Repère cohérent avec la direction : local pour un axe local, global sinon (Gravité comprise).
+    /// Évite les combinaisons « axe local en repère global » que les moteurs liraient comme Gravité.
+    static LoadCoordSystem coordSystemFor(LoadDirection direction) noexcept
+    {
+        return (direction == LoadDirection::LocalX || direction == LoadDirection::LocalY
+                || direction == LoadDirection::LocalZ) ? LoadCoordSystem::Local : LoadCoordSystem::Global;
+    }
 
 private:
     int m_id = 0;

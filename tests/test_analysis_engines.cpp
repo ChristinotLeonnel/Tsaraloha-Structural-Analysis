@@ -752,5 +752,39 @@ bool runSuite_Engines(int& passed)
         std::cout << "[PASS] Test 206: Modèle modifié pendant un calcul en tâche de fond" << std::endl;
         ++passed;
     }
+
+    // -------------------------------------------------------------------------
+    // TEST 212 : charge uniforme sur une partie de la barre transmise au calcul sur son intervalle
+    // (avant correction : OpenSees appliquait beamUniform sur toute la barre, Custom2D aussi).
+    // -------------------------------------------------------------------------
+    {
+        Model beam;
+        GridManager gm;
+        const int s = beam.addNode(0, 0, 0), e = beam.addNode(6, 0, 0);
+        beam.getNode(s)->setSupport(SupportDefinition::fixed());
+        beam.getNode(e)->setSupport(SupportDefinition::pinned());   // rotations libres (OpenSees refuse un système sans DDL)
+        const int bm = beam.addBar(s, e, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        TSA::Model::MemberLoad partial = TSA::Model::MemberLoad::uniform(0, bm, 1, 10.0);
+        partial.setX1(1.0);
+        partial.setX2(3.0);
+        beam.loadManager().addMemberLoad(partial);
+
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext ctx;
+        ctx.engineId = "opensees";
+        ctx.common.includeSelfWeight = false;
+        const auto run = mgr.run(ctx, mgr.prepare(beam, &gm, ctx));
+        TEST_CHECK(run.success, "Test 212: calcul OpenSees (" << run.message << ") | "
+                   << run.results.journalLog().substr(run.results.journalLog().size() > 3000 ? run.results.journalLog().size() - 3000 : 0));
+        TEST_CHECK(std::abs(run.results.equilibrium().reactionFz - 20.0) < 1e-6,
+                   "Test 212: 10 kN/m sur [1, 3] m → réaction 20 kN (" << run.results.equilibrium().reactionFz << ")");
+        // Encastrée en i, articulée en j, charge proche de i : réaction plus forte en i.
+        const auto ri = run.results.nodeReaction(s), rj = run.results.nodeReaction(e);
+        TEST_CHECK(ri.rz > rj.rz && rj.rz > 0.0, "Test 212: répartition des réactions cohérente avec l'intervalle");
+        std::cout << "[PASS] Test 212: Charge uniforme partielle transmise au calcul" << std::endl;
+        ++passed;
+    }
     return true;
 }
