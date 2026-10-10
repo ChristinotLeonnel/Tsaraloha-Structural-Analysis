@@ -822,9 +822,10 @@ RibbonTab* RibbonBuilder::buildToolsTab(RibbonBar* bar, const RibbonActions& act
     }
 
     // Documentation & Aide
-    if (acts.actionHelp || acts.actionShortcuts || acts.actionAbout)
+    if (acts.actionHelp || acts.actionOnlineDocs || acts.actionShortcuts || acts.actionAbout)
     {
         auto* helpPanel = new RibbonPanel(QObject::tr("Documentation"), tab);
+        if (acts.actionOnlineDocs) helpPanel->addLargeAction(acts.actionOnlineDocs);
         if (acts.actionHelp) helpPanel->addLargeAction(acts.actionHelp);
 
         std::vector<QAction*> helpCol;

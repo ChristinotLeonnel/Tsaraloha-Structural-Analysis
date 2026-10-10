@@ -1,4 +1,5 @@
 #include "CableCreationDialog.h"
+#include "../HelpLauncher.h"
 #include <QEvent>
 #include "../../Model/Model.h"
 #include "../../Model/MaterialLibrary.h"
@@ -246,6 +247,8 @@ void CableCreationDialog::setupUi()
     btnLayout->setSpacing(6);
 
     m_btnHelp = new QPushButton(tr("Aide"), this);
+    m_btnHelp->setObjectName(QStringLiteral("helpButton"));
+    m_btnHelp->setProperty("helpTopic", QStringLiteral("model.cables"));
     m_btnHelp->setFixedWidth(60);
 
     m_btnAdd = new QPushButton(tr("Ajouter"), this);
@@ -642,6 +645,8 @@ void CableCreationDialog::loadFromCable(const TSA::Model::Cable& cable)
 
 void CableCreationDialog::onHelpClicked()
 {
+    // Documentation en ligne ; l'aide locale ci-dessous reste le repli d'un produit sans site d'aide.
+    if (TSA::UI::openHelpTopic(this, QStringLiteral("model.cables")) != TSA::UI::HelpOpenResult::NotConfigured) return;
     QMessageBox::information(this, tr("Aide - Câbles & Systèmes de Tension"),
         tr("<b>Élément Câble (1D) :</b><br><br>"
            "• <b>Section :</b> Section circulaire définie par son diamètre nominal Ø et son aire métallique A.<br>"

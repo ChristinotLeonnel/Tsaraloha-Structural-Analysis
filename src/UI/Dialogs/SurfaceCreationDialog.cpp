@@ -1,4 +1,5 @@
 #include "SurfaceCreationDialog.h"
+#include "../HelpLauncher.h"
 #include <QEvent>
 #include "App/ProductInfo.h"
 #include "../../Model/Model.h"
@@ -246,6 +247,8 @@ void SurfaceCreationDialog::setupUi()
     m_btnClose->setIcon(QIcon(":/icons/cancel.svg"));
 
     m_btnHelp = new QPushButton(tr("Aide"), this);
+    m_btnHelp->setObjectName(QStringLiteral("helpButton"));
+    m_btnHelp->setProperty("helpTopic", QStringLiteral("model.surfaces"));
     m_btnHelp->setIcon(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)));
 
     btnLayout->addWidget(m_btnAdd);
@@ -601,6 +604,8 @@ void SurfaceCreationDialog::onWallEndReturnPressed()
 
 void SurfaceCreationDialog::onHelpClicked()
 {
+    // Documentation en ligne ; l'aide locale ci-dessous reste le repli d'un produit sans site d'aide.
+    if (TSA::UI::openHelpTopic(this, QStringLiteral("model.surfaces")) != TSA::UI::HelpOpenResult::NotConfigured) return;
     QMessageBox::information(this, tr("Aide - Outil Éléments Surfaciques"),
         tr("<b>Outil de création d'Éléments Surfaciques (Dalles & Voiles) :</b><br><br>"
            "Cette interface unifiée regroupe l'ensemble des éléments 2D surfaciques.<br><br>"

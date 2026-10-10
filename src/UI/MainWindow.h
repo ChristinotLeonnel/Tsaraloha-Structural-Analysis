@@ -458,6 +458,8 @@ private:
     // Actions Thème & Aide
     QAction* m_actionToggleTheme = nullptr;
     QAction* m_actionHelp = nullptr;
+    QAction* m_actionOnlineDocs = nullptr;    ///< documentation en ligne (TSA Web)
+    QAction* m_actionReportProblem = nullptr; ///< procédure de signalement (TSA Web)
     QAction* m_actionShortcuts = nullptr;
     QAction* m_actionAbout = nullptr;
     QAction* m_actionExportDiagnostic = nullptr;

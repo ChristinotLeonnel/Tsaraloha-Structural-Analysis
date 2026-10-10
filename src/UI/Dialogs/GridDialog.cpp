@@ -1,4 +1,5 @@
 #include "GridDialog.h"
+#include "../HelpLauncher.h"
 #include "App/ProductInfo.h"
 #include "GridAdvancedSettingsDialog.h"
 #include "../../Grid/GridManager.h"
@@ -460,6 +461,9 @@ void GridDialog::setupUi()
     m_btnClose->setFixedHeight(26);
 
     m_btnHelp = new QPushButton(tr("Aide"), this);
+    m_btnHelp->setObjectName(QStringLiteral("helpButton"));
+    m_btnHelp->setProperty("helpTopic", QStringLiteral("model.grids"));
+    m_btnHelp->setVisible(TSA::UI::isOnlineHelpAvailable());
     m_btnHelp->setIcon(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)));
     m_btnHelp->setFixedHeight(26);
 
@@ -467,6 +471,7 @@ void GridDialog::setupUi()
     bottomLayout2->addWidget(m_btnClose);
     bottomLayout2->addWidget(m_btnHelp);
     mainLayout->addLayout(bottomLayout2);
+    connect(m_btnHelp, &QPushButton::clicked, this, [this]() { TSA::UI::openHelpTopic(this, QStringLiteral("model.grids")); });
 
     connect(m_chkLiveSync, &QCheckBox::toggled, this, [this](bool checked) {
         if (checked) onApply();

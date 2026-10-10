@@ -1,4 +1,5 @@
 #include "NodalLoadDialog.h"
+#include "../HelpLauncher.h"
 #include "../../Model/Model.h"
 #include "../../Model/Load/LoadManager.h"
 #include "../../Viewer/SelectionManager.h"
@@ -143,6 +144,7 @@ void NodalLoadDialog::setupUI()
     m_btnApply = new QPushButton(tr("Appliquer la Charge"), this);
     m_btnApply->setStyleSheet("background-color: #00adb5; color: white; font-weight: bold; padding: 6px;");
     m_btnClose = new QPushButton(tr("Fermer"), this);
+    if (auto* help = TSA::UI::createHelpButton(this, QStringLiteral("loading.nodal"))) btnLayout->addWidget(help);
     btnLayout->addStretch();
     btnLayout->addWidget(m_btnApply);
     btnLayout->addWidget(m_btnClose);
