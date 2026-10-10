@@ -2,6 +2,21 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Module de chargement : représentation, règles communes, interface)
+
+### Fixed
+- BUG-059 : charge uniforme partielle transmise sur toute la barre (OpenSees, Custom2D) ; test 212.
+- BUG-060 : sens des charges sur barre unifié (`LoadResolver::memberLoadVector`), sans changement des valeurs de calcul.
+- BUG-061 : représentation dense et fidèle des charges réparties (`src/Geometry/MemberLoadGlyph`) ; test 209.
+- BUG-062 : validation, repère déduit de la direction, application tout ou rien et doublons ; test 211.
+
+### Changed
+- Onglet Charges par catégories : Nœud (force et couple), Barre (uniforme, trapézoïdale, ponctuelle), Surface (désactivée :
+  non transmise au calcul), Poids (poids propre par cas de charge). Fenêtre de charge sur barre : intervalle pour toute
+  charge répartie, aide sur le sens, application aux barres sélectionnées en une entrée Annuler.
+- Densité des flèches : longueur ≈ 8 % de la hauteur visible par paliers × 1,5 (rendu recalculé seulement au changement de
+  palier), espacement = longueur / 2, 3 à 60 flèches par charge, 2 sur un intervalle court.
+
 ## 2026-10-10 (Crash de la sélection 3D après fermeture d'une fenêtre)
 
 ### Fixed
