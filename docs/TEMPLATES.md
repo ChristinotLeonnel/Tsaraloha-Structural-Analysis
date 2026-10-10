@@ -143,7 +143,7 @@ Le moteur lui-même n'exécute rien. Ces règles protègent donc surtout le HTML
 ## 4. Dépôt et origines
 
 Le dossier utilisateur est `<données>/templates`. Son emplacement exact est `QStandardPaths::AppLocalDataLocation` :
-sous Windows, `%LOCALAPPDATA%/Tsaraloha/<produit>/templates`.
+sous Windows, `%LOCALAPPDATA%/<organisation>/<produit>/templates`, pour TSA `%LOCALAPPDATA%/TSA Engineering/TSA/templates`.
 
 | Origine | Emplacement | Modifiable |
 |---|---|---|

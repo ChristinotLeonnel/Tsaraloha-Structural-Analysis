@@ -56,6 +56,13 @@ TSA::Modules::ModuleHostServices EcosystemApplication::moduleHostServices()
 EcosystemApplication::EcosystemApplication(int& argc, char** argv)
     : QApplication(argc, argv)
 {
+    // 0. Identité d'abord : elle fixe les dossiers QStandardPaths (journaux, configuration, données).
+    setApplicationName(TSA::Product::name());
+    setOrganizationName(QString::fromLatin1(TSA::Product::kOrganizationName));
+    if (TSA::Product::kOrganizationDomain[0] != '\0')
+        setOrganizationDomain(QString::fromLatin1(TSA::Product::kOrganizationDomain));
+    setApplicationVersion(TSA::Product::version());
+
     // 1. Initialiser immédiatement le système central de logging et de crash reporting
     TSA::Diagnostics::Logger::instance().init();
     TSA::Diagnostics::Logger::installQtMessageHandler();
@@ -78,12 +85,6 @@ EcosystemApplication::EcosystemApplication(int& argc, char** argv)
     {
         installTranslator(qtTranslator);
     }
-
-    setApplicationName(TSA::Product::name());
-    setOrganizationName(QString::fromLatin1(TSA::Product::kOrganizationName));
-    if (TSA::Product::kOrganizationDomain[0] != '\0')
-        setOrganizationDomain(QString::fromLatin1(TSA::Product::kOrganizationDomain));
-    setApplicationVersion(TSA::Product::version());
 
     QIcon appIcon;
     appIcon.addFile(QString::fromLatin1(TSA::Product::kIconIco));

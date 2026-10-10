@@ -99,8 +99,13 @@ def main():
         if low.startswith(FORBIDDEN_PREFIXES):
             errors.append(f"bibliothèque inutile ou incompatible distribuée : {rel}")
         here = os.path.dirname(b)
+        # Processus séparé (exécutable d'un sous-dossier : OpenSees, convertisseurs de modules) : le chargeur de
+        # Windows cherche dans SON dossier, jamais dans celui de l'application. Les DLL chargées dans le processus
+        # principal (plugins Qt, plugins/) trouvent en revanche celles du dossier de l'application.
+        separate = os.path.normcase(here) != os.path.normcase(root) and any(
+            f.lower().endswith(".exe") for f in os.listdir(here))
         for imp in pe_imports(b):
-            if os.path.exists(os.path.join(here, imp)) or os.path.exists(os.path.join(root, imp)):
+            if os.path.exists(os.path.join(here, imp)) or (not separate and os.path.exists(os.path.join(root, imp))):
                 continue
             if system_provides(imp, sysdirs):
                 continue

@@ -112,7 +112,7 @@ Elle est faite par `ModuleManifest::fromJson` :
 ## 3. Confiance et sécurité
 
 - **Modules livrés** (`<application>/modules`) : approuvés d'office.
-- **Modules utilisateur** (`<données>/modules`, sous Windows `%LOCALAPPDATA%/Tsaraloha/<produit>/modules`) :
+- **Modules utilisateur** (`<données>/modules`, sous Windows `%LOCALAPPDATA%/<organisation>/<produit>/modules`, pour TSA `%LOCALAPPDATA%/TSA Engineering/TSA/modules`) :
   - découverts et validés, mais **jamais activés** sans approbation explicite dans **Aide > Modules > Approuver**. Tant qu'ils ne sont pas approuvés, aucun plugin n'est chargé et aucun convertisseur n'est exécuté ;
   - l'approbation mémorise `id@sha256(module.json)` dans `<configuration>/modules-trust.json` ;
   - **toute modification du manifeste exige une nouvelle approbation**.

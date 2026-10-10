@@ -16,7 +16,8 @@ endif()
 
 function(tsa_runtime_search_dirs out source_dir)
     set(dirs "${source_dir}/opencascade-8.0.1-vc14-64/win64/vc14/bin")
-    file(GLOB tp LIST_DIRECTORIES true "${source_dir}/3rdparty-vc14-64/*/bin")
+    # bin/ et bin/win64/ (ex. openvr_api.dll, importée par TKOpenGl).
+    file(GLOB tp LIST_DIRECTORIES true "${source_dir}/3rdparty-vc14-64/*/bin" "${source_dir}/3rdparty-vc14-64/*/bin/win64")
     foreach(d ${tp})
         # Qt 5.11 du SDK OCCT : jamais utilisé par TSA (Qt 6) ; exclu pour éviter toute confusion.
         if(NOT d MATCHES "qt5\\.")

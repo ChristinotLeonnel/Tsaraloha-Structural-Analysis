@@ -57,7 +57,7 @@ if(WINDEPLOYQT_EXECUTABLE AND EXISTS "${WINDEPLOYQT_EXECUTABLE}")
     endif()
     execute_process(
         COMMAND "${WINDEPLOYQT_EXECUTABLE}" ${qtmode} --no-translations --no-compiler-runtime --no-opengl-sw
-                --no-system-d3d-compiler --no-quick-import ${dist_binaries}
+                --no-system-d3d-compiler --no-system-dxc-compiler --no-quick-import ${dist_binaries}
         RESULT_VARIABLE res OUTPUT_QUIET)
     if(NOT res EQUAL 0)
         message(FATAL_ERROR "windeployqt a échoué (${res})")
@@ -110,6 +110,9 @@ endforeach()
 
 # --- 6. Moteur OpenSees -----------------------------------------------------------------------------
 if(PACKAGE_OPENSEES AND EXISTS "${SOURCE_DIR}/thirdparty/OpenSees/bin/OpenSees.exe")
+    message(WARNING "OpenSees inclus : sa licence (The Regents of the University of California) autorise l'usage "
+                    "éducatif, de recherche et non lucratif ; un usage commercial exige un accord de l'Université. "
+                    "Vérifier avant toute diffusion (docs/THIRD_PARTY_LICENSES.md) ou configurer -DTSA_PACKAGE_OPENSEES=OFF.")
     set(os "${DIST_DIR}/engines/OpenSees")
     file(COPY "${SOURCE_DIR}/thirdparty/OpenSees/bin/OpenSees.exe" "${SOURCE_DIR}/thirdparty/OpenSees/bin/libiomp5md.dll"
          DESTINATION "${os}/bin")
@@ -159,12 +162,27 @@ foreach(lic "${SOURCE_DIR}/opencascade-8.0.1-vc14-64/LICENSE_LGPL_21.txt" "${SOU
     endif()
 endforeach()
 if(WINDEPLOYQT_EXECUTABLE)
+    # <Qt>/<version>/<kit>/bin/windeployqt.exe → <Qt>/Licenses (installateur officiel : LICENSE = LGPLv3 + GPLv3)
     get_filename_component(qt_root "${WINDEPLOYQT_EXECUTABLE}/../.." ABSOLUTE)
-    file(GLOB qt_lic "${qt_root}/../../Licenses/*LGPL*" "${qt_root}/../Licenses/*LGPL*")
+    file(GLOB qt_lic "${qt_root}/../../Licenses/LICENSE" "${qt_root}/../../Licenses/*LGPL*" "${qt_root}/../Licenses/*LGPL*")
     if(qt_lic)
         file(COPY ${qt_lic} DESTINATION "${DIST_DIR}/licenses/Qt")
+    else()
+        message(WARNING "Texte de licence Qt introuvable : à ajouter dans licenses/Qt avant diffusion")
     endif()
 endif()
+# Bibliothèques tierces importées par OpenCASCADE : textes fournis par le SDK (les absents sont signalés
+# dans docs/THIRD_PARTY_LICENSES.md).
+set(tp "${SOURCE_DIR}/3rdparty-vc14-64")
+foreach(pair "FreeType|${tp}/freetype-2.13.3-x64/LICENSE.TXT" "oneTBB|${tp}/tbb-2021.13.0-x64/LICENSE.txt"
+             "FreeImage|${tp}/freeimage-3.18.0-x64/license-fi.txt")
+    string(REPLACE "|" ";" pair "${pair}")
+    list(GET pair 0 lname)
+    list(GET pair 1 lfile)
+    if(EXISTS "${lfile}")
+        file(COPY "${lfile}" DESTINATION "${DIST_DIR}/licenses/${lname}")
+    endif()
+endforeach()
 
 # --- 9. Manifeste : chaque fichier distribué, taille, SHA-256, catégorie -------------------------
 file(GLOB_RECURSE all_files RELATIVE "${DIST_DIR}" "${DIST_DIR}/*")
@@ -201,9 +219,14 @@ foreach(f ${all_files})
     list(APPEND entries "    {\"path\": \"${fj}\", \"size\": ${sz}, \"sha256\": \"${h}\", \"category\": \"${cat}\"}")
 endforeach()
 string(TIMESTAMP now "%Y-%m-%dT%H:%M:%SZ" UTC)
+if(EXISTS "${DIST_DIR}/engines/OpenSees/bin/OpenSees.exe")
+    set(os_json true)
+else()
+    set(os_json false)
+endif()
 list(LENGTH all_files nfiles)
 string(JOIN ",\n" body ${entries})
 file(WRITE "${DIST_DIR}/MANIFEST.json"
-"{\n  \"product\": \"${PRODUCT}\",\n  \"version\": \"${VERSION}\",\n  \"configuration\": \"${CONFIG}\",\n  \"generated\": \"${now}\",\n  \"files\": ${nfiles},\n  \"totalBytes\": ${total},\n  \"openSeesIncluded\": ${PACKAGE_OPENSEES},\n  \"entries\": [\n${body}\n  ]\n}\n")
+"{\n  \"product\": \"${PRODUCT}\",\n  \"version\": \"${VERSION}\",\n  \"configuration\": \"${CONFIG}\",\n  \"generated\": \"${now}\",\n  \"files\": ${nfiles},\n  \"totalBytes\": ${total},\n  \"openSeesIncluded\": ${os_json},\n  \"entries\": [\n${body}\n  ]\n}\n")
 math(EXPR mb "${total} / 1048576")
 message(STATUS "=== Paquet terminé : ${nfiles} fichiers, ${mb} Mo — vérifier : python tools/verify_package.py \"${DIST_DIR}\" ===")

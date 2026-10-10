@@ -35,6 +35,9 @@ QString AppPaths::applicationDir()
 QString AppPaths::developmentSourceDir()
 {
 #ifdef TSA_SOURCE_DIR
+    // Un paquet (MANIFEST.json à côté de l'exécutable, cmake/PackageTSA.cmake) n'utilise jamais les sources,
+    // même si le chemin de compilation existe sur ce poste : il est autonome ou il échoue visiblement.
+    if (QFileInfo::exists(applicationDir() + QStringLiteral("/MANIFEST.json"))) return {};
     const QString dir = QString::fromUtf8(TSA_SOURCE_DIR);
     return QFileInfo(dir + QStringLiteral("/CMakeLists.txt")).exists() ? QDir::cleanPath(dir) : QString();
 #else
@@ -85,17 +88,19 @@ QString AppPaths::logsDir()
     const QString app = applicationDir();
     if (!app.isEmpty())
     {
-        // Poste de développement : dossier logs/ existant à côté du dossier de compilation.
+        // Poste de développement (jamais pour un paquet) : dossier logs/ existant à côté du dossier de compilation.
+        const bool dev = !developmentSourceDir().isEmpty();
         for (const QString& rel : { QStringLiteral("../../logs"), QStringLiteral("../logs") })
         {
-            const QString dev = QDir::cleanPath(QDir(app).filePath(rel));
-            if (QFileInfo(dev).isDir() && isWritableDir(dev)) return dev;
+            if (!dev) break;
+            const QString devLogs = QDir::cleanPath(QDir(app).filePath(rel));
+            if (QFileInfo(devLogs).isDir() && isWritableDir(devLogs)) return devLogs;
         }
         const QString local = QDir(app).filePath(QStringLiteral("logs"));
         if (QFileInfo(local).isDir() && isWritableDir(local)) return QDir::cleanPath(local);
         // Installation portable (dossier inscriptible) : logs/ créé à côté de l'exécutable ; sinon
         // (Program Files) : données utilisateur.
-        if (!developmentSourceDir().isEmpty() && isWritableDir(app)) return ensured(QDir::cleanPath(local));
+        if (dev && isWritableDir(app)) return ensured(QDir::cleanPath(local));
     }
     return ensured(userDataDir() + QStringLiteral("/logs"));
 }

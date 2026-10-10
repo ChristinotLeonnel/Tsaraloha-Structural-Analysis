@@ -64,6 +64,13 @@ Le `NDCGenerator` assemble automatiquement un rapport composé de 9 chapitres ri
 
 ## 4. Visualisation & Export
 
+> **Mise en page par template (2026-10-10, docs/TEMPLATES.md).** La note n'est plus mise en page en C++ :
+> `NDCExporter::renderHtml` rend le document structuré (`NDCTemplateData`, schéma `tsa-ndc/1`) avec le template
+> `ReportConfiguration::templateId` (défaut `tsa.ndc.standard`, personnalisable et exportable). Ce template reproduit
+> octet par octet `NDCDocument::toHtml` (test 282), conservé comme référence et repli explicite si le template est
+> introuvable ou en erreur. Le dock NDC et les exports HTML / PDF passent par ce rendu ; les images désignées par
+> un fichier local sont incorporées (document autonome).
+
 - **Visualiseur Intégré (`NDCViewerWidget`)** :
   - Intégré dans l'espace de travail TSA via le système multi-ports ou comme panneau dockable.
   - Sommaire interactif synchronisé : cliquer sur un chapitre ou sous-titre scrolle instantanément la vue.
