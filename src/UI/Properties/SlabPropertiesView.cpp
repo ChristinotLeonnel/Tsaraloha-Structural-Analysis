@@ -1,4 +1,5 @@
 #include "SlabPropertiesView.h"
+#include "ElementColorField.h"
 #include "../../Model/Model.h"
 #include "../../Model/Slab.h"
 #include "../../Model/MaterialLibrary.h"
@@ -76,7 +77,11 @@ void SlabPropertiesView::setupUi()
     m_btnColor = new QPushButton(grp);
     m_btnColor->setFixedHeight(24);
     connect(m_btnColor, &QPushButton::clicked, this, &SlabPropertiesView::pickColor);
-    form->addRow(tr("Couleur surfacique :"), m_btnColor);
+    form->addRow(tr("Couleur surfacique :"), TSA::UI::ElementColor::row(m_btnColor, this, [this]() {
+        m_colorHex.clear();
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
+        applyChanges();
+    }));
 
     mainLayout->addWidget(grp);
     mainLayout->addStretch();
@@ -128,19 +133,20 @@ void SlabPropertiesView::refreshView()
     }
     m_lblNodes->setText(nodesStr);
 
-    m_colorHex = QString::fromStdString(slab->color().empty() ? "#10B981" : slab->color());
-    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+    m_colorHex = QString::fromStdString(slab->color()); // vide : apparence du matériau
+    TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, slab->material());
+    m_colorMaterial = slab->material();
 
     m_isLoading = false;
 }
 
 void SlabPropertiesView::pickColor()
 {
-    QColor c = QColorDialog::getColor(QColor(m_colorHex), this, tr("Couleur de la Dalle"));
+    QColor c = QColorDialog::getColor(TSA::UI::ElementColor::initial(m_btnColor), this, tr("Couleur de la Dalle"));
     if (c.isValid())
     {
         m_colorHex = c.name();
-        m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
         applyChanges();
     }
 }

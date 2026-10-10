@@ -1,4 +1,5 @@
 #include "ColumnPropertiesView.h"
+#include "ElementColorField.h"
 #include "../../UndoRedo/UndoManager.h"
 #include "../Widgets/SectionPreviewWidget.h"
 #include "../../Model/Model.h"
@@ -162,7 +163,11 @@ void ColumnPropertiesView::setupUi()
     m_btnColor = new QPushButton(grpCol);
     m_btnColor->setFixedHeight(24);
     connect(m_btnColor, &QPushButton::clicked, this, &ColumnPropertiesView::pickColor);
-    formCol->addRow(tr("Couleur du poteau :"), m_btnColor);
+    formCol->addRow(tr("Couleur du poteau :"), TSA::UI::ElementColor::row(m_btnColor, this, [this]() {
+        m_colorHex.clear();
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
+        applyChanges();
+    }));
     mainLayout->addWidget(grpCol);
 
     mainLayout->addStretch();
@@ -289,19 +294,20 @@ void ColumnPropertiesView::refreshView()
         m_previewWidget->setRotation(col->rotation());
     }
 
-    m_colorHex = QString::fromStdString(col->color().empty() ? "#D97706" : col->color());
-    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+    m_colorHex = QString::fromStdString(col->color()); // vide : apparence du matériau
+    TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, col->material());
+    m_colorMaterial = col->material();
 
     m_isLoading = false;
 }
 
 void ColumnPropertiesView::pickColor()
 {
-    QColor c = QColorDialog::getColor(QColor(m_colorHex), this, tr("Couleur du Poteau"));
+    QColor c = QColorDialog::getColor(TSA::UI::ElementColor::initial(m_btnColor), this, tr("Couleur du Poteau"));
     if (c.isValid())
     {
         m_colorHex = c.name();
-        m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
         applyChanges();
     }
 }

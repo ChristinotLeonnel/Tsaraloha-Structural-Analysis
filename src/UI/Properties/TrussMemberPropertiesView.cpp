@@ -1,4 +1,5 @@
 #include "TrussMemberPropertiesView.h"
+#include "ElementColorField.h"
 #include "../../Model/Model.h"
 #include "../../Model/TrussMember.h"
 #include "../../Model/MaterialLibrary.h"
@@ -77,7 +78,11 @@ void TrussMemberPropertiesView::setupUi()
     m_btnColor = new QPushButton(grp);
     m_btnColor->setFixedHeight(24);
     connect(m_btnColor, &QPushButton::clicked, this, &TrussMemberPropertiesView::pickColor);
-    form->addRow(tr("Couleur d'affichage :"), m_btnColor);
+    form->addRow(tr("Couleur d'affichage :"), TSA::UI::ElementColor::row(m_btnColor, this, [this]() {
+        m_colorHex.clear();
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
+        applyChanges();
+    }));
 
     mainLayout->addWidget(grp);
     m_endNodes = new MemberEndNodesWidget(this);
@@ -129,19 +134,20 @@ void TrussMemberPropertiesView::refreshView()
     m_endNodes->setModel(m_model);
     m_endNodes->setNodes(trm->startNodeId(), trm->endNodeId());
 
-    m_colorHex = QString::fromStdString(trm->color().empty() ? "#EF4444" : trm->color());
-    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+    m_colorHex = QString::fromStdString(trm->color()); // vide : apparence du matériau
+    TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, trm->material());
+    m_colorMaterial = trm->material();
 
     m_isLoading = false;
 }
 
 void TrussMemberPropertiesView::pickColor()
 {
-    QColor c = QColorDialog::getColor(QColor(m_colorHex), this, tr("Couleur de la Barre de Treillis"));
+    QColor c = QColorDialog::getColor(TSA::UI::ElementColor::initial(m_btnColor), this, tr("Couleur de la Barre de Treillis"));
     if (c.isValid())
     {
         m_colorHex = c.name();
-        m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
         applyChanges();
     }
 }

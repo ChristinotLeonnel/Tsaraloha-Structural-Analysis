@@ -1,4 +1,5 @@
 #include "FoundationPropertiesView.h"
+#include "ElementColorField.h"
 #include "../../Model/Model.h"
 #include "../../Model/Foundation.h"
 
@@ -88,7 +89,11 @@ void FoundationPropertiesView::setupUi()
     m_btnColor = new QPushButton(grp);
     m_btnColor->setFixedHeight(24);
     connect(m_btnColor, &QPushButton::clicked, this, &FoundationPropertiesView::pickColor);
-    form->addRow(tr("Couleur d'affichage :"), m_btnColor);
+    form->addRow(tr("Couleur d'affichage :"), TSA::UI::ElementColor::row(m_btnColor, this, [this]() {
+        m_colorHex.clear();
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
+        applyChanges();
+    }));
 
     mainLayout->addWidget(grp);
     mainLayout->addStretch();
@@ -123,19 +128,20 @@ void FoundationPropertiesView::refreshView()
 
     m_lblNode->setText(QString("N%1").arg(f->nodeId()));
 
-    m_colorHex = QString::fromStdString(f->color().empty() ? "#64748B" : f->color());
-    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+    m_colorHex = QString::fromStdString(f->color()); // vide : apparence du matériau
+    TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, f->material());
+    m_colorMaterial = f->material();
 
     m_isLoading = false;
 }
 
 void FoundationPropertiesView::pickColor()
 {
-    QColor c = QColorDialog::getColor(QColor(m_colorHex), this, tr("Couleur de la Fondation"));
+    QColor c = QColorDialog::getColor(TSA::UI::ElementColor::initial(m_btnColor), this, tr("Couleur de la Fondation"));
     if (c.isValid())
     {
         m_colorHex = c.name();
-        m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
         applyChanges();
     }
 }

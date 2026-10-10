@@ -1,4 +1,5 @@
 #include "ResultsVisualManager.h"
+#include "MaterialVisual.h"
 #include "OccView.h"
 #include "../Model/Model.h"
 #include "../Model/Node.h"
@@ -502,7 +503,33 @@ void ResultsVisualManager::updateDeformedShapes()
         if (shape.IsNull()) continue;
 
         Handle(AIS_Shape) ais = new AIS_Shape(shape);
-        ais->SetColor(key.kind == StructuralElementKind::Cable ? Quantity_NOC_ORANGE : Quantity_NOC_CYAN1);
+        // La déformée garde l'apparence de l'élément : matériau (couleur, aspect, texture) ou couleur
+        // choisie par l'utilisateur dans les propriétés. Auparavant : cyan uniforme, câbles orange.
+        const TSA::Model::Material* material = nullptr;
+        std::string userColor;
+        switch (key.kind)
+        {
+        case StructuralElementKind::Beam:
+            if (const auto* b = m_model->getBeam(key.id)) { material = &b->material(); userColor = b->color(); }
+            break;
+        case StructuralElementKind::Column:
+            if (const auto* c = m_model->getColumn(key.id)) { material = &c->material(); userColor = c->color(); }
+            break;
+        case StructuralElementKind::Truss:
+            if (const auto* t = m_model->getTrussMember(key.id)) { material = &t->material(); userColor = t->color(); }
+            break;
+        case StructuralElementKind::Cable:
+            if (const auto* k = m_model->getCable(key.id)) { material = &k->material(); userColor = k->color(); }
+            break;
+        default:
+            break;
+        }
+        if (material && solid)
+            TSA::Viewer::MaterialVisual::instance().applyToShape(ais, *material, userColor, m_occView->renderDisplayMode());
+        else if (material)
+            ais->SetColor(TSA::Viewer::MaterialVisual::instance().getOcctColor(*material, userColor));
+        else
+            ais->SetColor(key.kind == StructuralElementKind::Cable ? Quantity_NOC_ORANGE : Quantity_NOC_CYAN1);
         if (solid)
             ais->SetDisplayMode(AIS_Shaded);
         else

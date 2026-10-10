@@ -1,13 +1,84 @@
 #include "MaterialVisual.h"
 #include "TextureManager.h"
 #include <QColor>
+#include <algorithm>
 #include <QString>
 #include <TCollection_AsciiString.hxx>
 #include <AIS_DisplayMode.hxx>
 #include <AIS_TexturedShape.hxx>
+#include <Graphic3d_AspectFillArea3d.hxx>
+#include <Graphic3d_TextureParams.hxx>
+#include <Prs3d_ShadingAspect.hxx>
+#include <gp_Pnt2d.hxx>
+#include <Image_PixMap.hxx>
+#include <BRepBndLib.hxx>
+#include <Bnd_Box.hxx>
+#include <QImage>
 
 namespace TSA::Viewer
 {
+
+namespace
+{
+/// Texture dont l'identifiant de ressource dépend du fichier : OpenGL la charge une seule fois et la
+/// partage entre toutes les barres du même matériau (l'identifiant par défaut est unique par objet).
+class SharedTexture2D : public Graphic3d_Texture2D
+{
+public:
+    explicit SharedTexture2D(const TCollection_AsciiString& filePath)
+        : Graphic3d_Texture2D(filePath)
+    {
+        setup(TCollection_AsciiString("TSA_Texture_") + filePath);
+    }
+    SharedTexture2D(const occ::handle<Image_PixMap>& pixmap, const TCollection_AsciiString& id)
+        : Graphic3d_Texture2D(pixmap)
+    {
+        setup(id);
+    }
+
+private:
+    void setup(const TCollection_AsciiString& id)
+    {
+        myTexId = id;
+        GetParams()->SetModulate(true); // multipliée par la couleur de l'objet (blanc : couleurs de la texture)
+        GetParams()->SetRepeat(true);
+        GetParams()->SetFilter(Graphic3d_TOTF_TRILINEAR);
+    }
+};
+
+/// Niveaux de gris normalisés (luminance moyenne ≈ 0,9) : la couleur choisie par l'utilisateur
+/// apparaît presque telle quelle, avec le grain du matériau. Lignes rangées du bas vers le haut
+/// (convention des textures OpenGL).
+occ::handle<Image_PixMap> neutralPixmap(const QString& filePath)
+{
+    QImage img(filePath);
+    if (img.isNull()) return {};
+    img = img.convertToFormat(QImage::Format_Grayscale8);
+    const int w = img.width(), h = img.height();
+    double sum = 0.0;
+    for (int y = 0; y < h; ++y)
+    {
+        const uchar* row = img.constScanLine(y);
+        for (int x = 0; x < w; ++x) sum += row[x];
+    }
+    const double mean = sum / std::max(1, w * h);
+    const double gain = mean > 1.0 ? (0.9 * 255.0) / mean : 1.0;
+
+    occ::handle<Image_PixMap> pm = new Image_PixMap();
+    if (!pm->InitTrash(Image_Format_RGB, w, h)) return {};
+    for (int y = 0; y < h; ++y)
+    {
+        const uchar* src = img.constScanLine(h - 1 - y);
+        uint8_t* dst = pm->ChangeRow(y);
+        for (int x = 0; x < w; ++x)
+        {
+            const auto v = static_cast<uint8_t>(std::min(255.0, src[x] * gain));
+            dst[3 * x] = dst[3 * x + 1] = dst[3 * x + 2] = v;
+        }
+    }
+    return pm;
+}
+} // namespace
 
 MaterialVisual& MaterialVisual::instance()
 {
@@ -193,12 +264,60 @@ void MaterialVisual::applyToShape(Handle(AIS_Shape) aisShape,
         aisShape->UnsetTransparency();
     }
 
-    // Application de la texture physique externe si l'objet est un AIS_TexturedShape
+    // Texture du matériau (mode Matériaux) : mapping natif d'AIS_Shape, appliqué par l'aspect
+    // d'ombrage de l'objet. La couleur effective (matériau, ou couleur choisie par l'utilisateur dans
+    // les propriétés) module la texture. Les coordonnées de texture sont générées au calcul de la
+    // présentation : appeler avant l'affichage, ou réafficher l'objet ensuite.
+    const QString texPath = mode == RenderDisplayMode::Materials ? resolveTexturePath(mat) : QString();
+    aisShape->Attributes()->SetupOwnShadingAspect();
+    const occ::handle<Graphic3d_AspectFillArea3d>& fill = aisShape->Attributes()->ShadingAspect()->Aspect();
+    if (!texPath.isEmpty())
+    {
+        // Sans couleur propre : la texture garde ses couleurs (objet blanc, aspect du matériau
+        // conservé). Avec une couleur choisie : grain du matériau en gris, teinté par cette couleur.
+        const bool userColored = !overrideHexColor.empty();
+        if (!userColored)
+        {
+            aspect.SetColor(Quantity_Color(Quantity_NOC_WHITE));
+            aisShape->SetMaterial(aspect);
+            aisShape->SetColor(Quantity_Color(Quantity_NOC_WHITE));
+        }
+        fill->SetTextureMap(sharedTexture(texPath, userColored));
+        fill->SetTextureMapOn();
+        // Coordonnées de texture normalisées par face : sans répétition, le motif serait étiré sur
+        // toute la longueur d'une barre. Environ un motif par mètre : V suit la plus grande dimension
+        // (longueur d'une barre), U la dimension intermédiaire (section, ou largeur d'une dalle).
+        double mid = 1.0, longest = 1.0;
+        if (aisShape->Shape().IsNull() == false)
+        {
+            Bnd_Box box;
+            BRepBndLib::Add(aisShape->Shape(), box);
+            if (!box.IsVoid())
+            {
+                double x0, y0, z0, x1, y1, z1;
+                box.Get(x0, y0, z0, x1, y1, z1);
+                double d[3] = { x1 - x0, y1 - y0, z1 - z0 };
+                std::sort(d, d + 3);
+                mid = d[1];
+                longest = d[2];
+            }
+        }
+        constexpr double kTileMetres = 1.0;
+        const double u = (mat.visual.textureScaleU > 0.0 ? mat.visual.textureScaleU : 1.0) * std::max(1.0, mid / kTileMetres);
+        const double v = (mat.visual.textureScaleV > 0.0 ? mat.visual.textureScaleV : 1.0) * std::max(1.0, longest / kTileMetres);
+        aisShape->SetTextureRepeatUV(gp_Pnt2d(u, v));
+    }
+    else
+    {
+        fill->SetTextureMapOff();
+        fill->SetTextureMap(occ::handle<Graphic3d_TextureMap>());
+    }
+
+    // Objet AIS_TexturedShape (extensions) : même texture par son propre mécanisme.
     Handle(AIS_TexturedShape) texShape = Handle(AIS_TexturedShape)::DownCast(aisShape);
     if (!texShape.IsNull())
     {
-        QString texPath = resolveTexturePath(mat);
-        if (!texPath.isEmpty() && mode == RenderDisplayMode::Materials)
+        if (!texPath.isEmpty())
         {
             texShape->SetTextureFileName(TCollection_AsciiString(texPath.toUtf8().constData()));
             texShape->SetTextureMapOn();
@@ -233,9 +352,27 @@ bool MaterialVisual::hasTexture(const TSA::Model::Material& mat) const
     return !resolveTexturePath(mat).isEmpty();
 }
 
+occ::handle<Graphic3d_Texture2D> MaterialVisual::sharedTexture(const QString& filePath, bool neutral)
+{
+    const std::string key = (neutral ? "neutral:" : "") + filePath.toStdString();
+    auto it = m_textureCache.find(key);
+    if (it != m_textureCache.end()) return it->second;
+    const TCollection_AsciiString path(filePath.toUtf8().constData());
+    occ::handle<Graphic3d_Texture2D> texture;
+    if (neutral)
+    {
+        if (occ::handle<Image_PixMap> pm = neutralPixmap(filePath); !pm.IsNull())
+            texture = new SharedTexture2D(pm, TCollection_AsciiString("TSA_TextureNeutral_") + path);
+    }
+    if (texture.IsNull()) texture = new SharedTexture2D(path);
+    m_textureCache.emplace(key, texture);
+    return texture;
+}
+
 void MaterialVisual::clearCache()
 {
     m_aspectCache.clear();
+    m_textureCache.clear();
     TextureManager::instance().clearCache();
 }
 

@@ -1,4 +1,5 @@
 #include "CablePropertiesView.h"
+#include "ElementColorField.h"
 #include "../../Model/Model.h"
 #include "../../Model/Cable/Cable.h"
 #include "../../Library/CableLibrary.h"
@@ -148,7 +149,11 @@ void CablePropertiesView::setupUi()
     m_btnColor = new QPushButton(grpAnchor);
     m_btnColor->setFixedHeight(24);
     connect(m_btnColor, &QPushButton::clicked, this, &CablePropertiesView::pickColor);
-    formAnchor->addRow(tr("Couleur d'affichage :"), m_btnColor);
+    formAnchor->addRow(tr("Couleur d'affichage :"), TSA::UI::ElementColor::row(m_btnColor, this, [this]() {
+        m_colorHex.clear();
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
+        applyChanges();
+    }));
 
     mainLayout->addWidget(grpAnchor);
     mainLayout->addStretch();
@@ -199,8 +204,9 @@ void CablePropertiesView::refreshView()
 
     m_chkTensionOnly->setChecked(cable->analysisProperties().tensionOnly);
 
-    m_colorHex = QString::fromStdString(cable->color().empty() ? "#F59E0B" : cable->color());
-    m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+    m_colorHex = QString::fromStdString(cable->color()); // vide : apparence du matériau
+    TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, cable->material());
+    m_colorMaterial = cable->material();
 
     m_isLoading = false;
 }
@@ -237,11 +243,11 @@ void CablePropertiesView::onCableTypeChanged(int /*index*/)
 
 void CablePropertiesView::pickColor()
 {
-    QColor c = QColorDialog::getColor(QColor(m_colorHex), this, tr("Couleur du Câble"));
+    QColor c = QColorDialog::getColor(TSA::UI::ElementColor::initial(m_btnColor), this, tr("Couleur du Câble"));
     if (c.isValid())
     {
         m_colorHex = c.name();
-        m_btnColor->setStyleSheet(QString("background-color: %1; border: 1px solid #555; border-radius: 3px;").arg(m_colorHex));
+        TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, m_colorMaterial);
         applyChanges();
     }
 }

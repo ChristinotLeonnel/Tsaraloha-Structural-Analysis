@@ -891,6 +891,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_snap.cpp
     ${TSA_ROOT}/tests/test_automation.cpp
     ${TSA_ROOT}/tests/test_help.cpp
+    ${TSA_ROOT}/tests/test_appearance.cpp
     ${TSA_ROOT}/tests/test_blueprint.cpp
     ${TSA_ROOT}/resources/resources.qrc
 )
