@@ -1,6 +1,7 @@
 #include "MemberLoadDialog.h"
 #include "../../Model/Model.h"
 #include "../../Model/Load/LoadManager.h"
+#include "../../Model/Load/MemberLoadCommands.h"
 #include "../../Viewer/SelectionManager.h"
 #include "../../Viewer/OccView.h"
 
@@ -22,7 +23,7 @@ MemberLoadDialog::MemberLoadDialog(TSA::Model::Model* model,
     , m_selectionManager(selectionManager)
     , m_occView(occView)
 {
-    setWindowTitle(tr("Application d'une Charge sur Barre"));
+    setWindowTitle(tr("Charge sur barre"));
     resize(480, 520);
     setupUI();
     populateElements();
@@ -37,9 +38,56 @@ MemberLoadDialog::MemberLoadDialog(TSA::Model::Model* model,
         }
         else if (!m_selectionManager->selectedColumns().empty())
         {
-            setTargetElementId(*m_selectionManager->selectedColumns().begin());
+            setTargetElementId(*m_selectionManager->selectedColumns().begin(), TSA::Model::MemberTargetType::Column);
+        }
+        const std::size_t count = m_selectionManager->selectedBeams().size() + m_selectionManager->selectedColumns().size();
+        if (count > 1)
+        {
+            m_chkAllSelected->setText(tr("Appliquer aux %1 barres sélectionnées").arg(count));
+            m_chkAllSelected->setChecked(true);
+            m_chkAllSelected->setVisible(true);
         }
     }
+}
+
+void MemberLoadDialog::setLoadType(TSA::Model::LoadType type)
+{
+    const int idx = m_comboType->findData(static_cast<int>(type));
+    if (idx >= 0) m_comboType->setCurrentIndex(idx);
+}
+
+double MemberLoadDialog::currentLength() const
+{
+    return m_model ? TSA::Model::memberLoadTargetLength(*m_model, m_comboElement->currentData().toInt(), currentTarget()) : -1.0;
+}
+
+std::vector<TSA::Model::MemberLoadTarget> MemberLoadDialog::chosenTargets() const
+{
+    std::vector<TSA::Model::MemberLoadTarget> targets;
+    const int id = m_comboElement->currentData().toInt();
+    if (id > 0) targets.push_back({ id, currentTarget() });
+    if (m_selectionManager && m_chkAllSelected->isVisible() && m_chkAllSelected->isChecked())
+    {
+        auto add = [&](int elemId, TSA::Model::MemberTargetType type) {
+            for (const auto& t : targets)
+                if (t.elementId == elemId && t.type == type) return;
+            targets.push_back({ elemId, type });
+        };
+        for (int b : m_selectionManager->selectedBeams()) add(b, TSA::Model::MemberTargetType::Beam);
+        for (int c : m_selectionManager->selectedColumns()) add(c, TSA::Model::MemberTargetType::Column);
+    }
+    return targets;
+}
+
+void MemberLoadDialog::onDirectionChanged(int /*index*/)
+{
+    const auto dir = static_cast<TSA::Model::LoadDirection>(m_comboDirection->currentData().toInt());
+    const bool local = TSA::Model::MemberLoad::coordSystemFor(dir) == TSA::Model::LoadCoordSystem::Local;
+    if (dir == TSA::Model::LoadDirection::Gravity)
+        m_lblDirectionHint->setText(tr("Repère global. Gravité : charge toujours dirigée vers le bas (−Z), le signe saisi est ignoré."));
+    else
+        m_lblDirectionHint->setText(tr("Repère %1. Valeur positive : sens de l'axe ; négative : sens opposé.")
+                                        .arg(local ? tr("local de la barre") : tr("global")));
 }
 
 void MemberLoadDialog::setupUI()
@@ -57,6 +105,12 @@ void MemberLoadDialog::setupUI()
     m_lblElementInfo->setStyleSheet("color: #00adb5; font-weight: bold; padding: 4px;");
     elemLayout->addWidget(m_lblElementInfo);
 
+    m_chkAllSelected = new QCheckBox(this);
+    m_chkAllSelected->setVisible(false);
+    m_chkAllSelected->setToolTip(tr("Applique la même charge à chaque barre sélectionnée dans la vue (une seule entrée Annuler). "
+                                    "Les positions sont en mètres depuis le nœud de début de chaque barre."));
+    elemLayout->addWidget(m_chkAllSelected);
+
     mainLayout->addWidget(groupElem);
 
     // 2. Cas de charge & Type de chargement
@@ -67,9 +121,11 @@ void MemberLoadDialog::setupUI()
     paramForm->addRow(tr("Cas de charge :"), m_comboLoadCase);
 
     m_comboType = new QComboBox(this);
-    m_comboType->addItem(tr("Uniforme répartie (kN/m)"), static_cast<int>(TSA::Model::LoadType::MemberUniform));
-    m_comboType->addItem(tr("Linéaire variable / Trapézoïdale (kN/m)"), static_cast<int>(TSA::Model::LoadType::MemberLinear));
+    m_comboType->addItem(tr("Uniforme (kN/m)"), static_cast<int>(TSA::Model::LoadType::MemberUniform));
+    m_comboType->addItem(tr("Linéaire : triangulaire ou trapézoïdale (q1 → q2, kN/m)"), static_cast<int>(TSA::Model::LoadType::MemberLinear));
     m_comboType->addItem(tr("Ponctuelle sur barre (kN)"), static_cast<int>(TSA::Model::LoadType::MemberPoint));
+    m_comboType->setToolTip(tr("Triangulaire : une des deux intensités vaut 0. Moments répartis et charges surfaciques : "
+                               "non disponibles (non transmis aux moteurs de calcul)."));
     paramForm->addRow(tr("Type de charge :"), m_comboType);
 
     m_comboDirection = new QComboBox(this);
@@ -81,6 +137,11 @@ void MemberLoadDialog::setupUI()
     m_comboDirection->addItem(tr("Local y (transversal)"), static_cast<int>(TSA::Model::LoadDirection::LocalY));
     m_comboDirection->addItem(tr("Local z (transversal)"), static_cast<int>(TSA::Model::LoadDirection::LocalZ));
     paramForm->addRow(tr("Direction :"), m_comboDirection);
+
+    m_lblDirectionHint = new QLabel(this);
+    m_lblDirectionHint->setWordWrap(true);
+    m_lblDirectionHint->setStyleSheet("color: #94a3b8;");
+    paramForm->addRow(QString(), m_lblDirectionHint);
 
     mainLayout->addWidget(groupParam);
 
@@ -107,21 +168,17 @@ void MemberLoadDialog::setupUI()
     valGrid->addWidget(m_lblQ2, 0, 2);
     valGrid->addWidget(m_spinQ2, 0, 3);
 
-    m_lblX1 = new QLabel(tr("Position début x1 :"), this);
+    m_lblX1 = new QLabel(tr("Début x1 :"), this);
     m_spinX1 = new QDoubleSpinBox(this);
     m_spinX1->setRange(0.0, 1000.0);
     m_spinX1->setDecimals(2);
     m_spinX1->setSuffix(" m");
-    m_lblX1->setVisible(false);
-    m_spinX1->setVisible(false);
 
-    m_lblX2 = new QLabel(tr("Position fin x2 :"), this);
+    m_lblX2 = new QLabel(tr("Fin x2 :"), this);
     m_spinX2 = new QDoubleSpinBox(this);
     m_spinX2->setRange(0.0, 1000.0);
     m_spinX2->setDecimals(2);
     m_spinX2->setSuffix(" m");
-    m_lblX2->setVisible(false);
-    m_spinX2->setVisible(false);
 
     valGrid->addWidget(m_lblX1, 1, 0);
     valGrid->addWidget(m_spinX1, 1, 1);
@@ -140,6 +197,11 @@ void MemberLoadDialog::setupUI()
     nameLayout->addWidget(m_editName);
     mainLayout->addLayout(nameLayout);
 
+    m_lblStatus = new QLabel(this);
+    m_lblStatus->setWordWrap(true);
+    m_lblStatus->setStyleSheet("color: #34d399;");
+    mainLayout->addWidget(m_lblStatus);
+
     // 5. Boutons d'action
     auto* btnLayout = new QHBoxLayout();
     m_btnApply = new QPushButton(tr("Appliquer la Charge"), this);
@@ -153,6 +215,9 @@ void MemberLoadDialog::setupUI()
     // Connexions
     connect(m_comboElement, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MemberLoadDialog::onElementSelectionChanged);
     connect(m_comboType, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MemberLoadDialog::onLoadTypeChanged);
+    connect(m_comboDirection, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MemberLoadDialog::onDirectionChanged);
+    onLoadTypeChanged(m_comboType->currentIndex());
+    onDirectionChanged(m_comboDirection->currentIndex());
     connect(m_btnApply, &QPushButton::clicked, this, &MemberLoadDialog::onApplyClicked);
     connect(m_btnClose, &QPushButton::clicked, this, &QDialog::accept);
 }
@@ -242,6 +307,8 @@ void MemberLoadDialog::updateElementInfoDisplay()
                 .arg(QString::number(b->length(*m_model), 'f', 2))
                 .arg(QString::fromStdString(b->section().name))
                 .arg(QString::fromStdString(b->material().name)));
+            m_spinX1->setMaximum(b->length(*m_model));
+            m_spinX2->setMaximum(b->length(*m_model));
             m_spinX2->setValue(b->length(*m_model));
             return;
         }
@@ -253,6 +320,8 @@ void MemberLoadDialog::updateElementInfoDisplay()
                 .arg(QString::number(col->length(*m_model), 'f', 2))
                 .arg(QString::fromStdString(col->section().name))
                 .arg(QString::fromStdString(col->material().name)));
+            m_spinX1->setMaximum(col->length(*m_model));
+            m_spinX2->setMaximum(col->length(*m_model));
             m_spinX2->setValue(col->length(*m_model));
             return;
         }
@@ -261,6 +330,8 @@ void MemberLoadDialog::updateElementInfoDisplay()
         if (truss)
         {
             m_lblElementInfo->setText(tr("Treillis | Longueur : %1 m").arg(QString::number(truss->length(*m_model), 'f', 2)));
+            m_spinX1->setMaximum(truss->length(*m_model));
+            m_spinX2->setMaximum(truss->length(*m_model));
             m_spinX2->setValue(truss->length(*m_model));
             return;
         }
@@ -277,10 +348,9 @@ void MemberLoadDialog::onLoadTypeChanged(int index)
     m_lblQ2->setVisible(isLinear);
     m_spinQ2->setVisible(isLinear);
 
-    m_lblX1->setVisible(isLinear || isPoint);
-    m_spinX1->setVisible(isLinear || isPoint);
-    m_lblX2->setVisible(isLinear);
-    m_spinX2->setVisible(isLinear);
+    // Intervalle [x1, x2] pour toute charge répartie (uniforme comprise), position seule pour une force.
+    m_lblX2->setVisible(!isPoint);
+    m_spinX2->setVisible(!isPoint);
 
     if (isPoint)
     {
@@ -290,54 +360,61 @@ void MemberLoadDialog::onLoadTypeChanged(int index)
     }
     else
     {
-        m_lblQ1->setText(tr("Intensité q :"));
+        m_lblQ1->setText(isLinear ? tr("Intensité q1 (début) :") : tr("Intensité q :"));
         m_spinQ1->setSuffix(" kN/m");
-        m_lblX1->setText(tr("Position début x1 :"));
+        m_lblX1->setText(tr("Début x1 :"));
     }
 }
 
 void MemberLoadDialog::onApplyClicked()
 {
     if (!m_model) return;
-
-    int elemId = m_comboElement->currentData().toInt();
-    if (elemId <= 0)
+    const std::vector<TSA::Model::MemberLoadTarget> targets = chosenTargets();
+    if (targets.empty())
     {
-        QMessageBox::warning(this, tr("Erreur"), tr("Veuillez sélectionner un élément structural valide."));
+        QMessageBox::warning(this, tr("Charge sur barre"), tr("Veuillez sélectionner un élément structural valide."));
         return;
     }
 
-    int loadCaseId = m_comboLoadCase->currentData().toInt();
-    auto type = static_cast<TSA::Model::LoadType>(m_comboType->currentData().toInt());
-    auto dir = static_cast<TSA::Model::LoadDirection>(m_comboDirection->currentData().toInt());
+    const auto type = static_cast<TSA::Model::LoadType>(m_comboType->currentData().toInt());
+    const auto dir = static_cast<TSA::Model::LoadDirection>(m_comboDirection->currentData().toInt());
+    const bool isPoint = type == TSA::Model::LoadType::MemberPoint;
+    const double q1 = m_spinQ1->value();
+    const double q2 = type == TSA::Model::LoadType::MemberLinear ? m_spinQ2->value() : q1;
+    const double x1 = m_spinX1->value();
+    const double x2 = isPoint ? x1 : m_spinX2->value();
 
-    double q1 = m_spinQ1->value();
-    double q2 = (type == TSA::Model::LoadType::MemberLinear) ? m_spinQ2->value() : q1;
-    double x1 = m_spinX1->value();
-    double x2 = m_spinX2->value();
+    TSA::Model::MemberLoad prototype(0, targets.front().elementId, m_comboLoadCase->currentData().toInt(), type, q1, q2, dir,
+                                     TSA::Model::MemberLoad::coordSystemFor(dir), x1, x2, false,
+                                     m_editName->text().trimmed().toStdString(), targets.front().type);
 
-    if (std::abs(q1) < 1e-9 && std::abs(q2) < 1e-9)
+    // Double application involontaire (double clic sur « Appliquer ») : confirmation.
+    int duplicates = 0;
+    for (const auto& t : targets)
     {
-        QMessageBox::warning(this, tr("Erreur"), tr("L'intensité de la charge est nulle."));
+        TSA::Model::MemberLoad probe = prototype;
+        probe.setElementId(t.elementId);
+        probe.setTargetType(t.type);
+        if (TSA::Model::hasEquivalentMemberLoad(*m_model, probe)) ++duplicates;
+    }
+    if (duplicates > 0
+        && QMessageBox::question(this, tr("Charge déjà présente"),
+                                 tr("Une charge identique existe déjà sur %1 barre(s). L'ajouter quand même (elle s'additionnera) ?")
+                                     .arg(duplicates),
+                                 QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+        return;
+
+    std::string error;
+    const std::vector<int> ids = TSA::Model::applyMemberLoad(
+        *m_model, prototype, targets,
+        tr("Charge sur %1 barre(s)").arg(targets.size()).toStdString(), &error);
+    if (ids.empty())
+    {
+        QMessageBox::warning(this, tr("Charge sur barre"), QString::fromStdString(error));
         return;
     }
-
-    std::string name = m_editName->text().trimmed().toStdString();
-
-    m_model->pushUndoState(tr("Appliquer Charge sur Élément #%1").arg(elemId).toStdString());
-
-    auto coordSys = (dir == TSA::Model::LoadDirection::LocalX ||
-                     dir == TSA::Model::LoadDirection::LocalY ||
-                     dir == TSA::Model::LoadDirection::LocalZ) ?
-                     TSA::Model::LoadCoordSystem::Local : TSA::Model::LoadCoordSystem::Global;
-
-    TSA::Model::MemberLoad ml(0, elemId, loadCaseId, type, q1, q2, dir, coordSys, x1, x2, false, name, currentTarget());
-    int newId = m_model->loadManager().addMemberLoad(ml);
-
-    m_model->notifyMemberLoadAdded(newId);
-
-    QMessageBox::information(this, tr("Succès"),
-                             tr("Charge sur barre ML#%1 appliquée avec succès sur l'élément #%2 !").arg(newId).arg(elemId));
+    m_lblStatus->setText(ids.size() == 1 ? tr("Charge ML%1 appliquée.").arg(ids.front())
+                                         : tr("%1 charges appliquées (ML%2 à ML%3).").arg(ids.size()).arg(ids.front()).arg(ids.back()));
 }
 
 } // namespace TSA::UI

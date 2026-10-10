@@ -32,183 +32,127 @@ LocalMemberLoadComponents LoadResolver::decomposeGlobalVectorToLocal(const gp_Ve
     return comp;
 }
 
+namespace
+{
+bool isLocalAxis(TSA::Model::LoadDirection d)
+{
+    using TSA::Model::LoadDirection;
+    return d == LoadDirection::LocalX || d == LoadDirection::LocalY || d == LoadDirection::LocalZ;
+}
+
+bool isGlobalAxis(TSA::Model::LoadDirection d)
+{
+    using TSA::Model::LoadDirection;
+    return d == LoadDirection::GlobalX || d == LoadDirection::GlobalY || d == LoadDirection::GlobalZ;
+}
+} // namespace
+
+bool LoadResolver::usesMagnitudeOnly(const TSA::Model::MemberLoad& load)
+{
+    return load.coordSystem() == TSA::Model::LoadCoordSystem::Local ? !isLocalAxis(load.direction())
+                                                                     : !isGlobalAxis(load.direction());
+}
+
+LocalMemberLoadComponents LoadResolver::memberLoadLocalComponents(const TSA::Model::MemberLoad& load, double q,
+                                                                  const gp_Pnt& p1, const gp_Pnt& p2,
+                                                                  double betaAngleDeg)
+{
+    using TSA::Model::LoadDirection;
+    LocalMemberLoadComponents c;
+    if (load.coordSystem() == TSA::Model::LoadCoordSystem::Local)
+    {
+        // Composantes exactes : aucune projection (résultats identiques à l'historique).
+        switch (load.direction())
+        {
+        case LoadDirection::LocalX: c.wx = q; break;
+        case LoadDirection::LocalY: c.wy = q; break;
+        case LoadDirection::LocalZ: c.wz = q; break;
+        default: c.wz = -std::abs(q); break;
+        }
+        return c;
+    }
+    gp_Vec g(0.0, 0.0, -std::abs(q));
+    switch (load.direction())
+    {
+    case LoadDirection::GlobalX: g = gp_Vec(q, 0.0, 0.0); break;
+    case LoadDirection::GlobalY: g = gp_Vec(0.0, q, 0.0); break;
+    case LoadDirection::GlobalZ: g = gp_Vec(0.0, 0.0, q); break;
+    default: break;   // Gravité, ou axe local en repère global : descendante |q|
+    }
+    return decomposeGlobalVectorToLocal(g, p1, p2, betaAngleDeg);
+}
+
+gp_Vec LoadResolver::memberLoadVector(const TSA::Model::MemberLoad& load, double q,
+                                      const gp_Pnt& p1, const gp_Pnt& p2, double betaAngleDeg)
+{
+    using TSA::Model::LoadDirection;
+    if (load.coordSystem() == TSA::Model::LoadCoordSystem::Local)
+    {
+        const LocalMemberLoadComponents c = memberLoadLocalComponents(load, q, p1, p2, betaAngleDeg);
+        return localVectorToGlobal(c.wx, c.wy, c.wz, p1, p2, betaAngleDeg);
+    }
+    switch (load.direction())
+    {
+    case LoadDirection::GlobalX: return gp_Vec(q, 0.0, 0.0);
+    case LoadDirection::GlobalY: return gp_Vec(0.0, q, 0.0);
+    case LoadDirection::GlobalZ: return gp_Vec(0.0, 0.0, q);
+    default: return gp_Vec(0.0, 0.0, -std::abs(q));
+    }
+}
+
 LocalMemberLoadComponents LoadResolver::resolveMemberLoadToLocal(const TSA::Model::MemberLoad& load,
                                                                const TSA::Model::Model& model)
 {
-    LocalMemberLoadComponents result;
-
-    // Récupérer les coordonnées de début et fin de l'élément
-    int elemId = load.elementId();
+    // Extrémités de l'élément porteur (poutre, poteau, treillis) ; même recherche qu'auparavant.
     int startNodeId = 0;
     int endNodeId = 0;
     double rotationDeg = 0.0;
-
-    if (load.targetType() == TSA::Model::MemberTargetType::Column)
+    const int elemId = load.elementId();
+    auto take = [&](const auto* e) {
+        if (!e) return false;
+        startNodeId = e->startNodeId();
+        endNodeId = e->endNodeId();
+        return true;
+    };
+    using TSA::Model::MemberTargetType;
+    if (load.targetType() == MemberTargetType::Column)
     {
-        const auto* col = model.getColumn(elemId);
-        if (col)
-        {
-            startNodeId = col->startNodeId();
-            endNodeId = col->endNodeId();
-            rotationDeg = col->rotation();
-        }
+        if (const auto* col = model.getColumn(elemId); take(col)) rotationDeg = col->rotation();
     }
-    else if (load.targetType() == TSA::Model::MemberTargetType::Truss)
+    else if (load.targetType() == MemberTargetType::Truss)
     {
-        const auto* tr = model.getTrussMember(elemId);
-        if (tr)
-        {
-            startNodeId = tr->startNodeId();
-            endNodeId = tr->endNodeId();
-        }
+        take(model.getTrussMember(elemId));
+    }
+    else if (const auto* b = model.getBeam(elemId); take(b))
+    {
+        rotationDeg = b->rotation();
+    }
+    else if (const auto* col = model.getColumn(elemId); take(col))
+    {
+        rotationDeg = col->rotation();
     }
     else
     {
-        const auto* b = model.getBeam(elemId);
-        if (b)
-        {
-            startNodeId = b->startNodeId();
-            endNodeId = b->endNodeId();
-            rotationDeg = b->rotation();
-        }
-        else
-        {
-            const auto* col = model.getColumn(elemId);
-            if (col)
-            {
-                startNodeId = col->startNodeId();
-                endNodeId = col->endNodeId();
-                rotationDeg = col->rotation();
-            }
-            else
-            {
-                const auto* tr = model.getTrussMember(elemId);
-                if (tr)
-                {
-                    startNodeId = tr->startNodeId();
-                    endNodeId = tr->endNodeId();
-                }
-            }
-        }
+        take(model.getTrussMember(elemId));
     }
 
     const auto* n1 = model.getNode(startNodeId);
     const auto* n2 = model.getNode(endNodeId);
-    if (!n1 || !n2)
-    {
-        // En cas d'élément introuvable, renvoie direct la valeur selon direction
-        return result;
-    }
-
-    gp_Pnt p1(n1->x(), n1->y(), n1->z());
-    gp_Pnt p2(n2->x(), n2->y(), n2->z());
-
-    double qMag = load.q1(); // Intensité représentative
-
-    if (load.coordSystem() == TSA::Model::LoadCoordSystem::Local)
-    {
-        // La charge est déjà exprimée dans le repère local
-        switch (load.direction())
-        {
-        case TSA::Model::LoadDirection::LocalX:
-            result.wx = qMag;
-            break;
-        case TSA::Model::LoadDirection::LocalY:
-            result.wy = qMag;
-            break;
-        case TSA::Model::LoadDirection::LocalZ:
-            result.wz = qMag;
-            break;
-        default:
-            result.wz = -qMag; // Par défaut transversal
-            break;
-        }
-        return result;
-    }
-
-    // Charge exprimée en repère global : construire le vecteur global
-    gp_Vec globalVec(0.0, 0.0, 0.0);
-    switch (load.direction())
-    {
-    case TSA::Model::LoadDirection::GlobalX:
-        globalVec = gp_Vec(qMag, 0.0, 0.0);
-        break;
-    case TSA::Model::LoadDirection::GlobalY:
-        globalVec = gp_Vec(0.0, qMag, 0.0);
-        break;
-    case TSA::Model::LoadDirection::GlobalZ:
-        globalVec = gp_Vec(0.0, 0.0, qMag);
-        break;
-    case TSA::Model::LoadDirection::Gravity:
-        // Gravité / charge verticale descendante (-Z par convention internationale)
-        globalVec = gp_Vec(0.0, 0.0, -std::abs(qMag));
-        break;
-    default:
-        globalVec = gp_Vec(0.0, 0.0, -std::abs(qMag));
-        break;
-    }
-
-    return decomposeGlobalVectorToLocal(globalVec, p1, p2, rotationDeg);
+    if (!n1 || !n2) return {};
+    return memberLoadLocalComponents(load, load.q1(), gp_Pnt(n1->x(), n1->y(), n1->z()),
+                                     gp_Pnt(n2->x(), n2->y(), n2->z()), rotationDeg);
 }
 
 LocalMemberLoadComponents LoadResolver::resolveMemberLoadToLocal(const TSA::Model::MemberLoad& load,
                                                                const CalculationSnapshot& snapshot)
 {
-    LocalMemberLoadComponents result;
-
     const auto* el = snapshot.findElementForLoad(load);
-    if (!el) return result;
-
+    if (!el) return {};
     const auto* n1 = snapshot.getNode(el->startNodeId);
     const auto* n2 = snapshot.getNode(el->endNodeId);
-    if (!n1 || !n2) return result;
-
-    gp_Pnt p1(n1->x, n1->y, n1->z);
-    gp_Pnt p2(n2->x, n2->y, n2->z);
-    double rotationDeg = el->rotation;
-    double qMag = load.q1();
-
-    if (load.coordSystem() == TSA::Model::LoadCoordSystem::Local)
-    {
-        switch (load.direction())
-        {
-        case TSA::Model::LoadDirection::LocalX:
-            result.wx = qMag;
-            break;
-        case TSA::Model::LoadDirection::LocalY:
-            result.wy = qMag;
-            break;
-        case TSA::Model::LoadDirection::LocalZ:
-            result.wz = qMag;
-            break;
-        default:
-            result.wz = -std::abs(qMag);
-            break;
-        }
-        return result;
-    }
-
-    gp_Vec globalVec(0.0, 0.0, 0.0);
-    switch (load.direction())
-    {
-    case TSA::Model::LoadDirection::GlobalX:
-        globalVec = gp_Vec(qMag, 0.0, 0.0);
-        break;
-    case TSA::Model::LoadDirection::GlobalY:
-        globalVec = gp_Vec(0.0, qMag, 0.0);
-        break;
-    case TSA::Model::LoadDirection::GlobalZ:
-        globalVec = gp_Vec(0.0, 0.0, qMag);
-        break;
-    case TSA::Model::LoadDirection::Gravity:
-        globalVec = gp_Vec(0.0, 0.0, -std::abs(qMag));
-        break;
-    default:
-        globalVec = gp_Vec(0.0, 0.0, -std::abs(qMag));
-        break;
-    }
-
-    return decomposeGlobalVectorToLocal(globalVec, p1, p2, rotationDeg);
+    if (!n1 || !n2) return {};
+    return memberLoadLocalComponents(load, load.q1(), gp_Pnt(n1->x, n1->y, n1->z), gp_Pnt(n2->x, n2->y, n2->z),
+                                     el->rotation);
 }
 
 gp_Vec LoadResolver::localVectorToGlobal(double lx, double ly, double lz,

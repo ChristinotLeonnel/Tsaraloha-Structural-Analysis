@@ -3,6 +3,9 @@
 #include "../../Model/Load/LoadManager.h"
 #include "../../Model/Load/NodalLoad.h"
 #include "../../Model/Load/MemberLoad.h"
+#include "../../Model/Load/MemberLoadCommands.h"
+
+#include <QMessageBox>
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -243,6 +246,7 @@ void LoadPropertiesView::refreshView()
         }
 
         m_lblHeader->setText(tr("Charge Nodale #%1").arg(m_loadId));
+        m_comboCoordSys->setEnabled(true);   // verrouillé seulement pour les charges sur barre
         m_editName->setText(QString::fromStdString(nl->name()));
         m_lblTarget->setText(tr("Nœud N%1").arg(nl->nodeId()));
 
@@ -291,6 +295,19 @@ void LoadPropertiesView::refreshView()
         m_spinX1->setValue(ml->x1());
         m_spinX2->setValue(ml->x2());
 
+        // Repère déduit de la direction (une direction locale en repère global serait lue comme
+        // Gravité par les moteurs) ; champs propres au type de charge seulement.
+        m_comboCoordSys->setEnabled(false);
+        const bool linear = ml->type() == TSA::Model::LoadType::MemberLinear;
+        const bool point = ml->type() == TSA::Model::LoadType::MemberPoint;
+        m_lblQ2->setVisible(linear);
+        m_spinQ2->setVisible(linear);
+        m_spinX2->setVisible(!point);
+        m_spinQ1->setSuffix(point ? " kN" : " kN/m");
+        m_lblHeader->setText(point ? tr("Charge ponctuelle sur barre #%1").arg(m_loadId)
+                             : linear ? tr("Charge linéaire sur barre #%1").arg(m_loadId)
+                                      : tr("Charge uniforme sur barre #%1").arg(m_loadId));
+
         m_groupForces->setVisible(false);
         m_groupMoments->setVisible(false);
         m_groupMember->setVisible(true);
@@ -330,17 +347,33 @@ void LoadPropertiesView::applyChanges()
         auto* ml = m_model->loadManager().getMemberLoad(m_loadId);
         if (!ml) return;
 
+        // Copie validée avant toute modification : une valeur refusée ne laisse rien dans le modèle.
+        TSA::Model::MemberLoad edited = *ml;
+        edited.setName(m_editName->text().trimmed().toStdString());
+        edited.setLoadCaseId(m_comboLoadCase->currentData().toInt());
+        edited.setDirection(static_cast<TSA::Model::LoadDirection>(m_comboDirection->currentData().toInt()));
+        edited.setCoordSystem(TSA::Model::MemberLoad::coordSystemFor(edited.direction()));
+        edited.setQ1(m_spinQ1->value());
+        edited.setQ2(edited.type() == TSA::Model::LoadType::MemberLinear ? m_spinQ2->value() : m_spinQ1->value());
+        edited.setX1(m_spinX1->value());
+        edited.setX2(edited.type() == TSA::Model::LoadType::MemberPoint ? m_spinX1->value() : m_spinX2->value());
+
+        const double length = TSA::Model::memberLoadTargetLength(*m_model, edited.elementId(), edited.targetType());
+        const std::string why = length < 0.0 ? std::string("La barre chargée n'existe plus.") : edited.validate(length);
+        if (!why.empty())
+        {
+            QMessageBox::warning(this, tr("Charge sur barre"), QString::fromStdString(why));
+            refreshView();   // retour aux valeurs du modèle
+            return;
+        }
+        auto same = [](double a, double b) { return std::abs(a - b) <= 1e-12; };
+        if (edited.name() == ml->name() && edited.loadCaseId() == ml->loadCaseId() && edited.direction() == ml->direction()
+            && edited.coordSystem() == ml->coordSystem() && same(edited.q1(), ml->q1()) && same(edited.q2(), ml->q2())
+            && same(edited.x1(), ml->x1()) && same(edited.x2(), ml->x2()))
+            return;   // rien n'a changé : pas d'entrée Annuler
+
         m_model->pushUndoState(tr("Modifier Charge sur Barre #%1").arg(m_loadId).toStdString());
-
-        ml->setName(m_editName->text().trimmed().toStdString());
-        ml->setLoadCaseId(m_comboLoadCase->currentData().toInt());
-        ml->setCoordSystem(static_cast<TSA::Model::LoadCoordSystem>(m_comboCoordSys->currentData().toInt()));
-        ml->setDirection(static_cast<TSA::Model::LoadDirection>(m_comboDirection->currentData().toInt()));
-        ml->setQ1(m_spinQ1->value());
-        ml->setQ2(m_spinQ2->value());
-        ml->setX1(m_spinX1->value());
-        ml->setX2(m_spinX2->value());
-
+        *ml = edited;
         m_model->notifyMemberLoadModified(m_loadId);
     }
 

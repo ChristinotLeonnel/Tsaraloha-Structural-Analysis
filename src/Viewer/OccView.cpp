@@ -75,6 +75,7 @@ OccView::OccView(QWidget* parent)
 
     // Repères de grille : une seule logique de visibilité pour toutes les vues (GridLabelLayout).
     connect(this, &OccView::viewCameraChanged, this, &OccView::updateGridLabelView);
+    connect(this, &OccView::viewCameraChanged, this, &OccView::updateMemberLoadZoomScale);
 
     if (m_interactionManager)
     {

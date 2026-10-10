@@ -329,17 +329,33 @@ RibbonTab* RibbonBuilder::buildLoadsTab(RibbonBar* bar, const RibbonActions& act
 {
     auto* tab = bar->addTab(QObject::tr("Charges"));
 
-    // Groupe 1 : Actions Ponctuelles
-    auto* ptPanel = new RibbonPanel(QObject::tr("Actions Ponctuelles"), tab);
+    // Catégories : Nœud, Barre, Surface, Poids propre (commandes réellement disponibles ; la charge
+    // surfacique est montrée désactivée avec la raison en infobulle).
+    auto* nodePanel = new RibbonPanel(QObject::tr("Nœud"), tab);
     auto* actPointLoad = acts.actionPointLoad ? acts.actionPointLoad : new QAction(QIcon(":/icons/load_force_couple.svg"), QObject::tr("Force et Couple"), parentWindow);
-    ptPanel->addLargeAction(actPointLoad);
-    tab->addPanel(ptPanel);
+    nodePanel->addLargeAction(actPointLoad);
+    tab->addPanel(nodePanel);
 
-    // Groupe 2 : Actions Réparties
-    auto* distPanel = new RibbonPanel(QObject::tr("Actions Réparties"), tab);
-    auto* actDistLoad = acts.actionDistLoad ? acts.actionDistLoad : new QAction(QIcon(":/icons/load_dist.svg"), QObject::tr("Charge Répartie"), parentWindow);
-    distPanel->addLargeAction(actDistLoad);
-    tab->addPanel(distPanel);
+    auto* barPanel = new RibbonPanel(QObject::tr("Barre"), tab);
+    auto* actDistLoad = acts.actionDistLoad ? acts.actionDistLoad : new QAction(QIcon(":/icons/load_dist.svg"), QObject::tr("Charge Uniforme"), parentWindow);
+    barPanel->addLargeAction(actDistLoad);
+    if (acts.actionTrapLoad) barPanel->addLargeAction(acts.actionTrapLoad);
+    if (acts.actionBarPointLoad) barPanel->addLargeAction(acts.actionBarPointLoad);
+    tab->addPanel(barPanel);
+
+    if (acts.actionSurfaceLoad)
+    {
+        auto* surfPanel = new RibbonPanel(QObject::tr("Surface"), tab);
+        surfPanel->addLargeAction(acts.actionSurfaceLoad);
+        tab->addPanel(surfPanel);
+    }
+
+    if (acts.actionSelfWeight)
+    {
+        auto* weightPanel = new RibbonPanel(QObject::tr("Poids"), tab);
+        weightPanel->addLargeAction(acts.actionSelfWeight);
+        tab->addPanel(weightPanel);
+    }
 
     // Groupe 3 : Cas de Charges & Normes
     auto* casesPanel = new RibbonPanel(QObject::tr("Cas & Normes"), tab);

@@ -727,10 +727,32 @@ void MainWindow::createActions()
     m_actionPointLoad->setToolTip(tr("Appliquer en un nœud une force (Fx, Fy, Fz) et/ou un couple (Mx, My, Mz)"));
     connect(m_actionPointLoad, &QAction::triggered, this, &MainWindow::onActionPointLoad);
 
-    m_actionDistLoad = new QAction(tr("Charge &Linéique Répartie..."), this);
+    m_actionDistLoad = new QAction(tr("Charge &Uniforme..."), this);
     m_actionDistLoad->setIcon(QIcon(":/icons/load_dist.svg"));
-    m_actionDistLoad->setToolTip(tr("Appliquer une charge répartie q sur les poutres"));
+    m_actionDistLoad->setToolTip(tr("Charge uniformément répartie q (kN/m) sur une barre, sur toute sa longueur ou sur un intervalle"));
     connect(m_actionDistLoad, &QAction::triggered, this, &MainWindow::onActionDistLoad);
+
+    m_actionTrapLoad = new QAction(tr("Charge &Trapézoïdale..."), this);
+    m_actionTrapLoad->setIcon(QIcon(":/icons/load_trapezoid.svg"));
+    m_actionTrapLoad->setToolTip(tr("Charge linéairement variable q1 → q2 (kN/m) : trapézoïdale, ou triangulaire si une extrémité vaut 0"));
+    connect(m_actionTrapLoad, &QAction::triggered, this, [this] { openMemberLoadDialog(TSA::Model::LoadType::MemberLinear); });
+
+    m_actionBarPointLoad = new QAction(tr("Force &Ponctuelle sur Barre..."), this);
+    m_actionBarPointLoad->setIcon(QIcon(":/icons/load_bar_point.svg"));
+    m_actionBarPointLoad->setToolTip(tr("Force concentrée P (kN) appliquée à une abscisse x de la barre"));
+    connect(m_actionBarPointLoad, &QAction::triggered, this, [this] { openMemberLoadDialog(TSA::Model::LoadType::MemberPoint); });
+
+    // Présentée mais désactivée : les dalles et voiles ne sont pas transmis aux moteurs de calcul.
+    m_actionSurfaceLoad = new QAction(tr("Charge &Surfacique"), this);
+    m_actionSurfaceLoad->setIcon(QIcon(":/icons/load_surface.svg"));
+    m_actionSurfaceLoad->setToolTip(tr("Non disponible : les dalles et voiles ne sont pas encore transmis au calcul (pas de maillage). "
+                                       "Appliquez les charges sur les poutres porteuses."));
+    m_actionSurfaceLoad->setEnabled(false);
+
+    m_actionSelfWeight = new QAction(tr("&Poids Propre..."), this);
+    m_actionSelfWeight->setIcon(QIcon(":/icons/load_selfweight.svg"));
+    m_actionSelfWeight->setToolTip(tr("Poids propre calculé automatiquement (section × masse volumique × g) : activé et pondéré par cas de charge"));
+    connect(m_actionSelfWeight, &QAction::triggered, this, &MainWindow::onActionLoadCases);
 
     m_actionLoadCases = new QAction(tr("&Cas de Charges && Combinaisons..."), this);
     m_actionLoadCases->setIcon(QIcon(":/icons/analysis_modal.svg"));
@@ -992,6 +1014,9 @@ void MainWindow::createMenus()
     QMenu* loadSubMenu = analysisMenu->addMenu(tr("Charges && Actions"));
     loadSubMenu->addAction(m_actionPointLoad);
     loadSubMenu->addAction(m_actionDistLoad);
+    loadSubMenu->addAction(m_actionTrapLoad);
+    loadSubMenu->addAction(m_actionBarPointLoad);
+    loadSubMenu->addAction(m_actionSelfWeight);
     loadSubMenu->addSeparator();
     loadSubMenu->addAction(m_actionLoadCases);
     analysisMenu->addSeparator();
@@ -1266,6 +1291,10 @@ void MainWindow::createRibbon()
 
     acts.actionPointLoad = m_actionPointLoad;
     acts.actionDistLoad = m_actionDistLoad;
+    acts.actionTrapLoad = m_actionTrapLoad;
+    acts.actionBarPointLoad = m_actionBarPointLoad;
+    acts.actionSurfaceLoad = m_actionSurfaceLoad;
+    acts.actionSelfWeight = m_actionSelfWeight;
     acts.actionLoadCases = m_actionLoadCases;
     acts.actionLoadsVisible = m_actionLoadsVisible;
     acts.actionForcesVisible = m_actionForcesVisible;

@@ -7,12 +7,16 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QPushButton>
+#include <QCheckBox>
+
+#include <vector>
 
 class OccView;
 
 namespace TSA::Model
 {
 class Model;
+struct MemberLoadTarget;
 }
 
 namespace TSA::Viewer
@@ -40,10 +44,13 @@ public:
 
     /// Préselection : les ids ne sont uniques que par famille (poutre 1 ≠ poteau 1).
     void setTargetElementId(int elemId, TSA::Model::MemberTargetType target = TSA::Model::MemberTargetType::Beam);
+    /// Type proposé à l'ouverture (boutons Uniforme / Trapézoïdale / Ponctuelle du ruban).
+    void setLoadType(TSA::Model::LoadType type);
 
 private slots:
     void onElementSelectionChanged(int index);
     void onLoadTypeChanged(int index);
+    void onDirectionChanged(int index);
     void onApplyClicked();
 
 private:
@@ -52,6 +59,9 @@ private:
     void populateLoadCases();
     void updateElementInfoDisplay();
     TSA::Model::MemberTargetType currentTarget() const;
+    double currentLength() const;
+    /// Barre de la liste, plus les autres barres sélectionnées si la case est cochée.
+    std::vector<TSA::Model::MemberLoadTarget> chosenTargets() const;
 
     TSA::Model::Model* m_model = nullptr;
     TSA::Viewer::SelectionManager* m_selectionManager = nullptr;
@@ -76,6 +86,9 @@ private:
     QLabel* m_lblX2 = nullptr;
     QDoubleSpinBox* m_spinX2 = nullptr;
 
+    QLabel* m_lblDirectionHint = nullptr;
+    QCheckBox* m_chkAllSelected = nullptr;
+    QLabel* m_lblStatus = nullptr;
     QLineEdit* m_editName = nullptr;
     QPushButton* m_btnApply = nullptr;
     QPushButton* m_btnClose = nullptr;

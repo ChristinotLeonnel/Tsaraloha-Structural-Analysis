@@ -19,6 +19,7 @@
 #include "../Geometry/FoundationGeometry.h"
 #include "../Geometry/CableGeometry3D.h"
 #include "../Geometry/SupportGeometry.h"
+#include "../Geometry/MemberLoadGlyph.h"
 #include "../Diagnostics/Logger.h"
 
 #include <QTimer>
@@ -1876,105 +1877,119 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
     const auto* ml = m_model->loadManager().getMemberLoad(loadId);
     if (!ml) return;
 
-    int elemId = ml->elementId();
     int sNode = 0, eNode = 0;
     double rotDeg = 0.0;
-    const auto* b = m_model->getBeam(elemId);
-    if (b) { sNode = b->startNodeId(); eNode = b->endNodeId(); rotDeg = b->rotation(); }
-    else
-    {
-        const auto* col = m_model->getColumn(elemId);
-        if (col) { sNode = col->startNodeId(); eNode = col->endNodeId(); rotDeg = col->rotation(); }
-        else
-        {
-            const auto* tr = m_model->getTrussMember(elemId);
-            if (tr) { sNode = tr->startNodeId(); eNode = tr->endNodeId(); }
-        }
-    }
+    const int elemId = ml->elementId();
+    if (const auto* b = m_model->getBeam(elemId)) { sNode = b->startNodeId(); eNode = b->endNodeId(); rotDeg = b->rotation(); }
+    else if (const auto* col = m_model->getColumn(elemId)) { sNode = col->startNodeId(); eNode = col->endNodeId(); rotDeg = col->rotation(); }
+    else if (const auto* tr = m_model->getTrussMember(elemId)) { sNode = tr->startNodeId(); eNode = tr->endNodeId(); }
 
     const auto* n1 = m_model->getNode(sNode);
     const auto* n2 = m_model->getNode(eNode);
     if (!n1 || !n2) return;
+    const gp_Pnt p1(n1->x(), n1->y(), n1->z());
+    const gp_Pnt p2(n2->x(), n2->y(), n2->z());
 
-    gp_Pnt p1(n1->x(), n1->y(), n1->z());
-    gp_Pnt p2(n2->x(), n2->y(), n2->z());
+    // Représentation calculée hors de la vue (MemberLoadGlyph) : sens = LoadResolver (même
+    // convention que les moteurs), forme = intervalle et intensités du modèle. Taille des flèches :
+    // fonction du zoom (paliers), densité : espacement proportionnel à cette taille.
+    TSA::Geometry::MemberLoadGlyphSettings settings;
+    settings.arrowLength = memberLoadArrowLength();
+    settings.spacing = 0.5 * settings.arrowLength;
+    m_memberLoadArrowLength = settings.arrowLength;   // palier courant (updateMemberLoadZoomScale)
+    const TSA::Geometry::MemberLoadGlyph glyph = TSA::Geometry::buildMemberLoadGlyph(*ml, p1, p2, rotDeg, settings);
+    if (glyph.kind == TSA::Geometry::MemberLoadGlyphKind::Invalid) return;
 
-    gp_Vec vAxis(p1, p2);
-    double len = vAxis.Magnitude();
-    if (len < 1e-4) return;
-
-    // Direction de la charge
-    // [CONVENTION]
-    // Sign and coordinate system determine true physical orientation.
-    // Negative q reverses the vector direction.
-    //
-    // [TRACEABILITY]
-    // MemberLoad -> CoordinateSystem/LocalFrame -> DirectionVector -> Viewer
-    gp_Vec dirVec(0.0, 0.0, -1.0);
-    double qMag = ml->q1();
-    double sign = (qMag < 0.0) ? -1.0 : 1.0;
-
-    if (ml->direction() == TSA::Model::LoadDirection::GlobalX) dirVec = gp_Vec(1.0, 0.0, 0.0) * sign;
-    else if (ml->direction() == TSA::Model::LoadDirection::GlobalY) dirVec = gp_Vec(0.0, 1.0, 0.0) * sign;
-    else if (ml->direction() == TSA::Model::LoadDirection::GlobalZ) dirVec = gp_Vec(0.0, 0.0, 1.0) * sign;
-    else if (ml->direction() == TSA::Model::LoadDirection::Gravity) dirVec = gp_Vec(0.0, 0.0, -1.0);
-    else if (ml->direction() == TSA::Model::LoadDirection::LocalX)
-    {
-        gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
-        dirVec = gp_Vec(frame.XDirection()) * sign;
-    }
-    else if (ml->direction() == TSA::Model::LoadDirection::LocalY)
-    {
-        gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
-        dirVec = gp_Vec(frame.YDirection()) * sign;
-    }
-    else if (ml->direction() == TSA::Model::LoadDirection::LocalZ)
-    {
-        gp_Ax3 frame = TSA::Analysis::LoadResolver::computeElementLocalAxes(p1, p2, rotDeg);
-        dirVec = gp_Vec(frame.Direction()) * sign;
-    }
-    if (dirVec.SquareMagnitude() > 1e-6) dirVec.Normalize();
-
-    double scale = (m_loadScale > 0.05) ? m_loadScale : 1.0;
+    const gp_Vec axis(p1, p2);
+    const gp_Dir axisDir(axis);
     std::vector<Handle(AIS_Shape)> shapes;
-    int numArrows = 4;
-    double arrowH = 0.6 * scale;
+    auto show = [&](const Handle(AIS_Shape)& ais) {
+        if (m_loadsVisible && m_forcesVisible) m_context->Display(ais, false);
+        if (m_selectionManager) m_selectionManager->registerMemberLoad(loadId, ais);
+        shapes.push_back(ais);
+    };
 
-    for (int i = 0; i <= numArrows; ++i)
+    if (glyph.kind == TSA::Geometry::MemberLoadGlyphKind::Point && !glyph.arrows.empty())
     {
-        double t = static_cast<double>(i) / static_cast<double>(numArrows);
-        gp_Pnt pt = p1.Translated(vAxis * t);
-        TopoDS_Shape arr = makeArrowShape(pt, dirVec, arrowH, 0.025 * scale, 0.07 * scale, 0.16 * scale);
-        if (!arr.IsNull())
+        // Force concentrée : flèche pleine, comme les charges nodales.
+        const auto& a = glyph.arrows.front();
+        const double L = a.length;
+        TopoDS_Shape arrow = makeArrowShape(a.tip, gp_Vec(a.direction), L, 0.035 * L, 0.11 * L, 0.26 * L);
+        if (!arrow.IsNull())
         {
-            Handle(AIS_Shape) aisArr = new AIS_Shape(arr);
-            aisArr->SetColor(Quantity_NOC_CYAN);
-            aisArr->SetMaterial(Graphic3d_NOM_PLASTIC);
-            aisArr->SetDisplayMode(AIS_Shaded);
-            if (m_loadsVisible && m_forcesVisible)
+            Handle(AIS_Shape) ais = new AIS_Shape(arrow);
+            ais->SetColor(Quantity_NOC_CYAN);
+            ais->SetMaterial(Graphic3d_NOM_PLASTIC);
+            ais->SetDisplayMode(AIS_Shaded);
+            show(ais);
+        }
+    }
+    else if (glyph.kind == TSA::Geometry::MemberLoadGlyphKind::Distributed)
+    {
+        // Charge répartie : un seul objet filaire (flèches régulièrement espacées + enveloppe).
+        BRep_Builder bb;
+        TopoDS_Compound comp;
+        bb.MakeCompound(comp);
+        bool any = false;
+        auto addEdge = [&](const gp_Pnt& a, const gp_Pnt& b) {
+            if (a.Distance(b) < 1e-9) return;
+            BRepBuilderAPI_MakeEdge edge(a, b);
+            if (edge.IsDone()) { bb.Add(comp, edge.Edge()); any = true; }
+        };
+        for (const auto& a : glyph.arrows)
+        {
+            addEdge(a.tail, a.tip);
+            // Pointe en V dans le plan (direction, barre) ; axe quelconque si la charge est axiale.
+            gp_Vec side = gp_Vec(axisDir) - gp_Vec(a.direction) * gp_Vec(axisDir).Dot(gp_Vec(a.direction));
+            if (side.Magnitude() < 1e-6)
             {
-                m_context->Display(aisArr, false);
+                side = gp_Vec(a.direction).Crossed(gp_Vec(0.0, 0.0, 1.0));
+                if (side.Magnitude() < 1e-6) side = gp_Vec(a.direction).Crossed(gp_Vec(1.0, 0.0, 0.0));
             }
-            if (m_selectionManager)
-            {
-                m_selectionManager->registerMemberLoad(loadId, aisArr);
-            }
-            shapes.push_back(aisArr);
+            side.Normalize();
+            const double headLength = std::min(0.22 * settings.arrowLength, 0.6 * a.length);
+            const double headWidth = 0.42 * headLength;
+            const gp_Pnt back = a.tip.Translated(-gp_Vec(a.direction) * headLength);
+            addEdge(a.tip, back.Translated(side * headWidth));
+            addEdge(a.tip, back.Translated(-side * headWidth));
+        }
+        for (std::size_t i = 1; i < glyph.envelope.size(); ++i) addEdge(glyph.envelope[i - 1], glyph.envelope[i]);
+        if (any)
+        {
+            Handle(AIS_Shape) ais = new AIS_Shape(comp);
+            ais->SetColor(Quantity_NOC_CYAN);
+            ais->SetWidth(2.0);
+            ais->SetDisplayMode(AIS_WireFrame);
+            show(ais);
         }
     }
     m_memberLoadShapes[loadId] = shapes;
 
-    // Étiquette au milieu
-    gp_Pnt midPnt = p1.Translated(vAxis * 0.5);
-    gp_Pnt labelPos = midPnt.Translated(-dirVec * (arrowH + 0.15));
+    // Étiquette : forme et intervalle de la charge, valeurs du modèle (jamais mises à l'échelle).
+    auto fmt = [](double v) { return QString::number(v, 'f', 2); };
+    QString textVal;
+    const bool partial = !ml->coversFullLength(axis.Magnitude());
+    switch (glyph.kind)
+    {
+    case TSA::Geometry::MemberLoadGlyphKind::Point:
+        textVal = QString("P = %1 kN (x = %2 m)").arg(fmt(ml->q1()), fmt(glyph.start));
+        break;
+    case TSA::Geometry::MemberLoadGlyphKind::DistributedMoment:
+        textVal = QString("m = %1 kNm/m (non transmis au calcul)").arg(fmt(ml->q1()));
+        break;
+    default:
+        textVal = ml->type() == TSA::Model::LoadType::MemberLinear
+                      ? QString("q = %1 → %2 kN/m").arg(fmt(ml->q1()), fmt(ml->q2()))
+                      : QString("q = %1 kN/m").arg(fmt(ml->q1()));
+        if (partial) textVal += QString(" [%1 – %2 m]").arg(fmt(glyph.start), fmt(glyph.end));
+        break;
+    }
+    if (const auto* lc = m_model->loadManager().getLoadCase(ml->loadCaseId()))
+        textVal += QString(" [%1]").arg(QString::fromStdString(lc->name()));
 
     Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
-    QString textVal = QString("q = %1 kN/m").arg(QString::number(ml->q1(), 'f', 1));
-    const auto* lc = m_model->loadManager().getLoadCase(ml->loadCaseId());
-    if (lc) textVal += QString(" [%1]").arg(QString::fromStdString(lc->name()));
-
     aisLabel->SetText(TCollection_ExtendedString(textVal.toUtf8().constData(), true));
-    aisLabel->SetPosition(labelPos);
+    aisLabel->SetPosition(glyph.labelAnchor);
     aisLabel->SetColor(m_isDarkMode ? Quantity_Color(0.2, 0.9, 1.0, Quantity_TOC_RGB) : Quantity_Color(0.0, 0.5, 0.7, Quantity_TOC_RGB));
     aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
     aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
@@ -1990,6 +2005,40 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
     m_memberLoadLabels[loadId] = aisLabel;
 
     if (redrawImmediately && !m_view.IsNull())
+    {
+        m_context->UpdateCurrentViewer();
+        m_view->Redraw();
+    }
+}
+
+double OccView::memberLoadArrowLength() const
+{
+    // Longueur à l'écran à peu près constante (≈ 8 % de la hauteur visible), par paliers × 1,5 : le
+    // rendu ne change qu'au franchissement d'un palier, jamais pendant un déplacement de la vue.
+    double base = 0.6;
+    if (!m_view.IsNull())
+    {
+        double width = 0.0, height = 0.0;
+        m_view->Size(width, height);
+        const double visible = std::min(width, height);
+        if (std::isfinite(visible) && visible > 1e-6) base = 0.08 * visible;
+    }
+    const double step = std::log(1.5);
+    const double quantized = std::pow(1.5, std::round(std::log(base) / step));
+    const double scale = (m_loadScale > 0.05) ? m_loadScale : 1.0;
+    return std::clamp(quantized, 1e-3, 1e4) * scale;
+}
+
+void OccView::updateMemberLoadZoomScale()
+{
+    if (!m_model || m_model->loadManager().memberLoads().empty()) return;
+    const double length = memberLoadArrowLength();
+    if (std::abs(length - m_memberLoadArrowLength) <= 1e-9 * std::max(1.0, length)) return;
+    m_memberLoadArrowLength = length;
+    for (const auto& [id, ml] : m_model->loadManager().memberLoads())
+        updateMemberLoadShape(id, false);
+    reapplyIsolationIfActive();
+    if (!m_context.IsNull() && !m_view.IsNull())
     {
         m_context->UpdateCurrentViewer();
         m_view->Redraw();

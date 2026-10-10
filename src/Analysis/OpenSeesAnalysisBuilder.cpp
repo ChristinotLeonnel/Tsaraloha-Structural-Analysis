@@ -446,9 +446,13 @@ MemberLoadResultant memberLoadResultant(const TSA::Model::MemberLoad& ml, const 
         break;
     }
     default:
-        r.force = globalIntensity(ml.q1()) * L;
-        r.centroid = 0.5 * L;
+    {
+        // Uniforme : intervalle commun aux moteurs et au rendu (toute la barre si non précisé).
+        const auto [a, b] = ml.appliedRange(L);
+        r.force = globalIntensity(ml.q1()) * (b - a);
+        r.centroid = 0.5 * (a + b);
         break;
+    }
     }
     return r;
 }
@@ -527,6 +531,19 @@ std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElement
             load.wyB = compB.wy * scale;
             load.wzB = compB.wz * scale;
             load.comment = "Charge trapézoïdale (forces d'encastrement parfait)";
+        }
+        else if (!ml.coversFullLength(L))
+        {
+            // Uniforme sur une partie de la barre : beamUniform couvrirait toute la barre (l'intervalle
+            // saisi était ignoré). Transmise comme charge linéaire d'intensités égales sur [a, b].
+            const auto [a, b] = ml.appliedRange(L);
+            load.kind = BeamElementLoad::Kind::Linear;
+            load.relativePosition = L > 1e-12 ? a / L : 0.0;
+            load.relativeEnd = L > 1e-12 ? b / L : 1.0;
+            load.wxB = load.wx;
+            load.wyB = load.wy;
+            load.wzB = load.wz;
+            load.comment = "Charge uniforme partielle (forces d'encastrement parfait)";
         }
         loads[el->tag].push_back(load);
     }

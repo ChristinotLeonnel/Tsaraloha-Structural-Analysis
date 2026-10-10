@@ -377,6 +377,8 @@ set(GEOMETRY_CORE_SOURCES
     ${TSA_ROOT}/src/Geometry/DeformedGeometry.cpp
     ${TSA_ROOT}/src/Geometry/DiagramGeometry.h
     ${TSA_ROOT}/src/Geometry/DiagramGeometry.cpp
+    ${TSA_ROOT}/src/Geometry/MemberLoadGlyph.h
+    ${TSA_ROOT}/src/Geometry/MemberLoadGlyph.cpp
     ${TSA_ROOT}/src/Geometry/SupportGeometry.h
     ${TSA_ROOT}/src/Geometry/SupportGeometry.cpp
 )
@@ -465,6 +467,8 @@ set(LOAD_CORE_SOURCES
     ${TSA_ROOT}/src/Model/Load/NodalLoad.cpp
     ${TSA_ROOT}/src/Model/Load/MemberLoad.h
     ${TSA_ROOT}/src/Model/Load/MemberLoad.cpp
+    ${TSA_ROOT}/src/Model/Load/MemberLoadCommands.h
+    ${TSA_ROOT}/src/Model/Load/MemberLoadCommands.cpp
     ${TSA_ROOT}/src/Model/Load/LoadCase.h
     ${TSA_ROOT}/src/Model/Load/LoadCase.cpp
     ${TSA_ROOT}/src/Model/Load/LoadCombination.h
