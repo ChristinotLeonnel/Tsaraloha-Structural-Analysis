@@ -11,6 +11,7 @@
 #include <QMenu>
 #include <QAction>
 #include <QTimer>
+#include <QSignalBlocker>
 
 namespace TSA::UI
 {
@@ -429,6 +430,16 @@ void ModelTreeWidget::refreshAll()
     }
 }
 
+void ModelTreeWidget::scheduleSupportsRefresh()
+{
+    if (m_supportsRefreshPending) return;
+    m_supportsRefreshPending = true;
+    QTimer::singleShot(0, this, [this] {
+        m_supportsRefreshPending = false;
+        refreshSupports();
+    });
+}
+
 void ModelTreeWidget::scheduleLoadsRefresh()
 {
     if (m_loadsRefreshPending) return;
@@ -487,6 +498,7 @@ void ModelTreeWidget::refreshSupports()
     flushRemovals();
     if (!m_supportsCategory)
         return;
+    QSignalBlocker blocker(m_tree);
 
     while (m_supportsCategory->childCount() > 0)
     {
@@ -668,6 +680,7 @@ void ModelTreeWidget::clearTreeSelection()
 void ModelTreeWidget::onNodeAdded(const TSA::Model::Node& node)
 {
     flushRemovals();
+    if (node.support().isSupported()) scheduleSupportsRefresh();
     QString label = QString::fromStdString(node.formattedName());
     QString desc = QString("(%1, %2, %3) m").arg(node.x(), 0, 'f', 2).arg(node.y(), 0, 'f', 2).arg(node.z(), 0, 'f', 2);
 
@@ -681,6 +694,7 @@ void ModelTreeWidget::onNodeAdded(const TSA::Model::Node& node)
 void ModelTreeWidget::onNodeModified(const TSA::Model::Node& node)
 {
     flushRemovals();
+    scheduleSupportsRefresh();
     QSignalBlocker blocker(m_tree);
     if (auto* child = findElementItem(m_nodesCategory, node.id()))
     {
@@ -691,6 +705,7 @@ void ModelTreeWidget::onNodeModified(const TSA::Model::Node& node)
 
 void ModelTreeWidget::onNodeRemoved(int nodeId)
 {
+    scheduleSupportsRefresh();
     queueRemoval(m_nodesCategory, nodeId);
 }
 

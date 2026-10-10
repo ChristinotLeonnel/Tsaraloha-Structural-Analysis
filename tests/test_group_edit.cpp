@@ -9,6 +9,10 @@
 #include "Viewer/SelectionManager.h"
 
 #include <QComboBox>
+#include <QApplication>
+#include <QTreeWidget>
+#include <QWheelEvent>
+#include "UI/ModelTree/ModelTreeWidget.h"
 
 bool runSuite_GroupEdit(int& passed)
 {
@@ -80,6 +84,72 @@ bool runSuite_GroupEdit(int& passed)
                    "Test 222: Annuler rétablit les deux nœuds");
         m.removeObserver(&view);
         std::cout << "[PASS] Test 222: Appui appliqué à tous les nœuds sélectionnés" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 223 : arbre du modèle — liste « Appuis » tenue à jour (BUG-071)
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int a = m.addNode(0, 0, 0);
+        const int b = m.addNode(6, 0, 0);
+        TSA::UI::ModelTreeWidget tree(&m);
+        auto supportsCount = [&tree]() -> int {
+            for (auto* t : tree.findChildren<QTreeWidget*>())
+            {
+                const auto items = t->findItems(QObject::tr("Appuis"), Qt::MatchExactly | Qt::MatchRecursive, 0);
+                if (!items.isEmpty()) return items.first()->childCount();
+            }
+            return -1;
+        };
+        QCoreApplication::processEvents();
+        TEST_CHECK(supportsCount() == 0, "Test 223: aucun appui au départ");
+
+        m.getNode(a)->setSupport(TSA::Model::SupportDefinition::fixed());
+        m.notifyNodeModified(a);
+        m.getNode(b)->setSupport(TSA::Model::SupportDefinition::pinned());
+        m.notifyNodeModified(b);
+        QCoreApplication::processEvents();
+        TEST_CHECK(supportsCount() == 2, "Test 223: appuis posés → listés (" << supportsCount() << ")");
+
+        m.getNode(a)->setSupport(TSA::Model::SupportDefinition::free());
+        m.notifyNodeModified(a);
+        QCoreApplication::processEvents();
+        TEST_CHECK(supportsCount() == 1, "Test 223: appui retiré → retiré de la liste");
+
+        m.removeNode(b);
+        QCoreApplication::processEvents();
+        TEST_CHECK(supportsCount() == 0, "Test 223: nœud supprimé → appui retiré de la liste");
+        std::cout << "[PASS] Test 223: Liste « Appuis » de l'arbre tenue à jour" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 224 : molette dans le panneau Propriétés — défile, ne change pas les valeurs (BUG-072)
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int n = m.addNode(0, 0, 0);
+        TSA::UI::PropertyPanel panel(&m);
+        panel.resize(320, 400);
+        panel.show();
+        panel.showNodeProperties(n);
+        QCoreApplication::processEvents();
+        QComboBox* preset = nullptr;
+        for (auto* combo : panel.findChildren<QComboBox*>())
+            if (combo->findData(static_cast<int>(TSA::Model::SupportType::Elastic)) >= 0) preset = combo;
+        TEST_CHECK(preset != nullptr, "Test 224: liste des types d'appui trouvée");
+        const int before = preset->currentIndex();
+        preset->clearFocus();
+        const QPointF pos(preset->width() / 2.0, preset->height() / 2.0);
+        QWheelEvent wheel(pos, preset->mapToGlobal(pos), QPoint(), QPoint(0, -120), Qt::NoButton, Qt::NoModifier,
+                          Qt::NoScrollPhase, false);
+        QApplication::sendEvent(preset, &wheel);
+        TEST_CHECK(preset->currentIndex() == before, "Test 224: la molette ne change plus le type d'appui");
+        TEST_CHECK(m.getNode(n)->support().isFree(), "Test 224: appui du nœud inchangé");
+        panel.hide();
+        std::cout << "[PASS] Test 224: Molette du panneau Propriétés sans effet sur les valeurs" << std::endl;
         ++passed;
     }
     return true;

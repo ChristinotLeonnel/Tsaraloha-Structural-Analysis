@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 243;
+    int expectedTotal = 245;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Appearance(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "groupedit") {
-        std::cout << "\n--- [Suite 31/31] Édition groupée : appui sur plusieurs nœuds (Test 222) ---" << std::endl;
+        std::cout << "\n--- [Suite 31/31] Édition groupée : appui sur plusieurs nœuds, arbre, molette (Tests 222-224) ---" << std::endl;
         if (!runSuite_GroupEdit(passed)) allOk = false;
     }
 #ifdef _WIN32
