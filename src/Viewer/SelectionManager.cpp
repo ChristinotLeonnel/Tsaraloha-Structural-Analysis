@@ -780,6 +780,11 @@ bool SelectionManager::toggleObject(const Handle(AIS_InteractiveObject)& obj)
     return true;
 }
 
+void SelectionManager::restoreSelected(SelectionType type, int id)
+{
+    if (std::set<int>* ids = selectionSet(type); ids && id > 0) ids->insert(id);
+}
+
 void SelectionManager::toggleElement(SelectionType type, int id)
 {
     std::set<int>* ids = selectionSet(type);

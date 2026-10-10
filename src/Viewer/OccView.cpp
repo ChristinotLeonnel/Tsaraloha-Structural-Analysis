@@ -490,6 +490,21 @@ void OccView::setCurrentBarProperties(const TSA::Model::BarProperties& props)
     }
 }
 
+void OccView::finishBarSegment(int endNodeId, bool created)
+{
+    clearRubberBand();
+    m_drawingNodeIds.clear();
+    m_drawingPoints.clear();
+    const auto* end = (created && m_barChainMode && m_model) ? m_model->getNode(endNodeId) : nullptr;
+    if (!end) return;
+    // « Étirer » : l'extrémité devient le départ de l'élément suivant (même mode, même réglages).
+    const gp_Pnt pt(end->x(), end->y(), end->z());
+    m_drawingNodeIds.push_back(endNodeId);
+    m_drawingPoints.push_back(pt);
+    emit barFirstPointPicked(pt, endNodeId);
+    emit drawingPromptChanged(tr("Étirer : départ N%1. Cliquez pour l'élément suivant (Échap pour terminer)").arg(endNodeId));
+}
+
 void OccView::startChainedBarDrawing(const gp_Pnt& originPt, int originNodeId)
 {
     m_drawingNodeIds.clear();

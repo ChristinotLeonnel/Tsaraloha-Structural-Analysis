@@ -160,6 +160,7 @@ void BarCreationDialog::setupUi()
     m_chkChain = new QCheckBox(tr("Étirer"), grpCoords);
     m_chkChain->setChecked(true); // Comportement Robot: tracé continu
     coordsLayout->addWidget(m_chkChain, 2, 1);
+    connect(m_chkChain, &QCheckBox::toggled, this, &BarCreationDialog::chainModeChanged);
 
     mainLayout->addWidget(grpCoords);
 

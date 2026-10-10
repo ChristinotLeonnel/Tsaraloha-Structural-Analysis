@@ -196,6 +196,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     {
                         m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
                     }
+                    if (node) emit barFirstPointPicked(gp_Pnt(node->x(), node->y(), node->z()), nodeId);
                     emit drawingPromptChanged(tr("Mode Dessin Poutre : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud (Échap pour annuler)").arg(nodeId));
                 }
                 else
@@ -222,9 +223,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                         emit elementCreated();
                         emit drawingPromptChanged(tr("Poutre B%1 créée reliant N%2 à N%3 (%4). Cliquez pour continuer").arg(beamId).arg(startId).arg(endId).arg(QString::fromStdString(sec.name)));
                     }
-                    clearRubberBand();
-                    m_drawingNodeIds.clear();
-                    m_drawingPoints.clear();
+                    finishBarSegment(endId, startId != endId);
                 }
             }
         }
@@ -243,6 +242,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     {
                         m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
                     }
+                    if (node) emit barFirstPointPicked(gp_Pnt(node->x(), node->y(), node->z()), nodeId);
                     emit drawingPromptChanged(tr("Mode Dessin Poteau : Base N%1 définie. Cliquez pour le nœud sommital").arg(nodeId));
                 }
                 else
@@ -278,9 +278,7 @@ void OccView::mousePressEvent(QMouseEvent* event)
                         emit elementCreated();
                         emit drawingPromptChanged(tr("Poteau C%1 créé reliant N%2 à N%3 (%4). Cliquez pour un autre poteau").arg(colId).arg(startId).arg(endId).arg(QString::fromStdString(m_presets.column.section.name)));
                     }
-                    clearRubberBand();
-                    m_drawingNodeIds.clear();
-                    m_drawingPoints.clear();
+                    finishBarSegment(endId, startId != endId);
                 }
             }
         }
