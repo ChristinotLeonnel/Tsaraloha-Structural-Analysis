@@ -6,6 +6,7 @@
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "../Model/Model.h"
+#include "../Model/Load/MemberLoadCommands.h"
 #include "../Coordinate/WorkPlane.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
@@ -872,6 +873,23 @@ void MainWindow::onActionDeleteSelected()
     size_t total = m_selectionManager->totalSelectedCount();
     if (total == 0)
         return;
+
+    // Charges sélectionnées dans la vue 3D (flèches) : la commande de suppression des éléments ne
+    // les connaissait pas, Suppr restait sans effet sur une charge (BUG-065).
+    const std::set<int> nodalLoads = m_selectionManager->selectedNodalLoads();
+    const std::set<int> memberLoads = m_selectionManager->selectedMemberLoads();
+    const int removedLoads = TSA::Model::removeLoads(*m_model, nodalLoads, memberLoads,
+                                                     tr("Suppression de charge(s)").toStdString());
+    const size_t elementCount = total - nodalLoads.size() - memberLoads.size();
+    if (elementCount == 0)
+    {
+        m_selectionManager->clearSelection();
+        if (m_occView) m_occView->clearHighlight();
+        if (m_propertyPanel) m_propertyPanel->clearProperties();
+        if (m_statusInfo) m_statusInfo->setText(tr("%1 charge(s) supprimée(s)").arg(removedLoads));
+        updateUndoRedoActions();
+        return;
+    }
 
     auto cmd = std::make_unique<TSA::Commands::DeleteElementsCommand>(
         *m_model,

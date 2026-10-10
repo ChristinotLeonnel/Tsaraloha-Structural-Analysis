@@ -2,6 +2,12 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Suppression des charges dans la vue 3D)
+
+### Fixed
+- BUG-065 : Suppr supprime les charges sélectionnées dans la vue 3D (charges nodales et sur barres), avec une seule
+  entrée Annuler ; nœuds et barres porteurs conservés. Test 219 (total 240).
+
 ## 2026-10-10 (Aide contextuelle vers la documentation en ligne)
 
 ### Added

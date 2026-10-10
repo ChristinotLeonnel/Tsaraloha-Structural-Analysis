@@ -759,5 +759,48 @@ bool runSuite_Loads(int& passed)
         passed++;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 219 : suppression des charges sélectionnées (Suppr dans la vue 3D, BUG-065)
+    // -------------------------------------------------------------------------
+    {
+        class RemovalObserver : public TSA::Model::IModelObserver
+        {
+        public:
+            std::vector<int> nodalRemoved, memberRemoved;
+            void onNodalLoadRemoved(int loadId) override { nodalRemoved.push_back(loadId); }
+            void onMemberLoadRemoved(int loadId) override { memberRemoved.push_back(loadId); }
+        };
+        Model model;
+        RemovalObserver obs;
+        model.addObserver(&obs);
+        const int n1 = model.addNode(0, 0, 0);
+        const int n2 = model.addNode(6, 0, 0);
+        const int b1 = model.addBar(n1, n2, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        const int nl = model.loadManager().addNodalLoad(NodalLoad(0, n2, 1, 0, 0, -20.0, 0, 0, 0, LoadCoordSystem::Global, "NL"));
+        const int ml = model.loadManager().addMemberLoad(MemberLoad::uniform(b1, 1, -5.0, LoadDirection::Gravity, "ML", MemberTargetType::Beam));
+        const int keep = model.loadManager().addMemberLoad(MemberLoad::uniform(b1, 1, -2.0, LoadDirection::Gravity, "Keep", MemberTargetType::Beam));
+        const bool couldUndo = model.canUndo();
+
+        TEST_CHECK(removeLoads(model, {}, {}, "rien") == 0 && model.canUndo() == couldUndo,
+                   "Test 219: sélection vide → modèle inchangé, pas d'entrée Annuler");
+        TEST_CHECK(removeLoads(model, { 999 }, { 999 }, "inconnues") == 0 && model.canUndo() == couldUndo,
+                   "Test 219: identifiants inconnus ignorés");
+
+        const int removed = removeLoads(model, { nl, 999 }, { ml }, "Suppression de charge(s)");
+        TEST_CHECK(removed == 2, "Test 219: deux charges supprimées");
+        TEST_CHECK(!model.loadManager().getNodalLoad(nl) && !model.loadManager().getMemberLoad(ml),
+                   "Test 219: charge nodale et charge sur barre retirées du modèle");
+        TEST_CHECK(model.loadManager().getMemberLoad(keep) && model.getBeam(b1) && model.getNode(n2),
+                   "Test 219: autres charges, barre et nœuds conservés");
+        TEST_CHECK(obs.nodalRemoved == std::vector<int>{ nl } && obs.memberRemoved == std::vector<int>{ ml },
+                   "Test 219: vue 3D notifiée (formes retirées)");
+        TEST_CHECK(model.canUndo() && model.undo(), "Test 219: une entrée Annuler");
+        TEST_CHECK(model.loadManager().getNodalLoad(nl) && model.loadManager().getMemberLoad(ml),
+                   "Test 219: Annuler rétablit les deux charges");
+        model.removeObserver(&obs);
+        std::cout << "[PASS] Test 219: Suppression des charges sélectionnées (une entrée Annuler)" << std::endl;
+        passed++;
+    }
+
     return true;
 }
