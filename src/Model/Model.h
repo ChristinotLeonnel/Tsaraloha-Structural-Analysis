@@ -318,6 +318,8 @@ public:
 
     // Historique Undo / Redo (Ctrl+Z / Ctrl+Y)
     void pushUndoState(const std::string& actionName = "", const std::string& coalesceKey = "");
+    /// Entrée Annuler pour un changement d'étiquettes seulement (renumérotation) : révision inchangée.
+    void pushLabelUndoState(const std::string& actionName);
     bool canUndo() const;
     bool canRedo() const;
     bool undo();
@@ -363,6 +365,16 @@ public:
     /// configuration, hors historique Annuler. Vide = réglages par défaut.
     const std::string& analysisSettingsJson() const noexcept { return m_analysisSettingsJson; }
     void setAnalysisSettingsJson(const std::string& json) { m_analysisSettingsJson = json; }
+
+    /// Paramètres de topologie et de numérotation (TSA::Topology::TopologySettings::toJson),
+    /// persistés dans le chunk TOPO du .tsa (format ≥ 1.5). Vide = valeurs par défaut (anciens projets).
+    const std::string& topologySettingsJson() const noexcept { return m_topologySettingsJson; }
+    void setTopologySettingsJson(const std::string& json) { m_topologySettingsJson = json; }
+
+    /// Étiquettes (noms visibles) modifiées sans autre changement : observateurs notifiés par
+    /// onModelDiffApplied, document marqué modifié, mais révision inchangée — les résultats de calcul
+    /// référencent les identifiants internes et restent valides après une renumérotation.
+    void notifyLabelsChanged(const ModelDiff& diff);
 
     bool isModified() const { return m_isModified; }
     void setModified(bool modified)
@@ -446,6 +458,7 @@ private:
     TSA::Grid::GridManager* m_gridManager = nullptr; ///< non possédé (voir setGridManager)
     bool m_isModified = false;
     std::string m_analysisSettingsJson;
+    std::string m_topologySettingsJson;
 };
 
 } // namespace TSA::Model

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../Topology/TopologyNumberingService.h"
+
 #include <QMainWindow>
 #include "../Model/SelectionQuery.h"
 #include "../Model/ModelCleanup.h"
@@ -378,6 +380,10 @@ private:
     QAction* m_actionMirror = nullptr;
     QAction* m_actionCleanModel = nullptr;
     QAction* m_actionExportIfc = nullptr;   ///< Exporter IFC 4.3 (src/BIM/IFC)
+    TSA::Topology::NumberingInput topologyNumberingInput() const;
+    void applyTopologyDisplay(const TSA::Topology::TopologySettings& settings);
+    void applyTopologyDisplayFromModel();
+    QAction* m_actionTopology = nullptr;    ///< Paramètres du projet → Topologie et numérotation
     QAction* m_actionImportIfc = nullptr;
     QAction* m_actionSplitBars = nullptr;
     QAction* m_actionMergeNodes = nullptr;
@@ -606,6 +612,8 @@ private slots:
     void onActionMirror();
     void onActionCleanModel();
     void onActionExportIfc();
+    /// Paramètres du projet → Topologie et numérotation.
+    void onActionTopologySettings();
     void onActionImportIfc();
     void onActionSplitBars();
     void onActionMergeNodes();

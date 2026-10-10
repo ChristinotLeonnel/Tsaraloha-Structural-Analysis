@@ -20,6 +20,19 @@ void Model::pushUndoState(const std::string& actionName, const std::string& coal
     }
 }
 
+void Model::pushLabelUndoState(const std::string& actionName)
+{
+    if (!actionName.empty())
+    {
+        TSA::Diagnostics::Logger::instance().setLastCommand(actionName);
+        TSA_LOG_INFO("Model", "ActionStarted", actionName);
+    }
+    if (m_undoManager)
+    {
+        m_undoManager->pushState(*this, actionName, std::string(), false);
+    }
+}
+
 bool Model::canUndo() const
 {
     return m_undoManager ? m_undoManager->canUndo() : false;
@@ -157,6 +170,15 @@ void Model::applySnapshotData(const Model::ModelStateSnapshot& snapshot)
     m_isModified = true;
 }
 
+void Model::notifyLabelsChanged(const ModelDiff& diff)
+{
+    m_isModified = true; // sans bumpRevision : géométrie, propriétés et résultats inchangés
+    for (auto* obs : m_observers)
+    {
+        obs->onModelDiffApplied(diff);
+    }
+}
+
 void Model::notifyModelDiffApplied(const ModelDiff& diff)
 {
     bumpRevision();
@@ -261,6 +283,7 @@ void Model::setBim(const TSA::BIM::BimModel& bim)
 void Model::clear()
 {
     m_analysisSettingsJson.clear();
+    m_topologySettingsJson.clear();
     m_bim = TSA::BIM::BimModel();
     m_bimSignature = ~0ull;
     m_calculationSnapshots.clear();

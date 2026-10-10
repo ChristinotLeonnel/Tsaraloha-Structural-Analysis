@@ -1605,6 +1605,7 @@ bool MainWindow::loadFile(const QString& path)
 
     m_model->clearUndoRedo();
     restoreAnalysisContextFromModel();
+    applyTopologyDisplayFromModel();
     updateWindowTitle();
 
     if (m_selectionManager)

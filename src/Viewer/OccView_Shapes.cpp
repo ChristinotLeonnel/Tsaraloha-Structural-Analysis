@@ -893,14 +893,12 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
 
     // 3. Créer l'étiquette 3D (AIS_TextLabel)
     Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
-    QString labelText = QString("N%1").arg(node->id());
+    // Étiquette visible (nom, éventuellement renuméroté par Topologie et numérotation) ; auparavant
+    // « N<identifiant interne> », qui ignorait le nom du nœud.
+    QString labelText = QString::fromStdString(node->formattedName());
     if (isFree)
     {
         labelText += " [LIBRE]";
-    }
-    else if (!node->name().empty() && node->name() != labelText.toStdString() && node->name() != node->formattedName())
-    {
-        labelText += QString(" (%1)").arg(QString::fromStdString(node->name()));
     }
     aisLabel->SetText(TCollection_ExtendedString(labelText.toUtf8().constData(), true));
     aisLabel->SetPosition(gp_Pnt(node->x(), node->y(), node->z() + 0.18));

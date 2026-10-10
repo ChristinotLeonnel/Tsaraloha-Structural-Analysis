@@ -2,6 +2,21 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-10 (Topologie et numérotation des nœuds et des éléments)
+
+### Added
+- Paramètres du projet → Topologie et numérotation (Fichier, ruban Outils > Projet) : 13 stratégies de nœuds
+  (séquentielle, coordonnées avec ordre et sens des axes, rangées, colonnes, couches, grille d'axes A1, niveaux,
+  Cuthill-McKee inverse, BFS, DFS, personnalisée…), 5 d'éléments ; groupes et maillage affichés indisponibles
+  (prérequis absents). Formats {p} {n} {g} {l}, départ, pas, chiffres, préfixes par famille, portée sélection,
+  conservation des étiquettes personnalisées, détection des doublons, aperçu sans effet, correspondance
+  identifiant interne ↔ étiquette ↔ tag OpenSees (export CSV). docs/TOPOLOGY.md.
+- Renumérotation = étiquettes seulement : une entrée Annuler sans changement de révision (résultats conservés).
+- Chunk TOPO (format 1.5) ; anciens projets ouverts avec les valeurs par défaut. Tests 225-236 (total 257).
+
+### Fixed
+- BUG-073 : l'étiquette 3D des nœuds affiche leur nom (et non l'identifiant interne).
+
 ## 2026-10-10 (Arbre : liste des appuis ; molette du panneau Propriétés)
 
 ### Fixed

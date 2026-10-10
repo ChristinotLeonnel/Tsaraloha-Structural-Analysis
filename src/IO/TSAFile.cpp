@@ -141,6 +141,10 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     {
         writeSettingsChunk(payload, model.analysisSettingsJson());
     }
+    if (!model.topologySettingsJson().empty())
+    {
+        writeJsonChunk(payload, CHUNK_TOPO, model.topologySettingsJson());
+    }
 
     // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
     std::map<std::string, TSA::ExtensionSystem::MechanicalSnapshot> snapshotsToSave = model.calculationSnapshots();
@@ -604,6 +608,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     bool hasLoadChunk = false;
     TSA::BIM::BimModel loadedBim;
     std::string loadedSettings;
+    std::string loadedTopology;
     std::string loadedCoordinates, loadedGrids;
     bool hasCoordinates = false, hasGrids = false;
 
@@ -684,6 +689,11 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             // validé à la relecture par AnalysisContext::fromJson (lecture tolérante).
             loadedSettings.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
+        case CHUNK_TOPO:
+            // Facultatif (format ≥ 1.5) : sans lui (anciens projets), numérotation par défaut. Lecture
+            // tolérante par TopologySettings::fromJson.
+            loadedTopology.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
         default:
             // Chunk inconnu (version future) : ignoré en toute sécurité grâce à chunkSize
             break;
@@ -744,6 +754,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     // Application dans le modèle -> déclenche automatiquement onModelCleared() chez tous les observateurs (OccView, ModelTree)
     model.restoreSnapshot(snapshot);
     model.setAnalysisSettingsJson(loadedSettings);
+    model.setTopologySettingsJson(loadedTopology);
 
     // Validation normative post-chargement (ISO/IEC 25010 - Intégrité et robustesse)
     auto report = TSA::Standards::ModelValidator::validate(model);

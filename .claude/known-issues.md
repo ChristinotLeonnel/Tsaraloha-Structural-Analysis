@@ -4,6 +4,17 @@ Last Updated: 2026-10-09 (audit QA, branche fix/audit-qa-2026-10-09). Ne pas sup
 
 ## Ouverts
 
+## BUG-074
+Area: Document / état « modifié »
+Problem: après Ctrl+S, le titre garde « * » et la fermeture redemande d'enregistrer tant que l'historique Annuler
+n'est pas vide (`ProjectSession::hasUnsavedChanges` = `isModified() || canUndo()`).
+Reproduction: modifier le modèle, Ctrl+S → « Enregistré : … » dans la barre d'état, mais titre « * » ; fermer →
+« Enregistrer les modifications ? ».
+Impact: LOW (confusion, demande d'enregistrement superflue ; aucune perte de données)
+Status: OPEN — constaté le 2026-10-10 pendant la vérification de la topologie ; correction proposée : mémoriser la
+profondeur de l'historique au dernier enregistrement.
+Related files: src/Project/ProjectSession.cpp, src/UI/MainWindow.cpp
+
 ## BUG-002
 Area: Calculation
 Problem: Dalles et voiles ne sont pas transmis au calcul (`CalculationSnapshot` /
@@ -108,6 +119,7 @@ Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapea
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |
+| BUG-073 | Étiquette 3D d'un nœud : affichait toujours « N<identifiant interne> » et jamais son nom (la condition d'ajout du nom était toujours fausse) ; titres du panneau Propriétés idem | Étiquette 3D = `formattedName()` ; titres « <étiquette> (id N) » | GUI : renumérotation par grille → A1-1, A2-2 affichés dans la vue |
 | BUG-072 | Molette dans le panneau Propriétés : en faisant défiler, la liste ou le champ numérique survolé changeait de valeur (un appui passait de « Libre » à « Appui simple ») | `PropertyPanel::eventFilter` : molette sur une liste / un champ numérique sans le focus → défilement du panneau ; un champ cliqué garde la molette | test 224 ; GUI : défilement sur les champs d'appui, valeurs inchangées |
 | BUG-071 | Arbre du modèle : liste « Appuis » relue seulement au chargement (appui posé, retiré, nœud supprimé, Annuler non reflétés) | `ModelTreeWidget::scheduleSupportsRefresh` (nœud ajouté appuyé, modifié, supprimé ; une reconstruction par rafale, sans signal de sélection) | test 223 ; GUI : Encastrement → « Appuis [1] », Ctrl+Z → « [0] » |
 | BUG-070 | Plusieurs nœuds sélectionnés, appui choisi dans les propriétés : seul le nœud affiché le recevait. La vue recréait la forme du nœud modifié et le resélectionnait (`selectNode`), ce qui rouvrait le panneau sur ce seul nœud et interrompait l'édition groupée avant le report ; même défaut pour barres, poteaux, câbles, treillis, dalles, voiles, fondations | `SelectionManager::restoreSelected` (remise en sélection sans signal) dans les huit `OccView::update…Shape` ; surbrillance ajoutée sans effacer celle des autres éléments | test 222 ; GUI : 2 nœuds sélectionnés, « Encastrement » → édition groupée maintenue |

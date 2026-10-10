@@ -83,6 +83,8 @@ private:
     void writeThumbnailChunk(std::vector<uint8_t>& buffer, const QByteArray& pngData);
     void writeBimChunk(std::vector<uint8_t>& buffer, const TSA::BIM::BimModel& bim);
     void writeSettingsChunk(std::vector<uint8_t>& buffer, const std::string& json);
+    /// Chunk JSON UTF-8 générique (TOPO…).
+    void writeJsonChunk(std::vector<uint8_t>& buffer, uint32_t chunkId, const std::string& json);
     void writeCoordinateChunk(std::vector<uint8_t>& buffer, const TSA::Coordinate::CoordinateSystem* cs);
     void writeGridChunk(std::vector<uint8_t>& buffer, const TSA::Grid::GridManager* gm);
     void writeNodeChunk(std::vector<uint8_t>& buffer, const std::map<int, TSA::Model::Node>& nodes);

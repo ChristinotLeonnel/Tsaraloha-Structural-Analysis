@@ -49,7 +49,7 @@ size_t UndoManager::approxMemoryBytes() const noexcept
     return total;
 }
 
-void UndoManager::pushEntry(HistoryEntry&& entry, TSA::Model::Model& model)
+void UndoManager::pushEntry(HistoryEntry&& entry, TSA::Model::Model& model, bool contentChange)
 {
     entry.approxBytes = estimateSnapshotBytes(entry.snapshot);
     m_undoStack.push_back(std::move(entry));
@@ -62,15 +62,16 @@ void UndoManager::pushEntry(HistoryEntry&& entry, TSA::Model::Model& model)
         m_undoStack.pop_front();
     }
     m_redoStack.clear();
-    model.setModified(true);
+    if (contentChange) model.setModified(true);
 }
 
-void UndoManager::pushState(TSA::Model::Model& model, const std::string& actionName, const std::string& coalesceKey)
+void UndoManager::pushState(TSA::Model::Model& model, const std::string& actionName, const std::string& coalesceKey,
+                            bool contentChange)
 {
     if (m_transactionDepth > 0)
     {
         // L'état initial est déjà capturé par la transaction ouverte : une seule entrée Undo.
-        model.setModified(true);
+        if (contentChange) model.setModified(true);
         return;
     }
 
@@ -82,7 +83,7 @@ void UndoManager::pushState(TSA::Model::Model& model, const std::string& actionN
         {
             // Même édition en cours : l'état « avant » de l'entrée existante reste la référence.
             top.lastPush = now;
-            model.setModified(true);
+            if (contentChange) model.setModified(true);
             return;
         }
     }
@@ -92,7 +93,7 @@ void UndoManager::pushState(TSA::Model::Model& model, const std::string& actionN
     entry.timestamp = nowTimestamp();
     entry.coalesceKey = coalesceKey;
     entry.lastPush = now;
-    pushEntry(std::move(entry), model);
+    pushEntry(std::move(entry), model, contentChange);
 }
 
 void UndoManager::restore(TSA::Model::Model& model,
