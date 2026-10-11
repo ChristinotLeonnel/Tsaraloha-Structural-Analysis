@@ -370,7 +370,9 @@ ImportResult importDocument(const QJsonObject& doc, TSA::Model::Model& model, co
         const QString kind = o.value("kind").toString();
         const bool relative = o.value("relative").toBool();
         const double pos = relative ? 1.0 : u.length;
-        const double intensity = kind == "point" ? u.force : lineLoad;   // moment réparti : kN·m/m = kN
+        // Moment réparti : (force × longueur) / longueur → facteur de la force seule (kN·mm/mm = kN·m/m),
+        // et non force / longueur (×1000 en millimètres auparavant).
+        const double intensity = (kind == "point" || kind == "moment") ? u.force : lineLoad;
         MemberLoad l;
         l.setId(id);
         l.setElementId(target.second);

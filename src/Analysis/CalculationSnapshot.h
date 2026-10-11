@@ -63,6 +63,17 @@ struct SnapshotNode
     /// anti-singularité propres au calcul 3D appliqués à fix* (rotation de forage des appuis
     /// articulés, Ty des appuis glissants). Un moteur 2D doit utiliser ceux-ci.
     std::array<bool, 6> definedFix { false, false, false, false, false, false };
+    bool pinnedSupport = false;   ///< appui articulé (translations bloquées, rotations libres)
+    bool rollerSupport = false;   ///< appui simple (seule la translation verticale bloquée)
+};
+
+/// Blocage ajouté par le calcul 3D, absent des appuis définis par l'utilisateur. Jamais silencieux :
+/// listé avant le calcul et contrôlé après (effort repris par ce blocage).
+struct AutomaticRestraint
+{
+    int nodeId = 0;
+    int dof = 0;          ///< 0..5 : Tx, Ty, Tz, Rx, Ry, Rz (repère global)
+    std::string reason;
 };
 
 /**
@@ -144,6 +155,10 @@ public:
     const std::vector<TSA::Model::MemberLoad>& memberLoads() const { return m_memberLoads; }
     const std::map<int, TSA::Model::LoadCase>& loadCases() const { return m_loadCases; }
     const std::map<int, TSA::Model::LoadCombination>& combinations() const { return m_combinations; }
+    /// Blocages ajoutés aux appuis articulés / simples (appui à fourche, structure plane), voir capture().
+    const std::vector<AutomaticRestraint>& automaticRestraints() const { return m_automaticRestraints; }
+    /// Remarques sur les appuis non complétés (barre inclinée : rotation autour de son axe laissée libre).
+    const std::vector<std::string>& restraintNotes() const { return m_restraintNotes; }
 
     const SnapshotNode* getNode(int id) const;
     /// Élément par tag OpenSees (clé de elements()).
@@ -163,8 +178,13 @@ public:
     bool hasElement(StructuralElementKind kind, int id) const { return findElement(kind, id) != nullptr; }
 
 private:
+    /// Blocages anti-singularité des appuis articulés / simples (après capture des barres).
+    static void applyAutomaticRestraints(CalculationSnapshot& snap);
+
     std::map<int, SnapshotNode> m_nodes;
     std::map<int, SnapshotElement> m_elements;          ///< clé : tag OpenSees unique
+    std::vector<AutomaticRestraint> m_automaticRestraints;
+    std::vector<std::string> m_restraintNotes;
     std::map<ElementKey, int> m_tagByKey;
     std::vector<TSA::Model::NodalLoad> m_nodalLoads;
     std::vector<TSA::Model::MemberLoad> m_memberLoads;

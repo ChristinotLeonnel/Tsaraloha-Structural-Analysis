@@ -12,6 +12,9 @@ namespace TSA::Analysis
 
 namespace
 {
+/// Matériau du nœud auxiliaire d'un modèle sans DDL libre : au-delà des matériaux des ressorts et des barres.
+constexpr int kZeroDofMaterialTag = 999999;
+
 int springMaterialCount(const OpenSeesModelMap& map)
 {
     int n = 0;
@@ -224,6 +227,30 @@ std::string OpenSeesAnalysisBuilder::buildBoundaryConditions(const CalculationSn
         tcl << "\n";
     }
 
+    // Aucun DDL libre (ex. barre unique bi-encastrée) : OpenSees refuse un système de taille nulle
+    // (« analyze failed »). Nœud auxiliaire relié à un nœud fixe par un ressort unitaire sur ses 6 DDL :
+    // système non vide, non chargé, sans lien avec la structure, absent des enregistreurs. Les nœuds
+    // de la structure restent immobiles ; réactions et efforts viennent des charges et des forces
+    // d'encastrement, comme dans tout autre calcul.
+    if (map.estimatedFreeDofs() == 0 && !snapshot.nodes().empty())
+    {
+        int maxNode = snapshot.nodes().rbegin()->first, maxElement = 0;
+        for (const auto& sp : map.springs())
+        {
+            maxNode = std::max(maxNode, sp.auxNodeTag);
+            maxElement = std::max(maxElement, sp.elementTag);
+        }
+        for (const auto& [tag, el] : snapshot.elements()) maxElement = std::max(maxElement, tag);
+        const int freeNode = maxNode + 1, anchor = maxNode + 2, element = maxElement + 1;
+        const int mat = kZeroDofMaterialTag;
+        tcl << "# Aucun degré de liberté libre : nœud auxiliaire neutre (système non vide, sans effet sur la structure)\n";
+        tcl << "node " << freeNode << " 0 0 0\nnode " << anchor << " 0 0 0\nfix " << anchor << " 1 1 1 1 1 1\n";
+        tcl << "uniaxialMaterial Elastic " << mat << " 1.0\n";
+        tcl << "element zeroLength " << element << " " << anchor << " " << freeNode << " -mat";
+        for (int d = 0; d < 6; ++d) tcl << " " << mat;
+        tcl << " -dir 1 2 3 4 5 6\n\n";
+    }
+
     return tcl.str();
 }
 
@@ -394,6 +421,37 @@ void BeamElementLoad::fixedEndForces(double length, double atI[6], double atJ[6]
         addPoint(wx, wy, wz, relativePosition * L);
         return;
     }
+    if (kind == Kind::Couple)
+    {
+        // Couple réparti c(x) = (cx, cy, cz), linéaire sur [a, b]. Forces nodales équivalentes exactes
+        // (barre prismatique) : travail virtuel ∫ c·θ dx avec θx linéaire (torsion de Saint-Venant),
+        // θz = v' et θy = −w' (fonctions d'Hermite, solutions exactes de l'élément d'Euler-Bernoulli).
+        // Forces d'encastrement parfait = −(forces équivalentes). Gauss à 4 points : exact (degré 3).
+        const double a = std::clamp(relativePosition, 0.0, 1.0) * L, b = std::clamp(relativeEnd, 0.0, 1.0) * L;
+        if (b <= a) return;
+        static const double kN[4] = { -0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526 };
+        static const double kW[4] = { 0.3478548451374538, 0.6521451548625461, 0.6521451548625461, 0.3478548451374538 };
+        const double mid = 0.5 * (a + b), half = 0.5 * (b - a);
+        for (int g = 0; g < 4; ++g)
+        {
+            const double t = 0.5 * (kN[g] + 1.0), w = kW[g] * half;
+            const double x = mid + half * kN[g], s = x / L;
+            const double cx = (wx + (wxB - wx) * t) * w, cy = (wy + (wyB - wy) * t) * w, cz = (wz + (wzB - wz) * t) * w;
+            const double d1 = (-6.0 * s + 6.0 * s * s) / L, d2 = 1.0 - 4.0 * s + 3.0 * s * s;  // N1', N2'
+            const double d3 = (6.0 * s - 6.0 * s * s) / L, d4 = -2.0 * s + 3.0 * s * s;          // N3', N4'
+            atI[3] -= cx * (1.0 - s);
+            atJ[3] -= cx * s;
+            atI[1] -= cz * d1;
+            atI[5] -= cz * d2;
+            atJ[1] -= cz * d3;
+            atJ[5] -= cz * d4;
+            atI[2] += cy * d1;
+            atI[4] -= cy * d2;
+            atJ[2] += cy * d3;
+            atJ[4] -= cy * d4;
+        }
+        return;
+    }
     // Charge répartie linéaire : intégrale de Gauss à 4 points, exacte (intégrande de degré 4).
     const bool linear = kind == Kind::Linear;
     const double a = linear ? relativePosition * L : 0.0;
@@ -409,6 +467,19 @@ void BeamElementLoad::fixedEndForces(double length, double atI[6], double atJ[6]
         const double w = kWeights[g] * half;
         addPoint((wx + (xB - wx) * t) * w, (wy + (yB - wy) * t) * w, (wz + (zB - wz) * t) * w, mid + half * kNodes[g]);
     }
+}
+
+gp_Vec memberMomentResultant(const TSA::Model::MemberLoad& ml, const CalculationSnapshot& snapshot)
+{
+    if (ml.type() != TSA::Model::LoadType::MemberMoment) return gp_Vec();
+    const auto* el = snapshot.findElementForLoad(ml);
+    if (!el || el->type == SnapshotElement::ElementType::Truss || el->type == SnapshotElement::ElementType::Cable) return gp_Vec();
+    const auto* n1 = snapshot.getNode(el->startNodeId);
+    const auto* n2 = snapshot.getNode(el->endNodeId);
+    if (!n1 || !n2) return gp_Vec();
+    const auto [a, b] = ml.appliedRange(el->length);
+    const double integral = 0.5 * (ml.intensityAt(a, el->length) + ml.intensityAt(b, el->length)) * (b - a); // ∫ m dx (linéaire)
+    return LoadResolver::memberLoadVector(ml, integral, gp_Pnt(n1->x, n1->y, n1->z), gp_Pnt(n2->x, n2->y, n2->z), el->rotation);
 }
 
 MemberLoadResultant memberLoadResultant(const TSA::Model::MemberLoad& ml, const CalculationSnapshot& snapshot)
@@ -500,7 +571,8 @@ std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElement
         if (pattern.caseId > 0 && ml.loadCaseId() != pattern.caseId) continue;
         const auto* el = snapshot.findElementForLoad(ml);
         if (!el || el->type == SnapshotElement::ElementType::Truss || el->type == SnapshotElement::ElementType::Cable) continue;
-        if (ml.type() == TSA::Model::LoadType::MemberMoment) continue; // non transmis (ModelValidator l'indique)
+        // Moment réparti sans axe défini (gravité) : refusé par ModelValidator, jamais deviné.
+        if (ml.type() == TSA::Model::LoadType::MemberMoment && LoadResolver::usesMagnitudeOnly(ml)) continue;
 
         const double scale = pattern.factor * forceScale;
         const LocalMemberLoadComponents comp = LoadResolver::resolveMemberLoadToLocal(ml, snapshot);
@@ -513,7 +585,28 @@ std::map<int, std::vector<BeamElementLoad>> OpenSeesAnalysisBuilder::beamElement
             if (!ml.isRelativePosition()) x = L > 1e-4 ? x / L : 0.0;
             return std::clamp(x, 0.0, 1.0);
         };
-        if (ml.type() == TSA::Model::LoadType::MemberPoint)
+        if (ml.type() == TSA::Model::LoadType::MemberMoment)
+        {
+            // Couple réparti (kNm/m) : composantes locales en a (q1) et en b (q2), même lecture de
+            // l'intervalle que le rendu et la subdivision (MemberLoad::appliedRange / intensityAt).
+            const auto [a, b] = ml.appliedRange(L);
+            TSA::Model::MemberLoad atA = ml, atB = ml;
+            atA.setQ1(ml.intensityAt(a, L));
+            atB.setQ1(ml.intensityAt(b, L));
+            const LocalMemberLoadComponents cA = LoadResolver::resolveMemberLoadToLocal(atA, snapshot);
+            const LocalMemberLoadComponents cB = LoadResolver::resolveMemberLoadToLocal(atB, snapshot);
+            load.kind = BeamElementLoad::Kind::Couple;
+            load.wx = cA.wx * scale;
+            load.wy = cA.wy * scale;
+            load.wz = cA.wz * scale;
+            load.wxB = cB.wx * scale;
+            load.wyB = cB.wy * scale;
+            load.wzB = cB.wz * scale;
+            load.relativePosition = L > 1e-12 ? a / L : 0.0;
+            load.relativeEnd = L > 1e-12 ? b / L : 1.0;
+            load.comment = "Moment réparti (forces nodales équivalentes)";
+        }
+        else if (ml.type() == TSA::Model::LoadType::MemberPoint)
         {
             load.kind = BeamElementLoad::Kind::Point;
             load.relativePosition = relative(ml.x1());
@@ -661,7 +754,7 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
             const auto* el = snapshot.getElementByTag(tag);
             for (const auto& load : list)
             {
-                if (load.kind == BeamElementLoad::Kind::Linear)
+                if (load.nodalEquivalent())
                 {
                     // Forces nodales équivalentes = −(forces d'encastrement parfait), en repère global.
                     const auto* n1 = el ? snapshot.getNode(el->startNodeId) : nullptr;

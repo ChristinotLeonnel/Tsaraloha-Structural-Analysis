@@ -1,6 +1,8 @@
 #include "CalculationSnapshot.h"
 #include "../Model/Model.h"
 #include "../Model/Load/LoadManager.h"
+#include <gp_Vec.hxx>
+
 #include <algorithm>
 #include <cmath>
 
@@ -52,20 +54,10 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model,
         sn.fixRz = (supp.rz() == TSA::Model::DOFState::Fixed);
         sn.definedFix = { sn.fixTx, sn.fixTy, sn.fixTz, sn.fixRx, sn.fixRy, sn.fixRz };
 
-        // Anti-singularité 3D : pour les appuis articulés (pinned) et rouleaux (roller),
-        // la rotation de forage (drill, Rx) est libre par définition mais crée une
-        // matrice de rigidité singulière dans un solveur 3D. On la bloque sauf si
-        // l'utilisateur a explicitement défini un ressort en rotation sur cet axe.
-        if ((supp.isPinned() || supp.isRoller()) && supp.rx() != TSA::Model::DOFState::Spring)
-        {
-            sn.fixRx = true;
-        }
-        // Pour un appui simple (roller), le déplacement transversal hors-plan Ty est bloqué
-        // pour empêcher le mécanisme de corps rigide en rotation horizontale dans l'espace 3D.
-        if (supp.isRoller() && supp.ty() != TSA::Model::DOFState::Spring)
-        {
-            sn.fixTy = true;
-        }
+        // Blocages anti-singularité des appuis articulés et simples : appliqués après la capture des
+        // barres (ils dépendent de leur direction), voir applyAutomaticRestraints.
+        sn.pinnedSupport = supp.isPinned();
+        sn.rollerSupport = supp.isRoller();
 
         // Raideurs élastiques (ressorts)
         if (supp.tx() == TSA::Model::DOFState::Spring) sn.kTx = supp.kx();
@@ -179,7 +171,99 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model,
     snap.m_loadCases = lm.loadCases();
     snap.m_combinations = lm.combinations();
 
+    applyAutomaticRestraints(snap);
     return snap;
+}
+
+void CalculationSnapshot::applyAutomaticRestraints(CalculationSnapshot& snap)
+{
+    // Un appui articulé (rotule sphérique) ou simple laisse les trois rotations libres. Dans le solveur 3D,
+    // une barre portée par de tels appuis tourne librement autour de son axe (mécanisme de torsion,
+    // matrice singulière). Blocages ajoutés, tous tracés (automaticRestraints) et contrôlés après calcul :
+    //  1. appui à fourche : rotation autour de l'axe de la barre lorsque toutes les barres fléchies du nœud
+    //     sont alignées sur un axe global (barre inclinée : non bloquable par « fix », signalé) ;
+    //  2. structure plane verticale (comportement historique) : plan XZ → Rx et, appui simple, Ty ;
+    //     plan YZ → Ry et, appui simple, Tx (rotations / translation hors plan) ;
+    //  3. structure non plane : appui simple → Ty (comportement historique), Rx n'est plus bloqué : il
+    //     encastrait en flexion les barres non parallèles à X.
+    // Un ressort défini par l'utilisateur sur le DDL concerné est toujours prioritaire.
+    std::set<int> used;
+    for (const auto& [tag, e] : snap.m_elements)
+    {
+        used.insert(e.startNodeId);
+        used.insert(e.endNodeId);
+    }
+    if (used.empty()) return;
+    double lo[3] = { 1e300, 1e300, 1e300 }, hi[3] = { -1e300, -1e300, -1e300 };
+    for (int id : used)
+        if (const auto* n = snap.getNode(id))
+        {
+            const double c[3] = { n->x, n->y, n->z };
+            for (int k = 0; k < 3; ++k) { lo[k] = std::min(lo[k], c[k]); hi[k] = std::max(hi[k], c[k]); }
+        }
+    const double span = std::max({ hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1.0 });
+    const double tol = 1e-6 * span;
+    const bool planeXZ = hi[1] - lo[1] <= tol;
+    const bool planeYZ = !planeXZ && hi[0] - lo[0] <= tol;
+
+    std::map<int, std::vector<gp_Vec>> directions; // barres fléchies par nœud
+    for (const auto& [tag, e] : snap.m_elements)
+    {
+        if (e.type == SnapshotElement::ElementType::Truss || e.type == SnapshotElement::ElementType::Cable) continue;
+        const auto* a = snap.getNode(e.startNodeId);
+        const auto* b = snap.getNode(e.endNodeId);
+        if (!a || !b) continue;
+        const gp_Vec d(b->x - a->x, b->y - a->y, b->z - a->z);
+        if (d.Magnitude() < 1e-12) continue;
+        directions[e.startNodeId].push_back(d.Normalized());
+        directions[e.endNodeId].push_back(d.Normalized());
+    }
+
+    static const char* kDof[6] = { "TX", "TY", "TZ", "RX", "RY", "RZ" };
+    for (auto& [id, n] : snap.m_nodes)
+    {
+        if (!(n.pinnedSupport || n.rollerSupport) || !used.count(id)) continue;
+        bool* fix[6] = { &n.fixTx, &n.fixTy, &n.fixTz, &n.fixRx, &n.fixRy, &n.fixRz };
+        const double spring[6] = { n.kTx, n.kTy, n.kTz, n.kRx, n.kRy, n.kRz };
+        auto lock = [&](int dof, const std::string& why) {
+            if (*fix[dof] || spring[dof] > 0.0) return;
+            *fix[dof] = true;
+            snap.m_automaticRestraints.push_back({ id, dof, std::string(kDof[dof]) + " bloquée au nœud N" + std::to_string(id) + " : " + why });
+        };
+        // 1. Appui à fourche
+        const auto it = directions.find(id);
+        if (it != directions.end())
+        {
+            const gp_Vec& d0 = it->second.front();
+            const bool collinear = std::all_of(it->second.begin(), it->second.end(),
+                                               [&](const gp_Vec& d) { return d.Crossed(d0).Magnitude() < 1e-9; });
+            if (collinear)
+            {
+                const double c[3] = { std::abs(d0.X()), std::abs(d0.Y()), std::abs(d0.Z()) };
+                const int k = static_cast<int>(std::max_element(c, c + 3) - c);
+                if (c[k] > 1.0 - 1e-9)
+                    lock(3 + k, "appui à fourche (rotation autour de l'axe de la barre, sinon libre : mécanisme de torsion)");
+                else if (!planeXZ && !planeYZ)
+                    snap.m_restraintNotes.push_back("Appui N" + std::to_string(id) + " : la barre est inclinée, la rotation autour "
+                                                    "de son axe n'est pas bloquée automatiquement.");
+            }
+        }
+        // 2. et 3. Structure plane / appui simple
+        if (planeXZ)
+        {
+            lock(3, "structure plane XZ (rotation hors plan)");
+            if (n.rollerSupport) lock(1, "structure plane XZ, appui simple (translation hors plan)");
+        }
+        else if (planeYZ)
+        {
+            lock(4, "structure plane YZ (rotation hors plan)");
+            if (n.rollerSupport) lock(0, "structure plane YZ, appui simple (translation hors plan)");
+        }
+        else if (n.rollerSupport)
+        {
+            lock(1, "appui simple (translation horizontale Y, comportement historique)");
+        }
+    }
 }
 
 const SnapshotNode* CalculationSnapshot::getNode(int id) const
@@ -253,6 +337,8 @@ CalculationSnapshot CalculationSnapshot::subdivided(const CalculationSnapshot& s
 {
     CalculationSnapshot out;
     out.m_nodes = src.m_nodes;
+    out.m_automaticRestraints = src.m_automaticRestraints;
+    out.m_restraintNotes = src.m_restraintNotes;
     out.m_loadCases = src.m_loadCases;
     out.m_combinations = src.m_combinations;
     out.m_nodalLoads = src.m_nodalLoads;

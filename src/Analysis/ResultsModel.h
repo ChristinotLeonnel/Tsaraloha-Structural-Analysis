@@ -180,6 +180,8 @@ struct AnalysisExecutionMetadata
     double relativeEquilibriumResidual = 0.0;   ///< |Σ F + Σ R| / |Σ F|
     double relativeMomentResidual = 0.0;        ///< |Σ M + Σ M_R| / échelle des moments (autour de l'origine)
     ExtractionLevel extractionLevel = ExtractionLevel::Light;
+    /// Points à vérifier constatés après le calcul (ex. effort repris par un blocage automatique d'appui).
+    std::vector<std::string> warnings;
 };
 
 /// Efforts élémentaires bruts fournis par OpenSees (mode ADVANCED), sans post-traitement.

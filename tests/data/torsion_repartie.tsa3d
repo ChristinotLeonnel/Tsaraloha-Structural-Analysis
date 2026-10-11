@@ -1,0 +1,19 @@
+{
+  "format": "TSA3D",
+  "version": "1.0",
+  "metadata": { "name": "Console en torsion répartie (test 328)", "description": "Couple uniforme 2 kN·m/m autour de l'axe local x ; unités en millimètres pour contrôler la conversion des moments répartis." },
+  "units": { "length": "mm", "force": "kN", "stress": "Pa" },
+  "materials": [ { "id": "S235", "type": "steel", "E": 210e9, "nu": 0.3, "density": 7850, "fk": 235e6 } ],
+  "sections": [ { "id": "R200x400", "shape": "rectangular", "dimensions": { "b": 200, "h": 400 } } ],
+  "nodes": [
+    { "id": "N1", "position": [0, 0, 0], "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+    { "id": "N2", "position": [3000, 0, 0] }
+  ],
+  "members": [ { "id": "B1", "type": "beam", "nodes": ["N1", "N2"], "section": "R200x400", "material": "S235" } ],
+  "loads": {
+    "cases": [ { "id": "T", "name": "Torsion répartie", "category": "live" } ],
+    "member": [
+      { "id": "MT1", "member": "B1", "case": "T", "kind": "moment", "direction": "localX", "coordinateSystem": "local", "q1": 2.0 }
+    ]
+  }
+}

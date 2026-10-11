@@ -297,8 +297,20 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
         m_results.appendLog("\n[ERRORS / WARNINGS]\n" + stdErrLog.toStdString());
     }
 
+    // Matrice singulière : mécanisme (OpenSees l'écrit sur la sortie d'erreur, d'où auparavant
+    // « fichiers de résultats illisibles » sans explication).
+    const QString fullLog = stdOutLog + stdErrLog;
+    if (fullLog.contains("matrix singular", Qt::CaseInsensitive) || fullLog.contains("singular matrix", Qt::CaseInsensitive))
+    {
+        if (errorMessage)
+            *errorMessage = tr("Matrice de rigidité singulière : la structure est un mécanisme (appuis insuffisants, rotule "
+                               "ou rotation laissée libre — par exemple la rotation d'une barre autour de son axe, en torsion, "
+                               "bloquée par aucun appui). Vérifier les appuis et les relâchements.");
+        m_results.setValid(false);
+        return false;
+    }
     // Détection de non-convergence
-    if (stdOutLog.contains("CONVERGENCE_FAIL") || stdOutLog.contains("Analysis Failed"))
+    if (fullLog.contains("CONVERGENCE_FAIL") || fullLog.contains("Analysis Failed"))
     {
         if (errorMessage) *errorMessage = tr("Non-convergence détectée lors de la résolution OpenSees.");
         m_results.setValid(false);

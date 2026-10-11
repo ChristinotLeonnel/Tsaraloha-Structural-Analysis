@@ -10,10 +10,14 @@
 #include "../Model/Wall.h"
 #include "../Model/Section.h"
 #include "../Model/Material.h"
+#include "../Analysis/LoadResolver.h"
 #include "../Analysis/LoadValidation.h"
 #include "../Analysis/OpenSeesAnalysisBuilder.h"
 
+#include <gp_Vec.hxx>
+
 #include <cmath>
+#include <functional>
 #include <sstream>
 #include <set>
 
@@ -424,13 +428,88 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
                 nl.nodeId(), "RDM");
         }
     }
-    for (const auto& [loadId, ml] : lm.memberLoads())
+    // Moments répartis (couple par unité de longueur) : transmis aux poutres et poteaux par forces nodales
+    // équivalentes ; jamais devinés ni ignorés en silence.
+    const bool anyMemberMoment = std::any_of(lm.memberLoads().begin(), lm.memberLoads().end(),
+                                             [](const auto& kv) { return kv.second.type() == TSA::Model::LoadType::MemberMoment; });
+    if (anyMemberMoment)
     {
-        if (ml.type() == TSA::Model::LoadType::MemberMoment)
+        const auto snap = TSA::Analysis::CalculationSnapshot::capture(model);
+        for (const auto& [loadId, ml] : lm.memberLoads())
         {
-            report.addWarning("Charges",
-                "La charge sur barre « " + ml.name() + " » est un moment réparti : ce type de charge n'est pas pris en compte par le calcul.",
-                loadId, "EN 1991");
+            if (ml.type() != TSA::Model::LoadType::MemberMoment) continue;
+            if (TSA::Analysis::LoadResolver::usesMagnitudeOnly(ml))
+            {
+                report.addError("Charges",
+                    "Le moment réparti « " + ml.name() + " » n'a pas d'axe défini (direction « gravité » ou axe incompatible avec le "
+                    "repère) : indiquer l'axe du vecteur moment (local x pour une torsion, ou un axe global).",
+                    loadId, "RDM");
+                continue;
+            }
+            const auto* el = snap.findElementForLoad(ml);
+            if (el && (el->type == TSA::Analysis::SnapshotElement::ElementType::Truss
+                       || el->type == TSA::Analysis::SnapshotElement::ElementType::Cable))
+            {
+                report.addWarning("Charges",
+                    "Le moment réparti « " + ml.name() + " » s'applique à une barre articulée (treillis ou câble), sans rigidité en "
+                    "rotation : il n'est pas transmis au calcul.",
+                    loadId, "RDM");
+            }
+        }
+    }
+
+    // 4b. Mécanisme de torsion : barres fléchies alignées (un seul axe) dont la rotation autour de cet axe
+    //     n'est bloquée par aucun appui (y compris les blocages automatiques du calcul 3D) : matrice
+    //     singulière. Détecté avant le calcul, avec les barres concernées.
+    {
+        using TSA::Analysis::SnapshotElement;
+        const auto snap = TSA::Analysis::CalculationSnapshot::capture(model);
+        std::map<int, int> parent;
+        std::function<int(int)> root = [&](int a) { return parent[a] == a ? a : parent[a] = root(parent[a]); };
+        std::vector<const SnapshotElement*> frames;
+        for (const auto& [tag, e] : snap.elements())
+        {
+            if (e.type == SnapshotElement::ElementType::Truss || e.type == SnapshotElement::ElementType::Cable) continue;
+            frames.push_back(&e);
+            for (int id : { e.startNodeId, e.endNodeId })
+                if (!parent.count(id)) parent[id] = id;
+            parent[root(e.startNodeId)] = root(e.endNodeId);
+        }
+        std::map<int, std::vector<const SnapshotElement*>> components;
+        for (const auto* e : frames) components[root(e->startNodeId)].push_back(e);
+        for (const auto& [r, members] : components)
+        {
+            auto dirOf = [&](const SnapshotElement* e) {
+                const auto* a = snap.getNode(e->startNodeId);
+                const auto* b = snap.getNode(e->endNodeId);
+                gp_Vec d(b->x - a->x, b->y - a->y, b->z - a->z);
+                return d.Magnitude() > 1e-12 ? d.Normalized() : gp_Vec();
+            };
+            const gp_Vec d0 = dirOf(members.front());
+            if (d0.Magnitude() < 0.5) continue;
+            if (!std::all_of(members.begin(), members.end(), [&](const auto* e) { return dirOf(e).Crossed(d0).Magnitude() < 1e-9; }))
+                continue; // barres non alignées : la torsion de l'une est retenue par la flexion des autres
+            const double dk[3] = { std::abs(d0.X()), std::abs(d0.Y()), std::abs(d0.Z()) };
+            bool restrained = false;
+            for (const auto& [id, p] : parent)
+            {
+                if (root(id) != r) continue;
+                const auto* n = snap.getNode(id);
+                if (!n) continue;
+                const bool fixedR[3] = { n->fixRx || n->kRx > 0.0, n->fixRy || n->kRy > 0.0, n->fixRz || n->kRz > 0.0 };
+                for (int k = 0; k < 3; ++k) restrained |= fixedR[k] && dk[k] > 1e-6;
+            }
+            if (restrained) continue;
+            std::string list;
+            for (std::size_t i = 0; i < members.size() && i < 5; ++i)
+                list += (i ? ", " : "") + std::string(members[i]->type == SnapshotElement::ElementType::Column ? "poteau " : "poutre ")
+                        + std::to_string(members[i]->id);
+            if (members.size() > 5) list += "…";
+            report.addError("Stabilité",
+                "Mécanisme de torsion : " + list + " (barres alignées) peuvent tourner librement autour de leur axe, aucun appui "
+                "ne bloquant cette rotation. Bloquer la rotation autour de l'axe de la barre sur au moins un nœud "
+                "(encastrement, appui à fourche ou ressort en rotation).",
+                members.front()->id, "RDM");
         }
     }
 
