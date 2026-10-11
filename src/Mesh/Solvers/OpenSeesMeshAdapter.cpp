@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <set>
 #include <sstream>
@@ -316,6 +317,41 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                         "surface(s) sans aucun nœud commun avec une barre, un appui ou une autre surface (mécanisme) ; aucune liaison rigide "
                         "n'est créée automatiquement (voile excentré, dalle décalée) : relier la surface par des nœuds communs",
                         list(isolated));
+            }
+            // Taille, types et qualité des éléments transmis (note de calcul)
+            {
+                auto& q = sm.mesh;
+                q.minEdge = 1e300;
+                q.minAngle = 180.0;
+                for (const auto& e : sm.elements)
+                {
+                    (e.meshNodes.size() == 4 ? q.quads : q.triangles)++;
+                    double lo = 1e300, hi = 0;
+                    const std::size_t n = e.meshNodes.size();
+                    for (std::size_t k = 0; k < n; ++k)
+                    {
+                        const auto& a = mesh.node(e.meshNodes[k]);
+                        const auto& b = mesh.node(e.meshNodes[(k + 1) % n]);
+                        const auto& c = mesh.node(e.meshNodes[(k + n - 1) % n]);
+                        const double ab[3] = { b.x - a.x, b.y - a.y, b.z - a.z }, ac[3] = { c.x - a.x, c.y - a.y, c.z - a.z };
+                        const double lab = std::sqrt(ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2]);
+                        const double lac = std::sqrt(ac[0] * ac[0] + ac[1] * ac[1] + ac[2] * ac[2]);
+                        lo = std::min(lo, lab), hi = std::max(hi, lab);
+                        if (lab > 0 && lac > 0)
+                        {
+                            const double cosA = std::clamp((ab[0] * ac[0] + ab[1] * ac[1] + ab[2] * ac[2]) / (lab * lac), -1.0, 1.0);
+                            q.minAngle = std::min(q.minAngle, std::acos(cosA) * 180.0 / 3.14159265358979323846);
+                        }
+                    }
+                    q.minEdge = std::min(q.minEdge, lo), q.maxEdge = std::max(q.maxEdge, hi);
+                    if (lo > 0) q.maxAspect = std::max(q.maxAspect, hi / lo);
+                }
+                q.nodes = sm.nodes.size();
+                if (q.empty()) q = {};
+                else if (q.minAngle < 15.0 || q.maxAspect > 10.0)
+                    add(L::Warning, "Qualité du maillage",
+                        "éléments de coque déformés (angle minimal " + std::to_string(int(q.minAngle)) + "°, rapport d'arêtes " + std::to_string(q.maxAspect).substr(0, 5) +
+                            ") : précision locale réduite, raffiner ou régulariser le maillage");
             }
             std::set<std::string> badMaterial;
             for (const auto& e : sm.elements)

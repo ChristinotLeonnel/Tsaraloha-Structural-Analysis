@@ -53,6 +53,16 @@ struct SurfaceNodeSupport
     std::string label;
 };
 
+/// Caractéristiques du maillage des surfaces réellement transmis (note de calcul, contrôle de qualité).
+struct SurfaceMeshSummary
+{
+    std::size_t quads = 0, triangles = 0, nodes = 0;
+    double minEdge = 0, maxEdge = 0;   ///< longueurs d'arête extrêmes (m)
+    double maxAspect = 0;              ///< plus grand rapport arête max / arête min d'un élément
+    double minAngle = 0;               ///< plus petit angle intérieur (degrés)
+    bool empty() const { return quads + triangles == 0; }
+};
+
 struct SurfaceAnalysisModel
 {
     std::vector<SurfaceMeshNode> nodes;
@@ -63,6 +73,7 @@ struct SurfaceAnalysisModel
     std::map<std::string, double> selfWeightBySurface;  ///< kN, contrôle et note de calcul
     std::vector<std::string> notes;             ///< conversions effectuées, contrôles de résultante
     std::string meshStamp;                      ///< empreinte du maillage utilisé (date de génération + paramètres)
+    SurfaceMeshSummary mesh;                    ///< taille, types et qualité des éléments transmis
 
     bool empty() const { return elements.empty(); }
 };

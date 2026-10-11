@@ -354,6 +354,9 @@ bool runSuite_Surfaces(int& passed)
         const double wMax = r.run.results.maxSurfaceDisplacement(&wn);
         std::cout << "  moment maximal dans les poutres de rive " << mBeam << " kN·m, déplacement maximal de la dalle " << wMax * 1000 << " mm" << std::endl;
         TEST_CHECK(mBeam > 1.0 && wMax > 0 && wn > 0, "Test 356: la dalle charge les poutres (flexion des poutres de rive) et se déforme");
+        const auto& msum = r.run.results.surfaceMeshSummary();
+        TEST_CHECK(msum.quads == r.compat.surfaces.elements.size() && msum.minAngle > 45.0 && msum.maxAspect < 2.5 && std::abs(msum.maxEdge - 0.5) < 0.05,
+                   "Test 356: résumé du maillage transmis aux résultats (" << msum.quads << " quadrangles, angle min " << msum.minAngle << "°)");
         const auto sum = r.run.results.summary();
         TEST_CHECK(m.getNode(sum.maxDisplacementNodeId) != nullptr, "Test 356: synthèse des déplacements sur les nœuds TSA (nœud " << sum.maxDisplacementNodeId << "), surfaces à part");
         // Note de calcul détaillée : hypothèses des coques, charges surfaciques, résultantes, contrôle de la charge verticale
@@ -365,7 +368,7 @@ bool runSuite_Surfaces(int& passed)
             const auto doc = mgr.generateReport();
             const QString html = TSA::NDC::NDCExporter::renderHtml(doc);
             TEST_CHECK(html.contains("Surfaces calculées en coques") && html.contains("Charges surfaciques") && html.contains("Résultantes des coques") &&
-                           html.contains("CONCORDANT"),
+                           html.contains("CONCORDANT") && html.contains("Maillage calculé") && html.contains("ShellMITC4") && html.contains("Origine des valeurs"),
                        "Test 356: note de calcul — hypothèses des coques, charges surfaciques, résultantes, charge verticale concordante");
         }
 

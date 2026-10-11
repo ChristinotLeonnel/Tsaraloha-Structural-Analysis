@@ -347,6 +347,7 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
     {
         r.results.attachSurfaceResults(prepared.model.surfaceNodes.meshToNode, prepared.model.surfaceNodes.surfaceOnlyNodes);
         r.results.setSurfaceMeshStamp(context.surfaces.meshStamp);
+        r.results.setSurfaceMeshSummary(context.surfaces.mesh);
     }
 
     // Traçabilité commune, renseignée ici pour qu'aucun moteur ne puisse l'omettre.

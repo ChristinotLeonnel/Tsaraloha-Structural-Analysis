@@ -4,6 +4,7 @@
 
 #include "AnalysisTypes.h"
 #include "SolverMesh.h"
+#include "SurfaceAnalysisModel.h"
 
 #include <string>
 #include <vector>
@@ -476,6 +477,8 @@ public:
     // Éléments surfaciques (coques) : résultantes par élément du maillage, déplacements par nœud du maillage
     /// Réactions aux nœuds du maillage des surfaces (appuis linéiques de bord), par nœud du maillage.
     const std::map<int, NodeReaction>& surfaceNodeReactions() const { return m_surfaceNodeReactions; }
+    const SurfaceMeshSummary& surfaceMeshSummary() const { return m_surfaceMeshSummary; }
+    void setSurfaceMeshSummary(const SurfaceMeshSummary& s) { m_surfaceMeshSummary = s; }
     const ModalResults& modal() const { return m_modal; }
     void setModal(const ModalResults& m) { m_modal = m; }
     const std::map<int, ShellElementResult>& shellResults() const { return m_shellResults; }
@@ -522,6 +525,7 @@ private:
     std::map<ElementKey, ElementResults> m_finalElementResults;
     std::map<int, ShellElementResult> m_shellResults;
     ModalResults m_modal;
+    SurfaceMeshSummary m_surfaceMeshSummary;
     std::map<int, NodeReaction> m_surfaceNodeReactions;
     std::map<int, NodeDisplacement> m_finalSurfaceNodeDisplacements;
     std::map<int, NodeDisplacement> m_surfaceNodeDisplacements;

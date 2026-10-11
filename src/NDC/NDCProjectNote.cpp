@@ -663,6 +663,49 @@ void chapterMethod(Ctx& x, NDCDocument& doc)
     doc.addChapter(ch);
 }
 
+/// Éléments surfaciques : maillage réellement calculé, formulation, équations, origine des valeurs et conventions.
+void chapterSurfaces(Ctx& x, NDCDocument& doc)
+{
+    const auto& q = x.results->surfaceMeshSummary();
+    auto ch = x.makeChapter(QStringLiteral("Éléments surfaciques (coques)"));
+    NDCSection sm;
+    sm.title = QStringLiteral("Maillage calculé");
+    sm.keyValues.push_back({ QStringLiteral("Maillage"), QString::fromStdString(x.results->surfaceMeshStamp().empty() ? std::string("—") : x.results->surfaceMeshStamp()) });
+    sm.keyValues.push_back({ QStringLiteral("Éléments"), QStringLiteral("%1 quadrangle(s) ShellMITC4, %2 triangle(s) ShellDKGT, %3 nœud(s)").arg(q.quads).arg(q.triangles).arg(q.nodes) });
+    sm.keyValues.push_back({ QStringLiteral("Taille des éléments"), QStringLiteral("arêtes de %1 à %2 m").arg(f(q.minEdge, 3), f(q.maxEdge, 3)) });
+    sm.keyValues.push_back({ QStringLiteral("Qualité"), QStringLiteral("angle intérieur minimal %1° ; rapport d'arêtes maximal %2 → %3")
+                                                            .arg(f(q.minAngle, 1), f(q.maxAspect, 2),
+                                                                 q.minAngle < 15.0 || q.maxAspect > 10.0 ? bad(QStringLiteral("ÉLÉMENTS DÉFORMÉS")) : ok()) });
+    ch.sections.push_back(sm);
+
+    NDCSection sf;
+    sf.title = QStringLiteral("Formulation et équations");
+    sf.paragraphs.push_back(QStringLiteral("Coque plane élastique linéaire, isotrope, épaisseur e constante par surface (section ElasticMembranePlateSection) : "
+                                           "membrane et flexion découplées, cisaillement transverse de Mindlin-Reissner (ShellMITC4, interpolation mixte qui "
+                                           "évite le verrouillage) ou condition de Kirchhoff discrète (ShellDKGT). Rigidités par unité de largeur :"));
+    sf.paragraphs.push_back(formula(QStringLiteral("D<sub>m</sub> = E·e / (1 − ν²) ;  D = E·e³ / (12·(1 − ν²)) ;  rigidité de cisaillement κ·G·e (κ = 5/6)")));
+    sf.paragraphs.push_back(QStringLiteral("Poids propre et charges surfaciques transformés en forces nodales cohérentes (intégration de Gauss sur les fonctions "
+                                           "de forme Nᵢ, ouvertures déduites, résultante et moment contrôlés contre la valeur analytique) :"));
+    sf.paragraphs.push_back(formula(QStringLiteral("g = ρ · g · e  (kN/m²) ;  F<sub>i</sub> = ∫<sub>A</sub> N<sub>i</sub> · p(u, v) dA ;  p(u, v) = q + g<sub>u</sub>·u + g<sub>v</sub>·v")));
+    sf.paragraphs.push_back(QStringLiteral("Masses (analyse modale) : m = ρ · e par unité d'aire, concentrées aux nœuds par l'élément."));
+    ch.sections.push_back(sf);
+
+    NDCSection sc;
+    sc.title = QStringLiteral("Origine des valeurs et conventions");
+    sc.paragraphs.push_back(QStringLiteral("Déplacements : valeurs nodales calculées par le moteur (aucune interpolation). Résultantes N<sub>xx</sub>, N<sub>yy</sub>, "
+                                           "N<sub>xy</sub> (kN/m), M<sub>xx</sub>, M<sub>yy</sub>, M<sub>xy</sub> (kN·m/m), V<sub>xz</sub>, V<sub>yz</sub> (kN/m) : "
+                                           "valeurs aux 4 points d'intégration de chaque élément, présentées en moyenne par élément, sans lissage entre "
+                                           "éléments ; repère local de l'élément (x selon son premier côté, z normal au plan), N > 0 en traction, signes des "
+                                           "moments selon la convention du moteur. Les cartes et les tableaux utilisent des valeurs principales "
+                                           "(indépendantes du repère local) : |M| = max |M<sub>1,2</sub>|, |N| = max |N<sub>1,2</sub>|, |V| = √(V<sub>xz</sub>² + V<sub>yz</sub>²)."));
+    sc.paragraphs.push_back(formula(QStringLiteral("M<sub>1,2</sub> = (M<sub>xx</sub> + M<sub>yy</sub>)/2 ± √(((M<sub>xx</sub> − M<sub>yy</sub>)/2)² + M<sub>xy</sub>²)")));
+    sc.paragraphs.push_back(QStringLiteral("Limites : comportement élastique linéaire (ni fissuration, ni plasticité), petits déplacements, formulations plaque seule et "
+                                           "membrane seule non prises en charge (refusées avant calcul), aucune charge thermique, contraintes non lissées aux nœuds. "
+                                           "Les vérifications réglementaires des dalles et voiles (ferraillage, poinçonnement) ne sont pas effectuées."));
+    ch.sections.push_back(sc);
+    doc.addChapter(ch);
+}
+
 void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
 {
     auto ch = x.makeChapter(x.detailed ? QStringLiteral("Contrôle du modèle et équilibre") : QStringLiteral("Contrôle du modèle et équilibre global"));
@@ -1453,6 +1496,7 @@ NDCDocument NDCProjectNote::build(const TSA::Model::Model& model, const std::sha
         chapterActions(x, doc);
         chapterCombinations(x, doc);
         chapterMethod(x, doc);
+        if (x.results && x.results->isValid() && !x.results->surfaceMeshSummary().empty()) chapterSurfaces(x, doc);
         chapterChecks(x, doc, issues);
         chapterViews(x, doc);
         chapterDisplacements(x, doc, issues);
