@@ -2691,6 +2691,10 @@ void OccView::updateSurfaceLoadShapes()
             side = (side - dir * side.Dot(dir)).Normalized();
             double cu = 0, cv = 0;
             int count = 0;
+            // Zone et variation linéaire : flèches limitées à la zone, longueur proportionnelle à |p(u, v)|
+            if (l.zone) u0 = std::max(u0, l.zoneU0), u1 = std::min(u1, l.zoneU1), v0 = std::max(v0, l.zoneV0), v1 = std::min(v1, l.zoneV1);
+            auto p = [&](double u, double v) { return l.value + l.gradU * u + l.gradV * v; };
+            const double pmax = std::max({ std::abs(p(u0, v0)), std::abs(p(u1, v0)), std::abs(p(u0, v1)), std::abs(p(u1, v1)), 1e-12 });
             for (double u = u0 + 0.5 * step; u < u1; u += step)
                 for (double v = v0 + 0.5 * step; v < v1; v += step)
                 {
@@ -2698,8 +2702,10 @@ void OccView::updateSurfaceLoadShapes()
                     bool inHole = false;
                     for (const auto& h : holes) inHole |= TSA::Mesh::pointInPolygon(u, v, h);
                     if (inHole) continue;
+                    const double ratio = std::abs(p(u, v)) / pmax;
+                    if (ratio < 0.05) continue;
                     const gp_Pnt tip = toPnt(sg->frame.toGlobal(u, v));
-                    const gp_Pnt tail = tip.Translated(-dir * L);
+                    const gp_Pnt tail = tip.Translated(-dir * (L * ratio));
                     addEdge(tail, tip);
                     const gp_Pnt back = tip.Translated(-dir * (0.22 * L));
                     addEdge(tip, back.Translated(side * (0.09 * L)));
@@ -2710,8 +2716,13 @@ void OccView::updateSurfaceLoadShapes()
                 for (std::size_t i = 0; i < poly.size(); ++i)
                     addEdge(toPnt(poly[i]).Translated(-dir * L), toPnt(poly[(i + 1) % poly.size()]).Translated(-dir * L));
             };
-            ring(sg->outer);
-            for (const auto& h : sg->holes) ring(h);
+            if (l.zone)
+                ring({ sg->frame.toGlobal(u0, v0), sg->frame.toGlobal(u1, v0), sg->frame.toGlobal(u1, v1), sg->frame.toGlobal(u0, v1) });
+            else
+            {
+                ring(sg->outer);
+                for (const auto& h : sg->holes) ring(h);
+            }
             if (any)
             {
                 Handle(AIS_Shape) ais = new AIS_Shape(comp);

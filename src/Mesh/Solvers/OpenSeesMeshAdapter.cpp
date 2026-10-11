@@ -408,6 +408,10 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                 p.value = l.value;
                 p.direction = dir;
                 p.projected = l.projected;
+                p.gradU = l.gradU;
+                p.gradV = l.gradV;
+                p.zone = l.zone;
+                p.zoneU0 = l.zoneU0, p.zoneV0 = l.zoneV0, p.zoneU1 = l.zoneU1, p.zoneV1 = l.zoneV1;
                 res = distributeSurfaceLoad(mesh, geo, p);
             }
             if (!res.ok)

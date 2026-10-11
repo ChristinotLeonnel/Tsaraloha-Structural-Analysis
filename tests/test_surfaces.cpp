@@ -15,7 +15,9 @@
 //        mode (nœuds du maillage), paramètres modaux enregistrés avec le contexte ;
 //   360  appuis linéiques de bord : plaque carrée simplement appuyée sur ses 4 bords (Navier), appuis élastiques (raideur
 //        linéique répartie, tassement), pied de voile interrompu par une porte, bords inexistants, surface non transmise et
-//        conditions redondantes signalés, persistance.
+//        conditions redondantes signalés, persistance ;
+//   361  charges sur une zone localisée (rectangle du repère local, découpe exacte des éléments et des ouvertures) et à
+//        variation linéaire (pression hydrostatique sur un voile : résultante γ·h²/2·L, point d'application à h/3).
 
 #include "test_common.h"
 
@@ -732,6 +734,105 @@ bool runSuite_Surfaces(int& passed)
                        "Test 360: appuis linéiques dans la note de calcul");
         }
         std::cout << "[PASS] Test 360: Appuis linéiques des surfaces (Navier " << w * 1000 << " / " << wRef * 1000 << " mm)" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 361 : charges sur zone et à variation linéaire
+    // -------------------------------------------------------------------------
+    {
+        auto sumRy = [](const AnalysisRunResult& r, int dof) {
+            double s = 0;
+            for (const auto& [id, rc] : r.results.surfaceNodeReactions()) s += dof == 1 ? rc.ry : rc.rz;
+            for (const auto& [id, rc] : r.results.allReactions()) s += dof == 1 ? rc.ry : rc.rz;
+            return s;
+        };
+        // a) Dalle 6 × 6 m appuyée sur son contour, ouverture 1 × 1 m, charge 5 kN/m² sur une zone qui chevauche l'ouverture
+        Model m;
+        const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(6, 0, 0), n3 = m.addNode(6, 6, 0), n4 = m.addNode(0, 6, 0);
+        const int s = m.addSlab({ n1, n2, n3, n4 }, 0.2, "Dalle");
+        SlabOpening o;
+        o.polygon = { { 2, 2 }, { 3, 2 }, { 3, 3 }, { 2, 3 } };
+        m.getSlab(s)->setOpenings({ o });
+        TSA::Model::SurfaceEdgeSupport ss;
+        ss.fixed = { true, true, true, false, false, false };
+        m.getSlab(s)->setEdgeSupports({ ss });
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        TSA::Model::SurfaceLoad zl;
+        zl.surfaceId = s;
+        zl.loadCaseId = lc;
+        zl.value = 5.0;
+        zl.zone = true;
+        zl.zoneU0 = 1.3, zl.zoneV0 = 0.7, zl.zoneU1 = 4.1, zl.zoneV1 = 2.6;
+        const int zid = m.loadManager().addSurfaceLoad(zl);
+        const auto r = runSurfaces(m, settings2D(0.5, true), false, lc);
+        const double zoneArea = 2.8 * 1.9 - 1.0 * 0.6;
+        double fz = 0, mx = 0, my = 0;
+        for (const auto& f : r.compat.surfaces.loads)
+        {
+            const auto& n = r.mesh.mesh.node(f.meshNode);
+            fz += f.fz, mx += n.y * f.fz, my += n.x * f.fz;
+        }
+        // centre de la zone nette : rectangle (2,7 ; 1,65) moins la partie de l'ouverture (2,5 ; 2,3)
+        const double cx = (2.8 * 1.9 * 2.7 - 0.6 * 2.5) / zoneArea, cy = (2.8 * 1.9 * 1.65 - 0.6 * 2.3) / zoneArea;
+        TEST_CHECK(r.run.success && std::abs(fz + 5.0 * zoneArea) < 1e-6 * 5.0 * zoneArea && std::abs(my / fz - cx) < 1e-6 && std::abs(mx / fz - cy) < 1e-6,
+                   "Test 361: charge de zone Σ Fz = " << fz << " kN (attendu " << -5.0 * zoneArea << "), centre (" << my / fz << " ; " << mx / fz << ") (" << blockingText(r.compat)
+                                                      << r.run.message << ")");
+        TEST_CHECK(std::abs(sumRy(r.run, 2) - 5.0 * zoneArea) < 1e-3 * 5.0 * zoneArea, "Test 361: Σ Rz = " << sumRy(r.run, 2) << " kN");
+        // zone vide refusée
+        auto bad = *m.loadManager().getSurfaceLoad(zid);
+        bad.zoneU1 = bad.zoneU0;
+        m.loadManager().removeSurfaceLoad(zid);
+        const int bid = m.loadManager().addSurfaceLoad(bad);
+        const auto rb = runSurfaces(m, settings2D(0.5, true), false, lc);
+        TEST_CHECK(rb.compat.blocking() && blockingText(rb.compat).find("zone") != std::string::npos, "Test 361: zone vide refusée (" << blockingText(rb.compat) << ")");
+        m.loadManager().removeSurfaceLoad(bid);
+
+        // b) Voile 5 × 3 m encastré en pied, eau sur h = 2 m (γ = 10 kN/m³) : p = γ·(h − v) sur v ≤ h
+        Model v;
+        const int pa = v.addNode(0, 0, 0), pb = v.addNode(5, 0, 0);
+        const int wid = v.addWall(pa, pb, 3.0, 0.2, "Voile");
+        TSA::Model::SurfaceEdgeSupport base;
+        base.edge = 0;
+        base.fixed = { true, true, true, true, true, true };
+        v.getWall(wid)->setEdgeSupports({ base });
+        const int vc = v.loadManager().addLoadCase(LoadCase(0, "Eau", LoadCaseCategory::Live));
+        TSA::Model::SurfaceLoad hl;
+        hl.targetKind = TSA::Model::SurfaceTargetKind::Wall;
+        hl.surfaceId = wid;
+        hl.loadCaseId = vc;
+        hl.direction = TSA::Model::SurfaceLoadDirection::GlobalY;
+        hl.value = 20.0;
+        hl.gradV = -10.0;
+        hl.zone = true;
+        hl.zoneU0 = 0, hl.zoneV0 = 0, hl.zoneU1 = 5, hl.zoneV1 = 2;
+        v.loadManager().addSurfaceLoad(hl);
+        const auto rh = runSurfaces(v, settings2D(0.4, true), false, vc);
+        double fy = 0, mz = 0;
+        for (const auto& f : rh.compat.surfaces.loads)
+        {
+            fy += f.fy;
+            mz += rh.mesh.mesh.node(f.meshNode).z * f.fy;
+        }
+        const double Ph = 10.0 * 2.0 * 2.0 / 2.0 * 5.0;   // 100 kN
+        TEST_CHECK(rh.run.success && std::abs(fy - Ph) < 1e-6 * Ph && std::abs(mz / fy - 2.0 / 3.0) < 1e-6,
+                   "Test 361: hydrostatique Σ Fy = " << fy << " kN (γh²L/2 = " << Ph << "), point d'application z = " << mz / fy << " m (h/3) " << blockingText(rh.compat) << rh.run.message);
+        TEST_CHECK(std::abs(sumRy(rh.run, 1) + Ph) < 1e-3 * Ph, "Test 361: Σ Ry = " << sumRy(rh.run, 1) << " kN");
+
+        // c) Persistance de la zone et des gradients
+        QTemporaryDir tmp;
+        const std::string path = (tmp.path() + "/zone.tsa").toStdString();
+        std::string err;
+        TSA::IO::TSAFileWriter writer;
+        GridManager grids;
+        TEST_CHECK(writer.saveToFile(path, v, &grids, "Zone", "TSA", &err), "Test 361: enregistrement (" << err << ")");
+        Model back;
+        GridManager bg;
+        std::string name;
+        TSA::IO::TSAFileReader reader;
+        bool same = reader.loadFromFile(path, back, &bg, "", &name, nullptr, nullptr, &err) && back.loadManager().surfaceLoads().size() == 1;
+        if (same) same = back.loadManager().surfaceLoads().begin()->second == v.loadManager().surfaceLoads().begin()->second;
+        TEST_CHECK(same, "Test 361: zone et variation linéaire relues à l'identique (" << err << ")");
+        std::cout << "[PASS] Test 361: Charges sur zone et à variation linéaire" << std::endl;
         ++passed;
     }
     return true;

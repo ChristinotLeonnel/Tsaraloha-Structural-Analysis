@@ -281,7 +281,10 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
                                        { "value", l.value },
                                        { "projected", l.projected },
                                        { "u", l.u },
-                                       { "v", l.v } });
+                                       { "v", l.v },
+                                       { "gradU", l.gradU },
+                                       { "gradV", l.gradV },
+                                       { "zone", l.zone ? QJsonValue(QJsonArray { l.zoneU0, l.zoneV0, l.zoneU1, l.zoneV1 }) : QJsonValue() } });
         auto supportsJson = [](const std::vector<TSA::Model::SurfaceEdgeSupport>& list) {
             QJsonArray a;
             for (const auto& sp : list)
@@ -1001,6 +1004,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         l.projected = o.value("projected").toBool();
         l.u = o.value("u").toDouble();
         l.v = o.value("v").toDouble();
+        l.gradU = o.value("gradU").toDouble();
+        l.gradV = o.value("gradV").toDouble();
+        if (const QJsonArray z = o.value("zone").toArray(); z.size() == 4)
+            l.zone = true, l.zoneU0 = z[0].toDouble(), l.zoneV0 = z[1].toDouble(), l.zoneU1 = z[2].toDouble(), l.zoneV1 = z[3].toDouble();
         if (l.id <= 0 || snapshot.loadSnapshot.surfaceLoads.count(l.id)) continue;
         snapshot.loadSnapshot.surfaceLoads[l.id] = l;
         snapshot.loadSnapshot.nextSurfaceLoadId = std::max(snapshot.loadSnapshot.nextSurfaceLoadId, l.id + 1);

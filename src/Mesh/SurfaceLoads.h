@@ -31,6 +31,12 @@ struct SurfacePressure
         LocalNormal     ///< −N (normale de la surface, sens de sa définition) : une pression positive appuie sur la face
     } direction = Direction::Gravity;
     bool projected = false;         ///< direction globale : intensité rapportée à la surface projetée perpendiculairement à la direction
+    /// Variation linéaire dans le repère local de la surface : p(u, v) = value + gradU · u + gradV · v (kN/m³) ; ex. pression
+    /// hydrostatique sur un voile : value = γ·h, gradV = −γ, zone limitée à v ≤ h.
+    double gradU = 0, gradV = 0;
+    /// Zone chargée : rectangle [zoneU0, zoneU1] × [zoneV0, zoneV1] du repère local (sinon toute la surface nette).
+    bool zone = false;
+    double zoneU0 = 0, zoneV0 = 0, zoneU1 = 0, zoneV1 = 0;
 };
 
 struct NodalForce

@@ -48,7 +48,14 @@ QString describeSurfaceLoad(const TSA::Model::Model& model, const SurfaceLoad& l
     QString s = QStringLiteral("%1 %2 %3, %4").arg(point ? QObject::tr("P =") : QObject::tr("q ="), QString::number(l.value, 'f', 2),
                                                    point ? QStringLiteral("kN") : QStringLiteral("kN/m²"), directionName(l.direction));
     if (point) s += QObject::tr(" en (u = %1 ; v = %2) m").arg(l.u, 0, 'f', 2).arg(l.v, 0, 'f', 2);
-    else if (l.projected) s += QObject::tr(", surface projetée");
+    else
+    {
+        if (l.gradU != 0.0 || l.gradV != 0.0)
+            s += QObject::tr(" + %1·u + %2·v (kN/m³)").arg(l.gradU, 0, 'g', 4).arg(l.gradV, 0, 'g', 4);
+        if (l.zone)
+            s += QObject::tr(", zone u ∈ [%1 ; %2], v ∈ [%3 ; %4] m").arg(l.zoneU0, 0, 'f', 2).arg(l.zoneU1, 0, 'f', 2).arg(l.zoneV0, 0, 'f', 2).arg(l.zoneV1, 0, 'f', 2);
+        if (l.projected) s += QObject::tr(", surface projetée");
+    }
     s += QObject::tr(" — cas %1").arg(lc ? QString::fromStdString(lc->name()) : QString::number(l.loadCaseId));
     return s;
 }
@@ -104,6 +111,20 @@ SurfaceLoadsDialog::SurfaceLoadsDialog(const TSA::Model::Model& model, const std
     m_v = new QDoubleSpinBox(this);
     for (auto* s : { m_u, m_v }) s->setRange(-1e5, 1e5), s->setDecimals(3), s->setSuffix(QStringLiteral(" m")), pos->addWidget(s);
     form->addRow(tr("Position (u ; v), repère local :"), pos);
+    auto* grad = new QHBoxLayout;
+    m_gradU = new QDoubleSpinBox(this);
+    m_gradV = new QDoubleSpinBox(this);
+    for (auto* s : { m_gradU, m_gradV }) s->setRange(-1e5, 1e5), s->setDecimals(3), s->setSuffix(QStringLiteral(" kN/m³")), grad->addWidget(s);
+    m_gradU->setToolTip(tr("Variation de l'intensité le long de u (repère local)"));
+    m_gradV->setToolTip(tr("Variation de l'intensité le long de v ; pression hydrostatique sur un voile : valeur = γ·h, gradient v = −γ, zone v ≤ h"));
+    form->addRow(tr("Variation linéaire (g_u ; g_v) :"), grad);
+    m_zone = new QCheckBox(tr("Limiter à une zone rectangulaire du repère local"), this);
+    form->addRow(QString(), m_zone);
+    auto* zone = new QHBoxLayout;
+    m_zu0 = new QDoubleSpinBox(this), m_zv0 = new QDoubleSpinBox(this), m_zu1 = new QDoubleSpinBox(this), m_zv1 = new QDoubleSpinBox(this);
+    for (auto* s : { m_zu0, m_zv0, m_zu1, m_zv1 }) s->setRange(-1e5, 1e5), s->setDecimals(3), s->setSuffix(QStringLiteral(" m")), zone->addWidget(s);
+    m_zu1->setValue(1.0), m_zv1->setValue(1.0);
+    form->addRow(tr("Zone u₀, v₀, u₁, v₁ :"), zone);
     m_name = new QLineEdit(this);
     m_name->setPlaceholderText(tr("ex. Exploitation bureaux, cloisons, vent façade"));
     form->addRow(tr("Libellé :"), m_name);
@@ -113,7 +134,10 @@ SurfaceLoadsDialog::SurfaceLoadsDialog(const TSA::Model::Model& model, const std
         m_value->setSuffix(point ? QStringLiteral(" kN") : QStringLiteral(" kN/m²"));
         m_u->setEnabled(point), m_v->setEnabled(point);
         m_projected->setEnabled(!point);
+        m_gradU->setEnabled(!point), m_gradV->setEnabled(!point), m_zone->setEnabled(!point);
+        for (auto* s : { m_zu0, m_zv0, m_zu1, m_zv1 }) s->setEnabled(!point && m_zone->isChecked());
     };
+    connect(m_zone, &QCheckBox::toggled, this, updateForm);
     connect(m_distribution, QOverload<int>::of(&QComboBox::currentIndexChanged), this, updateForm);
     updateForm();
 
@@ -160,6 +184,13 @@ void SurfaceLoadsDialog::addFromForm()
         l.projected = m_projected->isChecked() && l.distribution == SurfaceLoadDistribution::Uniform;
         l.u = m_u->value();
         l.v = m_v->value();
+        if (l.distribution == SurfaceLoadDistribution::Uniform)
+        {
+            l.gradU = m_gradU->value();
+            l.gradV = m_gradV->value();
+            l.zone = m_zone->isChecked();
+            if (l.zone) l.zoneU0 = m_zu0->value(), l.zoneV0 = m_zv0->value(), l.zoneU1 = m_zu1->value(), l.zoneV1 = m_zv1->value();
+        }
         m_loads.push_back(l);
     }
     fill();

@@ -596,6 +596,13 @@ void chapterActions(Ctx& x, NDCDocument& doc)
             default: return QStringLiteral("gravité");
             }
         };
+        auto extra = [](const TSA::Model::SurfaceLoad& l) {
+            QString t;
+            if (l.gradU != 0.0 || l.gradV != 0.0) t += QStringLiteral(" + %1·u + %2·v (kN/m³)").arg(f(l.gradU, 3), f(l.gradV, 3));
+            if (l.zone) t += QStringLiteral(", zone u ∈ [%1 ; %2], v ∈ [%3 ; %4] m").arg(f(l.zoneU0), f(l.zoneU1), f(l.zoneV0), f(l.zoneV1));
+            if (l.projected) t += QStringLiteral(", surface projetée");
+            return t;
+        };
         for (const auto& [id, l] : lm.surfaceLoads())
         {
             const auto* lc = lm.getLoadCase(l.loadCaseId);
@@ -603,7 +610,7 @@ void chapterActions(Ctx& x, NDCDocument& doc)
             ts.rows.push_back({ QString::fromStdString(l.surfaceRef()), lc ? QString::fromStdString(lc->name()) : QString::number(l.loadCaseId),
                                 l.name.empty() ? QStringLiteral("—") : QString::fromStdString(l.name),
                                 QStringLiteral("%1 %2, %3%4").arg(f(l.value, 2), pt ? QStringLiteral("kN") : QStringLiteral("kN/m²"), dirName(l.direction),
-                                                                  pt ? QStringLiteral(" en (%1 ; %2) m").arg(f(l.u), f(l.v)) : (l.projected ? QStringLiteral(", surface projetée") : QString())) });
+                                                                  pt ? QStringLiteral(" en (%1 ; %2) m").arg(f(l.u), f(l.v)) : extra(l)) });
         }
         ss.tables.push_back(ts);
         ch.sections.push_back(ss);
@@ -712,7 +719,9 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
         for (const auto& [id, l] : x.model.loadManager().surfaceLoads())
         {
             double v = 0.0;
-            if (l.direction == TSA::Model::SurfaceLoadDirection::Gravity)
+            // Zone ou variation linéaire : résultante non sommée ici (calculée exactement sur le maillage au calcul)
+            const bool simple = l.distribution == TSA::Model::SurfaceLoadDistribution::Point || (!l.zone && l.gradU == 0.0 && l.gradV == 0.0);
+            if (l.direction == TSA::Model::SurfaceLoadDirection::Gravity && simple)
             {
                 double area = 0.0;
                 if (l.targetKind == TSA::Model::SurfaceTargetKind::Slab)

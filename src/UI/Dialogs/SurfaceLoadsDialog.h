@@ -44,7 +44,9 @@ private:
     QTableWidget* m_table = nullptr;
     QComboBox *m_case = nullptr, *m_distribution = nullptr, *m_direction = nullptr;
     QDoubleSpinBox *m_value = nullptr, *m_u = nullptr, *m_v = nullptr;
-    QCheckBox* m_projected = nullptr;
+    QDoubleSpinBox *m_gradU = nullptr, *m_gradV = nullptr;
+    QDoubleSpinBox *m_zu0 = nullptr, *m_zv0 = nullptr, *m_zu1 = nullptr, *m_zv1 = nullptr;
+    QCheckBox *m_projected = nullptr, *m_zone = nullptr;
     QLineEdit* m_name = nullptr;
 };
 

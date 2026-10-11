@@ -42,6 +42,11 @@ struct SurfaceLoad
     double value = 0.0;         ///< kN/m² (uniforme) ou kN (ponctuelle)
     bool projected = false;     ///< uniforme, direction globale : intensité rapportée à la surface projetée
     double u = 0.0, v = 0.0;    ///< ponctuelle : position dans le repère local de la surface (m)
+    /// Uniforme : variation linéaire p(u, v) = value + gradU · u + gradV · v (kN/m³, repère local ; ex. hydrostatique)
+    double gradU = 0.0, gradV = 0.0;
+    /// Uniforme : zone chargée limitée au rectangle [zoneU0, zoneU1] × [zoneV0, zoneV1] du repère local (m)
+    bool zone = false;
+    double zoneU0 = 0.0, zoneV0 = 0.0, zoneU1 = 0.0, zoneV1 = 0.0;
 
     /// Référence de la surface, identique à celle du maillage (SL2, W5).
     std::string surfaceRef() const { return (targetKind == SurfaceTargetKind::Slab ? "SL" : "W") + std::to_string(surfaceId); }
