@@ -12,6 +12,17 @@ public static class Win {
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 }
 "@
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public static class MouseInput {
+    [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint dx, uint dy, uint d, UIntPtr e);
+    public static void Click(int x, int y) { SetCursorPos(x, y); mouse_event(2, 0, 0, 0, UIntPtr.Zero); mouse_event(4, 0, 0, 0, UIntPtr.Zero); }
+}
+"@
+# Coordonnées UI Automation et curseur dans le même repère (pixels physiques).
+[MouseInput]::SetProcessDPIAware() | Out-Null
 $AE = [System.Windows.Automation.AutomationElement]
 $TS = [System.Windows.Automation.TreeScope]
 $CT = [System.Windows.Automation.ControlType]
@@ -43,11 +54,15 @@ function Wait-Window($titlePattern, $seconds = 60) {
 }
 function Find-Dialog($processId, $titlePattern, $seconds = 10) {
     $deadline = (Get-Date).AddSeconds($seconds)
+    $cond = New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, $processId)
+    $winCond = New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, $CT::Window)
     while ((Get-Date) -lt $deadline) {
-        $cond = New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, $processId)
-        foreach ($w in $AE::RootElement.FindAll($TS::Descendants, $cond)) {
-            if ($w.Current.ControlType -eq $CT::Window -and $w.Current.Name -like $titlePattern) { return $w }
-        }
+        try {
+            foreach ($top in $AE::RootElement.FindAll($TS::Children, $cond)) {
+                if ($top.Current.Name -like $titlePattern -and $top.Current.ControlType -eq $CT::Window) { return $top }
+                foreach ($child in $top.FindAll($TS::Children, $winCond)) { if ($child.Current.Name -like $titlePattern) { return $child } }
+            }
+        } catch {}
         Start-Sleep -Milliseconds 300
     }
     return $null
@@ -61,6 +76,10 @@ function Focus-Window($w) {
 function Press($keys) { [System.Windows.Forms.SendKeys]::SendWait($keys); Start-Sleep -Milliseconds 300 }
 function Toggle-State($e) { return $e.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Current.ToggleState }
 function Do-Toggle($e) { $e.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle(); Start-Sleep -Milliseconds 800 }
+function Click-Mouse($e) {
+    $r = $e.Current.BoundingRectangle
+    [MouseInput]::Click([int]($r.Left + $r.Width / 2), [int]($r.Top + $r.Height / 2)); Start-Sleep -Milliseconds 600
+}
 function Click($e) { $e.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); Start-Sleep -Milliseconds 500 }
 function Value-Of($e) {
     try { return $e.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value } catch { return $e.Current.Name }

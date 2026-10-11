@@ -596,6 +596,10 @@ bool runTorsionMechanics(int& passed)
         TEST_CHECK(std::abs(sectionExtentY(solid, xm) - (0.2 * std::abs(std::cos(phi)) + 0.4 * std::abs(std::sin(phi)))) < 1e-9,
                    "Test 331: coordonnées des sommets de la section à mi-longueur");
         TEST_CHECK(r->nodeDisplacement(tip).rx == axis.twist.back(), "Test 331: valeur affichée = résultat du calcul (non amplifiée)");
+        const auto& sum = r->summary();
+        TEST_CHECK(relClose(sum.maxTorsionMoment, m * L, 1e-9) && relClose(sum.maxTwist, theta(L), 1e-9) && sum.maxTorsionMomentElementId == bar
+                       && sum.maxDisplacement < 1e-12 && sum.maxBendingMoment < 1e-9,
+                   "Test 331: synthèse — Mx max = m·L, θx max = θ(L) (déplacement et flexion nuls en torsion pure)");
         // Symbole de la charge : vecteurs moment parallèles à la barre (torsion), sens de +x pour m > 0
         const auto glyph = TSA::Geometry::buildMemberLoadGlyph(mdl.loadManager().memberLoads().begin()->second, gp_Pnt(0, 0, 0),
                                                                gp_Pnt(L, 0, 0), 0.0);
@@ -627,6 +631,19 @@ bool runTorsionMechanics(int& passed)
             std::string err;
             const bool saved = writer.saveToFile((dir + "/torsion_ui.tsa").toStdString(), ui, nullptr, "Essai torsion", "TSA", &err);
             std::cout << "  projet d'essai de l'interface : " << (dir + "/torsion_ui.tsa").toStdString() << (saved ? "" : " — ÉCHEC " + err) << std::endl;
+            // Essai de la boîte « Charge sur barre » : console (B1) et treillis (T1), aucune charge, cas « T ».
+            Model dlg;
+            const int d1 = dlg.addNode(0, 0, 0), d2 = dlg.addNode(3, 0, 0), d3 = dlg.addNode(3, 2, 0);
+            dlg.getNode(d1)->setSupport(SupportDefinition::fixed());
+            dlg.getNode(d3)->setSupport(SupportDefinition::fixed());
+            dlg.addBar(d1, d2, sec, mat, BarRole::Beam, 0.0, "Console");
+            dlg.addTrussMember(d2, d3, 0.05, "Tirant");
+            const int lcD = dlg.loadManager().addLoadCase(LoadCase(0, "T", LoadCaseCategory::Live, false, 1.0));
+            TSA::Analysis::AnalysisContext dctx = ctx;
+            dctx.loadCaseIds = { lcD };
+            dlg.setAnalysisSettingsJson(QJsonDocument(dctx.toJson()).toJson(QJsonDocument::Compact).toStdString());
+            const bool savedD = writer.saveToFile((dir + "/torsion_dialog.tsa").toStdString(), dlg, nullptr, "Essai dialogue", "TSA", &err);
+            std::cout << "  projet d'essai de la boîte de dialogue : " << (dir + "/torsion_dialog.tsa").toStdString() << (savedD ? "" : " — ÉCHEC " + err) << std::endl;
         }
         std::cout << "[PASS] Test 331: Vue d'une torsion répartie" << std::endl;
         ++passed;
@@ -810,12 +827,101 @@ bool runTorsionMechanics(int& passed)
         std::cout << "[PASS] Test 333: Appuis articulés — modes de blocage" << std::endl;
         ++passed;
     }
+
+    // TEST 334 : charges stockables mais non transmises — signalées ou refusées avant tout résultat
+    {
+        std::cout << "\n--- TEST 334: Charges non transmises au solveur ---" << std::endl;
+        auto issueText = [&](const Model& mdl, TSA::Standards::ValidationSeverity sev, const char* text) {
+            return hasIssue(TSA::Standards::ModelValidator::validateForAnalysis(mdl, p), sev, text);
+        };
+        using Sev = TSA::Standards::ValidationSeverity;
+        // 1. Charge surfacique d'un fichier TSA3D : conservée, jamais appliquée
+        {
+            const QByteArray json = R"({ "format": "TSA3D", "version": "1.0",
+              "materials": [ { "id": "S235", "type": "steel", "E": 210e9, "nu": 0.3, "density": 7850, "fk": 235e6 } ],
+              "sections": [ { "id": "R", "shape": "rectangular", "dimensions": { "b": 0.2, "h": 0.4 } } ],
+              "nodes": [ { "id": "N1", "position": [0, 0, 0], "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+                         { "id": "N2", "position": [3, 0, 0] } ],
+              "members": [ { "id": "B1", "type": "beam", "nodes": ["N1", "N2"], "section": "R", "material": "S235" } ],
+              "loads": { "cases": [ { "id": "G", "name": "G", "category": "dead" } ],
+                         "nodal": [ { "id": "F", "node": "N2", "case": "G", "force": [0, 0, -1] } ],
+                         "surface": [ { "id": "P1", "case": "G", "pressure": -2.5 } ] } })";
+            Model mdl;
+            const auto res = TSA::IO::Tsa3d::importDocument(QJsonDocument::fromJson(json).object(), mdl);
+            TEST_CHECK(res.ok, "Test 334: import TSA3D avec charge surfacique");
+            TEST_CHECK(issueText(mdl, Sev::Warning, "surfacique"), "Test 334: charge surfacique conservée signalée NON appliquée avant le calcul");
+        }
+        // 2. Poids propre explicite, moment réparti sur treillis, moment réparti sans axe
+        {
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(3, 0, 0), c = mdl.addNode(3, 2, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::fixed());
+            mdl.getNode(c)->setSupport(SupportDefinition::fixed());
+            const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            const int truss = mdl.addTrussMember(b, c, 0.05);
+            const int lc = addCase(mdl);
+            MemberLoad sw(0, bar, lc, LoadType::SelfWeight, 1.0, 1.0, LoadDirection::Gravity);
+            mdl.loadManager().addMemberLoad(sw);
+            TEST_CHECK(issueText(mdl, Sev::Warning, "poids propre"), "Test 334: poids propre explicite signalé (comportement de chaque moteur)");
+            MemberLoad onTruss = couple(truss, lc, 1.0, 1.0, LoadDirection::LocalX);
+            onTruss.setTargetType(MemberTargetType::Truss);
+            mdl.loadManager().addMemberLoad(onTruss);
+            TEST_CHECK(issueText(mdl, Sev::Warning, "barre articulée"), "Test 334: moment réparti sur treillis signalé non transmis");
+            mdl.loadManager().addMemberLoad(couple(bar, lc, 1.0, 1.0, LoadDirection::Gravity));
+            TEST_CHECK(issueText(mdl, Sev::Error, "pas d'axe défini"), "Test 334: moment réparti sans axe refusé (erreur)");
+        }
+        std::cout << "[PASS] Test 334: Charges non transmises signalées" << std::endl;
+        ++passed;
+    }
     return true;
+}
+
+/// Contrôle d'un projet enregistré par l'application après l'essai de la boîte de dialogue (TSA_UI_CHECK_FILE) :
+/// charges relues, transmission au solveur, θ comparé à m·L²/(2GJ). Hors décompte des tests.
+bool checkDialogProject(const QString& path)
+{
+    Model m;
+    TSA::IO::TSAFileReader reader;
+    std::string err;
+    if (!reader.loadFromFile(path.toStdString(), m, nullptr, "", nullptr, nullptr, nullptr, &err))
+    {
+        std::cout << "UI-CHECK ÉCHEC lecture : " << err << std::endl;
+        return false;
+    }
+    std::cout << "UI-CHECK charges sur barre relues : " << m.loadManager().memberLoads().size() << std::endl;
+    for (const auto& [id, l] : m.loadManager().memberLoads())
+        std::cout << "UI-CHECK   ML" << id << " type=" << static_cast<int>(l.type()) << " (MemberMoment=" << static_cast<int>(LoadType::MemberMoment)
+                  << ") cible=" << static_cast<int>(l.targetType()) << " #" << l.elementId() << " direction=" << static_cast<int>(l.direction())
+                  << " (LocalX=" << static_cast<int>(LoadDirection::LocalX) << ") q1=" << l.q1() << " q2=" << l.q2() << std::endl;
+    const auto report = TSA::Standards::ModelValidator::validateForAnalysis(m, AnalysisParameters {});
+    for (const auto& i : report.issues())
+        if (i.severity != TSA::Standards::ValidationSeverity::Info) std::cout << "UI-CHECK   validation : " << i.message << std::endl;
+    AnalysisParameters p;
+    p.includeSelfWeight = false;
+    ResultsModel r;
+    if (!solve(m, p, r)) { std::cout << "UI-CHECK ÉCHEC calcul" << std::endl; return false; }
+    const auto& beam = m.beams().begin()->second;
+    const double L = beam.length(m), GJ = shearModulus(beam.material()) * beam.section().it();
+    double mBeam = 0.0;
+    for (const auto& [id, l] : m.loadManager().memberLoads())
+        if (l.type() == LoadType::MemberMoment && l.targetType() == MemberTargetType::Beam && l.direction() == LoadDirection::LocalX) mBeam += l.q1();
+    const double theta = r.nodeDisplacement(beam.endNodeId()).rx, ref = mBeam * L * L / (2.0 * GJ);
+    std::cout << "UI-CHECK θ(L) = " << theta << " rad ; référence m·L²/(2GJ) = " << ref << " ; écart relatif "
+              << (ref != 0.0 ? std::abs(theta - ref) / std::abs(ref) : std::abs(theta)) << std::endl;
+    std::cout << "UI-CHECK équilibre vérifié : " << r.executionMetadata().isEquilibriumVerified << " ; ΣMx appliqué = "
+              << r.equilibrium().appliedMx << " ; réaction = " << r.equilibrium().reactionMx << std::endl;
+    return std::abs(theta - ref) <= 1e-9 * std::max(1e-12, std::abs(ref));
 }
 } // namespace
 
 bool runSuite_Torsion(int& passed)
 {
+    if (const QString f = qEnvironmentVariable("TSA_UI_CHECK_FILE"); !f.isEmpty())
+    {
+        std::cout << (checkDialogProject(f) ? "UI-CHECK RÉSULTAT : OK" : "UI-CHECK RÉSULTAT : ÉCHEC") << std::endl;
+        return true;
+    }
+
     // TEST 321 : console en torsion pure — θ = T·L / (G·J), du solveur à la vue 3D
     {
         std::cout << "\n--- TEST 321: Console en torsion (référence T·L/GJ) ---" << std::endl;

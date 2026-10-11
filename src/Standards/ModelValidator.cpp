@@ -16,6 +16,10 @@
 
 #include <gp_Vec.hxx>
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+
 #include <cmath>
 #include <functional>
 #include <sstream>
@@ -428,6 +432,26 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
                 nl.nodeId(), "RDM");
         }
     }
+    // Charges conservées mais jamais appliquées : jamais tues avant un calcul.
+    {
+        // Charges surfaciques d'un fichier TSA3D : conservées (export fidèle), sans surface calculée.
+        const QJsonObject root = QJsonDocument::fromJson(QByteArray::fromStdString(model.exchangeExtensionsJson())).object();
+        const QJsonArray surface = root.value("document").toObject().value("loads").toObject().value("surface").toArray();
+        if (!surface.isEmpty())
+            report.addWarning("Charges",
+                std::to_string(surface.size()) + " charge(s) surfacique(s) importée(s) d'un fichier TSA3D sont conservées mais NON "
+                "appliquées : aucun élément surfacique n'est calculé. Les résultats n'en tiennent pas compte ; les convertir en "
+                "charges sur barres ou nodales pour les inclure.", 0, "EN 1991");
+        int explicitSelfWeight = 0;
+        for (const auto& [loadId, ml] : lm.memberLoads())
+            if (ml.type() == TSA::Model::LoadType::SelfWeight) ++explicitSelfWeight;
+        if (explicitSelfWeight > 0)
+            report.addWarning("Charges",
+                std::to_string(explicitSelfWeight) + " charge(s) sur barre de type « poids propre » explicite : OpenSees l'applique "
+                "comme une charge uniforme vers le bas d'intensité q1, le moteur 2D l'ignore. Le poids propre se règle par "
+                "l'option « Inclure le poids propre » (double comptage possible).", 0, "EN 1991");
+    }
+
     // Moments répartis (couple par unité de longueur) : transmis aux poutres et poteaux par forces nodales
     // équivalentes ; jamais devinés ni ignorés en silence.
     const bool anyMemberMoment = std::any_of(lm.memberLoads().begin(), lm.memberLoads().end(),
