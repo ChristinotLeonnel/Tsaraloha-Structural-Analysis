@@ -281,6 +281,39 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                 sm.nodes.push_back({ id, n.x, n.y, n.z, n.tsaNode });
                 if (!n.tsaNode) ++surfaceOnlyNodes;
             }
+            // Connexions : une surface dont aucun nœud n'est partagé avec une barre, un appui ou une autre surface est
+            // isolée (mécanisme). Aucune liaison rigide n'est ajoutée par défaut (voile excentré, dalle décalée : à relier
+            // explicitement, par des nœuds communs).
+            {
+                std::set<int> memberNodes;
+                for (const auto& e : mesh.elements)
+                    if (!e.boundary && feTypeDimension(e.type) == 1) memberNodes.insert(e.nodes.begin(), e.nodes.end());
+                std::map<int, std::set<std::string>> surfacesAtNode;
+                for (const auto& e : sm.elements)
+                    for (int n : e.meshNodes) surfacesAtNode[n].insert(e.source);
+                std::set<std::string> isolated;
+                for (const auto& ref : shells)
+                {
+                    bool linked = false;
+                    for (const auto& [n, refs] : surfacesAtNode)
+                    {
+                        if (!refs.count(ref)) continue;
+                        const int t = mesh.node(n).tsaNode;
+                        const auto* tn = t > 0 ? model->getNode(t) : nullptr;
+                        if (memberNodes.count(n) || (tn && tn->support().isSupported()) || refs.size() > 1)
+                        {
+                            linked = true;
+                            break;
+                        }
+                    }
+                    if (!linked) isolated.insert(ref);
+                }
+                if (!isolated.empty())
+                    add(L::Blocking, "Connexions",
+                        "surface(s) sans aucun nœud commun avec une barre, un appui ou une autre surface (mécanisme) ; aucune liaison rigide "
+                        "n'est créée automatiquement (voile excentré, dalle décalée) : relier la surface par des nœuds communs",
+                        list(isolated));
+            }
             std::set<std::string> badMaterial;
             for (const auto& e : sm.elements)
                 if (e.thickness <= 0 || e.material.mechanical.youngModulus <= 0) badMaterial.insert(e.source);

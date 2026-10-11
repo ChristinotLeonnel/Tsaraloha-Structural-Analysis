@@ -229,6 +229,27 @@ double absMax(const TSA::Analysis::ElementResults& r, double TSA::Analysis::Stat
     return v;
 }
 
+/// Surfaces calculées en coques (présentes dans les résultats) : référence (SL2, W5).
+std::set<std::string> computedSurfaces(const Ctx& x)
+{
+    std::set<std::string> out;
+    if (x.hasResults())
+        for (const auto& [id, r] : x.results->shellResults()) out.insert(r.source);
+    return out;
+}
+
+/// Poids propre (kN) des surfaces calculées : ρ · g · e · aire nette.
+double surfaceSelfWeightKN(const Ctx& x)
+{
+    double w = 0.0;
+    const auto refs = computedSurfaces(x);
+    for (const auto& [id, s] : x.model.slabs())
+        if (refs.count("SL" + std::to_string(id))) w += s.material().mechanical.density * kGravity * s.thickness() * s.area(x.model) / 1000.0;
+    for (const auto& [id, s] : x.model.walls())
+        if (refs.count("W" + std::to_string(id))) w += s.material().mechanical.density * kGravity * s.thickness() * s.area(x.model) / 1000.0;
+    return w;
+}
+
 bool isSteel(const TSA::Model::Material& m)
 {
     return m.type == TSA::Model::MaterialType::Steel || m.type == TSA::Model::MaterialType::GalvanizedSteel;
@@ -293,13 +314,19 @@ QStringList hypotheses(const Ctx& x)
     h << QStringLiteral("Analyse statique linéaire : petits déplacements, matériaux élastiques linéaires, sans effet du second ordre (P-Δ) "
                         "ni analyse modale ou dynamique.");
     const std::size_t slabs = m.slabs().size(), walls = m.walls().size(), fnd = m.foundations().size();
-    if (slabs + walls + fnd > 0)
-        h << QStringLiteral("Éléments modélisés mais non transmis au calcul : %1 dalle(s), %2 voile(s), %3 semelle(s). Ils servent à la géométrie, "
-                            "au rendu et au maillage ; les charges des planchers sont reportées sur les poutres en charges linéiques "
-                            "(largeurs de reprise indiquées dans les libellés des charges). Leur rigidité n'est pas prise en compte "
-                            "(les noyaux en voiles ne contreventent pas le modèle de calcul).")
-                 .arg(slabs)
-                 .arg(walls)
+    const auto computed = computedSurfaces(x);
+    if (!computed.empty())
+        h << QStringLiteral("Surfaces calculées en coques : %1 surface(s) maillée(s) (Gmsh), éléments ShellMITC4 (quadrangles, Mindlin-Reissner) et "
+                            "ShellDKGT (triangles, Kirchhoff discret), section élastique membrane + plaque (E, ν, épaisseur). Nœuds partagés avec les "
+                            "barres situées sur leurs arêtes ; aucune liaison rigide ni excentricité ajoutée (plans moyens confondus avec les axes "
+                            "des barres). Poids propre (ρ·g·e) et charges surfaciques convertis en charges nodales cohérentes (∫ Nᵢ p dA).")
+                 .arg(computed.size());
+    const std::size_t notComputed = slabs + walls - computed.size();
+    if (notComputed + fnd > 0)
+        h << QStringLiteral("Éléments modélisés mais non transmis au calcul : %1 dalle(s) ou voile(s) (non maillés, non structuraux ou maillage non "
+                            "transmis), %2 semelle(s). Ils servent à la géométrie, au rendu et au maillage ; leurs charges éventuelles sont reportées "
+                            "sur les poutres en charges linéiques (libellés des charges) et leur rigidité n'est pas prise en compte.")
+                 .arg(notComputed)
                  .arg(fnd);
     if (!m.cables().empty())
         h << QStringLiteral("Câbles : tension initiale T0 imposée par une déformation initiale ε0 = T0 / (E·A) ; matériau élastique, algorithme "
@@ -507,6 +534,36 @@ void chapterActions(Ctx& x, NDCDocument& doc)
         sl.tables.push_back(tl);
         ch.sections.push_back(sl);
     }
+    if (!lm.surfaceLoads().empty())
+    {
+        NDCSection ss;
+        ss.title = QStringLiteral("Charges surfaciques");
+        ss.paragraphs.push_back(QStringLiteral("Charges des dalles et voiles, converties au calcul en charges nodales cohérentes sur le maillage des surfaces "
+                                               "(résultante et moment contrôlés, ouvertures déduites)."));
+        auto ts = x.makeTable(QStringLiteral("Charges surfaciques"), { QStringLiteral("Surface"), QStringLiteral("Cas"), QStringLiteral("Libellé"), QStringLiteral("Charge") },
+                              { QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("left") });
+        auto dirName = [](TSA::Model::SurfaceLoadDirection d) {
+            switch (d)
+            {
+            case TSA::Model::SurfaceLoadDirection::GlobalX: return QStringLiteral("X global");
+            case TSA::Model::SurfaceLoadDirection::GlobalY: return QStringLiteral("Y global");
+            case TSA::Model::SurfaceLoadDirection::GlobalZ: return QStringLiteral("Z global");
+            case TSA::Model::SurfaceLoadDirection::LocalNormal: return QStringLiteral("normale locale");
+            default: return QStringLiteral("gravité");
+            }
+        };
+        for (const auto& [id, l] : lm.surfaceLoads())
+        {
+            const auto* lc = lm.getLoadCase(l.loadCaseId);
+            const bool pt = l.distribution == TSA::Model::SurfaceLoadDistribution::Point;
+            ts.rows.push_back({ QString::fromStdString(l.surfaceRef()), lc ? QString::fromStdString(lc->name()) : QString::number(l.loadCaseId),
+                                l.name.empty() ? QStringLiteral("—") : QString::fromStdString(l.name),
+                                QStringLiteral("%1 %2, %3%4").arg(f(l.value, 2), pt ? QStringLiteral("kN") : QStringLiteral("kN/m²"), dirName(l.direction),
+                                                                  pt ? QStringLiteral(" en (%1 ; %2) m").arg(f(l.u), f(l.v)) : (l.projected ? QStringLiteral(", surface projetée") : QString())) });
+        }
+        ss.tables.push_back(ts);
+        ch.sections.push_back(ss);
+    }
     doc.addChapter(ch);
 }
 
@@ -605,7 +662,27 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
         analysedLoading(x, &combId, &caseId);
         const auto& lm = x.model.loadManager();
         const auto sums = loadsByCase(x.model);
-        const double sw = selfWeightKN(x.model);
+        const double sw = selfWeightKN(x.model) + surfaceSelfWeightKN(x);
+        double surfaceLoads = 0.0;   // charges surfaciques verticales (uniformes : q × aire nette ; ponctuelles : P)
+        std::map<int, double> surfaceByCase;
+        for (const auto& [id, l] : x.model.loadManager().surfaceLoads())
+        {
+            double v = 0.0;
+            if (l.direction == TSA::Model::SurfaceLoadDirection::Gravity)
+            {
+                double area = 0.0;
+                if (l.targetKind == TSA::Model::SurfaceTargetKind::Slab)
+                {
+                    if (const auto* s = x.model.getSlab(l.surfaceId)) area = s->area(x.model);
+                }
+                else if (const auto* w = x.model.getWall(l.surfaceId))
+                    area = w->area(x.model);
+                v = l.distribution == TSA::Model::SurfaceLoadDistribution::Point ? l.value : l.value * area;
+            }
+            else
+                surfaceLoads += 1.0;   // charge non verticale ou normale : composante verticale non sommée ici
+            surfaceByCase[l.loadCaseId] += v;
+        }
         std::map<int, double> factors;
         if (const auto* c = combId ? lm.getCombination(combId) : nullptr) factors = c->caseFactors();
         else if (caseId) factors[caseId] = 1.0;
@@ -624,10 +701,12 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
                     complete = complete && it->second.otherLoads == 0;
                 }
                 if (lc->isSelfWeightIncluded()) expected += fac * lc->selfWeightFactor() * sw;
+                expected += fac * surfaceByCase[cid];
             }
+            complete = complete && surfaceLoads == 0.0;
             const double computed = -eq.appliedFz;
             const double gap = std::abs(computed - expected) / std::max(std::abs(expected), 1e-9);
-            se.paragraphs.push_back(QStringLiteral("Contrôle indépendant de la charge verticale : Σ facteurs × (poids propre + Σ q·L + Σ F<sub>z</sub>) = %1 kN "
+            se.paragraphs.push_back(QStringLiteral("Contrôle indépendant de la charge verticale : Σ facteurs × (poids propre + Σ q·L + Σ F<sub>z</sub> + charges surfaciques) = %1 kN "
                                                    "d'après le modèle ; charge appliquée par le moteur = %2 kN ; écart %3 % → %4.")
                                         .arg(f(expected, 1), f(computed, 1), f(gap * 100.0, 3),
                                              !complete ? warn(QStringLiteral("charges non sommées présentes"))
@@ -835,6 +914,44 @@ void chapterForces(Ctx& x, NDCDocument& doc)
     }
     ss.tables.push_back(ts);
     ch.sections.push_back(ss);
+
+    if (!x.results->shellResults().empty())
+    {
+        struct S
+        {
+            int elements = 0;
+            double m = 0, n = 0, v = 0;
+        };
+        std::map<std::string, S> per;
+        auto principal = [](double a, double b, double c) {
+            const double mid = 0.5 * (a + b), r = std::sqrt(0.25 * (a - b) * (a - b) + c * c);
+            return std::max(std::abs(mid + r), std::abs(mid - r));
+        };
+        for (const auto& [id, r] : x.results->shellResults())
+        {
+            auto& s = per[r.source];
+            ++s.elements;
+            const auto& m = r.mean;
+            s.m = std::max(s.m, principal(m[3], m[4], m[5]));
+            s.n = std::max(s.n, principal(m[0], m[1], m[2]));
+            s.v = std::max(s.v, std::hypot(m[6], m[7]));
+        }
+        int node = 0;
+        const double wmax = x.results->maxSurfaceDisplacement(&node);
+        NDCSection sc;
+        sc.title = QStringLiteral("Résultantes des coques (dalles, voiles)");
+        sc.paragraphs.push_back(QStringLiteral("Résultantes par unité de longueur, moyenne des 4 points d'intégration de chaque élément, valeurs principales "
+                                               "(indépendantes du repère local de l'élément) : moment |M|, effort dans le plan |N|, effort tranchant transverse "
+                                               "|V| = √(Vxz² + Vyz²). Déplacement maximal des surfaces : %1 mm (nœud %2 du maillage).")
+                                    .arg(f(wmax * 1000.0, 2))
+                                    .arg(node));
+        auto tc = x.makeTable(QStringLiteral("Résultantes maximales par surface"),
+                              { QStringLiteral("Surface"), QStringLiteral("Éléments"), QStringLiteral("|M| max (kN·m/m)"), QStringLiteral("|N| max (kN/m)"), QStringLiteral("|V| max (kN/m)") },
+                              { QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right") });
+        for (const auto& [ref, s] : per) tc.rows.push_back({ QString::fromStdString(ref), QString::number(s.elements), f(s.m, 2), f(s.n, 2), f(s.v, 2) });
+        sc.tables.push_back(tc);
+        ch.sections.push_back(sc);
+    }
     doc.addChapter(ch);
 }
 
@@ -1067,7 +1184,11 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         add(QStringLiteral("Interaction flexion-compression des barres acier"), QStringLiteral("EN 1993-1-1 §6.3.3"));
         add(QStringLiteral("Assemblages (boulonnés, soudés), pieds de poteaux"), QStringLiteral("EN 1993-1-8"));
     }
-    if (!x.model.slabs().empty() || !x.model.walls().empty()) add(QStringLiteral("Dalles et voiles (non transmis au calcul) : flexion, poinçonnement, contreventement"), QStringLiteral("EN 1992-1-1"));
+    if (!x.model.slabs().empty() || !x.model.walls().empty())
+        add(computedSurfaces(x).empty() ? QStringLiteral("Dalles et voiles (non transmis au calcul) : flexion, poinçonnement, contreventement")
+                                        : QStringLiteral("Dalles et voiles calculés en coques : ferraillage de flexion et d'effort tranchant, poinçonnement, "
+                                                         "voiles (flexion composée, cisaillement), ouvertures (renforts)"),
+            QStringLiteral("EN 1992-1-1"));
     if (!x.model.foundations().empty()) add(QStringLiteral("Fondations : portance du sol, tassements, ferraillage des semelles"), QStringLiteral("EN 1997-1, EN 1992-1-1"));
     if (!x.model.cables().empty())
     {

@@ -37,7 +37,7 @@ tension est contrôlée a posteriori (tous tendus sous ELU : 1 108 à 3 850 kN, 
 
 Hypothèses communes : analyse statique linéaire (OpenSees 3.8.0), sans second ordre ni analyse modale ; dalles, voiles
 et semelles modélisés pour la géométrie et le rendu mais **non transmis au calcul** (leurs charges sont reportées sur les
-poutres) ; finitions d'aspect (béton coffré, acier peint, câble…) sans effet sur le calcul.
+poutres) ; ces surfaces sont déclarées « non structurales » pour qu'un calcul avec maillage ne compte pas une seconde fois leur poids et leurs charges (passer en « coque » et retirer les charges linéiques équivalentes pour les calculer, docs/SURFACES.md) ; finitions d'aspect (béton coffré, acier peint, câble…) sans effet sur le calcul.
 
 Contrôles de la suite (à chaque génération) : topologie (doublons, longueurs nulles, nœuds isolés ou non connectés,
 structure d'un seul tenant), Σ réactions = Σ q·L sous Q seul, équilibre ELU, contrainte σ = N/A ± M/W (contrôle

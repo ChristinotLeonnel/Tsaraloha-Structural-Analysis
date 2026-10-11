@@ -220,7 +220,12 @@ bool MeshController::importMesh(const QString& path, QStringList* warnings, QStr
 SolverCompatibility MeshController::solverCompatibility(const std::string& engineName, const TSA::Analysis::AnalysisCapabilities& caps) const
 {
     if (!m_model || !m_project.hasMesh) return {};
-    return OpenSeesMeshAdapter::check(m_project.mesh, MeshGeometry::extract(*m_model), engineName, caps, 3000000, m_model);
+    auto r = OpenSeesMeshAdapter::check(m_project.mesh, MeshGeometry::extract(*m_model), engineName, caps, 3000000, m_model);
+    // Interfaces non conformes relevées par le mailleur (nœuds non partagés entre objets) : signalées avant le calcul
+    for (const auto& i : m_project.record.interfaces)
+        if (!i.conforming)
+            r.items.push_back({ SolverCheckItem::Level::Warning, "Connexions", "interface non conforme entre " + i.a + " et " + i.b + " : " + i.description, { i.a, i.b } });
+    return r;
 }
 
 QString meshStatusText(const MeshController& c)

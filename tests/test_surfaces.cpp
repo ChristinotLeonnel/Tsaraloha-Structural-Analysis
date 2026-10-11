@@ -21,6 +21,8 @@
 #include "Mesh/MeshResultField.h"
 #include "Mesh/Solvers/OpenSeesMeshAdapter.h"
 #include "Model/Load/LoadManager.h"
+#include "NDC/NDCExporter.h"
+#include "NDC/ReportManager.h"
 
 #include <QTemporaryDir>
 
@@ -328,6 +330,18 @@ bool runSuite_Surfaces(int& passed)
         const double wMax = r.run.results.maxSurfaceDisplacement(&wn);
         std::cout << "  moment maximal dans les poutres de rive " << mBeam << " kN·m, déplacement maximal de la dalle " << wMax * 1000 << " mm" << std::endl;
         TEST_CHECK(mBeam > 1.0 && wMax > 0 && wn > 0, "Test 356: la dalle charge les poutres (flexion des poutres de rive) et se déforme");
+        // Note de calcul détaillée : hypothèses des coques, charges surfaciques, résultantes, contrôle de la charge verticale
+        {
+            TSA::NDC::ReportManager mgr;
+            mgr.setModel(&m);
+            mgr.setResultsModel(std::make_shared<TSA::Analysis::ResultsModel>(r.run.results));
+            mgr.applyTemplate(TSA::NDC::ReportTemplateType::BureauEtudes);
+            const auto doc = mgr.generateReport();
+            const QString html = TSA::NDC::NDCExporter::renderHtml(doc);
+            TEST_CHECK(html.contains("Surfaces calculées en coques") && html.contains("Charges surfaciques") && html.contains("Résultantes des coques") &&
+                           html.contains("CONCORDANT"),
+                       "Test 356: note de calcul — hypothèses des coques, charges surfaciques, résultantes, charge verticale concordante");
+        }
 
         // Voile de contreventement en console : déplacement en tête sous un effort horizontal (flexion + cisaillement)
         Model v;
@@ -388,6 +402,14 @@ bool runSuite_Surfaces(int& passed)
         m.loadManager().addSurfaceLoad(sl);
         r = runSurfaces(m, settings2D(0.5, true));
         TEST_CHECK(r.compat.blocking() && blockingText(r.compat).find("non transmise") != std::string::npos, "Test 357: charge sur une surface non transmise refusée");
+        // Dalle isolée (aucun appui, aucune barre, aucune autre surface) : refusée, aucune liaison rigide inventée
+        {
+            Model iso;
+            const int a = iso.addNode(0, 0, 3), b = iso.addNode(4, 0, 3), c = iso.addNode(4, 3, 3), d = iso.addNode(0, 3, 3);
+            iso.addSlab({ a, b, c, d }, 0.2, "Isolée");
+            const auto ri = runSurfaces(iso, settings2D(0.5, true));
+            TEST_CHECK(ri.compat.blocking() && blockingText(ri.compat).find("mécanisme") != std::string::npos, "Test 357: surface non connectée refusée (" << blockingText(ri.compat) << ")");
+        }
         // Charge surfacique sans maillage : calcul refusé (jamais ignorée en silence)
         m.getSlab(s)->setFormulation(TSA::Model::SurfaceFormulation::Shell);
         GridManager gm;

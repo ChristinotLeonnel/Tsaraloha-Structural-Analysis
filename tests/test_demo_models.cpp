@@ -1061,6 +1061,18 @@ bool solveCase(Model& m, int caseId, int combId, bool selfWeight, ResultsModel& 
     return ok;
 }
 
+/// Dalles et voiles des projets : charges reportées sur les poutres (hypothèse des projets) → surfaces non structurales,
+/// pour qu'un calcul avec maillage ne compte pas une seconde fois leur poids et leurs charges (docs/SURFACES.md).
+void markSurfacesNonStructural(Model& m)
+{
+    std::vector<int> ids;
+    for (const auto& [id, s] : m.slabs()) ids.push_back(id);
+    for (int id : ids) m.getSlab(id)->setFormulation(TSA::Model::SurfaceFormulation::NonStructural);
+    ids.clear();
+    for (const auto& [id, w] : m.walls()) ids.push_back(id);
+    for (int id : ids) m.getWall(id)->setFormulation(TSA::Model::SurfaceFormulation::NonStructural);
+}
+
 bool runDemoProjects(int& passed, const QString& outDir, const QString& tmpDir)
 {
     const Project projects[] = {
@@ -1087,6 +1099,7 @@ bool runDemoProjects(int& passed, const QString& outDir, const QString& tmpDir)
         Model m;
         TSA::Grid::GridDefinition def(pr.title, TSA::Grid::GridType::Cartesian);
         pr.build(m, def);
+        markSurfacesNonStructural(m);
         const Topology t = inspect(m);
         std::cout << "  " << pr.title << " : " << t.nodes << " nœuds, " << t.beams << " poutres, " << t.columns << " poteaux, " << t.cables << " câbles, "
                   << m.slabs().size() << " dalles, " << m.walls().size() << " voiles, " << m.foundations().size() << " semelles, " << t.supports << " appuis, "
