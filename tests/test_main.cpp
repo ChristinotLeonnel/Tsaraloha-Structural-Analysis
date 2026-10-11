@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 349;
+    int expectedTotal = 353;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -197,7 +197,7 @@ int main(int argc, char* argv[])
         if (!runSuite_MeshView(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "demo") {
-        std::cout << "\n--- [Suite 27/27] Modèles de démonstration (pont, hangar, bâtiment) ---" << std::endl;
+        std::cout << "\n--- [Suite 27/27] Modèles et projets de démonstration ---" << std::endl;
         if (!runSuite_DemoModels(passed)) allOk = false;
     }
 #endif
