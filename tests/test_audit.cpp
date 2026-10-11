@@ -3,12 +3,22 @@
 //   365  propriétés des sections : intégration numérique indépendante de la géométrie (T, cornière, UPN, I) et
 //        valeurs publiées des catalogues (EN 10365 / ArcelorMittal) pour les profils laminés ;
 //   366  EN 1992-1-1 (flexion simple, aciers comprimés, bétons à haute résistance) et EN 1993-1-1 (Tableau 6.2,
-//        Tableau 5.2, χ) comparés à des calculs manuels indépendants écrits dans le test.
+//        Tableau 5.2, χ) comparés à des calculs manuels indépendants écrits dans le test ;
+//   369  invariants mathématiques de la chaîne éléments finis (portique 3D incliné, OpenSees, extraction avancée) :
+//        matrice locale = matrice analytique d'Euler-Bernoulli 12×12, R orthogonale, K_e global symétrique et sans
+//        rigidité pour les 6 mouvements de corps rigide, K global = assemblage des K_e, symétrique et défini positif,
+//        résidu ‖K·U − F‖/‖F‖, équilibre des réactions.
 
 #include "test_common.h"
 
 #include "Standards/Design/ConcreteDesignEC2.h"
 #include "Standards/Design/SteelDesignEC3.h"
+#include "Analysis/Engine/AnalysisEngineRegistry.h"
+#include "Analysis/Engine/AnalysisManager.h"
+#include "Grid/GridManager.h"
+#include "Model/Load/LoadManager.h"
+
+#include <QJsonObject>
 
 #include <functional>
 
@@ -188,6 +198,166 @@ bool runSuite_Audit(int& passed)
                        SteelDesignEC3::compressionClass(Section::pipe(0.3239, 0.005), 355e6) == 4,
                    "Test 366: classes en compression (HEB 200 : 1 ; âme 960/6 et tube 324×5 en S355 : 4, vérification refusée)");
         std::cout << "[PASS] Test 366: EC2 et EC3 conformes aux calculs manuels (μ, As, As2, χ, courbes, classes)" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 369 : invariants mathématiques de la chaîne éléments finis
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::Analysis;
+        Model m;
+        const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(0, 0, 3), n3 = m.addNode(4, 2, 3.5), n4 = m.addNode(4, 2, 0);
+        m.getNode(n1)->setSupport(SupportDefinition::fixed());
+        m.getNode(n4)->setSupport(SupportDefinition::fixed());
+        const Material steel = Material::steelS355();
+        m.addColumn(n1, n2, Section::rectangular(0.3, 0.5), steel, 30.0);   // section tournée de 30°
+        m.addBar(n2, n3, Section::ipe(300), steel, BarRole::Beam);           // poutre inclinée dans l'espace
+        m.addColumn(n4, n3, Section::heb(200), steel);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "F", LoadCaseCategory::Live));
+        m.loadManager().addNodalLoad(NodalLoad(0, n2, lc, 12.0, -7.0, -30.0, 4.0, -2.0, 3.0));
+        m.loadManager().addNodalLoad(NodalLoad(0, n3, lc, -5.0, 9.0, -45.0, 0.0, 6.0, -1.5));
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext ctx;
+        ctx.engineId = "opensees";
+        ctx.common.includeSelfWeight = false;
+        ctx.loadCaseIds = { lc };
+        ctx.engineSettings["opensees"] = QJsonObject { { "extractionLevel", 1 } };   // ExtractionLevel::Advanced
+        GridManager gm;
+        const auto prep = mgr.prepare(m, &gm, ctx);
+        const auto run = prep.canRun() ? mgr.run(ctx, prep) : AnalysisRunResult {};
+        TEST_CHECK(run.success, "Test 369: calcul avec extraction avancée (" << run.message << ")");
+        const auto& adv = run.results.advanced();
+        TEST_CHECK(adv.available && adv.hasGlobalStiffness && adv.elementMatrices.size() == 3, "Test 369: matrices extraites (" << adv.elementMatrices.size() << ")");
+
+        const double E = steel.mechanical.youngModulus * 1e-3, G = E / (2.0 * (1.0 + steel.mechanical.poissonRatio));
+        double worstLocal = 0, worstRigid = 0, worstSym = 0, worstOrth = 0;
+        const int nEq = adv.dofMap.equationCount();
+        std::vector<double> Kasm(std::size_t(nEq) * nEq, 0.0);
+        for (const auto& [key, em] : adv.elementMatrices)
+        {
+            TEST_CHECK(em.available && em.kLocal.rows == 12 && em.kGlobal.rows == 12, "Test 369: matrices 12×12 de " << key.label());
+            const Section sec = key.kind == StructuralElementKind::Beam ? m.getBeam(key.id)->section() : m.getColumn(key.id)->section();
+            const double L = em.length, A = sec.area(), Iy = sec.iy(), Iz = sec.iz(), J = sec.it();
+            // Matrice analytique d'Euler-Bernoulli, ordre OpenSees (ux uy uz rx ry rz)_i (…)_j
+            double k[12][12] = {};
+            auto set = [&](int i, int j, double v) { k[i][j] = k[j][i] = v; };
+            set(0, 0, E * A / L), set(0, 6, -E * A / L), set(6, 6, E * A / L);
+            set(3, 3, G * J / L), set(3, 9, -G * J / L), set(9, 9, G * J / L);
+            const double z12 = 12 * E * Iz / (L * L * L), z6 = 6 * E * Iz / (L * L), z4 = 4 * E * Iz / L, z2 = 2 * E * Iz / L;   // plan x-y
+            set(1, 1, z12), set(1, 5, z6), set(1, 7, -z12), set(1, 11, z6), set(5, 5, z4), set(5, 7, -z6), set(5, 11, z2), set(7, 7, z12), set(7, 11, -z6), set(11, 11, z4);
+            const double y12 = 12 * E * Iy / (L * L * L), y6 = 6 * E * Iy / (L * L), y4 = 4 * E * Iy / L, y2 = 2 * E * Iy / L;   // plan x-z
+            set(2, 2, y12), set(2, 4, -y6), set(2, 8, -y12), set(2, 10, -y6), set(4, 4, y4), set(4, 8, y6), set(4, 10, y2), set(8, 8, y12), set(8, 10, y6), set(10, 10, y4);
+            double kmax = 0;
+            for (int i = 0; i < 12; ++i)
+                for (int j = 0; j < 12; ++j) kmax = std::max(kmax, std::abs(k[i][j]));
+            for (int i = 0; i < 12; ++i)
+                for (int j = 0; j < 12; ++j)
+                {
+                    worstLocal = std::max(worstLocal, std::abs(em.kLocal(i, j) - k[i][j]) / kmax);
+                    worstSym = std::max(worstSym, std::abs(em.kGlobal(i, j) - em.kGlobal(j, i)) / kmax);
+                }
+            // R orthogonale (lignes = axes locaux x, y, z)
+            for (int a = 0; a < 3; ++a)
+                for (int b = 0; b < 3; ++b)
+                {
+                    double d = 0;
+                    for (int c = 0; c < 3; ++c) d += em.rotation[a * 3 + c] * em.rotation[b * 3 + c];
+                    worstOrth = std::max(worstOrth, std::abs(d - (a == b ? 1.0 : 0.0)));
+                }
+            // Mouvements de corps rigide : 3 translations, 3 rotations u = θ × x (x : coordonnées des nœuds)
+            const auto* ni = m.getNode(em.nodeI);
+            const auto* nj = m.getNode(em.nodeJ);
+            const double X[2][3] = { { ni->x(), ni->y(), ni->z() }, { nj->x(), nj->y(), nj->z() } };
+            for (int mode = 0; mode < 6; ++mode)
+            {
+                double u[12] = {};
+                for (int n = 0; n < 2; ++n)
+                {
+                    if (mode < 3) u[n * 6 + mode] = 1.0;
+                    else
+                    {
+                        double th[3] = { 0, 0, 0 };
+                        th[mode - 3] = 1.0;
+                        u[n * 6 + 0] = th[1] * X[n][2] - th[2] * X[n][1];
+                        u[n * 6 + 1] = th[2] * X[n][0] - th[0] * X[n][2];
+                        u[n * 6 + 2] = th[0] * X[n][1] - th[1] * X[n][0];
+                        u[n * 6 + 3 + (mode - 3)] = 1.0;
+                    }
+                }
+                for (int i = 0; i < 12; ++i)
+                {
+                    double f = 0;
+                    for (int j = 0; j < 12; ++j) f += em.kGlobal(i, j) * u[j];
+                    worstRigid = std::max(worstRigid, std::abs(f) / (kmax * 10.0));
+                }
+            }
+            // Assemblage sur les DDL libres
+            for (int a = 0; a < 12; ++a)
+            {
+                const int ea = adv.dofMap.equationOf(a < 6 ? em.nodeI : em.nodeJ, a % 6);
+                if (ea < 0) continue;
+                for (int b = 0; b < 12; ++b)
+                {
+                    const int eb = adv.dofMap.equationOf(b < 6 ? em.nodeI : em.nodeJ, b % 6);
+                    if (eb >= 0) Kasm[std::size_t(ea) * nEq + eb] += em.kGlobal(a, b);
+                }
+            }
+        }
+        std::cout << "  écarts : K_local/analytique " << worstLocal << ", symétrie " << worstSym << ", RRᵀ − I " << worstOrth << ", corps rigide " << worstRigid << std::endl;
+        TEST_CHECK(worstLocal < 1e-6, "Test 369: matrice locale = Euler-Bernoulli analytique (écart relatif " << worstLocal << ")");
+        TEST_CHECK(worstSym < 1e-9 && worstOrth < 1e-9, "Test 369: K_e global symétrique, R orthogonale");
+        TEST_CHECK(worstRigid < 1e-7, "Test 369: 6 mouvements de corps rigide sans effort (" << worstRigid << ")");
+
+        // K global OpenSees = assemblage TSA ; symétrique ; défini positif (Cholesky) ; résidu K·U − F
+        double kAbs = 0, dAsm = 0, dSym = 0;
+        for (int i = 0; i < nEq; ++i)
+            for (int j = 0; j < nEq; ++j) kAbs = std::max(kAbs, std::abs(adv.kGlobal.at(i, j)));
+        for (int i = 0; i < nEq; ++i)
+            for (int j = 0; j < nEq; ++j)
+            {
+                dAsm = std::max(dAsm, std::abs(adv.kGlobal.at(i, j) - Kasm[std::size_t(i) * nEq + j]) / kAbs);
+                dSym = std::max(dSym, std::abs(adv.kGlobal.at(i, j) - adv.kGlobal.at(j, i)) / kAbs);
+            }
+        std::vector<double> L(std::size_t(nEq) * nEq, 0.0);
+        bool spd = true;
+        for (int j = 0; j < nEq && spd; ++j)
+        {
+            double s = adv.kGlobal.at(j, j);
+            for (int k2 = 0; k2 < j; ++k2) s -= L[std::size_t(j) * nEq + k2] * L[std::size_t(j) * nEq + k2];
+            if (s <= 0) spd = false;
+            else L[std::size_t(j) * nEq + j] = std::sqrt(s);
+            for (int i = j + 1; i < nEq && spd; ++i)
+            {
+                double v = adv.kGlobal.at(i, j);
+                for (int k2 = 0; k2 < j; ++k2) v -= L[std::size_t(i) * nEq + k2] * L[std::size_t(j) * nEq + k2];
+                L[std::size_t(i) * nEq + j] = v / L[std::size_t(j) * nEq + j];
+            }
+        }
+        std::vector<double> F(nEq, 0.0);
+        for (const auto& [id, nl] : m.loadManager().nodalLoads())
+        {
+            const double f[6] = { nl.fx(), nl.fy(), nl.fz(), nl.mx(), nl.my(), nl.mz() };
+            for (int d = 0; d < 6; ++d)
+                if (const int e = adv.dofMap.equationOf(nl.nodeId(), d); e >= 0) F[e] += f[d];
+        }
+        const auto U = adv.globalDisplacementVector(run.results.allDisplacements());
+        double rn = 0, fn = 0;
+        for (int i = 0; i < nEq; ++i)
+        {
+            double r = -F[i];
+            for (int j = 0; j < nEq; ++j) r += adv.kGlobal.at(i, j) * U[j];
+            rn += r * r, fn += F[i] * F[i];
+        }
+        const double resid = std::sqrt(rn / fn);
+        std::cout << "  K global : " << nEq << " équations, écart à l'assemblage " << dAsm << ", symétrie " << dSym << ", résidu ‖KU − F‖/‖F‖ = " << resid << std::endl;
+        TEST_CHECK(nEq == 12 && dAsm < 1e-8 && dSym < 1e-12 && spd, "Test 369: K global = Σ K_e assemblées, symétrique, défini positif");
+        TEST_CHECK(resid < 1e-6, "Test 369: résidu ‖K·U − F‖/‖F‖ = " << resid);
+        const auto eq = run.results.equilibrium();
+        TEST_CHECK(std::abs(eq.reactionFx + 7.0) < 1e-6 && std::abs(eq.reactionFy + 2.0) < 1e-6 && std::abs(eq.reactionFz - 75.0) < 1e-6,
+                   "Test 369: Σ réactions = −Σ charges (" << eq.reactionFx << ", " << eq.reactionFy << ", " << eq.reactionFz << ")");
+        std::cout << "[PASS] Test 369: Invariants de la chaîne éléments finis (matrices, assemblage, résidu, équilibre)" << std::endl;
         ++passed;
     }
     return true;
