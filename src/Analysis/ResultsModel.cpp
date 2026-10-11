@@ -86,6 +86,7 @@ void ResultsModel::clear()
     m_finalElementResults.clear();
     m_shellResults.clear();
     m_modal = ModalResults{};
+    m_surfaceNodeReactions.clear();
     m_finalSurfaceNodeDisplacements.clear();
     m_surfaceNodeDisplacements.clear();
     m_surfaceMeshStamp.clear();
@@ -426,8 +427,12 @@ void ResultsModel::mergeSubdivisions(const std::map<ElementKey, std::vector<std:
 void ResultsModel::attachSurfaceResults(const std::map<int, int>& meshToNode, const std::set<int>& surfaceOnly)
 {
     m_surfaceNodeDisplacements.clear();
+    m_surfaceNodeReactions.clear();
     for (const auto& [mesh, node] : meshToNode)
+    {
         if (const auto* d = getNodeDisplacement(node)) m_surfaceNodeDisplacements[mesh] = *d;
+        if (const auto* rc = getNodeReaction(node); rc && surfaceOnly.count(node)) m_surfaceNodeReactions[mesh] = *rc;
+    }
     for (auto& st : m_stepResults)   // pas de calcul ou modes propres
         for (const auto& [mesh, node] : meshToNode)
             if (auto it = st.displacements.find(node); it != st.displacements.end()) st.surfaceDisplacements[mesh] = it->second;

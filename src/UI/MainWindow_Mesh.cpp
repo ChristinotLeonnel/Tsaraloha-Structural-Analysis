@@ -3,6 +3,7 @@
 
 #include "MainWindow.h"
 #include "Dialogs/SurfaceLoadsDialog.h"
+#include "Dialogs/SurfaceSupportsDialog.h"
 #include "../Model/Load/LoadManager.h"
 
 #include "../Analysis/AnalysisController.h"
@@ -346,6 +347,36 @@ void MainWindow::onActionSurfaceLoads()
                                   .arg(dlg.loads().size())
                                   .arg(surfaces.size())
                                   .arg(added));
+}
+
+void MainWindow::onActionSurfaceSupports()
+{
+    if (!m_model || !m_selectionManager) return;
+    const auto sel = m_selectionManager->selectedElements();
+    std::vector<std::pair<TSA::Model::SurfaceTargetKind, int>> surfaces;
+    for (int id : sel.slabs) surfaces.emplace_back(TSA::Model::SurfaceTargetKind::Slab, id);
+    for (int id : sel.walls) surfaces.emplace_back(TSA::Model::SurfaceTargetKind::Wall, id);
+    if (surfaces.empty())
+    {
+        QMessageBox::information(this, tr("Appuis linéiques"), tr("Sélectionnez une ou plusieurs dalles ou voiles."));
+        return;
+    }
+    TSA::UI::SurfaceSupportsDialog dlg(*m_model, surfaces, this);
+    if (dlg.exec() != QDialog::Accepted) return;
+    m_model->pushUndoState(tr("Appuis linéiques").toStdString());
+    for (const auto& [kind, id] : surfaces)
+    {
+        if (kind == TSA::Model::SurfaceTargetKind::Slab)
+        {
+            if (auto* s = m_model->getSlab(id)) s->setEdgeSupports(dlg.supportsOf(kind, id));
+        }
+        else if (auto* w = m_model->getWall(id))
+            w->setEdgeSupports(dlg.supportsOf(kind, id));
+    }
+    m_model->setModified(true);
+    if (m_occView) m_occView->updateAllLoadShapes();
+    if (m_statusInfo)
+        m_statusInfo->setText(tr("%1 appui(s) linéique(s) sur %2 surface(s) : appliqués aux nœuds du maillage au calcul").arg(dlg.entries().size()).arg(surfaces.size()));
 }
 
 bool MainWindow::applyMeshToAnalysis(TSA::Analysis::AnalysisContext& ctx, const TSA::Analysis::AnalysisEngine& engine)

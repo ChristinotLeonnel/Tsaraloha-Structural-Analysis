@@ -474,6 +474,8 @@ public:
     /// référencent ensuite que des objets du modèle.
     /// @param parts barre TSA → (sous-élément, abscisse de début) dans l'ordre
     // Éléments surfaciques (coques) : résultantes par élément du maillage, déplacements par nœud du maillage
+    /// Réactions aux nœuds du maillage des surfaces (appuis linéiques de bord), par nœud du maillage.
+    const std::map<int, NodeReaction>& surfaceNodeReactions() const { return m_surfaceNodeReactions; }
     const ModalResults& modal() const { return m_modal; }
     void setModal(const ModalResults& m) { m_modal = m; }
     const std::map<int, ShellElementResult>& shellResults() const { return m_shellResults; }
@@ -520,6 +522,7 @@ private:
     std::map<ElementKey, ElementResults> m_finalElementResults;
     std::map<int, ShellElementResult> m_shellResults;
     ModalResults m_modal;
+    std::map<int, NodeReaction> m_surfaceNodeReactions;
     std::map<int, NodeDisplacement> m_finalSurfaceNodeDisplacements;
     std::map<int, NodeDisplacement> m_surfaceNodeDisplacements;
     std::string m_surfaceMeshStamp;

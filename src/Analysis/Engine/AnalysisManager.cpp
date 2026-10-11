@@ -153,6 +153,11 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
         anySupport |= std::any_of(n.definedFix.begin(), n.definedFix.end(), [](bool f) { return f; });
         anySpring |= (n.kTx > 0 || n.kTy > 0 || n.kTz > 0 || n.kRx > 0 || n.kRy > 0 || n.kRz > 0);
     }
+    if (!context.surfaces.supports.empty())
+    {
+        anySupport = true;
+        v.addInfo("Appuis", std::to_string(context.surfaces.supports.size()) + " nœud(s) du maillage des surfaces portés par des appuis linéiques de bord.");
+    }
     if (!anySupport && !anySpring)
         v.addError("Appuis", "Aucun appui dans la portée : la structure est instable.");
     else if (anySpring && !caps.supportsSprings)

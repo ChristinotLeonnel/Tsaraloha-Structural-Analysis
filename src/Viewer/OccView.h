@@ -404,6 +404,8 @@ public:
     void setSurfaceLoadsVisible(bool visible);
     bool surfaceLoadsVisible() const { return m_surfaceLoadsVisible; }
     void updateSurfaceLoadShapes();
+    /// Appuis linéiques des bords des dalles et voiles (trait épais et hachures côté appui).
+    void updateSurfaceSupportShapes();
     bool areLoadsVisible() const noexcept { return m_loadsVisible; }
 
     void setForcesVisible(bool visible);
@@ -642,6 +644,7 @@ private:
     bool m_loadsVisible = true;
     bool m_surfaceLoadsVisible = true;
     std::vector<Handle(AIS_InteractiveObject)> m_surfaceLoadShapes;
+    std::vector<Handle(AIS_InteractiveObject)> m_surfaceSupportShapes;
     bool m_forcesVisible = true;
     bool m_momentsVisible = true;
     bool m_loadValuesVisible = true;

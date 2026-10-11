@@ -528,6 +528,7 @@ private:
     QAction* m_actionTrapLoad = nullptr;        // charge linéaire (triangulaire / trapézoïdale)
     QAction* m_actionBarPointLoad = nullptr;    // force ponctuelle sur barre
     QAction* m_actionSurfaceLoadsVisible = nullptr;
+    QAction* m_actionSurfaceSupports = nullptr;   // appuis linéiques des bords des dalles et voiles
     QAction* m_actionSurfaceLoad = nullptr;     // désactivée : non transmise aux moteurs (BUG-002)
     QAction* m_actionSelfWeight = nullptr;      // poids propre : réglé par cas de charge
     QAction* m_actionLoadCases = nullptr;
@@ -682,6 +683,7 @@ private slots:
     void onActionMeshClear();
     void onActionSlabOpenings();
     void onActionSurfaceLoads();
+    void onActionSurfaceSupports();
     void refreshMeshOverlay();
     void onMeshModelChanged();
     void onActionReportTemplates();

@@ -410,6 +410,8 @@ void CommandCatalog::initializeStandardCatalog() {
                    "", CommandCategory::Loads});
   registerCommand({"cmd.loads.surface", "Charge surfacique", "Charge répartie sur surface", "Q, S",
                    "", CommandCategory::Loads});
+  registerCommand({"cmd.loads.surface_supports", "Appuis linéiques des surfaces", "Appuis répartis sur les bords des dalles et voiles", "",
+                   "", CommandCategory::Loads});
   registerCommand({"cmd.loads.self_weight", "Poids propre", "Paramètres du poids propre", "Q, G",
                    "", CommandCategory::Loads});
   registerCommand({"cmd.loadcases.manager", "Cas de charges et combinaisons", "Gestionnaire des cas de charges et combinaisons", "Q, C",

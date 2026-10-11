@@ -8,6 +8,7 @@
 #include "../Model/Material.h"
 #include "../Model/SurfaceFormulation.h"
 
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -41,12 +42,24 @@ struct SurfaceNodalForce
     std::string label;
 };
 
+/// Appui d'un nœud du maillage issu d'un appui linéique de bord (SurfaceEdgeSupport) : DDL bloqués et raideurs
+/// nodales (raideur linéique × longueur d'influence du nœud sur le bord), axes globaux.
+struct SurfaceNodeSupport
+{
+    int meshNode = 0;
+    std::array<bool, 6> fixed {};
+    std::array<double, 6> stiffness {};   ///< kN/m (translations), kN·m/rad (rotations)
+    double length = 0.0;                  ///< longueur d'influence (m)
+    std::string label;
+};
+
 struct SurfaceAnalysisModel
 {
     std::vector<SurfaceMeshNode> nodes;
     std::vector<SurfaceMeshElement> elements;
     std::vector<SurfaceNodalForce> loads;       ///< charges surfaciques, par cas de charge
     std::vector<SurfaceNodalForce> selfWeight;  ///< poids propre des surfaces (facteur 1)
+    std::vector<SurfaceNodeSupport> supports;   ///< appuis linéiques de bord répartis sur les nœuds du maillage
     std::map<std::string, double> selfWeightBySurface;  ///< kN, contrôle et note de calcul
     std::vector<std::string> notes;             ///< conversions effectuées, contrôles de résultante
     std::string meshStamp;                      ///< empreinte du maillage utilisé (date de génération + paramètres)

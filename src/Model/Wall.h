@@ -3,6 +3,7 @@
 #include "Material.h"
 #include "Slab.h"
 #include "SurfaceFormulation.h"
+#include "SurfaceSupport.h"
 #include <string>
 #include <vector>
 
@@ -57,6 +58,9 @@ public:
     /// départ, v vers le haut depuis le pied (m).
     const std::vector<SurfaceOpening>& openings() const { return m_openings; }
     void setOpenings(const std::vector<SurfaceOpening>& o) { m_openings = o; }
+    /// Appuis linéiques sur les bords : 0 pied, 1 extrémité de fin, 2 tête, 3 extrémité de début.
+    const std::vector<SurfaceEdgeSupport>& edgeSupports() const { return m_edgeSupports; }
+    void setEdgeSupports(const std::vector<SurfaceEdgeSupport>& s) { m_edgeSupports = s; }
 
     const std::string& color() const { return m_color; }
     void setColor(const std::string& color) { m_color = color; }
@@ -72,6 +76,7 @@ private:
     double m_offset = 0.0;     // Décalage par rapport à l'axe (m)
     std::string m_color;
     std::vector<SurfaceOpening> m_openings;
+    std::vector<SurfaceEdgeSupport> m_edgeSupports;
     SurfaceFormulation m_formulation = SurfaceFormulation::Shell;
 };
 

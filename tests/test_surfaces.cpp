@@ -12,7 +12,10 @@
 //   358  persistance : formulations, ouvertures des voiles, charges surfaciques ; validation des ouvertures de voile ;
 //   359  analyse modale (essai F) : fréquence propre d'une bande de coque en console comparée à la théorie des poutres,
 //        masse totale = ρ·e·A, masses converties depuis un cas de charge (m = q·A/g), participation, formes propres par
-//        mode (nœuds du maillage), paramètres modaux enregistrés avec le contexte.
+//        mode (nœuds du maillage), paramètres modaux enregistrés avec le contexte ;
+//   360  appuis linéiques de bord : plaque carrée simplement appuyée sur ses 4 bords (Navier), appuis élastiques (raideur
+//        linéique répartie, tassement), pied de voile interrompu par une porte, bords inexistants, surface non transmise et
+//        conditions redondantes signalés, persistance.
 
 #include "test_common.h"
 
@@ -597,6 +600,138 @@ bool runSuite_Surfaces(int& passed)
         TEST_CHECK(back.type == TSA::Analysis::AnalysisType::Modal && back.common.modeCount == 9 && back.common.modalMassCaseIds == std::vector<int>({ 3, 5 }),
                    "Test 359: contexte modal relu");
         std::cout << "[PASS] Test 359: Analyse modale des coques (f1 " << md.modes[0].frequency << " Hz / " << f1 << " Hz)" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 360 : appuis linéiques sur les bords des surfaces
+    // -------------------------------------------------------------------------
+    {
+        auto sumReactions = [](const AnalysisRunResult& r, int dof) {
+            double s = 0;
+            for (const auto& [id, rc] : r.results.surfaceNodeReactions()) s += dof == 0 ? rc.rx : dof == 1 ? rc.ry : rc.rz;
+            for (const auto& [id, rc] : r.results.allReactions()) s += dof == 0 ? rc.rx : dof == 1 ? rc.ry : rc.rz;
+            return s;
+        };
+        // a) Plaque carrée a × a simplement appuyée sur ses 4 bords (Tz bloqué ; Tx, Ty bloqués pour la membrane),
+        //    charge uniforme : w = 0,00406 · q · a⁴ / D (Timoshenko, Navier), Σ Rz = q · a²
+        const double a = 6.0, h = 0.20, q = 10.0;
+        Model m;
+        const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(a, 0, 0), n3 = m.addNode(a, a, 0), n4 = m.addNode(0, a, 0);
+        const int s = m.addSlab({ n1, n2, n3, n4 }, h, "Plaque");
+        TSA::Model::SurfaceEdgeSupport ss;
+        ss.edge = -1;
+        ss.fixed = { true, true, true, false, false, false };
+        ss.name = "appui simple";
+        m.getSlab(s)->setEdgeSupports({ ss });
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        TSA::Model::SurfaceLoad sl;
+        sl.surfaceId = s;
+        sl.loadCaseId = lc;
+        sl.value = q;
+        m.loadManager().addSurfaceLoad(sl);
+        const auto r = runSurfaces(m, settings2D(0.25, true), false, lc);
+        TEST_CHECK(!r.compat.blocking() && r.prepared.canRun() && r.run.success,
+                   "Test 360: plaque sur appuis linéiques (" << blockingText(r.compat) << errorsOf(r.prepared) << r.run.message << ")");
+        const auto& mat = m.getSlab(s)->material();
+        const double D = mat.E * 1e-3 * h * h * h / (12.0 * (1.0 - mat.nu * mat.nu));
+        const double wRef = 0.00406 * q * a * a * a * a / D, w = maxSurfaceUz(r.run);
+        TEST_CHECK(std::abs(w - wRef) / wRef < 0.05, "Test 360: flèche " << w * 1000 << " mm, Navier " << wRef * 1000 << " mm");
+        TEST_CHECK(std::abs(sumReactions(r.run, 2) - q * a * a) < 1e-3 * q * a * a, "Test 360: Σ Rz = " << sumReactions(r.run, 2) << " kN (q·a² = " << q * a * a << ")");
+        double perim = 0;
+        for (const auto& ns : r.compat.surfaces.supports) perim += ns.length;
+        TEST_CHECK(std::abs(perim - 4 * a) < 1e-6 && !r.run.results.surfaceNodeReactions().empty(), "Test 360: longueurs d'influence = périmètre (" << perim << " m)");
+
+        // b) Appui élastique sur tout le contour : Σ kᵢ = k · périmètre ; tassement ≈ q·A / (k·périmètre) (plaque raide)
+        TSA::Model::SurfaceEdgeSupport el;
+        el.fixed = { true, true, false, false, false, true };
+        el.stiffness = { 0, 0, 500.0, 0, 0, 0 };   // kN/m/m
+        m.getSlab(s)->setEdgeSupports({ el });
+        const auto re = runSurfaces(m, settings2D(0.5, true), false, lc);
+        TEST_CHECK(re.run.success, "Test 360: appui élastique (" << blockingText(re.compat) << errorsOf(re.prepared) << re.run.message << ")");
+        double ksum = 0;
+        for (const auto& ns : re.compat.surfaces.supports) ksum += ns.stiffness[2];
+        TEST_CHECK(std::abs(ksum - 500.0 * 4 * a) < 1e-6 * ksum, "Test 360: Σ kᵢ = " << ksum << " kN/m (k·périmètre = " << 500.0 * 4 * a << ")");
+        TEST_CHECK(std::abs(sumReactions(re.run, 2) - q * a * a) < 1e-3 * q * a * a, "Test 360: Σ Rz (ressorts) = " << sumReactions(re.run, 2) << " kN");
+        double wEdge = 1e9;
+        for (const auto& ns : re.compat.surfaces.supports)
+            if (const auto* d = re.run.results.surfaceNodeDisplacements().count(ns.meshNode) ? &re.run.results.surfaceNodeDisplacements().at(ns.meshNode) : nullptr)
+                wEdge = std::min(wEdge, std::abs(d->uz));
+        TEST_CHECK(wEdge > 0.5 * q * a * a / ksum && maxSurfaceUz(re.run) > wRef, "Test 360: tassement des bords " << wEdge * 1000 << " mm (q·A/Σk = " << q * a * a / ksum * 1000 << " mm)");
+
+        // c) Contrôles : bord inexistant (bloquant), DDL bloqué et élastique, double blocage (redondant), appui sans effet
+        TSA::Model::SurfaceEdgeSupport bad = ss;
+        bad.edge = 7;
+        TSA::Model::SurfaceEdgeSupport both = ss;
+        both.edge = 0;
+        both.stiffness[2] = 100.0;
+        TSA::Model::SurfaceEdgeSupport none;
+        none.edge = 1;
+        m.getSlab(s)->setEdgeSupports({ ss, bad, both, none });
+        const auto rc = runSurfaces(m, settings2D(0.5, true), false, lc);
+        std::string warnings;
+        for (const auto& i : rc.compat.items)
+            if (i.level == SolverCheckItem::Level::Warning) warnings += i.message + " | ";
+        TEST_CHECK(rc.compat.blocking() && blockingText(rc.compat).find("inexistant") != std::string::npos, "Test 360: bord inexistant refusé");
+        TEST_CHECK(warnings.find("raideur est sans effet") != std::string::npos && warnings.find("redondante") != std::string::npos &&
+                       warnings.find("sans effet") != std::string::npos,
+                   "Test 360: conditions redondantes ou sans effet signalées (" << warnings << ")");
+        m.getSlab(s)->setEdgeSupports({ ss });
+        m.getSlab(s)->setFormulation(TSA::Model::SurfaceFormulation::NonStructural);
+        m.loadManager().clear();
+        const auto rn = runSurfaces(m, settings2D(0.5, true));
+        TEST_CHECK(rn.compat.blocking() && blockingText(rn.compat).find("non transmise") != std::string::npos, "Test 360: appui sur une surface non transmise refusé");
+        m.getSlab(s)->setFormulation(TSA::Model::SurfaceFormulation::Shell);
+
+        // d) Voile de 5 m encastré en pied, porte de 1 m au pied : appui sur 4 m ; vent 1 kN/m² (normale), Σ Rx + q·A_nette = 0
+        Model v;
+        const int pa = v.addNode(0, 0, 0), pb = v.addNode(5, 0, 0);
+        const int wid = v.addWall(pa, pb, 3.0, 0.2, "Voile");
+        SlabOpening door;
+        door.polygon = { { 1.0, 0.0 }, { 2.0, 0.0 }, { 2.0, 2.1 }, { 1.0, 2.1 } };
+        v.getWall(wid)->setOpenings({ door });
+        TSA::Model::SurfaceEdgeSupport base;
+        base.edge = 0;
+        base.fixed = { true, true, true, true, true, true };
+        v.getWall(wid)->setEdgeSupports({ base });
+        const int vc = v.loadManager().addLoadCase(LoadCase(0, "W", LoadCaseCategory::Wind));
+        TSA::Model::SurfaceLoad wl;
+        wl.targetKind = TSA::Model::SurfaceTargetKind::Wall;
+        wl.surfaceId = wid;
+        wl.loadCaseId = vc;
+        wl.direction = TSA::Model::SurfaceLoadDirection::GlobalY;
+        wl.value = 1.0;
+        v.loadManager().addSurfaceLoad(wl);
+        const auto rw = runSurfaces(v, settings2D(0.25, true), false, vc);
+        double baseLength = 0;
+        for (const auto& ns : rw.compat.surfaces.supports) baseLength += ns.length;
+        TEST_CHECK(rw.run.success && std::abs(baseLength - 4.0) < 1e-6, "Test 360: pied du voile appuyé sur " << baseLength << " m (5 m − porte 1 m) " << rw.run.message);
+        const double net = 5.0 * 3.0 - 1.0 * 2.1;
+        TEST_CHECK(std::abs(sumReactions(rw.run, 1) + net) < 1e-3 * net, "Test 360: Σ Ry = " << sumReactions(rw.run, 1) << " kN (charge " << net << " kN)");
+
+        // e) Persistance des appuis linéiques
+        QTemporaryDir tmp;
+        const std::string path = (tmp.path() + "/appuis.tsa").toStdString();
+        std::string err;
+        TSA::IO::TSAFileWriter writer;
+        GridManager grids;
+        TEST_CHECK(writer.saveToFile(path, v, &grids, "Appuis", "TSA", &err), "Test 360: enregistrement (" << err << ")");
+        Model back;
+        GridManager bg;
+        std::string name;
+        TSA::IO::TSAFileReader reader;
+        TEST_CHECK(reader.loadFromFile(path, back, &bg, "", &name, nullptr, nullptr, &err) && back.getWall(wid) &&
+                       back.getWall(wid)->edgeSupports() == v.getWall(wid)->edgeSupports(),
+                   "Test 360: appuis linéiques relus (" << err << ")");
+        {
+            TSA::NDC::ReportManager mgr;
+            mgr.setModel(&v);
+            mgr.setResultsModel(std::make_shared<TSA::Analysis::ResultsModel>(rw.run.results));
+            mgr.applyTemplate(TSA::NDC::ReportTemplateType::BureauEtudes);
+            const QString html = TSA::NDC::NDCExporter::renderHtml(mgr.generateReport());
+            TEST_CHECK(html.contains("Appuis linéiques des bords des surfaces") && html.contains("pied") && html.contains("Tx, Ty, Tz, Rx, Ry, Rz"),
+                       "Test 360: appuis linéiques dans la note de calcul");
+        }
+        std::cout << "[PASS] Test 360: Appuis linéiques des surfaces (Navier " << w * 1000 << " / " << wRef * 1000 << " mm)" << std::endl;
         ++passed;
     }
     return true;

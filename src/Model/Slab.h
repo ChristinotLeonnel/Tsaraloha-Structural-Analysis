@@ -2,6 +2,7 @@
 
 #include "Material.h"
 #include "SurfaceFormulation.h"
+#include "SurfaceSupport.h"
 #include <vector>
 #include <string>
 #include <utility>
@@ -69,6 +70,9 @@ public:
     /// Ouvertures (maillage, affichage) ; persistées dans le chunk OPNG du .tsa (format ≥ 1.8).
     const std::vector<SlabOpening>& openings() const { return m_openings; }
     void setOpenings(const std::vector<SlabOpening>& openings) { m_openings = openings; }
+    /// Appuis linéiques sur les bords (docs/SURFACES.md) ; bord i = sommet i → sommet i+1 du contour.
+    const std::vector<SurfaceEdgeSupport>& edgeSupports() const { return m_edgeSupports; }
+    void setEdgeSupports(const std::vector<SurfaceEdgeSupport>& s) { m_edgeSupports = s; }
 
 private:
     int m_id = 0;
@@ -79,6 +83,7 @@ private:
     SlabType m_slabType = SlabType::TwoWay;
     std::string m_color;
     std::vector<SlabOpening> m_openings;
+    std::vector<SurfaceEdgeSupport> m_edgeSupports;
     SurfaceFormulation m_formulation = SurfaceFormulation::Shell;
 };
 

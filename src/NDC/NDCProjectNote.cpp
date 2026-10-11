@@ -479,6 +479,41 @@ void chapterSupports(Ctx& x, NDCDocument& doc)
         s.tables.push_back(t);
     }
     ch.sections.push_back(s);
+
+    // Appuis linéiques des bords des surfaces (appliqués aux nœuds du maillage, raideur linéique × longueur d'influence)
+    auto te = x.makeTable(QStringLiteral("Appuis linéiques des bords des surfaces"),
+                          { QStringLiteral("Surface"), QStringLiteral("Bord"), QStringLiteral("DDL bloqués"), QStringLiteral("Raideurs linéiques") },
+                          { QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("left") });
+    static const char* dofs[6] = { "Tx", "Ty", "Tz", "Rx", "Ry", "Rz" };
+    auto rows = [&](const QString& ref, bool wall, const std::vector<TSA::Model::SurfaceEdgeSupport>& list) {
+        static const char* wallEdges[4] = { "pied", "extrémité de fin", "tête", "extrémité de début" };
+        for (const auto& sp : list)
+        {
+            QStringList fx, k;
+            for (int d = 0; d < 6; ++d)
+                if (sp.fixed[d]) fx << QString::fromLatin1(dofs[d]);
+                else if (sp.stiffness[d] > 0)
+                    k << QStringLiteral("k<sub>%1</sub> = %2 %3").arg(QString::fromLatin1(dofs[d])).arg(sp.stiffness[d], 0, 'g', 6).arg(d < 3 ? QStringLiteral("kN/m/m") : QStringLiteral("kN·m/rad/m"));
+            const QString edge = sp.edge < 0 ? QStringLiteral("tout le contour")
+                                 : wall && sp.edge < 4 ? QString::fromUtf8(wallEdges[sp.edge])
+                                                       : QStringLiteral("bord %1").arg(sp.edge + 1);
+            te.rows.push_back({ ref, edge, fx.isEmpty() ? QStringLiteral("—") : fx.join(QStringLiteral(", ")), k.isEmpty() ? QStringLiteral("—") : k.join(QStringLiteral(", ")) });
+        }
+    };
+    for (const auto& [id, sl] : x.model.slabs()) rows(QStringLiteral("SL%1").arg(id), false, sl.edgeSupports());
+    for (const auto& [id, w] : x.model.walls()) rows(QStringLiteral("W%1").arg(id), true, w.edgeSupports());
+    if (!te.rows.empty())
+    {
+        NDCSection se;
+        se.title = QStringLiteral("Appuis linéiques");
+        se.paragraphs.push_back(QStringLiteral("Chaque nœud du maillage situé sur le bord reçoit les blocages indiqués (axes globaux) et la raideur nodale "
+                                               "k<sub>i</sub> = k · l<sub>i</sub>, l<sub>i</sub> étant sa longueur d'influence (demi-intervalles vers ses voisins "
+                                               "sur le bord, interrompus par les ouvertures)."));
+        se.tables.push_back(te);
+        ch.sections.push_back(se);
+    }
+    else
+        --x.table;   // tableau non publié : numérotation continue
     doc.addChapter(ch);
 }
 
