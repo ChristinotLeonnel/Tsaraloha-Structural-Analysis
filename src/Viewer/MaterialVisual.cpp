@@ -8,6 +8,7 @@
 #include <AIS_TexturedShape.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
 #include <Graphic3d_TextureParams.hxx>
+#include <Prs3d_LineAspect.hxx>
 #include <Prs3d_ShadingAspect.hxx>
 #include <gp_Pnt2d.hxx>
 #include <Image_PixMap.hxx>
@@ -268,8 +269,13 @@ void MaterialVisual::applyToShape(Handle(AIS_Shape) aisShape,
     // d'ombrage de l'objet. La couleur effective (matériau, ou couleur choisie par l'utilisateur dans
     // les propriétés) module la texture. Les coordonnées de texture sont générées au calcul de la
     // présentation : appeler avant l'affichage, ou réafficher l'objet ensuite.
-    const QString texPath = mode == RenderDisplayMode::Materials ? resolveTexturePath(mat) : QString();
+    const QString texPath = mode == RenderDisplayMode::Materials && !m_lightweight ? resolveTexturePath(mat) : QString();
     aisShape->Attributes()->SetupOwnShadingAspect();
+    // Arêtes des faces (prises en compte au prochain calcul de la présentation)
+    const bool edges = m_showEdges && !m_lightweight;
+    aisShape->Attributes()->SetFaceBoundaryDraw(edges);
+    if (edges)
+        aisShape->Attributes()->SetFaceBoundaryAspect(new Prs3d_LineAspect(Quantity_Color(0.15, 0.17, 0.20, Quantity_TOC_RGB), Aspect_TOL_SOLID, 1.0));
     const occ::handle<Graphic3d_AspectFillArea3d>& fill = aisShape->Attributes()->ShadingAspect()->Aspect();
     if (!texPath.isEmpty())
     {

@@ -124,6 +124,9 @@ struct RibbonActions
     std::vector<QAction*> drawTools;                     ///< outils de dessin (registre)
     std::map<std::string, QAction*> dimensionTools;      ///< outils de cotation (registre, par identifiant)
     std::vector<QAction*> dimensionCommands;             ///< modifier, supprimer, nettoyer, afficher, style
+    std::vector<QAction*> renderModes;                   ///< rendu texturé, ombré, filaire
+    QAction* renderEdges = nullptr;                      ///< arêtes des faces
+    QAction* renderLightweight = nullptr;                ///< mode léger (PC modestes)
     std::vector<QAction*> modelDisplayModes;             ///< physique, filaire analytique, éléments finis, superposition
     QAction* actionMoveOrigin = nullptr;
     QAction* actionDelete = nullptr;

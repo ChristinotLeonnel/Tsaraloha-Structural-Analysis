@@ -133,6 +133,10 @@ void MainWindow::setupShortcuts()
     // Représentations du modèle (Affichage > Représentation)
     const char* displayIds[] = { "cmd.view.display_physical", "cmd.view.display_analytical", "cmd.view.display_fe", "cmd.view.display_overlay" };
     for (std::size_t i = 0; i < m_displayModeActions.size() && i < 4; ++i) bindShortcut(displayIds[i], m_displayModeActions[i]);
+    const char* renderIds[] = { "cmd.view.render_textured", "cmd.view.render_shaded", "cmd.view.render_wireframe" };
+    for (std::size_t i = 0; i < m_renderModeActions.size() && i < 3; ++i) bindShortcut(renderIds[i], m_renderModeActions[i]);
+    bindShortcut("cmd.view.render_edges", m_actionRenderEdges);
+    bindShortcut("cmd.view.render_lightweight", m_actionRenderLightweight);
     // Panneaux (actions du gestionnaire de fenêtres)
     if (m_windowManager)
         for (const char* dock : { "model_browser", "visibility", "elements", "properties", "work_planes", "analysis_data", "console" })

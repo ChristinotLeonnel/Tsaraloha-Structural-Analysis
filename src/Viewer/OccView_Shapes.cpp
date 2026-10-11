@@ -1092,6 +1092,34 @@ void OccView::setRenderDisplayMode(TSA::Viewer::RenderDisplayMode mode)
     }
 }
 
+void OccView::setRenderOptions(bool showEdges, bool lightweight)
+{
+    auto& mv = TSA::Viewer::MaterialVisual::instance();
+    mv.setShowEdges(showEdges);
+    mv.setLightweight(lightweight);
+    if (m_context.IsNull()) return;
+    // Facettisation : écart de corde relatif (défaut OCCT 0,001) et angle (12°) quadruplés en mode léger
+    static const double defaultCoef = m_context->DeviationCoefficient();
+    static const double defaultAngle = m_context->DeviationAngle();
+    m_context->SetDeviationCoefficient(lightweight ? 4.0 * defaultCoef : defaultCoef);
+    m_context->SetDeviationAngle(lightweight ? 4.0 * defaultAngle : defaultAngle);
+    if (!m_model) return;
+    setRenderDisplayMode(m_renderDisplayMode);
+    // Arêtes et finesse ne s'appliquent qu'au recalcul des présentations
+    auto redisplay = [this](const auto& shapes) {
+        for (const auto& [id, shape] : shapes)
+            if (!shape.IsNull() && m_context->IsDisplayed(shape)) m_context->Redisplay(shape, false);
+    };
+    redisplay(m_beamShapes);
+    redisplay(m_columnShapes);
+    redisplay(m_slabShapes);
+    redisplay(m_wallShapes);
+    redisplay(m_foundationShapes);
+    redisplay(m_trussShapes);
+    redisplay(m_cableShapes);
+    m_context->UpdateCurrentViewer();
+}
+
 void OccView::updateBeamShape(int beamId, bool redrawImmediately)
 {
     if (m_context.IsNull() || !m_model)

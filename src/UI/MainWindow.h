@@ -403,6 +403,13 @@ private:
     void reportModelDisplayMode();
     QActionGroup* m_displayModeGroup = nullptr;
     std::vector<QAction*> m_displayModeActions;
+    /// Rendu des volumes (texturé, ombré, filaire), arêtes et mode léger — préférences conservées (QSettings).
+    void createRenderModeActions();
+    void applyRenderOptions();
+    QActionGroup* m_renderModeGroup = nullptr;
+    std::vector<QAction*> m_renderModeActions;
+    QAction* m_actionRenderEdges = nullptr;
+    QAction* m_actionRenderLightweight = nullptr;
     void syncDimensionActions();
     QAction* m_actionDimensionsVisible = nullptr;
     QAction* m_actionEditDimension = nullptr;
