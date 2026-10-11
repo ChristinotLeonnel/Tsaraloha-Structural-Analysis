@@ -831,6 +831,22 @@ bool runSuite_Surfaces(int& passed)
         TEST_CHECK(rh.run.success && std::abs(fy - Ph) < 1e-6 * Ph && std::abs(mz / fy - 2.0 / 3.0) < 1e-6,
                    "Test 361: hydrostatique Σ Fy = " << fy << " kN (γh²L/2 = " << Ph << "), point d'application z = " << mz / fy << " m (h/3) " << blockingText(rh.compat) << rh.run.message);
         TEST_CHECK(std::abs(sumRy(rh.run, 1) + Ph) < 1e-3 * Ph, "Test 361: Σ Ry = " << sumRy(rh.run, 1) << " kN");
+        // Projet d'exemple (TSA_DEMO_DIR) : voile de réservoir encastré en pied (appui linéique), poussée hydrostatique, maillage enregistré
+        if (const QString dir = qEnvironmentVariable("TSA_DEMO_DIR"); !dir.isEmpty())
+        {
+            MeshProject mp;
+            mp.settings = settings2D(0.4, true);
+            mp.hasMesh = true;
+            mp.mesh = rh.mesh.mesh;
+            mp.record = rh.mesh.record;
+            v.setMeshProjectJson(QJsonDocument(mp.toJson()).toJson(QJsonDocument::Compact).toStdString());
+            TSA::IO::TSAFileWriter writer;
+            GridManager grids;
+            std::string err;
+            const std::string path = (dir + "/TSA_Exemple_Voile_Reservoir.tsa").toStdString();
+            TEST_CHECK(writer.saveToFile(path, v, &grids, "Voile de réservoir — poussée hydrostatique", "TSA — exemples", &err), "Test 361: projet d'exemple écrit (" << err << ")");
+            std::cout << "  projet d'exemple : " << path << std::endl;
+        }
 
         // c) Persistance de la zone et des gradients
         QTemporaryDir tmp;

@@ -796,25 +796,57 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
                           .arg(QString::fromStdString(prepared.model.scopeLabel));
     const auto ext = m_resultsModel->summary();
     const auto eq = m_resultsModel->equilibrium();
-    summary += tr("\n• Déplacement max : %1 mm (nœud N%2)\n• Moment max : %3 kNm (barre #%4)\n"
-                  "• Traction max : %5 kN\n• Réaction verticale totale : %6 kN")
-                   .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3).arg(ext.maxDisplacementNodeId)
-                   .arg(ext.maxBendingMoment, 0, 'f', 2).arg(ext.maxBendingMomentElementId)
-                   .arg(ext.maxTension, 0, 'f', 2).arg(eq.reactionFz, 0, 'f', 2);
-    if (!m_resultsModel->shellResults().empty())
+    const auto& modal = m_resultsModel->modal();
+    const bool isModal = m_resultsModel->analysisType() == TSA::Analysis::AnalysisType::Modal && !modal.empty();
+    if (isModal)
+    {
+        // Analyse modale : aucune grandeur statique (déplacements, efforts, réactions) n'est calculée.
+        const bool kN = m_resultsModel->units().force == "kN";
+        summary += tr("\n• Analyse modale : %1 mode(s)\n• Masse totale : %2 %3 (libre %4 %3)")
+                       .arg(modal.modes.size())
+                       .arg(modal.totalMass[2], 0, 'f', 3)
+                       .arg(kN ? QStringLiteral("t") : QStringLiteral("kg"))
+                       .arg(modal.totalFreeMass[2], 0, 'f', 3);
+        for (std::size_t i = 0; i < std::min<std::size_t>(modal.modes.size(), 3); ++i)
+            summary += tr("\n• Mode %1 : f = %2 Hz, T = %3 s (MX %4 %, MY %5 %, MZ %6 %)")
+                           .arg(modal.modes[i].index)
+                           .arg(modal.modes[i].frequency, 0, 'f', 3)
+                           .arg(modal.modes[i].period, 0, 'f', 4)
+                           .arg(modal.modes[i].massRatio[0], 0, 'f', 1)
+                           .arg(modal.modes[i].massRatio[1], 0, 'f', 1)
+                           .arg(modal.modes[i].massRatio[2], 0, 'f', 1);
+        const auto& last = modal.modes.back().cumulativeRatio;
+        summary += tr("\n• Masse cumulée : MX %1 %, MY %2 %, MZ %3 %").arg(last[0], 0, 'f', 1).arg(last[1], 0, 'f', 1).arg(last[2], 0, 'f', 1);
+    }
+    else
+    {
+        if (ext.maxDisplacementNodeId > 0)   // barres ou nœuds TSA calculés
+            summary += tr("\n• Déplacement max : %1 mm (nœud N%2)\n• Moment max : %3 kNm (barre #%4)\n• Traction max : %5 kN")
+                           .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3).arg(ext.maxDisplacementNodeId)
+                           .arg(ext.maxBendingMoment, 0, 'f', 2).arg(ext.maxBendingMomentElementId)
+                           .arg(ext.maxTension, 0, 'f', 2);
+        summary += tr("\n• Réaction verticale totale : %1 kN").arg(eq.reactionFz, 0, 'f', 2);
+    }
+    if (!m_resultsModel->surfaceNodeDisplacements().empty())
     {
         int meshNode = 0;
         const double ws = m_resultsModel->maxSurfaceDisplacement(&meshNode);
-        summary += tr("\n• Surfaces (coques) : %1 élément(s), déplacement max %2 mm (nœud %3 du maillage)")
-                       .arg(m_resultsModel->shellResults().size())
-                       .arg(ws * 1000.0, 0, 'f', 3)
-                       .arg(meshNode);
+        const auto& q = m_resultsModel->surfaceMeshSummary();
+        if (isModal)
+            summary += tr("\n• Surfaces (coques) : %1 élément(s), formes propres sur le maillage (normalisées, sans unité)").arg(q.quads + q.triangles);
+        else
+            summary += tr("\n• Surfaces (coques) : %1 élément(s), déplacement max %2 mm (nœud %3 du maillage)")
+                           .arg(q.quads + q.triangles)
+                           .arg(ws * 1000.0, 0, 'f', 3)
+                           .arg(meshNode);
     }
     if (ext.maxTorsionMoment > 1e-9 || ext.maxTwist > 1e-12)
         summary += tr("\n• Torsion max : Mx = %1 kNm (barre #%2), θx = %3 mrad (barre #%4)")
                        .arg(ext.maxTorsionMoment, 0, 'f', 2).arg(ext.maxTorsionMomentElementId)
                        .arg(ext.maxTwist * 1000.0, 0, 'g', 4).arg(ext.maxTwistElementId);
-    if (m_statusInfo)
+    if (m_statusInfo && isModal)
+        m_statusInfo->setText(tr("%1 OK : analyse modale, %2 mode(s), f1 = %3 Hz").arg(engineName).arg(modal.modes.size()).arg(modal.modes.front().frequency, 0, 'f', 3));
+    else if (m_statusInfo)
         m_statusInfo->setText(tr("%1 OK : δ_max = %2 mm, M_max = %3 kNm")
                                   .arg(engineName).arg(ext.maxDisplacement * 1000.0, 0, 'f', 2)
                                   .arg(ext.maxBendingMoment, 0, 'f', 1));

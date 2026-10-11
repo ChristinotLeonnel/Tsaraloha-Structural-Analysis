@@ -55,6 +55,12 @@ MeshResultSet ResultsModelMeshAdapter::extract(const FeMesh& mesh) const
     MeshResultField u;
     u.name = "Déplacement";
     u.unit = "m";
+    if (m_results.analysisType() == TSA::Analysis::AnalysisType::Modal)
+    {
+        // Forme propre : amplitude arbitraire, normalisée par TSA (translation maximale = 1)
+        u.unit = "forme propre normalisée, sans unité";
+        set.notes.push_back("analyse modale : déplacements = forme propre du mode affiché, normalisée (translation maximale = 1)");
+    }
     u.source = meta.solverEngine + (meta.solverVersion.empty() ? std::string() : " " + meta.solverVersion);
     u.components = 3;
     std::size_t exact = 0, interpolated = 0;

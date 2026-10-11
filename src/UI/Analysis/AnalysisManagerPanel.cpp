@@ -246,10 +246,20 @@ void AnalysisManagerPanel::updateResultsSummary()
     QString text = tr("<b>%1</b>%2 — %3<br>").arg(QString::fromStdString(meta.solverEngine).toHtmlEscaped(),
                                                    meta.solverVersion.empty() ? QString() : " " + QString::fromStdString(meta.solverVersion).toHtmlEscaped(),
                                                    meta.analysisScope.empty() ? tr("modèle complet") : QString::fromStdString(meta.analysisScope).toHtmlEscaped());
-    text += tr("Déplacement max : <b>%1 mm</b> (N%2) · Moment max : <b>%3 %4</b> · Réaction verticale totale : %5 %6")
-                .arg(sum.maxDisplacement * 1000.0, 0, 'f', 3).arg(sum.maxDisplacementNodeId)
-                .arg(sum.maxBendingMoment, 0, 'f', 2).arg(QString::fromStdString(r->units().moment))
-                .arg(eq.reactionFz, 0, 'f', 2).arg(QString::fromStdString(r->units().force));
+    if (r->analysisType() == AnalysisType::Modal && !r->modal().empty())
+    {
+        const auto& md = r->modal();
+        text += tr("Analyse modale : <b>%1 mode(s)</b> · f1 = <b>%2 Hz</b> · T1 = %3 s · masse totale %4")
+                    .arg(md.modes.size())
+                    .arg(md.modes.front().frequency, 0, 'f', 3)
+                    .arg(md.modes.front().period, 0, 'f', 4)
+                    .arg(md.totalMass[2], 0, 'f', 3);
+    }
+    else
+        text += tr("Déplacement max : <b>%1 mm</b> (N%2) · Moment max : <b>%3 %4</b> · Réaction verticale totale : %5 %6")
+                    .arg(sum.maxDisplacement * 1000.0, 0, 'f', 3).arg(sum.maxDisplacementNodeId)
+                    .arg(sum.maxBendingMoment, 0, 'f', 2).arg(QString::fromStdString(r->units().moment))
+                    .arg(eq.reactionFz, 0, 'f', 2).arg(QString::fromStdString(r->units().force));
     if (!r->shellResults().empty())
     {
         int meshNode = 0;

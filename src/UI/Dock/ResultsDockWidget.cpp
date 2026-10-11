@@ -401,7 +401,7 @@ void ResultsDockWidget::updateSummaryText()
     const auto& s = m_resultsModel->summary();
     const auto& eq = m_resultsModel->equilibrium();
 
-    m_labelStatus->setText(tr("✓ Calcul disponible (%1 pas)").arg(m_resultsModel->stepCount()));
+    m_labelStatus->setText(m_resultsModel->stepCount() > 1 ? tr("✓ Calcul disponible (%1 pas)").arg(m_resultsModel->stepCount()) : tr("✓ Calcul disponible"));
     m_labelStatus->setStyleSheet("font-weight: bold; color: #10b981;");
 
     QString txt = tr(
@@ -418,6 +418,14 @@ void ResultsDockWidget::updateSummaryText()
     .arg(s.maxTension, 0, 'f', 1)
     .arg(eq.reactionFz, 0, 'f', 1)
     .arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("DÉSÉQUILIBRE"));
+    if (s.maxDisplacementNodeId <= 0)   // aucun nœud TSA calculé (modèle de surfaces seules) : pas de ligne « barres » vide
+        txt = tr("• Réaction totale Rz : %1 kN\n• Équilibre : %2").arg(eq.reactionFz, 0, 'f', 1).arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("DÉSÉQUILIBRE"));
+    if (!m_resultsModel->surfaceNodeDisplacements().empty())
+    {
+        int meshNode = 0;
+        const double ws = m_resultsModel->maxSurfaceDisplacement(&meshNode);
+        txt += tr("\n• Surfaces (coques) : déplacement max %1 mm (nœud %2 du maillage)").arg(ws * 1000.0, 0, 'f', 2).arg(meshNode);
+    }
     if (s.maxTorsionMoment > 1e-9 || s.maxTwist > 1e-12)
         txt += tr("\n• Torsion max : Mx = %1 kNm (Barre #%2), θx = %3 mrad (Barre #%4)")
                    .arg(s.maxTorsionMoment, 0, 'f', 2).arg(s.maxTorsionMomentElementId)
