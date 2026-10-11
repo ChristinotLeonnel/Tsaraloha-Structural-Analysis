@@ -518,7 +518,7 @@ void CommandCatalog::initializeStandardCatalog() {
                    ":/icons/results_disp.svg", CommandCategory::Results});
   registerCommand({"cmd.results.forces", "Efforts internes", "Diagrammes des efforts (M, N, V)", "",
                    ":/icons/results_forces.svg", CommandCategory::Results});
-  registerCommand({"cmd.results.stresses", "Contraintes", "Contraintes de Von Mises", "",
+  registerCommand({"cmd.results.stresses", "Contraintes", "Contrainte normale de fibre extrême σ = N/A ± M/W (poutres)", "",
                    ":/icons/results_stress.svg", CommandCategory::Results});
   registerCommand({"cmd.report.ndc", "Note de calcul", "Ouvrir la note de calcul", "F8",
                    "", CommandCategory::Documentation});

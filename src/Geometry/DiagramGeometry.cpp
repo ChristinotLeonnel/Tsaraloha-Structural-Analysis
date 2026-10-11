@@ -28,6 +28,7 @@ QString DiagramGeometry::diagramTypeName(DiagramType type)
     case DiagramType::RotationRx:   return QStringLiteral("Rotation de Torsion (RX)");
     case DiagramType::RotationRy:   return QStringLiteral("Rotation Flexion (RY)");
     case DiagramType::RotationRz:   return QStringLiteral("Rotation Flexion (RZ)");
+    case DiagramType::StressSigma:  return QStringLiteral("Contrainte normale de fibre extrême (σ = N/A ± M/W)");
     case DiagramType::None:
     default:                        return QStringLiteral("Aucun");
     }
@@ -54,10 +55,22 @@ QString DiagramGeometry::diagramUnit(DiagramType type, bool useKiloNewtons)
     case DiagramType::RotationRy:
     case DiagramType::RotationRz:
         return QStringLiteral("rad");
+    case DiagramType::StressSigma:
+        return QStringLiteral("MPa");
     case DiagramType::None:
     default:
         return QString();
     }
+}
+
+double DiagramGeometry::normalStressMPa(const TSA::Analysis::StationForces& st, double area, double wy, double wz, bool kiloNewtons)
+{
+    if (area <= 0.0) return 0.0;
+    const double k = kiloNewtons ? 1e-3 : 1e-6; // kN/m² → MPa, ou N/m² → MPa
+    const double axial = st.N / area;
+    const double bending = (wy > 0.0 ? std::abs(st.My) / wy : 0.0) + (wz > 0.0 ? std::abs(st.Mz) / wz : 0.0);
+    const double top = axial + bending, bottom = axial - bending;
+    return (std::abs(top) >= std::abs(bottom) ? top : bottom) * k;
 }
 
 double DiagramGeometry::getStationValue(const TSA::Analysis::StationForces& st, DiagramType type)
@@ -78,6 +91,7 @@ double DiagramGeometry::getStationValue(const TSA::Analysis::StationForces& st, 
     case DiagramType::RotationRx:   return st.rx;
     case DiagramType::RotationRy:   return st.ry;
     case DiagramType::RotationRz:   return st.rz;
+    case DiagramType::StressSigma:  return st.N; // stations préparées par l'appelant : N contient σ (MPa)
     case DiagramType::None:
     default:                        return 0.0;
     }

@@ -884,9 +884,10 @@ void MainWindow::createActions()
     m_actionResultsForces->setToolTip(tr("Afficher les diagrammes de moments, efforts tranchants et normaux"));
     connect(m_actionResultsForces, &QAction::triggered, this, &MainWindow::onActionResultsForces);
 
-    m_actionResultsStress = new QAction(tr("Contraintes de &Von Mises"), this);
+    m_actionResultsStress = new QAction(tr("&Contraintes normales σ (poutres)"), this);
     m_actionResultsStress->setIcon(QIcon(":/icons/results_stress.svg"));
-    m_actionResultsStress->setToolTip(tr("Afficher la cartographie des contraintes"));
+    m_actionResultsStress->setToolTip(tr("Contrainte normale de fibre extrême σ = N/A ± |My|/Wy ± |Mz|/Wz (théorie des poutres, MPa). "
+                                         "Ni cisaillement ni torsion : ce n'est pas une contrainte de Von Mises."));
     connect(m_actionResultsStress, &QAction::triggered, this, &MainWindow::onActionResultsStress);
 
     m_actionMeasure = new QAction(tr("&Mesurer Distance 3D..."), this);

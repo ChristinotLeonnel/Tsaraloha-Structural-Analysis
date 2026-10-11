@@ -132,6 +132,7 @@ void ResultsDockWidget::setupUi()
     m_comboFamily->addItem(tr("⚡ Effort tranchant Vz"), static_cast<int>(TSA::Geometry::DiagramType::ShearForceVz));
     m_comboFamily->addItem(tr("⚡ Effort tranchant Vy"), static_cast<int>(TSA::Geometry::DiagramType::ShearForceVy));
     m_comboFamily->addItem(tr("↔️ Effort normal N (Traction/Compr.)"), static_cast<int>(TSA::Geometry::DiagramType::AxialForceN));
+    m_comboFamily->addItem(tr("🧮 Contrainte normale σ = N/A ± M/W (MPa)"), static_cast<int>(TSA::Geometry::DiagramType::StressSigma));
     m_comboFamily->addItem(tr("➡️ Flèche UX"), static_cast<int>(TSA::Geometry::DiagramType::DeflectionUx));
     m_comboFamily->addItem(tr("↗️ Flèche UY"), static_cast<int>(TSA::Geometry::DiagramType::DeflectionUy));
     m_comboFamily->addItem(tr("⬇️ Flèche UZ (Verticale)"), static_cast<int>(TSA::Geometry::DiagramType::DeflectionUz));

@@ -57,6 +57,34 @@ static std::vector<TSA::Analysis::StationForces> getAllStations(const TSA::Analy
     res.push_back(el.endForces);
     return res;
 }
+
+/// Section de l'élément de résultat (contraintes), nullptr si inconnue.
+static const TSA::Model::Section* sectionOf(const TSA::Model::Model* m, const TSA::Analysis::ElementKey& key)
+{
+    if (!m) return nullptr;
+    using K = TSA::Analysis::StructuralElementKind;
+    switch (key.kind)
+    {
+    case K::Beam: { const auto* e = m->getBeam(key.id); return e ? &e->section() : nullptr; }
+    case K::Column: { const auto* e = m->getColumn(key.id); return e ? &e->section() : nullptr; }
+    case K::Truss: { const auto* e = m->getTrussMember(key.id); return e ? &e->section() : nullptr; }
+    case K::Cable: { const auto* e = m->getCable(key.id); return e ? &e->section() : nullptr; }
+    }
+    return nullptr;
+}
+
+/// Stations à tracer : pour la contrainte normale, N est remplacé par σ (MPa) calculé avec la section.
+static std::vector<TSA::Analysis::StationForces> displayStations(const TSA::Model::Model* m, const TSA::Analysis::ElementKey& key,
+                                                                 const TSA::Analysis::ElementResults& el, TSA::Geometry::DiagramType type,
+                                                                 bool kiloNewtons)
+{
+    auto stations = getAllStations(el);
+    if (type != TSA::Geometry::DiagramType::StressSigma) return stations;
+    const auto* sec = sectionOf(m, key);
+    if (!sec) return {};
+    for (auto& st : stations) st.N = TSA::Geometry::DiagramGeometry::normalStressMPa(st, sec->area(), sec->wy(), sec->wz(), kiloNewtons);
+    return stations;
+}
 } // namespace
 
 namespace TSA::Viewer
@@ -365,9 +393,10 @@ void ResultsVisualManager::autoComputeDiagramScale()
     if (!m_results || !m_model || m_diagramType == TSA::Geometry::DiagramType::None) return;
 
     double maxVal = 0.0;
+    const bool kN = m_results->units().force == "kN";
     for (const auto& [id, el] : m_results->allElementResults())
     {
-        auto stations = getAllStations(el);
+        auto stations = displayStations(m_model, id, el, m_diagramType, kN);
         for (const auto& st : stations)
         {
             double v = std::abs(TSA::Geometry::DiagramGeometry::getStationValue(st, m_diagramType));
@@ -663,10 +692,11 @@ void ResultsVisualManager::updateDiagramShapes()
         return;
     }
 
+    const bool kN = m_results->units().force == "kN";
     for (const auto& [elKey, elemRes] : m_results->allElementResults())
     {
         const int elId = elKey.id;
-        auto stations = getAllStations(elemRes);
+        auto stations = displayStations(m_model, elKey, elemRes, m_diagramType, kN);
         if (stations.empty()) continue;
 
         gp_Pnt p1, p2;
@@ -741,6 +771,10 @@ void ResultsVisualManager::updateDiagramShapes()
                 m_diagramType == TSA::Geometry::DiagramType::TorsionMx)
             {
                 ais->SetColor(Quantity_NOC_CORAL);
+            }
+            else if (m_diagramType == TSA::Geometry::DiagramType::StressSigma)
+            {
+                ais->SetColor(Quantity_NOC_PURPLE);
             }
             else if (m_diagramType == TSA::Geometry::DiagramType::AxialForceN)
             {

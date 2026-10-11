@@ -26,7 +26,8 @@ enum class DiagramType
     DeflectionUres, ///< U résultant (Norme du déplacement)
     RotationRx,     ///< RX (Rotation de torsion rad)
     RotationRy,     ///< RY (Rotation de flexion Y rad)
-    RotationRz      ///< RZ (Rotation de flexion Z rad)
+    RotationRz,     ///< RZ (Rotation de flexion Z rad)
+    StressSigma     ///< σ de fibre extrême (MPa) = N/A ± |My|/Wy ± |Mz|/Wz — théorie des poutres, traction > 0
 };
 
 /**
@@ -36,6 +37,12 @@ enum class DiagramType
 class DiagramGeometry
 {
 public:
+    /// Contrainte normale de fibre extrême (MPa, traction > 0) d'une station : σ = N/A ± (|My|/Wy + |Mz|/Wz),
+    /// signe de l'extrême le plus grand en valeur absolue. Efforts en kN et kN·m (kiloNewtons) ou N et N·m.
+    /// Sans module de flexion (câble, treillis), seul N/A est retenu. Ne tient compte ni du cisaillement ni
+    /// de la torsion (ce n'est pas une contrainte de Von Mises).
+    static double normalStressMPa(const TSA::Analysis::StationForces& st, double area, double wy, double wz, bool kiloNewtons = true);
+
     /**
      * @brief Retourne le nom lisible du diagramme (ex. "Moment Fléchissant Mz").
      */
