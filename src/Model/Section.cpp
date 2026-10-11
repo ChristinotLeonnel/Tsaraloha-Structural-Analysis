@@ -19,7 +19,12 @@ double Section::area() const
     case SectionShape::Circular:
         return M_PI * diameter * diameter / 4.0;
     case SectionShape::IShape:
-        return 2.0 * (width * tf) + (height - 2.0 * tf) * tw;
+    {
+        // Profil laminé normalisé (rayon de congé connu) : congés âme-aile inclus (valeurs des catalogues).
+        double af = 0.0;
+        if (const double r = rootRadius(); r > 0.0) rolledIShapeFillets(height, tw, tf, r, &af, nullptr, nullptr);
+        return 2.0 * (width * tf) + (height - 2.0 * tf) * tw + af;
+    }
     case SectionShape::Pipe:
         return M_PI * (diameter * diameter - (diameter - 2 * tw) * (diameter - 2 * tw)) / 4.0;
     case SectionShape::BoxHollow:
@@ -46,7 +51,15 @@ double Section::iy() const
     case SectionShape::UPN:
     {
         double hInner = height - 2.0 * tf;
-        return (width * std::pow(height, 3) - (width - tw) * std::pow(hInner, 3)) / 12.0;
+        double base = (width * std::pow(height, 3) - (width - tw) * std::pow(hInner, 3)) / 12.0;
+        if (shape == SectionShape::IShape)
+            if (const double r = rootRadius(); r > 0.0)
+            {
+                double fy = 0.0;
+                rolledIShapeFillets(height, tw, tf, r, nullptr, &fy, nullptr);
+                base += fy;
+            }
+        return base;
     }
     case SectionShape::Pipe:
         return (M_PI * (std::pow(diameter, 4) - std::pow(diameter - 2 * tw, 4))) / 64.0;
@@ -54,8 +67,12 @@ double Section::iy() const
         return (width * std::pow(height, 3) - (width - 2 * tw) * std::pow(height - 2 * tf, 3)) / 12.0;
     case SectionShape::Angle:
     {
-        double t = (tw > 0.0) ? tw : 0.008;
-        return (t * std::pow(height, 3) + width * std::pow(t, 3)) / 12.0;
+        // Axe horizontal passant par le centre de gravité (Huygens) : aile verticale h × t et aile horizontale
+        // (b − t) × t. L'ancienne formule omettait les termes de transport (inertie ≈ divisée par 2).
+        const double t = (tw > 0.0) ? tw : 0.008;
+        const double zc = centroidFromBottom();
+        const double a1 = t * height, a2 = (width - t) * t;
+        return t * std::pow(height, 3) / 12.0 + a1 * std::pow(height / 2.0 - zc, 2) + (width - t) * std::pow(t, 3) / 12.0 + a2 * std::pow(t / 2.0 - zc, 2);
     }
     case SectionShape::TSection:
     {
@@ -86,13 +103,18 @@ double Section::iz() const
     {
         double iflange = 2.0 * (tf * std::pow(width, 3) / 12.0);
         double iweb = (height - 2.0 * tf) * std::pow(tw, 3) / 12.0;
-        return iflange + iweb;
+        double fz = 0.0;
+        if (const double r = rootRadius(); r > 0.0) rolledIShapeFillets(height, tw, tf, r, nullptr, nullptr, &fz);
+        return iflange + iweb + fz;
     }
     case SectionShape::UPN:
     {
-        double iflange = 2.0 * (tf * std::pow(width, 3) / 12.0);
-        double iweb = (height - 2.0 * tf) * std::pow(tw, 3) / 12.0;
-        return iflange + iweb;
+        // Axe vertical passant par le centre de gravité, décalé vers l'âme (Huygens). L'ancienne formule prenait
+        // chaque paroi autour de son propre centre (Iz ≈ divisée par 2). Ailes à épaisseur moyenne constante :
+        // l'inclinaison des ailes et les congés ne sont pas modélisés (UPN 200 : +15 % sur Iz, docs/AUDIT_CALCULS.md).
+        const double yc = centroidFromLeft();
+        const double af = width * tf, hw = height - 2.0 * tf, aw = hw * tw;
+        return 2.0 * (tf * std::pow(width, 3) / 12.0 + af * std::pow(width / 2.0 - yc, 2)) + hw * std::pow(tw, 3) / 12.0 + aw * std::pow(tw / 2.0 - yc, 2);
     }
     case SectionShape::Pipe:
         return (M_PI * (std::pow(diameter, 4) - std::pow(diameter - 2 * tw, 4))) / 64.0;
@@ -100,8 +122,11 @@ double Section::iz() const
         return (height * std::pow(width, 3) - (height - 2 * tf) * std::pow(width - 2 * tw, 3)) / 12.0;
     case SectionShape::Angle:
     {
-        double t = (tw > 0.0) ? tw : 0.008;
-        return (t * std::pow(width, 3) + height * std::pow(t, 3)) / 12.0;
+        // Axe vertical passant par le centre de gravité (Huygens) : aile horizontale b × t, aile verticale (h − t) × t.
+        const double t = (tw > 0.0) ? tw : 0.008;
+        const double yc = centroidFromLeft();
+        const double a1 = t * width, a2 = (height - t) * t;
+        return t * std::pow(width, 3) / 12.0 + a1 * std::pow(width / 2.0 - yc, 2) + (height - t) * std::pow(t, 3) / 12.0 + a2 * std::pow(t / 2.0 - yc, 2);
     }
     case SectionShape::TSection:
     {
@@ -228,10 +253,81 @@ double Section::it() const
     return iy() + iz();
 }
 
+double Section::centroidFromBottom() const
+{
+    switch (shape)
+    {
+    case SectionShape::TSection:
+    {
+        // Aile en haut (b × tf), âme en dessous ((h − tf) × tw)
+        const double af = width * tf, aw = (height - tf) * tw;
+        return (af + aw) > 0.0 ? (af * (height - tf / 2.0) + aw * (height - tf) / 2.0) / (af + aw) : height / 2.0;
+    }
+    case SectionShape::Angle:
+    {
+        // Aile verticale (h × t) à gauche, aile horizontale ((b − t) × t) en bas
+        const double t = (tw > 0.0) ? tw : 0.008;
+        const double a1 = t * height, a2 = (width - t) * t;
+        return (a1 + a2) > 0.0 ? (a1 * height / 2.0 + a2 * t / 2.0) / (a1 + a2) : height / 2.0;
+    }
+    default: return height / 2.0;
+    }
+}
+
+double Section::centroidFromLeft() const
+{
+    switch (shape)
+    {
+    case SectionShape::UPN:
+    {
+        // Âme à gauche (dos), ailes vers la droite
+        const double af = width * tf, hw = height - 2.0 * tf, aw = hw * tw;
+        return (2.0 * af + aw) > 0.0 ? (2.0 * af * width / 2.0 + aw * tw / 2.0) / (2.0 * af + aw) : width / 2.0;
+    }
+    case SectionShape::Angle:
+    {
+        const double t = (tw > 0.0) ? tw : 0.008;
+        const double a1 = t * width, a2 = (height - t) * t;
+        return (a1 + a2) > 0.0 ? (a1 * width / 2.0 + a2 * t / 2.0) / (a1 + a2) : width / 2.0;
+    }
+    default: return width / 2.0;
+    }
+}
+
+double Section::iyz() const
+{
+    if (shape != SectionShape::Angle) return 0.0;
+    const double t = (tw > 0.0) ? tw : 0.008;
+    const double yc = centroidFromLeft(), zc = centroidFromBottom();
+    // Aile verticale : centre (t/2, h/2) ; aile horizontale : centre (t + (b − t)/2, t/2)
+    const double a1 = t * height, a2 = (width - t) * t;
+    return a1 * (t / 2.0 - yc) * (height / 2.0 - zc) + a2 * (t + (width - t) / 2.0 - yc) * (t / 2.0 - zc);
+}
+
+void Section::rolledIShapeFillets(double h, double tw, double tf, double r, double* area, double* iy, double* iz)
+{
+    // Congé = carré r × r privé d'un quart de disque de rayon r centré au coin opposé (« écoinçon »).
+    //   aire a = (1 − π/4)·r² ; centre à e = r·(10 − 3π)/(12 − 3π) du coin âme-aile ;
+    //   inertie propre (axe parallèle à un côté, par le centre) : I0 − a·e², I0 = r⁴/3 − Iq, Iq = inertie du quart
+    //   de disque par rapport au même côté.
+    const double pi = 3.14159265358979323846;
+    const double a = (1.0 - pi / 4.0) * r * r;
+    const double e = r * (10.0 - 3.0 * pi) / (12.0 - 3.0 * pi);
+    const double aq = pi * r * r / 4.0, dq = 4.0 * r / (3.0 * pi);
+    const double iqCentroid = pi * std::pow(r, 4) / 16.0 - aq * dq * dq;
+    const double iqSide = iqCentroid + aq * std::pow(r - dq, 2);
+    const double iOwn = (std::pow(r, 4) / 3.0 - iqSide) - a * e * e;
+    if (area) *area = 4.0 * a;
+    if (iy) *iy = 4.0 * (iOwn + a * std::pow(h / 2.0 - tf - e, 2));
+    if (iz) *iz = 4.0 * (iOwn + a * std::pow(tw / 2.0 + e, 2));
+}
+
 double Section::wy() const
 {
-    double h2 = std::max(1e-4, height / 2.0);
-    return iy() / h2;
+    // Fibre la plus éloignée du centre de gravité (sections dissymétriques : T, cornière)
+    const double zc = centroidFromBottom();
+    const double v = std::max({ 1e-4, zc, height - zc });
+    return iy() / v;
 }
 
 double Section::wz() const
@@ -239,9 +335,10 @@ double Section::wz() const
     // `width` est toujours correctement renseigné (y compris pour Circular/Pipe, où les
     // usines recopient le diamètre dans `width`) : pas besoin de retester `diameter`, qui
     // conserve sa valeur par défaut (0.30) pour toutes les formes non circulaires et fausserait
-    // le résultat.
-    double w2 = std::max(1e-4, width / 2.0);
-    return iz() / w2;
+    // le résultat. Fibre extrême : bout d'aile d'un UPN ou d'une cornière.
+    const double yc = centroidFromLeft();
+    const double w = std::max({ 1e-4, yc, width - yc });
+    return iz() / w;
 }
 
 Section Section::rectangular(double b, double h, const std::string& name)

@@ -49,8 +49,21 @@ struct Section
     double rootRadius() const;
     /// J d'un profil en I laminé à congés (El Darwish & Johnston, unités cohérentes).
     static double rolledIShapeTorsionConstant(double h, double b, double tw, double tf, double r);
-    double wy() const; // Module de résistance élastique fort Wel,y = Iy / (h/2) (m3)
-    double wz() const; // Module de résistance élastique faible Wel,z = Iz / (b/2) (m3)
+    /// Module de résistance élastique Wel,y = Iy / v_max (m³), v_max = distance du centre de gravité à la fibre la
+    /// plus éloignée selon la hauteur (h/2 pour les sections symétriques ; T et cornière : fibre opposée au centre).
+    double wy() const;
+    /// Module de résistance élastique Wel,z = Iz / w_max (m³) (b/2 si symétrique ; UPN et cornière : fibre extrême).
+    double wz() const;
+    /// Position du centre de gravité : distance à la fibre inférieure (selon h) et à la fibre de gauche (selon b,
+    /// dos de l'âme d'un UPN, face extérieure de l'aile verticale d'une cornière) (m).
+    double centroidFromBottom() const;
+    double centroidFromLeft() const;
+    /// Produit d'inertie Iyz dans les axes parallèles aux côtés (m⁴) : non nul pour une cornière, dont les axes
+    /// principaux sont inclinés. Le calcul utilise Iy et Iz (axes géométriques) : couplage des flexions négligé,
+    /// signalé (docs/AUDIT_CALCULS.md).
+    double iyz() const;
+    /// Contribution des quatre congés âme-aile d'un profil en I laminé (rayon r) : aire et inerties (m², m⁴).
+    static void rolledIShapeFillets(double h, double tw, double tf, double r, double* area, double* iy, double* iz);
 
     // Usines prédéfinies
     static Section rectangular(double b, double h, const std::string& name = "");

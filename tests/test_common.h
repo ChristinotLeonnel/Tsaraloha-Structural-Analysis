@@ -200,3 +200,4 @@ bool runSuite_Torsion(int& passed);
 bool runSuite_MeshView(int& passed);
 bool runSuite_DemoModels(int& passed);
 bool runSuite_Surfaces(int& passed);
+bool runSuite_Audit(int& passed);
