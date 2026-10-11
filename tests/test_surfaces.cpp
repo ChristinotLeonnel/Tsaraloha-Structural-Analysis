@@ -17,7 +17,9 @@
 //        linéique répartie, tassement), pied de voile interrompu par une porte, bords inexistants, surface non transmise et
 //        conditions redondantes signalés, persistance ;
 //   361  charges sur une zone localisée (rectangle du repère local, découpe exacte des éléments et des ouvertures) et à
-//        variation linéaire (pression hydrostatique sur un voile : résultante γ·h²/2·L, point d'application à h/3).
+//        variation linéaire (pression hydrostatique sur un voile : résultante γ·h²/2·L, point d'application à h/3) ;
+//   362  unités (essai G) : même modèle (coques, poids propre, charge surfacique, appuis linéiques élastiques, masses) calculé
+//        en kN·m et en N·m : déplacements et fréquences identiques, réactions et masses dans le rapport 1000, équilibre.
 
 #include "test_common.h"
 
@@ -33,6 +35,7 @@
 #include "NDC/NDCExporter.h"
 #include "NDC/ReportManager.h"
 
+#include <QJsonObject>
 #include <QTemporaryDir>
 
 #include <functional>
@@ -833,6 +836,63 @@ bool runSuite_Surfaces(int& passed)
         if (same) same = back.loadManager().surfaceLoads().begin()->second == v.loadManager().surfaceLoads().begin()->second;
         TEST_CHECK(same, "Test 361: zone et variation linéaire relues à l'identique (" << err << ")");
         std::cout << "[PASS] Test 361: Charges sur zone et à variation linéaire" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 362 : unités (essai G) — calcul en kN et en N
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(5, 0, 0), n3 = m.addNode(5, 4, 0), n4 = m.addNode(0, 4, 0);
+        const int s = m.addSlab({ n1, n2, n3, n4 }, 0.2, "Dalle");
+        TSA::Model::SurfaceEdgeSupport rigid, spring;
+        rigid.edge = 3;   // bord n4 → n1 encastré
+        rigid.fixed = { true, true, true, true, true, true };
+        spring.edge = 1;  // bord n2 → n3 sur appui élastique vertical
+        spring.fixed = { true, true, false, false, false, false };
+        spring.stiffness = { 0, 0, 2000.0, 0, 0, 0 };
+        m.getSlab(s)->setEdgeSupports({ rigid, spring });
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        TSA::Model::SurfaceLoad sl;
+        sl.surfaceId = s;
+        sl.loadCaseId = lc;
+        sl.value = 3.0;
+        m.loadManager().addSurfaceLoad(sl);
+        auto run = [&](bool kN, bool modal) {
+            return runSurfaces(m, settings2D(0.5, true), true, modal ? 0 : lc, [&](TSA::Analysis::AnalysisContext& c) {
+                QJsonObject o = c.settingsFor("opensees");
+                o["useKiloNewtons"] = kN;
+                c.engineSettings["opensees"] = o;
+                if (modal) c.type = TSA::Analysis::AnalysisType::Modal, c.common.modeCount = 3;
+            });
+        };
+        const auto a = run(true, false), b = run(false, false);
+        TEST_CHECK(a.run.success && b.run.success, "Test 362: calculs en kN et en N (" << a.run.message << " / " << b.run.message << ")");
+        double maxDiff = 0, wMax = 0;
+        for (const auto& [id, d] : a.run.results.surfaceNodeDisplacements())
+        {
+            const auto& e = b.run.results.surfaceNodeDisplacements().at(id);
+            maxDiff = std::max(maxDiff, std::abs(d.uz - e.uz));
+            wMax = std::max(wMax, std::abs(d.uz));
+        }
+        TEST_CHECK(wMax > 1e-5 && maxDiff < 1e-9 + 1e-7 * wMax, "Test 362: déplacements identiques (écart " << maxDiff << " m sur " << wMax << " m)");
+        auto sumRz = [](const AnalysisRunResult& r) {
+            double z = 0;
+            for (const auto& [id, rc] : r.results.surfaceNodeReactions()) z += rc.rz;
+            for (const auto& [id, rc] : r.results.allReactions()) z += rc.rz;
+            return z;
+        };
+        const double expected = 3.0 * 20.0 + 2500 * 9.81 * 0.2 * 20.0 / 1000.0;   // q·A + ρ·g·e·A (kN)
+        TEST_CHECK(std::abs(sumRz(a.run) - expected) < 1e-3 * expected && std::abs(sumRz(b.run) - 1000.0 * expected) < 1e-3 * 1000.0 * expected,
+                   "Test 362: Σ Rz = " << sumRz(a.run) << " kN et " << sumRz(b.run) << " N (attendu " << expected << " kN)");
+        const auto ma = run(true, true), mb = run(false, true);
+        TEST_CHECK(ma.run.success && mb.run.success && !ma.run.results.modal().empty() && !mb.run.results.modal().empty(),
+                   "Test 362: calculs modaux (" << ma.run.message << " / " << mb.run.message << ")");
+        const auto& fa = ma.run.results.modal(), & fb = mb.run.results.modal();
+        TEST_CHECK(std::abs(fa.modes[0].frequency - fb.modes[0].frequency) < 1e-6 * fa.modes[0].frequency &&
+                       std::abs(fb.totalMass[2] - 1000.0 * fa.totalMass[2]) < 1e-6 * fb.totalMass[2] && std::abs(fa.totalMass[2] - 2.5 * 0.2 * 20.0) < 1e-9,
+                   "Test 362: f1 = " << fa.modes[0].frequency << " / " << fb.modes[0].frequency << " Hz, masses " << fa.totalMass[2] << " t / " << fb.totalMass[2] << " kg");
+        std::cout << "[PASS] Test 362: Unités kN / N : déplacements, réactions, fréquences et masses cohérents" << std::endl;
         ++passed;
     }
     return true;
