@@ -68,6 +68,8 @@ struct AnalysisParameters
     int targetCombinationId = 0;    ///< 0 = cas individuels
     bool useKiloNewtons = true;     ///< true: kN, m, kPa, kNm | false: N, m, Pa, Nm
     bool includeSelfWeight = true;
+    /// Blocages automatiques des appuis articulés / simples (CalculationSnapshot::capture).
+    SupportRestraintMode supportRestraints = SupportRestraintMode::Fork;
 
     // Méthodes et algorithmes de résolution
     NonlinearAlgorithm algorithmType = NonlinearAlgorithm::Newton;

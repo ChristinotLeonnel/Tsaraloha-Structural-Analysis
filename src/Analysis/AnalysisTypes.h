@@ -16,6 +16,20 @@ namespace TSA::Analysis
 /// Famille d'élément TSA. Les identifiants TSA ne sont uniques qu'à l'intérieur d'une famille
 /// (Model : compteurs séparés pour poutres, poteaux, treillis, câbles) : un élément calculé est
 /// donc toujours désigné par le couple (famille, id), jamais par l'id seul.
+/// Blocages ajoutés par le calcul 3D aux appuis articulés (rotule sphérique) et simples, dont les rotations
+/// sont libres. Choix de l'utilisateur (paramètres d'analyse), jamais appliqué en silence :
+///  - Fork   : appui à fourche, rotation autour de l'axe de la barre (si parallèle à un axe global) ;
+///             structures planes verticales : rotation hors plan (et translation hors plan des appuis simples) ;
+///  - Legacy : comportement des versions antérieures : RX globale toujours bloquée, TY des appuis simples ;
+///             valeur des projets enregistrés avant l'introduction de ce réglage ;
+///  - None   : aucun blocage : rotules sphériques réelles, un mécanisme éventuel est signalé.
+enum class SupportRestraintMode
+{
+    Fork,
+    Legacy,
+    None
+};
+
 enum class StructuralElementKind
 {
     Beam,

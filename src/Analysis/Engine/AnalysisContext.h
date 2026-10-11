@@ -79,6 +79,9 @@ struct CommonAnalysisSettings
     /// Transmettre le maillage 1D généré (barres subdivisées) aux moteurs qui le prennent en charge.
     /// Option du SOLVEUR, distincte des paramètres du mailleur (docs/MESH.md §J).
     bool useGeneratedMesh = true;
+    /// Blocages automatiques des appuis articulés / simples. Nouveau projet : appui à fourche ; projet enregistré
+    /// avant ce réglage (clé absente) : mode historique, signalé avant le calcul (aucune modification silencieuse).
+    SupportRestraintMode supportRestraints = SupportRestraintMode::Fork;
 };
 
 struct AnalysisContext

@@ -99,6 +99,7 @@ QJsonObject OpenSeesEngine::settingsFromParameters(const AnalysisParameters& p)
 AnalysisParameters OpenSeesEngine::parametersFromContext(const AnalysisContext& context)
 {
     AnalysisParameters p;
+    p.supportRestraints = context.common.supportRestraints;
     const QJsonObject s = context.settingsFor(kId);
     auto i = [&](const char* k, int d) { return s.value(k).toInt(d); };
     auto d = [&](const char* k, double v) { return s.value(k).toDouble(v); };

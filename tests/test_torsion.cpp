@@ -708,6 +708,108 @@ bool runTorsionMechanics(int& passed)
         std::cout << "[PASS] Test 332: J et Iw des profils laminés" << std::endl;
         ++passed;
     }
+
+    // TEST 333 : modes de blocage des appuis articulés — choix explicite, historique conservé, risques signalés
+    {
+        std::cout << "\n--- TEST 333: Appuis articulés — fourche, historique, aucun blocage ---" << std::endl;
+        using TSA::Analysis::SupportRestraintMode;
+        const double L = 6.0, q = 10.0;
+        auto yBeam = [&](Model& mdl) {
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(0, L, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::pinned());
+            mdl.getNode(b)->setSupport(SupportDefinition::pinned());
+            const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), q));
+            return bar;
+        };
+        // 1. Poutre selon Y sur deux articulations
+        {
+            Model mdl;
+            const int bar = yBeam(mdl);
+            AnalysisParameters pf = p;
+            pf.supportRestraints = SupportRestraintMode::Fork;
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, pf, r), "Test 333: mode fourche — poutre selon Y calculée");
+            double w = 0.0;
+            for (const auto& st : r.getElementResults(StructuralElementKind::Beam, bar)->intermediateStations)
+                if (std::abs(st.position - L / 2) < 1e-9) w = st.uz;
+            TEST_CHECK(relClose(w, -5.0 * q * std::pow(L, 4) / (384.0 * E * sec.iy()), 2e-5) && r.executionMetadata().isEquilibriumVerified,
+                       "Test 333: mode fourche — 5qL⁴/384EI, équilibre vérifié");
+
+            AnalysisParameters pl = p;
+            pl.supportRestraints = SupportRestraintMode::Legacy;
+            const auto report = TSA::Standards::ModelValidator::validateForAnalysis(mdl, pl);
+            bool risk = false;
+            for (const auto& i : report.issues())
+                risk |= i.severity == TSA::Standards::ValidationSeverity::Warning && i.message.find("RX globale") != std::string::npos
+                        && i.message.find("Risque") != std::string::npos && i.message.find("Correction") != std::string::npos;
+            TEST_CHECK(risk, "Test 333: mode historique — avertissement (DDL RX, risque, correction) avant le calcul");
+            const auto legacy = CalculationSnapshot::capture(mdl, nullptr, SupportRestraintMode::Legacy);
+            bool rxOnly = !legacy.automaticRestraints().empty();
+            for (const auto& ar : legacy.automaticRestraints()) rxOnly &= ar.dof == 3;
+            TEST_CHECK(rxOnly, "Test 333: mode historique — RX globale bloquée (comportement des versions antérieures, tracé)");
+            OpenSeesSolver solver;
+            QString e;
+            const bool ok = solver.solveSynchronous(mdl, pl, &e);
+            std::cout << "  mode historique, poutre selon Y : " << (ok ? "calculé" : e.toStdString()) << std::endl;
+            TEST_CHECK(!ok && (e.contains(QStringLiteral("Mécanisme de torsion")) || e.contains(QStringLiteral("mécanisme"))),
+                       "Test 333: mode historique — torsion de la poutre selon Y libre : mécanisme signalé, aucun résultat");
+
+            AnalysisParameters pn = p;
+            pn.supportRestraints = SupportRestraintMode::None;
+            TEST_CHECK(CalculationSnapshot::capture(mdl, nullptr, SupportRestraintMode::None).automaticRestraints().empty(),
+                       "Test 333: aucun blocage — aucun DDL ajouté");
+            OpenSeesSolver s2;
+            TEST_CHECK(!s2.solveSynchronous(mdl, pn, &e) && e.contains(QStringLiteral("Mécanisme de torsion")),
+                       "Test 333: aucun blocage — mécanisme de torsion détecté avant le calcul");
+        }
+        // 2. Portique plan XZ, pieds articulés, charges dans le plan : fourche et historique identiques, blocages sans effort
+        {
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(0, 0, 4), c = mdl.addNode(6, 0, 4), d = mdl.addNode(6, 0, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::pinned());
+            mdl.getNode(d)->setSupport(SupportDefinition::pinned());
+            mdl.addColumn(a, b, Section::heb(200), mat);
+            const int beam = mdl.addBar(b, c, Section::ipe(300), mat, BarRole::Beam);
+            mdl.addColumn(d, c, Section::heb(200), mat);
+            const int lc = addCase(mdl);
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, 12.0));
+            mdl.loadManager().addNodalLoad(NodalLoad(0, b, lc, 8.0, 0, 0));
+            ResultsModel rf, rl;
+            AnalysisParameters pf = p, pl = p;
+            pf.supportRestraints = SupportRestraintMode::Fork;
+            pl.supportRestraints = SupportRestraintMode::Legacy;
+            TEST_CHECK(solve(mdl, pf, rf) && solve(mdl, pl, rl), "Test 333: portique plan — calculs fourche et historique");
+            const auto df = rf.nodeDisplacement(c), dl = rl.nodeDisplacement(c);
+            TEST_CHECK(std::abs(df.ux - dl.ux) < 1e-12 && std::abs(df.uz - dl.uz) < 1e-12 && std::abs(df.ry - dl.ry) < 1e-12,
+                       "Test 333: portique plan — résultats identiques (structure plane : blocages hors plan sans effet)");
+            const auto& eq = rf.equilibrium();
+            TEST_CHECK(rf.executionMetadata().isEquilibriumVerified && std::abs(eq.errorFx()) < 1e-9 && std::abs(eq.errorFz()) < 1e-9
+                           && rf.executionMetadata().warnings.empty() && rl.executionMetadata().warnings.empty(),
+                       "Test 333: portique plan — équilibre vérifié, aucun effort repris par un blocage automatique");
+            TEST_CHECK(relClose(rf.getNodeReaction(a)->rx + rf.getNodeReaction(d)->rx, -8.0, 1e-9)
+                           && relClose(rf.getNodeReaction(a)->rz + rf.getNodeReaction(d)->rz, 12.0 * 6.0, 1e-9),
+                       "Test 333: portique plan — réactions ΣRx = −H, ΣRz = q·L");
+        }
+        // 3. Réglage enregistré : nouveau projet → fourche ; projet antérieur (clé absente) → historique
+        {
+            TSA::Analysis::AnalysisContext fresh;
+            TEST_CHECK(fresh.common.supportRestraints == SupportRestraintMode::Fork, "Test 333: nouveau projet — appui à fourche");
+            QJsonObject json = fresh.toJson();
+            QJsonObject common = json.value("common").toObject();
+            TEST_CHECK(common.value("pinnedSupports").toString() == "fork", "Test 333: réglage enregistré (clé pinnedSupports)");
+            common.remove("pinnedSupports");
+            json["common"] = common;
+            TEST_CHECK(TSA::Analysis::AnalysisContext::fromJson(json).common.supportRestraints == SupportRestraintMode::Legacy,
+                       "Test 333: projet antérieur (clé absente) — mode historique conservé, non modifié en silence");
+            common["pinnedSupports"] = "none";
+            json["common"] = common;
+            TEST_CHECK(TSA::Analysis::AnalysisContext::fromJson(json).common.supportRestraints == SupportRestraintMode::None,
+                       "Test 333: relecture du mode « aucun blocage »");
+        }
+        std::cout << "[PASS] Test 333: Appuis articulés — modes de blocage" << std::endl;
+        ++passed;
+    }
     return true;
 }
 } // namespace

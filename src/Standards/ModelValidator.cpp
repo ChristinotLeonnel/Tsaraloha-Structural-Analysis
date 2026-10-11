@@ -463,7 +463,8 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
     //     singulière. Détecté avant le calcul, avec les barres concernées.
     {
         using TSA::Analysis::SnapshotElement;
-        const auto snap = TSA::Analysis::CalculationSnapshot::capture(model);
+        const auto snap = TSA::Analysis::CalculationSnapshot::capture(model, nullptr, params.supportRestraints);
+        for (const auto& w : snap.restraintWarnings()) report.addWarning("Appuis", w, 0, "RDM");
         std::map<int, int> parent;
         std::function<int(int)> root = [&](int a) { return parent[a] == a ? a : parent[a] = root(parent[a]); };
         std::vector<const SnapshotElement*> frames;
@@ -507,8 +508,9 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
             if (members.size() > 5) list += "…";
             report.addError("Stabilité",
                 "Mécanisme de torsion : " + list + " (barres alignées) peuvent tourner librement autour de leur axe, aucun appui "
-                "ne bloquant cette rotation. Bloquer la rotation autour de l'axe de la barre sur au moins un nœud "
-                "(encastrement, appui à fourche ou ressort en rotation).",
+                "ne bloquant cette rotation (matrice singulière). Correction : bloquer la rotation autour de l'axe de la barre "
+                "sur au moins un nœud (encastrement, appui à fourche défini, ressort en rotation), ou choisir le mode "
+                "« appui à fourche » des appuis articulés dans les paramètres d'analyse si la barre est parallèle à un axe global.",
                 members.front()->id, "RDM");
         }
     }
