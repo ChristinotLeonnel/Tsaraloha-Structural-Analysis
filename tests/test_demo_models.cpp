@@ -27,6 +27,7 @@
 #include "Model/Load/LoadManager.h"
 #include "NDC/ReportManager.h"
 #include "Viewer/OccView.h"
+#include "Viewer/ResultsVisualManager.h"
 
 #include <QFileInfo>
 #include <QThread>
@@ -450,6 +451,7 @@ DemoLoads addStandardCases(Model& m, bool wind)
 {
     DemoLoads l;
     auto& lm = m.loadManager();
+    lm.clear(); // cas et combinaisons Eurocode par défaut remplacés par ceux du projet
     l.G = lm.addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead, true, 1.0, "Poids propre et charges permanentes"));
     l.Q = lm.addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live, false, 1.0, "Charges d'exploitation"));
     if (wind) l.W = lm.addLoadCase(LoadCase(0, "W", LoadCaseCategory::Wind, false, 1.0, "Vent (charges nodales en façade)"));
@@ -992,6 +994,9 @@ Topology inspect(const Model& m)
 
 bool solveSelfWeight(Model& m, double* maxDisp, std::string* error)
 {
+    // Un seul cas : le LoadManager d'un modèle neuf contient déjà des cas Eurocode par défaut (dont un G avec poids
+    // propre) ; les conserver compterait le poids propre deux fois dans le calcul « tous les cas ».
+    m.loadManager().clear();
     m.loadManager().addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead, true, 1.0));
     OpenSeesSolver solver;
     AnalysisParameters params;
@@ -1268,11 +1273,18 @@ bool runDemoProjects(int& passed, const QString& outDir, const QString& tmpDir)
             cfg.engineerName = QStringLiteral("Généré par la suite de tests TSA");
             cfg.clientName = QStringLiteral("—");
             int shots = 0;
-            mgr.setSnapshotProvider([&view, &shots](const QString&, int w, int h) -> QImage {
+            auto resultsForView = std::make_shared<ResultsModel>(ru);
+            mgr.setSnapshotProvider([&view, &shots, resultsForView](const QString& type, int w, int h) -> QImage {
                 ++shots;
+                // Vue réelle de TSA : charges masquées ; « deformed » : résultats du calcul ELU, déformée amplifiée
+                view.setLoadsVisible(false);
+                view.setResultsModel(type == QLatin1String("deformed") ? resultsForView : nullptr);
+                if (type == QLatin1String("deformed") && view.resultsVisual()) view.resultsVisual()->setDeformedVisible(true);
+                view.resize(w / 2, h / 2);
+                for (int k = 0; k < 10; ++k) QApplication::processEvents();
                 view.viewIsometric();
                 view.fitModel();
-                for (int k = 0; k < 5; ++k) QApplication::processEvents();
+                for (int k = 0; k < 10; ++k) QApplication::processEvents();
                 return view.captureViewImage(w, h);
             });
             const auto doc = mgr.generateReport();
@@ -1282,7 +1294,18 @@ bool runDemoProjects(int& passed, const QString& outDir, const QString& tmpDir)
             const bool okPdf = mgr.exportPdf(pdf, &perr);
             std::cout << "  note " << tpl << " : " << doc.chapters.size() << " chapitres, " << doc.allFigures().size() << " figures, " << doc.allTables().size()
                       << " tableaux, " << shots << " vues, PDF " << QFileInfo(pdf).size() / 1024 << " Ko" << (outDir.isEmpty() ? "" : " → " + pdf.toStdString()) << std::endl;
-            TEST_CHECK(okPdf && !doc.chapters.empty() && QFileInfo(pdf).size() > 20000, "Test " << testNo << ": note de calcul " << tpl << " — " << perr.toStdString());
+            int pages = 0;
+            {
+                QFile file(pdf);
+                if (file.open(QIODevice::ReadOnly))
+                {
+                    const QByteArray bytes = file.readAll();
+                    pages = int(bytes.count("/Type /Page") - bytes.count("/Type /Pages"));
+                }
+            }
+            std::cout << "  note " << tpl << " : " << pages << " page(s) PDF" << std::endl;
+            TEST_CHECK(okPdf && QFileInfo(pdf).size() > 20000 && (simple ? doc.chapters.size() >= 6 : doc.chapters.size() == 18),
+                       "Test " << testNo << ": note de calcul " << tpl << " (" << doc.chapters.size() << " chapitres) — " << perr.toStdString());
         }
         if (!outDir.isEmpty()) std::cout << "  projet écrit : " << path << std::endl;
         std::cout << "[PASS] Test " << testNo << ": " << pr.title << std::endl;
