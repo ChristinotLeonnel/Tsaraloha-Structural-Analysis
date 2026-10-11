@@ -60,7 +60,7 @@ void ResultsDockWidget::syncFromVisualManager(TSA::Viewer::ResultsVisualManager*
         m_comboScalePreset->setCurrentIndex(presetIdx);
     }
     m_spinCustomScale->setValue(visualMgr->deformationScale());
-    m_labelEffectiveScale->setText(tr("Échelle effective : ×%1").arg(visualMgr->deformationScale(), 0, 'f', 1));
+    m_labelEffectiveScale->setText(tr("Échelle effective : ×%1%2").arg(visualMgr->deformationScale(), 0, 'g', 5).arg(std::abs(visualMgr->deformationScale() - 1.0) < 1e-12 ? tr(" (non amplifiée)") : QString()));
 
     // Mode d'affichage déformée
     switch (visualMgr->deformedDisplayMode())
@@ -80,6 +80,7 @@ void ResultsDockWidget::syncFromVisualManager(TSA::Viewer::ResultsVisualManager*
     m_chkReactions->setChecked(visualMgr->areReactionsVisible());
     m_chkDiagramLabels->setChecked(visualMgr->areDiagramLabelsVisible());
     m_chkLegend->setChecked(visualMgr->isLegendVisible());
+    m_chkSectionRotation->setChecked(visualMgr->isSectionRotationVisible());
 
     m_updating = false;
 }
@@ -177,6 +178,15 @@ void ResultsDockWidget::setupUi()
     vDef->addWidget(m_radioBoth);
     vDef->addWidget(m_radioDeformedOnly);
     vDef->addWidget(m_radioInitialOnly);
+    m_chkSectionRotation = new QCheckBox(tr("Rotation des sections (torsion)"), m_grpDeformedMode);
+    m_chkSectionRotation->setChecked(true);
+    m_chkSectionRotation->setToolTip(tr("Fait tourner les sections des poutres et poteaux de leur torsion θx calculée "
+                                        "(amplifiée comme les déplacements) et trace des repères de section. "
+                                        "Une torsion pure ne déplace pas l'axe de la barre : sans cette option, elle reste invisible."));
+    connect(m_chkSectionRotation, &QCheckBox::toggled, this, [this](bool on) {
+        if (!m_updating) emit sectionRotationToggled(on);
+    });
+    vDef->addWidget(m_chkSectionRotation);
     rootLayout->addWidget(m_grpDeformedMode);
 
     // 4. Facteur d'Échelle 3D

@@ -79,6 +79,16 @@ public:
     ScalePreset deformationScalePreset() const { return m_deformationPreset; }
     void setDeformationScalePreset(ScalePreset preset, double customVal = 1.0);
 
+    /// Rotation des sections (torsion θx des poutres et poteaux) appliquée à la déformée, avec repères de
+    /// section. Activée par défaut ; désactivée, la déformée ne montre que les déplacements de l'axe.
+    bool isSectionRotationVisible() const { return m_sectionRotationVisible; }
+    void setSectionRotationVisible(bool visible);
+    /// Plus grande torsion |θx| calculée (rad, non amplifiée) et barre concernée.
+    double maxTwist() const;
+    std::string maxTwistElement() const;
+    /// Nombre de barres dont les repères de torsion sont affichés (0 sans vue 3D).
+    std::size_t sectionMarkerCount() const { return m_twistMarkerShapes.size(); }
+
     // Diagrammes 3D
     TSA::Geometry::DiagramType diagramType() const { return m_diagramType; }
     void setDiagramType(TSA::Geometry::DiagramType type);
@@ -124,6 +134,7 @@ private:
     /// reconstruit que la géométrie d'affichage).
     void rebuildDeformedAxes();
     void applyStructureDisplay(bool deformedShown);
+    const TSA::Model::Section* memberSection(const TSA::Analysis::ElementKey& key, double* rotationDeg) const;
 
     void updateDiagramShapes();
     void clearDiagramShapes();
@@ -162,10 +173,14 @@ private:
     int m_axesFromHermite = 0;
     int m_axesInvalid = 0;
     std::string m_firstAxisProblem;
+    bool m_sectionRotationVisible = true;
+    double m_maxTwist = 0.0;           ///< |θx| max (rad), calculé avec les axes
+    std::string m_maxTwistElement;
 
     // Objets OCCT affichés
     std::map<int, Handle(AIS_Shape)> m_deformedElementShapes;
     std::map<int, Handle(AIS_Shape)> m_deformedNodeShapes;
+    std::vector<Handle(AIS_Shape)> m_twistMarkerShapes;
     std::map<int, Handle(AIS_Shape)> m_diagramShapes;
     std::map<int, std::vector<Handle(AIS_TextLabel)>> m_diagramLabels;
     std::map<int, Handle(AIS_Shape)> m_reactionShapes;

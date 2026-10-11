@@ -53,6 +53,7 @@ signals:
     void deformedToggled(bool visible);
     void deformedDisplayModeChanged(TSA::Viewer::DeformedDisplayMode mode);
     void deformationScalePresetChanged(TSA::Viewer::ScalePreset preset, double customVal);
+    void sectionRotationToggled(bool visible);
     void diagramTypeChanged(TSA::Geometry::DiagramType type);
     void diagramScalePresetChanged(TSA::Viewer::ScalePreset preset, double customVal);
     void diagramLabelsToggled(bool visible);
@@ -106,6 +107,7 @@ private:
     QRadioButton* m_radioInitialOnly = nullptr;
     QRadioButton* m_radioDeformedOnly = nullptr;
     QRadioButton* m_radioBoth = nullptr;
+    QCheckBox* m_chkSectionRotation = nullptr;
 
     // Facteur d'échelle
     QComboBox* m_comboScalePreset = nullptr;

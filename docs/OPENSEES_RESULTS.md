@@ -59,6 +59,19 @@ Les **stations intermédiaires** (diagrammes) restent issues du post-traitement 
 + superposition approchée des charges) : voir known-issues BUG-016. Les valeurs d'extrémité et les forces brutes
 ne passent pas par ce post-traitement.
 
+### Torsion
+
+Un moment nodal est transmis par `load $node Fx Fy Fz Mx My Mz` **dans le repère global** : un nœud n'a
+pas de repère local. Une charge nodale déclarée « locale » est appliquée selon les axes globaux, et le
+contrôle avant calcul le signale. Pour appliquer une torsion, donnez le moment autour de l'axe global
+parallèle à la barre. La rigidité de torsion d'`elasticBeamColumn` est G·J, avec J = `Section::it()`
+(constante de Saint-Venant, voir docs/SECTIONS.md).
+
+La rotation de torsion θx est relue sur le DDL 4 des nœuds (`NodeDisplacement::rx`, repère global). Le
+long de la barre, `StationForces::rx` (repère local) est interpolée linéairement entre les nœuds, ce qui
+est exact sans couple réparti (les moments répartis ne sont pas transmis). Test 321 : θ = T·L / (G·J) à
+10⁻⁹ près.
+
 ## 5. Repère local (poutres/poteaux)
 
 TSA transmet `geomTransf Linear $tag $vecxz` avec `vecxz` = axe z local TSA
@@ -126,6 +139,7 @@ converties en N).
 | K_e·u_e − globalForce ; T·global − localForce ; k_b·u_b − basicForce | ~10⁻¹⁴ |
 | Σ F + Σ R (ressort, charges réparties, poids propre, kN et N) | ~10⁻¹⁵ |
 | Console : flèche PL³/3EI, rotation, réactions, 12EI/L³, 4EI/L, EA/L | < 10⁻⁹ |
+| Console en torsion : θ = T·L/(G·J) (rectangle, caisson, rond), portique en L : θ = P·a·L/(G·J) | < 10⁻⁹ |
 
 ## 10. Coût (Debug, ce poste)
 

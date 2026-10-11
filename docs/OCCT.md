@@ -56,7 +56,7 @@ Gestionnaire dédié à la visualisation interactive des résultats structurels 
   - **Charges combinées** : Représentation simultanée force (rouge) + moment (magenta) avec étiquette de composantes ($F_x, F_y, F_z$ et $M_x, M_y, M_z$).
   - **Sélection et contrôle** : Sélection directe par clic dans le viewport (`SelectionType::NodalLoad`, `SelectionType::MemberLoad`), bascule d'affichage (`setForcesVisible`, `setMomentsVisible`), échelle dynamique (`setLoadScale`).
 - **Résultats d'analyse** :
-  - `DeformedGeometry` : Construction de la fibre neutre déformée par interpolation cubique d'Hermite et extrusion solide B-Rep.
+  - `DeformedGeometry` : axe déformé non amplifié (stations du solveur, ou interpolation cubique d'Hermite), torsion θx en chaque point (`DeformedAxis::twist`), repères de section (`sectionFrames` : tangente pour la flexion, rotation s·θx autour de l'axe pour la torsion), barre balayée continue et repères de torsion (`createSectionMarkers`).
   - `DiagramGeometry` : Construction des facettes de diagrammes 3D, contour, hachures et drapeaux d'extrema.
 
 ### `src/Grid`

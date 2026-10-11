@@ -613,8 +613,10 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
             double my = nl.my() * factor * forceScale;
             double mz = nl.mz() * factor * forceScale;
 
+            // Repère global (un nœud n'a pas de repère local ; ModelValidator le signale si « local »).
             tcl << "  load " << nl.nodeId() << " " << fx << " " << fy << " " << fz << " "
-                << mx << " " << my << " " << mz << " ;# " << nl.name() << "\n";
+                << mx << " " << my << " " << mz << " ;# " << nl.name()
+                << (nl.coordSystem() == TSA::Model::LoadCoordSystem::Local ? " (déclarée locale : axes globaux)" : "") << "\n";
         }
 
         // Charges sur treillis et câbles : réparties pour moitié sur chaque nœud

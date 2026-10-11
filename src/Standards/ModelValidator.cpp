@@ -241,6 +241,15 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
         {
             report.addError("Sections", secErr, elemId, "EN 1990");
         }
+        else if (std::string(typeName) == "Poutre" || std::string(typeName) == "Poteau")
+        {
+            // Poutres et poteaux : élément de poutre 3D, la rigidité de torsion G·J doit exister (sinon
+            // la rotation autour de l'axe de la barre n'a aucune rigidité : matrice singulière).
+            const double J = sec.it();
+            if (!std::isfinite(J) || J <= 0.0)
+                report.addError("Sections", "La constante de torsion de Saint-Venant J de la section « " + sec.name
+                                    + " » est nulle ou invalide : la torsion ne peut pas être calculée.", elemId, "RDM");
+        }
 
         std::string matErr;
         if (!validateMaterial(mat, &matErr))
@@ -401,6 +410,18 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
                     + nl.name() + " » ne peut pas être repris par la structure (ignoré).",
                     nl.nodeId(), "RDM");
             }
+        }
+    }
+    for (const auto& [loadId, nl] : lm.nodalLoads())
+    {
+        // Un nœud n'a pas de repère local : les composantes sont appliquées dans le repère global.
+        if (nl.coordSystem() == TSA::Model::LoadCoordSystem::Local)
+        {
+            report.addWarning("Charges",
+                "La charge nodale « " + nl.name() + " » (nœud N" + std::to_string(nl.nodeId()) + ") est déclarée en repère local : "
+                "un nœud n'a pas de repère local, ses forces et moments sont appliqués selon les axes globaux X, Y, Z. "
+                "Pour une torsion, donner le moment autour de l'axe global parallèle à la barre.",
+                nl.nodeId(), "RDM");
         }
     }
     for (const auto& [loadId, ml] : lm.memberLoads())

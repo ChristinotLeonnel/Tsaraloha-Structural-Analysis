@@ -41,7 +41,26 @@ struct Section
 };
 ```
 
-`TODO: VERIFY IN SOURCE` pour le détail exact des formules `iy()/iz()/it()/wy()/wz()` dans
+### Constante de torsion `it()` (J de Saint-Venant, transmise à `elasticBeamColumn`)
+
+`it()` est la constante de torsion de Saint-Venant J, utilisée par le calcul (rigidité G·J,
+G = E / 2(1 + ν)). Elle n'est **pas** le moment quadratique polaire Iy + Iz, sauf pour les sections
+circulaires pleines ou annulaires.
+
+| Forme | Formule | Remarque |
+| :--- | :--- | :--- |
+| `Rectangular` | a·b³·[1/3 − 0,21·(b/a)·(1 − (b/a)⁴/12)], a ≥ b | ≈ 0,229·a·b³ pour a/b = 2 (Timoshenko), test 321 |
+| `Circular` | π·d⁴/32 | égal au moment polaire |
+| `Pipe` | π·(D⁴ − d⁴)/32 | égal au moment polaire |
+| `BoxHollow` | 4·Am² / ∮ds/t + Σ s·t³/3, Am = (b − tw)(h − tf) | Bredt sur la ligne moyenne, sans arrondis d'angle (EN 10219-2) ; Iy + Iz le surestimait d'environ 34 % pour un carré (test 322) |
+| `IShape`, `UPN` | (2·b·tf³ + (h − tf)·tw³)/3 | parois minces ouvertes |
+| `TSection` | (b·tf³ + (h − tf)·tw³)/3 | parois minces ouvertes |
+| `Angle` | (h + b − t)·t³/3 | parois minces ouvertes |
+
+Le contrôle avant calcul (`ModelValidator::validate`) refuse une poutre ou un poteau dont J est nul ou
+non fini : la rotation autour de l'axe de la barre n'aurait aucune rigidité.
+
+`TODO: VERIFY IN SOURCE` pour le détail exact des formules `iy()/iz()/wy()/wz()` dans
 `Section.cpp` avant toute modification — ne pas deviner les formules existantes,
 notamment pour les profils composés (`IShape`, `UPN`, `Angle`, `TSection`, `BoxHollow`).
 

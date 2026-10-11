@@ -132,12 +132,51 @@ void ResultsVisualManager::setDeformationScale(double scale)
     emit visualStateChanged();
 }
 
+void ResultsVisualManager::setSectionRotationVisible(bool visible)
+{
+    if (m_sectionRotationVisible == visible) return;
+    m_sectionRotationVisible = visible;
+    if (m_deformationPreset == ScalePreset::Auto) autoComputeDeformationScale();
+    updateDeformedShapes();
+    updateLegend();
+    redrawView();
+    emit visualStateChanged();
+}
+
+double ResultsVisualManager::maxTwist() const
+{
+    if (!m_deformedAxesValid) const_cast<ResultsVisualManager*>(this)->rebuildDeformedAxes();
+    return m_maxTwist;
+}
+
+std::string ResultsVisualManager::maxTwistElement() const
+{
+    if (!m_deformedAxesValid) const_cast<ResultsVisualManager*>(this)->rebuildDeformedAxes();
+    return m_maxTwistElement;
+}
+
+const TSA::Model::Section* ResultsVisualManager::memberSection(const TSA::Analysis::ElementKey& key, double* rotationDeg) const
+{
+    using TSA::Analysis::StructuralElementKind;
+    if (!m_model) return nullptr;
+    if (key.kind == StructuralElementKind::Beam)
+    {
+        if (const auto* b = m_model->getBeam(key.id)) { if (rotationDeg) *rotationDeg = b->rotation(); return &b->section(); }
+    }
+    else if (key.kind == StructuralElementKind::Column)
+    {
+        if (const auto* c = m_model->getColumn(key.id)) { if (rotationDeg) *rotationDeg = c->rotation(); return &c->section(); }
+    }
+    return nullptr;
+}
+
 void ResultsVisualManager::autoComputeDeformationScale()
 {
     if (!m_results || !m_model || m_results->allDisplacements().empty()) return;
 
     // Plus grand déplacement réellement calculé : nœuds ET points le long des barres (une poutre sur
-    // deux appuis n'a aucun déplacement nodal, sa flèche est en travée).
+    // deux appuis n'a aucun déplacement nodal, sa flèche est en travée). Torsion : une section qui
+    // tourne de θx déplace ses fibres extrêmes de |θx|·r ; une torsion pure ne déplace pas l'axe.
     double maxU = 0.0;
     for (const auto& [id, d] : m_results->allDisplacements())
     {
@@ -145,13 +184,22 @@ void ResultsVisualManager::autoComputeDeformationScale()
         if (std::isfinite(u) && u > maxU) maxU = u;
     }
     if (!m_deformedAxesValid) rebuildDeformedAxes();
+    double maxTwist = 0.0;
     for (const auto& [key, axis] : m_deformedAxes)
-        for (const auto& u : axis.displacement)
-            if (axis.valid) maxU = std::max(maxU, u.Magnitude());
+    {
+        if (!axis.valid) continue;
+        for (const auto& u : axis.displacement) maxU = std::max(maxU, u.Magnitude());
+        if (!m_sectionRotationVisible || !axis.hasTwist()) continue;
+        const auto* section = memberSection(key, nullptr);
+        const double r = section ? TSA::Geometry::DeformedGeometry::sectionRadius(*section) : 0.0;
+        const double t = axis.maxAbsTwist();
+        maxTwist = std::max(maxTwist, t);
+        maxU = std::max(maxU, t * r);
+    }
 
     if (maxU < 1e-9)
     {
-        m_deformationScale = 1.0;
+        m_deformationScale = 1.0; // résultats nuls : aucune déformée inventée
         return;
     }
 
@@ -166,7 +214,11 @@ void ResultsVisualManager::autoComputeDeformationScale()
 
     double span = std::max({maxX - minX, maxY - minY, maxZ - minZ, 5.0});
     // Viser une déformation visuelle max de 5% de la portée globale
-    m_deformationScale = std::clamp(0.05 * span / maxU, 1.0, 5000.0);
+    double scale = 0.05 * span / maxU;
+    // Rotation des sections affichée limitée à ≈ 30° : au-delà, la torsion amplifiée devient illisible.
+    constexpr double kMaxDisplayedTwist = 0.5236;
+    if (maxTwist > 1e-12) scale = std::min(scale, kMaxDisplayedTwist / maxTwist);
+    m_deformationScale = std::clamp(scale, 1.0, 5000.0);
 }
 
 void ResultsVisualManager::setDeformationScalePreset(ScalePreset preset, double customVal)
@@ -275,6 +327,14 @@ QString ResultsVisualManager::legendSummaryText() const
         if (m_axesInvalid > 0)
             text += QString("⚠ %1 barre(s) sans déformée (%2)\n")
                         .arg(m_axesInvalid).arg(QString::fromStdString(m_firstAxisProblem));
+        if (m_maxTwist > 1e-12)
+        {
+            text += QString("TORSION : θx max = %1 mrad (%2) | %3\n")
+                        .arg(m_maxTwist * 1000.0, 0, 'g', 4)
+                        .arg(QString::fromStdString(m_maxTwistElement))
+                        .arg(m_sectionRotationVisible ? QString("sections tournées ×%1").arg(m_deformationScale, 0, 'g', 4)
+                                                      : QString("rotation des sections masquée"));
+        }
     }
     if (m_diagramType != TSA::Geometry::DiagramType::None)
     {
@@ -419,6 +479,8 @@ void ResultsVisualManager::rebuildDeformedAxes()
     m_deformedAxes.clear();
     m_axesFromStations = m_axesFromHermite = m_axesInvalid = 0;
     m_firstAxisProblem.clear();
+    m_maxTwist = 0.0;
+    m_maxTwistElement.clear();
     m_deformedAxesValid = true;
     if (!m_results || !m_results->isValid() || !m_model) return;
 
@@ -438,6 +500,11 @@ void ResultsVisualManager::rebuildDeformedAxes()
         }
         else if (axis.source == TSA::Geometry::DeformedAxisSource::SolverStations) ++m_axesFromStations;
         else if (axis.source == TSA::Geometry::DeformedAxisSource::CubicHermite) ++m_axesFromHermite;
+        if (axis.valid && axis.maxAbsTwist() > m_maxTwist)
+        {
+            m_maxTwist = axis.maxAbsTwist();
+            m_maxTwistElement = std::string(TSA::Analysis::elementKindName(kind)) + " " + std::to_string(id);
+        }
         m_deformedAxes[{ kind, id }] = std::move(axis);
     };
 
@@ -480,20 +547,29 @@ void ResultsVisualManager::updateDeformedShapes()
         int mapKey = key.id;
         if (key.kind == StructuralElementKind::Beam || key.kind == StructuralElementKind::Column)
         {
-            const TSA::Model::Section* section = nullptr;
+            if (key.kind == StructuralElementKind::Column) mapKey = 100000 + key.id;
             double rotation = 0.0;
-            if (key.kind == StructuralElementKind::Beam)
-            {
-                if (const auto* b = m_model->getBeam(key.id)) { section = &b->section(); rotation = b->rotation(); }
-            }
-            else
-            {
-                mapKey = 100000 + key.id;
-                if (const auto* c = m_model->getColumn(key.id)) { section = &c->section(); rotation = c->rotation(); }
-            }
-            if (section) shape = TSA::Geometry::DeformedGeometry::createMemberSolid(axis, *section, rotation, m_deformationScale);
+            const TSA::Model::Section* section = memberSection(key, &rotation);
+            if (section)
+                shape = TSA::Geometry::DeformedGeometry::createMemberSolid(axis, *section, rotation, m_deformationScale,
+                                                                           m_sectionRotationVisible);
             solid = !shape.IsNull();
             if (!solid) shape = TSA::Geometry::DeformedGeometry::createAxisWire(axis, m_deformationScale);
+            // Torsion : contours de section et génératrice (rotation visible même pour une section ronde).
+            if (section && m_sectionRotationVisible && axis.hasTwist()
+                && axis.maxAbsTwist() > std::max(1e-12, 1e-3 * m_maxTwist))
+            {
+                const TopoDS_Shape markers = TSA::Geometry::DeformedGeometry::createSectionMarkers(
+                    axis, *section, rotation, m_deformationScale, true);
+                if (!markers.IsNull())
+                {
+                    Handle(AIS_Shape) m = new AIS_Shape(markers);
+                    m->SetColor(Quantity_NOC_ORANGERED);
+                    m->SetWidth(2.0);
+                    ctx->Display(m, false);
+                    m_twistMarkerShapes.push_back(m);
+                }
+            }
         }
         else
         {
@@ -552,9 +628,11 @@ void ResultsVisualManager::clearDeformedShapes()
         {
             ctx->Remove(shape, false);
         }
+        for (auto& shape : m_twistMarkerShapes) ctx->Remove(shape, false);
     }
     m_deformedElementShapes.clear();
     m_deformedNodeShapes.clear();
+    m_twistMarkerShapes.clear();
 }
 
 void ResultsVisualManager::updateDiagramShapes()
