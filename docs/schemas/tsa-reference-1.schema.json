@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsaraloha.local/schemas/tsa-reference-1.schema.json",
+  "title": "Références externes pour le banc de validation TSA (tsa.reference/1)",
+  "description": "Résultats d'une source indépendante (calcul manuel, autre logiciel exécuté sur un modèle harmonisé) comparés aux résultats TSA d'un cas tsa.benchmark/1. Équivalent CSV : case,quantity,value,unit,source,rel_tol,abs_tol.",
+  "type": "object",
+  "required": ["format", "references"],
+  "properties": {
+    "format": { "const": "tsa.reference/1" },
+    "source": { "type": "string", "description": "Source par défaut (logiciel, version, modèle)." },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["case", "quantity", "value"],
+        "properties": {
+          "case": { "type": "string" },
+          "quantity": { "type": "string", "pattern": "^(node|reaction|reactionsum|member|surface|modal):" },
+          "value": { "type": "number" },
+          "unit": { "type": "string" },
+          "source": { "type": "string" },
+          "tolerance": { "type": "object", "properties": { "rel": { "type": "number" }, "abs": { "type": "number" } } }
+        }
+      }
+    }
+  }
+}

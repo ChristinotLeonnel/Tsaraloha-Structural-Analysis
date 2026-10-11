@@ -1317,7 +1317,7 @@ bool runDemoProjects(int& passed, const QString& outDir, const QString& tmpDir)
                 }
             }
             std::cout << "  note " << tpl << " : " << pages << " page(s) PDF" << std::endl;
-            TEST_CHECK(okPdf && QFileInfo(pdf).size() > 20000 && (simple ? doc.chapters.size() >= 6 : doc.chapters.size() == 18),
+            TEST_CHECK(okPdf && QFileInfo(pdf).size() > 20000 && (simple ? doc.chapters.size() >= 6 : doc.chapters.size() == 19)   /* 19 : chapitre « Validation du logiciel et traçabilité » */,
                        "Test " << testNo << ": note de calcul " << tpl << " (" << doc.chapters.size() << " chapitres) — " << perr.toStdString());
         }
         if (!outDir.isEmpty()) std::cout << "  projet écrit : " << path << std::endl;

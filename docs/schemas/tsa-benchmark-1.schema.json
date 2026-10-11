@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tsaraloha.local/schemas/tsa-benchmark-1.schema.json",
+  "title": "Cas de référence TSA (tsa.benchmark/1)",
+  "description": "Cas de validation exécuté par la chaîne de calcul réelle de TSA (docs/BENCHMARKS.md). Unités : kN, m, kPa (E en kPa, masse volumique en kg/m³), Hz, t.",
+  "type": "object",
+  "required": ["format", "id", "title", "sources", "model", "checks"],
+  "properties": {
+    "format": { "const": "tsa.benchmark/1" },
+    "id": { "type": "string", "pattern": "^[A-Z]+-[0-9]+[a-z]?$" },
+    "title": { "type": "string" },
+    "category": { "enum": ["rdm", "fea"] },
+    "description": { "type": "string" },
+    "sources": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "hypotheses": { "type": "array", "items": { "type": "string" } },
+    "units": { "type": "object" },
+    "engines": { "type": "array", "items": { "enum": ["opensees", "custom2d"] } },
+    "parameters": {
+      "type": "object",
+      "description": "Paramètres numériques ou dérivés (formule évaluée à partir des autres paramètres).",
+      "additionalProperties": { "type": ["number", "string"] }
+    },
+    "tolerance": { "$ref": "#/$defs/tolerance" },
+    "model": {
+      "type": "object",
+      "properties": {
+        "materials": { "type": "object", "additionalProperties": { "type": "object", "required": ["E"], "properties": { "E": { "type": "number" }, "nu": { "type": "number" }, "rho": { "type": "number" } } } },
+        "sections": { "type": "object", "additionalProperties": { "type": "object", "required": ["shape"], "properties": { "shape": { "enum": ["rectangular", "circular", "pipe", "box", "ipe", "hea", "heb"] } } } },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object", "required": ["id", "x", "y", "z"],
+            "properties": {
+              "id": { "type": "integer" }, "x": { "type": "number" }, "y": { "type": "number" }, "z": { "type": "number" },
+              "support": { "oneOf": [ { "enum": ["fixed", "pinned", "free"] }, { "type": "array", "minItems": 6, "maxItems": 6, "items": { "enum": [0, 1] } } ] },
+              "springs": { "type": "array", "minItems": 6, "maxItems": 6, "items": { "type": "number" } }
+            }
+          }
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object", "required": ["id", "i", "j", "section", "material"],
+            "properties": { "type": { "enum": ["beam", "column", "truss"] }, "rotation": { "type": "number" }, "release_i": { "type": "string" }, "release_j": { "type": "string" } }
+          }
+        },
+        "slabs": { "type": "array" },
+        "cases": { "type": "array", "items": { "type": "object", "required": ["id"] } },
+        "nodalLoads": { "type": "array" },
+        "memberLoads": { "type": "array", "items": { "type": "object", "properties": { "type": { "enum": ["uniform", "trapezoidal", "point"] }, "direction": { "enum": ["gravity", "globalX", "globalY", "globalZ", "localX", "localY", "localZ"] } } } },
+        "surfaceLoads": { "type": "array" }
+      }
+    },
+    "analysis": {
+      "type": "object",
+      "properties": {
+        "selfWeight": { "type": "boolean" }, "case": { "type": "integer" }, "type": { "enum": ["linear_static", "modal"] }, "modes": { "type": "integer" },
+        "meshSize": { "type": "number" }, "meshSizes": { "type": "array", "items": { "type": "number" } }, "quads": { "type": "boolean" }, "subdivide": { "type": "integer" }
+      }
+    },
+    "checks": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "required": ["quantity", "expected"],
+        "properties": {
+          "quantity": { "type": "string", "pattern": "^(node|reaction|reactionsum|member|surface|modal):" },
+          "label": { "type": "string" },
+          "expected": { "type": ["number", "string"] },
+          "unit": { "type": "string" },
+          "tolerance": { "$ref": "#/$defs/tolerance" },
+          "engines": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "tolerance": { "type": "object", "properties": { "rel": { "type": "number", "minimum": 0 }, "abs": { "type": "number", "minimum": 0 } } }
+  }
+}

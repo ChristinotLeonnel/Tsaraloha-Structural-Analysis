@@ -11,6 +11,7 @@
 #include <map>
 #include <set>
 #include <cmath>
+#include <limits>
 #include <chrono>
 
 namespace TSA::Analysis
@@ -211,6 +212,8 @@ struct AnalysisExecutionMetadata
     double executionDurationMs = 0.0;
     /// Durées mesurées des étapes du moteur (ms) : préparation du script, résolution, lecture des résultats.
     double scriptDurationMs = 0.0, solveDurationMs = 0.0, readDurationMs = 0.0;
+    /// Statique non linéaire : facteur de charge atteint en fin de calcul (1 = charge complète) ; NaN si non lu.
+    double finalLoadFactor = std::numeric_limits<double>::quiet_NaN();
 
     // Configuration réelle du système OpenSees (traçabilité des matrices)
     std::string modelBuilder = "BasicBuilder -ndm 3 -ndf 6";

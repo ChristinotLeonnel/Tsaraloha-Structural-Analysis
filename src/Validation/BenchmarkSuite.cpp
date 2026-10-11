@@ -821,6 +821,10 @@ RunResult runOnce(const BenchmarkCase& c, const std::string& engine, double mesh
         ctx.dimension = TSA::Analysis::AnalysisDimension::Plane2D;
         ctx.scope.type = TSA::Analysis::ScopeType::ModelPlane;
     }
+    if (c.analysis.value("type").toString() == "nonlinear_static") ctx.type = TSA::Analysis::AnalysisType::NonLinearStatic;
+    // Réglages propres au moteur (ex. transformation géométrique P-Delta, nombre de pas) transmis tels quels
+    if (const QJsonObject es = c.analysis.value("engineSettings").toObject().value(QString::fromStdString(engine)).toObject(); !es.isEmpty())
+        ctx.engineSettings[engine] = es;
     if (c.analysis.value("type").toString() == "modal")
     {
         ctx.type = TSA::Analysis::AnalysisType::Modal;
