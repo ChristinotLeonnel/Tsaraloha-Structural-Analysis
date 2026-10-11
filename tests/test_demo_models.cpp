@@ -473,6 +473,35 @@ std::size_t lineLoad(Model& m, const std::string& prefix, int caseId, double q, 
     return ids.size();
 }
 
+/// Finition d'aspect (rendu seulement) des éléments dont le nom commence par `prefix` ; `mat` remplace le matériau
+/// quand il est fourni (dalles, voiles et semelles créés avec le matériau par défaut).
+void finish(Model& m, const std::string& prefix, const TSA::Model::VisualProperties& v, const Material* mat = nullptr)
+{
+    auto apply = [&](auto& e) {
+        if (e.name().rfind(prefix, 0) != 0) return;
+        if (mat) e.setMaterial(*mat);
+        e.material().visual = v;
+    };
+    std::vector<int> ids;
+    for (const auto& [id, e] : m.beams()) ids.push_back(id);
+    for (int id : ids) apply(*m.getBeam(id));
+    ids.clear();
+    for (const auto& [id, e] : m.columns()) ids.push_back(id);
+    for (int id : ids) apply(*m.getColumn(id));
+    ids.clear();
+    for (const auto& [id, e] : m.slabs()) ids.push_back(id);
+    for (int id : ids) apply(*m.getSlab(id));
+    ids.clear();
+    for (const auto& [id, e] : m.walls()) ids.push_back(id);
+    for (int id : ids) apply(*m.getWall(id));
+    ids.clear();
+    for (const auto& [id, e] : m.foundations()) ids.push_back(id);
+    for (int id : ids) apply(*m.getFoundation(id));
+    ids.clear();
+    for (const auto& [id, e] : m.cables()) ids.push_back(id);
+    for (int id : ids) apply(*m.getCable(id));
+}
+
 int nodeAt(const Model& m, double x, double y, double z)
 {
     for (const auto& [id, n] : m.nodes())
@@ -547,6 +576,12 @@ void buildConcreteBuilding(Model& m, TSA::Grid::GridDefinition& grid)
     }
     for (double x : xs)
         for (double y : ys) m.addFoundation(nodeAt(m, x, y, 0), 1.8, 1.8, 0.6, "Semelle");
+    namespace VF = TSA::Model::VisualFinish;
+    finish(m, "Poteau", VF::formedConcrete());
+    finish(m, "Voile", VF::formedConcrete(), &c);
+    finish(m, "Dalle", VF::rawConcrete(), &c);
+    finish(m, "Semelle", VF::roughConcrete(), &c);
+    finish(m, "Longrine", VF::roughConcrete());
     // Charges : dalles portant selon Y entre poutres porteuses (largeur 6 m sur les files 2 et 3, 3 m en rive)
     const auto L = addStandardCases(m, false);
     lineLoad(m, "Poutre porteuse int", L.G, 6.5 * 6.0, "G dalle 20 cm + revêtement (6,5 kN/m² × 6 m)");
@@ -640,6 +675,16 @@ void buildMixedBuilding(Model& m, TSA::Grid::GridDefinition& grid)
                           0.14, "Dalle sur bac acier " + lv[k]);
     for (double x : xs)
         for (double y : ys) m.addFoundation(nodeAt(m, x, y, 0), 2.2, 2.2, 0.7, "Semelle BA");
+    namespace VF = TSA::Model::VisualFinish;
+    finish(m, "Poteau BA", VF::formedConcrete());
+    finish(m, "Voile", VF::formedConcrete(), &c);
+    finish(m, "Dalle", VF::rawConcrete(), &c);
+    finish(m, "Semelle", VF::roughConcrete(), &c);
+    finish(m, "Poutre", VF::paintedSteel());
+    finish(m, "Solive", VF::paintedSteel());
+    finish(m, "Ferme", VF::galvanizedSteel());
+    finish(m, "Panne", VF::galvanizedSteel());
+    finish(m, "Palée", VF::paintedSteel("#B03A2E"));
     // Charges : dalle 14 cm portant selon X entre solives et poutres (entraxe 8/3 = 2,67 m)
     const auto L = addStandardCases(m, false);
     const double b = 8.0 / 3.0;
@@ -741,6 +786,17 @@ void buildComplexBuilding(Model& m, TSA::Grid::GridDefinition& grid)
             }
     for (const auto& [id, n] : m.nodes())
         if (std::abs(n.z()) < 1e-9 && n.support().isSupported()) m.addFoundation(id, 1.8, 1.8, 0.6, "Semelle");
+    namespace VF = TSA::Model::VisualFinish;
+    finish(m, "Poteau BA", VF::formedConcrete());
+    finish(m, "Console", VF::formedConcrete());
+    finish(m, "Voile", VF::formedConcrete(), &c);
+    finish(m, "Dalle", VF::rawConcrete(), &c);
+    finish(m, "Semelle", VF::roughConcrete(), &c);
+    finish(m, "Poteau acier", VF::paintedSteel("#5E6A73"));
+    finish(m, "Poutre acier", VF::paintedSteel("#5E6A73"));
+    finish(m, "Palée", VF::paintedSteel("#B03A2E"));
+    finish(m, "Arc", VF::galvanizedSteel());
+    finish(m, "Panne", VF::galvanizedSteel());
     // Charges : G, Q sur les poutres porteuses, vent W en façade sud (y = 0) de l'aile A, charges nodales +Y
     const auto L = addStandardCases(m, true);
     lineLoad(m, "Poutre BA A porteuse", L.G, 6.5 * 3.0, "G dalle 20 cm + revêtement (6,5 kN/m² × 3 m)");
@@ -843,6 +899,17 @@ void buildCableStayedBridge(Model& m, TSA::Grid::GridDefinition& grid)
     }
     for (double xp : { L1, L1 + L2 })
         for (double y : { -legY, legY }) m.addFoundation(nodeAt(m, xp, y, zBase), 10.0, 8.0, 3.0, "Semelle de pylône");
+    namespace VF = TSA::Model::VisualFinish;
+    finish(m, "Fût", VF::formedConcrete());
+    finish(m, "Entretoise de pylône", VF::formedConcrete());
+    finish(m, "Pile", VF::roughConcrete());
+    finish(m, "Appareil", VF::rawConcrete());
+    finish(m, "Semelle", VF::roughConcrete(), &c);
+    finish(m, "Poutre de rive", VF::paintedSteel());
+    finish(m, "Pièce de pont", VF::paintedSteel());
+    finish(m, "Longeron", VF::paintedSteel());
+    finish(m, "Contreventement", VF::galvanizedSteel());
+    finish(m, "Hauban", VF::cable());
 
     grid.setXPositions({ 0.0, 40.0, L1, L1 + L2, Ltot - 40.0, Ltot });
     grid.setXLabels({ "C0", "P1", "Pylône 1", "Pylône 2", "P4", "C5" });
@@ -1109,7 +1176,18 @@ bool runDemoProjects(int& passed, const QString& outDir, const QString& tmpDir)
         TEST_CHECK(reader.loadFromFile(path, back, &backGrids, "", &name, nullptr, nullptr, &err), "Test " << testNo << ": relecture — " << err);
         const Topology tb = inspect(back);
         const auto& bl = back.loadManager();
-        bool tensionsKept = true;
+        bool tensionsKept = true, visualsKept = true;
+        std::size_t textured = 0;
+        for (const auto& [id, b] : m.beams())
+        {
+            const auto* bb = back.getBeam(id);
+            visualsKept = visualsKept && bb && TSA::Model::sameVisual(bb->material().visual, b.material().visual);
+            textured += b.material().visual.textureName == "formed_concrete" || b.material().visual.textureName == "painted_steel";
+        }
+        for (const auto& [id, w] : m.walls())
+            visualsKept = visualsKept && back.getWall(id) && TSA::Model::sameVisual(back.getWall(id)->material().visual, w.material().visual);
+        for (const auto& [id, c] : m.cables())
+            visualsKept = visualsKept && back.getCable(id) && TSA::Model::sameVisual(back.getCable(id)->material().visual, c.material().visual);
         for (const auto& [id, c] : m.cables())
         {
             const auto* cb = back.getCable(id);
@@ -1118,9 +1196,10 @@ bool runDemoProjects(int& passed, const QString& outDir, const QString& tmpDir)
         TEST_CHECK(tb.nodes == t.nodes && tb.beams == t.beams && tb.columns == t.columns && tb.cables == t.cables && tb.supports == t.supports &&
                        back.slabs().size() == m.slabs().size() && back.walls().size() == m.walls().size() && back.foundations().size() == m.foundations().size() &&
                        bl.loadCases().size() == lm.loadCases().size() && bl.combinations().size() == lm.combinations().size() &&
-                       bl.memberLoads().size() == lm.memberLoads().size() && bl.nodalLoads().size() == lm.nodalLoads().size() && tensionsKept && name == pr.title &&
+                       bl.memberLoads().size() == lm.memberLoads().size() && bl.nodalLoads().size() == lm.nodalLoads().size() && tensionsKept && visualsKept && name == pr.title &&
                        backGrids.grids().size() == 1,
-                   "Test " << testNo << ": relecture identique (éléments, appuis, câbles et tensions, cas, combinaisons, charges, grille, nom)");
+                   "Test " << testNo << ": relecture identique (éléments, appuis, câbles et tensions, finitions, cas, combinaisons, charges, grille, nom)");
+        std::cout << "  finitions d'aspect conservées à la relecture : " << (visualsKept ? "oui" : "NON") << " (" << textured << " poutres en béton coffré ou acier peint)" << std::endl;
         ResultsModel rb;
         const bool okB = solveCase(back, 0, combELU, true, rb, &err);
         const double d0 = sum.maxDisplacement, d1 = rb.summary().maxDisplacement;
