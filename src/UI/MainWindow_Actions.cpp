@@ -1682,6 +1682,8 @@ void MainWindow::createDockWindows()
                 this, &MainWindow::onActionToggleReactions);
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::activeStepChanged,
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setActiveStep);
+        // Maillage coloré et déformée des surfaces : suivent le pas ou le mode propre affiché
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::activeStepChanged, this, [this](int) { refreshMeshOverlay(); });
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::legendToggled,
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setLegendVisible);
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::nodesVisibleToggled,
