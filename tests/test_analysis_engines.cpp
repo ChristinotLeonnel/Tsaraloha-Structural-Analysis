@@ -423,8 +423,8 @@ bool runSuite_Engines(int& passed)
         TEST_CHECK(dlg.offeredDimensions() == std::vector<AnalysisDimension>({ AnalysisDimension::Space3D }),
                    "Test 137: dimensions d'OpenSees");
         const auto osTypes = dlg.offeredAnalysisTypes();
-        TEST_CHECK(osTypes == std::vector<AnalysisType>({ AnalysisType::LinearStatic, AnalysisType::NonLinearStatic }),
-                   "Test 137: types filtrés par capacités (statique uniquement)");
+        TEST_CHECK(osTypes == std::vector<AnalysisType>({ AnalysisType::LinearStatic, AnalysisType::NonLinearStatic, AnalysisType::Modal }),
+                   "Test 137: types filtrés par capacités (statique, non linéaire, modale)");
         const QJsonObject osSettings = dlg.context().settingsFor("opensees");
         TEST_CHECK(!osSettings.isEmpty(), "Test 137: réglages OpenSees produits par son panneau");
 

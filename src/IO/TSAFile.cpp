@@ -281,12 +281,32 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
                                        { "value", l.value },
                                        { "projected", l.projected },
                                        { "u", l.u },
-                                       { "v", l.v } });
-        if (!slabs.isEmpty() || !walls.isEmpty() || !loads.isEmpty())
-            writeJsonChunk(payload, CHUNK_SURF,
-                           QJsonDocument(QJsonObject { { "schema", 1 }, { "slabFormulations", slabs }, { "wallFormulations", walls }, { "surfaceLoads", loads } })
-                               .toJson(QJsonDocument::Compact)
-                               .toStdString());
+                                       { "v", l.v },
+                                       { "gradU", l.gradU },
+                                       { "gradV", l.gradV },
+                                       { "zone", l.zone ? QJsonValue(QJsonArray { l.zoneU0, l.zoneV0, l.zoneU1, l.zoneV1 }) : QJsonValue() } });
+        auto supportsJson = [](const std::vector<TSA::Model::SurfaceEdgeSupport>& list) {
+            QJsonArray a;
+            for (const auto& sp : list)
+            {
+                QJsonArray fx, k;
+                for (int d = 0; d < 6; ++d) fx.append(sp.fixed[d]), k.append(sp.stiffness[d]);
+                a.append(QJsonObject { { "edge", sp.edge }, { "fixed", fx }, { "stiffness", k }, { "name", QString::fromStdString(sp.name) } });
+            }
+            return a;
+        };
+        QJsonObject slabSupports, wallSupports;
+        for (const auto& [id, s] : model.slabs())
+            if (!s.edgeSupports().empty()) slabSupports.insert(QString::number(id), supportsJson(s.edgeSupports()));
+        for (const auto& [id, w] : model.walls())
+            if (!w.edgeSupports().empty()) wallSupports.insert(QString::number(id), supportsJson(w.edgeSupports()));
+        if (!slabs.isEmpty() || !walls.isEmpty() || !loads.isEmpty() || !slabSupports.isEmpty() || !wallSupports.isEmpty())
+        {
+            QJsonObject root { { "schema", 1 }, { "slabFormulations", slabs }, { "wallFormulations", walls }, { "surfaceLoads", loads } };
+            if (!slabSupports.isEmpty()) root.insert("slabEdgeSupports", slabSupports);
+            if (!wallSupports.isEmpty()) root.insert("wallEdgeSupports", wallSupports);
+            writeJsonChunk(payload, CHUNK_SURF, QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString());
+        }
     }
     if (!model.dimensions().items.empty() || !(model.dimensions().style == TSA::Annotation::DimensionStyle()))
     {
@@ -922,6 +942,25 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             if (auto w = loadedWalls.find(it.key().toInt()); w != loadedWalls.end())
                 w->second.setFormulation(TSA::Model::surfaceFormulationFromKey(it.value().toString().toStdString()));
         loadedSurfaceLoads = root.value("surfaceLoads").toArray();
+        auto readSupports = [](const QJsonArray& a) {
+            std::vector<TSA::Model::SurfaceEdgeSupport> list;
+            for (const auto& v : a)
+            {
+                const QJsonObject o = v.toObject();
+                TSA::Model::SurfaceEdgeSupport sp;
+                sp.edge = o.value("edge").toInt(-1);
+                const QJsonArray fx = o.value("fixed").toArray(), k = o.value("stiffness").toArray();
+                for (int d = 0; d < 6; ++d) sp.fixed[d] = fx.at(d).toBool(), sp.stiffness[d] = k.at(d).toDouble();
+                sp.name = o.value("name").toString().toStdString();
+                list.push_back(sp);
+            }
+            return list;
+        };
+        const QJsonObject ss = root.value("slabEdgeSupports").toObject(), ws = root.value("wallEdgeSupports").toObject();
+        for (auto it = ss.begin(); it != ss.end(); ++it)
+            if (auto s = loadedSlabs.find(it.key().toInt()); s != loadedSlabs.end()) s->second.setEdgeSupports(readSupports(it.value().toArray()));
+        for (auto it = ws.begin(); it != ws.end(); ++it)
+            if (auto w = loadedWalls.find(it.key().toInt()); w != loadedWalls.end()) w->second.setEdgeSupports(readSupports(it.value().toArray()));
     }
     if (!loadedVisuals.empty())
     {
@@ -965,6 +1004,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         l.projected = o.value("projected").toBool();
         l.u = o.value("u").toDouble();
         l.v = o.value("v").toDouble();
+        l.gradU = o.value("gradU").toDouble();
+        l.gradV = o.value("gradV").toDouble();
+        if (const QJsonArray z = o.value("zone").toArray(); z.size() == 4)
+            l.zone = true, l.zoneU0 = z[0].toDouble(), l.zoneV0 = z[1].toDouble(), l.zoneU1 = z[2].toDouble(), l.zoneV1 = z[3].toDouble();
         if (l.id <= 0 || snapshot.loadSnapshot.surfaceLoads.count(l.id)) continue;
         snapshot.loadSnapshot.surfaceLoads[l.id] = l;
         snapshot.loadSnapshot.nextSurfaceLoadId = std::max(snapshot.loadSnapshot.nextSurfaceLoadId, l.id + 1);

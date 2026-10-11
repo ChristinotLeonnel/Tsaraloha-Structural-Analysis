@@ -8,6 +8,7 @@
 #include "../Model/Material.h"
 #include "../Model/SurfaceFormulation.h"
 
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -41,15 +42,38 @@ struct SurfaceNodalForce
     std::string label;
 };
 
+/// Appui d'un nœud du maillage issu d'un appui linéique de bord (SurfaceEdgeSupport) : DDL bloqués et raideurs
+/// nodales (raideur linéique × longueur d'influence du nœud sur le bord), axes globaux.
+struct SurfaceNodeSupport
+{
+    int meshNode = 0;
+    std::array<bool, 6> fixed {};
+    std::array<double, 6> stiffness {};   ///< kN/m (translations), kN·m/rad (rotations)
+    double length = 0.0;                  ///< longueur d'influence (m)
+    std::string label;
+};
+
+/// Caractéristiques du maillage des surfaces réellement transmis (note de calcul, contrôle de qualité).
+struct SurfaceMeshSummary
+{
+    std::size_t quads = 0, triangles = 0, nodes = 0;
+    double minEdge = 0, maxEdge = 0;   ///< longueurs d'arête extrêmes (m)
+    double maxAspect = 0;              ///< plus grand rapport arête max / arête min d'un élément
+    double minAngle = 0;               ///< plus petit angle intérieur (degrés)
+    bool empty() const { return quads + triangles == 0; }
+};
+
 struct SurfaceAnalysisModel
 {
     std::vector<SurfaceMeshNode> nodes;
     std::vector<SurfaceMeshElement> elements;
     std::vector<SurfaceNodalForce> loads;       ///< charges surfaciques, par cas de charge
     std::vector<SurfaceNodalForce> selfWeight;  ///< poids propre des surfaces (facteur 1)
+    std::vector<SurfaceNodeSupport> supports;   ///< appuis linéiques de bord répartis sur les nœuds du maillage
     std::map<std::string, double> selfWeightBySurface;  ///< kN, contrôle et note de calcul
     std::vector<std::string> notes;             ///< conversions effectuées, contrôles de résultante
     std::string meshStamp;                      ///< empreinte du maillage utilisé (date de génération + paramètres)
+    SurfaceMeshSummary mesh;                    ///< taille, types et qualité des éléments transmis
 
     bool empty() const { return elements.empty(); }
 };

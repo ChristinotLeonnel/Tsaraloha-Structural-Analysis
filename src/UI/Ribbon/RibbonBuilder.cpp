@@ -347,6 +347,7 @@ RibbonTab* RibbonBuilder::buildLoadsTab(RibbonBar* bar, const RibbonActions& act
     {
         auto* surfPanel = new RibbonPanel(QObject::tr("Surface"), tab);
         surfPanel->addLargeAction(acts.actionSurfaceLoad);
+        if (acts.actionSurfaceSupports) surfPanel->addLargeAction(acts.actionSurfaceSupports);
         tab->addPanel(surfPanel);
     }
 

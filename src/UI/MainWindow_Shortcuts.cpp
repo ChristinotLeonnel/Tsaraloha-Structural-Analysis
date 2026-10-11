@@ -91,7 +91,7 @@ void MainWindow::setupShortcuts()
         // Charges
         { "cmd.loads.point", m_actionPointLoad }, { "cmd.loads.distributed", m_actionDistLoad },
         { "cmd.loads.trapezoidal", m_actionTrapLoad }, { "cmd.loads.bar_point", m_actionBarPointLoad },
-        { "cmd.loads.surface", m_actionSurfaceLoad }, { "cmd.display.surface_loads", m_actionSurfaceLoadsVisible }, { "cmd.loads.self_weight", m_actionSelfWeight },
+        { "cmd.loads.surface", m_actionSurfaceLoad }, { "cmd.loads.surface_supports", m_actionSurfaceSupports }, { "cmd.display.surface_loads", m_actionSurfaceLoadsVisible }, { "cmd.loads.self_weight", m_actionSelfWeight },
         { "cmd.loadcases.manager", m_actionLoadCases },
         // Maillage, analyse, résultats, rapports, BIM
         { "cmd.analysis.mesh", m_actionMeshGen },

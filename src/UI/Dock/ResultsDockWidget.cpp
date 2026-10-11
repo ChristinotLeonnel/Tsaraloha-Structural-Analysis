@@ -23,6 +23,7 @@
 #include <QDoubleSpinBox>
 #include <QPushButton>
 #include <QTimer>
+#include <algorithm>
 #include <cmath>
 
 namespace TSA::UI
@@ -379,10 +380,28 @@ void ResultsDockWidget::updateSummaryText()
         return;
     }
 
+    const auto& modal = m_resultsModel->modal();
+    if (m_resultsModel->analysisType() == TSA::Analysis::AnalysisType::Modal && !modal.empty())
+    {
+        m_labelStatus->setText(tr("✓ Analyse modale (%1 modes)").arg(modal.modes.size()));
+        m_labelStatus->setStyleSheet("font-weight: bold; color: #10b981;");
+        const bool kN = m_resultsModel->units().force == "kN";
+        QString txt = tr("Masse totale : %1 %3 (libre %2 %3)\n").arg(modal.totalMass[2], 0, 'f', 3).arg(modal.totalFreeMass[2], 0, 'f', 3).arg(kN ? QStringLiteral("t") : QStringLiteral("kg"));
+        txt += tr("Mode   f (Hz)    T (s)    MX %   MY %   MZ %\n");
+        for (const auto& md : modal.modes)
+            txt += QStringLiteral("%1  %2  %3  %4  %5  %6\n").arg(md.index, 4).arg(md.frequency, 8, 'f', 3).arg(md.period, 8, 'f', 4)
+                       .arg(md.massRatio[0], 6, 'f', 1).arg(md.massRatio[1], 6, 'f', 1).arg(md.massRatio[2], 6, 'f', 1);
+        const auto& last = modal.modes.back().cumulativeRatio;
+        txt += tr("Cumul : MX %1 %, MY %2 %, MZ %3 %\n").arg(last[0], 0, 'f', 1).arg(last[1], 0, 'f', 1).arg(last[2], 0, 'f', 1);
+        txt += tr("Formes propres normalisées (translation max = 1) ; masses : %1.").arg(QString::fromStdString(modal.massSource));
+        m_labelSummary->setText(txt);
+        return;
+    }
+
     const auto& s = m_resultsModel->summary();
     const auto& eq = m_resultsModel->equilibrium();
 
-    m_labelStatus->setText(tr("✓ Calcul disponible (%1 pas)").arg(m_resultsModel->stepCount()));
+    m_labelStatus->setText(m_resultsModel->stepCount() > 1 ? tr("✓ Calcul disponible (%1 pas)").arg(m_resultsModel->stepCount()) : tr("✓ Calcul disponible"));
     m_labelStatus->setStyleSheet("font-weight: bold; color: #10b981;");
 
     QString txt = tr(
@@ -399,6 +418,14 @@ void ResultsDockWidget::updateSummaryText()
     .arg(s.maxTension, 0, 'f', 1)
     .arg(eq.reactionFz, 0, 'f', 1)
     .arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("DÉSÉQUILIBRE"));
+    if (s.maxDisplacementNodeId <= 0)   // aucun nœud TSA calculé (modèle de surfaces seules) : pas de ligne « barres » vide
+        txt = tr("• Réaction totale Rz : %1 kN\n• Équilibre : %2").arg(eq.reactionFz, 0, 'f', 1).arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("DÉSÉQUILIBRE"));
+    if (!m_resultsModel->surfaceNodeDisplacements().empty())
+    {
+        int meshNode = 0;
+        const double ws = m_resultsModel->maxSurfaceDisplacement(&meshNode);
+        txt += tr("\n• Surfaces (coques) : déplacement max %1 mm (nœud %2 du maillage)").arg(ws * 1000.0, 0, 'f', 2).arg(meshNode);
+    }
     if (s.maxTorsionMoment > 1e-9 || s.maxTwist > 1e-12)
         txt += tr("\n• Torsion max : Mx = %1 kNm (Barre #%2), θx = %3 mrad (Barre #%4)")
                    .arg(s.maxTorsionMoment, 0, 'f', 2).arg(s.maxTorsionMomentElementId)
@@ -509,7 +536,8 @@ void ResultsDockWidget::updateStepControls()
 
     m_grpSteps->setEnabled(true);
     int count = m_resultsModel->stepCount();
-    int current = m_resultsModel->activeStep() + 1;
+    const bool modal = m_resultsModel->analysisType() == TSA::Analysis::AnalysisType::Modal && !m_resultsModel->modal().empty();
+    int current = modal ? std::max(1, m_resultsModel->activeStep() + 1) : m_resultsModel->activeStep() + 1;
 
     m_sliderStep->blockSignals(true);
     m_spinStep->blockSignals(true);
@@ -523,6 +551,12 @@ void ResultsDockWidget::updateStepControls()
     m_btnPrevStep->setEnabled(current > 1);
     m_btnNextStep->setEnabled(current < count);
 
+    if (modal)
+    {
+        const auto& md = m_resultsModel->modal().modes[std::size_t(std::clamp(current, 1, count) - 1)];
+        m_labelStepInfo->setText(tr("Mode %1 / %2 : f = %3 Hz, T = %4 s").arg(current).arg(count).arg(md.frequency, 0, 'f', 3).arg(md.period, 0, 'f', 4));
+        return;
+    }
     double lambda = (count > 1) ? (static_cast<double>(current) / static_cast<double>(count) * 100.0) : 100.0;
     m_labelStepInfo->setText(tr("Pas %1 / %2 (Facteur de charge λ = %3%)").arg(current).arg(count).arg(lambda, 0, 'f', 1));
 }

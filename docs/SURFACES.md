@@ -113,13 +113,17 @@ Les charges s'appliquent avec l'action « Charge surfacique » sur une ou plusie
 | Répartition | Valeur | Directions |
 |---|---|---|
 | Uniforme sur la surface nette | kN/m² | gravité (−Z), X, Y, Z global, normale locale (−N : une valeur positive appuie sur la face) ; surface projetée possible pour une direction globale |
+| Uniforme ou variable sur une zone | kN/m², kN/m³ | mêmes directions ; zone rectangulaire [u₀, u₁] × [v₀, v₁] du repère local ; intensité p(u, v) = q + g_u·u + g_v·v |
 | Ponctuelle en (u, v) | kN | mêmes directions |
+
+**Exemple, poussée hydrostatique sur un voile :** hauteur d'eau h, poids volumique γ. On saisit q = γ·h, g_v = −γ et la zone v ≤ h. La résultante vaut γ·h²/2 par mètre de voile, appliquée à h/3 (test 361).
 
 La conversion est faite par `SurfaceLoads`, sur le maillage :
 
 - **Charge uniforme :** elle est convertie en charges nodales cohérentes ∫ Nᵢ p dA, par intégration de Gauss sur les fonctions de forme de chaque élément. La répartition n'est donc pas faite à parts égales entre les nœuds.
 - **Charge ponctuelle :** elle est répartie par les fonctions de forme de l'élément qui contient le point, soit Nᵢ(ξ, η) · F.
-- **Contrôle :** la résultante et le moment par rapport à l'origine sont comparés à la valeur analytique (aire nette et centre de surface). Un écart bloque la conversion.
+- **Zone et variation linéaire :** un élément entièrement dans la zone est intégré par Gauss. Un élément à cheval sur le bord de la zone est découpé (Sutherland-Hodgman), puis seule sa partie chargée est intégrée (triangles, règle à 7 points, coordonnées naturelles retrouvées par Newton). L'intégration est exacte : la zone n'a pas besoin de suivre le maillage.
+- **Contrôle :** la résultante et le moment par rapport à l'origine sont comparés à la valeur analytique. Celle-ci est obtenue par les intégrales exactes des polygones (zone ∩ surface nette, ouvertures déduites ; moments d'ordre 1 et 2 pour la variation linéaire). Un écart bloque la conversion, de même qu'une zone vide ou hors de la surface.
 
 Les charges sont enregistrées dans le chunk `SURF` (format 1.10). Elles disparaissent avec leur surface.
 
@@ -152,8 +156,43 @@ Les connexions suivent ces règles :
 - **Plans moyens et excentricités :** le plan moyen de la coque coïncide avec l'axe de la barre. **Aucune excentricité ni liaison rigide n'est ajoutée** (les retombées de poutre ne sont pas modélisées).
 - **Dalle et poteau, voile et dalle :** les nœuds TSA communs sont partagés, et les nœuds plongés dans la dalle aussi.
 - **Surface isolée** (aucun nœud commun avec une barre, un appui ou une autre surface) : **refusée** (mécanisme). Un voile excentré (`offset` non nul) n'a pas de nœud commun avec ses nœuds de pied : il doit être relié explicitement.
-- **Appuis :** ils ne s'appliquent qu'aux nœuds TSA. Un bord de dalle « appuyé » demande des nœuds TSA d'appui le long du bord, à un pas inférieur à la taille de maille. Sinon, des nœuds de maillage intermédiaires restent libres. Les tests 354 et 356 le vérifient.
+- **Appuis ponctuels :** les appuis des nœuds TSA s'appliquent aux nœuds du maillage confondus avec eux.
+- **Appuis linéiques de bord** (action « Appuis linéiques... », ruban Charges > Surface) : voir la section 7 bis.
 - **Fondations :** les semelles ne sont pas transmises (volumes à 3 DDL). Les appuis aux nœuds restent appliqués.
+
+## 7 bis. Appuis linéiques de bord
+
+Un appui linéique est porté par la dalle ou le voile, comme ses ouvertures : Annuler, la copie et la suppression le prennent en compte. Il est enregistré dans le chunk `SURF` (clés `slabEdgeSupports`, `wallEdgeSupports`).
+
+**Bords visés :**
+
+- **Dalle :** bord i = côté du contour allant du sommet i au sommet i+1.
+- **Voile :** 0 pied, 1 extrémité de fin, 2 tête, 3 extrémité de début (rectangle brut, décalage `offset` compris).
+- **Tout le contour :** edge = −1.
+
+**Conditions :** pour chaque DDL (Tx, Ty, Tz, Rx, Ry, Rz, axes globaux), l'appui est bloqué, élastique (raideur par unité de longueur, kN/m/m ou kN·m/rad/m) ou libre. Le dialogue propose des types prédéfinis : appui simple, articulé, encastré, appui élastique vertical.
+
+**Application au calcul :** l'adaptateur relève les nœuds du maillage situés sur le bord. Chaque nœud reçoit :
+
+- les blocages choisis ;
+- une raideur kᵢ = k · lᵢ, où lᵢ est sa longueur d'influence : la somme des demi-intervalles vers ses voisins sur le bord reliés par une arête d'élément. Une porte au pied d'un voile interrompt donc l'appui, et Σ lᵢ = longueur réellement appuyée.
+
+Un DDL bloqué l'emporte sur une raideur. Les réactions des nœuds propres aux surfaces sont conservées par nœud du maillage (`surfaceNodeReactions`) et entrent dans l'équilibre global.
+
+**Contrôles avant calcul :**
+
+| Situation | Niveau |
+|---|---|
+| Bord inexistant | bloquant |
+| Appui sur une surface non transmise (non maillée, non structurale, formulation refusée) | bloquant |
+| Aucun nœud du maillage sur le bord visé | bloquant |
+| DDL à la fois bloqué et élastique (raideur sans effet) | avertissement |
+| Même DDL bloqué par plusieurs appuis du même bord (condition redondante) | avertissement |
+| Appui sans aucun DDL ni raideur | avertissement |
+
+Une surface portée par un appui linéique n'est pas « isolée ». Un mécanisme résiduel est détecté par le moteur : matrice singulière en statique, valeur propre ≤ 0 en modal.
+
+**Unités :** les raideurs sont converties dans l'unité de force du calcul. En mode N, elles étaient auparavant écrites sans conversion, ce qui concernait aussi les appuis élastiques nodaux ; c'est corrigé et vérifié par le test 362.
 
 ## 8. Résultats
 
@@ -163,9 +202,53 @@ Les résultats suivants sont disponibles :
 - **Déplacements :** ils sont exacts à chaque nœud du maillage.
 - **Affichage :** Analyse > Maillage > « Déplacements sur le maillage », puis « Grandeur affichée sur le maillage ». La déformée est amplifiée et le champ est coloré. Ces résultats ne sont reportés que sur le maillage qui a servi au calcul (empreinte de génération).
 - **Équilibre global :** il intègre les charges surfaciques et le poids propre des coques.
-- **Note de calcul** (simplifiée et détaillée) : elle reprend les hypothèses des coques, les charges surfaciques et les résultantes maximales par surface. Son contrôle indépendant de la charge verticale inclut les surfaces. Le ferraillage des dalles et voiles et le poinçonnement y sont marqués « non calculée ».
+- **Note de calcul** (simplifiée et détaillée) : elle reprend les hypothèses des coques, les charges surfaciques et les résultantes maximales par surface. Son contrôle indépendant de la charge verticale inclut les surfaces ; il est signalé incomplet pour les charges sur zone ou variables. Le ferraillage des dalles et voiles et le poinçonnement y sont marqués « non calculée ».
+- **Chapitre « Éléments surfaciques »** de la note détaillée. Il présente :
+  - le maillage réellement calculé : quadrangles, triangles, nœuds, arêtes extrêmes, angle minimal, rapport d'arêtes ; un élément déformé est signalé ;
+  - la formulation et les rigidités ;
+  - le poids propre et les forces nodales cohérentes, avec leurs équations ;
+  - l'origine des valeurs : nœuds, ou points de Gauss moyennés par élément, sans lissage ;
+  - les conventions de repère et de signe, et les limites.
+- **Appuis linéiques :** la note les liste avec leur méthode de répartition.
+- **Synchronisation :** la coloration et la déformée du maillage suivent le pas de calcul ou le mode propre affiché. Pour un pas intermédiaire, aucun effort de coque n'est affiché (enregistrés au dernier pas seulement).
 
 Conventions de signe (OpenSees, repère local de l'élément) : une plaque fléchie vers le bas sous une charge descendante présente des moments M négatifs en travée.
+
+## 8 bis. Analyse modale
+
+**Lancement :** type d'analyse « Modale (fréquences et modes propres) », avec le nombre de modes, dans Paramètres d'analyse (Ctrl+F5). Capacité du moteur : `supportsModal`.
+
+**Masses :**
+
+| Origine | Masse | Mise en œuvre OpenSees |
+|---|---|---|
+| Barres | ρ·A par unité de longueur | elasticBeamColumn `-mass`, truss et corotTruss `-rho` |
+| Coques | ρ·e par unité d'aire | section ElasticMembranePlateSection |
+| Cas cochés « convertis en masses » (méthode explicite, jamais implicite) | m = F_z,descendante / g, sur X, Y et Z | aux nœuds ; charges de barre réparties par la règle du levier, charges surfaciques par les forces nodales cohérentes |
+
+Le poids propre n'est jamais converti : il est déjà représenté par les masses des éléments.
+
+**Résolution :** `eigen` avec LAPACK dense (`-fullGenLapack`) jusqu'à 3000 DDL libres, Arpack au-delà ; au plus (DDL libres − 1) modes. `nodeEigenvector` donne les formes propres de chaque nœud et `modalProperties` les masses totale et libre et les rapports de masse participante, mode par mode et cumulés.
+
+**Résultats :**
+
+- fréquence, période, ω et λ ;
+- participation MX à RMZ ;
+- formes propres normalisées (translation maximale = 1, sans unité), parcourues mode par mode comme des « pas » (barres et maillage des surfaces) ;
+- tableau des modes dans le panneau de résultats.
+
+Une valeur propre ≤ 0 est refusée (mécanisme). Aucun résultat statique n'est présenté pour un calcul modal. La note de calcul comporte un chapitre « Analyse modale » : méthode, équations, masses, contrôle d'après le modèle, tableau des modes. La règle des 90 % de masse (EN 1998) n'est pas vérifiée automatiquement.
+
+## 8 ter. API interne et IFC
+
+**API :** `TSA::Api::SurfaceApi` (src/Api) fonctionne sans interface graphique. Elle offre :
+
+- **Description :** `list` donne la référence, le GlobalId, la formulation, les aires brute et nette, les ouvertures, les appuis et les charges.
+- **Capacités :** `capabilities(engine)` est à interroger avant usage : coques, plaque, membrane, modal, appuis linéiques, charges de zone, thermique.
+- **Modifications validées :** `addOpening`, `addEdgeSupport`, `addLoad`, `setFormulation`.
+- **Export JSON versionné :** `toJson`, au format « tsa.surfaces/1 ».
+
+**IFC :** `IfcStructuralSurfaceMember` reçoit les ouvertures en `IfcFaceBound`, calculées avec la même géométrie que le maillage. Son type prédéfini suit la formulation (SHELL, BENDING_ELEMENT, MEMBRANE_ELEMENT). Les GlobalId sont ceux de la couche BIM, stables.
 
 ## 9. Validation (suite `surfaces`)
 
@@ -176,6 +259,17 @@ Conventions de signe (OpenSees, repère local de l'élément) : une plaque fléc
 | 356 | dalle sur 4 poutres et 4 poteaux ; voile de contreventement en console | nœuds de bord partagés avec les poutres ; Σ R = charges + poids propre ; voile à 2,8 % de Timoshenko ; note de calcul |
 | 357 | plaque, membrane, non structurale, surface isolée, charges non transmissibles | refus explicites |
 | 358 | enregistrement et relecture | formulations, ouvertures des voiles, charges surfaciques identiques |
+| 359 | essai F, analyse modale : bande de coque 4 × 1 m en console, 1,875²/(2πL²)·√(EI/m) | f1 = 7,099 Hz pour 7,111 Hz (−0,16 %) ; masse totale = ρ·e·A ; masses converties q·A/g et fréquence en √(m₀/(m₀+m_q)) à 0,5 % près ; participation MZ du mode 1 ≈ 63 % ; note de calcul |
+| 360 | appuis linéiques : plaque 6 × 6 m appuyée sur ses 4 bords, comparée à Navier (0,00406·q·a⁴/D) | +2,7 % ; Σ Rz = q·a² ; Σ lᵢ = périmètre ; appui élastique : Σ kᵢ = k·périmètre ; pied de voile avec porte appuyé sur 4 m ; contrôles ; persistance ; note |
+| 361 | charge sur zone chevauchant une ouverture ; poussée hydrostatique sur un voile | résultante et centre exacts (10⁻⁶) ; γh²L/2 = 100 kN appliqués à h/3 ; Σ R ; zone vide refusée ; persistance |
+| 362 | essai G, unités : même modèle en kN et en N | déplacements identiques, réactions × 1000 (= q·A + ρ·g·e·A), fréquences identiques, masses × 1000 |
+| 363 | plancher de 24 dalles sur poutres et poteaux (1536 coques) | maillage + calcul ≈ 1 à 1,5 s (Debug) ; Σ Rz exact ; empreinte du maillage conservée pour une charge ou un appui, modifiée pour une ouverture |
+| 364 | API interne, IFC | description, capacités, refus motivés, JSON versionné ; IfcFaceBound, BENDING_ELEMENT, GlobalId présent |
+
+Vérifiés dans l'application réelle avec `examples/TSA_Exemple_Voile_Reservoir.tsa` (voile 5 × 3 m encastré par appui linéique, eau sur 2 m) :
+
+- **Calcul statique (F5) :** Rz = 73,57 kN = ρ·g·e·A ; déplacement maximal 0,835 mm en tête ; hachures de l'appui et zone chargée affichées.
+- **Calcul modal (Ctrl+F5, type « Modale ») :** masse 7,500 t = ρ·e·A ; f1 = 12,85 Hz, contre 12,64 Hz pour une console en théorie des poutres (effet plaque, ν) ; 85,6 % de masse cumulée en Y sur 6 modes.
 
 Une plaque de Navier (4 × 4 m, appuis simples sur les quatre bords) calculée hors de TSA avec les mêmes éléments OpenSees donne les écarts suivants pour la flèche au centre :
 
@@ -184,8 +278,27 @@ Une plaque de Navier (4 × 4 m, appuis simples sur les quatre bords) calculée h
 
 ## 10. Limites
 
-- **Calcul :** il est statique linéaire. Le moteur actuel ne gère ni second ordre, ni fissuration, ni analyse modale ou dynamique des coques.
-- **Formulations :** seule la coque est calculée. La plaque seule et la membrane seule sont refusées.
-- **Liaisons :** aucune excentricité ni liaison rigide n'est générée. Les appuis sont seulement ponctuels (nœuds TSA) : il n'existe pas encore d'appui linéaire sur un bord de surface.
-- **Charges :** il n'y a ni charge sur une zone partielle, ni charge variable, ni charge thermique sur les surfaces.
+- **Calcul :** statique linéaire et modal. Le moteur intégré ne gère pas, pour les coques :
+  - le second ordre ;
+  - la fissuration ;
+  - le temporel ;
+  - le spectre de réponse ;
+  - le pushover ;
+  - le flambement ;
+  - le thermique.
+  Ces analyses ne sont pas proposées.
+- **Formulations :** seule la coque est calculée. La plaque seule et la membrane seule sont refusées (éléments de membrane OpenSees à 2 DDL, incompatibles avec le modèle à 6 DDL).
+- **Liaisons :**
+  - aucune excentricité ni liaison rigide n'est générée ;
+  - aucune contrainte multipoint (equalDOF, rigidLink) ;
+  - aucune liaison surface-surface autre que les nœuds partagés.
+- **Appuis linéiques :** ils sont exprimés en axes globaux, sans repère local du bord.
+- **Charges :**
+  - la zone est rectangulaire en repère local (pas de polygone quelconque) ;
+  - il n'y a pas de charge linéique le long d'un bord ni de charge thermique.
+- **Normale :** aucune commande d'inversion de la normale ; une pression normale de sens opposé se saisit avec une valeur négative.
+- **Résultats :**
+  - les contraintes aux nœuds ne sont pas lissées ;
+  - les efforts de coque ne sont enregistrés qu'au dernier pas d'un calcul non linéaire ;
+  - en modal, aucun effort de coque n'est calculé.
 - **Vérifications réglementaires :** les dalles et voiles ne font l'objet d'aucune vérification (ferraillage, poinçonnement, cisaillement des voiles).

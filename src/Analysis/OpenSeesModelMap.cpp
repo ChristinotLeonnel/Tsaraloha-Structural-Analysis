@@ -89,6 +89,8 @@ OpenSeesModelMap OpenSeesModelMap::build(const CalculationSnapshot& snapshot, co
     }
 
     // Ressorts : tags placés au-delà des tags existants (aucune collision possible).
+    // Raideurs saisies en kN/m et kN·m/rad (SupportDefinition, appuis linéiques) : converties dans l'unité de force du calcul.
+    const double stiffnessScale = params.useKiloNewtons ? 1.0 : 1000.0;
     int auxTag = maxNodeId + 1;
     int springTag = maxElementTag + 1;
     for (const auto& [id, n] : snapshot.nodes())
@@ -96,7 +98,7 @@ OpenSeesModelMap OpenSeesModelMap::build(const CalculationSnapshot& snapshot, co
         const double k[6] = { n.kTx, n.kTy, n.kTz, n.kRx, n.kRy, n.kRz };
         SpringSupportInfo s;
         for (int d = 0; d < 6; ++d)
-            if (k[d] > 0.0) { s.dofs.push_back(d); s.stiffness.push_back(k[d]); }
+            if (k[d] > 0.0) { s.dofs.push_back(d); s.stiffness.push_back(k[d] * stiffnessScale); }
         if (s.dofs.empty()) continue;
         s.nodeId = id;
         s.auxNodeTag = auxTag++;

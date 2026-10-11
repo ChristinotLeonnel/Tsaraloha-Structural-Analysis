@@ -2288,6 +2288,7 @@ void OccView::updateAllLoadShapes()
         updateMemberLoadShape(id, false);
     }
     updateSurfaceLoadShapes();
+    updateSurfaceSupportShapes();
     // Dernière étape de onModelDiffApplied() et de rebuildAllShapes() : une seule passe
     // d'isolation couvre ainsi les éléments et les charges recréés (no-op hors isolation).
     reapplyIsolationIfActive();
@@ -2534,6 +2535,77 @@ void OccView::setSupportLabelsVisible(bool visible)
 
 
 
+void OccView::updateSurfaceSupportShapes()
+{
+    if (m_context.IsNull()) return;
+    for (auto& o : m_surfaceSupportShapes)
+        if (!o.IsNull()) m_context->Remove(o, false);
+    m_surfaceSupportShapes.clear();
+    if (!m_model) return;
+    const double L = memberLoadArrowLength();
+    BRep_Builder bb;
+    TopoDS_Compound comp;
+    bb.MakeCompound(comp);
+    bool any = false;
+    auto addEdge = [&](const gp_Pnt& a, const gp_Pnt& b) {
+        if (a.Distance(b) < 1e-9) return;
+        BRepBuilderAPI_MakeEdge e(a, b);
+        if (e.IsDone()) bb.Add(comp, e.Edge()), any = true;
+    };
+    // Bord appuyé : trait doublé et hachures (côté appui : vers le bas, ou perpendiculaires pour un bord vertical)
+    auto drawEdge = [&](const gp_Pnt& a, const gp_Pnt& b) {
+        gp_Vec ab(a, b);
+        const double len = ab.Magnitude();
+        if (len < 1e-9) return;
+        ab.Normalize();
+        gp_Vec down(0, 0, -1);
+        if (std::abs(ab.Dot(down)) > 0.9) down = gp_Vec(ab.Y(), -ab.X(), 0).Magnitude() > 1e-9 ? gp_Vec(ab.Y(), -ab.X(), 0) : gp_Vec(1, 0, 0);
+        down = (down - ab * down.Dot(ab)).Normalized();
+        addEdge(a, b);
+        addEdge(a.Translated(down * (0.06 * L)), b.Translated(down * (0.06 * L)));
+        const int n = std::max(2, int(len / (0.35 * L)));
+        for (int i = 0; i <= n; ++i)
+        {
+            const gp_Pnt p = a.Translated(ab * (len * i / n) + down * (0.06 * L));
+            addEdge(p, p.Translated(down * (0.18 * L) - ab * (0.12 * L)));
+        }
+    };
+    auto drawSupports = [&](const std::vector<gp_Pnt>& corners, const std::vector<TSA::Model::SurfaceEdgeSupport>& list) {
+        for (const auto& sp : list)
+            for (int e = 0; e < int(corners.size()); ++e)
+                if (sp.edge < 0 || sp.edge == e) drawEdge(corners[std::size_t(e)], corners[std::size_t(e + 1) % corners.size()]);
+    };
+    for (const auto& [id, s] : m_model->slabs())
+    {
+        if (s.edgeSupports().empty()) continue;
+        std::vector<gp_Pnt> c;
+        for (int nid : s.nodeIds())
+            if (const auto* n = m_model->getNode(nid)) c.emplace_back(n->x(), n->y(), n->z());
+        drawSupports(c, s.edgeSupports());
+    }
+    for (const auto& [id, w] : m_model->walls())
+    {
+        if (w.edgeSupports().empty()) continue;
+        const auto* na = m_model->getNode(w.startNodeId());
+        const auto* nb = m_model->getNode(w.endNodeId());
+        if (!na || !nb) continue;
+        gp_Vec d(nb->x() - na->x(), nb->y() - na->y(), 0);
+        if (d.Magnitude() < 1e-12) continue;
+        d.Normalize();
+        const gp_Vec off = gp_Vec(-d.Y(), d.X(), 0) * w.offset();
+        const gp_Pnt a = gp_Pnt(na->x(), na->y(), na->z()).Translated(off), b = gp_Pnt(nb->x(), nb->y(), nb->z()).Translated(off);
+        const gp_Vec up(0, 0, w.height());
+        drawSupports({ a, b, b.Translated(up), a.Translated(up) }, w.edgeSupports());
+    }
+    if (!any) return;
+    Handle(AIS_Shape) ais = new AIS_Shape(comp);
+    ais->SetColor(m_isDarkMode ? Quantity_Color(0.35, 0.85, 0.45, Quantity_TOC_RGB) : Quantity_Color(0.05, 0.55, 0.2, Quantity_TOC_RGB));
+    ais->SetWidth(2.5);
+    m_context->Display(ais, false);
+    m_context->Deactivate(ais);
+    m_surfaceSupportShapes.push_back(ais);
+}
+
 void OccView::updateSurfaceLoadShapes()
 {
     if (m_context.IsNull()) return;
@@ -2619,6 +2691,10 @@ void OccView::updateSurfaceLoadShapes()
             side = (side - dir * side.Dot(dir)).Normalized();
             double cu = 0, cv = 0;
             int count = 0;
+            // Zone et variation linéaire : flèches limitées à la zone, longueur proportionnelle à |p(u, v)|
+            if (l.zone) u0 = std::max(u0, l.zoneU0), u1 = std::min(u1, l.zoneU1), v0 = std::max(v0, l.zoneV0), v1 = std::min(v1, l.zoneV1);
+            auto p = [&](double u, double v) { return l.value + l.gradU * u + l.gradV * v; };
+            const double pmax = std::max({ std::abs(p(u0, v0)), std::abs(p(u1, v0)), std::abs(p(u0, v1)), std::abs(p(u1, v1)), 1e-12 });
             for (double u = u0 + 0.5 * step; u < u1; u += step)
                 for (double v = v0 + 0.5 * step; v < v1; v += step)
                 {
@@ -2626,8 +2702,10 @@ void OccView::updateSurfaceLoadShapes()
                     bool inHole = false;
                     for (const auto& h : holes) inHole |= TSA::Mesh::pointInPolygon(u, v, h);
                     if (inHole) continue;
+                    const double ratio = std::abs(p(u, v)) / pmax;
+                    if (ratio < 0.05) continue;
                     const gp_Pnt tip = toPnt(sg->frame.toGlobal(u, v));
-                    const gp_Pnt tail = tip.Translated(-dir * L);
+                    const gp_Pnt tail = tip.Translated(-dir * (L * ratio));
                     addEdge(tail, tip);
                     const gp_Pnt back = tip.Translated(-dir * (0.22 * L));
                     addEdge(tip, back.Translated(side * (0.09 * L)));
@@ -2638,8 +2716,13 @@ void OccView::updateSurfaceLoadShapes()
                 for (std::size_t i = 0; i < poly.size(); ++i)
                     addEdge(toPnt(poly[i]).Translated(-dir * L), toPnt(poly[(i + 1) % poly.size()]).Translated(-dir * L));
             };
-            ring(sg->outer);
-            for (const auto& h : sg->holes) ring(h);
+            if (l.zone)
+                ring({ sg->frame.toGlobal(u0, v0), sg->frame.toGlobal(u1, v0), sg->frame.toGlobal(u1, v1), sg->frame.toGlobal(u0, v1) });
+            else
+            {
+                ring(sg->outer);
+                for (const auto& h : sg->holes) ring(h);
+            }
             if (any)
             {
                 Handle(AIS_Shape) ais = new AIS_Shape(comp);

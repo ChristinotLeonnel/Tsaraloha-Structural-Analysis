@@ -7,6 +7,7 @@
 #include "../../Model/Model.h"
 
 #include <QCheckBox>
+#include <algorithm>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -16,6 +17,7 @@
 #include <QListWidget>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSpinBox>
 #include <QVBoxLayout>
 
 namespace TSA::UI
@@ -33,6 +35,7 @@ QString typeLabel(AnalysisType t)
     {
     case AnalysisType::LinearStatic: return QObject::tr("Statique linéaire");
     case AnalysisType::NonLinearStatic: return QObject::tr("Statique non linéaire");
+    case AnalysisType::Modal: return QObject::tr("Modale (fréquences et modes propres)");
     }
     return {};
 }
@@ -114,7 +117,7 @@ void AnalysisDialog::buildUi()
     lay->addWidget(groupEngine);
 
     auto* groupCommon = new QGroupBox(tr("Analyse"), content);
-    auto* fc = new QFormLayout(groupCommon);
+    auto* fc = m_commonForm = new QFormLayout(groupCommon);
     m_dimensionCombo = new QComboBox(groupCommon);
     fc->addRow(tr("Dimension :"), m_dimensionCombo);
     m_typeCombo = new QComboBox(groupCommon);
@@ -130,6 +133,17 @@ void AnalysisDialog::buildUi()
     fc->addRow(tr("Chargement :"), m_loadCombo);
     m_selfWeight = new QCheckBox(tr("Inclure le poids propre"), groupCommon);
     fc->addRow(QString(), m_selfWeight);
+    m_modeCount = new QSpinBox(groupCommon);
+    m_modeCount->setRange(1, 200);
+    m_modeCount->setValue(6);
+    m_modeCount->setToolTip(tr("Nombre de modes propres calculés (valeurs propres les plus basses)."));
+    fc->addRow(tr("Nombre de modes :"), m_modeCount);
+    m_massCases = new QListWidget(groupCommon);
+    m_massCases->setMaximumHeight(90);
+    m_massCases->setToolTip(tr("Masses : celles des éléments (barres ρ·A, coques ρ·e) sont toujours prises en compte. Les charges des cas "
+                               "cochés sont converties explicitement en masses : composante verticale descendante / g, sur les trois "
+                               "translations. Ne pas cocher le poids propre déjà représenté par les éléments."));
+    fc->addRow(tr("Cas convertis en masses :"), m_massCases);
     m_supportCombo = new QComboBox(groupCommon);
     m_supportCombo->addItem(tr("Appui à fourche (rotation autour de la barre bloquée)"),
                             static_cast<int>(TSA::Analysis::SupportRestraintMode::Fork));
@@ -184,6 +198,7 @@ void AnalysisDialog::buildUi()
     connect(cancel, &QPushButton::clicked, this, &QDialog::reject);
     connect(m_engineCombo, &QComboBox::currentIndexChanged, this, [this]() { if (!m_updating) onEngineChanged(); });
     connect(m_typeCombo, &QComboBox::currentIndexChanged, this, [this]() {
+        updateTypeDependentRows();
         if (m_updating) return;
         syncCommonToOptions();
     });
@@ -252,8 +267,15 @@ void AnalysisDialog::populateLoads()
     m_loadCombo->addItem(tr("Tous les cas (superposés)"), QStringLiteral("all"));
     if (!m_model) return;
     const auto& lm = m_model->loadManager();
+    m_massCases->clear();
     for (const auto& [id, lc] : lm.loadCases())
+    {
         m_loadCombo->addItem(tr("Cas : %1").arg(qs(lc.name())), QStringLiteral("cases:%1").arg(id));
+        auto* it = new QListWidgetItem(qs(lc.name()), m_massCases);
+        it->setData(Qt::UserRole, id);
+        it->setFlags(it->flags() | Qt::ItemIsUserCheckable);
+        it->setCheckState(Qt::Unchecked);
+    }
     for (const auto& [id, c] : lm.combinations())
         m_loadCombo->addItem(tr("Combinaison : %1").arg(qs(c.name())), QStringLiteral("combo:%1").arg(id));
 }
@@ -305,6 +327,14 @@ void AnalysisDialog::setContext(const AnalysisContext& context)
     }
     m_loadCombo->setCurrentIndex(lo);
     m_selfWeight->setChecked(m_context.common.includeSelfWeight);
+    m_modeCount->setValue(m_context.common.modeCount);
+    for (int i = 0; i < m_massCases->count(); ++i)
+    {
+        auto* it = m_massCases->item(i);
+        const int id = it->data(Qt::UserRole).toInt();
+        const auto& ids = m_context.common.modalMassCaseIds;
+        it->setCheckState(std::find(ids.begin(), ids.end(), id) != ids.end() ? Qt::Checked : Qt::Unchecked);
+    }
     m_supportCombo->setCurrentIndex(std::max(0, m_supportCombo->findData(static_cast<int>(m_context.common.supportRestraints))));
     m_updating = false;
 
@@ -369,11 +399,12 @@ void AnalysisDialog::refreshEngineDependentWidgets()
 
     const int wantedType = static_cast<int>(m_context.type);
     m_typeCombo->clear();
-    for (auto t : { AnalysisType::LinearStatic, AnalysisType::NonLinearStatic })
+    for (auto t : { AnalysisType::LinearStatic, AnalysisType::NonLinearStatic, AnalysisType::Modal })
         if (caps.supportsAnalysisType(t)) m_typeCombo->addItem(typeLabel(t), static_cast<int>(t));
     const int ti = m_typeCombo->findData(wantedType);
     m_typeCombo->setCurrentIndex(ti >= 0 ? ti : 0);
     m_updating = false;
+    updateTypeDependentRows();
 
     // Pas de bouton inutilisable : calcul possible si le moteur est disponible ou installable.
     m_runButton->setEnabled(avail.available || avail.canProvision);
@@ -409,9 +440,23 @@ AnalysisContext AnalysisDialog::context() const
         for (const auto& id : lk.mid(6).split(',', Qt::SkipEmptyParts)) c.loadCaseIds.push_back(id.toInt());
 
     c.common.includeSelfWeight = m_selfWeight->isChecked();
+    c.common.modeCount = m_modeCount->value();
+    c.common.modalMassCaseIds.clear();
+    for (int i = 0; i < m_massCases->count(); ++i)
+        if (m_massCases->item(i)->checkState() == Qt::Checked) c.common.modalMassCaseIds.push_back(m_massCases->item(i)->data(Qt::UserRole).toInt());
+    if (c.type == AnalysisType::Modal) c.combinationId = 0, c.loadCaseIds.clear();   // les charges ne sont pas calculées
     c.common.supportRestraints = static_cast<TSA::Analysis::SupportRestraintMode>(m_supportCombo->currentData().toInt());
     if (m_optionsWidget) c.engineSettings[c.engineId] = m_optionsWidget->saveSettings();
     return c;
+}
+
+void AnalysisDialog::updateTypeDependentRows()
+{
+    const bool modal = m_typeCombo->currentIndex() >= 0 && static_cast<AnalysisType>(m_typeCombo->currentData().toInt()) == AnalysisType::Modal;
+    m_commonForm->setRowVisible(m_loadCombo, !modal);
+    m_commonForm->setRowVisible(m_selfWeight, !modal);
+    m_commonForm->setRowVisible(m_modeCount, modal);
+    m_commonForm->setRowVisible(m_massCases, modal);
 }
 
 EngineId AnalysisDialog::currentEngineId() const

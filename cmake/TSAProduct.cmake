@@ -120,6 +120,8 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/SurfaceLoadsDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/SurfaceLoadsDialog.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/SurfaceSupportsDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/SurfaceSupportsDialog.cpp
     ${TSA_ROOT}/src/UI/HelpLauncher.h
     ${TSA_ROOT}/src/UI/HelpLauncher.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridDialog.h
@@ -602,6 +604,8 @@ set(ANALYSIS_ENGINE_SOURCES
     ${TSA_ROOT}/src/Analysis/Engine/AnalysisEngineRegistry.cpp
     ${TSA_ROOT}/src/Analysis/Engine/AnalysisManager.h
     ${TSA_ROOT}/src/Analysis/Engine/AnalysisManager.cpp
+    ${TSA_ROOT}/src/Api/SurfaceApi.h
+    ${TSA_ROOT}/src/Api/SurfaceApi.cpp
     ${TSA_ROOT}/src/Analysis/Engines/BuiltInEngines.cpp
     ${TSA_ROOT}/src/Analysis/Engines/OpenSees/OpenSeesEngine.h
     ${TSA_ROOT}/src/Analysis/Engines/OpenSees/OpenSeesEngine.cpp

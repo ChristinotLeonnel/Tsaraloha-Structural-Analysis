@@ -609,6 +609,23 @@ CalculationSnapshot CalculationSnapshot::withSurfaces(const CalculationSnapshot&
     };
     addForces(surfaces.loads);
     addForces(surfaces.selfWeight);
+    // Appuis linéiques de bord : DDL bloqués (ou) et raideurs (somme) ajoutés aux nœuds ; un DDL bloqué l'emporte sur une raideur.
+    for (const auto& s : surfaces.supports)
+    {
+        auto it = m.meshToNode.find(s.meshNode);
+        if (it == m.meshToNode.end()) continue;
+        auto& n = out.m_nodes.at(it->second);
+        bool* fix[6] = { &n.fixTx, &n.fixTy, &n.fixTz, &n.fixRx, &n.fixRy, &n.fixRz };
+        double* k[6] = { &n.kTx, &n.kTy, &n.kTz, &n.kRx, &n.kRy, &n.kRz };
+        for (int d = 0; d < 6; ++d)
+        {
+            if (s.fixed[d]) *fix[d] = n.definedFix[d] = true;
+            else if (s.stiffness[d] > 0.0) *k[d] += s.stiffness[d];
+        }
+        for (int d = 0; d < 6; ++d)
+            if (*fix[d]) *k[d] = 0.0;
+        if (n.supportType == TSA::Model::SupportType::Free) n.supportType = TSA::Model::SupportType::Custom;
+    }
     if (notes)
         notes->push_back(std::to_string(out.m_shells.size()) + " élément(s) de coque, " + std::to_string(merged) + " nœud(s) partagé(s) avec les barres ou les nœuds TSA, " +
                          std::to_string(created) + " nœud(s) propres aux surfaces.");

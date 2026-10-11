@@ -67,6 +67,7 @@ struct RibbonActions
     QAction* actionTrapLoad = nullptr;
     QAction* actionBarPointLoad = nullptr;
     QAction* actionSurfaceLoad = nullptr;
+    QAction* actionSurfaceSupports = nullptr;
     QAction* actionSelfWeight = nullptr;
     QAction* actionLoadCases = nullptr;
     QAction* actionLoadsVisible = nullptr;

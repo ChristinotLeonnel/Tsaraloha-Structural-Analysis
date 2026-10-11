@@ -85,6 +85,11 @@ ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
             break;
         }
     }
+    // Appuis linéiques des bords de dalles et de voiles (appliqués aux nœuds du maillage au calcul)
+    for (const auto& [sid, sl] : model.slabs())
+        if (!sl.edgeSupports().empty()) hasSupport = true;
+    for (const auto& [wid, wl] : model.walls())
+        if (!wl.edgeSupports().empty()) hasSupport = true;
     if (!hasSupport)
     {
         report.addError("Conditions aux Limites",

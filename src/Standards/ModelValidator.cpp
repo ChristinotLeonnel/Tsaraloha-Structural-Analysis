@@ -208,6 +208,11 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
         }
     }
 
+    // Appuis linéiques des bords de dalles et de voiles (appliqués aux nœuds du maillage au calcul)
+    for (const auto& [sid, sl] : model.slabs())
+        if (!sl.edgeSupports().empty()) hasSupport = true;
+    for (const auto& [wid, wl] : model.walls())
+        if (!wl.edgeSupports().empty()) hasSupport = true;
     // 2. Contrôle de stabilité cinématique globale
     if (!hasSupport)
     {

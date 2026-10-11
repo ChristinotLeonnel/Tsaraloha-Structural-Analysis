@@ -267,6 +267,7 @@ cmd.loads.distributed               | Q, U                  | on   | Q, U       
 cmd.loads.point                     | Q, N                  | on   | Q, N                  | Force et couple — Charge nodale : force et moment
 cmd.loads.self_weight               | Q, G                  | on   | Q, G                  | Poids propre — Paramètres du poids propre
 cmd.loads.surface                   | Q, S                  | on   | Q, S                  | Charge surfacique — Charge répartie sur surface
+cmd.loads.surface_supports          |                       | on   |                       | Appuis linéiques des surfaces — Appuis répartis sur les bords des dalles et voiles
 cmd.loads.trapezoidal               | Q, T                  | on   | Q, T                  | Charge trapézoïdale — Charge répartie trapézoïdale sur barre
 
 [Cas de charge et combinaisons]

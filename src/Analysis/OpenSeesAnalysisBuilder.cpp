@@ -307,7 +307,8 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
                 tcl << "uniaxialMaterial InitStrain " << mat << " " << baseMat << " " << eps0 << "\n";
             }
             tcl << "element corotTruss " << e.tag << " " << e.nodeI << " " << e.nodeJ << " "
-                << Ac << " " << mat << " ;# " << e.key.label() << " câble\n";
+                << Ac << " " << mat << " -rho " << Ac * el->material.density * (params.useKiloNewtons ? 1e-3 : 1.0)
+                << " ;# " << e.key.label() << " câble\n";
         }
         else if (el->type == SnapshotElement::ElementType::Truss)
         {
@@ -316,7 +317,8 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
             const int mat = matTag++;
             tcl << "uniaxialMaterial Elastic " << mat << " " << E << "\n";
             tcl << "element " << e.opsClass << " " << e.tag << " " << e.nodeI << " " << e.nodeJ << " "
-                << A << " " << mat << " ;# " << e.key.label() << "\n";
+                << A << " " << mat << " -rho " << A * el->material.density * (params.useKiloNewtons ? 1e-3 : 1.0)
+                << " ;# " << e.key.label() << "\n";
         }
         else
         {
@@ -921,6 +923,87 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
 
     tcl << "wipe\n";
 
+    return tcl.str();
+}
+
+
+std::map<int, double> OpenSeesAnalysisBuilder::modalLoadMasses(const CalculationSnapshot& snapshot, const AnalysisParameters& params)
+{
+    // Méthode explicite : masse = composante verticale descendante des charges des cas désignés / g, sur les 3
+    // translations. Charges nodales : au nœud ; charges de barres : résultante répartie sur les deux nœuds par la règle
+    // du levier ; charges surfaciques : forces nodales cohérentes du maillage. Les composantes ascendantes ou
+    // horizontales ne créent pas de masse. Le poids propre n'est jamais converti (masses des éléments, ρ).
+    constexpr double g = 9.81;
+    const double forceScale = params.useKiloNewtons ? 1.0 : 1000.0;
+    std::set<int> cases(params.modalMassCaseIds.begin(), params.modalMassCaseIds.end());
+    cases.erase(0);
+    std::map<int, double> m;
+    if (cases.empty()) return m;
+    auto add = [&](int node, double fz) {
+        if (fz < 0.0 && snapshot.getNode(node)) m[node] += -fz * forceScale / g;
+    };
+    for (const auto& nl : snapshot.nodalLoads())
+        if (cases.count(nl.loadCaseId())) add(nl.nodeId(), nl.fz());
+    for (const auto& f : snapshot.surfaceForces())
+        if (cases.count(f.loadCaseId)) add(f.nodeId, f.fz);
+    for (const auto& ml : snapshot.memberLoads())
+    {
+        if (!cases.count(ml.loadCaseId())) continue;
+        const auto* el = snapshot.findElementForLoad(ml);
+        if (!el) continue;
+        const MemberLoadResultant res = memberLoadResultant(ml, snapshot);
+        const double t = el->length > 1e-9 ? std::clamp(res.centroid / el->length, 0.0, 1.0) : 0.5;
+        add(el->startNodeId, res.force.Z() * (1.0 - t));
+        add(el->endNodeId, res.force.Z() * t);
+    }
+    return m;
+}
+
+std::string OpenSeesAnalysisBuilder::buildModalScript(const CalculationSnapshot& snapshot, const OpenSeesModelMap& map,
+                                                     const AnalysisParameters& params)
+{
+    std::ostringstream tcl;
+    tcl << std::setprecision(17);
+    tcl << "# ==============================================================================\n";
+    tcl << "# TSA — Analyse modale OpenSees (valeurs et vecteurs propres)\n";
+    tcl << "# Unités : " << (params.useKiloNewtons ? "kN, m, s, t" : "N, m, s, kg") << "\n";
+    tcl << "# Masses : barres ρ·A (elasticBeamColumn -mass, truss -rho), coques ρ·e (section), masses converties ci-dessous\n";
+    tcl << "# ==============================================================================\n\n";
+    tcl << "wipe\n";
+    tcl << "model BasicBuilder -ndm 3 -ndf 6\n\n";
+    tcl << buildNodes(snapshot);
+    tcl << buildBoundaryConditions(snapshot, map);
+    tcl << buildElements(snapshot, map, params);
+
+    const auto extra = modalLoadMasses(snapshot, params);
+    if (!extra.empty())
+    {
+        tcl << "# Masses issues des charges des cas";
+        for (int id : params.modalMassCaseIds) tcl << " " << id;
+        tcl << " (m = F_descendante / g, translations X, Y, Z)\n";
+        for (const auto& [node, mass] : extra) tcl << "mass " << node << " " << mass << " " << mass << " " << mass << " 0 0 0\n";
+        tcl << "\n";
+    }
+
+    // Au plus (DDL libres − 1) modes ; résolution dense (LAPACK, généralisée) pour les petits modèles, Arpack au-delà.
+    const int freeDofs = std::max(1, map.estimatedFreeDofs());
+    const int modes = std::clamp(params.modeCount, 1, std::max(1, freeDofs - 1));
+    tcl << "constraints " << toTclString(params.constraintHandler) << "\n";
+    tcl << "numberer RCM\n";
+    tcl << "set tsaLambda [eigen" << (freeDofs <= 3000 ? " -fullGenLapack " : " ") << modes << "]\n";
+    tcl << "set tsaF [open \"" << params.modalEigenOutputFile << "\" w]\n";
+    tcl << "foreach tsaL $tsaLambda { puts $tsaF $tsaL }\n";
+    tcl << "close $tsaF\n";
+    tcl << "set tsaF [open \"" << params.modalShapesOutputFile << "\" w]\n";
+    tcl << "for {set tsaM 1} {$tsaM <= [llength $tsaLambda]} {incr tsaM} {\n";
+    tcl << "  set tsaRow {}\n";
+    tcl << "  foreach tsaN {" << joinTags(map.structuralNodeTags()) << "} { lappend tsaRow {*}[nodeEigenvector $tsaN $tsaM] }\n";
+    tcl << "  puts $tsaF $tsaRow\n";
+    tcl << "}\n";
+    tcl << "close $tsaF\n";
+    tcl << "if {[catch {modalProperties -file \"" << params.modalPropertiesOutputFile << "\"} tsaErr]} { puts \"TSA_OPS_MODAL_PROPERTIES_FAIL $tsaErr\" }\n";
+    tcl << "puts \"TSA_OPS_SUCCESS Modal [llength $tsaLambda] modes\"\n";
+    tcl << "wipe\n";
     return tcl.str();
 }
 

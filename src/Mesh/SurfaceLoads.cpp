@@ -76,28 +76,61 @@ std::vector<Gauss> gauss(FeType t)
     return out;
 }
 
-double polygonArea(const std::vector<P3>& poly, const PlaneFrame& f, P3* centroidTimesArea)
+/// Intégrales d'un polygone plan (u, v) : aire et moments d'ordre 1 et 2 (signe de l'orientation retiré).
+struct PolyIntegrals
 {
-    double a = 0, cu = 0, cv = 0;
-    std::vector<std::pair<double, double>> p;
-    for (const auto& q : poly)
-    {
-        double u = 0, v = 0;
-        f.toLocal(q, &u, &v);
-        p.emplace_back(u, v);
-    }
+    double A = 0, Su = 0, Sv = 0, Suu = 0, Suv = 0, Svv = 0;
+};
+PolyIntegrals polyIntegrals(const std::vector<std::pair<double, double>>& p)
+{
+    PolyIntegrals r;
     for (std::size_t i = 0; i < p.size(); ++i)
     {
         const auto& [x1, y1] = p[i];
         const auto& [x2, y2] = p[(i + 1) % p.size()];
-        const double cr = x1 * y2 - x2 * y1;
-        a += cr;
-        cu += (x1 + x2) * cr;
-        cv += (y1 + y2) * cr;
+        const double c = x1 * y2 - x2 * y1;
+        r.A += c / 2;
+        r.Su += (x1 + x2) * c / 6;
+        r.Sv += (y1 + y2) * c / 6;
+        r.Suu += (x1 * x1 + x1 * x2 + x2 * x2) * c / 12;
+        r.Svv += (y1 * y1 + y1 * y2 + y2 * y2) * c / 12;
+        r.Suv += (x1 * y2 + 2 * x1 * y1 + 2 * x2 * y2 + x2 * y1) * c / 24;
     }
-    a *= 0.5;
-    if (centroidTimesArea && std::abs(a) > 0) *centroidTimesArea = f.toGlobal(cu / (6 * a), cv / (6 * a)) * std::abs(a);
-    return std::abs(a);
+    if (r.A < 0) r.A = -r.A, r.Su = -r.Su, r.Sv = -r.Sv, r.Suu = -r.Suu, r.Suv = -r.Suv, r.Svv = -r.Svv;
+    return r;
+}
+
+/// Découpe (Sutherland-Hodgman) d'un polygone quelconque par le rectangle [u0, u1] × [v0, v1].
+std::vector<std::pair<double, double>> clipRect(std::vector<std::pair<double, double>> poly, double u0, double v0, double u1, double v1)
+{
+    auto clip = [&](auto inside, auto cut) {
+        std::vector<std::pair<double, double>> out;
+        for (std::size_t i = 0; i < poly.size(); ++i)
+        {
+            const auto a = poly[i], b = poly[(i + 1) % poly.size()];
+            const bool ia = inside(a), ib = inside(b);
+            if (ia) out.push_back(a);
+            if (ia != ib) out.push_back(cut(a, b));
+        }
+        poly = out;
+    };
+    auto lerpU = [](double c) {
+        return [c](std::pair<double, double> a, std::pair<double, double> b) {
+            const double t = (c - a.first) / (b.first - a.first);
+            return std::pair<double, double> { c, a.second + t * (b.second - a.second) };
+        };
+    };
+    auto lerpV = [](double c) {
+        return [c](std::pair<double, double> a, std::pair<double, double> b) {
+            const double t = (c - a.second) / (b.second - a.second);
+            return std::pair<double, double> { a.first + t * (b.first - a.first), c };
+        };
+    };
+    clip([&](auto p) { return p.first >= u0; }, lerpU(u0));
+    if (!poly.empty()) clip([&](auto p) { return p.first <= u1; }, lerpU(u1));
+    if (!poly.empty()) clip([&](auto p) { return p.second >= v0; }, lerpV(v0));
+    if (!poly.empty()) clip([&](auto p) { return p.second <= v1; }, lerpV(v1));
+    return poly;
 }
 
 double relErr(const P3& a, const P3& b, double scale)
@@ -128,8 +161,42 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
     if (normal && load.projected) r.warnings.push_back("surface projetée sans objet pour une pression normale : surface réelle utilisée");
     const double projFactor = (!normal && load.projected) ? std::abs(s->frame.N.dot(dir)) : 1.0;
 
+    if (load.zone && (load.zoneU1 <= load.zoneU0 || load.zoneV1 <= load.zoneV0))
+    {
+        r.errors.push_back("zone chargée vide (u₁ ≤ u₀ ou v₁ ≤ v₀) : charge non convertie");
+        return r;
+    }
+    auto pressure = [&](double u, double v) { return load.value + load.gradU * u + load.gradV * v; };
     std::map<int, P3> forces;
     std::vector<double> N, dr, ds;
+    // Repère local d'un nœud du maillage
+    auto local = [&](int node) {
+        const auto& n = mesh.node(node);
+        double u = 0, v = 0;
+        s->frame.toLocal(P3 { n.x, n.y, n.z }, &u, &v);
+        return std::pair<double, double> { u, v };
+    };
+    // Coordonnées naturelles (r, s) d'un point (u, v) de l'élément : Newton sur la transformation géométrique
+    auto natural = [&](const FeElement& e, double u, double v, double* rr, double* ss) {
+        double a = (e.type == FeType::Tri3 || e.type == FeType::Tri6) ? 1.0 / 3 : 0.0, b = a;
+        for (int it = 0; it < 30; ++it)
+        {
+            shape(e.type, a, b, N, dr, ds);
+            double fu = -u, fv = -v, j11 = 0, j12 = 0, j21 = 0, j22 = 0;
+            for (std::size_t i = 0; i < N.size(); ++i)
+            {
+                const auto [ui, vi] = local(e.nodes[i]);
+                fu += N[i] * ui, fv += N[i] * vi;
+                j11 += dr[i] * ui, j12 += ds[i] * ui, j21 += dr[i] * vi, j22 += ds[i] * vi;
+            }
+            const double det = j11 * j22 - j12 * j21;
+            if (std::abs(det) < 1e-300) break;
+            const double da = (j22 * fu - j12 * fv) / det, db = (-j21 * fu + j11 * fv) / det;
+            a -= da, b -= db;
+            if (std::abs(da) + std::abs(db) < 1e-14) break;
+        }
+        *rr = a, *ss = b;
+    };
     for (const auto& e : mesh.elements)
     {
         if (e.boundary || e.source != load.surface || feTypeDimension(e.type) != 2) continue;
@@ -140,19 +207,65 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
             return r;
         }
         ++r.elements;
-        for (const auto& g : gauss(e.type))
+        // Zone : élément entièrement dans la zone → intégration de Gauss sur l'élément ; à cheval → intégration sur la partie
+        // découpée (triangles en éventail, règle à 7 points, coordonnées naturelles retrouvées par Newton) ; hors zone → rien.
+        bool whole = true;
+        std::vector<std::pair<double, double>> part;
+        if (load.zone)
         {
-            shape(e.type, g.xi, g.eta, N, dr, ds);
-            P3 Xr, Xs;
-            for (std::size_t i = 0; i < N.size(); ++i)
+            const std::size_t corners = (e.type == FeType::Tri3 || e.type == FeType::Tri6) ? 3 : 4;
+            std::vector<std::pair<double, double>> poly;
+            bool inside = true;
+            for (std::size_t i = 0; i < corners; ++i)
             {
-                const auto& n = mesh.node(e.nodes[i]);
-                const P3 X { n.x, n.y, n.z };
-                Xr = Xr + X * dr[i];
-                Xs = Xs + X * ds[i];
+                poly.push_back(local(e.nodes[i]));
+                const auto& [u, v] = poly.back();
+                inside &= u >= load.zoneU0 - 1e-12 && u <= load.zoneU1 + 1e-12 && v >= load.zoneV0 - 1e-12 && v <= load.zoneV1 + 1e-12;
             }
-            const double dA = Xr.cross(Xs).norm() * g.w;
-            for (std::size_t i = 0; i < N.size(); ++i) forces[e.nodes[i]] = forces[e.nodes[i]] + dir * (load.value * projFactor * N[i] * dA);
+            if (!inside)
+            {
+                whole = false;
+                part = clipRect(poly, load.zoneU0, load.zoneV0, load.zoneU1, load.zoneV1);
+                if (part.size() < 3 || polyIntegrals(part).A < 1e-14) continue;
+            }
+        }
+        if (whole)
+        {
+            for (const auto& g : gauss(e.type))
+            {
+                shape(e.type, g.xi, g.eta, N, dr, ds);
+                P3 Xr, Xs, X;
+                for (std::size_t i = 0; i < N.size(); ++i)
+                {
+                    const auto& n = mesh.node(e.nodes[i]);
+                    const P3 Xi { n.x, n.y, n.z };
+                    X = X + Xi * N[i];
+                    Xr = Xr + Xi * dr[i];
+                    Xs = Xs + Xi * ds[i];
+                }
+                double u = 0, v = 0;
+                s->frame.toLocal(X, &u, &v);
+                const double dA = Xr.cross(Xs).norm() * g.w;
+                const double p = pressure(u, v);
+                for (std::size_t i = 0; i < N.size(); ++i) forces[e.nodes[i]] = forces[e.nodes[i]] + dir * (p * projFactor * N[i] * dA);
+            }
+            continue;
+        }
+        const auto tri = gauss(FeType::Tri3);
+        for (std::size_t k = 1; k + 1 < part.size(); ++k)
+        {
+            const auto a = part[0], b = part[k], c = part[k + 1];
+            const double area2 = std::abs((b.first - a.first) * (c.second - a.second) - (c.first - a.first) * (b.second - a.second));
+            for (const auto& g : tri)
+            {
+                const double u = a.first + g.xi * (b.first - a.first) + g.eta * (c.first - a.first);
+                const double v = a.second + g.xi * (b.second - a.second) + g.eta * (c.second - a.second);
+                double rr = 0, ss = 0;
+                natural(e, u, v, &rr, &ss);
+                shape(e.type, rr, ss, N, dr, ds);
+                const double w = pressure(u, v) * projFactor * area2 * g.w;
+                for (std::size_t i = 0; i < N.size(); ++i) forces[e.nodes[i]] = forces[e.nodes[i]] + dir * (w * N[i]);
+            }
         }
     }
     if (r.elements == 0)
@@ -167,25 +280,41 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
         r.resultant = r.resultant + f;
         r.moment = r.moment + P3 { fn.x, fn.y, fn.z }.cross(f);
     }
-    // Valeurs analytiques : aire nette (ouvertures déduites) et centre de surface
-    P3 ca, cah;
-    double area = polygonArea(s->outer, s->frame, &ca);
-    P3 c = ca;
-    for (const auto& h : s->holes)
+    // Valeurs analytiques sur l'aire nette (ouvertures déduites), limitée à la zone : ∫ p dA et ∫ X p dA par les intégrales
+    // exactes des polygones (p linéaire en u, v).
+    auto toUV = [&](const std::vector<P3>& poly) {
+        std::vector<std::pair<double, double>> out;
+        for (const auto& q : poly)
+        {
+            double u = 0, v = 0;
+            s->frame.toLocal(q, &u, &v);
+            out.emplace_back(u, v);
+        }
+        return load.zone ? clipRect(out, load.zoneU0, load.zoneV0, load.zoneU1, load.zoneV1) : out;
+    };
+    PolyIntegrals I;
+    auto accumulate = [&](const std::vector<P3>& poly, double sign) {
+        const auto uv = toUV(poly);
+        if (uv.size() < 3) return;
+        const auto J = polyIntegrals(uv);
+        I.A += sign * J.A, I.Su += sign * J.Su, I.Sv += sign * J.Sv, I.Suu += sign * J.Suu, I.Suv += sign * J.Suv, I.Svv += sign * J.Svv;
+    };
+    accumulate(s->outer, 1.0);
+    for (const auto& h : s->holes) accumulate(h, -1.0);
+    const double area = I.A;
+    if (area <= 1e-12)
     {
-        const double ah = polygonArea(h, s->frame, &cah);
-        area -= ah;
-        c = c - cah;
-    }
-    if (area <= 0)
-    {
-        r.errors.push_back("aire nette nulle : charge non convertie");
+        r.errors.push_back(load.zone ? "zone chargée hors de la surface nette : charge non convertie" : "aire nette nulle : charge non convertie");
         return r;
     }
-    const P3 centroid = c * (1.0 / area);
-    r.expectedResultant = dir * (load.value * projFactor * area);
-    r.expectedMoment = centroid.cross(r.expectedResultant);
-    const double scale = r.expectedResultant.norm();
+    const double P = load.value * I.A + load.gradU * I.Su + load.gradV * I.Sv;   // ∫ p dA
+    const double Pu = load.value * I.Su + load.gradU * I.Suu + load.gradV * I.Suv;   // ∫ u p dA
+    const double Pv = load.value * I.Sv + load.gradU * I.Suv + load.gradV * I.Svv;   // ∫ v p dA
+    const P3 firstMoment = s->frame.origin * P + s->frame.U * Pu + s->frame.V * Pv;   // ∫ X p dA
+    r.expectedResultant = dir * (P * projFactor);
+    r.expectedMoment = firstMoment.cross(dir) * projFactor;
+    const P3 centroid = std::abs(P) > 1e-300 ? firstMoment * (1.0 / P) : s->frame.origin;
+    const double scale = std::max(r.expectedResultant.norm(), (std::abs(load.gradU) + std::abs(load.gradV)) * area * std::sqrt(area) * 1e-3 + 1e-12);
     r.resultantError = relErr(r.resultant, r.expectedResultant, scale);
     const double armScale = scale * std::max(1.0, centroid.norm() + std::sqrt(area));
     r.momentError = relErr(r.moment, r.expectedMoment, armScale);

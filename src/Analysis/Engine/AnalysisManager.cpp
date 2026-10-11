@@ -153,6 +153,11 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
         anySupport |= std::any_of(n.definedFix.begin(), n.definedFix.end(), [](bool f) { return f; });
         anySpring |= (n.kTx > 0 || n.kTy > 0 || n.kTz > 0 || n.kRx > 0 || n.kRy > 0 || n.kRz > 0);
     }
+    if (!context.surfaces.supports.empty())
+    {
+        anySupport = true;
+        v.addInfo("Appuis", std::to_string(context.surfaces.supports.size()) + " nœud(s) du maillage des surfaces portés par des appuis linéiques de bord.");
+    }
     if (!anySupport && !anySpring)
         v.addError("Appuis", "Aucun appui dans la portée : la structure est instable.");
     else if (anySpring && !caps.supportsSprings)
@@ -170,7 +175,15 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
         if (!snap.loadCases().count(id)) v.addError("Charges", "Cas de charge #" + std::to_string(id) + " introuvable.");
 
     const bool anyLoad = !snap.nodalLoads().empty() || !snap.memberLoads().empty();
-    if (!anyLoad && !context.common.includeSelfWeight)
+    if (context.type == AnalysisType::Modal)
+    {
+        for (int id : context.common.modalMassCaseIds)
+            if (!snap.loadCases().count(id)) v.addError("Masses", "Cas de charge #" + std::to_string(id) + " (converti en masses) introuvable.");
+        v.addInfo("Masses", context.common.modalMassCaseIds.empty()
+                                ? "Analyse modale : masses des éléments seulement (barres ρ·A, coques ρ·e) ; les charges ne sont pas des masses."
+                                : "Analyse modale : masses des éléments + charges verticales descendantes des cas choisis converties (m = F/g).");
+    }
+    else if (!anyLoad && !context.common.includeSelfWeight)
         v.addWarning("Charges", "Aucune charge dans la portée et poids propre désactivé : résultats nuls.");
     else
         v.addInfo("Charges", "Charges valides.");
@@ -334,6 +347,7 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
     {
         r.results.attachSurfaceResults(prepared.model.surfaceNodes.meshToNode, prepared.model.surfaceNodes.surfaceOnlyNodes);
         r.results.setSurfaceMeshStamp(context.surfaces.meshStamp);
+        r.results.setSurfaceMeshSummary(context.surfaces.mesh);
     }
 
     // Traçabilité commune, renseignée ici pour qu'aucun moteur ne puisse l'omettre.

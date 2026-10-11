@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <set>
 #include <sstream>
@@ -294,7 +295,10 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                 std::set<std::string> isolated;
                 for (const auto& ref : shells)
                 {
+                    const auto* sg = geo.surface(ref);
                     bool linked = false;
+                    if (sg && sg->kind == SurfaceGeom::Kind::Slab && model->getSlab(sg->id)) linked = !model->getSlab(sg->id)->edgeSupports().empty();
+                    if (sg && sg->kind == SurfaceGeom::Kind::Wall && model->getWall(sg->id)) linked = !model->getWall(sg->id)->edgeSupports().empty();
                     for (const auto& [n, refs] : surfacesAtNode)
                     {
                         if (!refs.count(ref)) continue;
@@ -313,6 +317,41 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                         "surface(s) sans aucun nœud commun avec une barre, un appui ou une autre surface (mécanisme) ; aucune liaison rigide "
                         "n'est créée automatiquement (voile excentré, dalle décalée) : relier la surface par des nœuds communs",
                         list(isolated));
+            }
+            // Taille, types et qualité des éléments transmis (note de calcul)
+            {
+                auto& q = sm.mesh;
+                q.minEdge = 1e300;
+                q.minAngle = 180.0;
+                for (const auto& e : sm.elements)
+                {
+                    (e.meshNodes.size() == 4 ? q.quads : q.triangles)++;
+                    double lo = 1e300, hi = 0;
+                    const std::size_t n = e.meshNodes.size();
+                    for (std::size_t k = 0; k < n; ++k)
+                    {
+                        const auto& a = mesh.node(e.meshNodes[k]);
+                        const auto& b = mesh.node(e.meshNodes[(k + 1) % n]);
+                        const auto& c = mesh.node(e.meshNodes[(k + n - 1) % n]);
+                        const double ab[3] = { b.x - a.x, b.y - a.y, b.z - a.z }, ac[3] = { c.x - a.x, c.y - a.y, c.z - a.z };
+                        const double lab = std::sqrt(ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2]);
+                        const double lac = std::sqrt(ac[0] * ac[0] + ac[1] * ac[1] + ac[2] * ac[2]);
+                        lo = std::min(lo, lab), hi = std::max(hi, lab);
+                        if (lab > 0 && lac > 0)
+                        {
+                            const double cosA = std::clamp((ab[0] * ac[0] + ab[1] * ac[1] + ab[2] * ac[2]) / (lab * lac), -1.0, 1.0);
+                            q.minAngle = std::min(q.minAngle, std::acos(cosA) * 180.0 / 3.14159265358979323846);
+                        }
+                    }
+                    q.minEdge = std::min(q.minEdge, lo), q.maxEdge = std::max(q.maxEdge, hi);
+                    if (lo > 0) q.maxAspect = std::max(q.maxAspect, hi / lo);
+                }
+                q.nodes = sm.nodes.size();
+                if (q.empty()) q = {};
+                else if (q.minAngle < 15.0 || q.maxAspect > 10.0)
+                    add(L::Warning, "Qualité du maillage",
+                        "éléments de coque déformés (angle minimal " + std::to_string(int(q.minAngle)) + "°, rapport d'arêtes " + std::to_string(q.maxAspect).substr(0, 5) +
+                            ") : précision locale réduite, raffiner ou régulariser le maillage");
             }
             std::set<std::string> badMaterial;
             for (const auto& e : sm.elements)
@@ -405,6 +444,10 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                 p.value = l.value;
                 p.direction = dir;
                 p.projected = l.projected;
+                p.gradU = l.gradU;
+                p.gradV = l.gradV;
+                p.zone = l.zone;
+                p.zoneU0 = l.zoneU0, p.zoneV0 = l.zoneV0, p.zoneU1 = l.zoneU1, p.zoneV1 = l.zoneV1;
                 res = distributeSurfaceLoad(mesh, geo, p);
             }
             if (!res.ok)
@@ -417,6 +460,117 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
         }
         if (converted)
             r.surfaces.notes.push_back(std::to_string(converted) + " charge(s) surfacique(s) converties en charges nodales cohérentes (∫ Nᵢ p dA), résultante et moment contrôlés");
+
+        // Appuis linéiques des bords : chaque nœud du maillage situé sur le bord reçoit les blocages et la raideur linéique
+        // multipliée par sa longueur d'influence (demi-distances aux nœuds voisins sur le bord).
+        std::size_t supportedNodes = 0;
+        auto edgeSupports = [&](const std::string& ref, const std::vector<std::array<double, 3>>& corners, bool closed,
+                                const std::vector<TSA::Model::SurfaceEdgeSupport>& list) {
+            if (list.empty()) return;
+            if (!transmitted.count(ref))
+            {
+                add(L::Blocking, "Appuis", "appui(s) linéique(s) de " + ref + " : surface non transmise au calcul (non maillée, non structurale ou formulation non prise en charge)", { ref });
+                return;
+            }
+            std::set<int> nodes;
+            std::set<std::pair<int, int>> links;   // arêtes des éléments : un intervalle du bord sans arête est un vide (porte)
+            for (const auto& e : r.surfaces.elements)
+                if (e.source == ref)
+                {
+                    nodes.insert(e.meshNodes.begin(), e.meshNodes.end());
+                    for (std::size_t k = 0; k < e.meshNodes.size(); ++k)
+                    {
+                        const int u = e.meshNodes[k], v = e.meshNodes[(k + 1) % e.meshNodes.size()];
+                        links.insert({ std::min(u, v), std::max(u, v) });
+                    }
+                }
+            auto linked = [&](int u, int v) { return links.count({ std::min(u, v), std::max(u, v) }) > 0; };
+            const int edges = int(corners.size()) - (closed ? 0 : 1);
+            std::map<std::pair<int, int>, int> fixedTwice;   // (bord, DDL) bloqué par plusieurs appuis : redondant
+            for (std::size_t si = 0; si < list.size(); ++si)
+            {
+                const auto& sp = list[si];
+                const std::string who = "appui linéique " + std::to_string(si + 1) + (sp.name.empty() ? std::string() : " « " + sp.name + " »") + " de " + ref;
+                if (!sp.any())
+                {
+                    add(L::Warning, "Appuis", who + " : aucun DDL bloqué ni raideur, sans effet", { ref });
+                    continue;
+                }
+                if (sp.edge < -1 || sp.edge >= edges)
+                {
+                    add(L::Blocking, "Appuis", who + " : bord " + std::to_string(sp.edge + 1) + " inexistant (" + std::to_string(edges) + " bord(s))", { ref });
+                    continue;
+                }
+                for (int d = 0; d < 6; ++d)
+                    if (sp.fixed[d] && sp.stiffness[d] > 0.0)
+                        add(L::Warning, "Appuis", who + " : DDL " + std::to_string(d + 1) + " à la fois bloqué et élastique, la raideur est sans effet", { ref });
+                const int e0 = sp.edge < 0 ? 0 : sp.edge, e1 = sp.edge < 0 ? edges - 1 : sp.edge;
+                std::size_t count = 0;
+                for (int ei = e0; ei <= e1; ++ei)
+                {
+                    for (int d = 0; d < 6; ++d)
+                        if (sp.fixed[d] && ++fixedTwice[{ ei, d }] == 2)
+                            add(L::Warning, "Appuis", ref + " bord " + std::to_string(ei + 1) + " : DDL " + std::to_string(d + 1) + " bloqué par plusieurs appuis (condition redondante)", { ref });
+                    const auto& A = corners[std::size_t(ei)];
+                    const auto& B = corners[std::size_t(ei + 1) % corners.size()];
+                    const double ab[3] = { B[0] - A[0], B[1] - A[1], B[2] - A[2] };
+                    const double L2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+                    if (L2 < 1e-12) continue;
+                    const double Lg = std::sqrt(L2);
+                    std::vector<std::pair<double, int>> on;   // (abscisse, nœud)
+                    for (int id : nodes)
+                    {
+                        const auto& n = mesh.node(id);
+                        const double ap[3] = { n.x - A[0], n.y - A[1], n.z - A[2] };
+                        const double t = (ap[0] * ab[0] + ap[1] * ab[1] + ap[2] * ab[2]) / L2;
+                        if (t < -1e-9 || t > 1 + 1e-9) continue;
+                        const double dx = ap[0] - t * ab[0], dy = ap[1] - t * ab[1], dz = ap[2] - t * ab[2];
+                        if (std::sqrt(dx * dx + dy * dy + dz * dz) <= 1e-5) on.push_back({ std::clamp(t, 0.0, 1.0) * Lg, id });
+                    }
+                    std::sort(on.begin(), on.end());
+                    for (std::size_t k = 0; k < on.size(); ++k)
+                    {
+                        // Longueur d'influence : demi-intervalles vers les voisins du bord reliés par une arête d'élément
+                        const double lo = k > 0 && linked(on[k - 1].second, on[k].second) ? (on[k].first - on[k - 1].first) / 2 : 0.0;
+                        const double hi = k + 1 < on.size() && linked(on[k].second, on[k + 1].second) ? (on[k + 1].first - on[k].first) / 2 : 0.0;
+                        TSA::Analysis::SurfaceNodeSupport ns;
+                        ns.meshNode = on[k].second;
+                        ns.fixed = sp.fixed;
+                        ns.length = lo + hi;
+                        for (int d = 0; d < 6; ++d) ns.stiffness[d] = sp.fixed[d] ? 0.0 : sp.stiffness[d] * ns.length;
+                        ns.label = who + ", bord " + std::to_string(ei + 1);
+                        r.surfaces.supports.push_back(ns);
+                        ++count;
+                    }
+                }
+                if (!count)
+                    add(L::Blocking, "Appuis", who + " : aucun nœud du maillage sur le bord visé (régénérer le maillage)", { ref });
+                supportedNodes += count;
+            }
+        };
+        for (const auto& [id, s] : model->slabs())
+        {
+            std::vector<std::array<double, 3>> c;
+            for (int nid : s.nodeIds())
+                if (const auto* n = model->getNode(nid)) c.push_back({ n->x(), n->y(), n->z() });
+            edgeSupports("SL" + std::to_string(id), c, true, s.edgeSupports());
+        }
+        for (const auto& [id, w] : model->walls())
+        {
+            const auto* na = model->getNode(w.startNodeId());
+            const auto* nb = model->getNode(w.endNodeId());
+            if (!na || !nb) continue;
+            double dx = nb->x() - na->x(), dy = nb->y() - na->y();
+            const double l = std::hypot(dx, dy);
+            if (l < 1e-12) continue;
+            dx /= l, dy /= l;
+            const double ox = -dy * w.offset(), oy = dx * w.offset();
+            const std::array<double, 3> a { na->x() + ox, na->y() + oy, na->z() }, b { nb->x() + ox, nb->y() + oy, nb->z() };
+            edgeSupports("W" + std::to_string(id), { a, b, { b[0], b[1], b[2] + w.height() }, { a[0], a[1], a[2] + w.height() } }, true, w.edgeSupports());
+        }
+        if (supportedNodes)
+            r.surfaces.notes.push_back(std::to_string(supportedNodes) + " nœud(s) du maillage portés par des appuis linéiques de bord (raideur linéique × longueur "
+                                       "d'influence de chaque nœud)");
     }
 
     if (!volumes.empty())

@@ -108,7 +108,9 @@ struct Ctx
     bool detailed = false;
     int chapter = 1, table = 1, figure = 1;
     std::vector<Member> members;
-    bool hasResults() const { return results && results->isValid(); }
+    /// Résultats statiques (déplacements, efforts, réactions) ; une analyse modale n'en fournit pas.
+    bool hasResults() const { return results && results->isValid() && results->analysisType() != TSA::Analysis::AnalysisType::Modal; }
+    bool hasModal() const { return results && results->isValid() && !results->modal().empty(); }
     int rowCap() const { return detailed ? 30 : 10; }
 
     NDCTable makeTable(const QString& caption, const QStringList& headers, const std::vector<QString>& align)
@@ -129,10 +131,17 @@ struct Ctx
     }
 };
 
+/// Texte des chapitres de résultats statiques en l'absence de tels résultats.
+QString noStaticResults(const Ctx& x)
+{
+    return x.hasModal() ? QStringLiteral("Aucun résultat statique : le dernier calcul est une analyse modale (voir le chapitre « Analyse modale »).")
+                        : QStringLiteral("Aucun résultat de calcul.");
+}
+
 /// Libellé du cas ou de la combinaison du calcul (métadonnées du solveur : « Combinaison #id », « Cas de charge #id »).
 QString analysedLoading(const Ctx& x, int* combId = nullptr, int* caseId = nullptr)
 {
-    if (!x.hasResults()) return QStringLiteral("aucun calcul disponible");
+    if (!x.hasResults()) return x.hasModal() ? QStringLiteral("aucun (analyse modale)") : QStringLiteral("aucun calcul disponible");
     const QString meta = QString::fromStdString(x.results->executionMetadata().loadCombinationType);
     const auto& lm = x.model.loadManager();
     const QRegularExpressionMatch m = QRegularExpression(QStringLiteral("#(\\d+)")).match(meta);
@@ -470,6 +479,41 @@ void chapterSupports(Ctx& x, NDCDocument& doc)
         s.tables.push_back(t);
     }
     ch.sections.push_back(s);
+
+    // Appuis linéiques des bords des surfaces (appliqués aux nœuds du maillage, raideur linéique × longueur d'influence)
+    auto te = x.makeTable(QStringLiteral("Appuis linéiques des bords des surfaces"),
+                          { QStringLiteral("Surface"), QStringLiteral("Bord"), QStringLiteral("DDL bloqués"), QStringLiteral("Raideurs linéiques") },
+                          { QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("left") });
+    static const char* dofs[6] = { "Tx", "Ty", "Tz", "Rx", "Ry", "Rz" };
+    auto rows = [&](const QString& ref, bool wall, const std::vector<TSA::Model::SurfaceEdgeSupport>& list) {
+        static const char* wallEdges[4] = { "pied", "extrémité de fin", "tête", "extrémité de début" };
+        for (const auto& sp : list)
+        {
+            QStringList fx, k;
+            for (int d = 0; d < 6; ++d)
+                if (sp.fixed[d]) fx << QString::fromLatin1(dofs[d]);
+                else if (sp.stiffness[d] > 0)
+                    k << QStringLiteral("k<sub>%1</sub> = %2 %3").arg(QString::fromLatin1(dofs[d])).arg(sp.stiffness[d], 0, 'g', 6).arg(d < 3 ? QStringLiteral("kN/m/m") : QStringLiteral("kN·m/rad/m"));
+            const QString edge = sp.edge < 0 ? QStringLiteral("tout le contour")
+                                 : wall && sp.edge < 4 ? QString::fromUtf8(wallEdges[sp.edge])
+                                                       : QStringLiteral("bord %1").arg(sp.edge + 1);
+            te.rows.push_back({ ref, edge, fx.isEmpty() ? QStringLiteral("—") : fx.join(QStringLiteral(", ")), k.isEmpty() ? QStringLiteral("—") : k.join(QStringLiteral(", ")) });
+        }
+    };
+    for (const auto& [id, sl] : x.model.slabs()) rows(QStringLiteral("SL%1").arg(id), false, sl.edgeSupports());
+    for (const auto& [id, w] : x.model.walls()) rows(QStringLiteral("W%1").arg(id), true, w.edgeSupports());
+    if (!te.rows.empty())
+    {
+        NDCSection se;
+        se.title = QStringLiteral("Appuis linéiques");
+        se.paragraphs.push_back(QStringLiteral("Chaque nœud du maillage situé sur le bord reçoit les blocages indiqués (axes globaux) et la raideur nodale "
+                                               "k<sub>i</sub> = k · l<sub>i</sub>, l<sub>i</sub> étant sa longueur d'influence (demi-intervalles vers ses voisins "
+                                               "sur le bord, interrompus par les ouvertures)."));
+        se.tables.push_back(te);
+        ch.sections.push_back(se);
+    }
+    else
+        --x.table;   // tableau non publié : numérotation continue
     doc.addChapter(ch);
 }
 
@@ -552,6 +596,13 @@ void chapterActions(Ctx& x, NDCDocument& doc)
             default: return QStringLiteral("gravité");
             }
         };
+        auto extra = [](const TSA::Model::SurfaceLoad& l) {
+            QString t;
+            if (l.gradU != 0.0 || l.gradV != 0.0) t += QStringLiteral(" + %1·u + %2·v (kN/m³)").arg(f(l.gradU, 3), f(l.gradV, 3));
+            if (l.zone) t += QStringLiteral(", zone u ∈ [%1 ; %2], v ∈ [%3 ; %4] m").arg(f(l.zoneU0), f(l.zoneU1), f(l.zoneV0), f(l.zoneV1));
+            if (l.projected) t += QStringLiteral(", surface projetée");
+            return t;
+        };
         for (const auto& [id, l] : lm.surfaceLoads())
         {
             const auto* lc = lm.getLoadCase(l.loadCaseId);
@@ -559,7 +610,7 @@ void chapterActions(Ctx& x, NDCDocument& doc)
             ts.rows.push_back({ QString::fromStdString(l.surfaceRef()), lc ? QString::fromStdString(lc->name()) : QString::number(l.loadCaseId),
                                 l.name.empty() ? QStringLiteral("—") : QString::fromStdString(l.name),
                                 QStringLiteral("%1 %2, %3%4").arg(f(l.value, 2), pt ? QStringLiteral("kN") : QStringLiteral("kN/m²"), dirName(l.direction),
-                                                                  pt ? QStringLiteral(" en (%1 ; %2) m").arg(f(l.u), f(l.v)) : (l.projected ? QStringLiteral(", surface projetée") : QString())) });
+                                                                  pt ? QStringLiteral(" en (%1 ; %2) m").arg(f(l.u), f(l.v)) : extra(l)) });
         }
         ss.tables.push_back(ts);
         ch.sections.push_back(ss);
@@ -609,6 +660,49 @@ void chapterMethod(Ctx& x, NDCDocument& doc)
     s.paragraphs.push_back(QStringLiteral("Flexion simple des poutres en béton armé (EN 1992-1-1, diagramme rectangulaire simplifié) :"));
     s.paragraphs.push_back(formula(QStringLiteral("μ<sub>cu</sub> = M<sub>Ed</sub> / (b · d² · f<sub>cd</sub>) ;  A<sub>s</sub> = M<sub>Ed</sub> / (z · f<sub>yd</sub>)")));
     ch.sections.push_back(s);
+    doc.addChapter(ch);
+}
+
+/// Éléments surfaciques : maillage réellement calculé, formulation, équations, origine des valeurs et conventions.
+void chapterSurfaces(Ctx& x, NDCDocument& doc)
+{
+    const auto& q = x.results->surfaceMeshSummary();
+    auto ch = x.makeChapter(QStringLiteral("Éléments surfaciques (coques)"));
+    NDCSection sm;
+    sm.title = QStringLiteral("Maillage calculé");
+    sm.keyValues.push_back({ QStringLiteral("Maillage"), QString::fromStdString(x.results->surfaceMeshStamp().empty() ? std::string("—") : x.results->surfaceMeshStamp()) });
+    sm.keyValues.push_back({ QStringLiteral("Éléments"), QStringLiteral("%1 quadrangle(s) ShellMITC4, %2 triangle(s) ShellDKGT, %3 nœud(s)").arg(q.quads).arg(q.triangles).arg(q.nodes) });
+    sm.keyValues.push_back({ QStringLiteral("Taille des éléments"), QStringLiteral("arêtes de %1 à %2 m").arg(f(q.minEdge, 3), f(q.maxEdge, 3)) });
+    sm.keyValues.push_back({ QStringLiteral("Qualité"), QStringLiteral("angle intérieur minimal %1° ; rapport d'arêtes maximal %2 → %3")
+                                                            .arg(f(q.minAngle, 1), f(q.maxAspect, 2),
+                                                                 q.minAngle < 15.0 || q.maxAspect > 10.0 ? bad(QStringLiteral("ÉLÉMENTS DÉFORMÉS")) : ok()) });
+    ch.sections.push_back(sm);
+
+    NDCSection sf;
+    sf.title = QStringLiteral("Formulation et équations");
+    sf.paragraphs.push_back(QStringLiteral("Coque plane élastique linéaire, isotrope, épaisseur e constante par surface (section ElasticMembranePlateSection) : "
+                                           "membrane et flexion découplées, cisaillement transverse de Mindlin-Reissner (ShellMITC4, interpolation mixte qui "
+                                           "évite le verrouillage) ou condition de Kirchhoff discrète (ShellDKGT). Rigidités par unité de largeur :"));
+    sf.paragraphs.push_back(formula(QStringLiteral("D<sub>m</sub> = E·e / (1 − ν²) ;  D = E·e³ / (12·(1 − ν²)) ;  rigidité de cisaillement κ·G·e (κ = 5/6)")));
+    sf.paragraphs.push_back(QStringLiteral("Poids propre et charges surfaciques transformés en forces nodales cohérentes (intégration de Gauss sur les fonctions "
+                                           "de forme Nᵢ, ouvertures déduites, résultante et moment contrôlés contre la valeur analytique) :"));
+    sf.paragraphs.push_back(formula(QStringLiteral("g = ρ · g · e  (kN/m²) ;  F<sub>i</sub> = ∫<sub>A</sub> N<sub>i</sub> · p(u, v) dA ;  p(u, v) = q + g<sub>u</sub>·u + g<sub>v</sub>·v")));
+    sf.paragraphs.push_back(QStringLiteral("Masses (analyse modale) : m = ρ · e par unité d'aire, concentrées aux nœuds par l'élément."));
+    ch.sections.push_back(sf);
+
+    NDCSection sc;
+    sc.title = QStringLiteral("Origine des valeurs et conventions");
+    sc.paragraphs.push_back(QStringLiteral("Déplacements : valeurs nodales calculées par le moteur (aucune interpolation). Résultantes N<sub>xx</sub>, N<sub>yy</sub>, "
+                                           "N<sub>xy</sub> (kN/m), M<sub>xx</sub>, M<sub>yy</sub>, M<sub>xy</sub> (kN·m/m), V<sub>xz</sub>, V<sub>yz</sub> (kN/m) : "
+                                           "valeurs aux 4 points d'intégration de chaque élément, présentées en moyenne par élément, sans lissage entre "
+                                           "éléments ; repère local de l'élément (x selon son premier côté, z normal au plan), N > 0 en traction, signes des "
+                                           "moments selon la convention du moteur. Les cartes et les tableaux utilisent des valeurs principales "
+                                           "(indépendantes du repère local) : |M| = max |M<sub>1,2</sub>|, |N| = max |N<sub>1,2</sub>|, |V| = √(V<sub>xz</sub>² + V<sub>yz</sub>²)."));
+    sc.paragraphs.push_back(formula(QStringLiteral("M<sub>1,2</sub> = (M<sub>xx</sub> + M<sub>yy</sub>)/2 ± √(((M<sub>xx</sub> − M<sub>yy</sub>)/2)² + M<sub>xy</sub>²)")));
+    sc.paragraphs.push_back(QStringLiteral("Limites : comportement élastique linéaire (ni fissuration, ni plasticité), petits déplacements, formulations plaque seule et "
+                                           "membrane seule non prises en charge (refusées avant calcul), aucune charge thermique, contraintes non lissées aux nœuds. "
+                                           "Les vérifications réglementaires des dalles et voiles (ferraillage, poinçonnement) ne sont pas effectuées."));
+    ch.sections.push_back(sc);
     doc.addChapter(ch);
 }
 
@@ -668,7 +762,9 @@ void chapterChecks(Ctx& x, NDCDocument& doc, int& issues)
         for (const auto& [id, l] : x.model.loadManager().surfaceLoads())
         {
             double v = 0.0;
-            if (l.direction == TSA::Model::SurfaceLoadDirection::Gravity)
+            // Zone ou variation linéaire : résultante non sommée ici (calculée exactement sur le maillage au calcul)
+            const bool simple = l.distribution == TSA::Model::SurfaceLoadDistribution::Point || (!l.zone && l.gradU == 0.0 && l.gradV == 0.0);
+            if (l.direction == TSA::Model::SurfaceLoadDirection::Gravity && simple)
             {
                 double area = 0.0;
                 if (l.targetKind == TSA::Model::SurfaceTargetKind::Slab)
@@ -748,7 +844,7 @@ void chapterDisplacements(Ctx& x, NDCDocument& doc, int& issues)
     NDCSection s;
     if (!x.hasResults())
     {
-        s.paragraphs.push_back(QStringLiteral("Aucun résultat de calcul."));
+        s.paragraphs.push_back(noStaticResults(x));
         ch.sections.push_back(s);
         doc.addChapter(ch);
         return;
@@ -822,7 +918,7 @@ void chapterReactions(Ctx& x, NDCDocument& doc)
     NDCSection s;
     if (!x.hasResults())
     {
-        s.paragraphs.push_back(QStringLiteral("Aucun résultat de calcul."));
+        s.paragraphs.push_back(noStaticResults(x));
         ch.sections.push_back(s);
         doc.addChapter(ch);
         return;
@@ -864,7 +960,7 @@ void chapterForces(Ctx& x, NDCDocument& doc)
     NDCSection s;
     if (!x.hasResults())
     {
-        s.paragraphs.push_back(QStringLiteral("Aucun résultat de calcul."));
+        s.paragraphs.push_back(noStaticResults(x));
         ch.sections.push_back(s);
         doc.addChapter(ch);
         return;
@@ -955,6 +1051,70 @@ void chapterForces(Ctx& x, NDCDocument& doc)
     doc.addChapter(ch);
 }
 
+void chapterModal(Ctx& x, NDCDocument& doc)
+{
+    const auto& md = x.results->modal();
+    auto ch = x.makeChapter(QStringLiteral("Analyse modale"));
+    const bool kN = x.results->units().force == "kN";
+    const QString mu = kN ? QStringLiteral("t") : QStringLiteral("kg");
+    NDCSection sm;
+    sm.title = QStringLiteral("Méthode");
+    sm.paragraphs.push_back(QStringLiteral("Modes propres non amortis : valeurs et vecteurs propres du problème généralisé (matrice de rigidité K, matrice de "
+                                           "masse M concentrée aux nœuds), résolu par OpenSees (commande eigen ; LAPACK dense jusqu'à 3000 DDL libres, Arpack "
+                                           "au-delà) :"));
+    sm.paragraphs.push_back(formula(QStringLiteral("(K − ω² · M) · φ = 0 ;  f = ω / (2π) ;  T = 1 / f")));
+    sm.paragraphs.push_back(QStringLiteral("Masses : barres m = ρ · A par unité de longueur (elasticBeamColumn, truss, corotTruss), coques m = ρ · e par unité "
+                                           "d'aire (section ElasticMembranePlateSection), translations seulement. Origine : %1. Conversion d'une charge en masse "
+                                           "(cas choisis explicitement) :")
+                                .arg(QString::fromStdString(md.massSource)));
+    sm.paragraphs.push_back(formula(QStringLiteral("m = F<sub>z,descendante</sub> / g  (g = 9,81 m/s², appliquée sur X, Y et Z)")));
+    sm.paragraphs.push_back(QStringLiteral("Participation (OpenSees modalProperties) : facteur Γ<sub>i</sub> = φ<sub>i</sub>ᵀ · M · r / (φ<sub>i</sub>ᵀ · M · φ<sub>i</sub>) "
+                                           "et masse effective Γ<sub>i</sub>² · φ<sub>i</sub>ᵀ · M · φ<sub>i</sub>, rapportée à la masse libre (hors DDL bloqués). "
+                                           "Les formes propres sont affichées normalisées à une translation maximale unitaire (amplitude sans unité)."));
+    ch.sections.push_back(sm);
+
+    NDCSection st;
+    st.title = QStringLiteral("Masses");
+    auto tm = x.makeTable(QStringLiteral("Masses du modèle de calcul (%1)").arg(mu),
+                          { QStringLiteral("Grandeur"), QStringLiteral("X"), QStringLiteral("Y"), QStringLiteral("Z") },
+                          { QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right") });
+    tm.rows.push_back({ QStringLiteral("Masse totale (y compris nœuds bloqués)"), f(md.totalMass[0], 3), f(md.totalMass[1], 3), f(md.totalMass[2], 3) });
+    tm.rows.push_back({ QStringLiteral("Masse libre (participante)"), f(md.totalFreeMass[0], 3), f(md.totalFreeMass[1], 3), f(md.totalFreeMass[2], 3) });
+    st.tables.push_back(tm);
+    // Contrôle indépendant : masses des barres (ρ·A·L) et des surfaces en coque (ρ·e·aire nette) d'après le modèle
+    double members = 0.0, surfaces = 0.0;
+    for (const auto& mb : x.members) members += mb.material->density * mb.section->area() * mb.length;
+    for (const auto& [id, sl] : x.model.slabs())
+        if (sl.formulation() == TSA::Model::SurfaceFormulation::Shell) surfaces += sl.material().mechanical.density * sl.thickness() * sl.area(x.model);
+    for (const auto& [id, w] : x.model.walls())
+        if (w.formulation() == TSA::Model::SurfaceFormulation::Shell) surfaces += w.material().mechanical.density * w.thickness() * w.area(x.model);
+    const double k = kN ? 1e-3 : 1.0;
+    st.paragraphs.push_back(QStringLiteral("Contrôle d'après le modèle : barres Σ ρ·A·L = %1 %3 ; surfaces en coque Σ ρ·e·A<sub>nette</sub> = %2 %3 (surfaces maillées "
+                                           "et transmises au calcul seulement ; les charges converties s'y ajoutent).")
+                                .arg(f(members * k, 3), f(surfaces * k, 3), mu));
+    ch.sections.push_back(st);
+
+    NDCSection sr;
+    sr.title = QStringLiteral("Fréquences et participation");
+    auto tr = x.makeTable(QStringLiteral("Modes propres calculés (%1)").arg(md.modes.size()),
+                          { QStringLiteral("Mode"), QStringLiteral("f (Hz)"), QStringLiteral("T (s)"), QStringLiteral("MX (%)"), QStringLiteral("MY (%)"),
+                            QStringLiteral("MZ (%)"), QStringLiteral("Σ MX (%)"), QStringLiteral("Σ MY (%)"), QStringLiteral("Σ MZ (%)") },
+                          { QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"),
+                            QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("right") });
+    for (const auto& m : md.modes)
+        tr.rows.push_back({ QString::number(m.index), f(m.frequency, 3), f(m.period, 4), f(m.massRatio[0], 1), f(m.massRatio[1], 1), f(m.massRatio[2], 1),
+                            f(m.cumulativeRatio[0], 1), f(m.cumulativeRatio[1], 1), f(m.cumulativeRatio[2], 1) });
+    sr.tables.push_back(tr);
+    const auto& last = md.modes.back().cumulativeRatio;
+    sr.paragraphs.push_back(QStringLiteral("Masse cumulée des %1 modes : X %2 %, Y %3 %, Z %4 %. Les règles réglementaires (par exemple 90 % de la masse en "
+                                           "analyse sismique, EN 1998-1 §4.3.3.3) ne sont pas vérifiées automatiquement ; le nombre de modes est un choix de "
+                                           "l'utilisateur. Aucun calcul de réponse (spectre, temporel) n'est effectué.")
+                                .arg(md.modes.size())
+                                .arg(f(last[0], 1), f(last[1], 1), f(last[2], 1)));
+    ch.sections.push_back(sr);
+    doc.addChapter(ch);
+}
+
 void chapterCables(Ctx& x, NDCDocument& doc, int& issues)
 {
     auto ch = x.makeChapter(QStringLiteral("Câbles et haubans"));
@@ -984,7 +1144,7 @@ void chapterCables(Ctx& x, NDCDocument& doc, int& issues)
     NDCSection sr;
     sr.title = QStringLiteral("Efforts dans les câbles");
     if (!x.hasResults())
-        sr.paragraphs.push_back(QStringLiteral("Aucun résultat de calcul."));
+        sr.paragraphs.push_back(noStaticResults(x));
     else
     {
         struct C
@@ -1336,11 +1496,13 @@ NDCDocument NDCProjectNote::build(const TSA::Model::Model& model, const std::sha
         chapterActions(x, doc);
         chapterCombinations(x, doc);
         chapterMethod(x, doc);
+        if (x.results && x.results->isValid() && !x.results->surfaceMeshSummary().empty()) chapterSurfaces(x, doc);
         chapterChecks(x, doc, issues);
         chapterViews(x, doc);
         chapterDisplacements(x, doc, issues);
         chapterReactions(x, doc);
         chapterForces(x, doc);
+        if (x.hasModal()) chapterModal(x, doc);
         chapterCables(x, doc, issues);
         chapterDesign(x, doc, computed, failed);
         chapterConclusion(x, doc, issues, computed, failed);
@@ -1354,6 +1516,7 @@ NDCDocument NDCProjectNote::build(const TSA::Model::Model& model, const std::sha
         chapterViews(x, doc);
         chapterDisplacements(x, doc, issues);
         chapterReactions(x, doc);
+        if (x.hasModal()) chapterModal(x, doc);
         if (!model.cables().empty()) chapterCables(x, doc, issues);
         chapterDesign(x, doc, computed, failed);
         chapterConclusion(x, doc, issues, computed, failed);

@@ -108,6 +108,12 @@ struct AnalysisParameters
     std::string forceOutputFile = "ele_forces.out";          ///< poutres/poteaux : localForce (12)
     std::string axialOutputFile = "ele_axial.out";           ///< treillis/câbles : basicForce (1)
     std::string globalForceOutputFile = "ele_global.out";    ///< Advanced : globalForce (12)
+    // Analyse modale
+    int modeCount = 6;                                       ///< nombre de modes propres demandés
+    std::vector<int> modalMassCaseIds;                       ///< cas dont les charges verticales descendantes sont converties en masses (m = F/g)
+    std::string modalEigenOutputFile = "modal_eigen.out";
+    std::string modalShapesOutputFile = "modal_shapes.out";
+    std::string modalPropertiesOutputFile = "modal_props.out";
     std::string shellQuadOutputFile = "shell_quad.out";      ///< ShellMITC4 : stresses (4 × 8)
     std::string shellTriOutputFile = "shell_tri.out";        ///< ShellDKGT : stresses (4 × 8)
     std::string basicForceOutputFile = "ele_basic.out";      ///< Advanced : poutres basicForce (6)
@@ -280,6 +286,13 @@ public:
     /// Charges eleLoad de tous les motifs (calcul linéaire : superposition), par tag d'élément.
     static std::map<int, std::vector<BeamElementLoad>> beamElementLoads(const CalculationSnapshot& snapshot,
                                                                         const AnalysisParameters& params);
+
+    /// Script d'analyse modale : modèle (masses des éléments : ρ·A des barres, ρ des sections de coque), masses
+    /// additionnelles issues des cas demandés (m = F/g, translations seulement), valeurs propres (eigen), vecteurs propres
+    /// de chaque nœud, propriétés modales (modalProperties : masses, participation).
+    static std::string buildModalScript(const CalculationSnapshot& snapshot, const OpenSeesModelMap& map, const AnalysisParameters& params);
+    /// Masses nodales additionnelles (unités de masse du calcul) déduites des charges verticales descendantes des cas demandés.
+    static std::map<int, double> modalLoadMasses(const CalculationSnapshot& snapshot, const AnalysisParameters& params);
 
     static std::string buildScript(const CalculationSnapshot& snapshot,
                                    const AnalysisParameters& params);

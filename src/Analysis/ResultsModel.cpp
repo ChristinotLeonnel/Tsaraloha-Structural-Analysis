@@ -85,6 +85,10 @@ void ResultsModel::clear()
     m_finalReactions.clear();
     m_finalElementResults.clear();
     m_shellResults.clear();
+    m_modal = ModalResults{};
+    m_surfaceMeshSummary = SurfaceMeshSummary{};
+    m_surfaceNodeReactions.clear();
+    m_finalSurfaceNodeDisplacements.clear();
     m_surfaceNodeDisplacements.clear();
     m_surfaceMeshStamp.clear();
     m_advanced = AdvancedResults{};
@@ -109,6 +113,7 @@ ResultAvailability ResultsModel::availabilityFromData() const
     a.dofMapping = m_advanced.available && !m_advanced.dofMap.empty();
     a.globalStiffness = m_advanced.available && m_advanced.hasGlobalStiffness;
     a.elementStiffness = m_advanced.available && !m_advanced.elementMatrices.empty();
+    a.modes = !m_modal.modes.empty();
     return a;
 }
 
@@ -217,6 +222,7 @@ void ResultsModel::setActiveStep(int step)
     if (step < 0 || step >= static_cast<int>(m_stepResults.size()))
     {
         m_activeStep = -1;
+        if (!m_finalSurfaceNodeDisplacements.empty()) m_surfaceNodeDisplacements = m_finalSurfaceNodeDisplacements;
         if (!m_finalDisplacements.empty()) m_displacements = m_finalDisplacements;
         if (!m_finalReactions.empty()) m_reactions = m_finalReactions;
         if (!m_finalElementResults.empty()) m_elementResults = m_finalElementResults;
@@ -231,8 +237,10 @@ void ResultsModel::setActiveStep(int step)
         m_finalElementResults = m_elementResults;
     }
 
+    if (m_finalSurfaceNodeDisplacements.empty() && !m_surfaceNodeDisplacements.empty()) m_finalSurfaceNodeDisplacements = m_surfaceNodeDisplacements;
     m_activeStep = step;
     const auto& s = m_stepResults[step];
+    if (!s.surfaceDisplacements.empty()) m_surfaceNodeDisplacements = s.surfaceDisplacements;
     m_displacements = s.displacements;
     m_reactions = s.reactions;
     m_elementResults = s.elementResults;
@@ -420,8 +428,15 @@ void ResultsModel::mergeSubdivisions(const std::map<ElementKey, std::vector<std:
 void ResultsModel::attachSurfaceResults(const std::map<int, int>& meshToNode, const std::set<int>& surfaceOnly)
 {
     m_surfaceNodeDisplacements.clear();
+    m_surfaceNodeReactions.clear();
     for (const auto& [mesh, node] : meshToNode)
+    {
         if (const auto* d = getNodeDisplacement(node)) m_surfaceNodeDisplacements[mesh] = *d;
+        if (const auto* rc = getNodeReaction(node); rc && surfaceOnly.count(node)) m_surfaceNodeReactions[mesh] = *rc;
+    }
+    for (auto& st : m_stepResults)   // pas de calcul ou modes propres
+        for (const auto& [mesh, node] : meshToNode)
+            if (auto it = st.displacements.find(node); it != st.displacements.end()) st.surfaceDisplacements[mesh] = it->second;
     for (int id : surfaceOnly)
     {
         m_displacements.erase(id);

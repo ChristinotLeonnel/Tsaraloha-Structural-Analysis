@@ -747,6 +747,11 @@ void MainWindow::createActions()
     m_actionSurfaceLoad->setToolTip(tr("Charges uniformes (kN/m²) ou ponctuelles (kN) sur les dalles et voiles sélectionnés ; calculées sur le maillage "
                                        "des surfaces (coques)"));
     connect(m_actionSurfaceLoad, &QAction::triggered, this, &MainWindow::onActionSurfaceLoads);
+    m_actionSurfaceSupports = new QAction(tr("Appuis &linéiques..."), this);
+    m_actionSurfaceSupports->setIcon(QIcon(":/icons/support_pinned.svg"));
+    m_actionSurfaceSupports->setToolTip(tr("Appuis répartis le long des bords des dalles et voiles sélectionnés (bloqués ou élastiques par unité de "
+                                           "longueur) ; appliqués aux nœuds du maillage au calcul"));
+    connect(m_actionSurfaceSupports, &QAction::triggered, this, &MainWindow::onActionSurfaceSupports);
     m_actionSurfaceLoadsVisible = new QAction(tr("Afficher les charges &surfaciques"), this);
     m_actionSurfaceLoadsVisible->setCheckable(true);
     m_actionSurfaceLoadsVisible->setChecked(true);
@@ -1402,6 +1407,7 @@ void MainWindow::createRibbon()
     acts.actionTrapLoad = m_actionTrapLoad;
     acts.actionBarPointLoad = m_actionBarPointLoad;
     acts.actionSurfaceLoad = m_actionSurfaceLoad;
+    acts.actionSurfaceSupports = m_actionSurfaceSupports;
     acts.actionSelfWeight = m_actionSelfWeight;
     acts.actionLoadCases = m_actionLoadCases;
     acts.actionLoadsVisible = m_actionLoadsVisible;
@@ -1676,6 +1682,8 @@ void MainWindow::createDockWindows()
                 this, &MainWindow::onActionToggleReactions);
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::activeStepChanged,
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setActiveStep);
+        // Maillage coloré et déformée des surfaces : suivent le pas ou le mode propre affiché
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::activeStepChanged, this, [this](int) { refreshMeshOverlay(); });
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::legendToggled,
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setLegendVisible);
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::nodesVisibleToggled,

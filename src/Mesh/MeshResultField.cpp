@@ -55,6 +55,12 @@ MeshResultSet ResultsModelMeshAdapter::extract(const FeMesh& mesh) const
     MeshResultField u;
     u.name = "Déplacement";
     u.unit = "m";
+    if (m_results.analysisType() == TSA::Analysis::AnalysisType::Modal)
+    {
+        // Forme propre : amplitude arbitraire, normalisée par TSA (translation maximale = 1)
+        u.unit = "forme propre normalisée, sans unité";
+        set.notes.push_back("analyse modale : déplacements = forme propre du mode affiché, normalisée (translation maximale = 1)");
+    }
     u.source = meta.solverEngine + (meta.solverVersion.empty() ? std::string() : " " + meta.solverVersion);
     u.components = 3;
     std::size_t exact = 0, interpolated = 0;
@@ -146,7 +152,11 @@ MeshResultSet ResultsModelMeshAdapter::extract(const FeMesh& mesh) const
     if (!u.values.empty()) set.fields.push_back(std::move(u));
 
     // 3. Éléments de coque : résultantes par unité de longueur (moyenne des 4 points d'intégration)
-    if (sameMesh && !m_results.shellResults().empty())
+    // Efforts des coques : enregistrés au dernier pas seulement ; pour un pas intermédiaire, aucun champ (pas de valeur d'un autre pas)
+    const bool intermediateStep = m_results.activeStep() >= 0 && m_results.activeStep() + 1 < m_results.stepCount();
+    if (sameMesh && intermediateStep && !m_results.shellResults().empty())
+        set.notes.push_back("pas intermédiaire : efforts des coques disponibles au dernier pas seulement (déplacements du pas affichés)");
+    if (sameMesh && !intermediateStep && !m_results.shellResults().empty())
     {
         const std::string src = meta.solverEngine + (meta.solverVersion.empty() ? std::string() : " " + meta.solverVersion);
         const char* method = "moyenne des 4 points d'intégration de l'élément, repère local de l'élément (axe x : nœud 1 → nœud 2)";
