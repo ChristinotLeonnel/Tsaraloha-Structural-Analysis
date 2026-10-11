@@ -59,6 +59,12 @@ const char* analysisTypeKey(AnalysisType t) { return keyFromEnum(t, kTypes); }
 const char* scopeTypeKey(ScopeType t) { return keyFromEnum(t, kScopes); }
 const char* dimensionKey(AnalysisDimension d) { return keyFromEnum(d, kDims); }
 
+const std::pair<SupportRestraintMode, const char*> kSupportModes[] = {
+    { SupportRestraintMode::Fork, "fork" },
+    { SupportRestraintMode::Legacy, "legacy" },
+    { SupportRestraintMode::None, "none" },
+};
+
 bool AnalysisScope::operator==(const AnalysisScope& o) const
 {
     return type == o.type && gridId == o.gridId && axisFamily == o.axisFamily && axisLabel == o.axisLabel &&
@@ -106,7 +112,8 @@ QJsonObject AnalysisContext::toJson() const
         { "scope", scopeJson },
         { "loadCases", cases },
         { "combinationId", combinationId },
-        { "common", QJsonObject{ { "includeSelfWeight", common.includeSelfWeight }, { "useGeneratedMesh", common.useGeneratedMesh } } },
+        { "common", QJsonObject{ { "includeSelfWeight", common.includeSelfWeight }, { "useGeneratedMesh", common.useGeneratedMesh },
+                                 { "pinnedSupports", QString::fromLatin1(keyFromEnum(common.supportRestraints, kSupportModes)) } } },
         { "engineSettings", engines },
     };
 }
@@ -144,6 +151,10 @@ AnalysisContext AnalysisContext::fromJson(const QJsonObject& json, bool* ok)
     const QJsonObject common = json.value("common").toObject();
     c.common.includeSelfWeight = common.value("includeSelfWeight").toBool(true);
     c.common.useGeneratedMesh = common.value("useGeneratedMesh").toBool(true);
+    // Clé absente : projet enregistré avant ce réglage → comportement historique conservé (signalé avant calcul).
+    c.common.supportRestraints = common.contains("pinnedSupports")
+                                     ? enumFromKey(common.value("pinnedSupports").toString(), kSupportModes, SupportRestraintMode::Fork)
+                                     : SupportRestraintMode::Legacy;
 
     const QJsonObject engines = json.value("engineSettings").toObject();
     for (auto it = engines.begin(); it != engines.end(); ++it)

@@ -16,6 +16,10 @@
 
 #include <gp_Vec.hxx>
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+
 #include <cmath>
 #include <functional>
 #include <sstream>
@@ -428,6 +432,26 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
                 nl.nodeId(), "RDM");
         }
     }
+    // Charges conservées mais jamais appliquées : jamais tues avant un calcul.
+    {
+        // Charges surfaciques d'un fichier TSA3D : conservées (export fidèle), sans surface calculée.
+        const QJsonObject root = QJsonDocument::fromJson(QByteArray::fromStdString(model.exchangeExtensionsJson())).object();
+        const QJsonArray surface = root.value("document").toObject().value("loads").toObject().value("surface").toArray();
+        if (!surface.isEmpty())
+            report.addWarning("Charges",
+                std::to_string(surface.size()) + " charge(s) surfacique(s) importée(s) d'un fichier TSA3D sont conservées mais NON "
+                "appliquées : aucun élément surfacique n'est calculé. Les résultats n'en tiennent pas compte ; les convertir en "
+                "charges sur barres ou nodales pour les inclure.", 0, "EN 1991");
+        int explicitSelfWeight = 0;
+        for (const auto& [loadId, ml] : lm.memberLoads())
+            if (ml.type() == TSA::Model::LoadType::SelfWeight) ++explicitSelfWeight;
+        if (explicitSelfWeight > 0)
+            report.addWarning("Charges",
+                std::to_string(explicitSelfWeight) + " charge(s) sur barre de type « poids propre » explicite : OpenSees l'applique "
+                "comme une charge uniforme vers le bas d'intensité q1, le moteur 2D l'ignore. Le poids propre se règle par "
+                "l'option « Inclure le poids propre » (double comptage possible).", 0, "EN 1991");
+    }
+
     // Moments répartis (couple par unité de longueur) : transmis aux poutres et poteaux par forces nodales
     // équivalentes ; jamais devinés ni ignorés en silence.
     const bool anyMemberMoment = std::any_of(lm.memberLoads().begin(), lm.memberLoads().end(),
@@ -463,7 +487,8 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
     //     singulière. Détecté avant le calcul, avec les barres concernées.
     {
         using TSA::Analysis::SnapshotElement;
-        const auto snap = TSA::Analysis::CalculationSnapshot::capture(model);
+        const auto snap = TSA::Analysis::CalculationSnapshot::capture(model, nullptr, params.supportRestraints);
+        for (const auto& w : snap.restraintWarnings()) report.addWarning("Appuis", w, 0, "RDM");
         std::map<int, int> parent;
         std::function<int(int)> root = [&](int a) { return parent[a] == a ? a : parent[a] = root(parent[a]); };
         std::vector<const SnapshotElement*> frames;
@@ -507,8 +532,9 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
             if (members.size() > 5) list += "…";
             report.addError("Stabilité",
                 "Mécanisme de torsion : " + list + " (barres alignées) peuvent tourner librement autour de leur axe, aucun appui "
-                "ne bloquant cette rotation. Bloquer la rotation autour de l'axe de la barre sur au moins un nœud "
-                "(encastrement, appui à fourche ou ressort en rotation).",
+                "ne bloquant cette rotation (matrice singulière). Correction : bloquer la rotation autour de l'axe de la barre "
+                "sur au moins un nœud (encastrement, appui à fourche défini, ressort en rotation), ou choisir le mode "
+                "« appui à fourche » des appuis articulés dans les paramètres d'analyse si la barre est parallèle à un axe global.",
                 members.front()->id, "RDM");
         }
     }

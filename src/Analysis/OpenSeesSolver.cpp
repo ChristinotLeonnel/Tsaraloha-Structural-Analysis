@@ -71,7 +71,7 @@ bool OpenSeesSolver::solveSynchronous(const TSA::Model::Model& model,
 
     // 2. Capture snapshot immuable (sécurité modèle TSA)
     emit progressChanged(15, tr("Génération du snapshot calculatoire..."));
-    CalculationSnapshot snapshot = CalculationSnapshot::capture(model);
+    CalculationSnapshot snapshot = CalculationSnapshot::capture(model, nullptr, params.supportRestraints);
 
     bool ok = executeWorkflow(snapshot, params, errorMessage);
     m_isRunning = false;
@@ -142,7 +142,7 @@ void OpenSeesSolver::solveAsync(const TSA::Model::Model& model,
     emit progressChanged(10, tr("Initialisation de l'analyse asynchrone..."));
 
     // Capture immédiate du snapshot sur le thread principal pour éviter tout accès concurrent
-    CalculationSnapshot snapshot = CalculationSnapshot::capture(model);
+    CalculationSnapshot snapshot = CalculationSnapshot::capture(model, nullptr, params.supportRestraints);
 
     QThread* worker = QThread::create([this, snapshot, params]() {
         QString err;

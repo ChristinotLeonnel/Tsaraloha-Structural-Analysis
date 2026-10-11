@@ -199,7 +199,7 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
         return p;
     }
 
-    p.model = AnalysisModelExtractor::extract(model, scope, context.dimension);
+    p.model = AnalysisModelExtractor::extract(model, scope, context.dimension, context.common.supportRestraints);
     p.extracted = true;
 
     p.validation = validateGeneric(context, p.model, engine->info(), engine->capabilities());
@@ -214,6 +214,12 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
         if (restraints.size() > shown)
             p.validation.addInfo("Appuis", std::to_string(restraints.size() - shown) + " autre(s) blocage(s) automatique(s) d'appuis articulés ou simples.");
         for (const auto& n : p.model.snapshot.restraintNotes()) p.validation.addInfo("Appuis", n);
+        // Risques des blocages (mode historique) : déjà ajoutés par ModelValidator pour le modèle complet.
+        if (!p.model.entireModel)
+            for (const auto& w : p.model.snapshot.restraintWarnings()) p.validation.addWarning("Appuis", w);
+        if (context.common.supportRestraints == SupportRestraintMode::None)
+            p.validation.addInfo("Appuis", "Appuis articulés et simples : aucun blocage automatique (rotules sphériques réelles) ; "
+                                           "un mécanisme éventuel est signalé avant ou après le calcul.");
     }
 
     // Modèle complet : contrôles normatifs historiques de TSA (communs à tous les moteurs).
@@ -222,6 +228,7 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
         AnalysisParameters common;
         common.type = context.type;
         common.includeSelfWeight = context.common.includeSelfWeight;
+        common.supportRestraints = context.common.supportRestraints;
         const auto report = TSA::Standards::ModelValidator::validateForAnalysis(model, common);
         for (const auto& e : report.formattedErrors()) p.validation.addError("Modèle", e);
         for (const auto& w : report.formattedWarnings()) p.validation.addWarning("Modèle", w);

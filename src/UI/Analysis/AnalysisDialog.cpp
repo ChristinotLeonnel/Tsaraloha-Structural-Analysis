@@ -130,6 +130,20 @@ void AnalysisDialog::buildUi()
     fc->addRow(tr("Chargement :"), m_loadCombo);
     m_selfWeight = new QCheckBox(tr("Inclure le poids propre"), groupCommon);
     fc->addRow(QString(), m_selfWeight);
+    m_supportCombo = new QComboBox(groupCommon);
+    m_supportCombo->addItem(tr("Appui à fourche (rotation autour de la barre bloquée)"),
+                            static_cast<int>(TSA::Analysis::SupportRestraintMode::Fork));
+    m_supportCombo->addItem(tr("Historique (RX globale bloquée)"), static_cast<int>(TSA::Analysis::SupportRestraintMode::Legacy));
+    m_supportCombo->addItem(tr("Aucun blocage (rotule sphérique)"), static_cast<int>(TSA::Analysis::SupportRestraintMode::None));
+    m_supportCombo->setToolTip(tr("Les appuis articulés et simples laissent les rotations libres. En 3D, une barre portée par deux "
+                                  "rotules tourne librement autour de son axe (mécanisme de torsion).\n"
+                                  "• Appui à fourche : la rotation autour de l'axe de la barre est bloquée (barre parallèle à un axe "
+                                  "global) ; structures planes : rotation hors plan bloquée.\n"
+                                  "• Historique : RX globale bloquée (versions antérieures) ; encastre la flexion des barres non "
+                                  "parallèles à X.\n"
+                                  "• Aucun blocage : rotules sphériques réelles ; un mécanisme est signalé.\n"
+                                  "Chaque blocage est listé avant le calcul et signalé s'il reprend un effort."));
+    fc->addRow(tr("Appuis articulés / simples :"), m_supportCombo);
     lay->addWidget(groupCommon);
 
     m_optionsGroup = new QGroupBox(content);
@@ -291,6 +305,7 @@ void AnalysisDialog::setContext(const AnalysisContext& context)
     }
     m_loadCombo->setCurrentIndex(lo);
     m_selfWeight->setChecked(m_context.common.includeSelfWeight);
+    m_supportCombo->setCurrentIndex(std::max(0, m_supportCombo->findData(static_cast<int>(m_context.common.supportRestraints))));
     m_updating = false;
 
     m_shownEngine.clear();   // force la reconstruction du panneau d'options
@@ -394,6 +409,7 @@ AnalysisContext AnalysisDialog::context() const
         for (const auto& id : lk.mid(6).split(',', Qt::SkipEmptyParts)) c.loadCaseIds.push_back(id.toInt());
 
     c.common.includeSelfWeight = m_selfWeight->isChecked();
+    c.common.supportRestraints = static_cast<TSA::Analysis::SupportRestraintMode>(m_supportCombo->currentData().toInt());
     if (m_optionsWidget) c.engineSettings[c.engineId] = m_optionsWidget->saveSettings();
     return c;
 }

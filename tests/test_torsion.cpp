@@ -149,6 +149,83 @@ bool hasIssue(const TSA::Standards::ModelValidationReport& report, TSA::Standard
     return false;
 }
 
+/// Profil laminé publié : British Steel, fiches « European IPE sections » et « European HE sections » du 21.07.26
+/// (dimensions, rayon de congé r, constante de torsion J en cm⁴, constante de gauchissement H en dm⁶).
+struct RolledReference
+{
+    const char* name;
+    double h, b, tw, tf, r;  // mm
+    double J;                // cm⁴
+    double H;                // dm⁶ (3 chiffres significatifs imprimés)
+};
+const RolledReference kBritishSteel[] = {
+    { "HE 100 A", 96.0, 100.0, 5.0, 8.0, 12.0, 5.28, 0.0026 },
+    { "HE 100 B", 100.0, 100.0, 6.0, 10.0, 12.0, 9.33, 0.0034 },
+    { "HE 120 A", 114.0, 120.0, 5.0, 8.0, 12.0, 6.04, 0.0065 },
+    { "HE 120 B", 120.0, 120.0, 6.5, 11.0, 12.0, 13.9, 0.0094 },
+    { "HE 140 A", 133.0, 140.0, 5.5, 8.5, 12.0, 8.10, 0.0151 },
+    { "HE 140 B", 140.0, 140.0, 7.0, 12.0, 12.0, 20.2, 0.0225 },
+    { "HE 160 A", 152.0, 160.0, 6.0, 9.0, 15.0, 12.1, 0.0315 },
+    { "HE 160 B", 160.0, 160.0, 8.0, 13.0, 15.0, 31.3, 0.0480 },
+    { "HE 180 A", 171.0, 180.0, 6.0, 9.5, 16.0, 15.5, 0.0603 },
+    { "HE 180 B", 180.0, 180.0, 8.5, 14.0, 16.0, 43.2, 0.0939 },
+    { "HE 200 A", 190.0, 200.0, 6.5, 10.0, 20.0, 23.1, 0.108 },
+    { "HE 200 B", 200.0, 200.0, 9.0, 15.0, 20.0, 62.8, 0.171 },
+    { "HE 220 A", 210.0, 220.0, 7.0, 11.0, 20.0, 30.8, 0.194 },
+    { "HE 220 B", 220.0, 220.0, 9.5, 16.0, 20.0, 80.4, 0.296 },
+    { "HE 240 A", 230.0, 240.0, 7.5, 12.0, 20.0, 40.7, 0.329 },
+    { "HE 240 B", 240.0, 240.0, 10.0, 17.0, 20.0, 102, 0.488 },
+    { "HE 260 A", 250.0, 260.0, 7.5, 12.5, 20.0, 47.5, 0.517 },
+    { "HE 260 B", 260.0, 260.0, 10.0, 17.5, 20.0, 117, 0.754 },
+    { "HE 280 A", 270.0, 280.0, 8.0, 13.0, 27.0, 70.5, 0.787 },
+    { "HE 280 B", 280.0, 280.0, 10.5, 18.0, 27.0, 156, 1.13 },
+    { "HE 300 A", 290.0, 300.0, 8.5, 14.0, 27.0, 87.8, 1.20 },
+    { "HE 300 B", 300.0, 300.0, 11.0, 19.0, 27.0, 189, 1.69 },
+    { "HE 320 A", 310.0, 300.0, 9.0, 15.5, 27.0, 112, 1.51 },
+    { "HE 320 B", 320.0, 300.0, 11.5, 20.5, 27.0, 230, 2.07 },
+    { "HE 340 A", 330.0, 300.0, 9.5, 16.5, 27.0, 131, 1.83 },
+    { "HE 340 B", 340.0, 300.0, 12.0, 21.5, 27.0, 263, 2.46 },
+    { "HE 360 A", 350.0, 300.0, 10.0, 17.5, 27.0, 153, 2.18 },
+    { "HE 360 B", 360.0, 300.0, 12.5, 22.5, 27.0, 298, 2.89 },
+    { "HE 400 A", 390.0, 300.0, 11.0, 19.0, 27.0, 193, 2.95 },
+    { "HE 400 B", 400.0, 300.0, 13.5, 24.0, 27.0, 361, 3.82 },
+    { "HE 450 A", 440.0, 300.0, 11.5, 21.0, 27.0, 250, 4.15 },
+    { "HE 450 B", 450.0, 300.0, 14.0, 26.0, 27.0, 448, 5.27 },
+    { "HE 500 A", 490.0, 300.0, 12.0, 23.0, 27.0, 318, 5.65 },
+    { "HE 500 B", 500.0, 300.0, 14.5, 28.0, 27.0, 548, 7.03 },
+    { "HE 550 A", 540.0, 300.0, 12.5, 24.0, 27.0, 360, 7.20 },
+    { "HE 550 B", 550.0, 300.0, 15.0, 29.0, 27.0, 610, 8.87 },
+    { "HE 600 A", 590.0, 300.0, 13.0, 25.0, 27.0, 407, 9.00 },
+    { "HE 600 B", 600.0, 300.0, 15.5, 30.0, 27.0, 677, 11.0 },
+    { "HE 650 A", 640.0, 300.0, 13.5, 26.0, 27.0, 458, 11.0 },
+    { "HE 650 B", 650.0, 300.0, 16.0, 31.0, 27.0, 749, 13.4 },
+    { "HE 700 A", 690.0, 300.0, 14.5, 27.0, 27.0, 522, 13.4 },
+    { "HE 700 B", 700.0, 300.0, 17.0, 32.0, 27.0, 839, 16.1 },
+    { "HE 800 A", 790.0, 300.0, 15.0, 28.0, 27.0, 588, 18.3 },
+    { "HE 800 B", 800.0, 300.0, 17.5, 33.0, 27.0, 932, 21.9 },
+    { "HE 900 A", 890.0, 300.0, 16.0, 30.0, 30.0, 749, 25.0 },
+    { "HE 900 B", 900.0, 300.0, 18.5, 35.0, 30.0, 1150, 29.6 },
+    { "HE 1000 A", 990.0, 300.0, 16.5, 31.0, 30.0, 835, 32.2 },
+    { "HE 1000 B", 1000.0, 300.0, 19.0, 36.0, 30.0, 1267, 37.8 },
+    { "IPE 100", 100.0, 55.0, 4.1, 5.7, 7.0, 1.16, 0.0004 },
+    { "IPE 120", 120.0, 64.0, 4.4, 6.3, 7.0, 1.69, 0.0009 },
+    { "IPE 140", 140.0, 73.0, 4.7, 6.9, 7.0, 2.40, 0.0020 },
+    { "IPE 160", 160.0, 82.0, 5.0, 7.4, 9.0, 3.54, 0.0040 },
+    { "IPE 180", 180.0, 91.0, 5.3, 8.0, 9.0, 4.73, 0.0075 },
+    { "IPE 200", 200.0, 100.0, 5.6, 8.5, 12.0, 6.92, 0.0131 },
+    { "IPE 220", 220.0, 110.0, 5.9, 9.2, 12.0, 9.03, 0.0228 },
+    { "IPE 240", 240.0, 120.0, 6.2, 9.8, 15.0, 13.0, 0.0376 },
+    { "IPE 270", 270.0, 135.0, 6.6, 10.2, 15.0, 15.9, 0.0708 },
+    { "IPE 300", 300.0, 150.0, 7.1, 10.7, 15.0, 19.9, 0.126 },
+    { "IPE 330", 330.0, 160.0, 7.5, 11.5, 20.0, 30.4, 0.200 },
+    { "IPE 360", 360.0, 170.0, 8.0, 12.7, 16.0, 35.3, 0.314 },
+    { "IPE 400", 400.0, 180.0, 8.6, 13.5, 20.0, 49.7, 0.492 },
+    { "IPE 450", 450.0, 190.0, 9.4, 14.6, 20.0, 65.0, 0.794 },
+    { "IPE 500", 500.0, 200.0, 10.2, 16.0, 20.0, 87.1, 1.25 },
+    { "IPE 550", 550.0, 210.0, 11.1, 17.2, 27.0, 132, 1.90 },
+    { "IPE 600", 600.0, 220.0, 12.0, 19.0, 20.0, 154, 2.86 },
+};
+
 /// Tests 326-331 : couple inversé, couple réparti, import TSA3D, barre inclinée, appuis, vue.
 bool runTorsionMechanics(int& passed)
 {
@@ -519,6 +596,10 @@ bool runTorsionMechanics(int& passed)
         TEST_CHECK(std::abs(sectionExtentY(solid, xm) - (0.2 * std::abs(std::cos(phi)) + 0.4 * std::abs(std::sin(phi)))) < 1e-9,
                    "Test 331: coordonnées des sommets de la section à mi-longueur");
         TEST_CHECK(r->nodeDisplacement(tip).rx == axis.twist.back(), "Test 331: valeur affichée = résultat du calcul (non amplifiée)");
+        const auto& sum = r->summary();
+        TEST_CHECK(relClose(sum.maxTorsionMoment, m * L, 1e-9) && relClose(sum.maxTwist, theta(L), 1e-9) && sum.maxTorsionMomentElementId == bar
+                       && sum.maxDisplacement < 1e-12 && sum.maxBendingMoment < 1e-9,
+                   "Test 331: synthèse — Mx max = m·L, θx max = θ(L) (déplacement et flexion nuls en torsion pure)");
         // Symbole de la charge : vecteurs moment parallèles à la barre (torsion), sens de +x pour m > 0
         const auto glyph = TSA::Geometry::buildMemberLoadGlyph(mdl.loadManager().memberLoads().begin()->second, gp_Pnt(0, 0, 0),
                                                                gp_Pnt(L, 0, 0), 0.0);
@@ -550,16 +631,297 @@ bool runTorsionMechanics(int& passed)
             std::string err;
             const bool saved = writer.saveToFile((dir + "/torsion_ui.tsa").toStdString(), ui, nullptr, "Essai torsion", "TSA", &err);
             std::cout << "  projet d'essai de l'interface : " << (dir + "/torsion_ui.tsa").toStdString() << (saved ? "" : " — ÉCHEC " + err) << std::endl;
+            // Essai de la boîte « Charge sur barre » : console (B1) et treillis (T1), aucune charge, cas « T ».
+            Model dlg;
+            const int d1 = dlg.addNode(0, 0, 0), d2 = dlg.addNode(3, 0, 0), d3 = dlg.addNode(3, 2, 0);
+            dlg.getNode(d1)->setSupport(SupportDefinition::fixed());
+            dlg.getNode(d3)->setSupport(SupportDefinition::fixed());
+            dlg.addBar(d1, d2, sec, mat, BarRole::Beam, 0.0, "Console");
+            dlg.addTrussMember(d2, d3, 0.05, "Tirant");
+            const int lcD = dlg.loadManager().addLoadCase(LoadCase(0, "T", LoadCaseCategory::Live, false, 1.0));
+            TSA::Analysis::AnalysisContext dctx = ctx;
+            dctx.loadCaseIds = { lcD };
+            dlg.setAnalysisSettingsJson(QJsonDocument(dctx.toJson()).toJson(QJsonDocument::Compact).toStdString());
+            const bool savedD = writer.saveToFile((dir + "/torsion_dialog.tsa").toStdString(), dlg, nullptr, "Essai dialogue", "TSA", &err);
+            std::cout << "  projet d'essai de la boîte de dialogue : " << (dir + "/torsion_dialog.tsa").toStdString() << (savedD ? "" : " — ÉCHEC " + err) << std::endl;
         }
         std::cout << "[PASS] Test 331: Vue d'une torsion répartie" << std::endl;
         ++passed;
     }
+
+    // TEST 332 : constantes de torsion et de gauchissement des profils laminés, comparées à des fiches publiées
+    {
+        std::cout << "\n--- TEST 332: J et Iw des profils laminés (fiches British Steel) ---" << std::endl;
+        double worstJ = 0.0, worstH = 0.0;
+        std::string worstJName, worstHName;
+        for (const auto& ref : kBritishSteel)
+        {
+            const double m = 1e-3; // mm → m
+            const double J = Section::rolledIShapeTorsionConstant(ref.h * m, ref.b * m, ref.tw * m, ref.tf * m, ref.r * m) * 1e8; // cm⁴
+            Section s;
+            s.shape = SectionShape::IShape;
+            s.height = ref.h * m; s.width = ref.b * m; s.tw = ref.tw * m; s.tf = ref.tf * m;
+            const double H = s.iw() * 1e6; // dm⁶
+            const double eJ = std::abs(J / ref.J - 1.0);
+            // H imprimé à 3 chiffres significatifs et 4 décimales au plus (0,0004 dm⁶ pour l'IPE 100) : demi-unité du dernier chiffre tolérée.
+            const double digit = std::max(1e-4, std::pow(10.0, std::floor(std::log10(ref.H)) - 2.0)); // 4 décimales au plus
+            const double eH = std::max(0.0, std::abs(H - ref.H) - 0.5 * digit) / ref.H;
+            if (eJ > worstJ) { worstJ = eJ; worstJName = ref.name; }
+            if (eH > worstH) { worstH = eH; worstHName = ref.name; }
+        }
+        std::cout << "  " << std::size(kBritishSteel) << " profils : écart max J " << worstJ * 100 << " % (" << worstJName << "), Iw "
+                  << worstH * 100 << " % (" << worstHName << ")" << std::endl;
+        TEST_CHECK(worstJ < 5e-3, "Test 332: J (El Darwish & Johnston, congés) = fiches British Steel à 0,5 % près (" + worstJName + ")");
+        TEST_CHECK(worstH < 1.5e-2, "Test 332: Iw = tf·b³(h − tf)²/24 = fiches British Steel à 1,5 % près (" + worstHName + ")");
+
+        // Profils de TSA : rayon EN 10365. Identique à British Steel pour les IPE 100-300 et HE 100-160 : J identique.
+        int compared = 0;
+        for (const auto& ref : kBritishSteel)
+        {
+            const std::string n = ref.name;
+            Section s;
+            if (n.rfind("IPE ", 0) == 0) s = Section::ipe(std::stoi(n.substr(4)));
+            else if (n.size() > 3 && n.rfind("HE ", 0) == 0) s = n.back() == 'A' ? Section::hea(std::stoi(n.substr(3))) : Section::heb(std::stoi(n.substr(3)));
+            if (s.rootRadius() <= 0.0 || std::abs(s.rootRadius() * 1e3 - ref.r) > 1e-9) continue;
+            ++compared;
+            TEST_CHECK(relClose(s.it() * 1e8, ref.J, 5e-3), "Test 332: " + s.name + " — J de TSA = fiche (" + std::to_string(s.it() * 1e8) + " cm⁴)");
+        }
+        std::cout << "  " << compared << " profils de TSA de même rayon de congé que la fiche : J identique à 0,5 % près" << std::endl;
+        TEST_CHECK(compared >= 15, "Test 332: au moins 15 profils de TSA comparés directement");
+
+        // Rayon différent (British Steel lamine le HE 200 B avec r = 20 mm, EN 10365 : 18 mm) : écart attendu et documenté.
+        const Section heb200 = Section::heb(200);
+        TEST_CHECK(std::abs(heb200.rootRadius() - 0.018) < 1e-12 && heb200.it() * 1e8 < 62.8 && heb200.it() * 1e8 > 58.0,
+                   "Test 332: HEB 200 (r = 18 mm EN 10365) — J entre parois minces et fiche à r = 20 mm");
+
+        // Section paramétrique ou modifiée : jamais de congé supposé
+        Section modified = Section::ipe(300);
+        modified.tf = 0.012;
+        Section renamed = Section::ipe(300);
+        renamed.name = "Poutre soudée 300";
+        TEST_CHECK(modified.rootRadius() == 0.0 && renamed.rootRadius() == 0.0 && Section::ipe(999).rootRadius() == 0.0,
+                   "Test 332: dimensions modifiées, désignation libre ou numéro inconnu — formule des parois minces");
+        TEST_CHECK(relClose(renamed.it(), (2.0 * 0.150 * std::pow(0.0107, 3) + (0.300 - 0.0107) * std::pow(0.0071, 3)) / 3.0, 1e-12),
+                   "Test 332: profil reconstitué sans congé — J parois minces");
+        TEST_CHECK(std::isnan(Section::upn(200).iw()) && Section::boxHollow(0.2, 0.2, 0.01).iw() == 0.0,
+                   "Test 332: Iw non calculé (UPN) signalé par NaN, négligeable pour les sections fermées");
+
+        // Persistance : désignation et dimensions enregistrées → même J après réouverture
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(4, 0, 0);
+        m.getNode(a)->setSupport(SupportDefinition::fixed());
+        m.addBar(a, b, Section::hea(260), Material::steelS235(), BarRole::Beam);
+        const std::string path = (QDir::tempPath() + "/tsa_test_332.tsa").toStdString();
+        TSA::IO::TSAFileWriter writer;
+        std::string err;
+        TEST_CHECK(writer.saveToFile(path, m, nullptr, "J", "TSA", &err), "Test 332: enregistrement");
+        Model back;
+        TSA::IO::TSAFileReader reader;
+        TEST_CHECK(reader.loadFromFile(path, back, nullptr, "", nullptr, nullptr, nullptr, &err), "Test 332: relecture");
+        const Section& reread = back.beams().begin()->second.section();
+        TEST_CHECK(reread.rootRadius() == Section::hea(260).rootRadius() && reread.it() == Section::hea(260).it(),
+                   "Test 332: J identique après réouverture (rayon déduit de la désignation, aucun champ ajouté au format)");
+        std::filesystem::remove(path);
+        std::cout << "[PASS] Test 332: J et Iw des profils laminés" << std::endl;
+        ++passed;
+    }
+
+    // TEST 333 : modes de blocage des appuis articulés — choix explicite, historique conservé, risques signalés
+    {
+        std::cout << "\n--- TEST 333: Appuis articulés — fourche, historique, aucun blocage ---" << std::endl;
+        using TSA::Analysis::SupportRestraintMode;
+        const double L = 6.0, q = 10.0;
+        auto yBeam = [&](Model& mdl) {
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(0, L, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::pinned());
+            mdl.getNode(b)->setSupport(SupportDefinition::pinned());
+            const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), q));
+            return bar;
+        };
+        // 1. Poutre selon Y sur deux articulations
+        {
+            Model mdl;
+            const int bar = yBeam(mdl);
+            AnalysisParameters pf = p;
+            pf.supportRestraints = SupportRestraintMode::Fork;
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, pf, r), "Test 333: mode fourche — poutre selon Y calculée");
+            double w = 0.0;
+            for (const auto& st : r.getElementResults(StructuralElementKind::Beam, bar)->intermediateStations)
+                if (std::abs(st.position - L / 2) < 1e-9) w = st.uz;
+            TEST_CHECK(relClose(w, -5.0 * q * std::pow(L, 4) / (384.0 * E * sec.iy()), 2e-5) && r.executionMetadata().isEquilibriumVerified,
+                       "Test 333: mode fourche — 5qL⁴/384EI, équilibre vérifié");
+
+            AnalysisParameters pl = p;
+            pl.supportRestraints = SupportRestraintMode::Legacy;
+            const auto report = TSA::Standards::ModelValidator::validateForAnalysis(mdl, pl);
+            bool risk = false;
+            for (const auto& i : report.issues())
+                risk |= i.severity == TSA::Standards::ValidationSeverity::Warning && i.message.find("RX globale") != std::string::npos
+                        && i.message.find("Risque") != std::string::npos && i.message.find("Correction") != std::string::npos;
+            TEST_CHECK(risk, "Test 333: mode historique — avertissement (DDL RX, risque, correction) avant le calcul");
+            const auto legacy = CalculationSnapshot::capture(mdl, nullptr, SupportRestraintMode::Legacy);
+            bool rxOnly = !legacy.automaticRestraints().empty();
+            for (const auto& ar : legacy.automaticRestraints()) rxOnly &= ar.dof == 3;
+            TEST_CHECK(rxOnly, "Test 333: mode historique — RX globale bloquée (comportement des versions antérieures, tracé)");
+            OpenSeesSolver solver;
+            QString e;
+            const bool ok = solver.solveSynchronous(mdl, pl, &e);
+            std::cout << "  mode historique, poutre selon Y : " << (ok ? "calculé" : e.toStdString()) << std::endl;
+            TEST_CHECK(!ok && (e.contains(QStringLiteral("Mécanisme de torsion")) || e.contains(QStringLiteral("mécanisme"))),
+                       "Test 333: mode historique — torsion de la poutre selon Y libre : mécanisme signalé, aucun résultat");
+
+            AnalysisParameters pn = p;
+            pn.supportRestraints = SupportRestraintMode::None;
+            TEST_CHECK(CalculationSnapshot::capture(mdl, nullptr, SupportRestraintMode::None).automaticRestraints().empty(),
+                       "Test 333: aucun blocage — aucun DDL ajouté");
+            OpenSeesSolver s2;
+            TEST_CHECK(!s2.solveSynchronous(mdl, pn, &e) && e.contains(QStringLiteral("Mécanisme de torsion")),
+                       "Test 333: aucun blocage — mécanisme de torsion détecté avant le calcul");
+        }
+        // 2. Portique plan XZ, pieds articulés, charges dans le plan : fourche et historique identiques, blocages sans effort
+        {
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(0, 0, 4), c = mdl.addNode(6, 0, 4), d = mdl.addNode(6, 0, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::pinned());
+            mdl.getNode(d)->setSupport(SupportDefinition::pinned());
+            mdl.addColumn(a, b, Section::heb(200), mat);
+            const int beam = mdl.addBar(b, c, Section::ipe(300), mat, BarRole::Beam);
+            mdl.addColumn(d, c, Section::heb(200), mat);
+            const int lc = addCase(mdl);
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, 12.0));
+            mdl.loadManager().addNodalLoad(NodalLoad(0, b, lc, 8.0, 0, 0));
+            ResultsModel rf, rl;
+            AnalysisParameters pf = p, pl = p;
+            pf.supportRestraints = SupportRestraintMode::Fork;
+            pl.supportRestraints = SupportRestraintMode::Legacy;
+            TEST_CHECK(solve(mdl, pf, rf) && solve(mdl, pl, rl), "Test 333: portique plan — calculs fourche et historique");
+            const auto df = rf.nodeDisplacement(c), dl = rl.nodeDisplacement(c);
+            TEST_CHECK(std::abs(df.ux - dl.ux) < 1e-12 && std::abs(df.uz - dl.uz) < 1e-12 && std::abs(df.ry - dl.ry) < 1e-12,
+                       "Test 333: portique plan — résultats identiques (structure plane : blocages hors plan sans effet)");
+            const auto& eq = rf.equilibrium();
+            TEST_CHECK(rf.executionMetadata().isEquilibriumVerified && std::abs(eq.errorFx()) < 1e-9 && std::abs(eq.errorFz()) < 1e-9
+                           && rf.executionMetadata().warnings.empty() && rl.executionMetadata().warnings.empty(),
+                       "Test 333: portique plan — équilibre vérifié, aucun effort repris par un blocage automatique");
+            TEST_CHECK(relClose(rf.getNodeReaction(a)->rx + rf.getNodeReaction(d)->rx, -8.0, 1e-9)
+                           && relClose(rf.getNodeReaction(a)->rz + rf.getNodeReaction(d)->rz, 12.0 * 6.0, 1e-9),
+                       "Test 333: portique plan — réactions ΣRx = −H, ΣRz = q·L");
+        }
+        // 3. Réglage enregistré : nouveau projet → fourche ; projet antérieur (clé absente) → historique
+        {
+            TSA::Analysis::AnalysisContext fresh;
+            TEST_CHECK(fresh.common.supportRestraints == SupportRestraintMode::Fork, "Test 333: nouveau projet — appui à fourche");
+            QJsonObject json = fresh.toJson();
+            QJsonObject common = json.value("common").toObject();
+            TEST_CHECK(common.value("pinnedSupports").toString() == "fork", "Test 333: réglage enregistré (clé pinnedSupports)");
+            common.remove("pinnedSupports");
+            json["common"] = common;
+            TEST_CHECK(TSA::Analysis::AnalysisContext::fromJson(json).common.supportRestraints == SupportRestraintMode::Legacy,
+                       "Test 333: projet antérieur (clé absente) — mode historique conservé, non modifié en silence");
+            common["pinnedSupports"] = "none";
+            json["common"] = common;
+            TEST_CHECK(TSA::Analysis::AnalysisContext::fromJson(json).common.supportRestraints == SupportRestraintMode::None,
+                       "Test 333: relecture du mode « aucun blocage »");
+        }
+        std::cout << "[PASS] Test 333: Appuis articulés — modes de blocage" << std::endl;
+        ++passed;
+    }
+
+    // TEST 334 : charges stockables mais non transmises — signalées ou refusées avant tout résultat
+    {
+        std::cout << "\n--- TEST 334: Charges non transmises au solveur ---" << std::endl;
+        auto issueText = [&](const Model& mdl, TSA::Standards::ValidationSeverity sev, const char* text) {
+            return hasIssue(TSA::Standards::ModelValidator::validateForAnalysis(mdl, p), sev, text);
+        };
+        using Sev = TSA::Standards::ValidationSeverity;
+        // 1. Charge surfacique d'un fichier TSA3D : conservée, jamais appliquée
+        {
+            const QByteArray json = R"({ "format": "TSA3D", "version": "1.0",
+              "materials": [ { "id": "S235", "type": "steel", "E": 210e9, "nu": 0.3, "density": 7850, "fk": 235e6 } ],
+              "sections": [ { "id": "R", "shape": "rectangular", "dimensions": { "b": 0.2, "h": 0.4 } } ],
+              "nodes": [ { "id": "N1", "position": [0, 0, 0], "support": { "tx": "fixed", "ty": "fixed", "tz": "fixed", "rx": "fixed", "ry": "fixed", "rz": "fixed" } },
+                         { "id": "N2", "position": [3, 0, 0] } ],
+              "members": [ { "id": "B1", "type": "beam", "nodes": ["N1", "N2"], "section": "R", "material": "S235" } ],
+              "loads": { "cases": [ { "id": "G", "name": "G", "category": "dead" } ],
+                         "nodal": [ { "id": "F", "node": "N2", "case": "G", "force": [0, 0, -1] } ],
+                         "surface": [ { "id": "P1", "case": "G", "pressure": -2.5 } ] } })";
+            Model mdl;
+            const auto res = TSA::IO::Tsa3d::importDocument(QJsonDocument::fromJson(json).object(), mdl);
+            TEST_CHECK(res.ok, "Test 334: import TSA3D avec charge surfacique");
+            TEST_CHECK(issueText(mdl, Sev::Warning, "surfacique"), "Test 334: charge surfacique conservée signalée NON appliquée avant le calcul");
+        }
+        // 2. Poids propre explicite, moment réparti sur treillis, moment réparti sans axe
+        {
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(3, 0, 0), c = mdl.addNode(3, 2, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::fixed());
+            mdl.getNode(c)->setSupport(SupportDefinition::fixed());
+            const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            const int truss = mdl.addTrussMember(b, c, 0.05);
+            const int lc = addCase(mdl);
+            MemberLoad sw(0, bar, lc, LoadType::SelfWeight, 1.0, 1.0, LoadDirection::Gravity);
+            mdl.loadManager().addMemberLoad(sw);
+            TEST_CHECK(issueText(mdl, Sev::Warning, "poids propre"), "Test 334: poids propre explicite signalé (comportement de chaque moteur)");
+            MemberLoad onTruss = couple(truss, lc, 1.0, 1.0, LoadDirection::LocalX);
+            onTruss.setTargetType(MemberTargetType::Truss);
+            mdl.loadManager().addMemberLoad(onTruss);
+            TEST_CHECK(issueText(mdl, Sev::Warning, "barre articulée"), "Test 334: moment réparti sur treillis signalé non transmis");
+            mdl.loadManager().addMemberLoad(couple(bar, lc, 1.0, 1.0, LoadDirection::Gravity));
+            TEST_CHECK(issueText(mdl, Sev::Error, "pas d'axe défini"), "Test 334: moment réparti sans axe refusé (erreur)");
+        }
+        std::cout << "[PASS] Test 334: Charges non transmises signalées" << std::endl;
+        ++passed;
+    }
     return true;
+}
+
+/// Contrôle d'un projet enregistré par l'application après l'essai de la boîte de dialogue (TSA_UI_CHECK_FILE) :
+/// charges relues, transmission au solveur, θ comparé à m·L²/(2GJ). Hors décompte des tests.
+bool checkDialogProject(const QString& path)
+{
+    Model m;
+    TSA::IO::TSAFileReader reader;
+    std::string err;
+    if (!reader.loadFromFile(path.toStdString(), m, nullptr, "", nullptr, nullptr, nullptr, &err))
+    {
+        std::cout << "UI-CHECK ÉCHEC lecture : " << err << std::endl;
+        return false;
+    }
+    std::cout << "UI-CHECK charges sur barre relues : " << m.loadManager().memberLoads().size() << std::endl;
+    for (const auto& [id, l] : m.loadManager().memberLoads())
+        std::cout << "UI-CHECK   ML" << id << " type=" << static_cast<int>(l.type()) << " (MemberMoment=" << static_cast<int>(LoadType::MemberMoment)
+                  << ") cible=" << static_cast<int>(l.targetType()) << " #" << l.elementId() << " direction=" << static_cast<int>(l.direction())
+                  << " (LocalX=" << static_cast<int>(LoadDirection::LocalX) << ") q1=" << l.q1() << " q2=" << l.q2() << std::endl;
+    const auto report = TSA::Standards::ModelValidator::validateForAnalysis(m, AnalysisParameters {});
+    for (const auto& i : report.issues())
+        if (i.severity != TSA::Standards::ValidationSeverity::Info) std::cout << "UI-CHECK   validation : " << i.message << std::endl;
+    AnalysisParameters p;
+    p.includeSelfWeight = false;
+    ResultsModel r;
+    if (!solve(m, p, r)) { std::cout << "UI-CHECK ÉCHEC calcul" << std::endl; return false; }
+    const auto& beam = m.beams().begin()->second;
+    const double L = beam.length(m), GJ = shearModulus(beam.material()) * beam.section().it();
+    double mBeam = 0.0;
+    for (const auto& [id, l] : m.loadManager().memberLoads())
+        if (l.type() == LoadType::MemberMoment && l.targetType() == MemberTargetType::Beam && l.direction() == LoadDirection::LocalX) mBeam += l.q1();
+    const double theta = r.nodeDisplacement(beam.endNodeId()).rx, ref = mBeam * L * L / (2.0 * GJ);
+    std::cout << "UI-CHECK θ(L) = " << theta << " rad ; référence m·L²/(2GJ) = " << ref << " ; écart relatif "
+              << (ref != 0.0 ? std::abs(theta - ref) / std::abs(ref) : std::abs(theta)) << std::endl;
+    std::cout << "UI-CHECK équilibre vérifié : " << r.executionMetadata().isEquilibriumVerified << " ; ΣMx appliqué = "
+              << r.equilibrium().appliedMx << " ; réaction = " << r.equilibrium().reactionMx << std::endl;
+    return std::abs(theta - ref) <= 1e-9 * std::max(1e-12, std::abs(ref));
 }
 } // namespace
 
 bool runSuite_Torsion(int& passed)
 {
+    if (const QString f = qEnvironmentVariable("TSA_UI_CHECK_FILE"); !f.isEmpty())
+    {
+        std::cout << (checkDialogProject(f) ? "UI-CHECK RÉSULTAT : OK" : "UI-CHECK RÉSULTAT : ÉCHEC") << std::endl;
+        return true;
+    }
+
     // TEST 321 : console en torsion pure — θ = T·L / (G·J), du solveur à la vue 3D
     {
         std::cout << "\n--- TEST 321: Console en torsion (référence T·L/GJ) ---" << std::endl;
@@ -667,15 +1029,11 @@ bool runSuite_Torsion(int& passed)
         const double jBox = 4.0 * am * am * t / perim + perim * t * t * t / 3.0;
         TEST_CHECK(relClose(box.it(), jBox, 1e-12), "Test 322: caisson — J de Bredt (" + std::to_string(box.it()) + " m⁴)");
         TEST_CHECK(box.it() < 0.8 * (box.iy() + box.iz()), "Test 322: caisson — J < moment polaire (anciennement confondus)");
-        // Profil ouvert IPE 300 : parois minces (2·b·tf³ + (h − tf)·tw³)/3, congés ignorés. Le catalogue
-        // (It = 20,12 cm⁴, congés r = 15 mm compris) donne environ 28 % de plus : écart documenté, pas une
-        // valeur exacte (docs/SECTIONS.md).
+        // Profil laminé IPE 300 (rayon de congé EN 10365 = 15 mm, identique à British Steel) : formule avec congés.
         const Section ipe = Section::ipe(300);
-        const double jThin = (2.0 * 0.150 * std::pow(0.0107, 3) + (0.300 - 0.0107) * std::pow(0.0071, 3)) / 3.0;
-        const double ratio = ipe.it() / 20.12e-8;
-        std::cout << "  IPE 300 : J = " << ipe.it() * 1e8 << " cm⁴ (parois minces), catalogue 20.12 cm⁴ → rapport " << ratio << std::endl;
-        TEST_CHECK(relClose(ipe.it(), jThin, 1e-12) && ratio > 0.75 && ratio < 0.80,
-                   "Test 322: IPE 300 — J parois minces, ≈ 0.78 × catalogue (congés non modélisés)");
+        std::cout << "  IPE 300 : J = " << ipe.it() * 1e8 << " cm⁴ (fiche British Steel : 19.9 cm⁴)" << std::endl;
+        TEST_CHECK(std::abs(ipe.rootRadius() - 0.015) < 1e-12 && relClose(ipe.it(), 19.9e-8, 5e-3),
+                   "Test 322: IPE 300 — J avec congés = 19.9 cm⁴ (British Steel)");
 
         // Le J du caisson est bien celui du calcul : console en torsion
         Model m;

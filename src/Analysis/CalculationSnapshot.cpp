@@ -16,6 +16,12 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model)
 
 CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model, const TSA::Model::ElementSet* scope)
 {
+    return capture(model, scope, SupportRestraintMode::Fork);
+}
+
+CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model, const TSA::Model::ElementSet* scope,
+                                                 SupportRestraintMode supportRestraints)
+{
     CalculationSnapshot snap;
 
     // Portée : barres retenues, puis nœuds qu'elles relient (un nœud isolé n'est pas calculable).
@@ -171,12 +177,14 @@ CalculationSnapshot CalculationSnapshot::capture(const TSA::Model::Model& model,
     snap.m_loadCases = lm.loadCases();
     snap.m_combinations = lm.combinations();
 
-    applyAutomaticRestraints(snap);
+    applyAutomaticRestraints(snap, supportRestraints);
     return snap;
 }
 
-void CalculationSnapshot::applyAutomaticRestraints(CalculationSnapshot& snap)
+void CalculationSnapshot::applyAutomaticRestraints(CalculationSnapshot& snap, SupportRestraintMode mode)
 {
+    snap.m_supportRestraintMode = mode;
+    if (mode == SupportRestraintMode::None) return; // rotules sphériques réelles : aucun blocage ajouté
     // Un appui articulé (rotule sphérique) ou simple laisse les trois rotations libres. Dans le solveur 3D,
     // une barre portée par de tels appuis tourne librement autour de son axe (mécanisme de torsion,
     // matrice singulière). Blocages ajoutés, tous tracés (automaticRestraints) et contrôlés après calcul :
@@ -220,6 +228,37 @@ void CalculationSnapshot::applyAutomaticRestraints(CalculationSnapshot& snap)
     }
 
     static const char* kDof[6] = { "TX", "TY", "TZ", "RX", "RY", "RZ" };
+    if (mode == SupportRestraintMode::Legacy)
+    {
+        std::vector<int> bendingLocked; // nœuds dont une barre fléchie n'est pas parallèle à X : RX y encastre la flexion
+        for (auto& [id, n] : snap.m_nodes)
+        {
+            if (!(n.pinnedSupport || n.rollerSupport) || !used.count(id)) continue;
+            auto lockLegacy = [&](int dof, bool* f, double k, const char* why) {
+                if (*f || k > 0.0) return;
+                *f = true;
+                snap.m_automaticRestraints.push_back({ id, dof, std::string(kDof[dof]) + " bloquée au nœud N" + std::to_string(id) + " : " + why });
+            };
+            lockLegacy(3, &n.fixRx, n.kRx, "mode historique (RX globale bloquée aux appuis articulés et simples)");
+            if (n.rollerSupport) lockLegacy(1, &n.fixTy, n.kTy, "mode historique (TY bloquée aux appuis simples)");
+            const auto it = directions.find(id);
+            if (it != directions.end()
+                && std::any_of(it->second.begin(), it->second.end(), [](const gp_Vec& d) { return std::abs(d.X()) < 1.0 - 1e-9; }))
+                bendingLocked.push_back(id);
+        }
+        if (!bendingLocked.empty())
+        {
+            std::string list;
+            for (std::size_t i = 0; i < bendingLocked.size() && i < 8; ++i) list += (i ? ", N" : "N") + std::to_string(bendingLocked[i]);
+            if (bendingLocked.size() > 8) list += "…";
+            snap.m_restraintWarnings.push_back(
+                "Appuis en mode historique : la rotation RX globale est bloquée aux appuis " + list + ", où une barre n'est pas parallèle "
+                "à X. Risque : pour ces barres, ce blocage retient la flexion (moments d'appui fictifs, flèches sous-estimées) et "
+                "laisse libre la torsion autour de leur axe (mécanisme possible). Correction : choisir « appui à fourche » ou "
+                "« aucun blocage » dans les paramètres d'analyse, ou définir ces appuis explicitement.");
+        }
+        return;
+    }
     for (auto& [id, n] : snap.m_nodes)
     {
         if (!(n.pinnedSupport || n.rollerSupport) || !used.count(id)) continue;
@@ -339,6 +378,8 @@ CalculationSnapshot CalculationSnapshot::subdivided(const CalculationSnapshot& s
     out.m_nodes = src.m_nodes;
     out.m_automaticRestraints = src.m_automaticRestraints;
     out.m_restraintNotes = src.m_restraintNotes;
+    out.m_restraintWarnings = src.m_restraintWarnings;
+    out.m_supportRestraintMode = src.m_supportRestraintMode;
     out.m_loadCases = src.m_loadCases;
     out.m_combinations = src.m_combinations;
     out.m_nodalLoads = src.m_nodalLoads;

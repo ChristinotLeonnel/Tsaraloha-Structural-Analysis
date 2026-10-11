@@ -403,6 +403,14 @@ AnalysisModel AnalysisModelExtractor::extract(const TSA::Model::Model& model,
                                               const ResolvedScope& scope,
                                               AnalysisDimension dimension)
 {
+    return extract(model, scope, dimension, SupportRestraintMode::Fork);
+}
+
+AnalysisModel AnalysisModelExtractor::extract(const TSA::Model::Model& model,
+                                              const ResolvedScope& scope,
+                                              AnalysisDimension dimension,
+                                              SupportRestraintMode supportRestraints)
+{
     AnalysisModel am;
     am.dimension = dimension;
     am.scopeLabel = scope.label;
@@ -411,7 +419,7 @@ AnalysisModel AnalysisModelExtractor::extract(const TSA::Model::Model& model,
     am.plane = scope.plane;
 
     // Une seule capture, restreinte à la portée (aucune géométrie OCCT n'est construite).
-    am.snapshot = CalculationSnapshot::capture(model, scope.entireModel ? nullptr : &scope.elements);
+    am.snapshot = CalculationSnapshot::capture(model, scope.entireModel ? nullptr : &scope.elements, supportRestraints);
 
     for (const auto& [id, node] : am.snapshot.nodes()) am.mapping.addNode(id);
     for (const auto& [tag, el] : am.snapshot.elements()) am.mapping.addElement(el.key(), tag);

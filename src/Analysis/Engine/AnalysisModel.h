@@ -146,6 +146,10 @@ class AnalysisModelExtractor
 public:
     static AnalysisModel extract(const TSA::Model::Model& model,
                                  const ResolvedScope& scope,
+                                 AnalysisDimension dimension,
+                                 SupportRestraintMode supportRestraints);
+    static AnalysisModel extract(const TSA::Model::Model& model,
+                                 const ResolvedScope& scope,
                                  AnalysisDimension dimension);
 };
 

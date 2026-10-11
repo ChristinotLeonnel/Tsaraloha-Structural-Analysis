@@ -51,6 +51,10 @@ Architecture en Ruban structurée en 9 onglets métier :
 Panneau latéral de pilotage des résultats 3D issu du solveur OpenSees :
 - **Grandeur affichée** : Déformée 3D seule ou combinée avec l'une des 4 familles de diagrammes 3D ($M_z, M_y, M_x$, $V_z, V_y$, $N$, $U_x, U_y, U_z, U_{res}$, $R_x, R_y, R_z$).
 - **Contrôle d'échelle** : Mode automatique basé sur l'envergure $L_{span}$ de la structure, presets ($\times 1, \times 10, \times 100, \times 1000, \times 10000$) ou facteur personnalisé. Le facteur effectif est affiché en permanence (« non amplifiée » à ×1) ; l'amplification ne touche que l'affichage, jamais les résultats.
+- **Synthèse** : flèche, moment, traction, réactions et, s'il y a torsion, Mx et θx maximaux (une torsion
+  pure ne déplace pas les nœuds : « déplacement 0 » ne signifie pas « aucune déformation »).
+- **Appuis articulés / simples** (boîte « Paramètres d'analyse ») : appui à fourche, historique ou aucun blocage
+  (docs/TORSION.md §4).
 - **Saisie d'une torsion** :
   - couple nodal : « Force et couple », moment autour de l'axe global parallèle à la barre ;
   - couple réparti : « Charge sur barre », type « Moment réparti / torsion (m1 → m2, kNm/m) »,

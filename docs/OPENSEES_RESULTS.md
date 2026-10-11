@@ -97,16 +97,17 @@ librement autour de son axe : c'est un mécanisme de torsion, et la matrice est 
 `CalculationSnapshot::applyAutomaticRestraints` ajoute des blocages, chacun tracé dans
 `automaticRestraints()` :
 
-1. **Appui à fourche** : rotation autour de l'axe de la barre. Ajouté si toutes les barres fléchies du
-   nœud sont alignées sur un axe global. Pour une barre inclinée, « fix » ne peut pas le faire et
-   c'est signalé.
-2. **Structure plane verticale** : c'est le comportement historique. Plan XZ : RX et, pour un appui
-   simple, TY. Plan YZ : RY et, pour un appui simple, TX.
-3. **Structure non plane** : appui simple → TY (comportement historique).
+Le mode est **choisi par l'utilisateur** (paramètres d'analyse, « Appuis articulés / simples », clé
+`pinnedSupports` de `CommonAnalysisSettings`, `AnalysisParameters::supportRestraints`) :
 
-RX n'est plus bloqué d'office. Auparavant, ce blocage encastrait en flexion les barres non parallèles
-à X : une poutre selon Y sur deux articulations échouait (matrice singulière), et sous une charge
-dans l'autre plan, sa flexion aurait été bloquée.
+1. **Appui à fourche** (`fork`, nouveaux projets) : rotation autour de l'axe de la barre si toutes les barres
+   fléchies du nœud sont alignées sur un axe global (barre inclinée : signalé, non bloquable par « fix ») ;
+   structure plane verticale : plan XZ → RX et, appui simple, TY ; plan YZ → RY et, appui simple, TX ;
+   structure non plane : appui simple → TY.
+2. **Historique** (`legacy`, projets enregistrés avant ce réglage, clé absente) : RX globale et TY des appuis
+   simples, comme les versions antérieures. Avertissement avant calcul si une barre n'est pas parallèle à X
+   (DDL RX, risque : flexion encastrée et torsion libre, correction).
+3. **Aucun** (`none`) : rotules sphériques réelles, mécanismes signalés.
 
 Ces blocages sont listés avant le calcul. Ensuite, `OpenSeesResultsReader::checkAutomaticRestraints`
 signale tout effort qu'ils reprennent (métadonnées `warnings`, journal, boîte de fin de calcul) : un

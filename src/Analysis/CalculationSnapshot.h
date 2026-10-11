@@ -138,6 +138,9 @@ public:
      * @param scope nullptr = tout le modèle (identique à capture(model)).
      */
     static CalculationSnapshot capture(const TSA::Model::Model& model, const TSA::Model::ElementSet* scope);
+    /// Idem, avec le mode de blocage automatique des appuis articulés / simples choisi par l'utilisateur.
+    static CalculationSnapshot capture(const TSA::Model::Model& model, const TSA::Model::ElementSet* scope,
+                                       SupportRestraintMode supportRestraints);
 
     /**
      * @brief Snapshot dont les barres fléchies (poutres, poteaux) sont subdivisées aux positions relatives
@@ -159,6 +162,10 @@ public:
     const std::vector<AutomaticRestraint>& automaticRestraints() const { return m_automaticRestraints; }
     /// Remarques sur les appuis non complétés (barre inclinée : rotation autour de son axe laissée libre).
     const std::vector<std::string>& restraintNotes() const { return m_restraintNotes; }
+    /// Risques des blocages appliqués (mode historique : RX globale qui encastre la flexion d'une barre non
+    /// parallèle à X) : DDL, risque et correction ; à présenter comme avertissements avant le calcul.
+    const std::vector<std::string>& restraintWarnings() const { return m_restraintWarnings; }
+    SupportRestraintMode supportRestraintMode() const { return m_supportRestraintMode; }
 
     const SnapshotNode* getNode(int id) const;
     /// Élément par tag OpenSees (clé de elements()).
@@ -179,12 +186,14 @@ public:
 
 private:
     /// Blocages anti-singularité des appuis articulés / simples (après capture des barres).
-    static void applyAutomaticRestraints(CalculationSnapshot& snap);
+    static void applyAutomaticRestraints(CalculationSnapshot& snap, SupportRestraintMode mode);
 
     std::map<int, SnapshotNode> m_nodes;
     std::map<int, SnapshotElement> m_elements;          ///< clé : tag OpenSees unique
     std::vector<AutomaticRestraint> m_automaticRestraints;
     std::vector<std::string> m_restraintNotes;
+    std::vector<std::string> m_restraintWarnings;
+    SupportRestraintMode m_supportRestraintMode = SupportRestraintMode::Fork;
     std::map<ElementKey, int> m_tagByKey;
     std::vector<TSA::Model::NodalLoad> m_nodalLoads;
     std::vector<TSA::Model::MemberLoad> m_memberLoads;

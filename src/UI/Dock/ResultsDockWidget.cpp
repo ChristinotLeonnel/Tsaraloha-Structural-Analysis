@@ -350,6 +350,10 @@ void ResultsDockWidget::updateSummaryText()
     .arg(s.maxTension, 0, 'f', 1)
     .arg(eq.reactionFz, 0, 'f', 1)
     .arg(eq.isBalanced(0.05) ? tr("CONFORME") : tr("DÉSÉQUILIBRE"));
+    if (s.maxTorsionMoment > 1e-9 || s.maxTwist > 1e-12)
+        txt += tr("\n• Torsion max : Mx = %1 kNm (Barre #%2), θx = %3 mrad (Barre #%4)")
+                   .arg(s.maxTorsionMoment, 0, 'f', 2).arg(s.maxTorsionMomentElementId)
+                   .arg(s.maxTwist * 1000.0, 0, 'g', 4).arg(s.maxTwistElementId);
 
     // Évaluation des ratios de travail maximaux Eurocodes (EC2 & EC3)
     if (m_model)

@@ -801,10 +801,16 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
                    .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3).arg(ext.maxDisplacementNodeId)
                    .arg(ext.maxBendingMoment, 0, 'f', 2).arg(ext.maxBendingMomentElementId)
                    .arg(ext.maxTension, 0, 'f', 2).arg(eq.reactionFz, 0, 'f', 2);
+    if (ext.maxTorsionMoment > 1e-9 || ext.maxTwist > 1e-12)
+        summary += tr("\n• Torsion max : Mx = %1 kNm (barre #%2), θx = %3 mrad (barre #%4)")
+                       .arg(ext.maxTorsionMoment, 0, 'f', 2).arg(ext.maxTorsionMomentElementId)
+                       .arg(ext.maxTwist * 1000.0, 0, 'g', 4).arg(ext.maxTwistElementId);
     if (m_statusInfo)
         m_statusInfo->setText(tr("%1 OK : δ_max = %2 mm, M_max = %3 kNm")
                                   .arg(engineName).arg(ext.maxDisplacement * 1000.0, 0, 'f', 2)
                                   .arg(ext.maxBendingMoment, 0, 'f', 1));
+    if (m_statusInfo && ext.maxTorsionMoment > 1e-9)
+        m_statusInfo->setText(m_statusInfo->text() + tr(", Mx_max = %1 kNm").arg(ext.maxTorsionMoment, 0, 'f', 2));
     if (m_consoleDock) m_consoleDock->appendLog(summary, "SUCCESS");
     // Points constatés après le calcul (ex. effort repris par un blocage automatique d'appui) : jamais tus.
     if (!meta.warnings.empty())

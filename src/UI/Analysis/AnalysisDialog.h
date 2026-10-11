@@ -95,6 +95,7 @@ private:
     QComboBox* m_levelCombo = nullptr;
     QComboBox* m_loadCombo = nullptr;
     QCheckBox* m_selfWeight = nullptr;
+    QComboBox* m_supportCombo = nullptr;   ///< blocages automatiques des appuis articulés / simples
     QGroupBox* m_optionsGroup = nullptr;
     QVBoxLayout* m_optionsLayout = nullptr;
     QLabel* m_noOptionsLabel = nullptr;

@@ -321,6 +321,15 @@ struct ResultsSummary
     int maxBendingMomentElementId = 0;
     StructuralElementKind maxBendingMomentElementKind = StructuralElementKind::Beam;
 
+    /// Torsion : |Mx| maximal (extrémités et stations) et |θx| maximal (rotation autour de l'axe de la barre,
+    /// repère local) ; une torsion pure ne déplace pas les nœuds ni ne crée de moment de flexion.
+    double maxTorsionMoment = 0.0;
+    int maxTorsionMomentElementId = 0;
+    StructuralElementKind maxTorsionMomentElementKind = StructuralElementKind::Beam;
+    double maxTwist = 0.0;
+    int maxTwistElementId = 0;
+    StructuralElementKind maxTwistElementKind = StructuralElementKind::Beam;
+
 };
 
 /**

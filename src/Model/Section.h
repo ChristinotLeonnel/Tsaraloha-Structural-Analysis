@@ -36,7 +36,19 @@ struct Section
     double area() const;
     double iy() const; // Inertie flexion selon axe fort (m4)
     double iz() const; // Inertie flexion selon axe faible (m4)
-    double it() const; // Inertie torsionnelle de Saint-Venant (m4)
+    /// Constante de torsion de Saint-Venant J (m⁴). Profils en I laminés normalisés (IPE, HEA, HEB, rayon de
+    /// congé EN 10365 connu) : formule d'El Darwish & Johnston avec congés, celle des tables SCI ; autres
+    /// formes : formules de parois minces / Bredt / sections pleines (docs/SECTIONS.md).
+    double it() const;
+    /// Constante de gauchissement Iw (m⁶) : profil en I bisymétrique tf·b³·(h − tf)²/24 ; nulle (négligeable)
+    /// pour les sections pleines et fermées ; NaN si non disponible (UPN, cornière, T).
+    double iw() const;
+    /// Rayon de congé (m) des profils laminés normalisés reconnus par leur désignation (« IPE 300 », « HEA 200 »,
+    /// « HEB 160 ») ET leurs dimensions EN 10365 ; 0 sinon (section paramétrique ou modifiée). Non stocké dans le
+    /// fichier : déduit à chaque calcul, identique avant et après réouverture.
+    double rootRadius() const;
+    /// J d'un profil en I laminé à congés (El Darwish & Johnston, unités cohérentes).
+    static double rolledIShapeTorsionConstant(double h, double b, double tw, double tf, double r);
     double wy() const; // Module de résistance élastique fort Wel,y = Iy / (h/2) (m3)
     double wz() const; // Module de résistance élastique faible Wel,z = Iz / (b/2) (m3)
 

@@ -288,6 +288,24 @@ void ResultsModel::computeSummary()
             m_summary.maxBendingMomentElementId = key.id;
             m_summary.maxBendingMomentElementKind = key.kind;
         }
+
+        auto torsion = [&](const StationForces& st) {
+            if (std::isfinite(st.Mx) && std::abs(st.Mx) > m_summary.maxTorsionMoment)
+            {
+                m_summary.maxTorsionMoment = std::abs(st.Mx);
+                m_summary.maxTorsionMomentElementId = key.id;
+                m_summary.maxTorsionMomentElementKind = key.kind;
+            }
+            if (std::isfinite(st.rx) && std::abs(st.rx) > m_summary.maxTwist)
+            {
+                m_summary.maxTwist = std::abs(st.rx);
+                m_summary.maxTwistElementId = key.id;
+                m_summary.maxTwistElementKind = key.kind;
+            }
+        };
+        torsion(res.startForces);
+        torsion(res.endForces);
+        for (const auto& st : res.intermediateStations) torsion(st);
     }
 
 }
