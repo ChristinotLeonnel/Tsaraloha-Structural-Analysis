@@ -58,14 +58,14 @@ Les identifiants de nœuds et de barres sont ceux du fichier JSON.
 
 ## 3. Cas disponibles
 
-Résultats du 12/10/2026, OpenSees 3.8.0 et Custom2D (TSALab MetDeDeplacement) : 26 cas, 134 vérifications, toutes réussies.
+Résultats du 12/10/2026, OpenSees 3.8.0 et Custom2D (TSALab MetDeDeplacement) : 27 cas, 144 vérifications, toutes réussies.
 
 | Cas | Objet | Moteurs | Écart max. |
 |---|---|---|---|
 | RDM-01, 02 | barre en traction, en compression (δ = NL/EA, N, réaction, σ) | OpenSees, Custom2D | 4e-14 % |
 | RDM-03 | poutre isostatique, charge uniforme (5qL⁴/384EI, qL²/8, qL/2, qL³/24EI) | OpenSees, Custom2D | 7e-14 % |
 | RDM-03b | même poutre en une barre : moment et flèche aux stations | OpenSees (flèche 1e-3 %), Custom2D | 1e-3 % |
-| RDM-04 | charge ponctuelle centrale (PL/4, PL³/48EI) | OpenSees, Custom2D | 4e-14 % |
+| RDM-04, 04b | charge ponctuelle centrale (PL/4, PL³/48EI) ; charge ponctuelle excentrée sur barre bi-encastrée (Pab²/L², flèche sous la charge) | OpenSees, Custom2D | 9e-3 % (flèche reconstruite, OpenSees) |
 | RDM-05a, 05b | console, force en bout et charge uniforme (flèche, rotation, réactions) | OpenSees, Custom2D | 5e-14 % |
 | RDM-06 | portique encastré, effort horizontal (méthode des rotations) | OpenSees, Custom2D | 0,41 % (déformation axiale, absente de la solution de référence) |
 | RDM-07a, 07b | treillis plan (nœuds, travaux virtuels) et spatial (trépied) | OpenSees | 3e-12 % |
