@@ -1,0 +1,25 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-12",
+  "title": "Poids propre automatique des barres",
+  "category": "rdm",
+  "description": "Poutre IPE 300 en acier (ρ = 7850 kg/m³) sur deux appuis, 8 m, poids propre seul : réactions ρ·g·A·L/2 avec l'aire du catalogue (53,81 cm², congés inclus) et moment ρ·g·A·L²/8.",
+  "sources": ["ArcelorMittal — Sections and merchant bars, catalogue EN 10365 (IPE 300 : A = 53,81 cm²)", "EN 1991-1-1:2002, §5 (poids propre : volume × poids volumique)"],
+  "hypotheses": ["g = 9,81 m/s²", "Euler-Bernoulli", "modèle plan (XZ) calculé en 3D : Ty et Rx bloqués aux appuis"],
+  "units": { "force": "kN", "length": "m", "stress": "kPa" },
+  "engines": ["opensees", "custom2d"],
+  "parameters": { "rho": 7850.0, "g": 9.81, "A": 53.81e-4, "L": 8.0, "w": "rho*g*A/1000" },
+  "model": {
+    "materials": { "S": { "E": 210000000.0, "nu": 0.3, "rho": 7850 } },
+    "sections": { "I": { "shape": "ipe", "n": 300 } },
+    "nodes": [ { "id": 1, "x": 0, "y": 0, "z": 0, "support": [1, 1, 1, 1, 0, 0] }, { "id": 2, "x": 8.0, "y": 0, "z": 0, "support": [0, 1, 1, 1, 0, 0] } ],
+    "members": [ { "id": 1, "type": "beam", "i": 1, "j": 2, "section": "I", "material": "S" } ],
+    "cases": [ { "id": 1, "name": "G" } ]
+  },
+  "analysis": { "selfWeight": true, "case": 1 },
+  "checks": [
+    { "quantity": "reaction:1:fz", "label": "réaction (poids propre)", "expected": "w*L/2", "unit": "kN", "tolerance": { "rel": 1e-3, "abs": 1e-9 } },
+    { "quantity": "reactionsum:fz", "label": "Σ réactions = poids de la barre", "expected": "w*L", "unit": "kN", "tolerance": { "rel": 1e-3, "abs": 1e-9 } },
+    { "quantity": "member:1:M:absmax", "label": "moment en travée", "expected": "w*L^2/8", "unit": "kN·m", "tolerance": { "rel": 1e-3, "abs": 1e-9 } }
+  ]
+}
