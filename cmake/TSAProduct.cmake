@@ -1007,6 +1007,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_mesh.cpp
     ${TSA_ROOT}/tests/test_torsion.cpp
     ${TSA_ROOT}/tests/test_meshview.cpp
+    ${TSA_ROOT}/tests/test_demo_models.cpp
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )
