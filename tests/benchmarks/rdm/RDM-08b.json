@@ -1,0 +1,110 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-08b",
+  "title": "Torsion d'une barre rectangulaire (Saint-Venant)",
+  "category": "rdm",
+  "description": "Section 0,2 × 0,4 m : J = β·a·b³, β = 1/3 − (64/π⁵)(b/a)·Σ tanh(nπa/2b)/n⁵ (série de Saint-Venant, n = 1, 3, 5, 7). TSA utilise l'approximation de Roark ; l'écart attendu est < 0,2 %.",
+  "sources": [
+    "W.C. Young, R.G. Budynas — Roark's Formulas for Stress and Strain, 7e éd. (tableaux des poutres, torsion)",
+    "S. Timoshenko, J.N. Goodier — Theory of Elasticity, §109 (torsion d'une barre rectangulaire)"
+  ],
+  "hypotheses": [
+    "torsion libre de Saint-Venant, gauchissement non empêché"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "G": "E/(2*(1+nu))",
+    "a": 0.4,
+    "b": 0.2,
+    "T": 5.0,
+    "L": 2.0,
+    "beta": "1/3 - 64/pi^5*(b/a)*(tanh(pi*a/(2*b)) + tanh(3*pi*a/(2*b))/3^5 + tanh(5*pi*a/(2*b))/5^5 + tanh(7*pi*a/(2*b))/7^5)",
+    "J": "beta*a*b^3"
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "R": {
+        "shape": "rectangular",
+        "b": 0.2,
+        "h": 0.4
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "x": 2.0,
+        "y": 0,
+        "z": 0
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "beam",
+        "i": 1,
+        "j": 2,
+        "section": "R",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "T"
+      }
+    ],
+    "nodalLoads": [
+      {
+        "node": 2,
+        "case": 1,
+        "mx": 5.0
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "node:2:rx",
+      "label": "rotation de torsion",
+      "expected": "T*L/(G*J)",
+      "unit": "rad",
+      "tolerance": {
+        "rel": 0.002,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

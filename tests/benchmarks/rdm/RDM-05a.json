@@ -1,0 +1,161 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-05a",
+  "title": "Console — force en bout",
+  "category": "rdm",
+  "description": "Console de 4 m, P = 20 kN en bout.",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)",
+    "W.C. Young, R.G. Budynas — Roark's Formulas for Stress and Strain, 7e éd. (tableaux des poutres, torsion)"
+  ],
+  "hypotheses": [
+    "Euler-Bernoulli",
+    "bout libre : DDL hors plan bloqués (Ty, Rx, Rz) pour un calcul 3D plan",
+    "signes : rotation positive autour de +Y (règle de la main droite) ; réaction moment = −(r × F)"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees",
+    "custom2d"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "b": 0.2,
+    "h": 0.4,
+    "A": "b*h",
+    "I": "b*h^3/12",
+    "W": "b*h^2/6",
+    "L": 4.0,
+    "P": 20.0
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "R": {
+        "shape": "rectangular",
+        "b": 0.2,
+        "h": 0.4
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "x": 4.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          0,
+          1,
+          0,
+          1,
+          0,
+          1
+        ]
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "beam",
+        "i": 1,
+        "j": 2,
+        "section": "R",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "P"
+      }
+    ],
+    "nodalLoads": [
+      {
+        "node": 2,
+        "case": 1,
+        "fz": -20.0
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "node:2:uz",
+      "label": "flèche en bout",
+      "expected": "-P*L^3/(3*E*I)",
+      "unit": "m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "node:2:ry",
+      "label": "rotation en bout",
+      "expected": "P*L^2/(2*E*I)",
+      "unit": "rad",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reaction:1:fz",
+      "label": "réaction verticale",
+      "expected": "P",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reaction:1:my",
+      "label": "moment d'encastrement",
+      "expected": "-P*L",
+      "unit": "kN·m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "member:1:M:absmax",
+      "label": "moment maximal",
+      "expected": "P*L",
+      "unit": "kN·m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

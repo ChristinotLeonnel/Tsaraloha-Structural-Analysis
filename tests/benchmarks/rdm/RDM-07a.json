@@ -1,0 +1,176 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-07a",
+  "title": "Treillis plan triangulaire",
+  "category": "rdm",
+  "description": "Triangle isocèle (base 4 m, hauteur 3 m), P = 30 kN au sommet. Efforts par équilibre des nœuds, flèche par les travaux virtuels.",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)",
+    "R.C. Hibbeler — Structural Analysis (méthode des nœuds, travaux virtuels)"
+  ],
+  "hypotheses": [
+    "barres articulées (treillis), effort normal seul",
+    "sommet : Ty bloqué (treillis plan dans un calcul 3D)"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "P": 30.0,
+    "A": "pi*0.05^2/4",
+    "Ld": "sqrt(2^2+3^2)",
+    "s": "3/Ld",
+    "t": "3/2",
+    "Lb": 4.0
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "T": {
+        "shape": "circular",
+        "d": 0.05
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": 2,
+        "x": 4.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          0,
+          1,
+          1,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": 3,
+        "x": 2.0,
+        "y": 0,
+        "z": 3.0,
+        "support": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "truss",
+        "i": 1,
+        "j": 2,
+        "section": "T",
+        "material": "S"
+      },
+      {
+        "id": 2,
+        "type": "truss",
+        "i": 1,
+        "j": 3,
+        "section": "T",
+        "material": "S"
+      },
+      {
+        "id": 3,
+        "type": "truss",
+        "i": 2,
+        "j": 3,
+        "section": "T",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "P"
+      }
+    ],
+    "nodalLoads": [
+      {
+        "node": 3,
+        "case": 1,
+        "fz": -30.0
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "member:2:N:start",
+      "label": "effort dans une diagonale (compression)",
+      "expected": "-P/(2*s)",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "member:1:N:start",
+      "label": "effort dans la membrure (traction)",
+      "expected": "P/(2*t)",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "node:3:uz",
+      "label": "flèche du sommet (travaux virtuels)",
+      "expected": "-P/(E*A)*(2*Ld/(4*s^2) + Lb/(4*t^2))",
+      "unit": "m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reaction:1:fz",
+      "label": "réaction",
+      "expected": "P/2",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

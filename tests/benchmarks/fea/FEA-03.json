@@ -1,0 +1,155 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "FEA-03",
+  "title": "Bande de coque en console (théorie des poutres, ν = 0)",
+  "category": "fea",
+  "description": "Bande 4 × 1 m, e = 0,20 m, encastrée sur un petit côté par un appui linéique, q = 10 kN/m² : w = q·b·L⁴/(8·E·I).",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)",
+    "OpenSees — ShellMITC4 (Dvorkin-Bathe) et ShellDKGT : documentation et exemples de vérification (opensees.berkeley.edu)"
+  ],
+  "hypotheses": [
+    "ν = 0 : la bande se comporte comme une poutre",
+    "cisaillement transverse (Mindlin) négligeable : L/e = 20"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees"
+  ],
+  "parameters": {
+    "E": 31000000.0,
+    "q": 10.0,
+    "L": 4.0,
+    "bw": 1.0,
+    "e": 0.2,
+    "I": "bw*e^3/12"
+  },
+  "model": {
+    "materials": {
+      "C": {
+        "E": 31000000.0,
+        "nu": 0.0,
+        "rho": 2500
+      }
+    },
+    "sections": {},
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "x": 4,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "id": 3,
+        "x": 4,
+        "y": 1,
+        "z": 0
+      },
+      {
+        "id": 4,
+        "x": 0,
+        "y": 1,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "members": [],
+    "slabs": [
+      {
+        "id": 1,
+        "nodes": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "thickness": 0.2,
+        "material": "C",
+        "edgeSupports": [
+          {
+            "edge": 3,
+            "fixed": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "q"
+      }
+    ],
+    "surfaceLoads": [
+      {
+        "slab": 1,
+        "case": 1,
+        "q": 10.0
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1,
+    "meshSizes": [
+      0.5,
+      0.25,
+      0.125
+    ],
+    "quads": true
+  },
+  "checks": [
+    {
+      "quantity": "surface:uz:absmax",
+      "label": "flèche en bout (vers le bas)",
+      "expected": "-q*bw*L^4/(8*E*I)",
+      "unit": "m",
+      "tolerance": {
+        "rel": 0.01,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reactionsum:fz",
+      "label": "Σ réactions",
+      "expected": "q*bw*L",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

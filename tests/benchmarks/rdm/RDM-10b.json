@@ -1,0 +1,171 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-10b",
+  "title": "Poutre continue à deux travées égales",
+  "category": "rdm",
+  "description": "Deux travées de 5 m, q = 10 kN/m.",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)",
+    "W.C. Young, R.G. Budynas — Roark's Formulas for Stress and Strain, 7e éd. (tableaux des poutres, torsion)"
+  ],
+  "hypotheses": [
+    "Euler-Bernoulli",
+    "modèle plan (XZ) calculé en 3D : Ty et Rx bloqués aux appuis (aucun mécanisme hors plan), Rz libre"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees",
+    "custom2d"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "b": 0.2,
+    "h": 0.4,
+    "A": "b*h",
+    "I": "b*h^3/12",
+    "W": "b*h^2/6",
+    "L": 5.0,
+    "q": 10.0
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "R": {
+        "shape": "rectangular",
+        "b": 0.2,
+        "h": 0.4
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": 2,
+        "x": 5.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": 3,
+        "x": 10.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          0
+        ]
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "beam",
+        "i": 1,
+        "j": 2,
+        "section": "R",
+        "material": "S"
+      },
+      {
+        "id": 2,
+        "type": "beam",
+        "i": 2,
+        "j": 3,
+        "section": "R",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "q"
+      }
+    ],
+    "memberLoads": [
+      {
+        "member": 1,
+        "case": 1,
+        "type": "uniform",
+        "q": 10.0,
+        "direction": "gravity"
+      },
+      {
+        "member": 2,
+        "case": 1,
+        "type": "uniform",
+        "q": 10.0,
+        "direction": "gravity"
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "reaction:2:fz",
+      "label": "réaction centrale",
+      "expected": "5*q*L/4",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reaction:1:fz",
+      "label": "réaction de rive",
+      "expected": "3*q*L/8",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "member:1:M:absmax",
+      "label": "moment sur appui central (valeur absolue)",
+      "expected": "q*L^2/8",
+      "unit": "kN·m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-08a",
+  "title": "Torsion d'une barre circulaire",
+  "category": "rdm",
+  "description": "Barre pleine Ø 100 mm, L = 2 m, couple T = 5 kN·m en bout : θ = T·L/(G·J), J = π·d⁴/32.",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)"
+  ],
+  "hypotheses": [
+    "torsion de Saint-Venant (section circulaire : pas de gauchissement)",
+    "G = E/(2(1+ν))"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "G": "E/(2*(1+nu))",
+    "J": "pi*0.1^4/32",
+    "T": 5.0,
+    "L": 2.0
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "R": {
+        "shape": "circular",
+        "d": 0.1
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "x": 2.0,
+        "y": 0,
+        "z": 0
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "beam",
+        "i": 1,
+        "j": 2,
+        "section": "R",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "T"
+      }
+    ],
+    "nodalLoads": [
+      {
+        "node": 2,
+        "case": 1,
+        "mx": 5.0
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "node:2:rx",
+      "label": "rotation de torsion",
+      "expected": "T*L/(G*J)",
+      "unit": "rad",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "member:1:T:start",
+      "label": "moment de torsion",
+      "expected": "T",
+      "unit": "kN·m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reaction:1:mx",
+      "label": "réaction",
+      "expected": "-T",
+      "unit": "kN·m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

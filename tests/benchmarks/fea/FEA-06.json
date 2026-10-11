@@ -1,0 +1,124 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "FEA-06",
+  "title": "Mode propre d'une poutre sur deux appuis (masses réparties)",
+  "category": "fea",
+  "description": "Poutre de 6 m subdivisée en 20 éléments : f = π/(2L²)·√(E·I/m), m = ρ·A. Section 0,2 × 0,4 m : le premier mode est la flexion latérale (I_z = h·b³/12 = I_y/4, f1 = f2/2), le second la flexion verticale (I_y). Convergence des masses concentrées.",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)"
+  ],
+  "hypotheses": [
+    "Euler-Bernoulli, masses concentrées aux nœuds (20 sous-éléments)",
+    "modèle plan (XZ) calculé en 3D : Ty et Rx bloqués aux appuis (aucun mécanisme hors plan), Rz libre"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "b": 0.2,
+    "h": 0.4,
+    "A": "b*h",
+    "I": "b*h^3/12",
+    "W": "b*h^2/6",
+    "L": 6.0,
+    "rho": 7.85,
+    "m": "rho*A"
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "R": {
+        "shape": "rectangular",
+        "b": 0.2,
+        "h": 0.4
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": 2,
+        "x": 6.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          0
+        ]
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "beam",
+        "i": 1,
+        "j": 2,
+        "section": "R",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "-"
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "type": "modal",
+    "modes": 2,
+    "subdivide": 20
+  },
+  "checks": [
+    {
+      "quantity": "modal:f1",
+      "label": "mode 1 : flexion latérale (I_z)",
+      "expected": "pi/(2*L^2)*sqrt(E*h*b^3/12/m)",
+      "unit": "Hz",
+      "tolerance": {
+        "rel": 0.005,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "modal:f2",
+      "label": "mode 2 : flexion verticale (I_y)",
+      "expected": "pi/(2*L^2)*sqrt(E*I/m)",
+      "unit": "Hz",
+      "tolerance": {
+        "rel": 0.005,
+        "abs": 1e-09
+      }
+    }
+  ]
+}
