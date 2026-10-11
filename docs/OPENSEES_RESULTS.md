@@ -68,9 +68,60 @@ parallèle à la barre. La rigidité de torsion d'`elasticBeamColumn` est G·J, 
 (constante de Saint-Venant, voir docs/SECTIONS.md).
 
 La rotation de torsion θx est relue sur le DDL 4 des nœuds (`NodeDisplacement::rx`, repère global). Le
-long de la barre, `StationForces::rx` (repère local) est interpolée linéairement entre les nœuds, ce qui
-est exact sans couple réparti (les moments répartis ne sont pas transmis). Test 321 : θ = T·L / (G·J) à
-10⁻⁹ près.
+long de la barre, `StationForces::rx` (repère local) est obtenue par θx(x) = θi + ∫ Mx/GJ dx, calée sur
+les deux nœuds : linéaire sans couple réparti, parabolique sous couple uniforme.
+
+**Moment réparti** (`LoadType::MemberMoment`, kNm/m) :
+- C'est un vecteur couple par mètre, porté par l'axe de la charge (`direction`) : local x = torsion,
+  local y ou z = moment de flexion réparti, ou un axe global projeté sur le repère local.
+- Il varie linéairement de q1 en a à q2 en b (`MemberLoad::appliedRange` et `intensityAt`). Il est
+  uniforme si q1 = q2.
+- Aucun `eleLoad` d'ElasticBeam3d ne le prend en charge. Il est donc transmis par **forces nodales
+  équivalentes exactes** pour une barre prismatique (`BeamElementLoad::Couple`) :
+  - torsion : travail virtuel avec θx linéaire ;
+  - flexion : fonctions d'Hermite, avec θz = v' et θy = −w' ;
+  - forces d'encastrement parfait = −(forces équivalentes), intégration de Gauss à 4 points, exacte.
+- Le lecteur ajoute ces forces d'encastrement aux efforts d'extrémité d'OpenSees. Il reconstruit
+  ensuite par équilibre T(x) = −(Mx,i + ∫ m dx), My et Mz.
+- Le couple ∫ m dx est inclus dans l'équilibre global.
+- Il est refusé sans axe défini (direction « gravité »). Il est signalé et non transmis sur un treillis
+  ou un câble, qui n'ont pas de rigidité en rotation.
+
+Écarts mesurés : tests 321, 326, 327 et 329 (≤ 10⁻⁹) ; T(x) = m(L − x) à 10⁻¹⁵ près ;
+θ(L) = m·L²/(2GJ) à 10⁻⁹ près.
+
+### Appuis articulés et simples : blocages automatiques
+
+Une rotule sphérique laisse les trois rotations libres. Une barre portée par deux rotules tourne donc
+librement autour de son axe : c'est un mécanisme de torsion, et la matrice est singulière.
+`CalculationSnapshot::applyAutomaticRestraints` ajoute des blocages, chacun tracé dans
+`automaticRestraints()` :
+
+1. **Appui à fourche** : rotation autour de l'axe de la barre. Ajouté si toutes les barres fléchies du
+   nœud sont alignées sur un axe global. Pour une barre inclinée, « fix » ne peut pas le faire et
+   c'est signalé.
+2. **Structure plane verticale** : c'est le comportement historique. Plan XZ : RX et, pour un appui
+   simple, TY. Plan YZ : RY et, pour un appui simple, TX.
+3. **Structure non plane** : appui simple → TY (comportement historique).
+
+RX n'est plus bloqué d'office. Auparavant, ce blocage encastrait en flexion les barres non parallèles
+à X : une poutre selon Y sur deux articulations échouait (matrice singulière), et sous une charge
+dans l'autre plan, sa flexion aurait été bloquée.
+
+Ces blocages sont listés avant le calcul. Ensuite, `OpenSeesResultsReader::checkAutomaticRestraints`
+signale tout effort qu'ils reprennent (métadonnées `warnings`, journal, boîte de fin de calcul) : un
+tel effort n'est porté par aucun appui défini.
+
+**Mécanismes.**
+- Une barre ou une chaîne de barres alignées dont la rotation autour de l'axe n'est bloquée nulle
+  part est refusée avant le calcul (`ModelValidator`, « Mécanisme de torsion »).
+- Une matrice singulière signalée par OpenSees (sur sa sortie d'erreur) est refusée avec un message
+  explicite.
+- Une matrice quasi singulière, dont le pivot n'est pas nul à cause des arrondis, donne des résultats
+  absurdes : par exemple 10¹¹ m pour une structure de 3 m. Elle est refusée dès que le déplacement
+  dépasse 10 fois l'envergure ou que la rotation dépasse 10 rad.
+- Un modèle sans aucun DDL libre, par exemple une barre unique bi-encastrée, reçoit un nœud
+  auxiliaire neutre : OpenSees refuse un système de taille nulle.
 
 ## 5. Repère local (poutres/poteaux)
 

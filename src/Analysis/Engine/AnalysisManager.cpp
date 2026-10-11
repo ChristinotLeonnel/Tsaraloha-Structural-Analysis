@@ -204,6 +204,18 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
 
     p.validation = validateGeneric(context, p.model, engine->info(), engine->capabilities());
 
+    // Calcul 3D : blocages ajoutés aux appuis articulés / simples (appui à fourche, structure plane),
+    // listés pour que l'utilisateur sache quelles rotations le calcul a bloquées (CalculationSnapshot).
+    if (context.dimension == AnalysisDimension::Space3D)
+    {
+        const auto& restraints = p.model.snapshot.automaticRestraints();
+        const std::size_t shown = std::min<std::size_t>(restraints.size(), 8);
+        for (std::size_t i = 0; i < shown; ++i) p.validation.addInfo("Appuis", "Blocage automatique : " + restraints[i].reason);
+        if (restraints.size() > shown)
+            p.validation.addInfo("Appuis", std::to_string(restraints.size() - shown) + " autre(s) blocage(s) automatique(s) d'appuis articulés ou simples.");
+        for (const auto& n : p.model.snapshot.restraintNotes()) p.validation.addInfo("Appuis", n);
+    }
+
     // Modèle complet : contrôles normatifs historiques de TSA (communs à tous les moteurs).
     if (p.model.entireModel)
     {

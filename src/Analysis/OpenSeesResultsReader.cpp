@@ -6,6 +6,7 @@
 #include "../Core/Utf8Path.h"
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 #include <iostream>
 #include <cmath>
@@ -162,12 +163,30 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
 
     auto internalAt = [&](double x) {
         double fx = rawI[0], fy = rawI[1], fz = rawI[2];
+        double tx = rawI[3];
         double my = rawI[4] + x * rawI[2];
         double mz = rawI[5] - x * rawI[1];
         for (const auto& l : loads)
         {
             const double wx = l.wx * loadFactor, wy = l.wy * loadFactor, wz = l.wz * loadFactor;
-            if (l.kind == BeamElementLoad::Kind::Point)
+            if (l.kind == BeamElementLoad::Kind::Couple)
+            {
+                // Couple réparti sur [a, min(x, b)] : s'ajoute directement aux moments du tronçon (torsion
+                // tx, flexion my, mz), aucune force. Gauss à 2 points (exact, intensité linéaire).
+                const double a = std::clamp(l.relativePosition, 0.0, 1.0) * L;
+                const double b = std::clamp(l.relativeEnd, 0.0, 1.0) * L;
+                const double c = std::min(x, b);
+                if (c <= a || b <= a) continue;
+                const double mid = 0.5 * (a + c), half = 0.5 * (c - a);
+                for (const double g : { -0.5773502691896258, 0.5773502691896258 })
+                {
+                    const double t = (mid + half * g - a) / (b - a);
+                    tx += (wx + (l.wxB * loadFactor - wx) * t) * half;
+                    my += (wy + (l.wyB * loadFactor - wy) * t) * half;
+                    mz += (wz + (l.wzB * loadFactor - wz) * t) * half;
+                }
+            }
+            else if (l.kind == BeamElementLoad::Kind::Point)
             {
                 const double a = std::clamp(l.relativePosition, 0.0, 1.0) * L;
                 if (a >= x) continue;
@@ -208,7 +227,7 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
         sf.N = -fx;
         sf.Vy = fy;
         sf.Vz = fz;
-        sf.Mx = -rawI[3];
+        sf.Mx = -tx;
         sf.My = my;
         sf.Mz = -mz;
         return sf;
@@ -227,7 +246,7 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
     {
         if (l.kind == BeamElementLoad::Kind::Uniform) continue;
         addBreakpoint(l.relativePosition);
-        if (l.kind == BeamElementLoad::Kind::Linear) addBreakpoint(l.relativeEnd);
+        if (l.nodalEquivalent()) addBreakpoint(l.relativeEnd);
     }
     std::sort(xs.begin(), xs.end());
 
@@ -236,9 +255,11 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
     const double EIz = E * el.section.iz();
     const double EIy = E * el.section.iy();
     const double EA = E * el.section.area();
+    // Torsion de Saint-Venant (même G·J que l'élément elasticBeamColumn) : θx' = Mx / GJ.
+    const double GJ = E / (2.0 * (1.0 + el.material.mechanical.poissonRatio)) * el.section.it();
     const int n = 400;
     const double dx = L / n;
-    std::vector<double> sV(n + 1, 0.0), gV(n + 1, 0.0), sW(n + 1, 0.0), gW(n + 1, 0.0), hU(n + 1, 0.0);
+    std::vector<double> sV(n + 1, 0.0), gV(n + 1, 0.0), sW(n + 1, 0.0), gW(n + 1, 0.0), hU(n + 1, 0.0), hT(n + 1, 0.0);
     StationForces prev = internalAt(0.0);
     for (int i = 1; i <= n; ++i)
     {
@@ -251,6 +272,7 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
         sW[i] = sW[i - 1] + 0.5 * (kw0 + kw1) * dx;
         gW[i] = gW[i - 1] + 0.5 * (sW[i - 1] + sW[i]) * dx;
         hU[i] = hU[i - 1] + 0.5 * (e0 + e1) * dx;
+        hT[i] = hT[i - 1] + (GJ > 0.0 ? 0.5 * (prev.Mx + cur.Mx) / GJ * dx : 0.0);
         prev = cur;
     }
     auto sample = [&](const std::vector<double>& arr, double x) {
@@ -270,7 +292,9 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
         sf.ux = a.ux + (b.ux - a.ux - hU[n]) * t + sample(hU, x);
         sf.rz = (b.uy - a.uy) / L + sample(sV, x) - gV[n] / L;    // θz = v'
         sf.ry = -((b.uz - a.uz) / L + sample(sW, x) - gW[n] / L); // θy = −w'
-        sf.rx = a.rx + (b.rx - a.rx) * t;
+        // θx calé sur les deux nœuds (comme u axial) : linéaire sans couple réparti, parabolique sous
+        // couple uniforme (θ = θi + ∫ Mx/GJ dx).
+        sf.rx = a.rx + (b.rx - a.rx - hT[n]) * t + sample(hT, x);
         res.intermediateStations.push_back(sf);
     }
 }
@@ -350,7 +374,7 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
                 if (auto it = loads->find(e.tag); it != loads->end()) elementLoads = &it->second;
                 for (const auto& l : *elementLoads)
                 {
-                    if (l.kind != BeamElementLoad::Kind::Linear) continue;
+                    if (!l.nodalEquivalent()) continue;
                     double fI[6], fJ[6];
                     l.fixedEndForces(el->length, fI, fJ);
                     for (int k = 0; k < 6; ++k)
@@ -450,6 +474,37 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
         outResults.appendLog("\n[ERREUR NORMATIVE] Instabilité numérique détectée : les déplacements ou réactions contiennent des valeurs non finies (NaN/Inf).\n");
         outResults.setValid(false);
         return false;
+    }
+    // Mécanisme numériquement « résolu » : une matrice quasi singulière (pivot non nul par arrondi) donne
+    // des déplacements sans rapport avec la structure (ex. 10¹¹ m). En théorie linéaire, un déplacement
+    // supérieur à 10 fois l'envergure ou une rotation de plus de 10 rad n'a aucun sens physique.
+    if (!dispRows.empty())
+    {
+        double lo[3] = { 1e300, 1e300, 1e300 }, hi[3] = { -1e300, -1e300, -1e300 };
+        for (const auto& [id, n] : snapshot.nodes())
+        {
+            const double c[3] = { n.x, n.y, n.z };
+            for (int k = 0; k < 3; ++k) { lo[k] = std::min(lo[k], c[k]); hi[k] = std::max(hi[k], c[k]); }
+        }
+        const double span = std::max({ hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1.0 });
+        const auto& last = dispRows.back();
+        double maxU = 0.0, maxR = 0.0;
+        for (std::size_t i = 0; i + 5 < last.size(); i += 6)
+        {
+            maxU = std::max({ maxU, std::abs(last[i]), std::abs(last[i + 1]), std::abs(last[i + 2]) });
+            maxR = std::max({ maxR, std::abs(last[i + 3]), std::abs(last[i + 4]), std::abs(last[i + 5]) });
+        }
+        if (maxU > 10.0 * span || maxR > 10.0)
+        {
+            std::ostringstream msg;
+            msg << std::setprecision(3) << "Résultats non physiques (déplacement max " << maxU << " m, rotation max " << maxR
+                << " rad, pour une structure de " << span << " m) : la matrice de rigidité est quasi singulière, la structure est un "
+                   "mécanisme (appuis insuffisants, rotule ou rotation laissée libre). Vérifier les appuis et les relâchements.";
+            if (errorMessage) *errorMessage = msg.str();
+            outResults.appendLog("\n[ERREUR] " + msg.str() + "\n");
+            outResults.setValid(false);
+            return false;
+        }
     }
     if (!ctx.layoutErrors.empty())
     {
@@ -577,6 +632,7 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
     }
 
     computeGlobalEquilibrium(snapshot, params, outResults);
+    checkAutomaticRestraints(snapshot, params, outResults);
     outResults.computeSummary();
 
     if (dispRows.empty() && reactRows.empty() && outResults.allElementResults().empty())
@@ -800,6 +856,36 @@ bool OpenSeesResultsReader::readMatrixResults(const std::string& workingDirector
     return true;
 }
 
+void OpenSeesResultsReader::checkAutomaticRestraints(const CalculationSnapshot& snapshot, const AnalysisParameters& params,
+                                                     ResultsModel& outResults)
+{
+    // Un blocage ajouté par le calcul (appui à fourche, structure plane) ne doit reprendre aucun effort
+    // dans un modèle cohérent : s'il en reprend, l'utilisateur doit le savoir (appui implicite).
+    if (snapshot.automaticRestraints().empty()) return;
+    double scale = 0.0;
+    for (const auto& [id, r] : outResults.allReactions())
+        for (double v : { r.rx, r.ry, r.rz, r.mx, r.my, r.mz })
+            if (std::isfinite(v)) scale = std::max(scale, std::abs(v));
+    const double tol = 1e-6 * std::max(scale, 1e-9);
+    const char* unitF = params.useKiloNewtons ? "kN" : "N";
+    const char* unitM = params.useKiloNewtons ? "kNm" : "Nm";
+    auto meta = outResults.executionMetadata();
+    for (const auto& a : snapshot.automaticRestraints())
+    {
+        const NodeReaction* r = outResults.getNodeReaction(a.nodeId);
+        if (!r) continue;
+        const double v[6] = { r->rx, r->ry, r->rz, r->mx, r->my, r->mz };
+        const double value = v[std::clamp(a.dof, 0, 5)];
+        if (!std::isfinite(value) || std::abs(value) <= tol) continue;
+        std::ostringstream os;
+        os << std::setprecision(4) << "Blocage automatique " << a.reason << " — il reprend " << value << " "
+           << (a.dof < 3 ? unitF : unitM) << " : cet effort n'est porté par aucun appui défini. Vérifier les appuis.";
+        meta.warnings.push_back(os.str());
+        outResults.appendLog("\n[AVERTISSEMENT] " + os.str() + "\n");
+    }
+    outResults.setExecutionMetadata(meta);
+}
+
 void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& snapshot,
                                                     const AnalysisParameters& params,
                                                     ResultsModel& outResults)
@@ -850,6 +936,12 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
             const auto* el = snapshot.findElementForLoad(ml);
             if (!el) continue;
             addForce(pointOnElement(*el, res.centroid), res.force * (factor * forceScale));
+            // Moment réparti (poutres, poteaux) : couple pur ∫ m dx, indépendant du point d'application.
+            const gp_Vec couple = memberMomentResultant(ml, snapshot) * (factor * forceScale);
+            eq.appliedMx += couple.X();
+            eq.appliedMy += couple.Y();
+            eq.appliedMz += couple.Z();
+            eq.momentScale += couple.Magnitude();
         }
 
         if (includeSW)

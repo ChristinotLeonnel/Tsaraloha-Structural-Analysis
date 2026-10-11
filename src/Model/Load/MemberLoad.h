@@ -181,7 +181,8 @@ public:
     /// Vrai si la charge répartie couvre toute la barre (à 1e-9 L près).
     bool coversFullLength(double length) const;
     /// Intensité signée à l'abscisse s (m) : q1 pour uniforme et ponctuelle ; interpolation linéaire
-    /// de q1 (en a) à q2 (en b) pour une charge linéaire. Le sens physique est donné par
+    /// de q1 (en a) à q2 (en b) pour une charge linéaire et pour un moment réparti (kNm/m, vecteur
+    /// moment porté par l'axe `direction` ; LocalX = torsion). Le sens physique est donné par
     /// LoadResolver::memberLoadVector.
     double intensityAt(double s, double length) const;
     /// Message d'erreur en français, vide si la charge est valide pour une barre de longueur L :

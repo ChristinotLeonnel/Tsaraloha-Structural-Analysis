@@ -44,6 +44,10 @@ public:
                                   std::string* errorMessage = nullptr);
 
 private:
+    /// Efforts repris par les blocages automatiques d'appuis (CalculationSnapshot::automaticRestraints) :
+    /// avertissement dans les métadonnées et le journal s'ils ne sont pas négligeables.
+    static void checkAutomaticRestraints(const CalculationSnapshot& snapshot, const AnalysisParameters& params,
+                                         ResultsModel& outResults);
     static void computeGlobalEquilibrium(const CalculationSnapshot& snapshot,
                                          const AnalysisParameters& params,
                                          ResultsModel& outResults);

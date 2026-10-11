@@ -234,15 +234,20 @@ struct LoadPatternSpec
 ///    que le lecteur ajoute aux efforts d'extrémité calculés par OpenSees.
 struct BeamElementLoad
 {
-    enum class Kind { Uniform, Point, Linear };
+    /// Couple : moment réparti (vecteur couple par unité de longueur, repère local : x = torsion,
+    /// y et z = moments de flexion répartis), linéaire de a à b. Transmis comme Linear par forces
+    /// nodales équivalentes (aucun eleLoad OpenSees ne le prend en charge pour ElasticBeam3d).
+    enum class Kind { Uniform, Point, Linear, Couple };
     Kind kind = Kind::Uniform;
-    double wx = 0.0, wy = 0.0, wz = 0.0;     ///< intensité (Uniform), force (Point), intensité en a (Linear)
-    double wxB = 0.0, wyB = 0.0, wzB = 0.0;  ///< intensité en b (Linear)
-    double relativePosition = 0.0;           ///< Point : x / L ; Linear : a / L
-    double relativeEnd = 1.0;                ///< Linear : b / L
+    double wx = 0.0, wy = 0.0, wz = 0.0;     ///< intensité (Uniform), force (Point), intensité en a (Linear, Couple)
+    double wxB = 0.0, wyB = 0.0, wzB = 0.0;  ///< intensité en b (Linear, Couple)
+    double relativePosition = 0.0;           ///< Point : x / L ; Linear, Couple : a / L
+    double relativeEnd = 1.0;                ///< Linear, Couple : b / L
     std::string comment;
 
     bool point() const { return kind == Kind::Point; }
+    /// Charge transmise aux nœuds (forces nodales équivalentes = −forces d'encastrement parfait).
+    bool nodalEquivalent() const { return kind == Kind::Linear || kind == Kind::Couple; }
     /// Forces d'encastrement parfait (barre bi-encastrée) exercées SUR la barre en i et en j,
     /// repère local [Fx Fy Fz Mx My Mz].
     void fixedEndForces(double length, double atI[6], double atJ[6]) const;
@@ -256,6 +261,9 @@ struct MemberLoadResultant
     double centroid = 0.0;
 };
 MemberLoadResultant memberLoadResultant(const TSA::Model::MemberLoad& load, const CalculationSnapshot& snapshot);
+/// Couple résultant (repère global, unités de la charge, sans facteur) d'un moment réparti sur une poutre
+/// ou un poteau : ∫ m(x) dx porté par l'axe de la charge. Vecteur nul pour tout autre type de charge.
+gp_Vec memberMomentResultant(const TSA::Model::MemberLoad& load, const CalculationSnapshot& snapshot);
 
 class OpenSeesAnalysisBuilder
 {

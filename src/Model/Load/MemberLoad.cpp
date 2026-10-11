@@ -89,7 +89,8 @@ bool MemberLoad::coversFullLength(double length) const
 
 double MemberLoad::intensityAt(double s, double length) const
 {
-    if (m_type != LoadType::MemberLinear) return m_q1;
+    // Charge linéaire et moment réparti : q1 en a, q2 en b, variation linéaire (moment uniforme si q1 = q2).
+    if (m_type != LoadType::MemberLinear && m_type != LoadType::MemberMoment) return m_q1;
     const auto [a, b] = appliedRange(length);
     if (b - a <= 1e-12) return m_q1;
     const double t = std::clamp((s - a) / (b - a), 0.0, 1.0);
@@ -102,7 +103,7 @@ std::string MemberLoad::validate(double length) const
         return "Valeurs non finies (intensité ou position).";
     if (!(length > 1e-9))
         return "La barre chargée est de longueur nulle.";
-    const bool linear = m_type == LoadType::MemberLinear;
+    const bool linear = m_type == LoadType::MemberLinear || m_type == LoadType::MemberMoment;
     if (std::abs(m_q1) < 1e-12 && (!linear || std::abs(m_q2) < 1e-12))
         return "L'intensité de la charge est nulle.";
 

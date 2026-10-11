@@ -1,4 +1,4 @@
-// Suite « torsion » (tests 321-325) : moment de torsion appliqué à une barre, du calcul OpenSees jusqu'à la
+// Suite « torsion » (tests 321-331) : moment de torsion appliqué à une barre, du calcul OpenSees jusqu'à la
 // déformée 3D. Chaque grandeur est comparée à la RDM (θ = T·L / (G·J), flèches de console) ; la vue est
 // contrôlée sur la géométrie produite (rotation des sections, repères, facteur d'échelle).
 // Contrôle visuel facultatif : TSA_TEST_DUMP_DIR=<dossier> enregistre des captures du viewport réel.
@@ -10,7 +10,11 @@
 #include "Analysis/OpenSeesSolver.h"
 #include "Geometry/BeamGeometry.h"
 #include "Geometry/DeformedGeometry.h"
+#include "Geometry/MemberLoadGlyph.h"
 #include "Grid/GridManager.h"
+#include "IO/TSAFile.h"
+#include "IO/Tsa3d/Tsa3d.h"
+#include "Analysis/Engine/AnalysisContext.h"
 #include "Model/Load/LoadManager.h"
 #include "Standards/ModelValidator.h"
 #include "Viewer/OccView.h"
@@ -124,6 +128,434 @@ void dumpViews(Model& m, const std::shared_ptr<ResultsModel>& results, const QSt
     view.setResultsModel(nullptr);
     view.setModel(nullptr);
 }
+
+/// Moment réparti (couple par unité de longueur) sur une barre.
+MemberLoad couple(int bar, int lc, double q1, double q2, LoadDirection dir, double x1 = 0.0, double x2 = 0.0)
+{
+    MemberLoad l(0, bar, lc, LoadType::MemberMoment, q1, q2, dir, MemberLoad::coordSystemFor(dir), x1, x2);
+    l.setName("couple réparti");
+    return l;
+}
+
+int addCase(Model& m, const char* name = "CAS")
+{
+    return m.loadManager().addLoadCase(LoadCase(0, name, LoadCaseCategory::Live, false, 1.0));
+}
+
+bool hasIssue(const TSA::Standards::ModelValidationReport& report, TSA::Standards::ValidationSeverity sev, const char* text)
+{
+    for (const auto& i : report.issues())
+        if (i.severity == sev && i.message.find(text) != std::string::npos) return true;
+    return false;
+}
+
+/// Tests 326-331 : couple inversé, couple réparti, import TSA3D, barre inclinée, appuis, vue.
+bool runTorsionMechanics(int& passed)
+{
+    const Section sec = Section::rectangular(0.2, 0.4);
+    const Material mat = Material::steelS235();
+    const double G = shearModulus(mat), J = sec.it(), GJ = G * J, E = mat.mechanical.youngModulus * 1e-3;
+    AnalysisParameters p;
+    p.includeSelfWeight = false;
+
+    // TEST 326 (B) : inversion du couple — rotation et réactions changent de signe, même amplitude
+    {
+        std::cout << "\n--- TEST 326: Inversion du couple ---" << std::endl;
+        const double L = 3.0, T = 10.0, m = 4.0;
+        double rx[2] = {}, mx[2] = {}, rxq[2] = {}, mxq[2] = {};
+        for (int k = 0; k < 2; ++k)
+        {
+            const double sgn = k == 0 ? 1.0 : -1.0;
+            Model mdl;
+            int tip = 0;
+            const int bar = cantilever(mdl, L, sec, &tip);
+            const int lcT = addCase(mdl, "T"), lcM = addCase(mdl, "m");
+            mdl.loadManager().addNodalLoad(NodalLoad(0, tip, lcT, 0, 0, 0, sgn * T, 0, 0));
+            mdl.loadManager().addMemberLoad(couple(bar, lcM, sgn * m, sgn * m, LoadDirection::LocalX));
+            ResultsModel r;
+            p.targetLoadCaseId = lcT;
+            TEST_CHECK(solve(mdl, p, r), "Test 326: calcul couple concentré");
+            rx[k] = r.nodeDisplacement(tip).rx;
+            mx[k] = r.getNodeReaction(mdl.getBeam(bar)->startNodeId()) ? r.getNodeReaction(mdl.getBeam(bar)->startNodeId())->mx : 0.0;
+            p.targetLoadCaseId = lcM;
+            TEST_CHECK(solve(mdl, p, r), "Test 326: calcul couple réparti");
+            rxq[k] = r.nodeDisplacement(tip).rx;
+            mxq[k] = r.getNodeReaction(mdl.getBeam(bar)->startNodeId()) ? r.getNodeReaction(mdl.getBeam(bar)->startNodeId())->mx : 0.0;
+        }
+        p.targetLoadCaseId = 0;
+        std::cout << "  θ(+T) = " << rx[0] << ", θ(−T) = " << rx[1] << " ; réaction " << mx[0] << " / " << mx[1] << std::endl;
+        TEST_CHECK(relClose(rx[0], T * L / GJ, 1e-9) && relClose(rx[1], -rx[0], 1e-12) && relClose(mx[1], -mx[0], 1e-12)
+                       && relClose(mx[0], -T, 1e-9),
+                   "Test 326: couple concentré — θ et réaction opposés, |θ| = TL/GJ, réaction = −T");
+        TEST_CHECK(relClose(rxq[1], -rxq[0], 1e-12) && relClose(mxq[1], -mxq[0], 1e-12) && relClose(mxq[0], -m * L, 1e-9),
+                   "Test 326: couple réparti — θ et réaction opposés, réaction = −m·L");
+        std::cout << "[PASS] Test 326: Inversion du couple" << std::endl;
+        ++passed;
+    }
+
+    // TEST 327 (C) : couple réparti — T(x) = m(L − x), θ(L) = m L² / 2GJ, distributions variables, flexion
+    {
+        std::cout << "\n--- TEST 327: Couple réparti ---" << std::endl;
+        const double L = 3.0, m = 2.0;
+        // 1. Uniforme sur console
+        {
+            Model mdl;
+            int tip = 0;
+            const int bar = cantilever(mdl, L, sec, &tip);
+            const int lc = addCase(mdl);
+            mdl.loadManager().addMemberLoad(couple(bar, lc, m, m, LoadDirection::LocalX));
+            TEST_CHECK(!hasIssue(TSA::Standards::ModelValidator::validateForAnalysis(mdl, p), TSA::Standards::ValidationSeverity::Warning, "moment réparti"),
+                       "Test 327: moment réparti transmis (plus d'avertissement « non pris en compte »)");
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, p, r), "Test 327: calcul console, couple uniforme");
+            const double ref = m * L * L / (2.0 * GJ);
+            std::cout << "  θ(L) = " << r.nodeDisplacement(tip).rx << " ; référence m·L²/(2GJ) = " << ref << std::endl;
+            TEST_CHECK(relClose(r.nodeDisplacement(tip).rx, ref, 1e-9), "Test 327: θ(L) = m·L²/(2GJ)");
+            const auto& eq = r.equilibrium();
+            TEST_CHECK(relClose(eq.appliedMx, m * L, 1e-12) && relClose(eq.reactionMx, -m * L, 1e-9) && std::abs(eq.errorMx()) < 1e-9 * m * L
+                           && r.executionMetadata().isEquilibriumVerified,
+                       "Test 327: équilibre global — couple appliqué m·L = −réaction");
+            const auto* er = r.getElementResults(StructuralElementKind::Beam, bar);
+            TEST_CHECK(er && relClose(er->startForces.Mx, m * L, 1e-9) && std::abs(er->endForces.Mx) < 1e-9 * m * L,
+                       "Test 327: Mx(0) = m·L, Mx(L) = 0");
+            double worstT = 0.0, worstTheta = 0.0;
+            for (const auto& s : er->intermediateStations)
+            {
+                const double x = s.position;
+                worstT = std::max(worstT, std::abs(s.Mx - m * (L - x)));
+                worstTheta = std::max(worstTheta, std::abs(s.rx - m * (L * x - 0.5 * x * x) / GJ));
+            }
+            std::cout << "  écart max T(x) = " << worstT << " kNm ; écart max θ(x) = " << worstTheta / ref << " × θ(L)" << std::endl;
+            TEST_CHECK(worstT < 1e-9 * m * L, "Test 327: T_int(x) = m·(L − x) aux stations");
+            TEST_CHECK(worstTheta < 1e-9 * ref, "Test 327: θ(x) = m·(L·x − x²/2)/GJ aux stations (parabolique)");
+        }
+        // 2. Linéaire m1 → m2 sur toute la barre, puis uniforme partielle [a, b]
+        {
+            const double m1 = 1.0, m2 = 3.0, a = 1.0, b = 2.5;
+            Model mdl;
+            int tip = 0;
+            const int bar = cantilever(mdl, L, sec, &tip);
+            const int lc1 = addCase(mdl, "lin"), lc2 = addCase(mdl, "part");
+            mdl.loadManager().addMemberLoad(couple(bar, lc1, m1, m2, LoadDirection::LocalX));
+            mdl.loadManager().addMemberLoad(couple(bar, lc2, m, m, LoadDirection::LocalX, a, b));
+            ResultsModel r;
+            p.targetLoadCaseId = lc1;
+            TEST_CHECK(solve(mdl, p, r), "Test 327: calcul couple linéaire");
+            TEST_CHECK(relClose(r.nodeDisplacement(tip).rx, L * L * (m1 / 6.0 + m2 / 3.0) / GJ, 1e-9)
+                           && relClose(r.getNodeReaction(mdl.getBeam(bar)->startNodeId())->mx, -(m1 + m2) * L / 2.0, 1e-9),
+                       "Test 327: couple linéaire — θ(L) = L²(m1/6 + m2/3)/GJ, réaction = −(m1 + m2)L/2");
+            p.targetLoadCaseId = lc2;
+            TEST_CHECK(solve(mdl, p, r), "Test 327: calcul couple partiel");
+            TEST_CHECK(relClose(r.nodeDisplacement(tip).rx, m * (b * b - a * a) / (2.0 * GJ), 1e-9)
+                           && relClose(r.getNodeReaction(mdl.getBeam(bar)->startNodeId())->mx, -m * (b - a), 1e-9),
+                       "Test 327: couple partiel [a, b] — θ(L) = m(b² − a²)/2GJ, réaction = −m(b − a)");
+            p.targetLoadCaseId = 0;
+        }
+        // 3. Bi-encastrée, couple uniforme : réactions −m·L/2, θ(L/2) = m·L²/8GJ (reconstruction en travée)
+        {
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(L, 0, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::fixed());
+            mdl.getNode(b)->setSupport(SupportDefinition::fixed());
+            const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            mdl.loadManager().addMemberLoad(couple(bar, addCase(mdl), m, m, LoadDirection::LocalX));
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, p, r), "Test 327: calcul bi-encastrée");
+            const auto* er = r.getElementResults(StructuralElementKind::Beam, bar);
+            double mid = 0.0;
+            for (const auto& s : er->intermediateStations)
+                if (std::abs(s.position - L / 2) < 1e-9) mid = s.rx;
+            TEST_CHECK(relClose(r.getNodeReaction(a)->mx, -m * L / 2, 1e-9) && relClose(r.getNodeReaction(b)->mx, -m * L / 2, 1e-9)
+                           && relClose(mid, m * L * L / (8.0 * GJ), 1e-9),
+                       "Test 327: bi-encastrée — réactions −m·L/2, θ(L/2) = m·L²/(8GJ)");
+        }
+        // 4. Moment de flexion réparti (axe local z) : v(L) = m·L³/3EI, θ(L) = m·L²/2EI, Mz(x) = m(L − x)
+        {
+            Model mdl;
+            int tip = 0;
+            const int bar = cantilever(mdl, L, sec, &tip);
+            mdl.loadManager().addMemberLoad(couple(bar, addCase(mdl), m, m, LoadDirection::LocalZ));
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, p, r), "Test 327: calcul flexion répartie");
+            const auto d = r.nodeDisplacement(tip);
+            const double EIz = E * sec.iz();
+            const double rot = std::sqrt(d.rx * d.rx + d.ry * d.ry + d.rz * d.rz), u = std::sqrt(d.ux * d.ux + d.uy * d.uy + d.uz * d.uz);
+            TEST_CHECK(relClose(rot, m * L * L / (2.0 * EIz), 1e-9) && relClose(u, m * L * L * L / (3.0 * EIz), 1e-9) && std::abs(d.rx) < 1e-15,
+                       "Test 327: couple de flexion réparti — θ = m·L²/2EI, v = ∫M(L − x)/EI = m·L³/3EI, aucune torsion");
+            const auto* er = r.getElementResults(StructuralElementKind::Beam, bar);
+            double worst = 0.0;
+            for (const auto& s : er->intermediateStations) worst = std::max(worst, std::abs(std::abs(s.Mz) - m * (L - s.position)));
+            TEST_CHECK(worst < 1e-9 * m * L && r.executionMetadata().isEquilibriumVerified, "Test 327: |Mz(x)| = m(L − x), équilibre vérifié");
+        }
+        std::cout << "[PASS] Test 327: Couple réparti (uniforme, linéaire, partiel, bi-encastré, flexion)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 328 (D) : moment de torsion réparti importé d'un fichier TSA3D (unités en millimètres)
+    {
+        std::cout << "\n--- TEST 328: Couple réparti importé (TSA3D) ---" << std::endl;
+        const QString path = QStringLiteral(TSA_SOURCE_DIR) + "/tests/data/torsion_repartie.tsa3d";
+        QJsonObject doc;
+        TSA::IO::Tsa3d::Report report;
+        TEST_CHECK(TSA::IO::Tsa3d::readFile(path, &doc, &report), "Test 328: lecture du fichier TSA3D");
+        Model mdl;
+        const auto res = TSA::IO::Tsa3d::importDocument(doc, mdl);
+        TEST_CHECK(res.ok, "Test 328: import validé");
+        TEST_CHECK(mdl.loadManager().memberLoads().size() == 1, "Test 328: une charge sur barre importée");
+        const MemberLoad& l = mdl.loadManager().memberLoads().begin()->second;
+        TEST_CHECK(l.type() == LoadType::MemberMoment && l.direction() == LoadDirection::LocalX && relClose(l.q1(), 2.0, 1e-12)
+                       && relClose(l.q2(), 2.0, 1e-12),
+                   "Test 328: moment réparti local x, 2 kN·m/m (kN·mm/mm converti sans facteur 1000) — q1 = " + std::to_string(l.q1()));
+        const int bar = mdl.beams().begin()->first;
+        const int tip = mdl.getBeam(bar)->endNodeId();
+        TEST_CHECK(std::abs(mdl.getNode(tip)->x() - 3.0) < 1e-12, "Test 328: longueur 3000 mm = 3 m");
+        ResultsModel r;
+        TEST_CHECK(solve(mdl, p, r), "Test 328: calcul du modèle importé");
+        const Section& s = mdl.getBeam(bar)->section();
+        const double ref = 2.0 * 9.0 / (2.0 * shearModulus(mdl.getBeam(bar)->material()) * s.it());
+        std::cout << "  θ(L) = " << r.nodeDisplacement(tip).rx << " ; référence = " << ref << std::endl;
+        TEST_CHECK(relClose(r.nodeDisplacement(tip).rx, ref, 1e-9), "Test 328: la charge importée atteint le solveur — θ(L) = m·L²/(2GJ)");
+        std::cout << "[PASS] Test 328: Couple réparti importé (TSA3D)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 329 (E) : barre inclinée dans l'espace (β = 30°) — couple autour de l'axe local x
+    {
+        std::cout << "\n--- TEST 329: Barre inclinée ---" << std::endl;
+        const gp_Pnt p1(0, 0, 0), p2(3.0, 2.0, 1.5);
+        const double L = p1.Distance(p2), T = 7.0, m = 1.5, beta = 30.0;
+        const gp_Vec ex = gp_Vec(p1, p2).Normalized();
+        Model mdl;
+        const int a = mdl.addNode(p1.X(), p1.Y(), p1.Z()), b = mdl.addNode(p2.X(), p2.Y(), p2.Z());
+        mdl.getNode(a)->setSupport(SupportDefinition::fixed());
+        const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam, beta);
+        const int lcT = addCase(mdl, "T"), lcM = addCase(mdl, "m");
+        mdl.loadManager().addNodalLoad(NodalLoad(0, b, lcT, 0, 0, 0, T * ex.X(), T * ex.Y(), T * ex.Z())); // vecteur T·x (global)
+        mdl.loadManager().addMemberLoad(couple(bar, lcM, m, m, LoadDirection::LocalX));
+        auto r = std::make_shared<ResultsModel>();
+        p.targetLoadCaseId = lcT;
+        TEST_CHECK(solve(mdl, p, *r), "Test 329: calcul couple concentré");
+        auto d = r->nodeDisplacement(b);
+        const gp_Vec R(d.rx, d.ry, d.rz);
+        TEST_CHECK(relClose(R.Dot(ex), T * L / GJ, 1e-9) && R.Crossed(ex).Magnitude() < 1e-9 * R.Magnitude()
+                       && std::abs(d.ux) + std::abs(d.uy) + std::abs(d.uz) < 1e-12,
+                   "Test 329: rotation portée par l'axe de la barre, θ = T·L/GJ, aucune translation");
+        const DeformedAxis axis = axisOf(mdl, *r, StructuralElementKind::Beam, bar);
+        const double s = 40.0;
+        const auto frames = DeformedGeometry::sectionFrames(axis, beta, s, true);
+        const auto base = BeamGeometry::sectionFrame(p1, p2, beta);
+        TEST_CHECK(relClose(axis.twist.back(), T * L / GJ, 1e-9) && relClose(signedAngle(base.x, frames.back().x, ex), s * T * L / GJ, 1e-9)
+                       && std::abs(signedAngle(base.x, frames.front().x, ex)) < 1e-12,
+                   "Test 329: vue — section d'extrémité tournée de s·θ autour de l'axe incliné");
+        p.targetLoadCaseId = lcM;
+        TEST_CHECK(solve(mdl, p, *r), "Test 329: calcul couple réparti");
+        d = r->nodeDisplacement(b);
+        const gp_Vec Rm(d.rx, d.ry, d.rz);
+        TEST_CHECK(relClose(Rm.Dot(ex), m * L * L / (2.0 * GJ), 1e-9) && Rm.Crossed(ex).Magnitude() < 1e-9 * Rm.Magnitude()
+                       && r->executionMetadata().isEquilibriumVerified,
+                   "Test 329: couple réparti local x — θ = m·L²/2GJ autour de l'axe, équilibre vérifié");
+        p.targetLoadCaseId = 0;
+        std::cout << "[PASS] Test 329: Barre inclinée" << std::endl;
+        ++passed;
+    }
+
+    // TEST 330 (F) : conditions aux limites — fourches, ressort, bi-encastrement, mécanismes détectés
+    {
+        std::cout << "\n--- TEST 330: Conditions aux limites ---" << std::endl;
+        // 1. Poutre selon Y sur deux appuis articulés (échouait : matrice singulière ; flexion bloquée par RX)
+        {
+            const double L = 6.0, q = 10.0;
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(0, L, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::pinned());
+            mdl.getNode(b)->setSupport(SupportDefinition::pinned());
+            const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), q));
+            const auto snap = CalculationSnapshot::capture(mdl);
+            bool forkY = snap.automaticRestraints().size() == 2;
+            for (const auto& ar : snap.automaticRestraints()) forkY &= ar.dof == 4 && ar.reason.find("fourche") != std::string::npos;
+            TEST_CHECK(forkY, "Test 330: appuis articulés d'une poutre selon Y — fourche RY tracée (et non RX)");
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, p, r), "Test 330: calcul de la poutre selon Y");
+            double w = 0.0;
+            for (const auto& s : r.getElementResults(StructuralElementKind::Beam, bar)->intermediateStations)
+                if (std::abs(s.position - L / 2) < 1e-9) w = s.uz;
+            // Flèche en travée : double intégration numérique de la courbure (400 pas) → écart ~1e-5.
+            TEST_CHECK(relClose(w, -5.0 * q * std::pow(L, 4) / (384.0 * E * sec.iy()), 2e-5) && r.executionMetadata().warnings.empty(),
+                       "Test 330: flèche 5qL⁴/384EI (appuis réellement articulés en flexion), fourches sans effort");
+        }
+        // 2. Poutre selon X articulée aux deux bouts, couple au milieu : repris par les fourches → signalé
+        {
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), c = mdl.addNode(2, 0, 0), b = mdl.addNode(4, 0, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::pinned());
+            mdl.getNode(b)->setSupport(SupportDefinition::pinned());
+            mdl.addBar(a, c, sec, mat, BarRole::Beam);
+            mdl.addBar(c, b, sec, mat, BarRole::Beam);
+            mdl.loadManager().addNodalLoad(NodalLoad(0, c, addCase(mdl), 0, 0, 0, 6.0, 0, 0));
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, p, r), "Test 330: calcul poutre articulée en torsion");
+            const auto& w = r.executionMetadata().warnings;
+            TEST_CHECK(w.size() == 2 && w.front().find("reprend") != std::string::npos && relClose(r.getNodeReaction(a)->mx, -3.0, 1e-9)
+                           && relClose(r.getNodeReaction(b)->mx, -3.0, 1e-9),
+                   "Test 330: couple repris par les fourches automatiques (−3 kNm chacune) et signalé");
+        }
+        // 3. Bi-encastrée, couple T en x = a : réactions −T·b/L et −T·a/L, θ(a) = T·a·b/(GJ·L)
+        {
+            const double L = 3.0, aPos = 1.0, T = 9.0;
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), c = mdl.addNode(aPos, 0, 0), b = mdl.addNode(L, 0, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::fixed());
+            mdl.getNode(b)->setSupport(SupportDefinition::fixed());
+            mdl.addBar(a, c, sec, mat, BarRole::Beam);
+            mdl.addBar(c, b, sec, mat, BarRole::Beam);
+            mdl.loadManager().addNodalLoad(NodalLoad(0, c, addCase(mdl), 0, 0, 0, T, 0, 0));
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, p, r), "Test 330: calcul bi-encastrée");
+            const double bPos = L - aPos;
+            TEST_CHECK(relClose(r.getNodeReaction(a)->mx, -T * bPos / L, 1e-9) && relClose(r.getNodeReaction(b)->mx, -T * aPos / L, 1e-9)
+                           && relClose(r.nodeDisplacement(c).rx, T * aPos * bPos / (GJ * L), 1e-9),
+                       "Test 330: bi-encastrée — réactions −T·b/L, −T·a/L, θ(a) = T·a·b/(GJ·L)");
+        }
+        // 3b. Barre unique bi-encastrée (aucun DDL libre : échouait dans OpenSees) — flexion qL²/12, qL⁴/384EI
+        {
+            const double L = 6.0, q = 10.0;
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(L, 0, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::fixed());
+            mdl.getNode(b)->setSupport(SupportDefinition::fixed());
+            const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            mdl.loadManager().addMemberLoad(MemberLoad::uniform(bar, addCase(mdl), q));
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, p, r), "Test 330: calcul barre bi-encastrée sans DDL libre");
+            const auto* er = r.getElementResults(StructuralElementKind::Beam, bar);
+            double w = 0.0;
+            for (const auto& s : er->intermediateStations)
+                if (std::abs(s.position - L / 2) < 1e-9) w = s.uz;
+            TEST_CHECK(relClose(std::abs(er->startForces.My), q * L * L / 12.0, 1e-9) && relClose(w, -q * std::pow(L, 4) / (384.0 * E * sec.iy()), 1e-4) /* intégration numérique de la courbure */
+                           && relClose(r.getNodeReaction(a)->rz, q * L / 2.0, 1e-9),
+                       "Test 330: bi-encastrée seule — M = qL²/12, w = qL⁴/384EI, R = qL/2");
+        }
+        // 4. Ressort de torsion à l'appui : θ = T/k + T·L/GJ
+        {
+            const double L = 3.0, T = 5.0, k = 2000.0;
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(L, 0, 0);
+            using DS = TSA::Model::DOFState;
+            auto s = SupportDefinition::custom(DS::Fixed, DS::Fixed, DS::Fixed, DS::Spring, DS::Fixed, DS::Fixed);
+            s.setKrx(k);
+            mdl.getNode(a)->setSupport(s);
+            mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            mdl.loadManager().addNodalLoad(NodalLoad(0, b, addCase(mdl), 0, 0, 0, T, 0, 0));
+            ResultsModel r;
+            TEST_CHECK(solve(mdl, p, r), "Test 330: calcul avec ressort de torsion");
+            TEST_CHECK(relClose(r.nodeDisplacement(b).rx, T / k + T * L / GJ, 1e-9), "Test 330: ressort de torsion — θ = T/k + T·L/GJ");
+        }
+        // 5. Rotation autour de l'axe libre aux deux appuis : mécanisme détecté avant le calcul
+        {
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(4, 0, 0);
+            using DS = TSA::Model::DOFState;
+            const auto free = SupportDefinition::custom(DS::Fixed, DS::Fixed, DS::Fixed, DS::Free, DS::Fixed, DS::Fixed);
+            mdl.getNode(a)->setSupport(free);
+            mdl.getNode(b)->setSupport(free);
+            const int bar = mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            mdl.loadManager().addNodalLoad(NodalLoad(0, b, addCase(mdl), 0, 0, 0, 5.0, 0, 0));
+            TEST_CHECK(hasIssue(TSA::Standards::ModelValidator::validateForAnalysis(mdl, p), TSA::Standards::ValidationSeverity::Error,
+                                ("Mécanisme de torsion : poutre " + std::to_string(bar)).c_str()),
+                       "Test 330: mécanisme de torsion détecté avant le calcul (barre désignée)");
+            OpenSeesSolver solver;
+            QString e;
+            TEST_CHECK(!solver.solveSynchronous(mdl, p, &e) && e.contains(QStringLiteral("Mécanisme de torsion")),
+                       "Test 330: calcul refusé avec le message de mécanisme");
+        }
+        // 6. Mécanisme non détecté avant le calcul (barres non alignées) : résultats absurdes refusés, message explicite
+        {
+            Model mdl;
+            const int a = mdl.addNode(0, 0, 0), b = mdl.addNode(3, 0, 0), c = mdl.addNode(3, 3, 0);
+            mdl.getNode(a)->setSupport(SupportDefinition::pinned()); // un seul appui articulé : rotation libre de l'ensemble
+            mdl.addBar(a, b, sec, mat, BarRole::Beam);
+            mdl.addBar(b, c, sec, mat, BarRole::Beam);
+            mdl.loadManager().addNodalLoad(NodalLoad(0, c, addCase(mdl), 0, 0, -5.0));
+            OpenSeesSolver solver;
+            QString e;
+            const bool ok = solver.solveSynchronous(mdl, p, &e);
+            std::cout << "  message : " << e.toStdString() << std::endl;
+            TEST_CHECK(!ok && e.contains(QStringLiteral("mécanisme")) && !solver.results().isValid(),
+                       "Test 330: mécanisme quasi singulier (déplacements de 10¹¹ m auparavant présentés comme résultats) refusé explicitement");
+        }
+        std::cout << "[PASS] Test 330: Conditions aux limites" << std::endl;
+        ++passed;
+    }
+
+    // TEST 331 (G) : visualisation d'une torsion répartie — rotations et coordonnées des sections
+    {
+        std::cout << "\n--- TEST 331: Vue d'une torsion répartie ---" << std::endl;
+        const double L = 3.0, m = 2.0;
+        Model mdl;
+        int tip = 0;
+        const int bar = cantilever(mdl, L, sec, &tip);
+        mdl.loadManager().addMemberLoad(couple(bar, addCase(mdl), m, m, LoadDirection::LocalX));
+        auto r = std::make_shared<ResultsModel>();
+        TEST_CHECK(solve(mdl, p, *r), "Test 331: calcul");
+        const DeformedAxis axis = axisOf(mdl, *r, StructuralElementKind::Beam, bar);
+        auto theta = [&](double x) { return m * (L * x - 0.5 * x * x) / GJ; };
+        double worst = 0.0;
+        for (std::size_t i = 0; i < axis.size(); ++i) worst = std::max(worst, std::abs(axis.twist[i] - theta(axis.x[i])));
+        TEST_CHECK(axis.source == DeformedAxisSource::SolverStations && worst < 1e-9 * theta(L),
+                   "Test 331: θx de la vue = m(L·x − x²/2)/GJ en chaque point (non linéaire)");
+        ResultsVisualManager vm(nullptr);
+        vm.setModel(&mdl);
+        vm.setResultsModel(r);
+        const double s = vm.deformationScale();
+        const auto frames = DeformedGeometry::sectionFrames(axis, 0.0, s, true);
+        const auto base = BeamGeometry::sectionFrame(gp_Pnt(0, 0, 0), gp_Pnt(L, 0, 0), 0.0);
+        bool angles = true;
+        for (std::size_t i = 0; i < frames.size(); ++i)
+            angles &= std::abs(signedAngle(base.x, frames[i].x, gp_Vec(1, 0, 0)) - s * theta(axis.x[i])) < 1e-9;
+        TEST_CHECK(angles && relClose(vm.maxTwist(), theta(L), 1e-9), "Test 331: chaque section tournée de s·θx(x)");
+        const TopoDS_Shape solid = DeformedGeometry::createMemberSolid(axis, sec, 0.0, s, true);
+        const double xm = 1.5, phi = s * theta(xm);
+        TEST_CHECK(std::abs(sectionExtentY(solid, xm) - (0.2 * std::abs(std::cos(phi)) + 0.4 * std::abs(std::sin(phi)))) < 1e-9,
+                   "Test 331: coordonnées des sommets de la section à mi-longueur");
+        TEST_CHECK(r->nodeDisplacement(tip).rx == axis.twist.back(), "Test 331: valeur affichée = résultat du calcul (non amplifiée)");
+        // Symbole de la charge : vecteurs moment parallèles à la barre (torsion), sens de +x pour m > 0
+        const auto glyph = TSA::Geometry::buildMemberLoadGlyph(mdl.loadManager().memberLoads().begin()->second, gp_Pnt(0, 0, 0),
+                                                               gp_Pnt(L, 0, 0), 0.0);
+        bool parallel = glyph.kind == TSA::Geometry::MemberLoadGlyphKind::DistributedMoment && glyph.arrows.empty() && glyph.momentVectors.size() >= 2;
+        for (const auto& v : glyph.momentVectors) parallel &= gp_Vec(v.direction).Dot(gp_Vec(1, 0, 0)) > 1.0 - 1e-12;
+        TEST_CHECK(parallel, "Test 331: symbole du couple réparti — vecteurs moment parallèles à la barre, aucune flèche de force");
+        // Projet d'essai de l'interface (TSA_TEST_DUMP_DIR) : console en torsion (couple en bout), barre
+        // inclinée sous couple réparti, cas FLEXION séparé ; réglages d'analyse : OpenSees 3D, cas TORSION.
+        if (const QString dir = qEnvironmentVariable("TSA_TEST_DUMP_DIR"); !dir.isEmpty())
+        {
+            Model ui;
+            const int n1 = ui.addNode(0, 0, 0), n2 = ui.addNode(3, 0, 0), n3 = ui.addNode(0, 3, 0), n4 = ui.addNode(2.5, 4.5, 1.5);
+            ui.getNode(n1)->setSupport(SupportDefinition::fixed());
+            ui.getNode(n3)->setSupport(SupportDefinition::fixed());
+            ui.addBar(n1, n2, sec, mat, BarRole::Beam, 0.0, "Console torsion");
+            const int b2 = ui.addBar(n3, n4, Section::circular(0.25), mat, BarRole::Beam, 0.0, "Barre inclinée");
+            const int lcT = ui.loadManager().addLoadCase(LoadCase(0, "TORSION", LoadCaseCategory::Live, false, 1.0));
+            const int lcF = ui.loadManager().addLoadCase(LoadCase(0, "FLEXION", LoadCaseCategory::Live, false, 1.0));
+            ui.loadManager().addNodalLoad(NodalLoad(0, n2, lcT, 0, 0, 0, 10.0, 0, 0, LoadCoordSystem::Global, "T = 10 kNm"));
+            ui.loadManager().addMemberLoad(couple(b2, lcT, 2.0, 2.0, LoadDirection::LocalX));
+            ui.loadManager().addNodalLoad(NodalLoad(0, n2, lcF, 0, 0, -20.0, 0, 0, 0, LoadCoordSystem::Global, "F = 20 kN"));
+            TSA::Analysis::AnalysisContext ctx;
+            ctx.engineId = "opensees";
+            ctx.dimension = TSA::Analysis::AnalysisDimension::Space3D;
+            ctx.loadCaseIds = { lcT };
+            ctx.common.includeSelfWeight = false;
+            ui.setAnalysisSettingsJson(QJsonDocument(ctx.toJson()).toJson(QJsonDocument::Compact).toStdString());
+            TSA::IO::TSAFileWriter writer;
+            std::string err;
+            const bool saved = writer.saveToFile((dir + "/torsion_ui.tsa").toStdString(), ui, nullptr, "Essai torsion", "TSA", &err);
+            std::cout << "  projet d'essai de l'interface : " << (dir + "/torsion_ui.tsa").toStdString() << (saved ? "" : " — ÉCHEC " + err) << std::endl;
+        }
+        std::cout << "[PASS] Test 331: Vue d'une torsion répartie" << std::endl;
+        ++passed;
+    }
+    return true;
+}
 } // namespace
 
 bool runSuite_Torsion(int& passed)
@@ -235,6 +667,15 @@ bool runSuite_Torsion(int& passed)
         const double jBox = 4.0 * am * am * t / perim + perim * t * t * t / 3.0;
         TEST_CHECK(relClose(box.it(), jBox, 1e-12), "Test 322: caisson — J de Bredt (" + std::to_string(box.it()) + " m⁴)");
         TEST_CHECK(box.it() < 0.8 * (box.iy() + box.iz()), "Test 322: caisson — J < moment polaire (anciennement confondus)");
+        // Profil ouvert IPE 300 : parois minces (2·b·tf³ + (h − tf)·tw³)/3, congés ignorés. Le catalogue
+        // (It = 20,12 cm⁴, congés r = 15 mm compris) donne environ 28 % de plus : écart documenté, pas une
+        // valeur exacte (docs/SECTIONS.md).
+        const Section ipe = Section::ipe(300);
+        const double jThin = (2.0 * 0.150 * std::pow(0.0107, 3) + (0.300 - 0.0107) * std::pow(0.0071, 3)) / 3.0;
+        const double ratio = ipe.it() / 20.12e-8;
+        std::cout << "  IPE 300 : J = " << ipe.it() * 1e8 << " cm⁴ (parois minces), catalogue 20.12 cm⁴ → rapport " << ratio << std::endl;
+        TEST_CHECK(relClose(ipe.it(), jThin, 1e-12) && ratio > 0.75 && ratio < 0.80,
+                   "Test 322: IPE 300 — J parois minces, ≈ 0.78 × catalogue (congés non modélisés)");
 
         // Le J du caisson est bien celui du calcul : console en torsion
         Model m;
@@ -441,5 +882,5 @@ bool runSuite_Torsion(int& passed)
         std::cout << "[PASS] Test 325: Cas multiples, réinitialisation, facteur" << std::endl;
         ++passed;
     }
-    return true;
+    return runTorsionMechanics(passed);
 }
