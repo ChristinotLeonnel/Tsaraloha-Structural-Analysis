@@ -220,7 +220,9 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     }
 
     emit progressChanged(25, tr("Génération du script d'analyse Tcl..."));
-    std::string script = OpenSeesAnalysisBuilder::buildScript(snapshot, opsMap, localParams);
+    const bool modal = localParams.type == AnalysisType::Modal;
+    std::string script = modal ? OpenSeesAnalysisBuilder::buildModalScript(snapshot, opsMap, localParams)
+                               : OpenSeesAnalysisBuilder::buildScript(snapshot, opsMap, localParams);
 
     QString scriptFilePath = workDirPath + "/model.tcl";
     QFile scriptFile(scriptFilePath);
@@ -326,7 +328,8 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
 
     // 4. Extraction et désérialisation des résultats
     std::string readErr;
-    bool readOk = OpenSeesResultsReader::readResults(workDirPath.toStdString(),
+    bool readOk = modal ? OpenSeesResultsReader::readModalResults(workDirPath.toStdString(), snapshot, opsMap, localParams, m_results, &readErr)
+                        : OpenSeesResultsReader::readResults(workDirPath.toStdString(),
                                                    snapshot,
                                                    opsMap,
                                                    localParams,
@@ -341,7 +344,7 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
 
     // 5. Passage « matrices » (mode Advanced uniquement) : script séparé, l'analyse principale
     //    et son solveur ne sont pas modifiés. Un échec ici n'invalide pas les résultats courants.
-    if (localParams.extractionLevel == ExtractionLevel::Advanced)
+    if (localParams.extractionLevel == ExtractionLevel::Advanced && !modal)
     {
         emit progressChanged(90, tr("Extraction des matrices de rigidité (passage séparé)..."));
         const bool withK = opsMap.estimatedFreeDofs() <= localParams.maxGlobalStiffnessDofs;
@@ -407,7 +410,11 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     if (meta.solverVersion.empty()) meta.solverVersion = "3.8.0";
     meta.nationalAnnex = TSA::Standards::NationalAnnexConfig::instance().annexName().toStdString();
     meta.normativeFramework = "EN 1990:2002+A1:2005 / ISO/IEC 25010";
-    if (params.targetCombinationId > 0)
+    if (modal)
+    {
+        meta.loadCombinationType = "Analyse modale (" + std::to_string(m_results.modal().modes.size()) + " modes)";
+    }
+    else if (params.targetCombinationId > 0)
     {
         meta.loadCombinationType = "Combinaison #" + std::to_string(params.targetCombinationId);
     }

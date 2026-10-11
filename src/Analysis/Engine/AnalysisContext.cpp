@@ -2,6 +2,8 @@
 
 #include <QJsonArray>
 
+#include <algorithm>
+
 namespace TSA::Analysis
 {
 
@@ -26,6 +28,7 @@ const char* keyFromEnum(E value, const std::pair<E, const char*> (&table)[N])
 const std::pair<AnalysisType, const char*> kTypes[] = {
     { AnalysisType::LinearStatic, "linear_static" },
     { AnalysisType::NonLinearStatic, "nonlinear_static" },
+    { AnalysisType::Modal, "modal" },
 };
 const std::pair<ScopeType, const char*> kScopes[] = {
     { ScopeType::EntireModel, "entire_model" },
@@ -100,6 +103,8 @@ QJsonObject AnalysisContext::toJson() const
 
     QJsonArray cases;
     for (int id : loadCaseIds) cases.append(id);
+    QJsonArray massCases;
+    for (int id : common.modalMassCaseIds) massCases.append(id);
 
     QJsonObject engines;
     for (const auto& [id, settings] : engineSettings) engines[QString::fromStdString(id)] = settings;
@@ -113,7 +118,8 @@ QJsonObject AnalysisContext::toJson() const
         { "loadCases", cases },
         { "combinationId", combinationId },
         { "common", QJsonObject{ { "includeSelfWeight", common.includeSelfWeight }, { "useGeneratedMesh", common.useGeneratedMesh },
-                                 { "pinnedSupports", QString::fromLatin1(keyFromEnum(common.supportRestraints, kSupportModes)) } } },
+                                 { "pinnedSupports", QString::fromLatin1(keyFromEnum(common.supportRestraints, kSupportModes)) },
+                                 { "modeCount", common.modeCount }, { "modalMassCases", massCases } } },
         { "engineSettings", engines },
     };
 }
@@ -155,6 +161,8 @@ AnalysisContext AnalysisContext::fromJson(const QJsonObject& json, bool* ok)
     c.common.supportRestraints = common.contains("pinnedSupports")
                                      ? enumFromKey(common.value("pinnedSupports").toString(), kSupportModes, SupportRestraintMode::Fork)
                                      : SupportRestraintMode::Legacy;
+    c.common.modeCount = std::max(1, common.value("modeCount").toInt(6));
+    for (const auto& v : common.value("modalMassCases").toArray()) c.common.modalMassCaseIds.push_back(v.toInt());
 
     const QJsonObject engines = json.value("engineSettings").toObject();
     for (auto it = engines.begin(); it != engines.end(); ++it)

@@ -19,7 +19,8 @@ namespace TSA::Analysis
 enum class AnalysisType
 {
     LinearStatic,
-    NonLinearStatic
+    NonLinearStatic,
+    Modal           ///< valeurs et vecteurs propres (eigen), masses des éléments et masses additionnelles explicites
 };
 
 /**
@@ -114,6 +115,26 @@ struct StepResults
     std::map<int, NodeDisplacement> displacements;
     std::map<int, NodeReaction> reactions;
     std::map<ElementKey, ElementResults> elementResults;
+    std::map<int, NodeDisplacement> surfaceDisplacements;   ///< nœuds du maillage des surfaces (coques)
+};
+
+/// Mode propre (analyse modale) : valeur propre λ = ω², fréquence, période, participation (OpenSees modalProperties,
+/// rapports en % de la masse libre). La forme propre est le pas de résultats correspondant (StepResults), normalisée par
+/// le moteur (amplitude arbitraire).
+struct ModalMode
+{
+    int index = 0;
+    double eigenvalue = 0.0, omega = 0.0, frequency = 0.0, period = 0.0;
+    std::array<double, 6> massRatio {};        ///< % de la masse libre, MX MY MZ RMX RMY RMZ
+    std::array<double, 6> cumulativeRatio {};
+};
+
+struct ModalResults
+{
+    std::vector<ModalMode> modes;
+    std::array<double, 6> totalMass {}, totalFreeMass {};   ///< unités de masse du calcul (t en kN, kg en N)
+    std::string massSource;                                  ///< origine des masses (éléments, charges converties)
+    bool empty() const { return modes.empty(); }
 };
 
 /**
@@ -254,6 +275,7 @@ struct ResultAvailability
     bool elementStiffness = false;
     bool globalStiffness = false;
     bool dofMapping = false;
+    bool modes = false;   ///< analyse modale : fréquences, formes propres, participation
 };
 
 /// Table de résultats propre à un moteur (résultats qui n'ont pas d'équivalent commun).
@@ -452,6 +474,8 @@ public:
     /// référencent ensuite que des objets du modèle.
     /// @param parts barre TSA → (sous-élément, abscisse de début) dans l'ordre
     // Éléments surfaciques (coques) : résultantes par élément du maillage, déplacements par nœud du maillage
+    const ModalResults& modal() const { return m_modal; }
+    void setModal(const ModalResults& m) { m_modal = m; }
     const std::map<int, ShellElementResult>& shellResults() const { return m_shellResults; }
     void setShellResult(const ShellElementResult& r) { m_shellResults[r.meshElement] = r; }
     const std::map<int, NodeDisplacement>& surfaceNodeDisplacements() const { return m_surfaceNodeDisplacements; }
@@ -495,6 +519,8 @@ private:
     std::map<int, NodeReaction> m_finalReactions;
     std::map<ElementKey, ElementResults> m_finalElementResults;
     std::map<int, ShellElementResult> m_shellResults;
+    ModalResults m_modal;
+    std::map<int, NodeDisplacement> m_finalSurfaceNodeDisplacements;
     std::map<int, NodeDisplacement> m_surfaceNodeDisplacements;
     std::string m_surfaceMeshStamp;
 

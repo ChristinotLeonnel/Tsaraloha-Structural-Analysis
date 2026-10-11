@@ -9,7 +9,10 @@
 //        voile de contreventement en console (flexion + cisaillement) ;
 //   357  formulations non prises en charge (plaque, membrane) refusées, surface non structurale, charge sur une surface
 //        non transmise refusée, charge sans maillage refusée ;
-//   358  persistance : formulations, ouvertures des voiles, charges surfaciques ; validation des ouvertures de voile.
+//   358  persistance : formulations, ouvertures des voiles, charges surfaciques ; validation des ouvertures de voile ;
+//   359  analyse modale (essai F) : fréquence propre d'une bande de coque en console comparée à la théorie des poutres,
+//        masse totale = ρ·e·A, masses converties depuis un cas de charge (m = q·A/g), participation, formes propres par
+//        mode (nœuds du maillage), paramètres modaux enregistrés avec le contexte.
 
 #include "test_common.h"
 
@@ -26,6 +29,8 @@
 #include "NDC/ReportManager.h"
 
 #include <QTemporaryDir>
+
+#include <functional>
 
 using namespace TSA::Mesh;
 using TSA::Analysis::AnalysisRunResult;
@@ -52,7 +57,8 @@ MeshSettingsSet settings2D(double h, bool quads)
     return s;
 }
 
-SurfRun runSurfaces(Model& m, const MeshSettingsSet& s, bool selfWeight = false, int caseId = 0)
+SurfRun runSurfaces(Model& m, const MeshSettingsSet& s, bool selfWeight = false, int caseId = 0,
+                    const std::function<void(TSA::Analysis::AnalysisContext&)>& tune = {})
 {
     SurfRun r;
     const auto g = MeshGeometry::extract(m);
@@ -70,6 +76,7 @@ SurfRun runSurfaces(Model& m, const MeshSettingsSet& s, bool selfWeight = false,
     ctx.memberSubdivisions = r.compat.memberSubdivisions;
     ctx.surfaces = r.compat.surfaces;
     ctx.surfaces.meshStamp = "maillage-essai";
+    if (tune) tune(ctx);
     r.prepared = mgr.prepare(m, &gm, ctx);
     if (!r.compat.blocking() && r.prepared.canRun()) r.run = mgr.run(ctx, r.prepared);
     return r;
@@ -503,6 +510,93 @@ bool runSuite_Surfaces(int& passed)
         Model fresh;
         TEST_CHECK(Slab().formulation() == TSA::Model::SurfaceFormulation::Shell && fresh.loadManager().surfaceLoads().empty(), "Test 358: valeurs par défaut (coque)");
         std::cout << "[PASS] Test 358: Persistance des surfaces et de leurs charges" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 359 : analyse modale (essai F) — bande de coque en console
+    // -------------------------------------------------------------------------
+    {
+        const double L = 4.0, b = 1.0, h = 0.20, rho = 2.5;   // t/m³ (calcul en kN, m, s)
+        Model m;
+        const int s = cantilever(m, L, b, h, 0.125);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "G2", LoadCaseCategory::Dead));
+        TSA::Model::SurfaceLoad sl;
+        sl.surfaceId = s;
+        sl.loadCaseId = lc;
+        sl.value = 10.0;   // kN/m²
+        m.loadManager().addSurfaceLoad(sl);
+        const double E = m.getSlab(s)->material().E * 1e-3;   // kPa
+        const double EI = E * b * h * h * h / 12.0, mu = rho * b * h;
+        const double f1 = 1.875104 * 1.875104 / (2.0 * 3.14159265358979 * L * L) * std::sqrt(EI / mu);
+        auto modal = [&](std::vector<int> massCases) {
+            return runSurfaces(m, settings2D(0.25, true), false, 0, [&](TSA::Analysis::AnalysisContext& c) {
+                c.type = TSA::Analysis::AnalysisType::Modal;
+                c.common.modeCount = 4;
+                c.common.modalMassCaseIds = massCases;
+            });
+        };
+        const auto r = modal({});
+        TEST_CHECK(!r.compat.blocking() && r.prepared.canRun() && r.run.success,
+                   "Test 359: calcul modal (" << blockingText(r.compat) << errorsOf(r.prepared) << r.run.message << ")");
+        const auto& md = r.run.results.modal();
+        TEST_CHECK(md.modes.size() == 4 && r.run.results.stepCount() == 4 && r.run.results.analysisType() == TSA::Analysis::AnalysisType::Modal,
+                   "Test 359: 4 modes lus (" << md.modes.size() << ")");
+        const double err = std::abs(md.modes[0].frequency - f1) / f1;
+        TEST_CHECK(err < 0.02, "Test 359: f1 = " << md.modes[0].frequency << " Hz, théorie " << f1 << " Hz (écart " << err * 100 << " %)");
+        TEST_CHECK(std::abs(md.modes[0].period * md.modes[0].frequency - 1.0) < 1e-9 &&
+                       std::abs(md.modes[0].omega * md.modes[0].omega - md.modes[0].eigenvalue) < 1e-6 * md.modes[0].eigenvalue,
+                   "Test 359: T = 1/f, ω² = λ");
+        TEST_CHECK(md.modes[1].frequency >= md.modes[0].frequency && md.modes[3].frequency >= md.modes[2].frequency, "Test 359: modes triés");
+        const double mass = rho * L * b * h;
+        TEST_CHECK(std::abs(md.totalMass[2] - mass) < 1e-6 * mass && std::abs(md.totalMass[0] - mass) < 1e-6 * mass,
+                   "Test 359: masse totale " << md.totalMass[2] << " t = ρ·e·A = " << mass << " t");
+        TEST_CHECK(md.totalFreeMass[2] < md.totalMass[2] && md.totalFreeMass[2] > 0.9 * mass, "Test 359: masse libre (hors nœuds encastrés)");
+        // Participation verticale du 1er mode : ≈ 61 % pour une console continue (rapportée à la masse libre)
+        TEST_CHECK(md.modes[0].massRatio[2] > 55.0 && md.modes[0].massRatio[2] < 70.0 && md.modes[0].cumulativeRatio[2] <= 100.0 + 1e-6,
+                   "Test 359: participation MZ du mode 1 = " << md.modes[0].massRatio[2] << " %");
+        // Forme propre : maillage des surfaces, normalisée (translation max = 1), maximum en bout de console
+        const auto& st = r.run.results.allStepResults()[0];
+        double best = 0, xBest = 0;
+        for (const auto& [mesh, d] : st.surfaceDisplacements)
+            if (std::abs(d.uz) > best) best = std::abs(d.uz), xBest = r.mesh.mesh.node(mesh).x;
+        TEST_CHECK(!st.surfaceDisplacements.empty() && std::abs(best - 1.0) < 1e-9 && std::abs(xBest - L) < 1e-6,
+                   "Test 359: forme propre 1 (max " << best << " en x = " << xBest << ")");
+        TSA::Analysis::ResultsModel copy = r.run.results;
+        copy.setActiveStep(1);
+        TEST_CHECK(copy.surfaceNodeDisplacements().size() == st.surfaceDisplacements.size(), "Test 359: parcours des modes (surfaces)");
+
+        // Masses converties depuis le cas G2 : m = q·A/g ; masse uniforme → f réduite de √(m0 / (m0 + mq))
+        const auto r2 = modal({ lc });
+        TEST_CHECK(r2.run.success, "Test 359: calcul modal avec masses converties (" << r2.run.message << ")");
+        const auto& md2 = r2.run.results.modal();
+        const double mq = 10.0 * L * b / 9.81;
+        TEST_CHECK(!md2.empty() && std::abs(md2.totalMass[2] - (mass + mq)) < 1e-6 * (mass + mq), "Test 359: masse totale avec G2 = " << (md2.empty() ? 0.0 : md2.totalMass[2]) << " t (attendu " << mass + mq << ")");
+        const double f1b = md.modes[0].frequency * std::sqrt(mass / (mass + mq));
+        TEST_CHECK(!md2.empty() && std::abs(md2.modes[0].frequency - f1b) / f1b < 0.005,
+                   "Test 359: f1 avec masses converties = " << (md2.empty() ? 0.0 : md2.modes[0].frequency) << " Hz (attendu " << f1b << ")");
+        TEST_CHECK(md2.massSource.find("m = F/g") != std::string::npos, "Test 359: origine des masses tracée");
+
+        // Note de calcul : chapitre modal (fréquences calculées), aucun résultat statique présenté
+        {
+            TSA::NDC::ReportManager mgr;
+            mgr.setModel(&m);
+            mgr.setResultsModel(std::make_shared<TSA::Analysis::ResultsModel>(r.run.results));
+            mgr.applyTemplate(TSA::NDC::ReportTemplateType::BureauEtudes);
+            const QString html = TSA::NDC::NDCExporter::renderHtml(mgr.generateReport());
+            TEST_CHECK(html.contains("Analyse modale") && html.contains(QString::number(md.modes[0].frequency, 'f', 3)) &&
+                           html.contains("Aucun résultat statique") && html.contains("(K − ω² · M) · φ = 0"),
+                       "Test 359: note de calcul — chapitre modal, pas de résultat statique inventé");
+        }
+
+        // Contexte : paramètres modaux enregistrés
+        TSA::Analysis::AnalysisContext c;
+        c.type = TSA::Analysis::AnalysisType::Modal;
+        c.common.modeCount = 9;
+        c.common.modalMassCaseIds = { 3, 5 };
+        const auto back = TSA::Analysis::AnalysisContext::fromJson(c.toJson());
+        TEST_CHECK(back.type == TSA::Analysis::AnalysisType::Modal && back.common.modeCount == 9 && back.common.modalMassCaseIds == std::vector<int>({ 3, 5 }),
+                   "Test 359: contexte modal relu");
+        std::cout << "[PASS] Test 359: Analyse modale des coques (f1 " << md.modes[0].frequency << " Hz / " << f1 << " Hz)" << std::endl;
         ++passed;
     }
     return true;

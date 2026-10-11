@@ -83,6 +83,11 @@ struct CommonAnalysisSettings
     /// Blocages automatiques des appuis articulés / simples. Nouveau projet : appui à fourche ; projet enregistré
     /// avant ce réglage (clé absente) : mode historique, signalé avant le calcul (aucune modification silencieuse).
     SupportRestraintMode supportRestraints = SupportRestraintMode::Fork;
+    /// Analyse modale : nombre de modes propres demandés.
+    int modeCount = 6;
+    /// Analyse modale : cas de charge dont les charges verticales descendantes sont converties en masses (m = F/g,
+    /// translations X, Y, Z ; méthode explicite, docs/SURFACES.md). Vide = masses propres des éléments seulement.
+    std::vector<int> modalMassCaseIds;
 };
 
 struct AnalysisContext

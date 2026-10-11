@@ -47,6 +47,7 @@ AnalysisCapabilities OpenSeesEngine::capabilities() const
     c.providesDofMapping = true;         // mode ADVANCED
     c.supportsCustomOptions = true;
     c.supportsMesh = true;               // barres subdivisées (maillage 1D) : sous-éléments elasticBeamColumn
+    c.supportsModal = true;              // eigen + modalProperties : fréquences, formes propres, participation
     c.supportsShell = true;              // dalles et voiles maillés : ShellMITC4 / ShellDKGT (formulation coque seule)
     return c;
 }
@@ -128,6 +129,8 @@ AnalysisParameters OpenSeesEngine::parametersFromContext(const AnalysisContext& 
     // Partie commune
     p.type = context.type;
     p.includeSelfWeight = context.common.includeSelfWeight;
+    p.modeCount = context.common.modeCount;
+    p.modalMassCaseIds = context.common.modalMassCaseIds;
     p.targetCombinationId = context.combinationId;
     p.targetLoadCaseId = (context.combinationId <= 0 && context.loadCaseIds.size() == 1) ? context.loadCaseIds.front() : 0;
     return p;

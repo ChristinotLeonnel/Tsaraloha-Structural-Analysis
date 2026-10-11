@@ -170,7 +170,15 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
         if (!snap.loadCases().count(id)) v.addError("Charges", "Cas de charge #" + std::to_string(id) + " introuvable.");
 
     const bool anyLoad = !snap.nodalLoads().empty() || !snap.memberLoads().empty();
-    if (!anyLoad && !context.common.includeSelfWeight)
+    if (context.type == AnalysisType::Modal)
+    {
+        for (int id : context.common.modalMassCaseIds)
+            if (!snap.loadCases().count(id)) v.addError("Masses", "Cas de charge #" + std::to_string(id) + " (converti en masses) introuvable.");
+        v.addInfo("Masses", context.common.modalMassCaseIds.empty()
+                                ? "Analyse modale : masses des éléments seulement (barres ρ·A, coques ρ·e) ; les charges ne sont pas des masses."
+                                : "Analyse modale : masses des éléments + charges verticales descendantes des cas choisis converties (m = F/g).");
+    }
+    else if (!anyLoad && !context.common.includeSelfWeight)
         v.addWarning("Charges", "Aucune charge dans la portée et poids propre désactivé : résultats nuls.");
     else
         v.addInfo("Charges", "Charges valides.");

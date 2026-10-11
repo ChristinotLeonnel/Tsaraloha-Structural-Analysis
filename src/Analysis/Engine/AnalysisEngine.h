@@ -57,6 +57,7 @@ struct AnalysisCapabilities
     bool supportsStatic = false;
     bool supportsNonlinear = false;
     bool supportsBuckling = false;
+    bool supportsModal = false;        ///< analyse modale (valeurs et vecteurs propres, participation)
 
     // Résultats que le moteur sait produire
     bool providesDisplacements = false;
@@ -75,6 +76,7 @@ struct AnalysisCapabilities
         {
         case AnalysisType::LinearStatic: return supportsStatic;
         case AnalysisType::NonLinearStatic: return supportsNonlinear;
+        case AnalysisType::Modal: return supportsModal;
         }
         return false;
     }

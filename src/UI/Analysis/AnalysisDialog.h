@@ -10,6 +10,8 @@
 #include <QDialog>
 
 class QCheckBox;
+class QFormLayout;
+class QSpinBox;
 class QComboBox;
 class QGroupBox;
 class QLabel;
@@ -73,6 +75,7 @@ private:
     void syncCommonToOptions();
     void storeOptions();
     void showValidation(const TSA::Analysis::ValidationResult& v);
+    void updateTypeDependentRows();
 
     TSA::Analysis::AnalysisManager& m_manager;
     const AnalysisEngineOptionsRegistry& m_options;
@@ -95,6 +98,9 @@ private:
     QComboBox* m_levelCombo = nullptr;
     QComboBox* m_loadCombo = nullptr;
     QCheckBox* m_selfWeight = nullptr;
+    QFormLayout* m_commonForm = nullptr;
+    QSpinBox* m_modeCount = nullptr;          ///< analyse modale : nombre de modes
+    QListWidget* m_massCases = nullptr;       ///< analyse modale : cas convertis en masses (m = F/g)
     QComboBox* m_supportCombo = nullptr;   ///< blocages automatiques des appuis articulés / simples
     QGroupBox* m_optionsGroup = nullptr;
     QVBoxLayout* m_optionsLayout = nullptr;

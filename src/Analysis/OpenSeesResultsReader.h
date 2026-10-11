@@ -43,6 +43,15 @@ public:
                                   ResultsModel& outResults,
                                   std::string* errorMessage = nullptr);
 
+    /// Analyse modale : valeurs propres (fréquences, périodes), formes propres de chaque nœud (normalisées à une
+    /// translation maximale unitaire, une forme par pas), masses et participation (modalProperties).
+    static bool readModalResults(const std::string& workingDirectory,
+                                 const CalculationSnapshot& snapshot,
+                                 const OpenSeesModelMap& map,
+                                 const AnalysisParameters& params,
+                                 ResultsModel& outResults,
+                                 std::string* errorMessage = nullptr);
+
 private:
     /// Efforts repris par les blocages automatiques d'appuis (CalculationSnapshot::automaticRestraints) :
     /// avertissement dans les métadonnées et le journal s'ils ne sont pas négligeables.

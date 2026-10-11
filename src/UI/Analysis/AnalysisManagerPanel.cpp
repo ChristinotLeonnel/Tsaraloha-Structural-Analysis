@@ -33,6 +33,7 @@ QString yesNo(bool v) { return v ? QStringLiteral("✔") : QStringLiteral("—")
 
 QString typeLabel(AnalysisType t)
 {
+    if (t == AnalysisType::Modal) return QObject::tr("modale");
     return t == AnalysisType::NonLinearStatic ? QObject::tr("statique non linéaire") : QObject::tr("statique linéaire");
 }
 } // namespace

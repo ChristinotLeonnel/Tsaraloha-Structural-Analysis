@@ -1053,4 +1053,133 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
     outResults.setExecutionMetadata(meta);
 }
 
+
+namespace
+{
+/// Section « * k. TITRE » du rapport modalProperties : lignes numériques qui suivent l'en-tête.
+std::vector<std::vector<double>> modalSection(const std::vector<std::string>& lines, const std::string& title)
+{
+    std::vector<std::vector<double>> rows;
+    bool in = false;
+    for (const auto& l : lines)
+    {
+        if (!l.empty() && l[0] == '*')
+        {
+            if (in) break;
+            in = l.find(title) != std::string::npos && (title.find("cumulative") != std::string::npos || l.find("cumulative") == std::string::npos);
+            continue;
+        }
+        if (!in || l.empty() || l[0] == '#') continue;
+        bool nf = false;
+        auto v = parseDoubles(l, &nf);
+        for (double& x : v)
+            if (!std::isfinite(x)) x = 0.0;   // direction sans masse : 0/0 dans le rapport
+        if (!v.empty()) rows.push_back(std::move(v));
+    }
+    return rows;
+}
+} // namespace
+
+bool OpenSeesResultsReader::readModalResults(const std::string& workingDirectory, const CalculationSnapshot& snapshot,
+                                             const OpenSeesModelMap& map, const AnalysisParameters& params,
+                                             ResultsModel& outResults, std::string* errorMessage)
+{
+    std::string savedLog = outResults.journalLog();
+    outResults.clear();
+    if (!savedLog.empty()) outResults.appendLog(savedLog);
+    outResults.setAnalysisType(AnalysisType::Modal);
+    outResults.setUnits(UnitSystem::fromKiloNewtons(params.useKiloNewtons));
+    outResults.updateTimestamp();
+    const std::string dir = workingDirectory + "/";
+    auto fail = [&](const std::string& msg) {
+        if (errorMessage) *errorMessage = msg;
+        outResults.appendLog("\n[ERREUR] " + msg + "\n");
+        outResults.setValid(false);
+        return false;
+    };
+
+    std::vector<double> lambdas;
+    bool nonFinite = false;
+    for (const auto& l : readAllLines(dir + params.modalEigenOutputFile))
+        for (double v : parseDoubles(l, &nonFinite)) lambdas.push_back(v);
+    if (lambdas.empty())
+        return fail("Analyse modale : aucune valeur propre calculée par OpenSees (masse nulle sur les DDL libres, mécanisme ou "
+                    "solveur aux valeurs propres en échec ; voir le journal).");
+    if (nonFinite) return fail("Analyse modale : valeurs propres non finies (masse ou rigidité singulière).");
+    for (std::size_t i = 0; i < lambdas.size(); ++i)
+        if (lambdas[i] <= 0.0)
+            return fail("Analyse modale : valeur propre λ" + std::to_string(i + 1) + " = " + std::to_string(lambdas[i]) +
+                        " ≤ 0 : la structure est un mécanisme (appuis ou liaisons insuffisants).");
+
+    const auto shapeLines = readAllLines(dir + params.modalShapesOutputFile);
+    const std::size_t expected = map.structuralNodeTags().size() * 6;
+    if (shapeLines.size() < lambdas.size()) return fail("Analyse modale : formes propres incomplètes (" + std::to_string(shapeLines.size()) + " lues).");
+
+    const auto props = readAllLines(dir + params.modalPropertiesOutputFile);
+    const auto ratios = modalSection(props, "MODAL PARTICIPATION MASS RATIOS (%)");
+    const auto cumul = modalSection(props, "MODAL PARTICIPATION MASS RATIOS (%) (cumulative)");
+    const auto total = modalSection(props, "TOTAL MASS OF THE STRUCTURE");
+    const auto free = modalSection(props, "TOTAL FREE MASS OF THE STRUCTURE");
+
+    ModalResults modal;
+    if (!total.empty() && total[0].size() >= 6) std::copy_n(total[0].begin(), 6, modal.totalMass.begin());
+    if (!free.empty() && free[0].size() >= 6) std::copy_n(free[0].begin(), 6, modal.totalFreeMass.begin());
+    std::ostringstream src;
+    src << "masses des éléments (barres ρ·A, coques ρ·e)";
+    if (!params.modalMassCaseIds.empty())
+    {
+        src << " + charges verticales descendantes des cas";
+        for (int id : params.modalMassCaseIds) src << " " << id;
+        src << " converties (m = F/g)";
+    }
+    modal.massSource = src.str();
+
+    constexpr double kPi = 3.14159265358979323846;
+    for (std::size_t i = 0; i < lambdas.size(); ++i)
+    {
+        ModalMode mode;
+        mode.index = int(i) + 1;
+        mode.eigenvalue = lambdas[i];
+        mode.omega = std::sqrt(lambdas[i]);
+        mode.frequency = mode.omega / (2.0 * kPi);
+        mode.period = 1.0 / mode.frequency;
+        auto row = [&](const std::vector<std::vector<double>>& t, std::array<double, 6>& out) {
+            for (const auto& r : t)
+                if (r.size() >= 7 && int(std::lround(r[0])) == mode.index) std::copy_n(r.begin() + 1, 6, out.begin());
+        };
+        row(ratios, mode.massRatio);
+        row(cumul, mode.cumulativeRatio);
+        modal.modes.push_back(mode);
+
+        bool nf = false;
+        const auto v = parseDoubles(shapeLines[i], &nf);
+        if (v.size() != expected || nf)
+            return fail("Analyse modale : forme propre " + std::to_string(i + 1) + " : " + std::to_string(v.size()) + " valeurs lues, " +
+                        std::to_string(expected) + " attendues.");
+        auto shape = parseDisplacements(v, map);
+        double maxT = 0.0;
+        for (const auto& [id, d] : shape) maxT = std::max(maxT, d.translationMagnitude());
+        if (maxT > 0.0)
+            for (auto& [id, d] : shape)
+            {
+                d.ux /= maxT, d.uy /= maxT, d.uz /= maxT;
+                d.rx /= maxT, d.ry /= maxT, d.rz /= maxT;
+            }
+        StepResults st;
+        st.stepNumber = mode.index;
+        st.factorOrTime = mode.frequency;
+        st.displacements = shape;
+        outResults.addStepResults(st);
+        if (i == 0)
+            for (const auto& [id, d] : shape) outResults.setNodeDisplacement(id, d);
+    }
+    if (props.empty() || ratios.empty())
+        outResults.appendLog("\n[AVERTISSEMENT] Rapport modalProperties absent : participation modale non disponible.\n");
+    outResults.setModal(modal);
+    outResults.computeSummary();
+    outResults.setValid(true);
+    (void)snapshot;
+    return true;
+}
+
 } // namespace TSA::Analysis
