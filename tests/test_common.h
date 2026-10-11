@@ -198,3 +198,4 @@ bool runSuite_Deployment(int& passed);
 bool runSuite_Mesh(int& passed);
 bool runSuite_Torsion(int& passed);
 bool runSuite_MeshView(int& passed);
+bool runSuite_DemoModels(int& passed);
