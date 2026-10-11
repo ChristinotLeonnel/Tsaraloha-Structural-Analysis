@@ -18,6 +18,7 @@
 #include "IO/TSAFile.h"
 #include "Mesh/MeshGenerator.h"
 #include "Mesh/MeshGeometry.h"
+#include "Mesh/MeshProject.h"
 #include "Mesh/MeshResultField.h"
 #include "Mesh/Solvers/OpenSeesMeshAdapter.h"
 #include "Model/Load/LoadManager.h"
@@ -330,6 +331,8 @@ bool runSuite_Surfaces(int& passed)
         const double wMax = r.run.results.maxSurfaceDisplacement(&wn);
         std::cout << "  moment maximal dans les poutres de rive " << mBeam << " kN·m, déplacement maximal de la dalle " << wMax * 1000 << " mm" << std::endl;
         TEST_CHECK(mBeam > 1.0 && wMax > 0 && wn > 0, "Test 356: la dalle charge les poutres (flexion des poutres de rive) et se déforme");
+        const auto sum = r.run.results.summary();
+        TEST_CHECK(m.getNode(sum.maxDisplacementNodeId) != nullptr, "Test 356: synthèse des déplacements sur les nœuds TSA (nœud " << sum.maxDisplacementNodeId << "), surfaces à part");
         // Note de calcul détaillée : hypothèses des coques, charges surfaciques, résultantes, contrôle de la charge verticale
         {
             TSA::NDC::ReportManager mgr;
@@ -341,6 +344,23 @@ bool runSuite_Surfaces(int& passed)
             TEST_CHECK(html.contains("Surfaces calculées en coques") && html.contains("Charges surfaciques") && html.contains("Résultantes des coques") &&
                            html.contains("CONCORDANT"),
                        "Test 356: note de calcul — hypothèses des coques, charges surfaciques, résultantes, charge verticale concordante");
+        }
+
+        // Projet d'exemple (TSA_DEMO_DIR) : dalle sur poutres, charge surfacique et maillage enregistrés dans le .tsa
+        if (const QString dir = qEnvironmentVariable("TSA_DEMO_DIR"); !dir.isEmpty())
+        {
+            MeshProject mp;
+            mp.settings = settings2D(0.5, true);
+            mp.hasMesh = true;
+            mp.mesh = r.mesh.mesh;
+            mp.record = r.mesh.record;
+            m.setMeshProjectJson(QJsonDocument(mp.toJson()).toJson(QJsonDocument::Compact).toStdString());
+            TSA::IO::TSAFileWriter writer;
+            GridManager grids;
+            std::string err;
+            const std::string path = (dir + "/TSA_Exemple_Dalle_Coques.tsa").toStdString();
+            TEST_CHECK(writer.saveToFile(path, m, &grids, "Dalle sur poutres — coques", "TSA — exemples", &err), "Test 356: projet d'exemple écrit (" << err << ")");
+            std::cout << "  projet d'exemple : " << path << std::endl;
         }
 
         // Voile de contreventement en console : déplacement en tête sous un effort horizontal (flexion + cisaillement)

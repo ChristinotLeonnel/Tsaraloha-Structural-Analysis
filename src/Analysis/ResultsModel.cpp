@@ -434,6 +434,8 @@ void ResultsModel::attachSurfaceResults(const std::map<int, int>& meshToNode, co
             st.reactions.erase(id);
         }
     }
+    // Synthèse recalculée sur les seuls nœuds TSA (le maximum des surfaces est donné par maxSurfaceDisplacement)
+    if (!surfaceOnly.empty()) computeSummary();
 }
 
 double ResultsModel::maxSurfaceDisplacement(int* meshNode) const
