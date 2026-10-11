@@ -1,0 +1,14 @@
+{
+  "id": "tsa.ndc.print",
+  "name": "Note de calcul imprimable",
+  "version": "1.0.0",
+  "description": "Note de calcul mise en page pour l'export PDF (mise en page en tableaux, sommaire avec numéros de page, en-têtes et pieds de page posés par l'exporteur). Utilisée par les notes simplifiée et détaillée.",
+  "author": "Tsaraloha",
+  "license": "Identique à l'application",
+  "engine": "tsa-template/1",
+  "dataSchema": "tsa-ndc/1",
+  "applications": ["TSA", "TSALab"],
+  "reports": [
+    { "id": "ndc", "name": "Note de calcul", "entry": "main.html", "requires": ["project.title", "chapters", "style", "show"] }
+  ]
+}

@@ -48,6 +48,7 @@ QJsonObject ReportConfiguration::toJson() const
     styleObj["enableFooter"] = enableFooter;
     styleObj["enablePagination"] = enablePagination;
     styleObj["templateId"] = templateId;
+    styleObj["noteLayout"] = noteLayout == NoteLayout::Detailed ? "detailed" : noteLayout == NoteLayout::Simplified ? "simplified" : "legacy";
     root["style"] = styleObj;
 
     // 3. Sélection des chapitres
@@ -142,6 +143,11 @@ void ReportConfiguration::fromJson(const QJsonObject& json)
         if (st.contains("enableFooter")) enableFooter = st["enableFooter"].toBool();
         if (st.contains("enablePagination")) enablePagination = st["enablePagination"].toBool();
         if (st.contains("templateId")) templateId = st["templateId"].toString();
+        if (st.contains("noteLayout"))
+        {
+            const QString l = st["noteLayout"].toString();
+            noteLayout = l == "detailed" ? NoteLayout::Detailed : l == "simplified" ? NoteLayout::Simplified : NoteLayout::Legacy;
+        }
     }
 
     if (json.contains("chapters") && json["chapters"].isObject())

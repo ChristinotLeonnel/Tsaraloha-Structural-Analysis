@@ -1,0 +1,33 @@
+<table width="100%" cellspacing="0" cellpadding="14" style="border: 2px solid {{{style.primaryColor}}};">
+<tr><td>
+<table width="100%" cellspacing="0" cellpadding="0">
+<tr>
+<td valign="middle"><span class="cover-brand">{{{product.name}}}</span><br><span style="color: #64748b;">Analyse et calcul de structures par éléments finis</span></td>
+{{#show.logo}}
+<td width="90" align="right" valign="middle"><img src="{{{logoUri}}}" width="72" height="72"></td>
+{{/show.logo}}
+</tr>
+</table>
+<p>&nbsp;</p><p>&nbsp;</p>
+<p align="center"><span class="cover-title">NOTE DE CALCUL</span></p>
+<p align="center"><span class="cover-sub">{{{project.title}}}</span></p>
+{{#project.description}}
+<p align="center" style="color: #475569;">{{{project.description}}}</p>
+{{/project.description}}
+<p align="center"><span class="cover-status">{{{project.status}}}</span></p>
+<p>&nbsp;</p>
+<table width="100%" cellspacing="0" cellpadding="5" style="background-color: #f1f5f9; border: 1px solid #cbd5e1;">
+<tr><td width="38%"><b>Projet n°</b></td><td>{{{project.number}}}</td></tr>
+<tr><td><b>Document n°</b></td><td>{{{project.documentNumber}}}</td></tr>
+<tr><td><b>Indice</b></td><td>{{{project.revision}}}</td></tr>
+<tr><td><b>Date d'émission</b></td><td>{{{project.date}}}</td></tr>
+<tr><td><b>Établi par</b></td><td>{{{project.engineer}}}</td></tr>
+<tr><td><b>Organisme</b></td><td>{{{project.organization}}}</td></tr>
+<tr><td><b>Maître d'ouvrage</b></td><td>{{{project.client}}}</td></tr>
+<tr><td><b>Référentiel</b></td><td>{{{project.standards}}}</td></tr>
+<tr><td><b>Logiciel</b></td><td>{{{project.software}}}</td></tr>
+</table>
+<p>&nbsp;</p>
+<p style="font-size: 8.5pt; color: #64748b;">Note produite automatiquement par {{{product.name}}} v{{{product.reportVersion}}} à partir du modèle et des résultats du calcul. Les vérifications non implémentées sont signalées « non calculée ». Elle ne remplace pas la vérification par un ingénieur qualifié.</p>
+</td></tr>
+</table>

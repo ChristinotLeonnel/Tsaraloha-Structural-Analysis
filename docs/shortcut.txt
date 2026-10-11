@@ -294,7 +294,7 @@ cmd.results.fit_model               |                       | on   |            
 cmd.results.fit_results             |                       | on   |                       | Cadrer les résultats — Cadrer les résultats affichés
 cmd.results.forces                  |                       | on   |                       | Efforts internes — Diagrammes des efforts (M, N, V)
 cmd.results.reactions               | Shift+F9              | on   | Shift+F9              | Afficher les réactions — Afficher ou masquer les réactions d'appui
-cmd.results.stresses                |                       | on   |                       | Contraintes — Contraintes de Von Mises
+cmd.results.stresses                |                       | on   |                       | Contraintes — Contrainte normale de fibre extrême σ = N/A ± M/W (poutres)
 
 [Rapports]
 # identifiant                       | raccourci(s)          | état | par défaut            | description

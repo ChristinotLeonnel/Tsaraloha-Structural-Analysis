@@ -9,6 +9,14 @@
 #include <QPainter>
 #include <QPageLayout>
 #include <QPageSize>
+#include <QAbstractTextDocumentLayout>
+#include <QFont>
+#include <QRegularExpression>
+#include <QTextBlock>
+#include <QTextFragment>
+#include <QTextLayout>
+#include "App/ProductInfo.h"
+#include <map>
 
 namespace TSA::NDC
 {
@@ -56,36 +64,157 @@ bool NDCExporter::exportToHtml(const NDCDocument& doc, const QString& filePath, 
 
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
-    out << renderHtml(doc);
+    QString html = renderHtml(doc);
+    html.remove(QRegularExpression(QStringLiteral("\\[\\[P:[A-Za-z0-9_]+\\]\\]"))); // numéros de page : PDF seulement
+    out << html;
     file.close();
     return true;
 }
 
+namespace
+{
+const QRegularExpression& pageRefPattern()
+{
+    static const QRegularExpression re(QStringLiteral("\\[\\[P:([A-Za-z0-9_]+)\\]\\]"));
+    return re;
+}
+
+/// Page (1 = première) de chaque ancre <a name> du document mis en page.
+std::map<QString, int> anchorPages(const QTextDocument& doc, double pageHeight)
+{
+    std::map<QString, int> pages;
+    auto* layout = doc.documentLayout();
+    for (QTextBlock b = doc.begin(); b.isValid(); b = b.next())
+    {
+        for (auto it = b.begin(); !it.atEnd(); ++it)
+        {
+            const QTextFragment f = it.fragment();
+            if (!f.isValid()) continue;
+            for (const QString& name : f.charFormat().anchorNames())
+            {
+                if (pages.count(name)) continue;
+                // Position verticale de la ligne qui porte l'ancre (bloc dans une cellule de tableau compris)
+                const QRectF r = layout->blockBoundingRect(b);
+                const QTextLayout* tl = b.layout();
+                double y = r.top();
+                if (tl && tl->lineCount() > 0)
+                {
+                    const QTextLine line = tl->lineForTextPosition(f.position() - b.position());
+                    if (line.isValid()) y += line.y();
+                }
+                pages[name] = int(y / pageHeight) + 1;
+            }
+        }
+    }
+    return pages;
+}
+} // namespace
+
 bool NDCExporter::exportToPdf(const NDCDocument& doc, const QString& filePath, QString* error)
 {
-    try
+    const auto& c = doc.config;
+    QPdfWriter writer(filePath);
+    if (!writer.setPageSize(QPageSize(c.pageFormat == PageFormat::A3 ? QPageSize::A3 : QPageSize::A4)) ||
+        !writer.setPageOrientation(c.pageOrientation == PageOrientation::Landscape ? QPageLayout::Landscape : QPageLayout::Portrait))
     {
-        QPdfWriter pdfWriter(filePath);
-        pdfWriter.setPageSize(QPageSize(QPageSize::A4));
-        pdfWriter.setPageOrientation(QPageLayout::Portrait);
-        pdfWriter.setPageMargins(QMarginsF(15, 15, 15, 15), QPageLayout::Millimeter);
-        pdfWriter.setResolution(300);
+        if (error) *error = QStringLiteral("Format de page refusé par le générateur PDF.");
+        return false;
+    }
+    writer.setPageMargins(QMarginsF(0, 0, 0, 0), QPageLayout::Millimeter);
+    writer.setResolution(300);
+    writer.setTitle(QStringLiteral("%1 — Note de calcul").arg(c.projectTitle));
+    writer.setCreator(QStringLiteral("%1 v%2").arg(TSA::Product::name(), QString::fromLatin1(TSA::Product::kReportVersion)));
 
-        QTextDocument textDoc;
-        textDoc.setHtml(renderHtml(doc));
-        textDoc.print(&pdfWriter);
-        return true;
-    }
-    catch (const std::exception& e)
+    // Mise en page en unités logiques de 96 ppp, dessinée à 300 ppp : les largeurs du HTML (pixels) gardent leur
+    // taille habituelle et les tableaux occupent toute la largeur utile.
+    constexpr double kLogicalDpi = 96.0;
+    const double scale = writer.resolution() / kLogicalDpi;
+    const QSizeF pageMm = writer.pageLayout().fullRect(QPageLayout::Millimeter).size();
+    const double bandMm = 9.0; // en-tête et pied de page
+    auto px = [&](double mm) { return mm / 25.4 * kLogicalDpi; };
+    const double left = px(c.marginMmLeft), top = px(c.marginMmTop + (c.enableHeader ? bandMm : 0.0));
+    const double width = px(pageMm.width() - c.marginMmLeft - c.marginMmRight);
+    const double height = px(pageMm.height() - c.marginMmTop - c.marginMmBottom - (c.enableHeader ? bandMm : 0.0) - (c.enableFooter ? bandMm : 0.0));
+
+    QString html = renderHtml(doc);
+    const bool hasRefs = html.contains(pageRefPattern());
+    QTextDocument textDoc;
+    textDoc.setDocumentMargin(0);
+    textDoc.setDefaultFont(QFont(c.fontFamily.section(',', 0, 0).trimmed(), c.baseFontSizePt));
+    textDoc.setPageSize(QSizeF(width, height));
+    auto layoutWith = [&](const std::map<QString, int>* pages) {
+        QString h = html;
+        h.replace(pageRefPattern(), QStringLiteral("00"));
+        if (pages)
+        {
+            h = html;
+            QRegularExpressionMatchIterator it = pageRefPattern().globalMatch(html);
+            QString out;
+            qsizetype last = 0;
+            while (it.hasNext())
+            {
+                const auto m = it.next();
+                out += html.mid(last, m.capturedStart() - last);
+                const auto p = pages->find(m.captured(1));
+                out += p != pages->end() ? QString::number(p->second) : QStringLiteral("—");
+                last = m.capturedEnd();
+            }
+            out += html.mid(last);
+            h = out;
+        }
+        textDoc.setHtml(h);
+        textDoc.setPageSize(QSizeF(width, height));
+    };
+    layoutWith(nullptr);
+    if (hasRefs)
     {
-        if (error) *error = QString::fromUtf8(e.what());
+        // Deux passes : numéros de page du sommaire relevés sur la première mise en page
+        const auto pages = anchorPages(textDoc, height);
+        layoutWith(&pages);
+    }
+    const int pageCount = textDoc.pageCount();
+
+    QPainter painter;
+    if (!painter.begin(&writer))
+    {
+        if (error) *error = QStringLiteral("Impossible d'écrire le fichier PDF : %1").arg(filePath);
         return false;
     }
-    catch (...)
+    const QString headerLeft = c.customHeaderText.isEmpty() ? c.projectTitle : QStringLiteral("%1 — %2").arg(c.projectTitle, c.documentNumber);
+    const QString footerLeft = doc.softwareVersion;
+    QFont small(textDoc.defaultFont());
+    small.setPixelSize(10); // unités logiques (96 ppp) du peintre mis à l'échelle
+    for (int i = 0; i < pageCount; ++i)
     {
-        if (error) *error = "Erreur inconnue lors de la génération du PDF.";
-        return false;
+        if (i > 0) writer.newPage();
+        painter.save();
+        painter.scale(scale, scale);
+        painter.save();
+        painter.translate(left, top - i * height);
+        textDoc.drawContents(&painter, QRectF(0, i * height, width, height));
+        painter.restore();
+        painter.setFont(small);
+        painter.setPen(QColor(100, 116, 139));
+        if (c.enableHeader && i > 0)
+        {
+            const double y = px(c.marginMmTop);
+            painter.drawText(QRectF(left, y, width, px(bandMm) - 4), Qt::AlignLeft | Qt::AlignVCenter, headerLeft);
+            painter.drawText(QRectF(left, y, width, px(bandMm) - 4), Qt::AlignRight | Qt::AlignVCenter, c.documentStatus);
+            painter.drawLine(QPointF(left, y + px(bandMm) - 3), QPointF(left + width, y + px(bandMm) - 3));
+        }
+        if (c.enableFooter)
+        {
+            const double y = top + height + 3;
+            painter.drawLine(QPointF(left, y), QPointF(left + width, y));
+            painter.drawText(QRectF(left, y + 2, width, px(bandMm) - 4), Qt::AlignLeft | Qt::AlignVCenter, footerLeft);
+            if (c.enablePagination)
+                painter.drawText(QRectF(left, y + 2, width, px(bandMm) - 4), Qt::AlignRight | Qt::AlignVCenter,
+                                 QStringLiteral("Page %1 / %2").arg(i + 1).arg(pageCount));
+        }
+        painter.restore();
     }
+    painter.end();
+    return true;
 }
 
 } // namespace TSA::NDC

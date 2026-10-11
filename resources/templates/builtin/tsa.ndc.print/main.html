@@ -1,0 +1,43 @@
+{{! Note de calcul imprimable — HTML limité au sous-ensemble rendu par QTextDocument (export PDF de TSA) :
+    tableaux pour la mise en page, ancres <a name>, sauts de page CSS. Les repères [[P:ancre]] du sommaire sont
+    remplacés par les numéros de page à l'export PDF (et effacés à l'export HTML). Données : schéma « tsa-ndc/1 ». }}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{{project.title}}} — Note de calcul</title>
+{{> style}}
+</head>
+<body>
+{{#show.coverPage}}
+{{> cover}}
+{{/show.coverPage}}
+{{#show.toc}}
+{{> toc}}
+{{/show.toc}}
+{{#chapters}}
+<h1 class="chapter"><a name="chap_{{number}}"></a>{{number}}. {{{title}}}</h1>
+{{#sections}}
+{{#title}}
+<h2><a name="sec_{{chapter}}_{{index}}"></a>{{chapter}}.{{index}} {{{title}}}</h2>
+{{/title}}
+{{#paragraphs}}
+<p>{{{.}}}</p>
+{{/paragraphs}}
+{{#hasKeyValues}}
+<table class="kv" width="100%" cellspacing="0" cellpadding="4">
+{{#keyValues}}
+<tr><td class="kv-key" width="42%">{{{key}}}</td><td class="kv-val">{{{value}}}</td></tr>
+{{/keyValues}}
+</table>
+{{/hasKeyValues}}
+{{#tables}}
+{{> table}}
+{{/tables}}
+{{#figures}}
+{{> figure}}
+{{/figures}}
+{{/sections}}
+{{/chapters}}
+</body>
+</html>

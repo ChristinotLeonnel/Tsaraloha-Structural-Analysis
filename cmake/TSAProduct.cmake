@@ -660,6 +660,8 @@ set(NDC_CORE_SOURCES
     ${TSA_ROOT}/src/NDC/NDCExporter.cpp
     ${TSA_ROOT}/src/NDC/NDCTemplateData.h
     ${TSA_ROOT}/src/NDC/NDCTemplateData.cpp
+    ${TSA_ROOT}/src/NDC/NDCProjectNote.h
+    ${TSA_ROOT}/src/NDC/NDCProjectNote.cpp
     ${TSA_ROOT}/src/NDC/ReportManager.h
     ${TSA_ROOT}/src/NDC/ReportManager.cpp
     ${TSA_ROOT}/src/NDC/NDCPlanarCurves.h

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 #include <TopoDS_Shape.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
@@ -41,7 +43,16 @@ public:
     /// signe de l'extrême le plus grand en valeur absolue. Efforts en kN et kN·m (kiloNewtons) ou N et N·m.
     /// Sans module de flexion (câble, treillis), seul N/A est retenu. Ne tient compte ni du cisaillement ni
     /// de la torsion (ce n'est pas une contrainte de Von Mises).
-    static double normalStressMPa(const TSA::Analysis::StationForces& st, double area, double wy, double wz, bool kiloNewtons = true);
+    static double normalStressMPa(const TSA::Analysis::StationForces& st, double area, double wy, double wz, bool kiloNewtons = true)
+    {
+        // En ligne : utilisée aussi par la note de calcul (bibliothèque du modèle, sans la partie graphique)
+        if (area <= 0.0) return 0.0;
+        const double k = kiloNewtons ? 1e-3 : 1e-6; // kN/m² → MPa, ou N/m² → MPa
+        const double axial = st.N / area;
+        const double bending = (wy > 0.0 ? std::abs(st.My) / wy : 0.0) + (wz > 0.0 ? std::abs(st.Mz) / wz : 0.0);
+        const double top = axial + bending, bottom = axial - bending;
+        return (std::abs(top) >= std::abs(bottom) ? top : bottom) * k;
+    }
 
     /**
      * @brief Retourne le nom lisible du diagramme (ex. "Moment Fléchissant Mz").

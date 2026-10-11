@@ -1,0 +1,25 @@
+<h1 class="chapter">Sommaire</h1>
+<table width="100%" cellspacing="0" cellpadding="2">
+{{#chapters}}
+<tr><td><b><a href="#chap_{{number}}">{{number}}. {{{title}}}</a></b></td><td width="40" align="right"><b>[[P:chap_{{number}}]]</b></td></tr>
+{{#tocSections}}
+<tr><td style="padding-left: 18px; color: #475569;"><a href="#sec_{{chapter}}_{{index}}">{{chapter}}.{{index}} {{{title}}}</a></td><td width="40" align="right" style="color: #475569;">[[P:sec_{{chapter}}_{{index}}]]</td></tr>
+{{/tocSections}}
+{{/chapters}}
+</table>
+{{#show.lof}}
+<h2>Liste des figures</h2>
+<table width="100%" cellspacing="0" cellpadding="2">
+{{#allFigures}}
+<tr><td>Figure {{number}} — {{{caption}}}</td><td width="40" align="right">[[P:fig_{{number}}]]</td></tr>
+{{/allFigures}}
+</table>
+{{/show.lof}}
+{{#show.lot}}
+<h2>Liste des tableaux</h2>
+<table width="100%" cellspacing="0" cellpadding="2">
+{{#allTables}}
+<tr><td>Tableau {{number}} — {{{caption}}}</td><td width="40" align="right">[[P:tbl_{{number}}]]</td></tr>
+{{/allTables}}
+</table>
+{{/show.lot}}

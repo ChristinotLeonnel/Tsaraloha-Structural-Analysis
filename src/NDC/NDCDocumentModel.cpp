@@ -179,7 +179,7 @@ QString NDCDocument::toHtml() const
         ts << "    <div class=\"cover-meta-item\"><strong>Projet N° :</strong> " << config.projectNumber << "</div>\n";
         ts << "    <div class=\"cover-meta-item\"><strong>Document N° :</strong> " << config.documentNumber << "</div>\n";
         ts << "    <div class=\"cover-meta-item\"><strong>Indice de Révision :</strong> " << config.revision << "</div>\n";
-        ts << "    <div class=\"cover-meta-item\"><strong>Date d'Émission :</strong> " << config.emissionDate << "</div>\n";
+        ts << "    <div class=\"cover-meta-item\"><strong>Date d'Émission :</strong> " << (config.emissionDate.isEmpty() ? QDate::currentDate().toString("dd/MM/yyyy") : config.emissionDate) << "</div>\n";
         ts << "    <div class=\"cover-meta-item\"><strong>Auteur / Ingénieur :</strong> " << config.engineerName << "</div>\n";
         ts << "    <div class=\"cover-meta-item\"><strong>Bureau d'Études :</strong> " << config.organization << "</div>\n";
         ts << "    <div class=\"cover-meta-item\"><strong>Maître d'Ouvrage :</strong> " << config.clientName << "</div>\n";

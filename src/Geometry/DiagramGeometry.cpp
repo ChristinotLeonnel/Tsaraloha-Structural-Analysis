@@ -63,16 +63,6 @@ QString DiagramGeometry::diagramUnit(DiagramType type, bool useKiloNewtons)
     }
 }
 
-double DiagramGeometry::normalStressMPa(const TSA::Analysis::StationForces& st, double area, double wy, double wz, bool kiloNewtons)
-{
-    if (area <= 0.0) return 0.0;
-    const double k = kiloNewtons ? 1e-3 : 1e-6; // kN/m² → MPa, ou N/m² → MPa
-    const double axial = st.N / area;
-    const double bending = (wy > 0.0 ? std::abs(st.My) / wy : 0.0) + (wz > 0.0 ? std::abs(st.Mz) / wz : 0.0);
-    const double top = axial + bending, bottom = axial - bending;
-    return (std::abs(top) >= std::abs(bottom) ? top : bottom) * k;
-}
-
 double DiagramGeometry::getStationValue(const TSA::Analysis::StationForces& st, DiagramType type)
 {
     switch (type)
