@@ -2164,9 +2164,17 @@ void OccView::setNodeDisplayFilter(NodeDisplayFilter filter)
     emit nodeDisplayFilterChanged(filter);
 }
 
+void OccView::setSurfaceLoadsVisible(bool visible)
+{
+    m_surfaceLoadsVisible = visible;
+    updateSurfaceLoadShapes();
+    if (!m_context.IsNull()) m_context->UpdateCurrentViewer();
+}
+
 void OccView::setLoadsVisible(bool visible)
 {
     m_loadsVisible = visible;
+    updateSurfaceLoadShapes();
     if (!m_context.IsNull())
     {
         for (auto& [id, shapes] : m_nodalLoadShapes)

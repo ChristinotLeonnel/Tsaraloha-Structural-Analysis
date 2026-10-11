@@ -6,14 +6,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 353;
+    int expectedTotal = 358;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo]" << std::endl;
+            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces]" << std::endl;
             return 0;
         }
     }
@@ -199,6 +199,10 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "demo") {
         std::cout << "\n--- [Suite 27/27] Modèles et projets de démonstration ---" << std::endl;
         if (!runSuite_DemoModels(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "surfaces") {
+        std::cout << "\n--- [Suite 28/28] Éléments surfaciques (coques, ouvertures, charges) ---" << std::endl;
+        if (!runSuite_Surfaces(passed)) allOk = false;
     }
 #endif
 

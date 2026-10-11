@@ -239,22 +239,54 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
         writeJsonChunk(payload, CHUNK_MESH, model.meshProjectJson());
     }
     {
-        // Facultatif (format ≥ 1.8) : ouvertures des dalles, dans le repère local de chaque dalle.
-        QJsonObject slabs;
-        for (const auto& [id, slab] : model.slabs())
-        {
-            if (slab.openings().empty()) continue;
+        // Facultatif (format ≥ 1.8) : ouvertures des dalles (1.10 : et des voiles), dans le repère local de chaque surface.
+        auto openingsJson = [](const std::vector<TSA::Model::SlabOpening>& openings) {
             QJsonArray list;
-            for (const auto& o : slab.openings())
+            for (const auto& o : openings)
             {
                 QJsonArray poly;
                 for (const auto& [u, v] : o.polygon) poly.append(QJsonArray { u, v });
                 list.append(QJsonObject { { "name", QString::fromStdString(o.name) }, { "shape", QString::fromStdString(o.shape) }, { "polygon", poly } });
             }
-            slabs.insert(QString::number(id), list);
+            return list;
+        };
+        QJsonObject slabs, walls;
+        for (const auto& [id, slab] : model.slabs())
+            if (!slab.openings().empty()) slabs.insert(QString::number(id), openingsJson(slab.openings()));
+        for (const auto& [id, wall] : model.walls())
+            if (!wall.openings().empty()) walls.insert(QString::number(id), openingsJson(wall.openings()));
+        if (!slabs.isEmpty() || !walls.isEmpty())
+        {
+            QJsonObject root { { "schema", 1 }, { "slabs", slabs } };
+            if (!walls.isEmpty()) root.insert("walls", walls);
+            writeJsonChunk(payload, CHUNK_OPNG, QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString());
         }
-        if (!slabs.isEmpty())
-            writeJsonChunk(payload, CHUNK_OPNG, QJsonDocument(QJsonObject { { "schema", 1 }, { "slabs", slabs } }).toJson(QJsonDocument::Compact).toStdString());
+    }
+    {
+        // Facultatif (format ≥ 1.10) : formulation des surfaces (si différente de « coque ») et charges surfaciques.
+        QJsonObject slabs, walls;
+        for (const auto& [id, s] : model.slabs())
+            if (s.formulation() != TSA::Model::SurfaceFormulation::Shell) slabs.insert(QString::number(id), TSA::Model::surfaceFormulationKey(s.formulation()));
+        for (const auto& [id, w] : model.walls())
+            if (w.formulation() != TSA::Model::SurfaceFormulation::Shell) walls.insert(QString::number(id), TSA::Model::surfaceFormulationKey(w.formulation()));
+        QJsonArray loads;
+        for (const auto& [id, l] : model.loadManager().surfaceLoads())
+            loads.append(QJsonObject { { "id", id },
+                                       { "target", l.targetKind == TSA::Model::SurfaceTargetKind::Slab ? "slab" : "wall" },
+                                       { "surface", l.surfaceId },
+                                       { "case", l.loadCaseId },
+                                       { "name", QString::fromStdString(l.name) },
+                                       { "distribution", l.distribution == TSA::Model::SurfaceLoadDistribution::Point ? "point" : "uniform" },
+                                       { "direction", TSA::Model::surfaceLoadDirectionKey(l.direction) },
+                                       { "value", l.value },
+                                       { "projected", l.projected },
+                                       { "u", l.u },
+                                       { "v", l.v } });
+        if (!slabs.isEmpty() || !walls.isEmpty() || !loads.isEmpty())
+            writeJsonChunk(payload, CHUNK_SURF,
+                           QJsonDocument(QJsonObject { { "schema", 1 }, { "slabFormulations", slabs }, { "wallFormulations", walls }, { "surfaceLoads", loads } })
+                               .toJson(QJsonDocument::Compact)
+                               .toStdString());
     }
     if (!model.dimensions().items.empty() || !(model.dimensions().style == TSA::Annotation::DimensionStyle()))
     {
@@ -733,6 +765,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::string loadedDimensions;
     std::string loadedMesh;
     std::string loadedOpenings;
+    std::string loadedSurfaces;
     std::string loadedVisuals;
     std::string loadedCoordinates, loadedGrids;
     bool hasCoordinates = false, hasGrids = false;
@@ -830,6 +863,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         case CHUNK_OPNG:
             if (chunkBytes && chunkLen > 0) loadedOpenings.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
+        case CHUNK_SURF:
+            // Facultatif (format ≥ 1.10) : sans lui, toutes les surfaces sont des coques et aucune charge surfacique.
+            if (chunkBytes && chunkLen > 0) loadedSurfaces.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
         case CHUNK_MVIS:
             // Facultatif (format ≥ 1.9) : sans lui, chaque élément garde la finition de son matériau de bibliothèque.
             if (chunkBytes && chunkLen > 0) loadedVisuals.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
@@ -853,13 +890,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     snapshot.columns = std::move(loadedColumns);
     if (!loadedOpenings.empty())
     {
-        const QJsonObject slabs = QJsonDocument::fromJson(QByteArray::fromStdString(loadedOpenings)).object().value("slabs").toObject();
-        for (auto it = slabs.begin(); it != slabs.end(); ++it)
-        {
-            auto s = loadedSlabs.find(it.key().toInt());
-            if (s == loadedSlabs.end()) continue;
+        const QJsonObject root = QJsonDocument::fromJson(QByteArray::fromStdString(loadedOpenings)).object();
+        auto readOpenings = [](const QJsonArray& list) {
             std::vector<TSA::Model::SlabOpening> openings;
-            for (const auto& v : it.value().toArray())
+            for (const auto& v : list)
             {
                 const QJsonObject o = v.toObject();
                 TSA::Model::SlabOpening op;
@@ -868,8 +902,26 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
                 for (const auto& p : o.value("polygon").toArray()) op.polygon.emplace_back(p.toArray().at(0).toDouble(), p.toArray().at(1).toDouble());
                 if (op.polygon.size() >= 3) openings.push_back(op);
             }
-            s->second.setOpenings(openings);
-        }
+            return openings;
+        };
+        const QJsonObject slabs = root.value("slabs").toObject(), walls = root.value("walls").toObject();
+        for (auto it = slabs.begin(); it != slabs.end(); ++it)
+            if (auto s = loadedSlabs.find(it.key().toInt()); s != loadedSlabs.end()) s->second.setOpenings(readOpenings(it.value().toArray()));
+        for (auto it = walls.begin(); it != walls.end(); ++it)
+            if (auto w = loadedWalls.find(it.key().toInt()); w != loadedWalls.end()) w->second.setOpenings(readOpenings(it.value().toArray()));
+    }
+    QJsonArray loadedSurfaceLoads;
+    if (!loadedSurfaces.empty())
+    {
+        const QJsonObject root = QJsonDocument::fromJson(QByteArray::fromStdString(loadedSurfaces)).object();
+        const QJsonObject slabs = root.value("slabFormulations").toObject(), walls = root.value("wallFormulations").toObject();
+        for (auto it = slabs.begin(); it != slabs.end(); ++it)
+            if (auto s = loadedSlabs.find(it.key().toInt()); s != loadedSlabs.end())
+                s->second.setFormulation(TSA::Model::surfaceFormulationFromKey(it.value().toString().toStdString()));
+        for (auto it = walls.begin(); it != walls.end(); ++it)
+            if (auto w = loadedWalls.find(it.key().toInt()); w != loadedWalls.end())
+                w->second.setFormulation(TSA::Model::surfaceFormulationFromKey(it.value().toString().toStdString()));
+        loadedSurfaceLoads = root.value("surfaceLoads").toArray();
     }
     if (!loadedVisuals.empty())
     {
@@ -897,6 +949,25 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         // Eurocodes par défaut, comme pour un nouveau projet. Auparavant le modèle chargé se
         // retrouvait sans AUCUN cas de charge (snapshot de charges vide).
         snapshot.loadSnapshot = TSA::Model::LoadManager().createSnapshot();
+    }
+    for (const auto& v : loadedSurfaceLoads)
+    {
+        const QJsonObject o = v.toObject();
+        TSA::Model::SurfaceLoad l;
+        l.id = o.value("id").toInt();
+        l.targetKind = o.value("target").toString() == "wall" ? TSA::Model::SurfaceTargetKind::Wall : TSA::Model::SurfaceTargetKind::Slab;
+        l.surfaceId = o.value("surface").toInt();
+        l.loadCaseId = o.value("case").toInt();
+        l.name = o.value("name").toString().toStdString();
+        l.distribution = o.value("distribution").toString() == "point" ? TSA::Model::SurfaceLoadDistribution::Point : TSA::Model::SurfaceLoadDistribution::Uniform;
+        l.direction = TSA::Model::surfaceLoadDirectionFromKey(o.value("direction").toString().toStdString());
+        l.value = o.value("value").toDouble();
+        l.projected = o.value("projected").toBool();
+        l.u = o.value("u").toDouble();
+        l.v = o.value("v").toDouble();
+        if (l.id <= 0 || snapshot.loadSnapshot.surfaceLoads.count(l.id)) continue;
+        snapshot.loadSnapshot.surfaceLoads[l.id] = l;
+        snapshot.loadSnapshot.nextSurfaceLoadId = std::max(snapshot.loadSnapshot.nextSurfaceLoadId, l.id + 1);
     }
     snapshot.calculationSnapshots = std::move(loadedSnapshots);
     snapshot.definitionReferences = std::move(loadedReferences);

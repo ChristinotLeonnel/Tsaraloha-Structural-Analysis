@@ -400,6 +400,10 @@ public:
 
     // Visibilité et étiquetage 3D des charges (Forces, Moments, Réparties)
     void setLoadsVisible(bool visible);
+    /// Charges surfaciques (dalles, voiles) : zone chargée, sens, valeur, unité, cas et repère ; affichage activable.
+    void setSurfaceLoadsVisible(bool visible);
+    bool surfaceLoadsVisible() const { return m_surfaceLoadsVisible; }
+    void updateSurfaceLoadShapes();
     bool areLoadsVisible() const noexcept { return m_loadsVisible; }
 
     void setForcesVisible(bool visible);
@@ -636,6 +640,8 @@ private:
     /// Caméra modifiée : charges réparties redessinées seulement si le palier de zoom change.
     void updateMemberLoadZoomScale();
     bool m_loadsVisible = true;
+    bool m_surfaceLoadsVisible = true;
+    std::vector<Handle(AIS_InteractiveObject)> m_surfaceLoadShapes;
     bool m_forcesVisible = true;
     bool m_momentsVisible = true;
     bool m_loadValuesVisible = true;

@@ -68,6 +68,19 @@ MeshResultSet ResultsModelMeshAdapter::extract(const FeMesh& mesh) const
                 ++exact;
             }
 
+    // 1 bis. Nœuds des surfaces calculées en coques : valeurs exactes du solveur (même maillage que le calcul).
+    const bool sameMesh = !m_results.surfaceNodeDisplacements().empty() && !m_meshStamp.empty() && m_meshStamp == m_results.surfaceMeshStamp();
+    std::size_t surfaceExact = 0;
+    if (!m_results.surfaceNodeDisplacements().empty() && !sameMesh)
+        set.notes.push_back("maillage affiché différent de celui du calcul : résultats des surfaces non reportés (relancer le calcul)");
+    if (sameMesh)
+        for (const auto& [id, d] : m_results.surfaceNodeDisplacements())
+            if (!u.values.count(id) && id >= 1 && id <= int(mesh.nodes.size()) && std::isfinite(d.ux) && std::isfinite(d.uy) && std::isfinite(d.uz))
+            {
+                u.values[id] = { d.ux, d.uy, d.uz };
+                ++surfaceExact;
+            }
+
     // 2. Nœuds des barres maillées : stations du solveur le long de la barre (repère local → global).
     std::map<std::string, std::vector<int>> memberNodes;
     for (const auto& e : mesh.elements)
@@ -123,13 +136,52 @@ MeshResultSet ResultsModelMeshAdapter::extract(const FeMesh& mesh) const
             ++interpolated;
         }
     }
-    u.method = std::to_string(exact) + " nœud(s) aux valeurs exactes du solveur (nœuds TSA), " + std::to_string(interpolated) +
+    u.method = std::to_string(exact) + " nœud(s) aux valeurs exactes du solveur (nœuds TSA), " + std::to_string(surfaceExact) +
+               " nœud(s) de surfaces aux valeurs exactes du solveur (coques), " + std::to_string(interpolated) +
                " nœud(s) de barres interpolés linéairement entre deux stations du solveur";
     const std::size_t missing = mesh.nodes.size() - u.values.size();
     if (missing > 0)
         set.notes.push_back(std::to_string(missing) + " nœud(s) du maillage sans résultat (surfaces, volumes ou barres non calculés) : "
                                                       "aucune valeur n'est inventée");
     if (!u.values.empty()) set.fields.push_back(std::move(u));
+
+    // 3. Éléments de coque : résultantes par unité de longueur (moyenne des 4 points d'intégration)
+    if (sameMesh && !m_results.shellResults().empty())
+    {
+        const std::string src = meta.solverEngine + (meta.solverVersion.empty() ? std::string() : " " + meta.solverVersion);
+        const char* method = "moyenne des 4 points d'intégration de l'élément, repère local de l'élément (axe x : nœud 1 → nœud 2)";
+        struct Def
+        {
+            const char* name;
+            const char* unit;
+            int comp;   ///< composante, ou −1 / −2 : moment / effort principal de plus grande valeur absolue
+        };
+        const Def defs[] = { { "Moment principal (coque)", "kN·m/m", -1 }, { "Effort principal dans le plan (coque)", "kN/m", -2 }, { "Mxx (coque)", "kN·m/m", 3 },
+                             { "Myy (coque)", "kN·m/m", 4 },              { "Mxy (coque)", "kN·m/m", 5 },                         { "Nxx (coque)", "kN/m", 0 },
+                             { "Nyy (coque)", "kN/m", 1 },                { "Nxy (coque)", "kN/m", 2 },                           { "Vxz (coque)", "kN/m", 6 },
+                             { "Vyz (coque)", "kN/m", 7 } };
+        auto principal = [](double a, double b, double c) {
+            const double m = 0.5 * (a + b), r = std::sqrt(0.25 * (a - b) * (a - b) + c * c);
+            return std::abs(m + r) >= std::abs(m - r) ? m + r : m - r;
+        };
+        for (const auto& d : defs)
+        {
+            MeshResultField f;
+            f.name = d.name;
+            f.unit = d.unit;
+            f.source = src;
+            f.location = FieldLocation::Element;
+            f.method = d.comp < 0 ? std::string("valeur principale de plus grande valeur absolue, indépendante du repère local ; ") + method : method;
+            for (const auto& [eid, r] : m_results.shellResults())
+            {
+                if (eid < 1 || eid > int(mesh.elements.size())) continue;
+                const auto& m = r.mean;
+                const double v = d.comp == -1 ? principal(m[3], m[4], m[5]) : d.comp == -2 ? principal(m[0], m[1], m[2]) : m[std::size_t(d.comp)];
+                if (std::isfinite(v)) f.values[eid] = { v, 0.0, 0.0 };
+            }
+            if (!f.values.empty()) set.fields.push_back(std::move(f));
+        }
+    }
     return set;
 }
 

@@ -1,4 +1,5 @@
 #include "Slab.h"
+#include <algorithm>
 #include "Model.h"
 #include <cmath>
 #include <iomanip>
@@ -32,7 +33,7 @@ std::string Slab::formattedName() const
     return ss.str();
 }
 
-double Slab::area(const Model& model) const
+double Slab::grossArea(const Model& model) const
 {
     if (m_nodeIds.size() < 3) return 0.0;
 
@@ -57,6 +58,25 @@ double Slab::area(const Model& model) const
 void Slab::setMaterialId(int id)
 {
     m_material = Material::findById(id);
+}
+
+double polygonArea(const std::vector<std::pair<double, double>>& poly)
+{
+    double a = 0.0;
+    for (std::size_t i = 0; i < poly.size(); ++i)
+    {
+        const auto& [x1, y1] = poly[i];
+        const auto& [x2, y2] = poly[(i + 1) % poly.size()];
+        a += x1 * y2 - x2 * y1;
+    }
+    return 0.5 * a;
+}
+
+double Slab::area(const Model& model) const
+{
+    double a = grossArea(model);
+    for (const auto& o : m_openings) a -= std::abs(polygonArea(o.polygon));
+    return std::max(0.0, a);
 }
 
 } // namespace TSA::Model

@@ -801,6 +801,15 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
                    .arg(ext.maxDisplacement * 1000.0, 0, 'f', 3).arg(ext.maxDisplacementNodeId)
                    .arg(ext.maxBendingMoment, 0, 'f', 2).arg(ext.maxBendingMomentElementId)
                    .arg(ext.maxTension, 0, 'f', 2).arg(eq.reactionFz, 0, 'f', 2);
+    if (!m_resultsModel->shellResults().empty())
+    {
+        int meshNode = 0;
+        const double ws = m_resultsModel->maxSurfaceDisplacement(&meshNode);
+        summary += tr("\n• Surfaces (coques) : %1 élément(s), déplacement max %2 mm (nœud %3 du maillage)")
+                       .arg(m_resultsModel->shellResults().size())
+                       .arg(ws * 1000.0, 0, 'f', 3)
+                       .arg(meshNode);
+    }
     if (ext.maxTorsionMoment > 1e-9 || ext.maxTwist > 1e-12)
         summary += tr("\n• Torsion max : Mx = %1 kNm (barre #%2), θx = %3 mrad (barre #%4)")
                        .arg(ext.maxTorsionMoment, 0, 'f', 2).arg(ext.maxTorsionMomentElementId)

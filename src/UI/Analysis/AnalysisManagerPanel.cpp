@@ -249,6 +249,15 @@ void AnalysisManagerPanel::updateResultsSummary()
                 .arg(sum.maxDisplacement * 1000.0, 0, 'f', 3).arg(sum.maxDisplacementNodeId)
                 .arg(sum.maxBendingMoment, 0, 'f', 2).arg(QString::fromStdString(r->units().moment))
                 .arg(eq.reactionFz, 0, 'f', 2).arg(QString::fromStdString(r->units().force));
+    if (!r->shellResults().empty())
+    {
+        int meshNode = 0;
+        const double ws = r->maxSurfaceDisplacement(&meshNode);
+        text += tr("<br>Surfaces (coques) : %1 élément(s), déplacement max <b>%2 mm</b> (nœud %3 du maillage)")
+                    .arg(r->shellResults().size())
+                    .arg(ws * 1000.0, 0, 'f', 3)
+                    .arg(meshNode);
+    }
     if (adv.available && adv.hasGlobalStiffness)
         text += tr("<br>Système : %1 équation(s), %2 coefficient(s) non nul(s) de K (dock « Données d'analyse », espace Recherche).")
                     .arg(adv.kGlobal.rows).arg(adv.kGlobal.nonZeros());

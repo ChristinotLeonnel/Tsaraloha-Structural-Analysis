@@ -63,6 +63,9 @@ public:
     const std::vector<int>& allElementTags() const { return m_allElementTags; }       ///< globalForce : 12 valeurs
     const std::vector<int>& basicStiffnessBeamTags() const { return m_kbBeamTags; }   ///< 36 valeurs
     const std::vector<int>& basicStiffnessTrussTags() const { return m_kbTrussTags; } ///< 1 valeur
+    /// Coques : ShellMITC4 (quadrangles) et ShellDKGT (triangles), réponse « stresses » : 4 points × 8 résultantes.
+    const std::vector<int>& shellQuadTags() const { return m_shellQuadTags; }
+    const std::vector<int>& shellTriTags() const { return m_shellTriTags; }
 
     /// Nombre d'équations attendu (DDL non fixés, nœuds structuraux) : estimation a priori
     /// servant à décider l'extraction de K_global ; la valeur exacte vient de nodeDOFs.
@@ -88,6 +91,8 @@ private:
     std::vector<int> m_allElementTags;
     std::vector<int> m_kbBeamTags;
     std::vector<int> m_kbTrussTags;
+    std::vector<int> m_shellQuadTags;
+    std::vector<int> m_shellTriTags;
     int m_estimatedFreeDofs = 0;
 };
 

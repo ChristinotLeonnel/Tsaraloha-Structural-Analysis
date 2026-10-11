@@ -72,6 +72,20 @@ void WallPropertiesView::setupUi()
     connect(m_comboMaterial, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &WallPropertiesView::onWidgetChanged);
     form->addRow(tr("Matériau :"), m_comboMaterial);
 
+    m_comboFormulation = new QComboBox(grp);
+    for (auto f : { TSA::Model::SurfaceFormulation::Shell, TSA::Model::SurfaceFormulation::Plate, TSA::Model::SurfaceFormulation::Membrane,
+                    TSA::Model::SurfaceFormulation::NonStructural })
+        m_comboFormulation->addItem(QString::fromUtf8(TSA::Model::surfaceFormulationName(f)), static_cast<int>(f));
+    m_comboFormulation->setToolTip(tr("Formulation transmise au calcul. OpenSees (TSA) calcule la coque ; plaque et membrane seules sont refusées "
+                                      "avant le calcul (aucune substitution). « Non structurale » : géométrie seulement."));
+    connect(m_comboFormulation, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &WallPropertiesView::onWidgetChanged);
+    form->addRow(tr("Formulation (calcul) :"), m_comboFormulation);
+
+    m_lblSurfaceInfo = new QLabel(grp);
+    m_lblSurfaceInfo->setWordWrap(true);
+    m_lblSurfaceInfo->setStyleSheet("color: #64748B;");
+    form->addRow(tr("Surface :"), m_lblSurfaceInfo);
+
     m_lblNodes = new QLabel(grp);
     m_lblNodes->setStyleSheet("color: #64748B; font-weight: bold;");
     form->addRow(tr("Nœuds de base :"), m_lblNodes);
@@ -131,6 +145,12 @@ void WallPropertiesView::refreshView()
     TSA::UI::ElementColor::showOn(m_btnColor, m_colorHex, wall->material());
     m_colorMaterial = wall->material();
 
+    if (int fi = m_comboFormulation->findData(static_cast<int>(wall->formulation())); fi >= 0) m_comboFormulation->setCurrentIndex(fi);
+    m_lblSurfaceInfo->setText(tr("aire nette %1 m² (brute %2 m²), %3 ouverture(s), %4 charge(s) surfacique(s)")
+                                  .arg(QString::number(wall->area(*m_model), 'f', 2), QString::number(wall->grossArea(*m_model), 'f', 2))
+                                  .arg(wall->openings().size())
+                                  .arg(m_model->loadManager().surfaceLoadsForSurface(TSA::Model::SurfaceTargetKind::Wall, wall->id()).size()));
+
     m_isLoading = false;
 }
 
@@ -173,6 +193,7 @@ void WallPropertiesView::applyChanges()
     }
     wall->setColor(m_colorHex.toStdString());
 
+    wall->setFormulation(static_cast<TSA::Model::SurfaceFormulation>(m_comboFormulation->currentData().toInt()));
     m_model->notifyWallModified(m_wallId);
     emit elementModified();
 }

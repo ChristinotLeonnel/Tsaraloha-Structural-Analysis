@@ -527,6 +527,7 @@ private:
     QAction* m_actionDistLoad = nullptr;
     QAction* m_actionTrapLoad = nullptr;        // charge linéaire (triangulaire / trapézoïdale)
     QAction* m_actionBarPointLoad = nullptr;    // force ponctuelle sur barre
+    QAction* m_actionSurfaceLoadsVisible = nullptr;
     QAction* m_actionSurfaceLoad = nullptr;     // désactivée : non transmise aux moteurs (BUG-002)
     QAction* m_actionSelfWeight = nullptr;      // poids propre : réglé par cas de charge
     QAction* m_actionLoadCases = nullptr;
@@ -602,6 +603,7 @@ private:
     double m_meshAnimPhase = 0.0;
     double m_meshDeformScale = 0.0;          ///< 0 : facteur automatique
     double m_meshAutoScale = 0.0;
+    QString m_meshFieldName = QStringLiteral("Déplacement");   ///< grandeur colorée sur le maillage
     QString m_meshPickText;
     std::vector<bool> m_meshOnlySavedCategories; ///< visibilité de la géométrie avant « maillage seul »
     bool m_meshOnlySavedNodes = true;
@@ -679,6 +681,7 @@ private slots:
     void onActionMeshImport();
     void onActionMeshClear();
     void onActionSlabOpenings();
+    void onActionSurfaceLoads();
     void refreshMeshOverlay();
     void onMeshModelChanged();
     void onActionReportTemplates();

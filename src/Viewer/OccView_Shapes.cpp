@@ -1366,7 +1366,23 @@ void OccView::updateWallShape(int wallId, bool redrawImmediately)
     if (!nodeA || !nodeB)
         return;
 
-    TopoDS_Shape shape = TSA::Geometry::WallGeometry::createWallShape(*nodeA, *nodeB, wall->height(), wall->thickness(), wall->offset());
+    TopoDS_Shape shape;
+    TSA::Mesh::SurfaceGeom contour;
+    if (!wall->openings().empty() && TSA::Mesh::wallSurface(*m_model, *wall, &contour))
+    {
+        // Voile percé : même contour que le maillage de calcul (portes en encoche, fenêtres en trous)
+        auto toPnt = [](const TSA::Mesh::P3& p) { return gp_Pnt(p.x, p.y, p.z); };
+        std::vector<gp_Pnt> outer;
+        for (const auto& p : contour.outer) outer.push_back(toPnt(p));
+        std::vector<std::vector<gp_Pnt>> holes;
+        for (const auto& h : contour.holes)
+        {
+            holes.emplace_back();
+            for (const auto& p : h) holes.back().push_back(toPnt(p));
+        }
+        shape = TSA::Geometry::WallGeometry::createWallShape(outer, holes, gp_Vec(contour.frame.N.x, contour.frame.N.y, contour.frame.N.z), wall->thickness());
+    }
+    if (shape.IsNull()) shape = TSA::Geometry::WallGeometry::createWallShape(*nodeA, *nodeB, wall->height(), wall->thickness(), wall->offset());
     if (!shape.IsNull())
     {
         Handle(AIS_Shape) aisWall = new AIS_Shape(shape);
@@ -2271,6 +2287,7 @@ void OccView::updateAllLoadShapes()
     {
         updateMemberLoadShape(id, false);
     }
+    updateSurfaceLoadShapes();
     // Dernière étape de onModelDiffApplied() et de rebuildAllShapes() : une seule passe
     // d'isolation couvre ainsi les éléments et les charges recréés (no-op hors isolation).
     reapplyIsolationIfActive();
@@ -2283,6 +2300,9 @@ void OccView::updateAllLoadShapes()
 void OccView::clearLoadShapes()
 {
     if (m_context.IsNull()) return;
+    for (auto& o : m_surfaceLoadShapes)
+        if (!o.IsNull()) m_context->Remove(o, false);
+    m_surfaceLoadShapes.clear();
     for (auto& [id, shapes] : m_nodalLoadShapes)
     {
         for (auto& s : shapes)
@@ -2513,3 +2533,142 @@ void OccView::setSupportLabelsVisible(bool visible)
 
 
 
+
+void OccView::updateSurfaceLoadShapes()
+{
+    if (m_context.IsNull()) return;
+    for (auto& o : m_surfaceLoadShapes)
+        if (!o.IsNull()) m_context->Remove(o, false);
+    m_surfaceLoadShapes.clear();
+    if (!m_model || !m_loadsVisible || !m_surfaceLoadsVisible || m_model->loadManager().surfaceLoads().empty()) return;
+
+    // Géométrie des surfaces identique à celle du maillage (contours, ouvertures, repères locaux)
+    const auto geo = TSA::Mesh::MeshGeometry::extract(*m_model);
+    const double L = memberLoadArrowLength();
+    const Quantity_Color color = m_isDarkMode ? Quantity_Color(1.0, 0.62, 0.18, Quantity_TOC_RGB) : Quantity_Color(0.85, 0.42, 0.0, Quantity_TOC_RGB);
+    auto toPnt = [](const TSA::Mesh::P3& p) { return gp_Pnt(p.x, p.y, p.z); };
+    for (const auto& [id, l] : m_model->loadManager().surfaceLoads())
+    {
+        const auto* sg = geo.surface(l.surfaceRef());
+        if (!sg) continue;
+        gp_Vec dir;
+        QString dirName;
+        switch (l.direction)
+        {
+        case TSA::Model::SurfaceLoadDirection::GlobalX: dir = gp_Vec(1, 0, 0), dirName = tr("X global"); break;
+        case TSA::Model::SurfaceLoadDirection::GlobalY: dir = gp_Vec(0, 1, 0), dirName = tr("Y global"); break;
+        case TSA::Model::SurfaceLoadDirection::GlobalZ: dir = gp_Vec(0, 0, 1), dirName = tr("Z global"); break;
+        case TSA::Model::SurfaceLoadDirection::LocalNormal: dir = gp_Vec(-sg->frame.N.x, -sg->frame.N.y, -sg->frame.N.z), dirName = tr("normale locale"); break;
+        default: dir = gp_Vec(0, 0, -1), dirName = tr("gravité"); break;
+        }
+        if (l.value < 0) dir.Reverse();
+        dir.Normalize();
+        const bool point = l.distribution == TSA::Model::SurfaceLoadDistribution::Point;
+        gp_Pnt labelAt;
+        if (point)
+        {
+            const gp_Pnt P = toPnt(sg->frame.toGlobal(l.u, l.v));
+            TopoDS_Shape arrow = makeArrowShape(P, dir, 1.4 * L, 0.035 * L, 0.11 * L, 0.3 * L);
+            if (!arrow.IsNull())
+            {
+                Handle(AIS_Shape) ais = new AIS_Shape(arrow);
+                ais->SetColor(color);
+                ais->SetMaterial(Graphic3d_NOM_PLASTIC);
+                ais->SetDisplayMode(AIS_Shaded);
+                m_context->Display(ais, false);
+                m_context->Deactivate(ais);
+                m_surfaceLoadShapes.push_back(ais);
+            }
+            labelAt = P.Translated(-dir * (1.55 * L));
+        }
+        else
+        {
+            // Grille de flèches sur la surface nette (ouvertures exclues), contour de la zone chargée décalé de L
+            std::vector<std::pair<double, double>> outer;
+            std::vector<std::vector<std::pair<double, double>>> holes;
+            double u0 = 1e30, u1 = -1e30, v0 = 1e30, v1 = -1e30;
+            for (const auto& p : sg->outer)
+            {
+                double u = 0, v = 0;
+                sg->frame.toLocal(p, &u, &v);
+                outer.emplace_back(u, v);
+                u0 = std::min(u0, u), u1 = std::max(u1, u), v0 = std::min(v0, v), v1 = std::max(v1, v);
+            }
+            for (const auto& h : sg->holes)
+            {
+                holes.emplace_back();
+                for (const auto& p : h)
+                {
+                    double u = 0, v = 0;
+                    sg->frame.toLocal(p, &u, &v);
+                    holes.back().emplace_back(u, v);
+                }
+            }
+            const double step = std::max({ 0.9 * L, (u1 - u0) / 14.0, (v1 - v0) / 14.0, 1e-3 });
+            BRep_Builder bb;
+            TopoDS_Compound comp;
+            bb.MakeCompound(comp);
+            bool any = false;
+            auto addEdge = [&](const gp_Pnt& a, const gp_Pnt& b) {
+                if (a.Distance(b) < 1e-9) return;
+                BRepBuilderAPI_MakeEdge e(a, b);
+                if (e.IsDone()) bb.Add(comp, e.Edge()), any = true;
+            };
+            gp_Vec side(sg->frame.U.x, sg->frame.U.y, sg->frame.U.z);
+            if (std::abs(side.Dot(dir)) > 0.9) side = gp_Vec(sg->frame.V.x, sg->frame.V.y, sg->frame.V.z);
+            side = (side - dir * side.Dot(dir)).Normalized();
+            double cu = 0, cv = 0;
+            int count = 0;
+            for (double u = u0 + 0.5 * step; u < u1; u += step)
+                for (double v = v0 + 0.5 * step; v < v1; v += step)
+                {
+                    if (!TSA::Mesh::pointInPolygon(u, v, outer)) continue;
+                    bool inHole = false;
+                    for (const auto& h : holes) inHole |= TSA::Mesh::pointInPolygon(u, v, h);
+                    if (inHole) continue;
+                    const gp_Pnt tip = toPnt(sg->frame.toGlobal(u, v));
+                    const gp_Pnt tail = tip.Translated(-dir * L);
+                    addEdge(tail, tip);
+                    const gp_Pnt back = tip.Translated(-dir * (0.22 * L));
+                    addEdge(tip, back.Translated(side * (0.09 * L)));
+                    addEdge(tip, back.Translated(-side * (0.09 * L)));
+                    cu += u, cv += v, ++count;
+                }
+            auto ring = [&](const std::vector<TSA::Mesh::P3>& poly) {
+                for (std::size_t i = 0; i < poly.size(); ++i)
+                    addEdge(toPnt(poly[i]).Translated(-dir * L), toPnt(poly[(i + 1) % poly.size()]).Translated(-dir * L));
+            };
+            ring(sg->outer);
+            for (const auto& h : sg->holes) ring(h);
+            if (any)
+            {
+                Handle(AIS_Shape) ais = new AIS_Shape(comp);
+                ais->SetColor(color);
+                ais->SetWidth(1.5);
+                ais->SetDisplayMode(AIS_WireFrame);
+                m_context->Display(ais, false);
+                m_context->Deactivate(ais);
+                m_surfaceLoadShapes.push_back(ais);
+            }
+            labelAt = count ? toPnt(sg->frame.toGlobal(cu / count, cv / count)).Translated(-dir * (1.15 * L)) : toPnt(sg->outer.front());
+        }
+        if (m_loadValuesVisible)
+        {
+            const auto* lc = m_model->loadManager().getLoadCase(l.loadCaseId);
+            const QString text = QStringLiteral("%1 = %2 %3 [%4, %5]")
+                                     .arg(point ? QStringLiteral("P") : QStringLiteral("q"), QString::number(std::abs(l.value), 'f', 2),
+                                          point ? QStringLiteral("kN") : QStringLiteral("kN/m²"), lc ? QString::fromStdString(lc->name()) : QString::number(l.loadCaseId),
+                                          dirName);
+            Handle(AIS_TextLabel) label = new AIS_TextLabel();
+            label->SetText(TCollection_ExtendedString(text.toUtf8().constData(), true));
+            label->SetPosition(labelAt);
+            label->SetColor(color);
+            label->SetHJustification(Graphic3d_HTA_CENTER);
+            label->SetHeight(12.0);
+            label->SetFontAspect(Font_FA_Bold);
+            m_context->Display(label, false);
+            m_context->Deactivate(label);
+            m_surfaceLoadShapes.push_back(label);
+        }
+    }
+}

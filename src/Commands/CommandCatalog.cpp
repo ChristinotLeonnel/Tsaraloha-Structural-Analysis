@@ -376,6 +376,8 @@ void CommandCatalog::initializeStandardCatalog() {
                    "", CommandCategory::Display});
   registerCommand({"cmd.display.loads", "Afficher les charges", "Afficher ou masquer les charges 3D", "Ctrl+Shift+L",
                    "", CommandCategory::Display});
+  registerCommand({"cmd.display.surface_loads", "Afficher les charges surfaciques", "Afficher ou masquer les charges des dalles et voiles", "",
+                   "", CommandCategory::Display});
   registerCommand({"cmd.display.forces", "Afficher les forces", "Afficher ou masquer les forces", "",
                    "", CommandCategory::Display});
   registerCommand({"cmd.display.moments", "Afficher les moments", "Afficher ou masquer les moments", "",

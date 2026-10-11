@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../Model/SurfaceFormulation.h"
+
 // Géométrie maillable extraite du modèle TSA : barres (1D), surfaces (dalles avec ouvertures, voiles :
 // 2D), volumes (semelles : parallélépipèdes, 3D), points caractéristiques (appuis, charges ponctuelles,
 // changements de section, connexions) et empreinte servant à détecter un maillage obsolète.
@@ -13,6 +15,7 @@ namespace TSA::Model
 {
 class Model;
 class Slab;
+class Wall;
 }
 
 namespace TSA::Mesh
@@ -73,6 +76,7 @@ struct SurfaceGeom
     double area = 0;
     std::string material;
     double thickness = 0;
+    TSA::Model::SurfaceFormulation formulation = TSA::Model::SurfaceFormulation::Shell;
 };
 
 struct VolumeGeom
@@ -122,6 +126,15 @@ std::vector<std::vector<P3>> slabOpenings3D(const TSA::Model::Model& model, cons
 /// Vérifie qu'une ouverture est contenue dans la dalle et ne recoupe pas les autres ; message vide = valide.
 std::string validateSlabOpening(const TSA::Model::Model& model, const TSA::Model::Slab& slab, const std::vector<std::pair<double, double>>& polygon,
                                 int ignoreIndex = -1);
+
+/// Ouverture d'un voile (repère local : u le long du voile depuis le nœud de départ, v vers le haut) : contenue dans le
+/// rectangle du voile, sans recouper le contour ni les autres ouvertures ; message vide = valide.
+std::string validateWallOpening(const TSA::Model::Model& model, const TSA::Model::Wall& wall, const std::vector<std::pair<double, double>>& polygon,
+                                int ignoreIndex = -1);
+
+/// Surface médiane d'un voile (pied décalé de offset, hauteur selon +Z) : portes posées au pied en encoches du contour,
+/// autres ouvertures en trous. Partagée par le maillage et la vue 3D (même géométrie affichée et calculée).
+bool wallSurface(const TSA::Model::Model& model, const TSA::Model::Wall& wall, SurfaceGeom* out);
 
 /// Point dans un polygone 2D (règle pair-impair).
 bool pointInPolygon(double u, double v, const std::vector<std::pair<double, double>>& poly);

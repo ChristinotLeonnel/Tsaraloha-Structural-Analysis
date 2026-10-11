@@ -18,6 +18,7 @@
 #include "../Model/Load/LoadCase.h"
 #include "../Model/Load/LoadCombination.h"
 #include "AnalysisTypes.h"
+#include "SurfaceAnalysisModel.h"
 #include "../Model/SelectionQuery.h"
 
 #include <array>
@@ -103,6 +104,35 @@ struct SnapshotElement
 
 /// Correspondance d'une barre subdivisée selon le maillage (docs/MESH.md §J) : sous-éléments transmis au
 /// moteur (identifiants >= kSubElementIdBase, même famille) et nœuds intermédiaires (absents du modèle TSA).
+/// Élément de coque figé (dalle ou voile maillé) : 3 ou 4 nœuds du snapshot.
+struct SnapshotShell
+{
+    int tag = 0;                ///< tag OpenSees, au-delà des tags des barres
+    int meshElement = 0;        ///< élément du maillage du projet
+    std::string source;         ///< SL2, W5
+    std::vector<int> nodes;
+    double thickness = 0.0;
+    TSA::Model::Material material;
+};
+
+/// Force nodale (kN, repère global) d'une charge surfacique (loadCaseId > 0) ou du poids propre des surfaces (0).
+struct SnapshotNodalForce
+{
+    int nodeId = 0;
+    int loadCaseId = 0;
+    double fx = 0, fy = 0, fz = 0;
+    std::string label;
+};
+
+/// Correspondance nœuds du maillage → nœuds du snapshot (nœud TSA, nœud de subdivision d'une barre, ou nœud propre
+/// à la surface, à retirer des résultats nodaux de TSA).
+struct SurfaceNodeMap
+{
+    std::map<int, int> meshToNode;
+    std::set<int> surfaceOnlyNodes;
+    bool empty() const { return meshToNode.empty(); }
+};
+
 struct SubdivisionMap
 {
     static constexpr int kSubElementIdBase = 1000000000;
@@ -167,6 +197,18 @@ public:
     const std::vector<std::string>& restraintWarnings() const { return m_restraintWarnings; }
     SupportRestraintMode supportRestraintMode() const { return m_supportRestraintMode; }
 
+    /**
+     * @brief Snapshot complété par les éléments surfaciques (coques) : chaque nœud du maillage est rattaché au nœud
+     * TSA qu'il représente, sinon au nœud du snapshot situé au même point (nœud de subdivision d'une barre : maillage
+     * conforme, l'arête commune est une seule courbe du mailleur), sinon devient un nœud libre. Seule la formulation
+     * coque est acceptée (membrane et plaque seules : *error). Forces des charges surfaciques et du poids propre
+     * reportées sur les nœuds correspondants.
+     */
+    static CalculationSnapshot withSurfaces(const CalculationSnapshot& source, const SurfaceAnalysisModel& surfaces, SurfaceNodeMap* map,
+                                            std::vector<std::string>* notes, std::string* error);
+
+    const std::vector<SnapshotShell>& shells() const { return m_shells; }
+    const std::vector<SnapshotNodalForce>& surfaceForces() const { return m_surfaceForces; }
     const SnapshotNode* getNode(int id) const;
     /// Élément par tag OpenSees (clé de elements()).
     const SnapshotElement* getElementByTag(int tag) const;
@@ -199,6 +241,8 @@ private:
     std::vector<TSA::Model::MemberLoad> m_memberLoads;
     std::map<int, TSA::Model::LoadCase> m_loadCases;
     std::map<int, TSA::Model::LoadCombination> m_combinations;
+    std::vector<SnapshotShell> m_shells;
+    std::vector<SnapshotNodalForce> m_surfaceForces;
 };
 
 } // namespace TSA::Analysis

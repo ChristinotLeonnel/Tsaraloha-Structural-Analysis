@@ -205,6 +205,7 @@ cmd.display.node_labels             |                       | on   |            
 cmd.display.nodes                   |                       | on   |                       | Afficher les nœuds — Afficher ou masquer les nœuds
 cmd.display.support_labels          |                       | on   |                       | Afficher les étiquettes d'appuis — Afficher ou masquer les étiquettes d'appuis
 cmd.display.supports                |                       | on   |                       | Afficher les appuis — Afficher ou masquer les symboles d'appuis
+cmd.display.surface_loads           |                       | on   |                       | Afficher les charges surfaciques — Afficher ou masquer les charges des dalles et voiles
 
 [Propriétés]
 # identifiant                       | raccourci(s)          | état | par défaut            | description

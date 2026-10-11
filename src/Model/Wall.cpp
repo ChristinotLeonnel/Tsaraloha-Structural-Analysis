@@ -1,4 +1,5 @@
 #include "Wall.h"
+#include <algorithm>
 #include "Model.h"
 #include <cmath>
 #include <iomanip>
@@ -45,9 +46,16 @@ double Wall::length(const Model& model) const
     return std::sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-double Wall::area(const Model& model) const
+double Wall::grossArea(const Model& model) const
 {
     return length(model) * m_height;
+}
+
+double Wall::area(const Model& model) const
+{
+    double a = grossArea(model);
+    for (const auto& o : m_openings) a -= std::abs(polygonArea(o.polygon));
+    return std::max(0.0, a);
 }
 
 void Wall::setMaterialId(int id)

@@ -8,6 +8,7 @@
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepPrimAPI_MakePrism.hxx>
+#include <TopoDS_Wire.hxx>
 #include <cmath>
 
 namespace TSA::Geometry
@@ -65,6 +66,35 @@ TopoDS_Shape WallGeometry::createWallShape(
         return TopoDS_Shape();
 
     return prism.Shape();
+}
+
+TopoDS_Shape WallGeometry::createWallShape(const std::vector<gp_Pnt>& outer, const std::vector<std::vector<gp_Pnt>>& holes, const gp_Vec& normal, double thickness)
+{
+    if (outer.size() < 3 || normal.Magnitude() < 1e-12 || thickness <= 0) return TopoDS_Shape();
+    const gp_Vec n = normal.Normalized();
+    const gp_Vec shift = n * (-0.5 * thickness);
+    auto wire = [&](const std::vector<gp_Pnt>& pts) {
+        BRepBuilderAPI_MakePolygon poly;
+        for (const auto& p : pts) poly.Add(p.Translated(shift));
+        poly.Close();
+        return poly;
+    };
+    auto outerPoly = wire(outer);
+    if (!outerPoly.IsDone()) return TopoDS_Shape();
+    BRepBuilderAPI_MakeFace face(outerPoly.Wire(), Standard_True);
+    if (!face.IsDone()) return TopoDS_Shape();
+    for (const auto& h : holes)
+    {
+        if (h.size() < 3) continue;
+        auto hp = wire(h);
+        if (!hp.IsDone()) continue;
+        TopoDS_Wire w = hp.Wire();
+        w.Reverse();   // trou : orientation opposée au contour extérieur
+        face.Add(w);
+    }
+    if (!face.IsDone()) return TopoDS_Shape();
+    BRepPrimAPI_MakePrism prism(face.Face(), n * thickness);
+    return prism.IsDone() ? prism.Shape() : TopoDS_Shape();
 }
 
 } // namespace TSA::Geometry

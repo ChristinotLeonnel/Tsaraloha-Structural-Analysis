@@ -37,7 +37,7 @@ tension est contrôlée a posteriori (tous tendus sous ELU : 1 108 à 3 850 kN, 
 
 Hypothèses communes : analyse statique linéaire (OpenSees 3.8.0), sans second ordre ni analyse modale ; dalles, voiles
 et semelles modélisés pour la géométrie et le rendu mais **non transmis au calcul** (leurs charges sont reportées sur les
-poutres) ; finitions d'aspect (béton coffré, acier peint, câble…) sans effet sur le calcul.
+poutres) ; ces surfaces sont déclarées « non structurales » pour qu'un calcul avec maillage ne compte pas une seconde fois leur poids et leurs charges (passer en « coque » et retirer les charges linéiques équivalentes pour les calculer, docs/SURFACES.md) ; finitions d'aspect (béton coffré, acier peint, câble…) sans effet sur le calcul.
 
 Contrôles de la suite (à chaque génération) : topologie (doublons, longueurs nulles, nœuds isolés ou non connectés,
 structure d'un seul tenant), Σ réactions = Σ q·L sous Q seul, équilibre ELU, contrainte σ = N/A ± M/W (contrôle
@@ -46,6 +46,13 @@ tensions), recalcul identique du projet relu, notes de calcul PDF.
 
 Notes de calcul : `notes/<projet>_note_simplifiee.pdf` et `notes/<projet>_note_detaillee.pdf` (18 chapitres), produites
 par le module NDC à partir des résultats ELU.
+
+## Dalle calculée en coques (test 356)
+
+`TSA_Exemple_Dalle_Coques.tsa` : dalle de 6 × 4 m (e = 20 cm) sur quatre poutres et quatre poteaux en béton armé, charge
+surfacique de 5 kN/m² (cas G, avec poids propre) et maillage enregistré (quadrangles de 0,5 m). Au calcul (F5), la dalle est
+transmise en coques OpenSees (96 ShellMITC4) : Σ réactions = 373,1 kN (charge, poids propre des barres et de la dalle),
+déplacement maximal de la dalle 1,58 mm. Voir docs/SURFACES.md.
 
 ## Trois modèles filaires (tests 347 à 349)
 

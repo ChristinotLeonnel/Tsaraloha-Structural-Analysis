@@ -108,6 +108,8 @@ struct AnalysisParameters
     std::string forceOutputFile = "ele_forces.out";          ///< poutres/poteaux : localForce (12)
     std::string axialOutputFile = "ele_axial.out";           ///< treillis/câbles : basicForce (1)
     std::string globalForceOutputFile = "ele_global.out";    ///< Advanced : globalForce (12)
+    std::string shellQuadOutputFile = "shell_quad.out";      ///< ShellMITC4 : stresses (4 × 8)
+    std::string shellTriOutputFile = "shell_tri.out";        ///< ShellDKGT : stresses (4 × 8)
     std::string basicForceOutputFile = "ele_basic.out";      ///< Advanced : poutres basicForce (6)
 
     // Passage « matrices » (Advanced, script séparé, état de référence non déformé)

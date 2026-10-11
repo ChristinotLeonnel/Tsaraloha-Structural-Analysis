@@ -118,6 +118,8 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.cpp
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/SurfaceLoadsDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/SurfaceLoadsDialog.cpp
     ${TSA_ROOT}/src/UI/HelpLauncher.h
     ${TSA_ROOT}/src/UI/HelpLauncher.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridDialog.h
@@ -1007,9 +1009,11 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_templates.cpp
     ${TSA_ROOT}/tests/test_deployment.cpp
     ${TSA_ROOT}/tests/test_mesh.cpp
+    ${TSA_ROOT}/tests/test_surfaces.cpp
     ${TSA_ROOT}/tests/test_torsion.cpp
     ${TSA_ROOT}/tests/test_meshview.cpp
     ${TSA_ROOT}/tests/test_demo_models.cpp
+    ${TSA_ROOT}/tests/test_surfaces.cpp
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )

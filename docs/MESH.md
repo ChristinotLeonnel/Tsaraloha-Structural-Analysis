@@ -177,7 +177,7 @@ Les éléments non pris en charge sont listés avec une stratégie compatible. *
 | line2 d'une poutre ou d'un poteau | **sous-éléments `elasticBeamColumn`**, avec l'orientation et la transformation de la barre et les relâchements aux seules extrémités |
 | line2 d'un treillis ou d'un câble | un seul élément par barre : une chaîne articulée subdivisée serait un mécanisme |
 | line3 | aucune : régénérer au premier ordre |
-| tri3, quad4 (dalles, voiles) | **non transmis** : `ShellDKGT` et `ShellMITC4` existent dans OpenSees, mais l'adaptateur TSA ne transmet pas encore les coques. Les dalles et voiles restent exclus du calcul, avec un avertissement (comportement actuel) |
+| tri3, quad4 (dalles, voiles) | **coques** `ShellDKGT` / `ShellMITC4` (formulation « coque » ; plaque et membrane seules refusées), section `ElasticMembranePlateSection`, nœuds partagés avec les barres — voir `docs/SURFACES.md` |
 | tri6, quad8 | aucune coque OpenSees équivalente (`ShellMITC9` exige 9 nœuds) |
 | tet4, tet10, hex8, hex20 | éléments de volume OpenSees à 3 DDL, incompatibles avec le modèle à 6 DDL de TSA : non transmis, les appuis aux nœuds restent appliqués |
 
@@ -209,8 +209,7 @@ La résultante et le moment par rapport à l'origine sont **contrôlés** contre
 son centre. Un écart, une surface non maillée ou un élément non pris en charge empêche la conversion, qui est
 signalée.
 
-Le modèle TSA n'a pas encore d'objet « charge surfacique » transmis au calcul, et les coques ne sont pas transmises
-à OpenSees. Ce service fournit les charges nodales équivalentes (test 298), mais aucune n'est appliquée au calcul
+Les charges surfaciques du modèle (`SurfaceLoad`, uniformes ou ponctuelles) et le poids propre des coques sont convertis par ce service au lancement du calcul, puis appliqués aux nœuds des coques (`docs/SURFACES.md`, tests 355 et 356). Une charge ponctuelle est répartie par les fonctions de forme de l'élément qui contient le point (`distributeSurfacePointLoad`).
 aujourd'hui.
 
 ## 9. Enregistrement et reproductibilité

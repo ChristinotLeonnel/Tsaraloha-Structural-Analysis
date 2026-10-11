@@ -84,6 +84,9 @@ void ResultsModel::clear()
     m_finalDisplacements.clear();
     m_finalReactions.clear();
     m_finalElementResults.clear();
+    m_shellResults.clear();
+    m_surfaceNodeDisplacements.clear();
+    m_surfaceMeshStamp.clear();
     m_advanced = AdvancedResults{};
     m_availability = ResultAvailability{};
     m_engineTables.clear();
@@ -412,6 +415,39 @@ void ResultsModel::mergeSubdivisions(const std::map<ElementKey, std::vector<std:
         }
     if (!m_solverMesh.empty()) m_solverMesh.description += " ; barres subdivisées selon le maillage TSA";
     computeSummary();
+}
+
+void ResultsModel::attachSurfaceResults(const std::map<int, int>& meshToNode, const std::set<int>& surfaceOnly)
+{
+    m_surfaceNodeDisplacements.clear();
+    for (const auto& [mesh, node] : meshToNode)
+        if (const auto* d = getNodeDisplacement(node)) m_surfaceNodeDisplacements[mesh] = *d;
+    for (int id : surfaceOnly)
+    {
+        m_displacements.erase(id);
+        m_finalDisplacements.erase(id);
+        m_reactions.erase(id);
+        m_finalReactions.erase(id);
+        for (auto& st : m_stepResults)
+        {
+            st.displacements.erase(id);
+            st.reactions.erase(id);
+        }
+    }
+    // Synthèse recalculée sur les seuls nœuds TSA (le maximum des surfaces est donné par maxSurfaceDisplacement)
+    if (!surfaceOnly.empty()) computeSummary();
+}
+
+double ResultsModel::maxSurfaceDisplacement(int* meshNode) const
+{
+    double best = 0.0;
+    for (const auto& [id, d] : m_surfaceNodeDisplacements)
+        if (d.translationMagnitude() > best)
+        {
+            best = d.translationMagnitude();
+            if (meshNode) *meshNode = id;
+        }
+    return best;
 }
 
 } // namespace TSA::Analysis

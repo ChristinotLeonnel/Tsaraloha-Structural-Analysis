@@ -76,13 +76,16 @@ class SlabOpeningsDialog : public QDialog
     Q_OBJECT
 
 public:
-    SlabOpeningsDialog(const TSA::Model::Model& model, int slabId, QWidget* parent = nullptr);
+    /// Ouvertures d'une dalle (trémies) ou, si wall, d'un voile (portes posées au pied, fenêtres, réservations).
+    SlabOpeningsDialog(const TSA::Model::Model& model, int surfaceId, QWidget* parent = nullptr, bool wall = false);
     std::vector<TSA::Model::SlabOpening> openings() const { return m_openings; }
 
 private:
     void fill();
+    std::string validate(const std::vector<std::pair<double, double>>& polygon) const;
     const TSA::Model::Model& m_model;
     int m_slabId;
+    bool m_wall = false;
     std::vector<TSA::Model::SlabOpening> m_openings;
     QTableWidget* m_table = nullptr;
 };

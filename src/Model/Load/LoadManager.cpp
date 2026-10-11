@@ -19,6 +19,8 @@ void LoadManager::clear()
     m_memberLoads.clear();
     m_loadCases.clear();
     m_combinations.clear();
+    m_surfaceLoads.clear();
+    m_nextSurfaceLoadId = 1;
     m_nextNodalLoadId = 1;
     m_nextMemberLoadId = 1;
     m_nextLoadCaseId = 1;
@@ -103,6 +105,8 @@ bool LoadManager::removeLoadCase(int id)
         else
             ++lit;
     }
+    for (auto sit = m_surfaceLoads.begin(); sit != m_surfaceLoads.end();)
+        sit = sit->second.loadCaseId == id ? m_surfaceLoads.erase(sit) : std::next(sit);
     for (auto mit = m_memberLoads.begin(); mit != m_memberLoads.end(); )
     {
         if (mit->second.loadCaseId() == id)
@@ -492,6 +496,8 @@ LoadManager::LoadSnapshot LoadManager::createSnapshot() const
     snap.memberLoads = m_memberLoads;
     snap.loadCases = m_loadCases;
     snap.combinations = m_combinations;
+    snap.surfaceLoads = m_surfaceLoads;
+    snap.nextSurfaceLoadId = m_nextSurfaceLoadId;
     snap.nextNodalLoadId = m_nextNodalLoadId;
     snap.nextMemberLoadId = m_nextMemberLoadId;
     snap.nextLoadCaseId = m_nextLoadCaseId;
@@ -506,11 +512,74 @@ void LoadManager::applySnapshot(const LoadManager::LoadSnapshot& snap)
     m_memberLoads = snap.memberLoads;
     m_loadCases = snap.loadCases;
     m_combinations = snap.combinations;
+    m_surfaceLoads = snap.surfaceLoads;
+    m_nextSurfaceLoadId = snap.nextSurfaceLoadId;
     m_nextNodalLoadId = snap.nextNodalLoadId;
     m_nextMemberLoadId = snap.nextMemberLoadId;
     m_nextLoadCaseId = snap.nextLoadCaseId;
     m_nextCombinationId = snap.nextCombinationId;
     m_activeLoadCaseId = snap.activeLoadCaseId;
+}
+
+// --- Charges surfaciques ---------------------------------------------------------------------------------------
+
+int LoadManager::addSurfaceLoad(const SurfaceLoad& load)
+{
+    int id = m_nextSurfaceLoadId++;
+    while (m_surfaceLoads.count(id)) id = m_nextSurfaceLoadId++;
+    SurfaceLoad l = load;
+    l.id = id;
+    if (l.loadCaseId <= 0) l.loadCaseId = m_activeLoadCaseId;
+    m_surfaceLoads[id] = l;
+    return id;
+}
+
+bool LoadManager::addSurfaceLoadWithId(int id, const SurfaceLoad& load)
+{
+    if (id <= 0 || m_surfaceLoads.count(id)) return false;
+    SurfaceLoad l = load;
+    l.id = id;
+    m_surfaceLoads[id] = l;
+    m_nextSurfaceLoadId = std::max(m_nextSurfaceLoadId, id + 1);
+    return true;
+}
+
+bool LoadManager::removeSurfaceLoad(int id) { return m_surfaceLoads.erase(id) > 0; }
+
+SurfaceLoad* LoadManager::getSurfaceLoad(int id)
+{
+    auto it = m_surfaceLoads.find(id);
+    return it != m_surfaceLoads.end() ? &it->second : nullptr;
+}
+
+const SurfaceLoad* LoadManager::getSurfaceLoad(int id) const
+{
+    auto it = m_surfaceLoads.find(id);
+    return it != m_surfaceLoads.end() ? &it->second : nullptr;
+}
+
+std::vector<SurfaceLoad> LoadManager::surfaceLoadsForSurface(SurfaceTargetKind kind, int surfaceId) const
+{
+    std::vector<SurfaceLoad> out;
+    for (const auto& [id, l] : m_surfaceLoads)
+        if (l.targetKind == kind && l.surfaceId == surfaceId) out.push_back(l);
+    return out;
+}
+
+std::vector<int> LoadManager::removeSurfaceLoadsForSurface(SurfaceTargetKind kind, int surfaceId)
+{
+    std::vector<int> removed;
+    for (auto it = m_surfaceLoads.begin(); it != m_surfaceLoads.end();)
+    {
+        if (it->second.targetKind == kind && it->second.surfaceId == surfaceId)
+        {
+            removed.push_back(it->first);
+            it = m_surfaceLoads.erase(it);
+        }
+        else
+            ++it;
+    }
+    return removed;
 }
 
 } // namespace TSA::Model

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "AnalysisTypes.h"
 #include "SolverMesh.h"
 
@@ -112,6 +114,20 @@ struct StepResults
     std::map<int, NodeDisplacement> displacements;
     std::map<int, NodeReaction> reactions;
     std::map<ElementKey, ElementResults> elementResults;
+};
+
+/**
+ * @brief Résultats d'un élément de coque (dalle, voile) : résultantes par unité de longueur aux points
+ * d'intégration, repère local de l'élément, unités du calcul (kN/m, kN·m/m).
+ * Composantes : 0 Nxx, 1 Nyy, 2 Nxy, 3 Mxx, 4 Myy, 5 Mxy, 6 Vxz, 7 Vyz.
+ */
+struct ShellElementResult
+{
+    int tag = 0;
+    int meshElement = 0;
+    std::string source;                         ///< SL2, W5
+    std::vector<std::array<double, 8>> gauss;   ///< un jeu par point d'intégration
+    std::array<double, 8> mean {};              ///< moyenne des points d'intégration
 };
 
 /**
@@ -435,6 +451,19 @@ public:
     /// restent dans les stations), maillage du solveur rattaché aux barres TSA. Les résultats ne
     /// référencent ensuite que des objets du modèle.
     /// @param parts barre TSA → (sous-élément, abscisse de début) dans l'ordre
+    // Éléments surfaciques (coques) : résultantes par élément du maillage, déplacements par nœud du maillage
+    const std::map<int, ShellElementResult>& shellResults() const { return m_shellResults; }
+    void setShellResult(const ShellElementResult& r) { m_shellResults[r.meshElement] = r; }
+    const std::map<int, NodeDisplacement>& surfaceNodeDisplacements() const { return m_surfaceNodeDisplacements; }
+    /// Déplacements des nœuds du maillage (meshToNode : nœud du maillage → nœud du calcul) ; les nœuds propres aux
+    /// surfaces (surfaceOnly) sont retirés des résultats nodaux de TSA, qui ne connaissent que ses nœuds.
+    void attachSurfaceResults(const std::map<int, int>& meshToNode, const std::set<int>& surfaceOnly);
+    /// Déplacement maximal sur les surfaces (m) et nœud du maillage correspondant.
+    double maxSurfaceDisplacement(int* meshNode = nullptr) const;
+    /// Empreinte du maillage des surfaces ayant servi au calcul (identifiants des nœuds et éléments du maillage).
+    const std::string& surfaceMeshStamp() const { return m_surfaceMeshStamp; }
+    void setSurfaceMeshStamp(const std::string& s) { m_surfaceMeshStamp = s; }
+
     void mergeSubdivisions(const std::map<ElementKey, std::vector<std::pair<ElementKey, double>>>& parts, const std::set<int>& internalNodes);
 
     // Journal d'analyse
@@ -465,6 +494,9 @@ private:
     std::map<int, NodeDisplacement> m_finalDisplacements;
     std::map<int, NodeReaction> m_finalReactions;
     std::map<ElementKey, ElementResults> m_finalElementResults;
+    std::map<int, ShellElementResult> m_shellResults;
+    std::map<int, NodeDisplacement> m_surfaceNodeDisplacements;
+    std::string m_surfaceMeshStamp;
 
     GlobalEquilibrium m_equilibrium;
     ResultsSummary m_summary;

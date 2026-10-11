@@ -172,7 +172,7 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
         emit logReceived("[ERREUR] Le snapshot calculatoire ne contient aucun nœud.");
         return false;
     }
-    if (snapshot.elementCount() == 0)
+    if (snapshot.elementCount() == 0 && snapshot.shells().empty())
     {
         if (errorMessage) *errorMessage = tr("Le snapshot calculatoire ne contient aucun élément structural.");
         emit logReceived("[ERREUR] Le snapshot calculatoire ne contient aucun élément structural.");

@@ -1,7 +1,10 @@
 #pragma once
 
 #include "Material.h"
+#include "Slab.h"
+#include "SurfaceFormulation.h"
 #include <string>
+#include <vector>
 
 namespace TSA::Model
 {
@@ -43,7 +46,17 @@ public:
     void setOffset(double off) { m_offset = off; }
 
     double length(const Model& model) const;
+    /// Aire nette (ouvertures déduites).
     double area(const Model& model) const;
+    double grossArea(const Model& model) const;
+
+    SurfaceFormulation formulation() const { return m_formulation; }
+    void setFormulation(SurfaceFormulation f) { m_formulation = f; }
+
+    /// Ouvertures (portes, fenêtres, réservations) : repère local du voile, u le long du voile depuis le nœud de
+    /// départ, v vers le haut depuis le pied (m).
+    const std::vector<SurfaceOpening>& openings() const { return m_openings; }
+    void setOpenings(const std::vector<SurfaceOpening>& o) { m_openings = o; }
 
     const std::string& color() const { return m_color; }
     void setColor(const std::string& color) { m_color = color; }
@@ -58,6 +71,8 @@ private:
     Material m_material = Material::concreteC25_30();
     double m_offset = 0.0;     // Décalage par rapport à l'axe (m)
     std::string m_color;
+    std::vector<SurfaceOpening> m_openings;
+    SurfaceFormulation m_formulation = SurfaceFormulation::Shell;
 };
 
 } // namespace TSA::Model
