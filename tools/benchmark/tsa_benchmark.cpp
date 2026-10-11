@@ -26,7 +26,10 @@ using namespace TSA::Validation;
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
-    QString cases = QStringLiteral(TSA_SOURCE_DIR "/tests/benchmarks"), reference, out = QDir::current().filePath("validation-reports");
+    // Paquet : <exe>/validation/cases ; poste de développement : sources
+    const QString shipped = QDir(QCoreApplication::applicationDirPath()).filePath("validation/cases");
+    QString cases = QFileInfo(shipped).isDir() ? shipped : QStringLiteral(TSA_SOURCE_DIR "/tests/benchmarks"), reference,
+            out = QDir::current().filePath("validation-reports");
     std::vector<std::string> engines;
     bool validateOnly = false;
     const QStringList args = app.arguments();

@@ -1362,7 +1362,7 @@ function(tsa_add_product)
 
     tsaraloha_add_thumbnail_provider(${thumbs} ${P_PRODUCT_DIR})
     tsaraloha_add_sdk_tools(${name} ${model} ${P_PRODUCT_DIR})
-    tsaraloha_add_package_target(${name} "${name}.exe;tsaraloha-mcp.exe;tsa3d-validate.exe;tsa-template.exe;tsa-mesh.exe;${thumbs}.dll")
+    tsaraloha_add_package_target(${name} "${name}.exe;tsaraloha-mcp.exe;tsa3d-validate.exe;tsa-template.exe;tsa-mesh.exe;${name}_Benchmark.exe;${thumbs}.dll")
     if(TARGET ${thumbs})
         add_dependencies(${name} ${thumbs})
     endif()

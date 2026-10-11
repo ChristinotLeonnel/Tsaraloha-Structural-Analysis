@@ -16,6 +16,12 @@
 #include "../Standards/Design/SteelDesignEC3.h"
 
 #include <QBuffer>
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QDateTime>
 #include <QRegularExpression>
 
@@ -1380,6 +1386,104 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
     doc.addChapter(ch);
 }
 
+/// Rapport de validation du logiciel (banc tests/benchmarks, docs/BENCHMARKS.md) livré à côté de l'exécutable :
+/// validation/latest.json (paquet) ou validation-reports/latest.json (poste de développement). Variable
+/// TSA_VALIDATION_REPORT : chemin explicite.
+QJsonObject validationReport(QString* path)
+{
+    QStringList candidates;
+    if (const QString env = qEnvironmentVariable("TSA_VALIDATION_REPORT"); !env.isEmpty()) candidates << env;
+    const QString dir = QCoreApplication::applicationDirPath();
+    candidates << QDir(dir).filePath("validation/latest.json") << QDir(dir).filePath("validation-reports/latest.json");
+    for (const auto& c : candidates)
+    {
+        QFile f(c);
+        if (!f.open(QIODevice::ReadOnly)) continue;
+        const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
+        if (o.value("format").toString() != "tsa.validation-report/1") continue;
+        if (path) *path = c;
+        return o;
+    }
+    return {};
+}
+
+void chapterValidation(Ctx& x, NDCDocument& doc)
+{
+    auto ch = x.makeChapter(QStringLiteral("Validation du logiciel et traçabilité"));
+    NDCSection st;
+    st.title = QStringLiteral("Traçabilité du calcul");
+    if (x.results && x.results->isValid())
+    {
+        const auto& meta = x.results->executionMetadata();
+        st.keyValues.push_back({ QStringLiteral("Logiciel"), QStringLiteral("%1 %2").arg(TSA::Product::name(), TSA::Product::version()) });
+        st.keyValues.push_back({ QStringLiteral("Moteur de calcul"), QString::fromStdString(meta.solverEngine + " " + meta.solverVersion) });
+        st.keyValues.push_back({ QStringLiteral("Unités du calcul"), QString::fromStdString(x.results->units().force + ", " + x.results->units().length) });
+        st.keyValues.push_back({ QStringLiteral("Date du calcul"), QString::fromStdString(meta.executionTimestamp.empty() ? x.results->timestamp() : meta.executionTimestamp) });
+    }
+    else
+        st.paragraphs.push_back(QStringLiteral("Aucun calcul valide : traçabilité du calcul non disponible."));
+    ch.sections.push_back(st);
+
+    NDCSection sv;
+    sv.title = QStringLiteral("Banc de validation (cas de référence)");
+    sv.paragraphs.push_back(QStringLiteral("Le banc de validation de TSA exécute des cas à solution connue (RDM, éléments finis) par la chaîne de calcul réelle et "
+                                           "compare chaque grandeur à sa référence analytique avec une tolérance mixte |x − x<sub>réf</sub>| ≤ ε<sub>abs</sub> + "
+                                           "ε<sub>rel</sub>·|x<sub>réf</sub>| (docs/BENCHMARKS.md). Il valide la chaîne de calcul sur ces cas ; il ne remplace pas le "
+                                           "contrôle, par l'ingénieur, du modèle et des hypothèses du présent projet."));
+    QString path;
+    const QJsonObject rep = validationReport(&path);
+    if (rep.isEmpty())
+    {
+        sv.paragraphs.push_back(bad(QStringLiteral("AUCUN RAPPORT DE VALIDATION")) +
+                                QStringLiteral(" n'accompagne cette installation : la validation du logiciel n'est pas attestée par ce document (exécuter "
+                                               "TSA_Benchmark ou la suite « benchmarks »)."));
+    }
+    else
+    {
+        const QJsonObject sum = rep.value("summary").toObject();
+        const QString version = rep.value("tsaVersion").toString();
+        sv.keyValues.push_back({ QStringLiteral("Rapport"), QStringLiteral("%1 — TSA %2 — %3").arg(rep.value("timestamp").toString(), version, rep.value("engines").toString()) });
+        sv.keyValues.push_back({ QStringLiteral("Résultat"), QStringLiteral("%1 vérification(s) réussie(s), %2 en échec, %3 non disponible(s)")
+                                                                 .arg(sum.value("passed").toInt())
+                                                                 .arg(sum.value("failed").toInt())
+                                                                 .arg(sum.value("unavailable").toInt()) });
+        if (version != TSA::Product::version())
+            sv.paragraphs.push_back(bad(QStringLiteral("VERSION DIFFÉRENTE")) + QStringLiteral(" : le rapport porte sur TSA %1, ce document sur TSA %2.").arg(version, TSA::Product::version()));
+        auto t = x.makeTable(QStringLiteral("Cas de référence du banc de validation"),
+                             { QStringLiteral("Cas"), QStringLiteral("Intitulé"), QStringLiteral("Moteur"), QStringLiteral("Vérifications"), QStringLiteral("Écart relatif max."),
+                               QStringLiteral("Statut") },
+                             { QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("center") });
+        for (const auto& v : rep.value("cases").toArray())
+        {
+            const QJsonObject c = v.toObject();
+            double worst = 0;
+            int n = 0;
+            for (const auto& k : c.value("checks").toArray())
+            {
+                ++n;
+                if (k.toObject().value("relError").isDouble()) worst = std::max(worst, k.toObject().value("relError").toDouble());
+            }
+            const QString status = c.value("skipped").toBool() ? QStringLiteral("non exécuté (moteur absent)") : (c.value("passed").toBool() ? ok() : bad(QStringLiteral("ÉCHEC")));
+            t.rows.push_back({ c.value("id").toString(), c.value("title").toString(), c.value("engine").toString(), QString::number(n),
+                               QString::number(worst * 100.0, 'g', 3) + QStringLiteral(" %"), status });
+        }
+        sv.tables.push_back(t);
+    }
+    ch.sections.push_back(sv);
+
+    NDCSection sl;
+    sl.title = QStringLiteral("Limites connues du logiciel");
+    for (const auto& l : { QStringLiteral("Analyse élastique linéaire au premier ordre (statique) et analyse modale ; non linéaire géométrique selon les options du moteur, non validé par le banc."),
+                           QStringLiteral("Poutres d'Euler-Bernoulli (cisaillement transverse négligé) ; gauchissement des sections ouvertes non pris en compte dans la rigidité."),
+                           QStringLiteral("Cornières : axes principaux inclinés non pris en compte (flexions supposées découplées dans les axes des ailes)."),
+                           QStringLiteral("UPN et cornières : ailes inclinées et congés non modélisés (UPN 200 : Iz +15 % par rapport au catalogue)."),
+                           QStringLiteral("Vérifications réglementaires partielles : EC2 flexion simple (section rectangulaire, axe fort), EC3 flambement par flexion (classes 1 à 3) ; "
+                                          "effort tranchant, ELS, déversement, assemblages, dalles et voiles non vérifiés.") })
+        sl.paragraphs.push_back(QStringLiteral("• ") + l);
+    ch.sections.push_back(sl);
+    doc.addChapter(ch);
+}
+
 void chapterConclusion(Ctx& x, NDCDocument& doc, int issues, int computedChecks, int failedChecks)
 {
     auto ch = x.makeChapter(x.detailed ? QStringLiteral("Conclusion, limites et références") : QStringLiteral("Conclusion et limites"));
@@ -1520,6 +1624,7 @@ NDCDocument NDCProjectNote::build(const TSA::Model::Model& model, const std::sha
         if (x.hasModal()) chapterModal(x, doc);
         chapterCables(x, doc, issues);
         chapterDesign(x, doc, computed, failed);
+        chapterValidation(x, doc);
         chapterConclusion(x, doc, issues, computed, failed);
     }
     else
@@ -1534,6 +1639,7 @@ NDCDocument NDCProjectNote::build(const TSA::Model::Model& model, const std::sha
         if (x.hasModal()) chapterModal(x, doc);
         if (!model.cables().empty()) chapterCables(x, doc, issues);
         chapterDesign(x, doc, computed, failed);
+        chapterValidation(x, doc);
         chapterConclusion(x, doc, issues, computed, failed);
     }
     return doc;

@@ -8,6 +8,9 @@
 
 #include "App/ProductInfo.h"
 #include "Validation/BenchmarkSuite.h"
+#include "NDC/NDCExporter.h"
+#include "NDC/ReportManager.h"
+#include "Model/Model.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -131,6 +134,21 @@ bool runSuite_Benchmarks(int& passed)
         TEST_CHECK(writeReport(r, tmp.filePath("reports"), nullptr) && QDir(tmp.filePath("reports")).entryList({ "report-*.md" }).size() == 1 &&
                        QFile::exists(tmp.filePath("reports/latest.json")),
                    "Test 368: rapport horodaté et latest.json");
+        // Note de calcul : chapitre de validation alimenté par le rapport (variable TSA_VALIDATION_REPORT), absence signalée sinon
+        {
+            Model m;
+            TSA::NDC::ReportManager mgr;
+            mgr.setModel(&m);
+            mgr.applyTemplate(TSA::NDC::ReportTemplateType::BureauEtudes);
+            qputenv("TSA_VALIDATION_REPORT", tmp.filePath("absent.json").toUtf8());
+            const QString none = TSA::NDC::NDCExporter::renderHtml(mgr.generateReport());
+            qputenv("TSA_VALIDATION_REPORT", tmp.filePath("reports/latest.json").toUtf8());
+            const QString with = TSA::NDC::NDCExporter::renderHtml(mgr.generateReport());
+            qunsetenv("TSA_VALIDATION_REPORT");
+            TEST_CHECK(with.contains("Validation du logiciel et traçabilité") && with.contains("RDM-04") && with.contains("Limites connues du logiciel"),
+                       "Test 368: note de calcul — chapitre de validation (rapport repris)");
+            TEST_CHECK(none.contains("AUCUN RAPPORT DE VALIDATION") || none.contains("RDM-0"), "Test 368: note de calcul — rapport absent signalé");
+        }
         std::cout << "[PASS] Test 368: Outillage du banc (formules, tolérances, références externes, rapports)" << std::endl;
         ++passed;
     }
