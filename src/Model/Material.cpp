@@ -1,5 +1,6 @@
 #include "Material.h"
 #include <algorithm>
+#include <cmath>
 
 namespace TSA::Model
 {
@@ -424,5 +425,52 @@ Material Material::findByType(MaterialType type)
     return concreteC25_30();
 }
 
-} // namespace TSA::Model
+bool sameVisual(const VisualProperties& a, const VisualProperties& b)
+{
+    auto eq = [](double x, double y) { return std::abs(x - y) < 1e-9; };
+    return a.baseColor == b.baseColor && eq(a.roughness, b.roughness) && eq(a.metallic, b.metallic) && eq(a.transparency, b.transparency) &&
+           eq(a.shininess, b.shininess) && a.textureName == b.textureName && a.texturePath == b.texturePath && eq(a.textureScaleU, b.textureScaleU) &&
+           eq(a.textureScaleV, b.textureScaleV);
+}
 
+namespace VisualFinish
+{
+namespace
+{
+VisualProperties make(const char* color, double roughness, double metallic, double transparency, double shininess, const char* texture, double scale = 1.0)
+{
+    VisualProperties v;
+    v.baseColor = color;
+    v.roughness = roughness;
+    v.metallic = metallic;
+    v.transparency = transparency;
+    v.shininess = shininess;
+    v.textureName = texture;
+    v.textureScaleU = scale;
+    v.textureScaleV = scale;
+    return v;
+}
+} // namespace
+
+VisualProperties rawConcrete() { return make("#8F9295", 0.85, 0.0, 0.0, 0.10, "concrete"); }
+VisualProperties formedConcrete() { return make("#A3A5A6", 0.80, 0.0, 0.0, 0.12, "formed_concrete"); }
+VisualProperties roughConcrete() { return make("#9A968E", 0.95, 0.0, 0.0, 0.05, "rough_concrete"); }
+VisualProperties steel() { return make("#7C858E", 0.45, 0.85, 0.0, 0.45, "steel"); }
+VisualProperties paintedSteel(const std::string& colorHex)
+{
+    // La texture remplace la couleur en mode Matériaux : elle n'est gardée que pour la teinte par défaut.
+    VisualProperties v = make("#2F5D8A", 0.40, 0.20, 0.0, 0.55, "painted_steel");
+    if (colorHex != v.baseColor)
+    {
+        v.baseColor = colorHex;
+        v.textureName.clear();
+    }
+    return v;
+}
+VisualProperties galvanizedSteel() { return make("#B4BBC2", 0.35, 0.90, 0.0, 0.60, "galvanized"); }
+VisualProperties cable() { return make("#3A3F44", 0.50, 0.30, 0.0, 0.40, "cable"); }
+VisualProperties glass() { return make("#CFE8F5", 0.05, 0.0, 0.70, 0.90, "glass"); }
+VisualProperties soil() { return make("#7A6248", 0.98, 0.0, 0.0, 0.02, "soil"); }
+} // namespace VisualFinish
+
+} // namespace TSA::Model

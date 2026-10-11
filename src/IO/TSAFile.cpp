@@ -21,6 +21,86 @@
 #include <fstream>
 #include <sstream>
 
+namespace TSA::IO::Detail
+{
+namespace
+{
+/// Finition restituée par deserializeMaterial pour ce matériau (bibliothèque, par id puis par nom).
+const TSA::Model::VisualProperties* libraryVisual(const TSA::Model::Material& m)
+{
+    const auto* lib = TSA::Model::MaterialLibrary::instance().findById(m.id);
+    if (!lib) lib = TSA::Model::MaterialLibrary::instance().findByName(m.name);
+    return lib ? &lib->visual : nullptr;
+}
+
+QJsonObject visualToJson(const TSA::Model::VisualProperties& v)
+{
+    return QJsonObject { { "color", QString::fromStdString(v.baseColor) }, { "roughness", v.roughness },     { "metallic", v.metallic },
+                         { "transparency", v.transparency },                { "shininess", v.shininess },     { "texture", QString::fromStdString(v.textureName) },
+                         { "texturePath", QString::fromStdString(v.texturePath) }, { "scaleU", v.textureScaleU }, { "scaleV", v.textureScaleV } };
+}
+
+TSA::Model::VisualProperties visualFromJson(const QJsonObject& o, TSA::Model::VisualProperties v)
+{
+    v.baseColor = o.value("color").toString(QString::fromStdString(v.baseColor)).toStdString();
+    v.roughness = o.value("roughness").toDouble(v.roughness);
+    v.metallic = o.value("metallic").toDouble(v.metallic);
+    v.transparency = o.value("transparency").toDouble(v.transparency);
+    v.shininess = o.value("shininess").toDouble(v.shininess);
+    v.textureName = o.value("texture").toString(QString::fromStdString(v.textureName)).toStdString();
+    v.texturePath = o.value("texturePath").toString(QString::fromStdString(v.texturePath)).toStdString();
+    v.textureScaleU = o.value("scaleU").toDouble(v.textureScaleU);
+    v.textureScaleV = o.value("scaleV").toDouble(v.textureScaleV);
+    return v;
+}
+
+template <class Map>
+QJsonObject collectVisuals(const Map& elements)
+{
+    QJsonObject out;
+    for (const auto& [id, e] : elements)
+    {
+        const auto& mat = e.material();
+        const auto* lib = libraryVisual(mat);
+        if (!lib || !TSA::Model::sameVisual(*lib, mat.visual)) out.insert(QString::number(id), visualToJson(mat.visual));
+    }
+    return out;
+}
+} // namespace
+
+/// JSON du chunk MVIS : finitions des éléments qui diffèrent de la finition de bibliothèque de leur matériau
+/// (vide si aucune).
+std::string elementVisualsJson(const TSA::Model::Model& model)
+{
+    QJsonObject root;
+    auto add = [&root](const char* key, const QJsonObject& o) {
+        if (!o.isEmpty()) root.insert(key, o);
+    };
+    add("beams", collectVisuals(model.beams()));
+    add("columns", collectVisuals(model.columns()));
+    add("slabs", collectVisuals(model.slabs()));
+    add("walls", collectVisuals(model.walls()));
+    add("foundations", collectVisuals(model.foundations()));
+    add("trusses", collectVisuals(model.trussMembers()));
+    add("cables", collectVisuals(model.cables()));
+    if (root.isEmpty()) return {};
+    root.insert("schema", 1);
+    return QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString();
+}
+
+template <class Map>
+void applyElementVisuals(const QJsonObject& visuals, Map& elements)
+{
+    for (auto it = visuals.begin(); it != visuals.end(); ++it)
+    {
+        auto e = elements.find(it.key().toInt());
+        if (e == elements.end()) continue;
+        auto& mat = e->second.material();
+        mat.visual = visualFromJson(it.value().toObject(), mat.visual);
+    }
+}
+} // namespace TSA::IO::Detail
+
 namespace TSA::IO
 {
 
@@ -179,6 +259,11 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     if (!model.dimensions().items.empty() || !(model.dimensions().style == TSA::Annotation::DimensionStyle()))
     {
         writeJsonChunk(payload, CHUNK_DIMS, model.dimensions().toJson());
+    }
+    {
+        // Facultatif (format ≥ 1.9) : finitions d'aspect propres à certains éléments.
+        const std::string visuals = Detail::elementVisualsJson(model);
+        if (!visuals.empty()) writeJsonChunk(payload, CHUNK_MVIS, visuals);
     }
 
     // Snapshots mécaniques de calcul & références d'extensions (Phase 8)
@@ -648,6 +733,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::string loadedDimensions;
     std::string loadedMesh;
     std::string loadedOpenings;
+    std::string loadedVisuals;
     std::string loadedCoordinates, loadedGrids;
     bool hasCoordinates = false, hasGrids = false;
 
@@ -744,6 +830,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         case CHUNK_OPNG:
             if (chunkBytes && chunkLen > 0) loadedOpenings.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
+        case CHUNK_MVIS:
+            // Facultatif (format ≥ 1.9) : sans lui, chaque élément garde la finition de son matériau de bibliothèque.
+            if (chunkBytes && chunkLen > 0) loadedVisuals.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
         case CHUNK_DIMS:
             // Facultatif (format ≥ 1.6) : sans lui (anciens projets), aucune cotation.
             loadedDimensions.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
@@ -780,6 +870,17 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             }
             s->second.setOpenings(openings);
         }
+    }
+    if (!loadedVisuals.empty())
+    {
+        const QJsonObject root = QJsonDocument::fromJson(QByteArray::fromStdString(loadedVisuals)).object();
+        Detail::applyElementVisuals(root.value("beams").toObject(), snapshot.beams);
+        Detail::applyElementVisuals(root.value("columns").toObject(), snapshot.columns);
+        Detail::applyElementVisuals(root.value("slabs").toObject(), loadedSlabs);
+        Detail::applyElementVisuals(root.value("walls").toObject(), loadedWalls);
+        Detail::applyElementVisuals(root.value("foundations").toObject(), loadedFoundations);
+        Detail::applyElementVisuals(root.value("trusses").toObject(), loadedTrussMembers);
+        Detail::applyElementVisuals(root.value("cables").toObject(), loadedCables);
     }
     snapshot.slabs = std::move(loadedSlabs);
     snapshot.walls = std::move(loadedWalls);
