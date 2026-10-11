@@ -813,7 +813,7 @@ NDCDocument NDCGenerator::generate(
                 const auto* elRes = results->getElementResults(TSA::Analysis::StructuralElementKind::Beam, bId);
                 if (!elRes) continue;
 
-                double Med = std::max(elRes->maxBendingMoment(), 0.01);
+                double Med = std::max(elRes->maxAbsMy(), 0.01);   // axe fort (flexion simple EC2)
                 auto check = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(b.section(), b.material(), Med * 1000.0);
                 double maxRatio = check.utilizationRatio * 100.0;
                 bool ok = (maxRatio <= 100.0 && check.valid);

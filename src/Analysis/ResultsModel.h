@@ -102,7 +102,8 @@ struct ElementResults
 
     double maxNormalForce() const;
     double minNormalForce() const;
-    double maxBendingMoment() const;
+    double maxBendingMoment() const;   ///< max √(My² + Mz²) (intensité, pas un moment d'un axe donné)
+    double maxAbsMy() const;           ///< max |My| : flexion autour de l'axe local y (axe fort, inertie Iy)
     double maxShearForce() const;
 };
 

@@ -3,7 +3,11 @@
 // ============================================================
 // STRUCTURAL STANDARD & DESIGN
 // Standard   : EN 1993-1-1:2005 (Eurocode 3 - Calcul des structures en acier)
-// Clause     : §6.2 (Résistance des sections) & §6.3 (Stabilité des barres au flambement)
+// Clause     : §5.5 / Tableau 5.2 (classe en compression), §6.2 (résistance des sections), §6.3.1 et
+//              Tableaux 6.1, 6.2 (flambement par flexion des barres comprimées)
+// Validité   : sections de classe 1 à 3 en compression (classe 4 : aire efficace EN 1993-1-5 non calculée,
+//              vérification refusée) ; flambement par torsion ou flexion-torsion non vérifié ; fy non réduite
+//              pour les épaisseurs > 40 mm (EN 10025-2)
 // Requirement: REQ-CALC-EC3-002
 // ============================================================
 
@@ -59,6 +63,8 @@ struct EC3BucklingResult
     double Nb_Rd = 0.0;                 ///< Effort normal résistant de calcul au flambement en N
     double utilizationRatio = 0.0;      ///< Taux de travail eta = Ned / Nb_Rd
     bool pass = false;                  ///< Vérification satisfaite si utilizationRatio <= 1.0
+    int sectionClass = 0;               ///< Classe en compression (Tableau 5.2) ; 0 = non déterminée
+    QString curveReason;                ///< Choix de la courbe (Tableau 6.2)
     QString summary;                    ///< Synthèse textuelle
 };
 
@@ -102,6 +108,12 @@ public:
      * @brief Détermine la courbe de flambement par défaut selon le profil et l'axe considéré.
      */
     static EC3BucklingCurve defaultBucklingCurve(TSA::Model::SectionShape shape, bool strongAxis = true);
+    /// Courbe de flambement selon le Tableau 6.2 (forme, h/b, tf, nuance fy, axe) ; tubes de fabrication inconnue :
+    /// formés à froid (courbe c, sécuritaire). reason : ligne du tableau retenue.
+    static EC3BucklingCurve bucklingCurve(const TSA::Model::Section& section, double fy_Pa, bool strongAxis, QString* reason = nullptr);
+    /// Classe de la section en compression pure (Tableau 5.2, ε = √(235/fy)) ; 0 si la forme n'est pas classée.
+    static int compressionClass(const TSA::Model::Section& section, double fy_Pa);
+    static QString curveName(EC3BucklingCurve c);
 
     /**
      * @brief Effectue la vérification au flambement directement depuis une Section et un Material du modèle.

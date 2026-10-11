@@ -1230,21 +1230,31 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         if (mb.kind != StructuralElementKind::Beam || !isConcrete(*mb.material) || mb.section->shape != TSA::Model::SectionShape::Rectangular) continue;
         const auto* r = x.results->getElementResults(mb.kind, mb.id);
         if (!r) continue;
-        const double med = std::max(absMax(*r, &TSA::Analysis::StationForces::My), absMax(*r, &TSA::Analysis::StationForces::Mz));
+        // Flexion autour de l'axe fort (M_y, inertie I_y = b·h³/12, hauteur h) : seule configuration de la section b × h
+        // vérifiée. Le moment d'axe faible M_z n'est pas un moment de la même section : signalé, jamais confondu.
+        const double med = absMax(*r, &TSA::Analysis::StationForces::My);
+        const double mzMax = absMax(*r, &TSA::Analysis::StationForces::Mz);
         const auto c = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(*mb.section, *mb.material, std::max(med, 0.01) * 1000.0);
-        const bool pass = c.valid && c.utilizationRatio <= 1.0;
+        const bool pass = c.valid && !c.requiresCompressionSteel && !c.exceedsMaximum;
         ++computedChecks;
         failedChecks += !pass;
+        QString status = pass ? ok() : bad(QStringLiteral("NON CONFORME"));
+        if (c.valid && c.requiresCompressionSteel && !c.exceedsMaximum)
+            status = bad(QStringLiteral("ACIERS COMPRIMÉS REQUIS")) + QStringLiteral("<br><small>A<sub>s2</sub> = %1 cm²</small>").arg(f(c.As2_required * 1e4, 2));
+        if (mzMax > 0.1 * std::max(med, 1e-9)) status += QStringLiteral("<br><small>flexion déviée (M<sub>z</sub> = %1 kN·m) non vérifiée</small>").arg(f(mzMax, 1));
         ec2.push_back({ c.utilizationRatio, { QStringLiteral("Poutre %1").arg(mb.id), QStringLiteral("%1<br><small>%2</small>").arg(mb.name, QString::fromStdString(mb.section->name)),
-                                              f(med, 1), f(c.As_provided * 1e4, 2), f(c.utilizationRatio * 100.0, 1) + QStringLiteral(" %"), pass ? ok() : bad(QStringLiteral("NON CONFORME")) } });
+                                              f(med, 1), f(c.As_provided * 1e4, 2), f(c.utilizationRatio * 100.0, 1) + QStringLiteral(" %"), status } });
     }
     if (!ec2.empty())
     {
         std::sort(ec2.begin(), ec2.end(), [](const Row& a, const Row& b) { return a.ratio > b.ratio; });
         NDCSection s;
         s.title = QStringLiteral("Flexion simple des poutres en béton armé (EN 1992-1-1) — calculée");
-        s.paragraphs.push_back(QStringLiteral("M<sub>Ed</sub> = moment maximal (|M<sub>y</sub>| ou |M<sub>z</sub>|) de la barre ; acier B500, enrobage 5 cm ; "
-                                              "ratio = μ<sub>cu</sub> / μ<sub>lu</sub>. %1 poutre(s) vérifiée(s).")
+        s.paragraphs.push_back(QStringLiteral("M<sub>Ed</sub> = moment maximal |M<sub>y</sub>| (axe fort) de la barre ; acier B500 (E<sub>s</sub> = 200 GPa), enrobage 5 cm ; "
+                                              "bloc rectangulaire λ, η (§3.1.7) ; ratio = μ<sub>cu</sub> / μ<sub>lu</sub>, μ<sub>lu</sub> = η·λ·α<sub>u</sub>·(1 − λ·α<sub>u</sub>/2) avec "
+                                              "α<sub>u</sub> = ε<sub>cu3</sub> / (ε<sub>cu3</sub> + ε<sub>yd</sub>) (aciers tendus plastifiés, sans redistribution). Au-delà, les aciers "
+                                              "comprimés nécessaires sont donnés ; A<sub>s</sub> ≥ A<sub>s,min</sub> (9.1N), A<sub>s</sub> + A<sub>s2</sub> ≤ 0,04·A<sub>c</sub>. "
+                                              "Effort tranchant, ELS (fissuration, flèche) et dispositions constructives non vérifiés. %1 poutre(s) vérifiée(s).")
                                .arg(ec2.size()));
         auto t = x.makeTable(QStringLiteral("Poutres en béton armé, par ratio décroissant"),
                              { QStringLiteral("Barre"), QStringLiteral("Désignation / section"), QStringLiteral("M<sub>Ed</sub> (kN·m)"), QStringLiteral("A<sub>s</sub> (cm²)"), QStringLiteral("Ratio"),
@@ -1264,12 +1274,14 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         if (!r || r->minNormalForce() >= -1e-3) continue;
         const double ned = -r->minNormalForce();
         const auto c = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(*mb.section, *mb.material, mb.length, 1.0, ned * 1000.0, false);
-        const bool pass = c.pass && c.utilizationRatio <= 1.0;
+        const bool pass = c.valid && c.pass && c.utilizationRatio <= 1.0;
         ++computedChecks;
         failedChecks += !pass;
+        const QString status = !c.valid && c.sectionClass == 4 ? bad(QStringLiteral("CLASSE 4 — NON VÉRIFIÉE")) : (pass ? ok() : bad(QStringLiteral("NON CONFORME")));
         ec3.push_back({ c.utilizationRatio, { QStringLiteral("%1 %2").arg(kindName(mb.kind)).arg(mb.id), QStringLiteral("%1<br><small>%2</small>").arg(mb.name, QString::fromStdString(mb.section->name)),
                                               f(ned, 1), f(mb.length, 2), f(c.reducedSlenderness, 2), f(c.chi, 3), f(c.Nb_Rd / 1000.0, 0),
-                                              f(c.utilizationRatio * 100.0, 1) + QStringLiteral(" %"), pass ? ok() : bad(QStringLiteral("NON CONFORME")) } });
+                                              f(c.utilizationRatio * 100.0, 1) + QStringLiteral(" %"),
+                                              status + QStringLiteral("<br><small>%1%2</small>").arg(c.curveReason.toHtmlEscaped(), c.sectionClass ? QStringLiteral(", classe %1").arg(c.sectionClass) : QStringLiteral(", classe non déterminée")) } });
     }
     if (!ec3.empty())
     {
@@ -1277,7 +1289,10 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         NDCSection s;
         s.title = QStringLiteral("Flambement par flexion des barres acier comprimées (EN 1993-1-1 §6.3.1) — calculée");
         s.paragraphs.push_back(QStringLiteral("Effort de compression seul (sans interaction avec la flexion), axe faible, longueur de flambement = longueur de la barre "
-                                              "entre nœuds (β = 1). %1 barre(s) vérifiée(s).")
+                                              "entre nœuds (β = 1). Courbe de flambement selon le Tableau 6.2 (h/b, t<sub>f</sub>, nuance ; profils creux de fabrication "
+                                              "non précisée : formés à froid), classe en compression selon le Tableau 5.2 (classe 4 : aire efficace non calculée, "
+                                              "vérification non effectuée). Flambement par torsion et flexion-torsion non vérifiés ; f<sub>y</sub> non réduite au-delà de "
+                                              "40 mm d'épaisseur. %1 barre(s) vérifiée(s).")
                                .arg(ec3.size()));
         auto t = x.makeTable(QStringLiteral("Barres acier comprimées, par taux de travail décroissant"),
                              { QStringLiteral("Barre"), QStringLiteral("Désignation / section"), QStringLiteral("N<sub>Ed</sub> (kN)"), QStringLiteral("L (m)"), QStringLiteral("λ̄"), QStringLiteral("χ"),
