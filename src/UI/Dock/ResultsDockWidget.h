@@ -15,6 +15,7 @@ class QSpinBox;
 class QDoubleSpinBox;
 class QLabel;
 class QPushButton;
+class QTimer;
 class QGroupBox;
 class QTextEdit;
 
@@ -67,6 +68,8 @@ signals:
     void fitResultsRequested();
     void fitDeformedRequested();
     void fitSelectionRequested();
+    /// Phase d'animation de la déformée (0 : géométrie initiale, 1 : déformée amplifiée).
+    void animationPhaseChanged(double phase);
 
 public slots:
     void refreshUi();
@@ -113,6 +116,15 @@ private:
     QComboBox* m_comboScalePreset = nullptr;
     QDoubleSpinBox* m_spinCustomScale = nullptr;
     QLabel* m_labelEffectiveScale = nullptr;
+    // Animation de la déformée (interpolation visuelle de la solution statique, solveur jamais relancé)
+    QPushButton* m_btnAnimPlay = nullptr;
+    QPushButton* m_btnAnimReset = nullptr;
+    QComboBox* m_comboAnimSpeed = nullptr;
+    QLabel* m_labelAnim = nullptr;
+    QTimer* m_animTimer = nullptr;
+    double m_animTime = 0.0;
+    void setAnimationRunning(bool run);
+    void emitAnimationPhase(double phase);
 
     // Multi-pas
     QGroupBox* m_grpSteps = nullptr;

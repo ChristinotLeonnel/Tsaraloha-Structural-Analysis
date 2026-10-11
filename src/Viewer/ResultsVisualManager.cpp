@@ -132,6 +132,16 @@ void ResultsVisualManager::setDeformationScale(double scale)
     emit visualStateChanged();
 }
 
+void ResultsVisualManager::setAnimationPhase(double phase)
+{
+    phase = std::clamp(phase, 0.0, 1.0);
+    if (std::abs(m_animationPhase - phase) < 1e-6) return;
+    m_animationPhase = phase;
+    if (m_deformedVisible) updateDeformedShapes();
+    updateLegend(); // ligne « ANIMATION : … (pas une analyse dynamique) » pendant la lecture
+    redrawView();
+}
+
 void ResultsVisualManager::setSectionRotationVisible(bool visible)
 {
     if (m_sectionRotationVisible == visible) return;
@@ -321,6 +331,10 @@ QString ResultsVisualManager::legendSummaryText() const
             .arg(sum.maxDisplacementNodeId)
             .arg(m_deformationScale, 0, 'g', 4)
             .arg(trueScale ? QString("(échelle réelle)") : QString("(amplifiée pour l'affichage, résultats inchangés)"));
+        if (m_animationPhase < 1.0 - 1e-9)
+            text += QString("ANIMATION : %1 % du facteur ×%2 — interpolation visuelle de la déformée statique (pas une analyse dynamique)\n")
+                        .arg(m_animationPhase * 100.0, 0, 'f', 0)
+                        .arg(m_deformationScale, 0, 'g', 4);
         if (m_axesFromStations + m_axesFromHermite > 0)
             text += QString("Courbe des barres : %1 depuis les stations du solveur, %2 par interpolation cubique nodale\n")
                         .arg(m_axesFromStations).arg(m_axesFromHermite);
@@ -537,6 +551,8 @@ void ResultsVisualManager::updateDeformedShapes()
     applyStructureDisplay(show);
     if (!show) return;
     if (!m_deformedAxesValid) rebuildDeformedAxes();
+    // Facteur affiché : amplification × phase d'animation (1 hors animation)
+    const double displayScale = m_deformationScale * m_animationPhase;
 
     // Une barre = un objet continu (axe déformé balayé par la section) ; barres articulées : polyligne.
     for (const auto& [key, axis] : m_deformedAxes)
@@ -551,16 +567,16 @@ void ResultsVisualManager::updateDeformedShapes()
             double rotation = 0.0;
             const TSA::Model::Section* section = memberSection(key, &rotation);
             if (section)
-                shape = TSA::Geometry::DeformedGeometry::createMemberSolid(axis, *section, rotation, m_deformationScale,
+                shape = TSA::Geometry::DeformedGeometry::createMemberSolid(axis, *section, rotation, displayScale,
                                                                            m_sectionRotationVisible);
             solid = !shape.IsNull();
-            if (!solid) shape = TSA::Geometry::DeformedGeometry::createAxisWire(axis, m_deformationScale);
+            if (!solid) shape = TSA::Geometry::DeformedGeometry::createAxisWire(axis, displayScale);
             // Torsion : contours de section et génératrice (rotation visible même pour une section ronde).
             if (section && m_sectionRotationVisible && axis.hasTwist()
                 && axis.maxAbsTwist() > std::max(1e-12, 1e-3 * m_maxTwist))
             {
                 const TopoDS_Shape markers = TSA::Geometry::DeformedGeometry::createSectionMarkers(
-                    axis, *section, rotation, m_deformationScale, true);
+                    axis, *section, rotation, displayScale, true);
                 if (!markers.IsNull())
                 {
                     Handle(AIS_Shape) m = new AIS_Shape(markers);
@@ -574,7 +590,7 @@ void ResultsVisualManager::updateDeformedShapes()
         else
         {
             mapKey = (key.kind == StructuralElementKind::Truss ? 200000 : 300000) + key.id;
-            shape = TSA::Geometry::DeformedGeometry::createAxisWire(axis, m_deformationScale);
+            shape = TSA::Geometry::DeformedGeometry::createAxisWire(axis, displayScale);
         }
         if (shape.IsNull()) continue;
 
