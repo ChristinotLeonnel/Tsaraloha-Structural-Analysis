@@ -844,6 +844,7 @@ public:
             FeNode n;
             n.id = int(mesh.nodes.size()) + 1;
             n.x = coord[3 * i], n.y = coord[3 * i + 1], n.z = coord[3 * i + 2];
+            n.gmshTag = tags[i];
             idOf[tags[i]] = n.id;
             mesh.nodes.push_back(n);
         }
@@ -878,6 +879,9 @@ public:
                     fe.type = ft;
                     fe.source = source;
                     fe.boundary = boundary;
+                    fe.gmshTag = et[k][e];
+                    fe.gmshEntityDim = dim;
+                    fe.gmshEntityTag = tag;
                     for (std::size_t j = 0; j < nn; ++j) fe.nodes.push_back(idOf[en[k][e * nn + j]]);
                     elementOf[et[k][e]] = fe.id;
                     groupElements[boundary ? source + ":contour" : source].push_back(fe.id);
@@ -968,6 +972,21 @@ public:
                 g.dimension = 1;
                 for (auto x : t) g.nodes.push_back(idOf[x]);
                 mesh.groups.push_back(g);
+            }
+            // Groupes physiques Gmsh (créés par physicalGroups() avant l'extraction) : étiquettes conservées,
+            // associées par nom et dimension (l'étiquette Gmsh n'est pas un identifiant TSA).
+            DimTags phys;
+            gmsh::model::getPhysicalGroups(phys);
+            for (const auto& [pd, pt] : phys)
+            {
+                std::string pname;
+                gmsh::model::getPhysicalName(pd, pt, pname);
+                for (auto& g : mesh.groups)
+                    if (g.name == pname && g.dimension == pd)
+                    {
+                        g.gmshPhysicalDim = pd;
+                        g.gmshPhysicalTag = pt;
+                    }
             }
         }
     }
@@ -1092,12 +1111,11 @@ GenerationResult generate(const MeshGeometry& geometry, const MeshSettingsSet& s
         if (!r.cancelled)
         {
             progress(85, "extraction");
+            // Groupes physiques (noms = références TSA) créés avant l'extraction : leurs étiquettes Gmsh sont
+            // conservées dans FeGroup ; sans effet sur le maillage.
+            b.physicalGroups();
             b.extract(r.mesh);
-            if (!options.writeMshTo.empty())
-            {
-                b.physicalGroups();
-                gmsh::write(options.writeMshTo);
-            }
+            if (!options.writeMshTo.empty()) gmsh::write(options.writeMshTo);
         }
         for (const auto& l : session.log())
             if (l.rfind("Warning", 0) == 0 || l.rfind("Error", 0) == 0) rec.engineLog.push_back(l);
@@ -1224,11 +1242,15 @@ bool importMesh(const std::string& path, FeMesh* out, std::vector<std::string>* 
             FeNode n;
             n.id = int(mesh.nodes.size()) + 1;
             n.x = coord[3 * i], n.y = coord[3 * i + 1], n.z = coord[3 * i + 2];
+            n.gmshTag = tags[i];
             idOf[tags[i]] = n.id;
             mesh.nodes.push_back(n);
         }
         // Source des éléments : groupe physique (référence TSA si le fichier vient de TSA), sinon entité Gmsh.
         std::map<std::pair<int, int>, std::string> entityName;
+        // Groupes physiques : chaque groupe garde TOUS les éléments de ses entités (une entité peut appartenir à
+        // plusieurs groupes) et son étiquette Gmsh.
+        std::vector<std::pair<FeGroup, std::vector<int>>> physicalGroups; // groupe, entités (dim > 0)
         DimTags groups;
         gmsh::model::getPhysicalGroups(groups);
         for (const auto& [dim, tag] : groups)
@@ -1238,9 +1260,20 @@ bool importMesh(const std::string& path, FeMesh* out, std::vector<std::string>* 
             if (name.empty()) name = "groupe " + std::to_string(dim) + "-" + std::to_string(tag);
             std::vector<int> ents;
             gmsh::model::getEntitiesForPhysicalGroup(dim, tag, ents);
+            if (dim > 0)
+            {
+                FeGroup pg;
+                pg.name = name;
+                pg.dimension = dim;
+                pg.gmshPhysicalDim = dim;
+                pg.gmshPhysicalTag = tag;
+                physicalGroups.push_back({ pg, ents });
+            }
             if (dim == 0)
             {
                 FeGroup g { name, 0, {}, {} };
+                g.gmshPhysicalDim = 0;
+                g.gmshPhysicalTag = tag;
                 for (int e : ents)
                 {
                     std::vector<std::size_t> t;
@@ -1257,7 +1290,8 @@ bool importMesh(const std::string& path, FeMesh* out, std::vector<std::string>* 
         DimTags entities;
         gmsh::model::getEntities(entities);
         std::set<int> unknown;
-        std::map<std::string, std::vector<int>> groupElements;
+        std::map<std::string, std::vector<int>> groupElements;   // entités sans groupe physique
+        std::map<std::pair<int, int>, std::vector<int>> entityElements;
         std::unordered_map<std::size_t, bool> seen;
         for (const auto& [dim, tag] : entities)
         {
@@ -1286,11 +1320,22 @@ bool importMesh(const std::string& path, FeMesh* out, std::vector<std::string>* 
                     fe.type = ft;
                     fe.source = source;
                     fe.boundary = boundary;
+                    fe.gmshTag = et[k][e];
+                    fe.gmshEntityDim = dim;
+                    fe.gmshEntityTag = tag;
                     for (std::size_t j = 0; j < nn; ++j) fe.nodes.push_back(idOf[en[k][e * nn + j]]);
-                    groupElements[name].push_back(fe.id);
+                    entityElements[{ dim, tag }].push_back(fe.id);
+                    if (!entityName.count({ dim, tag })) groupElements[name].push_back(fe.id);
                     mesh.elements.push_back(fe);
                 }
             }
+        }
+        for (auto& [pg, ents] : physicalGroups)
+        {
+            for (int ent : ents)
+                if (auto it = entityElements.find({ pg.dimension, ent }); it != entityElements.end())
+                    pg.elements.insert(pg.elements.end(), it->second.begin(), it->second.end());
+            if (!pg.elements.empty()) mesh.groups.push_back(pg);
         }
         for (const auto& [name, els] : groupElements)
             mesh.groups.push_back({ name, feTypeDimension(mesh.elements[std::size_t(els.front() - 1)].type), els, {} });

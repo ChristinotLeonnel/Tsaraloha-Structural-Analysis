@@ -17,6 +17,7 @@
 #include <OpenGl_GraphicDriver.hxx>
 #include <Aspect_DisplayConnection.hxx>
 
+#include <Bnd_Box.hxx>
 #include <gp_Pnt.hxx>
 #include <vector>
 
@@ -51,7 +52,9 @@ namespace TSA::Grid
 #include <Graphic3d_ClipPlane.hxx>
 #include <Graphic3d_Camera.hxx>
 #include <gp_Ax3.hxx>
+#include <functional>
 #include <optional>
+#include <SelectMgr_EntityOwner.hxx>
 #include "../Model/SelectionQuery.h"
 #include "ModelDisplayMode.h"
 #include "MaterialVisual.h"
@@ -72,6 +75,16 @@ public:
     const Handle(AIS_InteractiveContext)& context() const { return m_context; }
     const Handle(V3d_View)& view() const { return m_view; }
     const Handle(V3d_Viewer)& viewer() const { return m_viewer; }
+
+    /// Calques indépendants du modèle (maillage FEM…) : un clic simple sur une entité détectée est d'abord
+    /// proposé à `click` ; s'il le consomme (vrai), la sélection du modèle est vidée sans autre traitement.
+    /// `hover` : texte de survol d'une entité du calque (vide : survol habituel du modèle).
+    void setOverlayPickHandlers(std::function<bool(const Handle(SelectMgr_EntityOwner)&)> click,
+                                std::function<QString(const Handle(SelectMgr_EntityOwner)&)> hover)
+    {
+        m_overlayClick = std::move(click);
+        m_overlayHover = std::move(hover);
+    }
 
     // Liaison avec le modèle et la sélection
     void setModel(TSA::Model::Model* model);
@@ -143,6 +156,8 @@ public:
     void fitAll();
     void fitSelection();
     void fitModel();
+    /// Cadre la vue sur une boîte (calque : maillage…) comme fitModel : historique de caméra, profondeur, signal.
+    void fitBox(const Bnd_Box& box);
     void fitResults();
     void fitDeformed();
     void resetView();
@@ -542,6 +557,10 @@ private:
     /// Objet détecté au clic ; une cotation cède la place à un élément du modèle détecté au même endroit
     /// (lignes d'attache au ras des nœuds, ligne de cote croisant une barre).
     Handle(AIS_InteractiveObject) detectedPreferringModel();
+    /// Toutes les entités détectées sous le curseur sont proposées au calque (le plan de travail, confondu avec
+    /// une dalle maillée, peut être détecté en premier) : vrai si l'une d'elles a été consommée.
+    bool overlayConsumesClick();
+    QString overlayHoverText();
 
 protected:
     /// Après toute modification : sélection débarrassée des éléments supprimés (différé, regroupé).
@@ -582,6 +601,8 @@ private:
 private:
     TSA::Model::Model* m_model = nullptr;
     TSA::Viewer::SelectionManager* m_selectionManager = nullptr;
+    std::function<bool(const Handle(SelectMgr_EntityOwner)&)> m_overlayClick;
+    std::function<QString(const Handle(SelectMgr_EntityOwner)&)> m_overlayHover;
 
     Handle(Aspect_DisplayConnection) m_displayConnection;
     Handle(OpenGl_GraphicDriver)    m_graphicDriver;

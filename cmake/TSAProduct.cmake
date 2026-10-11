@@ -65,6 +65,7 @@ set(UI_MAINWINDOW_SOURCES
     ${TSA_ROOT}/src/UI/MainWindow_Tsa3d.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Reports.cpp
     ${TSA_ROOT}/src/UI/MainWindow_Mesh.cpp
+    ${TSA_ROOT}/src/UI/MainWindow_MeshView.cpp
     ${TSA_ROOT}/src/UI/MainWindow_ModelingTools.cpp
 )
 
@@ -378,8 +379,10 @@ set(VIEWER_MAIN_SOURCES
     ${TSA_ROOT}/src/Viewer/OccView.h
     ${TSA_ROOT}/src/Viewer/OccView.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Shapes.cpp
-    ${TSA_ROOT}/src/Viewer/MeshOverlay.h
-    ${TSA_ROOT}/src/Viewer/MeshOverlay.cpp
+    ${TSA_ROOT}/src/Viewer/MeshVisual.h
+    ${TSA_ROOT}/src/Viewer/MeshVisual.cpp
+    ${TSA_ROOT}/src/Viewer/MeshVSDataSource.h
+    ${TSA_ROOT}/src/Viewer/MeshVSDataSource.cpp
     ${TSA_ROOT}/src/Viewer/OccView_DisplayMode.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Navigation.cpp
     ${TSA_ROOT}/src/Viewer/OccView_Events.cpp
@@ -482,6 +485,10 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Mesh/MeshProject.cpp
     ${TSA_ROOT}/src/Mesh/MeshQuality.h
     ${TSA_ROOT}/src/Mesh/MeshQuality.cpp
+    ${TSA_ROOT}/src/Mesh/MeshDisplayModel.h
+    ${TSA_ROOT}/src/Mesh/MeshDisplayModel.cpp
+    ${TSA_ROOT}/src/Mesh/MeshResultField.h
+    ${TSA_ROOT}/src/Mesh/MeshResultField.cpp
     ${TSA_ROOT}/src/Mesh/SurfaceLoads.h
     ${TSA_ROOT}/src/Mesh/SurfaceLoads.cpp
     ${TSA_ROOT}/src/Mesh/Gmsh/GmshMeshEngine.h
@@ -939,6 +946,7 @@ set(OCCT_LIBS
     TKV3d
     TKOpenGl
     TKMesh
+    TKMeshVS
 )
 
 # Fichiers qui utilisent directement l'API Win32 (MessageBox, shell, dbghelp...) :
@@ -998,6 +1006,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_deployment.cpp
     ${TSA_ROOT}/tests/test_mesh.cpp
     ${TSA_ROOT}/tests/test_torsion.cpp
+    ${TSA_ROOT}/tests/test_meshview.cpp
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )

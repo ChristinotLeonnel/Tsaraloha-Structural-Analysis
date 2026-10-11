@@ -261,13 +261,23 @@ QJsonObject meshToJson(const FeMesh& m)
         sources.append(QString::fromStdString(s));
         return sourceIndex[s] = int(sourceIndex.size());
     };
-    for (const auto& n : m.nodes) nodes.append(QJsonArray { n.x, n.y, n.z, n.tsaNode, src(n.source) });
+    // Correspondance Gmsh (étiquettes des nœuds, éléments, entités d'origine) : tableaux parallèles facultatifs.
+    QJsonArray gmshNodes, gmshElements;
+    bool anyGmsh = false;
+    for (const auto& n : m.nodes)
+    {
+        nodes.append(QJsonArray { n.x, n.y, n.z, n.tsaNode, src(n.source) });
+        gmshNodes.append(double(n.gmshTag));
+        anyGmsh |= n.gmshTag != 0;
+    }
     for (const auto& e : m.elements)
     {
         QJsonArray a { kFeType.value(static_cast<int>(e.type)), src(e.source), e.boundary ? 1 : 0 };
         for (int id : e.nodes) a.append(id);
         elements.append(a);
         quality.append(e.quality);
+        gmshElements.append(QJsonArray { double(e.gmshTag), e.gmshEntityDim, e.gmshEntityTag });
+        anyGmsh |= e.gmshTag != 0;
     }
     for (const auto& g : m.groups)
     {
@@ -276,9 +286,16 @@ QJsonObject meshToJson(const FeMesh& m)
         for (int id : g.nodes) nids.append(id);
         QJsonObject go { { "name", QString::fromStdString(g.name) }, { "dimension", g.dimension }, { "elements", ids } };
         if (!nids.isEmpty()) go.insert("nodes", nids);
+        if (g.gmshPhysicalDim >= 0) go.insert("gmshPhysical", QJsonArray { g.gmshPhysicalDim, g.gmshPhysicalTag });
         groups.append(go);
     }
-    return { { "sources", sources }, { "nodes", nodes }, { "elements", elements }, { "quality", quality }, { "groups", groups } };
+    QJsonObject out { { "sources", sources }, { "nodes", nodes }, { "elements", elements }, { "quality", quality }, { "groups", groups } };
+    if (anyGmsh)
+    {
+        out.insert("gmshNodeTags", gmshNodes);
+        out.insert("gmshElements", gmshElements);
+    }
+    return out;
 }
 
 FeMesh meshFromJson(const QJsonObject& o)
@@ -300,12 +317,26 @@ FeMesh meshFromJson(const QJsonObject& o)
         const QJsonArray a = v.toArray();
         FeElement e;
         e.id = ++id;
-        e.type = static_cast<FeType>(std::max<qsizetype>(0, kFeType.indexOf(a.at(0).toString())));
+        // Type inconnu : jamais converti en un autre type. L'élément garde ses nœuds et un type marqué invalide
+        // par le nombre de nœuds : l'affichage et les contrôles le signalent (MeshDisplayModel, MeshQuality).
+        const qsizetype t = kFeType.indexOf(a.at(0).toString());
+        e.type = t >= 0 ? static_cast<FeType>(t) : FeType::Line2;
         e.source = src(a.at(1).toInt());
+        if (t < 0) e.source = std::string(kFeUnknownTypePrefix) + " « " + a.at(0).toString().toStdString() + " » : " + e.source;
         e.boundary = a.at(2).toInt() != 0;
         for (int k = 3; k < a.size(); ++k) e.nodes.push_back(a.at(k).toInt());
         e.quality = quality.at(e.id - 1).toDouble(2.0);
         m.elements.push_back(e);
+    }
+    const QJsonArray gmshNodes = o.value("gmshNodeTags").toArray(), gmshElements = o.value("gmshElements").toArray();
+    for (std::size_t i = 0; i < m.nodes.size() && i < std::size_t(gmshNodes.size()); ++i)
+        m.nodes[i].gmshTag = std::size_t(gmshNodes.at(qsizetype(i)).toDouble());
+    for (std::size_t i = 0; i < m.elements.size() && i < std::size_t(gmshElements.size()); ++i)
+    {
+        const QJsonArray g = gmshElements.at(qsizetype(i)).toArray();
+        m.elements[i].gmshTag = std::size_t(g.at(0).toDouble());
+        m.elements[i].gmshEntityDim = g.at(1).toInt(-1);
+        m.elements[i].gmshEntityTag = g.at(2).toInt();
     }
     for (const auto& v : o.value("groups").toArray())
     {
@@ -315,6 +346,11 @@ FeMesh meshFromJson(const QJsonObject& o)
         fg.dimension = g.value("dimension").toInt(1);
         for (const auto& e : g.value("elements").toArray()) fg.elements.push_back(e.toInt());
         for (const auto& n : g.value("nodes").toArray()) fg.nodes.push_back(n.toInt());
+        if (const QJsonArray ph = g.value("gmshPhysical").toArray(); ph.size() == 2)
+        {
+            fg.gmshPhysicalDim = ph.at(0).toInt(-1);
+            fg.gmshPhysicalTag = ph.at(1).toInt();
+        }
         m.groups.push_back(fg);
     }
     return m;

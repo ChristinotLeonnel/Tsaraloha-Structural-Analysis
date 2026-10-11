@@ -52,9 +52,23 @@ function(tsa_copy_runtime_dependencies)
         LIBRARIES ${libs}
         RESOLVED_DEPENDENCIES_VAR resolved
         UNRESOLVED_DEPENDENCIES_VAR unresolved
+        CONFLICTING_DEPENDENCIES_PREFIX conflict
         DIRECTORIES ${R_SEARCH_DIRS}
         PRE_EXCLUDE_REGEXES "^api-ms-.*" "^ext-ms-.*"
         POST_EXCLUDE_REGEXES "^[A-Za-z]:/[Ww][Ii][Nn][Dd][Oo][Ww][Ss]/.*")
+    # Même DLL trouvée à plusieurs endroits (ex. copie déjà déployée à côté de l'exécutable et original du SDK,
+    # selon le dossier de la DLL qui l'importe) : acceptée seulement si toutes les copies sont identiques.
+    foreach(name ${conflict_FILENAMES})
+        list(GET conflict_${name} 0 first)
+        file(SHA256 "${first}" ref_hash)
+        foreach(other ${conflict_${name}})
+            file(SHA256 "${other}" other_hash)
+            if(NOT other_hash STREQUAL ref_hash)
+                message(FATAL_ERROR "DLL ${name} : copies différentes (${conflict_${name}})")
+            endif()
+        endforeach()
+        list(APPEND resolved "${first}")
+    endforeach()
     set(copied "")
     foreach(dep ${resolved})
         get_filename_component(name "${dep}" NAME)

@@ -630,7 +630,17 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
                     bool multi = (event->modifiers() & Qt::ControlModifier);
                     m_context->MoveTo(px, py, m_view, false);
 
-                    if (m_context->HasDetected())
+                    if (m_context->HasDetected() && overlayConsumesClick())
+                    {
+                        // Entité d'un calque (maillage) : traitée par le calque ; la sélection du modèle est vidée
+                        // pour que propriétés et surbrillance ne désignent qu'une seule chose.
+                        if (!multi)
+                        {
+                            m_context->ClearSelected(false);
+                            if (m_selectionManager) m_selectionManager->clearSelection();
+                        }
+                    }
+                    else if (m_context->HasDetected())
                     {
                         Handle(AIS_InteractiveObject) obj = detectedPreferringModel();
                         const bool preferred = obj != m_context->DetectedInteractive();
@@ -958,6 +968,7 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                 int slabId = m_selectionManager ? m_selectionManager->getSlabId(detectedObj) : -1;
                 int nodeId = m_selectionManager ? m_selectionManager->getNodeId(detectedObj) : -1;
                 int cableId = m_selectionManager ? m_selectionManager->getCableId(detectedObj) : -1;
+                if (const QString text = overlayHoverText(); !text.isEmpty()) emit objectHovered(text);
 
                 if (nodeId > 0 && m_model)
                 {

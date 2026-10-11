@@ -50,6 +50,7 @@
 #include <gp_Ax3.hxx>
 #include <gp_Trsf.hxx>
 #include <gp_Pln.hxx>
+#include <algorithm>
 #include <cmath>
 
 void OccView::fitAll()
@@ -206,6 +207,18 @@ void OccView::fitModel()
 
     bndBox.Enlarge(0.5);
     m_view->FitAll(bndBox, 0.15, true);
+    m_view->ZFitAll();
+    m_view->Redraw();
+    emit viewCameraChanged();
+}
+
+void OccView::fitBox(const Bnd_Box& box)
+{
+    if (m_view.IsNull() || box.IsVoid()) return;
+    pushCameraHistory();
+    Bnd_Box b = box;
+    b.Enlarge(std::max(0.05, std::sqrt(b.SquareExtent()) * 0.02));
+    m_view->FitAll(b, 0.1, true);
     m_view->ZFitAll();
     m_view->Redraw();
     emit viewCameraChanged();
