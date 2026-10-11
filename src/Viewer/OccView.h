@@ -95,6 +95,8 @@ public:
     // Mode d'affichage et de rendu des matériaux
     TSA::Viewer::RenderDisplayMode renderDisplayMode() const { return m_renderDisplayMode; }
     void setRenderDisplayMode(TSA::Viewer::RenderDisplayMode mode);
+    /// Arêtes des faces et mode léger (sans texture ni arête, facettisation 4 fois plus grossière). Visuel seulement.
+    void setRenderOptions(bool showEdges, bool lightweight);
 
     // Représentation du modèle (physique, filaire analytique, éléments finis, superposition) :
     // purement visuelle, conservée pendant la session (ModelDisplayMode.h).

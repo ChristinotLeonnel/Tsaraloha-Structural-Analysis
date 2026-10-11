@@ -14,6 +14,10 @@
     { "id": "soil", "name": "Soil Earth", "category": "Soil", "file": "soil.png", "repeat_u": 1.0, "repeat_v": 1.0 },
     { "id": "sand", "name": "Sand Bed", "category": "Soil", "file": "sand.png", "repeat_u": 1.0, "repeat_v": 1.0 },
     { "id": "gravel", "name": "Aggregate Gravel", "category": "Soil", "file": "gravel.png", "repeat_u": 1.0, "repeat_v": 1.0 },
-    { "id": "rock", "name": "Solid Bedrock", "category": "Soil", "file": "rock.png", "repeat_u": 1.0, "repeat_v": 1.0 }
+    { "id": "rock", "name": "Solid Bedrock", "category": "Soil", "file": "rock.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "formed_concrete", "name": "Formed Concrete (formwork joints, tie holes)", "category": "Concrete", "file": "formed_concrete.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "rough_concrete", "name": "Exposed Aggregate Concrete", "category": "Concrete", "file": "rough_concrete.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "painted_steel", "name": "Painted Steel (RAL 5009 approx.)", "category": "Steel", "file": "painted_steel.png", "repeat_u": 1.0, "repeat_v": 1.0 },
+    { "id": "cable", "name": "Stay Cable Strands", "category": "Steel", "file": "cable.png", "repeat_u": 1.0, "repeat_v": 1.0 }
   ]
 }

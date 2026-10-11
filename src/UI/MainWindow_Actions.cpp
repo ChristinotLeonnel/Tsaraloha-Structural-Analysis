@@ -554,6 +554,7 @@ void MainWindow::createActions()
     createModelingToolActions();
     createDimensionActions();
     createDisplayModeActions();
+    createRenderModeActions();
 
     m_actionMirror = new QAction(tr("&Symétrie (Miroir)..."), this);
     m_actionMirror->setIcon(QIcon(":/icons/edit/mirror.svg"));
@@ -883,9 +884,10 @@ void MainWindow::createActions()
     m_actionResultsForces->setToolTip(tr("Afficher les diagrammes de moments, efforts tranchants et normaux"));
     connect(m_actionResultsForces, &QAction::triggered, this, &MainWindow::onActionResultsForces);
 
-    m_actionResultsStress = new QAction(tr("Contraintes de &Von Mises"), this);
+    m_actionResultsStress = new QAction(tr("&Contraintes normales σ (poutres)"), this);
     m_actionResultsStress->setIcon(QIcon(":/icons/results_stress.svg"));
-    m_actionResultsStress->setToolTip(tr("Afficher la cartographie des contraintes"));
+    m_actionResultsStress->setToolTip(tr("Contrainte normale de fibre extrême σ = N/A ± |My|/Wy ± |Mz|/Wz (théorie des poutres, MPa). "
+                                         "Ni cisaillement ni torsion : ce n'est pas une contrainte de Von Mises."));
     connect(m_actionResultsStress, &QAction::triggered, this, &MainWindow::onActionResultsStress);
 
     m_actionMeasure = new QAction(tr("&Mesurer Distance 3D..."), this);
@@ -1239,6 +1241,11 @@ void MainWindow::createMenus()
     {
         QMenu* reprSub = viewMenu->addMenu(QIcon(":/icons/view/display_analytical.svg"), tr("Représentation du modèle"));
         for (QAction* a : m_displayModeActions) reprSub->addAction(a);
+        QMenu* renderSub = viewMenu->addMenu(QIcon(":/icons/view/view_shaded.svg"), tr("Rendu des volumes"));
+        for (QAction* a : m_renderModeActions) renderSub->addAction(a);
+        renderSub->addSeparator();
+        renderSub->addAction(m_actionRenderEdges);
+        renderSub->addAction(m_actionRenderLightweight);
     }
     viewMenu->addAction(m_actionCoordSystem);
     viewMenu->addAction(m_actionSectionCut);
@@ -1344,6 +1351,9 @@ void MainWindow::createRibbon()
     for (const auto& tool : m_toolRegistry->instances())
         if (tool->category() == TSA::Interaction::ToolCategory::Annotate) acts.dimensionTools[tool->id()] = m_toolActions[tool->id()];
     acts.modelDisplayModes = m_displayModeActions;
+    acts.renderModes = m_renderModeActions;
+    acts.renderEdges = m_actionRenderEdges;
+    acts.renderLightweight = m_actionRenderLightweight;
     acts.dimensionCommands = { m_actionEditDimension, m_actionDeleteDimensions, m_actionCleanDimensions, m_actionDimensionsVisible,
                                m_actionDimensionStyle };
     acts.actionMoveOrigin = m_actionMoveOrigin;
@@ -1643,6 +1653,8 @@ void MainWindow::createDockWindows()
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDeformationScalePreset);
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::sectionRotationToggled,
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setSectionRotationVisible);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::animationPhaseChanged,
+                m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setAnimationPhase);
         // Facteur effectif (Auto recalculé, préréglage, manuel) toujours affiché dans le panneau.
         connect(m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::visualStateChanged, m_resultsDock,
                 [this] { m_resultsDock->syncFromVisualManager(m_occView->resultsVisual()); });

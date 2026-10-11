@@ -1,0 +1,22 @@
+<a name="tbl_{{number}}"></a>
+<table class="data" width="100%" cellspacing="0" cellpadding="3">
+<thead>
+<tr>
+{{#headers}}
+<th align="{{{align}}}">{{{text}}}</th>
+{{/headers}}
+</tr>
+</thead>
+<tbody>
+{{#rows}}
+<tr>
+{{#cells}}
+<td align="{{{align}}}">{{{text}}}</td>
+{{/cells}}
+</tr>
+{{/rows}}
+</tbody>
+</table>
+{{#caption}}
+<p class="caption" align="center">Tableau {{number}} — {{{caption}}}</p>
+{{/caption}}

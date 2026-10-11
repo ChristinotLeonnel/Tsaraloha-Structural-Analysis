@@ -22,6 +22,8 @@
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QPushButton>
+#include <QTimer>
+#include <cmath>
 
 namespace TSA::UI
 {
@@ -44,6 +46,10 @@ void ResultsDockWidget::setModel(TSA::Model::Model* model)
 
 void ResultsDockWidget::setResultsModel(const std::shared_ptr<TSA::Analysis::ResultsModel>& results)
 {
+    // Nouveaux résultats : animation arrêtée, déformée complète affichée
+    if (m_animTimer && m_animTimer->isActive()) setAnimationRunning(false);
+    m_animTime = 0.0;
+    emitAnimationPhase(1.0);
     m_resultsModel = results;
     refreshUi();
 }
@@ -126,6 +132,7 @@ void ResultsDockWidget::setupUi()
     m_comboFamily->addItem(tr("⚡ Effort tranchant Vz"), static_cast<int>(TSA::Geometry::DiagramType::ShearForceVz));
     m_comboFamily->addItem(tr("⚡ Effort tranchant Vy"), static_cast<int>(TSA::Geometry::DiagramType::ShearForceVy));
     m_comboFamily->addItem(tr("↔️ Effort normal N (Traction/Compr.)"), static_cast<int>(TSA::Geometry::DiagramType::AxialForceN));
+    m_comboFamily->addItem(tr("🧮 Contrainte normale σ = N/A ± M/W (MPa)"), static_cast<int>(TSA::Geometry::DiagramType::StressSigma));
     m_comboFamily->addItem(tr("➡️ Flèche UX"), static_cast<int>(TSA::Geometry::DiagramType::DeflectionUx));
     m_comboFamily->addItem(tr("↗️ Flèche UY"), static_cast<int>(TSA::Geometry::DiagramType::DeflectionUy));
     m_comboFamily->addItem(tr("⬇️ Flèche UZ (Verticale)"), static_cast<int>(TSA::Geometry::DiagramType::DeflectionUz));
@@ -218,6 +225,48 @@ void ResultsDockWidget::setupUi()
     m_labelEffectiveScale->setStyleSheet("font-size: 11px; color: #3b82f6;");
     formScale->addRow(m_labelEffectiveScale);
     rootLayout->addWidget(grpScale);
+
+    // Animation de la déformée : les résultats statiques déjà calculés sont réaffichés entre la géométrie
+    // initiale et la déformée amplifiée ; ce n'est pas une analyse dynamique.
+    auto* grpAnim = new QGroupBox(tr("Animation de la déformée"), container);
+    auto* vAnim = new QVBoxLayout(grpAnim);
+    vAnim->setContentsMargins(8, 8, 8, 8);
+    vAnim->setSpacing(6);
+    auto* hAnim = new QHBoxLayout();
+    m_btnAnimPlay = new QPushButton(tr("▶ Lecture"), grpAnim);
+    m_btnAnimPlay->setObjectName(QStringLiteral("ResultsAnimPlay"));
+    m_btnAnimPlay->setCheckable(true);
+    m_btnAnimReset = new QPushButton(tr("⏮ Début"), grpAnim);
+    m_btnAnimReset->setObjectName(QStringLiteral("ResultsAnimReset"));
+    m_comboAnimSpeed = new QComboBox(grpAnim);
+    m_comboAnimSpeed->setObjectName(QStringLiteral("ResultsAnimSpeed"));
+    m_comboAnimSpeed->addItem(tr("Vitesse ×0,5"), 0.5);
+    m_comboAnimSpeed->addItem(tr("Vitesse ×1"), 1.0);
+    m_comboAnimSpeed->addItem(tr("Vitesse ×2"), 2.0);
+    m_comboAnimSpeed->setCurrentIndex(1);
+    hAnim->addWidget(m_btnAnimPlay);
+    hAnim->addWidget(m_btnAnimReset);
+    hAnim->addWidget(m_comboAnimSpeed, 1);
+    vAnim->addLayout(hAnim);
+    m_labelAnim = new QLabel(tr("Interpolation visuelle entre la géométrie initiale et la déformée calculée (pas une analyse dynamique)."), grpAnim);
+    m_labelAnim->setWordWrap(true);
+    m_labelAnim->setStyleSheet("font-size: 11px; color: #94a3b8;");
+    vAnim->addWidget(m_labelAnim);
+    rootLayout->addWidget(grpAnim);
+    m_animTimer = new QTimer(this);
+    m_animTimer->setInterval(40);
+    connect(m_animTimer, &QTimer::timeout, this, [this]() {
+        const double speed = m_comboAnimSpeed->currentData().toDouble();
+        m_animTime += 0.04 * speed;
+        // Aller-retour en 3 s à vitesse ×1 : 0 → 1 → 0 (cosinus, départ de la géométrie initiale)
+        emitAnimationPhase(0.5 - 0.5 * std::cos(2.0 * M_PI * m_animTime / 3.0));
+    });
+    connect(m_btnAnimPlay, &QPushButton::toggled, this, &ResultsDockWidget::setAnimationRunning);
+    connect(m_btnAnimReset, &QPushButton::clicked, this, [this]() {
+        setAnimationRunning(false);
+        m_animTime = 0.0;
+        emitAnimationPhase(0.0);
+    });
 
     // 5. Multi-pas / Incréments (Non-linéaire & Dynamique)
     m_grpSteps = new QGroupBox(tr("Pas de Calcul / Incréments"), container);
@@ -640,6 +689,27 @@ void ResultsDockWidget::onNodeLabelsCheckChanged(bool checked)
 {
     if (m_updating) return;
     emit nodeLabelsToggled(checked);
+}
+
+void ResultsDockWidget::setAnimationRunning(bool run)
+{
+    if (!m_animTimer) return;
+    if (m_btnAnimPlay->isChecked() != run)
+    {
+        const QSignalBlocker block(m_btnAnimPlay);
+        m_btnAnimPlay->setChecked(run);
+    }
+    m_btnAnimPlay->setText(run ? tr("⏸ Pause") : tr("▶ Lecture"));
+    if (run) m_animTimer->start();
+    else m_animTimer->stop();
+}
+
+void ResultsDockWidget::emitAnimationPhase(double phase)
+{
+    if (m_labelAnim)
+        m_labelAnim->setText(tr("Affichage : %1 % de la déformée amplifiée. Interpolation visuelle de la solution statique (pas une analyse dynamique).")
+                                 .arg(phase * 100.0, 0, 'f', 0));
+    emit animationPhaseChanged(phase);
 }
 
 } // namespace TSA::UI

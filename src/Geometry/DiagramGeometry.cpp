@@ -28,6 +28,7 @@ QString DiagramGeometry::diagramTypeName(DiagramType type)
     case DiagramType::RotationRx:   return QStringLiteral("Rotation de Torsion (RX)");
     case DiagramType::RotationRy:   return QStringLiteral("Rotation Flexion (RY)");
     case DiagramType::RotationRz:   return QStringLiteral("Rotation Flexion (RZ)");
+    case DiagramType::StressSigma:  return QStringLiteral("Contrainte normale de fibre extrême (σ = N/A ± M/W)");
     case DiagramType::None:
     default:                        return QStringLiteral("Aucun");
     }
@@ -54,6 +55,8 @@ QString DiagramGeometry::diagramUnit(DiagramType type, bool useKiloNewtons)
     case DiagramType::RotationRy:
     case DiagramType::RotationRz:
         return QStringLiteral("rad");
+    case DiagramType::StressSigma:
+        return QStringLiteral("MPa");
     case DiagramType::None:
     default:
         return QString();
@@ -78,6 +81,7 @@ double DiagramGeometry::getStationValue(const TSA::Analysis::StationForces& st, 
     case DiagramType::RotationRx:   return st.rx;
     case DiagramType::RotationRy:   return st.ry;
     case DiagramType::RotationRz:   return st.rz;
+    case DiagramType::StressSigma:  return st.N; // stations préparées par l'appelant : N contient σ (MPa)
     case DiagramType::None:
     default:                        return 0.0;
     }

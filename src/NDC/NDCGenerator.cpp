@@ -1,6 +1,7 @@
 #include "NDCPlanarCurves.h"
 #include "App/ProductInfo.h"
 #include "NDCGenerator.h"
+#include "NDCProjectNote.h"
 #include "NormativeReferenceDetector.h"
 #include "ResultAnalyzer.h"
 #include "ReportConfiguration.h"
@@ -107,6 +108,8 @@ NDCDocument NDCGenerator::generate(
     const ReportConfiguration& config,
     const SnapshotProvider& snapshotProvider)
 {
+    if (config.noteLayout != NoteLayout::Legacy) return NDCProjectNote::build(model, results, config, snapshotProvider);
+
     NDCDocument doc;
     doc.config = config;
 
@@ -468,20 +471,26 @@ NDCDocument NDCGenerator::generate(
         tVerif.headers = {QStringLiteral("Critère de Contrôle"), QStringLiteral("Valeur Constatée"), QStringLiteral("Tolérance / Norme"), QStringLiteral("Statut")};
         tVerif.columnAlignments = {QStringLiteral("left"), QStringLiteral("center"), QStringLiteral("center"), QStringLiteral("center")};
 
-        tVerif.rows.push_back({QStringLiteral("Nœuds isolés (sans barre connectée)"), QStringLiteral("0 nœud orphelin"), QStringLiteral("0 exigé"), QStringLiteral("<span class=\"badge badge-success\">OK</span>")});
-        tVerif.rows.push_back({QStringLiteral("Barres de longueur nulle (L <= 0)"), QStringLiteral("0 barre dégénérée"), QStringLiteral("0 exigé"), QStringLiteral("<span class=\"badge badge-success\">OK</span>")});
-        tVerif.rows.push_back({QStringLiteral("Stabilité globale (conditions d'appui)"), QStringLiteral("Liaisons effectives"), QStringLiteral(">= 6 DDL bloqués"), QStringLiteral("<span class=\"badge badge-success\">OK</span>")});
+        // Valeurs calculées sur le modèle (auparavant écrites en dur « OK »)
+        const ModelAudit audit = auditModel(model);
+        auto badge = [](bool good, const QString& yes, const QString& no) {
+            return good ? QStringLiteral("<span class=\"badge badge-success\">%1</span>").arg(yes) : QStringLiteral("<span class=\"badge badge-danger\">%1</span>").arg(no);
+        };
+        tVerif.rows.push_back({QStringLiteral("Nœuds isolés (sans barre connectée)"), QStringLiteral("%1 nœud(s)").arg(audit.isolatedNodes), QStringLiteral("0 exigé"), badge(audit.isolatedNodes == 0, QStringLiteral("OK"), QStringLiteral("À CORRIGER"))});
+        tVerif.rows.push_back({QStringLiteral("Barres de longueur nulle (L <= 0)"), QStringLiteral("%1 barre(s)").arg(audit.zeroLength), QStringLiteral("0 exigé"), badge(audit.zeroLength == 0, QStringLiteral("OK"), QStringLiteral("À CORRIGER"))});
+        tVerif.rows.push_back({QStringLiteral("Parties disjointes de la structure"), QString::number(audit.components), QStringLiteral("1"), badge(audit.components == 1, QStringLiteral("OK"), QStringLiteral("À EXAMINER"))});
+        tVerif.rows.push_back({QStringLiteral("Nœuds d'appui"), QString::number(audit.supportedNodes), QStringLiteral(">= 1"), badge(audit.supportedNodes >= 1, QStringLiteral("OK"), QStringLiteral("AUCUN APPUI"))});
 
         if (results && results->isValid())
         {
             const auto& eq = results->equilibrium();
-            double maxRes = eq.maxError();
-
+            const double maxRes = eq.maxError();
+            const double scale = std::max({ std::abs(eq.appliedFx), std::abs(eq.appliedFy), std::abs(eq.appliedFz), 1e-9 });
             tVerif.rows.push_back({
                 QStringLiteral("Équilibre global des forces (Σ F_ext + Σ R = 0)"),
-                QString("Résidu max = %1 kN").arg(maxRes, 0, 'e', 2),
-                QStringLiteral("Tolérance <= 1.0e-3 kN"),
-                (maxRes <= 1e-3) ? QStringLiteral("<span class=\"badge badge-success\">CONFORME</span>") : QStringLiteral("<span class=\"badge badge-warning\">NON VÉRIFIÉ</span>")
+                QString("Résidu max = %1 kN (relatif %2)").arg(maxRes, 0, 'e', 2).arg(maxRes / scale, 0, 'e', 2),
+                QStringLiteral("Résidu relatif <= 1.0e-3"),
+                eq.isBalanced(1e-3) ? QStringLiteral("<span class=\"badge badge-success\">CONFORME</span>") : QStringLiteral("<span class=\"badge badge-warning\">NON VÉRIFIÉ</span>")
             });
         }
         sVerif.tables.push_back(tVerif);
@@ -889,10 +898,16 @@ NDCDocument NDCGenerator::generate(
         ch.title = QStringLiteral("Conclusions et Déclaration de Conformité");
 
         NDCSection sConc;
-        sConc.paragraphs.push_back(QStringLiteral("Les calculs éléments finis conduits avec OpenSees attestent de la cohérence mécanique globale du modèle. "
-                                                  "L'équilibre statique global des charges et réactions est rigoureusement respecté. "
-                                                  "Les grandeurs déterminées ci-dessus constituent les sollicitations de dimensionnement "
-                                                  "à l'État Limite Ultime (ELU) et à l'État Limite de Service (ELS) conformément aux Eurocodes."));
+        // Conclusion factuelle : rien n'est affirmé qui n'ait été calculé.
+        if (results && results->isValid())
+            sConc.paragraphs.push_back(QStringLiteral("Calcul %1 disponible. Équilibre global des forces %2. Les sollicitations présentées correspondent au seul "
+                                                      "chargement calculé (%3) ; elles ne constituent pas une enveloppe de toutes les combinaisons. Les vérifications "
+                                                      "réglementaires non présentées dans cette note ne sont pas effectuées.")
+                                           .arg(QString::fromStdString(results->executionMetadata().solverEngine),
+                                                results->equilibrium().isBalanced(1e-3) ? QStringLiteral("vérifié") : QStringLiteral("non vérifié"),
+                                                QString::fromStdString(results->executionMetadata().loadCombinationType)));
+        else
+            sConc.paragraphs.push_back(QStringLiteral("Aucun résultat de calcul disponible : la note ne présente que les données du modèle."));
         ch.sections.push_back(sConc);
         doc.addChapter(ch);
     }

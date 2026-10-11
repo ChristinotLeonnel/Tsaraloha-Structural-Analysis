@@ -693,6 +693,15 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
         reprPanel->addSmallColumn({ acts.modelDisplayModes[2], acts.modelDisplayModes[3] });
         tab->addPanel(reprPanel);
     }
+    // Rendu des volumes : texturé, ombré, filaire ; arêtes ; mode léger
+    if (acts.renderModes.size() == 3 && acts.renderEdges && acts.renderLightweight)
+    {
+        auto* renderPanel = new RibbonPanel(QObject::tr("Rendu"), tab);
+        renderPanel->addSmallColumn({ acts.renderModes[0], acts.renderModes[1], acts.renderModes[2] });
+        renderPanel->addInternalSeparator();
+        renderPanel->addSmallColumn({ acts.renderEdges, acts.renderLightweight });
+        tab->addPanel(renderPanel);
+    }
 
     // Navigation & Cadrage
     auto* navPanel = new RibbonPanel(QObject::tr("Navigation"), tab);

@@ -10,8 +10,10 @@ ReportConfiguration ReportTemplate::createTemplate(ReportTemplateType type)
     switch (type)
     {
     case ReportTemplateType::BureauEtudes:
-        // Configuration complète d'ingénierie et d'exécution
-        config.documentStatus = "Bon Pour Exécution (BPE)";
+        // Note détaillée (18 chapitres, NDCProjectNote) mise en page pour l'impression
+        config.documentStatus = "Note de calcul — à viser par un ingénieur qualifié";
+        config.noteLayout = NoteLayout::Detailed;
+        config.templateId = "tsa.ndc.print";
         config.includeCoverPage = true;
         config.includeToc = true;
         config.includeLof = true;
@@ -114,8 +116,10 @@ ReportConfiguration ReportTemplate::createTemplate(ReportTemplateType type)
         break;
 
     case ReportTemplateType::Minimal:
-        // Synthèse exécutive condensée (3-5 pages)
-        config.documentStatus = "Synthèse Sommaire de Calcul";
+        // Note simplifiée (NDCProjectNote) : synthèse de quelques pages
+        config.documentStatus = "Note de calcul simplifiée";
+        config.noteLayout = NoteLayout::Simplified;
+        config.templateId = "tsa.ndc.print";
         config.includeCoverPage = true;
         config.includeToc = false;
         config.includeLof = false;
@@ -173,13 +177,13 @@ QString ReportTemplate::templateDescription(ReportTemplateType type)
     switch (type)
     {
     case ReportTemplateType::BureauEtudes:
-        return "Rapport complet et exhaustif pour visa de bureau de contrôle et exécution de chantier. Inclut la totalité des vérifications, enveloppes et armatures.";
+        return "Note détaillée en 18 chapitres : données, méthode et formules, résultats, câbles, vérifications calculées et liste des vérifications non calculées.";
     case ReportTemplateType::Eurocode:
         return "Focus sur la conformité aux normes EN 1990/1991/1992/1993/1998, critères d'état limite ultime (ELU) et de service (ELS).";
     case ReportTemplateType::Universitaire:
         return "Idéal pour mémoires et publications académiques : insistance sur la discrétisation EF, matrices, équilibre statique et modes vibratoires.";
     case ReportTemplateType::Minimal:
-        return "Document concis de quelques pages résumant les charges, les réactions maximales aux appuis et l'élément critique pour une décision rapide.";
+        return "Note simplifiée de quelques pages : hypothèses, charges, contrôle du modèle, résultats principaux, vérifications et limites.";
     case ReportTemplateType::Custom:
         return "Configuration utilisateur sur-mesure chargée depuis un profil sauvegardé.";
     }

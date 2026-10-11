@@ -1004,7 +1004,7 @@ void MainWindow::onActionResultsForces()
 
 void MainWindow::onActionResultsStress()
 {
-    onActionDiagramN();
+    if (m_occView && m_occView->resultsVisual()) m_occView->resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::StressSigma);
 }
 
 void MainWindow::onActionMeasure()

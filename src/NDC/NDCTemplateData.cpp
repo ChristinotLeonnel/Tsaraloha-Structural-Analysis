@@ -2,7 +2,10 @@
 
 #include "App/ProductInfo.h"
 
+#include <QBuffer>
+#include <QDate>
 #include <QFile>
+#include <QImage>
 #include <QFileInfo>
 #include <QJsonArray>
 
@@ -19,6 +22,22 @@ QString logoSvg()
     QFile file(QString::fromLatin1(TSA::Product::kIconSvg));
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) return QString::fromUtf8(file.readAll());
     return QStringLiteral("<svg width=\"80\" height=\"80\" viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"45\" fill=\"#1a56db\"/><text x=\"50\" y=\"58\" font-family=\"Arial\" font-size=\"24\" font-weight=\"bold\" fill=\"white\" text-anchor=\"middle\">TSA</text></svg>");
+}
+
+/// Logo officiel en PNG (data URI) : QTextDocument, moteur de l'export PDF, n'affiche pas de SVG en ligne.
+QString logoPngUri()
+{
+    static const QString uri = [] {
+        QImage img(QStringLiteral(":/icons/TSA_dark.png"));
+        if (img.isNull()) return QString();
+        img = img.scaled(160, 160, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        QByteArray ba;
+        QBuffer buf(&ba);
+        buf.open(QIODevice::WriteOnly);
+        img.save(&buf, "PNG");
+        return QStringLiteral("data:image/png;base64,") + QString::fromLatin1(ba.toBase64());
+    }();
+    return uri;
 }
 
 QString imageSource(const NDCFigure& fig, bool inlineLocal)
@@ -55,6 +74,7 @@ QJsonObject figureJson(const NDCFigure& f, bool inlineLocal)
              { "caption", f.caption },
              { "src", imageSource(f, inlineLocal) },
              { "widthPercent", f.widthPercent },
+             { "widthPx", qRound(6.8 * f.widthPercent) }, // largeur utile d'une page A4 portrait ≈ 680 px (96 ppp)
              { "viewName", f.viewName },
              { "elementRef", f.elementRef },
              { "loadCaseOrCombo", f.loadCaseOrCombo } };
@@ -104,7 +124,7 @@ QJsonObject ndcTemplateData(const NDCDocument& doc, const NDCTemplateDataOptions
                         { "address", c.organizationAddress },
                         { "email", c.contactEmail },
                         { "phone", c.contactPhone },
-                        { "date", c.emissionDate },
+                        { "date", c.emissionDate.isEmpty() ? QDate::currentDate().toString(QStringLiteral("dd/MM/yyyy")) : c.emissionDate },
                         { "standards", doc.standardReference },
                         { "software", doc.softwareVersion } } },
         { "page",
@@ -127,6 +147,7 @@ QJsonObject ndcTemplateData(const NDCDocument& doc, const NDCTemplateDataOptions
                         { "footer", c.enableFooter },
                         { "pagination", c.enablePagination } } },
         { "logoSvg", c.showTsaLogo ? logoSvg() : QString() },
+        { "logoUri", c.showTsaLogo ? logoPngUri() : QString() },
         { "chapters", chapters },
         { "allFigures", allFigures },
         { "allTables", allTables },

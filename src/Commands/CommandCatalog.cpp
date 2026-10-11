@@ -356,6 +356,16 @@ void CommandCatalog::initializeStandardCatalog() {
                    ":/icons/view/display_fe.svg", CommandCategory::View});
   registerCommand({"cmd.view.display_overlay", "Superposition", "Représentation : sections translucides et axes", "Alt+4",
                    ":/icons/view/view_transparent.svg", CommandCategory::View});
+  registerCommand({"cmd.view.render_textured", "Rendu texturé", "Volumes avec la finition des matériaux (couleur, brillance, texture)", "Alt+5",
+                   ":/icons/view/view_3d.svg", CommandCategory::View});
+  registerCommand({"cmd.view.render_shaded", "Rendu ombré", "Volumes ombrés en couleur unie, sans texture", "Alt+6",
+                   ":/icons/view/view_shaded.svg", CommandCategory::View});
+  registerCommand({"cmd.view.render_wireframe", "Rendu filaire", "Arêtes des volumes seulement", "Alt+7",
+                   ":/icons/view/view_wireframe.svg", CommandCategory::View});
+  registerCommand({"cmd.view.render_edges", "Arêtes des volumes", "Dessiner les arêtes des faces sur les volumes ombrés", "Alt+8",
+                   "", CommandCategory::View});
+  registerCommand({"cmd.view.render_lightweight", "Mode léger", "PC modestes : sans texture ni arête, facettisation plus grossière", "Alt+9",
+                   "", CommandCategory::View});
   registerCommand({"cmd.display.nodes", "Afficher les nœuds", "Afficher ou masquer les nœuds", "",
                    "", CommandCategory::Display});
   registerCommand({"cmd.display.node_labels", "Afficher les numéros de nœuds", "Afficher ou masquer les étiquettes des nœuds", "",
@@ -508,7 +518,7 @@ void CommandCatalog::initializeStandardCatalog() {
                    ":/icons/results_disp.svg", CommandCategory::Results});
   registerCommand({"cmd.results.forces", "Efforts internes", "Diagrammes des efforts (M, N, V)", "",
                    ":/icons/results_forces.svg", CommandCategory::Results});
-  registerCommand({"cmd.results.stresses", "Contraintes", "Contraintes de Von Mises", "",
+  registerCommand({"cmd.results.stresses", "Contraintes", "Contrainte normale de fibre extrême σ = N/A ± M/W (poutres)", "",
                    ":/icons/results_stress.svg", CommandCategory::Results});
   registerCommand({"cmd.report.ndc", "Note de calcul", "Ouvrir la note de calcul", "F8",
                    "", CommandCategory::Documentation});

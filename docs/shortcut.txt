@@ -177,6 +177,11 @@ cmd.view.iso                        | Num+5                 | on   | Num+5      
 cmd.view.left                       | Num+3                 | on   | Num+3                 | Vue de gauche — Caméra vers +X
 cmd.view.next                       | Alt+Right             | on   | Alt+Right             | Vue suivante — Revenir à la vue suivante
 cmd.view.prev                       | Alt+Left ; Z, P       | on   | Alt+Left ; Z, P       | Vue précédente — Revenir à la vue précédente (AutoCAD : Z, P)
+cmd.view.render_edges               | Alt+8                 | on   | Alt+8                 | Arêtes des volumes — Dessiner les arêtes des faces sur les volumes ombrés
+cmd.view.render_lightweight         | Alt+9                 | on   | Alt+9                 | Mode léger — PC modestes : sans texture ni arête, facettisation plus grossière
+cmd.view.render_shaded              | Alt+6                 | on   | Alt+6                 | Rendu ombré — Volumes ombrés en couleur unie, sans texture
+cmd.view.render_textured            | Alt+5                 | on   | Alt+5                 | Rendu texturé — Volumes avec la finition des matériaux (couleur, brillance, texture)
+cmd.view.render_wireframe           | Alt+7                 | on   | Alt+7                 | Rendu filaire — Arêtes des volumes seulement
 cmd.view.reset                      | R                     | on   | R                     | Réinitialiser la vue — Réinitialiser l'orientation de la caméra
 cmd.view.right                      | Ctrl+Num+3            | on   | Ctrl+Num+3            | Vue de droite — Caméra vers -X
 cmd.view.rotate_left                |                       | on   |                       | Pivoter la vue 2D à gauche — Rotation de la vue 2D de -15°
@@ -289,7 +294,7 @@ cmd.results.fit_model               |                       | on   |            
 cmd.results.fit_results             |                       | on   |                       | Cadrer les résultats — Cadrer les résultats affichés
 cmd.results.forces                  |                       | on   |                       | Efforts internes — Diagrammes des efforts (M, N, V)
 cmd.results.reactions               | Shift+F9              | on   | Shift+F9              | Afficher les réactions — Afficher ou masquer les réactions d'appui
-cmd.results.stresses                |                       | on   |                       | Contraintes — Contraintes de Von Mises
+cmd.results.stresses                |                       | on   |                       | Contraintes — Contrainte normale de fibre extrême σ = N/A ± M/W (poutres)
 
 [Rapports]
 # identifiant                       | raccourci(s)          | état | par défaut            | description

@@ -27,6 +27,16 @@ enum class PageOrientation
 };
 
 /**
+ * @brief Structure de la note : historique (chapitres configurables), simplifiée ou détaillée (NDCProjectNote).
+ */
+enum class NoteLayout
+{
+    Legacy,     ///< générateur historique (sections choisies par les cases include*)
+    Simplified, ///< synthèse : hypothèses, charges, contrôle, résultats principaux, vérifications, limites
+    Detailed    ///< 18 chapitres : données, méthode et formules, résultats, câbles, vérifications calculées / non calculées
+};
+
+/**
  * @brief Configuration complète et personnalisable de la Note de Calcul (NDC).
  * Gère les métadonnées de projet, la charte graphique, les options d'affichage 3D
  * et la sélection granulaire des sections/chapitres.
@@ -75,6 +85,7 @@ struct ReportConfiguration
     bool enablePagination = true;      ///< Format "Page X sur Y"
     /// Template de mise en page (schéma « tsa-ndc/1 », docs/TEMPLATES.md) ; introuvable ou invalide : générateur historique.
     QString templateId = "tsa.ndc.standard";
+    NoteLayout noteLayout = NoteLayout::Legacy;
 
     // =========================================================================
     // 3. SELECTION GRANULAIRE DES SECTIONS ET CONTENUS

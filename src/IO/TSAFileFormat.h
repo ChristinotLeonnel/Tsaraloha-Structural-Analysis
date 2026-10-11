@@ -27,7 +27,7 @@ constexpr bool isReadableFileMagic(uint32_t magic)
 // Versioning du format
 // -----------------------------------------------------------------------------
 constexpr uint16_t TSA_FORMAT_VERSION_MAJOR = 1;
-constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 8; // 1.8 : chunks MESH et OPNG ; 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
+constexpr uint16_t TSA_FORMAT_VERSION_MINOR = 9; // 1.9 : chunk MVIS ; 1.8 : chunks MESH et OPNG ; 1.1 : chunk LOAD ; 1.2 : bloc d'aperçu après le payload (TSAPreviewBlock.h) ; 1.3 : chunk BIMM ; 1.4 : chunk SETT ; 1.5 : chunk TOPO ; 1.6 : chunk DIMS ; 1.7 : chunk XTND
 
 // Version de disposition interne du chunk LOAD (indépendante de la version du format)
 constexpr uint32_t LOAD_CHUNK_LAYOUT_VERSION = 1;
@@ -83,6 +83,7 @@ constexpr uint32_t CHUNK_TOPO = 0x4F504F54; // 'TOPO' : Topologie et numérotati
 constexpr uint32_t CHUNK_XTND = 0x444E5458; // 'XTND' : données d'échange non interprétées (TSA3D) — JSON UTF-8 opaque (1.7)
 constexpr uint32_t CHUNK_MESH = 0x4853454D; // 'MESH' : maillage du projet (paramètres, profil, maillage généré, rapport) — JSON UTF-8 (1.8)
 constexpr uint32_t CHUNK_OPNG = 0x474E504F; // 'OPNG' : ouvertures des dalles (repère local) — JSON UTF-8 (1.8)
+constexpr uint32_t CHUNK_MVIS = 0x5349564D; // 'MVIS' : finitions d'aspect des éléments différentes de celle du matériau de bibliothèque — JSON UTF-8 (1.9)
 constexpr uint32_t CHUNK_DIMS = 0x534D4944; // 'DIMS' : Cotations 3D (DimensionSet : style + ancrages) — JSON UTF-8 versionné (1.6)
 constexpr uint32_t CHUNK_RSLT = 0x544C5352; // 'RSLT' : Résultats de calcul EF (déplacements, efforts, contraintes)
 constexpr uint32_t CHUNK_SNAP = 0x50414E53; // 'SNAP' : Snapshots mécaniques immuables de calcul et métadonnées d'extensions

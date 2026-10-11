@@ -168,8 +168,9 @@ MainWindow::MainWindow(QWidget* parent)
     m_occView->setModel(m_model);
     m_occView->setGridManager(m_gridManager, m_gridSnapManager);
     m_occView->setCreationPresets(m_presets);
+    applyRenderOptions(); // rendu des volumes enregistré (texturé / ombré / filaire, arêtes, mode léger)
 
-    m_openSeesSolver = std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
+    m_openSeesSolver =std::make_unique<TSA::Analysis::OpenSeesSolver>(this);
     m_engineOptions = std::make_unique<TSA::UI::AnalysisEngineOptionsRegistry>();
     TSA::UI::registerBuiltInEngineOptions(*m_engineOptions);
     if (m_diagramWidget)

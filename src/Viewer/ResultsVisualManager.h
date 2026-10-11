@@ -77,6 +77,10 @@ public:
     void autoComputeDeformationScale();
 
     ScalePreset deformationScalePreset() const { return m_deformationPreset; }
+    /// Animation de la déformée : fraction (0…1) du facteur d'amplification appliquée à l'affichage. Les mêmes
+    /// résultats statiques sont réaffichés (aucun calcul relancé, aucune analyse dynamique).
+    void setAnimationPhase(double phase);
+    double animationPhase() const { return m_animationPhase; }
     void setDeformationScalePreset(ScalePreset preset, double customVal = 1.0);
 
     /// Rotation des sections (torsion θx des poutres et poteaux) appliquée à la déformée, avec repères de
@@ -162,6 +166,7 @@ private:
     bool m_reactionsVisible = true;
 
     ScalePreset m_deformationPreset = ScalePreset::Auto;
+    double m_animationPhase = 1.0;
     ScalePreset m_diagramPreset = ScalePreset::Auto;
     bool m_legendVisible = true;
 

@@ -3,6 +3,13 @@
     <!-- Templates intégrés (docs/TEMPLATES.md) : un dossier par paquet (manifest.json + fichiers).
          Liste régénérée par tools/update_templates_qrc.py ; contrôlée par le test 283. -->
     <qresource prefix="/templates">
+        <file alias="builtin/tsa.ndc.print/main.html">templates/builtin/tsa.ndc.print/main.html</file>
+        <file alias="builtin/tsa.ndc.print/manifest.json">templates/builtin/tsa.ndc.print/manifest.json</file>
+        <file alias="builtin/tsa.ndc.print/partials/cover.html">templates/builtin/tsa.ndc.print/partials/cover.html</file>
+        <file alias="builtin/tsa.ndc.print/partials/figure.html">templates/builtin/tsa.ndc.print/partials/figure.html</file>
+        <file alias="builtin/tsa.ndc.print/partials/style.html">templates/builtin/tsa.ndc.print/partials/style.html</file>
+        <file alias="builtin/tsa.ndc.print/partials/table.html">templates/builtin/tsa.ndc.print/partials/table.html</file>
+        <file alias="builtin/tsa.ndc.print/partials/toc.html">templates/builtin/tsa.ndc.print/partials/toc.html</file>
         <file alias="builtin/tsa.ndc.standard/main.html">templates/builtin/tsa.ndc.standard/main.html</file>
         <file alias="builtin/tsa.ndc.standard/manifest.json">templates/builtin/tsa.ndc.standard/manifest.json</file>
         <file alias="builtin/tsa.ndc.standard/partials/cover.html">templates/builtin/tsa.ndc.standard/partials/cover.html</file>

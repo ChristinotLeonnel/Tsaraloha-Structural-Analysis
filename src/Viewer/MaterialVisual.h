@@ -63,6 +63,13 @@ public:
     // Vidage du cache en cas de modification dynamique de matériau
     void clearCache();
 
+    /// Arêtes des faces dessinées en trait fin sur les solides ombrés (aide à la lecture des volumes).
+    void setShowEdges(bool on) { m_showEdges = on; }
+    bool showEdges() const { return m_showEdges; }
+    /// Mode léger (PC modestes) : aucune texture ni arête ; la vue réduit aussi la finesse de facettisation.
+    void setLightweight(bool on) { m_lightweight = on; }
+    bool lightweight() const { return m_lightweight; }
+
 private:
     MaterialVisual() = default;
     ~MaterialVisual() = default;
@@ -72,6 +79,8 @@ private:
 private:
     std::unordered_map<int, Graphic3d_MaterialAspect> m_aspectCache;
     std::unordered_map<std::string, occ::handle<Graphic3d_Texture2D>> m_textureCache;
+    bool m_showEdges = false;
+    bool m_lightweight = false;
 };
 
 } // namespace TSA::Viewer

@@ -127,7 +127,36 @@ struct Material
     static Material findByName(const std::string& name);
     static Material findById(int id);
     static Material findByType(MaterialType type);
+
+    /// Copie du matériau avec une autre finition visuelle (propriétés mécaniques et nom inchangés).
+    Material withVisual(const VisualProperties& v) const
+    {
+        Material m = *this;
+        m.visual = v;
+        return m;
+    }
 };
+
+/// Égalité des propriétés d'aspect (tolérance 1e-9 sur les réels).
+bool sameVisual(const VisualProperties& a, const VisualProperties& b);
+
+/**
+ * @brief Finitions d'aspect prédéfinies, indépendantes des propriétés mécaniques.
+ * Elles n'agissent que sur le rendu (couleur, rugosité, brillance, texture) : le calcul n'en dépend jamais.
+ * Les textures sont des motifs procéduraux de Extensions/TSALib/Textures (textures.json).
+ */
+namespace VisualFinish
+{
+VisualProperties rawConcrete();      ///< béton brut de décoffrage, gris moyen mat
+VisualProperties formedConcrete();   ///< béton coffré : joints de banches et trous de tiges
+VisualProperties roughConcrete();    ///< béton granuleux / désactivé : granulats apparents
+VisualProperties steel();            ///< acier de construction brut, semi-mat
+VisualProperties paintedSteel(const std::string& colorHex = "#2F5D8A"); ///< acier peint (couleur RAL au choix)
+VisualProperties galvanizedSteel();  ///< acier galvanisé, fleurage zinc
+VisualProperties cable();            ///< câble à torons (gaine PEHD ou torons apparents)
+VisualProperties glass();            ///< verre feuilleté transparent
+VisualProperties soil();             ///< terrain naturel
+} // namespace VisualFinish
 
 } // namespace TSA::Model
 
