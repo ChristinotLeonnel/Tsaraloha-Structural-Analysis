@@ -1,0 +1,28 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-04b",
+  "title": "Poutre bi-encastrée — charge ponctuelle excentrée sur la barre",
+  "category": "rdm",
+  "description": "L = 6 m, P = 40 kN appliquée SUR la barre (charge de barre, pas nodale) à a = 2 m de l'appui gauche (b = 4 m) : R_A = P·b²·(3a + b)/L³, R_B = P·a²·(a + 3b)/L³, |M_A| = P·a·b²/L², |M_B| = P·a²·b/L², flèche sous la charge P·a³·b³/(3·E·I·L³).",
+  "sources": ["W.C. Young, R.G. Budynas — Roark's Formulas for Stress and Strain, 7e éd., tableau 8.1 (poutre bi-encastrée, charge concentrée)"],
+  "hypotheses": ["Euler-Bernoulli", "charge de barre transmise par eleLoad -beamPoint (OpenSees) ou par le moteur plan"],
+  "units": { "force": "kN", "length": "m", "stress": "kPa" },
+  "engines": ["opensees", "custom2d"],
+  "parameters": { "E": 210000000.0, "b0": 0.2, "h": 0.4, "I": "b0*h^3/12", "L": 6.0, "P": 40.0, "a": 2.0, "b": 4.0 },
+  "model": {
+    "materials": { "S": { "E": 210000000.0, "nu": 0.3, "rho": 7850 } },
+    "sections": { "R": { "shape": "rectangular", "b": 0.2, "h": 0.4 } },
+    "nodes": [ { "id": 1, "x": 0, "y": 0, "z": 0, "support": [1, 1, 1, 1, 1, 1] }, { "id": 2, "x": 6.0, "y": 0, "z": 0, "support": [1, 1, 1, 1, 1, 1] } ],
+    "members": [ { "id": 1, "type": "beam", "i": 1, "j": 2, "section": "R", "material": "S" } ],
+    "cases": [ { "id": 1, "name": "P" } ],
+    "memberLoads": [ { "member": 1, "case": 1, "type": "point", "p": 40.0, "x": 2.0, "relative": false, "direction": "gravity" } ]
+  },
+  "analysis": { "selfWeight": false, "case": 1 },
+  "checks": [
+    { "quantity": "reaction:1:fz", "label": "réaction gauche", "expected": "P*b^2*(3*a+b)/L^3", "unit": "kN", "tolerance": { "rel": 1e-6, "abs": 1e-9 } },
+    { "quantity": "reaction:2:fz", "label": "réaction droite", "expected": "P*a^2*(a+3*b)/L^3", "unit": "kN", "tolerance": { "rel": 1e-6, "abs": 1e-9 } },
+    { "quantity": "member:1:M:start", "label": "moment d'encastrement gauche", "expected": "P*a*b^2/L^2", "unit": "kN·m", "tolerance": { "rel": 1e-6, "abs": 1e-9 } },
+    { "quantity": "member:1:M:end", "label": "moment d'encastrement droit", "expected": "P*a^2*b/L^2", "unit": "kN·m", "tolerance": { "rel": 1e-6, "abs": 1e-9 } },
+    { "quantity": "member:1:uz:at=0.3333333333333333", "label": "flèche sous la charge", "expected": "-P*a^3*b^3/(3*E*I*L^3)", "unit": "m", "tolerance": { "rel": 1e-4, "abs": 1e-9 } }
+  ]
+}

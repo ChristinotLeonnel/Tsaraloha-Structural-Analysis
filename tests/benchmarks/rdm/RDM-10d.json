@@ -1,0 +1,136 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-10d",
+  "title": "Poutre sur deux appuis — charge uniforme partielle",
+  "category": "rdm",
+  "description": "L = 6 m, q = 8 kN/m de a = 1,5 m à b = 4 m : R_A = q(b−a)(L − (a+b)/2)/L.",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)"
+  ],
+  "hypotheses": [
+    "Euler-Bernoulli"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees",
+    "custom2d"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "b": 0.2,
+    "h": 0.4,
+    "A": "b*h",
+    "I": "b*h^3/12",
+    "W": "b*h^2/6",
+    "L": 6.0,
+    "q": 8.0,
+    "a": 1.5,
+    "bb": 4.0
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "R": {
+        "shape": "rectangular",
+        "b": 0.2,
+        "h": 0.4
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": 2,
+        "x": 6.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          0
+        ]
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "beam",
+        "i": 1,
+        "j": 2,
+        "section": "R",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "part"
+      }
+    ],
+    "memberLoads": [
+      {
+        "member": 1,
+        "case": 1,
+        "type": "trapezoidal",
+        "q1": 8.0,
+        "q2": 8.0,
+        "x1": 1.5,
+        "x2": 4.0,
+        "relative": false,
+        "direction": "gravity"
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "reaction:1:fz",
+      "label": "réaction gauche",
+      "expected": "q*(bb-a)*(L-(a+bb)/2)/L",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reaction:2:fz",
+      "label": "réaction droite",
+      "expected": "q*(bb-a)*((a+bb)/2)/L",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

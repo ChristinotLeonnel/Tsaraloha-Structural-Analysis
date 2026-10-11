@@ -1,0 +1,141 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-01",
+  "title": "Barre en traction",
+  "category": "rdm",
+  "description": "Console axiale chargée en bout ; δ = N·L/(E·A).",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)"
+  ],
+  "hypotheses": [
+    "élasticité linéaire, petits déplacements",
+    "barre prismatique, effort normal centré"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees",
+    "custom2d"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "b": 0.2,
+    "h": 0.4,
+    "A": "b*h",
+    "I": "b*h^3/12",
+    "W": "b*h^2/6",
+    "L": 3.0,
+    "P": 100.0
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "R": {
+        "shape": "rectangular",
+        "b": 0.2,
+        "h": 0.4
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "x": 3.0,
+        "y": 0,
+        "z": 0
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "beam",
+        "i": 1,
+        "j": 2,
+        "section": "R",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "N"
+      }
+    ],
+    "nodalLoads": [
+      {
+        "node": 2,
+        "case": 1,
+        "fx": 100.0
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "node:2:ux",
+      "label": "allongement δ",
+      "expected": "P*L/(E*A)",
+      "unit": "m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "member:1:N:start",
+      "label": "effort normal (traction > 0)",
+      "expected": "P",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reaction:1:fx",
+      "label": "réaction",
+      "expected": "-P",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "member:1:sigma:absmax",
+      "label": "contrainte normale |σ| = |N|/A",
+      "expected": "abs(P)/A",
+      "unit": "kPa",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+case,quantity,value,unit,source,rel_tol,abs_tol
+# Gabarit de références externes (docs/BENCHMARKS.md, §Comparaison avec un autre logiciel).
+# Une ligne par grandeur : identifiant du cas (RDM-03…), grandeur TSA (node:2:uz, reaction:1:fz, member:1:M:absmax,
+# surface:uz:absmax, modal:f1…), valeur dans les unités du cas (kN, m, kPa, Hz), logiciel et version, tolérances.
+# Aucune valeur n'est fournie ici : les résultats d'un logiciel tiers doivent provenir d'un calcul réellement
+# exécuté sur un modèle harmonisé (géométrie, appuis, axes locaux, charges, unités, type d'élément).
+# Exemple de ligne :
+# RDM-03,node:2:uz,<valeur>,m,<logiciel> <version> — modèle harmonisé,0.001,1e-9

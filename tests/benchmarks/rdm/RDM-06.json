@@ -1,0 +1,200 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-06",
+  "title": "Portique encastré — effort horizontal en tête",
+  "category": "rdm",
+  "description": "Portique 6 × 4 m à pieds encastrés, H = 20 kN en tête. Raideur latérale (barres inextensibles) : K = 24·E·Ic/h³ · (6k+1)/(6k+4), k = (Ib/L)/(Ic/h).",
+  "sources": [
+    "A. Ghali, A.M. Neville — Structural Analysis (méthode des rotations, portique à un niveau)",
+    "W.C. Young, R.G. Budynas — Roark's Formulas for Stress and Strain, 7e éd. (tableaux des poutres, torsion)"
+  ],
+  "hypotheses": [
+    "Euler-Bernoulli",
+    "solution de référence : barres inextensibles ; les deux moteurs de TSA prennent en compte la déformation axiale (raccourcissement différentiel des poteaux sous le moment de renversement, compression de la poutre) : écart attendu de l'ordre de 0,5 %, tolérance 1 %",
+    "poteau 0,3 × 0,3 m, poutre 0,3 × 0,5 m",
+    "modèle plan (XZ) calculé en 3D : Ty et Rx bloqués aux appuis (aucun mécanisme hors plan), Rz libre"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees",
+    "custom2d"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "H": 20.0,
+    "h": 4.0,
+    "L": 6.0,
+    "Ic": "0.3*0.3^3/12",
+    "Ib": "0.3*0.5^3/12",
+    "k": "(Ib/L)/(Ic/h)",
+    "K": "24*E*Ic/h^3*(6*k+1)/(6*k+4)"
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "C": {
+        "shape": "rectangular",
+        "b": 0.3,
+        "h": 0.3
+      },
+      "B": {
+        "shape": "rectangular",
+        "b": 0.3,
+        "h": 0.5
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "x": 0,
+        "y": 0,
+        "z": 4.0,
+        "support": [
+          0,
+          1,
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      {
+        "id": 3,
+        "x": 6.0,
+        "y": 0,
+        "z": 4.0,
+        "support": [
+          0,
+          1,
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      {
+        "id": 4,
+        "x": 6.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "column",
+        "i": 1,
+        "j": 2,
+        "section": "C",
+        "material": "S"
+      },
+      {
+        "id": 2,
+        "type": "beam",
+        "i": 2,
+        "j": 3,
+        "section": "B",
+        "material": "S"
+      },
+      {
+        "id": 3,
+        "type": "column",
+        "i": 4,
+        "j": 3,
+        "section": "C",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "H"
+      }
+    ],
+    "nodalLoads": [
+      {
+        "node": 2,
+        "case": 1,
+        "fx": 20.0
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "node:2:ux",
+      "label": "déplacement en tête",
+      "expected": "H/K",
+      "unit": "m",
+      "tolerance": {
+        "rel": 0.01,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "node:3:ux",
+      "label": "déplacement en tête (droite)",
+      "expected": "H/K",
+      "unit": "m",
+      "tolerance": {
+        "rel": 0.01,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reactionsum:fx",
+      "label": "Σ réactions horizontales",
+      "expected": "-H",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-06
+      }
+    },
+    {
+      "quantity": "reactionsum:fz",
+      "label": "Σ réactions verticales",
+      "expected": 0.0,
+      "unit": "kN",
+      "tolerance": {
+        "rel": 0,
+        "abs": 1e-06
+      }
+    }
+  ]
+}

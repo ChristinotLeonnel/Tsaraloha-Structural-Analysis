@@ -1,4 +1,5 @@
 #include "OpenSeesSolver.h"
+#include <QRegularExpression>
 #include "OpenSeesResultsReader.h"
 #include "../Model/Model.h"
 #include "../Standards/ModelValidator.h"
@@ -220,6 +221,8 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     }
 
     emit progressChanged(25, tr("Génération du script d'analyse Tcl..."));
+    QElapsedTimer stageTimer;   // durées des étapes (traçabilité, mesures de performance)
+    stageTimer.start();
     const bool modal = localParams.type == AnalysisType::Modal;
     std::string script = modal ? OpenSeesAnalysisBuilder::buildModalScript(snapshot, opsMap, localParams)
                                : OpenSeesAnalysisBuilder::buildScript(snapshot, opsMap, localParams);
@@ -235,6 +238,8 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     scriptFile.close();
 
     // 3. Exécution du processus OpenSees
+    const double scriptMs = stageTimer.nsecsElapsed() / 1e6;
+    stageTimer.restart();
     emit progressChanged(40, tr("Lancement du solveur OpenSees..."));
     emit logReceived(QString("[TSA] Lancement de %1 sur %2").arg(exePath, scriptFilePath));
 
@@ -291,6 +296,8 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     m_process = nullptr;
     int exitCode = process.exitCode();
 
+    const double solveMs = stageTimer.nsecsElapsed() / 1e6;
+    stageTimer.restart();
     emit progressChanged(85, tr("Analyse du journal et lecture des résultats..."));
     m_results.clearLog();
     m_results.appendLog(stdOutLog.toStdString());
@@ -405,6 +412,9 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
 
     // Traçabilité des métadonnées normatives d'exécution
     auto meta = m_results.executionMetadata();
+    meta.scriptDurationMs = scriptMs;
+    meta.solveDurationMs = solveMs;
+    meta.readDurationMs = stageTimer.nsecsElapsed() / 1e6;
     meta.solverEngine = "OpenSees";
     meta.solverVersion = OpenSeesManager::instance().versionInfo().versionString.toStdString();
     if (meta.solverVersion.empty()) meta.solverVersion = "3.8.0";
@@ -425,6 +435,28 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     else
     {
         meta.loadCombinationType = "Statique Linéaire";
+    }
+    // Statique non linéaire : facteur de charge atteint (λ = 1 attendu) ; tout autre facteur est signalé, jamais tu
+    if (localParams.type == AnalysisType::NonLinearStatic)
+    {
+        const QString log = QString::fromStdString(m_results.journalLog());
+        const int at = log.lastIndexOf(QStringLiteral("TSA_OPS_LOAD_FACTOR"));
+        if (at >= 0)
+        {
+            bool ok = false;
+            const double lambda = log.mid(at + 20).section(QRegularExpression(QStringLiteral("\\s")), 0, 0, QString::SectionSkipEmpty).toDouble(&ok);
+            if (ok)
+            {
+                meta.finalLoadFactor = lambda;
+                if (std::abs(lambda - 1.0) > 1e-6)
+                {
+                    const std::string w = "Statique non linéaire : résultats au facteur de charge λ = " + std::to_string(lambda) +
+                                          ", et non à la charge complète (λ = 1) : vérifier l'intégrateur (longueur d'arc, contrôle en déplacement) et le nombre de pas.";
+                    meta.warnings.push_back(w);
+                    emit logReceived(QString("[AVERTISSEMENT] %1").arg(QString::fromStdString(w)));
+                }
+            }
+        }
     }
     m_results.setExecutionMetadata(meta);
     m_results.setAvailability(m_results.availabilityFromData());

@@ -1,0 +1,146 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "FEA-05",
+  "title": "Mode propre d'une bande de coque en console",
+  "category": "fea",
+  "description": "Bande 4 × 1 m, e = 0,20 m, encastrée : f1 = 1,8751²/(2π·L²)·√(E·I/m), m = ρ·e·b ; masse totale ρ·e·A.",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)",
+    "OpenSees — ShellMITC4 (Dvorkin-Bathe) et ShellDKGT : documentation et exemples de vérification (opensees.berkeley.edu)"
+  ],
+  "hypotheses": [
+    "masses concentrées des coques (ρ·e)",
+    "effet de plaque (ν = 0,2) : écart attendu < 2 %"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees"
+  ],
+  "parameters": {
+    "E": 31000000.0,
+    "rho": 2.5,
+    "L": 4.0,
+    "bw": 1.0,
+    "e": 0.2,
+    "I": "bw*e^3/12",
+    "m": "rho*e*bw"
+  },
+  "model": {
+    "materials": {
+      "C": {
+        "E": 31000000.0,
+        "nu": 0.2,
+        "rho": 2500
+      }
+    },
+    "sections": {},
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "x": 4,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "id": 3,
+        "x": 4,
+        "y": 1,
+        "z": 0
+      },
+      {
+        "id": 4,
+        "x": 0,
+        "y": 1,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "members": [],
+    "slabs": [
+      {
+        "id": 1,
+        "nodes": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "thickness": 0.2,
+        "material": "C",
+        "edgeSupports": [
+          {
+            "edge": 3,
+            "fixed": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "-"
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "type": "modal",
+    "modes": 3,
+    "meshSize": 0.25,
+    "quads": true
+  },
+  "checks": [
+    {
+      "quantity": "modal:f1",
+      "label": "fréquence fondamentale",
+      "expected": "1.875104^2/(2*pi*L^2)*sqrt(E*I/m)",
+      "unit": "Hz",
+      "tolerance": {
+        "rel": 0.02,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "modal:mass:z",
+      "label": "masse totale",
+      "expected": "rho*e*L*bw",
+      "unit": "t",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

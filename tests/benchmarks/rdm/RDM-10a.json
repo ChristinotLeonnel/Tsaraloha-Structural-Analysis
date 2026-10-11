@@ -1,0 +1,163 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-10a",
+  "title": "Poutre encastrée-appuyée — charge uniforme (hyperstatique)",
+  "category": "rdm",
+  "description": "L = 8 m, q = 12 kN/m.",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)",
+    "W.C. Young, R.G. Budynas — Roark's Formulas for Stress and Strain, 7e éd. (tableaux des poutres, torsion)"
+  ],
+  "hypotheses": [
+    "Euler-Bernoulli",
+    "modèle plan (XZ) calculé en 3D : Ty et Rx bloqués aux appuis (aucun mécanisme hors plan), Rz libre"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees",
+    "custom2d"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "nu": 0.3,
+    "b": 0.2,
+    "h": 0.4,
+    "A": "b*h",
+    "I": "b*h^3/12",
+    "W": "b*h^2/6",
+    "L": 8.0,
+    "q": 12.0
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "R": {
+        "shape": "rectangular",
+        "b": 0.2,
+        "h": 0.4
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 2,
+        "x": 4.0,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "id": 3,
+        "x": 8.0,
+        "y": 0,
+        "z": 0,
+        "support": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          0
+        ]
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "beam",
+        "i": 1,
+        "j": 2,
+        "section": "R",
+        "material": "S"
+      },
+      {
+        "id": 2,
+        "type": "beam",
+        "i": 2,
+        "j": 3,
+        "section": "R",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "q"
+      }
+    ],
+    "memberLoads": [
+      {
+        "member": 1,
+        "case": 1,
+        "type": "uniform",
+        "q": 12.0,
+        "direction": "gravity"
+      },
+      {
+        "member": 2,
+        "case": 1,
+        "type": "uniform",
+        "q": 12.0,
+        "direction": "gravity"
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "reaction:3:fz",
+      "label": "réaction de l'appui simple",
+      "expected": "3*q*L/8",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reaction:1:fz",
+      "label": "réaction de l'encastrement",
+      "expected": "5*q*L/8",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reaction:1:my",
+      "label": "moment d'encastrement (composante globale autour de +Y)",
+      "expected": "-q*L^2/8",
+      "unit": "kN·m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

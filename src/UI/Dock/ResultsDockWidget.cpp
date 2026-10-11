@@ -447,7 +447,7 @@ void ResultsDockWidget::updateSummaryText()
             if (beam.material().type == TSA::Model::MaterialType::Concrete ||
                 beam.material().type == TSA::Model::MaterialType::ReinforcedConcrete)
             {
-                double Med = elemRes->maxBendingMoment() * 1000.0;
+                double Med = elemRes->maxAbsMy() * 1000.0;   // axe fort de la section b × h (EC2, flexion simple)
                 auto ec2 = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(beam.section(), beam.material(), Med);
                 if (ec2.valid && ec2.utilizationRatio > maxEtaEC2)
                 {

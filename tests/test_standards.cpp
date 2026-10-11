@@ -20,6 +20,9 @@
 using namespace TSA::Standards;
 using namespace TSA::Standards::Design;
 
+// assert() est sans effet en Release (NDEBUG) : vérifications actives dans toutes les configurations (audit).
+#define STD_CHECK(cond) TEST_CHECK(cond, "Test Standards : condition non vérifiée")
+
 bool runSuite_Standards(int& passed)
 {
     std::cout << "\n=== [Suite Standards] Normative Requirements & Model Validator Tests ===" << std::endl;
@@ -28,34 +31,34 @@ bool runSuite_Standards(int& passed)
     {
         std::cout << "Test Standards.1 : RequirementsCatalog completeness and indexing... ";
         auto& cat = RequirementsCatalog::instance();
-        assert(cat.totalCount() >= 15);
+        STD_CHECK(cat.totalCount() >= 15);
 
         auto reqArch = cat.findById("REQ-SW-ARCH-001");
-        assert(reqArch.has_value());
-        assert(reqArch->standard == StandardFramework::ISO_IEC_25010);
-        assert(reqArch->status == RequirementStatus::Implemented);
+        STD_CHECK(reqArch.has_value());
+        STD_CHECK(reqArch->standard == StandardFramework::ISO_IEC_25010);
+        STD_CHECK(reqArch->status == RequirementStatus::Implemented);
 
         auto reqSnap = cat.findById("REQ-CALC-SNAP-001");
-        assert(reqSnap.has_value());
-        assert(reqSnap->domain == RequirementDomain::AnalysisFEM);
+        STD_CHECK(reqSnap.has_value());
+        STD_CHECK(reqSnap->domain == RequirementDomain::AnalysisFEM);
 
         auto reqEC0 = cat.findById("REQ-CALC-EC0-001");
-        assert(reqEC0.has_value());
-        assert(reqEC0->standard == StandardFramework::EN_1990);
+        STD_CHECK(reqEC0.has_value());
+        STD_CHECK(reqEC0->standard == StandardFramework::EN_1990);
 
         auto ecReqs = cat.filterByStandard(StandardFramework::EN_1990);
-        assert(!ecReqs.empty());
+        STD_CHECK(!ecReqs.empty());
 
         auto implementedReqs = cat.filterByStatus(RequirementStatus::Implemented);
-        assert(implementedReqs.size() >= 10);
+        STD_CHECK(implementedReqs.size() >= 10);
 
         QString md = cat.generateMatrixMarkdown();
-        assert(!md.isEmpty());
-        assert(md.contains("REQ-SW-ARCH-001"));
+        STD_CHECK(!md.isEmpty());
+        STD_CHECK(md.contains("REQ-SW-ARCH-001"));
 
         QString html = cat.generateTraceabilityReportHtml();
-        assert(!html.isEmpty());
-        assert(html.contains("<table>"));
+        STD_CHECK(!html.isEmpty());
+        STD_CHECK(html.contains("<table>"));
 
         passed++;
         std::cout << "PASSED" << std::endl;
@@ -69,39 +72,39 @@ bool runSuite_Standards(int& passed)
         // France NF
         nac.setAnnex(NationalAnnexCode::France_NF);
         auto fNF = nac.safetyFactors();
-        assert(std::abs(fNF.gammaG_sup - 1.35) < 1e-6);
-        assert(std::abs(fNF.gammaQ - 1.50) < 1e-6);
-        assert(std::abs(fNF.gammaC - 1.50) < 1e-6);
-        assert(std::abs(fNF.gammaS - 1.15) < 1e-6);
-        assert(std::abs(fNF.gammaM0 - 1.00) < 1e-6);
-        assert(std::abs(fNF.gammaM1 - 1.00) < 1e-6);
+        STD_CHECK(std::abs(fNF.gammaG_sup - 1.35) < 1e-6);
+        STD_CHECK(std::abs(fNF.gammaQ - 1.50) < 1e-6);
+        STD_CHECK(std::abs(fNF.gammaC - 1.50) < 1e-6);
+        STD_CHECK(std::abs(fNF.gammaS - 1.15) < 1e-6);
+        STD_CHECK(std::abs(fNF.gammaM0 - 1.00) < 1e-6);
+        STD_CHECK(std::abs(fNF.gammaM1 - 1.00) < 1e-6);
 
         // Germany DIN (spécificité gammaM1 = 1.10)
         nac.setAnnex(NationalAnnexCode::Germany_DIN);
         auto fDIN = nac.safetyFactors();
-        assert(std::abs(fDIN.gammaM1 - 1.10) < 1e-6);
+        STD_CHECK(std::abs(fDIN.gammaM1 - 1.10) < 1e-6);
 
         // Restauration France NF
         nac.setAnnex(NationalAnnexCode::France_NF);
 
         // Facteurs psi EN 1990
         auto psiA = nac.psiForCategory(BuildingCategory::CatA_Domestic);
-        assert(std::abs(psiA.psi0 - 0.70) < 1e-6);
-        assert(std::abs(psiA.psi1 - 0.50) < 1e-6);
-        assert(std::abs(psiA.psi2 - 0.30) < 1e-6);
+        STD_CHECK(std::abs(psiA.psi0 - 0.70) < 1e-6);
+        STD_CHECK(std::abs(psiA.psi1 - 0.50) < 1e-6);
+        STD_CHECK(std::abs(psiA.psi2 - 0.30) < 1e-6);
 
         auto psiE = nac.psiForCategory(BuildingCategory::CatE_Storage);
-        assert(std::abs(psiE.psi0 - 1.00) < 1e-6);
-        assert(std::abs(psiE.psi1 - 0.90) < 1e-6);
-        assert(std::abs(psiE.psi2 - 0.80) < 1e-6);
+        STD_CHECK(std::abs(psiE.psi0 - 1.00) < 1e-6);
+        STD_CHECK(std::abs(psiE.psi1 - 0.90) < 1e-6);
+        STD_CHECK(std::abs(psiE.psi2 - 0.80) < 1e-6);
 
         auto psiSnowPlaine = nac.psiForSnow(200.0);
-        assert(std::abs(psiSnowPlaine.psi0 - 0.50) < 1e-6);
-        assert(std::abs(psiSnowPlaine.psi2 - 0.00) < 1e-6);
+        STD_CHECK(std::abs(psiSnowPlaine.psi0 - 0.50) < 1e-6);
+        STD_CHECK(std::abs(psiSnowPlaine.psi2 - 0.00) < 1e-6);
 
         auto psiSnowMontagne = nac.psiForSnow(1500.0);
-        assert(std::abs(psiSnowMontagne.psi0 - 0.70) < 1e-6);
-        assert(std::abs(psiSnowMontagne.psi2 - 0.20) < 1e-6);
+        STD_CHECK(std::abs(psiSnowMontagne.psi0 - 0.70) < 1e-6);
+        STD_CHECK(std::abs(psiSnowMontagne.psi2 - 0.20) < 1e-6);
 
         passed++;
         std::cout << "PASSED" << std::endl;
@@ -111,24 +114,24 @@ bool runSuite_Standards(int& passed)
     {
         std::cout << "Test Standards.3 : ExternalLibraryCatalog documentation and constraints... ";
         auto& libCat = ExternalLibraryCatalog::instance();
-        assert(libCat.allLibraries().size() >= 3);
+        STD_CHECK(libCat.allLibraries().size() >= 3);
 
         auto qtInfo = libCat.findByName("Qt");
-        assert(qtInfo.has_value());
-        assert(!qtInfo->responsibility.empty());
-        assert(!qtInfo->constraints.empty());
+        STD_CHECK(qtInfo.has_value());
+        STD_CHECK(!qtInfo->responsibility.empty());
+        STD_CHECK(!qtInfo->constraints.empty());
 
         auto occInfo = libCat.findByName("OpenCASCADE");
-        assert(occInfo.has_value());
-        assert(occInfo->version == "8.0.1");
+        STD_CHECK(occInfo.has_value());
+        STD_CHECK(occInfo->version == "8.0.1");
 
         auto opsInfo = libCat.findByName("OpenSees");
-        assert(opsInfo.has_value());
-        assert(!opsInfo->interfaceUsed.empty());
+        STD_CHECK(opsInfo.has_value());
+        STD_CHECK(!opsInfo->interfaceUsed.empty());
 
         QString doc = libCat.generateDocumentationMarkdown();
-        assert(doc.contains("OpenCASCADE"));
-        assert(doc.contains("OpenSees"));
+        STD_CHECK(doc.contains("OpenCASCADE"));
+        STD_CHECK(doc.contains("OpenSees"));
 
         passed++;
         std::cout << "PASSED" << std::endl;
@@ -138,19 +141,19 @@ bool runSuite_Standards(int& passed)
     {
         std::cout << "Test Standards.4 : StandardPropertyDefinitions and domain checks... ";
         auto fckDef = StandardPropertyDefinitions::concreteCompressiveStrength();
-        assert(fckDef.propertyName == "fck");
-        assert(fckDef.isValid(25.0e6));
-        assert(!fckDef.isValid(-5.0));
-        assert(!fckDef.isValid(std::numeric_limits<double>::quiet_NaN()));
-        assert(!fckDef.isValid(std::numeric_limits<double>::infinity()));
+        STD_CHECK(fckDef.propertyName == "fck");
+        STD_CHECK(fckDef.isValid(25.0e6));
+        STD_CHECK(!fckDef.isValid(-5.0));
+        STD_CHECK(!fckDef.isValid(std::numeric_limits<double>::quiet_NaN()));
+        STD_CHECK(!fckDef.isValid(std::numeric_limits<double>::infinity()));
 
         auto eSteelDef = StandardPropertyDefinitions::youngModulusSteel();
-        assert(eSteelDef.isValid(210.0e9));
-        assert(!eSteelDef.isValid(50.0e9));
+        STD_CHECK(eSteelDef.isValid(210.0e9));
+        STD_CHECK(!eSteelDef.isValid(50.0e9));
 
         auto nuConc = StandardPropertyDefinitions::poissonRatioConcrete();
-        assert(nuConc.isValid(0.20));
-        assert(!nuConc.isValid(0.55)); // Non physique pour béton
+        STD_CHECK(nuConc.isValid(0.20));
+        STD_CHECK(!nuConc.isValid(0.55)); // Non physique pour béton
 
         passed++;
         std::cout << "PASSED" << std::endl;
@@ -163,8 +166,8 @@ bool runSuite_Standards(int& passed)
         // Modèle vide -> doit échouer
         TSA::Model::Model emptyModel;
         auto repEmpty = ModelValidator::validate(emptyModel);
-        assert(!repEmpty.isValid());
-        assert(repEmpty.errorCount() >= 1);
+        STD_CHECK(!repEmpty.isValid());
+        STD_CHECK(repEmpty.errorCount() >= 1);
 
         // Modèle avec 2 nœuds et une poutre sans appui -> doit échouer pour instabilité cinématique
         TSA::Model::Model testModel;
@@ -173,27 +176,27 @@ bool runSuite_Standards(int& passed)
         testModel.addBar(n1, n2, TSA::Model::Section::rectangular(0.30, 0.50), TSA::Model::Material::concreteC25_30());
 
         auto repNoSupport = ModelValidator::validate(testModel);
-        assert(!repNoSupport.isValid());
-        assert(repNoSupport.summary().contains("Échec"));
+        STD_CHECK(!repNoSupport.isValid());
+        STD_CHECK(repNoSupport.summary().contains("Échec"));
 
         // Ajout d'un appui encastré au nœud 1 -> devient valide
         testModel.getNode(n1)->setSupportType(TSA::Model::SupportType::Fixed);
 
         auto repValid = ModelValidator::validate(testModel);
-        assert(repValid.isValid());
+        STD_CHECK(repValid.isValid());
 
         // Test section invalide (aire négative)
         TSA::Model::Section invalidSec;
         invalidSec.width = -0.3;
         invalidSec.height = 0.5;
         std::string secErr;
-        assert(!ModelValidator::validateSection(invalidSec, &secErr));
+        STD_CHECK(!ModelValidator::validateSection(invalidSec, &secErr));
 
         // Test matériau invalide (Poisson >= 0.5)
         TSA::Model::Material invalidMat;
         invalidMat.nu = 0.65;
         std::string matErr;
-        assert(!ModelValidator::validateMaterial(invalidMat, &matErr));
+        STD_CHECK(!ModelValidator::validateMaterial(invalidMat, &matErr));
 
         passed++;
         std::cout << "PASSED" << std::endl;
@@ -207,7 +210,7 @@ bool runSuite_Standards(int& passed)
         TSA::Analysis::AnalysisParameters params;
         params.type = TSA::Analysis::AnalysisType::LinearStatic;
         auto repEmpty = ModelValidator::validateForAnalysis(emptyModel, params);
-        assert(!repEmpty.isValid());
+        STD_CHECK(!repEmpty.isValid());
 
         // Modèle sans aucun appui
         TSA::Model::Model unstableModel;
@@ -215,25 +218,25 @@ bool runSuite_Standards(int& passed)
         int n2 = unstableModel.addNode(4.0, 0.0, 0.0);
         unstableModel.addBar(n1, n2, TSA::Model::Section::rectangular(0.3, 0.5), TSA::Model::Material::concreteC25_30());
         auto repUnstable = ModelValidator::validateForAnalysis(unstableModel, params);
-        assert(!repUnstable.isValid());
+        STD_CHECK(!repUnstable.isValid());
         bool hasSupportIssue = false;
         for (const auto& iss : repUnstable.issues())
         {
             if (iss.category == "Conditions aux Limites") hasSupportIssue = true;
         }
-        assert(hasSupportIssue);
+        STD_CHECK(hasSupportIssue);
 
         // Modèle stable mais cas de charge cible inexistant
         unstableModel.getNode(n1)->setSupportType(TSA::Model::SupportType::Fixed);
         params.targetLoadCaseId = 999;
         auto repBadLC = ModelValidator::validateForAnalysis(unstableModel, params);
-        assert(!repBadLC.isValid());
+        STD_CHECK(!repBadLC.isValid());
         bool hasLCIssue = false;
         for (const auto& iss : repBadLC.issues())
         {
             if (iss.category == "Charges") hasLCIssue = true;
         }
-        assert(hasLCIssue);
+        STD_CHECK(hasLCIssue);
 
         passed++;
         std::cout << "PASSED" << std::endl;
@@ -252,8 +255,8 @@ bool runSuite_Standards(int& passed)
         TSA::Analysis::AnalysisParameters params;
         QString solverErr;
         bool ok = solver.solveSynchronous(unstableModel, params, &solverErr);
-        assert(!ok);
-        assert(solverErr.contains("validation normative avant calcul"));
+        STD_CHECK(!ok);
+        STD_CHECK(solverErr.contains("validation normative avant calcul"));
 
         // Détection de singularité numérique (NaN/Inf) dans OpenSeesResultsReader
         QString tmpDir = QDir::tempPath() + "/tsa_singularity_test_" + QString::number(QDateTime::currentMSecsSinceEpoch());
@@ -278,9 +281,9 @@ bool runSuite_Standards(int& passed)
         TSA::Analysis::ResultsModel res;
         std::string readerErr;
         bool readOk = TSA::Analysis::OpenSeesResultsReader::readResults(tmpDir.toStdString(), snap, readParams, res, &readerErr);
-        assert(!readOk);
-        assert(!res.isValid());
-        assert(readerErr.find("Instabilité numérique") != std::string::npos);
+        STD_CHECK(!readOk);
+        STD_CHECK(!res.isValid());
+        STD_CHECK(readerErr.find("Instabilité numérique") != std::string::npos);
 
         // Nettoyage
         QFile::remove(dispFile);
@@ -295,19 +298,19 @@ bool runSuite_Standards(int& passed)
         std::cout << "Test Standards.8 : AnalysisExecutionMetadata in ResultsModel... ";
         TSA::Analysis::ResultsModel res;
         auto meta = res.executionMetadata();
-        assert(meta.solverEngine == "OpenSees");
-        assert(!meta.nationalAnnex.empty());
-        assert(!meta.normativeFramework.empty());
+        STD_CHECK(meta.solverEngine == "OpenSees");
+        STD_CHECK(!meta.nationalAnnex.empty());
+        STD_CHECK(!meta.normativeFramework.empty());
 
         meta.maxResidualForce = 0.00045;
         meta.isEquilibriumVerified = true;
         res.setExecutionMetadata(meta);
 
-        assert(res.executionMetadata().isEquilibriumVerified);
-        assert(res.executionMetadata().maxResidualForce < 0.001);
+        STD_CHECK(res.executionMetadata().isEquilibriumVerified);
+        STD_CHECK(res.executionMetadata().maxResidualForce < 0.001);
 
         res.clear();
-        assert(!res.executionMetadata().isEquilibriumVerified);
+        STD_CHECK(!res.executionMetadata().isEquilibriumVerified);
 
         passed++;
         std::cout << "PASSED" << std::endl;
@@ -317,24 +320,24 @@ bool runSuite_Standards(int& passed)
     {
         std::cout << "Test Standards.9 : AnalyticalBenchmarkRegistry and reference cases... ";
         auto& reg = AnalyticalBenchmarkRegistry::instance();
-        assert(reg.totalCount() >= 4);
-        assert(reg.passedCount() >= 4);
+        STD_CHECK(reg.totalCount() >= 4);
+        STD_CHECK(reg.passedCount() >= 4);
 
         // Évaluation analytique d'une poutre bi-appuyée sous P = 10 kN, L = 5 m (M_théorique = 12.5 kNm)
         auto bc1 = AnalyticalBenchmarkRegistry::evaluateBeamPointLoad("TEST_POINT_LOAD", 10.0, 5.0, 12.502);
-        assert(bc1.passed);
-        assert(std::abs(bc1.expectedValue - 12.5) < 1e-9);
-        assert(bc1.relativeError() < 0.001);
+        STD_CHECK(bc1.passed);
+        STD_CHECK(std::abs(bc1.expectedValue - 12.5) < 1e-9);
+        STD_CHECK(bc1.relativeError() < 0.001);
 
         // Évaluation avec écart supérieur à la tolérance
         auto bcFail = AnalyticalBenchmarkRegistry::evaluateBeamPointLoad("TEST_FAIL", 10.0, 5.0, 15.0);
-        assert(!bcFail.passed);
+        STD_CHECK(!bcFail.passed);
 
         // Rapport Markdown généré
         std::string reportMd = reg.generateReportMarkdown();
-        assert(!reportMd.empty());
-        assert(reportMd.find("EC3_STEEL_BEAM_001") != std::string::npos);
-        assert(reportMd.find("PASSED") != std::string::npos);
+        STD_CHECK(!reportMd.empty());
+        STD_CHECK(reportMd.find("EC3_STEEL_BEAM_001") != std::string::npos);
+        STD_CHECK(reportMd.find("PASSED") != std::string::npos);
 
         passed++;
         std::cout << "PASSED" << std::endl;
@@ -355,32 +358,32 @@ bool runSuite_Standards(int& passed)
         in.gammaS = 1.15;
 
         auto res = ConcreteDesignEC2::calculateRectangularBeamFlexure(in);
-        assert(res.valid);
-        assert(!res.requiresCompressionSteel);
-        assert(res.effectiveDepth == 0.45);
-        assert(std::abs(res.fcd - 16.666667e6) < 1e3);
-        assert(std::abs(res.fyd - 434.782608e6) < 1e3);
+        STD_CHECK(res.valid);
+        STD_CHECK(!res.requiresCompressionSteel);
+        STD_CHECK(res.effectiveDepth == 0.45);
+        STD_CHECK(std::abs(res.fcd - 16.666667e6) < 1e3);
+        STD_CHECK(std::abs(res.fyd - 434.782608e6) < 1e3);
         // mu_cu ~ 0.1481
-        assert(res.mu_cu > 0.14 && res.mu_cu < 0.16);
-        assert(res.utilizationRatio < 1.0);
+        STD_CHECK(res.mu_cu > 0.14 && res.mu_cu < 0.16);
+        STD_CHECK(res.utilizationRatio < 1.0);
         // Section As_provided en m² (~ 8.3 cm²)
-        assert(res.As_provided > 8.0e-4 && res.As_provided < 9.0e-4);
-        assert(res.As_provided >= res.As_min);
+        STD_CHECK(res.As_provided > 8.0e-4 && res.As_provided < 9.0e-4);
+        STD_CHECK(res.As_provided >= res.As_min);
 
         // Cas sous-dimensionné nécessitant armatures comprimées
         in.Med = 500.0e3; // 500 kNm -> dépasse mu_lu = 0.372
         auto resHeavy = ConcreteDesignEC2::calculateRectangularBeamFlexure(in);
-        assert(resHeavy.valid);
-        assert(resHeavy.requiresCompressionSteel);
-        assert(resHeavy.utilizationRatio > 1.0);
+        STD_CHECK(resHeavy.valid);
+        STD_CHECK(resHeavy.requiresCompressionSteel);
+        STD_CHECK(resHeavy.utilizationRatio > 1.0);
 
         // Calcul direct depuis les objets du modèle TSA (Section & Material)
         auto sec = TSA::Model::Section::rectangular(0.30, 0.50);
         auto mat = TSA::Model::Material::concreteC25_30();
         auto resModel = ConcreteDesignEC2::calculateFromModel(sec, mat, 120.0e3, 500.0e6, 0.05);
-        assert(resModel.valid);
-        assert(!resModel.requiresCompressionSteel);
-        assert(resModel.As_provided > 6.0e-4);
+        STD_CHECK(resModel.valid);
+        STD_CHECK(!resModel.requiresCompressionSteel);
+        STD_CHECK(resModel.As_provided > 6.0e-4);
 
         passed++;
         std::cout << "PASSED" << std::endl;
@@ -396,10 +399,10 @@ bool runSuite_Standards(int& passed)
         double Wel = 1.943e-4; // 194.3 cm³
 
         double Nt_Rd = SteelDesignEC3::tensionResistance(A, fy);
-        assert(std::abs(Nt_Rd - 669.28e3) < 1e2);
+        STD_CHECK(std::abs(Nt_Rd - 669.28e3) < 1e2);
 
         double Mc_Rd = SteelDesignEC3::bendingResistance(Wel, fy);
-        assert(std::abs(Mc_Rd - 45.66e3) < 1e2);
+        STD_CHECK(std::abs(Mc_Rd - 45.66e3) < 1e2);
 
         // 2. Flambement (§6.3) : Poteau IPE 200, L = 4.0 m, articulé (beta = 1.0), axe faible (Iz = 1.42e-6 m4)
         EC3BucklingInput in;
@@ -413,28 +416,28 @@ bool runSuite_Standards(int& passed)
         in.gammaM1 = 1.00;
 
         auto res = SteelDesignEC3::calculateBuckling(in);
-        assert(res.valid);
-        assert(res.radiusOfGyration > 0.02 && res.radiusOfGyration < 0.025); // ~ 2.23 cm
-        assert(res.slenderness > 170.0 && res.slenderness < 190.0);         // ~ 179
-        assert(res.reducedSlenderness > 1.8 && res.reducedSlenderness < 2.1); // ~ 1.91
-        assert(res.chi > 0.20 && res.chi < 0.26);                          // ~ 0.228
-        assert(res.Nb_Rd > 140.0e3 && res.Nb_Rd < 170.0e3);                // ~ 152 kN
-        assert(res.utilizationRatio < 1.0);
-        assert(res.pass);
+        STD_CHECK(res.valid);
+        STD_CHECK(res.radiusOfGyration > 0.02 && res.radiusOfGyration < 0.025); // ~ 2.23 cm
+        STD_CHECK(res.slenderness > 170.0 && res.slenderness < 190.0);         // ~ 179
+        STD_CHECK(res.reducedSlenderness > 1.8 && res.reducedSlenderness < 2.1); // ~ 1.91
+        STD_CHECK(res.chi > 0.20 && res.chi < 0.26);                          // ~ 0.228
+        STD_CHECK(res.Nb_Rd > 140.0e3 && res.Nb_Rd < 170.0e3);                // ~ 152 kN
+        STD_CHECK(res.utilizationRatio < 1.0);
+        STD_CHECK(res.pass);
 
         // Cas charge excessive au-delà de Nb,Rd
         in.Ned = 200.0e3; // 200 kN > 152 kN
         auto resFail = SteelDesignEC3::calculateBuckling(in);
-        assert(resFail.valid);
-        assert(resFail.utilizationRatio > 1.0);
-        assert(!resFail.pass);
+        STD_CHECK(resFail.valid);
+        STD_CHECK(resFail.utilizationRatio > 1.0);
+        STD_CHECK(!resFail.pass);
 
         // Calcul direct depuis une barre du modèle TSA
         auto secIpe = TSA::Model::Section::ipe(200);
         auto matSteel = TSA::Model::Material::steelS235();
         auto resBar = SteelDesignEC3::calculateFromBar(secIpe, matSteel, 4.0, 1.0, 100.0e3, false);
-        assert(resBar.valid);
-        assert(resBar.pass);
+        STD_CHECK(resBar.valid);
+        STD_CHECK(resBar.pass);
 
         passed++;
         std::cout << "PASSED" << std::endl;

@@ -69,7 +69,9 @@ OpenSeesOptionsWidget::OpenSeesOptionsWidget(QWidget* parent)
     m_stepSize = new QDoubleSpinBox(m_groupNonlinear);
     m_stepSize->setRange(1e-5, 10.0);
     m_stepSize->setDecimals(4);
-    formNL->addRow(tr("Taille de pas (Δλ ou arc) :"), m_stepSize);
+    m_stepSize->setToolTip(tr("Longueur d'arc ou incrément de norme (ArcLength, MinUnbalDispNorm). Contrôle du chargement : "
+                                                                           "Δλ = 1 / nombre de pas, la charge complète est toujours atteinte."));
+    formNL->addRow(tr("Taille de pas (arc, norme) :"), m_stepSize);
     m_tolerance = new QDoubleSpinBox(m_groupNonlinear);
     m_tolerance->setRange(1e-12, 1e-1);
     m_tolerance->setDecimals(8);

@@ -1,0 +1,179 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-07b",
+  "title": "Treillis spatial — trépied",
+  "category": "rdm",
+  "description": "Trois barres de 3,606 m (pied sur un cercle de 2 m, sommet à 3 m), P = 60 kN vertical au sommet : N = −P/(3·cos β), δ = P·L/(3·E·A·cos²β).",
+  "sources": [
+    "S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)"
+  ],
+  "hypotheses": [
+    "barres articulées",
+    "symétrie ternaire : transformation des repères 3D"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees"
+  ],
+  "parameters": {
+    "E": 210000000.0,
+    "P": 60.0,
+    "A": "pi*0.05^2/4",
+    "Ll": "sqrt(2^2+3^2)",
+    "c": "3/Ll"
+  },
+  "model": {
+    "materials": {
+      "S": {
+        "E": 210000000.0,
+        "nu": 0.3,
+        "rho": 7850
+      }
+    },
+    "sections": {
+      "T": {
+        "shape": "circular",
+        "d": 0.05
+      }
+    },
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0,
+        "y": 0,
+        "z": 3.0
+      },
+      {
+        "id": 2,
+        "x": 2.0,
+        "y": 0.0,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 3,
+        "x": -1.0,
+        "y": 1.732050807569,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      {
+        "id": 4,
+        "x": -1.0,
+        "y": -1.732050807569,
+        "z": 0,
+        "support": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "members": [
+      {
+        "id": 1,
+        "type": "truss",
+        "i": 1,
+        "j": 2,
+        "section": "T",
+        "material": "S"
+      },
+      {
+        "id": 2,
+        "type": "truss",
+        "i": 1,
+        "j": 3,
+        "section": "T",
+        "material": "S"
+      },
+      {
+        "id": 3,
+        "type": "truss",
+        "i": 1,
+        "j": 4,
+        "section": "T",
+        "material": "S"
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "P"
+      }
+    ],
+    "nodalLoads": [
+      {
+        "node": 1,
+        "case": 1,
+        "fz": -60.0
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1
+  },
+  "checks": [
+    {
+      "quantity": "member:1:N:start",
+      "label": "effort dans un pied",
+      "expected": "-P/(3*c)",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "member:3:N:start",
+      "label": "effort dans un pied (3)",
+      "expected": "-P/(3*c)",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "node:1:uz",
+      "label": "déplacement vertical du sommet",
+      "expected": "-P*Ll/(3*E*A*c^2)",
+      "unit": "m",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "node:1:ux",
+      "label": "déplacement horizontal (symétrie)",
+      "expected": 0.0,
+      "unit": "m",
+      "tolerance": {
+        "rel": 0,
+        "abs": 1e-12
+      }
+    }
+  ]
+}

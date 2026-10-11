@@ -16,6 +16,12 @@
 #include "../Standards/Design/SteelDesignEC3.h"
 
 #include <QBuffer>
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QDateTime>
 #include <QRegularExpression>
 
@@ -1230,21 +1236,31 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         if (mb.kind != StructuralElementKind::Beam || !isConcrete(*mb.material) || mb.section->shape != TSA::Model::SectionShape::Rectangular) continue;
         const auto* r = x.results->getElementResults(mb.kind, mb.id);
         if (!r) continue;
-        const double med = std::max(absMax(*r, &TSA::Analysis::StationForces::My), absMax(*r, &TSA::Analysis::StationForces::Mz));
+        // Flexion autour de l'axe fort (M_y, inertie I_y = b·h³/12, hauteur h) : seule configuration de la section b × h
+        // vérifiée. Le moment d'axe faible M_z n'est pas un moment de la même section : signalé, jamais confondu.
+        const double med = absMax(*r, &TSA::Analysis::StationForces::My);
+        const double mzMax = absMax(*r, &TSA::Analysis::StationForces::Mz);
         const auto c = TSA::Standards::Design::ConcreteDesignEC2::calculateFromModel(*mb.section, *mb.material, std::max(med, 0.01) * 1000.0);
-        const bool pass = c.valid && c.utilizationRatio <= 1.0;
+        const bool pass = c.valid && !c.requiresCompressionSteel && !c.exceedsMaximum;
         ++computedChecks;
         failedChecks += !pass;
+        QString status = pass ? ok() : bad(QStringLiteral("NON CONFORME"));
+        if (c.valid && c.requiresCompressionSteel && !c.exceedsMaximum)
+            status = bad(QStringLiteral("ACIERS COMPRIMÉS REQUIS")) + QStringLiteral("<br><small>A<sub>s2</sub> = %1 cm²</small>").arg(f(c.As2_required * 1e4, 2));
+        if (mzMax > 0.1 * std::max(med, 1e-9)) status += QStringLiteral("<br><small>flexion déviée (M<sub>z</sub> = %1 kN·m) non vérifiée</small>").arg(f(mzMax, 1));
         ec2.push_back({ c.utilizationRatio, { QStringLiteral("Poutre %1").arg(mb.id), QStringLiteral("%1<br><small>%2</small>").arg(mb.name, QString::fromStdString(mb.section->name)),
-                                              f(med, 1), f(c.As_provided * 1e4, 2), f(c.utilizationRatio * 100.0, 1) + QStringLiteral(" %"), pass ? ok() : bad(QStringLiteral("NON CONFORME")) } });
+                                              f(med, 1), f(c.As_provided * 1e4, 2), f(c.utilizationRatio * 100.0, 1) + QStringLiteral(" %"), status } });
     }
     if (!ec2.empty())
     {
         std::sort(ec2.begin(), ec2.end(), [](const Row& a, const Row& b) { return a.ratio > b.ratio; });
         NDCSection s;
         s.title = QStringLiteral("Flexion simple des poutres en béton armé (EN 1992-1-1) — calculée");
-        s.paragraphs.push_back(QStringLiteral("M<sub>Ed</sub> = moment maximal (|M<sub>y</sub>| ou |M<sub>z</sub>|) de la barre ; acier B500, enrobage 5 cm ; "
-                                              "ratio = μ<sub>cu</sub> / μ<sub>lu</sub>. %1 poutre(s) vérifiée(s).")
+        s.paragraphs.push_back(QStringLiteral("M<sub>Ed</sub> = moment maximal |M<sub>y</sub>| (axe fort) de la barre ; acier B500 (E<sub>s</sub> = 200 GPa), enrobage 5 cm ; "
+                                              "bloc rectangulaire λ, η (§3.1.7) ; ratio = μ<sub>cu</sub> / μ<sub>lu</sub>, μ<sub>lu</sub> = η·λ·α<sub>u</sub>·(1 − λ·α<sub>u</sub>/2) avec "
+                                              "α<sub>u</sub> = ε<sub>cu3</sub> / (ε<sub>cu3</sub> + ε<sub>yd</sub>) (aciers tendus plastifiés, sans redistribution). Au-delà, les aciers "
+                                              "comprimés nécessaires sont donnés ; A<sub>s</sub> ≥ A<sub>s,min</sub> (9.1N), A<sub>s</sub> + A<sub>s2</sub> ≤ 0,04·A<sub>c</sub>. "
+                                              "Effort tranchant, ELS (fissuration, flèche) et dispositions constructives non vérifiés. %1 poutre(s) vérifiée(s).")
                                .arg(ec2.size()));
         auto t = x.makeTable(QStringLiteral("Poutres en béton armé, par ratio décroissant"),
                              { QStringLiteral("Barre"), QStringLiteral("Désignation / section"), QStringLiteral("M<sub>Ed</sub> (kN·m)"), QStringLiteral("A<sub>s</sub> (cm²)"), QStringLiteral("Ratio"),
@@ -1264,12 +1280,14 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         if (!r || r->minNormalForce() >= -1e-3) continue;
         const double ned = -r->minNormalForce();
         const auto c = TSA::Standards::Design::SteelDesignEC3::calculateFromBar(*mb.section, *mb.material, mb.length, 1.0, ned * 1000.0, false);
-        const bool pass = c.pass && c.utilizationRatio <= 1.0;
+        const bool pass = c.valid && c.pass && c.utilizationRatio <= 1.0;
         ++computedChecks;
         failedChecks += !pass;
+        const QString status = !c.valid && c.sectionClass == 4 ? bad(QStringLiteral("CLASSE 4 — NON VÉRIFIÉE")) : (pass ? ok() : bad(QStringLiteral("NON CONFORME")));
         ec3.push_back({ c.utilizationRatio, { QStringLiteral("%1 %2").arg(kindName(mb.kind)).arg(mb.id), QStringLiteral("%1<br><small>%2</small>").arg(mb.name, QString::fromStdString(mb.section->name)),
                                               f(ned, 1), f(mb.length, 2), f(c.reducedSlenderness, 2), f(c.chi, 3), f(c.Nb_Rd / 1000.0, 0),
-                                              f(c.utilizationRatio * 100.0, 1) + QStringLiteral(" %"), pass ? ok() : bad(QStringLiteral("NON CONFORME")) } });
+                                              f(c.utilizationRatio * 100.0, 1) + QStringLiteral(" %"),
+                                              status + QStringLiteral("<br><small>%1%2</small>").arg(c.curveReason.toHtmlEscaped(), c.sectionClass ? QStringLiteral(", classe %1").arg(c.sectionClass) : QStringLiteral(", classe non déterminée")) } });
     }
     if (!ec3.empty())
     {
@@ -1277,7 +1295,10 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
         NDCSection s;
         s.title = QStringLiteral("Flambement par flexion des barres acier comprimées (EN 1993-1-1 §6.3.1) — calculée");
         s.paragraphs.push_back(QStringLiteral("Effort de compression seul (sans interaction avec la flexion), axe faible, longueur de flambement = longueur de la barre "
-                                              "entre nœuds (β = 1). %1 barre(s) vérifiée(s).")
+                                              "entre nœuds (β = 1). Courbe de flambement selon le Tableau 6.2 (h/b, t<sub>f</sub>, nuance ; profils creux de fabrication "
+                                              "non précisée : formés à froid), classe en compression selon le Tableau 5.2 (classe 4 : aire efficace non calculée, "
+                                              "vérification non effectuée). Flambement par torsion et flexion-torsion non vérifiés ; f<sub>y</sub> non réduite au-delà de "
+                                              "40 mm d'épaisseur. %1 barre(s) vérifiée(s).")
                                .arg(ec3.size()));
         auto t = x.makeTable(QStringLiteral("Barres acier comprimées, par taux de travail décroissant"),
                              { QStringLiteral("Barre"), QStringLiteral("Désignation / section"), QStringLiteral("N<sub>Ed</sub> (kN)"), QStringLiteral("L (m)"), QStringLiteral("λ̄"), QStringLiteral("χ"),
@@ -1362,6 +1383,104 @@ void chapterDesign(Ctx& x, NDCDocument& doc, int& computedChecks, int& failedChe
     add(QStringLiteral("Enveloppe de toutes les combinaisons (seul le chargement indiqué est exploité)"), QStringLiteral("EN 1990"));
     nc.tables.push_back(t);
     ch.sections.push_back(nc);
+    doc.addChapter(ch);
+}
+
+/// Rapport de validation du logiciel (banc tests/benchmarks, docs/BENCHMARKS.md) livré à côté de l'exécutable :
+/// validation/latest.json (paquet) ou validation-reports/latest.json (poste de développement). Variable
+/// TSA_VALIDATION_REPORT : chemin explicite.
+QJsonObject validationReport(QString* path)
+{
+    QStringList candidates;
+    if (const QString env = qEnvironmentVariable("TSA_VALIDATION_REPORT"); !env.isEmpty()) candidates << env;
+    const QString dir = QCoreApplication::applicationDirPath();
+    candidates << QDir(dir).filePath("validation/latest.json") << QDir(dir).filePath("validation-reports/latest.json");
+    for (const auto& c : candidates)
+    {
+        QFile f(c);
+        if (!f.open(QIODevice::ReadOnly)) continue;
+        const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
+        if (o.value("format").toString() != "tsa.validation-report/1") continue;
+        if (path) *path = c;
+        return o;
+    }
+    return {};
+}
+
+void chapterValidation(Ctx& x, NDCDocument& doc)
+{
+    auto ch = x.makeChapter(QStringLiteral("Validation du logiciel et traçabilité"));
+    NDCSection st;
+    st.title = QStringLiteral("Traçabilité du calcul");
+    if (x.results && x.results->isValid())
+    {
+        const auto& meta = x.results->executionMetadata();
+        st.keyValues.push_back({ QStringLiteral("Logiciel"), QStringLiteral("%1 %2").arg(TSA::Product::name(), TSA::Product::version()) });
+        st.keyValues.push_back({ QStringLiteral("Moteur de calcul"), QString::fromStdString(meta.solverEngine + " " + meta.solverVersion) });
+        st.keyValues.push_back({ QStringLiteral("Unités du calcul"), QString::fromStdString(x.results->units().force + ", " + x.results->units().length) });
+        st.keyValues.push_back({ QStringLiteral("Date du calcul"), QString::fromStdString(meta.executionTimestamp.empty() ? x.results->timestamp() : meta.executionTimestamp) });
+    }
+    else
+        st.paragraphs.push_back(QStringLiteral("Aucun calcul valide : traçabilité du calcul non disponible."));
+    ch.sections.push_back(st);
+
+    NDCSection sv;
+    sv.title = QStringLiteral("Banc de validation (cas de référence)");
+    sv.paragraphs.push_back(QStringLiteral("Le banc de validation de TSA exécute des cas à solution connue (RDM, éléments finis) par la chaîne de calcul réelle et "
+                                           "compare chaque grandeur à sa référence analytique avec une tolérance mixte |x − x<sub>réf</sub>| ≤ ε<sub>abs</sub> + "
+                                           "ε<sub>rel</sub>·|x<sub>réf</sub>| (docs/BENCHMARKS.md). Il valide la chaîne de calcul sur ces cas ; il ne remplace pas le "
+                                           "contrôle, par l'ingénieur, du modèle et des hypothèses du présent projet."));
+    QString path;
+    const QJsonObject rep = validationReport(&path);
+    if (rep.isEmpty())
+    {
+        sv.paragraphs.push_back(bad(QStringLiteral("AUCUN RAPPORT DE VALIDATION")) +
+                                QStringLiteral(" n'accompagne cette installation : la validation du logiciel n'est pas attestée par ce document (exécuter "
+                                               "TSA_Benchmark ou la suite « benchmarks »)."));
+    }
+    else
+    {
+        const QJsonObject sum = rep.value("summary").toObject();
+        const QString version = rep.value("tsaVersion").toString();
+        sv.keyValues.push_back({ QStringLiteral("Rapport"), QStringLiteral("%1 — TSA %2 — %3").arg(rep.value("timestamp").toString(), version, rep.value("engines").toString()) });
+        sv.keyValues.push_back({ QStringLiteral("Résultat"), QStringLiteral("%1 vérification(s) réussie(s), %2 en échec, %3 non disponible(s)")
+                                                                 .arg(sum.value("passed").toInt())
+                                                                 .arg(sum.value("failed").toInt())
+                                                                 .arg(sum.value("unavailable").toInt()) });
+        if (version != TSA::Product::version())
+            sv.paragraphs.push_back(bad(QStringLiteral("VERSION DIFFÉRENTE")) + QStringLiteral(" : le rapport porte sur TSA %1, ce document sur TSA %2.").arg(version, TSA::Product::version()));
+        auto t = x.makeTable(QStringLiteral("Cas de référence du banc de validation"),
+                             { QStringLiteral("Cas"), QStringLiteral("Intitulé"), QStringLiteral("Moteur"), QStringLiteral("Vérifications"), QStringLiteral("Écart relatif max."),
+                               QStringLiteral("Statut") },
+                             { QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("left"), QStringLiteral("right"), QStringLiteral("right"), QStringLiteral("center") });
+        for (const auto& v : rep.value("cases").toArray())
+        {
+            const QJsonObject c = v.toObject();
+            double worst = 0;
+            int n = 0;
+            for (const auto& k : c.value("checks").toArray())
+            {
+                ++n;
+                if (k.toObject().value("relError").isDouble()) worst = std::max(worst, k.toObject().value("relError").toDouble());
+            }
+            const QString status = c.value("skipped").toBool() ? QStringLiteral("non exécuté (moteur absent)") : (c.value("passed").toBool() ? ok() : bad(QStringLiteral("ÉCHEC")));
+            t.rows.push_back({ c.value("id").toString(), c.value("title").toString(), c.value("engine").toString(), QString::number(n),
+                               QString::number(worst * 100.0, 'g', 3) + QStringLiteral(" %"), status });
+        }
+        sv.tables.push_back(t);
+    }
+    ch.sections.push_back(sv);
+
+    NDCSection sl;
+    sl.title = QStringLiteral("Limites connues du logiciel");
+    for (const auto& l : { QStringLiteral("Analyse élastique linéaire au premier ordre (statique) et analyse modale ; non linéaire géométrique selon les options du moteur, non validé par le banc."),
+                           QStringLiteral("Poutres d'Euler-Bernoulli (cisaillement transverse négligé) ; gauchissement des sections ouvertes non pris en compte dans la rigidité."),
+                           QStringLiteral("Cornières : axes principaux inclinés non pris en compte (flexions supposées découplées dans les axes des ailes)."),
+                           QStringLiteral("UPN et cornières : ailes inclinées et congés non modélisés (UPN 200 : Iz +15 % par rapport au catalogue)."),
+                           QStringLiteral("Vérifications réglementaires partielles : EC2 flexion simple (section rectangulaire, axe fort), EC3 flambement par flexion (classes 1 à 3) ; "
+                                          "effort tranchant, ELS, déversement, assemblages, dalles et voiles non vérifiés.") })
+        sl.paragraphs.push_back(QStringLiteral("• ") + l);
+    ch.sections.push_back(sl);
     doc.addChapter(ch);
 }
 
@@ -1505,6 +1624,7 @@ NDCDocument NDCProjectNote::build(const TSA::Model::Model& model, const std::sha
         if (x.hasModal()) chapterModal(x, doc);
         chapterCables(x, doc, issues);
         chapterDesign(x, doc, computed, failed);
+        chapterValidation(x, doc);
         chapterConclusion(x, doc, issues, computed, failed);
     }
     else
@@ -1519,6 +1639,7 @@ NDCDocument NDCProjectNote::build(const TSA::Model::Model& model, const std::sha
         if (x.hasModal()) chapterModal(x, doc);
         if (!model.cables().empty()) chapterCables(x, doc, issues);
         chapterDesign(x, doc, computed, failed);
+        chapterValidation(x, doc);
         chapterConclusion(x, doc, issues, computed, failed);
     }
     return doc;

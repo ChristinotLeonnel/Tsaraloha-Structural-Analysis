@@ -11,6 +11,7 @@
 #include <map>
 #include <set>
 #include <cmath>
+#include <limits>
 #include <chrono>
 
 namespace TSA::Analysis
@@ -102,7 +103,8 @@ struct ElementResults
 
     double maxNormalForce() const;
     double minNormalForce() const;
-    double maxBendingMoment() const;
+    double maxBendingMoment() const;   ///< max √(My² + Mz²) (intensité, pas un moment d'un axe donné)
+    double maxAbsMy() const;           ///< max |My| : flexion autour de l'axe local y (axe fort, inertie Iy)
     double maxShearForce() const;
 };
 
@@ -208,6 +210,10 @@ struct AnalysisExecutionMetadata
     int totalNodes = 0;
     int totalElements = 0;
     double executionDurationMs = 0.0;
+    /// Durées mesurées des étapes du moteur (ms) : préparation du script, résolution, lecture des résultats.
+    double scriptDurationMs = 0.0, solveDurationMs = 0.0, readDurationMs = 0.0;
+    /// Statique non linéaire : facteur de charge atteint en fin de calcul (1 = charge complète) ; NaN si non lu.
+    double finalLoadFactor = std::numeric_limits<double>::quiet_NaN();
 
     // Configuration réelle du système OpenSees (traçabilité des matrices)
     std::string modelBuilder = "BasicBuilder -ndm 3 -ndf 6";

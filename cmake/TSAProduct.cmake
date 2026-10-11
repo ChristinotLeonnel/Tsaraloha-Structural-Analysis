@@ -606,6 +606,8 @@ set(ANALYSIS_ENGINE_SOURCES
     ${TSA_ROOT}/src/Analysis/Engine/AnalysisManager.cpp
     ${TSA_ROOT}/src/Api/SurfaceApi.h
     ${TSA_ROOT}/src/Api/SurfaceApi.cpp
+    ${TSA_ROOT}/src/Validation/BenchmarkSuite.h
+    ${TSA_ROOT}/src/Validation/BenchmarkSuite.cpp
     ${TSA_ROOT}/src/Analysis/Engines/BuiltInEngines.cpp
     ${TSA_ROOT}/src/Analysis/Engines/OpenSees/OpenSeesEngine.h
     ${TSA_ROOT}/src/Analysis/Engines/OpenSees/OpenSeesEngine.cpp
@@ -1014,10 +1016,11 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_deployment.cpp
     ${TSA_ROOT}/tests/test_mesh.cpp
     ${TSA_ROOT}/tests/test_surfaces.cpp
+    ${TSA_ROOT}/tests/test_audit.cpp
+    ${TSA_ROOT}/tests/test_benchmarks.cpp
     ${TSA_ROOT}/tests/test_torsion.cpp
     ${TSA_ROOT}/tests/test_meshview.cpp
     ${TSA_ROOT}/tests/test_demo_models.cpp
-    ${TSA_ROOT}/tests/test_surfaces.cpp
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )
@@ -1359,7 +1362,7 @@ function(tsa_add_product)
 
     tsaraloha_add_thumbnail_provider(${thumbs} ${P_PRODUCT_DIR})
     tsaraloha_add_sdk_tools(${name} ${model} ${P_PRODUCT_DIR})
-    tsaraloha_add_package_target(${name} "${name}.exe;tsaraloha-mcp.exe;tsa3d-validate.exe;tsa-template.exe;tsa-mesh.exe;${thumbs}.dll")
+    tsaraloha_add_package_target(${name} "${name}.exe;tsaraloha-mcp.exe;tsa3d-validate.exe;tsa-template.exe;tsa-mesh.exe;${name}_Benchmark.exe;${thumbs}.dll")
     if(TARGET ${thumbs})
         add_dependencies(${name} ${thumbs})
     endif()
@@ -1391,10 +1394,21 @@ function(tsa_add_product)
             set_source_files_properties(${TSA_ROOT}/tests/test_thumbnail_provider.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
         endif()
 
+        # Banc de validation en ligne de commande (docs/BENCHMARKS.md) : cas JSON tests/benchmarks, références externes
+        add_executable(${name}_Benchmark ${TSA_ROOT}/tools/benchmark/tsa_benchmark.cpp)
+        tsa_apply_common_settings(${name}_Benchmark ${P_PRODUCT_DIR})
+        target_precompile_headers(${name}_Benchmark REUSE_FROM ${model})
+        target_link_libraries(${name}_Benchmark PRIVATE ${model} ${graphics} ${widgets})
+        tsa_copy_gmsh_runtime(${name}_Benchmark)
+        if(MSVC)
+            target_link_options(${name}_Benchmark PRIVATE /SUBSYSTEM:CONSOLE)
+        endif()
+        add_test(NAME ${name}_Benchmarks COMMAND ${name}_Benchmark --out ${CMAKE_BINARY_DIR}/validation-reports)
+
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards tsa3d modules templates deployment mesh)
+                       loads opensees supports standards tsa3d modules templates deployment mesh surfaces audit benchmarks)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

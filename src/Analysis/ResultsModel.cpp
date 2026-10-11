@@ -41,6 +41,13 @@ double ElementResults::maxBendingMoment() const
     return val;
 }
 
+double ElementResults::maxAbsMy() const
+{
+    double val = std::max(std::abs(startForces.My), std::abs(endForces.My));
+    for (const auto& s : intermediateStations) val = std::max(val, std::abs(s.My));
+    return val;
+}
+
 double ElementResults::maxShearForce() const
 {
     auto shearMag = [](const StationForces& s) {

@@ -884,8 +884,9 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
         case IntegratorType::LoadControl:
         default:
         {
-            double stepSize = (params.stepSize > 0.0) ? params.stepSize : (1.0 / std::max(1, params.numSteps));
-            tcl << "integrator LoadControl " << stepSize << "\n";
+            // Δλ = 1/n : la charge complète (λ = 1) est atteinte au dernier pas. Auparavant Δλ = stepSize (0,05 par
+            // défaut) avec 10 pas : λ final = 0,5, résultats présentés comme ceux de la charge complète (audit).
+            tcl << "integrator LoadControl " << 1.0 / std::max(1, params.numSteps) << "\n";
             break;
         }
         }
@@ -902,6 +903,8 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
         tcl << "if {$ok == 0} {\n";
         tcl << "  puts \"TSA_OPS_SUCCESS Non-Linear Static Converged\"\n";
         tcl << "}\n";
+        // Facteur de charge réellement atteint (série linéaire : temps = λ), contrôlé par le lecteur
+        tcl << "puts \"TSA_OPS_LOAD_FACTOR [getTime]\"\n";
     }
     else
     {

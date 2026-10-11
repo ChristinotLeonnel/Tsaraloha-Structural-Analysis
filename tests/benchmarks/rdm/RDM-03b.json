@@ -1,0 +1,27 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "RDM-03b",
+  "title": "Efforts et déformée le long d'une barre unique (stations)",
+  "category": "rdm",
+  "description": "Poutre sur deux appuis de 6 m en UNE seule barre, q = 10 kN/m : le moment et la flèche maximaux, en travée, ne sont pas des valeurs nodales ; ils proviennent de la reconstruction des efforts et de la déformée aux stations de la barre (RDM exacte de la barre chargée, docs/OPENSEES_RESULTS.md).",
+  "sources": ["S. Timoshenko, J. Gere — Mechanics of Materials (poutres d'Euler-Bernoulli, formules usuelles de RDM)"],
+  "hypotheses": ["Euler-Bernoulli", "modèle plan (XZ) calculé en 3D : Ty et Rx bloqués aux appuis", "flèche locale w(x) de la barre (corde fixe : appuis immobiles)"],
+  "units": { "force": "kN", "length": "m", "stress": "kPa" },
+  "engines": ["opensees", "custom2d"],
+  "parameters": { "E": 210000000.0, "b": 0.2, "h": 0.4, "I": "b*h^3/12", "L": 6.0, "q": 10.0 },
+  "model": {
+    "materials": { "S": { "E": 210000000.0, "nu": 0.3, "rho": 7850 } },
+    "sections": { "R": { "shape": "rectangular", "b": 0.2, "h": 0.4 } },
+    "nodes": [ { "id": 1, "x": 0, "y": 0, "z": 0, "support": [1, 1, 1, 1, 0, 0] }, { "id": 2, "x": 6.0, "y": 0, "z": 0, "support": [0, 1, 1, 1, 0, 0] } ],
+    "members": [ { "id": 1, "type": "beam", "i": 1, "j": 2, "section": "R", "material": "S" } ],
+    "cases": [ { "id": 1, "name": "q" } ],
+    "memberLoads": [ { "member": 1, "case": 1, "type": "uniform", "q": 10.0, "direction": "gravity" } ]
+  },
+  "analysis": { "selfWeight": false, "case": 1 },
+  "checks": [
+    { "quantity": "member:1:M:absmax", "label": "moment en travée (station)", "expected": "q*L^2/8", "unit": "kN·m", "tolerance": { "rel": 1e-6, "abs": 1e-9 } },
+    { "quantity": "member:1:V:absmax", "label": "effort tranchant d'appui", "expected": "q*L/2", "unit": "kN", "tolerance": { "rel": 1e-6, "abs": 1e-9 } },
+    { "quantity": "member:1:M:at=0.25", "label": "moment au quart de portée (q·x·(L − x)/2)", "expected": "q*(L/4)*(L - L/4)/2", "unit": "kN·m", "tolerance": { "rel": 1e-6, "abs": 1e-9 } },
+    { "quantity": "member:1:uz:absmax", "label": "flèche maximale (déformée reconstruite, w local, z local vers le haut)", "expected": "-5*q*L^4/(384*E*I)", "unit": "m", "tolerance": { "rel": 1e-4, "abs": 1e-9 } }
+  ]
+}
