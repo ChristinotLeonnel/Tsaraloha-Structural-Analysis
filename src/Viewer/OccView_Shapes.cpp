@@ -239,6 +239,22 @@ Handle(AIS_InteractiveObject) OccView::detectedPreferringModel()
     return first;
 }
 
+bool OccView::overlayConsumesClick()
+{
+    if (!m_overlayClick) return false;
+    for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
+        if (m_overlayClick(m_context->DetectedCurrentOwner())) return true;
+    return false;
+}
+
+QString OccView::overlayHoverText()
+{
+    if (!m_overlayHover) return {};
+    for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
+        if (QString text = m_overlayHover(m_context->DetectedCurrentOwner()); !text.isEmpty()) return text;
+    return {};
+}
+
 void OccView::onDimensionsChanged(const std::vector<int>& ids)
 {
     if (!m_dimensionRenderer || !m_model) return;

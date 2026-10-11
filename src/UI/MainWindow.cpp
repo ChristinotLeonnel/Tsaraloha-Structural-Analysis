@@ -21,7 +21,7 @@
 #include "Ruler/ViewportContainer.h"
 #include "Diagrams/Diagram2DWidget.h"
 #include "../NDC/NDCViewerWidget.h"
-#include "../Viewer/MeshOverlay.h"
+#include "../Viewer/MeshVisual.h"
 #include "../Analysis/OpenSeesSolver.h"
 #include "../Analysis/ResultsModel.h"
 #include "../Analysis/OpenSeesManager.h"

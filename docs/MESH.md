@@ -19,7 +19,7 @@ MeshQuality     OpenSeesMeshAdapter    SurfaceLoads (charges nodales équivalent
    │                 ▼
    │        AnalysisContext.memberSubdivisions ──► CalculationSnapshot::subdivided ──► moteur ──► ResultsModel::mergeSubdivisions
    ▼
-MeshProject (chunk MESH du .tsa)       Interface : MeshController (thread de travail), panneau, liste de qualité, MeshOverlay (vue 3D)
+MeshProject (chunk MESH du .tsa)       Interface : MeshController (thread de travail), panneau, liste de qualité, MeshVisual (vue 3D, docs/MESH_VISUALIZATION.md)
 ```
 
 | Couche | Fichiers | Dépend de |
@@ -28,7 +28,7 @@ MeshProject (chunk MESH du .tsa)       Interface : MeshController (thread de tra
 | Moteur | `MeshGenerator` (façade), `Gmsh/GmshMeshEngine` | SDK Gmsh (API C) |
 | Conversion solveur | `Solvers/OpenSeesMeshAdapter` | capacités des moteurs d'analyse |
 | Analyse | `CalculationSnapshot::subdivided`, `ResultsModel::mergeSubdivisions`, `AnalysisManager` | aucun maillage : seulement des positions de subdivision |
-| Interface | `UI/Mesh/*`, `UI/MainWindow_Mesh.cpp`, `Viewer/MeshOverlay` | tout ce qui précède |
+| Interface | `UI/Mesh/*`, `UI/MainWindow_Mesh.cpp`, `UI/MainWindow_MeshView.cpp`, `Viewer/MeshVisual` | tout ce qui précède |
 
 Points de conception :
 

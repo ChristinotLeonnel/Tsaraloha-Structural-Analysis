@@ -71,7 +71,7 @@ class MeshQualityPanel;
 }
 namespace TSA::Viewer
 {
-class MeshOverlay;
+class MeshVisual;
 }
 namespace TSA::NDC
 {
@@ -84,6 +84,7 @@ class QActionGroup;
 class QToolButton;
 class QMenu;
 class QTimer;
+class QPlainTextEdit;
 class QStatusBar;
 class QLabel;
 class QDockWidget;
@@ -559,8 +560,50 @@ private:
     TSA::UI::MeshQualityPanel* m_meshQualityPanel = nullptr;
     QDockWidget* m_meshDock = nullptr;
     QDockWidget* m_meshQualityDock = nullptr;
-    std::unique_ptr<TSA::Viewer::MeshOverlay> m_meshOverlay;
+    std::unique_ptr<TSA::Viewer::MeshVisual> m_meshVisual;
     void setupMesh();
+
+    // Affichage du maillage dans la vue 3D (docs/MESH_VISUALIZATION.md, MainWindow_MeshView.cpp)
+    QAction* m_actionMeshWire = nullptr;
+    QAction* m_actionMeshFacesEdges = nullptr;
+    QAction* m_actionMeshFaces = nullptr;
+    QAction* m_actionMeshShrink = nullptr;
+    QAction* m_actionMeshEdges = nullptr;
+    QAction* m_actionMeshTransparent = nullptr;
+    QAction* m_actionMeshOnly = nullptr;
+    QAction* m_actionMeshNodes = nullptr;
+    QAction* m_actionMeshNodeLabels = nullptr;
+    QAction* m_actionMeshElementLabels = nullptr;
+    QAction* m_actionMeshNodeSize = nullptr;
+    QAction* m_actionMeshLineWidth = nullptr;
+    QAction* m_actionMesh1D = nullptr;
+    QAction* m_actionMesh2D = nullptr;
+    QAction* m_actionMesh3D = nullptr;
+    QAction* m_actionMeshInterior = nullptr;
+    QAction* m_actionMeshCut = nullptr;
+    QAction* m_actionMeshIsolate = nullptr;
+    QAction* m_actionMeshAllGroups = nullptr;
+    QAction* m_actionMeshPick = nullptr;
+    QAction* m_actionMeshFit = nullptr;
+    QAction* m_actionMeshResults = nullptr;
+    QAction* m_actionMeshDeformScale = nullptr;
+    QAction* m_actionMeshAnimate = nullptr;
+    QMenu* m_meshViewMenu = nullptr;
+    QDockWidget* m_meshInspectDock = nullptr;
+    QPlainTextEdit* m_meshInspectText = nullptr;
+    QTimer* m_meshAnimTimer = nullptr;
+    double m_meshAnimPhase = 0.0;
+    double m_meshDeformScale = 0.0;          ///< 0 : facteur automatique
+    double m_meshAutoScale = 0.0;
+    QString m_meshPickText;
+    std::vector<bool> m_meshOnlySavedCategories; ///< visibilité de la géométrie avant « maillage seul »
+    bool m_meshOnlySavedNodes = true;
+    void createMeshViewActions();
+    void populateMeshViewMenu(QMenu* menu);
+    void setupMeshView();
+    void applyMeshViewOptions();
+    void refreshMeshInspector();
+    void setMeshOnly(bool on);
     /// Maillage → contexte de calcul (subdivision des barres), après contrôle de compatibilité ; faux = calcul annulé.
     bool applyMeshToAnalysis(TSA::Analysis::AnalysisContext& context, const TSA::Analysis::AnalysisEngine& engine);
     QAction* m_actionReportTemplates = nullptr;

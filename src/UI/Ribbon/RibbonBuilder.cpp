@@ -408,6 +408,8 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
     }
     if (!meshCol2.empty()) meshPanel->addSmallColumn(meshCol2);
     if (acts.actionMeshShow) meshPanel->addSmallColumn({ acts.actionMeshShow });
+    if (acts.meshViewMenu)
+        meshPanel->addMenuButton(QObject::tr("Affichage du maillage"), QIcon(":/icons/view_iso.svg"), acts.meshViewMenu, RibbonButtonSize::Small);
     tab->addPanel(meshPanel);
 
     // Groupe 2 : Résolution & Solveur EF

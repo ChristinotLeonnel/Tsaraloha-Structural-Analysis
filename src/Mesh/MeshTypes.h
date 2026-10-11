@@ -98,6 +98,8 @@ enum class FeType
     Tet10
 };
 const char* feTypeName(FeType t);
+/// Préfixe de FeElement::source d'un élément relu avec un type inconnu : jamais interprété (affichage, calcul).
+inline constexpr const char* kFeUnknownTypePrefix = "type inconnu";
 int feTypeDimension(FeType t);
 int feTypeCornerCount(FeType t);
 bool feTypeIsSecondOrder(FeType t);
@@ -220,6 +222,7 @@ struct FeNode
     double x = 0, y = 0, z = 0;
     int tsaNode = 0;            ///< nœud TSA confondu (0 : nœud du maillage)
     std::string source;         ///< objet ayant créé le nœud
+    std::size_t gmshTag = 0;    ///< étiquette du nœud dans Gmsh (0 : inconnue) ; jamais confondue avec id
 };
 
 struct FeElement
@@ -230,6 +233,9 @@ struct FeElement
     std::string source;         ///< référence de l'objet d'origine
     bool boundary = false;      ///< élément de frontière (ligne de contour, face de volume)
     double quality = 2.0;       ///< qualité Gmsh minSICN (2 : non calculée)
+    std::size_t gmshTag = 0;    ///< étiquette de l'élément dans Gmsh (0 : inconnue)
+    int gmshEntityDim = -1;     ///< entité géométrique Gmsh d'origine (dimension, étiquette) ; −1 : inconnue
+    int gmshEntityTag = 0;
 };
 
 struct FeGroup
@@ -238,6 +244,8 @@ struct FeGroup
     int dimension = 1;
     std::vector<int> elements;
     std::vector<int> nodes;     ///< groupe de nœuds (appuis, points de charge, interfaces) ; vide sinon
+    int gmshPhysicalDim = -1;   ///< groupe physique Gmsh correspondant (dimension, étiquette) ; −1 : aucun
+    int gmshPhysicalTag = 0;
 };
 
 struct FeMesh

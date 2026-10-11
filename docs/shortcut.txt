@@ -227,6 +227,30 @@ cmd.mesh.quality                    |                       | on   |            
 cmd.mesh.regenerate                 |                       | on   |                       | Régénérer le maillage — Régénérer avec les paramètres enregistrés
 cmd.mesh.settings                   |                       | on   |                       | Paramètres du maillage — Panneau de paramétrage du maillage (Gmsh)
 cmd.mesh.show                       |                       | on   |                       | Afficher le maillage — Afficher le maillage du projet dans la vue 3D
+cmd.mesh.view.all_groups            |                       | on   |                       | Afficher tous les groupes du maillage — Annuler l'isolation des groupes
+cmd.mesh.view.animate               |                       | on   |                       | Animer la déformée du maillage — Animation de la déformée
+cmd.mesh.view.cut                   |                       | on   |                       | Coupe du maillage — Masquer les éléments d'un côté d'un plan
+cmd.mesh.view.deform_scale          |                       | on   |                       | Facteur de déformation du maillage — Amplification des déplacements affichés
+cmd.mesh.view.edges                 |                       | on   |                       | Arêtes du maillage — Afficher ou masquer les arêtes du maillage
+cmd.mesh.view.element_labels        |                       | on   |                       | Numéros des éléments du maillage — Identifiants des éléments du maillage
+cmd.mesh.view.faces                 |                       | on   |                       | Maillage : faces seules — Faces des éléments sans arêtes
+cmd.mesh.view.faces_edges           |                       | on   |                       | Maillage : faces et arêtes — Faces des éléments et arêtes uniques
+cmd.mesh.view.fit                   |                       | on   |                       | Cadrer sur le maillage — Cadrer la vue sur le maillage affiché
+cmd.mesh.view.interior              |                       | on   |                       | Faces intérieures des volumes — Afficher aussi les faces partagées entre volumes
+cmd.mesh.view.isolate               |                       | on   |                       | Isoler des groupes du maillage — Afficher seulement les groupes choisis
+cmd.mesh.view.line_width            |                       | on   |                       | Épaisseur des traits du maillage — Épaisseur des arêtes et éléments 1D
+cmd.mesh.view.mesh_only             |                       | on   |                       | Maillage seul — Masquer la géométrie du modèle, garder le maillage
+cmd.mesh.view.node_labels           |                       | on   |                       | Numéros des nœuds du maillage — Identifiants des nœuds du maillage
+cmd.mesh.view.node_size             |                       | on   |                       | Taille des nœuds du maillage — Échelle des marqueurs de nœuds
+cmd.mesh.view.nodes                 |                       | on   |                       | Nœuds du maillage — Afficher ou masquer les nœuds du maillage
+cmd.mesh.view.pick                  |                       | on   |                       | Sélection dans le maillage — Sélectionner un nœud ou un élément du maillage
+cmd.mesh.view.results               |                       | on   |                       | Déplacements sur le maillage — Déplacements calculés sur le maillage (couleurs, déformée)
+cmd.mesh.view.show_1d               |                       | on   |                       | Éléments 1D du maillage — Afficher ou masquer les éléments 1D
+cmd.mesh.view.show_2d               |                       | on   |                       | Éléments 2D du maillage — Afficher ou masquer les éléments 2D
+cmd.mesh.view.show_3d               |                       | on   |                       | Éléments 3D du maillage — Afficher ou masquer les éléments 3D
+cmd.mesh.view.shrink                |                       | on   |                       | Maillage : éléments réduits — Éléments réduits autour de leur centre
+cmd.mesh.view.transparent           |                       | on   |                       | Faces du maillage transparentes — Faces semi-transparentes
+cmd.mesh.view.wireframe             |                       | on   |                       | Maillage filaire — Arêtes uniques du maillage, sans faces
 cmd.mesh.zone                       |                       | on   |                       | Raffinement local — Zone de raffinement autour des nœuds sélectionnés
 cmd.model.slab_openings             |                       | on   |                       | Ouvertures de la dalle — Trémies de la dalle sélectionnée
 

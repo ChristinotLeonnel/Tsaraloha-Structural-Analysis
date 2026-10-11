@@ -6,7 +6,7 @@
 #include "../Analysis/AnalysisController.h"
 #include "../Mesh/MeshGenerator.h"
 #include "../Model/Model.h"
-#include "../Viewer/MeshOverlay.h"
+#include "../Viewer/MeshVisual.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "Dock/LogConsoleDock.h"
@@ -19,6 +19,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QMessageBox>
+#include <QPointer>
 #include <QPushButton>
 
 using namespace TSA::Mesh;
@@ -54,7 +55,14 @@ void MainWindow::setupMesh()
     m_meshQualityDock->setWidget(m_meshQualityPanel);
     addDockWidget(Qt::BottomDockWidgetArea, m_meshQualityDock);
     m_meshQualityDock->hide();
-    if (m_occView) m_meshOverlay = std::make_unique<TSA::Viewer::MeshOverlay>(m_occView->context(), m_occView->view());
+    // Contexte et vue lus à chaque usage : OccView ne crée sa vue OCCT qu'à son premier affichage (après setupMesh).
+    if (m_occView)
+    {
+        const QPointer<OccView> view(m_occView);
+        m_meshVisual = std::make_unique<TSA::Viewer::MeshVisual>(
+            [view]() { return view ? view->context() : Handle(AIS_InteractiveContext)(); },
+            [view]() { return view ? view->view() : Handle(V3d_View)(); });
+    }
 
     connect(m_meshPanel, &TSA::UI::MeshSettingsPanel::qualityRequested, this, &MainWindow::onActionMeshQuality);
     connect(m_meshPanel, &TSA::UI::MeshSettingsPanel::exportRequested, this, &MainWindow::onActionMeshExport);
@@ -62,8 +70,11 @@ void MainWindow::setupMesh()
     connect(m_meshPanel, &TSA::UI::MeshSettingsPanel::localForSelectionRequested, this, &MainWindow::onActionMeshLocal);
     connect(m_meshPanel, &TSA::UI::MeshSettingsPanel::zoneFromSelectionRequested, this, &MainWindow::onActionMeshZone);
     connect(m_meshQualityPanel, &TSA::UI::MeshQualityPanel::issueActivated, this, [this](int element, int node) {
-        const FeMesh* mesh = m_meshController->hasMesh() ? &m_meshController->project().mesh : nullptr;
-        if (m_meshOverlay && mesh) m_meshOverlay->highlight(*mesh, element, node, true);
+        if (!m_meshVisual || !m_meshController->hasMesh()) return;
+        if (m_actionMeshShow && !m_actionMeshShow->isChecked()) m_actionMeshShow->setChecked(true);
+        m_meshVisual->highlight(element, node, true);
+        m_meshPickText = QString::fromStdString(element ? m_meshVisual->describeElement(element) : m_meshVisual->describeNode(node));
+        refreshMeshInspector();
     });
     connect(m_meshController, &TSA::UI::MeshController::generationFinished, this, [this](bool preview, bool ok, const QString& message) {
         if (m_consoleDock)
@@ -91,24 +102,10 @@ void MainWindow::setupMesh()
     connect(m_meshController, &TSA::UI::MeshController::previewChanged, this, &MainWindow::refreshMeshOverlay);
     connect(m_meshController, &TSA::UI::MeshController::meshChanged, this, &MainWindow::refreshMeshOverlay);
     m_meshController->setModel(m_model);
+    setupMeshView();
 }
 
-void MainWindow::refreshMeshOverlay()
-{
-    if (!m_meshOverlay || !m_meshController) return;
-    if (const FeMesh* preview = m_meshController->preview())
-    {
-        m_meshOverlay->show(*preview, TSA::Viewer::MeshOverlay::Mode::Preview);
-        return;
-    }
-    if (m_actionMeshShow && m_actionMeshShow->isChecked() && m_meshController->hasMesh())
-    {
-        const auto& q = m_meshController->quality().perElementQuality;
-        m_meshOverlay->show(m_meshController->project().mesh, TSA::Viewer::MeshOverlay::Mode::Generated, &q, 0.1);
-    }
-    else
-        m_meshOverlay->clear();
-}
+// refreshMeshOverlay : MainWindow_MeshView.cpp
 
 void MainWindow::onMeshModelChanged()
 {

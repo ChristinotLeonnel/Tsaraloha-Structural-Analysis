@@ -24,6 +24,13 @@ bureau actif). La fenêtre de TSA doit rester au premier plan pendant l'essai.
    « gravité », treillis signalé au calcul, enregistrement, réouverture. Contrôle du fichier enregistré :
    `TSA_UI_CHECK_FILE=<dossier>/torsion_dialog.tsa TSA_TestSuite.exe --suite=torsion` (charges relues, θ comparé
    à m·L²/(2GJ)).
+6. Maillage dans la vue 3D : `TSA_TEST_DUMP_DIR=<dossier> TSA_TestSuite.exe --suite=meshview` écrit
+   `<dossier>/meshview_ui.tsa` (portique, dalle, semelles, réglages 1D + 2D + 3D, maillage non généré), puis
+   `mesh_view_scenario.ps1 -Project <dossier>/meshview_ui.tsa -OutDir … [-Exe <paquet>\TSA.exe]` : génération Gmsh
+   par le ruban, comptes relus dans « Inspection du maillage », modes, maillage seul, étiquettes, filtre, clic de
+   sélection dans la vue, redimensionnement, calcul et déplacements, enregistrement, réouverture, cycles, journal.
+   Le menu déroulant « Affichage du maillage » du ruban n'est pas exposé à UI Automation : il est parcouru au clavier.
+   Le scénario enregistre le projet : le régénérer avant une nouvelle exécution.
 5. Taille de la vue 3D selon les panneaux : `viewport_layout.ps1 -Project … [-Width 1220 -Height 765]`.
 
 Les boutons qui ouvrent une boîte modale sont cliqués à la souris (`Click-Mouse`) : l'Invoke d'UI Automation

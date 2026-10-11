@@ -789,6 +789,7 @@ void MainWindow::createActions()
     connect(m_actionMeshImport, &QAction::triggered, this, &MainWindow::onActionMeshImport);
     m_actionMeshClear = new QAction(tr("Supprimer le maillage"), this);
     connect(m_actionMeshClear, &QAction::triggered, this, &MainWindow::onActionMeshClear);
+    createMeshViewActions();
     m_actionSlabOpenings = new QAction(tr("Ouvertures de la dalle..."), this);
     m_actionSlabOpenings->setToolTip(tr("Trémies de la dalle sélectionnée (rectangles, cercles), prises en compte par le maillage"));
     connect(m_actionSlabOpenings, &QAction::triggered, this, &MainWindow::onActionSlabOpenings);
@@ -1086,6 +1087,8 @@ void MainWindow::createMenus()
         meshSub->addAction(m_actionMeshRegenerate);
         meshSub->addAction(m_actionMeshQuality);
         meshSub->addAction(m_actionMeshShow);
+        m_meshViewMenu = meshSub->addMenu(tr("Affichage du maillage"));
+        populateMeshViewMenu(m_meshViewMenu);
         meshSub->addSeparator();
         meshSub->addAction(m_actionMeshLocal);
         meshSub->addAction(m_actionMeshZone);
@@ -1396,6 +1399,7 @@ void MainWindow::createRibbon()
     acts.actionMeshLocal = m_actionMeshLocal;
     acts.actionMeshZone = m_actionMeshZone;
     acts.actionMeshShow = m_actionMeshShow;
+    acts.meshViewMenu = m_meshViewMenu;
     acts.actionAnalysisConfig = m_actionAnalysisConfig;
     acts.actionRunSolve = m_actionRunSolve;
 

@@ -412,6 +412,54 @@ void CommandCatalog::initializeStandardCatalog() {
                    "", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.show", "Afficher le maillage", "Afficher le maillage du projet dans la vue 3D", "",
                    "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.wireframe", "Maillage filaire", "Arêtes uniques du maillage, sans faces", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.faces_edges", "Maillage : faces et arêtes", "Faces des éléments et arêtes uniques", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.faces", "Maillage : faces seules", "Faces des éléments sans arêtes", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.shrink", "Maillage : éléments réduits", "Éléments réduits autour de leur centre", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.edges", "Arêtes du maillage", "Afficher ou masquer les arêtes du maillage", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.transparent", "Faces du maillage transparentes", "Faces semi-transparentes", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.mesh_only", "Maillage seul", "Masquer la géométrie du modèle, garder le maillage", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.nodes", "Nœuds du maillage", "Afficher ou masquer les nœuds du maillage", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.node_labels", "Numéros des nœuds du maillage", "Identifiants des nœuds du maillage", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.element_labels", "Numéros des éléments du maillage", "Identifiants des éléments du maillage", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.node_size", "Taille des nœuds du maillage", "Échelle des marqueurs de nœuds", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.line_width", "Épaisseur des traits du maillage", "Épaisseur des arêtes et éléments 1D", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.show_1d", "Éléments 1D du maillage", "Afficher ou masquer les éléments 1D", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.show_2d", "Éléments 2D du maillage", "Afficher ou masquer les éléments 2D", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.show_3d", "Éléments 3D du maillage", "Afficher ou masquer les éléments 3D", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.interior", "Faces intérieures des volumes", "Afficher aussi les faces partagées entre volumes", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.cut", "Coupe du maillage", "Masquer les éléments d'un côté d'un plan", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.isolate", "Isoler des groupes du maillage", "Afficher seulement les groupes choisis", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.all_groups", "Afficher tous les groupes du maillage", "Annuler l'isolation des groupes", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.pick", "Sélection dans le maillage", "Sélectionner un nœud ou un élément du maillage", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.fit", "Cadrer sur le maillage", "Cadrer la vue sur le maillage affiché", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.results", "Déplacements sur le maillage", "Déplacements calculés sur le maillage (couleurs, déformée)", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.deform_scale", "Facteur de déformation du maillage", "Amplification des déplacements affichés", "",
+                   "", CommandCategory::Mesh});
+  registerCommand({"cmd.mesh.view.animate", "Animer la déformée du maillage", "Animation de la déformée", "",
+                   "", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.local", "Maillage local de la sélection", "Paramètres de maillage des objets sélectionnés", "",
                    "", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.zone", "Raffinement local", "Zone de raffinement autour des nœuds sélectionnés", "",

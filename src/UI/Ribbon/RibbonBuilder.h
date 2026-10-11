@@ -4,6 +4,7 @@
 #include <QObject>
 
 class QAction;
+class QMenu;
 class QWidget;
 
 namespace TSA::UI
@@ -82,6 +83,7 @@ struct RibbonActions
     QAction* actionMeshLocal = nullptr;
     QAction* actionMeshZone = nullptr;
     QAction* actionMeshShow = nullptr;
+    QMenu* meshViewMenu = nullptr;      ///< « Affichage du maillage » (modes, filtres, sélection, résultats)
     QAction* actionAnalysisConfig = nullptr;
     QAction* actionRunSolve = nullptr;
 
