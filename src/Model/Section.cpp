@@ -113,15 +113,88 @@ double Section::iz() const
     return (height * width * width * width) / 12.0;
 }
 
+double Section::rolledIShapeTorsionConstant(double h, double b, double tw, double tf, double r)
+{
+    // El Darwish & Johnston (1965), formule des tables SCI « Blue Book » / British Steel : ailes et âme
+    // rectangulaires + correction des nœuds âme-aile avec congés de rayon r. Validée sur 65 profils IPE et HE
+    // (fiches British Steel 21.07.26 : écart ≤ 0,4 %, arrondi d'impression), test 332.
+    const double D = ((tf + r) * (tf + r) + tw * (r + 0.25 * tw)) / (2.0 * r + tf);
+    const double a1 = -0.042 + 0.2204 * tw / tf + 0.1355 * r / tf - 0.0865 * r * tw / (tf * tf) - 0.0725 * tw * tw / (tf * tf);
+    return 2.0 / 3.0 * b * std::pow(tf, 3) + (h - 2.0 * tf) * std::pow(tw, 3) / 3.0 + 2.0 * a1 * std::pow(D, 4) - 0.420 * std::pow(tf, 4);
+}
+
+double Section::rootRadius() const
+{
+    if (shape != SectionShape::IShape) return 0.0;
+    // Désignation normalisée → profil de référence (mêmes usines) ; rayon EN 10365 seulement si les dimensions
+    // n'ont pas été modifiées.
+    auto number = [&](const std::string& prefix) -> int {
+        if (name.rfind(prefix, 0) != 0) return 0;
+        try { return std::stoi(name.substr(prefix.size())); } catch (...) { return 0; }
+    };
+    Section ref;
+    double r = 0.0;
+    if (const int n = number("IPE "); n > 0)
+    {
+        ref = ipe(n);
+        r = n <= 140 ? 7.0 : n <= 180 ? 9.0 : n <= 220 ? 12.0 : n <= 300 ? 15.0 : n <= 360 ? 18.0 : 21.0;
+    }
+    else if (const int a = number("HEA "), bb = number("HEB "); a > 0 || bb > 0)
+    {
+        const int m = a > 0 ? a : bb;
+        ref = a > 0 ? hea(m) : heb(m);
+        r = m <= 140 ? 12.0 : m <= 180 ? 15.0 : m <= 220 ? 18.0 : m <= 240 ? 21.0 : m <= 280 ? 24.0 : 27.0;
+    }
+    else
+    {
+        return 0.0;
+    }
+    // Numéros décrits par les usines (au-delà, elles renvoient un profil par défaut sous la même désignation).
+    static const int kIpe[] = { 100, 120, 140, 160, 180, 200, 220, 240, 270, 300, 330, 360, 400 };
+    static const int kHe[] = { 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300 };
+    const int n = number("IPE ") > 0 ? number("IPE ") : number("HEA ") > 0 ? number("HEA ") : number("HEB ");
+    const bool isIpe = number("IPE ") > 0;
+    if (isIpe ? std::find(std::begin(kIpe), std::end(kIpe), n) == std::end(kIpe) : std::find(std::begin(kHe), std::end(kHe), n) == std::end(kHe))
+        return 0.0;
+    auto same = [](double x, double y) { return std::abs(x - y) <= 1e-7; };
+    if (!same(ref.height, height) || !same(ref.width, width) || !same(ref.tw, tw) || !same(ref.tf, tf)) return 0.0;
+    return r * 1e-3;
+}
+
+double Section::iw() const
+{
+    switch (shape)
+    {
+    case SectionShape::IShape:
+        // Ailes seules, bisymétrique (congés et âme négligés) : écart ≤ 1,2 % aux fiches British Steel.
+        return tf * std::pow(width, 3) * std::pow(height - tf, 2) / 24.0;
+    case SectionShape::Rectangular:
+    case SectionShape::Circular:
+    case SectionShape::Pipe:
+    case SectionShape::BoxHollow:
+        return 0.0; // sections pleines et fermées : gauchissement négligeable devant la torsion de Saint-Venant
+    default:
+        return std::nan(""); // UPN, cornière, T : non calculé
+    }
+}
+
 double Section::it() const
 {
-    // Approximation torsionnelle de Saint-Venant
     switch (shape)
     {
     case SectionShape::Circular:
         return (M_PI * std::pow(diameter, 4)) / 32.0;
     case SectionShape::IShape:
+    {
+        // Profil laminé normalisé : congés pris en compte ; sinon parois minces (sous-estime J de 12 à 29 %
+        // pour un profil laminé, exact pour un profil reconstitué soudé sans congé).
+        const double r = rootRadius();
+        if (r > 0.0) return rolledIShapeTorsionConstant(height, width, tw, tf, r);
+        return (2.0 * width * std::pow(tf, 3) + (height - tf) * std::pow(tw, 3)) / 3.0;
+    }
     case SectionShape::UPN:
+        // Parois minces, épaisseur d'aile moyenne (ailes inclinées et congés non modélisés, non comparé à un
+        // catalogue : aucune référence vérifiée dans ce travail).
         return (2.0 * width * std::pow(tf, 3) + (height - tf) * std::pow(tw, 3)) / 3.0;
     case SectionShape::TSection:
         return (width * std::pow(tf, 3) + (height - tf) * std::pow(tw, 3)) / 3.0;
