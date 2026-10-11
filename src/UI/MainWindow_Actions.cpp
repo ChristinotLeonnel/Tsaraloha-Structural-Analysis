@@ -1637,6 +1637,11 @@ void MainWindow::createDockWindows()
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDeformedDisplayMode);
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::deformationScalePresetChanged,
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDeformationScalePreset);
+        connect(m_resultsDock, &TSA::UI::ResultsDockWidget::sectionRotationToggled,
+                m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setSectionRotationVisible);
+        // Facteur effectif (Auto recalculé, préréglage, manuel) toujours affiché dans le panneau.
+        connect(m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::visualStateChanged, m_resultsDock,
+                [this] { m_resultsDock->syncFromVisualManager(m_occView->resultsVisual()); });
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::diagramTypeChanged,
                 m_occView->resultsVisual(), &TSA::Viewer::ResultsVisualManager::setDiagramType);
         connect(m_resultsDock, &TSA::UI::ResultsDockWidget::diagramScalePresetChanged,

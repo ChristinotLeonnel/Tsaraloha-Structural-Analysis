@@ -133,9 +133,26 @@ double Section::it() const
         double a = std::max(width, height);
         return a * std::pow(b, 3) * (1.0 / 3.0 - 0.21 * (b / a) * (1.0 - std::pow(b / a, 4) / 12.0));
     }
-    default:
-        return iy() + iz();
+    case SectionShape::Pipe:
+    {
+        // Tube rond : J de Saint-Venant = moment polaire (exact pour une couronne circulaire).
+        const double d = std::max(0.0, diameter - 2.0 * tw);
+        return M_PI * (std::pow(diameter, 4) - std::pow(d, 4)) / 32.0;
     }
+    case SectionShape::BoxHollow:
+    {
+        // Caisson (profil creux fermé) : J ≠ moment polaire Iy + Iz (≈ 34 % de trop pour un carré).
+        // Bredt sur la ligne moyenne, Am = (b − tw)(h − tf), ∮ds/t = 2(h − tf)/tw + 2(b − tw)/tf, plus
+        // la contribution des parois minces Σ s·t³/3 (EN 10219-2, sans arrondis d'angle).
+        const double t1 = tw, t2 = (tf > 0.0) ? tf : tw;
+        const double bm = width - t1, hm = height - t2;
+        if (bm <= 0.0 || hm <= 0.0 || t1 <= 0.0) return iy() + iz();
+        const double am = bm * hm;
+        const double perimeterOverT = 2.0 * hm / t1 + 2.0 * bm / t2;
+        return 4.0 * am * am / perimeterOverT + (2.0 * hm * std::pow(t1, 3) + 2.0 * bm * std::pow(t2, 3)) / 3.0;
+    }
+    }
+    return iy() + iz();
 }
 
 double Section::wy() const

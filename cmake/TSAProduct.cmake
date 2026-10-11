@@ -997,6 +997,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_templates.cpp
     ${TSA_ROOT}/tests/test_deployment.cpp
     ${TSA_ROOT}/tests/test_mesh.cpp
+    ${TSA_ROOT}/tests/test_torsion.cpp
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )

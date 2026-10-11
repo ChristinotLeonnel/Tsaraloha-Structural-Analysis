@@ -8,6 +8,7 @@
 #include <BRep_Builder.hxx>
 #include <Poly_Triangulation.hxx>
 #include <TopoDS.hxx>
+#include <TopoDS_Compound.hxx>
 #include <TopoDS_Face.hxx>
 #include <gp_Ax3.hxx>
 #include <gp_XY.hxx>
@@ -34,7 +35,7 @@ bool stationsUsable(const TSA::Analysis::ElementResults& er, double L)
     if (er.intermediateStations.empty()) return false;
     if (std::abs(er.length - L) > 1e-6 * std::max(1.0, L)) return false;
     return std::all_of(er.intermediateStations.begin(), er.intermediateStations.end(), [](const auto& s) {
-        return finite(s.position) && finite(s.ux) && finite(s.uy) && finite(s.uz);
+        return finite(s.position) && finite(s.ux) && finite(s.uy) && finite(s.uz) && finite(s.rx);
     });
 }
 
@@ -53,6 +54,13 @@ gp_Vec rotateMinimal(const gp_Vec& from, const gp_Vec& to, const gp_Vec& v, cons
     }
     const gp_Vec kn = k / s;
     return v * c + kn.Crossed(v) * s + kn * (kn.Dot(v) * (1.0 - c));
+}
+
+/// Rotation d'angle `angle` (rad, sens direct) de v autour de l'axe unitaire k (formule de Rodrigues).
+gp_Vec rotateAbout(const gp_Vec& k, double angle, const gp_Vec& v)
+{
+    const double c = std::cos(angle), s = std::sin(angle);
+    return v * c + k.Crossed(v) * s + k * (k.Dot(v) * (1.0 - c));
 }
 
 bool pointInTriangle(const gp_XY& p, const gp_XY& a, const gp_XY& b, const gp_XY& c)
@@ -176,11 +184,14 @@ DeformedAxis DeformedGeometry::computeMemberAxis(
     const gp_Vec chord(p1, p2);
     const gp_Vec U1(d1->ux, d1->uy, d1->uz), U2(d2->ux, d2->uy, d2->uz);
 
-    auto add = [&](double x, const gp_Vec& u) {
+    auto add = [&](double x, const gp_Vec& u, double theta = 0.0) {
         axis.x.push_back(x);
         axis.initial.push_back(p1.Translated(chord * (x / L)));
         axis.displacement.push_back(u);
+        if (flexural) axis.twist.push_back(theta);
     };
+    // Torsion aux nœuds : composante de la rotation nodale (vecteur global) sur l'axe local x.
+    const double tx1 = gp_Vec(d1->rx, d1->ry, d1->rz).Dot(ex), tx2 = gp_Vec(d2->rx, d2->ry, d2->rz).Dot(ex);
 
     if (flexural && elementResults && stationsUsable(*elementResults, L))
     {
@@ -190,9 +201,9 @@ DeformedAxis DeformedGeometry::computeMemberAxis(
         for (const auto& s : elementResults->intermediateStations)
             if (s.position > 1e-9 * L && s.position < L * (1.0 - 1e-9)) st.push_back(&s);
         std::sort(st.begin(), st.end(), [](const auto* a, const auto* b) { return a->position < b->position; });
-        add(0.0, U1);
-        for (const auto* s : st) add(s->position, ex * s->ux + ey * s->uy + ez * s->uz);
-        add(L, U2);
+        add(0.0, U1, tx1);
+        for (const auto* s : st) add(s->position, ex * s->ux + ey * s->uy + ez * s->uz, s->rx);
+        add(L, U2, tx2);
     }
     else if (flexural)
     {
@@ -214,8 +225,9 @@ DeformedAxis DeformedGeometry::computeMemberAxis(
             const double u = (1.0 - s) * u1 + s * u2;
             const double v = h1 * v1 + h2 * v2 + h3 * rz1 + h4 * rz2;
             const double w = h1 * w1 + h2 * w2 - (h3 * ry1 + h4 * ry2);
-            // Extrémités : déplacements nodaux exacts (pas d'arrondi de projection)
-            add(s * L, k == 0 ? U1 : (k == n ? U2 : ex * u + ey * v + ez * w));
+            // Extrémités : déplacements nodaux exacts (pas d'arrondi de projection). Torsion de
+            // Saint-Venant (ElasticBeam3d) : θx linéaire entre les nœuds (exact sans couple réparti).
+            add(s * L, k == 0 ? U1 : (k == n ? U2 : ex * u + ey * v + ez * w), (1.0 - s) * tx1 + s * tx2);
         }
     }
     else
@@ -249,28 +261,134 @@ TopoDS_Shape DeformedGeometry::createAxisWire(const DeformedAxis& axis, double s
     return TopoDS_Shape();
 }
 
-TopoDS_Shape DeformedGeometry::createMemberSolid(const DeformedAxis& axis, const TSA::Model::Section& section,
-                                                 double rotationDeg, double scale)
+double DeformedAxis::maxAbsTwist() const
 {
-    if (!axis.valid || axis.size() < 2 || !std::isfinite(scale)) return TopoDS_Shape();
-    const auto frame = BeamGeometry::sectionFrame(axis.initial.front(), axis.initial.back(), rotationDeg);
-    if (!frame.valid) return TopoDS_Shape();
-    const auto outline = BeamGeometry::sectionOutline(section);
-    if (outline.outer.size() < 3) return TopoDS_Shape();
+    double m = 0.0;
+    for (double t : twist)
+        if (std::isfinite(t)) m = std::max(m, std::abs(t));
+    return m;
+}
 
-    // 1. Points amplifiés et repère de section à chaque station : tangente de l'axe déformé, section
-    //    tournée par la rotation minimale depuis la barre droite (aucune torsion artificielle).
+std::vector<DeformedSectionFrame> DeformedGeometry::sectionFrames(const DeformedAxis& axis, double rotationDeg, double scale,
+                                                                  bool applyTwist)
+{
+    std::vector<DeformedSectionFrame> frames;
+    if (!axis.valid || axis.size() < 2 || !std::isfinite(scale)) return frames;
+    const auto base = BeamGeometry::sectionFrame(axis.initial.front(), axis.initial.back(), rotationDeg);
+    if (!base.valid) return frames;
     const std::size_t n = axis.size();
     std::vector<gp_Pnt> P(n);
     for (std::size_t i = 0; i < n; ++i) P[i] = axis.pointAt(i, scale);
+    const bool twist = applyTwist && axis.hasTwist();
+    frames.resize(n);
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        // Flexion : tangente de l'axe déformé, section tournée par la rotation minimale depuis la barre
+        // droite (aucune torsion artificielle).
+        gp_Vec t = (i == 0) ? gp_Vec(P[0], P[1]) : (i == n - 1) ? gp_Vec(P[n - 2], P[n - 1]) : gp_Vec(P[i - 1], P[i + 1]);
+        t = t.Magnitude() > 1e-12 ? t.Normalized() : base.z;
+        auto& f = frames[i];
+        f.origin = P[i];
+        f.t = t;
+        f.x = rotateMinimal(base.z, t, base.x, base.x);
+        f.y = rotateMinimal(base.z, t, base.y, base.x);
+        // Torsion : rotation propre de la section autour de l'axe de la barre, amplifiée comme les
+        // déplacements (les résultats ne sont pas modifiés).
+        if (twist && std::isfinite(axis.twist[i]) && axis.twist[i] != 0.0)
+        {
+            const double phi = scale * axis.twist[i];
+            f.x = rotateAbout(t, phi, f.x);
+            f.y = rotateAbout(t, phi, f.y);
+        }
+    }
+    return frames;
+}
+
+double DeformedGeometry::sectionRadius(const TSA::Model::Section& section)
+{
+    double r = 0.0;
+    for (const auto& q : BeamGeometry::sectionOutline(section).outer) r = std::max(r, q.Modulus());
+    return r;
+}
+
+TopoDS_Shape DeformedGeometry::createSectionMarkers(const DeformedAxis& axis, const TSA::Model::Section& section,
+                                                    double rotationDeg, double scale, bool applyTwist, int rings)
+{
+    const auto frames = sectionFrames(axis, rotationDeg, scale, applyTwist);
+    const auto outline = BeamGeometry::sectionOutline(section);
+    if (frames.size() < 2 || outline.outer.size() < 3) return TopoDS_Shape();
+    // Léger dépassement du contour : les repères restent visibles sur la surface ombrée de la barre.
+    const double grow = 1.04;
+    auto at = [&](std::size_t i, const gp_XY& q) {
+        const auto& f = frames[i];
+        return f.origin.Translated(f.x * (q.X() * grow) + f.y * (q.Y() * grow));
+    };
+    try
+    {
+        BRep_Builder builder;
+        TopoDS_Compound compound;
+        builder.MakeCompound(compound);
+        bool any = false;
+        const std::size_t n = frames.size();
+        const int count = std::clamp(rings, 2, 50);
+        std::vector<std::size_t> stations;
+        for (int k = 0; k < count; ++k)
+        {
+            const auto i = static_cast<std::size_t>(std::lround(static_cast<double>(k) * static_cast<double>(n - 1) / (count - 1)));
+            if (stations.empty() || stations.back() != i) stations.push_back(i);
+        }
+        for (std::size_t i : stations)
+        {
+            BRepBuilderAPI_MakePolygon ring;
+            for (const auto& q : outline.outer) ring.Add(at(i, q));
+            ring.Close();
+            if (ring.IsDone())
+            {
+                builder.Add(compound, ring.Wire());
+                any = true;
+            }
+        }
+        // Génératrice : point du contour le plus haut dans la barre non déformée (vers +Z global ; +X pour
+        // une barre verticale), suivi d'une extrémité à l'autre ; elle s'enroule en hélice sous torsion.
+        const auto base = BeamGeometry::sectionFrame(axis.initial.front(), axis.initial.back(), rotationDeg);
+        const gp_Vec up = std::abs(base.z.Z()) > 0.999 ? gp_Vec(1, 0, 0) : gp_Vec(0, 0, 1);
+        auto height = [&](const gp_XY& q) { return (base.x * q.X() + base.y * q.Y()).Dot(up); };
+        std::size_t ref = 0;
+        for (std::size_t k = 1; k < outline.outer.size(); ++k)
+            if (height(outline.outer[k]) > height(outline.outer[ref]) + 1e-12) ref = k;
+        BRepBuilderAPI_MakePolygon line;
+        for (std::size_t i = 0; i < n; ++i) line.Add(at(i, outline.outer[ref]));
+        if (line.IsDone())
+        {
+            builder.Add(compound, line.Wire());
+            any = true;
+        }
+        return any ? TopoDS_Shape(compound) : TopoDS_Shape();
+    }
+    catch (...)
+    {
+        return TopoDS_Shape();
+    }
+}
+
+TopoDS_Shape DeformedGeometry::createMemberSolid(const DeformedAxis& axis, const TSA::Model::Section& section,
+                                                 double rotationDeg, double scale, bool applyTwist)
+{
+    const auto outline = BeamGeometry::sectionOutline(section);
+    if (outline.outer.size() < 3) return TopoDS_Shape();
+    const auto frames = sectionFrames(axis, rotationDeg, scale, applyTwist);
+    if (frames.size() < 2) return TopoDS_Shape();
+
+    // 1. Points amplifiés et repère de section à chaque station (flexion et torsion : sectionFrames).
+    const std::size_t n = frames.size();
+    std::vector<gp_Pnt> P(n);
     std::vector<gp_Vec> X(n), Y(n), T(n);
     for (std::size_t i = 0; i < n; ++i)
     {
-        gp_Vec t = (i == 0) ? gp_Vec(P[0], P[1]) : (i == n - 1) ? gp_Vec(P[n - 2], P[n - 1]) : gp_Vec(P[i - 1], P[i + 1]);
-        t = t.Magnitude() > 1e-12 ? t.Normalized() : frame.z;
-        T[i] = t;
-        X[i] = rotateMinimal(frame.z, t, frame.x, frame.x);
-        Y[i] = rotateMinimal(frame.z, t, frame.y, frame.x);
+        P[i] = frames[i].origin;
+        X[i] = frames[i].x;
+        Y[i] = frames[i].y;
+        T[i] = frames[i].t;
     }
 
     std::vector<gp_Pnt> nodes;
