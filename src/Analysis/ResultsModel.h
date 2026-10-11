@@ -209,6 +209,8 @@ struct AnalysisExecutionMetadata
     int totalNodes = 0;
     int totalElements = 0;
     double executionDurationMs = 0.0;
+    /// Durées mesurées des étapes du moteur (ms) : préparation du script, résolution, lecture des résultats.
+    double scriptDurationMs = 0.0, solveDurationMs = 0.0, readDurationMs = 0.0;
 
     // Configuration réelle du système OpenSees (traçabilité des matrices)
     std::string modelBuilder = "BasicBuilder -ndm 3 -ndf 6";

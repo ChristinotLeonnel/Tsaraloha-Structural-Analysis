@@ -58,6 +58,9 @@
 #include <SelectMgr_ViewerSelector.hxx>
 #include <StdSelect_ViewerSelector3d.hxx>
 #include <Graphic3d_Camera.hxx>
+#include <TColStd_IndexedDataMapOfStringString.hxx>
+#include <OpenGl_Caps.hxx>
+#include "../Diagnostics/Logger.h"
 #include <gp_Dir.hxx>
 #include <gp_Vec.hxx>
 #include <Bnd_Box.hxx>
@@ -126,10 +129,48 @@ void OccView::showEvent(QShowEvent* event)
     }
 }
 
+QString OccView::RenderingInfo::summary() const
+{
+    if (device.isEmpty()) return QStringLiteral("rendu non initialisé");
+    return QStringLiteral("%1 — %2, OpenGL %3%4 (%5)%6")
+        .arg(vendor, device, version, glsl.isEmpty() ? QString() : QStringLiteral(", GLSL ") + glsl,
+             hardware ? QStringLiteral("accélération matérielle") : QStringLiteral("RENDU LOGICIEL : affichage lent sur les grands modèles"),
+             compatibilityMode ? QStringLiteral(", mode de compatibilité") : QString());
+}
+
+OccView::RenderingInfo OccView::renderingInfo() const
+{
+    RenderingInfo r;
+    if (m_view.IsNull()) return r;
+    TColStd_IndexedDataMapOfStringString dict;
+    m_view->DiagnosticInformation(dict, Graphic3d_DiagnosticInfo_Device);
+    auto get = [&](const char* key) {
+        const TCollection_AsciiString k(key);
+        return dict.Contains(k) ? QString::fromLatin1(dict.FindFromKey(k).ToCString()) : QString();
+    };
+    r.vendor = get("GLvendor");
+    r.device = get("GLdevice");
+    r.version = get("GLversion");
+    r.glsl = get("GLSLversion");
+    // Rendus logiciels connus : GDI de Windows, Microsoft Basic Render, llvmpipe / softpipe (Mesa), SwiftShader
+    const QString d = r.device.toLower();
+    r.hardware = !r.device.isEmpty() && !d.contains("gdi generic") && !d.contains("basic render") && !d.contains("llvmpipe") && !d.contains("softpipe") &&
+                 !d.contains("swiftshader");
+    r.compatibilityMode = !m_graphicDriver.IsNull() && m_graphicDriver->Options().ffpEnable;
+    return r;
+}
+
 void OccView::initOcc()
 {
     m_displayConnection = new Aspect_DisplayConnection();
     m_graphicDriver = new OpenGl_GraphicDriver(m_displayConnection);
+    // Mode de compatibilité pour les cartes graphiques anciennes ou les pilotes défaillants (TSA_RENDER_COMPAT=1) :
+    // contexte OpenGL de compatibilité et pipeline fixe, au lieu du profil moderne par défaut.
+    if (qEnvironmentVariableIntValue("TSA_RENDER_COMPAT") == 1)
+    {
+        m_graphicDriver->ChangeOptions().contextCompatible = true;
+        m_graphicDriver->ChangeOptions().ffpEnable = true;
+    }
 
     m_viewer = new V3d_Viewer(m_graphicDriver);
     m_viewer->SetDefaultLights();
@@ -170,6 +211,8 @@ void OccView::initOcc()
     {
         wind->Map();
     }
+    // Rendu réellement obtenu, journalisé (diagnostic des postes sans accélération matérielle)
+    TSA_LOG_INFO("Viewer", "OpenGLRenderer", renderingInfo().summary().toStdString());
 
     Quantity_Color topColor = m_isDarkMode ? Quantity_Color(0.12, 0.14, 0.18, Quantity_TOC_RGB)
                                            : Quantity_Color(0.82, 0.88, 0.95, Quantity_TOC_RGB);

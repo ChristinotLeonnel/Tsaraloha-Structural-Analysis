@@ -220,6 +220,8 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     }
 
     emit progressChanged(25, tr("Génération du script d'analyse Tcl..."));
+    QElapsedTimer stageTimer;   // durées des étapes (traçabilité, mesures de performance)
+    stageTimer.start();
     const bool modal = localParams.type == AnalysisType::Modal;
     std::string script = modal ? OpenSeesAnalysisBuilder::buildModalScript(snapshot, opsMap, localParams)
                                : OpenSeesAnalysisBuilder::buildScript(snapshot, opsMap, localParams);
@@ -235,6 +237,8 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     scriptFile.close();
 
     // 3. Exécution du processus OpenSees
+    const double scriptMs = stageTimer.nsecsElapsed() / 1e6;
+    stageTimer.restart();
     emit progressChanged(40, tr("Lancement du solveur OpenSees..."));
     emit logReceived(QString("[TSA] Lancement de %1 sur %2").arg(exePath, scriptFilePath));
 
@@ -291,6 +295,8 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
     m_process = nullptr;
     int exitCode = process.exitCode();
 
+    const double solveMs = stageTimer.nsecsElapsed() / 1e6;
+    stageTimer.restart();
     emit progressChanged(85, tr("Analyse du journal et lecture des résultats..."));
     m_results.clearLog();
     m_results.appendLog(stdOutLog.toStdString());
@@ -405,6 +411,9 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
 
     // Traçabilité des métadonnées normatives d'exécution
     auto meta = m_results.executionMetadata();
+    meta.scriptDurationMs = scriptMs;
+    meta.solveDurationMs = solveMs;
+    meta.readDurationMs = stageTimer.nsecsElapsed() / 1e6;
     meta.solverEngine = "OpenSees";
     meta.solverVersion = OpenSeesManager::instance().versionInfo().versionString.toStdString();
     if (meta.solverVersion.empty()) meta.solverVersion = "3.8.0";

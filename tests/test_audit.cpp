@@ -7,7 +7,9 @@
 //   369  invariants mathématiques de la chaîne éléments finis (portique 3D incliné, OpenSees, extraction avancée) :
 //        matrice locale = matrice analytique d'Euler-Bernoulli 12×12, R orthogonale, K_e global symétrique et sans
 //        rigidité pour les 6 mouvements de corps rigide, K global = assemblage des K_e, symétrique et défini positif,
-//        résidu ‖K·U − F‖/‖F‖, équilibre des réactions.
+//        résidu ‖K·U − F‖/‖F‖, équilibre des réactions ;
+//   370  rendu graphique : fournisseur, carte, version OpenGL et accélération matérielle effectivement obtenus
+//        (diagnostic journalisé), mode de compatibilité pour les cartes anciennes.
 
 #include "test_common.h"
 
@@ -19,6 +21,9 @@
 #include "Model/Load/LoadManager.h"
 
 #include <QJsonObject>
+#include <QApplication>
+#include <QThread>
+#include "Viewer/OccView.h"
 
 #include <functional>
 
@@ -358,6 +363,22 @@ bool runSuite_Audit(int& passed)
         TEST_CHECK(std::abs(eq.reactionFx + 7.0) < 1e-6 && std::abs(eq.reactionFy + 2.0) < 1e-6 && std::abs(eq.reactionFz - 75.0) < 1e-6,
                    "Test 369: Σ réactions = −Σ charges (" << eq.reactionFx << ", " << eq.reactionFy << ", " << eq.reactionFz << ")");
         std::cout << "[PASS] Test 369: Invariants de la chaîne éléments finis (matrices, assemblage, résidu, équilibre)" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 370 : rendu graphique réellement obtenu
+    // -------------------------------------------------------------------------
+    {
+        OccView view;
+        view.resize(320, 240);
+        view.show();
+        for (int k = 0; k < 20; ++k) { QApplication::processEvents(); QThread::msleep(10); }
+        const auto info = view.renderingInfo();
+        std::cout << "  rendu : " << info.summary().toStdString() << std::endl;
+        TEST_CHECK(!info.device.isEmpty() && !info.version.isEmpty() && !info.summary().isEmpty(), "Test 370: carte et version OpenGL identifiées");
+        TEST_CHECK(!info.compatibilityMode || qEnvironmentVariableIntValue("TSA_RENDER_COMPAT") == 1, "Test 370: mode de compatibilité seulement sur demande");
+        view.hide();
+        std::cout << "[PASS] Test 370: Rendu graphique identifié (" << (info.hardware ? "matériel" : "logiciel") << ")" << std::endl;
         ++passed;
     }
     return true;

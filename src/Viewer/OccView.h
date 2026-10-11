@@ -76,6 +76,17 @@ public:
     const Handle(V3d_View)& view() const { return m_view; }
     const Handle(V3d_Viewer)& viewer() const { return m_viewer; }
 
+    /// Rendu effectivement utilisé (OpenGL) : fournisseur, carte, version, accélération matérielle ou logicielle,
+    /// mode de compatibilité. Vide tant que la vue n'est pas initialisée.
+    struct RenderingInfo
+    {
+        QString vendor, device, version, glsl;
+        bool hardware = false;
+        bool compatibilityMode = false;
+        QString summary() const;
+    };
+    RenderingInfo renderingInfo() const;
+
     /// Calques indépendants du modèle (maillage FEM…) : un clic simple sur une entité détectée est d'abord
     /// proposé à `click` ; s'il le consomme (vrai), la sélection du modèle est vidée sans autre traitement.
     /// `hover` : texte de survol d'une entité du calque (vide : survol habituel du modèle).
