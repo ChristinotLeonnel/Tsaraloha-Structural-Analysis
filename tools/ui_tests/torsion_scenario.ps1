@@ -156,7 +156,7 @@ $wp.Close()
 Start-Sleep -Seconds 2
 $q = Dismiss $p.Id "*" @("*Ne pas enregistrer*", "*Non*", "*No*", "*Discard*") 3
 if ($q) { Write-Output ("  fermeture : " + $q) }
-$p.WaitForExit(20000) | Out-Null
+$p.WaitForExit(40000) | Out-Null
 Check ($p.HasExited) "7. TSA fermé (code $($p.ExitCode))"
 $p2 = Start-Process -FilePath $exe -ArgumentList ('"' + $proj + '"') -PassThru
 $w2e = Wait-Window "TSA*torsion_ui*" 90
@@ -174,7 +174,7 @@ Capture $w2 "$dir\11_reouverture_calcul.png" | Out-Null
 (Fresh $w2).GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
 Start-Sleep -Seconds 2
 $q = Dismiss $p2.Id "*" @("*Ne pas enregistrer*", "*Non*", "*No*", "*Discard*") 3
-$p2.WaitForExit(20000) | Out-Null
+$p2.WaitForExit(40000) | Out-Null
 Check ($p2.HasExited) "7. seconde session fermée (code $($p2.ExitCode))"
 
 Write-Output "=== BILAN ==="

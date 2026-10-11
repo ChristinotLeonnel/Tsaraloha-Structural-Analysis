@@ -19,6 +19,7 @@ public static class MouseInput {
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint dx, uint dy, uint d, UIntPtr e);
     public static void Click(int x, int y) { SetCursorPos(x, y); mouse_event(2, 0, 0, 0, UIntPtr.Zero); mouse_event(4, 0, 0, 0, UIntPtr.Zero); }
+    [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
 }
 "@
 # Coordonnées UI Automation et curseur dans le même repère (pixels physiques).
@@ -80,7 +81,12 @@ function Click-Mouse($e) {
     $r = $e.Current.BoundingRectangle
     [MouseInput]::Click([int]($r.Left + $r.Width / 2), [int]($r.Top + $r.Height / 2)); Start-Sleep -Milliseconds 600
 }
-function Click($e) { $e.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); Start-Sleep -Milliseconds 500 }
+function Click($e) {
+    # Invoke ; s'il ne rend pas la main (action Qt synchrone, boîte modale…), vrai clic souris au centre.
+    try { $e.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke() }
+    catch { try { Click-Mouse $e } catch {} }
+    Start-Sleep -Milliseconds 500
+}
 function Value-Of($e) {
     try { return $e.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value } catch { return $e.Current.Name }
 }
@@ -114,6 +120,41 @@ function Select-ComboItem($w, $currentPattern, $itemPattern) {
     Press "{ENTER}"
     Start-Sleep -Milliseconds 1200
     return [bool](Find-Combo $w $itemPattern)
+}
+function Close-App($proc, $w, $seconds = 40, [bool]$save = $false) {
+    # Fermeture de la fenêtre, puis réponse « ne pas enregistrer » à toute boîte de confirmation du processus ; vrai si le
+    # processus s'est terminé.
+    # WM_CLOSE posté (comme la croix de la fenêtre) : indépendant du focus clavier, ne bloque pas.
+    [MouseInput]::PostMessage((HandleOf $w), 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+    $deadline = (Get-Date).AddSeconds($seconds)
+    $cond = New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, $proc.Id)
+    $winCond = New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, $CT::Window)
+    while (-not $proc.HasExited -and (Get-Date) -lt $deadline) {
+        try {
+            foreach ($top in $AE::RootElement.FindAll($TS::Children, $cond)) {
+                foreach ($win in @($top) + @($top.FindAll($TS::Descendants, $winCond))) {
+                    foreach ($b in (Find-All $win $CT::Button)) {
+                        $n = $b.Current.Name
+                        # Boîte « TSA - Enregistrer les modifications » : Enregistrer / Annuler / Ne pas tenir compte.
+                        $isPrompt = $win.Current.Name -like "*Enregistrer les modifications*" -or $win.Current.Name -like "*enregistrer*"
+                        $wanted = if ($save) { $isPrompt -and $n -eq "Enregistrer" } else { $n -like "Ne pas tenir compte*" -or $n -like "*Ne pas enregistrer*" -or $n -eq "Non" -or $n -eq "No" -or $n -like "Discard*" }
+                        if ($wanted) {
+                            Write-Host ("  fermeture : « " + $win.Current.Name + " » → " + $n); Click-Mouse $b
+                        }
+                    }
+                }
+            }
+        } catch {}
+        Start-Sleep -Milliseconds 700
+        $proc.Refresh()
+    }
+    return $proc.HasExited
+}
+function Save-Project($w) {
+    # Bouton « Enregistrer » du ruban, cliqué à la souris (Ctrl+S dépend du focus clavier).
+    $b = Find-ByName (Fresh $w) "Enregistrer" $CT::Button
+    if ($b) { Click-Mouse $b; Start-Sleep -Seconds 2; return $true }
+    Focus-Window $w; Press "^s"; Start-Sleep -Seconds 2; return $false
 }
 function Capture($w, $path) {
     Focus-Window $w

@@ -53,37 +53,21 @@ circulaires pleines ou annulaires.
 | `Circular` | π·d⁴/32 | égal au moment polaire |
 | `Pipe` | π·(D⁴ − d⁴)/32 | égal au moment polaire |
 | `BoxHollow` | 4·Am² / ∮ds/t + Σ s·t³/3, Am = (b − tw)(h − tf) | Bredt sur la ligne moyenne, sans arrondis d'angle (EN 10219-2) ; Iy + Iz le surestimait d'environ 34 % pour un carré (test 322) |
-| `IShape`, `UPN` | (2·b·tf³ + (h − tf)·tw³)/3 | parois minces ouvertes |
-| `TSection` | (b·tf³ + (h − tf)·tw³)/3 | parois minces ouvertes |
-| `Angle` | (h + b − t)·t³/3 | parois minces ouvertes |
+| `IShape` normalisé (IPE, HEA, HEB : désignation et dimensions EN 10365) | El Darwish & Johnston, congés de rayon r EN 10365 (`rootRadius()`) | 65 profils des fiches British Steel : ≤ 0,36 % (test 332) |
+| `IShape` modifié ou reconstitué | (2·b·tf³ + (h − tf)·tw³)/3 | parois minces, exact sans congé |
+| `UPN` | (2·b·tf³ + (h − tf)·tw³)/3 | parois minces, **non vérifié** (ailes inclinées, congés) |
+| `TSection` | (b·tf³ + (h − tf)·tw³)/3 | parois minces, **non vérifié** |
+| `Angle` | (h + b − t)·t³/3 | parois minces, **non vérifié** |
 
 Le contrôle avant calcul (`ModelValidator::validate`) refuse une poutre ou un poteau dont J est nul ou
 non fini : la rotation autour de l'axe de la barre n'aurait aucune rigidité.
 
-**Approximations (à connaître avant d'exploiter J) :**
-- **Profils ouverts** (`IShape`, `UPN`, `TSection`, `Angle`) : la formule des parois minces ignore les
-  congés de raccordement. Pour l'IPE 300, J = 15,70 cm⁴ contre 20,12 cm⁴ au catalogue, soit un rapport
-  de 0,78 (test 322). La rigidité de torsion est donc sous-estimée d'environ 20 à 30 % pour les profils
-  laminés. C'est défavorable pour les rotations, mais cela modifie la répartition des moments de
-  torsion dans une structure hyperstatique. Le modèle `Section` n'a pas de rayon de congé. Pour une
-  valeur exacte, il faudrait ajouter J (ou le rayon) aux bibliothèques de sections.
-- **Caissons** : formule de Bredt sans arrondis d'angle. Pour un profil creux réel, la valeur du catalogue
-  (angles arrondis) est un peu plus faible ; l'écart n'est pas chiffré par les tests.
-- **Géométries complexes ou sections importées** : J n'est pas calculé par une méthode numérique
-  (éléments finis de la section). Seules les formes listées ci-dessus sont prises en charge.
+Le rayon de congé n'est pas stocké (format binaire des sections inchangé) : il est déduit à chaque calcul de la
+désignation et des dimensions ; une section modifiée revient aux parois minces. `iw()` donne la constante de
+gauchissement (profil en I : tf·b³(h − tf)²/24 ; 0 pour les sections fermées ou pleines ; NaN sinon).
 
-**Gauchissement non modélisé.** L'élément `elasticBeamColumn` (ElasticBeam3d) suit la torsion uniforme
-de Saint-Venant, avec 6 DDL par nœud. Pour un profil ouvert dont le gauchissement est empêché (encastrement,
-torsion non uniforme), la rigidité réelle est plus grande et des contraintes normales de gauchissement
-apparaissent : TSA ne les calcule pas. Pour ajouter un élément avec gauchissement (7ᵉ DDL), il
-faudrait :
-1. la constante de gauchissement Iw dans `Section` et les bibliothèques ;
-2. un élément OpenSees à 7 DDL et un modèle `-ndf 7` pour les nœuds concernés, ou un autre moteur, déclaré
-   dans `OpenSeesModelMap` (`opsClass`) et dans les capacités du moteur ;
-3. le bimoment comme effort et le DDL de gauchissement dans `ResultsModel` et la vue.
-
-L'architecture actuelle (snapshot, carte de modèle, lecteur, vue alimentée par `DeformedAxis::twist`)
-isole ces points : seuls ces trois étages sont à étendre.
+Hypothèses, sources, limites (caissons sans arrondis d'angle, profils non vérifiés) et étude du gauchissement :
+**docs/TORSION.md**.
 
 `TODO: VERIFY IN SOURCE` pour le détail exact des formules `iy()/iz()/wy()/wz()` dans
 `Section.cpp` avant toute modification — ne pas deviner les formules existantes,

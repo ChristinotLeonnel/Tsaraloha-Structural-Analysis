@@ -139,13 +139,10 @@ Start-Sleep -Seconds 2
 $fitDef = Find-NameLike (Fresh $w) "*Déformée" $CT::Button
 if ($fitDef) { Click $fitDef; Start-Sleep -Seconds 2 }
 Capture $w "$OutDir\d03_resultats.png" | Out-Null
-Focus-Window $w
-Press "^s"; Start-Sleep -Seconds 2
-Focus-Window $w; Press "%{F4}"
-Start-Sleep -Seconds 2
-[void](Dismiss $p.Id "*" @("*Ne pas enregistrer*", "*Non*", "*No*") 3)
-$p.WaitForExit(20000) | Out-Null
-Check ($p.HasExited) "8. TSA fermé (code $($p.ExitCode))"
+# Fermeture avec enregistrement par la boîte « Enregistrer les modifications » de TSA.
+$closed = Close-App $p $w 40 $true
+Check $closed "8. TSA fermé après « Enregistrer » dans la boîte de confirmation (code $($p.ExitCode))"
+Check ((Get-Item $Project).LastWriteTime -gt (Get-Date).AddMinutes(-5)) "8. projet enregistré ($((Get-Item $Project).LastWriteTime.ToString('HH:mm:ss')))"
 
 # --- Réouverture : charges restituées et affichées ------------------------------------------------------------
 $p2 = Start-Process -FilePath $Exe -ArgumentList ('"' + $Project + '"') -PassThru
@@ -157,10 +154,7 @@ Capture $w2 "$OutDir\d04_reouverture.png" | Out-Null
 $stat = $null
 for ($k = 0; $k -lt 40 -and -not $stat; $k++) { $stat = Find-NameLike (Fresh $w2) "Aucun résultat*" $CT::Text; if (-not $stat) { Start-Sleep -Milliseconds 500; if ($k % 8 -eq 7) { Focus-Window $w2 } } }
 Check ($stat -ne $null) "9. réouverture : aucun résultat affiché tant que le calcul n'est pas relancé ('$(if ($stat) { $stat.Current.Name })')"
-Focus-Window $w2; Press "%{F4}"
-Start-Sleep -Seconds 2
-[void](Dismiss $p2.Id "*" @("*Ne pas enregistrer*", "*Non*", "*No*") 3)
-$p2.WaitForExit(20000) | Out-Null
-Check ($p2.HasExited) "9. seconde session fermée (code $($p2.ExitCode))"
+$closed2 = Close-App $p2 $w2
+Check $closed2 "9. seconde session fermée (code $($p2.ExitCode))"
 Write-Host "=== BILAN ==="
 $results | ForEach-Object { Write-Host $_ }
