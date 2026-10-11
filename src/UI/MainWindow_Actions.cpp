@@ -741,12 +741,19 @@ void MainWindow::createActions()
     m_actionBarPointLoad->setToolTip(tr("Force concentrée P (kN) appliquée à une abscisse x de la barre"));
     connect(m_actionBarPointLoad, &QAction::triggered, this, [this] { openMemberLoadDialog(TSA::Model::LoadType::MemberPoint); });
 
-    // Présentée mais désactivée : les dalles et voiles ne sont pas transmis aux moteurs de calcul.
-    m_actionSurfaceLoad = new QAction(tr("Charge &Surfacique"), this);
+    // Charges des dalles et voiles : converties en charges nodales cohérentes sur le maillage au calcul (docs/SURFACES.md).
+    m_actionSurfaceLoad = new QAction(tr("Charge &Surfacique..."), this);
     m_actionSurfaceLoad->setIcon(QIcon(":/icons/load_surface.svg"));
-    m_actionSurfaceLoad->setToolTip(tr("Non disponible : les dalles et voiles ne sont pas encore transmis au calcul (pas de maillage). "
-                                       "Appliquez les charges sur les poutres porteuses."));
-    m_actionSurfaceLoad->setEnabled(false);
+    m_actionSurfaceLoad->setToolTip(tr("Charges uniformes (kN/m²) ou ponctuelles (kN) sur les dalles et voiles sélectionnés ; calculées sur le maillage "
+                                       "des surfaces (coques)"));
+    connect(m_actionSurfaceLoad, &QAction::triggered, this, &MainWindow::onActionSurfaceLoads);
+    m_actionSurfaceLoadsVisible = new QAction(tr("Afficher les charges &surfaciques"), this);
+    m_actionSurfaceLoadsVisible->setCheckable(true);
+    m_actionSurfaceLoadsVisible->setChecked(true);
+    m_actionSurfaceLoadsVisible->setToolTip(tr("Zone chargée, sens, valeur, unité, cas et repère des charges des dalles et voiles"));
+    connect(m_actionSurfaceLoadsVisible, &QAction::toggled, this, [this](bool on) {
+        if (m_occView) m_occView->setSurfaceLoadsVisible(on);
+    });
 
     m_actionSelfWeight = new QAction(tr("&Poids Propre..."), this);
     m_actionSelfWeight->setIcon(QIcon(":/icons/load_selfweight.svg"));
@@ -791,7 +798,7 @@ void MainWindow::createActions()
     m_actionMeshClear = new QAction(tr("Supprimer le maillage"), this);
     connect(m_actionMeshClear, &QAction::triggered, this, &MainWindow::onActionMeshClear);
     createMeshViewActions();
-    m_actionSlabOpenings = new QAction(tr("Ouvertures de la dalle..."), this);
+    m_actionSlabOpenings = new QAction(tr("Ouvertures (dalle ou voile)..."), this);
     m_actionSlabOpenings->setToolTip(tr("Trémies de la dalle sélectionnée (rectangles, cercles), prises en compte par le maillage"));
     connect(m_actionSlabOpenings, &QAction::triggered, this, &MainWindow::onActionSlabOpenings);
 
@@ -1262,6 +1269,7 @@ void MainWindow::createMenus()
     visSub->addAction(m_actionForcesVisible);
     visSub->addAction(m_actionMomentsVisible);
     visSub->addAction(m_actionLoadValuesVisible);
+    visSub->addAction(m_actionSurfaceLoadsVisible);
     visSub->addAction(m_actionGridSnap);
     visSub->addAction(m_actionObjectSnap);
     visSub->addAction(m_actionRulersVisible);

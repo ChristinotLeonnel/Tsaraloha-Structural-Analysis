@@ -460,6 +460,9 @@ public:
     void attachSurfaceResults(const std::map<int, int>& meshToNode, const std::set<int>& surfaceOnly);
     /// Déplacement maximal sur les surfaces (m) et nœud du maillage correspondant.
     double maxSurfaceDisplacement(int* meshNode = nullptr) const;
+    /// Empreinte du maillage des surfaces ayant servi au calcul (identifiants des nœuds et éléments du maillage).
+    const std::string& surfaceMeshStamp() const { return m_surfaceMeshStamp; }
+    void setSurfaceMeshStamp(const std::string& s) { m_surfaceMeshStamp = s; }
 
     void mergeSubdivisions(const std::map<ElementKey, std::vector<std::pair<ElementKey, double>>>& parts, const std::set<int>& internalNodes);
 
@@ -493,6 +496,7 @@ private:
     std::map<ElementKey, ElementResults> m_finalElementResults;
     std::map<int, ShellElementResult> m_shellResults;
     std::map<int, NodeDisplacement> m_surfaceNodeDisplacements;
+    std::string m_surfaceMeshStamp;
 
     GlobalEquilibrium m_equilibrium;
     ResultsSummary m_summary;

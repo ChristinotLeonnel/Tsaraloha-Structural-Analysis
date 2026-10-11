@@ -255,6 +255,22 @@ void MainWindow::populateMeshViewMenu(QMenu* menu)
     menu->addActions({ m_actionMeshPick, m_actionMeshFit });
     menu->addSeparator();
     menu->addActions({ m_actionMeshResults, m_actionMeshDeformScale, m_actionMeshAnimate });
+    // Grandeur colorée : déplacement (nœuds) ou résultantes des coques (éléments) ; la déformée reste celle des déplacements
+    QMenu* fieldMenu = menu->addMenu(tr("Grandeur affichée sur le maillage"));
+    auto* group = new QActionGroup(fieldMenu);
+    for (const char* name : { "Déplacement", "Moment principal (coque)", "Effort principal dans le plan (coque)", "Mxx (coque)", "Myy (coque)", "Mxy (coque)",
+                              "Nxx (coque)", "Nyy (coque)", "Nxy (coque)", "Vxz (coque)", "Vyz (coque)" })
+    {
+        QAction* a = fieldMenu->addAction(QString::fromUtf8(name));
+        a->setCheckable(true);
+        a->setChecked(m_meshFieldName == QString::fromUtf8(name));
+        group->addAction(a);
+        connect(a, &QAction::triggered, this, [this, name] {
+            m_meshFieldName = QString::fromUtf8(name);
+            if (m_actionMeshResults && !m_actionMeshResults->isChecked()) m_actionMeshResults->setChecked(true);
+            else refreshMeshOverlay();
+        });
+    }
 }
 
 void MainWindow::setupMeshView()
@@ -358,7 +374,7 @@ void MainWindow::refreshMeshOverlay()
         const FeMesh& mesh = m_meshController->project().mesh;
         const auto& q = m_meshController->quality().perElementQuality;
         // Résultats : uniquement des valeurs calculées par le solveur pour le modèle courant (aucune extrapolation).
-        std::optional<MeshResultField> displacement;
+        std::optional<MeshResultField> displacement, colorField;
         if (m_actionMeshResults && m_actionMeshResults->isChecked())
         {
             if (!m_resultsModel || !m_resultsModel->isValid() || !m_model)
@@ -367,8 +383,12 @@ void MainWindow::refreshMeshOverlay()
             }
             else
             {
-                const MeshResultSet set = ResultsModelMeshAdapter(*m_model, *m_resultsModel).extract(mesh);
+                const auto& rec = m_meshController->project().record;
+                const MeshResultSet set = ResultsModelMeshAdapter(*m_model, *m_resultsModel, rec.generated + "|" + rec.settingsHash).extract(mesh);
                 if (const auto* f = set.find("Déplacement")) displacement = *f;
+                if (const auto* f = set.find(m_meshFieldName.toStdString()); f && f != set.find("Déplacement")) colorField = *f;
+                else if (m_meshFieldName != QStringLiteral("Déplacement") && m_statusInfo)
+                    m_statusInfo->setText(tr("« %1 » : aucune valeur calculée sur ce maillage (coques non calculées ou maillage différent du calcul)").arg(m_meshFieldName));
                 if (m_consoleDock)
                 {
                     m_consoleDock->appendLog(tr("Résultats sur le maillage : %1").arg(displacement ? QString::fromStdString(displacement->method) : tr("aucune valeur")), "INFO");
@@ -393,8 +413,8 @@ void MainWindow::refreshMeshOverlay()
             m_meshAutoScale = umax > 1e-15 ? 0.05 * size / umax : 1.0;
         }
         const double scale = m_meshDeformScale > 0 ? m_meshDeformScale : m_meshAutoScale;
-        m_meshVisual->show(mesh, TSA::Viewer::MeshVisual::Mode::Generated, &q, 0.1, displacement ? &*displacement : nullptr,
-                           displacement ? &*displacement : nullptr, scale);
+        const MeshResultField* color = colorField ? &*colorField : (displacement ? &*displacement : nullptr);
+        m_meshVisual->show(mesh, TSA::Viewer::MeshVisual::Mode::Generated, &q, 0.1, color, displacement ? &*displacement : nullptr, scale);
         if (!m_meshVisual->model().issues().empty() && m_consoleDock)
             m_consoleDock->appendLog(tr("Affichage du maillage : %1 élément(s) écarté(s) (voir « Inspection du maillage »)").arg(m_meshVisual->model().issues().size()), "WARN");
     }

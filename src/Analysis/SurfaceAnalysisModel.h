@@ -49,6 +49,7 @@ struct SurfaceAnalysisModel
     std::vector<SurfaceNodalForce> selfWeight;  ///< poids propre des surfaces (facteur 1)
     std::map<std::string, double> selfWeightBySurface;  ///< kN, contrôle et note de calcul
     std::vector<std::string> notes;             ///< conversions effectuées, contrôles de résultante
+    std::string meshStamp;                      ///< empreinte du maillage utilisé (date de génération + paramètres)
 
     bool empty() const { return elements.empty(); }
 };

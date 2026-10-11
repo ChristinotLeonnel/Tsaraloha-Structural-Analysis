@@ -207,6 +207,69 @@ std::string validateWallOpening(const TSA::Model::Model& model, const TSA::Model
     return validateOpening(outer, wall.openings(), polygon, ignoreIndex, "du voile");
 }
 
+bool wallSurface(const TSA::Model::Model& model, const TSA::Model::Wall& w, SurfaceGeom* out)
+{
+    const auto* na = model.getNode(w.startNodeId());
+    const auto* nb = model.getNode(w.endNodeId());
+    if (!na || !nb) return false;
+    const P3 a { na->x(), na->y(), na->z() }, b { nb->x(), nb->y(), nb->z() };
+    const P3 dir = P3 { b.x - a.x, b.y - a.y, 0 }.normalized();
+    const P3 nrm { -dir.y, dir.x, 0 };
+    const P3 off = nrm * w.offset();
+    SurfaceGeom sg;
+    sg.ref = refOf("W", w.id());
+    sg.kind = SurfaceGeom::Kind::Wall;
+    sg.id = w.id();
+    sg.outer = { a + off, b + off, b + off + P3 { 0, 0, w.height() }, a + off + P3 { 0, 0, w.height() } };
+    sg.cornerNodes = { std::abs(w.offset()) < 1e-12 ? w.startNodeId() : 0, std::abs(w.offset()) < 1e-12 ? w.endNodeId() : 0, 0, 0 };
+    sg.frame.origin = sg.outer[0];
+    sg.frame.U = (sg.outer[1] - sg.outer[0]).normalized();
+    sg.frame.V = { 0, 0, 1 };
+    sg.frame.N = sg.frame.U.cross(sg.frame.V).normalized();
+    sg.area = distance(sg.outer[0], sg.outer[1]) * w.height();
+    // Ouvertures (portes, fenêtres) : repère local du voile (u le long du voile, v vers le haut). Une porte posée au
+    // pied devient une encoche du contour (elle ne peut pas être un trou : elle touche le bord).
+    const double Lw = distance(sg.outer[0], sg.outer[1]);
+    std::vector<std::tuple<double, double, double>> doors;
+    for (const auto& o : w.openings())
+    {
+        double u1 = 0, u2 = 0, top = 0;
+        if (isWallDoor(o.polygon, Lw, w.height(), &u1, &u2, &top)) doors.emplace_back(u1, u2, top);
+    }
+    if (!doors.empty())
+    {
+        std::sort(doors.begin(), doors.end());
+        std::vector<P3> outer { sg.frame.toGlobal(0, 0) };
+        std::vector<int> nodes { sg.cornerNodes[0] };
+        for (const auto& [u1, u2, top] : doors)
+        {
+            for (const auto& [u, v] : { std::pair { u1, 0.0 }, { u1, top }, { u2, top }, { u2, 0.0 } }) outer.push_back(sg.frame.toGlobal(u, v)), nodes.push_back(0);
+            sg.area -= (u2 - u1) * top;
+        }
+        outer.push_back(sg.outer[1]), outer.push_back(sg.outer[2]), outer.push_back(sg.outer[3]);
+        nodes.push_back(sg.cornerNodes[1]), nodes.push_back(0), nodes.push_back(0);
+        sg.outer = outer;
+        sg.cornerNodes = nodes;
+    }
+    for (const auto& o : w.openings())
+    {
+        if (isWallDoor(o.polygon, Lw, w.height(), nullptr, nullptr, nullptr)) continue;
+        std::vector<P3> hole;
+        for (const auto& [u, v] : o.polygon) hole.push_back(sg.frame.toGlobal(u, v));
+        if (hole.size() >= 3)
+        {
+            sg.holes.push_back(hole);
+            sg.area -= std::abs(polygonArea2D(o.polygon));
+        }
+    }
+    sg.formulation = w.formulation();
+    sg.material = w.material().name;
+    sg.thickness = w.thickness();
+    if (sg.area <= 1e-12) return false;
+    *out = sg;
+    return true;
+}
+
 MeshGeometry MeshGeometry::extract(const TSA::Model::Model& model)
 {
     MeshGeometry g;
@@ -298,65 +361,11 @@ MeshGeometry MeshGeometry::extract(const TSA::Model::Model& model)
         for (const auto& o : s.openings()) sg.area -= std::abs(polygonArea2D(o.polygon));
         g.surfaces.push_back(sg);
     }
-    // Voiles : rectangle médian (pied décalé de offset selon la normale horizontale, hauteur selon +Z)
+    // Voiles : contour médian (portes en encoche, fenêtres en trous), commun au maillage et à la vue 3D
     for (const auto& [id, w] : model.walls())
     {
-        auto ia = g.tsaNodes.find(w.startNodeId()), ib = g.tsaNodes.find(w.endNodeId());
-        if (ia == g.tsaNodes.end() || ib == g.tsaNodes.end()) continue;
-        const P3 a = ia->second, b = ib->second;
-        const P3 dir = P3 { b.x - a.x, b.y - a.y, 0 }.normalized();
-        const P3 nrm { -dir.y, dir.x, 0 };
-        const P3 off = nrm * w.offset();
         SurfaceGeom sg;
-        sg.ref = refOf("W", id);
-        sg.kind = SurfaceGeom::Kind::Wall;
-        sg.id = id;
-        sg.outer = { a + off, b + off, b + off + P3 { 0, 0, w.height() }, a + off + P3 { 0, 0, w.height() } };
-        sg.cornerNodes = { std::abs(w.offset()) < 1e-12 ? w.startNodeId() : 0, std::abs(w.offset()) < 1e-12 ? w.endNodeId() : 0, 0, 0 };
-        sg.frame.origin = sg.outer[0];
-        sg.frame.U = (sg.outer[1] - sg.outer[0]).normalized();
-        sg.frame.V = { 0, 0, 1 };
-        sg.frame.N = sg.frame.U.cross(sg.frame.V).normalized();
-        sg.area = distance(sg.outer[0], sg.outer[1]) * w.height();
-        // Ouvertures (portes, fenêtres) : repère local du voile (u le long du voile, v vers le haut). Une porte posée au
-        // pied devient une encoche du contour (elle ne peut pas être un trou : elle touche le bord).
-        const double Lw = distance(sg.outer[0], sg.outer[1]);
-        std::vector<std::tuple<double, double, double>> doors;
-        for (const auto& o : w.openings())
-        {
-            double u1 = 0, u2 = 0, top = 0;
-            if (isWallDoor(o.polygon, Lw, w.height(), &u1, &u2, &top)) doors.emplace_back(u1, u2, top);
-        }
-        if (!doors.empty())
-        {
-            std::sort(doors.begin(), doors.end());
-            std::vector<P3> outer { sg.frame.toGlobal(0, 0) };
-            std::vector<int> nodes { sg.cornerNodes[0] };
-            for (const auto& [u1, u2, top] : doors)
-            {
-                for (const auto& [u, v] : { std::pair { u1, 0.0 }, { u1, top }, { u2, top }, { u2, 0.0 } }) outer.push_back(sg.frame.toGlobal(u, v)), nodes.push_back(0);
-                sg.area -= (u2 - u1) * top;
-            }
-            outer.push_back(sg.outer[1]), outer.push_back(sg.outer[2]), outer.push_back(sg.outer[3]);
-            nodes.push_back(sg.cornerNodes[1]), nodes.push_back(0), nodes.push_back(0);
-            sg.outer = outer;
-            sg.cornerNodes = nodes;
-        }
-        for (const auto& o : w.openings())
-        {
-            if (isWallDoor(o.polygon, Lw, w.height(), nullptr, nullptr, nullptr)) continue;
-            std::vector<P3> hole;
-            for (const auto& [u, v] : o.polygon) hole.push_back(sg.frame.toGlobal(u, v));
-            if (hole.size() >= 3)
-            {
-                sg.holes.push_back(hole);
-                sg.area -= std::abs(polygonArea2D(o.polygon));
-            }
-        }
-        sg.formulation = w.formulation();
-        sg.material = w.material().name;
-        sg.thickness = w.thickness();
-        if (sg.area > 1e-12) g.surfaces.push_back(sg);
+        if (wallSurface(model, w, &sg)) g.surfaces.push_back(sg);
     }
     // Semelles : volumes parallélépipédiques sous le nœud
     for (const auto& [id, f] : model.foundations())

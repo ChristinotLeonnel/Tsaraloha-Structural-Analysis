@@ -250,18 +250,30 @@ void MeshQualityPanel::fill()
 
 // --- Ouvertures de dalle ----------------------------------------------------------------------------
 
-SlabOpeningsDialog::SlabOpeningsDialog(const TSA::Model::Model& model, int slabId, QWidget* parent)
+SlabOpeningsDialog::SlabOpeningsDialog(const TSA::Model::Model& model, int surfaceId, QWidget* parent, bool wall)
     : QDialog(parent)
     , m_model(model)
-    , m_slabId(slabId)
+    , m_slabId(surfaceId)
+    , m_wall(wall)
 {
-    const auto* slab = model.getSlab(slabId);
-    if (slab) m_openings = slab->openings();
-    setWindowTitle(tr("Ouvertures de la dalle %1").arg(slab ? QString::fromStdString(slab->formattedName()) : QString::number(slabId)));
-    resize(560, 360);
+    QString name = QString::number(surfaceId);
+    if (wall)
+    {
+        if (const auto* w = model.getWall(surfaceId)) m_openings = w->openings(), name = QString::fromStdString(w->formattedName());
+        setWindowTitle(tr("Ouvertures du voile %1").arg(name));
+    }
+    else
+    {
+        if (const auto* slab = model.getSlab(surfaceId)) m_openings = slab->openings(), name = QString::fromStdString(slab->formattedName());
+        setWindowTitle(tr("Ouvertures de la dalle %1").arg(name));
+    }
+    resize(600, 380);
     auto* v = new QVBoxLayout(this);
-    auto* info = new QLabel(tr("Repère local de la dalle : origine au premier nœud, axe u vers le deuxième nœud, v perpendiculaire dans le plan. "
-                               "Les ouvertures sont prises en compte par le maillage (et le restent si les nœuds de la dalle bougent)."),
+    auto* info = new QLabel(wall ? tr("Repère local du voile : u le long du voile depuis son nœud de départ, v vers le haut depuis le pied (m). "
+                                      "Une ouverture rectangulaire posée au pied (v = 0) est une porte : elle entaille le contour. Les ouvertures "
+                                      "retirent la matière du voile dans l'affichage, le maillage et le calcul.")
+                                 : tr("Repère local de la dalle : origine au premier nœud, axe u vers le deuxième nœud, v perpendiculaire dans le plan. "
+                                      "Les ouvertures retirent la matière de la dalle dans l'affichage, le maillage et le calcul."),
                             this);
     info->setWordWrap(true);
     v->addWidget(info);
@@ -272,10 +284,11 @@ SlabOpeningsDialog::SlabOpeningsDialog(const TSA::Model::Model& model, int slabI
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     v->addWidget(m_table, 1);
     auto* row = new QHBoxLayout;
-    auto* rect = new QPushButton(tr("Rectangle…"), this);
+    auto* rect = new QPushButton(wall ? tr("Porte / fenêtre…") : tr("Rectangle…"), this);
     auto* circle = new QPushButton(tr("Cercle…"), this);
+    auto* poly = new QPushButton(tr("Polygone…"), this);
     auto* remove = new QPushButton(tr("Supprimer"), this);
-    row->addWidget(rect), row->addWidget(circle), row->addWidget(remove), row->addStretch();
+    row->addWidget(rect), row->addWidget(circle), row->addWidget(poly), row->addWidget(remove), row->addStretch();
     v->addLayout(row);
     auto* bb = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     connect(bb, &QDialogButtonBox::accepted, this, &QDialog::accept);
@@ -283,11 +296,7 @@ SlabOpeningsDialog::SlabOpeningsDialog(const TSA::Model::Model& model, int slabI
     v->addWidget(bb);
 
     auto addOpening = [this](TSA::Model::SlabOpening o) {
-        const auto* s = m_model.getSlab(m_slabId);
-        if (!s) return;
-        TSA::Model::Slab probe = *s;
-        probe.setOpenings(m_openings);
-        const std::string err = TSA::Mesh::validateSlabOpening(m_model, probe, o.polygon);
+        const std::string err = validate(o.polygon);
         if (!err.empty())
         {
             QMessageBox::warning(this, tr("Ouverture refusée"), QString::fromStdString(err));
@@ -296,34 +305,57 @@ SlabOpeningsDialog::SlabOpeningsDialog(const TSA::Model::Model& model, int slabI
         m_openings.push_back(o);
         fill();
     };
-    connect(rect, &QPushButton::clicked, this, [this, addOpening] {
+    auto numbers = [](const QString& t) {
+        std::vector<double> out;
+        for (const QString& p : t.split(';', Qt::SkipEmptyParts)) out.push_back(p.trimmed().replace(',', '.').toDouble());
+        return out;
+    };
+    connect(rect, &QPushButton::clicked, this, [this, addOpening, numbers] {
         bool ok = false;
-        const QString t = QInputDialog::getText(this, tr("Ouverture rectangulaire"), tr("Centre u ; centre v ; largeur (u) ; longueur (v) en m :"), QLineEdit::Normal,
-                                                QStringLiteral("1 ; 1 ; 0,8 ; 0,8"), &ok);
+        const QString t = m_wall ? QInputDialog::getText(this, tr("Porte ou fenêtre"), tr("u gauche ; v bas (0 = porte) ; largeur ; hauteur, en m :"), QLineEdit::Normal,
+                                                         QStringLiteral("1 ; 0 ; 0,9 ; 2,1"), &ok)
+                                 : QInputDialog::getText(this, tr("Ouverture rectangulaire"), tr("Centre u ; centre v ; largeur (u) ; longueur (v) en m :"),
+                                                         QLineEdit::Normal, QStringLiteral("1 ; 1 ; 0,8 ; 0,8"), &ok);
         if (!ok) return;
-        const QStringList p = t.split(';');
-        if (p.size() != 4) return;
-        auto d = [&](int i) { return p[i].trimmed().replace(',', '.').toDouble(); };
-        const double cu = d(0), cv = d(1), a = d(2) / 2, b = d(3) / 2;
+        const auto d = numbers(t);
+        if (d.size() != 4 || d[2] <= 0 || d[3] <= 0) return;
         TSA::Model::SlabOpening o;
-        o.name = tr("O%1").arg(m_openings.size() + 1).toStdString();
+        o.name = (m_wall && d[1] <= 1e-9 ? tr("Porte %1") : tr("O%1")).arg(m_openings.size() + 1).toStdString();
         o.shape = "rectangle";
-        o.polygon = { { cu - a, cv - b }, { cu + a, cv - b }, { cu + a, cv + b }, { cu - a, cv + b } };
+        if (m_wall)
+            o.polygon = { { d[0], d[1] }, { d[0] + d[2], d[1] }, { d[0] + d[2], d[1] + d[3] }, { d[0], d[1] + d[3] } };
+        else
+        {
+            const double a = d[2] / 2, b = d[3] / 2;
+            o.polygon = { { d[0] - a, d[1] - b }, { d[0] + a, d[1] - b }, { d[0] + a, d[1] + b }, { d[0] - a, d[1] + b } };
+        }
         addOpening(o);
     });
-    connect(circle, &QPushButton::clicked, this, [this, addOpening] {
+    connect(circle, &QPushButton::clicked, this, [this, addOpening, numbers] {
         bool ok = false;
         const QString t = QInputDialog::getText(this, tr("Ouverture circulaire"), tr("Centre u ; centre v ; diamètre en m :"), QLineEdit::Normal,
                                                 QStringLiteral("1 ; 1 ; 0,5"), &ok);
         if (!ok) return;
-        const QStringList p = t.split(';');
-        if (p.size() != 3) return;
-        auto d = [&](int i) { return p[i].trimmed().replace(',', '.').toDouble(); };
+        const auto d = numbers(t);
+        if (d.size() != 3 || d[2] <= 0) return;
         TSA::Model::SlabOpening o;
         o.name = tr("O%1").arg(m_openings.size() + 1).toStdString();
         o.shape = "circle";
         for (int k = 0; k < 24; ++k)   // polygone à 24 côtés (le maillage suit ce contour)
-            o.polygon.emplace_back(d(0) + d(2) / 2 * std::cos(2 * 3.14159265358979 * k / 24), d(1) + d(2) / 2 * std::sin(2 * 3.14159265358979 * k / 24));
+            o.polygon.emplace_back(d[0] + d[2] / 2 * std::cos(2 * 3.14159265358979 * k / 24), d[1] + d[2] / 2 * std::sin(2 * 3.14159265358979 * k / 24));
+        addOpening(o);
+    });
+    connect(poly, &QPushButton::clicked, this, [this, addOpening, numbers] {
+        bool ok = false;
+        const QString t = QInputDialog::getText(this, tr("Ouverture polygonale"), tr("Sommets u v séparés par des « ; » (u1 ; v1 ; u2 ; v2 ; …), au moins 3, en m :"),
+                                                QLineEdit::Normal, QStringLiteral("1 ; 1 ; 2 ; 1 ; 1,5 ; 2"), &ok);
+        if (!ok) return;
+        const auto d = numbers(t);
+        if (d.size() < 6 || d.size() % 2) return;
+        TSA::Model::SlabOpening o;
+        o.name = tr("O%1").arg(m_openings.size() + 1).toStdString();
+        o.shape = "polygon";
+        for (std::size_t k = 0; k + 1 < d.size(); k += 2) o.polygon.emplace_back(d[k], d[k + 1]);
         addOpening(o);
     });
     connect(remove, &QPushButton::clicked, this, [this] {
@@ -333,6 +365,23 @@ SlabOpeningsDialog::SlabOpeningsDialog(const TSA::Model::Model& model, int slabI
         fill();
     });
     fill();
+}
+
+std::string SlabOpeningsDialog::validate(const std::vector<std::pair<double, double>>& polygon) const
+{
+    if (m_wall)
+    {
+        const auto* w = m_model.getWall(m_slabId);
+        if (!w) return "voile introuvable";
+        TSA::Model::Wall probe = *w;
+        probe.setOpenings(m_openings);
+        return TSA::Mesh::validateWallOpening(m_model, probe, polygon);
+    }
+    const auto* s = m_model.getSlab(m_slabId);
+    if (!s) return "dalle introuvable";
+    TSA::Model::Slab probe = *s;
+    probe.setOpenings(m_openings);
+    return TSA::Mesh::validateSlabOpening(m_model, probe, polygon);
 }
 
 void SlabOpeningsDialog::fill()

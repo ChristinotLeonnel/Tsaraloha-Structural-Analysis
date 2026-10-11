@@ -69,12 +69,17 @@ public:
 /// - nœud de maillage confondu avec un nœud TSA calculé : déplacement exact ;
 /// - nœud intérieur d'une barre maillée (éléments 1D de la barre) : déplacement aux stations du solveur,
 ///   interpolé linéairement entre les deux stations encadrantes (position le long de la barre) ;
-/// - nœuds des surfaces et volumes : aucun calcul de ces éléments → aucune valeur.
+/// - nœuds des surfaces calculées en coques (même maillage que le calcul) : déplacements exacts du solveur ;
+/// - éléments de coque : résultantes moyennes des points d'intégration (repère local de l'élément) et moments / efforts
+///   principaux (indépendants de l'orientation de ce repère) ;
+/// - volumes, surfaces non calculées ou maillage différent de celui du calcul : aucune valeur.
 class ResultsModelMeshAdapter : public MeshResultAdapter
 {
 public:
-    ResultsModelMeshAdapter(const TSA::Model::Model& model, const TSA::Analysis::ResultsModel& results)
-        : m_model(model), m_results(results)
+    /// @param meshStamp empreinte du maillage affiché (date de génération + paramètres) : les résultats des surfaces ne sont
+    ///        reportés que si elle est celle du maillage du calcul (identifiants de nœuds et d'éléments identiques)
+    ResultsModelMeshAdapter(const TSA::Model::Model& model, const TSA::Analysis::ResultsModel& results, std::string meshStamp = {})
+        : m_model(model), m_results(results), m_meshStamp(std::move(meshStamp))
     {
     }
     std::string name() const override { return "Résultats des barres (ResultsModel)"; }
@@ -83,6 +88,7 @@ public:
 private:
     const TSA::Model::Model& m_model;
     const TSA::Analysis::ResultsModel& m_results;
+    std::string m_meshStamp;
 };
 
 } // namespace TSA::Mesh

@@ -42,6 +42,8 @@ private:
     QLineEdit* m_editName = nullptr;
     QDoubleSpinBox* m_spinThickness = nullptr;
     QComboBox* m_comboMaterial = nullptr;
+    QComboBox* m_comboFormulation = nullptr;   ///< formulation mécanique (coque, plaque, membrane, non structurale)
+    QLabel* m_lblSurfaceInfo = nullptr;        ///< aire nette, ouvertures, charges surfaciques
     QComboBox* m_comboType = nullptr;
     QLabel* m_lblNodes = nullptr;
     QPushButton* m_btnColor = nullptr;

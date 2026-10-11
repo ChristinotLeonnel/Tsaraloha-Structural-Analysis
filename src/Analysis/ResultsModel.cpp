@@ -86,6 +86,7 @@ void ResultsModel::clear()
     m_finalElementResults.clear();
     m_shellResults.clear();
     m_surfaceNodeDisplacements.clear();
+    m_surfaceMeshStamp.clear();
     m_advanced = AdvancedResults{};
     m_availability = ResultAvailability{};
     m_engineTables.clear();

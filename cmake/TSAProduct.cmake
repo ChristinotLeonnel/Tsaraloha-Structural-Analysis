@@ -118,6 +118,8 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.cpp
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/SurfaceLoadsDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/SurfaceLoadsDialog.cpp
     ${TSA_ROOT}/src/UI/HelpLauncher.h
     ${TSA_ROOT}/src/UI/HelpLauncher.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridDialog.h

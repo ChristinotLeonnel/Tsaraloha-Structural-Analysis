@@ -331,7 +331,10 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
 
     // Coques : déplacements par nœud du maillage ; nœuds propres aux surfaces retirés des résultats nodaux de TSA.
     if (!prepared.model.surfaceNodes.empty())
+    {
         r.results.attachSurfaceResults(prepared.model.surfaceNodes.meshToNode, prepared.model.surfaceNodes.surfaceOnlyNodes);
+        r.results.setSurfaceMeshStamp(context.surfaces.meshStamp);
+    }
 
     // Traçabilité commune, renseignée ici pour qu'aucun moteur ne puisse l'omettre.
     const EngineInfo info = engine->info();

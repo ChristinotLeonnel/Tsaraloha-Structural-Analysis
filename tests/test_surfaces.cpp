@@ -18,6 +18,7 @@
 #include "IO/TSAFile.h"
 #include "Mesh/MeshGenerator.h"
 #include "Mesh/MeshGeometry.h"
+#include "Mesh/MeshResultField.h"
 #include "Mesh/Solvers/OpenSeesMeshAdapter.h"
 #include "Model/Load/LoadManager.h"
 
@@ -65,6 +66,7 @@ SurfRun runSurfaces(Model& m, const MeshSettingsSet& s, bool selfWeight = false,
     if (caseId) ctx.loadCaseIds = { caseId };
     ctx.memberSubdivisions = r.compat.memberSubdivisions;
     ctx.surfaces = r.compat.surfaces;
+    ctx.surfaces.meshStamp = "maillage-essai";
     r.prepared = mgr.prepare(m, &gm, ctx);
     if (!r.compat.blocking() && r.prepared.canRun()) r.run = mgr.run(ctx, r.prepared);
     return r;
@@ -164,6 +166,17 @@ bool runSuite_Surfaces(int& passed)
                 std::cout << "  moment Mxx maximal (moyenne des points de Gauss d'un élément) : " << mxx << " kN·m/m (qL²/2 = " << q * L * L / 2 << ")" << std::endl;
                 TEST_CHECK(!r.run.results.shellResults().empty() && mxx > 0.8 * q * L * L / 2 && mxx < q * L * L / 2 * 1.02,
                            "Test 354: résultantes de coque lues (Mxx près de l'encastrement)");
+                // Report sur le maillage : déplacements exacts aux nœuds des coques, résultantes par élément ; refusé sur un autre maillage
+                const auto set = ResultsModelMeshAdapter(m, r.run.results, "maillage-essai").extract(r.mesh.mesh);
+                const auto* u = set.find("Déplacement");
+                const auto* mp = set.find("Moment principal (coque)");
+                std::size_t covered = 0;
+                for (const auto& n : r.compat.surfaces.nodes) covered += u && u->has(n.meshNode);
+                TEST_CHECK(u && covered == r.compat.surfaces.nodes.size() && mp && mp->values.size() == r.compat.surfaces.elements.size() &&
+                               std::max(std::abs(mp->range().first), std::abs(mp->range().second)) > 0.8 * q * L * L / 2,
+                           "Test 354: champs sur le maillage (déplacements de " << covered << " nœuds de coque, moment principal sur " << (mp ? mp->values.size() : 0) << " éléments)");
+                const auto other = ResultsModelMeshAdapter(m, r.run.results, "autre-maillage").extract(r.mesh.mesh);
+                TEST_CHECK(!other.find("Moment principal (coque)") && !other.notes.empty(), "Test 354: résultats des coques non reportés sur un maillage différent");
             }
         }
         TEST_CHECK(errQuadFine < 0.03 && errTri < 0.05, "Test 354: flèche à moins de 3 % (quadrangles) et 5 % (triangles) de qL⁴/8EI");

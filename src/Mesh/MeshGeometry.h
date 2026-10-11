@@ -132,6 +132,10 @@ std::string validateSlabOpening(const TSA::Model::Model& model, const TSA::Model
 std::string validateWallOpening(const TSA::Model::Model& model, const TSA::Model::Wall& wall, const std::vector<std::pair<double, double>>& polygon,
                                 int ignoreIndex = -1);
 
+/// Surface médiane d'un voile (pied décalé de offset, hauteur selon +Z) : portes posées au pied en encoches du contour,
+/// autres ouvertures en trous. Partagée par le maillage et la vue 3D (même géométrie affichée et calculée).
+bool wallSurface(const TSA::Model::Model& model, const TSA::Model::Wall& wall, SurfaceGeom* out);
+
 /// Point dans un polygone 2D (règle pair-impair).
 bool pointInPolygon(double u, double v, const std::vector<std::pair<double, double>>& poly);
 

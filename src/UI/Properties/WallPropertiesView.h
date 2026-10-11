@@ -43,6 +43,8 @@ private:
     QDoubleSpinBox* m_spinThickness = nullptr;
     QDoubleSpinBox* m_spinHeight = nullptr;
     QComboBox* m_comboMaterial = nullptr;
+    QComboBox* m_comboFormulation = nullptr;   ///< formulation mécanique (coque, plaque, membrane, non structurale)
+    QLabel* m_lblSurfaceInfo = nullptr;        ///< aire nette, ouvertures, charges surfaciques
     QLabel* m_lblNodes = nullptr;
     QPushButton* m_btnColor = nullptr;
     QString m_colorHex; ///< couleur propre à l'élément ; vide : apparence du matériau

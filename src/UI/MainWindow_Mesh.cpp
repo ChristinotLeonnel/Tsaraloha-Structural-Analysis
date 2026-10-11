@@ -2,6 +2,8 @@
 // l'affichage du maillage dans la vue 3D et la transmission au calcul au contrôleur de maillage (Gmsh).
 
 #include "MainWindow.h"
+#include "Dialogs/SurfaceLoadsDialog.h"
+#include "../Model/Load/LoadManager.h"
 
 #include "../Analysis/AnalysisController.h"
 #include "../Mesh/MeshGenerator.h"
@@ -277,9 +279,26 @@ void MainWindow::onActionSlabOpenings()
 {
     if (!m_model || !m_selectionManager) return;
     const auto sel = m_selectionManager->selectedElements();
-    if (sel.slabs.size() != 1)
+    if (sel.slabs.size() + sel.walls.size() != 1)
     {
-        QMessageBox::information(this, tr("Ouvertures de dalle"), tr("Sélectionnez une dalle."));
+        QMessageBox::information(this, tr("Ouvertures"), tr("Sélectionnez une dalle ou un voile."));
+        return;
+    }
+    if (sel.walls.size() == 1)
+    {
+        const int wid = *sel.walls.begin();
+        TSA::UI::SlabOpeningsDialog dlg(*m_model, wid, this, true);
+        if (dlg.exec() != QDialog::Accepted) return;
+        if (auto* wall = m_model->getWall(wid))
+        {
+            m_model->pushUndoState(tr("Ouvertures du voile %1").arg(wid).toStdString());
+            wall->setOpenings(dlg.openings());
+            m_model->setModified(true);
+            m_model->notifyWallModified(wid);
+            if (m_occView) m_occView->updateWallShape(wid, true);
+            onMeshModelChanged();
+            if (m_statusInfo) m_statusInfo->setText(tr("%1 ouverture(s) sur le voile : régénérer le maillage").arg(dlg.openings().size()));
+        }
         return;
     }
     const int id = *sel.slabs.begin();
@@ -287,12 +306,46 @@ void MainWindow::onActionSlabOpenings()
     if (dlg.exec() != QDialog::Accepted) return;
     if (auto* slab = m_model->getSlab(id))
     {
+        m_model->pushUndoState(tr("Ouvertures de la dalle %1").arg(id).toStdString());
         slab->setOpenings(dlg.openings());
         m_model->setModified(true);
         if (m_occView) m_occView->updateSlabShape(id, true);
         onMeshModelChanged();
         if (m_statusInfo) m_statusInfo->setText(tr("%1 ouverture(s) sur la dalle : régénérer le maillage").arg(dlg.openings().size()));
     }
+}
+
+void MainWindow::onActionSurfaceLoads()
+{
+    if (!m_model || !m_selectionManager) return;
+    const auto sel = m_selectionManager->selectedElements();
+    std::vector<std::pair<TSA::Model::SurfaceTargetKind, int>> surfaces;
+    for (int id : sel.slabs) surfaces.emplace_back(TSA::Model::SurfaceTargetKind::Slab, id);
+    for (int id : sel.walls) surfaces.emplace_back(TSA::Model::SurfaceTargetKind::Wall, id);
+    if (surfaces.empty())
+    {
+        QMessageBox::information(this, tr("Charges surfaciques"), tr("Sélectionnez une ou plusieurs dalles ou voiles."));
+        return;
+    }
+    TSA::UI::SurfaceLoadsDialog dlg(*m_model, surfaces, this);
+    if (dlg.exec() != QDialog::Accepted) return;
+    m_model->pushUndoState(tr("Charges surfaciques").toStdString());
+    auto& lm = m_model->loadManager();
+    for (const auto& [kind, id] : surfaces) lm.removeSurfaceLoadsForSurface(kind, id);
+    int added = 0;
+    for (const auto& l : dlg.loads())
+    {
+        if (l.id > 0 && lm.addSurfaceLoadWithId(l.id, l)) continue;
+        lm.addSurfaceLoad(l);
+        ++added;
+    }
+    m_model->setModified(true);
+    if (m_occView) m_occView->updateAllLoadShapes();
+    if (m_statusInfo)
+        m_statusInfo->setText(tr("%1 charge(s) surfacique(s) sur %2 surface(s) (%3 nouvelle(s)) : calculées sur le maillage des surfaces")
+                                  .arg(dlg.loads().size())
+                                  .arg(surfaces.size())
+                                  .arg(added));
 }
 
 bool MainWindow::applyMeshToAnalysis(TSA::Analysis::AnalysisContext& ctx, const TSA::Analysis::AnalysisEngine& engine)
@@ -351,6 +404,7 @@ bool MainWindow::applyMeshToAnalysis(TSA::Analysis::AnalysisContext& ctx, const 
     }
     ctx.memberSubdivisions = compat.memberSubdivisions;
     ctx.surfaces = compat.surfaces;
+    ctx.surfaces.meshStamp = m_meshController->project().record.generated + "|" + m_meshController->project().record.settingsHash;
     ctx.meshLabel = tr("maillage %1 du %2").arg(QString::fromStdString(m_meshController->project().record.mesher),
                                                 QString::fromStdString(m_meshController->project().record.generated)).toStdString();
     return true;
