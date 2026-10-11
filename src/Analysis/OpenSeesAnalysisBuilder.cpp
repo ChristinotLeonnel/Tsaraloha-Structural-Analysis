@@ -298,8 +298,9 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
             int mat = baseMat;
             if (el->initialTension > 1e-4)
             {
-                // Précontrainte / Tension initiale du câble (InitStrain: eps0 = T0 / (E * A))
-                const double t0Scaled = el->initialTension * (params.useKiloNewtons ? 1.0 : 1000.0);
+                // Précontrainte / Tension initiale du câble (InitStrain: eps0 = T0 / (E * A)). T0 est stocké en N
+                // (CablePrestress) : il est converti dans l'unité de force du calcul, comme E.
+                const double t0Scaled = el->initialTension * scaleForce;
                 const double eps0 = t0Scaled / (E * Ac);
                 mat = matTag++;
                 tcl << "uniaxialMaterial InitStrain " << mat << " " << baseMat << " " << eps0 << "\n";

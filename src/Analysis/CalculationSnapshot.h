@@ -94,7 +94,7 @@ struct SnapshotElement
     double length = 0.0;
     TSA::Model::Section section;
     TSA::Model::Material material;
-    double initialTension = 0.0; // Pour les câbles
+    double initialTension = 0.0; // Pour les câbles : tension initiale T0 en N (Cable::initialTension)
     /// Relâchements d'extrémité (poutres). Rotules de flexion (my, mz) transmises à OpenSees
     /// (-releasey / -releasez) et à Custom2D ; les autres relâchements sont signalés par ModelValidator.
     TSA::Model::EndRelease startRelease;
