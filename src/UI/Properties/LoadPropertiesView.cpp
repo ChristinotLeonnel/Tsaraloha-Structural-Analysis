@@ -298,13 +298,16 @@ void LoadPropertiesView::refreshView()
         // Repère déduit de la direction (une direction locale en repère global serait lue comme
         // Gravité par les moteurs) ; champs propres au type de charge seulement.
         m_comboCoordSys->setEnabled(false);
-        const bool linear = ml->type() == TSA::Model::LoadType::MemberLinear;
+        const bool moment = ml->type() == TSA::Model::LoadType::MemberMoment;
+        const bool linear = ml->type() == TSA::Model::LoadType::MemberLinear || moment; // moment réparti : m1 → m2
         const bool point = ml->type() == TSA::Model::LoadType::MemberPoint;
         m_lblQ2->setVisible(linear);
         m_spinQ2->setVisible(linear);
         m_spinX2->setVisible(!point);
-        m_spinQ1->setSuffix(point ? " kN" : " kN/m");
+        m_spinQ1->setSuffix(point ? " kN" : moment ? " kNm/m" : " kN/m");
+        m_spinQ2->setSuffix(moment ? " kNm/m" : " kN/m");
         m_lblHeader->setText(point ? tr("Charge ponctuelle sur barre #%1").arg(m_loadId)
+                             : moment ? tr("Moment réparti sur barre #%1").arg(m_loadId)
                              : linear ? tr("Charge linéaire sur barre #%1").arg(m_loadId)
                                       : tr("Charge uniforme sur barre #%1").arg(m_loadId));
 
@@ -354,7 +357,8 @@ void LoadPropertiesView::applyChanges()
         edited.setDirection(static_cast<TSA::Model::LoadDirection>(m_comboDirection->currentData().toInt()));
         edited.setCoordSystem(TSA::Model::MemberLoad::coordSystemFor(edited.direction()));
         edited.setQ1(m_spinQ1->value());
-        edited.setQ2(edited.type() == TSA::Model::LoadType::MemberLinear ? m_spinQ2->value() : m_spinQ1->value());
+        const bool variable = edited.type() == TSA::Model::LoadType::MemberLinear || edited.type() == TSA::Model::LoadType::MemberMoment;
+        edited.setQ2(variable ? m_spinQ2->value() : m_spinQ1->value());
         edited.setX1(m_spinX1->value());
         edited.setX2(edited.type() == TSA::Model::LoadType::MemberPoint ? m_spinX1->value() : m_spinX2->value());
 

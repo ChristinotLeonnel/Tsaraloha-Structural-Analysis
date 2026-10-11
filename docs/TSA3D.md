@@ -49,7 +49,7 @@ Les unités par défaut sont celles de TSA, indiquées en gras dans le tableau.
 | Clé | Valeurs acceptées | Grandeurs |
 |---|---|---|
 | `length` | **m**, cm, mm | coordonnées, dimensions, épaisseurs, positions |
-| `force` | **kN**, N, MN | forces, charges (kN/m ou kN·m suivent `force` et `length`), tension des câbles |
+| `force` | **kN**, N, MN | forces, charges (kN/m ou kN·m suivent `force` et `length`), tension des câbles ; un moment réparti (kN·m/m) suit `force` seule |
 | `stress` | **Pa**, kPa, MPa, N/mm2, GPa | `E`, `fk` des matériaux |
 | `pressure` | **kPa**, kN/m2, Pa, N/m2, MPa | portance du sol |
 | `angle` | **deg**, rad | rotation des barres |
@@ -113,7 +113,10 @@ La masse volumique est toujours en kg/m³ et le coefficient de dilatation en 1/K
 
 Valeurs des énumérations :
 - `category` : `dead`, `live`, `wind`, `snow`, `seismic`, `temperature`, `accidental` ou `custom` ;
-- `kind` : `uniform`, `trapezoidal` (exige `q2`), `point` (exige `x1`) ou `moment` ;
+- `kind` : `uniform`, `trapezoidal` (exige `q2`), `point` (exige `x1`) ou `moment`. Un moment est un
+  moment réparti, en force × longueur par longueur (kN·m/m). Son vecteur est porté par `direction` :
+  `localX` pour une torsion, axe local ou global sinon (`gravity` est refusé). Il varie linéairement de
+  `q1` à `q2` ; `q2` vaut `q1` par défaut. Il est transmis aux poutres et aux poteaux ;
 - `direction` : `globalX`, `globalY`, `globalZ`, `gravity`, `localX`, `localY` ou `localZ` ;
 - `type` d'une combinaison : `ulsFundamental`, `ulsAccidental`, `ulsSeismic`, `slsCharacteristic`, `slsFrequent`, `slsQuasiPermanent` ou `custom`.
 

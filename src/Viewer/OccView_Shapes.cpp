@@ -2055,6 +2055,50 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
             show(ais);
         }
     }
+    else if (glyph.kind == TSA::Geometry::MemberLoadGlyphKind::DistributedMoment && !glyph.momentVectors.empty())
+    {
+        // Moment réparti : vecteurs moment à double pointe (convention des moments), magenta comme les
+        // moments nodaux. Torsion : vecteurs parallèles à la barre (décalés pour rester visibles).
+        BRep_Builder bb;
+        TopoDS_Compound comp;
+        bb.MakeCompound(comp);
+        bool any = false;
+        auto addEdge = [&](const gp_Pnt& a, const gp_Pnt& b) {
+            if (a.Distance(b) < 1e-9) return;
+            BRepBuilderAPI_MakeEdge edge(a, b);
+            if (edge.IsDone()) { bb.Add(comp, edge.Edge()); any = true; }
+        };
+        gp_Vec offset = gp_Vec(axisDir).Crossed(gp_Vec(0.0, 0.0, 1.0));
+        if (offset.Magnitude() < 1e-6) offset = gp_Vec(axisDir).Crossed(gp_Vec(1.0, 0.0, 0.0));
+        offset.Normalize();
+        for (const auto& v : glyph.momentVectors)
+        {
+            const gp_Vec d(v.direction);
+            const bool alongBar = std::abs(d.Dot(gp_Vec(axisDir))) > 0.99;
+            const gp_Vec shift = alongBar ? offset * (0.25 * settings.arrowLength) : gp_Vec();
+            const gp_Pnt tail = v.tail.Translated(shift), tip = v.tip.Translated(shift);
+            addEdge(tail, tip);
+            gp_Vec side = d.Crossed(alongBar ? offset.Crossed(d) : gp_Vec(axisDir));
+            if (side.Magnitude() < 1e-6) side = offset;
+            side.Normalize();
+            const double head = std::min(0.18 * settings.arrowLength, 0.45 * v.length);
+            for (int k = 0; k < 2; ++k)
+            {
+                const gp_Pnt apex = tip.Translated(-d * (k * 0.8 * head));
+                const gp_Pnt back = apex.Translated(-d * head);
+                addEdge(apex, back.Translated(side * (0.45 * head)));
+                addEdge(apex, back.Translated(-side * (0.45 * head)));
+            }
+        }
+        if (any)
+        {
+            Handle(AIS_Shape) ais = new AIS_Shape(comp);
+            ais->SetColor(Quantity_NOC_MAGENTA);
+            ais->SetWidth(2.0);
+            ais->SetDisplayMode(AIS_WireFrame);
+            show(ais);
+        }
+    }
     m_memberLoadShapes[loadId] = shapes;
 
     // Étiquette : forme et intervalle de la charge, valeurs du modèle (jamais mises à l'échelle).
@@ -2067,7 +2111,10 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
         textVal = QString("P = %1 kN (x = %2 m)").arg(fmt(ml->q1()), fmt(glyph.start));
         break;
     case TSA::Geometry::MemberLoadGlyphKind::DistributedMoment:
-        textVal = QString("m = %1 kNm/m (non transmis au calcul)").arg(fmt(ml->q1()));
+        textVal = std::abs(ml->q1() - ml->q2()) < 1e-12 ? QString("m = %1 kNm/m").arg(fmt(ml->q1()))
+                                                         : QString("m = %1 → %2 kNm/m").arg(fmt(ml->q1()), fmt(ml->q2()));
+        if (ml->direction() == TSA::Model::LoadDirection::LocalX) textVal += QStringLiteral(" (torsion)");
+        if (partial) textVal += QString(" [%1 – %2 m]").arg(fmt(glyph.start), fmt(glyph.end));
         break;
     default:
         textVal = ml->type() == TSA::Model::LoadType::MemberLinear

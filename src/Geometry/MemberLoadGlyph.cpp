@@ -45,8 +45,28 @@ MemberLoadGlyph buildMemberLoadGlyph(const TSA::Model::MemberLoad& load,
 
     if (load.type() == LoadType::MemberMoment)
     {
+        // Vecteur moment (axe de la charge, sens par la règle de la main droite) en stations régulières :
+        // pour une torsion, il est parallèle à la barre. Longueur ∝ |m| local, valeurs du modèle inchangées.
         g.kind = MemberLoadGlyphKind::DistributedMoment;
         g.labelAnchor = pointAt(0.5 * (a + b));
+        g.maxIntensity = std::max(std::abs(load.intensityAt(a, L)), std::abs(load.intensityAt(b, L)));
+        if (g.maxIntensity < 1e-12) return g;
+        const int count = std::max(2, distributedStationCount(b - a, settings) / 2);
+        for (int k = 0; k < count; ++k)
+        {
+            const double s = count > 1 ? a + (b - a) * k / (count - 1) : 0.5 * (a + b);
+            const double m = load.intensityAt(s, L);
+            const gp_Vec v = LoadResolver::memberLoadVector(load, m, p1, p2, betaAngleDeg);
+            if (v.Magnitude() < 1e-12) continue;
+            LoadArrow arrow;
+            arrow.position = s;
+            arrow.intensity = m;
+            arrow.direction = gp_Dir(v);
+            arrow.length = arrowLength * std::abs(m) / g.maxIntensity;
+            arrow.tail = pointAt(s);
+            arrow.tip = arrow.tail.Translated(gp_Vec(arrow.direction) * arrow.length);
+            g.momentVectors.push_back(arrow);
+        }
         return g;
     }
 

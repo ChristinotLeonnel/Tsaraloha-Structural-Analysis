@@ -43,7 +43,7 @@ enum class MemberLoadGlyphKind
     Invalid,            ///< barre introuvable ou de longueur nulle
     Distributed,        ///< uniforme ou linéaire (triangulaire, trapézoïdale)
     Point,              ///< force ponctuelle sur la barre
-    DistributedMoment   ///< moment réparti : pas de flèche de force (non transmis aux moteurs)
+    DistributedMoment   ///< moment réparti : vecteurs moment (momentVectors), aucune flèche de force
 };
 
 struct MemberLoadGlyph
@@ -53,6 +53,9 @@ struct MemberLoadGlyph
     double end = 0.0;                   ///< fin de l'intervalle chargé (m)
     std::vector<LoadArrow> arrows;      ///< flèches d'intensité non nulle
     std::vector<gp_Pnt> envelope;       ///< queues des flèches de a à b (sur la barre où q = 0)
+    /// Moment réparti : vecteurs moment (convention double flèche, règle de la main droite) partant de la
+    /// barre, de longueur proportionnelle à |m| local ; même représentation que LoadArrow (tip = extrémité).
+    std::vector<LoadArrow> momentVectors;
     double maxIntensity = 0.0;          ///< |q| maximal sur l'intervalle (kN/m ou kN)
     gp_Pnt labelAnchor;                 ///< position proposée pour l'étiquette
 };

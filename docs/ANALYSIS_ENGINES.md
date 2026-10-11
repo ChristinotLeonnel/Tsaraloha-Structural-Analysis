@@ -75,8 +75,8 @@ combinaisons. Aucune géométrie OCCT n'est construite. L'`AnalysisModel` contie
   mais exclues (`crossingElements`), charges hors portée.
 
 `SnapshotNode::definedFix` conserve les blocages **définis par l'utilisateur** : les blocages
-anti-singularité du calcul 3D (rotation de forage des articulations, Ty des appuis glissants) ne
-doivent pas être projetés dans un plan (une articulation d'un portique de l'axe « 2 » resterait sinon
+anti-singularité du calcul 3D (appui à fourche des articulations, rotations hors plan des structures
+planes, Ty des appuis glissants, voir docs/OPENSEES_RESULTS.md) ne doivent pas être projetés dans un plan (une articulation d'un portique de l'axe « 2 » resterait sinon
 encastrée en rotation).
 
 Pas de cache : l'extraction est O(éléments) et le contexte peut changer sans modifier le modèle

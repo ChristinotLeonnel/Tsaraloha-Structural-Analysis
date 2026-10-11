@@ -10,8 +10,11 @@
 #include "Analysis/OpenSeesSolver.h"
 #include "Geometry/BeamGeometry.h"
 #include "Geometry/DeformedGeometry.h"
+#include "Geometry/MemberLoadGlyph.h"
 #include "Grid/GridManager.h"
+#include "IO/TSAFile.h"
 #include "IO/Tsa3d/Tsa3d.h"
+#include "Analysis/Engine/AnalysisContext.h"
 #include "Model/Load/LoadManager.h"
 #include "Standards/ModelValidator.h"
 #include "Viewer/OccView.h"
@@ -516,6 +519,38 @@ bool runTorsionMechanics(int& passed)
         TEST_CHECK(std::abs(sectionExtentY(solid, xm) - (0.2 * std::abs(std::cos(phi)) + 0.4 * std::abs(std::sin(phi)))) < 1e-9,
                    "Test 331: coordonnées des sommets de la section à mi-longueur");
         TEST_CHECK(r->nodeDisplacement(tip).rx == axis.twist.back(), "Test 331: valeur affichée = résultat du calcul (non amplifiée)");
+        // Symbole de la charge : vecteurs moment parallèles à la barre (torsion), sens de +x pour m > 0
+        const auto glyph = TSA::Geometry::buildMemberLoadGlyph(mdl.loadManager().memberLoads().begin()->second, gp_Pnt(0, 0, 0),
+                                                               gp_Pnt(L, 0, 0), 0.0);
+        bool parallel = glyph.kind == TSA::Geometry::MemberLoadGlyphKind::DistributedMoment && glyph.arrows.empty() && glyph.momentVectors.size() >= 2;
+        for (const auto& v : glyph.momentVectors) parallel &= gp_Vec(v.direction).Dot(gp_Vec(1, 0, 0)) > 1.0 - 1e-12;
+        TEST_CHECK(parallel, "Test 331: symbole du couple réparti — vecteurs moment parallèles à la barre, aucune flèche de force");
+        // Projet d'essai de l'interface (TSA_TEST_DUMP_DIR) : console en torsion (couple en bout), barre
+        // inclinée sous couple réparti, cas FLEXION séparé ; réglages d'analyse : OpenSees 3D, cas TORSION.
+        if (const QString dir = qEnvironmentVariable("TSA_TEST_DUMP_DIR"); !dir.isEmpty())
+        {
+            Model ui;
+            const int n1 = ui.addNode(0, 0, 0), n2 = ui.addNode(3, 0, 0), n3 = ui.addNode(0, 3, 0), n4 = ui.addNode(2.5, 4.5, 1.5);
+            ui.getNode(n1)->setSupport(SupportDefinition::fixed());
+            ui.getNode(n3)->setSupport(SupportDefinition::fixed());
+            ui.addBar(n1, n2, sec, mat, BarRole::Beam, 0.0, "Console torsion");
+            const int b2 = ui.addBar(n3, n4, Section::circular(0.25), mat, BarRole::Beam, 0.0, "Barre inclinée");
+            const int lcT = ui.loadManager().addLoadCase(LoadCase(0, "TORSION", LoadCaseCategory::Live, false, 1.0));
+            const int lcF = ui.loadManager().addLoadCase(LoadCase(0, "FLEXION", LoadCaseCategory::Live, false, 1.0));
+            ui.loadManager().addNodalLoad(NodalLoad(0, n2, lcT, 0, 0, 0, 10.0, 0, 0, LoadCoordSystem::Global, "T = 10 kNm"));
+            ui.loadManager().addMemberLoad(couple(b2, lcT, 2.0, 2.0, LoadDirection::LocalX));
+            ui.loadManager().addNodalLoad(NodalLoad(0, n2, lcF, 0, 0, -20.0, 0, 0, 0, LoadCoordSystem::Global, "F = 20 kN"));
+            TSA::Analysis::AnalysisContext ctx;
+            ctx.engineId = "opensees";
+            ctx.dimension = TSA::Analysis::AnalysisDimension::Space3D;
+            ctx.loadCaseIds = { lcT };
+            ctx.common.includeSelfWeight = false;
+            ui.setAnalysisSettingsJson(QJsonDocument(ctx.toJson()).toJson(QJsonDocument::Compact).toStdString());
+            TSA::IO::TSAFileWriter writer;
+            std::string err;
+            const bool saved = writer.saveToFile((dir + "/torsion_ui.tsa").toStdString(), ui, nullptr, "Essai torsion", "TSA", &err);
+            std::cout << "  projet d'essai de l'interface : " << (dir + "/torsion_ui.tsa").toStdString() << (saved ? "" : " — ÉCHEC " + err) << std::endl;
+        }
         std::cout << "[PASS] Test 331: Vue d'une torsion répartie" << std::endl;
         ++passed;
     }
@@ -632,6 +667,15 @@ bool runSuite_Torsion(int& passed)
         const double jBox = 4.0 * am * am * t / perim + perim * t * t * t / 3.0;
         TEST_CHECK(relClose(box.it(), jBox, 1e-12), "Test 322: caisson — J de Bredt (" + std::to_string(box.it()) + " m⁴)");
         TEST_CHECK(box.it() < 0.8 * (box.iy() + box.iz()), "Test 322: caisson — J < moment polaire (anciennement confondus)");
+        // Profil ouvert IPE 300 : parois minces (2·b·tf³ + (h − tf)·tw³)/3, congés ignorés. Le catalogue
+        // (It = 20,12 cm⁴, congés r = 15 mm compris) donne environ 28 % de plus : écart documenté, pas une
+        // valeur exacte (docs/SECTIONS.md).
+        const Section ipe = Section::ipe(300);
+        const double jThin = (2.0 * 0.150 * std::pow(0.0107, 3) + (0.300 - 0.0107) * std::pow(0.0071, 3)) / 3.0;
+        const double ratio = ipe.it() / 20.12e-8;
+        std::cout << "  IPE 300 : J = " << ipe.it() * 1e8 << " cm⁴ (parois minces), catalogue 20.12 cm⁴ → rapport " << ratio << std::endl;
+        TEST_CHECK(relClose(ipe.it(), jThin, 1e-12) && ratio > 0.75 && ratio < 0.80,
+                   "Test 322: IPE 300 — J parois minces, ≈ 0.78 × catalogue (congés non modélisés)");
 
         // Le J du caisson est bien celui du calcul : console en torsion
         Model m;

@@ -84,7 +84,15 @@ void MemberLoadDialog::onDirectionChanged(int /*index*/)
 {
     const auto dir = static_cast<TSA::Model::LoadDirection>(m_comboDirection->currentData().toInt());
     const bool local = TSA::Model::MemberLoad::coordSystemFor(dir) == TSA::Model::LoadCoordSystem::Local;
-    if (dir == TSA::Model::LoadDirection::Gravity)
+    const bool moment = static_cast<TSA::Model::LoadType>(m_comboType->currentData().toInt()) == TSA::Model::LoadType::MemberMoment;
+    if (moment)
+        m_lblDirectionHint->setText(dir == TSA::Model::LoadDirection::Gravity
+                                        ? tr("Un moment réparti n'a pas de sens « gravité » : choisir l'axe du vecteur moment (local x = torsion).")
+                                        : dir == TSA::Model::LoadDirection::LocalX
+                                              ? tr("Torsion : couple autour de l'axe de la barre (règle de la main droite, de i vers j).")
+                                              : tr("Moment réparti autour de l'axe %1 (règle de la main droite).")
+                                                    .arg(m_comboDirection->currentText()));
+    else if (dir == TSA::Model::LoadDirection::Gravity)
         m_lblDirectionHint->setText(tr("Repère global. Gravité : charge toujours dirigée vers le bas (−Z), le signe saisi est ignoré."));
     else
         m_lblDirectionHint->setText(tr("Repère %1. Valeur positive : sens de l'axe ; négative : sens opposé.")
@@ -125,8 +133,10 @@ void MemberLoadDialog::setupUI()
     m_comboType->addItem(tr("Uniforme (kN/m)"), static_cast<int>(TSA::Model::LoadType::MemberUniform));
     m_comboType->addItem(tr("Linéaire : triangulaire ou trapézoïdale (q1 → q2, kN/m)"), static_cast<int>(TSA::Model::LoadType::MemberLinear));
     m_comboType->addItem(tr("Ponctuelle sur barre (kN)"), static_cast<int>(TSA::Model::LoadType::MemberPoint));
-    m_comboType->setToolTip(tr("Triangulaire : une des deux intensités vaut 0. Moments répartis et charges surfaciques : "
-                               "non disponibles (non transmis aux moteurs de calcul)."));
+    m_comboType->addItem(tr("Moment réparti / torsion (m1 → m2, kNm/m)"), static_cast<int>(TSA::Model::LoadType::MemberMoment));
+    m_comboType->setToolTip(tr("Triangulaire : une des deux intensités vaut 0. Moment réparti : vecteur couple par mètre porté "
+                               "par l'axe choisi (local x = torsion), transmis aux poutres et poteaux. Charges surfaciques : "
+                               "non disponibles."));
     paramForm->addRow(tr("Type de charge :"), m_comboType);
 
     m_comboDirection = new QComboBox(this);
@@ -344,8 +354,11 @@ void MemberLoadDialog::updateElementInfoDisplay()
 void MemberLoadDialog::onLoadTypeChanged(int index)
 {
     auto type = static_cast<TSA::Model::LoadType>(m_comboType->itemData(index).toInt());
-    bool isLinear = (type == TSA::Model::LoadType::MemberLinear);
+    const bool isMoment = type == TSA::Model::LoadType::MemberMoment;
+    bool isLinear = (type == TSA::Model::LoadType::MemberLinear) || isMoment; // moment réparti : m1 → m2
     bool isPoint = (type == TSA::Model::LoadType::MemberPoint);
+    if (isMoment && m_comboDirection->currentData().toInt() == static_cast<int>(TSA::Model::LoadDirection::Gravity))
+        m_comboDirection->setCurrentIndex(m_comboDirection->findData(static_cast<int>(TSA::Model::LoadDirection::LocalX)));
 
     m_lblQ2->setVisible(isLinear);
     m_spinQ2->setVisible(isLinear);
@@ -362,10 +375,13 @@ void MemberLoadDialog::onLoadTypeChanged(int index)
     }
     else
     {
-        m_lblQ1->setText(isLinear ? tr("Intensité q1 (début) :") : tr("Intensité q :"));
-        m_spinQ1->setSuffix(" kN/m");
+        m_lblQ1->setText(isMoment ? tr("Moment m1 (début) :") : isLinear ? tr("Intensité q1 (début) :") : tr("Intensité q :"));
+        m_lblQ2->setText(isMoment ? tr("Moment m2 (fin) :") : tr("Intensité q2 (fin) :"));
+        m_spinQ1->setSuffix(isMoment ? " kNm/m" : " kN/m");
+        m_spinQ2->setSuffix(isMoment ? " kNm/m" : " kN/m");
         m_lblX1->setText(tr("Début x1 :"));
     }
+    onDirectionChanged(m_comboDirection->currentIndex());
 }
 
 void MemberLoadDialog::onApplyClicked()
@@ -382,7 +398,13 @@ void MemberLoadDialog::onApplyClicked()
     const auto dir = static_cast<TSA::Model::LoadDirection>(m_comboDirection->currentData().toInt());
     const bool isPoint = type == TSA::Model::LoadType::MemberPoint;
     const double q1 = m_spinQ1->value();
-    const double q2 = type == TSA::Model::LoadType::MemberLinear ? m_spinQ2->value() : q1;
+    const bool variable = type == TSA::Model::LoadType::MemberLinear || type == TSA::Model::LoadType::MemberMoment;
+    const double q2 = variable ? m_spinQ2->value() : q1;
+    if (type == TSA::Model::LoadType::MemberMoment && dir == TSA::Model::LoadDirection::Gravity)
+    {
+        QMessageBox::warning(this, tr("Charge sur barre"), tr("Choisir l'axe du moment réparti (local x pour une torsion)."));
+        return;
+    }
     const double x1 = m_spinX1->value();
     const double x2 = isPoint ? x1 : m_spinX2->value();
 

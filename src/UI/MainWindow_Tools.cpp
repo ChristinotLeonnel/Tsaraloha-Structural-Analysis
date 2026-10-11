@@ -806,6 +806,18 @@ bool MainWindow::runAnalysis(const TSA::Analysis::AnalysisContext& context)
                                   .arg(engineName).arg(ext.maxDisplacement * 1000.0, 0, 'f', 2)
                                   .arg(ext.maxBendingMoment, 0, 'f', 1));
     if (m_consoleDock) m_consoleDock->appendLog(summary, "SUCCESS");
+    // Points constatés après le calcul (ex. effort repris par un blocage automatique d'appui) : jamais tus.
+    if (!meta.warnings.empty())
+    {
+        QStringList warnings;
+        for (const auto& w : meta.warnings)
+        {
+            warnings << QString::fromStdString(w);
+            if (m_consoleDock) m_consoleDock->appendLog(QString::fromStdString(w), "WARN");
+        }
+        QMessageBox::warning(this, tr("Calcul terminé — points à vérifier"), summary + tr("\n\nPoints à vérifier :\n• ") + warnings.join("\n• "));
+        return true;
+    }
     QMessageBox::information(this, tr("Calcul terminé"), summary);
     return true;
 }

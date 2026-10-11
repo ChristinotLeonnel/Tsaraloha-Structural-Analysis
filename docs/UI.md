@@ -51,6 +51,10 @@ Architecture en Ruban structurée en 9 onglets métier :
 Panneau latéral de pilotage des résultats 3D issu du solveur OpenSees :
 - **Grandeur affichée** : Déformée 3D seule ou combinée avec l'une des 4 familles de diagrammes 3D ($M_z, M_y, M_x$, $V_z, V_y$, $N$, $U_x, U_y, U_z, U_{res}$, $R_x, R_y, R_z$).
 - **Contrôle d'échelle** : Mode automatique basé sur l'envergure $L_{span}$ de la structure, presets ($\times 1, \times 10, \times 100, \times 1000, \times 10000$) ou facteur personnalisé. Le facteur effectif est affiché en permanence (« non amplifiée » à ×1) ; l'amplification ne touche que l'affichage, jamais les résultats.
+- **Saisie d'une torsion** :
+  - couple nodal : « Force et couple », moment autour de l'axe global parallèle à la barre ;
+  - couple réparti : « Charge sur barre », type « Moment réparti / torsion (m1 → m2, kNm/m) »,
+    direction « Local x ». Les vecteurs moment sont dessinés en magenta, parallèles à la barre.
 - **Rotation des sections (torsion)** : case cochée par défaut. Les sections des poutres et poteaux tournent de leur torsion θx calculée, amplifiée comme les déplacements, et des repères orange sont tracés (contours de section et génératrice en hélice), visibles aussi sur une section ronde. Une torsion pure ne déplace pas l'axe de la barre : sans cette option, elle reste invisible. L'échelle automatique tient compte du déplacement des fibres extrêmes |θx|·r et limite la rotation affichée à environ 30°. La légende indique θx max et la barre concernée.
 - **Incréments non-linéaires** : Slider et spinbox pour naviguer entre les pas de calcul avec affichage dynamique du facteur de charge $\lambda$.
 - **Filtre des nœuds** : Visibilité conditionnelle (tous, nœuds libres non connectés, appuis).

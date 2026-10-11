@@ -60,6 +60,31 @@ circulaires pleines ou annulaires.
 Le contrôle avant calcul (`ModelValidator::validate`) refuse une poutre ou un poteau dont J est nul ou
 non fini : la rotation autour de l'axe de la barre n'aurait aucune rigidité.
 
+**Approximations (à connaître avant d'exploiter J) :**
+- **Profils ouverts** (`IShape`, `UPN`, `TSection`, `Angle`) : la formule des parois minces ignore les
+  congés de raccordement. Pour l'IPE 300, J = 15,70 cm⁴ contre 20,12 cm⁴ au catalogue, soit un rapport
+  de 0,78 (test 322). La rigidité de torsion est donc sous-estimée d'environ 20 à 30 % pour les profils
+  laminés. C'est défavorable pour les rotations, mais cela modifie la répartition des moments de
+  torsion dans une structure hyperstatique. Le modèle `Section` n'a pas de rayon de congé. Pour une
+  valeur exacte, il faudrait ajouter J (ou le rayon) aux bibliothèques de sections.
+- **Caissons** : formule de Bredt sans arrondis d'angle. Pour un profil creux réel, la valeur du catalogue
+  (angles arrondis) est un peu plus faible ; l'écart n'est pas chiffré par les tests.
+- **Géométries complexes ou sections importées** : J n'est pas calculé par une méthode numérique
+  (éléments finis de la section). Seules les formes listées ci-dessus sont prises en charge.
+
+**Gauchissement non modélisé.** L'élément `elasticBeamColumn` (ElasticBeam3d) suit la torsion uniforme
+de Saint-Venant, avec 6 DDL par nœud. Pour un profil ouvert dont le gauchissement est empêché (encastrement,
+torsion non uniforme), la rigidité réelle est plus grande et des contraintes normales de gauchissement
+apparaissent : TSA ne les calcule pas. Pour ajouter un élément avec gauchissement (7ᵉ DDL), il
+faudrait :
+1. la constante de gauchissement Iw dans `Section` et les bibliothèques ;
+2. un élément OpenSees à 7 DDL et un modèle `-ndf 7` pour les nœuds concernés, ou un autre moteur, déclaré
+   dans `OpenSeesModelMap` (`opsClass`) et dans les capacités du moteur ;
+3. le bimoment comme effort et le DDL de gauchissement dans `ResultsModel` et la vue.
+
+L'architecture actuelle (snapshot, carte de modèle, lecteur, vue alimentée par `DeformedAxis::twist`)
+isole ces points : seuls ces trois étages sont à étendre.
+
 `TODO: VERIFY IN SOURCE` pour le détail exact des formules `iy()/iz()/wy()/wz()` dans
 `Section.cpp` avant toute modification — ne pas deviner les formules existantes,
 notamment pour les profils composés (`IShape`, `UPN`, `Angle`, `TSection`, `BoxHollow`).
