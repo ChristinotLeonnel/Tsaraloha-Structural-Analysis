@@ -7,6 +7,7 @@
 // Référence : docs/ANALYSIS_ENGINES.md
 
 #include "../ResultsModel.h"   // AnalysisType
+#include "../SurfaceAnalysisModel.h"
 
 #include <QJsonObject>
 
@@ -109,6 +110,9 @@ struct AnalysisContext
     /// renseignée au moment du calcul depuis le maillage du projet ; jamais persistée avec le contexte.
     std::map<ElementKey, std::vector<double>> memberSubdivisions;
     std::string meshLabel;   ///< ex. « maillage du 10/10/2026, 120 éléments 1D »
+    /// Éléments surfaciques maillés (coques) et forces nodales équivalentes de leurs charges, renseignés au moment du
+    /// calcul depuis le maillage du projet (adaptateur) ; jamais persistés avec le contexte.
+    SurfaceAnalysisModel surfaces;
 
     QJsonObject settingsFor(const EngineId& id) const
     {

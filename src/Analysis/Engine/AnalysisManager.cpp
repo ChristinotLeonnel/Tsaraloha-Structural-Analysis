@@ -87,7 +87,7 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
     }
 
     // 3. Contenu calculable
-    if (snap.elementCount() == 0)
+    if (snap.elementCount() == 0 && context.surfaces.empty())
     {
         v.addError("Éléments", "La portée « " + model.scopeLabel + " » ne contient aucun élément filaire calculable.");
         return v;
@@ -259,6 +259,35 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
         }
     }
 
+    // Éléments surfaciques maillés (coques) : ajoutés au modèle de calcul si le moteur les prend en charge.
+    if (!context.surfaces.empty())
+    {
+        if (!context.common.useGeneratedMesh)
+            p.validation.addWarning("Surfaces", "Maillage non transmis (option du calcul) : dalles et voiles non calculés.");
+        else if (!engine->capabilities().supportsShell)
+            p.validation.addError("Surfaces", "Le moteur " + engine->info().name + " ne calcule pas les éléments surfaciques (coques).");
+        else
+        {
+            std::vector<std::string> notes;
+            std::string error;
+            p.model.snapshot = CalculationSnapshot::withSurfaces(p.model.snapshot, context.surfaces, &p.model.surfaceNodes, &notes, &error);
+            if (!error.empty())
+                p.validation.addError("Surfaces", error);
+            else
+            {
+                for (const auto& n : notes) p.validation.addInfo("Surfaces", n);
+                for (const auto& n : context.surfaces.notes) p.validation.addInfo("Surfaces", n);
+            }
+        }
+    }
+    else if (!model.loadManager().surfaceLoads().empty())
+        p.validation.addError("Surfaces", std::to_string(model.loadManager().surfaceLoads().size()) +
+                                              " charge(s) surfacique(s) définie(s) mais aucune surface maillée transmise : générer le maillage "
+                                              "(Analyse > Maillage) ou supprimer ces charges. Aucune charge n'est ignorée en silence.");
+    else if (p.model.hasPlanarElements() && engine->capabilities().supportsShell)
+        p.validation.addWarning("Surfaces", "Dalles et voiles non maillés : ni leur rigidité ni leurs charges ne sont calculées. "
+                                            "Générer le maillage (Analyse > Maillage) pour les transmettre en coques.");
+
     p.validation.merge(engine->validate(context, p.model));
     return p;
 }
@@ -299,6 +328,10 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
             for (const auto& part : list) parts[parent].push_back({ part.key, part.x0 });
         r.results.mergeSubdivisions(parts, prepared.model.subdivisions.internalNodes);
     }
+
+    // Coques : déplacements par nœud du maillage ; nœuds propres aux surfaces retirés des résultats nodaux de TSA.
+    if (!prepared.model.surfaceNodes.empty())
+        r.results.attachSurfaceResults(prepared.model.surfaceNodes.meshToNode, prepared.model.surfaceNodes.surfaceOnlyNodes);
 
     // Traçabilité commune, renseignée ici pour qu'aucun moteur ne puisse l'omettre.
     const EngineInfo info = engine->info();

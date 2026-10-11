@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Material.h"
+#include "SurfaceFormulation.h"
 #include <vector>
 #include <string>
 #include <utility>
@@ -12,6 +13,7 @@ class Model;
 
 /// Ouverture (trémie) d'une dalle : polygone dans le repère local de la dalle (origine au premier nœud,
 /// u vers le deuxième nœud, n normale de Newell, v = n × u ; m). Suit la dalle quand ses nœuds bougent.
+/// Ouverture d'une surface (trémie de dalle, porte ou fenêtre de voile), dans le repère local de la surface.
 struct SlabOpening
 {
     std::string name;
@@ -54,7 +56,12 @@ public:
     SlabType slabType() const { return m_slabType; }
     void setSlabType(SlabType type) { m_slabType = type; }
 
+    /// Aire nette (ouvertures déduites).
     double area(const Model& model) const;
+    double grossArea(const Model& model) const;
+
+    SurfaceFormulation formulation() const { return m_formulation; }
+    void setFormulation(SurfaceFormulation f) { m_formulation = f; }
 
     const std::string& color() const { return m_color; }
     void setColor(const std::string& color) { m_color = color; }
@@ -72,6 +79,12 @@ private:
     SlabType m_slabType = SlabType::TwoWay;
     std::string m_color;
     std::vector<SlabOpening> m_openings;
+    SurfaceFormulation m_formulation = SurfaceFormulation::Shell;
 };
+
+using SurfaceOpening = SlabOpening;
+
+/// Aire algébrique d'un polygone 2D (u, v).
+double polygonArea(const std::vector<std::pair<double, double>>& poly);
 
 } // namespace TSA::Model

@@ -1,4 +1,6 @@
 #include "CalculationSnapshot.h"
+#include <set>
+#include <tuple>
 #include "../Model/Model.h"
 #include "../Model/Load/LoadManager.h"
 #include <gp_Vec.hxx>
@@ -510,6 +512,106 @@ CalculationSnapshot CalculationSnapshot::subdivided(const CalculationSnapshot& s
     if (skippedAxial && notes)
         notes->push_back(std::to_string(skippedAxial) + " barre(s) de treillis ou câble(s) non subdivisée(s) : une chaîne de barres articulées "
                                                          "serait un mécanisme (un seul élément transmis)");
+    if (map) *map = m;
+    return out;
+}
+
+CalculationSnapshot CalculationSnapshot::withSurfaces(const CalculationSnapshot& src, const SurfaceAnalysisModel& surfaces, SurfaceNodeMap* map,
+                                                      std::vector<std::string>* notes, std::string* error)
+{
+    CalculationSnapshot out = src;
+    SurfaceNodeMap m;
+    auto fail = [&](const std::string& e) {
+        if (error) *error = e;
+        return src;
+    };
+    for (const auto& e : surfaces.elements)
+        if (e.formulation != TSA::Model::SurfaceFormulation::Shell)
+            return fail("Surface " + e.source + " : formulation « " + std::string(TSA::Model::surfaceFormulationName(e.formulation)) +
+                        " » non prise en charge par ce moteur (seule la coque l'est).");
+
+    // Recherche par position : grille de pas 1 mm sur les nœuds du snapshot (TSA et subdivisions des barres)
+    auto key = [](double x, double y, double z) { return std::make_tuple(std::llround(x * 1000.0), std::llround(y * 1000.0), std::llround(z * 1000.0)); };
+    std::map<std::tuple<long long, long long, long long>, std::vector<int>> grid;
+    for (const auto& [id, n] : out.m_nodes) grid[key(n.x, n.y, n.z)].push_back(id);
+    auto findAt = [&](double x, double y, double z) {
+        const auto k = key(x, y, z);
+        for (long long dx = -1; dx <= 1; ++dx)
+            for (long long dy = -1; dy <= 1; ++dy)
+                for (long long dz = -1; dz <= 1; ++dz)
+                {
+                    auto it = grid.find({ std::get<0>(k) + dx, std::get<1>(k) + dy, std::get<2>(k) + dz });
+                    if (it == grid.end()) continue;
+                    for (int id : it->second)
+                    {
+                        const auto& n = out.m_nodes.at(id);
+                        if (std::abs(n.x - x) <= 1e-6 && std::abs(n.y - y) <= 1e-6 && std::abs(n.z - z) <= 1e-6) return id;
+                    }
+                }
+        return 0;
+    };
+
+    std::set<int> used;
+    for (const auto& e : surfaces.elements) used.insert(e.meshNodes.begin(), e.meshNodes.end());
+    int nextNode = out.m_nodes.empty() ? 1 : out.m_nodes.rbegin()->first + 1;
+    std::size_t merged = 0, created = 0;
+    for (const auto& n : surfaces.nodes)
+    {
+        if (!used.count(n.meshNode)) continue;
+        int id = 0;
+        if (n.tsaNode > 0 && out.m_nodes.count(n.tsaNode)) id = n.tsaNode;
+        if (!id) id = findAt(n.x, n.y, n.z);
+        if (id)
+            ++merged;
+        else
+        {
+            SnapshotNode sn;
+            sn.id = nextNode++;
+            sn.x = n.x;
+            sn.y = n.y;
+            sn.z = n.z;
+            out.m_nodes[sn.id] = sn;
+            grid[key(n.x, n.y, n.z)].push_back(sn.id);
+            m.surfaceOnlyNodes.insert(sn.id);
+            id = sn.id;
+            ++created;
+        }
+        m.meshToNode[n.meshNode] = id;
+    }
+
+    int nextTag = out.m_elements.empty() ? 1 : out.m_elements.rbegin()->first + 1;
+    for (const auto& e : surfaces.elements)
+    {
+        if (e.meshNodes.size() != 3 && e.meshNodes.size() != 4) return fail("Élément " + std::to_string(e.meshElement) + " de " + e.source + " : 3 ou 4 nœuds attendus.");
+        SnapshotShell sh;
+        sh.tag = nextTag++;
+        sh.meshElement = e.meshElement;
+        sh.source = e.source;
+        sh.thickness = e.thickness;
+        sh.material = e.material;
+        for (int mn : e.meshNodes)
+        {
+            auto it = m.meshToNode.find(mn);
+            if (it == m.meshToNode.end()) return fail("Élément " + std::to_string(e.meshElement) + " de " + e.source + " : nœud du maillage " + std::to_string(mn) + " inconnu.");
+            sh.nodes.push_back(it->second);
+        }
+        if (std::set<int>(sh.nodes.begin(), sh.nodes.end()).size() != sh.nodes.size())
+            return fail("Élément " + std::to_string(e.meshElement) + " de " + e.source + " : nœuds confondus (élément dégénéré).");
+        out.m_shells.push_back(sh);
+    }
+    auto addForces = [&](const std::vector<SurfaceNodalForce>& list) {
+        for (const auto& f : list)
+        {
+            auto it = m.meshToNode.find(f.meshNode);
+            if (it == m.meshToNode.end()) continue;
+            out.m_surfaceForces.push_back({ it->second, f.loadCaseId, f.fx, f.fy, f.fz, f.label });
+        }
+    };
+    addForces(surfaces.loads);
+    addForces(surfaces.selfWeight);
+    if (notes)
+        notes->push_back(std::to_string(out.m_shells.size()) + " élément(s) de coque, " + std::to_string(merged) + " nœud(s) partagé(s) avec les barres ou les nœuds TSA, " +
+                         std::to_string(created) + " nœud(s) propres aux surfaces.");
     if (map) *map = m;
     return out;
 }

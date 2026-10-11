@@ -220,7 +220,7 @@ bool MeshController::importMesh(const QString& path, QStringList* warnings, QStr
 SolverCompatibility MeshController::solverCompatibility(const std::string& engineName, const TSA::Analysis::AnalysisCapabilities& caps) const
 {
     if (!m_model || !m_project.hasMesh) return {};
-    return OpenSeesMeshAdapter::check(m_project.mesh, MeshGeometry::extract(*m_model), engineName, caps);
+    return OpenSeesMeshAdapter::check(m_project.mesh, MeshGeometry::extract(*m_model), engineName, caps, 3000000, m_model);
 }
 
 QString meshStatusText(const MeshController& c)

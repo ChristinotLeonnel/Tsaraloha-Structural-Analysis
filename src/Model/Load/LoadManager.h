@@ -5,6 +5,7 @@
 #include "MemberLoad.h"
 #include "LoadCase.h"
 #include "LoadCombination.h"
+#include "SurfaceLoad.h"
 
 #include <map>
 #include <vector>
@@ -29,6 +30,8 @@ public:
         std::map<int, MemberLoad> memberLoads;
         std::map<int, LoadCase> loadCases;
         std::map<int, LoadCombination> combinations;
+        std::map<int, SurfaceLoad> surfaceLoads;
+        int nextSurfaceLoadId = 1;
         int nextNodalLoadId = 1;
         int nextMemberLoadId = 1;
         int nextLoadCaseId = 1;
@@ -96,6 +99,16 @@ public:
     std::vector<MemberLoad> memberLoadsForCase(int loadCaseId) const;
     std::vector<int> removeMemberLoadsForElement(int elementId, MemberTargetType targetType = MemberTargetType::Beam);
 
+    // Charges surfaciques (dalles, voiles)
+    int addSurfaceLoad(const SurfaceLoad& load);
+    bool addSurfaceLoadWithId(int id, const SurfaceLoad& load);
+    bool removeSurfaceLoad(int id);
+    SurfaceLoad* getSurfaceLoad(int id);
+    const SurfaceLoad* getSurfaceLoad(int id) const;
+    const std::map<int, SurfaceLoad>& surfaceLoads() const noexcept { return m_surfaceLoads; }
+    std::vector<SurfaceLoad> surfaceLoadsForSurface(SurfaceTargetKind kind, int surfaceId) const;
+    std::vector<int> removeSurfaceLoadsForSurface(SurfaceTargetKind kind, int surfaceId);
+
     std::vector<NodalLoad> getNodalLoadsForNode(int nodeId) const { return nodalLoadsForNode(nodeId); }
     std::vector<NodalLoad> getNodalLoadsForCase(int loadCaseId) const { return nodalLoadsForCase(loadCaseId); }
     std::vector<MemberLoad> getMemberLoadsForElement(int elementId) const { return memberLoadsForElement(elementId); }
@@ -134,6 +147,8 @@ private:
     std::map<int, MemberLoad> m_memberLoads;
     std::map<int, LoadCase> m_loadCases;
     std::map<int, LoadCombination> m_combinations;
+    std::map<int, SurfaceLoad> m_surfaceLoads;
+    int m_nextSurfaceLoadId = 1;
 
     int m_nextNodalLoadId = 1;
     int m_nextMemberLoadId = 1;

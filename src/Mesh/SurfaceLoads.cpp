@@ -199,4 +199,110 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
     return r;
 }
 
+SurfaceLoadResult distributeSurfacePointLoad(const FeMesh& mesh, const MeshGeometry& geo, const SurfacePointLoad& load, double tol)
+{
+    SurfaceLoadResult r;
+    const SurfaceGeom* s = geo.surface(load.surface);
+    if (!s)
+    {
+        r.errors.push_back("surface « " + load.surface + " » inconnue du modèle : charge non convertie");
+        return r;
+    }
+    // Le point doit être dans la surface nette (repère local)
+    auto local = [&](const std::vector<P3>& poly) {
+        std::vector<std::pair<double, double>> out;
+        for (const auto& q : poly)
+        {
+            double u = 0, v = 0;
+            s->frame.toLocal(q, &u, &v);
+            out.emplace_back(u, v);
+        }
+        return out;
+    };
+    if (!pointInPolygon(load.u, load.v, local(s->outer)))
+    {
+        r.errors.push_back("point (" + std::to_string(load.u) + " ; " + std::to_string(load.v) + ") hors de la surface " + load.surface + " : charge non convertie");
+        return r;
+    }
+    for (const auto& h : s->holes)
+        if (pointInPolygon(load.u, load.v, local(h)))
+        {
+            r.errors.push_back("point dans une ouverture de " + load.surface + " : aucune matière porteuse, charge non convertie");
+            return r;
+        }
+    P3 dir;
+    switch (load.direction)
+    {
+    case SurfacePressure::Direction::GlobalX: dir = { 1, 0, 0 }; break;
+    case SurfacePressure::Direction::GlobalY: dir = { 0, 1, 0 }; break;
+    case SurfacePressure::Direction::GlobalZ: dir = { 0, 0, 1 }; break;
+    case SurfacePressure::Direction::Gravity: dir = { 0, 0, -1 }; break;
+    case SurfacePressure::Direction::LocalNormal: dir = s->frame.N * -1.0; break;
+    }
+    const P3 P = s->frame.toGlobal(load.u, load.v);
+    std::vector<double> N, dr, ds;
+    for (const auto& e : mesh.elements)
+    {
+        if (e.boundary || e.source != load.surface || (e.type != FeType::Tri3 && e.type != FeType::Quad4)) continue;
+        // Coordonnées naturelles du point dans l'élément (plan de la surface) : Newton sur x(ξ, η) = P
+        double xi = e.type == FeType::Tri3 ? 1.0 / 3 : 0.0, eta = xi;
+        bool converged = false;
+        for (int it = 0; it < 25; ++it)
+        {
+            shape(e.type, xi, eta, N, dr, ds);
+            P3 X, Xr, Xs;
+            for (std::size_t i = 0; i < N.size(); ++i)
+            {
+                const auto& n = mesh.node(e.nodes[i]);
+                const P3 Q { n.x, n.y, n.z };
+                X = X + Q * N[i];
+                Xr = Xr + Q * dr[i];
+                Xs = Xs + Q * ds[i];
+            }
+            const P3 res = P - X;
+            // Moindres carrés 2×2 : [Xr·Xr Xr·Xs ; Xs·Xr Xs·Xs] d = [Xr·res ; Xs·res]
+            const double a11 = Xr.dot(Xr), a12 = Xr.dot(Xs), a22 = Xs.dot(Xs), b1 = Xr.dot(res), b2 = Xs.dot(res);
+            const double det = a11 * a22 - a12 * a12;
+            if (std::abs(det) < 1e-30) break;
+            const double dxi = (b1 * a22 - b2 * a12) / det, deta = (a11 * b2 - a12 * b1) / det;
+            xi += dxi;
+            eta += deta;
+            if (std::abs(dxi) + std::abs(deta) < 1e-12)
+            {
+                converged = res.norm() < 1e-6;
+                break;
+            }
+        }
+        if (!converged) continue;
+        const double e1 = 1e-9;
+        const bool inside = e.type == FeType::Tri3 ? (xi >= -e1 && eta >= -e1 && xi + eta <= 1 + e1) : (std::abs(xi) <= 1 + e1 && std::abs(eta) <= 1 + e1);
+        if (!inside) continue;
+        shape(e.type, xi, eta, N, dr, ds);
+        ++r.elements;
+        for (std::size_t i = 0; i < N.size(); ++i)
+        {
+            const P3 f = dir * (load.value * N[i]);
+            r.forces.push_back({ e.nodes[i], f.x, f.y, f.z });
+            const auto& n = mesh.node(e.nodes[i]);
+            r.resultant = r.resultant + f;
+            r.moment = r.moment + P3 { n.x, n.y, n.z }.cross(f);
+        }
+        r.expectedResultant = dir * load.value;
+        r.expectedMoment = P.cross(r.expectedResultant);
+        const double scale = std::abs(load.value);
+        r.resultantError = relErr(r.resultant, r.expectedResultant, scale);
+        r.momentError = relErr(r.moment, r.expectedMoment, scale * std::max(1.0, P.norm()));
+        if (r.resultantError > tol || r.momentError > tol)
+        {
+            r.errors.push_back("charge ponctuelle : résultante ou moment des forces nodales différents de la valeur exacte, charge non convertie");
+            r.forces.clear();
+            return r;
+        }
+        r.ok = true;
+        return r;
+    }
+    r.errors.push_back("aucun élément du premier ordre (tri3, quad4) de " + load.surface + " ne contient le point : surface non maillée ou maillage du second ordre");
+    return r;
+}
+
 } // namespace TSA::Mesh

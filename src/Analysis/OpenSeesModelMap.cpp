@@ -82,6 +82,12 @@ OpenSeesModelMap OpenSeesModelMap::build(const CalculationSnapshot& snapshot, co
         map.m_elements.push_back(e);
     }
 
+    for (const auto& sh : snapshot.shells())
+    {
+        maxElementTag = std::max(maxElementTag, sh.tag);
+        (sh.nodes.size() == 4 ? map.m_shellQuadTags : map.m_shellTriTags).push_back(sh.tag);
+    }
+
     // Ressorts : tags placés au-delà des tags existants (aucune collision possible).
     int auxTag = maxNodeId + 1;
     int springTag = maxElementTag + 1;

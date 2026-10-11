@@ -329,7 +329,7 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
     // 2. Vérification de la présence d'éléments porteurs
     size_t totalElements = model.beams().size() + model.columns().size() +
                            model.trussMembers().size() + model.cables().size();
-    if (totalElements == 0)
+    if (totalElements == 0 && model.slabs().empty() && model.walls().empty())
     {
         report.addError("Modèle Calcul",
             "Aucun élément structural filaire (Poutre, Poteau, Treillis ou Câble) n'est présent pour le calcul.",
@@ -341,8 +341,8 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
     {
         report.addWarning("Modèle Calcul",
             std::to_string(model.slabs().size()) + " dalle(s) et " + std::to_string(model.walls().size()) +
-            " voile(s) ne sont pas pris en compte par le calcul (ni rigidité, ni charges) : "
-            "seuls les éléments filaires sont transmis à OpenSees.", 0, "EN 1990 §5.1");
+            " voile(s) : calculés en coques uniquement à partir du maillage du projet à jour (formulation « coque ») ; "
+            "sans maillage transmis, ni leur rigidité ni leurs charges ne sont prises en compte.", 0, "EN 1990 §5.1");
     }
 
     // 2c. Charges sur barre : chaque charge doit désigner un élément calculé (famille + id).

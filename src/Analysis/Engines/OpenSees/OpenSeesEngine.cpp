@@ -47,6 +47,7 @@ AnalysisCapabilities OpenSeesEngine::capabilities() const
     c.providesDofMapping = true;         // mode ADVANCED
     c.supportsCustomOptions = true;
     c.supportsMesh = true;               // barres subdivisées (maillage 1D) : sous-éléments elasticBeamColumn
+    c.supportsShell = true;              // dalles et voiles maillés : ShellMITC4 / ShellDKGT (formulation coque seule)
     return c;
 }
 

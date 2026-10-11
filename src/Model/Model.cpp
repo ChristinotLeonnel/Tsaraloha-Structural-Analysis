@@ -880,6 +880,7 @@ bool Model::removeSlab(int slabId)
     }
 
     m_slabs.erase(it);
+    m_loadManager.removeSurfaceLoadsForSurface(SurfaceTargetKind::Slab, slabId); // ses charges disparaissent avec elle
 
     bumpRevision();
     for (auto* obs : m_observers)
@@ -974,6 +975,7 @@ bool Model::removeWall(int wallId)
     }
 
     m_walls.erase(it);
+    m_loadManager.removeSurfaceLoadsForSurface(SurfaceTargetKind::Wall, wallId);
 
     bumpRevision();
     for (auto* obs : m_observers)

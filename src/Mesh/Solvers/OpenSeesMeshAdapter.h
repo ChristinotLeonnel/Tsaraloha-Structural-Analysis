@@ -15,11 +15,17 @@
 #include "../MeshTypes.h"
 
 #include "../../Analysis/Engine/AnalysisEngine.h"
+#include "../../Analysis/SurfaceAnalysisModel.h"
 
 #include <map>
 #include <optional>
 #include <string>
 #include <vector>
+
+namespace TSA::Model
+{
+class Model;
+}
 
 namespace TSA::Mesh
 {
@@ -45,6 +51,9 @@ struct SolverCompatibility
     std::vector<std::string> strategies;   ///< stratégies compatibles proposées
     /// Subdivision transmissible (poutres et poteaux, éléments 1D du premier ordre) : positions relatives.
     std::map<TSA::Analysis::ElementKey, std::vector<double>> memberSubdivisions;
+    /// Coques transmissibles (dalles et voiles à formulation « coque », premier ordre) et forces nodales équivalentes du
+    /// poids propre et des charges surfaciques ; vide si aucun modèle n'est fourni ou si le moteur ne calcule pas les coques.
+    TSA::Analysis::SurfaceAnalysisModel surfaces;
     std::size_t transmittedElements = 0, ignoredElements = 0;
     std::size_t estimatedDofs = 0;
 
@@ -57,8 +66,10 @@ class OpenSeesMeshAdapter
 {
 public:
     /// @param dofLimit limite raisonnable de degrés de liberté (ressources) ; au-delà : bloquant
+    /// @param model modèle TSA (matériaux, épaisseurs, charges surfaciques) : nécessaire pour transmettre les coques
     static SolverCompatibility check(const FeMesh& mesh, const MeshGeometry& geometry, const std::string& engineName,
-                                     const TSA::Analysis::AnalysisCapabilities& caps, std::size_t dofLimit = 3000000);
+                                     const TSA::Analysis::AnalysisCapabilities& caps, std::size_t dofLimit = 3000000,
+                                     const TSA::Model::Model* model = nullptr);
 
     /// Élément OpenSees correspondant (ou raison de l'absence de conversion) pour un type d'élément du
     /// maillage ; family : 0 poutre, 1 poteau, 2 treillis, 3 câble, -1 surface ou volume.

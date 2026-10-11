@@ -300,6 +300,7 @@ bool MainWindow::applyMeshToAnalysis(TSA::Analysis::AnalysisContext& ctx, const 
     // Paramètres du mailleur et options du solveur distincts : le maillage n'est transmis que si l'option du
     // calcul le demande, s'il est à jour et compatible avec le moteur (adaptateur OpenSees), sans conversion silencieuse.
     ctx.memberSubdivisions.clear();
+    ctx.surfaces = {};
     if (!m_meshController || !m_meshController->hasMesh() || !ctx.common.useGeneratedMesh) return true;
     const QString engineName = QString::fromStdString(engine.info().name);
     if (m_meshController->stale())
@@ -349,6 +350,7 @@ bool MainWindow::applyMeshToAnalysis(TSA::Analysis::AnalysisContext& ctx, const 
             return false;
     }
     ctx.memberSubdivisions = compat.memberSubdivisions;
+    ctx.surfaces = compat.surfaces;
     ctx.meshLabel = tr("maillage %1 du %2").arg(QString::fromStdString(m_meshController->project().record.mesher),
                                                 QString::fromStdString(m_meshController->project().record.generated)).toStdString();
     return true;

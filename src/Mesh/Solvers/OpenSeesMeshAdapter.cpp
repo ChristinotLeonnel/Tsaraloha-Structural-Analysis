@@ -1,4 +1,7 @@
 #include "OpenSeesMeshAdapter.h"
+#include "../SurfaceLoads.h"
+#include "../../Model/Model.h"
+#include "../../Model/Load/LoadManager.h"
 
 #include <algorithm>
 #include <cctype>
@@ -60,8 +63,12 @@ std::string OpenSeesMeshAdapter::openSeesElementFor(FeType t, int family, bool* 
             return "truss / corotTruss : un seul élément par barre (une chaîne de barres articulées subdivisée serait un mécanisme)";
         return "aucun (ligne de contour : élément de frontière, sans rigidité)";
     case FeType::Line3: return "aucun élément OpenSees de barre à 3 nœuds dans l'adaptateur : régénérer au premier ordre";
-    case FeType::Tri3: return "ShellDKGT existe dans OpenSees mais l'adaptateur TSA ne transmet pas encore les coques";
-    case FeType::Quad4: return "ShellMITC4 existe dans OpenSees mais l'adaptateur TSA ne transmet pas encore les coques";
+    case FeType::Tri3:
+        *convertible = family == -1;
+        return "ShellDKGT (triangle à 3 nœuds, plaque de Kirchhoff discrète + membrane, 6 DDL par nœud)";
+    case FeType::Quad4:
+        *convertible = family == -1;
+        return "ShellMITC4 (quadrangle à 4 nœuds, Mindlin-Reissner à cisaillement interpolé + membrane, 6 DDL par nœud)";
     case FeType::Tri6: return "aucune coque triangulaire à 6 nœuds dans OpenSees";
     case FeType::Quad8: return "aucune coque à 8 nœuds dans OpenSees (ShellMITC9 exige 9 nœuds)";
     case FeType::Tet4:
@@ -75,7 +82,7 @@ std::string OpenSeesMeshAdapter::openSeesElementFor(FeType t, int family, bool* 
 }
 
 SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeometry& geo, const std::string& engine,
-                                               const TSA::Analysis::AnalysisCapabilities& caps, std::size_t dofLimit)
+                                               const TSA::Analysis::AnalysisCapabilities& caps, std::size_t dofLimit, const TSA::Model::Model* model)
 {
     SolverCompatibility r;
     r.engine = engine;
@@ -182,23 +189,203 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
         r.transmittedElements += axial.size();
     }
 
-    // Éléments 2D et 3D
+    // Éléments 2D : coques (formulation « coque », premier ordre) si le moteur les calcule ; sinon exclus, et dit
+    std::size_t surfaceOnlyNodes = 0;
     if (!surfaces.empty())
     {
         bool conv = false;
-        const bool reject = caps.planarElementPolicy == TSA::Analysis::UnsupportedElementPolicy::Reject;
-        std::string detail;
-        if (mesh.countOf(FeType::Quad4)) detail += " quadrangles : " + openSeesElementFor(FeType::Quad4, -1, &conv) + ".";
-        if (mesh.countOf(FeType::Tri3)) detail += " triangles : " + openSeesElementFor(FeType::Tri3, -1, &conv) + ".";
-        if (mesh.countOf(FeType::Quad8) || mesh.countOf(FeType::Tri6)) detail += " second ordre : " + openSeesElementFor(FeType::Quad8, -1, &conv) + ".";
-        add(reject ? L::Blocking : L::Warning, "Types d'éléments",
-            std::to_string(n2) + " élément(s) de surface non transmis" + (reject ? " (calcul refusé tant qu'ils sont dans la portée)." : " ; les dalles et voiles sont exclus du calcul.") +
-                detail,
-            list(surfaces));
-        r.ignoredElements += n2;
-        r.strategies.push_back("Calculer les barres seules : dalles et voiles exclus (avertissement au lancement du calcul)");
-        r.strategies.push_back("Représenter les planchers par un grillage de poutres (éléments 1D transmissibles)");
+        if (!caps.supportsShell || !model)
+        {
+            const bool reject = caps.planarElementPolicy == TSA::Analysis::UnsupportedElementPolicy::Reject;
+            add(reject ? L::Blocking : L::Warning, "Types d'éléments",
+                std::to_string(n2) + " élément(s) de surface non transmis" +
+                    (!caps.supportsShell ? " : " + engine + " ne calcule pas les coques" : " (modèle non fourni à l'adaptateur)") +
+                    (reject ? " (calcul refusé tant qu'ils sont dans la portée)." : " ; les dalles et voiles sont exclus du calcul."),
+                list(surfaces));
+            r.ignoredElements += n2;
+            r.strategies.push_back("Calculer les barres seules : dalles et voiles exclus (avertissement au lancement du calcul)");
+        }
+        else
+        {
+            std::set<std::string> plate, membrane, nonStructural, secondOrder, shells;
+            for (const auto& ref : surfaces)
+            {
+                const auto* sg = geo.surface(ref);
+                if (!sg) continue;
+                bool second = false;
+                for (const auto& e : mesh.elements)
+                    if (!e.boundary && e.source == ref && feTypeDimension(e.type) == 2 && feTypeIsSecondOrder(e.type)) second = true;
+                switch (sg->formulation)
+                {
+                case TSA::Model::SurfaceFormulation::NonStructural: nonStructural.insert(ref); break;
+                case TSA::Model::SurfaceFormulation::Plate: plate.insert(ref); break;
+                case TSA::Model::SurfaceFormulation::Membrane: membrane.insert(ref); break;
+                default: (second ? secondOrder : shells).insert(ref); break;
+                }
+            }
+            if (!plate.empty())
+                add(L::Blocking, "Formulation des surfaces",
+                    "formulation « plaque seule » non disponible dans OpenSees en 3D (aucun élément de plaque sans membrane) : choisir « coque » "
+                    "(la membrane ajoute la rigidité dans le plan) ou « non structurale »",
+                    list(plate));
+            if (!membrane.empty())
+                add(L::Blocking, "Formulation des surfaces",
+                    "formulation « membrane seule » non transmise : les éléments de membrane OpenSees (quad, tri31) sont à 2 DDL par nœud, "
+                    "incompatibles avec le modèle à 6 DDL de TSA ; une coque à faible rigidité de flexion serait une rigidité fictive",
+                    list(membrane));
+            if (!secondOrder.empty())
+                add(L::Blocking, "Ordre des éléments", "éléments de surface du second ordre : " + openSeesElementFor(FeType::Quad8, -1, &conv) + " — régénérer au premier ordre",
+                    list(secondOrder));
+            if (!nonStructural.empty())
+            {
+                std::size_t n = 0;
+                for (const auto& e : mesh.elements)
+                    if (!e.boundary && nonStructural.count(e.source) && feTypeDimension(e.type) == 2) ++n;
+                add(L::Warning, "Types d'éléments", "surface(s) non structurale(s) : non transmises (ni rigidité, ni poids propre, ni charges)", list(nonStructural));
+                r.ignoredElements += n;
+            }
+            if (!plate.empty() || !membrane.empty()) r.strategies.push_back("Choisir la formulation « coque » des surfaces concernées (propriétés de la surface)");
+
+            // Éléments de coque
+            auto& sm = r.surfaces;
+            std::set<int> usedNodes;
+            for (const auto& e : mesh.elements)
+            {
+                if (e.boundary || !shells.count(e.source) || (e.type != FeType::Tri3 && e.type != FeType::Quad4)) continue;
+                const auto* sg = geo.surface(e.source);
+                TSA::Analysis::SurfaceMeshElement se;
+                se.meshElement = e.id;
+                se.source = e.source;
+                se.meshNodes = e.nodes;
+                se.formulation = sg->formulation;
+                if (sg->kind == SurfaceGeom::Kind::Slab)
+                {
+                    const auto* slab = model->getSlab(sg->id);
+                    if (!slab) continue;
+                    se.thickness = slab->thickness();
+                    se.material = slab->material();
+                }
+                else
+                {
+                    const auto* wall = model->getWall(sg->id);
+                    if (!wall) continue;
+                    se.thickness = wall->thickness();
+                    se.material = wall->material();
+                }
+                usedNodes.insert(e.nodes.begin(), e.nodes.end());
+                sm.elements.push_back(se);
+            }
+            for (int id : usedNodes)
+            {
+                const auto& n = mesh.node(id);
+                sm.nodes.push_back({ id, n.x, n.y, n.z, n.tsaNode });
+                if (!n.tsaNode) ++surfaceOnlyNodes;
+            }
+            std::set<std::string> badMaterial;
+            for (const auto& e : sm.elements)
+                if (e.thickness <= 0 || e.material.mechanical.youngModulus <= 0) badMaterial.insert(e.source);
+            if (!badMaterial.empty()) add(L::Blocking, "Sections et matériaux", "surface(s) sans épaisseur ou sans module d'Young", list(badMaterial));
+            if (!sm.elements.empty())
+            {
+                r.transmittedElements += sm.elements.size();
+                std::size_t quads = 0, tris = 0;
+                for (const auto& e : sm.elements) (e.meshNodes.size() == 4 ? quads : tris)++;
+                add(L::Ok, "Types d'éléments",
+                    std::to_string(shells.size()) + " surface(s) → " + std::to_string(quads) + " ShellMITC4 et " + std::to_string(tris) + " ShellDKGT");
+                add(L::Ok, "Connexions",
+                    "nœuds des coques partagés avec les barres et les nœuds TSA situés sur leurs arêtes (maillage conforme : arête commune = une courbe du "
+                    "mailleur) ; aucune liaison rigide ni excentricité ajoutée (plans moyens confondus avec les axes des barres)");
+            }
+
+            // Poids propre des surfaces : ρ · g · e (kN/m²) réparti en charges nodales cohérentes
+            for (const auto& ref : shells)
+            {
+                const auto* sg = geo.surface(ref);
+                double rho = 0, h = 0;
+                for (const auto& e : sm.elements)
+                    if (e.source == ref)
+                    {
+                        rho = e.material.mechanical.density;
+                        h = e.thickness;
+                        break;
+                    }
+                const double q = rho * 9.81 * h / 1000.0;
+                if (q <= 0 || !sg) continue;
+                SurfacePressure p;
+                p.surface = ref;
+                p.value = q;
+                p.direction = SurfacePressure::Direction::Gravity;
+                const auto res = distributeSurfaceLoad(mesh, geo, p);
+                if (!res.ok)
+                {
+                    add(L::Blocking, "Charges", "poids propre de " + ref + " non converti : " + (res.errors.empty() ? std::string() : res.errors.front()), { ref });
+                    continue;
+                }
+                for (const auto& f : res.forces) sm.selfWeight.push_back({ f.node, 0, f.fx, f.fy, f.fz, "Poids propre " + ref });
+                sm.selfWeightBySurface[ref] = -res.resultant.z;
+            }
+            if (!sm.selfWeightBySurface.empty())
+            {
+                double total = 0;
+                for (const auto& [ref, w] : sm.selfWeightBySurface) total += w;
+                std::ostringstream os;
+                os.precision(6);
+                os << "poids propre des surfaces : " << total << " kN (ρ·g·e × aire nette), réparti en charges nodales cohérentes, appliqué aux cas qui "
+                   << "incluent le poids propre";
+                sm.notes.push_back(os.str());
+            }
+        }
     }
+
+    // Charges surfaciques du modèle : converties sur les coques transmises, jamais ignorées en silence
+    if (model)
+    {
+        std::set<std::string> transmitted;
+        for (const auto& e : r.surfaces.elements) transmitted.insert(e.source);
+        std::size_t converted = 0;
+        for (const auto& [id, l] : model->loadManager().surfaceLoads())
+        {
+            const std::string ref = l.surfaceRef();
+            const std::string who = "charge surfacique " + std::to_string(id) + (l.name.empty() ? std::string() : " « " + l.name + " »") + " (" + ref + ")";
+            if (!transmitted.count(ref))
+            {
+                add(L::Blocking, "Charges", who + " : surface non transmise au calcul (non maillée, non structurale, formulation non prise en charge ou moteur sans coques)",
+                    { ref });
+                continue;
+            }
+            SurfacePressure::Direction dir = SurfacePressure::Direction::Gravity;
+            switch (l.direction)
+            {
+            case TSA::Model::SurfaceLoadDirection::GlobalX: dir = SurfacePressure::Direction::GlobalX; break;
+            case TSA::Model::SurfaceLoadDirection::GlobalY: dir = SurfacePressure::Direction::GlobalY; break;
+            case TSA::Model::SurfaceLoadDirection::GlobalZ: dir = SurfacePressure::Direction::GlobalZ; break;
+            case TSA::Model::SurfaceLoadDirection::LocalNormal: dir = SurfacePressure::Direction::LocalNormal; break;
+            default: break;
+            }
+            SurfaceLoadResult res;
+            if (l.distribution == TSA::Model::SurfaceLoadDistribution::Point)
+                res = distributeSurfacePointLoad(mesh, geo, { ref, l.u, l.v, l.value, dir });
+            else
+            {
+                SurfacePressure p;
+                p.surface = ref;
+                p.value = l.value;
+                p.direction = dir;
+                p.projected = l.projected;
+                res = distributeSurfaceLoad(mesh, geo, p);
+            }
+            if (!res.ok)
+            {
+                add(L::Blocking, "Charges", who + " non convertie : " + (res.errors.empty() ? std::string("erreur inconnue") : res.errors.front()), { ref });
+                continue;
+            }
+            for (const auto& f : res.forces) r.surfaces.loads.push_back({ f.node, l.loadCaseId, f.fx, f.fy, f.fz, who });
+            ++converted;
+        }
+        if (converted)
+            r.surfaces.notes.push_back(std::to_string(converted) + " charge(s) surfacique(s) converties en charges nodales cohérentes (∫ Nᵢ p dA), résultante et moment contrôlés");
+    }
+
     if (!volumes.empty())
     {
         bool conv = false;
@@ -212,7 +399,7 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
     // DDL : nœuds TSA + nœuds intermédiaires des barres subdivisées, 6 DDL (BasicBuilder -ndm 3 -ndf 6).
     std::size_t internal = 0;
     for (const auto& [k, pos] : r.memberSubdivisions) internal += pos.size();
-    r.estimatedDofs = (geo.tsaNodes.size() + internal) * 6;
+    r.estimatedDofs = (geo.tsaNodes.size() + internal + surfaceOnlyNodes) * 6;
     add(L::Ok, "Degrés de liberté", "6 DDL par nœud (UX UY UZ RX RY RZ), cohérents avec les éléments de barre transmis");
     if (r.estimatedDofs > dofLimit)
         add(L::Blocking, "Ressources",
@@ -230,7 +417,8 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
     add(L::Ok, "Appuis", "appuis aux nœuds TSA, inchangés ; les nœuds intermédiaires du maillage sont libres");
     add(L::Ok, "Charges",
         "charges sur barres réparties exactement sur les sous-éléments (portions, charge ponctuelle sur le sous-élément porteur ou à un nœud du maillage) ; "
-        "charges nodales inchangées ; poids propre calculé par sous-élément ; aucune charge surfacique transmise (coques non transmises)");
+        "charges nodales inchangées ; poids propre calculé par sous-élément ; charges surfaciques et poids propre des coques convertis en charges nodales "
+        "cohérentes");
     add(L::Ok, "Groupes", "les éléments sont rattachés à leur barre par la référence TSA (groupes physiques Gmsh), jamais par les étiquettes Gmsh");
     if (r.strategies.empty() && !r.blocking()) r.strategies.push_back("Transmettre le maillage tel quel");
     if (n1second) r.strategies.insert(r.strategies.begin(), "Régénérer le maillage au premier ordre (même finesse) pour transmettre les barres subdivisées");

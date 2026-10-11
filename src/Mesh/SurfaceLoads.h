@@ -50,6 +50,18 @@ struct SurfaceLoadResult
     std::vector<std::string> errors, warnings;
 };
 
+struct SurfacePointLoad
+{
+    std::string surface;            ///< SL2, W5
+    double u = 0, v = 0;            ///< position dans le repère local de la surface (m)
+    double value = 0;               ///< kN
+    SurfacePressure::Direction direction = SurfacePressure::Direction::Gravity;
+};
+
+/// Force ponctuelle sur une surface maillée : répartie sur les nœuds de l'élément qui contient le point par ses fonctions
+/// de forme (Nᵢ(ξ, η) · F, statiquement équivalent). Refusée si le point est hors de la surface ou dans une ouverture.
+SurfaceLoadResult distributeSurfacePointLoad(const FeMesh& mesh, const MeshGeometry& geometry, const SurfacePointLoad& load, double tolerance = 1e-6);
+
 SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& geometry, const SurfacePressure& load, double tolerance = 1e-6);
 
 } // namespace TSA::Mesh

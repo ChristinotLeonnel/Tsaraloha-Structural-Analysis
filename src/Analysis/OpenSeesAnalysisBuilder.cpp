@@ -1,4 +1,5 @@
 #include "OpenSeesAnalysisBuilder.h"
+#include <tuple>
 #include "OpenSeesModelMap.h"
 #include "LoadResolver.h"
 #include <algorithm>
@@ -339,6 +340,34 @@ std::string OpenSeesAnalysisBuilder::buildElements(const CalculationSnapshot& sn
     }
     tcl << "\n";
 
+    // Coques (dalles, voiles maillés) : section ElasticMembranePlateSection (E, ν, h, ρ), ShellMITC4 (quadrangle,
+    // Mindlin-Reissner, interpolation mixte du cisaillement) ou ShellDKGT (triangle, Kirchhoff discret).
+    if (!snapshot.shells().empty())
+    {
+        tcl << "# ------------------------------------------------------------------------------\n";
+        tcl << "# Coques (ElasticMembranePlateSection ; ShellMITC4 quadrangles, ShellDKGT triangles)\n";
+        tcl << "# ------------------------------------------------------------------------------\n";
+        std::map<std::tuple<double, double, double, double>, int> sections;
+        const double massScale = params.useKiloNewtons ? 1e-3 : 1.0;   // kg/m³ → t/m³ (kN, m, s)
+        for (const auto& sh : snapshot.shells())
+        {
+            const auto k = std::make_tuple(sh.material.mechanical.youngModulus * scaleForce, sh.material.mechanical.poissonRatio, sh.thickness, sh.material.mechanical.density * massScale);
+            if (sections.count(k)) continue;
+            const int tag = int(sections.size()) + 1;
+            sections[k] = tag;
+            tcl << "section ElasticMembranePlateSection " << tag << " " << std::get<0>(k) << " " << std::get<1>(k) << " " << std::get<2>(k) << " "
+                << std::get<3>(k) << " ;# " << sh.material.name << ", e = " << sh.thickness << " m\n";
+        }
+        for (const auto& sh : snapshot.shells())
+        {
+            const int sec = sections.at(std::make_tuple(sh.material.mechanical.youngModulus * scaleForce, sh.material.mechanical.poissonRatio, sh.thickness, sh.material.mechanical.density * massScale));
+            tcl << "element " << (sh.nodes.size() == 4 ? "ShellMITC4 " : "ShellDKGT ") << sh.tag;
+            for (int n : sh.nodes) tcl << " " << n;
+            tcl << " " << sec << " ;# " << sh.source << " élément " << sh.meshElement << "\n";
+        }
+        tcl << "\n";
+    }
+
     return tcl.str();
 }
 
@@ -374,6 +403,12 @@ std::string OpenSeesAnalysisBuilder::buildRecorders(const OpenSeesModelMap& map,
         tcl << "recorder Element -file \"" << params.axialOutputFile << "\"" << recorderPrecision()
             << " -ele " << joinTags(map.axialTags()) << " basicForce\n";
     }
+    // Coques : résultantes par unité de longueur aux 4 points d'intégration
+    // [Nxx Nyy Nxy Mxx Myy Mxy Vxz Vyz] (repère local de l'élément).
+    if (!map.shellQuadTags().empty())
+        tcl << "recorder Element -file \"" << params.shellQuadOutputFile << "\"" << recorderPrecision() << " -ele " << joinTags(map.shellQuadTags()) << " stresses\n";
+    if (!map.shellTriTags().empty())
+        tcl << "recorder Element -file \"" << params.shellTriOutputFile << "\"" << recorderPrecision() << " -ele " << joinTags(map.shellTriTags()) << " stresses\n";
     if (params.extractionLevel == ExtractionLevel::Advanced)
     {
         if (!map.allElementTags().empty())
@@ -711,6 +746,19 @@ std::string OpenSeesAnalysisBuilder::buildLoads(const CalculationSnapshot& snaps
             tcl << "  load " << nl.nodeId() << " " << fx << " " << fy << " " << fz << " "
                 << mx << " " << my << " " << mz << " ;# " << nl.name()
                 << (nl.coordSystem() == TSA::Model::LoadCoordSystem::Local ? " (déclarée locale : axes globaux)" : "") << "\n";
+        }
+
+        // Charges surfaciques et poids propre des surfaces : forces nodales équivalentes cohérentes (∫ Nᵢ p dA),
+        // calculées sur le maillage avant le calcul (SurfaceAnalysisModel)
+        for (const auto& f : snapshot.surfaceForces())
+        {
+            double k = 0.0;
+            if (f.loadCaseId == 0)
+                k = pattern.includeSelfWeight ? factor : 0.0;
+            else if (pattern.caseId == 0 || f.loadCaseId == pattern.caseId)
+                k = factor;
+            if (k == 0.0) continue;
+            tcl << "  load " << f.nodeId << " " << f.fx * k * forceScale << " " << f.fy * k * forceScale << " " << f.fz * k * forceScale << " 0 0 0 ;# " << f.label << "\n";
         }
 
         // Charges sur treillis et câbles : réparties pour moitié sur chaque nœud

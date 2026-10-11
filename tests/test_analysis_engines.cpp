@@ -148,11 +148,11 @@ bool runSuite_Engines(int& passed)
     {
         const auto os = OpenSeesEngine().capabilities();
         TEST_CHECK(os.supports3D && !os.supports2D, "Test 131: OpenSees 3D uniquement (ndm 3)");
-        TEST_CHECK(os.supportsFrame && os.supportsTruss && os.supportsCable && os.supportsSprings && !os.supportsShell,
-                   "Test 131: OpenSees éléments filaires, pas de coques");
+        TEST_CHECK(os.supportsFrame && os.supportsTruss && os.supportsCable && os.supportsSprings && os.supportsShell,
+                   "Test 131: OpenSees éléments filaires et coques maillées (ShellMITC4 / ShellDKGT, suite surfaces)");
         TEST_CHECK(os.supportsStatic && os.supportsNonlinear,
                    "Test 131: OpenSees statique linéaire et non linéaire (TSA : calcul statique uniquement)");
-        TEST_CHECK(os.planarElementPolicy == UnsupportedElementPolicy::ExcludeWithWarning, "Test 131: OpenSees exclut dalles/voiles avec avertissement");
+        TEST_CHECK(os.planarElementPolicy == UnsupportedElementPolicy::ExcludeWithWarning, "Test 131: OpenSees exclut avec avertissement les dalles/voiles non maillés");
 
         const auto c2 = Custom2DEngine().capabilities();
         TEST_CHECK(c2.supports2D && !c2.supports3D && c2.supportsFrame && !c2.supportsShell && c2.supportsStatic,

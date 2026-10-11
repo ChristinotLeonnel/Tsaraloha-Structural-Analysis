@@ -9,6 +9,7 @@
 #include <cmath>
 #include <map>
 #include <sstream>
+#include <tuple>
 
 namespace TSA::Mesh
 {
@@ -119,27 +120,18 @@ std::vector<std::vector<P3>> slabOpenings3D(const TSA::Model::Model& model, cons
     return out;
 }
 
-std::string validateSlabOpening(const TSA::Model::Model& model, const Slab& slab, const std::vector<std::pair<double, double>>& polygon, int ignoreIndex)
+static std::string validateOpening(const std::vector<std::pair<double, double>>& outer, const std::vector<TSA::Model::SlabOpening>& existing,
+                            const std::vector<std::pair<double, double>>& polygon, int ignoreIndex, const std::string& what)
 {
     if (polygon.size() < 3) return "une ouverture a au moins 3 sommets";
     if (std::abs(polygonArea2D(polygon)) < 1e-8) return "ouverture d'aire nulle";
-    const auto corners = slabCorners(model, slab);
-    if (corners.size() < 3) return "dalle sans contour valide";
-    const PlaneFrame f = slabFrame(corners);
-    std::vector<std::pair<double, double>> outer;
-    for (const auto& c : corners)
-    {
-        double u = 0, v = 0;
-        f.toLocal(c, &u, &v);
-        outer.emplace_back(u, v);
-    }
+    if (outer.size() < 3) return what + " sans contour valide";
     for (const auto& [u, v] : polygon)
-        if (!pointInPolygon(u, v, outer)) return "l'ouverture dépasse le contour de la dalle";
+        if (!pointInPolygon(u, v, outer)) return "l'ouverture dépasse le contour " + what;
     for (std::size_t i = 0; i < polygon.size(); ++i)
         for (std::size_t j = 0; j < outer.size(); ++j)
             if (segmentsCross(polygon[i], polygon[(i + 1) % polygon.size()], outer[j], outer[(j + 1) % outer.size()]))
-                return "l'ouverture recoupe le contour de la dalle";
-    const auto& existing = slab.openings();
+                return "l'ouverture recoupe le contour " + what;
     for (std::size_t k = 0; k < existing.size(); ++k)
     {
         if (int(k) == ignoreIndex) continue;
@@ -154,6 +146,65 @@ std::string validateSlabOpening(const TSA::Model::Model& model, const Slab& slab
                     return "l'ouverture recoupe l'ouverture « " + existing[k].name + " »";
     }
     return {};
+}
+
+std::string validateSlabOpening(const TSA::Model::Model& model, const Slab& slab, const std::vector<std::pair<double, double>>& polygon, int ignoreIndex)
+{
+    const auto corners = slabCorners(model, slab);
+    std::vector<std::pair<double, double>> outer;
+    if (corners.size() >= 3)
+    {
+        const PlaneFrame f = slabFrame(corners);
+        for (const auto& c : corners)
+        {
+            double u = 0, v = 0;
+            f.toLocal(c, &u, &v);
+            outer.emplace_back(u, v);
+        }
+    }
+    return validateOpening(outer, slab.openings(), polygon, ignoreIndex, "de la dalle");
+}
+
+static bool isWallDoor(const std::vector<std::pair<double, double>>& p, double L, double H, double* u1, double* u2, double* top)
+{
+    if (p.size() != 4) return false;
+    double a = 1e30, b = -1e30, lo = 1e30, hi = -1e30;
+    for (const auto& [u, v] : p) a = std::min(a, u), b = std::max(b, u), lo = std::min(lo, v), hi = std::max(hi, v);
+    for (const auto& [u, v] : p)
+        if ((std::abs(u - a) > 1e-9 && std::abs(u - b) > 1e-9) || (std::abs(v - lo) > 1e-9 && std::abs(v - hi) > 1e-9)) return false;   // rectangle aligné
+    if (std::abs(lo) > 1e-9 || a <= 1e-9 || b >= L - 1e-9 || hi >= H - 1e-9 || b - a <= 1e-9 || hi <= 1e-9) return false;
+    if (u1) *u1 = a;
+    if (u2) *u2 = b;
+    if (top) *top = hi;
+    return true;
+}
+
+std::string validateWallOpening(const TSA::Model::Model& model, const TSA::Model::Wall& wall, const std::vector<std::pair<double, double>>& polygon, int ignoreIndex)
+{
+    const double L = wall.length(model), H = wall.height();
+    std::vector<std::pair<double, double>> outer;
+    if (L > 1e-9 && H > 1e-9) outer = { { 0.0, 0.0 }, { L, 0.0 }, { L, H }, { 0.0, H } };
+    // Porte : rectangle posé sur le pied du voile (encoche du contour) ; elle ne doit recouper ni les autres ouvertures
+    // ni une autre porte
+    double u1 = 0, u2 = 0, top = 0;
+    if (isWallDoor(polygon, L, H, &u1, &u2, &top))
+    {
+        std::vector<std::pair<double, double>> lifted = polygon;
+        for (auto& [u, v] : lifted)
+            if (std::abs(v) <= 1e-9) v = 1e-6;   // contrôle de recouvrement sur la partie intérieure
+        for (std::size_t k = 0; k < wall.openings().size(); ++k)
+        {
+            if (int(k) == ignoreIndex) continue;
+            double a = 0, b = 0, t = 0;
+            if (isWallDoor(wall.openings()[k].polygon, L, H, &a, &b, &t) && a < u2 + 1e-9 && b > u1 - 1e-9)
+                return "la porte chevauche ou touche la porte « " + wall.openings()[k].name + " »";
+        }
+        std::vector<TSA::Model::SlabOpening> others;
+        for (std::size_t k = 0; k < wall.openings().size(); ++k)
+            if (int(k) != ignoreIndex && !isWallDoor(wall.openings()[k].polygon, L, H, nullptr, nullptr, nullptr)) others.push_back(wall.openings()[k]);
+        return validateOpening(outer, others, lifted, -1, "du voile");
+    }
+    return validateOpening(outer, wall.openings(), polygon, ignoreIndex, "du voile");
 }
 
 MeshGeometry MeshGeometry::extract(const TSA::Model::Model& model)
@@ -231,6 +282,7 @@ MeshGeometry MeshGeometry::extract(const TSA::Model::Model& model)
         sg.outer = slabCorners(model, s);
         if (sg.outer.size() < 3) continue;
         sg.cornerNodes = s.nodeIds();
+        sg.formulation = s.formulation();
         sg.material = s.material().name;
         sg.thickness = s.thickness();
         sg.frame = slabFrame(sg.outer);
@@ -266,6 +318,42 @@ MeshGeometry MeshGeometry::extract(const TSA::Model::Model& model)
         sg.frame.V = { 0, 0, 1 };
         sg.frame.N = sg.frame.U.cross(sg.frame.V).normalized();
         sg.area = distance(sg.outer[0], sg.outer[1]) * w.height();
+        // Ouvertures (portes, fenêtres) : repère local du voile (u le long du voile, v vers le haut). Une porte posée au
+        // pied devient une encoche du contour (elle ne peut pas être un trou : elle touche le bord).
+        const double Lw = distance(sg.outer[0], sg.outer[1]);
+        std::vector<std::tuple<double, double, double>> doors;
+        for (const auto& o : w.openings())
+        {
+            double u1 = 0, u2 = 0, top = 0;
+            if (isWallDoor(o.polygon, Lw, w.height(), &u1, &u2, &top)) doors.emplace_back(u1, u2, top);
+        }
+        if (!doors.empty())
+        {
+            std::sort(doors.begin(), doors.end());
+            std::vector<P3> outer { sg.frame.toGlobal(0, 0) };
+            std::vector<int> nodes { sg.cornerNodes[0] };
+            for (const auto& [u1, u2, top] : doors)
+            {
+                for (const auto& [u, v] : { std::pair { u1, 0.0 }, { u1, top }, { u2, top }, { u2, 0.0 } }) outer.push_back(sg.frame.toGlobal(u, v)), nodes.push_back(0);
+                sg.area -= (u2 - u1) * top;
+            }
+            outer.push_back(sg.outer[1]), outer.push_back(sg.outer[2]), outer.push_back(sg.outer[3]);
+            nodes.push_back(sg.cornerNodes[1]), nodes.push_back(0), nodes.push_back(0);
+            sg.outer = outer;
+            sg.cornerNodes = nodes;
+        }
+        for (const auto& o : w.openings())
+        {
+            if (isWallDoor(o.polygon, Lw, w.height(), nullptr, nullptr, nullptr)) continue;
+            std::vector<P3> hole;
+            for (const auto& [u, v] : o.polygon) hole.push_back(sg.frame.toGlobal(u, v));
+            if (hole.size() >= 3)
+            {
+                sg.holes.push_back(hole);
+                sg.area -= std::abs(polygonArea2D(o.polygon));
+            }
+        }
+        sg.formulation = w.formulation();
         sg.material = w.material().name;
         sg.thickness = w.thickness();
         if (sg.area > 1e-12) g.surfaces.push_back(sg);

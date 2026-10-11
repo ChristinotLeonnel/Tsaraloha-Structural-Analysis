@@ -631,6 +631,38 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
         }
     }
 
+    // Coques : 4 points d'intégration × 8 résultantes par élément (ShellMITC4, ShellDKGT)
+    if (!snapshot.shells().empty())
+    {
+        std::map<int, const SnapshotShell*> byTag;
+        for (const auto& sh : snapshot.shells()) byTag[sh.tag] = &sh;
+        auto readShells = [&](const std::string& file, const std::vector<int>& tags, const char* what) {
+            if (tags.empty()) return;
+            const auto rows = ctx.table(dir + file, tags.size() * 32, what);
+            if (rows.empty()) return;
+            const auto& last = rows.back();
+            for (std::size_t i = 0; i < tags.size(); ++i)
+            {
+                const SnapshotShell* sh = byTag[tags[i]];
+                if (!sh || last.size() < (i + 1) * 32) continue;
+                ShellElementResult r;
+                r.tag = sh->tag;
+                r.meshElement = sh->meshElement;
+                r.source = sh->source;
+                for (int g = 0; g < 4; ++g)
+                {
+                    std::array<double, 8> v {};
+                    for (int c = 0; c < 8; ++c) v[c] = last[i * 32 + g * 8 + c];
+                    for (int c = 0; c < 8; ++c) r.mean[c] += v[c] / 4.0;
+                    r.gauss.push_back(v);
+                }
+                outResults.setShellResult(r);
+            }
+        };
+        readShells(params.shellQuadOutputFile, map.shellQuadTags(), "Résultantes des coques (quadrangles)");
+        readShells(params.shellTriOutputFile, map.shellTriTags(), "Résultantes des coques (triangles)");
+    }
+
     computeGlobalEquilibrium(snapshot, params, outResults);
     checkAutomaticRestraints(snapshot, params, outResults);
     outResults.computeSummary();
@@ -942,6 +974,13 @@ void OpenSeesResultsReader::computeGlobalEquilibrium(const CalculationSnapshot& 
             eq.appliedMy += couple.Y();
             eq.appliedMz += couple.Z();
             eq.momentScale += couple.Magnitude();
+        }
+
+        for (const auto& f : snapshot.surfaceForces())
+        {
+            if (f.loadCaseId == 0 ? !includeSW : (targetCaseId > 0 && f.loadCaseId != targetCaseId)) continue;
+            const auto* n = snapshot.getNode(f.nodeId);
+            addForce(n ? gp_Pnt(n->x, n->y, n->z) : gp_Pnt(), gp_Vec(f.fx, f.fy, f.fz) * (factor * forceScale));
         }
 
         if (includeSW)
