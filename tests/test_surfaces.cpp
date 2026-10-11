@@ -19,7 +19,9 @@
 //   361  charges sur une zone localisée (rectangle du repère local, découpe exacte des éléments et des ouvertures) et à
 //        variation linéaire (pression hydrostatique sur un voile : résultante γ·h²/2·L, point d'application à h/3) ;
 //   362  unités (essai G) : même modèle (coques, poids propre, charge surfacique, appuis linéiques élastiques, masses) calculé
-//        en kN·m et en N·m : déplacements et fréquences identiques, réactions et masses dans le rapport 1000, équilibre.
+//        en kN·m et en N·m : déplacements et fréquences identiques, réactions et masses dans le rapport 1000, équilibre ;
+//   363  robustesse et performance : plancher de 24 dalles sur poutres et poteaux (≈ 1500 coques), temps de maillage et de
+//        calcul, équilibre global ; invalidation : ouverture → remaillage, charge ou appui linéique → maillage conservé.
 
 #include "test_common.h"
 
@@ -35,6 +37,7 @@
 #include "NDC/NDCExporter.h"
 #include "NDC/ReportManager.h"
 
+#include <QElapsedTimer>
 #include <QJsonObject>
 #include <QTemporaryDir>
 
@@ -893,6 +896,80 @@ bool runSuite_Surfaces(int& passed)
                        std::abs(fb.totalMass[2] - 1000.0 * fa.totalMass[2]) < 1e-6 * fb.totalMass[2] && std::abs(fa.totalMass[2] - 2.5 * 0.2 * 20.0) < 1e-9,
                    "Test 362: f1 = " << fa.modes[0].frequency << " / " << fb.modes[0].frequency << " Hz, masses " << fa.totalMass[2] << " t / " << fb.totalMass[2] << " kg");
         std::cout << "[PASS] Test 362: Unités kN / N : déplacements, réactions, fréquences et masses cohérents" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 363 : nombreuses surfaces — temps, équilibre, invalidation du maillage
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        const int nx = 6, ny = 4;
+        const double a = 4.0, H = 3.0;
+        const Material c = Material::concreteC30_37();
+        std::map<std::pair<int, int>, int> top;
+        for (int i = 0; i <= nx; ++i)
+            for (int j = 0; j <= ny; ++j)
+            {
+                const int b = m.addNode(i * a, j * a, 0);
+                m.getNode(b)->setSupport(SupportDefinition::fixed());
+                top[{ i, j }] = m.addNode(i * a, j * a, H);
+                m.addColumn(b, top[{ i, j }], Section::rectangular(0.4, 0.4), c, 0.0, "Poteau");
+            }
+        double beamLength = 0;
+        for (int i = 0; i <= nx; ++i)
+            for (int j = 0; j <= ny; ++j)
+            {
+                if (i < nx) m.addBar(top[{ i, j }], top[{ i + 1, j }], Section::rectangular(0.3, 0.5), c, BarRole::Beam, 0.0, "Poutre"), beamLength += a;
+                if (j < ny) m.addBar(top[{ i, j }], top[{ i, j + 1 }], Section::rectangular(0.3, 0.5), c, BarRole::Beam, 0.0, "Poutre"), beamLength += a;
+            }
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "G+Q", LoadCaseCategory::Dead, true, 1.0));
+        std::vector<int> slabs;
+        for (int i = 0; i < nx; ++i)
+            for (int j = 0; j < ny; ++j)
+            {
+                const int s = m.addSlab({ top[{ i, j }], top[{ i + 1, j }], top[{ i + 1, j + 1 }], top[{ i, j + 1 }] }, 0.2, "Dalle");
+                m.getSlab(s)->setMaterial(c);
+                slabs.push_back(s);
+                TSA::Model::SurfaceLoad sl;
+                sl.surfaceId = s;
+                sl.loadCaseId = lc;
+                sl.value = 3.0;
+                m.loadManager().addSurfaceLoad(sl);
+            }
+        QElapsedTimer t;
+        t.start();
+        const auto r = runSurfaces(m, settings2D(0.5, true), true, lc);
+        const double seconds = t.elapsed() / 1000.0;
+        TEST_CHECK(!r.compat.blocking() && r.run.success, "Test 363: plancher de " << slabs.size() << " dalles (" << blockingText(r.compat) << errorsOf(r.prepared) << r.run.message << ")");
+        const double g = c.mechanical.density * 9.81 / 1000.0;
+        const double area = nx * ny * a * a;
+        const double expected = g * (0.2 * area + Section::rectangular(0.4, 0.4).area() * H * (nx + 1) * (ny + 1) + Section::rectangular(0.3, 0.5).area() * beamLength) + 3.0 * area;
+        const double rz = r.run.results.equilibrium().reactionFz;
+        std::cout << "  " << slabs.size() << " dalles, " << r.compat.surfaces.elements.size() << " coques, " << r.compat.surfaces.nodes.size() << " nœuds de surface : maillage + calcul "
+                  << seconds << " s ; Σ Rz " << rz << " kN (attendu " << expected << ")" << std::endl;
+        TEST_CHECK(r.compat.surfaces.elements.size() >= 1000 && std::abs(rz - expected) < 1e-6 * expected, "Test 363: équilibre global (Σ Rz = " << rz << ", attendu " << expected << ")");
+        TEST_CHECK(seconds < 300.0, "Test 363: durée raisonnable (" << seconds << " s)");
+
+        // Invalidation : charges et appuis linéiques ne modifient pas l'empreinte du maillage (pas de remaillage inutile) ;
+        // une ouverture la modifie (remaillage nécessaire).
+        const std::string h0 = MeshGeometry::extract(m).hash;
+        TSA::Model::SurfaceEdgeSupport es;
+        es.fixed = { false, false, true, false, false, false };
+        m.getSlab(slabs.front())->setEdgeSupports({ es });
+        TSA::Model::SurfaceLoad extra;
+        extra.surfaceId = slabs.back();
+        extra.loadCaseId = lc;
+        extra.value = 1.0;
+        extra.zone = true;
+        extra.zoneU1 = extra.zoneV1 = 1.0;
+        m.loadManager().addSurfaceLoad(extra);
+        const std::string h1 = MeshGeometry::extract(m).hash;
+        SlabOpening o;
+        o.polygon = { { 1, 1 }, { 2, 1 }, { 2, 2 }, { 1, 2 } };
+        m.getSlab(slabs.front())->setOpenings({ o });
+        const std::string h2 = MeshGeometry::extract(m).hash;
+        TEST_CHECK(h0 == h1 && h1 != h2, "Test 363: empreinte du maillage conservée (charges, appuis) et modifiée (ouverture)");
+        std::cout << "[PASS] Test 363: Plancher de " << slabs.size() << " dalles (" << seconds << " s), invalidation du maillage" << std::endl;
         ++passed;
     }
     return true;
