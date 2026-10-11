@@ -54,6 +54,13 @@ surfacique de 5 kN/m² (cas G, avec poids propre) et maillage enregistré (quadr
 transmise en coques OpenSees (96 ShellMITC4) : Σ réactions = 373,1 kN (charge, poids propre des barres et de la dalle),
 déplacement maximal de la dalle 1,58 mm. Voir docs/SURFACES.md.
 
+## Voile de réservoir : appui linéique et poussée hydrostatique (test 361)
+
+`TSA_Exemple_Voile_Reservoir.tsa` est un voile de 5 × 3 m (e = 20 cm), encastré sur toute la longueur de son pied par un appui linéique, sous une hauteur d'eau de 2 m (γ = 10 kN/m³). La poussée hydrostatique p = 20 − 10·v (kN/m²) s'applique sur la zone v ≤ 2 m. Le maillage est enregistré (quadrangles de 0,4 m, 104 ShellMITC4).
+
+- **Calcul statique (F5) :** Rz = 73,6 kN (poids propre), poussée de 100 kN appliquée à h/3, déplacement maximal 0,84 mm en tête.
+- **Calcul modal** (Ctrl+F5, type « Modale ») : 6 modes, masse 7,5 t, f1 = 12,85 Hz.
+
 ## Trois modèles filaires (tests 347 à 349)
 
 | Fichier | Ouvrage | Nœuds | Barres | Appuis |
