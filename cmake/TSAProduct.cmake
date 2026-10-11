@@ -604,6 +604,8 @@ set(ANALYSIS_ENGINE_SOURCES
     ${TSA_ROOT}/src/Analysis/Engine/AnalysisEngineRegistry.cpp
     ${TSA_ROOT}/src/Analysis/Engine/AnalysisManager.h
     ${TSA_ROOT}/src/Analysis/Engine/AnalysisManager.cpp
+    ${TSA_ROOT}/src/Api/SurfaceApi.h
+    ${TSA_ROOT}/src/Api/SurfaceApi.cpp
     ${TSA_ROOT}/src/Analysis/Engines/BuiltInEngines.cpp
     ${TSA_ROOT}/src/Analysis/Engines/OpenSees/OpenSeesEngine.h
     ${TSA_ROOT}/src/Analysis/Engines/OpenSees/OpenSeesEngine.cpp

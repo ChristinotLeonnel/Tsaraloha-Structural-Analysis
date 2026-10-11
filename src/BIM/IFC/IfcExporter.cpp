@@ -8,6 +8,7 @@
 #include "../Core/BimModel.h"
 #include "../Core/IfcGuid.h"
 #include "../../Coordinate/LevelManager.h"
+#include "../../Mesh/MeshGeometry.h"
 #include "../../Model/Model.h"
 
 #include <QFile>
@@ -263,13 +264,24 @@ private:
         return m;
     }
 
-    int surfaceMember(const AnalyticalRef& r, const std::vector<Vec3>& pts, const std::vector<int>& nodeIds, double thickness)
+    /// Élément surfacique analytique : contour extérieur, ouvertures en contours intérieurs (IfcFaceBound), type prédéfini
+    /// selon la formulation (SHELL, BENDING_ELEMENT, MEMBRANE_ELEMENT).
+    int surfaceMember(const AnalyticalRef& r, const std::vector<Vec3>& pts, const std::vector<int>& nodeIds, double thickness,
+                      const std::vector<std::vector<Vec3>>& holes = {}, const char* predefined = "SHELL")
     {
         if (pts.size() < 3) return 0;
         std::vector<int> loop;
         for (const auto& p : pts) loop.push_back(m_geom.point(p));
         const int poly = m_w.add("IFCPOLYLOOP", W::refs(loop));
         const int bound = m_w.add("IFCFACEOUTERBOUND", W::ref(poly) + ",.T.");
+        std::vector<int> bounds { bound };
+        for (const auto& h : holes)
+        {
+            if (h.size() < 3) continue;
+            std::vector<int> hl;
+            for (const auto& p : h) hl.push_back(m_geom.point(p));
+            bounds.push_back(m_w.add("IFCFACEBOUND", W::ref(m_w.add("IFCPOLYLOOP", W::refs(hl))) + ",.T."));
+        }
         // Plan porteur : premier sommet, normale de Newell
         Vec3 n { 0, 0, 0 };
         for (std::size_t i = 0; i < pts.size(); ++i)
@@ -287,11 +299,11 @@ private:
         const double lx = std::sqrt(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
         x = { x[0] / lx, x[1] / lx, x[2] / lx };
         const int plane = m_w.add("IFCPLANE", W::ref(m_geom.placement3(pts[0], n, x)));
-        const int face = m_w.add("IFCFACESURFACE", W::refs({ bound }) + "," + W::ref(plane) + ",.T.");
+        const int face = m_w.add("IFCFACESURFACE", W::refs(bounds) + "," + W::ref(plane) + ",.T.");
         const int topo = m_w.add("IFCTOPOLOGYREPRESENTATION", W::ref(m_ctx.modelContext) + ",'Reference','Face'," + W::refs({ face }));
         const int shape = m_w.add("IFCPRODUCTDEFINITIONSHAPE", "$,$," + W::refs({ topo }));
         const int m = m_w.add("IFCSTRUCTURALSURFACEMEMBER", W::str(guidOf(r)) + ",$," + W::str(r.label()) + ",$,$,"
-                                                            + W::ref(m_ctx.analysisPlacement) + "," + W::ref(shape) + ",.SHELL.,"
+                                                            + W::ref(m_ctx.analysisPlacement) + "," + W::ref(shape) + "," + W::enumeration(predefined) + ","
                                                             + W::real(thickness));
         for (int nid : nodeIds)
             if (int c = connection(nid)) m_rels.connect(m, c);
@@ -311,6 +323,24 @@ private:
         const int model = m_w.add("IFCSTRUCTURALANALYSISMODEL", W::str(s.analysisModel.globalId) + ",$," + W::str(s.analysisModel.name)
                                                                     + ",$,$,.LOADING_3D.,$,$,$," + W::ref(m_ctx.analysisPlacement));
         const auto& m = m_model;
+        // Géométrie des surfaces partagée avec le maillage (contours, portes en encoche, ouvertures)
+        const auto surfaces = TSA::Mesh::MeshGeometry::extract(m);
+        auto vec = [](const TSA::Mesh::P3& p) { return Vec3 { p.x, p.y, p.z }; };
+        auto loops = [&](const std::string& ref, std::vector<Vec3>* outer, std::vector<std::vector<Vec3>>* holes) {
+            const auto* sg = surfaces.surface(ref);
+            if (!sg) return false;
+            outer->clear();
+            for (const auto& p : sg->outer) outer->push_back(vec(p));
+            for (const auto& h : sg->holes)
+            {
+                holes->emplace_back();
+                for (const auto& p : h) holes->back().push_back(vec(p));
+            }
+            return true;
+        };
+        auto predefined = [](TSA::Model::SurfaceFormulation f) {
+            return f == TSA::Model::SurfaceFormulation::Plate ? "BENDING_ELEMENT" : f == TSA::Model::SurfaceFormulation::Membrane ? "MEMBRANE_ELEMENT" : "SHELL";
+        };
         for (const auto& [id, e] : m_ctx.bim.elements())
         {
             std::vector<int> members;
@@ -337,9 +367,11 @@ private:
                     if (auto it = m.slabs().find(r.id); it != m.slabs().end())
                     {
                         std::vector<Vec3> pts;
-                        for (int nid : it->second.nodeIds())
-                            if (const auto* n = m.getNode(nid)) pts.push_back({ n->x(), n->y(), n->z() });
-                        item = surfaceMember(r, pts, it->second.nodeIds(), it->second.thickness());
+                        std::vector<std::vector<Vec3>> holes;
+                        if (!loops("SL" + std::to_string(r.id), &pts, &holes))
+                            for (int nid : it->second.nodeIds())
+                                if (const auto* n = m.getNode(nid)) pts.push_back({ n->x(), n->y(), n->z() });
+                        item = surfaceMember(r, pts, it->second.nodeIds(), it->second.thickness(), holes, predefined(it->second.formulation()));
                     }
                     break;
                 case ElementKind::Wall:
@@ -350,8 +382,12 @@ private:
                         if (a && b)
                         {
                             const double h = it->second.height();
-                            item = surfaceMember(r, { { a->x(), a->y(), a->z() }, { b->x(), b->y(), b->z() }, { b->x(), b->y(), b->z() + h }, { a->x(), a->y(), a->z() + h } },
-                                                 { it->second.startNodeId(), it->second.endNodeId() }, it->second.thickness());
+                            std::vector<Vec3> pts;
+                            std::vector<std::vector<Vec3>> holes;
+                            if (!loops("W" + std::to_string(r.id), &pts, &holes))
+                                pts = { { a->x(), a->y(), a->z() }, { b->x(), b->y(), b->z() }, { b->x(), b->y(), b->z() + h }, { a->x(), a->y(), a->z() + h } };
+                            item = surfaceMember(r, pts, { it->second.startNodeId(), it->second.endNodeId() }, it->second.thickness(), holes,
+                                                 predefined(it->second.formulation()));
                         }
                     }
                     break;

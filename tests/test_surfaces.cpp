@@ -21,11 +21,15 @@
 //   362  unités (essai G) : même modèle (coques, poids propre, charge surfacique, appuis linéiques élastiques, masses) calculé
 //        en kN·m et en N·m : déplacements et fréquences identiques, réactions et masses dans le rapport 1000, équilibre ;
 //   363  robustesse et performance : plancher de 24 dalles sur poutres et poteaux (≈ 1500 coques), temps de maillage et de
-//        calcul, équilibre global ; invalidation : ouverture → remaillage, charge ou appui linéique → maillage conservé.
+//        calcul, équilibre global ; invalidation : ouverture → remaillage, charge ou appui linéique → maillage conservé ;
+//   364  API interne des surfaces (sans interface) : description, capacités du moteur, modifications validées, export JSON
+//        versionné ; IFC : élément surfacique analytique avec ouvertures (IfcFaceBound) et type selon la formulation.
 
 #include "test_common.h"
 
 #include "Analysis/Engine/AnalysisManager.h"
+#include "Api/SurfaceApi.h"
+#include "BIM/IFC/IfcExporter.h"
 #include "Grid/GridManager.h"
 #include "IO/TSAFile.h"
 #include "Mesh/MeshGenerator.h"
@@ -38,6 +42,7 @@
 #include "NDC/ReportManager.h"
 
 #include <QElapsedTimer>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QTemporaryDir>
 
@@ -970,6 +975,64 @@ bool runSuite_Surfaces(int& passed)
         const std::string h2 = MeshGeometry::extract(m).hash;
         TEST_CHECK(h0 == h1 && h1 != h2, "Test 363: empreinte du maillage conservée (charges, appuis) et modifiée (ouverture)");
         std::cout << "[PASS] Test 363: Plancher de " << slabs.size() << " dalles (" << seconds << " s), invalidation du maillage" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 364 : API interne des surfaces, export IFC des surfaces analytiques
+    // -------------------------------------------------------------------------
+    {
+        using TSA::Api::SurfaceApi;
+        Model m;
+        const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(6, 0, 0), n3 = m.addNode(6, 4, 0), n4 = m.addNode(0, 4, 0);
+        const int s = m.addSlab({ n1, n2, n3, n4 }, 0.2, "Dalle");
+        const int w = m.addWall(n1, n2, 3.0, 0.2, "Voile");
+        std::string err;
+        TEST_CHECK(SurfaceApi::addOpening(m, TSA::Model::SurfaceTargetKind::Slab, s, { { 2, 1 }, { 3, 1 }, { 3, 2 }, { 2, 2 } }, "trémie", &err),
+                   "Test 364: ouverture ajoutée (" << err << ")");
+        TEST_CHECK(!SurfaceApi::addOpening(m, TSA::Model::SurfaceTargetKind::Slab, s, { { 5, 3 }, { 7, 3 }, { 7, 5 }, { 5, 5 } }, "hors dalle", &err) && !err.empty(),
+                   "Test 364: ouverture hors de la dalle refusée");
+        TSA::Model::SurfaceEdgeSupport sp;
+        sp.edge = 2;
+        sp.fixed[2] = true;
+        TEST_CHECK(SurfaceApi::addEdgeSupport(m, TSA::Model::SurfaceTargetKind::Slab, s, sp, &err), "Test 364: appui linéique ajouté");
+        sp.edge = 9;
+        TEST_CHECK(!SurfaceApi::addEdgeSupport(m, TSA::Model::SurfaceTargetKind::Slab, s, sp, &err), "Test 364: bord inexistant refusé");
+        TEST_CHECK(!SurfaceApi::addEdgeSupport(m, TSA::Model::SurfaceTargetKind::Wall, w, TSA::Model::SurfaceEdgeSupport {}, &err), "Test 364: appui sans effet refusé");
+        TSA::Model::SurfaceLoad l;
+        l.surfaceId = s;
+        l.loadCaseId = 999;
+        TEST_CHECK(SurfaceApi::addLoad(m, l, &err) == 0, "Test 364: cas de charge inexistant refusé");
+        l.loadCaseId = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        l.value = 2.0;
+        TEST_CHECK(SurfaceApi::addLoad(m, l, &err) > 0, "Test 364: charge ajoutée (" << err << ")");
+        TEST_CHECK(SurfaceApi::setFormulation(m, TSA::Model::SurfaceTargetKind::Wall, w, TSA::Model::SurfaceFormulation::Plate, &err), "Test 364: formulation");
+
+        const auto list = SurfaceApi::list(m);
+        TEST_CHECK(list.size() == 2 && list[0].ref == "SL" + std::to_string(s) && std::abs(list[0].netArea - 23.0) < 1e-9 && std::abs(list[0].grossArea - 24.0) < 1e-9 &&
+                       list[0].openings == 1 && list[0].edgeSupports == 1 && list[0].loads == 1 && list[1].formulation == TSA::Model::SurfaceFormulation::Plate,
+                   "Test 364: description des surfaces");
+        TSA::Analysis::AnalysisEngineRegistry reg;
+        TSA::Analysis::registerBuiltInEngines(reg);
+        const auto os = SurfaceApi::capabilities(*reg.engine("opensees"));
+        const auto c2 = SurfaceApi::capabilities(*reg.engine("custom2d"));
+        TEST_CHECK(os.shell && os.modal && os.edgeSupports && os.zoneLoads && !os.plate && !os.membrane && !os.thermal && !os.supports(TSA::Model::SurfaceFormulation::Plate) &&
+                       !c2.shell && !c2.edgeSupports,
+                   "Test 364: capacités interrogées avant usage (OpenSees : coques, modal ; Custom2D : aucune surface)");
+        const QJsonObject j = SurfaceApi::toJson(m);
+        const QJsonArray arr = j.value("surfaces").toArray();
+        TEST_CHECK(j.value("format").toString() == "tsa.surfaces/1" && arr.size() == 2 && arr[0].toObject().value("openings").toArray().size() == 1 &&
+                       arr[0].toObject().value("outer").toArray().size() == 4 && arr[1].toObject().value("formulation").toString() == "plate",
+                   "Test 364: export JSON versionné");
+
+        TSA::BIM::Ifc::IfcExportOptions opt;
+        opt.timeStamp = "2026-10-12T00:00:00";
+        std::string ifc;
+        TSA::BIM::Ifc::IfcExporter::exportToString(m, opt, ifc);
+        TEST_CHECK(ifc.find("IFCSTRUCTURALSURFACEMEMBER") != std::string::npos && ifc.find("IFCFACEBOUND(") != std::string::npos &&
+                       ifc.find(".BENDING_ELEMENT.") != std::string::npos && ifc.find(".SHELL.") != std::string::npos,
+                   "Test 364: IFC — surfaces analytiques avec ouverture (IfcFaceBound) et type selon la formulation");
+        TEST_CHECK(!list[0].globalId.empty() && ifc.find(list[0].globalId) != std::string::npos, "Test 364: GlobalId stable de la dalle présent dans l'IFC (" << list[0].globalId << ")");
+        std::cout << "[PASS] Test 364: API interne des surfaces et export IFC" << std::endl;
         ++passed;
     }
     return true;
