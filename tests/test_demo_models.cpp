@@ -18,6 +18,7 @@
 #include "test_common.h"
 
 #include "Analysis/OpenSeesSolver.h"
+#include "Geometry/DiagramGeometry.h"
 #include "Grid/GridDefinition.h"
 #include "Grid/GridManager.h"
 #include "IO/TSAFile.h"
@@ -618,13 +619,14 @@ void buildMixedBuilding(Model& m, TSA::Grid::GridDefinition& grid)
             }
     for (double x : xs)
         for (double y : ys) w.support(x, y, 0, SupportDefinition::fixed());
-    // Planchers R+1 à R+3 : poutres acier selon Y (9 m), solives aux tiers des travées X, poutres de file selon X
+    // Planchers R+1 à R+3 : poutres acier selon Y (9 m), solives aux tiers des travées X, poutres de file en caisson
+    // soudé selon X (elles reprennent les solives à leurs tiers)
     for (std::size_t k = 1; k <= 3; ++k)
     {
         const double z = zs[k];
         for (std::size_t i = 0; i + 1 < xs.size(); ++i)
         {
-            for (double y : ys) w.bar(P(xs[i], y, z), P(xs[i + 1], y, z), Kind::Beam, Section::heb(300), s, "Poutre de file acier");
+            for (double y : ys) w.bar(P(xs[i], y, z), P(xs[i + 1], y, z), Kind::Beam, Section::boxHollow(0.30, 0.70, 0.015, 0.025, "Caisson soudé 300x700"), s, "Poutre de file acier");
             for (double t : { 1.0 / 3, 2.0 / 3 })
             {
                 const double x = xs[i] + t * (xs[i + 1] - xs[i]);
@@ -1122,6 +1124,42 @@ bool runDemoProjects(int& passed, const QString& outDir, const QString& tmpDir)
         std::cout << std::defaultfloat << std::endl;
         TEST_CHECK(okU && eq.isBalanced(1e-3) && sum.maxDisplacement > 0 && sum.maxDisplacement < 0.5,
                    "Test " << testNo << ": calcul ELU convergé et équilibré (écart " << eq.maxError() << " kN) " << err);
+
+        // Contrainte normale de fibre extrême (diagramme « σ = N/A ± M/W ») : contrôle analytique, puis valeur maximale
+        if (testNo == 350)
+        {
+            TSA::Analysis::StationForces st;
+            st.N = 100.0;  // kN
+            st.My = 50.0;  // kN·m
+            st.Mz = -10.0; // kN·m
+            const double s1 = TSA::Geometry::DiagramGeometry::normalStressMPa(st, 0.01, 0.001, 0.0005);
+            st.N = -400.0;
+            const double s2 = TSA::Geometry::DiagramGeometry::normalStressMPa(st, 0.01, 0.001, 0.0005);
+            // (100/0,01 + 50/0,001 + 10/0,0005) kPa = 80 MPa ; (−400/0,01 − 70 000) kPa = −110 MPa
+            TEST_CHECK(std::abs(s1 - 80.0) < 1e-9 && std::abs(s2 + 110.0) < 1e-9, "Test " << testNo << ": σ = N/A ± M/W (" << s1 << " ; " << s2 << " MPa)");
+        }
+        {
+            double smax = 0.0;
+            std::string smaxName;
+            for (const auto& [key, er] : ru.allElementResults())
+            {
+                const Section* sec = key.kind == StructuralElementKind::Beam     ? (m.getBeam(key.id) ? &m.getBeam(key.id)->section() : nullptr)
+                                     : key.kind == StructuralElementKind::Column ? (m.getColumn(key.id) ? &m.getColumn(key.id)->section() : nullptr)
+                                                                                : nullptr;
+                if (!sec) continue;
+                for (const auto* st : { &er.startForces, &er.endForces })
+                {
+                    const double sv = std::abs(TSA::Geometry::DiagramGeometry::normalStressMPa(*st, sec->area(), sec->wy(), sec->wz()));
+                    if (sv > smax)
+                    {
+                        smax = sv;
+                        smaxName = (key.kind == StructuralElementKind::Beam ? m.getBeam(key.id)->name() : m.getColumn(key.id)->name()) + " — " + sec->name;
+                    }
+                }
+            }
+            std::cout << std::fixed << std::setprecision(1) << "  contrainte normale de fibre extrême max (poutres et poteaux, ELU) : " << smax << " MPa (" << smaxName << ")"
+                      << std::defaultfloat << std::endl;
+        }
 
         // 3. Haubans : contrôle analytique de la précontrainte (câble bi-encastré : N = T0) et tension dans tous les haubans
         if (!m.cables().empty())
