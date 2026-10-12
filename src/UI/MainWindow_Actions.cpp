@@ -2,6 +2,7 @@
 #include <QSignalBlocker>
 #include <QLineEdit>
 #include "../Project/ProjectManager.h"
+#include "Display/DisplayMenus.h"
 #include "../Viewer/DisplayProfile.h"
 #include <QMessageBox>
 #include <QSettings>
@@ -1314,21 +1315,17 @@ void MainWindow::createMenus()
     viewMenu->addAction(m_actionCoordSystem);
     viewMenu->addAction(m_actionSectionCut);
     viewMenu->addSeparator();
-    createDisplayScaleMenus();
-    viewMenu->addMenu(m_annotationScaleMenu);
-    viewMenu->addMenu(m_loadScaleMenu);
-    m_displayProfilesMenu = viewMenu->addMenu(tr("Profils d'affichage"));
-    m_displayProfilesMenu->setToolTipsVisible(true);
-    connect(m_displayProfilesMenu, &QMenu::aboutToShow, this, &MainWindow::rebuildDisplayProfilesMenu);
-    rebuildDisplayProfilesMenu();
-    // Diagnostic d'affichage (développeur) : objets de la scène et échelles graphiques du document au premier plan
-    connect(viewMenu->addAction(tr("Diagnostic d'affichage…")), &QAction::triggered, this, [this] {
-        if (!m_occView) return;
-        const QString text = m_occView->displayDiagnosticsText();
-        if (m_consoleDock) m_consoleDock->appendLog(text, "INFO");
-        QMessageBox box(QMessageBox::Information, tr("Diagnostic d'affichage"), text, QMessageBox::Ok, this);
-        box.setTextInteractionFlags(Qt::TextSelectableByMouse);
-        box.exec();
+    // Échelles des annotations et des charges, profils d'affichage, diagnostic : composant partagé avec TSALab
+    m_displayMenus = new TSA::UI::DisplayMenus(this, { [this] { return m_occView; },
+                                                       [this]() -> const TSA::Model::Model* { return m_model; },
+                                                       [this] { return m_projectManager && m_projectManager->hasFilePath() ? m_projectManager->currentFilePath() : QString(); } });
+    m_annotationScaleMenu = m_displayMenus->annotationMenu();
+    m_loadScaleMenu = m_displayMenus->loadScaleMenu();
+    m_displayMenus->addTo(viewMenu);
+    connect(m_displayMenus, &TSA::UI::DisplayMenus::profileApplied, this, [this] { syncDisplayActionsFromView(); });
+    connect(m_displayMenus, &TSA::UI::DisplayMenus::message, this, [this](const QString& text, const QString& type) {
+        if (m_consoleDock && (type != "INFO" || text.contains('\n'))) m_consoleDock->appendLog(text, type);
+        if (m_statusInfo && !text.contains('\n')) m_statusInfo->setText(text);
     });
     QMenu* visSub = viewMenu->addMenu(tr("Aides Visuelles"));
     visSub->addAction(m_actionGridVisible);
@@ -2281,209 +2278,9 @@ void MainWindow::createStatusBar()
     });
 }
 
-void MainWindow::createDisplayScaleMenus()
-{
-    using TSA::Viewer::AnnotationSizeMode;
-    using TSA::Viewer::AnnotationStyle;
-    auto& style = AnnotationStyle::instance();
-
-    // Échelle des annotations : taille des textes indépendante de la géométrie (aucune valeur modifiée)
-    m_annotationScaleMenu = new QMenu(tr("Échelle des annotations"), this);
-    auto* modes = new QActionGroup(m_annotationScaleMenu);
-    auto* screen = m_annotationScaleMenu->addAction(tr("Taille constante à l'écran"));
-    auto* model = m_annotationScaleMenu->addAction(tr("Taille liée au modèle"));
-    screen->setToolTip(tr("Textes lisibles quel que soit le zoom (hauteur en pixels, facteur d'écran compris)"));
-    model->setToolTip(tr("Textes en mètres du modèle : ils grandissent et rétrécissent avec le zoom"));
-    for (QAction* a : { screen, model }) a->setCheckable(true), modes->addAction(a);
-    auto syncModes = [screen, model, &style] {
-        screen->setChecked(style.settings().mode == AnnotationSizeMode::ScreenConstant);
-        model->setChecked(style.settings().mode == AnnotationSizeMode::ModelLinked);
-    };
-    syncModes();
-    connect(screen, &QAction::triggered, this, [&style] { style.setMode(AnnotationSizeMode::ScreenConstant); });
-    connect(model, &QAction::triggered, this, [&style] { style.setMode(AnnotationSizeMode::ModelLinked); });
-    connect(&style, &AnnotationStyle::changed, this, syncModes);
-    m_annotationScaleMenu->addSeparator();
-    connect(m_annotationScaleMenu->addAction(tr("Taille du texte…")), &QAction::triggered, this, [this, &style] {
-        bool ok = false;
-        const int px = QInputDialog::getInt(this, tr("Taille des annotations"), tr("Hauteur des textes (pixels logiques, 8 à 32) :"),
-                                            int(std::lround(style.settings().basePixels)), 8, 32, 1, &ok);
-        if (ok) style.setBasePixels(px);
-    });
-    connect(m_annotationScaleMenu->addAction(tr("Hauteur liée au modèle…")), &QAction::triggered, this, [this, &style] {
-        bool ok = false;
-        const double h = QInputDialog::getDouble(this, tr("Taille liée au modèle"), tr("Hauteur d'un texte (m) :"), style.settings().modelHeight, 0.01, 10.0, 2, &ok);
-        if (ok) style.setModelHeight(h);
-    });
-    connect(m_annotationScaleMenu->addAction(tr("Adapter automatiquement")), &QAction::triggered, this, [this, &style] {
-        double span = 10.0;
-        if (m_model && !m_model->nodes().empty())
-        {
-            double lo[3] = { 1e300, 1e300, 1e300 }, hi[3] = { -1e300, -1e300, -1e300 };
-            for (const auto& [id, n] : m_model->nodes())
-            {
-                const double c[3] = { n.x(), n.y(), n.z() };
-                for (int k = 0; k < 3; ++k) lo[k] = std::min(lo[k], c[k]), hi[k] = std::max(hi[k], c[k]);
-            }
-            span = std::max({ hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1.0 });
-        }
-        style.adaptTo(m_occView ? m_occView->height() : 800, span);
-    });
-    connect(m_annotationScaleMenu->addAction(tr("Réinitialiser les tailles")), &QAction::triggered, this, [&style] { style.reset(); });
-
-    // Échelle des charges : longueur des flèches seulement (les charges transmises au calcul sont inchangées)
-    using TSA::Geometry::LoadScaleMode;
-    m_loadScaleMenu = new QMenu(tr("Échelle des charges"), this);
-    auto* lmodes = new QActionGroup(m_loadScaleMenu);
-    struct ModeItem
-    {
-        QString text, tip;
-        LoadScaleMode mode;
-    };
-    const ModeItem items[] = {
-        { tr("Proportionnelle"), tr("Longueur proportionnelle à l'intensité dans chaque famille (kN, kN/m, kN/m², kN·m)"), LoadScaleMode::Proportional },
-        { tr("Automatique (minimum garanti)"), tr("Proportionnelle, avec une longueur minimale pour que les charges faibles restent visibles"), LoadScaleMode::Automatic },
-        { tr("Normalisée"), tr("Toutes les flèches de même longueur ; l'intensité est donnée par la valeur affichée"), LoadScaleMode::Normalized },
-    };
-    std::vector<std::pair<QAction*, LoadScaleMode>> modeActions;
-    for (const auto& it : items)
-    {
-        QAction* a = m_loadScaleMenu->addAction(it.text);
-        a->setToolTip(it.tip);
-        a->setCheckable(true);
-        a->setChecked((m_occView ? m_occView->loadScaleSettings().mode : TSA::Geometry::LoadScaleSettings {}.mode) == it.mode);
-        modeActions.emplace_back(a, it.mode);
-        lmodes->addAction(a);
-        const LoadScaleMode mode = it.mode;
-        connect(a, &QAction::triggered, this, [this, mode] {
-            if (!m_occView) return;
-            auto s = m_occView->loadScaleSettings();
-            s.mode = mode;
-            m_occView->setLoadScaleSettings(s);
-        });
-    }
-    m_loadScaleMenu->addSeparator();
-    connect(m_loadScaleMenu->addAction(tr("Facteur d'affichage…")), &QAction::triggered, this, [this] {
-        if (!m_occView) return;
-        bool ok = false;
-        const double f = QInputDialog::getDouble(this, tr("Échelle des charges"), tr("Facteur global d'affichage des flèches :"), m_occView->loadScale(), 0.05, 20.0, 2, &ok);
-        if (ok) m_occView->setLoadScale(f);
-    });
-    connect(m_loadScaleMenu->addAction(tr("Longueur minimale…")), &QAction::triggered, this, [this] {
-        if (!m_occView) return;
-        bool ok = false;
-        auto s = m_occView->loadScaleSettings();
-        const double r = QInputDialog::getDouble(this, tr("Échelle des charges"), tr("Longueur minimale (mode automatique), en % de la flèche maximale :"),
-                                                 s.minRatio * 100.0, 0.0, 100.0, 0, &ok);
-        if (!ok) return;
-        s.minRatio = r / 100.0;
-        m_occView->setLoadScaleSettings(s);
-    });
-    auto* values = m_loadScaleMenu->addAction(tr("Afficher les valeurs et unités"));
-    auto* legend = m_loadScaleMenu->addAction(tr("Afficher la légende des charges"));
-    for (QAction* a : { values, legend }) a->setCheckable(true), a->setChecked(true);
-    connect(values, &QAction::toggled, this, [this](bool on) {
-        if (!m_occView) return;
-        auto s = m_occView->loadScaleSettings();
-        s.showValues = s.showUnits = on;
-        m_occView->setLoadScaleSettings(s);
-    });
-    connect(legend, &QAction::toggled, this, [this](bool on) {
-        if (!m_occView) return;
-        auto s = m_occView->loadScaleSettings();
-        s.showLegend = on;
-        m_occView->setLoadScaleSettings(s);
-    });
-    connect(m_loadScaleMenu->addAction(tr("Réinitialiser l'échelle des charges")), &QAction::triggered, this, [this, values, legend, modeActions] {
-        if (!m_occView) return;
-        m_occView->setLoadScale(1.0);
-        m_occView->setLoadScaleSettings(TSA::Geometry::LoadScaleSettings {});
-        values->setChecked(true), legend->setChecked(true);
-        for (const auto& [a, mode] : modeActions) a->setChecked(mode == TSA::Geometry::LoadScaleSettings {}.mode);
-    });
-}
-
-void MainWindow::rebuildDisplayProfilesMenu()
-{
-    if (!m_displayProfilesMenu) return;
-    m_displayProfilesMenu->clear();
-    TSA::Viewer::DisplayProfileStore store;
-    auto* group = new QActionGroup(m_displayProfilesMenu);
-    for (const auto& p : store.profiles())
-    {
-        QAction* a = m_displayProfilesMenu->addAction(p.name);
-        a->setCheckable(true);
-        a->setChecked(p.name == m_activeDisplayProfile);
-        a->setToolTip(tr("Applique les réglages graphiques du profil (aucune donnée du modèle ni des résultats n'est modifiée)"));
-        group->addAction(a);
-        const QString name = p.name;
-        connect(a, &QAction::triggered, this, [this, name] { applyDisplayProfile(name); });
-    }
-    m_displayProfilesMenu->addSeparator();
-    connect(m_displayProfilesMenu->addAction(tr("Enregistrer l'affichage actuel comme profil…")), &QAction::triggered, this, [this] {
-        if (!m_occView) return;
-        bool ok = false;
-        const QString name = QInputDialog::getText(this, tr("Profil d'affichage"), tr("Nom du profil :"), QLineEdit::Normal,
-                                                   m_activeDisplayProfile.isEmpty() ? tr("Mon profil") : m_activeDisplayProfile, &ok).trimmed();
-        if (!ok || name.isEmpty()) return;
-        TSA::Viewer::DisplayProfileStore store;
-        if (store.contains(name) &&
-            QMessageBox::question(this, tr("Profil d'affichage"), tr("Le profil « %1 » existe : le remplacer par l'affichage actuel ?").arg(name)) != QMessageBox::Yes)
-            return;
-        QString error;
-        if (!store.save({ name, TSA::Viewer::captureDisplaySettings(*m_occView) }, &error))
-        {
-            QMessageBox::warning(this, tr("Profil d'affichage"), error);
-            return;
-        }
-        m_activeDisplayProfile = name;
-        if (m_projectManager && m_projectManager->hasFilePath()) store.setDocumentProfile(m_projectManager->currentFilePath(), name);
-        if (m_statusInfo) m_statusInfo->setText(tr("Profil d'affichage « %1 » enregistré").arg(name));
-    });
-    auto pick = [this](const QString& title) {
-        TSA::Viewer::DisplayProfileStore store;
-        QStringList names;
-        for (const auto& p : store.profiles()) names << p.name;
-        bool ok = false;
-        const QString n = QInputDialog::getItem(this, title, tr("Profil :"), names, 0, false, &ok);
-        return ok ? n : QString();
-    };
-    connect(m_displayProfilesMenu->addAction(tr("Renommer un profil…")), &QAction::triggered, this, [this, pick] {
-        const QString from = pick(tr("Renommer un profil"));
-        if (from.isEmpty()) return;
-        bool ok = false;
-        const QString to = QInputDialog::getText(this, tr("Renommer un profil"), tr("Nouveau nom :"), QLineEdit::Normal, from, &ok).trimmed();
-        if (!ok || to == from) return;
-        QString error;
-        TSA::Viewer::DisplayProfileStore store;
-        if (!store.rename(from, to, &error)) QMessageBox::warning(this, tr("Renommer un profil"), error);
-        else if (m_activeDisplayProfile == from) m_activeDisplayProfile = to;
-    });
-    connect(m_displayProfilesMenu->addAction(tr("Supprimer un profil…")), &QAction::triggered, this, [this, pick] {
-        const QString name = pick(tr("Supprimer un profil"));
-        if (name.isEmpty()) return;
-        if (QMessageBox::question(this, tr("Supprimer un profil"), tr("Supprimer le profil « %1 » ?").arg(name)) != QMessageBox::Yes) return;
-        TSA::Viewer::DisplayProfileStore().remove(name);
-        if (m_activeDisplayProfile == name) m_activeDisplayProfile.clear();
-    });
-    connect(m_displayProfilesMenu->addAction(tr("Rétablir les profils fournis")), &QAction::triggered, this, [] {
-        TSA::Viewer::DisplayProfileStore().restoreDefaults();
-    });
-}
-
 bool MainWindow::applyDisplayProfile(const QString& name)
 {
-    if (!m_occView) return false;
-    TSA::Viewer::DisplayProfileStore store;
-    if (!store.contains(name)) return false;
-    const QStringList unknown = TSA::Viewer::applyDisplaySettings(*m_occView, store.profile(name).settings);
-    if (!unknown.isEmpty() && m_consoleDock)
-        m_consoleDock->appendLog(tr("Profil « %1 » : réglages inconnus ignorés (%2)").arg(name, unknown.join(", ")), "WARN");
-    m_activeDisplayProfile = name;
-    if (m_projectManager && m_projectManager->hasFilePath()) store.setDocumentProfile(m_projectManager->currentFilePath(), name);
-    syncDisplayActionsFromView();
-    if (m_statusInfo) m_statusInfo->setText(tr("Profil d'affichage « %1 » appliqué").arg(name));
-    return true;
+    return m_displayMenus && m_displayMenus->applyProfile(name);   // resynchronisation : signal profileApplied
 }
 
 void MainWindow::syncDisplayActionsFromView()

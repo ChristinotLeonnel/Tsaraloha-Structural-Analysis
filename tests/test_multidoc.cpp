@@ -18,7 +18,10 @@
 //   387  profils d'affichage : profils fournis, application sur une vraie vue (aucune donnée physique ni résultat
 //        modifié), clés inconnues ignorées, clés absentes sans effet, valeurs hors bornes refusées, liste blanche à
 //        l'enregistrement, créer / renommer / supprimer / rétablir, association à un document, persistance relue par un
-//        autre processus (registre) ; réglages de l'utilisateur jamais touchés (identité de réglages isolée, effacée).
+//        autre processus (registre) ; réglages de l'utilisateur jamais touchés (identité de réglages isolée, effacée) ;
+//   388  menus d'affichage partagés TSA / TSALab (UI/Display/DisplayMenus) : menus et actions, profil appliqué par le
+//        composant (signal, effet sur la vue, association au document), refus sans vue, échelle des charges,
+//        diagnostic ; aucune donnée du modèle modifiée.
 
 #include "test_common.h"
 
@@ -31,6 +34,8 @@
 #include "Viewer/OccView.h"
 #include "Viewer/ResultsVisualManager.h"
 #include "Viewer/AnnotationStyle.h"
+#include "UI/Display/DisplayMenus.h"
+#include "Geometry/LoadDisplayScale.h"
 
 #include <QDir>
 #include <QFile>
@@ -44,6 +49,9 @@
 #include <QProcess>
 #include <QSettings>
 #include <QApplication>
+#include <QAction>
+#include <QMenu>
+#include <QWidget>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -619,6 +627,79 @@ bool runSuite_MultiDoc(int& passed)
         QCoreApplication::setOrganizationName(savedOrg);
         QCoreApplication::setApplicationName(savedApp);
         std::cout << "[PASS] Test 387: Profils d'affichage (fournis, application, liste blanche, gestion, document, persistance)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 388 : menus d'affichage partagés (TSA et TSALab)
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::Viewer;
+        const QString savedOrg = QCoreApplication::organizationName(), savedApp = QCoreApplication::applicationName();
+        const QString isoOrg = QStringLiteral("TSA_TestSuite_Isolated"), isoApp = QStringLiteral("menus%1").arg(QCoreApplication::applicationPid());
+        QCoreApplication::setOrganizationName(isoOrg);
+        QCoreApplication::setApplicationName(isoApp);
+        const AnnotationSettings savedStyle = AnnotationStyle::instance().settings();
+
+        Model m;
+        const Portal pt = portal(m);
+        (void)pt;
+        QWidget host;
+        OccView view(&host);
+        host.resize(640, 480);
+        host.show();
+        view.resize(640, 480);
+        for (int k = 0; k < 20; ++k) QApplication::processEvents(), QThread::msleep(5);
+        view.setModel(&m);
+        view.rebuildAllShapes();
+        OccView* current = &view;
+        QString docPath = QStringLiteral("C:/Projets/Essai.tsalab");
+        TSA::UI::DisplayMenus menus(&host, { [&] { return current; }, [&]() -> const Model* { return &m; }, [&] { return docPath; } });
+        auto titles = [](QMenu* menu) {
+            QStringList t;
+            for (QAction* a : menu->actions())
+                if (!a->isSeparator()) t << a->text();
+            return t;
+        };
+        TEST_CHECK(menus.annotationMenu() && titles(menus.annotationMenu()).contains("Taille constante à l'écran") &&
+                       titles(menus.loadScaleMenu()).contains("Proportionnelle") && titles(menus.profilesMenu()).contains("Présentation") &&
+                       menus.diagnosticAction(),
+                   "Test 388: menus d'échelles, de profils et diagnostic construits par le composant partagé");
+        QMenu viewMenu;
+        menus.addTo(&viewMenu);
+        TEST_CHECK(viewMenu.actions().size() == 4, "Test 388: ajout au menu Affichage de la fenêtre hôte (3 menus + diagnostic)");
+
+        int applied = 0;
+        QObject::connect(&menus, &TSA::UI::DisplayMenus::profileApplied, [&](const QString&) { ++applied; });
+        const auto revision0 = m.revision();
+        TEST_CHECK(menus.applyProfile("Présentation") && applied == 1 && !view.isGridVisible() && !view.areNodesVisible() && menus.activeProfile() == "Présentation",
+                   "Test 388: profil appliqué par le composant — signal émis, vue modifiée");
+        TEST_CHECK(DisplayProfileStore().documentProfile(docPath) == "Présentation", "Test 388: profil associé au document de la fenêtre hôte");
+        TEST_CHECK(!menus.applyProfile("Inexistant") && applied == 1, "Test 388: profil inconnu refusé");
+        // Échelle des charges : l'action « Normalisée » agit sur la vue du document
+        for (QAction* a : menus.loadScaleMenu()->actions())
+            if (a->text() == "Normalisée") a->trigger();
+        TEST_CHECK(view.loadScaleSettings().mode == TSA::Geometry::LoadScaleMode::Normalized, "Test 388: échelle des charges réglée sur la vue du document");
+        TEST_CHECK(menus.diagnosticText().contains("DIAGNOSTIC D'AFFICHAGE"), "Test 388: diagnostic de la vue");
+        TEST_CHECK(m.revision() == revision0 && m.nodes().size() == 4, "Test 388: aucune donnée du modèle modifiée");
+        current = nullptr;   // fenêtre sans vue (document fermé)
+        TEST_CHECK(!menus.applyProfile("Modélisation") && menus.diagnosticText().isEmpty(), "Test 388: sans vue — refus, aucun accès invalide");
+
+        view.setModel(nullptr);
+        host.hide();
+        {
+            QSettings iso;
+            iso.clear();
+            iso.sync();
+        }
+        QProcess::execute("reg", { "delete", QStringLiteral("HKCU\\Software\\%1").arg(isoOrg), "/f" });
+        auto& style = AnnotationStyle::instance();
+        style.setMode(savedStyle.mode);
+        style.setBasePixels(savedStyle.basePixels);
+        style.setModelHeight(savedStyle.modelHeight);
+        QCoreApplication::setOrganizationName(savedOrg);
+        QCoreApplication::setApplicationName(savedApp);
+        std::cout << "[PASS] Test 388: Menus d'affichage partagés (échelles, profils, diagnostic)" << std::endl;
         ++passed;
     }
 

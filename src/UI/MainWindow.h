@@ -91,6 +91,7 @@ class QPlainTextEdit;
 class QStatusBar;
 class QLabel;
 class QDockWidget;
+namespace TSA::UI { class DisplayMenus; }
 
 /// ProjectWorkspace de TSA : viewport, ruban, docks et barre d'état d'un projet ouvert.
 /// Embarqué dans TSA::UI::AppShell (page du mode Workspace) ; créé au premier projet ouvert ou créé.
@@ -639,14 +640,10 @@ private:
     std::vector<bool> m_meshOnlySavedCategories; ///< visibilité de la géométrie avant « maillage seul »
     bool m_meshOnlySavedNodes = true;
     void createMeshViewActions();
-    /// Menus « Échelle des annotations » et « Échelle des charges » (représentation seulement, valeurs inchangées)
-    void createDisplayScaleMenus();
-    QMenu* m_annotationScaleMenu = nullptr;
+    /// Menus d'affichage partagés avec TSALab (échelles, profils, diagnostic : src/UI/Display/DisplayMenus)
+    TSA::UI::DisplayMenus* m_displayMenus = nullptr;
+    QMenu* m_annotationScaleMenu = nullptr;   ///< menus de m_displayMenus, repris par le ruban
     QMenu* m_loadScaleMenu = nullptr;
-    /// Profils d'affichage (docs/DISPLAY_SCALES.md § 7) : menu reconstruit à l'ouverture
-    QMenu* m_displayProfilesMenu = nullptr;
-    QString m_activeDisplayProfile;
-    void rebuildDisplayProfilesMenu();
 public:
     /// Applique un profil d'affichage (réglages graphiques seulement) et resynchronise boutons, menus et panneau des
     /// résultats ; associé au document s'il a un fichier. Faux si le profil n'existe pas.

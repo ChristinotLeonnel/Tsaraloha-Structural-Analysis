@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include "../Analysis/FiberStress.h"
 
 #include <TopoDS_Shape.hxx>
 #include <gp_Pnt.hxx>
@@ -45,13 +46,8 @@ public:
     /// de la torsion (ce n'est pas une contrainte de Von Mises).
     static double normalStressMPa(const TSA::Analysis::StationForces& st, double area, double wy, double wz, bool kiloNewtons = true)
     {
-        // En ligne : utilisée aussi par la note de calcul (bibliothèque du modèle, sans la partie graphique)
-        if (area <= 0.0) return 0.0;
-        const double k = kiloNewtons ? 1e-3 : 1e-6; // kN/m² → MPa, ou N/m² → MPa
-        const double axial = st.N / area;
-        const double bending = (wy > 0.0 ? std::abs(st.My) / wy : 0.0) + (wz > 0.0 ? std::abs(st.Mz) / wz : 0.0);
-        const double top = axial + bending, bottom = axial - bending;
-        return (std::abs(top) >= std::abs(bottom) ? top : bottom) * k;
+        // Formule dans la couche modèle (Analysis/FiberStress.h), utilisée aussi par la note de calcul
+        return TSA::Analysis::fiberNormalStressMPa(st, area, wy, wz, kiloNewtons);
     }
 
     /**
