@@ -4,6 +4,9 @@
 #include "../Analysis/ResultsModel.h"
 #include "../Model/Beam.h"
 #include "../Model/Column.h"
+#include "../Mesh/MeshGeometry.h"
+#include "../Mesh/MeshProject.h"
+#include "../Mesh/Solvers/OpenSeesMeshAdapter.h"
 #include "../Model/Load/LoadCase.h"
 #include "../Model/Load/LoadManager.h"
 #include "../Model/Load/MemberLoad.h"
@@ -430,12 +433,15 @@ void registerBuiltInCommands(CommandRegistry& reg)
     reg.add({ "analysis.run", "Calculer", "Analyse",
               "Calcule le modèle avec les réglages d'analyse du projet ; moteur et axe de grille facultatifs "
               "(« custom2d » + axe « B » : portique plan de l'axe B ; axe « * » : modèle complet ; axe « plan » : plan "
-              "du modèle, s'il est plan). Poids propre : « oui » / « non », vide = réglage du projet. Les réglages "
+              "du modèle, s'il est plan). Poids propre : « oui » / « non », vide = réglage du projet. Cas de charge ou "
+              "combinaison : nom ou numéro (l'un ou l'autre), vide = réglage du projet. Les réglages "
               "modifiés sont enregistrés avec le projet. Calcul synchrone : les résultats sont publiés à la fin.",
               { optional(param("engine", "Moteur", VT::Text), std::string()),
                 optional(param("axis", "Axe de grille", VT::Text), std::string()),
                 optional(param("export_system", "Exporter K·U = F", VT::Bool), false),
-                optional(param("self_weight", "Poids propre", VT::Text), std::string()) },
+                optional(param("self_weight", "Poids propre", VT::Text), std::string()),
+                optional(param("case", "Cas de charge (nom ou numéro)", VT::Text), std::string()),
+                optional(param("combination", "Combinaison (nom ou numéro)", VT::Text), std::string()) },
               { param("max_displacement", "Déplacement max", VT::Real, Q::Length),
                 param("max_moment", "Moment max", VT::Real, Q::Moment),
                 param("equations", "Équations", VT::Integer) }, false },
@@ -482,6 +488,29 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 if (sw == "OUI" || sw == "YES" || sw == "TRUE" || sw == "1") ctx.common.includeSelfWeight = true;
                 else if (sw == "NON" || sw == "NO" || sw == "FALSE" || sw == "0") ctx.common.includeSelfWeight = false;
                 else if (!sw.empty()) return fail("Poids propre : « " + text(a, "self_weight") + " » (oui ou non attendu).");
+                // Chargement : un cas ou une combinaison, désigné par son nom exact ou son numéro
+                const std::string caseRef = text(a, "case"), comboRef = text(a, "combination");
+                if (!caseRef.empty() && !comboRef.empty()) return fail("Cas de charge ou combinaison : l'un ou l'autre, pas les deux.");
+                auto isNumber = [](const std::string& t) { return !t.empty() && std::all_of(t.begin(), t.end(), [](unsigned char ch) { return std::isdigit(ch); }); };
+                const auto& lm = s.model().loadManager();
+                if (!caseRef.empty())
+                {
+                    int id = 0;
+                    for (const auto& [cid, lc] : lm.loadCases())
+                        if (lc.name() == caseRef || (isNumber(caseRef) && cid == std::stoi(caseRef))) id = cid;
+                    if (!id) return fail("Cas de charge « " + caseRef + " » introuvable.");
+                    ctx.loadCaseIds = { id };
+                    ctx.combinationId = 0;
+                }
+                if (!comboRef.empty())
+                {
+                    int id = 0;
+                    for (const auto& [cid, cb] : lm.loadCombinations())
+                        if (cb.name() == comboRef || (isNumber(comboRef) && cid == std::stoi(comboRef))) id = cid;
+                    if (!id) return fail("Combinaison « " + comboRef + " » introuvable.");
+                    ctx.combinationId = id;
+                    ctx.loadCaseIds.clear();
+                }
                 if (std::get<bool>(a.at("export_system")))
                 {
                     QJsonObject settings = ctx.settingsFor(ctx.engineId);
@@ -490,6 +519,34 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 }
                 ac.setContext(ctx);
                 ac.storeContextInModel();
+
+                // Maillage enregistré dans le projet (Gmsh) : transmis s'il est à jour et compatible, comme le fait le
+                // bouton Calculer (UI/Mesh/MeshAnalysisBridge) ; sans dialogue ici : obsolète ou non transmissible → refus motivé
+                ctx.memberSubdivisions.clear();
+                ctx.surfaces = {};
+                if (ctx.common.useGeneratedMesh)
+                {
+                    const auto mp = TSA::Mesh::MeshProject::load(s.model());
+                    if (mp.hasMesh)
+                    {
+                        const auto geometry = TSA::Mesh::MeshGeometry::extract(s.model());
+                        if (mp.isStale(geometry.hash))
+                            return fail("Maillage obsolète (géométrie modifiée depuis sa génération) : régénérer le maillage, ou désactiver "
+                                        "« utiliser le maillage généré » dans les réglages du calcul.");
+                        const auto compat = TSA::Mesh::OpenSeesMeshAdapter::check(mp.mesh, geometry, engine->info().name, caps, 3000000, &s.model());
+                        if (compat.blocking())
+                        {
+                            std::string why;
+                            for (const auto& i : compat.items)
+                                if (i.level == TSA::Mesh::SolverCheckItem::Level::Blocking) why += (why.empty() ? "" : " ; ") + i.message;
+                            return fail("Maillage non transmissible à " + engine->info().name + " : " + why);
+                        }
+                        ctx.memberSubdivisions = compat.memberSubdivisions;
+                        ctx.surfaces = compat.surfaces;
+                        ctx.surfaces.meshStamp = mp.record.generated + "|" + mp.record.settingsHash;
+                        ctx.meshLabel = "maillage " + mp.record.mesher + " du " + mp.record.generated;
+                    }
+                }
 
                 const PreparedAnalysis prepared = ac.prepare(ctx);
                 if (!prepared.canRun())

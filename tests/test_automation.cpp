@@ -194,6 +194,12 @@ bool runSuite_Automation(int& passed)
                    "Test 389: section, barre ou matériau inconnus refusés");
 
         TEST_CHECK(!run("analysis.run engine=custom2d axis=plan self_weight=peut-etre").ok, "Test 389: poids propre — valeur inconnue refusée");
+        TEST_CHECK(!run("analysis.run engine=custom2d axis=plan case=inconnu").ok && !run("analysis.run engine=custom2d axis=plan combination=99").ok &&
+                       !run("analysis.run engine=custom2d axis=plan case=P combination=1").ok,
+                   "Test 389: cas ou combinaison introuvable, ou les deux à la fois — refusé");
+        TEST_CHECK(run("analysis.run engine=custom2d axis=plan case=G self_weight=non").ok && s.analysis().context().loadCaseIds.size() == 1 &&
+                       s.analysis().context().combinationId == 0,
+                   "Test 389: cas de charge désigné par son nom");
         TEST_CHECK(run("analysis.run engine=custom2d axis=plan self_weight=non").ok && !s.analysis().context().common.includeSelfWeight,
                    "Test 389: calcul Custom2D sans poids propre (réglage enregistré)");
         const auto ra = run("results.node_reaction id=1"), rb = run("results.node_reaction id=3");

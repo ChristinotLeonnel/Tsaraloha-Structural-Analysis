@@ -1,6 +1,6 @@
 # Audit scientifique des calculs de TSA — registre central
 
-Version 0.1.0, audit du 12/10/2026. Ce document est le registre central des calculs effectivement implémentés. Pour chacun, il indique où le calcul se trouve, la méthode et les hypothèses, les tests, les défauts relevés et corrigés, et le niveau de validation atteint.
+Version 0.1.0, audit du 12/10/2026, complété le 13/10/2026 (§ 4.1, § 4.2). Ce document est le registre central des calculs effectivement implémentés. Pour chacun, il indique où le calcul se trouve, la méthode et les hypothèses, les tests, les défauts relevés et corrigés, et le niveau de validation atteint.
 
 Il complète :
 - `docs/BENCHMARKS.md` : banc de validation et écarts quantifiés ;
@@ -103,6 +103,39 @@ Une analyse aux éléments finis correcte ne signifie pas qu'une structure satis
 
 Défauts de la phase « surfaces » corrigés auparavant : voir `docs/SURFACES.md`.
 
+### 4.1 Corrections du 12 et du 13/10/2026 (commandes, maillage, validation)
+
+Ces défauts ont été relevés pendant les travaux du laboratoire TSALab. TSALab utilise les mêmes sources que TSA : chaque
+correction s'applique donc aux deux applications.
+
+| Prio. | Défaut | Conséquence | Correction | Test de non-régression | Commit |
+|---|---|---|---|---|---|
+| **P0** | Commandes `model.create_beam`, `model.create_column` : une taille de profil hors catalogue (« IPE 999 ») était acceptée | section **fausse et silencieuse** : dimensions de l'IPE 100 sous le nom « IPE 999 », calcul effectué avec cette section | taille vérifiée contre le catalogue (IPE, HEA, HEB, UPN), refus avec la liste des tailles ; caractères parasites refusés (« 999x ») | test 389, test L6 (TSALab) | e9648de |
+| **P1** | Commande `analysis.run` (console, Blueprint, MCP) : le maillage enregistré du projet n'était pas transmis au calcul, contrairement au bouton Calculer | dalles et voiles maillés **exclus du calcul** sans erreur dédiée ; leurs nœuds restent sans élément → matrice singulière, ou résultats sans les coques | maillage à jour et compatible transmis (coques, barres subdivisées) ; maillage obsolète ou non transmissible : refus motivé (pas de dialogue dans une commande) | test 390 | ec72cd0 |
+| **P1** | Validation : une charge surfacique de **n'importe quel** cas bloquait le calcul sans maillage, même si son cas n'était pas calculé | calcul refusé à tort (« charge surfacique définie mais aucune surface maillée ») pour tout autre cas ou combinaison | seules comptent les charges surfaciques des cas calculés (combinaison choisie, sinon cas choisis, sinon tous) | test 390 | 8076835 |
+| **P2** | Validation, coques transmises : trois avertissements faux (« aucune charge : résultats nuls », « dalles non calculées sans maillage », « aucun élément filaire ») | confirmation demandée à tort avant chaque calcul de dalle ; message « résultats nuls » contraire à la réalité | charges surfaciques transmises comptées comme charges ; drapeau `AnalysisParameters::surfacesTransmitted` ; dalles et voiles reconnus comme éléments structuraux | test 390 | c6c29a2 |
+| — | Commande `analysis.run` : impossible de choisir le cas de charge ou la combinaison | scripts, Blueprints et MCP limités aux réglages enregistrés du projet | paramètres `case=` et `combination=` (nom ou numéro), l'un ou l'autre ; introuvable → refus | test 389 | 2fecbf1 |
+
+Vérifications : suites `automation` (tests 192, 200, 389) et `mesh` (dont le test 390), puis suite complète ; contrôle
+des couches (`tools/check_layers.py`).
+
+### 4.2 Constat ouvert : résidu d'équilibre des haubans précontraints
+
+Pont à haubans (projet de démonstration de la suite `demo`, test 353 : 64 haubans en `corotTruss` avec déformation
+initiale), mesuré le 13/10/2026 sous OpenSees 3.8.0 :
+
+| Calcul | Σ charges appliquées | Σ réactions | Écart relatif |
+|---|---|---|---|
+| cas Q seul (trafic, sans poids propre) | 27 200 kN | 27 200,506 kN | 1,9 × 10⁻⁵ |
+| ELU 6.10 d'un modèle d'essai réunissant ce pont et six autres structures (essai du 13/10/2026, modèle non conservé) | 345 097 kN | 345 099 kN | 8 × 10⁻⁶ (forces), 1 × 10⁻⁵ (moments) |
+| structures sans câble, mêmes calculs | — | — | ≤ 4 × 10⁻¹⁴ |
+
+Cause : le script OpenSees utilise `algorithm Linear` (un seul pas, sans itération d'équilibre), alors que les haubans
+sont des éléments corotationnels précontraints, donc non linéaires. L'écart est faible, mais il n'est pas nul. La
+précontrainte crée aussi des réactions sur une structure non chargée. Le test 353 l'accepte (tolérance 10⁻³). Une
+référence analytique qui somme toutes les réactions d'un projet contenant ce pont sera faussée d'autant : il faut sommer
+les réactions de la structure étudiée seulement. Correction proposée en recommandation P1 (§ 8).
+
 ## 5. Note de calcul
 
 La note de calcul (`NDCProjectNote`) comprend, entre autres :
@@ -189,6 +222,8 @@ Le CPU reste le mode fiable par défaut. Aucun téléchargement de dépendance n
 | P2 | Export DOCX de la note | diffusion | — | moyenne ; dépendance | — |
 | P2 | Exécution parallèle de cas indépendants (plusieurs processus OpenSees) | — | combinaisons multiples plus rapides | moyenne | concordance série/parallèle |
 | P2 | Corotationnel : à valider | — | grands déplacements | faible : cas de console en grande rotation (Elastica) | banc |
+| P1 | Haubans précontraints (`corotTruss`) calculés par `algorithm Linear` (§ 4.2) | résidu d'équilibre ≈ 2 × 10⁻⁵ ; réactions parasites | équilibre exact des ponts à haubans | moyenne : algorithme de Newton (quelques itérations) quand le modèle contient des câbles, sans changer les autres calculs | test 353 avec tolérance 10⁻⁶ ; équilibre par structure |
+| P2 | Dalle sans maillage transmis : ses nœuds restent dans le modèle de calcul sans élément | matrice singulière, au lieu d'un message qui nomme la dalle | message explicite | faible : écarter ou signaler les nœuds sans élément | cas d'une dalle non maillée |
 
 ## 9. Reproduire
 
