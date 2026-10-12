@@ -58,7 +58,7 @@ Les identifiants de nœuds et de barres sont ceux du fichier JSON.
 
 ## 3. Cas disponibles
 
-Résultats du 12/10/2026, OpenSees 3.8.0 et Custom2D (TSALab MetDeDeplacement) : 27 cas, 144 vérifications, toutes réussies.
+Résultats du 12/10/2026, OpenSees 3.8.0 et Custom2D (TSALab MetDeDeplacement) : 28 cas, 146 vérifications, toutes réussies (FEA-07 ajouté le 12/10/2026).
 
 | Cas | Objet | Moteurs | Écart max. |
 |---|---|---|---|
@@ -75,12 +75,13 @@ Résultats du 12/10/2026, OpenSees 3.8.0 et Custom2D (TSALab MetDeDeplacement) :
 | RDM-11a | solveur non linéaire en géométrie linéaire : charge complète atteinte | OpenSees | 5e-14 % |
 | RDM-11b | second ordre P-Δ, console comprimée (P/Pcr = 0,37) | OpenSees | 0,03 % |
 | RDM-12 | poids propre automatique (IPE 300, A du catalogue) | OpenSees, Custom2D | 4e-3 % |
-| FEA-01 | plaque carrée appuyée, ShellMITC4 (Navier), convergence | OpenSees | +2,65 % (Mindlin, appui « dur ») |
+| FEA-01 | plaque carrée appuyée, ShellMITC4 (Navier), convergence | OpenSees | +2,65 % (appui « mou » : couche limite de Mindlin, l'écart croît au raffinement ; voir FEA-07) |
 | FEA-02 | même plaque, ShellDKGT, convergence | OpenSees | 0,08 % |
 | FEA-03 | bande de coque en console (théorie des poutres) | OpenSees | 0,2 % |
 | FEA-04 | dalle avec trémie, équilibre et aire nette | OpenSees | 1e-11 % |
 | FEA-05 | mode propre d'une bande de coque | OpenSees | 0,49 % |
 | FEA-06 | modes d'une poutre (flexion latérale et verticale, masses concentrées) | OpenSees | 4e-5 % |
+| FEA-07 | même plaque, appui « dur », ShellMITC4 contre la référence de Mindlin (Wang et al. 2001), 4 maillages | OpenSees | 0,015 % (écart divisé par 4 à chaque raffinement : ordre 2) |
 
 **Convergence des plaques** (flèche au centre, référence de Navier 2,444 mm) :
 

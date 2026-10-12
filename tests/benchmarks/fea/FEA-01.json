@@ -10,8 +10,8 @@
   ],
   "hypotheses": [
     "coque élastique linéaire, plaque mince (a/e = 30)",
-    "appui simple « dur » (translations du bord bloquées)",
-    "référence de Kirchhoff : MITC4 (Mindlin) légèrement plus souple"
+    "appui simple : translations du bord bloquées, rotations libres (appui « mou » au sens de Mindlin)",
+    "référence de Kirchhoff : MITC4 (Mindlin) converge vers une solution plus souple, à cause de la couche limite de l'appui mou (écart croissant au raffinement, 2,65 % à h = 0,25 m) ; la convergence de MITC4 est vérifiée contre la référence de Mindlin par FEA-07 (appui dur)"
   ],
   "units": {
     "force": "kN",
