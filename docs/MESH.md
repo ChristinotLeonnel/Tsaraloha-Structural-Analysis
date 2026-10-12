@@ -29,6 +29,7 @@ MeshProject (chunk MESH du .tsa)       Interface : MeshController (thread de tra
 | Conversion solveur | `Solvers/OpenSeesMeshAdapter` | capacités des moteurs d'analyse |
 | Analyse | `CalculationSnapshot::subdivided`, `ResultsModel::mergeSubdivisions`, `AnalysisManager` | aucun maillage : seulement des positions de subdivision |
 | Interface | `UI/Mesh/*`, `UI/MainWindow_Mesh.cpp`, `UI/MainWindow_MeshView.cpp`, `Viewer/MeshVisual` | tout ce qui précède |
+| Transmission au calcul | `UI/Mesh/MeshAnalysisBridge` (partagée TSA / TSALab), `AnalysisManagerPanel::setContextPreparer` | contrôleur, adaptateur OpenSees |
 
 Points de conception :
 
