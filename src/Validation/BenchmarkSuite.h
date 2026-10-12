@@ -54,6 +54,15 @@ bool parseBenchmark(const QJsonObject& json, BenchmarkCase* out, std::vector<std
 bool loadBenchmarkFile(const QString& path, BenchmarkCase* out, std::vector<std::string>* errors);
 std::vector<QString> benchmarkFiles(const QString& directory);   ///< *.json, récursif, ordre alphabétique
 
+/// Point d'une étude de convergence en maillage : valeur obtenue par le moteur pour une taille de maille.
+struct ConvergencePoint
+{
+    double meshSize = 0.0;      ///< taille cible transmise au mailleur (m)
+    std::string meshInfo;       ///< composition du maillage réellement produit (quadrangles, triangles)
+    bool available = false;     ///< calcul abouti et grandeur présente dans les résultats
+    double value = 0.0;
+};
+
 struct CheckOutcome
 {
     std::string caseId, engine, quantity, label, formula, unit, source;   ///< source : « analytique » ou référence externe
@@ -64,6 +73,9 @@ struct CheckOutcome
     bool interpolated = false; ///< valeur interpolée entre deux stations (et non une valeur du moteur)
     bool passed = false;
     std::string note;
+    /// Étude de convergence (cas déclarant « meshSizes ») : un point par taille, dans l'ordre du cas ; la vérification
+    /// porte sur le dernier (le plus fin). Vide pour un calcul unique.
+    std::vector<ConvergencePoint> convergence;
 };
 
 struct CaseOutcome
