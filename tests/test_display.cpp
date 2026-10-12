@@ -10,7 +10,11 @@
 //        objet orphelin ; le zoom ne reconstruit rien ;
 //   374  échelle des charges : familles d'unités séparées, modes proportionnel / automatique / normalisé, rapports
 //        d'intensité (10, 50, 100 kN), longueurs bornées, valeurs des charges inchangées, nouvelle charge maximale
-//        appliquée à toute la famille, légende.
+//        appliquée à toute la famille, légende ;
+//   375  copier-coller entre projets : presse-papier commun, projet source détruit avant le collage ; géométrie,
+//        sections, matériaux, orientation, appuis, voile, treillis, dalle complète ; charges en option avec cas de
+//        charge rapprochés par nom (créés s'ils manquent), valeurs identiques ; collage à l'origine ou au point
+//        désigné ; une seule étape d'annulation ; aucun collage partiel (dépendance manquante → modèle inchangé).
 
 #include "test_common.h"
 
@@ -18,6 +22,7 @@
 #include "Analysis/Engine/AnalysisManager.h"
 #include "Grid/GridManager.h"
 #include "Model/Load/LoadManager.h"
+#include "Model/StructuralClipboard.h"
 #include "Viewer/OccView.h"
 #include "Viewer/ResultsVisualManager.h"
 #include "Viewer/AnnotationStyle.h"
@@ -345,6 +350,137 @@ bool runSuite_Display(int& passed)
         view.setModel(nullptr);
         view.hide();
         std::cout << "[PASS] Test 374: Échelle des charges par famille (proportionnelle, automatique, normalisée)" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 375 : copier-coller entre projets (presse-papier commun)
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::Model;
+        auto& clip = StructuralClipboard::shared();
+        TEST_CHECK(&clip == &StructuralClipboard::shared(), "Test 375: presse-papier unique pour toute l'application");
+        int srcBeam = 0, srcCaseG = 0;
+        {
+            // Projet A (détruit avant le collage : le presse-papier ne garde aucune référence vers lui)
+            Model a;
+            const int n1 = a.addNode(2, 3, 0), n2 = a.addNode(2, 3, 4), n3 = a.addNode(8, 3, 4), n4 = a.addNode(8, 3, 0);
+            a.getNode(n1)->setSupport(SupportDefinition::fixed());
+            a.getNode(n4)->setSupport(SupportDefinition::pinned());
+            a.addColumn(n1, n2, Section::heb(200), Material::steelS235(), 90.0);
+            srcBeam = a.addBar(n2, n3, Section::ipe(300), Material::steelS355(), BarRole::Beam, 15.0);
+            a.addColumn(n4, n3, Section::heb(200), Material::steelS235());
+            const int w = a.addWall(n1, n4, 4.0, 0.25);
+            a.getWall(w)->setMaterial(Material::concreteC30_37());
+            a.addTrussMember(n1, n3, 0.08);
+            const int n5 = a.addNode(2, 9, 4), n6 = a.addNode(8, 9, 4);
+            const int slab = a.addSlab({ n2, n3, n6, n5 }, 0.22);
+            a.getSlab(slab)->setMaterial(Material::concreteC30_37());
+            auto& lm = a.loadManager();
+            lm.clear();
+            srcCaseG = lm.addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead));
+            const int q = lm.addLoadCase(LoadCase(0, "Q bureaux", LoadCaseCategory::Live));
+            lm.addNodalLoad(NodalLoad(0, n2, q, 12.5, 0.0, -100.0));
+            lm.addMemberLoad(MemberLoad::uniform(srcBeam, srcCaseG, 7.25));
+            SurfaceLoad sl;
+            sl.targetKind = SurfaceTargetKind::Slab;
+            sl.surfaceId = slab;
+            sl.loadCaseId = q;
+            sl.value = 2.5;
+            lm.addSurfaceLoad(sl);
+
+            ClipboardSelection sel;
+            sel.beams = { srcBeam };
+            sel.columns = { 1, 2 };
+            sel.walls = { w };
+            sel.trusses = { 1 };
+            sel.slabs = { slab };
+            ClipboardOptions opt;
+            opt.loads = true;
+            clip.copyFrom(a, sel, opt);
+        }
+        TEST_CHECK(clip.hasData() && clip.nodeCount() == 6 && clip.totalElementCount() == 6 && clip.loadCount() == 3,
+                   "Test 375: copie — 6 nœuds, 6 éléments (poutre, 2 poteaux, voile, treillis, dalle), 3 charges (" << clip.nodeCount() << ", " << clip.totalElementCount() << ", " << clip.loadCount() << ")");
+
+        // Projet B : contenu existant, cas « G » d'id différent, pas de cas « Q bureaux »
+        Model b;
+        auto& lmB = b.loadManager();
+        lmB.clear();
+        lmB.addLoadCase(LoadCase(0, "Vent", LoadCaseCategory::Wind));
+        const int gB = lmB.addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead));
+        const int e1 = b.addNode(0, 0, 0), e2 = b.addNode(5, 0, 0);
+        b.addBar(e1, e2, Section::ipe(200), Material::steelS235(), BarRole::Beam);
+        const std::size_t nodesBefore = b.nodes().size(), beamsBefore = b.beams().size(), casesBefore = lmB.loadCases().size();
+
+        const auto r = clip.pasteUndoable(b, 100.0, 0.0, 0.0, "Coller");
+        TEST_CHECK(r.complete && r.nodeIds.size() == 6 && r.elementCount() == 6 && r.loadCount() == 3, "Test 375: collage complet dans le projet B");
+        TEST_CHECK(b.nodes().size() == nodesBefore + 6 && b.beams().size() == beamsBefore + 1 && b.columns().size() == 2 && b.walls().size() == 1 &&
+                       b.trussMembers().size() == 1 && b.slabs().size() == 1,
+                   "Test 375: éléments ajoutés au contenu existant de B");
+        // Géométrie : coin minimal (2, 3, 0) placé en (100, 0, 0)
+        const auto* pBeam = b.getBeam(r.elementMap.at({ ElementKind::Beam, srcBeam }).id);
+        const auto* s = pBeam ? b.getNode(pBeam->startNodeId()) : nullptr;
+        const auto* e = pBeam ? b.getNode(pBeam->endNodeId()) : nullptr;
+        TEST_CHECK(s && e && s->x() == 100.0 && s->y() == 0.0 && s->z() == 4.0 && e->x() == 106.0, "Test 375: positions relatives conservées");
+        TEST_CHECK(pBeam && pBeam->properties().section.name == Section::ipe(300).name && pBeam->properties().material.name == Material::steelS355().name &&
+                       pBeam->properties().rotation == 15.0,
+                   "Test 375: section, matériau et orientation de la poutre");
+        const auto& col1 = b.columns().begin()->second;
+        TEST_CHECK(col1.properties().rotation == 90.0, "Test 375: orientation du poteau");
+        int fixedCount = 0, pinnedCount = 0;
+        for (int nid : r.nodeIds)
+        {
+            fixedCount += b.getNode(nid)->support().isFixed();
+            pinnedCount += b.getNode(nid)->support().isPinned();
+        }
+        TEST_CHECK(fixedCount == 1 && pinnedCount == 1, "Test 375: appuis copiés (encastrement, articulation)");
+        const auto& wall = b.walls().begin()->second;
+        const auto& slabB = b.slabs().begin()->second;
+        TEST_CHECK(wall.thickness() == 0.25 && wall.height() == 4.0 && wall.material().name == Material::concreteC30_37().name &&
+                       slabB.thickness() == 0.22 && slabB.material().name == Material::concreteC30_37().name && slabB.nodeIds().size() == 4,
+                   "Test 375: voile et dalle complets (épaisseur, hauteur, matériau)");
+        // Charges : « G » rapproché du cas existant, « Q bureaux » créé ; valeurs identiques
+        TEST_CHECK(r.loadCaseMap.at(srcCaseG) == gB && r.createdLoadCaseIds.size() == 1 && lmB.loadCases().size() == casesBefore + 1 &&
+                       lmB.getLoadCase(r.createdLoadCaseIds[0])->name() == "Q bureaux",
+                   "Test 375: cas de charge rapprochés par nom (G existant, Q bureaux créé)");
+        const auto* ml = lmB.getMemberLoad(r.memberLoadIds.at(0));
+        const auto* nl = lmB.getNodalLoad(r.nodalLoadIds.at(0));
+        const auto* su = lmB.getSurfaceLoad(r.surfaceLoadIds.at(0));
+        TEST_CHECK(ml && ml->q1() == 7.25 && ml->elementId() == pBeam->id() && ml->loadCaseId() == gB && nl && nl->fz() == -100.0 && nl->fx() == 12.5 &&
+                       su && su->value == 2.5 && su->surfaceId == slabB.id(),
+                   "Test 375: charges collées sur les nouveaux éléments, valeurs identiques (7,25 kN/m ; 12,5 / −100 kN ; 2,5 kN/m²)");
+
+        // Annulation : une seule étape retire tout le collage ; Rétablir le remet
+        TEST_CHECK(b.canUndo() && b.undo() && b.nodes().size() == nodesBefore && b.beams().size() == beamsBefore && b.slabs().empty() && b.walls().empty() &&
+                       lmB.loadCases().size() == casesBefore && lmB.memberLoads().empty(),
+                   "Test 375: Ctrl+Z annule le collage entier");
+        TEST_CHECK(b.redo() && b.nodes().size() == nodesBefore + 6 && b.slabs().size() == 1, "Test 375: Ctrl+Y rétablit le collage");
+
+        // Position d'origine : mêmes coordonnées que dans le projet source
+        Model c;
+        const auto r2 = clip.pasteAtOrigin(c);
+        double minX = 1e9, minY = 1e9, minZ = 1e9;
+        for (const auto& [id, n] : c.nodes()) minX = std::min(minX, n.x()), minY = std::min(minY, n.y()), minZ = std::min(minZ, n.z());
+        TEST_CHECK(r2.complete && minX == 2.0 && minY == 3.0 && minZ == 0.0, "Test 375: collage à la position d'origine");
+
+        // Tout ou rien : dalle dont un nœud n'existe pas (modèle source incohérent) → rien n'est collé
+        {
+            Model bad;
+            const int x1 = bad.addNode(0, 0, 0), x2 = bad.addNode(1, 0, 0), x3 = bad.addNode(1, 1, 0);
+            const int sb = bad.addSlab({ x1, x2, x3 }, 0.2);
+            bad.addBar(x1, x2, Section::ipe(200), Material::steelS235(), BarRole::Beam);
+            bad.getSlab(sb)->setNodeIds({ x1, x2, x3, 999 });
+            ClipboardSelection sel;
+            sel.slabs = { sb };
+            sel.beams = { 1 };
+            clip.copyFrom(bad, sel);
+        }
+        const std::size_t nB = b.nodes().size(), bB = b.beams().size();
+        const bool couldUndo = b.canUndo();
+        const auto r3 = clip.pasteUndoable(b, 0, 0, 0, "Coller");
+        TEST_CHECK(!r3.complete && !r3.error.empty() && r3.empty() && b.nodes().size() == nB && b.beams().size() == bB && b.canUndo() == couldUndo,
+                   "Test 375: dépendance manquante — rien collé, historique inchangé (" << r3.error << ")");
+        clip.clear();
+        std::cout << "[PASS] Test 375: Copier-coller entre projets (dépendances, charges, annulation, tout ou rien)" << std::endl;
         ++passed;
     }
     return true;

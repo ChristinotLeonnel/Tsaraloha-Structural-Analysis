@@ -2,6 +2,7 @@
 // actions (ruban, menu contextuel de l'arbre), indicateur de barre d'état et configuration.
 
 #include "MainWindow.h"
+#include "../Project/ProjectSession.h"
 
 #include "AI/AICoEngineeringDock.h"
 #include "AI/AIRuntimeDialog.h"
@@ -82,9 +83,7 @@ void MainWindow::createAIComponents()
     connect(m_automation, &TSA::Automation::AutomationServer::logMessage, this, [this](const QString& text, const QString& type) {
         if (m_consoleDock) m_consoleDock->appendLog(text, type);
     });
-    QString automationError;
-    if (!m_automation->start(TSA::Automation::AutomationServer::defaultName(), &automationError) && m_consoleDock)
-        m_consoleDock->appendLog(tr("Serveur d'automatisation (MCP) indisponible : %1").arg(automationError), "WARN");
+    // Démarrage par setAutomationActive : plusieurs documents ouverts, un seul serveur (celui du document actif)
 
     m_aiDock = new TSA::UI::AICoEngineeringDock(m_aiOrchestrator, this);
     m_aiDock->toggleViewAction()->setIcon(QIcon(":/icons/analysis_run.svg"));
@@ -197,4 +196,27 @@ void MainWindow::openAIConfig(int page)
     m_aiDialog->show();
     m_aiDialog->raise();
     m_aiDialog->activateWindow();
+}
+
+bool MainWindow::hasUnsavedChanges() const
+{
+    return m_session && m_session->hasUnsavedChanges();
+}
+
+bool MainWindow::isAutomationActive() const
+{
+    return m_automation && m_automation->isListening();
+}
+
+void MainWindow::setAutomationActive(bool active)
+{
+    if (!m_automation || active == m_automation->isListening()) return;
+    if (!active)
+    {
+        m_automation->stop();
+        return;
+    }
+    QString error;
+    if (!m_automation->start(TSA::Automation::AutomationServer::defaultName(), &error) && m_consoleDock)
+        m_consoleDock->appendLog(tr("Serveur d'automatisation (MCP) indisponible : %1").arg(error), "WARN");
 }

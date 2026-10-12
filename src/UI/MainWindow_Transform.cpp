@@ -77,18 +77,45 @@ void MainWindow::onActionCopyClipboard()
         return;
     }
 
-    m_clipboard.copyFrom(*m_model,
-                         m_selectionManager->selectedNodes(),
-                         m_selectionManager->selectedBeams(),
-                         m_selectionManager->selectedColumns(),
-                         m_selectionManager->selectedSlabs());
+    TSA::Model::ClipboardSelection sel;
+    sel.nodes = m_selectionManager->selectedNodes();
+    sel.beams = m_selectionManager->selectedBeams();
+    sel.columns = m_selectionManager->selectedColumns();
+    sel.slabs = m_selectionManager->selectedSlabs();
+    sel.walls = m_selectionManager->selectedWalls();
+    sel.trusses = m_selectionManager->selectedTrussMembers();
+    sel.cables = m_selectionManager->selectedCables();
+    TSA::Model::ClipboardOptions options;
+    options.supports = !m_actionClipCopySupports || m_actionClipCopySupports->isChecked();
+    options.loads = m_actionClipCopyLoads && m_actionClipCopyLoads->isChecked();
+    // Presse-papier commun à tous les onglets : le collage peut se faire dans un autre projet ouvert
+    m_clipboard.copyFrom(*m_model, sel, options);
 
     if (statusBar())
     {
-        statusBar()->showMessage(tr("Presse-papier : %1 nœud(s), %2 barre(s) copiés (Ctrl+V pour coller)")
+        statusBar()->showMessage(tr("Presse-papier : %1 nœud(s), %2 élément(s), %3 charge(s) copiés — Ctrl+V au point désigné, Ctrl+Maj+V à la position d'origine, dans ce projet ou un autre onglet")
             .arg(m_clipboard.nodeCount())
-            .arg(m_clipboard.totalElementCount()), 4000);
+            .arg(m_clipboard.totalElementCount())
+            .arg(m_clipboard.loadCount()), 6000);
     }
+}
+
+void MainWindow::onActionCutClipboard()
+{
+    if (!m_selectionManager || !m_selectionManager->hasSelection() || !m_model) return;
+    onActionCopyClipboard();
+    if (!m_clipboard.hasData()) return;
+    onActionDeleteSelected();   // suppression annulable (Ctrl+Z restaure les éléments coupés)
+}
+
+void MainWindow::onActionPasteOriginal()
+{
+    if (!m_clipboard.hasData())
+    {
+        if (statusBar()) statusBar()->showMessage(tr("Presse-papier vide. Sélectionnez des éléments et faites Ctrl+C."), 3000);
+        return;
+    }
+    pasteClipboardAt(m_clipboard.originX(), m_clipboard.originY(), m_clipboard.originZ(), tr("à la position d'origine"));
 }
 
 void MainWindow::onActionPasteClipboard()
@@ -136,12 +163,26 @@ void MainWindow::onOriginMoveRequested(const gp_Pnt& newOrigin)
 
 void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
 {
+    pasteClipboardAt(target.X(), target.Y(), target.Z(),
+                     tr("en (%1, %2, %3) m").arg(target.X(), 0, 'f', 2).arg(target.Y(), 0, 'f', 2).arg(target.Z(), 0, 'f', 2));
+    if (m_occView) m_occView->setInteractionMode(OccView::InteractionMode::Select);
+}
+
+void MainWindow::pasteClipboardAt(double x, double y, double z, const QString& where)
+{
     if (!m_clipboard.hasData() || !m_model)
         return;
+    if (!confirmNoRunningAnalysis(tr("coller"))) return;
 
-    m_model->pushUndoState(tr("Coller Presse-papier").toStdString());
-
-    auto res = m_clipboard.pasteTo(*m_model, target.X(), target.Y(), target.Z());
+    // Une seule étape d'annulation ; tout ou rien (le modèle est rétabli si un élément ne peut pas être recréé)
+    auto res = m_clipboard.pasteUndoable(*m_model, x, y, z, tr("Coller Presse-papier").toStdString());
+    if (!res.complete)
+    {
+        QMessageBox::warning(this, tr("Coller"), tr("Le collage a été annulé : un élément n'a pas pu être recréé (%1). Le modèle est inchangé.")
+                                                     .arg(QString::fromStdString(res.error)));
+        updateUndoRedoActions();
+        return;
+    }
     if (res.empty())
         return;
 
@@ -152,22 +193,24 @@ void MainWindow::onPasteAtPointRequested(const gp_Pnt& target)
         for (int bid : res.beamIds) m_selectionManager->selectBeam(bid, true);
         for (int cid : res.columnIds) m_selectionManager->selectColumn(cid, true);
         for (int sid : res.slabIds) m_selectionManager->selectSlab(sid, true);
+        for (int wid : res.wallIds) m_selectionManager->selectWall(wid, true);
+        for (int tid : res.trussIds) m_selectionManager->selectTrussMember(tid, true);
+        for (int cid : res.cableIds) m_selectionManager->selectCable(cid, true);
     }
 
     if (m_modelTree) m_modelTree->refreshAll();
     if (m_occView)
     {
+        if (res.loadCount() > 0) m_occView->updateAllLoadShapes();
         m_occView->update();
-        m_occView->setInteractionMode(OccView::InteractionMode::Select);
     }
 
     if (m_statusInfo)
     {
-        m_statusInfo->setText(tr("Collé en (%1, %2, %3) m : %4 élément(s)")
-            .arg(target.X(), 0, 'f', 2)
-            .arg(target.Y(), 0, 'f', 2)
-            .arg(target.Z(), 0, 'f', 2)
-            .arg(res.nodeIds.size() + res.beamIds.size() + res.columnIds.size() + res.slabIds.size()));
+        QString text = tr("Collé %1 : %2 nœud(s), %3 élément(s)").arg(where).arg(res.nodeIds.size()).arg(res.elementCount());
+        if (res.loadCount() > 0) text += tr(", %1 charge(s)").arg(res.loadCount());
+        if (!res.createdLoadCaseIds.empty()) text += tr(" — %1 cas de charge créé(s)").arg(res.createdLoadCaseIds.size());
+        m_statusInfo->setText(text);
     }
     updateUndoRedoActions();
 }

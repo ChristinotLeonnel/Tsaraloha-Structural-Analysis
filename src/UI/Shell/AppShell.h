@@ -2,9 +2,11 @@
 
 // Fenêtre unique du produit (TSA, TSALab) : barre de titre personnalisée + deux modes exclusifs.
 //   StartCenter      : écran d'accueil seul (créé au lancement) ;
-//   ProjectWorkspace : MainWindow (viewport, ruban, docks, barre d'état), créé au premier projet
-//                      ouvert ou créé, puis conservé et vidé à la fermeture du projet.
-// Cycle de vie : Start Center → Nouveau / Ouvrir / Projet récent → Workspace → Fermer → Start Center.
+//   ProjectWorkspace : un ou plusieurs documents ouverts, un onglet chacun (comme dans un logiciel de CAO).
+// Chaque document est un MainWindow complet et indépendant : modèle, historique, maillage, résultats, vue, état
+// d'enregistrement (aucune donnée partagée entre projets, sauf le presse-papiers structurel, voulu partagé pour copier
+// d'un projet à l'autre). Les commandes de la barre de titre agissent sur le document au premier plan.
+// Cycle de vie : Start Center → Nouveau / Ouvrir → onglet → Fermer (dernier onglet → Start Center).
 
 #include <QHash>
 #include <QWidget>
@@ -17,6 +19,7 @@ class QAbstractNativeEventFilter;
 class QMenu;
 class QShortcut;
 class QStackedWidget;
+class QTabBar;
 class QVBoxLayout;
 
 namespace TSA::UI
@@ -48,14 +51,23 @@ public:
     void openProject();
     /// Ouvre un fichier projet du produit (projets récents, glisser-déposer, ligne de commande).
     bool openProjectFile(const QString& path);
+    /// Ferme le document au premier plan (confirmation si modifié).
     bool closeProject();
+    bool closeAllProjects();
+    void saveAllProjects();
     bool isProjectOpen() const { return m_mode == ApplicationMode::ProjectWorkspace; }
+    QList<MainWindow*> documents() const { return m_documents; }
+    void activateDocument(MainWindow* document);
+    bool closeDocument(MainWindow* document);
 
     StartCenter* startCenter() const { return m_startCenter; }
-    /// Workspace de modélisation (nul tant qu'aucun projet n'a été ouvert ou créé).
+    /// Document au premier plan (nul si aucun projet n'est ouvert).
     MainWindow* workspace() const { return m_workspace; }
 
 protected:
+    /// Ctrl+Tab / Ctrl+Maj+Tab, Ctrl+Pg.Suiv / Ctrl+Pg.Préc : document suivant / précédent (filtre de l'application :
+    /// Ctrl+Maj+Tab arrive en Key_Backtab, qu'un QShortcut ne reconnaît pas de façon fiable)
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
     void changeEvent(QEvent* event) override;
     void showEvent(QShowEvent* event) override;
@@ -67,7 +79,11 @@ protected:
 #endif
 
 private:
-    MainWindow* ensureWorkspace();
+    MainWindow* createWorkspace();
+    MainWindow* documentFor(const QString& path) const;
+    void refreshTabs();
+    QString tabLabel(const MainWindow* document) const;
+    void showTabMenu(const QPoint& pos);
     bool loadIntoWorkspace(const QString& path);
     void setMode(ApplicationMode mode);
     void updateTitle();
@@ -89,7 +105,11 @@ private:
     TitleBar* m_titleBar = nullptr;
     QStackedWidget* m_stack = nullptr;
     StartCenter* m_startCenter = nullptr;
-    MainWindow* m_workspace = nullptr;
+    MainWindow* m_workspace = nullptr;          ///< document au premier plan
+    QList<MainWindow*> m_documents;              ///< ordre des onglets
+    QTabBar* m_docTabs = nullptr;
+    QAction* m_actCloseAll = nullptr;
+    QAction* m_actSaveAll = nullptr;
 
     QAction* m_actNew = nullptr;
     QAction* m_actOpen = nullptr;

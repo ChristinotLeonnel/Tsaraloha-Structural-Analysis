@@ -1,4 +1,5 @@
 #include "../Interaction/Tools/ModelingTool.h"
+#include <QSettings>
 #include <QInputDialog>
 #include "../Viewer/AnnotationStyle.h"
 #include "Common/SelectionSynchronizer.h"
@@ -534,6 +535,28 @@ void MainWindow::createActions()
     m_actionPasteClipboard->setIcon(QIcon(":/icons/edit/paste.svg"));
     m_actionPasteClipboard->setToolTip(tr("Coller les éléments copiés dans la vue 3D au clic souris (Ctrl+V)"));
     connect(m_actionPasteClipboard, &QAction::triggered, this, &MainWindow::onActionPasteClipboard);
+    m_actionPasteClipboard->setText(tr("C&oller au point désigné"));
+
+    m_actionCutClipboard = new QAction(QIcon(":/icons/edit/cut.svg"), tr("Co&uper"), this);
+    m_actionCutClipboard->setToolTip(tr("Copier la sélection dans le presse-papier puis la supprimer (Ctrl+X ; annulable)"));
+    connect(m_actionCutClipboard, &QAction::triggered, this, &MainWindow::onActionCutClipboard);
+
+    m_actionPasteOriginal = new QAction(QIcon(":/icons/edit/paste.svg"), tr("Coller à la position d'origine"), this);
+    m_actionPasteOriginal->setToolTip(tr("Coller aux mêmes coordonnées que dans le projet source (Ctrl+Maj+V)"));
+    connect(m_actionPasteOriginal, &QAction::triggered, this, &MainWindow::onActionPasteOriginal);
+
+    // Ce que la copie emporte en plus de la géométrie, des sections, matériaux et orientations (réglage mémorisé)
+    {
+        QSettings settings;
+        m_actionClipCopySupports = new QAction(tr("Copier les appuis"), this);
+        m_actionClipCopyLoads = new QAction(tr("Copier les charges (cas de charge rapprochés par nom)"), this);
+        m_actionClipCopySupports->setCheckable(true);
+        m_actionClipCopyLoads->setCheckable(true);
+        m_actionClipCopySupports->setChecked(settings.value("Clipboard/copySupports", true).toBool());
+        m_actionClipCopyLoads->setChecked(settings.value("Clipboard/copyLoads", false).toBool());
+        connect(m_actionClipCopySupports, &QAction::toggled, this, [](bool on) { QSettings().setValue("Clipboard/copySupports", on); });
+        connect(m_actionClipCopyLoads, &QAction::toggled, this, [](bool on) { QSettings().setValue("Clipboard/copyLoads", on); });
+    }
 
     m_actionMove3D = new QAction(tr("&Déplacement 3D (Point à Point)..."), this);
     m_actionMove3D->setIcon(QIcon(":/icons/structure/struct_move.svg"));
@@ -939,8 +962,14 @@ void MainWindow::createMenus()
     editMenu->addSeparator();
     editMenu->addAction(m_actionSelectMode);
     editMenu->addSeparator();
+    editMenu->addAction(m_actionCutClipboard);
     editMenu->addAction(m_actionCopyClipboard);
     editMenu->addAction(m_actionPasteClipboard);
+    editMenu->addAction(m_actionPasteOriginal);
+    QMenu* clipOptions = editMenu->addMenu(tr("Options du presse-papier"));
+    clipOptions->setToolTipsVisible(true);
+    clipOptions->addAction(m_actionClipCopySupports);
+    clipOptions->addAction(m_actionClipCopyLoads);
     editMenu->addSeparator();
     editMenu->addAction(m_actionMove3D);
     editMenu->addAction(m_actionMove);
@@ -1348,6 +1377,8 @@ void MainWindow::createRibbon()
     acts.actionRedo = m_actionRedo;
     acts.actionCopyClipboard = m_actionCopyClipboard;
     acts.actionPasteClipboard = m_actionPasteClipboard;
+    acts.actionCutClipboard = m_actionCutClipboard;
+    acts.actionPasteOriginal = m_actionPasteOriginal;
 
     acts.actionSelectMode = m_actionSelectMode;
     acts.actionMove3D = m_actionMove3D;

@@ -74,13 +74,17 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
     if (!histCol.empty()) clipPanel->addSmallColumn(histCol);
 
     std::vector<QAction*> clipCol;
+    if (acts.actionCutClipboard) clipCol.push_back(acts.actionCutClipboard);
     if (acts.actionCopyClipboard) clipCol.push_back(acts.actionCopyClipboard);
-    if (acts.actionPasteClipboard) clipCol.push_back(acts.actionPasteClipboard);
     if (!clipCol.empty())
     {
         clipPanel->addInternalSeparator();
         clipPanel->addSmallColumn(clipCol);
     }
+    std::vector<QAction*> pasteCol;
+    if (acts.actionPasteClipboard) pasteCol.push_back(acts.actionPasteClipboard);
+    if (acts.actionPasteOriginal) pasteCol.push_back(acts.actionPasteOriginal);
+    if (!pasteCol.empty()) clipPanel->addSmallColumn(pasteCol);
     tab->addPanel(clipPanel);
 
     // Édition courante
@@ -631,12 +635,16 @@ RibbonTab* RibbonBuilder::buildEditTab(RibbonBar* bar, const RibbonActions& acts
 
     // Presse-papier
     std::vector<QAction*> clipCol;
+    if (acts.actionCutClipboard) clipCol.push_back(acts.actionCutClipboard);
     if (acts.actionCopyClipboard) clipCol.push_back(acts.actionCopyClipboard);
-    if (acts.actionPasteClipboard) clipCol.push_back(acts.actionPasteClipboard);
+    std::vector<QAction*> pasteCol;
+    if (acts.actionPasteClipboard) pasteCol.push_back(acts.actionPasteClipboard);
+    if (acts.actionPasteOriginal) pasteCol.push_back(acts.actionPasteOriginal);
     if (!clipCol.empty())
     {
         auto* clipPanel = new RibbonPanel(QObject::tr("Presse-papier"), tab);
         clipPanel->addSmallColumn(clipCol);
+        if (!pasteCol.empty()) clipPanel->addSmallColumn(pasteCol);
         tab->addPanel(clipPanel);
     }
 

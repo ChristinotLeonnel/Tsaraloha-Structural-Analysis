@@ -31,6 +31,11 @@ bureau actif). La fenêtre de TSA doit rester au premier plan pendant l'essai.
    sélection dans la vue, redimensionnement, calcul et déplacements, enregistrement, réouverture, cycles, journal.
    Le menu déroulant « Affichage du maillage » du ruban n'est pas exposé à UI Automation : il est parcouru au clavier.
    Le scénario enregistre le projet : le régénérer avant une nouvelle exécution.
+7. Onglets multi-projets : `multidoc_scenario.ps1 -Work <dossier vide, chemin long> [-Exe <paquet>\TSA.exe]` (copies
+   des exemples dans `<dossier>`) : noms identiques distingués par le dossier, résultats propres à chaque onglet,
+   fichier déjà ouvert activé, Nouveau projet, copier-coller d'un onglet à l'autre, Ctrl+Tab, fermeture avec
+   confirmation. Le scénario modifie les réglages (projets récents, dernier dossier) : sauvegarder puis restaurer
+   `HKCU\Software\TSA*`.
 5. Taille de la vue 3D selon les panneaux : `viewport_layout.ps1 -Project … [-Width 1220 -Height 765]`.
 
 Les boutons qui ouvrent une boîte modale sont cliqués à la souris (`Click-Mouse`) : l'Invoke d'UI Automation

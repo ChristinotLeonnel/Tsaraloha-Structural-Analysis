@@ -29,6 +29,8 @@ struct RibbonActions
     QAction* actionRedo = nullptr;
     QAction* actionCopyClipboard = nullptr;
     QAction* actionPasteClipboard = nullptr;
+    QAction* actionCutClipboard = nullptr;
+    QAction* actionPasteOriginal = nullptr;
 
     // 2. Modélisation
     QAction* actionDrawNode = nullptr;
