@@ -14,7 +14,9 @@
 //   375  copier-coller entre projets : presse-papier commun, projet source détruit avant le collage ; géométrie,
 //        sections, matériaux, orientation, appuis, voile, treillis, dalle complète ; charges en option avec cas de
 //        charge rapprochés par nom (créés s'ils manquent), valeurs identiques ; collage à l'origine ou au point
-//        désigné ; une seule étape d'annulation ; aucun collage partiel (dépendance manquante → modèle inchangé).
+//        désigné ; une seule étape d'annulation ; aucun collage partiel (dépendance manquante → modèle inchangé) ;
+//   376  diagnostic d'affichage : nombre d'objets de la scène et de résultats conforme à la vue, échelles graphiques
+//        listées (caméra, déformée, diagrammes, annotations, charges par famille) ; sa lecture ne modifie rien.
 
 #include "test_common.h"
 
@@ -481,6 +483,38 @@ bool runSuite_Display(int& passed)
                    "Test 375: dépendance manquante — rien collé, historique inchangé (" << r3.error << ")");
         clip.clear();
         std::cout << "[PASS] Test 375: Copier-coller entre projets (dépendances, charges, annulation, tout ou rien)" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 376 : diagnostic d'affichage
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        OccView view;
+        view.resize(640, 480);
+        view.show();
+        pump(20);
+        view.setModel(&m);
+        auto results = portalResults(m);
+        view.rebuildAllShapes();
+        view.setResultsModel(results);
+        view.resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
+        pump();
+        const int scene = displayedObjects(view);
+        const auto d = view.resultsVisual()->diagnostics();
+        const QString text = view.displayDiagnosticsText();
+        std::cout << text.toStdString() << std::endl;
+        TEST_CHECK(text.contains(QString("Scène : %1 objet").arg(scene)) && text.contains(QString("Résultats affichés : %1 objet").arg(d.total())) && d.total() > 0,
+                   "Test 376: comptes de la scène et des résultats conformes à la vue");
+        TEST_CHECK(text.contains("Caméra") && text.contains("Déformée") && text.contains("Diagrammes") && text.contains("Annotations") &&
+                       text.contains("kN/m") && text.contains("valeurs calculées et charges inchangées"),
+                   "Test 376: échelles graphiques listées (caméra, déformée, diagrammes, annotations, charges par famille)");
+        const double my = results->allElementResults().begin()->second.maxAbsMy();
+        TEST_CHECK(displayedObjects(view) == scene && results->allElementResults().begin()->second.maxAbsMy() == my, "Test 376: lecture du diagnostic sans effet");
+        view.setResultsModel(nullptr);
+        view.setModel(nullptr);
+        view.hide();
+        std::cout << "[PASS] Test 376: Diagnostic d'affichage (scène, résultats, échelles)" << std::endl;
         ++passed;
     }
     return true;

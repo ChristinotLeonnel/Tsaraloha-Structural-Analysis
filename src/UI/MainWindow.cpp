@@ -59,6 +59,7 @@
 #include "../Commands/CommandCatalog.h"
 #include "Home/NewProjectDialog.h"
 
+#include <QMetaMethod>
 #include <QMenuBar>
 #include <QToolBar>
 #include <QStatusBar>
@@ -233,12 +234,7 @@ MainWindow::MainWindow(QWidget* parent)
     }
     if (m_occView)
     {
-        connect(m_occView, &OccView::fileDropped, this, [this](const QString& filePath) {
-            if (confirmNoRunningAnalysis(tr("ouvrir un autre projet")) && maybeSave())
-            {
-                loadFile(filePath);
-            }
-        });
+        connect(m_occView, &OccView::fileDropped, this, &MainWindow::openDroppedFile);
     }
 
     if (m_windowManager)
@@ -1899,6 +1895,17 @@ void MainWindow::dragEnterEvent(QDragEnterEvent* event)
     QMainWindow::dragEnterEvent(event);
 }
 
+void MainWindow::openDroppedFile(const QString& path)
+{
+    if (isSignalConnected(QMetaMethod::fromSignal(&MainWindow::openFileRequested)))
+    {
+        emit openFileRequested(path);   // onglets : le projet courant reste ouvert
+        return;
+    }
+    if (confirmNoRunningAnalysis(tr("ouvrir un autre projet")) && maybeSave())
+        loadFile(path);
+}
+
 void MainWindow::dropEvent(QDropEvent* event)
 {
     if (event->mimeData()->hasUrls())
@@ -1909,10 +1916,7 @@ void MainWindow::dropEvent(QDropEvent* event)
             if (TSA::Product::isOpenableProjectFile(path))
             {
                 event->acceptProposedAction();
-                if (confirmNoRunningAnalysis(tr("ouvrir un autre projet")) && maybeSave())
-                {
-                    loadFile(path);
-                }
+                openDroppedFile(path);
                 return;
             }
         }

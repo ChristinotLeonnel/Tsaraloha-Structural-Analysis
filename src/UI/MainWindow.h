@@ -135,6 +135,8 @@ public:
     bool confirmNoRunningAnalysis(const QString& action);
     /// Modifications non enregistrées (onglet de document : indicateur « ● »).
     bool hasUnsavedChanges() const;
+    /// Fichier déposé : transmis à l'hôte (onglets) s'il écoute, sinon ouvert à la place du projet courant
+    void openDroppedFile(const QString& path);
     /// Serveur d'automatisation (MCP) : un seul document à la fois l'expose, celui au premier plan (AppShell).
     void setAutomationActive(bool active);
     bool isAutomationActive() const;
@@ -151,6 +153,8 @@ public:
 signals:
     void newProjectRequested();
     void openProjectRequested();
+    /// Fichier déposé sur la fenêtre ou la vue : ouvert par l'hôte dans un onglet (ou activé s'il est déjà ouvert)
+    void openFileRequested(const QString& path);
     void closeProjectRequested();
     void exitRequested();
     void fullScreenRequested(bool fullScreen);

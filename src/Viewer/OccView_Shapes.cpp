@@ -1,4 +1,5 @@
 #include "../Mesh/MeshGeometry.h"
+#include <AIS_ListOfInteractive.hxx>
 #include <Graphic3d_TransformPers.hxx>
 #include "AnnotationStyle.h"
 #include "OccView.h"
@@ -2846,4 +2847,64 @@ void OccView::updateSurfaceLoadShapes()
             m_surfaceLoadShapes.push_back(label);
         }
     }
+}
+
+QString OccView::displayDiagnosticsText() const
+{
+    QString t = tr("DIAGNOSTIC D'AFFICHAGE\n");
+    int scene = 0;
+    if (!m_context.IsNull())
+    {
+        AIS_ListOfInteractive list;
+        m_context->DisplayedObjects(list);
+        scene = list.Extent();
+    }
+    t += tr("Scène : %1 objet(s) affiché(s)\n").arg(scene);
+    if (m_resultsVisual)
+    {
+        const auto d = m_resultsVisual->diagnostics();
+        t += tr("Résultats affichés : %1 objet(s) — déformée %2, marqueurs de torsion %3, diagrammes %4, étiquettes %5, "
+                "réactions %6 (+%7 étiquettes), extremum %8, légende %9\n")
+                 .arg(d.total()).arg(d.deformed).arg(d.twistMarkers).arg(d.diagrams).arg(d.diagramLabels)
+                 .arg(d.reactions).arg(d.reactionLabels).arg(d.extremum).arg(d.legend);
+    }
+    t += tr("\nÉchelles graphiques (représentation seulement : valeurs calculées et charges inchangées)\n");
+    if (!m_view.IsNull()) t += tr("  Caméra : échelle de vue %1\n").arg(m_view->Scale(), 0, 'g', 4);
+    if (m_resultsVisual)
+    {
+        t += tr("  Déformée : amplification ×%1\n").arg(m_resultsVisual->deformationScale(), 0, 'g', 4);
+        if (m_resultsVisual->diagramAllZero())
+            t += tr("  Diagrammes : grandeur nulle sur toute la structure (aucun tracé)\n");
+        else
+            t += tr("  Diagrammes : échelle %1 m/unité = automatique %2 × multiplicateur %3 ; valeur max %4 ; %5 étiquette(s) superposée(s) masquée(s)\n")
+                     .arg(m_resultsVisual->diagramScale(), 0, 'g', 4)
+                     .arg(m_resultsVisual->diagramAutoScale(), 0, 'g', 4)
+                     .arg(m_resultsVisual->diagramScaleMultiplier(), 0, 'g', 4)
+                     .arg(m_resultsVisual->diagramMaxValue(), 0, 'g', 4)
+                     .arg(m_resultsVisual->hiddenDiagramLabels());
+    }
+    const auto& a = TSA::Viewer::AnnotationStyle::instance().settings();
+    t += tr("  Annotations : %1 — %2 px × facteur d'écran %3 ; hauteur liée au modèle %4 m\n")
+             .arg(a.mode == TSA::Viewer::AnnotationSizeMode::ScreenConstant ? tr("taille constante à l'écran") : tr("taille liée au modèle"))
+             .arg(a.basePixels, 0, 'g', 3)
+             .arg(a.devicePixelRatio, 0, 'g', 3)
+             .arg(a.modelHeight, 0, 'g', 3);
+    using TSA::Geometry::LoadFamily;
+    using TSA::Geometry::LoadScaleMode;
+    const QString mode = m_loadScaleSettings.mode == LoadScaleMode::Proportional ? tr("proportionnelle")
+                       : m_loadScaleSettings.mode == LoadScaleMode::Automatic    ? tr("automatique (minimum %1 %)").arg(m_loadScaleSettings.minRatio * 100.0, 0, 'f', 0)
+                                                                                 : tr("normalisée");
+    t += tr("  Charges : %1 ; facteur %2 ; flèche de référence %3 m\n").arg(mode).arg(m_loadScale, 0, 'g', 3).arg(memberLoadArrowLength(), 0, 'g', 3);
+    for (int f = 0; f < static_cast<int>(LoadFamily::Count); ++f)
+    {
+        const double mx = m_loadMaxima.max[std::size_t(f)];
+        if (mx <= 0.0) continue;
+        const auto fam = static_cast<LoadFamily>(f);
+        t += tr("    %1 : max %2 %3 → %4 m\n")
+                 .arg(QString::fromUtf8(TSA::Geometry::loadFamilyName(fam)))
+                 .arg(mx, 0, 'g', 4)
+                 .arg(QString::fromUtf8(TSA::Geometry::loadFamilyUnit(fam)))
+                 .arg(loadArrowLengthFor(mx, fam), 0, 'g', 3);
+    }
+    return t;
 }

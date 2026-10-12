@@ -28,8 +28,9 @@ Chaque `PhysicalElement` porte la liste **ordonnée** (sens de l'axe) de ses él
 | Modification (section, nœuds, matériau…) | Aucune : l'identité ne change jamais |
 | Regrouper / Séparer | `BimModel::group`, `BimModel::ungroup` |
 
-Limite connue : le collage du presse-papiers structurel (`StructuralClipboard`) ne transmet pas
-encore les métadonnées BIM ; les éléments collés reçoivent un produit 1:1.
+Collage du presse-papiers structurel (`StructuralClipboard`, y compris d'un projet à l'autre) : un produit par
+produit source, mêmes métadonnées, éléments dans l'ordre de l'axe (`registerPasted`, BUG-029 ;
+`docs/MULTI_DOCUMENT.md`).
 
 ## 3. Identifiants
 

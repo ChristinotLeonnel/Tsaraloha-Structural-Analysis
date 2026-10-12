@@ -253,6 +253,7 @@ MainWindow* AppShell::createWorkspace()
 
     connect(workspace, &MainWindow::newProjectRequested, this, &AppShell::createNewProject);
     connect(workspace, &MainWindow::openProjectRequested, this, &AppShell::openProject);
+    connect(workspace, &MainWindow::openFileRequested, this, &AppShell::openProjectFile);
     connect(workspace, &MainWindow::closeProjectRequested, this, &AppShell::closeProject);
     connect(workspace, &MainWindow::exitRequested, this, &QWidget::close);
     connect(workspace, &MainWindow::fullScreenRequested, this, [this](bool on) {

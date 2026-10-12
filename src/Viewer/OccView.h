@@ -439,6 +439,9 @@ public:
     /// Longueur graphique (m) de la flèche d'une charge d'intensité donnée dans sa famille, à la vue courante.
     double loadArrowLengthFor(double intensity, TSA::Geometry::LoadFamily family) const;
     QString loadScaleLegendText() const;
+    /// Diagnostic d'affichage (développeur) : objets de la scène, objets de résultats, échelles graphiques en vigueur
+    /// (caméra, déformée, diagrammes, annotations, charges) ; aucune ne modifie les valeurs du modèle ou des résultats.
+    QString displayDiagnosticsText() const;
 
     void updateNodalLoadShape(int loadId, bool redrawImmediately = true);
     void removeNodalLoadShape(int loadId, bool redrawImmediately = true);

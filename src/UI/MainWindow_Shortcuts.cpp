@@ -40,7 +40,7 @@ void MainWindow::setupShortcuts()
         { "cmd.model.clean", m_actionCleanModel },
         // Édition
         { "cmd.edit.undo", m_actionUndo }, { "cmd.edit.redo", m_actionRedo }, { "cmd.edit.copy", m_actionCopyClipboard },
-        { "cmd.edit.paste", m_actionPasteClipboard }, { "cmd.edit.cut", m_actionCutClipboard }, { "cmd.edit.pasteOriginal", m_actionPasteOriginal }, { "cmd.edit.delete", m_actionDelete },
+        { "cmd.edit.paste", m_actionPasteClipboard }, { "cmd.edit.cut", m_actionCutClipboard }, { "cmd.edit.paste_original", m_actionPasteOriginal }, { "cmd.edit.delete", m_actionDelete },
         { "cmd.edit.repeat", ShortcutManager::instance().repeatAction() },
         // Sélection
         { "cmd.select.mode", m_actionSelectMode }, { "cmd.select.all", m_actionSelectAll },

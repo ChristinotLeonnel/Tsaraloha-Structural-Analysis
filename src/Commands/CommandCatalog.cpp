@@ -92,7 +92,7 @@ void CommandCatalog::initializeStandardCatalog() {
                    ":/icons/edit/paste.svg", CommandCategory::Edit});
   registerCommand({"cmd.edit.cut", "Couper", "Copier les éléments sélectionnés dans le presse-papier puis les supprimer", "Ctrl+X",
                    ":/icons/edit/cut.svg", CommandCategory::Edit});
-  registerCommand({"cmd.edit.pasteOriginal", "Coller à la position d'origine", "Coller les éléments du presse-papier aux coordonnées du projet source", "Ctrl+Shift+V",
+  registerCommand({"cmd.edit.paste_original", "Coller à la position d'origine", "Coller les éléments du presse-papier aux coordonnées du projet source", "Ctrl+Shift+V",
                    ":/icons/edit/paste.svg", CommandCategory::Edit});
   registerCommand({"cmd.edit.delete", "Supprimer", "Supprimer les éléments, charges ou cotations sélectionnés", "Del",
                    ":/icons/edit/delete.svg", CommandCategory::Edit});

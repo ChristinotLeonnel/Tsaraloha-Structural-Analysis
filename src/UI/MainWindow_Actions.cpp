@@ -1,4 +1,5 @@
 #include "../Interaction/Tools/ModelingTool.h"
+#include <QMessageBox>
 #include <QSettings>
 #include <QInputDialog>
 #include "../Viewer/AnnotationStyle.h"
@@ -1296,6 +1297,15 @@ void MainWindow::createMenus()
     createDisplayScaleMenus();
     viewMenu->addMenu(m_annotationScaleMenu);
     viewMenu->addMenu(m_loadScaleMenu);
+    // Diagnostic d'affichage (développeur) : objets de la scène et échelles graphiques du document au premier plan
+    connect(viewMenu->addAction(tr("Diagnostic d'affichage…")), &QAction::triggered, this, [this] {
+        if (!m_occView) return;
+        const QString text = m_occView->displayDiagnosticsText();
+        if (m_consoleDock) m_consoleDock->appendLog(text, "INFO");
+        QMessageBox box(QMessageBox::Information, tr("Diagnostic d'affichage"), text, QMessageBox::Ok, this);
+        box.setTextInteractionFlags(Qt::TextSelectableByMouse);
+        box.exec();
+    });
     QMenu* visSub = viewMenu->addMenu(tr("Aides Visuelles"));
     visSub->addAction(m_actionGridVisible);
     visSub->addAction(m_actionLevelsVisible);
