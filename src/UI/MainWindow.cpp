@@ -1614,6 +1614,9 @@ bool MainWindow::loadFile(const QString& path)
     }
 
     m_model->clearUndoRedo();
+    // Résultats du projet précédent : jamais présentés sur le projet ouvert (ils l'étaient tant qu'aucun calcul
+    // n'était relancé : diagrammes de l'ancien calcul dessinés sur les éléments de même id du nouveau modèle).
+    if (m_analysis) m_analysis->clearResults();
     restoreAnalysisContextFromModel();
     applyTopologyDisplayFromModel();
     syncDimensionActions();

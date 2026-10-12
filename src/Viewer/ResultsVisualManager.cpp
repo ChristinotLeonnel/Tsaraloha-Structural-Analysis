@@ -117,6 +117,7 @@ void ResultsVisualManager::setResultsModel(const std::shared_ptr<TSA::Analysis::
 {
     m_results = results;
     m_deformedAxesValid = false;
+    clearExtremumMarker();   // marqueur d'un autre calcul : jamais conservé
     if (m_results && m_results->isValid())
     {
         // Un facteur choisi par l'utilisateur (×1, ×100, manuel) est conservé d'un calcul à l'autre.
@@ -589,10 +590,8 @@ void ResultsVisualManager::updateDeformedShapes()
         if (!axis.valid) continue; // signalé dans la légende, jamais remplacé par une forme inventée
         TopoDS_Shape shape;
         bool solid = false;
-        int mapKey = key.id;
         if (key.kind == StructuralElementKind::Beam || key.kind == StructuralElementKind::Column)
         {
-            if (key.kind == StructuralElementKind::Column) mapKey = 100000 + key.id;
             double rotation = 0.0;
             const TSA::Model::Section* section = memberSection(key, &rotation);
             if (section)
@@ -618,7 +617,6 @@ void ResultsVisualManager::updateDeformedShapes()
         }
         else
         {
-            mapKey = (key.kind == StructuralElementKind::Truss ? 200000 : 300000) + key.id;
             shape = TSA::Geometry::DeformedGeometry::createAxisWire(axis, displayScale);
         }
         if (shape.IsNull()) continue;
@@ -656,8 +654,33 @@ void ResultsVisualManager::updateDeformedShapes()
         else
             ais->SetWidth(key.kind == StructuralElementKind::Cable ? 2.0 : 2.5);
         ctx->Display(ais, false);
-        m_deformedElementShapes[mapKey] = ais;
+        replaceShape(m_deformedElementShapes, key, ais);
     }
+}
+
+template <typename Map, typename Key>
+void ResultsVisualManager::replaceShape(Map& map, const Key& key, const Handle(AIS_Shape)& shape)
+{
+    // Garde : un objet déjà affiché sous la même clé est retiré de la scène avant d'être remplacé (jamais d'objet
+    // orphelin resté à l'écran)
+    auto it = map.find(key);
+    if (it != map.end() && !it->second.IsNull() && it->second != shape)
+        if (auto ctx = context()) ctx->Remove(it->second, false);
+    map[key] = shape;
+}
+
+ResultsVisualManager::Diagnostics ResultsVisualManager::diagnostics() const
+{
+    Diagnostics d;
+    d.deformed = int(m_deformedElementShapes.size() + m_deformedNodeShapes.size());
+    d.twistMarkers = int(m_twistMarkerShapes.size());
+    d.diagrams = int(m_diagramShapes.size());
+    for (const auto& [k, v] : m_diagramLabels) d.diagramLabels += int(v.size());
+    d.reactions = int(m_reactionShapes.size());
+    d.reactionLabels = int(m_reactionLabels.size());
+    d.extremum = int(!m_extremumMarkerShape.IsNull()) + int(!m_extremumLabel.IsNull());
+    d.legend = int(!m_legendLabel.IsNull());
+    return d;
 }
 
 void ResultsVisualManager::clearDeformedShapes()
@@ -798,7 +821,7 @@ void ResultsVisualManager::updateDiagramShapes()
             }
             ais->SetTransparency(0.25);
             ctx->Display(ais, false);
-            m_diagramShapes[elId] = ais;
+            replaceShape(m_diagramShapes, elKey, ais);
         }
 
         // Étiquettes de valeurs extrêmes
@@ -837,7 +860,7 @@ void ResultsVisualManager::updateDiagramShapes()
                 lbl->SetHeight(12.0);
                 lbl->SetFont("Arial");
                 ctx->Display(lbl, false);
-                m_diagramLabels[elId].push_back(lbl);
+                m_diagramLabels[elKey].push_back(lbl);
             };
 
             addLabel(maxIdx, maxVal);

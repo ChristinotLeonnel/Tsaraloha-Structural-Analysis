@@ -124,6 +124,15 @@ public:
     void showExtremumMarker(const TSA::NDC::ExtremumPoint& pt);
     void clearExtremumMarker();
 
+    /// Objets de résultats actuellement affichés (diagnostic : un objet de la scène absent de ces comptes serait un
+    /// objet orphelin, impossible à retirer).
+    struct Diagnostics
+    {
+        int deformed = 0, twistMarkers = 0, diagrams = 0, diagramLabels = 0, reactions = 0, reactionLabels = 0, extremum = 0, legend = 0;
+        int total() const { return deformed + twistMarkers + diagrams + diagramLabels + reactions + reactionLabels + extremum + legend; }
+    };
+    Diagnostics diagnostics() const;
+
     // Nettoyage et actualisation
     void updateAllVisuals();
     void clearAllVisuals();
@@ -147,6 +156,8 @@ private:
     void clearReactionShapes();
 
     Handle(AIS_InteractiveContext) context() const;
+    template <typename Map, typename Key>
+    void replaceShape(Map& map, const Key& key, const Handle(AIS_Shape)& shape);
     void redrawView();
 
 private:
@@ -183,11 +194,14 @@ private:
     std::string m_maxTwistElement;
 
     // Objets OCCT affichés
-    std::map<int, Handle(AIS_Shape)> m_deformedElementShapes;
+    // Objets affichés par élément, désignés par (famille, id) : les ids TSA ne sont uniques que dans leur famille
+    // (poutre 1 et poteau 1 coexistent). Une clé « int » faisait écraser un objet affiché sans le retirer de la scène :
+    // il restait à l'écran indéfiniment, y compris dans un nouveau projet (audit de l'affichage).
+    std::map<TSA::Analysis::ElementKey, Handle(AIS_Shape)> m_deformedElementShapes;
     std::map<int, Handle(AIS_Shape)> m_deformedNodeShapes;
     std::vector<Handle(AIS_Shape)> m_twistMarkerShapes;
-    std::map<int, Handle(AIS_Shape)> m_diagramShapes;
-    std::map<int, std::vector<Handle(AIS_TextLabel)>> m_diagramLabels;
+    std::map<TSA::Analysis::ElementKey, Handle(AIS_Shape)> m_diagramShapes;
+    std::map<TSA::Analysis::ElementKey, std::vector<Handle(AIS_TextLabel)>> m_diagramLabels;
     std::map<int, Handle(AIS_Shape)> m_reactionShapes;
     std::map<int, Handle(AIS_TextLabel)> m_reactionLabels;
     Handle(AIS_Shape) m_extremumMarkerShape;

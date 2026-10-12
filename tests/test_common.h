@@ -202,3 +202,4 @@ bool runSuite_DemoModels(int& passed);
 bool runSuite_Surfaces(int& passed);
 bool runSuite_Audit(int& passed);
 bool runSuite_Benchmarks(int& passed);
+bool runSuite_Display(int& passed);
