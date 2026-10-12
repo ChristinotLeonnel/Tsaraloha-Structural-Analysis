@@ -97,7 +97,18 @@ public:
     TSA::Geometry::DiagramType diagramType() const { return m_diagramType; }
     void setDiagramType(TSA::Geometry::DiagramType type);
 
+    /// Échelle des diagrammes (m de diagramme par unité de la grandeur) = échelle automatique × multiplicateur.
+    /// Indépendante de l'amplification de la déformée, du zoom de la caméra et de la taille des textes.
     double diagramScale() const { return m_diagramScale; }
+    double diagramAutoScale() const { return m_diagramAutoScale; }
+    double diagramScaleMultiplier() const { return m_diagramMultiplier; }
+    /// Multiplicateur choisi par l'utilisateur (1 = automatique) : conservé d'un calcul et d'une grandeur à l'autre.
+    void setDiagramScaleMultiplier(double multiplier);
+    /// Plus grande valeur absolue de la grandeur affichée (unité du diagramme) ; 0 si nulle partout.
+    double diagramMaxValue() const { return m_diagramMaxValue; }
+    /// Grandeur affichée nulle sur toute la structure (aucun diagramme dessiné, message dans la légende).
+    bool diagramAllZero() const { return m_diagramAllZero; }
+    int hiddenDiagramLabels() const { return m_hiddenDiagramLabels; }
     void setDiagramScale(double scale);
     void autoComputeDiagramScale();
 
@@ -124,6 +135,15 @@ public:
     void showExtremumMarker(const TSA::NDC::ExtremumPoint& pt);
     void clearExtremumMarker();
 
+    /// Objets de résultats actuellement affichés (diagnostic : un objet de la scène absent de ces comptes serait un
+    /// objet orphelin, impossible à retirer).
+    struct Diagnostics
+    {
+        int deformed = 0, twistMarkers = 0, diagrams = 0, diagramLabels = 0, reactions = 0, reactionLabels = 0, extremum = 0, legend = 0;
+        int total() const { return deformed + twistMarkers + diagrams + diagramLabels + reactions + reactionLabels + extremum + legend; }
+    };
+    Diagnostics diagnostics() const;
+
     // Nettoyage et actualisation
     void updateAllVisuals();
     void clearAllVisuals();
@@ -147,6 +167,8 @@ private:
     void clearReactionShapes();
 
     Handle(AIS_InteractiveContext) context() const;
+    template <typename Map, typename Key>
+    void replaceShape(Map& map, const Key& key, const Handle(AIS_Shape)& shape);
     void redrawView();
 
 private:
@@ -161,6 +183,11 @@ private:
 
     TSA::Geometry::DiagramType m_diagramType = TSA::Geometry::DiagramType::None;
     double m_diagramScale = 0.05;
+    double m_diagramAutoScale = 0.05;
+    double m_diagramMultiplier = 1.0;
+    double m_diagramMaxValue = 0.0;
+    bool m_diagramAllZero = false;
+    int m_hiddenDiagramLabels = 0;   ///< étiquettes superposées non affichées (dédoublonnage aux nœuds)
     bool m_diagramLabelsVisible = true;
 
     bool m_reactionsVisible = true;
@@ -183,11 +210,14 @@ private:
     std::string m_maxTwistElement;
 
     // Objets OCCT affichés
-    std::map<int, Handle(AIS_Shape)> m_deformedElementShapes;
+    // Objets affichés par élément, désignés par (famille, id) : les ids TSA ne sont uniques que dans leur famille
+    // (poutre 1 et poteau 1 coexistent). Une clé « int » faisait écraser un objet affiché sans le retirer de la scène :
+    // il restait à l'écran indéfiniment, y compris dans un nouveau projet (audit de l'affichage).
+    std::map<TSA::Analysis::ElementKey, Handle(AIS_Shape)> m_deformedElementShapes;
     std::map<int, Handle(AIS_Shape)> m_deformedNodeShapes;
     std::vector<Handle(AIS_Shape)> m_twistMarkerShapes;
-    std::map<int, Handle(AIS_Shape)> m_diagramShapes;
-    std::map<int, std::vector<Handle(AIS_TextLabel)>> m_diagramLabels;
+    std::map<TSA::Analysis::ElementKey, Handle(AIS_Shape)> m_diagramShapes;
+    std::map<TSA::Analysis::ElementKey, std::vector<Handle(AIS_TextLabel)>> m_diagramLabels;
     std::map<int, Handle(AIS_Shape)> m_reactionShapes;
     std::map<int, Handle(AIS_TextLabel)> m_reactionLabels;
     Handle(AIS_Shape) m_extremumMarkerShape;

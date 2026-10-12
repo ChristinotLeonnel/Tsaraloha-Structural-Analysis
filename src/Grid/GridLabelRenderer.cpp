@@ -1,4 +1,5 @@
 #include "GridLabelRenderer.h"
+#include "../Viewer/AnnotationStyle.h"
 
 #include <TopoDS_Edge.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
@@ -153,7 +154,7 @@ void GridLabelRenderer::updateLabels(const GridSystem& gridSystem, const Handle(
         aisText->SetColor(label.isLevelLabel ? levelTextColor : textColor);
         aisText->SetHJustification(label.isLevelLabel ? Graphic3d_HTA_RIGHT : Graphic3d_HTA_CENTER);
         aisText->SetVJustification(Graphic3d_VTA_CENTER);
-        aisText->SetHeight(label.isLevelLabel ? (label.isBold ? 14.0 : 12.0) : (label.isBold ? 15.0 : 13.0));
+        TSA::Viewer::AnnotationStyle::instance().apply(aisText, label.isBold ? TSA::Viewer::AnnotationRole::GridLabelBold : TSA::Viewer::AnnotationRole::GridLabel);
         if (label.isBold)
         {
             aisText->SetFontAspect(Font_FA_Bold);

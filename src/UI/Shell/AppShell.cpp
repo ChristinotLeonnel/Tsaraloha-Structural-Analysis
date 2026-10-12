@@ -27,6 +27,7 @@
 #include <QDropEvent>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QKeyEvent>
 #include <QMenu>
 #include <QMimeData>
 #include <QAbstractNativeEventFilter>
@@ -35,6 +36,10 @@
 #include <QSettings>
 #include <QShortcut>
 #include <QStackedWidget>
+#include <QTabBar>
+#include <QClipboard>
+#include <QDesktopServices>
+#include <QUrl>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -78,6 +83,36 @@ AppShell::AppShell(QWidget* parent)
     m_titleBar = new TitleBar(this);
     m_layout->addWidget(m_titleBar);
 
+    // Onglets des documents ouverts (visibles en mode Workspace)
+    m_docTabs = new QTabBar(this);
+    m_docTabs->setObjectName("TSADocumentTabs");
+    m_docTabs->setTabsClosable(true);
+    m_docTabs->setMovable(true);
+    m_docTabs->setExpanding(false);
+    m_docTabs->setDocumentMode(true);
+    // Largeur des onglets calculée avec la police du thème (QTabBar::tab : Segoe UI 11 px demi-gras) : sinon le nom,
+    // mesuré avec la police normale, est tronqué (« Reser…r.tsa ») ; noms longs : boutons de défilement
+    {
+        QFont tabFont(QStringLiteral("Segoe UI"));
+        tabFont.setPixelSize(11);
+        tabFont.setWeight(QFont::DemiBold);
+        m_docTabs->setFont(tabFont);
+    }
+    m_docTabs->setElideMode(Qt::ElideNone);
+    m_docTabs->setUsesScrollButtons(true);
+    m_docTabs->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_docTabs->hide();
+    m_layout->addWidget(m_docTabs);
+    connect(m_docTabs, &QTabBar::currentChanged, this, [this](int i) {
+        if (i >= 0 && i < m_documents.size() && m_documents[i] != m_workspace) activateDocument(m_documents[i]);
+    });
+    connect(m_docTabs, &QTabBar::tabCloseRequested, this, [this](int i) {
+        if (i >= 0 && i < m_documents.size()) closeDocument(m_documents[i]);
+    });
+    connect(m_docTabs, &QTabBar::tabMoved, this, [this](int from, int to) { m_documents.move(from, to); });
+    connect(m_docTabs, &QTabBar::customContextMenuRequested, this, &AppShell::showTabMenu);
+    qApp->installEventFilter(this);   // Ctrl+Tab entre documents (eventFilter)
+
     m_stack = new QStackedWidget(this);
     m_layout->addWidget(m_stack, 1);
 
@@ -108,12 +143,16 @@ void AppShell::createActions()
     m_actUndo = new QAction(QIcon(":/icons/undo.svg"), tr("Annuler"), this);
     m_actRedo = new QAction(QIcon(":/icons/redo.svg"), tr("Rétablir"), this);
     m_actCloseProject = new QAction(QIcon(":/icons/file/file_close.svg"), tr("Fermer le projet"), this);
+    m_actCloseAll = new QAction(tr("Fermer tous les projets"), this);
+    m_actSaveAll = new QAction(QIcon(":/icons/file_save.svg"), tr("Enregistrer tous les projets"), this);
+    connect(m_actCloseAll, &QAction::triggered, this, &AppShell::closeAllProjects);
+    connect(m_actSaveAll, &QAction::triggered, this, &AppShell::saveAllProjects);
     m_actTheme = new QAction(themeIcon(ThemeManager::instance().isDarkMode()), tr("Thème clair / sombre"), this);
     m_actExit = new QAction(QIcon(":/icons/file_exit.svg"), tr("Quitter %1").arg(TSA::Product::name()), this);
 
     m_actNew->setToolTip(tr("Nouveau projet (Ctrl+N)"));
     m_actOpen->setToolTip(tr("Ouvrir un projet (Ctrl+O)"));
-    m_actCloseProject->setToolTip(tr("Fermer le projet et revenir au Start Center"));
+    m_actCloseProject->setToolTip(tr("Fermer le projet au premier plan (le dernier ramène au Start Center)"));
     m_actTheme->setToolTip(tr("Basculer entre le thème clair et le thème sombre"));
 
     connect(m_actNew, &QAction::triggered, this, &AppShell::createNewProject);
@@ -167,10 +206,17 @@ void AppShell::createActions()
 
 void AppShell::bindToWorkspace(QAction* proxy, QAction* target)
 {
-    if (!target) return;
+    // Action de la barre de titre → action du document au premier plan (re-liée à chaque changement d'onglet)
+    if (QAction* old = m_proxyTargets.value(proxy)) disconnect(old, &QAction::changed, this, &AppShell::syncProxyActions);
+    if (!proxy->property("tsaProxyConnected").toBool())
+    {
+        connect(proxy, &QAction::triggered, this, [this, proxy] {
+            if (QAction* t = m_proxyTargets.value(proxy)) t->trigger();
+        });
+        proxy->setProperty("tsaProxyConnected", true);
+    }
     m_proxyTargets[proxy] = target;
-    connect(proxy, &QAction::triggered, target, &QAction::trigger);
-    connect(target, &QAction::changed, this, &AppShell::syncProxyActions);
+    if (target) connect(target, &QAction::changed, this, &AppShell::syncProxyActions);
 }
 
 void AppShell::syncProxyActions()
@@ -187,25 +233,30 @@ void AppShell::syncProxyActions()
     }
     m_actCloseProject->setEnabled(isProjectOpen());
     m_actCloseProject->setVisible(isProjectOpen());
+    m_actCloseAll->setEnabled(isProjectOpen());
+    m_actSaveAll->setEnabled(isProjectOpen());
     for (QShortcut* sc : m_startCenterShortcuts) sc->setEnabled(!isProjectOpen());
 }
 
-MainWindow* AppShell::ensureWorkspace()
+MainWindow* AppShell::createWorkspace()
 {
-    if (m_workspace) return m_workspace;
-
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    m_workspace = new MainWindow(m_stack);
+    auto* workspace = new MainWindow(m_stack);
     // La somme des minima des panneaux (barre d'état ≈ 1 680 px, docks + barre du viewport ≈ 1 520 px)
     // pousserait la fenêtre hors de l'écran : le workspace se contente d'un minimum raisonnable.
-    m_workspace->setMinimumSize(kWorkspaceMinimumSize);
-    m_stack->addWidget(m_workspace);
+    workspace->setMinimumSize(kWorkspaceMinimumSize);
+    m_stack->addWidget(workspace);
+    m_documents << workspace;
+    m_docTabs->blockSignals(true);
+    m_docTabs->addTab(QString());
+    m_docTabs->blockSignals(false);
 
-    connect(m_workspace, &MainWindow::newProjectRequested, this, &AppShell::createNewProject);
-    connect(m_workspace, &MainWindow::openProjectRequested, this, &AppShell::openProject);
-    connect(m_workspace, &MainWindow::closeProjectRequested, this, &AppShell::closeProject);
-    connect(m_workspace, &MainWindow::exitRequested, this, &QWidget::close);
-    connect(m_workspace, &MainWindow::fullScreenRequested, this, [this](bool on) {
+    connect(workspace, &MainWindow::newProjectRequested, this, &AppShell::createNewProject);
+    connect(workspace, &MainWindow::openProjectRequested, this, &AppShell::openProject);
+    connect(workspace, &MainWindow::openFileRequested, this, &AppShell::openProjectFile);
+    connect(workspace, &MainWindow::closeProjectRequested, this, &AppShell::closeProject);
+    connect(workspace, &MainWindow::exitRequested, this, &QWidget::close);
+    connect(workspace, &MainWindow::fullScreenRequested, this, [this](bool on) {
         if (on && !isFullScreen())
         {
             m_wasMaximizedBeforeFullScreen = isMaximized();
@@ -216,24 +267,187 @@ MainWindow* AppShell::ensureWorkspace()
             m_wasMaximizedBeforeFullScreen ? showMaximized() : showNormal();
         }
     });
-    connect(m_workspace, &MainWindow::previewCaptured, m_startCenter, &StartCenter::updatePreview);
-    connect(m_workspace, &QWidget::windowTitleChanged, this, &AppShell::updateTitle);
-
-    bindToWorkspace(m_actSave, m_workspace->actionSave());
-    bindToWorkspace(m_actSaveAs, m_workspace->actionSaveAs());
-    bindToWorkspace(m_actUndo, m_workspace->actionUndo());
-    bindToWorkspace(m_actRedo, m_workspace->actionRedo());
+    connect(workspace, &MainWindow::previewCaptured, m_startCenter, &StartCenter::updatePreview);
+    connect(workspace, &QWidget::windowTitleChanged, this, [this] {
+        refreshTabs();
+        updateTitle();
+    });
     QApplication::restoreOverrideCursor();
-    return m_workspace;
+    return workspace;
+}
+
+MainWindow* AppShell::documentFor(const QString& path) const
+{
+    const QString wanted = TSA::Project::RecentProjects::normalize(path);
+    for (MainWindow* d : m_documents)
+    {
+        const auto* pm = d->projectManager();
+        if (pm && pm->hasFilePath() && TSA::Project::RecentProjects::normalize(pm->currentFilePath()).compare(wanted, Qt::CaseInsensitive) == 0) return d;
+    }
+    return nullptr;
+}
+
+QString AppShell::tabLabel(const MainWindow* d) const
+{
+    const auto* pm = d->projectManager();
+    const QString path = pm && pm->hasFilePath() ? pm->currentFilePath() : QString();
+    QString name = path.isEmpty() ? (pm && !pm->projectName().isEmpty() ? pm->projectName() : tr("Nouveau projet")) : QFileInfo(path).fileName();
+    // Même nom de fichier dans des dossiers différents : dossier parent ajouté
+    if (!path.isEmpty())
+        for (const MainWindow* other : m_documents)
+        {
+            if (other == d) continue;
+            const auto* opm = other->projectManager();
+            if (opm && opm->hasFilePath() && QFileInfo(opm->currentFilePath()).fileName().compare(QFileInfo(path).fileName(), Qt::CaseInsensitive) == 0)
+            {
+                name += QStringLiteral(" — ") + QFileInfo(path).absoluteDir().dirName();
+                break;
+            }
+        }
+    return d->hasUnsavedChanges() ? name + QStringLiteral(" ●") : name;
+}
+
+void AppShell::refreshTabs()
+{
+    m_docTabs->blockSignals(true);
+    for (int i = 0; i < m_documents.size() && i < m_docTabs->count(); ++i)
+    {
+        m_docTabs->setTabText(i, tabLabel(m_documents[i]));
+        const auto* pm = m_documents[i]->projectManager();
+        m_docTabs->setTabToolTip(i, pm && pm->hasFilePath() ? QDir::toNativeSeparators(pm->currentFilePath()) : tr("Projet non enregistré"));
+    }
+    const int cur = m_documents.indexOf(m_workspace);
+    if (cur >= 0) m_docTabs->setCurrentIndex(cur);
+    m_docTabs->blockSignals(false);
+    m_docTabs->setVisible(isProjectOpen() && !m_documents.isEmpty());
+}
+
+void AppShell::activateDocument(MainWindow* document)
+{
+    if (!document || !m_documents.contains(document)) return;
+    if (m_workspace && m_workspace != document) m_workspace->setAutomationActive(false);
+    m_workspace = document;
+    bindToWorkspace(m_actSave, document->actionSave());
+    bindToWorkspace(m_actSaveAs, document->actionSaveAs());
+    bindToWorkspace(m_actUndo, document->actionUndo());
+    bindToWorkspace(m_actRedo, document->actionRedo());
+    document->setAutomationActive(true);
+    for (MainWindow* d : m_documents)
+        d->setMinimumSize(m_mode == ApplicationMode::ProjectWorkspace && d == document ? kWorkspaceMinimumSize : QSize(1, 1));
+    if (m_mode == ApplicationMode::ProjectWorkspace) m_stack->setCurrentWidget(document);
+    refreshTabs();
+    syncProxyActions();
+    updateTitle();
+}
+
+bool AppShell::closeDocument(MainWindow* document)
+{
+    if (!document || !m_documents.contains(document)) return true;
+    activateDocument(document);   // le document dont on demande la fermeture est montré pendant la confirmation
+    if (!document->closeProject()) return false;   // calcul en cours ou « Annuler »
+    document->setAutomationActive(false);
+    const int index = m_documents.indexOf(document);
+    m_documents.removeAt(index);
+    m_docTabs->blockSignals(true);
+    m_docTabs->removeTab(index);
+    m_docTabs->blockSignals(false);
+    m_stack->removeWidget(document);
+    if (m_workspace == document) m_workspace = nullptr;
+    document->hide();
+    document->deleteLater();   // modèle, résultats, vue et caches du document libérés avec lui
+    if (m_documents.isEmpty())
+    {
+        bindToWorkspace(m_actSave, nullptr);
+        bindToWorkspace(m_actSaveAs, nullptr);
+        bindToWorkspace(m_actUndo, nullptr);
+        bindToWorkspace(m_actRedo, nullptr);
+        showStartCenter();
+    }
+    else
+        activateDocument(m_documents[std::min<int>(index, m_documents.size() - 1)]);
+    return true;
+}
+
+bool AppShell::closeAllProjects()
+{
+    while (!m_documents.isEmpty())
+        if (!closeDocument(m_workspace && m_documents.contains(m_workspace) ? m_workspace : m_documents.last())) return false;
+    return true;
+}
+
+void AppShell::saveAllProjects()
+{
+    MainWindow* current = m_workspace;
+    for (MainWindow* d : m_documents)
+        if (d->hasUnsavedChanges() && d->actionSave())
+        {
+            activateDocument(d);
+            d->actionSave()->trigger();
+        }
+    if (current) activateDocument(current);
+}
+
+bool AppShell::eventFilter(QObject* watched, QEvent* event)
+{
+    if ((event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride) && isProjectOpen() && m_documents.size() > 1 && isActiveWindow())
+    {
+        auto* ke = static_cast<QKeyEvent*>(event);
+        const bool ctrl = ke->modifiers() & Qt::ControlModifier;
+        int step = 0;
+        if (ctrl && ke->key() == Qt::Key_Tab) step = (ke->modifiers() & Qt::ShiftModifier) ? -1 : 1;
+        else if (ctrl && ke->key() == Qt::Key_Backtab) step = -1;
+        else if (ctrl && ke->key() == Qt::Key_PageDown) step = 1;
+        else if (ctrl && ke->key() == Qt::Key_PageUp) step = -1;
+        if (step != 0)
+        {
+            if (event->type() == QEvent::ShortcutOverride)
+                event->accept();   // aucun raccourci ne la consomme : la touche arrive en KeyPress
+            else
+            {
+                const int n = int(m_documents.size());
+                activateDocument(m_documents[(m_documents.indexOf(m_workspace) + step + n) % n]);
+            }
+            return event->type() == QEvent::KeyPress;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
+void AppShell::showTabMenu(const QPoint& pos)
+{
+    const int i = m_docTabs->tabAt(pos);
+    if (i < 0 || i >= m_documents.size()) return;
+    MainWindow* d = m_documents[i];
+    QMenu menu(this);
+    menu.addAction(tr("Enregistrer"), this, [this, d] {
+        activateDocument(d);
+        if (d->actionSave()) d->actionSave()->trigger();
+    });
+    menu.addAction(tr("Fermer"), this, [this, d] { closeDocument(d); });
+    menu.addAction(tr("Fermer les autres projets"), this, [this, d] {
+        for (MainWindow* o : QList<MainWindow*>(m_documents))
+            if (o != d && !closeDocument(o)) return;
+    });
+    menu.addAction(m_actCloseAll);
+    menu.addAction(m_actSaveAll);
+    const auto* pm = d->projectManager();
+    if (pm && pm->hasFilePath())
+    {
+        const QString path = pm->currentFilePath();
+        menu.addSeparator();
+        menu.addAction(tr("Copier le chemin"), this, [path] { QApplication::clipboard()->setText(QDir::toNativeSeparators(path)); });
+        menu.addAction(tr("Ouvrir le dossier"), this, [path] { QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath())); });
+    }
+    menu.exec(m_docTabs->mapToGlobal(pos));
 }
 
 void AppShell::setMode(ApplicationMode mode)
 {
     m_mode = mode;
-    if (mode == ApplicationMode::ProjectWorkspace)
+    if (mode == ApplicationMode::ProjectWorkspace && m_workspace)
     {
         // Le viewport doit être visible (OCCT initialisé) avant tout chargement ou capture.
-        m_stack->setCurrentWidget(ensureWorkspace());
+        m_stack->setCurrentWidget(m_workspace);
     }
     else
     {
@@ -241,8 +455,9 @@ void AppShell::setMode(ApplicationMode mode)
         m_stack->setCurrentWidget(m_startCenter);
     }
     // La page cachée n'impose pas sa taille minimale (QStackedLayout prend le maximum des pages).
-    if (m_workspace)
-        m_workspace->setMinimumSize(mode == ApplicationMode::ProjectWorkspace ? kWorkspaceMinimumSize : QSize(1, 1));
+    for (MainWindow* d : m_documents)
+        d->setMinimumSize(mode == ApplicationMode::ProjectWorkspace && d == m_workspace ? kWorkspaceMinimumSize : QSize(1, 1));
+    refreshTabs();
     syncProxyActions();
     updateTitle();
 }
@@ -268,67 +483,63 @@ void AppShell::updateTitle()
 
 void AppShell::createNewProject()
 {
-    if (isProjectOpen() && (!m_workspace->confirmNoRunningAnalysis(tr("créer un projet")) || !m_workspace->maybeSave())) return;
-
+    // Nouveau projet = nouvel onglet : les projets déjà ouverts restent ouverts, intacts
     NewProjectDialog dialog(this);
     if (dialog.exec() != QDialog::Accepted) return;
 
-    MainWindow* workspace = ensureWorkspace();
+    MainWindow* workspace = createWorkspace();
+    activateDocument(workspace);
     showProjectWorkspace();
     if (!workspace->createProject(dialog.settings()))
-    {
-        workspace->closeProject();
-        showStartCenter();
-    }
+        closeDocument(workspace);
+    else
+        refreshTabs();
 }
 
 void AppShell::openProject()
 {
-    if (isProjectOpen() && (!m_workspace->confirmNoRunningAnalysis(tr("ouvrir un autre projet")) || !m_workspace->maybeSave())) return;
-
     QString initialDir;
     const auto recent = TSA::Project::RecentProjects().list(false);
     if (!recent.isEmpty()) initialDir = QFileInfo(recent.first().path).absolutePath();
     const QString path = QFileDialog::getOpenFileName(this, tr("Ouvrir un projet %1").arg(TSA::Product::name()), initialDir,
                                                       TSA::Product::openFileFilter());
     if (path.isEmpty()) return;
-    loadIntoWorkspace(path);
+    openProjectFile(path);
 }
 
 bool AppShell::openProjectFile(const QString& path)
 {
     if (path.isEmpty()) return false;
-    if (isProjectOpen())
+    if (MainWindow* open = documentFor(path))
     {
-        const auto* pm = m_workspace->projectManager();
-        if (pm && pm->hasFilePath()
-            && TSA::Project::RecentProjects::normalize(pm->currentFilePath()).compare(TSA::Project::RecentProjects::normalize(path), Qt::CaseInsensitive) == 0)
-            return true; // déjà ouvert
-        if (!m_workspace->confirmNoRunningAnalysis(tr("ouvrir un autre projet")) || !m_workspace->maybeSave()) return false;
+        activateDocument(open);   // déjà ouvert : onglet activé, aucun second exemplaire
+        showProjectWorkspace();
+        return true;
     }
     return loadIntoWorkspace(path);
 }
 
 bool AppShell::loadIntoWorkspace(const QString& path)
 {
-    const bool wasOpen = isProjectOpen();
-    MainWindow* workspace = ensureWorkspace();
+    MainWindow* previous = m_workspace;
+    MainWindow* workspace = createWorkspace();
+    activateDocument(workspace);
     showProjectWorkspace();
-    if (workspace->loadFile(path)) return true;
-    if (!wasOpen)
+    if (workspace->loadFile(path))
     {
-        workspace->closeProject();
-        showStartCenter();
+        refreshTabs();
+        return true;
     }
+    // Échec du chargement : l'onglet vide est retiré sans question, le projet précédent revient au premier plan
+    closeDocument(workspace);
+    if (previous && m_documents.contains(previous)) activateDocument(previous);
     return false;
 }
 
 bool AppShell::closeProject()
 {
-    if (!isProjectOpen()) return true;
-    if (!m_workspace->closeProject()) return false;
-    showStartCenter();
-    return true;
+    if (!isProjectOpen() || !m_workspace) return true;
+    return closeDocument(m_workspace);
 }
 
 void AppShell::rebuildApplicationMenu()
@@ -353,7 +564,9 @@ void AppShell::rebuildApplicationMenu()
     menu->addSeparator();
     menu->addAction(m_actSave);
     menu->addAction(m_actSaveAs);
+    menu->addAction(m_actSaveAll);
     menu->addAction(m_actCloseProject);
+    menu->addAction(m_actCloseAll);
 
     if (isProjectOpen() && m_workspace)
     {
@@ -366,10 +579,15 @@ void AppShell::rebuildApplicationMenu()
 
 void AppShell::closeEvent(QCloseEvent* event)
 {
-    if (m_workspace && !m_workspace->prepareToClose())
+    // Chaque document ouvert : calcul en cours, modifications non enregistrées (confirmation), disposition
+    for (MainWindow* d : QList<MainWindow*>(m_documents))
     {
-        event->ignore();
-        return;
+        activateDocument(d);
+        if (!d->prepareToClose())
+        {
+            event->ignore();
+            return;
+        }
     }
     saveShellGeometry();
     event->accept();

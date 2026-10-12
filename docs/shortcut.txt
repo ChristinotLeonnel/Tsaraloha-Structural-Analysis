@@ -32,8 +32,10 @@ cmd.file.save_as                    | Ctrl+Shift+S          | on   | Ctrl+Shift+
 [Édition]
 # identifiant                       | raccourci(s)          | état | par défaut            | description
 cmd.edit.copy                       | Ctrl+C ; Ctrl+Ins     | on   | Ctrl+C ; Ctrl+Ins     | Copier — Copier les éléments sélectionnés dans le presse-papier
+cmd.edit.cut                        | Ctrl+X                | on   | Ctrl+X                | Couper — Copier les éléments sélectionnés dans le presse-papier puis les supprimer
 cmd.edit.delete                     | Del                   | on   | Del                   | Supprimer — Supprimer les éléments, charges ou cotations sélectionnés
 cmd.edit.paste                      | Ctrl+V ; Shift+Ins    | on   | Ctrl+V ; Shift+Ins    | Coller — Coller les éléments du presse-papier en 3D
+cmd.edit.paste_original             | Ctrl+Shift+V          | on   | Ctrl+Shift+V          | Coller à la position d'origine — Coller les éléments du presse-papier aux coordonnées du projet source
 cmd.edit.redo                       | Ctrl+Y ; Ctrl+Shift+Z | on   | Ctrl+Y ; Ctrl+Shift+Z | Rétablir — Rétablir la modification annulée
 cmd.edit.repeat                     | Ctrl+Return           | on   | Ctrl+Return           | Répéter la dernière commande — Relancer la dernière commande de modélisation, de modification, de charge ou d'appui
 cmd.edit.undo                       | Ctrl+Z                | on   | Ctrl+Z                | Annuler — Annuler la dernière modification

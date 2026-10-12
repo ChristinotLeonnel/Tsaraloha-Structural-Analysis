@@ -1,4 +1,5 @@
 #include "ResultsVisualManager.h"
+#include "AnnotationStyle.h"
 #include "MaterialVisual.h"
 #include "OccView.h"
 #include "../Model/Model.h"
@@ -9,6 +10,7 @@
 #include "../Model/Cable/Cable.h"
 #include "../Model/Section.h"
 
+#include <Graphic3d_TransformPers.hxx>
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_TextLabel.hxx>
@@ -117,6 +119,7 @@ void ResultsVisualManager::setResultsModel(const std::shared_ptr<TSA::Analysis::
 {
     m_results = results;
     m_deformedAxesValid = false;
+    clearExtremumMarker();   // marqueur d'un autre calcul : jamais conservé
     if (m_results && m_results->isValid())
     {
         // Un facteur choisi par l'utilisateur (×1, ×100, manuel) est conservé d'un calcul à l'autre.
@@ -291,10 +294,23 @@ void ResultsVisualManager::setDiagramType(TSA::Geometry::DiagramType type)
     emit visualStateChanged();
 }
 
+void ResultsVisualManager::setDiagramScaleMultiplier(double multiplier)
+{
+    if (!(multiplier > 0.0) || !std::isfinite(multiplier)) multiplier = 1.0;
+    m_diagramMultiplier = multiplier;
+    m_diagramScale = m_diagramAutoScale * m_diagramMultiplier;
+    updateDiagramShapes();
+    updateLegend();
+    redrawView();
+    emit visualStateChanged();
+}
+
 void ResultsVisualManager::setDiagramScale(double scale)
 {
-    if (std::abs(m_diagramScale - scale) < 1e-6) return;
+    // Échelle absolue (m par unité) : enregistrée comme multiplicateur de l'échelle automatique
+    if (!(scale > 0.0) || std::abs(m_diagramScale - scale) <= 1e-12 * std::max(1.0, std::abs(scale))) return;
     m_diagramScale = scale;
+    m_diagramMultiplier = m_diagramAutoScale > 0.0 ? scale / m_diagramAutoScale : 1.0;
     updateDiagramShapes();
     updateLegend();
     redrawView();
@@ -303,22 +319,19 @@ void ResultsVisualManager::setDiagramScale(double scale)
 
 void ResultsVisualManager::setDiagramScalePreset(ScalePreset preset, double customVal)
 {
+    // Diagrammes : multiplicateur de l'échelle automatique (une échelle « ×100 » absolue n'a pas de sens pour une
+    // grandeur en kN·m ; elle était auparavant partagée avec l'amplification de la déformée).
     m_diagramPreset = preset;
+    autoComputeDiagramScale();
     switch (preset)
     {
-    case ScalePreset::Auto:
-        autoComputeDiagramScale();
-        updateDiagramShapes();
-        updateLegend();
-        redrawView();
-        emit visualStateChanged();
-        break;
-    case ScalePreset::X1:     setDiagramScale(1.0); break;
-    case ScalePreset::X10:    setDiagramScale(10.0); break;
-    case ScalePreset::X100:   setDiagramScale(100.0); break;
-    case ScalePreset::X1000:  setDiagramScale(1000.0); break;
-    case ScalePreset::X10000: setDiagramScale(10000.0); break;
-    case ScalePreset::Custom: setDiagramScale(customVal > 0.0 ? customVal : 0.05); break;
+    case ScalePreset::Auto:   setDiagramScaleMultiplier(1.0); break;
+    case ScalePreset::X1:     setDiagramScaleMultiplier(1.0); break;
+    case ScalePreset::X10:    setDiagramScaleMultiplier(10.0); break;
+    case ScalePreset::X100:   setDiagramScaleMultiplier(100.0); break;
+    case ScalePreset::X1000:  setDiagramScaleMultiplier(1000.0); break;
+    case ScalePreset::X10000: setDiagramScaleMultiplier(10000.0); break;
+    case ScalePreset::Custom: setDiagramScaleMultiplier(customVal > 0.0 ? customVal : 1.0); break;
     }
 }
 
@@ -350,6 +363,21 @@ QString ResultsVisualManager::legendSummaryText() const
     if (!m_results || !m_results->isValid()) return QString();
 
     QString text;
+    {
+        // Calcul affiché : jamais un résultat d'un autre calcul présenté comme courant
+        const auto& meta = m_results->executionMetadata();
+        QString loading = QString::fromStdString(meta.loadCombinationType);
+        if (!m_results->caseOrComboName().empty()) loading += QStringLiteral(" « %1 »").arg(QString::fromStdString(m_results->caseOrComboName()));
+        text += QString("CALCUL : %1 — %2 — %3\n").arg(QString::fromStdString(meta.solverEngine), loading, QString::fromStdString(m_results->timestamp()));
+        const int step = m_results->activeStep(), steps = m_results->stepCount();
+        if (m_results->analysisType() == TSA::Analysis::AnalysisType::Modal && !m_results->modal().empty())
+        {
+            const int k = std::clamp(step < 0 ? 0 : step, 0, int(m_results->modal().modes.size()) - 1);
+            text += QString("MODE %1 / %2 : f = %3 Hz (forme propre normalisée)\n").arg(k + 1).arg(m_results->modal().modes.size()).arg(m_results->modal().modes[std::size_t(k)].frequency, 0, 'f', 3);
+        }
+        else if (steps > 1)
+            text += QString("PAS %1 / %2\n").arg(step < 0 ? steps : step + 1).arg(steps);
+    }
     if (m_deformedVisible)
     {
         const auto& sum = m_results->summary();
@@ -380,10 +408,19 @@ QString ResultsVisualManager::legendSummaryText() const
     }
     if (m_diagramType != TSA::Geometry::DiagramType::None)
     {
-        text += QString("DIAGRAMME : %1 (%2) | Échelle ×%3\n")
-            .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType))
-            .arg(TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType))
-            .arg(m_diagramScale, 0, 'f', 4);
+        const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType);
+        if (m_diagramAllZero)
+            text += QString("DIAGRAMME : %1 — grandeur nulle sur toute la structure (aucun diagramme)\n")
+                        .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType));
+        else
+            text += QString("DIAGRAMME : %1 (%2) | max |%3| %2 | 1 m de diagramme = %4 %2%5\n")
+                        .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType))
+                        .arg(unit)
+                        .arg(m_diagramMaxValue, 0, 'g', 4)
+                        .arg(m_diagramScale > 0.0 ? 1.0 / m_diagramScale : 0.0, 0, 'g', 4)
+                        .arg(std::abs(m_diagramMultiplier - 1.0) < 1e-12 ? QString(" (échelle automatique)") : QString(" (automatique ×%1)").arg(m_diagramMultiplier, 0, 'g', 3));
+        if (!m_diagramAllZero && m_hiddenDiagramLabels > 0)
+            text += QString("%1 étiquette(s) superposée(s) non affichée(s) (valeur égale ou inférieure à une étiquette voisine)\n").arg(m_hiddenDiagramLabels);
     }
     return text;
 }
@@ -404,9 +441,13 @@ void ResultsVisualManager::autoComputeDiagramScale()
         }
     }
 
-    if (maxVal < 1e-6)
+    m_diagramMaxValue = maxVal;
+    m_diagramAllZero = !(maxVal > 0.0);
+    if (m_diagramAllZero)
     {
-        m_diagramScale = 0.05;
+        // Grandeur nulle partout : aucun diagramme arbitraire (message dans la légende)
+        m_diagramAutoScale = 0.0;
+        m_diagramScale = 0.0;
         return;
     }
 
@@ -419,8 +460,20 @@ void ResultsVisualManager::autoComputeDiagramScale()
     }
     double span = std::max({maxX - minX, maxY - minY, maxZ - minZ, 5.0});
 
-    // Hauteur crête de diagramme cible ~ 8% de la taille de structure
-    m_diagramScale = std::clamp((0.08 * span) / maxVal, 1e-5, 10.0);
+    // Hauteur crête cible : 8 % de l'envergure, sans dépasser 60 % de la longueur médiane des barres (diagrammes qui
+    // ne recouvrent pas la structure). Aucun plafond sur l'échelle elle-même : une rotation de
+    // 1e-3 rad donne un diagramme aussi lisible qu'un moment de 100 kN·m (l'ancien plafond ×10 la réduisait à quelques millimètres).
+    std::vector<double> lengths;
+    for (const auto& [id, el] : m_results->allElementResults())
+        if (el.length > 0.0) lengths.push_back(el.length);
+    double target = 0.08 * span;
+    if (!lengths.empty())
+    {
+        std::nth_element(lengths.begin(), lengths.begin() + lengths.size() / 2, lengths.end());
+        target = std::min(target, 0.6 * lengths[lengths.size() / 2]);
+    }
+    m_diagramAutoScale = target / maxVal;
+    m_diagramScale = m_diagramAutoScale * m_diagramMultiplier;
 }
 
 void ResultsVisualManager::setDiagramLabelsVisible(bool visible)
@@ -462,28 +515,21 @@ void ResultsVisualManager::updateLegend()
     QString txt = legendSummaryText();
     if (txt.isEmpty()) return;
 
-    double minX = 0, minY = 0, maxZ = 0;
-    if (m_model && !m_model->nodes().empty())
-    {
-        minX = minY = 1e9;
-        maxZ = -1e9;
-        for (const auto& [id, n] : m_model->nodes())
-        {
-            minX = std::min(minX, n.x());
-            minY = std::min(minY, n.y());
-            maxZ = std::max(maxZ, n.z());
-        }
-    }
-
-    gp_Pnt legendPos(minX, minY, maxZ + 0.4);
-
+    // Légende fixe à l'écran (coin inférieur droit, zone libre : cube de navigation en haut à droite, légende des charges
+    // en haut à gauche) : ne recouvre plus la structure et ne suit plus la caméra ; taille constante quel que soit le mode
     m_legendLabel = new AIS_TextLabel();
-    m_legendLabel->SetPosition(legendPos);
+    m_legendLabel->SetPosition(gp_Pnt(0, 0, 0));
     m_legendLabel->SetText(TCollection_ExtendedString(txt.toUtf8().constData(), true));
     m_legendLabel->SetColor(Quantity_NOC_YELLOW);
-    m_legendLabel->SetHeight(13.0);
+    TSA::Viewer::AnnotationStyle::instance().apply(m_legendLabel, TSA::Viewer::AnnotationRole::Legend);
+    m_legendLabel->SetZoomable(false);
+    m_legendLabel->SetHJustification(Graphic3d_HTA_RIGHT);
+    m_legendLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
+    m_legendLabel->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_2d, Aspect_TOTP_RIGHT_LOWER, NCollection_Vec2<int>(16, 24)));
+    m_legendLabel->SetZLayer(Graphic3d_ZLayerId_TopOSD);
     m_legendLabel->SetFont("Arial");
     ctx->Display(m_legendLabel, false);
+    ctx->Deactivate(m_legendLabel);   // non sélectionnable
 }
 
 void ResultsVisualManager::updateAllVisuals()
@@ -589,10 +635,8 @@ void ResultsVisualManager::updateDeformedShapes()
         if (!axis.valid) continue; // signalé dans la légende, jamais remplacé par une forme inventée
         TopoDS_Shape shape;
         bool solid = false;
-        int mapKey = key.id;
         if (key.kind == StructuralElementKind::Beam || key.kind == StructuralElementKind::Column)
         {
-            if (key.kind == StructuralElementKind::Column) mapKey = 100000 + key.id;
             double rotation = 0.0;
             const TSA::Model::Section* section = memberSection(key, &rotation);
             if (section)
@@ -618,7 +662,6 @@ void ResultsVisualManager::updateDeformedShapes()
         }
         else
         {
-            mapKey = (key.kind == StructuralElementKind::Truss ? 200000 : 300000) + key.id;
             shape = TSA::Geometry::DeformedGeometry::createAxisWire(axis, displayScale);
         }
         if (shape.IsNull()) continue;
@@ -656,8 +699,33 @@ void ResultsVisualManager::updateDeformedShapes()
         else
             ais->SetWidth(key.kind == StructuralElementKind::Cable ? 2.0 : 2.5);
         ctx->Display(ais, false);
-        m_deformedElementShapes[mapKey] = ais;
+        replaceShape(m_deformedElementShapes, key, ais);
     }
+}
+
+template <typename Map, typename Key>
+void ResultsVisualManager::replaceShape(Map& map, const Key& key, const Handle(AIS_Shape)& shape)
+{
+    // Garde : un objet déjà affiché sous la même clé est retiré de la scène avant d'être remplacé (jamais d'objet
+    // orphelin resté à l'écran)
+    auto it = map.find(key);
+    if (it != map.end() && !it->second.IsNull() && it->second != shape)
+        if (auto ctx = context()) ctx->Remove(it->second, false);
+    map[key] = shape;
+}
+
+ResultsVisualManager::Diagnostics ResultsVisualManager::diagnostics() const
+{
+    Diagnostics d;
+    d.deformed = int(m_deformedElementShapes.size() + m_deformedNodeShapes.size());
+    d.twistMarkers = int(m_twistMarkerShapes.size());
+    d.diagrams = int(m_diagramShapes.size());
+    for (const auto& [k, v] : m_diagramLabels) d.diagramLabels += int(v.size());
+    d.reactions = int(m_reactionShapes.size());
+    d.reactionLabels = int(m_reactionLabels.size());
+    d.extremum = int(!m_extremumMarkerShape.IsNull()) + int(!m_extremumLabel.IsNull());
+    d.legend = int(!m_legendLabel.IsNull());
+    return d;
 }
 
 void ResultsVisualManager::clearDeformedShapes()
@@ -687,12 +755,20 @@ void ResultsVisualManager::updateDiagramShapes()
 
     clearDiagramShapes();
 
-    if (m_diagramType == TSA::Geometry::DiagramType::None || !m_results || !m_results->isValid() || !m_model)
+    if (m_diagramType == TSA::Geometry::DiagramType::None || !m_results || !m_results->isValid() || !m_model || m_diagramAllZero)
     {
-        return;
+        return;   // grandeur nulle partout : rien de dessiné, la légende l'indique
     }
 
     const bool kN = m_results->units().force == "kN";
+    struct PendingLabel
+    {
+        TSA::Analysis::ElementKey key;
+        gp_Pnt position;
+        double value;
+        QString text;
+    };
+    std::vector<PendingLabel> pending;
     for (const auto& [elKey, elemRes] : m_results->allElementResults())
     {
         const int elId = elKey.id;
@@ -798,7 +874,7 @@ void ResultsVisualManager::updateDiagramShapes()
             }
             ais->SetTransparency(0.25);
             ctx->Display(ais, false);
-            m_diagramShapes[elId] = ais;
+            replaceShape(m_diagramShapes, elKey, ais);
         }
 
         // Étiquettes de valeurs extrêmes
@@ -825,19 +901,13 @@ void ResultsVisualManager::updateDiagramShapes()
 
             auto addLabel = [&](size_t idx, double val)
             {
-                if (std::abs(val) < 1e-4) return;
+                if (val == 0.0) return;
                 double pos = (length > 1e-6) ? (stations[idx].position / length) : 0.0;
                 gp_Pnt base = p1.Translated(vAB * pos);
                 gp_Pnt posLabel = base.Translated(offsetDir * (val * m_diagramScale + 0.08));
 
-                Handle(AIS_TextLabel) lbl = new AIS_TextLabel();
-                lbl->SetPosition(posLabel);
-                lbl->SetText(TCollection_ExtendedString(QString("%1 %2").arg(val, 0, 'f', 1).arg(unit).toUtf8().constData()));
-                lbl->SetColor(Quantity_NOC_WHITE);
-                lbl->SetHeight(12.0);
-                lbl->SetFont("Arial");
-                ctx->Display(lbl, false);
-                m_diagramLabels[elId].push_back(lbl);
+                // 4 chiffres significatifs : une rotation de 0,0059 rad s'affichait « 0.0 rad » (format à 1 décimale)
+                pending.push_back({ elKey, posLabel, val, QString("%1 %2").arg(QString::number(val, 'g', 4)).arg(unit) });
             };
 
             addLabel(maxIdx, maxVal);
@@ -846,6 +916,37 @@ void ResultsVisualManager::updateDiagramShapes()
                 addLabel(minIdx, minVal);
             }
         }
+    }
+    // Étiquettes : à un nœud partagé, la poutre et le poteau donnent la même valeur au même endroit. Une étiquette dont
+    // la position est à moins de 4 % de l'envergure d'une étiquette de plus grande valeur absolue n'est pas affichée
+    // (valeur toujours lisible par l'autre ; rien n'est perdu dans les tableaux et la note).
+    double lo[3] = { 1e300, 1e300, 1e300 }, hi[3] = { -1e300, -1e300, -1e300 };
+    for (const auto& [id, node] : m_model->nodes())
+    {
+        const double c[3] = { node.x(), node.y(), node.z() };
+        for (int k = 0; k < 3; ++k) lo[k] = std::min(lo[k], c[k]), hi[k] = std::max(hi[k], c[k]);
+    }
+    const double minGap = 0.04 * std::max({ hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1.0 });
+    std::stable_sort(pending.begin(), pending.end(), [](const PendingLabel& a, const PendingLabel& b) { return std::abs(a.value) > std::abs(b.value); });
+    std::vector<gp_Pnt> kept;
+    m_hiddenDiagramLabels = 0;
+    for (const auto& pl : pending)
+    {
+        const bool crowded = std::any_of(kept.begin(), kept.end(), [&](const gp_Pnt& p) { return p.Distance(pl.position) < minGap; });
+        if (crowded)
+        {
+            ++m_hiddenDiagramLabels;
+            continue;
+        }
+        kept.push_back(pl.position);
+        Handle(AIS_TextLabel) lbl = new AIS_TextLabel();
+        lbl->SetPosition(pl.position);
+        lbl->SetText(TCollection_ExtendedString(pl.text.toUtf8().constData(), true));
+        lbl->SetColor(Quantity_NOC_WHITE);
+        TSA::Viewer::AnnotationStyle::instance().apply(lbl, TSA::Viewer::AnnotationRole::DiagramValue);
+        lbl->SetFont("Arial");
+        ctx->Display(lbl, false);
+        m_diagramLabels[pl.key].push_back(lbl);
     }
 }
 
@@ -868,6 +969,7 @@ void ResultsVisualManager::clearDiagramShapes()
     }
     m_diagramShapes.clear();
     m_diagramLabels.clear();
+    m_hiddenDiagramLabels = 0;
 }
 
 void ResultsVisualManager::updateReactionShapes()
@@ -926,7 +1028,7 @@ void ResultsVisualManager::updateReactionShapes()
         }
         lbl->SetText(TCollection_ExtendedString(lblStr.toUtf8().constData()));
         lbl->SetColor(Quantity_NOC_LIMEGREEN);
-        lbl->SetHeight(12.0);
+        TSA::Viewer::AnnotationStyle::instance().apply(lbl, TSA::Viewer::AnnotationRole::ReactionValue);
         ctx->Display(lbl, false);
         m_reactionLabels[nodeId] = lbl;
     }
@@ -986,7 +1088,7 @@ void ResultsVisualManager::showExtremumMarker(const TSA::NDC::ExtremumPoint& pt)
     gp_Pnt labelPos = pt.globalCoords.Translated(gp_Vec(0.0, 0.0, radius * 2.5));
     m_extremumLabel->SetPosition(labelPos);
     m_extremumLabel->SetColor(Quantity_NOC_YELLOW);
-    m_extremumLabel->SetHeight(15.0);
+    TSA::Viewer::AnnotationStyle::instance().apply(m_extremumLabel, TSA::Viewer::AnnotationRole::Extremum);
 
     ctx->Display(m_extremumLabel, false);
 

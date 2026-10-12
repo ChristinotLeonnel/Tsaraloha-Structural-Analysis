@@ -110,6 +110,7 @@ private:
     QTimer* m_reloadTimer = nullptr;
     QAction* m_repeatAction = nullptr;
     QPointer<QAction> m_lastCommand;
+    QString m_lastCommandId;   ///< onglets : la répétition vise l'action de même identifiant du document visible
 };
 
 /// Garde des champs de saisie : dans un champ de texte, une touche de saisie (lettre, chiffre, Suppr,

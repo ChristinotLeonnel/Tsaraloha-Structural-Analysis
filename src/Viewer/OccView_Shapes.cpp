@@ -1,4 +1,7 @@
 #include "../Mesh/MeshGeometry.h"
+#include <AIS_ListOfInteractive.hxx>
+#include <Graphic3d_TransformPers.hxx>
+#include "AnnotationStyle.h"
 #include "OccView.h"
 #include "SelectionManager.h"
 #include "ResultsVisualManager.h"
@@ -982,7 +985,7 @@ void OccView::updateNodeShape(int nodeId, bool redrawImmediately)
     aisLabel->SetColor(isFree ? Quantity_Color(1.0, 0.2, 0.8, Quantity_TOC_RGB) : (m_isDarkMode ? Quantity_Color(0.2, 0.9, 0.9, Quantity_TOC_RGB) : Quantity_Color(0.0, 0.4, 0.6, Quantity_TOC_RGB)));
     aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
     aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
-    aisLabel->SetHeight(13.0);
+    TSA::Viewer::AnnotationStyle::instance().apply(aisLabel, TSA::Viewer::AnnotationRole::NodeLabel);
     aisLabel->SetFontAspect(Font_FA_Bold);
 
     m_context->Display(aisLabel, false);
@@ -1862,7 +1865,18 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
     gp_Pnt p0(node->x(), node->y(), node->z());
 
     std::vector<Handle(AIS_Shape)> loadAisShapes;
-    double scale = (m_loadScale > 0.05) ? m_loadScale : 1.0;
+    if (refreshLoadMaxima() && !m_loadRebuildPending)
+    {
+        // Une nouvelle intensité maximale change l'échelle de toute la famille : reconstruction différée de toutes les
+        // charges (une seule fois, après la modification en cours)
+        m_loadRebuildPending = true;
+        QTimer::singleShot(0, this, [this] {
+            m_loadRebuildPending = false;
+            updateAllLoadShapes();
+        });
+    }
+    const double ref = memberLoadArrowLength();   // longueur de référence (≈ constante à l'écran, facteur inclus)
+    gp_Pnt labelPos(p0.X(), p0.Y(), p0.Z() + 0.35 * ref);
 
     // 1. Vecteur force
     // [CONVENTION]
@@ -1878,10 +1892,13 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
     if (mag > 1e-6 && m_forcesVisible)
     {
         gp_Dir fDir(fVec);
-        double arrowLen = std::clamp((0.6 + mag * 0.02) * scale, 0.8 * scale, 2.5 * scale);
-        double shaftR = 0.035 * scale;
-        double headR = 0.09 * scale;
-        double headL = 0.22 * scale;
+        // Longueur proportionnelle à l'intensité dans la famille des forces (auparavant 0,6 + 0,02·F bornée à
+        // [0,8 ; 2,5] m : 100 et 500 kN avaient la même flèche)
+        const double arrowLen = loadArrowLengthFor(mag, TSA::Geometry::LoadFamily::Force);
+        const double shaftR = 0.03 * ref;
+        const double headR = 0.08 * ref;
+        const double headL = std::min(0.25 * ref, 0.6 * arrowLen);
+        labelPos = p0.Translated(gp_Vec(fDir) * (arrowLen + 0.12 * ref));   // valeur au bout de la flèche
 
         TopoDS_Shape arrow = makeLoadArrowShape(p0, fDir, arrowLen, shaftR, headR, headL);
         if (!arrow.IsNull())
@@ -1916,10 +1933,11 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
 
     if (mMag > 1e-6 && m_momentsVisible)
     {
-        double arcRadius = std::clamp((0.35 + mMag * 0.015) * scale, 0.35 * scale, 1.2 * scale);
-        double tubeR = 0.025 * scale;
-        double headR = 0.065 * scale;
-        double headL = 0.16 * scale;
+        // Rayon de l'arc proportionnel à l'intensité dans la famille des moments
+        const double arcRadius = std::max(0.15 * ref, 0.6 * loadArrowLengthFor(mMag, TSA::Geometry::LoadFamily::Moment));
+        const double tubeR = 0.022 * ref;
+        const double headR = 0.06 * ref;
+        const double headL = 0.15 * ref;
 
         TopoDS_Shape mMoment = makeMomentShape(p0, mVec, arcRadius, tubeR, headR, headL);
         if (!mMoment.IsNull())
@@ -1967,11 +1985,11 @@ void OccView::updateNodalLoadShape(int loadId, bool redrawImmediately)
     if (valTxt.isEmpty()) valTxt = QString("NL#%1").arg(loadId);
 
     aisLabel->SetText(TCollection_ExtendedString(valTxt.toUtf8().constData(), true));
-    aisLabel->SetPosition(gp_Pnt(p0.X(), p0.Y(), p0.Z() + (0.35 * scale)));
+    aisLabel->SetPosition(labelPos);
     aisLabel->SetColor(m_isDarkMode ? Quantity_Color(1.0, 0.8, 0.2, Quantity_TOC_RGB) : Quantity_Color(0.8, 0.4, 0.0, Quantity_TOC_RGB));
     aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
     aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
-    aisLabel->SetHeight(12.0);
+    TSA::Viewer::AnnotationStyle::instance().apply(aisLabel, TSA::Viewer::AnnotationRole::LoadValue);
     aisLabel->SetFontAspect(Font_FA_Bold);
 
     m_context->Display(aisLabel, false);
@@ -2046,9 +2064,26 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
     // convention que les moteurs), forme = intervalle et intensités du modèle. Taille des flèches :
     // fonction du zoom (paliers), densité : espacement proportionnel à cette taille.
     TSA::Geometry::MemberLoadGlyphSettings settings;
-    settings.arrowLength = memberLoadArrowLength();
-    settings.spacing = 0.5 * settings.arrowLength;
-    m_memberLoadArrowLength = settings.arrowLength;   // palier courant (updateMemberLoadZoomScale)
+    if (refreshLoadMaxima() && !m_loadRebuildPending)
+    {
+        m_loadRebuildPending = true;
+        QTimer::singleShot(0, this, [this] {
+            m_loadRebuildPending = false;
+            updateAllLoadShapes();
+        });
+    }
+    const double refLength = memberLoadArrowLength();
+    m_memberLoadArrowLength = refLength;   // palier courant (updateMemberLoadZoomScale)
+    {
+        // Flèche de l'intensité maximale de CETTE charge, à l'échelle de sa famille (une charge de 5 kN/m n'a plus la
+        // même flèche qu'une charge de 50 kN/m) ; la forme le long de la barre reste proportionnelle à q(x)
+        using TSA::Model::LoadType;
+        const double qMax = std::max(std::abs(ml->q1()), ml->type() == LoadType::MemberLinear ? std::abs(ml->q2()) : 0.0);
+        const auto family = ml->type() == LoadType::MemberPoint ? TSA::Geometry::LoadFamily::Force
+                                                                 : (ml->type() == LoadType::MemberMoment ? TSA::Geometry::LoadFamily::LineMoment : TSA::Geometry::LoadFamily::LineForce);
+        settings.arrowLength = std::max(1e-6, loadArrowLengthFor(qMax, family));
+    }
+    settings.spacing = 0.5 * refLength;   // densité liée à la vue, pas à l'intensité
     const TSA::Geometry::MemberLoadGlyph glyph = TSA::Geometry::buildMemberLoadGlyph(*ml, p1, p2, rotDeg, settings);
     if (glyph.kind == TSA::Geometry::MemberLoadGlyphKind::Invalid) return;
 
@@ -2192,7 +2227,7 @@ void OccView::updateMemberLoadShape(int loadId, bool redrawImmediately)
     aisLabel->SetColor(m_isDarkMode ? Quantity_Color(0.2, 0.9, 1.0, Quantity_TOC_RGB) : Quantity_Color(0.0, 0.5, 0.7, Quantity_TOC_RGB));
     aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
     aisLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
-    aisLabel->SetHeight(12.0);
+    TSA::Viewer::AnnotationStyle::instance().apply(aisLabel, TSA::Viewer::AnnotationRole::LoadValue);
     aisLabel->SetFontAspect(Font_FA_Bold);
 
     m_context->Display(aisLabel, false);
@@ -2230,12 +2265,11 @@ double OccView::memberLoadArrowLength() const
 
 void OccView::updateMemberLoadZoomScale()
 {
-    if (!m_model || m_model->loadManager().memberLoads().empty()) return;
+    if (!m_model) return;
     const double length = memberLoadArrowLength();
     if (std::abs(length - m_memberLoadArrowLength) <= 1e-9 * std::max(1.0, length)) return;
     m_memberLoadArrowLength = length;
-    for (const auto& [id, ml] : m_model->loadManager().memberLoads())
-        updateMemberLoadShape(id, false);
+    updateAllLoadShapes();   // forces, moments, charges réparties et surfaciques : même longueur de référence
     reapplyIsolationIfActive();
     if (!m_context.IsNull() && !m_view.IsNull())
     {
@@ -2275,10 +2309,65 @@ void OccView::removeMemberLoadShape(int loadId, bool redrawImmediately)
     }
 }
 
+bool OccView::refreshLoadMaxima()
+{
+    if (!m_model) return false;
+    const auto maxima = TSA::Geometry::loadFamilyMaxima(m_model->loadManager());
+    if (maxima == m_loadMaxima) return false;
+    m_loadMaxima = maxima;
+    return true;
+}
+
+double OccView::loadArrowLengthFor(double intensity, TSA::Geometry::LoadFamily family) const
+{
+    auto s = m_loadScaleSettings;
+    s.factor = 1.0;   // le facteur global (setLoadScale) est déjà dans la longueur de référence
+    return TSA::Geometry::loadArrowLength(intensity, m_loadMaxima.of(family), memberLoadArrowLength(), s);
+}
+
+QString OccView::loadScaleLegendText() const
+{
+    auto s = m_loadScaleSettings;
+    s.factor = 1.0;
+    return QString::fromStdString(TSA::Geometry::loadScaleLegend(m_loadMaxima, memberLoadArrowLength(), s));
+}
+
+void OccView::setLoadScaleSettings(const TSA::Geometry::LoadScaleSettings& s)
+{
+    if (s == m_loadScaleSettings) return;
+    m_loadScaleSettings = s;
+    m_loadValuesVisible = s.showValues;
+    updateAllLoadShapes();
+}
+
+void OccView::updateLoadLegend()
+{
+    if (m_context.IsNull()) return;
+    if (!m_loadLegend.IsNull()) m_context->Remove(m_loadLegend, false);
+    m_loadLegend.Nullify();
+    bool any = false;
+    for (double v : m_loadMaxima.max) any = any || v > 0.0;
+    if (!any || !m_loadsVisible || !m_loadScaleSettings.showLegend) return;
+    // Légende fixe à l'écran (coin supérieur gauche), indépendante du zoom
+    m_loadLegend = new AIS_TextLabel();
+    m_loadLegend->SetText(TCollection_ExtendedString(loadScaleLegendText().toUtf8().constData(), true));
+    m_loadLegend->SetPosition(gp_Pnt(0, 0, 0));
+    m_loadLegend->SetColor(m_isDarkMode ? Quantity_Color(1.0, 0.75, 0.45, Quantity_TOC_RGB) : Quantity_Color(0.55, 0.25, 0.0, Quantity_TOC_RGB));
+    m_loadLegend->SetHJustification(Graphic3d_HTA_LEFT);
+    m_loadLegend->SetVJustification(Graphic3d_VTA_TOP);
+    TSA::Viewer::AnnotationStyle::instance().apply(m_loadLegend, TSA::Viewer::AnnotationRole::Legend);
+    m_loadLegend->SetZoomable(false);
+    m_loadLegend->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_2d, Aspect_TOTP_LEFT_UPPER, NCollection_Vec2<int>(16, 60)));
+    m_loadLegend->SetZLayer(Graphic3d_ZLayerId_TopOSD);
+    m_context->Display(m_loadLegend, false);
+    m_context->Deactivate(m_loadLegend);
+}
+
 void OccView::updateAllLoadShapes()
 {
     if (!m_model) return;
     clearLoadShapes();
+    refreshLoadMaxima();
     for (const auto& [id, nl] : m_model->loadManager().nodalLoads())
     {
         updateNodalLoadShape(id, false);
@@ -2289,6 +2378,7 @@ void OccView::updateAllLoadShapes()
     }
     updateSurfaceLoadShapes();
     updateSurfaceSupportShapes();
+    updateLoadLegend();
     // Dernière étape de onModelDiffApplied() et de rebuildAllShapes() : une seule passe
     // d'isolation couvre ainsi les éléments et les charges recréés (no-op hors isolation).
     reapplyIsolationIfActive();
@@ -2442,7 +2532,7 @@ void OccView::updateSupportShape(int nodeId, bool redrawImmediately)
     aisLabel->SetColor(Quantity_Color(0.95, 0.65, 0.15, Quantity_TOC_RGB));
     aisLabel->SetHJustification(Graphic3d_HTA_CENTER);
     aisLabel->SetVJustification(Graphic3d_VTA_TOP);
-    aisLabel->SetHeight(12.0);
+    TSA::Viewer::AnnotationStyle::instance().apply(aisLabel, TSA::Viewer::AnnotationRole::SupportLabel);
     aisLabel->SetFontAspect(Font_FA_Bold);
 
     m_context->Display(aisLabel, false);
@@ -2616,11 +2706,14 @@ void OccView::updateSurfaceLoadShapes()
 
     // Géométrie des surfaces identique à celle du maillage (contours, ouvertures, repères locaux)
     const auto geo = TSA::Mesh::MeshGeometry::extract(*m_model);
-    const double L = memberLoadArrowLength();
+    const double Lref = memberLoadArrowLength();
     const Quantity_Color color = m_isDarkMode ? Quantity_Color(1.0, 0.62, 0.18, Quantity_TOC_RGB) : Quantity_Color(0.85, 0.42, 0.0, Quantity_TOC_RGB);
     auto toPnt = [](const TSA::Mesh::P3& p) { return gp_Pnt(p.x, p.y, p.z); };
     for (const auto& [id, l] : m_model->loadManager().surfaceLoads())
     {
+        // Flèche de l'intensité de cette charge à l'échelle de sa famille (kN/m² ou kN pour une charge ponctuelle)
+        const double L = std::max(0.05 * Lref, loadArrowLengthFor(l.value, l.distribution == TSA::Model::SurfaceLoadDistribution::Point
+                                                                              ? TSA::Geometry::LoadFamily::Force : TSA::Geometry::LoadFamily::Pressure));
         const auto* sg = geo.surface(l.surfaceRef());
         if (!sg) continue;
         gp_Vec dir;
@@ -2747,11 +2840,71 @@ void OccView::updateSurfaceLoadShapes()
             label->SetPosition(labelAt);
             label->SetColor(color);
             label->SetHJustification(Graphic3d_HTA_CENTER);
-            label->SetHeight(12.0);
+            TSA::Viewer::AnnotationStyle::instance().apply(label, TSA::Viewer::AnnotationRole::LoadValue);
             label->SetFontAspect(Font_FA_Bold);
             m_context->Display(label, false);
             m_context->Deactivate(label);
             m_surfaceLoadShapes.push_back(label);
         }
     }
+}
+
+QString OccView::displayDiagnosticsText() const
+{
+    QString t = tr("DIAGNOSTIC D'AFFICHAGE\n");
+    int scene = 0;
+    if (!m_context.IsNull())
+    {
+        AIS_ListOfInteractive list;
+        m_context->DisplayedObjects(list);
+        scene = list.Extent();
+    }
+    t += tr("Scène : %1 objet(s) affiché(s)\n").arg(scene);
+    if (m_resultsVisual)
+    {
+        const auto d = m_resultsVisual->diagnostics();
+        t += tr("Résultats affichés : %1 objet(s) — déformée %2, marqueurs de torsion %3, diagrammes %4, étiquettes %5, "
+                "réactions %6 (+%7 étiquettes), extremum %8, légende %9\n")
+                 .arg(d.total()).arg(d.deformed).arg(d.twistMarkers).arg(d.diagrams).arg(d.diagramLabels)
+                 .arg(d.reactions).arg(d.reactionLabels).arg(d.extremum).arg(d.legend);
+    }
+    t += tr("\nÉchelles graphiques (représentation seulement : valeurs calculées et charges inchangées)\n");
+    if (!m_view.IsNull()) t += tr("  Caméra : échelle de vue %1\n").arg(m_view->Scale(), 0, 'g', 4);
+    if (m_resultsVisual)
+    {
+        t += tr("  Déformée : amplification ×%1\n").arg(m_resultsVisual->deformationScale(), 0, 'g', 4);
+        if (m_resultsVisual->diagramAllZero())
+            t += tr("  Diagrammes : grandeur nulle sur toute la structure (aucun tracé)\n");
+        else
+            t += tr("  Diagrammes : échelle %1 m/unité = automatique %2 × multiplicateur %3 ; valeur max %4 ; %5 étiquette(s) superposée(s) masquée(s)\n")
+                     .arg(m_resultsVisual->diagramScale(), 0, 'g', 4)
+                     .arg(m_resultsVisual->diagramAutoScale(), 0, 'g', 4)
+                     .arg(m_resultsVisual->diagramScaleMultiplier(), 0, 'g', 4)
+                     .arg(m_resultsVisual->diagramMaxValue(), 0, 'g', 4)
+                     .arg(m_resultsVisual->hiddenDiagramLabels());
+    }
+    const auto& a = TSA::Viewer::AnnotationStyle::instance().settings();
+    t += tr("  Annotations : %1 — %2 px × facteur d'écran %3 ; hauteur liée au modèle %4 m\n")
+             .arg(a.mode == TSA::Viewer::AnnotationSizeMode::ScreenConstant ? tr("taille constante à l'écran") : tr("taille liée au modèle"))
+             .arg(a.basePixels, 0, 'g', 3)
+             .arg(a.devicePixelRatio, 0, 'g', 3)
+             .arg(a.modelHeight, 0, 'g', 3);
+    using TSA::Geometry::LoadFamily;
+    using TSA::Geometry::LoadScaleMode;
+    const QString mode = m_loadScaleSettings.mode == LoadScaleMode::Proportional ? tr("proportionnelle")
+                       : m_loadScaleSettings.mode == LoadScaleMode::Automatic    ? tr("automatique (minimum %1 %)").arg(m_loadScaleSettings.minRatio * 100.0, 0, 'f', 0)
+                                                                                 : tr("normalisée");
+    t += tr("  Charges : %1 ; facteur %2 ; flèche de référence %3 m\n").arg(mode).arg(m_loadScale, 0, 'g', 3).arg(memberLoadArrowLength(), 0, 'g', 3);
+    for (int f = 0; f < static_cast<int>(LoadFamily::Count); ++f)
+    {
+        const double mx = m_loadMaxima.max[std::size_t(f)];
+        if (mx <= 0.0) continue;
+        const auto fam = static_cast<LoadFamily>(f);
+        t += tr("    %1 : max %2 %3 → %4 m\n")
+                 .arg(QString::fromUtf8(TSA::Geometry::loadFamilyName(fam)))
+                 .arg(mx, 0, 'g', 4)
+                 .arg(QString::fromUtf8(TSA::Geometry::loadFamilyUnit(fam)))
+                 .arg(loadArrowLengthFor(mx, fam), 0, 'g', 3);
+    }
+    return t;
 }

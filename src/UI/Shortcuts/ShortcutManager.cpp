@@ -471,7 +471,20 @@ QAction* ShortcutManager::repeatAction()
         m_repeatAction = new QAction(tr("Répéter la dernière commande"), this);
         m_repeatAction->setEnabled(false);
         connect(m_repeatAction, &QAction::triggered, this, [this] {
-            if (m_lastCommand && m_lastCommand->isEnabled()) m_lastCommand->trigger();
+            // Plusieurs documents ouverts (onglets) : l'action mémorisée peut appartenir à un onglet caché ; on rejoue
+            // la commande de même identifiant dans le document visible
+            QAction* target = m_lastCommand;
+            auto visible = [](QAction* a) {
+                auto* w = a ? qobject_cast<QWidget*>(a->parent()) : nullptr;
+                return !w || w->isVisible();
+            };
+            if (!visible(target))
+            {
+                target = nullptr;
+                for (QAction* a : actions(m_lastCommandId))
+                    if (a && visible(a)) target = a;
+            }
+            if (target && target->isEnabled()) target->trigger();
         });
         bind(QStringLiteral("cmd.edit.repeat"), m_repeatAction);
     }
@@ -490,6 +503,7 @@ void ShortcutManager::rememberLastCommand(QAction* action)
     for (const auto& p : prefixes) repeatable |= id.startsWith(p);
     if (!repeatable || id == QLatin1String("cmd.modify.viewport_input") || id == QLatin1String("cmd.create.presets")) return;
     m_lastCommand = action;
+    m_lastCommandId = id;
     if (m_repeatAction)
     {
         m_repeatAction->setEnabled(true);

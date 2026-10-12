@@ -133,6 +133,13 @@ public:
     /// fermé, ses résultats seraient publiés sur un autre modèle. action : « quitter », « ouvrir un
     /// autre projet »…
     bool confirmNoRunningAnalysis(const QString& action);
+    /// Modifications non enregistrées (onglet de document : indicateur « ● »).
+    bool hasUnsavedChanges() const;
+    /// Fichier déposé : transmis à l'hôte (onglets) s'il écoute, sinon ouvert à la place du projet courant
+    void openDroppedFile(const QString& path);
+    /// Serveur d'automatisation (MCP) : un seul document à la fois l'expose, celui au premier plan (AppShell).
+    void setAutomationActive(bool active);
+    bool isAutomationActive() const;
 
     QAction* actionSave() const { return m_actionSave; }
     QAction* actionSaveAs() const { return m_actionSaveAs; }
@@ -146,6 +153,8 @@ public:
 signals:
     void newProjectRequested();
     void openProjectRequested();
+    /// Fichier déposé sur la fenêtre ou la vue : ouvert par l'hôte dans un onglet (ou activé s'il est déjà ouvert)
+    void openFileRequested(const QString& path);
     void closeProjectRequested();
     void exitRequested();
     void fullScreenRequested(bool fullScreen);
@@ -387,6 +396,10 @@ private:
     QAction* m_actionRotate3D = nullptr;
     QAction* m_actionMoveOrigin = nullptr;
     QAction* m_actionCopyClipboard = nullptr;
+    QAction* m_actionCutClipboard = nullptr;
+    QAction* m_actionPasteOriginal = nullptr;
+    QAction* m_actionClipCopySupports = nullptr;
+    QAction* m_actionClipCopyLoads = nullptr;
     QAction* m_actionPasteClipboard = nullptr;
     QAction* m_actionMirror = nullptr;
     QAction* m_actionCleanModel = nullptr;
@@ -421,7 +434,8 @@ private:
     QAction* m_actionSplitBars = nullptr;
     QAction* m_actionMergeNodes = nullptr;
 
-    TSA::Model::StructuralClipboard m_clipboard;
+    /// Presse-papier de l'application, commun à tous les onglets (copier dans un projet, coller dans un autre)
+    TSA::Model::StructuralClipboard& m_clipboard = TSA::Model::StructuralClipboard::shared();
 
     // Actions Barre "Vue" & Navigation (AutoCAD / Robot SA style)
     QAction* m_actionViewXY = nullptr;
@@ -609,6 +623,10 @@ private:
     std::vector<bool> m_meshOnlySavedCategories; ///< visibilité de la géométrie avant « maillage seul »
     bool m_meshOnlySavedNodes = true;
     void createMeshViewActions();
+    /// Menus « Échelle des annotations » et « Échelle des charges » (représentation seulement, valeurs inchangées)
+    void createDisplayScaleMenus();
+    QMenu* m_annotationScaleMenu = nullptr;
+    QMenu* m_loadScaleMenu = nullptr;
     void populateMeshViewMenu(QMenu* menu);
     void setupMeshView();
     void applyMeshViewOptions();
@@ -735,6 +753,10 @@ private slots:
     void onActionMoveOrigin();
     void onActionCopyClipboard();
     void onActionPasteClipboard();
+    void onActionCutClipboard();
+    void onActionPasteOriginal();
+    /// Collage (une étape d'annulation, tout ou rien) puis sélection des éléments collés
+    void pasteClipboardAt(double x, double y, double z, const QString& where);
     void onActionMirror();
     void onActionCleanModel();
     void onActionExportIfc();

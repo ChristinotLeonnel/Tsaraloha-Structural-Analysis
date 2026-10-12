@@ -67,7 +67,7 @@ existante : sans redémarrage ni recompilation. Une nouvelle fonctionnalité exi
 
 | Famille | Raccourcis |
 | :--- | :--- |
-| Windows / Qt conservés | Ctrl+N, O, S, Maj+S, Z, Y, C, V, A, Suppr, F1, F11, Ctrl+W / Ctrl+F4 (fermer le projet) |
+| Windows / Qt conservés | Ctrl+N, O, S, Maj+S, Z, Y, C, X, V, A, Suppr, F1, F11, Ctrl+W / Ctrl+F4 (fermer le projet) ; Ctrl+Maj+V coller à la position d'origine ; Ctrl+Tab / Ctrl+Maj+Tab, Ctrl+Pg.Suiv / Pg.Préc onglet de projet suivant / précédent (`docs/MULTI_DOCUMENT.md`) |
 | Dessin (lettre seule, existants) | N, B, C, Alt+C, L, W ; M, Ctrl+R, Ctrl+D ; I, H, Alt+H… |
 | Suites AutoCAD | Z, E / Z, W / Z, P (zoom étendu, fenêtre, précédent) ; T, R (ajuster) ; E, X (prolonger) ; O, F (décaler) ; D, I (mesurer) |
 | Cotation « D, … » | D, A alignée ; D, L linéaire ; D, H ; D, X / Y / Z ; D, N angulaire ; D, V niveau ; D, C chaîne ; D, B cumulée ; D, E modifier |

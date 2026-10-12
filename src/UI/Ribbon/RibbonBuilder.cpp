@@ -74,13 +74,17 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
     if (!histCol.empty()) clipPanel->addSmallColumn(histCol);
 
     std::vector<QAction*> clipCol;
+    if (acts.actionCutClipboard) clipCol.push_back(acts.actionCutClipboard);
     if (acts.actionCopyClipboard) clipCol.push_back(acts.actionCopyClipboard);
-    if (acts.actionPasteClipboard) clipCol.push_back(acts.actionPasteClipboard);
     if (!clipCol.empty())
     {
         clipPanel->addInternalSeparator();
         clipPanel->addSmallColumn(clipCol);
     }
+    std::vector<QAction*> pasteCol;
+    if (acts.actionPasteClipboard) pasteCol.push_back(acts.actionPasteClipboard);
+    if (acts.actionPasteOriginal) pasteCol.push_back(acts.actionPasteOriginal);
+    if (!pasteCol.empty()) clipPanel->addSmallColumn(pasteCol);
     tab->addPanel(clipPanel);
 
     // Édition courante
@@ -631,12 +635,16 @@ RibbonTab* RibbonBuilder::buildEditTab(RibbonBar* bar, const RibbonActions& acts
 
     // Presse-papier
     std::vector<QAction*> clipCol;
+    if (acts.actionCutClipboard) clipCol.push_back(acts.actionCutClipboard);
     if (acts.actionCopyClipboard) clipCol.push_back(acts.actionCopyClipboard);
-    if (acts.actionPasteClipboard) clipCol.push_back(acts.actionPasteClipboard);
+    std::vector<QAction*> pasteCol;
+    if (acts.actionPasteClipboard) pasteCol.push_back(acts.actionPasteClipboard);
+    if (acts.actionPasteOriginal) pasteCol.push_back(acts.actionPasteOriginal);
     if (!clipCol.empty())
     {
         auto* clipPanel = new RibbonPanel(QObject::tr("Presse-papier"), tab);
         clipPanel->addSmallColumn(clipCol);
+        if (!pasteCol.empty()) clipPanel->addSmallColumn(pasteCol);
         tab->addPanel(clipPanel);
     }
 
@@ -789,6 +797,14 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     {
         visPanel->addInternalSeparator();
         visPanel->addSmallColumn(visCol3);
+    }
+    if (acts.annotationScaleMenu || acts.loadScaleMenu)
+    {
+        visPanel->addInternalSeparator();
+        if (acts.annotationScaleMenu)
+            visPanel->addMenuButton(QObject::tr("Échelle des annotations"), QIcon(":/icons/grid_labels.svg"), acts.annotationScaleMenu, RibbonButtonSize::Small);
+        if (acts.loadScaleMenu)
+            visPanel->addMenuButton(QObject::tr("Échelle des charges"), QIcon(":/icons/load_point.svg"), acts.loadScaleMenu, RibbonButtonSize::Small);
     }
     tab->addPanel(visPanel);
 

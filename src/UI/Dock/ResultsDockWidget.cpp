@@ -68,6 +68,15 @@ void ResultsDockWidget::syncFromVisualManager(TSA::Viewer::ResultsVisualManager*
     }
     m_spinCustomScale->setValue(visualMgr->deformationScale());
     m_labelEffectiveScale->setText(tr("Échelle effective : ×%1%2").arg(visualMgr->deformationScale(), 0, 'g', 5).arg(std::abs(visualMgr->deformationScale() - 1.0) < 1e-12 ? tr(" (non amplifiée)") : QString()));
+    if (m_labelDiagramScale)
+    {
+        const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(visualMgr->diagramType());
+        if (visualMgr->diagramType() == TSA::Geometry::DiagramType::None) m_labelDiagramScale->setText(tr("Aucun diagramme affiché"));
+        else if (visualMgr->diagramAllZero()) m_labelDiagramScale->setText(tr("Grandeur nulle sur toute la structure"));
+        else
+            m_labelDiagramScale->setText(tr("1 m de diagramme = %1 %2 (max %3 %2)").arg(1.0 / std::max(visualMgr->diagramScale(), 1e-300), 0, 'g', 4).arg(unit).arg(visualMgr->diagramMaxValue(), 0, 'g', 4));
+        m_spinDiagramMultiplier->setValue(visualMgr->diagramScaleMultiplier());
+    }
 
     // Mode d'affichage déformée
     switch (visualMgr->deformedDisplayMode())
@@ -198,7 +207,7 @@ void ResultsDockWidget::setupUi()
     rootLayout->addWidget(m_grpDeformedMode);
 
     // 4. Facteur d'Échelle 3D
-    auto* grpScale = new QGroupBox(tr("Amplification / Facteur d'Échelle"), container);
+    auto* grpScale = new QGroupBox(tr("Amplification de la déformée"), container);
     auto* formScale = new QFormLayout(grpScale);
     formScale->setContentsMargins(8, 8, 8, 8);
     formScale->setSpacing(6);
@@ -226,6 +235,39 @@ void ResultsDockWidget::setupUi()
     m_labelEffectiveScale->setStyleSheet("font-size: 11px; color: #3b82f6;");
     formScale->addRow(m_labelEffectiveScale);
     rootLayout->addWidget(grpScale);
+
+    // 4 bis. Échelle des diagrammes : indépendante de la déformée, du zoom et des textes
+    auto* grpDiag = new QGroupBox(tr("Échelle des diagrammes"), container);
+    auto* formDiag = new QFormLayout(grpDiag);
+    formDiag->setContentsMargins(8, 8, 8, 8);
+    formDiag->setSpacing(6);
+    m_comboDiagramScale = new QComboBox(grpDiag);
+    m_comboDiagramScale->addItem(tr("Automatique"), 1.0);
+    m_comboDiagramScale->addItem(tr("Automatique ×0,5"), 0.5);
+    m_comboDiagramScale->addItem(tr("Automatique ×2"), 2.0);
+    m_comboDiagramScale->addItem(tr("Automatique ×5"), 5.0);
+    m_comboDiagramScale->addItem(tr("Personnalisé…"), 0.0);
+    m_comboDiagramScale->setToolTip(tr("Hauteur des diagrammes à l'écran (valeurs calculées inchangées). Automatique : crête à 8 % de "
+                                       "l'envergure, sans dépasser 60 % de la longueur médiane des barres."));
+    formDiag->addRow(tr("Échelle :"), m_comboDiagramScale);
+    m_spinDiagramMultiplier = new QDoubleSpinBox(grpDiag);
+    m_spinDiagramMultiplier->setRange(0.01, 1000.0);
+    m_spinDiagramMultiplier->setDecimals(2);
+    m_spinDiagramMultiplier->setValue(1.0);
+    m_spinDiagramMultiplier->setPrefix(QStringLiteral("× "));
+    m_spinDiagramMultiplier->setEnabled(false);
+    formDiag->addRow(tr("Facteur :"), m_spinDiagramMultiplier);
+    m_labelDiagramScale = new QLabel(tr("1 m de diagramme = —"), grpDiag);
+    m_labelDiagramScale->setStyleSheet("font-size: 11px; color: #3b82f6;");
+    formDiag->addRow(m_labelDiagramScale);
+    connect(m_comboDiagramScale, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+        m_spinDiagramMultiplier->setEnabled(m_comboDiagramScale->currentData().toDouble() <= 0.0);
+        if (!m_updating) emitDiagramScale();
+    });
+    connect(m_spinDiagramMultiplier, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) {
+        if (!m_updating && m_comboDiagramScale->currentData().toDouble() <= 0.0) emitDiagramScale();
+    });
+    rootLayout->addWidget(grpDiag);
 
     // Animation de la déformée : les résultats statiques déjà calculés sont réaffichés entre la géométrie
     // initiale et la déformée amplifiée ; ce n'est pas une analyse dynamique.
@@ -621,19 +663,21 @@ void ResultsDockWidget::onScalePresetChanged(int index)
     m_spinCustomScale->setEnabled(isCustom);
 
     double customVal = m_spinCustomScale->value();
-    emit deformationScalePresetChanged(preset, customVal);
-    emit diagramScalePresetChanged(preset, customVal);
+    emit deformationScalePresetChanged(preset, customVal);   // déformée seulement : les diagrammes ont leur échelle
+}
+
+void ResultsDockWidget::emitDiagramScale()
+{
+    const double preset = m_comboDiagramScale->currentData().toDouble();
+    const double multiplier = preset > 0.0 ? preset : m_spinDiagramMultiplier->value();
+    emit diagramScalePresetChanged(std::abs(multiplier - 1.0) < 1e-12 ? TSA::Viewer::ScalePreset::Auto : TSA::Viewer::ScalePreset::Custom, multiplier);
 }
 
 void ResultsDockWidget::onCustomScaleChanged(double val)
 {
     if (m_updating) return;
     auto preset = static_cast<TSA::Viewer::ScalePreset>(m_comboScalePreset->currentData().toInt());
-    if (preset == TSA::Viewer::ScalePreset::Custom)
-    {
-        emit deformationScalePresetChanged(preset, val);
-        emit diagramScalePresetChanged(preset, val);
-    }
+    if (preset == TSA::Viewer::ScalePreset::Custom) emit deformationScalePresetChanged(preset, val);
 }
 
 void ResultsDockWidget::onStepSliderChanged(int val)
