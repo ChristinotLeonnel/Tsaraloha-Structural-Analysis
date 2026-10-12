@@ -97,6 +97,9 @@ signals:
     void progressChanged(int percent, const QString& status);
     /// Fin du calcul, après publication des résultats en cas de succès.
     void finished(bool success, const QString& message);
+    /// Fin de TOUT calcul, en tâche de fond (start) comme synchrone (runBlocking : console, Blueprint, MCP), après
+    /// publication des résultats : contexte réellement calculé, succès, message du moteur (journal d'expériences).
+    void runCompleted(const TSA::Analysis::AnalysisContext& context, bool success, const QString& message);
     void resultsChanged();
     /// Le modèle a changé depuis le calcul : les résultats ont été invalidés (émis une fois, différé).
     void resultsBecameStale();
@@ -119,6 +122,7 @@ private:
     /// Révision du modèle au lancement du calcul en tâche de fond : le modèle peut être modifié
     /// (panneau d'analyse non modal, ouverture d'un autre projet) pendant que le thread calcule.
     std::uint64_t m_runRevision = 0;
+    AnalysisContext m_runContext;   ///< contexte du dernier calcul lancé (traçabilité : runCompleted)
     /// Armé par cancel(), remplacé à chaque start() : partagé avec le thread de calcul.
     std::shared_ptr<std::atomic<bool>> m_cancelFlag = std::make_shared<std::atomic<bool>>(false);
 };
