@@ -790,6 +790,14 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
         visPanel->addInternalSeparator();
         visPanel->addSmallColumn(visCol3);
     }
+    if (acts.annotationScaleMenu || acts.loadScaleMenu)
+    {
+        visPanel->addInternalSeparator();
+        if (acts.annotationScaleMenu)
+            visPanel->addMenuButton(QObject::tr("Échelle des annotations"), QIcon(":/icons/grid_labels.svg"), acts.annotationScaleMenu, RibbonButtonSize::Small);
+        if (acts.loadScaleMenu)
+            visPanel->addMenuButton(QObject::tr("Échelle des charges"), QIcon(":/icons/load_point.svg"), acts.loadScaleMenu, RibbonButtonSize::Small);
+    }
     tab->addPanel(visPanel);
 
     // Fenêtres Docks

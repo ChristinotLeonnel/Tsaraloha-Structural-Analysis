@@ -4,7 +4,13 @@
 //        projet) : aucun objet orphelin dans la scène, aucun cumul après plusieurs calculs ;
 //   372  échelles distinctes : zoom de la caméra, échelle des diagrammes (multiplicateur conservé), amplification de la
 //        déformée ; aucune ne modifie les résultats calculés ; diagrammes de faible amplitude lisibles (flèches,
-//        rotations) ; grandeur nulle partout annoncée sans diagramme arbitraire.
+//        rotations) ; grandeur nulle partout annoncée sans diagramme arbitraire ;
+//   373  annotations : taille constante à l'écran (pixels × DPI) ou liée au modèle (mètres, texte zoomable), bornes
+//        8–32 px, facteurs de rôle, réinitialisation, adaptation automatique ; la vue reconstruit ses textes sans
+//        objet orphelin ; le zoom ne reconstruit rien ;
+//   374  échelle des charges : familles d'unités séparées, modes proportionnel / automatique / normalisé, rapports
+//        d'intensité (10, 50, 100 kN), longueurs bornées, valeurs des charges inchangées, nouvelle charge maximale
+//        appliquée à toute la famille, légende.
 
 #include "test_common.h"
 
@@ -14,6 +20,10 @@
 #include "Model/Load/LoadManager.h"
 #include "Viewer/OccView.h"
 #include "Viewer/ResultsVisualManager.h"
+#include "Viewer/AnnotationStyle.h"
+#include "Geometry/LoadDisplayScale.h"
+
+#include <Prs3d_TextAspect.hxx>
 
 #include <AIS_ListOfInteractive.hxx>
 #include <Bnd_Box.hxx>
@@ -178,6 +188,9 @@ bool runSuite_Display(int& passed)
                       << rv->diagramMaxValue() * std::min(rv->diagramAutoScale(), 10.0) << " m)" << std::endl;
             TEST_CHECK(std::abs(peakU - peak) < 1e-9, "Test 372: diagramme de faible amplitude lisible (crête " << peakU << " m)");
         }
+        // Légende : calcul affiché identifié ; étiquettes de rotation lisibles (4 chiffres significatifs)
+        TEST_CHECK(rv->legendSummaryText().contains("CALCUL : OpenSees") && rv->diagnostics().diagramLabels > 0,
+                   "Test 372: légende — calcul affiché identifié (" << rv->legendSummaryText().left(80).toStdString() << ")");
         // Multiplicateur manuel conservé après changement de grandeur et nouveau calcul
         rv->setDiagramScalePreset(TSA::Viewer::ScalePreset::Custom, 2.5);
         rv->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
@@ -213,6 +226,125 @@ bool runSuite_Display(int& passed)
         view.setModel(nullptr);
         view.hide();
         std::cout << "[PASS] Test 372: Échelles de la caméra, des diagrammes et de la déformée distinctes ; résultats inchangés" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 373 : annotations à taille constante ou liée au modèle
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::Viewer;
+        auto& st = AnnotationStyle::instance();
+        const AnnotationSettings saved = st.settings();   // réglages de l'utilisateur restaurés en fin de test
+        st.reset();
+        st.setDevicePixelRatio(1.0);
+        TEST_CHECK(st.settings().mode == AnnotationSizeMode::ScreenConstant && std::abs(st.height(AnnotationRole::NodeLabel) - 12.0) < 1e-12,
+                   "Test 373: valeur initiale — constante à l'écran, 12 px");
+        st.setDevicePixelRatio(1.5);
+        TEST_CHECK(std::abs(st.height(AnnotationRole::NodeLabel) - 18.0) < 1e-12 && std::abs(st.height(AnnotationRole::Extremum) - 22.5) < 1e-12,
+                   "Test 373: facteur d'écran (DPI 150 %) et facteur de rôle");
+        st.setBasePixels(4.0);
+        const double lo = st.settings().basePixels;
+        st.setBasePixels(99.0);
+        TEST_CHECK(lo == 8.0 && st.settings().basePixels == 32.0, "Test 373: taille bornée à [8, 32] px");
+        st.setMode(AnnotationSizeMode::ModelLinked);
+        st.setModelHeight(0.3);
+        TEST_CHECK(std::abs(st.height(AnnotationRole::NodeLabel) - 0.3) < 1e-12, "Test 373: taille liée au modèle en mètres");
+        Handle(AIS_TextLabel) lbl = new AIS_TextLabel();
+        st.apply(lbl, AnnotationRole::LoadValue);
+        TEST_CHECK(lbl->Attributes()->TextAspect()->Aspect()->GetTextZoomable(), "Test 373: texte lié au modèle « zoomable »");
+        st.setMode(AnnotationSizeMode::ScreenConstant);
+        st.apply(lbl, AnnotationRole::LoadValue);
+        TEST_CHECK(!lbl->Attributes()->TextAspect()->Aspect()->GetTextZoomable(), "Test 373: texte constant à l'écran non zoomable");
+        st.adaptTo(400, 30.0);
+        TEST_CHECK(st.settings().basePixels == 10.0 && std::abs(st.settings().modelHeight - 0.5) < 1e-12, "Test 373: adaptation automatique (petite vue, envergure 30 m)");
+
+        // Vue réelle : changement de réglage → textes reconstruits, aucun objet orphelin ; zoom → rien de reconstruit
+        Model m;
+        OccView view;
+        view.resize(640, 480);
+        view.show();
+        pump(20);
+        view.setModel(&m);
+        auto results = portalResults(m);
+        view.rebuildAllShapes();
+        view.setResultsModel(results);
+        view.resultsVisual()->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
+        pump();
+        const int before = displayedObjects(view);
+        int changes = 0;
+        QObject::connect(&st, &AnnotationStyle::changed, [&changes] { ++changes; });
+        st.setMode(AnnotationSizeMode::ModelLinked);
+        pump();
+        TEST_CHECK(changes == 1 && displayedObjects(view) == before, "Test 373: mode changé — textes reconstruits sans cumul (" << displayedObjects(view) << " / " << before << ")");
+        view.view()->SetZoom(3.0);
+        pump();
+        TEST_CHECK(changes == 1 && displayedObjects(view) == before, "Test 373: zoom sans reconstruction");
+        st.setMode(saved.mode);
+        st.setBasePixels(saved.basePixels);
+        st.setModelHeight(saved.modelHeight);
+        view.setResultsModel(nullptr);
+        view.setModel(nullptr);
+        view.hide();
+        std::cout << "[PASS] Test 373: Annotations constantes à l'écran ou liées au modèle (DPI, bornes, rôles)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 374 : échelle des charges proportionnelle, automatique, normalisée
+    // -------------------------------------------------------------------------
+    {
+        using namespace TSA::Geometry;
+        LoadScaleSettings s;
+        s.mode = LoadScaleMode::Proportional;
+        const double ref = 2.0;
+        const double l10 = loadArrowLength(10, 100, ref, s), l50 = loadArrowLength(50, 100, ref, s), l100 = loadArrowLength(100, 100, ref, s);
+        TEST_CHECK(std::abs(l10 - 0.2) < 1e-12 && std::abs(l50 - 1.0) < 1e-12 && std::abs(l100 - 2.0) < 1e-12, "Test 374: proportionnel — 10, 50, 100 kN → 0,2, 1, 2 m");
+        TEST_CHECK(loadArrowLength(1000, 100, ref, s) == 2.0 && loadArrowLength(0.0, 100, ref, s) == 0.0 && std::abs(loadArrowLength(0.5, 100, ref, s) - 0.06) < 1e-12,
+                   "Test 374: longueur maximale bornée, charge nulle sans flèche, minimum de visibilité 3 %");
+        s.mode = LoadScaleMode::Automatic;
+        TEST_CHECK(std::abs(loadArrowLength(10, 100, ref, s) - 0.5) < 1e-12 && std::abs(loadArrowLength(50, 100, ref, s) - 1.0) < 1e-12,
+                   "Test 374: automatique — minimum garanti 25 %, rapports conservés au-dessus");
+        s.mode = LoadScaleMode::Normalized;
+        TEST_CHECK(loadArrowLength(10, 100, ref, s) == loadArrowLength(100, 100, ref, s), "Test 374: normalisé — longueurs égales");
+
+        // Familles séparées : une charge linéique de 500 kN/m n'écrase pas les forces en kN
+        Model m;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0), c = m.addNode(0, 0, 3);
+        const int beam = m.addBar(a, b, Section::ipe(300), Material::steelS235(), BarRole::Beam);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "Q", LoadCaseCategory::Live));
+        m.loadManager().addNodalLoad(NodalLoad(0, a, lc, 0, 0, -10.0));
+        m.loadManager().addNodalLoad(NodalLoad(0, c, lc, 0, 0, -100.0));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(beam, lc, 500.0));
+        const auto mx = loadFamilyMaxima(m.loadManager());
+        TEST_CHECK(mx.of(LoadFamily::Force) == 100.0 && mx.of(LoadFamily::LineForce) == 500.0 && mx.of(LoadFamily::Pressure) == 0.0, "Test 374: maxima par famille");
+
+        OccView view;
+        view.resize(640, 480);
+        view.show();
+        pump(20);
+        view.setModel(&m);
+        LoadScaleSettings ps;
+        ps.mode = LoadScaleMode::Proportional;
+        view.setLoadScaleSettings(ps);
+        pump();
+        const double f10 = view.loadArrowLengthFor(10, LoadFamily::Force), f100 = view.loadArrowLengthFor(100, LoadFamily::Force);
+        std::cout << "  flèches : 10 kN → " << f10 << " m, 100 kN → " << f100 << " m ; légende : " << view.loadScaleLegendText().toStdString().substr(0, 60) << "…" << std::endl;
+        TEST_CHECK(std::abs(f10 / f100 - 0.1) < 1e-12, "Test 374: vue — rapport 10/100 kN = 0,1");
+        // Nouvelle charge plus forte : toute la famille est remise à l'échelle (reconstruction différée)
+        m.loadManager().addNodalLoad(NodalLoad(0, b, lc, 0, 0, -200.0));
+        view.updateAllLoadShapes();
+        pump(5);
+        TEST_CHECK(std::abs(view.loadArrowLengthFor(100, LoadFamily::Force) / view.loadArrowLengthFor(200, LoadFamily::Force) - 0.5) < 1e-12 &&
+                       view.loadFamilyMaxima().of(LoadFamily::Force) == 200.0,
+                   "Test 374: nouvelle charge maximale appliquée à toute la famille");
+        // Valeurs des charges inchangées par l'affichage
+        double sumFz = 0;
+        for (const auto& [id, nl] : m.loadManager().nodalLoads()) sumFz += nl.fz();
+        TEST_CHECK(sumFz == -310.0 && m.loadManager().memberLoads().begin()->second.q1() == 500.0, "Test 374: valeurs des charges inchangées");
+        TEST_CHECK(view.loadScaleLegendText().contains("kN/m") && view.loadScaleLegendText().contains("200"), "Test 374: légende par famille");
+        view.setModel(nullptr);
+        view.hide();
+        std::cout << "[PASS] Test 374: Échelle des charges par famille (proportionnelle, automatique, normalisée)" << std::endl;
         ++passed;
     }
     return true;

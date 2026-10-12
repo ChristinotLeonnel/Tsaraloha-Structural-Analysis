@@ -609,6 +609,10 @@ private:
     std::vector<bool> m_meshOnlySavedCategories; ///< visibilité de la géométrie avant « maillage seul »
     bool m_meshOnlySavedNodes = true;
     void createMeshViewActions();
+    /// Menus « Échelle des annotations » et « Échelle des charges » (représentation seulement, valeurs inchangées)
+    void createDisplayScaleMenus();
+    QMenu* m_annotationScaleMenu = nullptr;
+    QMenu* m_loadScaleMenu = nullptr;
     void populateMeshViewMenu(QMenu* menu);
     void setupMeshView();
     void applyMeshViewOptions();

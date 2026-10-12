@@ -8,6 +8,7 @@
 
 #include "../Model/Model.h"
 #include "../Model/ModelDiff.h"
+#include "../Geometry/LoadDisplayScale.h"
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Shape.hxx>
@@ -430,6 +431,14 @@ public:
 
     void setLoadScale(double scale);
     double loadScale() const noexcept { return m_loadScale; }
+    /// Échelle d'affichage des charges (proportionnelle, automatique, normalisée ; familles d'unités) : longueur des
+    /// flèches seulement, valeurs des charges inchangées (Geometry/LoadDisplayScale).
+    const TSA::Geometry::LoadScaleSettings& loadScaleSettings() const { return m_loadScaleSettings; }
+    void setLoadScaleSettings(const TSA::Geometry::LoadScaleSettings& s);
+    const TSA::Geometry::LoadFamilyMaxima& loadFamilyMaxima() const { return m_loadMaxima; }
+    /// Longueur graphique (m) de la flèche d'une charge d'intensité donnée dans sa famille, à la vue courante.
+    double loadArrowLengthFor(double intensity, TSA::Geometry::LoadFamily family) const;
+    QString loadScaleLegendText() const;
 
     void updateNodalLoadShape(int loadId, bool redrawImmediately = true);
     void removeNodalLoadShape(int loadId, bool redrawImmediately = true);
@@ -660,6 +669,13 @@ private:
     bool m_momentsVisible = true;
     bool m_loadValuesVisible = true;
     double m_loadScale = 1.0;
+    TSA::Geometry::LoadScaleSettings m_loadScaleSettings;
+    TSA::Geometry::LoadFamilyMaxima m_loadMaxima;
+    Handle(AIS_TextLabel) m_loadLegend;
+    bool m_loadRebuildPending = false;
+    /// Maxima par famille recalculés ; vrai s'ils ont changé (toutes les flèches sont alors reconstruites)
+    bool refreshLoadMaxima();
+    void updateLoadLegend();
 
     bool m_isInitialized = false;
 

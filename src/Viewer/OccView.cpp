@@ -1,4 +1,5 @@
 #include "OccView.h"
+#include "AnnotationStyle.h"
 #include "DimensionRenderer.h"
 #include "DisplayModeRenderers.h"
 #include "SelectionManager.h"
@@ -211,6 +212,15 @@ void OccView::initOcc()
     {
         wind->Map();
     }
+    // Annotations : facteur d'échelle de l'écran (DPI) ; reconstruction des textes à chaque changement de réglage
+    // (jamais au mouvement de la caméra : les textes constants à l'écran sont dessinés en pixels par OCCT)
+    TSA::Viewer::AnnotationStyle::instance().setDevicePixelRatio(devicePixelRatioF());
+    connect(&TSA::Viewer::AnnotationStyle::instance(), &TSA::Viewer::AnnotationStyle::changed, this, [this]() {
+        if (m_context.IsNull()) return;
+        rebuildAllShapes();
+        rebuildGrid();
+        if (m_resultsVisual) m_resultsVisual->updateAllVisuals();
+    });
     // Rendu réellement obtenu, journalisé (diagnostic des postes sans accélération matérielle)
     TSA_LOG_INFO("Viewer", "OpenGLRenderer", renderingInfo().summary().toStdString());
 

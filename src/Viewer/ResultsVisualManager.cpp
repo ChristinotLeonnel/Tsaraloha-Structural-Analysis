@@ -1,4 +1,5 @@
 #include "ResultsVisualManager.h"
+#include "AnnotationStyle.h"
 #include "MaterialVisual.h"
 #include "OccView.h"
 #include "../Model/Model.h"
@@ -361,6 +362,21 @@ QString ResultsVisualManager::legendSummaryText() const
     if (!m_results || !m_results->isValid()) return QString();
 
     QString text;
+    {
+        // Calcul affiché : jamais un résultat d'un autre calcul présenté comme courant
+        const auto& meta = m_results->executionMetadata();
+        QString loading = QString::fromStdString(meta.loadCombinationType);
+        if (!m_results->caseOrComboName().empty()) loading += QStringLiteral(" « %1 »").arg(QString::fromStdString(m_results->caseOrComboName()));
+        text += QString("CALCUL : %1 — %2 — %3\n").arg(QString::fromStdString(meta.solverEngine), loading, QString::fromStdString(m_results->timestamp()));
+        const int step = m_results->activeStep(), steps = m_results->stepCount();
+        if (m_results->analysisType() == TSA::Analysis::AnalysisType::Modal && !m_results->modal().empty())
+        {
+            const int k = std::clamp(step < 0 ? 0 : step, 0, int(m_results->modal().modes.size()) - 1);
+            text += QString("MODE %1 / %2 : f = %3 Hz (forme propre normalisée)\n").arg(k + 1).arg(m_results->modal().modes.size()).arg(m_results->modal().modes[std::size_t(k)].frequency, 0, 'f', 3);
+        }
+        else if (steps > 1)
+            text += QString("PAS %1 / %2\n").arg(step < 0 ? steps : step + 1).arg(steps);
+    }
     if (m_deformedVisible)
     {
         const auto& sum = m_results->summary();
@@ -402,6 +418,8 @@ QString ResultsVisualManager::legendSummaryText() const
                         .arg(m_diagramMaxValue, 0, 'g', 4)
                         .arg(m_diagramScale > 0.0 ? 1.0 / m_diagramScale : 0.0, 0, 'g', 4)
                         .arg(std::abs(m_diagramMultiplier - 1.0) < 1e-12 ? QString(" (échelle automatique)") : QString(" (automatique ×%1)").arg(m_diagramMultiplier, 0, 'g', 3));
+        if (!m_diagramAllZero && m_hiddenDiagramLabels > 0)
+            text += QString("%1 étiquette(s) superposée(s) non affichée(s) (valeur égale ou inférieure à une étiquette voisine)\n").arg(m_hiddenDiagramLabels);
     }
     return text;
 }
@@ -515,7 +533,7 @@ void ResultsVisualManager::updateLegend()
     m_legendLabel->SetPosition(legendPos);
     m_legendLabel->SetText(TCollection_ExtendedString(txt.toUtf8().constData(), true));
     m_legendLabel->SetColor(Quantity_NOC_YELLOW);
-    m_legendLabel->SetHeight(13.0);
+    TSA::Viewer::AnnotationStyle::instance().apply(m_legendLabel, TSA::Viewer::AnnotationRole::Legend);
     m_legendLabel->SetFont("Arial");
     ctx->Display(m_legendLabel, false);
 }
@@ -749,6 +767,14 @@ void ResultsVisualManager::updateDiagramShapes()
     }
 
     const bool kN = m_results->units().force == "kN";
+    struct PendingLabel
+    {
+        TSA::Analysis::ElementKey key;
+        gp_Pnt position;
+        double value;
+        QString text;
+    };
+    std::vector<PendingLabel> pending;
     for (const auto& [elKey, elemRes] : m_results->allElementResults())
     {
         const int elId = elKey.id;
@@ -881,19 +907,13 @@ void ResultsVisualManager::updateDiagramShapes()
 
             auto addLabel = [&](size_t idx, double val)
             {
-                if (std::abs(val) < 1e-4) return;
+                if (val == 0.0) return;
                 double pos = (length > 1e-6) ? (stations[idx].position / length) : 0.0;
                 gp_Pnt base = p1.Translated(vAB * pos);
                 gp_Pnt posLabel = base.Translated(offsetDir * (val * m_diagramScale + 0.08));
 
-                Handle(AIS_TextLabel) lbl = new AIS_TextLabel();
-                lbl->SetPosition(posLabel);
-                lbl->SetText(TCollection_ExtendedString(QString("%1 %2").arg(val, 0, 'f', 1).arg(unit).toUtf8().constData()));
-                lbl->SetColor(Quantity_NOC_WHITE);
-                lbl->SetHeight(12.0);
-                lbl->SetFont("Arial");
-                ctx->Display(lbl, false);
-                m_diagramLabels[elKey].push_back(lbl);
+                // 4 chiffres significatifs : une rotation de 0,0059 rad s'affichait « 0.0 rad » (format à 1 décimale)
+                pending.push_back({ elKey, posLabel, val, QString("%1 %2").arg(QString::number(val, 'g', 4)).arg(unit) });
             };
 
             addLabel(maxIdx, maxVal);
@@ -902,6 +922,37 @@ void ResultsVisualManager::updateDiagramShapes()
                 addLabel(minIdx, minVal);
             }
         }
+    }
+    // Étiquettes : à un nœud partagé, la poutre et le poteau donnent la même valeur au même endroit. Une étiquette dont
+    // la position est à moins de 4 % de l'envergure d'une étiquette de plus grande valeur absolue n'est pas affichée
+    // (valeur toujours lisible par l'autre ; rien n'est perdu dans les tableaux et la note).
+    double lo[3] = { 1e300, 1e300, 1e300 }, hi[3] = { -1e300, -1e300, -1e300 };
+    for (const auto& [id, node] : m_model->nodes())
+    {
+        const double c[3] = { node.x(), node.y(), node.z() };
+        for (int k = 0; k < 3; ++k) lo[k] = std::min(lo[k], c[k]), hi[k] = std::max(hi[k], c[k]);
+    }
+    const double minGap = 0.04 * std::max({ hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1.0 });
+    std::stable_sort(pending.begin(), pending.end(), [](const PendingLabel& a, const PendingLabel& b) { return std::abs(a.value) > std::abs(b.value); });
+    std::vector<gp_Pnt> kept;
+    m_hiddenDiagramLabels = 0;
+    for (const auto& pl : pending)
+    {
+        const bool crowded = std::any_of(kept.begin(), kept.end(), [&](const gp_Pnt& p) { return p.Distance(pl.position) < minGap; });
+        if (crowded)
+        {
+            ++m_hiddenDiagramLabels;
+            continue;
+        }
+        kept.push_back(pl.position);
+        Handle(AIS_TextLabel) lbl = new AIS_TextLabel();
+        lbl->SetPosition(pl.position);
+        lbl->SetText(TCollection_ExtendedString(pl.text.toUtf8().constData(), true));
+        lbl->SetColor(Quantity_NOC_WHITE);
+        TSA::Viewer::AnnotationStyle::instance().apply(lbl, TSA::Viewer::AnnotationRole::DiagramValue);
+        lbl->SetFont("Arial");
+        ctx->Display(lbl, false);
+        m_diagramLabels[pl.key].push_back(lbl);
     }
 }
 
@@ -924,6 +975,7 @@ void ResultsVisualManager::clearDiagramShapes()
     }
     m_diagramShapes.clear();
     m_diagramLabels.clear();
+    m_hiddenDiagramLabels = 0;
 }
 
 void ResultsVisualManager::updateReactionShapes()
@@ -982,7 +1034,7 @@ void ResultsVisualManager::updateReactionShapes()
         }
         lbl->SetText(TCollection_ExtendedString(lblStr.toUtf8().constData()));
         lbl->SetColor(Quantity_NOC_LIMEGREEN);
-        lbl->SetHeight(12.0);
+        TSA::Viewer::AnnotationStyle::instance().apply(lbl, TSA::Viewer::AnnotationRole::ReactionValue);
         ctx->Display(lbl, false);
         m_reactionLabels[nodeId] = lbl;
     }
@@ -1042,7 +1094,7 @@ void ResultsVisualManager::showExtremumMarker(const TSA::NDC::ExtremumPoint& pt)
     gp_Pnt labelPos = pt.globalCoords.Translated(gp_Vec(0.0, 0.0, radius * 2.5));
     m_extremumLabel->SetPosition(labelPos);
     m_extremumLabel->SetColor(Quantity_NOC_YELLOW);
-    m_extremumLabel->SetHeight(15.0);
+    TSA::Viewer::AnnotationStyle::instance().apply(m_extremumLabel, TSA::Viewer::AnnotationRole::Extremum);
 
     ctx->Display(m_extremumLabel, false);
 

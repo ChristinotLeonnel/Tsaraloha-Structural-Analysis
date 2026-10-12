@@ -395,6 +395,8 @@ set(VIEWER_MAIN_SOURCES
     ${TSA_ROOT}/src/Viewer/SelectionManager.cpp
     ${TSA_ROOT}/src/Viewer/ResultsVisualManager.h
     ${TSA_ROOT}/src/Viewer/ResultsVisualManager.cpp
+    ${TSA_ROOT}/src/Viewer/AnnotationStyle.h
+    ${TSA_ROOT}/src/Viewer/AnnotationStyle.cpp
 )
 
 # --- Matériaux visuels, projection et navigation de vue — [CORE] --------------
@@ -425,6 +427,8 @@ set(GEOMETRY_CORE_SOURCES
     ${TSA_ROOT}/src/Geometry/DiagramGeometry.cpp
     ${TSA_ROOT}/src/Geometry/MemberLoadGlyph.h
     ${TSA_ROOT}/src/Geometry/MemberLoadGlyph.cpp
+    ${TSA_ROOT}/src/Geometry/LoadDisplayScale.h
+    ${TSA_ROOT}/src/Geometry/LoadDisplayScale.cpp
     ${TSA_ROOT}/src/Geometry/SupportGeometry.h
     ${TSA_ROOT}/src/Geometry/SupportGeometry.cpp
 )

@@ -84,7 +84,9 @@ struct RibbonActions
     QAction* actionMeshLocal = nullptr;
     QAction* actionMeshZone = nullptr;
     QAction* actionMeshShow = nullptr;
-    QMenu* meshViewMenu = nullptr;      ///< « Affichage du maillage » (modes, filtres, sélection, résultats)
+    QMenu* meshViewMenu = nullptr;
+    QMenu* annotationScaleMenu = nullptr;   ///< « Échelle des annotations »
+    QMenu* loadScaleMenu = nullptr;         ///< « Échelle des charges »      ///< « Affichage du maillage » (modes, filtres, sélection, résultats)
     QAction* actionAnalysisConfig = nullptr;
     QAction* actionRunSolve = nullptr;
 

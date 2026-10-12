@@ -108,6 +108,7 @@ public:
     double diagramMaxValue() const { return m_diagramMaxValue; }
     /// Grandeur affichée nulle sur toute la structure (aucun diagramme dessiné, message dans la légende).
     bool diagramAllZero() const { return m_diagramAllZero; }
+    int hiddenDiagramLabels() const { return m_hiddenDiagramLabels; }
     void setDiagramScale(double scale);
     void autoComputeDiagramScale();
 
@@ -186,6 +187,7 @@ private:
     double m_diagramMultiplier = 1.0;
     double m_diagramMaxValue = 0.0;
     bool m_diagramAllZero = false;
+    int m_hiddenDiagramLabels = 0;   ///< étiquettes superposées non affichées (dédoublonnage aux nœuds)
     bool m_diagramLabelsVisible = true;
 
     bool m_reactionsVisible = true;
