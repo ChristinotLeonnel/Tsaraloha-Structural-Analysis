@@ -608,6 +608,7 @@ void registerLabCommands(CommandRegistry& reg)
                     nMax = std::max(nMax, f.N * k), nMin = std::min(nMin, f.N * k);
                     vMax = std::max(vMax, std::hypot(f.Vy, f.Vz) * k), mMax = std::max(mMax, std::hypot(f.My, f.Mz) * k);
                 }
+                nMax += 0.0, nMin += 0.0;   // −0 → 0 (affichage)
                 std::ostringstream o;
                 o << "Barre " << id << " : N ∈ [" << nMin << ", " << nMax << "] kN, |V|max = " << vMax << " kN, |M|max = " << mMax << " kN·m (" << st.size() << " stations)";
                 return done(o.str(), { { "n_max", nMax }, { "n_min", nMin }, { "v_max", vMax }, { "m_max", mMax }, { "stations", static_cast<long long>(st.size()) } });
