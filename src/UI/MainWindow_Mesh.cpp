@@ -13,6 +13,7 @@
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "Dock/LogConsoleDock.h"
+#include "Mesh/MeshAnalysisBridge.h"
 #include "Mesh/MeshController.h"
 #include "Mesh/MeshDialogs.h"
 #include "Mesh/MeshSettingsPanel.h"
@@ -381,62 +382,8 @@ void MainWindow::onActionSurfaceSupports()
 
 bool MainWindow::applyMeshToAnalysis(TSA::Analysis::AnalysisContext& ctx, const TSA::Analysis::AnalysisEngine& engine)
 {
-    // Paramètres du mailleur et options du solveur distincts : le maillage n'est transmis que si l'option du
-    // calcul le demande, s'il est à jour et compatible avec le moteur (adaptateur OpenSees), sans conversion silencieuse.
-    ctx.memberSubdivisions.clear();
-    ctx.surfaces = {};
-    if (!m_meshController || !m_meshController->hasMesh() || !ctx.common.useGeneratedMesh) return true;
-    const QString engineName = QString::fromStdString(engine.info().name);
-    if (m_meshController->stale())
-    {
-        QMessageBox box(QMessageBox::Warning, tr("Maillage obsolète"),
-                        tr("La géométrie a été modifiée depuis la génération du maillage : il ne correspond plus au modèle."), QMessageBox::NoButton, this);
-        auto* regen = box.addButton(tr("Régénérer le maillage"), QMessageBox::AcceptRole);
-        auto* without = box.addButton(tr("Calculer sans maillage (un élément par barre)"), QMessageBox::DestructiveRole);
-        box.addButton(QMessageBox::Cancel);
-        box.exec();
-        if (box.clickedButton() == regen) m_meshController->generate(false);
-        if (box.clickedButton() != without) return false;
-        return true;
-    }
-    const auto compat = m_meshController->solverCompatibility(engine.info().name, engine.capabilities());
-    QStringList lines;
-    for (const auto& i : compat.items)
-    {
-        if (i.level == SolverCheckItem::Level::Ok) continue;
-        QString objs;
-        for (std::size_t k = 0; k < i.objects.size() && k < 8; ++k) objs += (k ? ", " : " (") + QString::fromStdString(i.objects[k]);
-        if (!objs.isEmpty()) objs += i.objects.size() > 8 ? QStringLiteral(", …)") : QStringLiteral(")");
-        lines << QStringLiteral("• [%1] %2%3")
-                     .arg(i.level == SolverCheckItem::Level::Blocking ? tr("bloquant") : tr("avertissement"), QString::fromStdString(i.message), objs);
-    }
-    if (m_consoleDock)
-    {
-        m_consoleDock->appendLog(tr("Maillage → %1 : %2").arg(engineName, QString::fromStdString(compat.summary())), "INFO");
-        for (const auto& l : lines) m_consoleDock->appendLog(l, "WARN");
-    }
-    if (compat.blocking())
-    {
-        QStringList strategies;
-        for (const auto& s : compat.strategies) strategies << QStringLiteral("• ") + QString::fromStdString(s);
-        QMessageBox box(QMessageBox::Warning, tr("Maillage non transmissible à %1").arg(engineName),
-                        tr("%1\n\nStratégies compatibles :\n%2").arg(lines.join('\n'), strategies.join('\n')), QMessageBox::NoButton, this);
-        auto* without = box.addButton(tr("Calculer sans maillage (un élément par barre)"), QMessageBox::AcceptRole);
-        box.addButton(QMessageBox::Cancel);
-        box.exec();
-        return box.clickedButton() == without;
-    }
-    if (!lines.isEmpty())
-    {
-        if (QMessageBox::warning(this, tr("Maillage et %1").arg(engineName),
-                                 tr("Le maillage est transmis en partie :\n\n%1\n\nLancer le calcul ?").arg(lines.join('\n')), QMessageBox::Yes | QMessageBox::No,
-                                 QMessageBox::Yes) != QMessageBox::Yes)
-            return false;
-    }
-    ctx.memberSubdivisions = compat.memberSubdivisions;
-    ctx.surfaces = compat.surfaces;
-    ctx.surfaces.meshStamp = m_meshController->project().record.generated + "|" + m_meshController->project().record.settingsHash;
-    ctx.meshLabel = tr("maillage %1 du %2").arg(QString::fromStdString(m_meshController->project().record.mesher),
-                                                QString::fromStdString(m_meshController->project().record.generated)).toStdString();
-    return true;
+    // Logique partagée avec TSALab (UI/Mesh/MeshAnalysisBridge)
+    return TSA::UI::applyMeshToAnalysis(m_meshController, ctx, engine, this, [this](const QString& text, const QString& type) {
+        if (m_consoleDock) m_consoleDock->appendLog(text, type);
+    });
 }

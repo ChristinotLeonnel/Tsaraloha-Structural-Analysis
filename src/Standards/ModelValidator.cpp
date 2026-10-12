@@ -342,7 +342,7 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
     }
 
     // 2b. Dalles et voiles : pas de maillage EF, non transmis au solveur (BUG-002)
-    if (!model.slabs().empty() || !model.walls().empty())
+    if ((!model.slabs().empty() || !model.walls().empty()) && !params.surfacesTransmitted)
     {
         report.addWarning("Modèle Calcul",
             std::to_string(model.slabs().size()) + " dalle(s) et " + std::to_string(model.walls().size()) +

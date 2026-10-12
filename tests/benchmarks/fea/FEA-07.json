@@ -1,0 +1,179 @@
+{
+  "format": "tsa.benchmark/1",
+  "id": "FEA-07",
+  "title": "Plaque carrée, appui simple « dur » — ShellMITC4 contre la référence de Mindlin",
+  "category": "fea",
+  "description": "Plaque 6 × 6 m, e = 0,20 m, q = 10 kN/m², appui simple dur sur les 4 bords (w = 0 et rotation tangentielle au bord bloquée). Référence de Mindlin : w = α·q·a⁴/D + β·q·a²/(κ·G·e), relation exacte entre plaques de Mindlin et de Kirchhoff simplement appuyées polygonales (α = 0,00406235 de Navier, β = 0,0736714 moment de Marcus au centre, κ = 5/6). Même plaque que FEA-01, qui laisse la rotation tangentielle libre (appui « mou ») et converge vers une solution plus souple. Étude de convergence sur quatre maillages.",
+  "sources": [
+    "C.M. Wang, G.T. Lim, J.N. Reddy, K.H. Lee — Relationships between bending solutions of Reissner and Mindlin plate theories, Engineering Structures 23 (2001) 838-849",
+    "S. Timoshenko, S. Woinowsky-Krieger — Theory of Plates and Shells (plaque carrée simplement appuyée, solution de Navier : α = 0,00406)",
+    "OpenSees — ShellMITC4 (Dvorkin-Bathe), ElasticMembranePlateSection (cisaillement transverse 5/6·G·e)"
+  ],
+  "hypotheses": [
+    "coque élastique linéaire, a/e = 30",
+    "appui simple dur : translations bloquées et rotation autour de la normale au bord dans le plan bloquée (rx sur les bords parallèles à y, ry sur les bords parallèles à x)",
+    "référence de Mindlin avec κ = 5/6, coefficients α et β calculés par séries (2000 termes par direction)"
+  ],
+  "units": {
+    "force": "kN",
+    "length": "m",
+    "stress": "kPa"
+  },
+  "engines": [
+    "opensees"
+  ],
+  "parameters": {
+    "E": 31000000.0,
+    "nu": 0.2,
+    "e": 0.2,
+    "a": 6.0,
+    "q": 10.0,
+    "D": "E*e^3/(12*(1-nu^2))",
+    "G": "E/(2*(1+nu))",
+    "k": 0.8333333333333334,
+    "alpha": 0.004062352660675069,
+    "beta": 0.07367135326539033
+  },
+  "model": {
+    "materials": {
+      "C": {
+        "E": 31000000.0,
+        "nu": 0.2,
+        "rho": 2500
+      }
+    },
+    "sections": {},
+    "nodes": [
+      {
+        "id": 1,
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "id": 2,
+        "x": 6,
+        "y": 0,
+        "z": 0
+      },
+      {
+        "id": 3,
+        "x": 6,
+        "y": 6,
+        "z": 0
+      },
+      {
+        "id": 4,
+        "x": 0,
+        "y": 6,
+        "z": 0
+      }
+    ],
+    "members": [],
+    "slabs": [
+      {
+        "id": 1,
+        "nodes": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "thickness": 0.2,
+        "material": "C",
+        "edgeSupports": [
+          {
+            "edge": 0,
+            "fixed": [
+              1,
+              1,
+              1,
+              0,
+              1,
+              0
+            ]
+          },
+          {
+            "edge": 1,
+            "fixed": [
+              1,
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "edge": 2,
+            "fixed": [
+              1,
+              1,
+              1,
+              0,
+              1,
+              0
+            ]
+          },
+          {
+            "edge": 3,
+            "fixed": [
+              1,
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": 1,
+        "name": "q"
+      }
+    ],
+    "surfaceLoads": [
+      {
+        "slab": 1,
+        "case": 1,
+        "q": 10.0
+      }
+    ]
+  },
+  "analysis": {
+    "selfWeight": false,
+    "case": 1,
+    "meshSizes": [
+      1.0,
+      0.5,
+      0.25,
+      0.125
+    ],
+    "quads": true
+  },
+  "checks": [
+    {
+      "quantity": "surface:uz:absmax",
+      "label": "flèche au centre (vers le bas), référence de Mindlin",
+      "expected": "-(alpha*q*a^4/D + beta*q*a^2/(k*G*e))",
+      "unit": "m",
+      "tolerance": {
+        "rel": 0.01,
+        "abs": 1e-09
+      }
+    },
+    {
+      "quantity": "reactionsum:fz",
+      "label": "Σ réactions = q·a²",
+      "expected": "q*a^2",
+      "unit": "kN",
+      "tolerance": {
+        "rel": 1e-06,
+        "abs": 1e-09
+      }
+    }
+  ]
+}

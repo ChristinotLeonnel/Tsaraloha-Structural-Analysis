@@ -174,7 +174,9 @@ ValidationResult AnalysisManager::validateGeneric(const AnalysisContext& context
     for (int id : context.loadCaseIds)
         if (!snap.loadCases().count(id)) v.addError("Charges", "Cas de charge #" + std::to_string(id) + " introuvable.");
 
-    const bool anyLoad = !snap.nodalLoads().empty() || !snap.memberLoads().empty();
+    // Charges surfaciques converties sur le maillage transmis (coques) : ce sont des charges du calcul
+    const bool surfaceLoads = !context.surfaces.loads.empty() && context.common.useGeneratedMesh && caps.supportsShell;
+    const bool anyLoad = !snap.nodalLoads().empty() || !snap.memberLoads().empty() || surfaceLoads;
     if (context.type == AnalysisType::Modal)
     {
         for (int id : context.common.modalMassCaseIds)
@@ -242,6 +244,7 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
         common.type = context.type;
         common.includeSelfWeight = context.common.includeSelfWeight;
         common.supportRestraints = context.common.supportRestraints;
+        common.surfacesTransmitted = !context.surfaces.empty() && context.common.useGeneratedMesh && engine->capabilities().supportsShell;
         const auto report = TSA::Standards::ModelValidator::validateForAnalysis(model, common);
         for (const auto& e : report.formattedErrors()) p.validation.addError("Modèle", e);
         for (const auto& w : report.formattedWarnings()) p.validation.addWarning("Modèle", w);

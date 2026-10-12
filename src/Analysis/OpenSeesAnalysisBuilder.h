@@ -68,6 +68,8 @@ struct AnalysisParameters
     int targetCombinationId = 0;    ///< 0 = cas individuels
     bool useKiloNewtons = true;     ///< true: kN, m, kPa, kNm | false: N, m, Pa, Nm
     bool includeSelfWeight = true;
+    /// Dalles et voiles maillés transmis au calcul (coques) : leur rigidité et leurs charges sont prises en compte.
+    bool surfacesTransmitted = false;
     /// Blocages automatiques des appuis articulés / simples (CalculationSnapshot::capture).
     SupportRestraintMode supportRestraints = SupportRestraintMode::Fork;
 

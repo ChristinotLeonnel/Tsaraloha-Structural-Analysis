@@ -70,7 +70,9 @@ ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
         return report;
     }
 
-    if (model.beams().empty() && model.columns().empty() && model.trussMembers().empty() && model.cables().empty())
+    // Dalles et voiles : éléments structuraux calculés en coques à partir du maillage (sinon signalé par ModelValidator)
+    if (model.beams().empty() && model.columns().empty() && model.trussMembers().empty() && model.cables().empty() && model.slabs().empty() &&
+        model.walls().empty())
     {
         report.addWarning("Géométrie", "Le modèle ne comporte aucun élément linéaire filaire.");
     }
