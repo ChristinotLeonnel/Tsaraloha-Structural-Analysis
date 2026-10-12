@@ -775,8 +775,9 @@ std::string engineVersion(const std::string& engine)
 {
     if (engine == "opensees")
     {
+        // Version lue sur l'exécutable ; jamais une valeur par défaut présentée comme constatée
         const auto v = TSA::Analysis::OpenSeesManager::instance().versionInfo().versionString.toStdString();
-        return "OpenSees " + (v.empty() ? std::string("3.8.0") : v);
+        return "OpenSees " + (v.empty() ? std::string("(version non lue)") : v);
     }
     return engine == "custom2d" ? "Custom2D (TSALab MetDeDeplacement)" : engine;
 }
