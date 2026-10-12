@@ -10,6 +10,7 @@
 #include "../Model/Cable/Cable.h"
 #include "../Model/Section.h"
 
+#include <Graphic3d_TransformPers.hxx>
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_Shape.hxx>
 #include <AIS_TextLabel.hxx>
@@ -514,28 +515,21 @@ void ResultsVisualManager::updateLegend()
     QString txt = legendSummaryText();
     if (txt.isEmpty()) return;
 
-    double minX = 0, minY = 0, maxZ = 0;
-    if (m_model && !m_model->nodes().empty())
-    {
-        minX = minY = 1e9;
-        maxZ = -1e9;
-        for (const auto& [id, n] : m_model->nodes())
-        {
-            minX = std::min(minX, n.x());
-            minY = std::min(minY, n.y());
-            maxZ = std::max(maxZ, n.z());
-        }
-    }
-
-    gp_Pnt legendPos(minX, minY, maxZ + 0.4);
-
+    // Légende fixe à l'écran (coin inférieur droit, zone libre : cube de navigation en haut à droite, légende des charges
+    // en haut à gauche) : ne recouvre plus la structure et ne suit plus la caméra ; taille constante quel que soit le mode
     m_legendLabel = new AIS_TextLabel();
-    m_legendLabel->SetPosition(legendPos);
+    m_legendLabel->SetPosition(gp_Pnt(0, 0, 0));
     m_legendLabel->SetText(TCollection_ExtendedString(txt.toUtf8().constData(), true));
     m_legendLabel->SetColor(Quantity_NOC_YELLOW);
     TSA::Viewer::AnnotationStyle::instance().apply(m_legendLabel, TSA::Viewer::AnnotationRole::Legend);
+    m_legendLabel->SetZoomable(false);
+    m_legendLabel->SetHJustification(Graphic3d_HTA_RIGHT);
+    m_legendLabel->SetVJustification(Graphic3d_VTA_BOTTOM);
+    m_legendLabel->SetTransformPersistence(new Graphic3d_TransformPers(Graphic3d_TMF_2d, Aspect_TOTP_RIGHT_LOWER, NCollection_Vec2<int>(16, 24)));
+    m_legendLabel->SetZLayer(Graphic3d_ZLayerId_TopOSD);
     m_legendLabel->SetFont("Arial");
     ctx->Display(m_legendLabel, false);
+    ctx->Deactivate(m_legendLabel);   // non sélectionnable
 }
 
 void ResultsVisualManager::updateAllVisuals()
