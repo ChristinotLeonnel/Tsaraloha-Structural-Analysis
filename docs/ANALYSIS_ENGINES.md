@@ -39,7 +39,7 @@ UI Analysis (AnalysisDialog, AnalysisManagerPanel)   console / Blueprint / IA (a
 | Orchestration + validation générique | `src/Analysis/Engine/AnalysisManager.*` |
 | Contrôleur partagé (session) : moteurs, réglages du projet, calcul en tâche de fond, résultats | `src/Analysis/AnalysisController.*` (`ProjectSession::analysis()`) |
 | Gestionnaire d'analyse (panneau partagé : moteurs, réglages, validation, calcul, synthèse) | `src/UI/Analysis/AnalysisManagerPanel.*` |
-| Commandes `analysis.run`, `results.summary`, `results.node_displacement` (console, Blueprint, IA) | `src/Automation/CommandRegistry.cpp` |
+| Commandes `analysis.run` (dont `self_weight=oui|non`), `results.summary`, `results.node_displacement`, `results.node_reaction`, `results.member_forces`, `query.bar`, `compare.values` (console, Blueprint, IA) | `src/Automation/CommandRegistry.cpp` |
 | Enregistrement des moteurs intégrés | `src/Analysis/Engines/BuiltInEngines.cpp` |
 | Adaptateur OpenSees | `src/Analysis/Engines/OpenSees/OpenSeesEngine.*` |
 | Contrat du solveur 2D, conversion, moteur | `src/Analysis/Engines/Custom2D/*` |

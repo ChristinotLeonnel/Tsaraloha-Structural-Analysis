@@ -585,6 +585,8 @@ void AnalysisDataDock::exportData()
         { tr("K globale (CSV, COO)"), ResultsDataset::GlobalStiffness, ResultsExportFormat::Csv, "CSV (*.csv)" },
         { tr("Rigidités élémentaires (CSV)"), ResultsDataset::ElementStiffness, ResultsExportFormat::Csv, "CSV (*.csv)" },
         { tr("Rigidités élémentaires (TXT)"), ResultsDataset::ElementStiffness, ResultsExportFormat::Txt, "Texte (*.txt)" },
+        { tr("Vecteurs F et U du système (CSV)"), ResultsDataset::SystemVectors, ResultsExportFormat::Csv, "CSV (*.csv)" },
+        { tr("Transformations local / global (CSV)"), ResultsDataset::Transformations, ResultsExportFormat::Csv, "CSV (*.csv)" },
         { tr("Tout (JSON)"), ResultsDataset::All, ResultsExportFormat::Json, "JSON (*.json)" },
         { tr("Tout (TXT)"), ResultsDataset::All, ResultsExportFormat::Txt, "Texte (*.txt)" },
     };

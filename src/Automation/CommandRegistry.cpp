@@ -169,6 +169,26 @@ bool parseSection(const std::string& spec, TSA::Model::Section& out, std::string
     std::istringstream in(upper(spec));
     std::string family, size;
     in >> family >> size;
+    // Tailles du catalogue (Section.h) : une taille absente n'est jamais remplacée par un profil par défaut
+    static const std::vector<int> ipe { 100, 120, 140, 160, 180, 200, 220, 240, 270, 300, 330, 360, 400 };
+    static const std::vector<int> he { 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300 };
+    static const std::vector<int> upn { 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300 };
+    const std::vector<int>* sizes = family == "IPE" ? &ipe : (family == "HEA" || family == "HEB") ? &he : family == "UPN" ? &upn : nullptr;
+    if (sizes)
+    {
+        std::size_t used = 0;
+        int n = 0;
+        try { n = std::stoi(size, &used); } catch (const std::exception&) { used = 0; }
+        if (used == 0 || used != size.size() || std::find(sizes->begin(), sizes->end(), n) == sizes->end())
+        {
+            if (error) *error = "Profil « " + spec + " » absent du catalogue (" + family + " : " + [&] {
+                std::string l;
+                for (int v : *sizes) l += (l.empty() ? "" : ", ") + std::to_string(v);
+                return l;
+            }() + ").";
+            return false;
+        }
+    }
     try
     {
         if (family == "IPE") out = TSA::Model::Section::ipe(std::stoi(size));
@@ -243,6 +263,11 @@ CommandResult createBar(TSA::Project::ProjectSession& s, const Arguments& a, TSA
 }
 } // namespace
 
+namespace
+{
+void registerLabCommands(CommandRegistry& reg);
+} // namespace
+
 void registerBuiltInCommands(CommandRegistry& reg)
 {
     using VT = ValueType;
@@ -287,6 +312,26 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 else return fail("Type d'appui inconnu « " + text(a, "type") + " » (fixed, pinned, roller, free).");
                 s.model().notifyNodeModified(id);
                 return done("Appui « " + text(a, "type") + " » sur N" + std::to_string(id) + ".");
+            });
+
+    reg.add({ "model.set_section", "Affecter section et matériau", "Modèle",
+              "Remplace la section (IPE n, HEA n, HEB n, UPN n, RECT bxh, CIRC d) et, si donné, le matériau d'une barre.",
+              { param("bar", "Barre", VT::Integer), param("section", "Section", VT::Text), optional(param("material", "Matériau", VT::Text), std::string()) },
+              {}, true },
+            [](auto& s, const Arguments& a) {
+                const int id = static_cast<int>(integer(a, "bar"));
+                auto* bar = s.model().getBar(id);
+                if (!bar) return fail("Barre " + std::to_string(id) + " inexistante.");
+                TSA::Model::Section section;
+                std::string error;
+                if (!parseSection(text(a, "section"), section, &error)) return fail(error);
+                TSA::Model::Material material = bar->material();
+                const std::string mat = text(a, "material");
+                if (!mat.empty() && !parseMaterial(mat, material)) return fail("Matériau inconnu « " + mat + " » (S235, S355, C25/30, C30/37, C24).");
+                bar->setSection(section);
+                bar->setMaterial(material);
+                s.model().notifyBeamModified(id);
+                return done("Barre " + std::to_string(id) + " : section « " + text(a, "section") + " »" + (mat.empty() ? std::string() : ", matériau " + mat) + ".");
             });
 
     // --- Charges ----------------------------------------------------------------------------------
@@ -362,15 +407,35 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 return done("N" + std::to_string(id) + " : " + formatValue(p), { { "position", p } });
             });
 
+    reg.add({ "query.bar", "Lire une barre", "Requêtes", "Nœuds, longueur et propriétés de section et de matériau d'une barre.",
+              { param("id", "Barre", VT::Integer) },
+              { param("start", "Nœud de départ", VT::Integer), param("end", "Nœud d'arrivée", VT::Integer),
+                param("length", "Longueur", VT::Real, Q::Length), param("area", "Aire (m²)", VT::Real),
+                param("iy", "Iy, axe fort (m⁴)", VT::Real), param("iz", "Iz, axe faible (m⁴)", VT::Real),
+                param("e", "Module d'Young (kN/m²)", VT::Real), param("rotation", "Rotation de section", VT::Real, Q::Angle) }, false },
+            [](auto& s, const Arguments& a) {
+                const int id = static_cast<int>(integer(a, "id"));
+                const auto* b = s.model().getBar(id);
+                if (!b) return fail("Barre " + std::to_string(id) + " inexistante.");
+                const double L = b->length(s.model()), E = b->material().E / 1000.0;
+                std::ostringstream o;
+                o << "Barre " << id << " : N" << b->startNodeId() << " → N" << b->endNodeId() << ", L = " << L << " m, A = " << b->section().area()
+                  << " m², Iy = " << b->section().iy() << " m⁴, E = " << E << " kN/m²";
+                return done(o.str(), { { "start", static_cast<long long>(b->startNodeId()) }, { "end", static_cast<long long>(b->endNodeId()) },
+                                       { "length", L }, { "area", b->section().area() }, { "iy", b->section().iy() }, { "iz", b->section().iz() },
+                                       { "e", E }, { "rotation", b->rotation() } });
+            });
+
     // --- Analyse (contrôleur partagé de la session) ----------------------------------------------
     reg.add({ "analysis.run", "Calculer", "Analyse",
               "Calcule le modèle avec les réglages d'analyse du projet ; moteur et axe de grille facultatifs "
               "(« custom2d » + axe « B » : portique plan de l'axe B ; axe « * » : modèle complet ; axe « plan » : plan "
-              "du modèle, s'il est plan). Les réglages "
+              "du modèle, s'il est plan). Poids propre : « oui » / « non », vide = réglage du projet. Les réglages "
               "modifiés sont enregistrés avec le projet. Calcul synchrone : les résultats sont publiés à la fin.",
               { optional(param("engine", "Moteur", VT::Text), std::string()),
                 optional(param("axis", "Axe de grille", VT::Text), std::string()),
-                optional(param("export_system", "Exporter K·U = F", VT::Bool), false) },
+                optional(param("export_system", "Exporter K·U = F", VT::Bool), false),
+                optional(param("self_weight", "Poids propre", VT::Text), std::string()) },
               { param("max_displacement", "Déplacement max", VT::Real, Q::Length),
                 param("max_moment", "Moment max", VT::Real, Q::Moment),
                 param("equations", "Équations", VT::Integer) }, false },
@@ -413,6 +478,10 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 // Dimension : celle que le moteur sait calculer (plan pour un moteur 2D seul).
                 if (!caps.supportsDimension(ctx.dimension))
                     ctx.dimension = caps.supports2D ? AnalysisDimension::Plane2D : AnalysisDimension::Space3D;
+                const std::string sw = upper(text(a, "self_weight"));
+                if (sw == "OUI" || sw == "YES" || sw == "TRUE" || sw == "1") ctx.common.includeSelfWeight = true;
+                else if (sw == "NON" || sw == "NO" || sw == "FALSE" || sw == "0") ctx.common.includeSelfWeight = false;
+                else if (!sw.empty()) return fail("Poids propre : « " + text(a, "self_weight") + " » (oui ou non attendu).");
                 if (std::get<bool>(a.at("export_system")))
                 {
                     QJsonObject settings = ctx.settingsFor(ctx.engineId);
@@ -486,7 +555,93 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 return done("N" + std::to_string(id) + " : u = " + formatValue(u) + " m, |u| = " + formatValue(norm * 1000.0) + " mm",
                             { { "displacement", u }, { "rotation", rot }, { "magnitude", norm } });
             });
+
+    registerLabCommands(reg);
 }
+
+namespace
+{
+// Lecture d'efforts et comparaison : enregistrées après les autres résultats (ordre d'affichage du registre)
+void registerLabCommands(CommandRegistry& reg)
+{
+    using VT = ValueType;
+    using Q = Quantity;
+
+    reg.add({ "results.node_reaction", "Réaction d'un appui", "Résultats",
+              "Réaction calculée d'un nœud appuyé (kN, kN·m), repère global.",
+              { param("id", "Nœud", VT::Integer) },
+              { param("force", "Force", VT::Point3, Q::Force), param("moment", "Moment", VT::Point3, Q::Moment) }, false },
+            [](auto& s, const Arguments& a) {
+                const auto r = s.analysis().results();
+                if (!r) return fail("Aucun résultat : lancez d'abord un calcul (analysis.run).");
+                const int id = static_cast<int>(integer(a, "id"));
+                const auto* re = r->getNodeReaction(id);
+                if (!re) return fail("Aucune réaction pour le nœud N" + std::to_string(id) + " (nœud non appuyé ou hors du calcul).");
+                const double k = r->units().force == "N" ? 1.0e-3 : 1.0;
+                const Point3 f { re->rx * k, re->ry * k, re->rz * k }, m { re->mx * k, re->my * k, re->mz * k };
+                return done("N" + std::to_string(id) + " : R = " + formatValue(f) + " kN, M = " + formatValue(m) + " kN·m", { { "force", f }, { "moment", m } });
+            });
+
+    reg.add({ "results.member_forces", "Efforts d'une barre", "Résultats",
+              "Efforts extrêmes calculés le long d'une barre (stations du moteur, repère local) : N, V, M.",
+              { param("id", "Barre", VT::Integer) },
+              { param("n_max", "N max (traction)", VT::Real, Q::Force), param("n_min", "N min (compression)", VT::Real, Q::Force),
+                param("v_max", "|V| max", VT::Real, Q::Force), param("m_max", "|M| max", VT::Real, Q::Moment),
+                param("stations", "Stations", VT::Integer) }, false },
+            [](auto& s, const Arguments& a) {
+                const auto r = s.analysis().results();
+                if (!r) return fail("Aucun résultat : lancez d'abord un calcul (analysis.run).");
+                const int id = static_cast<int>(integer(a, "id"));
+                const TSA::Analysis::ElementResults* er = nullptr;
+                int found = 0;
+                for (const auto& [key, e] : r->allElementResults())
+                    if (key.id == id && key.kind != TSA::Analysis::StructuralElementKind::Cable) er = &e, ++found;
+                if (!er) return fail("Aucun effort pour la barre " + std::to_string(id) + " (hors du calcul).");
+                if (found > 1) return fail("Barre " + std::to_string(id) + " ambiguë dans les résultats.");
+                std::vector<TSA::Analysis::StationForces> st { er->startForces };
+                st.insert(st.end(), er->intermediateStations.begin(), er->intermediateStations.end());
+                st.push_back(er->endForces);
+                const double k = r->units().force == "N" ? 1.0e-3 : 1.0;
+                double nMax = -1e300, nMin = 1e300, vMax = 0.0, mMax = 0.0;
+                for (const auto& f : st)
+                {
+                    nMax = std::max(nMax, f.N * k), nMin = std::min(nMin, f.N * k);
+                    vMax = std::max(vMax, std::hypot(f.Vy, f.Vz) * k), mMax = std::max(mMax, std::hypot(f.My, f.Mz) * k);
+                }
+                nMax += 0.0, nMin += 0.0;   // −0 → 0 (affichage)
+                std::ostringstream o;
+                o << "Barre " << id << " : N ∈ [" << nMin << ", " << nMax << "] kN, |V|max = " << vMax << " kN, |M|max = " << mMax << " kN·m (" << st.size() << " stations)";
+                return done(o.str(), { { "n_max", nMax }, { "n_min", nMin }, { "v_max", vMax }, { "m_max", mMax }, { "stations", static_cast<long long>(st.size()) } });
+            });
+
+    reg.add({ "compare.values", "Comparer à une référence", "Laboratoire",
+              "Écarts d'une valeur à sa référence et verdict selon la tolérance mixte |x − réf| ≤ ε_abs + ε_rel·|réf|. "
+              "L'écart relatif n'est pas défini si |réf| ≈ 0 (sortie absente).",
+              { param("value", "Valeur", VT::Real), param("reference", "Référence", VT::Real),
+                optional(param("rel_tol", "Tolérance relative", VT::Real), 1.0e-6), optional(param("abs_tol", "Tolérance absolue", VT::Real), 1.0e-9) },
+              { param("abs_error", "Écart absolu", VT::Real), param("rel_error", "Écart relatif", VT::Real), param("passed", "Dans la tolérance", VT::Bool) }, false },
+            [](auto&, const Arguments& a) {
+                const double x = real(a, "value"), ref = real(a, "reference"), rel = real(a, "rel_tol"), abs = real(a, "abs_tol");
+                if (!std::isfinite(x) || !std::isfinite(ref)) return fail("Valeur ou référence non finie.");
+                if (rel < 0.0 || abs < 0.0) return fail("Tolérances négatives.");
+                const double e = std::abs(x - ref);
+                const bool ok = e <= abs + rel * std::abs(ref);
+                Arguments out { { "abs_error", e }, { "passed", ok } };
+                std::ostringstream o;
+                o << "|Δ| = " << e;
+                if (std::abs(ref) > 1e-12)
+                {
+                    out["rel_error"] = e / std::abs(ref);
+                    o << ", écart relatif " << e / std::abs(ref) * 100.0 << " %";
+                }
+                else
+                    o << ", réf. ≈ 0 : écart relatif non défini";
+                o << (ok ? " — dans la tolérance" : " — HORS TOLÉRANCE");
+                return done(o.str(), out);
+            });
+}
+
+} // namespace
 
 const CommandRegistry& CommandRegistry::builtIn()
 {

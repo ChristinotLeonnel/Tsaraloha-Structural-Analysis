@@ -50,6 +50,14 @@ bool runSuite_Benchmarks(int& passed)
                 report.cases.push_back(o);
                 if (o.skipped) continue;
                 TEST_CHECK(o.ran, "Test 367: " << o.caseId << " (" << o.engine << ") calculé : " << o.message);
+                const auto sizes = c.analysis.value("meshSizes").toArray();
+                for (const auto& k : o.checks)
+                    if (sizes.size() > 1)
+                        TEST_CHECK(k.convergence.size() == std::size_t(sizes.size()) && k.convergence.back().available && k.convergence.back().value == k.value &&
+                                       k.convergence.front().meshSize == sizes.first().toDouble() && !k.convergence.front().meshInfo.empty(),
+                                   "Test 367: " << o.caseId << " " << k.quantity << " — série de convergence structurée (" << k.convergence.size() << " maillages)");
+                    else
+                        TEST_CHECK(k.convergence.empty(), "Test 367: " << o.caseId << " " << k.quantity << " — pas de série pour un calcul unique");
                 for (const auto& k : o.checks)
                     TEST_CHECK(k.passed, "Test 367: " << o.caseId << " (" << o.engine << ") " << k.quantity << " = " << k.value << ", référence " << k.reference << " ("
                                                       << k.formula << ", tolérance " << k.tolerance.abs << " + " << k.tolerance.rel << "·|réf|)");

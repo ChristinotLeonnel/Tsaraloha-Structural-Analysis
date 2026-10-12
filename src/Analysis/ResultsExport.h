@@ -26,6 +26,8 @@ enum class ResultsDataset
     DofMap,
     GlobalStiffness,   ///< K_global (COO en CSV)
     ElementStiffness,  ///< k_basic / k_local / K_global de chaque élément
+    SystemVectors,     ///< F et U du système K·U = F par équation (U déduit des déplacements si le moteur ne l'exporte pas)
+    Transformations,   ///< matrice de rotation local → global (axes x, y, z locaux en repère global) de chaque élément
     All                ///< JSON ou TXT uniquement
 };
 

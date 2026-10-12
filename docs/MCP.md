@@ -52,8 +52,9 @@ Claude Code ──stdio (MCP, JSON-RPC)──► tsaraloha-mcp.exe ──canal l
 | `undo` / `redo` | Annuler / Rétablir du projet |
 | `list_documents` | documents (onglets) ouverts : identifiant, nom, chemin, actif |
 
-Le calcul se lance par la commande `analysis.run` (moteur, axe de grille, export du système) et se lit par
-`results.summary`, `results.node_displacement`, `inspect_model get_results_summary`.
+Le calcul se lance par la commande `analysis.run` (moteur, axe de grille, export du système, poids propre) et se lit
+par `results.summary`, `results.node_displacement`, `results.node_reaction`, `results.member_forces`,
+`inspect_model get_results_summary`. `compare.values` juge un écart à une référence (tolérance mixte).
 
 ## Installation dans Claude Code
 

@@ -39,7 +39,7 @@ Statut : phase 6 de `docs/TSARALOHA_ARCHITECTURE.md` (ADR-024), 2026-10-08. Mote
 | Logique | ET, OU, NON |
 | Flux | Si, Séquence, Pour, Tant que |
 | Texte / Débogage | Concaténer, Afficher |
-| Projet (Modèle, Charges, Requêtes, Analyse, Résultats) | **une commande du registre central = un nœud** (`cmd.<id>`), généré automatiquement — dont `analysis.run` (Calculer) et `results.summary` / `results.node_displacement` |
+| Projet (Modèle, Charges, Requêtes, Analyse, Résultats) | **une commande du registre central = un nœud** (`cmd.<id>`), généré automatiquement — dont `analysis.run` (Calculer), `model.set_section` (Affecter section et matériau), `results.summary` / `results.node_displacement` / `results.node_reaction` / `results.member_forces`, `query.bar` et `compare.values` (Comparer à une référence) |
 | TSALab | Banc de validation (cœur scientifique) |
 
 Ajouter une commande au registre (`src/Automation/CommandRegistry.cpp`) la rend disponible dans le Blueprint, la

@@ -943,9 +943,13 @@ std::vector<CaseOutcome> runBenchmark(const BenchmarkCase& c, const RunOptions& 
                 conv << "convergence :";
                 for (std::size_t i = 0; i < runs.size(); ++i)
                 {
-                    double v = 0;
+                    ConvergencePoint p;
                     bool interp = false;
-                    conv << " h=" << meshSizes[i] << " (" << runs[i].meshInfo << ") → " << (runs[i].ok && extract(k.quantity, runs[i].results, runs[i].built, &v, &interp, nullptr) ? std::to_string(v) : std::string("—"));
+                    p.meshSize = meshSizes[i];
+                    p.meshInfo = runs[i].meshInfo;
+                    p.available = runs[i].ok && extract(k.quantity, runs[i].results, runs[i].built, &p.value, &interp, nullptr);
+                    conv << " h=" << p.meshSize << " (" << p.meshInfo << ") → " << (p.available ? std::to_string(p.value) : std::string("—"));
+                    o.convergence.push_back(p);
                 }
                 o.note += (o.note.empty() ? "" : " ; ") + conv.str();
             }
@@ -1034,18 +1038,27 @@ QJsonObject reportJson(const BenchmarkReport& r)
     {
         QJsonArray checks;
         for (const auto& k : c.checks)
-            checks.append(QJsonObject { { "quantity", QString::fromStdString(k.quantity) },
-                                        { "label", QString::fromStdString(k.label) },
-                                        { "formula", QString::fromStdString(k.formula) },
-                                        { "reference", k.reference },
-                                        { "value", k.available ? QJsonValue(k.value) : QJsonValue() },
-                                        { "absError", k.available ? QJsonValue(k.absError) : QJsonValue() },
-                                        { "relError", std::isfinite(k.relError) ? QJsonValue(k.relError) : QJsonValue() },
-                                        { "tolerance", QJsonObject { { "rel", k.tolerance.rel }, { "abs", k.tolerance.abs } } },
-                                        { "status", status(k) },
-                                        { "source", QString::fromStdString(k.source) },
-                                        { "interpolated", k.interpolated },
-                                        { "note", QString::fromStdString(k.note) } });
+        {
+            QJsonArray conv;
+            for (const auto& p : k.convergence)
+                conv.append(QJsonObject { { "meshSize", p.meshSize },
+                                          { "mesh", QString::fromStdString(p.meshInfo) },
+                                          { "value", p.available ? QJsonValue(p.value) : QJsonValue() } });
+            QJsonObject check { { "quantity", QString::fromStdString(k.quantity) },
+                                { "label", QString::fromStdString(k.label) },
+                                { "formula", QString::fromStdString(k.formula) },
+                                { "reference", k.reference },
+                                { "value", k.available ? QJsonValue(k.value) : QJsonValue() },
+                                { "absError", k.available ? QJsonValue(k.absError) : QJsonValue() },
+                                { "relError", std::isfinite(k.relError) ? QJsonValue(k.relError) : QJsonValue() },
+                                { "tolerance", QJsonObject { { "rel", k.tolerance.rel }, { "abs", k.tolerance.abs } } },
+                                { "status", status(k) },
+                                { "source", QString::fromStdString(k.source) },
+                                { "interpolated", k.interpolated },
+                                { "note", QString::fromStdString(k.note) } };
+            if (!conv.isEmpty()) check.insert("convergence", conv);
+            checks.append(check);
+        }
         cases.append(QJsonObject { { "id", QString::fromStdString(c.caseId) },
                                    { "title", QString::fromStdString(c.title) },
                                    { "category", QString::fromStdString(c.category) },
