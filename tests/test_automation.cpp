@@ -1,10 +1,12 @@
 // Suite « automation » : registre central des commandes exécutables (ADR-024, phase 5) — test 192 ;
-// serveur d'automatisation et pont MCP (Claude Code co-ingénieur) — test 200.
+// serveur d'automatisation et pont MCP (Claude Code co-ingénieur) — test 200 ; commandes du laboratoire
+// (propriétés, lecture d'efforts et de réactions, comparaison à une référence) — test 389.
 // Une même commande sert l'interface, le Blueprint, l'IA et la console : création par ligne de
 // commande, typage des arguments, une entrée Annuler par commande, échec sans effet sur le modèle.
 #include "test_common.h"
 
 #include "Automation/AutomationServer.h"
+#include "Analysis/AnalysisController.h"
 #include "Automation/CommandRegistry.h"
 #include "Model/Load/LoadManager.h"
 #include "Project/ProjectSession.h"
@@ -15,6 +17,9 @@
 #include <QJsonDocument>
 #include <QProcess>
 #include <QThread>
+
+#include <cmath>
+#include <sstream>
 
 bool runSuite_Automation(int& passed)
 {
@@ -161,6 +166,64 @@ bool runSuite_Automation(int& passed)
         TEST_CHECK(bridge.waitForFinished(5000), "Test 200: tsaraloha-mcp se termine à la fin de l'entrée");
         server.stop();
         std::cout << "[PASS] Test 200: serveur d'automatisation et pont MCP" << std::endl;
+        ++passed;
+    }
+    // TEST 389 : commandes du laboratoire — expérience « poutre bi-appuyée » pilotée uniquement par le registre
+    // (console, Blueprint, MCP) : affectation de section, calcul sans poids propre, réaction, efforts, comparaison
+    {
+        TSA::Project::ProjectSession s;
+        const auto& reg = CommandRegistry::builtIn();
+        for (const char* id : { "model.set_section", "query.bar", "results.node_reaction", "results.member_forces", "compare.values" })
+            TEST_CHECK(reg.find(id), "Test 389: commande " << id << " enregistrée");
+        auto run = [&](const std::string& line) { return executeCommandLine(reg, s, line); };
+        for (const char* line : { "model.create_node position=0,0,0", "model.create_node position=3,0,0", "model.create_node position=6,0,0",
+                                  "model.create_beam start=1 end=2 section=\"IPE 200\"", "model.create_beam start=2 end=3 section=\"IPE 300\"",
+                                  "model.set_support node=1 type=pinned", "model.set_support node=3 type=roller", "loads.create_case name=P category=live",
+                                  "loads.add_nodal node=2 case=1 fz=-50" })
+            TEST_CHECK(run(line).ok, "Test 389: « " << line << " »");
+        // Affectation de propriétés (une entrée Annuler), lecture des propriétés réelles de la barre
+        const double iy200 = std::get<double>(run("query.bar id=1").outputs.at("iy"));
+        TEST_CHECK(run("model.set_section bar=1 section=\"IPE 300\" material=S235").ok, "Test 389: section IPE 300 affectée à la barre 1");
+        const auto b1 = run("query.bar id=1"), b2 = run("query.bar id=2");
+        TEST_CHECK(b1.ok && std::get<double>(b1.outputs.at("iy")) == std::get<double>(b2.outputs.at("iy")) && std::get<double>(b1.outputs.at("iy")) > iy200 &&
+                       std::get<double>(b1.outputs.at("length")) == 3.0 && std::get<double>(b1.outputs.at("e")) == 210.0e6,
+                   "Test 389: query.bar — Iy de l'IPE 300, L = 3 m, E = 210 GPa en kN/m²");
+        TEST_CHECK(s.undo() && std::get<double>(run("query.bar id=1").outputs.at("iy")) == iy200 && s.redo(), "Test 389: affectation annulée puis rétablie");
+        TEST_CHECK(!run("model.set_section bar=1 section=\"IPE 999x\"").ok && !run("model.set_section bar=9 section=\"IPE 300\"").ok &&
+                       !run("model.set_section bar=1 section=\"IPE 300\" material=acier").ok,
+                   "Test 389: section, barre ou matériau inconnus refusés");
+
+        TEST_CHECK(!run("analysis.run engine=custom2d axis=plan self_weight=peut-etre").ok, "Test 389: poids propre — valeur inconnue refusée");
+        TEST_CHECK(run("analysis.run engine=custom2d axis=plan self_weight=non").ok && !s.analysis().context().common.includeSelfWeight,
+                   "Test 389: calcul Custom2D sans poids propre (réglage enregistré)");
+        const auto ra = run("results.node_reaction id=1"), rb = run("results.node_reaction id=3");
+        TEST_CHECK(ra.ok && rb.ok && std::abs(std::get<Point3>(ra.outputs.at("force"))[2] - 25.0) < 1e-9 && std::abs(std::get<Point3>(rb.outputs.at("force"))[2] - 25.0) < 1e-9,
+                   "Test 389: réactions verticales P/2 = 25 kN aux deux appuis");
+        TEST_CHECK(!run("results.node_reaction id=2").ok, "Test 389: nœud non appuyé — pas de réaction inventée");
+        const auto mf = run("results.member_forces id=1");
+        TEST_CHECK(mf.ok && std::abs(std::get<double>(mf.outputs.at("m_max")) - 75.0) < 1e-9 && std::abs(std::get<double>(mf.outputs.at("v_max")) - 25.0) < 1e-9 &&
+                       std::get<long long>(mf.outputs.at("stations")) >= 2,
+                   "Test 389: efforts de la barre 1 — |M|max = P·L/4 = 75 kN·m, |V|max = 25 kN");
+        TEST_CHECK(!run("results.member_forces id=7").ok, "Test 389: barre absente des résultats refusée");
+
+        // Flèche comparée à P·L³/(48·E·I) calculée avec les propriétés lues par query.bar
+        const double E = std::get<double>(b1.outputs.at("e")), I = std::get<double>(b1.outputs.at("iy"));
+        const double ref = -50.0 * 216.0 / (48.0 * E * I);
+        const double uz = std::get<Point3>(run("results.node_displacement id=2").outputs.at("displacement"))[2];
+        std::ostringstream cmp;
+        cmp.precision(17);
+        cmp << "compare.values value=" << uz << " reference=" << ref << " rel_tol=1e-6";
+        const auto c = run(cmp.str());
+        TEST_CHECK(c.ok && std::get<bool>(c.outputs.at("passed")) && std::get<double>(c.outputs.at("rel_error")) < 1e-9,
+                   "Test 389: compare.values — flèche δ = " << uz << " m, référence " << ref << " m (" << c.message << ")");
+        const auto off = run("compare.values value=1.02 reference=1 rel_tol=0.01");
+        TEST_CHECK(off.ok && !std::get<bool>(off.outputs.at("passed")) && std::abs(std::get<double>(off.outputs.at("rel_error")) - 0.02) < 1e-12,
+                   "Test 389: écart de 2 % hors d'une tolérance de 1 %");
+        const auto zero = run("compare.values value=5e-10 reference=0");
+        TEST_CHECK(zero.ok && std::get<bool>(zero.outputs.at("passed")) && !zero.outputs.count("rel_error") && zero.message.find("non défini") != std::string::npos,
+                   "Test 389: référence nulle — écart relatif non défini (sortie absente), tolérance absolue");
+        TEST_CHECK(!run("compare.values value=1 reference=1 rel_tol=-1").ok, "Test 389: tolérance négative refusée");
+        std::cout << "[PASS] Test 389: commandes du laboratoire (propriétés, réactions, efforts, comparaison à une référence)" << std::endl;
         ++passed;
     }
     return true;

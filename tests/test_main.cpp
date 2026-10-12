@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Snap(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "automation") {
-        std::cout << "\n--- [Suite 27/27] Registre central des commandes (Tests 192, 200) ---" << std::endl;
+        std::cout << "\n--- [Suite 27/27] Registre central des commandes (Tests 192, 200, 389) ---" << std::endl;
         if (!runSuite_Automation(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "blueprint") {
