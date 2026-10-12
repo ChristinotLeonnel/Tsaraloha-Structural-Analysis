@@ -292,10 +292,23 @@ void ResultsVisualManager::setDiagramType(TSA::Geometry::DiagramType type)
     emit visualStateChanged();
 }
 
+void ResultsVisualManager::setDiagramScaleMultiplier(double multiplier)
+{
+    if (!(multiplier > 0.0) || !std::isfinite(multiplier)) multiplier = 1.0;
+    m_diagramMultiplier = multiplier;
+    m_diagramScale = m_diagramAutoScale * m_diagramMultiplier;
+    updateDiagramShapes();
+    updateLegend();
+    redrawView();
+    emit visualStateChanged();
+}
+
 void ResultsVisualManager::setDiagramScale(double scale)
 {
-    if (std::abs(m_diagramScale - scale) < 1e-6) return;
+    // Échelle absolue (m par unité) : enregistrée comme multiplicateur de l'échelle automatique
+    if (!(scale > 0.0) || std::abs(m_diagramScale - scale) <= 1e-12 * std::max(1.0, std::abs(scale))) return;
     m_diagramScale = scale;
+    m_diagramMultiplier = m_diagramAutoScale > 0.0 ? scale / m_diagramAutoScale : 1.0;
     updateDiagramShapes();
     updateLegend();
     redrawView();
@@ -304,22 +317,19 @@ void ResultsVisualManager::setDiagramScale(double scale)
 
 void ResultsVisualManager::setDiagramScalePreset(ScalePreset preset, double customVal)
 {
+    // Diagrammes : multiplicateur de l'échelle automatique (une échelle « ×100 » absolue n'a pas de sens pour une
+    // grandeur en kN·m ; elle était auparavant partagée avec l'amplification de la déformée).
     m_diagramPreset = preset;
+    autoComputeDiagramScale();
     switch (preset)
     {
-    case ScalePreset::Auto:
-        autoComputeDiagramScale();
-        updateDiagramShapes();
-        updateLegend();
-        redrawView();
-        emit visualStateChanged();
-        break;
-    case ScalePreset::X1:     setDiagramScale(1.0); break;
-    case ScalePreset::X10:    setDiagramScale(10.0); break;
-    case ScalePreset::X100:   setDiagramScale(100.0); break;
-    case ScalePreset::X1000:  setDiagramScale(1000.0); break;
-    case ScalePreset::X10000: setDiagramScale(10000.0); break;
-    case ScalePreset::Custom: setDiagramScale(customVal > 0.0 ? customVal : 0.05); break;
+    case ScalePreset::Auto:   setDiagramScaleMultiplier(1.0); break;
+    case ScalePreset::X1:     setDiagramScaleMultiplier(1.0); break;
+    case ScalePreset::X10:    setDiagramScaleMultiplier(10.0); break;
+    case ScalePreset::X100:   setDiagramScaleMultiplier(100.0); break;
+    case ScalePreset::X1000:  setDiagramScaleMultiplier(1000.0); break;
+    case ScalePreset::X10000: setDiagramScaleMultiplier(10000.0); break;
+    case ScalePreset::Custom: setDiagramScaleMultiplier(customVal > 0.0 ? customVal : 1.0); break;
     }
 }
 
@@ -381,10 +391,17 @@ QString ResultsVisualManager::legendSummaryText() const
     }
     if (m_diagramType != TSA::Geometry::DiagramType::None)
     {
-        text += QString("DIAGRAMME : %1 (%2) | Échelle ×%3\n")
-            .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType))
-            .arg(TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType))
-            .arg(m_diagramScale, 0, 'f', 4);
+        const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType);
+        if (m_diagramAllZero)
+            text += QString("DIAGRAMME : %1 — grandeur nulle sur toute la structure (aucun diagramme)\n")
+                        .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType));
+        else
+            text += QString("DIAGRAMME : %1 (%2) | max |%3| %2 | 1 m de diagramme = %4 %2%5\n")
+                        .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType))
+                        .arg(unit)
+                        .arg(m_diagramMaxValue, 0, 'g', 4)
+                        .arg(m_diagramScale > 0.0 ? 1.0 / m_diagramScale : 0.0, 0, 'g', 4)
+                        .arg(std::abs(m_diagramMultiplier - 1.0) < 1e-12 ? QString(" (échelle automatique)") : QString(" (automatique ×%1)").arg(m_diagramMultiplier, 0, 'g', 3));
     }
     return text;
 }
@@ -405,9 +422,13 @@ void ResultsVisualManager::autoComputeDiagramScale()
         }
     }
 
-    if (maxVal < 1e-6)
+    m_diagramMaxValue = maxVal;
+    m_diagramAllZero = !(maxVal > 0.0);
+    if (m_diagramAllZero)
     {
-        m_diagramScale = 0.05;
+        // Grandeur nulle partout : aucun diagramme arbitraire (message dans la légende)
+        m_diagramAutoScale = 0.0;
+        m_diagramScale = 0.0;
         return;
     }
 
@@ -420,8 +441,20 @@ void ResultsVisualManager::autoComputeDiagramScale()
     }
     double span = std::max({maxX - minX, maxY - minY, maxZ - minZ, 5.0});
 
-    // Hauteur crête de diagramme cible ~ 8% de la taille de structure
-    m_diagramScale = std::clamp((0.08 * span) / maxVal, 1e-5, 10.0);
+    // Hauteur crête cible : 8 % de l'envergure, sans dépasser 60 % de la longueur médiane des barres (diagrammes qui
+    // ne recouvrent pas la structure). Aucun plafond sur l'échelle elle-même : une rotation de
+    // 1e-3 rad donne un diagramme aussi lisible qu'un moment de 100 kN·m (l'ancien plafond ×10 la réduisait à quelques millimètres).
+    std::vector<double> lengths;
+    for (const auto& [id, el] : m_results->allElementResults())
+        if (el.length > 0.0) lengths.push_back(el.length);
+    double target = 0.08 * span;
+    if (!lengths.empty())
+    {
+        std::nth_element(lengths.begin(), lengths.begin() + lengths.size() / 2, lengths.end());
+        target = std::min(target, 0.6 * lengths[lengths.size() / 2]);
+    }
+    m_diagramAutoScale = target / maxVal;
+    m_diagramScale = m_diagramAutoScale * m_diagramMultiplier;
 }
 
 void ResultsVisualManager::setDiagramLabelsVisible(bool visible)
@@ -710,9 +743,9 @@ void ResultsVisualManager::updateDiagramShapes()
 
     clearDiagramShapes();
 
-    if (m_diagramType == TSA::Geometry::DiagramType::None || !m_results || !m_results->isValid() || !m_model)
+    if (m_diagramType == TSA::Geometry::DiagramType::None || !m_results || !m_results->isValid() || !m_model || m_diagramAllZero)
     {
-        return;
+        return;   // grandeur nulle partout : rien de dessiné, la légende l'indique
     }
 
     const bool kN = m_results->units().force == "kN";

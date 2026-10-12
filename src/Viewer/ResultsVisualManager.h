@@ -97,7 +97,17 @@ public:
     TSA::Geometry::DiagramType diagramType() const { return m_diagramType; }
     void setDiagramType(TSA::Geometry::DiagramType type);
 
+    /// Échelle des diagrammes (m de diagramme par unité de la grandeur) = échelle automatique × multiplicateur.
+    /// Indépendante de l'amplification de la déformée, du zoom de la caméra et de la taille des textes.
     double diagramScale() const { return m_diagramScale; }
+    double diagramAutoScale() const { return m_diagramAutoScale; }
+    double diagramScaleMultiplier() const { return m_diagramMultiplier; }
+    /// Multiplicateur choisi par l'utilisateur (1 = automatique) : conservé d'un calcul et d'une grandeur à l'autre.
+    void setDiagramScaleMultiplier(double multiplier);
+    /// Plus grande valeur absolue de la grandeur affichée (unité du diagramme) ; 0 si nulle partout.
+    double diagramMaxValue() const { return m_diagramMaxValue; }
+    /// Grandeur affichée nulle sur toute la structure (aucun diagramme dessiné, message dans la légende).
+    bool diagramAllZero() const { return m_diagramAllZero; }
     void setDiagramScale(double scale);
     void autoComputeDiagramScale();
 
@@ -172,6 +182,10 @@ private:
 
     TSA::Geometry::DiagramType m_diagramType = TSA::Geometry::DiagramType::None;
     double m_diagramScale = 0.05;
+    double m_diagramAutoScale = 0.05;
+    double m_diagramMultiplier = 1.0;
+    double m_diagramMaxValue = 0.0;
+    bool m_diagramAllZero = false;
     bool m_diagramLabelsVisible = true;
 
     bool m_reactionsVisible = true;

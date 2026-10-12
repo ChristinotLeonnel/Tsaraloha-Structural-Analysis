@@ -115,6 +115,11 @@ private:
     // Facteur d'échelle
     QComboBox* m_comboScalePreset = nullptr;
     QDoubleSpinBox* m_spinCustomScale = nullptr;
+    // Échelle des diagrammes : multiplicateur de l'échelle automatique, distinct de l'amplification de la déformée
+    QComboBox* m_comboDiagramScale = nullptr;
+    QDoubleSpinBox* m_spinDiagramMultiplier = nullptr;
+    QLabel* m_labelDiagramScale = nullptr;
+    void emitDiagramScale();
     QLabel* m_labelEffectiveScale = nullptr;
     // Animation de la déformée (interpolation visuelle de la solution statique, solveur jamais relancé)
     QPushButton* m_btnAnimPlay = nullptr;

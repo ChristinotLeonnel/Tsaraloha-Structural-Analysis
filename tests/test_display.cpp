@@ -1,7 +1,10 @@
 // Suite « display » : affichage des résultats, des annotations et des charges dans la vue 3D réelle (OCCT).
 //   371  résultats résiduels : portique dont les ids de poutre et de poteau coïncident ; diagrammes, déformée et
 //        réactions affichés puis retirés (nouveau jeu de résultats, absence de résultats, modèle vidé = nouveau
-//        projet) : aucun objet orphelin dans la scène, aucun cumul après plusieurs calculs.
+//        projet) : aucun objet orphelin dans la scène, aucun cumul après plusieurs calculs ;
+//   372  échelles distinctes : zoom de la caméra, échelle des diagrammes (multiplicateur conservé), amplification de la
+//        déformée ; aucune ne modifie les résultats calculés ; diagrammes de faible amplitude lisibles (flèches,
+//        rotations) ; grandeur nulle partout annoncée sans diagramme arbitraire.
 
 #include "test_common.h"
 
@@ -13,6 +16,7 @@
 #include "Viewer/ResultsVisualManager.h"
 
 #include <AIS_ListOfInteractive.hxx>
+#include <Bnd_Box.hxx>
 #include <QApplication>
 #include <QThread>
 
@@ -134,6 +138,81 @@ bool runSuite_Display(int& passed)
         pump();
         view.hide();
         std::cout << "[PASS] Test 371: Aucun résultat résiduel (ids de familles distinctes, calculs successifs, nouveau projet)" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 372 : échelles distinctes, résultats inchangés
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        OccView view;
+        view.resize(640, 480);
+        view.show();
+        pump(20);
+        view.setModel(&m);
+        auto results = portalResults(m);
+        TEST_CHECK(results, "Test 372: calcul");
+        view.rebuildAllShapes();
+        auto* rv = view.resultsVisual();
+        view.setResultsModel(results);
+        // Valeurs de référence (copie) : aucune commande d'affichage ne doit les modifier
+        const auto refDisp = results->allDisplacements();
+        std::map<ElementKey, double> refMy;
+        for (const auto& [k, e] : results->allElementResults()) refMy[k] = e.maxAbsMy();
+
+        // Moment : crête automatique ≈ min(8 % de l'envergure, 60 % de la longueur médiane des barres)
+        rv->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
+        pump();
+        const double span = 6.0, medianL = 3.0;
+        const double peak = rv->diagramMaxValue() * rv->diagramScale();
+        TEST_CHECK(std::abs(peak - std::min(0.08 * span, 0.6 * medianL)) < 1e-9, "Test 372: crête du diagramme de moment " << peak << " m");
+        // Flèche (mm) et rotation (rad, ~1e-3) : même hauteur à l'écran. L'ancien plafond (échelle ≤ 10 m par unité) donnait
+        // une crête de quelques millimètres au diagramme de rotation.
+        for (auto type : { TSA::Geometry::DiagramType::DeflectionUz, TSA::Geometry::DiagramType::RotationRy })
+        {
+            rv->setDiagramType(type);
+            pump();
+            const double peakU = rv->diagramMaxValue() * rv->diagramScale();
+            std::cout << "  " << TSA::Geometry::DiagramGeometry::diagramTypeName(type).toStdString() << " : max " << rv->diagramMaxValue() << " "
+                      << TSA::Geometry::DiagramGeometry::diagramUnit(type).toStdString() << ", crête affichée " << peakU << " m (ancienne : "
+                      << rv->diagramMaxValue() * std::min(rv->diagramAutoScale(), 10.0) << " m)" << std::endl;
+            TEST_CHECK(std::abs(peakU - peak) < 1e-9, "Test 372: diagramme de faible amplitude lisible (crête " << peakU << " m)");
+        }
+        // Multiplicateur manuel conservé après changement de grandeur et nouveau calcul
+        rv->setDiagramScalePreset(TSA::Viewer::ScalePreset::Custom, 2.5);
+        rv->setDiagramType(TSA::Geometry::DiagramType::BendingMy);
+        view.setResultsModel(results);
+        pump();
+        TEST_CHECK(std::abs(rv->diagramScaleMultiplier() - 2.5) < 1e-12 && std::abs(rv->diagramMaxValue() * rv->diagramScale() - 2.5 * peak) < 1e-9,
+                   "Test 372: multiplicateur ×2,5 conservé (crête " << rv->diagramMaxValue() * rv->diagramScale() << " m)");
+        // Amplification de la déformée : sans effet sur l'échelle des diagrammes
+        const double ds = rv->diagramScale();
+        rv->setDeformedVisible(true);
+        rv->setDeformationScalePreset(TSA::Viewer::ScalePreset::X1000);
+        pump();
+        TEST_CHECK(std::abs(rv->deformationScale() - 1000.0) < 1e-12 && std::abs(rv->diagramScale() - ds) < 1e-15, "Test 372: déformée ×1000 sans effet sur les diagrammes");
+        // Zoom de la caméra : sans effet sur les échelles, les objets et les résultats
+        const int objects = displayedObjects(view);
+        view.view()->SetZoom(4.0);
+        view.view()->SetZoom(0.1);
+        pump();
+        TEST_CHECK(std::abs(rv->diagramScale() - ds) < 1e-15 && std::abs(rv->deformationScale() - 1000.0) < 1e-12 && displayedObjects(view) == objects,
+                   "Test 372: zoom de la caméra sans effet sur les échelles et la scène");
+        bool same = results->allDisplacements().size() == refDisp.size();
+        for (const auto& [id, d] : results->allDisplacements())
+            same = same && refDisp.count(id) && refDisp.at(id).ux == d.ux && refDisp.at(id).uz == d.uz && refDisp.at(id).ry == d.ry;
+        for (const auto& [k, e] : results->allElementResults()) same = same && refMy.at(k) == e.maxAbsMy();
+        TEST_CHECK(same, "Test 372: résultats calculés identiques (bit à bit) après zoom, échelles et déformée");
+        // Grandeur nulle partout (torsion d'un portique plan) : aucun diagramme, légende explicite
+        rv->setDiagramScalePreset(TSA::Viewer::ScalePreset::Auto);
+        rv->setDiagramType(TSA::Geometry::DiagramType::TorsionMx);
+        pump();
+        TEST_CHECK(rv->diagramAllZero() && rv->diagnostics().diagrams == 0 && rv->legendSummaryText().contains("nulle sur toute la structure"),
+                   "Test 372: grandeur nulle annoncée, aucun diagramme arbitraire");
+        view.setResultsModel(nullptr);
+        view.setModel(nullptr);
+        view.hide();
+        std::cout << "[PASS] Test 372: Échelles de la caméra, des diagrammes et de la déformée distinctes ; résultats inchangés" << std::endl;
         ++passed;
     }
     return true;
