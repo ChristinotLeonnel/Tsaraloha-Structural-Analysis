@@ -194,6 +194,8 @@ set(UI_EXTENSIONMANAGERDIALOG_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/ReportTemplatesDialog.cpp
     ${TSA_ROOT}/src/UI/Mesh/MeshController.h
     ${TSA_ROOT}/src/UI/Mesh/MeshController.cpp
+    ${TSA_ROOT}/src/UI/Mesh/MeshAnalysisBridge.h
+    ${TSA_ROOT}/src/UI/Mesh/MeshAnalysisBridge.cpp
     ${TSA_ROOT}/src/UI/Mesh/MeshSettingsPanel.h
     ${TSA_ROOT}/src/UI/Mesh/MeshSettingsPanel.cpp
     ${TSA_ROOT}/src/UI/Mesh/MeshDialogs.h

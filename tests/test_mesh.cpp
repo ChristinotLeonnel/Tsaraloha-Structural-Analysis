@@ -13,6 +13,11 @@
 #include "Mesh/MeshQuality.h"
 #include "Mesh/Solvers/OpenSeesMeshAdapter.h"
 #include "Mesh/SurfaceLoads.h"
+#include "Analysis/AnalysisController.h"
+#include "Model/Load/LoadManager.h"
+#include "Project/ProjectSession.h"
+#include "UI/Analysis/AnalysisManagerPanel.h"
+#include "UI/Mesh/MeshAnalysisBridge.h"
 #include "UI/Mesh/MeshController.h"
 #include "UI/Mesh/MeshSettingsPanel.h"
 
@@ -626,6 +631,94 @@ bool runSuite_Mesh(int& passed)
         }
         TEST_CHECK(algos == 1 && volumes == 1, "Test 299: panneau : algorithmes Gmsh proposés, hexaèdres réservés aux volumes transfinis");
         std::cout << "[PASS] Test 299: Contrôleur et panneau de maillage" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 390 : maillage transmis au calcul par le gestionnaire d'analyse partagé (TSA et TSALab) —
+    // plaque carrée, appui simple dur, flèche comparée à la référence de Mindlin (cas FEA-07)
+    // -------------------------------------------------------------------------
+    {
+        TSA::Project::ProjectSession s;
+        Model& m = s.model();
+        const int a = m.addNode(0, 0, 0), b = m.addNode(6, 0, 0), c = m.addNode(6, 6, 0), d = m.addNode(0, 6, 0);
+        const int sl = m.addSlab({ a, b, c, d }, 0.2, "Dalle");
+        TSA::Model::Material mat = TSA::Model::Material::concreteC25_30();
+        mat.E = 31.0e9, mat.nu = 0.2, mat.density = 2500.0;
+        mat.syncMechanical();
+        m.getSlab(sl)->setMaterial(mat);
+        std::vector<TSA::Model::SurfaceEdgeSupport> sups(4);
+        for (int e = 0; e < 4; ++e)
+        {
+            sups[e].edge = e;
+            for (int k = 0; k < 3; ++k) sups[e].fixed[k] = true;
+            sups[e].fixed[e % 2 == 0 ? 4 : 3] = true;   // rotation tangentielle au bord bloquée (appui dur)
+        }
+        m.getSlab(sl)->setEdgeSupports(sups);
+        const int lc = m.loadManager().addLoadCase(TSA::Model::LoadCase(0, "q", TSA::Model::LoadCaseCategory::Live));
+        TSA::Model::SurfaceLoad q;
+        q.surfaceId = sl, q.loadCaseId = lc, q.value = 10.0;
+        m.loadManager().addSurfaceLoad(q);
+
+        TSA::UI::MeshController ctl;
+        ctl.setModel(&m);
+        auto& g = ctl.settings().global;
+        g.globalSize = 0.25, g.mesh3D = false, g.recombine = true;
+        g.nearSupports.enabled = g.nearPointLoads.enabled = g.nearOpenings.enabled = g.nearConnections.enabled = g.nearSectionChanges.enabled = false;
+        g.globalSize *= 0.25 / g.effectiveSize();
+        ctl.commitSettings();
+        QEventLoop loop;
+        bool genOk = false;
+        QObject::connect(&ctl, &TSA::UI::MeshController::generationFinished, [&](bool, bool ok, const QString&) { genOk = ok; loop.quit(); });
+        QTimer::singleShot(120000, &loop, &QEventLoop::quit);
+        TEST_CHECK(ctl.generate(false), "Test 390: génération lancée");
+        loop.exec();
+        TEST_CHECK(genOk && ctl.hasMesh() && !ctl.stale(), "Test 390: plaque maillée (" << ctl.project().mesh.countByDimension(2) << " éléments 2D)");
+
+        auto ctx = s.analysis().context();
+        ctx.engineId = "opensees";
+        ctx.common.includeSelfWeight = false;
+        ctx.common.useGeneratedMesh = true;
+        ctx.loadCaseIds = { lc };
+        s.analysis().setContext(ctx);
+        const auto* engine = s.analysis().registry().engine("opensees");
+        TEST_CHECK(engine && engine->availability().available, "Test 390: OpenSees disponible");
+
+        // Sans transmission : la dalle n'est pas calculée (exclue avec avertissement)
+        TSA::Analysis::AnalysisContext bare = ctx;
+        TEST_CHECK(TSA::UI::applyMeshToAnalysis(nullptr, bare, *engine, nullptr) && bare.surfaces.elements.empty(), "Test 390: sans contrôleur — aucun maillage transmis");
+        // Avec transmission : coques du maillage dans le contexte, réglages du projet inchangés
+        TSA::Analysis::AnalysisContext meshed = ctx;
+        std::vector<QString> logs;
+        TEST_CHECK(TSA::UI::applyMeshToAnalysis(&ctl, meshed, *engine, nullptr, [&](const QString& t, const QString&) { logs.push_back(t); }) &&
+                       meshed.surfaces.elements.size() == ctl.project().mesh.countByDimension(2) && !meshed.meshLabel.empty() && !logs.empty() &&
+                       s.analysis().context().surfaces.elements.empty(),
+                   "Test 390: maillage transmis au contexte du calcul (" << meshed.surfaces.elements.size() << " coques), réglages du projet inchangés");
+        const auto prepared = s.analysis().prepare(meshed);
+        for (const auto& w : prepared.validation.texts(TSA::Analysis::ValidationSeverity::Warning)) std::cout << "  avertissement : " << w << std::endl;
+        TEST_CHECK(prepared.canRun() && !prepared.validation.hasWarnings(), "Test 390: modèle maillé valide, sans avertissement (le panneau ne demandera rien)");
+
+        TSA::UI::AnalysisManagerPanel panel(&s, nullptr);
+        int preparerCalls = 0;
+        panel.setContextPreparer([&](TSA::Analysis::AnalysisContext& cx, const TSA::Analysis::AnalysisEngine& en) {
+            ++preparerCalls;
+            return TSA::UI::applyMeshToAnalysis(&ctl, cx, en, &panel);
+        });
+        bool runOk = false;
+        QObject::connect(&s.analysis(), &TSA::Analysis::AnalysisController::runCompleted, &loop,
+                         [&](const TSA::Analysis::AnalysisContext&, bool ok, const QString&) { runOk = ok; loop.quit(); });
+        QTimer::singleShot(300000, &loop, &QEventLoop::quit);
+        TEST_CHECK(panel.run(), "Test 390: calcul lancé par le gestionnaire d'analyse");
+        loop.exec();
+        const auto r = s.analysis().results();
+        double uz = 0;
+        if (r)
+            for (const auto& [id, dsp] : r->surfaceNodeDisplacements())
+                if (std::abs(dsp.uz) > std::abs(uz)) uz = dsp.uz;
+        const double D = 31.0e6 * 0.008 / (12.0 * 0.96), G = 31.0e6 / 2.4;
+        const double ref = -(0.004062352660675069 * 10.0 * 1296.0 / D + 0.07367135326539033 * 10.0 * 36.0 / (5.0 / 6.0 * G * 0.2));
+        TEST_CHECK(runOk && preparerCalls == 1 && std::abs(uz - ref) <= 1e-3 * std::abs(ref) && s.analysis().context().surfaces.elements.empty(),
+                   "Test 390: flèche " << uz << " m, référence de Mindlin " << ref << " m (écart " << std::abs(uz / ref - 1) * 100 << " %)");
+        std::cout << "[PASS] Test 390: maillage transmis au calcul par le gestionnaire d'analyse partagé (référence de Mindlin)" << std::endl;
         ++passed;
     }
     return true;

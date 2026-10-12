@@ -302,9 +302,12 @@ void AnalysisManagerPanel::configure()
 
 bool AnalysisManagerPanel::validate()
 {
-    AnalysisController& ac = m_session->analysis();
+    return showValidation(m_session->analysis().prepare());
+}
+
+bool AnalysisManagerPanel::showValidation(const PreparedAnalysis& prepared)
+{
     m_validation->clear();
-    const PreparedAnalysis prepared = ac.prepare();
     if (!prepared.extracted)
         m_validation->addItem(new QListWidgetItem(tr("Modèle d'analyse non extrait (moteur ou portée invalide).")));
     else
@@ -344,8 +347,15 @@ bool AnalysisManagerPanel::run()
                                                                   QString::fromStdString(av.message)));
         return false;
     }
-    if (!validate()) return false;
-    const PreparedAnalysis prepared = ac.prepare();
+    // Contexte du calcul : réglages du projet, complétés (maillage) par l'application
+    AnalysisContext context = ac.context();
+    if (m_preparer && !m_preparer(context, *engine))
+    {
+        m_status->setText(tr("Calcul annulé."));
+        return false;
+    }
+    const PreparedAnalysis prepared = ac.prepare(context);
+    if (!showValidation(prepared)) return false;
     if (prepared.validation.hasWarnings())
     {
         const auto reply = QMessageBox::warning(this, tr("Avertissements avant calcul"),
@@ -354,7 +364,7 @@ bool AnalysisManagerPanel::run()
         if (reply != QMessageBox::Yes) return false;
     }
     m_progress->setValue(0);
-    return ac.start(ac.context(), prepared);
+    return ac.start(context, prepared);
 }
 
 void AnalysisManagerPanel::cancel()

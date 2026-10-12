@@ -23,6 +23,12 @@ namespace TSA::Project
 {
 class ProjectSession;
 }
+namespace TSA::Analysis
+{
+struct AnalysisContext;
+class AnalysisEngine;
+struct PreparedAnalysis;
+}
 
 namespace TSA::UI
 {
@@ -39,6 +45,12 @@ public:
 
     /// Sélection courante (portée « éléments sélectionnés » de la fenêtre Analysis).
     void setSelectionProvider(std::function<TSA::Model::ElementSet()> provider) { m_selection = std::move(provider); }
+    /// Complète le contexte juste avant le calcul (maillage généré, TSA::UI::applyMeshToAnalysis) ; faux = calcul annulé.
+    /// Le contexte complété sert au calcul seulement : il n'est pas enregistré dans les réglages du projet.
+    void setContextPreparer(std::function<bool(TSA::Analysis::AnalysisContext&, const TSA::Analysis::AnalysisEngine&)> preparer)
+    {
+        m_preparer = std::move(preparer);
+    }
 
     /// Relit les réglages et l'état (après ouverture d'un projet, nouveau projet).
     void refresh();
@@ -63,10 +75,12 @@ private:
     void updateContextSummary();
     void updateResultsSummary();
     void setRunning(bool running);
+    bool showValidation(const TSA::Analysis::PreparedAnalysis& prepared);
 
     TSA::Project::ProjectSession* m_session = nullptr;
     const AnalysisEngineOptionsRegistry* m_options = nullptr;
     std::function<TSA::Model::ElementSet()> m_selection;
+    std::function<bool(TSA::Analysis::AnalysisContext&, const TSA::Analysis::AnalysisEngine&)> m_preparer;
 
     QTableWidget* m_engines = nullptr;
     QLabel* m_context = nullptr;
