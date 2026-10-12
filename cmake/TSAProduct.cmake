@@ -265,6 +265,8 @@ set(UI_RULER_SOURCES
 
 # --- Widgets divers ------------------------------------------------------------
 set(UI_WIDGETS_SOURCES
+    ${TSA_ROOT}/src/UI/Display/DisplayMenus.h
+    ${TSA_ROOT}/src/UI/Display/DisplayMenus.cpp
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintScene.h
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintScene.cpp
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintEditor.h
@@ -612,6 +614,7 @@ set(ANALYSIS_ENGINE_SOURCES
     ${TSA_ROOT}/src/Analysis/Engine/AnalysisManager.cpp
     ${TSA_ROOT}/src/Api/SurfaceApi.h
     ${TSA_ROOT}/src/Api/SurfaceApi.cpp
+    ${TSA_ROOT}/src/Analysis/FiberStress.h
     ${TSA_ROOT}/src/Validation/BenchmarkSuite.h
     ${TSA_ROOT}/src/Validation/BenchmarkSuite.cpp
     ${TSA_ROOT}/src/Analysis/Engines/BuiltInEngines.cpp

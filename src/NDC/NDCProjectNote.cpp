@@ -5,7 +5,7 @@
 #include "ResultAnalyzer.h"
 #include "../Analysis/OpenSeesManager.h"
 #include "../Analysis/ResultsModel.h"
-#include "../Geometry/DiagramGeometry.h"
+#include "../Analysis/FiberStress.h"
 #include "../Model/Beam.h"
 #include "../Model/Cable/Cable.h"
 #include "../Model/Column.h"
@@ -228,7 +228,7 @@ double maxNormalStress(const TSA::Analysis::ElementResults& r, const TSA::Model:
 {
     double best = 0.0;
     auto test = [&](const TSA::Analysis::StationForces& st) {
-        const double v = TSA::Geometry::DiagramGeometry::normalStressMPa(st, s.area(), s.wy(), s.wz());
+        const double v = TSA::Analysis::fiberNormalStressMPa(st, s.area(), s.wy(), s.wz());
         if (std::abs(v) > std::abs(best)) best = v;
     };
     test(r.startForces);

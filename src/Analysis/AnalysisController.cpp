@@ -100,6 +100,7 @@ bool AnalysisController::start(const AnalysisContext& context, const PreparedAna
     if (!engine) return false;
 
     m_runningEngine = context.engineId;
+    m_runContext = context;
     m_cancelFlag = std::make_shared<std::atomic<bool>>(false);
     m_runRevision = m_model ? m_model->revision() : 0;
     auto job = std::make_shared<const PreparedAnalysis>(prepared);
@@ -159,6 +160,7 @@ void AnalysisController::onWorkerFinished()
     AnalysisRunResult& r = *m_lastRun;
     if (r.success) publishResults(std::make_shared<ResultsModel>(std::move(r.results)), m_runRevision);
     emit finished(r.success, QString::fromStdString(r.message));
+    emit runCompleted(m_runContext, r.success, QString::fromStdString(r.message));
 }
 
 AnalysisRunResult AnalysisController::runBlocking(const AnalysisContext& context, const PreparedAnalysis& prepared)
@@ -170,6 +172,7 @@ AnalysisRunResult AnalysisController::runBlocking(const AnalysisContext& context
         return busy;
     }
     m_runningEngine = context.engineId;
+    m_runContext = context;
     m_cancelFlag = std::make_shared<std::atomic<bool>>(false);
     *m_lastRun = m_manager->run(context, prepared, makeCallbacks());
     AnalysisRunResult summary;
@@ -177,6 +180,7 @@ AnalysisRunResult AnalysisController::runBlocking(const AnalysisContext& context
     summary.message = m_lastRun->message;
     if (m_lastRun->success) publishResults(std::make_shared<ResultsModel>(std::move(m_lastRun->results)));
     else summary.results = m_lastRun->results;   // journal du moteur en cas d'échec
+    emit runCompleted(m_runContext, summary.success, QString::fromStdString(summary.message));
     return summary;
 }
 
