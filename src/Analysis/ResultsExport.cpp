@@ -253,7 +253,8 @@ QJsonObject datasetJson(const ResultsModel& r, ResultsDataset ds)
 
 bool needsAdvanced(ResultsDataset ds)
 {
-    return ds == ResultsDataset::DofMap || ds == ResultsDataset::GlobalStiffness || ds == ResultsDataset::ElementStiffness;
+    return ds == ResultsDataset::DofMap || ds == ResultsDataset::GlobalStiffness || ds == ResultsDataset::ElementStiffness ||
+           ds == ResultsDataset::SystemVectors || ds == ResultsDataset::Transformations;
 }
 
 std::string renderCsv(const ResultsModel& r, ResultsDataset ds, std::string* err)
@@ -324,6 +325,62 @@ std::string renderCsv(const ResultsModel& r, ResultsDataset ds, std::string* err
                             << (mats[k].second->exact ? "true" : "false") << '\n';
         }
         break;
+    case ResultsDataset::SystemVectors:
+    {
+        // F : second membre exporté par le moteur (jamais reconstitué) ; U : vecteur du moteur, sinon déduit des
+        // déplacements nodaux calculés (provenance indiquée ligne par ligne)
+        const auto& eqs = adv.dofMap.equations;
+        if (eqs.empty())
+        {
+            if (err) *err = "Vecteurs F et U indisponibles : numérotation des équations non exportée par le moteur.";
+            return {};
+        }
+        const bool hasF = adv.loadVector.size() == eqs.size();
+        const bool hasU = adv.displacementVector.size() == eqs.size();
+        const std::vector<double> uDerived = hasU ? std::vector<double> {} : adv.globalDisplacementVector(r.allDisplacements());
+        if (!hasF && uDerived.size() != eqs.size())
+        {
+            if (err) *err = "Vecteurs F et U indisponibles : le moteur n'exporte pas son système (Custom2D : option « Exporter le système K·U = F »).";
+            return {};
+        }
+        out << "# F : " << (hasF ? "second membre exporté par le moteur" : "non exporté par ce moteur (colonne vide)")
+            << " | U : " << (hasU ? "solution exportée par le moteur" : "déduite des déplacements nodaux calculés") << '\n';
+        out << "equation,node,dof,F,U,U_source\n";
+        for (std::size_t q = 0; q < eqs.size(); ++q)
+        {
+            const auto& e = eqs[q];
+            out << e.equation << ',' << e.nodeId << ',' << adv.dofMap.dofLabels[e.dof] << ',' << (hasF ? num(adv.loadVector[q]) : std::string()) << ','
+                << num(hasU ? adv.displacementVector[q] : uDerived[q]) << ',' << (hasU ? "moteur" : "déplacements nodaux") << '\n';
+        }
+        break;
+    }
+    case ResultsDataset::Transformations:
+    {
+        std::string missing;
+        int written = 0;
+        out << "element,class,nodeI,nodeJ,length,x_X,x_Y,x_Z,y_X,y_Y,y_Z,z_X,z_Y,z_Z\n";
+        for (const auto& [key, em] : adv.elementMatrices)
+        {
+            double norm = 0;
+            for (double v : em.rotation) norm += v * v;
+            if (norm < 0.5)   // rotation non fournie par le moteur pour cet élément
+            {
+                missing += (missing.empty() ? "" : " ; ") + key.label() + (em.unavailableReason.empty() ? "" : " (" + em.unavailableReason + ")");
+                continue;
+            }
+            out << key.label() << ',' << em.opsClass << ',' << em.nodeI << ',' << em.nodeJ << ',' << num(em.length);
+            for (double v : em.rotation) out << ',' << num(v);
+            out << '\n';
+            ++written;
+        }
+        if (written == 0)
+        {
+            if (err) *err = "Transformations indisponibles : aucune matrice de rotation exportée par le moteur" + (missing.empty() ? std::string(".") : " — " + missing);
+            return {};
+        }
+        if (!missing.empty()) out << "# non fournies par le moteur : " << missing << '\n';
+        break;
+    }
     case ResultsDataset::All:
         if (err) *err = "L'export complet n'est disponible qu'en JSON ou TXT.";
         return {};
