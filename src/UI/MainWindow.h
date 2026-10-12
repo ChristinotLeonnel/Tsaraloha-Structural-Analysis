@@ -7,6 +7,9 @@
 #include "../Model/ModelCleanup.h"
 #include <QImage>
 #include <QPointer>
+#include <functional>
+#include <QJsonArray>
+#include <QUuid>
 #include <memory>
 #include <vector>
 #include <map>
@@ -139,6 +142,15 @@ public:
     void openDroppedFile(const QString& path);
     /// Serveur d'automatisation (MCP) : un seul document à la fois l'expose, celui au premier plan (AppShell).
     void setAutomationActive(bool active);
+    /// Document au premier plan ou non (onglets) : un document mis en arrière-plan masque ses fenêtres flottantes
+    /// (panneaux d'outil, panneaux détachés) et les réaffiche quand il revient ; aucune fenêtre d'un projet ne reste
+    /// par-dessus un autre (son bouton « Ajouter » agirait sur le projet caché).
+    void setDocumentForeground(bool foreground);
+    /// Identifiant stable du document (onglet), exposé au client MCP
+    QString documentId() const { return m_documentId; }
+    /// Documents ouverts de l'application, pour la méthode MCP list_documents (fourni par l'hôte à onglets)
+    void setAutomationDocumentsProvider(std::function<QJsonArray()> provider);
+    QList<QWidget*> hiddenFloatingWindows() const;
     bool isAutomationActive() const;
 
     QAction* actionSave() const { return m_actionSave; }
@@ -400,6 +412,8 @@ private:
     QAction* m_actionPasteOriginal = nullptr;
     QAction* m_actionClipCopySupports = nullptr;
     QAction* m_actionClipCopyLoads = nullptr;
+    QAction* m_actionClipMergeNodes = nullptr;   ///< collage : fusion des nœuds coïncidents (réglage mémorisé)
+    QAction* m_actionClipTolerance = nullptr;
     QAction* m_actionPasteClipboard = nullptr;
     QAction* m_actionMirror = nullptr;
     QAction* m_actionCleanModel = nullptr;
@@ -435,6 +449,8 @@ private:
     QAction* m_actionMergeNodes = nullptr;
 
     /// Presse-papier de l'application, commun à tous les onglets (copier dans un projet, coller dans un autre)
+    QString m_documentId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    QList<QPointer<QWidget>> m_backgroundHidden;   ///< fenêtres flottantes masquées pendant que le document est en arrière-plan
     TSA::Model::StructuralClipboard& m_clipboard = TSA::Model::StructuralClipboard::shared();
 
     // Actions Barre "Vue" & Navigation (AutoCAD / Robot SA style)
@@ -627,6 +643,16 @@ private:
     void createDisplayScaleMenus();
     QMenu* m_annotationScaleMenu = nullptr;
     QMenu* m_loadScaleMenu = nullptr;
+    /// Profils d'affichage (docs/DISPLAY_SCALES.md § 7) : menu reconstruit à l'ouverture
+    QMenu* m_displayProfilesMenu = nullptr;
+    QString m_activeDisplayProfile;
+    void rebuildDisplayProfilesMenu();
+public:
+    /// Applique un profil d'affichage (réglages graphiques seulement) et resynchronise boutons, menus et panneau des
+    /// résultats ; associé au document s'il a un fichier. Faux si le profil n'existe pas.
+    bool applyDisplayProfile(const QString& name);
+private:
+    void syncDisplayActionsFromView();
     void populateMeshViewMenu(QMenu* menu);
     void setupMeshView();
     void applyMeshViewOptions();

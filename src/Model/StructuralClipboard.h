@@ -16,6 +16,10 @@
 #include "Load/NodalLoad.h"
 #include "Load/MemberLoad.h"
 #include "Load/SurfaceLoad.h"
+#include "Load/LoadCombination.h"
+#include "Foundation.h"
+#include "SelectionQuery.h"
+#include "../Annotation/Dimension.h"
 #include "../BIM/Core/BimModel.h"
 
 namespace TSA::Model
@@ -92,10 +96,76 @@ struct ClipboardCable
     std::string name;
 };
 
+struct ClipboardFoundation
+{
+    int originalId = 0;
+    int originalNodeId = 0;
+    Foundation foundation;
+};
+
 /// Sélection copiée (identifiants du projet source, par famille : un nœud 1 et une poutre 1 coexistent).
 struct ClipboardSelection
 {
-    std::set<int> nodes, beams, columns, slabs, walls, trusses, cables;
+    std::set<int> nodes, beams, columns, slabs, walls, trusses, cables, foundations;
+    std::set<int> dimensions;   ///< cotations (annotations) : ancrages sur les nœuds copiés reliés, les autres figés
+};
+
+/// Nœuds du collage qui tombent sur des nœuds existants du projet cible.
+enum class NodeMergeMode
+{
+    KeepSeparate,     ///< nœuds toujours créés (modèles indépendants, comportement historique)
+    MergeCoincident   ///< nœud existant réutilisé s'il est à moins de la tolérance et compatible
+};
+
+/// Deux nœuds fusionnés portent des appuis différents (deux appuis non libres et non identiques).
+enum class SupportConflictPolicy
+{
+    Ask,         ///< rien n'est collé ; les conflits sont rendus pour que l'utilisateur décide
+    KeepTarget,  ///< l'appui du projet cible est conservé
+    UseCopied,   ///< l'appui copié remplace celui du projet cible
+    DontMerge    ///< ces nœuds ne sont pas fusionnés (nœuds coïncidents séparés)
+};
+
+/// Élément collé dont tous les nœuds sont des nœuds existants déjà reliés par un élément de la même famille.
+enum class DuplicateElementPolicy
+{
+    Skip,  ///< élément (et ses charges) non collé : pas de rigidité doublée
+    Keep   ///< élément collé quand même
+};
+
+struct PasteOptions
+{
+    NodeMergeMode merge = NodeMergeMode::KeepSeparate;
+    double tolerance = 1.0e-3;   ///< m (unité de longueur du modèle) : distance réelle maximale pour fusionner
+    SupportConflictPolicy supportConflicts = SupportConflictPolicy::Ask;
+    DuplicateElementPolicy duplicates = DuplicateElementPolicy::Skip;
+};
+
+struct PasteConflict
+{
+    enum class Kind
+    {
+        Support,     ///< appuis incompatibles sur deux nœuds coïncidents
+        Degenerate,  ///< élément qui deviendrait dégénéré (deux de ses nœuds fusionnés en un seul)
+        Duplicate    ///< élément identique à un élément existant (mêmes nœuds, même famille)
+    };
+    Kind kind = Kind::Support;
+    int clipboardId = 0;   ///< nœud ou élément source
+    ElementKind element = ElementKind::Node;   ///< famille de l'élément (Degenerate, Duplicate)
+    int targetNodeId = 0;  ///< nœud existant concerné (fusion)
+    std::string message;
+};
+
+/// Analyse préalable du collage (aucune modification) : fusions retenues, conflits, avertissements.
+struct PastePlan
+{
+    std::map<int, int> merges;   ///< nœud source → nœud existant du projet cible
+    std::vector<PasteConflict> supportConflicts;   ///< non résolus (politique « Ask »)
+    std::vector<PasteConflict> degenerate;         ///< bloquants
+    std::vector<PasteConflict> duplicates;
+    std::vector<std::string> warnings;
+    bool needsDecision() const { return !supportConflicts.empty(); }
+    bool blocked() const { return !degenerate.empty(); }
 };
 
 /// Ce que la copie emporte en plus de la géométrie, des sections, matériaux et orientations (toujours copiés).
@@ -119,6 +189,14 @@ struct PasteResult
     std::vector<int> memberLoadIds;
     std::vector<int> surfaceLoadIds;
     std::vector<int> createdLoadCaseIds;   ///< cas de charge créés dans le projet cible (absents par leur nom)
+    std::vector<int> foundationIds;
+    std::vector<int> dimensionIds;
+    std::vector<int> combinationIds;       ///< combinaisons créées (une combinaison identique existante est réutilisée)
+    std::vector<int> mergedNodeIds;        ///< nœuds existants réutilisés (fusion)
+    int skippedDuplicates = 0;             ///< éléments en double non collés (politique Skip)
+    std::vector<std::string> warnings;     ///< renommages, combinaisons non copiées, charges ignorées…
+    std::vector<PasteConflict> conflicts;  ///< conflits à trancher (needsDecision) ou bloquants
+    bool needsDecision = false;            ///< rien n'a été collé : appuis incompatibles, décision demandée
 
     /// Tables de correspondance source → cible (traçabilité, sélection du collage, tests)
     std::map<int, int> nodeMap;
@@ -129,10 +207,11 @@ struct PasteResult
     std::string error;
 
     bool empty() const {
-        return nodeIds.empty() && beamIds.empty() && columnIds.empty() && slabIds.empty() && wallIds.empty() && trussIds.empty() && cableIds.empty();
+        return nodeIds.empty() && mergedNodeIds.empty() && beamIds.empty() && columnIds.empty() && slabIds.empty() && wallIds.empty() &&
+               trussIds.empty() && cableIds.empty() && foundationIds.empty() && dimensionIds.empty();
     }
     std::size_t elementCount() const {
-        return beamIds.size() + columnIds.size() + slabIds.size() + wallIds.size() + trussIds.size() + cableIds.size();
+        return beamIds.size() + columnIds.size() + slabIds.size() + wallIds.size() + trussIds.size() + cableIds.size() + foundationIds.size();
     }
     std::size_t loadCount() const { return nodalLoadIds.size() + memberLoadIds.size() + surfaceLoadIds.size(); }
 };
@@ -151,7 +230,7 @@ public:
     /// Presse-papier de l'application, commun à tous les documents ouverts (copier dans A, coller dans B).
     static StructuralClipboard& shared();
 
-    bool hasData() const noexcept { return m_hasData && !m_nodes.empty(); }
+    bool hasData() const noexcept { return m_hasData && (!m_nodes.empty() || !m_dimensions.empty()); }
     void clear() noexcept;
 
     size_t nodeCount() const noexcept { return m_nodes.size(); }
@@ -161,11 +240,16 @@ public:
     size_t wallCount() const noexcept { return m_walls.size(); }
     size_t trussCount() const noexcept { return m_trusses.size(); }
     size_t cableCount() const noexcept { return m_cables.size(); }
+    size_t foundationCount() const noexcept { return m_foundations.size(); }
+    size_t dimensionCount() const noexcept { return m_dimensions.size(); }
+    size_t combinationCount() const noexcept { return m_combinations.size(); }
     size_t loadCount() const noexcept { return m_nodalLoads.size() + m_memberLoads.size() + m_surfaceLoads.size(); }
     size_t totalElementCount() const noexcept
     {
-        return m_beams.size() + m_columns.size() + m_slabs.size() + m_walls.size() + m_trusses.size() + m_cables.size();
+        return m_beams.size() + m_columns.size() + m_slabs.size() + m_walls.size() + m_trusses.size() + m_cables.size() + m_foundations.size();
     }
+    /// Avertissements de la copie (combinaison non copiée faute de cas de charge résoluble…)
+    const std::vector<std::string>& copyWarnings() const noexcept { return m_copyWarnings; }
 
     void copyFrom(const Model& model, const ClipboardSelection& selection, const ClipboardOptions& options = {});
 
@@ -183,13 +267,17 @@ public:
                   const std::set<int>& selectedSlabs,
                   const std::set<int>& selectedCables = {});
 
+    /// Analyse du collage sans rien modifier : fusions de nœuds, conflits d'appuis, éléments dégénérés ou en double.
+    PastePlan analyzePaste(const Model& model, double targetX, double targetY, double targetZ, const PasteOptions& options = {}) const;
     /// Collage avec le coin minimal (x, y, z) de la sélection copiée placé au point cible. Ne gère pas l'historique.
-    PasteResult pasteTo(Model& model, double targetX, double targetY, double targetZ) const;
+    PasteResult pasteTo(Model& model, double targetX, double targetY, double targetZ, const PasteOptions& options = {}) const;
     /// Collage à la position d'origine (mêmes coordonnées que dans le projet source).
-    PasteResult pasteAtOrigin(Model& model) const { return pasteTo(model, m_refOriginX, m_refOriginY, m_refOriginZ); }
+    PasteResult pasteAtOrigin(Model& model, const PasteOptions& options = {}) const { return pasteTo(model, m_refOriginX, m_refOriginY, m_refOriginZ, options); }
     /// Collage « tout ou rien » : une étape d'annulation (Ctrl+Z annule le collage entier) ; si un élément ne peut pas
-    /// être recréé, le modèle est rétabli dans son état d'avant le collage (aucun collage partiel).
-    PasteResult pasteUndoable(Model& model, double targetX, double targetY, double targetZ, const std::string& actionName = "Coller") const;
+    /// être recréé, le modèle est rétabli dans son état d'avant le collage (aucun collage partiel). Conflit d'appuis à
+    /// trancher (politique Ask) ou élément dégénéré : rien n'est modifié, `needsDecision` / `conflicts` renseignés.
+    PasteResult pasteUndoable(Model& model, double targetX, double targetY, double targetZ, const std::string& actionName = "Coller",
+                              const PasteOptions& options = {}) const;
     /// Vide si le contenu est collable ; sinon la première dépendance manquante (nœud, cas de charge).
     std::string validate() const;
 
@@ -225,6 +313,12 @@ private:
     std::vector<MemberLoad> m_memberLoads;
     std::vector<SurfaceLoad> m_surfaceLoads;
     std::map<int, LoadCase> m_loadCases;
+    /// Combinaisons qui utilisent un cas de charge copié (tous leurs cas sont dans m_loadCases)
+    std::vector<LoadCombination> m_combinations;
+    std::vector<ClipboardFoundation> m_foundations;
+    /// Cotations : ancrages associés aux nœuds copiés (identifiants source) ou figés (points absolus)
+    std::vector<TSA::Annotation::Dimension> m_dimensions;
+    std::vector<std::string> m_copyWarnings;
     /// Produits physiques (métadonnées BIM, regroupement 1:N) des éléments copiés : le collage
     /// reforme un produit par produit source (BUG-029).
     std::vector<TSA::BIM::PhysicalElement> m_bimProducts;

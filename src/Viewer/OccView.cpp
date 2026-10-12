@@ -26,6 +26,7 @@
 #include <gp_Ax2.hxx>
 #include <gp_Ax1.hxx>
 
+#include <QTimer>
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
@@ -127,6 +128,19 @@ void OccView::showEvent(QShowEvent* event)
         rebuildGrid();
         updateWorkPlaneVisual();
         fitAll();
+    }
+    else if (!m_view.IsNull())
+    {
+        // Vue réaffichée (onglet de document ramené au premier plan) : la fenêtre a pu être redimensionnée pendant que
+        // la vue était cachée ; Qt ne redimensionne la fenêtre native qu'à l'affichage, MustBeResized avait donc lu
+        // l'ancienne taille (bande noire). Ajustement au tour suivant de la boucle, une fois la taille native appliquée.
+        QTimer::singleShot(0, this, [this] {
+            if (m_view.IsNull() || !isVisible()) return;
+            m_view->MustBeResized();
+            m_view->Invalidate();
+            m_view->Redraw();
+            emit viewCameraChanged();
+        });
     }
 }
 

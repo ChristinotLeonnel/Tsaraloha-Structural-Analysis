@@ -14,9 +14,16 @@
 // Protocole : une requête JSON par ligne {"id", "method", "params"} → une réponse par ligne
 // {"id", "result"} ou {"id", "error": {"message"}}. Traitement dans le thread de l'interface (signaux
 // du QLocalServer), comme une action de l'utilisateur.
+//
+// Plusieurs documents (onglets) : un serveur par document, un seul à l'écoute — celui du document au premier plan
+// (nom de canal fixe, compatibilité des clients). Au changement d'onglet, le serveur du document quitté est arrêté et
+// ses connexions fermées (sockets enfants du QLocalServer) : le pont se reconnecte au document actif, jamais à un
+// document caché ou fermé. Chaque réponse porte « document » {id stable, nom, chemin} ; une requête peut fixer
+// params.document_id : s'il ne désigne pas ce document actif, erreur explicite, rien n'est exécuté (docs/MCP.md).
 
 #include "../AI/Context/EngineeringContext.h"
 
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
@@ -54,6 +61,13 @@ public:
     void setSourcesProvider(std::function<TSA::AI::EngineeringSources()> provider) { m_sources = std::move(provider); }
     /// Nom et chemin du projet (réponse à « hello »).
     void setProjectInfoProvider(std::function<QJsonObject()> provider) { m_projectInfo = std::move(provider); }
+    /// Identifiant stable du document servi (constant pendant toute la vie de l'onglet).
+    void setDocumentId(const QString& id) { m_documentId = id; }
+    QString documentId() const { return m_documentId; }
+    /// Le document est-il encore ouvert et au premier plan ? Vérifié à chaque requête (par défaut : oui).
+    void setActiveCheck(std::function<bool()> check) { m_activeCheck = std::move(check); }
+    /// Documents ouverts [{id, name, path, active}] (méthode list_documents) ; par défaut : ce document seul.
+    void setDocumentsProvider(std::function<QJsonArray()> provider) { m_documents = std::move(provider); }
 
     /// Traite une requête (public pour les tests). Méthodes : hello, list_commands, execute, execute_line,
     /// run_script, model_summary, read_tool, undo, redo.
@@ -74,6 +88,10 @@ private:
     QLocalServer* m_server = nullptr;
     std::function<TSA::AI::EngineeringSources()> m_sources;
     std::function<QJsonObject()> m_projectInfo;
+    QString m_documentId;
+    std::function<bool()> m_activeCheck;
+    std::function<QJsonArray()> m_documents;
+    QJsonObject documentJson() const;
 };
 
 } // namespace TSA::Automation

@@ -54,7 +54,11 @@ QJsonArray toolList()
         return QJsonObject { { "name", name }, { "description", description }, { "inputSchema", input } };
     };
     return QJsonArray {
-        tool("tsaraloha_status", "Application connectée (TSA ou TSALab), version et projet ouvert. À appeler en premier.", schema({})),
+        tool("tsaraloha_status", "Application connectée (TSA ou TSALab), version, projet et document actif (identifiant stable). À appeler en premier.", schema({})),
+        tool("list_documents",
+             "Documents (onglets) ouverts dans l'application : identifiant, nom, chemin, actif. Les commandes agissent toujours sur le "
+             "document actif ; pour en viser un autre, l'utilisateur active son onglet.",
+             schema({})),
         tool("list_commands",
              "Commandes du registre central de TSA : identifiant, paramètres typés avec unités (m, kN, kN/m, kN·m, degrés), "
              "valeurs par défaut, sorties. Une même commande sert l'interface, la console, les Blueprints et ce serveur.",
@@ -64,13 +68,13 @@ QJsonArray toolList()
              "Exemple : command = \"model.create_node\", arguments = {\"position\": [0, 0, 3]}. Point = [x, y, z] en m ; "
              "liste d'identifiants = [1, 2] ; les sorties (ex. « id ») servent aux commandes suivantes.",
              schema({ { "command", prop("string", "Identifiant de la commande (voir list_commands)") },
-                      { "arguments", prop("object", "Paramètres nommés de la commande") } },
+                      { "arguments", prop("object", "Paramètres nommés de la commande") }, { "document_id", prop("string", "Optionnel : identifiant du document visé (tsaraloha_status / list_documents). S'il n'est pas le document actif, rien n'est exécuté.") } },
                     { "command" })),
         tool("run_command_script",
              "Exécute un script de commandes (une par ligne, syntaxe de la console) comme un Blueprint : « a = commande … » nomme "
              "une commande, « a.id » réutilise sa sortie. Ex. :\na = model.create_node position=0,0,0\n"
              "b = model.create_node position=6,0,0\nmodel.create_beam start=a.id end=b.id section=\"IPE 300\"",
-             schema({ { "script", prop("string", "Script, une commande par ligne") } }, { "script" })),
+             schema({ { "script", prop("string", "Script, une commande par ligne") }, { "document_id", prop("string", "Optionnel : identifiant du document visé (tsaraloha_status / list_documents). S'il n'est pas le document actif, rien n'est exécuté.") } }, { "script" })),
         tool("get_model_summary",
              "Contexte d'ingénierie structuré du projet : effectifs, matériaux, sections, appuis, charges, résultats (unités "
              "explicites). Listes plafonnées : détail par inspect_model.",
@@ -82,8 +86,8 @@ QJsonArray toolList()
              schema({ { "tool", QJsonObject { { "type", "string" }, { "enum", readTools } } },
                       { "arguments", prop("object", "Arguments de l'outil de lecture") } },
                     { "tool" })),
-        tool("undo", "Annule la dernière action du projet (comme Ctrl+Z dans l'application).", schema({})),
-        tool("redo", "Rétablit la dernière action annulée.", schema({})),
+        tool("undo", "Annule la dernière action du projet (comme Ctrl+Z dans l'application).", schema({ { "document_id", prop("string", "Optionnel : identifiant du document visé (tsaraloha_status / list_documents). S'il n'est pas le document actif, rien n'est exécuté.") } })),
+        tool("redo", "Rétablit la dernière action annulée.", schema({ { "document_id", prop("string", "Optionnel : identifiant du document visé (tsaraloha_status / list_documents). S'il n'est pas le document actif, rien n'est exécuté.") } })),
     };
 }
 
@@ -151,6 +155,7 @@ QJsonObject callTool(const QString& name, const QJsonObject& args)
     QJsonObject params;
     if (name == "tsaraloha_status") method = "hello";
     else if (name == "list_commands") method = "list_commands";
+    else if (name == "list_documents") method = "list_documents";
     else if (name == "execute_command")
     {
         method = "execute";
@@ -173,6 +178,8 @@ QJsonObject callTool(const QString& name, const QJsonObject& args)
     }
     else if (name == "undo" || name == "redo") method = name;
     else return textResult(QStringLiteral("Outil inconnu : %1").arg(name), true);
+    // Document visé : transmis tel quel ; l'application refuse explicitement s'il n'est pas le document actif
+    if (args.contains("document_id")) params["document_id"] = args.value("document_id");
 
     QJsonValue value;
     QString error;

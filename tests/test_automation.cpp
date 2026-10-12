@@ -140,7 +140,12 @@ bool runSuite_Automation(int& passed)
                    "Test 200: MCP initialize");
         bridge.write("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n");
         const auto tools = rpc("tools/list", {}).value("result").toObject().value("tools").toArray();
-        TEST_CHECK(tools.size() == 8, "Test 200: MCP tools/list (8 outils)");
+        bool hasListDocuments = false;
+        for (const auto& t : tools) hasListDocuments = hasListDocuments || t.toObject().value("name").toString() == "list_documents";
+        TEST_CHECK(tools.size() == 9 && hasListDocuments, "Test 200: MCP tools/list (9 outils, dont list_documents)");
+        const auto docsCall = rpc("tools/call", { { "name", "list_documents" }, { "arguments", QJsonObject {} } }).value("result").toObject();
+        TEST_CHECK(!docsCall.value("isError").toBool() && docsCall.value("content").toArray()[0].toObject().value("text").toString().contains("documents"),
+                   "Test 200: MCP list_documents par le pont réel");
         const auto status = rpc("tools/call", { { "name", "tsaraloha_status" }, { "arguments", QJsonObject {} } }).value("result").toObject();
         TEST_CHECK(!status.value("isError").toBool() && status.value("content").toArray()[0].toObject().value("text").toString().contains("TSA"),
                    "Test 200: MCP tsaraloha_status");

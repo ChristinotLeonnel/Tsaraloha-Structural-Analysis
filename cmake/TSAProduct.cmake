@@ -397,6 +397,8 @@ set(VIEWER_MAIN_SOURCES
     ${TSA_ROOT}/src/Viewer/ResultsVisualManager.cpp
     ${TSA_ROOT}/src/Viewer/AnnotationStyle.h
     ${TSA_ROOT}/src/Viewer/AnnotationStyle.cpp
+    ${TSA_ROOT}/src/Viewer/DisplayProfile.h
+    ${TSA_ROOT}/src/Viewer/DisplayProfile.cpp
 )
 
 # --- Matériaux visuels, projection et navigation de vue — [CORE] --------------
@@ -1023,10 +1025,10 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_audit.cpp
     ${TSA_ROOT}/tests/test_benchmarks.cpp
     ${TSA_ROOT}/tests/test_display.cpp
+    ${TSA_ROOT}/tests/test_multidoc.cpp
     ${TSA_ROOT}/tests/test_torsion.cpp
     ${TSA_ROOT}/tests/test_meshview.cpp
     ${TSA_ROOT}/tests/test_demo_models.cpp
-    ${TSA_ROOT}/tests/test_display.cpp
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )
@@ -1414,7 +1416,7 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards tsa3d modules templates deployment mesh surfaces audit benchmarks display)
+                       loads opensees supports standards tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

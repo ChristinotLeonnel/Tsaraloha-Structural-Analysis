@@ -37,6 +37,8 @@
 #include <QShortcut>
 #include <QStackedWidget>
 #include <QTabBar>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <QClipboard>
 #include <QDesktopServices>
 #include <QUrl>
@@ -254,6 +256,19 @@ MainWindow* AppShell::createWorkspace()
     connect(workspace, &MainWindow::newProjectRequested, this, &AppShell::createNewProject);
     connect(workspace, &MainWindow::openProjectRequested, this, &AppShell::openProject);
     connect(workspace, &MainWindow::openFileRequested, this, &AppShell::openProjectFile);
+    // MCP : documents ouverts (identifiant stable, nom, chemin, actif) pour list_documents
+    workspace->setAutomationDocumentsProvider([this] {
+        QJsonArray docs;
+        for (MainWindow* d : m_documents)
+        {
+            const auto* pm = d->projectManager();
+            docs.append(QJsonObject { { "id", d->documentId() },
+                                      { "name", tabLabel(d) },
+                                      { "path", pm && pm->hasFilePath() ? pm->currentFilePath() : QString() },
+                                      { "active", d == m_workspace } });
+        }
+        return docs;
+    });
     connect(workspace, &MainWindow::closeProjectRequested, this, &AppShell::closeProject);
     connect(workspace, &MainWindow::exitRequested, this, &QWidget::close);
     connect(workspace, &MainWindow::fullScreenRequested, this, [this](bool on) {
@@ -325,13 +340,18 @@ void AppShell::refreshTabs()
 void AppShell::activateDocument(MainWindow* document)
 {
     if (!document || !m_documents.contains(document)) return;
-    if (m_workspace && m_workspace != document) m_workspace->setAutomationActive(false);
+    if (m_workspace && m_workspace != document)
+    {
+        m_workspace->setAutomationActive(false);
+        m_workspace->setDocumentForeground(false);   // ses panneaux flottants ne restent pas sur l'autre projet
+    }
     m_workspace = document;
     bindToWorkspace(m_actSave, document->actionSave());
     bindToWorkspace(m_actSaveAs, document->actionSaveAs());
     bindToWorkspace(m_actUndo, document->actionUndo());
     bindToWorkspace(m_actRedo, document->actionRedo());
     document->setAutomationActive(true);
+    document->setDocumentForeground(true);
     for (MainWindow* d : m_documents)
         d->setMinimumSize(m_mode == ApplicationMode::ProjectWorkspace && d == document ? kWorkspaceMinimumSize : QSize(1, 1));
     if (m_mode == ApplicationMode::ProjectWorkspace) m_stack->setCurrentWidget(document);

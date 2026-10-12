@@ -50,6 +50,9 @@ public:
     QList<CommandDefinition> definitions() const;          ///< commandes reliées à au moins une action
     const CommandDefinition* definition(const QString& id) const;
     QList<QAction*> actions(const QString& id) const;
+    /// Action que « Répéter la dernière commande » déclencherait : celle de même identifiant dans le document visible
+    /// (nulle si aucune) ; jamais une action d'un onglet caché ou fermé.
+    QAction* repeatTarget() const;
     QString idOf(const QAction* action) const;
     QList<QKeySequence> effective(const QString& id) const;
     QList<QKeySequence> defaults(const QString& id) const;

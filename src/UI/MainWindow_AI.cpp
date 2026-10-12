@@ -75,6 +75,9 @@ void MainWindow::createAIComponents()
         }
         return o;
     });
+    // Document résolu à chaque requête : identifiant stable de l'onglet, et refus si ce document n'est plus actif
+    m_automation->setDocumentId(m_documentId);
+    m_automation->setActiveCheck([this] { return isAutomationActive(); });
     connect(m_automation, &TSA::Automation::AutomationServer::projectModified, this, [this] {
         updateUndoRedoActions();
         updateWindowTitle();
@@ -219,4 +222,46 @@ void MainWindow::setAutomationActive(bool active)
     QString error;
     if (!m_automation->start(TSA::Automation::AutomationServer::defaultName(), &error) && m_consoleDock)
         m_consoleDock->appendLog(tr("Serveur d'automatisation (MCP) indisponible : %1").arg(error), "WARN");
+}
+
+void MainWindow::setDocumentForeground(bool foreground)
+{
+    if (!foreground)
+    {
+        m_backgroundHidden.clear();
+        for (QWidget* w : findChildren<QWidget*>())
+        {
+            // Fenêtres de premier niveau appartenant au document (outil, panneau détaché), hors boîtes modales
+            if (w->isWindow() && w->isVisible() && !w->isModal())
+            {
+                m_backgroundHidden << w;
+                w->hide();
+            }
+        }
+        return;
+    }
+    // Réaffichées sans être activées : l'activation d'un panneau d'outil relance l'outil (BarCreationDialog,
+    // WindowActivate) ; l'outil ne reprend que si l'utilisateur clique dans le panneau, comme avant le changement d'onglet.
+    for (const QPointer<QWidget>& w : m_backgroundHidden)
+    {
+        if (!w) continue;
+        const bool had = w->testAttribute(Qt::WA_ShowWithoutActivating);
+        w->setAttribute(Qt::WA_ShowWithoutActivating, true);
+        w->show();
+        w->setAttribute(Qt::WA_ShowWithoutActivating, had);
+    }
+    m_backgroundHidden.clear();
+}
+
+QList<QWidget*> MainWindow::hiddenFloatingWindows() const
+{
+    QList<QWidget*> out;
+    for (const QPointer<QWidget>& w : m_backgroundHidden)
+        if (w) out << w.data();
+    return out;
+}
+
+void MainWindow::setAutomationDocumentsProvider(std::function<QJsonArray()> provider)
+{
+    if (m_automation) m_automation->setDocumentsProvider(std::move(provider));
 }

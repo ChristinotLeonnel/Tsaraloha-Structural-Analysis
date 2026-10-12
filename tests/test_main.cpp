@@ -6,14 +6,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 376;
+    int expectedTotal = 387;
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display]" << std::endl;
+            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display|multidoc]" << std::endl;
             return 0;
         }
     }
@@ -215,6 +215,10 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "display") {
         std::cout << "\n--- [Suite 31/31] Affichage des résultats, annotations et charges ---" << std::endl;
         if (!runSuite_Display(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "multidoc") {
+        std::cout << "\n--- [Suite 32/32] Multi-documents, copier-coller, profils d'affichage, MCP ---" << std::endl;
+        if (!runSuite_MultiDoc(passed)) allOk = false;
     }
 #endif
 

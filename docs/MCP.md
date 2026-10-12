@@ -23,7 +23,18 @@ Claude Code ──stdio (MCP, JSON-RPC)──► tsaraloha-mcp.exe ──canal l
 
 - `src/Automation/AutomationServer.*` (base commune) : `QLocalServer`, accès réservé au compte Windows de
   l'utilisateur (`UserAccessOption`), aucun port réseau. Démarré par `MainWindow` (TSA) et `LabMainWindow` (TSALab).
-  Une seule instance par application écoute (la première ouverte).
+  Un seul serveur écoute par canal : celui du document (onglet) au premier plan. Avant d'écouter, le serveur vérifie
+  qu'aucun autre ne répond sous ce nom : sous Windows, `listen()` réussit même si le tube nommé est déjà servi, et le
+  client serait alors relié au hasard à l'un ou à l'autre. Une seconde instance de TSA n'écoute donc pas.
+- Plusieurs documents (`docs/MULTI_DOCUMENT.md`) :
+  - **Changement d'onglet** : les connexions du document quitté sont fermées, et le pont se reconnecte au document
+    actif.
+  - **Identifiant de document** : chaque réponse porte `document {id, name, path}`, avec un identifiant stable par
+    onglet ; `tsaraloha_status` l'affiche.
+  - **`list_documents`** donne les documents ouverts.
+  - **`document_id`** : `execute_command`, `run_command_script`, `undo` et `redo` acceptent ce paramètre facultatif.
+    S'il ne désigne pas le document actif, l'application renvoie une erreur explicite et rien n'est exécuté.
+  - **Compatibilité** : les clients existants, qui n'envoient pas `document_id`, fonctionnent sans changement.
 - `tools/mcp/TsaralohaMcp.cpp` → `tsaraloha-mcp.exe` (Qt Core + Network), construit à côté de `TSA.exe` / `TSALab.exe`.
 - Tout passe par l'existant : une commande modifiante = une entrée Annuler, vues mises à jour, console de
   l'application (`MCP › …`) ; les outils de lecture sont ceux de l'assistant IA (liste blanche).
@@ -39,6 +50,7 @@ Claude Code ──stdio (MCP, JSON-RPC)──► tsaraloha-mcp.exe ──canal l
 | `get_model_summary` | contexte d'ingénierie structuré (unités explicites), contrôles en option |
 | `inspect_model` | lecture : `get_object`, `list_members`, `list_nodes`, `list_loads`, `get_results_summary`, `check_model`… |
 | `undo` / `redo` | Annuler / Rétablir du projet |
+| `list_documents` | documents (onglets) ouverts : identifiant, nom, chemin, actif |
 
 Le calcul se lance par la commande `analysis.run` (moteur, axe de grille, export du système) et se lit par
 `results.summary`, `results.node_displacement`, `inspect_model get_results_summary`.

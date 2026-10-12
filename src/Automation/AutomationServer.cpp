@@ -146,6 +146,19 @@ QString AutomationServer::defaultName()
 bool AutomationServer::start(const QString& name, QString* errorOut)
 {
     stop();
+    // Sous Windows, listen() réussit même si un autre serveur écoute déjà sous ce nom (plusieurs instances d'un tube
+    // nommé) : le client serait relié à l'un ou à l'autre au hasard. Un serveur qui répond déjà (autre document de
+    // l'application, autre instance de TSA) garde le canal ; celui-ci n'est pas démarré.
+    {
+        QLocalSocket probe;
+        probe.connectToServer(name);
+        if (probe.waitForConnected(150))
+        {
+            probe.disconnectFromServer();
+            if (errorOut) *errorOut = tr("le canal « %1 » est déjà servi par une autre instance ou un autre document").arg(name);
+            return false;
+        }
+    }
     m_server = new QLocalServer(this);
     m_server->setSocketOptions(QLocalServer::UserAccessOption);   // compte Windows de l'utilisateur seulement
     if (!m_server->listen(name))
@@ -216,12 +229,44 @@ TSA::AI::EngineeringSources AutomationServer::sources() const
     return s;
 }
 
+QJsonObject AutomationServer::documentJson() const
+{
+    QJsonObject d { { "id", m_documentId } };
+    if (m_projectInfo)
+    {
+        const QJsonObject info = m_projectInfo();
+        if (info.contains("project")) d["name"] = info.value("project");
+        if (info.contains("path")) d["path"] = info.value("path");
+    }
+    return d;
+}
+
 QJsonObject AutomationServer::handle(const QJsonObject& request)
 {
+    QJsonObject response = [&]() -> QJsonObject {
     const QString method = request.value("method").toString();
     const QJsonObject params = request.value("params").toObject();
     if (!m_session) return error(QStringLiteral("aucun projet ouvert"));
+    // Document résolu à chaque requête : encore ouvert et au premier plan, et celui que le client désigne s'il le fait
+    if (m_activeCheck && !m_activeCheck())
+        return error(QStringLiteral("ce document n'est plus le document actif de l'application : requête refusée (reconnectez-vous, ou list_documents)"));
+    if (params.contains("document_id") && params.value("document_id").toString() != m_documentId)
+        return error(QStringLiteral("document « %1 » demandé, mais le document actif est « %2 » : rien n'a été exécuté. Activez son onglet dans "
+                                    "l'application (list_documents donne les documents ouverts).")
+                         .arg(params.value("document_id").toString(), m_documentId));
     const CommandRegistry& registry = CommandRegistry::builtIn();
+
+    if (method == "list_documents")
+    {
+        QJsonArray docs = m_documents ? m_documents() : QJsonArray {};
+        if (docs.isEmpty())
+        {
+            QJsonObject d = documentJson();
+            d["active"] = true;
+            docs.append(d);
+        }
+        return result(QJsonObject { { "documents", docs }, { "active", m_documentId } });
+    }
 
     if (method == "hello")
     {
@@ -232,6 +277,7 @@ QJsonObject AutomationServer::handle(const QJsonObject& request)
             const QJsonObject info = m_projectInfo();
             for (auto it = info.begin(); it != info.end(); ++it) o[it.key()] = it.value();
         }
+        if (!m_documentId.isEmpty()) o["document"] = documentJson();
         return result(o);
     }
 
@@ -329,6 +375,9 @@ QJsonObject AutomationServer::handle(const QJsonObject& request)
     }
 
     return error(QStringLiteral("méthode inconnue : %1").arg(method));
+    }();
+    if (!m_documentId.isEmpty()) response["document"] = documentJson();
+    return response;
 }
 
 } // namespace TSA::Automation

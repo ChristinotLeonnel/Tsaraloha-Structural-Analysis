@@ -3,6 +3,7 @@
 #include "Analysis/AnalysisEngineOptions.h"
 #include "Dock/AnalysisDataDock.h"
 #include "MainWindow.h"
+#include "../Viewer/DisplayProfile.h"
 #include "../Viewer/OccView.h"
 #include "../Viewer/SelectionManager.h"
 #include "../Model/Model.h"
@@ -1617,6 +1618,9 @@ bool MainWindow::loadFile(const QString& path)
     applyTopologyDisplayFromModel();
     syncDimensionActions();
     updateWindowTitle();
+    // Profil d'affichage associé à ce fichier (réglages de l'application ; le .tsa n'en contient pas)
+    if (const QString profile = TSA::Viewer::DisplayProfileStore().documentProfile(path); !profile.isEmpty())
+        applyDisplayProfile(profile);
 
     if (m_selectionManager)
     {
