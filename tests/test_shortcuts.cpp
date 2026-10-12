@@ -22,6 +22,13 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <chrono>
+#include <memory>
+#include <thread>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 #ifdef TSA_HAVE_QTTEST
 #include <QTest>
 #endif
@@ -392,6 +399,7 @@ bool runSuite_Shortcuts(int& passed)
         mgr.bind("cmd.display.grid", &grid);
         mgr.setConfigPath(dir.filePath("shortcut.txt"));
         mgr.loadConfig();
+        TEST_CHECK(dir.isValid(), "Test 264: dossier temporaire créé");
         TSA::UI::ShortcutEditorDialog dlg(mgr);
         dlg.setSearchText(QStringLiteral("Ctrl+S"));
         TEST_CHECK(dlg.visibleRowCount() == 1, "Test 264: recherche par raccourci");
@@ -403,9 +411,11 @@ bool runSuite_Shortcuts(int& passed)
         QStringList errors;
         TEST_CHECK(!dlg.apply(&errors) && save.shortcut() == QKeySequence("Ctrl+S"), "Test 264: application refusée tant que le conflit existe");
         TEST_CHECK(!dlg.setSelectedShortcutText("Ctrl+Truc"), "Test 264: combinaison invalide refusée");
+        errors.clear();
         TEST_CHECK(dlg.setSelectedShortcutText("Ctrl+Shift+F12 ; F12") && dlg.conflicts().isEmpty() && dlg.apply(&errors) &&
                        save.shortcuts() == seqs("Ctrl+Shift+F12 ; F12"),
-                   "Test 264: alias appliqués");
+                   "Test 264: alias appliqués (dossier temporaire valide : " << dir.isValid() << " ; conflits : " << dlg.conflicts().join(";").toStdString()
+                   << " ; erreurs : " << errors.join(";").toStdString() << ")");
         QString content;
         {
             QFile f(mgr.configPath()); // refermé aussitôt : Windows refuse de remplacer un fichier ouvert
@@ -466,6 +476,111 @@ bool runSuite_Shortcuts(int& passed)
         TEST_CHECK(readable && actual == expected,
                    "Test 266: docs/shortcut.txt à jour (régénérer : TSA_UPDATE_SHORTCUT_REFERENCE=1 TSA_TestSuite --suite=shortcuts)");
         std::cout << "[PASS] Test 266: Infobulles et fichier de référence" << std::endl;
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 377 : enregistrement de shortcut.txt pendant qu'un autre processus le tient ouvert (antivirus, indexeur,
+    // éditeur) — cause de l'échec intermittent du test 264 : sous Windows, le remplacement atomique de QSaveFile
+    // (renommage par-dessus le fichier) est refusé tant qu'un handle ouvert sans FILE_SHARE_DELETE existe.
+    // -------------------------------------------------------------------------
+    {
+#ifdef Q_OS_WIN
+        QTemporaryDir dir;
+        ShortcutManager mgr;
+        QAction save(QStringLiteral("Enregistrer"));
+        mgr.bind("cmd.file.save", &save);
+        mgr.setConfigPath(dir.filePath("shortcut.txt"));
+        TEST_CHECK(dir.isValid() && mgr.loadConfig(), "Test 377: fichier créé");
+        const std::wstring path = QDir::toNativeSeparators(mgr.configPath()).toStdWString();
+        // Handle tenu 200 ms, partage lecture/écriture mais pas suppression : comme Defender sur un fichier neuf
+        HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        TEST_CHECK(h != INVALID_HANDLE_VALUE, "Test 377: fichier ouvert par un « autre processus »");
+        std::thread release([h] {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            CloseHandle(h);
+        });
+        auto s = mgr.settings();
+        s["cmd.file.save"].sequences = seqs("Ctrl+Shift+F11");
+        s["cmd.file.save"].enabled = true;
+        QStringList errors;
+        QElapsedTimer t;
+        t.start();
+        const bool ok = mgr.saveSettings(s, &errors);
+        const qint64 ms = t.elapsed();
+        release.join();
+        std::cout << "  enregistrement : " << (ok ? "réussi" : "échoué") << " en " << ms << " ms ; " << errors.join(";").toStdString() << std::endl;
+        TEST_CHECK(ok && save.shortcut() == QKeySequence("Ctrl+Shift+F11"), "Test 377: enregistrement réussi une fois le fichier libéré (" << errors.join(";").toStdString() << ")");
+        QString content;
+        {
+            QFile f(mgr.configPath());
+            if (f.open(QIODevice::ReadOnly)) content = QString::fromUtf8(f.readAll());
+        }
+        TEST_CHECK(content.contains("Ctrl+Shift+F11"), "Test 377: contenu écrit");
+        // Fichier tenu indéfiniment : échec signalé (pas de blocage), message explicite, raccourcis inchangés
+        HANDLE h2 = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        s["cmd.file.save"].sequences = seqs("Ctrl+Shift+F10");
+        errors.clear();
+        t.restart();
+        const bool ok2 = mgr.saveSettings(s, &errors);
+        const qint64 ms2 = t.elapsed();
+        CloseHandle(h2);
+        TEST_CHECK(!ok2 && !errors.isEmpty() && errors.join(";").contains("écriture impossible") && ms2 < 3000 && save.shortcut() == QKeySequence("Ctrl+Shift+F11"),
+                   "Test 377: fichier verrouillé durablement — échec explicite en " << ms2 << " ms, raccourcis inchangés");
+        std::cout << "[PASS] Test 377: shortcut.txt enregistré malgré un verrou temporaire d'un autre processus" << std::endl;
+#else
+        std::cout << "[PASS] Test 377: verrou de fichier Windows — NON EXÉCUTÉ (hors Windows)" << std::endl;
+#endif
+        ++passed;
+    }
+    // -------------------------------------------------------------------------
+    // TEST 378 : répéter la dernière commande avec plusieurs documents (onglets) — la commande est rejouée dans le
+    // document visible, jamais dans un onglet caché ni avec l'action d'un onglet fermé
+    // -------------------------------------------------------------------------
+    {
+        ShortcutManager mgr;
+        auto docA = std::make_unique<QWidget>();
+        QWidget docB;
+        auto* beamA = new QAction(QStringLiteral("Poutre"), docA.get());
+        auto* beamB = new QAction(QStringLiteral("Poutre"), &docB);
+        int nA = 0, nB = 0;
+        QObject::connect(beamA, &QAction::triggered, [&] { ++nA; });
+        QObject::connect(beamB, &QAction::triggered, [&] { ++nB; });
+        mgr.bind("cmd.create.beam", beamA);
+        mgr.bind("cmd.create.beam", beamB);
+        QAction* repeat = mgr.repeatAction();
+        docA->show();
+        docB.hide();
+        beamA->trigger();   // commande lancée dans A
+        TEST_CHECK(nA == 1 && mgr.repeatTarget() == beamA, "Test 378: commande lancée dans le document A");
+        // Changement d'onglet : A caché, B visible
+        docA->hide();
+        docB.show();
+        TEST_CHECK(mgr.repeatTarget() == beamB, "Test 378: après changement d'onglet, cible = action du document visible");
+        repeat->trigger();
+        TEST_CHECK(nA == 1 && nB == 1, "Test 378: Ctrl+Entrée agit sur B, pas sur A (A " << nA << ", B " << nB << ")");
+        // Plusieurs changements d'onglet
+        docB.hide();
+        docA->show();
+        repeat->trigger();
+        docA->hide();
+        docB.show();
+        repeat->trigger();
+        TEST_CHECK(nA == 2 && nB == 2, "Test 378: allers-retours entre onglets — chaque répétition dans le document visible");
+        // Onglet A fermé alors que sa commande était la dernière : rejouée dans B, aucun pointeur vers A
+        docB.hide();
+        docA->show();
+        beamA->trigger();
+        docA.reset();   // fermeture de l'onglet A (actions détruites)
+        docB.show();
+        TEST_CHECK(mgr.repeatTarget() == beamB, "Test 378: onglet d'origine fermé — cible = document restant");
+        repeat->trigger();
+        TEST_CHECK(nB == 3, "Test 378: onglet d'origine fermé — commande rejouée dans le document restant");
+        // Aucun document visible : rien n'est déclenché
+        docB.hide();
+        TEST_CHECK(mgr.repeatTarget() == nullptr, "Test 378: aucun document visible — aucune cible");
+        repeat->trigger();
+        TEST_CHECK(nB == 3, "Test 378: aucun document visible — rien n'est déclenché");
+        std::cout << "[PASS] Test 378: Répéter la dernière commande avec plusieurs documents" << std::endl;
         ++passed;
     }
     return true;

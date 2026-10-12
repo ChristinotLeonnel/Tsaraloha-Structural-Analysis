@@ -1,4 +1,8 @@
 #include "../Interaction/Tools/ModelingTool.h"
+#include <QSignalBlocker>
+#include <QLineEdit>
+#include "../Project/ProjectManager.h"
+#include "../Viewer/DisplayProfile.h"
 #include <QMessageBox>
 #include <QSettings>
 #include <QInputDialog>
@@ -557,6 +561,19 @@ void MainWindow::createActions()
         m_actionClipCopyLoads->setChecked(settings.value("Clipboard/copyLoads", false).toBool());
         connect(m_actionClipCopySupports, &QAction::toggled, this, [](bool on) { QSettings().setValue("Clipboard/copySupports", on); });
         connect(m_actionClipCopyLoads, &QAction::toggled, this, [](bool on) { QSettings().setValue("Clipboard/copyLoads", on); });
+        m_actionClipMergeNodes = new QAction(tr("Fusionner les nœuds coïncidents au collage"), this);
+        m_actionClipMergeNodes->setToolTip(tr("Un nœud collé à moins de la tolérance d'un nœud existant compatible le réutilise ; sinon les nœuds restent séparés"));
+        m_actionClipMergeNodes->setCheckable(true);
+        m_actionClipMergeNodes->setChecked(settings.value("Clipboard/mergeNodes", false).toBool());
+        connect(m_actionClipMergeNodes, &QAction::toggled, this, [](bool on) { QSettings().setValue("Clipboard/mergeNodes", on); });
+        m_actionClipTolerance = new QAction(tr("Tolérance de fusion…"), this);
+        connect(m_actionClipTolerance, &QAction::triggered, this, [this] {
+            bool ok = false;
+            const double mm = QInputDialog::getDouble(this, tr("Tolérance de fusion"),
+                                                      tr("Distance réelle maximale entre un nœud collé et un nœud existant pour les fusionner (mm) :"),
+                                                      QSettings().value("Clipboard/mergeToleranceM", 1.0e-3).toDouble() * 1000.0, 0.001, 1000.0, 3, &ok);
+            if (ok) QSettings().setValue("Clipboard/mergeToleranceM", mm / 1000.0);
+        });
     }
 
     m_actionMove3D = new QAction(tr("&Déplacement 3D (Point à Point)..."), this);
@@ -971,6 +988,9 @@ void MainWindow::createMenus()
     clipOptions->setToolTipsVisible(true);
     clipOptions->addAction(m_actionClipCopySupports);
     clipOptions->addAction(m_actionClipCopyLoads);
+    clipOptions->addSeparator();
+    clipOptions->addAction(m_actionClipMergeNodes);
+    clipOptions->addAction(m_actionClipTolerance);
     editMenu->addSeparator();
     editMenu->addAction(m_actionMove3D);
     editMenu->addAction(m_actionMove);
@@ -1297,6 +1317,10 @@ void MainWindow::createMenus()
     createDisplayScaleMenus();
     viewMenu->addMenu(m_annotationScaleMenu);
     viewMenu->addMenu(m_loadScaleMenu);
+    m_displayProfilesMenu = viewMenu->addMenu(tr("Profils d'affichage"));
+    m_displayProfilesMenu->setToolTipsVisible(true);
+    connect(m_displayProfilesMenu, &QMenu::aboutToShow, this, &MainWindow::rebuildDisplayProfilesMenu);
+    rebuildDisplayProfilesMenu();
     // Diagnostic d'affichage (développeur) : objets de la scène et échelles graphiques du document au premier plan
     connect(viewMenu->addAction(tr("Diagnostic d'affichage…")), &QAction::triggered, this, [this] {
         if (!m_occView) return;
@@ -2377,4 +2401,109 @@ void MainWindow::createDisplayScaleMenus()
         values->setChecked(true), legend->setChecked(true);
         for (const auto& [a, mode] : modeActions) a->setChecked(mode == TSA::Geometry::LoadScaleSettings {}.mode);
     });
+}
+
+void MainWindow::rebuildDisplayProfilesMenu()
+{
+    if (!m_displayProfilesMenu) return;
+    m_displayProfilesMenu->clear();
+    TSA::Viewer::DisplayProfileStore store;
+    auto* group = new QActionGroup(m_displayProfilesMenu);
+    for (const auto& p : store.profiles())
+    {
+        QAction* a = m_displayProfilesMenu->addAction(p.name);
+        a->setCheckable(true);
+        a->setChecked(p.name == m_activeDisplayProfile);
+        a->setToolTip(tr("Applique les réglages graphiques du profil (aucune donnée du modèle ni des résultats n'est modifiée)"));
+        group->addAction(a);
+        const QString name = p.name;
+        connect(a, &QAction::triggered, this, [this, name] { applyDisplayProfile(name); });
+    }
+    m_displayProfilesMenu->addSeparator();
+    connect(m_displayProfilesMenu->addAction(tr("Enregistrer l'affichage actuel comme profil…")), &QAction::triggered, this, [this] {
+        if (!m_occView) return;
+        bool ok = false;
+        const QString name = QInputDialog::getText(this, tr("Profil d'affichage"), tr("Nom du profil :"), QLineEdit::Normal,
+                                                   m_activeDisplayProfile.isEmpty() ? tr("Mon profil") : m_activeDisplayProfile, &ok).trimmed();
+        if (!ok || name.isEmpty()) return;
+        TSA::Viewer::DisplayProfileStore store;
+        if (store.contains(name) &&
+            QMessageBox::question(this, tr("Profil d'affichage"), tr("Le profil « %1 » existe : le remplacer par l'affichage actuel ?").arg(name)) != QMessageBox::Yes)
+            return;
+        QString error;
+        if (!store.save({ name, TSA::Viewer::captureDisplaySettings(*m_occView) }, &error))
+        {
+            QMessageBox::warning(this, tr("Profil d'affichage"), error);
+            return;
+        }
+        m_activeDisplayProfile = name;
+        if (m_projectManager && m_projectManager->hasFilePath()) store.setDocumentProfile(m_projectManager->currentFilePath(), name);
+        if (m_statusInfo) m_statusInfo->setText(tr("Profil d'affichage « %1 » enregistré").arg(name));
+    });
+    auto pick = [this](const QString& title) {
+        TSA::Viewer::DisplayProfileStore store;
+        QStringList names;
+        for (const auto& p : store.profiles()) names << p.name;
+        bool ok = false;
+        const QString n = QInputDialog::getItem(this, title, tr("Profil :"), names, 0, false, &ok);
+        return ok ? n : QString();
+    };
+    connect(m_displayProfilesMenu->addAction(tr("Renommer un profil…")), &QAction::triggered, this, [this, pick] {
+        const QString from = pick(tr("Renommer un profil"));
+        if (from.isEmpty()) return;
+        bool ok = false;
+        const QString to = QInputDialog::getText(this, tr("Renommer un profil"), tr("Nouveau nom :"), QLineEdit::Normal, from, &ok).trimmed();
+        if (!ok || to == from) return;
+        QString error;
+        TSA::Viewer::DisplayProfileStore store;
+        if (!store.rename(from, to, &error)) QMessageBox::warning(this, tr("Renommer un profil"), error);
+        else if (m_activeDisplayProfile == from) m_activeDisplayProfile = to;
+    });
+    connect(m_displayProfilesMenu->addAction(tr("Supprimer un profil…")), &QAction::triggered, this, [this, pick] {
+        const QString name = pick(tr("Supprimer un profil"));
+        if (name.isEmpty()) return;
+        if (QMessageBox::question(this, tr("Supprimer un profil"), tr("Supprimer le profil « %1 » ?").arg(name)) != QMessageBox::Yes) return;
+        TSA::Viewer::DisplayProfileStore().remove(name);
+        if (m_activeDisplayProfile == name) m_activeDisplayProfile.clear();
+    });
+    connect(m_displayProfilesMenu->addAction(tr("Rétablir les profils fournis")), &QAction::triggered, this, [] {
+        TSA::Viewer::DisplayProfileStore().restoreDefaults();
+    });
+}
+
+bool MainWindow::applyDisplayProfile(const QString& name)
+{
+    if (!m_occView) return false;
+    TSA::Viewer::DisplayProfileStore store;
+    if (!store.contains(name)) return false;
+    const QStringList unknown = TSA::Viewer::applyDisplaySettings(*m_occView, store.profile(name).settings);
+    if (!unknown.isEmpty() && m_consoleDock)
+        m_consoleDock->appendLog(tr("Profil « %1 » : réglages inconnus ignorés (%2)").arg(name, unknown.join(", ")), "WARN");
+    m_activeDisplayProfile = name;
+    if (m_projectManager && m_projectManager->hasFilePath()) store.setDocumentProfile(m_projectManager->currentFilePath(), name);
+    syncDisplayActionsFromView();
+    if (m_statusInfo) m_statusInfo->setText(tr("Profil d'affichage « %1 » appliqué").arg(name));
+    return true;
+}
+
+void MainWindow::syncDisplayActionsFromView()
+{
+    if (!m_occView) return;
+    // Boutons et menus : état relu dans la vue, sans relancer leurs actions
+    auto set = [](QAction* a, bool on) {
+        if (!a) return;
+        const QSignalBlocker block(a);
+        a->setChecked(on);
+    };
+    set(m_actionGridVisible, m_occView->isGridVisible());
+    set(m_actionGridLabels, m_occView->areGridLabelsVisible());
+    set(m_actionNodesVisible, m_occView->areNodesVisible());
+    set(m_actionNodeLabelsVisible, m_occView->areNodeLabelsVisible());
+    set(m_actionSupportsVisible, m_occView->areSupportsVisible());
+    set(m_actionLoadsVisible, m_occView->areLoadsVisible());
+    set(m_actionLoadValuesVisible, m_occView->areLoadValuesVisible());
+    set(m_actionSurfaceLoadsVisible, m_occView->surfaceLoadsVisible());
+    for (QAction* a : m_displayModeActions)
+        set(a, a->data().toInt() == static_cast<int>(m_occView->modelDisplayMode()));
+    if (m_resultsDock && m_occView->resultsVisual()) m_resultsDock->syncFromVisualManager(m_occView->resultsVisual());
 }

@@ -8,6 +8,7 @@
 #include "../Core/Utf8Path.h"
 
 #include <QSaveFile>
+#include <filesystem>
 #include <QByteArray>
 #include <QBuffer>
 #include <QDateTime>
@@ -510,12 +511,25 @@ TSAFileReader::TSAFileReader()
 {
 }
 
+namespace
+{
+/// Ouverture impossible : fichier absent, ou présent mais illisible (verrouillé par un autre programme, droits).
+/// Un fichier verrouillé était annoncé « introuvable ».
+std::string openFailureMessage(const std::string& filePath)
+{
+    std::error_code ec;
+    if (std::filesystem::exists(TSA::Core::utf8Path(filePath), ec))
+        return "Fichier inaccessible (ouvert ou verrouillé par un autre programme, ou droits insuffisants) : " + filePath;
+    return "Fichier introuvable : " + filePath;
+}
+} // namespace
+
 bool TSAFileReader::readHeader(const std::string& filePath, TSAFileHeader& header, std::string* errorMessage)
 {
     std::ifstream in(TSA::Core::utf8Path(filePath), std::ios::binary);
     if (!in.is_open())
     {
-        if (errorMessage) *errorMessage = "Fichier introuvable ou inaccessible : " + filePath;
+        if (errorMessage) *errorMessage = openFailureMessage(filePath);
         return false;
     }
 
@@ -561,7 +575,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     std::ifstream in(TSA::Core::utf8Path(filePath), std::ios::binary | std::ios::ate);
     if (!in.is_open())
     {
-        if (errorMessage) *errorMessage = "Fichier introuvable : " + filePath;
+        if (errorMessage) *errorMessage = openFailureMessage(filePath);
         return false;
     }
 
@@ -706,7 +720,7 @@ bool TSAFileReader::extractThumbnail(const std::string& filePath, QImage& outThu
     std::ifstream in(TSA::Core::utf8Path(filePath), std::ios::binary);
     if (!in.is_open())
     {
-        if (errorMessage) *errorMessage = "Fichier introuvable : " + filePath;
+        if (errorMessage) *errorMessage = openFailureMessage(filePath);
         return false;
     }
 

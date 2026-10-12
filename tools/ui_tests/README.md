@@ -36,6 +36,10 @@ bureau actif). La fenêtre de TSA doit rester au premier plan pendant l'essai.
    fichier déjà ouvert activé, Nouveau projet, copier-coller d'un onglet à l'autre, Ctrl+Tab, fermeture avec
    confirmation. Le scénario modifie les réglages (projets récents, dernier dossier) : sauvegarder puis restaurer
    `HKCU\Software\TSA*`.
+8. Glisser-déposer et Ctrl+Entrée : `dragdrop_repeat_scenario.ps1 -Work <dossier vide, chemin long>`. Vrai glisser OLE
+   depuis l'Explorateur (même nom, troisième projet, déjà ouvert, corrompu, verrouillé, non .tsa), puis Ctrl+Entrée
+   après changement d'onglet et après fermeture de l'onglet d'origine, panneau d'outil flottant. Lignes `OK` /
+   `ÉCHEC`. Sauvegarder puis restaurer `HKCU\Software\TSA*` et `shortcut.txt`.
 5. Taille de la vue 3D selon les panneaux : `viewport_layout.ps1 -Project … [-Width 1220 -Height 765]`.
 
 Les boutons qui ouvrent une boîte modale sont cliqués à la souris (`Click-Mouse`) : l'Invoke d'UI Automation

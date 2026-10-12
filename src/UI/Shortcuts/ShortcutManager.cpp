@@ -15,6 +15,7 @@
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QSaveFile>
+#include <QThread>
 #include <QStandardPaths>
 #include <QTextEdit>
 #include <QTimer>
@@ -245,10 +246,27 @@ bool ShortcutManager::readFile(QString* text, QString* error) const
 bool ShortcutManager::writeFile(const QString& text, QString* error)
 {
     QDir().mkpath(QFileInfo(m_path).absolutePath());
-    QSaveFile f(m_path); // fichier temporaire puis remplacement : jamais de fichier à moitié écrit
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text) || f.write(text.toUtf8()) < 0 || !f.commit())
+    // Fichier temporaire puis remplacement : jamais de fichier à moitié écrit. Sous Windows, le remplacement (renommage
+    // par-dessus shortcut.txt) est refusé (« Accès refusé ») tant qu'un autre processus tient le fichier ouvert sans
+    // FILE_SHARE_DELETE : antivirus ou indexeur qui examine un fichier qu'on vient d'écrire, éditeur de texte. Ce verrou
+    // est bref : nouvelles tentatives bornées (12 × 50 ms), puis échec signalé (test 377 ; cause de l'échec
+    // intermittent du test 264).
+    constexpr int kAttempts = 12;
+    QString lastError;
+    for (int attempt = 0; attempt < kAttempts; ++attempt)
     {
-        if (error) *error = QStringLiteral("écriture impossible de %1 : %2").arg(QDir::toNativeSeparators(m_path), f.errorString());
+        if (attempt > 0) QThread::msleep(50);
+        QSaveFile f(m_path);
+        if (f.open(QIODevice::WriteOnly | QIODevice::Text) && f.write(text.toUtf8()) >= 0 && f.commit())
+        {
+            lastError.clear();
+            break;
+        }
+        lastError = f.errorString();
+    }
+    if (!lastError.isEmpty())
+    {
+        if (error) *error = QStringLiteral("écriture impossible de %1 : %2").arg(QDir::toNativeSeparators(m_path), lastError);
         return false;
     }
     m_lastText = normalizedText(text); // notification de notre propre écriture : ignorée
@@ -471,24 +489,28 @@ QAction* ShortcutManager::repeatAction()
         m_repeatAction = new QAction(tr("Répéter la dernière commande"), this);
         m_repeatAction->setEnabled(false);
         connect(m_repeatAction, &QAction::triggered, this, [this] {
-            // Plusieurs documents ouverts (onglets) : l'action mémorisée peut appartenir à un onglet caché ; on rejoue
-            // la commande de même identifiant dans le document visible
-            QAction* target = m_lastCommand;
-            auto visible = [](QAction* a) {
-                auto* w = a ? qobject_cast<QWidget*>(a->parent()) : nullptr;
-                return !w || w->isVisible();
-            };
-            if (!visible(target))
-            {
-                target = nullptr;
-                for (QAction* a : actions(m_lastCommandId))
-                    if (a && visible(a)) target = a;
-            }
-            if (target && target->isEnabled()) target->trigger();
+            // La commande mémorisée (identifiant) est rejouée dans le document au premier plan. Plusieurs documents
+            // (onglets) : l'action mémorisée peut appartenir à un onglet caché, ou à un onglet fermé (pointeur nul) ;
+            // on choisit l'action de même identifiant dont le widget propriétaire est visible. Jamais une action d'un
+            // document caché ou détruit (docs/MULTI_DOCUMENT.md, test 378).
+            if (QAction* target = repeatTarget(); target && target->isEnabled()) target->trigger();
         });
         bind(QStringLiteral("cmd.edit.repeat"), m_repeatAction);
     }
     return m_repeatAction;
+}
+
+QAction* ShortcutManager::repeatTarget() const
+{
+    auto visible = [](QAction* a) {
+        auto* w = a ? qobject_cast<QWidget*>(a->parent()) : nullptr;
+        return a && (!w || w->isVisible());
+    };
+    if (visible(m_lastCommand)) return m_lastCommand;
+    if (m_lastCommandId.isEmpty()) return nullptr;
+    for (QAction* a : actions(m_lastCommandId))
+        if (visible(a)) return a;
+    return nullptr;
 }
 
 void ShortcutManager::rememberLastCommand(QAction* action)

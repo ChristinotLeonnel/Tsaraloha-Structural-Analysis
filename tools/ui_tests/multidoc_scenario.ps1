@@ -5,7 +5,9 @@
 # Les projets sont des copies des exemples placées dans -Work (chemin long : « ~ » est une touche pour SendKeys).
 # Le scénario modifie les réglages de TSA (dossier du dernier projet, projets récents) : sauvegarder
 # HKCU\Software\TSA* avant l'essai et les restaurer après.
-param([string]$Exe = (Join-Path $PSScriptRoot "..\..\build-ninja-debug\TSA.exe"), [Parameter(Mandatory = $true)][string]$Work)
+param([string]$Exe = "", [Parameter(Mandatory = $true)][string]$Work)
+# $PSScriptRoot est vide dans les valeurs par défaut de param() sous PowerShell 5.1
+if (-not $Exe) { $Exe = Join-Path $PSScriptRoot "..\..\build-ninja-debug\TSA.exe" }
 $ErrorActionPreference = "Continue"
 . (Join-Path $PSScriptRoot "uia_lib.ps1")
 $OutDir = Join-Path $Work "shots"

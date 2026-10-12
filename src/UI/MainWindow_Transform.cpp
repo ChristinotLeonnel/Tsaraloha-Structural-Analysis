@@ -11,6 +11,7 @@
 #include "Tools/ModelCleanupDialog.h"
 #include "Dock/LogConsoleDock.h"
 
+#include <QSettings>
 #include <QMessageBox>
 #include <QStatusBar>
 #include <QLabel>
@@ -85,11 +86,15 @@ void MainWindow::onActionCopyClipboard()
     sel.walls = m_selectionManager->selectedWalls();
     sel.trusses = m_selectionManager->selectedTrussMembers();
     sel.cables = m_selectionManager->selectedCables();
+    sel.foundations = m_selectionManager->selectedFoundations();
+    sel.dimensions = m_selectionManager->selectedDimensions();
     TSA::Model::ClipboardOptions options;
     options.supports = !m_actionClipCopySupports || m_actionClipCopySupports->isChecked();
     options.loads = m_actionClipCopyLoads && m_actionClipCopyLoads->isChecked();
     // Presse-papier commun à tous les onglets : le collage peut se faire dans un autre projet ouvert
     m_clipboard.copyFrom(*m_model, sel, options);
+    if (m_consoleDock)
+        for (const auto& w : m_clipboard.copyWarnings()) m_consoleDock->appendLog(tr("Copie : %1").arg(QString::fromStdString(w)), "WARN");
 
     if (statusBar())
     {
@@ -174,16 +179,73 @@ void MainWindow::pasteClipboardAt(double x, double y, double z, const QString& w
         return;
     if (!confirmNoRunningAnalysis(tr("coller"))) return;
 
+    TSA::Model::PasteOptions options;
+    {
+        QSettings settings;
+        options.merge = m_actionClipMergeNodes && m_actionClipMergeNodes->isChecked() ? TSA::Model::NodeMergeMode::MergeCoincident
+                                                                                     : TSA::Model::NodeMergeMode::KeepSeparate;
+        options.tolerance = settings.value("Clipboard/mergeToleranceM", 1.0e-3).toDouble();
+    }
+    auto listOf = [](const std::vector<TSA::Model::PasteConflict>& conflicts) {
+        QStringList lines;
+        for (std::size_t i = 0; i < conflicts.size() && i < 12; ++i) lines << QStringLiteral("• ") + QString::fromStdString(conflicts[i].message);
+        if (conflicts.size() > 12) lines << QObject::tr("… et %1 autre(s)").arg(conflicts.size() - 12);
+        return lines.join('\n');
+    };
+    // Éléments identiques à des éléments existants (fusion) : décision avant le collage
+    if (options.merge == TSA::Model::NodeMergeMode::MergeCoincident)
+    {
+        auto probe = options;
+        probe.supportConflicts = TSA::Model::SupportConflictPolicy::KeepTarget;   // analyse des doublons seulement
+        const auto plan = m_clipboard.analyzePaste(*m_model, x, y, z, probe);
+        if (!plan.duplicates.empty() && !plan.blocked())
+        {
+            QMessageBox box(QMessageBox::Question, tr("Coller — éléments en double"),
+                            tr("%1 élément(s) collé(s) relieraient des nœuds existants déjà reliés par un élément de la même famille :\n\n%2\n\n"
+                               "Les coller doublerait leur rigidité.")
+                                .arg(plan.duplicates.size()).arg(listOf(plan.duplicates)),
+                            QMessageBox::NoButton, this);
+            auto* skip = box.addButton(tr("Ne pas coller les doublons"), QMessageBox::AcceptRole);
+            auto* keep = box.addButton(tr("Les coller quand même"), QMessageBox::DestructiveRole);
+            box.addButton(QMessageBox::Cancel);
+            box.setDefaultButton(skip);
+            box.exec();
+            if (box.clickedButton() == keep) options.duplicates = TSA::Model::DuplicateElementPolicy::Keep;
+            else if (box.clickedButton() != skip) return;
+        }
+    }
+
     // Une seule étape d'annulation ; tout ou rien (le modèle est rétabli si un élément ne peut pas être recréé)
-    auto res = m_clipboard.pasteUndoable(*m_model, x, y, z, tr("Coller Presse-papier").toStdString());
+    auto res = m_clipboard.pasteUndoable(*m_model, x, y, z, tr("Coller Presse-papier").toStdString(), options);
+    if (!res.complete && res.needsDecision)
+    {
+        // Appuis incompatibles sur des nœuds coïncidents : aucune propriété n'est supprimée sans décision
+        QMessageBox box(QMessageBox::Warning, tr("Coller — appuis incompatibles"),
+                        tr("Des nœuds collés tombent sur des nœuds existants qui portent un appui différent :\n\n%1\n\nQue faire ?")
+                            .arg(listOf(res.conflicts)),
+                        QMessageBox::NoButton, this);
+        auto* separate = box.addButton(tr("Ne pas fusionner ces nœuds"), QMessageBox::AcceptRole);
+        auto* keepTarget = box.addButton(tr("Conserver les appuis du projet"), QMessageBox::ActionRole);
+        auto* useCopied = box.addButton(tr("Utiliser les appuis copiés"), QMessageBox::DestructiveRole);
+        box.addButton(QMessageBox::Cancel);
+        box.setDefaultButton(separate);
+        box.exec();
+        if (box.clickedButton() == separate) options.supportConflicts = TSA::Model::SupportConflictPolicy::DontMerge;
+        else if (box.clickedButton() == keepTarget) options.supportConflicts = TSA::Model::SupportConflictPolicy::KeepTarget;
+        else if (box.clickedButton() == useCopied) options.supportConflicts = TSA::Model::SupportConflictPolicy::UseCopied;
+        else return;   // annulé : modèle inchangé
+        res = m_clipboard.pasteUndoable(*m_model, x, y, z, tr("Coller Presse-papier").toStdString(), options);
+    }
     if (!res.complete)
     {
-        QMessageBox::warning(this, tr("Coller"), tr("Le collage a été annulé : un élément n'a pas pu être recréé (%1). Le modèle est inchangé.")
-                                                     .arg(QString::fromStdString(res.error)));
+        QMessageBox::warning(this, tr("Coller"), tr("Le collage a été annulé, le modèle est inchangé :\n\n%1")
+                                                     .arg(res.conflicts.empty() ? QString::fromStdString(res.error) : listOf(res.conflicts)));
         updateUndoRedoActions();
         return;
     }
-    if (res.empty())
+    if (m_consoleDock)
+        for (const auto& w : res.warnings) m_consoleDock->appendLog(tr("Collage : %1").arg(QString::fromStdString(w)), "WARN");
+    if (res.empty() && res.loadCount() == 0)
         return;
 
     if (m_selectionManager)
@@ -196,6 +258,7 @@ void MainWindow::pasteClipboardAt(double x, double y, double z, const QString& w
         for (int wid : res.wallIds) m_selectionManager->selectWall(wid, true);
         for (int tid : res.trussIds) m_selectionManager->selectTrussMember(tid, true);
         for (int cid : res.cableIds) m_selectionManager->selectCable(cid, true);
+        for (int fid : res.foundationIds) m_selectionManager->selectFoundation(fid, true);
     }
 
     if (m_modelTree) m_modelTree->refreshAll();
@@ -210,6 +273,11 @@ void MainWindow::pasteClipboardAt(double x, double y, double z, const QString& w
         QString text = tr("Collé %1 : %2 nœud(s), %3 élément(s)").arg(where).arg(res.nodeIds.size()).arg(res.elementCount());
         if (res.loadCount() > 0) text += tr(", %1 charge(s)").arg(res.loadCount());
         if (!res.createdLoadCaseIds.empty()) text += tr(" — %1 cas de charge créé(s)").arg(res.createdLoadCaseIds.size());
+        if (!res.mergedNodeIds.empty()) text += tr(" — %1 nœud(s) fusionné(s)").arg(res.mergedNodeIds.size());
+        if (res.skippedDuplicates > 0) text += tr(" — %1 doublon(s) non collé(s)").arg(res.skippedDuplicates);
+        if (!res.dimensionIds.empty()) text += tr(" — %1 cotation(s)").arg(res.dimensionIds.size());
+        if (!res.combinationIds.empty()) text += tr(" — %1 combinaison(s)").arg(res.combinationIds.size());
+        if (!res.warnings.empty()) text += tr(" (%1 avertissement(s) dans la console)").arg(res.warnings.size());
         m_statusInfo->setText(text);
     }
     updateUndoRedoActions();

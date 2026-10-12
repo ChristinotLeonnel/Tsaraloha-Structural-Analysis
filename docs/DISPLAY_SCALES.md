@@ -95,3 +95,44 @@ Trois causes faisaient réapparaître des courbes d'un ancien calcul. Elles sont
 
 Depuis les onglets multi-projets (`docs/MULTI_DOCUMENT.md`), chaque document a sa propre vue et ses propres
 résultats. Un nouveau projet s'ouvre dans un onglet neuf.
+
+## 7. Profils d'affichage
+
+**Affichage > Profils d'affichage** propose d'appliquer un profil, d'enregistrer l'affichage actuel comme profil,
+de renommer ou supprimer un profil, et de rétablir les profils fournis. Le code est dans
+`src/Viewer/DisplayProfile.*`.
+
+- **Profils fournis** : ils sont créés au premier usage et restent modifiables comme les autres.
+  - Modélisation ;
+  - Charges ;
+  - Maillage (représentation éléments finis) ;
+  - Résultats ;
+  - Déformées ;
+  - Analyse modale ;
+  - Présentation.
+- **Contenu** : une **liste blanche de clés graphiques**.
+  - représentation du modèle ;
+  - couleurs (mode de rendu) ;
+  - nœuds, numéros et appuis ;
+  - grille, axes, niveaux et plan de travail ;
+  - familles d'éléments visibles ;
+  - charges : forces, moments, valeurs, mode et facteur d'échelle, longueur minimale, légende ;
+  - déformée : mode et amplification ;
+  - grandeur et multiplicateur des diagrammes, étiquettes ;
+  - réactions, légende, rotation des sections ;
+  - taille des annotations.
+
+  Une clé non graphique (section, charge…) n'est jamais enregistrée. Appliquer un profil ne modifie ni le modèle
+  (sa révision reste la même) ni les résultats (test 387).
+- **Chargement tolérant** : une clé inconnue est ignorée et signalée dans la console. Une clé absente laisse le
+  réglage courant tel quel. Une valeur hors bornes est refusée. Une liste illisible est chargée vide, sans échec.
+- **Paramètres globaux et paramètres propres au projet** :
+  - les profils sont des réglages **de l'application**, communs à tous les projets et conservés après redémarrage ;
+  - le dernier profil appliqué à un projet enregistré lui est **associé** par le chemin du fichier, puis réappliqué
+    à son ouverture ;
+  - l'association est stockée dans les réglages : le format `.tsa` n'est pas modifié et les anciens fichiers restent
+    compatibles ;
+  - les clés de taille des annotations agissent sur le style d'annotation de l'application, commun à tous les
+    onglets.
+- **Synchronisation** : après application, les boutons et menus (grille, nœuds, appuis, charges, représentation)
+  et le panneau des résultats relisent l'état de la vue.
