@@ -296,8 +296,23 @@ PreparedAnalysis AnalysisManager::prepare(const TSA::Model::Model& model,
             }
         }
     }
-    else if (!model.loadManager().surfaceLoads().empty())
-        p.validation.addError("Surfaces", std::to_string(model.loadManager().surfaceLoads().size()) +
+    else if (const std::size_t calculated = [&] {
+                 // Charges surfaciques des cas réellement calculés : combinaison choisie, sinon cas choisis, sinon tous
+                 std::size_t n = 0;
+                 const auto& lm = model.loadManager();
+                 const auto* combo = context.combinationId > 0 ? lm.getCombination(context.combinationId) : nullptr;
+                 for (const auto& [id, sl] : lm.surfaceLoads())
+                 {
+                     const bool in = context.combinationId > 0 ? (combo && combo->hasCase(sl.loadCaseId))
+                                     : context.loadCaseIds.empty()
+                                         ? true
+                                         : std::find(context.loadCaseIds.begin(), context.loadCaseIds.end(), sl.loadCaseId) != context.loadCaseIds.end();
+                     n += in;
+                 }
+                 return n;
+             }();
+             calculated > 0)
+        p.validation.addError("Surfaces", std::to_string(calculated) +
                                               " charge(s) surfacique(s) définie(s) mais aucune surface maillée transmise : générer le maillage "
                                               "(Analyse > Maillage) ou supprimer ces charges. Aucune charge n'est ignorée en silence.");
     else if (p.model.hasPlanarElements() && engine->capabilities().supportsShell)

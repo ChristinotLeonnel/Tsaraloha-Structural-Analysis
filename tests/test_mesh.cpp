@@ -683,6 +683,20 @@ bool runSuite_Mesh(int& passed)
         const auto* engine = s.analysis().registry().engine("opensees");
         TEST_CHECK(engine && engine->availability().available, "Test 390: OpenSees disponible");
 
+        // Cas sans pression, calculé sans maillage : la pression d'un autre cas ne bloque pas le calcul
+        {
+            auto other = ctx;
+            other.loadCaseIds = { m.loadManager().addLoadCase(TSA::Model::LoadCase(0, "autre", TSA::Model::LoadCaseCategory::Live)) };
+            auto pressureError = [&](const TSA::Analysis::AnalysisContext& c) {
+                for (const auto& e : s.analysis().prepare(c).validation.texts(TSA::Analysis::ValidationSeverity::Error))
+                    if (e.find("charge(s) surfacique(s)") != std::string::npos) return true;
+                return false;
+            };
+            TEST_CHECK(!pressureError(other), "Test 390: cas sans charge surfacique, sans maillage — la pression d'un autre cas ne bloque pas le calcul");
+            auto all = ctx;
+            all.loadCaseIds.clear();
+            TEST_CHECK(pressureError(all), "Test 390: tous les cas, sans maillage — pression non transmise, calcul refusé");
+        }
         // Sans transmission : la dalle n'est pas calculée (exclue avec avertissement)
         TSA::Analysis::AnalysisContext bare = ctx;
         TEST_CHECK(TSA::UI::applyMeshToAnalysis(nullptr, bare, *engine, nullptr) && bare.surfaces.elements.empty(), "Test 390: sans contrôleur — aucun maillage transmis");
