@@ -4,6 +4,9 @@
 #include "../Analysis/ResultsModel.h"
 #include "../Model/Beam.h"
 #include "../Model/Column.h"
+#include "../Mesh/MeshGeometry.h"
+#include "../Mesh/MeshProject.h"
+#include "../Mesh/Solvers/OpenSeesMeshAdapter.h"
 #include "../Model/Load/LoadCase.h"
 #include "../Model/Load/LoadManager.h"
 #include "../Model/Load/MemberLoad.h"
@@ -516,6 +519,34 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 }
                 ac.setContext(ctx);
                 ac.storeContextInModel();
+
+                // Maillage enregistré dans le projet (Gmsh) : transmis s'il est à jour et compatible, comme le fait le
+                // bouton Calculer (UI/Mesh/MeshAnalysisBridge) ; sans dialogue ici : obsolète ou non transmissible → refus motivé
+                ctx.memberSubdivisions.clear();
+                ctx.surfaces = {};
+                if (ctx.common.useGeneratedMesh)
+                {
+                    const auto mp = TSA::Mesh::MeshProject::load(s.model());
+                    if (mp.hasMesh)
+                    {
+                        const auto geometry = TSA::Mesh::MeshGeometry::extract(s.model());
+                        if (mp.isStale(geometry.hash))
+                            return fail("Maillage obsolète (géométrie modifiée depuis sa génération) : régénérer le maillage, ou désactiver "
+                                        "« utiliser le maillage généré » dans les réglages du calcul.");
+                        const auto compat = TSA::Mesh::OpenSeesMeshAdapter::check(mp.mesh, geometry, engine->info().name, caps, 3000000, &s.model());
+                        if (compat.blocking())
+                        {
+                            std::string why;
+                            for (const auto& i : compat.items)
+                                if (i.level == TSA::Mesh::SolverCheckItem::Level::Blocking) why += (why.empty() ? "" : " ; ") + i.message;
+                            return fail("Maillage non transmissible à " + engine->info().name + " : " + why);
+                        }
+                        ctx.memberSubdivisions = compat.memberSubdivisions;
+                        ctx.surfaces = compat.surfaces;
+                        ctx.surfaces.meshStamp = mp.record.generated + "|" + mp.record.settingsHash;
+                        ctx.meshLabel = "maillage " + mp.record.mesher + " du " + mp.record.generated;
+                    }
+                }
 
                 const PreparedAnalysis prepared = ac.prepare(ctx);
                 if (!prepared.canRun())

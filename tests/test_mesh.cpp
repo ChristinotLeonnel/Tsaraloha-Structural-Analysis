@@ -14,6 +14,7 @@
 #include "Mesh/Solvers/OpenSeesMeshAdapter.h"
 #include "Mesh/SurfaceLoads.h"
 #include "Analysis/AnalysisController.h"
+#include "Automation/CommandRegistry.h"
 #include "Model/Load/LoadManager.h"
 #include "Project/ProjectSession.h"
 #include "UI/Analysis/AnalysisManagerPanel.h"
@@ -732,6 +733,20 @@ bool runSuite_Mesh(int& passed)
         const double ref = -(0.004062352660675069 * 10.0 * 1296.0 / D + 0.07367135326539033 * 10.0 * 36.0 / (5.0 / 6.0 * G * 0.2));
         TEST_CHECK(runOk && preparerCalls == 1 && std::abs(uz - ref) <= 1e-3 * std::abs(ref) && s.analysis().context().surfaces.elements.empty(),
                    "Test 390: flèche " << uz << " m, référence de Mindlin " << ref << " m (écart " << std::abs(uz / ref - 1) * 100 << " %)");
+        // Commande analysis.run (console, Blueprint, MCP) : maillage enregistré transmis ; obsolète → refus motivé
+        {
+            const auto& reg = TSA::Automation::CommandRegistry::builtIn();
+            const auto cmd = TSA::Automation::executeCommandLine(reg, s, "analysis.run engine=opensees case=q self_weight=non");
+            double uzCmd = 0;
+            if (const auto rc = s.analysis().results())
+                for (const auto& [id, dsp] : rc->surfaceNodeDisplacements())
+                    if (std::abs(dsp.uz) > std::abs(uzCmd)) uzCmd = dsp.uz;
+            TEST_CHECK(cmd.ok && std::abs(uzCmd - ref) <= 1e-3 * std::abs(ref), "Test 390: analysis.run — maillage enregistré transmis, flèche " << uzCmd << " m (" << cmd.message << ")");
+            m.getNode(c)->setCoordinates(6.1, 6, 0);
+            const auto stale = TSA::Automation::executeCommandLine(reg, s, "analysis.run engine=opensees case=q self_weight=non");
+            TEST_CHECK(!stale.ok && stale.message.find("obsolète") != std::string::npos, "Test 390: analysis.run — maillage obsolète refusé avec la raison");
+            m.getNode(c)->setCoordinates(6, 6, 0);
+        }
         std::cout << "[PASS] Test 390: maillage transmis au calcul par le gestionnaire d'analyse partagé (référence de Mindlin)" << std::endl;
         ++passed;
     }
