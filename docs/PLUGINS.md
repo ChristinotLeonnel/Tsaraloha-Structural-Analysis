@@ -45,7 +45,9 @@ Exemple complet : `TSALab/plugins/sample/SamplePlugin.cpp` (commande composée `
 
 - **ABI** : même compilateur et même bibliothèque d'exécution que l'application (MSVC, `/MD` ou `/MDd`), car
   l'interface échange des types `std::` (chaînes, `std::function`, `std::variant`).
-- `kApiVersion` (actuellement 1) : une DLL d'une autre version est refusée, avec le motif.
+- `kApiVersion` (actuellement 2) : une DLL d'une autre version est refusée, avec le motif. Version 2 (13/10/2026) :
+  valeurs objet dans `Value` (`ObjectRef`), `PinSpec::objectType`, `NodeDefinition` étendue (statut, version,
+  documentation, source, réutilisation des résultats, sorties ordonnées) ; une DLL de la version 1 doit être recompilée.
 - Identifiants uniques, préfixés par celui du plugin ; un doublon est refusé.
 - Une DLL n'est jamais déchargée (ses fonctions restent référencées par les registres).
 - Arrêt (facultatif, 2026-10-10) : une DLL peut exporter `extern "C" void tsaraloha_plugin_shutdown()`, appelé une fois

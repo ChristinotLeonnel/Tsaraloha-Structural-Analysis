@@ -1,10 +1,14 @@
 #include "BlueprintFile.h"
 
+#include "BlueprintRuntime.h"
+
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
+
+#include <map>
 
 namespace TSA::Blueprint
 {
@@ -25,7 +29,7 @@ QJsonValue encode(const Value& v)
         for (int id : *ids) a.append(id);
         o["ids"] = a;
     }
-    else return QJsonValue();
+    else return QJsonValue();   // objet ou valeur vide : jamais enregistré
     return o;
 }
 
@@ -49,6 +53,74 @@ Value decode(const QJsonValue& j)
     }
     return {};
 }
+
+/// Version enregistrée d'un nœud : la sienne si connue, sinon celle de la bibliothèque (version courante).
+int stampedVersion(const NodeInstance& n)
+{
+    if (n.version > 0) return n.version;
+    const auto* d = NodeLibrary::standard().find(n.type);
+    return d ? d->version : 1;
+}
+
+QJsonObject nodeJson(const NodeInstance& n)
+{
+    QJsonObject jn;
+    jn["id"] = n.id;
+    jn["type"] = QString::fromStdString(n.type);
+    jn["v"] = stampedVersion(n);
+    jn["x"] = n.x;
+    jn["y"] = n.y;
+    QJsonObject values;
+    for (const auto& [pin, v] : n.values)
+    {
+        const QJsonValue e = encode(v);
+        if (!e.isNull()) values[QString::fromStdString(pin)] = e;
+    }
+    if (!values.isEmpty()) jn["values"] = values;
+    return jn;
+}
+
+NodeInstance nodeFromJson(const QJsonObject& jn)
+{
+    NodeInstance n;
+    n.id = jn["id"].toInt();
+    n.type = jn["type"].toString().toStdString();
+    n.version = jn.contains("v") ? jn["v"].toInt() : 1;
+    n.x = jn["x"].toDouble();
+    n.y = jn["y"].toDouble();
+    const QJsonObject values = jn["values"].toObject();
+    for (auto it = values.begin(); it != values.end(); ++it) n.values[it.key().toStdString()] = decode(it.value());
+    return n;
+}
+
+QJsonObject linkJson(const Link& l)
+{
+    return QJsonObject { { "from", l.fromNode }, { "out", QString::fromStdString(l.fromPin) }, { "to", l.toNode }, { "in", QString::fromStdString(l.toPin) } };
+}
+
+Link linkFromJson(const QJsonObject& jl)
+{
+    return { jl["from"].toInt(), jl["out"].toString().toStdString(), jl["to"].toInt(), jl["in"].toString().toStdString() };
+}
+
+QJsonObject commentJson(const Comment& c)
+{
+    return QJsonObject { { "id", c.id }, { "x", c.x }, { "y", c.y }, { "w", c.width }, { "h", c.height },
+                         { "text", QString::fromStdString(c.text) }, { "color", QString::fromStdString(c.color) } };
+}
+
+Comment commentFromJson(const QJsonObject& jc)
+{
+    Comment c;
+    c.id = jc["id"].toInt();
+    c.x = jc["x"].toDouble();
+    c.y = jc["y"].toDouble();
+    c.width = jc["w"].toDouble(400.0);
+    c.height = jc["h"].toDouble(240.0);
+    c.text = jc["text"].toString().toStdString();
+    c.color = jc["color"].toString(QStringLiteral("#546E7A")).toStdString();
+    return c;
+}
 } // namespace
 
 QByteArray toJson(const Graph& g)
@@ -59,28 +131,14 @@ QByteArray toJson(const Graph& g)
     root["name"] = QString::fromStdString(g.name);
     root["description"] = QString::fromStdString(g.description);
     QJsonArray nodes;
-    for (const auto& [id, n] : g.nodes())
-    {
-        QJsonObject jn;
-        jn["id"] = id;
-        jn["type"] = QString::fromStdString(n.type);
-        jn["x"] = n.x;
-        jn["y"] = n.y;
-        QJsonObject values;
-        for (const auto& [pin, v] : n.values)
-        {
-            const QJsonValue e = encode(v);
-            if (!e.isNull()) values[QString::fromStdString(pin)] = e;
-        }
-        if (!values.isEmpty()) jn["values"] = values;
-        nodes.append(jn);
-    }
+    for (const auto& [id, n] : g.nodes()) nodes.append(nodeJson(n));
     root["nodes"] = nodes;
     QJsonArray links;
-    for (const auto& l : g.links())
-        links.append(QJsonObject { { "from", l.fromNode }, { "out", QString::fromStdString(l.fromPin) },
-                                   { "to", l.toNode }, { "in", QString::fromStdString(l.toPin) } });
+    for (const auto& l : g.links()) links.append(linkJson(l));
     root["links"] = links;
+    QJsonArray comments;
+    for (const auto& [id, c] : g.comments()) comments.append(commentJson(c));
+    if (!comments.isEmpty()) root["comments"] = comments;
     return QJsonDocument(root).toJson(QJsonDocument::Indented);
 }
 
@@ -104,21 +162,11 @@ bool fromJson(const QByteArray& json, Graph& g, QString* error)
     loaded.description = root["description"].toString().toStdString();
     for (const auto& x : root["nodes"].toArray())
     {
-        const QJsonObject jn = x.toObject();
-        NodeInstance n;
-        n.id = jn["id"].toInt();
-        n.type = jn["type"].toString().toStdString();
-        n.x = jn["x"].toDouble();
-        n.y = jn["y"].toDouble();
-        const QJsonObject values = jn["values"].toObject();
-        for (auto it = values.begin(); it != values.end(); ++it) n.values[it.key().toStdString()] = decode(it.value());
+        const NodeInstance n = nodeFromJson(x.toObject());
         if (!loaded.insertNode(n)) return fail(QStringLiteral("identifiant de nœud invalide ou en double : %1").arg(n.id));
     }
-    for (const auto& x : root["links"].toArray())
-    {
-        const QJsonObject jl = x.toObject();
-        loaded.addLink({ jl["from"].toInt(), jl["out"].toString().toStdString(), jl["to"].toInt(), jl["in"].toString().toStdString() });
-    }
+    for (const auto& x : root["links"].toArray()) loaded.addLink(linkFromJson(x.toObject()));
+    for (const auto& x : root["comments"].toArray()) loaded.addComment(commentFromJson(x.toObject()));
     g = std::move(loaded);
     return true;
 }
@@ -143,6 +191,64 @@ bool loadFile(const QString& path, Graph& g, QString* error)
         return false;
     }
     return fromJson(f.readAll(), g, error);
+}
+
+QByteArray fragmentToJson(const Graph& g, const std::set<int>& nodes, const std::set<int>& comments)
+{
+    QJsonObject root;
+    root["format"] = "tsbp-fragment";
+    root["version"] = kFileVersion;
+    QJsonArray jn, jl, jc;
+    for (int id : nodes)
+        if (const auto* n = g.node(id)) jn.append(nodeJson(*n));
+    for (const auto& l : g.links())
+        if (nodes.count(l.fromNode) && nodes.count(l.toNode)) jl.append(linkJson(l));
+    for (int id : comments)
+        if (const auto* c = g.comment(id)) jc.append(commentJson(*c));
+    root["nodes"] = jn;
+    root["links"] = jl;
+    root["comments"] = jc;
+    return QJsonDocument(root).toJson(QJsonDocument::Compact);
+}
+
+bool pasteFragment(Graph& g, const QByteArray& json, double dx, double dy, std::vector<int>* newNodes, std::vector<int>* newComments,
+                   QString* error)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    const QJsonObject root = doc.object();
+    if (!doc.isObject() || root["format"].toString() != QLatin1String("tsbp-fragment"))
+    {
+        if (error) *error = QStringLiteral("le presse-papiers ne contient pas de nœuds Blueprint");
+        return false;
+    }
+    std::map<int, int> remap;
+    for (const auto& x : root["nodes"].toArray())
+    {
+        NodeInstance n = nodeFromJson(x.toObject());
+        const int id = g.addNode(n.type, n.x + dx, n.y + dy);
+        NodeInstance* created = g.node(id);
+        created->values = n.values;
+        created->version = n.version;
+        remap[n.id] = id;
+        if (newNodes) newNodes->push_back(id);
+    }
+    for (const auto& x : root["links"].toArray())
+    {
+        Link l = linkFromJson(x.toObject());
+        if (!remap.count(l.fromNode) || !remap.count(l.toNode)) continue;
+        l.fromNode = remap[l.fromNode];
+        l.toNode = remap[l.toNode];
+        g.addLink(l);
+    }
+    for (const auto& x : root["comments"].toArray())
+    {
+        Comment c = commentFromJson(x.toObject());
+        c.id = 0;
+        c.x += dx, c.y += dy;
+        const int id = g.addComment(c);
+        if (newComments) newComments->push_back(id);
+    }
+    return true;
 }
 
 } // namespace TSA::Blueprint

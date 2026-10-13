@@ -1,4 +1,5 @@
-// Suite « blueprint » : programmation visuelle (ADR-024, phases 6 et 8) — tests 193 à 195, 197 à 199.
+// Suite « blueprint » : programmation visuelle (ADR-024, phases 6 et 8) — tests 193 à 195, 197 à 199, 391
+// (valeurs objet, réutilisation des résultats, variables, contrôles du graphe, fichier v2, copier-coller).
 #include "test_common.h"
 
 #include "AI/Tools/AIToolRegistry.h"
@@ -59,6 +60,115 @@ Graph portalBlueprint(const NodeLibrary& lib, int& summaryNode, int& loopNode)
     link(loopNode, "completed", summaryNode, "exec");
     return g;
 }
+
+// --- Test 391 : objets de test et bibliothèque locale (la bibliothèque standard partagée n'est pas modifiée) ----
+
+class TestVector final : public TSA::Automation::ObjectValue
+{
+public:
+    explicit TestVector(std::vector<double> v) : values(std::move(v)) {}
+    std::string typeName() const override { return "TestVector"; }
+    std::string summary() const override { return "vecteur de " + std::to_string(values.size()) + " composantes"; }
+    std::string details() const override
+    {
+        std::string s = "composantes :";
+        for (double x : values) s += " " + std::to_string(x);
+        return s;
+    }
+    bool equals(const ObjectValue& o) const override
+    {
+        const auto* t = dynamic_cast<const TestVector*>(&o);
+        return t && t->values == values;
+    }
+    std::vector<double> values;
+};
+
+class TestOther final : public TSA::Automation::ObjectValue
+{
+public:
+    std::string typeName() const override { return "TestOther"; }
+    std::string summary() const override { return "autre objet"; }
+    bool equals(const ObjectValue& o) const override { return dynamic_cast<const TestOther*>(&o) != nullptr; }
+};
+
+PinSpec testPin(const char* name, ValueType type, Value def = {}, const char* objectType = "")
+{
+    PinSpec p;
+    p.name = name;
+    p.label = name;
+    p.type = type;
+    p.defaultValue = std::move(def);
+    p.objectType = objectType;
+    return p;
+}
+
+/// Nœuds standard + test.make (pur, réutilisable : compte ses évaluations), test.sum, test.other, test.consume_other.
+struct TestLibrary
+{
+    NodeLibrary lib;
+    std::shared_ptr<int> makeCount = std::make_shared<int>(0);
+    std::shared_ptr<int> sumCount = std::make_shared<int>(0);
+
+    TestLibrary()
+    {
+        registerStandardNodes(lib, TSA::Automation::CommandRegistry::builtIn());
+        NodeDefinition make;
+        make.id = "test.make";
+        make.title = "Fabriquer un vecteur";
+        make.category = "Test";
+        make.pure = true;
+        make.cacheable = true;
+        make.inputs = { testPin("n", ValueType::Integer, 3LL), testPin("value", ValueType::Real, 1.0) };
+        make.outputs = { testPin("vector", ValueType::Object, {}, "TestVector") };
+        lib.add(make, [count = makeCount](ExecutionContext& c) {
+            ++*count;
+            const long long n = c.integer("n");
+            const double v = c.real("value");
+            if (c.failed()) return false;
+            c.setOutput("vector", ObjectRef(std::make_shared<TestVector>(std::vector<double>(static_cast<std::size_t>(n), v))));
+            return true;
+        });
+        NodeDefinition sum;
+        sum.id = "test.sum";
+        sum.title = "Somme";
+        sum.category = "Test";
+        sum.pure = true;
+        sum.cacheable = true;
+        sum.inputs = { testPin("vector", ValueType::Object, {}, "TestVector") };
+        sum.outputs = { testPin("sum", ValueType::Real) };
+        lib.add(sum, [count = sumCount](ExecutionContext& c) {
+            ++*count;
+            const auto v = c.objectAs<TestVector>("vector");
+            if (!v) return false;
+            double s = 0.0;
+            for (double x : v->values) s += x;
+            c.setOutput("sum", s);
+            return true;
+        });
+        NodeDefinition other;
+        other.id = "test.other";
+        other.title = "Autre objet";
+        other.category = "Test";
+        other.pure = true;
+        other.outputs = { testPin("other", ValueType::Object, {}, "TestOther") };
+        lib.add(other, [](ExecutionContext& c) {
+            c.setOutput("other", ObjectRef(std::make_shared<TestOther>()));
+            return true;
+        });
+        NodeDefinition consume;
+        consume.id = "test.consume_other";
+        consume.title = "Consommer un autre objet";
+        consume.category = "Test";
+        consume.pure = true;
+        consume.inputs = { testPin("other", ValueType::Object, {}, "TestOther") };
+        consume.outputs = { testPin("ok", ValueType::Bool) };
+        lib.add(consume, [](ExecutionContext& c) {
+            if (!c.object("other")) return false;
+            c.setOutput("ok", true);
+            return true;
+        });
+    }
+};
 } // namespace
 
 bool runSuite_Blueprint(int& passed)
@@ -336,6 +446,193 @@ bool runSuite_Blueprint(int& passed)
         TEST_CHECK(selected > 0 && !view->scene()->selectedItems().isEmpty(), "Test 199: nœuds sélectionnés");
         delete editor;   // avant correction : assertion Qt (arrêt du programme)
         std::cout << "[PASS] Test 199: fermeture de l'éditeur Blueprint avec une sélection" << std::endl;
+        ++passed;
+    }
+
+    // TEST 391 : valeurs objet typées, réutilisation des résultats (dans une exécution et d'une exécution à l'autre),
+    // variables, cycle d'exécution, dépendances mal ordonnées, fichier v2 (commentaires, versions), copier-coller
+    {
+        TestLibrary t;
+        const NodeLibrary& L = t.lib;
+        std::string why;
+        // 1. Typage des objets
+        {
+            Graph g;
+            const int make = g.addNode("test.make"), sum = g.addNode("test.sum"), cons = g.addNode("test.consume_other");
+            const int print = g.addNode("debug.print"), add = g.addNode("math.add");
+            TEST_CHECK(L.connect(g, { make, "vector", sum, "vector" }, &why), "Test 391: objet relié à une entrée du même type");
+            TEST_CHECK(!L.canConnect(g, { make, "vector", cons, "other" }, &why) && why.find("TestVector") != std::string::npos
+                           && why.find("TestOther") != std::string::npos,
+                       "Test 391: objets de types différents refusés (" << why << ")");
+            TEST_CHECK(!L.canConnect(g, { make, "vector", add, "a" }, &why), "Test 391: objet vers réel refusé");
+            TEST_CHECK(L.canConnect(g, { make, "vector", print, "value" }, &why), "Test 391: objet vers broche générique admis");
+            const ObjectRef a = std::make_shared<TestVector>(std::vector<double> { 1.0, 2.0 });
+            TEST_CHECK(TSA::Automation::formatValue(a) == "vecteur de 2 composantes", "Test 391: texte d'un objet = son résumé");
+            TEST_CHECK(TSA::Automation::sameValue(a, ObjectRef(std::make_shared<TestVector>(std::vector<double> { 1.0, 2.0 })))
+                           && !TSA::Automation::sameValue(a, ObjectRef(std::make_shared<TestVector>(std::vector<double> { 1.0, 3.0 }))),
+                       "Test 391: égalité des objets par contenu");
+            Value parsed;
+            TEST_CHECK(!TSA::Automation::parseArgument("x", ValueType::Object, parsed), "Test 391: un objet n'a pas de forme texte");
+            // Objet du mauvais type arrivé par une broche générique (variable) : refusé à l'exécution avec les deux types
+            Graph w;
+            const int st = w.addNode("event.start"), set = w.addNode("var.set"), get = w.addNode("var.get"), oth = w.addNode("test.other");
+            const int s2 = w.addNode("test.sum"), pr = w.addNode("debug.print");
+            w.setValue(set, "name", std::string("v"));
+            w.setValue(get, "name", std::string("v"));
+            TEST_CHECK(L.connect(w, { st, "then", set, "exec" }) && L.connect(w, { oth, "other", set, "value" }) && L.connect(w, { set, "then", pr, "exec" })
+                           && L.connect(w, { get, "value", s2, "vector" }) && L.connect(w, { s2, "sum", pr, "value" }),
+                       "Test 391: graphe à variable générique");
+            const auto rep = Runner(L, w, nullptr).run();
+            TEST_CHECK(!rep.ok && rep.message.find("TestVector attendu") != std::string::npos && rep.message.find("TestOther") != std::string::npos,
+                       "Test 391: type d'objet contrôlé à l'exécution (" << rep.message << ")");
+        }
+        // 2-3. Réutilisation : un nœud lu par trois consommateurs n'est évalué qu'une fois ; d'une exécution à l'autre,
+        // rien n'est réévalué ; une valeur modifiée ne recalcule que ce qui en dépend
+        {
+            Graph g;
+            const int start = g.addNode("event.start"), make = g.addNode("test.make");
+            g.setValue(make, "n", 4LL);
+            g.setValue(make, "value", 2.5);
+            int sums[3], prints[3];
+            int prev = start;
+            for (int k = 0; k < 3; ++k)
+            {
+                sums[k] = g.addNode("test.sum");
+                prints[k] = g.addNode("debug.print");
+                TEST_CHECK(L.connect(g, { make, "vector", sums[k], "vector" }) && L.connect(g, { sums[k], "sum", prints[k], "value" })
+                               && L.connect(g, { prev, "then", prints[k], "exec" }),
+                           "Test 391: graphe de réutilisation");
+                prev = prints[k];
+            }
+            *t.makeCount = 0;
+            auto rep = Runner(L, g, nullptr).run();
+            TEST_CHECK(rep.ok && *t.makeCount == 1 && rep.log.size() == 3 && rep.log[0] == "10",
+                       "Test 391: une seule évaluation pour trois lecteurs (" << *t.makeCount << " évaluation(s), " << rep.message << ")");
+            TEST_CHECK(rep.values.count(make) && std::holds_alternative<ObjectRef>(rep.values.at(make).at("vector")),
+                       "Test 391: valeurs intermédiaires rendues dans le rapport");
+            EvaluationCache cache;
+            Runner first(L, g, nullptr);
+            first.setCache(&cache);
+            TEST_CHECK(first.run().ok && cache.size() >= 4, "Test 391: cache rempli (" << cache.size() << " entrée(s))");
+            const int makes = *t.makeCount, summed = *t.sumCount;
+            Runner second(L, g, nullptr);
+            second.setCache(&cache);
+            rep = second.run();
+            TEST_CHECK(rep.ok && *t.makeCount == makes && *t.sumCount == summed && rep.profile[make].reused >= 1 && rep.reused >= 4,
+                       "Test 391: seconde exécution sans réévaluation (" << rep.reused << " réutilisation(s))");
+            g.setValue(make, "value", 3.0);
+            Runner third(L, g, nullptr);
+            third.setCache(&cache);
+            rep = third.run();
+            TEST_CHECK(rep.ok && *t.makeCount == makes + 1 && *t.sumCount == summed + 3 && rep.log[0] == "12",
+                       "Test 391: valeur modifiée → seuls les nœuds dépendants recalculés (" << rep.log[0] << ")");
+            // 8. Copier-coller : nœuds choisis et lien interne, sans le lien sortant de la sélection
+            const QByteArray frag = fragmentToJson(g, { make, sums[0] });
+            Graph h = g;
+            std::vector<int> created;
+            TEST_CHECK(pasteFragment(h, frag, 40.0, 40.0, &created) && created.size() == 2 && h.nodes().size() == g.nodes().size() + 2,
+                       "Test 391: fragment collé (2 nœuds)");
+            const auto* copy = h.node(created[0]);
+            TEST_CHECK(copy && copy->type == "test.make" && std::get<long long>(copy->values.at("n")) == 4 && copy->x == g.node(make)->x + 40.0,
+                       "Test 391: valeurs et position décalée conservées");
+            TEST_CHECK(h.links().size() == g.links().size() + 1 && h.linkTo(created[1], "vector").has_value()
+                           && h.linkTo(created[1], "vector")->fromNode == created[0],
+                       "Test 391: lien interne recréé entre les copies, liens externes ignorés");
+            TEST_CHECK(!pasteFragment(h, QByteArray("{}"), 0, 0), "Test 391: presse-papiers sans nœud refusé");
+        }
+        // 4. Variables : somme 1..10 accumulée dans une boucle
+        {
+            Graph g;
+            const int start = g.addNode("event.start"), init = g.addNode("var.set"), loop = g.addNode("flow.for");
+            const int acc = g.addNode("var.set"), get = g.addNode("var.get"), add = g.addNode("math.add"), out = g.addNode("var.get"), print = g.addNode("debug.print");
+            for (int n : { init, acc, get, out }) g.setValue(n, "name", std::string("s"));
+            g.setValue(init, "value", 0.0);
+            g.setValue(loop, "first", 1LL);
+            g.setValue(loop, "last", 10LL);
+            TEST_CHECK(L.connect(g, { start, "then", init, "exec" }) && L.connect(g, { init, "then", loop, "exec" }) && L.connect(g, { loop, "body", acc, "exec" })
+                           && L.connect(g, { get, "value", add, "a" }) && L.connect(g, { loop, "index", add, "b" }) && L.connect(g, { add, "result", acc, "value" })
+                           && L.connect(g, { loop, "completed", print, "exec" }) && L.connect(g, { out, "value", print, "value" }),
+                       "Test 391: graphe d'accumulation");
+            TEST_CHECK(L.warnings(g).empty(), "Test 391: boucle correctement ordonnée, aucun avertissement");
+            const auto rep = Runner(L, g, nullptr).run();
+            TEST_CHECK(rep.ok && !rep.log.empty() && rep.log.back() == "55" && rep.variables.count("s")
+                           && std::get<double>(rep.variables.at("s")) == 55.0,
+                       "Test 391: variable accumulée Σ 1..10 = 55 (" << rep.message << ")");
+            Graph u;
+            const int s0 = u.addNode("event.start"), p0 = u.addNode("debug.print"), g0 = u.addNode("var.get");
+            u.setValue(g0, "name", std::string("absente"));
+            TEST_CHECK(L.connect(u, { s0, "then", p0, "exec" }) && L.connect(u, { g0, "value", p0, "value" }), "Test 391: lecture d'une variable");
+            const auto bad = Runner(L, u, nullptr).run();
+            TEST_CHECK(!bad.ok && bad.message.find("non affectée") != std::string::npos, "Test 391: variable non affectée signalée");
+        }
+        // 5-6. Cycle d'exécution (bloquant) et dépendance mal ordonnée (avertissement)
+        {
+            Graph c;
+            const int s = c.addNode("event.start"), a = c.addNode("debug.print"), b = c.addNode("debug.print");
+            TEST_CHECK(L.connect(c, { s, "then", a, "exec" }) && L.connect(c, { a, "then", b, "exec" }) && L.connect(c, { b, "then", a, "exec" }),
+                       "Test 391: liens d'exécution en boucle");
+            bool cycle = false;
+            for (const auto& i : L.validate(c)) cycle = cycle || i.message.find("cycle d'exécution") != std::string::npos;
+            TEST_CHECK(cycle, "Test 391: cycle d'exécution refusé à la validation");
+            Graph d;
+            const int st = d.addNode("event.start"), print = d.addNode("debug.print"), set = d.addNode("var.set");
+            d.setValue(set, "name", std::string("x"));
+            d.setValue(set, "value", 1.0);
+            TEST_CHECK(L.connect(d, { st, "then", print, "exec" }) && L.connect(d, { print, "then", set, "exec" }) && L.connect(d, { set, "value", print, "value" }),
+                       "Test 391: lecture avant production");
+            const auto warnings = L.warnings(d);
+            TEST_CHECK(warnings.size() == 1 && warnings[0].node == print && L.validate(d).empty(), "Test 391: dépendance mal ordonnée signalée (non bloquante)");
+            TEST_CHECK(!Runner(L, d, nullptr).run().ok, "Test 391: à l'exécution, sortie non disponible");
+        }
+        // 7. Fichier v2 : commentaires et versions ; version 1 lisible ; version plus récente que la bibliothèque signalée
+        {
+            Graph f;
+            f.name = "Fichier v2";
+            const int s = f.addNode("event.start", -100, 0), m = f.addNode("test.make", 50, 20);
+            f.setValue(m, "value", 4.25);
+            TEST_CHECK(L.connect(f, { s, "then", f.addNode("debug.print", 300, 0), "exec" }), "Test 391: graphe à enregistrer");
+            Comment note;
+            note.x = -150, note.y = -60, note.width = 520, note.height = 220;
+            note.text = "Étape 1 — Modèle\nNœuds et éléments";
+            note.color = "#00796B";
+            const int cid = f.addComment(note);
+            TEST_CHECK(f.nodesInComment(cid).size() == 3, "Test 391: nœuds contenus dans le commentaire");
+            QTemporaryDir dir;
+            const QString path = dir.filePath("v2.tsbp");
+            TEST_CHECK(saveFile(f, path), "Test 391: enregistrement");
+            Graph back;
+            QString error;
+            TEST_CHECK(loadFile(path, back, &error), "Test 391: relecture (" << error.toStdString() << ")");
+            TEST_CHECK(back.comments().size() == 1 && back.comment(cid)->text == note.text && back.comment(cid)->color == "#00796B"
+                           && back.comment(cid)->width == 520.0,
+                       "Test 391: commentaire relu");
+            TEST_CHECK(back.node(s)->version == 1 && back.node(m)->version == 1 && std::get<double>(back.node(m)->values.at("value")) == 4.25,
+                       "Test 391: versions des nœuds enregistrées, valeurs relues");
+            Graph again;
+            TEST_CHECK(fromJson(toJson(back), again) && again.sameContent(back), "Test 391: relecture idempotente");
+            back.node(m)->version = 9;
+            bool newer = false;
+            for (const auto& i : L.validate(back)) newer = newer || i.message.find("version plus récente") != std::string::npos;
+            TEST_CHECK(newer, "Test 391: nœud d'une version plus récente signalé");
+            Graph v1;
+            TEST_CHECK(fromJson("{\"format\":\"tsbp\",\"version\":1,\"name\":\"ancien\",\"nodes\":[{\"id\":1,\"type\":\"event.start\",\"x\":0,\"y\":0}],"
+                                "\"links\":[]}",
+                                v1)
+                           && v1.nodes().size() == 1 && v1.node(1)->version == 1 && v1.comments().empty(),
+                       "Test 391: fichier de version 1 lu (nœuds en version 1, sans commentaire)");
+        }
+        // 9. Contenu complet d'un objet dans le journal
+        {
+            Graph g;
+            const int s = g.addNode("event.start"), make = g.addNode("test.make"), show = g.addNode("debug.print_details");
+            g.setValue(make, "n", 2LL);
+            g.setValue(show, "title", std::string("Vecteur"));
+            TEST_CHECK(L.connect(g, { s, "then", show, "exec" }) && L.connect(g, { make, "vector", show, "value" }), "Test 391: affichage du contenu");
+            const auto rep = Runner(L, g, nullptr).run();
+            TEST_CHECK(rep.ok && rep.log.size() == 1 && rep.log[0].find("Vecteur\ncomposantes : 1.0") == 0, "Test 391: contenu complet de l'objet écrit");
+        }
+        std::cout << "[PASS] Test 391: objets typés, réutilisation des résultats, variables, cycles et dépendances, fichier v2, copier-coller"
+                  << std::endl;
         ++passed;
     }
     return true;

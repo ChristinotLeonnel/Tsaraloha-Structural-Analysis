@@ -26,7 +26,11 @@
 namespace TSA::Plugins
 {
 
-inline constexpr int kApiVersion = 1;
+/// Version de l'API (structures échangées : Value, PinSpec, NodeDefinition, CommandSpec). Historique :
+///  1 — commandes et nœuds ;
+///  2 — valeurs objet (ObjectValue, ObjectRef dans Value), PinSpec::objectType, NodeDefinition étendue (statut,
+///      version, documentation, source, réutilisation des résultats, sorties ordonnées) : DLL de la version 1 refusées.
+inline constexpr int kApiVersion = 2;
 
 /// Exécution d'une commande de plugin.
 class ICommandContext

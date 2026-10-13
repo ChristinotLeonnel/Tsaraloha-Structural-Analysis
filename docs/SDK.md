@@ -21,7 +21,7 @@ de modules.
             ├──────────────────────────── modèle ─────────────────────────────────┤
             │ Model, ResultsModel, ReportDataBuilder, TemplateEngine                │
             └──────────────────────────────────────────────────────────────────────┘
-   modules : module.json ──► convertisseurs (processus) │ templates (données) │ plugin (DLL, API v1)
+   modules : module.json ──► convertisseurs (processus) │ templates (données) │ plugin (DLL, API v2)
 ```
 
 - `src/Modules`, `src/Templates`, `src/Reports` et `src/IO/Tsa3d` appartiennent à la couche **modèle**. Ils n'utilisent aucun widget (contrôle : `tools/check_layers.py`).
@@ -72,7 +72,7 @@ Un module est un dossier qui contient `module.json`. Le schéma JSON est `docs/s
 | Nom, version, description, éditeur, licence | `name`, `version` (`majeur.mineur[.correctif]`), `description`, `publisher`, `license` |
 | Compatibilité de l'hôte | `hosts` : application (`TSA` ou `TSALab`), `min`, `max` facultatif |
 | Dépendances | `dependencies` : `id`, version `min`, `optional` |
-| Commandes, menus, nœuds | via le `plugin` (API v1) ; les convertisseurs apparaissent dans **Fichier > Importer via un module...** |
+| Commandes, menus, nœuds | via le `plugin` (API v2) ; les convertisseurs apparaissent dans **Fichier > Importer via un module...** |
 | Types de données | `dataTypes` (ex. `TSA3D/1`) |
 | Formats d'import et d'export | `entryPoints.importers` et `entryPoints.exporters` |
 | Templates | `templates` : paquets `.tsatemplate` |
@@ -131,9 +131,9 @@ Elle est faite par `ModuleManifest::fromJson` :
 |---|---|---|
 | Convertisseur (processus séparé) | **aucune** : fichiers, arguments, code de sortie | formats d'échange, outils tiers, autres langages, autres compilateurs |
 | Template | aucune (JSON) | documents |
-| Plugin DLL (API v1) | même compilateur (MSVC), même runtime (`/MD` ou `/MDd`), `kApiVersion` = 1 | commandes et nœuds intégrés à l'interface |
+| Plugin DLL (API v2) | même compilateur (MSVC), même runtime (`/MD` ou `/MDd`), `kApiVersion` = 2 | commandes et nœuds intégrés à l'interface (objets typés, documentation des nœuds) |
 
-- L'API v1 des plugins n'a pas changé.
+- API des plugins : version 2 depuis le 13/10/2026 (valeurs objet et métadonnées des nœuds, `docs/PLUGINS.md`) ; une DLL de la version 1 est refusée avec le motif et doit être recompilée.
 - Le point d'arrêt `tsaraloha_plugin_shutdown` est **facultatif**. Il est appelé à l'arrêt du module ou à la fermeture de l'application, et un plugin existant sans ce point reste compatible.
 - Une DLL n'est jamais déchargée : ses fonctions restent référencées par les registres.
 - Pour toute extension qui ne demande pas d'intégration fine à l'interface, préférez le processus séparé.

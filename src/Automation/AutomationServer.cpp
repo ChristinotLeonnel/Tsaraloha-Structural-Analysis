@@ -32,6 +32,8 @@ QJsonValue toJson(const Value& v)
         for (int id : *ids) a.append(id);
         return a;
     }
+    if (const auto* obj = std::get_if<ObjectRef>(&v); obj && *obj)
+        return QJsonObject { { "type", QString::fromStdString((*obj)->typeName()) }, { "summary", QString::fromStdString((*obj)->summary()) } };
     return QJsonValue();
 }
 
@@ -81,6 +83,7 @@ bool fromJson(const QJsonValue& j, ValueType type, Value& out)
         out = ids;
         return true;
     }
+    case ValueType::Object: return false;   // pas de forme JSON d'entrée : un objet vient d'un lien Blueprint
     }
     return false;
 }
