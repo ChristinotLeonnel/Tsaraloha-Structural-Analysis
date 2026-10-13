@@ -273,6 +273,8 @@ set(UI_WIDGETS_SOURCES
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintScene.cpp
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintEditor.h
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintEditor.cpp
+    ${TSA_ROOT}/src/UI/Blueprint/BlueprintObjectViewer.h
+    ${TSA_ROOT}/src/UI/Blueprint/BlueprintObjectViewer.cpp
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.h
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.cpp
     ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.h

@@ -1,9 +1,12 @@
 #pragma once
 
-// Éditeur de Blueprints (composant partagé, couche widgets) : palette de nœuds, scène, valeurs du
-// nœud sélectionné, actions Nouveau / Ouvrir / Enregistrer / Valider / Exécuter, historique du graphe
-// (Annuler / Rétablir propres à l'éditeur), débogueur (points d'arrêt, pas à pas, valeurs produites,
-// arrêt), pont texte (script de commandes, description pour l'IA).
+// Éditeur de Blueprints (composant partagé, couche widgets) : palette de nœuds (statut validé / expérimental),
+// scène, valeurs du nœud sélectionné, actions Nouveau / Ouvrir / Enregistrer / Valider / Exécuter, historique du graphe
+// (Annuler / Rétablir propres à l'éditeur), copier / coller / dupliquer, commentaires, documentation et source des
+// nœuds (F1), liste des problèmes (erreurs, avertissements, erreur d'exécution), valeurs produites par la dernière
+// exécution (objets ouverts dans leur vue : BlueprintObjectViewer), débogueur (points d'arrêt, pas à pas, valeurs
+// produites, arrêt), réutilisation des résultats d'une exécution à l'autre (EvaluationCache), pont texte (script de
+// commandes, description pour l'IA).
 // Il exécute le Blueprint sur la session de projet fournie (setSession) : les commandes passent par le
 // registre central, donc par l'historique Annuler / Rétablir du projet et les observateurs du modèle.
 // Un graphe qui n'accède pas au projet (calcul, science) s'exécute en tâche de fond : l'interface reste
@@ -24,6 +27,7 @@ class QFormLayout;
 class QGraphicsView;
 class QLabel;
 class QLineEdit;
+class QTabWidget;
 class QTreeWidget;
 
 namespace TSA::Project
@@ -75,6 +79,14 @@ public:
     bool canUndo() const { return !m_undo.empty(); }
     bool canRedo() const { return !m_redo.empty(); }
 
+    // Copier / coller (presse-papiers : fragment JSON), commentaires
+    void copySelection();
+    void paste();
+    void duplicateSelection();
+    /// Commentaire encadrant les nœuds sélectionnés (ou au centre de la vue).
+    int addComment(const QString& text = {});
+    void showDocumentation();
+
     // Pont texte (IA, scripts)
     bool importScript(const QString& script, QString* error = nullptr);
     QString exportScript(QStringList* warnings = nullptr) const;
@@ -82,6 +94,9 @@ public:
 
     TSA::Blueprint::Graph& graph() { return m_graph; }
     QString currentFile() const { return m_file; }
+    /// Rapport de la dernière exécution (valeurs produites, profil, réutilisations).
+    const TSA::Blueprint::ExecutionReport& lastReport() const { return m_lastReport; }
+    TSA::Blueprint::EvaluationCache& cache() { return m_cache; }
 
 signals:
     /// Message pour la console de l'application (type : SYS, INFO, WARN, ERROR).
@@ -98,6 +113,12 @@ private:
     bool execute(bool debugging, bool stepFromStart);
     TSA::Blueprint::DebugAction pause(const TSA::Blueprint::DebugState& state);
     void showWatch(const std::map<int, std::map<std::string, TSA::Blueprint::Value>>* outputs);
+    /// Valeurs produites : nœud sélectionné (ou tous) de la dernière exécution, ou de la pause du débogueur.
+    void showValues();
+    void openValue(QTreeWidgetItem* item);
+    void refreshProblems();
+    void editComment(int id);
+    void graphReplaced();
     void setRunning(bool running);
     void recordChange(const QString& coalesceKey = {});
     void resetHistory();
@@ -116,7 +137,16 @@ private:
     QFormLayout* m_properties = nullptr;
     QLabel* m_nodeTitle = nullptr;
     QLabel* m_nodeDescription = nullptr;
+    QLabel* m_nodeStatus = nullptr;
+    QWidget* m_docButton = nullptr;
+    QLabel* m_watchTitle = nullptr;
     QTreeWidget* m_watch = nullptr;
+    QTreeWidget* m_problems = nullptr;
+    QTabWidget* m_sideTabs = nullptr;                           ///< onglets « Valeurs » / « Problèmes »
+    TSA::Blueprint::EvaluationCache m_cache;
+    TSA::Blueprint::ExecutionReport m_lastReport;
+    bool m_hasReport = false;
+    std::map<int, std::map<std::string, TSA::Blueprint::Value>> m_pauseValues;   ///< sorties visibles pendant une pause
 
     std::set<int> m_breakpoints;
     TSA::Blueprint::BreakpointDebugger* m_debugger = nullptr;   ///< pendant une exécution déboguée
