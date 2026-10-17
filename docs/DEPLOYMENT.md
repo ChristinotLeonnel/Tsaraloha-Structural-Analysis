@@ -104,5 +104,27 @@ Voir `docs/THIRD_PARTY_LICENSES.md`. Points d'attention :
 
 ## 7. Limites connues
 
-- Pas d'installateur (MSI ou NSIS) : le livrable est un dossier portable. L'association de fichiers est enregistrée au premier lancement dans le registre de l'utilisateur.
+- La version portable (ZIP) n'enregistre l'association de fichiers qu'au premier lancement, dans le registre de l'utilisateur ; l'installateur l'enregistre dès l'installation (section 8).
 - Signature de code des exécutables non faite.
+
+## 8. Installateur Windows
+
+La cible `installer_<produit>` (Inno Setup 6, `packaging/installer.iss`, commun à TSA et TSALab) construit
+`<build>/dist/<produit>-<version>-windows-x64-setup.exe` à partir du paquet `package_<produit>`, sans y ajouter ni retirer
+de fichier. Elle n'existe que si `ISCC.exe` est trouvé (`winget install JRSoftware.InnoSetup`).
+
+| Point | Comportement |
+| :--- | :--- |
+| Identité | lue dans `product/ProductIdentity.h` (nom, version, extension, ProgID, DLL d'aperçu, dossier des réglages) ; `kInstallerAppId` est permanent : le changer casserait la mise à jour en place |
+| Droits | installation pour l'utilisateur courant (`%LOCALAPPDATA%\Programs\<produit>`), sans administrateur ; pas d'installation pour tous les utilisateurs (l'aperçu Explorateur s'enregistre en HKCU) |
+| Association | tâche cochée par défaut : mêmes clés HKCU que `WindowsAssociation.cpp`, aperçu Explorateur par `regsvr32` (DllRegisterServer en HKCU) |
+| Désinstallation | Paramètres > Applications ; retire fichiers, raccourcis, ProgID, valeurs posées sur l'extension, CLSID d'aperçu ; ne touche jamais aux réglages ni aux projets de l'utilisateur |
+| Licence | page de licence : `LICENSE` (MIT) du produit, également copié en `LICENSE.txt` dans le paquet |
+
+**Version publique sans Gmsh.** Tant que la question de licence de Gmsh (section 6, `THIRD_PARTY_LICENSES.md`) n'est pas
+tranchée, les versions publiques se construisent avec `-DTSA_PACKAGE_GMSH=OFF` : le logiciel démarre, le maillage est
+indisponible. Un installateur ne change rien à cette question : il distribue les mêmes fichiers que le paquet.
+
+Essai réalisé le 17/10/2026 (TSA 0.1.0, Release, sans Gmsh, 44 Mo) : installation silencieuse (`/VERYSILENT`),
+fichiers, raccourci, association, aperçu et entrée « Applications » présents ; TSA démarre (Start Center) ; désinstallation
+silencieuse sans reste (fichiers, raccourci, ProgID, extension, CLSID, entrée) — 19 contrôles sur 19.

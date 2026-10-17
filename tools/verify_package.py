@@ -24,7 +24,7 @@ FORBIDDEN_PREFIXES = ("qt5", "vtk", "tcl86", "tk86", "doxygen")
 
 
 def pe_imports(path):
-    """Noms des DLL importées (imports normaux et différés) d'un fichier PE 32/64 bits."""
+    """DLL importées d'un fichier PE 32/64 bits : liste de (nom, différé) — imports normaux puis différés."""
     with open(path, "rb") as f:
         data = f.read()
     if data[:2] != b"MZ":
@@ -64,7 +64,7 @@ def pe_imports(path):
             noff = rva2off(name_rva)
             if noff is None:
                 break
-            names.append(cstr(noff))
+            names.append((cstr(noff), index == 13))
             off += stride
     return names
 
@@ -87,6 +87,13 @@ def main():
     sysdirs = [os.path.join(windir, "System32"), windir]
     errors, warnings = [], []
 
+    manifest = {}
+    try:
+        with open(os.path.join(root, "MANIFEST.json"), encoding="utf-8") as f:
+            manifest = json.load(f)
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"MANIFEST.json illisible : {e}")
+
     binaries = []
     for dirpath, _, files in os.walk(root):
         for f in files:
@@ -104,17 +111,21 @@ def main():
         # principal (plugins Qt, plugins/) trouvent en revanche celles du dossier de l'application.
         separate = os.path.normcase(here) != os.path.normcase(root) and any(
             f.lower().endswith(".exe") for f in os.listdir(here))
-        for imp in pe_imports(b):
+        for imp, delayed in pe_imports(b):
             if os.path.exists(os.path.join(here, imp)) or (not separate and os.path.exists(os.path.join(root, imp))):
                 continue
             if system_provides(imp, sysdirs):
+                continue
+            # Paquet construit sans Gmsh (TSA_PACKAGE_GMSH=OFF, manifeste) : la DLL, chargée en différé, peut manquer ;
+            # le logiciel démarre et signale le maillage indisponible.
+            if delayed and imp.lower().startswith("gmsh-") and manifest and not manifest.get("gmshIncluded"):
                 continue
             errors.append(f"{rel} : DLL manquante « {imp} »")
         checked += 1
 
     required = ["platforms/qwindows.dll", "iconengines/qsvgicon.dll", "imageformats/qsvg.dll",
                 "translations/qtbase_fr.qm", "resources/occt/Shaders", "resources/occt/StdResource",
-                "MANIFEST.json", "docs/shortcut.txt", "licenses/THIRD_PARTY_LICENSES.md", "Extensions"]
+                "MANIFEST.json", "LICENSE.txt", "docs/shortcut.txt", "licenses/THIRD_PARTY_LICENSES.md", "Extensions"]
     exe = [f for f in os.listdir(root) if f.lower() in ("tsa.exe", "tsalab.exe")]
     if not exe:
         errors.append("exécutable principal absent")
@@ -122,12 +133,6 @@ def main():
         if not os.path.exists(os.path.join(root, r)):
             errors.append(f"fichier indispensable absent : {r}")
 
-    manifest = {}
-    try:
-        with open(os.path.join(root, "MANIFEST.json"), encoding="utf-8") as f:
-            manifest = json.load(f)
-    except Exception as e:  # noqa: BLE001
-        errors.append(f"MANIFEST.json illisible : {e}")
     if manifest.get("gmshIncluded"):
         dlls = [f for f in os.listdir(root) if f.lower().startswith("gmsh-") and f.lower().endswith(".dll")]
         if not dlls:

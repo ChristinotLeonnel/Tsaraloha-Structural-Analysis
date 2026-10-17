@@ -72,4 +72,10 @@ inline constexpr char kGlyphSvg[] = ":/icons/TSA_glyph.svg";
 // --- Extension Explorateur (DLL de miniatures) -------------------------------------------------
 inline constexpr char kThumbnailProviderDll[] = "TSAThumbnailProvider.dll";
 
+
+// --- Installateur Windows (packaging/installer.iss, lu par CMake) ---------------------------------
+// Identifiant permanent de l'installateur : ne jamais le changer, sinon Windows traite une nouvelle
+// version comme un autre logiciel (pas de mise à jour en place, deux entrées dans « Programmes »).
+inline constexpr char kInstallerAppId[] = "15E32277-3248-46AD-9261-B3098FF290A2";
+
 } // namespace TSA::Product
