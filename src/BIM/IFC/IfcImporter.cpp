@@ -101,6 +101,15 @@ public:
         if (m_opt.useAnalyticalModel) importAnalytical();
         importProducts();
         finalizeBim();
+        // Jamais de succès sans contenu : un fichier qui contient des produits porteurs dont aucun n'a pu être
+        // converti est un échec (motifs dans les avertissements), pas un import « réussi » vide.
+        if (m_report.products == 0 && m_report.nodes == 0 && m_report.members == 0 && m_report.surfaces == 0)
+        {
+            m_report.error = m_sourceProducts > 0
+                ? std::to_string(m_sourceProducts) + " produit(s) porteur(s) dans le fichier, aucun n'a pu être converti"
+                : "aucun élément structurel ni modèle analytique dans le fichier";
+            return m_report;
+        }
         m_report.ok = true;
         return m_report;
     }
@@ -750,6 +759,7 @@ private:
             {
                 BimCategory cat;
                 if (!categoryOf(p->type, cat)) continue;
+                ++m_sourceProducts;
                 const std::string pdt = p->arg(8).asText();
                 std::vector<AnalyticalRef> refs;
                 for (int a : m_assigned[p->id])
@@ -840,6 +850,7 @@ private:
     double m_pressure = 1.0;   ///< facteur de contrainte du fichier → Pa
     BimModel m_bim;
     std::vector<PhysicalElement> m_products;
+    int m_sourceProducts = 0;   ///< produits porteurs présents dans le fichier (convertis ou non)
 
     std::map<int, int> m_material, m_productOf, m_container;
     std::map<int, std::vector<int>> m_psets, m_classes, m_assigned, m_materialProps;

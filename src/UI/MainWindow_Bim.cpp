@@ -69,23 +69,29 @@ void MainWindow::onActionImportIfc()
                                                       tr("IFC (*.ifc);;Tous les fichiers (*.*)"));
     if (path.isEmpty()) return;
 
+    // Lecture dans un modèle temporaire : le projet ouvert n'est remplacé qu'après un import réussi
+    // (un fichier illisible ou sans élément exploitable le laisse intact).
+    TSA::Model::Model imported;
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const auto r = TSA::BIM::Ifc::IfcImporter::importFile(path.toStdString(), imported);
+    QApplication::restoreOverrideCursor();
+    if (!r.ok)
+    {
+        QString msg = QString::fromStdString(r.summary());
+        if (!r.warnings.empty()) msg += "\n\n" + tr("Détail :") + "\n" + joinWarnings(r.warnings);
+        msg += "\n\n" + tr("Le projet ouvert n'a pas été modifié.");
+        QMessageBox::critical(this, tr("Import IFC"), msg);
+        return;
+    }
+
     // L'import crée un nouveau projet (même parcours que Fichier > Nouveau, avec enregistrement proposé)
     const auto before = m_model->revision();
     onActionNew();
     if (m_model->revision() == before && !m_model->nodes().empty()) return;   // nouveau projet annulé
 
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    const auto r = TSA::BIM::Ifc::IfcImporter::importFile(path.toStdString(), *m_model);
     // Reconstruction complète des vues (onModelCleared) puis état initial de l'historique
-    m_model->restoreSnapshot(m_model->createSnapshot("Import IFC"));
+    m_model->restoreSnapshot(imported.createSnapshot("Import IFC"));
     m_model->clearUndoRedo();
-    QApplication::restoreOverrideCursor();
-
-    if (!r.ok)
-    {
-        QMessageBox::critical(this, tr("Import IFC"), QString::fromStdString(r.summary()));
-        return;
-    }
 
     const QString name = QFileInfo(path).completeBaseName();
     if (m_viewportContainer && m_model->levelManager())
