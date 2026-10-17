@@ -8,9 +8,13 @@
 // déclenchent leur corps plusieurs fois. Les commandes modifient le projet par le registre central :
 // une entrée Annuler par commande, vues notifiées par le modèle.
 // Garde-fous : nombre d'étapes et d'itérations bornés, erreur explicite avec le nœud fautif.
-// Profilage : nombre d'exécutions et temps cumulé par nœud.
+// Profilage : nombre d'exécutions, réutilisations et temps cumulé par nœud.
 // Débogage : un Debugger (facultatif) est consulté avant chaque nœud d'action ; il peut suspendre
 // l'exécution (point d'arrêt, pas à pas), inspecter les valeurs déjà produites, ou l'interrompre.
+// Réutilisation : un nœud pur « cacheable » n'est réévalué que si ses entrées changent (EvaluationCache,
+// conservé d'une exécution à l'autre par l'éditeur : seule la partie modifiée du graphe est recalculée).
+// Variables : var.set / var.get (accumulateurs des boucles, par exemple K = K + Aᵀ·k·A).
+// Valeurs intermédiaires : toutes les sorties produites sont rendues dans le rapport (ExecutionReport::values).
 
 #include "BlueprintGraph.h"
 
@@ -39,9 +43,16 @@ struct Issue
     std::string message;
 };
 
+class NodeLibrary;
+
 class NodeLibrary
 {
 public:
+    NodeLibrary() = default;
+    /// Bibliothèque augmentée : ses définitions propres, puis celles de `base` (non possédée, doit lui survivre).
+    explicit NodeLibrary(const NodeLibrary* base) : m_base(base) {}
+
+    /// Faux si l'identifiant est vide, déjà défini (ici ou dans la bibliothèque de base) ou sans exécuteur.
     bool add(NodeDefinition definition, NodeExecutor executor);
     const NodeDefinition* find(const std::string& type) const;
     const NodeExecutor* executor(const std::string& type) const;
@@ -52,11 +63,29 @@ public:
     /// Crée le lien s'il est valide ; un lien existant vers la même entrée de donnée (ou depuis la
     /// même sortie d'exécution) est remplacé.
     bool connect(Graph& g, const Link& link, std::string* why = nullptr) const;
-    /// Types inconnus, liens invalides, entrées requises non renseignées, cycles de données.
+    /// Erreurs bloquantes : types inconnus, version de nœud plus récente que la bibliothèque, liens invalides
+    /// (types, objets), entrées requises non renseignées, cycles de données entre nœuds purs, cycles d'exécution.
     std::vector<Issue> validate(const Graph& g) const;
+    /// Avertissements (non bloquants) : un nœud d'action lit la sortie d'un nœud d'action qui n'est pas exécuté avant
+    /// lui dans le flux (dépendance incorrecte : « sortie non disponible » à l'exécution, ou valeur d'un tour précédent).
+    std::vector<Issue> warnings(const Graph& g) const;
 
     /// Vrai si un nœud du graphe lit ou modifie le projet (exécution obligatoire dans le thread de l'interface).
     bool usesProject(const Graph& g) const;
+
+    /// Bibliothèque `base` augmentée des sous-graphes `subgraphs` : types « sub.<id> » (instances), « sub.<id>.in » et
+    /// « sub.<id>.out » (entrée et sortie du corps). BlueprintSubgraph.h.
+    static std::unique_ptr<NodeLibrary> withSubgraphs(const NodeLibrary& base, const std::vector<SubgraphDefinition>& subgraphs);
+    /// Bibliothèque augmentée (construite avec une base) : remplace ses types de sous-graphes par ceux de `subgraphs`, en
+    /// place (l'éditeur garde la même bibliothèque d'un graphe à l'autre). Invalide les NodeDefinition* déjà obtenus de
+    /// ces types. Sans base : vide la bibliothèque.
+    void setSubgraphs(const std::vector<SubgraphDefinition>& subgraphs);
+    /// Bibliothèque effective d'un graphe : celle-ci si le graphe n'a pas de sous-graphe (ou si elle en contient déjà les
+    /// types), sinon une bibliothèque augmentée conservée dans `holder`. validate, warnings, canConnect, connect et
+    /// usesProject l'utilisent d'eux-mêmes ; Runner aussi.
+    const NodeLibrary& forGraph(const Graph& g, std::unique_ptr<NodeLibrary>& holder) const;
+    /// Bibliothèque augmentée de sous-graphes (types sub.*).
+    bool hasSubgraphTypes() const { return m_subgraphTypes; }
 
     /// Bibliothèque standard : événements, paramètres, math, logique, flux, texte, débogage,
     /// commandes du registre central (cmd.*), nœuds scientifiques TSALab (science.*), nœuds des plugins.
@@ -72,6 +101,8 @@ private:
     };
     std::vector<Entry> m_entries;
     std::map<std::string, std::size_t> m_index;
+    const NodeLibrary* m_base = nullptr;
+    bool m_subgraphTypes = false;
 };
 
 void registerStandardNodes(NodeLibrary& library, const TSA::Automation::CommandRegistry& commands);
@@ -81,6 +112,7 @@ bool registerCommandNode(NodeLibrary& library, const TSA::Automation::CommandReg
 struct NodeStats
 {
     int executions = 0;
+    int reused = 0;                        ///< résultats réutilisés sans réévaluation (nœud pur « cacheable »)
     double milliseconds = 0.0;
 };
 
@@ -92,7 +124,35 @@ struct ExecutionReport
     std::vector<std::string> log;          ///< sorties de debug.print et des commandes
     std::map<int, NodeStats> profile;      ///< profileur
     int steps = 0;
+    int reused = 0;                        ///< réutilisations au total
     double milliseconds = 0.0;
+    /// Dernières valeurs produites par chaque nœud (valeurs intermédiaires : matrices, vecteurs, résultats…).
+    std::map<int, std::map<std::string, Value>> values;
+    std::map<std::string, Value> variables;   ///< variables du graphe en fin d'exécution
+};
+
+/// Résultats réutilisables des nœuds purs « cacheable » (NodeDefinition::cacheable) : un nœud n'est réévalué que si
+/// son type ou l'une de ses entrées (valeur reliée ou saisie, comparée par sameValue) a changé. Une instance par
+/// graphe, conservée d'une exécution à l'autre (éditeur) ; à vider si le graphe est remplacé. Non partagé entre
+/// exécutions simultanées.
+class EvaluationCache
+{
+public:
+    void clear() { m_entries.clear(); }
+    std::size_t size() const { return m_entries.size(); }
+    /// Retire les entrées des nœuds absents du graphe ou dont le type a changé.
+    void prune(const Graph& graph);
+
+private:
+    friend class Runner;
+    struct Entry
+    {
+        std::string type;
+        std::vector<std::shared_ptr<const void>> revision;   ///< NodeDefinition::revision à l'évaluation
+        std::vector<Value> inputs;
+        std::map<std::string, Value> outputs;
+    };
+    std::map<int, Entry> m_entries;
 };
 
 struct ExecutionLimits
@@ -155,6 +215,8 @@ public:
     ExecutionReport run(const std::map<std::string, Value>& parameterOverrides = {});
     /// Débogueur consulté avant chaque nœud d'action (nul : aucun). Non possédé.
     void setDebugger(Debugger* debugger);
+    /// Réutilisation des résultats d'une exécution à l'autre (nul : réutilisation limitée à cette exécution). Non possédé.
+    void setCache(EvaluationCache* cache);
     /// Demande l'arrêt (appelable depuis un autre thread) : l'exécution s'arrête avant le nœud suivant.
     void requestStop();
 
@@ -177,6 +239,25 @@ public:
     std::string text(const std::string& pin);
     bool isConnected(const std::string& pin) const;
     bool hasValue(const std::string& pin) const;   ///< reliée ou saisie
+    /// Objet d'une entrée : nul (et erreur enregistrée) s'il manque ou n'a pas le type de la broche.
+    ObjectRef object(const std::string& pin);
+    /// Bibliothèque de l'exécution (effective : sous-graphes compris).
+    const NodeLibrary& library() const;
+    /// Objet d'une entrée converti dans sa classe C++ : nul (et erreur) si absent ou d'une autre classe.
+    template <typename T>
+    std::shared_ptr<const T> objectAs(const std::string& pin)
+    {
+        const ObjectRef o = object(pin);
+        if (!o) return nullptr;
+        auto t = std::dynamic_pointer_cast<const T>(o);
+        if (!t) fail("entrée « " + pin + " » : objet " + o->typeName() + " d'une classe inattendue");
+        return t;
+    }
+
+    /// Variables du graphe (var.set / var.get) : partagées par tous les nœuds pendant une exécution.
+    bool hasVariable(const std::string& name) const;
+    Value variable(const std::string& name) const;
+    void setVariable(const std::string& name, const Value& value);
 
     void setOutput(const std::string& pin, const Value& value);
     /// Déclenche la sortie d'exécution (exécute la chaîne aval, puis revient). Faux si erreur en aval.

@@ -64,6 +64,7 @@ bool matches(const Value& v, ValueType t)
     case ValueType::Text: return std::holds_alternative<std::string>(v);
     case ValueType::Point3: return std::holds_alternative<Point3>(v);
     case ValueType::IdList: return std::holds_alternative<std::vector<int>>(v) || std::holds_alternative<long long>(v);
+    case ValueType::Object: return std::holds_alternative<ObjectRef>(v) && std::get<ObjectRef>(v) != nullptr;
     }
     return false;
 }
@@ -762,6 +763,7 @@ bool parseValue(const std::string& raw, ValueType type, Value& out)
         case ValueType::Integer: out = std::stoll(raw, &used); return used == raw.size();
         case ValueType::Real: out = std::stod(raw, &used); return used == raw.size();
         case ValueType::Text: out = raw; return true;
+        case ValueType::Object: return false;   // un objet n'a pas de forme textuelle : il vient d'un lien Blueprint
         case ValueType::Point3:
         case ValueType::IdList:
         {
@@ -868,6 +870,8 @@ std::string formatArgument(const Value& v)
         const auto& ids = std::get<std::vector<int>>(v);
         for (std::size_t i = 0; i < ids.size(); ++i) o << (i ? "," : "") << ids[i];
     }
+    else if (const auto* obj = std::get_if<ObjectRef>(&v); obj && *obj)
+        o << '"' << (*obj)->summary() << '"';   // lisible, non relisible : un objet n'a pas de forme textuelle
     return o.str();
 }
 
@@ -888,7 +892,31 @@ std::string formatValue(const Value& v)
         const auto& ids = std::get<std::vector<int>>(v);
         for (std::size_t i = 0; i < ids.size(); ++i) o << (i ? "," : "") << ids[i];
     }
+    else if (const auto* obj = std::get_if<ObjectRef>(&v))
+        o << (*obj ? (*obj)->summary() : std::string("(objet vide)"));
     return o.str();
+}
+
+bool catalogSection(const std::string& spec, TSA::Model::Section& out, std::string* error)
+{
+    return parseSection(spec, out, error);
+}
+
+bool catalogMaterial(const std::string& name, TSA::Model::Material& out)
+{
+    return parseMaterial(name, out);
+}
+
+bool sameValue(const Value& a, const Value& b)
+{
+    if (a.index() != b.index()) return false;
+    if (const auto* oa = std::get_if<ObjectRef>(&a))
+    {
+        const auto& ob = std::get<ObjectRef>(b);
+        if (*oa == ob) return true;
+        return *oa && ob && (*oa)->typeName() == ob->typeName() && (*oa)->equals(*ob);
+    }
+    return a == b;
 }
 
 const char* typeName(ValueType t)
@@ -901,6 +929,7 @@ const char* typeName(ValueType t)
     case ValueType::Text: return "texte";
     case ValueType::Point3: return "point x,y,z";
     case ValueType::IdList: return "liste d'identifiants";
+    case ValueType::Object: return "objet";
     }
     return "?";
 }

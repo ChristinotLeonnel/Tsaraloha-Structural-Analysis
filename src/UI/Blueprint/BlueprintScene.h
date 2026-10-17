@@ -6,8 +6,12 @@
 //     colorés par type) ; valeur saisie affichée sur les entrées non reliées ;
 //   - liens : courbes de Bézier (blanches pour l'exécution, couleur du type pour les données) ;
 //   - tirer depuis une broche crée un lien (contrôlé par NodeLibrary::connect) ;
-//   - Suppr retire les nœuds / liens sélectionnés ;
-//   - après une exécution : profil (exécutions, temps) sur chaque nœud, nœud en erreur surligné ;
+//   - Suppr retire les nœuds / liens / commentaires sélectionnés ;
+//   - commentaires : cadres titrés derrière les nœuds ; déplacer un cadre déplace les nœuds qu'il contient, la poignée
+//     en bas à droite le redimensionne, un double-clic modifie son texte ;
+//   - statut des composants : ✓ validé, ⚗ expérimental (en-tête du nœud) ;
+//   - sous-graphes : instances (en-tête vert sapin, « ⧉ », double-clic : ouvrir le corps), entrée et sortie d'un corps ;
+//   - après une exécution : profil (exécutions, réutilisations, temps) sur chaque nœud, nœud en erreur surligné ;
 //   - débogage : points d'arrêt (pastille rouge), nœud en pause surligné, édition bloquée pendant l'exécution.
 
 #include "Blueprint/BlueprintRuntime.h"
@@ -23,6 +27,7 @@ namespace TSA::UI
 {
 
 class BlueprintNodeItem;
+class BlueprintCommentItem;
 
 class BlueprintScene : public QGraphicsScene
 {
@@ -35,6 +40,15 @@ public:
     void rebuild();
     int addNode(const std::string& type, const QPointF& pos);
     void deleteSelection();
+    /// Commentaire encadrant `rect` (scène) ; sélectionné.
+    int addComment(const QRectF& rect, const QString& text);
+    void refreshComment(int id);
+    std::set<int> selectedNodes() const;
+    std::set<int> selectedComments() const;
+    /// Sélectionne exactement ces nœuds et commentaires.
+    void selectItems(const std::vector<int>& nodes, const std::vector<int>& comments);
+    /// Rend le nœud visible et le sélectionne.
+    void focusNode(int id);
     /// Affiche le profil d'une exécution et le nœud en erreur (0 : aucun). Rapport vide : efface.
     void showReport(const TSA::Blueprint::ExecutionReport* report);
     void refreshNode(int id);
@@ -57,12 +71,22 @@ public:
     // Interne (éléments) : position déplacée, broche à une position de scène.
     void nodeMoved(int id, const QPointF& pos);
     QPointF pinPosition(int node, const std::string& pin, bool output) const;
+    /// Déplace un nœud (commentaire qui emporte son contenu) sans passer par la souris.
+    void moveNodeBy(int id, const QPointF& delta);
+    void commentChanged();
+    void requestCommentEdit(int id) { emit commentEditRequested(id); }
+    void requestNodeOpen(int id) { emit nodeOpenRequested(id); }
 
 signals:
     void message(const QString& text);
     void graphChanged();
     /// Des nœuds ont été déplacés à la souris (fin du glisser).
     void nodesMoved();
+    /// Double-clic sur un commentaire : modifier son texte.
+    void commentEditRequested(int id);
+    /// Double-clic sur un nœud (instance de sous-graphe : ouvrir son corps). À traiter en différé : l'éditeur reconstruit
+    /// la scène, donc l'élément qui reçoit le clic.
+    void nodeOpenRequested(int id);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
@@ -83,6 +107,7 @@ private:
     TSA::Blueprint::Graph& m_graph;
     const TSA::Blueprint::NodeLibrary& m_library;
     std::map<int, BlueprintNodeItem*> m_items;
+    std::map<int, BlueprintCommentItem*> m_commentItems;
     std::vector<QGraphicsPathItem*> m_links;
     QGraphicsPathItem* m_dragLine = nullptr;
     PinHit m_dragFrom;

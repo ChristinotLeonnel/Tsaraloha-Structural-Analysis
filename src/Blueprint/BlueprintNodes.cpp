@@ -1,4 +1,4 @@
-// Nœuds standard des Blueprints : événements, paramètres, maths, logique, flux, texte, débogage,
+// Nœuds standard des Blueprints : événements, paramètres, variables, maths, logique, flux, texte, débogage,
 // commandes du registre central (une par commande, générées automatiquement) et science TSALab.
 #include "BlueprintRuntime.h"
 
@@ -41,10 +41,23 @@ NodeDefinition def(std::string id, std::string title, std::string category, std:
     return { std::move(id), std::move(title), std::move(category), std::move(description), std::move(in), std::move(out), pure };
 }
 
+/// Fonction pure de ses entrées : résultat réutilisé tant que les entrées ne changent pas.
+NodeDefinition pureFunction(NodeDefinition d)
+{
+    d.cacheable = true;
+    return d;
+}
+
+NodeDefinition ordered(NodeDefinition d)
+{
+    d.orderedOutputs = true;
+    return d;
+}
+
 void binaryMath(NodeLibrary& lib, const char* id, const char* title, const char* desc, double (*op)(double, double, bool&))
 {
-    lib.add(def(id, title, "Math", desc, { data("a", "A", VT::Real, 0.0), data("b", "B", VT::Real, 0.0) },
-                { data("result", "Résultat", VT::Real) }, true),
+    lib.add(pureFunction(def(id, title, "Math", desc, { data("a", "A", VT::Real, 0.0), data("b", "B", VT::Real, 0.0) },
+                { data("result", "Résultat", VT::Real) }, true)),
             [op](ExecutionContext& c) {
                 bool ok = true;
                 const double r = op(c.real("a"), c.real("b"), ok);
@@ -81,8 +94,11 @@ void parameterNode(NodeLibrary& lib, const char* id, const char* title, VT type,
 void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegistry& commands)
 {
     // --- Événements ------------------------------------------------------------------------------
-    lib.add(def("event.start", "Début", "Événements", "Point de départ de l'exécution.", {}, { execOut() }, false),
-            [](ExecutionContext& c) { return c.fire("then"); });
+    {
+        NodeDefinition start = def("event.start", "Début", "Événements", "Point de départ de l'exécution.", {}, { execOut() }, false);
+        start.entry = true;
+        lib.add(std::move(start), [](ExecutionContext& c) { return c.fire("then"); });
+    }
 
     // --- Paramètres ------------------------------------------------------------------------------
     parameterNode<double>(lib, "param.real", "Paramètre réel", VT::Real, 0.0);
@@ -90,6 +106,35 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
     parameterNode<bool>(lib, "param.bool", "Paramètre booléen", VT::Bool, false);
     parameterNode<std::string>(lib, "param.text", "Paramètre texte", VT::Text, std::string());
     parameterNode<Point3>(lib, "param.point", "Paramètre point", VT::Point3, Point3 { 0, 0, 0 }, Quantity::Length);
+
+    // --- Variables ---------------------------------------------------------------------------------
+    // Valeur nommée partagée par tout le graphe pendant une exécution (accumulateur d'une boucle : K = K + Aᵀ·k·A).
+    lib.add(def("var.set", "Affecter une variable", "Variables",
+                "Mémorise une valeur sous un nom pour la suite de l'exécution (toute valeur, objets compris). "
+                "La variable est relue par « Lire une variable » ; elle disparaît à la fin de l'exécution.",
+                { execIn(), data("name", "Nom", VT::Text, std::string("x")), anyData("value", "Valeur") },
+                { execOut(), anyData("value", "Valeur") }, false),
+            [](ExecutionContext& c) {
+                const std::string name = c.text("name");
+                const Value v = c.input("value");
+                if (c.failed()) return false;
+                if (name.empty()) return c.fail("nom de variable vide");
+                if (std::holds_alternative<std::monostate>(v)) return c.fail("valeur vide pour la variable « " + name + " »");
+                c.setVariable(name, v);
+                c.setOutput("value", v);
+                return c.fire("then");
+            });
+    lib.add(def("var.get", "Lire une variable", "Variables",
+                "Valeur actuelle d'une variable affectée plus tôt dans l'exécution (réévaluée à chaque lecture : dans une boucle, "
+                "elle voit la dernière affectation).",
+                { data("name", "Nom", VT::Text, std::string("x")) }, { anyData("value", "Valeur") }, true),
+            [](ExecutionContext& c) {
+                const std::string name = c.text("name");
+                if (c.failed()) return false;
+                if (!c.hasVariable(name)) return c.fail("variable « " + name + " » non affectée (relier « Affecter une variable » avant sa lecture)");
+                c.setOutput("value", c.variable(name));
+                return true;
+            });
 
     // --- Math --------------------------------------------------------------------------------------
     binaryMath(lib, "math.add", "Addition", "A + B", [](double a, double b, bool&) { return a + b; });
@@ -99,9 +144,9 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
         ok = b != 0.0;
         return ok ? a / b : 0.0;
     });
-    lib.add(def("math.compare", "Comparer", "Math", "A op B, op ∈ { <, <=, >, >=, ==, != }.",
+    lib.add(pureFunction(def("math.compare", "Comparer", "Math", "A op B, op ∈ { <, <=, >, >=, ==, != }.",
                 { data("a", "A", VT::Real, 0.0), data("b", "B", VT::Real, 0.0), data("op", "Opérateur", VT::Text, std::string("<")) },
-                { data("result", "Résultat", VT::Bool) }, true),
+                { data("result", "Résultat", VT::Bool) }, true)),
             [](ExecutionContext& c) {
                 const double a = c.real("a"), b = c.real("b");
                 const std::string op = c.text("op");
@@ -116,23 +161,23 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
                 c.setOutput("result", r);
                 return !c.failed();
             });
-    lib.add(def("math.to_integer", "Arrondir en entier", "Math", "Entier le plus proche.", { data("value", "Valeur", VT::Real, 0.0) },
-                { data("result", "Entier", VT::Integer) }, true),
+    lib.add(pureFunction(def("math.to_integer", "Arrondir en entier", "Math", "Entier le plus proche.", { data("value", "Valeur", VT::Real, 0.0) },
+                { data("result", "Entier", VT::Integer) }, true)),
             [](ExecutionContext& c) {
                 c.setOutput("result", static_cast<long long>(std::llround(c.real("value"))));
                 return !c.failed();
             });
-    lib.add(def("math.make_point", "Construire un point", "Math", "Point (x, y, z) en mètres.",
+    lib.add(pureFunction(def("math.make_point", "Construire un point", "Math", "Point (x, y, z) en mètres.",
                 { data("x", "X", VT::Real, 0.0, Quantity::Length), data("y", "Y", VT::Real, 0.0, Quantity::Length),
                   data("z", "Z", VT::Real, 0.0, Quantity::Length) },
-                { data("point", "Point", VT::Point3, {}, Quantity::Length) }, true),
+                { data("point", "Point", VT::Point3, {}, Quantity::Length) }, true)),
             [](ExecutionContext& c) {
                 c.setOutput("point", Point3 { c.real("x"), c.real("y"), c.real("z") });
                 return !c.failed();
             });
-    lib.add(def("math.break_point", "Décomposer un point", "Math", "Coordonnées d'un point.",
+    lib.add(pureFunction(def("math.break_point", "Décomposer un point", "Math", "Coordonnées d'un point.",
                 { data("point", "Point", VT::Point3, Point3 { 0, 0, 0 }, Quantity::Length) },
-                { data("x", "X", VT::Real), data("y", "Y", VT::Real), data("z", "Z", VT::Real) }, true),
+                { data("x", "X", VT::Real), data("y", "Y", VT::Real), data("z", "Z", VT::Real) }, true)),
             [](ExecutionContext& c) {
                 const Value v = c.input("point");
                 const auto* p = std::get_if<Point3>(&v);
@@ -144,13 +189,13 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
             });
 
     // --- Logique -----------------------------------------------------------------------------------
-    lib.add(def("logic.and", "ET", "Logique", "A et B.", { data("a", "A", VT::Bool, false), data("b", "B", VT::Bool, false) },
-                { data("result", "Résultat", VT::Bool) }, true),
+    lib.add(pureFunction(def("logic.and", "ET", "Logique", "A et B.", { data("a", "A", VT::Bool, false), data("b", "B", VT::Bool, false) },
+                { data("result", "Résultat", VT::Bool) }, true)),
             [](ExecutionContext& c) { c.setOutput("result", c.boolean("a") && c.boolean("b")); return !c.failed(); });
-    lib.add(def("logic.or", "OU", "Logique", "A ou B.", { data("a", "A", VT::Bool, false), data("b", "B", VT::Bool, false) },
-                { data("result", "Résultat", VT::Bool) }, true),
+    lib.add(pureFunction(def("logic.or", "OU", "Logique", "A ou B.", { data("a", "A", VT::Bool, false), data("b", "B", VT::Bool, false) },
+                { data("result", "Résultat", VT::Bool) }, true)),
             [](ExecutionContext& c) { c.setOutput("result", c.boolean("a") || c.boolean("b")); return !c.failed(); });
-    lib.add(def("logic.not", "NON", "Logique", "Négation.", { data("a", "A", VT::Bool, false) }, { data("result", "Résultat", VT::Bool) }, true),
+    lib.add(pureFunction(def("logic.not", "NON", "Logique", "Négation.", { data("a", "A", VT::Bool, false) }, { data("result", "Résultat", VT::Bool) }, true)),
             [](ExecutionContext& c) { c.setOutput("result", !c.boolean("a")); return !c.failed(); });
 
     // --- Flux d'exécution ----------------------------------------------------------------------------
@@ -161,12 +206,12 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
                 if (c.failed()) return false;
                 return c.fire(cond ? "true" : "false");
             });
-    lib.add(def("flow.sequence", "Séquence", "Flux", "Exécute ses sorties dans l'ordre.",
-                { execIn() }, { execOut("then_0", "1"), execOut("then_1", "2"), execOut("then_2", "3") }, false),
+    lib.add(ordered(def("flow.sequence", "Séquence", "Flux", "Exécute ses sorties dans l'ordre.",
+                { execIn() }, { execOut("then_0", "1"), execOut("then_1", "2"), execOut("then_2", "3") }, false)),
             [](ExecutionContext& c) { return c.fire("then_0") && c.fire("then_1") && c.fire("then_2"); });
-    lib.add(def("flow.for", "Pour", "Flux", "Exécute « Corps » pour chaque index de Premier à Dernier (inclus), puis « Terminé ».",
+    lib.add(ordered(def("flow.for", "Pour", "Flux", "Exécute « Corps » pour chaque index de Premier à Dernier (inclus), puis « Terminé ».",
                 { execIn(), data("first", "Premier", VT::Integer, 0LL), data("last", "Dernier", VT::Integer, 0LL) },
-                { execOut("body", "Corps"), data("index", "Index", VT::Integer), execOut("completed", "Terminé") }, false),
+                { execOut("body", "Corps"), data("index", "Index", VT::Integer), execOut("completed", "Terminé") }, false)),
             [](ExecutionContext& c) {
                 const long long first = c.integer("first"), last = c.integer("last");
                 if (c.failed()) return false;
@@ -178,8 +223,8 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
                 }
                 return c.fire("completed");
             });
-    lib.add(def("flow.while", "Tant que", "Flux", "Exécute « Corps » tant que la condition (réévaluée) est vraie.",
-                { execIn(), data("condition", "Condition", VT::Bool, false) }, { execOut("body", "Corps"), execOut("completed", "Terminé") }, false),
+    lib.add(ordered(def("flow.while", "Tant que", "Flux", "Exécute « Corps » tant que la condition (réévaluée) est vraie.",
+                { execIn(), data("condition", "Condition", VT::Bool, false) }, { execOut("body", "Corps"), execOut("completed", "Terminé") }, false)),
             [](ExecutionContext& c) {
                 for (int i = 0;; ++i)
                 {
@@ -193,8 +238,8 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
             });
 
     // --- Texte et débogage ---------------------------------------------------------------------------
-    lib.add(def("text.concat", "Concaténer", "Texte", "A suivi de B (toute valeur convertie en texte).",
-                { anyData("a", "A"), anyData("b", "B") }, { data("result", "Texte", VT::Text) }, true),
+    lib.add(pureFunction(def("text.concat", "Concaténer", "Texte", "A suivi de B (toute valeur convertie en texte).",
+                { anyData("a", "A"), anyData("b", "B") }, { data("result", "Texte", VT::Text) }, true)),
             [](ExecutionContext& c) { c.setOutput("result", c.text("a") + c.text("b")); return !c.failed(); });
     lib.add(def("debug.print", "Afficher", "Débogage", "Écrit une valeur dans le journal d'exécution.",
                 { execIn(), anyData("value", "Valeur") }, { execOut() }, false),
@@ -202,6 +247,19 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
                 const std::string t = c.text("value");
                 if (c.failed()) return false;
                 c.log(t);
+                return c.fire("then");
+            });
+    lib.add(def("debug.print_details", "Afficher le contenu", "Débogage",
+                "Écrit le contenu complet d'une valeur dans le journal : matrice, vecteur, tableau de résultats (un objet est "
+                "écrit en entier, pas seulement son résumé).",
+                { execIn(), data("title", "Titre", VT::Text, std::string()), anyData("value", "Valeur") }, { execOut() }, false),
+            [](ExecutionContext& c) {
+                const std::string title = c.text("title");
+                const Value v = c.input("value");
+                if (c.failed()) return false;
+                const auto* o = std::get_if<ObjectRef>(&v);
+                const std::string body = o && *o ? (*o)->details() : toText(v);
+                c.log(title.empty() ? body : title + "\n" + body);
                 return c.fire("then");
             });
 

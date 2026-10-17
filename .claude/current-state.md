@@ -17,6 +17,11 @@ Phase 8 IMPLEMENTED (2026-10-08) : débogueur Blueprint (points d'arrêt, pas à
 tâche de fond des graphes sans accès au projet, historique de l'éditeur, script de commandes ↔ Blueprint, outils IA
 list_commands / propose_blueprint, API de plugins (docs/PLUGINS.md, PluginManager chargé par EcosystemApplication),
 OpenSees dans tsalab_science (OpenSeesPlanarSolver, validation croisée 14/14). Tests 197–198 (TSA), L8 (TSALab), S6.
+Sous-graphes Blueprint IMPLEMENTED (2026-10-17, branche feature/blueprint-structurel, fusionnée dans main) : moteur
+(BlueprintSubgraph.*), fichier v3 et .tsbps, éditeur (encapsulation, corps ouvert, propriétés, import / export).
+Vérifié : tests 392–393, 393/393 PASS (Debug et Release, 2026-10-17) ; essai de TSALab réel (UIA) : double-clic sur une
+instance, fil d'Ariane, propriétés, retour. Import d'une définition présente au contenu différent :
+remplacée par celle du fichier, avertissements, annulable.
 
 ## Build
 Status: IMPLEMENTED — PASS (preset ninja-debug, -j 4)

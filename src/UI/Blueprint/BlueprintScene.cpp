@@ -1,10 +1,13 @@
 #include "BlueprintScene.h"
 
+#include "Blueprint/BlueprintSubgraph.h"
+
 #include <QGraphicsView>
 
 #include <QGraphicsItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsSceneMouseEvent>
+#include <QCursor>
 #include <QKeyEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -27,6 +30,15 @@ constexpr int kLinkData = Qt::UserRole + 1;   // index du lien dans le graphe
 
 QColor categoryColor(const std::string& category)
 {
+    // Programmation structurelle de TSALab (bibliothèque A à E) et composants expérimentaux
+    auto starts = [&](const char* p) { return category.rfind(p, 0) == 0; };
+    if (starts("Structure A")) return QColor("#00796B");
+    if (starts("Structure B")) return QColor("#0277BD");
+    if (starts("Structure C")) return QColor("#3949AB");
+    if (starts("Structure D")) return QColor("#558B2F");
+    if (starts("Structure E")) return QColor("#5D4037");
+    if (starts("Expérimental")) return QColor("#E65100");
+    if (category == "Variables") return QColor("#8E24AA");
     if (category == "Événements") return QColor("#B3261E");
     if (category == "Paramètres") return QColor("#5E35B1");
     if (category == "Math") return QColor("#2E7D32");
@@ -59,6 +71,19 @@ QColor pinColor(const PinSpec& pin)
     case ValueType::Text: return QColor("#F06292");
     case ValueType::Point3: return QColor("#FFD54F");
     case ValueType::IdList: return QColor("#FFA726");
+    case ValueType::Object:
+    {
+        static const std::map<std::string, QColor> known = {
+            { "Matrix", QColor("#BA68C8") },         { "Vector", QColor("#9575CD") },          { "StructuralModel", QColor("#4DB6AC") },
+            { "Node2D", QColor("#81C784") },         { "FrameElement2D", QColor("#4FC3F7") }, { "Material", QColor("#BCAAA4") },
+            { "Section2D", QColor("#B0BEC5") },      { "SupportCondition", QColor("#FF8A65") }, { "Load", QColor("#FFB74D") },
+            { "LoadCase", QColor("#FFCC80") },       { "LoadCombination", QColor("#FFE082") }, { "DOFSet", QColor("#F48FB1") },
+            { "ReducedSystem", QColor("#CE93D8") },  { "SolverResult", QColor("#80CBC4") },   { "InternalForceDiagram", QColor("#E6EE9C") },
+        };
+        if (const auto it = known.find(pin.objectType); it != known.end()) return it->second;
+        const std::size_t h = std::hash<std::string> {}(pin.objectType);
+        return QColor::fromHsv(static_cast<int>(h % 360), 120, 230);
+    }
     }
     return Qt::gray;
 }
@@ -126,14 +151,20 @@ public:
 
         QPainterPath header;
         header.addRoundedRect(QRectF(0, 0, kWidth, kHeader), 6, 6);
-        p->fillPath(header, d ? categoryColor(d->category) : QColor("#B71C1C"));
+        const bool instance = !subgraphOfType(n->type).empty();
+        const bool bodyEnd = !instance && n->type.rfind("sub.", 0) == 0;   // entrée / sortie d'un corps de sous-graphe
+        p->fillPath(header, !d ? QColor("#B71C1C") : instance ? QColor("#00695C") : bodyEnd ? QColor("#37474F") : categoryColor(d->category));
         p->setPen(Qt::white);
         QFont f = p->font();
         f.setBold(true);
         f.setPointSizeF(8.5);
         p->setFont(f);
-        p->drawText(QRectF(8, 0, kWidth - 16, kHeader), Qt::AlignVCenter | Qt::AlignLeft,
-                    d ? QString::fromStdString(d->title) : QStringLiteral("Inconnu : %1").arg(QString::fromStdString(n->type)));
+        QString title = d ? QString::fromStdString(d->title) : QStringLiteral("Inconnu : %1").arg(QString::fromStdString(n->type));
+        if (d && d->status == NodeStatus::Validated) title = QStringLiteral("✓ ") + title;
+        else if (d && d->status == NodeStatus::Experimental) title = QStringLiteral("⚗ ") + title;
+        if (d && instance) title = QStringLiteral("⧉ ") + title;
+        p->drawText(QRectF(8, 0, kWidth - 24, kHeader), Qt::AlignVCenter | Qt::AlignLeft,
+                    p->fontMetrics().elidedText(title, Qt::ElideRight, int(kWidth - 24)));
         if (m_scene.hasBreakpoint(m_id))
         {
             p->setPen(QPen(Qt::white, 1.0));
@@ -186,8 +217,9 @@ public:
         if (m_hasStats)
         {
             p->setPen(QColor("#FFD54F"));
-            p->drawText(QRectF(0, h + 2, kWidth, 14), Qt::AlignLeft,
-                        QStringLiteral("× %1   %2 ms").arg(m_stats.executions).arg(m_stats.milliseconds, 0, 'f', 2));
+            QString line = QStringLiteral("× %1   %2 ms").arg(m_stats.executions).arg(m_stats.milliseconds, 0, 'f', 2);
+            if (m_stats.reused > 0) line += QStringLiteral("   ↺ %1").arg(m_stats.reused);
+            p->drawText(QRectF(0, h + 2, kWidth, 14), Qt::AlignLeft, line);
         }
     }
 
@@ -197,6 +229,11 @@ protected:
         if (change == ItemPositionHasChanged) m_scene.nodeMoved(m_id, value.toPointF());
         return QGraphicsItem::itemChange(change, value);
     }
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* e) override
+    {
+        m_scene.requestNodeOpen(m_id);
+        e->accept();
+    }
 
 private:
     BlueprintScene& m_scene;
@@ -204,6 +241,158 @@ private:
     bool m_hasStats = false;
     bool m_failed = false;
     NodeStats m_stats;
+};
+
+// -----------------------------------------------------------------------------
+// Commentaire (cadre titré)
+// -----------------------------------------------------------------------------
+
+class BlueprintCommentItem : public QGraphicsItem
+{
+public:
+    static constexpr double kGrip = 14.0;
+
+    BlueprintCommentItem(BlueprintScene& scene, int id) : m_scene(scene), m_id(id)
+    {
+        const auto* c = scene.graph().comment(id);
+        setPos(c->x, c->y);
+        setFlags(ItemIsMovable | ItemIsSelectable | ItemSendsGeometryChanges);
+        setZValue(-1);
+        setAcceptHoverEvents(true);
+        m_last = pos();
+    }
+
+    int id() const { return m_id; }
+    /// Taille ou texte modifiés hors de la souris (éditeur).
+    void refresh()
+    {
+        prepareGeometryChange();
+        update();
+    }
+
+    QRectF boundingRect() const override
+    {
+        const auto* c = m_scene.graph().comment(m_id);
+        return c ? QRectF(-2, -2, c->width + 4, c->height + 4) : QRectF();
+    }
+
+    void paint(QPainter* p, const QStyleOptionGraphicsItem*, QWidget*) override
+    {
+        const auto* c = m_scene.graph().comment(m_id);
+        if (!c) return;
+        const QColor color(QString::fromStdString(c->color));
+        QColor fill = color;
+        fill.setAlpha(46);
+        p->setRenderHint(QPainter::Antialiasing);
+        p->setPen(QPen(isSelected() ? QColor("#FFC107") : color, isSelected() ? 2.0 : 1.2));
+        p->setBrush(fill);
+        p->drawRoundedRect(QRectF(0, 0, c->width, c->height), 6, 6);
+        const QString text = QString::fromStdString(c->text);
+        const QString title = text.section(QLatin1Char('\n'), 0, 0);
+        const QString body = text.section(QLatin1Char('\n'), 1);
+        QPainterPath bar;
+        bar.addRoundedRect(QRectF(0, 0, c->width, 26), 6, 6);
+        QColor barColor = color;
+        barColor.setAlpha(170);
+        p->fillPath(bar, barColor);
+        QFont f = p->font();
+        f.setBold(true);
+        f.setPointSizeF(9.5);
+        p->setFont(f);
+        p->setPen(Qt::white);
+        p->drawText(QRectF(8, 0, c->width - 16, 26), Qt::AlignVCenter | Qt::AlignLeft,
+                    p->fontMetrics().elidedText(title, Qt::ElideRight, int(c->width - 16)));
+        if (!body.isEmpty())
+        {
+            f.setBold(false);
+            f.setPointSizeF(8.0);
+            p->setFont(f);
+            p->setPen(QColor("#ECEFF1"));
+            p->drawText(QRectF(8, 30, c->width - 16, c->height - 36), Qt::AlignTop | Qt::AlignLeft | Qt::TextWordWrap, body);
+        }
+        p->setPen(QPen(color, 1.5));
+        for (int k = 1; k <= 3; ++k)
+            p->drawLine(QPointF(c->width - 4 * k, c->height - 2), QPointF(c->width - 2, c->height - 4 * k));
+    }
+
+protected:
+    bool onGrip(const QPointF& local) const
+    {
+        const auto* c = m_scene.graph().comment(m_id);
+        return c && local.x() >= c->width - kGrip && local.y() >= c->height - kGrip;
+    }
+
+    void hoverMoveEvent(QGraphicsSceneHoverEvent* e) override
+    {
+        setCursor(onGrip(e->pos()) ? Qt::SizeFDiagCursor : Qt::ArrowCursor);
+        QGraphicsItem::hoverMoveEvent(e);
+    }
+
+    void mousePressEvent(QGraphicsSceneMouseEvent* e) override
+    {
+        m_resizing = m_scene.isEditable() && e->button() == Qt::LeftButton && onGrip(e->pos());
+        m_carried.clear();
+        if (!m_resizing)
+            for (int n : m_scene.graph().nodesInComment(m_id)) m_carried.push_back(n);
+        m_last = pos();
+        m_pressAt = pos();
+        QGraphicsItem::mousePressEvent(e);
+    }
+
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* e) override
+    {
+        if (m_resizing)
+        {
+            if (auto* c = m_scene.graph().comment(m_id))
+            {
+                prepareGeometryChange();
+                c->width = std::max(160.0, e->pos().x());
+                c->height = std::max(80.0, e->pos().y());
+                update();
+            }
+            return;
+        }
+        QGraphicsItem::mouseMoveEvent(e);
+    }
+
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* e) override
+    {
+        const bool changed = m_resizing || pos() != m_pressAt;
+        m_resizing = false;
+        QGraphicsItem::mouseReleaseEvent(e);
+        if (changed) m_scene.commentChanged();
+    }
+
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* e) override
+    {
+        m_scene.requestCommentEdit(m_id);
+        e->accept();
+    }
+
+    QVariant itemChange(GraphicsItemChange change, const QVariant& value) override
+    {
+        if (change == ItemPositionHasChanged)
+        {
+            const QPointF now = value.toPointF();
+            const QPointF delta = now - m_last;
+            m_last = now;
+            if (auto* c = m_scene.graph().comment(m_id))
+            {
+                c->x = now.x();
+                c->y = now.y();
+            }
+            // Les nœuds contenus suivent le cadre (sauf ceux déjà déplacés avec la sélection)
+            for (int n : m_carried) m_scene.moveNodeBy(n, delta);
+        }
+        return QGraphicsItem::itemChange(change, value);
+    }
+
+private:
+    BlueprintScene& m_scene;
+    int m_id = 0;
+    bool m_resizing = false;
+    QPointF m_last, m_pressAt;
+    std::vector<int> m_carried;
 };
 
 // -----------------------------------------------------------------------------
@@ -225,7 +414,15 @@ void BlueprintScene::rebuild()
     m_dragLine = nullptr;
     clear();
     m_items.clear();
+    m_commentItems.clear();
     m_links.clear();
+    for (const auto& [id, c] : m_graph.comments())
+    {
+        auto* item = new BlueprintCommentItem(*this, id);
+        item->setFlag(QGraphicsItem::ItemIsMovable, m_editable);
+        addItem(item);
+        m_commentItems[id] = item;
+    }
     for (const auto& [id, n] : m_graph.nodes())
     {
         auto* item = new BlueprintNodeItem(*this, id);
@@ -297,6 +494,74 @@ void BlueprintScene::setEditable(bool editable)
 {
     m_editable = editable;
     for (auto& [id, item] : m_items) item->setFlag(QGraphicsItem::ItemIsMovable, editable);
+    for (auto& [id, item] : m_commentItems) item->setFlag(QGraphicsItem::ItemIsMovable, editable);
+}
+
+int BlueprintScene::addComment(const QRectF& rect, const QString& text)
+{
+    TSA::Blueprint::Comment c;
+    c.x = rect.x(), c.y = rect.y(), c.width = std::max(160.0, rect.width()), c.height = std::max(80.0, rect.height());
+    c.text = text.toStdString();
+    const int id = m_graph.addComment(c);
+    auto* item = new BlueprintCommentItem(*this, id);
+    item->setFlag(QGraphicsItem::ItemIsMovable, m_editable);
+    addItem(item);
+    m_commentItems[id] = item;
+    clearSelection();
+    item->setSelected(true);
+    emit graphChanged();
+    return id;
+}
+
+void BlueprintScene::refreshComment(int id)
+{
+    if (const auto it = m_commentItems.find(id); it != m_commentItems.end()) it->second->refresh();
+}
+
+std::set<int> BlueprintScene::selectedNodes() const
+{
+    std::set<int> out;
+    for (auto* item : selectedItems())
+        if (auto* n = dynamic_cast<BlueprintNodeItem*>(item)) out.insert(n->id());
+    return out;
+}
+
+std::set<int> BlueprintScene::selectedComments() const
+{
+    std::set<int> out;
+    for (auto* item : selectedItems())
+        if (auto* c = dynamic_cast<BlueprintCommentItem*>(item)) out.insert(c->id());
+    return out;
+}
+
+void BlueprintScene::selectItems(const std::vector<int>& nodes, const std::vector<int>& comments)
+{
+    clearSelection();
+    for (int id : nodes)
+        if (const auto it = m_items.find(id); it != m_items.end()) it->second->setSelected(true);
+    for (int id : comments)
+        if (const auto it = m_commentItems.find(id); it != m_commentItems.end()) it->second->setSelected(true);
+}
+
+void BlueprintScene::focusNode(int id)
+{
+    const auto it = m_items.find(id);
+    if (it == m_items.end()) return;
+    clearSelection();
+    it->second->setSelected(true);
+    for (QGraphicsView* v : views()) v->centerOn(it->second);
+}
+
+void BlueprintScene::moveNodeBy(int id, const QPointF& delta)
+{
+    const auto it = m_items.find(id);
+    if (it == m_items.end() || it->second->isSelected()) return;   // déjà déplacé avec la sélection
+    it->second->moveBy(delta.x(), delta.y());
+}
+
+void BlueprintScene::commentChanged()
+{
+    emit graphChanged();
 }
 
 void BlueprintScene::nodeMoved(int id, const QPointF& pos)
@@ -329,20 +594,22 @@ int BlueprintScene::selectedNode() const
 
 void BlueprintScene::deleteSelection()
 {
-    std::vector<int> nodes;
+    std::vector<int> nodes, comments;
     std::vector<Link> links;
     for (auto* item : selectedItems())
     {
         if (auto* n = dynamic_cast<BlueprintNodeItem*>(item)) nodes.push_back(n->id());
+        else if (auto* c = dynamic_cast<BlueprintCommentItem*>(item)) comments.push_back(c->id());
         else if (item->data(kLinkData).isValid())
         {
             const int i = item->data(kLinkData).toInt();
             if (i >= 0 && i < static_cast<int>(m_graph.links().size())) links.push_back(m_graph.links()[std::size_t(i)]);
         }
     }
-    if (nodes.empty() && links.empty()) return;
+    if (nodes.empty() && links.empty() && comments.empty()) return;
     for (const auto& l : links) m_graph.removeLink(l);
     for (int id : nodes) m_graph.removeNode(id);
+    for (int id : comments) m_graph.removeComment(id);
     rebuild();
     emit graphChanged();
 }

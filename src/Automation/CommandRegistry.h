@@ -24,6 +24,12 @@ namespace TSA::Project
 class ProjectSession;
 }
 
+namespace TSA::Model
+{
+struct Section;
+struct Material;
+}
+
 namespace TSA::Automation
 {
 
@@ -34,7 +40,8 @@ enum class ValueType
     Real,
     Text,
     Point3,   ///< x, y, z (m)
-    IdList
+    IdList,
+    Object    ///< valeur structurée (ObjectValue) : matrice, modèle de calcul, résultat… (liens Blueprint uniquement)
 };
 
 /// Grandeur physique d'un paramètre réel (affichage, contrôle d'unités, typage des broches Blueprint).
@@ -49,7 +56,27 @@ enum class Quantity
 };
 
 using Point3 = std::array<double, 3>;
-using Value = std::variant<std::monostate, bool, long long, double, std::string, Point3, std::vector<int>>;
+
+/// Valeur structurée transportée par un lien Blueprint (matrice, modèle de calcul, résultat…). Immuable : créée par un
+/// nœud, partagée par ses consommateurs, jamais modifiée (un nœud qui « modifie » rend un nouvel objet). Définie par le
+/// module qui la produit (TSALab : objets de la programmation structurelle). Jamais enregistrée dans un fichier
+/// Blueprint (seules les valeurs saisies le sont) ; refusée par la ligne de commande et le serveur MCP.
+class ObjectValue
+{
+public:
+    virtual ~ObjectValue() = default;
+    /// Type stable (« Matrix », « FrameElement2D »…) : typage des broches et contrôle des liens.
+    virtual std::string typeName() const = 0;
+    /// Une ligne (journal, valeurs produites, nœud).
+    virtual std::string summary() const = 0;
+    /// Contenu complet lisible (matrice, tableau de résultats…) ; par défaut, le résumé.
+    virtual std::string details() const { return summary(); }
+    /// Même type et même contenu : réutilisation des résultats des nœuds purs (EvaluationCache).
+    virtual bool equals(const ObjectValue& other) const = 0;
+};
+using ObjectRef = std::shared_ptr<const ObjectValue>;
+
+using Value = std::variant<std::monostate, bool, long long, double, std::string, Point3, std::vector<int>, ObjectRef>;
 using Arguments = std::map<std::string, Value>;
 
 struct ParameterSpec
@@ -133,8 +160,16 @@ bool parseArgument(const std::string& raw, ValueType type, Value& out);
 /// Valeur écrite dans la syntaxe de la ligne de commande, relisible par parseArgument (« 0,0,3 », « "IPE 300" »).
 std::string formatArgument(const Value& value);
 
-/// Valeur lisible (« 1,2,3 », « 0, 0, 3 », « vrai »).
+/// Profil du catalogue (« IPE 300 », « HEB 200 », « UPN 160 », « RECT 0.3x0.5 », « CIRC 0.4 ») : mêmes règles que les
+/// commandes de création de barres (taille absente du catalogue refusée, avec la liste des tailles ; *error).
+bool catalogSection(const std::string& spec, TSA::Model::Section& out, std::string* error = nullptr);
+/// Matériau du catalogue des commandes (S235, S355, C25/30, C30/37, C24).
+bool catalogMaterial(const std::string& name, TSA::Model::Material& out);
+
+/// Valeur lisible (« 1,2,3 », « 0, 0, 3 », « vrai » ; objet : son résumé).
 std::string formatValue(const Value& value);
+/// Égalité de deux valeurs : même alternative et même contenu (objets : même instance ou ObjectValue::equals).
+bool sameValue(const Value& a, const Value& b);
 const char* typeName(ValueType type);
 const char* quantityUnit(Quantity quantity);
 
