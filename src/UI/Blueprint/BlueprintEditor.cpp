@@ -2,7 +2,9 @@
 
 #include "BlueprintScene.h"
 #include "BlueprintObjectViewer.h"
+#include "BlueprintSubgraphDialog.h"
 #include "Blueprint/BlueprintFile.h"
+#include "Blueprint/BlueprintSubgraph.h"
 #include "Blueprint/BlueprintScript.h"
 #include "Automation/CommandRegistry.h"
 
@@ -15,6 +17,7 @@
 #include <QGraphicsView>
 #include <QHBoxLayout>
 #include <QEventLoop>
+#include <QFileInfo>
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QKeyEvent>
@@ -154,11 +157,106 @@ void fillValueRow(QTreeWidgetItem* row, const std::string& text, bool object)
     if (object) tip += QObject::tr("\n\nDouble-clic ou Entrée : afficher l'objet");
     row->setToolTip(1, tip);
 }
+
+/// Mêmes définitions (corps comparés aussi par identité : ils sont immuables et partagés).
+bool sameDefinitions(const std::vector<SubgraphDefinition>& a, const std::vector<SubgraphDefinition>& b)
+{
+    if (a.size() != b.size()) return false;
+    for (std::size_t i = 0; i < a.size(); ++i)
+        if (a[i].body != b[i].body || !a[i].sameContent(b[i])) return false;
+    return true;
+}
+
+/// Identifiant de sous-graphe tiré d'un nom (« Rigidité globale » → « rigidite_globale ») et absent de `taken`.
+std::string suggestSubgraphId(QString name, const std::vector<SubgraphDefinition>& taken)
+{
+    name.replace(QStringLiteral("œ"), QStringLiteral("oe")).replace(QStringLiteral("Œ"), QStringLiteral("OE")).replace(QStringLiteral("æ"), QStringLiteral("ae"));
+    QString s;
+    for (const QChar c : name.normalized(QString::NormalizationForm_KD))
+    {
+        if (c.unicode() < 128 && (c.isLetterOrNumber() || c == QLatin1Char('_') || c == QLatin1Char('-'))) s += c.toLower();
+        else if ((c.isSpace() || c == QLatin1Char('\'') || c == QLatin1Char('.')) && !s.endsWith(QLatin1Char('_'))) s += QLatin1Char('_');
+    }
+    while (s.endsWith(QLatin1Char('_'))) s.chop(1);
+    if (s.isEmpty() || !s.at(0).isLetter()) s.prepend(QStringLiteral("sg_"));
+    s.truncate(48);
+    const std::string base = s.toStdString();
+    std::string id = base;
+    auto used = [&](const std::string& x) { return std::any_of(taken.begin(), taken.end(), [&](const SubgraphDefinition& d) { return d.id == x; }); };
+    for (int k = 2; used(id); ++k) id = base + "_" + std::to_string(k);
+    return id;
+}
+
+/// Changements d'interface qui cassent des liens d'instances : broche supprimée, ou dont le type change.
+std::vector<std::string> breakingInterfaceChanges(const SubgraphDefinition& before, const SubgraphDefinition& after)
+{
+    std::vector<std::string> out;
+    auto check = [&](const std::vector<PinSpec>& oldPins, const std::vector<PinSpec>& newPins, const char* side) {
+        for (const auto& o : oldPins)
+        {
+            const auto it = std::find_if(newPins.begin(), newPins.end(), [&](const PinSpec& p) { return p.name == o.name; });
+            if (it == newPins.end())
+                out.push_back(std::string(side) + " « " + o.name + " » supprimée");
+            else if (it->type != o.type || it->any != o.any || it->objectType != o.objectType)
+                out.push_back(std::string(side) + " « " + o.name + " » : " + pinTypeName(o) + " → " + pinTypeName(*it));
+        }
+    };
+    check(before.inputs, after.inputs, "entrée");
+    check(before.outputs, after.outputs, "sortie");
+    return out;
+}
+
+/// Report d'un corps édité (`edited` : corps + définitions de la session) dans son graphe parent : définitions créées,
+/// importées ou modifiées pendant l'édition (ordre de dépendance par point fixe), puis la définition `id` avec son
+/// interface et son corps courants (nouvelle version si le contenu change ; instances du parent mises à jour).
+bool foldBody(const NodeLibrary& base, const std::string& id, const Graph& edited, Graph& parent, std::vector<std::string>* updates,
+              std::string* error)
+{
+    std::vector<const SubgraphDefinition*> pending;
+    for (const auto& d : edited.subgraphs)
+    {
+        if (d.id == id) continue;
+        const SubgraphDefinition* p = parent.subgraph(d.id);
+        if (!p || !p->sameContent(d)) pending.push_back(&d);
+    }
+    while (!pending.empty())
+    {
+        std::string firstError;
+        std::vector<const SubgraphDefinition*> left;
+        for (const auto* d : pending)
+        {
+            std::string why;
+            if (!defineSubgraph(base, parent, *d, updates, &why))
+            {
+                if (firstError.empty()) firstError = why;
+                left.push_back(d);
+            }
+        }
+        if (left.size() == pending.size())
+        {
+            if (error) *error = firstError;
+            return false;
+        }
+        pending = std::move(left);
+    }
+    const SubgraphDefinition* current = edited.subgraph(id);
+    if (!current)
+    {
+        if (error) *error = "sous-graphe « " + id + " » introuvable";
+        return false;
+    }
+    SubgraphDefinition def = *current;
+    auto body = std::make_shared<Graph>(edited);
+    body->subgraphs.clear();
+    def.body = body;
+    return defineSubgraph(base, parent, def, updates, error);
+}
 } // namespace
 
 BlueprintEditor::BlueprintEditor(QWidget* parent)
     : QWidget(parent)
     , m_library(NodeLibrary::standard())
+    , m_effective(&m_library)
 {
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
@@ -202,6 +300,60 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     m_actBreakpoint = bar->addAction(tr("● Point d'arrêt"), this, [this] { toggleBreakpoint(m_scene->selectedNode()); });
     m_actBreakpoint->setToolTip(tr("Ajouter / retirer un point d'arrêt sur le nœud sélectionné"));
     bar->addSeparator();
+    auto* subMenu = new QMenu(this);
+    subMenu->addAction(tr("Créer un sous-graphe depuis la sélection…"), this, [this] {
+        QString error;
+        if (!encapsulateSelection({}, &error) && !error.isEmpty()) QMessageBox::warning(this, tr("Sous-graphe"), error);
+    });
+    subMenu->addAction(tr("Ouvrir le sous-graphe sélectionné"), this, [this] {
+        const std::string id = targetSubgraph();
+        if (id.empty() || id == currentSubgraph())
+        {
+            emit logMessage(tr("Sélectionner une instance de sous-graphe à ouvrir (ou double-cliquer l'instance)."), "WARN");
+            return;
+        }
+        QString error;
+        if (!openSubgraph(id, &error)) QMessageBox::warning(this, tr("Sous-graphe"), error);
+    });
+    subMenu->addAction(tr("Propriétés du sous-graphe…"), this, [this] {
+        const std::string id = targetSubgraph();
+        if (id.empty()) emit logMessage(tr("Sélectionner une instance de sous-graphe (ou ouvrir son corps)."), "WARN");
+        else editSubgraphProperties(id);
+    });
+    subMenu->addAction(tr("Retour au graphe parent"), this, &BlueprintEditor::backToParent);
+    subMenu->addSeparator();
+    subMenu->addAction(tr("Importer un sous-graphe (.tsbps)…"), this, [this] {
+        const QString path = QFileDialog::getOpenFileName(this, tr("Importer un sous-graphe"), m_file.isEmpty() ? QString() : QFileInfo(m_file).absolutePath(),
+                                                          tr("Sous-graphe Blueprint (*.tsbps)"));
+        if (path.isEmpty()) return;
+        QString error;
+        if (!importSubgraphs(path, &error)) QMessageBox::warning(this, tr("Sous-graphe"), error);
+    });
+    subMenu->addAction(tr("Exporter le sous-graphe (.tsbps)…"), this, [this] {
+        std::string id = targetSubgraph();
+        if (id.empty()) id = chooseSubgraph(tr("Exporter un sous-graphe"), false);
+        if (id.empty()) return;
+        QString path = QFileDialog::getSaveFileName(this, tr("Exporter le sous-graphe"), QString::fromStdString(id) + QStringLiteral(".tsbps"),
+                                                    tr("Sous-graphe Blueprint (*.tsbps)"));
+        if (path.isEmpty()) return;
+        if (!path.endsWith(QLatin1String(".tsbps"), Qt::CaseInsensitive)) path += QStringLiteral(".tsbps");
+        QString error;
+        if (exportSubgraph(id, path, &error)) emit logMessage(tr("Sous-graphe exporté : %1").arg(path), "SYS");
+        else QMessageBox::warning(this, tr("Sous-graphe"), error);
+    });
+    subMenu->addAction(tr("Supprimer une définition inutilisée…"), this, [this] {
+        const std::string id = chooseSubgraph(tr("Supprimer une définition"), true);
+        if (id.empty()) return;
+        QString error;
+        if (!removeSubgraphDefinition(id, &error)) QMessageBox::warning(this, tr("Sous-graphe"), error);
+    });
+    auto* subButton = new QToolButton(bar);
+    subButton->setText(tr("Sous-graphes"));
+    subButton->setToolTip(tr("Fonctions écrites en blocs : encapsuler la sélection, ouvrir et modifier le corps (double-clic sur une "
+                             "instance), propriétés et interface, fichiers .tsbps"));
+    subButton->setMenu(subMenu);
+    subButton->setPopupMode(QToolButton::InstantPopup);
+    bar->addWidget(subButton);
     auto* scriptMenu = new QMenu(this);
     scriptMenu->addAction(tr("Importer un script de commandes…"), this, [this] {
         bool ok = false;
@@ -230,6 +382,33 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     bar->addWidget(scriptButton);
     root->addWidget(bar);
 
+    // Fil d'Ariane : corps de sous-graphe en cours d'édition
+    m_subgraphBar = new QWidget(this);
+    m_subgraphBar->setObjectName(QStringLiteral("subgraphBar"));
+    m_subgraphBar->setAttribute(Qt::WA_StyledBackground, true);
+    m_subgraphBar->setStyleSheet(QStringLiteral("#subgraphBar { background: #00695C; } #subgraphBar QLabel { color: white; }"));
+    auto* subLay = new QHBoxLayout(m_subgraphBar);
+    subLay->setContentsMargins(8, 3, 8, 3);
+    m_breadcrumb = new QLabel(m_subgraphBar);
+    m_breadcrumb->setWordWrap(true);
+    subLay->addWidget(m_breadcrumb, 1);
+    auto* propsButton = new QPushButton(tr("Propriétés…"), m_subgraphBar);
+    propsButton->setToolTip(tr("Nom, catégorie, documentation, entrées et sorties typées du sous-graphe"));
+    connect(propsButton, &QPushButton::clicked, this, [this] { editSubgraphProperties(currentSubgraph()); });
+    auto* discardButton = new QPushButton(tr("Abandonner les modifications"), m_subgraphBar);
+    connect(discardButton, &QPushButton::clicked, this, [this] {
+        if (QMessageBox::question(this, tr("Sous-graphe"), tr("Abandonner les modifications du corps et revenir au graphe parent ?")) == QMessageBox::Yes)
+            closeSubgraph(false);
+    });
+    auto* backButton = new QPushButton(tr("◀ Retour au graphe parent"), m_subgraphBar);
+    backButton->setToolTip(tr("Enregistrer le corps comme nouvelle version du sous-graphe et mettre à jour ses instances"));
+    connect(backButton, &QPushButton::clicked, this, &BlueprintEditor::backToParent);
+    subLay->addWidget(propsButton);
+    subLay->addWidget(discardButton);
+    subLay->addWidget(backButton);
+    m_subgraphBar->hide();
+    root->addWidget(m_subgraphBar);
+
     auto* split = new QSplitter(Qt::Horizontal, this);
     root->addWidget(split, 1);
 
@@ -250,7 +429,7 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     buildPalette();
 
     // Scène
-    m_scene = new BlueprintScene(m_graph, m_library, this);
+    m_scene = new BlueprintScene(m_graph, m_effective, this);
     auto* view = new BlueprintView(m_scene, split);
     view->handles = [](QKeyEvent* k) {
         const auto mods = k->modifiers() & ~Qt::KeypadModifier;
@@ -278,6 +457,17 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     });
     connect(m_scene, &BlueprintScene::nodesMoved, this, [this] { recordChange(); });
     connect(m_scene, &BlueprintScene::commentEditRequested, this, &BlueprintEditor::editComment);
+    // Double-clic sur une instance : ouvrir son corps (différé : la scène reconstruit l'élément qui reçoit le clic)
+    connect(
+        m_scene, &BlueprintScene::nodeOpenRequested, this,
+        [this](int id) {
+            const NodeInstance* n = m_graph.node(id);
+            const std::string sub = n ? subgraphOfType(n->type) : std::string();
+            if (sub.empty() || m_running) return;
+            QString error;
+            if (!openSubgraph(sub, &error)) QMessageBox::warning(this, tr("Sous-graphe"), error);
+        },
+        Qt::QueuedConnection);
 
     // Valeurs du nœud sélectionné
     auto* right = new QWidget(split);
@@ -356,8 +546,16 @@ void BlueprintEditor::buildPalette()
 {
     m_palette->clear();
     std::map<std::string, QTreeWidgetItem*> categories;
-    for (const auto* d : m_library.definitions())
+    const std::string current = currentSubgraph();
+    for (const auto* d : m_effective.definitions())
     {
+        // Entrée et sortie d'un corps : proposées dans le corps édité seulement ; pas d'instance d'un sous-graphe dans son corps
+        if (d->id.rfind("sub.", 0) == 0)
+        {
+            const std::string sub = subgraphOfType(d->id);
+            const bool ownEnd = !current.empty() && (d->id == subgraphInputType(current) || d->id == subgraphOutputType(current));
+            if (sub.empty() ? !ownEnd : sub == current) continue;
+        }
         auto& cat = categories[d->category];
         if (!cat)
         {
@@ -403,17 +601,20 @@ void BlueprintEditor::addFromPalette()
 
 void BlueprintEditor::newBlueprint()
 {
+    m_frames.clear();
     m_graph.clear();
     m_graph.name = tr("Nouveau Blueprint").toStdString();
     m_graph.addNode("event.start", -300, 0);
     m_file.clear();
     m_breakpoints.clear();
     m_scene->setBreakpoints(m_breakpoints);
+    syncLibrary();
     m_scene->rebuild();
     m_view->centerOn(0, 0);
     graphReplaced();
     showNodeProperties();
     resetHistory();
+    updateSubgraphBar();
 }
 
 void BlueprintEditor::graphReplaced()
@@ -434,13 +635,16 @@ bool BlueprintEditor::open(const QString& path)
         QMessageBox::warning(this, tr("Blueprint"), tr("Impossible d'ouvrir le Blueprint :\n%1").arg(error));
         return false;
     }
+    m_frames.clear();
     m_graph = std::move(loaded);
     m_file = path;
     m_breakpoints.clear();
     m_scene->setBreakpoints(m_breakpoints);
+    syncLibrary();
     m_scene->rebuild();
     graphReplaced();
     resetHistory();
+    updateSubgraphBar();
     QTimer::singleShot(0, this, &BlueprintEditor::fitGraph);   // après affichage de l'onglet (taille réelle)
     emit logMessage(tr("Blueprint ouvert : %1").arg(path), "SYS");
     validate();
@@ -463,11 +667,14 @@ void BlueprintEditor::fitGraph()
 
 void BlueprintEditor::setGraph(Graph graph)
 {
+    m_frames.clear();
     m_graph = std::move(graph);
     m_file.clear();
     m_breakpoints.clear();
     m_scene->setBreakpoints(m_breakpoints);
+    syncLibrary();
     m_scene->rebuild();
+    updateSubgraphBar();
     graphReplaced();
     QTimer::singleShot(0, this, &BlueprintEditor::fitGraph);   // après affichage de l'onglet (taille réelle)
     showNodeProperties();
@@ -479,7 +686,14 @@ bool BlueprintEditor::save()
 {
     if (m_file.isEmpty()) return saveAs();
     QString error;
-    if (!saveFile(m_graph, m_file, &error))
+    Graph top;   // corps en cours d'édition reportés dans leurs définitions
+    if (!composedGraph(top, &error))
+    {
+        QMessageBox::warning(this, tr("Blueprint"),
+                             tr("Enregistrement impossible : %1\nCorriger le corps du sous-graphe ou abandonner ses modifications.").arg(error));
+        return false;
+    }
+    if (!saveFile(top, m_file, &error))
     {
         QMessageBox::warning(this, tr("Blueprint"), tr("Échec de l'enregistrement :\n%1").arg(error));
         return false;
@@ -501,8 +715,8 @@ bool BlueprintEditor::saveAs()
 void BlueprintEditor::validate()
 {
     refreshProblems();
-    const auto issues = m_library.validate(m_graph);
-    for (const auto& i : m_library.warnings(m_graph))
+    const auto issues = this->issues();
+    for (const auto& i : m_effective.warnings(m_graph))
         emit logMessage(tr("Blueprint (avertissement) : %1%2").arg(i.node ? QStringLiteral("#%1 ").arg(i.node) : QString(), QString::fromStdString(i.message)),
                         "WARN");
     if (issues.empty())
@@ -521,15 +735,15 @@ void BlueprintEditor::refreshProblems()
     m_problems->clear();
     auto add = [this](int node, const QString& kind, const std::string& text) {
         const auto* n = node ? m_graph.node(node) : nullptr;
-        const auto* d = n ? m_library.find(n->type) : nullptr;
+        const auto* d = n ? m_effective.find(n->type) : nullptr;
         auto* item = new QTreeWidgetItem(m_problems, { node ? QStringLiteral("#%1 %2").arg(node).arg(d ? QString::fromStdString(d->title) : QString())
                                                             : tr("graphe"),
                                                        QStringLiteral("%1 : %2").arg(kind, QString::fromStdString(text)) });
         item->setData(0, kNodeRole, node);
         item->setToolTip(1, QString::fromStdString(text));
     };
-    for (const auto& i : m_library.validate(m_graph)) add(i.node, tr("erreur"), i.message);
-    for (const auto& i : m_library.warnings(m_graph)) add(i.node, tr("avertissement"), i.message);
+    for (const auto& i : issues()) add(i.node, tr("erreur"), i.message);
+    for (const auto& i : m_effective.warnings(m_graph)) add(i.node, tr("avertissement"), i.message);
     if (m_hasReport && !m_lastReport.ok && !m_lastReport.message.empty()) add(m_lastReport.failedNode, tr("exécution"), m_lastReport.message);
     m_problems->resizeColumnToContents(0);
 }
@@ -553,14 +767,14 @@ bool BlueprintEditor::execute(bool debugging, bool stepFromStart)
         return false;
     }
     ExecutionReport report;
-    const bool background = !debugging && !m_library.usesProject(m_graph);
+    const Graph runGraph = graphForRun();   // dans un corps : essai du corps seul (valeurs par défaut des entrées)
+    const bool background = !debugging && !m_library.usesProject(runGraph);
     setRunning(true);
     if (background)
     {
         // Aucun accès au projet : exécution dans un thread de travail sur une copie du graphe ; la boucle
         // locale garde l'interface réactive (Arrêter reste utilisable).
-        const Graph copy = m_graph;
-        Runner runner(m_library, copy, nullptr);
+        Runner runner(m_library, runGraph, nullptr);
         runner.setCache(&m_cache);   // l'interface ne touche pas au cache pendant l'exécution (édition bloquée)
         m_runner = &runner;
         QEventLoop loop;
@@ -575,7 +789,7 @@ bool BlueprintEditor::execute(bool debugging, bool stepFromStart)
     }
     else
     {
-        Runner runner(m_library, m_graph, m_session);
+        Runner runner(m_library, runGraph, m_session);
         runner.setCache(&m_cache);
         BreakpointDebugger debugger([this](const DebugState& s) { return pause(s); }, m_breakpoints, stepFromStart);
         if (debugging)
@@ -617,7 +831,7 @@ DebugAction BlueprintEditor::pause(const DebugState& state)
     m_pauseValues = state.outputs ? *state.outputs : std::map<int, std::map<std::string, Value>> {};
     showWatch(&m_pauseValues);
     const NodeInstance* n = m_graph.node(state.node);
-    const NodeDefinition* d = n ? m_library.find(n->type) : nullptr;
+    const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
     emit logMessage(tr("Débogueur : pause avant « %1 » (#%2), %3 étape(s) exécutée(s).")
                         .arg(d ? QString::fromStdString(d->title) : QStringLiteral("?")).arg(state.node).arg(state.step),
                     "INFO");
@@ -639,7 +853,7 @@ void BlueprintEditor::showWatch(const std::map<int, std::map<std::string, Value>
     for (const auto& [id, pins] : *outputs)
     {
         const NodeInstance* n = m_graph.node(id);
-        const NodeDefinition* d = n ? m_library.find(n->type) : nullptr;
+        const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
         auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(d->title) : QString()) });
         for (const auto& [pin, v] : pins)
         {
@@ -671,7 +885,7 @@ void BlueprintEditor::showValues()
     {
         if (selected && id != selected) continue;
         const NodeInstance* n = m_graph.node(id);
-        const NodeDefinition* d = n ? m_library.find(n->type) : nullptr;
+        const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
         auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(d->title) : QString()) });
         for (const auto& [pin, v] : pins)
         {
@@ -806,6 +1020,7 @@ void BlueprintEditor::undo()
     m_undo.pop_back();
     m_snapshot = m_graph;
     m_lastKey.clear();
+    syncLibrary();
     m_scene->rebuild();
     m_scene->showReport(nullptr);
     showNodeProperties();
@@ -820,6 +1035,7 @@ void BlueprintEditor::redo()
     m_redo.pop_back();
     m_snapshot = m_graph;
     m_lastKey.clear();
+    syncLibrary();
     m_scene->rebuild();
     m_scene->showReport(nullptr);
     showNodeProperties();
@@ -843,7 +1059,7 @@ bool BlueprintEditor::importScript(const QString& script, QString* error)
 QString BlueprintEditor::exportScript(QStringList* warnings) const
 {
     std::vector<std::string> w;
-    const QString s = QString::fromStdString(toCommandScript(m_graph, m_library, &w));
+    const QString s = QString::fromStdString(toCommandScript(m_graph, m_effective, &w));
     if (warnings)
         for (const auto& x : w) warnings->append(QString::fromStdString(x));
     return s;
@@ -851,7 +1067,7 @@ QString BlueprintEditor::exportScript(QStringList* warnings) const
 
 QString BlueprintEditor::describeGraph() const
 {
-    return QString::fromStdString(describe(m_graph, m_library));
+    return QString::fromStdString(describe(m_graph, m_effective));
 }
 
 void BlueprintEditor::copySelection()
@@ -876,11 +1092,14 @@ void BlueprintEditor::paste()
     if (json.isEmpty()) json = mime->text().toUtf8();
     std::vector<int> nodes, comments;
     QString error;
-    if (!pasteFragment(m_graph, json, 40.0, 40.0, &nodes, &comments, &error))
+    std::vector<std::string> notes;   // définitions de sous-graphes ajoutées ou mises à jour
+    if (!pasteFragment(m_graph, json, 40.0, 40.0, &nodes, &comments, &error, &notes))
     {
         emit logMessage(tr("Coller : %1").arg(error), "WARN");
         return;
     }
+    for (const auto& note : notes) emit logMessage(tr("Coller : %1").arg(QString::fromStdString(note)), "SYS");
+    syncLibrary();
     m_scene->rebuild();
     m_scene->selectItems(nodes, comments);
     recordChange();
@@ -938,12 +1157,12 @@ void BlueprintEditor::showDocumentation()
 {
     const int id = m_scene->selectedNode();
     const NodeInstance* n = id ? m_graph.node(id) : nullptr;
-    const NodeDefinition* d = n ? m_library.find(n->type) : nullptr;
+    const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
     if (!d)
     {
         // Nœud choisi dans la palette
         auto* item = m_palette->currentItem();
-        if (item && !item->data(0, kTypeRole).toString().isEmpty()) d = m_library.find(item->data(0, kTypeRole).toString().toStdString());
+        if (item && !item->data(0, kTypeRole).toString().isEmpty()) d = m_effective.find(item->data(0, kTypeRole).toString().toStdString());
     }
     if (d) showNodeDocumentation(*d, this);
 }
@@ -953,7 +1172,7 @@ void BlueprintEditor::showNodeProperties()
     while (m_properties->rowCount() > 0) m_properties->removeRow(0);
     const int id = m_scene->selectedNode();
     const NodeInstance* n = id ? m_graph.node(id) : nullptr;
-    const NodeDefinition* d = n ? m_library.find(n->type) : nullptr;
+    const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
     showValues();
     if (!d)
     {
@@ -973,6 +1192,30 @@ void BlueprintEditor::showNodeProperties()
     case NodeStatus::Validated: m_nodeStatus->setText(tr("✓ composant validé (testé contre des références)")); break;
     case NodeStatus::Experimental: m_nodeStatus->setText(tr("⚗ composant expérimental (non validé)")); break;
     case NodeStatus::Standard: m_nodeStatus->setText(d->cacheable ? tr("résultat réutilisé tant que ses entrées ne changent pas") : QString()); break;
+    }
+    // Instance de sous-graphe : ouvrir le corps, propriétés ; entrée / sortie du corps édité : propriétés. Actions différées :
+    // elles reconstruisent ce panneau (et le bouton cliqué).
+    if (const std::string sub = subgraphOfType(n->type); !sub.empty() || (!currentSubgraph().empty() && n->type.rfind("sub.", 0) == 0))
+    {
+        const std::string target = sub.empty() ? currentSubgraph() : sub;
+        auto* row = new QWidget(m_propertiesHost);
+        auto* lay = new QHBoxLayout(row);
+        lay->setContentsMargins(0, 0, 0, 0);
+        if (!sub.empty())
+        {
+            auto* open = new QPushButton(tr("Ouvrir le sous-graphe"), row);
+            connect(open, &QPushButton::clicked, this, [this, target] {
+                QTimer::singleShot(0, this, [this, target] {
+                    QString error;
+                    if (!openSubgraph(target, &error)) QMessageBox::warning(this, tr("Sous-graphe"), error);
+                });
+            });
+            lay->addWidget(open);
+        }
+        auto* props = new QPushButton(tr("Propriétés…"), row);
+        connect(props, &QPushButton::clicked, this, [this, target] { QTimer::singleShot(0, this, [this, target] { editSubgraphProperties(target); }); });
+        lay->addWidget(props);
+        m_properties->addRow(tr("Sous-graphe"), row);
     }
 
     for (const auto& pin : d->inputs)
@@ -1081,6 +1324,470 @@ void BlueprintEditor::showNodeProperties()
         if (pin.required) label += QStringLiteral(" *");
         m_properties->addRow(label, editor);
     }
+}
+
+
+// -----------------------------------------------------------------------------
+// Sous-graphes
+// -----------------------------------------------------------------------------
+
+void BlueprintEditor::selectNodes(const std::vector<int>& nodes)
+{
+    m_scene->selectItems(nodes, {});
+}
+
+std::string BlueprintEditor::currentSubgraph() const
+{
+    return m_frames.empty() ? std::string() : m_frames.back().id;
+}
+
+bool BlueprintEditor::syncLibrary()
+{
+    const bool changed = !sameDefinitions(m_graph.subgraphs, m_syncedSubgraphs);
+    if (changed)
+    {
+        m_syncedSubgraphs = m_graph.subgraphs;
+        m_effective.setSubgraphs(m_graph.subgraphs);   // invalide les NodeDefinition* des types sub.* : aucun n'est conservé
+    }
+    if (changed || m_paletteSubgraph != currentSubgraph())
+    {
+        m_paletteSubgraph = currentSubgraph();
+        buildPalette();
+        filterPalette(m_search->text());
+    }
+    return changed;
+}
+
+void BlueprintEditor::updateSubgraphBar()
+{
+    if (!m_subgraphBar) return;
+    if (m_frames.empty())
+    {
+        m_subgraphBar->hide();
+        return;
+    }
+    QStringList path;
+    const std::string& root = m_frames.front().parent.name;
+    path << (root.empty() ? tr("Graphe principal") : QString::fromStdString(root));
+    for (const auto& f : m_frames)
+    {
+        const SubgraphDefinition* d = f.parent.subgraph(f.id);
+        path << QString::fromStdString(d && !d->name.empty() ? d->name : f.id);
+    }
+    const SubgraphDefinition* d = m_graph.subgraph(currentSubgraph());
+    m_breadcrumb->setText(tr("<b>Corps du sous-graphe</b> : %1 — version %2. « Retour » enregistre une nouvelle version et met à jour les instances.")
+                              .arg(path.join(QStringLiteral(" › ")).toHtmlEscaped())
+                              .arg(d ? d->version : 0));
+    m_subgraphBar->show();
+}
+
+std::vector<Issue> BlueprintEditor::issues() const
+{
+    if (m_frames.empty()) return m_effective.validate(m_graph);
+    return validateBody(m_library, m_graph, m_frames.back().id, m_graph.subgraphs);
+}
+
+Graph BlueprintEditor::graphForRun() const
+{
+    Graph g = m_graph;
+    if (m_frames.empty()) return g;
+    for (auto& d : g.subgraphs)
+        if (d.id == m_frames.back().id)
+        {
+            auto body = std::make_shared<Graph>(m_graph);
+            body->subgraphs.clear();
+            d.body = body;
+        }
+    return g;
+}
+
+bool BlueprintEditor::composedGraph(Graph& out, QString* error) const
+{
+    Graph current = m_graph;
+    for (auto f = m_frames.rbegin(); f != m_frames.rend(); ++f)
+    {
+        Graph parent = f->parent;
+        std::string why;
+        if (!foldBody(m_library, f->id, current, parent, nullptr, &why))
+        {
+            if (error) *error = tr("corps du sous-graphe « %1 » : %2").arg(QString::fromStdString(f->id), QString::fromStdString(why));
+            return false;
+        }
+        current = std::move(parent);
+    }
+    out = std::move(current);
+    return true;
+}
+
+bool BlueprintEditor::encapsulateSelection(const QString& name, QString* error)
+{
+    auto fail = [error](const QString& m) {
+        if (error) *error = m;
+        return false;
+    };
+    if (m_running) return fail(tr("exécution en cours"));
+    const auto nodes = m_scene->selectedNodes();
+    if (nodes.empty()) return fail(tr("sélectionner les nœuds à encapsuler"));
+    QString title = name.trimmed();
+    if (title.isEmpty())
+    {
+        bool ok = false;
+        title = QInputDialog::getText(this, tr("Créer un sous-graphe"), tr("Nom du sous-graphe (%1 nœud(s) sélectionné(s)) :").arg(nodes.size()),
+                                      QLineEdit::Normal, tr("Sous-graphe"), &ok)
+                    .trimmed();
+        if (!ok) return false;   // annulé
+        if (title.isEmpty()) return fail(tr("nom vide"));
+    }
+    Graph trial = m_graph;
+    const EncapsulationResult r = encapsulate(m_library, trial, nodes, suggestSubgraphId(title, m_graph.subgraphs), title.toStdString());
+    if (!r.ok) return fail(QString::fromStdString(r.message));
+    m_graph = std::move(trial);
+    for (auto it = m_breakpoints.begin(); it != m_breakpoints.end();) it = m_graph.node(*it) ? std::next(it) : m_breakpoints.erase(it);
+    m_scene->setBreakpoints(m_breakpoints);
+    syncLibrary();
+    m_scene->rebuild();
+    m_scene->selectItems({ r.instance }, {});
+    recordChange();
+    refreshProblems();
+    showNodeProperties();
+    emit logMessage(QString::fromStdString(r.message) + tr(" Double-cliquer l'instance pour ouvrir son corps."), "SYS");
+    return true;
+}
+
+bool BlueprintEditor::openSubgraph(const std::string& id, QString* error)
+{
+    auto fail = [error](const QString& m) {
+        if (error) *error = m;
+        return false;
+    };
+    if (m_running) return fail(tr("exécution en cours"));
+    const SubgraphDefinition* d = m_graph.subgraph(id);
+    if (!d || !d->body) return fail(tr("sous-graphe « %1 » introuvable dans ce graphe").arg(QString::fromStdString(id)));
+    for (const auto& f : m_frames)
+        if (f.id == id) return fail(tr("le corps du sous-graphe « %1 » est déjà ouvert (appel récursif)").arg(QString::fromStdString(id)));
+    const QString title = QString::fromStdString(d->name.empty() ? id : d->name);
+    const int version = d->version;
+    SubgraphFrame f;
+    f.id = id;
+    f.parent = m_graph;
+    f.undo = std::move(m_undo);
+    f.redo = std::move(m_redo);
+    f.breakpoints = m_breakpoints;
+    f.scale = m_view->transform().m11();
+    const QPointF c = m_view->mapToScene(m_view->viewport()->rect().center());
+    f.centerX = c.x();
+    f.centerY = c.y();
+    Graph body = *d->body;
+    body.subgraphs = m_graph.subgraphs;   // types des sous-graphes appelés par le corps, de son entrée et de sa sortie
+    m_frames.push_back(std::move(f));
+    m_graph = std::move(body);
+    m_breakpoints.clear();
+    m_scene->setBreakpoints(m_breakpoints);
+    syncLibrary();
+    m_scene->rebuild();
+    graphReplaced();
+    resetHistory();
+    updateSubgraphBar();
+    showNodeProperties();
+    QTimer::singleShot(0, this, &BlueprintEditor::fitGraph);
+    emit logMessage(tr("Corps du sous-graphe « %1 » (version %2) ouvert : « Retour au graphe parent » enregistre les modifications.").arg(title).arg(version),
+                    "SYS");
+    return true;
+}
+
+bool BlueprintEditor::closeSubgraph(bool apply, QString* error)
+{
+    auto fail = [error](const QString& m) {
+        if (error) *error = m;
+        return false;
+    };
+    if (m_frames.empty()) return fail(tr("aucun corps de sous-graphe ouvert"));
+    if (m_running) return fail(tr("exécution en cours"));
+    Graph parent = m_frames.back().parent;
+    std::vector<std::string> updates;
+    bool changed = false;
+    if (apply)
+    {
+        std::string why;
+        if (!foldBody(m_library, m_frames.back().id, m_graph, parent, &updates, &why)) return fail(QString::fromStdString(why));
+        changed = !parent.sameContent(m_frames.back().parent);
+    }
+    SubgraphFrame frame = std::move(m_frames.back());
+    m_frames.pop_back();
+    const SubgraphDefinition* before = frame.parent.subgraph(frame.id);
+    const QString title = QString::fromStdString(before && !before->name.empty() ? before->name : frame.id);
+    const int oldVersion = before ? before->version : 0;
+    m_undo = std::move(frame.undo);
+    m_redo = std::move(frame.redo);
+    if (apply && changed)
+    {
+        m_undo.push_back(frame.parent);   // une entrée Annuler : le graphe parent d'avant l'ouverture du corps
+        if (m_undo.size() > 200) m_undo.erase(m_undo.begin());
+        m_redo.clear();
+    }
+    m_graph = apply ? std::move(parent) : std::move(frame.parent);
+    m_snapshot = m_graph;
+    m_lastKey.clear();
+    m_breakpoints = frame.breakpoints;
+    m_scene->setBreakpoints(m_breakpoints);
+    syncLibrary();
+    m_scene->rebuild();
+    graphReplaced();
+    updateActions();
+    updateSubgraphBar();
+    m_view->resetTransform();
+    m_view->scale(frame.scale, frame.scale);
+    m_view->centerOn(frame.centerX, frame.centerY);
+    showNodeProperties();
+    if (!apply)
+        emit logMessage(tr("Sous-graphe « %1 » : modifications du corps abandonnées.").arg(title), "SYS");
+    else if (!changed)
+        emit logMessage(tr("Sous-graphe « %1 » inchangé (version %2).").arg(title).arg(oldVersion), "SYS");
+    else
+    {
+        const SubgraphDefinition* d = m_graph.subgraph(frame.id);
+        emit logMessage(tr("Sous-graphe « %1 » enregistré en version %2 (%3 instance(s) dans ce graphe).")
+                            .arg(title)
+                            .arg(d ? d->version : 0)
+                            .arg(subgraphInstances(m_graph, frame.id).size()),
+                        "SYS");
+        for (const auto& u : updates) emit logMessage(tr("Sous-graphe : %1").arg(QString::fromStdString(u)), "WARN");
+    }
+    return true;
+}
+
+void BlueprintEditor::backToParent()
+{
+    if (m_frames.empty()) return;
+    QString error;
+    if (closeSubgraph(true, &error)) return;
+    QMessageBox box(QMessageBox::Warning, tr("Sous-graphe"), tr("Le corps du sous-graphe ne peut pas être enregistré :\n%1").arg(error),
+                    QMessageBox::NoButton, this);
+    QPushButton* keep = box.addButton(tr("Continuer l'édition"), QMessageBox::AcceptRole);
+    QPushButton* discard = box.addButton(tr("Abandonner les modifications"), QMessageBox::DestructiveRole);
+    box.setDefaultButton(keep);
+    box.exec();
+    if (box.clickedButton() == discard)
+        closeSubgraph(false);
+    else
+    {
+        refreshProblems();
+        m_sideTabs->setCurrentWidget(m_problems);
+    }
+}
+
+bool BlueprintEditor::setSubgraphInterface(const SubgraphDefinition& updated, QString* error)
+{
+    auto fail = [error](const QString& m) {
+        if (error) *error = m;
+        return false;
+    };
+    if (m_running) return fail(tr("exécution en cours"));
+    if (currentSubgraph() != updated.id) return fail(tr("ouvrir d'abord le corps du sous-graphe « %1 »").arg(QString::fromStdString(updated.id)));
+    auto it = std::find_if(m_graph.subgraphs.begin(), m_graph.subgraphs.end(), [&](const SubgraphDefinition& d) { return d.id == updated.id; });
+    if (it == m_graph.subgraphs.end()) return fail(tr("sous-graphe « %1 » introuvable").arg(QString::fromStdString(updated.id)));
+    for (const auto* pins : { &updated.inputs, &updated.outputs })
+    {
+        std::set<std::string> names;
+        for (const auto& p : *pins)
+            if (!isValidPinName(p.name) || !names.insert(p.name).second || p.kind != PinKind::Data)
+                return fail(tr("broche « %1 » invalide ou en double").arg(QString::fromStdString(p.name)));
+    }
+    SubgraphDefinition def = updated;
+    def.version = it->version;   // nouvelle version au retour au graphe parent
+    def.body = it->body;
+    *it = def;
+    // Liens du corps vers des broches de l'entrée ou de la sortie supprimées ou de type modifié
+    const auto lib = NodeLibrary::withSubgraphs(m_library, m_graph.subgraphs);
+    std::vector<int> ends;
+    for (const auto& [nid, n] : m_graph.nodes())
+        if (n.type == subgraphInputType(def.id) || n.type == subgraphOutputType(def.id)) ends.push_back(nid);
+    const auto removed = pruneStaleLinks(*lib, m_graph, ends);
+    // La définition garde un corps cohérent avec son interface (contrôles, exécution) : le corps courant
+    auto body = std::make_shared<Graph>(m_graph);
+    body->subgraphs.clear();
+    for (auto& d : m_graph.subgraphs)
+        if (d.id == def.id) d.body = body;
+    syncLibrary();
+    m_scene->rebuild();
+    recordChange();
+    refreshProblems();
+    showNodeProperties();
+    updateSubgraphBar();
+    for (const auto& r : removed) emit logMessage(tr("Interface du sous-graphe : %1").arg(QString::fromStdString(r)), "WARN");
+    emit logMessage(tr("Interface du sous-graphe « %1 » modifiée (%2 entrée(s), %3 sortie(s)) ; enregistrée au retour au graphe parent.")
+                        .arg(QString::fromStdString(def.name.empty() ? def.id : def.name))
+                        .arg(def.inputs.size())
+                        .arg(def.outputs.size()),
+                    "SYS");
+    return true;
+}
+
+QStringList BlueprintEditor::knownObjectTypes() const
+{
+    std::set<QString> types;
+    for (const auto* d : m_effective.definitions())
+        for (const auto* pins : { &d->inputs, &d->outputs })
+            for (const auto& p : *pins)
+                if (p.type == ValueType::Object && !p.objectType.empty()) types.insert(QString::fromStdString(p.objectType));
+    return QStringList(types.begin(), types.end());
+}
+
+bool BlueprintEditor::editSubgraphProperties(const std::string& id)
+{
+    if (id.empty() || m_running) return false;
+    if (currentSubgraph() != id)
+    {
+        QString error;
+        if (!openSubgraph(id, &error))
+        {
+            QMessageBox::warning(this, tr("Sous-graphe"), error);
+            return false;
+        }
+    }
+    const SubgraphDefinition* d = m_graph.subgraph(id);
+    if (!d) return false;
+    BlueprintSubgraphDialog dialog(*d, knownObjectTypes(), this);
+    if (dialog.exec() != QDialog::Accepted) return false;
+    QString error;
+    if (!setSubgraphInterface(dialog.definition(), &error))
+    {
+        QMessageBox::warning(this, tr("Sous-graphe"), error);
+        return false;
+    }
+    return true;
+}
+
+bool BlueprintEditor::exportSubgraph(const std::string& id, const QString& path, QString* error)
+{
+    Graph top;   // corps en cours d'édition compris
+    if (!composedGraph(top, error)) return false;
+    if (!top.subgraph(id))
+    {
+        if (error) *error = tr("sous-graphe « %1 » introuvable").arg(QString::fromStdString(id));
+        return false;
+    }
+    return saveSubgraphFile(top, id, path, error);
+}
+
+bool BlueprintEditor::importSubgraphs(const QString& path, QString* error)
+{
+    auto fail = [error](const QString& m) {
+        if (error) *error = m;
+        return false;
+    };
+    if (m_running) return fail(tr("exécution en cours"));
+    std::vector<SubgraphDefinition> defs;
+    QString why;
+    if (!loadSubgraphFile(path, defs, &why)) return fail(why);
+    Graph trial = m_graph;
+    std::vector<std::string> notes, updates, warnings;
+    for (const auto& d : defs)
+    {
+        const SubgraphDefinition* existing = trial.subgraph(d.id);
+        const QString label = QString::fromStdString(d.name.empty() ? d.id : d.name);
+        if (existing)
+        {
+            SubgraphDefinition probe = d;
+            probe.version = existing->version;
+            if (probe.sameContent(*existing))
+            {
+                notes.push_back(tr("« %1 » déjà présent (version %2)").arg(label).arg(existing->version).toStdString());
+                continue;
+            }
+            if (d.id == currentSubgraph())
+                return fail(tr("« %1 » : son corps est en cours d'édition ; revenir au graphe parent avant d'importer").arg(label));
+            // Définition présente au contenu différent. L'import est un geste délibéré (fichier choisi) : la définition du
+            // fichier devient une nouvelle version locale, instances mises à jour, une entrée Annuler. Les numéros de
+            // version de deux copies modifiées séparément ne sont pas comparables : ils ne décident pas ; un fichier plus
+            // ancien que le graphe et une interface qui casse des liens d'instances sont signalés.
+            if (d.version < existing->version)
+                warnings.push_back(tr("« %1 » : le fichier contient la version %2, antérieure à la version %3 du graphe, qu'elle remplace "
+                                      "(Annuler pour revenir)")
+                                       .arg(label)
+                                       .arg(d.version)
+                                       .arg(existing->version)
+                                       .toStdString());
+            for (const auto& change : breakingInterfaceChanges(*existing, d))
+                warnings.push_back(tr("« %1 » : %2").arg(label, QString::fromStdString(change)).toStdString());
+        }
+        const bool had = existing != nullptr;
+        const int oldVersion = had ? existing->version : 0;
+        std::string reason;
+        if (!defineSubgraph(m_library, trial, d, &updates, &reason))   // tout ou rien : le graphe n'est modifié qu'à la fin
+            return fail(tr("« %1 » : %2").arg(label, QString::fromStdString(reason)));
+        const int newVersion = trial.subgraph(d.id)->version;
+        notes.push_back((had ? tr("« %1 » remplacé par celui du fichier (version %2 → %3)").arg(label).arg(oldVersion).arg(newVersion)
+                             : tr("« %1 » ajouté (version %2)").arg(label).arg(newVersion))
+                            .toStdString());
+    }
+    m_graph = std::move(trial);
+    syncLibrary();
+    m_scene->rebuild();
+    recordChange();
+    refreshProblems();
+    showNodeProperties();
+    emit logMessage(tr("Sous-graphes importés de %1 :").arg(path), "SYS");
+    for (const auto& n : notes) emit logMessage(QStringLiteral("  ") + QString::fromStdString(n), "SYS");
+    for (const auto& w : warnings) emit logMessage(tr("Import : %1").arg(QString::fromStdString(w)), "WARN");
+    for (const auto& u : updates) emit logMessage(tr("Sous-graphe : %1").arg(QString::fromStdString(u)), "WARN");
+    return true;
+}
+
+bool BlueprintEditor::removeSubgraphDefinition(const std::string& id, QString* error)
+{
+    if (!m_frames.empty())
+    {
+        if (error) *error = tr("revenir au graphe principal pour supprimer une définition");
+        return false;
+    }
+    std::string why;
+    if (!removeSubgraph(m_graph, id, &why))
+    {
+        if (error) *error = QString::fromStdString(why);
+        return false;
+    }
+    syncLibrary();
+    m_scene->rebuild();
+    recordChange();
+    refreshProblems();
+    emit logMessage(tr("Définition du sous-graphe « %1 » supprimée.").arg(QString::fromStdString(id)), "SYS");
+    return true;
+}
+
+std::string BlueprintEditor::targetSubgraph() const
+{
+    const int id = m_scene->selectedNode();
+    if (const NodeInstance* n = id ? m_graph.node(id) : nullptr)
+        if (std::string sub = subgraphOfType(n->type); !sub.empty()) return sub;
+    return currentSubgraph();
+}
+
+std::string BlueprintEditor::chooseSubgraph(const QString& title, bool unusedOnly)
+{
+    QStringList items;
+    std::vector<std::string> ids;
+    for (const auto& d : m_graph.subgraphs)
+    {
+        if (unusedOnly)
+        {
+            bool used = !subgraphInstances(m_graph, d.id).empty();
+            for (const auto& o : m_graph.subgraphs)
+                if (o.id != d.id && o.body && !subgraphInstances(*o.body, d.id).empty()) used = true;
+            if (used) continue;
+        }
+        items << tr("%1 (%2, version %3)").arg(QString::fromStdString(d.name.empty() ? d.id : d.name), QString::fromStdString(d.id)).arg(d.version);
+        ids.push_back(d.id);
+    }
+    if (items.isEmpty())
+    {
+        QMessageBox::information(this, title, unusedOnly ? tr("Aucune définition inutilisée.") : tr("Aucun sous-graphe dans ce graphe."));
+        return {};
+    }
+    bool ok = false;
+    const QString choice = QInputDialog::getItem(this, title, tr("Sous-graphe :"), items, 0, false, &ok);
+    const auto index = items.indexOf(choice);
+    return ok && index >= 0 ? ids[static_cast<std::size_t>(index)] : std::string();
 }
 
 } // namespace TSA::UI

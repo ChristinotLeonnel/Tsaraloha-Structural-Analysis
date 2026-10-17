@@ -10,6 +10,7 @@
 //   - commentaires : cadres titrés derrière les nœuds ; déplacer un cadre déplace les nœuds qu'il contient, la poignée
 //     en bas à droite le redimensionne, un double-clic modifie son texte ;
 //   - statut des composants : ✓ validé, ⚗ expérimental (en-tête du nœud) ;
+//   - sous-graphes : instances (en-tête vert sapin, « ⧉ », double-clic : ouvrir le corps), entrée et sortie d'un corps ;
 //   - après une exécution : profil (exécutions, réutilisations, temps) sur chaque nœud, nœud en erreur surligné ;
 //   - débogage : points d'arrêt (pastille rouge), nœud en pause surligné, édition bloquée pendant l'exécution.
 
@@ -74,6 +75,7 @@ public:
     void moveNodeBy(int id, const QPointF& delta);
     void commentChanged();
     void requestCommentEdit(int id) { emit commentEditRequested(id); }
+    void requestNodeOpen(int id) { emit nodeOpenRequested(id); }
 
 signals:
     void message(const QString& text);
@@ -82,6 +84,9 @@ signals:
     void nodesMoved();
     /// Double-clic sur un commentaire : modifier son texte.
     void commentEditRequested(int id);
+    /// Double-clic sur un nœud (instance de sous-graphe : ouvrir son corps). À traiter en différé : l'éditeur reconstruit
+    /// la scène, donc l'élément qui reçoit le clic.
+    void nodeOpenRequested(int id);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;

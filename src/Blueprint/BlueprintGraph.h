@@ -1,13 +1,15 @@
 #pragma once
 
-// Graphe d'un Blueprint : nœuds (type, version, position, valeurs saisies), liens (exécution, données) et
-// commentaires (cadres titrés qui regroupent visuellement des nœuds : étapes d'un algorithme, annotations).
+// Graphe d'un Blueprint : nœuds (type, version, position, valeurs saisies), liens (exécution, données),
+// commentaires (cadres titrés qui regroupent visuellement des nœuds : étapes d'un algorithme, annotations) et
+// sous-graphes réutilisables (fonctions écrites en blocs, appelées par des nœuds « sub.<id> » : BlueprintSubgraph.h).
 // Structure de données pure ; la validité des types de nœuds et des liens est vérifiée par la
 // bibliothèque (NodeLibrary::validate) et à la connexion (NodeLibrary::canConnect).
 
 #include "BlueprintTypes.h"
 
 #include <map>
+#include <memory>
 #include <optional>
 
 namespace TSA::Blueprint
@@ -46,6 +48,28 @@ struct Link
     bool operator==(const Link&) const = default;
 };
 
+class Graph;
+
+/// Sous-graphe réutilisable : un corps (graphe) entre un nœud d'entrée « sub.<id>.in » (début, sorties = entrées du
+/// sous-graphe) et un nœud de sortie « sub.<id>.out » (fin, entrées = sorties du sous-graphe), appelé par des instances
+/// « sub.<id> » aux broches typées. Le corps est immuable (partagé) : une modification crée un nouveau corps, ce qui
+/// garde les copies du graphe (annulation) indépendantes.
+struct SubgraphDefinition
+{
+    std::string id;                      ///< identifiant stable : lettres, chiffres, « _ », « - »
+    std::string name;                    ///< titre des instances
+    std::string description;
+    std::string category = "Sous-graphes";
+    std::string documentation;
+    int version = 1;                     ///< incrémentée à chaque modification enregistrée
+    std::vector<PinSpec> inputs;         ///< entrées de données (type, objet, valeur par défaut, obligatoire)
+    std::vector<PinSpec> outputs;        ///< sorties de données
+    std::shared_ptr<const Graph> body;
+
+    /// Même contenu (corps compris), versions comprises.
+    bool sameContent(const SubgraphDefinition& other) const;
+};
+
 class Graph
 {
 public:
@@ -79,8 +103,13 @@ public:
     /// Nœuds dont la position est dans le cadre du commentaire.
     std::vector<int> nodesInComment(int id) const;
 
+    /// Sous-graphes définis dans ce graphe (enregistrés avec lui) ; leurs instances « sub.<id> » sont résolues par
+    /// NodeLibrary (bibliothèque augmentée des sous-graphes du graphe).
+    std::vector<SubgraphDefinition> subgraphs;
+    const SubgraphDefinition* subgraph(const std::string& id) const;
+
     void clear();
-    /// Même contenu (nom, description, nœuds, liens, commentaires) ; l'ordre des liens n'est pas significatif.
+    /// Même contenu (nom, description, nœuds, liens, commentaires, sous-graphes) ; l'ordre des liens n'est pas significatif.
     bool sameContent(const Graph& other) const;
 
 private:

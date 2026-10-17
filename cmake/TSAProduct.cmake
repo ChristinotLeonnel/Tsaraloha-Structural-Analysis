@@ -275,6 +275,8 @@ set(UI_WIDGETS_SOURCES
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintEditor.cpp
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintObjectViewer.h
     ${TSA_ROOT}/src/UI/Blueprint/BlueprintObjectViewer.cpp
+    ${TSA_ROOT}/src/UI/Blueprint/BlueprintSubgraphDialog.h
+    ${TSA_ROOT}/src/UI/Blueprint/BlueprintSubgraphDialog.cpp
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.h
     ${TSA_ROOT}/src/UI/Common/EcosystemApplication.cpp
     ${TSA_ROOT}/src/UI/Common/SelectionSynchronizer.h
@@ -856,6 +858,8 @@ set(TSARALOHA_MODEL_SOURCES
     ${TSA_ROOT}/src/Blueprint/BlueprintRuntime.h
     ${TSA_ROOT}/src/Blueprint/BlueprintRuntime.cpp
     ${TSA_ROOT}/src/Blueprint/BlueprintNodes.cpp
+    ${TSA_ROOT}/src/Blueprint/BlueprintSubgraph.h
+    ${TSA_ROOT}/src/Blueprint/BlueprintSubgraph.cpp
     ${TSA_ROOT}/src/Blueprint/BlueprintFile.h
     ${TSA_ROOT}/src/Blueprint/BlueprintFile.cpp
     ${TSA_ROOT}/src/Blueprint/BlueprintScript.h

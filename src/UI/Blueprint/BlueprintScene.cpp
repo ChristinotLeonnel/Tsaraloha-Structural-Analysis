@@ -1,5 +1,7 @@
 #include "BlueprintScene.h"
 
+#include "Blueprint/BlueprintSubgraph.h"
+
 #include <QGraphicsView>
 
 #include <QGraphicsItem>
@@ -149,7 +151,9 @@ public:
 
         QPainterPath header;
         header.addRoundedRect(QRectF(0, 0, kWidth, kHeader), 6, 6);
-        p->fillPath(header, d ? categoryColor(d->category) : QColor("#B71C1C"));
+        const bool instance = !subgraphOfType(n->type).empty();
+        const bool bodyEnd = !instance && n->type.rfind("sub.", 0) == 0;   // entrée / sortie d'un corps de sous-graphe
+        p->fillPath(header, !d ? QColor("#B71C1C") : instance ? QColor("#00695C") : bodyEnd ? QColor("#37474F") : categoryColor(d->category));
         p->setPen(Qt::white);
         QFont f = p->font();
         f.setBold(true);
@@ -158,6 +162,7 @@ public:
         QString title = d ? QString::fromStdString(d->title) : QStringLiteral("Inconnu : %1").arg(QString::fromStdString(n->type));
         if (d && d->status == NodeStatus::Validated) title = QStringLiteral("✓ ") + title;
         else if (d && d->status == NodeStatus::Experimental) title = QStringLiteral("⚗ ") + title;
+        if (d && instance) title = QStringLiteral("⧉ ") + title;
         p->drawText(QRectF(8, 0, kWidth - 24, kHeader), Qt::AlignVCenter | Qt::AlignLeft,
                     p->fontMetrics().elidedText(title, Qt::ElideRight, int(kWidth - 24)));
         if (m_scene.hasBreakpoint(m_id))
@@ -223,6 +228,11 @@ protected:
     {
         if (change == ItemPositionHasChanged) m_scene.nodeMoved(m_id, value.toPointF());
         return QGraphicsItem::itemChange(change, value);
+    }
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* e) override
+    {
+        m_scene.requestNodeOpen(m_id);
+        e->accept();
     }
 
 private:

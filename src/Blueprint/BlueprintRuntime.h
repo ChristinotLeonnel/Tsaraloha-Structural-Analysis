@@ -48,6 +48,11 @@ class NodeLibrary;
 class NodeLibrary
 {
 public:
+    NodeLibrary() = default;
+    /// Bibliothèque augmentée : ses définitions propres, puis celles de `base` (non possédée, doit lui survivre).
+    explicit NodeLibrary(const NodeLibrary* base) : m_base(base) {}
+
+    /// Faux si l'identifiant est vide, déjà défini (ici ou dans la bibliothèque de base) ou sans exécuteur.
     bool add(NodeDefinition definition, NodeExecutor executor);
     const NodeDefinition* find(const std::string& type) const;
     const NodeExecutor* executor(const std::string& type) const;
@@ -68,6 +73,20 @@ public:
     /// Vrai si un nœud du graphe lit ou modifie le projet (exécution obligatoire dans le thread de l'interface).
     bool usesProject(const Graph& g) const;
 
+    /// Bibliothèque `base` augmentée des sous-graphes `subgraphs` : types « sub.<id> » (instances), « sub.<id>.in » et
+    /// « sub.<id>.out » (entrée et sortie du corps). BlueprintSubgraph.h.
+    static std::unique_ptr<NodeLibrary> withSubgraphs(const NodeLibrary& base, const std::vector<SubgraphDefinition>& subgraphs);
+    /// Bibliothèque augmentée (construite avec une base) : remplace ses types de sous-graphes par ceux de `subgraphs`, en
+    /// place (l'éditeur garde la même bibliothèque d'un graphe à l'autre). Invalide les NodeDefinition* déjà obtenus de
+    /// ces types. Sans base : vide la bibliothèque.
+    void setSubgraphs(const std::vector<SubgraphDefinition>& subgraphs);
+    /// Bibliothèque effective d'un graphe : celle-ci si le graphe n'a pas de sous-graphe (ou si elle en contient déjà les
+    /// types), sinon une bibliothèque augmentée conservée dans `holder`. validate, warnings, canConnect, connect et
+    /// usesProject l'utilisent d'eux-mêmes ; Runner aussi.
+    const NodeLibrary& forGraph(const Graph& g, std::unique_ptr<NodeLibrary>& holder) const;
+    /// Bibliothèque augmentée de sous-graphes (types sub.*).
+    bool hasSubgraphTypes() const { return m_subgraphTypes; }
+
     /// Bibliothèque standard : événements, paramètres, math, logique, flux, texte, débogage,
     /// commandes du registre central (cmd.*), nœuds scientifiques TSALab (science.*), nœuds des plugins.
     static const NodeLibrary& standard();
@@ -82,6 +101,8 @@ private:
     };
     std::vector<Entry> m_entries;
     std::map<std::string, std::size_t> m_index;
+    const NodeLibrary* m_base = nullptr;
+    bool m_subgraphTypes = false;
 };
 
 void registerStandardNodes(NodeLibrary& library, const TSA::Automation::CommandRegistry& commands);
@@ -127,6 +148,7 @@ private:
     struct Entry
     {
         std::string type;
+        std::vector<std::shared_ptr<const void>> revision;   ///< NodeDefinition::revision à l'évaluation
         std::vector<Value> inputs;
         std::map<std::string, Value> outputs;
     };
@@ -219,6 +241,8 @@ public:
     bool hasValue(const std::string& pin) const;   ///< reliée ou saisie
     /// Objet d'une entrée : nul (et erreur enregistrée) s'il manque ou n'a pas le type de la broche.
     ObjectRef object(const std::string& pin);
+    /// Bibliothèque de l'exécution (effective : sous-graphes compris).
+    const NodeLibrary& library() const;
     /// Objet d'une entrée converti dans sa classe C++ : nul (et erreur) si absent ou d'une autre classe.
     template <typename T>
     std::shared_ptr<const T> objectAs(const std::string& pin)

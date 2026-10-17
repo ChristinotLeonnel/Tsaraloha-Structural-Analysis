@@ -16,6 +16,7 @@
 
 #include "../Automation/CommandRegistry.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -84,6 +85,13 @@ struct NodeDefinition
     /// Sorties d'exécution déclenchées dans l'ordre (séquence, boucle : corps puis « terminé ») : ce qui suit une sortie
     /// s'exécute après ce qui suit les précédentes (contrôle des dépendances entre nœuds d'action).
     bool orderedOutputs = false;
+    /// Point de départ de l'exécution (« Début », entrée d'un sous-graphe) : Runner::run exécute chacun de ces nœuds.
+    bool entry = false;
+    /// Révision du contenu d'un type défini dans le graphe (sous-graphe : son corps et ceux des sous-graphes qu'il appelle,
+    /// par identifiant) : un résultat mis en cache n'est réutilisé que pour la même révision — sinon une définition modifiée
+    /// (annuler, import, interface) rendrait le résultat de l'ancienne. Comparaison par identité : les corps sont immuables
+    /// et l'entrée du cache les garde en vie. Vide pour les nœuds natifs.
+    std::vector<std::shared_ptr<const void>> revision;
 
     const PinSpec* input(const std::string& name) const;
     const PinSpec* output(const std::string& name) const;

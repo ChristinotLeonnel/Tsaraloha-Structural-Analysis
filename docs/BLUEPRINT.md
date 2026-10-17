@@ -2,7 +2,7 @@
 
 Statut : phase 6 de `docs/TSARALOHA_ARCHITECTURE.md` (ADR-024), 2026-10-08 ; valeurs objet, réutilisation des
 résultats, variables, commentaires et fichier v2 le 13/10/2026 (programmation structurelle de TSALab :
-`TSALab/docs/BLUEPRINT_STRUCTUREL.md`). Moteur partagé (TSA et TSALab), éditeur partagé, affiché dans l'espace
+`TSALab/docs/BLUEPRINT_STRUCTUREL.md`) ; sous-graphes réutilisables et fichier v3 le 17/10/2026. Moteur partagé (TSA et TSALab), éditeur partagé, affiché dans l'espace
 « Blueprint » de TSALab.
 
 ## Où est le code
@@ -11,12 +11,14 @@ résultats, variables, commentaires et fichier v2 le 13/10/2026 (programmation s
 | :--- | :--- | :--- |
 | Types, graphe | `src/Blueprint/BlueprintTypes.h`, `BlueprintGraph.*` | modèle (C++ standard) |
 | Bibliothèque, exécution, profil | `src/Blueprint/BlueprintRuntime.*`, `BlueprintNodes.cpp` | modèle |
-| Fichier `.tsbp` | `src/Blueprint/BlueprintFile.*` | modèle (Qt Core / JSON) |
+| Fichier `.tsbp`, sous-graphe `.tsbps` | `src/Blueprint/BlueprintFile.*` | modèle (Qt Core / JSON) |
+| Sous-graphes : types, exécution imbriquée, contrôles, encapsulation | `src/Blueprint/BlueprintSubgraph.*` | modèle (C++ standard) |
 | Script de commandes ↔ Blueprint, description pour l'IA | `src/Blueprint/BlueprintScript.*` | modèle (C++ standard) |
 | Éditeur | `src/UI/Blueprint/BlueprintScene.*`, `BlueprintEditor.*` | widgets |
 | Vues des objets, documentation des nœuds | `src/UI/Blueprint/BlueprintObjectViewer.*` | widgets |
+| Propriétés d'un sous-graphe (interface typée) | `src/UI/Blueprint/BlueprintSubgraphDialog.*` | widgets |
 | Exemples | `TSALab/lab/Research/Examples/BlueprintExamples.*`, `StructuralGraphs.*` | application TSALab |
-| Tests | `tests/test_blueprint.cpp` (193–195, 197–199, 391), `TSALab/lab/Tests` (L6, L8, L15 à L22) | |
+| Tests | `tests/test_blueprint.cpp` (193–195, 197–199, 391, 392 sous-graphes, 393 sous-graphes dans l'éditeur), `TSALab/lab/Tests` (L6, L8, L15 à L22) | |
 
 ## Modèle d'exécution
 
@@ -38,7 +40,10 @@ résultats, variables, commentaires et fichier v2 le 13/10/2026 (programmation s
   même alternative et même contenu, objets comparés par `ObjectValue::equals`). Ses entrées sont évaluées une fois,
   puis transmises à l'exécuteur. `EvaluationCache` (fourni par l'éditeur à chaque exécution) garde les résultats d'une
   exécution à l'autre : seule la partie du graphe touchée par une modification est recalculée ; le profil indique ↺
-  pour un résultat réutilisé. Exclus : nœuds d'action, nœuds qui utilisent le projet, variables, paramètres.
+  pour un résultat réutilisé. Exclus : nœuds d'action, nœuds qui utilisent le projet, variables, paramètres. Une
+  instance de sous-graphe n'est réutilisée que pour la même **révision** de sa définition (`NodeDefinition::revision` :
+  identité de son corps et des corps qu'il appelle) : après Annuler, un import ou une interface modifiée, le résultat
+  de l'ancienne définition n'est jamais rendu (test 392).
 - **Variables** : `var.set` (action) mémorise une valeur sous un nom pour la suite de l'exécution, `var.get` (pur,
   réévalué à chaque lecture) la relit ; accumulateurs des boucles.
 - Validation avant exécution (bloquante) : types inconnus, nœud enregistré avec une version plus récente que la
@@ -79,14 +84,63 @@ Métadonnées d'un nœud (`NodeDefinition`) : `status` (standard, **validé** �
 
 ## Fichier `.tsbp`
 
-JSON versionné (`"format": "tsbp"`, `"version": 2`) : nom, description, nœuds (id, type, `v` = version du type de
+JSON versionné (`"format": "tsbp"`, `"version": 2`, ou 3 s'il contient des sous-graphes) : nom, description, nœuds (id, type, `v` = version du type de
 nœud, position, valeurs saisies typées), liens (`from`/`out` → `to`/`in`), commentaires (`id`, `x`, `y`, `w`, `h`,
 `text`, `color`). La version 1 (sans `v` ni commentaires) est lue telle quelle ; une version future du fichier est
 refusée ; un type de nœud inconnu est chargé puis signalé à la validation (plugins absents) ; un nœud d'une version plus
-récente que la bibliothèque est signalé. Les objets ne sont jamais enregistrés.
+récente que la bibliothèque est signalé. Les objets ne sont jamais enregistrés. Version 3 : liste `subgraphs`
+(identifiant, nom, description, catégorie, documentation, version, entrées et sorties typées — `bool`, `integer`,
+`real`, `text`, `point`, `ids`, `object` avec son type d'objet, `any` —, valeur par défaut, entrée obligatoire, corps
+`graph`). Un graphe sans sous-graphe s'enregistre toujours en version 2 (lisible par les versions antérieures).
+Sous-graphe seul `.tsbps` (`"format": "tsbp-subgraph"`, version 1) : définitions utilisées d'abord, définition
+principale en dernier.
 
 Fragment de presse-papiers (`fragmentToJson` / `pasteFragment`, format `tsbp-fragment`) : nœuds choisis, liens entre eux,
-commentaires ; collés avec de nouveaux identifiants et un décalage.
+commentaires, et définitions des sous-graphes utilisés ; collés avec de nouveaux identifiants et un décalage. Une
+définition absente du graphe est ajoutée ; une définition présente est remplacée si celle du fragment est d'une
+version plus récente, conservée sinon (signalé dans le journal).
+
+## Sous-graphes
+
+Fonctions écrites en blocs, définies dans le graphe qui les utilise (`Graph::subgraphs`, enregistrées avec lui) et
+partagées par copier-coller ou fichier `.tsbps`.
+
+- **Corps** : graphe entre un nœud d'entrée `sub.<id>.in` (point de départ ; ses sorties sont les entrées du
+  sous-graphe) et un nœud de sortie `sub.<id>.out` (ses entrées, obligatoires, sont les sorties). Corps immuable et
+  partagé : une modification crée un nouveau corps (historique de l'éditeur peu coûteux).
+- **Instance** `sub.<id>` : **pure** (évaluée à la demande, réutilisable) si le corps ne contient que des nœuds purs,
+  **d'action** (broches d'exécution) sinon. Elle exécute le corps dans une exécution imbriquée, ses entrées passées en
+  paramètres ; journal du corps repris, préfixé du nom ; une erreur du corps fait échouer l'instance avec son message ;
+  sortie non produite (fin non atteinte) = erreur explicite. Imbrication bornée à 32 niveaux.
+- **Bibliothèque** : les types `sub.*` d'un graphe vivent dans une bibliothèque augmentée (`NodeLibrary::forGraph`,
+  `withSubgraphs`, `setSubgraphs`) ; `validate`, `connect`, `Runner` l'utilisent d'eux-mêmes ; la bibliothèque
+  globale n'est jamais modifiée.
+- **Contrôles** (bloquants) : identifiants et noms de broches, entrée et sortie uniques, « Début » interdit dans un
+  corps, fin atteinte depuis l'entrée par les liens d'exécution, corps valide (types, liens, entrées requises, cycles),
+  appels récursifs directs ou indirects, définition absente (« sous-graphe … introuvable »), instance enregistrée par
+  une version plus récente.
+- **Versions** : `defineSubgraph` incrémente la version quand le contenu change (inchangée sinon) et met à jour les
+  instances : liens vers une broche supprimée ou de type modifié retirés, valeurs d'entrées supprimées effacées, chaque
+  retrait décrit. `removeSubgraph` refuse une définition encore utilisée.
+- **Encapsulation** (`encapsulate`) : liens de données entrants → entrées (une par source), sortants → sorties ; au
+  plus un point d'entrée et une sortie d'exécution ; « Début » et nœuds d'entrée / sortie refusés ; résultat
+  identique à celui d'avant (tests 392, 393).
+
+Éditeur (menu « Sous-graphes ») : créer un sous-graphe depuis la sélection (identifiant tiré du nom :
+« Rigidité globale » → `rigidite_globale`) ; **double-clic** sur une instance (ou bouton « Ouvrir le sous-graphe ») :
+édition du corps, fil d'Ariane, historique propre au corps, palette du corps (entrée / sortie proposées, pas d'appel
+récursif), problèmes du corps rattachés à ses nœuds (`validateBody`), ▶ Exécuter = essai du corps seul avec les
+valeurs par défaut des entrées ; **« Retour au graphe parent »** : le corps (et les sous-graphes créés, importés ou
+modifiés pendant son édition) devient une nouvelle version, instances mises à jour, une entrée Annuler dans le parent
+— corps invalide : retour refusé, au choix continuer l'édition ou abandonner les modifications ; **Propriétés…** :
+nom, catégorie, description, documentation (F1 sur une instance), entrées et sorties (nom stable, libellé, type,
+type d'objet, valeur par défaut lue selon le type et refusée si illisible, entrée obligatoire) ; Enregistrer depuis
+un corps ouvert enregistre le graphe principal avec le corps courant (`composedGraph`) ; exporter / importer `.tsbps`
+(une définition déjà présente est ignorée si son contenu est identique ; sinon l'import, geste délibéré, la remplace
+par celle du fichier en nouvelle version locale : fichier plus ancien et interface qui casse des liens d'instances
+signalés, une entrée Annuler ; tout ou rien) ; supprimer une
+définition inutilisée. Les points d'arrêt du débogueur ne s'appliquent pas à l'intérieur d'une instance exécutée ; ils
+s'appliquent au corps exécuté seul.
 
 ## Débogueur (phase 8)
 

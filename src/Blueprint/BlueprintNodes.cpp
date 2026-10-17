@@ -94,8 +94,11 @@ void parameterNode(NodeLibrary& lib, const char* id, const char* title, VT type,
 void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegistry& commands)
 {
     // --- Événements ------------------------------------------------------------------------------
-    lib.add(def("event.start", "Début", "Événements", "Point de départ de l'exécution.", {}, { execOut() }, false),
-            [](ExecutionContext& c) { return c.fire("then"); });
+    {
+        NodeDefinition start = def("event.start", "Début", "Événements", "Point de départ de l'exécution.", {}, { execOut() }, false);
+        start.entry = true;
+        lib.add(std::move(start), [](ExecutionContext& c) { return c.fire("then"); });
+    }
 
     // --- Paramètres ------------------------------------------------------------------------------
     parameterNode<double>(lib, "param.real", "Paramètre réel", VT::Real, 0.0);

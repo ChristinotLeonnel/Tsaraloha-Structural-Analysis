@@ -158,8 +158,39 @@ std::vector<int> Graph::nodesInComment(int id) const
     return out;
 }
 
+const SubgraphDefinition* Graph::subgraph(const std::string& id) const
+{
+    for (const auto& d : subgraphs)
+        if (d.id == id) return &d;
+    return nullptr;
+}
+
+namespace
+{
+bool samePin(const PinSpec& a, const PinSpec& b)
+{
+    return a.name == b.name && a.label == b.label && a.kind == b.kind && a.type == b.type && a.any == b.any && a.quantity == b.quantity
+           && a.required == b.required && a.objectType == b.objectType && TSA::Automation::sameValue(a.defaultValue, b.defaultValue);
+}
+
+bool samePins(const std::vector<PinSpec>& a, const std::vector<PinSpec>& b)
+{
+    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), samePin);
+}
+} // namespace
+
+bool SubgraphDefinition::sameContent(const SubgraphDefinition& o) const
+{
+    if (id != o.id || name != o.name || description != o.description || category != o.category || documentation != o.documentation
+        || version != o.version || !samePins(inputs, o.inputs) || !samePins(outputs, o.outputs))
+        return false;
+    if (!body || !o.body) return !body && !o.body;
+    return body->sameContent(*o.body);
+}
+
 void Graph::clear()
 {
+    subgraphs.clear();
     m_nodes.clear();
     m_links.clear();
     m_comments.clear();
@@ -176,6 +207,12 @@ bool Graph::sameContent(const Graph& other) const
         return false;
     for (const auto& l : m_links)
         if (std::find(other.m_links.begin(), other.m_links.end(), l) == other.m_links.end()) return false;
+    if (subgraphs.size() != other.subgraphs.size()) return false;
+    for (const auto& d : subgraphs)
+    {
+        const SubgraphDefinition* o = other.subgraph(d.id);
+        if (!o || !d.sameContent(*o)) return false;
+    }
     return true;
 }
 

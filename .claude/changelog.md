@@ -2,6 +2,26 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-17 (Blueprint : sous-graphes réutilisables, fichier v3 — branche feature/blueprint-structurel)
+
+### Added
+- `src/Blueprint/BlueprintSubgraph.*` : sous-graphes définis dans le graphe (`Graph::subgraphs`), corps entre
+  `sub.<id>.in` et `sub.<id>.out`, instances `sub.<id>` pures (réutilisables) ou d'action, exécution imbriquée
+  (journal préfixé, erreur du corps propagée, 32 niveaux), bibliothèque augmentée par graphe
+  (`NodeLibrary::forGraph` / `withSubgraphs` / `setSubgraphs`), contrôles (structure, fin atteinte, récursion,
+  définition absente, version plus récente), `encapsulate`, `defineSubgraph` (version + mise à jour des instances),
+  `removeSubgraph`, `validateBody`, `pruneStaleLinks`.
+- Fichier `.tsbp` version 3 (liste `subgraphs`) ; un graphe sans sous-graphe reste en version 2. Fichier `.tsbps`
+  (sous-graphe et ses dépendances) ; copier-coller avec les définitions utilisées.
+- Éditeur : menu Sous-graphes (encapsuler la sélection, ouvrir, propriétés, retour, import / export, suppression),
+  double-clic sur une instance, fil d'Ariane, historique propre au corps, essai du corps seul, graphe composé à
+  l'enregistrement, `BlueprintSubgraphDialog` (interface typée). Tests 392 (moteur) et 393 (éditeur) : 393/393.
+
+### Fixed
+- Réutilisation des résultats : une instance de sous-graphe pouvait rendre le résultat de l'ancienne définition
+  (même type, mêmes entrées) après Annuler, un import ou une interface modifiée. `NodeDefinition::revision`
+  (identité des corps) comparée par `EvaluationCache` ; trouvé par le test 393, garanti par le test 392.
+
 ## 2026-10-10 (Raccourcis clavier : gestionnaire central, shortcut.txt, rechargement à chaud, éditeur)
 
 ### Added

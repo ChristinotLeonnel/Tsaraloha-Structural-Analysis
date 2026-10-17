@@ -1,5 +1,7 @@
 #include "BlueprintRuntime.h"
 
+#include "BlueprintSubgraph.h"
+
 #include <algorithm>
 #include <functional>
 #include <set>
@@ -32,7 +34,7 @@ std::string toText(const Value& v)
 
 bool NodeLibrary::add(NodeDefinition definition, NodeExecutor executor)
 {
-    if (definition.id.empty() || !executor || m_index.count(definition.id)) return false;
+    if (definition.id.empty() || !executor || m_index.count(definition.id) || (m_base && m_base->find(definition.id))) return false;
     // Réutilisation réservée aux fonctions pures de leurs entrées
     if (!definition.pure || definition.usesProject) definition.cacheable = false;
     m_index[definition.id] = m_entries.size();
@@ -43,24 +45,38 @@ bool NodeLibrary::add(NodeDefinition definition, NodeExecutor executor)
 const NodeDefinition* NodeLibrary::find(const std::string& type) const
 {
     const auto it = m_index.find(type);
-    return it == m_index.end() ? nullptr : &m_entries[it->second].definition;
+    if (it != m_index.end()) return &m_entries[it->second].definition;
+    return m_base ? m_base->find(type) : nullptr;
 }
 
 const NodeExecutor* NodeLibrary::executor(const std::string& type) const
 {
     const auto it = m_index.find(type);
-    return it == m_index.end() ? nullptr : &m_entries[it->second].executor;
+    if (it != m_index.end()) return &m_entries[it->second].executor;
+    return m_base ? m_base->executor(type) : nullptr;
 }
 
 std::vector<const NodeDefinition*> NodeLibrary::definitions() const
 {
-    std::vector<const NodeDefinition*> list;
+    std::vector<const NodeDefinition*> list = m_base ? m_base->definitions() : std::vector<const NodeDefinition*> {};
     for (const auto& e : m_entries) list.push_back(&e.definition);
     return list;
 }
 
+const NodeLibrary& NodeLibrary::forGraph(const Graph& g, std::unique_ptr<NodeLibrary>& holder) const
+{
+    if (g.subgraphs.empty() || m_subgraphTypes) return *this;
+    holder = withSubgraphs(*this, g.subgraphs);
+    return *holder;
+}
+
 bool NodeLibrary::canConnect(const Graph& g, const Link& link, std::string* why) const
 {
+    if (!g.subgraphs.empty() && !m_subgraphTypes)
+    {
+        std::unique_ptr<NodeLibrary> holder;
+        return forGraph(g, holder).canConnect(g, link, why);
+    }
     auto fail = [why](const std::string& m) {
         if (why) *why = m;
         return false;
@@ -84,6 +100,11 @@ bool NodeLibrary::canConnect(const Graph& g, const Link& link, std::string* why)
 
 bool NodeLibrary::connect(Graph& g, const Link& link, std::string* why) const
 {
+    if (!g.subgraphs.empty() && !m_subgraphTypes)
+    {
+        std::unique_ptr<NodeLibrary> holder;
+        return forGraph(g, holder).connect(g, link, why);
+    }
     if (!canConnect(g, link, why)) return false;
     const auto* def = find(g.node(link.fromNode)->type);
     const bool exec = def->output(link.fromPin)->kind == PinKind::Exec;
@@ -97,13 +118,21 @@ bool NodeLibrary::connect(Graph& g, const Link& link, std::string* why) const
 
 std::vector<Issue> NodeLibrary::validate(const Graph& g) const
 {
+    if (!g.subgraphs.empty() && !m_subgraphTypes)
+    {
+        std::unique_ptr<NodeLibrary> holder;
+        return forGraph(g, holder).validate(g);
+    }
     std::vector<Issue> issues;
+    for (const auto& message : validateSubgraphs(*this, g.subgraphs)) issues.push_back({ 0, message });
     for (const auto& [id, n] : g.nodes())
     {
         const auto* def = find(n.type);
         if (!def)
         {
-            issues.push_back({ id, "type de nœud inconnu « " + n.type + " »" });
+            const std::string sub = subgraphOfType(n.type);
+            issues.push_back({ id, sub.empty() ? "type de nœud inconnu « " + n.type + " »"
+                                               : "sous-graphe « " + sub + " » introuvable : sa définition est absente du graphe (importer le sous-graphe)" });
             continue;
         }
         if (n.version > def->version)
@@ -172,6 +201,11 @@ std::vector<Issue> NodeLibrary::validate(const Graph& g) const
 
 std::vector<Issue> NodeLibrary::warnings(const Graph& g) const
 {
+    if (!g.subgraphs.empty() && !m_subgraphTypes)
+    {
+        std::unique_ptr<NodeLibrary> holder;
+        return forGraph(g, holder).warnings(g);
+    }
     std::vector<Issue> out;
     auto defOf = [&](int id) -> const NodeDefinition* {
         const auto* n = g.node(id);
@@ -275,6 +309,11 @@ NodeLibrary& NodeLibrary::global()
 
 bool NodeLibrary::usesProject(const Graph& g) const
 {
+    if (!g.subgraphs.empty() && !m_subgraphTypes)
+    {
+        std::unique_ptr<NodeLibrary> holder;
+        return forGraph(g, holder).usesProject(g);
+    }
     for (const auto& [id, n] : g.nodes())
         if (const auto* d = find(n.type); d && d->usesProject) return true;
     return false;
@@ -286,6 +325,7 @@ bool NodeLibrary::usesProject(const Graph& g) const
 
 struct Runner::State
 {
+    std::unique_ptr<NodeLibrary> subgraphLibrary;   ///< bibliothèque augmentée des sous-graphes du graphe (s'il en a)
     const NodeLibrary& library;
     const Graph& graph;
     TSA::Project::ProjectSession* session = nullptr;
@@ -304,7 +344,7 @@ struct Runner::State
     double childMs = 0.0;   ///< temps des nœuds descendants (profil exclusif)
 
     State(const NodeLibrary& lib, const Graph& g, TSA::Project::ProjectSession* s, ExecutionLimits l)
-        : library(lib), graph(g), session(s), limits(l) {}
+        : library(lib.forGraph(g, subgraphLibrary)), graph(g), session(s), limits(l) {}
 
     bool fail(int node, const std::string& message)
     {
@@ -376,7 +416,11 @@ struct Runner::State
         }
         EvaluationCache& c = cache ? *cache : localCache;
         const auto hit = c.m_entries.find(node);
-        if (hit != c.m_entries.end() && hit->second.type == n.type && hit->second.inputs.size() == fingerprint.size()
+        auto sameRevision = [&](const std::vector<std::shared_ptr<const void>>& r) {
+            return r.size() == def.revision.size()
+                   && std::equal(r.begin(), r.end(), def.revision.begin(), [](const auto& a, const auto& b) { return a.get() == b.get(); });
+        };
+        if (hit != c.m_entries.end() && hit->second.type == n.type && sameRevision(hit->second.revision) && hit->second.inputs.size() == fingerprint.size()
             && std::equal(fingerprint.begin(), fingerprint.end(), hit->second.inputs.begin(),
                           [](const Value& a, const Value& b) { return TSA::Automation::sameValue(a, b); }))
         {
@@ -389,7 +433,7 @@ struct Runner::State
         const bool ok = run(node);
         prefetched.erase(node);
         if (!ok) return false;
-        c.m_entries[node] = { n.type, std::move(fingerprint), outputs[node] };
+        c.m_entries[node] = { n.type, def.revision, std::move(fingerprint), outputs[node] };
         return true;
     }
 
@@ -466,9 +510,9 @@ ExecutionReport Runner::run(const std::map<std::string, Value>& parameterOverrid
                            + (issues.size() > 1 ? " (+" + std::to_string(issues.size() - 1) + " autre(s))" : "");
         return s.report;
     }
-    std::vector<int> starts;
+    std::vector<int> starts;   // « Début » et entrées de sous-graphe
     for (const auto& [id, n] : s.graph.nodes())
-        if (n.type == "event.start") starts.push_back(id);
+        if (const auto* d = s.library.find(n.type); d && d->entry) starts.push_back(id);
     if (starts.empty())
     {
         s.report.message = "Aucun nœud « Début » : rien à exécuter.";
@@ -563,6 +607,11 @@ std::string ExecutionContext::text(const std::string& pin)
     const Value v = input(pin);
     if (const auto* t = std::get_if<std::string>(&v)) return *t;
     return toText(v);
+}
+
+const NodeLibrary& ExecutionContext::library() const
+{
+    return m_state.library;
 }
 
 bool ExecutionContext::isConnected(const std::string& pin) const

@@ -43,6 +43,9 @@ Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir 
 - [ ] OpenSeesPlanarSolver : rotules et charges partielles / trapézoïdales (eleLoad partiel selon la version d'OpenSees).
 - [ ] Plugins : signature / liste blanche des DLL avant diffusion hors poste de développement.
 - [ ] BUG-036 (cache CMake). [x] BUG-037 corrigé.
+- [x] Blueprint : sous-graphes réutilisables (moteur, fichier v3 / .tsbps, éditeur), tests 392–393 (2026-10-17).
+- [x] Blueprint : import d'une définition déjà présente au contenu différent — remplacée par celle du fichier (geste
+      délibéré), nouvelle version, avertissements, annulable (test 393).
 
 ## CRITICAL
 
