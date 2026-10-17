@@ -1323,6 +1323,11 @@ endfunction()
 # Dossier produit : <build>/dist/<produit> ; à vérifier avec tools/verify_package.py.
 set(TSA_VCREDIST_DIR "$ENV{VCToolsRedistDir}" CACHE PATH "Runtime MSVC redistribuable (VCToolsRedistDir)")
 option(TSA_PACKAGE_OPENSEES "Inclure OpenSees (thirdparty/OpenSees) dans le paquet — vérifier sa licence" ON)
+# Révision du code source citée par licenses/Gmsh/SOURCE.txt : commit exact construit (flux de publication de
+# Setup-Livrable) ; vide : étiquette v<version>.
+set(TSA_SOURCE_REF "" CACHE STRING "Commit ou étiquette du code source de la version distribuée")
+# Autres codes compilés dans la version (dépôt voisin : TSALab pour TSA, TSA pour TSALab), adresses séparées par « ; ».
+set(TSA_EXTRA_SOURCE_URLS "" CACHE STRING "Adresses du code source des autres dépôts compilés dans la version")
 
 # Lit les constantes k<clé> de product/ProductIdentity.h du produit (seule source d'identité) : variables <prefix><clé>.
 function(tsaraloha_read_identity prefix)
@@ -1364,6 +1369,8 @@ function(tsaraloha_add_package_target target binaries)
             "-DGMSH_LICENSE_DIR=${TSA_GMSH_LICENSE_DIR}"
             "-DGMSH_VERSION=${_gmsh_version}"
             "-DSOURCE_URL=${_SourceRepositoryUrl}"
+            "-DSOURCE_REF=${TSA_SOURCE_REF}"
+            "-DEXTRA_SOURCE_URLS=${TSA_EXTRA_SOURCE_URLS}"
             "-DEXTRA_EXECUTABLES=${_extra}"
             -P "${TSA_ROOT}/cmake/PackageTSA.cmake"
         DEPENDS ${target}

@@ -77,10 +77,18 @@ endif()
 # est diffusé dans le respect de la GPL — code du produit public (MIT, compatible), code de Gmsh désigné par
 # licenses/Gmsh/SOURCE.txt (docs/THIRD_PARTY_LICENSES.md).
 if(GMSH_DLL AND EXISTS "${GMSH_DLL}")
+    if(NOT SOURCE_REF)
+        set(SOURCE_REF "v${VERSION}")
+    endif()
     foreach(v GMSH_VERSION SOURCE_URL VERSION)
         if(NOT ${v})
             message(FATAL_ERROR "Gmsh inclus : ${v} non défini (code source correspondant exigé par la GPL)")
         endif()
+    endforeach()
+    set(extra_sources "")
+    foreach(u ${EXTRA_SOURCE_URLS})
+        string(APPEND extra_sources "- Also built from / également compilé à partir de : ${u}
+")
     endforeach()
     message(STATUS "Gmsh ${GMSH_VERSION} inclus (GPL) : code source correspondant indiqué dans licenses/Gmsh/SOURCE.txt")
     file(COPY "${GMSH_DLL}" DESTINATION "${DIST_DIR}")
@@ -100,8 +108,8 @@ therefore distributed under the terms of the GPL; the ${PRODUCT} code itself rem
 Cette distribution de ${PRODUCT} ${VERSION} contient Gmsh ${GMSH_VERSION}, sous licence GNU GPL version 2 ou
 ultérieure. L'ensemble est donc distribué selon les termes de la GPL ; le code de ${PRODUCT} reste sous licence MIT.
 
-- ${PRODUCT} ${VERSION}: ${SOURCE_URL}/tree/v${VERSION}
-- Gmsh ${GMSH_VERSION} (unmodified / non modifié): https://gmsh.info/src/gmsh-${GMSH_VERSION}-source.tgz
+- ${PRODUCT} ${VERSION}: ${SOURCE_URL}/tree/${SOURCE_REF}
+${extra_sources}- Gmsh ${GMSH_VERSION} (unmodified / non modifié): https://gmsh.info/src/gmsh-${GMSH_VERSION}-source.tgz
   A copy is attached to each published release / une copie est jointe à chaque version publiée :
   https://github.com/ChristinotLeonnel/Setup-Livrable/releases
 ")
