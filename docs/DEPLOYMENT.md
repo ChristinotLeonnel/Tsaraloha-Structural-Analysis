@@ -121,10 +121,16 @@ de fichier. Elle n'existe que si `ISCC.exe` est trouvé (`winget install JRSoftw
 | Désinstallation | Paramètres > Applications ; retire fichiers, raccourcis, ProgID, valeurs posées sur l'extension, CLSID d'aperçu ; ne touche jamais aux réglages ni aux projets de l'utilisateur |
 | Licence | page de licence : `LICENSE` (MIT) du produit, également copié en `LICENSE.txt` dans le paquet |
 
-**Version publique sans Gmsh.** Tant que la question de licence de Gmsh (section 6, `THIRD_PARTY_LICENSES.md`) n'est pas
-tranchée, les versions publiques se construisent avec `-DTSA_PACKAGE_GMSH=OFF` : le logiciel démarre, le maillage est
-indisponible. Un installateur ne change rien à cette question : il distribue les mêmes fichiers que le paquet.
+**Gmsh dans les versions publiques.** Les dépôts de code étant publics (décision du 17/10/2026,
+`THIRD_PARTY_LICENSES.md`), les versions publiques incluent Gmsh, et donc le maillage. Le paquet contient
+`licenses/Gmsh/SOURCE.txt` (code source correspondant de TSA et de Gmsh). Un installateur ne change rien aux
+obligations de la GPL : il distribue les mêmes fichiers que le paquet.
 
-Essai réalisé le 17/10/2026 (TSA 0.1.0, Release, sans Gmsh, 44 Mo) : installation silencieuse (`/VERYSILENT`),
+Premier essai réalisé le 17/10/2026 (TSA 0.1.0, Release, construit sans Gmsh, 44 Mo) : installation silencieuse (`/VERYSILENT`),
 fichiers, raccourci, association, aperçu et entrée « Applications » présents ; TSA démarre (Start Center) ; désinstallation
 silencieuse sans reste (fichiers, raccourci, ProgID, extension, CLSID, entrée) — 19 contrôles sur 19.
+
+Essai avec Gmsh (17/10/2026, TSA 0.1.0, Release, 308 fichiers, 238 Mo, installateur de 67 Mo) : mêmes contrôles,
+plus la DLL Gmsh, `licenses/Gmsh/LICENSE.txt` et `SOURCE.txt`, et un maillage réel par `tsa-mesh.exe` depuis la
+copie installée (`examples/TSA_Exemple_Dalle_Coques.tsa` : Gmsh 4.15.2, 141 nœuds, 160 éléments, 0 erreur de
+qualité) — 21 contrôles sur 21.

@@ -139,6 +139,8 @@ def main():
             errors.append("moteur de maillage Gmsh annoncé mais DLL absente")
         if not os.path.exists(os.path.join(root, "licenses", "Gmsh", "LICENSE.txt")):
             errors.append("licence de Gmsh absente : licenses/Gmsh/LICENSE.txt")
+        if not os.path.exists(os.path.join(root, "licenses", "Gmsh", "SOURCE.txt")):
+            errors.append("Gmsh (GPL) livré sans indication du code source : licenses/Gmsh/SOURCE.txt")
     if manifest.get("openSeesIncluded"):
         for r in ("engines/OpenSees/bin/OpenSees.exe", "engines/OpenSees/lib/tcl8.6/init.tcl"):
             if not os.path.exists(os.path.join(root, r)):

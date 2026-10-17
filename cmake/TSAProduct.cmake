@@ -1323,10 +1323,26 @@ endfunction()
 # Dossier produit : <build>/dist/<produit> ; à vérifier avec tools/verify_package.py.
 set(TSA_VCREDIST_DIR "$ENV{VCToolsRedistDir}" CACHE PATH "Runtime MSVC redistribuable (VCToolsRedistDir)")
 option(TSA_PACKAGE_OPENSEES "Inclure OpenSees (thirdparty/OpenSees) dans le paquet — vérifier sa licence" ON)
+
+# Lit les constantes k<clé> de product/ProductIdentity.h du produit (seule source d'identité) : variables <prefix><clé>.
+function(tsaraloha_read_identity prefix)
+    file(READ "${CMAKE_SOURCE_DIR}/product/ProductIdentity.h" _identity)
+    foreach(key ${ARGN})
+        if(NOT _identity MATCHES "k${key}\\[\\] = L?\"([^\"]*)\"")
+            message(FATAL_ERROR "ProductIdentity.h : k${key} introuvable")
+        endif()
+        set(${prefix}${key} "${CMAKE_MATCH_1}" PARENT_SCOPE)
+    endforeach()
+endfunction()
+
 function(tsaraloha_add_package_target target binaries)
     if(NOT WIN32)
         return()
     endif()
+    # Gmsh (GPL) livré : le paquet indique où obtenir le code source correspondant (licenses/Gmsh/SOURCE.txt).
+    tsaraloha_read_identity(_ SourceRepositoryUrl)
+    string(REGEX MATCH "gmsh-([0-9]+\\.[0-9]+\\.[0-9]+)" _gmsh_match "${TSA_GMSH_LICENSE_DIR}")
+    set(_gmsh_version "${CMAKE_MATCH_1}")
     get_target_property(_qmake_loc Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(_qt_bin_dir "${_qmake_loc}" DIRECTORY)
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
@@ -1346,6 +1362,8 @@ function(tsaraloha_add_package_target target binaries)
             -DPACKAGE_OPENSEES=${TSA_PACKAGE_OPENSEES}
             "-DGMSH_DLL=$<$<BOOL:${TSA_PACKAGE_GMSH}>:${TSA_GMSH_DLL}>"
             "-DGMSH_LICENSE_DIR=${TSA_GMSH_LICENSE_DIR}"
+            "-DGMSH_VERSION=${_gmsh_version}"
+            "-DSOURCE_URL=${_SourceRepositoryUrl}"
             "-DEXTRA_EXECUTABLES=${_extra}"
             -P "${TSA_ROOT}/cmake/PackageTSA.cmake"
         DEPENDS ${target}
@@ -1364,14 +1382,8 @@ function(tsaraloha_add_installer_target target)
         message(STATUS "Inno Setup 6 (ISCC) introuvable : pas de cible installer_${target}")
         return()
     endif()
-    file(READ "${CMAKE_SOURCE_DIR}/product/ProductIdentity.h" _identity)
-    foreach(key Name Version ProjectExtension ProgId ProjectFriendlyName ProjectContentType ThumbnailProviderDll
-                AppUserModelId OrganizationName SettingsApplication InstallerAppId)
-        if(NOT _identity MATCHES "k${key}\\[\\] = L?\"([^\"]*)\"")
-            message(FATAL_ERROR "ProductIdentity.h : k${key} introuvable (installateur)")
-        endif()
-        set(_${key} "${CMAKE_MATCH_1}")
-    endforeach()
+    tsaraloha_read_identity(_ Name Version ProjectExtension ProgId ProjectFriendlyName ProjectContentType ThumbnailProviderDll
+                              AppUserModelId OrganizationName SettingsApplication InstallerAppId)
     if(NOT _Name STREQUAL target)
         message(FATAL_ERROR "ProductIdentity.h : kName « ${_Name} » ≠ cible « ${target} »")
     endif()
