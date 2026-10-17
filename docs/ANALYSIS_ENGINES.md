@@ -39,7 +39,7 @@ UI Analysis (AnalysisDialog, AnalysisManagerPanel)   console / Blueprint / IA (a
 | Orchestration + validation générique | `src/Analysis/Engine/AnalysisManager.*` |
 | Contrôleur partagé (session) : moteurs, réglages du projet, calcul en tâche de fond, résultats | `src/Analysis/AnalysisController.*` (`ProjectSession::analysis()`) |
 | Gestionnaire d'analyse (panneau partagé : moteurs, réglages, validation, calcul, synthèse) | `src/UI/Analysis/AnalysisManagerPanel.*` |
-| Commandes `analysis.run` (dont `self_weight=oui|non`), `results.summary`, `results.node_displacement`, `results.node_reaction`, `results.member_forces`, `query.bar`, `compare.values` (console, Blueprint, IA) | `src/Automation/CommandRegistry.cpp` |
+| Commandes `analysis.run` (dont `self_weight=oui\|non`), `results.summary`, `results.node_displacement`, `results.node_reaction`, `results.member_forces`, `query.bar`, `compare.values` (console, Blueprint, IA) | `src/Automation/CommandRegistry.cpp` |
 | Enregistrement des moteurs intégrés | `src/Analysis/Engines/BuiltInEngines.cpp` |
 | Adaptateur OpenSees | `src/Analysis/Engines/OpenSees/OpenSeesEngine.*` |
 | Contrat du solveur 2D, conversion, moteur | `src/Analysis/Engines/Custom2D/*` |
@@ -93,6 +93,7 @@ sections/matériaux, coques (`planarElementPolicy` : `Reject` → erreur explici
 ## Moteurs
 
 ### OpenSees (`opensees`)
+
 Réutilise sans modification le chemin existant via `OpenSeesSolver::solveSnapshot` (même workflow que
 `solveSynchronous`, sur le snapshot de la portée). `parametersFromContext` traduit contexte + bloc JSON
 d'options en `AnalysisParameters`. Version lue sur l'exécutable (jamais inventée). Capacités : 3D,
@@ -100,6 +101,7 @@ barres/treillis/câbles/ressorts, statique linéaire et non linéaire, matrices 
 modal, le pushover et le temporel ont été retirés (ADR-022, branche `archive/dynamique`).
 
 ### Custom2D (`custom2d`)
+
 Emplacement d'intégration des solveurs d'ossatures planes du cœur scientifique **TSALab** (ADR-024,
 `docs/TSARALOHA_ARCHITECTURE.md`). Contrat : `tsalab::planar` (`TSALab/science/include/tsalab/planar/
 PlanarSolver.h`, alias `Custom2D::` dans TSA via `Custom2DSolver.h` ; `ISolver`, `Input`, `Output`, système
@@ -135,6 +137,7 @@ class MySolver final : public tsalab::planar::ISolver { /* name, version, solve,
 // tsalab::planar::createBuiltInSolvers() : ajouter le solveur ; puis l'ajouter au banc de validation
 // (tsalab-bench) — TSA et TSALab le reçoivent sans autre modification.
 ```
+
 Puis mettre à jour `Custom2DEngine::capabilities()` selon ce que le solveur fait réellement.
 
 ## Ajouter un moteur
