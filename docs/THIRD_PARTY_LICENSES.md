@@ -37,8 +37,19 @@ Avant toute diffusion de TSA avec Gmsh, choisir l'une des options :
 2. **obtenir une licence commerciale** auprès des auteurs de Gmsh ;
 3. **diffuser sans Gmsh** (`-DTSA_PACKAGE_GMSH=OFF`) : TSA démarre, mais le maillage est indisponible. L'utilisateur peut éventuellement installer lui-même la DLL, ce qui ne change pas l'analyse juridique et doit être vérifié.
 
-Le script de packaging affiche cet avertissement à chaque paquet qui inclut Gmsh. **Ce point n'est pas tranché par le
-développement : c'est une décision de l'éditeur.**
+**Décision de l'éditeur (17/10/2026) : option 1.** TSA et TSALab sont sous licence MIT (compatible avec la GPL) et
+leurs dépôts de code restent **publics**. Une version qui contient Gmsh est donc distribuée, dans son ensemble,
+selon les termes de la GPL ; le code de TSA reste sous MIT. Obligations tenues à chaque version :
+
+- `licenses/Gmsh/LICENSE.txt`, `CREDITS.txt` et `SOURCE.txt` dans le paquet (`SOURCE.txt` : code de TSA à
+  l'étiquette `v<version>` du dépôt public, code de Gmsh de la version livrée) ; `tools/verify_package.py`
+  refuse un paquet qui contient Gmsh sans ces fichiers ;
+- étiquette `v<version>` posée dans le dépôt du code au commit construit ;
+- archive source de Gmsh (`gmsh-<version>-source.tgz`, non modifiée) jointe à la version publiée sur
+  `Setup-Livrable`, en plus du lien vers gmsh.info.
+
+Rendre un dépôt de code privé remettrait en cause cette décision : il faudrait alors fournir le code source avec
+chaque version, obtenir une licence commerciale de Gmsh, ou construire sans Gmsh (`-DTSA_PACKAGE_GMSH=OFF`).
 
 ## OpenSees : point bloquant pour une diffusion commerciale
 

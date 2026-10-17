@@ -73,18 +73,38 @@ endif()
 
 # --- 2 bis. Moteur de maillage Gmsh (DLL chargée en différé par TSA) --------------------------------
 # Copiée avant l'étape 3 : ses propres dépendances sont ainsi analysées comme celles des autres DLL du paquet.
-# La DLL n'importe que des DLL système de Windows (vérifié par tools/verify_package.py). Licence GPL : le
-# paquet n'est diffusable que dans le respect de la GPL (ou sous licence commerciale des auteurs de Gmsh).
+# La DLL n'importe que des DLL système de Windows (vérifié par tools/verify_package.py). Licence GPL : le paquet
+# est diffusé dans le respect de la GPL — code du produit public (MIT, compatible), code de Gmsh désigné par
+# licenses/Gmsh/SOURCE.txt (docs/THIRD_PARTY_LICENSES.md).
 if(GMSH_DLL AND EXISTS "${GMSH_DLL}")
-    message(WARNING "Gmsh inclus : licence GNU GPL v2 ou ultérieure. Distribuer TSA avec Gmsh impose le respect de la GPL "
-                    "pour l'ensemble (ou une licence commerciale de Gmsh). Vérifier avant diffusion (docs/THIRD_PARTY_LICENSES.md) "
-                    "ou configurer -DTSA_PACKAGE_GMSH=OFF (TSA démarre alors sans maillage).")
+    foreach(v GMSH_VERSION SOURCE_URL VERSION)
+        if(NOT ${v})
+            message(FATAL_ERROR "Gmsh inclus : ${v} non défini (code source correspondant exigé par la GPL)")
+        endif()
+    endforeach()
+    message(STATUS "Gmsh ${GMSH_VERSION} inclus (GPL) : code source correspondant indiqué dans licenses/Gmsh/SOURCE.txt")
     file(COPY "${GMSH_DLL}" DESTINATION "${DIST_DIR}")
     foreach(f LICENSE.txt CREDITS.txt)
         if(EXISTS "${GMSH_LICENSE_DIR}/${f}")
             file(COPY "${GMSH_LICENSE_DIR}/${f}" DESTINATION "${DIST_DIR}/licenses/Gmsh")
         endif()
     endforeach()
+    file(WRITE "${DIST_DIR}/licenses/Gmsh/SOURCE.txt"
+"Corresponding source code / Code source correspondant
+=====================================================
+
+This distribution of ${PRODUCT} ${VERSION} includes Gmsh ${GMSH_VERSION} (gmsh-*.dll), licensed under the
+GNU General Public License, version 2 or later (see LICENSE.txt in this folder). The work as a whole is
+therefore distributed under the terms of the GPL; the ${PRODUCT} code itself remains under the MIT license.
+
+Cette distribution de ${PRODUCT} ${VERSION} contient Gmsh ${GMSH_VERSION}, sous licence GNU GPL version 2 ou
+ultérieure. L'ensemble est donc distribué selon les termes de la GPL ; le code de ${PRODUCT} reste sous licence MIT.
+
+- ${PRODUCT} ${VERSION}: ${SOURCE_URL}/tree/v${VERSION}
+- Gmsh ${GMSH_VERSION} (unmodified / non modifié): https://gmsh.info/src/gmsh-${GMSH_VERSION}-source.tgz
+  A copy is attached to each published release / une copie est jointe à chaque version publiée :
+  https://github.com/ChristinotLeonnel/Setup-Livrable/releases
+")
 endif()
 
 # --- 3. Autres DLL réellement importées (exécutables et DLL du paquet, récursivement) --------------

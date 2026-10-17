@@ -31,5 +31,11 @@ OpenSees may be used without fee for educational, research and non-profit
 purposes only; commercial use requires an agreement with the University of
 California.
 
+Gmsh is licensed under the GNU GPL, version 2 or later. A distribution of
+TSA that includes Gmsh is therefore distributed, as a whole, under the
+terms of the GPL: the TSA source code is public (this repository) and
+licenses/Gmsh/SOURCE.txt in each distribution gives the corresponding source
+of both TSA and Gmsh. The TSA code itself remains under the MIT license.
+
 Structural results produced with this software must be checked by a qualified
 engineer before use in a real project.
