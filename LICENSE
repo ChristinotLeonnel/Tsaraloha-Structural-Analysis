@@ -1,0 +1,35 @@
+MIT License
+
+Copyright (c) 2026 Christinot Leonnel Tsaraloha
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+Third-party components
+
+This license covers the TSA code only. Components distributed with TSA (Qt,
+Open CASCADE Technology, OpenSees, Gmsh, the Microsoft Visual C++ runtime and
+others) remain under their own licenses, whose texts are in the "licenses"
+folder of each distribution; see docs/THIRD_PARTY_LICENSES.md. In particular,
+OpenSees may be used without fee for educational, research and non-profit
+purposes only; commercial use requires an agreement with the University of
+California.
+
+Structural results produced with this software must be checked by a qualified
+engineer before use in a real project.

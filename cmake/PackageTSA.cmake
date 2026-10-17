@@ -12,11 +12,12 @@ cmake_minimum_required(VERSION 3.20)
 #     Extensions/            bibliothèques TSALib livrées
 #     modules/               modules livrés (module.json)
 #     plugins/               plugins binaires (vide par défaut)
+#     LICENSE.txt            licence du produit (PRODUCT_LICENSE)
 #     licenses/              THIRD_PARTY_LICENSES.md et licences fournies
 #     docs/                  shortcut.txt (référence), TSA3D, SDK
 #     MANIFEST.json          fichiers distribués : taille, SHA-256, catégorie, origine
 #
-# Paramètres (-D) : BUILD_DIR SOURCE_DIR DIST_DIR PRODUCT VERSION CONFIG WINDEPLOYQT_EXECUTABLE
+# Paramètres (-D) : BUILD_DIR SOURCE_DIR DIST_DIR PRODUCT PRODUCT_LICENSE VERSION CONFIG WINDEPLOYQT_EXECUTABLE
 #                   VCREDIST_DIR (VCToolsRedistDir) PACKAGE_OPENSEES (ON/OFF) EXTRA_EXECUTABLES (liste ;)
 
 foreach(v BUILD_DIR SOURCE_DIR DIST_DIR PRODUCT)
@@ -179,6 +180,11 @@ endforeach()
 
 # --- 8. Licences ------------------------------------------------------------------------------------
 file(MAKE_DIRECTORY "${DIST_DIR}/licenses")
+# Licence du produit lui-même (MIT) : sa notice doit accompagner chaque copie distribuée.
+if(NOT EXISTS "${PRODUCT_LICENSE}")
+    message(FATAL_ERROR "Licence du produit introuvable : ${PRODUCT_LICENSE}")
+endif()
+configure_file("${PRODUCT_LICENSE}" "${DIST_DIR}/LICENSE.txt" COPYONLY)
 if(EXISTS "${SOURCE_DIR}/docs/THIRD_PARTY_LICENSES.md")
     file(COPY "${SOURCE_DIR}/docs/THIRD_PARTY_LICENSES.md" DESTINATION "${DIST_DIR}/licenses")
 endif()

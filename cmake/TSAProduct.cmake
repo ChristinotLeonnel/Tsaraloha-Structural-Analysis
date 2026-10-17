@@ -1338,6 +1338,7 @@ function(tsaraloha_add_package_target target binaries)
             -DSOURCE_DIR=${TSA_ROOT}
             -DDIST_DIR=${CMAKE_BINARY_DIR}/dist/${target}
             -DPRODUCT=${target}
+            -DPRODUCT_LICENSE=${CMAKE_SOURCE_DIR}/LICENSE
             -DVERSION=${PROJECT_VERSION}
             -DCONFIG=$<CONFIG>
             -DWINDEPLOYQT_EXECUTABLE=${WINDEPLOYQT_EXECUTABLE}
@@ -1349,6 +1350,53 @@ function(tsaraloha_add_package_target target binaries)
             -P "${TSA_ROOT}/cmake/PackageTSA.cmake"
         DEPENDS ${target}
         COMMENT "Paquet distribuable ${target} → ${CMAKE_BINARY_DIR}/dist/${target}"
+        VERBATIM)
+    tsaraloha_add_installer_target(${target})
+endfunction()
+
+# Installateur Windows : cible installer_<produit> (Inno Setup 6, packaging/installer.iss), construite à partir du
+# paquet package_<produit>. Les valeurs viennent de product/ProductIdentity.h du produit, seule source d'identité.
+# Sans Inno Setup (ISCC), la cible n'existe pas : le paquet portable reste disponible.
+function(tsaraloha_add_installer_target target)
+    find_program(TSA_ISCC_EXECUTABLE ISCC
+        HINTS "$ENV{LOCALAPPDATA}/Programs/Inno Setup 6" "$ENV{ProgramFiles}/Inno Setup 6" "C:/Program Files (x86)/Inno Setup 6")
+    if(NOT TSA_ISCC_EXECUTABLE)
+        message(STATUS "Inno Setup 6 (ISCC) introuvable : pas de cible installer_${target}")
+        return()
+    endif()
+    file(READ "${CMAKE_SOURCE_DIR}/product/ProductIdentity.h" _identity)
+    foreach(key Name Version ProjectExtension ProgId ProjectFriendlyName ProjectContentType ThumbnailProviderDll
+                AppUserModelId OrganizationName SettingsApplication InstallerAppId)
+        if(NOT _identity MATCHES "k${key}\\[\\] = L?\"([^\"]*)\"")
+            message(FATAL_ERROR "ProductIdentity.h : k${key} introuvable (installateur)")
+        endif()
+        set(_${key} "${CMAKE_MATCH_1}")
+    endforeach()
+    if(NOT _Name STREQUAL target)
+        message(FATAL_ERROR "ProductIdentity.h : kName « ${_Name} » ≠ cible « ${target} »")
+    endif()
+    string(TOLOWER "${target}" _slug)
+    add_custom_target(installer_${target}
+        COMMAND "${TSA_ISCC_EXECUTABLE}" /Q
+            "/DProduct=${target}"
+            "/DProductSlug=${_slug}"
+            "/DVersion=${_Version}"
+            "/DNumericVersion=${PROJECT_VERSION}"
+            "/DAppId=${_InstallerAppId}"
+            "/DAppUserModelId=${_AppUserModelId}"
+            "/DExtension=${_ProjectExtension}"
+            "/DProgId=${_ProgId}"
+            "/DFriendlyName=${_ProjectFriendlyName}"
+            "/DContentType=${_ProjectContentType}"
+            "/DThumbnailDll=${_ThumbnailProviderDll}"
+            "/DDataDir=${_OrganizationName}\\${_SettingsApplication}"
+            "/DSourceDir=${CMAKE_BINARY_DIR}/dist/${target}"
+            "/DOutputDir=${CMAKE_BINARY_DIR}/dist"
+            "/DSetupIcon=${CMAKE_SOURCE_DIR}/resources/icons/${target}.ico"
+            "/DLicenseFile=${CMAKE_SOURCE_DIR}/LICENSE"
+            "${TSA_ROOT}/packaging/installer.iss"
+        DEPENDS package_${target}
+        COMMENT "Installateur ${target} → ${CMAKE_BINARY_DIR}/dist/${target}-${_Version}-windows-x64-setup.exe"
         VERBATIM)
 endfunction()
 
