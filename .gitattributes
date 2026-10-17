@@ -5,3 +5,7 @@ docs/schemas/** text eol=lf
 *.png binary
 *.ico binary
 *.dll binary
+
+# Fichiers IFC d'essai : conservés octet pour octet (non modifiés, CC BY 4.0, empreintes dans leur README)
+tests/data/ifc/**/*.ifc -text
+tests/data/ifc/**/LICENSE.txt -text
