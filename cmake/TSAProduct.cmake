@@ -1456,8 +1456,7 @@ function(tsa_add_product)
     add_dependencies(${name} ${name}_Mcp)
 
     # --- Tests unitaires : bibliothèques partagées -------------------------
-    if(TSA_BUILD_TESTS)
-        enable_testing()
+    if(TSA_BUILD_TESTS)   # enable_testing() : CMakeLists.txt racine du produit (portée du répertoire)
         add_executable(${tests} ${TSA_TEST_SOURCES})
         tsa_apply_common_settings(${tests} ${P_PRODUCT_DIR})
         target_include_directories(${tests} PRIVATE ${TSA_ROOT}/tests)
