@@ -123,8 +123,12 @@ public:
     // Objets physiques importés (IFC) sans élément de calcul : maillages d'origine (BimGeometryRenderer.h).
     void setBimGeometryVisible(bool visible);
     bool bimGeometryVisible() const;
-    /// Nombre de produits tracés par la couche.
+    /// Nombre de produits tracés par la couche, et nombre effectivement affichés (0 si elle est masquée).
     std::size_t bimGeometryCount() const;
+    std::size_t bimGeometryDisplayedCount() const;
+    /// Cadrage sur le modèle (fitModel) dès que la vue est prête : tout de suite si elle l'est, sinon à son premier
+    /// affichage, à la place du cadrage général qui englobe la grille (onglet neuf d'un projet importé).
+    void fitModelWhenReady();
 
     // Visualisation des résultats OpenSees (déformée, diagrammes 3D, réactions)
     TSA::Viewer::ResultsVisualManager* resultsVisual() const { return m_resultsVisual.get(); }
@@ -843,6 +847,7 @@ private:
     bool m_displayOverlaysPending = false;
     std::unique_ptr<TSA::Viewer::BimGeometryRenderer> m_bimRenderer;
     bool m_bimSyncPending = false;
+    bool m_fitModelOnInit = false;   ///< fitModelWhenReady() reçu avant l'initialisation d'OCCT
     /// Accord différé (regroupé) de la couche BIM avec le modèle : un produit relié au calcul quitte la couche.
     void scheduleBimGeometrySync();
     /// Produit BIM désigné par l'entité détectée sous le curseur, si aucun élément du modèle n'est détecté (les

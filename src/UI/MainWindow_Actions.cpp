@@ -396,6 +396,15 @@ void MainWindow::createActions()
     m_actionLoadsVisible->setChecked(true);
     connect(m_actionLoadsVisible, &QAction::toggled, this, &MainWindow::onToggleLoadsVisible);
 
+    m_actionBimGeometryVisible = new QAction(tr("Objets &IFC importés"), this);
+    m_actionBimGeometryVisible->setObjectName("actionBimGeometryVisible");
+    m_actionBimGeometryVisible->setIcon(QIcon(":/icons/visibility.svg"));
+    m_actionBimGeometryVisible->setToolTip(tr("Afficher ou masquer dans la vue 3D les objets IFC importés sans élément de calcul "
+                                              "(murs, fenêtres, mobilier…) ; masquer ne les retire pas du projet"));
+    m_actionBimGeometryVisible->setCheckable(true);
+    m_actionBimGeometryVisible->setChecked(true);
+    connect(m_actionBimGeometryVisible, &QAction::toggled, this, &MainWindow::onToggleBimGeometryVisible);
+
     m_actionForcesVisible = new QAction(tr("Afficher les &Forces 3D"), this);
     m_actionForcesVisible->setIcon(QIcon(":/icons/load_point.svg"));
     m_actionForcesVisible->setToolTip(tr("Afficher ou masquer les flèches 3D de forces (Fx, Fy, Fz)"));
@@ -628,7 +637,8 @@ void MainWindow::createActions()
     connect(m_actionTopology, &QAction::triggered, this, &MainWindow::onActionTopologySettings);
 
     m_actionImportIfc = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer I&FC..."), this);
-    m_actionImportIfc->setToolTip(tr("Créer un projet depuis un fichier IFC (IFC2X3, IFC4, IFC4X3) : modèle analytique ou déduit de la géométrie"));
+    m_actionImportIfc->setToolTip(tr("Créer un projet depuis un fichier IFC (IFC2X3, IFC4, IFC4X3) : objets physiques et géométrie, "
+                                     "modèle de calcul du fichier ; déduction depuis la géométrie seulement sur demande"));
     connect(m_actionImportIfc, &QAction::triggered, this, &MainWindow::onActionImportIfc);
     m_actionImportTsa3d = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer TSA&3D..."), this);
     m_actionImportTsa3d->setToolTip(tr("Créer un projet depuis un fichier TSA3D (format d'échange documenté, validé avant import)"));
@@ -1336,6 +1346,7 @@ void MainWindow::createMenus()
     visSub->addAction(m_actionSupportsVisible);
     visSub->addAction(m_actionSupportLabelsVisible);
     visSub->addAction(m_actionLoadsVisible);
+    visSub->addAction(m_actionBimGeometryVisible);
     visSub->addAction(m_actionForcesVisible);
     visSub->addAction(m_actionMomentsVisible);
     visSub->addAction(m_actionLoadValuesVisible);
@@ -1478,6 +1489,7 @@ void MainWindow::createRibbon()
     acts.actionSelfWeight = m_actionSelfWeight;
     acts.actionLoadCases = m_actionLoadCases;
     acts.actionLoadsVisible = m_actionLoadsVisible;
+    acts.actionBimGeometryVisible = m_actionBimGeometryVisible;
     acts.actionForcesVisible = m_actionForcesVisible;
     acts.actionMomentsVisible = m_actionMomentsVisible;
     acts.actionLoadValuesVisible = m_actionLoadValuesVisible;
@@ -2305,6 +2317,7 @@ void MainWindow::syncDisplayActionsFromView()
     set(m_actionNodeLabelsVisible, m_occView->areNodeLabelsVisible());
     set(m_actionSupportsVisible, m_occView->areSupportsVisible());
     set(m_actionLoadsVisible, m_occView->areLoadsVisible());
+    set(m_actionBimGeometryVisible, m_occView->bimGeometryVisible());
     set(m_actionLoadValuesVisible, m_occView->areLoadValuesVisible());
     set(m_actionSurfaceLoadsVisible, m_occView->surfaceLoadsVisible());
     for (QAction* a : m_displayModeActions)

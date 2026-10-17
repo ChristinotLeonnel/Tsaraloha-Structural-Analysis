@@ -64,6 +64,12 @@ public slots:
     void showMemberLoadProperties(int loadId);
     /// Objet physique importé (IFC), en lecture seule : identité, état pour le calcul, Psets.
     void showBimProductProperties(int productId);
+
+public:
+    /// Un objet IFC est affiché (couche masquée : l'inspecteur est vidé pour ne pas désigner un objet invisible).
+    bool showsBimProduct() const;
+
+public slots:
     void setWorkPlane(const TSA::Coordinate::WorkPlane& wp);
     void clearProperties();
     /// Sélection multiple : la vue affichée (élément principal) édite aussi les autres éléments du

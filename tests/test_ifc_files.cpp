@@ -9,9 +9,16 @@
 #include "BIM/IFC/IfcComparison.h"
 #include "BIM/IFC/IfcExporter.h"
 #include "BIM/IFC/IfcImporter.h"
+#include "Coordinate/LevelManager.h"
 #include "IO/TSAFile.h"
+#include "Viewer/OccView.h"
 
+#include <AIS_InteractiveContext.hxx>
+#include <AIS_ListOfInteractive.hxx>
+#include <QApplication>
 #include <QElapsedTimer>
+#include <QGuiApplication>
+#include <QThread>
 
 #include <array>
 #include <filesystem>
@@ -146,6 +153,9 @@ bool runSuite_IfcFiles(int& passed)
             const auto r = load(file, m);
             TEST_CHECK(r.ok && r.schema == schema && std::abs(r.lengthUnit - 0.001) < 1e-12 && r.storeys == 1,
                        std::string("Test 400: ") + file + " lu (schéma, millimètres, étage)");
+            const auto& levels = m.levelManager()->levels();
+            TEST_CHECK(levels.size() == 1 && levels.front().name == "00 groundfloor" && std::abs(levels.front().elevation) < 1e-6,
+                       std::string("Test 400: ") + file + " : l'étage du fichier seul, sous son nom (aucun niveau du gabarit par défaut)");
             TEST_CHECK(r.products == 17 && r.productsWithGeometry == 16 && m.bim().elements().size() == 17,
                        std::string("Test 400: ") + file + " : 17 produits conservés, 16 avec géométrie");
             std::set<std::string> guids;
@@ -223,10 +233,10 @@ bool runSuite_IfcFiles(int& passed)
         TEST_CHECK(r.ok && std::abs(r.lengthUnit - 0.0254) < 1e-12 && r.products == 1 && r.productsWithGeometry == 1,
                    "Test 403: unité de longueur en pouces reconnue (0,0254 m)");
         const auto b = bounds(m);
-        auto near = [](double a, double e) { return std::abs(a - e) < 1e-6; };
-        TEST_CHECK(near(b[5] - b[2], 120 * 0.0254) && near(b[3] - b[0], 8 * 0.0254) && near(b[4] - b[1], 8 * 0.0254),
+        auto approx = [](double a, double e) { return std::abs(a - e) < 1e-6; };
+        TEST_CHECK(approx(b[5] - b[2], 120 * 0.0254) && approx(b[3] - b[0], 8 * 0.0254) && approx(b[4] - b[1], 8 * 0.0254),
                    "Test 403: poteau 8 × 8 × 120 po = 0,2032 × 0,2032 × 3,048 m");
-        TEST_CHECK(near(b[2], 48 * 0.0254) && near((b[0] + b[3]) / 2, 432 * 0.0254) && near((b[1] + b[4]) / 2, 288 * 0.0254),
+        TEST_CHECK(approx(b[2], 48 * 0.0254) && approx((b[0] + b[3]) / 2, 432 * 0.0254) && approx((b[1] + b[4]) / 2, 288 * 0.0254),
                    "Test 403: position issue des placements imbriqués (base à 1,2192 m, centre 10,9728 ; 7,3152 m)");
         std::cout << "[PASS] Test 403: Unités (pouces) et placements imbriqués" << std::endl;
         ++passed;
@@ -315,6 +325,96 @@ bool runSuite_IfcFiles(int& passed)
             for (const auto& d : c.differences) std::cout << "    " << d << std::endl;
         TEST_CHECK(c.identical(), "Test 407: projet relu identique (" + c.summary() + ")");
         std::cout << "[PASS] Test 407: Projet .tsa d'un IFC importé relu sans perte" << std::endl;
+        ++passed;
+    }
+
+    // TEST 409 : export robuste : dossier inexistant refusé, cible en lecture seule laissée intacte, aucune copie
+    // temporaire de relecture laissée sur le disque (succès comme échec)
+    {
+        Model m;
+        TEST_CHECK(load("ifc4rv_wall-with-opening-and-window.ifc", m).ok, "Test 409: import");
+        const fs::path dir = workDir() / "export409";
+        fs::remove_all(dir);
+        fs::create_directories(dir);
+        auto leftovers = [&dir] {
+            int n = 0;
+            for (const auto& e : fs::directory_iterator(dir))
+                if (e.path().filename().string().rfind(".tsa-ifc-", 0) == 0) ++n;
+            return n;
+        };
+        const auto missing = IfcExporter::exportToFile(m, (dir / "absent" / "x.ifc").string());
+        TEST_CHECK(!missing.ok && !missing.error.empty() && !fs::exists(dir / "absent"), "Test 409: dossier inexistant : refus motivé (" + missing.error + ")");
+
+        const fs::path locked = dir / "verrouille.ifc";
+        std::ofstream(locked, std::ios::binary) << "contenu d'origine";
+        fs::permissions(locked, fs::perms::owner_write | fs::perms::group_write | fs::perms::others_write, fs::perm_options::remove);
+        const auto ro = IfcExporter::exportToFile(m, locked.string());
+        fs::permissions(locked, fs::perms::owner_write, fs::perm_options::add);
+        TEST_CHECK(!ro.ok && readText(locked) == "contenu d'origine" && leftovers() == 0,
+                   "Test 409: cible en lecture seule : refus, fichier existant intact, aucune copie temporaire (" + ro.error + ")");
+
+        const auto ok = IfcExporter::exportToFile(m, (dir / "export.ifc").string());
+        TEST_CHECK(ok.ok && ok.verifiedElements == ok.products && fs::file_size(dir / "export.ifc") > 1000 && leftovers() == 0,
+                   "Test 409: export relu, aucune copie temporaire laissée");
+        std::cout << "[PASS] Test 409: Export robuste (dossier absent, cible protégée, aucun fichier temporaire)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 408 : couche des objets IFC dans la vue 3D réelle : objets tracés, masquage puis réaffichage sans toucher au
+    // projet ni aux autres objets, état conservé au changement de projet (comme les autres aides visuelles).
+    // Vue OCCT : contexte OpenGL sur une vraie fenêtre ; la plateforme Qt « offscreen » n'en fournit pas (arrêt du
+    // programme, 0xC0000409) : test annoncé comme sauté, jamais compté réussi.
+    if (QGuiApplication::platformName() == QLatin1String("offscreen"))
+        std::cout << "[SKIP] Test 408: vue 3D indisponible sur la plateforme Qt « offscreen » (lancer avec QT_QPA_PLATFORM=windows)" << std::endl;
+    else
+    {
+        auto pump = [](int n = 10) {
+            for (int k = 0; k < n; ++k)
+            {
+                QApplication::processEvents();
+                QThread::msleep(5);
+            }
+        };
+        auto displayed = [](OccView& v) {
+            AIS_ListOfInteractive list;
+            v.context()->DisplayedObjects(list);
+            return list.Extent();
+        };
+        Model m;
+        TEST_CHECK(load("ifc4_Building-Architecture.ifc", m).ok, "Test 408: import");
+        const int n = m.addNode(0, 0, 0);   // un objet TSA ordinaire à côté des objets importés
+        TEST_CHECK(n > 0, "Test 408: nœud TSA");
+        OccView view;
+        view.resize(640, 480);
+        view.show();
+        pump(20);
+        view.setModel(&m);
+        pump();
+        const int all = displayed(view);
+        TEST_CHECK(view.bimGeometryVisible() && view.bimGeometryCount() == 12 && view.bimGeometryDisplayedCount() == 12,
+                   "Test 408: 12 objets importés avec géométrie tracés");
+        view.setBimGeometryVisible(false);
+        pump();
+        TEST_CHECK(!view.bimGeometryVisible() && view.bimGeometryDisplayedCount() == 0 && view.bimGeometryCount() == 12
+                       && displayed(view) == all - 12 && m.bim().elements().size() == 14 && m.nodes().size() == 1,
+                   "Test 408: couche masquée, projet intact (14 produits), autres objets toujours affichés");
+        view.setBimGeometryVisible(true);
+        pump();
+        TEST_CHECK(view.bimGeometryDisplayedCount() == 12 && displayed(view) == all, "Test 408: couche réaffichée à l'identique");
+
+        view.setBimGeometryVisible(false);
+        Model other;
+        TEST_CHECK(load("ifc4_Building-Structural.ifc", other).ok, "Test 408: second projet");
+        view.setModel(&other);
+        pump();
+        TEST_CHECK(!view.bimGeometryVisible() && view.bimGeometryCount() == 16 && view.bimGeometryDisplayedCount() == 0,
+                   "Test 408: autre projet : objets préparés, choix de masquage conservé");
+        view.setBimGeometryVisible(true);
+        pump();
+        TEST_CHECK(view.bimGeometryDisplayedCount() == 16, "Test 408: autre projet réaffiché");
+        view.setModel(nullptr);
+        pump();
+        std::cout << "[PASS] Test 408: Couche des objets IFC (afficher / masquer, changement de projet)" << std::endl;
         ++passed;
     }
     return true;

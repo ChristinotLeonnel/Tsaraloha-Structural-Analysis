@@ -15,6 +15,7 @@
 
 #include <QFileInfo>
 #include <QSaveFile>
+#include <QTemporaryFile>
 
 #include <array>
 #include <cctype>
@@ -608,22 +609,23 @@ IfcExportReport IfcExporter::exportToFile(const TSA::Model::Model& model, const 
     std::string doc;
     IfcExportReport r = exportToString(model, options, doc);
     if (!r.ok) return r;
-    // Écriture atomique : un fichier existant n'est remplacé qu'une fois le nouveau entièrement écrit.
-    QSaveFile f(qpath);
-    if (!f.open(QIODevice::WriteOnly) || f.write(doc.data(), static_cast<qint64>(doc.size())) != static_cast<qint64>(doc.size())
-        || !f.commit())   // ASCII pur (Unicode encodé \X2\)
-    {
-        r.ok = false;
-        r.error = "impossible d'écrire « " + path + " » (" + f.errorString().toStdString() + ")";
-        return r;
-    }
+    const auto size = static_cast<qint64>(doc.size());   // ASCII pur (Unicode encodé \X2\)
 
-    // Relecture par un lecteur indépendant de l'écrivain de TSA : jamais de succès annoncé sur un fichier illisible.
+    // 1. Relecture par un lecteur indépendant de l'écrivain de TSA, sur une copie temporaire du même dossier : un
+    //    fichier illisible n'atteint jamais la cible (un fichier existant n'est pas remplacé) et la copie est supprimée.
     if (options.verifyAfterWrite)
     {
+        QTemporaryFile probe(QFileInfo(qpath).absolutePath() + "/.tsa-ifc-XXXXXX.ifc");
+        if (!probe.open() || probe.write(doc.data(), size) != size || !probe.flush())
+        {
+            r.ok = false;
+            r.error = "impossible d'écrire dans le dossier de « " + path + " » (" + probe.errorString().toStdString() + ")";
+            return r;
+        }
+        probe.close();
         std::string schema, error;
         int elements = 0;
-        if (detail::verifyFile(path, schema, elements, error))
+        if (detail::verifyFile(probe.fileName().toStdString(), schema, elements, error))
         {
             r.verifiedElements = elements;
             r.verification = "relu par " + detail::fullEngineName() + " : schéma " + schema + ", " + std::to_string(elements) + " produit(s)";
@@ -634,10 +636,22 @@ IfcExportReport IfcExporter::exportToFile(const TSA::Model::Model& model, const 
         else if (detail::fullEngineAvailable())
         {
             r.ok = false;
-            r.error = "fichier écrit mais illisible par un lecteur IFC indépendant (" + error + ")";
+            r.error = "fichier produit illisible par un lecteur IFC indépendant (" + error + ") : « " + path + " » non écrit";
+            return r;
         }
         else
             r.verification = "relecture indépendante non faite (" + error + ")";
+    }   // copie temporaire supprimée ici
+
+    // 2. Écriture atomique du contenu vérifié : un fichier existant n'est remplacé qu'une fois le nouveau entièrement écrit.
+    QSaveFile f(qpath);
+    if (!f.open(QIODevice::WriteOnly) || f.write(doc.data(), size) != size || !f.commit())
+    {
+        r.ok = false;
+        r.error = "impossible d'écrire « " + path + " » (" + f.errorString().toStdString() + ")";
+        r.verifiedElements = -1;
+        r.verification.clear();
+        return r;
     }
     return r;
 }

@@ -29,6 +29,9 @@ struct IfcComparison
     int geometryCompared = 0;      ///< produits avec géométrie dans A et dans B
     int geometryWithinTolerance = 0;
     double maxBoundsDeviation = 0.0;   ///< plus grand écart d'emprise constaté (m)
+    int levelsA = 0, levelsB = 0;   ///< niveaux du projet (exportés en IfcBuildingStorey)
+    int storeysA = 0;               ///< niveaux de A liés à un étage IFC (GlobalId)
+    int storeysPreserved = 0;       ///< … retrouvés dans B par GlobalId, même nom et même cote
     int nodesA = 0, nodesB = 0, membersA = 0, membersB = 0, surfacesA = 0, surfacesB = 0, foundationsA = 0, foundationsB = 0;
     std::vector<std::string> differences;   ///< premières différences relevées (50 au plus)
 

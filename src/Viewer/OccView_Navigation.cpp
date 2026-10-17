@@ -185,9 +185,15 @@ void OccView::fitSelection()
     emit viewCameraChanged();
 }
 
+void OccView::fitModelWhenReady()
+{
+    if (m_view.IsNull()) m_fitModelOnInit = true;
+    else fitModel();
+}
+
 void OccView::fitModel()
 {
-    const bool imported = m_bimRenderer && m_bimRenderer->size() > 0;
+    const bool imported = m_bimRenderer && m_bimRenderer->visible() && m_bimRenderer->size() > 0;   // couche masquée : hors cadrage
     if (m_view.IsNull() || !m_model || (m_model->nodes().empty() && !imported))
     {
         fitAll();

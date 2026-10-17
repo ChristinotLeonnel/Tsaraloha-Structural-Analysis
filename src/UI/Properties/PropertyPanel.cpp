@@ -305,6 +305,11 @@ void PropertyPanel::showBimProductProperties(int productId)
     m_stack->setCurrentWidget(m_bimView);
 }
 
+bool PropertyPanel::showsBimProduct() const
+{
+    return m_stack && m_stack->currentWidget() == m_bimView;
+}
+
 void PropertyPanel::showFoundationProperties(int foundationId)
 {
     endMultiEdit();

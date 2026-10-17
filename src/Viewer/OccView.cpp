@@ -128,7 +128,9 @@ void OccView::showEvent(QShowEvent* event)
         rebuildAllShapes();
         rebuildGrid();
         updateWorkPlaneVisual();
-        fitAll();
+        if (m_fitModelOnInit) fitModel();
+        else fitAll();
+        m_fitModelOnInit = false;
     }
     else if (!m_view.IsNull())
     {

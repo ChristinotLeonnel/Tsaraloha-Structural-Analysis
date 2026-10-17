@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 401;
+    int expectedTotal = 404;   // mesuré le 17/10/2026, plateforme Qt native
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Bim(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "ifc") {
-        std::cout << "\n--- [Suite 25 bis] Fichiers IFC réels : IFC2X3, IFC4, IFC4X3, aller-retour, fichiers invalides (Tests 400-407) ---" << std::endl;
+        std::cout << "\n--- [Suite 25 bis] Fichiers IFC réels : IFC2X3, IFC4, IFC4X3, aller-retour, fichiers invalides, export robuste, vue 3D (Tests 400-409) ---" << std::endl;
         if (!runSuite_IfcFiles(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "snap") {

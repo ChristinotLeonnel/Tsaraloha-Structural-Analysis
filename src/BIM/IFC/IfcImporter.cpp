@@ -938,6 +938,41 @@ private:
     std::map<int, std::string> m_storeyLevel;       ///< #étage → id de niveau
 };
 
+/// Projet vierge (aucun nœud, élément ni produit) : ses niveaux sont ceux du gabarit par défaut du modèle.
+bool pristine(const TSA::Model::Model& m)
+{
+    return m.nodes().empty() && m.beams().empty() && m.columns().empty() && m.slabs().empty() && m.walls().empty()
+        && m.foundations().empty() && m.bim().elements().empty();
+}
+
+/// Import dans un projet vierge : les niveaux du gabarit par défaut sont mis de côté pendant l'import, pour que le
+/// projet ait exactement les étages du fichier (ni étage inventé, réexporté ensuite en IfcBuildingStorey, ni étage du
+/// fichier fondu dans un niveau du gabarit de même cote, sous le nom de ce niveau). Rétablis si le fichier n'a aucun
+/// étage (repères de travail). Imbrication sans effet : un import dans un import ne trouve plus de niveau à écarter.
+class TemplateLevels
+{
+public:
+    explicit TemplateLevels(TSA::Model::Model& m) : m_model(m)
+    {
+        auto* lm = m.levelManager();
+        if (!lm || !pristine(m)) return;
+        m_saved = lm->levels();
+        for (const auto& l : m_saved) lm->removeLevel(l.id);
+    }
+    ~TemplateLevels()
+    {
+        auto* lm = m_model.levelManager();
+        if (!lm || m_saved.empty() || !lm->levels().empty()) return;
+        for (const auto& l : m_saved) lm->addLevelWithId(l.id, l.name, l.elevation);
+    }
+    TemplateLevels(const TemplateLevels&) = delete;
+    TemplateLevels& operator=(const TemplateLevels&) = delete;
+
+private:
+    TSA::Model::Model& m_model;
+    std::vector<TSA::Coordinate::Level> m_saved;
+};
+
 /// Enveloppe ISO 10303-21 : en-tête « ISO-10303-21; » et fin « END-ISO-10303-21; ». Un fichier tronqué (transfert
 /// interrompu, disque plein) se lit sans erreur jusqu'à sa coupure : il serait importé en partie, en silence.
 std::string stepEnvelopeError(const std::string& content)
@@ -960,6 +995,7 @@ IfcImportReport IfcImporter::importString(const std::string& content, TSA::Model
     IfcImportReport r;
     r.engine = "lecteur STEP interne";
     if (r.error = stepEnvelopeError(content); !r.error.empty()) return r;
+    TemplateLevels templateLevels(model);
     if (!reader.parse(content, &r.error)) return r;
     const std::string& schema = reader.schema();
     if (schema.rfind("IFC", 0) != 0)
@@ -1001,6 +1037,7 @@ IfcImportReport IfcImporter::importFile(const std::string& path, TSA::Model::Mod
     const QByteArray bytes = f.readAll();
     const std::string content(bytes.constData(), static_cast<std::size_t>(bytes.size()));
     if (r.error = stepEnvelopeError(content); !r.error.empty()) return r;
+    TemplateLevels templateLevels(model);
     if (!detail::fullEngineAvailable()) return importString(content, model, options);
 
     // 1. Lecteur interne : structure spatiale, étages et modèle analytique du fichier (et déduction si demandée).

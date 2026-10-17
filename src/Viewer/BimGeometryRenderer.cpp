@@ -139,6 +139,15 @@ void BimGeometryRenderer::setVisible(bool visible)
     }
 }
 
+std::size_t BimGeometryRenderer::displayedCount() const
+{
+    if (m_context.IsNull()) return 0;
+    std::size_t n = 0;
+    for (const auto& [id, object] : m_objects)
+        if (m_context->IsDisplayed(object)) ++n;
+    return n;
+}
+
 Bnd_Box BimGeometryRenderer::bounds() const
 {
     Bnd_Box box;

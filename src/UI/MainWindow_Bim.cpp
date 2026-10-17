@@ -3,9 +3,11 @@
 //
 // Import et export s'exécutent dans un thread de travail, derrière une fenêtre de progression modale (annulable pour
 // l'import) : l'interface reste dessinée, et aucune autre commande ne peut démarrer pendant ce temps. Le thread ne
-// touche jamais au projet ouvert : l'import remplit un modèle temporaire, l'export lit une copie (instantané).
+// touche jamais au projet ouvert : l'import remplit un modèle temporaire, ouvert ensuite dans un nouvel onglet (les
+// projets ouverts ne sont jamais remplacés) ; l'export lit une copie (instantané).
 
 #include "MainWindow.h"
+#include "../BIM/Core/BimModel.h"
 #include "../BIM/IFC/IfcExporter.h"
 #include "../BIM/IFC/IfcImporter.h"
 #include "../Coordinate/LevelManager.h"
@@ -16,8 +18,10 @@
 #include "Dock/LogConsoleDock.h"
 #include "ModelTree/ModelTreeWidget.h"
 #include "Ruler/ViewportContainer.h"
+#include "Widgets/ProjectStatusOverlay.h"
 
 #include <QApplication>
+#include <QMetaMethod>
 #include <QEventLoop>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -174,11 +178,11 @@ void MainWindow::onActionImportIfc()
         progress.publish(percent, stage);
         return !progress.cancel.load();
     };
-    TSA::Model::Model imported;
+    auto imported = std::make_shared<TSA::Model::Model>();
     TSA::BIM::Ifc::IfcImportReport r;
     TSA::UI::IfcProgressDialog dialog(tr("Import IFC"), tr("Lecture de %1…").arg(QFileInfo(path).fileName()), this);
     const std::string source = path.toStdString();
-    const std::string failure = runInWorker(dialog, progress, [&] { r = TSA::BIM::Ifc::IfcImporter::importFile(source, imported, options); });
+    const std::string failure = runInWorker(dialog, progress, [&] { r = TSA::BIM::Ifc::IfcImporter::importFile(source, *imported, options); });
     if (!failure.empty())
     {
         r.ok = false;
@@ -206,20 +210,39 @@ void MainWindow::onActionImportIfc()
         return;
     }
 
-    // L'import crée un nouveau projet (même parcours que Fichier > Nouveau, avec enregistrement proposé)
-    const auto before = m_model->revision();
-    onActionNew();
-    if (m_model->revision() == before && !m_model->nodes().empty())   // nouveau projet annulé
+    // Projet importé ouvert dans un nouvel onglet par l'hôte (comme Fichier > Ouvrir) : ce document et son historique
+    // restent intacts. Sans hôte (fenêtre seule), installé ici seulement si le document est vide.
+    if (isSignalConnected(QMetaMethod::fromSignal(&MainWindow::importedProjectReady)))
     {
-        if (m_consoleDock) m_consoleDock->appendLog(tr("Import IFC abandonné : le nouveau projet a été annulé."), "WARN");
+        emit importedProjectReady(imported, path, std::make_shared<const TSA::BIM::Ifc::IfcImportReport>(r));
         return;
     }
+    if (!m_model->nodes().empty() || !m_model->bim().elements().empty() || hasUnsavedChanges())
+    {
+        QMessageBox::warning(this, tr("Import IFC"), tr("Ouvrez un projet vide pour recevoir l'import : le projet ouvert n'a pas été modifié."));
+        return;
+    }
+    adoptImportedProject(*imported, path, r);
+}
 
-    // Reconstruction complète des vues (onModelCleared) puis état initial de l'historique
+void MainWindow::adoptImportedProject(const TSA::Model::Model& imported, const QString& path, const TSA::BIM::Ifc::IfcImportReport& r)
+{
+    if (!m_model) return;
+    // Reconstruction complète des vues (onModelCleared) puis état initial de l'historique ; projet sans fichier,
+    // à enregistrer (fermeture : enregistrement proposé)
     m_model->restoreSnapshot(imported.createSnapshot("Import IFC"));
     m_model->clearUndoRedo();
+    m_model->setModified(true);
 
     const QString name = QFileInfo(path).completeBaseName();
+    if (m_projectManager) m_projectManager->setProjectName(name);
+    updateWindowTitle();
+    if (m_projectStatusWidget)
+    {
+        m_projectStatusWidget->setModel(m_model);
+        m_projectStatusWidget->setProjectInfo(name, QString());
+        m_projectStatusWidget->refreshStatus();
+    }
     if (m_viewportContainer && m_model->levelManager())
         m_viewportContainer->updateLevelsList(m_model->levelManager()->elevationList(), m_model->levelManager()->levelNames());
     if (m_modelTree)
@@ -229,9 +252,13 @@ void MainWindow::onActionImportIfc()
     }
     if (m_occView)
     {
+        // Objets importés montrés, bouton « Objets IFC importés » accordé (sans relancer son action)
         m_occView->setBimGeometryVisible(true);
+        syncDisplayActionsFromView();
         m_occView->rebuildGrid();
-        m_occView->fitModel();
+        // Onglet neuf : la vue OCCT n'existe qu'à son premier affichage ; le cadrage sur le projet importé est alors fait
+        // à la place du cadrage général (qui englobe la grille du gabarit et réduit le bâtiment à un coin de la vue).
+        m_occView->fitModelWhenReady();
     }
     if (m_consoleDock)
     {

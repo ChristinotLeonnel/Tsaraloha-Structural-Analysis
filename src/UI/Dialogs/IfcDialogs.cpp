@@ -122,8 +122,8 @@ IfcImportOptionsDialog::IfcImportOptionsDialog(const QString& path, QWidget* par
     layout->addWidget(m_analytical);
     layout->addWidget(m_derive);
     auto* note = new QLabel(tr("Les objets sans élément de calcul sont conservés « à préparer » (porteurs) ou « non porteurs » : "
-                               "aucune connexion, aucun appui ni aucune charge n'est inventé. Le projet ouvert n'est remplacé "
-                               "qu'après un import réussi."),
+                               "aucune connexion, aucun appui ni aucune charge n'est inventé. Le projet importé s'ouvre dans "
+                               "un nouvel onglet : les projets ouverts ne sont pas modifiés."),
                             this);
     note->setWordWrap(true);
     layout->addWidget(note);

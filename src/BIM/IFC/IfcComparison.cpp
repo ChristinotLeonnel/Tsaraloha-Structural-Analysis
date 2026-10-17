@@ -1,11 +1,13 @@
 #include "IfcComparison.h"
 
+#include "../../Coordinate/LevelManager.h"
 #include "../../Model/Model.h"
 #include "../Core/BimModel.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <map>
 
 namespace TSA::BIM::Ifc
 {
@@ -48,7 +50,7 @@ bool IfcComparison::identical() const
 {
     return productsA == productsB && guidsPreserved == productsA && classesPreserved == productsA && namesPreserved == productsA
         && propertySetsPreserved == productsA && statusPreserved == productsA && geometryWithinTolerance == geometryCompared
-        && nodesA == nodesB && membersA == membersB && surfacesA == surfacesB && foundationsA == foundationsB;
+        && levelsA == levelsB && storeysPreserved == storeysA && nodesA == nodesB && membersA == membersB && surfacesA == surfacesB && foundationsA == foundationsB;
 }
 
 std::string IfcComparison::summary() const
@@ -60,7 +62,8 @@ std::string IfcComparison::summary() const
         + std::to_string(productsB) + " produit(s) ; GlobalId " + ratio(guidsPreserved) + ", classes " + ratio(classesPreserved)
         + ", noms " + ratio(namesPreserved) + ", Psets " + ratio(propertySetsPreserved) + ", états " + ratio(statusPreserved)
         + " ; géométrie " + std::to_string(geometryWithinTolerance) + "/" + std::to_string(geometryCompared) + " (écart max "
-        + deviation + " m, tolérance " + std::to_string(tolerance) + " m) ; calcul : " + std::to_string(nodesA) + "/"
+        + deviation + " m, tolérance " + std::to_string(tolerance) + " m) ; étages " + std::to_string(storeysPreserved) + "/"
+        + std::to_string(storeysA) + " (niveaux " + std::to_string(levelsA) + "/" + std::to_string(levelsB) + ") ; calcul : " + std::to_string(nodesA) + "/"
         + std::to_string(nodesB) + " nœuds, " + std::to_string(membersA) + "/" + std::to_string(membersB) + " barres, "
         + std::to_string(surfacesA) + "/" + std::to_string(surfacesB) + " surfaces, " + std::to_string(foundationsA) + "/"
         + std::to_string(foundationsB) + " fondations";
@@ -114,6 +117,26 @@ IfcComparison compareModels(const TSA::Model::Model& a, const TSA::Model::Model&
             else note(label + " : emprise décalée de " + std::to_string(deviation) + " m");
         }
     }
+    // Étages : niveaux liés à un IfcBuildingStorey, comparés par GlobalId (nom et cote)
+    auto storeys = [](const TSA::Model::Model& m) {
+        std::map<std::string, std::pair<std::string, double>> out;
+        if (const auto* lm = m.levelManager())
+            for (const auto& [level, guid] : m.bim().spatial().storeyGlobalIds)
+                if (const auto* l = lm->getLevel(level)) out[guid] = { l->name, l->elevation };
+        return out;
+    };
+    const auto sa = storeys(a), sb = storeys(b);
+    c.storeysA = static_cast<int>(sa.size());
+    for (const auto& [guid, level] : sa)
+    {
+        auto it = sb.find(guid);
+        if (it != sb.end() && it->second.first == level.first && std::abs(it->second.second - level.second) <= tolerance) ++c.storeysPreserved;
+        else note("étage " + guid + " « " + level.first + " » : " + (it == sb.end() ? "absent" : "relu « " + it->second.first + " »"));
+    }
+    c.levelsA = a.levelManager() ? static_cast<int>(a.levelManager()->levels().size()) : 0;
+    c.levelsB = b.levelManager() ? static_cast<int>(b.levelManager()->levels().size()) : 0;
+    if (c.levelsA != c.levelsB) note("niveaux : " + std::to_string(c.levelsA) + " → " + std::to_string(c.levelsB));
+
     c.nodesA = static_cast<int>(a.nodes().size());
     c.nodesB = static_cast<int>(b.nodes().size());
     c.membersA = static_cast<int>(a.beams().size() + a.columns().size() + a.trussMembers().size() + a.cables().size());

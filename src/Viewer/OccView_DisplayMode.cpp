@@ -172,6 +172,11 @@ std::size_t OccView::bimGeometryCount() const
     return m_bimRenderer ? m_bimRenderer->size() : 0;
 }
 
+std::size_t OccView::bimGeometryDisplayedCount() const
+{
+    return m_bimRenderer ? m_bimRenderer->displayedCount() : 0;
+}
+
 void OccView::scheduleBimGeometrySync()
 {
     // Rien à faire tant qu'aucun produit importé n'est tracé ni présent (cas des projets créés dans TSA)

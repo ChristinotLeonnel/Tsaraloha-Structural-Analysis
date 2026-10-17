@@ -42,6 +42,8 @@ public:
     void setVisible(bool visible);
     bool visible() const { return m_visible; }
     std::size_t size() const { return m_objects.size(); }
+    /// Objets effectivement affichés dans le contexte (0 si la couche est masquée).
+    std::size_t displayedCount() const;
     /// Emprise des produits tracés (vide s'il n'y en a aucun).
     Bnd_Box bounds() const;
     /// Produit (id BimModel) d'une entité détectée ; 0 si elle n'appartient pas à cette couche.
