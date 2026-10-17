@@ -1,8 +1,34 @@
 # Known Issues
 
-Last Updated: 2026-10-09 (audit QA, branche fix/audit-qa-2026-10-09). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-17 (validation de l'échange IFC, branche feature/io-ifc : BUG-076, BUG-077). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
+
+## BUG-076
+Area: Tests / intégration continue (vue 3D OCCT)
+Problem: toute suite qui crée une `OccView` s'arrête (code 0xC0000409, `abort()` du CRT, sans message) sous la
+plateforme Qt `offscreen` : la fenêtre n'a pas de vrai HWND, OCCT (`WNT_Window`, contexte WGL) ne peut créer son
+contexte OpenGL. Le workflow de publication (Setup-Livrable, `QT_QPA_PLATFORM: offscreen` à l'étape Tests) fait donc
+échouer `display`, `audit`, `multidoc` et `TSA_AllTests` — ce n'était pas un défaut du code des suites.
+Reproduction: `set QT_QPA_PLATFORM=offscreen` puis `TSA_TestSuite.exe --suite=display` → 0xC0000409 dès la première
+vue ; avec `QT_QPA_PLATFORM=windows` (vraie fenêtre) : display 6/6, audit 4/4, multidoc 10/10 (17/10/2026, build-ci
+propre). Équivalent local de la CI (offscreen) : 26/30 tests CTest réussis, exactement ces quatre en échec. Même résultat avec le binaire
+antérieur aux travaux IFC (TSA_TestSuite du 17/10 13:54) : défaut préexistant, indépendant d'IFC.
+Impact: HIGH pour la publication (étape Tests de la CI en échec), aucun impact pour l'utilisateur.
+Status: OPEN — piste : exécuter ces suites avec la plateforme `windows` sur le runner (session de bureau des runners
+GitHub Windows ; OpenGL logiciel à vérifier : Mesa llvmpipe si le pilote Microsoft ne fournit que GL 1.1), ou les
+annoncer sautées sous `offscreen` comme le test 408 de la suite `ifc`. À valider par une exécution réelle de la CI.
+Related files: tests/test_display.cpp, tests/test_audit.cpp, tests/test_multidoc*.cpp, Setup-Livrable/.github/workflows/release.yml
+
+## BUG-077
+Area: Import IFC / titre de la fenêtre
+Problem: le projet issu d'un import IFC s'ouvre dans un nouvel onglet nommé d'après le fichier, mais la barre de titre
+affiche « TSA — Sans titre * » tant qu'il n'est pas enregistré (`ProjectManager::windowTitle` ne connaît que le nom du
+fichier).
+Reproduction: Importer IFC… → ifc4x3_Building-Structural.ifc → onglet « ifc4x3_Building-Structural ● », titre « Sans titre ».
+Impact: LOW (cosmétique ; l'onglet et l'arbre portent le bon nom)
+Status: OPEN — constaté le 17/10/2026 (essai UI Automation de l'import IFC).
+Related files: src/Project/ProjectManager.cpp, src/UI/MainWindow_Bim.cpp
 
 ## BUG-075
 Area: Sélection 3D / nœuds

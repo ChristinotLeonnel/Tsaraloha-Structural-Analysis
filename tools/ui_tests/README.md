@@ -44,3 +44,8 @@ bureau actif). La fenêtre de TSA doit rester au premier plan pendant l'essai.
 
 Les boutons qui ouvrent une boîte modale sont cliqués à la souris (`Click-Mouse`) : l'Invoke d'UI Automation
 ne rend pas la main pendant la boucle modale de Qt.
+9. Échange IFC : `ifc_scenario.ps1 -Work <dossier vide, chemin long> [-BigFile <grand .ifc>] [-Exe <paquet>\TSA.exe]` :
+   projet ouvert, import IFC2X3 / IFC4 / IFC4X3_ADD2 (options, rapport, nouvel onglet), annulation pendant l'import du
+   grand fichier, fichier tronqué refusé, bouton « Objets IFC importés », survol et inspecteur d'un objet importé,
+   export relu, projet d'origine intact ; journal `<dossier>\ifc_scenario.log`, captures `<dossier>\shots`. Réglages
+   `HKCU\Software\TSA Engineering` sauvegardés puis restaurés par le script.

@@ -23,12 +23,16 @@ voile, semelle… ou `LoadBearing = TRUE`) ou **non porteur** (porte, fenêtre, 
 Interface (`src/UI/MainWindow_Bim.cpp`, `src/UI/Dialogs/IfcDialogs`) :
 
 - Importer : options (géométrie, modèle de calcul du fichier, déduction depuis la géométrie), import dans un thread
-  de travail, progression et annulation, **projet ouvert remplacé seulement après un import réussi**, rapport
-  détaillé (objets, classes, avertissements, enregistrement CSV).
+  de travail, progression et annulation, **projet importé ouvert dans un nouvel onglet** (projet sans fichier, à
+  enregistrer ; les projets ouverts ne sont jamais remplacés), rapport détaillé (objets, classes, avertissements,
+  enregistrement CSV).
 - Exporter : écriture atomique (`QSaveFile`) d'une copie du projet dans un thread de travail, **relecture par
   IfcOpenShell** : un fichier illisible fait échouer l'export, jamais de succès annoncé sur un fichier non vérifié.
 - Vue 3D : objets importés sans élément de calcul tracés avec leur géométrie d'origine (couleur du style IFC) ;
-  survol et clic → propriétés IFC dans l'inspecteur (lecture seule).
+  survol et clic → propriétés IFC dans l'inspecteur (lecture seule). Bouton **« Objets IFC importés »** (Accueil >
+  Projet, Affichage > Aides visuelles, menu Vue > Aides visuelles) : masque ou réaffiche la couche sans toucher au
+  projet ; masquer vide l'inspecteur s'il montrait un objet IFC ; le choix est conservé d'un projet à l'autre, comme
+  les autres aides visuelles, et un import réaffiche la couche.
 - Ligne de commande : `tsa-ifc info | export | roundtrip` (rapport JSON).
 
 ## 2. Export (schéma `IFC4X3_ADD2`, vue `ReferenceView`)

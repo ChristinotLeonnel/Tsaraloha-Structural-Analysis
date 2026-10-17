@@ -70,6 +70,27 @@ autorise son usage par un logiciel diffusé commercialement et non libre, contra
    dépôt public de TSA. Boost et Eigen, compilés dans les DLL sans modification, sont désignés par URL et empreinte.
 
 Composants exclus de la compilation : Python, IfcConvert, CGAL, COLLADA, glTF, USD, PROJ (licences et taille).
+
+Audit des binaires livrés (17/10/2026) :
+
+- dépendances des 13 DLL (table d'import) : Windows, runtime MSVC et DLL d'OpenCASCADE déjà livrées (`TKernel`,
+  `TKMath`, `TKBRep`, `TKBO`, `TKBool`, `TKMesh`…), aucune autre bibliothèque ;
+- Boost (`program_options`, `regex`) lié statiquement dans les DLL : BSL-1.0, aucune obligation pour le code objet ;
+- Eigen (en-têtes) : MPL-2.0 ; certains fichiers d'Eigen sont sous LGPL ou BSD (`COPYING.README`) : la compilation
+  n'impose pas `EIGEN_MPL2_ONLY`, la liste des en-têtes réellement inclus reste à établir ;
+- code tiers relevé dans les sources compilées : une routine d'intersection rayon / boîte « From Tavian Barnes - MIT
+  License » (`src/ifcgeom/kernels/opencascade/clash_utils.cpp`), compilée dans
+  `ifcopenshell_geometry_kernel_opencascade.dll` ; avis et texte MIT reproduits dans
+  `licenses/IfcOpenShell/THIRD_PARTY_NOTICES.txt` (le source ne mentionne ni année ni formule de copyright) ;
+- les dossiers sous licence propre du dépôt IfcOpenShell (Bonsai GPL, outils Python `bcf`, `ifcclash`…) ne sont pas
+  compilés.
+
+**À faire confirmer par un juriste** (la réussite de `tools/verify_package.py` ne vaut pas conformité) : suffisance de
+l'offre de source (archive jointe à chaque version publiée et script de compilation public), remplaçabilité effective
+des DLL d'une interface C++ (même compilateur et mêmes options requis, script fourni), extrait MIT ci-dessus, fichiers
+LGPL éventuels d'Eigen. Les paquets ne sont pas reproductibles au bit près (horodatages des binaires) : la traçabilité
+repose sur `MANIFEST.json` (SHA-256 de chaque fichier), `TSA-BUILD.json` (versions et empreintes des sources) et
+`SHA256SUMS.txt` des versions publiées.
 `tools/verify_package.py` refuse un paquet qui contient IfcOpenShell sans tous ses modules ni ses licences ; la
 publication échoue si la bibliothèque manque (`-DTSA_REQUIRE_IFCOPENSHELL=ON`).
 
