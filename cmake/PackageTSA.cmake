@@ -115,6 +115,63 @@ ${extra_sources}- Gmsh ${GMSH_VERSION} (unmodified / non modifié): https://gmsh
 ")
 endif()
 
+# --- 2 ter. Import IFC complet : IfcOpenShell (LGPL-3.0), compilé par scripts/build_ifcopenshell.ps1 ---------------
+# Toutes les DLL à côté de l'exécutable : bibliothèques liées et modules chargés à l'exécution (schémas, noyau
+# OpenCASCADE), cherchés dans le dossier de la bibliothèque qui les charge. Liaison dynamique, DLL remplaçables par
+# l'utilisateur (LGPL-3.0 §4 d) 1)) ; code source correspondant désigné par licenses/IfcOpenShell/SOURCE.txt (§6 de
+# la GPL-3.0, que la LGPL complète). Boost (BSL-1.0, statique) et Eigen (MPL-2.0, en-têtes) sont compilés dedans.
+if(IFCOPENSHELL_ROOT AND EXISTS "${IFCOPENSHELL_ROOT}/bin")
+    file(GLOB ifcos_dlls "${IFCOPENSHELL_ROOT}/bin/*.dll")
+    if(NOT ifcos_dlls)
+        message(FATAL_ERROR "IfcOpenShell : aucune DLL dans ${IFCOPENSHELL_ROOT}/bin")
+    endif()
+    foreach(l IfcOpenShell/COPYING IfcOpenShell/COPYING.LESSER Boost/LICENSE_1_0.txt Eigen/COPYING.MPL2 Eigen/COPYING.README)
+        if(NOT EXISTS "${IFCOPENSHELL_ROOT}/licenses/${l}")
+            message(FATAL_ERROR "IfcOpenShell inclus : licence ${l} absente de ${IFCOPENSHELL_ROOT}/licenses "
+                                "(relancer scripts/build_ifcopenshell.ps1)")
+        endif()
+    endforeach()
+    if(NOT SOURCE_REF)
+        set(SOURCE_REF "v${VERSION}")
+    endif()
+    list(LENGTH ifcos_dlls n_ifcos)
+    message(STATUS "IfcOpenShell inclus (LGPL-3.0) : ${n_ifcos} DLL ; code source correspondant indiqué dans licenses/IfcOpenShell/SOURCE.txt")
+    file(COPY ${ifcos_dlls} DESTINATION "${DIST_DIR}")
+    file(COPY "${IFCOPENSHELL_ROOT}/licenses/" DESTINATION "${DIST_DIR}/licenses")
+    if(EXISTS "${IFCOPENSHELL_ROOT}/TSA-BUILD.json")
+        file(COPY "${IFCOPENSHELL_ROOT}/TSA-BUILD.json" DESTINATION "${DIST_DIR}/licenses/IfcOpenShell")
+    endif()
+    file(WRITE "${DIST_DIR}/licenses/IfcOpenShell/SOURCE.txt"
+"IfcOpenShell — corresponding source / code source correspondant
+================================================================
+
+This distribution of ${PRODUCT} ${VERSION} uses IfcOpenShell 0.9.0post1 (ifcopenshell.*.dll, ifcopenshell_*.dll),
+licensed under the GNU Lesser General Public License version 3 (COPYING.LESSER), which supplements the GNU General
+Public License version 3 (COPYING). The libraries are dynamically linked: you may replace these DLLs with a modified,
+interface-compatible build. ${PRODUCT} itself remains under the MIT license.
+
+Cette distribution de ${PRODUCT} ${VERSION} utilise IfcOpenShell 0.9.0post1 (DLL ifcopenshell*), sous licence GNU LGPL
+version 3, qui complète la GNU GPL version 3. Les bibliothèques sont liées dynamiquement : vous pouvez remplacer ces
+DLL par une version modifiée compatible. ${PRODUCT} reste sous licence MIT.
+
+- IfcOpenShell 0.9.0post1 (unmodified / non modifié): tag ifcopenshell-python-0.9.0post1,
+  commit 2744f8426bdef98a486406628a121298a5479690
+  https://github.com/IfcOpenShell/IfcOpenShell/archive/refs/tags/ifcopenshell-python-0.9.0post1.tar.gz
+  SHA-256 2776eef7ddc0137df317f0294623523dc4ccdaba468c172232cfdda13f4e912a
+  A copy is attached to each published release / une copie est jointe à chaque version publiée :
+  https://github.com/ChristinotLeonnel/Setup-Livrable/releases
+- Build script / script de compilation (options, schémas IFC2X3, IFC4, IFC4X3_ADD2) :
+  ${SOURCE_URL}/blob/${SOURCE_REF}/scripts/build_ifcopenshell.ps1 (see TSA-BUILD.json)
+- Compiled into the DLLs / compilés dans les DLL (unmodified / non modifiés) :
+  Boost 1.92.0 (Boost Software License 1.0)
+  https://github.com/boostorg/boost/releases/download/boost-1.92.0/boost-1.92.0-b2-nodocs.tar.gz
+  SHA-256 e2a814b3a158ab482c7a3d330f8bf5a7a8423d258a4e2fb396996e00fcee2111
+  Eigen 3.4.1 (Mozilla Public License 2.0) https://gitlab.com/libeigen/eigen/-/archive/3.4.1/eigen-3.4.1.tar.gz
+  SHA-256 b93c667d1b69265cdb4d9f30ec21f8facbbe8b307cf34c0b9942834c6d4fdbe2
+- Geometry kernel / noyau géométrique : Open CASCADE Technology 8.0.1 (licenses/OpenCASCADE)
+")
+endif()
+
 # --- 3. Autres DLL réellement importées (exécutables et DLL du paquet, récursivement) --------------
 tsa_runtime_search_dirs(search_dirs "${SOURCE_DIR}")
 file(GLOB pkg_dlls "${DIST_DIR}/*.dll")
@@ -290,9 +347,14 @@ if(_gmsh_in_dist)
 else()
     set(gmsh_json false)
 endif()
+if(EXISTS "${DIST_DIR}/ifcopenshell.parse.dll")
+    set(ifcos_json true)
+else()
+    set(ifcos_json false)
+endif()
 list(LENGTH all_files nfiles)
 string(JOIN ",\n" body ${entries})
 file(WRITE "${DIST_DIR}/MANIFEST.json"
-"{\n  \"product\": \"${PRODUCT}\",\n  \"version\": \"${VERSION}\",\n  \"configuration\": \"${CONFIG}\",\n  \"generated\": \"${now}\",\n  \"files\": ${nfiles},\n  \"totalBytes\": ${total},\n  \"openSeesIncluded\": ${os_json},\n  \"gmshIncluded\": ${gmsh_json},\n  \"entries\": [\n${body}\n  ]\n}\n")
+"{\n  \"product\": \"${PRODUCT}\",\n  \"version\": \"${VERSION}\",\n  \"configuration\": \"${CONFIG}\",\n  \"generated\": \"${now}\",\n  \"files\": ${nfiles},\n  \"totalBytes\": ${total},\n  \"openSeesIncluded\": ${os_json},\n  \"gmshIncluded\": ${gmsh_json},\n  \"ifcOpenShellIncluded\": ${ifcos_json},\n  \"entries\": [\n${body}\n  ]\n}\n")
 math(EXPR mb "${total} / 1048576")
 message(STATUS "=== Paquet terminé : ${nfiles} fichiers, ${mb} Mo — vérifier : python tools/verify_package.py \"${DIST_DIR}\" ===")

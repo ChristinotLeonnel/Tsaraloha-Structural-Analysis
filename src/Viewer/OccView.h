@@ -34,6 +34,7 @@ namespace TSA::Viewer
     class DimensionRenderer;
     class AnalyticalModelRenderer;
     class FiniteElementMeshRenderer;
+    class BimGeometryRenderer;
 }
 
 namespace TSA::Grid
@@ -118,6 +119,12 @@ public:
     TSA::Viewer::SolverMeshStatus solverMeshStatus() const;
     /// Recalcule les axes superposés et le maillage affiché (résultats nouveaux ou obsolètes, isolation…).
     void refreshDisplayModeOverlays();
+
+    // Objets physiques importés (IFC) sans élément de calcul : maillages d'origine (BimGeometryRenderer.h).
+    void setBimGeometryVisible(bool visible);
+    bool bimGeometryVisible() const;
+    /// Nombre de produits tracés par la couche.
+    std::size_t bimGeometryCount() const;
 
     // Visualisation des résultats OpenSees (déformée, diagrammes 3D, réactions)
     TSA::Viewer::ResultsVisualManager* resultsVisual() const { return m_resultsVisual.get(); }
@@ -471,6 +478,8 @@ signals:
     void mousePixelPositionChanged(int px, int py);
     void viewCameraChanged();
     void objectHovered(const QString& info);
+    /// Clic sur un objet physique importé (couche BIM) : identifiant du produit dans BimModel.
+    void bimProductPicked(int productId);
     void gridVisibilityChanged(bool visible);
     void gridSnapChanged(bool enabled);
     void objectSnapChanged(bool enabled);
@@ -832,6 +841,13 @@ private:
     std::unique_ptr<TSA::Viewer::AnalyticalModelRenderer> m_analyticalRenderer;
     std::unique_ptr<TSA::Viewer::FiniteElementMeshRenderer> m_meshRenderer;
     bool m_displayOverlaysPending = false;
+    std::unique_ptr<TSA::Viewer::BimGeometryRenderer> m_bimRenderer;
+    bool m_bimSyncPending = false;
+    /// Accord différé (regroupé) de la couche BIM avec le modèle : un produit relié au calcul quitte la couche.
+    void scheduleBimGeometrySync();
+    /// Produit BIM désigné par l'entité détectée sous le curseur, si aucun élément du modèle n'est détecté (les
+    /// nœuds et barres dans un mur importé restent désignables) ; 0 sinon.
+    int detectedBimProduct();
     /// Barre : apparence selon le mode (axe analytique coloré par famille, ou section et matériau).
     void styleLinearShape(const Handle(AIS_Shape)& ais, const TSA::Model::Material& material, const std::string& color,
                           TSA::Analysis::StructuralElementKind kind);

@@ -3,11 +3,13 @@
 //
 //   tsa-ifc info <fichier.ifc>                    import dans un projet vide, rapport (produits présents / importés)
 //   tsa-ifc export <projet.tsa | .tsa3d> <sortie.ifc>
-//   tsa-ifc roundtrip <fichier.ifc> <sortie.ifc>  import puis export du projet obtenu
+//   tsa-ifc roundtrip <fichier.ifc> <sortie.ifc>  import, export du projet obtenu, réimport et comparaison
 //
+// Options (info, roundtrip) : --derive (éléments de calcul déduits de la géométrie), --no-geometry.
 // Le rapport est écrit en JSON sur la sortie standard. Code de sortie : 0 succès, 1 échec (fichier illisible,
-// import ou export refusé), 2 usage.
+// import ou export refusé, aller-retour avec pertes), 2 usage.
 
+#include "BIM/IFC/IfcComparison.h"
 #include "BIM/IFC/IfcExporter.h"
 #include "BIM/IFC/IfcImporter.h"
 #include "BIM/IFC/IfcStepReader.h"
@@ -58,34 +60,73 @@ QJsonObject productsInFile(const std::string& path)
     return out;
 }
 
+QJsonArray strings(const std::vector<std::string>& lines)
+{
+    QJsonArray out;
+    for (const auto& l : lines) out.append(QString::fromStdString(l));
+    return out;
+}
+
 QJsonObject importJson(const IfcImportReport& r)
 {
-    QJsonArray warnings;
-    for (const auto& w : r.warnings) warnings.append(QString::fromStdString(w));
+    QJsonObject byClass;
+    for (const auto& [cls, n] : r.byClass) byClass.insert(QString::fromStdString(cls), n);
     return QJsonObject {
         { QStringLiteral("ok"), r.ok },
+        { QStringLiteral("canceled"), r.canceled },
         { QStringLiteral("error"), QString::fromStdString(r.error) },
         { QStringLiteral("schema"), QString::fromStdString(r.schema) },
+        { QStringLiteral("engine"), QString::fromStdString(r.engine) },
+        { QStringLiteral("lengthUnit"), r.lengthUnit },
         { QStringLiteral("products"), r.products },
+        { QStringLiteral("productsWithGeometry"), r.productsWithGeometry },
+        { QStringLiteral("toPrepare"), r.toPrepare },
+        { QStringLiteral("notStructural"), r.notStructural },
+        { QStringLiteral("ignored"), r.ignored },
+        { QStringLiteral("derived"), r.derived },
         { QStringLiteral("nodes"), r.nodes },
         { QStringLiteral("members"), r.members },
         { QStringLiteral("surfaces"), r.surfaces },
         { QStringLiteral("foundations"), r.foundations },
         { QStringLiteral("storeys"), r.storeys },
-        { QStringLiteral("warnings"), warnings },
+        { QStringLiteral("byClass"), byClass },
+        { QStringLiteral("summary"), QString::fromStdString(r.summary()) },
+        { QStringLiteral("warnings"), strings(r.warnings) },
     };
 }
 
 QJsonObject exportJson(const IfcExportReport& r, const QString& path)
 {
-    QJsonArray warnings;
-    for (const auto& w : r.warnings) warnings.append(QString::fromStdString(w));
     return QJsonObject {
         { QStringLiteral("ok"), r.ok },
         { QStringLiteral("summary"), QString::fromStdString(r.summary()) },
         { QStringLiteral("file"), path },
         { QStringLiteral("bytes"), static_cast<double>(QFileInfo(path).size()) },
-        { QStringLiteral("warnings"), warnings },
+        { QStringLiteral("products"), r.products },
+        { QStringLiteral("entities"), r.entities },
+        { QStringLiteral("verifiedElements"), r.verifiedElements },
+        { QStringLiteral("verification"), QString::fromStdString(r.verification) },
+        { QStringLiteral("warnings"), strings(r.warnings) },
+    };
+}
+
+QJsonObject comparisonJson(const IfcComparison& c)
+{
+    return QJsonObject {
+        { QStringLiteral("identical"), c.identical() },
+        { QStringLiteral("summary"), QString::fromStdString(c.summary()) },
+        { QStringLiteral("tolerance"), c.tolerance },
+        { QStringLiteral("productsA"), c.productsA },
+        { QStringLiteral("productsB"), c.productsB },
+        { QStringLiteral("guidsPreserved"), c.guidsPreserved },
+        { QStringLiteral("classesPreserved"), c.classesPreserved },
+        { QStringLiteral("namesPreserved"), c.namesPreserved },
+        { QStringLiteral("propertySetsPreserved"), c.propertySetsPreserved },
+        { QStringLiteral("statusPreserved"), c.statusPreserved },
+        { QStringLiteral("geometryCompared"), c.geometryCompared },
+        { QStringLiteral("geometryWithinTolerance"), c.geometryWithinTolerance },
+        { QStringLiteral("maxBoundsDeviation"), c.maxBoundsDeviation },
+        { QStringLiteral("differences"), strings(c.differences) },
     };
 }
 
@@ -115,14 +156,17 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     SetConsoleOutputCP(65001);   // UTF-8
 #endif
-    const QStringList args = app.arguments().mid(1);
+    QStringList args = app.arguments().mid(1);
+    IfcImportOptions options;
+    options.deriveAnalyticalFromGeometry = args.removeAll(QStringLiteral("--derive")) > 0;
+    options.importGeometry = args.removeAll(QStringLiteral("--no-geometry")) == 0;
     const QString cmd = args.value(0);
     if (!((cmd == QLatin1String("info") && args.size() == 2) || (cmd == QLatin1String("export") && args.size() == 3)
           || (cmd == QLatin1String("roundtrip") && args.size() == 3)))
     {
-        std::fprintf(stderr, "Usage : tsa-ifc info <fichier.ifc>\n"
+        std::fprintf(stderr, "Usage : tsa-ifc info <fichier.ifc> [--derive] [--no-geometry]\n"
                              "        tsa-ifc export <projet.tsa | modèle.tsa3d> <sortie.ifc>\n"
-                             "        tsa-ifc roundtrip <fichier.ifc> <sortie.ifc>\n");
+                             "        tsa-ifc roundtrip <fichier.ifc> <sortie.ifc> [--derive] [--no-geometry]\n");
         return 2;
     }
 
@@ -146,14 +190,26 @@ int main(int argc, char** argv)
     }
 
     out.insert(QStringLiteral("inFile"), productsInFile(args[1].toStdString()));
-    const auto imported = IfcImporter::importFile(args[1].toStdString(), model);
+    const auto imported = IfcImporter::importFile(args[1].toStdString(), model, options);
     out.insert(QStringLiteral("import"), importJson(imported));
     bool ok = imported.ok;
     if (ok && cmd == QLatin1String("roundtrip"))
     {
+        // Aller-retour : export du projet obtenu, réimport du fichier écrit, comparaison des deux projets
         const auto r = IfcExporter::exportToFile(model, args[2].toStdString());
         out.insert(QStringLiteral("export"), exportJson(r, args[2]));
         ok = r.ok;
+        if (ok)
+        {
+            TSA::Model::Model again;
+            IfcImportOptions reimport;   // sans déduction : le fichier écrit par TSA porte son modèle de calcul
+            reimport.importGeometry = options.importGeometry;
+            const auto back = IfcImporter::importFile(args[2].toStdString(), again, reimport);
+            out.insert(QStringLiteral("reimport"), importJson(back));
+            const auto comparison = compareModels(model, again);
+            out.insert(QStringLiteral("comparison"), comparisonJson(comparison));
+            ok = back.ok && comparison.identical();
+        }
     }
     out.insert(QStringLiteral("ms"), static_cast<double>(timer.elapsed()));
     return print(out, ok);

@@ -307,13 +307,20 @@ bool BimModel::synchronize(const TSA::Model::Model& model)
                                 }),
                  an.end());
         changed |= an.size() != before;
-        if (an.empty())
+        auto& e = it->second;
+        if (an.empty() && !e.imported())
         {
+            // Produit créé dans TSA, vidé de ses éléments de calcul : il n'a plus d'existence propre.
             it = m_elements.erase(it);
             changed = true;
+            continue;
         }
-        else
-            ++it;
+        // Produit importé : conservé même sans élément de calcul (préparation requise, ou non porteur).
+        const AnalyticalStatus status = !an.empty() ? AnalyticalStatus::Analytical
+            : e.status == AnalyticalStatus::Analytical ? AnalyticalStatus::NeedsPreparation : e.status;
+        changed |= status != e.status;
+        e.status = status;
+        ++it;
     }
     for (auto it = m_analyticalGuids.begin(); it != m_analyticalGuids.end();)
     {
@@ -504,8 +511,9 @@ int BimModel::insert(PhysicalElement e)
         an.erase(std::remove_if(an.begin(), an.end(),
                                 [&](const AnalyticalRef& r) { return std::find(e.analytical.begin(), e.analytical.end(), r) != e.analytical.end(); }),
                  an.end());
-        it = an.empty() ? m_elements.erase(it) : std::next(it);
+        it = an.empty() && !it->second.imported() ? m_elements.erase(it) : std::next(it);
     }
+    if (e.analytical.empty() && e.status == AnalyticalStatus::Analytical) e.status = AnalyticalStatus::NeedsPreparation;
     const bool keepGuid = IfcGuid::isValid(e.globalId) && !elementByGlobalId(e.globalId);
     const std::string guid = e.globalId;
     const int id = create(e);
@@ -517,6 +525,20 @@ int BimModel::insert(PhysicalElement e)
 void BimModel::setAnalyticalGlobalId(const AnalyticalRef& ref, const std::string& globalId)
 {
     if (IfcGuid::isValid(globalId)) m_analyticalGuids[ref] = globalId;
+}
+
+std::map<int, MeshPtr> BimModel::geometries() const
+{
+    std::map<int, MeshPtr> out;
+    for (const auto& [id, e] : m_elements)
+        if (e.geometry) out[id] = e.geometry;
+    return out;
+}
+
+void BimModel::attachGeometries(const std::map<int, MeshPtr>& meshes)
+{
+    for (const auto& [id, mesh] : meshes)
+        if (auto it = m_elements.find(id); it != m_elements.end()) it->second.geometry = mesh;
 }
 
 std::string BimModel::resolvedStorey(const TSA::Model::Model& model, const PhysicalElement& e) const
@@ -584,6 +606,15 @@ QJsonObject BimModel::toJson() const
         for (const auto& c : e.classifications)
             cls.append(QJsonObject { { "system", qs(c.system) }, { "id", qs(c.identification) }, { "name", qs(c.name) } });
         o["classifications"] = cls;
+        // Origine IFC (produits importés) ; la géométrie est dans le chunk binaire BGEO, pas dans ce JSON.
+        if (!e.ifcClass.empty()) o["ifcClass"] = qs(e.ifcClass);
+        if (e.status != AnalyticalStatus::Analytical) o["status"] = analyticalStatusKey(e.status);
+        if (!e.importNotes.empty())
+        {
+            QJsonArray notes;
+            for (const auto& n : e.importNotes) notes.append(qs(n));
+            o["importNotes"] = notes;
+        }
         elements.append(o);
     }
     root["elements"] = elements;
@@ -638,6 +669,9 @@ bool BimModel::fromJson(const QJsonObject& root, BimModel& out)
             const QJsonObject co = cv.toObject();
             e.classifications.push_back({ ss(co["system"]), ss(co["id"]), ss(co["name"]) });
         }
+        e.ifcClass = ss(o["ifcClass"]);
+        analyticalStatusFromKey(ss(o["status"]), e.status);
+        for (const auto& n : o["importNotes"].toArray()) e.importNotes.push_back(ss(n));
         out.m_elements[e.id] = std::move(e);
     }
     const QJsonObject guids = root["analytical"].toObject();

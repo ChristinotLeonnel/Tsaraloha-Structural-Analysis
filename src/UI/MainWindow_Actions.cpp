@@ -2213,6 +2213,13 @@ void MainWindow::createStatusBar()
         }
     });
 
+    // Objet physique importé (IFC) désigné dans la vue : propriétés en lecture seule dans l'inspecteur
+    connect(m_occView, &OccView::bimProductPicked, this, [this](int productId) {
+        if (!m_propertyPanel) return;
+        m_propertyPanel->showBimProductProperties(productId);
+        if (m_propertiesDock) m_propertiesDock->raise();
+    });
+
     // Détection et repérage au survol des objets
     connect(m_occView, &OccView::objectHovered, this, [this](const QString& info) {
         if (m_statusInfo)

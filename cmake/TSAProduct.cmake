@@ -12,6 +12,7 @@
 
 get_filename_component(TSA_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 include("${CMAKE_CURRENT_LIST_DIR}/Gmsh.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/IfcOpenShell.cmake")
 # Cœur scientifique : dépôt TSALab voisin (TSALab/science).
 set(TSALAB_ROOT_DIR "${TSA_ROOT}/../TSALab" CACHE PATH "Racine du dépôt TSALab (cœur scientifique tsalab_science)")
 get_filename_component(TSALAB_ROOT_DIR "${TSALAB_ROOT_DIR}" ABSOLUTE)
@@ -104,6 +105,8 @@ set(UI_PROPERTIES_SOURCES
     ${TSA_ROOT}/src/UI/Properties/WorkPlanePropertiesView.cpp
     ${TSA_ROOT}/src/UI/Properties/LoadPropertiesView.h
     ${TSA_ROOT}/src/UI/Properties/LoadPropertiesView.cpp
+    ${TSA_ROOT}/src/UI/Properties/BimProductPropertiesView.h
+    ${TSA_ROOT}/src/UI/Properties/BimProductPropertiesView.cpp
 )
 
 # --- Boîtes de dialogue -------------------------------------------------------
@@ -116,6 +119,8 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/ShortcutEditorDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.h
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/IfcDialogs.h
+    ${TSA_ROOT}/src/UI/Dialogs/IfcDialogs.cpp
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/TopologyDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/SurfaceLoadsDialog.h
@@ -417,6 +422,8 @@ set(VIEWER_CORE_SOURCES
     ${TSA_ROOT}/src/Viewer/ModelDisplayMode.cpp
     ${TSA_ROOT}/src/Viewer/DisplayModeRenderers.h
     ${TSA_ROOT}/src/Viewer/DisplayModeRenderers.cpp
+    ${TSA_ROOT}/src/Viewer/BimGeometryRenderer.h
+    ${TSA_ROOT}/src/Viewer/BimGeometryRenderer.cpp
     ${TSA_ROOT}/src/Viewer/MaterialVisual.h
     ${TSA_ROOT}/src/Viewer/MaterialVisual.cpp
     ${TSA_ROOT}/src/Viewer/TextureManager.h
@@ -530,6 +537,8 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/BIM/Core/IfcGuid.cpp
     ${TSA_ROOT}/src/BIM/Core/BimModel.h
     ${TSA_ROOT}/src/BIM/Core/BimModel.cpp
+    ${TSA_ROOT}/src/BIM/Core/BimGeometry.h
+    ${TSA_ROOT}/src/BIM/Core/BimGeometry.cpp
     ${TSA_ROOT}/src/BIM/IFC/IfcStepWriter.h
     ${TSA_ROOT}/src/BIM/IFC/IfcStepWriter.cpp
     ${TSA_ROOT}/src/BIM/IFC/IfcExportContext.h
@@ -547,6 +556,10 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/BIM/IFC/IfcStepReader.cpp
     ${TSA_ROOT}/src/BIM/IFC/IfcImporter.h
     ${TSA_ROOT}/src/BIM/IFC/IfcImporter.cpp
+    ${TSA_ROOT}/src/BIM/IFC/IfcOpenShellImport.h
+    ${TSA_ROOT}/src/BIM/IFC/IfcOpenShellImport.cpp
+    ${TSA_ROOT}/src/BIM/IFC/IfcComparison.h
+    ${TSA_ROOT}/src/BIM/IFC/IfcComparison.cpp
     ${TSA_ROOT}/src/Model/Model_Snapshots.cpp
     ${TSA_ROOT}/src/Model/ModelDiff.h
     ${TSA_ROOT}/src/Model/ModelDiff.cpp
@@ -1017,6 +1030,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_met_de_deplacement.cpp
     ${TSA_ROOT}/tests/test_model_cleanup.cpp
     ${TSA_ROOT}/tests/test_bim.cpp
+    ${TSA_ROOT}/tests/test_ifc_files.cpp
     ${TSA_ROOT}/tests/test_snap.cpp
     ${TSA_ROOT}/tests/test_automation.cpp
     ${TSA_ROOT}/tests/test_help.cpp
@@ -1169,6 +1183,8 @@ function(tsaraloha_add_shared_libraries)
         # GmshMeshEngine inclut gmsh.h_cwrap (en-tête de 350 ko) : hors en-têtes précompilés
         set_source_files_properties(${TSA_ROOT}/src/Mesh/Gmsh/GmshMeshEngine.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
     endif()
+    # Import IFC complet (cmake/IfcOpenShell.cmake), si la bibliothèque est présente : pont compilé à part
+    tsa_link_ifcopenshell(${model} ${P_PRODUCT_DIR} ${P_OVERLAY_DIRS})
 
     # En-têtes précompilés : Qt et OCCT sont très lourds à parser.
     # Les autres cibles réutilisent ce PCH (REUSE_FROM).
@@ -1243,6 +1259,7 @@ endfunction()
 # (Qt, OCCT, 3rdparty, Extensions/ de la base commune) à côté de l'exécutable.
 function(tsaraloha_configure_application target)
     tsa_copy_gmsh_runtime(${target})
+    tsa_copy_ifcopenshell_runtime(${target})
     if(MSVC)
         # Debug : console conservée pour les journaux ; autres configurations : fenêtré pur.
         target_link_options(${target} PRIVATE
@@ -1300,6 +1317,7 @@ function(tsaraloha_add_sdk_tools product model product_dir)
     add_executable(tsa-ifc ${TSA_ROOT}/sdk/tools/tsa-ifc/main.cpp)
     tsa_apply_common_settings(tsa-ifc ${product_dir})
     target_link_libraries(tsa-ifc PRIVATE ${model})
+    tsa_copy_ifcopenshell_runtime(tsa-ifc)
     if(MSVC)
         target_compile_options(tsa-ifc PRIVATE /utf-8)
         target_link_options(tsa-ifc PRIVATE /SUBSYSTEM:CONSOLE)
@@ -1380,6 +1398,7 @@ function(tsaraloha_add_package_target target binaries)
             "-DSOURCE_REF=${TSA_SOURCE_REF}"
             "-DEXTRA_SOURCE_URLS=${TSA_EXTRA_SOURCE_URLS}"
             "-DEXTRA_EXECUTABLES=${_extra}"
+            "-DIFCOPENSHELL_ROOT=$<$<BOOL:${TSA_HAVE_IFCOPENSHELL}>:${TSA_IFCOPENSHELL_ROOT}>"
             -P "${TSA_ROOT}/cmake/PackageTSA.cmake"
         DEPENDS ${target}
         COMMENT "Paquet distribuable ${target} → ${CMAKE_BINARY_DIR}/dist/${target}"
@@ -1478,6 +1497,7 @@ function(tsa_add_product)
         endif()
         set_target_properties(${tests} PROPERTIES OUTPUT_NAME "${name}_TestSuite")
         tsa_copy_gmsh_runtime(${tests})
+        tsa_copy_ifcopenshell_runtime(${tests})
         add_dependencies(${tests} ${name}_Mcp sample_csv2tsa3d)
         target_compile_definitions(${tests} PRIVATE TSA_SAMPLE_MODULE_DIR="${CMAKE_BINARY_DIR}/modules/sample.csvimport")
         target_compile_definitions(${tests} PRIVATE TSARALOHA_MCP_EXE="$<TARGET_FILE:${name}_Mcp>")
@@ -1501,7 +1521,7 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
+                       loads opensees supports standards bim ifc tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

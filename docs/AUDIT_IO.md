@@ -60,9 +60,53 @@ Dans tous les cas de rejet, **l'import se déclare réussi** (`ok`) avec zéro �
 | IO13 | basse | Aucun fichier IFC réel dans les tests ; aucun test IFC2X3 | `tests/data` |
 | T1 | critique (hors I/O) | `ctest` ne trouvait **aucun test** (`enable_testing()` appelé dans une fonction) : corrigé le 17/10/2026 | `CMakeLists.txt` |
 
-## 4. Données conservées par l'import actuel (cas favorable)
+## 4. Données conservées par l'import initial (cas favorable)
 
 GlobalId (produits, projet, site, bâtiment, étages, objets analytiques), noms, descriptions, repères, types
 prédéfinis, Psets à valeurs simples (`IfcPropertySingleValue` seulement), classifications, matériaux et profils
 paramétrés, étages. Perdus : propriétés énumérées / bornées / listes / tables, quantités (`IfcElementQuantity`),
 relations non structurelles, ouvertures, géométrie non paramétrique.
+
+## 5. État après travaux — 17/10/2026
+
+Mesures `tsa-ifc roundtrip` (import, export IFC4X3_ADD2 relu par IfcOpenShell, réimport, comparaison), Release,
+IfcOpenShell 0.9.0post1. « A/R » : aller-retour identique (identités, classes, noms, Psets, états, géométrie à 1 mm,
+modèle de calcul).
+
+| Fichier | Schéma | Produits | Géométrie | À préparer | Non porteurs | Export relu | A/R | Écart max | Durée |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | :---: | ---: | ---: |
+| Building-Structural | IFC2X3 / IFC4 / IFC4X3_ADD2 | 17 | 16 | 11 | 6 | 17 | oui | 1,2·10⁻⁷ m | 0,3 s |
+| Building-Architecture | les trois | 14 | 12 | 6 | 8 | 14 | oui | 1,2·10⁻⁷ m | 0,3 s |
+| Infra-Bridge | IFC2X3 | 68 | 48 | 37 | 31 | 68 | oui | 4,8·10⁻⁷ m | 1,3 s |
+| wall-with-opening-and-window | IFC4 | 2 | 2 | 0 | 2 | 2 | oui | 2,4·10⁻¹⁶ m | 0,1 s |
+| column-straight-rectangle-tessellation (pouces) | IFC4 | 1 | 1 | 1 | 0 | 1 | oui | 2,2·10⁻¹⁶ m | 0,1 s |
+| revit2011_wall1, revit2014_multiple_bounded_halfspaces | IFC2X3 | 1 | 1 | — | — | 1 | oui | 1,2·10⁻⁷ m | 0,1 s |
+| nested_mapped_item | IFC2X3 | 53 | 51 | 24 | 29 | 53 | oui | 9,5·10⁻⁷ m | 1,1 s |
+| acad2010_walls | IFC2X3 | 8 | 8 | 8 | 0 | 8 | oui | 4,0·10⁻¹⁵ m | 0,1 s |
+| geometrygym_great_court_roof (3,7 Mo) | IFC2X3 | 5 178 | 5 178 | 5 178 | 0 | 5 178 | oui | 1,2·10⁻⁷ m | 13 s (import seul : 4,9 s) |
+| standard_case_element_beam, large_offset, faceted_brep, mapped_shape_transformation, tesselated_faceset, structural_analysis_curve | IFC4 / IFC2X3 | 1 à 18 | toutes | — | — | toutes | oui | ≤ 1,8·10⁻⁷ m | ≤ 1,5 s |
+| invalid.ifc, fichier tronqué, texte non IFC, fichier absent | — | — | — | — | — | — | refusés, motif affiché | — | — |
+
+| N° | Traitement |
+| :--- | :--- |
+| IO1 | **corrigé** : IfcOpenShell lit toutes les représentations (noyau OpenCASCADE) ; 21/21 fichiers légaux importés avec géométrie |
+| IO2 | **corrigé** : échec motivé si rien n'est importé ; fichier tronqué refusé (enveloppe ISO 10303-21) |
+| IO3 | **corrigé** : import dans un modèle temporaire, projet ouvert remplacé seulement après succès |
+| IO4 | **corrigé** : tous les `IfcElement` conservés (à préparer / non porteurs / partiels), jamais supprimés par la synchronisation ; géométrie persistée dans le `.tsa` (chunk `BGEO`) |
+| IO5 | **corrigé** : déduction depuis la géométrie seulement sur demande, chaque élément déduit signalé ; liens explicites du fichier convertis (voile ↔ surface, semelle ↔ appui) |
+| IO6 | **corrigé** : aucune propriété inventée hors déduction demandée (matériau provisoire alors signalé) |
+| IO7 | **contourné** : IfcOpenShell lit les fichiers (schémas exacts) ; le lecteur interne ne sert plus qu'au modèle de calcul et au repli |
+| IO8 | **corrigé** : import asynchrone, progression, annulation, rapport détaillé avec CSV |
+| IO9 | **en partie** : relecture indépendante après export (échec si illisible), écriture atomique, export asynchrone sur copie ; schéma unique IFC4X3_ADD2 et pas de sélection de catégories |
+| IO10 | **ouvert** : géoréférencement ignoré (unités d'angle : avertissement du noyau) |
+| IO11 | **corrigé** : classe d'origine, Psets et quantités, matériaux, profils, type, parent, ouvertures, géométrie (maillage) conservés et réexportés |
+| IO12 | ouvert (documenté) |
+| IO13 | **corrigé** : 9 fichiers buildingSMART réels (IFC2X3, IFC4, IFC4X3_ADD2) dans la suite `ifc` (tests 400–407) |
+
+Défauts trouvés et corrigés pendant les essais : fondations exportées sans lien vers leur appui (l'ancien import les
+déduisait en silence), produits sans géométrie propre omis à l'export, classe `…StandardCase` perdue, nom par défaut
+écrit pour les produits importés sans nom, valeurs d'origine de `TSA_Import` écrasées au réimport, avis du noyau
+présentés comme avertissements, en-tête de géométries `BGEO` faux si un maillage était nul.
+
+Autres formats : pas de changement (inventaire § 1 inchangé ; `.tsa` passe en version 1.11 avec le chunk `BGEO`,
+lu de façon tolérante par les versions antérieures qui l'ignorent). DXF reste absent.

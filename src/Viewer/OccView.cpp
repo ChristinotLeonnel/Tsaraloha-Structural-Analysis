@@ -1,5 +1,6 @@
 #include "OccView.h"
 #include "AnnotationStyle.h"
+#include "BimGeometryRenderer.h"
 #include "DimensionRenderer.h"
 #include "DisplayModeRenderers.h"
 #include "SelectionManager.h"
@@ -199,6 +200,7 @@ void OccView::initOcc()
     m_dimensionRenderer = std::make_unique<TSA::Viewer::DimensionRenderer>(m_context, m_selectionManager);
     m_analyticalRenderer = std::make_unique<TSA::Viewer::AnalyticalModelRenderer>(m_context);
     m_meshRenderer = std::make_unique<TSA::Viewer::FiniteElementMeshRenderer>(m_context);
+    m_bimRenderer = std::make_unique<TSA::Viewer::BimGeometryRenderer>(m_context);
 
     // Style de surbrillance dynamique (survol souris) : Cyan éclatant
     m_context->HighlightStyle()->SetColor(Quantity_NOC_CYAN1);

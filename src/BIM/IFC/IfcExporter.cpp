@@ -11,11 +11,17 @@
 #include "../../Mesh/MeshGeometry.h"
 #include "../../Model/Model.h"
 
-#include <QFile>
-#include <QFileInfo>
+#include "IfcOpenShellImport.h"
 
+#include <QFileInfo>
+#include <QSaveFile>
+
+#include <array>
+#include <cctype>
 #include <cmath>
 #include <map>
+#include <set>
+#include <tuple>
 
 namespace TSA::BIM::Ifc
 {
@@ -28,7 +34,7 @@ std::string IfcExportReport::summary() const
     if (!ok) return "Export IFC échoué : " + error;
     return std::to_string(products) + " produit(s), " + std::to_string(storeys) + " étage(s), "
         + std::to_string(analyticalMembers) + " élément(s) analytique(s), " + std::to_string(analyticalNodes)
-        + " nœud(s) analytique(s), " + std::to_string(entities) + " entités STEP";
+        + " nœud(s) analytique(s), " + std::to_string(entities) + " entités STEP" + (verification.empty() ? "" : " ; " + verification);
 }
 
 namespace
@@ -64,6 +70,55 @@ MaterialInfo materialOf(const TSA::Model::Model& m, const AnalyticalRef& r)
     default: break;
     }
     return {};
+}
+
+/// Classe écrite pour un produit et attributs qui suivent Tag (schéma IFC4X3_ADD2).
+struct ExportClass
+{
+    std::string entity;   ///< IFCBEAM, IFCDOOR… ; IFCBUILDINGELEMENTPROXY à défaut
+    std::string tail;     ///< « ,.NOTDEFINED. » pour les classes à PredefinedType seul
+    bool substituted = false;   ///< classe d'origine non écrite telle quelle (conservée en propriété)
+};
+
+std::string upper(std::string s)
+{
+    for (auto& c : s) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    return s;
+}
+
+std::string optLength(const PhysicalElement& e, const char* key)
+{
+    if (const auto* ps = e.propertySet("TSA_Import"))
+        if (auto it = ps->properties.find(key); it != ps->properties.end() && it->second.type == PropertyValue::Type::Length)
+            return W::real(it->second.number);
+    return "$";
+}
+
+/// Produits importés : classe d'origine ramenée au schéma écrit. Les « …StandardCase » et « …ElementedCase »
+/// d'IFC4 n'existent plus en IFC4X3 (classe de base) ; les classes dont l'exporteur ne connaît pas les attributs
+/// propres deviennent IfcBuildingElementProxy, la classe d'origine étant conservée en propriété (TSA_Import).
+ExportClass exportClass(const PhysicalElement& e)
+{
+    const std::string pdt = W::enumeration(IfcMapper::predefinedType(e.category, e.predefinedType));
+    std::string cls = upper(e.ifcClass);
+    for (const char* suffix : { "STANDARDCASE", "ELEMENTEDCASE" })
+        if (const std::string s(suffix); cls.size() > s.size() && cls.compare(cls.size() - s.size(), s.size(), s) == 0)
+            cls.resize(cls.size() - s.size());
+    if (cls.empty()) cls = IfcMapper::stepEntity(e.category);   // produit créé dans TSA
+    if (cls == "IFCPILE") return { cls, "," + pdt + ",$" };     // ConstructionType (déprécié en 4.3)
+    // Classes dont les attributs propres se limitent à PredefinedType (vérifié sur le schéma IFC4X3_ADD2)
+    static const std::set<std::string> generic = {
+        "IFCBEAM", "IFCCOLUMN", "IFCMEMBER", "IFCSLAB", "IFCWALL", "IFCFOOTING", "IFCPLATE", "IFCBUILDINGELEMENTPROXY",
+        "IFCROOF", "IFCSTAIR", "IFCRAMP", "IFCRAMPFLIGHT", "IFCRAILING", "IFCCOVERING", "IFCCURTAINWALL", "IFCCHIMNEY",
+        "IFCSHADINGDEVICE", "IFCBEARING", "IFCDISCRETEACCESSORY", "IFCBUILDINGELEMENTPART", "IFCFURNITURE",
+    };
+    if (generic.count(cls)) return { cls, "," + pdt };
+    if (cls == "IFCDOOR" || cls == "IFCWINDOW")   // OverallHeight, OverallWidth, PredefinedType, Operation/PartitioningType, UserDefined…
+        return { cls, "," + optLength(e, "OverallHeight") + "," + optLength(e, "OverallWidth") + ",.NOTDEFINED.,$,$" };
+    if (cls == "IFCSTAIRFLIGHT") return { cls, ",$,$,$,$,.NOTDEFINED." };
+    if (cls == "IFCELEMENTASSEMBLY") return { cls, ",$,.NOTDEFINED." };
+    if (cls == "IFCMECHANICALFASTENER") return { cls, ",$,$,.NOTDEFINED." };
+    return { "IFCBUILDINGELEMENTPROXY", ",.NOTDEFINED.", true };
 }
 
 std::string stiffness(TSA::Model::DOFState s, double k, const char* measure)
@@ -162,37 +217,97 @@ private:
             }
     }
 
+    /// Décomposition d'origine (TSA_Import.Parent = « IfcRoof <GlobalId> ») : id produit → GlobalId du tout, si ce tout est
+    /// un produit du modèle et que la chaîne des parents ne boucle pas.
+    std::map<int, std::string> decomposition() const
+    {
+        std::map<std::string, std::string> parentByGuid;
+        for (const auto& [id, e] : m_ctx.bim.elements())
+            if (const auto* ps = e.propertySet("TSA_Import"))
+                if (auto it = ps->properties.find("Parent"); it != ps->properties.end())
+                {
+                    const std::string& v = it->second.text;
+                    const std::string guid = v.substr(v.find_last_of(' ') + 1);
+                    if (guid != e.globalId && m_ctx.bim.elementByGlobalId(guid)) parentByGuid[e.globalId] = guid;
+                }
+        std::map<int, std::string> out;
+        for (const auto& [id, e] : m_ctx.bim.elements())
+        {
+            auto it = parentByGuid.find(e.globalId);
+            if (it == parentByGuid.end()) continue;
+            std::set<std::string> seen { e.globalId };
+            bool loops = false;
+            for (auto up = it; up != parentByGuid.end(); up = parentByGuid.find(up->second))
+                if (!seen.insert(up->second).second)
+                {
+                    loops = true;
+                    break;
+                }
+            if (!loops) out[id] = it->second;
+        }
+        return out;
+    }
+
     void writeProducts()
     {
         std::map<std::string, int> classificationSources;
         std::map<std::string, int> classificationRefs;
+        // Une partie d'agrégat est rattachée à son tout ; seul le tout est contenu dans l'étage (règle IFC).
+        const std::map<int, std::string> parentOf = decomposition();
+        std::map<std::string, int> productByGuid;
         for (const auto& [id, e] : m_ctx.bim.elements())
         {
-            const std::string entity = IfcMapper::stepEntity(e.category);
-            if (entity.empty() || e.analytical.empty()) continue;
+            const bool physicalOnly = e.analytical.empty();
+            const std::string label = (e.name.empty() ? defaultProductName(e) : e.name) + (e.ifcClass.empty() ? "" : " (" + e.ifcClass + ")");
+            const ExportClass ec = exportClass(e);
+            if (ec.entity.empty()) continue;
 
             const std::string storey = m_ctx.bim.resolvedStorey(m_model, e);
             auto st = m_storeys.find(storey);
             const int container = st != m_storeys.end() ? st->second.first : m_building;
             const int relTo = st != m_storeys.end() ? st->second.second : m_buildingPlacement;
             const int placement = m_geom.localPlacement(relTo, m_identity);
-            const int shape = m_geom.productShape(e);
-            if (!shape) m_ctx.warnings.push_back(defaultProductName(e) + " : géométrie non exportée (dimensions nulles ou nœuds manquants).");
+            // Produit importé sans élément de calcul : géométrie d'origine (maillage) ; sans géométrie propre (agrégat dont
+            // les parties portent la géométrie, objet non représenté dans le fichier) : sans représentation. Jamais omis.
+            const int shape = !physicalOnly ? m_geom.productShape(e) : e.geometry ? meshShape(*e.geometry) : 0;
+            if (!shape && (!physicalOnly || e.geometry))
+                m_ctx.warnings.push_back(label + " : géométrie non exportée (dimensions nulles ou nœuds manquants).");
 
-            const std::string pdt = IfcMapper::predefinedType(e.category, e.predefinedType);
-            std::string args = W::str(e.globalId) + ",$," + W::str(e.name.empty() ? defaultProductName(e) : e.name) + ","
-                + W::optStr(e.description) + "," + W::optStr(e.objectType) + "," + W::ref(placement) + ","
-                + (shape ? W::ref(shape) : "$") + "," + W::optStr((e.tag.empty() ? defaultProductTag(e) : e.tag)) + "," + W::enumeration(pdt);
-            if (e.category == BimCategory::Pile) args += ",$";   // ConstructionType (déprécié en 4.3)
-            const int product = m_w.add(entity, args);
+            // Nom : à défaut, nom par défaut des produits créés dans TSA (« Poutre B3 ») ; un produit importé sans nom le reste.
+            const std::string name = !e.name.empty() ? W::str(e.name) : e.imported() ? std::string("$") : W::str(defaultProductName(e));
+            std::string args = W::str(e.globalId) + ",$," + name + "," + W::optStr(e.description) + "," + W::optStr(e.objectType) + ","
+                + W::ref(placement) + "," + (shape ? W::ref(shape) : "$") + "," + W::optStr((e.tag.empty() ? defaultProductTag(e) : e.tag))
+                + ec.tail;
+            const int product = m_w.add(ec.entity, args);
             m_productIds[id] = product;
-            m_rels.contain(container, product);
+            productByGuid[e.globalId] = product;
+            if (!parentOf.count(id)) m_rels.contain(container, product);
             ++m_report.products;
 
-            const MaterialInfo mi = materialOf(m_model, e.analytical.front());
-            if (mi.material)
-                m_rels.associateMaterial(mi.section ? m_mapper.materialProfileSet(*mi.material, *mi.section) : m_mapper.material(*mi.material), product);
-            for (int ps : m_props.write(e)) m_rels.defineByProperties(ps, product);
+            PhysicalElement written = e;   // copie légère : la géométrie est partagée
+            if (!e.ifcClass.empty() && upper(e.ifcClass) != ec.entity)
+            {
+                // Classe d'origine non écrite telle quelle (classe absente d'IFC4X3 comme les …StandardCase, ou proxy) :
+                // conservée en propriété, rétablie à la relecture par TSA.
+                PropertySet* origin = nullptr;
+                for (auto& ps : written.propertySets)
+                    if (ps.name == "TSA_Import") origin = &ps;
+                if (!origin)
+                {
+                    written.propertySets.push_back({ "TSA_Import", {} });
+                    origin = &written.propertySets.back();
+                }
+                origin->properties["OriginalIfcClass"] = PropertyValue::ofText(e.ifcClass, PropertyValue::Type::Label);
+                if (ec.substituted)
+                    m_ctx.warnings.push_back(label + " : exporté en IfcBuildingElementProxy (classe d'origine conservée en propriété TSA_Import).");
+            }
+            if (!physicalOnly)
+            {
+                const MaterialInfo mi = materialOf(m_model, e.analytical.front());
+                if (mi.material)
+                    m_rels.associateMaterial(mi.section ? m_mapper.materialProfileSet(*mi.material, *mi.section) : m_mapper.material(*mi.material), product);
+            }
+            for (int ps : m_props.write(written)) m_rels.defineByProperties(ps, product);
 
             for (const auto& c : e.classifications)
             {
@@ -204,6 +319,45 @@ private:
                 m_rels.classify(ref, product);
             }
         }
+        for (const auto& [id, parentGuid] : parentOf)
+        {
+            const auto part = m_productIds.find(id);
+            const auto whole = productByGuid.find(parentGuid);
+            if (part != m_productIds.end() && whole != productByGuid.end()) m_rels.aggregate(whole->second, part->second);
+        }
+    }
+
+    /// Géométrie importée : IfcTriangulatedFaceSet (coordonnées du projet, m) et sa couleur (style de surface).
+    int meshShape(const TriangleMesh& m)
+    {
+        if (!m.valid()) return 0;
+        std::string coords;
+        coords.reserve(m.vertexCount() * 36);
+        for (std::size_t i = 0; i < m.vertexCount(); ++i)
+        {
+            const auto p = m.vertex(i);
+            coords += (i ? ",(" : "(") + W::real(p[0]) + "," + W::real(p[1]) + "," + W::real(p[2]) + ")";
+        }
+        const int list = m_w.add("IFCCARTESIANPOINTLIST3D", "(" + coords + "),$");   // CoordList, TagList (IFC4X3)
+        std::string faces;
+        faces.reserve(m.indices.size() * 6);
+        for (std::size_t t = 0; t + 2 < m.indices.size(); t += 3)
+            faces += (t ? ",(" : "(") + std::to_string(m.indices[t] + 1) + "," + std::to_string(m.indices[t + 1] + 1) + ","
+                + std::to_string(m.indices[t + 2] + 1) + ")";
+        // Coordinates, Normals, Closed, CoordIndex, PnIndex
+        const int tfs = m_w.add("IFCTRIANGULATEDFACESET", W::ref(list) + ",$,$,(" + faces + "),$");
+        m_w.add("IFCSTYLEDITEM", W::ref(tfs) + "," + W::refs({ surfaceStyle(m.color) }) + ",$");
+        const int rep = m_w.add("IFCSHAPEREPRESENTATION", W::ref(m_ctx.bodyContext) + ",'Body','Tessellation'," + W::refs({ tfs }));
+        return m_w.add("IFCPRODUCTDEFINITIONSHAPE", "$,$," + W::refs({ rep }));
+    }
+
+    int surfaceStyle(const std::array<float, 4>& c)
+    {
+        const auto key = std::make_tuple(std::lround(c[0] * 255), std::lround(c[1] * 255), std::lround(c[2] * 255), std::lround(c[3] * 255));
+        if (auto it = m_styles.find(key); it != m_styles.end()) return it->second;
+        const int colour = m_w.add("IFCCOLOURRGB", "$," + W::real(c[0]) + "," + W::real(c[1]) + "," + W::real(c[2]));
+        const int shading = m_w.add("IFCSURFACESTYLESHADING", W::ref(colour) + "," + W::real(1.0 - c[3]));   // SurfaceColour, Transparency
+        return m_styles[key] = m_w.add("IFCSURFACESTYLE", "$,.BOTH.," + W::refs({ shading }));
     }
 
     int vertex(int nodeId)
@@ -392,8 +546,10 @@ private:
                     }
                     break;
                 case ElementKind::Foundation:
-                    // Une fondation est un appui du modèle analytique : son nœud devient une connexion
-                    if (auto it = m.foundations().find(r.id); it != m.foundations().end()) connection(it->second.nodeId());
+                    // Une fondation est un appui du modèle analytique : son nœud devient une connexion, reliée à la semelle
+                    // (IfcRelAssignsToProduct) pour que la relecture retrouve la fondation sur ce nœud, sans déduction.
+                    if (auto it = m.foundations().find(r.id); it != m.foundations().end())
+                        if (const int c = connection(it->second.nodeId())) members.push_back(c);
                     break;
                 default:
                     break;
@@ -435,6 +591,7 @@ private:
     std::map<int, int> m_productIds;                        ///< id produit BIM → #STEP
     std::map<int, int> m_vertices, m_connections;           ///< nœud → #STEP
     std::vector<int> m_analyticalItems;
+    std::map<std::tuple<long, long, long, long>, int> m_styles;   ///< couleur (RVBA ×255) → IfcSurfaceStyle
 };
 } // namespace
 
@@ -451,14 +608,37 @@ IfcExportReport IfcExporter::exportToFile(const TSA::Model::Model& model, const 
     std::string doc;
     IfcExportReport r = exportToString(model, options, doc);
     if (!r.ok) return r;
-    QFile f(qpath);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    // Écriture atomique : un fichier existant n'est remplacé qu'une fois le nouveau entièrement écrit.
+    QSaveFile f(qpath);
+    if (!f.open(QIODevice::WriteOnly) || f.write(doc.data(), static_cast<qint64>(doc.size())) != static_cast<qint64>(doc.size())
+        || !f.commit())   // ASCII pur (Unicode encodé \X2\)
     {
         r.ok = false;
         r.error = "impossible d'écrire « " + path + " » (" + f.errorString().toStdString() + ")";
         return r;
     }
-    f.write(doc.data(), static_cast<qint64>(doc.size()));   // ASCII pur (Unicode encodé \X2\)
+
+    // Relecture par un lecteur indépendant de l'écrivain de TSA : jamais de succès annoncé sur un fichier illisible.
+    if (options.verifyAfterWrite)
+    {
+        std::string schema, error;
+        int elements = 0;
+        if (detail::verifyFile(path, schema, elements, error))
+        {
+            r.verifiedElements = elements;
+            r.verification = "relu par " + detail::fullEngineName() + " : schéma " + schema + ", " + std::to_string(elements) + " produit(s)";
+            if (elements != r.products)
+                r.warnings.push_back("Relecture : " + std::to_string(elements) + " produit(s) relu(s) pour " + std::to_string(r.products) + " écrit(s).");
+            if (!error.empty()) r.warnings.push_back("Relecture : " + error);
+        }
+        else if (detail::fullEngineAvailable())
+        {
+            r.ok = false;
+            r.error = "fichier écrit mais illisible par un lecteur IFC indépendant (" + error + ")";
+        }
+        else
+            r.verification = "relecture indépendante non faite (" + error + ")";
+    }
     return r;
 }
 

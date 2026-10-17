@@ -11,6 +11,8 @@
 #include "TrussMemberPropertiesView.h"
 #include "WorkPlanePropertiesView.h"
 #include "LoadPropertiesView.h"
+#include "BimProductPropertiesView.h"
+#include "../../BIM/Core/BimModel.h"
 #include "../../Coordinate/WorkPlane.h"
 
 #include <QVBoxLayout>
@@ -70,6 +72,7 @@ void PropertyPanel::setModel(TSA::Model::Model* model)
     m_wallView->setModel(m_model);
     m_foundationView->setModel(m_model);
     m_trussView->setModel(m_model);
+    m_bimView->setModel(m_model);
     if (m_workPlaneView)
     {
         m_workPlaneView->setModel(m_model);
@@ -174,6 +177,9 @@ void PropertyPanel::setupUi()
     m_loadView = new LoadPropertiesView(m_model, m_stack);
     connect(m_loadView, &LoadPropertiesView::loadModified, this, &PropertyPanel::elementModified);
     m_stack->addWidget(m_loadView); // Index 10
+
+    m_bimView = new BimProductPropertiesView(m_model, m_stack);   // lecture seule
+    m_stack->addWidget(m_bimView); // Index 11
 
     containerLayout->addWidget(m_stack);
     m_elementResults = new ElementResultsPanel(scrollContainer);
@@ -284,6 +290,19 @@ void PropertyPanel::showWallProperties(int wallId)
     m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU VOILE"), m_model && m_model->getWall(wallId) ? m_model->getWall(wallId)->formattedName() : std::string(), wallId));
     m_wallView->setElementId(wallId);
     m_stack->setCurrentWidget(m_wallView);
+}
+
+void PropertyPanel::showBimProductProperties(int productId)
+{
+    endMultiEdit();
+    const auto* e = m_model ? m_model->bim().element(productId) : nullptr;
+    if (!e || !m_bimView->setProduct(productId))
+    {
+        clearProperties();
+        return;
+    }
+    m_titleLabel->setText(tr("OBJET IFC : %1").arg(QString::fromStdString(e->name.empty() ? e->ifcClass : e->name)));
+    m_stack->setCurrentWidget(m_bimView);
 }
 
 void PropertyPanel::showFoundationProperties(int foundationId)

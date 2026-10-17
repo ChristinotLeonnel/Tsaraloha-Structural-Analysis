@@ -22,9 +22,24 @@ enum class BimCategory
     Project, Site, Building, BuildingStorey, Grid, Space,
     // Physique (produits porteurs)
     Column, Beam, Member, Slab, Wall, Footing, Pile, Plate,
+    // Physique, autre produit importé (porte, escalier, revêtement, objet générique…) : classe IFC d'origine
+    // conservée dans PhysicalElement::ifcClass, IfcBuildingElementProxy à défaut.
+    Proxy,
     // Analytique
     AnalyticalNode, AnalyticalMember, AnalyticalSurface, BoundaryCondition, Release, LoadApplication
 };
+
+/// Passage au modèle de calcul d'un produit physique. Un produit importé sans élément de calcul n'est jamais
+/// converti en silence : il attend une préparation explicite (docs/IFC_MAPPING.md, « Préparer le modèle de calcul »).
+enum class AnalyticalStatus
+{
+    Analytical,         ///< représenté par un ou plusieurs éléments de calcul
+    NeedsPreparation,   ///< porteur probable, sans élément de calcul : préparation requise
+    NotStructural       ///< non porteur (porte, fenêtre, revêtement…) : conservé, exclu du calcul
+};
+
+const char* analyticalStatusKey(AnalyticalStatus s);   ///< "analytical", "to_prepare", "not_structural"
+bool analyticalStatusFromKey(const std::string& key, AnalyticalStatus& out);
 
 /// Entité IFC 4.3 correspondante ("IfcBeam"…) ; vide si aucune (objet interne).
 const char* ifcEntity(BimCategory c);

@@ -7,6 +7,7 @@
 // TSA::Model::Model : même snapshot (Annuler / Rétablir), même fichier .tsa (chunk BIMM).
 // Référence : docs/BIM_ARCHITECTURE.md, docs/ANALYTICAL_MODEL.md
 
+#include "BimGeometry.h"
 #include "BimTypes.h"
 
 #include <QJsonObject>
@@ -38,6 +39,15 @@ struct PhysicalElement
     std::vector<AnalyticalRef> analytical;   ///< éléments analytiques, dans l'ordre de l'axe
     std::vector<PropertySet> propertySets;   ///< Psets saisis (les Psets calculés sont ajoutés à l'export)
     std::vector<ClassificationReference> classifications;
+
+    // --- Origine IFC (produits importés) ------------------------------------------------------------------
+    std::string ifcClass;            ///< classe IFC d'origine (« IfcDoor », « IfcBeam »…) ; vide : produit créé dans TSA
+    AnalyticalStatus status = AnalyticalStatus::Analytical;   ///< dérivé de `analytical` pour les produits TSA
+    MeshPtr geometry;                ///< géométrie physique importée (monde, m) ; nulle : déduite des éléments de calcul
+    std::vector<std::string> importNotes;   ///< limites constatées à l'import (données non converties, approximations)
+
+    /// Produit issu d'un fichier (classe d'origine ou géométrie propre) : conservé même sans élément de calcul.
+    bool imported() const { return !ifcClass.empty() || geometry != nullptr; }
 
     const PropertySet* propertySet(const std::string& name) const;
 };
@@ -102,6 +112,11 @@ public:
     int insert(PhysicalElement e);
     /// Import : impose le GlobalId d'un objet analytique (ignoré s'il n'est pas valide).
     void setAnalyticalGlobalId(const AnalyticalRef& ref, const std::string& globalId);
+
+    /// Géométries physiques des produits (id → maillage), pour la persistance (chunk BGEO).
+    std::map<int, MeshPtr> geometries() const;
+    /// Rattache des géométries relues aux produits existants (ids inconnus ignorés).
+    void attachGeometries(const std::map<int, MeshPtr>& meshes);
 
     /// Étage (id de niveau) du produit : imposé, sinon niveau du nœud le plus bas (Node::levelId),
     /// sinon niveau de cote ≤ z la plus haute. Vide s'il n'y a aucun niveau.
