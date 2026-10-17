@@ -23,6 +23,7 @@ class WorkPlanePropertiesView;
 class LoadPropertiesView;
 class ElementResultsPanel;
 class BimProductPropertiesView;
+class ElementBimPanel;
 }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Analysis { class ResultsModel; }
@@ -142,6 +143,7 @@ private:
     WorkPlanePropertiesView* m_workPlaneView = nullptr;
     LoadPropertiesView* m_loadView = nullptr;
     BimProductPropertiesView* m_bimView = nullptr;
+    ElementBimPanel* m_elementBim = nullptr;           ///< identité BIM et quantités de l'élément sélectionné
     ElementResultsPanel* m_elementResults = nullptr;   ///< résultats de la barre sélectionnée (tout moteur)
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
     TSA::Model::MultiEditSession m_multiEdit;

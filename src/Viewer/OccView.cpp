@@ -608,23 +608,21 @@ void OccView::startChainedBarDrawing(const gp_Pnt& originPt, int originNodeId)
 
 void OccView::finishCurrentSlab()
 {
-    if (m_drawingNodeIds.size() >= 3 && m_model)
+    if (m_drawingPoints.size() < 3 || !m_model) return;
+
+    const auto slab = resolvedPresets().slab;
+    const auto r = TSA::Interaction::ElementCreation(*m_model).createSlab(drawingPicks(), slab);
+    clearDrawing();
+    if (!r.success)
     {
-        m_model->pushUndoState(tr("Création Dalle").toStdString());
-        int slabId = m_model->addSlab(m_drawingNodeIds, m_presets.slab.thickness);
-        if (auto* s = m_model->getSlab(slabId))
-        {
-            s->setMaterial(TSA::Model::Material::findByName(m_presets.slab.material.name));
-            if (!m_presets.slab.color.empty()) s->setColor(m_presets.slab.color);
-            updateSlabShape(slabId);
-        }
-        emit elementCreated();
-        emit slabCreated(slabId);
-        emit drawingPromptChanged(tr("Dalle S%1 créée (%2 nœuds, ép=%3m). Cliquez pour une nouvelle dalle").arg(slabId).arg(m_drawingNodeIds.size()).arg(m_presets.slab.thickness));
-        clearRubberBand();
-        m_drawingNodeIds.clear();
-        m_drawingPoints.clear();
+        // Contour refusé (aligné, non plan, croisé, doublon) : rien n'a été créé, le tracé repart de zéro.
+        emit slabDrawingCancelled();
+        reportCreation(r, {});
+        return;
     }
+    updateSlabShape(r.elementId);
+    emit slabCreated(r.elementId);
+    reportCreation(r, tr("Dalle S%1 créée (%2 nœuds, ép=%3m). Cliquez pour une nouvelle dalle").arg(r.elementId).arg(r.nodeIds.size()).arg(slab.thickness));
 }
 
 void OccView::resetCurrentSlabContour()
@@ -893,26 +891,87 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
     return true;
 }
 
-int OccView::getOrCreateNode(double x, double y, double z, int existingNodeId)
+TSA::Interaction::DrawPoint OccView::drawPointAt(double x, double y, double z, int detectedNodeId) const
 {
-    if (existingNodeId > 0 && m_model && m_model->getNode(existingNodeId))
-        return existingNodeId;
+    TSA::Interaction::DrawPoint dp(gp_Pnt(x, y, z), detectedNodeId);
+    if (!m_model) return dp;
+    const TSA::Interaction::ElementCreation creation(*m_model);
+    dp.nodeId = creation.existingNode(dp);
+    dp.point = creation.position(dp);
+    return dp;
+}
 
-    if (!m_model)
-        return -1;
+void OccView::pushDrawPoint(const TSA::Interaction::DrawPoint& p)
+{
+    m_drawingNodeIds.push_back(p.nodeId);
+    m_drawingPoints.push_back(p.point);
+}
 
-    for (const auto& [id, node] : m_model->nodes())
+std::vector<TSA::Interaction::DrawPoint> OccView::drawingPicks() const
+{
+    std::vector<TSA::Interaction::DrawPoint> picks;
+    for (size_t i = 0; i < m_drawingPoints.size(); ++i)
+        picks.emplace_back(m_drawingPoints[i], i < m_drawingNodeIds.size() ? m_drawingNodeIds[i] : -1);
+    return picks;
+}
+
+void OccView::clearDrawing()
+{
+    clearRubberBand();
+    m_drawingNodeIds.clear();
+    m_drawingPoints.clear();
+}
+
+QString OccView::pointLabel(const TSA::Interaction::DrawPoint& p) const
+{
+    if (p.nodeId > 0) return tr("N%1").arg(p.nodeId);
+    return tr("(%1; %2; %3)").arg(p.point.X(), 0, 'f', 2).arg(p.point.Y(), 0, 'f', 2).arg(p.point.Z(), 0, 'f', 2);
+}
+
+TSA::Model::StructurePresets OccView::resolvedPresets() const
+{
+    using TSA::Model::Material;
+    auto p = m_presets;
+    p.beam.material = Material::findByName(p.beam.material.name);
+    p.column.material = Material::findByName(p.column.material.name);
+    p.slab.material = Material::findByName(p.slab.material.name);
+    p.wall.material = Material::findByName(p.wall.material.name);
+    p.foundation.material = Material::findByName(p.foundation.material.name);
+    p.truss.material = Material::findByName(p.truss.material.name);
+    return p;
+}
+
+TSA::Model::BarProperties OccView::drawingBarProperties(TSA::Model::BarRole role) const
+{
+    const bool column = role == TSA::Model::BarRole::Column;
+    const auto presets = resolvedPresets();
+    TSA::Model::BarProperties props;
+    props.id = 0;   // identifiant attribué par le modèle
+    props.role = role;
+    // Réglages du dialogue « Barre » s'ils sont définis, sinon préréglages poutre / poteau.
+    props.section = (m_currentBarProps.section.width > 0.0 || m_currentBarProps.section.diameter > 0.0)
+        ? m_currentBarProps.section : (column ? presets.column.section : presets.beam.section);
+    props.material = (m_currentBarProps.material.E > 0.0)
+        ? m_currentBarProps.material : (column ? presets.column.material : presets.beam.material);
+    props.rotation = (m_currentBarProps.rotation != 0.0)
+        ? m_currentBarProps.rotation : (column ? presets.column.betaAngle : presets.beam.betaAngle);
+    props.color = !m_currentBarProps.color.empty() ? m_currentBarProps.color : (column ? presets.column.color : presets.beam.color);
+    props.name = props.section.name;
+    return props;
+}
+
+void OccView::reportCreation(const TSA::Interaction::CreationResult& r, const QString& successPrompt)
+{
+    if (!r.success)
     {
-        double dx = node.x() - x;
-        double dy = node.y() - y;
-        double dz = node.z() - z;
-        if (std::sqrt(dx * dx + dy * dy + dz * dz) < 1e-3)
-        {
-            return id;
-        }
+        emit drawingPromptChanged(tr("Non créé : %1").arg(QString::fromStdString(r.message)));
+        return;
     }
-
-    return m_model->addNode(x, y, z);
+    emit elementCreated();
+    QString prompt = successPrompt;
+    for (const auto& w : r.warnings)
+        prompt += tr(" — Attention : %1").arg(QString::fromStdString(w));
+    emit drawingPromptChanged(prompt);
 }
 
 void OccView::clearTransformPreview()

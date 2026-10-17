@@ -17,6 +17,7 @@
 #include "../UI/Theme/ThemeManager.h"
 #include "../Coordinate/CoordinateTransformationService.h"
 #include "../Commands/ModifyCommands.h"
+#include "../Coordinate/GeometryTolerance.h"
 #include <gp_Trsf.hxx>
 #include <gp_Ax3.hxx>
 #include <gp_Ax2.hxx>
@@ -137,11 +138,9 @@ void OccView::mousePressEvent(QMouseEvent* event)
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
-                m_model->pushUndoState(tr("Création Nœud").toStdString());
-                int newId = getOrCreateNode(wx, wy, wz, detectedId);
-                emit elementCreated();
-                emit drawingPromptChanged(tr("Nœud N%1 créé en (X = %2 m, Y = %3 m, Z = %4 m)")
-                    .arg(newId)
+                const auto r = TSA::Interaction::ElementCreation(*m_model).createNode(drawPointAt(wx, wy, wz, detectedId));
+                reportCreation(r, tr("Nœud N%1 créé en (X = %2 m, Y = %3 m, Z = %4 m)")
+                    .arg(r.elementId)
                     .arg(wx, 0, 'f', 3)
                     .arg(wy, 0, 'f', 3)
                     .arg(wz, 0, 'f', 3));
@@ -149,136 +148,63 @@ void OccView::mousePressEvent(QMouseEvent* event)
         }
         else if (interactionMode() == InteractionMode::DrawBar)
         {
+            // Le dialogue « Barre » crée l'élément (ElementCreation) à la réception du 2nd point.
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
-                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
-                const auto* node = m_model->getNode(nodeId);
-                gp_Pnt pt = node ? gp_Pnt(node->x(), node->y(), node->z()) : gp_Pnt(wx, wy, wz);
-
-                if (m_drawingNodeIds.empty())
+                const auto dp = drawPointAt(wx, wy, wz, detectedId);
+                if (m_drawingPoints.empty())
                 {
-                    m_drawingNodeIds.push_back(nodeId);
-                    m_drawingPoints.push_back(pt);
-                    emit barFirstPointPicked(pt, nodeId);
-                    emit drawingPromptChanged(tr("Barre : 1er point N%1 fixé en (%2; %3; %4). Cliquez pour le 2nd point")
-                        .arg(nodeId).arg(pt.X(), 0, 'f', 2).arg(pt.Y(), 0, 'f', 2).arg(pt.Z(), 0, 'f', 2));
+                    pushDrawPoint(dp);
+                    emit barFirstPointPicked(dp.point, dp.nodeId);
+                    emit drawingPromptChanged(tr("Barre : 1er point %1 fixé en (%2; %3; %4). Cliquez pour le 2nd point")
+                        .arg(pointLabel(dp)).arg(dp.point.X(), 0, 'f', 2).arg(dp.point.Y(), 0, 'f', 2).arg(dp.point.Z(), 0, 'f', 2));
                 }
                 else
                 {
-                    int startId = m_drawingNodeIds[0];
-                    int endId = nodeId;
-                    clearRubberBand();
-                    m_drawingNodeIds.clear();
-                    m_drawingPoints.clear();
-
-                    if (startId != endId)
-                    {
-                        emit barSecondPointPicked(pt, endId);
-                        emit elementCreated();
-                    }
+                    clearDrawing();
+                    emit barSecondPointPicked(dp.point, dp.nodeId);
+                    emit elementCreated();
                 }
             }
         }
-        else if (interactionMode() == InteractionMode::DrawBeam)
+        else if (interactionMode() == InteractionMode::DrawBeam || interactionMode() == InteractionMode::DrawColumn)
         {
+            const bool column = interactionMode() == InteractionMode::DrawColumn;
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
-                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
-                if (m_drawingNodeIds.empty())
+                const auto dp = drawPointAt(wx, wy, wz, detectedId);
+                if (m_drawingPoints.empty())
                 {
-                    m_drawingNodeIds.push_back(nodeId);
-                    const auto* node = m_model->getNode(nodeId);
-                    if (node)
-                    {
-                        m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
-                    }
-                    if (node) emit barFirstPointPicked(gp_Pnt(node->x(), node->y(), node->z()), nodeId);
-                    emit drawingPromptChanged(tr("Mode Dessin Poutre : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud (Échap pour annuler)").arg(nodeId));
+                    pushDrawPoint(dp);
+                    emit barFirstPointPicked(dp.point, dp.nodeId);
+                    emit drawingPromptChanged(column
+                        ? tr("Mode Dessin Poteau : base %1 définie. Cliquez pour le sommet (Échap pour annuler)").arg(pointLabel(dp))
+                        : tr("Mode Dessin Poutre : 1er point %1. Cliquez pour le 2nd point (Échap pour annuler)").arg(pointLabel(dp)));
                 }
                 else
                 {
-                    int startId = m_drawingNodeIds[0];
-                    int endId = nodeId;
-                    if (startId != endId)
+                    const auto props = drawingBarProperties(column ? TSA::Model::BarRole::Column : TSA::Model::BarRole::Beam);
+                    const auto r = TSA::Interaction::ElementCreation(*m_model).createBar(drawingPicks().front(), dp, props);
+                    if (r.success)
                     {
-                        m_model->pushUndoState(tr("Création Poutre").toStdString());
-                        TSA::Model::Section sec = (m_currentBarProps.section.width > 0.0 || m_currentBarProps.section.diameter > 0.0)
-                            ? m_currentBarProps.section : m_presets.beam.section;
-                        TSA::Model::Material mat = (m_currentBarProps.material.E > 0.0)
-                            ? m_currentBarProps.material : TSA::Model::Material::findByName(m_presets.beam.material.name);
-                        double rot = (m_currentBarProps.rotation != 0.0) ? m_currentBarProps.rotation : m_presets.beam.betaAngle;
-
-                        int beamId = m_model->addBar(startId, endId, sec, mat,
-                            TSA::Model::BarRole::Beam, rot, sec.name);
-                        if (auto* b = m_model->getBeam(beamId))
-                        {
-                            if (!m_currentBarProps.color.empty()) b->setColor(m_currentBarProps.color);
-                            else if (!m_presets.beam.color.empty()) b->setColor(m_presets.beam.color);
-                            updateBeamShape(beamId);
-                        }
-                        emit elementCreated();
-                        emit drawingPromptChanged(tr("Poutre B%1 créée reliant N%2 à N%3 (%4). Cliquez pour continuer").arg(beamId).arg(startId).arg(endId).arg(QString::fromStdString(sec.name)));
+                        if (column) updateColumnShape(r.elementId);
+                        else updateBeamShape(r.elementId);
+                        reportCreation(r, column
+                            ? tr("Poteau C%1 créé reliant N%2 à N%3 (%4). Cliquez pour un autre poteau")
+                                  .arg(r.elementId).arg(r.nodeIds[0]).arg(r.nodeIds[1]).arg(QString::fromStdString(props.section.name))
+                            : tr("Poutre B%1 créée reliant N%2 à N%3 (%4). Cliquez pour continuer")
+                                  .arg(r.elementId).arg(r.nodeIds[0]).arg(r.nodeIds[1]).arg(QString::fromStdString(props.section.name)));
+                        finishBarSegment(r.nodeIds[1], true);
                     }
-                    finishBarSegment(endId, startId != endId);
-                }
-            }
-        }
-        else if (interactionMode() == InteractionMode::DrawColumn)
-        {
-            double wx = 0.0, wy = 0.0, wz = 0.0;
-            int detectedId = -1;
-            if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
-            {
-                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
-                if (m_drawingNodeIds.empty())
-                {
-                    m_drawingNodeIds.push_back(nodeId);
-                    const auto* node = m_model->getNode(nodeId);
-                    if (node)
+                    else
                     {
-                        m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
+                        // Refus (longueur nulle, doublon…) : le 1er point reste fixé, rien n'a été créé.
+                        reportCreation(r, {});
                     }
-                    if (node) emit barFirstPointPicked(gp_Pnt(node->x(), node->y(), node->z()), nodeId);
-                    emit drawingPromptChanged(tr("Mode Dessin Poteau : Base N%1 définie. Cliquez pour le nœud sommital").arg(nodeId));
-                }
-                else
-                {
-                    int startId = m_drawingNodeIds[0];
-                    int endId = nodeId;
-                    if (startId == endId)
-                    {
-                        // Si l'utilisateur reclique au même endroit, crée automatiquement un nœud 3m au-dessus
-                        const auto* n = m_model->getNode(startId);
-                        if (n)
-                        {
-                            endId = getOrCreateNode(n->x(), n->y(), n->z() + 3.0, -1);
-                        }
-                    }
-                    if (startId != endId)
-                    {
-                        m_model->pushUndoState(tr("Création Poteau").toStdString());
-                        TSA::Model::Section sec = (m_currentBarProps.section.width > 0.0 || m_currentBarProps.section.diameter > 0.0)
-                            ? m_currentBarProps.section : m_presets.column.section;
-                        TSA::Model::Material mat = (m_currentBarProps.material.E > 0.0)
-                            ? m_currentBarProps.material : TSA::Model::Material::findByName(m_presets.column.material.name);
-                        double rot = (m_currentBarProps.rotation != 0.0) ? m_currentBarProps.rotation : m_presets.column.betaAngle;
-
-                        int colId = m_model->addColumn(
-                            startId, endId, sec, mat, rot, sec.name);
-                        if (auto* c = m_model->getColumn(colId))
-                        {
-                            if (!m_currentBarProps.color.empty()) c->setColor(m_currentBarProps.color);
-                            else if (!m_presets.column.color.empty()) c->setColor(m_presets.column.color);
-                            updateColumnShape(colId);
-                        }
-                        emit elementCreated();
-                        emit drawingPromptChanged(tr("Poteau C%1 créé reliant N%2 à N%3 (%4). Cliquez pour un autre poteau").arg(colId).arg(startId).arg(endId).arg(QString::fromStdString(m_presets.column.section.name)));
-                    }
-                    finishBarSegment(endId, startId != endId);
                 }
             }
         }
@@ -288,27 +214,21 @@ void OccView::mousePressEvent(QMouseEvent* event)
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
-                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
-
-                // Si clic sur le 1er nœud pour fermer le polygone
-                if (!m_drawingNodeIds.empty() && nodeId == m_drawingNodeIds.front() && m_drawingNodeIds.size() >= 3)
+                const auto dp = drawPointAt(wx, wy, wz, detectedId);
+                const bool closesContour = m_drawingPoints.size() >= 3
+                    && ((dp.nodeId > 0 && dp.nodeId == m_drawingNodeIds.front())
+                        || dp.point.Distance(m_drawingPoints.front()) <= TSA::Coordinate::GeometryTolerance::nodeCoincidence);
+                if (closesContour)
                 {
                     finishCurrentSlab();
                 }
                 else
                 {
-                    m_drawingNodeIds.push_back(nodeId);
-                    const auto* node = m_model->getNode(nodeId);
-                    gp_Pnt pt(node ? node->x() : wx, node ? node->y() : wy, node ? node->z() : wz);
-                    if (node)
-                    {
-                        m_drawingPoints.push_back(pt);
-                    }
-                    emit slabNodePicked(nodeId, pt, static_cast<int>(m_drawingNodeIds.size()));
-                    emit drawingPromptChanged(tr("Dalle : Nœud N%1 ajouté (total : %2 nœuds). Cliquez pour ajouter, ou fermez sur N%3 / Clic droit")
-                        .arg(nodeId)
-                        .arg(m_drawingNodeIds.size())
-                        .arg(m_drawingNodeIds.front()));
+                    pushDrawPoint(dp);
+                    emit slabNodePicked(dp.nodeId, dp.point, static_cast<int>(m_drawingPoints.size()));
+                    emit drawingPromptChanged(tr("Dalle : point %1 ajouté (total : %2). Cliquez pour ajouter, ou fermez sur le 1er point / Clic droit")
+                        .arg(pointLabel(dp))
+                        .arg(m_drawingPoints.size()));
                 }
             }
         }
@@ -318,44 +238,30 @@ void OccView::mousePressEvent(QMouseEvent* event)
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
-                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
-                const auto* node = m_model->getNode(nodeId);
-                gp_Pnt pt(node ? node->x() : wx, node ? node->y() : wy, node ? node->z() : wz);
-
-                if (m_drawingNodeIds.empty())
+                const auto dp = drawPointAt(wx, wy, wz, detectedId);
+                if (m_drawingPoints.empty())
                 {
-                    m_drawingNodeIds.push_back(nodeId);
-                    if (node) m_drawingPoints.push_back(pt);
-                    emit wallFirstPointPicked(pt, nodeId);
-                    emit drawingPromptChanged(tr("Mode Voile : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud (H=%2m, ép=%3m)").arg(nodeId).arg(m_presets.wall.height).arg(m_presets.wall.thickness));
+                    pushDrawPoint(dp);
+                    emit wallFirstPointPicked(dp.point, dp.nodeId);
+                    emit drawingPromptChanged(tr("Mode Voile : 1er point %1. Cliquez pour le 2nd point (H=%2m, ép=%3m)").arg(pointLabel(dp)).arg(m_presets.wall.height).arg(m_presets.wall.thickness));
                 }
                 else
                 {
-                    int startId = m_drawingNodeIds[0];
-                    int endId = nodeId;
-                    if (startId != endId)
+                    const auto r = TSA::Interaction::ElementCreation(*m_model).createWall(drawingPicks().front(), dp, resolvedPresets().wall);
+                    if (r.success)
                     {
-                        emit wallSecondPointPicked(pt, endId);
-                        m_model->pushUndoState(tr("Création Voile").toStdString());
-                        int wallId = m_model->addWall(startId, endId, m_presets.wall.height, m_presets.wall.thickness);
-                        if (auto* w = m_model->getWall(wallId))
-                        {
-                            w->setOffset(m_presets.wall.offset);
-                            w->setMaterial(TSA::Model::Material::findByName(m_presets.wall.material.name));
-                            if (!m_presets.wall.color.empty()) w->setColor(m_presets.wall.color);
-                            updateWallShape(wallId);
-                        }
-                        emit elementCreated();
-                        emit wallCreated(wallId);
-                        emit drawingPromptChanged(tr("Voile W%1 créé reliant N%2 à N%3 (H=%4m, ép=%5m). Cliquez pour continuer").arg(wallId).arg(startId).arg(endId).arg(m_presets.wall.height).arg(m_presets.wall.thickness));
+                        emit wallSecondPointPicked(dp.point, r.nodeIds[1]);
+                        updateWallShape(r.elementId);
+                        reportCreation(r, tr("Voile W%1 créé reliant N%2 à N%3 (H=%4m, ép=%5m). Cliquez pour continuer").arg(r.elementId).arg(r.nodeIds[0]).arg(r.nodeIds[1]).arg(m_presets.wall.height).arg(m_presets.wall.thickness));
+                        emit wallCreated(r.elementId);
+                        // Enchaînement continu du tracé de voile
+                        clearDrawing();
+                        pushDrawPoint(TSA::Interaction::DrawPoint(dp.point, r.nodeIds[1]));
                     }
-                    clearRubberBand();
-                    m_drawingNodeIds.clear();
-                    m_drawingPoints.clear();
-                    // Enchaînement continu du tracé de voile
-                    m_drawingNodeIds.push_back(endId);
-                    const auto* nEnd = m_model->getNode(endId);
-                    if (nEnd) m_drawingPoints.push_back(gp_Pnt(nEnd->x(), nEnd->y(), nEnd->z()));
+                    else
+                    {
+                        reportCreation(r, {});
+                    }
                 }
             }
         }
@@ -365,11 +271,11 @@ void OccView::mousePressEvent(QMouseEvent* event)
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
-                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
-                m_model->pushUndoState(tr("Création Fondation").toStdString());
-                int fId = m_model->addFoundation(nodeId, 1.50, 1.50, 0.50);
-                emit elementCreated();
-                emit drawingPromptChanged(tr("Semelle F%1 créée sous le nœud N%2 (1.50x1.50x0.50 m)").arg(fId).arg(nodeId));
+                const auto& fp = m_presets.foundation;
+                const auto r = TSA::Interaction::ElementCreation(*m_model).createFoundation(drawPointAt(wx, wy, wz, detectedId), fp);
+                reportCreation(r, tr("Semelle F%1 créée sous le nœud N%2 (%3 x %4 x %5 m)")
+                    .arg(r.elementId).arg(r.nodeIds.empty() ? -1 : r.nodeIds[0])
+                    .arg(fp.widthA, 0, 'f', 2).arg(fp.lengthB, 0, 'f', 2).arg(fp.heightH, 0, 'f', 2));
             }
         }
         else if (interactionMode() == InteractionMode::DrawTruss)
@@ -378,61 +284,41 @@ void OccView::mousePressEvent(QMouseEvent* event)
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
-                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
-                if (m_drawingNodeIds.empty())
+                const auto dp = drawPointAt(wx, wy, wz, detectedId);
+                if (m_drawingPoints.empty())
                 {
-                    m_drawingNodeIds.push_back(nodeId);
-                    const auto* node = m_model->getNode(nodeId);
-                    if (node) m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
-                    emit drawingPromptChanged(tr("Mode Treillis : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud").arg(nodeId));
+                    pushDrawPoint(dp);
+                    emit drawingPromptChanged(tr("Mode Treillis : 1er point %1. Cliquez pour le 2nd point (%2)").arg(pointLabel(dp)).arg(QString::fromStdString(m_presets.truss.section.name)));
                 }
                 else
                 {
-                    int startId = m_drawingNodeIds[0];
-                    int endId = nodeId;
-                    if (startId != endId)
-                    {
-                        m_model->pushUndoState(tr("Création Barre de Treillis").toStdString());
-                        int trId = m_model->addTrussMember(startId, endId, 0.10);
-                        emit elementCreated();
-                        emit drawingPromptChanged(tr("Barre TR%1 créée reliant N%2 à N%3").arg(trId).arg(startId).arg(endId));
-                    }
-                    clearRubberBand();
-                    m_drawingNodeIds.clear();
-                    m_drawingPoints.clear();
+                    const auto r = TSA::Interaction::ElementCreation(*m_model).createTrussMember(drawingPicks().front(), dp, m_presets.truss);
+                    reportCreation(r, tr("Barre TR%1 créée reliant N%2 à N%3 (%4)").arg(r.elementId)
+                        .arg(r.nodeIds.empty() ? -1 : r.nodeIds[0]).arg(r.nodeIds.size() < 2 ? -1 : r.nodeIds[1])
+                        .arg(QString::fromStdString(m_presets.truss.section.name)));
+                    if (r.success) clearDrawing();
                 }
             }
         }
         else if (interactionMode() == InteractionMode::DrawCable)
         {
+            // Le dialogue « Câble » crée l'élément (ElementCreation) à la réception du 2nd point.
             double wx = 0.0, wy = 0.0, wz = 0.0;
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
-                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
-                const auto* node = m_model->getNode(nodeId);
-                gp_Pnt pt = node ? gp_Pnt(node->x(), node->y(), node->z()) : gp_Pnt(wx, wy, wz);
-
-                if (m_drawingNodeIds.empty())
+                const auto dp = drawPointAt(wx, wy, wz, detectedId);
+                if (m_drawingPoints.empty())
                 {
-                    m_drawingNodeIds.push_back(nodeId);
-                    m_drawingPoints.push_back(pt);
-                    emit cableFirstPointPicked(pt, nodeId);
-                    emit drawingPromptChanged(tr("Mode Dessin Câble : 1er nœud N%1 sélectionné. Cliquez pour le 2nd nœud (Échap pour annuler)").arg(nodeId));
+                    pushDrawPoint(dp);
+                    emit cableFirstPointPicked(dp.point, dp.nodeId);
+                    emit drawingPromptChanged(tr("Mode Dessin Câble : 1er point %1. Cliquez pour le 2nd point (Échap pour annuler)").arg(pointLabel(dp)));
                 }
                 else
                 {
-                    int startId = m_drawingNodeIds[0];
-                    int endId = nodeId;
-                    clearRubberBand();
-                    m_drawingNodeIds.clear();
-                    m_drawingPoints.clear();
-
-                    if (startId != endId)
-                    {
-                        emit cableSecondPointPicked(pt, endId);
-                        emit elementCreated();
-                    }
+                    clearDrawing();
+                    emit cableSecondPointPicked(dp.point, dp.nodeId);
+                    emit elementCreated();
                 }
             }
         }
@@ -444,39 +330,25 @@ void OccView::mousePressEvent(QMouseEvent* event)
             int detectedId = -1;
             if (getPointUnderCursor(p, wx, wy, wz, detectedId) && m_model)
             {
-                int nodeId = getOrCreateNode(wx, wy, wz, detectedId);
-                if (m_drawingNodeIds.empty())
+                const auto dp = drawPointAt(wx, wy, wz, detectedId);
+                const QString typeStr = (interactionMode() == InteractionMode::DrawStayCable) ? tr("Hauban") :
+                                        (interactionMode() == InteractionMode::DrawSuspensionCable) ? tr("Câble Porteur") : tr("Suspente");
+                if (m_drawingPoints.empty())
                 {
-                    m_drawingNodeIds.push_back(nodeId);
-                    const auto* node = m_model->getNode(nodeId);
-                    if (node) m_drawingPoints.push_back(gp_Pnt(node->x(), node->y(), node->z()));
-                    QString typeStr = (interactionMode() == InteractionMode::DrawStayCable) ? tr("Hauban") :
-                                      (interactionMode() == InteractionMode::DrawSuspensionCable) ? tr("Câble Porteur") : tr("Suspente");
-                    emit drawingPromptChanged(tr("Mode Dessin %1 : 1er nœud N%2 sélectionné. Cliquez pour le 2nd nœud").arg(typeStr).arg(nodeId));
+                    pushDrawPoint(dp);
+                    emit drawingPromptChanged(tr("Mode Dessin %1 : 1er point %2. Cliquez pour le 2nd point").arg(typeStr).arg(pointLabel(dp)));
                 }
                 else
                 {
-                    int startId = m_drawingNodeIds[0];
-                    int endId = nodeId;
-                    if (startId != endId)
-                    {
-                        QString typeStr = (interactionMode() == InteractionMode::DrawStayCable) ? tr("Hauban") :
-                                          (interactionMode() == InteractionMode::DrawSuspensionCable) ? tr("Câble Porteur") : tr("Suspente");
-                        m_model->pushUndoState(tr("Création %1").arg(typeStr).toStdString());
+                    TSA::Model::CableType cType = TSA::Model::CableType::Hanger;
+                    if (interactionMode() == InteractionMode::DrawStayCable) cType = TSA::Model::CableType::StayCable;
+                    else if (interactionMode() == InteractionMode::DrawSuspensionCable) cType = TSA::Model::CableType::SuspensionCable;
 
-                        TSA::Model::CableType cType = TSA::Model::CableType::Generic;
-                        if (interactionMode() == InteractionMode::DrawStayCable) cType = TSA::Model::CableType::StayCable;
-                        else if (interactionMode() == InteractionMode::DrawSuspensionCable) cType = TSA::Model::CableType::SuspensionCable;
-                        else if (interactionMode() == InteractionMode::DrawHanger) cType = TSA::Model::CableType::Hanger;
-
-                        int cableId = m_model->addCable(startId, endId, cType);
-                        updateCableShape(cableId);
-                        emit elementCreated();
-                        emit drawingPromptChanged(tr("%1 C%2 créé reliant N%3 à N%4. Cliquez pour continuer").arg(typeStr).arg(cableId).arg(startId).arg(endId));
-                    }
-                    clearRubberBand();
-                    m_drawingNodeIds.clear();
-                    m_drawingPoints.clear();
+                    const auto r = TSA::Interaction::ElementCreation(*m_model).createCable(drawingPicks().front(), dp, cType);
+                    if (r.success) updateCableShape(r.elementId);
+                    reportCreation(r, tr("%1 C%2 créé reliant N%3 à N%4. Cliquez pour continuer").arg(typeStr).arg(r.elementId)
+                        .arg(r.nodeIds.empty() ? -1 : r.nodeIds[0]).arg(r.nodeIds.size() < 2 ? -1 : r.nodeIds[1]));
+                    if (r.success) clearDrawing();
                 }
             }
         }
@@ -1220,19 +1092,9 @@ void OccView::keyPressEvent(QKeyEvent* event)
     }
     else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
     {
-        if (interactionMode() == InteractionMode::DrawSlab && m_drawingNodeIds.size() >= 3 && m_model)
+        if (interactionMode() == InteractionMode::DrawSlab && m_drawingPoints.size() >= 3 && m_model)
         {
-            m_model->pushUndoState(tr("Création Dalle").toStdString());
-            int slabId = m_model->addSlab(m_drawingNodeIds, m_presets.slab.thickness);
-            if (auto* s = m_model->getSlab(slabId))
-            {
-                s->setMaterial(TSA::Model::Material::findByName(m_presets.slab.material.name));
-                if (!m_presets.slab.color.empty()) s->setColor(m_presets.slab.color);
-                updateSlabShape(slabId);
-            }
-            emit elementCreated();
-            emit drawingPromptChanged(tr("Dalle S%1 créée (%2 nœuds, ép=%3m)").arg(slabId).arg(m_drawingNodeIds.size()).arg(m_presets.slab.thickness));
-            cancelCurrentDrawing();
+            finishCurrentSlab();   // même validation et même transaction que la fermeture du contour
         }
     }
     // F (zoom étendu), Maj+F, R : raccourcis des actions (ShortcutManager, personnalisables). Les traiter

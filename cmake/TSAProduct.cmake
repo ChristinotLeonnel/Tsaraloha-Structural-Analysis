@@ -81,6 +81,8 @@ set(UI_PROPERTIES_SOURCES
     ${TSA_ROOT}/src/UI/Properties/IElementPropertyView.h
     ${TSA_ROOT}/src/UI/Properties/PropertyPanel.h
     ${TSA_ROOT}/src/UI/Properties/PropertyPanel.cpp
+    ${TSA_ROOT}/src/UI/Properties/ElementBimPanel.h
+    ${TSA_ROOT}/src/UI/Properties/ElementBimPanel.cpp
     ${TSA_ROOT}/src/UI/Properties/ElementResultsPanel.h
     ${TSA_ROOT}/src/UI/Properties/ElementResultsPanel.cpp
     ${TSA_ROOT}/src/UI/Properties/MemberEndNodesWidget.h
@@ -539,6 +541,8 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/BIM/Core/BimModel.cpp
     ${TSA_ROOT}/src/BIM/Core/BimGeometry.h
     ${TSA_ROOT}/src/BIM/Core/BimGeometry.cpp
+    ${TSA_ROOT}/src/BIM/Core/QuantityTakeoff.h
+    ${TSA_ROOT}/src/BIM/Core/QuantityTakeoff.cpp
     ${TSA_ROOT}/src/BIM/IFC/IfcStepWriter.h
     ${TSA_ROOT}/src/BIM/IFC/IfcStepWriter.cpp
     ${TSA_ROOT}/src/BIM/IFC/IfcExportContext.h
@@ -777,6 +781,8 @@ set(UNDOREDO_SOURCES
 set(INTERACTION_SOURCES
     ${TSA_ROOT}/src/Interaction/InteractionManager.h
     ${TSA_ROOT}/src/Interaction/InteractionManager.cpp
+    ${TSA_ROOT}/src/Interaction/ElementCreation.h
+    ${TSA_ROOT}/src/Interaction/ElementCreation.cpp
     ${TSA_ROOT}/src/Interaction/Tools/ModelingTool.h
     ${TSA_ROOT}/src/Interaction/Tools/ModelingTool.cpp
     ${TSA_ROOT}/src/Interaction/Tools/ModifyTools.h
@@ -1031,6 +1037,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_model_cleanup.cpp
     ${TSA_ROOT}/tests/test_bim.cpp
     ${TSA_ROOT}/tests/test_ifc_files.cpp
+    ${TSA_ROOT}/tests/test_drawing.cpp
     ${TSA_ROOT}/tests/test_snap.cpp
     ${TSA_ROOT}/tests/test_automation.cpp
     ${TSA_ROOT}/tests/test_help.cpp
@@ -1521,7 +1528,7 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards bim ifc tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
+                       loads opensees supports standards bim ifc drawing tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

@@ -1,7 +1,9 @@
 #pragma once
 
+#include "Foundation.h"
 #include "Material.h"
 #include "Section.h"
+#include "TrussMember.h"
 #include <string>
 
 namespace TSA::Model
@@ -39,12 +41,34 @@ struct WallPreset
     std::string color = "";
 };
 
+/// Semelle posée par le mode Dessin Fondation (dimensions affichées dans l'invite avant le clic).
+struct FoundationPreset
+{
+    FoundationType type = FoundationType::IsolatedFooting;
+    double widthA = 1.50;
+    double lengthB = 1.50;
+    double heightH = 0.50;
+    Material material = Material::concreteC25_30();
+    std::string color = "";
+};
+
+/// Barre de treillis posée par le mode Dessin Treillis.
+struct TrussPreset
+{
+    Section section = Section::circular(0.10, "C100");
+    Material material = Material::steelS235();
+    TrussMemberRole role = TrussMemberRole::Diagonal;
+    std::string color = "";
+};
+
 struct StructurePresets
 {
     BeamPreset beam;
     ColumnPreset column;
     SlabPreset slab;
     WallPreset wall;
+    FoundationPreset foundation;
+    TrussPreset truss;
     bool showDialogBeforeDrawing = true;
 };
 

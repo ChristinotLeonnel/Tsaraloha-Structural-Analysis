@@ -6,14 +6,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 404;   // mesuré le 17/10/2026, plateforme Qt native
+    int expectedTotal = 418;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 14 tests « drawing »
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|ifc|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display|multidoc]" << std::endl;
+            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|ifc|drawing|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display|multidoc]" << std::endl;
             return 0;
         }
     }
@@ -126,6 +126,10 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "ifc") {
         std::cout << "\n--- [Suite 25 bis] Fichiers IFC réels : IFC2X3, IFC4, IFC4X3, aller-retour, fichiers invalides, export robuste, vue 3D (Tests 400-409) ---" << std::endl;
         if (!runSuite_IfcFiles(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "drawing") {
+        std::cout << "\n--- [Suite 25 ter] Dessin BIM : création transactionnelle, validation, croisements, identité BIM, métré, palette, intégration (Tests 410-423) ---" << std::endl;
+        if (!runSuite_Drawing(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "snap") {
         std::cout << "\n--- [Suite 26/26] Accrochage 3D (OSNAP) en espace écran (Tests 181-187) ---" << std::endl;

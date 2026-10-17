@@ -45,6 +45,7 @@ namespace TSA::Grid
 #include "../Grid/GridRenderer.h"
 #include "../Model/CreationPresets.h"
 #include "../Interaction/InteractionManager.h"
+#include "../Interaction/ElementCreation.h"
 #include "../Coordinate/WorkPlane.h"
 #include <AIS_ViewCube.hxx>
 #include <AIS_RubberBand.hxx>
@@ -402,6 +403,9 @@ public:
     // Dessin d'éléments surfaciques (Dalles & Voiles)
     void finishCurrentSlab();
     void resetCurrentSlabContour();
+    /// Invite après une création (vue ou dialogue de création) : succès et réserves, ou motif du refus ;
+    /// émet elementCreated() en cas de succès.
+    void reportCreation(const TSA::Interaction::CreationResult& r, const QString& successPrompt);
 
     // Visibilité et étiquetage 3D des nœuds
     enum class NodeDisplayFilter
@@ -636,7 +640,17 @@ private:
     void clearRubberBand();
     void clearTransformPreview();
     void buildTransformPreviewGhosts();
-    int getOrCreateNode(double x, double y, double z, int existingNodeId);
+    // Tracé des modes Dessin (OccView.cpp) : les clics mémorisent des points, les nœuds ne sont
+    // créés qu'à la validation de l'élément, par ElementCreation (une transaction).
+    /// Point de tracé : nœud existant visé (accroché ou confondu), sinon position libre.
+    TSA::Interaction::DrawPoint drawPointAt(double x, double y, double z, int detectedNodeId) const;
+    void pushDrawPoint(const TSA::Interaction::DrawPoint& p);
+    std::vector<TSA::Interaction::DrawPoint> drawingPicks() const;
+    void clearDrawing();
+    QString pointLabel(const TSA::Interaction::DrawPoint& p) const;
+    /// Préréglages avec matériaux du catalogue (le dialogue des préréglages n'en garde que le nom).
+    TSA::Model::StructurePresets resolvedPresets() const;
+    TSA::Model::BarProperties drawingBarProperties(TSA::Model::BarRole role) const;
     void updateClipPlaneEquation();
     void updateSectionPlaneVisual();
     /// Applique au trièdre du WorkPlane la rotation (sans translation) + l'ancrage au point d'origine
@@ -807,8 +821,8 @@ private:
     void clearSnapMarker();
 
     std::unique_ptr<TSA::Interaction::InteractionManager> m_interactionManager;
-    std::vector<int> m_drawingNodeIds;
-    std::vector<gp_Pnt> m_drawingPoints;
+    std::vector<int> m_drawingNodeIds;     ///< nœud visé par chaque point du tracé (-1 : point libre)
+    std::vector<gp_Pnt> m_drawingPoints;   ///< positions du tracé (même taille que m_drawingNodeIds)
 
     // Outil de modification / dessin actif (OccView_Tools.cpp)
     TSA::Interaction::ModelingTool* m_activeTool = nullptr;
