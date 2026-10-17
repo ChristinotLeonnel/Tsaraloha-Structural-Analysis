@@ -115,8 +115,11 @@ if (-not (Test-Path (Join-Path $BoostPrefix "lib\libboost_program_options.lib"))
 # --- 3. Eigen : installation des en-têtes et de Eigen3Config.cmake ---------------------------------------------
 if (-not (Test-Path (Join-Path $EigenPrefix "share\eigen3\cmake\Eigen3Config.cmake"))) {
     Step "Eigen 3.4.1"
+    # En-têtes seuls : sans EIGEN_BUILD_BLAS/LAPACK=OFF, un Fortran présent (gfortran des runners GitHub) ajoute
+    # les bibliothèques BLAS/LAPACK, que « cmake --install » cherche sans qu'elles aient été compilées.
     Invoke-Native "cmake" @("-S", (Join-Path $WorkDir "src\eigen-3.4.1"), "-B", (Join-Path $WorkDir "build-eigen"), "-G", "Ninja",
-        "-DBUILD_TESTING=OFF", "-DEIGEN_BUILD_DOC=OFF", "-DCMAKE_INSTALL_PREFIX=$EigenPrefix") (Join-Path $WorkDir "eigen-configure.log")
+        "-DBUILD_TESTING=OFF", "-DEIGEN_BUILD_DOC=OFF", "-DEIGEN_BUILD_BLAS=OFF", "-DEIGEN_BUILD_LAPACK=OFF",
+        "-DCMAKE_INSTALL_PREFIX=$EigenPrefix") (Join-Path $WorkDir "eigen-configure.log")
     Invoke-Native "cmake" @("--install", (Join-Path $WorkDir "build-eigen")) (Join-Path $WorkDir "eigen-install.log")
 }
 
