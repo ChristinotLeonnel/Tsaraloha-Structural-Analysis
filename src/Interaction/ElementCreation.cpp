@@ -465,6 +465,18 @@ CreationResult ElementCreation::createWall(const DrawPoint& a, const DrawPoint& 
     if (r.message.empty()) r.message = checkDuplicateLinear(LinearFamily::Wall, a, b);
     if (!r.message.empty()) return r;
 
+    // Base inclinée : refusée. Le voile est extrudé verticalement depuis sa base ; sa surface de calcul
+    // (TSA::Mesh::wallSurface) prend U le long de la base et V vertical : avec une pente, ce repère n'est plus
+    // orthogonal (ouvertures, maillage et charges mal placés) et l'aire L × H est surestimée.
+    const double dz = std::abs(position(a).Z() - position(b).Z());
+    if (dz > GeometryTolerance::nodeCoincidence)
+    {
+        r.message = "Les deux points de base du voile ne sont pas à la même cote (écart de " + fmt(dz) + " m, tolérance "
+            + fmt(GeometryTolerance::nodeCoincidence) + " m) : TSA ne sait pas encore calculer un voile à base inclinée. "
+              "Tracez le voile entre deux points de même cote.";
+        return r;
+    }
+
     const auto warnings = unconnectedWarnings({ a, b }, false);
     TSA::UndoRedo::EditTransaction tx(m_model, "Création Voile");
     const int s = resolveNode(a, r), e = resolveNode(b, r);

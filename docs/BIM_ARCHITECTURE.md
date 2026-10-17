@@ -150,6 +150,7 @@ ou « Non créé : motif »).
 | Aucune valeur inventée | dimensions et sections des préréglages explicites (poutre, poteau, dalle, voile, **fondation**, **treillis**), modifiables dans « Préréglages de structure » ; plus de poteau de 3 m créé par un double clic ; matériaux proposés limités à ceux de la bibliothèque |
 | Doublons | même famille sur les mêmes nœuds (dans les deux sens), dalle sur le même contour, deuxième fondation sous un nœud : refusés |
 | Dalle | ≥ 3 points distincts, non alignés, plans (1 mm), contour simple (aucun côté ne recoupe un autre) |
+| Voile | base horizontale : deux points de base à moins de 1 mm de cote l'un de l'autre, sinon refus motivé. La surface de calcul (`wallSurface`) ne sait pas représenter une base inclinée : son repère local cesse d'être orthogonal et l'aire est surestimée |
 
 ### 5.3 Quantités
 

@@ -63,12 +63,13 @@ Nouvelle suite `drawing` (`tests/test_drawing.cpp`), enregistrée sous CTest (`T
 | 420 | métré : poutre, dalle avec trémie, voile avec porte, semelle, treillis ; cumuls ; produit de 2 poutres |
 | 421 | quantités recalculées après déplacement d'un nœud et après Annuler |
 | 422 | palette : classe IFC, GlobalId, quantités, mise à jour, nœud sans panneau |
+| 424 | voile : même cote, écart de 0,5 mm (créé, cote conservée), écarts de ±0,40 m et 2 mm (refus motivé, rien de créé), nœuds existants intacts ; garde sur la limite de `wallSurface` |
 | 423 | scénario d'intégration : 4 poteaux, 4 poutres, dalle, voile, 4 semelles sur les nœuds existants ; aucun orphelin ; un produit par élément ; métré ; `.tsa` ; IFC ; 14 entrées Annuler |
 
 Résultats mesurés sur ce poste (Release, MSVC 19.51, Qt 6.11.2) :
 
-- suite `drawing`, plateforme native : **14 / 14** ;
-- suite `drawing`, plateforme `offscreen` : 13 / 13, le test 419 étant **annoncé comme sauté**
+- suite `drawing`, plateforme native : **15 / 15** (avec le test 424) ;
+- suite `drawing`, plateforme `offscreen` : 13 / 13 avant le test 424, le test 419 étant **annoncé comme sauté**
   (BUG-076 : vue OCCT impossible sous `offscreen`) et non compté ;
 - suite complète, plateforme native : voir § 5.
 
@@ -82,7 +83,7 @@ Résultats mesurés sur ce poste (Release, MSVC 19.51, Qt 6.11.2) :
 
 ## 5. Suite complète et constats annexes
 
-- Suite complète, plateforme native, avant le correctif de la touche Entrée (§ 6) : **418 / 418**.
+- Suite complète, plateforme native, avant le correctif de la touche Entrée (§ 7) : **418 / 418**.
 - Version finale, plateforme native, deux exécutions :
   - **412 / 418** à la première. Le test 20 (mesure de temps, annulation à 5 000 barres sous
     350 ms) a dépassé son seuil et interrompu la suite `commands`. Ce test est déjà connu pour
@@ -90,11 +91,43 @@ Résultats mesurés sur ce poste (Release, MSVC 19.51, Qt 6.11.2) :
   - La suite `commands` lancée seule trois fois : 7 / 7 à chaque fois (meilleur temps à
     5 000 barres ≈ 156 ms).
   - **418 / 418** à la seconde exécution complète.
+- Avec la règle du voile incliné (test 424, 419 tests), deux exécutions complètes en natif :
+  - **413 / 419** à la première, de nouveau à cause du test 20 : meilleur temps d'annulation à
+    5 000 barres = 508 ms ;
+  - **419 / 419** à la seconde, avec 29 ms pour la même mesure.
+  - Les suites qui précèdent le test 20 (coordinates, model, io) n'appellent aucun code modifié
+    par ce chantier. Le seuil n'a pas été modifié.
 - Deux lignes `libpng error: Read Error` apparaissent sur la sortie d'erreur pendant les tests des
   modèles de documents (vers le test 284). Elles figuraient déjà dans un journal CI antérieur à ce
   chantier et ne font échouer aucun test : rien à voir avec le dessin, non traité ici.
 
-## 6. Défaut trouvé pendant la relecture
+## 6. Voile à base inclinée
+
+Règle retenue : **refus motivé** si les deux points de base diffèrent de plus de
+`GeometryTolerance::nodeCoincidence` (1 mm) en cote. En deçà, le voile est créé sans
+avertissement et sans retouche des coordonnées.
+
+Pourquoi un refus plutôt qu'un avertissement : la géométrie ne serait pas seulement douteuse,
+elle serait fausse dans le calcul.
+- `TSA::Mesh::wallSurface` prend `U` le long de la base, donc incliné, et `V` vertical ; or
+  `PlaneFrame::toLocal` suppose un repère orthogonal. Le maillage Gmsh, les ouvertures et les
+  charges de surface seraient mal placés.
+- L'aire vaut `L₃D × H` au lieu de `L_horizontale × H`. Le test 424 constate 15 m² au lieu de
+  12 m² pour une base de 4 m horizontaux et 3 m de dénivelé.
+
+Le message du refus s'affiche dans la barre d'invite pour le mode Dessin (« Non créé : … ») et
+dans une boîte de message pour le dialogue « Surface ».
+
+Limites restantes :
+- Les voiles à base inclinée déjà présents dans un fichier ou importés ne sont pas concernés
+  par la règle ; leur calcul garde les défauts ci-dessus.
+- `QuantityTakeoff` mesure la longueur d'un voile en 3D : son métré est surestimé de la même
+  façon.
+- Prendre en charge les voiles sur terrain en pente demande un repère orthogonal dans
+  `wallSurface`, une aire correcte, un métré cohérent et l'export IFC correspondant, avec leurs
+  tests. C'est un chantier à part entière, non commencé.
+
+## 7. Défaut trouvé pendant la relecture
 
 La touche Entrée du mode Dessin Dalle avait gardé une copie de l'ancien code : `addSlab` sur les
 numéros de nœuds du tracé, sans validation. Avec des points libres (−1), elle aurait transmis des

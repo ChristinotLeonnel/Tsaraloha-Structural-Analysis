@@ -1,4 +1,4 @@
-// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration (tests 410-423). Les points sont
+// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée (tests 410-424). Les points sont
 // fournis comme par la vue 3D (position accrochée, nœud visé) ; le modèle, l'historique et la couche
 // BIM sont vérifiés après chaque création ou refus.
 
@@ -8,6 +8,7 @@
 #include "BIM/IFC/IfcExporter.h"
 #include "BIM/IFC/IfcImporter.h"
 #include "IO/TSAFile.h"
+#include "Mesh/MeshGeometry.h"
 #include "Interaction/ElementCreation.h"
 #include "UI/Properties/ElementBimPanel.h"
 #include "Viewer/OccView.h"
@@ -544,6 +545,73 @@ bool runSuite_Drawing(int& passed)
         while (m.canUndo() && m.undo()) ++undos;
         TEST_CHECK(undos == 14 && m.nodes().empty() && m.bim().elements().empty(), "Test 423: 14 créations = 14 entrées Annuler, modèle vide après annulation");
         std::cout << "[PASS] Test 423: Scénario d'intégration (tracé, contrôle, métré, .tsa, IFC, annulation)" << std::endl;
+        ++passed;
+    }
+
+    // TEST 424 : voile dont les deux points de base ne sont pas à la même cote — refusé au-delà de
+    // GeometryTolerance::nodeCoincidence (1 mm), accepté en deçà sans retouche des coordonnées.
+    {
+        WallPreset wp;
+        auto hasSlopeWarning = [](const CreationResult& r) {
+            for (const auto& w : r.warnings)
+                if (w.find("cote") != std::string::npos) return true;
+            return false;
+        };
+
+        // Même cote : créé, aucun avertissement de cote ; Annuler retire voile et nœuds.
+        {
+            Model m;
+            ElementCreation c(m);
+            auto r = c.createWall(pt(0, 0, 0), pt(5, 0, 0), wp);
+            TEST_CHECK(r.success && !hasSlopeWarning(r) && r.warnings.empty(), "Test 424: même cote : voile créé sans avertissement");
+            TEST_CHECK(m.undo() && m.walls().empty() && m.nodes().empty() && !m.canUndo(), "Test 424: Annuler retire le voile et ses 2 nœuds");
+        }
+
+        // Écart inférieur à la tolérance (0,5 mm) : créé, coordonnées conservées telles quelles.
+        {
+            Model m;
+            ElementCreation c(m);
+            auto r = c.createWall(pt(0, 0, 0), pt(5, 0, 0.0005), wp);
+            const auto* nb = r.success ? m.getNode(r.nodeIds[1]) : nullptr;
+            TEST_CHECK(r.success && !hasSlopeWarning(r) && nb && nb->z() == 0.0005,
+                       "Test 424: écart de 0,5 mm (< 1 mm) : voile créé, cote du point d'origine conservée");
+        }
+
+        // Écart supérieur à la tolérance, dans les deux sens : refus motivé, rien de créé.
+        for (const auto& [dz, shown] : { std::pair { 0.40, "0.400" }, { -0.40, "0.400" }, { 0.002, "0.002" } })
+        {
+            Model m;
+            ElementCreation c(m);
+            auto r = c.createWall(pt(0, 0, 0), pt(5, 0, dz), wp);
+            TEST_CHECK(!r.success && r.message.find("même cote") != std::string::npos && r.message.find(std::string("écart de ") + shown + " m") != std::string::npos,
+                       "Test 424: écart de " + std::to_string(dz) + " m : refus motivé (écart indiqué)");
+            TEST_CHECK(m.nodes().empty() && m.walls().empty() && !m.canUndo() && r.createdNodeIds.empty(),
+                       "Test 424: refus : aucun nœud ni voile abandonné, historique intact");
+        }
+
+        // Points accrochés à des nœuds existants de cotes différentes : nœuds intacts, rien d'ajouté.
+        {
+            Model m;
+            const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(5, 0, 0.4);
+            ElementCreation c(m);
+            auto r = c.createWall(pt(0, 0, 0, n1), pt(5, 0, 0.4, n2), wp);
+            TEST_CHECK(!r.success && m.nodes().size() == 2 && m.walls().empty() && m.getNode(n2)->z() == 0.4,
+                       "Test 424: nœuds existants à cotes différentes : refus, nœuds non modifiés");
+        }
+
+        // Motif du refus : la surface de calcul d'un voile à base inclinée (créé sans le service) n'a pas un repère
+        // orthogonal et surestime son aire. Si ce garde échoue, wallSurface a été corrigée : la règle peut être revue.
+        {
+            Model m;
+            const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(4, 0, 3);
+            const int w = m.addWall(n1, n2, 3.0, 0.2);
+            TSA::Mesh::SurfaceGeom sg;
+            TEST_CHECK(w > 0 && TSA::Mesh::wallSurface(m, *m.getWall(w), &sg), "Test 424: surface de calcul du voile incliné");
+            const double trueArea = 4.0 * 3.0;   // parallélogramme : longueur horizontale × hauteur
+            TEST_CHECK(std::abs(sg.frame.U.dot(sg.frame.V)) > 0.5 && sg.area > trueArea + 1.0,
+                       "Test 424: limite constatée (repère non orthogonal, aire 15 m² au lieu de 12 m²) : motif du refus");
+        }
+        std::cout << "[PASS] Test 424: Voile à base inclinée refusé, tolérance de 1 mm" << std::endl;
         ++passed;
     }
 
