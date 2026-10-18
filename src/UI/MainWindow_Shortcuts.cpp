@@ -64,6 +64,7 @@ void MainWindow::setupShortcuts()
         { "cmd.display.levels", m_actionLevelsVisible }, { "cmd.display.grid_labels", m_actionGridLabels },
         { "cmd.display.rulers", m_actionRulersVisible }, { "cmd.coord.workplane_xy", m_actionWorkPlaneXY },
         { "cmd.coord.workplane_xz", m_actionWorkPlaneXZ }, { "cmd.coord.workplane_yz", m_actionWorkPlaneYZ },
+        { "cmd.coord.workplane_next", m_actionWorkPlaneNextRef }, { "cmd.coord.workplane_prev", m_actionWorkPlanePrevRef }, { "cmd.coord.workplane_next_intersection", m_actionWorkPlaneNextInter }, { "cmd.coord.workplane_prev_intersection", m_actionWorkPlanePrevInter }, { "cmd.coord.workplane_align_intersection", m_actionWorkPlaneAlignInter }, { "cmd.coord.workplane_back", m_actionWorkPlaneBack },
         { "cmd.coord.workplane_level", m_actionWorkPlaneLevel }, { "cmd.coord.workplane_custom", m_actionWorkPlaneCustom },
         { "cmd.coord.workplane_visible", m_actionWorkPlaneVisible }, { "cmd.view.normal_to_plane", m_actionViewNormalToPlane },
         { "cmd.struct.levels", m_actionManageLevels }, { "cmd.struct.grid_dialog", m_actionGridManager },

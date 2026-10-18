@@ -834,6 +834,11 @@ void OccView::rebuildAllShapes()
     if (m_selectionManager)
     {
         m_selectionManager->clearRegistry();
+        // Le registre vidé contenait aussi le panneau du plan de travail, qui n'est pas reconstruit ici :
+        // sans ce réenregistrement, un clic sur le panneau ne sélectionnait plus le plan après l'ouverture
+        // d'un projet, et le manipulateur 3D restait inaccessible.
+        if (!m_workPlaneShape.IsNull())
+            m_selectionManager->registerWorkPlane(m_workPlane.id(), m_workPlaneShape);
     }
 
     if (!m_model)

@@ -56,6 +56,10 @@ public:
   TSA::Coordinate::WorkPlaneAxis currentAxis() const { return m_currentAxis; }
   void setWorkPlaneAxis(TSA::Coordinate::WorkPlaneAxis axis);
   void setActivePlane(TSA::Coordinate::WorkPlaneAxis axis, double offset);
+  /// Écho d'un plan déjà appliqué par OccView (commande, manipulateur, navigation) : sélecteurs et règles
+  /// mis à jour SANS réappliquer le plan. setActivePlane() le reconstruirait à l'origine globale
+  /// (setWorkPlaneAxisAndOffset) et effacerait le décalage dans le plan (X, Y d'un plan d'étage déplacé).
+  void reflectActivePlane(TSA::Coordinate::WorkPlaneAxis axis, double offset);
   void refreshAvailablePlanes();
 
   void setMode2D(bool enabled);

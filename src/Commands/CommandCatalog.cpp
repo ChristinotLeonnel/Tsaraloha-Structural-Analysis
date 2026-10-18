@@ -288,6 +288,18 @@ void CommandCatalog::initializeStandardCatalog() {
                    ":/icons/view/view_front.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_yz", "Plan de travail YZ", "Plan de travail global vertical YZ", "",
                    ":/icons/view/view_side.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_next", "Plan de travail suivant", "Plan parallèle suivant passant par des intersections de la grille (niveau, axe)", "Alt+PgUp",
+                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_prev", "Plan de travail précédent (grille)", "Plan parallèle précédent passant par des intersections de la grille (niveau, axe)", "Alt+PgDown",
+                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_next_intersection", "Intersection suivante", "Origine du plan de travail sur l'intersection suivante de la grille", "Ctrl+Alt+PgUp",
+                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_prev_intersection", "Intersection précédente", "Origine du plan de travail sur l'intersection précédente de la grille", "Ctrl+Alt+PgDown",
+                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_align_intersection", "Aligner sur l'intersection", "Origine du plan de travail sur l'intersection de la grille la plus proche du curseur", "Alt+Home",
+                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+  registerCommand({"cmd.coord.workplane_back", "Revenir au plan de travail précédent", "Plan de travail précédent (historique)", "Alt+Backspace",
+                   ":/icons/view/view_side.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_level", "Plan de travail sur l'étage", "Plan de travail sur l'étage actif", "",
                    ":/icons/structure/levels.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_custom", "Plan de travail personnalisé", "Définir un plan de travail personnalisé", "",
