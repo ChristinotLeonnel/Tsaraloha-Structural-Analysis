@@ -185,6 +185,7 @@ void PropertyPanel::setupUi()
 
     containerLayout->addWidget(m_stack);
     m_elementBim = new ElementBimPanel(scrollContainer);
+    m_elementBim->setModel(m_model);   // le modèle du constructeur : setModel() ignore ensuite le même modèle
     containerLayout->addWidget(m_elementBim);
     m_elementResults = new ElementResultsPanel(scrollContainer);
     containerLayout->addWidget(m_elementResults);

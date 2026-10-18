@@ -48,6 +48,14 @@ StructurePresetDialog::StructurePresetDialog(
         m_tabWidget->setCurrentIndex(3);
         setWindowTitle(tr("Propriétés du Poteau - Pré-dessin 3D"));
         break;
+    case PresetTarget::Foundation:
+        m_tabWidget->setCurrentIndex(4);
+        setWindowTitle(tr("Propriétés de la Fondation - Pré-dessin 3D"));
+        break;
+    case PresetTarget::Truss:
+        m_tabWidget->setCurrentIndex(5);
+        setWindowTitle(tr("Propriétés du Treillis - Pré-dessin 3D"));
+        break;
     }
 }
 

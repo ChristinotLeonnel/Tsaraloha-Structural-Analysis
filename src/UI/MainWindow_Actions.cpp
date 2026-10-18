@@ -2288,6 +2288,12 @@ void MainWindow::createStatusBar()
     connect(m_occView, &OccView::modelingToolReady, this, &MainWindow::applyActiveModelingTool);
     connect(m_occView, &OccView::originMoveRequested, this, &MainWindow::onOriginMoveRequested);
     connect(m_occView, &OccView::pasteAtPointRequested, this, &MainWindow::onPasteAtPointRequested);
+    // Élément créé par un mode Dessin ou un dialogue de création : sans ce rafraîchissement, Annuler (bouton et
+    // Ctrl+Z) restait grisé après un tracé dans la vue 3D (constaté par l'essai tools/ui_tests/drawing_scenario.ps1).
+    connect(m_occView, &OccView::elementCreated, this, [this]() {
+        updateUndoRedoActions();
+        updateWindowTitle();
+    });
 
     connect(m_occView, &OccView::drawingPromptChanged, this, [this](const QString& prompt) {
         if (m_statusInfo)

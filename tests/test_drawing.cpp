@@ -1,4 +1,4 @@
-// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée, outils avancés (tests 410-425). Les points sont
+// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée, outils avancés, palette complète (tests 410-426). Les points sont
 // fournis comme par la vue 3D (position accrochée, nœud visé) ; le modèle, l'historique et la couche
 // BIM sont vérifiés après chaque création ou refus.
 
@@ -13,9 +13,11 @@
 #include "Interaction/Tools/ModelingTool.h"
 #include "UndoRedo/EditTransaction.h"
 #include "UI/Properties/ElementBimPanel.h"
+#include "UI/Properties/PropertyPanel.h"
 #include "Viewer/OccView.h"
 
 #include <QApplication>
+#include <QGroupBox>
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -696,6 +698,28 @@ bool runSuite_Drawing(int& passed)
             TEST_CHECK(!again.success && m.beams().size() == 4 && m.nodes().size() == 5, "Test 425: arc en double refusé, modèle inchangé");
         }
         std::cout << "[PASS] Test 425: Outils de dessin avancés par le service de création" << std::endl;
+        ++passed;
+    }
+
+    // TEST 426 : palette complète (PropertyPanel construit avec son modèle, comme dans l'application) — le bloc
+    // « Identité BIM et quantités » s'affiche pour l'élément sélectionné. Régression trouvée par l'essai de l'interface
+    // réelle (tools/ui_tests/drawing_scenario.ps1) : le bloc ne recevait pas le modèle et restait masqué.
+    {
+        Model m;
+        ElementCreation c(m);
+        SlabPreset sp;
+        auto slab = c.createSlab({ pt(0, 0, 0), pt(6, 0, 0), pt(6, 5, 0), pt(0, 5, 0) }, sp);
+        TSA::UI::PropertyPanel panel(&m);
+        panel.showSlabProperties(slab.elementId);
+        TSA::UI::ElementBimPanel* bimPanel = nullptr;   // pas de Q_OBJECT : recherche parmi les QGroupBox
+        for (auto* g : panel.findChildren<QGroupBox*>())
+            if (auto* candidate = dynamic_cast<TSA::UI::ElementBimPanel*>(g)) bimPanel = candidate;
+        const QString t = bimPanel ? bimPanel->text() : QString();
+        TEST_CHECK(bimPanel && !bimPanel->isHidden() && t.contains("IfcSlab") && t.contains("Surface : 30.000"),
+                   "Test 426: palette de la dalle : identité BIM et surface affichées");
+        panel.showNodeProperties(slab.nodeIds[0]);
+        TEST_CHECK(bimPanel->isHidden(), "Test 426: nœud : bloc BIM masqué");
+        std::cout << "[PASS] Test 426: Palette complète, bloc identité BIM et quantités" << std::endl;
         ++passed;
     }
 

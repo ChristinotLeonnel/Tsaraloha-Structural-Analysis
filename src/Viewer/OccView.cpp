@@ -662,9 +662,11 @@ void OccView::cancelCurrentDrawing()
         emit drawingPromptChanged(tr("Outil Barre (Robot) : Cliquez pour sélectionner ou créer le 1er nœud"));
         break;
     case InteractionMode::DrawBeam:
+        emit barDrawingCancelled();   // le dialogue « Barre » sert aussi aux poutres : origine effacée
         emit drawingPromptChanged(tr("Mode Dessin Poutre : Cliquez pour sélectionner ou créer le 1er nœud"));
         break;
     case InteractionMode::DrawColumn:
+        emit barDrawingCancelled();
         emit drawingPromptChanged(tr("Mode Dessin Poteau : Cliquez pour définir la base du poteau"));
         break;
     case InteractionMode::DrawSlab:
