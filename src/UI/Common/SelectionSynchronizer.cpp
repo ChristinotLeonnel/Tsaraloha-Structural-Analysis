@@ -47,6 +47,12 @@ void SelectionSynchronizer::connectTree()
             m_view->setWorkPlaneAxisAndOffset(static_cast<TSA::Coordinate::WorkPlaneAxis>(axis), offset, name.toStdString());
     });
 
+    connect(m_tree, &ModelTreeWidget::bimProductSelected, this, [this](int productId) {
+        m_selection->clearSelection();
+        m_view->clearHighlight();
+        m_properties->showBimProductProperties(productId);
+    });
+
     connect(m_tree, &ModelTreeWidget::nodeSelected, this, [this](int id) {
         m_selection->selectNode(id);
         m_view->highlightNode(id);

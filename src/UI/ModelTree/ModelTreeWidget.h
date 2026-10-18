@@ -35,6 +35,9 @@ public:
   void refreshLoads();
   void refreshSupports();
   void refreshResults();
+  /// Branche « Structure BIM » : site, bâtiment, un étage par niveau (cote croissante), produits physiques
+  /// classés par étage (BimModel::resolvedStorey), produits sans étage à part. Dérivée du modèle.
+  void refreshBim();
 
   void selectNodeItem(int nodeId);
   void selectBeamItem(int beamId);
@@ -65,6 +68,9 @@ signals:
   void supportSelected(int nodeId);
   void resultsSelected();
   void selectionCleared();
+  /// Produit physique sans élément de calcul (objet IFC importé) choisi dans la branche BIM. Un produit TSA
+  /// émet le signal de son premier élément de calcul (beamSelected…).
+  void bimProductSelected(int productId);
 
 protected:
   // Implémentation de IModelObserver pour mise à jour temps réel
@@ -111,6 +117,8 @@ protected:
 
   void onModelDiffApplied(const TSA::Model::ModelDiff &diff) override;
   void onModelCleared() override;
+  // Branche BIM reconstruite une fois par rafale de modifications (création, Annuler, import…)
+  void onModelEdited() override { scheduleBimRefresh(); }
   void onModelDestroyed() override { m_model = nullptr; }
 
 private slots:
@@ -133,6 +141,8 @@ private:
   // Annuler), une seule fois par rafale (BUG-071 : la liste n'était relue qu'au chargement).
   bool m_supportsRefreshPending = false;
   void scheduleSupportsRefresh();
+  bool m_bimRefreshPending = false;
+  void scheduleBimRefresh();
   void queueRemoval(QTreeWidgetItem *category, int id);
   void flushRemovals();
   // Index id → item par catégorie d'éléments (BUG-007) : tenu à jour à la création (on*Added), à la
@@ -147,6 +157,7 @@ private:
   QString m_projectName;
   QTreeWidgetItem *m_projectRootItem = nullptr;
   QTreeWidgetItem *m_levelsCategory = nullptr;
+  QTreeWidgetItem *m_bimCategory = nullptr;
   QTreeWidgetItem *m_gridsCategory = nullptr;
   QTreeWidgetItem *m_nodesCategory = nullptr;
   QTreeWidgetItem *m_beamsCategory = nullptr;

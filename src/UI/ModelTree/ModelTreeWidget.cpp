@@ -2,6 +2,7 @@
 #include "App/ProductInfo.h"
 #include "../../Model/ModelDiff.h"
 #include "../../Grid/GridManager.h"
+#include "../../Coordinate/LevelManager.h"
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <functional>
@@ -12,6 +13,9 @@
 #include <QAction>
 #include <QTimer>
 #include <QSignalBlocker>
+#include <QSet>
+#include <algorithm>
+#include <map>
 
 namespace TSA::UI
 {
@@ -41,7 +45,9 @@ enum ItemType
     TypeSupport = 12,
     TypeResult = 13,
     TypeProject = 14,
-    TypeWorkPlane = 15
+    TypeWorkPlane = 15,
+    TypeBimSpatial = 16,   ///< site, bâtiment, étage (IdRole : clé « site », « building », « storey:<niveau> »)
+    TypeBimProduct = 17    ///< produit physique (IdRole : id du produit)
 };
 
 ModelTreeWidget::ModelTreeWidget(TSA::Model::Model* model, QWidget* parent)
@@ -222,6 +228,11 @@ void ModelTreeWidget::createRootCategories()
     m_levelsCategory->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
     m_levelsCategory->setExpanded(true);
 
+    m_bimCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Structure BIM (IFC)"), "" });
+    m_bimCategory->setData(0, TypeRole, TypeCategory);
+    m_bimCategory->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
+    m_bimCategory->setExpanded(true);
+
     m_gridsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Grilles"), "" });
     m_gridsCategory->setData(0, TypeRole, TypeCategory);
     m_gridsCategory->setIcon(0, QIcon(":/icons/modeling/grid_cartesian.svg"));
@@ -392,6 +403,7 @@ void ModelTreeWidget::refreshAll()
     refreshLoads();
     refreshSupports();
     refreshResults();
+    refreshBim();
 
     if (!m_model)
         return;
@@ -438,6 +450,89 @@ void ModelTreeWidget::scheduleSupportsRefresh()
         m_supportsRefreshPending = false;
         refreshSupports();
     });
+}
+
+void ModelTreeWidget::scheduleBimRefresh()
+{
+    if (m_bimRefreshPending) return;
+    m_bimRefreshPending = true;
+    QTimer::singleShot(0, this, [this] {
+        m_bimRefreshPending = false;
+        refreshBim();
+    });
+}
+
+void ModelTreeWidget::refreshBim()
+{
+    if (!m_bimCategory)
+        return;
+    QSignalBlocker blocker(m_tree);
+
+    // Branches repliées par l'utilisateur : conservées d'une reconstruction à l'autre
+    QSet<QString> collapsed;
+    std::function<void(QTreeWidgetItem*)> scan = [&](QTreeWidgetItem* item) {
+        for (int i = 0; i < item->childCount(); ++i)
+        {
+            auto* child = item->child(i);
+            if (child->data(0, TypeRole).toInt() == TypeBimSpatial && !child->isExpanded())
+                collapsed.insert(child->data(0, IdRole).toString());
+            scan(child);
+        }
+    };
+    scan(m_bimCategory);
+    while (m_bimCategory->childCount() > 0)
+    {
+        delete m_bimCategory->takeChild(0);
+    }
+    if (!m_model)
+    {
+        m_bimCategory->setText(1, "");
+        return;
+    }
+
+    const auto& bim = m_model->bim();
+    auto spatial = [&](QTreeWidgetItem* parent, const QString& key, const QString& label, const QString& info) {
+        auto* item = new QTreeWidgetItem(parent, { label, info });
+        item->setData(0, TypeRole, TypeBimSpatial);
+        item->setData(0, IdRole, key);
+        item->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
+        item->setExpanded(!collapsed.contains(key));
+        return item;
+    };
+    auto* site = spatial(m_bimCategory, "site", QString::fromStdString(bim.spatial().site.name), "IfcSite");
+    auto* building = spatial(site, "building", QString::fromStdString(bim.spatial().building.name), "IfcBuilding");
+
+    std::vector<TSA::Coordinate::Level> levels;
+    if (const auto* lm = m_model->levelManager()) levels = lm->levels();
+    std::sort(levels.begin(), levels.end(), [](const auto& a, const auto& b) { return a.elevation < b.elevation; });
+    std::map<std::string, QTreeWidgetItem*> storeys;
+    for (const auto& lv : levels)
+        storeys[lv.id] = spatial(building, QString::fromStdString("storey:" + lv.id), QString::fromStdString(lv.name),
+                                 tr("Z = %1 m").arg(lv.elevation, 0, 'f', 2));
+    QTreeWidgetItem* noStorey = nullptr;
+    std::map<QTreeWidgetItem*, int> counts;
+    for (const auto& [id, product] : bim.elements())
+    {
+        QTreeWidgetItem* parent = nullptr;
+        if (const auto it = storeys.find(bim.resolvedStorey(*m_model, product)); it != storeys.end())
+            parent = it->second;
+        else
+        {
+            if (!noStorey) noStorey = spatial(building, "storey:", tr("Sans étage"), "");
+            parent = noStorey;
+        }
+        const std::string name = product.name.empty() ? TSA::BIM::defaultProductName(product) : product.name;
+        const QString ifcClass = product.ifcClass.empty() ? QString::fromLatin1(TSA::BIM::ifcEntity(product.category))
+                                                          : QString::fromStdString(product.ifcClass);
+        auto* item = new QTreeWidgetItem(parent, { QString::fromStdString(name), ifcClass });
+        item->setData(0, TypeRole, TypeBimProduct);
+        item->setData(0, IdRole, id);
+        item->setToolTip(0, tr("GlobalId %1").arg(QString::fromStdString(product.globalId)));
+        ++counts[parent];
+    }
+    for (const auto& [item, n] : counts)
+        item->setText(1, (item->text(1).isEmpty() ? QString() : item->text(1) + "  ") + QString("[%1]").arg(n));
+    m_bimCategory->setText(1, QString("[%1]").arg(bim.elements().size()));
 }
 
 void ModelTreeWidget::scheduleLoadsRefresh()
@@ -1125,6 +1220,30 @@ void ModelTreeWidget::onItemSelectionChanged()
     case TypeNode:
         emit nodeSelected(item->data(0, IdRole).toInt());
         break;
+    case TypeBimProduct:
+    {
+        const int productId = item->data(0, IdRole).toInt();
+        const auto* product = m_model ? m_model->bim().element(productId) : nullptr;
+        if (!product) break;
+        if (product->analytical.empty())
+        {
+            emit bimProductSelected(productId);   // objet importé sans élément de calcul
+            break;
+        }
+        const auto& ref = product->analytical.front();
+        switch (ref.kind)
+        {
+        case TSA::Model::ElementKind::Beam: emit beamSelected(ref.id); break;
+        case TSA::Model::ElementKind::Column: emit columnSelected(ref.id); break;
+        case TSA::Model::ElementKind::Slab: emit slabSelected(ref.id); break;
+        case TSA::Model::ElementKind::Wall: emit wallSelected(ref.id); break;
+        case TSA::Model::ElementKind::Foundation: emit foundationSelected(ref.id); break;
+        case TSA::Model::ElementKind::TrussMember: emit trussMemberSelected(ref.id); break;
+        case TSA::Model::ElementKind::Cable: emit cableSelected(ref.id); break;
+        case TSA::Model::ElementKind::Node: emit nodeSelected(ref.id); break;
+        }
+        break;
+    }
     case TypeBeam:
         emit beamSelected(item->data(0, IdRole).toInt());
         break;

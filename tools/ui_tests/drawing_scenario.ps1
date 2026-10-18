@@ -7,7 +7,9 @@
 #   6. voile à base inclinée saisi dans le dialogue « Surface » : refus motivé, rien de créé ;
 #   7. Paramètres de modélisation : onglets Fondation et Treillis ;
 #   8. Portique (outil de la vue) : créé, puis relancé sur les mêmes pieds → refusé (console), rien de créé ;
-#   9. palette : identité BIM et quantités de la dalle sélectionnée (clic au centre de la dalle).
+#   9. palette : identité BIM et quantités de la dalle sélectionnée (clic au centre de la dalle) ;
+#  10. arbre du modèle : branche « Structure BIM (IFC) », produit « Poteau C1 » sous son étage, clic → propriétés du
+#      poteau (la dalle était sélectionnée : le changement de panneau prouve l'effet du clic).
 # Garde-fous : l'essai s'arrête (sans rien enregistrer) si la fenêtre active n'est pas celle du projet qu'il a créé ;
 # aucun clic n'est envoyé ailleurs (un clic dans le Start Center ouvrirait un projet récent). Les points de la vue
 # sont placés par rapport à son centre (indépendants de la disposition des panneaux) ; accrochages coupés pendant
@@ -400,6 +402,36 @@ foreach ($e in (Find-All (Fresh $script:w) $CT::Pane)) {
     } catch {}
 }
 Shot "09_palette_bim.png"
+
+# --- 10. Arbre du modèle : branche « Structure BIM (IFC) » ------------------------------------------------------------------
+RibbonTab "Affichage"
+EnsureOn "ARBRE DU MOD*"   # panneau masqué dans certaines dispositions (dernière étape : plus de clic dans la vue)
+Start-Sleep -Seconds 1
+$treeTab = Find-All (Fresh $script:w) $CT::TabItem | Where-Object { $_.Current.Name -like "ARBRE*" } | Select-Object -First 1
+if ($treeTab) { Click-Mouse $treeTab; Start-Sleep -Seconds 1 }
+# UIA n'expose que les lignes visibles : filtre de l'arbre sur « Poteau C1 » (ancêtres gardés et dépliés)
+# (un panneau replié garde des champs « visibles » pour UIA, à des coordonnées négatives : position réelle exigée)
+$search = Find-All (Fresh $script:w) $CT::Edit | Where-Object { $r = $_.Current.BoundingRectangle; -not $_.Current.IsOffscreen -and $r.Left -ge 0 -and $r.Left -lt 480 -and $r.Top -ge 240 -and $r.Top -lt 330 } | Select-Object -First 1
+if ($search) {
+    Say "    champ de recherche : $($search.Current.BoundingRectangle) valeur « $(Value-Of $search) »"
+    Click-Mouse $search; Press "^a"; Press "Poteau C1"; Start-Sleep -Seconds 1
+    Say "    après saisie : « $(Value-Of $search) »"
+} else { Say "    champ de recherche de l'arbre introuvable" }
+$bimRoot = $null
+foreach ($try in 1..10) {
+    $bimRoot = Find-All (Fresh $script:w) $CT::TreeItem | Where-Object { $_.Current.Name -like "Structure BIM*" } | Select-Object -First 1
+    if ($bimRoot) { break }; Start-Sleep -Milliseconds 500
+}
+# Qt expose les lignes d'un QTreeWidget à plat (pas d'imbrication UIA) : le filtre ne laisse visibles que le chemin
+# du produit, lu dans l'ordre des lignes
+$rows = @(Find-All (Fresh $script:w) $CT::TreeItem | Where-Object { $r = $_.Current.BoundingRectangle; -not $_.Current.IsOffscreen -and $r.Left -ge 0 -and $r.Left -lt 480 -and $r.Top -gt 330 } | Sort-Object { $_.Current.BoundingRectangle.Top })
+$path = @($rows | ForEach-Object { $_.Current.Name })
+$colItem = $rows | Where-Object { $_.Current.Name -like "Poteau C1*" } | Select-Object -First 1
+if ($colItem) { Click-Mouse $colItem; Start-Sleep -Seconds 1 }
+$propTitle = PromptText "PROPRIÉTÉS DU POTEAU"
+$chain = $path -join " › "
+Check "arbre : Structure BIM › Site › Bâtiment › étage › Poteau C1, clic → propriétés du poteau" ($bimRoot -and $colItem -and $chain -match "Structure BIM.*Site.*Bâtiment.*Poteau C1" -and $propTitle) "chemin « $chain » ; panneau « $propTitle »"
+Shot "10_arbre_bim.png"
 
 # --- Fermeture sans enregistrer, réglages restaurés ----------------------------------------------------------------------
 Finish $(if (@($script:results | Where-Object { -not $_.Ok }).Count -eq 0) { 0 } else { 1 })

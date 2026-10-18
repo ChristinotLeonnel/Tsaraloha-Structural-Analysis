@@ -1,4 +1,4 @@
-// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée, outils avancés, palette complète (tests 410-426). Les points sont
+// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée, outils avancés, palette complète, arbre BIM (tests 410-427). Les points sont
 // fournis comme par la vue 3D (position accrochée, nœud visé) ; le modèle, l'historique et la couche
 // BIM sont vérifiés après chaque création ou refus.
 
@@ -13,6 +13,7 @@
 #include "Interaction/Tools/ModelingTool.h"
 #include "UndoRedo/EditTransaction.h"
 #include "UI/Properties/ElementBimPanel.h"
+#include "UI/ModelTree/ModelTreeWidget.h"
 #include "UI/Properties/PropertyPanel.h"
 #include "Viewer/OccView.h"
 
@@ -22,6 +23,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QThread>
+#include <QTreeWidget>
 
 #include <set>
 
@@ -720,6 +722,69 @@ bool runSuite_Drawing(int& passed)
         panel.showNodeProperties(slab.nodeIds[0]);
         TEST_CHECK(bimPanel->isHidden(), "Test 426: nœud : bloc BIM masqué");
         std::cout << "[PASS] Test 426: Palette complète, bloc identité BIM et quantités" << std::endl;
+        ++passed;
+    }
+
+    // TEST 427 : arbre du modèle — branche « Structure BIM » (site › bâtiment › étages › produits), produits classés
+    // par étage, clic sur un produit = signal de son élément de calcul, branche à jour après Annuler
+    {
+        Model m;
+        auto* lm = m.levelManager();
+        TEST_CHECK(lm != nullptr, "Test 427: niveaux disponibles");
+        if (lm->levels().empty()) { lm->addLevel("RDC", 0.0); lm->addLevel("R+1", 3.0); }
+        ElementCreation c(m);
+        auto col = beamProps();
+        col.role = BarRole::Column;
+        auto rc = c.createBar(pt(0, 0, 0), pt(0, 0, 3), col);                              // pied à Z = 0
+        SlabPreset sp;
+        auto rs = c.createSlab({ pt(0, 0, 3, rc.nodeIds[1]), pt(6, 0, 3), pt(6, 5, 3), pt(0, 5, 3) }, sp);   // à Z = 3
+
+        TSA::UI::ModelTreeWidget tree(&m);
+        tree.refreshAll();
+        auto* qtree = tree.findChild<QTreeWidget*>();
+        TEST_CHECK(qtree != nullptr, "Test 427: QTreeWidget de l'arbre");
+        std::function<QTreeWidgetItem*(QTreeWidgetItem*, const QString&)> find = [&](QTreeWidgetItem* from, const QString& prefix) -> QTreeWidgetItem* {
+            for (int i = 0; i < from->childCount(); ++i)
+            {
+                if (from->child(i)->text(0).startsWith(prefix)) return from->child(i);
+                if (auto* r = find(from->child(i), prefix)) return r;
+            }
+            return nullptr;
+        };
+        auto* bimRoot = find(qtree->invisibleRootItem(), "Structure BIM");
+        TEST_CHECK(bimRoot && bimRoot->text(1) == "[2]", "Test 427: branche « Structure BIM » avec 2 produits");
+        auto* building = bimRoot ? find(bimRoot, QString::fromStdString(m.bim().spatial().building.name)) : nullptr;
+        TEST_CHECK(building && building->text(1) == "IfcBuilding", "Test 427: site › bâtiment");
+
+        // Étage de chaque produit = BimModel::resolvedStorey (niveau du nœud le plus bas, sinon cote)
+        const auto* colProduct = m.bim().physicalOf({ ElementKind::Column, rc.elementId });
+        const auto* slabProduct = m.bim().physicalOf({ ElementKind::Slab, rs.elementId });
+        auto storeyItemOf = [&](const TSA::BIM::PhysicalElement* p) -> QTreeWidgetItem* {
+            const std::string st = m.bim().resolvedStorey(m, *p);
+            const auto* level = lm->getLevel(st);
+            return level && building ? find(building, QString::fromStdString(level->name)) : nullptr;
+        };
+        auto* colStorey = storeyItemOf(colProduct);
+        auto* slabStorey = storeyItemOf(slabProduct);
+        auto productUnder = [&](QTreeWidgetItem* storey, const char* ifcClass) {
+            for (int i = 0; storey && i < storey->childCount(); ++i)
+                if (storey->child(i)->text(1) == ifcClass) return storey->child(i);
+            return static_cast<QTreeWidgetItem*>(nullptr);
+        };
+        auto* colItem = productUnder(colStorey, "IfcColumn");
+        auto* slabItem = productUnder(slabStorey, "IfcSlab");
+        TEST_CHECK(colItem && slabItem && colStorey != slabStorey, "Test 427: poteau et dalle sous leurs étages respectifs");
+
+        int selectedSlab = -1;
+        QObject::connect(&tree, &TSA::UI::ModelTreeWidget::slabSelected, [&selectedSlab](int id) { selectedSlab = id; });
+        qtree->setCurrentItem(slabItem);
+        TEST_CHECK(selectedSlab == rs.elementId, "Test 427: clic sur le produit IfcSlab : dalle sélectionnée (signal de l'élément)");
+
+        TEST_CHECK(m.undo(), "Test 427: Annuler la dalle");
+        QApplication::processEvents();   // reconstruction regroupée de la branche
+        bimRoot = find(qtree->invisibleRootItem(), "Structure BIM");
+        TEST_CHECK(bimRoot && bimRoot->text(1) == "[1]", "Test 427: branche à jour après Annuler (1 produit)");
+        std::cout << "[PASS] Test 427: Arbre du modèle, branche Structure BIM" << std::endl;
         ++passed;
     }
 
