@@ -349,7 +349,7 @@ bool runSuite_Views(int& passed)
 
     if (offscreen)
     {
-        for (int t : { 433, 435, 436, 437, 438, 440, 441, 442, 444, 445, 446, 447, 448 })
+        for (int t : { 433, 435, 436, 437, 438, 440, 441, 442, 444, 445, 446, 447, 448, 449 })
             std::cout << "[SKIP] Test " << t << ": vue 3D indisponible sur la plateforme Qt « offscreen » (lancer avec QT_QPA_PLATFORM=windows)" << std::endl;
         return true;
     }
@@ -1190,6 +1190,50 @@ bool runSuite_Views(int& passed)
                    "Test 448: clic sur le panneau du plan après reconstruction des formes : plan sélectionné (id " << selectedPlane << ")");
         view.setSelectionManager(nullptr);
         std::cout << "[PASS] Test 448: Panneau du plan sélectionnable après reconstruction des formes (manipulateur accessible)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 449 : nom du plan après un changement de cote — un nom qui cite l'ancienne cote est remplacé (niveau, référence
+    // de la grille structurelle ou « Z = … m »), un nom libre est conservé, le plan précédent retrouve son nom
+    // -------------------------------------------------------------------------
+    {
+        using TSA::Coordinate::WorkPlane;
+        using T = TSA::Coordinate::WorkPlaneType;
+        Model m;
+        ViewHarness h(m);
+        OccView& view = h.view;
+        TSA::Grid::GridManager gm;
+        TSA::Grid::GridDefinition def("Portiques", TSA::Grid::GridType::Cartesian);
+        def.setXPositions({ 0.0, 2.0, 3.0, 5.0, 6.0, 8.0 });
+        def.setXLabels({ "1", "2", "3", "4", "5", "6" });
+        def.setYPositions({ 0.0, 4.5, 9.0 });
+        def.setYLabels({ "A", "B", "C" });
+        def.setZLevels({ 0.0, 3.5 });
+        def.setZLabels({ "RDC", "R+1" });
+        gm.clearAllGrids();
+        gm.addGrid(def);
+        view.setGridManager(&gm, nullptr);
+
+        view.setActiveWorkPlane(WorkPlane(T::GlobalXY, "RDC (Z=0.00)", 0.0));
+        view.moveWorkPlaneBy(gp_Vec(2.0, 1.0, 0.0));
+        const std::string inPlane = view.activeWorkPlane().name();
+        view.moveWorkPlaneBy(gp_Vec(0.0, 0.0, 1.2));
+        const std::string moved = view.activeWorkPlane().name();
+        TEST_CHECK(inPlane == "RDC (Z=0.00)" && moved == "Z = 1.20 m",
+                   "Test 449: déplacement dans le plan : nom conservé (« " << inPlane << " ») ; montée de 1,2 m : « " << moved << " »");
+        view.setActiveWorkPlane(WorkPlane(T::GlobalXY, "RDC (Z=0.00)", 0.0));
+        const QString msg = view.stepWorkPlaneAlongNormal(1);
+        TEST_CHECK(msg.contains("niveau R+1") && view.activeWorkPlane().name() == "niveau R+1 (Z=3.50)",
+                   "Test 449: niveau suivant de la grille structurelle : plan nommé « " << view.activeWorkPlane().name() << " »");
+        TEST_CHECK(view.previousWorkPlane() && view.activeWorkPlane().name() == "RDC (Z=0.00)",
+                   "Test 449: plan précédent : nom d'origine rétabli (« " << view.activeWorkPlane().name() << " »)");
+        view.setActiveWorkPlane(WorkPlane(T::GlobalXZ, "Coupe A", 0.0));
+        view.moveWorkPlaneBy(gp_Vec(0.0, 4.0, 0.0));
+        TEST_CHECK(view.activeWorkPlane().name() == "Coupe A" && std::abs(view.activeWorkPlane().origin().Y() - 4.0) < 1e-12,
+                   "Test 449: nom libre sans cote (« Coupe A ») conservé après un déplacement");
+        view.setGridManager(nullptr, nullptr);
+        std::cout << "[PASS] Test 449: Nom du plan tenu à jour après un changement de cote (noms libres conservés)" << std::endl;
         ++passed;
     }
     return true;

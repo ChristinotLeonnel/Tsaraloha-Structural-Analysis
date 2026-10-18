@@ -435,6 +435,7 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
                 m_manipulator->StopTransform(true);
             }
 
+            m_workPlane = withCurrentPositionName(m_workPlane, m_manipulatorStartWp);
             if (m_model)
             {
                 m_model->pushUndoState(tr("Modification Plan de Travail").toStdString());

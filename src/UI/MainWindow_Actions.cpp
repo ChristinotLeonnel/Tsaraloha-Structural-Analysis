@@ -1914,9 +1914,10 @@ void MainWindow::createDockWindows()
         }
         QString c = cmd.toUpper().trimmed();
         {
-            // Saisie précise du plan de travail : « WPMOVE dx dy dz » (translation, m), « WPORIGIN x y z » (origine, m)
+            // Saisie précise du plan de travail : « WPMOVE dx dy dz » (translation, m), « WPORIGIN x y z » (origine, m),
+            // « WPROT rx ry rz » (orientation absolue en degrés, Rz·Ry·Rx comme le panneau des propriétés ; origine conservée)
             const QStringList parts = c.split(QRegularExpression(QStringLiteral("[\\s;]+")), Qt::SkipEmptyParts);
-            if (!parts.isEmpty() && (parts[0] == "WPMOVE" || parts[0] == "WPORIGIN"))
+            if (!parts.isEmpty() && (parts[0] == "WPMOVE" || parts[0] == "WPORIGIN" || parts[0] == "WPROT"))
             {
                 bool ok = parts.size() == 4;
                 double v[3] = { 0.0, 0.0, 0.0 };
@@ -1924,7 +1925,29 @@ void MainWindow::createDockWindows()
                     v[k] = QString(parts[k + 1]).replace(',', '.').toDouble(&ok);
                 if (!ok || !m_occView)
                 {
-                    m_consoleDock->appendLog(tr("Usage : %1 x y z (mètres)").arg(parts[0]), "WARN");
+                    m_consoleDock->appendLog(parts[0] == "WPROT" ? tr("Usage : WPROT rx ry rz (degrés)")
+                                                                 : tr("Usage : %1 x y z (mètres)").arg(parts[0]), "WARN");
+                    return;
+                }
+                if (parts[0] == "WPROT")
+                {
+                    TSA::Coordinate::WorkPlane wp = m_occView->activeWorkPlane();
+                    const gp_Pnt origin = wp.origin();
+                    wp.setRotation(v[0], v[1], v[2]);
+                    if (std::abs(v[0]) < 1e-9 && std::abs(v[1]) < 1e-9 && std::abs(v[2]) < 1e-9)
+                    {
+                        // Orientation nulle : un vrai plan XY à la même origine (décalage = altitude), pas un plan
+                        // « personnalisé » horizontal
+                        wp.setType(TSA::Coordinate::WorkPlaneType::GlobalXY);
+                        wp.setOrigin(origin);
+                        wp.setName(tr("Z = %1 m").arg(origin.Z(), 0, 'f', 2).toStdString());
+                    }
+                    else
+                        wp.setName(tr("Plan orienté (%1° ; %2° ; %3°)").arg(v[0], 0, 'g', 6).arg(v[1], 0, 'g', 6).arg(v[2], 0, 'g', 6).toStdString());
+                    m_occView->setActiveWorkPlane(wp);
+                    const gp_Dir n = m_occView->activeWorkPlane().normal();
+                    reportWorkPlaneNavigation(tr("Orientation du plan de travail : normale (%1 ; %2 ; %3)")
+                                                  .arg(n.X(), 0, 'f', 4).arg(n.Y(), 0, 'f', 4).arg(n.Z(), 0, 'f', 4));
                     return;
                 }
                 if (parts[0] == "WPMOVE") m_occView->moveWorkPlaneBy(gp_Vec(v[0], v[1], v[2]));
@@ -2136,8 +2159,9 @@ void MainWindow::fitStatusBar()
     const QList<QWidget*> all = { m_statusProject, m_statusView, m_statusUnits, m_statusLevel, m_statusCoordinates,
                                   m_statusCoordinatesLocal, m_statusWorkPlane, m_statusSnap, m_statusCounts, m_statusInfo,
                                   m_statusAI, m_statusLogo };
-    const QList<QWidget*> optional = { m_statusCoordinatesLocal, m_statusUnits, m_statusView, m_statusWorkPlane,
-                                       m_statusSnap, m_statusLogo, m_statusCounts, m_statusLevel };
+    // Le plan de travail actif (nom, cote) passe avant le logo : c'est le repère du dessin
+    const QList<QWidget*> optional = { m_statusCoordinatesLocal, m_statusUnits, m_statusView, m_statusLogo,
+                                       m_statusWorkPlane, m_statusSnap, m_statusCounts, m_statusLevel };
     auto minWidth = [](QWidget* w) {
         if (w->sizePolicy().horizontalPolicy() == QSizePolicy::Ignored) return w->minimumWidth();
         return std::max(w->minimumWidth(), w->minimumSizeHint().width());

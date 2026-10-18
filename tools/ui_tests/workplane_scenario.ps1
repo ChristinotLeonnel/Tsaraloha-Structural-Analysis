@@ -4,7 +4,8 @@
 #   2. WPMOVE 0 0 3 puis WPMOVE 2 0 0 : plan déplacé, type XY conservé (pas « Personnalisé »), origine annoncée ;
 #   3. WPBACK deux fois : plan précédent rétabli à chaque fois ;
 #   4. WPNEXT / WPPREV : plan parallèle suivant / précédent de la grille structurelle du projet ;
-#   5. WPINEXT : origine sur l'intersection suivante, identifiant d'axes annoncé ;
+#   5. WPINEXT : origine sur l'intersection suivante, identifiant d'axes annoncé ; 5 bis. WPROT 30 0 0 (plan incliné),
+#      WPINEXT et WPNEXT sur ce plan, retour par WPBACK ;
 #   6. glisser réel de la poignée Z du manipulateur (plan sélectionné par un clic sur son panneau, poignée repérée par sa
 #      couleur dans une capture) : Échap pendant un glisser, plan rétabli ; puis glisser complet, plan monté ; WPBACK.
 # Les captures (<Work>\shots) servent au contrôle visuel de la grille : une seule grille, dans le plan annoncé.
@@ -170,6 +171,8 @@ EnsureState "Magnétisme Grille*" "Off"
 EnsureState "Accrochage Objets*" "Off"
 EnsureConsole
 PressRibbon "Affichage" "Vue Isométrique*"
+$pl0 = @(Texts "^Plan: ") | Select-Object -First 1
+Check "indicateur du plan visible dans la barre d'état (fenêtre de $([System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea.Width) px)" ($pl0 -like "Plan: *") "« $pl0 »"
 $o0 = Origin
 Check "origine du plan de travail annoncée dans la console" (-not [double]::IsNaN($o0[2])) (Fmt $o0)
 Shot "01_iso_plan_initial.png"
@@ -178,6 +181,8 @@ Shot "01_iso_plan_initial.png"
 Command "WPMOVE 0 0 3"
 $o2 = Origin
 Check "WPMOVE 0 0 3 : plan monté de 3 m" (Near $o2 @($o0[0], $o0[1], ($o0[2] + 3))) (Fmt $o2)
+$pl2 = @(Texts "^Plan: ") | Select-Object -First 1
+Check "barre d'état après WPMOVE : plan toujours XY, à sa nouvelle cote" ($pl2 -eq ("Plan: XY (Z = {0} m)" -f [string]::Format([cultureinfo]::InvariantCulture, "{0:0.00}", $o2[2]))) "« $pl2 »"
 Shot "02_wpmove_z3.png"
 Command "WPMOVE 2 0 0"
 $o3 = Origin
@@ -206,6 +211,26 @@ $i1 = LastConsole "Origine du plan sur l'intersection|Plan de travail inchangé"
 Check "WPINEXT : origine sur l'intersection suivante, identifiant d'axes annoncé" ($i1 -like "Origine du plan sur l'intersection *") "« $i1 »"
 Shot "06_wpinext.png"
 Command "WPBACK"
+
+# --- 5 bis. Plan incliné (WPROT) : intersections et plan parallèle suivant sur la grille du projet -----------------------
+Command "WPROT 30 0 0"
+$r1 = LastConsole "Orientation du plan de travail"
+$pl5 = @(Texts "^Plan: ") | Select-Object -First 1
+Check "WPROT 30 0 0 : plan incliné de 30° autour de X, nommé d'après son orientation" ($r1 -match "normale \(-?0\.0000 ; -0\.5000 ; 0\.8660\)" -and $pl5 -like "Plan: Plan orienté (30*") "« $r1 » ; « $pl5 »"
+Shot "06b_plan_incline.png"
+Command "WPINEXT"
+$i2 = LastConsole "Origine du plan sur l'intersection|Plan de travail inchangé"
+$oi = Origin
+Check "plan incliné : origine sur une intersection située dans le plan (Y = Z = 0 pour ce plan passant par l'axe X)" ($i2 -like "Origine du plan sur l'intersection *" -and [math]::Abs($oi[1]) -lt 0.0006 -and [math]::Abs($oi[2]) -lt 0.0006) "« $i2 »"
+Command "WPNEXT"
+$n3 = LastConsole "Plan de travail suivant|Plan de travail inchangé"
+$on3 = Origin
+Check "plan incliné : plan parallèle suivant, déplacé le long de la normale (X inchangé, Y·cos30 + Z·sin30 = 0, Z > 0)" ($n3 -like "Plan de travail suivant*" -and [math]::Abs($on3[0] - $oi[0]) -lt 0.0006 -and [math]::Abs($on3[1] * 0.8660254 + $on3[2] * 0.5) -lt 0.002 -and $on3[2] -gt 0.01) "« $n3 » ; origine $(Fmt $on3)"
+Shot "06c_incline_suivant.png"
+Command "WPBACK"; Command "WPBACK"; Command "WPBACK"
+$ob3 = Origin
+$pl6 = @(Texts "^Plan: ") | Select-Object -First 1
+Check "trois WPBACK : retour au plan XY d'origine" ((Near $ob3 $o0) -and $pl6 -like "Plan: XY (Z = *") "$(Fmt $ob3) ; « $pl6 »"
 
 if ($SkipDrag) { Finish 0 }
 
@@ -306,6 +331,9 @@ Check "Échap pendant le glisser : plan rétabli à son origine, gizmo à sa pla
 Drag $g1 @($g1[0], ($g1[1] - 120))
 Shot "09_apres_glisser.png"
 $od1 = Origin
+$act = LastConsole "Plan de travail actif : "
+$zTxt = [string]::Format([cultureinfo]::InvariantCulture, "{0:0.00}", $od1[2])
+Check "nom du plan à jour après le glisser (ne cite plus l'ancienne cote)" ($act -notmatch "Z\s*=\s*0[.,]00" -and $act -match [regex]::Escape($zTxt)) "« $act »"
 Check "glisser de la poignée Z : plan monté verticalement (X, Y inchangés)" ($od1[2] -gt $od0[2] + 0.05 -and [math]::Abs($od1[0] - $od0[0]) -lt 0.0006 -and [math]::Abs($od1[1] - $od0[1]) -lt 0.0006) "avant $(Fmt $od0) ; après $(Fmt $od1)"
 Command "WPBACK"
 $back = LastConsole "Plan de travail précédent|Plan de travail inchangé"

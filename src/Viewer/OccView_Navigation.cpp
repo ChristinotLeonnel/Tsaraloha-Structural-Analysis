@@ -18,6 +18,7 @@
 #include "ResultsVisualManager.h"
 #include "../Model/SelectionQuery.h"
 #include <tuple>
+#include <QRegularExpression>
 #include "../Analysis/ResultsModel.h"
 
 #include <AIS_Shape.hxx>
@@ -833,8 +834,9 @@ void OccView::nextView()
     emit viewCameraChanged();
 }
 
-void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
+void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& requested)
 {
+    const TSA::Coordinate::WorkPlane wp = withCurrentPositionName(requested, m_workPlane);
     rememberWorkPlane(m_workPlane, wp);
     bool needFullRebuild = (m_workPlaneShape.IsNull() ||
                             std::abs(m_workPlane.width() - wp.width()) > 1e-4 ||
@@ -1116,6 +1118,62 @@ void OccView::rememberWorkPlane(const TSA::Coordinate::WorkPlane& previous, cons
     m_workPlaneHistory.push_back(previous);
     if (m_workPlaneHistory.size() > 50)
         m_workPlaneHistory.erase(m_workPlaneHistory.begin());
+}
+
+TSA::Coordinate::WorkPlane OccView::withCurrentPositionName(const TSA::Coordinate::WorkPlane& wp,
+                                                            const TSA::Coordinate::WorkPlane& previous) const
+{
+    using T = TSA::Coordinate::WorkPlaneType;
+    using A = TSA::Coordinate::WorkPlaneAxis;
+    auto axisOf = [](const TSA::Coordinate::WorkPlane& p, A& axis, QChar& letter, double& coord) {
+        switch (p.type())
+        {
+        case T::GlobalXY:
+        case T::ElevationZ: axis = A::Z; letter = 'Z'; coord = p.origin().Z(); return true;
+        case T::GlobalXZ: axis = A::Y; letter = 'Y'; coord = p.origin().Y(); return true;
+        case T::GlobalYZ: axis = A::X; letter = 'X'; coord = p.origin().X(); return true;
+        default: return false;
+        }
+    };
+    A axis = A::Z, previousAxis = A::Z;
+    QChar letter, previousLetter;
+    double coord = 0.0, previousCoord = 0.0;
+    if (!axisOf(wp, axis, letter, coord) || !axisOf(previous, previousAxis, previousLetter, previousCoord)
+        || axis != previousAxis || std::abs(coord - previousCoord) < 1e-9)
+        return wp;
+
+    // Le nom cite-t-il la cote d'avant (arrondie à l'affichage, 2 décimales) ?
+    static const QRegularExpression positional(QStringLiteral("([XYZ])\\s*=\\s*(-?\\d+(?:[.,]\\d+)?)"));
+    bool stale = false;
+    for (auto it = positional.globalMatch(QString::fromStdString(wp.name())); it.hasNext() && !stale;)
+    {
+        const auto m = it.next();
+        stale = m.captured(1) == QString(letter)
+                && std::abs(m.captured(2).replace(',', '.').toDouble() - previousCoord) < 0.006;
+    }
+    if (!stale)
+        return wp;
+
+    TSA::Coordinate::WorkPlane renamed = wp;
+    QString name;
+    if (m_model)
+        for (const auto& level : m_model->detectStructuralPlanes(axis))
+            if (std::abs(level.offset - coord) < 0.006)
+            {
+                name = QString::fromStdString(level.name);
+                break;
+            }
+    if (name.isEmpty())
+        for (const auto& ref : TSA::Grid::WorkPlaneReferences::parallelPlanes(structuralGrids(), wp))
+            if (std::abs(ref.offset) < 1e-6 && !ref.label.empty())
+            {
+                name = QStringLiteral("%1 (%2=%3)").arg(QString::fromStdString(ref.label), QString(letter)).arg(coord, 0, 'f', 2);
+                break;
+            }
+    if (name.isEmpty())
+        name = QStringLiteral("%1 = %2 m").arg(QString(letter)).arg(coord, 0, 'f', 2);   // format du sélecteur de niveau
+    renamed.setName(name.toStdString());
+    return renamed;
 }
 
 std::vector<const TSA::Grid::GridSystem*> OccView::structuralGrids() const

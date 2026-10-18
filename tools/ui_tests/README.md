@@ -71,10 +71,11 @@ ne rend pas la main pendant la boucle modale de Qt.
    est refermée avant les clics sur le ViewCube et évitée par les clics de tracé.
 12. Plan de travail, grille et manipulateur : `workplane_scenario.ps1 -Work <dossier vide> [-Exe <dossier>\TSA.exe] [-SkipDrag]` :
    copie de `examples/TSA_Demo_Batiment_R+5.tsa` ouverte en argument (jamais enregistrée), console affichée (F2) si
-   besoin ; `WPMOVE 0 0 3` puis `WPMOVE 2 0 0` (origine lue dans la console par `WPMOVE 0 0 0`, sans effet sur
-   l'historique), `WPBACK` deux fois, `WPNEXT` / `WPPREV` (niveau R+1 de la grille du projet), `WPINEXT` (intersection
-   et identifiants d'axes) ; puis clic sur le panneau du plan, poignée Z du manipulateur repérée par sa couleur (pixels
-   bleus apparus, colonne la plus dense : l'anneau de rotation Z est exclu), glisser interrompu par Échap (capture
-   `08a` prise avant la touche), glisser complet (plan monté, X et Y inchangés), `WPBACK` ; 9 vérifications, journal
+   besoin ; indicateur « Plan: … » de la barre d'état visible ; `WPMOVE 0 0 3` (barre d'état : toujours XY) puis
+   `WPMOVE 2 0 0` (origine lue dans la console par `WPMOVE 0 0 0`, sans effet sur l'historique), `WPBACK` deux fois,
+   `WPNEXT` / `WPPREV` (niveau R+1 de la grille du projet), `WPINEXT` (intersection et identifiants d'axes) ; plan
+   incliné `WPROT 30 0 0` (normale annoncée), `WPINEXT` et `WPNEXT` sur ce plan, trois `WPBACK` ; puis clic sur le
+   panneau du plan, poignée Z du manipulateur repérée par sa couleur (pixels bleus apparus, colonne la plus dense :
+   l'anneau de rotation Z est exclu), glisser interrompu par Échap (capture `08a` prise avant la touche), glisser
+   complet (plan monté, X et Y inchangés, nom du plan à jour), `WPBACK` ; 16 vérifications, journal
    `<dossier>\workplane_scenario.log`, captures `<dossier>\shots` (contrôle visuel : une seule grille, dans le plan).
-   L'étiquette « Plan: … » de la barre d'état est masquée sous 1 920 px : l'essai lit la console.

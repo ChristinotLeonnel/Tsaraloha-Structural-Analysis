@@ -101,6 +101,12 @@ Projection et le sélecteur de niveau, ce dernier **sans réappliquer le plan** 
 - **Caméra** : orbite, panoramique et zoom ne changent ni le plan ni la grille (seule la densité affichée de la grille
   dépend du zoom).
 - **Console** : une ligne « Plan de travail actif » par changement ; pendant un glisser, seule la position finale.
+- **Nom du plan** : un nom qui cite la cote d'avant (« RDC (Z=0.00) », « Z = 3.40 m ») est périmé dès que le plan
+  change de cote. Il est remplacé, dans l'ordre, par le niveau du modèle à la nouvelle cote (libellés du sélecteur de
+  niveau), la référence de la grille structurelle (« niveau R+1 (Z=3.50) ») ou « Z = 15.93 m ». Un nom sans cote
+  (« Coupe A ») est conservé ; le plan précédent retrouve son nom. Plans globaux XY, étage, XZ et YZ.
+- **Barre d'état** : quand la place manque, le logo est retiré avant l'indicateur « Plan: … ». À 1 920 px, celui-ci
+  reste visible (type et cote, ou nom d'un plan orienté).
 
 ### Navigation sur la grille structurelle
 
@@ -123,6 +129,7 @@ coordonnée n'est écrite en dur : des axes à 0, 2, 3, 5, 6 et 8 m donnent exac
 | Plan précédent (historique, 50 plans) | Alt+Retour arrière | `WPBACK` | oui |
 | Déplacer le plan de dx dy dz (m) | — | `WPMOVE dx dy dz` | — |
 | Origine du plan en x y z (m) | — | `WPORIGIN x y z` | — |
+| Orientation absolue rx ry rz (degrés, Rz·Ry·Rx comme le panneau des propriétés ; origine conservée ; `WPROT 0 0 0` = plan XY) | — | `WPROT rx ry rz` | — |
 | Plans globaux XY, XZ, YZ, étage | — | — | oui (existants) |
 | Plan personnalisé (3 points, face) | — | — | oui (dialogue existant) |
 | Vue normale au plan | Num 0 | `WPNORMAL` | — (existant) |
@@ -237,6 +244,8 @@ Le service de navigation et les vues nommées sont prêts à servir plusieurs vu
 | B15 (BUG-087) | Panneau du plan non sélectionnable après l'ouverture d'un projet : manipulateur inaccessible. | `rebuildAllShapes` vidait le registre de sélection, panneau compris. | Panneau réenregistré. |
 | B16 | Plan horizontal personnalisé : niveau actif non mis à jour. | Seuls les types globaux étaient traités. | Niveau actif = altitude du plan. |
 | B17 (BUG-088) | Console : une ligne « Plan de travail actif » par mouvement de souris pendant un glisser. | `workPlaneChanged` émis à chaque mouvement. | Ligne écrite au relâchement seulement. |
+| B18 (BUG-089) | Plan déplacé : nom citant l'ancienne cote (« RDC (Z=0.00) » à 15,93 m). | Nom jamais recalculé. | Nom positionnel périmé remplacé ; nom libre conservé. |
+| B19 (BUG-090) | Indicateur « Plan: … » absent de la barre d'état à 1 920 px. | Retiré faute de place avant le logo. | Logo retiré en premier. |
 
 Pas de quadrillage : supprimé en septembre (texture défectueuse), il est remplacé par `WorkPlaneGrid`, lignes
 vectorielles avec décalage de profondeur du panneau.
@@ -263,18 +272,21 @@ Suite `views`, tests 433 à 448. Résultats du 18/10/2026, en plateforme Qt nati
 | 446 | Navigation dans la vue sur la grille irrégulière : coupes à 2, 3, 5, 6, 8 m, axe « 5 » à X = 6 m, niveau R+1, intersections, alignement, plan précédent, autre document intact. | réussi |
 | 447 | Écho vers le sélecteur de niveau (câblage de la fenêtre) : origine dans le plan conservée, une seule entrée personnalisée. | réussi |
 | 448 | Panneau du plan sélectionnable au clic après reconstruction des formes. | réussi |
+| 449 | Nom du plan : conservé lors d'un déplacement dans le plan, « Z = 1.20 m » après une montée, « niveau R+1 (Z=3.50) » par la navigation, nom libre conservé, nom rétabli par le plan précédent. | réussi |
 
 Les tests 444, 447 et 448 échouent sur le code d'avant leur correction (vérifié en réintroduisant chaque défaut).
 
-Sous `offscreen`, les tests 433, 435 à 438, 440 à 442 et 444 à 448 sont annoncés sautés, jamais comptés réussis. Dans
+Sous `offscreen`, les tests 433, 435 à 438, 440 à 442 et 444 à 449 sont annoncés sautés, jamais comptés réussis. Dans
 la CI de Setup-Livrable, la suite passe en plateforme native.
 
 Essais de l'interface réelle (voir `tools/ui_tests/README.md`) :
 
 - `views_scenario.ps1`, **19 vérifications** (essai 11) ;
-- `workplane_scenario.ps1`, **9 vérifications** (essai 12) : `WPMOVE`, `WPBACK`, `WPNEXT` / `WPPREV`, `WPINEXT` sur la
-  grille du projet R+5, puis vrai glisser de la poignée Z du manipulateur (Échap, glisser complet, `WPBACK`). Cet essai
-  a trouvé les défauts B13 (touche Échap), B14, B15 et B17, invisibles aux tests sans fenêtre principale.
+- `workplane_scenario.ps1`, **16 vérifications** (essai 12) : indicateur « Plan: … » visible à 1 920 px, `WPMOVE`
+  (type XY conservé dans la barre d'état), `WPBACK`, `WPNEXT` / `WPPREV`, `WPINEXT` sur la grille du projet R+5 ; plan
+  incliné de 30° (`WPROT 30 0 0`), intersection dans le plan et plan parallèle suivant le long de la normale ; puis vrai
+  glisser de la poignée Z du manipulateur (Échap, glisser complet, nom du plan à jour, `WPBACK`). Cet essai a trouvé
+  les défauts B13 (touche Échap), B14, B15 et B17, invisibles aux tests sans fenêtre principale.
 
 ## 5. Limites
 
@@ -283,10 +295,11 @@ Essais de l'interface réelle (voir `tools/ui_tests/README.md`) :
 - Les plans de travail inclinés ne se créent pas par l'essai d'interface : le dialogue des plans personnalisés n'est pas
   piloté. Le dessin sur plan incliné est vérifié par les tests 438 et 442.
 - Pas de grille polaire ni de grille personnalisée par plan au-delà du pas en U et en V.
-- Le nom d'un plan déplacé n'est pas mis à jour : un plan nommé « RDC (Z=0.00) » garde ce nom à 15 m. L'origine et le
-  niveau affichés, eux, sont justes.
-- Sous 1 920 px de large, l'indicateur « Plan: … » de la barre d'état est masqué faute de place (`fitStatusBar`,
-  comportement existant). L'origine reste lisible dans la console et le sélecteur de niveau.
-- La navigation par intersections ne pilote pas encore les grilles cylindriques et arbitraires par l'essai d'interface :
-  elle est vérifiée sur grille cartésienne (tests 443, 446 et essai 12) ; les autres types passent par le même calcul
-  (`intersections()` de chaque grille).
+- Le nom des plans orientés (personnalisés) n'est pas recalculé lors d'un déplacement : il décrit leur orientation
+  (« Plan orienté (30° ; 0° ; 0°) »), qui ne change pas en translation.
+- Plus étroit que 1 920 px, l'indicateur « Plan: … » peut encore être retiré faute de place ; l'origine reste lisible
+  dans la console (`WPMOVE 0 0 0` l'annonce sans rien changer).
+- Grilles cylindriques et arbitraires : même calcul que la grille cartésienne (`intersections()` de chaque grille) ;
+  l'essai d'interface utilise la grille cartésienne du projet R+5.
+- L'alignement sur une surface passe par le dialogue de plan personnalisé existant (3 points, face) ; l'orientation se
+  saisit aussi par `WPROT`.

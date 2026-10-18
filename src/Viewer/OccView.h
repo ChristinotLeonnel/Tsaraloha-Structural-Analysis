@@ -817,6 +817,11 @@ private:
     bool m_hasCursorPoint = false;
     /// Mémorise le plan avant un changement réel (origine, orientation ou type différents).
     void rememberWorkPlane(const TSA::Coordinate::WorkPlane& previous, const TSA::Coordinate::WorkPlane& next);
+    /// Un nom qui cite la cote d'avant (« RDC (Z=0.00) », « Z = 3.40 m ») est périmé quand le plan change de cote : il
+    /// est remplacé par le niveau du modèle à la nouvelle cote, sinon la référence de la grille structurelle, sinon
+    /// « Z = … m ». Un nom sans cote (« Coupe A ») est conservé. Plans globaux XY, étage, XZ et YZ.
+    TSA::Coordinate::WorkPlane withCurrentPositionName(const TSA::Coordinate::WorkPlane& wp,
+                                                       const TSA::Coordinate::WorkPlane& previous) const;
     /// Tout ce qui dépend de la position du plan : grille, trièdre, plan privilégié, service de coordonnées, niveau
     /// actif d'un plan horizontal, isolation, rendu. Seul chemin, qu'il s'agisse d'une commande ou du manipulateur.
     void syncWorkPlaneDependents(const gp_Trsf& trsf);
