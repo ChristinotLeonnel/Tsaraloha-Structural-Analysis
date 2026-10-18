@@ -1,5 +1,9 @@
 #include "BlueprintGraph.h"
 
+#include <QCoreApplication>
+#include <QString>
+#include <QtGlobal>
+
 #include <algorithm>
 
 namespace TSA::Blueprint
@@ -31,19 +35,31 @@ bool dataCompatible(const PinSpec& from, const PinSpec& to)
 
 std::string pinTypeName(const PinSpec& pin)
 {
-    if (pin.kind == PinKind::Exec) return "exécution";
-    if (pin.any) return "générique";
-    if (pin.type == ValueType::Object) return pin.objectType.empty() ? std::string("objet") : pin.objectType;
-    return TSA::Automation::typeName(pin.type);
+    if (pin.kind == PinKind::Exec) return QCoreApplication::translate("TSA::Blueprint::Nodes", "exécution").toStdString();
+    if (pin.any) return QCoreApplication::translate("TSA::Blueprint::Nodes", "générique").toStdString();
+    if (pin.type == ValueType::Object)
+        return pin.objectType.empty() ? QCoreApplication::translate("TSA::Blueprint::Nodes", "objet").toStdString() : pin.objectType;
+    // Noms des types marqués dans le registre (CommandRegistry.cpp, contexte « TSA::Automation::Commands »)
+    return QCoreApplication::translate("TSA::Automation::Commands", TSA::Automation::typeName(pin.type)).toStdString();
+}
+
+std::string displayText(const std::string& source)
+{
+    if (source.empty()) return source;
+    const QString original = QString::fromStdString(source);
+    QString t = QCoreApplication::translate("TSA::Blueprint::Nodes", source.c_str());
+    if (t == original) t = QCoreApplication::translate("TSA::Automation::Commands", source.c_str());
+    return t.toStdString();
 }
 
 const char* statusName(NodeStatus status)
 {
+    // Texte source (affiché après QCoreApplication::translate("TSA::Blueprint::Nodes", …) par l'interface)
     switch (status)
     {
-    case NodeStatus::Standard: return "standard";
-    case NodeStatus::Validated: return "validé";
-    case NodeStatus::Experimental: return "expérimental";
+    case NodeStatus::Standard: return QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "standard");
+    case NodeStatus::Validated: return QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "validé");
+    case NodeStatus::Experimental: return QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "expérimental");
     }
     return "?";
 }

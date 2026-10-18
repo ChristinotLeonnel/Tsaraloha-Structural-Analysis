@@ -398,7 +398,7 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
         m_results.advanced().matrixRunDurationMs = static_cast<double>(timer.elapsed());
         if (!matrixOk)
         {
-            m_results.advanced().warnings.push_back("Extraction des matrices impossible : " + matrixErr.toStdString());
+            m_results.advanced().warnings.push_back(tr("Extraction des matrices impossible : %1").arg(matrixErr).toStdString());
             emit logReceived(QString("[AVERTISSEMENT] Extraction des matrices impossible : %1").arg(matrixErr));
         }
         else
@@ -450,8 +450,10 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
                 meta.finalLoadFactor = lambda;
                 if (std::abs(lambda - 1.0) > 1e-6)
                 {
-                    const std::string w = "Statique non linéaire : résultats au facteur de charge λ = " + std::to_string(lambda) +
-                                          ", et non à la charge complète (λ = 1) : vérifier l'intégrateur (longueur d'arc, contrôle en déplacement) et le nombre de pas.";
+                    const std::string w = tr("Statique non linéaire : résultats au facteur de charge λ = %1"
+                                             ", et non à la charge complète (λ = 1) : vérifier l'intégrateur (longueur d'arc, contrôle en "
+                                             "déplacement) et le nombre de pas.")
+                                              .arg(QString::fromStdString(std::to_string(lambda))).toStdString();
                     meta.warnings.push_back(w);
                     emit logReceived(QString("[AVERTISSEMENT] %1").arg(QString::fromStdString(w)));
                 }

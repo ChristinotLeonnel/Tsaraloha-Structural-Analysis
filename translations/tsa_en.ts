@@ -6191,6 +6191,36 @@ See Help &gt; Modules.</translation>
 <context>
     <name>OccView</name>
     <message>
+        <source>HAUT</source>
+        <comment>face du ViewCube, ASCII</comment>
+        <translation>TOP</translation>
+    </message>
+    <message>
+        <source>BAS</source>
+        <comment>face du ViewCube, ASCII</comment>
+        <translation>BOTTOM</translation>
+    </message>
+    <message>
+        <source>ARRIERE</source>
+        <comment>face du ViewCube, ASCII</comment>
+        <translation>BACK</translation>
+    </message>
+    <message>
+        <source>AVANT</source>
+        <comment>face du ViewCube, ASCII</comment>
+        <translation>FRONT</translation>
+    </message>
+    <message>
+        <source>DROITE</source>
+        <comment>face du ViewCube, ASCII</comment>
+        <translation>RIGHT</translation>
+    </message>
+    <message>
+        <source>GAUCHE</source>
+        <comment>face du ViewCube, ASCII</comment>
+        <translation>LEFT</translation>
+    </message>
+    <message>
         <source>Mode Sélection actif</source>
         <translation>Select mode active</translation>
     </message>
@@ -6694,6 +6724,14 @@ Double-click or Enter: show the object</translation>
         <translation>Outputs</translation>
     </message>
     <message>
+        <source>Identifiant :</source>
+        <translation>Identifier:</translation>
+    </message>
+    <message>
+        <source>version</source>
+        <translation>version</translation>
+    </message>
+    <message>
         <source>(pas de documentation détaillée)</source>
         <translation>(no detailed documentation)</translation>
     </message>
@@ -7040,6 +7078,594 @@ Run the analysis?</translation>
     </message>
 </context>
 <context>
+    <name>TSA::Analysis::AnalysisEngine</name>
+    <message>
+        <source>Ce moteur ne peut pas être installé automatiquement.</source>
+        <translation>This engine cannot be installed automatically.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::AnalysisManager</name>
+    <message>
+        <source>Poutre</source>
+        <translation>Beam</translation>
+    </message>
+    <message>
+        <source>Poteau</source>
+        <translation>Column</translation>
+    </message>
+    <message>
+        <source>Treillis</source>
+        <translation>Truss</translation>
+    </message>
+    <message>
+        <source>Câble</source>
+        <translation>Cable</translation>
+    </message>
+    <message>
+        <source>Barre</source>
+        <translation>Member</translation>
+    </message>
+    <message>
+        <source>2D (ossature plane)</source>
+        <translation>2D (plane frame)</translation>
+    </message>
+    <message>
+        <source>3D (ossature spatiale)</source>
+        <translation>3D (space frame)</translation>
+    </message>
+    <message>
+        <source>Portée</source>
+        <translation>Analysis scope</translation>
+    </message>
+    <message>
+        <source>Moteur</source>
+        <translation>Engine</translation>
+    </message>
+    <message>
+        <source>Éléments</source>
+        <translation>Elements</translation>
+    </message>
+    <message>
+        <source>Sections</source>
+        <translation>Sections</translation>
+    </message>
+    <message>
+        <source>Matériaux</source>
+        <translation>Materials</translation>
+    </message>
+    <message>
+        <source>Appuis</source>
+        <translation>Supports</translation>
+    </message>
+    <message>
+        <source>Charges</source>
+        <translation>Loads</translation>
+    </message>
+    <message>
+        <source>Masses</source>
+        <translation>Masses</translation>
+    </message>
+    <message>
+        <source>Portée : %1 — %2 nœud(s), %3 barre(s).</source>
+        <translation>Analysis scope: %1 — %2 node(s), %3 member(s).</translation>
+    </message>
+    <message>
+        <source>Le moteur %1 ne calcule pas en %2.</source>
+        <translation>The %1 engine does not analyse in %2.</translation>
+    </message>
+    <message>
+        <source>Le moteur %1 ne propose pas ce type d'analyse.</source>
+        <translation>The %1 engine does not offer this analysis type.</translation>
+    </message>
+    <message>
+        <source>Une analyse 2D nécessite une portée plane : choisissez un axe de grille, un niveau ou un plan de travail.</source>
+        <translation>A 2D analysis requires a planar analysis scope: choose a grid axis, a level or a work plane.</translation>
+    </message>
+    <message>
+        <source>Nœuds hors du plan d'analyse : %1.</source>
+        <translation>Nodes outside the analysis plane: %1.</translation>
+    </message>
+    <message>
+        <source>Plan d'analyse défini.</source>
+        <translation>Analysis plane defined.</translation>
+    </message>
+    <message>
+        <source>La portée « %1 » ne contient aucun élément filaire calculable.</source>
+        <translation>The analysis scope “%1” contains no line element that can be analysed.</translation>
+    </message>
+    <message>
+        <source>Le moteur %1 ne supporte pas les éléments de type %2 (%3).</source>
+        <translation>The %1 engine does not support elements of type %2 (%3).</translation>
+    </message>
+    <message>
+        <source>Barres de longueur nulle : %1.</source>
+        <translation>Zero-length members: %1.</translation>
+    </message>
+    <message>
+        <source>Sections sans aire ou sans inertie : %1.</source>
+        <translation>Sections without area or without moment of inertia: %1.</translation>
+    </message>
+    <message>
+        <source>Sections assignées.</source>
+        <translation>Sections assigned.</translation>
+    </message>
+    <message>
+        <source>Matériaux sans module d'Young : %1.</source>
+        <translation>Materials without Young's modulus: %1.</translation>
+    </message>
+    <message>
+        <source>Matériaux assignés.</source>
+        <translation>Materials assigned.</translation>
+    </message>
+    <message>
+        <source>Éléments valides.</source>
+        <translation>Valid elements.</translation>
+    </message>
+    <message>
+        <source>Le moteur %1 ne supporte pas les éléments de type Shell (%2 dalle(s) et %3 voile(s) dans la portée). Sélectionnez un plan contenant uniquement des éléments compatibles.</source>
+        <translation>The %1 engine does not support shell elements (%2 slab(s) and %3 wall(s) in the analysis scope). Select a plane containing only compatible elements.</translation>
+    </message>
+    <message>
+        <source>%1 dalle(s) et %2 voile(s) de la portée ne sont pas pris en compte par le moteur %3 (ni rigidité, ni charges) : seuls les éléments filaires sont calculés.</source>
+        <translation>%1 slab(s) and %2 wall(s) of the analysis scope are not taken into account by the %3 engine (neither stiffness nor loads): only line elements are analysed.</translation>
+    </message>
+    <message>
+        <source>%1 fondation(s) : seules les conditions d'appui des nœuds sont transmises.</source>
+        <translation>%1 foundation(s): only the support conditions of the nodes are transferred.</translation>
+    </message>
+    <message>
+        <source>%1 barre(s) reliée(s) à la portée mais hors de celle-ci sont exclues (leur rigidité et leurs charges ne sont pas transmises) : %2.</source>
+        <translation>%1 member(s) connected to the analysis scope but outside it are excluded (their stiffness and loads are not transferred): %2.</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) du maillage des surfaces portés par des appuis linéiques de bord.</source>
+        <translation>%1 surface mesh node(s) carried by edge line supports.</translation>
+    </message>
+    <message>
+        <source>Aucun appui dans la portée : la structure est instable.</source>
+        <translation>No support in the analysis scope: the structure is unstable.</translation>
+    </message>
+    <message>
+        <source>Le moteur %1 ne supporte pas les appuis élastiques (ressorts).</source>
+        <translation>The %1 engine does not support elastic supports (springs).</translation>
+    </message>
+    <message>
+        <source>Appuis définis.</source>
+        <translation>Supports defined.</translation>
+    </message>
+    <message>
+        <source>Combinaison #%1 introuvable.</source>
+        <translation>Combination #%1 not found.</translation>
+    </message>
+    <message>
+        <source>Cas de charge #%1 introuvable.</source>
+        <translation>Load case #%1 not found.</translation>
+    </message>
+    <message>
+        <source>Cas de charge #%1 (converti en masses) introuvable.</source>
+        <translation>Load case #%1 (converted to masses) not found.</translation>
+    </message>
+    <message>
+        <source>Analyse modale : masses des éléments seulement (barres ρ·A, coques ρ·e) ; les charges ne sont pas des masses.</source>
+        <translation>Modal analysis: element masses only (members ρ·A, shells ρ·e); loads are not masses.</translation>
+    </message>
+    <message>
+        <source>Analyse modale : masses des éléments + charges verticales descendantes des cas choisis converties (m = F/g).</source>
+        <translation>Modal analysis: element masses + downward vertical loads of the chosen cases converted (m = F/g).</translation>
+    </message>
+    <message>
+        <source>Aucune charge dans la portée et poids propre désactivé : résultats nuls.</source>
+        <translation>No load in the analysis scope and self-weight disabled: zero results.</translation>
+    </message>
+    <message>
+        <source>Charges valides.</source>
+        <translation>Valid loads.</translation>
+    </message>
+    <message>
+        <source>%1 charge(s) appliquée(s) hors portée ne sont pas transmises.</source>
+        <translation>%1 load(s) applied outside the analysis scope are not transferred.</translation>
+    </message>
+    <message>
+        <source>Moteur d'analyse inconnu : « %1 ».</source>
+        <translation>Unknown analysis engine: “%1”.</translation>
+    </message>
+    <message>
+        <source>Blocage automatique : %1</source>
+        <translation>Automatic restraint: %1</translation>
+    </message>
+    <message>
+        <source>%1 autre(s) blocage(s) automatique(s) d'appuis articulés ou simples.</source>
+        <translation>%1 other automatic restraint(s) at pinned or roller supports.</translation>
+    </message>
+    <message>
+        <source>Appuis articulés et simples : aucun blocage automatique (rotules sphériques réelles) ; un mécanisme éventuel est signalé avant ou après le calcul.</source>
+        <translation>Pinned and roller supports: no automatic restraint (true spherical hinges); any mechanism is reported before or after the analysis.</translation>
+    </message>
+    <message>
+        <source>Modèle</source>
+        <translation>Model</translation>
+    </message>
+    <message>
+        <source>Maillage</source>
+        <translation>Mesh</translation>
+    </message>
+    <message>
+        <source>Maillage généré non transmis (option du calcul) : un élément fini par barre.</source>
+        <translation>Generated mesh not transferred (analysis option): one finite element per member.</translation>
+    </message>
+    <message>
+        <source>Le moteur %1 ne prend pas en charge les barres subdivisées : maillage non transmis, un élément fini par barre.</source>
+        <translation>The %1 engine does not support subdivided members: mesh not transferred, one finite element per member.</translation>
+    </message>
+    <message>
+        <source>%1 barre(s) subdivisée(s) en %2 éléments finis (%3 nœuds intermédiaires)</source>
+        <translation>%1 member(s) subdivided into %2 finite elements (%3 intermediate nodes)</translation>
+    </message>
+    <message>
+        <source>Surfaces</source>
+        <translation>Surfaces</translation>
+    </message>
+    <message>
+        <source>Maillage non transmis (option du calcul) : dalles et voiles non calculés.</source>
+        <translation>Mesh not transferred (analysis option): slabs and walls not analysed.</translation>
+    </message>
+    <message>
+        <source>Le moteur %1 ne calcule pas les éléments surfaciques (coques).</source>
+        <translation>The %1 engine does not analyse surface elements (shells).</translation>
+    </message>
+    <message>
+        <source>%1 charge(s) surfacique(s) définie(s) mais aucune surface maillée transmise : générer le maillage (Analyse &gt; Maillage) ou supprimer ces charges. Aucune charge n'est ignorée en silence.</source>
+        <translation>%1 surface load(s) defined but no meshed surface transferred: generate the mesh (Analysis &gt; Mesh) or delete these loads. No load is silently ignored.</translation>
+    </message>
+    <message>
+        <source>Dalles et voiles non maillés : ni leur rigidité ni leurs charges ne sont calculées. Générer le maillage (Analyse &gt; Maillage) pour les transmettre en coques.</source>
+        <translation>Slabs and walls not meshed: neither their stiffness nor their loads are analysed. Generate the mesh (Analysis &gt; Mesh) to transfer them as shells.</translation>
+    </message>
+    <message>
+        <source>Le modèle d'analyse n'est pas valide :</source>
+        <translation>The analysis model is not valid:</translation>
+    </message>
+    <message>
+        <source>Moteur %1 indisponible : %2</source>
+        <translation>Engine %1 unavailable: %2</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::AnalysisScopeResolver</name>
+    <message>
+        <source>L'axe « %1 » n'existe pas dans la grille « %2 ».</source>
+        <translation>The axis “%1” does not exist in the grid “%2”.</translation>
+    </message>
+    <message>
+        <source>Le modèle doit contenir au moins deux nœuds pour définir un plan.</source>
+        <translation>The model must contain at least two nodes to define a plane.</translation>
+    </message>
+    <message>
+        <source>Plan du modèle (vertical XZ)</source>
+        <translation>Model plane (vertical XZ)</translation>
+    </message>
+    <message>
+        <source>Plan du modèle (vertical YZ)</source>
+        <translation>Model plane (vertical YZ)</translation>
+    </message>
+    <message>
+        <source>Plan du modèle (vertical)</source>
+        <translation>Model plane (vertical)</translation>
+    </message>
+    <message>
+        <source>Plan du modèle (horizontal, z = %1)</source>
+        <translation>Model plane (horizontal, z = %1)</translation>
+    </message>
+    <message>
+        <source>Le modèle n'est pas plan : choisir un axe de grille, un niveau ou un plan de travail.</source>
+        <translation>The model is not planar: choose a grid axis, a level or a work plane.</translation>
+    </message>
+    <message>
+        <source>Modèle complet</source>
+        <translation>Complete model</translation>
+    </message>
+    <message>
+        <source>Sélection</source>
+        <translation>Selection</translation>
+    </message>
+    <message>
+        <source>La sélection ne contient aucun objet du modèle.</source>
+        <translation>The selection contains no model object.</translation>
+    </message>
+    <message>
+        <source>Grille introuvable (« %1 »).</source>
+        <translation>Grid not found (“%1”).</translation>
+    </message>
+    <message>
+        <source>Seuls les axes d'une grille cartésienne définissent un plan d'analyse.</source>
+        <translation>Only the axes of a Cartesian grid define an analysis plane.</translation>
+    </message>
+    <message>
+        <source>Axe %1 (%2)</source>
+        <translation>Axis %1 (%2)</translation>
+    </message>
+    <message>
+        <source>Niveau introuvable (« %1 »).</source>
+        <translation>Level not found (“%1”).</translation>
+    </message>
+    <message>
+        <source>Niveau %1 (%2)</source>
+        <translation>Level %1 (%2)</translation>
+    </message>
+    <message>
+        <source>Plan de travail introuvable (#%1).</source>
+        <translation>Work plane not found (#%1).</translation>
+    </message>
+    <message>
+        <source>Plan de travail %1</source>
+        <translation>Work plane %1</translation>
+    </message>
+    <message>
+        <source> ∩ niveau %1</source>
+        <translation> ∩ level %1</translation>
+    </message>
+    <message>
+        <source>Axe %1 — %2</source>
+        <translation>Axis %1 — %2</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::CalculationSnapshot</name>
+    <message>
+        <source>%1 bloquée au nœud N%2 : %3</source>
+        <translation>%1 restrained at node N%2: %3</translation>
+    </message>
+    <message>
+        <source>mode historique (RX globale bloquée aux appuis articulés et simples)</source>
+        <translation>legacy mode (global RX restrained at pinned and roller supports)</translation>
+    </message>
+    <message>
+        <source>mode historique (TY bloquée aux appuis simples)</source>
+        <translation>legacy mode (TY restrained at roller supports)</translation>
+    </message>
+    <message>
+        <source>Appuis en mode historique : la rotation RX globale est bloquée aux appuis %1, où une barre n'est pas parallèle à X. Risque : pour ces barres, ce blocage retient la flexion (moments d'appui fictifs, flèches sous-estimées) et laisse libre la torsion autour de leur axe (mécanisme possible). Correction : choisir « appui à fourche » ou « aucun blocage » dans les paramètres d'analyse, ou définir ces appuis explicitement.</source>
+        <translation>Supports in legacy mode: the global RX rotation is restrained at supports %1, where a member is not parallel to X. Risk: for these members, this restraint resists bending (fictitious support moments, underestimated deflections) and leaves torsion about their axis free (possible mechanism). Fix: choose “fork support” or “no restraint” in the analysis settings, or define these supports explicitly.</translation>
+    </message>
+    <message>
+        <source>appui à fourche (rotation autour de l'axe de la barre, sinon libre : mécanisme de torsion)</source>
+        <translation>fork support (rotation about the member axis, otherwise free: torsion mechanism)</translation>
+    </message>
+    <message>
+        <source>Appui N%1 : la barre est inclinée, la rotation autour de son axe n'est pas bloquée automatiquement.</source>
+        <translation>Support N%1: the member is inclined, the rotation about its axis is not restrained automatically.</translation>
+    </message>
+    <message>
+        <source>structure plane XZ (rotation hors plan)</source>
+        <translation>planar XZ structure (out-of-plane rotation)</translation>
+    </message>
+    <message>
+        <source>structure plane XZ, appui simple (translation hors plan)</source>
+        <translation>planar XZ structure, roller support (out-of-plane translation)</translation>
+    </message>
+    <message>
+        <source>structure plane YZ (rotation hors plan)</source>
+        <translation>planar YZ structure (out-of-plane rotation)</translation>
+    </message>
+    <message>
+        <source>structure plane YZ, appui simple (translation hors plan)</source>
+        <translation>planar YZ structure, roller support (out-of-plane translation)</translation>
+    </message>
+    <message>
+        <source>appui simple (translation horizontale Y, comportement historique)</source>
+        <translation>roller support (horizontal Y translation, legacy behaviour)</translation>
+    </message>
+    <message>
+        <source>%1 barre(s) de treillis ou câble(s) non subdivisée(s) : une chaîne de barres articulées serait un mécanisme (un seul élément transmis)</source>
+        <translation>%1 truss member(s) or cable(s) not subdivided: a chain of pinned members would be a mechanism (a single element transferred)</translation>
+    </message>
+    <message>
+        <source>Surface %1 : formulation « %2 » non prise en charge par ce moteur (seule la coque l'est).</source>
+        <translation>Surface %1: formulation “%2” not supported by this engine (only the shell is).</translation>
+    </message>
+    <message>
+        <source>Élément %1 de %2 : 3 ou 4 nœuds attendus.</source>
+        <translation>Element %1 of %2: 3 or 4 nodes expected.</translation>
+    </message>
+    <message>
+        <source>Élément %1 de %2 : nœud du maillage %3 inconnu.</source>
+        <translation>Element %1 of %2: unknown mesh node %3.</translation>
+    </message>
+    <message>
+        <source>Élément %1 de %2 : nœuds confondus (élément dégénéré).</source>
+        <translation>Element %1 of %2: coincident nodes (degenerate element).</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de coque, %2 nœud(s) partagé(s) avec les barres ou les nœuds TSA, %3 nœud(s) propres aux surfaces.</source>
+        <translation>%1 shell element(s), %2 node(s) shared with the members or the TSA nodes, %3 node(s) specific to the surfaces.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::Custom2DAdapter</name>
+    <message>
+        <source>Ressorts d'appui obliques au plan : le couplage entre les deux translations du plan est ignoré.</source>
+        <translation>Support springs oblique to the plane: the coupling between the two in-plane translations is ignored.</translation>
+    </message>
+    <message>
+        <source>Axes de section non alignés sur la normale au plan (%1) : inertie de flexion projetée.</source>
+        <translation>Section axes not aligned with the plane normal (%1): projected bending moment of inertia.</translation>
+    </message>
+    <message>
+        <source>%1 charge(s) sur barre de type moment réparti ou poids propre explicite ne sont pas transmises au solveur 2D.</source>
+        <translation>%1 member load(s) of the distributed moment or explicit self-weight type are not transferred to the 2D solver.</translation>
+    </message>
+    <message>
+        <source>Composantes de charge hors du plan ignorées (max %1).</source>
+        <translation>Out-of-plane load components ignored (max %1).</translation>
+    </message>
+    <message>
+        <source>La pesanteur n'est pas contenue dans le plan : seule sa projection dans le plan est appliquée.</source>
+        <translation>Gravity is not contained in the plane: only its projection onto the plane is applied.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::Custom2DEngine</name>
+    <message>
+        <source>Moteur de calcul structurel 2D personnalisé TSA (%1).</source>
+        <translation>TSA custom 2D structural analysis engine (%1).</translation>
+    </message>
+    <message>
+        <source>Moteur de calcul structurel 2D personnalisé TSA — solveur non connecté.</source>
+        <translation>TSA custom 2D structural analysis engine — solver not connected.</translation>
+    </message>
+    <message>
+        <source>solveur Custom2D non connecté (adaptateur prêt : implémenter Custom2D::ISolver et l'enregistrer dans registerBuiltInEngines). Aucun calcul n'est effectué.</source>
+        <translation>Custom2D solver not connected (adapter ready: implement Custom2D::ISolver and register it in registerBuiltInEngines). No analysis is performed.</translation>
+    </message>
+    <message>
+        <source>Solveur non connecté : la portée peut être validée mais pas calculée.</source>
+        <translation>Solver not connected: the analysis scope can be validated but not analysed.</translation>
+    </message>
+    <message>
+        <source>Conversion de la portée en ossature plane…</source>
+        <translation>Converting the analysis scope to a plane frame…</translation>
+    </message>
+    <message>
+        <source>Résolution Custom2D…</source>
+        <translation>Custom2D solution…</translation>
+    </message>
+    <message>
+        <source>Échec du solveur Custom2D.</source>
+        <translation>Custom2D solver failure.</translation>
+    </message>
+    <message>
+        <source>Remappage des résultats vers le modèle TSA…</source>
+        <translation>Mapping the results back to the TSA model…</translation>
+    </message>
+    <message>
+        <source>Calcul Custom2D terminé.</source>
+        <translation>Custom2D analysis completed.</translation>
+    </message>
+    <message>
+        <source>Résultats Custom2D inexploitables.</source>
+        <translation>Custom2D results unusable.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::LoadValidation</name>
+    <message>
+        <source>Validation réussie. Le modèle est prêt pour le calcul OpenSees.</source>
+        <translation>Validation successful. The model is ready for the OpenSees analysis.</translation>
+    </message>
+    <message>
+        <source> (%1 avertissement(s)).</source>
+        <translation> (%1 warning(s)).</translation>
+    </message>
+    <message>
+        <source>Échec de validation : %1 erreur(s) détectée(s).</source>
+        <translation>Validation failed: %1 error(s) detected.</translation>
+    </message>
+    <message>
+        <source>Géométrie</source>
+        <translation>Geometry</translation>
+    </message>
+    <message>
+        <source>Le modèle structural ne contient aucun nœud.</source>
+        <translation>The structural model contains no node.</translation>
+    </message>
+    <message>
+        <source>Le modèle ne comporte aucun élément linéaire filaire.</source>
+        <translation>The model contains no line element.</translation>
+    </message>
+    <message>
+        <source>Conditions aux Limites</source>
+        <translation>Boundary conditions</translation>
+    </message>
+    <message>
+        <source>Charges</source>
+        <translation>Loads</translation>
+    </message>
+    <message>
+        <source>Aucun cas de charge (Load Case) n'est défini dans le modèle.</source>
+        <translation>No load case is defined in the model.</translation>
+    </message>
+    <message>
+        <source>Charge Nodale</source>
+        <translation>Nodal load</translation>
+    </message>
+    <message>
+        <source>La charge nodale NL#%1 référence le nœud inexistant N%2</source>
+        <translation>Nodal load NL#%1 references the non-existent node N%2</translation>
+    </message>
+    <message>
+        <source>La charge nodale NL#%1 est assignée à un cas de charge inexistant Cas#%2</source>
+        <translation>Nodal load NL#%1 is assigned to a non-existent load case Cas#%2</translation>
+    </message>
+    <message>
+        <source>La charge nodale NL#%1 contient une valeur non numérique (NaN).</source>
+        <translation>Nodal load NL#%1 contains a non-numeric value (NaN).</translation>
+    </message>
+    <message>
+        <source>La charge nodale NL#%1 a une intensité nulle.</source>
+        <translation>Nodal load NL#%1 has zero intensity.</translation>
+    </message>
+    <message>
+        <source>Charge sur Barre</source>
+        <translation>Member load</translation>
+    </message>
+    <message>
+        <source>La charge ML#%1 référence l'élément inexistant #%2</source>
+        <translation>Load ML#%1 references the non-existent element #%2</translation>
+    </message>
+    <message>
+        <source>La charge ML#%1 est assignée au cas de charge inexistant Cas#%2</source>
+        <translation>Load ML#%1 is assigned to the non-existent load case Cas#%2</translation>
+    </message>
+    <message>
+        <source>La charge ML#%1 contient une intensité non numérique (NaN).</source>
+        <translation>Load ML#%1 contains a non-numeric intensity (NaN).</translation>
+    </message>
+    <message>
+        <source>La charge ML#%1 a une intensité nulle.</source>
+        <translation>Load ML#%1 has zero intensity.</translation>
+    </message>
+    <message>
+        <source>Combinaisons</source>
+        <translation>Combinations</translation>
+    </message>
+    <message>
+        <source>La combinaison '%1' est vide (aucun cas de charge pondéré).</source>
+        <translation>The combination '%1' is empty (no weighted load case).</translation>
+    </message>
+    <message>
+        <source>La combinaison '%1' référence le cas de charge inexistant Cas#%2</source>
+        <translation>The combination '%1' references the non-existent load case Cas#%2</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::OpenSeesEngine</name>
+    <message>
+        <source>Moteur éléments finis général (processus externe OpenSees.exe, scripts Tcl générés) : ossatures spatiales, treillis, câbles, appuis élastiques.</source>
+        <translation>General finite element engine (external OpenSees.exe process, generated Tcl scripts): space frames, trusses, cables, elastic supports.</translation>
+    </message>
+    <message>
+        <source>OpenSees.exe introuvable ou non vérifié.</source>
+        <translation>OpenSees.exe not found or not verified.</translation>
+    </message>
+    <message>
+        <source>Le générateur OpenSees calcule un cas, tous les cas superposés ou une combinaison : créez une combinaison pour calculer plusieurs cas ensemble.</source>
+        <translation>The OpenSees generator analyses one case, all superimposed cases or one combination: create a combination to analyse several cases together.</translation>
+    </message>
+    <message>
+        <source>Le nœud de contrôle N%1 (Displacement Control) n'appartient pas à la portée calculée.</source>
+        <translation>The control node N%1 (Displacement Control) does not belong to the analysed scope.</translation>
+    </message>
+    <message>
+        <source>Calcul 3D d'une portée plane : la stabilité hors plan n'est assurée que par les appuis définis dans la portée.</source>
+        <translation>3D analysis of a planar scope: out-of-plane stability is provided only by the supports defined in the analysis scope.</translation>
+    </message>
+    <message>
+        <source>Calcul OpenSees terminé.</source>
+        <translation>OpenSees analysis completed.</translation>
+    </message>
+</context>
+<context>
     <name>TSA::Analysis::OpenSeesManager</name>
     <message>
         <source>Fichier OpenSees.exe introuvable.</source>
@@ -7116,6 +7742,116 @@ Run the analysis?</translation>
     <message>
         <source>Vérification échouée après extraction.</source>
         <translation>Verification failed after extraction.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::OpenSeesModelMap</name>
+    <message>
+        <source>Tag OpenSees invalide ou dupliqué : %1</source>
+        <translation>Invalid or duplicate OpenSees tag: %1</translation>
+    </message>
+    <message>
+        <source>Élément TSA présent deux fois : %1</source>
+        <translation>TSA element present twice: %1</translation>
+    </message>
+    <message>
+        <source>Élément %1 : nœud d'extrémité absent du modèle de calcul.</source>
+        <translation>Element %1: end node missing from the analysis model.</translation>
+    </message>
+    <message>
+        <source>Élément %1 : longueur nulle ou repère local indéfini.</source>
+        <translation>Element %1: zero length or undefined local axes.</translation>
+    </message>
+    <message>
+        <source>Collision de tag entre nœud auxiliaire de ressort et nœud TSA : %1</source>
+        <translation>Tag collision between spring auxiliary node and TSA node: %1</translation>
+    </message>
+    <message>
+        <source>Collision de tag entre élément ressort et élément structural : %1</source>
+        <translation>Tag collision between spring element and structural element: %1</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::OpenSeesResultsReader</name>
+    <message>
+        <source>%1 : %2 valeurs lues, %3 attendues (mapping TSA/OpenSees incohérent).</source>
+        <translation>%1: %2 values read, %3 expected (inconsistent TSA/OpenSees mapping).</translation>
+    </message>
+    <message>
+        <source>Déplacements</source>
+        <translation>Displacements</translation>
+    </message>
+    <message>
+        <source>Réactions</source>
+        <translation>Reactions</translation>
+    </message>
+    <message>
+        <source>Efforts locaux poutres/poteaux</source>
+        <translation>Local forces in beams/columns</translation>
+    </message>
+    <message>
+        <source>Efforts normaux treillis/câbles</source>
+        <translation>Axial forces in trusses/cables</translation>
+    </message>
+    <message>
+        <source>Instabilité numérique ou matrice de rigidité singulière : des valeurs infinies ou indéterminées (NaN/Inf) ont été détectées dans la réponse structurale OpenSees.</source>
+        <translation>Numerical instability or singular stiffness matrix: infinite or undefined values (NaN/Inf) were detected in the OpenSees structural response.</translation>
+    </message>
+    <message>
+        <source>Résultats non physiques (déplacement max %1 m, rotation max %2 rad, pour une structure de %3 m) : la matrice de rigidité est quasi singulière, la structure est un mécanisme (appuis insuffisants, rotule ou rotation laissée libre). Vérifier les appuis et les relâchements.</source>
+        <translation>Non-physical results (max displacement %1 m, max rotation %2 rad, for a %3 m structure): the stiffness matrix is nearly singular, the structure is a mechanism (insufficient supports, hinge or rotation left free). Check the supports and releases.</translation>
+    </message>
+    <message>
+        <source>Résultats OpenSees incohérents avec le modèle de calcul :</source>
+        <translation>OpenSees results inconsistent with the analysis model:</translation>
+    </message>
+    <message>
+        <source>Forces brutes ignorées : valeurs non finies ou disposition incohérente.</source>
+        <translation>Raw forces ignored: non-finite values or inconsistent layout.</translation>
+    </message>
+    <message>
+        <source>Résultantes des coques (quadrangles)</source>
+        <translation>Shell resultants (quadrangles)</translation>
+    </message>
+    <message>
+        <source>Résultantes des coques (triangles)</source>
+        <translation>Shell resultants (triangles)</translation>
+    </message>
+    <message>
+        <source>Les fichiers de résultats d'OpenSees n'ont pas pu être lus ou sont vides.</source>
+        <translation>The OpenSees result files could not be read or are empty.</translation>
+    </message>
+    <message>
+        <source>Mapping des DDL OpenSees absent ou incohérent (nodeDOFs).</source>
+        <translation>OpenSees DOF mapping missing or inconsistent (nodeDOFs).</translation>
+    </message>
+    <message>
+        <source>Mapping des DDL OpenSees absent ou incohérent : matrices ignorées.</source>
+        <translation>OpenSees DOF mapping missing or inconsistent: matrices ignored.</translation>
+    </message>
+    <message>
+        <source>Rigidités élémentaires ignorées (fichier incohérent ou valeurs non finies).</source>
+        <translation>Element stiffnesses ignored (inconsistent file or non-finite values).</translation>
+    </message>
+    <message>
+        <source>Blocage automatique %1 — il reprend %2 %3 : cet effort n'est porté par aucun appui défini. Vérifier les appuis.</source>
+        <translation>Automatic restraint %1 — it carries %2 %3: this force is carried by no defined support. Check the supports.</translation>
+    </message>
+    <message>
+        <source>Analyse modale : aucune valeur propre calculée par OpenSees (masse nulle sur les DDL libres, mécanisme ou solveur aux valeurs propres en échec ; voir le journal).</source>
+        <translation>Modal analysis: no eigenvalue computed by OpenSees (zero mass on the free DOF, mechanism or eigenvalue solver failure; see the log).</translation>
+    </message>
+    <message>
+        <source>Analyse modale : valeurs propres non finies (masse ou rigidité singulière).</source>
+        <translation>Modal analysis: non-finite eigenvalues (singular mass or stiffness).</translation>
+    </message>
+    <message>
+        <source>Analyse modale : valeur propre λ%1 = %2 ≤ 0 : la structure est un mécanisme (appuis ou liaisons insuffisants).</source>
+        <translation>Modal analysis: eigenvalue λ%1 = %2 ≤ 0: the structure is a mechanism (insufficient supports or connections).</translation>
+    </message>
+    <message>
+        <source>Analyse modale : formes propres incomplètes (%1 lues).</source>
+        <translation>Modal analysis: incomplete mode shapes (%1 read).</translation>
     </message>
 </context>
 <context>
@@ -7227,6 +7963,10 @@ Run the analysis?</translation>
         <translation>the matrix pass did not finish: %1</translation>
     </message>
     <message>
+        <source>Extraction des matrices impossible : %1</source>
+        <translation>Matrix extraction impossible: %1</translation>
+    </message>
+    <message>
         <source>disponible</source>
         <translation>available</translation>
     </message>
@@ -7235,8 +7975,109 @@ Run the analysis?</translation>
         <translation>not extracted</translation>
     </message>
     <message>
+        <source>Statique non linéaire : résultats au facteur de charge λ = %1, et non à la charge complète (λ = 1) : vérifier l'intégrateur (longueur d'arc, contrôle en déplacement) et le nombre de pas.</source>
+        <translation>Nonlinear static: results at load factor λ = %1, not at the full load (λ = 1): check the integrator (arc-length, displacement control) and the number of steps.</translation>
+    </message>
+    <message>
         <source>Calcul et post-traitement terminés avec succès.</source>
         <translation>Analysis and post-processing completed successfully.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::ResultsExport</name>
+    <message>
+        <source>K_global indisponible : %1</source>
+        <translation>K_global unavailable: %1</translation>
+    </message>
+    <message>
+        <source>Vecteurs F et U indisponibles : numérotation des équations non exportée par le moteur.</source>
+        <translation>F and U vectors unavailable: equation numbering not exported by the engine.</translation>
+    </message>
+    <message>
+        <source>Vecteurs F et U indisponibles : le moteur n'exporte pas son système (Custom2D : option « Exporter le système K·U = F »).</source>
+        <translation>F and U vectors unavailable: the engine does not export its system (Custom2D: option “Export the K·U = F system”).</translation>
+    </message>
+    <message>
+        <source>Transformations indisponibles : aucune matrice de rotation exportée par le moteur</source>
+        <translation>Transformations unavailable: no rotation matrix exported by the engine</translation>
+    </message>
+    <message>
+        <source>L'export complet n'est disponible qu'en JSON ou TXT.</source>
+        <translation>Full export is only available in JSON or TXT.</translation>
+    </message>
+    <message>
+        <source>Données avancées absentes : relancer le calcul en mode ADVANCED (matrices et mapping DDL).</source>
+        <translation>Advanced data missing: run the analysis again in ADVANCED mode (matrices and DOF mapping).</translation>
+    </message>
+    <message>
+        <source>Aucune donnée à exporter.</source>
+        <translation>No data to export.</translation>
+    </message>
+    <message>
+        <source>Impossible d'écrire %1</source>
+        <translation>Unable to write %1</translation>
+    </message>
+    <message>
+        <source>Échec de l'écriture de %1</source>
+        <translation>Failed to write %1</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::ResultsModel</name>
+    <message>
+        <source>barres subdivisées selon le maillage : matrices et efforts bruts des sous-éléments non présentés par barre (la matrice globale inclut les nœuds intermédiaires)</source>
+        <translation>members subdivided according to the mesh: matrices and raw forces of the sub-elements not presented per member (the global matrix includes the intermediate nodes)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Analysis::SolverMesh</name>
+    <message>
+        <source>linéaire</source>
+        <translation>linear</translation>
+    </message>
+    <message>
+        <source>longueur nulle</source>
+        <translation>zero length</translation>
+    </message>
+    <message>
+        <source>triangle</source>
+        <translation>triangle</translation>
+    </message>
+    <message>
+        <source>quadrangle</source>
+        <translation>quadrangle</translation>
+    </message>
+    <message>
+        <source>tétraèdre</source>
+        <translation>tetrahedron</translation>
+    </message>
+    <message>
+        <source>hexaèdre</source>
+        <translation>hexahedron</translation>
+    </message>
+    <message>
+        <source>%1 : %2 nœud(s)</source>
+        <translation>%1: %2 node(s)</translation>
+    </message>
+    <message>
+        <source>moteur</source>
+        <translation>engine</translation>
+    </message>
+    <message>
+        <source> dont %1 propre(s) au moteur</source>
+        <translation> of which %1 specific to the engine</translation>
+    </message>
+    <message>
+        <source>, %1 élément(s) fini(s)</source>
+        <translation>, %1 finite element(s)</translation>
+    </message>
+    <message>
+        <source> ; jusqu'à %1 éléments finis par élément TSA</source>
+        <translation>; up to %1 finite elements per TSA element</translation>
+    </message>
+    <message>
+        <source> ; 1 élément fini par élément TSA (aucune subdivision)</source>
+        <translation>; 1 finite element per TSA element (no subdivision)</translation>
     </message>
 </context>
 <context>
@@ -7248,6 +8089,2025 @@ Run the analysis?</translation>
     <message>
         <source>Client d'automatisation connecté (MCP).</source>
         <translation>Automation client connected (MCP).</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Automation::Commands</name>
+    <message>
+        <source>Commande inconnue : « %1 ».</source>
+        <translation>Unknown command: “%1”.</translation>
+    </message>
+    <message>
+        <source>Paramètre inconnu « %1 » pour %2.</source>
+        <translation>Unknown parameter “%1” for %2.</translation>
+    </message>
+    <message>
+        <source>Paramètre requis manquant : « %1 » (%2).</source>
+        <translation>Missing required parameter: “%1” (%2).</translation>
+    </message>
+    <message>
+        <source>Paramètre « %1 » : %2 attendu, reçu « %3 ».</source>
+        <translation>Parameter “%1”: %2 expected, received “%3”.</translation>
+    </message>
+    <message>
+        <source>Profil « %1 » absent du catalogue (%2 : %3).</source>
+        <translation>Profile “%1” not in the catalogue (%2: %3).</translation>
+    </message>
+    <message>
+        <source>Section inconnue « %1 » (IPE n, HEA n, HEB n, UPN n, RECT bxh, CIRC d).</source>
+        <translation>Unknown section “%1” (IPE n, HEA n, HEB n, UPN n, RECT bxh, CIRC d).</translation>
+    </message>
+    <message>
+        <source>Dimensions de section invalides : « %1 ».</source>
+        <translation>Invalid section dimensions: “%1”.</translation>
+    </message>
+    <message>
+        <source>%1 : nœud d'extrémité inexistant.</source>
+        <translation>%1: end node does not exist.</translation>
+    </message>
+    <message>
+        <source>%1 : les deux extrémités sont le même nœud.</source>
+        <translation>%1: both ends are the same node.</translation>
+    </message>
+    <message>
+        <source>Matériau inconnu « %1 » (S235, S355, C25/30, C30/37, C24).</source>
+        <translation>Unknown material “%1” (S235, S355, C25/30, C30/37, C24).</translation>
+    </message>
+    <message>
+        <source>%1 non créé(e).</source>
+        <translation>%1 not created.</translation>
+    </message>
+    <message>
+        <source>%1 %2 créé(e) entre N%3 et N%4.</source>
+        <translation>%1 %2 created between N%3 and N%4.</translation>
+    </message>
+    <message>
+        <source>Créer un nœud</source>
+        <translation>Create a node</translation>
+    </message>
+    <message>
+        <source>Modèle</source>
+        <translation>Model</translation>
+    </message>
+    <message>
+        <source>Ajoute un nœud aux coordonnées données (m).</source>
+        <translation>Adds a node at the given coordinates (m).</translation>
+    </message>
+    <message>
+        <source>Position</source>
+        <translation>Position</translation>
+    </message>
+    <message>
+        <source>Nom</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>Nœud créé</source>
+        <translation>Node created</translation>
+    </message>
+    <message>
+        <source>Nœud N%1 créé.</source>
+        <translation>Node N%1 created.</translation>
+    </message>
+    <message>
+        <source>Nœud de départ</source>
+        <translation>Start node</translation>
+    </message>
+    <message>
+        <source>Nœud d'arrivée</source>
+        <translation>End node</translation>
+    </message>
+    <message>
+        <source>Section</source>
+        <translation>Section</translation>
+    </message>
+    <message>
+        <source>Matériau</source>
+        <translation>Material</translation>
+    </message>
+    <message>
+        <source>Rotation de section</source>
+        <translation>Section rotation</translation>
+    </message>
+    <message>
+        <source>Créer une poutre</source>
+        <translation>Create a beam</translation>
+    </message>
+    <message>
+        <source>Ajoute une poutre entre deux nœuds existants.</source>
+        <translation>Adds a beam between two existing nodes.</translation>
+    </message>
+    <message>
+        <source>Poutre créée</source>
+        <translation>Beam created</translation>
+    </message>
+    <message>
+        <source>Poutre</source>
+        <translation>Beam</translation>
+    </message>
+    <message>
+        <source>Créer un poteau</source>
+        <translation>Create a column</translation>
+    </message>
+    <message>
+        <source>Ajoute un poteau entre deux nœuds existants.</source>
+        <translation>Adds a column between two existing nodes.</translation>
+    </message>
+    <message>
+        <source>Poteau créé</source>
+        <translation>Column created</translation>
+    </message>
+    <message>
+        <source>Poteau</source>
+        <translation>Column</translation>
+    </message>
+    <message>
+        <source>Définir un appui</source>
+        <translation>Define a support</translation>
+    </message>
+    <message>
+        <source>Appui d'un nœud : fixed (encastrement), pinned (articulation), roller (appui simple), free (aucun).</source>
+        <translation>Support of a node: fixed (fixed support), pinned (pinned support), roller (roller support), free (none).</translation>
+    </message>
+    <message>
+        <source>Nœud</source>
+        <translation>Node</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>Type</translation>
+    </message>
+    <message>
+        <source>Nœud N%1 inexistant.</source>
+        <translation>Node N%1 does not exist.</translation>
+    </message>
+    <message>
+        <source>Type d'appui inconnu « %1 » (fixed, pinned, roller, free).</source>
+        <translation>Unknown support type “%1” (fixed, pinned, roller, free).</translation>
+    </message>
+    <message>
+        <source>Appui « %1 » sur N%2.</source>
+        <translation>Support “%1” at N%2.</translation>
+    </message>
+    <message>
+        <source>Affecter section et matériau</source>
+        <translation>Assign section and material</translation>
+    </message>
+    <message>
+        <source>Remplace la section (IPE n, HEA n, HEB n, UPN n, RECT bxh, CIRC d) et, si donné, le matériau d'une barre.</source>
+        <translation>Replaces the section (IPE n, HEA n, HEB n, UPN n, RECT bxh, CIRC d) and, if given, the material of a member.</translation>
+    </message>
+    <message>
+        <source>Barre</source>
+        <translation>Member</translation>
+    </message>
+    <message>
+        <source>Barre %1 inexistante.</source>
+        <translation>Member %1 does not exist.</translation>
+    </message>
+    <message>
+        <source>Barre %1 : section « %2 ».</source>
+        <translation>Member %1: section “%2”.</translation>
+    </message>
+    <message>
+        <source>Barre %1 : section « %2 », matériau %3.</source>
+        <translation>Member %1: section “%2”, material %3.</translation>
+    </message>
+    <message>
+        <source>Créer un cas de charge</source>
+        <translation>Create a load case</translation>
+    </message>
+    <message>
+        <source>Charges</source>
+        <translation>Loads</translation>
+    </message>
+    <message>
+        <source>Ajoute un cas de charge (catégorie : dead, live, wind, snow).</source>
+        <translation>Adds a load case (category: dead, live, wind, snow).</translation>
+    </message>
+    <message>
+        <source>Catégorie</source>
+        <translation>Category</translation>
+    </message>
+    <message>
+        <source>Cas créé</source>
+        <translation>Case created</translation>
+    </message>
+    <message>
+        <source>Catégorie inconnue « %1 » (dead, live, wind, snow).</source>
+        <translation>Unknown category “%1” (dead, live, wind, snow).</translation>
+    </message>
+    <message>
+        <source>Cas de charge %1 « %2 » créé.</source>
+        <translation>Load case %1 “%2” created.</translation>
+    </message>
+    <message>
+        <source>Ajouter une charge nodale</source>
+        <translation>Add a nodal load</translation>
+    </message>
+    <message>
+        <source>Force (kN) appliquée à un nœud, repère global.</source>
+        <translation>Force (kN) applied to a node, global axes.</translation>
+    </message>
+    <message>
+        <source>Cas de charge</source>
+        <translation>Load case</translation>
+    </message>
+    <message>
+        <source>Charge créée</source>
+        <translation>Load created</translation>
+    </message>
+    <message>
+        <source>Cas de charge %1 inexistant.</source>
+        <translation>Load case %1 does not exist.</translation>
+    </message>
+    <message>
+        <source>Charge nulle.</source>
+        <translation>Zero load.</translation>
+    </message>
+    <message>
+        <source>Charge nodale %1 sur N%2.</source>
+        <translation>Nodal load %1 at N%2.</translation>
+    </message>
+    <message>
+        <source>Ajouter une charge répartie</source>
+        <translation>Add a distributed load</translation>
+    </message>
+    <message>
+        <source>Charge uniforme (kN/m) sur une poutre, sens de la pesanteur pour q &gt; 0.</source>
+        <translation>Uniform load (kN/m) on a beam, in the direction of gravity for q &gt; 0.</translation>
+    </message>
+    <message>
+        <source>Intensité</source>
+        <translation>Intensity</translation>
+    </message>
+    <message>
+        <source>Poutre %1 inexistante.</source>
+        <translation>Beam %1 does not exist.</translation>
+    </message>
+    <message>
+        <source>Charge répartie %1 sur la poutre %2.</source>
+        <translation>Distributed load %1 on beam %2.</translation>
+    </message>
+    <message>
+        <source>Résumé du modèle</source>
+        <translation>Model summary</translation>
+    </message>
+    <message>
+        <source>Requêtes</source>
+        <translation>Queries</translation>
+    </message>
+    <message>
+        <source>Effectifs du modèle.</source>
+        <translation>Model counts.</translation>
+    </message>
+    <message>
+        <source>Nœuds</source>
+        <translation>Nodes</translation>
+    </message>
+    <message>
+        <source>Poutres</source>
+        <translation>Beams</translation>
+    </message>
+    <message>
+        <source>Poteaux</source>
+        <translation>Columns</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s), %2 poutre(s), %3 poteau(x), %4 cas de charge.</source>
+        <translation>%1 node(s), %2 beam(s), %3 column(s), %4 load case(s).</translation>
+    </message>
+    <message>
+        <source>Lire un nœud</source>
+        <translation>Read a node</translation>
+    </message>
+    <message>
+        <source>Position d'un nœud.</source>
+        <translation>Position of a node.</translation>
+    </message>
+    <message>
+        <source>Lire une barre</source>
+        <translation>Read a member</translation>
+    </message>
+    <message>
+        <source>Nœuds, longueur et propriétés de section et de matériau d'une barre.</source>
+        <translation>Nodes, length and section and material properties of a member.</translation>
+    </message>
+    <message>
+        <source>Longueur</source>
+        <translation>Length</translation>
+    </message>
+    <message>
+        <source>Aire (m²)</source>
+        <translation>Area (m²)</translation>
+    </message>
+    <message>
+        <source>Iy, axe fort (m⁴)</source>
+        <translation>Iy, strong axis (m⁴)</translation>
+    </message>
+    <message>
+        <source>Iz, axe faible (m⁴)</source>
+        <translation>Iz, weak axis (m⁴)</translation>
+    </message>
+    <message>
+        <source>Module d'Young (kN/m²)</source>
+        <translation>Young's modulus (kN/m²)</translation>
+    </message>
+    <message>
+        <source>Barre %1 : N%2 → N%3, L = %4 m, A = %5 m², Iy = %6 m⁴, E = %7 kN/m²</source>
+        <translation>Member %1: N%2 → N%3, L = %4 m, A = %5 m², Iy = %6 m⁴, E = %7 kN/m²</translation>
+    </message>
+    <message>
+        <source>Calculer</source>
+        <translation>Analyse</translation>
+    </message>
+    <message>
+        <source>Analyse</source>
+        <translation>Analysis</translation>
+    </message>
+    <message>
+        <source>Calcule le modèle avec les réglages d'analyse du projet ; moteur et axe de grille facultatifs (« custom2d » + axe « B » : portique plan de l'axe B ; axe « * » : modèle complet ; axe « plan » : plan du modèle, s'il est plan). Poids propre : « oui » / « non », vide = réglage du projet. Cas de charge ou combinaison : nom ou numéro (l'un ou l'autre), vide = réglage du projet. Les réglages modifiés sont enregistrés avec le projet. Calcul synchrone : les résultats sont publiés à la fin.</source>
+        <translation>Analyses the model with the project analysis settings; engine and grid axis optional (“custom2d” + axis “B”: plane frame of axis B; axis “*”: complete model; axis “plan”: model plane, if planar). Self-weight: “oui” / “non”, empty = project setting. Load case or combination: name or number (one or the other), empty = project setting. Modified settings are saved with the project. Synchronous analysis: the results are published at the end.</translation>
+    </message>
+    <message>
+        <source>Moteur</source>
+        <translation>Engine</translation>
+    </message>
+    <message>
+        <source>Axe de grille</source>
+        <translation>Grid axis</translation>
+    </message>
+    <message>
+        <source>Exporter K·U = F</source>
+        <translation>Export K·U = F</translation>
+    </message>
+    <message>
+        <source>Poids propre</source>
+        <translation>Self-weight</translation>
+    </message>
+    <message>
+        <source>Cas de charge (nom ou numéro)</source>
+        <translation>Load case (name or number)</translation>
+    </message>
+    <message>
+        <source>Combinaison (nom ou numéro)</source>
+        <translation>Combination (name or number)</translation>
+    </message>
+    <message>
+        <source>Déplacement max</source>
+        <translation>Max displacement</translation>
+    </message>
+    <message>
+        <source>Moment max</source>
+        <translation>Max moment</translation>
+    </message>
+    <message>
+        <source>Équations</source>
+        <translation>Equations</translation>
+    </message>
+    <message>
+        <source>Un calcul est déjà en cours.</source>
+        <translation>An analysis is already running.</translation>
+    </message>
+    <message>
+        <source>Moteur « %1 » inconnu.</source>
+        <translation>Unknown engine “%1”.</translation>
+    </message>
+    <message>
+        <source>Axe de grille « %1 » introuvable.</source>
+        <translation>Grid axis “%1” not found.</translation>
+    </message>
+    <message>
+        <source>Aucun moteur d'analyse sélectionné.</source>
+        <translation>No analysis engine selected.</translation>
+    </message>
+    <message>
+        <source>Poids propre : « %1 » (oui ou non attendu).</source>
+        <translation>Self-weight: “%1” (oui or non expected).</translation>
+    </message>
+    <message>
+        <source>Cas de charge ou combinaison : l'un ou l'autre, pas les deux.</source>
+        <translation>Load case or combination: one or the other, not both.</translation>
+    </message>
+    <message>
+        <source>Cas de charge « %1 » introuvable.</source>
+        <translation>Load case “%1” not found.</translation>
+    </message>
+    <message>
+        <source>Combinaison « %1 » introuvable.</source>
+        <translation>Combination “%1” not found.</translation>
+    </message>
+    <message>
+        <source>Maillage obsolète (géométrie modifiée depuis sa génération) : régénérer le maillage, ou désactiver « utiliser le maillage généré » dans les réglages du calcul.</source>
+        <translation>Outdated mesh (geometry modified since it was generated): regenerate the mesh, or disable “use the generated mesh” in the analysis settings.</translation>
+    </message>
+    <message>
+        <source>Maillage non transmissible à %1 : %2</source>
+        <translation>Mesh cannot be transferred to %1: %2</translation>
+    </message>
+    <message>
+        <source>maillage %1 du %2</source>
+        <translation>mesh %1 of %2</translation>
+    </message>
+    <message>
+        <source>Analyse impossible : %1</source>
+        <translation>Analysis impossible: %1</translation>
+    </message>
+    <message>
+        <source>modèle d'analyse non extrait.</source>
+        <translation>analysis model not extracted.</translation>
+    </message>
+    <message>
+        <source>Échec du calcul : %1</source>
+        <translation>Analysis failed: %1</translation>
+    </message>
+    <message>
+        <source>%1 : δmax = %2 mm (N%3), Mmax = %4 kN·m, %5 équation(s)</source>
+        <translation>%1: δmax = %2 mm (N%3), Mmax = %4 kN·m, %5 equation(s)</translation>
+    </message>
+    <message>
+        <source>%1 : δmax = %2 mm (N%3), Mmax = %4 kN·m</source>
+        <translation>%1: δmax = %2 mm (N%3), Mmax = %4 kN·m</translation>
+    </message>
+    <message>
+        <source>Résumé des résultats</source>
+        <translation>Results summary</translation>
+    </message>
+    <message>
+        <source>Résultats</source>
+        <translation>Results</translation>
+    </message>
+    <message>
+        <source>Valeurs extrêmes du dernier calcul (déplacement, moment, réaction verticale totale) et validité.</source>
+        <translation>Extreme values of the last analysis (displacement, moment, total vertical reaction) and validity.</translation>
+    </message>
+    <message>
+        <source>Nœud du déplacement max</source>
+        <translation>Node of max displacement</translation>
+    </message>
+    <message>
+        <source>Réaction verticale totale</source>
+        <translation>Total vertical reaction</translation>
+    </message>
+    <message>
+        <source>À jour</source>
+        <translation>Up to date</translation>
+    </message>
+    <message>
+        <source>Aucun résultat : lancez d'abord un calcul (analysis.run).</source>
+        <translation>No results: run an analysis first (analysis.run).</translation>
+    </message>
+    <message>
+        <source>δmax = %1 mm (N%2), Mmax = %3 kN·m, ΣRz = %4 kN</source>
+        <translation>δmax = %1 mm (N%2), Mmax = %3 kN·m, ΣRz = %4 kN</translation>
+    </message>
+    <message>
+        <source>δmax = %1 mm (N%2), Mmax = %3 kN·m, ΣRz = %4 kN — RÉSULTATS OBSOLÈTES</source>
+        <translation>δmax = %1 mm (N%2), Mmax = %3 kN·m, ΣRz = %4 kN — RESULTS OUTDATED</translation>
+    </message>
+    <message>
+        <source>Déplacement d'un nœud</source>
+        <translation>Displacement of a node</translation>
+    </message>
+    <message>
+        <source>Translation (m) et rotation (rad) calculées d'un nœud, repère global.</source>
+        <translation>Computed translation (m) and rotation (rad) of a node, global axes.</translation>
+    </message>
+    <message>
+        <source>Translation</source>
+        <translation>Translation</translation>
+    </message>
+    <message>
+        <source>Rotation (rad)</source>
+        <translation>Rotation (rad)</translation>
+    </message>
+    <message>
+        <source>Norme</source>
+        <translation>Magnitude</translation>
+    </message>
+    <message>
+        <source>Aucun résultat pour le nœud N%1.</source>
+        <translation>No results for node N%1.</translation>
+    </message>
+    <message>
+        <source>Réaction d'un appui</source>
+        <translation>Support reaction</translation>
+    </message>
+    <message>
+        <source>Réaction calculée d'un nœud appuyé (kN, kN·m), repère global.</source>
+        <translation>Computed reaction of a supported node (kN, kN·m), global axes.</translation>
+    </message>
+    <message>
+        <source>Force</source>
+        <translation>Force</translation>
+    </message>
+    <message>
+        <source>Moment</source>
+        <translation>Moment</translation>
+    </message>
+    <message>
+        <source>Aucune réaction pour le nœud N%1 (nœud non appuyé ou hors du calcul).</source>
+        <translation>No reaction for node N%1 (unsupported node or outside the analysis).</translation>
+    </message>
+    <message>
+        <source>Efforts d'une barre</source>
+        <translation>Member forces</translation>
+    </message>
+    <message>
+        <source>Efforts extrêmes calculés le long d'une barre (stations du moteur, repère local) : N, V, M.</source>
+        <translation>Extreme forces calculated along a member (engine stations, local axes): N, V, M.</translation>
+    </message>
+    <message>
+        <source>N max (traction)</source>
+        <translation>N max (tension)</translation>
+    </message>
+    <message>
+        <source>N min (compression)</source>
+        <translation>N min (compression)</translation>
+    </message>
+    <message>
+        <source>Stations</source>
+        <translation>Stations</translation>
+    </message>
+    <message>
+        <source>Aucun effort pour la barre %1 (hors du calcul).</source>
+        <translation>No forces for member %1 (outside the analysis).</translation>
+    </message>
+    <message>
+        <source>Barre %1 ambiguë dans les résultats.</source>
+        <translation>Member %1 is ambiguous in the results.</translation>
+    </message>
+    <message>
+        <source>Barre %1 : N ∈ [%2, %3] kN, |V|max = %4 kN, |M|max = %5 kN·m (%6 stations)</source>
+        <translation>Member %1: N ∈ [%2, %3] kN, |V|max = %4 kN, |M|max = %5 kN·m (%6 stations)</translation>
+    </message>
+    <message>
+        <source>Comparer à une référence</source>
+        <translation>Compare with a reference</translation>
+    </message>
+    <message>
+        <source>Laboratoire</source>
+        <translation>Laboratory</translation>
+    </message>
+    <message>
+        <source>Écarts d'une valeur à sa référence et verdict selon la tolérance mixte |x − réf| ≤ ε_abs + ε_rel·|réf|. L'écart relatif n'est pas défini si |réf| ≈ 0 (sortie absente).</source>
+        <translation>Deviations of a value from its reference and verdict according to the mixed tolerance |x − ref| ≤ ε_abs + ε_rel·|ref|. The relative deviation is undefined if |ref| ≈ 0 (output missing).</translation>
+    </message>
+    <message>
+        <source>Valeur</source>
+        <translation>Value</translation>
+    </message>
+    <message>
+        <source>Référence</source>
+        <translation>Reference</translation>
+    </message>
+    <message>
+        <source>Tolérance relative</source>
+        <translation>Relative tolerance</translation>
+    </message>
+    <message>
+        <source>Tolérance absolue</source>
+        <translation>Absolute tolerance</translation>
+    </message>
+    <message>
+        <source>Écart absolu</source>
+        <translation>Absolute deviation</translation>
+    </message>
+    <message>
+        <source>Écart relatif</source>
+        <translation>Relative deviation</translation>
+    </message>
+    <message>
+        <source>Dans la tolérance</source>
+        <translation>Within tolerance</translation>
+    </message>
+    <message>
+        <source>Valeur ou référence non finie.</source>
+        <translation>Value or reference is not finite.</translation>
+    </message>
+    <message>
+        <source>Tolérances négatives.</source>
+        <translation>Negative tolerances.</translation>
+    </message>
+    <message>
+        <source>|Δ| = %1, écart relatif %2 % — dans la tolérance</source>
+        <translation>|Δ| = %1, relative deviation %2 % — within tolerance</translation>
+    </message>
+    <message>
+        <source>|Δ| = %1, écart relatif %2 % — HORS TOLÉRANCE</source>
+        <translation>|Δ| = %1, relative deviation %2 % — OUT OF TOLERANCE</translation>
+    </message>
+    <message>
+        <source>|Δ| = %1, réf. ≈ 0 : écart relatif non défini — dans la tolérance</source>
+        <translation>|Δ| = %1, ref. ≈ 0: relative deviation undefined — within tolerance</translation>
+    </message>
+    <message>
+        <source>|Δ| = %1, réf. ≈ 0 : écart relatif non défini — HORS TOLÉRANCE</source>
+        <translation>|Δ| = %1, ref. ≈ 0: relative deviation undefined — OUT OF TOLERANCE</translation>
+    </message>
+    <message>
+        <source>Guillemet non fermé.</source>
+        <translation>Unclosed quotation mark.</translation>
+    </message>
+    <message>
+        <source>Ligne vide.</source>
+        <translation>Empty line.</translation>
+    </message>
+    <message>
+        <source>Commande inconnue : « %1 ». Tapez « help » pour la liste.</source>
+        <translation>Unknown command: “%1”. Type “help” for the list.</translation>
+    </message>
+    <message>
+        <source>Argument « %1 » : syntaxe nom=valeur attendue.</source>
+        <translation>Argument “%1”: name=value syntax expected.</translation>
+    </message>
+    <message>
+        <source>booléen</source>
+        <translation>boolean</translation>
+    </message>
+    <message>
+        <source>entier</source>
+        <translation>integer</translation>
+    </message>
+    <message>
+        <source>réel</source>
+        <translation>real</translation>
+    </message>
+    <message>
+        <source>texte</source>
+        <translation>text</translation>
+    </message>
+    <message>
+        <source>point x,y,z</source>
+        <translation>point x,y,z</translation>
+    </message>
+    <message>
+        <source>liste d'identifiants</source>
+        <translation>list of identifiers</translation>
+    </message>
+    <message>
+        <source>objet</source>
+        <translation>object</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Blueprint::File</name>
+    <message>
+        <source>broche « %1 » : type « %2 » inconnu</source>
+        <translation>pin “%1”: unknown type “%2”</translation>
+    </message>
+    <message>
+        <source>identifiant de nœud invalide ou en double : %1</source>
+        <translation>invalid or duplicate node identifier: %1</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : identifiant invalide</source>
+        <translation>subgraph “%1”: invalid identifier</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : %2</source>
+        <translation>subgraph “%1”: %2</translation>
+    </message>
+    <message>
+        <source>JSON invalide : %1</source>
+        <translation>invalid JSON: %1</translation>
+    </message>
+    <message>
+        <source>ce fichier n'est pas un Blueprint (.tsbp)</source>
+        <translation>this file is not a Blueprint (.tsbp)</translation>
+    </message>
+    <message>
+        <source>version de Blueprint %1 non prise en charge (maximum %2)</source>
+        <translation>Blueprint version %1 not supported (maximum %2)</translation>
+    </message>
+    <message>
+        <source>le presse-papiers ne contient pas de nœuds Blueprint</source>
+        <translation>the clipboard does not contain Blueprint nodes</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » (version %2) ajouté</source>
+        <translation>subgraph “%1” (version %2) added</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » mis à jour de la version %2 à la version %3</source>
+        <translation>subgraph “%1” updated from version %2 to version %3</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : version %2 du graphe conservée (fragment en version %3)</source>
+        <translation>subgraph “%1”: graph version %2 kept (fragment at version %3)</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » inexistant</source>
+        <translation>subgraph “%1” does not exist</translation>
+    </message>
+    <message>
+        <source>ce fichier n'est pas un sous-graphe Blueprint (.tsbps)</source>
+        <translation>this file is not a Blueprint subgraph (.tsbps)</translation>
+    </message>
+    <message>
+        <source>version de sous-graphe %1 non prise en charge (maximum %2)</source>
+        <translation>subgraph version %1 not supported (maximum %2)</translation>
+    </message>
+    <message>
+        <source>fichier de sous-graphe vide</source>
+        <translation>empty subgraph file</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Blueprint::Nodes</name>
+    <message>
+        <source>exécution</source>
+        <translation>execution</translation>
+    </message>
+    <message>
+        <source>générique</source>
+        <translation>generic</translation>
+    </message>
+    <message>
+        <source>objet</source>
+        <translation>object</translation>
+    </message>
+    <message>
+        <source>standard</source>
+        <translation>standard</translation>
+    </message>
+    <message>
+        <source>validé</source>
+        <translation>validated</translation>
+    </message>
+    <message>
+        <source>expérimental</source>
+        <translation>experimental</translation>
+    </message>
+    <message>
+        <source>Math</source>
+        <translation>Math</translation>
+    </message>
+    <message>
+        <source>Résultat</source>
+        <translation>Result</translation>
+    </message>
+    <message>
+        <source>division par zéro</source>
+        <translation>division by zero</translation>
+    </message>
+    <message>
+        <source>Paramètres</source>
+        <translation>Parameters</translation>
+    </message>
+    <message>
+        <source>Paramètre nommé du Blueprint : sa valeur peut être modifiée sans toucher au graphe (reconstruction paramétrique).</source>
+        <translation>Named Blueprint parameter: its value can be changed without touching the graph (parametric rebuild).</translation>
+    </message>
+    <message>
+        <source>Nom</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>Valeur</source>
+        <translation>Value</translation>
+    </message>
+    <message>
+        <source>valeur imposée au paramètre « %1 » de type incorrect</source>
+        <translation>value forced on parameter “%1” has the wrong type</translation>
+    </message>
+    <message>
+        <source>Début</source>
+        <translation>Start</translation>
+    </message>
+    <message>
+        <source>Événements</source>
+        <translation>Events</translation>
+    </message>
+    <message>
+        <source>Point de départ de l'exécution.</source>
+        <translation>Starting point of the execution.</translation>
+    </message>
+    <message>
+        <source>Paramètre réel</source>
+        <translation>Real parameter</translation>
+    </message>
+    <message>
+        <source>Paramètre entier</source>
+        <translation>Integer parameter</translation>
+    </message>
+    <message>
+        <source>Paramètre booléen</source>
+        <translation>Boolean parameter</translation>
+    </message>
+    <message>
+        <source>Paramètre texte</source>
+        <translation>Text parameter</translation>
+    </message>
+    <message>
+        <source>Paramètre point</source>
+        <translation>Point parameter</translation>
+    </message>
+    <message>
+        <source>Affecter une variable</source>
+        <translation>Set a variable</translation>
+    </message>
+    <message>
+        <source>Variables</source>
+        <translation>Variables</translation>
+    </message>
+    <message>
+        <source>Mémorise une valeur sous un nom pour la suite de l'exécution (toute valeur, objets compris). La variable est relue par « Lire une variable » ; elle disparaît à la fin de l'exécution.</source>
+        <translation>Stores a value under a name for the rest of the execution (any value, objects included). The variable is read back by “Get a variable”; it disappears at the end of the execution.</translation>
+    </message>
+    <message>
+        <source>nom de variable vide</source>
+        <translation>empty variable name</translation>
+    </message>
+    <message>
+        <source>valeur vide pour la variable « %1 »</source>
+        <translation>empty value for variable “%1”</translation>
+    </message>
+    <message>
+        <source>Lire une variable</source>
+        <translation>Get a variable</translation>
+    </message>
+    <message>
+        <source>Valeur actuelle d'une variable affectée plus tôt dans l'exécution (réévaluée à chaque lecture : dans une boucle, elle voit la dernière affectation).</source>
+        <translation>Current value of a variable set earlier in the execution (re-evaluated at each read: in a loop, it sees the latest assignment).</translation>
+    </message>
+    <message>
+        <source>variable « %1 » non affectée (relier « Affecter une variable » avant sa lecture)</source>
+        <translation>variable “%1” not set (link “Set a variable” before reading it)</translation>
+    </message>
+    <message>
+        <source>Addition</source>
+        <translation>Addition</translation>
+    </message>
+    <message>
+        <source>Soustraction</source>
+        <translation>Subtraction</translation>
+    </message>
+    <message>
+        <source>Multiplication</source>
+        <translation>Multiplication</translation>
+    </message>
+    <message>
+        <source>Division</source>
+        <translation>Division</translation>
+    </message>
+    <message>
+        <source>A ÷ B (B non nul)</source>
+        <translation>A ÷ B (B non-zero)</translation>
+    </message>
+    <message>
+        <source>Comparer</source>
+        <translation>Compare</translation>
+    </message>
+    <message>
+        <source>Opérateur</source>
+        <translation>Operator</translation>
+    </message>
+    <message>
+        <source>opérateur inconnu « %1 »</source>
+        <translation>unknown operator “%1”</translation>
+    </message>
+    <message>
+        <source>Arrondir en entier</source>
+        <translation>Round to integer</translation>
+    </message>
+    <message>
+        <source>Entier le plus proche.</source>
+        <translation>Nearest integer.</translation>
+    </message>
+    <message>
+        <source>Entier</source>
+        <translation>Integer</translation>
+    </message>
+    <message>
+        <source>Construire un point</source>
+        <translation>Make a point</translation>
+    </message>
+    <message>
+        <source>Point (x, y, z) en mètres.</source>
+        <translation>Point (x, y, z) in metres.</translation>
+    </message>
+    <message>
+        <source>Point</source>
+        <translation>Point</translation>
+    </message>
+    <message>
+        <source>Décomposer un point</source>
+        <translation>Break a point</translation>
+    </message>
+    <message>
+        <source>Coordonnées d'un point.</source>
+        <translation>Coordinates of a point.</translation>
+    </message>
+    <message>
+        <source>point attendu</source>
+        <translation>point expected</translation>
+    </message>
+    <message>
+        <source>ET</source>
+        <translation>AND</translation>
+    </message>
+    <message>
+        <source>Logique</source>
+        <translation>Logic</translation>
+    </message>
+    <message>
+        <source>A et B.</source>
+        <translation>A and B.</translation>
+    </message>
+    <message>
+        <source>OU</source>
+        <translation>OR</translation>
+    </message>
+    <message>
+        <source>A ou B.</source>
+        <translation>A or B.</translation>
+    </message>
+    <message>
+        <source>NON</source>
+        <translation>NOT</translation>
+    </message>
+    <message>
+        <source>Négation.</source>
+        <translation>Negation.</translation>
+    </message>
+    <message>
+        <source>Si</source>
+        <translation>If</translation>
+    </message>
+    <message>
+        <source>Flux</source>
+        <translation>Flow</translation>
+    </message>
+    <message>
+        <source>Exécute « Vrai » ou « Faux » selon la condition.</source>
+        <translation>Runs “True” or “False” depending on the condition.</translation>
+    </message>
+    <message>
+        <source>Condition</source>
+        <translation>Condition</translation>
+    </message>
+    <message>
+        <source>Vrai</source>
+        <translation>True</translation>
+    </message>
+    <message>
+        <source>Faux</source>
+        <translation>False</translation>
+    </message>
+    <message>
+        <source>Séquence</source>
+        <translation>Sequence</translation>
+    </message>
+    <message>
+        <source>Exécute ses sorties dans l'ordre.</source>
+        <translation>Runs its outputs in order.</translation>
+    </message>
+    <message>
+        <source>Pour</source>
+        <translation>For</translation>
+    </message>
+    <message>
+        <source>Exécute « Corps » pour chaque index de Premier à Dernier (inclus), puis « Terminé ».</source>
+        <translation>Runs “Body” for each index from First to Last (inclusive), then “Completed”.</translation>
+    </message>
+    <message>
+        <source>Premier</source>
+        <translation>First</translation>
+    </message>
+    <message>
+        <source>Dernier</source>
+        <translation>Last</translation>
+    </message>
+    <message>
+        <source>Corps</source>
+        <translation>Body</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>Index</translation>
+    </message>
+    <message>
+        <source>Terminé</source>
+        <translation>Completed</translation>
+    </message>
+    <message>
+        <source>trop d'itérations (%1)</source>
+        <translation>too many iterations (%1)</translation>
+    </message>
+    <message>
+        <source>Tant que</source>
+        <translation>While</translation>
+    </message>
+    <message>
+        <source>Exécute « Corps » tant que la condition (réévaluée) est vraie.</source>
+        <translation>Runs “Body” while the condition (re-evaluated) is true.</translation>
+    </message>
+    <message>
+        <source>trop d'itérations (boucle infinie ?)</source>
+        <translation>too many iterations (infinite loop?)</translation>
+    </message>
+    <message>
+        <source>Concaténer</source>
+        <translation>Concatenate</translation>
+    </message>
+    <message>
+        <source>Texte</source>
+        <translation>Text</translation>
+    </message>
+    <message>
+        <source>A suivi de B (toute valeur convertie en texte).</source>
+        <translation>A followed by B (any value converted to text).</translation>
+    </message>
+    <message>
+        <source>Afficher</source>
+        <translation>Print</translation>
+    </message>
+    <message>
+        <source>Débogage</source>
+        <translation>Debugging</translation>
+    </message>
+    <message>
+        <source>Écrit une valeur dans le journal d'exécution.</source>
+        <translation>Writes a value to the execution log.</translation>
+    </message>
+    <message>
+        <source>Afficher le contenu</source>
+        <translation>Print contents</translation>
+    </message>
+    <message>
+        <source>Écrit le contenu complet d'une valeur dans le journal : matrice, vecteur, tableau de résultats (un objet est écrit en entier, pas seulement son résumé).</source>
+        <translation>Writes the full contents of a value to the log: matrix, vector, results table (an object is written in full, not only its summary).</translation>
+    </message>
+    <message>
+        <source>Titre</source>
+        <translation>Title</translation>
+    </message>
+    <message>
+        <source>Banc de validation</source>
+        <translation>Validation bench</translation>
+    </message>
+    <message>
+        <source>Exécute les benchmarks à solution analytique sur tous les solveurs d'ossatures planes (résultat, solution analytique, validation croisée K·U = F).</source>
+        <translation>Runs the benchmarks with an analytical solution on all plane frame solvers (result, analytical solution, cross-validation K·U = F).</translation>
+    </message>
+    <message>
+        <source>Validés</source>
+        <translation>Passed</translation>
+    </message>
+    <message>
+        <source>Total</source>
+        <translation>Total</translation>
+    </message>
+    <message>
+        <source>Rapport</source>
+        <translation>Report</translation>
+    </message>
+    <message>
+        <source>aucun projet ouvert</source>
+        <translation>no project open</translation>
+    </message>
+    <message>
+        <source>paramètre requis « %1 » non renseigné</source>
+        <translation>required parameter “%1” not set</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Blueprint::Runtime</name>
+    <message>
+        <source>nœud inexistant</source>
+        <translation>node does not exist</translation>
+    </message>
+    <message>
+        <source>un nœud ne peut pas être relié à lui-même</source>
+        <translation>a node cannot be linked to itself</translation>
+    </message>
+    <message>
+        <source>type de nœud inconnu</source>
+        <translation>unknown node type</translation>
+    </message>
+    <message>
+        <source>sortie « %1 » inexistante sur %2</source>
+        <translation>output “%1” does not exist on %2</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » inexistante sur %2</source>
+        <translation>input “%1” does not exist on %2</translation>
+    </message>
+    <message>
+        <source>une broche d'exécution ne se relie qu'à une broche d'exécution</source>
+        <translation>an execution pin can only be linked to an execution pin</translation>
+    </message>
+    <message>
+        <source>types incompatibles : %1 → %2</source>
+        <translation>incompatible types: %1 → %2</translation>
+    </message>
+    <message>
+        <source>type de nœud inconnu « %1 »</source>
+        <translation>unknown node type “%1”</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » introuvable : sa définition est absente du graphe (importer le sous-graphe)</source>
+        <translation>subgraph “%1” not found: its definition is missing from the graph (import the subgraph)</translation>
+    </message>
+    <message>
+        <source>%1 : nœud enregistré en version %2, bibliothèque en version %3 (fichier créé par une version plus récente)</source>
+        <translation>%1: node saved at version %2, library at version %3 (file created by a newer version)</translation>
+    </message>
+    <message>
+        <source>%1 : entrée requise « %2 » non renseignée</source>
+        <translation>%1: required input “%2” not set</translation>
+    </message>
+    <message>
+        <source>lien invalide : %1</source>
+        <translation>invalid link: %1</translation>
+    </message>
+    <message>
+        <source>cycle de données entre nœuds purs</source>
+        <translation>data cycle between pure nodes</translation>
+    </message>
+    <message>
+        <source>cycle d'exécution : les liens d'exécution reviennent à un nœud déjà exécuté (utiliser « Pour » ou « Tant que »)</source>
+        <translation>execution cycle: the execution links return to a node already executed (use “For” or “While”)</translation>
+    </message>
+    <message>
+        <source>%1 (#%2) lit une sortie de « %3 » (#%4) qui n'est pas exécuté avant lui dans le flux</source>
+        <translation>%1 (#%2) reads an output of “%3” (#%4) which is not executed before it in the flow</translation>
+    </message>
+    <message>
+        <source>%1 (#%2) : %3</source>
+        <translation>%1 (#%2): %3</translation>
+    </message>
+    <message>
+        <source>nombre maximal d'étapes atteint (%1)</source>
+        <translation>maximum number of steps reached (%1)</translation>
+    </message>
+    <message>
+        <source>exécution arrêtée par l'utilisateur</source>
+        <translation>execution stopped by the user</translation>
+    </message>
+    <message>
+        <source>nœud ou type inconnu</source>
+        <translation>unknown node or type</translation>
+    </message>
+    <message>
+        <source>exécution interrompue (débogueur)</source>
+        <translation>execution interrupted (debugger)</translation>
+    </message>
+    <message>
+        <source>échec</source>
+        <translation>failed</translation>
+    </message>
+    <message>
+        <source>source inconnue</source>
+        <translation>unknown source</translation>
+    </message>
+    <message>
+        <source>cycle de données</source>
+        <translation>data cycle</translation>
+    </message>
+    <message>
+        <source>sortie « %1 » non disponible (nœud d'action pas encore exécuté)</source>
+        <translation>output “%1” not available (action node not yet executed)</translation>
+    </message>
+    <message>
+        <source>Blueprint invalide : %1 (+%2 autre(s))</source>
+        <translation>Invalid Blueprint: %1 (+%2 other(s))</translation>
+    </message>
+    <message>
+        <source>Blueprint invalide : %1</source>
+        <translation>Invalid Blueprint: %1</translation>
+    </message>
+    <message>
+        <source>Aucun nœud « Début » : rien à exécuter.</source>
+        <translation>No “Start” node: nothing to run.</translation>
+    </message>
+    <message>
+        <source>Exécution terminée (%1 étape(s), %2 résultat(s) réutilisé(s)).</source>
+        <translation>Execution completed (%1 step(s), %2 result(s) reused).</translation>
+    </message>
+    <message>
+        <source>Exécution terminée (%1 étape(s)).</source>
+        <translation>Execution completed (%1 step(s)).</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » inexistante</source>
+        <translation>input “%1” does not exist</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » : objet %2 attendu, %3 reçu</source>
+        <translation>input “%1”: object %2 expected, %3 received</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » : réel attendu</source>
+        <translation>input “%1”: real expected</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » : entier attendu</source>
+        <translation>input “%1”: integer expected</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » : booléen attendu</source>
+        <translation>input “%1”: boolean expected</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » : objet attendu (relier une sortie de type objet)</source>
+        <translation>input “%1”: object expected (link an object-type output)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Blueprint::Script</name>
+    <message>
+        <source>ligne %1 : %2</source>
+        <translation>line %1: %2</translation>
+    </message>
+    <message>
+        <source>commande attendue</source>
+        <translation>command expected</translation>
+    </message>
+    <message>
+        <source>commande inconnue « %1 »</source>
+        <translation>unknown command “%1”</translation>
+    </message>
+    <message>
+        <source>aucun nœud pour la commande « %1 »</source>
+        <translation>no node for command “%1”</translation>
+    </message>
+    <message>
+        <source>argument « %1 » : syntaxe nom=valeur attendue</source>
+        <translation>argument “%1”: name=value syntax expected</translation>
+    </message>
+    <message>
+        <source>paramètre inconnu « %1 » pour %2</source>
+        <translation>unknown parameter “%1” for %2</translation>
+    </message>
+    <message>
+        <source>« %1 » : %2</source>
+        <translation>“%1”: %2</translation>
+    </message>
+    <message>
+        <source>paramètre « %1 » : %2 attendu, reçu « %3 »</source>
+        <translation>parameter “%1”: %2 expected, received “%3”</translation>
+    </message>
+    <message>
+        <source>script vide : aucune commande</source>
+        <translation>empty script: no command</translation>
+    </message>
+    <message>
+        <source>aucun nœud « Début »</source>
+        <translation>no “Start” node</translation>
+    </message>
+    <message>
+        <source>boucle d'exécution non exprimable en script</source>
+        <translation>execution loop cannot be expressed in a script</translation>
+    </message>
+    <message>
+        <source>nœud « %1 » (#%2) non exprimable en script : chaîne arrêtée</source>
+        <translation>node “%1” (#%2) cannot be expressed in a script: chain stopped</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » de #%2 reliée à un nœud non exprimable en script</source>
+        <translation>input “%1” of #%2 linked to a node that cannot be expressed in a script</translation>
+    </message>
+    <message>
+        <source>plusieurs suites d'exécution : seule la première est suivie</source>
+        <translation>several execution continuations: only the first one is followed</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Blueprint::Subgraph</name>
+    <message>
+        <source>aucune</source>
+        <translation>none</translation>
+    </message>
+    <message>
+        <source>%1 (%2, obligatoire)</source>
+        <translation>%1 (%2, required)</translation>
+    </message>
+    <message>
+        <source>%1 (%2)</source>
+        <translation>%1 (%2)</translation>
+    </message>
+    <message>
+        <source>Sous-graphes</source>
+        <translation>Subgraphs</translation>
+    </message>
+    <message>
+        <source>Sous-graphe « %1 ».</source>
+        <translation>Subgraph “%1”.</translation>
+    </message>
+    <message>
+        <source>Sous-graphe « %1 », version %2 — pur (évalué à la demande).
+Entrées : %3.
+Sorties : %4.
+Corps : %5 nœud(s), exécuté dans une exécution imbriquée ; son journal est repris, préfixé de son nom ; une erreur du corps fait échouer l'instance.</source>
+        <translation>Subgraph “%1”, version %2 — pure (evaluated on demand).
+Inputs: %3.
+Outputs: %4.
+Body: %5 node(s), run in a nested execution; its log is carried over, prefixed with its name; an error in the body makes the instance fail.</translation>
+    </message>
+    <message>
+        <source>Sous-graphe « %1 », version %2 — d'action (broches d'exécution).
+Entrées : %3.
+Sorties : %4.
+Corps : %5 nœud(s), exécuté dans une exécution imbriquée ; son journal est repris, préfixé de son nom ; une erreur du corps fait échouer l'instance.</source>
+        <translation>Subgraph “%1”, version %2 — action (execution pins).
+Inputs: %3.
+Outputs: %4.
+Body: %5 node(s), run in a nested execution; its log is carried over, prefixed with its name; an error in the body makes the instance fail.</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » (défini dans le graphe)</source>
+        <translation>subgraph “%1” (defined in the graph)</translation>
+    </message>
+    <message>
+        <source>sous-graphes imbriqués sur plus de %1 niveaux (appel récursif ?)</source>
+        <translation>subgraphs nested more than %1 levels deep (recursive call?)</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » sans corps</source>
+        <translation>subgraph “%1” has no body</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : %2</source>
+        <translation>subgraph “%1”: %2</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : sortie « %2 » non produite (la fin du corps n'a pas été atteinte)</source>
+        <translation>subgraph “%1”: output “%2” not produced (the end of the body was not reached)</translation>
+    </message>
+    <message>
+        <source>Entrées — %1</source>
+        <translation>Inputs — %1</translation>
+    </message>
+    <message>
+        <source>Sous-graphe (corps)</source>
+        <translation>Subgraph (body)</translation>
+    </message>
+    <message>
+        <source>Point de départ du corps du sous-graphe « %1 » : valeurs des entrées de l'instance.</source>
+        <translation>Starting point of the body of subgraph “%1”: input values of the instance.</translation>
+    </message>
+    <message>
+        <source>Valeurs des entrées passées par l'instance. Corps exécuté seul (essai) : valeurs par défaut des entrées ; une entrée obligatoire sans valeur par défaut fait alors échouer l'exécution.</source>
+        <translation>Input values passed by the instance. Body run on its own (test): default values of the inputs; a required input without a default value then makes the execution fail.</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » du sous-graphe non fournie (exécution du corps seul : donner une valeur par défaut)</source>
+        <translation>subgraph input “%1” not provided (body run on its own: give a default value)</translation>
+    </message>
+    <message>
+        <source>Sorties — %1</source>
+        <translation>Outputs — %1</translation>
+    </message>
+    <message>
+        <source>Fin du corps du sous-graphe « %1 » : valeurs rendues par l'instance.</source>
+        <translation>End of the body of subgraph “%1”: values returned by the instance.</translation>
+    </message>
+    <message>
+        <source>Chaque entrée est obligatoire : c'est une sortie du sous-graphe. Le nœud doit être atteint par les liens d'exécution depuis l'entrée du corps.</source>
+        <translation>Each input is required: it is an output of the subgraph. The node must be reached by the execution links from the input of the body.</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : nœud « Début » interdit dans un corps (le point de départ est l'entrée du sous-graphe)</source>
+        <translation>subgraph “%1”: “Start” node not allowed in a body (the starting point is the input of the subgraph)</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : nœud d'entrée ou de sortie d'un autre sous-graphe (%2)</source>
+        <translation>subgraph “%1”: input or output node of another subgraph (%2)</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : le corps doit contenir un nœud d'entrée et un nœud de sortie (%2 et %3)</source>
+        <translation>subgraph “%1”: the body must contain an input node and an output node (%2 and %3)</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : la fin du corps n'est pas atteinte depuis son entrée (relier les liens d'exécution)</source>
+        <translation>subgraph “%1”: the end of the body is not reached from its input (connect the execution links)</translation>
+    </message>
+    <message>
+        <source>appel récursif de sous-graphes : %1</source>
+        <translation>recursive subgraph call: %1</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : identifiant invalide « %2 » (lettre puis lettres, chiffres, _ ou -, 64 caractères au plus)</source>
+        <translation>subgraph “%1”: invalid identifier “%2” (a letter, then letters, digits, _ or -, 64 characters at most)</translation>
+    </message>
+    <message>
+        <source>identifiant de sous-graphe en double « %1 »</source>
+        <translation>duplicate subgraph identifier “%1”</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : version %2 invalide</source>
+        <translation>subgraph “%1”: invalid version %2</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : nom de broche invalide « %2 »</source>
+        <translation>subgraph “%1”: invalid pin name “%2”</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : broche « %2 » en double</source>
+        <translation>subgraph “%1”: duplicate pin “%2”</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : broche « %2 » : seules les broches de données sont configurables</source>
+        <translation>subgraph “%1”: pin “%2”: only data pins can be configured</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : corps absent</source>
+        <translation>subgraph “%1”: body missing</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » : #%2 %3</source>
+        <translation>subgraph “%1”: #%2 %3</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » introuvable</source>
+        <translation>subgraph “%1” not found</translation>
+    </message>
+    <message>
+        <source>%1 : lien « %2 » retiré (broche supprimée ou de type modifié)</source>
+        <translation>%1: link “%2” removed (pin deleted or type changed)</translation>
+    </message>
+    <message>
+        <source>%1 : valeur de l'entrée supprimée « %2 » effacée</source>
+        <translation>%1: value of the deleted input “%2” cleared</translation>
+    </message>
+    <message>
+        <source>aucun nœud sélectionné</source>
+        <translation>no node selected</translation>
+    </message>
+    <message>
+        <source>identifiant invalide « %1 » (lettre puis lettres, chiffres, _ ou -)</source>
+        <translation>invalid identifier “%1” (a letter, then letters, digits, _ or -)</translation>
+    </message>
+    <message>
+        <source>un sous-graphe « %1 » existe déjà dans ce graphe</source>
+        <translation>a subgraph “%1” already exists in this graph</translation>
+    </message>
+    <message>
+        <source>nœud #%1 inexistant</source>
+        <translation>node #%1 does not exist</translation>
+    </message>
+    <message>
+        <source>nœud #%1 de type inconnu « %2 »</source>
+        <translation>node #%1 of unknown type “%2”</translation>
+    </message>
+    <message>
+        <source>« %1 » (#%2) ne peut pas être encapsulé (point de départ ou nœud d'entrée / de sortie de sous-graphe)</source>
+        <translation>“%1” (#%2) cannot be wrapped (starting point or subgraph input / output node)</translation>
+    </message>
+    <message>
+        <source>lien invalide depuis #%1.%2</source>
+        <translation>invalid link from #%1.%2</translation>
+    </message>
+    <message>
+        <source>plusieurs liens d'exécution entrent dans la sélection par des nœuds différents : un sous-graphe a un seul point d'entrée</source>
+        <translation>several execution links enter the selection through different nodes: a subgraph has a single entry point</translation>
+    </message>
+    <message>
+        <source>plusieurs sorties d'exécution quittent la sélection : un sous-graphe a une seule sortie d'exécution</source>
+        <translation>several execution outputs leave the selection: a subgraph has a single execution output</translation>
+    </message>
+    <message>
+        <source>la sélection contient des nœuds d'action mais aucun lien d'exécution n'y entre (elle ne serait jamais exécutée)</source>
+        <translation>the selection contains action nodes but no execution link enters it (it would never be executed)</translation>
+    </message>
+    <message>
+        <source>chaîne d'exécution encapsulée en boucle : fin introuvable</source>
+        <translation>wrapped execution chain loops: end not found</translation>
+    </message>
+    <message>
+        <source>la chaîne d'exécution encapsulée se termine sur « %1 », sans sortie d'exécution</source>
+        <translation>the wrapped execution chain ends on “%1”, without an execution output</translation>
+    </message>
+    <message>
+        <source>Sous-graphe « %1 » créé : %2 nœud(s), %3 entrée(s), %4 sortie(s), d'action.</source>
+        <translation>Subgraph “%1” created: %2 node(s), %3 input(s), %4 output(s), action.</translation>
+    </message>
+    <message>
+        <source>Sous-graphe « %1 » créé : %2 nœud(s), %3 entrée(s), %4 sortie(s), pur.</source>
+        <translation>Subgraph “%1” created: %2 node(s), %3 input(s), %4 output(s), pure.</translation>
+    </message>
+    <message>
+        <source>instance %1</source>
+        <translation>instance %1</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » encore utilisé (%2 instance(s))</source>
+        <translation>subgraph “%1” still in use (%2 instance(s))</translation>
+    </message>
+    <message>
+        <source>sous-graphe « %1 » inexistant</source>
+        <translation>subgraph “%1” does not exist</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Interaction::DimensionTools</name>
+    <message>
+        <source>Cotation angulaire : cliquez le sommet de l'angle</source>
+        <translation>Angular dimension: click the vertex of the angle</translation>
+    </message>
+    <message>
+        <source>Cliquez un point du premier bras (nœud, extrémité de barre…)</source>
+        <translation>Click a point on the first arm (node, member end…)</translation>
+    </message>
+    <message>
+        <source>Cliquez un point du second bras</source>
+        <translation>Click a point on the second arm</translation>
+    </message>
+    <message>
+        <source>Placez l'arc de cote (clic), ou tapez son rayon + Entrée</source>
+        <translation>Place the dimension arc (click), or type its radius + Enter</translation>
+    </message>
+    <message>
+        <source>Cotation de niveau : cliquez le point dont la cote est affichée</source>
+        <translation>Level dimension: click the point whose elevation is shown</translation>
+    </message>
+    <message>
+        <source>Placez le texte de la cote de niveau (clic)</source>
+        <translation>Place the level dimension text (click)</translation>
+    </message>
+    <message>
+        <source>Cliquez les points successifs (au moins 2)</source>
+        <translation>Click the successive points (at least 2)</translation>
+    </message>
+    <message>
+        <source>Cliquez le point suivant, ou Entrée pour placer la ligne de cote</source>
+        <translation>Click the next point, or Enter to place the dimension line</translation>
+    </message>
+    <message>
+        <source>Placez la ligne de cote (clic), ou tapez son décalage + Entrée</source>
+        <translation>Place the dimension line (click), or type its offset + Enter</translation>
+    </message>
+    <message>
+        <source>%1 : cliquez le premier point (nœud, extrémité, intersection…)</source>
+        <translation>%1: click the first point (node, end, intersection…)</translation>
+    </message>
+    <message>
+        <source>Cliquez le second point</source>
+        <translation>Click the second point</translation>
+    </message>
+    <message>
+        <source>saisie incomplète</source>
+        <translation>incomplete input</translation>
+    </message>
+    <message>
+        <source>cotation refusée : %1</source>
+        <translation>dimension rejected: %1</translation>
+    </message>
+    <message>
+        <source>cotation #%1 créée (%2)</source>
+        <translation>dimension #%1 created (%2)</translation>
+    </message>
+    <message>
+        <source>Cotation alignée</source>
+        <translation>Aligned dimension</translation>
+    </message>
+    <message>
+        <source>Distance réelle entre deux points, même inclinée (vraie grandeur).</source>
+        <translation>Actual distance between two points, even inclined (true length).</translation>
+    </message>
+    <message>
+        <source>Cotation linéaire</source>
+        <translation>Linear dimension</translation>
+    </message>
+    <message>
+        <source>Distance projetée sur l'axe X, Y ou Z choisi selon la position du curseur (comme une cotation horizontale / verticale).</source>
+        <translation>Distance projected onto the X, Y or Z axis chosen from the cursor position (like a horizontal / vertical dimension).</translation>
+    </message>
+    <message>
+        <source>Cotation horizontale</source>
+        <translation>Horizontal dimension</translation>
+    </message>
+    <message>
+        <source>Distance en plan (projection sur le plan horizontal).</source>
+        <translation>Distance in plan (projection onto the horizontal plane).</translation>
+    </message>
+    <message>
+        <source>Cotation suivant X</source>
+        <translation>Dimension along X</translation>
+    </message>
+    <message>
+        <source>Écart des coordonnées X entre deux points.</source>
+        <translation>Difference of the X coordinates between two points.</translation>
+    </message>
+    <message>
+        <source>Cotation suivant Y</source>
+        <translation>Dimension along Y</translation>
+    </message>
+    <message>
+        <source>Écart des coordonnées Y entre deux points.</source>
+        <translation>Difference of the Y coordinates between two points.</translation>
+    </message>
+    <message>
+        <source>Cotation verticale (Z)</source>
+        <translation>Vertical dimension (Z)</translation>
+    </message>
+    <message>
+        <source>Différence de niveau (écart des coordonnées Z) entre deux points.</source>
+        <translation>Level difference (difference of the Z coordinates) between two points.</translation>
+    </message>
+    <message>
+        <source>Cotation angulaire</source>
+        <translation>Angular dimension</translation>
+    </message>
+    <message>
+        <source>Angle au sommet entre deux directions (barres, lignes) : sommet, puis un point de chaque bras.</source>
+        <translation>Angle at the vertex between two directions (members, lines): vertex, then one point on each arm.</translation>
+    </message>
+    <message>
+        <source>Cotation de niveau</source>
+        <translation>Level dimension</translation>
+    </message>
+    <message>
+        <source>Altitude d'un point par rapport à la référence de niveau du style.</source>
+        <translation>Elevation of a point relative to the level reference of the style.</translation>
+    </message>
+    <message>
+        <source>Cotation en chaîne</source>
+        <translation>Chain dimension</translation>
+    </message>
+    <message>
+        <source>Distances successives entre plusieurs points, sur une même ligne de cote (direction premier → dernier point).</source>
+        <translation>Successive distances between several points, on a single dimension line (direction first → last point).</translation>
+    </message>
+    <message>
+        <source>Cotation cumulée</source>
+        <translation>Cumulative dimension</translation>
+    </message>
+    <message>
+        <source>Distances mesurées depuis le premier point (origine commune).</source>
+        <translation>Distances measured from the first point (common origin).</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Interaction::DrawTools</name>
+    <message>
+        <source>Attention : %1</source>
+        <translation>Warning: %1</translation>
+    </message>
+    <message>
+        <source>%1 non créé : %2</source>
+        <translation>%1 not created: %2</translation>
+    </message>
+    <message>
+        <source>Chaîne de poutres</source>
+        <translation>Beam chain</translation>
+    </message>
+    <message>
+        <source>Dessiner des poutres consécutives (Entrée pour terminer)</source>
+        <translation>Draw consecutive beams (Enter to finish)</translation>
+    </message>
+    <message>
+        <source>Chaîne de poutres : cliquez le premier point</source>
+        <translation>Beam chain: click the first point</translation>
+    </message>
+    <message>
+        <source>Chaîne de poutres : cliquez le point suivant (Entrée : terminer, %1 poutre(s))</source>
+        <translation>Beam chain: click the next point (Enter: finish, %1 beam(s))</translation>
+    </message>
+    <message>
+        <source>%1 poutre(s) créée(s).</source>
+        <translation>%1 beam(s) created.</translation>
+    </message>
+    <message>
+        <source>Coin 1 (m)</source>
+        <translation>Corner 1 (m)</translation>
+    </message>
+    <message>
+        <source>Coin opposé (m)</source>
+        <translation>Opposite corner (m)</translation>
+    </message>
+    <message>
+        <source>Rectangle de poutres</source>
+        <translation>Beam rectangle</translation>
+    </message>
+    <message>
+        <source>Quatre poutres formant un rectangle dans le plan de travail</source>
+        <translation>Four beams forming a rectangle in the work plane</translation>
+    </message>
+    <message>
+        <source>Rectangle de poutres : cliquez un coin</source>
+        <translation>Beam rectangle: click a corner</translation>
+    </message>
+    <message>
+        <source>Rectangle de poutres : cliquez le coin opposé</source>
+        <translation>Beam rectangle: click the opposite corner</translation>
+    </message>
+    <message>
+        <source>Rectangle : les deux coins doivent différer selon les deux axes du plan de travail.</source>
+        <translation>Rectangle: the two corners must differ along both axes of the work plane.</translation>
+    </message>
+    <message>
+        <source>Rectangle de 4 poutres créé.</source>
+        <translation>Rectangle of 4 beams created.</translation>
+    </message>
+    <message>
+        <source>Pied gauche (m)</source>
+        <translation>Left base (m)</translation>
+    </message>
+    <message>
+        <source>Pied droit (m)</source>
+        <translation>Right base (m)</translation>
+    </message>
+    <message>
+        <source>Hauteur (m)</source>
+        <translation>Height (m)</translation>
+    </message>
+    <message>
+        <source>Portique</source>
+        <translation>Portal frame</translation>
+    </message>
+    <message>
+        <source>Deux poteaux et une traverse à partir des deux pieds</source>
+        <translation>Two columns and a beam from the two bases</translation>
+    </message>
+    <message>
+        <source>Portique (hauteur %1 m, tapez une hauteur pour la changer) : cliquez le pied gauche</source>
+        <translation>Portal frame (height %1 m, type a height to change it): click the left base</translation>
+    </message>
+    <message>
+        <source>Portique (hauteur %1 m) : cliquez le pied droit</source>
+        <translation>Portal frame (height %1 m): click the right base</translation>
+    </message>
+    <message>
+        <source>Portique : pieds confondus.</source>
+        <translation>Portal frame: bases coincide.</translation>
+    </message>
+    <message>
+        <source>Portique créé (2 poteaux, 1 traverse).</source>
+        <translation>Portal frame created (2 columns, 1 beam).</translation>
+    </message>
+    <message>
+        <source>Coin 2 (m)</source>
+        <translation>Corner 2 (m)</translation>
+    </message>
+    <message>
+        <source>Coin 3 (m)</source>
+        <translation>Corner 3 (m)</translation>
+    </message>
+    <message>
+        <source>Coin 4 (m)</source>
+        <translation>Corner 4 (m)</translation>
+    </message>
+    <message>
+        <source>Contreventement en X</source>
+        <translation>X bracing</translation>
+    </message>
+    <message>
+        <source>Deux diagonales de treillis dans un panneau défini par ses 4 coins (dans l'ordre)</source>
+        <translation>Two truss diagonals in a panel defined by its 4 corners (in order)</translation>
+    </message>
+    <message>
+        <source>Contreventement en X : cliquez le coin %1 sur 4 (dans l'ordre du contour)</source>
+        <translation>X bracing: click corner %1 of 4 (in contour order)</translation>
+    </message>
+    <message>
+        <source>Contreventement en X : 2 diagonales créées.</source>
+        <translation>X bracing: 2 diagonals created.</translation>
+    </message>
+    <message>
+        <source>Début (m)</source>
+        <translation>Start (m)</translation>
+    </message>
+    <message>
+        <source>Point de passage (m)</source>
+        <translation>Through point (m)</translation>
+    </message>
+    <message>
+        <source>Fin (m)</source>
+        <translation>End (m)</translation>
+    </message>
+    <message>
+        <source>Nombre de poutres</source>
+        <translation>Number of beams</translation>
+    </message>
+    <message>
+        <source>Arc de poutres</source>
+        <translation>Beam arc</translation>
+    </message>
+    <message>
+        <source>Arc par 3 points discrétisé en N poutres droites</source>
+        <translation>3-point arc divided into N straight beams</translation>
+    </message>
+    <message>
+        <source>Arc de %1 poutres (tapez un nombre pour le changer) : cliquez le début</source>
+        <translation>Arc of %1 beams (type a number to change it): click the start</translation>
+    </message>
+    <message>
+        <source>Arc de %1 poutres (tapez un nombre pour le changer) : cliquez un point de passage</source>
+        <translation>Arc of %1 beams (type a number to change it): click a through point</translation>
+    </message>
+    <message>
+        <source>Arc de %1 poutres (tapez un nombre pour le changer) : cliquez la fin</source>
+        <translation>Arc of %1 beams (type a number to change it): click the end</translation>
+    </message>
+    <message>
+        <source>Arc : les trois points sont alignés ou confondus.</source>
+        <translation>Arc: the three points are aligned or coincident.</translation>
+    </message>
+    <message>
+        <source>Arc de %1 poutre(s) créé.</source>
+        <translation>Arc of %1 beam(s) created.</translation>
+    </message>
+    <message>
+        <source>Coin 1 de la zone (m)</source>
+        <translation>Area corner 1 (m)</translation>
+    </message>
+    <message>
+        <source>Poteaux sur grille</source>
+        <translation>Columns on grid</translation>
+    </message>
+    <message>
+        <source>Un poteau à chaque intersection de la grille active comprise dans une zone (pied à la cote du 1er coin)</source>
+        <translation>One column at each intersection of the active grid within an area (base at the elevation of the 1st corner)</translation>
+    </message>
+    <message>
+        <source>Poteaux sur grille : cliquez un coin de la zone (tapez une hauteur pour la changer)</source>
+        <translation>Columns on grid: click a corner of the area (type a height to change it)</translation>
+    </message>
+    <message>
+        <source>Poteaux sur grille : cliquez le coin opposé</source>
+        <translation>Columns on grid: click the opposite corner</translation>
+    </message>
+    <message>
+        <source>Poteaux sur grille : aucune grille cartésienne active.</source>
+        <translation>Columns on grid: no active Cartesian grid.</translation>
+    </message>
+    <message>
+        <source>Poteaux sur grille : aucune intersection dans la zone.</source>
+        <translation>Columns on grid: no intersection in the area.</translation>
+    </message>
+    <message>
+        <source>%1 poteau(x) créé(s).</source>
+        <translation>%1 column(s) created.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Interaction::ElementCreation</name>
+    <message>
+        <source>la poutre B%1</source>
+        <translation>beam B%1</translation>
+    </message>
+    <message>
+        <source>la barre B%1</source>
+        <translation>member B%1</translation>
+    </message>
+    <message>
+        <source>le poteau C%1</source>
+        <translation>column C%1</translation>
+    </message>
+    <message>
+        <source>la barre de treillis TR%1</source>
+        <translation>truss member TR%1</translation>
+    </message>
+    <message>
+        <source>le câble CB%1</source>
+        <translation>cable CB%1</translation>
+    </message>
+    <message>
+        <source>le voile W%1</source>
+        <translation>wall W%1</translation>
+    </message>
+    <message>
+        <source>Les deux extrémités sont confondues : un élément de longueur nulle n'est pas créé.</source>
+        <translation>The two ends coincide: a zero-length element is not created.</translation>
+    </message>
+    <message>
+        <source>N%1 et N%2 sont déjà reliés par %3 : élément en double non créé.</source>
+        <translation>N%1 and N%2 are already connected by %3: duplicate element not created.</translation>
+    </message>
+    <message>
+        <source>Le point %1 est sur %2 sans nœud commun : aucune connexion n'est créée (outil Diviser ou Intersecter pour les relier).</source>
+        <translation>Point %1 lies on %2 without a common node: no connection is created (use the Split or Intersect tool to connect them).</translation>
+    </message>
+    <message>
+        <source>L'élément croise %1 en %2 sans nœud commun : un croisement n'est pas une connexion (outil Intersecter pour les relier).</source>
+        <translation>The element crosses %1 at %2 without a common node: a crossing is not a connection (use the Intersect tool to connect them).</translation>
+    </message>
+    <message>
+        <source>Une dalle demande au moins 3 points de contour.</source>
+        <translation>A slab requires at least 3 contour points.</translation>
+    </message>
+    <message>
+        <source>Les points %1 et %2 du contour sont confondus.</source>
+        <translation>Contour points %1 and %2 coincide.</translation>
+    </message>
+    <message>
+        <source>Les points du contour sont alignés : la dalle n'a pas de surface.</source>
+        <translation>The contour points are aligned: the slab has no area.</translation>
+    </message>
+    <message>
+        <source>Le contour n'est pas plan : un point s'écarte de %1 m du plan moyen (tolérance %2 m).</source>
+        <translation>The contour is not planar: a point deviates by %1 m from the mean plane (tolerance %2 m).</translation>
+    </message>
+    <message>
+        <source>Le contour se recoupe (côtés %1 et %2) : tracez un polygone simple.</source>
+        <translation>The contour intersects itself (sides %1 and %2): draw a simple polygon.</translation>
+    </message>
+    <message>
+        <source>La dalle S%1 occupe déjà ce contour : dalle en double non créée.</source>
+        <translation>Slab S%1 already occupies this contour: duplicate slab not created.</translation>
+    </message>
+    <message>
+        <source>Le nœud N%1 existe déjà à cet emplacement : aucun nœud créé.</source>
+        <translation>Node N%1 already exists at this location: no node created.</translation>
+    </message>
+    <message>
+        <source>Création Nœud</source>
+        <translation>Create node</translation>
+    </message>
+    <message>
+        <source>Le nœud n'a pas pu être créé.</source>
+        <translation>The node could not be created.</translation>
+    </message>
+    <message>
+        <source>La section « %1 » n'a pas d'aire : choisissez une section valide.</source>
+        <translation>Section “%1” has no area: choose a valid section.</translation>
+    </message>
+    <message>
+        <source>Le matériau « %1 » n'a pas de module d'élasticité : choisissez un matériau valide.</source>
+        <translation>Material “%1” has no modulus of elasticity: choose a valid material.</translation>
+    </message>
+    <message>
+        <source>Création Poteau</source>
+        <translation>Create column</translation>
+    </message>
+    <message>
+        <source>Création Poutre</source>
+        <translation>Create beam</translation>
+    </message>
+    <message>
+        <source>Création Barre</source>
+        <translation>Create member</translation>
+    </message>
+    <message>
+        <source>L'élément n'a pas pu être créé.</source>
+        <translation>The element could not be created.</translation>
+    </message>
+    <message>
+        <source>La section de treillis n'a pas d'aire : réglez-la dans les préréglages.</source>
+        <translation>The truss section has no area: set it in the presets.</translation>
+    </message>
+    <message>
+        <source>Création Barre de Treillis</source>
+        <translation>Create truss member</translation>
+    </message>
+    <message>
+        <source>La barre de treillis n'a pas pu être créée.</source>
+        <translation>The truss member could not be created.</translation>
+    </message>
+    <message>
+        <source>Création Câble</source>
+        <translation>Create cable</translation>
+    </message>
+    <message>
+        <source>Le câble n'a pas pu être créé.</source>
+        <translation>The cable could not be created.</translation>
+    </message>
+    <message>
+        <source>L'épaisseur de la dalle doit être positive.</source>
+        <translation>The slab thickness must be positive.</translation>
+    </message>
+    <message>
+        <source>Création Dalle</source>
+        <translation>Create slab</translation>
+    </message>
+    <message>
+        <source>La dalle n'a pas pu être créée.</source>
+        <translation>The slab could not be created.</translation>
+    </message>
+    <message>
+        <source>La hauteur et l'épaisseur du voile doivent être positives.</source>
+        <translation>The wall height and thickness must be positive.</translation>
+    </message>
+    <message>
+        <source>Base inclinée : les deux pieds du voile diffèrent de %1 m en cote ; le voile est un parallélogramme (longueur en plan × hauteur). Vérifiez les niveaux visés.</source>
+        <translation>Inclined base: the two wall bases differ by %1 m in elevation; the wall is a parallelogram (length in plan × height). Check the target levels.</translation>
+    </message>
+    <message>
+        <source>Création Voile</source>
+        <translation>Create wall</translation>
+    </message>
+    <message>
+        <source>Le voile n'a pas pu être créé.</source>
+        <translation>The wall could not be created.</translation>
+    </message>
+    <message>
+        <source>Les dimensions de la semelle doivent être positives (préréglages).</source>
+        <translation>The footing dimensions must be positive (presets).</translation>
+    </message>
+    <message>
+        <source>Le nœud N%1 porte déjà la fondation F%2 : fondation en double non créée.</source>
+        <translation>Node N%1 already carries foundation F%2: duplicate foundation not created.</translation>
+    </message>
+    <message>
+        <source>Création Fondation</source>
+        <translation>Create foundation</translation>
+    </message>
+    <message>
+        <source>La fondation n'a pas pu être créée.</source>
+        <translation>The foundation could not be created.</translation>
     </message>
 </context>
 <context>
@@ -7339,6 +10199,477 @@ Run the analysis?</translation>
     <message>
         <source>Coller 3D : Cliquez le point d'insertion pour les éléments du presse-papier (Échap = Annuler)</source>
         <translation>Paste 3D: click the insertion point for the clipboard elements (Esc = cancel)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Interaction::ModifyTools</name>
+    <message>
+        <source>Translation X (m)</source>
+        <translation>Translation X (m)</translation>
+    </message>
+    <message>
+        <source>Translation Y (m)</source>
+        <translation>Translation Y (m)</translation>
+    </message>
+    <message>
+        <source>Translation Z (m)</source>
+        <translation>Translation Z (m)</translation>
+    </message>
+    <message>
+        <source>%1 : cliquez le point de base</source>
+        <translation>%1: click the base point</translation>
+    </message>
+    <message>
+        <source>%1 : cliquez la destination (ou tapez une distance dans la direction du curseur + Entrée)</source>
+        <translation>%1: click the destination (or type a distance in the cursor direction + Enter)</translation>
+    </message>
+    <message>
+        <source>Déplacer</source>
+        <translation>Move</translation>
+    </message>
+    <message>
+        <source>Déplacer la sélection d'un point de base vers une destination</source>
+        <translation>Move the selection from a base point to a destination</translation>
+    </message>
+    <message>
+        <source>Déplacer : sélection vide ou vecteur nul.</source>
+        <translation>Move: empty selection or zero vector.</translation>
+    </message>
+    <message>
+        <source>Déplacement de %1 nœud(s) de (%2, %3, %4) m.</source>
+        <translation>Moved %1 node(s) by (%2, %3, %4) m.</translation>
+    </message>
+    <message>
+        <source>Nombre de copies</source>
+        <translation>Number of copies</translation>
+    </message>
+    <message>
+        <source>Copier</source>
+        <translation>Copy</translation>
+    </message>
+    <message>
+        <source>Copier la sélection par translation (copies répétées possibles)</source>
+        <translation>Copy the selection by translation (repeated copies possible)</translation>
+    </message>
+    <message>
+        <source>Copier : sélection vide ou vecteur nul.</source>
+        <translation>Copy: empty selection or zero vector.</translation>
+    </message>
+    <message>
+        <source>%1 copie(s) : %2 objet(s) créé(s).</source>
+        <translation>%1 copy(ies): %2 object(s) created.</translation>
+    </message>
+    <message>
+        <source>Réseau linéaire</source>
+        <translation>Linear array</translation>
+    </message>
+    <message>
+        <source>Répéter la sélection N fois selon un pas (vecteur base → point)</source>
+        <translation>Repeat the selection N times with a spacing (base vector → point)</translation>
+    </message>
+    <message>
+        <source>Réseau linéaire (%1 copies, tapez un nombre pour le changer) : cliquez le point de base</source>
+        <translation>Linear array (%1 copies, type a number to change it): click the base point</translation>
+    </message>
+    <message>
+        <source>Réseau linéaire (%1 copies) : cliquez le point définissant le pas (ou tapez le pas)</source>
+        <translation>Linear array (%1 copies): click the point defining the spacing (or type the spacing)</translation>
+    </message>
+    <message>
+        <source>Réseau : sélection vide ou pas nul.</source>
+        <translation>Array: empty selection or zero spacing.</translation>
+    </message>
+    <message>
+        <source>Réseau linéaire : %1 copie(s), %2 objet(s).</source>
+        <translation>Linear array: %1 copy(ies), %2 object(s).</translation>
+    </message>
+    <message>
+        <source>Centre (m)</source>
+        <translation>Centre (m)</translation>
+    </message>
+    <message>
+        <source>Axe (direction)</source>
+        <translation>Axis (direction)</translation>
+    </message>
+    <message>
+        <source>Angle (°)</source>
+        <translation>Angle (°)</translation>
+    </message>
+    <message>
+        <source>Conserver l'original (copie)</source>
+        <translation>Keep the original (copy)</translation>
+    </message>
+    <message>
+        <source>Rotation</source>
+        <translation>Rotate</translation>
+    </message>
+    <message>
+        <source>Faire tourner (ou copier en tournant) la sélection autour de la normale du plan de travail</source>
+        <translation>Rotate (or copy while rotating) the selection about the work plane normal</translation>
+    </message>
+    <message>
+        <source>Rotation : cliquez le centre</source>
+        <translation>Rotate: click the centre</translation>
+    </message>
+    <message>
+        <source>Rotation : cliquez la direction de référence (ou tapez l'angle en degrés + Entrée)</source>
+        <translation>Rotate: click the reference direction (or type the angle in degrees + Enter)</translation>
+    </message>
+    <message>
+        <source>Rotation : cliquez la nouvelle direction (Ctrl + clic : copie)</source>
+        <translation>Rotate: click the new direction (Ctrl + click: copy)</translation>
+    </message>
+    <message>
+        <source>Rotation : sélection vide, axe nul ou angle nul.</source>
+        <translation>Rotate: empty selection, zero axis or zero angle.</translation>
+    </message>
+    <message>
+        <source>Copie par rotation de %1° : %2 objet(s).</source>
+        <translation>Copy by rotation of %1°: %2 object(s).</translation>
+    </message>
+    <message>
+        <source>Rotation de %1° : %2 nœud(s).</source>
+        <translation>Rotation of %1°: %2 node(s).</translation>
+    </message>
+    <message>
+        <source>Nombre total d'exemplaires</source>
+        <translation>Total number of instances</translation>
+    </message>
+    <message>
+        <source>Angle total (°)</source>
+        <translation>Total angle (°)</translation>
+    </message>
+    <message>
+        <source>Réseau polaire</source>
+        <translation>Polar array</translation>
+    </message>
+    <message>
+        <source>Répartir N exemplaires de la sélection autour d'un centre</source>
+        <translation>Distribute N instances of the selection around a centre</translation>
+    </message>
+    <message>
+        <source>Réseau polaire (%1 exemplaires sur %2°, tapez un nombre pour le changer) : cliquez le centre</source>
+        <translation>Polar array (%1 instances over %2°, type a number to change it): click the centre</translation>
+    </message>
+    <message>
+        <source>Réseau polaire : sélection vide.</source>
+        <translation>Polar array: empty selection.</translation>
+    </message>
+    <message>
+        <source>Réseau polaire : %1 exemplaires, %2 objet(s) créé(s).</source>
+        <translation>Polar array: %1 instances, %2 object(s) created.</translation>
+    </message>
+    <message>
+        <source>Point 1 de l'axe (m)</source>
+        <translation>Axis point 1 (m)</translation>
+    </message>
+    <message>
+        <source>Point 2 de l'axe (m)</source>
+        <translation>Axis point 2 (m)</translation>
+    </message>
+    <message>
+        <source>Normale du plan de travail</source>
+        <translation>Work plane normal</translation>
+    </message>
+    <message>
+        <source>Conserver l'original (copie miroir)</source>
+        <translation>Keep the original (mirror copy)</translation>
+    </message>
+    <message>
+        <source>Symétrie</source>
+        <translation>Mirror</translation>
+    </message>
+    <message>
+        <source>Symétrie par rapport au plan contenant l'axe P1-P2 et perpendiculaire au plan de travail</source>
+        <translation>Mirror about the plane containing axis P1-P2 and perpendicular to the work plane</translation>
+    </message>
+    <message>
+        <source>Symétrie : cliquez le 1er point de l'axe de symétrie</source>
+        <translation>Mirror: click the 1st point of the mirror axis</translation>
+    </message>
+    <message>
+        <source>Symétrie : cliquez le 2e point de l'axe (Ctrl + clic : retourner sans copier)</source>
+        <translation>Mirror: click the 2nd point of the axis (Ctrl + click: flip without copying)</translation>
+    </message>
+    <message>
+        <source>Symétrie : sélection vide ou axe parallèle à la normale du plan de travail.</source>
+        <translation>Mirror: empty selection or axis parallel to the work plane normal.</translation>
+    </message>
+    <message>
+        <source>Copie miroir : %1 objet(s) créé(s).</source>
+        <translation>Mirror copy: %1 object(s) created.</translation>
+    </message>
+    <message>
+        <source>Symétrie : %1 nœud(s) déplacé(s).</source>
+        <translation>Mirror: %1 node(s) moved.</translation>
+    </message>
+    <message>
+        <source>(Les treillis ne sont pas pris en charge par la symétrie.)</source>
+        <translation>(Trusses are not supported by mirroring.)</translation>
+    </message>
+    <message>
+        <source>Point de base (m)</source>
+        <translation>Base point (m)</translation>
+    </message>
+    <message>
+        <source>Facteur d'échelle</source>
+        <translation>Scale factor</translation>
+    </message>
+    <message>
+        <source>Échelle</source>
+        <translation>Scale</translation>
+    </message>
+    <message>
+        <source>Agrandir / réduire la géométrie de la sélection depuis un point de base</source>
+        <translation>Enlarge / reduce the geometry of the selection from a base point</translation>
+    </message>
+    <message>
+        <source>Échelle : cliquez le point de base</source>
+        <translation>Scale: click the base point</translation>
+    </message>
+    <message>
+        <source>Échelle : tapez le facteur + Entrée, ou cliquez un point de référence</source>
+        <translation>Scale: type the factor + Enter, or click a reference point</translation>
+    </message>
+    <message>
+        <source>Échelle : cliquez la nouvelle position du point de référence</source>
+        <translation>Scale: click the new position of the reference point</translation>
+    </message>
+    <message>
+        <source>Échelle : sélection vide ou facteur 1.</source>
+        <translation>Scale: empty selection or factor 1.</translation>
+    </message>
+    <message>
+        <source>Échelle %1 : %2 nœud(s).</source>
+        <translation>Scale %1: %2 node(s).</translation>
+    </message>
+    <message>
+        <source>Nombre de tronçons</source>
+        <translation>Number of segments</translation>
+    </message>
+    <message>
+        <source>Diviser en N</source>
+        <translation>Split into N</translation>
+    </message>
+    <message>
+        <source>Diviser des barres en N tronçons égaux</source>
+        <translation>Split members into N equal segments</translation>
+    </message>
+    <message>
+        <source>Diviser en %1 (tapez un nombre pour le changer) : cliquez une barre</source>
+        <translation>Split into %1 (type a number to change it): click a member</translation>
+    </message>
+    <message>
+        <source>Diviser : aucune barre divisée (charges ponctuelles ou partielles, ou aucune barre).</source>
+        <translation>Split: no member split (point or partial loads, or no member).</translation>
+    </message>
+    <message>
+        <source>%1 barre(s) divisée(s) en %2.</source>
+        <translation>%1 member(s) split into %2.</translation>
+    </message>
+    <message>
+        <source>%1 refusée(s) (charges non redistribuables).</source>
+        <translation>%1 refused (loads cannot be redistributed).</translation>
+    </message>
+    <message>
+        <source>Position relative (0–1)</source>
+        <translation>Relative position (0–1)</translation>
+    </message>
+    <message>
+        <source>Diviser au point</source>
+        <translation>Split at point</translation>
+    </message>
+    <message>
+        <source>Diviser une barre au point cliqué (accroché aux nœuds, milieux, grilles)</source>
+        <translation>Split a member at the clicked point (snapped to nodes, midpoints, grids)</translation>
+    </message>
+    <message>
+        <source>Diviser au point : cliquez la barre à l'endroit de la division</source>
+        <translation>Split at point: click the member where it is to be split</translation>
+    </message>
+    <message>
+        <source>%1 barre(s) divisée(s) à %2 %.</source>
+        <translation>%1 member(s) split at %2 %.</translation>
+    </message>
+    <message>
+        <source>Diviser au point : division impossible (extrémité, charges non redistribuables).</source>
+        <translation>Split at point: split not possible (end point, loads cannot be redistributed).</translation>
+    </message>
+    <message>
+        <source>Tolérance de croisement (m)</source>
+        <translation>Crossing tolerance (m)</translation>
+    </message>
+    <message>
+        <source>Intersecter</source>
+        <translation>Intersect</translation>
+    </message>
+    <message>
+        <source>Créer un nœud commun aux croisements de barres (division des barres qui se coupent)</source>
+        <translation>Create a common node where members cross (splitting the intersecting members)</translation>
+    </message>
+    <message>
+        <source>Intersecter : cliquez la 1re barre</source>
+        <translation>Intersect: click the 1st member</translation>
+    </message>
+    <message>
+        <source>Intersecter : cliquez la 2e barre</source>
+        <translation>Intersect: click the 2nd member</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) d'intersection créé(s).</source>
+        <translation>%1 intersection node(s) created.</translation>
+    </message>
+    <message>
+        <source>Intersecter : aucune barre ne se croise.</source>
+        <translation>Intersect: no members cross.</translation>
+    </message>
+    <message>
+        <source>Prolonger</source>
+        <translation>Extend</translation>
+    </message>
+    <message>
+        <source>Prolonger une barre jusqu'à une barre limite (nœud commun créé sur la limite)</source>
+        <translation>Extend a member to a boundary member (common node created on the boundary)</translation>
+    </message>
+    <message>
+        <source>Prolonger : cliquez la barre limite</source>
+        <translation>Extend: click the boundary member</translation>
+    </message>
+    <message>
+        <source>Prolonger : cliquez la barre à prolonger, près de l'extrémité à allonger</source>
+        <translation>Extend: click the member to extend, near the end to lengthen</translation>
+    </message>
+    <message>
+        <source>Prolonger : deux barres requises.</source>
+        <translation>Extend: two members required.</translation>
+    </message>
+    <message>
+        <source>Prolonger : barre introuvable.</source>
+        <translation>Extend: member not found.</translation>
+    </message>
+    <message>
+        <source>Prolonger : barres parallèles.</source>
+        <translation>Extend: parallel members.</translation>
+    </message>
+    <message>
+        <source>Prolonger : la barre ne rencontre pas la limite (droites non sécantes).</source>
+        <translation>Extend: the member does not meet the boundary (non-intersecting lines).</translation>
+    </message>
+    <message>
+        <source>Prolonger : le point de rencontre est hors de la barre limite.</source>
+        <translation>Extend: the meeting point is outside the boundary member.</translation>
+    </message>
+    <message>
+        <source>Prolonger : la limite n'est pas du côté de l'extrémité cliquée (utilisez Ajuster pour raccourcir).</source>
+        <translation>Extend: the boundary is not on the side of the clicked end (use Trim to shorten).</translation>
+    </message>
+    <message>
+        <source>Prolonger : division de la barre limite impossible (charges non redistribuables).</source>
+        <translation>Extend: the boundary member cannot be split (loads cannot be redistributed).</translation>
+    </message>
+    <message>
+        <source>Barre prolongée jusqu'au nœud N%1.</source>
+        <translation>Member extended to node N%1.</translation>
+    </message>
+    <message>
+        <source>Ajuster</source>
+        <translation>Trim</translation>
+    </message>
+    <message>
+        <source>Couper une barre sur une barre de coupe et supprimer la partie cliquée</source>
+        <translation>Cut a member at a cutting member and delete the clicked part</translation>
+    </message>
+    <message>
+        <source>Ajuster : cliquez la barre de coupe</source>
+        <translation>Trim: click the cutting member</translation>
+    </message>
+    <message>
+        <source>Ajuster : cliquez la partie de barre à supprimer</source>
+        <translation>Trim: click the part of the member to delete</translation>
+    </message>
+    <message>
+        <source>Ajuster : deux barres requises.</source>
+        <translation>Trim: two members required.</translation>
+    </message>
+    <message>
+        <source>Ajuster : barre introuvable.</source>
+        <translation>Trim: member not found.</translation>
+    </message>
+    <message>
+        <source>Ajuster : barres parallèles.</source>
+        <translation>Trim: parallel members.</translation>
+    </message>
+    <message>
+        <source>Ajuster : les barres ne se coupent pas à l'intérieur de la barre à ajuster.</source>
+        <translation>Trim: the members do not intersect within the member to trim.</translation>
+    </message>
+    <message>
+        <source>Ajuster : division de la barre de coupe impossible.</source>
+        <translation>Trim: the cutting member cannot be split.</translation>
+    </message>
+    <message>
+        <source>Ajuster : division impossible (charges non redistribuables).</source>
+        <translation>Trim: split not possible (loads cannot be redistributed).</translation>
+    </message>
+    <message>
+        <source>Barre ajustée au nœud N%1.</source>
+        <translation>Member trimmed at node N%1.</translation>
+    </message>
+    <message>
+        <source>Distance (m)</source>
+        <translation>Distance (m)</translation>
+    </message>
+    <message>
+        <source>Côté opposé</source>
+        <translation>Opposite side</translation>
+    </message>
+    <message>
+        <source>Décaler</source>
+        <translation>Offset</translation>
+    </message>
+    <message>
+        <source>Copier une barre parallèlement à elle-même, à une distance donnée</source>
+        <translation>Copy a member parallel to itself, at a given distance</translation>
+    </message>
+    <message>
+        <source>Décaler de %1 m (tapez une distance pour la changer) : cliquez la barre</source>
+        <translation>Offset by %1 m (type a distance to change it): click the member</translation>
+    </message>
+    <message>
+        <source>Décaler de %1 m : cliquez le côté du décalage</source>
+        <translation>Offset by %1 m: click the offset side</translation>
+    </message>
+    <message>
+        <source>%1 barre(s) décalée(s) de %2 m.</source>
+        <translation>%1 member(s) offset by %2 m.</translation>
+    </message>
+    <message>
+        <source>Décaler : aucune barre (ou côté indéterminé).</source>
+        <translation>Offset: no member (or side undetermined).</translation>
+    </message>
+    <message>
+        <source>Tolérance (m)</source>
+        <translation>Tolerance (m)</translation>
+    </message>
+    <message>
+        <source>Fusionner les nœuds</source>
+        <translation>Merge nodes</translation>
+    </message>
+    <message>
+        <source>Fusionner les nœuds confondus (éléments, appuis et charges reportés)</source>
+        <translation>Merge coincident nodes (elements, supports and loads transferred)</translation>
+    </message>
+    <message>
+        <source>Fusion des nœuds confondus à %1 mm</source>
+        <translation>Merging coincident nodes within %1 mm</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) fusionné(s).</source>
+        <translation>%1 node(s) merged.</translation>
+    </message>
+    <message>
+        <source>Aucun nœud confondu.</source>
+        <translation>No coincident nodes.</translation>
     </message>
 </context>
 <context>
@@ -7778,6 +11109,606 @@ Run the analysis?</translation>
     <message>
         <source>Aucun chemin de fichier défini pour l'enregistrement.</source>
         <translation>No file path defined for saving.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Standards::ModelValidator</name>
+    <message>
+        <source> [Réf: %1]</source>
+        <translation> [Ref: %1]</translation>
+    </message>
+    <message>
+        <source>Validation réussie : Modèle conforme aux normes avec %1 avertissement(s).</source>
+        <translation>Validation passed: model compliant with the standards with %1 warning(s).</translation>
+    </message>
+    <message>
+        <source>Validation réussie : Modèle structural 100% conforme et intègre.</source>
+        <translation>Validation passed: structural model 100% compliant and consistent.</translation>
+    </message>
+    <message>
+        <source>Échec de validation : %1 erreur(s) et %2 avertissement(s) détectés.</source>
+        <translation>Validation failed: %1 error(s) and %2 warning(s) detected.</translation>
+    </message>
+    <message>
+        <source>L'aire de section A est invalide (doit être &gt; 0 et finie).</source>
+        <translation>The section area A is invalid (must be &gt; 0 and finite).</translation>
+    </message>
+    <message>
+        <source>Le moment quadratique Iy est invalide (doit être &gt; 0).</source>
+        <translation>The second moment of area Iy is invalid (must be &gt; 0).</translation>
+    </message>
+    <message>
+        <source>Le moment quadratique Iz est invalide (doit être &gt; 0).</source>
+        <translation>The second moment of area Iz is invalid (must be &gt; 0).</translation>
+    </message>
+    <message>
+        <source>Le module d'élasticité E est invalide (doit être &gt; 0 et fini).</source>
+        <translation>The modulus of elasticity E is invalid (must be &gt; 0 and finite).</translation>
+    </message>
+    <message>
+        <source>Le coefficient de Poisson nu doit être dans l'intervalle physique [0.0, 0.5[.</source>
+        <translation>Poisson's ratio nu must be within the physical range [0.0, 0.5[.</translation>
+    </message>
+    <message>
+        <source>La masse volumique rho doit être positive.</source>
+        <translation>The density rho must be positive.</translation>
+    </message>
+    <message>
+        <source>L'identifiant du nœud doit être un entier strictement positif.</source>
+        <translation>The node identifier must be a strictly positive integer.</translation>
+    </message>
+    <message>
+        <source>Les coordonnées du nœud contiennent des valeurs NaN ou infinies.</source>
+        <translation>The node coordinates contain NaN or infinite values.</translation>
+    </message>
+    <message>
+        <source>Géométrie</source>
+        <translation>Geometry</translation>
+    </message>
+    <message>
+        <source>Le modèle structural ne contient aucun nœud.</source>
+        <translation>The structural model contains no nodes.</translation>
+    </message>
+    <message>
+        <source>Nœuds</source>
+        <translation>Nodes</translation>
+    </message>
+    <message>
+        <source>Nœud géométriquement coïncident avec le nœud %1 (distance &lt; 1 mm). Utiliser « Fusionner les nœuds confondus ».</source>
+        <translation>Node geometrically coincident with node %1 (distance &lt; 1 mm). Use “Merge coincident nodes”.</translation>
+    </message>
+    <message>
+        <source>Conditions aux Limites</source>
+        <translation>Boundary conditions</translation>
+    </message>
+    <message>
+        <source>Aucun appui (Encastrement, Articulation, Appui simple ou Ressort) n'est défini. La structure est cinématiquement instable.</source>
+        <translation>No support (fixed, pinned, roller or spring) is defined. The structure is kinematically unstable.</translation>
+    </message>
+    <message>
+        <source>Les nœuds d'extrémité sont identiques ou invalides.</source>
+        <translation>The end nodes are identical or invalid.</translation>
+    </message>
+    <message>
+        <source>Fait référence à un nœud inexistant dans le modèle.</source>
+        <translation>Refers to a node that does not exist in the model.</translation>
+    </message>
+    <message>
+        <source>La longueur de l'élément est nulle ou inférieure à 0.1 mm.</source>
+        <translation>The element length is zero or less than 0.1 mm.</translation>
+    </message>
+    <message>
+        <source>Sections</source>
+        <translation>Sections</translation>
+    </message>
+    <message>
+        <source>La constante de torsion de Saint-Venant J de la section « %1 » est nulle ou invalide : la torsion ne peut pas être calculée.</source>
+        <translation>The Saint-Venant torsion constant J of section “%1” is zero or invalid: torsion cannot be calculated.</translation>
+    </message>
+    <message>
+        <source>Matériaux</source>
+        <translation>Materials</translation>
+    </message>
+    <message>
+        <source>Poutre</source>
+        <translation>Beam</translation>
+    </message>
+    <message>
+        <source>Poteau</source>
+        <translation>Column</translation>
+    </message>
+    <message>
+        <source>Treillis</source>
+        <translation>Truss</translation>
+    </message>
+    <message>
+        <source>Câble</source>
+        <translation>Cable</translation>
+    </message>
+    <message>
+        <source>Dalles</source>
+        <translation>Slabs</translation>
+    </message>
+    <message>
+        <source>Une dalle requiert au moins 3 nœuds de contour.</source>
+        <translation>A slab requires at least 3 boundary nodes.</translation>
+    </message>
+    <message>
+        <source>L'épaisseur de la dalle doit être strictement positive.</source>
+        <translation>The slab thickness must be strictly positive.</translation>
+    </message>
+    <message>
+        <source>Voiles</source>
+        <translation>Walls</translation>
+    </message>
+    <message>
+        <source>Les nœuds de base du voile sont invalides ou identiques.</source>
+        <translation>The wall base nodes are invalid or identical.</translation>
+    </message>
+    <message>
+        <source>La hauteur du voile doit être strictement positive.</source>
+        <translation>The wall height must be strictly positive.</translation>
+    </message>
+    <message>
+        <source>L'épaisseur du voile doit être strictement positive.</source>
+        <translation>The wall thickness must be strictly positive.</translation>
+    </message>
+    <message>
+        <source>Charges</source>
+        <translation>Loads</translation>
+    </message>
+    <message>
+        <source>Modèle Calcul</source>
+        <translation>Analysis model</translation>
+    </message>
+    <message>
+        <source>Aucun élément structural filaire (Poutre, Poteau, Treillis ou Câble) n'est présent pour le calcul.</source>
+        <translation>No line structural element (beam, column, truss or cable) is present for the analysis.</translation>
+    </message>
+    <message>
+        <source>%1 dalle(s) et %2 voile(s) : calculés en coques uniquement à partir du maillage du projet à jour (formulation « coque ») ; sans maillage transmis, ni leur rigidité ni leurs charges ne sont prises en compte.</source>
+        <translation>%1 slab(s) and %2 wall(s): analysed as shells only from the up-to-date project mesh (“shell” formulation); without a transmitted mesh, neither their stiffness nor their loads are taken into account.</translation>
+    </message>
+    <message>
+        <source>La charge sur barre #%1 (élément %2) ne désigne aucun élément calculé de façon univoque : elle sera ignorée par le calcul.</source>
+        <translation>The member load #%1 (element %2) does not unambiguously designate any analysed element: it will be ignored by the analysis.</translation>
+    </message>
+    <message>
+        <source>Nœuds Orphelins</source>
+        <translation>Orphan nodes</translation>
+    </message>
+    <message>
+        <source>Le nœud N%1 est isolé (non connecté, non chargé, sans appui).</source>
+        <translation>Node N%1 is isolated (not connected, not loaded, no support).</translation>
+    </message>
+    <message>
+        <source>Relâchements</source>
+        <translation>Releases</translation>
+    </message>
+    <message>
+        <source>La poutre #%1 a un relâchement d'effort normal, d'effort tranchant ou de torsion : il est ignoré par le calcul (seules les rotules de flexion My / Mz sont transmises).</source>
+        <translation>Beam #%1 has an axial force, shear force or torsion release: it is ignored by the analysis (only My / Mz bending hinges are transmitted).</translation>
+    </message>
+    <message>
+        <source>Le nœud N%1 n'est relié qu'à des treillis / câbles : le moment nodal de la charge « %2 » ne peut pas être repris par la structure (ignoré).</source>
+        <translation>Node N%1 is connected only to trusses / cables: the nodal moment of load “%2” cannot be carried by the structure (ignored).</translation>
+    </message>
+    <message>
+        <source>La charge nodale « %1 » (nœud N%2) est déclarée en repère local : un nœud n'a pas de repère local, ses forces et moments sont appliqués selon les axes globaux X, Y, Z. Pour une torsion, donner le moment autour de l'axe global parallèle à la barre.</source>
+        <translation>Nodal load “%1” (node N%2) is declared in local axes: a node has no local axes, its forces and moments are applied along the global X, Y, Z axes. For torsion, give the moment about the global axis parallel to the member.</translation>
+    </message>
+    <message>
+        <source>%1 charge(s) surfacique(s) importée(s) d'un fichier TSA3D sont conservées mais NON appliquées : aucun élément surfacique n'est calculé. Les résultats n'en tiennent pas compte ; les convertir en charges sur barres ou nodales pour les inclure.</source>
+        <translation>%1 surface load(s) imported from a TSA3D file are kept but NOT applied: no surface element is analysed. The results do not take them into account; convert them into member or nodal loads to include them.</translation>
+    </message>
+    <message>
+        <source>%1 charge(s) sur barre de type « poids propre » explicite : OpenSees l'applique comme une charge uniforme vers le bas d'intensité q1, le moteur 2D l'ignore. Le poids propre se règle par l'option « Inclure le poids propre » (double comptage possible).</source>
+        <translation>%1 member load(s) of explicit “self-weight” type: OpenSees applies it as a uniform downward load of intensity q1, the 2D engine ignores it. Self-weight is set by the “Include self-weight” option (possible double counting).</translation>
+    </message>
+    <message>
+        <source>Le moment réparti « %1 » n'a pas d'axe défini (direction « gravité » ou axe incompatible avec le repère) : indiquer l'axe du vecteur moment (local x pour une torsion, ou un axe global).</source>
+        <translation>Distributed moment “%1” has no defined axis (“gravity” direction or axis incompatible with the axes): specify the axis of the moment vector (local x for torsion, or a global axis).</translation>
+    </message>
+    <message>
+        <source>Le moment réparti « %1 » s'applique à une barre articulée (treillis ou câble), sans rigidité en rotation : il n'est pas transmis au calcul.</source>
+        <translation>Distributed moment “%1” is applied to a pinned member (truss or cable), with no rotational stiffness: it is not transmitted to the analysis.</translation>
+    </message>
+    <message>
+        <source>Appuis</source>
+        <translation>Supports</translation>
+    </message>
+    <message>
+        <source>poteau %1</source>
+        <translation>column %1</translation>
+    </message>
+    <message>
+        <source>poutre %1</source>
+        <translation>beam %1</translation>
+    </message>
+    <message>
+        <source>Stabilité</source>
+        <translation>Stability</translation>
+    </message>
+    <message>
+        <source>Mécanisme de torsion : %1 (barres alignées) peuvent tourner librement autour de leur axe, aucun appui ne bloquant cette rotation (matrice singulière). Correction : bloquer la rotation autour de l'axe de la barre sur au moins un nœud (encastrement, appui à fourche défini, ressort en rotation), ou choisir le mode « appui à fourche » des appuis articulés dans les paramètres d'analyse si la barre est parallèle à un axe global.</source>
+        <translation>Torsion mechanism: %1 (aligned members) can rotate freely about their axis, no support restraining this rotation (singular matrix). Fix: restrain the rotation about the member axis at one node at least (fixed support, defined fork support, rotational spring), or choose the “fork support” mode for pinned supports in the analysis settings if the member is parallel to a global axis.</translation>
+    </message>
+    <message>
+        <source>Combinaisons</source>
+        <translation>Combinations</translation>
+    </message>
+    <message>
+        <source>La combinaison ciblée pour le calcul (ID %1) n'existe pas.</source>
+        <translation>The combination targeted for the analysis (ID %1) does not exist.</translation>
+    </message>
+    <message>
+        <source>La combinaison ciblée '%1' ne contient aucun cas de charge pondéré.</source>
+        <translation>The targeted combination '%1' contains no factored load case.</translation>
+    </message>
+    <message>
+        <source>Le cas de charge ciblé pour le calcul (ID %1) n'existe pas.</source>
+        <translation>The load case targeted for the analysis (ID %1) does not exist.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Topology::NumberingStrategies</name>
+    <message>
+        <source>Séquentielle globale (ordre de création)</source>
+        <translation>Global sequential (creation order)</translation>
+    </message>
+    <message>
+        <source>Numérote les nœuds dans l'ordre de leur identifiant interne, c'est-à-dire l'ordre de création.</source>
+        <translation>Numbers the nodes in the order of their internal identifier, i.e. the creation order.</translation>
+    </message>
+    <message>
+        <source>Le modèle n'a qu'une seule cote : il n'y a pas de couches à parcourir.</source>
+        <translation>The model has only one elevation: there are no layers to step through.</translation>
+    </message>
+    <message>
+        <source>Grille d'axes (A1, A2, B1…)</source>
+        <translation>Axis grid (A1, A2, B1…)</translation>
+    </message>
+    <message>
+        <source>Étiquette chaque nœud situé à une intersection de la grille active par le repère de ses axes (lettre + chiffre), avec la couche en 3D. Les nœuds hors intersection ne reçoivent pas de faux repère : ils sont numérotés à la suite avec le préfixe.</source>
+        <translation>Labels each node located at an intersection of the active grid with the reference of its axes (letter + digit), with the layer in 3D. Nodes off the intersections do not receive a false reference: they are numbered afterwards with the prefix.</translation>
+    </message>
+    <message>
+        <source>Aucune grille cartésienne active avec des axes dans les deux directions.</source>
+        <translation>No active Cartesian grid with axes in both directions.</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) confondu(s) avec un autre à la même intersection : suffixe .2, .3… ajouté. Envisagez « Fusionner les nœuds ».</source>
+        <translation>%1 node(s) coincident with another at the same intersection: suffix .2, .3… added. Consider “Merge nodes”.</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) hors des intersections de la grille (tolérance %2 m) : numérotés à la suite avec le préfixe, sans repère de grille.</source>
+        <translation>%1 node(s) off the grid intersections (tolerance %2 m): numbered afterwards with the prefix, without a grid reference.</translation>
+    </message>
+    <message>
+        <source>Par niveau (plans de travail horizontaux)</source>
+        <translation>By level (horizontal work planes)</translation>
+    </message>
+    <message>
+        <source>Regroupe les nœuds par niveau du projet (ou par cote si aucun niveau n'est défini), puis numérote chaque niveau par rangées. Le jeton {l} donne le numéro de niveau.</source>
+        <translation>Groups the nodes by project level (or by elevation if no level is defined), then numbers each level by rows. The {l} token gives the level number.</translation>
+    </message>
+    <message>
+        <source>Un seul niveau (ou une seule cote) : la numérotation par niveau n'apporte rien.</source>
+        <translation>Only one level (or one elevation): numbering by level adds nothing.</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) entre deux niveaux : rattaché(s) au niveau le plus proche.</source>
+        <translation>%1 node(s) between two levels: attached to the nearest level.</translation>
+    </message>
+    <message>
+        <source>Parcours en largeur (BFS)</source>
+        <translation>Breadth-first traversal (BFS)</translation>
+    </message>
+    <message>
+        <source>Parcours en profondeur (DFS)</source>
+        <translation>Depth-first traversal (DFS)</translation>
+    </message>
+    <message>
+        <source>Connectivité topologique (Cuthill-McKee inverse)</source>
+        <translation>Topological connectivity (reverse Cuthill-McKee)</translation>
+    </message>
+    <message>
+        <source>Suit les éléments à partir du nœud de départ, niveau de voisinage par niveau de voisinage. Chaque partie non reliée est parcourue à son tour.</source>
+        <translation>Follows the elements from the start node, neighbourhood level by neighbourhood level. Each unconnected part is traversed in turn.</translation>
+    </message>
+    <message>
+        <source>Suit les éléments à partir du nœud de départ en allant le plus loin possible avant de revenir. Chaque partie non reliée est parcourue à son tour.</source>
+        <translation>Follows the elements from the start node, going as far as possible before backtracking. Each unconnected part is traversed in turn.</translation>
+    </message>
+    <message>
+        <source>Ordre de Cuthill-McKee inverse : rapproche les numéros des nœuds reliés (largeur de bande réduite), utile pour lire les matrices de rigidité.</source>
+        <translation>Reverse Cuthill-McKee order: brings the numbers of connected nodes closer together (reduced bandwidth), useful for reading stiffness matrices.</translation>
+    </message>
+    <message>
+        <source>Aucun élément ne relie les nœuds : pas de graphe à parcourir.</source>
+        <translation>No element connects the nodes: no graph to traverse.</translation>
+    </message>
+    <message>
+        <source>Nœud de départ %1 hors de la portée : départ automatique.</source>
+        <translation>Start node %1 out of range: automatic start.</translation>
+    </message>
+    <message>
+        <source>%1 parties non reliées : parcourues l'une après l'autre.</source>
+        <translation>%1 unconnected parts: traversed one after the other.</translation>
+    </message>
+    <message>
+        <source>Personnalisée / manuelle (conserver les étiquettes)</source>
+        <translation>Custom / manual (keep labels)</translation>
+    </message>
+    <message>
+        <source>Ne renumérote pas les nœuds : les étiquettes actuelles, éventuellement saisies à la main dans les propriétés, sont conservées.</source>
+        <translation>Does not renumber the nodes: the current labels, possibly entered by hand in the properties, are kept.</translation>
+    </message>
+    <message>
+        <source>TSA ne gère pas encore de groupes ni de sous-modèles : rien à quoi rattacher la numérotation.</source>
+        <translation>TSA does not yet handle groups or submodels: nothing to attach the numbering to.</translation>
+    </message>
+    <message>
+        <source>TSA ne génère pas encore de maillage éléments finis (la commande « Générer maillage » ne fait qu'une estimation ; les barres sont calculées sans maillage) : aucun nœud ni élément de maillage à numéroter.</source>
+        <translation>TSA does not yet generate a finite element mesh (the “Generate mesh” command only makes an estimate; members are analysed without a mesh): no mesh node or element to number.</translation>
+    </message>
+    <message>
+        <source>Séquentielle (ordre de création)</source>
+        <translation>Sequential (creation order)</translation>
+    </message>
+    <message>
+        <source>Par type d'élément</source>
+        <translation>By element type</translation>
+    </message>
+    <message>
+        <source>Par proximité géométrique (centres des éléments)</source>
+        <translation>By geometric proximity (element centres)</translation>
+    </message>
+    <message>
+        <source>Par parcours topologique (suit la numérotation des nœuds)</source>
+        <translation>By topological traversal (follows the node numbering)</translation>
+    </message>
+    <message>
+        <source>Ordre de l'identifiant interne de chaque famille (ordre de création).</source>
+        <translation>Order of the internal identifier of each family (creation order).</translation>
+    </message>
+    <message>
+        <source>Regroupe par famille (poutres, poteaux, treillis, câbles, dalles, voiles, fondations) ; utile avec une suite de numéros commune.</source>
+        <translation>Groups by family (beams, columns, trusses, cables, slabs, walls, foundations); useful with a common number sequence.</translation>
+    </message>
+    <message>
+        <source>Trie les éléments par la position de leur centre, selon l'ordre des axes choisi.</source>
+        <translation>Sorts the elements by the position of their centre, in the chosen axis order.</translation>
+    </message>
+    <message>
+        <source>Ordonne les éléments selon les nouveaux numéros de leurs nœuds : les éléments voisins ont des numéros voisins. Les extrémités et l'orientation des barres ne sont jamais modifiées.</source>
+        <translation>Orders the elements by the new numbers of their nodes: neighbouring elements have neighbouring numbers. The ends and orientation of members are never changed.</translation>
+    </message>
+    <message>
+        <source>Ne renumérote pas les éléments : les étiquettes actuelles sont conservées.</source>
+        <translation>Does not renumber the elements: the current labels are kept.</translation>
+    </message>
+    <message>
+        <source>Par coordonnées (ordre des axes au choix)</source>
+        <translation>By coordinates (axis order of your choice)</translation>
+    </message>
+    <message>
+        <source>Trie les nœuds selon les axes choisis (X-Y-Z, Z-Y-X…), dans le sens choisi pour chaque axe. Les coordonnées à moins de la tolérance sont regroupées sur une même rangée.</source>
+        <translation>Sorts the nodes along the chosen axes (X-Y-Z, Z-Y-X…), in the direction chosen for each axis. Coordinates closer than the tolerance are grouped in the same row.</translation>
+    </message>
+    <message>
+        <source>Par coordonnées X, puis Y, puis Z</source>
+        <translation>By X, then Y, then Z coordinates</translation>
+    </message>
+    <message>
+        <source>Trie d'abord selon X, puis Y, puis Z.</source>
+        <translation>Sorts first by X, then Y, then Z.</translation>
+    </message>
+    <message>
+        <source>Par coordonnées Z, puis Y, puis X</source>
+        <translation>By Z, then Y, then X coordinates</translation>
+    </message>
+    <message>
+        <source>Trie d'abord selon Z, puis Y, puis X.</source>
+        <translation>Sorts first by Z, then Y, then X.</translation>
+    </message>
+    <message>
+        <source>Par rangées</source>
+        <translation>By rows</translation>
+    </message>
+    <message>
+        <source>Rangées parallèles à X : de rangée en rangée (Y), puis le long de chaque rangée (X), couche par couche.</source>
+        <translation>Rows parallel to X: from row to row (Y), then along each row (X), layer by layer.</translation>
+    </message>
+    <message>
+        <source>Par colonnes</source>
+        <translation>By columns</translation>
+    </message>
+    <message>
+        <source>Colonnes parallèles à Y : de colonne en colonne (X), puis le long de chaque colonne (Y), couche par couche.</source>
+        <translation>Columns parallel to Y: from column to column (X), then along each column (Y), layer by layer.</translation>
+    </message>
+    <message>
+        <source>Par couches (modèles 3D)</source>
+        <translation>By layers (3D models)</translation>
+    </message>
+    <message>
+        <source>Couche horizontale par couche horizontale (Z), puis par rangées. Avec « Recommencer à chaque couche », chaque couche repart du numéro de départ (jeton {l} pour distinguer les couches).</source>
+        <translation>Horizontal layer by horizontal layer (Z), then by rows. With “Restart at each layer”, each layer starts again from the start number ({l} token to distinguish the layers).</translation>
+    </message>
+    <message>
+        <source>Par sous-modèle ou groupe</source>
+        <translation>By submodel or group</translation>
+    </message>
+    <message>
+        <source>Orientée maillage structuré</source>
+        <translation>Structured-mesh oriented</translation>
+    </message>
+    <message>
+        <source>Orientée maillage non structuré</source>
+        <translation>Unstructured-mesh oriented</translation>
+    </message>
+    <message>
+        <source>Par groupe</source>
+        <translation>By group</translation>
+    </message>
+    <message>
+        <source>Par maillage structuré</source>
+        <translation>By structured mesh</translation>
+    </message>
+    <message>
+        <source>Par maillage non structuré</source>
+        <translation>By unstructured mesh</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Topology::TopologyNumberingService</name>
+    <message>
+        <source>%1 : le numéro de départ doit être positif ou nul.</source>
+        <translation>%1: the start number must be positive or zero.</translation>
+    </message>
+    <message>
+        <source>%1 : l'incrément doit être au moins 1.</source>
+        <translation>%1: the increment must be at least 1.</translation>
+    </message>
+    <message>
+        <source>%1 : le nombre de chiffres doit être compris entre 0 et 9.</source>
+        <translation>%1: the number of digits must be between 0 and 9.</translation>
+    </message>
+    <message>
+        <source>%1 : numéro de départ hors limites.</source>
+        <translation>%1: start number out of range.</translation>
+    </message>
+    <message>
+        <source>%1 : le format d'étiquette est vide.</source>
+        <translation>%1: the label format is empty.</translation>
+    </message>
+    <message>
+        <source>%1 : le format doit contenir {n} ou {g}, sinon toutes les étiquettes seraient identiques.</source>
+        <translation>%1: the format must contain {n} or {g}, otherwise all labels would be identical.</translation>
+    </message>
+    <message>
+        <source>%1 : le format doit contenir {n}, sinon toutes les étiquettes seraient identiques.</source>
+        <translation>%1: the format must contain {n}, otherwise all labels would be identical.</translation>
+    </message>
+    <message>
+        <source>%1 : le jeton {g} (grille) est réservé aux nœuds.</source>
+        <translation>%1: the {g} (grid) token is reserved for nodes.</translation>
+    </message>
+    <message>
+        <source>%1 : format trop long (40 caractères au plus).</source>
+        <translation>%1: format too long (40 characters at most).</translation>
+    </message>
+    <message>
+        <source>%1 : préfixe trop long (16 caractères au plus).</source>
+        <translation>%1: prefix too long (16 characters at most).</translation>
+    </message>
+    <message>
+        <source>%1 : le préfixe ne doit contenir ni espace ni accolade.</source>
+        <translation>%1: the prefix must contain neither spaces nor braces.</translation>
+    </message>
+    <message>
+        <source>Nœuds</source>
+        <translation>Nodes</translation>
+    </message>
+    <message>
+        <source>Éléments</source>
+        <translation>Elements</translation>
+    </message>
+    <message>
+        <source>Nœuds : la tolérance doit être comprise entre 0 et 10 m.</source>
+        <translation>Nodes: the tolerance must be between 0 and 10 m.</translation>
+    </message>
+    <message>
+        <source>Éléments : la tolérance doit être comprise entre 0 et 10 m.</source>
+        <translation>Elements: the tolerance must be between 0 and 10 m.</translation>
+    </message>
+    <message>
+        <source>Stratégie de numérotation des nœuds inconnue : « %1 ».</source>
+        <translation>Unknown node numbering strategy: “%1”.</translation>
+    </message>
+    <message>
+        <source>Stratégie de numérotation des éléments inconnue : « %1 ».</source>
+        <translation>Unknown element numbering strategy: “%1”.</translation>
+    </message>
+    <message>
+        <source>Préfixe « %1 » utilisé par %2 et %3 avec des suites de numéros séparées : étiquettes en double.</source>
+        <translation>Prefix “%1” used by %2 and %3 with separate number sequences: duplicate labels.</translation>
+    </message>
+    <message>
+        <source>Éléments : sans {p} dans le format, les suites séparées par famille produisent des étiquettes en double ; ajoutez {p} ou choisissez une suite commune.</source>
+        <translation>Elements: without {p} in the format, sequences separated by family produce duplicate labels; add {p} or choose a common sequence.</translation>
+    </message>
+    <message>
+        <source>Nœuds : « %1 » indisponible — %2</source>
+        <translation>Nodes: “%1” unavailable — %2</translation>
+    </message>
+    <message>
+        <source>Aucun des nœuds sélectionnés n'existe dans le modèle.</source>
+        <translation>None of the selected nodes exists in the model.</translation>
+    </message>
+    <message>
+        <source>Erreur interne de la stratégie « %1 » : ordre incomplet.</source>
+        <translation>Internal error in strategy “%1”: incomplete order.</translation>
+    </message>
+    <message>
+        <source>%1 étiquette(s) de nœud personnalisée(s) conservée(s).</source>
+        <translation>%1 custom node label(s) kept.</translation>
+    </message>
+    <message>
+        <source>Éléments : « %1 » indisponible — %2</source>
+        <translation>Elements: “%1” unavailable — %2</translation>
+    </message>
+    <message>
+        <source>%1 étiquette(s) d'élément personnalisée(s) conservée(s).</source>
+        <translation>%1 custom element label(s) kept.</translation>
+    </message>
+    <message>
+        <source>%1 étiquette(s) de nœud en double après renumérotation (%2) : modifiez le format, le préfixe, ou désactivez la conservation des étiquettes personnalisées.</source>
+        <translation>%1 duplicate node label(s) after renumbering (%2): change the format or the prefix, or disable keeping custom labels.</translation>
+    </message>
+    <message>
+        <source>%1 étiquette(s) d'élément en double après renumérotation (%2) : modifiez le format, le préfixe, ou désactivez la conservation des étiquettes personnalisées.</source>
+        <translation>%1 duplicate element label(s) after renumbering (%2): change the format or the prefix, or disable keeping custom labels.</translation>
+    </message>
+    <message>
+        <source>Le modèle a changé depuis la prévisualisation : prévisualisez à nouveau.</source>
+        <translation>The model has changed since the preview: preview again.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Topology::TopologySettings</name>
+    <message>
+        <source>Nœud</source>
+        <translation>Node</translation>
+    </message>
+    <message>
+        <source>Poutre / barre</source>
+        <translation>Beam / member</translation>
+    </message>
+    <message>
+        <source>Poteau</source>
+        <translation>Column</translation>
+    </message>
+    <message>
+        <source>Treillis</source>
+        <translation>Truss</translation>
+    </message>
+    <message>
+        <source>Câble</source>
+        <translation>Cable</translation>
+    </message>
+    <message>
+        <source>Dalle</source>
+        <translation>Slab</translation>
+    </message>
+    <message>
+        <source>Voile</source>
+        <translation>Wall</translation>
+    </message>
+    <message>
+        <source>Fondation</source>
+        <translation>Foundation</translation>
     </message>
 </context>
 <context>
@@ -9825,6 +13756,14 @@ Example: -10.00; 0.00; 0.00</translation>
         <translation>Problems</translation>
     </message>
     <message>
+        <source>%1
+
+%2 — composant %3</source>
+        <translation>%1
+
+%2 — %3 component</translation>
+    </message>
+    <message>
         <source>Blueprint</source>
         <translation>Blueprint</translation>
     </message>
@@ -10131,6 +14070,17 @@ Fix the subgraph body or discard its changes.</translation>
     <message>
         <source>Sous-graphe :</source>
         <translation>Subgraph:</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::UI::BlueprintScene</name>
+    <message>
+        <source>Inconnu : %1</source>
+        <translation>Unknown: %1</translation>
+    </message>
+    <message>
+        <source> (requis)</source>
+        <translation> (required)</translation>
     </message>
 </context>
 <context>
@@ -19096,6 +23046,18 @@ Create a new project or open a %1 file: its preview will appear here.</translati
     <message>
         <source>Choisir l'axe du plan de travail : Z (Horizontal), X (Coupe YZ), Y (Coupe XZ)</source>
         <translation>Choose the work plane axis: Z (horizontal), X (YZ section), Y (XZ section)</translation>
+    </message>
+    <message>
+        <source>Z (Plancher)</source>
+        <translation>Z (Floor)</translation>
+    </message>
+    <message>
+        <source>X (Coupe YZ)</source>
+        <translation>X (Section YZ)</translation>
+    </message>
+    <message>
+        <source>Y (Coupe XZ)</source>
+        <translation>Y (Section XZ)</translation>
     </message>
     <message>
         <source>Activer plan horizontal Z (Alt+Z)</source>

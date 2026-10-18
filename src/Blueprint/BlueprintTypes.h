@@ -100,7 +100,11 @@ struct NodeDefinition
 /// Compatibilité d'un lien de données (Entier → Réel admis ; générique accepte tout ; objets : même type d'objet,
 /// ou broche « tout objet »).
 bool dataCompatible(const PinSpec& from, const PinSpec& to);
-/// Type affiché d'une broche (« réel », « Matrix », « générique »).
+/// Type affiché d'une broche (« réel », « Matrix », « générique »), dans la langue de l'interface.
 std::string pinTypeName(const PinSpec& pin);
+/// Titre, catégorie, description ou libellé de broche d'une définition dans la langue de l'interface. Les définitions
+/// gardent le texte source français (marqué QT_TRANSLATE_NOOP, contexte « TSA::Blueprint::Nodes » ou, pour les nœuds des
+/// commandes, « TSA::Automation::Commands ») : il sert de clé (couleur des catégories…). Texte inconnu : rendu tel quel.
+std::string displayText(const std::string& source);
 
 } // namespace TSA::Blueprint

@@ -560,17 +560,17 @@ void BlueprintEditor::buildPalette()
         auto& cat = categories[d->category];
         if (!cat)
         {
-            cat = new QTreeWidgetItem(m_palette, { QString::fromStdString(d->category) });
+            cat = new QTreeWidgetItem(m_palette, { QString::fromStdString(displayText(d->category)) });
             cat->setFlags(Qt::ItemIsEnabled);
             cat->setExpanded(true);
         }
-        QString label = QString::fromStdString(d->title);
+        QString label = QString::fromStdString(displayText(d->title));
         if (d->status == NodeStatus::Validated) label += QStringLiteral("  ✓");
         else if (d->status == NodeStatus::Experimental) label += QStringLiteral("  ⚗");
         auto* item = new QTreeWidgetItem(cat, { label });
         item->setData(0, kTypeRole, QString::fromStdString(d->id));
-        item->setToolTip(0, QStringLiteral("%1\n\n%2 — composant %3").arg(QString::fromStdString(d->description), QString::fromStdString(d->id),
-                                                                        QString::fromUtf8(statusName(d->status))));
+        item->setToolTip(0, tr("%1\n\n%2 — composant %3").arg(QString::fromStdString(displayText(d->description)), QString::fromStdString(d->id),
+                                                             QCoreApplication::translate("TSA::Blueprint::Nodes", statusName(d->status))));
     }
 }
 
@@ -737,7 +737,7 @@ void BlueprintEditor::refreshProblems()
     auto add = [this](int node, const QString& kind, const std::string& text) {
         const auto* n = node ? m_graph.node(node) : nullptr;
         const auto* d = n ? m_effective.find(n->type) : nullptr;
-        auto* item = new QTreeWidgetItem(m_problems, { node ? QStringLiteral("#%1 %2").arg(node).arg(d ? QString::fromStdString(d->title) : QString())
+        auto* item = new QTreeWidgetItem(m_problems, { node ? QStringLiteral("#%1 %2").arg(node).arg(d ? QString::fromStdString(displayText(d->title)) : QString())
                                                             : tr("graphe"),
                                                        QStringLiteral("%1 : %2").arg(kind, QString::fromStdString(text)) });
         item->setData(0, kNodeRole, node);
@@ -834,7 +834,7 @@ DebugAction BlueprintEditor::pause(const DebugState& state)
     const NodeInstance* n = m_graph.node(state.node);
     const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
     emit logMessage(tr("Débogueur : pause avant « %1 » (#%2), %3 étape(s) exécutée(s).")
-                        .arg(d ? QString::fromStdString(d->title) : QStringLiteral("?")).arg(state.node).arg(state.step),
+                        .arg(d ? QString::fromStdString(displayText(d->title)) : QStringLiteral("?")).arg(state.node).arg(state.step),
                     "INFO");
     emit projectModified();   // vues à jour pendant la pause (commandes déjà exécutées)
     QEventLoop loop;
@@ -855,7 +855,7 @@ void BlueprintEditor::showWatch(const std::map<int, std::map<std::string, Value>
     {
         const NodeInstance* n = m_graph.node(id);
         const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
-        auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(d->title) : QString()) });
+        auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(displayText(d->title)) : QString()) });
         for (const auto& [pin, v] : pins)
         {
             auto* row = new QTreeWidgetItem(item, { QString::fromStdString(pin) });
@@ -887,7 +887,7 @@ void BlueprintEditor::showValues()
         if (selected && id != selected) continue;
         const NodeInstance* n = m_graph.node(id);
         const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
-        auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(d->title) : QString()) });
+        auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(displayText(d->title)) : QString()) });
         for (const auto& [pin, v] : pins)
         {
             const PinSpec* spec = d ? d->output(pin) : nullptr;
@@ -1185,8 +1185,8 @@ void BlueprintEditor::showNodeProperties()
         m_docButton->setEnabled(false);
         return;
     }
-    m_nodeTitle->setText(QStringLiteral("%1  #%2").arg(QString::fromStdString(d->title)).arg(id));
-    m_nodeDescription->setText(QString::fromStdString(d->description));
+    m_nodeTitle->setText(QStringLiteral("%1  #%2").arg(QString::fromStdString(displayText(d->title))).arg(id));
+    m_nodeDescription->setText(QString::fromStdString(displayText(d->description)));
     m_docButton->setEnabled(true);
     switch (d->status)
     {
@@ -1224,7 +1224,7 @@ void BlueprintEditor::showNodeProperties()
         if (pin.kind != PinKind::Data || pin.any) continue;
         if (m_graph.linkTo(id, pin.name))
         {
-            m_properties->addRow(QString::fromStdString(pin.label), new QLabel(tr("(relié)"), m_propertiesHost));
+            m_properties->addRow(QString::fromStdString(displayText(pin.label)), new QLabel(tr("(relié)"), m_propertiesHost));
             continue;
         }
         const auto it = n->values.find(pin.name);
@@ -1235,7 +1235,7 @@ void BlueprintEditor::showNodeProperties()
             m_scene->refreshNode(id);
             recordChange(QStringLiteral("%1:%2").arg(id).arg(QString::fromStdString(pinName)));
         };
-        QString label = QString::fromStdString(pin.label);
+        QString label = QString::fromStdString(displayText(pin.label));
         if (const char* unit = TSA::Automation::quantityUnit(pin.quantity); unit[0]) label += QStringLiteral(" (%1)").arg(QString::fromUtf8(unit));
 
         QWidget* editor = nullptr;

@@ -3,11 +3,18 @@
 
 #include "BlueprintSubgraph.h"
 
+#include <QCoreApplication>
+#include <QString>
+#include <QtGlobal>
+
 #include <algorithm>
 #include <cctype>
 #include <deque>
 #include <functional>
 #include <map>
+
+// Traduction : messages et textes composés des types de sous-graphe dans le contexte « TSA::Blueprint::Subgraph ».
+// Les noms, identifiants, catégories et descriptions saisis par l'utilisateur (écrits dans les fichiers) restent tels quels.
 
 namespace TSA::Blueprint
 {
@@ -84,9 +91,14 @@ BodyTraits traits(const SubgraphDefinition& d, const NodeLibrary& base, const st
 
 std::string pinList(const std::vector<PinSpec>& pins)
 {
-    if (pins.empty()) return "aucune";
+    if (pins.empty()) return QCoreApplication::translate("TSA::Blueprint::Subgraph", "aucune").toStdString();
     std::string s;
-    for (const auto& p : pins) s += (s.empty() ? "" : ", ") + (p.label.empty() ? p.name : p.label) + " (" + pinTypeName(p) + (p.required ? ", obligatoire" : "") + ")";
+    for (const auto& p : pins)
+    {
+        const QString label = QString::fromStdString(p.label.empty() ? p.name : displayText(p.label)), type = QString::fromStdString(pinTypeName(p));
+        s += (s.empty() ? "" : ", ")
+             + (p.required ? QCoreApplication::translate("TSA::Blueprint::Subgraph", "%1 (%2, obligatoire)").arg(label, type) : QCoreApplication::translate("TSA::Blueprint::Subgraph", "%1 (%2)").arg(label, type)).toStdString();
+    }
     return s;
 }
 
@@ -127,8 +139,8 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
     NodeDefinition inst;
     inst.id = subgraphInstanceType(d.id);
     inst.title = titleOf(d);
-    inst.category = d.category.empty() ? "Sous-graphes" : d.category;
-    inst.description = d.description.empty() ? "Sous-graphe « " + titleOf(d) + " »." : d.description;
+    inst.category = d.category.empty() ? QT_TRANSLATE_NOOP("TSA::Blueprint::Subgraph", "Sous-graphes") : d.category;   // texte source (clé de catégorie)
+    inst.description = d.description.empty() ? QCoreApplication::translate("TSA::Blueprint::Subgraph", "Sous-graphe « %1 ».").arg(QString::fromStdString(titleOf(d))).toStdString() : d.description;
     inst.pure = t.pure;
     inst.cacheable = t.pure && t.cacheable;
     inst.usesProject = t.usesProject;
@@ -147,12 +159,21 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
         p.required = false;
         inst.outputs.push_back(p);
     }
-    inst.documentation = (d.documentation.empty() ? std::string() : d.documentation + "\n\n") + "Sous-graphe « " + d.id + " », version "
-                         + std::to_string(d.version) + " — " + (t.pure ? "pur (évalué à la demande)" : "d'action (broches d'exécution)") + ".\nEntrées : "
-                         + pinList(d.inputs) + ".\nSorties : " + pinList(d.outputs) + ".\nCorps : " + std::to_string(d.body ? d.body->nodes().size() : 0)
-                         + " nœud(s), exécuté dans une exécution imbriquée ; son journal est repris, préfixé de son nom ; une erreur du corps fait "
-                           "échouer l'instance.";
-    inst.source = "sous-graphe « " + d.id + " » (défini dans le graphe)";
+    {
+        const QString summary =
+            t.pure ? QCoreApplication::translate("TSA::Blueprint::Subgraph", "Sous-graphe « %1 », version %2 — pur (évalué à la demande).\nEntrées : %3.\nSorties : %4.\nCorps : %5 "
+                                                         "nœud(s), exécuté dans une exécution imbriquée ; son journal est repris, préfixé de son "
+                                                         "nom ; une erreur du corps fait échouer l'instance.")
+                   : QCoreApplication::translate("TSA::Blueprint::Subgraph", "Sous-graphe « %1 », version %2 — d'action (broches d'exécution).\nEntrées : %3.\nSorties : %4.\n"
+                                                         "Corps : %5 nœud(s), exécuté dans une exécution imbriquée ; son journal est repris, "
+                                                         "préfixé de son nom ; une erreur du corps fait échouer l'instance.");
+        inst.documentation = (d.documentation.empty() ? std::string() : d.documentation + "\n\n")
+                             + summary
+                                   .arg(QString::fromStdString(d.id), QString::number(d.version), QString::fromStdString(pinList(d.inputs)), QString::fromStdString(pinList(d.outputs)),
+                                        QString::number(d.body ? d.body->nodes().size() : 0))
+                                   .toStdString();
+    }
+    inst.source = QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » (défini dans le graphe)").arg(QString::fromStdString(d.id)).toStdString();
     std::map<std::string, std::shared_ptr<const void>> bodies;
     collectBodies(d, *set, bodies);
     for (auto& [id, body] : bodies) inst.revision.push_back(std::move(body));
@@ -160,8 +181,8 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
     lib.add(std::move(inst), [self, set, k, pure](ExecutionContext& c) {
         const SubgraphDefinition& def = (*set)[k];
         if (callDepth() >= kMaxSubgraphDepth)
-            return c.fail("sous-graphes imbriqués sur plus de " + std::to_string(kMaxSubgraphDepth) + " niveaux (appel récursif ?)");
-        if (!def.body) return c.fail("sous-graphe « " + titleOf(def) + " » sans corps");
+            return c.fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphes imbriqués sur plus de %1 niveaux (appel récursif ?)").arg(kMaxSubgraphDepth).toStdString());
+        if (!def.body) return c.fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » sans corps").arg(QString::fromStdString(titleOf(def))).toStdString());
         std::map<std::string, Value> arguments;
         for (const auto& p : def.inputs)
         {
@@ -176,7 +197,8 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
             rep = inner.run(arguments);
         }
         for (const auto& line : rep.log) c.log("[" + titleOf(def) + "] " + line);
-        if (!rep.ok) return c.fail("sous-graphe « " + titleOf(def) + " » : " + rep.message);
+        if (!rep.ok)
+            return c.fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : %2").arg(QString::fromStdString(titleOf(def)), QString::fromStdString(rep.message)).toStdString());
         int outNode = 0;
         for (const auto& [id, n] : def.body->nodes())
             if (n.type == subgraphOutputType(def.id)) outNode = id;
@@ -184,8 +206,9 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
         for (const auto& p : def.outputs)
         {
             if (it == rep.values.end() || !it->second.count(p.name))
-                return c.fail("sous-graphe « " + titleOf(def) + " » : sortie « " + (p.label.empty() ? p.name : p.label)
-                              + " » non produite (la fin du corps n'a pas été atteinte)");
+                return c.fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : sortie « %2 » non produite (la fin du corps n'a pas été atteinte)")
+                                  .arg(QString::fromStdString(titleOf(def)), QString::fromStdString(p.label.empty() ? p.name : displayText(p.label)))
+                                  .toStdString());
             c.setOutput(p.name, it->second.at(p.name));
         }
         return pure ? true : c.fire("then");
@@ -194,9 +217,11 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
     // Entrée du corps : point de départ, sorties = entrées du sous-graphe
     NodeDefinition in;
     in.id = subgraphInputType(d.id);
-    in.title = "Entrées — " + titleOf(d);
-    in.category = "Sous-graphe (corps)";
-    in.description = "Point de départ du corps du sous-graphe « " + titleOf(d) + " » : valeurs des entrées de l'instance.";
+    in.title = QCoreApplication::translate("TSA::Blueprint::Subgraph", "Entrées — %1").arg(QString::fromStdString(titleOf(d))).toStdString();
+    in.category = QT_TRANSLATE_NOOP("TSA::Blueprint::Subgraph", "Sous-graphe (corps)");   // texte source (clé de catégorie)
+    in.description = QCoreApplication::translate("TSA::Blueprint::Subgraph", "Point de départ du corps du sous-graphe « %1 » : valeurs des entrées de l'instance.")
+                         .arg(QString::fromStdString(titleOf(d)))
+                         .toStdString();
     in.entry = true;
     in.status = NodeStatus::Standard;
     in.version = d.version;
@@ -207,9 +232,11 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
         p.required = false;
         in.outputs.push_back(p);
     }
-    in.documentation = "Valeurs des entrées passées par l'instance. Corps exécuté seul (essai) : valeurs par défaut des entrées ; une "
-                       "entrée obligatoire sans valeur par défaut fait alors échouer l'exécution.";
-    in.source = "sous-graphe « " + d.id + " » (défini dans le graphe)";
+    in.documentation = QCoreApplication::translate("TSA::Blueprint::Subgraph", "Valeurs des entrées passées par l'instance. Corps exécuté seul (essai) : valeurs par "
+                                                   "défaut des entrées ; une entrée obligatoire sans valeur par défaut fait alors "
+                                                   "échouer l'exécution.")
+                           .toStdString();
+    in.source = QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » (défini dans le graphe)").arg(QString::fromStdString(d.id)).toStdString();
     lib.add(std::move(in), [set, k](ExecutionContext& c) {
         const SubgraphDefinition& def = (*set)[k];
         for (const auto& p : def.inputs)
@@ -219,7 +246,10 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
             else if (!isUnset(p.defaultValue))
                 c.setOutput(p.name, p.defaultValue);
             else if (p.required)
-                return c.fail("entrée « " + (p.label.empty() ? p.name : p.label) + " » du sous-graphe non fournie (exécution du corps seul : donner une valeur par défaut)");
+                return c.fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "entrée « %1 » du sous-graphe non fournie (exécution du corps seul : donner une valeur "
+                                                                "par défaut)")
+                                  .arg(QString::fromStdString(p.label.empty() ? p.name : displayText(p.label)))
+                                  .toStdString());
             else
                 c.setOutput(p.name, Value {});
         }
@@ -229,9 +259,11 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
     // Sortie du corps : fin, entrées = sorties du sous-graphe (reprises en sorties, lues par l'instance)
     NodeDefinition out;
     out.id = subgraphOutputType(d.id);
-    out.title = "Sorties — " + titleOf(d);
-    out.category = "Sous-graphe (corps)";
-    out.description = "Fin du corps du sous-graphe « " + titleOf(d) + " » : valeurs rendues par l'instance.";
+    out.title = QCoreApplication::translate("TSA::Blueprint::Subgraph", "Sorties — %1").arg(QString::fromStdString(titleOf(d))).toStdString();
+    out.category = QT_TRANSLATE_NOOP("TSA::Blueprint::Subgraph", "Sous-graphe (corps)");   // texte source (clé de catégorie)
+    out.description = QCoreApplication::translate("TSA::Blueprint::Subgraph", "Fin du corps du sous-graphe « %1 » : valeurs rendues par l'instance.")
+                          .arg(QString::fromStdString(titleOf(d)))
+                          .toStdString();
     out.status = NodeStatus::Standard;
     out.version = d.version;
     out.inputs.push_back(execInPin());
@@ -243,9 +275,10 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
         p.required = false;
         out.outputs.push_back(p);
     }
-    out.documentation = "Chaque entrée est obligatoire : c'est une sortie du sous-graphe. Le nœud doit être atteint par les liens d'exécution "
-                        "depuis l'entrée du corps.";
-    out.source = "sous-graphe « " + d.id + " » (défini dans le graphe)";
+    out.documentation = QCoreApplication::translate("TSA::Blueprint::Subgraph", "Chaque entrée est obligatoire : c'est une sortie du sous-graphe. Le nœud doit être "
+                                                    "atteint par les liens d'exécution depuis l'entrée du corps.")
+                            .toStdString();
+    out.source = QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » (défini dans le graphe)").arg(QString::fromStdString(d.id)).toStdString();
     lib.add(std::move(out), [set, k](ExecutionContext& c) {
         for (const auto& p : (*set)[k].outputs)
         {
@@ -263,20 +296,28 @@ void registerTypes(NodeLibrary& lib, const NodeLibrary& base, const std::shared_
 std::vector<std::string> structureIssues(const NodeLibrary& library, const SubgraphDefinition& d, bool* complete)
 {
     std::vector<std::string> out;
-    const std::string label = "sous-graphe « " + titleOf(d) + " »";
+    const QString label = QString::fromStdString(titleOf(d));
     int in = 0, out_ = 0, ins = 0, outs = 0;
     for (const auto& [id, n] : d.body->nodes())
     {
         if (n.type == subgraphInputType(d.id)) in = id, ++ins;
         else if (n.type == subgraphOutputType(d.id)) out_ = id, ++outs;
-        else if (n.type == "event.start") out.push_back(label + " : nœud « Début » interdit dans un corps (le point de départ est l'entrée du sous-graphe)");
+        else if (n.type == "event.start")
+            out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : nœud « Début » interdit dans un corps (le point de départ est "
+                                                              "l'entrée du sous-graphe)")
+                              .arg(label)
+                              .toStdString());
         else if (n.type.rfind(kPrefix, 0) == 0 && subgraphOfType(n.type).empty())
-            out.push_back(label + " : nœud d'entrée ou de sortie d'un autre sous-graphe (" + n.type + ")");
+            out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : nœud d'entrée ou de sortie d'un autre sous-graphe (%2)")
+                              .arg(label, QString::fromStdString(n.type))
+                              .toStdString());
     }
     if (complete) *complete = ins == 1 && outs == 1;
     if (ins != 1 || outs != 1)
     {
-        out.push_back(label + " : le corps doit contenir un nœud d'entrée et un nœud de sortie (" + std::to_string(ins) + " et " + std::to_string(outs) + ")");
+        out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : le corps doit contenir un nœud d'entrée et un nœud de sortie (%2 et %3)")
+                          .arg(label, QString::number(ins), QString::number(outs))
+                          .toStdString());
         return out;
     }
     std::set<int> reached { in };
@@ -295,7 +336,11 @@ std::vector<std::string> structureIssues(const NodeLibrary& library, const Subgr
             if (p && p->kind == PinKind::Exec && reached.insert(l.toNode).second) todo.push_back(l.toNode);
         }
     }
-    if (!reached.count(out_)) out.push_back(label + " : la fin du corps n'est pas atteinte depuis son entrée (relier les liens d'exécution)");
+    if (!reached.count(out_))
+        out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : la fin du corps n'est pas atteinte depuis son entrée (relier les liens "
+                                                          "d'exécution)")
+                          .arg(label)
+                          .toStdString());
     return out;
 }
 
@@ -321,7 +366,7 @@ std::string recursionIssue(const std::vector<SubgraphDefinition>& set)
                 bool on = false;
                 for (const auto& p : path)
                     if (on || p == callee) on = true, cycle += p + " → ";
-                found = "appel récursif de sous-graphes : " + cycle + callee;
+                found = QCoreApplication::translate("TSA::Blueprint::Subgraph", "appel récursif de sous-graphes : %1").arg(QString::fromStdString(cycle + callee)).toStdString();
                 return true;
             }
             if (color[callee] == 0 && visit(callee)) return true;
@@ -444,34 +489,46 @@ std::vector<std::string> validateSubgraphs(const NodeLibrary& library, const std
     std::set<std::string> ids;
     for (const auto& d : set)
     {
-        const std::string label = "sous-graphe « " + titleOf(d) + " »";
+        const QString label = QString::fromStdString(titleOf(d));
         if (!isValidSubgraphId(d.id))
         {
-            out.push_back(label + " : identifiant invalide « " + d.id + " » (lettre puis lettres, chiffres, _ ou -, 64 caractères au plus)");
+            out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : identifiant invalide « %2 » (lettre puis lettres, chiffres, _ ou -, 64 "
+                                                              "caractères au plus)")
+                              .arg(label, QString::fromStdString(d.id))
+                              .toStdString());
             continue;
         }
-        if (!ids.insert(d.id).second) out.push_back("identifiant de sous-graphe en double « " + d.id + " »");
-        if (d.version < 1) out.push_back(label + " : version " + std::to_string(d.version) + " invalide");
+        if (!ids.insert(d.id).second)
+            out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "identifiant de sous-graphe en double « %1 »").arg(QString::fromStdString(d.id)).toStdString());
+        if (d.version < 1)
+            out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : version %2 invalide").arg(label, QString::number(d.version)).toStdString());
         for (const auto* pins : { &d.inputs, &d.outputs })
         {
             std::set<std::string> names;
             for (const auto& p : *pins)
             {
-                if (!isValidPinName(p.name)) out.push_back(label + " : nom de broche invalide « " + p.name + " »");
-                if (!names.insert(p.name).second) out.push_back(label + " : broche « " + p.name + " » en double");
-                if (p.kind != PinKind::Data) out.push_back(label + " : broche « " + p.name + " » : seules les broches de données sont configurables");
+                if (!isValidPinName(p.name))
+                    out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : nom de broche invalide « %2 »").arg(label, QString::fromStdString(p.name)).toStdString());
+                if (!names.insert(p.name).second)
+                    out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : broche « %2 » en double").arg(label, QString::fromStdString(p.name)).toStdString());
+                if (p.kind != PinKind::Data)
+                    out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : broche « %2 » : seules les broches de données sont configurables")
+                                      .arg(label, QString::fromStdString(p.name))
+                                      .toStdString());
             }
         }
         if (!d.body)
         {
-            out.push_back(label + " : corps absent");
+            out.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : corps absent").arg(label).toStdString());
             continue;
         }
         bool complete = false;
         for (auto& m : structureIssues(library, d, &complete)) out.push_back(std::move(m));
         if (!complete) continue;
         for (const auto& issue : library.validate(*d.body))
-            out.push_back(label + " : " + (issue.node ? "#" + std::to_string(issue.node) + " " : std::string()) + issue.message);
+            out.push_back((issue.node ? QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : #%2 %3").arg(label, QString::number(issue.node), QString::fromStdString(issue.message))
+                                      : QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » : %2").arg(label, QString::fromStdString(issue.message)))
+                              .toStdString());
     }
     if (std::string r = recursionIssue(set); !r.empty()) out.push_back(std::move(r));
     return out;
@@ -481,7 +538,7 @@ std::vector<Issue> validateBody(const NodeLibrary& base, const Graph& body, cons
 {
     std::vector<SubgraphDefinition> trial = definitions;
     const auto it = std::find_if(trial.begin(), trial.end(), [&](const SubgraphDefinition& d) { return d.id == id; });
-    if (it == trial.end()) return { { 0, "sous-graphe « " + id + " » introuvable" } };
+    if (it == trial.end()) return { { 0, QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » introuvable").arg(QString::fromStdString(id)).toStdString() } };
     auto copy = std::make_shared<Graph>(body);
     copy->subgraphs.clear();   // corps seul : les définitions ne sont pas reprises dans ses contrôles
     it->body = copy;
@@ -501,7 +558,7 @@ std::vector<std::string> pruneStaleLinks(const NodeLibrary& library, Graph& g, c
     auto title = [&](int id) {
         const NodeInstance* n = g.node(id);
         const NodeDefinition* d = n ? lib.find(n->type) : nullptr;
-        return "#" + std::to_string(id) + (d ? " « " + d->title + " »" : std::string());
+        return "#" + std::to_string(id) + (d ? " « " + displayText(d->title) + " »" : std::string());
     };
     std::vector<Link> stale;
     for (const auto& l : g.links())
@@ -510,7 +567,9 @@ std::vector<std::string> pruneStaleLinks(const NodeLibrary& library, Graph& g, c
     {
         g.removeLink(l);
         const bool in = targets.count(l.toNode) > 0;
-        removed.push_back(title(in ? l.toNode : l.fromNode) + " : lien « " + (in ? l.toPin : l.fromPin) + " » retiré (broche supprimée ou de type modifié)");
+        removed.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "%1 : lien « %2 » retiré (broche supprimée ou de type modifié)")
+                              .arg(QString::fromStdString(title(in ? l.toNode : l.fromNode)), QString::fromStdString(in ? l.toPin : l.fromPin))
+                              .toStdString());
     }
     for (int id : nodes)
     {
@@ -521,7 +580,7 @@ std::vector<std::string> pruneStaleLinks(const NodeLibrary& library, Graph& g, c
         {
             if (!d->input(v->first))
             {
-                removed.push_back(title(id) + " : valeur de l'entrée supprimée « " + v->first + " » effacée");
+                removed.push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "%1 : valeur de l'entrée supprimée « %2 » effacée").arg(QString::fromStdString(title(id)), QString::fromStdString(v->first)).toStdString());
                 v = n->values.erase(v);
             }
             else
@@ -569,9 +628,10 @@ EncapsulationResult encapsulate(const NodeLibrary& base, Graph& g, const std::se
         r.message = m;
         return r;
     };
-    if (selection.empty()) return fail("aucun nœud sélectionné");
-    if (!isValidSubgraphId(id)) return fail("identifiant invalide « " + id + " » (lettre puis lettres, chiffres, _ ou -)");
-    if (g.subgraph(id)) return fail("un sous-graphe « " + id + " » existe déjà dans ce graphe");
+    if (selection.empty()) return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "aucun nœud sélectionné").toStdString());
+    if (!isValidSubgraphId(id))
+        return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "identifiant invalide « %1 » (lettre puis lettres, chiffres, _ ou -)").arg(QString::fromStdString(id)).toStdString());
+    if (g.subgraph(id)) return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "un sous-graphe « %1 » existe déjà dans ce graphe").arg(QString::fromStdString(id)).toStdString());
     std::unique_ptr<NodeLibrary> holder;
     const NodeLibrary& lib = base.forGraph(g, holder);
     bool hasAction = false;
@@ -579,11 +639,14 @@ EncapsulationResult encapsulate(const NodeLibrary& base, Graph& g, const std::se
     for (int n : selection)
     {
         const NodeInstance* ni = g.node(n);
-        if (!ni) return fail("nœud #" + std::to_string(n) + " inexistant");
+        if (!ni) return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "nœud #%1 inexistant").arg(n).toStdString());
         const NodeDefinition* d = lib.find(ni->type);
-        if (!d) return fail("nœud #" + std::to_string(n) + " de type inconnu « " + ni->type + " »");
+        if (!d) return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "nœud #%1 de type inconnu « %2 »").arg(QString::number(n), QString::fromStdString(ni->type)).toStdString());
         if (d->entry || (ni->type.rfind(kPrefix, 0) == 0 && subgraphOfType(ni->type).empty()))
-            return fail("« " + d->title + " » (#" + std::to_string(n) + ") ne peut pas être encapsulé (point de départ ou nœud d'entrée / de sortie de sous-graphe)");
+            return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "« %1 » (#%2) ne peut pas être encapsulé (point de départ ou nœud d'entrée / de sortie de "
+                                                            "sous-graphe)")
+                            .arg(QString::fromStdString(displayText(d->title)), QString::number(n))
+                            .toStdString());
         hasAction = hasAction || !d->pure;
         minX = std::min(minX, ni->x), maxX = std::max(maxX, ni->x);
         sumX += ni->x, sumY += ni->y;
@@ -606,7 +669,8 @@ EncapsulationResult encapsulate(const NodeLibrary& base, Graph& g, const std::se
         const bool a = inside(l.fromNode), b = inside(l.toNode);
         if (a == b) continue;
         const PinSpec* src = outputPin(l.fromNode, l.fromPin);
-        if (!src) return fail("lien invalide depuis #" + std::to_string(l.fromNode) + "." + l.fromPin);
+        if (!src)
+            return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "lien invalide depuis #%1.%2").arg(QString::number(l.fromNode), QString::fromStdString(l.fromPin)).toStdString());
         if (src->kind == PinKind::Exec)
         {
             (b ? execIn : execOut).push_back(l);
@@ -649,9 +713,18 @@ EncapsulationResult encapsulate(const NodeLibrary& base, Graph& g, const std::se
     std::set<Source> execTargets, execSources;
     for (const auto& l : execIn) execTargets.insert({ l.toNode, l.toPin });
     for (const auto& l : execOut) execSources.insert({ l.fromNode, l.fromPin });
-    if (execTargets.size() > 1) return fail("plusieurs liens d'exécution entrent dans la sélection par des nœuds différents : un sous-graphe a un seul point d'entrée");
-    if (execSources.size() > 1) return fail("plusieurs sorties d'exécution quittent la sélection : un sous-graphe a une seule sortie d'exécution");
-    if (hasAction && execTargets.empty()) return fail("la sélection contient des nœuds d'action mais aucun lien d'exécution n'y entre (elle ne serait jamais exécutée)");
+    if (execTargets.size() > 1)
+        return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "plusieurs liens d'exécution entrent dans la sélection par des nœuds différents : un "
+                                                        "sous-graphe a un seul point d'entrée")
+                        .toStdString());
+    if (execSources.size() > 1)
+        return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "plusieurs sorties d'exécution quittent la sélection : un sous-graphe a une seule sortie "
+                                                        "d'exécution")
+                        .toStdString());
+    if (hasAction && execTargets.empty())
+        return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "la sélection contient des nœuds d'action mais aucun lien d'exécution n'y entre (elle ne "
+                                                        "serait jamais exécutée)")
+                        .toStdString());
 
     // Corps : copie des nœuds et des liens intérieurs, entrée et sortie
     auto body = std::make_shared<Graph>();
@@ -677,7 +750,8 @@ EncapsulationResult encapsulate(const NodeLibrary& base, Graph& g, const std::se
             int x = entry.first;
             while (true)
             {
-                if (!visited.insert(x).second) return fail("chaîne d'exécution encapsulée en boucle : fin introuvable");
+                if (!visited.insert(x).second)
+                    return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "chaîne d'exécution encapsulée en boucle : fin introuvable").toStdString());
                 const NodeInstance* nx = body->node(x);
                 const NodeDefinition* dx = nx ? lib.find(nx->type) : nullptr;
                 std::vector<std::string> execOuts;
@@ -685,7 +759,9 @@ EncapsulationResult encapsulate(const NodeLibrary& base, Graph& g, const std::se
                     for (const auto& p : dx->outputs)
                         if (p.kind == PinKind::Exec) execOuts.push_back(p.name);
                 if (execOuts.empty())
-                    return fail("la chaîne d'exécution encapsulée se termine sur « " + (dx ? dx->title : nx->type) + " », sans sortie d'exécution");
+                    return fail(QCoreApplication::translate("TSA::Blueprint::Subgraph", "la chaîne d'exécution encapsulée se termine sur « %1 », sans sortie d'exécution")
+                                    .arg(QString::fromStdString(dx ? displayText(dx->title) : nx->type))
+                                    .toStdString());
                 const auto next = body->linksFrom(x, execOuts.back());
                 if (next.empty())
                 {
@@ -717,8 +793,10 @@ EncapsulationResult encapsulate(const NodeLibrary& base, Graph& g, const std::se
     for (const auto& l : execOut) g.addLink({ inst, "then", l.toNode, l.toPin });
     r.ok = true;
     r.instance = inst;
-    r.message = "Sous-graphe « " + def.name + " » créé : " + std::to_string(selection.size()) + " nœud(s), " + std::to_string(inputs.size()) + " entrée(s), "
-                + std::to_string(outputs.size()) + " sortie(s), " + (hasAction ? "d'action" : "pur") + ".";
+    r.message = (hasAction ? QCoreApplication::translate("TSA::Blueprint::Subgraph", "Sous-graphe « %1 » créé : %2 nœud(s), %3 entrée(s), %4 sortie(s), d'action.")
+                           : QCoreApplication::translate("TSA::Blueprint::Subgraph", "Sous-graphe « %1 » créé : %2 nœud(s), %3 entrée(s), %4 sortie(s), pur."))
+                    .arg(QString::fromStdString(def.name), QString::number(selection.size()), QString::number(inputs.size()), QString::number(outputs.size()))
+                    .toStdString();
     return r;
 }
 
@@ -750,7 +828,7 @@ bool defineSubgraph(const NodeLibrary& base, Graph& g, SubgraphDefinition def, s
     // Mise à jour des instances : liens et valeurs devenus invalides retirés, version courante à l'enregistrement
     const std::vector<int> instances = subgraphInstances(g, def.id);
     for (auto& m : pruneStaleLinks(*lib, g, instances))
-        if (updates) updates->push_back("instance " + std::move(m));
+        if (updates) updates->push_back(QCoreApplication::translate("TSA::Blueprint::Subgraph", "instance %1").arg(QString::fromStdString(m)).toStdString());
     for (int inst : instances) g.node(inst)->version = 0;
     return true;
 }
@@ -762,14 +840,15 @@ bool removeSubgraph(Graph& g, const std::string& id, std::string* error)
         if (d.id != id && d.body && !subgraphInstances(*d.body, id).empty()) users.push_back(0);
     if (!users.empty())
     {
-        if (error) *error = "sous-graphe « " + id + " » encore utilisé (" + std::to_string(users.size()) + " instance(s))";
+        if (error)
+            *error = QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » encore utilisé (%2 instance(s))").arg(QString::fromStdString(id), QString::number(users.size())).toStdString();
         return false;
     }
     const auto before = g.subgraphs.size();
     g.subgraphs.erase(std::remove_if(g.subgraphs.begin(), g.subgraphs.end(), [&](const SubgraphDefinition& d) { return d.id == id; }), g.subgraphs.end());
     if (g.subgraphs.size() == before)
     {
-        if (error) *error = "sous-graphe « " + id + " » inexistant";
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::Subgraph", "sous-graphe « %1 » inexistant").arg(QString::fromStdString(id)).toStdString();
         return false;
     }
     return true;

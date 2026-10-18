@@ -2,6 +2,8 @@
 
 #include "Custom2DAdapter.h"
 
+#include <QCoreApplication>
+
 namespace TSA::Analysis
 {
 
@@ -11,8 +13,9 @@ EngineInfo Custom2DEngine::info() const
     i.id = kId;
     i.name = "Custom2D";
     i.version = m_solver ? m_solver->version() : std::string();
-    i.description = m_solver ? "Moteur de calcul structurel 2D personnalisé TSA (" + m_solver->name() + ")."
-                             : "Moteur de calcul structurel 2D personnalisé TSA — solveur non connecté.";
+    i.description = m_solver ? QCoreApplication::translate("TSA::Analysis::Custom2DEngine", "Moteur de calcul structurel 2D personnalisé TSA (%1).")
+                                   .arg(QString::fromStdString(m_solver->name())).toStdString()
+                             : QCoreApplication::translate("TSA::Analysis::Custom2DEngine", "Moteur de calcul structurel 2D personnalisé TSA — solveur non connecté.").toStdString();
     return i;
 }
 
@@ -42,8 +45,9 @@ EngineAvailability Custom2DEngine::availability() const
     EngineAvailability a;
     a.available = m_solver != nullptr;
     if (!a.available)
-        a.message = "solveur Custom2D non connecté (adaptateur prêt : implémenter Custom2D::ISolver et "
-                    "l'enregistrer dans registerBuiltInEngines). Aucun calcul n'est effectué.";
+        a.message = QCoreApplication::translate("TSA::Analysis::Custom2DEngine",
+                        "solveur Custom2D non connecté (adaptateur prêt : implémenter Custom2D::ISolver et "
+                        "l'enregistrer dans registerBuiltInEngines). Aucun calcul n'est effectué.").toStdString();
     return a;
 }
 
@@ -54,7 +58,7 @@ ValidationResult Custom2DEngine::validate(const AnalysisContext& context, const 
     // La conversion signale toute perte d'information (hors plan, section oblique, charges).
     Custom2D::buildInput(context, model, &v);
     if (!m_solver)
-        v.addWarning("Custom2D", "Solveur non connecté : la portée peut être validée mais pas calculée.");
+        v.addWarning("Custom2D", QCoreApplication::translate("TSA::Analysis::Custom2DEngine", "Solveur non connecté : la portée peut être validée mais pas calculée.").toStdString());
     return v;
 }
 
@@ -67,24 +71,25 @@ AnalysisRunResult Custom2DEngine::run(const AnalysisContext& context, const Anal
         r.message = availability().message;
         return r;
     }
-    if (callbacks.progress) callbacks.progress(10, "Conversion de la portée en ossature plane…");
+    if (callbacks.progress) callbacks.progress(10, QCoreApplication::translate("TSA::Analysis::Custom2DEngine", "Conversion de la portée en ossature plane…").toStdString());
     const Custom2D::Input input = Custom2D::buildInput(context, model, nullptr);
 
-    if (callbacks.progress) callbacks.progress(30, "Résolution Custom2D…");
+    if (callbacks.progress) callbacks.progress(30, QCoreApplication::translate("TSA::Analysis::Custom2DEngine", "Résolution Custom2D…").toStdString());
     const Custom2D::Output output = m_solver->solve(input);
     if (callbacks.log)
         for (const auto& line : output.log) callbacks.log(line);
 
     if (!output.success)
     {
-        r.message = output.message.empty() ? "Échec du solveur Custom2D." : output.message;
+        r.message = output.message.empty() ? QCoreApplication::translate("TSA::Analysis::Custom2DEngine", "Échec du solveur Custom2D.").toStdString() : output.message;
         return r;
     }
-    if (callbacks.progress) callbacks.progress(90, "Remappage des résultats vers le modèle TSA…");
+    if (callbacks.progress) callbacks.progress(90, QCoreApplication::translate("TSA::Analysis::Custom2DEngine", "Remappage des résultats vers le modèle TSA…").toStdString());
     r.results = Custom2D::mapResults(context, model, output);
     r.results.setSolverMesh(Custom2D::solverMesh(model, input));
     r.success = r.results.isValid();
-    r.message = r.success ? "Calcul Custom2D terminé." : "Résultats Custom2D inexploitables.";
+    r.message = r.success ? QCoreApplication::translate("TSA::Analysis::Custom2DEngine", "Calcul Custom2D terminé.").toStdString()
+                          : QCoreApplication::translate("TSA::Analysis::Custom2DEngine", "Résultats Custom2D inexploitables.").toStdString();
     return r;
 }
 

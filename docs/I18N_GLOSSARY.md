@@ -156,3 +156,24 @@ Choisis par les traducteurs puis harmonisés : une seule forme par notion, appli
 | norme | standard | fenitra | courant |
 | catégorie | category | sokajy | courant |
 | erreur, avertissement | error, warning | hadisoana, fampitandremana | courant |
+
+## 5. Calcul, Blueprint, outils et numérotation (octobre 2026, lots 6 à 8)
+
+Mêmes règles : une seule forme par notion. Les touches gardent les noms des claviers AZERTY (Entrée, Échap, Suppr).
+
+| Français | English | Malagasy | Statut |
+|---|---|---|---|
+| portée (d'analyse) | analysis scope | sehatra | proposé |
+| moteur de calcul | analysis engine | motera kajy | proposé |
+| mécanisme | mechanism | mekanisma | emprunt |
+| valeur propre, forme propre | eigenvalue, mode shape | sanda manokana, endriky ny fihetsika voajanahary | proposé |
+| blocage automatique | automatic restraint | fanakanana ho azy | proposé |
+| relâchement | release | fanalefahana | proposé |
+| module d'Young, module d'élasticité | Young's modulus, elastic modulus | tahan'i Young, tahan'ny fahaelastika | proposé (distinct de *môdiola*) |
+| moment quadratique | second moment of area | momenta kadratika | proposé |
+| coefficient de Poisson | Poisson's ratio | tahan'i Poisson | proposé |
+| vecteur | vector | vektora | emprunt |
+| bloc, broche, sous-graphe (Blueprint) | node, pin, subgraph | bloka, tsatoka, zana-grafy | proposé |
+| intersecter, prolonger, ajuster, décaler | intersect, extend, trim, offset | Ampifanapaho, Halavao, Fohezo, Ahemory | proposé |
+| renumérotation, étiquette, préfixe, suffixe | renumbering, label, prefix, suffix | fanomezana laharana indray, marika, tovona, tovana | proposé |
+| plancher, coupe (axe du plan de travail) | floor, section | gorodona, fizarana | courant |

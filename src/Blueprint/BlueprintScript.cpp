@@ -2,11 +2,17 @@
 
 #include "../Automation/CommandRegistry.h"
 
+#include <QCoreApplication>
+#include <QString>
+
 #include <algorithm>
 #include <cctype>
 #include <map>
 #include <set>
 #include <sstream>
+
+// Traduction : erreurs de lecture d'un script et avertissements d'export affichés (contexte « TSA::Blueprint::Script »).
+// Le texte du script, le nom du graphe créé et describe() (destiné à l'assistant IA) restent inchangés.
 
 namespace TSA::Blueprint
 {
@@ -35,7 +41,7 @@ bool fromCommandScript(const std::string& script, const NodeLibrary& library, co
 {
     using namespace TSA::Automation;
     auto failAt = [error](int line, const std::string& message) {
-        if (error) *error = "ligne " + std::to_string(line) + " : " + message;
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::Script", "ligne %1 : %2").arg(QString::number(line), QString::fromStdString(message)).toStdString();
         return false;
     };
 
@@ -70,11 +76,12 @@ bool fromCommandScript(const std::string& script, const NodeLibrary& library, co
         std::vector<std::string> tokens;
         std::string tokError;
         if (!tokenizeCommandLine(line, tokens, &tokError)) return failAt(lineNo, tokError);
-        if (tokens.empty()) return failAt(lineNo, "commande attendue");
+        if (tokens.empty()) return failAt(lineNo, QCoreApplication::translate("TSA::Blueprint::Script", "commande attendue").toStdString());
         const CommandSpec* spec = commands.find(tokens[0]);
-        if (!spec) return failAt(lineNo, "commande inconnue « " + tokens[0] + " »");
+        if (!spec) return failAt(lineNo, QCoreApplication::translate("TSA::Blueprint::Script", "commande inconnue « %1 »").arg(QString::fromStdString(tokens[0])).toStdString());
         const std::string type = "cmd." + spec->id;
-        if (!library.find(type)) return failAt(lineNo, "aucun nœud pour la commande « " + spec->id + " »");
+        if (!library.find(type))
+            return failAt(lineNo, QCoreApplication::translate("TSA::Blueprint::Script", "aucun nœud pour la commande « %1 »").arg(QString::fromStdString(spec->id)).toStdString());
 
         const int node = g.addNode(type, kStepX * column, (column % 2) * 60.0);
         ++column;
@@ -83,23 +90,30 @@ bool fromCommandScript(const std::string& script, const NodeLibrary& library, co
         for (std::size_t i = 1; i < tokens.size(); ++i)
         {
             const auto pos = tokens[i].find('=');
-            if (pos == std::string::npos) return failAt(lineNo, "argument « " + tokens[i] + " » : syntaxe nom=valeur attendue");
+            if (pos == std::string::npos)
+                return failAt(lineNo, QCoreApplication::translate("TSA::Blueprint::Script", "argument « %1 » : syntaxe nom=valeur attendue").arg(QString::fromStdString(tokens[i])).toStdString());
             const std::string name = tokens[i].substr(0, pos), value = tokens[i].substr(pos + 1);
             const auto p = std::find_if(spec->parameters.begin(), spec->parameters.end(),
                                         [&](const ParameterSpec& s) { return s.name == name; });
-            if (p == spec->parameters.end()) return failAt(lineNo, "paramètre inconnu « " + name + " » pour " + spec->id);
+            if (p == spec->parameters.end())
+                return failAt(lineNo, QCoreApplication::translate("TSA::Blueprint::Script", "paramètre inconnu « %1 » pour %2").arg(QString::fromStdString(name), QString::fromStdString(spec->id)).toStdString());
 
             // Référence « variable.sortie » : lien de données depuis la commande nommée.
             const auto dot = value.find('.');
             if (dot != std::string::npos && variables.count(value.substr(0, dot)))
             {
                 const Link link { variables.at(value.substr(0, dot)), value.substr(dot + 1), node, name };
-                if (!library.connect(g, link, &why)) return failAt(lineNo, "« " + value + " » : " + why);
+                if (!library.connect(g, link, &why))
+                    return failAt(lineNo, QCoreApplication::translate("TSA::Blueprint::Script", "« %1 » : %2").arg(QString::fromStdString(value), QString::fromStdString(why)).toStdString());
                 continue;
             }
             Value v;
             if (!parseArgument(value, p->type, v))
-                return failAt(lineNo, "paramètre « " + name + " » : " + typeName(p->type) + " attendu, reçu « " + value + " »");
+                return failAt(lineNo, QCoreApplication::translate("TSA::Blueprint::Script", "paramètre « %1 » : %2 attendu, reçu « %3 »")
+                                          .arg(QString::fromStdString(name),
+                                               QCoreApplication::translate("TSA::Automation::Commands", typeName(p->type)),   // nom marqué dans le registre
+                                               QString::fromStdString(value))
+                                          .toStdString());
             g.setValue(node, name, v);
         }
         if (!variable.empty()) variables[variable] = node;
@@ -108,7 +122,7 @@ bool fromCommandScript(const std::string& script, const NodeLibrary& library, co
     }
     if (column == 0)
     {
-        if (error) *error = "script vide : aucune commande";
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::Script", "script vide : aucune commande").toStdString();
         return false;
     }
     const auto issues = library.validate(g);
@@ -135,7 +149,7 @@ std::string toCommandScript(const Graph& graph, const NodeLibrary& library, std:
         if (n.type == "event.start") { start = id; break; }
     if (!start)
     {
-        warn("aucun nœud « Début »");
+        warn(QCoreApplication::translate("TSA::Blueprint::Script", "aucun nœud « Début »").toStdString());
         return o.str();
     }
 
@@ -152,15 +166,16 @@ std::string toCommandScript(const Graph& graph, const NodeLibrary& library, std:
         const int id = next.front().toNode;
         if (!visited.insert(id).second)
         {
-            warn("boucle d'exécution non exprimable en script");
+            warn(QCoreApplication::translate("TSA::Blueprint::Script", "boucle d'exécution non exprimable en script").toStdString());
             break;
         }
         const NodeInstance* n = graph.node(id);
         const NodeDefinition* d = n ? library.find(n->type) : nullptr;
         if (!d || n->type.rfind("cmd.", 0) != 0)
         {
-            warn("nœud « " + (d ? d->title : n ? n->type : std::string("?")) + " » (#" + std::to_string(id)
-                 + ") non exprimable en script : chaîne arrêtée");
+            warn(QCoreApplication::translate("TSA::Blueprint::Script", "nœud « %1 » (#%2) non exprimable en script : chaîne arrêtée")
+                     .arg(QString::fromStdString(d ? displayText(d->title) : n ? n->type : std::string("?")), QString::number(id))
+                     .toStdString());
             break;
         }
         if (referenced.count(id)) o << 'n' << id << " = ";
@@ -174,7 +189,9 @@ std::string toCommandScript(const Graph& graph, const NodeLibrary& library, std:
                 if (src && src->type.rfind("cmd.", 0) == 0 && visited.count(link->fromNode))
                     o << ' ' << pin.name << "=n" << link->fromNode << '.' << link->fromPin;
                 else
-                    warn("entrée « " + pin.name + " » de #" + std::to_string(id) + " reliée à un nœud non exprimable en script");
+                    warn(QCoreApplication::translate("TSA::Blueprint::Script", "entrée « %1 » de #%2 reliée à un nœud non exprimable en script")
+                             .arg(QString::fromStdString(pin.name), QString::number(id))
+                             .toStdString());
                 continue;
             }
             const auto it = n->values.find(pin.name);
@@ -182,7 +199,7 @@ std::string toCommandScript(const Graph& graph, const NodeLibrary& library, std:
                 o << ' ' << pin.name << '=' << formatArgument(it->second);
         }
         o << '\n';
-        if (d->outputs.size() > 1 && graph.linksFrom(id, "then").size() > 1) warn("plusieurs suites d'exécution : seule la première est suivie");
+        if (d->outputs.size() > 1 && graph.linksFrom(id, "then").size() > 1) warn(QCoreApplication::translate("TSA::Blueprint::Script", "plusieurs suites d'exécution : seule la première est suivie").toStdString());
         next = graph.linksFrom(id, "then");
     }
     return o.str();

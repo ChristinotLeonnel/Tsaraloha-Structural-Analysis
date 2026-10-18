@@ -5,6 +5,8 @@
 
 #include <gp_Vec.hxx>
 
+#include <QCoreApplication>
+
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -97,7 +99,7 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
         in.nodes.push_back(n);
     }
     if (coupledSprings)
-        warn("Ressorts d'appui obliques au plan : le couplage entre les deux translations du plan est ignoré.");
+        warn(QCoreApplication::translate("TSA::Analysis::Custom2DAdapter", "Ressorts d'appui obliques au plan : le couplage entre les deux translations du plan est ignoré.").toStdString());
 
     // Barres
     std::vector<std::string> unaligned;
@@ -134,7 +136,8 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
     {
         std::string s;
         for (std::size_t i = 0; i < unaligned.size() && i < 6; ++i) s += (i ? ", " : "") + unaligned[i];
-        warn("Axes de section non alignés sur la normale au plan (" + s + ") : inertie de flexion projetée.");
+        warn(QCoreApplication::translate("TSA::Analysis::Custom2DAdapter", "Axes de section non alignés sur la normale au plan (%1) : inertie de flexion projetée.")
+                 .arg(QString::fromStdString(s)).toStdString());
     }
 
     // Charges nodales
@@ -219,10 +222,12 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
         in.memberLoads.push_back(l);
     }
     if (skipped)
-        warn(std::to_string(skipped) + " charge(s) sur barre de type moment réparti ou poids propre explicite ne sont "
-                                       "pas transmises au solveur 2D.");
+        warn(QCoreApplication::translate("TSA::Analysis::Custom2DAdapter",
+                                         "%1 charge(s) sur barre de type moment réparti ou poids propre explicite ne sont "
+                                         "pas transmises au solveur 2D.").arg(skipped).toStdString());
     if (outOfPlane > kEps)
-        warn("Composantes de charge hors du plan ignorées (max " + std::to_string(outOfPlane) + ").");
+        warn(QCoreApplication::translate("TSA::Analysis::Custom2DAdapter", "Composantes de charge hors du plan ignorées (max %1).")
+                 .arg(QString::fromStdString(std::to_string(outOfPlane))).toStdString());
 
     // Cas, combinaisons, demande
     for (const auto& [id, lc] : snap.loadCases())
@@ -245,7 +250,7 @@ Input buildInput(const AnalysisContext& context, const AnalysisModel& model, Val
     in.request.gravityX = g.Dot(vec(pl.u));
     in.request.gravityY = g.Dot(vec(pl.v));
     if (context.common.includeSelfWeight && std::abs(g.Dot(vec(pl.n))) > kAligned)
-        warn("La pesanteur n'est pas contenue dans le plan : seule sa projection dans le plan est appliquée.");
+        warn(QCoreApplication::translate("TSA::Analysis::Custom2DAdapter", "La pesanteur n'est pas contenue dans le plan : seule sa projection dans le plan est appliquée.").toStdString());
     return in;
 }
 

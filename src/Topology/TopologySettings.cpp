@@ -1,5 +1,6 @@
 #include "TopologySettings.h"
 
+#include <QCoreApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
 
@@ -87,14 +88,14 @@ std::string familyDisplayName(EntityFamily f)
 {
     switch (f)
     {
-    case EntityFamily::Node: return "Nœud";
-    case EntityFamily::Beam: return "Poutre / barre";
-    case EntityFamily::Column: return "Poteau";
-    case EntityFamily::Truss: return "Treillis";
-    case EntityFamily::Cable: return "Câble";
-    case EntityFamily::Slab: return "Dalle";
-    case EntityFamily::Wall: return "Voile";
-    case EntityFamily::Foundation: return "Fondation";
+    case EntityFamily::Node: return QCoreApplication::translate("TSA::Topology::TopologySettings", "Nœud").toStdString();
+    case EntityFamily::Beam: return QCoreApplication::translate("TSA::Topology::TopologySettings", "Poutre / barre").toStdString();
+    case EntityFamily::Column: return QCoreApplication::translate("TSA::Topology::TopologySettings", "Poteau").toStdString();
+    case EntityFamily::Truss: return QCoreApplication::translate("TSA::Topology::TopologySettings", "Treillis").toStdString();
+    case EntityFamily::Cable: return QCoreApplication::translate("TSA::Topology::TopologySettings", "Câble").toStdString();
+    case EntityFamily::Slab: return QCoreApplication::translate("TSA::Topology::TopologySettings", "Dalle").toStdString();
+    case EntityFamily::Wall: return QCoreApplication::translate("TSA::Topology::TopologySettings", "Voile").toStdString();
+    case EntityFamily::Foundation: return QCoreApplication::translate("TSA::Topology::TopologySettings", "Fondation").toStdString();
     }
     return {};
 }

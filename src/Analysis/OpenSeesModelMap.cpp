@@ -2,6 +2,8 @@
 #include "OpenSeesAnalysisBuilder.h"
 #include "LoadResolver.h"
 
+#include <QCoreApplication>
+
 #include <algorithm>
 #include <set>
 
@@ -141,21 +143,25 @@ std::vector<std::string> OpenSeesModelMap::validate(const CalculationSnapshot& s
     for (const auto& e : m_elements)
     {
         if (e.tag <= 0 || !tags.insert(e.tag).second)
-            errors.push_back("Tag OpenSees invalide ou dupliqué : " + std::to_string(e.tag));
+            errors.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesModelMap", "Tag OpenSees invalide ou dupliqué : %1").arg(e.tag).toStdString());
         if (!keys.insert(e.key).second)
-            errors.push_back("Élément TSA présent deux fois : " + e.key.label());
+            errors.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesModelMap", "Élément TSA présent deux fois : %1").arg(QString::fromStdString(e.key.label())).toStdString());
         if (!snapshot.getNode(e.nodeI) || !snapshot.getNode(e.nodeJ))
-            errors.push_back("Élément " + e.key.label() + " : nœud d'extrémité absent du modèle de calcul.");
+            errors.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesModelMap", "Élément %1 : nœud d'extrémité absent du modèle de calcul.")
+                                 .arg(QString::fromStdString(e.key.label())).toStdString());
         else if (!e.axes.valid)
-            errors.push_back("Élément " + e.key.label() + " : longueur nulle ou repère local indéfini.");
+            errors.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesModelMap", "Élément %1 : longueur nulle ou repère local indéfini.")
+                                 .arg(QString::fromStdString(e.key.label())).toStdString());
     }
     std::set<int> nodeTags(m_structuralNodeTags.begin(), m_structuralNodeTags.end());
     for (const auto& s : m_springs)
     {
         if (nodeTags.count(s.auxNodeTag))
-            errors.push_back("Collision de tag entre nœud auxiliaire de ressort et nœud TSA : " + std::to_string(s.auxNodeTag));
+            errors.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesModelMap", "Collision de tag entre nœud auxiliaire de ressort et nœud TSA : %1")
+                                 .arg(s.auxNodeTag).toStdString());
         if (tags.count(s.elementTag))
-            errors.push_back("Collision de tag entre élément ressort et élément structural : " + std::to_string(s.elementTag));
+            errors.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesModelMap", "Collision de tag entre élément ressort et élément structural : %1")
+                                 .arg(s.elementTag).toStdString());
     }
     return errors;
 }

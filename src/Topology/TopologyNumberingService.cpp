@@ -4,6 +4,10 @@
 #include "../Model/Model.h"
 #include "../Model/ModelDiff.h"
 
+#include <QCoreApplication>
+#include <QString>
+#include <QtGlobal>
+
 #include <algorithm>
 #include <cctype>
 #include <iomanip>
@@ -114,8 +118,9 @@ std::map<std::pair<EntityFamily, int>, int> solverTags(const TSA::Model::Model& 
     return tags;
 }
 
+/// message : phrase traduite, %1 = nombre d'étiquettes en double, %2 = exemples.
 void reportDuplicates(const std::map<std::string, std::vector<std::pair<EntityFamily, int>>>& byLabel,
-                      const std::set<std::pair<EntityFamily, int>>& changed, const std::string& what,
+                      const std::set<std::pair<EntityFamily, int>>& changed, const QString& message,
                       NumberingPreview& preview)
 {
     int shown = 0, total = 0;
@@ -133,9 +138,7 @@ void reportDuplicates(const std::map<std::string, std::vector<std::pair<EntityFa
         }
     }
     if (total)
-        preview.errors.push_back(std::to_string(total) + " étiquette(s) de " + what + " en double après renumérotation (" +
-                                 examples + (total > shown ? "…" : "") +
-                                 ") : modifiez le format, le préfixe, ou désactivez la conservation des étiquettes personnalisées.");
+        preview.errors.push_back(message.arg(total).arg(QString::fromStdString(examples + (total > shown ? "…" : ""))).toStdString());
 }
 
 } // namespace
@@ -148,31 +151,61 @@ int NumberingPreview::changedCount() const
 std::vector<std::string> validateSettings(const TopologySettings& s)
 {
     std::vector<std::string> errors;
+    // what : nom de la rubrique (« Nœuds », « Éléments », famille) en tête du message.
+    auto add = [&](const char* text, const std::string& what) {
+        errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService", text)
+                             .arg(QString::fromStdString(what)).toStdString());
+    };
     auto checkFormat = [&](const LabelFormat& f, const std::string& what, bool allowGrid) {
-        if (f.start < 0) errors.push_back(what + " : le numéro de départ doit être positif ou nul.");
-        if (f.increment < 1) errors.push_back(what + " : l'incrément doit être au moins 1.");
-        if (f.width < 0 || f.width > 9) errors.push_back(what + " : le nombre de chiffres doit être compris entre 0 et 9.");
-        if (f.start > 100000000) errors.push_back(what + " : numéro de départ hors limites.");
-        if (f.pattern.empty()) errors.push_back(what + " : le format d'étiquette est vide.");
+        if (f.start < 0) add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService", "%1 : le numéro de départ doit être positif ou nul."), what);
+        if (f.increment < 1) add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService", "%1 : l'incrément doit être au moins 1."), what);
+        if (f.width < 0 || f.width > 9)
+            add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService", "%1 : le nombre de chiffres doit être compris entre 0 et 9."), what);
+        if (f.start > 100000000) add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService", "%1 : numéro de départ hors limites."), what);
+        if (f.pattern.empty()) add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService", "%1 : le format d'étiquette est vide."), what);
         else if (!hasToken(f.pattern, "{n}") && !(allowGrid && hasToken(f.pattern, "{g}")))
-            errors.push_back(what + " : le format doit contenir {n}" + std::string(allowGrid ? " ou {g}" : "") +
-                             ", sinon toutes les étiquettes seraient identiques.");
-        if (!allowGrid && hasToken(f.pattern, "{g}")) errors.push_back(what + " : le jeton {g} (grille) est réservé aux nœuds.");
-        if (f.pattern.size() > 40) errors.push_back(what + " : format trop long (40 caractères au plus).");
+        {
+            if (allowGrid)
+                add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService",
+                                      "%1 : le format doit contenir {n} ou {g}, sinon toutes les étiquettes seraient identiques."),
+                    what);
+            else
+                add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService",
+                                      "%1 : le format doit contenir {n}, sinon toutes les étiquettes seraient identiques."),
+                    what);
+        }
+        if (!allowGrid && hasToken(f.pattern, "{g}"))
+            add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService", "%1 : le jeton {g} (grille) est réservé aux nœuds."), what);
+        if (f.pattern.size() > 40)
+            add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService", "%1 : format trop long (40 caractères au plus)."), what);
     };
     auto checkPrefix = [&](const std::string& p, const std::string& what) {
-        if (p.size() > 16) errors.push_back(what + " : préfixe trop long (16 caractères au plus).");
+        if (p.size() > 16) add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService", "%1 : préfixe trop long (16 caractères au plus)."), what);
         if (std::any_of(p.begin(), p.end(), [](unsigned char c) { return std::isspace(c) || std::iscntrl(c) || c == '{' || c == '}'; }))
-            errors.push_back(what + " : le préfixe ne doit contenir ni espace ni accolade.");
+            add(QT_TRANSLATE_NOOP("TSA::Topology::TopologyNumberingService", "%1 : le préfixe ne doit contenir ni espace ni accolade."), what);
     };
-    checkFormat(s.nodes.format, "Nœuds", true);
-    checkPrefix(s.nodes.format.prefix, "Nœuds");
-    checkFormat(s.elements.format, "Éléments", false);
+    const std::string nodesLabel = QCoreApplication::translate("TSA::Topology::TopologyNumberingService", "Nœuds").toStdString();
+    const std::string elementsLabel = QCoreApplication::translate("TSA::Topology::TopologyNumberingService", "Éléments").toStdString();
+    checkFormat(s.nodes.format, nodesLabel, true);
+    checkPrefix(s.nodes.format.prefix, nodesLabel);
+    checkFormat(s.elements.format, elementsLabel, false);
     for (EntityFamily f : kElementFamilies) checkPrefix(s.elementPrefix(f), familyDisplayName(f));
-    if (!(s.nodes.tolerance > 0.0) || s.nodes.tolerance > 10.0) errors.push_back("Nœuds : la tolérance doit être comprise entre 0 et 10 m.");
-    if (!(s.elements.tolerance > 0.0) || s.elements.tolerance > 10.0) errors.push_back("Éléments : la tolérance doit être comprise entre 0 et 10 m.");
-    if (!findNodeStrategy(s.nodes.strategy)) errors.push_back("Stratégie de numérotation des nœuds inconnue : « " + s.nodes.strategy + " ».");
-    if (!findElementStrategy(s.elements.strategy)) errors.push_back("Stratégie de numérotation des éléments inconnue : « " + s.elements.strategy + " ».");
+    if (!(s.nodes.tolerance > 0.0) || s.nodes.tolerance > 10.0)
+        errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                     "Nœuds : la tolérance doit être comprise entre 0 et 10 m.")
+                             .toStdString());
+    if (!(s.elements.tolerance > 0.0) || s.elements.tolerance > 10.0)
+        errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                     "Éléments : la tolérance doit être comprise entre 0 et 10 m.")
+                             .toStdString());
+    if (!findNodeStrategy(s.nodes.strategy))
+        errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                     "Stratégie de numérotation des nœuds inconnue : « %1 ».")
+                             .arg(QString::fromStdString(s.nodes.strategy)).toStdString());
+    if (!findElementStrategy(s.elements.strategy))
+        errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                     "Stratégie de numérotation des éléments inconnue : « %1 ».")
+                             .arg(QString::fromStdString(s.elements.strategy)).toStdString());
     if (!s.elements.sharedSequence && hasToken(s.elements.format.pattern, "{p}"))
     {
         // Suites séparées : deux familles au même préfixe produiraient les mêmes étiquettes.
@@ -182,13 +215,19 @@ std::vector<std::string> validateSettings(const TopologySettings& s)
             const std::string p = s.elementPrefix(f);
             auto [it, inserted] = seen.emplace(p, familyDisplayName(f));
             if (!inserted)
-                errors.push_back("Préfixe « " + p + " » utilisé par " + it->second + " et " + familyDisplayName(f) +
-                                 " avec des suites de numéros séparées : étiquettes en double.");
+                errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                             "Préfixe « %1 » utilisé par %2 et %3 avec des suites de numéros séparées : "
+                                                             "étiquettes en double.")
+                                     .arg(QString::fromStdString(p), QString::fromStdString(it->second),
+                                          QString::fromStdString(familyDisplayName(f)))
+                                     .toStdString());
         }
     }
     if (!s.elements.sharedSequence && !hasToken(s.elements.format.pattern, "{p}"))
-        errors.push_back("Éléments : sans {p} dans le format, les suites séparées par famille produisent des étiquettes en "
-                         "double ; ajoutez {p} ou choisissez une suite commune.");
+        errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                     "Éléments : sans {p} dans le format, les suites séparées par famille produisent "
+                                                     "des étiquettes en double ; ajoutez {p} ou choisissez une suite commune.")
+                             .toStdString());
     return errors;
 }
 
@@ -242,14 +281,18 @@ NumberingPreview computePreview(const TSA::Model::Model& model, const TopologySe
     const Availability nodeAvail = nodeStrategy->availability(model, input);
     if (!nodeAvail.available)
     {
-        preview.errors.push_back("Nœuds : « " + nodeStrategy->name() + " » indisponible — " + nodeAvail.reason);
+        preview.errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService", "Nœuds : « %1 » indisponible — %2")
+                                     .arg(QString::fromStdString(nodeStrategy->name()), QString::fromStdString(nodeAvail.reason))
+                                     .toStdString());
         return preview;
     }
     std::vector<OrderItem> items;
     for (const auto& [id, n] : model.nodes())
         if (!selection || input.selectedNodes.count(id)) items.push_back({ id, n.x(), n.y(), n.z() });
     if (selection && items.empty() && !input.selectedNodes.empty())
-        preview.warnings.push_back("Aucun des nœuds sélectionnés n'existe dans le modèle.");
+        preview.warnings.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                               "Aucun des nœuds sélectionnés n'existe dans le modèle.")
+                                       .toStdString());
 
     NodeContext nctx{ model, s.nodes, input, items };
     const Ordering nodeOrder = nodeStrategy->order(nctx);
@@ -262,7 +305,9 @@ NumberingPreview computePreview(const TSA::Model::Model& model, const TopologySe
         std::sort(b.begin(), b.end());
         if (a != b)
         {
-            preview.errors.push_back("Erreur interne de la stratégie « " + nodeStrategy->name() + " » : ordre incomplet.");
+            preview.errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                                 "Erreur interne de la stratégie « %1 » : ordre incomplet.")
+                                         .arg(QString::fromStdString(nodeStrategy->name())).toStdString());
             return preview;
         }
     }
@@ -314,14 +359,18 @@ NumberingPreview computePreview(const TSA::Model::Model& model, const TopologySe
     }
     const auto preservedNodes = std::count_if(preview.entries.begin(), preview.entries.end(), [](const PreviewEntry& e) { return e.preserved; });
     if (preservedNodes)
-        preview.warnings.push_back(std::to_string(preservedNodes) + " étiquette(s) de nœud personnalisée(s) conservée(s).");
+        preview.warnings.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                               "%1 étiquette(s) de nœud personnalisée(s) conservée(s).")
+                                       .arg(static_cast<qlonglong>(preservedNodes)).toStdString());
 
     // ─── Éléments ──────────────────────────────────────────────────────────────────────────
     const ElementNumberingStrategy* elemStrategy = findElementStrategy(s.elements.strategy);
     const Availability elemAvail = elemStrategy->availability(model, input);
     if (!elemAvail.available)
     {
-        preview.errors.push_back("Éléments : « " + elemStrategy->name() + " » indisponible — " + elemAvail.reason);
+        preview.errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService", "Éléments : « %1 » indisponible — %2")
+                                     .arg(QString::fromStdString(elemStrategy->name()), QString::fromStdString(elemAvail.reason))
+                                     .toStdString());
         return preview;
     }
     const std::vector<ElementInfo> all = collectElements(model);
@@ -342,7 +391,9 @@ NumberingPreview computePreview(const TSA::Model::Model& model, const TopologySe
     preview.warnings.insert(preview.warnings.end(), elemOrder.warnings.begin(), elemOrder.warnings.end());
     if (elemOrder.order.size() != elemItems.size())
     {
-        preview.errors.push_back("Erreur interne de la stratégie « " + elemStrategy->name() + " » : ordre incomplet.");
+        preview.errors.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                             "Erreur interne de la stratégie « %1 » : ordre incomplet.")
+                                     .arg(QString::fromStdString(elemStrategy->name())).toStdString());
         return preview;
     }
     const bool keepElements = s.elements.strategy == "keep";
@@ -381,7 +432,9 @@ NumberingPreview computePreview(const TSA::Model::Model& model, const TopologySe
         preview.entries.push_back(std::move(e));
     }
     if (preservedElements)
-        preview.warnings.push_back(std::to_string(preservedElements) + " étiquette(s) d'élément personnalisée(s) conservée(s).");
+        preview.warnings.push_back(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                               "%1 étiquette(s) d'élément personnalisée(s) conservée(s).")
+                                       .arg(preservedElements).toStdString());
 
     // ─── Doublons (étiquettes finales, entités hors portée comprises) ──────────────────────
     std::map<std::pair<EntityFamily, int>, std::string> finalLabel;
@@ -396,8 +449,16 @@ NumberingPreview computePreview(const TSA::Model::Model& model, const TopologySe
     std::map<std::string, std::vector<std::pair<EntityFamily, int>>> nodeLabels, elemLabels;
     for (const auto& [key, label] : finalLabel)
         (key.first == EntityFamily::Node ? nodeLabels : elemLabels)[label].push_back(key);
-    reportDuplicates(nodeLabels, changed, "nœud", preview);
-    reportDuplicates(elemLabels, changed, "élément", preview);
+    reportDuplicates(nodeLabels, changed,
+                     QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                 "%1 étiquette(s) de nœud en double après renumérotation (%2) : modifiez le format, "
+                                                 "le préfixe, ou désactivez la conservation des étiquettes personnalisées."),
+                     preview);
+    reportDuplicates(elemLabels, changed,
+                     QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                 "%1 étiquette(s) d'élément en double après renumérotation (%2) : modifiez le format, "
+                                                 "le préfixe, ou désactivez la conservation des étiquettes personnalisées."),
+                     preview);
     return preview;
 }
 
@@ -418,7 +479,9 @@ bool applyPreview(TSA::Model::Model& model, const NumberingPreview& preview, con
     {
         auto it = current.find({ e.family, e.id });
         if (it == current.end() || it->second != e.currentLabel)
-            return fail("Le modèle a changé depuis la prévisualisation : prévisualisez à nouveau.");
+            return fail(QCoreApplication::translate("TSA::Topology::TopologyNumberingService",
+                                                    "Le modèle a changé depuis la prévisualisation : prévisualisez à nouveau.")
+                            .toStdString());
     }
     if (preview.changedCount() == 0)
     {

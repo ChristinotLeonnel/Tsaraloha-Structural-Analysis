@@ -4,6 +4,7 @@
 #include "../Model/Model.h"
 #include "../Model/Load/LoadManager.h"
 #include <gp_Vec.hxx>
+#include <QCoreApplication>
 
 #include <algorithm>
 #include <cmath>
@@ -236,13 +237,14 @@ void CalculationSnapshot::applyAutomaticRestraints(CalculationSnapshot& snap, Su
         for (auto& [id, n] : snap.m_nodes)
         {
             if (!(n.pinnedSupport || n.rollerSupport) || !used.count(id)) continue;
-            auto lockLegacy = [&](int dof, bool* f, double k, const char* why) {
+            auto lockLegacy = [&](int dof, bool* f, double k, const QString& why) {
                 if (*f || k > 0.0) return;
                 *f = true;
-                snap.m_automaticRestraints.push_back({ id, dof, std::string(kDof[dof]) + " bloquée au nœud N" + std::to_string(id) + " : " + why });
+                snap.m_automaticRestraints.push_back({ id, dof, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "%1 bloquée au nœud N%2 : %3")
+                                                                     .arg(QString::fromLatin1(kDof[dof]), QString::number(id), why).toStdString() });
             };
-            lockLegacy(3, &n.fixRx, n.kRx, "mode historique (RX globale bloquée aux appuis articulés et simples)");
-            if (n.rollerSupport) lockLegacy(1, &n.fixTy, n.kTy, "mode historique (TY bloquée aux appuis simples)");
+            lockLegacy(3, &n.fixRx, n.kRx, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "mode historique (RX globale bloquée aux appuis articulés et simples)"));
+            if (n.rollerSupport) lockLegacy(1, &n.fixTy, n.kTy, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "mode historique (TY bloquée aux appuis simples)"));
             const auto it = directions.find(id);
             if (it != directions.end()
                 && std::any_of(it->second.begin(), it->second.end(), [](const gp_Vec& d) { return std::abs(d.X()) < 1.0 - 1e-9; }))
@@ -253,11 +255,12 @@ void CalculationSnapshot::applyAutomaticRestraints(CalculationSnapshot& snap, Su
             std::string list;
             for (std::size_t i = 0; i < bendingLocked.size() && i < 8; ++i) list += (i ? ", N" : "N") + std::to_string(bendingLocked[i]);
             if (bendingLocked.size() > 8) list += "…";
-            snap.m_restraintWarnings.push_back(
-                "Appuis en mode historique : la rotation RX globale est bloquée aux appuis " + list + ", où une barre n'est pas parallèle "
+            snap.m_restraintWarnings.push_back(QCoreApplication::translate("TSA::Analysis::CalculationSnapshot",
+                "Appuis en mode historique : la rotation RX globale est bloquée aux appuis %1, où une barre n'est pas parallèle "
                 "à X. Risque : pour ces barres, ce blocage retient la flexion (moments d'appui fictifs, flèches sous-estimées) et "
                 "laisse libre la torsion autour de leur axe (mécanisme possible). Correction : choisir « appui à fourche » ou "
-                "« aucun blocage » dans les paramètres d'analyse, ou définir ces appuis explicitement.");
+                "« aucun blocage » dans les paramètres d'analyse, ou définir ces appuis explicitement.")
+                .arg(QString::fromStdString(list)).toStdString());
         }
         return;
     }
@@ -266,10 +269,11 @@ void CalculationSnapshot::applyAutomaticRestraints(CalculationSnapshot& snap, Su
         if (!(n.pinnedSupport || n.rollerSupport) || !used.count(id)) continue;
         bool* fix[6] = { &n.fixTx, &n.fixTy, &n.fixTz, &n.fixRx, &n.fixRy, &n.fixRz };
         const double spring[6] = { n.kTx, n.kTy, n.kTz, n.kRx, n.kRy, n.kRz };
-        auto lock = [&](int dof, const std::string& why) {
+        auto lock = [&](int dof, const QString& why) {
             if (*fix[dof] || spring[dof] > 0.0) return;
             *fix[dof] = true;
-            snap.m_automaticRestraints.push_back({ id, dof, std::string(kDof[dof]) + " bloquée au nœud N" + std::to_string(id) + " : " + why });
+            snap.m_automaticRestraints.push_back({ id, dof, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "%1 bloquée au nœud N%2 : %3")
+                                                                 .arg(QString::fromLatin1(kDof[dof]), QString::number(id), why).toStdString() });
         };
         // 1. Appui à fourche
         const auto it = directions.find(id);
@@ -283,26 +287,26 @@ void CalculationSnapshot::applyAutomaticRestraints(CalculationSnapshot& snap, Su
                 const double c[3] = { std::abs(d0.X()), std::abs(d0.Y()), std::abs(d0.Z()) };
                 const int k = static_cast<int>(std::max_element(c, c + 3) - c);
                 if (c[k] > 1.0 - 1e-9)
-                    lock(3 + k, "appui à fourche (rotation autour de l'axe de la barre, sinon libre : mécanisme de torsion)");
+                    lock(3 + k, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "appui à fourche (rotation autour de l'axe de la barre, sinon libre : mécanisme de torsion)"));
                 else if (!planeXZ && !planeYZ)
-                    snap.m_restraintNotes.push_back("Appui N" + std::to_string(id) + " : la barre est inclinée, la rotation autour "
-                                                    "de son axe n'est pas bloquée automatiquement.");
+                    snap.m_restraintNotes.push_back(QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "Appui N%1 : la barre est inclinée, la rotation autour "
+                                                    "de son axe n'est pas bloquée automatiquement.").arg(id).toStdString());
             }
         }
         // 2. et 3. Structure plane / appui simple
         if (planeXZ)
         {
-            lock(3, "structure plane XZ (rotation hors plan)");
-            if (n.rollerSupport) lock(1, "structure plane XZ, appui simple (translation hors plan)");
+            lock(3, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "structure plane XZ (rotation hors plan)"));
+            if (n.rollerSupport) lock(1, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "structure plane XZ, appui simple (translation hors plan)"));
         }
         else if (planeYZ)
         {
-            lock(4, "structure plane YZ (rotation hors plan)");
-            if (n.rollerSupport) lock(0, "structure plane YZ, appui simple (translation hors plan)");
+            lock(4, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "structure plane YZ (rotation hors plan)"));
+            if (n.rollerSupport) lock(0, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "structure plane YZ, appui simple (translation hors plan)"));
         }
         else if (n.rollerSupport)
         {
-            lock(1, "appui simple (translation horizontale Y, comportement historique)");
+            lock(1, QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "appui simple (translation horizontale Y, comportement historique)"));
         }
     }
 }
@@ -510,8 +514,9 @@ CalculationSnapshot CalculationSnapshot::subdivided(const CalculationSnapshot& s
         }
     }
     if (skippedAxial && notes)
-        notes->push_back(std::to_string(skippedAxial) + " barre(s) de treillis ou câble(s) non subdivisée(s) : une chaîne de barres articulées "
-                                                         "serait un mécanisme (un seul élément transmis)");
+        notes->push_back(QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "%1 barre(s) de treillis ou câble(s) non subdivisée(s) : une chaîne de barres articulées "
+                                                         "serait un mécanisme (un seul élément transmis)")
+                             .arg(skippedAxial).toStdString());
     if (map) *map = m;
     return out;
 }
@@ -527,8 +532,9 @@ CalculationSnapshot CalculationSnapshot::withSurfaces(const CalculationSnapshot&
     };
     for (const auto& e : surfaces.elements)
         if (e.formulation != TSA::Model::SurfaceFormulation::Shell)
-            return fail("Surface " + e.source + " : formulation « " + std::string(TSA::Model::surfaceFormulationName(e.formulation)) +
-                        " » non prise en charge par ce moteur (seule la coque l'est).");
+            return fail(QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "Surface %1 : formulation « %2 » non prise en charge par ce moteur (seule la coque l'est).")
+                            .arg(QString::fromStdString(e.source), QString::fromStdString(std::string(TSA::Model::surfaceFormulationName(e.formulation))))
+                            .toStdString());
 
     // Recherche par position : grille de pas 1 mm sur les nœuds du snapshot (TSA et subdivisions des barres)
     auto key = [](double x, double y, double z) { return std::make_tuple(std::llround(x * 1000.0), std::llround(y * 1000.0), std::llround(z * 1000.0)); };
@@ -582,7 +588,8 @@ CalculationSnapshot CalculationSnapshot::withSurfaces(const CalculationSnapshot&
     int nextTag = out.m_elements.empty() ? 1 : out.m_elements.rbegin()->first + 1;
     for (const auto& e : surfaces.elements)
     {
-        if (e.meshNodes.size() != 3 && e.meshNodes.size() != 4) return fail("Élément " + std::to_string(e.meshElement) + " de " + e.source + " : 3 ou 4 nœuds attendus.");
+        if (e.meshNodes.size() != 3 && e.meshNodes.size() != 4) return fail(QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "Élément %1 de %2 : 3 ou 4 nœuds attendus.")
+                                                                             .arg(QString::number(e.meshElement), QString::fromStdString(e.source)).toStdString());
         SnapshotShell sh;
         sh.tag = nextTag++;
         sh.meshElement = e.meshElement;
@@ -592,11 +599,14 @@ CalculationSnapshot CalculationSnapshot::withSurfaces(const CalculationSnapshot&
         for (int mn : e.meshNodes)
         {
             auto it = m.meshToNode.find(mn);
-            if (it == m.meshToNode.end()) return fail("Élément " + std::to_string(e.meshElement) + " de " + e.source + " : nœud du maillage " + std::to_string(mn) + " inconnu.");
+            if (it == m.meshToNode.end()) return fail(QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "Élément %1 de %2 : nœud du maillage %3 inconnu.")
+                                                          .arg(QString::number(e.meshElement), QString::fromStdString(e.source), QString::number(mn))
+                                                          .toStdString());
             sh.nodes.push_back(it->second);
         }
         if (std::set<int>(sh.nodes.begin(), sh.nodes.end()).size() != sh.nodes.size())
-            return fail("Élément " + std::to_string(e.meshElement) + " de " + e.source + " : nœuds confondus (élément dégénéré).");
+            return fail(QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "Élément %1 de %2 : nœuds confondus (élément dégénéré).")
+                            .arg(QString::number(e.meshElement), QString::fromStdString(e.source)).toStdString());
         out.m_shells.push_back(sh);
     }
     auto addForces = [&](const std::vector<SurfaceNodalForce>& list) {
@@ -627,8 +637,9 @@ CalculationSnapshot CalculationSnapshot::withSurfaces(const CalculationSnapshot&
         if (n.supportType == TSA::Model::SupportType::Free) n.supportType = TSA::Model::SupportType::Custom;
     }
     if (notes)
-        notes->push_back(std::to_string(out.m_shells.size()) + " élément(s) de coque, " + std::to_string(merged) + " nœud(s) partagé(s) avec les barres ou les nœuds TSA, " +
-                         std::to_string(created) + " nœud(s) propres aux surfaces.");
+        notes->push_back(QCoreApplication::translate("TSA::Analysis::CalculationSnapshot", "%1 élément(s) de coque, %2 nœud(s) partagé(s) avec les barres ou les nœuds TSA, "
+                                                     "%3 nœud(s) propres aux surfaces.")
+                             .arg(QString::number(out.m_shells.size()), QString::number(merged), QString::number(created)).toStdString());
     if (map) *map = m;
     return out;
 }

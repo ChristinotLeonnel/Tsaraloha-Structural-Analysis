@@ -16,6 +16,7 @@
 
 #include <gp_Vec.hxx>
 
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -67,7 +68,9 @@ std::vector<std::string> ModelValidationReport::formattedErrors() const
             std::string msg = "[" + issue.category + "] ";
             if (issue.entityId > 0) msg += "(ID " + std::to_string(issue.entityId) + ") ";
             msg += issue.message;
-            if (!issue.normativeRef.empty()) msg += " [Réf: " + issue.normativeRef + "]";
+            if (!issue.normativeRef.empty())
+                msg += QCoreApplication::translate("TSA::Standards::ModelValidator", " [Réf: %1]")
+                           .arg(QString::fromStdString(issue.normativeRef)).toStdString();
             errs.push_back(msg);
         }
     }
@@ -96,12 +99,15 @@ QString ModelValidationReport::summary() const
     {
         if (hasWarnings())
         {
-            return QStringLiteral("Validation réussie : Modèle conforme aux normes avec %1 avertissement(s).")
+            return QCoreApplication::translate("TSA::Standards::ModelValidator",
+                                               "Validation réussie : Modèle conforme aux normes avec %1 avertissement(s).")
                 .arg(warningCount());
         }
-        return QStringLiteral("Validation réussie : Modèle structural 100% conforme et intègre.");
+        return QCoreApplication::translate("TSA::Standards::ModelValidator",
+                                           "Validation réussie : Modèle structural 100% conforme et intègre.");
     }
-    return QStringLiteral("Échec de validation : %1 erreur(s) et %2 avertissement(s) détectés.")
+    return QCoreApplication::translate("TSA::Standards::ModelValidator",
+                                       "Échec de validation : %1 erreur(s) et %2 avertissement(s) détectés.")
         .arg(errorCount()).arg(warningCount());
 }
 
@@ -113,17 +119,20 @@ bool ModelValidator::validateSection(const TSA::Model::Section& s, std::string* 
 
     if (std::isnan(A) || std::isinf(A) || A <= 0.0)
     {
-        if (errorMsg) *errorMsg = "L'aire de section A est invalide (doit être > 0 et finie).";
+        if (errorMsg) *errorMsg = QCoreApplication::translate("TSA::Standards::ModelValidator",
+            "L'aire de section A est invalide (doit être > 0 et finie).").toStdString();
         return false;
     }
     if (std::isnan(Iy) || std::isinf(Iy) || Iy <= 0.0)
     {
-        if (errorMsg) *errorMsg = "Le moment quadratique Iy est invalide (doit être > 0).";
+        if (errorMsg) *errorMsg = QCoreApplication::translate("TSA::Standards::ModelValidator",
+            "Le moment quadratique Iy est invalide (doit être > 0).").toStdString();
         return false;
     }
     if (std::isnan(Iz) || std::isinf(Iz) || Iz <= 0.0)
     {
-        if (errorMsg) *errorMsg = "Le moment quadratique Iz est invalide (doit être > 0).";
+        if (errorMsg) *errorMsg = QCoreApplication::translate("TSA::Standards::ModelValidator",
+            "Le moment quadratique Iz est invalide (doit être > 0).").toStdString();
         return false;
     }
     return true;
@@ -137,17 +146,20 @@ bool ModelValidator::validateMaterial(const TSA::Model::Material& m, std::string
 
     if (std::isnan(E) || std::isinf(E) || E <= 0.0)
     {
-        if (errorMsg) *errorMsg = "Le module d'élasticité E est invalide (doit être > 0 et fini).";
+        if (errorMsg) *errorMsg = QCoreApplication::translate("TSA::Standards::ModelValidator",
+            "Le module d'élasticité E est invalide (doit être > 0 et fini).").toStdString();
         return false;
     }
     if (std::isnan(nu) || std::isinf(nu) || nu < 0.0 || nu >= 0.5)
     {
-        if (errorMsg) *errorMsg = "Le coefficient de Poisson nu doit être dans l'intervalle physique [0.0, 0.5[.";
+        if (errorMsg) *errorMsg = QCoreApplication::translate("TSA::Standards::ModelValidator",
+            "Le coefficient de Poisson nu doit être dans l'intervalle physique [0.0, 0.5[.").toStdString();
         return false;
     }
     if (std::isnan(rho) || std::isinf(rho) || rho <= 0.0)
     {
-        if (errorMsg) *errorMsg = "La masse volumique rho doit être positive.";
+        if (errorMsg) *errorMsg = QCoreApplication::translate("TSA::Standards::ModelValidator",
+            "La masse volumique rho doit être positive.").toStdString();
         return false;
     }
     return true;
@@ -157,14 +169,16 @@ bool ModelValidator::validateNode(const TSA::Model::Node& n, std::string* errorM
 {
     if (n.id() <= 0)
     {
-        if (errorMsg) *errorMsg = "L'identifiant du nœud doit être un entier strictement positif.";
+        if (errorMsg) *errorMsg = QCoreApplication::translate("TSA::Standards::ModelValidator",
+            "L'identifiant du nœud doit être un entier strictement positif.").toStdString();
         return false;
     }
     if (std::isnan(n.x()) || std::isinf(n.x()) ||
         std::isnan(n.y()) || std::isinf(n.y()) ||
         std::isnan(n.z()) || std::isinf(n.z()))
     {
-        if (errorMsg) *errorMsg = "Les coordonnées du nœud contiennent des valeurs NaN ou infinies.";
+        if (errorMsg) *errorMsg = QCoreApplication::translate("TSA::Standards::ModelValidator",
+            "Les coordonnées du nœud contiennent des valeurs NaN ou infinies.").toStdString();
         return false;
     }
     return true;
@@ -178,7 +192,9 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
     const auto& nodes = model.nodes();
     if (nodes.empty())
     {
-        report.addError("Géométrie", "Le modèle structural ne contient aucun nœud.", 0, "EN 1990");
+        report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Géométrie").toStdString(),
+                        QCoreApplication::translate("TSA::Standards::ModelValidator",
+                            "Le modèle structural ne contient aucun nœud.").toStdString(), 0, "EN 1990");
         return report;
     }
 
@@ -187,9 +203,10 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
     // Doublons géométriques (tolérance 1 mm), hachage spatial : O(N log N) au lieu de O(N²).
     for (const auto& [dupId, keeperId] : model.findCoincidentNodes(1e-3))
     {
-        report.addWarning("Nœuds",
-            "Nœud géométriquement coïncident avec le nœud " + std::to_string(keeperId) +
-            " (distance < 1 mm). Utiliser « Fusionner les nœuds confondus ».", dupId);
+        report.addWarning(QCoreApplication::translate("TSA::Standards::ModelValidator", "Nœuds").toStdString(),
+            QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "Nœud géométriquement coïncident avec le nœud %1"
+                " (distance < 1 mm). Utiliser « Fusionner les nœuds confondus ».").arg(keeperId).toStdString(), dupId);
     }
 
     for (const auto& [id, n] : nodes)
@@ -197,7 +214,8 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
         std::string nodeErr;
         if (!validateNode(n, &nodeErr))
         {
-            report.addError("Nœuds", nodeErr, id, "ISO/IEC 25010 §4.2.5");
+            report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Nœuds").toStdString(),
+                            nodeErr, id, "ISO/IEC 25010 §4.2.5");
         }
 
 
@@ -216,19 +234,25 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
     // 2. Contrôle de stabilité cinématique globale
     if (!hasSupport)
     {
-        report.addError("Conditions aux Limites",
-            "Aucun appui (Encastrement, Articulation, Appui simple ou Ressort) n'est défini. "
-            "La structure est cinématiquement instable.", 0, "EN 1990 §2.1");
+        report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Conditions aux Limites").toStdString(),
+            QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "Aucun appui (Encastrement, Articulation, Appui simple ou Ressort) n'est défini. "
+                "La structure est cinématiquement instable.").toStdString(), 0, "EN 1990 §2.1");
     }
 
     // 3. Contrôle des éléments linéaires (Poutres, Poteaux, Bielles, Câbles)
+    // typeName : texte source français (marqué QT_TRANSLATE_NOOP aux appels), comparé tel quel ci-dessous ;
+    // seule la catégorie affichée (typeLabel) est traduite.
     auto validateLinear = [&](int elemId, int startId, int endId,
                               const TSA::Model::Section& sec, const TSA::Model::Material& mat,
                               const std::string& typeName)
     {
+        const std::string typeLabel =
+            QCoreApplication::translate("TSA::Standards::ModelValidator", typeName.c_str()).toStdString();
         if (startId <= 0 || endId <= 0 || startId == endId)
         {
-            report.addError(typeName, "Les nœuds d'extrémité sont identiques ou invalides.", elemId, "RDM");
+            report.addError(typeLabel, QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "Les nœuds d'extrémité sont identiques ou invalides.").toStdString(), elemId, "RDM");
             return;
         }
 
@@ -236,7 +260,8 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
         auto itEnd = nodes.find(endId);
         if (itStart == nodes.end() || itEnd == nodes.end())
         {
-            report.addError(typeName, "Fait référence à un nœud inexistant dans le modèle.", elemId);
+            report.addError(typeLabel, QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "Fait référence à un nœud inexistant dans le modèle.").toStdString(), elemId);
             return;
         }
 
@@ -246,13 +271,15 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
 
         if (length < 1e-4) // < 0.1 mm
         {
-            report.addError(typeName, "La longueur de l'élément est nulle ou inférieure à 0.1 mm.", elemId, "RDM");
+            report.addError(typeLabel, QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "La longueur de l'élément est nulle ou inférieure à 0.1 mm.").toStdString(), elemId, "RDM");
         }
 
         std::string secErr;
         if (!validateSection(sec, &secErr))
         {
-            report.addError("Sections", secErr, elemId, "EN 1990");
+            report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Sections").toStdString(),
+                            secErr, elemId, "EN 1990");
         }
         else if (std::string(typeName) == "Poutre" || std::string(typeName) == "Poteau")
         {
@@ -260,67 +287,83 @@ ModelValidationReport ModelValidator::validate(const TSA::Model::Model& model)
             // la rotation autour de l'axe de la barre n'a aucune rigidité : matrice singulière).
             const double J = sec.it();
             if (!std::isfinite(J) || J <= 0.0)
-                report.addError("Sections", "La constante de torsion de Saint-Venant J de la section « " + sec.name
-                                    + " » est nulle ou invalide : la torsion ne peut pas être calculée.", elemId, "RDM");
+                report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Sections").toStdString(),
+                                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                                    "La constante de torsion de Saint-Venant J de la section « %1"
+                                    " » est nulle ou invalide : la torsion ne peut pas être calculée.")
+                                    .arg(QString::fromStdString(sec.name)).toStdString(), elemId, "RDM");
         }
 
         std::string matErr;
         if (!validateMaterial(mat, &matErr))
         {
-            report.addError("Matériaux", matErr, elemId, "EN 1992 / EN 1993");
+            report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Matériaux").toStdString(),
+                            matErr, elemId, "EN 1992 / EN 1993");
         }
     };
 
     for (const auto& [id, b] : model.beams())
-        validateLinear(id, b.startNodeId(), b.endNodeId(), b.section(), b.material(), "Poutre");
+        validateLinear(id, b.startNodeId(), b.endNodeId(), b.section(), b.material(),
+                       QT_TRANSLATE_NOOP("TSA::Standards::ModelValidator", "Poutre"));
 
     for (const auto& [id, c] : model.columns())
-        validateLinear(id, c.startNodeId(), c.endNodeId(), c.section(), c.material(), "Poteau");
+        validateLinear(id, c.startNodeId(), c.endNodeId(), c.section(), c.material(),
+                       QT_TRANSLATE_NOOP("TSA::Standards::ModelValidator", "Poteau"));
 
     for (const auto& [id, t] : model.trussMembers())
-        validateLinear(id, t.startNodeId(), t.endNodeId(), t.section(), t.material(), "Treillis");
+        validateLinear(id, t.startNodeId(), t.endNodeId(), t.section(), t.material(),
+                       QT_TRANSLATE_NOOP("TSA::Standards::ModelValidator", "Treillis"));
 
     for (const auto& [id, cb] : model.cables())
-        validateLinear(id, cb.startNodeId(), cb.endNodeId(), cb.section(), cb.material(), "Câble");
+        validateLinear(id, cb.startNodeId(), cb.endNodeId(), cb.section(), cb.material(),
+                       QT_TRANSLATE_NOOP("TSA::Standards::ModelValidator", "Câble"));
 
     // 4. Contrôle des éléments surfaciques (Dalles, Voiles)
+    const std::string slabsCat = QCoreApplication::translate("TSA::Standards::ModelValidator", "Dalles").toStdString();
     for (const auto& [id, sl] : model.slabs())
     {
         if (sl.nodeIds().size() < 3)
         {
-            report.addError("Dalles", "Une dalle requiert au moins 3 nœuds de contour.", id);
+            report.addError(slabsCat, QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "Une dalle requiert au moins 3 nœuds de contour.").toStdString(), id);
         }
         if (sl.thickness() <= 0.0 || std::isnan(sl.thickness()))
         {
-            report.addError("Dalles", "L'épaisseur de la dalle doit être strictement positive.", id);
+            report.addError(slabsCat, QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "L'épaisseur de la dalle doit être strictement positive.").toStdString(), id);
         }
     }
 
+    const std::string wallsCat = QCoreApplication::translate("TSA::Standards::ModelValidator", "Voiles").toStdString();
     for (const auto& [id, w] : model.walls())
     {
         if (w.startNodeId() <= 0 || w.endNodeId() <= 0 || w.startNodeId() == w.endNodeId())
         {
-            report.addError("Voiles", "Les nœuds de base du voile sont invalides ou identiques.", id);
+            report.addError(wallsCat, QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "Les nœuds de base du voile sont invalides ou identiques.").toStdString(), id);
         }
         if (w.height() <= 0.0 || std::isnan(w.height()))
         {
-            report.addError("Voiles", "La hauteur du voile doit être strictement positive.", id);
+            report.addError(wallsCat, QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "La hauteur du voile doit être strictement positive.").toStdString(), id);
         }
         if (w.thickness() <= 0.0 || std::isnan(w.thickness()))
         {
-            report.addError("Voiles", "L'épaisseur du voile doit être strictement positive.", id);
+            report.addError(wallsCat, QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "L'épaisseur du voile doit être strictement positive.").toStdString(), id);
         }
     }
 
     // 5. Validation des charges et combinaisons
+    const std::string loadsCat = QCoreApplication::translate("TSA::Standards::ModelValidator", "Charges").toStdString();
     auto loadRep = TSA::Analysis::LoadValidation::validateModel(model);
     for (const auto& err : loadRep.errors())
     {
-        report.addError("Charges", err, 0, "EN 1991");
+        report.addError(loadsCat, err, 0, "EN 1991");
     }
     for (const auto& warn : loadRep.warnings())
     {
-        report.addWarning("Charges", warn);
+        report.addWarning(loadsCat, warn);
     }
 
     return report;
@@ -336,19 +379,23 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
                            model.trussMembers().size() + model.cables().size();
     if (totalElements == 0 && model.slabs().empty() && model.walls().empty())
     {
-        report.addError("Modèle Calcul",
-            "Aucun élément structural filaire (Poutre, Poteau, Treillis ou Câble) n'est présent pour le calcul.",
+        report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Modèle Calcul").toStdString(),
+            QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "Aucun élément structural filaire (Poutre, Poteau, Treillis ou Câble) n'est présent pour le calcul.").toStdString(),
             0, "EN 1990");
     }
 
     // 2b. Dalles et voiles : pas de maillage EF, non transmis au solveur (BUG-002)
     if ((!model.slabs().empty() || !model.walls().empty()) && !params.surfacesTransmitted)
     {
-        report.addWarning("Modèle Calcul",
-            std::to_string(model.slabs().size()) + " dalle(s) et " + std::to_string(model.walls().size()) +
-            " voile(s) : calculés en coques uniquement à partir du maillage du projet à jour (formulation « coque ») ; "
-            "sans maillage transmis, ni leur rigidité ni leurs charges ne sont prises en compte.", 0, "EN 1990 §5.1");
+        report.addWarning(QCoreApplication::translate("TSA::Standards::ModelValidator", "Modèle Calcul").toStdString(),
+            QCoreApplication::translate("TSA::Standards::ModelValidator",
+                "%1 dalle(s) et %2"
+                " voile(s) : calculés en coques uniquement à partir du maillage du projet à jour (formulation « coque ») ; "
+                "sans maillage transmis, ni leur rigidité ni leurs charges ne sont prises en compte.")
+                .arg(model.slabs().size()).arg(model.walls().size()).toStdString(), 0, "EN 1990 §5.1");
     }
+    const std::string loadsCat = QCoreApplication::translate("TSA::Standards::ModelValidator", "Charges").toStdString();
 
     // 2c. Charges sur barre : chaque charge doit désigner un élément calculé (famille + id).
     {
@@ -357,9 +404,11 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
         {
             if (!snap.findElementForLoad(ml))
             {
-                report.addWarning("Charges",
-                    "La charge sur barre #" + std::to_string(ml.id()) + " (élément " + std::to_string(ml.elementId())
-                    + ") ne désigne aucun élément calculé de façon univoque : elle sera ignorée par le calcul.",
+                report.addWarning(loadsCat,
+                    QCoreApplication::translate("TSA::Standards::ModelValidator",
+                        "La charge sur barre #%1 (élément %2"
+                        ") ne désigne aucun élément calculé de façon univoque : elle sera ignorée par le calcul.")
+                        .arg(ml.id()).arg(ml.elementId()).toStdString(),
                     ml.id(), "EN 1991");
             }
         }
@@ -387,8 +436,9 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
 
         if (!isConnected && !isSupported && !isLoaded)
         {
-            report.addWarning("Nœuds Orphelins",
-                "Le nœud N" + std::to_string(id) + " est isolé (non connecté, non chargé, sans appui).",
+            report.addWarning(QCoreApplication::translate("TSA::Standards::ModelValidator", "Nœuds Orphelins").toStdString(),
+                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                    "Le nœud N%1 est isolé (non connecté, non chargé, sans appui).").arg(id).toStdString(),
                 id, "ISO/IEC 25010");
         }
     }
@@ -399,9 +449,10 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
         auto unsupported = [](const TSA::Model::EndRelease& r) { return r.fx || r.fy || r.fz || r.mx; };
         if (unsupported(b.startRelease()) || unsupported(b.endRelease()))
         {
-            report.addWarning("Relâchements",
-                "La poutre #" + std::to_string(id) + " a un relâchement d'effort normal, d'effort tranchant ou de torsion : "
-                "il est ignoré par le calcul (seules les rotules de flexion My / Mz sont transmises).",
+            report.addWarning(QCoreApplication::translate("TSA::Standards::ModelValidator", "Relâchements").toStdString(),
+                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                    "La poutre #%1 a un relâchement d'effort normal, d'effort tranchant ou de torsion : "
+                    "il est ignoré par le calcul (seules les rotules de flexion My / Mz sont transmises).").arg(id).toStdString(),
                 id, "RDM");
         }
     }
@@ -418,9 +469,11 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
             const bool hasMoment = std::abs(nl.mx()) > 1e-12 || std::abs(nl.my()) > 1e-12 || std::abs(nl.mz()) > 1e-12;
             if (hasMoment && axialNodes.count(nl.nodeId()) && !frameNodes.count(nl.nodeId()))
             {
-                report.addWarning("Charges",
-                    "Le nœud N" + std::to_string(nl.nodeId()) + " n'est relié qu'à des treillis / câbles : le moment nodal de la charge « "
-                    + nl.name() + " » ne peut pas être repris par la structure (ignoré).",
+                report.addWarning(loadsCat,
+                    QCoreApplication::translate("TSA::Standards::ModelValidator",
+                        "Le nœud N%1 n'est relié qu'à des treillis / câbles : le moment nodal de la charge « "
+                        "%2 » ne peut pas être repris par la structure (ignoré).")
+                        .arg(QString::number(nl.nodeId()), QString::fromStdString(nl.name())).toStdString(),
                     nl.nodeId(), "RDM");
             }
         }
@@ -430,10 +483,12 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
         // Un nœud n'a pas de repère local : les composantes sont appliquées dans le repère global.
         if (nl.coordSystem() == TSA::Model::LoadCoordSystem::Local)
         {
-            report.addWarning("Charges",
-                "La charge nodale « " + nl.name() + " » (nœud N" + std::to_string(nl.nodeId()) + ") est déclarée en repère local : "
-                "un nœud n'a pas de repère local, ses forces et moments sont appliqués selon les axes globaux X, Y, Z. "
-                "Pour une torsion, donner le moment autour de l'axe global parallèle à la barre.",
+            report.addWarning(loadsCat,
+                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                    "La charge nodale « %1 » (nœud N%2) est déclarée en repère local : "
+                    "un nœud n'a pas de repère local, ses forces et moments sont appliqués selon les axes globaux X, Y, Z. "
+                    "Pour une torsion, donner le moment autour de l'axe global parallèle à la barre.")
+                    .arg(QString::fromStdString(nl.name()), QString::number(nl.nodeId())).toStdString(),
                 nl.nodeId(), "RDM");
         }
     }
@@ -443,18 +498,21 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
         const QJsonObject root = QJsonDocument::fromJson(QByteArray::fromStdString(model.exchangeExtensionsJson())).object();
         const QJsonArray surface = root.value("document").toObject().value("loads").toObject().value("surface").toArray();
         if (!surface.isEmpty())
-            report.addWarning("Charges",
-                std::to_string(surface.size()) + " charge(s) surfacique(s) importée(s) d'un fichier TSA3D sont conservées mais NON "
-                "appliquées : aucun élément surfacique n'est calculé. Les résultats n'en tiennent pas compte ; les convertir en "
-                "charges sur barres ou nodales pour les inclure.", 0, "EN 1991");
+            report.addWarning(loadsCat,
+                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                    "%1 charge(s) surfacique(s) importée(s) d'un fichier TSA3D sont conservées mais NON "
+                    "appliquées : aucun élément surfacique n'est calculé. Les résultats n'en tiennent pas compte ; les convertir en "
+                    "charges sur barres ou nodales pour les inclure.").arg(surface.size()).toStdString(), 0, "EN 1991");
         int explicitSelfWeight = 0;
         for (const auto& [loadId, ml] : lm.memberLoads())
             if (ml.type() == TSA::Model::LoadType::SelfWeight) ++explicitSelfWeight;
         if (explicitSelfWeight > 0)
-            report.addWarning("Charges",
-                std::to_string(explicitSelfWeight) + " charge(s) sur barre de type « poids propre » explicite : OpenSees l'applique "
-                "comme une charge uniforme vers le bas d'intensité q1, le moteur 2D l'ignore. Le poids propre se règle par "
-                "l'option « Inclure le poids propre » (double comptage possible).", 0, "EN 1991");
+            report.addWarning(loadsCat,
+                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                    "%1 charge(s) sur barre de type « poids propre » explicite : OpenSees l'applique "
+                    "comme une charge uniforme vers le bas d'intensité q1, le moteur 2D l'ignore. Le poids propre se règle par "
+                    "l'option « Inclure le poids propre » (double comptage possible).").arg(explicitSelfWeight).toStdString(),
+                0, "EN 1991");
     }
 
     // Moments répartis (couple par unité de longueur) : transmis aux poutres et poteaux par forces nodales
@@ -469,9 +527,11 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
             if (ml.type() != TSA::Model::LoadType::MemberMoment) continue;
             if (TSA::Analysis::LoadResolver::usesMagnitudeOnly(ml))
             {
-                report.addError("Charges",
-                    "Le moment réparti « " + ml.name() + " » n'a pas d'axe défini (direction « gravité » ou axe incompatible avec le "
-                    "repère) : indiquer l'axe du vecteur moment (local x pour une torsion, ou un axe global).",
+                report.addError(loadsCat,
+                    QCoreApplication::translate("TSA::Standards::ModelValidator",
+                        "Le moment réparti « %1 » n'a pas d'axe défini (direction « gravité » ou axe incompatible avec le "
+                        "repère) : indiquer l'axe du vecteur moment (local x pour une torsion, ou un axe global).")
+                        .arg(QString::fromStdString(ml.name())).toStdString(),
                     loadId, "RDM");
                 continue;
             }
@@ -479,9 +539,11 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
             if (el && (el->type == TSA::Analysis::SnapshotElement::ElementType::Truss
                        || el->type == TSA::Analysis::SnapshotElement::ElementType::Cable))
             {
-                report.addWarning("Charges",
-                    "Le moment réparti « " + ml.name() + " » s'applique à une barre articulée (treillis ou câble), sans rigidité en "
-                    "rotation : il n'est pas transmis au calcul.",
+                report.addWarning(loadsCat,
+                    QCoreApplication::translate("TSA::Standards::ModelValidator",
+                        "Le moment réparti « %1 » s'applique à une barre articulée (treillis ou câble), sans rigidité en "
+                        "rotation : il n'est pas transmis au calcul.")
+                        .arg(QString::fromStdString(ml.name())).toStdString(),
                     loadId, "RDM");
             }
         }
@@ -493,7 +555,8 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
     {
         using TSA::Analysis::SnapshotElement;
         const auto snap = TSA::Analysis::CalculationSnapshot::capture(model, nullptr, params.supportRestraints);
-        for (const auto& w : snap.restraintWarnings()) report.addWarning("Appuis", w, 0, "RDM");
+        const std::string supportsCat = QCoreApplication::translate("TSA::Standards::ModelValidator", "Appuis").toStdString();
+        for (const auto& w : snap.restraintWarnings()) report.addWarning(supportsCat, w, 0, "RDM");
         std::map<int, int> parent;
         std::function<int(int)> root = [&](int a) { return parent[a] == a ? a : parent[a] = root(parent[a]); };
         std::vector<const SnapshotElement*> frames;
@@ -532,14 +595,19 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
             if (restrained) continue;
             std::string list;
             for (std::size_t i = 0; i < members.size() && i < 5; ++i)
-                list += (i ? ", " : "") + std::string(members[i]->type == SnapshotElement::ElementType::Column ? "poteau " : "poutre ")
-                        + std::to_string(members[i]->id);
+                list += (i ? ", " : "")
+                        + (members[i]->type == SnapshotElement::ElementType::Column
+                               ? QCoreApplication::translate("TSA::Standards::ModelValidator", "poteau %1")
+                               : QCoreApplication::translate("TSA::Standards::ModelValidator", "poutre %1"))
+                              .arg(members[i]->id).toStdString();
             if (members.size() > 5) list += "…";
-            report.addError("Stabilité",
-                "Mécanisme de torsion : " + list + " (barres alignées) peuvent tourner librement autour de leur axe, aucun appui "
-                "ne bloquant cette rotation (matrice singulière). Correction : bloquer la rotation autour de l'axe de la barre "
-                "sur au moins un nœud (encastrement, appui à fourche défini, ressort en rotation), ou choisir le mode "
-                "« appui à fourche » des appuis articulés dans les paramètres d'analyse si la barre est parallèle à un axe global.",
+            report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Stabilité").toStdString(),
+                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                    "Mécanisme de torsion : %1 (barres alignées) peuvent tourner librement autour de leur axe, aucun appui "
+                    "ne bloquant cette rotation (matrice singulière). Correction : bloquer la rotation autour de l'axe de la barre "
+                    "sur au moins un nœud (encastrement, appui à fourche défini, ressort en rotation), ou choisir le mode "
+                    "« appui à fourche » des appuis articulés dans les paramètres d'analyse si la barre est parallèle à un axe global.")
+                    .arg(QString::fromStdString(list)).toStdString(),
                 members.front()->id, "RDM");
         }
     }
@@ -550,14 +618,17 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
         const auto* combo = lm.getCombination(params.targetCombinationId);
         if (!combo)
         {
-            report.addError("Combinaisons",
-                "La combinaison ciblée pour le calcul (ID " + std::to_string(params.targetCombinationId) + ") n'existe pas.",
+            report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Combinaisons").toStdString(),
+                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                    "La combinaison ciblée pour le calcul (ID %1) n'existe pas.").arg(params.targetCombinationId).toStdString(),
                 params.targetCombinationId, "EN 1990");
         }
         else if (combo->caseFactors().empty())
         {
-            report.addError("Combinaisons",
-                "La combinaison ciblée '" + combo->name() + "' ne contient aucun cas de charge pondéré.",
+            report.addError(QCoreApplication::translate("TSA::Standards::ModelValidator", "Combinaisons").toStdString(),
+                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                    "La combinaison ciblée '%1' ne contient aucun cas de charge pondéré.")
+                    .arg(QString::fromStdString(combo->name())).toStdString(),
                 params.targetCombinationId, "EN 1990");
         }
     }
@@ -566,8 +637,9 @@ ModelValidationReport ModelValidator::validateForAnalysis(const TSA::Model::Mode
         const auto* lc = lm.getLoadCase(params.targetLoadCaseId);
         if (!lc)
         {
-            report.addError("Charges",
-                "Le cas de charge ciblé pour le calcul (ID " + std::to_string(params.targetLoadCaseId) + ") n'existe pas.",
+            report.addError(loadsCat,
+                QCoreApplication::translate("TSA::Standards::ModelValidator",
+                    "Le cas de charge ciblé pour le calcul (ID %1) n'existe pas.").arg(params.targetLoadCaseId).toStdString(),
                 params.targetLoadCaseId, "EN 1991");
         }
     }

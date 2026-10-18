@@ -10,6 +10,8 @@
 
 #include <gp_Vec.hxx>
 
+#include <QCoreApplication>
+
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -86,6 +88,18 @@ std::string formatElevation(double z)
     return o.str();
 }
 
+/// Texte de l'interface (contexte « TSA::Analysis::AnalysisScopeResolver »), paramètres %1, %2 déjà formatés.
+/// Le texte source est marqué QT_TRANSLATE_NOOP à chaque appel pour lupdate.
+std::string scopeText(const char* text, const std::string& a1 = std::string(), const std::string& a2 = std::string())
+{
+    QString s = QCoreApplication::translate("TSA::Analysis::AnalysisScopeResolver", text);
+    if (s.contains(QLatin1String("%2")))
+        s = s.arg(QString::fromStdString(a1), QString::fromStdString(a2));
+    else if (s.contains(QLatin1String("%1")))
+        s = s.arg(QString::fromStdString(a1));
+    return s.toStdString();
+}
+
 TSA::Model::ElementSet intersect(const TSA::Model::ElementSet& a, const TSA::Model::ElementSet& b)
 {
     auto inter = [](const std::set<int>& x, const std::set<int>& y) {
@@ -138,7 +152,10 @@ std::optional<AnalysisPlane> gridAxisPlane(const TSA::Grid::GridDefinition& def,
         p.n = p.u.Crossed(p.v);
         return p;
     }
-    if (error) *error = "L'axe « " + label + " » n'existe pas dans la grille « " + def.name() + " ».";
+    if (error)
+        *error = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver",
+                                             "L'axe « %1 » n'existe pas dans la grille « %2 »."),
+                           label, def.name());
     return std::nullopt;
 }
 
@@ -156,7 +173,9 @@ std::optional<AnalysisPlane> modelPlane(const TSA::Model::Model& model, std::str
     const auto& nodes = model.nodes();
     if (nodes.size() < 2)
     {
-        if (error) *error = "Le modèle doit contenir au moins deux nœuds pour définir un plan.";
+        if (error)
+            *error = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver",
+                                                 "Le modèle doit contenir au moins deux nœuds pour définir un plan."));
         return std::nullopt;
     }
     const auto& first = nodes.begin()->second;
@@ -189,8 +208,11 @@ std::optional<AnalysisPlane> modelPlane(const TSA::Model::Model& model, std::str
         p.v = gp_Dir(0, 0, 1);
         p.n = p.u.Crossed(p.v);
         if (label)
-            *label = std::abs(uy) <= 1e-9 ? "Plan du modèle (vertical XZ)"
-                   : std::abs(ux) <= 1e-9 ? "Plan du modèle (vertical YZ)" : "Plan du modèle (vertical)";
+            *label = std::abs(uy) <= 1e-9
+                         ? scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Plan du modèle (vertical XZ)"))
+                     : std::abs(ux) <= 1e-9
+                         ? scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Plan du modèle (vertical YZ)"))
+                         : scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Plan du modèle (vertical)"));
         return p;
     }
     if (horizontal)
@@ -199,10 +221,14 @@ std::optional<AnalysisPlane> modelPlane(const TSA::Model::Model& model, std::str
         p.u = gp_Dir(1, 0, 0);
         p.v = gp_Dir(0, 1, 0);
         p.n = gp_Dir(0, 0, 1);
-        if (label) *label = "Plan du modèle (horizontal, z = " + formatElevation(z0) + ")";
+        if (label)
+            *label = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Plan du modèle (horizontal, z = %1)"),
+                               formatElevation(z0));
         return p;
     }
-    if (error) *error = "Le modèle n'est pas plan : choisir un axe de grille, un niveau ou un plan de travail.";
+    if (error)
+        *error = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver",
+                                             "Le modèle n'est pas plan : choisir un axe de grille, un niveau ou un plan de travail."));
     return std::nullopt;
 }
 
@@ -225,12 +251,12 @@ ResolvedScope AnalysisScopeResolver::resolve(const TSA::Model::Model& model,
     {
     case ScopeType::EntireModel:
         r.entireModel = true;
-        r.label = "Modèle complet";
+        r.label = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Modèle complet"));
         r.elements = TSA::Model::SelectionQuery::all(model);
         break;
 
     case ScopeType::SelectedElements:
-        r.label = "Sélection";
+        r.label = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Sélection"));
         r.elements.nodes = existing(scope.nodes, model.nodes());
         r.elements.beams = existing(scope.beams, model.beams());
         r.elements.columns = existing(scope.columns, model.columns());
@@ -241,7 +267,8 @@ ResolvedScope AnalysisScopeResolver::resolve(const TSA::Model::Model& model,
         r.elements.foundations = existing(scope.foundations, model.foundations());
         if (r.elements.empty())
         {
-            r.error = "La sélection ne contient aucun objet du modèle.";
+            r.error = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver",
+                                                  "La sélection ne contient aucun objet du modèle."));
             return r;
         }
         break;
@@ -251,18 +278,21 @@ ResolvedScope AnalysisScopeResolver::resolve(const TSA::Model::Model& model,
         const auto* grid = grids ? grids->getGrid(scope.gridId) : nullptr;
         if (!grid)
         {
-            r.error = "Grille introuvable (« " + scope.gridId + " »).";
+            r.error = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Grille introuvable (« %1 »)."),
+                                scope.gridId);
             return r;
         }
         if (grid->type() != TSA::Grid::GridType::Cartesian)
         {
-            r.error = "Seuls les axes d'une grille cartésienne définissent un plan d'analyse.";
+            r.error = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver",
+                                                  "Seuls les axes d'une grille cartésienne définissent un plan d'analyse."));
             return r;
         }
         auto plane = gridAxisPlane(grid->definition(), scope.axisFamily, scope.axisLabel, &r.error);
         if (!plane) return r;
         r.plane = plane;
-        r.label = "Axe " + scope.axisLabel + " (" + grid->name() + ")";
+        r.label = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Axe %1 (%2)"),
+                            scope.axisLabel, grid->name());
         r.elements = onPlane(model, *plane);
         break;
     }
@@ -273,7 +303,8 @@ ResolvedScope AnalysisScopeResolver::resolve(const TSA::Model::Model& model,
         const auto* level = lm ? lm->getLevel(scope.levelId) : nullptr;
         if (!level)
         {
-            r.error = "Niveau introuvable (« " + scope.levelId + " »).";
+            r.error = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Niveau introuvable (« %1 »)."),
+                                scope.levelId);
             return r;
         }
         AnalysisPlane p;
@@ -282,7 +313,8 @@ ResolvedScope AnalysisScopeResolver::resolve(const TSA::Model::Model& model,
         p.v = gp_Dir(0, 1, 0);
         p.n = gp_Dir(0, 0, 1);
         r.plane = p;
-        r.label = "Niveau " + level->name + " (" + formatElevation(level->elevation) + ")";
+        r.label = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Niveau %1 (%2)"),
+                            level->name, formatElevation(level->elevation));
         r.elements = TSA::Model::SelectionQuery::atElevation(model, level->elevation, kTol);
         break;
     }
@@ -293,7 +325,8 @@ ResolvedScope AnalysisScopeResolver::resolve(const TSA::Model::Model& model,
         const auto* wp = wpm ? wpm->getWorkPlane(scope.workPlaneId) : nullptr;
         if (!wp)
         {
-            r.error = "Plan de travail introuvable (#" + std::to_string(scope.workPlaneId) + ").";
+            r.error = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Plan de travail introuvable (#%1)."),
+                                std::to_string(scope.workPlaneId));
             return r;
         }
         AnalysisPlane p;
@@ -302,7 +335,7 @@ ResolvedScope AnalysisScopeResolver::resolve(const TSA::Model::Model& model,
         p.v = wp->axisY();
         p.n = wp->normal();
         r.plane = p;
-        r.label = "Plan de travail " + wp->name();
+        r.label = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Plan de travail %1"), wp->name());
         r.elements = TSA::Model::SelectionQuery::onWorkPlane(model, *wp, kTol);
         break;
     }
@@ -324,11 +357,12 @@ ResolvedScope AnalysisScopeResolver::resolve(const TSA::Model::Model& model,
         const auto* level = lm ? lm->getLevel(scope.levelId) : nullptr;
         if (!level)
         {
-            r.error = "Niveau introuvable (« " + scope.levelId + " »).";
+            r.error = scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Niveau introuvable (« %1 »)."),
+                                scope.levelId);
             return r;
         }
         r.elements = intersect(r.elements, TSA::Model::SelectionQuery::atElevation(model, level->elevation, kTol));
-        r.label += " ∩ niveau " + level->name;
+        r.label += scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", " ∩ niveau %1"), level->name);
     }
 
     r.ok = true;
@@ -339,7 +373,7 @@ std::vector<AnalysisScopeResolver::ScopeOption> AnalysisScopeResolver::available
     const TSA::Model::Model& model, const TSA::Grid::GridManager* grids)
 {
     std::vector<ScopeOption> out;
-    out.push_back({ AnalysisScope{}, "Modèle complet" });
+    out.push_back({ AnalysisScope{}, scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Modèle complet")) });
     // Modèle plan (portique, poutre, treillis dessinés sans grille) : calculable par un moteur 2D tel quel.
     std::string planeLabel;
     if (modelPlane(model, nullptr, &planeLabel))
@@ -363,7 +397,8 @@ std::vector<AnalysisScopeResolver::ScopeOption> AnalysisScopeResolver::available
                     s.gridId = def.id();
                     s.axisFamily = family;
                     s.axisLabel = family == GridAxisFamily::X ? def.getXLabel(i) : def.getYLabel(i);
-                    out.push_back({ s, "Axe " + s.axisLabel + " — " + def.name() });
+                    out.push_back({ s, scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Axe %1 — %2"),
+                                                 s.axisLabel, def.name()) });
                 }
             };
             addAxes(GridAxisFamily::Y, def.yPositions().size());   // A, B, C…
@@ -378,7 +413,8 @@ std::vector<AnalysisScopeResolver::ScopeOption> AnalysisScopeResolver::available
             AnalysisScope s;
             s.type = ScopeType::Level;
             s.levelId = level.id;
-            out.push_back({ s, "Niveau " + level.name + " (" + formatElevation(level.elevation) + ")" });
+            out.push_back({ s, scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Niveau %1 (%2)"),
+                                         level.name, formatElevation(level.elevation)) });
         }
     }
 
@@ -389,7 +425,7 @@ std::vector<AnalysisScopeResolver::ScopeOption> AnalysisScopeResolver::available
             AnalysisScope s;
             s.type = ScopeType::WorkPlane;
             s.workPlaneId = id;
-            out.push_back({ s, "Plan de travail " + wp.name() });
+            out.push_back({ s, scopeText(QT_TRANSLATE_NOOP("TSA::Analysis::AnalysisScopeResolver", "Plan de travail %1"), wp.name()) });
         }
     }
     return out;

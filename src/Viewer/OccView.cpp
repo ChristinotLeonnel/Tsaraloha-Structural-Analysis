@@ -289,13 +289,15 @@ void OccView::initOcc()
     m_viewCube->SetRoundRadius(0.10);
     m_viewCube->SetYup(false); // +Z vertical (élévation)
 
-    // Libellés français conformes à Robot Structural Analysis
-    m_viewCube->SetBoxSideLabel(V3d_Zpos, "HAUT");
-    m_viewCube->SetBoxSideLabel(V3d_Zneg, "BAS");
-    m_viewCube->SetBoxSideLabel(V3d_Ypos, "ARRIERE");
-    m_viewCube->SetBoxSideLabel(V3d_Yneg, "AVANT");
-    m_viewCube->SetBoxSideLabel(V3d_Xpos, "DROITE");
-    m_viewCube->SetBoxSideLabel(V3d_Xneg, "GAUCHE");
+    // Libellés conformes à Robot Structural Analysis, dans la langue de l'interface. OCCT ne les accepte qu'en ASCII
+    // (TCollection_AsciiString) : les traductions de ces six mots restent sans accent.
+    const auto sideLabel = [](const QString& text) { return TCollection_AsciiString(text.toLatin1().constData()); };
+    m_viewCube->SetBoxSideLabel(V3d_Zpos, sideLabel(tr("HAUT", "face du ViewCube, ASCII")));
+    m_viewCube->SetBoxSideLabel(V3d_Zneg, sideLabel(tr("BAS", "face du ViewCube, ASCII")));
+    m_viewCube->SetBoxSideLabel(V3d_Ypos, sideLabel(tr("ARRIERE", "face du ViewCube, ASCII")));
+    m_viewCube->SetBoxSideLabel(V3d_Yneg, sideLabel(tr("AVANT", "face du ViewCube, ASCII")));
+    m_viewCube->SetBoxSideLabel(V3d_Xpos, sideLabel(tr("DROITE", "face du ViewCube, ASCII")));
+    m_viewCube->SetBoxSideLabel(V3d_Xneg, sideLabel(tr("GAUCHE", "face du ViewCube, ASCII")));
 
     m_viewCube->SetTransformPersistence(new Graphic3d_TransformPers(
         Graphic3d_TMF_TriedronPers,

@@ -159,7 +159,7 @@ public:
         f.setBold(true);
         f.setPointSizeF(8.5);
         p->setFont(f);
-        QString title = d ? QString::fromStdString(d->title) : QStringLiteral("Inconnu : %1").arg(QString::fromStdString(n->type));
+        QString title = d ? QString::fromStdString(displayText(d->title)) : BlueprintScene::tr("Inconnu : %1").arg(QString::fromStdString(n->type));
         if (d && d->status == NodeStatus::Validated) title = QStringLiteral("✓ ") + title;
         else if (d && d->status == NodeStatus::Experimental) title = QStringLiteral("⚗ ") + title;
         if (d && instance) title = QStringLiteral("⧉ ") + title;
@@ -193,13 +193,13 @@ public:
             const QPointF c(0.0, kHeader + kRow * (i + 0.5));
             const bool linked = m_scene.graph().linkTo(m_id, pin.name).has_value();
             drawPin(pin, c, linked);
-            QString label = QString::fromStdString(pin.label);
+            QString label = QString::fromStdString(displayText(pin.label));
             if (pin.kind == PinKind::Data && !linked)
             {
                 const auto it = n->values.find(pin.name);
                 const Value v = (it != n->values.end()) ? it->second : pin.defaultValue;
                 if (!std::holds_alternative<std::monostate>(v)) label += QStringLiteral(" = ") + QString::fromStdString(toText(v));
-                else if (pin.required) label += QStringLiteral(" (requis)");
+                else if (pin.required) label += BlueprintScene::tr(" (requis)");
             }
             p->setPen(QColor("#CFD8DC"));
             p->drawText(QRectF(10, c.y() - kRow / 2, kWidth / 2 + 30, kRow), Qt::AlignVCenter | Qt::AlignLeft,
@@ -212,7 +212,7 @@ public:
             drawPin(pin, c, !m_scene.graph().linksFrom(m_id, pin.name).empty());
             p->setPen(QColor("#CFD8DC"));
             p->drawText(QRectF(kWidth / 2, c.y() - kRow / 2, kWidth / 2 - 10, kRow), Qt::AlignVCenter | Qt::AlignRight,
-                        QString::fromStdString(pin.label));
+                        QString::fromStdString(displayText(pin.label)));
         }
         if (m_hasStats)
         {

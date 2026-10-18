@@ -3,6 +3,7 @@
 #include "BlueprintRuntime.h"
 #include "BlueprintSubgraph.h"
 
+#include <QCoreApplication>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -11,6 +12,9 @@
 
 #include <algorithm>
 #include <map>
+
+// Traduction : messages d'erreur et notes affichés dans le contexte « TSA::Blueprint::File ». Clés JSON, identifiants et
+// valeurs par défaut écrites dans les fichiers (catégorie « Sous-graphes ») restent inchangés.
 
 namespace TSA::Blueprint
 {
@@ -138,7 +142,7 @@ bool pinFromJson(const QJsonObject& j, PinSpec& p, QString* error)
         p.any = true;
     else if (!valueTypeFromId(type, p.type))
     {
-        if (error) *error = QStringLiteral("broche « %1 » : type « %2 » inconnu").arg(QString::fromStdString(p.name), QString::fromStdString(type));
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "broche « %1 » : type « %2 » inconnu").arg(QString::fromStdString(p.name), QString::fromStdString(type));
         return false;
     }
     p.objectType = j["object"].toString().toStdString();
@@ -185,7 +189,7 @@ bool readContent(const QJsonObject& root, Graph& g, QString* error)
         const NodeInstance n = nodeFromJson(x.toObject());
         if (!g.insertNode(n))
         {
-            if (error) *error = QStringLiteral("identifiant de nœud invalide ou en double : %1").arg(n.id);
+            if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "identifiant de nœud invalide ou en double : %1").arg(n.id);
             return false;
         }
     }
@@ -223,10 +227,10 @@ bool subgraphFromJson(const QJsonObject& j, SubgraphDefinition& d, QString* erro
     d.category = j["category"].toString(QStringLiteral("Sous-graphes")).toStdString();
     d.documentation = j["documentation"].toString().toStdString();
     d.version = j["version"].toInt(1);
-    const QString label = QStringLiteral("sous-graphe « %1 »").arg(QString::fromStdString(d.id));
+    const QString label = QString::fromStdString(d.id);
     if (!isValidSubgraphId(d.id))
     {
-        if (error) *error = label + QStringLiteral(" : identifiant invalide");
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "sous-graphe « %1 » : identifiant invalide").arg(label);
         return false;
     }
     for (int side = 0; side < 2; ++side)
@@ -236,7 +240,7 @@ bool subgraphFromJson(const QJsonObject& j, SubgraphDefinition& d, QString* erro
             QString why;
             if (!pinFromJson(x.toObject(), p, &why))
             {
-                if (error) *error = label + QStringLiteral(" : ") + why;
+                if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "sous-graphe « %1 » : %2").arg(label, why);
                 return false;
             }
             (side == 0 ? d.inputs : d.outputs).push_back(p);
@@ -245,7 +249,7 @@ bool subgraphFromJson(const QJsonObject& j, SubgraphDefinition& d, QString* erro
     QString why;
     if (!readContent(j["graph"].toObject(), *body, &why))
     {
-        if (error) *error = label + QStringLiteral(" : ") + why;
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "sous-graphe « %1 » : %2").arg(label, why);
         return false;
     }
     d.body = body;
@@ -287,12 +291,12 @@ bool fromJson(const QByteArray& json, Graph& g, QString* error)
     };
     QJsonParseError pe;
     const QJsonDocument doc = QJsonDocument::fromJson(json, &pe);
-    if (doc.isNull() || !doc.isObject()) return fail(QStringLiteral("JSON invalide : %1").arg(pe.errorString()));
+    if (doc.isNull() || !doc.isObject()) return fail(QCoreApplication::translate("TSA::Blueprint::File", "JSON invalide : %1").arg(pe.errorString()));
     const QJsonObject root = doc.object();
-    if (root["format"].toString() != QLatin1String("tsbp")) return fail(QStringLiteral("ce fichier n'est pas un Blueprint (.tsbp)"));
+    if (root["format"].toString() != QLatin1String("tsbp")) return fail(QCoreApplication::translate("TSA::Blueprint::File", "ce fichier n'est pas un Blueprint (.tsbp)"));
     const int version = root["version"].toInt();
     if (version < 1 || version > kFileVersion)
-        return fail(QStringLiteral("version de Blueprint %1 non prise en charge (maximum %2)").arg(version).arg(kFileVersion));
+        return fail(QCoreApplication::translate("TSA::Blueprint::File", "version de Blueprint %1 non prise en charge (maximum %2)").arg(version).arg(kFileVersion));
 
     Graph loaded;
     QString why;
@@ -353,7 +357,7 @@ bool pasteFragment(Graph& g, const QByteArray& json, double dx, double dy, std::
     const QJsonObject root = doc.object();
     if (!doc.isObject() || root["format"].toString() != QLatin1String("tsbp-fragment"))
     {
-        if (error) *error = QStringLiteral("le presse-papiers ne contient pas de nœuds Blueprint");
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "le presse-papiers ne contient pas de nœuds Blueprint");
         return false;
     }
     // Définitions des sous-graphes utilisés par le fragment : ajoutées, ou remplacées par une version plus récente
@@ -364,18 +368,22 @@ bool pasteFragment(Graph& g, const QByteArray& json, double dx, double dy, std::
         auto it = std::find_if(g.subgraphs.begin(), g.subgraphs.end(), [&](const SubgraphDefinition& x) { return x.id == d.id; });
         if (it == g.subgraphs.end())
         {
-            if (notes) notes->push_back("sous-graphe « " + d.id + " » (version " + std::to_string(d.version) + ") ajouté");
+            if (notes)
+                notes->push_back(QCoreApplication::translate("TSA::Blueprint::File", "sous-graphe « %1 » (version %2) ajouté").arg(QString::fromStdString(d.id), QString::number(d.version)).toStdString());
             g.subgraphs.push_back(std::move(d));
         }
         else if (d.version > it->version)
         {
             if (notes)
-                notes->push_back("sous-graphe « " + d.id + " » mis à jour de la version " + std::to_string(it->version) + " à la version " + std::to_string(d.version));
+                notes->push_back(QCoreApplication::translate("TSA::Blueprint::File", "sous-graphe « %1 » mis à jour de la version %2 à la version %3")
+                                     .arg(QString::fromStdString(d.id), QString::number(it->version), QString::number(d.version))
+                                     .toStdString());
             *it = std::move(d);
         }
         else if (!d.sameContent(*it) && notes)
-            notes->push_back("sous-graphe « " + d.id + " » : version " + std::to_string(it->version) + " du graphe conservée (fragment en version "
-                             + std::to_string(d.version) + ")");
+            notes->push_back(QCoreApplication::translate("TSA::Blueprint::File", "sous-graphe « %1 » : version %2 du graphe conservée (fragment en version %3)")
+                                 .arg(QString::fromStdString(d.id), QString::number(it->version), QString::number(d.version))
+                                 .toStdString());
     }
     std::map<int, int> remap;
     for (const auto& x : root["nodes"].toArray())
@@ -412,7 +420,7 @@ bool saveSubgraphFile(const Graph& owner, const std::string& id, const QString& 
     const SubgraphDefinition* main = owner.subgraph(id);
     if (!main)
     {
-        if (error) *error = QStringLiteral("sous-graphe « %1 » inexistant").arg(QString::fromStdString(id));
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "sous-graphe « %1 » inexistant").arg(QString::fromStdString(id));
         return false;
     }
     // Dépendances (sous-graphes appelés par le corps) d'abord, définition principale en dernier
@@ -457,19 +465,19 @@ bool loadSubgraphFile(const QString& path, std::vector<SubgraphDefinition>& defi
     const QJsonObject root = doc.object();
     if (doc.isNull() || !doc.isObject() || root["format"].toString() != QLatin1String("tsbp-subgraph"))
     {
-        if (error) *error = QStringLiteral("ce fichier n'est pas un sous-graphe Blueprint (.tsbps)");
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "ce fichier n'est pas un sous-graphe Blueprint (.tsbps)");
         return false;
     }
     const int version = root["version"].toInt();
     if (version < 1 || version > kSubgraphFileVersion)
     {
-        if (error) *error = QStringLiteral("version de sous-graphe %1 non prise en charge (maximum %2)").arg(version).arg(kSubgraphFileVersion);
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "version de sous-graphe %1 non prise en charge (maximum %2)").arg(version).arg(kSubgraphFileVersion);
         return false;
     }
     if (!readSubgraphs(root["subgraphs"].toArray(), definitions, error)) return false;
     if (definitions.empty())
     {
-        if (error) *error = QStringLiteral("fichier de sous-graphe vide");
+        if (error) *error = QCoreApplication::translate("TSA::Blueprint::File", "fichier de sous-graphe vide");
         return false;
     }
     return true;

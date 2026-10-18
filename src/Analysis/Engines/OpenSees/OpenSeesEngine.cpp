@@ -3,6 +3,7 @@
 #include "../../OpenSeesManager.h"
 #include "../../OpenSeesSolver.h"
 
+#include <QCoreApplication>
 #include <QObject>
 
 namespace TSA::Analysis
@@ -16,8 +17,9 @@ EngineInfo OpenSeesEngine::info() const
     EngineInfo i;
     i.id = kId;
     i.name = "OpenSees";
-    i.description = "Moteur éléments finis général (processus externe OpenSees.exe, scripts Tcl générés) : "
-                    "ossatures spatiales, treillis, câbles, appuis élastiques.";
+    i.description = QCoreApplication::translate("TSA::Analysis::OpenSeesEngine",
+                        "Moteur éléments finis général (processus externe OpenSees.exe, scripts Tcl générés) : "
+                        "ossatures spatiales, treillis, câbles, appuis élastiques.").toStdString();
     if (!m_version)
     {
         auto& mgr = OpenSeesManager::instance();
@@ -57,7 +59,7 @@ EngineAvailability OpenSeesEngine::availability() const
     EngineAvailability a;
     a.available = OpenSeesManager::instance().isAvailable();
     a.canProvision = !a.available;
-    if (!a.available) a.message = "OpenSees.exe introuvable ou non vérifié.";
+    if (!a.available) a.message = QCoreApplication::translate("TSA::Analysis::OpenSeesEngine", "OpenSees.exe introuvable ou non vérifié.").toStdString();
     return a;
 }
 
@@ -140,18 +142,21 @@ ValidationResult OpenSeesEngine::validate(const AnalysisContext& context, const 
 {
     ValidationResult v;
     if (context.combinationId <= 0 && context.loadCaseIds.size() > 1)
-        v.addError("OpenSees", "Le générateur OpenSees calcule un cas, tous les cas superposés ou une combinaison : "
-                               "créez une combinaison pour calculer plusieurs cas ensemble.");
+        v.addError("OpenSees", QCoreApplication::translate("TSA::Analysis::OpenSeesEngine",
+                                   "Le générateur OpenSees calcule un cas, tous les cas superposés ou une combinaison : "
+                                   "créez une combinaison pour calculer plusieurs cas ensemble.").toStdString());
 
     const AnalysisParameters p = parametersFromContext(context);
     if (p.type == AnalysisType::NonLinearStatic && p.integratorType == IntegratorType::DisplacementControl &&
         model.mapping.analysisNode(p.controlNodeId) == 0)
-        v.addError("OpenSees", "Le nœud de contrôle N" + std::to_string(p.controlNodeId)
-                                   + " (Displacement Control) n'appartient pas à la portée calculée.");
+        v.addError("OpenSees", QCoreApplication::translate("TSA::Analysis::OpenSeesEngine",
+                                   "Le nœud de contrôle N%1 (Displacement Control) n'appartient pas à la portée calculée.")
+                                   .arg(p.controlNodeId).toStdString());
 
     if (!model.entireModel && context.scope.isPlanar())
-        v.addWarning("OpenSees", "Calcul 3D d'une portée plane : la stabilité hors plan n'est assurée que par "
-                                 "les appuis définis dans la portée.");
+        v.addWarning("OpenSees", QCoreApplication::translate("TSA::Analysis::OpenSeesEngine",
+                                     "Calcul 3D d'une portée plane : la stabilité hors plan n'est assurée que par "
+                                     "les appuis définis dans la portée.").toStdString());
     return v;
 }
 
@@ -176,7 +181,7 @@ AnalysisRunResult OpenSeesEngine::run(const AnalysisContext& context, const Anal
 
     QString err;
     r.success = solver->solveSnapshot(model.snapshot, parametersFromContext(context), &err);
-    r.message = r.success ? "Calcul OpenSees terminé." : err.toStdString();
+    r.message = r.success ? QCoreApplication::translate("TSA::Analysis::OpenSeesEngine", "Calcul OpenSees terminé.").toStdString() : err.toStdString();
     r.results = solver->results();
     return r;
 }

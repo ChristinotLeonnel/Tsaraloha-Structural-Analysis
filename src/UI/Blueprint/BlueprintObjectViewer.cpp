@@ -104,7 +104,7 @@ QString resolveSourcePath(const std::string& relativePath)
 void showNodeDocumentation(const TSA::Blueprint::NodeDefinition& d, QWidget* parent)
 {
     using TSA::Blueprint::NodeStatus;
-    auto* dlg = toolWindow(QObject::tr("Documentation — %1").arg(QString::fromStdString(d.title)), parent, QSize(860, 640));
+    auto* dlg = toolWindow(QObject::tr("Documentation — %1").arg(QString::fromStdString(TSA::Blueprint::displayText(d.title))), parent, QSize(860, 640));
     auto* lay = new QVBoxLayout(dlg);
     QString status;
     switch (d.status)
@@ -119,18 +119,17 @@ void showNodeDocumentation(const TSA::Blueprint::NodeDefinition& d, QWidget* par
         for (const auto& p : list)
         {
             if (p.kind == TSA::Blueprint::PinKind::Exec) continue;
-            rows += QStringLiteral("<li><b>%1</b> (%2)</li>").arg(QString::fromStdString(p.label).toHtmlEscaped(),
+            rows += QStringLiteral("<li><b>%1</b> (%2)</li>").arg(QString::fromStdString(TSA::Blueprint::displayText(p.label)).toHtmlEscaped(),
                                                                 QString::fromStdString(TSA::Blueprint::pinTypeName(p)).toHtmlEscaped());
         }
         if (!rows.isEmpty()) pins += QStringLiteral("<p><b>%1</b></p><ul>%2</ul>").arg(title, rows);
     };
     pinList(d.inputs, QObject::tr("Entrées"));
     pinList(d.outputs, QObject::tr("Sorties"));
-    auto* head = new QLabel(QStringLiteral("<h3>%1</h3><p>%2</p><p><i>%3</i></p><p>Identifiant : <code>%4</code> — version %5</p>%6")
-                                .arg(QString::fromStdString(d.title).toHtmlEscaped(), QString::fromStdString(d.description).toHtmlEscaped(), status,
-                                     QString::fromStdString(d.id).toHtmlEscaped())
-                                .arg(d.version)
-                                .arg(pins),
+    auto* head = new QLabel(QStringLiteral("<h3>%1</h3><p>%2</p><p><i>%3</i></p><p>%7 <code>%4</code> — %8 %5</p>%6")
+                                .arg(QString::fromStdString(TSA::Blueprint::displayText(d.title)).toHtmlEscaped(), QString::fromStdString(TSA::Blueprint::displayText(d.description)).toHtmlEscaped(), status,
+                                     QString::fromStdString(d.id).toHtmlEscaped(), QString::number(d.version), pins,
+                                     QObject::tr("Identifiant :"), QObject::tr("version")),
                             dlg);
     head->setWordWrap(true);
     head->setTextFormat(Qt::RichText);
