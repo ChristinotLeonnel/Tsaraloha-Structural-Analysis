@@ -1,135 +1,165 @@
-# Rapport d'implémentation — outils de dessin BIM (17/10/2026)
+# Rapport d'implémentation — outils de dessin BIM (17-18/10/2026)
 
-Branche `feature/bim-drawing`, créée depuis `feature/io-ifc`. Rien n'est poussé ni fusionné.
+Branche `feature/bim-drawing`, créée depuis `feature/io-ifc`. Elle n'est ni poussée ni fusionnée.
 Documents liés :
 - constat : `BIM_DRAWING_AUDIT.md` ;
 - architecture : `BIM_ARCHITECTURE.md` § 5 ;
-- suite du chantier : `BIM_DRAWING_ROADMAP.md`.
+- suite du chantier : `BIM_DRAWING_ROADMAP.md` ;
+- essai de l'interface : `tools/ui_tests/drawing_scenario.ps1`.
 
 ## 1. Ce qui a changé
 
-| Problème de l'audit | Correction | Fichiers |
-| :--- | :--- | :--- |
-| D1 Nœuds orphelins | Le tracé mémorise des points (`DrawPoint`). Les nœuds sont créés à la validation de l'élément ; Échap ne laisse rien. | `src/Interaction/ElementCreation.*`, `src/Viewer/OccView.cpp`, `OccView_Events.cpp` |
-| D2 Annuler incomplet | Nœuds, élément et réglages du dialogue sont créés dans une seule `EditTransaction`, soit une entrée Annuler. | idem, dialogues Barre / Câble / Surface |
-| D3 Logique dans la vue, 3 chemins | Un service sans vue, appelé par la vue et par les trois dialogues ; la vue ne fait plus qu'afficher le compte rendu. | idem |
-| D4 Valeurs inventées | Préréglages Fondation et Treillis explicites et modifiables (2 onglets ajoutés). Il n'y a plus de poteau de 3 m au double clic : le clic est refusé avec son motif. Les matériaux absents de la bibliothèque sont retirés des listes (C20/25, C35/45, S275 devenaient C25/30 sans rien dire). | `src/Model/CreationPresets.h`, `src/UI/Dialogs/StructurePresetDialog.*`, `SurfaceCreationDialog.cpp` |
-| D5 Pas de validation | Contrôles faits avant toute modification : longueur nulle, section sans aire, matériau sans module, doublon, dalle (3 points, alignés, non plane, croisée, points confondus, doublon), voile de dimension nulle, deuxième semelle sur un nœud. | `ElementCreation.cpp` |
-| D6 Croisement non signalé | Avertissement si une extrémité tombe sur une barre sans nœud, ou si deux barres se croisent sans nœud commun. Aucune division automatique. | `ElementCreation.cpp` |
-| D7 Tolérance locale | `GeometryTolerance::nodeCoincidence` (1 mm) devient la seule tolérance. Au-delà, un nouveau nœud est créé, sans fusion. | `src/Coordinate/GeometryTolerance.h` |
-| D8 Quantités absentes | `QuantityTakeoff` calcule longueur, surfaces brute / ouvertures / nette, volume et masse, par élément, produit, matériau, section et famille. | `src/BIM/Core/QuantityTakeoff.*` |
-| D9 Palette sans BIM | Panneau « Identité BIM et quantités » ajouté sous la vue de l'élément. | `src/UI/Properties/ElementBimPanel.*`, `PropertyPanel.*` |
+### 1.1 Problèmes de l'audit (17/10)
 
-Aucun module sans rapport avec le dessin n'a été modifié. Le format `.tsa` est inchangé : aucun
-champ persistant n'a été ajouté, donc aucune migration n'est nécessaire.
+| Problème | Correction | Fichiers |
+| :--- | :--- | :--- |
+| D1 Nœuds orphelins | Le tracé mémorise des points (`DrawPoint`) ; les nœuds sont créés à la validation de l'élément ; Échap ne laisse rien. | `src/Interaction/ElementCreation.*`, `src/Viewer/OccView.cpp`, `OccView_Events.cpp` |
+| D2 Annuler incomplet | Nœuds, élément et réglages du dialogue dans une seule `EditTransaction`, donc une entrée Annuler. | idem, dialogues Barre / Câble / Surface |
+| D3 Logique dans la vue, 3 chemins | Un service sans vue, appelé par la vue, les trois dialogues et les outils de dessin avancés. | idem, `src/Interaction/Tools/DrawTools.cpp` |
+| D4 Valeurs inventées | Préréglages Fondation et Treillis explicites et modifiables. Plus de poteau de 3 m au double clic, plus de barre de treillis de 0,10 m imposée. Matériaux absents de la bibliothèque retirés des listes (C20/25, C35/45, S275 devenaient C25/30 sans rien dire). | `src/Model/CreationPresets.h`, `src/UI/Dialogs/StructurePresetDialog.*`, `SurfaceCreationDialog.cpp` |
+| D5 Pas de validation | Contrôles avant toute modification : longueur nulle, section sans aire, matériau sans module, doublons, dalle (3 points, alignés, non plane, croisée, points confondus), voile de dimension nulle, deuxième semelle sur un nœud. | `ElementCreation.cpp` |
+| D6 Croisement non signalé | Avertissement si une extrémité tombe sur une barre sans nœud, ou si deux barres se croisent sans nœud commun. Aucune division automatique. | `ElementCreation.cpp` |
+| D7 Tolérance locale | `GeometryTolerance::nodeCoincidence` (1 mm) seule tolérance ; au-delà, nouveau nœud, sans fusion. | `src/Coordinate/GeometryTolerance.h` |
+| D8 Quantités absentes | `QuantityTakeoff` : longueur, surfaces brute / ouvertures / nette, volume, masse, par élément, produit, matériau, section et famille. | `src/BIM/Core/QuantityTakeoff.*` |
+| D9 Palette sans BIM | Bloc « Identité BIM et quantités » sous la vue de l'élément (produit, classe IFC, GlobalId, étage, type, métré). | `src/UI/Properties/ElementBimPanel.*`, `PropertyPanel.*` |
+| D10 Navigateur sans hiérarchie BIM | Branche « Structure BIM (IFC) » : site › bâtiment › étages › produits, et types de produits. | `src/UI/ModelTree/ModelTreeWidget.*`, `src/UI/Common/SelectionSynchronizer.cpp` |
+| D11 Types copiés par valeur | Types de produits partagés (`ProductType`) : création depuis le modèle, propagation, réapplication, écarts, IFC. | `src/BIM/Core/BimModel.*`, `src/BIM/Core/ProductTypes.*`, `src/BIM/IFC/*` |
+
+### 1.2 Feuille de route validée le 18/10
+
+| Étape | Résultat | Commit |
+| :--- | :--- | :--- |
+| 1. Outils avancés par le service | Chaîne, rectangle, portique, contreventement en X, arc, poteaux sur grille passent par `ElementCreation` ; l'outil entier est annulé au premier refus. Un rectangle posé sur des poutres existantes les **doublait en silence** : il est désormais refusé (test 148 adapté). | `c329057` |
+| 2. Validation dans l'interface complète | Scénario UI Automation (`drawing_scenario.ps1`). Il a trouvé et fait corriger trois défauts (§ 4). | `49e3e42` |
+| 3. Arbre par bâtiment et étages | Branche « Structure BIM » ; un clic sur un produit ouvre son élément de calcul ou l'inspecteur IFC. | `746c473` |
+| 4. Voiles à base inclinée | Calcul, métré et IFC vérifiés **ensemble** (§ 5). | `c4d9ec8` |
+| 5. Types partagés | Types de sections et de matériaux, persistance compatible, IFC (§ 6). | ce commit |
 
 ## 2. État par exigence de la mission
 
 | Exigence | État | Commentaire |
 | :--- | :--- | :--- |
-| Objet BIM = entité métier persistante | terminé | Produit physique, GlobalId et classe IFC pour tout élément dessiné (test 417). L'identité survit à Annuler / Rétablir, au `.tsa` et à l'IFC (test 423). |
-| Séparation BIM / représentation / analytique / IFC | terminé | Le service écrit le modèle ; la vue n'affiche que le résultat ; le produit BIM se synchronise ; l'IFC reste dans `src/BIM/IFC`. |
-| Cycle de création en 12 étapes, aucun objet invalide | terminé pour les modes Dessin et les 3 dialogues | Les outils `ModelingTool` de dessin restent transactionnels, mais sans les validations du service (partiel, feuille de route n° 1). |
-| Accrochage centralisé | terminé | `SnapEngine` seul, tolérance de coïncidence unique. `GridSnapManager`, sans appelant, n'est pas encore retiré (non commencé, D13). |
-| Croisement ≠ connexion | terminé | Tests 416, 423. |
-| Pas de fusion par proximité | terminé | Test 410 (à 2 mm : nouveau nœud). |
-| Aucun nœud, appui ou charge inventé | terminé | Aucun appui ni aucune charge n'est créé par les outils. Le poteau de 3 m implicite est supprimé (test 419). |
-| Résultats périmés signalés | terminé | Test 418 : la création invalide les résultats, un refus non. |
-| Quantités issues du modèle | terminé | Tests 420, 421, 423. Produits importés sans élément de calcul : pas de métré (limite documentée). |
-| Palette de propriétés | terminé | Test 422. |
-| Navigateur à hiérarchie BIM | non commencé | D10. |
-| Types partagés (section, matériau) | non commencé | D11, demande une migration du format. |
+| Objet BIM = entité métier persistante | terminé | Produit, GlobalId, classe IFC, type, pour tout élément dessiné ; identité conservée par Annuler / Rétablir, `.tsa` et IFC (tests 417, 423, 430). |
+| Séparation BIM / représentation / analytique / IFC | terminé | Le service écrit le modèle, la vue affiche, le BIM se synchronise, l'IFC reste dans `src/BIM/IFC`. |
+| Cycle de création, aucun objet invalide | terminé | Modes Dessin, trois dialogues, six outils avancés (tests 410-416, 425). |
+| Accrochage centralisé | terminé | `SnapEngine` seul, tolérance unique. `GridSnapManager` (sans appelant) n'est pas retiré (D13, non commencé). |
+| Croisement ≠ connexion | terminé | Tests 416, 423, 425. |
+| Pas de fusion par proximité | terminé | Test 410. |
+| Aucun nœud, appui ou charge inventé | terminé | Tests 419, 425. |
+| Résultats périmés signalés | terminé | Tests 418, 431. |
+| Quantités issues du modèle | terminé | Tests 420, 421, 423, 428. Produit importé sans élément de calcul : pas de métré (limite documentée). |
+| Palette de propriétés | terminé | Tests 422, 426 ; essai de l'interface. |
+| Navigateur à hiérarchie BIM | terminé | Test 427 ; essai de l'interface. |
+| Types partagés | terminé (cœur) | Tests 430-432 ; essai de l'interface. Pas d'éditeur de type dédié (§ 7). |
+| Voiles à base inclinée | terminé | Tests 424, 428, 429 ; essai de l'interface. Porte au pied refusée sur une base inclinée. |
+| Persistance compatible | terminé | Format `.tsa` inchangé (1.11) ; types en champs facultatifs du bloc BIM, schéma 1 inchangé ; ancien fichier lu tel quel (test 430). |
+| IFC | terminé | Éléments dessinés, voiles inclinés et types : export, relecture par IfcOpenShell, réimport (tests 423, 428, 432). |
 | Grilles dans le modèle | non commencé | D12. |
-| Persistance compatible / migrée | terminé | Format inchangé ; aller-retour `.tsa` vérifié (test 423). Les préréglages ne sont pas persistés, comme avant. |
-| IFC | terminé | Export puis réimport des éléments dessinés : mêmes GlobalId (test 423). |
 | Rien de bloqué | — | Aucun point bloqué. |
 
 ## 3. Tests
 
-Nouvelle suite `drawing` (`tests/test_drawing.cpp`), enregistrée sous CTest (`TSA_drawingTests`) :
+Suite `drawing` (`tests/test_drawing.cpp`, CTest `TSA_drawingTests`) et un test de la suite `surfaces` :
 
 | Test | Objet |
 | :--- | :--- |
-| 410 | nœud : création, point confondu refusé, à 2 mm nouveau nœud, Annuler |
-| 411 | poutre : nœuds et poutre dans une entrée Annuler, Rétablir, nœud accroché ou confondu réutilisé |
-| 412 | refus avant modification : longueur nulle, section, matériau, doublons |
-| 413 | poteau, treillis selon le préréglage, câble avec réglages du dialogue dans la même transaction |
-| 414 | dalle : 2 points, alignés, non plane, croisée, confondus, côté replié, doublon ; création, Annuler |
-| 415 | voile et semelle selon les préréglages, doublons |
-| 416 | extrémité sur une barre et croisement : avertis, rien n'est divisé ni ajouté |
-| 417 | produit IfcColumn avec GlobalId ; Annuler le retire, Rétablir rend le même GlobalId |
-| 418 | résultats périmés après création, intacts après refus |
-| 419 | **vraie vue OCCT pilotée par clics** : aucun nœud pendant le tracé, Échap ne laisse rien, Entrée valide une dalle, Annuler complet, double clic de poteau refusé |
-| 420 | métré : poutre, dalle avec trémie, voile avec porte, semelle, treillis ; cumuls ; produit de 2 poutres |
-| 421 | quantités recalculées après déplacement d'un nœud et après Annuler |
-| 422 | palette : classe IFC, GlobalId, quantités, mise à jour, nœud sans panneau |
-| 424 | voile : même cote, écart de 0,5 mm (créé, cote conservée), écarts de ±0,40 m et 2 mm (refus motivé, rien de créé), nœuds existants intacts ; garde sur la limite de `wallSurface` |
-| 423 | scénario d'intégration : 4 poteaux, 4 poutres, dalle, voile, 4 semelles sur les nœuds existants ; aucun orphelin ; un produit par élément ; métré ; `.tsa` ; IFC ; 14 entrées Annuler |
+| 410-416 | service de création : nœud, poutre transactionnelle, refus, poteau / treillis / câble, dalle, voile / semelle, croisements |
+| 417-418 | identité BIM des éléments dessinés ; résultats périmés après création, intacts après refus |
+| 419 | **vraie vue OCCT pilotée par clics** : aucun nœud pendant le tracé, Échap, Entrée, Annuler, double clic de poteau refusé (sauté et annoncé sous `offscreen`, BUG-076) |
+| 420-421 | métré (trémie, porte, cumuls, produit de 2 poutres) ; quantités recalculées |
+| 422, 426 | bloc BIM seul, puis dans la palette complète (régression trouvée par l'essai de l'interface) |
+| 423 | scénario d'intégration : 14 créations, aucun orphelin, un produit par élément, métré, `.tsa`, IFC, 14 entrées Annuler |
+| 424 | voile à base inclinée : accepté et signalé au-delà de 1 mm, cotes conservées, Annuler |
+| 425 | outils avancés : portique refusé sans trace (y compris dans une transaction englobante), une entrée Annuler, préréglage Treillis, croisement signalé, arc en double refusé |
+| 427 | arbre « Structure BIM » : étages, produits, signal au clic, mise à jour après Annuler |
+| 428 | voile incliné : repère orthonormé, aire, ouvertures, métré, aller-retour IFC, **volume relu par IfcOpenShell = 2,4 m³** |
+| 429 (surfaces) | voile incliné **calculé en coques** : poids propre = Σ réactions = ρ·g·t·L·H = 58,86 kN, éléments dans le parallélogramme |
+| 430-432 | types : création (migration), `.tsa`, ancien bloc sans types ; écart, propagation (une entrée Annuler), réapplication ; IFC (fichier validé par IfcOpenShell, réimport) |
+| 148 (tools) | adapté : le rectangle superposé à une chaîne existante est refusé (il doublait deux poutres) |
 
-Résultats mesurés sur ce poste (Release, MSVC 19.51, Qt 6.11.2) :
+Résultats mesurés sur ce poste (Release, MSVC 19.51, Qt 6.11.2, plateforme native) :
 
-- suite `drawing`, plateforme native : **15 / 15** (avec le test 424) ;
-- suite `drawing`, plateforme `offscreen` : 13 / 13 avant le test 424, le test 419 étant **annoncé comme sauté**
-  (BUG-076 : vue OCCT impossible sous `offscreen`) et non compté ;
-- suite complète, plateforme native : voir § 5.
+- suite `drawing` : **22 / 22** ; suite `surfaces` : 12 / 12 ; suite `tools` : 10 / 10 ;
+- suite complète : **427 / 427** (18/10/2026, version finale).
 
-## 4. Ce qui n'a pas été vérifié
+Le test 20 (mesure de temps d'annulation, BUG-035) a échoué deux fois sur une dizaine
+d'exécutions complètes, toujours sous charge. Les meilleurs temps mesurés à 5 000 barres vont de
+22 ms à 508 ms selon la charge du poste. Les suites qui le précèdent n'exécutent aucun code de ce
+chantier, et le seuil n'a pas été modifié.
 
-- **Essai de l'interface réelle de TSA** (UI Automation sur l'application complète) : non lancé
-  dans ce chantier. Le test 419 pilote une vraie vue OCCT par événements souris, mais hors de la
-  fenêtre principale (pas de ruban ni de dialogues réels). Aucun scénario de l'interface n'est
-  déclaré validé visuellement.
-- **CI GitHub** : la branche n'est pas poussée, aucun essai CI n'a donc été fait.
+## 4. Essai de l'interface réelle
 
-## 5. Suite complète et constats annexes
+`tools/ui_tests/drawing_scenario.ps1` pilote TSA par UI Automation : vrais clics dans la vue 3D,
+vrais dialogues, ruban et menus contextuels. Dernière exécution : **17 / 17 vérifications
+observées**, captures conservées dans le dossier d'essai.
 
-- Suite complète, plateforme native, avant le correctif de la touche Entrée (§ 7) : **418 / 418**.
-- Version finale, plateforme native, deux exécutions :
-  - **412 / 418** à la première. Le test 20 (mesure de temps, annulation à 5 000 barres sous
-    350 ms) a dépassé son seuil et interrompu la suite `commands`. Ce test est déjà connu pour
-    être instable sous charge (BUG-035).
-  - La suite `commands` lancée seule trois fois : 7 / 7 à chaque fois (meilleur temps à
-    5 000 barres ≈ 156 ms).
-  - **418 / 418** à la seconde exécution complète.
-- Avec la règle du voile incliné (test 424, 419 tests), deux exécutions complètes en natif :
-  - **413 / 419** à la première, de nouveau à cause du test 20 : meilleur temps d'annulation à
-    5 000 barres = 508 ms ;
-  - **419 / 419** à la seconde, avec 29 ms pour la même mesure.
-  - Les suites qui précèdent le test 20 (coordinates, model, io) n'appellent aucun code modifié
-    par ce chantier. Le seuil n'a pas été modifié.
-- Deux lignes `libpng error: Read Error` apparaissent sur la sortie d'erreur pendant les tests des
-  modèles de documents (vers le test 284). Elles figuraient déjà dans un journal CI antérieur à ce
-  chantier et ne font échouer aucun test : rien à voir avec le dessin, non traité ici.
+| Étape | Observé |
+| :--- | :--- |
+| Poutre | 1er clic sans nœud ; Échap sans trace ; poutre au 2nd clic ; Annuler retire poutre et nœuds ; Rétablir |
+| Dalle | 3 clics sans nœud ; Entrée : dalle et ses 3 nœuds ; dalle croisée refusée (« Le contour se recoupe ») |
+| Voile incliné | créé, invite « Attention : Base inclinée : les deux pieds du voile diffèrent de 0.400 m » |
+| Préréglages | onglets Fondation et Treillis |
+| Portique | créé ; relancé sur les mêmes pieds : « Portique non créé : … élément en double » (console), rien de créé |
+| Palette | bloc « Identité BIM et quantités » de la dalle (classe IfcSlab, GlobalId, surface, volume) |
+| Arbre | Structure BIM › Site › Bâtiment › RDC › Poteau C1 ; clic → propriétés du poteau |
+| Types | clic droit sur la branche BIM → « Créer les types… » : 5 types, branche « Types de produits » |
 
-## 6. Voile à base inclinée
+Défauts de TSA trouvés par cet essai et corrigés :
 
-Règle retenue : **refus motivé** si les deux points de base diffèrent de plus de
-`GeometryTolerance::nodeCoincidence` (1 mm) en cote. En deçà, le voile est créé sans
-avertissement et sans retouche des coordonnées.
+1. Annuler (bouton et Ctrl+Z) restait **grisé après un tracé dans la vue 3D**. Le signal
+   `elementCreated` n'avait aucun abonné ; ce défaut est antérieur au chantier.
+2. Le bloc BIM ne s'affichait jamais dans l'application : il ne recevait pas le modèle. Le test
+   unitaire du bloc seul ne pouvait pas le voir (test 426 ajouté).
+3. Après Échap en mode Poutre ou Poteau, le dialogue « Barre » gardait l'origine du tracé annulé.
 
-Pourquoi un refus plutôt qu'un avertissement : la géométrie ne serait pas seulement douteuse,
-elle serait fausse dans le calcul.
-- `TSA::Mesh::wallSurface` prend `U` le long de la base, donc incliné, et `V` vertical ; or
-  `PlaneFrame::toLocal` suppose un repère orthogonal. Le maillage Gmsh, les ouvertures et les
-  charges de surface seraient mal placés.
-- L'aire vaut `L₃D × H` au lieu de `L_horizontale × H`. Le test 424 constate 15 m² au lieu de
-  12 m² pour une base de 4 m horizontaux et 3 m de dénivelé.
+Un premier essai, dont le script n'avait pas de garde-fou, a ouvert un projet récent de
+l'utilisateur. Le fichier n'a pas été modifié sur disque (vérifié), et l'essai s'arrête désormais
+sans rien enregistrer si la fenêtre active n'est pas le projet qu'il a créé.
 
-Le message du refus s'affiche dans la barre d'invite pour le mode Dessin (« Non créé : … ») et
-dans une boîte de message pour le dialogue « Surface ».
+## 5. Voiles à base inclinée
 
-Limites restantes :
-- Les voiles à base inclinée déjà présents dans un fichier ou importés ne sont pas concernés
-  par la règle ; leur calcul garde les défauts ci-dessus.
-- `QuantityTakeoff` mesure la longueur d'un voile en 3D : son métré est surestimé de la même
-  façon.
-- Prendre en charge les voiles sur terrain en pente demande un repère orthogonal dans
-  `wallSurface`, une aire correcte, un métré cohérent et l'export IFC correspondant, avec leurs
-  tests. C'est un chantier à part entière, non commencé.
+Un voile est extrudé verticalement depuis sa base. Si ses pieds diffèrent de cote, son élévation
+est un parallélogramme d'aire longueur en plan × hauteur. Toutes les représentations utilisent
+désormais cette géométrie :
 
-## 7. Défaut trouvé pendant la relecture
+| Représentation | Avant | Après |
+| :--- | :--- | :--- |
+| Affichage 3D | parallélogramme | inchangé |
+| Calcul (`wallSurface`) | repère non orthogonal, aire L₃D × H | repère U horizontal / V vertical, aire L × H |
+| `Wall::length()` (poids propre total, ouvertures) | longueur 3D | longueur en plan |
+| Métré | longueur 3D | longueur en plan |
+| Export IFC | bloc horizontal à la cote du 1er pied | parallélogramme extrudé dans l'épaisseur |
+| Réimport IFC | « contour non rectangulaire non pris en charge » | voile recréé |
 
-La touche Entrée du mode Dessin Dalle avait gardé une copie de l'ancien code : `addSlab` sur les
-numéros de nœuds du tracé, sans validation. Avec des points libres (−1), elle aurait transmis des
-identifiants invalides. Elle appelle désormais `finishCurrentSlab()` (même validation, même
-transaction). Le test 419 couvre ce chemin.
+À la création, un voile incliné est accepté avec l'avertissement « Base inclinée », car il
+s'agit souvent d'une erreur de niveau visé. Limite restante : une porte au pied d'un voile à base
+inclinée est refusée, avec son motif.
+
+## 6. Types de produits partagés
+
+- **Modèle** : `ProductType` dans le `BimModel`, rattaché aux produits par `typeId`, avec
+  section et matériau (éléments linéaires), épaisseur et matériau (dalles, voiles), matériau
+  (fondations). Sauvegardé avec le modèle (Annuler / Rétablir).
+- **Persistance** : champs facultatifs du bloc BIM (`types`, `type`), schéma inchangé. Un
+  fichier existant se lit tel quel, avec des produits sans type ; une version antérieure de TSA
+  ignore les types sans rejeter le bloc BIM.
+- **Opérations**, chacune en une transaction (menu contextuel de l'arbre) :
+  - créer les types depuis le modèle (migration) ;
+  - propager la définition d'un élément à son type ;
+  - réappliquer un type à ses occurrences.
+  L'écart d'une occurrence est affiché dans la palette et l'arbre.
+- **IFC** : `Ifc*Type` et `IfcRelDefinesByType` à l'export ; à l'import, types recréés avec
+  leur GlobalId, définition reprise de la première occurrence.
+
+## 7. Limites et reste à faire
+
+- Types : pas d'éditeur de type dédié. On modifie une occurrence puis on propage. Les câbles
+  n'ont pas de type, et le matériau n'est associé qu'aux occurrences en IFC, pas au type.
+- Porte au pied d'un voile à base inclinée.
+- Grilles dans le `Model` (D12), retrait de `GridSnapManager` (D13), préréglages persistés,
+  libellés de matériaux par la bibliothèque : non commencés.
+- CI : les quatre suites qui créent une vue OCCT échouent sous `offscreen` (BUG-076).
+  Proposition : les lancer en plateforme `windows` sur le runner (à essayer).
+- Messages « No operation defined for IfcVertexPoint » du noyau d'IfcOpenShell à la relecture
+  d'un export TSA : points de connexion analytiques sans géométrie physique ; sans effet sur
+  l'import.

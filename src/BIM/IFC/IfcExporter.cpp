@@ -281,6 +281,7 @@ private:
                 + ec.tail;
             const int product = m_w.add(ec.entity, args);
             m_productIds[id] = product;
+            if (const int type = typeEntity(e.typeId)) m_rels.defineByType(type, product);
             productByGuid[e.globalId] = product;
             if (!parentOf.count(id)) m_rels.contain(container, product);
             ++m_report.products;
@@ -326,6 +327,36 @@ private:
             const auto whole = productByGuid.find(parentGuid);
             if (part != m_productIds.end() && whole != productByGuid.end()) m_rels.aggregate(whole->second, part->second);
         }
+    }
+
+    /// Type de produit partagé (IfcBeamType, IfcColumnType…), écrit une fois ; 0 si le produit n'a pas de type ou si sa
+    /// catégorie n'a pas de type IFC.
+    int typeEntity(int typeId)
+    {
+        if (typeId == 0) return 0;
+        if (const auto it = m_typeIds.find(typeId); it != m_typeIds.end()) return it->second;
+        const auto* t = m_ctx.bim.type(typeId);
+        const char* entity = nullptr;
+        if (t)
+        {
+            switch (t->category)
+            {
+            case BimCategory::Beam: entity = "IFCBEAMTYPE"; break;
+            case BimCategory::Column: entity = "IFCCOLUMNTYPE"; break;
+            case BimCategory::Member: entity = "IFCMEMBERTYPE"; break;
+            case BimCategory::Slab: entity = "IFCSLABTYPE"; break;
+            case BimCategory::Wall: entity = "IFCWALLTYPE"; break;
+            case BimCategory::Footing: entity = "IFCFOOTINGTYPE"; break;
+            case BimCategory::Pile: entity = "IFCPILETYPE"; break;
+            case BimCategory::Plate: entity = "IFCPLATETYPE"; break;
+            default: break;
+            }
+        }
+        // GlobalId, OwnerHistory, Name, Description, ApplicableOccurrence, HasPropertySets, RepresentationMaps, Tag,
+        // ElementType, PredefinedType
+        const int id = entity ? m_w.add(entity, W::str(t->globalId) + ",$," + W::str(t->name) + ",$,$,$,$,$,$,.NOTDEFINED.") : 0;
+        m_typeIds[typeId] = id;
+        return id;
     }
 
     /// Géométrie importée : IfcTriangulatedFaceSet (coordonnées du projet, m) et sa couleur (style de surface).
@@ -590,6 +621,7 @@ private:
     int m_identity = 0, m_project = 0, m_site = 0, m_building = 0, m_sitePlacement = 0, m_buildingPlacement = 0;
     std::map<std::string, std::pair<int, int>> m_storeys;   ///< niveau → (étage, placement)
     std::map<int, int> m_productIds;                        ///< id produit BIM → #STEP
+    std::map<int, int> m_typeIds;                           ///< id type de produit → #STEP (0 : pas de type IFC)
     std::map<int, int> m_vertices, m_connections;           ///< nœud → #STEP
     std::vector<int> m_analyticalItems;
     std::map<std::tuple<long, long, long, long>, int> m_styles;   ///< couleur (RVBA ×255) → IfcSurfaceStyle

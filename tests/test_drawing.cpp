@@ -1,9 +1,10 @@
-// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée, outils avancés, palette complète, arbre BIM, voile incliné cohérent (tests 410-428). Les points sont
+// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée, outils avancés, palette complète, arbre BIM, voile incliné cohérent, types de produits (tests 410-432). Les points sont
 // fournis comme par la vue 3D (position accrochée, nœud visé) ; le modèle, l'historique et la couche
 // BIM sont vérifiés après chaque création ou refus.
 
 #include "test_common.h"
 
+#include "BIM/Core/ProductTypes.h"
 #include "BIM/Core/QuantityTakeoff.h"
 #include "BIM/IFC/IfcExporter.h"
 #include "BIM/IFC/IfcImporter.h"
@@ -866,6 +867,158 @@ bool runSuite_Drawing(int& passed)
         else
             TEST_CHECK(ir.ok && approxEqual(volume, 4.0 * 3.0 * 0.2, 1e-3), "Test 428: IFC relu par IfcOpenShell : volume du voile 2,4 m³ (12 m² × 0,2 m)");
         std::cout << "[PASS] Test 428: Voile à base inclinée, calcul / ouvertures / métré / IFC cohérents" << std::endl;
+        ++passed;
+    }
+
+    // TEST 430 : types de produits partagés — création depuis le modèle (migration), persistance .tsa, ancien bloc BIM
+    // sans types lu tel quel, schéma du bloc inchangé
+    {
+        Model m;
+        ElementCreation c(m);
+        auto b1 = c.createBar(pt(0, 0, 3), pt(5, 0, 3), beamProps());
+        auto b2 = c.createBar(pt(0, 4, 3), pt(5, 4, 3), beamProps());
+        auto steel = beamProps();
+        steel.section = Section::ipe(200);
+        steel.material = Material::steelS235();
+        auto b3 = c.createBar(pt(0, 8, 3), pt(5, 8, 3), steel);
+        auto col = beamProps();
+        col.role = BarRole::Column;
+        col.section = Section::rectangular(0.30, 0.30, "R30x30");
+        auto c1 = c.createBar(pt(0, 0, 0), pt(0, 0, 3, b1.nodeIds[0]), col);
+        SlabPreset s20, s25;
+        s25.thickness = 0.25;
+        auto sl1 = c.createSlab({ pt(10, 0, 0), pt(14, 0, 0), pt(14, 4, 0), pt(10, 4, 0) }, s20);
+        auto sl2 = c.createSlab({ pt(20, 0, 0), pt(24, 0, 0), pt(24, 4, 0), pt(20, 4, 0) }, s25);
+        WallPreset wp;
+        c.createWall(pt(30, 0, 0), pt(35, 0, 0), wp);
+        FoundationPreset fp;
+        c.createFoundation(pt(0, 0, 0, c1.nodeIds[0]), fp);
+        TEST_CHECK(b2.success && b3.success && sl1.success && sl2.success, "Test 430: modèle (3 poutres, poteau, 2 dalles, voile, semelle)");
+
+        const int created = TSA::BIM::createTypesFromModel(m);
+        const auto& bim = m.bim();
+        auto typeOf = [&](ElementKind k, int id) { const auto* p = bim.physicalOf({ k, id }); return p ? bim.type(p->typeId) : nullptr; };
+        const auto* tb1 = typeOf(ElementKind::Beam, b1.elementId);
+        TEST_CHECK(created == 7 && bim.types().size() == 7, "Test 430: 7 types (poutre R30x50, poutre IPE 200, poteau, dalle 0,20, dalle 0,25, voile, semelle)");
+        TEST_CHECK(tb1 && tb1 == typeOf(ElementKind::Beam, b2.elementId) && tb1 != typeOf(ElementKind::Beam, b3.elementId)
+                       && bim.occurrences(tb1->id).size() == 2 && tb1->section.name == "R30x50" && tb1->globalId.size() == 22,
+                   "Test 430: deux poutres R30x50 = un type à 2 occurrences, la poutre IPE 200 a le sien");
+        TEST_CHECK(typeOf(ElementKind::Slab, sl1.elementId) != typeOf(ElementKind::Slab, sl2.elementId)
+                       && std::abs(typeOf(ElementKind::Slab, sl2.elementId)->thickness - 0.25) < 1e-12, "Test 430: dalles d'épaisseurs différentes : types distincts");
+        TEST_CHECK(TSA::BIM::createTypesFromModel(m) == 0, "Test 430: relancé : aucun type de plus");
+        TEST_CHECK(m.bim().toJson()["schema"].toInt() == 1, "Test 430: schéma du bloc BIM inchangé (champs facultatifs ajoutés)");
+
+        // .tsa : types, GlobalId, occurrences, section et matériau (apparence comprise) relus
+        TSA::Model::Material tinted = m.getBeam(b3.elementId)->material();
+        const std::string color = tinted.visual.baseColor;
+        const auto filePath = std::filesystem::temp_directory_path() / "tsa_test430.tsa";
+        const QString file = QString::fromStdWString(filePath.wstring());
+        std::string err;
+        TEST_CHECK(TSA::IO::TSAProjectIO::saveToFile(file, m, nullptr, &err), "Test 430: enregistrement .tsa (" + err + ")");
+        Model r;
+        TEST_CHECK(TSA::IO::TSAProjectIO::loadFromFile(file, r, nullptr, &err), "Test 430: relecture .tsa (" + err + ")");
+        std::filesystem::remove(filePath);
+        bool same = r.bim().types().size() == 7;
+        for (const auto& [tid, t] : m.bim().types())
+        {
+            const auto* rt = r.bim().type(tid);
+            same = same && rt && rt->globalId == t.globalId && rt->name == t.name && rt->section.name == t.section.name
+                   && rt->material.name == t.material.name && rt->material.visual.baseColor == t.material.visual.baseColor
+                   && std::abs(rt->thickness - t.thickness) < 1e-12 && r.bim().occurrences(tid).size() == m.bim().occurrences(tid).size();
+        }
+        TEST_CHECK(same, "Test 430: .tsa relu : mêmes types, GlobalId, définitions et occurrences");
+
+        // Bloc BIM d'une version antérieure (sans « types » ni « type ») : lu, produits sans type
+        QJsonObject old = m.bim().toJson();
+        old.remove("types");
+        old.remove("nextTypeId");
+        TSA::BIM::BimModel legacy;
+        bool untyped = TSA::BIM::BimModel::fromJson(old, legacy) && legacy.types().empty();
+        for (const auto& [id, p] : legacy.elements()) untyped = untyped && p.typeId == 0;
+        TEST_CHECK(untyped && legacy.elements().size() == m.bim().elements().size(), "Test 430: ancien bloc BIM sans types : lu, produits sans type");
+        std::cout << "[PASS] Test 430: Types de produits — création, persistance, compatibilité" << std::endl;
+        ++passed;
+    }
+
+    // TEST 431 : occurrence modifiée → écart affiché ; propagation au type (une entrée Annuler), réapplication,
+    // résultats de calcul périmés
+    {
+        Model m;
+        ElementCreation c(m);
+        auto b1 = c.createBar(pt(0, 0, 3), pt(5, 0, 3), beamProps());
+        auto b2 = c.createBar(pt(0, 4, 3), pt(5, 4, 3), beamProps());
+        auto b3 = c.createBar(pt(0, 8, 3), pt(5, 8, 3), beamProps());
+        TSA::UI::ModelTreeWidget tree(&m);
+        tree.refreshAll();
+        QString lastMessage;
+        QObject::connect(&tree, &TSA::UI::ModelTreeWidget::modelEditedByTree, [&lastMessage](const QString& msg) { lastMessage = msg; });
+        TEST_CHECK(tree.createProductTypes() == 1 && m.canUndo(), "Test 431: type créé depuis l'arbre (une entrée Annuler)");
+        const int p2 = m.bim().physicalOf({ ElementKind::Beam, b2.elementId })->id;
+        const int typeId = m.bim().element(p2)->typeId;
+
+        // Occurrence modifiée seule (comme dans la palette) : écart signalé (fonction et panneau BIM)
+        m.getBeam(b2.elementId)->setSection(Section::rectangular(0.30, 0.60, "R30x60"));
+        m.notifyBeamModified(b2.elementId);
+        TEST_CHECK(TSA::BIM::typeDeviation(m, *m.bim().element(p2)) == "section R30x60 au lieu de R30x50", "Test 431: écart de la poutre modifiée");
+        TSA::UI::ElementBimPanel panel;
+        panel.setModel(&m);
+        panel.showElement(TSA::BIM::AnalyticalRef { ElementKind::Beam, b2.elementId });
+        TEST_CHECK(panel.text().contains("Type : Poutre R30x50") && panel.text().contains("diffère du type"), "Test 431: palette : type et écart affichés");
+
+        auto results = std::make_shared<TSA::Analysis::ResultsModel>();
+        results->setValid(true);
+        TSA::Analysis::ResultsValidityGuard guard(&m);
+        guard.trackResults(results);
+        m.clearUndoRedo();
+        TEST_CHECK(tree.propagateProductType(p2) == 2 && lastMessage.contains("propagé"), "Test 431: propagation au type : les 2 autres poutres modifiées");
+        bool all60 = true;
+        for (int id : { b1.elementId, b2.elementId, b3.elementId }) all60 = all60 && m.getBeam(id)->section().name == "R30x60";
+        TEST_CHECK(all60 && m.bim().type(typeId)->section.name == "R30x60" && !guard.resultsUpToDate(),
+                   "Test 431: type et 3 occurrences en R30x60, résultats de calcul périmés");
+        TEST_CHECK(m.undo() && m.getBeam(b1.elementId)->section().name == "R30x50" && m.getBeam(b3.elementId)->section().name == "R30x50"
+                       && m.bim().type(typeId)->section.name == "R30x50" && !m.canUndo(),
+                   "Test 431: une seule entrée Annuler : type et occurrences rétablis");
+        TEST_CHECK(tree.reapplyProductType(typeId) == 1 && m.getBeam(b2.elementId)->section().name == "R30x50",
+                   "Test 431: réapplication du type : la poutre modifiée revient à R30x50");
+        TEST_CHECK(tree.reapplyProductType(typeId) == 0 && lastMessage.contains("conformes"), "Test 431: déjà conforme : rien à faire, message");
+        std::cout << "[PASS] Test 431: Types de produits — écart, propagation, réapplication" << std::endl;
+        ++passed;
+    }
+
+    // TEST 432 : types de produits en IFC — Ifc*Type + IfcRelDefinesByType (fichier validé par IfcOpenShell), réimport :
+    // mêmes types (GlobalId), occurrences, définitions reprises des occurrences
+    {
+        Model m;
+        ElementCreation c(m);
+        c.createBar(pt(0, 0, 3), pt(5, 0, 3), beamProps());
+        c.createBar(pt(0, 4, 3), pt(5, 4, 3), beamProps());
+        SlabPreset sp;
+        c.createSlab({ pt(0, 0, 3), pt(5, 0, 3), pt(5, 4, 3), pt(0, 4, 3) }, sp);
+        TSA::BIM::createTypesFromModel(m);
+        TSA::BIM::Ifc::IfcExportOptions opt;
+        opt.timeStamp = "2026-10-18T12:00:00";
+        std::string doc;
+        TEST_CHECK(TSA::BIM::Ifc::IfcExporter::exportToString(m, opt, doc).ok, "Test 432: export IFC");
+        TEST_CHECK(doc.find("IFCBEAMTYPE") != std::string::npos && doc.find("IFCSLABTYPE") != std::string::npos
+                       && doc.find("IFCRELDEFINESBYTYPE") != std::string::npos, "Test 432: IfcBeamType, IfcSlabType, IfcRelDefinesByType écrits");
+        const auto ifcPath = std::filesystem::temp_directory_path() / "tsa_test432.ifc";
+        const auto er = TSA::BIM::Ifc::IfcExporter::exportToFile(m, ifcPath.string(), opt);
+        std::filesystem::remove(ifcPath);
+        TEST_CHECK(er.ok, "Test 432: fichier écrit après relecture de contrôle (IfcOpenShell)");
+
+        Model back;
+        TEST_CHECK(TSA::BIM::Ifc::IfcImporter::importString(doc, back).ok, "Test 432: réimport");
+        bool same = back.bim().types().size() == m.bim().types().size();
+        for (const auto& [tid, t] : m.bim().types())
+        {
+            const TSA::BIM::ProductType* bt = nullptr;
+            for (const auto& [id, x] : back.bim().types()) if (x.globalId == t.globalId) bt = &x;
+            same = same && bt && bt->name == t.name && bt->category == t.category && bt->material.name == t.material.name
+                   && back.bim().occurrences(bt->id).size() == m.bim().occurrences(tid).size()
+                   && (t.category != TSA::BIM::BimCategory::Beam || bt->section.name == t.section.name);
+        }
+        TEST_CHECK(same, "Test 432: réimport : mêmes types (GlobalId, nom), mêmes occurrences, définitions reprises");
+        std::cout << "[PASS] Test 432: Types de produits en IFC" << std::endl;
         ++passed;
     }
 

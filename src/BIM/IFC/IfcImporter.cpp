@@ -1,4 +1,5 @@
 #include "IfcImporter.h"
+#include "../Core/ProductTypes.h"
 
 #include "IfcGeometryMapper.h"
 #include "IfcOpenShellImport.h"
@@ -954,8 +955,44 @@ private:
             if (e.predefinedType.empty()) e.predefinedType = "NOTDEFINED";
             m_bim.insert(e);
         }
+        importTypes();
         m_m.setBim(m_bim);
+        completeTypeDefinitions(m_m, m_importedTypes);   // section, matériau, épaisseur repris de la première occurrence
         m_m.setModified(true);
+    }
+
+    /// Types de produits (IfcRelDefinesByType) : un ProductType par type IFC rattaché à des produits importés.
+    void importTypes()
+    {
+        static const std::map<std::string, BimCategory> categories {
+            { "IFCBEAMTYPE", BimCategory::Beam }, { "IFCCOLUMNTYPE", BimCategory::Column }, { "IFCMEMBERTYPE", BimCategory::Member },
+            { "IFCSLABTYPE", BimCategory::Slab }, { "IFCWALLTYPE", BimCategory::Wall }, { "IFCFOOTINGTYPE", BimCategory::Footing },
+            { "IFCPILETYPE", BimCategory::Pile }, { "IFCPLATETYPE", BimCategory::Plate } };
+        std::map<int, int> typeOfEntity;   // #type IFC → id du type TSA
+        for (const auto* rel : m_r.byType("IFCRELDEFINESBYTYPE"))
+        {
+            const auto* te = m_r.get(rel->arg(5));
+            if (!te) continue;
+            const auto cat = categories.find(te->type);
+            if (cat == categories.end()) continue;
+            for (int obj : rel->arg(4).refs())
+            {
+                const auto* product = m_r.get(obj);
+                const auto* p = product ? m_bim.elementByGlobalId(product->arg(0).asText()) : nullptr;
+                if (!p) continue;
+                int& tid = typeOfEntity[te->id];
+                if (!tid)
+                {
+                    ProductType t;
+                    t.globalId = te->arg(0).asText();
+                    t.name = te->arg(2).isNull() ? std::string() : te->arg(2).asText();
+                    t.category = cat->second;
+                    tid = m_bim.addType(t);
+                    m_importedTypes.push_back(tid);
+                }
+                m_bim.setProductType(p->id, tid);
+            }
+        }
     }
 
     const IfcStepReader& m_r;
@@ -967,6 +1004,7 @@ private:
     bool m_physicalProducts = true;
     BimModel m_bim;
     std::vector<PhysicalElement> m_products;
+    std::vector<int> m_importedTypes;   ///< types créés par importTypes (définition à compléter)
     int m_sourceProducts = 0;   ///< produits porteurs présents dans le fichier (convertis ou non)
 
     std::map<int, int> m_material, m_productOf, m_container;

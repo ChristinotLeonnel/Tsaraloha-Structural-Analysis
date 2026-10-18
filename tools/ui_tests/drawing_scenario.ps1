@@ -9,7 +9,9 @@
 #   8. Portique (outil de la vue) : créé, puis relancé sur les mêmes pieds → refusé (console), rien de créé ;
 #   9. palette : identité BIM et quantités de la dalle sélectionnée (clic au centre de la dalle) ;
 #  10. arbre du modèle : branche « Structure BIM (IFC) », produit « Poteau C1 » sous son étage, clic → propriétés du
-#      poteau (la dalle était sélectionnée : le changement de panneau prouve l'effet du clic).
+#      poteau (la dalle était sélectionnée : le changement de panneau prouve l'effet du clic) ;
+#  11. types de produits : « Créer les types de produits depuis le modèle » (clic droit sur la branche BIM, menu au
+#      clavier), message de la console, branche « Types de produits ».
 # Garde-fous : l'essai s'arrête (sans rien enregistrer) si la fenêtre active n'est pas celle du projet qu'il a créé ;
 # aucun clic n'est envoyé ailleurs (un clic dans le Start Center ouvrirait un projet récent). Les points de la vue
 # sont placés par rapport à son centre (indépendants de la disposition des panneaux) ; accrochages coupés pendant
@@ -440,6 +442,31 @@ $propTitle = PromptText "PROPRIÉTÉS DU POTEAU"
 $chain = $path -join " › "
 Check "arbre : Structure BIM › Site › Bâtiment › étage › Poteau C1, clic → propriétés du poteau" ($bimRoot -and $colItem -and $chain -match "Structure BIM.*Site.*Bâtiment.*Poteau C1" -and $propTitle) "chemin « $chain » ; panneau « $propTitle »"
 Shot "10_arbre_bim.png"
+
+# --- 11. Types de produits : création depuis l'arbre (menu contextuel piloté au clavier : ses éléments ne sont pas
+# exposés à UIA) -------------------------------------------------------------------------------------------------------
+Guard
+function TreeRows {
+    @(Find-All (Fresh $script:w) $CT::TreeItem | Where-Object { $r = $_.Current.BoundingRectangle; -not $_.Current.IsOffscreen -and $r.Left -ge 0 -and $r.Left -lt 480 -and $r.Top -gt 330 } | Sort-Object { $_.Current.BoundingRectangle.Top })
+}
+function TreeFilter($text) {
+    $f = Find-All (Fresh $script:w) $CT::Edit | Where-Object { $r = $_.Current.BoundingRectangle; -not $_.Current.IsOffscreen -and $r.Left -ge 0 -and $r.Left -lt 480 -and $r.Top -ge 240 -and $r.Top -lt 330 } | Select-Object -First 1
+    if ($f) { Click-Mouse $f; Press "^a"; Press $text; Start-Sleep -Seconds 1 }
+}
+TreeFilter "Structure BIM"
+$bimRow = TreeRows | Where-Object { $_.Current.Name -like "Structure BIM*" } | Select-Object -First 1
+if ($bimRow) {
+    $r = $bimRow.Current.BoundingRectangle
+    [MouseInput]::SetCursorPos([int]($r.Left + 40), [int]($r.Top + $r.Height / 2)) | Out-Null; Start-Sleep -Milliseconds 300
+    [MouseInput]::mouse_event(8, 0, 0, 0, [UIntPtr]::Zero); [MouseInput]::mouse_event(16, 0, 0, 0, [UIntPtr]::Zero)   # clic droit
+    Start-Sleep -Milliseconds 900
+    Press "{DOWN}"; Press "{ENTER}"; Start-Sleep -Seconds 1   # 1re entrée : « Créer les types de produits depuis le modèle »
+}
+$typesMsg = ConsoleText "Types de produits :"
+TreeFilter "Types de produits"
+$typeRows = @(TreeRows | ForEach-Object { $_.Current.Name })
+Check "types créés depuis l'arbre (clic droit, menu), branche « Types de produits »" ($bimRow -and $typesMsg -match "type\(s\) créé" -and ($typeRows -join "|") -match "Types de produits") "console « $typesMsg » ; arbre « $($typeRows -join ' › ') »"
+Shot "11_types_de_produits.png"
 
 # Vue d'ensemble (dernière étape : le cadrage change) — voile incliné, dalle, portique, poutre visibles
 RibbonTab "Affichage"

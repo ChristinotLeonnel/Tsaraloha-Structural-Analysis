@@ -1,5 +1,6 @@
 #include "ElementBimPanel.h"
 
+#include "../../BIM/Core/ProductTypes.h"
 #include "../../BIM/Core/QuantityTakeoff.h"
 #include "../../Coordinate/LevelManager.h"
 #include "../../Model/Model.h"
@@ -63,6 +64,13 @@ void ElementBimPanel::refresh()
         QString cls = QString::fromLatin1(TSA::BIM::ifcEntity(product->category));
         if (!product->predefinedType.empty()) cls += QStringLiteral(" · ") + esc(product->predefinedType);
         html += tr("<br>Classe IFC : %1").arg(cls);
+        if (const auto* type = bim.type(product->typeId))
+        {
+            html += tr("<br>Type : %1").arg(esc(type->name));
+            const std::string dev = TSA::BIM::typeDeviation(*m_model, *product);
+            if (!dev.empty()) html += tr(" — <i>diffère du type : %1</i>").arg(esc(dev));
+        }
+        else html += tr("<br>Type : aucun");
         html += tr("<br>GlobalId : <code>%1</code>").arg(esc(product->globalId));
         const std::string storey = bim.resolvedStorey(*m_model, *product);
         const auto* lm = m_model->levelManager();

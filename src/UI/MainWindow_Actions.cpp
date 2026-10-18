@@ -1614,6 +1614,13 @@ void MainWindow::createDockWindows()
 
     m_modelTree = new TSA::UI::ModelTreeWidget(m_model, m_modelTreeDock);
     m_modelTreeDock->setWidget(m_modelTree);
+    // Types de produits créés, réappliqués ou propagés depuis l'arbre : Annuler, titre, message
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::modelEditedByTree, this, [this](const QString& message) {
+        updateUndoRedoActions();
+        updateWindowTitle();
+        if (m_statusInfo) m_statusInfo->setText(message);
+        if (m_consoleDock) m_consoleDock->appendLog(message, "INFO");
+    });
     m_modelTreeDock->setMinimumWidth(280);
     m_modelTreeDock->toggleViewAction()->setIcon(QIcon(":/icons/model_tree.svg"));
     addDockWidget(Qt::LeftDockWidgetArea, m_modelTreeDock);

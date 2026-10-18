@@ -166,4 +166,30 @@ pas mesurée).
 `ElementBimPanel`, sous la vue de l'élément sélectionné (poutre, poteau, câble, treillis, dalle,
 voile, fondation), en lecture seule : nom et numéro du produit, classe IFC et type prédéfini,
 GlobalId (sélectionnable), étage, éléments de calcul regroupés, GlobalId analytique, quantités de
-l'élément et du produit entier. Rafraîchie à chaque modification du modèle et après Annuler.
+l'élément et du produit entier, type de produit et écart éventuel. Rafraîchie à chaque modification du modèle et après
+Annuler.
+
+### 5.5 Navigateur BIM
+
+Branche « Structure BIM (IFC) » de l'arbre du modèle : site › bâtiment › un étage par niveau (cote croissante) ›
+produits physiques, classés par `BimModel::resolvedStorey` (« Sans étage » à part), classe IFC en colonne. Branche
+dérivée du modèle, reconstruite une fois par rafale de modifications. Un clic sur un produit sélectionne son premier
+élément de calcul ; un objet IFC importé sans calcul ouvre l'inspecteur IFC.
+
+### 5.6 Types de produits partagés
+
+`ProductType` (dans le `BimModel`) : catégorie, nom, GlobalId, section et matériau (éléments linéaires), épaisseur et
+matériau (dalles, voiles), matériau (fondations). Un produit y est rattaché par `typeId`. Persistance : champs
+facultatifs du bloc BIM (`types`, `type`), schéma 1 inchangé, donc un fichier existant se lit tel quel (produits sans
+type) et une version antérieure de TSA ignore les types sans rejeter le bloc.
+
+| Opération | Effet (une transaction, une entrée Annuler) |
+| :--- | :--- |
+| Créer les types depuis le modèle | un type par définition distincte, produits sans type rattachés (migration d'un projet existant) |
+| Propager la définition d'un élément au type | le type reprend la section, l'épaisseur et le matériau de l'occurrence, puis les applique aux autres |
+| Réappliquer le type | ramène les occurrences modifiées à la définition du type |
+| Écart | occurrence différente de son type (« section R30x60 au lieu de R30x50 »), affiché dans la palette et l'arbre |
+
+IFC : `IfcBeamType`, `IfcColumnType`, `IfcMemberType`, `IfcSlabType`, `IfcWallType`, `IfcFootingType`, `IfcPileType`,
+`IfcPlateType` reliés par `IfcRelDefinesByType` ; à l'import, types recréés avec leur GlobalId et définition reprise
+de la première occurrence.

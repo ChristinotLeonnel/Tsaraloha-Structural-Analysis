@@ -4,38 +4,36 @@ Branche `feature/bim-drawing`. Constat : `BIM_DRAWING_AUDIT.md` (problèmes D1 �
 Architecture : `BIM_ARCHITECTURE.md` § 5. Bilan : `BIM_DRAWING_IMPLEMENTATION_REPORT.md`.
 
 L'ordre suit celui de la mission. Il est adapté là où l'existant était déjà conforme : modèle
-métier, identifiants, accrochage et IFC existaient, avec des tests. Le travail porte donc d'abord
-sur le chemin de création, qui était le maillon défaillant (D1 à D7).
+métier, identifiants, accrochage et IFC existaient, avec des tests. Le travail a donc d'abord
+porté sur le chemin de création, qui était le maillon défaillant (D1 à D7), puis sur la feuille
+de route validée le 18/10/2026.
 
 | # | Étape | Contenu | État |
 | :--- | :--- | :--- | :--- |
 | 1 | Modèle métier | `Model` + `BimModel` (produit physique ↔ éléments analytiques) | existant, conservé |
-| 2 | Identifiants et relations | GlobalId des produits et objets analytiques, mapping 1:N | existant ; vérifié pour les éléments dessinés (test 417) |
+| 2 | Identifiants et relations | GlobalId des produits, objets analytiques et types ; mapping 1:N | existant ; vérifié (tests 417, 430) |
 | 3 | Commandes transactionnelles | `ElementCreation` : validation, puis nœuds + élément dans une `EditTransaction` | **fait** (tests 410-416, 419) |
-| 4 | Accrochage | `SnapEngine` seul moteur ; coïncidence de nœud centralisée (`GeometryTolerance::nodeCoincidence`) | **fait** pour la tolérance ; `GridSnapManager` (D13) à retirer |
-| 5 | Outils structuraux | modes Dessin de la vue (nœud, barre, poutre, poteau, dalle, voile, fondation, treillis, haubans, câbles porteurs, suspentes), dialogues Barre / Câble / Surface, préréglages fondation et treillis | **fait** ; outils `ModelingTool` de dessin (chaîne, rectangle, portique…) : déjà transactionnels, à faire passer par les validations du service |
-| 6 | Palette de propriétés | identité BIM et quantités de l'élément (`ElementBimPanel`) | **fait** (test 422) |
-| 7 | Cohérence des vues | navigateur avec hiérarchie spatiale BIM (projet, bâtiment, étages, produits) | **non commencé** (D10) |
-| 8 | Sauvegarde et migration | aucun champ persistant ajouté : format `.tsa` inchangé (1.11), fichiers existants lus tels quels ; aller-retour vérifié | **fait** (test 423) ; préréglages non persistés (comme avant) |
-| 9 | Adaptateur analytique | le modèle analytique reste celui de TSA ; résultats périmés à la création | existant ; vérifié (test 418) |
-| 10 | IFC | export / réimport des éléments dessinés | existant ; vérifié (test 423) |
-| 11 | Quantités | `QuantityTakeoff` dérivé du modèle | **fait** (tests 420, 421) |
+| 4 | Accrochage | `SnapEngine` seul moteur ; coïncidence de nœud centralisée | **fait** ; `GridSnapManager` (D13) à retirer |
+| 5 | Outils structuraux | modes Dessin, dialogues Barre / Câble / Surface, six outils avancés, préréglages fondation et treillis | **fait** (tests 410-416, 425) |
+| 6 | Palette de propriétés | identité BIM, type et quantités de l'élément | **fait** (tests 422, 426) |
+| 7 | Cohérence des vues | branche « Structure BIM » de l'arbre (site, bâtiment, étages, produits, types) | **fait** (test 427) |
+| 8 | Sauvegarde et migration | format `.tsa` inchangé ; types en champs facultatifs du bloc BIM ; création des types depuis un projet existant | **fait** (tests 423, 430) ; préréglages non persistés (comme avant) |
+| 9 | Adaptateur analytique | modèle analytique de TSA ; résultats périmés à la création et à la propagation d'un type | existant ; vérifié (tests 418, 431) |
+| 10 | IFC | éléments dessinés, voiles inclinés, types de produits | **fait** (tests 423, 428, 432) |
+| 11 | Quantités | `QuantityTakeoff` dérivé du modèle | **fait** (tests 420, 421, 428) |
+| 12 | Voiles à base inclinée | calcul, métré, IFC cohérents | **fait** (tests 424, 428, 429) |
+| 13 | Interface réelle | `tools/ui_tests/drawing_scenario.ps1`, 17 vérifications | **fait** |
 
 ## Reste à faire (par priorité)
 
-1. **Outils `ModelingTool` de dessin** : ils passent par `ToolGeometry::nodeAt` dans une transaction,
-   mais sans les validations ni les avertissements de croisement du service. Il faut les faire
-   passer par `ElementCreation` sans changer leur ergonomie.
-2. **Navigateur BIM (D10)** : branche « Projet › Bâtiment › Étages › produits » dans
-   `ModelTreeWidget`, synchronisée avec la sélection.
-3. **Bibliothèque de types (D11)** : section et matériau partagés par référence (type de produit),
-   avec propagation et migration du format.
-4. **Grilles dans le `Model` (D12)**, puis retrait de `GridSnapManager` (D13).
-5. **Préréglages persistés** dans les paramètres utilisateur (aujourd'hui remis à zéro à chaque
+1. **Éditeur de types** : aujourd'hui, on modifie une occurrence puis on propage au type. Une
+   fenêtre « Types de produits » (section, matériau, épaisseur ; occurrences ; écarts) rendrait
+   l'opération directe.
+2. **Porte au pied d'un voile à base inclinée** : aujourd'hui refusée (seules les ouvertures
+   intérieures sont prises en charge).
+3. **Grilles dans le `Model` (D12)**, puis retrait de `GridSnapManager` (D13).
+4. **Préréglages persistés** dans les paramètres utilisateur (aujourd'hui remis à zéro à chaque
    lancement, comme avant ce chantier).
-6. **Essai de l'interface réelle** (UI Automation) du tracé complet dans TSA, en complément du
-   test 419, qui pilote déjà une vraie vue OCCT par clics.
-7. ~~Voiles à base inclinée~~ : **fait** le 18/10/2026 (calcul, métré, export et réimport IFC vérifiés ensemble,
-   tests 428 et 429). Reste : porte au pied d'un voile à base inclinée.
-8. Libellés des matériaux des dialogues : passer par la bibliothèque (`MaterialLibrary`) plutôt
+5. **Libellés des matériaux des dialogues** : passer par la bibliothèque (`MaterialLibrary`) plutôt
    que par des noms recherchés par mot-clé.
+6. **CI** : lancer en plateforme `windows` les quatre suites qui créent une vue OCCT (BUG-076).

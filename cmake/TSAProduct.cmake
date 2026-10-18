@@ -543,6 +543,8 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/BIM/Core/BimGeometry.cpp
     ${TSA_ROOT}/src/BIM/Core/QuantityTakeoff.h
     ${TSA_ROOT}/src/BIM/Core/QuantityTakeoff.cpp
+    ${TSA_ROOT}/src/BIM/Core/ProductTypes.h
+    ${TSA_ROOT}/src/BIM/Core/ProductTypes.cpp
     ${TSA_ROOT}/src/BIM/IFC/IfcStepWriter.h
     ${TSA_ROOT}/src/BIM/IFC/IfcStepWriter.cpp
     ${TSA_ROOT}/src/BIM/IFC/IfcExportContext.h

@@ -23,6 +23,8 @@ public:
     void associateMaterial(int materialSelect, int object) { m_materials[materialSelect].push_back(object); }
     void defineByProperties(int pset, int object) { m_psets.push_back({ pset, object }); }
     void classify(int reference, int object) { m_classifications[reference].push_back(object); }
+    /// Occurrence d'un type de produit (IfcRelDefinesByType).
+    void defineByType(int type, int object) { m_types[type].push_back(object); }
     void assignToGroup(int group, int object) { m_groups[group].push_back(object); }
     /// Objets analytiques → produit physique (PhysicalToAnalyticalMap à l'échange).
     void assignToProduct(int product, const std::vector<int>& analytical) { m_products[product] = analytical; }
@@ -33,7 +35,7 @@ public:
 
 private:
     IfcExportContext& m_ctx;
-    std::map<int, std::vector<int>> m_aggregates, m_contained, m_materials, m_classifications, m_groups, m_products;
+    std::map<int, std::vector<int>> m_aggregates, m_contained, m_materials, m_classifications, m_groups, m_products, m_types;
     std::vector<std::pair<int, int>> m_psets, m_connections;
 };
 

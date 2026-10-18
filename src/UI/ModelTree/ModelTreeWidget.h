@@ -38,6 +38,13 @@ public:
   /// Branche « Structure BIM » : site, bâtiment, un étage par niveau (cote croissante), produits physiques
   /// classés par étage (BimModel::resolvedStorey), produits sans étage à part. Dérivée du modèle.
   void refreshBim();
+  // Types de produits partagés (une transaction = une entrée Annuler ; aussi dans le menu contextuel de l'arbre)
+  /// Crée les types manquants depuis le modèle (migration d'un projet sans types). Retourne le nombre créé.
+  int createProductTypes();
+  /// Réapplique le type à toutes ses occurrences. Retourne le nombre d'éléments modifiés.
+  int reapplyProductType(int typeId);
+  /// Reprend la définition de ce produit dans son type et l'applique aux autres occurrences (-1 : produit sans type).
+  int propagateProductType(int productId);
 
   void selectNodeItem(int nodeId);
   void selectBeamItem(int beamId);
@@ -71,6 +78,8 @@ signals:
   /// Produit physique sans élément de calcul (objet IFC importé) choisi dans la branche BIM. Un produit TSA
   /// émet le signal de son premier élément de calcul (beamSelected…).
   void bimProductSelected(int productId);
+  /// Le modèle a été modifié depuis l'arbre (types de produits) : rafraîchir Annuler / titre, afficher le message.
+  void modelEditedByTree(const QString &message);
 
 protected:
   // Implémentation de IModelObserver pour mise à jour temps réel
