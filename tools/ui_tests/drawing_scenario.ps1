@@ -196,7 +196,7 @@ function ViewHoverClick($dx, $dy) {
 function UndoButtonInfo($name) { $b = TitleBarButton $name; if ($b) { "« $($b.Current.Name) » actif=$($b.Current.IsEnabled)" } else { "introuvable" } }
 
 # --- 1. Nouveau projet vierge ---------------------------------------------------------------------------------------
-$script:p = Start-Process -FilePath $Exe -PassThru
+$script:p = Start-Process -FilePath $Exe -ArgumentList "--lang=fr" -PassThru
 $deadline = (Get-Date).AddSeconds(120)
 while ((Get-Date) -lt $deadline) { $script:p.Refresh(); if ($script:p.MainWindowHandle -ne [IntPtr]::Zero -and $script:p.MainWindowTitle -like "TSA*") { break }; Start-Sleep -Milliseconds 500 }
 $script:w = $script:p.MainWindowHandle
@@ -246,12 +246,13 @@ Shot "01_projet_vierge.png"
 
 # Accrochages coupés (points reproductibles) ; console (refus des outils) et propriétés (palette) affichées AVANT
 # tout tracé : la disposition ne change plus ensuite, la scène reste au même endroit de l'écran
-RibbonTab "Affichage"
+RibbonTab "Grille et plans"   # accrochage : onglet Grille et plans (ruban réorganisé, docs/UI_RIBBON.md)
 EnsureOff "Magnétisme Grille*"
 EnsureOff "Accrochage Objets*"
+RibbonTab "Affichage"
 EnsureOn "CONSOLE*DIAGNOSTICS"
 EnsureOn "PROPRIÉTÉS"
-RibbonTab "Modèle"
+RibbonTab "Modélisation"
 Say "    vue 3D après réglages : $(ViewRect)"
 
 # --- 2. Poutre : 1er clic puis Échap ---------------------------------------------------------------------------------
@@ -266,7 +267,7 @@ $c = Counts
 Check "Échap pendant le tracé : modèle vide" ($c[0] -eq 0 -and $c[1] -eq 0) (CountsText)
 
 # --- 3. Poutre par deux clics, Annuler, Rétablir ---------------------------------------------------------------------
-RibbonTab "Modèle"
+RibbonTab "Modélisation"
 Click-Mouse (RibbonButton "Dessiner*Poutre")   # Échap a pu terminer la commande : la relancer
 Start-Sleep -Seconds 1
 ViewClick -213 -12
@@ -284,7 +285,7 @@ $c = Counts
 Check "Rétablir : poutre et nœuds rendus" ($c[0] -eq 2 -and $c[1] -eq 1) (CountsText)
 
 # --- 4. Dalle : 3 clics, Entrée -----------------------------------------------------------------------------------------
-RibbonTab "Modèle"
+RibbonTab "Modélisation"
 Click-Mouse (RibbonButton "Dessiner*Dalle")
 Start-Sleep -Seconds 2
 $base = Base
@@ -313,7 +314,7 @@ FocusMain; Press "{ESC}"
 
 # --- 6. Voile à base inclinée (dialogue « Surface », onglet Voile) -------------------------------------------------------
 $base = Base
-RibbonTab "Modèle"
+RibbonTab "Modélisation"
 Click-Mouse (RibbonButton "Dessiner*Voile")
 Start-Sleep -Seconds 2
 $sd = ChildWindow "Éléments Surfaciques*" 10
@@ -337,7 +338,7 @@ if ($sd) {
 FocusMain; Press "{ESC}"
 
 # --- 7. Paramètres de modélisation : onglets Fondation et Treillis --------------------------------------------------------
-RibbonTab "Modèle"
+RibbonTab "Accueil"   # Paramètres de modélisation : Accueil > Paramètres du projet
 Click-Mouse (RibbonButton "Paramètres de*Modélisation*")
 $pd = ChildWindow "*Pré-dessin 3D" 10
 if ($pd) {
@@ -352,7 +353,7 @@ if ($pd) {
 Start-Sleep -Seconds 1
 
 # --- 8. Portique : créé, puis refusé sur les mêmes pieds -------------------------------------------------------------------
-RibbonTab "Modèle"
+RibbonTab "Modélisation"
 Click-Mouse (RibbonButton "Portique")
 Start-Sleep -Seconds 1
 $base = Base

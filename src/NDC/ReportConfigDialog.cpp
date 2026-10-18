@@ -103,7 +103,7 @@ void ReportConfigDialog::setupUi()
     formLayout->addRow(tr("Couleur Primaire :"), m_editPrimaryColor);
     formLayout->addRow(tr("Taille de Police :"), m_spinFontSize);
     formLayout->addRow(QString(), m_chkShowLogo);
-    tabs->addTab(tabLayout, tr("Mise en Page & Style"));
+    tabs->addTab(tabLayout, tr("Mise en Page et Style"));
 
     // =========================================================================
     // ONGLET 3 : SECTIONS & RÉSULTATS
@@ -115,15 +115,15 @@ void ReportConfigDialog::setupUi()
     m_chkToc = new QCheckBox(tr("Table des Matières (Sommaire)"), this);
     m_chkLof = new QCheckBox(tr("Liste des Figures"), this);
     m_chkLot = new QCheckBox(tr("Liste des Tableaux"), this);
-    m_chkIntro = new QCheckBox(tr("Introduction & Hypothèses"), this);
+    m_chkIntro = new QCheckBox(tr("Introduction et Hypothèses"), this);
     m_chkStandards = new QCheckBox(tr("Normes Eurocodes Détectées"), this);
     m_chkGeom = new QCheckBox(tr("Description Géométrique"), this);
     m_chkMaterials = new QCheckBox(tr("Tableau des Matériaux"), this);
     m_chkSections = new QCheckBox(tr("Tableau des Sections"), this);
-    m_chkBoundary = new QCheckBox(tr("Conditions aux Limites & Appuis"), this);
-    m_chkLoads = new QCheckBox(tr("Charges & Combinaisons"), this);
+    m_chkBoundary = new QCheckBox(tr("Conditions aux Limites et Appuis"), this);
+    m_chkLoads = new QCheckBox(tr("Charges et Combinaisons"), this);
     m_chkMethod = new QCheckBox(tr("Méthode de Calcul MEF"), this);
-    m_chkQuality = new QCheckBox(tr("Contrôle Qualité & Équilibre"), this);
+    m_chkQuality = new QCheckBox(tr("Contrôle Qualité et Équilibre"), this);
     m_chkSnapshots = new QCheckBox(tr("Vues Tridimensionnelles 3D"), this);
     m_chkDisp = new QCheckBox(tr("Déplacements Nodaux"), this);
     m_chkDefl = new QCheckBox(tr("Flèches en Travée (L/250)"), this);
@@ -131,12 +131,12 @@ void ReportConfigDialog::setupUi()
     m_chkShear = new QCheckBox(tr("Efforts Tranchants Vz / Vy"), this);
     m_chkAxial = new QCheckBox(tr("Efforts Normaux N (Traction/Comp.)"), this);
     m_chkTorsion = new QCheckBox(tr("Moments de Torsion Mx"), this);
-    m_chkExtrema = new QCheckBox(tr("Synthèse & Localisation 3D Extrema"), this);
+    m_chkExtrema = new QCheckBox(tr("Synthèse et Localisation 3D Extrema"), this);
     m_chkDetailedTables = new QCheckBox(tr("Tableaux Détaillés par Barre"), this);
     m_chkEurocode = new QCheckBox(tr("Vérifications Eurocodes (EC2 / EC3)"), this);
-    m_chkWarn = new QCheckBox(tr("Avertissements & Limitations"), this);
-    m_chkConclusion = new QCheckBox(tr("Conclusion & Déclaration"), this);
-    m_chkBiblio = new QCheckBox(tr("Bibliographie & Webographie"), this);
+    m_chkWarn = new QCheckBox(tr("Avertissements et Limitations"), this);
+    m_chkConclusion = new QCheckBox(tr("Conclusion et Déclaration"), this);
+    m_chkBiblio = new QCheckBox(tr("Bibliographie et Webographie"), this);
 
     gridSec->addWidget(m_chkCover, 0, 0);
     gridSec->addWidget(m_chkToc, 1, 0);
@@ -166,7 +166,7 @@ void ReportConfigDialog::setupUi()
     gridSec->addWidget(m_chkConclusion, 10, 1);
     gridSec->addWidget(m_chkBiblio, 11, 1);
 
-    tabs->addTab(tabSections, tr("Sections & Résultats"));
+    tabs->addTab(tabSections, tr("Sections et Résultats"));
 
     // =========================================================================
     // ONGLET 4 : MODÈLES (TEMPLATES)
@@ -201,7 +201,7 @@ void ReportConfigDialog::setupUi()
     vlayTemplates->addWidget(grpFile);
     vlayTemplates->addStretch();
 
-    tabs->addTab(tabTemplates, tr("Modèles & Templates"));
+    tabs->addTab(tabTemplates, tr("Modèles et Templates"));
 
     mainLayout->addWidget(tabs);
 

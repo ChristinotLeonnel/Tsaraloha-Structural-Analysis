@@ -19,7 +19,12 @@
 //   460  icônes du catalogue présentes et dessinées dans les deux thèmes ;
 //   461  contraste avec le fond du ruban : forme >= 3:1 (thèmes sombre et clair), état désactivé >= 1,8:1 ;
 //   462  deux commandes différentes n'ont jamais la même image (exceptions justifiées listées) ;
-//   463  moteur d'icônes : palette par thème, état désactivé, ressource absente détectable.
+//   463  moteur d'icônes : palette par thème, état désactivé, ressource absente détectable ;
+// Suite « ribbon » (même fichier) :
+//   464  dix onglets dans l'ordre du travail ; chaque commande de la fenêtre à une seule place ; aucun bouton fictif ;
+//   465  commande absente de la fenêtre : ni groupe vide ni bouton de remplacement ;
+//   466  fenêtre de 1920 à 600 px : chaque commande reste atteignable (groupes réduits, repliés, menu « Plus ») ;
+//   467  ruban en anglais et en malgache : titres traduits, rangée d'onglets sans débordement.
 
 #include "test_common.h"
 
@@ -30,6 +35,15 @@
 #include "UI/Dialogs/LanguageDialog.h"
 #include "UI/Search/GlobalSearchWidget.h"
 #include "UI/Theme/ThemedIcon.h"
+#include "UI/Ribbon/RibbonBar.h"
+#include "UI/Ribbon/RibbonBuilder.h"
+#include "UI/Ribbon/RibbonPanel.h"
+#include "UI/Ribbon/RibbonTab.h"
+
+#include <QAction>
+#include <QMenu>
+#include <QTabBar>
+#include <set>
 
 #include <QElapsedTimer>
 #include <QFontMetrics>
@@ -69,6 +83,12 @@ SearchEntry entry(const QString& id, const QString& title, const QStringList& ke
     e.description = description;
     return e;
 }
+
+/// Réinstalle le français à la sortie du bloc (les suites suivantes ne doivent jamais hériter d'une autre langue).
+struct FrenchOnExit
+{
+    ~FrenchOnExit() { LanguageManager::install(*QCoreApplication::instance(), Language::French); }
+};
 
 QString topId(const CommandSearchIndex& index, const QString& query)
 {
@@ -151,6 +171,7 @@ bool runSuite_I18n(int& passed)
     // -------------------------------------------------------------------------
     {
         auto& app = *QCoreApplication::instance();
+        FrenchOnExit restoreFrench;
         TEST_CHECK(LanguageManager::install(app, Language::English), "Test 452: anglais installé");
         const QString en = QCoreApplication::translate("CommandCatalog", "Nouveau projet");
         const QString qtCancelEn = QCoreApplication::translate("QPlatformTheme", "Cancel");
@@ -497,5 +518,241 @@ bool runSuite_I18n(int& passed)
         ++passed;
     }
 
+    return true;
+}
+
+namespace
+{
+/// Ruban complet : une action distincte par champ de RibbonActions (aucun nul), trois par liste, trois menus.
+struct FullRibbonActions
+{
+    QObject owner;
+    TSA::UI::RibbonActions acts;
+    QMenu meshMenu, annotationMenu, loadMenu, meshSubMenu;
+    QAction* subMenuAction = nullptr;   ///< commande d'un sous-menu (« Grandeur affichée sur le maillage »)
+
+    FullRibbonActions()
+    {
+        auto make = [this](const QString& name) { auto* a = new QAction(name, &owner); a->setObjectName(name); return a; };
+#define F(x) acts.x = make(QStringLiteral(#x))
+    F(actionNew); F(actionCloseProject); F(actionOpen); F(actionSave);
+    F(actionSaveAs); F(actionExit); F(actionUndo); F(actionRedo);
+    F(actionCopyClipboard); F(actionPasteClipboard); F(actionCutClipboard); F(actionPasteOriginal);
+    F(actionImportIfc); F(actionExportIfc); F(actionImportTsa3d); F(actionExportTsa3d);
+    F(actionImportViaModule); F(actionBimGeometryVisible); F(actionTopology); F(actionStructurePresets);
+    F(actionLanguage); F(actionToggleTheme); F(actionShortcutEditor); F(actionSelectMode);
+    F(actionSelectAll); F(actionDrawNode); F(actionNewNode); F(actionDrawBar);
+    F(actionDrawBeam); F(actionDrawColumn); F(actionDrawCable); F(actionDrawSlab);
+    F(actionDrawWall); F(actionTruss); F(actionFooting); F(actionSlabOpenings);
+    F(actionAddCube); F(actionSecI); F(actionSecRect); F(actionSecCirc);
+    F(actionConcrete); F(actionSteel); F(actionLibrary); F(actionFixed);
+    F(actionPinned); F(actionRoller); F(actionSurfaceSupports); F(actionMove3D);
+    F(actionMove); F(actionCopy3D); F(actionCopy); F(actionRotate3D);
+    F(actionMirror); F(actionSplitBars); F(actionMergeNodes); F(actionCleanModel);
+    F(actionToolInputMode); F(actionDelete); F(actionNewGrid); F(actionGridManager);
+    F(actionManageLevels); F(actionWorkPlaneXY); F(actionWorkPlaneXZ); F(actionWorkPlaneYZ);
+    F(actionWorkPlaneLevel); F(actionWorkPlaneCustom); F(actionWorkPlaneVisible); F(actionViewNormalToPlane);
+    F(actionWorkPlaneNextRef); F(actionWorkPlanePrevRef); F(actionWorkPlaneBack); F(actionWorkPlaneNextInter);
+    F(actionWorkPlanePrevInter); F(actionWorkPlaneAlignInter); F(actionGridSnap); F(actionObjectSnap);
+    F(actionGridVisible); F(actionLevelsVisible); F(actionGridLabels); F(actionRulersVisible);
+    F(actionCoordSystem); F(actionMoveOrigin); F(actionSectionCut); F(actionPointLoad);
+    F(actionDistLoad); F(actionTrapLoad); F(actionBarPointLoad); F(actionSurfaceLoad);
+    F(actionSelfWeight); F(actionLoadCases); F(actionLoadsVisible); F(actionForcesVisible);
+    F(actionMomentsVisible); F(actionLoadValuesVisible); F(actionSurfaceLoadsVisible); F(actionMeshGen);
+    F(actionMeshRegenerate); F(actionMeshClear); F(actionMeshSettings); F(actionMeshLocal);
+    F(actionMeshZone); F(actionMeshPreview); F(actionMeshQuality); F(actionMeshShow);
+    F(actionMeshExport); F(actionMeshImport); F(actionRunSolve); F(actionAnalysisConfig);
+    F(actionAICheck); F(actionAIAnalyze); F(actionResultsDock); F(actionDeformedToggle);
+    F(actionResultsDisp); F(actionResultsForces); F(actionResultsStress); F(actionDiagramMz);
+    F(actionDiagramMy); F(actionDiagramMx); F(actionDiagramVz); F(actionDiagramVy);
+    F(actionDiagramN); F(actionDiagramDeflection); F(actionDiagramNone); F(actionReactionsToggle);
+    F(actionFitModel); F(actionFitResults); F(actionFitDeformed); F(actionOpenNDC);
+    F(actionReportTemplates); F(actionAIExplain); F(actionView3D); F(actionViewXY);
+    F(actionViewXZ); F(actionViewYZ); F(actionViewTop); F(actionViewBottom);
+    F(actionViewFront); F(actionViewBack); F(actionViewLeft); F(actionViewRight);
+    F(actionViewIsometric); F(actionViewHome); F(actionNamedViews); F(actionFitAll);
+    F(actionFitSelection); F(actionResetView); F(actionZoomIn); F(actionZoomOut);
+    F(actionZoomWindow); F(actionPreviousView); F(actionNextView); F(actionRotateLeft);
+    F(actionRotateRight); F(renderEdges); F(renderLightweight); F(actionNodesVisible);
+    F(actionNodeLabelsVisible); F(actionSupportsVisible); F(actionSupportLabelsVisible); F(actionFullScreen);
+    F(actionToggleModelTree); F(actionToggleProperties); F(actionToggleVisibility); F(actionToggleConsole);
+    F(actionMeasure); F(actionAIAssistant); F(actionAIConfig); F(actionExtensionManager);
+    F(actionModules); F(actionHelp); F(actionOnlineDocs); F(actionShortcuts);
+    F(actionAbout); F(actionReportProblem); F(actionExportDiagnostic);
+#undef F
+        for (auto* list : { &acts.drawTools, &acts.advancedModifyTools, &acts.dimensionCommands })
+            for (int i = 0; i < 3; ++i) list->push_back(make(QStringLiteral("liste%1_%2").arg(reinterpret_cast<quintptr>(list)).arg(i)));
+        for (int i = 0; i < 4; ++i) acts.modelDisplayModes.push_back(make(QStringLiteral("display%1").arg(i)));
+        for (int i = 0; i < 3; ++i) acts.renderModes.push_back(make(QStringLiteral("render%1").arg(i)));
+        for (const char* id : { "dim_aligned", "dim_linear", "dim_x", "dim_y", "dim_z", "dim_horizontal", "dim_angular", "dim_level",
+                                "dim_chain", "dim_cumulative", "dim_futur" })
+            acts.dimensionTools[id] = make(QString::fromLatin1(id));
+        for (QMenu* m : { &meshMenu, &annotationMenu, &loadMenu })
+            for (int i = 0; i < 2; ++i) m->addAction(make(QStringLiteral("menu%1_%2").arg(reinterpret_cast<quintptr>(m)).arg(i)));
+        subMenuAction = make(QStringLiteral("submenu_action"));
+        meshSubMenu.addAction(subMenuAction);
+        meshMenu.addMenu(&meshSubMenu);
+        acts.meshViewMenu = &meshMenu;
+        acts.annotationScaleMenu = &annotationMenu;
+        acts.loadScaleMenu = &loadMenu;
+    }
+};
+} // namespace
+
+bool runSuite_Ribbon(int& passed)
+{
+    using TSA::UI::RibbonBar;
+    using TSA::UI::RibbonBuilder;
+    const bool offscreen = QGuiApplication::platformName() == QLatin1String("offscreen");
+
+    // -------------------------------------------------------------------------
+    // TEST 464 : organisation : dix onglets, chaque commande à une place, aucune commande fictive
+    // -------------------------------------------------------------------------
+    {
+        FullRibbonActions full;
+        RibbonBar bar;
+        RibbonBuilder::buildAllTabs(&bar, full.acts, nullptr);
+        QStringList titles;
+        for (int i = 0; i < bar.tabCount(); ++i) titles << bar.tabTitle(i);
+        TEST_CHECK(titles == QStringList({ QString::fromUtf8("Accueil"), QString::fromUtf8("Modélisation"), "Modifier", "Grille et plans", "Charges",
+                                           "Maillage", "Analyse", QString::fromUtf8("Résultats"), "Affichage", "Outils" }),
+                   "Test 464: dix onglets dans l'ordre du travail (" << titles.join(", ").toStdString() << ")");
+        const auto placed = RibbonBuilder::placedActions(full.acts);
+        const auto locations = bar.actionLocations();
+        QStringList missing, extra, duplicated;
+        QHash<const QAction*, int> count;
+        for (int i = 0; i < bar.tabCount(); ++i)
+            for (auto* panel : bar.tab(i)->panels())
+            {
+                TEST_CHECK(!panel->title().isEmpty() && !panel->isEmptyPanel(), "Test 464: groupe sans titre ou vide dans « " << bar.tabTitle(i).toStdString() << " »");
+                for (QAction* a : panel->actions()) ++count[a];
+            }
+        std::set<const QAction*> placedSet(placed.begin(), placed.end());
+        // Commandes des menus déroulants (affichage du maillage, échelles) : vraies actions, suivies par leur groupe
+        for (QMenu* m : { &full.meshMenu, &full.annotationMenu, &full.loadMenu })
+            for (QAction* a : m->actions()) placedSet.insert(a);
+        for (QAction* a : placed)
+            if (!locations.contains(a)) missing << a->objectName();
+        for (auto it = count.begin(); it != count.end(); ++it)
+        {
+            if (!placedSet.count(it.key())) extra << it.key()->text();
+            if (it.value() > 1) duplicated << it.key()->objectName();
+        }
+        TEST_CHECK(missing.isEmpty(), "Test 464: commandes absentes du ruban : " << missing.join(", ").toStdString());
+        TEST_CHECK(extra.isEmpty(), "Test 464: boutons sans action réelle de la fenêtre : " << extra.join(", ").toStdString());
+        TEST_CHECK(duplicated.isEmpty(), "Test 464: commandes placées deux fois : " << duplicated.join(", ").toStdString());
+        TEST_CHECK(placed.size() > 200 && !locations.contains(full.acts.actionExit), "Test 464: " << placed.size() << " commandes placées (« Quitter » au menu de l'application)");
+        std::cout << "[PASS] Test 464: Ruban en dix onglets : " << placed.size() << " commandes, chacune à une place, aucune fictive" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 465 : un ruban incomplet (fenêtre sans certaines commandes) n'affiche ni groupe vide ni bouton de remplacement
+    // -------------------------------------------------------------------------
+    {
+        QObject owner;
+        TSA::UI::RibbonActions acts;
+        acts.actionNew = new QAction("Nouveau", &owner);
+        acts.actionDrawBeam = new QAction("Poutre", &owner);
+        acts.actionRunSolve = new QAction("Calcul", &owner);
+        RibbonBar bar;
+        RibbonBuilder::buildAllTabs(&bar, acts, nullptr);
+        int panels = 0, buttons = 0;
+        for (int i = 0; i < bar.tabCount(); ++i)
+            for (auto* panel : bar.tab(i)->panels())
+            {
+                ++panels;
+                buttons += static_cast<int>(panel->actions().size());
+            }
+        TEST_CHECK(panels == 3 && buttons == 3, "Test 465: " << panels << " groupe(s), " << buttons << " bouton(s) pour 3 commandes disponibles");
+        std::cout << "[PASS] Test 465: Aucun groupe vide ni bouton de remplacement quand une commande manque" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 466 : fenêtre réduite : chaque commande reste atteignable (groupes réduits, repliés, menu « Plus »)
+    // -------------------------------------------------------------------------
+    if (offscreen)
+        std::cout << "[SKIP] Test 466: mesures du ruban sans polices sur la plateforme Qt « offscreen » (lancer avec QT_QPA_PLATFORM=windows)" << std::endl;
+    else
+    {
+        FullRibbonActions full;
+        RibbonBar bar;
+        RibbonBuilder::buildAllTabs(&bar, full.acts, nullptr);
+        bar.show();
+        QStringList lost;
+        int overflowSeen = 0, collapsedSeen = 0;
+        for (int width : { 1920, 1366, 1024, 800, 600, 420 })
+        {
+            bar.resize(width, bar.sizeHint().height());
+            for (int i = 0; i < bar.tabCount(); ++i)
+            {
+                bar.setCurrentTabIndex(i);
+                QCoreApplication::processEvents();
+                auto* tab = bar.tab(i);
+                const auto reach = tab->reachableActions();
+                std::set<QAction*> reachable(reach.begin(), reach.end());
+                for (auto* panel : tab->panels())
+                    for (QAction* a : panel->actions())
+                        if (!reachable.count(a)) lost << QStringLiteral("%1 px, %2 : %3").arg(width).arg(bar.tabTitle(i), a->objectName());
+                // Sous-menu d'un menu déroulant (onglet Maillage) : atteignable aussi quand le groupe est replié
+                if (bar.tabTitle(i) == QStringLiteral("Maillage") && !reachable.count(full.subMenuAction))
+                    lost << QStringLiteral("%1 px, Maillage : commande du sous-menu").arg(width);
+                overflowSeen += tab->hasOverflowMenu();
+                for (auto* panel : tab->panels()) collapsedSeen += panel->isVisibleTo(tab) && panel->mode() == TSA::UI::RibbonPanelMode::Collapsed;
+            }
+        }
+        for (int i = 0; i < std::min<int>(10, lost.size()); ++i) std::cerr << "  perdue : " << lost[i].toStdString() << std::endl;
+        TEST_CHECK(lost.isEmpty(), "Test 466: " << lost.size() << " commande(s) inaccessible(s) après réduction de la fenêtre");
+        TEST_CHECK(collapsedSeen > 0 && overflowSeen > 0, "Test 466: groupes repliés (" << collapsedSeen << ") et menu « Plus » (" << overflowSeen << ") aux petites largeurs");
+        std::cout << "[PASS] Test 466: Toutes les commandes restent atteignables de 1920 à 420 px (groupes repliés : " << collapsedSeen << ", menu « Plus » : " << overflowSeen << ")" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 467 : ruban dans les trois langues : titres traduits, rangée d'onglets sans débordement à 1366 px
+    // -------------------------------------------------------------------------
+    {
+        auto& app = *QCoreApplication::instance();
+        FrenchOnExit restoreFrench;
+        // Textes source (français) des onglets et des groupes
+        QStringList sources;
+        {
+            FullRibbonActions full;
+            RibbonBar bar;
+            RibbonBuilder::buildAllTabs(&bar, full.acts, nullptr);
+            for (int i = 0; i < bar.tabCount(); ++i)
+            {
+                sources << bar.tabTitle(i);
+                for (auto* panel : bar.tab(i)->panels()) sources << panel->title();
+            }
+        }
+        sources.removeDuplicates();
+        QStringList untranslated;
+        int widest = 0;
+        QString widestLang;
+        for (Language lang : { Language::French, Language::English, Language::Malagasy })
+        {
+            if (lang != Language::French)
+                for (const QString& s : sources)
+                    if (!LanguageManager::hasTranslationFor(lang, "TSA::UI::RibbonBuilder", s.toUtf8().constData()))
+                        untranslated << LanguageManager::code(lang) + QStringLiteral(" : ") + s;
+            if (offscreen) continue;
+            TEST_CHECK(LanguageManager::install(app, lang), "Test 467: langue installée");
+            FullRibbonActions full;
+            RibbonBar bar;
+            RibbonBuilder::buildAllTabs(&bar, full.acts, nullptr);
+            const int w = bar.tabBar()->sizeHint().width();
+            if (w > widest) { widest = w; widestLang = LanguageManager::nativeName(lang); }
+        }
+        TEST_CHECK(LanguageManager::install(app, Language::French), "Test 467: retour au français");
+        for (int i = 0; i < std::min<int>(10, untranslated.size()); ++i) std::cerr << "  non traduit : " << untranslated[i].toStdString() << std::endl;
+        TEST_CHECK(untranslated.isEmpty(), "Test 467: " << untranslated.size() << " titre(s) d'onglet ou de groupe non traduit(s) sur " << sources.size());
+        if (!offscreen)
+            TEST_CHECK(widest <= 1100, "Test 467: rangée d'onglets la plus large : " << widest << " px (" << widestLang.toStdString() << ") pour 1366 px de fenêtre");
+        std::cout << "[PASS] Test 467: Ruban traduit (" << sources.size() << " titres) ; rangée d'onglets la plus large " << widest << " px ("
+                  << widestLang.toStdString() << ")" << std::endl;
+        ++passed;
+    }
     return true;
 }

@@ -782,7 +782,7 @@ void MainWindow::onToggleLoadsVisible(bool checked)
         m_occView->setLoadsVisible(checked);
         if (m_statusInfo)
         {
-            m_statusInfo->setText(checked ? tr("Charges & actions affichées en 3D") : tr("Charges masquées"));
+            m_statusInfo->setText(checked ? tr("Charges et actions affichées en 3D") : tr("Charges masquées"));
         }
     }
 }

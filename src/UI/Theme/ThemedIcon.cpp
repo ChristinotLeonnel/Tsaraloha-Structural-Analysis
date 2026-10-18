@@ -13,6 +13,7 @@
 #include <QRegularExpression>
 #include <QSvgRenderer>
 
+#include <algorithm>
 #include <cmath>
 
 namespace TSA::UI
@@ -87,7 +88,7 @@ public:
         QPixmap pm;
         if (!QPixmapCache::find(key, &pm))
         {
-            pm = QPixmap::fromImage(renderThemedIcon(m_path, std::min(px.width(), px.height()), dark, mode));
+            pm = QPixmap::fromImage(renderThemedIcon(m_path, px, dark, mode));
             QPixmapCache::insert(key, pm);
         }
         pm.setDevicePixelRatio(scale);
@@ -138,14 +139,20 @@ QByteArray themedSvg(const QString& resourcePath, bool dark)
 
 QImage renderThemedIcon(const QString& resourcePath, int size, bool dark, QIcon::Mode mode)
 {
-    QImage img(size, size, QImage::Format_ARGB32_Premultiplied);
+    return renderThemedIcon(resourcePath, QSize(size, size), dark, mode);
+}
+
+QImage renderThemedIcon(const QString& resourcePath, const QSize& size, bool dark, QIcon::Mode mode)
+{
+    QImage img(size, QImage::Format_ARGB32_Premultiplied);
     img.fill(Qt::transparent);
     QSvgRenderer renderer(themedSvg(resourcePath, dark));
     if (renderer.isValid())
     {
         QPainter p(&img);
         p.setRenderHint(QPainter::Antialiasing);
-        renderer.render(&p);
+        const int side = std::min(size.width(), size.height());
+        renderer.render(&p, QRectF((size.width() - side) / 2.0, (size.height() - side) / 2.0, side, side));
     }
     if (mode == QIcon::Disabled) toDisabled(img, dark);
     return img;

@@ -27,7 +27,7 @@ HelpDialog::HelpDialog(QWidget* parent)
 
 void HelpDialog::setupUi()
 {
-    setWindowTitle(tr("Aide & Documentation - %1").arg(TSA::Product::kMainWindowTitle));
+    setWindowTitle(tr("Aide et Documentation - %1").arg(TSA::Product::kMainWindowTitle));
     resize(860, 620);
     setMinimumSize(700, 500);
 
@@ -39,7 +39,7 @@ void HelpDialog::setupUi()
     auto* topHeader = new QHBoxLayout();
     topHeader->setSpacing(10);
 
-    auto* titleLabel = new QLabel(tr("📖 <b>Centre d'Aide & Documentation %1</b>").arg(TSA::Product::name()), this);
+    auto* titleLabel = new QLabel(tr("📖 <b>Centre d'Aide et Documentation %1</b>").arg(TSA::Product::name()), this);
     titleLabel->setStyleSheet("font-size: 14px;");
     topHeader->addWidget(titleLabel);
 
@@ -67,12 +67,12 @@ void HelpDialog::setupUi()
         item->setSizeHint(QSize(200, 36));
     };
 
-    addTopic(tr("🚀 Démarrage & Workflow"));
+    addTopic(tr("🚀 Démarrage et Workflow"));
     addTopic(tr("✏️ Modélisation 3D"));
-    addTopic(tr("📐 Grilles 3D & Niveaux"));
-    addTopic(tr("🎥 Vues, Caméra & Coupes"));
-    addTopic(tr("⌨️ Raccourcis & Console"));
-    addTopic(tr("⚙️ Analyse & Résultats EF"));
+    addTopic(tr("📐 Grilles 3D et Niveaux"));
+    addTopic(tr("🎥 Vues, Caméra et Coupes"));
+    addTopic(tr("⌨️ Raccourcis et Console"));
+    addTopic(tr("⚙️ Analyse et Résultats EF"));
     addTopic(tr("ℹ️ À Propos de %1").arg(TSA::Product::name()));
 
     connect(m_topicsList, &QListWidget::currentRowChanged, this, &HelpDialog::onTopicChanged);

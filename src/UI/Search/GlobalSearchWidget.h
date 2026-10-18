@@ -60,6 +60,8 @@ public:
 
 signals:
     void activated(const QString& id);
+    /// Le champ a perdu le focus (recherche terminée ou abandonnée).
+    void searchClosed();
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
@@ -85,6 +87,7 @@ private:
     QString m_shortcutText;
     QString m_lastFeedback;
     bool m_indexStale = true;
+    bool m_followsWindow = false;
 };
 
 } // namespace TSA::UI

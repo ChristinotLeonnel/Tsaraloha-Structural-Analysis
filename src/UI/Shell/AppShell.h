@@ -157,6 +157,8 @@ private:
     QHash<QAction*, QAction*> m_proxyTargets; // action de la barre de titre → action du workspace
 
     bool m_nativeFrameApplied = false;
+    bool m_restartPending = false;   ///< fermeture demandée par restartApplication()
+    bool m_searchShowedTitleBar = false;   ///< barre de titre affichée le temps d'une recherche (plein écran)
     std::unique_ptr<QAbstractNativeEventFilter> m_resizeFilter;
     bool m_wasMaximizedBeforeFullScreen = false;
 };

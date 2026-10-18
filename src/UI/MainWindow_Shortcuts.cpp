@@ -26,6 +26,9 @@ void MainWindow::bindShortcut(const char* id, QAction* action)
 {
     if (!action) return;
     ShortcutManager::instance().bind(QString::fromLatin1(id), action);
+    // Identifiant stable comme nom d'objet : repris par le bouton du ruban (AutomationId UI Automation), les essais
+    // retrouvent ainsi une commande quelle que soit la langue de l'interface
+    if (action->objectName().isEmpty()) action->setObjectName(QString::fromLatin1(id));
     // Associée à la fenêtre : le raccourci reste actif même si l'action n'est visible que dans un onglet
     // du ruban masqué (QWidget::addAction ignore les doublons).
     addAction(action);

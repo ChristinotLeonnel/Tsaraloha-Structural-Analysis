@@ -117,7 +117,7 @@ function ImportIfc($file, [switch]$Cancel) {
 }
 
 # --- 1. Projet existant ---------------------------------------------------------------------------------------------
-$script:p = Start-Process -FilePath $Exe -ArgumentList ('"' + $Project + '"') -PassThru
+$script:p = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", ('"' + $Project + '"')) -PassThru
 $deadline = (Get-Date).AddSeconds(120)
 while ((Get-Date) -lt $deadline) { $script:p.Refresh(); if ($script:p.MainWindowHandle -ne [IntPtr]::Zero -and $script:p.MainWindowTitle -like "TSA*") { break }; Start-Sleep -Milliseconds 500 }
 $script:w = $script:p.MainWindowHandle

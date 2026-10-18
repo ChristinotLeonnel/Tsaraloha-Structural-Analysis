@@ -18,7 +18,7 @@ LevelDialog::LevelDialog(TSA::Coordinate::LevelManager* levelManager, QWidget* p
     : QDialog(parent)
     , m_levelManager(levelManager)
 {
-    setWindowTitle(tr("Level & Story Manager"));
+    setWindowTitle(tr("Level et Story Manager"));
     resize(640, 420);
 
     setupUi();

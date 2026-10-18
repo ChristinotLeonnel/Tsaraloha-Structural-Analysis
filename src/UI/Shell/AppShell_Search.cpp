@@ -70,7 +70,19 @@ void AppShell::setupSearch()
 
     m_actSearch = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/search.svg")), tr("Rechercher une commande"), this);
     m_actSearch->setToolTip(tr("Retrouver une commande, un panneau ou un paramètre par son nom"));
-    connect(m_actSearch, &QAction::triggered, m_search, &GlobalSearchWidget::focusSearch);
+    connect(m_actSearch, &QAction::triggered, this, [this] {
+        // Plein écran : la barre de titre est masquée ; elle s'affiche le temps de la recherche
+        if (!m_titleBar->isVisible())
+        {
+            m_titleBar->show();
+            m_searchShowedTitleBar = true;
+        }
+        m_search->focusSearch();
+    });
+    connect(m_search, &GlobalSearchWidget::searchClosed, this, [this] {
+        if (m_searchShowedTitleBar && isFullScreen()) m_titleBar->hide();
+        m_searchShowedTitleBar = false;
+    });
     addAction(m_actSearch);   // raccourci actif dans toute la fenêtre (Start Center et documents)
     auto& mgr = ShortcutManager::instance();
     mgr.bind(QStringLiteral("cmd.tools.search"), m_actSearch);

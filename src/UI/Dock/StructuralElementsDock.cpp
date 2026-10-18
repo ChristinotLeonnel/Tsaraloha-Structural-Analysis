@@ -149,7 +149,7 @@ void StructuralElementsDock::buildElementTree()
     itemPanel->setData(0, Qt::UserRole, "Panel");
 
     // 3. Fondations & Appuis
-    m_foundationCategory = new QTreeWidgetItem(m_rootItem, { tr("Fondations & Appuis") });
+    m_foundationCategory = new QTreeWidgetItem(m_rootItem, { tr("Fondations et Appuis") });
     m_foundationCategory->setExpanded(true);
 
     auto* itemFooting = new QTreeWidgetItem(m_foundationCategory, { tr("Semelle / Fondation") });

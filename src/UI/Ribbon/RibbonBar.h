@@ -7,6 +7,7 @@
 
 class QAction;
 
+class QTabBar;
 class QTabWidget;
 class QVBoxLayout;
 
@@ -28,6 +29,8 @@ public:
     int tabCount() const;
     QString tabTitle(int index) const;
     RibbonTab* tab(int index) const;
+    /// Rangée des onglets (largeur des libellés dans chaque langue).
+    QTabBar* tabBar() const;
 
     /// Emplacement de chaque action du ruban : « Onglet › Groupe » (premier emplacement si l'action est répétée).
     QHash<const QAction*, QString> actionLocations() const;

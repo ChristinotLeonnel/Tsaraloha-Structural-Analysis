@@ -135,7 +135,7 @@ void CableCreationDialog::setupUi()
     mainLayout->addWidget(grpSection);
 
     // 4. Groupe "Matériau & Mécanique"
-    auto* grpMat = new QGroupBox(tr("Matériau & Caractéristiques Mécaniques"), this);
+    auto* grpMat = new QGroupBox(tr("Matériau et Caractéristiques Mécaniques"), this);
     auto* matLayout = new QGridLayout(grpMat);
     matLayout->setContentsMargins(8, 12, 8, 8);
     matLayout->setSpacing(6);
@@ -648,7 +648,7 @@ void CableCreationDialog::onHelpClicked()
 {
     // Documentation en ligne ; l'aide locale ci-dessous reste le repli d'un produit sans site d'aide.
     if (TSA::UI::openHelpTopic(this, QStringLiteral("model.cables")) != TSA::UI::HelpOpenResult::NotConfigured) return;
-    QMessageBox::information(this, tr("Aide - Câbles & Systèmes de Tension"),
+    QMessageBox::information(this, tr("Aide - Câbles et Systèmes de Tension"),
         tr("<b>Élément Câble (1D) :</b><br><br>"
            "• <b>Section :</b> Section circulaire définie par son diamètre nominal Ø et son aire métallique A.<br>"
            "• <b>Tension initiale T₀ :</b> Précontrainte axiale appliquée à l'élément.<br>"

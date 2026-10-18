@@ -21,7 +21,7 @@ namespace TSA::UI
 {
 
 ProjectionViewDock::ProjectionViewDock(QWidget* parent)
-    : QDockWidget(tr("PROJECTION & VUE"), parent)
+    : QDockWidget(tr("PROJECTION et VUE"), parent)
 {
     setObjectName("ProjectionViewDock");
     setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -169,7 +169,7 @@ void ProjectionViewDock::setupUi()
     // =========================================================================
     // 4. SECTION GIZMO 3D (GIZMO SIZE)
     // =========================================================================
-    auto* grpGizmo = new QGroupBox(tr("GIZMO & MANIPULATION 3D"), container);
+    auto* grpGizmo = new QGroupBox(tr("GIZMO et MANIPULATION 3D"), container);
     auto* gizmoLayout = new QVBoxLayout(grpGizmo);
     gizmoLayout->setSpacing(6);
 

@@ -19,7 +19,7 @@ namespace TSA::UI
 {
 
 LogConsoleDock::LogConsoleDock(QWidget* parent)
-    : QDockWidget(tr("CONSOLE & DIAGNOSTICS"), parent)
+    : QDockWidget(tr("CONSOLE et DIAGNOSTICS"), parent)
 {
     setObjectName("LogConsoleDock");
     setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);

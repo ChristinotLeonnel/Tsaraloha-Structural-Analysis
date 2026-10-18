@@ -20,7 +20,7 @@ LoadCaseDialog::LoadCaseDialog(TSA::Model::Model* model, QWidget* parent)
     : QDialog(parent)
     , m_model(model)
 {
-    setWindowTitle(tr("Cas de Charges, Combinaisons & Solveur OpenSees"));
+    setWindowTitle(tr("Cas de Charges, Combinaisons et Solveur OpenSees"));
     resize(780, 560);
     setupUI();
     refreshCasesTable();
@@ -114,7 +114,7 @@ void LoadCaseDialog::setupUI()
     m_txtScriptPreview->setPlaceholderText(tr("Cliquez sur 'Générer Script OpenSees' pour visualiser le code Tcl de calcul."));
     osLayout->addWidget(m_txtScriptPreview);
 
-    m_tabWidget->addTab(tabOpenSees, tr("3. Validation & OpenSees"));
+    m_tabWidget->addTab(tabOpenSees, tr("3. Validation et OpenSees"));
 
     mainLayout->addWidget(m_tabWidget);
 

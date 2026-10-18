@@ -53,7 +53,7 @@ void SectionCustomizationDialog::setupUi()
     mainLayout->setSpacing(8);
 
     // 1. Groupe Identification & Forme
-    auto* grpType = new QGroupBox(tr("Forme de Section & Bibliothèque"), this);
+    auto* grpType = new QGroupBox(tr("Forme de Section et Bibliothèque"), this);
     auto* formType = new QFormLayout(grpType);
     formType->setContentsMargins(8, 10, 8, 8);
     formType->setSpacing(6);
@@ -79,7 +79,7 @@ void SectionCustomizationDialog::setupUi()
     mainLayout->addWidget(grpType);
 
     // 2. Aperçu Graphique 2D avec Cotes
-    auto* grpPreview = new QGroupBox(tr("Schéma & Dimensions"), this);
+    auto* grpPreview = new QGroupBox(tr("Schéma et Dimensions"), this);
     auto* prevLayout = new QVBoxLayout(grpPreview);
     prevLayout->setContentsMargins(6, 6, 6, 6);
 

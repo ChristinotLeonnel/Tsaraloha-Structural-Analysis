@@ -15,6 +15,7 @@
 #include "TitleBar.h"
 #include "../MainWindow.h"
 #include "../Dialogs/LanguageDialog.h"
+#include "../Common/EcosystemApplication.h"
 #include "../../Core/I18n/LanguageManager.h"
 #include "../Home/NewProjectDialog.h"
 #include "../Home/StartCenter.h"
@@ -205,7 +206,6 @@ void AppShell::createActions()
     m_titleBar->addTrailing(m_actCloseProject);
     m_titleBar->addTrailing(m_actTheme);
     setupSearch();
-    addAction(m_actLanguage);
 
     m_recentMenu = new QMenu(tr("Projets récents"), this);
     m_recentMenu->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file_tsa.svg")));
@@ -628,8 +628,15 @@ void AppShell::rebuildApplicationMenu()
 void AppShell::chooseLanguage()
 {
     using TSA::Core::I18n::LanguageManager;
-    LanguageDialog dialog(LanguageManager::currentLanguage(), this);
-    if (dialog.exec() != QDialog::Accepted || dialog.choice() == LanguageDialog::Choice::Cancelled) return;
+    const auto current = LanguageManager::currentLanguage();
+    LanguageDialog dialog(current, this);
+    if (dialog.exec() != QDialog::Accepted || dialog.choice() == LanguageDialog::Choice::Cancelled)
+    {
+        // Boîte refermée sur la langue actuelle : la préférence est réalignée (annule un choix antérieur « au prochain
+        // démarrage »)
+        if (dialog.selectedLanguage() == current && LanguageManager::storedLanguage() != current) LanguageManager::storeLanguage(current);
+        return;
+    }
     LanguageManager::storeLanguage(dialog.selectedLanguage());
     if (dialog.choice() == LanguageDialog::Choice::RestartNow) restartApplication();
 }
@@ -638,12 +645,12 @@ bool AppShell::restartApplication()
 {
     // Projets enregistrés rouverts au redémarrage (un projet jamais enregistré fait l'objet de la confirmation
     // habituelle de fermeture)
-    QStringList files;
-    for (MainWindow* d : m_documents)
-        if (const auto* pm = d->projectManager(); pm && pm->hasFilePath()) files << pm->currentFilePath();
-    if (!close()) return false;   // fermeture refusée (modifications à enregistrer, calcul en cours) : on reste
-    QProcess::startDetached(QCoreApplication::applicationFilePath(), files);
-    return true;
+    // La liste des projets est établie dans closeEvent, après les confirmations (un projet enregistré à cette occasion
+    // est rouvert) ; la relance a lieu dans main(), une fois cette instance entièrement fermée.
+    m_restartPending = true;
+    if (close()) return true;
+    m_restartPending = false;   // fermeture refusée (modifications à enregistrer, calcul en cours) : on reste
+    return false;
 }
 
 void AppShell::closeEvent(QCloseEvent* event)
@@ -659,6 +666,13 @@ void AppShell::closeEvent(QCloseEvent* event)
         }
     }
     saveShellGeometry();
+    if (m_restartPending)
+    {
+        QStringList files;
+        for (MainWindow* d : m_documents)
+            if (const auto* pm = d->projectManager(); pm && pm->hasFilePath()) files << pm->currentFilePath();
+        if (auto* app = qobject_cast<EcosystemApplication*>(QCoreApplication::instance())) app->requestRestart(files);
+    }
     event->accept();
 }
 

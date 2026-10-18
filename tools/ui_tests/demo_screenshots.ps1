@@ -102,7 +102,7 @@ $plans = @(
 foreach ($plan in $plans) {
     $path = Join-Path $Projects $plan.File
     Write-Output "== $($plan.File)"
-    $p = Start-Process -FilePath $Exe -ArgumentList ('"' + $path + '"') -PassThru
+    $p = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", ('"' + $path + '"')) -PassThru
     $h = Wait-ProcessWindow $p ("TSA*" + [IO.Path]::GetFileNameWithoutExtension($plan.File) + "*")
     if ($h -eq [IntPtr]::Zero) { Write-Output "  ÉCHEC : fenêtre introuvable"; continue }
     $script:w = $h

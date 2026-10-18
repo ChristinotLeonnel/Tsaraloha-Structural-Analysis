@@ -33,7 +33,7 @@ GridSettingsDialog::GridSettingsDialog(TSA::Grid::GridManager* gridManager,
 
 void GridSettingsDialog::setupUi()
 {
-    setWindowTitle(tr("Gestionnaire des Grilles 3D & Accrochage"));
+    setWindowTitle(tr("Gestionnaire des Grilles 3D et Accrochage"));
     setWindowModality(Qt::NonModal);
     resize(580, 480);
 
@@ -79,12 +79,12 @@ void GridSettingsDialog::setupUi()
     mainLayout->addWidget(listGroup);
 
     // 2. Options d'affichage et d'accrochage
-    auto* optionsGroup = new QGroupBox(tr("Propriétés de la Grille Sélectionnée & Accrochage"), this);
+    auto* optionsGroup = new QGroupBox(tr("Propriétés de la Grille Sélectionnée et Accrochage"), this);
     auto* optGrid = new QGridLayout(optionsGroup);
 
     m_visibleCheck = new QCheckBox(tr("Grille Visible"), optionsGroup);
     m_snapCheck = new QCheckBox(tr("Accrochage Magnétique (Snap)"), optionsGroup);
-    m_labelsCheck = new QCheckBox(tr("Étiquettes & Bulles d'Axes Visibles"), optionsGroup);
+    m_labelsCheck = new QCheckBox(tr("Étiquettes et Bulles d'Axes Visibles"), optionsGroup);
     m_intersectionsCheck = new QCheckBox(tr("Intersections Visibles"), optionsGroup);
 
     optGrid->addWidget(m_visibleCheck, 0, 0);

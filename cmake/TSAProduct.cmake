@@ -1086,6 +1086,8 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_meshview.cpp
     ${TSA_ROOT}/tests/test_demo_models.cpp
     ${TSA_ROOT}/tests/test_i18n.cpp
+    # Ruban (couche application) : composants autonomes testés par la suite « ribbon »
+    ${UI_RIBBON_SOURCES}
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )
@@ -1574,7 +1576,7 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards bim ifc drawing views tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc i18n)
+                       loads opensees supports standards bim ifc drawing views tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc i18n ribbon)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

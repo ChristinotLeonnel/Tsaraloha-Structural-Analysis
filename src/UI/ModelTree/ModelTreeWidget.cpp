@@ -741,7 +741,7 @@ void ModelTreeWidget::refreshResults()
         delete m_resultsCategory->takeChild(0);
     }
 
-    auto* itemDisp = new QTreeWidgetItem(m_resultsCategory, { tr("Déplacements"), tr("Nœuds & Déformée 3D") });
+    auto* itemDisp = new QTreeWidgetItem(m_resultsCategory, { tr("Déplacements"), tr("Nœuds et Déformée 3D") });
     itemDisp->setData(0, TypeRole, TypeResult);
     itemDisp->setData(0, IdRole, 1);
     itemDisp->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_3d.svg")));
@@ -751,7 +751,7 @@ void ModelTreeWidget::refreshResults()
     itemForces->setData(0, IdRole, 2);
     itemForces->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/load_moment.svg")));
 
-    auto* itemReact = new QTreeWidgetItem(m_resultsCategory, { tr("Réactions d'Appuis"), tr("Forces & Moments") });
+    auto* itemReact = new QTreeWidgetItem(m_resultsCategory, { tr("Réactions d'Appuis"), tr("Forces et Moments") });
     itemReact->setData(0, TypeRole, TypeResult);
     itemReact->setData(0, IdRole, 3);
     itemReact->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/support_fixed.svg")));

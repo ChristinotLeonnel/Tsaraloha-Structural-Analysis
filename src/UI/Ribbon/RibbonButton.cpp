@@ -98,6 +98,13 @@ RibbonButton::RibbonButton(QAction* action, RibbonButtonSize size, QWidget* pare
     };
     syncAccessibility();
     if (action) connect(action, &QAction::changed, this, syncAccessibility);
+    // Identifiant de la commande (« cmd.display.grid ») : AutomationId stable, indépendant de la langue
+    // (posé après la construction du ruban, à la liaison des raccourcis : suivi par objectNameChanged)
+    if (action)
+    {
+        if (!action->objectName().isEmpty()) setObjectName(action->objectName());
+        connect(action, &QObject::objectNameChanged, this, [this](const QString& name) { setObjectName(name); });
+    }
 }
 
 RibbonButton::RibbonButton(const QString& text, const QIcon& icon, RibbonButtonSize size, QWidget* parent)

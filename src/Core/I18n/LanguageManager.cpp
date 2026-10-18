@@ -146,7 +146,7 @@ bool LanguageManager::install(QCoreApplication& app, Language language)
     if (state.qtBase) app.removeTranslator(state.qtBase.get());
     state.application.reset();
     state.qtBase.reset();
-    state.language = language;
+    state.language = Language::French;   // retenue seulement une fois la traduction chargée (repli : français)
 
     auto qt = std::make_unique<QTranslator>();
     if (loadQtBase(*qt, language))
@@ -160,6 +160,7 @@ bool LanguageManager::install(QCoreApplication& app, Language language)
     if (!tsa->load(translationResource(language))) return false;
     app.installTranslator(tsa.get());   // installé en dernier : consulté avant celui de Qt
     state.application = std::move(tsa);
+    state.language = language;
     return true;
 }
 

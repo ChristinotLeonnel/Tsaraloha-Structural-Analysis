@@ -1662,6 +1662,32 @@ void MainWindow::createRibbon()
     acts.actionAIAnalyze = m_actionAIAnalyze;
     acts.actionAIExplain = m_actionAIExplain;
 
+    // Commandes jusque-là hors du ruban (menus, raccourcis, console) : chacune a désormais sa place (docs/UI_RIBBON.md)
+    acts.actionImportTsa3d = m_actionImportTsa3d;
+    acts.actionExportTsa3d = m_actionExportTsa3d;
+    acts.actionImportViaModule = m_actionImportViaModule;
+    acts.actionShortcutEditor = m_actionShortcutEditor;
+    acts.actionSelectAll = m_actionSelectAll;
+    acts.actionSlabOpenings = m_actionSlabOpenings;
+    acts.actionWorkPlaneNextRef = m_actionWorkPlaneNextRef;
+    acts.actionWorkPlanePrevRef = m_actionWorkPlanePrevRef;
+    acts.actionWorkPlaneBack = m_actionWorkPlaneBack;
+    acts.actionWorkPlaneNextInter = m_actionWorkPlaneNextInter;
+    acts.actionWorkPlanePrevInter = m_actionWorkPlanePrevInter;
+    acts.actionWorkPlaneAlignInter = m_actionWorkPlaneAlignInter;
+    acts.actionMeshClear = m_actionMeshClear;
+    acts.actionMeshExport = m_actionMeshExport;
+    acts.actionMeshImport = m_actionMeshImport;
+    acts.actionReportTemplates = m_actionReportTemplates;
+    acts.actionRotateLeft = m_actionRotateLeft;
+    acts.actionRotateRight = m_actionRotateRight;
+    acts.actionSupportsVisible = m_actionSupportsVisible;
+    acts.actionSupportLabelsVisible = m_actionSupportLabelsVisible;
+    acts.actionSurfaceLoadsVisible = m_actionSurfaceLoadsVisible;
+    acts.actionModules = m_actionModules;
+    acts.actionReportProblem = m_actionReportProblem;
+    acts.actionExportDiagnostic = m_actionExportDiagnostic;
+
     TSA::UI::RibbonBuilder::buildAllTabs(m_ribbonBar, acts, this);
 
     // Intégration en tant que barre d'outils supérieure fixe non-flottante façon AutoCAD Ribbon
@@ -2127,7 +2153,7 @@ void MainWindow::createDockWindows()
             Qt::LeftDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/model_tree.svg")));
 
         m_windowManager->registerDock(
-            "visibility", tr("Calques & Visibilité"), tr("Affichage"), m_visibilityDock,
+            "visibility", tr("Calques et Visibilité"), tr("Affichage"), m_visibilityDock,
             Qt::LeftDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/visibility.svg")));
 
         m_windowManager->registerDock(
@@ -2139,7 +2165,7 @@ void MainWindow::createDockWindows()
             Qt::RightDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/properties.svg")));
 
         m_windowManager->registerDock(
-            "work_planes", tr("Plans de travail & Vues"), tr("Modélisation"), m_projectionViewDock,
+            "work_planes", tr("Plans de travail et Vues"), tr("Modélisation"), m_projectionViewDock,
             Qt::RightDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/view_normal_workplane.svg")));
 
         if (m_analysisDataDock)
@@ -2150,7 +2176,7 @@ void MainWindow::createDockWindows()
         }
 
         m_windowManager->registerDock(
-            "console", tr("Console & Messages"), tr("Outils"), m_consoleDock,
+            "console", tr("Console et Messages"), tr("Outils"), m_consoleDock,
             Qt::BottomDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/console.svg")));
     }
 

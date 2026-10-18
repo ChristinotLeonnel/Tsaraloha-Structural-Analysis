@@ -1,7 +1,17 @@
 #pragma once
 
-#include <vector>
+// Ruban de TSA (docs/UI_RIBBON.md) : dix onglets dans l'ordre du travail de l'ingénieur.
+//   Accueil · Modélisation · Modifier · Grille et plans · Charges · Maillage · Analyse · Résultats · Affichage · Outils
+// Chaque commande a une place, une seule (hors barre d'accès rapide) ; le ruban ne pose que des actions réelles de la
+// fenêtre (aucun bouton de remplacement) ; quand la place manque, RibbonTab réduit puis replie les groupes (jamais de
+// commande perdue).
+
+#include <QCoreApplication>
 #include <QObject>
+
+#include <map>
+#include <string>
+#include <vector>
 
 class QAction;
 class QMenu;
@@ -16,15 +26,15 @@ class RibbonPanel;
 
 struct RibbonActions
 {
-    // 1. Accueil & Fichier
+    // Projet
     QAction* actionNew = nullptr;
     QAction* actionCloseProject = nullptr;
     QAction* actionOpen = nullptr;
     QAction* actionSave = nullptr;
     QAction* actionSaveAs = nullptr;
-    QAction* actionExit = nullptr;
+    QAction* actionExit = nullptr;   ///< menu de l'application seulement
 
-    // Historique & Presse-papier
+    // Historique & presse-papiers
     QAction* actionUndo = nullptr;
     QAction* actionRedo = nullptr;
     QAction* actionCopyClipboard = nullptr;
@@ -32,7 +42,22 @@ struct RibbonActions
     QAction* actionCutClipboard = nullptr;
     QAction* actionPasteOriginal = nullptr;
 
-    // 2. Modélisation
+    // Échanges, paramètres du projet, préférences
+    QAction* actionImportIfc = nullptr;
+    QAction* actionExportIfc = nullptr;
+    QAction* actionImportTsa3d = nullptr;
+    QAction* actionExportTsa3d = nullptr;
+    QAction* actionImportViaModule = nullptr;
+    QAction* actionBimGeometryVisible = nullptr;   ///< couche des objets IFC importés
+    QAction* actionTopology = nullptr;
+    QAction* actionStructurePresets = nullptr;     ///< paramètres de modélisation
+    QAction* actionLanguage = nullptr;
+    QAction* actionToggleTheme = nullptr;
+    QAction* actionShortcutEditor = nullptr;
+
+    // Modélisation
+    QAction* actionSelectMode = nullptr;
+    QAction* actionSelectAll = nullptr;
     QAction* actionDrawNode = nullptr;
     QAction* actionNewNode = nullptr;
     QAction* actionDrawBar = nullptr;
@@ -43,61 +68,103 @@ struct RibbonActions
     QAction* actionDrawWall = nullptr;
     QAction* actionTruss = nullptr;
     QAction* actionFooting = nullptr;
+    QAction* actionSlabOpenings = nullptr;
     QAction* actionAddCube = nullptr;
-    QAction* actionStructurePresets = nullptr;
-
-    // Trame & Niveaux
-    QAction* actionNewGrid = nullptr;
-    QAction* actionGridManager = nullptr;
-    QAction* actionManageLevels = nullptr;
-
-    // 3. Structure
+    std::vector<QAction*> drawTools;                     ///< outils de dessin (registre)
     QAction* actionSecI = nullptr;
     QAction* actionSecRect = nullptr;
     QAction* actionSecCirc = nullptr;
     QAction* actionConcrete = nullptr;
     QAction* actionSteel = nullptr;
+    QAction* actionLibrary = nullptr;
     QAction* actionFixed = nullptr;
     QAction* actionPinned = nullptr;
     QAction* actionRoller = nullptr;
-    QAction* actionLibrary = nullptr;
-    QAction* actionExtensionManager = nullptr;
+    QAction* actionSurfaceSupports = nullptr;
 
-    // 4. Charges & Actions
+    // Modifier
+    QAction* actionMove3D = nullptr;
+    QAction* actionMove = nullptr;
+    QAction* actionCopy3D = nullptr;
+    QAction* actionCopy = nullptr;
+    QAction* actionRotate3D = nullptr;
+    QAction* actionMirror = nullptr;
+    QAction* actionSplitBars = nullptr;
+    QAction* actionMergeNodes = nullptr;
+    QAction* actionCleanModel = nullptr;
+    QAction* actionToolInputMode = nullptr;             ///< saisie 3D / fenêtre des outils
+    std::vector<QAction*> advancedModifyTools;           ///< outils de modification (registre)
+    QAction* actionDelete = nullptr;
+
+    // Grille et plans
+    QAction* actionNewGrid = nullptr;
+    QAction* actionGridManager = nullptr;
+    QAction* actionManageLevels = nullptr;
+    QAction* actionWorkPlaneXY = nullptr;
+    QAction* actionWorkPlaneXZ = nullptr;
+    QAction* actionWorkPlaneYZ = nullptr;
+    QAction* actionWorkPlaneLevel = nullptr;
+    QAction* actionWorkPlaneCustom = nullptr;
+    QAction* actionWorkPlaneVisible = nullptr;
+    QAction* actionViewNormalToPlane = nullptr;
+    QAction* actionWorkPlaneNextRef = nullptr;
+    QAction* actionWorkPlanePrevRef = nullptr;
+    QAction* actionWorkPlaneBack = nullptr;
+    QAction* actionWorkPlaneNextInter = nullptr;
+    QAction* actionWorkPlanePrevInter = nullptr;
+    QAction* actionWorkPlaneAlignInter = nullptr;
+    QAction* actionGridSnap = nullptr;
+    QAction* actionObjectSnap = nullptr;
+    QAction* actionGridVisible = nullptr;
+    QAction* actionLevelsVisible = nullptr;
+    QAction* actionGridLabels = nullptr;
+    QAction* actionRulersVisible = nullptr;
+    QMenu* annotationScaleMenu = nullptr;   ///< « Échelle des annotations »
+    QAction* actionCoordSystem = nullptr;
+    QAction* actionMoveOrigin = nullptr;
+    QAction* actionSectionCut = nullptr;
+
+    // Charges
     QAction* actionPointLoad = nullptr;
     QAction* actionDistLoad = nullptr;
     QAction* actionTrapLoad = nullptr;
     QAction* actionBarPointLoad = nullptr;
     QAction* actionSurfaceLoad = nullptr;
-    QAction* actionSurfaceSupports = nullptr;
     QAction* actionSelfWeight = nullptr;
     QAction* actionLoadCases = nullptr;
     QAction* actionLoadsVisible = nullptr;
-    QAction* actionBimGeometryVisible = nullptr;   ///< couche des objets IFC importés
     QAction* actionForcesVisible = nullptr;
     QAction* actionMomentsVisible = nullptr;
     QAction* actionLoadValuesVisible = nullptr;
+    QAction* actionSurfaceLoadsVisible = nullptr;
+    QMenu* loadScaleMenu = nullptr;         ///< « Échelle des charges »
 
-    // 5. Analyse & Calcul
+    // Maillage
     QAction* actionMeshGen = nullptr;
-    QAction* actionMeshSettings = nullptr;
-    QAction* actionMeshPreview = nullptr;
-    QAction* actionMeshQuality = nullptr;
     QAction* actionMeshRegenerate = nullptr;
+    QAction* actionMeshClear = nullptr;
+    QAction* actionMeshSettings = nullptr;
     QAction* actionMeshLocal = nullptr;
     QAction* actionMeshZone = nullptr;
+    QAction* actionMeshPreview = nullptr;
+    QAction* actionMeshQuality = nullptr;
     QAction* actionMeshShow = nullptr;
-    QMenu* meshViewMenu = nullptr;
-    QMenu* annotationScaleMenu = nullptr;   ///< « Échelle des annotations »
-    QMenu* loadScaleMenu = nullptr;         ///< « Échelle des charges »      ///< « Affichage du maillage » (modes, filtres, sélection, résultats)
-    QAction* actionAnalysisConfig = nullptr;
-    QAction* actionRunSolve = nullptr;
+    QMenu* meshViewMenu = nullptr;          ///< « Affichage du maillage » (modes, filtres, sélection, résultats)
+    QAction* actionMeshExport = nullptr;
+    QAction* actionMeshImport = nullptr;
 
+    // Analyse
+    QAction* actionRunSolve = nullptr;
+    QAction* actionAnalysisConfig = nullptr;
+    QAction* actionAICheck = nullptr;
+    QAction* actionAIAnalyze = nullptr;
+
+    // Résultats
     QAction* actionResultsDock = nullptr;
+    QAction* actionDeformedToggle = nullptr;
     QAction* actionResultsDisp = nullptr;
     QAction* actionResultsForces = nullptr;
     QAction* actionResultsStress = nullptr;
-    QAction* actionDeformedToggle = nullptr;
     QAction* actionDiagramMz = nullptr;
     QAction* actionDiagramMy = nullptr;
     QAction* actionDiagramMx = nullptr;
@@ -111,33 +178,10 @@ struct RibbonActions
     QAction* actionFitResults = nullptr;
     QAction* actionFitDeformed = nullptr;
     QAction* actionOpenNDC = nullptr;
+    QAction* actionReportTemplates = nullptr;
+    QAction* actionAIExplain = nullptr;
 
-    // 6. Édition & Transformations
-    QAction* actionSelectMode = nullptr;
-    QAction* actionMove3D = nullptr;
-    QAction* actionMove = nullptr;
-    QAction* actionCopy3D = nullptr;
-    QAction* actionCopy = nullptr;
-    QAction* actionRotate3D = nullptr;
-    QAction* actionMirror = nullptr;
-    QAction* actionSplitBars = nullptr;
-    QAction* actionMergeNodes = nullptr;
-    QAction* actionCleanModel = nullptr;
-    QAction* actionImportIfc = nullptr;
-    QAction* actionExportIfc = nullptr;
-    QAction* actionToolInputMode = nullptr;             ///< saisie 3D / fenêtre des outils
-    std::vector<QAction*> advancedModifyTools;           ///< outils de modification (registre)
-    std::vector<QAction*> drawTools;                     ///< outils de dessin (registre)
-    std::map<std::string, QAction*> dimensionTools;      ///< outils de cotation (registre, par identifiant)
-    std::vector<QAction*> dimensionCommands;             ///< modifier, supprimer, nettoyer, afficher, style
-    std::vector<QAction*> renderModes;                   ///< rendu texturé, ombré, filaire
-    QAction* renderEdges = nullptr;                      ///< arêtes des faces
-    QAction* renderLightweight = nullptr;                ///< mode léger (PC modestes)
-    std::vector<QAction*> modelDisplayModes;             ///< physique, filaire analytique, éléments finis, superposition
-    QAction* actionMoveOrigin = nullptr;
-    QAction* actionDelete = nullptr;
-
-    // 7. Affichage & Vues
+    // Affichage
     QAction* actionView3D = nullptr;
     QAction* actionViewXY = nullptr;
     QAction* actionViewXZ = nullptr;
@@ -151,7 +195,6 @@ struct RibbonActions
     QAction* actionViewIsometric = nullptr;
     QAction* actionViewHome = nullptr;
     QAction* actionNamedViews = nullptr;
-
     QAction* actionFitAll = nullptr;
     QAction* actionFitSelection = nullptr;
     QAction* actionResetView = nullptr;
@@ -160,66 +203,59 @@ struct RibbonActions
     QAction* actionZoomWindow = nullptr;
     QAction* actionPreviousView = nullptr;
     QAction* actionNextView = nullptr;
-
-    QAction* actionCoordSystem = nullptr;
-    QAction* actionWorkPlaneXY = nullptr;
-    QAction* actionWorkPlaneXZ = nullptr;
-    QAction* actionWorkPlaneYZ = nullptr;
-    QAction* actionWorkPlaneLevel = nullptr;
-    QAction* actionWorkPlaneCustom = nullptr;
-    QAction* actionWorkPlaneVisible = nullptr;
-    QAction* actionViewNormalToPlane = nullptr;
-    QAction* actionSectionCut = nullptr;
-
-    QAction* actionGridVisible = nullptr;
-    QAction* actionLevelsVisible = nullptr;
-    QAction* actionGridLabels = nullptr;
-    QAction* actionGridSnap = nullptr;
-    QAction* actionObjectSnap = nullptr;
-    QAction* actionRulersVisible = nullptr;
+    QAction* actionRotateLeft = nullptr;
+    QAction* actionRotateRight = nullptr;
+    std::vector<QAction*> modelDisplayModes;             ///< physique, filaire analytique, éléments finis, superposition
+    std::vector<QAction*> renderModes;                   ///< rendu texturé, ombré, filaire
+    QAction* renderEdges = nullptr;                      ///< arêtes des faces
+    QAction* renderLightweight = nullptr;                ///< mode léger (PC modestes)
     QAction* actionNodesVisible = nullptr;
     QAction* actionNodeLabelsVisible = nullptr;
+    QAction* actionSupportsVisible = nullptr;
+    QAction* actionSupportLabelsVisible = nullptr;
     QAction* actionFullScreen = nullptr;
-
     QAction* actionToggleModelTree = nullptr;
     QAction* actionToggleProperties = nullptr;
     QAction* actionToggleVisibility = nullptr;
     QAction* actionToggleConsole = nullptr;
 
-    // 8. Outils & Préférences
+    // Outils
     QAction* actionMeasure = nullptr;
-    QAction* actionTopology = nullptr;
-    QAction* actionToggleTheme = nullptr;
-    QAction* actionLanguage = nullptr;
+    std::map<std::string, QAction*> dimensionTools;      ///< outils de cotation (registre, par identifiant)
+    std::vector<QAction*> dimensionCommands;             ///< modifier, supprimer, nettoyer, afficher, style
+    QAction* actionAIAssistant = nullptr;
+    QAction* actionAIConfig = nullptr;
+    QAction* actionExtensionManager = nullptr;
+    QAction* actionModules = nullptr;
     QAction* actionHelp = nullptr;
     QAction* actionOnlineDocs = nullptr;
     QAction* actionShortcuts = nullptr;
     QAction* actionAbout = nullptr;
-
-    // 9. IA Co-Engineering
-    QAction* actionAIAssistant = nullptr;
-    QAction* actionAIConfig = nullptr;
-    QAction* actionAICheck = nullptr;
-    QAction* actionAIAnalyze = nullptr;
-    QAction* actionAIExplain = nullptr;
+    QAction* actionReportProblem = nullptr;
+    QAction* actionExportDiagnostic = nullptr;
 };
 
 class RibbonBuilder
 {
-public:
-    static void buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+    Q_DECLARE_TR_FUNCTIONS(TSA::UI::RibbonBuilder)
 
-    static RibbonTab* buildHomeTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildModelingTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildStructureTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildLoadsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildAnalysisTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildCalculationTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildResultsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildEditTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildViewTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
-    static RibbonTab* buildToolsTab(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+public:
+    /// Construit les dix onglets et la barre d'accès rapide.
+    static void buildAllTabs(RibbonBar* bar, const RibbonActions& acts, QWidget* parentWindow);
+    /// Actions que le ruban doit rendre atteignables (toutes celles de RibbonActions sauf « Quitter »), sans doublon.
+    static std::vector<QAction*> placedActions(const RibbonActions& acts);
+
+private:
+    static void buildHomeTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildModelingTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildModifyTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildGridTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildLoadsTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildMeshTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildAnalysisTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildResultsTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildViewTab(RibbonBar* bar, const RibbonActions& acts);
+    static void buildToolsTab(RibbonBar* bar, const RibbonActions& acts);
 };
 
 } // namespace TSA::UI
-

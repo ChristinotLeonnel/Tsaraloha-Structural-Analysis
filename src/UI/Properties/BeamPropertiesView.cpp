@@ -85,7 +85,7 @@ void BeamPropertiesView::setupUi()
     mainLayout->addWidget(m_endNodes);
 
     // 1. Général & Rôle
-    auto* grpGen = new QGroupBox(tr("Général & Rôle"), this);
+    auto* grpGen = new QGroupBox(tr("Général et Rôle"), this);
     auto* formGen = new QFormLayout(grpGen);
     formGen->setContentsMargins(8, 8, 8, 8);
     formGen->setSpacing(6);

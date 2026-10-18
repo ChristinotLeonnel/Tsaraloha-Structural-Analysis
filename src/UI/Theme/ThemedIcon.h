@@ -24,5 +24,7 @@ QByteArray themedSvg(const QString& resourcePath, bool dark);
 
 /// Image de l'icône pour un thème et un état, indépendamment du thème actif (tests de contraste).
 QImage renderThemedIcon(const QString& resourcePath, int size, bool dark, QIcon::Mode mode = QIcon::Normal);
+/// Même rendu dans un rectangle : l'icône (carrée) est centrée, sans déformation.
+QImage renderThemedIcon(const QString& resourcePath, const QSize& size, bool dark, QIcon::Mode mode = QIcon::Normal);
 
 } // namespace TSA::UI

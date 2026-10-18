@@ -68,6 +68,11 @@ LanguageDialog::LanguageDialog(Language current, QWidget* parent)
     connect(m_later, &QPushButton::clicked, this, [this] { m_choice = Choice::Later; accept(); });
     connect(m_cancel, &QPushButton::clicked, this, &QDialog::reject);
     connect(m_list, &QListWidget::currentItemChanged, this, [this] { refreshTexts(); });
+    // Sélection sans changement d'élément courant (accessibilité, UI Automation) : elle fait foi aussi
+    connect(m_list, &QListWidget::itemSelectionChanged, this, [this] {
+        const auto selected = m_list->selectedItems();
+        if (!selected.isEmpty() && selected.first() != m_list->currentItem()) m_list->setCurrentItem(selected.first());
+    });
     connect(m_list, &QListWidget::itemDoubleClicked, this, [this] {
         if (selectedLanguage() != m_current) m_restart->click();
     });

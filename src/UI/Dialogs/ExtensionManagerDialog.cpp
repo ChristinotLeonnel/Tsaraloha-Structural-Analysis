@@ -28,7 +28,7 @@ namespace TSA::UI
 ExtensionManagerDialog::ExtensionManagerDialog(QWidget* parent)
     : QDialog(parent)
 {
-    setWindowTitle(tr("Gestionnaire de Bibliothèques & Extensions TSALib"));
+    setWindowTitle(tr("Gestionnaire de Bibliothèques et Extensions TSALib"));
     resize(1000, 680);
     setMinimumSize(850, 500);
 
@@ -185,7 +185,7 @@ void ExtensionManagerDialog::populateCategoryTree()
 
     // 3. Sections & Profilés
     auto* secRoot = new QTreeWidgetItem(m_categoryTree);
-    secRoot->setText(0, tr("Sections & Profilés (%1)").arg(reg.sectionCount()));
+    secRoot->setText(0, tr("Sections et Profilés (%1)").arg(reg.sectionCount()));
     secRoot->setData(0, Qt::UserRole, "Sections_All");
     secRoot->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/section_i.svg")));
 
@@ -200,7 +200,7 @@ void ExtensionManagerDialog::populateCategoryTree()
 
     // 4. Câbles & Torons
     auto* cabRoot = new QTreeWidgetItem(m_categoryTree);
-    cabRoot->setText(0, tr("Câbles & Torons (%1)").arg(reg.cableCount()));
+    cabRoot->setText(0, tr("Câbles et Torons (%1)").arg(reg.cableCount()));
     cabRoot->setData(0, Qt::UserRole, "Cables_All");
     cabRoot->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_cable.svg")));
 
@@ -377,7 +377,7 @@ void ExtensionManagerDialog::populateExtensionsList(const QString& filter)
         m_itemsTable->setItem(r, 1, new QTableWidgetItem(QString::fromStdString(man.name)));
         m_itemsTable->setItem(r, 2, new QTableWidgetItem(QString::fromStdString(man.version.toString())));
         m_itemsTable->setItem(r, 3, new QTableWidgetItem(QString::fromStdString(man.author)));
-        auto* statusItem = new QTableWidgetItem(tr("Actif & Validé"));
+        auto* statusItem = new QTableWidgetItem(tr("Actif et Validé"));
         statusItem->setForeground(QBrush(QColor("#2B6CB0")));
         m_itemsTable->setItem(r, 4, statusItem);
     }

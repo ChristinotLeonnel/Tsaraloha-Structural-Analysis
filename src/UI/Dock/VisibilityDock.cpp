@@ -15,7 +15,7 @@ namespace TSA::UI
 {
 
 VisibilityDock::VisibilityDock(QWidget* parent)
-    : QDockWidget(tr("CALQUES & VISIBILITÉ"), parent)
+    : QDockWidget(tr("CALQUES et VISIBILITÉ"), parent)
 {
     setObjectName("VisibilityDock");
     setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -58,12 +58,12 @@ void VisibilityDock::setupUi()
     };
 
     // Groupe Guides & Repères
-    m_guidesGroup = new QGroupBox(tr("Guides & Repères 3D"), container);
+    m_guidesGroup = new QGroupBox(tr("Guides et Repères 3D"), container);
     auto* guidesLayout = new QVBoxLayout(m_guidesGroup);
     guidesLayout->setSpacing(6);
     m_chkGrid = addCheck(m_guidesGroup, tr("Grille 3D (G)"), true, false);
-    m_chkLevels = addCheck(m_guidesGroup, tr("Plans d'étages & Altimétrie"), true, false);
-    m_chkLabels = addCheck(m_guidesGroup, tr("Bulles & Libellés d'axes"), true, false);
+    m_chkLevels = addCheck(m_guidesGroup, tr("Plans d'étages et Altimétrie"), true, false);
+    m_chkLabels = addCheck(m_guidesGroup, tr("Bulles et Libellés d'axes"), true, false);
     m_chkRulers = addCheck(m_guidesGroup, tr("Règles graduées du viewport"), true, false);
     m_chkCoords = addCheck(m_guidesGroup, tr("Repères locaux (LCS)"), false, false);
     m_chkWorkPlane = addCheck(m_guidesGroup, tr("Plan de travail 3D (W)"), true, false);
@@ -75,7 +75,7 @@ void VisibilityDock::setupUi()
     modelLayout->setSpacing(6);
     m_chkNodes = addCheck(m_modelGroup, tr("Nœuds structurels"), true, true);
     m_chkNodeLabels = addCheck(m_modelGroup, tr("Numéros des nœuds (labels 3D)"), false, false);
-    m_chkLoads = addCheck(m_modelGroup, tr("Charges & Actions (3D)"), true, true);
+    m_chkLoads = addCheck(m_modelGroup, tr("Charges et Actions (3D)"), true, true);
     m_chkLoadValues = addCheck(m_modelGroup, tr("Valeurs des charges (kN, kN/m)"), true, false);
 
     using Cat = OccView::ElementCategory;

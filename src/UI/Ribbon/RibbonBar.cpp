@@ -89,6 +89,11 @@ QString RibbonBar::tabTitle(int index) const
     return m_tabWidget && index >= 0 && index < m_tabWidget->count() ? m_tabWidget->tabText(index) : QString();
 }
 
+QTabBar* RibbonBar::tabBar() const
+{
+    return m_tabWidget ? m_tabWidget->tabBar() : nullptr;
+}
+
 RibbonTab* RibbonBar::tab(int index) const
 {
     return index >= 0 && index < static_cast<int>(m_tabs.size()) ? m_tabs[index] : nullptr;

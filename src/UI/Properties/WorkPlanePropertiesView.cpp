@@ -179,7 +179,7 @@ void WorkPlanePropertiesView::setupUi()
     mainLayout->setSpacing(8);
 
     // 1. Groupe Identification
-    auto* grpId = new QGroupBox(tr("Identification & Type"), this);
+    auto* grpId = new QGroupBox(tr("Identification et Type"), this);
     auto* formId = new QFormLayout(grpId);
     formId->setContentsMargins(8, 8, 8, 8);
     formId->setSpacing(6);
@@ -336,7 +336,7 @@ void WorkPlanePropertiesView::setupUi()
     mainLayout->addWidget(grpGrid);
 
     // 6. Groupe États & Contrôles
-    auto* grpState = new QGroupBox(tr("États & Isolation"), this);
+    auto* grpState = new QGroupBox(tr("États et Isolation"), this);
     auto* layState = new QVBoxLayout(grpState);
     layState->setContentsMargins(8, 8, 8, 8);
     layState->setSpacing(4);

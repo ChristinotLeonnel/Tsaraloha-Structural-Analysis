@@ -136,6 +136,12 @@ EcosystemApplication::~EcosystemApplication()
     TSA::Diagnostics::Logger::instance().shutdown();
 }
 
+void EcosystemApplication::requestRestart(const QStringList& projectFiles)
+{
+    m_restartRequested = true;
+    m_restartFiles = projectFiles;
+}
+
 QStringList EcosystemApplication::projectFilesFromArguments() const
 {
     QStringList files;

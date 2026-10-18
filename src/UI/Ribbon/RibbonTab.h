@@ -27,6 +27,9 @@ public:
 
     void addPanel(RibbonPanel* panel);
     const std::vector<RibbonPanel*>& panels() const { return m_panels; }
+    /// Actions atteignables à la largeur actuelle : groupes affichés (complets, réduits ou repliés) et menu « Plus ».
+    std::vector<QAction*> reachableActions() const;
+    bool hasOverflowMenu() const;
 
     void updateTheme(bool isDark);
 

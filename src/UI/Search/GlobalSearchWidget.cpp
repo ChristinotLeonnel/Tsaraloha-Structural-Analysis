@@ -13,6 +13,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPainter>
+#include <QScreen>
 #include <QStyledItemDelegate>
 #include <QTimer>
 #include <QToolTip>
@@ -121,8 +122,10 @@ GlobalSearchWidget::GlobalSearchWidget(QWidget* parent)
     layout->addWidget(m_edit);
     setShortcutText(QString());
 
-    // Liste des résultats : cadre enfant de la fenêtre (placé au premier plan sous le champ), le champ garde le focus
-    m_popup = new QFrame(this);
+    // Liste des résultats : petite fenêtre outil sans focus (le champ garde la saisie), au-dessus de la vue 3D, qui
+    // est une fenêtre native qu'aucun widget enfant ne peut recouvrir
+    m_popup = new QFrame(this, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+    m_popup->setAttribute(Qt::WA_ShowWithoutActivating);
     m_popup->setObjectName("TSAGlobalSearchPopup");
     m_popup->setFrameShape(QFrame::StyledPanel);
     m_popup->hide();
@@ -295,11 +298,10 @@ void GlobalSearchWidget::moveSelection(int delta)
 
 void GlobalSearchWidget::showPopup()
 {
-    QWidget* host = window();
-    if (m_popup->parentWidget() != host)
+    if (!m_followsWindow)
     {
-        m_popup->setParent(host);
-        host->installEventFilter(this);   // suivre les redimensionnements de la fenêtre
+        window()->installEventFilter(this);   // suivre les déplacements et redimensionnements de la fenêtre
+        m_followsWindow = true;
     }
     positionPopup();
     m_popup->show();
@@ -313,14 +315,16 @@ void GlobalSearchWidget::hidePopup()
 
 void GlobalSearchWidget::positionPopup()
 {
-    QWidget* host = m_popup->parentWidget();
-    if (!host) return;
     const int rows = std::max(1, m_list->count());
     const int width = std::max(m_edit->width(), 480);
     const int height = rows * kRowHeight + 2 * m_list->frameWidth() + m_hint->sizeHint().height() + 2;
-    QPoint pos = m_edit->mapTo(host, QPoint(0, m_edit->height() + 2));
-    pos.setX(std::clamp(pos.x() + m_edit->width() - width, 4, std::max(4, host->width() - width - 4)));
-    m_popup->setGeometry(pos.x(), pos.y(), width, std::min(height, host->height() - pos.y() - 8));
+    // Aligné à droite du champ, dans l'écran qui contient le champ
+    QPoint pos = m_edit->mapToGlobal(QPoint(m_edit->width() - width, m_edit->height() + 2));
+    QRect area = window()->geometry();
+    if (const QScreen* screen = m_edit->screen()) area = area.intersected(screen->availableGeometry());
+    if (area.isEmpty() && m_edit->screen()) area = m_edit->screen()->availableGeometry();
+    pos.setX(std::clamp(pos.x(), area.left() + 4, std::max(area.left() + 4, area.right() - width - 4)));
+    m_popup->setGeometry(pos.x(), pos.y(), width, std::max(kRowHeight, std::min(height, area.bottom() - pos.y() - 8)));
 }
 
 bool GlobalSearchWidget::eventFilter(QObject* watched, QEvent* event)
@@ -371,11 +375,12 @@ bool GlobalSearchWidget::eventFilter(QObject* watched, QEvent* event)
         }
         else if (event->type() == QEvent::FocusOut)
         {
-            // Un clic dans la liste ne prend pas le focus (NoFocus) : la liste se ferme sur toute autre sortie
+            // Un clic dans la liste ne prend pas le focus (fenêtre sans focus) : la liste se ferme sur toute autre sortie
             hidePopup();
+            emit searchClosed();
         }
     }
-    else if (event->type() == QEvent::Resize && watched == m_popup->parentWidget() && isPopupVisible())
+    else if ((event->type() == QEvent::Resize || event->type() == QEvent::Move) && watched == window() && isPopupVisible())
     {
         positionPopup();
     }

@@ -61,7 +61,7 @@ void LoadPropertiesView::setupUi()
     mainLayout->addWidget(m_lblHeader);
 
     // Informations générales
-    auto* groupGen = new QGroupBox(tr("Identification & Système"), this);
+    auto* groupGen = new QGroupBox(tr("Identification et Système"), this);
     auto* formGen = new QFormLayout(groupGen);
 
     m_editName = new QLineEdit(this);

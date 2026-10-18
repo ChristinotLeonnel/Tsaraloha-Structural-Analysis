@@ -118,4 +118,41 @@ Les symboles, unités, formules, normes, noms d'éléments finis et identifiants
 | thème sombre, clair | dark, light theme | endrika maizina, mazava | courant |
 | bibliothèque (de sections) | library | tahiry | proposé |
 | extension | extension | fanitarana | proposé |
-| module | module | môdely | emprunt |
+| module | module | môdiola | emprunt (distinct de *modely* = modèle) |
+
+## 4. Termes ajoutés lors de la traduction complète (octobre 2026)
+
+Choisis par les traducteurs puis harmonisés : une seule forme par notion, appliquée à tous les textes.
+
+| Français | English | Malagasy | Statut |
+|---|---|---|---|
+| rigidité, raideur | stiffness | hahenjana | proposé |
+| matrice (de rigidité) | (stiffness) matrix | matrisy (matrisin'ny hahenjana) | emprunt |
+| masse | mass | habetsahana | proposé |
+| masse volumique | density | hakitroka | proposé |
+| ressort | spring | resôra | emprunt |
+| coque (élément) | shell | akorandriaka | proposé |
+| plaque | plate | plaka | emprunt |
+| degrés de liberté (DDL) | degrees of freedom (DOF) | fahafahana mihetsika | proposé |
+| excentrement | eccentricity, offset | fialana | proposé |
+| ancrage | anchorage | fatorana | proposé |
+| tolérance | tolerance | fandeferana | proposé |
+| gravité (pesanteur) | gravity | herin'ny tany | proposé |
+| rayon / diamètre | radius / diameter | antsasaky ny savaivony / savaivony | courant |
+| épaisseur, hauteur, largeur, longueur | thickness, height, width, length | hateviny, haavony, sakany, halavany | courant |
+| traction / compression | tension / compression | fisintonana / fanerena | proposé |
+| incrément, pas de calcul | increment, step | fitomboana, dingana | proposé |
+| convergence, itération | convergence, iteration | fifanatonana, famerimberenana | proposé |
+| raffinement (maillage) | refinement | fanamadinihana | proposé |
+| âme / aile (profilé) | web / flange | vatany / elany | proposé |
+| bulle d'axe | axis bubble | faribolana | proposé |
+| ouverture, trémie | opening | lavaka | courant |
+| calque | layer | sosona | courant |
+| légende | legend | fanazavana | courant |
+| onglet | tab | pejy | proposé |
+| ruban | ribbon | tandavana | proposé |
+| arrondi | rounding | fanakaikezana isa | proposé |
+| graphe, nœud Blueprint, lien | graph, node, link | grafy, bloka, rohy | emprunt / proposé |
+| norme | standard | fenitra | courant |
+| catégorie | category | sokajy | courant |
+| erreur, avertissement | error, warning | hadisoana, fampitandremana | courant |

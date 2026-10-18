@@ -78,7 +78,7 @@ foreach ($plan in $plans) {
     $script:dir = Join-Path $OutDir $plan.Key
     New-Item -ItemType Directory -Force $script:dir | Out-Null
     Write-Output "== $($plan.File)"
-    $p = Start-Process -FilePath $Exe -ArgumentList ('"' + (Join-Path $Projects $plan.File) + '"') -PassThru
+    $p = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", ('"' + (Join-Path $Projects $plan.File) + '"')) -PassThru
     $deadline = (Get-Date).AddSeconds(120)
     while ((Get-Date) -lt $deadline) { $p.Refresh(); if ($p.MainWindowHandle -ne [IntPtr]::Zero -and $p.MainWindowTitle -like "TSA*Projet*") { break }; Start-Sleep -Milliseconds 500 }
     if ($p.MainWindowHandle -eq [IntPtr]::Zero) { Write-Output "  ÉCHEC : fenêtre introuvable"; continue }

@@ -15,6 +15,36 @@
 namespace TSA::UI
 {
 
+namespace
+{
+void collectMenu(const QMenu* menu, std::vector<QAction*>& out)
+{
+    if (!menu) return;
+    for (QAction* a : menu->actions())
+    {
+        if (a->menu()) collectMenu(a->menu(), out);
+        else if (!a->isSeparator()) out.push_back(a);
+    }
+}
+} // namespace
+
+std::vector<QAction*> RibbonPanel::reachableActions() const
+{
+    std::vector<QAction*> out;
+    if (m_mode == RibbonPanelMode::Collapsed)
+    {
+        if (m_collapsedButton) collectMenu(m_collapsedButton->menu(), out);
+        return out;
+    }
+    for (auto* b : findChildren<QToolButton*>())
+    {
+        if (!b->isVisibleTo(this)) continue;
+        if (QAction* a = b->defaultAction()) out.push_back(a);
+        collectMenu(b->menu(), out);
+    }
+    return out;
+}
+
 std::vector<QAction*> RibbonPanel::actions() const
 {
     std::vector<QAction*> out;
@@ -81,7 +111,7 @@ void RibbonPanel::trackAction(QAction* action)
 
 void RibbonPanel::trackSeparator()
 {
-    if (!m_entries.empty() && m_entries.back().action) m_entries.push_back({ nullptr });
+    if (!m_entries.empty() && (m_entries.back().action || m_entries.back().submenu)) m_entries.push_back({ nullptr, nullptr });
 }
 
 RibbonButton* RibbonPanel::addLargeAction(QAction* action, QMenu* menu)
@@ -135,10 +165,14 @@ RibbonButton* RibbonPanel::addMenuButton(const QString& text, const QIcon& icon,
     {
         btn->setMenu(menu);
         btn->setPopupMode(QToolButton::InstantPopup);
-        // Les commandes du sous-menu restent atteignables depuis le menu replié.
+        // Les commandes du menu, sous-menus compris, restent atteignables depuis le menu replié et « Plus ».
         trackSeparator();
         for (auto* a : menu->actions())
-            if (!a->isSeparator() && !a->menu()) trackAction(a);
+        {
+            if (a->isSeparator()) continue;
+            if (a->menu()) m_entries.push_back({ nullptr, a->menu() });
+            else trackAction(a);
+        }
     }
     m_contentLayout->addWidget(btn);
     return btn;
@@ -249,6 +283,7 @@ QMenu* RibbonPanel::buildOverflowMenu(QWidget* parent) const
     for (const auto& e : m_entries)
     {
         if (e.action) menu->addAction(e.action);
+        else if (e.submenu) menu->addMenu(e.submenu);
         else if (!menu->actions().isEmpty() && !menu->actions().back()->isSeparator()) menu->addSeparator();
     }
     return menu;

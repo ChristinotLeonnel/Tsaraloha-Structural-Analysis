@@ -624,7 +624,7 @@ void SurfaceCreationDialog::onHelpClicked()
     // Documentation en ligne ; l'aide locale ci-dessous reste le repli d'un produit sans site d'aide.
     if (TSA::UI::openHelpTopic(this, QStringLiteral("model.surfaces")) != TSA::UI::HelpOpenResult::NotConfigured) return;
     QMessageBox::information(this, tr("Aide - Outil Éléments Surfaciques"),
-        tr("<b>Outil de création d'Éléments Surfaciques (Dalles & Voiles) :</b><br><br>"
+        tr("<b>Outil de création d'Éléments Surfaciques (Dalles et Voiles) :</b><br><br>"
            "Cette interface unifiée regroupe l'ensemble des éléments 2D surfaciques.<br><br>"
            "<b>1. Tracé d'une Dalle / Plancher :</b><br>"
            "• Sélectionnez <i>Dalle / Plancher</i> dans la liste supérieure.<br>"
