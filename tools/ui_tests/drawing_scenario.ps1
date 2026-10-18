@@ -4,7 +4,7 @@
 #   3. poutre par deux clics → 2 nœuds, 1 élément ; Annuler → modèle vide ; Rétablir ;
 #   4. Dessiner Dalle : 3 clics sans nœud créé, Entrée → dalle et ses 3 nœuds ;
 #   5. dalle croisée (nœud papillon) : refus motivé, rien de créé ;
-#   6. voile à base inclinée saisi dans le dialogue « Surface » : refus motivé, rien de créé ;
+#   6. voile à base inclinée saisi dans le dialogue « Surface » : créé (parallélogramme), avertissement « Base inclinée » ;
 #   7. Paramètres de modélisation : onglets Fondation et Treillis ;
 #   8. Portique (outil de la vue) : créé, puis relancé sur les mêmes pieds → refusé (console), rien de créé ;
 #   9. palette : identité BIM et quantités de la dalle sélectionnée (clic au centre de la dalle) ;
@@ -321,14 +321,16 @@ if ($sd) {
     Say "    champs du dialogue : $(($edits | ForEach-Object { '[' + (Value-Of $_) + ']' }) -join ' ')"
     Set-Value $wallEdits[0] "20 0 0"
     Set-Value $wallEdits[1] "25 0 0.4"
-    Click (Find-ByName (Fresh $sd) "Ajouter" $CT::Button)
-    $mb = ChildWindow "Voile non créé" 8
-    $text = if ($mb) { (Find-All $mb $CT::Text | ForEach-Object { $_.Current.Name }) -join " " } else { "" }
-    if ($mb) { Capture (HandleOf $mb) (Join-Path $OutDir "06_voile_incline_refuse.png") | Out-Null; Click (Find-ByName $mb "OK" $CT::Button) }
+    Click-Mouse (Find-ByName (Fresh $sd) "Ajouter" $CT::Button)
+    $mb = ChildWindow "Voile non créé" 3
+    $warn = ""
+    foreach ($try in 1..10) { $warn = PromptText "Base inclinée"; if ($warn) { break }; Start-Sleep -Milliseconds 500 }
+    Shot "06_voile_incline.png"
+    if ($mb) { Click (Find-ByName $mb "OK" $CT::Button) }
     Click (Find-ByName (Fresh $sd) "Fermer" $CT::Button)
     Start-Sleep -Seconds 1
     $script:wallBase = $base
-    Check "voile incliné refusé (boîte « Voile non créé », motif affiché)" ($mb -ne $null -and $text -match "même cote") "message « $text »"
+    Check "voile incliné créé, avertissement « Base inclinée » (aucune boîte de refus)" ($mb -eq $null -and $warn -match "diffèrent de 0.400 m") "invite « $warn »"
 } else { Check "dialogue Surface ouvert" $false "introuvable" }
 FocusMain; Press "{ESC}"
 
@@ -352,13 +354,19 @@ RibbonTab "Modèle"
 Click-Mouse (RibbonButton "Portique")
 Start-Sleep -Seconds 1
 $base = Base
+if ($script:wallBase -and $base[0] -eq $script:wallBase[0] -and $base[1] -eq $script:wallBase[1]) {
+    # Lecture valide antérieure au voile (illisible juste après son dialogue) : le voile ajoute 2 nœuds et 1 élément,
+    # contrôlé ci-dessous par les compteurs combinés
+    $base = @(($script:wallBase[0] + 2), ($script:wallBase[1] + 1))
+    Say "    référence du portique : avant le voile + voile = $($base -join '/')"
+}
 ViewClick -123 -92
 ViewClick -23 -82
 Start-Sleep -Seconds 1
 $d = Delta $base
 Check "portique créé (4 nœuds, 3 éléments de plus)" ($d[0] -eq 4 -and $d[1] -eq 3) "$(CountsText) ; console « $(ConsoleText 'Portique cr') »"
 $c = Counts
-Check "voile incliné : rien de créé (compteurs avant le voile + portique)" ($script:wallBase -and $c[0] -eq $script:wallBase[0] + 4 -and $c[1] -eq $script:wallBase[1] + 3) "avant le voile $($script:wallBase -join '/') ; après le portique $($c -join '/')"
+Check "voile incliné : 2 nœuds et 1 voile créés (compteurs avant le voile, puis après voile + portique)" ($script:wallBase -and $c[0] -eq $script:wallBase[0] + 2 + 4 -and $c[1] -eq $script:wallBase[1] + 1 + 3) "avant le voile $($script:wallBase -join '/') ; après le portique $($c -join '/')"
 Shot "08a_portique.png"
 $base = Base
 ViewClick -123 -92
@@ -432,6 +440,12 @@ $propTitle = PromptText "PROPRIÉTÉS DU POTEAU"
 $chain = $path -join " › "
 Check "arbre : Structure BIM › Site › Bâtiment › étage › Poteau C1, clic → propriétés du poteau" ($bimRoot -and $colItem -and $chain -match "Structure BIM.*Site.*Bâtiment.*Poteau C1" -and $propTitle) "chemin « $chain » ; panneau « $propTitle »"
 Shot "10_arbre_bim.png"
+
+# Vue d'ensemble (dernière étape : le cadrage change) — voile incliné, dalle, portique, poutre visibles
+RibbonTab "Affichage"
+$fit = RibbonButton "Zoom Étendu*"
+if ($fit) { Click-Mouse $fit; Start-Sleep -Seconds 2 }
+Shot "11_vue_ensemble.png"
 
 # --- Fermeture sans enregistrer, réglages restaurés ----------------------------------------------------------------------
 Finish $(if (@($script:results | Where-Object { -not $_.Ok }).Count -eq 0) { 0 } else { 1 })

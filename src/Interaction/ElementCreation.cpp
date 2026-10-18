@@ -465,19 +465,15 @@ CreationResult ElementCreation::createWall(const DrawPoint& a, const DrawPoint& 
     if (r.message.empty()) r.message = checkDuplicateLinear(LinearFamily::Wall, a, b);
     if (!r.message.empty()) return r;
 
-    // Base inclinée : refusée. Le voile est extrudé verticalement depuis sa base ; sa surface de calcul
-    // (TSA::Mesh::wallSurface) prend U le long de la base et V vertical : avec une pente, ce repère n'est plus
-    // orthogonal (ouvertures, maillage et charges mal placés) et l'aire L × H est surestimée.
+    // Base inclinée : acceptée, signalée. Le voile est extrudé verticalement depuis sa base : élévation en
+    // parallélogramme (longueur en plan × hauteur), même géométrie pour l'affichage, le calcul (Mesh::wallSurface,
+    // repère U horizontal / V vertical), le métré et l'export IFC. Souvent une erreur de saisie (pied accroché au
+    // mauvais niveau) : avertissement. Porte au pied non prise en charge sur une telle base (ouvertures intérieures).
+    auto warnings = unconnectedWarnings({ a, b }, false);
     const double dz = std::abs(position(a).Z() - position(b).Z());
     if (dz > GeometryTolerance::nodeCoincidence)
-    {
-        r.message = "Les deux points de base du voile ne sont pas à la même cote (écart de " + fmt(dz) + " m, tolérance "
-            + fmt(GeometryTolerance::nodeCoincidence) + " m) : TSA ne sait pas encore calculer un voile à base inclinée. "
-              "Tracez le voile entre deux points de même cote.";
-        return r;
-    }
-
-    const auto warnings = unconnectedWarnings({ a, b }, false);
+        warnings.push_back("Base inclinée : les deux pieds du voile diffèrent de " + fmt(dz)
+            + " m en cote ; le voile est un parallélogramme (longueur en plan × hauteur). Vérifiez les niveaux visés.");
     TSA::UndoRedo::EditTransaction tx(m_model, "Création Voile");
     const int s = resolveNode(a, r), e = resolveNode(b, r);
     const int id = (s > 0 && e > 0) ? m_model.addWall(s, e, preset.height, preset.thickness, name) : -1;

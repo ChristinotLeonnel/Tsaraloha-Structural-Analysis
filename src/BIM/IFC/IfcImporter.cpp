@@ -663,6 +663,33 @@ private:
         return true;
     }
 
+    /// Voile à base inclinée (export TSA, IfcGeometryMapper::wallSolid) : élévation en parallélogramme à deux côtés
+    /// verticaux de même hauteur dans le plan du profil, extrudée horizontalement de l'épaisseur. Pieds a, b sur le plan
+    /// médian (le décalage du voile y est repris), hauteur.
+    bool slopedWall(const Solid& s, Vec3& a, Vec3& b, double& height) const
+    {
+        if (!s.profile || s.profile->type != "IFCARBITRARYCLOSEDPROFILEDEF" || s.depth <= 0 || std::abs(s.dir[2]) > 1e-6) return false;
+        const auto local = curvePoints(m_r.get(s.profile->arg(2)));
+        if (local.size() != 4) return false;
+        std::vector<Vec3> w;
+        for (const auto& p : local) w.push_back(s.frame.point(p));
+        const Vec3 along = unit(cross({ 0, 0, 1 }, s.dir));   // horizontale du voile, du pied d'origine vers l'autre
+        std::vector<int> idx { 0, 1, 2, 3 };
+        std::sort(idx.begin(), idx.end(), [&](int i, int j) { return dot(w[i], along) < dot(w[j], along); });
+        auto vertical = [&](int i, int j) { return std::abs(w[i][0] - w[j][0]) < 1e-6 && std::abs(w[i][1] - w[j][1]) < 1e-6; };
+        if (!vertical(idx[0], idx[1]) || !vertical(idx[2], idx[3])) return false;
+        const Vec3& lowA = w[idx[0]][2] < w[idx[1]][2] ? w[idx[0]] : w[idx[1]];
+        const Vec3& highA = w[idx[0]][2] < w[idx[1]][2] ? w[idx[1]] : w[idx[0]];
+        const Vec3& lowB = w[idx[2]][2] < w[idx[3]][2] ? w[idx[2]] : w[idx[3]];
+        const Vec3& highB = w[idx[2]][2] < w[idx[3]][2] ? w[idx[3]] : w[idx[2]];
+        height = highA[2] - lowA[2];
+        if (height <= 1e-9 || std::abs((highB[2] - lowB[2]) - height) > 1e-6) return false;
+        const Vec3 half = mul(s.dir, s.depth / 2.0);
+        a = add(lowA, half);
+        b = add(lowB, half);
+        return true;
+    }
+
     /// foundationNode > 0 : semelle ou pieu relié à cet appui du fichier — la fondation y est créée (dimensions lues dans
     /// la géométrie), au lieu d'un nœud déduit du centre de sa face supérieure.
     std::vector<AnalyticalRef> fromGeometry(const StepEntity& product, BimCategory cat, const std::string& pdt, int foundationNode = 0)
@@ -767,7 +794,21 @@ private:
             {
                 Frame wf;
                 double dx = 0, dy = 0;
-                if (!rectangle(s, wf, dx, dy)) { m_report.warnings.push_back(product.arg(2).asText() + " : contour de voile non rectangulaire non pris en charge."); continue; }
+                if (!rectangle(s, wf, dx, dy))
+                {
+                    Vec3 pa, pb;
+                    double hh = 0;
+                    if (slopedWall(s, pa, pb, hh))
+                    {
+                        const int w = m_m.addWall(node(pa), node(pb), hh, s.depth);
+                        if (auto* wall = m_m.getWall(w)) wall->setMaterial(mat);
+                        refs.push_back({ ElementKind::Wall, w });
+                        ++m_report.surfaces;
+                        continue;
+                    }
+                    m_report.warnings.push_back(product.arg(2).asText() + " : contour de voile non rectangulaire non pris en charge.");
+                    continue;
+                }
                 // Axe du voile selon la plus grande dimension ; décalage = distance du centre à l'axe du placement
                 const Frame base = s.frame;
                 Vec3 u = dx >= dy ? wf.x : wf.y;

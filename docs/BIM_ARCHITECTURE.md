@@ -150,7 +150,7 @@ ou « Non créé : motif »).
 | Aucune valeur inventée | dimensions et sections des préréglages explicites (poutre, poteau, dalle, voile, **fondation**, **treillis**), modifiables dans « Préréglages de structure » ; plus de poteau de 3 m créé par un double clic ; matériaux proposés limités à ceux de la bibliothèque |
 | Doublons | même famille sur les mêmes nœuds (dans les deux sens), dalle sur le même contour, deuxième fondation sous un nœud : refusés |
 | Dalle | ≥ 3 points distincts, non alignés, plans (1 mm), contour simple (aucun côté ne recoupe un autre) |
-| Voile | base horizontale : deux points de base à moins de 1 mm de cote l'un de l'autre, sinon refus motivé. La surface de calcul (`wallSurface`) ne sait pas représenter une base inclinée : son repère local cesse d'être orthogonal et l'aire est surestimée |
+| Voile | base inclinée (pieds à plus de 1 mm de cote l'un de l'autre) acceptée et signalée : élévation en parallélogramme, longueur en plan × hauteur, même géométrie pour l'affichage, le calcul (`wallSurface` : repère U horizontal, V vertical), le métré et l'export IFC (profil en parallélogramme extrudé dans l'épaisseur, relu par le lecteur interne et par IfcOpenShell). Porte au pied refusée sur une base inclinée (ouvertures intérieures seules) |
 
 ### 5.3 Quantités
 

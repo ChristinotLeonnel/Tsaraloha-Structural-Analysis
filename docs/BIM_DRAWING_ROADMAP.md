@@ -35,7 +35,7 @@ sur le chemin de création, qui était le maillon défaillant (D1 à D7).
    lancement, comme avant ce chantier).
 6. **Essai de l'interface réelle** (UI Automation) du tracé complet dans TSA, en complément du
    test 419, qui pilote déjà une vraie vue OCCT par clics.
-7. **Voiles à base inclinée** : refusés à la création (base à plus de 1 mm de dénivelé). Pour les
-   accepter : repère orthogonal et aire correcte dans `wallSurface`, métré cohérent, export IFC, tests.
+7. ~~Voiles à base inclinée~~ : **fait** le 18/10/2026 (calcul, métré, export et réimport IFC vérifiés ensemble,
+   tests 428 et 429). Reste : porte au pied d'un voile à base inclinée.
 8. Libellés des matériaux des dialogues : passer par la bibliothèque (`MaterialLibrary`) plutôt
    que par des noms recherchés par mot-clé.

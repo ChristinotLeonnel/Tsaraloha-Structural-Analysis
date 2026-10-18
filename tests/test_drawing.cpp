@@ -1,4 +1,4 @@
-// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée, outils avancés, palette complète, arbre BIM (tests 410-427). Les points sont
+// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée, outils avancés, palette complète, arbre BIM, voile incliné cohérent (tests 410-428). Les points sont
 // fournis comme par la vue 3D (position accrochée, nœud visé) ; le modèle, l'historique et la couche
 // BIM sont vérifiés après chaque création ou refus.
 
@@ -554,70 +554,58 @@ bool runSuite_Drawing(int& passed)
         ++passed;
     }
 
-    // TEST 424 : voile dont les deux points de base ne sont pas à la même cote — refusé au-delà de
-    // GeometryTolerance::nodeCoincidence (1 mm), accepté en deçà sans retouche des coordonnées.
+    // TEST 424 : voile dont les deux points de base ne sont pas à la même cote — accepté et signalé au-delà de
+    // GeometryTolerance::nodeCoincidence (1 mm), sans avertissement en deçà ; coordonnées jamais retouchées
     {
         WallPreset wp;
         auto hasSlopeWarning = [](const CreationResult& r) {
             for (const auto& w : r.warnings)
-                if (w.find("cote") != std::string::npos) return true;
+                if (w.find("Base inclinée") != std::string::npos) return true;
             return false;
         };
 
-        // Même cote : créé, aucun avertissement de cote ; Annuler retire voile et nœuds.
+        // Même cote : créé, aucun avertissement ; Annuler retire voile et nœuds.
         {
             Model m;
             ElementCreation c(m);
             auto r = c.createWall(pt(0, 0, 0), pt(5, 0, 0), wp);
-            TEST_CHECK(r.success && !hasSlopeWarning(r) && r.warnings.empty(), "Test 424: même cote : voile créé sans avertissement");
+            TEST_CHECK(r.success && r.warnings.empty(), "Test 424: même cote : voile créé sans avertissement");
             TEST_CHECK(m.undo() && m.walls().empty() && m.nodes().empty() && !m.canUndo(), "Test 424: Annuler retire le voile et ses 2 nœuds");
         }
 
-        // Écart inférieur à la tolérance (0,5 mm) : créé, coordonnées conservées telles quelles.
+        // Écart inférieur à la tolérance (0,5 mm) : créé sans avertissement, cote conservée telle quelle.
         {
             Model m;
             ElementCreation c(m);
             auto r = c.createWall(pt(0, 0, 0), pt(5, 0, 0.0005), wp);
             const auto* nb = r.success ? m.getNode(r.nodeIds[1]) : nullptr;
-            TEST_CHECK(r.success && !hasSlopeWarning(r) && nb && nb->z() == 0.0005,
-                       "Test 424: écart de 0,5 mm (< 1 mm) : voile créé, cote du point d'origine conservée");
+            TEST_CHECK(r.success && !hasSlopeWarning(r) && nb && nb->z() == 0.0005, "Test 424: écart de 0,5 mm : voile créé, sans avertissement, cote conservée");
         }
 
-        // Écart supérieur à la tolérance, dans les deux sens : refus motivé, rien de créé.
+        // Écart supérieur à la tolérance, dans les deux sens : créé, avertissement avec l'écart, cotes conservées.
         for (const auto& [dz, shown] : { std::pair { 0.40, "0.400" }, { -0.40, "0.400" }, { 0.002, "0.002" } })
         {
             Model m;
             ElementCreation c(m);
             auto r = c.createWall(pt(0, 0, 0), pt(5, 0, dz), wp);
-            TEST_CHECK(!r.success && r.message.find("même cote") != std::string::npos && r.message.find(std::string("écart de ") + shown + " m") != std::string::npos,
-                       "Test 424: écart de " + std::to_string(dz) + " m : refus motivé (écart indiqué)");
-            TEST_CHECK(m.nodes().empty() && m.walls().empty() && !m.canUndo() && r.createdNodeIds.empty(),
-                       "Test 424: refus : aucun nœud ni voile abandonné, historique intact");
+            bool gapShown = false;
+            for (const auto& w : r.warnings) gapShown = gapShown || w.find(std::string("diffèrent de ") + shown + " m") != std::string::npos;
+            const auto* nb = r.success ? m.getNode(r.nodeIds[1]) : nullptr;
+            TEST_CHECK(r.success && hasSlopeWarning(r) && gapShown && nb && nb->z() == dz,
+                       "Test 424: écart de " + std::to_string(dz) + " m : voile créé, avertissement avec l'écart, cote conservée");
+            TEST_CHECK(m.undo() && m.walls().empty() && m.nodes().empty(), "Test 424: Annuler retire le voile incliné et ses nœuds");
         }
 
-        // Points accrochés à des nœuds existants de cotes différentes : nœuds intacts, rien d'ajouté.
+        // Pieds accrochés à des nœuds existants de cotes différentes : nœuds réutilisés, non modifiés.
         {
             Model m;
             const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(5, 0, 0.4);
             ElementCreation c(m);
             auto r = c.createWall(pt(0, 0, 0, n1), pt(5, 0, 0.4, n2), wp);
-            TEST_CHECK(!r.success && m.nodes().size() == 2 && m.walls().empty() && m.getNode(n2)->z() == 0.4,
-                       "Test 424: nœuds existants à cotes différentes : refus, nœuds non modifiés");
+            TEST_CHECK(r.success && r.createdNodeIds.empty() && m.nodes().size() == 2 && m.getNode(n2)->z() == 0.4,
+                       "Test 424: nœuds existants à cotes différentes : réutilisés, non modifiés");
         }
-
-        // Motif du refus : la surface de calcul d'un voile à base inclinée (créé sans le service) n'a pas un repère
-        // orthogonal et surestime son aire. Si ce garde échoue, wallSurface a été corrigée : la règle peut être revue.
-        {
-            Model m;
-            const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(4, 0, 3);
-            const int w = m.addWall(n1, n2, 3.0, 0.2);
-            TSA::Mesh::SurfaceGeom sg;
-            TEST_CHECK(w > 0 && TSA::Mesh::wallSurface(m, *m.getWall(w), &sg), "Test 424: surface de calcul du voile incliné");
-            const double trueArea = 4.0 * 3.0;   // parallélogramme : longueur horizontale × hauteur
-            TEST_CHECK(std::abs(sg.frame.U.dot(sg.frame.V)) > 0.5 && sg.area > trueArea + 1.0,
-                       "Test 424: limite constatée (repère non orthogonal, aire 15 m² au lieu de 12 m²) : motif du refus");
-        }
-        std::cout << "[PASS] Test 424: Voile à base inclinée refusé, tolérance de 1 mm" << std::endl;
+        std::cout << "[PASS] Test 424: Voile à base inclinée accepté et signalé, tolérance de 1 mm" << std::endl;
         ++passed;
     }
 
@@ -785,6 +773,99 @@ bool runSuite_Drawing(int& passed)
         bimRoot = find(qtree->invisibleRootItem(), "Structure BIM");
         TEST_CHECK(bimRoot && bimRoot->text(1) == "[1]", "Test 427: branche à jour après Annuler (1 produit)");
         std::cout << "[PASS] Test 427: Arbre du modèle, branche Structure BIM" << std::endl;
+        ++passed;
+    }
+
+    // TEST 428 : voile à base inclinée — même géométrie pour le calcul (surface de calcul orthonormée, aire), les
+    // ouvertures, le métré et l'export IFC relu par IfcOpenShell (le calcul lui-même : test 429, suite surfaces)
+    {
+        Model m;
+        const int n1 = m.addNode(0, 0, 0), n2 = m.addNode(4, 0, 3);   // longueur en plan 4 m, dénivelé 3 m
+        const int w = m.addWall(n1, n2, 3.0, 0.2, "Voile incliné");
+        const auto* wall = m.getWall(w);
+        TEST_CHECK(wall && approxEqual(wall->length(m), 4.0, 1e-12) && approxEqual(wall->baseRise(m), 3.0, 1e-12)
+                       && approxEqual(wall->grossArea(m), 12.0, 1e-12), "Test 428: longueur en plan 4 m, dénivelé 3 m, aire brute 12 m²");
+
+        TSA::Mesh::SurfaceGeom sg;
+        TEST_CHECK(TSA::Mesh::wallSurface(m, *wall, &sg), "Test 428: surface de calcul");
+        TEST_CHECK(std::abs(sg.frame.U.dot(sg.frame.V)) < 1e-12 && approxEqual(sg.area, 12.0, 1e-12) && std::abs(sg.frame.U.z) < 1e-12,
+                   "Test 428: repère orthonormé (U horizontal, V vertical), aire 12 m² (et non 15 m²)");
+        bool roundTrip = true;
+        for (const auto& [u, v] : std::vector<std::pair<double, double>> { { 0, 0 }, { 4, 3 }, { 4, 6 }, { 0, 3 }, { 1.3, 2.2 } })
+        {
+            double ru = 0, rv = 0;
+            sg.frame.toLocal(sg.frame.toGlobal(u, v), &ru, &rv);
+            roundTrip = roundTrip && approxEqual(ru, u, 1e-12) && approxEqual(rv, v, 1e-12);
+        }
+        double cu = 0, cv = 0;
+        sg.frame.toLocal(sg.outer[2], &cu, &cv);
+        TEST_CHECK(roundTrip && approxEqual(cu, 4.0, 1e-12) && approxEqual(cv, 6.0, 1e-12),
+                   "Test 428: coordonnées locales cohérentes (sommet haut droit en (4 ; 6))");
+
+        // Ouvertures : fenêtre intérieure acceptée et déduite partout ; porte au pied refusée (pied non horizontal)
+        SurfaceOpening win;
+        win.name = "fenêtre";
+        win.polygon = { { 1, 2 }, { 2, 2 }, { 2, 3 }, { 1, 3 } };   // entre la base (v = 0,75 u ≤ 1,5) et le haut (v = 3 + 0,75 u ≥ 3,75)
+        TEST_CHECK(TSA::Mesh::validateWallOpening(m, *wall, win.polygon, -1).empty(), "Test 428: fenêtre intérieure acceptée");
+        SurfaceOpening door;
+        door.polygon = { { 0.5, 0 }, { 1.4, 0 }, { 1.4, 2.1 }, { 0.5, 2.1 } };
+        TEST_CHECK(TSA::Mesh::validateWallOpening(m, *wall, door.polygon, -1).find("porte au pied") != std::string::npos,
+                   "Test 428: porte au pied d'un voile à base inclinée refusée, motif donné");
+        SurfaceOpening outside;
+        outside.polygon = { { 3, 0.5 }, { 3.8, 0.5 }, { 3.8, 1.5 }, { 3, 1.5 } };   // sous la base inclinée (v < 0,75 u)
+        TEST_CHECK(!TSA::Mesh::validateWallOpening(m, *wall, outside.polygon, -1).empty(), "Test 428: ouverture sous la base inclinée refusée");
+        m.getWall(w)->setOpenings({ win });
+        TEST_CHECK(TSA::Mesh::wallSurface(m, *m.getWall(w), &sg) && approxEqual(sg.area, 11.0, 1e-12) && sg.holes.size() == 1,
+                   "Test 428: surface de calcul trouée (11 m²)");
+        const auto q = TSA::BIM::elementQuantities(m, TSA::BIM::AnalyticalRef { ElementKind::Wall, w });
+        TEST_CHECK(q && approxEqual(q->length, 4.0, 1e-12) && approxEqual(q->grossArea, 12.0, 1e-12) && approxEqual(q->area, 11.0, 1e-12)
+                       && approxEqual(q->volume, 11.0 * 0.2, 1e-12), "Test 428: métré = calcul (longueur en plan 4 m, 12 − 1 = 11 m², 2,2 m³)");
+
+        // Export IFC : élévation en parallélogramme extrudée dans l'épaisseur ; relue par IfcOpenShell (volume du solide)
+        m.getWall(w)->setOpenings({});
+        TSA::BIM::Ifc::IfcExportOptions opt;
+        opt.timeStamp = "2026-10-18T12:00:00";
+        std::string doc;
+        TEST_CHECK(TSA::BIM::Ifc::IfcExporter::exportToString(m, opt, doc).ok, "Test 428: export IFC");
+        TEST_CHECK(doc.find("IFCARBITRARYCLOSEDPROFILEDEF") != std::string::npos && doc.find("IFCPOLYLINE") != std::string::npos,
+                   "Test 428: profil en parallélogramme (IfcArbitraryClosedProfileDef)");
+        // Aller-retour par le modèle analytique IFC (import par défaut) : même voile, mêmes cotes de pied
+        Model rt;
+        const auto rr = TSA::BIM::Ifc::IfcImporter::importString(doc, rt);
+        const TSA::Model::Wall* rw = rt.walls().empty() ? nullptr : &rt.walls().begin()->second;
+        TEST_CHECK(rr.ok && rt.walls().size() == 1 && rw && approxEqual(rw->length(rt), 4.0, 1e-6) && approxEqual(std::abs(rw->baseRise(rt)), 3.0, 1e-6)
+                       && approxEqual(rw->height(), 3.0, 1e-6) && approxEqual(rw->thickness(), 0.2, 1e-6),
+                   "Test 428: aller-retour IFC (modèle analytique) : voile de 4 m en plan, 3 m de dénivelé, H 3 m, e 0,2 m");
+
+        // Géométrie relue par le noyau d'IfcOpenShell (importFile : importString ne lit que le modèle) : volume du solide
+        const auto ifcPath = std::filesystem::temp_directory_path() / "tsa_test428.ifc";
+        { std::ofstream f(ifcPath, std::ios::binary); f << doc; }
+        Model back;
+        const auto ir = TSA::BIM::Ifc::IfcImporter::importFile(ifcPath.string(), back);
+        std::filesystem::remove(ifcPath);
+        double volume = -1.0;
+        for (const auto& [id, p] : back.bim().elements())
+        {
+            if (!p.geometry || p.category != TSA::BIM::BimCategory::Wall) continue;
+            const auto& pos = p.geometry->positions;
+            const auto& idx = p.geometry->indices;
+            double v6 = 0.0;
+            for (std::size_t k = 0; k + 2 < idx.size(); k += 3)
+            {
+                const float* A = &pos[3 * idx[k]];
+                const float* B = &pos[3 * idx[k + 1]];
+                const float* C = &pos[3 * idx[k + 2]];
+                v6 += A[0] * (B[1] * C[2] - B[2] * C[1]) - A[1] * (B[0] * C[2] - B[2] * C[0]) + A[2] * (B[0] * C[1] - B[1] * C[0]);
+            }
+            volume = std::abs(v6) / 6.0;
+        }
+        std::cout << "  voile incliné relu par IfcOpenShell : volume " << volume << " m³ (attendu 2.4)" << std::endl;
+        for (const auto& wmsg : ir.warnings) std::cout << "  avertissement d'import : " << wmsg << std::endl;
+        if (!TSA::BIM::Ifc::IfcImporter::fullEngineAvailable())
+            std::cout << "[SKIP] Test 428 (partie géométrie) : IfcOpenShell absent de cette compilation" << std::endl;
+        else
+            TEST_CHECK(ir.ok && approxEqual(volume, 4.0 * 3.0 * 0.2, 1e-3), "Test 428: IFC relu par IfcOpenShell : volume du voile 2,4 m³ (12 m² × 0,2 m)");
+        std::cout << "[PASS] Test 428: Voile à base inclinée, calcul / ouvertures / métré / IFC cohérents" << std::endl;
         ++passed;
     }
 

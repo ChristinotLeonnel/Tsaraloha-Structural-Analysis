@@ -46,7 +46,10 @@ public:
     double offset() const { return m_offset; }
     void setOffset(double off) { m_offset = off; }
 
+    /// Longueur en plan (le voile est extrudé verticalement : élévation = parallélogramme si la base est inclinée).
     double length(const Model& model) const;
+    /// Différence de cote entre le pied d'extrémité et le pied d'origine (0 pour une base horizontale).
+    double baseRise(const Model& model) const;
     /// Aire nette (ouvertures déduites).
     double area(const Model& model) const;
     double grossArea(const Model& model) const;

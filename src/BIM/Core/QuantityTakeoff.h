@@ -27,7 +27,7 @@ struct ElementQuantities
     std::string family;         ///< « Poutre », « Dalle »…
     std::string material;       ///< nom du matériau
     std::string section;        ///< section (éléments linéaires) ou « ép. 0.200 m » (dalles, voiles), « 1.50 × 1.50 × 0.50 m » (semelles)
-    double length = 0.0;        ///< m : axe des éléments linéaires, longueur d'un voile
+    double length = 0.0;        ///< m : axe des éléments linéaires, longueur en plan d'un voile
     double grossArea = 0.0;     ///< m² : dalle (contour), voile (élévation L × H), semelle (A × B)
     double openingArea = 0.0;   ///< m² : ouvertures déduites
     double area = 0.0;          ///< m² : surface nette = brute − ouvertures

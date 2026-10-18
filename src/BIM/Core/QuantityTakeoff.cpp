@@ -125,7 +125,7 @@ std::optional<ElementQuantities> elementQuantities(const TSA::Model::Model& m, c
             q.family = "Voile";
             q.material = e->material().name;
             q.section = "ép. " + fmt(e->thickness(), 3) + " m";
-            q.length = distance(m, e->startNodeId(), e->endNodeId());
+            q.length = e->length(m);   // en plan : élévation en parallélogramme si la base est inclinée
             q.grossArea = q.length * e->height();
             q.openingArea = openingsArea(e->openings());
             q.area = std::max(0.0, q.grossArea - q.openingArea);
