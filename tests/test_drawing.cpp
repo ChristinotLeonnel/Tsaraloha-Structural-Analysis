@@ -1,4 +1,4 @@
-// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée (tests 410-424). Les points sont
+// Suite « drawing » : service de création des éléments dessinés, modes Dessin de la vue, métré, palette et scénario d'intégration, voile à base inclinée, outils avancés (tests 410-425). Les points sont
 // fournis comme par la vue 3D (position accrochée, nœud visé) ; le modèle, l'historique et la couche
 // BIM sont vérifiés après chaque création ou refus.
 
@@ -10,6 +10,8 @@
 #include "IO/TSAFile.h"
 #include "Mesh/MeshGeometry.h"
 #include "Interaction/ElementCreation.h"
+#include "Interaction/Tools/ModelingTool.h"
+#include "UndoRedo/EditTransaction.h"
 #include "UI/Properties/ElementBimPanel.h"
 #include "Viewer/OccView.h"
 
@@ -612,6 +614,88 @@ bool runSuite_Drawing(int& passed)
                        "Test 424: limite constatée (repère non orthogonal, aire 15 m² au lieu de 12 m²) : motif du refus");
         }
         std::cout << "[PASS] Test 424: Voile à base inclinée refusé, tolérance de 1 mm" << std::endl;
+        ++passed;
+    }
+
+    // TEST 425 : outils de dessin avancés (ModelingTool) par ElementCreation — outil entier refusé au premier
+    // élément invalide, une entrée Annuler par outil, préréglage Treillis, croisements signalés
+    {
+        TSA::Interaction::ModelingToolRegistry reg;
+        TSA::Interaction::registerBuiltInModelingTools(reg);
+        auto pick = [](double x, double y, double z) {
+            TSA::Interaction::ToolPick p;
+            p.point = gp_Pnt(x, y, z);
+            return p;
+        };
+        TSA::Interaction::ToolContext ctx;
+
+        // Portique dont le poteau gauche existe déjà : refusé entièrement, même dans la transaction de la fenêtre.
+        {
+            Model m;
+            ElementCreation c(m);
+            auto col = beamProps();
+            col.role = BarRole::Column;
+            TEST_CHECK(c.createBar(pt(0, 0, 0), pt(0, 0, 4), col).success, "Test 425: poteau existant");
+            m.clearUndoRedo();
+            auto portal = reg.create("draw_portal");
+            portal->acceptValue(4.0, ctx);
+            portal->addPick(pick(0, 0, 0), ctx);
+            portal->addPick(pick(6, 0, 0), ctx);
+            TSA::Interaction::ToolResult r;
+            {
+                TSA::UndoRedo::EditTransaction tx(m, portal->name());   // comme MainWindow::applyModelingTool
+                r = portal->apply(m, ctx);
+                if (!r.success) tx.rollback();
+                else tx.commit();
+            }
+            TEST_CHECK(!r.success && r.message.find("Portique non créé") != std::string::npos && r.message.find("double") != std::string::npos,
+                       "Test 425: portique sur un poteau existant : refus motivé");
+            TEST_CHECK(m.columns().size() == 1 && m.beams().empty() && m.nodes().size() == 2 && !m.canUndo(),
+                       "Test 425: rien de créé (ni 2ᵉ poteau, ni traverse, ni nœud), historique intact");
+        }
+
+        // Portique accepté, outil appelé seul : une entrée Annuler retire 2 poteaux, la traverse et 4 nœuds.
+        {
+            Model m;
+            auto portal = reg.create("draw_portal");
+            portal->addPick(pick(0, 0, 0), ctx);
+            portal->addPick(pick(6, 0, 0), ctx);
+            const auto r = portal->apply(m, ctx);
+            TEST_CHECK(r.success && m.columns().size() == 2 && m.beams().size() == 1 && m.nodes().size() == 4 && r.created.columns.size() == 2,
+                       "Test 425: portique créé, nœuds de tête partagés par la traverse");
+            TEST_CHECK(m.undo() && m.columns().empty() && m.beams().empty() && m.nodes().empty() && !m.canUndo(),
+                       "Test 425: une seule entrée Annuler pour tout l'outil");
+        }
+
+        // Contreventement en X : section et matériau du préréglage Treillis ; les diagonales se croisent sans nœud.
+        {
+            Model m;
+            TSA::Interaction::ToolContext tctx;
+            tctx.presets.truss.section = Section::circular(0.06, "C60");
+            tctx.presets.truss.material = Material::steelS355();
+            auto xb = reg.create("draw_x_bracing");
+            for (const auto& p : { pick(0, 0, 0), pick(6, 0, 0), pick(6, 0, 4), pick(0, 0, 4) }) xb->addPick(p, tctx);
+            const auto r = xb->apply(m, tctx);
+            bool presetUsed = m.trussMembers().size() == 2;
+            for (const auto& [id, t] : m.trussMembers())
+                presetUsed = presetUsed && t.section().name == "C60" && t.material().name == Material::steelS355().name
+                             && t.role() == TrussMemberRole::Diagonal;
+            TEST_CHECK(r.success && presetUsed, "Test 425: diagonales selon le préréglage Treillis (plus de 0,10 m imposé)");
+            TEST_CHECK(r.message.find("croise") != std::string::npos && m.nodes().size() == 4,
+                       "Test 425: croisement des diagonales signalé, aucun nœud ajouté au croisement");
+        }
+
+        // Arc relancé à l'identique : toutes ses poutres seraient en double, refus et modèle inchangé.
+        {
+            Model m;
+            auto arc = reg.create("draw_beam_arc");
+            arc->setParam("segments", 4);
+            for (const auto& p : { pick(-5, 0, 0), pick(0, 0, 5), pick(5, 0, 0) }) arc->addPick(p, ctx);
+            TEST_CHECK(arc->apply(m, ctx).success && m.beams().size() == 4 && m.nodes().size() == 5, "Test 425: arc de 4 poutres");
+            const auto again = arc->apply(m, ctx);
+            TEST_CHECK(!again.success && m.beams().size() == 4 && m.nodes().size() == 5, "Test 425: arc en double refusé, modèle inchangé");
+        }
+        std::cout << "[PASS] Test 425: Outils de dessin avancés par le service de création" << std::endl;
         ++passed;
     }
 

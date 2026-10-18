@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 419;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 15 tests « drawing »
+    int expectedTotal = 420;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 16 tests « drawing »
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
         if (!runSuite_IfcFiles(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "drawing") {
-        std::cout << "\n--- [Suite 25 ter] Dessin BIM : création transactionnelle, validation, croisements, identité BIM, métré, palette, intégration, voile incliné (Tests 410-424) ---" << std::endl;
+        std::cout << "\n--- [Suite 25 ter] Dessin BIM : création transactionnelle, validation, croisements, identité BIM, métré, palette, intégration, voile incliné, outils avancés (Tests 410-425) ---" << std::endl;
         if (!runSuite_Drawing(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "snap") {

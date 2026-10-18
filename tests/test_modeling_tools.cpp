@@ -300,10 +300,19 @@ bool runSuite_ModelingTools(int& passed)
         for (const auto& [id, bm] : m.beams())
             TEST_CHECK(bm.section().name == ctx.presets.beam.section.name, "Test 148: préréglage de poutre");
 
+        // Rectangle posé sur la chaîne : deux de ses côtés doubleraient des poutres existantes. Avant le service de
+        // création, ces doublons étaient créés en silence ; l'outil est désormais refusé entièrement.
         auto rect = tool("draw_beam_rectangle");
         rect->addPick(at(0, 0, 0), ctx);
         rect->addPick(at(5, 5, 0), ctx);
-        TEST_CHECK(rect->apply(m, ctx).success && m.beams().size() == 6 && m.nodes().size() == 4, "Test 148: rectangle (nœuds réutilisés)");
+        const auto rr = rect->apply(m, ctx);
+        TEST_CHECK(!rr.success && rr.message.find("double") != std::string::npos && m.beams().size() == 2 && m.nodes().size() == 3,
+                   "Test 148: rectangle sur des poutres existantes : doublons refusés, rien de créé");
+        auto rect2 = tool("draw_beam_rectangle");
+        rect2->addPick(at(5, 5, 0), ctx);
+        rect2->addPick(at(10, 10, 0), ctx);
+        TEST_CHECK(rect2->apply(m, ctx).success && m.beams().size() == 6 && m.nodes().size() == 6,
+                   "Test 148: rectangle voisin (nœud commun réutilisé, 3 nœuds créés)");
 
         Model p;
         auto portal = tool("draw_portal");
