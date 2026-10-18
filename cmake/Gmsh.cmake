@@ -9,7 +9,13 @@
 #
 # Résultat : cible importée TSA::Gmsh (si disponible), variables TSA_GMSH_DLL, TSA_GMSH_LICENSE_DIR.
 
-set(TSA_GMSH_SDK "${TSA_ROOT}/thirdparty/gmsh-4.15.2-Windows64-sdk" CACHE PATH "SDK Gmsh (gmsh.info, Windows64-sdk)")
+# SDK officiel de gmsh.info pour le système : Windows64-sdk (DLL MinGW) ou Linux64-sdk (libgmsh.so).
+if(WIN32)
+    set(_gmsh_sdk_default "${TSA_ROOT}/thirdparty/gmsh-4.15.2-Windows64-sdk")
+else()
+    set(_gmsh_sdk_default "${TSA_ROOT}/thirdparty/gmsh-4.15.2-Linux64-sdk")
+endif()
+set(TSA_GMSH_SDK "${_gmsh_sdk_default}" CACHE PATH "SDK Gmsh (gmsh.info : Windows64-sdk ou Linux64-sdk)")
 option(TSA_WITH_GMSH "Maillage par Gmsh (SDK)" ON)
 option(TSA_PACKAGE_GMSH "Inclure la DLL Gmsh dans le paquet distribuable — licence GPL : voir docs/THIRD_PARTY_LICENSES.md" ON)
 
@@ -49,6 +55,21 @@ if(TSA_WITH_GMSH AND NOT TARGET TSA::Gmsh)
         else()
             set(TSA_GMSH_DLL "")
             message(WARNING "Gmsh : bibliothèque d'importation MSVC non générée (Python 3 et lib.exe requis) — maillage indisponible")
+        endif()
+    elseif(NOT WIN32 AND EXISTS "${TSA_GMSH_SDK}/include/gmsh.h_cwrap")
+        # Linux : bibliothèque partagée du SDK liée directement (RPATH de compilation posé par CMake), sans
+        # chargement différé ; TSA_GMSH_DLL reste vide (rien à copier à côté de l'exécutable).
+        find_library(TSA_GMSH_LIBRARY NAMES gmsh PATHS "${TSA_GMSH_SDK}/lib" NO_DEFAULT_PATH)
+        if(TSA_GMSH_LIBRARY)
+            add_library(TSA::Gmsh SHARED IMPORTED GLOBAL)
+            set_target_properties(TSA::Gmsh PROPERTIES
+                IMPORTED_LOCATION "${TSA_GMSH_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${TSA_GMSH_SDK}/include"
+                INTERFACE_COMPILE_DEFINITIONS "TSA_HAVE_GMSH=1")
+            set(TSA_GMSH_LICENSE_DIR "${TSA_GMSH_SDK}/share/doc/gmsh")
+            message(STATUS "Gmsh : ${TSA_GMSH_LIBRARY}")
+        else()
+            message(STATUS "Gmsh : libgmsh absente de ${TSA_GMSH_SDK}/lib — maillage indisponible")
         endif()
     else()
         message(STATUS "Gmsh : SDK absent (${TSA_GMSH_SDK}) — maillage indisponible")

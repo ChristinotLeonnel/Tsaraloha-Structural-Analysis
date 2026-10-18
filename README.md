@@ -112,6 +112,29 @@ cmake --build --preset windows-x64-release
 powershell -ExecutionPolicy Bypass -File .\scripts\setup_build.ps1 -Build
 ```
 
+#### Option D : Linux (Ninja, GCC ou Clang)
+Les presets `linux-release` et `linux-debug` ne sont proposés que sous Linux, et les presets Windows que sous
+Windows. Chaque système compile dans ses propres dossiers (`build-linux-*` ou `build*`) : un même disque peut
+servir aux deux sans conflit de cache CMake. Sous Linux, les SDK Windows du dépôt (`opencascade-…-vc14-64`,
+`thirdparty/ifcopenshell-0.9.0post1`) sont ignorés.
+
+Prérequis :
+
+* CMake 3.21 ou plus récent, Ninja, GCC 11+ ou Clang 14+ ;
+* Qt 6.11.2 « Desktop gcc_64 » installé par l'installateur officiel dans `~/Qt` (sinon,
+  `-DCMAKE_PREFIX_PATH=<dossier Qt>`) ;
+* OpenCASCADE 8.0.1 compilé depuis les sources et installé (dans `/usr/local` par défaut, sinon
+  `-DOpenCASCADE_DIR=<préfixe>/lib/cmake/opencascade`). Les paquets des distributions fournissent souvent une
+  version 7.x : CMake le signale, et la compilation peut échouer ;
+* facultatif : le SDK Gmsh pour Linux (`gmsh-4.15.2-Linux64-sdk`, gmsh.info) dans `thirdparty/`, pour le
+  maillage. Sans lui, TSA se compile sans maillage. IfcOpenShell est facultatif : à défaut, l'import IFC passe
+  par le lecteur STEP interne.
+
+```bash
+cmake --preset linux-release
+cmake --build --preset linux-release
+```
+
 ---
 
 ### <ins>4. Lancement de TSA</ins>

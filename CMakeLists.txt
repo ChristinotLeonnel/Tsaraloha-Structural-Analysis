@@ -24,7 +24,17 @@ find_package(Qt6 QUIET COMPONENTS Test)   # facultatif : tests des raccourcis (f
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/SetupDependencies.cmake")
 setup_external_dependencies()
 
-find_package(OpenCASCADE REQUIRED)
+find_package(OpenCASCADE)
+if(NOT OpenCASCADE_FOUND)
+    message(FATAL_ERROR "OpenCASCADE introuvable.\n"
+        "Windows : SDK opencascade-${TSA_OCCT_VERSION}-vc14-64 (téléchargé automatiquement si TSA_AUTO_DOWNLOAD_DEPS=ON).\n"
+        "Linux : installer OCCT ${TSA_OCCT_VERSION} (compilé depuis les sources, installé dans /usr/local) ou indiquer "
+        "-DOpenCASCADE_DIR=<préfixe>/lib/cmake/opencascade.")
+endif()
+if(OpenCASCADE_VERSION VERSION_LESS 8.0)
+    message(WARNING "OpenCASCADE ${OpenCASCADE_VERSION} : TSA est développé et vérifié avec OCCT ${TSA_OCCT_VERSION} ; "
+        "une version antérieure peut ne pas compiler.")
+endif()
 
 message(STATUS "OpenCASCADE Version: ${OpenCASCADE_VERSION}")
 message(STATUS "OpenCASCADE Include: ${OpenCASCADE_INCLUDE_DIR}")

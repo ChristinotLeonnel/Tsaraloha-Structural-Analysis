@@ -8,7 +8,13 @@
 # Résultat : TSA_HAVE_IFCOPENSHELL, TSA_IFCOPENSHELL_DLLS ; fonctions tsa_link_ifcopenshell(),
 # tsa_copy_ifcopenshell_runtime().
 
-set(TSA_IFCOPENSHELL_ROOT "${TSA_ROOT}/thirdparty/ifcopenshell-0.9.0post1" CACHE PATH "IfcOpenShell installé (scripts/build_ifcopenshell.ps1)")
+# Hors Windows, dossier distinct : thirdparty/ifcopenshell-0.9.0post1 est une compilation Windows (disque partagé).
+if(WIN32)
+    set(_ifcos_root_default "${TSA_ROOT}/thirdparty/ifcopenshell-0.9.0post1")
+else()
+    set(_ifcos_root_default "${TSA_ROOT}/thirdparty/ifcopenshell-0.9.0post1-linux")
+endif()
+set(TSA_IFCOPENSHELL_ROOT "${_ifcos_root_default}" CACHE PATH "IfcOpenShell installé (scripts/build_ifcopenshell.ps1 sous Windows)")
 option(TSA_WITH_IFCOPENSHELL "Import IFC complet par IfcOpenShell (LGPL-3.0)" ON)
 # Versions publiées : jamais de paquet sans l'import IFC complet (configuration en échec si la bibliothèque manque).
 option(TSA_REQUIRE_IFCOPENSHELL "Échec de la configuration si IfcOpenShell est absent ou inutilisable" OFF)

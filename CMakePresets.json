@@ -2,9 +2,19 @@
   "version": 3,
   "configurePresets": [
     {
+      "name": "windows-only",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
       "name": "windows-x64-release",
       "displayName": "Windows x64 Release",
       "description": "Build with MSVC x64 in Release mode",
+      "inherits": "windows-only",
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build",
@@ -18,6 +28,7 @@
       "name": "windows-x64-debug",
       "displayName": "Windows x64 Debug",
       "description": "Build with MSVC x64 in Debug mode",
+      "inherits": "windows-only",
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build-debug",
@@ -30,6 +41,7 @@
     {
       "name": "ninja-base",
       "hidden": true,
+      "inherits": "windows-only",
       "generator": "Ninja",
       "architecture": {
         "value": "x64",
@@ -67,26 +79,90 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "linux-base",
+      "hidden": true,
+      "description": "Ninja + GCC ou Clang. Qt de l'installateur officiel (~/Qt/6.11.2/gcc_64) ; OCCT installé sur le système (/usr/local ou paquets). Dossiers build-linux-* distincts des dossiers Windows (disque partagé).",
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "$env{HOME}/Qt/6.11.2/gcc_64"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux x64 Debug (Ninja)",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build-linux-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux x64 Release (Ninja)",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build-linux-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
     {
+      "name": "windows-build",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux-build",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
       "name": "windows-x64-release",
+      "inherits": "windows-build",
       "configurePreset": "windows-x64-release",
       "configuration": "Release"
     },
     {
       "name": "windows-x64-debug",
+      "inherits": "windows-build",
       "configurePreset": "windows-x64-debug",
       "configuration": "Debug"
     },
     {
       "name": "ninja-debug",
+      "inherits": "windows-build",
       "configurePreset": "ninja-debug"
     },
     {
       "name": "ninja-release",
+      "inherits": "windows-build",
       "configurePreset": "ninja-release"
+    },
+    {
+      "name": "linux-debug",
+      "inherits": "linux-build",
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "inherits": "linux-build",
+      "configurePreset": "linux-release"
     }
   ]
 }
