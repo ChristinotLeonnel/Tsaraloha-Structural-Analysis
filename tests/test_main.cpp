@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 454;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 22 tests « drawing » + test 429 (surfaces) + 17 tests « views » + 10 tests « i18n »
+    int expectedTotal = 458;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 22 tests « drawing » + test 429 (surfaces) + 17 tests « views » + 14 tests « i18n »
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {

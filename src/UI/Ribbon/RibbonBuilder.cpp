@@ -1,4 +1,5 @@
 #include "RibbonBuilder.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "RibbonBar.h"
 #include "RibbonTab.h"
 #include "RibbonPanel.h"
@@ -286,9 +287,9 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
 
     // Sections & Profilés
     auto* secPanel = new RibbonPanel(QObject::tr("Sections & Profilés"), tab);
-    auto* actSecI = acts.actionSecI ? acts.actionSecI : new QAction(QIcon(":/icons/section_i.svg"), QObject::tr("Profilé I/H"), parentWindow);
-    auto* actSecRect = acts.actionSecRect ? acts.actionSecRect : new QAction(QIcon(":/icons/section_rect.svg"), QObject::tr("Rectangulaire"), parentWindow);
-    auto* actSecCirc = acts.actionSecCirc ? acts.actionSecCirc : new QAction(QIcon(":/icons/section_circle.svg"), QObject::tr("Circulaire"), parentWindow);
+    auto* actSecI = acts.actionSecI ? acts.actionSecI : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/section_i.svg")), QObject::tr("Profilé I/H"), parentWindow);
+    auto* actSecRect = acts.actionSecRect ? acts.actionSecRect : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/section_rect.svg")), QObject::tr("Rectangulaire"), parentWindow);
+    auto* actSecCirc = acts.actionSecCirc ? acts.actionSecCirc : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/section_circle.svg")), QObject::tr("Circulaire"), parentWindow);
 
     secPanel->addLargeAction(actSecI);
     secPanel->addInternalSeparator();
@@ -297,8 +298,8 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
 
     // Matériaux
     auto* matPanel = new RibbonPanel(QObject::tr("Matériaux"), tab);
-    auto* actConcrete = acts.actionConcrete ? acts.actionConcrete : new QAction(QIcon(":/icons/material_concrete.svg"), QObject::tr("Béton Armé (EC2)"), parentWindow);
-    auto* actSteel = acts.actionSteel ? acts.actionSteel : new QAction(QIcon(":/icons/material_steel.svg"), QObject::tr("Acier Structural (EC3)"), parentWindow);
+    auto* actConcrete = acts.actionConcrete ? acts.actionConcrete : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/material_concrete.svg")), QObject::tr("Béton Armé (EC2)"), parentWindow);
+    auto* actSteel = acts.actionSteel ? acts.actionSteel : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/material_steel.svg")), QObject::tr("Acier Structural (EC3)"), parentWindow);
 
     matPanel->addLargeAction(actConcrete);
     matPanel->addInternalSeparator();
@@ -307,9 +308,9 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
 
     // Conditions d'Appuis
     auto* supPanel = new RibbonPanel(QObject::tr("Conditions d'Appuis"), tab);
-    auto* actFixed = acts.actionFixed ? acts.actionFixed : new QAction(QIcon(":/icons/support_fixed.svg"), QObject::tr("Encastrement"), parentWindow);
-    auto* actPinned = acts.actionPinned ? acts.actionPinned : new QAction(QIcon(":/icons/support_pinned.svg"), QObject::tr("Articulation"), parentWindow);
-    auto* actRoller = acts.actionRoller ? acts.actionRoller : new QAction(QIcon(":/icons/support_roller.svg"), QObject::tr("Appui Simple"), parentWindow);
+    auto* actFixed = acts.actionFixed ? acts.actionFixed : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/support_fixed.svg")), QObject::tr("Encastrement"), parentWindow);
+    auto* actPinned = acts.actionPinned ? acts.actionPinned : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/support_pinned.svg")), QObject::tr("Articulation"), parentWindow);
+    auto* actRoller = acts.actionRoller ? acts.actionRoller : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/support_roller.svg")), QObject::tr("Appui Simple"), parentWindow);
 
     supPanel->addLargeAction(actFixed);
     supPanel->addInternalSeparator();
@@ -318,8 +319,8 @@ RibbonTab* RibbonBuilder::buildStructureTab(RibbonBar* bar, const RibbonActions&
 
     // Bibliothèques & Extensions TSALib
     auto* libPanel = new RibbonPanel(QObject::tr("Bibliothèques & TSALib"), tab);
-    auto* actExtMgr = acts.actionExtensionManager ? acts.actionExtensionManager : new QAction(QIcon(":/icons/file_new.svg"), QObject::tr("Gestionnaire TSALib..."), parentWindow);
-    auto* actLib = acts.actionLibrary ? acts.actionLibrary : new QAction(QIcon(":/icons/structure_preset.svg"), QObject::tr("Bibliothèque..."), parentWindow);
+    auto* actExtMgr = acts.actionExtensionManager ? acts.actionExtensionManager : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")), QObject::tr("Gestionnaire TSALib..."), parentWindow);
+    auto* actLib = acts.actionLibrary ? acts.actionLibrary : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/structure_preset.svg")), QObject::tr("Bibliothèque..."), parentWindow);
     libPanel->addLargeAction(actExtMgr);
     libPanel->addLargeAction(actLib);
     tab->addPanel(libPanel);
@@ -337,12 +338,12 @@ RibbonTab* RibbonBuilder::buildLoadsTab(RibbonBar* bar, const RibbonActions& act
     // Catégories : Nœud, Barre, Surface, Poids propre (commandes réellement disponibles ; la charge
     // surfacique est montrée désactivée avec la raison en infobulle).
     auto* nodePanel = new RibbonPanel(QObject::tr("Nœud"), tab);
-    auto* actPointLoad = acts.actionPointLoad ? acts.actionPointLoad : new QAction(QIcon(":/icons/load_force_couple.svg"), QObject::tr("Force et Couple"), parentWindow);
+    auto* actPointLoad = acts.actionPointLoad ? acts.actionPointLoad : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/load_force_couple.svg")), QObject::tr("Force et Couple"), parentWindow);
     nodePanel->addLargeAction(actPointLoad);
     tab->addPanel(nodePanel);
 
     auto* barPanel = new RibbonPanel(QObject::tr("Barre"), tab);
-    auto* actDistLoad = acts.actionDistLoad ? acts.actionDistLoad : new QAction(QIcon(":/icons/load_dist.svg"), QObject::tr("Charge Uniforme"), parentWindow);
+    auto* actDistLoad = acts.actionDistLoad ? acts.actionDistLoad : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/load_dist.svg")), QObject::tr("Charge Uniforme"), parentWindow);
     barPanel->addLargeAction(actDistLoad);
     if (acts.actionTrapLoad) barPanel->addLargeAction(acts.actionTrapLoad);
     if (acts.actionBarPointLoad) barPanel->addLargeAction(acts.actionBarPointLoad);
@@ -400,7 +401,7 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
 
     // Groupe 1 : Discrétisation EF
     auto* meshPanel = new RibbonPanel(QObject::tr("Discrétisation"), tab);
-    auto* actGenMesh = acts.actionMeshGen ? acts.actionMeshGen : new QAction(QIcon(":/icons/mesh_generate.svg"), QObject::tr("Générer Maillage"), parentWindow);
+    auto* actGenMesh = acts.actionMeshGen ? acts.actionMeshGen : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/mesh_generate.svg")), QObject::tr("Générer Maillage"), parentWindow);
     meshPanel->addLargeAction(actGenMesh);
     std::vector<QAction*> meshCol1, meshCol2;
     for (QAction* a : { acts.actionMeshSettings, acts.actionMeshPreview, acts.actionMeshQuality })
@@ -415,12 +416,12 @@ RibbonTab* RibbonBuilder::buildAnalysisTab(RibbonBar* bar, const RibbonActions& 
     if (!meshCol2.empty()) meshPanel->addSmallColumn(meshCol2);
     if (acts.actionMeshShow) meshPanel->addSmallColumn({ acts.actionMeshShow });
     if (acts.meshViewMenu)
-        meshPanel->addMenuButton(QObject::tr("Affichage du maillage"), QIcon(":/icons/view_iso.svg"), acts.meshViewMenu, RibbonButtonSize::Small);
+        meshPanel->addMenuButton(QObject::tr("Affichage du maillage"), TSA::UI::themedIcon(QStringLiteral(":/icons/view_iso.svg")), acts.meshViewMenu, RibbonButtonSize::Small);
     tab->addPanel(meshPanel);
 
     // Groupe 2 : Résolution & Solveur EF
     auto* solvPanel = new RibbonPanel(QObject::tr("Solveur EF"), tab);
-    auto* actRun = acts.actionRunSolve ? acts.actionRunSolve : new QAction(QIcon(":/icons/analysis_run.svg"), QObject::tr("Calcul Statique"), parentWindow);
+    auto* actRun = acts.actionRunSolve ? acts.actionRunSolve : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis_run.svg")), QObject::tr("Calcul Statique"), parentWindow);
     solvPanel->addLargeAction(actRun);
     tab->addPanel(solvPanel);
 
@@ -492,7 +493,7 @@ RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& a
     }
     else
     {
-        auto* actDisp = acts.actionResultsDisp ? acts.actionResultsDisp : new QAction(QIcon(":/icons/results_disp.svg"), QObject::tr("Déplacements"), parentWindow);
+        auto* actDisp = acts.actionResultsDisp ? acts.actionResultsDisp : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/results_disp.svg")), QObject::tr("Déplacements"), parentWindow);
         defPanel->addLargeAction(actDisp);
     }
     tab->addPanel(defPanel);
@@ -552,7 +553,7 @@ RibbonTab* RibbonBuilder::buildResultsTab(RibbonBar* bar, const RibbonActions& a
 
     // Note de Calcul (NDC)
     auto* ndcPanel = new RibbonPanel(QObject::tr("Note de Calcul"), tab);
-    auto* actNdc = acts.actionOpenNDC ? acts.actionOpenNDC : new QAction(QIcon(":/icons/ndc_report.svg"), QObject::tr("Note de Calcul"), parentWindow);
+    auto* actNdc = acts.actionOpenNDC ? acts.actionOpenNDC : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/ndc_report.svg")), QObject::tr("Note de Calcul"), parentWindow);
     ndcPanel->addLargeAction(actNdc);
     tab->addPanel(ndcPanel);
 
@@ -801,9 +802,9 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     {
         visPanel->addInternalSeparator();
         if (acts.annotationScaleMenu)
-            visPanel->addMenuButton(QObject::tr("Échelle des annotations"), QIcon(":/icons/grid_labels.svg"), acts.annotationScaleMenu, RibbonButtonSize::Small);
+            visPanel->addMenuButton(QObject::tr("Échelle des annotations"), TSA::UI::themedIcon(QStringLiteral(":/icons/grid_labels.svg")), acts.annotationScaleMenu, RibbonButtonSize::Small);
         if (acts.loadScaleMenu)
-            visPanel->addMenuButton(QObject::tr("Échelle des charges"), QIcon(":/icons/load_point.svg"), acts.loadScaleMenu, RibbonButtonSize::Small);
+            visPanel->addMenuButton(QObject::tr("Échelle des charges"), TSA::UI::themedIcon(QStringLiteral(":/icons/load_point.svg")), acts.loadScaleMenu, RibbonButtonSize::Small);
     }
     tab->addPanel(visPanel);
 
@@ -858,7 +859,7 @@ RibbonTab* RibbonBuilder::buildToolsTab(RibbonBar* bar, const RibbonActions& act
     }
 
     // Mesures
-    auto* actMeasure = acts.actionMeasure ? acts.actionMeasure : new QAction(QIcon(":/icons/measure.svg"), QObject::tr("Mesurer 3D"), parentWindow);
+    auto* actMeasure = acts.actionMeasure ? acts.actionMeasure : new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/measure.svg")), QObject::tr("Mesurer 3D"), parentWindow);
     auto* measPanel = new RibbonPanel(QObject::tr("Inspection"), tab);
     measPanel->addLargeAction(actMeasure);
     tab->addPanel(measPanel);

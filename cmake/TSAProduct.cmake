@@ -266,6 +266,8 @@ set(MODEL_PRESETS_SOURCES
 set(UI_THEME_SOURCES
     ${TSA_ROOT}/src/UI/Theme/ThemeManager.h
     ${TSA_ROOT}/src/UI/Theme/ThemeManager.cpp
+    ${TSA_ROOT}/src/UI/Theme/ThemedIcon.h
+    ${TSA_ROOT}/src/UI/Theme/ThemedIcon.cpp
 )
 
 # --- Règles graduées du viewport ---------------------------------------------

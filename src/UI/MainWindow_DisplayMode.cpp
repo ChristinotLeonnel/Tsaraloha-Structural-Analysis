@@ -3,6 +3,7 @@
 // résultats. Logique de rendu : src/Viewer/OccView_DisplayMode.cpp ; politique : ModelDisplayMode.h.
 
 #include "MainWindow.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include "Dock/LogConsoleDock.h"
 #include "../Viewer/OccView.h"
@@ -27,7 +28,7 @@ void MainWindow::createDisplayModeActions()
         QString tip;
     };
     const Def defs[] = {
-        { ModelDisplayMode::Physical, ":/icons/view/view_shaded.svg", tr("Modèle\nphysique"),
+        { ModelDisplayMode::Physical, ":/icons/view/display_physical.svg", tr("Modèle\nphysique"),
           tr("Modèle physique : éléments avec leurs sections et leur géométrie habituelles") },
         { ModelDisplayMode::Analytical, ":/icons/view/display_analytical.svg", tr("Filaire\nanalytique"),
           tr("Modèle filaire analytique : sections masquées, axes des barres et nœuds visibles ; supports, charges, "
@@ -40,7 +41,7 @@ void MainWindow::createDisplayModeActions()
     };
     for (const Def& d : defs)
     {
-        auto* a = new QAction(QIcon(d.icon), d.text, this);
+        auto* a = new QAction(TSA::UI::themedIcon(d.icon), d.text, this);
         a->setCheckable(true);
         a->setToolTip(d.tip);
         a->setStatusTip(d.tip);
@@ -95,7 +96,7 @@ void MainWindow::createRenderModeActions()
     };
     for (const Def& d : defs)
     {
-        auto* a = new QAction(QIcon(d.icon), d.text, this);
+        auto* a = new QAction(TSA::UI::themedIcon(d.icon), d.text, this);
         a->setCheckable(true);
         a->setToolTip(d.tip);
         a->setStatusTip(d.tip);

@@ -15,7 +15,11 @@
 //   457  recherche, rapidité : 6 000 entrées, requêtes sous 50 ms ;
 //   458  champ de recherche : liste, flèches, Entrée (commande émise), Échap (fermer puis effacer), « aucun résultat »
 //        jamais exécutable, touches réservées au champ (ShortcutOverride) ;
-//   459  boîte « Langue » : explications dans la langue sélectionnée, boutons de redémarrage seulement si la langue change.
+//   459  boîte « Langue » : explications dans la langue sélectionnée, boutons de redémarrage seulement si la langue change ;
+//   460  icônes du catalogue présentes et dessinées dans les deux thèmes ;
+//   461  contraste avec le fond du ruban : forme >= 3:1 (thèmes sombre et clair), état désactivé >= 1,8:1 ;
+//   462  deux commandes différentes n'ont jamais la même image (exceptions justifiées listées) ;
+//   463  moteur d'icônes : palette par thème, état désactivé, ressource absente détectable.
 
 #include "test_common.h"
 
@@ -25,6 +29,7 @@
 #include "Core/I18n/LanguageManager.h"
 #include "UI/Dialogs/LanguageDialog.h"
 #include "UI/Search/GlobalSearchWidget.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include <QElapsedTimer>
 #include <QFontMetrics>
@@ -372,6 +377,123 @@ bool runSuite_I18n(int& passed)
         TEST_CHECK(restart->text() == expected && expected != QString::fromUtf8("Redémarrer maintenant"),
                    "Test 459: bouton dans la langue choisie (« " << restart->text().toStdString() << " »)");
         std::cout << "[PASS] Test 459: Choix de la langue expliqué dans la langue sélectionnée" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 460 : ressources des icônes présentes et dessinées
+    // -------------------------------------------------------------------------
+    QStringList catalogIcons;
+    for (const auto& [id, d] : CommandCatalog::instance().allCommands())
+        if (!d.iconPath.empty()) catalogIcons << QString::fromStdString(d.iconPath);
+    catalogIcons.removeDuplicates();
+    {
+        QStringList broken;
+        for (const QString& path : catalogIcons)
+        {
+            if (!QFile::exists(path)) { broken << path + QStringLiteral(" (absente)"); continue; }
+            for (bool dark : { true, false })
+            {
+                const QImage img = TSA::UI::renderThemedIcon(path, 24, dark);
+                int opaque = 0;
+                for (int y = 0; y < img.height(); ++y)
+                    for (int x = 0; x < img.width(); ++x) opaque += qAlpha(img.pixel(x, y)) > 128;
+                if (opaque < 12) broken << path + (dark ? QStringLiteral(" (vide, sombre)") : QStringLiteral(" (vide, clair)"));
+            }
+        }
+        for (const QString& b : broken) std::cerr << "  icône : " << b.toStdString() << std::endl;
+        TEST_CHECK(broken.isEmpty() && catalogIcons.size() > 120, "Test 460: " << broken.size() << " icône(s) absente(s) ou vide(s) sur " << catalogIcons.size());
+        std::cout << "[PASS] Test 460: " << catalogIcons.size() << " icônes du catalogue présentes et dessinées (thèmes sombre et clair)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 461 : contraste avec le fond du ruban (thèmes sombre et clair, état désactivé)
+    // -------------------------------------------------------------------------
+    {
+        auto lum = [](QRgb c) {
+            auto ch = [](int v) { const double s = v / 255.0; return s <= 0.04045 ? s / 12.92 : std::pow((s + 0.055) / 1.055, 2.4); };
+            return 0.2126 * ch(qRed(c)) + 0.7152 * ch(qGreen(c)) + 0.0722 * ch(qBlue(c));
+        };
+        auto ratio = [&](QRgb a, QRgb b) { double la = lum(a), lb = lum(b); if (la < lb) std::swap(la, lb); return (la + 0.05) / (lb + 0.05); };
+        // Pixels lisibles : composés sur le fond, contraste au moins égal au seuil
+        auto legible = [&](const QImage& img, QRgb bg, double threshold, int minAlpha) {
+            int n = 0;
+            for (int y = 0; y < img.height(); ++y)
+                for (int x = 0; x < img.width(); ++x)
+                {
+                    const QRgb p = img.pixel(x, y);
+                    const int a = qAlpha(p);
+                    if (a < minAlpha) continue;
+                    // ARGB32 non prémultiplié : couleur × alpha + fond × (1 − alpha)
+                    const QRgb onBg = qRgb((qRed(p) * a + qRed(bg) * (255 - a)) / 255, (qGreen(p) * a + qGreen(bg) * (255 - a)) / 255,
+                                           (qBlue(p) * a + qBlue(bg) * (255 - a)) / 255);
+                    n += ratio(onBg, bg) >= threshold;
+                }
+            return n;
+        };
+        const QRgb darkBg = qRgb(0x21, 0x28, 0x30), lightBg = qRgb(0xFF, 0xFF, 0xFF);
+        QStringList weak;
+        for (const QString& path : catalogIcons)
+            for (bool dark : { true, false })
+            {
+                const QRgb bg = dark ? darkBg : lightBg;
+                const QImage normal = TSA::UI::renderThemedIcon(path, 24, dark).convertToFormat(QImage::Format_ARGB32);
+                const QImage disabled = TSA::UI::renderThemedIcon(path, 24, dark, QIcon::Disabled).convertToFormat(QImage::Format_ARGB32);
+                if (legible(normal, bg, 3.0, 128) < 12) weak << path + (dark ? " (sombre)" : " (clair)");
+                // État désactivé : opacité réduite de moitié, traits fins anticrénelés → pixels dès 64/255
+                if (legible(disabled, bg, 1.8, 64) < 12) weak << path + (dark ? " (désactivée, sombre)" : " (désactivée, clair)");
+            }
+        for (int i = 0; i < std::min<int>(15, weak.size()); ++i) std::cerr << "  contraste insuffisant : " << weak[i].toStdString() << std::endl;
+        TEST_CHECK(weak.isEmpty(), "Test 461: " << weak.size() << " rendu(s) au contraste insuffisant (forme sous 3:1, désactivée sous 1,8:1)");
+        std::cout << "[PASS] Test 461: Icônes lisibles sur les deux thèmes (forme >= 3:1, état désactivé >= 1,8:1)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 462 : deux commandes différentes n'ont pas la même image
+    // -------------------------------------------------------------------------
+    {
+        // Paires où une image identique serait voulue (même fonction à deux endroits) : aucune à ce jour
+        const QSet<QString> allowed;
+        QHash<QByteArray, QStringList> byContent;
+        for (const auto& [id, d] : CommandCatalog::instance().allCommands())
+        {
+            if (d.iconPath.empty()) continue;
+            QFile f(QString::fromStdString(d.iconPath));
+            if (f.open(QIODevice::ReadOnly)) byContent[f.readAll()] << QString::fromStdString(id);
+        }
+        QStringList clashes;
+        for (auto it = byContent.begin(); it != byContent.end(); ++it)
+        {
+            QStringList ids = it.value();
+            ids.sort();
+            for (int i = 0; i < ids.size(); ++i)
+                for (int j = i + 1; j < ids.size(); ++j)
+                    if (!allowed.contains(ids[i] + "|" + ids[j])) clashes << ids[i] + " = " + ids[j];
+        }
+        for (const QString& c : clashes) std::cerr << "  même image : " << c.toStdString() << std::endl;
+        TEST_CHECK(clashes.isEmpty(), "Test 462: " << clashes.size() << " paire(s) de commandes différentes avec la même image");
+        std::cout << "[PASS] Test 462: Chaque commande du catalogue a une image qui lui est propre" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 463 : moteur d'icônes thématique
+    // -------------------------------------------------------------------------
+    {
+        const QString yellow = ":/icons/dimensions/dim_linear.svg";   // traits #FFD54F, illisibles sur fond blanc sans adaptation
+        TEST_CHECK(!TSA::UI::iconPalette(false).isEmpty() && TSA::UI::iconPalette(false).contains("#FFD54F"),
+                   "Test 463: palette du thème clair chargée (:/icons/palette.json)");
+        TEST_CHECK(TSA::UI::themedSvg(yellow, false).contains(TSA::UI::iconPalette(false).value("#FFD54F").toUtf8())
+                       && TSA::UI::themedSvg(yellow, true).contains("#FFD54F"),
+                   "Test 463: couleur adaptée au thème clair, inchangée en thème sombre");
+        const QIcon icon = TSA::UI::themedIcon(yellow);
+        TEST_CHECK(!icon.isNull() && !icon.pixmap(24, 24).isNull(), "Test 463: QIcon thématique utilisable");
+        const QImage normal = TSA::UI::renderThemedIcon(yellow, 24, true), disabled = TSA::UI::renderThemedIcon(yellow, 24, true, QIcon::Disabled);
+        TEST_CHECK(normal != disabled, "Test 463: état désactivé rendu différemment (gris atténué)");
+        TEST_CHECK(TSA::UI::themedIcon(":/icons/inexistante.svg").isNull(), "Test 463: ressource absente → icône nulle (détectable)");
+        std::cout << "[PASS] Test 463: Icônes adaptées au thème et à l'état désactivé" << std::endl;
         ++passed;
     }
 

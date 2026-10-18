@@ -1,4 +1,5 @@
 #include "BlueprintEditor.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include "BlueprintScene.h"
 #include "BlueprintObjectViewer.h"
@@ -263,15 +264,15 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     root->setSpacing(0);
 
     auto* bar = new QToolBar(this);
-    bar->addAction(QIcon(":/icons/file_new.svg"), tr("Nouveau Blueprint"), this, &BlueprintEditor::newBlueprint);
-    bar->addAction(QIcon(":/icons/file_open.svg"), tr("Ouvrir un Blueprint…"), this, [this] {
+    bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")), tr("Nouveau Blueprint"), this, &BlueprintEditor::newBlueprint);
+    bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")), tr("Ouvrir un Blueprint…"), this, [this] {
         const QString path = QFileDialog::getOpenFileName(this, tr("Ouvrir un Blueprint"), m_file, tr("Blueprint (*.tsbp)"));
         if (!path.isEmpty()) open(path);
     });
-    bar->addAction(QIcon(":/icons/file_save.svg"), tr("Enregistrer le Blueprint"), this, &BlueprintEditor::save);
+    bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_save.svg")), tr("Enregistrer le Blueprint"), this, &BlueprintEditor::save);
     bar->addSeparator();
-    m_actUndo = bar->addAction(QIcon(":/icons/undo.svg"), tr("Annuler (graphe)"), this, &BlueprintEditor::undo);
-    m_actRedo = bar->addAction(QIcon(":/icons/redo.svg"), tr("Rétablir (graphe)"), this, &BlueprintEditor::redo);
+    m_actUndo = bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/undo.svg")), tr("Annuler (graphe)"), this, &BlueprintEditor::undo);
+    m_actRedo = bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/redo.svg")), tr("Rétablir (graphe)"), this, &BlueprintEditor::redo);
     m_actUndo->setToolTip(tr("Annuler la dernière modification du Blueprint (l'historique du projet est distinct)"));
     bar->addAction(tr("Supprimer"), this, [this] { m_scene->deleteSelection(); });
     // Touches traitées par la vue du graphe (BlueprintView), pas par des raccourcis : voir la classe

@@ -1,4 +1,5 @@
 #include "ExtensionManagerDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "../../Core/AppPaths.h"
 #include "App/ProductInfo.h"
 #include "../../ExtensionSystem/LibraryManager.h"
@@ -56,27 +57,27 @@ void ExtensionManagerDialog::setupUi()
     m_searchEdit->setStyleSheet("QLineEdit { padding: 4px 8px; border-radius: 4px; font-size: 13px; }");
     topLayout->addWidget(m_searchEdit, 1);
 
-    m_btnReloadAll = new QPushButton(QIcon(":/icons/edit/redo.svg"), tr("Recharger tout"), this);
+    m_btnReloadAll = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/edit/redo.svg")), tr("Recharger tout"), this);
     m_btnReloadAll->setToolTip(tr("Recharger à chaud toutes les bibliothèques JSON et textures du disque sans recompiler"));
     m_btnReloadAll->setMinimumHeight(32);
     topLayout->addWidget(m_btnReloadAll);
 
-    m_btnValidateAll = new QPushButton(QIcon(":/icons/apply.svg"), tr("Valider l'intégrité"), this);
+    m_btnValidateAll = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")), tr("Valider l'intégrité"), this);
     m_btnValidateAll->setToolTip(tr("Vérifier la stricte conformité syntaxique et normative de toutes les extensions"));
     m_btnValidateAll->setMinimumHeight(32);
     topLayout->addWidget(m_btnValidateAll);
 
-    m_btnImport = new QPushButton(QIcon(":/icons/file_open.svg"), tr("Importer (.tsalib)..."), this);
+    m_btnImport = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")), tr("Importer (.tsalib)..."), this);
     m_btnImport->setToolTip(tr("Importer et installer un package .tsalib ou un dossier d'extension"));
     m_btnImport->setMinimumHeight(32);
     topLayout->addWidget(m_btnImport);
 
-    m_btnExport = new QPushButton(QIcon(":/icons/file_save.svg"), tr("Exporter (.tsalib)..."), this);
+    m_btnExport = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/file_save.svg")), tr("Exporter (.tsalib)..."), this);
     m_btnExport->setToolTip(tr("Empaqueter et exporter une extension au format autonome .tsalib"));
     m_btnExport->setMinimumHeight(32);
     topLayout->addWidget(m_btnExport);
 
-    m_btnOpenFolder = new QPushButton(QIcon(":/icons/structure_preset.svg"), tr("Ouvrir dossier"), this);
+    m_btnOpenFolder = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/structure_preset.svg")), tr("Ouvrir dossier"), this);
     m_btnOpenFolder->setToolTip(tr("Ouvrir le répertoire des extensions dans l'explorateur Windows"));
     m_btnOpenFolder->setMinimumHeight(32);
     topLayout->addWidget(m_btnOpenFolder);
@@ -165,13 +166,13 @@ void ExtensionManagerDialog::populateCategoryTree()
     auto* extItem = new QTreeWidgetItem(m_categoryTree);
     extItem->setText(0, tr("Extensions Installées"));
     extItem->setData(0, Qt::UserRole, "Extensions");
-    extItem->setIcon(0, QIcon(":/icons/file_new.svg"));
+    extItem->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")));
 
     // 2. Matériaux Eurocodes
     auto* matRoot = new QTreeWidgetItem(m_categoryTree);
     matRoot->setText(0, tr("Matériaux Eurocodes (%1)").arg(reg.materialCount()));
     matRoot->setData(0, Qt::UserRole, "Materials_All");
-    matRoot->setIcon(0, QIcon(":/icons/material_concrete.svg"));
+    matRoot->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/material_concrete.svg")));
 
     QStringList matCats = { "Concrete", "Steel", "Timber", "Soil", "Masonry", "Glass", "Aluminum" };
     for (const auto& cat : matCats)
@@ -186,7 +187,7 @@ void ExtensionManagerDialog::populateCategoryTree()
     auto* secRoot = new QTreeWidgetItem(m_categoryTree);
     secRoot->setText(0, tr("Sections & Profilés (%1)").arg(reg.sectionCount()));
     secRoot->setData(0, Qt::UserRole, "Sections_All");
-    secRoot->setIcon(0, QIcon(":/icons/section_i.svg"));
+    secRoot->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/section_i.svg")));
 
     QStringList secCats = { "IPE", "HEA", "HEB", "UPN", "TSection", "Angle" };
     for (const auto& cat : secCats)
@@ -201,7 +202,7 @@ void ExtensionManagerDialog::populateCategoryTree()
     auto* cabRoot = new QTreeWidgetItem(m_categoryTree);
     cabRoot->setText(0, tr("Câbles & Torons (%1)").arg(reg.cableCount()));
     cabRoot->setData(0, Qt::UserRole, "Cables_All");
-    cabRoot->setIcon(0, QIcon(":/icons/draw_cable.svg"));
+    cabRoot->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_cable.svg")));
 
     QStringList cabCats = { "PrestressingStrand", "LockedCoil", "StayCable", "Hanger", "PrestressingBar", "ASTM" };
     for (const auto& cat : cabCats)
@@ -216,13 +217,13 @@ void ExtensionManagerDialog::populateCategoryTree()
     auto* texItem = new QTreeWidgetItem(m_categoryTree);
     texItem->setText(0, tr("Textures PBR (%1)").arg(TSA::Viewer::TextureManager::instance().count()));
     texItem->setData(0, Qt::UserRole, "Textures");
-    texItem->setIcon(0, QIcon(":/icons/material_steel.svg"));
+    texItem->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/material_steel.svg")));
 
     // 6. Normes Eurocodes
     auto* stdItem = new QTreeWidgetItem(m_categoryTree);
     stdItem->setText(0, tr("Normes Eurocodes (EN)"));
     stdItem->setData(0, Qt::UserRole, "Standards");
-    stdItem->setIcon(0, QIcon(":/icons/common/help.svg"));
+    stdItem->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/common/help.svg")));
 }
 
 void ExtensionManagerDialog::selectCategory(const QString& categoryName)

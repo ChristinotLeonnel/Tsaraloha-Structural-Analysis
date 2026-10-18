@@ -1,4 +1,5 @@
 #include "StructuralElementsDock.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -36,34 +37,34 @@ void StructuralElementsDock::setupUi()
     auto* quickBtnLayout = new QGridLayout();
     quickBtnLayout->setSpacing(4);
 
-    m_btnQuickBeam = new QPushButton(QIcon(":/icons/draw_beam.svg"), tr("Poutre"), container);
+    m_btnQuickBeam = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_beam.svg")), tr("Poutre"), container);
     m_btnQuickBeam->setToolTip(tr("Mode dessin : Poutre (B)"));
     connect(m_btnQuickBeam, &QPushButton::clicked, this, &StructuralElementsDock::drawBeamTriggered);
     quickBtnLayout->addWidget(m_btnQuickBeam, 0, 0);
 
-    m_btnQuickColumn = new QPushButton(QIcon(":/icons/draw_column.svg"), tr("Poteau"), container);
+    m_btnQuickColumn = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_column.svg")), tr("Poteau"), container);
     m_btnQuickColumn->setToolTip(tr("Mode dessin : Poteau (C)"));
     connect(m_btnQuickColumn, &QPushButton::clicked, this, &StructuralElementsDock::drawColumnTriggered);
     quickBtnLayout->addWidget(m_btnQuickColumn, 0, 1);
 
-    m_btnQuickCable = new QPushButton(QIcon(":/icons/draw_cable.svg"), tr("Cable"), container);
+    m_btnQuickCable = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_cable.svg")), tr("Cable"), container);
     m_btnQuickCable->setToolTip(tr("Mode dessin : Cable (C) - Élément filaire tendu"));
     m_btnQuickCable->setStyleSheet("QPushButton { font-weight: bold; border: 1px solid #EA580C; background: rgba(234, 88, 12, 0.12); border-radius: 4px; padding: 4px; }"
                                    "QPushButton:hover { background: rgba(234, 88, 12, 0.25); border-color: #FB923C; }");
     connect(m_btnQuickCable, &QPushButton::clicked, this, &StructuralElementsDock::drawCableTriggered);
     quickBtnLayout->addWidget(m_btnQuickCable, 0, 2);
 
-    m_btnQuickSlab = new QPushButton(QIcon(":/icons/draw_slab.svg"), tr("Dalle"), container);
+    m_btnQuickSlab = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_slab.svg")), tr("Dalle"), container);
     m_btnQuickSlab->setToolTip(tr("Mode dessin : Dalle (L)"));
     connect(m_btnQuickSlab, &QPushButton::clicked, this, &StructuralElementsDock::drawSlabTriggered);
     quickBtnLayout->addWidget(m_btnQuickSlab, 1, 0);
 
-    m_btnQuickWall = new QPushButton(QIcon(":/icons/draw_wall.svg"), tr("Voile"), container);
+    m_btnQuickWall = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_wall.svg")), tr("Voile"), container);
     m_btnQuickWall->setToolTip(tr("Mode dessin : Voile (W)"));
     connect(m_btnQuickWall, &QPushButton::clicked, this, &StructuralElementsDock::drawWallTriggered);
     quickBtnLayout->addWidget(m_btnQuickWall, 1, 1);
 
-    auto* btnQuickBar = new QPushButton(QIcon(":/icons/draw_bar.svg"), tr("Barre"), container);
+    auto* btnQuickBar = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_bar.svg")), tr("Barre"), container);
     btnQuickBar->setToolTip(tr("Mode dessin : Barre filaire"));
     connect(btnQuickBar, &QPushButton::clicked, this, &StructuralElementsDock::drawBarTriggered);
     quickBtnLayout->addWidget(btnQuickBar, 1, 2);
@@ -107,19 +108,19 @@ void StructuralElementsDock::buildElementTree()
     m_linearCategory->setExpanded(true);
 
     auto* itemBeam = new QTreeWidgetItem(m_linearCategory, { tr("Poutre") });
-    itemBeam->setIcon(0, QIcon(":/icons/draw_beam.svg"));
+    itemBeam->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_beam.svg")));
     itemBeam->setData(0, Qt::UserRole, "Beam");
 
     auto* itemColumn = new QTreeWidgetItem(m_linearCategory, { tr("Poteau") });
-    itemColumn->setIcon(0, QIcon(":/icons/draw_column.svg"));
+    itemColumn->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_column.svg")));
     itemColumn->setData(0, Qt::UserRole, "Column");
 
     auto* itemBar = new QTreeWidgetItem(m_linearCategory, { tr("Barre") });
-    itemBar->setIcon(0, QIcon(":/icons/draw_bar.svg"));
+    itemBar->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_bar.svg")));
     itemBar->setData(0, Qt::UserRole, "Bar");
 
     auto* itemCable = new QTreeWidgetItem(m_linearCategory, { tr("Cable") });
-    itemCable->setIcon(0, QIcon(":/icons/draw_cable.svg"));
+    itemCable->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_cable.svg")));
     itemCable->setData(0, Qt::UserRole, "Cable");
     itemCable->setToolTip(0, tr("Câble structural - Élément tendu (mode dessin direct)"));
     QFont fCable = itemCable->font(0);
@@ -128,7 +129,7 @@ void StructuralElementsDock::buildElementTree()
     itemCable->setForeground(0, QColor("#FB923C"));
 
     auto* itemTruss = new QTreeWidgetItem(m_linearCategory, { tr("Treillis") });
-    itemTruss->setIcon(0, QIcon(":/icons/struct_truss.svg"));
+    itemTruss->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/struct_truss.svg")));
     itemTruss->setData(0, Qt::UserRole, "Truss");
 
     // 2. Éléments surfaciques (2D)
@@ -136,15 +137,15 @@ void StructuralElementsDock::buildElementTree()
     m_surfaceCategory->setExpanded(true);
 
     auto* itemSlab = new QTreeWidgetItem(m_surfaceCategory, { tr("Dalle") });
-    itemSlab->setIcon(0, QIcon(":/icons/draw_slab.svg"));
+    itemSlab->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_slab.svg")));
     itemSlab->setData(0, Qt::UserRole, "Slab");
 
     auto* itemWall = new QTreeWidgetItem(m_surfaceCategory, { tr("Voile") });
-    itemWall->setIcon(0, QIcon(":/icons/draw_wall.svg"));
+    itemWall->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_wall.svg")));
     itemWall->setData(0, Qt::UserRole, "Wall");
 
     auto* itemPanel = new QTreeWidgetItem(m_surfaceCategory, { tr("Panneau") });
-    itemPanel->setIcon(0, QIcon(":/icons/draw_slab.svg"));
+    itemPanel->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_slab.svg")));
     itemPanel->setData(0, Qt::UserRole, "Panel");
 
     // 3. Fondations & Appuis
@@ -152,7 +153,7 @@ void StructuralElementsDock::buildElementTree()
     m_foundationCategory->setExpanded(true);
 
     auto* itemFooting = new QTreeWidgetItem(m_foundationCategory, { tr("Semelle / Fondation") });
-    itemFooting->setIcon(0, QIcon(":/icons/struct_foundation.svg"));
+    itemFooting->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/struct_foundation.svg")));
     itemFooting->setData(0, Qt::UserRole, "Footing");
 }
 

@@ -2,6 +2,7 @@
 // actions (ruban, menu contextuel de l'arbre), indicateur de barre d'état et configuration.
 
 #include "MainWindow.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "../Project/ProjectSession.h"
 
 #include "AI/AICoEngineeringDock.h"
@@ -89,7 +90,7 @@ void MainWindow::createAIComponents()
     // Démarrage par setAutomationActive : plusieurs documents ouverts, un seul serveur (celui du document actif)
 
     m_aiDock = new TSA::UI::AICoEngineeringDock(m_aiOrchestrator, this);
-    m_aiDock->toggleViewAction()->setIcon(QIcon(":/icons/analysis_run.svg"));
+    m_aiDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis_run.svg")));
     // Zone droite, non tabifié : l'assistant se consulte à côté du viewport, sans masquer
     // l'arbre ni les propriétés.
     addDockWidget(Qt::RightDockWidgetArea, m_aiDock);
@@ -101,19 +102,19 @@ void MainWindow::createAIComponents()
     m_actionAIAssistant->setText(tr("Assistant IA"));
     m_actionAIAssistant->setToolTip(tr("Assistant de co-ingénierie : lit le modèle réel, explique, vérifie et propose (Ctrl+Maj+I)"));
 
-    m_actionAIConfig = new QAction(QIcon(":/icons/settings.svg"), tr("Configuration IA..."), this);
+    m_actionAIConfig = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/ai_settings.svg")), tr("Configuration IA..."), this);
     m_actionAIConfig->setToolTip(tr("Matériel détecté, modèle recommandé, mode LOCAL/CLOUD/AUTO, confidentialité, diagnostic"));
     connect(m_actionAIConfig, &QAction::triggered, this, [this] { openAIConfig(0); });
 
-    m_actionAICheck = new QAction(QIcon(":/icons/measure.svg"), tr("Vérifier la structure (IA)"), this);
+    m_actionAICheck = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/ai_check.svg")), tr("Vérifier la structure (IA)"), this);
     m_actionAICheck->setToolTip(tr("Contrôles automatiques TSA (fonctionnent sans IA) puis explication par l'assistant"));
     connect(m_actionAICheck, &QAction::triggered, this, [this] { m_aiDock->runTask(AITask::CheckStructure); });
 
-    m_actionAIAnalyze = new QAction(QIcon(":/icons/model_tree.svg"), tr("Analyser le modèle (IA)"), this);
+    m_actionAIAnalyze = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/model_tree.svg")), tr("Analyser le modèle (IA)"), this);
     m_actionAIAnalyze->setToolTip(tr("Synthèse du modèle et points à vérifier en priorité"));
     connect(m_actionAIAnalyze, &QAction::triggered, this, [this] { m_aiDock->runTask(AITask::AnalyzeModel); });
 
-    m_actionAIExplain = new QAction(QIcon(":/icons/results_forces.svg"), tr("Expliquer avec l'IA"), this);
+    m_actionAIExplain = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/ai_explain.svg")), tr("Expliquer avec l'IA"), this);
     m_actionAIExplain->setToolTip(tr("Explique le comportement de l'élément sélectionné à partir de ses données et résultats"));
     connect(m_actionAIExplain, &QAction::triggered, this, [this] { m_aiDock->runTask(AITask::ExplainSelection); });
 
@@ -152,7 +153,7 @@ void MainWindow::createAIComponents()
 
     if (m_windowManager)
         m_windowManager->registerDock("ai_coengineering", tr("IA Co-Engineering"), tr("Outils"), m_aiDock,
-                                      Qt::RightDockWidgetArea, false, QKeySequence(), QIcon(":/icons/analysis_run.svg"));
+                                      Qt::RightDockWidgetArea, false, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/analysis_run.svg")));
 }
 
 void MainWindow::createAIStatusWidget(QStatusBar* bar)

@@ -7,6 +7,7 @@
 #endif
 
 #include "AppShell.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "../Shortcuts/ShortcutManager.h"
 
 #include "../../App/ProductInfo.h"
@@ -142,20 +143,20 @@ AppShell::~AppShell()
 
 void AppShell::createActions()
 {
-    m_actNew = new QAction(QIcon(":/icons/file_new.svg"), tr("Nouveau projet…"), this);
-    m_actOpen = new QAction(QIcon(":/icons/file_open.svg"), tr("Ouvrir…"), this);
-    m_actSave = new QAction(QIcon(":/icons/file_save.svg"), tr("Enregistrer"), this);
-    m_actSaveAs = new QAction(QIcon(":/icons/file/file_save_as.svg"), tr("Enregistrer sous…"), this);
-    m_actUndo = new QAction(QIcon(":/icons/undo.svg"), tr("Annuler"), this);
-    m_actRedo = new QAction(QIcon(":/icons/redo.svg"), tr("Rétablir"), this);
-    m_actCloseProject = new QAction(QIcon(":/icons/file/file_close.svg"), tr("Fermer le projet"), this);
+    m_actNew = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")), tr("Nouveau projet…"), this);
+    m_actOpen = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")), tr("Ouvrir…"), this);
+    m_actSave = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_save.svg")), tr("Enregistrer"), this);
+    m_actSaveAs = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/file_save_as.svg")), tr("Enregistrer sous…"), this);
+    m_actUndo = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/undo.svg")), tr("Annuler"), this);
+    m_actRedo = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/redo.svg")), tr("Rétablir"), this);
+    m_actCloseProject = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/file_close.svg")), tr("Fermer le projet"), this);
     m_actCloseAll = new QAction(tr("Fermer tous les projets"), this);
-    m_actSaveAll = new QAction(QIcon(":/icons/file_save.svg"), tr("Enregistrer tous les projets"), this);
+    m_actSaveAll = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_save.svg")), tr("Enregistrer tous les projets"), this);
     connect(m_actCloseAll, &QAction::triggered, this, &AppShell::closeAllProjects);
     connect(m_actSaveAll, &QAction::triggered, this, &AppShell::saveAllProjects);
     m_actTheme = new QAction(themeIcon(ThemeManager::instance().isDarkMode()), tr("Thème clair / sombre"), this);
-    m_actExit = new QAction(QIcon(":/icons/file_exit.svg"), tr("Quitter %1").arg(TSA::Product::name()), this);
-    m_actLanguage = new QAction(QIcon(":/icons/common/language.svg"), tr("Langue de l'interface…"), this);
+    m_actExit = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_exit.svg")), tr("Quitter %1").arg(TSA::Product::name()), this);
+    m_actLanguage = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/language.svg")), tr("Langue de l'interface…"), this);
     m_actLanguage->setToolTip(tr("Choisir la langue de l'interface : English, Français, Malagasy"));
     connect(m_actLanguage, &QAction::triggered, this, &AppShell::chooseLanguage);
     TSA::UI::Shortcuts::ShortcutManager::instance().bind(QStringLiteral("cmd.settings.language"), m_actLanguage);
@@ -207,7 +208,7 @@ void AppShell::createActions()
     addAction(m_actLanguage);
 
     m_recentMenu = new QMenu(tr("Projets récents"), this);
-    m_recentMenu->setIcon(QIcon(":/icons/file_tsa.svg"));
+    m_recentMenu->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file_tsa.svg")));
     connect(m_titleBar->applicationMenu(), &QMenu::aboutToShow, this, &AppShell::rebuildApplicationMenu);
 
     // Commandes qui n'ont de sens qu'avec un projet ouvert : actives seulement en mode Workspace.

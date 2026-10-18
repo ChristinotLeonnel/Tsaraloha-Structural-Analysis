@@ -1,4 +1,5 @@
 #include "SectionCutDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
@@ -87,7 +88,7 @@ void SectionCutDialog::setupUi()
     syncLayout->addWidget(m_chkLiveSync);
     syncLayout->addStretch();
 
-    m_btnApply = new QPushButton(QIcon(":/icons/apply.svg"), tr("Appliquer"), this);
+    m_btnApply = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")), tr("Appliquer"), this);
     m_btnApply->setToolTip(tr("Appliquer immédiatement les modifications de la coupe"));
     m_btnApply->setStyleSheet("QPushButton { font-weight: bold; padding: 4px 12px; }");
     syncLayout->addWidget(m_btnApply);

@@ -1,4 +1,5 @@
 #include "BarCreationDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "../HelpLauncher.h"
 #include <QEvent>
 #include "App/ProductInfo.h"
@@ -113,7 +114,7 @@ void BarCreationDialog::setupUi()
     propsLayout->addWidget(m_comboRole, 0, 1);
 
     m_btnRoleMore = new QToolButton(grpProps);
-    m_btnRoleMore->setIcon(QIcon(":/icons/settings.svg"));
+    m_btnRoleMore->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/settings.svg")));
     m_btnRoleMore->setToolTip(tr("Options du rôle..."));
     propsLayout->addWidget(m_btnRoleMore, 0, 2);
 
@@ -123,12 +124,12 @@ void BarCreationDialog::setupUi()
     propsLayout->addWidget(m_comboSection, 1, 1);
 
     m_btnSectionMore = new QToolButton(grpProps);
-    m_btnSectionMore->setIcon(QIcon(":/icons/sections/section_i.svg"));
+    m_btnSectionMore->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/sections/section_i.svg")));
     m_btnSectionMore->setToolTip(tr("Modifier / Personnaliser la section..."));
     propsLayout->addWidget(m_btnSectionMore, 1, 2);
 
     m_btnCustomizeSection = new QPushButton(tr("Modifier / Personnaliser la section..."), grpProps);
-    m_btnCustomizeSection->setIcon(QIcon(":/icons/sections/section_custom.svg"));
+    m_btnCustomizeSection->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/sections/section_custom.svg")));
     m_btnCustomizeSection->setStyleSheet("font-size: 8.5pt; font-weight: bold; background-color: #1E70BF; color: white; padding: 4px 8px; border-radius: 3px;");
     propsLayout->addWidget(m_btnCustomizeSection, 2, 1, 1, 2);
 
@@ -181,7 +182,7 @@ void BarCreationDialog::setupUi()
     axisLayout->addWidget(m_comboEccentricity, 0, 1);
 
     m_btnEccMore = new QToolButton(grpAxis);
-    m_btnEccMore->setIcon(QIcon(":/icons/settings.svg"));
+    m_btnEccMore->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/settings.svg")));
     m_btnEccMore->setToolTip(tr("Options d'excentrement..."));
     axisLayout->addWidget(m_btnEccMore, 0, 2);
 
@@ -199,10 +200,10 @@ void BarCreationDialog::setupUi()
     btnLayout->setSpacing(8);
 
     m_btnAdd = new QPushButton(tr("Ajouter"), this);
-    m_btnAdd->setIcon(QIcon(":/icons/beam_add.svg"));
+    m_btnAdd->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/beam_add.svg")));
     m_btnAdd->setStyleSheet("font-weight: bold; background-color: #2E7D32; color: white; padding: 5px 12px; border-radius: 3px;");
     m_btnClose = new QPushButton(tr("Fermer"), this);
-    m_btnClose->setIcon(QIcon(":/icons/cancel.svg"));
+    m_btnClose->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
     m_btnHelp = new QPushButton(tr("Aide"), this);
     m_btnHelp->setObjectName(QStringLiteral("helpButton"));
     m_btnHelp->setProperty("helpTopic", QStringLiteral("model.members"));

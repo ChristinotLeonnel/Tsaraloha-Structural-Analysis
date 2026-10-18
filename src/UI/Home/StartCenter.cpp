@@ -1,4 +1,5 @@
 #include "StartCenter.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "App/ProductInfo.h"
 
 #include "../Theme/ThemeManager.h"
@@ -260,9 +261,9 @@ StartCenter::StartCenter(QWidget* parent)
     identity->addWidget(subtitle);
     identity->addSpacing(22);
 
-    m_btnNew = new QPushButton(QIcon(":/icons/file_new.svg"), tr("Nouveau projet"), m_identity);
+    m_btnNew = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")), tr("Nouveau projet"), m_identity);
     m_btnNew->setObjectName("StartCenterPrimary");
-    m_btnOpen = new QPushButton(QIcon(":/icons/file_open.svg"), tr("Ouvrir un projet"), m_identity);
+    m_btnOpen = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")), tr("Ouvrir un projet"), m_identity);
     m_btnOpen->setObjectName("StartCenterSecondary");
     m_btnNew->setToolTip(tr("Créer un projet %1 (Ctrl+N)").arg(TSA::Product::name()));
     m_btnOpen->setToolTip(tr("Ouvrir un fichier %1 (Ctrl+O)").arg(TSA::Product::projectExtension()));
@@ -282,7 +283,7 @@ StartCenter::StartCenter(QWidget* parent)
     connect(m_btnOpen, &QPushButton::clicked, this, &StartCenter::openDialogRequested);
 
     // Langue de l'interface : nom de la langue actuelle, dans cette langue (docs/I18N.md)
-    auto* language = new QPushButton(QIcon(":/icons/common/language.svg"),
+    auto* language = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/common/language.svg")),
                                      TSA::Core::I18n::LanguageManager::nativeName(TSA::Core::I18n::LanguageManager::currentLanguage()),
                                      m_identity);
     language->setObjectName("StartCenterLanguage");
@@ -514,7 +515,7 @@ void StartCenter::showCardMenu(const QString& path, const QPoint& globalPos)
     TSA::Project::ModelPreviewCache cache;
 
     QMenu menu(this);
-    QAction* actOpen = menu.addAction(QIcon(":/icons/file_open.svg"), tr("Ouvrir"));
+    QAction* actOpen = menu.addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")), tr("Ouvrir"));
     menu.setDefaultAction(actOpen);
     QAction* actFolder = menu.addAction(tr("Afficher dans l'explorateur"));
     QAction* actForget = menu.addAction(tr("Retirer des projets récents"));

@@ -1,4 +1,5 @@
 #include "GlobalSearchWidget.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include "../Theme/ThemeManager.h"
 
@@ -113,7 +114,7 @@ GlobalSearchWidget::GlobalSearchWidget(QWidget* parent)
     m_edit = new QLineEdit(this);
     m_edit->setObjectName("TSAGlobalSearchField");
     m_edit->setClearButtonEnabled(true);
-    m_edit->addAction(QIcon(":/icons/common/search.svg"), QLineEdit::LeadingPosition);
+    m_edit->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/search.svg")), QLineEdit::LeadingPosition);
     m_edit->setAccessibleName(tr("Rechercher une commande"));
     m_edit->setAccessibleDescription(tr("Saisir le nom d'une commande, d'un panneau ou d'un paramètre, en anglais, en français ou en malgache"));
     m_edit->installEventFilter(this);
@@ -256,7 +257,7 @@ void GlobalSearchWidget::updateResults()
         item->setData(ShortcutRole, e.shortcut);
         item->setData(KindRole, kindLabel(e.kind));
         QIcon icon = m_iconProvider ? m_iconProvider(e) : QIcon();
-        if (icon.isNull() && !e.iconPath.isEmpty()) icon = QIcon(e.iconPath);
+        if (icon.isNull() && !e.iconPath.isEmpty()) icon = TSA::UI::themedIcon(e.iconPath);
         item->setIcon(icon);
         item->setData(Qt::AccessibleTextRole, e.location.isEmpty() ? e.title : e.title + QStringLiteral(", ") + e.location);
         item->setData(Qt::AccessibleDescriptionRole, e.description);

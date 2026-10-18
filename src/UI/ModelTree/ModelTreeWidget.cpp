@@ -1,4 +1,5 @@
 #include "ModelTreeWidget.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "App/ProductInfo.h"
 #include "../../Model/ModelDiff.h"
 #include "../../Grid/GridManager.h"
@@ -248,77 +249,77 @@ void ModelTreeWidget::createRootCategories()
     QString rootText = m_projectName.isEmpty() ? tr("Projet") + TSA::Product::projectExtension() : m_projectName;
     m_projectRootItem = new QTreeWidgetItem(m_tree, { rootText, "" });
     m_projectRootItem->setData(0, TypeRole, TypeProject);
-    m_projectRootItem->setIcon(0, QIcon(":/icons/file/file_open.svg"));
+    m_projectRootItem->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/file/file_open.svg")));
     m_projectRootItem->setExpanded(true);
 
     m_levelsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Plans de travail / Niveaux"), "" });
     m_levelsCategory->setData(0, TypeRole, TypeCategory);
-    m_levelsCategory->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
+    m_levelsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/levels.svg")));
     m_levelsCategory->setExpanded(true);
 
     m_bimCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Structure BIM (IFC)"), "" });
     m_bimCategory->setData(0, TypeRole, TypeCategory);
-    m_bimCategory->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
+    m_bimCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/levels.svg")));
     m_bimCategory->setExpanded(true);
 
     m_gridsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Grilles"), "" });
     m_gridsCategory->setData(0, TypeRole, TypeCategory);
-    m_gridsCategory->setIcon(0, QIcon(":/icons/modeling/grid_cartesian.svg"));
+    m_gridsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/grid_cartesian.svg")));
     m_gridsCategory->setExpanded(true);
 
     m_nodesCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Nœuds"), "" });
     m_nodesCategory->setData(0, TypeRole, TypeCategory);
-    m_nodesCategory->setIcon(0, QIcon(":/icons/modeling/draw_node.svg"));
+    m_nodesCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/draw_node.svg")));
     m_nodesCategory->setExpanded(true);
 
     m_beamsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Poutres"), "" });
     m_beamsCategory->setData(0, TypeRole, TypeCategory);
-    m_beamsCategory->setIcon(0, QIcon(":/icons/modeling/draw_beam.svg"));
+    m_beamsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/draw_beam.svg")));
     m_beamsCategory->setExpanded(true);
 
     m_columnsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Poteaux"), "" });
     m_columnsCategory->setData(0, TypeRole, TypeCategory);
-    m_columnsCategory->setIcon(0, QIcon(":/icons/modeling/draw_column.svg"));
+    m_columnsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/draw_column.svg")));
     m_columnsCategory->setExpanded(true);
 
     m_slabsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Dalles"), "" });
     m_slabsCategory->setData(0, TypeRole, TypeCategory);
-    m_slabsCategory->setIcon(0, QIcon(":/icons/modeling/draw_slab.svg"));
+    m_slabsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/draw_slab.svg")));
     m_slabsCategory->setExpanded(true);
 
     m_wallsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Voiles"), "" });
     m_wallsCategory->setData(0, TypeRole, TypeCategory);
-    m_wallsCategory->setIcon(0, QIcon(":/icons/modeling/draw_wall.svg"));
+    m_wallsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/draw_wall.svg")));
     m_wallsCategory->setExpanded(true);
 
     m_foundationsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Fondations"), "" });
     m_foundationsCategory->setData(0, TypeRole, TypeCategory);
-    m_foundationsCategory->setIcon(0, QIcon(":/icons/modeling/struct_foundation.svg"));
+    m_foundationsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/struct_foundation.svg")));
     m_foundationsCategory->setExpanded(true);
 
     m_trussCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Treillis / Barres"), "" });
     m_trussCategory->setData(0, TypeRole, TypeCategory);
-    m_trussCategory->setIcon(0, QIcon(":/icons/modeling/struct_truss.svg"));
+    m_trussCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/struct_truss.svg")));
     m_trussCategory->setExpanded(false);
 
     m_cablesCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Câbles"), "" });
     m_cablesCategory->setData(0, TypeRole, TypeCategory);
-    m_cablesCategory->setIcon(0, QIcon(":/icons/modeling/draw_cable.svg"));
+    m_cablesCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/draw_cable.svg")));
     m_cablesCategory->setExpanded(false);
 
     m_loadsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Charges"), "" });
     m_loadsCategory->setData(0, TypeRole, TypeCategory);
-    m_loadsCategory->setIcon(0, QIcon(":/icons/modeling/load_dist.svg"));
+    m_loadsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/load_dist.svg")));
     m_loadsCategory->setExpanded(true);
 
     m_supportsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Appuis"), "" });
     m_supportsCategory->setData(0, TypeRole, TypeCategory);
-    m_supportsCategory->setIcon(0, QIcon(":/icons/modeling/support_fixed.svg"));
+    m_supportsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/support_fixed.svg")));
     m_supportsCategory->setExpanded(true);
 
     m_resultsCategory = new QTreeWidgetItem(m_projectRootItem, { tr("Résultats"), "" });
     m_resultsCategory->setData(0, TypeRole, TypeCategory);
-    m_resultsCategory->setIcon(0, QIcon(":/icons/view/view_3d.svg"));
+    m_resultsCategory->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_3d.svg")));
     m_resultsCategory->setExpanded(false);
 }
 
@@ -339,7 +340,7 @@ void ModelTreeWidget::refreshLevels()
     auto zPlanes = m_model->detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis::Z);
     auto* catZ = new QTreeWidgetItem(m_levelsCategory, { tr("Z (Niveaux horizontaux)"), QString("[%1]").arg(zPlanes.size()) });
     catZ->setData(0, TypeRole, TypeCategory);
-    catZ->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
+    catZ->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/levels.svg")));
     catZ->setExpanded(true);
 
     for (const auto& plane : zPlanes)
@@ -349,14 +350,14 @@ void ModelTreeWidget::refreshLevels()
         item->setData(0, IdRole, QString::fromStdString(plane.id));
         item->setData(0, AxisRole, static_cast<int>(TSA::Coordinate::WorkPlaneAxis::Z));
         item->setData(0, OffsetRole, plane.offset);
-        item->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
+        item->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/levels.svg")));
     }
 
     // 2. X (Coupes verticales YZ)
     auto xPlanes = m_model->detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis::X);
     auto* catX = new QTreeWidgetItem(m_levelsCategory, { tr("X (Coupes YZ)"), QString("[%1]").arg(xPlanes.size()) });
     catX->setData(0, TypeRole, TypeCategory);
-    catX->setIcon(0, QIcon(":/icons/view/coord_system.svg"));
+    catX->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/view/coord_system.svg")));
     catX->setExpanded(false);
 
     for (const auto& plane : xPlanes)
@@ -366,14 +367,14 @@ void ModelTreeWidget::refreshLevels()
         item->setData(0, IdRole, QString::fromStdString(plane.id));
         item->setData(0, AxisRole, static_cast<int>(TSA::Coordinate::WorkPlaneAxis::X));
         item->setData(0, OffsetRole, plane.offset);
-        item->setIcon(0, QIcon(":/icons/view/coord_system.svg"));
+        item->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/view/coord_system.svg")));
     }
 
     // 3. Y (Coupes verticales XZ)
     auto yPlanes = m_model->detectStructuralPlanes(TSA::Coordinate::WorkPlaneAxis::Y);
     auto* catY = new QTreeWidgetItem(m_levelsCategory, { tr("Y (Coupes XZ)"), QString("[%1]").arg(yPlanes.size()) });
     catY->setData(0, TypeRole, TypeCategory);
-    catY->setIcon(0, QIcon(":/icons/view/coord_system.svg"));
+    catY->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/view/coord_system.svg")));
     catY->setExpanded(false);
 
     for (const auto& plane : yPlanes)
@@ -383,7 +384,7 @@ void ModelTreeWidget::refreshLevels()
         item->setData(0, IdRole, QString::fromStdString(plane.id));
         item->setData(0, AxisRole, static_cast<int>(TSA::Coordinate::WorkPlaneAxis::Y));
         item->setData(0, OffsetRole, plane.offset);
-        item->setIcon(0, QIcon(":/icons/view/coord_system.svg"));
+        item->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/view/coord_system.svg")));
     }
 
     size_t total = zPlanes.size() + xPlanes.size() + yPlanes.size();
@@ -523,7 +524,7 @@ void ModelTreeWidget::refreshBim()
         auto* item = new QTreeWidgetItem(parent, { label, info });
         item->setData(0, TypeRole, TypeBimSpatial);
         item->setData(0, IdRole, key);
-        item->setIcon(0, QIcon(":/icons/modeling/levels.svg"));
+        item->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/levels.svg")));
         item->setExpanded(!collapsed.contains(key));
         return item;
     };
@@ -660,7 +661,7 @@ void ModelTreeWidget::refreshLoads()
         auto* item = new QTreeWidgetItem(m_loadsCategory, { name, details });
         item->setData(0, TypeRole, TypeLoad);
         item->setData(0, IdRole, id);
-        item->setIcon(0, QIcon(":/icons/modeling/load_point.svg"));
+        item->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/load_point.svg")));
     }
 
     for (const auto& [id, load] : lm.memberLoads())
@@ -671,7 +672,7 @@ void ModelTreeWidget::refreshLoads()
         auto* item = new QTreeWidgetItem(m_loadsCategory, { name, details });
         item->setData(0, TypeRole, TypeLoad);
         item->setData(0, IdRole, id);
-        item->setIcon(0, QIcon(":/icons/modeling/load_dist.svg"));
+        item->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/load_dist.svg")));
     }
 
     m_loadsCategory->setText(1, QString("[%1]").arg(m_loadsCategory->childCount()));
@@ -724,7 +725,7 @@ void ModelTreeWidget::refreshSupports()
         auto* item = new QTreeWidgetItem(m_supportsCategory, { name, details });
         item->setData(0, TypeRole, TypeSupport);
         item->setData(0, IdRole, nid);
-        item->setIcon(0, QIcon(iconPath));
+        item->setIcon(0, TSA::UI::themedIcon(iconPath));
     }
 
     m_supportsCategory->setText(1, QString("[%1]").arg(m_supportsCategory->childCount()));
@@ -743,17 +744,17 @@ void ModelTreeWidget::refreshResults()
     auto* itemDisp = new QTreeWidgetItem(m_resultsCategory, { tr("Déplacements"), tr("Nœuds & Déformée 3D") });
     itemDisp->setData(0, TypeRole, TypeResult);
     itemDisp->setData(0, IdRole, 1);
-    itemDisp->setIcon(0, QIcon(":/icons/view/view_3d.svg"));
+    itemDisp->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_3d.svg")));
 
     auto* itemForces = new QTreeWidgetItem(m_resultsCategory, { tr("Diagrammes d'Efforts"), tr("N, Vy, Vz, Mx, My, Mz") });
     itemForces->setData(0, TypeRole, TypeResult);
     itemForces->setData(0, IdRole, 2);
-    itemForces->setIcon(0, QIcon(":/icons/modeling/load_moment.svg"));
+    itemForces->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/load_moment.svg")));
 
     auto* itemReact = new QTreeWidgetItem(m_resultsCategory, { tr("Réactions d'Appuis"), tr("Forces & Moments") });
     itemReact->setData(0, TypeRole, TypeResult);
     itemReact->setData(0, IdRole, 3);
-    itemReact->setIcon(0, QIcon(":/icons/modeling/support_fixed.svg"));
+    itemReact->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/support_fixed.svg")));
 
     m_resultsCategory->setText(1, QString("[%1]").arg(m_resultsCategory->childCount()));
 }
@@ -1120,7 +1121,7 @@ void ModelTreeWidget::onCableAdded(const TSA::Model::Cable& cable)
     item->setData(0, TypeRole, TypeCable);
     item->setData(0, IdRole, cable.id());
     m_itemIndex[m_cablesCategory].insert(cable.id(), item);
-    item->setIcon(0, QIcon(":/icons/draw_cable.svg"));
+    item->setIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_cable.svg")));
     m_cablesCategory->setText(1, QString("[%1]").arg(m_cablesCategory->childCount()));
 }
 

@@ -1,4 +1,5 @@
 #include "LevelDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QTableWidget>
@@ -55,11 +56,11 @@ void LevelDialog::setupUi()
     auto* btnLayout = new QHBoxLayout();
 
     m_btnAdd = new QPushButton(tr("Ajouter un niveau"), this);
-    m_btnAdd->setIcon(QIcon(":/icons/node_add.svg"));
+    m_btnAdd->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/node_add.svg")));
     m_btnRemove = new QPushButton(tr("Supprimer le niveau"), this);
-    m_btnRemove->setIcon(QIcon(":/icons/delete.svg"));
+    m_btnRemove->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/delete.svg")));
     m_btnGenerate = new QPushButton(tr("Générer des étages..."), this);
-    m_btnGenerate->setIcon(QIcon(":/icons/geom_cube.svg"));
+    m_btnGenerate->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/geom_cube.svg")));
 
     btnLayout->addWidget(m_btnAdd);
     btnLayout->addWidget(m_btnRemove);
@@ -76,12 +77,12 @@ void LevelDialog::setupUi()
 
     auto* bottomLayout = new QHBoxLayout();
     m_btnApply = new QPushButton(tr("Appliquer"), this);
-    m_btnApply->setIcon(QIcon(":/icons/apply.svg"));
+    m_btnApply->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")));
     m_btnApply->setStyleSheet("QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; }");
     m_btnApply->setFixedHeight(26);
 
     auto* closeBtn = new QPushButton(tr("Fermer"), this);
-    closeBtn->setIcon(QIcon(":/icons/cancel.svg"));
+    closeBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
     closeBtn->setFixedHeight(26);
     closeBtn->setDefault(true);
     connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);

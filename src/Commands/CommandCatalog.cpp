@@ -80,9 +80,9 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.file.export_diagnostic", QT_TRANSLATE_NOOP("CommandCatalog", "Exporter le diagnostic"), QT_TRANSLATE_NOOP("CommandCatalog", "Exporter un rapport de diagnostic technique"), "",
                    ":/icons/common/diagnostic.svg", CommandCategory::File});
   registerCommand({"cmd.model.topology", QT_TRANSLATE_NOOP("CommandCatalog", "Topologie et numérotation"), QT_TRANSLATE_NOOP("CommandCatalog", "Paramètres du projet : stratégies de numérotation des nœuds et des éléments"), "",
-                   "", CommandCategory::Model});
+                   ":/icons/modeling/topology.svg", CommandCategory::Model});
   registerCommand({"cmd.model.clean", QT_TRANSLATE_NOOP("CommandCatalog", "Nettoyer le modèle"), QT_TRANSLATE_NOOP("CommandCatalog", "Détecter et corriger les défauts géométriques du modèle"), "",
-                   "", CommandCategory::Model});
+                   ":/icons/modeling/model_clean.svg", CommandCategory::Model});
   registerCommand({"cmd.edit.undo", QT_TRANSLATE_NOOP("CommandCatalog", "Annuler"), QT_TRANSLATE_NOOP("CommandCatalog", "Annuler la dernière modification"), "Ctrl+Z",
                    ":/icons/edit/undo.svg", CommandCategory::Edit});
   registerCommand({"cmd.edit.redo", QT_TRANSLATE_NOOP("CommandCatalog", "Rétablir"), QT_TRANSLATE_NOOP("CommandCatalog", "Rétablir la modification annulée"), "Ctrl+Y; Ctrl+Shift+Z",
@@ -94,7 +94,7 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.edit.cut", QT_TRANSLATE_NOOP("CommandCatalog", "Couper"), QT_TRANSLATE_NOOP("CommandCatalog", "Copier les éléments sélectionnés dans le presse-papier puis les supprimer"), "Ctrl+X",
                    ":/icons/edit/cut.svg", CommandCategory::Edit});
   registerCommand({"cmd.edit.paste_original", QT_TRANSLATE_NOOP("CommandCatalog", "Coller à la position d'origine"), QT_TRANSLATE_NOOP("CommandCatalog", "Coller les éléments du presse-papier aux coordonnées du projet source"), "Ctrl+Shift+V",
-                   ":/icons/edit/paste.svg", CommandCategory::Edit});
+                   ":/icons/edit/paste_in_place.svg", CommandCategory::Edit});
   registerCommand({"cmd.edit.delete", QT_TRANSLATE_NOOP("CommandCatalog", "Supprimer"), QT_TRANSLATE_NOOP("CommandCatalog", "Supprimer les éléments, charges ou cotations sélectionnés"), "Del",
                    ":/icons/edit/delete.svg", CommandCategory::Edit});
   registerCommand({"cmd.edit.repeat", QT_TRANSLATE_NOOP("CommandCatalog", "Répéter la dernière commande"), QT_TRANSLATE_NOOP("CommandCatalog", "Relancer la dernière commande de modélisation, de modification, de charge ou d'appui"), "Ctrl+Return",
@@ -134,7 +134,7 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.isolate.same_type", QT_TRANSLATE_NOOP("CommandCatalog", "Isoler par type"), QT_TRANSLATE_NOOP("CommandCatalog", "Isoler les éléments du même type que la sélection"), "Alt+I",
                    "", CommandCategory::Selection});
   registerCommand({"cmd.isolate.workplane", QT_TRANSLATE_NOOP("CommandCatalog", "Isoler le plan de travail"), QT_TRANSLATE_NOOP("CommandCatalog", "Isoler les éléments du plan de travail actif"), "Alt+W",
-                   ":/icons/view/view_top.svg", CommandCategory::Selection});
+                   ":/icons/modeling/isolate_workplane.svg", CommandCategory::Selection});
   registerCommand({"cmd.isolate.hide", QT_TRANSLATE_NOOP("CommandCatalog", "Masquer la sélection"), QT_TRANSLATE_NOOP("CommandCatalog", "Masquer les éléments sélectionnés"), "H",
                    "", CommandCategory::Selection});
   registerCommand({"cmd.isolate.invert", QT_TRANSLATE_NOOP("CommandCatalog", "Inverser l'isolation"), QT_TRANSLATE_NOOP("CommandCatalog", "Échanger objets visibles et objets masqués"), "",
@@ -166,7 +166,7 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.create.cube", QT_TRANSLATE_NOOP("CommandCatalog", "Cube structurel 3D"), QT_TRANSLATE_NOOP("CommandCatalog", "Générer un cube structurel paramétrique"), "",
                    "", CommandCategory::Create});
   registerCommand({"cmd.create.presets", QT_TRANSLATE_NOOP("CommandCatalog", "Paramètres de modélisation"), QT_TRANSLATE_NOOP("CommandCatalog", "Sections, matériaux et options utilisés par les outils de dessin"), "",
-                   ":/icons/structure/presets.svg", CommandCategory::Create});
+                   ":/icons/modeling/modeling_settings.svg", CommandCategory::Create});
   registerCommand({"cmd.support.fixed", QT_TRANSLATE_NOOP("CommandCatalog", "Encastrement"), QT_TRANSLATE_NOOP("CommandCatalog", "Affecter un encastrement (6 DDL bloqués) aux nœuds sélectionnés"), "A, E",
                    "", CommandCategory::Create});
   registerCommand({"cmd.support.pinned", QT_TRANSLATE_NOOP("CommandCatalog", "Articulation"), QT_TRANSLATE_NOOP("CommandCatalog", "Affecter une articulation (rotule 3D) aux nœuds sélectionnés"), "A, A",
@@ -190,7 +190,7 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.modify.copy_3d", QT_TRANSLATE_NOOP("CommandCatalog", "Copier (3D)"), QT_TRANSLATE_NOOP("CommandCatalog", "Copier la sélection point à point"), "Ctrl+Shift+D",
                    "", CommandCategory::Modify});
   registerCommand({"cmd.modify.copy", QT_TRANSLATE_NOOP("CommandCatalog", "Copie numérique"), QT_TRANSLATE_NOOP("CommandCatalog", "Copie numérique avec répétition (dialogue)"), "Ctrl+D",
-                   ":/icons/structure/struct_copy.svg", CommandCategory::Modify});
+                   ":/icons/edit/copy_array.svg", CommandCategory::Modify});
   registerCommand({"cmd.modify.translate", QT_TRANSLATE_NOOP("CommandCatalog", "Translation numérique"), QT_TRANSLATE_NOOP("CommandCatalog", "Translation par dialogue (dX, dY, dZ)"), "Ctrl+Shift+M",
                    ":/icons/move.svg", CommandCategory::Modify});
   registerCommand({"cmd.modify.rotate", QT_TRANSLATE_NOOP("CommandCatalog", "Rotation (3D)"), QT_TRANSLATE_NOOP("CommandCatalog", "Rotation de la sélection autour d'un axe"), "Ctrl+R",
@@ -202,9 +202,9 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.modify.merge_nodes", QT_TRANSLATE_NOOP("CommandCatalog", "Fusionner les nœuds"), QT_TRANSLATE_NOOP("CommandCatalog", "Fusionner les nœuds confondus (console : MERGE)"), "",
                    ":/icons/structure/struct_merge.svg", CommandCategory::Modify});
   registerCommand({"cmd.modify.move_origin", QT_TRANSLATE_NOOP("CommandCatalog", "Déplacer l'origine"), QT_TRANSLATE_NOOP("CommandCatalog", "Déplacer l'origine 3D"), "",
-                   ":/icons/structure/struct_move.svg", CommandCategory::Modify});
+                   ":/icons/edit/move_origin.svg", CommandCategory::Modify});
   registerCommand({"cmd.modify.viewport_input", QT_TRANSLATE_NOOP("CommandCatalog", "Saisie dans la vue 3D"), QT_TRANSLATE_NOOP("CommandCatalog", "Piloter les outils directement dans la vue 3D (sinon par dialogue)"), "",
-                   "", CommandCategory::Modify});
+                   ":/icons/tools/input_viewport.svg", CommandCategory::Modify});
   registerCommand({"cmd.tool.move", QT_TRANSLATE_NOOP("CommandCatalog", "Outil déplacer"), QT_TRANSLATE_NOOP("CommandCatalog", "Outil de modification : déplacer"), "",
                    "", CommandCategory::Modify});
   registerCommand({"cmd.tool.copy", QT_TRANSLATE_NOOP("CommandCatalog", "Outil copier"), QT_TRANSLATE_NOOP("CommandCatalog", "Outil de modification : copier"), "",
@@ -254,25 +254,25 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.tool.dim_cumulative", QT_TRANSLATE_NOOP("CommandCatalog", "Cotation cumulée"), QT_TRANSLATE_NOOP("CommandCatalog", "Cotes depuis une origine commune (AutoCAD : DBA)"), "D, B",
                    "", CommandCategory::Annotation});
   registerCommand({"cmd.dim.edit", QT_TRANSLATE_NOOP("CommandCatalog", "Modifier la cotation"), QT_TRANSLATE_NOOP("CommandCatalog", "Modifier la cotation sélectionnée"), "D, E",
-                   "", CommandCategory::Annotation});
+                   ":/icons/dimensions/dim_edit.svg", CommandCategory::Annotation});
   registerCommand({"cmd.dim.delete", QT_TRANSLATE_NOOP("CommandCatalog", "Supprimer les cotations"), QT_TRANSLATE_NOOP("CommandCatalog", "Supprimer les cotations sélectionnées"), "",
-                   "", CommandCategory::Annotation});
+                   ":/icons/dimensions/dim_delete.svg", CommandCategory::Annotation});
   registerCommand({"cmd.dim.visible", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les cotations"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les cotations"), "",
-                   "", CommandCategory::Annotation});
+                   ":/icons/dimensions/dim_visibility.svg", CommandCategory::Annotation});
   registerCommand({"cmd.dim.style", QT_TRANSLATE_NOOP("CommandCatalog", "Style des cotations"), QT_TRANSLATE_NOOP("CommandCatalog", "Unités, précision, tailles et couleurs des cotations"), "",
-                   "", CommandCategory::Annotation});
+                   ":/icons/dimensions/dim_style.svg", CommandCategory::Annotation});
   registerCommand({"cmd.dim.clean", QT_TRANSLATE_NOOP("CommandCatalog", "Supprimer les cotations invalides"), QT_TRANSLATE_NOOP("CommandCatalog", "Supprimer les cotations dont un nœud a été supprimé"), "",
-                   "", CommandCategory::Annotation});
+                   ":/icons/dimensions/dim_clean.svg", CommandCategory::Annotation});
   registerCommand({"cmd.tools.measure", QT_TRANSLATE_NOOP("CommandCatalog", "Mesurer une distance"), QT_TRANSLATE_NOOP("CommandCatalog", "Mesurer une distance 3D (AutoCAD : DI)"), "D, I",
                    "", CommandCategory::Annotation});
   registerCommand({"cmd.display.grid", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher la grille"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer la grille 3D"), "G; F7",
-                   ":/icons/view/grid.svg", CommandCategory::Snap});
+                   ":/icons/modeling/grid_visible.svg", CommandCategory::Snap});
   registerCommand({"cmd.snap.grid", QT_TRANSLATE_NOOP("CommandCatalog", "Magnétisme grille"), QT_TRANSLATE_NOOP("CommandCatalog", "Activer ou désactiver le magnétisme de la grille (Snap)"), "S",
-                   ":/icons/snap.svg", CommandCategory::Snap});
+                   ":/icons/modeling/snap_grid.svg", CommandCategory::Snap});
   registerCommand({"cmd.snap.object_snap", QT_TRANSLATE_NOOP("CommandCatalog", "Accrochage objets"), QT_TRANSLATE_NOOP("CommandCatalog", "Activer ou désactiver l'accrochage aux objets (OSNAP)"), "F3",
-                   ":/icons/view/snap.svg", CommandCategory::Snap});
+                   ":/icons/modeling/snap_object.svg", CommandCategory::Snap});
   registerCommand({"cmd.display.levels", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les plans d'étages"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les plans d'étages"), "",
-                   "", CommandCategory::Snap});
+                   ":/icons/modeling/levels_visible.svg", CommandCategory::Snap});
   registerCommand({"cmd.display.grid_labels", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les libellés d'axes"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les libellés des axes de grille"), "",
                    "", CommandCategory::Snap});
   registerCommand({"cmd.display.rulers", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les règles"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les règles graduées"), "",
@@ -284,41 +284,41 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.coord.axis_y", QT_TRANSLATE_NOOP("CommandCatalog", "Coupe verticale Y"), QT_TRANSLATE_NOOP("CommandCatalog", "Bandeau de la vue : coupes perpendiculaires à Y"), "Alt+Y",
                    "", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_xy", QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail XY"), QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail global horizontal XY"), "",
-                   ":/icons/view/view_top.svg", CommandCategory::Snap});
+                   ":/icons/modeling/workplane_xy.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_xz", QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail XZ"), QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail global vertical XZ"), "",
-                   ":/icons/view/view_front.svg", CommandCategory::Snap});
+                   ":/icons/modeling/workplane_xz.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_yz", QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail YZ"), QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail global vertical YZ"), "",
-                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+                   ":/icons/modeling/workplane_yz.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_next", QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail suivant"), QT_TRANSLATE_NOOP("CommandCatalog", "Plan parallèle suivant passant par des intersections de la grille (niveau, axe)"), "Alt+PgUp",
-                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+                   ":/icons/modeling/workplane_next.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_prev", QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail précédent (grille)"), QT_TRANSLATE_NOOP("CommandCatalog", "Plan parallèle précédent passant par des intersections de la grille (niveau, axe)"), "Alt+PgDown",
-                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+                   ":/icons/modeling/workplane_prev.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_next_intersection", QT_TRANSLATE_NOOP("CommandCatalog", "Intersection suivante"), QT_TRANSLATE_NOOP("CommandCatalog", "Origine du plan de travail sur l'intersection suivante de la grille"), "Ctrl+Alt+PgUp",
-                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+                   ":/icons/modeling/intersection_next.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_prev_intersection", QT_TRANSLATE_NOOP("CommandCatalog", "Intersection précédente"), QT_TRANSLATE_NOOP("CommandCatalog", "Origine du plan de travail sur l'intersection précédente de la grille"), "Ctrl+Alt+PgDown",
-                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+                   ":/icons/modeling/intersection_prev.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_align_intersection", QT_TRANSLATE_NOOP("CommandCatalog", "Aligner sur l'intersection"), QT_TRANSLATE_NOOP("CommandCatalog", "Origine du plan de travail sur l'intersection de la grille la plus proche du curseur"), "Alt+Home",
-                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+                   ":/icons/modeling/intersection_align.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_back", QT_TRANSLATE_NOOP("CommandCatalog", "Revenir au plan de travail précédent"), QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail précédent (historique)"), "Alt+Backspace",
-                   ":/icons/view/view_side.svg", CommandCategory::Snap});
+                   ":/icons/modeling/workplane_back.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_level", QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail sur l'étage"), QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail sur l'étage actif"), "",
-                   ":/icons/structure/levels.svg", CommandCategory::Snap});
+                   ":/icons/modeling/workplane_level.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_custom", QT_TRANSLATE_NOOP("CommandCatalog", "Plan de travail personnalisé"), QT_TRANSLATE_NOOP("CommandCatalog", "Définir un plan de travail personnalisé"), "",
-                   "", CommandCategory::Snap});
+                   ":/icons/modeling/workplane_custom.svg", CommandCategory::Snap});
   registerCommand({"cmd.coord.workplane_visible", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher le plan de travail"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer le plan de travail 3D"), "",
-                   "", CommandCategory::Snap});
+                   ":/icons/modeling/workplane_visible.svg", CommandCategory::Snap});
   registerCommand({"cmd.view.normal_to_plane", QT_TRANSLATE_NOOP("CommandCatalog", "Vue normale au plan"), QT_TRANSLATE_NOOP("CommandCatalog", "Orienter la caméra perpendiculairement au plan de travail"), "Num+0",
-                   "", CommandCategory::Snap});
+                   ":/icons/view/view_normal.svg", CommandCategory::Snap});
   registerCommand({"cmd.struct.levels", QT_TRANSLATE_NOOP("CommandCatalog", "Étages et niveaux"), QT_TRANSLATE_NOOP("CommandCatalog", "Gestionnaire des étages et niveaux"), "Ctrl+L",
                    ":/icons/structure/levels.svg", CommandCategory::Structure});
   registerCommand({"cmd.struct.grid_dialog", QT_TRANSLATE_NOOP("CommandCatalog", "Gestionnaire de grilles"), QT_TRANSLATE_NOOP("CommandCatalog", "Créer, modifier et activer les grilles d'axes"), "Ctrl+G",
-                   ":/icons/grid/grid_manager.svg", CommandCategory::Structure});
+                   ":/icons/modeling/grid_manager.svg", CommandCategory::Structure});
   registerCommand({"cmd.struct.new_grid", QT_TRANSLATE_NOOP("CommandCatalog", "Nouvelle grille 3D"), QT_TRANSLATE_NOOP("CommandCatalog", "Créer une nouvelle grille d'axes"), "Ctrl+Shift+G",
-                   "", CommandCategory::Structure});
+                   ":/icons/modeling/grid_new.svg", CommandCategory::Structure});
   registerCommand({"cmd.view.fit_all", QT_TRANSLATE_NOOP("CommandCatalog", "Zoom étendu"), QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer tout le modèle (AutoCAD : Z, E)"), "F; Z, E",
                    ":/icons/view/fit_all.svg", CommandCategory::View});
   registerCommand({"cmd.view.fit_selection", QT_TRANSLATE_NOOP("CommandCatalog", "Zoom sur la sélection"), QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer la sélection"), "Shift+F",
-                   ":/icons/view/fit_all.svg", CommandCategory::View});
+                   ":/icons/view/fit_selection.svg", CommandCategory::View});
   registerCommand({"cmd.view.zoom_in", QT_TRANSLATE_NOOP("CommandCatalog", "Zoom avant"), QT_TRANSLATE_NOOP("CommandCatalog", "Agrandir la vue"), "+",
                    ":/icons/view/zoom_in.svg", CommandCategory::View});
   registerCommand({"cmd.view.zoom_out", QT_TRANSLATE_NOOP("CommandCatalog", "Zoom arrière"), QT_TRANSLATE_NOOP("CommandCatalog", "Réduire la vue"), "-",
@@ -326,39 +326,39 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.view.zoom_window", QT_TRANSLATE_NOOP("CommandCatalog", "Zoom fenêtre"), QT_TRANSLATE_NOOP("CommandCatalog", "Zoomer sur un rectangle tracé (AutoCAD : Z, W)"), "Z, W",
                    ":/icons/view/zoom_window.svg", CommandCategory::View});
   registerCommand({"cmd.view.prev", QT_TRANSLATE_NOOP("CommandCatalog", "Vue précédente"), QT_TRANSLATE_NOOP("CommandCatalog", "Revenir à la vue précédente (AutoCAD : Z, P)"), "Alt+Left; Z, P",
-                   ":/icons/edit/undo.svg", CommandCategory::View});
+                   ":/icons/view/view_previous.svg", CommandCategory::View});
   registerCommand({"cmd.view.next", QT_TRANSLATE_NOOP("CommandCatalog", "Vue suivante"), QT_TRANSLATE_NOOP("CommandCatalog", "Revenir à la vue suivante"), "Alt+Right",
-                   ":/icons/edit/redo.svg", CommandCategory::View});
+                   ":/icons/view/view_next.svg", CommandCategory::View});
   registerCommand({"cmd.view.home", QT_TRANSLATE_NOOP("CommandCatalog", "Vue d'accueil"), QT_TRANSLATE_NOOP("CommandCatalog", "Vue initiale du modèle"), "Home",
-                   ":/icons/view/view_3d.svg", CommandCategory::View});
+                   ":/icons/view/view_home.svg", CommandCategory::View});
   registerCommand({"cmd.view.reset", QT_TRANSLATE_NOOP("CommandCatalog", "Réinitialiser la vue"), QT_TRANSLATE_NOOP("CommandCatalog", "Réinitialiser l'orientation de la caméra"), "R",
-                   ":/icons/view/view_iso.svg", CommandCategory::View});
+                   ":/icons/view/view_reset.svg", CommandCategory::View});
   registerCommand({"cmd.view.top", QT_TRANSLATE_NOOP("CommandCatalog", "Vue de dessus"), QT_TRANSLATE_NOOP("CommandCatalog", "Caméra vers -Z"), "Num+7",
                    ":/icons/view/view_top.svg", CommandCategory::View});
   registerCommand({"cmd.view.bottom", QT_TRANSLATE_NOOP("CommandCatalog", "Vue de dessous"), QT_TRANSLATE_NOOP("CommandCatalog", "Caméra vers +Z"), "Ctrl+Num+7",
-                   ":/icons/view/view_top.svg", CommandCategory::View});
+                   ":/icons/view/view_bottom.svg", CommandCategory::View});
   registerCommand({"cmd.view.front", QT_TRANSLATE_NOOP("CommandCatalog", "Vue de face"), QT_TRANSLATE_NOOP("CommandCatalog", "Caméra vers +Y"), "Num+1",
                    ":/icons/view/view_front.svg", CommandCategory::View});
   registerCommand({"cmd.view.back", QT_TRANSLATE_NOOP("CommandCatalog", "Vue arrière"), QT_TRANSLATE_NOOP("CommandCatalog", "Caméra vers -Y"), "Ctrl+Num+1",
-                   ":/icons/view/view_front.svg", CommandCategory::View});
+                   ":/icons/view/view_back.svg", CommandCategory::View});
   registerCommand({"cmd.view.left", QT_TRANSLATE_NOOP("CommandCatalog", "Vue de gauche"), QT_TRANSLATE_NOOP("CommandCatalog", "Caméra vers +X"), "Num+3",
-                   ":/icons/view/view_side.svg", CommandCategory::View});
+                   ":/icons/view/view_left.svg", CommandCategory::View});
   registerCommand({"cmd.view.right", QT_TRANSLATE_NOOP("CommandCatalog", "Vue de droite"), QT_TRANSLATE_NOOP("CommandCatalog", "Caméra vers -X"), "Ctrl+Num+3",
                    ":/icons/view/view_side.svg", CommandCategory::View});
   registerCommand({"cmd.view.iso", QT_TRANSLATE_NOOP("CommandCatalog", "Vue isométrique"), QT_TRANSLATE_NOOP("CommandCatalog", "Vue 3D isométrique"), "Num+5",
-                   ":/icons/view/view_3d.svg", CommandCategory::View});
+                   ":/icons/view/view_iso.svg", CommandCategory::View});
   registerCommand({"cmd.view.3d", QT_TRANSLATE_NOOP("CommandCatalog", "Vue 3D axonométrique"), QT_TRANSLATE_NOOP("CommandCatalog", "Revenir à la vue 3D axonométrique"), "",
                    "", CommandCategory::View});
   registerCommand({"cmd.view.xy", QT_TRANSLATE_NOOP("CommandCatalog", "Plan XY"), QT_TRANSLATE_NOOP("CommandCatalog", "Vue d'étage (plan XY)"), "",
-                   ":/icons/view/view_top.svg", CommandCategory::View});
+                   ":/icons/view/plan_xy.svg", CommandCategory::View});
   registerCommand({"cmd.view.xz", QT_TRANSLATE_NOOP("CommandCatalog", "Plan XZ"), QT_TRANSLATE_NOOP("CommandCatalog", "Élévation de face (plan XZ)"), "",
-                   ":/icons/view/view_front.svg", CommandCategory::View});
+                   ":/icons/view/plan_xz.svg", CommandCategory::View});
   registerCommand({"cmd.view.yz", QT_TRANSLATE_NOOP("CommandCatalog", "Plan YZ"), QT_TRANSLATE_NOOP("CommandCatalog", "Coupe latérale / pignon (plan YZ)"), "",
-                   ":/icons/view/view_side.svg", CommandCategory::View});
+                   ":/icons/view/plan_yz.svg", CommandCategory::View});
   registerCommand({"cmd.view.rotate_left", QT_TRANSLATE_NOOP("CommandCatalog", "Pivoter la vue 2D à gauche"), QT_TRANSLATE_NOOP("CommandCatalog", "Rotation de la vue 2D de -15°"), "",
-                   "", CommandCategory::View});
+                   ":/icons/view/rotate_ccw.svg", CommandCategory::View});
   registerCommand({"cmd.view.rotate_right", QT_TRANSLATE_NOOP("CommandCatalog", "Pivoter la vue 2D à droite"), QT_TRANSLATE_NOOP("CommandCatalog", "Rotation de la vue 2D de +15°"), "",
-                   "", CommandCategory::View});
+                   ":/icons/view/rotate_cw.svg", CommandCategory::View});
   registerCommand({"cmd.view.section_cut", QT_TRANSLATE_NOOP("CommandCatalog", "Coupes de la structure"), QT_TRANSLATE_NOOP("CommandCatalog", "Plan de coupe dynamique 3D"), "",
                    ":/icons/view/section_cut.svg", CommandCategory::View});
   registerCommand({"cmd.view.coord_system", QT_TRANSLATE_NOOP("CommandCatalog", "Repère local / global"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher le repère local ou global"), "",
@@ -366,7 +366,7 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.view.fullscreen", QT_TRANSLATE_NOOP("CommandCatalog", "Plein écran"), QT_TRANSLATE_NOOP("CommandCatalog", "Basculer en mode plein écran"), "F11",
                    ":/icons/fullscreen.svg", CommandCategory::View});
   registerCommand({"cmd.view.display_physical", QT_TRANSLATE_NOOP("CommandCatalog", "Modèle physique"), QT_TRANSLATE_NOOP("CommandCatalog", "Représentation : sections volumiques"), "Alt+1",
-                   ":/icons/view/view_shaded.svg", CommandCategory::View});
+                   ":/icons/view/display_physical.svg", CommandCategory::View});
   registerCommand({"cmd.view.display_analytical", QT_TRANSLATE_NOOP("CommandCatalog", "Modèle filaire analytique"), QT_TRANSLATE_NOOP("CommandCatalog", "Représentation : axes des barres et nœuds"), "Alt+2",
                    ":/icons/view/display_analytical.svg", CommandCategory::View});
   registerCommand({"cmd.view.display_fe", QT_TRANSLATE_NOOP("CommandCatalog", "Modèle éléments finis"), QT_TRANSLATE_NOOP("CommandCatalog", "Représentation : maillage réellement transmis au moteur"), "Alt+3",
@@ -384,29 +384,29 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.view.render_lightweight", QT_TRANSLATE_NOOP("CommandCatalog", "Mode léger"), QT_TRANSLATE_NOOP("CommandCatalog", "PC modestes : sans texture ni arête, facettisation plus grossière"), "Alt+9",
                    "", CommandCategory::View});
   registerCommand({"cmd.display.nodes", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les nœuds"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les nœuds"), "",
-                   "", CommandCategory::Display});
+                   ":/icons/modeling/nodes_visible.svg", CommandCategory::Display});
   registerCommand({"cmd.display.node_labels", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les numéros de nœuds"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les étiquettes des nœuds"), "",
-                   "", CommandCategory::Display});
+                   ":/icons/modeling/node_labels.svg", CommandCategory::Display});
   registerCommand({"cmd.display.supports", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les appuis"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les symboles d'appuis"), "",
-                   "", CommandCategory::Display});
+                   ":/icons/modeling/supports_visible.svg", CommandCategory::Display});
   registerCommand({"cmd.display.support_labels", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les étiquettes d'appuis"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les étiquettes d'appuis"), "",
-                   "", CommandCategory::Display});
+                   ":/icons/modeling/support_labels.svg", CommandCategory::Display});
   registerCommand({"cmd.display.loads", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les charges"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les charges 3D"), "Ctrl+Shift+L",
-                   "", CommandCategory::Display});
+                   ":/icons/modeling/loads_visible.svg", CommandCategory::Display});
   registerCommand({"cmd.display.surface_loads", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les charges surfaciques"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les charges des dalles et voiles"), "",
-                   "", CommandCategory::Display});
+                   ":/icons/modeling/surface_loads_visible.svg", CommandCategory::Display});
   registerCommand({"cmd.display.forces", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les forces"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les forces"), "",
                    "", CommandCategory::Display});
   registerCommand({"cmd.display.moments", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les moments"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les moments"), "",
                    "", CommandCategory::Display});
   registerCommand({"cmd.display.load_values", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les valeurs des charges"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les valeurs des charges"), "",
-                   "", CommandCategory::Display});
+                   ":/icons/modeling/load_values.svg", CommandCategory::Display});
   registerCommand({"cmd.properties.panel", QT_TRANSLATE_NOOP("CommandCatalog", "Panneau Propriétés"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer le panneau Propriétés"), "P",
                    ":/icons/view/properties.svg", CommandCategory::Properties});
   registerCommand({"cmd.library.custom", QT_TRANSLATE_NOOP("CommandCatalog", "Bibliothèque personnalisée"), QT_TRANSLATE_NOOP("CommandCatalog", "Bibliothèque personnalisée de sections et matériaux"), "Ctrl+B",
-                   "", CommandCategory::Libraries});
+                   ":/icons/common/library.svg", CommandCategory::Libraries});
   registerCommand({"cmd.library.manager", QT_TRANSLATE_NOOP("CommandCatalog", "Gestionnaire TSALib"), QT_TRANSLATE_NOOP("CommandCatalog", "Gestionnaire d'extensions TSALib"), "",
-                   ":/icons/extension_manager.svg", CommandCategory::Libraries});
+                   ":/icons/common/extension_manager.svg", CommandCategory::Libraries});
   registerCommand({"cmd.section.i", QT_TRANSLATE_NOOP("CommandCatalog", "Profilé en I/H"), QT_TRANSLATE_NOOP("CommandCatalog", "Créer un profilé IPE / HEA / HEB"), "",
                    "", CommandCategory::Libraries});
   registerCommand({"cmd.section.rect", QT_TRANSLATE_NOOP("CommandCatalog", "Section rectangulaire"), QT_TRANSLATE_NOOP("CommandCatalog", "Créer une section rectangulaire"), "",
@@ -428,21 +428,21 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.loads.surface", QT_TRANSLATE_NOOP("CommandCatalog", "Charge surfacique"), QT_TRANSLATE_NOOP("CommandCatalog", "Charge répartie sur surface"), "Q, S",
                    "", CommandCategory::Loads});
   registerCommand({"cmd.loads.surface_supports", QT_TRANSLATE_NOOP("CommandCatalog", "Appuis linéiques des surfaces"), QT_TRANSLATE_NOOP("CommandCatalog", "Appuis répartis sur les bords des dalles et voiles"), "",
-                   "", CommandCategory::Loads});
+                   ":/icons/modeling/surface_supports.svg", CommandCategory::Loads});
   registerCommand({"cmd.loads.self_weight", QT_TRANSLATE_NOOP("CommandCatalog", "Poids propre"), QT_TRANSLATE_NOOP("CommandCatalog", "Paramètres du poids propre"), "Q, G",
                    "", CommandCategory::Loads});
   registerCommand({"cmd.loadcases.manager", QT_TRANSLATE_NOOP("CommandCatalog", "Cas de charges et combinaisons"), QT_TRANSLATE_NOOP("CommandCatalog", "Gestionnaire des cas de charges et combinaisons"), "Q, C",
                    "", CommandCategory::LoadCases});
   registerCommand({"cmd.mesh.settings", QT_TRANSLATE_NOOP("CommandCatalog", "Paramètres du maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Panneau de paramétrage du maillage (Gmsh)"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_settings.svg", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.preview", QT_TRANSLATE_NOOP("CommandCatalog", "Aperçu du maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Maillage prévisionnel sans remplacer celui du projet"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_preview.svg", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.regenerate", QT_TRANSLATE_NOOP("CommandCatalog", "Régénérer le maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Régénérer avec les paramètres enregistrés"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_regenerate.svg", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.quality", QT_TRANSLATE_NOOP("CommandCatalog", "Vérifier la qualité du maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Contrôle de qualité et liste des problèmes"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_quality.svg", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.show", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher le maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher le maillage du projet dans la vue 3D"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_show.svg", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.view.wireframe", QT_TRANSLATE_NOOP("CommandCatalog", "Maillage filaire"), QT_TRANSLATE_NOOP("CommandCatalog", "Arêtes uniques du maillage, sans faces"), "",
                    "", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.view.faces_edges", QT_TRANSLATE_NOOP("CommandCatalog", "Maillage : faces et arêtes"), QT_TRANSLATE_NOOP("CommandCatalog", "Faces des éléments et arêtes uniques"), "",
@@ -492,49 +492,49 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.mesh.view.animate", QT_TRANSLATE_NOOP("CommandCatalog", "Animer la déformée du maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Animation de la déformée"), "",
                    "", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.local", QT_TRANSLATE_NOOP("CommandCatalog", "Maillage local de la sélection"), QT_TRANSLATE_NOOP("CommandCatalog", "Paramètres de maillage des objets sélectionnés"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_local.svg", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.zone", QT_TRANSLATE_NOOP("CommandCatalog", "Raffinement local"), QT_TRANSLATE_NOOP("CommandCatalog", "Zone de raffinement autour des nœuds sélectionnés"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_zone.svg", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.export", QT_TRANSLATE_NOOP("CommandCatalog", "Exporter le maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Exporter le maillage (msh, vtk, unv, inp, bdf, mesh)"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_export.svg", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.import", QT_TRANSLATE_NOOP("CommandCatalog", "Importer un maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Importer un maillage (Gmsh et formats lus par Gmsh)"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_import.svg", CommandCategory::Mesh});
   registerCommand({"cmd.mesh.clear", QT_TRANSLATE_NOOP("CommandCatalog", "Supprimer le maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Supprimer le maillage du projet (paramètres conservés)"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/analysis/mesh_clear.svg", CommandCategory::Mesh});
   registerCommand({"cmd.model.slab_openings", QT_TRANSLATE_NOOP("CommandCatalog", "Ouvertures de la dalle"), QT_TRANSLATE_NOOP("CommandCatalog", "Trémies de la dalle sélectionnée"), "",
-                   "", CommandCategory::Mesh});
+                   ":/icons/modeling/slab_openings.svg", CommandCategory::Mesh});
   registerCommand({"cmd.analysis.mesh", QT_TRANSLATE_NOOP("CommandCatalog", "Générer le maillage"), QT_TRANSLATE_NOOP("CommandCatalog", "Générer le maillage du projet avec Gmsh (enregistré, qualité contrôlée)"), "",
-                   ":/icons/analysis_mesh.svg", CommandCategory::Mesh});
+                   ":/icons/mesh_generate.svg", CommandCategory::Mesh});
   registerCommand({"cmd.analysis.solve", QT_TRANSLATE_NOOP("CommandCatalog", "Lancer le calcul"), QT_TRANSLATE_NOOP("CommandCatalog", "Lancer le calcul structurel (validations habituelles)"), "F5",
                    ":/icons/analysis_run.svg", CommandCategory::Analysis});
   registerCommand({"cmd.analysis.config", QT_TRANSLATE_NOOP("CommandCatalog", "Paramètres d'analyse"), QT_TRANSLATE_NOOP("CommandCatalog", "Moteur, portée, type d'analyse"), "Ctrl+F5",
                    "", CommandCategory::Analysis});
   registerCommand({"cmd.results.deformed", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher la déformée"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer la déformée 3D"), "F9",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/deformed_visible.svg", CommandCategory::Results});
   registerCommand({"cmd.results.reactions", QT_TRANSLATE_NOOP("CommandCatalog", "Afficher les réactions"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer les réactions d'appui"), "Shift+F9",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/reactions.svg", CommandCategory::Results});
   registerCommand({"cmd.results.diagram_mz", QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme Mz"), QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme du moment Mz"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/diagram_mz.svg", CommandCategory::Results});
   registerCommand({"cmd.results.diagram_my", QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme My"), QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme du moment My"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/diagram_my.svg", CommandCategory::Results});
   registerCommand({"cmd.results.diagram_mx", QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme Mx"), QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme de torsion Mx"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/diagram_mx.svg", CommandCategory::Results});
   registerCommand({"cmd.results.diagram_vz", QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme Vz"), QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme de l'effort tranchant Vz"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/diagram_vz.svg", CommandCategory::Results});
   registerCommand({"cmd.results.diagram_vy", QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme Vy"), QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme de l'effort tranchant Vy"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/diagram_vy.svg", CommandCategory::Results});
   registerCommand({"cmd.results.diagram_n", QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme N"), QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme de l'effort normal"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/diagram_n.svg", CommandCategory::Results});
   registerCommand({"cmd.results.diagram_deflection", QT_TRANSLATE_NOOP("CommandCatalog", "Flèches"), QT_TRANSLATE_NOOP("CommandCatalog", "Diagramme des flèches"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/diagram_deflection.svg", CommandCategory::Results});
   registerCommand({"cmd.results.diagram_none", QT_TRANSLATE_NOOP("CommandCatalog", "Masquer les diagrammes"), QT_TRANSLATE_NOOP("CommandCatalog", "Masquer les diagrammes d'efforts"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/diagram_none.svg", CommandCategory::Results});
   registerCommand({"cmd.results.fit_model", QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer le modèle"), QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer le modèle (résultats)"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/fit_model.svg", CommandCategory::Results});
   registerCommand({"cmd.results.fit_results", QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer les résultats"), QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer les résultats affichés"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/fit_results.svg", CommandCategory::Results});
   registerCommand({"cmd.results.fit_deformed", QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer la déformée"), QT_TRANSLATE_NOOP("CommandCatalog", "Cadrer la déformée"), "",
-                   "", CommandCategory::Results});
+                   ":/icons/analysis/fit_deformed.svg", CommandCategory::Results});
   registerCommand({"cmd.results.displacements", QT_TRANSLATE_NOOP("CommandCatalog", "Déplacements"), QT_TRANSLATE_NOOP("CommandCatalog", "Déformée et déplacements"), "",
                    ":/icons/results_disp.svg", CommandCategory::Results});
   registerCommand({"cmd.results.forces", QT_TRANSLATE_NOOP("CommandCatalog", "Efforts internes"), QT_TRANSLATE_NOOP("CommandCatalog", "Diagrammes des efforts (M, N, V)"), "",
@@ -544,17 +544,17 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.report.ndc", QT_TRANSLATE_NOOP("CommandCatalog", "Note de calcul"), QT_TRANSLATE_NOOP("CommandCatalog", "Ouvrir la note de calcul"), "F8",
                    "", CommandCategory::Documentation});
   registerCommand({"cmd.report.templates", QT_TRANSLATE_NOOP("CommandCatalog", "Documents par templates"), QT_TRANSLATE_NOOP("CommandCatalog", "Rapports et notes produits par templates : aperçu, options, export, gestion"), "",
-                   "", CommandCategory::Documentation});
+                   ":/icons/file/report_templates.svg", CommandCategory::Documentation});
   registerCommand({"cmd.bim.import_ifc", QT_TRANSLATE_NOOP("CommandCatalog", "Importer IFC"), QT_TRANSLATE_NOOP("CommandCatalog", "Importer un modèle IFC"), "Ctrl+I",
-                   "", CommandCategory::Bim});
+                   ":/icons/file/ifc_import.svg", CommandCategory::Bim});
   registerCommand({"cmd.bim.import_tsa3d", QT_TRANSLATE_NOOP("CommandCatalog", "Importer TSA3D"), QT_TRANSLATE_NOOP("CommandCatalog", "Créer un projet depuis un fichier TSA3D (format d'échange)"), "",
-                   "", CommandCategory::Bim});
+                   ":/icons/file/tsa3d_import.svg", CommandCategory::Bim});
   registerCommand({"cmd.bim.export_tsa3d", QT_TRANSLATE_NOOP("CommandCatalog", "Exporter TSA3D"), QT_TRANSLATE_NOOP("CommandCatalog", "Exporter le modèle au format d'échange TSA3D"), "",
-                   "", CommandCategory::Bim});
+                   ":/icons/file/tsa3d_export.svg", CommandCategory::Bim});
   registerCommand({"cmd.bim.import_module", QT_TRANSLATE_NOOP("CommandCatalog", "Importer via un module"), QT_TRANSLATE_NOOP("CommandCatalog", "Convertir un fichier avec un module puis l'importer (TSA3D)"), "",
-                   "", CommandCategory::Bim});
+                   ":/icons/file/module_import.svg", CommandCategory::Bim});
   registerCommand({"cmd.bim.export_ifc", QT_TRANSLATE_NOOP("CommandCatalog", "Exporter IFC"), QT_TRANSLATE_NOOP("CommandCatalog", "Exporter le modèle en IFC"), "Ctrl+E",
-                   "", CommandCategory::Bim});
+                   ":/icons/file/ifc_export.svg", CommandCategory::Bim});
   registerCommand({"cmd.window.results", QT_TRANSLATE_NOOP("CommandCatalog", "Panneau Résultats"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer le panneau Résultats structuraux 3D"), "Ctrl+1",
                    "", CommandCategory::Workspace});
   registerCommand({"cmd.window.properties", QT_TRANSLATE_NOOP("CommandCatalog", "Fenêtre Propriétés"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher ou masquer la fenêtre Propriétés"), "Ctrl+2",
@@ -574,13 +574,13 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.ai.assistant", QT_TRANSLATE_NOOP("CommandCatalog", "Assistant IA"), QT_TRANSLATE_NOOP("CommandCatalog", "Ouvrir l'assistant de co-ingénierie"), "Ctrl+Shift+I",
                    "", CommandCategory::Tools});
   registerCommand({"cmd.ai.config", QT_TRANSLATE_NOOP("CommandCatalog", "Configuration IA"), QT_TRANSLATE_NOOP("CommandCatalog", "Paramètres de l'assistant IA"), "",
-                   "", CommandCategory::Tools});
+                   ":/icons/common/ai_settings.svg", CommandCategory::Tools});
   registerCommand({"cmd.ai.check", QT_TRANSLATE_NOOP("CommandCatalog", "Vérifier la structure (IA)"), QT_TRANSLATE_NOOP("CommandCatalog", "Vérification de la structure par l'assistant"), "",
-                   "", CommandCategory::Tools});
+                   ":/icons/common/ai_check.svg", CommandCategory::Tools});
   registerCommand({"cmd.ai.analyze", QT_TRANSLATE_NOOP("CommandCatalog", "Analyser le modèle (IA)"), QT_TRANSLATE_NOOP("CommandCatalog", "Analyse du modèle par l'assistant"), "",
-                   "", CommandCategory::Tools});
+                   ":/icons/model_tree.svg", CommandCategory::Tools});
   registerCommand({"cmd.ai.explain", QT_TRANSLATE_NOOP("CommandCatalog", "Expliquer avec l'IA"), QT_TRANSLATE_NOOP("CommandCatalog", "Explication des résultats par l'assistant"), "",
-                   "", CommandCategory::Tools});
+                   ":/icons/common/ai_explain.svg", CommandCategory::Tools});
   registerCommand({"cmd.settings.theme", QT_TRANSLATE_NOOP("CommandCatalog", "Thème sombre / clair"), QT_TRANSLATE_NOOP("CommandCatalog", "Basculer entre le thème sombre et le thème clair"), "Ctrl+T",
                    ":/icons/common/theme_dark.svg", CommandCategory::Settings});
   registerCommand({"cmd.settings.language", QT_TRANSLATE_NOOP("CommandCatalog", "Langue de l'interface"), QT_TRANSLATE_NOOP("CommandCatalog", "Choisir la langue de l'interface : English, Français, Malagasy (appliquée au redémarrage)"), "",
@@ -590,15 +590,15 @@ void CommandCatalog::initializeStandardCatalog() {
   registerCommand({"cmd.help.shortcuts", QT_TRANSLATE_NOOP("CommandCatalog", "Liste des raccourcis"), QT_TRANSLATE_NOOP("CommandCatalog", "Afficher la liste des raccourcis clavier"), "F1",
                    ":/icons/common/shortcuts.svg", CommandCategory::Help});
   registerCommand({"cmd.help.shortcut_editor", QT_TRANSLATE_NOOP("CommandCatalog", "Personnaliser les raccourcis"), QT_TRANSLATE_NOOP("CommandCatalog", "Ouvrir l'éditeur des raccourcis clavier"), "Ctrl+F1",
-                   "", CommandCategory::Help});
+                   ":/icons/common/keyboard_settings.svg", CommandCategory::Help});
   registerCommand({"cmd.help.modules", QT_TRANSLATE_NOOP("CommandCatalog", "Modules"), QT_TRANSLATE_NOOP("CommandCatalog", "Gérer les modules installés (état, approbation)"), "",
-                   "", CommandCategory::Help});
+                   ":/icons/common/modules.svg", CommandCategory::Help});
   registerCommand({"cmd.help.full", QT_TRANSLATE_NOOP("CommandCatalog", "Aide complète"), QT_TRANSLATE_NOOP("CommandCatalog", "Ouvrir le centre d'aide"), "Shift+F1",
                    "", CommandCategory::Help});
   registerCommand({"cmd.help.online_docs", QT_TRANSLATE_NOOP("CommandCatalog", "Documentation en ligne"), QT_TRANSLATE_NOOP("CommandCatalog", "Ouvrir la documentation en ligne"), "",
-                   "", CommandCategory::Help});
+                   ":/icons/common/online_docs.svg", CommandCategory::Help});
   registerCommand({"cmd.help.report_problem", QT_TRANSLATE_NOOP("CommandCatalog", "Signaler un problème"), QT_TRANSLATE_NOOP("CommandCatalog", "Signaler un problème"), "",
-                   "", CommandCategory::Help});
+                   ":/icons/common/report_problem.svg", CommandCategory::Help});
   registerCommand({"cmd.help.about", QT_TRANSLATE_NOOP("CommandCatalog", "À propos"), QT_TRANSLATE_NOOP("CommandCatalog", "Informations de version"), "",
                    "", CommandCategory::Help});
 }

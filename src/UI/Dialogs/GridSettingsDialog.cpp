@@ -1,4 +1,5 @@
 #include "GridSettingsDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "GridDialog.h"
 #include "../../Viewer/OccView.h"
 
@@ -48,21 +49,21 @@ void GridSettingsDialog::setupUi()
 
     auto* btnCol = new QVBoxLayout();
     m_addBtn = new QPushButton(tr("Ajouter..."), listGroup);
-    m_addBtn->setIcon(QIcon(":/icons/node_add.svg"));
+    m_addBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/node_add.svg")));
     m_editBtn = new QPushButton(tr("Modifier..."), listGroup);
-    m_editBtn->setIcon(QIcon(":/icons/settings.svg"));
+    m_editBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/settings.svg")));
     m_duplicateBtn = new QPushButton(tr("Dupliquer"), listGroup);
-    m_duplicateBtn->setIcon(QIcon(":/icons/file_new.svg"));
+    m_duplicateBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")));
     m_copyBtn = new QPushButton(tr("Copier"), listGroup);
-    m_copyBtn->setIcon(QIcon(":/icons/file_new.svg"));
+    m_copyBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")));
     m_pasteBtn = new QPushButton(tr("Coller"), listGroup);
-    m_pasteBtn->setIcon(QIcon(":/icons/node_add.svg"));
+    m_pasteBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/node_add.svg")));
     m_renameBtn = new QPushButton(tr("Renommer..."), listGroup);
-    m_renameBtn->setIcon(QIcon(":/icons/settings.svg"));
+    m_renameBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/settings.svg")));
     m_deleteBtn = new QPushButton(tr("Supprimer"), listGroup);
-    m_deleteBtn->setIcon(QIcon(":/icons/delete.svg"));
+    m_deleteBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/delete.svg")));
     m_setActiveBtn = new QPushButton(tr("Définir comme Active"), listGroup);
-    m_setActiveBtn->setIcon(QIcon(":/icons/grid_cartesian.svg"));
+    m_setActiveBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/grid_cartesian.svg")));
 
     btnCol->addWidget(m_addBtn);
     btnCol->addWidget(m_editBtn);
@@ -152,13 +153,13 @@ void GridSettingsDialog::setupUi()
     auto* closeBtnLayout = new QHBoxLayout();
     closeBtnLayout->addStretch();
     m_btnApply = new QPushButton(tr("Appliquer"), this);
-    m_btnApply->setIcon(QIcon(":/icons/apply.svg"));
+    m_btnApply->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")));
     m_btnApply->setStyleSheet("QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; }");
     m_btnApply->setFixedHeight(26);
     closeBtnLayout->addWidget(m_btnApply);
 
     auto* closeBtn = new QPushButton(tr("Fermer"), this);
-    closeBtn->setIcon(QIcon(":/icons/cancel.svg"));
+    closeBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
     closeBtn->setFixedHeight(26);
     closeBtn->setDefault(true);
     connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
@@ -229,7 +230,7 @@ void GridSettingsDialog::refreshGridList()
         QString itemText = QString("%1 (%2)%3").arg(QString::fromStdString(g->name())).arg(typeStr).arg(status);
 
         auto* item = new QListWidgetItem(itemText, m_gridList);
-        item->setIcon(QIcon(iconPath));
+        item->setIcon(TSA::UI::themedIcon(iconPath));
         item->setData(Qt::UserRole, QString::fromStdString(g->id()));
 
         if (g->isActive())

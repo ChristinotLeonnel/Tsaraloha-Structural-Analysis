@@ -3,6 +3,7 @@
 // extensions) ; exécution par les actions existantes, jamais par une seconde implémentation.
 
 #include "AppShell.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include "TitleBar.h"
 #include "../MainWindow.h"
@@ -60,14 +61,14 @@ void AppShell::setupSearch()
     m_search->setIconProvider([this](const SearchEntry& e) -> QIcon {
         if (e.kind == SearchKind::Panel && e.id.startsWith(QStringLiteral("panel:")) && m_workspace)
             if (auto* dock = m_workspace->findChild<QDockWidget*>(e.id.mid(6))) return dock->toggleViewAction()->icon();
-        if (e.kind == SearchKind::ConsoleCommand) return QIcon(QStringLiteral(":/icons/common/console.svg"));
+        if (e.kind == SearchKind::ConsoleCommand) return TSA::UI::themedIcon(QStringLiteral(":/icons/common/console.svg"));
         if (QAction* a = actionForCommand(e.id); a && !a->icon().isNull()) return a->icon();
         return QIcon();
     });
     connect(m_search, &GlobalSearchWidget::activated, this, &AppShell::executeSearchResult);
     m_titleBar->addTrailingWidget(m_search);
 
-    m_actSearch = new QAction(QIcon(QStringLiteral(":/icons/common/search.svg")), tr("Rechercher une commande"), this);
+    m_actSearch = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/search.svg")), tr("Rechercher une commande"), this);
     m_actSearch->setToolTip(tr("Retrouver une commande, un panneau ou un paramètre par son nom"));
     connect(m_actSearch, &QAction::triggered, m_search, &GlobalSearchWidget::focusSearch);
     addAction(m_actSearch);   // raccourci actif dans toute la fenêtre (Start Center et documents)

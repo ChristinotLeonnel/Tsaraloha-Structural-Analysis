@@ -1,4 +1,5 @@
 #include "SectionCustomizationDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "../Widgets/SectionPreviewWidget.h"
 #include "../../Library/LibraryManager.h"
 #include <QVBoxLayout>
@@ -169,11 +170,11 @@ void SectionCustomizationDialog::setupUi()
     btnLayout->setSpacing(8);
 
     m_btnApply = new QPushButton(tr("Appliquer"), this);
-    m_btnApply->setIcon(QIcon(":/icons/apply.svg"));
+    m_btnApply->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")));
     m_btnApply->setStyleSheet("font-weight: bold; background-color: #007ACC; color: white; padding: 6px 16px; border-radius: 4px;");
 
     m_btnCancel = new QPushButton(tr("Annuler"), this);
-    m_btnCancel->setIcon(QIcon(":/icons/cancel.svg"));
+    m_btnCancel->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
 
     btnLayout->addStretch();
     btnLayout->addWidget(m_btnApply);

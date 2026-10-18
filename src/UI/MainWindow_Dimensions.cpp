@@ -2,6 +2,7 @@
 // sont des outils du registre (catégorie Annotate, src/Interaction/Tools/DimensionTools).
 
 #include "MainWindow.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include "Dialogs/DimensionDialogs.h"
 #include "../Annotation/DimensionGeometry.h"
@@ -16,25 +17,25 @@
 
 void MainWindow::createDimensionActions()
 {
-    m_actionDimensionsVisible = new QAction(QIcon(":/icons/dimensions/dim_visibility.svg"), tr("Afficher les cotations"), this);
+    m_actionDimensionsVisible = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/dimensions/dim_visibility.svg")), tr("Afficher les cotations"), this);
     m_actionDimensionsVisible->setCheckable(true);
     m_actionDimensionsVisible->setChecked(true);
     m_actionDimensionsVisible->setToolTip(tr("Afficher ou masquer les cotations 3D (enregistré dans le projet)"));
     connect(m_actionDimensionsVisible, &QAction::toggled, this, &MainWindow::onToggleDimensionsVisible);
 
-    m_actionEditDimension = new QAction(QIcon(":/icons/dimensions/dim_edit.svg"), tr("Modifier la cotation..."), this);
+    m_actionEditDimension = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/dimensions/dim_edit.svg")), tr("Modifier la cotation..."), this);
     m_actionEditDimension->setToolTip(tr("Modifier la cotation sélectionnée : position, texte, couleur, réassociation"));
     connect(m_actionEditDimension, &QAction::triggered, this, &MainWindow::onEditDimension);
 
-    m_actionDeleteDimensions = new QAction(QIcon(":/icons/dimensions/dim_delete.svg"), tr("Supprimer les cotations"), this);
+    m_actionDeleteDimensions = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/dimensions/dim_delete.svg")), tr("Supprimer les cotations"), this);
     m_actionDeleteDimensions->setToolTip(tr("Supprimer les cotations sélectionnées (Suppr fonctionne aussi)"));
     connect(m_actionDeleteDimensions, &QAction::triggered, this, &MainWindow::onDeleteDimensions);
 
-    m_actionDimensionStyle = new QAction(QIcon(":/icons/dimensions/dim_style.svg"), tr("Style des cotations..."), this);
+    m_actionDimensionStyle = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/dimensions/dim_style.svg")), tr("Style des cotations..."), this);
     m_actionDimensionStyle->setToolTip(tr("Unités, décimales, arrondi, hauteur du texte, flèches, couleurs"));
     connect(m_actionDimensionStyle, &QAction::triggered, this, &MainWindow::onDimensionStyle);
 
-    m_actionCleanDimensions = new QAction(QIcon(":/icons/dimensions/dim_clean.svg"), tr("Supprimer les cotations invalides"), this);
+    m_actionCleanDimensions = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/dimensions/dim_clean.svg")), tr("Supprimer les cotations invalides"), this);
     m_actionCleanDimensions->setToolTip(tr("Supprimer les cotations dont un nœud associé a été supprimé"));
     connect(m_actionCleanDimensions, &QAction::triggered, this, &MainWindow::onCleanDimensions);
 
