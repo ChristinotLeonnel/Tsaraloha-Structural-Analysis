@@ -178,12 +178,14 @@ Correction de l'audit : `GridSnapManager` **a des utilisateurs**.
 | Réglages (modes actifs, activation, tolérance) | `OccView` (`activeModes()` transmis à `SnapEngine`, `setSnapEnabled`), `GridSettingsDialog` (cases des modes, tolérance), `ProjectSession` (propriétaire), `MainWindow` (transmission à la vue et au dialogue) |
 | Recherche (`findSnap`, `findObjectSnap`) | `SnapManager::findWorkPlaneSnap` seulement, **sans appelant**, plus cinq fichiers de tests (`test_coordinates`, `test_grids`, `test_viewer`, `test_workplane`, `test_common.h`) |
 
-Défaut lié : l'indicateur « SNAP: ACTIF » de la barre d'état n'est jamais mis à jour (BUG-078).
+Défauts liés, corrigés le 18/10/2026 (docs/VIEWS_NAVIGATION.md) : l'indicateur « SNAP » de la barre d'état lit
+l'état réel de la vue (BUG-078) ; la case « Magnétisme » de `GridSettingsDialog` pilote cet état au lieu de
+`GridSnapManager` seul (BUG-080). Il reste à fusionner les réglages (étape 1) et la recherche (étapes 2 à 4).
 
 Étapes, chacune livrable seule et suivie de la suite complète :
 
 1. Extraire les réglages dans un `SnapSettings`, lu par `SnapEngine`, `GridSettingsDialog`, la barre
-   d'état (correction de BUG-078) et `OccView`.
+   d'état et `OccView`.
 2. Réécrire les tests qui appellent `findSnap` / `findObjectSnap` sur `SnapEngine`, avec les mêmes
    cas et les mêmes résultats attendus. Les comparer d'abord aux anciens résultats pendant une étape.
 3. Supprimer `SnapManager::findWorkPlaneSnap` et la partie recherche de `GridSnapManager`. Garder

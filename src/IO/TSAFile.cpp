@@ -325,6 +325,11 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     {
         writeJsonChunk(payload, CHUNK_DIMS, model.dimensions().toJson());
     }
+    if (!model.namedViews().views.empty())
+    {
+        // Facultatif (format ≥ 1.12) : vues nommées ; une version antérieure ignore ce chunk inconnu.
+        writeJsonChunk(payload, CHUNK_VIEW, model.namedViews().toJson());
+    }
     {
         // Facultatif (format ≥ 1.9) : finitions d'aspect propres à certains éléments.
         const std::string visuals = Detail::elementVisualsJson(model);
@@ -810,6 +815,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     std::string loadedTopology;
     std::string loadedExtensions;
     std::string loadedDimensions;
+    std::string loadedViews;
     std::string loadedMesh;
     std::string loadedOpenings;
     std::string loadedSurfaces;
@@ -931,6 +937,10 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
         case CHUNK_DIMS:
             // Facultatif (format ≥ 1.6) : sans lui (anciens projets), aucune cotation.
             loadedDimensions.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
+            break;
+        case CHUNK_VIEW:
+            // Facultatif (format ≥ 1.12) : sans lui (anciens projets), aucune vue nommée.
+            loadedViews.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
         default:
             // Chunk inconnu (version future) : ignoré en toute sécurité grâce à chunkSize
@@ -1085,6 +1095,12 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     model.setTopologySettingsJson(loadedTopology);
     model.setExchangeExtensionsJson(loadedExtensions);
     model.setMeshProjectJson(loadedMesh);
+    {
+        std::string viewWarnings;
+        model.loadNamedViews(TSA::Model::NamedViewSet::fromJson(loadedViews, &viewWarnings));
+        if (!viewWarnings.empty())
+            TSA_LOG_WARN("TSAFileReader", "NamedViews", viewWarnings);
+    }
 
     // Validation normative post-chargement (ISO/IEC 25010 - Intégrité et robustesse)
     auto report = TSA::Standards::ModelValidator::validate(model);

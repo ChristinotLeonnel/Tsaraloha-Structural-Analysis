@@ -135,6 +135,8 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/GridDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridSettingsDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/GridSettingsDialog.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/NamedViewsDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/NamedViewsDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridAdvancedSettingsDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/GridAdvancedSettingsDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/LevelDialog.h
@@ -434,6 +436,8 @@ set(VIEWER_CORE_SOURCES
     ${TSA_ROOT}/src/Viewer/ProjectionManager.cpp
     ${TSA_ROOT}/src/Viewer/ViewManager.h
     ${TSA_ROOT}/src/Viewer/ViewManager.cpp
+    ${TSA_ROOT}/src/Viewer/WorkPlaneGrid.h
+    ${TSA_ROOT}/src/Viewer/WorkPlaneGrid.cpp
 )
 
 # --- Géométrie des poutres et résultats (utilisée par les tests) — [CORE] ----
@@ -475,6 +479,8 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Model/SupportDefinition.cpp
     ${TSA_ROOT}/src/Model/Node.h
     ${TSA_ROOT}/src/Model/Node.cpp
+    ${TSA_ROOT}/src/Model/NamedViews.h
+    ${TSA_ROOT}/src/Model/NamedViews.cpp
     ${TSA_ROOT}/src/Model/Beam.h
     ${TSA_ROOT}/src/Model/Beam.cpp
     ${TSA_ROOT}/src/Model/Column.h
@@ -1040,6 +1046,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_bim.cpp
     ${TSA_ROOT}/tests/test_ifc_files.cpp
     ${TSA_ROOT}/tests/test_drawing.cpp
+    ${TSA_ROOT}/tests/test_views.cpp
     ${TSA_ROOT}/tests/test_snap.cpp
     ${TSA_ROOT}/tests/test_automation.cpp
     ${TSA_ROOT}/tests/test_help.cpp
@@ -1530,7 +1537,7 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards bim ifc drawing tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
+                       loads opensees supports standards bim ifc drawing views tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

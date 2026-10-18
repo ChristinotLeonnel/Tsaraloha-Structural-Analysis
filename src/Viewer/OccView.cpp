@@ -83,6 +83,7 @@ OccView::OccView(QWidget* parent)
 
     // Repères de grille : une seule logique de visibilité pour toutes les vues (GridLabelLayout).
     connect(this, &OccView::viewCameraChanged, this, &OccView::updateGridLabelView);
+    connect(this, &OccView::viewCameraChanged, this, &OccView::refreshWorkPlaneGrid);
     connect(this, &OccView::viewCameraChanged, this, &OccView::updateMemberLoadZoomScale);
 
     if (m_interactionManager)
@@ -266,8 +267,8 @@ void OccView::initOcc()
     );
 
     // Orientation standard génie civil : +Z vers le haut (élévation), projection axonométrique droite Z-up
-    m_view->SetUp(0.0, 0.0, 1.0);
-    m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
+    TSA::Viewer::ViewManager::applyFrame(m_view, TSA::Viewer::ViewManager::standardFrame(TSA::Viewer::StandardCameraView::ThreeD_Axo),
+                                         gp_Pnt(0.0, 0.0, 0.0));
     m_view->MustBeResized();
 
     // 3D ViewCube (Cube de navigation 3D interactif comme Robot Structural Analysis)
@@ -867,7 +868,21 @@ bool OccView::getPointUnderCursor(const QPoint& mousePixelPos, double& x, double
         }
         if (m_snapToGrid)
         {
-            snap = m_snapManager.snapToWorkPlaneGrid(gp_Pnt(wx, wy, wz), m_workPlane);
+            // Pas de la grille affichée (multiple du pas du plan) : on accroche ce que l'on voit ; tolérance
+            // proportionnelle au pas (0,5 m pour le pas de 1 m d'origine)
+            TSA::Coordinate::WorkPlane snapPlane = m_workPlane;
+            const double baseTol = m_snapManager.snapTolerance();
+            double tol = baseTol;
+            if (!m_workPlaneGrid.IsNull() && m_workPlane.gridSpacingX() > 1e-9)
+            {
+                const auto& g = m_workPlaneGrid->layout();
+                snapPlane.setGridSpacingX(g.stepU);
+                snapPlane.setGridSpacingY(g.stepV);
+                tol = baseTol * g.stepU / m_workPlane.gridSpacingX();
+            }
+            m_snapManager.setSnapTolerance(tol);
+            snap = m_snapManager.snapToWorkPlaneGrid(gp_Pnt(wx, wy, wz), snapPlane);
+            m_snapManager.setSnapTolerance(baseTol);
             snap.source = TSA::Grid::SnapSource::WorkPlane;
         }
     }

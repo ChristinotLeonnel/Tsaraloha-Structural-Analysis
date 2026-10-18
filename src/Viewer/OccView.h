@@ -63,6 +63,8 @@ namespace TSA::Grid
 #include "MaterialVisual.h"
 #include "ProjectionManager.h"
 #include "ViewManager.h"
+#include "WorkPlaneGrid.h"
+#include "../Model/NamedViews.h"
 #include "../Grid/SnapManager.h"
 
 class QTimer;
@@ -196,6 +198,29 @@ public:
     void viewRight();
     void viewIsometric();
 
+    // Service de navigation : seuls points d'entrée des changements d'orientation (ruban, raccourcis, ViewCube,
+    // dock de projection, commande). Orientations de ViewManager (Z vertical, déterministes) ; la géométrie n'est
+    // jamais modifiée.
+    /// Vue de face (Top…Right) : orientation exacte, projection orthographique. En mode 2D, le plan 2D suit la face.
+    /// En 3D, un plan de travail vu par la tranche (inutilisable pour dessiner) est remplacé par le plan de la face.
+    /// ThreeD_Axo : vue isométrique, quitte le mode 2D.
+    void showStandardView(TSA::Viewer::StandardCameraView view);
+    /// Vrai plan 2D d'une face : plan de travail de la face (niveau actif pour Dessus / Dessous ; dernier plan XZ
+    /// ou YZ utilisé pour les élévations), projection orthographique, caméra perpendiculaire, orbite bloquée.
+    void showPlanView(TSA::Viewer::StandardCameraView face);
+    /// Retour en 3D : quitte le mode 2D et rend la caméra 3D d'avant (projection comprise).
+    void show3DView();
+    /// Clic sur le ViewCube : face = showStandardView ; arête, coin = orientation 3D déterministe (quitte le mode 2D).
+    void showCubeOrientation(V3d_TypeOfOrientation orientation);
+    /// Face du mode 2D en cours (Custom : plan quelconque, vu selon sa normale).
+    TSA::Viewer::StandardCameraView plan2DFace() const noexcept { return m_plan2DFace; }
+    /// Durée de la transition de caméra du ViewCube (0 : immédiate) ; la caméra finit exactement sur la vue demandée.
+    void setViewTransitionMs(int ms) noexcept { m_viewTransitionMs = ms; }
+    /// Vue nommée : état courant (caméra, projection, mode 2D, face du plan 2D, plan de travail).
+    TSA::Model::NamedView captureNamedView(const std::string& name) const;
+    /// Restaure une vue nommée (plan de travail et mode 2D compris), caméra exacte ; false si la vue est invalide.
+    bool restoreNamedView(const TSA::Model::NamedView& view);
+
     void zoomIn(double factor = 1.25);
     void zoomOut(double factor = 1.25);
     void zoomAtCursor(const QPointF& logicalMousePos, double zoomFactor);
@@ -220,6 +245,10 @@ public:
     bool isWorkPlaneVisible() const { return m_workPlaneVisible; }
     void viewNormalToWorkPlane();
     void updateWorkPlaneVisual();
+    /// Grille du plan de travail (lignes au pas d'accrochage du plan, éclaircies selon le zoom) ; nulle si masquée.
+    const TSA::Viewer::WorkPlaneGrid* workPlaneGrid() const { return m_workPlaneGrid.get(); }
+    /// Pas affiché (et accroché) de la grille selon le zoom courant ; redessine seulement s'il change.
+    void refreshWorkPlaneGrid();
 
     // Gestionnaires spécialisés Découplés (Section 11)
     TSA::Viewer::ProjectionManager* projectionManager() noexcept { return &m_projectionManager; }
@@ -760,6 +789,11 @@ private:
     Handle(AIS_Shape) m_workPlaneShape;
     /// Axes X/Y/Z du WorkPlane avec lettres : taille FIXE À L'ÉCRAN (persistance de zoom, unités = pixels)
     Handle(AIS_Trihedron) m_workPlaneTrihedron;
+    Handle(TSA::Viewer::WorkPlaneGrid) m_workPlaneGrid;
+    double m_workPlanePanelHalfU = 10.0;   ///< demi-dimensions du panneau du plan (grille tracée dessus)
+    double m_workPlanePanelHalfV = 10.0;
+    double m_workPlanePanelCenterU = 0.0;  ///< centre du panneau dans le repère du plan (emprise du modèle)
+    double m_workPlanePanelCenterV = 0.0;
     Handle(AIS_Shape) m_workPlaneOriginShape;
     bool m_workPlaneAxesVisible = true;
     double m_gizmoSize = 100.0;
@@ -775,7 +809,24 @@ private:
     // Mode 2D CAO & Isolation Automatique non-destructive
     bool m_mode2DActive = false;
     Handle(Graphic3d_Camera) m_savedCamera3D;
-    bool m_savedWasOrtho = false;
+    bool m_savedWasOrtho = true;
+    TSA::Viewer::StandardCameraView m_plan2DFace = TSA::Viewer::StandardCameraView::Custom;
+    TSA::Viewer::StandardCameraView m_viewBefore2D = TSA::Viewer::StandardCameraView::ThreeD_Axo;
+    double m_lastElevationXZOffset = 0.0;   ///< dernier plan XZ / YZ utilisé : élévations rouvertes au même endroit
+    double m_lastElevationYZOffset = 0.0;
+    int m_viewTransitionMs = 180;
+    bool m_viewCubeClickPending = false;   ///< appui sur le ViewCube traité : son relâchement ne sélectionne rien
+    /// Orientation du mode 2D : face choisie si le plan lui est parallèle, sinon normale du plan.
+    TSA::Viewer::CameraFrame plan2DFrame() const;
+    void orient2DView(bool animate = false);
+    void animateCameraFrom(const Handle(Graphic3d_Camera)& start);
+    /// Plan de travail adapté à une face (le plan actif s'il lui est déjà parallèle).
+    TSA::Coordinate::WorkPlane workPlaneForFace(TSA::Viewer::StandardCameraView face) const;
+    /// Oriente la caméra (centre conservé), cadre le modèle ; transition éventuelle, fin exacte.
+    void applyCameraFrame(const TSA::Viewer::CameraFrame& frame, bool orthographic, bool animate);
+    void leaveMode2D(bool restoreCamera);
+    void syncViewPlaneMode();
+    void keep2DConsistent();   ///< ViewPlaneMode déduit du mode 2D et du plan actif (règles, repli du pointage)
     bool m_pre2DNodesVisible = true;
     bool m_pre2DNodeLabelsVisible = false;
     bool m_pre2DSupportsVisible = true;

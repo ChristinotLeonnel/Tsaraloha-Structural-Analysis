@@ -141,22 +141,22 @@ void MainWindow::createActions()
     // Actions Vues et Projections
     m_actionViewXY = new QAction(tr("Plan &XY (Vue d'étage)"), this);
     m_actionViewXY->setIcon(makePlanIcon(QColor(255, 140, 140), Qt::blue, Qt::darkGreen, "X", "Y"));
-    m_actionViewXY->setToolTip(tr("Vue en Plan XY (Étage actif)"));
+    m_actionViewXY->setToolTip(tr("Plan 2D XY : vue orthographique perpendiculaire au niveau actif, dessin dans ce plan"));
     connect(m_actionViewXY, &QAction::triggered, this, &MainWindow::onActionViewXY);
 
     m_actionViewYZ = new QAction(tr("Plan &YZ (Coupe latérale / Pignon)"), this);
     m_actionViewYZ->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
-    m_actionViewYZ->setToolTip(tr("Vue en Plan YZ (Coupe latérale / Pignon)"));
+    m_actionViewYZ->setToolTip(tr("Élévation 2D YZ : vue orthographique de côté, dessin dans le plan YZ"));
     connect(m_actionViewYZ, &QAction::triggered, this, &MainWindow::onActionViewYZ);
 
     m_actionViewXZ = new QAction(tr("Plan &XZ (Élévation de face / Portique)"), this);
     m_actionViewXZ->setIcon(makePlanIcon(QColor(140, 230, 160), Qt::blue, Qt::red, "X", "Z"));
-    m_actionViewXZ->setToolTip(tr("Vue en Plan XZ (Élévation de face / Portique)"));
+    m_actionViewXZ->setToolTip(tr("Élévation 2D XZ : vue orthographique de face, dessin dans le plan XZ"));
     connect(m_actionViewXZ, &QAction::triggered, this, &MainWindow::onActionViewXZ);
 
     m_actionView3D = new QAction(tr("Vue &3D (Axonométrique)"), this);
     m_actionView3D->setIcon(make3DIsoIcon());
-    m_actionView3D->setToolTip(tr("Vue 3D Isométrique"));
+    m_actionView3D->setToolTip(tr("Retour à la vue 3D (quitte le mode 2D, caméra 3D d'avant)"));
     connect(m_actionView3D, &QAction::triggered, this, &MainWindow::onActionView3D);
 
     m_actionCoordSystem = new QAction(tr("Repère &Local / Global"), this);
@@ -310,6 +310,11 @@ void MainWindow::createActions()
     m_actionViewNormalToPlane->setIcon(QIcon(":/icons/view_iso.svg"));
     m_actionViewNormalToPlane->setToolTip(tr("Orienter la caméra perpendiculairement au plan de travail actif"));
     connect(m_actionViewNormalToPlane, &QAction::triggered, this, &MainWindow::onActionViewNormalToPlane);
+
+    m_actionNamedViews = new QAction(tr("Vues nommées…"), this);
+    m_actionNamedViews->setIcon(QIcon(":/icons/tools/input_viewport.svg"));
+    m_actionNamedViews->setToolTip(tr("Enregistrer, restaurer, renommer ou supprimer les vues nommées du projet (caméra, mode 2D, plan de travail)"));
+    connect(m_actionNamedViews, &QAction::triggered, this, &MainWindow::onActionNamedViews);
 
     // Actions Grilles & Niveaux
     m_actionNewGrid = new QAction(tr("&Nouvelle Grille 3D..."), this);
@@ -1215,6 +1220,12 @@ void MainWindow::createMenus()
     projSub->addAction(m_actionViewIsometric);
     projSub->addAction(m_actionViewHome);
     projSub->addSeparator();
+    projSub->addAction(m_actionViewXY);
+    projSub->addAction(m_actionViewXZ);
+    projSub->addAction(m_actionViewYZ);
+    projSub->addSeparator();
+    projSub->addAction(m_actionNamedViews);
+    projSub->addSeparator();
     projSub->addAction(m_actionViewTop);
     projSub->addAction(m_actionViewBottom);
     projSub->addAction(m_actionViewFront);
@@ -1539,6 +1550,7 @@ void MainWindow::createRibbon()
     acts.actionViewRight = m_actionViewRight;
     acts.actionViewIsometric = m_actionViewIsometric;
     acts.actionViewHome = m_actionViewHome;
+    acts.actionNamedViews = m_actionNamedViews;
 
     acts.actionFitAll = m_actionFitAll;
     acts.actionFitSelection = m_actionFitSelection;
@@ -1891,6 +1903,7 @@ void MainWindow::createDockWindows()
         else if (c == "WPLEVEL") onWorkPlaneLevel();
         else if (c == "WPCUSTOM" || c == "WP") onActionWorkPlaneCustom();
         else if (c == "WPNORMAL" || c == "VPN") onActionViewNormalToPlane();
+        else if (c == "VIEWS" || c == "VNAMED") onActionNamedViews();
         else if (c == "WPSHOW") onActionToggleWorkPlaneVisible(true);
         else if (c == "WPHIDE") onActionToggleWorkPlaneVisible(false);
         else if (c == "SNAP" || c == "GRIDS") {
@@ -2142,7 +2155,7 @@ void MainWindow::createStatusBar()
 
     m_statusSnap = new QLabel(tr("SNAP: ACTIF"), this);
     m_statusSnap->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #4ade80; font-weight: bold;");
-    m_statusSnap->setFixedWidth(110);
+    m_statusSnap->setFixedWidth(130);   // « SNAP: INACTIF »
     bar->addWidget(m_statusSnap);
 
     // 6. Compteurs du modèle et de la sélection : valeurs réelles, relues à intervalle court
@@ -2175,6 +2188,8 @@ void MainWindow::createStatusBar()
 
     // Synchronisation du plan de travail et de l'historique caméra
     connect(m_occView, &OccView::workPlaneChanged, this, &MainWindow::onWorkPlaneChanged);
+    connect(m_occView, &OccView::standardViewChanged, this, [this](TSA::Viewer::StandardCameraView) { onNavigationViewChanged(); });
+    connect(m_occView, &OccView::mode2DChanged, this, [this](bool) { onNavigationViewChanged(); });
     if (m_occView)
     {
         onWorkPlaneChanged(m_occView->activeWorkPlane());
@@ -2283,11 +2298,14 @@ void MainWindow::createStatusBar()
 
     connect(m_occView, &OccView::gridSnapChanged, this, [this](bool enabled) {
         if (m_actionGridSnap) m_actionGridSnap->setChecked(enabled);
+        updateSnapStatus();
     });
 
     connect(m_occView, &OccView::objectSnapChanged, this, [this](bool enabled) {
         if (m_actionObjectSnap) m_actionObjectSnap->setChecked(enabled);
+        updateSnapStatus();
     });
+    updateSnapStatus();
 
     // Un seul endroit décide de la couleur des boutons de commande : le mode réel de la vue.
     connect(m_occView, &OccView::interactionModeChanged, this, [this](OccView::InteractionMode) { syncToolActionStates(); });

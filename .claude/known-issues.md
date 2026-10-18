@@ -1,6 +1,6 @@
 # Known Issues
 
-Last Updated: 2026-10-18 (branche feature/bim-drawing : BUG-076 correctif CI préparé, BUG-078, BUG-079). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-18 (finalisation des vues : BUG-078 corrigé, BUG-080 à BUG-082 trouvés et corrigés ; BUG-079 ouvert). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
 
@@ -28,17 +28,6 @@ Essai local (build-ninja-release, 79dfdea) : offscreen 25/25 ; windows + Mesa 6/
 sauté avec CTest « réussi », arrêt 0xC0000409, suite absente : échec dans les trois cas). Reste à vérifier sur le
 runner : session interactive (session ≠ 0) et durée de la passe native.
 Related files: tests/test_display.cpp, tests/test_audit.cpp, tests/test_multidoc*.cpp, Setup-Livrable/.github/workflows/release.yml, Setup-Livrable/scripts/run_tests.ps1
-
-## BUG-078
-Area: Barre d'état / accrochage
-Problem: l'indicateur « SNAP: ACTIF » de la barre d'état est créé une fois (`MainWindow_Actions.cpp`, `m_statusSnap`)
-et jamais mis à jour : il affiche « ACTIF » alors que le magnétisme de grille et l'accrochage objet sont coupés.
-Reproduction: Affichage → couper « Magnétisme Grille (Snap) » et « Accrochage Objets (OSNAP) » → la barre d'état
-affiche toujours « SNAP: ACTIF » (capture `11_types_de_produits.png` de l'essai `drawing_scenario.ps1` du 18/10/2026).
-Impact: LOW (information trompeuse ; l'accrochage lui-même suit bien les commandes)
-Status: OPEN — à traiter avec l'unification des accrochages (docs/BIM_DRAWING_ROADMAP.md, chantier D) : l'indicateur
-doit lire la même source que `SnapEngine`.
-Related files: src/UI/MainWindow_Actions.cpp, src/Grid/GridSnapManager.h
 
 ## BUG-079
 Area: Tests / mesure de temps (test 20, suite `commands`)
@@ -188,6 +177,10 @@ Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapea
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |
+| BUG-082 | Caméra capturée (aperçu des projets récents, vues nommées) avec l'œil sur la cible : en orthographique, OCCT peut ramener l'œil sur la cible (distance nulle) en gardant la direction à part ; la restauration refusait alors la caméra | Œil recalculé depuis la direction (`captureNamedView`, `cameraState`) | test 441 (vue d'élévation capturée puis restaurée exactement) |
+| BUG-081 | Panneau (et grille) du plan de travail toujours de 20 m × 20 m autour de l'origine du plan : la taille par défaut, explicite, empêchait le calcul « dynamique » de jamais s'exécuter ; un bâtiment loin de l'origine n'était couvert qu'en partie | Taille du plan = minimum ; agrandi et recentré sur l'emprise du modèle projeté dans le plan | test 437 (grille couvrant les 380 nœuds du projet R+5 dans les 6 vues) ; capture de l'essai views_scenario.ps1 |
+| BUG-080 | Dialogue des réglages de grille : la case « Magnétisme » modifiait `GridSnapManager`, que le calcul d'accrochage ne lit pas : sans effet réel | La case pilote `OccView::setGridSnapEnabled` (état réel, signal, ruban, barre d'état) | revue de code ; état réel vérifié par l'indicateur SNAP (essai views_scenario.ps1) |
+| BUG-078 | Indicateur « SNAP: ACTIF » de la barre d'état jamais mis à jour (créé une fois) | `MainWindow::updateSnapStatus` lit l'état réel de la vue (`isGridSnapEnabled`, `isObjectSnapEnabled`) à chaque signal de changement : ACTIF, GRILLE, OBJETS ou INACTIF | essai views_scenario.ps1 : « SNAP: ACTIF | SNAP: OBJETS | SNAP: INACTIF | SNAP: GRILLE » selon le magnétisme et l'OSNAP |
 | BUG-073 | Étiquette 3D d'un nœud : affichait toujours « N<identifiant interne> » et jamais son nom (la condition d'ajout du nom était toujours fausse) ; titres du panneau Propriétés idem | Étiquette 3D = `formattedName()` ; titres « <étiquette> (id N) » | GUI : renumérotation par grille → A1-1, A2-2 affichés dans la vue |
 | BUG-072 | Molette dans le panneau Propriétés : en faisant défiler, la liste ou le champ numérique survolé changeait de valeur (un appui passait de « Libre » à « Appui simple ») | `PropertyPanel::eventFilter` : molette sur une liste / un champ numérique sans le focus → défilement du panneau ; un champ cliqué garde la molette | test 224 ; GUI : défilement sur les champs d'appui, valeurs inchangées |
 | BUG-071 | Arbre du modèle : liste « Appuis » relue seulement au chargement (appui posé, retiré, nœud supprimé, Annuler non reflétés) | `ModelTreeWidget::scheduleSupportsRefresh` (nœud ajouté appuyé, modifié, supprimé ; une reconstruction par rafale, sans signal de sélection) | test 223 ; GUI : Encastrement → « Appuis [1] », Ctrl+Z → « [0] » |

@@ -150,6 +150,7 @@ struct RibbonActions
     QAction* actionViewRight = nullptr;
     QAction* actionViewIsometric = nullptr;
     QAction* actionViewHome = nullptr;
+    QAction* actionNamedViews = nullptr;
 
     QAction* actionFitAll = nullptr;
     QAction* actionFitSelection = nullptr;
