@@ -8,6 +8,7 @@
 
 #include <QAction>
 #include <QActionGroup>
+#include <QCoreApplication>
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QMenu>
@@ -206,7 +207,8 @@ void DisplayMenus::rebuildProfilesMenu()
     auto* group = new QActionGroup(m_profilesMenu);
     for (const auto& p : store.profiles())
     {
-        QAction* a = m_profilesMenu->addAction(p.name);
+        // Nom = clé du profil ; profils fournis traduits à l'affichage seulement (noms personnels inchangés)
+        QAction* a = m_profilesMenu->addAction(QCoreApplication::translate("TSA::Viewer::DisplayProfile", p.name.toUtf8().constData()));
         a->setCheckable(true);
         a->setChecked(p.name == m_activeProfile);
         a->setToolTip(tr("Applique les réglages graphiques du profil (aucune donnée du modèle ni des résultats n'est modifiée)"));

@@ -12,6 +12,7 @@
 #include "AnalysisValidation.h"
 #include "../ResultsModel.h"
 
+#include <QCoreApplication>
 #include <QJsonObject>
 
 #include <functional>
@@ -125,7 +126,9 @@ public:
     /// d'abord l'accord de l'utilisateur ; par défaut : impossible.
     virtual bool provision(std::string* error)
     {
-        if (error) *error = "Ce moteur ne peut pas être installé automatiquement.";
+        if (error)
+            *error = QCoreApplication::translate("TSA::Analysis::AnalysisEngine",
+                                                 "Ce moteur ne peut pas être installé automatiquement.").toStdString();
         return false;
     }
 

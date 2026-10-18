@@ -7,6 +7,7 @@
 #include <QAction>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QToolButton>
@@ -152,6 +153,15 @@ QToolButton* TitleBar::makeWindowButton(const QString& glyph, const QString& obj
     return b;
 }
 
+void TitleBar::addTrailingWidget(QWidget* widget)
+{
+    widget->setParent(m_trailingLayout->parentWidget());
+    widget->setProperty("tsaNonCaption", true);
+    m_trailingLayout->insertWidget(0, widget);
+    m_trailingLayout->insertSpacing(1, 8);
+    placeTitle();
+}
+
 void TitleBar::setTitle(const QString& title)
 {
     m_fullTitle = title;
@@ -180,7 +190,8 @@ bool TitleBar::isCaptionArea(const QPoint& localPos) const
     if (!rect().contains(localPos)) return false;
     const QWidget* child = childAt(localPos);
     for (const QWidget* w = child; w && w != this; w = w->parentWidget())
-        if (qobject_cast<const QAbstractButton*>(w)) return false;
+        if (qobject_cast<const QAbstractButton*>(w) || qobject_cast<const QLineEdit*>(w) || w->property("tsaNonCaption").toBool())
+            return false;   // bouton, champ de saisie (recherche) : clic pour le widget, pas déplacement de la fenêtre
     return true;
 }
 

@@ -52,7 +52,7 @@ function Find-Message($procId, $text, $seconds = 5) {
 }
 function Status($dlg) { $e = Find-NameLike (Fresh $dlg) "Charge ML*" $CT::Text; if ($e) { return $e.Current.Name } else { return "" } }
 
-$p = Start-Process -FilePath $Exe -ArgumentList ('"' + $Project + '"') -PassThru
+$p = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", ('"' + $Project + '"')) -PassThru
 $we = Wait-Window "TSA*torsion_dialog*" 90
 Check ($we -ne $null) "1. projet ouvert ($($we.Current.Name))"
 $w = [IntPtr]$we.Current.NativeWindowHandle
@@ -145,7 +145,7 @@ Check $closed "8. TSA fermé après « Enregistrer » dans la boîte de confirma
 Check ((Get-Item $Project).LastWriteTime -gt (Get-Date).AddMinutes(-5)) "8. projet enregistré ($((Get-Item $Project).LastWriteTime.ToString('HH:mm:ss')))"
 
 # --- Réouverture : charges restituées et affichées ------------------------------------------------------------
-$p2 = Start-Process -FilePath $Exe -ArgumentList ('"' + $Project + '"') -PassThru
+$p2 = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", ('"' + $Project + '"')) -PassThru
 $w2e = Wait-Window "TSA*torsion_dialog*" 90
 $w2 = [IntPtr]$w2e.Current.NativeWindowHandle
 Start-Sleep -Seconds 5; Focus-Window $w2; Start-Sleep -Seconds 2

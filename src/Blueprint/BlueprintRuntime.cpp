@@ -2,10 +2,16 @@
 
 #include "BlueprintSubgraph.h"
 
+#include <QCoreApplication>
+#include <QString>
+
 #include <algorithm>
 #include <functional>
 #include <set>
 #include <sstream>
+
+// Traduction : messages affichés (contrôles, erreurs d'exécution, compte rendu) dans le contexte « TSA::Blueprint::Runtime » ;
+// titres et libellés insérés dans un message : displayText (les définitions gardent le texte source).
 
 namespace TSA::Blueprint
 {
@@ -83,18 +89,24 @@ bool NodeLibrary::canConnect(const Graph& g, const Link& link, std::string* why)
     };
     const auto* a = g.node(link.fromNode);
     const auto* b = g.node(link.toNode);
-    if (!a || !b) return fail("nœud inexistant");
-    if (link.fromNode == link.toNode) return fail("un nœud ne peut pas être relié à lui-même");
+    if (!a || !b) return fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "nœud inexistant").toStdString());
+    if (link.fromNode == link.toNode) return fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "un nœud ne peut pas être relié à lui-même").toStdString());
     const auto* da = find(a->type);
     const auto* db = find(b->type);
-    if (!da || !db) return fail("type de nœud inconnu");
+    if (!da || !db) return fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "type de nœud inconnu").toStdString());
     const PinSpec* out = da->output(link.fromPin);
     const PinSpec* in = db->input(link.toPin);
-    if (!out) return fail("sortie « " + link.fromPin + " » inexistante sur " + da->title);
-    if (!in) return fail("entrée « " + link.toPin + " » inexistante sur " + db->title);
-    if (out->kind != in->kind) return fail("une broche d'exécution ne se relie qu'à une broche d'exécution");
+    if (!out)
+        return fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "sortie « %1 » inexistante sur %2")
+                        .arg(QString::fromStdString(link.fromPin), QString::fromStdString(displayText(da->title)))
+                        .toStdString());
+    if (!in)
+        return fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "entrée « %1 » inexistante sur %2")
+                        .arg(QString::fromStdString(link.toPin), QString::fromStdString(displayText(db->title)))
+                        .toStdString());
+    if (out->kind != in->kind) return fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "une broche d'exécution ne se relie qu'à une broche d'exécution").toStdString());
     if (out->kind == PinKind::Data && !dataCompatible(*out, *in))
-        return fail("types incompatibles : " + pinTypeName(*out) + " → " + pinTypeName(*in));
+        return fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "types incompatibles : %1 → %2").arg(QString::fromStdString(pinTypeName(*out)), QString::fromStdString(pinTypeName(*in))).toStdString());
     return true;
 }
 
@@ -131,26 +143,34 @@ std::vector<Issue> NodeLibrary::validate(const Graph& g) const
         if (!def)
         {
             const std::string sub = subgraphOfType(n.type);
-            issues.push_back({ id, sub.empty() ? "type de nœud inconnu « " + n.type + " »"
-                                               : "sous-graphe « " + sub + " » introuvable : sa définition est absente du graphe (importer le sous-graphe)" });
+            issues.push_back({ id, sub.empty() ? QCoreApplication::translate("TSA::Blueprint::Runtime", "type de nœud inconnu « %1 »").arg(QString::fromStdString(n.type)).toStdString()
+                                               : QCoreApplication::translate("TSA::Blueprint::Runtime", "sous-graphe « %1 » introuvable : sa définition est absente du graphe "
+                                                                                     "(importer le sous-graphe)")
+                                                     .arg(QString::fromStdString(sub))
+                                                     .toStdString() });
             continue;
         }
         if (n.version > def->version)
-            issues.push_back({ id, def->title + " : nœud enregistré en version " + std::to_string(n.version) + ", bibliothèque en version "
-                                       + std::to_string(def->version) + " (fichier créé par une version plus récente)" });
+            issues.push_back({ id, QCoreApplication::translate("TSA::Blueprint::Runtime", "%1 : nœud enregistré en version %2, bibliothèque en version %3 (fichier créé par une version "
+                                                                      "plus récente)")
+                                       .arg(QString::fromStdString(displayText(def->title)), QString::number(n.version), QString::number(def->version))
+                                       .toStdString() });
         for (const auto& p : def->inputs)
         {
             if (p.kind != PinKind::Data || !p.required) continue;
             const bool linked = g.linkTo(id, p.name).has_value();
             const auto v = n.values.find(p.name);
             const bool valued = (v != n.values.end() && !isUnset(v->second)) || !isUnset(p.defaultValue);
-            if (!linked && !valued) issues.push_back({ id, def->title + " : entrée requise « " + p.label + " » non renseignée" });
+            if (!linked && !valued)
+                issues.push_back({ id, QCoreApplication::translate("TSA::Blueprint::Runtime", "%1 : entrée requise « %2 » non renseignée")
+                                           .arg(QString::fromStdString(displayText(def->title)), QString::fromStdString(displayText(p.label)))
+                                           .toStdString() });
         }
     }
     for (const auto& l : g.links())
     {
         std::string why;
-        if (!canConnect(g, l, &why)) issues.push_back({ l.toNode, "lien invalide : " + why });
+        if (!canConnect(g, l, &why)) issues.push_back({ l.toNode, QCoreApplication::translate("TSA::Blueprint::Runtime", "lien invalide : %1").arg(QString::fromStdString(why)).toStdString() });
     }
     // Cycles de données entre nœuds purs (évaluation infinie)
     std::map<int, int> color;   // 0 blanc, 1 en cours, 2 fini
@@ -171,7 +191,7 @@ std::vector<Issue> NodeLibrary::validate(const Graph& g) const
     for (const auto& [id, n] : g.nodes())
     {
         const auto* d = find(n.type);
-        if (d && d->pure && color[id] == 0 && visit(id)) issues.push_back({ id, "cycle de données entre nœuds purs" });
+        if (d && d->pure && color[id] == 0 && visit(id)) issues.push_back({ id, QCoreApplication::translate("TSA::Blueprint::Runtime", "cycle de données entre nœuds purs").toStdString() });
     }
     // Cycles d'exécution (A → … → A par les liens d'exécution) : récursion infinie ; une boucle s'écrit avec Pour / Tant que
     std::map<int, int> state;   // 0 blanc, 1 en cours, 2 fini
@@ -193,7 +213,9 @@ std::vector<Issue> NodeLibrary::validate(const Graph& g) const
     for (const auto& [id, n] : g.nodes())
         if (state[id] == 0 && execVisit(id))
         {
-            issues.push_back({ id, "cycle d'exécution : les liens d'exécution reviennent à un nœud déjà exécuté (utiliser « Pour » ou « Tant que »)" });
+            issues.push_back({ id, QCoreApplication::translate("TSA::Blueprint::Runtime", "cycle d'exécution : les liens d'exécution reviennent à un nœud déjà exécuté (utiliser "
+                                                                 "« Pour » ou « Tant que »)")
+                                       .toStdString() });
             break;
         }
     return issues;
@@ -275,8 +297,9 @@ std::vector<Issue> NodeLibrary::warnings(const Graph& g) const
         {
             if (b == id || before(id, b)) continue;
             const auto* db = defOf(b);
-            out.push_back({ b, (db ? db->title : std::string("?")) + " (#" + std::to_string(b) + ") lit une sortie de « " + d->title + " » (#"
-                                   + std::to_string(id) + ") qui n'est pas exécuté avant lui dans le flux" });
+            out.push_back({ b, QCoreApplication::translate("TSA::Blueprint::Runtime", "%1 (#%2) lit une sortie de « %3 » (#%4) qui n'est pas exécuté avant lui dans le flux")
+                                   .arg(QString::fromStdString(db ? displayText(db->title) : std::string("?")), QString::number(b), QString::fromStdString(displayText(d->title)), QString::number(id))
+                                   .toStdString() });
         }
     }
     return out;
@@ -354,7 +377,10 @@ struct Runner::State
             report.failedNode = node;
             const auto* n = graph.node(node);
             const auto* d = n ? library.find(n->type) : nullptr;
-            report.message = (d ? d->title + " (#" + std::to_string(node) + ") : " : std::string()) + message;
+            report.message = d ? QCoreApplication::translate("TSA::Blueprint::Runtime", "%1 (#%2) : %3")
+                                       .arg(QString::fromStdString(displayText(d->title)), QString::number(node), QString::fromStdString(message))
+                                       .toStdString()
+                                 : message;
         }
         return false;
     }
@@ -363,12 +389,12 @@ struct Runner::State
     bool run(int id)
     {
         if (failed) return false;
-        if (++report.steps > limits.maxSteps) return fail(id, "nombre maximal d'étapes atteint (" + std::to_string(limits.maxSteps) + ")");
-        if (stopRequested.load()) return fail(id, "exécution arrêtée par l'utilisateur");
+        if (++report.steps > limits.maxSteps) return fail(id, QCoreApplication::translate("TSA::Blueprint::Runtime", "nombre maximal d'étapes atteint (%1)").arg(limits.maxSteps).toStdString());
+        if (stopRequested.load()) return fail(id, QCoreApplication::translate("TSA::Blueprint::Runtime", "exécution arrêtée par l'utilisateur").toStdString());
         const NodeInstance* n = graph.node(id);
         const NodeDefinition* def = n ? library.find(n->type) : nullptr;
         const NodeExecutor* exec = n ? library.executor(n->type) : nullptr;
-        if (!n || !def || !exec) return fail(id, "nœud ou type inconnu");
+        if (!n || !def || !exec) return fail(id, QCoreApplication::translate("TSA::Blueprint::Runtime", "nœud ou type inconnu").toStdString());
         if (debugger && !def->pure)
         {
             DebugState ds;
@@ -376,7 +402,7 @@ struct Runner::State
             ds.step = report.steps - 1;
             ds.outputs = &outputs;
             ds.log = &report.log;
-            if (debugger->beforeNode(ds) == DebugAction::Abort) return fail(id, "exécution interrompue (débogueur)");
+            if (debugger->beforeNode(ds) == DebugAction::Abort) return fail(id, QCoreApplication::translate("TSA::Blueprint::Runtime", "exécution interrompue (débogueur)").toStdString());
         }
 
         const auto t0 = Clock::now();
@@ -384,7 +410,7 @@ struct Runner::State
         childMs = 0.0;
         ExecutionContext ctx(*this, *n, *def);
         const bool ok = (*exec)(ctx) && !failed;
-        if (!ok && !failed) fail(id, "échec");
+        if (!ok && !failed) fail(id, QCoreApplication::translate("TSA::Blueprint::Runtime", "échec").toStdString());
         const double elapsed = msSince(t0);
         auto& st = report.profile[id];
         st.executions += 1;
@@ -442,10 +468,10 @@ struct Runner::State
     {
         const NodeInstance* n = graph.node(node);
         const NodeDefinition* def = n ? library.find(n->type) : nullptr;
-        if (!def) return fail(node, "source inconnue");
+        if (!def) return fail(node, QCoreApplication::translate("TSA::Blueprint::Runtime", "source inconnue").toStdString());
         if (def->pure)
         {
-            if (evaluating.count(node)) return fail(node, "cycle de données");
+            if (evaluating.count(node)) return fail(node, QCoreApplication::translate("TSA::Blueprint::Runtime", "cycle de données").toStdString());
             evaluating.insert(node);
             const bool ok = def->cacheable ? evaluateCacheable(node, *n, *def) : run(node);
             evaluating.erase(node);
@@ -453,7 +479,7 @@ struct Runner::State
         }
         const auto it = outputs.find(node);
         if (it == outputs.end() || !it->second.count(pin))
-            return fail(node, "sortie « " + pin + " » non disponible (nœud d'action pas encore exécuté)");
+            return fail(node, QCoreApplication::translate("TSA::Blueprint::Runtime", "sortie « %1 » non disponible (nœud d'action pas encore exécuté)").arg(QString::fromStdString(pin)).toStdString());
         out = it->second.at(pin);
         return true;
     }
@@ -506,8 +532,10 @@ ExecutionReport Runner::run(const std::map<std::string, Value>& parameterOverrid
     if (!issues.empty())
     {
         s.report.failedNode = issues.front().node;
-        s.report.message = "Blueprint invalide : " + issues.front().message
-                           + (issues.size() > 1 ? " (+" + std::to_string(issues.size() - 1) + " autre(s))" : "");
+        s.report.message = (issues.size() > 1 ? QCoreApplication::translate("TSA::Blueprint::Runtime", "Blueprint invalide : %1 (+%2 autre(s))")
+                                                   .arg(QString::fromStdString(issues.front().message), QString::number(issues.size() - 1))
+                                             : QCoreApplication::translate("TSA::Blueprint::Runtime", "Blueprint invalide : %1").arg(QString::fromStdString(issues.front().message)))
+                               .toStdString();
         return s.report;
     }
     std::vector<int> starts;   // « Début » et entrées de sous-graphe
@@ -515,15 +543,17 @@ ExecutionReport Runner::run(const std::map<std::string, Value>& parameterOverrid
         if (const auto* d = s.library.find(n.type); d && d->entry) starts.push_back(id);
     if (starts.empty())
     {
-        s.report.message = "Aucun nœud « Début » : rien à exécuter.";
+        s.report.message = QCoreApplication::translate("TSA::Blueprint::Runtime", "Aucun nœud « Début » : rien à exécuter.").toStdString();
         return s.report;
     }
     for (int id : starts)
         if (!s.run(id)) break;
     s.report.ok = !s.failed;
     if (s.report.ok)
-        s.report.message = "Exécution terminée (" + std::to_string(s.report.steps) + " étape(s)"
-                           + (s.report.reused ? ", " + std::to_string(s.report.reused) + " résultat(s) réutilisé(s)" : std::string()) + ").";
+        s.report.message = (s.report.reused ? QCoreApplication::translate("TSA::Blueprint::Runtime", "Exécution terminée (%1 étape(s), %2 résultat(s) réutilisé(s)).")
+                                                    .arg(QString::number(s.report.steps), QString::number(s.report.reused))
+                                              : QCoreApplication::translate("TSA::Blueprint::Runtime", "Exécution terminée (%1 étape(s)).").arg(s.report.steps))
+                               .toStdString();
     s.report.milliseconds = msSince(t0);
     s.report.values = s.outputs;        // valeurs intermédiaires, y compris après une erreur (débogage)
     s.report.variables = s.variables;
@@ -539,7 +569,7 @@ Value ExecutionContext::input(const std::string& pin)
     const PinSpec* spec = m_def.input(pin);
     if (!spec || spec->kind != PinKind::Data)
     {
-        m_state.fail(m_node.id, "entrée « " + pin + " » inexistante");
+        m_state.fail(m_node.id, QCoreApplication::translate("TSA::Blueprint::Runtime", "entrée « %1 » inexistante").arg(QString::fromStdString(pin)).toStdString());
         return {};
     }
     Value v;
@@ -561,12 +591,16 @@ Value ExecutionContext::input(const std::string& pin)
         const auto* o = std::get_if<ObjectRef>(&v);
         if (!o || !*o)
         {
-            m_state.fail(m_node.id, "entrée « " + spec->label + " » : objet " + pinTypeName(*spec) + " attendu, " + toText(v) + " reçu");
+            m_state.fail(m_node.id, QCoreApplication::translate("TSA::Blueprint::Runtime", "entrée « %1 » : objet %2 attendu, %3 reçu")
+                                         .arg(QString::fromStdString(displayText(spec->label)), QString::fromStdString(pinTypeName(*spec)), QString::fromStdString(toText(v)))
+                                         .toStdString());
             return {};
         }
         if (!spec->objectType.empty() && (*o)->typeName() != spec->objectType)
         {
-            m_state.fail(m_node.id, "entrée « " + spec->label + " » : objet " + spec->objectType + " attendu, " + (*o)->typeName() + " reçu");
+            m_state.fail(m_node.id, QCoreApplication::translate("TSA::Blueprint::Runtime", "entrée « %1 » : objet %2 attendu, %3 reçu")
+                                         .arg(QString::fromStdString(displayText(spec->label)), QString::fromStdString(spec->objectType), QString::fromStdString((*o)->typeName()))
+                                         .toStdString());
             return {};
         }
         return v;
@@ -582,7 +616,7 @@ double ExecutionContext::real(const std::string& pin)
     const Value v = input(pin);
     if (const auto* d = std::get_if<double>(&v)) return *d;
     if (const auto* i = std::get_if<long long>(&v)) return static_cast<double>(*i);
-    if (!failed()) fail("entrée « " + pin + " » : réel attendu");
+    if (!failed()) fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "entrée « %1 » : réel attendu").arg(QString::fromStdString(pin)).toStdString());
     return 0.0;
 }
 
@@ -590,7 +624,7 @@ long long ExecutionContext::integer(const std::string& pin)
 {
     const Value v = input(pin);
     if (const auto* i = std::get_if<long long>(&v)) return *i;
-    if (!failed()) fail("entrée « " + pin + " » : entier attendu");
+    if (!failed()) fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "entrée « %1 » : entier attendu").arg(QString::fromStdString(pin)).toStdString());
     return 0;
 }
 
@@ -598,7 +632,7 @@ bool ExecutionContext::boolean(const std::string& pin)
 {
     const Value v = input(pin);
     if (const auto* b = std::get_if<bool>(&v)) return *b;
-    if (!failed()) fail("entrée « " + pin + " » : booléen attendu");
+    if (!failed()) fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "entrée « %1 » : booléen attendu").arg(QString::fromStdString(pin)).toStdString());
     return false;
 }
 
@@ -624,7 +658,7 @@ ObjectRef ExecutionContext::object(const std::string& pin)
     const Value v = input(pin);
     if (failed()) return nullptr;
     if (const auto* o = std::get_if<ObjectRef>(&v); o && *o) return *o;
-    fail("entrée « " + pin + " » : objet attendu (relier une sortie de type objet)");
+    fail(QCoreApplication::translate("TSA::Blueprint::Runtime", "entrée « %1 » : objet attendu (relier une sortie de type objet)").arg(QString::fromStdString(pin)).toStdString());
     return nullptr;
 }
 

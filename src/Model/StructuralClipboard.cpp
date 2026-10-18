@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include "Load/LoadManager.h"
 #include "../UndoRedo/EditTransaction.h"
+#include <QCoreApplication>
+#include <QtGlobal>
 #include <algorithm>
 #include <map>
 #include <set>
@@ -268,7 +270,10 @@ void StructuralClipboard::copyFrom(const Model& model, const ClipboardSelection&
                 if (!lm.getLoadCase(caseId)) missing += (missing.empty() ? "" : ", ") + std::to_string(caseId);
             if (!missing.empty())
             {
-                m_copyWarnings.push_back("Combinaison « " + combo.name() + " » non copiée : cas de charge n° " + missing + " introuvable dans le projet source");
+                m_copyWarnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                     "Combinaison « %1 » non copiée : cas de charge n° %2 introuvable dans le projet source")
+                                             .arg(QString::fromStdString(combo.name()), QString::fromStdString(missing))
+                                             .toStdString());
                 continue;
             }
             for (const auto& [caseId, f] : combo.caseFactors()) keepCase(caseId);
@@ -341,7 +346,12 @@ private:
     std::unordered_map<long long, std::vector<Entry>> m_cells;
 };
 
-std::string fmtId(const char* what, int id) { return std::string(what) + " " + std::to_string(id); }
+/// Désignation affichée « poutre 12 » ; what est marqué par QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", …)
+std::string fmtId(const char* what, int id)
+{
+    return QCoreApplication::translate("TSA::Model::StructuralClipboard", what).toStdString() + " " + std::to_string(id);
+}
+QString qFmtId(const char* what, int id) { return QString::fromStdString(fmtId(what, id)); }
 
 /// Paire non ordonnée de nœuds
 std::pair<int, int> edge(int a, int b) { return a < b ? std::make_pair(a, b) : std::make_pair(b, a); }
@@ -355,7 +365,8 @@ PastePlan StructuralClipboard::analyzePaste(const Model& model, double targetX, 
     {
         if (!(options.tolerance > 0.0) || !std::isfinite(options.tolerance))
         {
-            plan.degenerate.push_back({ PasteConflict::Kind::Degenerate, 0, ElementKind::Node, 0, "tolérance de fusion invalide (elle doit être > 0 m)" });
+            plan.degenerate.push_back({ PasteConflict::Kind::Degenerate, 0, ElementKind::Node, 0,
+                                        QCoreApplication::translate("TSA::Model::StructuralClipboard", "tolérance de fusion invalide (elle doit être > 0 m)").toStdString() });
             return plan;
         }
         const NodeGrid grid(model, options.tolerance);
@@ -373,18 +384,25 @@ PastePlan StructuralClipboard::analyzePaste(const Model& model, double targetX, 
                 {
                 case SupportConflictPolicy::Ask:
                     plan.supportConflicts.push_back({ PasteConflict::Kind::Support, cn.originalId, ElementKind::Node, target,
-                                                      "nœud " + std::to_string(target) + " : appui existant et appui copié différents (nœud source " +
-                                                          std::to_string(cn.originalId) + ", écart " + std::to_string(d) + " m)" });
+                                                      QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                                  "nœud %1 : appui existant et appui copié différents (nœud source %2, écart %3 m)")
+                                                          .arg(QString::number(target), QString::number(cn.originalId), QString::fromStdString(std::to_string(d)))
+                                                          .toStdString() });
                     break;
                 case SupportConflictPolicy::DontMerge:
-                    plan.warnings.push_back("nœud source " + std::to_string(cn.originalId) + " non fusionné avec le nœud " + std::to_string(target) +
-                                            " (appuis différents) : nœuds coïncidents séparés");
+                    plan.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                        "nœud source %1 non fusionné avec le nœud %2 (appuis différents) : nœuds coïncidents séparés")
+                                                .arg(cn.originalId)
+                                                .arg(target)
+                                                .toStdString());
                     continue;
                 case SupportConflictPolicy::KeepTarget:
-                    plan.warnings.push_back("nœud " + std::to_string(target) + " : appui existant conservé, appui copié ignoré");
+                    plan.warnings.push_back(
+                        QCoreApplication::translate("TSA::Model::StructuralClipboard", "nœud %1 : appui existant conservé, appui copié ignoré").arg(target).toStdString());
                     break;
                 case SupportConflictPolicy::UseCopied:
-                    plan.warnings.push_back("nœud " + std::to_string(target) + " : appui existant remplacé par l'appui copié");
+                    plan.warnings.push_back(
+                        QCoreApplication::translate("TSA::Model::StructuralClipboard", "nœud %1 : appui existant remplacé par l'appui copié").arg(target).toStdString());
                     break;
                 }
             }
@@ -420,16 +438,27 @@ PastePlan StructuralClipboard::analyzePaste(const Model& model, double targetX, 
     auto checkBar = [&](ElementKind kind, const char* what, int id, int a, int b, const std::set<std::pair<int, int>>& existing) {
         const int ma = mapped(a), mb = mapped(b);
         if (ma == mb)
-            plan.degenerate.push_back({ PasteConflict::Kind::Degenerate, id, kind, ma, fmtId(what, id) + " : ses deux nœuds seraient fusionnés en un seul (longueur nulle)" });
+            plan.degenerate.push_back({ PasteConflict::Kind::Degenerate, id, kind, ma,
+                                        QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : ses deux nœuds seraient fusionnés en un seul (longueur nulle)")
+                                            .arg(qFmtId(what, id))
+                                            .toStdString() });
         else if (isExisting(ma) && isExisting(mb) && existing.count(edge(ma, mb)))
             plan.duplicates.push_back({ PasteConflict::Kind::Duplicate, id, kind, 0,
-                                        fmtId(what, id) + " : identique à un élément existant entre les nœuds " + std::to_string(ma) + " et " + std::to_string(mb) });
+                                        QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : identique à un élément existant entre les nœuds %2 et %3")
+                                            .arg(qFmtId(what, id), QString::number(ma), QString::number(mb))
+                                            .toStdString() });
     };
-    for (const auto& e : m_beams) checkBar(ElementKind::Beam, "poutre", e.originalId, e.originalStartNodeId, e.originalEndNodeId, beamEdges);
-    for (const auto& e : m_columns) checkBar(ElementKind::Column, "poteau", e.originalId, e.originalStartNodeId, e.originalEndNodeId, columnEdges);
-    for (const auto& e : m_walls) checkBar(ElementKind::Wall, "voile", e.originalId, e.originalStartNodeId, e.originalEndNodeId, wallEdges);
-    for (const auto& e : m_trusses) checkBar(ElementKind::TrussMember, "barre de treillis", e.originalId, e.originalStartNodeId, e.originalEndNodeId, trussEdges);
-    for (const auto& e : m_cables) checkBar(ElementKind::Cable, "câble", e.originalId, e.originalStartNodeId, e.originalEndNodeId, cableEdges);
+    for (const auto& e : m_beams)
+        checkBar(ElementKind::Beam, QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "poutre"), e.originalId, e.originalStartNodeId, e.originalEndNodeId, beamEdges);
+    for (const auto& e : m_columns)
+        checkBar(ElementKind::Column, QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "poteau"), e.originalId, e.originalStartNodeId, e.originalEndNodeId, columnEdges);
+    for (const auto& e : m_walls)
+        checkBar(ElementKind::Wall, QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "voile"), e.originalId, e.originalStartNodeId, e.originalEndNodeId, wallEdges);
+    for (const auto& e : m_trusses)
+        checkBar(ElementKind::TrussMember, QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "barre de treillis"), e.originalId, e.originalStartNodeId,
+                 e.originalEndNodeId, trussEdges);
+    for (const auto& e : m_cables)
+        checkBar(ElementKind::Cable, QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "câble"), e.originalId, e.originalStartNodeId, e.originalEndNodeId, cableEdges);
     for (const auto& e : m_slabs)
     {
         std::vector<int> v;
@@ -437,15 +466,24 @@ PastePlan StructuralClipboard::analyzePaste(const Model& model, double targetX, 
         std::vector<int> sorted = v;
         std::sort(sorted.begin(), sorted.end());
         if (std::adjacent_find(sorted.begin(), sorted.end()) != sorted.end())
-            plan.degenerate.push_back({ PasteConflict::Kind::Degenerate, e.originalId, ElementKind::Slab, 0, fmtId("dalle", e.originalId) + " : deux de ses sommets seraient fusionnés" });
+            plan.degenerate.push_back({ PasteConflict::Kind::Degenerate, e.originalId, ElementKind::Slab, 0,
+                                        QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : deux de ses sommets seraient fusionnés")
+                                            .arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "dalle"), e.originalId))
+                                            .toStdString() });
         else if (std::all_of(v.begin(), v.end(), isExisting) && slabSets.count(sorted))
-            plan.duplicates.push_back({ PasteConflict::Kind::Duplicate, e.originalId, ElementKind::Slab, 0, fmtId("dalle", e.originalId) + " : identique à une dalle existante" });
+            plan.duplicates.push_back({ PasteConflict::Kind::Duplicate, e.originalId, ElementKind::Slab, 0,
+                                        QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : identique à une dalle existante")
+                                            .arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "dalle"), e.originalId))
+                                            .toStdString() });
     }
     for (const auto& e : m_foundations)
     {
         const int m = mapped(e.originalNodeId);
         if (isExisting(m) && foundationNodes.count(m))
-            plan.duplicates.push_back({ PasteConflict::Kind::Duplicate, e.originalId, ElementKind::Foundation, m, fmtId("fondation", e.originalId) + " : le nœud " + std::to_string(m) + " porte déjà une fondation" });
+            plan.duplicates.push_back({ PasteConflict::Kind::Duplicate, e.originalId, ElementKind::Foundation, m,
+                                        QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : le nœud %2 porte déjà une fondation")
+                                            .arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "fondation"), e.originalId), QString::number(m))
+                                            .toStdString() });
     }
     return plan;
 }
@@ -464,7 +502,11 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         result.complete = false;
         result.needsDecision = !plan.blocked() && plan.needsDecision();
         result.conflicts = plan.blocked() ? plan.degenerate : plan.supportConflicts;
-        result.error = result.conflicts.front().message + (result.conflicts.size() > 1 ? " (+ " + std::to_string(result.conflicts.size() - 1) + " autre(s))" : "");
+        result.error = result.conflicts.size() > 1
+                           ? QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 (+ %2 autre(s))")
+                                 .arg(QString::fromStdString(result.conflicts.front().message), QString::number(result.conflicts.size() - 1))
+                                 .toStdString()
+                           : result.conflicts.front().message;
         return result;
     }
     // Éléments en double non collés (politique Skip) : identifiants source par famille
@@ -473,11 +515,15 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         for (const auto& c : plan.duplicates)
         {
             skip.insert({ c.element, c.clipboardId });
-            result.warnings.push_back(c.message + " — non collé");
+            result.warnings.push_back(
+                QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 — non collé").arg(QString::fromStdString(c.message)).toStdString());
             ++result.skippedDuplicates;
         }
     else
-        for (const auto& c : plan.duplicates) result.warnings.push_back(c.message + " — collé quand même (rigidité doublée)");
+        for (const auto& c : plan.duplicates)
+            result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 — collé quand même (rigidité doublée)")
+                                          .arg(QString::fromStdString(c.message))
+                                          .toStdString());
     auto skipped = [&](ElementKind fam, int id) { return skip.count({ fam, id }) > 0; };
 
     auto& nodeMap = result.nodeMap;
@@ -512,7 +558,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         int newNId = model.addNode(nx, ny, nz);
         if (newNId <= 0)
         {
-            fail("nœud " + std::to_string(cn.originalId));
+            fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "nœud"), cn.originalId));
             continue;
         }
         if (cn.hasSupport)
@@ -536,7 +582,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             int bId = model.addBar(p, itS->second, itE->second);
             if (bId <= 0)
             {
-                fail("poutre " + std::to_string(cb.originalId));
+                fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "poutre"), cb.originalId));
                 continue;
             }
             result.beamIds.push_back(bId);
@@ -555,7 +601,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             int cId = model.addColumn(itS->second, itE->second, p.section, p.material, p.rotation, p.name);
             if (cId <= 0)
             {
-                fail("poteau " + std::to_string(cc.originalId));
+                fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "poteau"), cc.originalId));
                 continue;
             }
             result.columnIds.push_back(cId);
@@ -579,7 +625,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         const int sId = sNodes.size() >= 3 && sNodes.size() == cs.originalNodeIds.size() ? model.addSlab(sNodes, cs.thickness) : -1;
         if (sId <= 0)
         {
-            fail("dalle " + std::to_string(cs.originalId));
+            fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "dalle"), cs.originalId));
             continue;
         }
         pasted[{ ElementKind::Slab, cs.originalId }] = { ElementKind::Slab, sId };
@@ -605,7 +651,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         const int wId = itS != nodeMap.end() && itE != nodeMap.end() ? model.addWall(itS->second, itE->second, cw.wall.height(), cw.wall.thickness(), cw.wall.name()) : -1;
         if (wId <= 0)
         {
-            fail("voile " + std::to_string(cw.originalId));
+            fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "voile"), cw.originalId));
             continue;
         }
         if (auto* w = model.getWall(wId))
@@ -628,7 +674,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         const int tId = itS != nodeMap.end() && itE != nodeMap.end() ? model.addTrussMember(itS->second, itE->second, 0.10, ct.member.name(), ct.member.role()) : -1;
         if (tId <= 0)
         {
-            fail("barre de treillis " + std::to_string(ct.originalId));
+            fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "barre de treillis"), ct.originalId));
             continue;
         }
         if (auto* t = model.getTrussMember(tId))
@@ -653,7 +699,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             int cId = model.addCable(itS->second, itE->second, ccab.definition, ccab.name, ccab.geometryMode, ccab.sag);
             if (cId <= 0)
             {
-                fail("câble " + std::to_string(ccab.originalId));
+                fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "câble"), ccab.originalId));
                 continue;
             }
             if (auto* nc = model.getCable(cId))
@@ -682,7 +728,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         const int fId = itN != nodeMap.end() ? model.addFoundation(itN->second, f0.widthA(), f0.lengthB(), f0.heightH(), f0.name(), f0.foundationType()) : -1;
         if (fId <= 0)
         {
-            fail("fondation " + std::to_string(cf.originalId));
+            fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "fondation"), cf.originalId));
             continue;
         }
         if (auto* f = model.getFoundation(fId))
@@ -700,7 +746,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
     auto countSkipped = [&](ElementKind fam) { return static_cast<std::size_t>(std::count_if(skip.begin(), skip.end(), [fam](const auto& k) { return k.first == fam; })); };
     if (result.beamIds.size() + countSkipped(ElementKind::Beam) != m_beams.size() || result.columnIds.size() + countSkipped(ElementKind::Column) != m_columns.size() ||
         result.cableIds.size() + countSkipped(ElementKind::Cable) != m_cables.size())
-        fail("élément sans ses nœuds");
+        fail(QCoreApplication::translate("TSA::Model::StructuralClipboard", "élément sans ses nœuds").toStdString());
 
     // Cotations : ancrages associés remappés sur les nœuds collés, points figés et position translatés
     if (!m_dimensions.empty())
@@ -770,7 +816,10 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                         if (!taken) break;
                         name = lc.name() + " (copie " + std::to_string(k) + ")";
                     }
-                    result.warnings.push_back("cas de charge « " + lc.name() + " » : un cas de même nom et d'autre catégorie existe ; créé sous le nom « " + name + " »");
+                    result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                          "cas de charge « %1 » : un cas de même nom et d'autre catégorie existe ; créé sous le nom « %2 »")
+                                                  .arg(QString::fromStdString(lc.name()), QString::fromStdString(name))
+                                                  .toStdString());
                     created.setName(name);
                 }
                 target = lm.addLoadCase(created);
@@ -788,7 +837,7 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             auto it = nodeMap.find(nl.nodeId());
             if (it == nodeMap.end() || caseOf(nl.loadCaseId()) == 0)
             {
-                fail("charge nodale " + std::to_string(nl.id()));
+                fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge nodale"), nl.id()));
                 continue;
             }
             nl.setId(0);
@@ -812,12 +861,15 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             auto it = pasted.find({ kindOf(ml.targetType()), ml.elementId() });
             if (it == pasted.end() && skipped(kindOf(ml.targetType()), ml.elementId()))
             {
-                result.warnings.push_back("charge sur barre " + std::to_string(ml.id()) + " non collée : son élément, en double, n'a pas été collé");
+                result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                      "charge sur barre %1 non collée : son élément, en double, n'a pas été collé")
+                                              .arg(ml.id())
+                                              .toStdString());
                 continue;
             }
             if (it == pasted.end() || caseOf(ml.loadCaseId()) == 0)
             {
-                fail("charge sur barre " + std::to_string(ml.id()));
+                fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge sur barre"), ml.id()));
                 continue;
             }
             ml.setId(0);
@@ -833,12 +885,15 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             auto it = pasted.find({ kind, sl.surfaceId });
             if (it == pasted.end() && skipped(kind, sl.surfaceId))
             {
-                result.warnings.push_back("charge surfacique " + std::to_string(sl.id) + " non collée : sa surface, en double, n'a pas été collée");
+                result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                      "charge surfacique %1 non collée : sa surface, en double, n'a pas été collée")
+                                              .arg(sl.id)
+                                              .toStdString());
                 continue;
             }
             if (it == pasted.end() || caseOf(sl.loadCaseId) == 0)
             {
-                fail("charge surfacique " + std::to_string(sl.id));
+                fail(fmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge surfacique"), sl.id));
                 continue;
             }
             sl.id = 0;
@@ -850,7 +905,10 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
         // facteurs) est réutilisée ; même nom mais contenu différent : renommée ; cas non résolu : non copiée.
         const std::size_t mergedLoads = std::count_if(m_nodalLoads.begin(), m_nodalLoads.end(), [&](const NodalLoad& l) { return plan.merges.count(l.nodeId()) > 0; });
         if (mergedLoads > 0)
-            result.warnings.push_back(std::to_string(mergedLoads) + " charge(s) nodale(s) ajoutée(s) à des nœuds existants (fusion) : elles s'ajoutent à leurs charges");
+            result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                  "%1 charge(s) nodale(s) ajoutée(s) à des nœuds existants (fusion) : elles s'ajoutent à leurs charges")
+                                          .arg(QString::number(mergedLoads))
+                                          .toStdString());
         for (const auto& combo : m_combinations)
         {
             std::map<int, double> factors;
@@ -863,7 +921,10 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
             }
             if (!resolved)
             {
-                result.warnings.push_back("combinaison « " + combo.name() + " » non copiée : un de ses cas de charge n'a pas pu être rapproché");
+                result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                      "combinaison « %1 » non copiée : un de ses cas de charge n'a pas pu être rapproché")
+                                              .arg(QString::fromStdString(combo.name()))
+                                              .toStdString());
                 continue;
             }
             const LoadCombination* sameName = nullptr;
@@ -883,12 +944,16 @@ PasteResult StructuralClipboard::pasteTo(Model& model, double targetX, double ta
                     if (!taken) break;
                     name = combo.name() + " (copie " + std::to_string(k) + ")";
                 }
-                result.warnings.push_back("combinaison « " + combo.name() + " » : une combinaison de même nom et de contenu différent existe ; copiée sous le nom « " + name + " »");
+                result.warnings.push_back(QCoreApplication::translate("TSA::Model::StructuralClipboard",
+                                                                      "combinaison « %1 » : une combinaison de même nom et de contenu différent existe ; copiée sous "
+                                                                      "le nom « %2 »")
+                                              .arg(QString::fromStdString(combo.name()), QString::fromStdString(name))
+                                              .toStdString());
                 c.setName(name);
             }
             const int id = lm.addCombination(c);
             if (id > 0) result.combinationIds.push_back(id);
-            else fail("combinaison « " + combo.name() + " »");
+            else fail(QCoreApplication::translate("TSA::Model::StructuralClipboard", "combinaison « %1 »").arg(QString::fromStdString(combo.name())).toStdString());
         }
     }
 
@@ -916,29 +981,29 @@ std::string StructuralClipboard::validate() const
     for (const auto& n : m_nodes) nodes.insert(n.originalId);
     auto has = [&](int id) { return nodes.count(id) > 0; };
     for (const auto& e : m_beams)
-        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return "poutre " + std::to_string(e.originalId) + " : nœud absent";
+        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : nœud absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "poutre"), e.originalId)).toStdString();
     for (const auto& e : m_columns)
-        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return "poteau " + std::to_string(e.originalId) + " : nœud absent";
+        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : nœud absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "poteau"), e.originalId)).toStdString();
     for (const auto& e : m_walls)
-        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return "voile " + std::to_string(e.originalId) + " : nœud absent";
+        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : nœud absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "voile"), e.originalId)).toStdString();
     for (const auto& e : m_trusses)
-        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return "barre de treillis " + std::to_string(e.originalId) + " : nœud absent";
+        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : nœud absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "barre de treillis"), e.originalId)).toStdString();
     for (const auto& e : m_cables)
-        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return "câble " + std::to_string(e.originalId) + " : nœud absent";
+        if (!has(e.originalStartNodeId) || !has(e.originalEndNodeId)) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : nœud absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "câble"), e.originalId)).toStdString();
     for (const auto& e : m_slabs)
     {
-        if (e.originalNodeIds.size() < 3) return "dalle " + std::to_string(e.originalId) + " : moins de 3 nœuds";
+        if (e.originalNodeIds.size() < 3) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : moins de 3 nœuds").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "dalle"), e.originalId)).toStdString();
         for (int id : e.originalNodeIds)
-            if (!has(id)) return "dalle " + std::to_string(e.originalId) + " : nœud absent";
+            if (!has(id)) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : nœud absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "dalle"), e.originalId)).toStdString();
     }
     for (const auto& e : m_foundations)
-        if (!has(e.originalNodeId)) return "fondation " + std::to_string(e.originalId) + " : nœud absent";
+        if (!has(e.originalNodeId)) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : nœud absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "fondation"), e.originalId)).toStdString();
     for (const auto& l : m_nodalLoads)
-        if (!has(l.nodeId()) || !m_loadCases.count(l.loadCaseId())) return "charge nodale " + std::to_string(l.id()) + " : nœud ou cas de charge absent";
+        if (!has(l.nodeId()) || !m_loadCases.count(l.loadCaseId())) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : nœud ou cas de charge absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge nodale"), l.id())).toStdString();
     for (const auto& l : m_memberLoads)
-        if (!m_loadCases.count(l.loadCaseId())) return "charge sur barre " + std::to_string(l.id()) + " : cas de charge absent";
+        if (!m_loadCases.count(l.loadCaseId())) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : cas de charge absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge sur barre"), l.id())).toStdString();
     for (const auto& l : m_surfaceLoads)
-        if (!m_loadCases.count(l.loadCaseId)) return "charge surfacique " + std::to_string(l.id) + " : cas de charge absent";
+        if (!m_loadCases.count(l.loadCaseId)) return QCoreApplication::translate("TSA::Model::StructuralClipboard", "%1 : cas de charge absent").arg(qFmtId(QT_TRANSLATE_NOOP("TSA::Model::StructuralClipboard", "charge surfacique"), l.id)).toStdString();
     return {};
 }
 

@@ -119,6 +119,8 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Shortcuts/ShortcutManager.cpp
     ${TSA_ROOT}/src/UI/Dialogs/ShortcutEditorDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/ShortcutEditorDialog.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/LanguageDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/LanguageDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.h
     ${TSA_ROOT}/src/UI/Dialogs/DimensionDialogs.cpp
     ${TSA_ROOT}/src/UI/Dialogs/IfcDialogs.h
@@ -264,6 +266,8 @@ set(MODEL_PRESETS_SOURCES
 set(UI_THEME_SOURCES
     ${TSA_ROOT}/src/UI/Theme/ThemeManager.h
     ${TSA_ROOT}/src/UI/Theme/ThemeManager.cpp
+    ${TSA_ROOT}/src/UI/Theme/ThemedIcon.h
+    ${TSA_ROOT}/src/UI/Theme/ThemedIcon.cpp
 )
 
 # --- Règles graduées du viewport ---------------------------------------------
@@ -507,6 +511,8 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Core/Units.h
     ${TSA_ROOT}/src/Core/AppPaths.h
     ${TSA_ROOT}/src/Core/AppPaths.cpp
+    ${TSA_ROOT}/src/Core/I18n/LanguageManager.h
+    ${TSA_ROOT}/src/Core/I18n/LanguageManager.cpp
     ${TSA_ROOT}/src/Modules/ModuleRegistry.h
     ${TSA_ROOT}/src/Modules/ModuleRegistry.cpp
     # Maillage (docs/MESH.md) : moteur Gmsh encapsulé dans Mesh/Gmsh/GmshMeshEngine
@@ -767,6 +773,10 @@ set(COMMANDS_SOURCES
     ${TSA_ROOT}/src/Commands/CommandCategory.h
     ${TSA_ROOT}/src/Commands/CommandCatalog.h
     ${TSA_ROOT}/src/Commands/CommandCatalog.cpp
+    ${TSA_ROOT}/src/Commands/CommandSearchIndex.h
+    ${TSA_ROOT}/src/Commands/CommandSearchIndex.cpp
+    ${TSA_ROOT}/src/Commands/CommandSynonyms.h
+    ${TSA_ROOT}/src/Commands/CommandSynonyms.cpp
     ${TSA_ROOT}/src/Commands/CreateElementCommands.h
     ${TSA_ROOT}/src/Commands/CreateElementCommands.cpp
     ${TSA_ROOT}/src/Commands/ModifyCommands.h
@@ -950,6 +960,9 @@ set(UI_AI_SOURCES
     ${TSA_ROOT}/src/UI/Home/NewProjectDialog.cpp
     ${TSA_ROOT}/src/UI/Shell/AppShell.h
     ${TSA_ROOT}/src/UI/Shell/AppShell.cpp
+    ${TSA_ROOT}/src/UI/Shell/AppShell_Search.cpp
+    ${TSA_ROOT}/src/UI/Search/GlobalSearchWidget.h
+    ${TSA_ROOT}/src/UI/Search/GlobalSearchWidget.cpp
     ${TSA_ROOT}/src/UI/Shell/TitleBar.h
     ${TSA_ROOT}/src/UI/Shell/TitleBar.cpp
 )
@@ -1072,6 +1085,9 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_torsion.cpp
     ${TSA_ROOT}/tests/test_meshview.cpp
     ${TSA_ROOT}/tests/test_demo_models.cpp
+    ${TSA_ROOT}/tests/test_i18n.cpp
+    # Ruban (couche application) : composants autonomes testés par la suite « ribbon »
+    ${UI_RIBBON_SOURCES}
     ${TSA_ROOT}/resources/resources.qrc
     ${TSA_ROOT}/resources/templates.qrc
 )
@@ -1481,7 +1497,25 @@ function(tsa_add_product)
 
     tsaraloha_add_shared_libraries(PREFIX ${name} PRODUCT_DIR ${P_PRODUCT_DIR})
 
+    # Traductions de l'interface (docs/I18N.md) : translations/tsa_<langue>.ts → .qm intégrés aux ressources (:/i18n/),
+    # dans l'application et dans la suite de tests. Mise à jour des .ts : tools/i18n/update_translations.py.
+    find_package(Qt6 QUIET COMPONENTS LinguistTools)
+    set(_tsa_qm_files "")
+    if(TARGET Qt6::lrelease)
+        qt_add_lrelease(TS_FILES ${TSA_ROOT}/translations/tsa_en.ts ${TSA_ROOT}/translations/tsa_mg.ts
+            LRELEASE_TARGET ${name}_lrelease NO_GLOBAL_TARGET
+            QM_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/i18n_${name}
+            QM_FILES_OUTPUT_VARIABLE _tsa_qm_files
+            OPTIONS -silent)
+    else()
+        message(WARNING "Qt LinguistTools (lrelease) introuvable : ${name} sera compilé sans traductions anglaise et "
+                        "malgache (textes en français ; la suite « i18n » le signale).")
+    endif()
+
     add_executable(${name} ${TSA_APP_SOURCES} ${P_RESOURCES})
+    if(_tsa_qm_files)
+        qt_add_resources(${name} "${name}_i18n" PREFIX "/i18n" BASE ${CMAKE_CURRENT_BINARY_DIR}/i18n_${name} FILES ${_tsa_qm_files})
+    endif()
     tsa_apply_common_settings(${name} ${P_PRODUCT_DIR})
     target_precompile_headers(${name} REUSE_FROM ${model})
     target_link_libraries(${name} PRIVATE ${model} ${graphics} ${widgets} Qt6::Svg)
@@ -1514,6 +1548,9 @@ function(tsa_add_product)
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:Qt6::Test> $<TARGET_FILE_DIR:${tests}>)
         endif()
         set_target_properties(${tests} PROPERTIES OUTPUT_NAME "${name}_TestSuite")
+        if(_tsa_qm_files)
+            qt_add_resources(${tests} "${tests}_i18n" PREFIX "/i18n" BASE ${CMAKE_CURRENT_BINARY_DIR}/i18n_${name} FILES ${_tsa_qm_files})
+        endif()
         tsa_copy_gmsh_runtime(${tests})
         tsa_copy_ifcopenshell_runtime(${tests})
         add_dependencies(${tests} ${name}_Mcp sample_csv2tsa3d)
@@ -1539,13 +1576,15 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards bim ifc drawing views tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
+                       loads opensees supports standards bim ifc drawing views tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc i18n ribbon)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)
         find_package(Python3 COMPONENTS Interpreter QUIET)
         if(Python3_FOUND)
             add_test(NAME ${name}_Layers COMMAND Python3::Interpreter ${TSA_ROOT}/tools/check_layers.py ${TSA_ROOT}/src)
+            # Traductions : paramètres, raccourcis &, doublons, caractères corrompus (docs/I18N.md §5)
+            add_test(NAME ${name}_I18nCheck COMMAND Python3::Interpreter ${TSA_ROOT}/tools/i18n/check_translations.py --strict)
         endif()
     endif()
 endfunction()

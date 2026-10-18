@@ -2,6 +2,9 @@
 
 #include "MeshGeometry.h"
 
+#include <QCoreApplication>
+#include <QtGlobal>
+
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -15,9 +18,10 @@ const char* severityName(QualityIssue::Severity s)
 {
     switch (s)
     {
-    case QualityIssue::Severity::Error: return "erreur";
-    case QualityIssue::Severity::Warning: return "avertissement";
-    case QualityIssue::Severity::Info: return "information";
+    // Texte source marqué : à traduire au point d'affichage par QCoreApplication::translate("TSA::Mesh::MeshQuality", …)
+    case QualityIssue::Severity::Error: return QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "erreur");
+    case QualityIssue::Severity::Warning: return QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "avertissement");
+    case QualityIssue::Severity::Info: return QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "information");
     }
     return "";
 }
@@ -59,10 +63,11 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
         const auto& n = mesh.node(id);
         return P3 { n.x, n.y, n.z };
     };
-    auto issue = [&](QualityIssue::Severity sev, const std::string& kind, const std::string& msg, const FeElement* e, int node, double value) {
+    // kind : texte marqué QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", …), traduit ici
+    auto issue = [&](QualityIssue::Severity sev, const char* kind, const std::string& msg, const FeElement* e, int node, double value) {
         QualityIssue i;
         i.severity = sev;
-        i.kind = kind;
+        i.kind = QCoreApplication::translate("TSA::Mesh::MeshQuality", kind).toStdString();
         i.message = msg;
         i.value = value;
         if (e)
@@ -88,6 +93,7 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
         r.issues.push_back(i);
     };
     auto fmt = [](double v) { return std::to_string(std::round(v * 100) / 100).substr(0, std::to_string(std::round(v * 100) / 100).find('.') + 3); };
+    auto F = [&fmt](double v) { return QString::fromStdString(fmt(v)); };   // même formatage, pour .arg()
 
     // Orientation des éléments 2D : cohérence entre voisins (une arête commune doit être parcourue en sens
     // opposés). Propagation depuis un élément par surface ; les éléments minoritaires sont « inversés ».
@@ -149,14 +155,14 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
         for (int id : e.nodes) valid &= id >= 1 && id <= N;
         if (!valid)
         {
-            issue(QualityIssue::Severity::Error, "connexion incorrecte", "élément référant un nœud inexistant", &e, 0, 0);
+            issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "connexion incorrecte"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "élément référant un nœud inexistant").toStdString(), &e, 0, 0);
             r.perElementQuality[e.id - 1] = 0;
             continue;
         }
         std::set<int> distinct(e.nodes.begin(), e.nodes.end());
         if (distinct.size() != e.nodes.size())
         {
-            issue(QualityIssue::Severity::Error, "connexion incorrecte", "nœud répété dans l'élément (élément dégénéré)", &e, 0, 0);
+            issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "connexion incorrecte"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "nœud répété dans l'élément (élément dégénéré)").toStdString(), &e, 0, 0);
             r.perElementQuality[e.id - 1] = 0;
         }
         for (int id : e.nodes) (dim == 3 ? usedBy3D : usedByOther)[id] = 1, used[id] = 1;
@@ -169,7 +175,7 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
         if (dim == 1)
         {
             const double L = distance(c[0], c[1]);
-            if (L < 1e-9) issue(QualityIssue::Severity::Error, "élément dégénéré", "élément 1D de longueur nulle", &e, 0, L), quality = 0;
+            if (L < 1e-9) issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "élément dégénéré"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "élément 1D de longueur nulle").toStdString(), &e, 0, L), quality = 0;
             lineAdj[{ std::min(e.nodes[0], e.nodes[1]), 0 }].push_back(e.id);
         }
         else if (dim == 2)
@@ -188,12 +194,12 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
             }
             if (area < 1e-12 * std::max(1.0, lmax * lmax))
             {
-                issue(QualityIssue::Severity::Error, "élément dégénéré", "élément d'aire nulle", &e, 0, area);
+                issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "élément dégénéré"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "élément d'aire nulle").toStdString(), &e, 0, area);
                 r.perElementQuality[e.id - 1] = 0;
                 continue;
             }
             if (flipped[std::size_t(e.id - 1)])
-                issue(QualityIssue::Severity::Error, "élément inversé", "orientation opposée à celle des éléments voisins de la surface", &e, 0, 0), quality = 0;
+                issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "élément inversé"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "orientation opposée à celle des éléments voisins de la surface").toStdString(), &e, 0, 0), quality = 0;
             double ar;
             if (nc == 3) ar = lmax * per / (4 * std::sqrt(3.0) * area);
             else
@@ -207,20 +213,20 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
                     sj = std::min(sj, e1.cross(e2).dot(n) / (e1.norm() * e2.norm() + 1e-300));
                 }
                 jac.add(sj);
-                if (sj <= 0) issue(QualityIssue::Severity::Error, "élément inversé", "jacobien normalisé ≤ 0 (quadrangle non convexe ou retourné)", &e, 0, sj), quality = 0;
+                if (sj <= 0) issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "élément inversé"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "jacobien normalisé ≤ 0 (quadrangle non convexe ou retourné)").toStdString(), &e, 0, sj), quality = 0;
                 else if (sj < q.minScaledJacobian)
-                    issue(QualityIssue::Severity::Warning, "distorsion", "jacobien normalisé " + fmt(sj) + " < " + fmt(q.minScaledJacobian), &e, 0, sj);
+                    issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "distorsion"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "jacobien normalisé %1 < %2").arg(F(sj), F(q.minScaledJacobian)).toStdString(), &e, 0, sj);
                 quality = std::min(quality, std::max(0.0, sj));
             }
             aspect.add(ar), minAng.add(amin), maxAng.add(amax);
             if (ar > q.maxAspectRatio)
-                issue(QualityIssue::Severity::Warning, "rapport d'aspect", "rapport d'aspect " + fmt(ar) + " > " + fmt(q.maxAspectRatio), &e, 0, ar);
-            if (amin < 5) issue(QualityIssue::Severity::Error, "angle", "angle de " + fmt(amin) + "° : élément quasi dégénéré", &e, 0, amin);
+                issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "rapport d'aspect"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "rapport d'aspect %1 > %2").arg(F(ar), F(q.maxAspectRatio)).toStdString(), &e, 0, ar);
+            if (amin < 5) issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "angle"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "angle de %1° : élément quasi dégénéré").arg(F(amin)).toStdString(), &e, 0, amin);
             else if (amin < q.minAngleDeg)
-                issue(QualityIssue::Severity::Warning, "angle", "angle minimal " + fmt(amin) + "° < " + fmt(q.minAngleDeg) + "°", &e, 0, amin);
-            if (amax > 175) issue(QualityIssue::Severity::Error, "angle", "angle de " + fmt(amax) + "° : élément quasi dégénéré", &e, 0, amax);
+                issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "angle"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "angle minimal %1° < %2°").arg(F(amin), F(q.minAngleDeg)).toStdString(), &e, 0, amin);
+            if (amax > 175) issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "angle"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "angle de %1° : élément quasi dégénéré").arg(F(amax)).toStdString(), &e, 0, amax);
             else if (amax > q.maxAngleDeg)
-                issue(QualityIssue::Severity::Warning, "angle", "angle maximal " + fmt(amax) + "° > " + fmt(q.maxAngleDeg) + "°", &e, 0, amax);
+                issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "angle"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "angle maximal %1° > %2°").arg(F(amax), F(q.maxAngleDeg)).toStdString(), &e, 0, amax);
             quality = std::min({ quality, 1.0 / ar, nc == 3 ? amin / 60.0 : amin / 90.0 });
         }
         else if (nc == 4)
@@ -237,9 +243,9 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
             const double ar = lmax / std::max(lmin, 1e-300);
             aspect.add(ar);
             if (std::abs(vol) < 1e-12 * std::max(1.0, lmax * lmax * lmax))
-                issue(QualityIssue::Severity::Error, "élément dégénéré", "tétraèdre de volume nul", &e, 0, vol), quality = 0;
+                issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "élément dégénéré"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "tétraèdre de volume nul").toStdString(), &e, 0, vol), quality = 0;
             if (ar > q.maxAspectRatio)
-                issue(QualityIssue::Severity::Warning, "rapport d'aspect", "rapport d'aspect " + fmt(ar) + " > " + fmt(q.maxAspectRatio), &e, 0, ar);
+                issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "rapport d'aspect"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "rapport d'aspect %1 > %2").arg(F(ar), F(q.maxAspectRatio)).toStdString(), &e, 0, ar);
             quality = std::min(quality, 1.0 / ar);
         }
         else
@@ -259,12 +265,12 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
             }
             const double ar = lmax / std::max(lmin, 1e-300);
             aspect.add(ar), jac.add(sj);
-            if (lmin < 1e-9) issue(QualityIssue::Severity::Error, "élément dégénéré", "hexaèdre à arête nulle", &e, 0, lmin), quality = 0;
-            else if (sj <= 0) issue(QualityIssue::Severity::Error, "élément inversé", "jacobien normalisé ≤ 0 (hexaèdre retourné)", &e, 0, sj), quality = 0;
+            if (lmin < 1e-9) issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "élément dégénéré"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "hexaèdre à arête nulle").toStdString(), &e, 0, lmin), quality = 0;
+            else if (sj <= 0) issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "élément inversé"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "jacobien normalisé ≤ 0 (hexaèdre retourné)").toStdString(), &e, 0, sj), quality = 0;
             else if (sj < q.minScaledJacobian)
-                issue(QualityIssue::Severity::Warning, "distorsion", "jacobien normalisé " + fmt(sj) + " < " + fmt(q.minScaledJacobian), &e, 0, sj);
+                issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "distorsion"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "jacobien normalisé %1 < %2").arg(F(sj), F(q.minScaledJacobian)).toStdString(), &e, 0, sj);
             if (ar > q.maxAspectRatio)
-                issue(QualityIssue::Severity::Warning, "rapport d'aspect", "rapport d'aspect " + fmt(ar) + " > " + fmt(q.maxAspectRatio), &e, 0, ar);
+                issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "rapport d'aspect"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "rapport d'aspect %1 > %2").arg(F(ar), F(q.maxAspectRatio)).toStdString(), &e, 0, ar);
             quality = std::min({ quality, std::max(0.0, sj), 1.0 / ar });
         }
         // Qualité Gmsh « minSICN » (inverse du conditionnement signé) : < 0 = élément inversé
@@ -272,9 +278,9 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
         {
             jac.add(e.quality);
             if (e.quality < 0)
-                issue(QualityIssue::Severity::Error, "élément inversé", "qualité Gmsh minSICN " + fmt(e.quality) + " < 0 (jacobien négatif)", &e, 0, e.quality), quality = 0;
+                issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "élément inversé"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "qualité Gmsh minSICN %1 < 0 (jacobien négatif)").arg(F(e.quality)).toStdString(), &e, 0, e.quality), quality = 0;
             else if (e.quality < q.minSICN)
-                issue(QualityIssue::Severity::Warning, "qualité Gmsh", "minSICN " + fmt(e.quality) + " < " + fmt(q.minSICN), &e, 0, e.quality);
+                issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "qualité Gmsh"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "minSICN %1 < %2").arg(F(e.quality), F(q.minSICN)).toStdString(), &e, 0, e.quality);
             quality = std::min(quality, std::max(0.0, e.quality));
         }
         r.perElementQuality[e.id - 1] = std::min(r.perElementQuality[e.id - 1], std::clamp(quality, 0.0, 1.0));
@@ -294,7 +300,7 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
                     const double g = std::max(a, b) / std::max(std::min(a, b), 1e-300);
                     growth.add(g);
                     if (g > q.maxGrowthRatio)
-                        issue(QualityIssue::Severity::Warning, "transition de taille", "rapport " + fmt(g) + " entre éléments voisins > " + fmt(q.maxGrowthRatio),
+                        issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "transition de taille"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "rapport %1 entre éléments voisins > %2").arg(F(g), F(q.maxGrowthRatio)).toStdString(),
                               els[i], n, g);
                 }
     }
@@ -307,16 +313,18 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
     };
     for (const auto& n : mesh.nodes)
     {
-        if (!used[n.id]) issue(QualityIssue::Severity::Warning, "nœud isolé", "nœud relié à aucun élément", nullptr, n.id, 0);
+        if (!used[n.id]) issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "nœud isolé"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "nœud relié à aucun élément").toStdString(), nullptr, n.id, 0);
         grid[cellKey(n)].push_back(n.id);
     }
     for (const auto& [k, ids] : grid)
         for (std::size_t i = 0; i < ids.size(); ++i)
             for (std::size_t j = i + 1; j < ids.size(); ++j)
                 if (distance(P(ids[i]), P(ids[j])) < 1e-6)
-                    issue(QualityIssue::Severity::Warning, "nœuds confondus",
-                          "nœuds " + std::to_string(ids[i]) + " et " + std::to_string(ids[j]) + " confondus mais distincts (" + mesh.node(ids[i]).source + " / " +
-                              mesh.node(ids[j]).source + ") : régions non connectées à cet endroit",
+                    issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "nœuds confondus"),
+                          QCoreApplication::translate("TSA::Mesh::MeshQuality", "nœuds %1 et %2 confondus mais distincts (%3 / %4) : régions non connectées à cet endroit")
+                              .arg(QString::number(ids[i]), QString::number(ids[j]), QString::fromStdString(mesh.node(ids[i]).source),
+                                   QString::fromStdString(mesh.node(ids[j]).source))
+                              .toStdString(),
                           nullptr, ids[i], 0);
 
     // Arêtes : non-variétés (plus de deux éléments d'une même surface) et arêtes libres
@@ -338,7 +346,7 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
         for (const auto* e : els) ++perSource[e->source];
         for (const auto& [src, count] : perSource)
             if (count > 2)
-                issue(QualityIssue::Severity::Error, "connexion incorrecte", "arête partagée par " + std::to_string(count) + " éléments de " + src, els.front(), ed.first, count);
+                issue(QualityIssue::Severity::Error, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "connexion incorrecte"), QCoreApplication::translate("TSA::Mesh::MeshQuality", "arête partagée par %1 éléments de %2").arg(QString::number(count), QString::fromStdString(src)).toStdString(), els.front(), ed.first, count);
         for (const auto* e : els)
             if (perSource[e->source] == 1) freeEdges.push_back({ ed, e });
     }
@@ -403,8 +411,8 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
                             if (distanceToSegment(p, a, b) > 1e-6 || distance(p, a) < 1e-6 || distance(p, b) < 1e-6) continue;
                             if (mesh.node(nid).source == e->source) continue;
                             if (!reported.insert({ nid, e->id }).second) continue;
-                            issue(QualityIssue::Severity::Warning, "incompatibilité entre régions",
-                                  "nœud de " + mesh.node(nid).source + " au milieu d'une arête de " + e->source + " (nœud non partagé)", e, nid, 0);
+                            issue(QualityIssue::Severity::Warning, QT_TRANSLATE_NOOP("TSA::Mesh::MeshQuality", "incompatibilité entre régions"),
+                                  QCoreApplication::translate("TSA::Mesh::MeshQuality", "nœud de %1 au milieu d'une arête de %2 (nœud non partagé)").arg(QString::fromStdString(mesh.node(nid).source), QString::fromStdString(e->source)).toStdString(), e, nid, 0);
                         }
                     }
         }
@@ -414,7 +422,7 @@ QualityReport analyzeMesh(const FeMesh& mesh, const QualityCriteria& q, const st
         {
             QualityIssue qi;
             qi.severity = QualityIssue::Severity::Warning;
-            qi.kind = "interface non conforme";
+            qi.kind = QCoreApplication::translate("TSA::Mesh::MeshQuality", "interface non conforme").toStdString();
             qi.message = i.a + " / " + i.b + " : " + i.description;
             qi.source = i.a;
             r.issues.push_back(qi);

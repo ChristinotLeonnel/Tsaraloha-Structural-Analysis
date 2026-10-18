@@ -63,6 +63,37 @@ void RibbonTab::updateTheme(bool /*isDark*/)
     });
 }
 
+std::vector<QAction*> RibbonTab::reachableActions() const
+{
+    std::vector<QAction*> out;
+    for (auto* p : m_panels)
+    {
+        if (!p->isVisibleTo(this)) continue;   // groupe passé dans « Plus »
+        const auto acts = p->reachableActions();
+        out.insert(out.end(), acts.begin(), acts.end());
+    }
+    if (hasOverflowMenu())
+    {
+        std::vector<const QMenu*> stack = { m_moreButton->menu() };
+        while (!stack.empty())
+        {
+            const QMenu* m = stack.back();
+            stack.pop_back();
+            for (QAction* a : m->actions())
+            {
+                if (a->menu()) stack.push_back(a->menu());
+                else if (!a->isSeparator()) out.push_back(a);
+            }
+        }
+    }
+    return out;
+}
+
+bool RibbonTab::hasOverflowMenu() const
+{
+    return m_moreButton && m_moreButton->isVisibleTo(this) && m_moreButton->menu();
+}
+
 void RibbonTab::addPanel(RibbonPanel* panel)
 {
     if (!panel) return;

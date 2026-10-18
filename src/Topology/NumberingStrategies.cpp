@@ -2,6 +2,10 @@
 
 #include "../Model/Model.h"
 
+#include <QCoreApplication>
+#include <QString>
+#include <QtGlobal>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -166,16 +170,27 @@ bool hasConnectivity(const TSA::Model::Model& m)
            !m.walls().empty() || !m.slabs().empty();
 }
 
+/// Texte source marqué QT_TRANSLATE_NOOP (tables de stratégies), traduit à l'affichage.
+std::string translated(const std::string& source)
+{
+    return QCoreApplication::translate("TSA::Topology::NumberingStrategies", source.c_str()).toStdString();
+}
+
 // ─── Stratégies des nœuds ────────────────────────────────────────────────────────────────────
 
 class SequentialNodes final : public NodeNumberingStrategy
 {
 public:
     std::string id() const override { return "sequential"; }
-    std::string name() const override { return "Séquentielle globale (ordre de création)"; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Topology::NumberingStrategies", "Séquentielle globale (ordre de création)").toStdString();
+    }
     std::string description() const override
     {
-        return "Numérote les nœuds dans l'ordre de leur identifiant interne, c'est-à-dire l'ordre de création.";
+        return QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                           "Numérote les nœuds dans l'ordre de leur identifiant interne, c'est-à-dire l'ordre de création.")
+            .toStdString();
     }
     Ordering order(const NodeContext& ctx) const override
     {
@@ -195,8 +210,8 @@ public:
     {
     }
     std::string id() const override { return m_id; }
-    std::string name() const override { return m_name; }
-    std::string description() const override { return m_desc; }
+    std::string name() const override { return translated(m_name); }
+    std::string description() const override { return translated(m_desc); }
     Availability availability(const TSA::Model::Model& model, const NumberingInput&) const override
     {
         if (m_needs3D && detail::modelDimension(model, 1e-6) < 3)
@@ -209,7 +224,9 @@ public:
                 zmax = std::max(zmax, n.z());
             }
             if (model.nodes().empty() || zmax - zmin < 1e-6)
-                return { false, "Le modèle n'a qu'une seule cote : il n'y a pas de couches à parcourir." };
+                return { false, QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                                            "Le modèle n'a qu'une seule cote : il n'y a pas de couches à parcourir.")
+                                    .toStdString() };
         }
         return {};
     }
@@ -252,18 +269,25 @@ class GridNodes final : public NodeNumberingStrategy
 {
 public:
     std::string id() const override { return "grid"; }
-    std::string name() const override { return "Grille d'axes (A1, A2, B1…)"; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Topology::NumberingStrategies", "Grille d'axes (A1, A2, B1…)").toStdString();
+    }
     std::string description() const override
     {
-        return "Étiquette chaque nœud situé à une intersection de la grille active par le repère de ses axes "
-               "(lettre + chiffre), avec la couche en 3D. Les nœuds hors intersection ne reçoivent pas de faux "
-               "repère : ils sont numérotés à la suite avec le préfixe.";
+        return QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                           "Étiquette chaque nœud situé à une intersection de la grille active par le repère de ses axes "
+                                           "(lettre + chiffre), avec la couche en 3D. Les nœuds hors intersection ne reçoivent pas de faux "
+                                           "repère : ils sont numérotés à la suite avec le préfixe.")
+            .toStdString();
     }
     std::string suggestedPattern() const override { return "{g}"; }
     Availability availability(const TSA::Model::Model&, const NumberingInput& input) const override
     {
         if (!input.grid || input.grid->xPositions.empty() || input.grid->yPositions.empty())
-            return { false, "Aucune grille cartésienne active avec des axes dans les deux directions." };
+            return { false, QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                                        "Aucune grille cartésienne active avec des axes dans les deux directions.")
+                                .toStdString() };
         return {};
     }
     Ordering order(const NodeContext& ctx) const override
@@ -333,15 +357,19 @@ public:
             }
         }
         if (coincident)
-            o.warnings.push_back(std::to_string(coincident) +
-                                 " nœud(s) confondu(s) avec un autre à la même intersection : suffixe .2, .3… ajouté. "
-                                 "Envisagez « Fusionner les nœuds ».");
+            o.warnings.push_back(QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                                             "%1 nœud(s) confondu(s) avec un autre à la même intersection : "
+                                                             "suffixe .2, .3… ajouté. Envisagez « Fusionner les nœuds ».")
+                                     .arg(coincident).toStdString());
         AxisOrder zyx;
         for (int id : sortByAxes(off, zyx, tol)) o.order.push_back(id);
         if (!off.empty())
-            o.warnings.push_back(std::to_string(off.size()) +
-                                 " nœud(s) hors des intersections de la grille (tolérance " + std::to_string(tol) +
-                                 " m) : numérotés à la suite avec le préfixe, sans repère de grille.");
+            o.warnings.push_back(QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                                             "%1 nœud(s) hors des intersections de la grille (tolérance %2 m) : "
+                                                             "numérotés à la suite avec le préfixe, sans repère de grille.")
+                                     .arg(static_cast<qulonglong>(off.size()))
+                                     .arg(QString::fromStdString(std::to_string(tol)))
+                                     .toStdString());
         return o;
     }
 };
@@ -350,11 +378,16 @@ class LevelNodes final : public NodeNumberingStrategy
 {
 public:
     std::string id() const override { return "level"; }
-    std::string name() const override { return "Par niveau (plans de travail horizontaux)"; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Topology::NumberingStrategies", "Par niveau (plans de travail horizontaux)").toStdString();
+    }
     std::string description() const override
     {
-        return "Regroupe les nœuds par niveau du projet (ou par cote si aucun niveau n'est défini), puis "
-               "numérote chaque niveau par rangées. Le jeton {l} donne le numéro de niveau.";
+        return QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                           "Regroupe les nœuds par niveau du projet (ou par cote si aucun niveau n'est défini), puis "
+                                           "numérote chaque niveau par rangées. Le jeton {l} donne le numéro de niveau.")
+            .toStdString();
     }
     Availability availability(const TSA::Model::Model& model, const NumberingInput& input) const override
     {
@@ -362,7 +395,9 @@ public:
         std::set<long long> z;
         for (const auto& [id, n] : model.nodes()) z.insert(std::llround(n.z() * 1000.0));
         if (z.size() >= 2) return {};
-        return { false, "Un seul niveau (ou une seule cote) : la numérotation par niveau n'apporte rien." };
+        return { false, QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                                    "Un seul niveau (ou une seule cote) : la numérotation par niveau n'apporte rien.")
+                            .toStdString() };
     }
     Ordering order(const NodeContext& ctx) const override
     {
@@ -395,7 +430,9 @@ public:
         o.order = planar;
         std::stable_sort(o.order.begin(), o.order.end(), [&](int a, int b) { return o.layer.at(a) < o.layer.at(b); });
         if (offLevel)
-            o.warnings.push_back(std::to_string(offLevel) + " nœud(s) entre deux niveaux : rattaché(s) au niveau le plus proche.");
+            o.warnings.push_back(QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                                             "%1 nœud(s) entre deux niveaux : rattaché(s) au niveau le plus proche.")
+                                     .arg(static_cast<qulonglong>(offLevel)).toStdString());
         return o;
     }
 };
@@ -411,9 +448,11 @@ public:
     {
         switch (m_kind)
         {
-        case Kind::Bfs: return "Parcours en largeur (BFS)";
-        case Kind::Dfs: return "Parcours en profondeur (DFS)";
-        default: return "Connectivité topologique (Cuthill-McKee inverse)";
+        case Kind::Bfs: return QCoreApplication::translate("TSA::Topology::NumberingStrategies", "Parcours en largeur (BFS)").toStdString();
+        case Kind::Dfs: return QCoreApplication::translate("TSA::Topology::NumberingStrategies", "Parcours en profondeur (DFS)").toStdString();
+        default:
+            return QCoreApplication::translate("TSA::Topology::NumberingStrategies", "Connectivité topologique (Cuthill-McKee inverse)")
+                .toStdString();
         }
     }
     std::string description() const override
@@ -421,19 +460,28 @@ public:
         switch (m_kind)
         {
         case Kind::Bfs:
-            return "Suit les éléments à partir du nœud de départ, niveau de voisinage par niveau de voisinage. "
-                   "Chaque partie non reliée est parcourue à son tour.";
+            return QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                               "Suit les éléments à partir du nœud de départ, niveau de voisinage par niveau de voisinage. "
+                                               "Chaque partie non reliée est parcourue à son tour.")
+                .toStdString();
         case Kind::Dfs:
-            return "Suit les éléments à partir du nœud de départ en allant le plus loin possible avant de revenir. "
-                   "Chaque partie non reliée est parcourue à son tour.";
+            return QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                               "Suit les éléments à partir du nœud de départ en allant le plus loin possible avant de revenir. "
+                                               "Chaque partie non reliée est parcourue à son tour.")
+                .toStdString();
         default:
-            return "Ordre de Cuthill-McKee inverse : rapproche les numéros des nœuds reliés (largeur de bande "
-                   "réduite), utile pour lire les matrices de rigidité.";
+            return QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                               "Ordre de Cuthill-McKee inverse : rapproche les numéros des nœuds reliés (largeur de bande "
+                                               "réduite), utile pour lire les matrices de rigidité.")
+                .toStdString();
         }
     }
     Availability availability(const TSA::Model::Model& model, const NumberingInput&) const override
     {
-        if (!hasConnectivity(model)) return { false, "Aucun élément ne relie les nœuds : pas de graphe à parcourir." };
+        if (!hasConnectivity(model))
+            return { false, QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                                        "Aucun élément ne relie les nœuds : pas de graphe à parcourir.")
+                                .toStdString() };
         return {};
     }
     Ordering order(const NodeContext& ctx) const override
@@ -461,8 +509,9 @@ public:
         std::set<int> visited;
         const int userStart = scope.count(ctx.settings.startNodeId) ? ctx.settings.startNodeId : 0;
         if (ctx.settings.startNodeId > 0 && !userStart)
-            o.warnings.push_back("Nœud de départ " + std::to_string(ctx.settings.startNodeId) +
-                                 " hors de la portée : départ automatique.");
+            o.warnings.push_back(QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                                             "Nœud de départ %1 hors de la portée : départ automatique.")
+                                     .arg(ctx.settings.startNodeId).toStdString());
         int components = 0;
         for (size_t gi = 0; gi <= geo.size(); ++gi)
         {
@@ -527,7 +576,9 @@ public:
             o.order.insert(o.order.end(), part.begin(), part.end());
         }
         if (components > 1)
-            o.warnings.push_back(std::to_string(components) + " parties non reliées : parcourues l'une après l'autre.");
+            o.warnings.push_back(QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                                             "%1 parties non reliées : parcourues l'une après l'autre.")
+                                     .arg(components).toStdString());
         return o;
     }
 
@@ -544,9 +595,9 @@ public:
     {
     }
     std::string id() const override { return m_id; }
-    std::string name() const override { return m_name; }
-    std::string description() const override { return m_reason; }
-    Availability availability(const TSA::Model::Model&, const NumberingInput&) const override { return { false, m_reason }; }
+    std::string name() const override { return translated(m_name); }
+    std::string description() const override { return translated(m_reason); }
+    Availability availability(const TSA::Model::Model&, const NumberingInput&) const override { return { false, translated(m_reason) }; }
     Ordering order(const NodeContext&) const override { return {}; }
 
 private:
@@ -557,11 +608,17 @@ class KeepNodes final : public NodeNumberingStrategy
 {
 public:
     std::string id() const override { return "keep"; }
-    std::string name() const override { return "Personnalisée / manuelle (conserver les étiquettes)"; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Topology::NumberingStrategies", "Personnalisée / manuelle (conserver les étiquettes)")
+            .toStdString();
+    }
     std::string description() const override
     {
-        return "Ne renumérote pas les nœuds : les étiquettes actuelles, éventuellement saisies à la main dans les "
-               "propriétés, sont conservées.";
+        return QCoreApplication::translate("TSA::Topology::NumberingStrategies",
+                                           "Ne renumérote pas les nœuds : les étiquettes actuelles, éventuellement saisies à la main dans les "
+                                           "propriétés, sont conservées.")
+            .toStdString();
     }
     Ordering order(const NodeContext& ctx) const override
     {
@@ -571,10 +628,12 @@ public:
     }
 };
 
-const char* kNoGroups = "TSA ne gère pas encore de groupes ni de sous-modèles : rien à quoi rattacher la numérotation.";
-const char* kNoMesh = "TSA ne génère pas encore de maillage éléments finis (la commande « Générer maillage » ne fait "
-                      "qu'une estimation ; les barres sont calculées sans maillage) : aucun nœud ni élément de maillage "
-                      "à numéroter.";
+const char* kNoGroups = QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                                          "TSA ne gère pas encore de groupes ni de sous-modèles : rien à quoi rattacher la numérotation.");
+const char* kNoMesh = QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                                        "TSA ne génère pas encore de maillage éléments finis (la commande « Générer maillage » ne fait "
+                                        "qu'une estimation ; les barres sont calculées sans maillage) : aucun nœud ni élément de maillage "
+                                        "à numéroter.");
 
 // ─── Stratégies des éléments ─────────────────────────────────────────────────────────────────
 
@@ -603,26 +662,38 @@ public:
     {
         switch (m_kind)
         {
-        case Kind::Sequential: return "Séquentielle (ordre de création)";
-        case Kind::ByType: return "Par type d'élément";
-        case Kind::Proximity: return "Par proximité géométrique (centres des éléments)";
-        case Kind::Topological: return "Par parcours topologique (suit la numérotation des nœuds)";
-        default: return "Personnalisée / manuelle (conserver les étiquettes)";
+        case Kind::Sequential: return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Séquentielle (ordre de création)"));
+        case Kind::ByType: return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par type d'élément"));
+        case Kind::Proximity:
+            return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par proximité géométrique (centres des éléments)"));
+        case Kind::Topological:
+            return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                                                "Par parcours topologique (suit la numérotation des nœuds)"));
+        default:
+            return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Personnalisée / manuelle (conserver les étiquettes)"));
         }
     }
     std::string description() const override
     {
         switch (m_kind)
         {
-        case Kind::Sequential: return "Ordre de l'identifiant interne de chaque famille (ordre de création).";
+        case Kind::Sequential:
+            return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                                                "Ordre de l'identifiant interne de chaque famille (ordre de création)."));
         case Kind::ByType:
-            return "Regroupe par famille (poutres, poteaux, treillis, câbles, dalles, voiles, fondations) ; utile avec "
-                   "une suite de numéros commune.";
-        case Kind::Proximity: return "Trie les éléments par la position de leur centre, selon l'ordre des axes choisi.";
+            return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                                                "Regroupe par famille (poutres, poteaux, treillis, câbles, dalles, voiles, fondations) ; utile avec "
+                                                "une suite de numéros commune."));
+        case Kind::Proximity:
+            return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                                                "Trie les éléments par la position de leur centre, selon l'ordre des axes choisi."));
         case Kind::Topological:
-            return "Ordonne les éléments selon les nouveaux numéros de leurs nœuds : les éléments voisins ont des "
-                   "numéros voisins. Les extrémités et l'orientation des barres ne sont jamais modifiées.";
-        default: return "Ne renumérote pas les éléments : les étiquettes actuelles sont conservées.";
+            return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                                                "Ordonne les éléments selon les nouveaux numéros de leurs nœuds : les éléments voisins ont des "
+                                                "numéros voisins. Les extrémités et l'orientation des barres ne sont jamais modifiées."));
+        default:
+            return translated(QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                                                "Ne renumérote pas les éléments : les étiquettes actuelles sont conservées."));
         }
     }
     ElementOrdering order(const ElementContext& ctx) const override
@@ -691,9 +762,9 @@ public:
     {
     }
     std::string id() const override { return m_id; }
-    std::string name() const override { return m_name; }
-    std::string description() const override { return m_reason; }
-    Availability availability(const TSA::Model::Model&, const NumberingInput&) const override { return { false, m_reason }; }
+    std::string name() const override { return translated(m_name); }
+    std::string description() const override { return translated(m_reason); }
+    Availability availability(const TSA::Model::Model&, const NumberingInput&) const override { return { false, translated(m_reason) }; }
     ElementOrdering order(const ElementContext&) const override { return {}; }
 
 private:
@@ -707,34 +778,48 @@ const std::vector<std::unique_ptr<NodeNumberingStrategy>>& nodeStrategies()
     static const std::vector<std::unique_ptr<NodeNumberingStrategy>> list = [] {
         std::vector<std::unique_ptr<NodeNumberingStrategy>> l;
         l.push_back(std::make_unique<SequentialNodes>());
+        // Libellés et descriptions : textes source marqués, traduits par name() / description().
         l.push_back(std::make_unique<AxisSortedNodes>(
-            "coordinates", "Par coordonnées (ordre des axes au choix)",
-            "Trie les nœuds selon les axes choisis (X-Y-Z, Z-Y-X…), dans le sens choisi pour chaque axe. Les "
-            "coordonnées à moins de la tolérance sont regroupées sur une même rangée.",
+            "coordinates", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par coordonnées (ordre des axes au choix)"),
+            QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                              "Trie les nœuds selon les axes choisis (X-Y-Z, Z-Y-X…), dans le sens choisi pour chaque axe. Les "
+                              "coordonnées à moins de la tolérance sont regroupées sur une même rangée."),
             std::nullopt, false));
-        l.push_back(std::make_unique<AxisSortedNodes>("xyz", "Par coordonnées X, puis Y, puis Z",
-                                                      "Trie d'abord selon X, puis Y, puis Z.", std::string("XYZ"), false));
-        l.push_back(std::make_unique<AxisSortedNodes>("zyx", "Par coordonnées Z, puis Y, puis X",
-                                                      "Trie d'abord selon Z, puis Y, puis X.", std::string("ZYX"), false));
         l.push_back(std::make_unique<AxisSortedNodes>(
-            "rows", "Par rangées", "Rangées parallèles à X : de rangée en rangée (Y), puis le long de chaque rangée (X), "
-                                   "couche par couche.", std::string("ZYX"), false));
+            "xyz", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par coordonnées X, puis Y, puis Z"),
+            QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Trie d'abord selon X, puis Y, puis Z."), std::string("XYZ"), false));
         l.push_back(std::make_unique<AxisSortedNodes>(
-            "columns", "Par colonnes", "Colonnes parallèles à Y : de colonne en colonne (X), puis le long de chaque "
-                                       "colonne (Y), couche par couche.", std::string("ZXY"), false));
+            "zyx", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par coordonnées Z, puis Y, puis X"),
+            QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Trie d'abord selon Z, puis Y, puis X."), std::string("ZYX"), false));
         l.push_back(std::make_unique<AxisSortedNodes>(
-            "layers", "Par couches (modèles 3D)",
-            "Couche horizontale par couche horizontale (Z), puis par rangées. Avec « Recommencer à chaque couche », "
-            "chaque couche repart du numéro de départ (jeton {l} pour distinguer les couches).",
+            "rows", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par rangées"),
+            QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                              "Rangées parallèles à X : de rangée en rangée (Y), puis le long de chaque rangée (X), "
+                              "couche par couche."),
+            std::string("ZYX"), false));
+        l.push_back(std::make_unique<AxisSortedNodes>(
+            "columns", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par colonnes"),
+            QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                              "Colonnes parallèles à Y : de colonne en colonne (X), puis le long de chaque "
+                              "colonne (Y), couche par couche."),
+            std::string("ZXY"), false));
+        l.push_back(std::make_unique<AxisSortedNodes>(
+            "layers", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par couches (modèles 3D)"),
+            QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies",
+                              "Couche horizontale par couche horizontale (Z), puis par rangées. Avec « Recommencer à chaque couche », "
+                              "chaque couche repart du numéro de départ (jeton {l} pour distinguer les couches)."),
             std::string("ZYX"), true));
         l.push_back(std::make_unique<GridNodes>());
         l.push_back(std::make_unique<LevelNodes>());
-        l.push_back(std::make_unique<UnavailableNodes>("group", "Par sous-modèle ou groupe", kNoGroups));
+        l.push_back(std::make_unique<UnavailableNodes>(
+            "group", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par sous-modèle ou groupe"), kNoGroups));
         l.push_back(std::make_unique<GraphNodes>(GraphNodes::Kind::Rcm));
         l.push_back(std::make_unique<GraphNodes>(GraphNodes::Kind::Bfs));
         l.push_back(std::make_unique<GraphNodes>(GraphNodes::Kind::Dfs));
-        l.push_back(std::make_unique<UnavailableNodes>("mesh_structured", "Orientée maillage structuré", kNoMesh));
-        l.push_back(std::make_unique<UnavailableNodes>("mesh_unstructured", "Orientée maillage non structuré", kNoMesh));
+        l.push_back(std::make_unique<UnavailableNodes>(
+            "mesh_structured", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Orientée maillage structuré"), kNoMesh));
+        l.push_back(std::make_unique<UnavailableNodes>(
+            "mesh_unstructured", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Orientée maillage non structuré"), kNoMesh));
         l.push_back(std::make_unique<KeepNodes>());
         return l;
     }();
@@ -749,9 +834,12 @@ const std::vector<std::unique_ptr<ElementNumberingStrategy>>& elementStrategies(
         l.push_back(std::make_unique<SimpleElements>(SimpleElements::Kind::ByType));
         l.push_back(std::make_unique<SimpleElements>(SimpleElements::Kind::Proximity));
         l.push_back(std::make_unique<SimpleElements>(SimpleElements::Kind::Topological));
-        l.push_back(std::make_unique<UnavailableElements>("group", "Par groupe", kNoGroups));
-        l.push_back(std::make_unique<UnavailableElements>("mesh_structured", "Par maillage structuré", kNoMesh));
-        l.push_back(std::make_unique<UnavailableElements>("mesh_unstructured", "Par maillage non structuré", kNoMesh));
+        l.push_back(std::make_unique<UnavailableElements>(
+            "group", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par groupe"), kNoGroups));
+        l.push_back(std::make_unique<UnavailableElements>(
+            "mesh_structured", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par maillage structuré"), kNoMesh));
+        l.push_back(std::make_unique<UnavailableElements>(
+            "mesh_unstructured", QT_TRANSLATE_NOOP("TSA::Topology::NumberingStrategies", "Par maillage non structuré"), kNoMesh));
         l.push_back(std::make_unique<SimpleElements>(SimpleElements::Kind::Keep));
         return l;
     }();

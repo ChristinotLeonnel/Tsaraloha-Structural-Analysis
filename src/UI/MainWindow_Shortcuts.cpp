@@ -9,6 +9,7 @@
 #include "Dock/LogConsoleDock.h"
 #include "Dock/ResultsDockWidget.h"
 #include "Ruler/ViewportContainer.h"
+#include "Ribbon/RibbonBar.h"
 #include "Shortcuts/ShortcutManager.h"
 #include "WindowManager/WindowItem.h"
 #include "WindowManager/WindowManager.h"
@@ -25,6 +26,9 @@ void MainWindow::bindShortcut(const char* id, QAction* action)
 {
     if (!action) return;
     ShortcutManager::instance().bind(QString::fromLatin1(id), action);
+    // Identifiant stable comme nom d'objet : repris par le bouton du ruban (AutomationId UI Automation), les essais
+    // retrouvent ainsi une commande quelle que soit la langue de l'interface
+    if (action->objectName().isEmpty()) action->setObjectName(QString::fromLatin1(id));
     // Associée à la fenêtre : le raccourci reste actif même si l'action n'est visible que dans un onglet
     // du ruban masqué (QWidget::addAction ignore les doublons).
     addAction(action);
@@ -118,6 +122,7 @@ void MainWindow::setupShortcuts()
         // Outils, paramètres, aide
         { "cmd.ai.assistant", m_actionAIAssistant }, { "cmd.ai.config", m_actionAIConfig }, { "cmd.ai.check", m_actionAICheck },
         { "cmd.ai.analyze", m_actionAIAnalyze }, { "cmd.ai.explain", m_actionAIExplain }, { "cmd.settings.theme", m_actionToggleTheme },
+        { "cmd.settings.language", m_actionLanguage },
         { "cmd.help.shortcuts", m_actionShortcuts }, { "cmd.help.shortcut_editor", m_actionShortcutEditor },
         { "cmd.help.modules", m_actionModules },
         { "cmd.help.full", m_actionHelp }, { "cmd.help.online_docs", m_actionOnlineDocs },
@@ -183,4 +188,14 @@ void MainWindow::onActionShortcutEditor()
 {
     TSA::UI::ShortcutEditorDialog dlg(ShortcutManager::instance(), this);
     dlg.exec();
+}
+
+QHash<const QAction*, QString> MainWindow::ribbonActionLocations() const
+{
+    return m_ribbonBar ? m_ribbonBar->actionLocations() : QHash<const QAction*, QString>();
+}
+
+void MainWindow::prefillConsoleCommand(const QString& text)
+{
+    if (m_consoleDock) m_consoleDock->prefillCommand(text);
 }

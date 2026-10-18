@@ -5,6 +5,7 @@
 // en charge est refusée avant le calcul, jamais remplacée silencieusement par une autre.
 
 #include <string>
+#include <QtGlobal>
 
 namespace TSA::Model
 {
@@ -40,10 +41,10 @@ inline const char* surfaceFormulationName(SurfaceFormulation f)
 {
     switch (f)
     {
-    case SurfaceFormulation::Plate: return "Plaque (flexion seule)";
-    case SurfaceFormulation::Membrane: return "Membrane (efforts dans le plan)";
-    case SurfaceFormulation::NonStructural: return "Non structurale (géométrie seulement)";
-    default: return "Coque (membrane + flexion)";
+    case SurfaceFormulation::Plate: return QT_TRANSLATE_NOOP("TSA::Model::SurfaceFormulation", "Plaque (flexion seule)");
+    case SurfaceFormulation::Membrane: return QT_TRANSLATE_NOOP("TSA::Model::SurfaceFormulation", "Membrane (efforts dans le plan)");
+    case SurfaceFormulation::NonStructural: return QT_TRANSLATE_NOOP("TSA::Model::SurfaceFormulation", "Non structurale (géométrie seulement)");
+    default: return QT_TRANSLATE_NOOP("TSA::Model::SurfaceFormulation", "Coque (membrane + flexion)");
     }
 }
 

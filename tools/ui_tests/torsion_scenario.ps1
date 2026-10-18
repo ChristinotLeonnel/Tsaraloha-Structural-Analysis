@@ -47,7 +47,7 @@ function Run-Analysis($w, $procId, $tag) {
 }
 
 # --- 1. Ouverture d'un projet existant ------------------------------------------------------------
-$p = Start-Process -FilePath $exe -ArgumentList ('"' + $proj + '"') -PassThru
+$p = Start-Process -FilePath $exe -ArgumentList @("--lang=fr", ('"' + $proj + '"')) -PassThru
 $we = Wait-Window "TSA*torsion_ui*" 90
 Check ($we -ne $null) "1. projet existant ouvert dans TSA.exe ($($we.Current.Name))"
 $w = [IntPtr]$we.Current.NativeWindowHandle
@@ -158,7 +158,7 @@ $q = Dismiss $p.Id "*" @("*Ne pas enregistrer*", "*Non*", "*No*", "*Discard*") 3
 if ($q) { Write-Output ("  fermeture : " + $q) }
 $p.WaitForExit(40000) | Out-Null
 Check ($p.HasExited) "7. TSA fermé (code $($p.ExitCode))"
-$p2 = Start-Process -FilePath $exe -ArgumentList ('"' + $proj + '"') -PassThru
+$p2 = Start-Process -FilePath $exe -ArgumentList @("--lang=fr", ('"' + $proj + '"')) -PassThru
 $w2e = Wait-Window "TSA*torsion_ui*" 90
 $w2 = [IntPtr]$w2e.Current.NativeWindowHandle
 Start-Sleep -Seconds 5

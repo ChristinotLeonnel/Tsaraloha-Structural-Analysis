@@ -128,7 +128,7 @@ void WorkPlaneDialog::setupUi()
     m_grpThreePoints->setVisible(false);
 
     // 4. Options
-    auto* grpOpt = new QGroupBox(tr("Options d'Affichage & Navigation"), this);
+    auto* grpOpt = new QGroupBox(tr("Options d'Affichage et Navigation"), this);
     auto* optLayout = new QVBoxLayout(grpOpt);
     optLayout->setSpacing(6);
 

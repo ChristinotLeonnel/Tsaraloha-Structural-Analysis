@@ -3,6 +3,7 @@
 #include "../Core/AppPaths.h"
 #include "../Model/Model.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -407,7 +408,7 @@ MeshProject MeshProject::fromJson(const QJsonObject& o, QStringList* warnings)
     MeshProject p;
     if (o.isEmpty()) return p;
     if (o.value("schema").toString() != QLatin1String(kMeshProjectSchema) && warnings)
-        warnings->append(QStringLiteral("maillage : schéma « %1 » inattendu, lecture tolérante").arg(o.value("schema").toString()));
+        warnings->append(QCoreApplication::translate("TSA::Mesh::MeshProject", "maillage : schéma « %1 » inattendu, lecture tolérante").arg(o.value("schema").toString()));
     const QJsonObject s = o.value("settings").toObject();
     p.settings.global = globalSettingsFromJson(s.value("global").toObject());
     for (const auto& v : s.value("locals").toArray()) p.settings.locals.push_back(localSettingFromJson(v.toObject()));
@@ -444,7 +445,7 @@ MeshProject MeshProject::fromJson(const QJsonObject& o, QStringList* warnings)
         p.quality.estimatedDofs = std::size_t(q.value("estimatedDofs").toDouble());
         p.mesh = meshFromJson(o.value("mesh").toObject());
         p.hasMesh = !p.mesh.empty();
-        if (!p.hasMesh && warnings) warnings->append(QStringLiteral("maillage : rapport présent mais maillage absent du fichier"));
+        if (!p.hasMesh && warnings) warnings->append(QCoreApplication::translate("TSA::Mesh::MeshProject", "maillage : rapport présent mais maillage absent du fichier"));
     }
     return p;
 }
@@ -577,7 +578,7 @@ bool MeshProfileLibrary::write(QString* error) const
     if (!f.open(QIODevice::WriteOnly) || f.write(QJsonDocument(QJsonObject { { "schema", "tsa-mesh-profiles/1" }, { "profiles", arr } }).toJson()) < 0 ||
         !f.commit())
     {
-        if (error) *error = QStringLiteral("écriture impossible de %1").arg(m_file);
+        if (error) *error = QCoreApplication::translate("TSA::Mesh::MeshProject", "écriture impossible de %1").arg(m_file);
         return false;
     }
     return true;
@@ -587,7 +588,7 @@ bool MeshProfileLibrary::save(const MeshProfile& profile, QString* error)
 {
     if (profile.name.empty())
     {
-        if (error) *error = QStringLiteral("nom de profil obligatoire");
+        if (error) *error = QCoreApplication::translate("TSA::Mesh::MeshProject", "nom de profil obligatoire");
         return false;
     }
     MeshProfile p = profile;
@@ -608,7 +609,7 @@ bool MeshProfileLibrary::remove(const std::string& name, QString* error)
     m_user.erase(std::remove_if(m_user.begin(), m_user.end(), [&](const MeshProfile& p) { return p.name == name; }), m_user.end());
     if (m_user.size() == before)
     {
-        if (error) *error = QStringLiteral("profil utilisateur « %1 » introuvable (un profil de départ ne se supprime pas)").arg(QString::fromStdString(name));
+        if (error) *error = QCoreApplication::translate("TSA::Mesh::MeshProject", "profil utilisateur « %1 » introuvable (un profil de départ ne se supprime pas)").arg(QString::fromStdString(name));
         return false;
     }
     return write(error);
@@ -619,14 +620,14 @@ bool MeshProfileLibrary::exportProfile(const std::string& name, const QString& p
     const auto p = find(name);
     if (!p)
     {
-        if (error) *error = QStringLiteral("profil introuvable");
+        if (error) *error = QCoreApplication::translate("TSA::Mesh::MeshProject", "profil introuvable");
         return false;
     }
     QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly) || f.write(QJsonDocument(QJsonObject { { "schema", "tsa-mesh-profile/1" }, { "profile", profileToJson(*p) } }).toJson()) < 0 ||
         !f.commit())
     {
-        if (error) *error = QStringLiteral("écriture impossible de %1").arg(path);
+        if (error) *error = QCoreApplication::translate("TSA::Mesh::MeshProject", "écriture impossible de %1").arg(path);
         return false;
     }
     return true;
@@ -637,13 +638,13 @@ bool MeshProfileLibrary::importProfile(const QString& path, std::string* name, Q
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly))
     {
-        if (error) *error = QStringLiteral("lecture impossible de %1").arg(path);
+        if (error) *error = QCoreApplication::translate("TSA::Mesh::MeshProject", "lecture impossible de %1").arg(path);
         return false;
     }
     const QJsonObject root = QJsonDocument::fromJson(f.readAll()).object();
     if (root.value("schema").toString() != QLatin1String("tsa-mesh-profile/1"))
     {
-        if (error) *error = QStringLiteral("fichier de profil de maillage invalide (schéma tsa-mesh-profile/1 attendu)");
+        if (error) *error = QCoreApplication::translate("TSA::Mesh::MeshProject", "fichier de profil de maillage invalide (schéma tsa-mesh-profile/1 attendu)");
         return false;
     }
     const MeshProfile p = profileFromJson(root.value("profile").toObject());

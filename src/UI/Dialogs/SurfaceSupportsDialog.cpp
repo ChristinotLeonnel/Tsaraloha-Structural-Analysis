@@ -31,7 +31,9 @@ QString edgeName(SurfaceTargetKind kind, int edge)
     if (edge < 0) return QObject::tr("tout le contour");
     if (kind == SurfaceTargetKind::Wall)
     {
-        static const char* names[4] = { "pied", "extrémité de fin", "tête", "extrémité de début" };
+        // Contexte « QObject » : celui de QObject::tr() qui traduit ces noms à l'affichage.
+        static const char* names[4] = { QT_TRANSLATE_NOOP("QObject", "pied"), QT_TRANSLATE_NOOP("QObject", "extrémité de fin"),
+                                        QT_TRANSLATE_NOOP("QObject", "tête"), QT_TRANSLATE_NOOP("QObject", "extrémité de début") };
         return edge < 4 ? QObject::tr(names[edge]) : QObject::tr("bord %1").arg(edge + 1);
     }
     return QObject::tr("bord %1").arg(edge + 1);

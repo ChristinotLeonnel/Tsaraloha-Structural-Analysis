@@ -1,5 +1,7 @@
 #include "WindowManager.h"
+#include "UI/Theme/ThemedIcon.h"
 #include <QActionGroup>
+#include <QCoreApplication>
 #include <QInputDialog>
 #include <QMessageBox>
 
@@ -369,7 +371,7 @@ void WindowManager::populateWindowsMenu(QMenu* menu)
 
     for (const auto& profName : profiles)
     {
-        auto* act = layoutSubMenu->addAction(profName);
+        auto* act = layoutSubMenu->addAction(QCoreApplication::translate("TSA::UI::LayoutManager", profName.toUtf8().constData()));
         act->setCheckable(true);
         act->setChecked(profName == activeProfile);
         profileGroup->addAction(act);
@@ -389,7 +391,7 @@ void WindowManager::populateWindowsMenu(QMenu* menu)
     menu->addSeparator();
 
     // 3. Action "Réinitialiser la disposition"
-    auto* actReset = menu->addAction(QIcon(":/icons/edit/undo.svg"), tr("&Réinitialiser la disposition"));
+    auto* actReset = menu->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/edit/undo.svg")), tr("&Réinitialiser la disposition"));
     connect(actReset, &QAction::triggered, this, &WindowManager::resetLayout);
 
     // Mettre à jour l'état coché à chaque ouverture du menu

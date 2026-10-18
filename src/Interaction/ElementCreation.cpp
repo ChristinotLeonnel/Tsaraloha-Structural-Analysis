@@ -6,6 +6,9 @@
 
 #include <gp_Vec.hxx>
 
+#include <QCoreApplication>
+#include <QString>
+
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -45,19 +48,26 @@ std::vector<LinearItem> linearItems(const TSA::Model::Model& m, bool bars, bool 
     if (bars)
     {
         for (const auto& [id, e] : m.beams())
-            items.push_back({ (e.role() == TSA::Model::BarRole::Beam ? "la poutre B" : "la barre B") + std::to_string(id), e.startNodeId(), e.endNodeId() });
+            items.push_back({ (e.role() == TSA::Model::BarRole::Beam
+                                   ? QCoreApplication::translate("TSA::Interaction::ElementCreation", "la poutre B%1")
+                                   : QCoreApplication::translate("TSA::Interaction::ElementCreation", "la barre B%1"))
+                                  .arg(id).toStdString(), e.startNodeId(), e.endNodeId() });
         for (const auto& [id, e] : m.columns())
-            items.push_back({ "le poteau C" + std::to_string(id), e.startNodeId(), e.endNodeId() });
+            items.push_back({ QCoreApplication::translate("TSA::Interaction::ElementCreation", "le poteau C%1").arg(id).toStdString(),
+                              e.startNodeId(), e.endNodeId() });
     }
     if (truss)
         for (const auto& [id, e] : m.trussMembers())
-            items.push_back({ "la barre de treillis TR" + std::to_string(id), e.startNodeId(), e.endNodeId() });
+            items.push_back({ QCoreApplication::translate("TSA::Interaction::ElementCreation", "la barre de treillis TR%1").arg(id).toStdString(),
+                              e.startNodeId(), e.endNodeId() });
     if (cables)
         for (const auto& [id, e] : m.cables())
-            items.push_back({ "le câble CB" + std::to_string(id), e.startNodeId(), e.endNodeId() });
+            items.push_back({ QCoreApplication::translate("TSA::Interaction::ElementCreation", "le câble CB%1").arg(id).toStdString(),
+                              e.startNodeId(), e.endNodeId() });
     if (walls)
         for (const auto& [id, e] : m.walls())
-            items.push_back({ "le voile W" + std::to_string(id), e.startNodeId(), e.endNodeId() });
+            items.push_back({ QCoreApplication::translate("TSA::Interaction::ElementCreation", "le voile W%1").arg(id).toStdString(),
+                              e.startNodeId(), e.endNodeId() });
     return items;
 }
 
@@ -146,7 +156,9 @@ std::string ElementCreation::checkLinear(const DrawPoint& a, const DrawPoint& b)
 {
     const int na = existingNode(a), nb = existingNode(b);
     if ((na > 0 && na == nb) || position(a).Distance(position(b)) <= GeometryTolerance::nodeCoincidence)
-        return "Les deux extrémités sont confondues : un élément de longueur nulle n'est pas créé.";
+        return QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                           "Les deux extrémités sont confondues : un élément de longueur nulle n'est pas créé.")
+            .toStdString();
     return {};
 }
 
@@ -158,8 +170,9 @@ std::string ElementCreation::checkDuplicateLinear(LinearFamily family, const Dra
                                    family == LinearFamily::Cable, family == LinearFamily::Wall);
     for (const auto& it : items)
         if ((it.start == na && it.end == nb) || (it.start == nb && it.end == na))
-            return "N" + std::to_string(na) + " et N" + std::to_string(nb) + " sont déjà reliés par " + it.label
-                + " : élément en double non créé.";
+            return QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                               "N%1 et N%2 sont déjà reliés par %3 : élément en double non créé.")
+                .arg(na).arg(nb).arg(QString::fromStdString(it.label)).toStdString();
     return {};
 }
 
@@ -180,8 +193,11 @@ std::vector<std::string> ElementCreation::unconnectedWarnings(const std::vector<
             double u = 0.0, v = 0.0;
             closestParameters(p.point, p.point, s, e, u, v);
             if (v > interior && v < 1.0 - interior && lerp(s, e, v).Distance(p.point) <= tol)
-                warnings.push_back("Le point " + fmtPoint(p.point) + " est sur " + it.label
-                    + " sans nœud commun : aucune connexion n'est créée (outil Diviser ou Intersecter pour les relier).");
+                warnings.push_back(QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                       "Le point %1 est sur %2 sans nœud commun : aucune connexion n'est créée "
+                                       "(outil Diviser ou Intersecter pour les relier).")
+                                       .arg(QString::fromStdString(fmtPoint(p.point)), QString::fromStdString(it.label))
+                                       .toStdString());
         }
     }
 
@@ -198,8 +214,11 @@ std::vector<std::string> ElementCreation::unconnectedWarnings(const std::vector<
             closestParameters(a, b, s, e, u, v);
             const bool interiorBoth = u > interior && u < 1.0 - interior && v > interior && v < 1.0 - interior;
             if (interiorBoth && lerp(a, b, u).Distance(lerp(s, e, v)) <= tol)
-                warnings.push_back("L'élément croise " + it.label + " en " + fmtPoint(lerp(a, b, u))
-                    + " sans nœud commun : un croisement n'est pas une connexion (outil Intersecter pour les relier).");
+                warnings.push_back(QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                       "L'élément croise %1 en %2 sans nœud commun : un croisement n'est pas une "
+                                       "connexion (outil Intersecter pour les relier).")
+                                       .arg(QString::fromStdString(it.label), QString::fromStdString(fmtPoint(lerp(a, b, u))))
+                                       .toStdString());
         }
     }
     return warnings;
@@ -208,7 +227,8 @@ std::vector<std::string> ElementCreation::unconnectedWarnings(const std::vector<
 std::string ElementCreation::checkSlab(const std::vector<DrawPoint>& contour) const
 {
     if (contour.size() < 3)
-        return "Une dalle demande au moins 3 points de contour.";
+        return QCoreApplication::translate("TSA::Interaction::ElementCreation", "Une dalle demande au moins 3 points de contour.")
+            .toStdString();
 
     std::vector<gp_Pnt> pts;
     pts.reserve(contour.size());
@@ -218,8 +238,9 @@ std::string ElementCreation::checkSlab(const std::vector<DrawPoint>& contour) co
     for (size_t i = 0; i < pts.size(); ++i)
         for (size_t j = i + 1; j < pts.size(); ++j)
             if (pts[i].Distance(pts[j]) <= tol)
-                return "Les points " + std::to_string(i + 1) + " et " + std::to_string(j + 1)
-                    + " du contour sont confondus.";
+                return QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                                   "Les points %1 et %2 du contour sont confondus.")
+                    .arg(static_cast<qulonglong>(i + 1)).arg(static_cast<qulonglong>(j + 1)).toStdString();
 
     // Plan d'appui : trois points les plus écartés (indépendant du sens de parcours ; la normale de
     // Newell, elle, s'annule pour un contour croisé dont les deux boucles se compensent).
@@ -234,7 +255,9 @@ std::string ElementCreation::checkSlab(const std::vector<DrawPoint>& contour) co
         if (c.Magnitude() > normal.Magnitude()) normal = c;
     }
     if (normal.Magnitude() <= tol * p0.Distance(pts[farthest]))
-        return "Les points du contour sont alignés : la dalle n'a pas de surface.";
+        return QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                           "Les points du contour sont alignés : la dalle n'a pas de surface.")
+            .toStdString();
     normal.Normalize();
     gp_Pnt centroid(0, 0, 0);
     for (const auto& p : pts) centroid.SetXYZ(centroid.XYZ() + p.XYZ());
@@ -244,8 +267,9 @@ std::string ElementCreation::checkSlab(const std::vector<DrawPoint>& contour) co
     for (const auto& p : pts)
         maxDev = std::max(maxDev, std::abs(gp_Vec(centroid, p).Dot(normal)));
     if (maxDev > tol)
-        return "Le contour n'est pas plan : un point s'écarte de " + fmt(maxDev) + " m du plan moyen (tolérance "
-            + fmt(tol) + " m).";
+        return QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                           "Le contour n'est pas plan : un point s'écarte de %1 m du plan moyen (tolérance %2 m).")
+            .arg(QString::fromStdString(fmt(maxDev)), QString::fromStdString(fmt(tol))).toStdString();
 
     // Contour simple : aucun côté ne coupe un côté non adjacent (coordonnées dans le plan).
     gp_Vec ex = std::abs(normal.X()) < 0.9 ? gp_Vec(1, 0, 0) : gp_Vec(0, 1, 0);
@@ -269,8 +293,9 @@ std::string ElementCreation::checkSlab(const std::vector<DrawPoint>& contour) co
             const auto& [cx, cy] = uv[j];
             const auto& [dx, dy] = uv[(j + 1) % n];
             if (segmentsCross2d(ax, ay, bx, by, cx, cy, dx, dy))
-                return "Le contour se recoupe (côtés " + std::to_string(i + 1) + " et " + std::to_string(j + 1)
-                    + ") : tracez un polygone simple.";
+                return QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                                   "Le contour se recoupe (côtés %1 et %2) : tracez un polygone simple.")
+                    .arg(static_cast<qulonglong>(i + 1)).arg(static_cast<qulonglong>(j + 1)).toStdString();
         }
 
     // Doublon : une dalle existante sur exactement les mêmes nœuds.
@@ -283,7 +308,9 @@ std::string ElementCreation::checkSlab(const std::vector<DrawPoint>& contour) co
     }
     for (const auto& [id, s] : m_model.slabs())
         if (std::set<int>(s.nodeIds().begin(), s.nodeIds().end()) == ids)
-            return "La dalle S" + std::to_string(id) + " occupe déjà ce contour : dalle en double non créée.";
+            return QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                               "La dalle S%1 occupe déjà ce contour : dalle en double non créée.")
+                .arg(id).toStdString();
     return {};
 }
 
@@ -292,16 +319,18 @@ CreationResult ElementCreation::createNode(const DrawPoint& p)
     CreationResult r;
     if (const int id = existingNode(p); id > 0)
     {
-        r.message = "Le nœud N" + std::to_string(id) + " existe déjà à cet emplacement : aucun nœud créé.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                                "Le nœud N%1 existe déjà à cet emplacement : aucun nœud créé.")
+                        .arg(id).toStdString();
         return r;
     }
-    TSA::UndoRedo::EditTransaction tx(m_model, "Création Nœud");
+    TSA::UndoRedo::EditTransaction tx(m_model, QCoreApplication::translate("TSA::Interaction::ElementCreation", "Création Nœud").toStdString());
     const int id = resolveNode(p, r);
     if (id <= 0)
     {
         tx.rollback();
         r.createdNodeIds.clear();
-        r.message = "Le nœud n'a pas pu être créé.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation", "Le nœud n'a pas pu être créé.").toStdString();
         return r;
     }
     tx.commit();
@@ -318,15 +347,21 @@ CreationResult ElementCreation::createBar(const DrawPoint& a, const DrawPoint& b
     const bool column = props.role == TSA::Model::BarRole::Column;
     r.message = checkLinear(a, b);
     if (r.message.empty() && props.section.area() <= 0.0)
-        r.message = "La section « " + props.section.name + " » n'a pas d'aire : choisissez une section valide.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                                "La section « %1 » n'a pas d'aire : choisissez une section valide.")
+                        .arg(QString::fromStdString(props.section.name)).toStdString();
     if (r.message.empty() && props.material.E <= 0.0)
-        r.message = "Le matériau « " + props.material.name + " » n'a pas de module d'élasticité : choisissez un matériau valide.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                                "Le matériau « %1 » n'a pas de module d'élasticité : choisissez un matériau valide.")
+                        .arg(QString::fromStdString(props.material.name)).toStdString();
     if (r.message.empty()) r.message = checkDuplicateLinear(LinearFamily::Bar, a, b);
     if (!r.message.empty()) return r;
 
     const auto warnings = unconnectedWarnings({ a, b }, true);
-    const char* label = column ? "Création Poteau" : props.role == TSA::Model::BarRole::Beam ? "Création Poutre" : "Création Barre";
-    TSA::UndoRedo::EditTransaction tx(m_model, label);
+    const QString label = column ? QCoreApplication::translate("TSA::Interaction::ElementCreation", "Création Poteau")
+        : props.role == TSA::Model::BarRole::Beam ? QCoreApplication::translate("TSA::Interaction::ElementCreation", "Création Poutre")
+                                                  : QCoreApplication::translate("TSA::Interaction::ElementCreation", "Création Barre");
+    TSA::UndoRedo::EditTransaction tx(m_model, label.toStdString());
     const int s = resolveNode(a, r), e = resolveNode(b, r);
     int id = -1;
     if (s > 0 && e > 0)
@@ -345,7 +380,7 @@ CreationResult ElementCreation::createBar(const DrawPoint& a, const DrawPoint& b
     {
         tx.rollback();
         r = {};
-        r.message = "L'élément n'a pas pu être créé.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation", "L'élément n'a pas pu être créé.").toStdString();
         return r;
     }
     if (setup) setup(m_model, id);
@@ -363,12 +398,15 @@ CreationResult ElementCreation::createTrussMember(const DrawPoint& a, const Draw
     CreationResult r;
     r.message = checkLinear(a, b);
     if (r.message.empty() && preset.section.area() <= 0.0)
-        r.message = "La section de treillis n'a pas d'aire : réglez-la dans les préréglages.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                                "La section de treillis n'a pas d'aire : réglez-la dans les préréglages.")
+                        .toStdString();
     if (r.message.empty()) r.message = checkDuplicateLinear(LinearFamily::Truss, a, b);
     if (!r.message.empty()) return r;
 
     const auto warnings = unconnectedWarnings({ a, b }, true);
-    TSA::UndoRedo::EditTransaction tx(m_model, "Création Barre de Treillis");
+    TSA::UndoRedo::EditTransaction tx(m_model,
+        QCoreApplication::translate("TSA::Interaction::ElementCreation", "Création Barre de Treillis").toStdString());
     const int s = resolveNode(a, r), e = resolveNode(b, r);
     const int id = (s > 0 && e > 0) ? m_model.addTrussMember(s, e, preset.section.diameter, "", preset.role) : -1;
     auto* member = m_model.getTrussMember(id);
@@ -376,7 +414,8 @@ CreationResult ElementCreation::createTrussMember(const DrawPoint& a, const Draw
     {
         tx.rollback();
         r = {};
-        r.message = "La barre de treillis n'a pas pu être créée.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation", "La barre de treillis n'a pas pu être créée.")
+                        .toStdString();
         return r;
     }
     member->setSection(preset.section);
@@ -400,14 +439,14 @@ CreationResult ElementCreation::createCable(const DrawPoint& a, const DrawPoint&
     if (!r.message.empty()) return r;
 
     const auto warnings = unconnectedWarnings({ a, b }, true);
-    TSA::UndoRedo::EditTransaction tx(m_model, "Création Câble");
+    TSA::UndoRedo::EditTransaction tx(m_model, QCoreApplication::translate("TSA::Interaction::ElementCreation", "Création Câble").toStdString());
     const int s = resolveNode(a, r), e = resolveNode(b, r);
     const int id = (s > 0 && e > 0) ? m_model.addCable(s, e, type) : -1;
     if (id <= 0)
     {
         tx.rollback();
         r = {};
-        r.message = "Le câble n'a pas pu être créé.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation", "Le câble n'a pas pu être créé.").toStdString();
         return r;
     }
     if (setup) setup(m_model, id);
@@ -423,11 +462,13 @@ CreationResult ElementCreation::createSlab(const std::vector<DrawPoint>& contour
                                            const std::string& name, TSA::Model::SlabType type, const CreationSetup& setup)
 {
     CreationResult r;
-    r.message = preset.thickness > 0.0 ? checkSlab(contour) : "L'épaisseur de la dalle doit être positive.";
+    r.message = preset.thickness > 0.0
+        ? checkSlab(contour)
+        : QCoreApplication::translate("TSA::Interaction::ElementCreation", "L'épaisseur de la dalle doit être positive.").toStdString();
     if (!r.message.empty()) return r;
 
     const auto warnings = unconnectedWarnings(contour, false);
-    TSA::UndoRedo::EditTransaction tx(m_model, "Création Dalle");
+    TSA::UndoRedo::EditTransaction tx(m_model, QCoreApplication::translate("TSA::Interaction::ElementCreation", "Création Dalle").toStdString());
     std::vector<int> ids;
     for (const auto& p : contour)
     {
@@ -441,7 +482,7 @@ CreationResult ElementCreation::createSlab(const std::vector<DrawPoint>& contour
     {
         tx.rollback();
         r = {};
-        r.message = "La dalle n'a pas pu être créée.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation", "La dalle n'a pas pu être créée.").toStdString();
         return r;
     }
     slab->setMaterial(preset.material);
@@ -460,7 +501,9 @@ CreationResult ElementCreation::createWall(const DrawPoint& a, const DrawPoint& 
 {
     CreationResult r;
     if (preset.height <= 0.0 || preset.thickness <= 0.0)
-        r.message = "La hauteur et l'épaisseur du voile doivent être positives.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                                "La hauteur et l'épaisseur du voile doivent être positives.")
+                        .toStdString();
     if (r.message.empty()) r.message = checkLinear(a, b);
     if (r.message.empty()) r.message = checkDuplicateLinear(LinearFamily::Wall, a, b);
     if (!r.message.empty()) return r;
@@ -472,9 +515,11 @@ CreationResult ElementCreation::createWall(const DrawPoint& a, const DrawPoint& 
     auto warnings = unconnectedWarnings({ a, b }, false);
     const double dz = std::abs(position(a).Z() - position(b).Z());
     if (dz > GeometryTolerance::nodeCoincidence)
-        warnings.push_back("Base inclinée : les deux pieds du voile diffèrent de " + fmt(dz)
-            + " m en cote ; le voile est un parallélogramme (longueur en plan × hauteur). Vérifiez les niveaux visés.");
-    TSA::UndoRedo::EditTransaction tx(m_model, "Création Voile");
+        warnings.push_back(QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                               "Base inclinée : les deux pieds du voile diffèrent de %1 m en cote ; le voile est un "
+                               "parallélogramme (longueur en plan × hauteur). Vérifiez les niveaux visés.")
+                               .arg(QString::fromStdString(fmt(dz))).toStdString());
+    TSA::UndoRedo::EditTransaction tx(m_model, QCoreApplication::translate("TSA::Interaction::ElementCreation", "Création Voile").toStdString());
     const int s = resolveNode(a, r), e = resolveNode(b, r);
     const int id = (s > 0 && e > 0) ? m_model.addWall(s, e, preset.height, preset.thickness, name) : -1;
     auto* wall = m_model.getWall(id);
@@ -482,7 +527,7 @@ CreationResult ElementCreation::createWall(const DrawPoint& a, const DrawPoint& 
     {
         tx.rollback();
         r = {};
-        r.message = "Le voile n'a pas pu être créé.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation", "Le voile n'a pas pu être créé.").toStdString();
         return r;
     }
     wall->setOffset(preset.offset);
@@ -503,20 +548,23 @@ CreationResult ElementCreation::createFoundation(const DrawPoint& p, const TSA::
     CreationResult r;
     if (preset.widthA <= 0.0 || preset.lengthB <= 0.0 || preset.heightH <= 0.0)
     {
-        r.message = "Les dimensions de la semelle doivent être positives (préréglages).";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                                "Les dimensions de la semelle doivent être positives (préréglages).")
+                        .toStdString();
         return r;
     }
     if (const int node = existingNode(p); node > 0)
         for (const auto& [id, f] : m_model.foundations())
             if (f.nodeId() == node)
             {
-                r.message = "Le nœud N" + std::to_string(node) + " porte déjà la fondation F" + std::to_string(id)
-                    + " : fondation en double non créée.";
+                r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation",
+                                                        "Le nœud N%1 porte déjà la fondation F%2 : fondation en double non créée.")
+                                .arg(node).arg(id).toStdString();
                 return r;
             }
 
     const auto warnings = unconnectedWarnings({ p }, false);
-    TSA::UndoRedo::EditTransaction tx(m_model, "Création Fondation");
+    TSA::UndoRedo::EditTransaction tx(m_model, QCoreApplication::translate("TSA::Interaction::ElementCreation", "Création Fondation").toStdString());
     const int node = resolveNode(p, r);
     const int id = node > 0 ? m_model.addFoundation(node, preset.widthA, preset.lengthB, preset.heightH, "", preset.type) : -1;
     auto* f = m_model.getFoundation(id);
@@ -524,7 +572,7 @@ CreationResult ElementCreation::createFoundation(const DrawPoint& p, const TSA::
     {
         tx.rollback();
         r = {};
-        r.message = "La fondation n'a pas pu être créée.";
+        r.message = QCoreApplication::translate("TSA::Interaction::ElementCreation", "La fondation n'a pas pu être créée.").toStdString();
         return r;
     }
     f->setMaterial(preset.material);

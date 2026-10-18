@@ -30,7 +30,7 @@ enum class EntityFamily
 };
 
 const char* familyKey(EntityFamily f);           ///< clé JSON stable (« node », « beam »…)
-std::string familyDisplayName(EntityFamily f);   ///< libellé français
+std::string familyDisplayName(EntityFamily f);   ///< libellé affiché, traduit dans la langue de l'interface
 bool familyFromKey(const std::string& key, EntityFamily& out);
 
 /// Ordre de parcours des axes (permutation de X, Y, Z) et sens par axe.

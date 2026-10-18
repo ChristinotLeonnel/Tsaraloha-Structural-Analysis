@@ -1,4 +1,5 @@
 #include "../Interaction/Tools/ModelingTool.h"
+#include "UI/Theme/ThemedIcon.h"
 #include <QSignalBlocker>
 #include <QLineEdit>
 #include "../Project/ProjectManager.h"
@@ -62,96 +63,89 @@
 
 namespace
 {
-static inline QIcon makePlanIcon(const QColor&, const QColor&, const QColor&, const QString& l1, const QString& l2)
-{
-    if (l1 == "X" && l2 == "Y") return QIcon(":/icons/view/view_top.svg");
-    if (l1 == "X" && l2 == "Z") return QIcon(":/icons/view/view_front.svg");
-    if (l1 == "Y" && l2 == "Z") return QIcon(":/icons/view/view_side.svg");
-    return QIcon(":/icons/view/view_3d.svg");
-}
 
-static inline QIcon make3DIsoIcon() { return QIcon(":/icons/view/view_3d.svg"); }
-static inline QIcon makeCoordSystemIcon() { return QIcon(":/icons/view/coord_system.svg"); }
-static inline QIcon makeSectionCutIcon() { return QIcon(":/icons/view/section_cut.svg"); }
+static inline QIcon make3DIsoIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_3d.svg")); }
+static inline QIcon makeCoordSystemIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/view/coord_system.svg")); }
+static inline QIcon makeSectionCutIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/view/section_cut.svg")); }
 static inline QIcon makeThemeIcon(bool dark) { return QIcon(dark ? ":/icons/common/theme_dark.svg" : ":/icons/common/theme_light.svg"); }
-static inline QIcon makeHelpIcon() { return QIcon(":/icons/common/help.svg"); }
-static inline QIcon makeShortcutsIcon() { return QIcon(":/icons/common/shortcuts.svg"); }
-static inline QIcon makeAboutIcon() { return QIcon(":/icons/common/about.svg"); }
-static inline QIcon makeRotateIcon() { return QIcon(":/icons/edit/rotate.svg"); }
-static inline QIcon makeOriginMoveIcon() { return QIcon(":/icons/structure/struct_move.svg"); }
-static inline QIcon makeUndoIcon() { return QIcon(":/icons/edit/undo.svg"); }
-static inline QIcon makeRedoIcon() { return QIcon(":/icons/edit/redo.svg"); }
+static inline QIcon makeHelpIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/common/help.svg")); }
+static inline QIcon makeShortcutsIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/common/shortcuts.svg")); }
+static inline QIcon makeAboutIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/common/about.svg")); }
+static inline QIcon makeRotateIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/edit/rotate.svg")); }
+static inline QIcon makeOriginMoveIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/edit/move_origin.svg")); }
+static inline QIcon makeUndoIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/edit/undo.svg")); }
+static inline QIcon makeRedoIcon() { return TSA::UI::themedIcon(QStringLiteral(":/icons/edit/redo.svg")); }
 } // namespace
 
 void MainWindow::createActions()
 {
     // Actions Fichier
     m_actionNew = new QAction(tr("&Nouveau Projet"), this);
-    m_actionNew->setIcon(QIcon(":/icons/file_new.svg"));
+    m_actionNew->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")));
     m_actionNew->setToolTip(tr("Nouveau Projet (Ctrl+N)"));
     connect(m_actionNew, &QAction::triggered, this, &MainWindow::onActionNew);
 
     m_actionOpen = new QAction(tr("&Ouvrir..."), this);
-    m_actionOpen->setIcon(QIcon(":/icons/file_open.svg"));
+    m_actionOpen->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")));
     m_actionOpen->setToolTip(tr("Ouvrir un projet existant (Ctrl+O)"));
     connect(m_actionOpen, &QAction::triggered, this, &MainWindow::onActionOpen);
 
     m_actionSave = new QAction(tr("&Enregistrer"), this);
-    m_actionSave->setIcon(QIcon(":/icons/file_save.svg"));
+    m_actionSave->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file_save.svg")));
     m_actionSave->setToolTip(tr("Enregistrer le projet (Ctrl+S)"));
     connect(m_actionSave, &QAction::triggered, this, &MainWindow::onActionSave);
 
     m_actionSaveAs = new QAction(tr("Enregistrer &sous..."), this);
-    m_actionSaveAs->setIcon(QIcon(":/icons/file/file_save_as.svg"));
+    m_actionSaveAs->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file/file_save_as.svg")));
     m_actionSaveAs->setToolTip(tr("Enregistrer le projet sous un nouveau nom (Ctrl+Shift+S)"));
     connect(m_actionSaveAs, &QAction::triggered, this, &MainWindow::onActionSaveAs);
 
     m_actionCloseProject = new QAction(tr("&Fermer le projet"), this);
-    m_actionCloseProject->setIcon(QIcon(":/icons/file/file_close.svg"));
+    m_actionCloseProject->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file/file_close.svg")));
     m_actionCloseProject->setToolTip(tr("Fermer le projet et revenir au Start Center"));
     connect(m_actionCloseProject, &QAction::triggered, this, &MainWindow::closeProjectRequested);
 
     m_actionExit = new QAction(tr("&Quitter"), this);
-    m_actionExit->setIcon(QIcon(":/icons/file_exit.svg"));
+    m_actionExit->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file_exit.svg")));
     m_actionExit->setToolTip(tr("Quitter l'application (Alt+F4)"));
     connect(m_actionExit, &QAction::triggered, this, &MainWindow::exitRequested);
 
     // Actions Édition & Transformation
     m_actionMove = new QAction(tr("Translation &Numérique (Dialogue)..."), this);
-    m_actionMove->setIcon(QIcon(":/icons/move.svg"));
+    m_actionMove->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/move.svg")));
     m_actionMove->setToolTip(tr("Translation numérique par incréments dX, dY, dZ (Ctrl+Shift+M)..."));
     m_actionMove->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionMove, &QAction::triggered, this, &MainWindow::onActionMove);
 
     m_actionCopy = new QAction(tr("&Copie Numérique (Répétition)..."), this);
-    m_actionCopy->setIcon(QIcon(":/icons/copy.svg"));
+    m_actionCopy->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/edit/copy_array.svg")));
     m_actionCopy->setToolTip(tr("Copie numérique paramétrique avec répétitions multiples (Ctrl+D)..."));
     m_actionCopy->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionCopy, &QAction::triggered, this, &MainWindow::onActionCopy);
 
     m_actionDelete = new QAction(tr("&Supprimer"), this);
-    m_actionDelete->setIcon(QIcon(":/icons/delete.svg"));
+    m_actionDelete->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/delete.svg")));
     m_actionDelete->setToolTip(tr("Supprimer les éléments sélectionnés (Suppr)"));
     connect(m_actionDelete, &QAction::triggered, this, &MainWindow::onActionDeleteSelected);
 
     m_actionSelectAll = new QAction(tr("&Tout Sélectionner"), this);
-    m_actionSelectAll->setIcon(QIcon(":/icons/edit/select_all.svg"));
+    m_actionSelectAll->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/edit/select_all.svg")));
     m_actionSelectAll->setToolTip(tr("Sélectionner tous les éléments du modèle (Ctrl+A)"));
     connect(m_actionSelectAll, &QAction::triggered, this, &MainWindow::onActionSelectAll);
 
     // Actions Vues et Projections
     m_actionViewXY = new QAction(tr("Plan &XY (Vue d'étage)"), this);
-    m_actionViewXY->setIcon(makePlanIcon(QColor(255, 140, 140), Qt::blue, Qt::darkGreen, "X", "Y"));
+    m_actionViewXY->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/plan_xy.svg")));
     m_actionViewXY->setToolTip(tr("Plan 2D XY : vue orthographique perpendiculaire au niveau actif, dessin dans ce plan"));
     connect(m_actionViewXY, &QAction::triggered, this, &MainWindow::onActionViewXY);
 
     m_actionViewYZ = new QAction(tr("Plan &YZ (Coupe latérale / Pignon)"), this);
-    m_actionViewYZ->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
+    m_actionViewYZ->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/plan_yz.svg")));
     m_actionViewYZ->setToolTip(tr("Élévation 2D YZ : vue orthographique de côté, dessin dans le plan YZ"));
     connect(m_actionViewYZ, &QAction::triggered, this, &MainWindow::onActionViewYZ);
 
     m_actionViewXZ = new QAction(tr("Plan &XZ (Élévation de face / Portique)"), this);
-    m_actionViewXZ->setIcon(makePlanIcon(QColor(140, 230, 160), Qt::blue, Qt::red, "X", "Z"));
+    m_actionViewXZ->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/plan_xz.svg")));
     m_actionViewXZ->setToolTip(tr("Élévation 2D XZ : vue orthographique de face, dessin dans le plan XZ"));
     connect(m_actionViewXZ, &QAction::triggered, this, &MainWindow::onActionViewXZ);
 
@@ -172,94 +166,94 @@ void MainWindow::createActions()
     connect(m_actionSectionCut, &QAction::triggered, this, &MainWindow::onActionSectionCut);
 
     m_actionFitAll = new QAction(tr("&Zoom Étendu (Fit All)"), this);
-    m_actionFitAll->setIcon(QIcon(":/icons/fit_all.svg"));
+    m_actionFitAll->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/fit_all.svg")));
     m_actionFitAll->setToolTip(tr("Ajuster la vue à l'ensemble du modèle (F)"));
     connect(m_actionFitAll, &QAction::triggered, this, &MainWindow::onFitAll);
 
     m_actionResetView = new QAction(tr("&Réinitialiser Vue"), this);
-    m_actionResetView->setIcon(QIcon(":/icons/view_iso.svg"));
+    m_actionResetView->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_reset.svg")));
     m_actionResetView->setToolTip(tr("Réinitialiser l'orientation de caméra 3D (R)"));
     connect(m_actionResetView, &QAction::triggered, this, &MainWindow::onResetView);
 
     m_actionFitSelection = new QAction(tr("Zoom &Sélection (Fit Selection)"), this);
-    m_actionFitSelection->setIcon(QIcon(":/icons/fit_all.svg"));
+    m_actionFitSelection->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/fit_selection.svg")));
     m_actionFitSelection->setToolTip(tr("Cadrer la vue sur les éléments sélectionnés (Maj+F)"));
     connect(m_actionFitSelection, &QAction::triggered, this, &MainWindow::onFitSelection);
 
     m_actionZoomIn = new QAction(tr("Zoom &Avant (+)"), this);
-    m_actionZoomIn->setIcon(QIcon(":/icons/zoom_in.svg"));
+    m_actionZoomIn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/zoom_in.svg")));
     m_actionZoomIn->setToolTip(tr("Agrandir la vue (+)"));
     connect(m_actionZoomIn, &QAction::triggered, this, &MainWindow::onZoomIn);
 
     m_actionZoomOut = new QAction(tr("Zoom A&rrière (-)"), this);
-    m_actionZoomOut->setIcon(QIcon(":/icons/zoom_out.svg"));
+    m_actionZoomOut->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/zoom_out.svg")));
     m_actionZoomOut->setToolTip(tr("Réduire la vue (-)"));
     connect(m_actionZoomOut, &QAction::triggered, this, &MainWindow::onZoomOut);
 
     m_actionZoomWindow = new QAction(tr("Zoom &Fenêtre"), this);
-    m_actionZoomWindow->setIcon(QIcon(":/icons/zoom_window.svg"));
+    m_actionZoomWindow->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/zoom_window.svg")));
     m_actionZoomWindow->setToolTip(tr("Agrandir une région rectangulaire par glisser-déposer"));
     connect(m_actionZoomWindow, &QAction::triggered, this, &MainWindow::onZoomWindow);
 
     m_actionRotateLeft = new QAction(tr("Pivoter Vue 2D &Gauche (-15°)"), this);
-    m_actionRotateLeft->setIcon(QIcon(":/icons/edit/rotate.svg"));
+    m_actionRotateLeft->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/rotate_ccw.svg")));
     m_actionRotateLeft->setToolTip(tr("Pivoter la vue de 15° vers la gauche"));
     connect(m_actionRotateLeft, &QAction::triggered, this, &MainWindow::onRotate2DLeft);
 
     m_actionRotateRight = new QAction(tr("Pivoter Vue 2D &Droite (+15°)"), this);
-    m_actionRotateRight->setIcon(QIcon(":/icons/edit/rotate.svg"));
+    m_actionRotateRight->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/rotate_cw.svg")));
     m_actionRotateRight->setToolTip(tr("Pivoter la vue de 15° vers la droite"));
     connect(m_actionRotateRight, &QAction::triggered, this, &MainWindow::onRotate2DRight);
 
     m_actionPreviousView = new QAction(tr("Vue &Précédente"), this);
-    m_actionPreviousView->setIcon(QIcon(":/icons/edit/undo.svg"));
+    m_actionPreviousView->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_previous.svg")));
     m_actionPreviousView->setToolTip(tr("Revenir à la vue de caméra précédente (Alt+Gauche)"));
     m_actionPreviousView->setEnabled(false);
     connect(m_actionPreviousView, &QAction::triggered, this, &MainWindow::onPreviousView);
 
     m_actionNextView = new QAction(tr("Vue &Suivante"), this);
-    m_actionNextView->setIcon(QIcon(":/icons/edit/redo.svg"));
+    m_actionNextView->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_next.svg")));
     m_actionNextView->setToolTip(tr("Rétablir la vue de caméra suivante (Alt+Droite)"));
     m_actionNextView->setEnabled(false);
     connect(m_actionNextView, &QAction::triggered, this, &MainWindow::onNextView);
 
     m_actionViewHome = new QAction(tr("Vue d'&Accueil (Home)"), this);
-    m_actionViewHome->setIcon(QIcon(":/icons/view_iso.svg"));
+    m_actionViewHome->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_home.svg")));
     m_actionViewHome->setToolTip(tr("Réorienter la caméra en vue d'accueil 3D (Home)"));
     connect(m_actionViewHome, &QAction::triggered, this, &MainWindow::onActionViewHome);
 
     m_actionViewTop = new QAction(tr("Vue de &Dessus (Top)"), this);
-    m_actionViewTop->setIcon(makePlanIcon(QColor(255, 140, 140), Qt::blue, Qt::darkGreen, "X", "Y"));
+    m_actionViewTop->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_top.svg")));
     m_actionViewTop->setToolTip(tr("Orienter la vue de dessus (Plan XY, +Z) (Num7)"));
     connect(m_actionViewTop, &QAction::triggered, this, &MainWindow::onActionViewTop);
 
     m_actionViewBottom = new QAction(tr("Vue de Dessou&s (Bottom)"), this);
-    m_actionViewBottom->setIcon(makePlanIcon(QColor(200, 200, 200), Qt::blue, Qt::darkGreen, "X", "Y"));
+    m_actionViewBottom->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_bottom.svg")));
     m_actionViewBottom->setToolTip(tr("Orienter la vue de dessous (-Z) (Ctrl+Num7)"));
     connect(m_actionViewBottom, &QAction::triggered, this, &MainWindow::onActionViewBottom);
 
     m_actionViewFront = new QAction(tr("Vue de &Face (Front)"), this);
-    m_actionViewFront->setIcon(makePlanIcon(QColor(140, 230, 160), Qt::blue, Qt::red, "X", "Z"));
+    m_actionViewFront->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_front.svg")));
     m_actionViewFront->setToolTip(tr("Orienter la vue de face (Élévation XZ, -Y) (Num1)"));
     connect(m_actionViewFront, &QAction::triggered, this, &MainWindow::onActionViewFront);
 
     m_actionViewBack = new QAction(tr("Vue Arriè&re (Back)"), this);
-    m_actionViewBack->setIcon(makePlanIcon(QColor(140, 200, 160), Qt::blue, Qt::red, "X", "Z"));
+    m_actionViewBack->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_back.svg")));
     m_actionViewBack->setToolTip(tr("Orienter la vue arrière (+Y) (Ctrl+Num1)"));
     connect(m_actionViewBack, &QAction::triggered, this, &MainWindow::onActionViewBack);
 
     m_actionViewLeft = new QAction(tr("Vue &Gauche (Left)"), this);
-    m_actionViewLeft->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
+    m_actionViewLeft->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_left.svg")));
     m_actionViewLeft->setToolTip(tr("Orienter la vue gauche (-X) (Num3)"));
     connect(m_actionViewLeft, &QAction::triggered, this, &MainWindow::onActionViewLeft);
 
     m_actionViewRight = new QAction(tr("Vue &Droite (Right)"), this);
-    m_actionViewRight->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
+    m_actionViewRight->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_side.svg")));
     m_actionViewRight->setToolTip(tr("Orienter la vue droite (+X) (Ctrl+Num3)"));
     connect(m_actionViewRight, &QAction::triggered, this, &MainWindow::onActionViewRight);
 
     m_actionViewIsometric = new QAction(tr("Vue &Isométrique"), this);
-    m_actionViewIsometric->setIcon(make3DIsoIcon());
+    m_actionViewIsometric->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_iso.svg")));
     m_actionViewIsometric->setToolTip(tr("Orienter la vue en projection axonométrique isométrique (Num5)"));
     connect(m_actionViewIsometric, &QAction::triggered, this, &MainWindow::onActionViewIsometric);
 
@@ -267,7 +261,7 @@ void MainWindow::createActions()
     m_workPlaneGroup->setExclusive(true);
 
     m_actionWorkPlaneXY = new QAction(tr("Plan de Travail &XY"), this);
-    m_actionWorkPlaneXY->setIcon(QIcon(":/icons/view_top.svg"));
+    m_actionWorkPlaneXY->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_xy.svg")));
     m_actionWorkPlaneXY->setToolTip(tr("Définir le plan de travail horizontal (Global XY, Z=0)"));
     m_actionWorkPlaneXY->setCheckable(true);
     m_actionWorkPlaneXY->setChecked(true);
@@ -275,65 +269,71 @@ void MainWindow::createActions()
     m_workPlaneGroup->addAction(m_actionWorkPlaneXY);
 
     m_actionWorkPlaneLevel = new QAction(tr("Plan de Travail sur &Étage"), this);
-    m_actionWorkPlaneLevel->setIcon(QIcon(":/icons/levels.svg"));
+    m_actionWorkPlaneLevel->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_level.svg")));
     m_actionWorkPlaneLevel->setToolTip(tr("Aligner le plan de travail horizontal sur l'altitude de l'étage actif"));
     m_actionWorkPlaneLevel->setCheckable(true);
     connect(m_actionWorkPlaneLevel, &QAction::triggered, this, &MainWindow::onWorkPlaneLevel);
     m_workPlaneGroup->addAction(m_actionWorkPlaneLevel);
 
     m_actionWorkPlaneXZ = new QAction(tr("Plan de Travail &XZ"), this);
-    m_actionWorkPlaneXZ->setIcon(QIcon(":/icons/view_front.svg"));
+    m_actionWorkPlaneXZ->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_xz.svg")));
     m_actionWorkPlaneXZ->setToolTip(tr("Définir le plan de travail vertical frontal (Global XZ, Façade)"));
     m_actionWorkPlaneXZ->setCheckable(true);
     connect(m_actionWorkPlaneXZ, &QAction::triggered, this, &MainWindow::onWorkPlaneXZ);
     m_workPlaneGroup->addAction(m_actionWorkPlaneXZ);
 
     m_actionWorkPlaneYZ = new QAction(tr("Plan de Travail &YZ"), this);
-    m_actionWorkPlaneYZ->setIcon(QIcon(":/icons/view_right.svg"));
+    m_actionWorkPlaneYZ->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_yz.svg")));
     m_actionWorkPlaneYZ->setToolTip(tr("Définir le plan de travail vertical latéral (Global YZ, Pignon)"));
     m_actionWorkPlaneYZ->setCheckable(true);
     connect(m_actionWorkPlaneYZ, &QAction::triggered, this, &MainWindow::onWorkPlaneYZ);
     m_workPlaneGroup->addAction(m_actionWorkPlaneYZ);
 
     m_actionWorkPlaneCustom = new QAction(tr("Plan de Travail &Personnalisé..."), this);
-    m_actionWorkPlaneCustom->setIcon(QIcon(":/icons/settings.svg"));
+    m_actionWorkPlaneCustom->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_custom.svg")));
     m_actionWorkPlaneCustom->setToolTip(tr("Définir un plan de travail personnalisé (3 points, décalage, options 3D)..."));
     connect(m_actionWorkPlaneCustom, &QAction::triggered, this, &MainWindow::onActionWorkPlaneCustom);
 
     m_actionWorkPlaneVisible = new QAction(tr("Afficher le &Plan de Travail 3D"), this);
-    m_actionWorkPlaneVisible->setIcon(QIcon(":/icons/view_home.svg"));
+    m_actionWorkPlaneVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_visible.svg")));
     m_actionWorkPlaneVisible->setToolTip(tr("Afficher ou masquer la trame et le panneau 3D du plan de travail actif"));
     m_actionWorkPlaneVisible->setCheckable(true);
     m_actionWorkPlaneVisible->setChecked(true);
     connect(m_actionWorkPlaneVisible, &QAction::toggled, this, &MainWindow::onActionToggleWorkPlaneVisible);
 
     m_actionViewNormalToPlane = new QAction(tr("&Vue Normale au Plan"), this);
-    m_actionViewNormalToPlane->setIcon(QIcon(":/icons/view_iso.svg"));
+    m_actionViewNormalToPlane->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_normal.svg")));
     m_actionViewNormalToPlane->setToolTip(tr("Orienter la caméra perpendiculairement au plan de travail actif"));
     connect(m_actionViewNormalToPlane, &QAction::triggered, this, &MainWindow::onActionViewNormalToPlane);
 
     m_actionNamedViews = new QAction(tr("Vues nommées…"), this);
-    m_actionNamedViews->setIcon(QIcon(":/icons/tools/input_viewport.svg"));
+    m_actionNamedViews->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/named_views.svg")));
     m_actionNamedViews->setToolTip(tr("Enregistrer, restaurer, renommer ou supprimer les vues nommées du projet (caméra, mode 2D, plan de travail)"));
     connect(m_actionNamedViews, &QAction::triggered, this, &MainWindow::onActionNamedViews);
 
     // Navigation du plan de travail sur la grille structurelle (menu Affichage › Plans de travail, raccourcis, commandes)
     m_actionWorkPlaneNextRef = new QAction(tr("Plan de travail suivant"), this);
+    m_actionWorkPlaneNextRef->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_next.svg")));
     m_actionWorkPlaneNextRef->setToolTip(tr("Plan parallèle suivant passant par des intersections de la grille (niveau, axe)"));
     connect(m_actionWorkPlaneNextRef, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->stepWorkPlaneAlongNormal(1)); });
     m_actionWorkPlanePrevRef = new QAction(tr("Plan de travail précédent (grille)"), this);
+    m_actionWorkPlanePrevRef->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_prev.svg")));
     m_actionWorkPlanePrevRef->setToolTip(tr("Plan parallèle précédent passant par des intersections de la grille (niveau, axe)"));
     connect(m_actionWorkPlanePrevRef, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->stepWorkPlaneAlongNormal(-1)); });
     m_actionWorkPlaneNextInter = new QAction(tr("Intersection suivante"), this);
+    m_actionWorkPlaneNextInter->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/intersection_next.svg")));
     m_actionWorkPlaneNextInter->setToolTip(tr("Origine du plan de travail sur l'intersection suivante de la grille"));
     connect(m_actionWorkPlaneNextInter, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->stepWorkPlaneIntersection(1)); });
     m_actionWorkPlanePrevInter = new QAction(tr("Intersection précédente"), this);
+    m_actionWorkPlanePrevInter->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/intersection_prev.svg")));
     m_actionWorkPlanePrevInter->setToolTip(tr("Origine du plan de travail sur l'intersection précédente de la grille"));
     connect(m_actionWorkPlanePrevInter, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->stepWorkPlaneIntersection(-1)); });
     m_actionWorkPlaneAlignInter = new QAction(tr("Aligner sur l'intersection"), this);
+    m_actionWorkPlaneAlignInter->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/intersection_align.svg")));
     m_actionWorkPlaneAlignInter->setToolTip(tr("Origine du plan de travail sur l'intersection de la grille la plus proche du curseur"));
     connect(m_actionWorkPlaneAlignInter, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->alignWorkPlaneOriginToCursorIntersection()); });
     m_actionWorkPlaneBack = new QAction(tr("Revenir au plan de travail précédent"), this);
+    m_actionWorkPlaneBack->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/workplane_back.svg")));
     m_actionWorkPlaneBack->setToolTip(tr("Plan de travail précédent (historique)"));
     connect(m_actionWorkPlaneBack, &QAction::triggered, this, [this] {
         if (m_occView) reportWorkPlaneNavigation(m_occView->previousWorkPlane() ? tr("Plan de travail précédent rétabli : %1").arg(QString::fromStdString(m_occView->activeWorkPlane().name())) : QString(),
@@ -342,84 +342,85 @@ void MainWindow::createActions()
 
     // Actions Grilles & Niveaux
     m_actionNewGrid = new QAction(tr("&Nouvelle Grille 3D..."), this);
-    m_actionNewGrid->setIcon(QIcon(":/icons/grid_cartesian.svg"));
+    m_actionNewGrid->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/grid_new.svg")));
     m_actionNewGrid->setToolTip(tr("Créer une nouvelle grille paramétrique 3D (Cartésienne ou Cylindrique)..."));
     connect(m_actionNewGrid, &QAction::triggered, this, &MainWindow::onNewGrid);
 
     m_actionGridManager = new QAction(tr("&Gestionnaire de Grilles..."), this);
-    m_actionGridManager->setIcon(QIcon(":/icons/settings.svg"));
+    m_actionGridManager->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/grid_manager.svg")));
     m_actionGridManager->setToolTip(tr("Gérer les grilles, plan actif, visibilité et magnétisme..."));
     connect(m_actionGridManager, &QAction::triggered, this, &MainWindow::onGridManagerDialog);
 
     m_actionManageLevels = new QAction(tr("Gestion des &Étages / Niveaux..."), this);
-    m_actionManageLevels->setIcon(QIcon(":/icons/levels.svg"));
+    m_actionManageLevels->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/levels.svg")));
     m_actionManageLevels->setToolTip(tr("Gérer les hauteurs d'étages, niveaux altimétriques et liaisons verticales (Ctrl+L)..."));
     connect(m_actionManageLevels, &QAction::triggered, this, &MainWindow::onManageLevels);
 
     m_actionGridVisible = new QAction(tr("&Afficher Grille 3D"), this);
-    m_actionGridVisible->setIcon(QIcon(":/icons/grid_cartesian.svg"));
+    m_actionGridVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/grid_visible.svg")));
     m_actionGridVisible->setToolTip(tr("Activer ou masquer la grille 3D (G / F7)"));
     m_actionGridVisible->setCheckable(true);
     m_actionGridVisible->setChecked(true);
     connect(m_actionGridVisible, &QAction::toggled, this, &MainWindow::onToggleGridVisible);
 
     m_actionLevelsVisible = new QAction(tr("Afficher Plans d'&Étages"), this);
-    m_actionLevelsVisible->setIcon(QIcon(":/icons/levels.svg"));
+    m_actionLevelsVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/levels_visible.svg")));
     m_actionLevelsVisible->setToolTip(tr("Afficher ou masquer les plans 3D des étages et marqueurs altimétriques"));
     m_actionLevelsVisible->setCheckable(true);
     m_actionLevelsVisible->setChecked(true);
     connect(m_actionLevelsVisible, &QAction::toggled, this, &MainWindow::onToggleLevelsVisible);
 
     m_actionGridSnap = new QAction(tr("&Magnétisme Grille (Snap)"), this);
-    m_actionGridSnap->setIcon(QIcon(":/icons/snap.svg"));
+    m_actionGridSnap->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/snap_grid.svg")));
     m_actionGridSnap->setToolTip(tr("Accrochage magnétique du curseur aux intersections de grille (S)"));
     m_actionGridSnap->setCheckable(true);
     m_actionGridSnap->setChecked(true);
     connect(m_actionGridSnap, &QAction::toggled, this, &MainWindow::onToggleGridSnap);
 
     m_actionObjectSnap = new QAction(tr("Accrochage &Objets (OSNAP)"), this);
-    m_actionObjectSnap->setIcon(QIcon(":/icons/view/snap.svg"));
+    m_actionObjectSnap->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/snap_object.svg")));
     m_actionObjectSnap->setToolTip(tr("Accrochage magnétique intelligent aux nœuds, milieux et extrémités (F3)"));
     m_actionObjectSnap->setCheckable(true);
     m_actionObjectSnap->setChecked(true);
     connect(m_actionObjectSnap, &QAction::toggled, this, &MainWindow::onToggleObjectSnap);
 
     m_actionGridLabels = new QAction(tr("Afficher Libellés d'&Axes"), this);
-    m_actionGridLabels->setIcon(QIcon(":/icons/grid_labels.svg"));
+    m_actionGridLabels->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/grid_labels.svg")));
     m_actionGridLabels->setToolTip(tr("Afficher ou masquer les bulles d'axes et libellés en 3D"));
     m_actionGridLabels->setCheckable(true);
     m_actionGridLabels->setChecked(true);
     connect(m_actionGridLabels, &QAction::toggled, this, &MainWindow::onToggleGridLabels);
 
     m_actionNodesVisible = new QAction(tr("Afficher les &Nœuds"), this);
-    m_actionNodesVisible->setIcon(QIcon(":/icons/draw_node.svg"));
+    m_actionNodesVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/nodes_visible.svg")));
     m_actionNodesVisible->setToolTip(tr("Afficher ou masquer les nœuds du modèle dans la vue 3D"));
     m_actionNodesVisible->setCheckable(true);
     m_actionNodesVisible->setChecked(true);
     connect(m_actionNodesVisible, &QAction::toggled, this, &MainWindow::onToggleNodesVisible);
 
     m_actionNodeLabelsVisible = new QAction(tr("Afficher les Numéros de &Nœuds"), this);
-    m_actionNodeLabelsVisible->setIcon(QIcon(":/icons/grid_labels.svg"));
+    m_actionNodeLabelsVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/node_labels.svg")));
     m_actionNodeLabelsVisible->setToolTip(tr("Afficher ou masquer les numéros et labels des nœuds (N1, N2...) en 3D"));
     m_actionNodeLabelsVisible->setCheckable(true);
     m_actionNodeLabelsVisible->setChecked(false);
     connect(m_actionNodeLabelsVisible, &QAction::toggled, this, &MainWindow::onToggleNodeLabelsVisible);
 
     m_actionSupportsVisible = new QAction(tr("Afficher les &Appuis 3D"), this);
-    m_actionSupportsVisible->setIcon(QIcon(":/icons/draw_node.svg"));
+    m_actionSupportsVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/supports_visible.svg")));
     m_actionSupportsVisible->setToolTip(tr("Afficher ou masquer les appuis structuraux (encastrements, rotules, rouleaux, ressorts)"));
     m_actionSupportsVisible->setCheckable(true);
     m_actionSupportsVisible->setChecked(true);
     connect(m_actionSupportsVisible, &QAction::toggled, this, &MainWindow::onToggleSupportsVisible);
 
     m_actionSupportLabelsVisible = new QAction(tr("Afficher les &Étiquettes d'Appuis"), this);
+    m_actionSupportLabelsVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/support_labels.svg")));
     m_actionSupportLabelsVisible->setToolTip(tr("Afficher ou masquer les étiquettes textuelles des appuis 3D"));
     m_actionSupportLabelsVisible->setCheckable(true);
     m_actionSupportLabelsVisible->setChecked(false);
     connect(m_actionSupportLabelsVisible, &QAction::toggled, this, &MainWindow::onToggleSupportLabelsVisible);
 
     m_actionLoadsVisible = new QAction(tr("Afficher les &Charges 3D"), this);
-    m_actionLoadsVisible->setIcon(QIcon(":/icons/load_dist.svg"));
+    m_actionLoadsVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/loads_visible.svg")));
     m_actionLoadsVisible->setToolTip(tr("Afficher ou masquer les représentations et flèches 3D des charges"));
     m_actionLoadsVisible->setCheckable(true);
     m_actionLoadsVisible->setChecked(true);
@@ -427,7 +428,7 @@ void MainWindow::createActions()
 
     m_actionBimGeometryVisible = new QAction(tr("Objets &IFC importés"), this);
     m_actionBimGeometryVisible->setObjectName("actionBimGeometryVisible");
-    m_actionBimGeometryVisible->setIcon(QIcon(":/icons/visibility.svg"));
+    m_actionBimGeometryVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/visibility.svg")));
     m_actionBimGeometryVisible->setToolTip(tr("Afficher ou masquer dans la vue 3D les objets IFC importés sans élément de calcul "
                                               "(murs, fenêtres, mobilier…) ; masquer ne les retire pas du projet"));
     m_actionBimGeometryVisible->setCheckable(true);
@@ -435,35 +436,35 @@ void MainWindow::createActions()
     connect(m_actionBimGeometryVisible, &QAction::toggled, this, &MainWindow::onToggleBimGeometryVisible);
 
     m_actionForcesVisible = new QAction(tr("Afficher les &Forces 3D"), this);
-    m_actionForcesVisible->setIcon(QIcon(":/icons/load_point.svg"));
+    m_actionForcesVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/load_point.svg")));
     m_actionForcesVisible->setToolTip(tr("Afficher ou masquer les flèches 3D de forces (Fx, Fy, Fz)"));
     m_actionForcesVisible->setCheckable(true);
     m_actionForcesVisible->setChecked(true);
     connect(m_actionForcesVisible, &QAction::toggled, this, &MainWindow::onToggleForcesVisible);
 
     m_actionMomentsVisible = new QAction(tr("Afficher les &Moments 3D"), this);
-    m_actionMomentsVisible->setIcon(QIcon(":/icons/load_moment.svg"));
+    m_actionMomentsVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/load_moment.svg")));
     m_actionMomentsVisible->setToolTip(tr("Afficher ou masquer les arcs 3D orientés de moments (Mx, My, Mz)"));
     m_actionMomentsVisible->setCheckable(true);
     m_actionMomentsVisible->setChecked(true);
     connect(m_actionMomentsVisible, &QAction::toggled, this, &MainWindow::onToggleMomentsVisible);
 
     m_actionLoadValuesVisible = new QAction(tr("Afficher les &Valeurs des Charges"), this);
-    m_actionLoadValuesVisible->setIcon(QIcon(":/icons/results_forces.svg"));
+    m_actionLoadValuesVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/load_values.svg")));
     m_actionLoadValuesVisible->setToolTip(tr("Afficher ou masquer les étiquettes de valeurs des charges (kN, kNm) en 3D"));
     m_actionLoadValuesVisible->setCheckable(true);
     m_actionLoadValuesVisible->setChecked(true);
     connect(m_actionLoadValuesVisible, &QAction::toggled, this, &MainWindow::onToggleLoadValuesVisible);
 
     m_actionRulersVisible = new QAction(tr("Afficher &Règles Graduées"), this);
-    m_actionRulersVisible->setIcon(QIcon(":/icons/rulers.svg"));
+    m_actionRulersVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/rulers.svg")));
     m_actionRulersVisible->setToolTip(tr("Afficher ou masquer les règles graduées du viewport"));
     m_actionRulersVisible->setCheckable(true);
     m_actionRulersVisible->setChecked(true);
     connect(m_actionRulersVisible, &QAction::toggled, this, &MainWindow::onToggleRulersVisible);
 
     m_actionFullScreen = new QAction(tr("Mode &Plein écran"), this);
-    m_actionFullScreen->setIcon(QIcon(":/icons/fullscreen.svg"));
+    m_actionFullScreen->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/fullscreen.svg")));
     m_actionFullScreen->setToolTip(tr("Basculer en mode plein écran (F11)"));
     m_actionFullScreen->setCheckable(true);
     connect(m_actionFullScreen, &QAction::toggled, this, &MainWindow::onToggleFullScreen);
@@ -477,7 +478,7 @@ void MainWindow::createActions()
     connect(m_drawModeGroup, &QActionGroup::triggered, this, [this] { syncToolActionStates(); });
 
     m_actionSelectMode = new QAction(tr("&Sélection"), this);
-    m_actionSelectMode->setIcon(QIcon(":/icons/select.svg"));
+    m_actionSelectMode->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/select.svg")));
     m_actionSelectMode->setToolTip(tr("Mode Sélection - Sélection par clic ou fenêtre (Échap)"));
     m_actionSelectMode->setCheckable(true);
     m_actionSelectMode->setChecked(true);
@@ -486,7 +487,7 @@ void MainWindow::createActions()
     m_drawModeGroup->addAction(m_actionSelectMode);
 
     m_actionDrawNode = new QAction(tr("Dessiner &Nœud"), this);
-    m_actionDrawNode->setIcon(QIcon(":/icons/draw_node.svg"));
+    m_actionDrawNode->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_node.svg")));
     m_actionDrawNode->setToolTip(tr("Dessiner un Nœud en 3D (N)"));
     m_actionDrawNode->setCheckable(true);
     m_actionDrawNode->setStatusTip(tr("Cliquez en 3D ou sur la grille pour créer un Nœud (N)"));
@@ -494,14 +495,14 @@ void MainWindow::createActions()
     m_drawModeGroup->addAction(m_actionDrawNode);
 
     m_actionDrawBar = new QAction(tr("Outil &Barres"), this);
-    m_actionDrawBar->setIcon(QIcon(":/icons/modeling/draw_bar.svg"));
+    m_actionDrawBar->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/draw_bar.svg")));
     m_actionDrawBar->setToolTip(tr("Outil Barres (style Robot Structural Analysis) : définition et dessin direct en 3D"));
     m_actionDrawBar->setCheckable(true);
     connect(m_actionDrawBar, &QAction::triggered, this, &MainWindow::onModeDrawBar);
     m_drawModeGroup->addAction(m_actionDrawBar);
 
     m_actionDrawBeam = new QAction(tr("Dessiner &Poutre"), this);
-    m_actionDrawBeam->setIcon(QIcon(":/icons/draw_beam.svg"));
+    m_actionDrawBeam->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_beam.svg")));
     m_actionDrawBeam->setToolTip(tr("Dessiner une Poutre (B)"));
     m_actionDrawBeam->setCheckable(true);
     m_actionDrawBeam->setStatusTip(tr("Ouvre l'interface filaire préconfigurée en mode Poutre (B)"));
@@ -509,7 +510,7 @@ void MainWindow::createActions()
     m_drawModeGroup->addAction(m_actionDrawBeam);
 
     m_actionDrawColumn = new QAction(tr("Dessiner &Poteau"), this);
-    m_actionDrawColumn->setIcon(QIcon(":/icons/draw_column.svg"));
+    m_actionDrawColumn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_column.svg")));
     m_actionDrawColumn->setToolTip(tr("Dessiner un Poteau (C)"));
     m_actionDrawColumn->setCheckable(true);
     m_actionDrawColumn->setStatusTip(tr("Ouvre l'interface filaire préconfigurée en mode Poteau (C)"));
@@ -517,7 +518,7 @@ void MainWindow::createActions()
     m_drawModeGroup->addAction(m_actionDrawColumn);
 
     m_actionDrawCable = new QAction(tr("Dessiner &Câble"), this);
-    m_actionDrawCable->setIcon(QIcon(":/icons/draw_cable.svg"));
+    m_actionDrawCable->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_cable.svg")));
     m_actionDrawCable->setToolTip(tr("Dessiner un Câble (Alt+C) - Élément filaire tendu"));
     m_actionDrawCable->setCheckable(true);
     m_actionDrawCable->setStatusTip(tr("Active le mode dessin Câble reliant deux nœuds (Alt+C)"));
@@ -525,7 +526,7 @@ void MainWindow::createActions()
     m_drawModeGroup->addAction(m_actionDrawCable);
 
     m_actionDrawSlab = new QAction(tr("Dessiner &Dalle"), this);
-    m_actionDrawSlab->setIcon(QIcon(":/icons/draw_slab.svg"));
+    m_actionDrawSlab->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_slab.svg")));
     m_actionDrawSlab->setToolTip(tr("Dessiner une Dalle (L)"));
     m_actionDrawSlab->setCheckable(true);
     m_actionDrawSlab->setStatusTip(tr("Ouvre l'interface surfacique en mode Dalle (L)"));
@@ -533,7 +534,7 @@ void MainWindow::createActions()
     m_drawModeGroup->addAction(m_actionDrawSlab);
 
     m_actionDrawWall = new QAction(tr("Dessiner &Voile"), this);
-    m_actionDrawWall->setIcon(QIcon(":/icons/struct_wall.svg"));
+    m_actionDrawWall->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/struct_wall.svg")));
     m_actionDrawWall->setToolTip(tr("Dessiner un Voile (W)"));
     m_actionDrawWall->setCheckable(true);
     m_actionDrawWall->setStatusTip(tr("Ouvre l'interface surfacique en mode Voile (W)"));
@@ -541,18 +542,18 @@ void MainWindow::createActions()
     m_drawModeGroup->addAction(m_actionDrawWall);
 
     m_actionStructurePresets = new QAction(tr("&Paramètres de Modélisation..."), this);
-    m_actionStructurePresets->setIcon(QIcon(":/icons/settings.svg"));
+    m_actionStructurePresets->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/modeling_settings.svg")));
     m_actionStructurePresets->setToolTip(tr("Configurer les caractéristiques des structures avant de dessiner (sections, épaisseurs, matériaux)..."));
     m_actionStructurePresets->setStatusTip(tr("Configurer les sections, hauteurs, épaisseurs et matériaux par défaut pour le dessin 3D"));
     connect(m_actionStructurePresets, &QAction::triggered, this, &MainWindow::onActionStructurePresets);
 
     m_actionNewNode = new QAction(tr("Nouveau &Nœud (Dialogue)..."), this);
-    m_actionNewNode->setIcon(QIcon(":/icons/node_add.svg"));
+    m_actionNewNode->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/node_add.svg")));
     m_actionNewNode->setToolTip(tr("Créer un Nœud par saisie de coordonnées numériques..."));
     connect(m_actionNewNode, &QAction::triggered, this, &MainWindow::onActionNewNode);
 
     m_actionAddCube = new QAction(tr("Cube &Structurel 3D"), this);
-    m_actionAddCube->setIcon(QIcon(":/icons/geom_cube.svg"));
+    m_actionAddCube->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/geom_cube.svg")));
     m_actionAddCube->setToolTip(tr("Générer un module 3D complet (8 nœuds, 4 poteaux, 8 poutres, 1 dalle)"));
     connect(m_actionAddCube, &QAction::triggered, this, &MainWindow::onActionAddCube);
 
@@ -571,21 +572,21 @@ void MainWindow::createActions()
 
     // Actions Presse-papier & Transformations 3D
     m_actionCopyClipboard = new QAction(tr("&Copier (Presse-papier)"), this);
-    m_actionCopyClipboard->setIcon(QIcon(":/icons/copy.svg"));
+    m_actionCopyClipboard->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/copy.svg")));
     m_actionCopyClipboard->setToolTip(tr("Copier la sélection dans le presse-papier structural (Ctrl+C)"));
     connect(m_actionCopyClipboard, &QAction::triggered, this, &MainWindow::onActionCopyClipboard);
 
     m_actionPasteClipboard = new QAction(tr("C&oller en 3D"), this);
-    m_actionPasteClipboard->setIcon(QIcon(":/icons/edit/paste.svg"));
+    m_actionPasteClipboard->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/edit/paste.svg")));
     m_actionPasteClipboard->setToolTip(tr("Coller les éléments copiés dans la vue 3D au clic souris (Ctrl+V)"));
     connect(m_actionPasteClipboard, &QAction::triggered, this, &MainWindow::onActionPasteClipboard);
     m_actionPasteClipboard->setText(tr("C&oller au point désigné"));
 
-    m_actionCutClipboard = new QAction(QIcon(":/icons/edit/cut.svg"), tr("Co&uper"), this);
+    m_actionCutClipboard = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/edit/cut.svg")), tr("Co&uper"), this);
     m_actionCutClipboard->setToolTip(tr("Copier la sélection dans le presse-papier puis la supprimer (Ctrl+X ; annulable)"));
     connect(m_actionCutClipboard, &QAction::triggered, this, &MainWindow::onActionCutClipboard);
 
-    m_actionPasteOriginal = new QAction(QIcon(":/icons/edit/paste.svg"), tr("Coller à la position d'origine"), this);
+    m_actionPasteOriginal = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/edit/paste_in_place.svg")), tr("Coller à la position d'origine"), this);
     m_actionPasteOriginal->setToolTip(tr("Coller aux mêmes coordonnées que dans le projet source (Ctrl+Maj+V)"));
     connect(m_actionPasteOriginal, &QAction::triggered, this, &MainWindow::onActionPasteOriginal);
 
@@ -616,13 +617,13 @@ void MainWindow::createActions()
     }
 
     m_actionMove3D = new QAction(tr("&Déplacement 3D (Point à Point)..."), this);
-    m_actionMove3D->setIcon(QIcon(":/icons/structure/struct_move.svg"));
+    m_actionMove3D->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/structure/struct_move.svg")));
     m_actionMove3D->setToolTip(tr("Déplacer interactivement les éléments dans la vue 3D (M)"));
     m_actionMove3D->setCheckable(true);
     connect(m_actionMove3D, &QAction::triggered, this, &MainWindow::onActionMove3D);
 
     m_actionCopy3D = new QAction(tr("C&opie 3D (Translation)..."), this);
-    m_actionCopy3D->setIcon(QIcon(":/icons/structure/struct_copy.svg"));
+    m_actionCopy3D->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/structure/struct_copy.svg")));
     m_actionCopy3D->setToolTip(tr("Copier interactivement les éléments par translation en 3D"));
     m_actionCopy3D->setCheckable(true);
     connect(m_actionCopy3D, &QAction::triggered, this, &MainWindow::onActionCopy3D);
@@ -639,51 +640,52 @@ void MainWindow::createActions()
     createRenderModeActions();
 
     m_actionMirror = new QAction(tr("&Symétrie (Miroir)..."), this);
-    m_actionMirror->setIcon(QIcon(":/icons/edit/mirror.svg"));
+    m_actionMirror->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/edit/mirror.svg")));
     m_actionMirror->setToolTip(tr("Symétrie par rapport à un axe cliqué dans la vue 3D (Ctrl au 2e clic : retourner sans copier)"));
     m_actionMirror->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionMirror, &QAction::triggered, this, &MainWindow::onActionMirror);
 
     m_actionSplitBars = new QAction(tr("&Diviser les barres..."), this);
-    m_actionSplitBars->setIcon(QIcon(":/icons/structure/struct_split.svg"));
+    m_actionSplitBars->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/structure/struct_split.svg")));
     m_actionSplitBars->setToolTip(tr("Diviser les poutres et poteaux sélectionnés en N tronçons égaux"));
     m_actionSplitBars->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionSplitBars, &QAction::triggered, this, &MainWindow::onActionSplitBars);
 
-    m_actionCleanModel = new QAction(QIcon(":/icons/structure/struct_merge.svg"), tr("&Nettoyer le modèle..."), this);
+    m_actionCleanModel = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/model_clean.svg")), tr("&Nettoyer le modèle..."), this);
     m_actionCleanModel->setToolTip(tr("Fusionner les nœuds confondus, supprimer les nœuds parasites et les barres en double, "
                                       "raccorder les nœuds posés sur des barres (bilan avant application)"));
     connect(m_actionCleanModel, &QAction::triggered, this, &MainWindow::onActionCleanModel);
 
     // Échange openBIM (IFC 4.3) : logique dans src/BIM/IFC, l'interface ne fait que relier
-    m_actionExportIfc = new QAction(QIcon(":/icons/file/file_export.svg"), tr("Exporter &IFC..."), this);
+    m_actionExportIfc = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/ifc_export.svg")), tr("Exporter &IFC..."), this);
     m_actionExportIfc->setToolTip(tr("Exporter le modèle au format IFC 4.3 (produits physiques, modèle analytique, matériaux, profils, Psets)"));
     connect(m_actionExportIfc, &QAction::triggered, this, &MainWindow::onActionExportIfc);
     m_actionTopology = new QAction(tr("&Topologie et numérotation..."), this);
     m_actionTopology->setToolTip(tr("Paramètres du projet : méthode de numérotation des nœuds et des éléments, "
                                     "prévisualisation et renumérotation des étiquettes"));
-    m_actionTopology->setIcon(QIcon(":/icons/grid_labels.svg"));
+    m_actionTopology->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/topology.svg")));
     connect(m_actionTopology, &QAction::triggered, this, &MainWindow::onActionTopologySettings);
 
-    m_actionImportIfc = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer I&FC..."), this);
+    m_actionImportIfc = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/ifc_import.svg")), tr("Importer I&FC..."), this);
     m_actionImportIfc->setToolTip(tr("Créer un projet depuis un fichier IFC (IFC2X3, IFC4, IFC4X3) : objets physiques et géométrie, "
                                      "modèle de calcul du fichier ; déduction depuis la géométrie seulement sur demande"));
     connect(m_actionImportIfc, &QAction::triggered, this, &MainWindow::onActionImportIfc);
-    m_actionImportTsa3d = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer TSA&3D..."), this);
+    m_actionImportTsa3d = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/tsa3d_import.svg")), tr("Importer TSA&3D..."), this);
     m_actionImportTsa3d->setToolTip(tr("Créer un projet depuis un fichier TSA3D (format d'échange documenté, validé avant import)"));
     connect(m_actionImportTsa3d, &QAction::triggered, this, &MainWindow::onActionImportTsa3d);
-    m_actionExportTsa3d = new QAction(QIcon(":/icons/file/file_export.svg"), tr("Exporter TSA3&D..."), this);
+    m_actionExportTsa3d = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/tsa3d_export.svg")), tr("Exporter TSA3&D..."), this);
     m_actionExportTsa3d->setToolTip(tr("Exporter le modèle au format TSA3D (JSON versionné : géométrie, objets, charges, maillage)"));
     connect(m_actionExportTsa3d, &QAction::triggered, this, &MainWindow::onActionExportTsa3d);
-    m_actionImportViaModule = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer via un &module..."), this);
+    m_actionImportViaModule = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/module_import.svg")), tr("Importer via un &module..."), this);
     m_actionImportViaModule->setToolTip(tr("Convertir un fichier avec un module (processus séparé) puis l'importer en TSA3D validé"));
     connect(m_actionImportViaModule, &QAction::triggered, this, &MainWindow::onActionImportViaModule);
     m_actionModules = new QAction(tr("&Modules..."), this);
+    m_actionModules->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/modules.svg")));
     m_actionModules->setToolTip(tr("Modules installés : état, compatibilité, approbation des modules utilisateur"));
     connect(m_actionModules, &QAction::triggered, this, &MainWindow::onActionModules);
 
     m_actionMergeNodes = new QAction(tr("&Fusionner les nœuds confondus..."), this);
-    m_actionMergeNodes->setIcon(QIcon(":/icons/structure/struct_merge.svg"));
+    m_actionMergeNodes->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/structure/struct_merge.svg")));
     m_actionMergeNodes->setToolTip(tr("Fusionner les nœuds géométriquement confondus (éléments, appuis et charges reportés)"));
     m_actionMergeNodes->setCheckable(true);   // coloré pendant la commande (syncToolActionStates)
     connect(m_actionMergeNodes, &QAction::triggered, this, &MainWindow::onActionMergeNodes);
@@ -702,6 +704,11 @@ void MainWindow::createActions()
     m_actionToggleTheme->setChecked(true);
     connect(m_actionToggleTheme, &QAction::triggered, this, &MainWindow::onToggleTheme);
 
+    m_actionLanguage = new QAction(tr("&Langue de l'interface…"), this);
+    m_actionLanguage->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/language.svg")));
+    m_actionLanguage->setToolTip(tr("Choisir la langue de l'interface : English, Français, Malagasy"));
+    connect(m_actionLanguage, &QAction::triggered, this, &MainWindow::languageDialogRequested);
+
     m_actionHelp = new QAction(tr("&Aide Complète %1...").arg(TSA::Product::name()), this);
     m_actionHelp->setIcon(makeHelpIcon());
     m_actionHelp->setToolTip(tr("Ouvrir le centre d'aide, guide et documentation"));
@@ -712,12 +719,13 @@ void MainWindow::createActions()
     if (TSA::UI::isOnlineHelpAvailable())
     {
         m_actionOnlineDocs = new QAction(tr("&Documentation en ligne..."), this);
-        m_actionOnlineDocs->setIcon(makeHelpIcon());
+        m_actionOnlineDocs->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/online_docs.svg")));
         m_actionOnlineDocs->setToolTip(tr("Ouvrir la documentation de %1 dans le navigateur").arg(TSA::Product::name()));
         connect(m_actionOnlineDocs, &QAction::triggered, this,
                 [this]() { TSA::UI::openHelpTopic(this, QStringLiteral("general.overview")); });
 
         m_actionReportProblem = new QAction(tr("&Signaler un problème..."), this);
+        m_actionReportProblem->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/report_problem.svg")));
         m_actionReportProblem->setToolTip(tr("Procédure de signalement d'un bug (documentation en ligne)"));
         connect(m_actionReportProblem, &QAction::triggered, this,
                 [this]() { TSA::UI::openHelpTopic(this, QStringLiteral("troubleshooting.report")); });
@@ -728,7 +736,7 @@ void MainWindow::createActions()
     m_actionShortcuts->setToolTip(tr("Afficher la liste des raccourcis clavier et commandes console (F1)"));
     connect(m_actionShortcuts, &QAction::triggered, this, &MainWindow::onActionShortcuts);
 
-    m_actionShortcutEditor = new QAction(QIcon(":/icons/settings.svg"), tr("&Personnaliser les raccourcis..."), this);
+    m_actionShortcutEditor = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/keyboard_settings.svg")), tr("&Personnaliser les raccourcis..."), this);
     m_actionShortcutEditor->setToolTip(tr("Modifier, désactiver ou rétablir les raccourcis clavier (fichier shortcut.txt)"));
     connect(m_actionShortcutEditor, &QAction::triggered, this, &MainWindow::onActionShortcutEditor);
 
@@ -738,104 +746,105 @@ void MainWindow::createActions()
     connect(m_actionAbout, &QAction::triggered, this, &MainWindow::onActionAbout);
 
     m_actionExportDiagnostic = new QAction(tr("&Exporter Rapport de Diagnostic..."), this);
-    m_actionExportDiagnostic->setIcon(QIcon(":/icons/console.svg"));
+    m_actionExportDiagnostic->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/diagnostic.svg")));
     m_actionExportDiagnostic->setToolTip(tr("Générer un rapport de diagnostic complet (système, modèle, 100 derniers événements)"));
     connect(m_actionExportDiagnostic, &QAction::triggered, this, &MainWindow::onActionExportDiagnosticReport);
 
     // Actions Métier & Outils Avancés
     m_actionTruss = new QAction(tr("&Treillis Paramétrique..."), this);
-    m_actionTruss->setIcon(QIcon(":/icons/struct_truss.svg"));
+    m_actionTruss->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/struct_truss.svg")));
     m_actionTruss->setToolTip(tr("Générer une ferme ou poutre en treillis (Warren, Pratt, Howe)"));
     connect(m_actionTruss, &QAction::triggered, this, &MainWindow::onActionTruss);
 
     m_actionFooting = new QAction(tr("&Semelle / Fondation..."), this);
-    m_actionFooting->setIcon(QIcon(":/icons/struct_foundation.svg"));
+    m_actionFooting->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/struct_foundation.svg")));
     m_actionFooting->setToolTip(tr("Générer des semelles isolées BA sous les poteaux"));
     connect(m_actionFooting, &QAction::triggered, this, &MainWindow::onActionFooting);
 
     m_actionSecI = new QAction(tr("Profilé en &I/H (IPE/HEA/HEB)..."), this);
-    m_actionSecI->setIcon(QIcon(":/icons/section_i.svg"));
+    m_actionSecI->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/section_i.svg")));
     m_actionSecI->setToolTip(tr("Sélectionner un profilé standard européen en I ou H"));
     connect(m_actionSecI, &QAction::triggered, this, &MainWindow::onActionSecI);
 
     m_actionSecRect = new QAction(tr("Section &Rectangulaire..."), this);
-    m_actionSecRect->setIcon(QIcon(":/icons/section_rect.svg"));
+    m_actionSecRect->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/section_rect.svg")));
     m_actionSecRect->setToolTip(tr("Définir une section rectangulaire (b x h)"));
     connect(m_actionSecRect, &QAction::triggered, this, &MainWindow::onActionSecRect);
 
     m_actionSecCirc = new QAction(tr("Section &Circulaire..."), this);
-    m_actionSecCirc->setIcon(QIcon(":/icons/section_circle.svg"));
+    m_actionSecCirc->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/section_circle.svg")));
     m_actionSecCirc->setToolTip(tr("Définir une section circulaire ou tubulaire"));
     connect(m_actionSecCirc, &QAction::triggered, this, &MainWindow::onActionSecCirc);
 
     m_actionConcrete = new QAction(tr("&Béton Armé (C25/30)..."), this);
-    m_actionConcrete->setIcon(QIcon(":/icons/material_concrete.svg"));
+    m_actionConcrete->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/material_concrete.svg")));
     m_actionConcrete->setToolTip(tr("Assigner les propriétés mécaniques du béton armé (Eurocode 2)"));
     connect(m_actionConcrete, &QAction::triggered, this, &MainWindow::onActionConcrete);
 
     m_actionSteel = new QAction(tr("&Acier Structural (S355)..."), this);
-    m_actionSteel->setIcon(QIcon(":/icons/material_steel.svg"));
+    m_actionSteel->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/material_steel.svg")));
     m_actionSteel->setToolTip(tr("Assigner les propriétés de l'acier de construction (Eurocode 3)"));
     connect(m_actionSteel, &QAction::triggered, this, &MainWindow::onActionSteel);
 
     m_actionFixed = new QAction(tr("Encastrement &Parfait (6 DDL)"), this);
-    m_actionFixed->setIcon(QIcon(":/icons/support_fixed.svg"));
+    m_actionFixed->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/support_fixed.svg")));
     m_actionFixed->setToolTip(tr("Bloquer les 6 degrés de liberté (Tx, Ty, Tz, Rx, Ry, Rz)"));
     connect(m_actionFixed, &QAction::triggered, this, &MainWindow::onActionFixed);
 
     m_actionPinned = new QAction(tr("&Articulation (Rotule 3D)"), this);
-    m_actionPinned->setIcon(QIcon(":/icons/support_pinned.svg"));
+    m_actionPinned->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/support_pinned.svg")));
     m_actionPinned->setToolTip(tr("Bloquer les 3 translations (Tx, Ty, Tz)"));
     connect(m_actionPinned, &QAction::triggered, this, &MainWindow::onActionPinned);
 
     m_actionRoller = new QAction(tr("Appui &Simple (Rouleau)"), this);
-    m_actionRoller->setIcon(QIcon(":/icons/support_roller.svg"));
+    m_actionRoller->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/support_roller.svg")));
     m_actionRoller->setToolTip(tr("Bloquer le déplacement vertical Tz"));
     connect(m_actionRoller, &QAction::triggered, this, &MainWindow::onActionRoller);
 
     m_actionLibrary = new QAction(tr("&Bibliothèque Personnalisée..."), this);
-    m_actionLibrary->setIcon(QIcon(":/icons/structure_preset.svg"));
+    m_actionLibrary->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/library.svg")));
     m_actionLibrary->setToolTip(tr("Gérer la bibliothèque de sections, matériaux, textures, couleurs et structures personnalisées"));
     connect(m_actionLibrary, &QAction::triggered, this, [this]() { onActionLibrary(0); });
 
     m_actionExtensionManager = new QAction(tr("&Gestionnaire TSALib..."), this);
-    m_actionExtensionManager->setIcon(QIcon(":/icons/file_new.svg"));
+    m_actionExtensionManager->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/common/extension_manager.svg")));
     m_actionExtensionManager->setToolTip(tr("Gérer les extensions, explorer les catalogues Eurocodes (matériaux, sections, câbles, textures) et recharger à chaud"));
     connect(m_actionExtensionManager, &QAction::triggered, this, &MainWindow::onActionExtensionManager);
 
     // Force ponctuelle et moment nodal réunis : une seule fenêtre (force Fx, Fy, Fz et couple Mx, My, Mz).
     m_actionPointLoad = new QAction(tr("&Force et Couple..."), this);
-    m_actionPointLoad->setIcon(QIcon(":/icons/load_force_couple.svg"));
+    m_actionPointLoad->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/load_force_couple.svg")));
     m_actionPointLoad->setToolTip(tr("Appliquer en un nœud une force (Fx, Fy, Fz) et/ou un couple (Mx, My, Mz)"));
     connect(m_actionPointLoad, &QAction::triggered, this, &MainWindow::onActionPointLoad);
 
     m_actionDistLoad = new QAction(tr("Charge &Uniforme..."), this);
-    m_actionDistLoad->setIcon(QIcon(":/icons/load_dist.svg"));
+    m_actionDistLoad->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/load_dist.svg")));
     m_actionDistLoad->setToolTip(tr("Charge uniformément répartie q (kN/m) sur une barre, sur toute sa longueur ou sur un intervalle"));
     connect(m_actionDistLoad, &QAction::triggered, this, &MainWindow::onActionDistLoad);
 
     m_actionTrapLoad = new QAction(tr("Charge &Trapézoïdale..."), this);
-    m_actionTrapLoad->setIcon(QIcon(":/icons/load_trapezoid.svg"));
+    m_actionTrapLoad->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/load_trapezoid.svg")));
     m_actionTrapLoad->setToolTip(tr("Charge linéairement variable q1 → q2 (kN/m) : trapézoïdale, ou triangulaire si une extrémité vaut 0"));
     connect(m_actionTrapLoad, &QAction::triggered, this, [this] { openMemberLoadDialog(TSA::Model::LoadType::MemberLinear); });
 
     m_actionBarPointLoad = new QAction(tr("Force &Ponctuelle sur Barre..."), this);
-    m_actionBarPointLoad->setIcon(QIcon(":/icons/load_bar_point.svg"));
+    m_actionBarPointLoad->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/load_bar_point.svg")));
     m_actionBarPointLoad->setToolTip(tr("Force concentrée P (kN) appliquée à une abscisse x de la barre"));
     connect(m_actionBarPointLoad, &QAction::triggered, this, [this] { openMemberLoadDialog(TSA::Model::LoadType::MemberPoint); });
 
     // Charges des dalles et voiles : converties en charges nodales cohérentes sur le maillage au calcul (docs/SURFACES.md).
     m_actionSurfaceLoad = new QAction(tr("Charge &Surfacique..."), this);
-    m_actionSurfaceLoad->setIcon(QIcon(":/icons/load_surface.svg"));
+    m_actionSurfaceLoad->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/load_surface.svg")));
     m_actionSurfaceLoad->setToolTip(tr("Charges uniformes (kN/m²) ou ponctuelles (kN) sur les dalles et voiles sélectionnés ; calculées sur le maillage "
                                        "des surfaces (coques)"));
     connect(m_actionSurfaceLoad, &QAction::triggered, this, &MainWindow::onActionSurfaceLoads);
     m_actionSurfaceSupports = new QAction(tr("Appuis &linéiques..."), this);
-    m_actionSurfaceSupports->setIcon(QIcon(":/icons/support_pinned.svg"));
+    m_actionSurfaceSupports->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/surface_supports.svg")));
     m_actionSurfaceSupports->setToolTip(tr("Appuis répartis le long des bords des dalles et voiles sélectionnés (bloqués ou élastiques par unité de "
                                            "longueur) ; appliqués aux nœuds du maillage au calcul"));
     connect(m_actionSurfaceSupports, &QAction::triggered, this, &MainWindow::onActionSurfaceSupports);
     m_actionSurfaceLoadsVisible = new QAction(tr("Afficher les charges &surfaciques"), this);
+    m_actionSurfaceLoadsVisible->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/surface_loads_visible.svg")));
     m_actionSurfaceLoadsVisible->setCheckable(true);
     m_actionSurfaceLoadsVisible->setChecked(true);
     m_actionSurfaceLoadsVisible->setToolTip(tr("Zone chargée, sens, valeur, unité, cas et repère des charges des dalles et voiles"));
@@ -844,59 +853,70 @@ void MainWindow::createActions()
     });
 
     m_actionSelfWeight = new QAction(tr("&Poids Propre..."), this);
-    m_actionSelfWeight->setIcon(QIcon(":/icons/load_selfweight.svg"));
+    m_actionSelfWeight->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/load_selfweight.svg")));
     m_actionSelfWeight->setToolTip(tr("Poids propre calculé automatiquement (section × masse volumique × g) : activé et pondéré par cas de charge"));
     connect(m_actionSelfWeight, &QAction::triggered, this, &MainWindow::onActionLoadCases);
 
     m_actionLoadCases = new QAction(tr("&Cas de Charges && Combinaisons..."), this);
-    m_actionLoadCases->setIcon(QIcon(":/icons/analysis_modal.svg"));
+    m_actionLoadCases->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis_modal.svg")));
     m_actionLoadCases->setToolTip(tr("Gérer les cas de charges, combinaisons Eurocodes et export OpenSees"));
     connect(m_actionLoadCases, &QAction::triggered, this, &MainWindow::onActionLoadCases);
 
 
-    m_actionMeshGen = new QAction(QIcon(":/icons/mesh_generate.svg"), tr("&Générer le maillage"), this);
+    m_actionMeshGen = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/mesh_generate.svg")), tr("&Générer le maillage"), this);
     m_actionMeshGen->setToolTip(tr("Génère le maillage du projet avec Gmsh (1D barres, 2D dalles et voiles, 3D semelles), l'enregistre et contrôle sa qualité"));
     connect(m_actionMeshGen, &QAction::triggered, this, &MainWindow::onActionMeshGen);
     m_actionMeshSettings = new QAction(tr("Paramètres du maillage..."), this);
+    m_actionMeshSettings->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_settings.svg")));
     m_actionMeshSettings->setToolTip(tr("Panneau de paramétrage du maillage : tailles, algorithmes, raffinement, paramètres locaux, qualité, profils"));
     connect(m_actionMeshSettings, &QAction::triggered, this, &MainWindow::onActionMeshSettings);
     m_actionMeshPreview = new QAction(tr("Aperçu du maillage"), this);
+    m_actionMeshPreview->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_preview.svg")));
     m_actionMeshPreview->setToolTip(tr("Affiche le maillage prévisionnel sans remplacer celui du projet (second appel : retire l'aperçu)"));
     connect(m_actionMeshPreview, &QAction::triggered, this, &MainWindow::onActionMeshPreview);
     m_actionMeshRegenerate = new QAction(tr("Régénérer le maillage"), this);
+    m_actionMeshRegenerate->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_regenerate.svg")));
     m_actionMeshRegenerate->setToolTip(tr("Régénère le maillage avec les paramètres enregistrés (après une modification de la géométrie)"));
     connect(m_actionMeshRegenerate, &QAction::triggered, this, &MainWindow::onActionMeshRegenerate);
     m_actionMeshQuality = new QAction(tr("Vérifier la qualité du maillage"), this);
+    m_actionMeshQuality->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_quality.svg")));
     m_actionMeshQuality->setToolTip(tr("Contrôle de qualité : aspect, angles, jacobien, minSICN, éléments inversés, nœuds isolés, interfaces"));
     connect(m_actionMeshQuality, &QAction::triggered, this, &MainWindow::onActionMeshQuality);
     m_actionMeshShow = new QAction(tr("Afficher le maillage"), this);
+    m_actionMeshShow->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_show.svg")));
     m_actionMeshShow->setCheckable(true);
     m_actionMeshShow->setToolTip(tr("Affiche le maillage du projet dans la vue 3D (éléments de qualité insuffisante en rouge)"));
     connect(m_actionMeshShow, &QAction::toggled, this, &MainWindow::onActionMeshShow);
     m_actionMeshLocal = new QAction(tr("Maillage local de la sélection..."), this);
+    m_actionMeshLocal->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_local.svg")));
     m_actionMeshLocal->setToolTip(tr("Paramètres de maillage propres aux objets sélectionnés, sans modifier les autres"));
     connect(m_actionMeshLocal, &QAction::triggered, this, &MainWindow::onActionMeshLocal);
     m_actionMeshZone = new QAction(tr("Raffinement local autour de la sélection..."), this);
+    m_actionMeshZone->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_zone.svg")));
     m_actionMeshZone->setToolTip(tr("Zone de raffinement autour des nœuds sélectionnés (appui, charge…)"));
     connect(m_actionMeshZone, &QAction::triggered, this, &MainWindow::onActionMeshZone);
     m_actionMeshExport = new QAction(tr("Exporter le maillage..."), this);
+    m_actionMeshExport->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_export.svg")));
     connect(m_actionMeshExport, &QAction::triggered, this, &MainWindow::onActionMeshExport);
     m_actionMeshImport = new QAction(tr("Importer un maillage..."), this);
+    m_actionMeshImport->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_import.svg")));
     connect(m_actionMeshImport, &QAction::triggered, this, &MainWindow::onActionMeshImport);
     m_actionMeshClear = new QAction(tr("Supprimer le maillage"), this);
+    m_actionMeshClear->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/mesh_clear.svg")));
     connect(m_actionMeshClear, &QAction::triggered, this, &MainWindow::onActionMeshClear);
     createMeshViewActions();
     m_actionSlabOpenings = new QAction(tr("Ouvertures (dalle ou voile)..."), this);
+    m_actionSlabOpenings->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/modeling/slab_openings.svg")));
     m_actionSlabOpenings->setToolTip(tr("Trémies de la dalle sélectionnée (rectangles, cercles), prises en compte par le maillage"));
     connect(m_actionSlabOpenings, &QAction::triggered, this, &MainWindow::onActionSlabOpenings);
 
     m_actionAnalysisConfig = new QAction(tr("&Analyse (moteur, portée)..."), this);
-    m_actionAnalysisConfig->setIcon(QIcon(":/icons/analysis_settings.svg"));
+    m_actionAnalysisConfig->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis_settings.svg")));
     m_actionAnalysisConfig->setToolTip(tr("Choisir le moteur de calcul, la portée (axe de grille, niveau, plan de travail), le chargement et les options du moteur"));
     connect(m_actionAnalysisConfig, &QAction::triggered, this, &MainWindow::onActionAnalysisConfig);
 
     m_actionRunSolve = new QAction(tr("&Lancer le Calcul Structurel"), this);
-    m_actionRunSolve->setIcon(QIcon(":/icons/analysis_run.svg"));
+    m_actionRunSolve->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis_run.svg")));
     m_actionRunSolve->setToolTip(tr("Lancer le calcul avec le moteur et la portée configurés (F5)"));
     connect(m_actionRunSolve, &QAction::triggered, this, &MainWindow::onActionRunSolve);
 
@@ -905,88 +925,97 @@ void MainWindow::createActions()
     m_actionDeformedToggle = new QAction(tr("Afficher la &Déformée 3D"), this);
     m_actionDeformedToggle->setCheckable(true);
     m_actionDeformedToggle->setChecked(true);
-    m_actionDeformedToggle->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_actionDeformedToggle->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/deformed_visible.svg")));
     m_actionDeformedToggle->setToolTip(tr("Activer ou masquer la vue de la structure déformée"));
     connect(m_actionDeformedToggle, &QAction::toggled, this, &MainWindow::onActionToggleDeformed);
 
     m_actionDiagramMz = new QAction(tr("Moment &Mz"), this);
+    m_actionDiagramMz->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_mz.svg")));
     m_actionDiagramMz->setToolTip(tr("Afficher le diagramme 3D du moment fléchissant Mz"));
     connect(m_actionDiagramMz, &QAction::triggered, this, &MainWindow::onActionDiagramMz);
 
     m_actionDiagramMy = new QAction(tr("Moment M&y"), this);
+    m_actionDiagramMy->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_my.svg")));
     m_actionDiagramMy->setToolTip(tr("Afficher le diagramme 3D du moment fléchissant secondaire My"));
     connect(m_actionDiagramMy, &QAction::triggered, this, &MainWindow::onActionDiagramMy);
 
     m_actionDiagramMx = new QAction(tr("Torsion M&x"), this);
+    m_actionDiagramMx->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_mx.svg")));
     m_actionDiagramMx->setToolTip(tr("Afficher le diagramme 3D du moment de torsion Mx"));
     connect(m_actionDiagramMx, &QAction::triggered, this, &MainWindow::onActionDiagramMx);
 
     m_actionDiagramVz = new QAction(tr("Tranchant &Vz"), this);
+    m_actionDiagramVz->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_vz.svg")));
     m_actionDiagramVz->setToolTip(tr("Afficher le diagramme 3D de l'effort tranchant Vz"));
     connect(m_actionDiagramVz, &QAction::triggered, this, &MainWindow::onActionDiagramVz);
 
     m_actionDiagramVy = new QAction(tr("Tranchant V&y"), this);
+    m_actionDiagramVy->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_vy.svg")));
     m_actionDiagramVy->setToolTip(tr("Afficher le diagramme 3D de l'effort tranchant Vy"));
     connect(m_actionDiagramVy, &QAction::triggered, this, &MainWindow::onActionDiagramVy);
 
     m_actionDiagramN = new QAction(tr("Effort Normal &N"), this);
+    m_actionDiagramN->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_n.svg")));
     m_actionDiagramN->setToolTip(tr("Afficher le diagramme 3D de l'effort normal N"));
     connect(m_actionDiagramN, &QAction::triggered, this, &MainWindow::onActionDiagramN);
 
     m_actionDiagramDeflection = new QAction(tr("Flèches &UZ / Ures"), this);
+    m_actionDiagramDeflection->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_deflection.svg")));
     m_actionDiagramDeflection->setToolTip(tr("Afficher le diagramme 3D des flèches transversales le long des éléments"));
     connect(m_actionDiagramDeflection, &QAction::triggered, this, &MainWindow::onActionDiagramDeflection);
 
     m_actionDiagramNone = new QAction(tr("&Masquer Diagrammes"), this);
+    m_actionDiagramNone->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/diagram_none.svg")));
     connect(m_actionDiagramNone, &QAction::triggered, this, &MainWindow::onActionDiagramNone);
 
     m_actionReactionsToggle = new QAction(tr("Afficher les &Réactions"), this);
+    m_actionReactionsToggle->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/reactions.svg")));
     m_actionReactionsToggle->setCheckable(true);
     m_actionReactionsToggle->setChecked(true);
     m_actionReactionsToggle->setToolTip(tr("Afficher les flèches et valeurs des réactions d'appui en 3D"));
     connect(m_actionReactionsToggle, &QAction::toggled, this, &MainWindow::onActionToggleReactions);
 
     m_actionFitModel = new QAction(tr("Cadrer &Modèle"), this);
-    m_actionFitModel->setIcon(QIcon(":/icons/fit_all.svg"));
+    m_actionFitModel->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/fit_model.svg")));
     m_actionFitModel->setToolTip(tr("Cadrer la vue sur l'ensemble du modèle initial non déformé"));
     connect(m_actionFitModel, &QAction::triggered, this, &MainWindow::onFitModel);
 
     m_actionFitResults = new QAction(tr("Cadrer &Résultats"), this);
-    m_actionFitResults->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_actionFitResults->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/fit_results.svg")));
     m_actionFitResults->setToolTip(tr("Cadrer la vue sur l'enveloppe globale des résultats et diagrammes 3D"));
     connect(m_actionFitResults, &QAction::triggered, this, &MainWindow::onFitResults);
 
     m_actionFitDeformed = new QAction(tr("Cadrer &Déformée"), this);
-    m_actionFitDeformed->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_actionFitDeformed->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis/fit_deformed.svg")));
     m_actionFitDeformed->setToolTip(tr("Cadrer la vue sur l'enveloppe de la structure déformée"));
     connect(m_actionFitDeformed, &QAction::triggered, this, &MainWindow::onFitDeformed);
 
     m_actionNoteDeCalcul = new QAction(tr("Note de &Calcul..."), this);
-    m_actionNoteDeCalcul->setIcon(QIcon(":/icons/ndc_report.svg"));
+    m_actionNoteDeCalcul->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/ndc_report.svg")));
     m_actionNoteDeCalcul->setToolTip(tr("Ouvrir l'inspecteur et générateur de Note de Calcul (F8)"));
     connect(m_actionNoteDeCalcul, &QAction::triggered, this, &MainWindow::onActionNoteDeCalcul);
-    m_actionReportTemplates = new QAction(QIcon(":/icons/ndc_report.svg"), tr("&Documents par templates..."), this);
+    m_actionReportTemplates = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/report_templates.svg")), tr("&Documents par templates..."), this);
     m_actionReportTemplates->setToolTip(tr("Rapports et notes de calcul produits par templates : aperçu, options, export HTML/PDF, import et personnalisation"));
     connect(m_actionReportTemplates, &QAction::triggered, this, &MainWindow::onActionReportTemplates);
 
     m_actionResultsDisp = new QAction(tr("Déformée && &Déplacements"), this);
-    m_actionResultsDisp->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_actionResultsDisp->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/results_disp.svg")));
     m_actionResultsDisp->setToolTip(tr("Afficher la déformée amplifiée et les déplacements nodaux"));
     connect(m_actionResultsDisp, &QAction::triggered, this, &MainWindow::onActionResultsDisp);
 
     m_actionResultsForces = new QAction(tr("Diagrammes des &Efforts (M/N/V)"), this);
-    m_actionResultsForces->setIcon(QIcon(":/icons/results_force.svg"));
+    m_actionResultsForces->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/results_force.svg")));
     m_actionResultsForces->setToolTip(tr("Afficher les diagrammes de moments, efforts tranchants et normaux"));
     connect(m_actionResultsForces, &QAction::triggered, this, &MainWindow::onActionResultsForces);
 
     m_actionResultsStress = new QAction(tr("&Contraintes normales σ (poutres)"), this);
-    m_actionResultsStress->setIcon(QIcon(":/icons/results_stress.svg"));
+    m_actionResultsStress->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/results_stress.svg")));
     m_actionResultsStress->setToolTip(tr("Contrainte normale de fibre extrême σ = N/A ± |My|/Wy ± |Mz|/Wz (théorie des poutres, MPa). "
                                          "Ni cisaillement ni torsion : ce n'est pas une contrainte de Von Mises."));
     connect(m_actionResultsStress, &QAction::triggered, this, &MainWindow::onActionResultsStress);
 
     m_actionMeasure = new QAction(tr("&Mesurer Distance 3D..."), this);
-    m_actionMeasure->setIcon(QIcon(":/icons/measure.svg"));
+    m_actionMeasure->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/measure.svg")));
     m_actionMeasure->setToolTip(tr("Mesurer la distance spatiale 3D, horizontale et dénivelée entre nœuds"));
     connect(m_actionMeasure, &QAction::triggered, this, &MainWindow::onActionMeasure);
 }
@@ -1044,8 +1073,8 @@ void MainWindow::createMenus()
     editMenu->addAction(m_actionMergeNodes);
     editMenu->addAction(m_actionCleanModel);
     {
-        auto* modifyMenu = editMenu->addMenu(QIcon(":/icons/tools/trim.svg"), tr("Outils de modification"));
-        auto* drawMenu = editMenu->addMenu(QIcon(":/icons/tools/beam_chain.svg"), tr("Outils de dessin"));
+        auto* modifyMenu = editMenu->addMenu(TSA::UI::themedIcon(QStringLiteral(":/icons/tools/trim.svg")), tr("Outils de modification"));
+        auto* drawMenu = editMenu->addMenu(TSA::UI::themedIcon(QStringLiteral(":/icons/tools/beam_chain.svg")), tr("Outils de dessin"));
         for (const auto& tool : m_toolRegistry->instances())
         {
             QAction* a = m_toolActions[tool->id()];
@@ -1130,7 +1159,7 @@ void MainWindow::createMenus()
     surfSub->addAction(m_actionFooting);
 
     {
-        QMenu* dimSub = modelMenu->addMenu(QIcon(":/icons/dimensions/dim_aligned.svg"), tr("Cotation"));
+        QMenu* dimSub = modelMenu->addMenu(TSA::UI::themedIcon(QStringLiteral(":/icons/dimensions/dim_aligned.svg")), tr("Cotation"));
         for (const auto& tool : m_toolRegistry->instances())
             if (tool->category() == TSA::Interaction::ToolCategory::Annotate) dimSub->addAction(m_toolActions[tool->id()]);
         dimSub->addSeparator();
@@ -1185,7 +1214,7 @@ void MainWindow::createMenus()
     loadSubMenu->addAction(m_actionLoadCases);
     analysisMenu->addSeparator();
     {
-        QMenu* meshSub = analysisMenu->addMenu(QIcon(":/icons/mesh_generate.svg"), tr("Maillage (Gmsh)"));
+        QMenu* meshSub = analysisMenu->addMenu(TSA::UI::themedIcon(QStringLiteral(":/icons/mesh_generate.svg")), tr("Maillage (Gmsh)"));
         meshSub->addAction(m_actionMeshSettings);
         meshSub->addSeparator();
         meshSub->addAction(m_actionMeshPreview);
@@ -1356,9 +1385,9 @@ void MainWindow::createMenus()
 
     viewMenu->addSeparator();
     {
-        QMenu* reprSub = viewMenu->addMenu(QIcon(":/icons/view/display_analytical.svg"), tr("Représentation du modèle"));
+        QMenu* reprSub = viewMenu->addMenu(TSA::UI::themedIcon(QStringLiteral(":/icons/view/display_analytical.svg")), tr("Représentation du modèle"));
         for (QAction* a : m_displayModeActions) reprSub->addAction(a);
-        QMenu* renderSub = viewMenu->addMenu(QIcon(":/icons/view/view_shaded.svg"), tr("Rendu des volumes"));
+        QMenu* renderSub = viewMenu->addMenu(TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_shaded.svg")), tr("Rendu des volumes"));
         for (QAction* a : m_renderModeActions) renderSub->addAction(a);
         renderSub->addSeparator();
         renderSub->addAction(m_actionRenderEdges);
@@ -1409,6 +1438,7 @@ void MainWindow::createMenus()
     toolsMenu->addAction(m_actionMeasure);
     toolsMenu->addSeparator();
     toolsMenu->addAction(m_actionToggleTheme);
+    toolsMenu->addAction(m_actionLanguage);
 
     // 10. Menu Aide
     QMenu* helpMenu = menuBar()->addMenu(tr("&Aide"));
@@ -1619,6 +1649,7 @@ void MainWindow::createRibbon()
 
     acts.actionMeasure = m_actionMeasure;
     acts.actionToggleTheme = m_actionToggleTheme;
+    acts.actionLanguage = m_actionLanguage;
     acts.actionHelp = m_actionHelp;
     acts.actionTopology = m_actionTopology;
     acts.actionOnlineDocs = m_actionOnlineDocs;
@@ -1630,6 +1661,32 @@ void MainWindow::createRibbon()
     acts.actionAICheck = m_actionAICheck;
     acts.actionAIAnalyze = m_actionAIAnalyze;
     acts.actionAIExplain = m_actionAIExplain;
+
+    // Commandes jusque-là hors du ruban (menus, raccourcis, console) : chacune a désormais sa place (docs/UI_RIBBON.md)
+    acts.actionImportTsa3d = m_actionImportTsa3d;
+    acts.actionExportTsa3d = m_actionExportTsa3d;
+    acts.actionImportViaModule = m_actionImportViaModule;
+    acts.actionShortcutEditor = m_actionShortcutEditor;
+    acts.actionSelectAll = m_actionSelectAll;
+    acts.actionSlabOpenings = m_actionSlabOpenings;
+    acts.actionWorkPlaneNextRef = m_actionWorkPlaneNextRef;
+    acts.actionWorkPlanePrevRef = m_actionWorkPlanePrevRef;
+    acts.actionWorkPlaneBack = m_actionWorkPlaneBack;
+    acts.actionWorkPlaneNextInter = m_actionWorkPlaneNextInter;
+    acts.actionWorkPlanePrevInter = m_actionWorkPlanePrevInter;
+    acts.actionWorkPlaneAlignInter = m_actionWorkPlaneAlignInter;
+    acts.actionMeshClear = m_actionMeshClear;
+    acts.actionMeshExport = m_actionMeshExport;
+    acts.actionMeshImport = m_actionMeshImport;
+    acts.actionReportTemplates = m_actionReportTemplates;
+    acts.actionRotateLeft = m_actionRotateLeft;
+    acts.actionRotateRight = m_actionRotateRight;
+    acts.actionSupportsVisible = m_actionSupportsVisible;
+    acts.actionSupportLabelsVisible = m_actionSupportLabelsVisible;
+    acts.actionSurfaceLoadsVisible = m_actionSurfaceLoadsVisible;
+    acts.actionModules = m_actionModules;
+    acts.actionReportProblem = m_actionReportProblem;
+    acts.actionExportDiagnostic = m_actionExportDiagnostic;
 
     TSA::UI::RibbonBuilder::buildAllTabs(m_ribbonBar, acts, this);
 
@@ -1665,12 +1722,12 @@ void MainWindow::createDockWindows()
         if (m_consoleDock) m_consoleDock->appendLog(message, "INFO");
     });
     m_modelTreeDock->setMinimumWidth(280);
-    m_modelTreeDock->toggleViewAction()->setIcon(QIcon(":/icons/model_tree.svg"));
+    m_modelTreeDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/model_tree.svg")));
     addDockWidget(Qt::LeftDockWidgetArea, m_modelTreeDock);
 
     // 2. Dock gauche ongletisé : CALQUES & VISIBILITÉ
     m_visibilityDock = new TSA::UI::VisibilityDock(this);
-    m_visibilityDock->toggleViewAction()->setIcon(QIcon(":/icons/visibility.svg"));
+    m_visibilityDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/visibility.svg")));
     addDockWidget(Qt::LeftDockWidgetArea, m_visibilityDock);
     tabifyDockWidget(m_modelTreeDock, m_visibilityDock);
     m_modelTreeDock->setMinimumWidth(380); // l'arbre (nom + détails) tient sans troncature
@@ -1693,7 +1750,7 @@ void MainWindow::createDockWindows()
 
     // 3. Dock gauche ongletisé : ÉLÉMENTS STRUCTURAUX (Volet de dessin)
     m_elementsDock = new TSA::UI::StructuralElementsDock(this);
-    m_elementsDock->toggleViewAction()->setIcon(QIcon(":/icons/draw_cable.svg"));
+    m_elementsDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_cable.svg")));
     addDockWidget(Qt::LeftDockWidgetArea, m_elementsDock);
     tabifyDockWidget(m_modelTreeDock, m_elementsDock);
     m_modelTreeDock->raise();
@@ -1716,13 +1773,13 @@ void MainWindow::createDockWindows()
     m_propertyPanel = new TSA::UI::PropertyPanel(m_model, m_propertiesDock);
     m_propertiesDock->setWidget(m_propertyPanel);
     m_propertiesDock->setMinimumWidth(280);
-    m_propertiesDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
+    m_propertiesDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/properties.svg")));
     addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
 
     // 4. Dock droit : PROJECTION & VUE (WorkPlane, 2D/3D, Caméra)
     m_projectionViewDock = new TSA::UI::ProjectionViewDock(this);
     m_projectionViewDock->setModel(m_model);
-    m_projectionViewDock->toggleViewAction()->setIcon(QIcon(":/icons/view_normal_workplane.svg"));
+    m_projectionViewDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/view_normal_workplane.svg")));
     addDockWidget(Qt::RightDockWidgetArea, m_projectionViewDock);
     tabifyDockWidget(m_propertiesDock, m_projectionViewDock);
     m_propertiesDock->raise();
@@ -1737,7 +1794,7 @@ void MainWindow::createDockWindows()
     m_projectStatusWidget->setGridManager(m_gridManager);
     m_projectStatusDock->setWidget(m_projectStatusWidget);
     m_projectStatusDock->setMinimumWidth(280);
-    m_projectStatusDock->toggleViewAction()->setIcon(QIcon(":/icons/properties.svg"));
+    m_projectStatusDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/properties.svg")));
     addDockWidget(Qt::RightDockWidgetArea, m_projectStatusDock);
     tabifyDockWidget(m_propertiesDock, m_projectStatusDock);
     m_propertiesDock->raise();
@@ -1776,7 +1833,7 @@ void MainWindow::createDockWindows()
     // 5. Dock droit : RÉSULTATS STRUCTURAUX 3D
     m_resultsDock = new TSA::UI::ResultsDockWidget(this);
     m_resultsDock->setModel(m_model);
-    m_resultsDock->toggleViewAction()->setIcon(QIcon(":/icons/results_disp.svg"));
+    m_resultsDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/results_disp.svg")));
     addDockWidget(Qt::RightDockWidgetArea, m_resultsDock);
     tabifyDockWidget(m_propertiesDock, m_resultsDock);
 
@@ -1835,7 +1892,7 @@ void MainWindow::createDockWindows()
 
     // 6. Dock inférieur : CONSOLE & HISTORIQUE COMMANDES
     m_consoleDock = new TSA::UI::LogConsoleDock(this);
-    m_consoleDock->toggleViewAction()->setIcon(QIcon(":/icons/console.svg"));
+    m_consoleDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/console.svg")));
     addDockWidget(Qt::BottomDockWidgetArea, m_consoleDock);
 
     // 7. Dock inférieur tabifié : DIAGRAMMES 2D & COURBES
@@ -1845,7 +1902,7 @@ void MainWindow::createDockWindows()
     m_diagramWidget = new TSA::UI::Diagram2DWidget(m_diagramDock);
     m_diagramWidget->setModel(m_model);
     m_diagramDock->setWidget(m_diagramWidget);
-    m_diagramDock->toggleViewAction()->setIcon(QIcon(":/icons/results_force.svg"));
+    m_diagramDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/results_force.svg")));
     addDockWidget(Qt::BottomDockWidgetArea, m_diagramDock);
     if (m_consoleDock)
     {
@@ -1861,7 +1918,7 @@ void MainWindow::createDockWindows()
     m_ndcWidget = new TSA::NDC::NDCViewerWidget(m_ndcDock);
     m_ndcWidget->setModel(m_model);
     m_ndcDock->setWidget(m_ndcWidget);
-    m_ndcDock->toggleViewAction()->setIcon(QIcon(":/icons/ndc_report.svg"));
+    m_ndcDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/ndc_report.svg")));
     addDockWidget(Qt::RightDockWidgetArea, m_ndcDock);
     tabifyDockWidget(m_propertiesDock, m_ndcDock);
     m_propertiesDock->raise();
@@ -2089,38 +2146,38 @@ void MainWindow::createDockWindows()
     {
         m_windowManager->registerWindow(
             "viewport", tr("Vue 3D"), tr("Général"), m_viewportContainer,
-            Qt::NoDockWidgetArea, true, QKeySequence("Ctrl+1"), QIcon(":/icons/view/view_3d.svg"));
+            Qt::NoDockWidgetArea, true, QKeySequence("Ctrl+1"), TSA::UI::themedIcon(QStringLiteral(":/icons/view/view_3d.svg")));
 
         m_windowManager->registerDock(
             "model_browser", tr("Navigateur du modèle"), tr("Modélisation"), m_modelTreeDock,
-            Qt::LeftDockWidgetArea, true, QKeySequence(), QIcon(":/icons/model_tree.svg"));
+            Qt::LeftDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/model_tree.svg")));
 
         m_windowManager->registerDock(
-            "visibility", tr("Calques & Visibilité"), tr("Affichage"), m_visibilityDock,
-            Qt::LeftDockWidgetArea, true, QKeySequence(), QIcon(":/icons/visibility.svg"));
+            "visibility", tr("Calques et Visibilité"), tr("Affichage"), m_visibilityDock,
+            Qt::LeftDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/visibility.svg")));
 
         m_windowManager->registerDock(
             "elements", tr("Éléments structuraux"), tr("Modélisation"), m_elementsDock,
-            Qt::LeftDockWidgetArea, true, QKeySequence(), QIcon(":/icons/draw_cable.svg"));
+            Qt::LeftDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/draw_cable.svg")));
 
         m_windowManager->registerDock(
             "properties", tr("Propriétés"), tr("Général"), m_propertiesDock,
-            Qt::RightDockWidgetArea, true, QKeySequence(), QIcon(":/icons/properties.svg"));
+            Qt::RightDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/properties.svg")));
 
         m_windowManager->registerDock(
-            "work_planes", tr("Plans de travail & Vues"), tr("Modélisation"), m_projectionViewDock,
-            Qt::RightDockWidgetArea, true, QKeySequence(), QIcon(":/icons/view_normal_workplane.svg"));
+            "work_planes", tr("Plans de travail et Vues"), tr("Modélisation"), m_projectionViewDock,
+            Qt::RightDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/view_normal_workplane.svg")));
 
         if (m_analysisDataDock)
         {
             m_windowManager->registerDock(
                 "analysis_data", tr("Données d'analyse"), tr("Résultats"), m_analysisDataDock,
-                Qt::BottomDockWidgetArea, false, QKeySequence(), QIcon(":/icons/results_disp.svg"));
+                Qt::BottomDockWidgetArea, false, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/results_disp.svg")));
         }
 
         m_windowManager->registerDock(
-            "console", tr("Console & Messages"), tr("Outils"), m_consoleDock,
-            Qt::BottomDockWidgetArea, true, QKeySequence(), QIcon(":/icons/console.svg"));
+            "console", tr("Console et Messages"), tr("Outils"), m_consoleDock,
+            Qt::BottomDockWidgetArea, true, QKeySequence(), TSA::UI::themedIcon(QStringLiteral(":/icons/console.svg")));
     }
 
     createAIComponents();

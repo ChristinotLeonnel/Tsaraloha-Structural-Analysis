@@ -157,7 +157,7 @@ void MemberLoadDialog::setupUI()
     mainLayout->addWidget(groupParam);
 
     // 3. Intensités et Positions
-    auto* groupVal = new QGroupBox(tr("Intensités & Position"), this);
+    auto* groupVal = new QGroupBox(tr("Intensités et Position"), this);
     auto* valGrid = new QGridLayout(groupVal);
 
     m_lblQ1 = new QLabel(tr("Intensité q :"), this);

@@ -250,7 +250,7 @@ function ReadNodes($file, $json) {
     return (Get-Content $json -Raw -Encoding UTF8 | ConvertFrom-Json)
 }
 function Launch($file) {
-    $script:p = Start-Process -FilePath $Exe -ArgumentList "`"$file`"" -PassThru
+    $script:p = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", "`"$file`"") -PassThru
     $deadline = (Get-Date).AddSeconds(120)
     $expected = "TSA — $(Split-Path $file -Leaf)"
     while ((Get-Date) -lt $deadline) {
@@ -279,9 +279,10 @@ if (-not (Launch $copy)) { Say "ARRÊT : la copie d'essai n'est pas la fenêtre 
 $script:projTitle = "TSA — Vues_R+5.tsa"
 $c0 = Counts
 Check "copie du projet ouverte (structure 3D)" ($nBefore -eq 380 -and $c0[0] -eq 380) "$($c0[0]) nœud(s), $($c0[1]) élément(s) ; $nBefore nœuds dans le fichier"
-RibbonTab "Affichage"
+RibbonTab "Grille et plans"   # accrochage : onglet Grille et plans (ruban réorganisé, docs/UI_RIBBON.md)
 EnsureOff "Magnétisme Grille*"
 EnsureOff "Accrochage Objets*"
+RibbonTab "Affichage"
 EnsureOn "CONSOLE*DIAGNOSTICS"
 Shot "01_projet_3D.png"
 
@@ -294,7 +295,7 @@ Shot "02_plan_XY.png"
 
 # --- 3. Poutre dans le plan, Annuler, Rétablir ------------------------------------------------------------------------
 $b3 = Counts
-PressRibbon "Modèle" "Dessiner*Poutre"
+PressRibbon "Modélisation" "Dessiner*Poutre"
 ViewClick 0.30 0.30
 ViewClick 0.42 0.30
 FocusMain; Press "{ESC}"; Press "{ESC}"; Start-Sleep -Milliseconds 600
@@ -313,7 +314,7 @@ PressRibbon "Affichage" "Plan*XZ*(*"
 $v4 = LastView
 Check "« Plan XZ » : élévation 2D, vue « 2D — Élévation avant (XZ) »" ((Mode2D) -eq "On" -and $v4 -eq "2D — Élévation avant (XZ)") "case 2D = $(Mode2D) ; bandeau « $(Badge) » ; vue « $v4 »"
 $b4 = Counts
-PressRibbon "Modèle" "Dessiner*Poutre"
+PressRibbon "Modélisation" "Dessiner*Poutre"
 ViewClick 0.25 0.35
 ViewClick 0.25 0.55
 FocusMain; Press "{ESC}"; Press "{ESC}"; Start-Sleep -Milliseconds 600
@@ -345,6 +346,7 @@ Check "ruban Affichage : plans 2D, faces (dessus, face, droite, gauche), isomét
 
 # --- 5c. Indicateur SNAP relié à l'état réel (BUG-078) ----------------------------------------------------------------
 $snapStates = @()
+RibbonTab "Grille et plans"   # accrochage : onglet Grille et plans (ruban réorganisé, docs/UI_RIBBON.md)
 EnsureOn "Magnétisme Grille*"; EnsureOn "Accrochage Objets*"; $snapStates += (SnapText)
 EnsureOff "Magnétisme Grille*"; $snapStates += (SnapText)
 EnsureOff "Accrochage Objets*"; $snapStates += (SnapText)
@@ -366,7 +368,7 @@ Command "BACK"
 $vk = LastView
 Check "plan XZ puis BACK : élévation arrière en 2D" ((Mode2D) -eq "On" -and $vk -eq "2D — Élévation arrière (XZ)") "case 2D = $(Mode2D) ; vue « $vk »"
 $b5 = Counts
-PressRibbon "Modèle" "Dessiner*Poutre"
+PressRibbon "Modélisation" "Dessiner*Poutre"
 ViewClick 0.40 0.40   # à gauche : la fenêtre de l'outil Poutre recouvre la droite de la vue
 ViewClick 0.40 0.62
 FocusMain; Press "{ESC}"; Press "{ESC}"; Start-Sleep -Milliseconds 600

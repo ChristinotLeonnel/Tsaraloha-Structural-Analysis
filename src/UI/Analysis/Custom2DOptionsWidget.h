@@ -13,6 +13,8 @@ namespace TSA::UI
 /// résolu K·U = F (dock « Données du calcul »).
 class Custom2DOptionsWidget final : public AnalysisEngineOptionsWidget
 {
+    Q_OBJECT
+
 public:
     explicit Custom2DOptionsWidget(QWidget* parent = nullptr);
     void loadSettings(const QJsonObject& settings) override;

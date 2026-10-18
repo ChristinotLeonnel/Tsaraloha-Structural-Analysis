@@ -15,6 +15,9 @@
 #include <gce_MakeCirc.hxx>
 #include <gp_Vec.hxx>
 
+#include <QCoreApplication>
+#include <QString>
+
 #include <array>
 #include <cmath>
 #include <set>
@@ -78,14 +81,19 @@ public:
         m_tx.commit();
         m_result.success = true;
         m_result.message = message;
-        for (const auto& w : m_warnings) m_result.message += " Attention : " + w;
+        for (const auto& w : m_warnings)
+            m_result.message += " " + QCoreApplication::translate("TSA::Interaction::DrawTools", "Attention : %1")
+                                          .arg(QString::fromStdString(w)).toStdString();
         return m_result;
     }
     /// Refus : tout ce que l'outil a créé est annulé, motif de l'élément refusé.
     ToolResult refused()
     {
         m_tx.rollback();
-        return { false, m_toolName + " non créé : " + m_refusal, {} };
+        return { false,
+                 QCoreApplication::translate("TSA::Interaction::DrawTools", "%1 non créé : %2")
+                     .arg(QString::fromStdString(m_toolName), QString::fromStdString(m_refusal)).toStdString(),
+                 {} };
     }
 
 private:
@@ -153,16 +161,26 @@ class BeamChainTool final : public ModelingTool
 {
 public:
     std::string id() const override { return "draw_beam_chain"; }
-    std::string name() const override { return "Chaîne de poutres"; }
-    std::string description() const override { return "Dessiner des poutres consécutives (Entrée pour terminer)"; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools", "Chaîne de poutres").toStdString();
+    }
+    std::string description() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools", "Dessiner des poutres consécutives (Entrée pour terminer)")
+            .toStdString();
+    }
     ToolCategory category() const override { return ToolCategory::Draw; }
     bool supportsDialog() const override { return false; }
     bool continuesAfterApply() const override { return true; }
     void reset() override { ModelingTool::reset(); m_finished = false; }
     std::string prompt() const override
     {
-        return m_picks.empty() ? "Chaîne de poutres : cliquez le premier point"
-                               : "Chaîne de poutres : cliquez le point suivant (Entrée : terminer, " + std::to_string(m_picks.size() - 1) + " poutre(s))";
+        return m_picks.empty()
+            ? QCoreApplication::translate("TSA::Interaction::DrawTools", "Chaîne de poutres : cliquez le premier point").toStdString()
+            : QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                          "Chaîne de poutres : cliquez le point suivant (Entrée : terminer, %1 poutre(s))")
+                  .arg(static_cast<qulonglong>(m_picks.size() - 1)).toStdString();
     }
     PickKind nextPick() const override { return m_finished ? PickKind::None : PickKind::Point; }
     bool ready() const override { return m_finished && m_picks.size() >= 2; }
@@ -188,7 +206,8 @@ public:
         ToolBuilder b(m, ctx, name());
         for (std::size_t i = 1; i < m_picks.size(); ++i)
             if (!b.beam({ m_picks[i - 1].point, m_picks[i - 1].nodeId }, { m_picks[i].point, m_picks[i].nodeId })) return b.refused();
-        return b.done(std::to_string(m_picks.size() - 1) + " poutre(s) créée(s).");
+        return b.done(QCoreApplication::translate("TSA::Interaction::DrawTools", "%1 poutre(s) créée(s).")
+                          .arg(static_cast<qulonglong>(m_picks.size() - 1)).toStdString());
     }
 
 private:
@@ -200,16 +219,26 @@ class BeamRectangleTool final : public FixedPointsTool
 public:
     BeamRectangleTool()
     {
-        addParam(pointP("c1", "Coin 1 (m)"));
-        addParam(pointP("c2", "Coin opposé (m)", gp_Pnt(6, 5, 0)));
+        addParam(pointP("c1", QCoreApplication::translate("TSA::Interaction::DrawTools", "Coin 1 (m)").toStdString()));
+        addParam(pointP("c2", QCoreApplication::translate("TSA::Interaction::DrawTools", "Coin opposé (m)").toStdString(),
+                        gp_Pnt(6, 5, 0)));
         m_pointKeys = { "c1", "c2" };
     }
     std::string id() const override { return "draw_beam_rectangle"; }
-    std::string name() const override { return "Rectangle de poutres"; }
-    std::string description() const override { return "Quatre poutres formant un rectangle dans le plan de travail"; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools", "Rectangle de poutres").toStdString();
+    }
+    std::string description() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools", "Quatre poutres formant un rectangle dans le plan de travail")
+            .toStdString();
+    }
     std::string prompt() const override
     {
-        return m_picks.empty() ? "Rectangle de poutres : cliquez un coin" : "Rectangle de poutres : cliquez le coin opposé";
+        return m_picks.empty()
+            ? QCoreApplication::translate("TSA::Interaction::DrawTools", "Rectangle de poutres : cliquez un coin").toStdString()
+            : QCoreApplication::translate("TSA::Interaction::DrawTools", "Rectangle de poutres : cliquez le coin opposé").toStdString();
     }
     ToolPreview preview(const gp_Pnt& cursor, const ToolContext& ctx) const override
     {
@@ -223,11 +252,13 @@ public:
     {
         const auto c = corners(pointParam("c1"), pointParam("c2"), ctx);
         if (c[0].Distance(c[1]) < 1e-6 || c[1].Distance(c[2]) < 1e-6)
-            return { false, "Rectangle : les deux coins doivent différer selon les deux axes du plan de travail." };
+            return { false, QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                                        "Rectangle : les deux coins doivent différer selon les deux axes du plan de travail.")
+                                .toStdString() };
         ToolBuilder b(m, ctx, name());
         for (int i = 0; i < 4; ++i)
             if (!b.beam(DrawPoint(c[i]), DrawPoint(c[(i + 1) % 4]))) return b.refused();
-        return b.done("Rectangle de 4 poutres créé.");
+        return b.done(QCoreApplication::translate("TSA::Interaction::DrawTools", "Rectangle de 4 poutres créé.").toStdString());
     }
 
 private:
@@ -246,19 +277,29 @@ class PortalTool final : public FixedPointsTool
 public:
     PortalTool()
     {
-        addParam(pointP("p1", "Pied gauche (m)"));
-        addParam(pointP("p2", "Pied droit (m)", gp_Pnt(6, 0, 0)));
-        addParam({ "height", "Hauteur (m)", ParamType::Length, 3.0, {}, 0.01, 1000 });
+        addParam(pointP("p1", QCoreApplication::translate("TSA::Interaction::DrawTools", "Pied gauche (m)").toStdString()));
+        addParam(pointP("p2", QCoreApplication::translate("TSA::Interaction::DrawTools", "Pied droit (m)").toStdString(),
+                        gp_Pnt(6, 0, 0)));
+        addParam({ "height", QCoreApplication::translate("TSA::Interaction::DrawTools", "Hauteur (m)").toStdString(),
+                   ParamType::Length, 3.0, {}, 0.01, 1000 });
         m_pointKeys = { "p1", "p2" };
     }
     std::string id() const override { return "draw_portal"; }
-    std::string name() const override { return "Portique"; }
-    std::string description() const override { return "Deux poteaux et une traverse à partir des deux pieds"; }
+    std::string name() const override { return QCoreApplication::translate("TSA::Interaction::DrawTools", "Portique").toStdString(); }
+    std::string description() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools", "Deux poteaux et une traverse à partir des deux pieds")
+            .toStdString();
+    }
     std::string prompt() const override
     {
-        const std::string h = fmt(param("height"));
-        return m_picks.empty() ? "Portique (hauteur " + h + " m, tapez une hauteur pour la changer) : cliquez le pied gauche"
-                               : "Portique (hauteur " + h + " m) : cliquez le pied droit";
+        const QString h = QString::fromStdString(fmt(param("height")));
+        return m_picks.empty()
+            ? QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                          "Portique (hauteur %1 m, tapez une hauteur pour la changer) : cliquez le pied gauche")
+                  .arg(h).toStdString()
+            : QCoreApplication::translate("TSA::Interaction::DrawTools", "Portique (hauteur %1 m) : cliquez le pied droit")
+                  .arg(h).toStdString();
     }
     bool acceptValue(double v, const ToolContext&) override
     {
@@ -278,12 +319,13 @@ public:
     ToolResult apply(Model& m, const ToolContext& ctx) override
     {
         const gp_Pnt a = pointParam("p1"), b = pointParam("p2");
-        if (a.Distance(b) < 1e-6) return { false, "Portique : pieds confondus." };
+        if (a.Distance(b) < 1e-6)
+            return { false, QCoreApplication::translate("TSA::Interaction::DrawTools", "Portique : pieds confondus.").toStdString() };
         const gp_Vec up(0, 0, param("height"));
         ToolBuilder tb(m, ctx, name());
         const DrawPoint ta(a.Translated(up)), tt(b.Translated(up));
         if (!tb.column(DrawPoint(a), ta) || !tb.column(DrawPoint(b), tt) || !tb.beam(ta, tt)) return tb.refused();
-        return tb.done("Portique créé (2 poteaux, 1 traverse).");
+        return tb.done(QCoreApplication::translate("TSA::Interaction::DrawTools", "Portique créé (2 poteaux, 1 traverse).").toStdString());
     }
 };
 
@@ -292,18 +334,28 @@ class XBracingTool final : public FixedPointsTool
 public:
     XBracingTool()
     {
-        addParam(pointP("a", "Coin 1 (m)"));
-        addParam(pointP("b", "Coin 2 (m)", gp_Pnt(6, 0, 0)));
-        addParam(pointP("c", "Coin 3 (m)", gp_Pnt(6, 0, 3)));
-        addParam(pointP("d", "Coin 4 (m)", gp_Pnt(0, 0, 3)));
+        addParam(pointP("a", QCoreApplication::translate("TSA::Interaction::DrawTools", "Coin 1 (m)").toStdString()));
+        addParam(pointP("b", QCoreApplication::translate("TSA::Interaction::DrawTools", "Coin 2 (m)").toStdString(), gp_Pnt(6, 0, 0)));
+        addParam(pointP("c", QCoreApplication::translate("TSA::Interaction::DrawTools", "Coin 3 (m)").toStdString(), gp_Pnt(6, 0, 3)));
+        addParam(pointP("d", QCoreApplication::translate("TSA::Interaction::DrawTools", "Coin 4 (m)").toStdString(), gp_Pnt(0, 0, 3)));
         m_pointKeys = { "a", "b", "c", "d" };
     }
     std::string id() const override { return "draw_x_bracing"; }
-    std::string name() const override { return "Contreventement en X"; }
-    std::string description() const override { return "Deux diagonales de treillis dans un panneau défini par ses 4 coins (dans l'ordre)"; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools", "Contreventement en X").toStdString();
+    }
+    std::string description() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                           "Deux diagonales de treillis dans un panneau défini par ses 4 coins (dans l'ordre)")
+            .toStdString();
+    }
     std::string prompt() const override
     {
-        return "Contreventement en X : cliquez le coin " + std::to_string(m_picks.size() + 1) + " sur 4 (dans l'ordre du contour)";
+        return QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                           "Contreventement en X : cliquez le coin %1 sur 4 (dans l'ordre du contour)")
+            .arg(static_cast<qulonglong>(m_picks.size() + 1)).toStdString();
     }
     ToolPreview preview(const gp_Pnt& cursor, const ToolContext&) const override
     {
@@ -321,7 +373,8 @@ public:
         const DrawPoint a(pointParam("a")), b(pointParam("b")), c(pointParam("c")), d(pointParam("d"));
         ToolBuilder tb(m, ctx, name());
         if (!tb.diagonal(a, c) || !tb.diagonal(b, d)) return tb.refused();
-        return tb.done("Contreventement en X : 2 diagonales créées.");
+        return tb.done(QCoreApplication::translate("TSA::Interaction::DrawTools", "Contreventement en X : 2 diagonales créées.")
+                           .toStdString());
     }
 };
 
@@ -330,20 +383,42 @@ class BeamArcTool final : public FixedPointsTool
 public:
     BeamArcTool()
     {
-        addParam(pointP("start", "Début (m)"));
-        addParam(pointP("mid", "Point de passage (m)", gp_Pnt(5, 0, 2)));
-        addParam(pointP("end", "Fin (m)", gp_Pnt(10, 0, 0)));
-        addParam({ "segments", "Nombre de poutres", ParamType::Count, 8, {}, 2, 1000 });
+        addParam(pointP("start", QCoreApplication::translate("TSA::Interaction::DrawTools", "Début (m)").toStdString()));
+        addParam(pointP("mid", QCoreApplication::translate("TSA::Interaction::DrawTools", "Point de passage (m)").toStdString(),
+                        gp_Pnt(5, 0, 2)));
+        addParam(pointP("end", QCoreApplication::translate("TSA::Interaction::DrawTools", "Fin (m)").toStdString(), gp_Pnt(10, 0, 0)));
+        addParam({ "segments", QCoreApplication::translate("TSA::Interaction::DrawTools", "Nombre de poutres").toStdString(),
+                   ParamType::Count, 8, {}, 2, 1000 });
         m_pointKeys = { "start", "mid", "end" };
     }
     std::string id() const override { return "draw_beam_arc"; }
-    std::string name() const override { return "Arc de poutres"; }
-    std::string description() const override { return "Arc par 3 points discrétisé en N poutres droites"; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools", "Arc de poutres").toStdString();
+    }
+    std::string description() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools", "Arc par 3 points discrétisé en N poutres droites")
+            .toStdString();
+    }
     std::string prompt() const override
     {
-        const char* step[] = { "le début", "un point de passage", "la fin" };
-        return "Arc de " + std::to_string(static_cast<int>(param("segments"))) + " poutres (tapez un nombre pour le changer) : cliquez "
-               + step[std::min<std::size_t>(m_picks.size(), 2)];
+        const int n = static_cast<int>(param("segments"));
+        switch (std::min<std::size_t>(m_picks.size(), 2))
+        {
+        case 0:
+            return QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                               "Arc de %1 poutres (tapez un nombre pour le changer) : cliquez le début")
+                .arg(n).toStdString();
+        case 1:
+            return QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                               "Arc de %1 poutres (tapez un nombre pour le changer) : cliquez un point de passage")
+                .arg(n).toStdString();
+        default:
+            return QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                               "Arc de %1 poutres (tapez un nombre pour le changer) : cliquez la fin")
+                .arg(n).toStdString();
+        }
     }
     bool acceptValue(double v, const ToolContext&) override { setParam("segments", std::round(v)); return true; }
     ToolPreview preview(const gp_Pnt& cursor, const ToolContext&) const override
@@ -362,11 +437,13 @@ public:
     {
         std::vector<gp_Pnt> pts;
         if (!arcPoints(pointParam("start"), pointParam("mid"), pointParam("end"), static_cast<int>(param("segments")), pts))
-            return { false, "Arc : les trois points sont alignés ou confondus." };
+            return { false, QCoreApplication::translate("TSA::Interaction::DrawTools", "Arc : les trois points sont alignés ou confondus.")
+                                .toStdString() };
         ToolBuilder b(m, ctx, name());
         for (std::size_t i = 1; i < pts.size(); ++i)
             if (!b.beam(DrawPoint(pts[i - 1]), DrawPoint(pts[i]))) return b.refused();
-        return b.done("Arc de " + std::to_string(pts.size() - 1) + " poutre(s) créé.");
+        return b.done(QCoreApplication::translate("TSA::Interaction::DrawTools", "Arc de %1 poutre(s) créé.")
+                          .arg(static_cast<qulonglong>(pts.size() - 1)).toStdString());
     }
 
     static bool arcPoints(const gp_Pnt& a, const gp_Pnt& b, const gp_Pnt& c, int n, std::vector<gp_Pnt>& out)
@@ -397,22 +474,33 @@ class GridColumnsTool final : public FixedPointsTool
 public:
     GridColumnsTool()
     {
-        addParam(pointP("c1", "Coin 1 de la zone (m)"));
-        addParam(pointP("c2", "Coin opposé (m)", gp_Pnt(20, 20, 0)));
-        addParam({ "height", "Hauteur (m)", ParamType::Length, 3.0, {}, 0.01, 1000 });
+        addParam(pointP("c1", QCoreApplication::translate("TSA::Interaction::DrawTools", "Coin 1 de la zone (m)").toStdString()));
+        addParam(pointP("c2", QCoreApplication::translate("TSA::Interaction::DrawTools", "Coin opposé (m)").toStdString(),
+                        gp_Pnt(20, 20, 0)));
+        addParam({ "height", QCoreApplication::translate("TSA::Interaction::DrawTools", "Hauteur (m)").toStdString(),
+                   ParamType::Length, 3.0, {}, 0.01, 1000 });
         m_pointKeys = { "c1", "c2" };
     }
     std::string id() const override { return "draw_grid_columns"; }
-    std::string name() const override { return "Poteaux sur grille"; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DrawTools", "Poteaux sur grille").toStdString();
+    }
     std::string description() const override
     {
-        return "Un poteau à chaque intersection de la grille active comprise dans une zone (pied à la cote du 1er coin)";
+        return QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                           "Un poteau à chaque intersection de la grille active comprise dans une zone "
+                                           "(pied à la cote du 1er coin)")
+            .toStdString();
     }
     bool continuesAfterApply() const override { return false; }
     std::string prompt() const override
     {
-        return m_picks.empty() ? "Poteaux sur grille : cliquez un coin de la zone (tapez une hauteur pour la changer)"
-                               : "Poteaux sur grille : cliquez le coin opposé";
+        return m_picks.empty()
+            ? QCoreApplication::translate("TSA::Interaction::DrawTools",
+                                          "Poteaux sur grille : cliquez un coin de la zone (tapez une hauteur pour la changer)")
+                  .toStdString()
+            : QCoreApplication::translate("TSA::Interaction::DrawTools", "Poteaux sur grille : cliquez le coin opposé").toStdString();
     }
     bool acceptValue(double v, const ToolContext&) override
     {
@@ -432,7 +520,9 @@ public:
     ToolResult apply(Model& m, const ToolContext& ctx) override
     {
         const auto* grid = ctx.grids ? ctx.grids->activeGrid() : nullptr;
-        if (!grid || !grid->cartesian()) return { false, "Poteaux sur grille : aucune grille cartésienne active." };
+        if (!grid || !grid->cartesian())
+            return { false, QCoreApplication::translate("TSA::Interaction::DrawTools", "Poteaux sur grille : aucune grille cartésienne active.")
+                                .toStdString() };
         const gp_Pnt a = pointParam("c1"), b = pointParam("c2");
         const double x0 = std::min(a.X(), b.X()) - 1e-6, x1 = std::max(a.X(), b.X()) + 1e-6;
         const double y0 = std::min(a.Y(), b.Y()) - 1e-6, y1 = std::max(a.Y(), b.Y()) + 1e-6;
@@ -444,12 +534,15 @@ public:
             if (x < x0 || x > x1 || y < y0 || y > y1) continue;
             if (seen.insert({ std::llround(x * 1e4), std::llround(y * 1e4) }).second) feet.emplace_back(x, y, a.Z());
         }
-        if (feet.empty()) return { false, "Poteaux sur grille : aucune intersection dans la zone." };
+        if (feet.empty())
+            return { false, QCoreApplication::translate("TSA::Interaction::DrawTools", "Poteaux sur grille : aucune intersection dans la zone.")
+                                .toStdString() };
         ToolBuilder tb(m, ctx, name());
         const gp_Vec up(0, 0, param("height"));
         for (const auto& f : feet)
             if (!tb.column(DrawPoint(f), DrawPoint(f.Translated(up)))) return tb.refused();
-        return tb.done(std::to_string(feet.size()) + " poteau(x) créé(s).");
+        return tb.done(QCoreApplication::translate("TSA::Interaction::DrawTools", "%1 poteau(x) créé(s).")
+                           .arg(static_cast<qulonglong>(feet.size())).toStdString());
     }
 };
 

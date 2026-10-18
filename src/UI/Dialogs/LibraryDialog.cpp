@@ -374,7 +374,7 @@ QWidget* LibraryDialog::createColorsTab()
     auto* form = new QFormLayout(group);
 
     m_colorNameEdit = new QLineEdit(this);
-    m_colorNameEdit->setPlaceholderText("Poutre Principale Bleue");
+    m_colorNameEdit->setPlaceholderText(tr("Poutre Principale Bleue"));
     form->addRow(tr("Nom :"), m_colorNameEdit);
 
     m_currentColorHex = "#007ACC";
@@ -477,7 +477,7 @@ QWidget* LibraryDialog::createTexturesTab()
     auto* form = new QFormLayout(group);
 
     m_texNameEdit = new QLineEdit(this);
-    m_texNameEdit->setPlaceholderText("Béton Coffrage Bois");
+    m_texNameEdit->setPlaceholderText(tr("Béton Coffrage Bois"));
     form->addRow(tr("Nom :"), m_texNameEdit);
 
     auto* pathLayout = new QHBoxLayout();
@@ -590,7 +590,7 @@ QWidget* LibraryDialog::createStructuresTab()
     form->addRow(tr("Nom :"), m_tplNameEdit);
 
     m_tplDescEdit = new QLineEdit(this);
-    m_tplDescEdit->setPlaceholderText("Portique 2D 6m x 3m");
+    m_tplDescEdit->setPlaceholderText(tr("Portique 2D 6m x 3m"));
     form->addRow(tr("Description :"), m_tplDescEdit);
 
     rightPanel->addWidget(group);

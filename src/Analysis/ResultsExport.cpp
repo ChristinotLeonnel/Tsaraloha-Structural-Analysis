@@ -1,5 +1,6 @@
 #include "ResultsExport.h"
 
+#include <QCoreApplication>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -298,7 +299,7 @@ std::string renderCsv(const ResultsModel& r, ResultsDataset ds, std::string* err
     case ResultsDataset::GlobalStiffness:
         if (!adv.hasGlobalStiffness)
         {
-            if (err) *err = "K_global indisponible : " + adv.kGlobalUnavailableReason;
+            if (err) *err = QCoreApplication::translate("TSA::Analysis::ResultsExport", "K_global indisponible : %1").arg(QString::fromStdString(adv.kGlobalUnavailableReason)).toStdString();
             return {};
         }
         out << "# " << adv.kGlobalMeta.source << " | " << adv.kGlobalMeta.matrixType << " | exact="
@@ -332,7 +333,9 @@ std::string renderCsv(const ResultsModel& r, ResultsDataset ds, std::string* err
         const auto& eqs = adv.dofMap.equations;
         if (eqs.empty())
         {
-            if (err) *err = "Vecteurs F et U indisponibles : numérotation des équations non exportée par le moteur.";
+            if (err)
+                *err = QCoreApplication::translate("TSA::Analysis::ResultsExport", "Vecteurs F et U indisponibles : numérotation des équations non exportée par le moteur.")
+                           .toStdString();
             return {};
         }
         const bool hasF = adv.loadVector.size() == eqs.size();
@@ -340,7 +343,9 @@ std::string renderCsv(const ResultsModel& r, ResultsDataset ds, std::string* err
         const std::vector<double> uDerived = hasU ? std::vector<double> {} : adv.globalDisplacementVector(r.allDisplacements());
         if (!hasF && uDerived.size() != eqs.size())
         {
-            if (err) *err = "Vecteurs F et U indisponibles : le moteur n'exporte pas son système (Custom2D : option « Exporter le système K·U = F »).";
+            if (err)
+                *err = QCoreApplication::translate("TSA::Analysis::ResultsExport", "Vecteurs F et U indisponibles : le moteur n'exporte pas son système "
+                                                       "(Custom2D : option « Exporter le système K·U = F »).").toStdString();
             return {};
         }
         out << "# F : " << (hasF ? "second membre exporté par le moteur" : "non exporté par ce moteur (colonne vide)")
@@ -375,14 +380,16 @@ std::string renderCsv(const ResultsModel& r, ResultsDataset ds, std::string* err
         }
         if (written == 0)
         {
-            if (err) *err = "Transformations indisponibles : aucune matrice de rotation exportée par le moteur" + (missing.empty() ? std::string(".") : " — " + missing);
+            if (err)
+                *err = QCoreApplication::translate("TSA::Analysis::ResultsExport", "Transformations indisponibles : aucune matrice de rotation exportée par le moteur").toStdString()
+                       + (missing.empty() ? std::string(".") : " — " + missing);
             return {};
         }
         if (!missing.empty()) out << "# non fournies par le moteur : " << missing << '\n';
         break;
     }
     case ResultsDataset::All:
-        if (err) *err = "L'export complet n'est disponible qu'en JSON ou TXT.";
+        if (err) *err = QCoreApplication::translate("TSA::Analysis::ResultsExport", "L'export complet n'est disponible qu'en JSON ou TXT.").toStdString();
         return {};
     }
     return out.str();
@@ -506,7 +513,8 @@ std::string ResultsExport::render(const ResultsModel& results, ResultsDataset da
     if (needsAdvanced(dataset) && !results.advanced().available)
     {
         if (errorMessage)
-            *errorMessage = "Données avancées absentes : relancer le calcul en mode ADVANCED (matrices et mapping DDL).";
+            *errorMessage = QCoreApplication::translate("TSA::Analysis::ResultsExport", "Données avancées absentes : relancer le calcul en mode ADVANCED (matrices et "
+                                                                 "mapping DDL).").toStdString();
         return {};
     }
     switch (format)
@@ -528,19 +536,19 @@ bool ResultsExport::write(const ResultsModel& results, ResultsDataset dataset, R
     const std::string content = render(results, dataset, format, &err);
     if (content.empty())
     {
-        if (errorMessage) *errorMessage = err.empty() ? "Aucune donnée à exporter." : err;
+        if (errorMessage) *errorMessage = err.empty() ? QCoreApplication::translate("TSA::Analysis::ResultsExport", "Aucune donnée à exporter.").toStdString() : err;
         return false;
     }
     QSaveFile f(QString::fromStdString(path));
     if (!f.open(QIODevice::WriteOnly))
     {
-        if (errorMessage) *errorMessage = "Impossible d'écrire " + path;
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::Analysis::ResultsExport", "Impossible d'écrire %1").arg(QString::fromStdString(path)).toStdString();
         return false;
     }
     f.write(content.data(), static_cast<qint64>(content.size()));
     if (!f.commit())
     {
-        if (errorMessage) *errorMessage = "Échec de l'écriture de " + path;
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::Analysis::ResultsExport", "Échec de l'écriture de %1").arg(QString::fromStdString(path)).toStdString();
         return false;
     }
     return true;

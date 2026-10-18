@@ -60,7 +60,7 @@ void NodalLoadDialog::setupUI()
     mainLayout->addWidget(groupNode);
 
     // 2. Groupe Cas de charge & Repère
-    auto* groupCase = new QGroupBox(tr("Cas de charge & Système de coordonnées"), this);
+    auto* groupCase = new QGroupBox(tr("Cas de charge et Système de coordonnées"), this);
     auto* caseForm = new QFormLayout(groupCase);
 
     m_comboLoadCase = new QComboBox(this);

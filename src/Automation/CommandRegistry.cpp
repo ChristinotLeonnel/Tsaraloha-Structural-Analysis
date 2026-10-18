@@ -19,6 +19,10 @@
 #include "../Project/ProjectSession.h"
 #include "../UndoRedo/EditTransaction.h"
 
+#include <QCoreApplication>
+#include <QString>
+#include <QtGlobal>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -26,6 +30,28 @@
 
 namespace TSA::Automation
 {
+
+// Traduction : titres, descriptions et libellés du registre marqués QT_TRANSLATE_NOOP dans le contexte
+// « TSA::Automation::Commands » (texte source conservé dans les spécifications, traduit à l'affichage : recherche
+// globale, Blueprint) ; messages des commandes traduits dans le même contexte. Les identifiants ne sont jamais traduits.
+namespace
+{
+QString qs(const std::string& s) { return QString::fromStdString(s); }
+
+/// Nombre écrit comme par le flux (même format qu'avant la traduction des messages).
+QString qn(double v)
+{
+    std::ostringstream o;
+    o << v;
+    return QString::fromStdString(o.str());
+}
+
+/// Texte source du registre (titre, libellé, nom de type) dans la langue de l'interface.
+QString shown(const std::string& source)
+{
+    return QCoreApplication::translate("TSA::Automation::Commands", source.c_str());
+}
+} // namespace
 
 // -----------------------------------------------------------------------------
 // Registre
@@ -85,7 +111,7 @@ CommandResult CommandRegistry::execute(TSA::Project::ProjectSession& session, co
     const auto it = m_index.find(id);
     if (it == m_index.end())
     {
-        r.message = "Commande inconnue : « " + id + " ».";
+        r.message = QCoreApplication::translate("TSA::Automation::Commands", "Commande inconnue : « %1 ».").arg(qs(id)).toStdString();
         return r;
     }
     const Entry& e = m_entries[it->second];
@@ -95,7 +121,7 @@ CommandResult CommandRegistry::execute(TSA::Project::ProjectSession& session, co
                                     [&](const ParameterSpec& s) { return s.name == name; });
         if (p == e.spec.parameters.end())
         {
-            r.message = "Paramètre inconnu « " + name + " » pour " + id + ".";
+            r.message = QCoreApplication::translate("TSA::Automation::Commands", "Paramètre inconnu « %1 » pour %2.").arg(qs(name), qs(id)).toStdString();
             return r;
         }
     }
@@ -106,7 +132,9 @@ CommandResult CommandRegistry::execute(TSA::Project::ProjectSession& session, co
         {
             if (p.required)
             {
-                r.message = "Paramètre requis manquant : « " + p.name + " » (" + p.label + ").";
+                r.message = QCoreApplication::translate("TSA::Automation::Commands", "Paramètre requis manquant : « %1 » (%2).")
+                                .arg(qs(p.name), shown(p.label))
+                                .toStdString();
                 return r;
             }
             args[p.name] = p.defaultValue;
@@ -114,7 +142,9 @@ CommandResult CommandRegistry::execute(TSA::Project::ProjectSession& session, co
         }
         if (!matches(a->second, p.type))
         {
-            r.message = "Paramètre « " + p.name + " » : " + typeName(p.type) + " attendu, reçu « " + formatValue(a->second) + " ».";
+            r.message = QCoreApplication::translate("TSA::Automation::Commands", "Paramètre « %1 » : %2 attendu, reçu « %3 ».")
+                            .arg(qs(p.name), shown(typeName(p.type)), qs(formatValue(a->second)))
+                            .toStdString();
             return r;
         }
         a->second = normalized(a->second, p.type);
@@ -122,7 +152,7 @@ CommandResult CommandRegistry::execute(TSA::Project::ProjectSession& session, co
 
     if (!e.spec.modifiesModel) return e.handler(session, args);
 
-    TSA::UndoRedo::EditTransaction tx(session.model(), e.spec.title);
+    TSA::UndoRedo::EditTransaction tx(session.model(), shown(e.spec.title).toStdString());   // libellé Annuler / Rétablir affiché
     r = e.handler(session, args);
     if (r.ok)
     {
@@ -185,11 +215,14 @@ bool parseSection(const std::string& spec, TSA::Model::Section& out, std::string
         try { n = std::stoi(size, &used); } catch (const std::exception&) { used = 0; }
         if (used == 0 || used != size.size() || std::find(sizes->begin(), sizes->end(), n) == sizes->end())
         {
-            if (error) *error = "Profil « " + spec + " » absent du catalogue (" + family + " : " + [&] {
-                std::string l;
-                for (int v : *sizes) l += (l.empty() ? "" : ", ") + std::to_string(v);
-                return l;
-            }() + ").";
+            if (error)
+                *error = QCoreApplication::translate("TSA::Automation::Commands", "Profil « %1 » absent du catalogue (%2 : %3).")
+                             .arg(qs(spec), qs(family), qs([&] {
+                                      std::string l;
+                                      for (int v : *sizes) l += (l.empty() ? "" : ", ") + std::to_string(v);
+                                      return l;
+                                  }()))
+                             .toStdString();
             return false;
         }
     }
@@ -208,13 +241,16 @@ bool parseSection(const std::string& spec, TSA::Model::Section& out, std::string
         }
         else
         {
-            if (error) *error = "Section inconnue « " + spec + " » (IPE n, HEA n, HEB n, UPN n, RECT bxh, CIRC d).";
+            if (error)
+                *error = QCoreApplication::translate("TSA::Automation::Commands", "Section inconnue « %1 » (IPE n, HEA n, HEB n, UPN n, RECT bxh, CIRC d).")
+                             .arg(qs(spec))
+                             .toStdString();
             return false;
         }
     }
     catch (const std::exception&)
     {
-        if (error) *error = "Dimensions de section invalides : « " + spec + " ».";
+        if (error) *error = QCoreApplication::translate("TSA::Automation::Commands", "Dimensions de section invalides : « %1 ».").arg(qs(spec)).toStdString();
         return false;
     }
     return true;
@@ -253,16 +289,24 @@ CommandResult createBar(TSA::Project::ProjectSession& s, const Arguments& a, TSA
 {
     Model& m = s.model();
     const int start = static_cast<int>(integer(a, "start")), end = static_cast<int>(integer(a, "end"));
-    if (!m.getNode(start) || !m.getNode(end)) return fail(std::string(kind) + " : nœud d'extrémité inexistant.");
-    if (start == end) return fail(std::string(kind) + " : les deux extrémités sont le même nœud.");
+    const QString shownKind = QCoreApplication::translate("TSA::Automation::Commands", kind);   // kind : texte source marqué
+    if (!m.getNode(start) || !m.getNode(end))
+        return fail(QCoreApplication::translate("TSA::Automation::Commands", "%1 : nœud d'extrémité inexistant.").arg(shownKind).toStdString());
+    if (start == end)
+        return fail(QCoreApplication::translate("TSA::Automation::Commands", "%1 : les deux extrémités sont le même nœud.").arg(shownKind).toStdString());
     TSA::Model::Section section;
     std::string error;
     if (!parseSection(text(a, "section"), section, &error)) return fail(error);
     TSA::Model::Material material;
-    if (!parseMaterial(text(a, "material"), material)) return fail("Matériau inconnu « " + text(a, "material") + " » (S235, S355, C25/30, C30/37, C24).");
+    if (!parseMaterial(text(a, "material"), material))
+        return fail(QCoreApplication::translate("TSA::Automation::Commands", "Matériau inconnu « %1 » (S235, S355, C25/30, C30/37, C24).")
+                        .arg(qs(text(a, "material")))
+                        .toStdString());
     const int id = m.addBar(start, end, section, material, role, real(a, "rotation"), text(a, "name"));
-    if (id <= 0) return fail(std::string(kind) + " non créé(e).");
-    return done(std::string(kind) + " " + std::to_string(id) + " créé(e) entre N" + std::to_string(start) + " et N" + std::to_string(end) + ".",
+    if (id <= 0) return fail(QCoreApplication::translate("TSA::Automation::Commands", "%1 non créé(e).").arg(shownKind).toStdString());
+    return done(QCoreApplication::translate("TSA::Automation::Commands", "%1 %2 créé(e) entre N%3 et N%4.")
+                    .arg(shownKind, QString::number(id), QString::number(start), QString::number(end))
+                    .toStdString(),
                 { { "id", static_cast<long long>(id) } });
 }
 } // namespace
@@ -278,70 +322,103 @@ void registerBuiltInCommands(CommandRegistry& reg)
     using Q = Quantity;
 
     // --- Modèle -----------------------------------------------------------------------------------
-    reg.add({ "model.create_node", "Créer un nœud", "Modèle", "Ajoute un nœud aux coordonnées données (m).",
-              { param("position", "Position", VT::Point3, Q::Length), optional(param("name", "Nom", VT::Text), std::string()) },
-              { param("id", "Nœud créé", VT::Integer) }, true },
+    reg.add({ "model.create_node", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Créer un nœud"), QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Modèle"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Ajoute un nœud aux coordonnées données (m)."),
+              { param("position", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Position"), VT::Point3, Q::Length),
+                optional(param("name", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nom"), VT::Text), std::string()) },
+              { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud créé"), VT::Integer) }, true },
             [](auto& s, const Arguments& a) {
                 const auto p = std::get<Point3>(a.at("position"));
                 const int id = s.model().addNode(p[0], p[1], p[2], "", text(a, "name"));
-                return done("Nœud N" + std::to_string(id) + " créé.", { { "id", static_cast<long long>(id) } });
+                return done(QCoreApplication::translate("TSA::Automation::Commands", "Nœud N%1 créé.").arg(id).toStdString(),
+                            { { "id", static_cast<long long>(id) } });
             });
 
     const std::vector<ParameterSpec> barParams = {
-        param("start", "Nœud de départ", VT::Integer), param("end", "Nœud d'arrivée", VT::Integer),
-        optional(param("section", "Section", VT::Text), std::string("IPE 300")),
-        optional(param("material", "Matériau", VT::Text), std::string("S235")),
-        optional(param("rotation", "Rotation de section", VT::Real, Q::Angle), 0.0),
-        optional(param("name", "Nom", VT::Text), std::string()),
+        param("start", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud de départ"), VT::Integer),
+        param("end", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud d'arrivée"), VT::Integer),
+        optional(param("section", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Section"), VT::Text), std::string("IPE 300")),
+        optional(param("material", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Matériau"), VT::Text), std::string("S235")),
+        optional(param("rotation", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Rotation de section"), VT::Real, Q::Angle), 0.0),
+        optional(param("name", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nom"), VT::Text), std::string()),
     };
-    reg.add({ "model.create_beam", "Créer une poutre", "Modèle", "Ajoute une poutre entre deux nœuds existants.",
-              barParams, { param("id", "Poutre créée", VT::Integer) }, true },
-            [](auto& s, const Arguments& a) { return createBar(s, a, TSA::Model::BarRole::Beam, "Poutre"); });
-    reg.add({ "model.create_column", "Créer un poteau", "Modèle", "Ajoute un poteau entre deux nœuds existants.",
-              barParams, { param("id", "Poteau créé", VT::Integer) }, true },
-            [](auto& s, const Arguments& a) { return createBar(s, a, TSA::Model::BarRole::Column, "Poteau"); });
+    reg.add({ "model.create_beam", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Créer une poutre"), QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Modèle"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Ajoute une poutre entre deux nœuds existants."),
+              barParams, { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Poutre créée"), VT::Integer) }, true },
+            [](auto& s, const Arguments& a) {
+                return createBar(s, a, TSA::Model::BarRole::Beam, QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Poutre"));
+            });
+    reg.add({ "model.create_column", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Créer un poteau"), QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Modèle"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Ajoute un poteau entre deux nœuds existants."),
+              barParams, { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Poteau créé"), VT::Integer) }, true },
+            [](auto& s, const Arguments& a) {
+                return createBar(s, a, TSA::Model::BarRole::Column, QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Poteau"));
+            });
 
-    reg.add({ "model.set_support", "Définir un appui", "Modèle",
-              "Appui d'un nœud : fixed (encastrement), pinned (articulation), roller (appui simple), free (aucun).",
-              { param("node", "Nœud", VT::Integer), param("type", "Type", VT::Text) }, {}, true },
+    reg.add({ "model.set_support", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Définir un appui"), QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Modèle"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands",
+                                "Appui d'un nœud : fixed (encastrement), pinned (articulation), roller (appui simple), free (aucun)."),
+              { param("node", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud"), VT::Integer),
+                param("type", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Type"), VT::Text) }, {}, true },
             [](auto& s, const Arguments& a) {
                 const int id = static_cast<int>(integer(a, "node"));
                 auto* n = s.model().getNode(id);
-                if (!n) return fail("Nœud N" + std::to_string(id) + " inexistant.");
+                if (!n) return fail(QCoreApplication::translate("TSA::Automation::Commands", "Nœud N%1 inexistant.").arg(id).toStdString());
                 const std::string t = upper(text(a, "type"));
                 if (t == "FIXED") n->setSupport(TSA::Model::SupportDefinition::fixed());
                 else if (t == "PINNED") n->setSupport(TSA::Model::SupportDefinition::pinned());
                 else if (t == "ROLLER") n->setSupport(TSA::Model::SupportDefinition::roller());
                 else if (t == "FREE") n->setSupport(TSA::Model::SupportDefinition::free());
-                else return fail("Type d'appui inconnu « " + text(a, "type") + " » (fixed, pinned, roller, free).");
+                else
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Type d'appui inconnu « %1 » (fixed, pinned, roller, free).")
+                                    .arg(qs(text(a, "type")))
+                                    .toStdString());
                 s.model().notifyNodeModified(id);
-                return done("Appui « " + text(a, "type") + " » sur N" + std::to_string(id) + ".");
+                return done(QCoreApplication::translate("TSA::Automation::Commands", "Appui « %1 » sur N%2.")
+                                .arg(qs(text(a, "type")), QString::number(id))
+                                .toStdString());
             });
 
-    reg.add({ "model.set_section", "Affecter section et matériau", "Modèle",
-              "Remplace la section (IPE n, HEA n, HEB n, UPN n, RECT bxh, CIRC d) et, si donné, le matériau d'une barre.",
-              { param("bar", "Barre", VT::Integer), param("section", "Section", VT::Text), optional(param("material", "Matériau", VT::Text), std::string()) },
+    reg.add({ "model.set_section", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Affecter section et matériau"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Modèle"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands",
+                                "Remplace la section (IPE n, HEA n, HEB n, UPN n, RECT bxh, CIRC d) et, si donné, le matériau d'une barre."),
+              { param("bar", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Barre"), VT::Integer),
+                param("section", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Section"), VT::Text),
+                optional(param("material", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Matériau"), VT::Text), std::string()) },
               {}, true },
             [](auto& s, const Arguments& a) {
                 const int id = static_cast<int>(integer(a, "bar"));
                 auto* bar = s.model().getBar(id);
-                if (!bar) return fail("Barre " + std::to_string(id) + " inexistante.");
+                if (!bar) return fail(QCoreApplication::translate("TSA::Automation::Commands", "Barre %1 inexistante.").arg(id).toStdString());
                 TSA::Model::Section section;
                 std::string error;
                 if (!parseSection(text(a, "section"), section, &error)) return fail(error);
                 TSA::Model::Material material = bar->material();
                 const std::string mat = text(a, "material");
-                if (!mat.empty() && !parseMaterial(mat, material)) return fail("Matériau inconnu « " + mat + " » (S235, S355, C25/30, C30/37, C24).");
+                if (!mat.empty() && !parseMaterial(mat, material))
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Matériau inconnu « %1 » (S235, S355, C25/30, C30/37, C24).")
+                                    .arg(qs(mat))
+                                    .toStdString());
                 bar->setSection(section);
                 bar->setMaterial(material);
                 s.model().notifyBeamModified(id);
-                return done("Barre " + std::to_string(id) + " : section « " + text(a, "section") + " »" + (mat.empty() ? std::string() : ", matériau " + mat) + ".");
+                if (mat.empty())
+                    return done(QCoreApplication::translate("TSA::Automation::Commands", "Barre %1 : section « %2 ».")
+                                    .arg(QString::number(id), qs(text(a, "section")))
+                                    .toStdString());
+                return done(QCoreApplication::translate("TSA::Automation::Commands", "Barre %1 : section « %2 », matériau %3.")
+                                .arg(QString::number(id), qs(text(a, "section")), qs(mat))
+                                .toStdString());
             });
 
     // --- Charges ----------------------------------------------------------------------------------
-    reg.add({ "loads.create_case", "Créer un cas de charge", "Charges", "Ajoute un cas de charge (catégorie : dead, live, wind, snow).",
-              { param("name", "Nom", VT::Text), optional(param("category", "Catégorie", VT::Text), std::string("dead")) },
-              { param("id", "Cas créé", VT::Integer) }, true },
+    reg.add({ "loads.create_case", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Créer un cas de charge"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Charges"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Ajoute un cas de charge (catégorie : dead, live, wind, snow)."),
+              { param("name", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nom"), VT::Text),
+                optional(param("category", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Catégorie"), VT::Text), std::string("dead")) },
+              { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Cas créé"), VT::Integer) }, true },
             [](auto& s, const Arguments& a) {
                 using C = TSA::Model::LoadCaseCategory;
                 const std::string c = upper(text(a, "category"));
@@ -349,46 +426,71 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 if (c == "LIVE") cat = C::Live;
                 else if (c == "WIND") cat = C::Wind;
                 else if (c == "SNOW") cat = C::Snow;
-                else if (c != "DEAD") return fail("Catégorie inconnue « " + text(a, "category") + " » (dead, live, wind, snow).");
+                else if (c != "DEAD")
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Catégorie inconnue « %1 » (dead, live, wind, snow).")
+                                    .arg(qs(text(a, "category")))
+                                    .toStdString());
                 const int id = s.model().loadManager().addLoadCase(TSA::Model::LoadCase(0, text(a, "name"), cat));
                 s.model().notifyLoadCaseChanged(id);
-                return done("Cas de charge " + std::to_string(id) + " « " + text(a, "name") + " » créé.", { { "id", static_cast<long long>(id) } });
+                return done(QCoreApplication::translate("TSA::Automation::Commands", "Cas de charge %1 « %2 » créé.")
+                                .arg(QString::number(id), qs(text(a, "name")))
+                                .toStdString(),
+                            { { "id", static_cast<long long>(id) } });
             });
 
-    reg.add({ "loads.add_nodal", "Ajouter une charge nodale", "Charges", "Force (kN) appliquée à un nœud, repère global.",
-              { param("node", "Nœud", VT::Integer), param("case", "Cas de charge", VT::Integer),
+    reg.add({ "loads.add_nodal", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Ajouter une charge nodale"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Charges"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Force (kN) appliquée à un nœud, repère global."),
+              { param("node", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud"), VT::Integer),
+                param("case", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Cas de charge"), VT::Integer),
                 optional(param("fx", "Fx", VT::Real, Q::Force), 0.0), optional(param("fy", "Fy", VT::Real, Q::Force), 0.0),
                 optional(param("fz", "Fz", VT::Real, Q::Force), 0.0) },
-              { param("id", "Charge créée", VT::Integer) }, true },
+              { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Charge créée"), VT::Integer) }, true },
             [](auto& s, const Arguments& a) {
                 const int node = static_cast<int>(integer(a, "node")), lc = static_cast<int>(integer(a, "case"));
-                if (!s.model().getNode(node)) return fail("Nœud N" + std::to_string(node) + " inexistant.");
-                if (!s.model().loadManager().getLoadCase(lc)) return fail("Cas de charge " + std::to_string(lc) + " inexistant.");
+                if (!s.model().getNode(node))
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Nœud N%1 inexistant.").arg(node).toStdString());
+                if (!s.model().loadManager().getLoadCase(lc))
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Cas de charge %1 inexistant.").arg(lc).toStdString());
                 const double fx = real(a, "fx"), fy = real(a, "fy"), fz = real(a, "fz");
-                if (std::abs(fx) + std::abs(fy) + std::abs(fz) == 0.0) return fail("Charge nulle.");
+                if (std::abs(fx) + std::abs(fy) + std::abs(fz) == 0.0)
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Charge nulle.").toStdString());
                 const int id = s.model().loadManager().addNodalLoad(TSA::Model::NodalLoad(0, node, lc, fx, fy, fz));
                 s.model().notifyNodalLoadAdded(id);
-                return done("Charge nodale " + std::to_string(id) + " sur N" + std::to_string(node) + ".", { { "id", static_cast<long long>(id) } });
+                return done(QCoreApplication::translate("TSA::Automation::Commands", "Charge nodale %1 sur N%2.")
+                                .arg(QString::number(id), QString::number(node))
+                                .toStdString(),
+                            { { "id", static_cast<long long>(id) } });
             });
 
-    reg.add({ "loads.add_uniform", "Ajouter une charge répartie", "Charges",
-              "Charge uniforme (kN/m) sur une poutre, sens de la pesanteur pour q > 0.",
-              { param("beam", "Poutre", VT::Integer), param("case", "Cas de charge", VT::Integer),
-                param("q", "Intensité", VT::Real, Q::ForcePerLength) },
-              { param("id", "Charge créée", VT::Integer) }, true },
+    reg.add({ "loads.add_uniform", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Ajouter une charge répartie"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Charges"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Charge uniforme (kN/m) sur une poutre, sens de la pesanteur pour q > 0."),
+              { param("beam", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Poutre"), VT::Integer),
+                param("case", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Cas de charge"), VT::Integer),
+                param("q", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Intensité"), VT::Real, Q::ForcePerLength) },
+              { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Charge créée"), VT::Integer) }, true },
             [](auto& s, const Arguments& a) {
                 const int beam = static_cast<int>(integer(a, "beam")), lc = static_cast<int>(integer(a, "case"));
-                if (!s.model().getBeam(beam)) return fail("Poutre " + std::to_string(beam) + " inexistante.");
-                if (!s.model().loadManager().getLoadCase(lc)) return fail("Cas de charge " + std::to_string(lc) + " inexistant.");
+                if (!s.model().getBeam(beam))
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Poutre %1 inexistante.").arg(beam).toStdString());
+                if (!s.model().loadManager().getLoadCase(lc))
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Cas de charge %1 inexistant.").arg(lc).toStdString());
                 const int id = s.model().loadManager().addMemberLoad(TSA::Model::MemberLoad::uniform(beam, lc, real(a, "q")));
                 s.model().notifyMemberLoadAdded(id);
-                return done("Charge répartie " + std::to_string(id) + " sur la poutre " + std::to_string(beam) + ".", { { "id", static_cast<long long>(id) } });
+                return done(QCoreApplication::translate("TSA::Automation::Commands", "Charge répartie %1 sur la poutre %2.")
+                                .arg(QString::number(id), QString::number(beam))
+                                .toStdString(),
+                            { { "id", static_cast<long long>(id) } });
             });
 
     // --- Requêtes (lecture seule) -----------------------------------------------------------------
-    reg.add({ "query.model_summary", "Résumé du modèle", "Requêtes", "Effectifs du modèle.", {},
-              { param("nodes", "Nœuds", VT::Integer), param("beams", "Poutres", VT::Integer),
-                param("columns", "Poteaux", VT::Integer), param("load_cases", "Cas de charge", VT::Integer) }, false },
+    reg.add({ "query.model_summary", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Résumé du modèle"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Requêtes"), QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Effectifs du modèle."), {},
+              { param("nodes", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœuds"), VT::Integer),
+                param("beams", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Poutres"), VT::Integer),
+                param("columns", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Poteaux"), VT::Integer),
+                param("load_cases", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Cas de charge"), VT::Integer) }, false },
             [](auto& s, const Arguments&) {
                 const Model& m = s.model();
                 // Les barres créées par addBar sont rangées ensemble et distinguées par leur rôle.
@@ -396,65 +498,77 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 for (const auto& [id, bar] : m.beams()) (bar.role() == TSA::Model::BarRole::Column ? c : b) += 1;
                 const auto n = static_cast<long long>(m.nodes().size()),
                            lc = static_cast<long long>(m.loadManager().loadCases().size());
-                std::ostringstream o;
-                o << n << " nœud(s), " << b << " poutre(s), " << c << " poteau(x), " << lc << " cas de charge.";
-                return done(o.str(), { { "nodes", n }, { "beams", b }, { "columns", c }, { "load_cases", lc } });
+                return done(QCoreApplication::translate("TSA::Automation::Commands", "%1 nœud(s), %2 poutre(s), %3 poteau(x), %4 cas de charge.")
+                                .arg(QString::number(n), QString::number(b), QString::number(c), QString::number(lc))
+                                .toStdString(),
+                            { { "nodes", n }, { "beams", b }, { "columns", c }, { "load_cases", lc } });
             });
 
-    reg.add({ "query.node", "Lire un nœud", "Requêtes", "Position d'un nœud.", { param("id", "Nœud", VT::Integer) },
-              { param("position", "Position", VT::Point3, Q::Length) }, false },
+    reg.add({ "query.node", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Lire un nœud"), QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Requêtes"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Position d'un nœud."),
+              { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud"), VT::Integer) },
+              { param("position", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Position"), VT::Point3, Q::Length) }, false },
             [](auto& s, const Arguments& a) {
                 const int id = static_cast<int>(integer(a, "id"));
                 const auto* n = s.model().getNode(id);
-                if (!n) return fail("Nœud N" + std::to_string(id) + " inexistant.");
+                if (!n) return fail(QCoreApplication::translate("TSA::Automation::Commands", "Nœud N%1 inexistant.").arg(id).toStdString());
                 const Point3 p { n->x(), n->y(), n->z() };
                 return done("N" + std::to_string(id) + " : " + formatValue(p), { { "position", p } });
             });
 
-    reg.add({ "query.bar", "Lire une barre", "Requêtes", "Nœuds, longueur et propriétés de section et de matériau d'une barre.",
-              { param("id", "Barre", VT::Integer) },
-              { param("start", "Nœud de départ", VT::Integer), param("end", "Nœud d'arrivée", VT::Integer),
-                param("length", "Longueur", VT::Real, Q::Length), param("area", "Aire (m²)", VT::Real),
-                param("iy", "Iy, axe fort (m⁴)", VT::Real), param("iz", "Iz, axe faible (m⁴)", VT::Real),
-                param("e", "Module d'Young (kN/m²)", VT::Real), param("rotation", "Rotation de section", VT::Real, Q::Angle) }, false },
+    reg.add({ "query.bar", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Lire une barre"), QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Requêtes"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœuds, longueur et propriétés de section et de matériau d'une barre."),
+              { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Barre"), VT::Integer) },
+              { param("start", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud de départ"), VT::Integer),
+                param("end", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud d'arrivée"), VT::Integer),
+                param("length", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Longueur"), VT::Real, Q::Length),
+                param("area", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Aire (m²)"), VT::Real),
+                param("iy", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Iy, axe fort (m⁴)"), VT::Real),
+                param("iz", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Iz, axe faible (m⁴)"), VT::Real),
+                param("e", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Module d'Young (kN/m²)"), VT::Real),
+                param("rotation", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Rotation de section"), VT::Real, Q::Angle) }, false },
             [](auto& s, const Arguments& a) {
                 const int id = static_cast<int>(integer(a, "id"));
                 const auto* b = s.model().getBar(id);
-                if (!b) return fail("Barre " + std::to_string(id) + " inexistante.");
+                if (!b) return fail(QCoreApplication::translate("TSA::Automation::Commands", "Barre %1 inexistante.").arg(id).toStdString());
                 const double L = b->length(s.model()), E = b->material().E / 1000.0;
-                std::ostringstream o;
-                o << "Barre " << id << " : N" << b->startNodeId() << " → N" << b->endNodeId() << ", L = " << L << " m, A = " << b->section().area()
-                  << " m², Iy = " << b->section().iy() << " m⁴, E = " << E << " kN/m²";
-                return done(o.str(), { { "start", static_cast<long long>(b->startNodeId()) }, { "end", static_cast<long long>(b->endNodeId()) },
+                const std::string msg = QCoreApplication::translate("TSA::Automation::Commands",
+                                                                     "Barre %1 : N%2 → N%3, L = %4 m, A = %5 m², Iy = %6 m⁴, E = %7 kN/m²")
+                                             .arg(QString::number(id), QString::number(b->startNodeId()), QString::number(b->endNodeId()), qn(L),
+                                                  qn(b->section().area()), qn(b->section().iy()), qn(E))
+                                             .toStdString();
+                return done(msg, { { "start", static_cast<long long>(b->startNodeId()) }, { "end", static_cast<long long>(b->endNodeId()) },
                                        { "length", L }, { "area", b->section().area() }, { "iy", b->section().iy() }, { "iz", b->section().iz() },
                                        { "e", E }, { "rotation", b->rotation() } });
             });
 
     // --- Analyse (contrôleur partagé de la session) ----------------------------------------------
-    reg.add({ "analysis.run", "Calculer", "Analyse",
-              "Calcule le modèle avec les réglages d'analyse du projet ; moteur et axe de grille facultatifs "
-              "(« custom2d » + axe « B » : portique plan de l'axe B ; axe « * » : modèle complet ; axe « plan » : plan "
-              "du modèle, s'il est plan). Poids propre : « oui » / « non », vide = réglage du projet. Cas de charge ou "
-              "combinaison : nom ou numéro (l'un ou l'autre), vide = réglage du projet. Les réglages "
-              "modifiés sont enregistrés avec le projet. Calcul synchrone : les résultats sont publiés à la fin.",
-              { optional(param("engine", "Moteur", VT::Text), std::string()),
-                optional(param("axis", "Axe de grille", VT::Text), std::string()),
-                optional(param("export_system", "Exporter K·U = F", VT::Bool), false),
-                optional(param("self_weight", "Poids propre", VT::Text), std::string()),
-                optional(param("case", "Cas de charge (nom ou numéro)", VT::Text), std::string()),
-                optional(param("combination", "Combinaison (nom ou numéro)", VT::Text), std::string()) },
-              { param("max_displacement", "Déplacement max", VT::Real, Q::Length),
-                param("max_moment", "Moment max", VT::Real, Q::Moment),
-                param("equations", "Équations", VT::Integer) }, false },
+    reg.add({ "analysis.run", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Calculer"), QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Analyse"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands",
+                                "Calcule le modèle avec les réglages d'analyse du projet ; moteur et axe de grille facultatifs "
+                                "(« custom2d » + axe « B » : portique plan de l'axe B ; axe « * » : modèle complet ; axe « plan » : plan "
+                                "du modèle, s'il est plan). Poids propre : « oui » / « non », vide = réglage du projet. Cas de charge ou "
+                                "combinaison : nom ou numéro (l'un ou l'autre), vide = réglage du projet. Les réglages "
+                                "modifiés sont enregistrés avec le projet. Calcul synchrone : les résultats sont publiés à la fin."),
+              { optional(param("engine", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Moteur"), VT::Text), std::string()),
+                optional(param("axis", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Axe de grille"), VT::Text), std::string()),
+                optional(param("export_system", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Exporter K·U = F"), VT::Bool), false),
+                optional(param("self_weight", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Poids propre"), VT::Text), std::string()),
+                optional(param("case", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Cas de charge (nom ou numéro)"), VT::Text), std::string()),
+                optional(param("combination", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Combinaison (nom ou numéro)"), VT::Text), std::string()) },
+              { param("max_displacement", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Déplacement max"), VT::Real, Q::Length),
+                param("max_moment", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Moment max"), VT::Real, Q::Moment),
+                param("equations", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Équations"), VT::Integer) }, false },
             [](auto& s, const Arguments& a) {
                 using namespace TSA::Analysis;
                 AnalysisController& ac = s.analysis();
-                if (ac.isRunning()) return fail("Un calcul est déjà en cours.");
+                if (ac.isRunning()) return fail(QCoreApplication::translate("TSA::Automation::Commands", "Un calcul est déjà en cours.").toStdString());
                 AnalysisContext ctx = ac.context();
                 const std::string engineId = text(a, "engine");
                 if (!engineId.empty())
                 {
-                    if (!ac.registry().engine(engineId)) return fail("Moteur « " + engineId + " » inconnu.");
+                    if (!ac.registry().engine(engineId))
+                        return fail(QCoreApplication::translate("TSA::Automation::Commands", "Moteur « %1 » inconnu.").arg(qs(engineId)).toStdString());
                     ctx.engineId = engineId;
                 }
                 const std::string axis = text(a, "axis");
@@ -477,10 +591,11 @@ void registerBuiltInCommands(CommandRegistry& reg)
                             found = true;
                             break;
                         }
-                    if (!found) return fail("Axe de grille « " + axis + " » introuvable.");
+                    if (!found)
+                        return fail(QCoreApplication::translate("TSA::Automation::Commands", "Axe de grille « %1 » introuvable.").arg(qs(axis)).toStdString());
                 }
                 const AnalysisEngine* engine = ac.registry().engine(ctx.engineId);
-                if (!engine) return fail("Aucun moteur d'analyse sélectionné.");
+                if (!engine) return fail(QCoreApplication::translate("TSA::Automation::Commands", "Aucun moteur d'analyse sélectionné.").toStdString());
                 const AnalysisCapabilities caps = engine->capabilities();
                 // Dimension : celle que le moteur sait calculer (plan pour un moteur 2D seul).
                 if (!caps.supportsDimension(ctx.dimension))
@@ -488,10 +603,15 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 const std::string sw = upper(text(a, "self_weight"));
                 if (sw == "OUI" || sw == "YES" || sw == "TRUE" || sw == "1") ctx.common.includeSelfWeight = true;
                 else if (sw == "NON" || sw == "NO" || sw == "FALSE" || sw == "0") ctx.common.includeSelfWeight = false;
-                else if (!sw.empty()) return fail("Poids propre : « " + text(a, "self_weight") + " » (oui ou non attendu).");
+                else if (!sw.empty())
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Poids propre : « %1 » (oui ou non attendu).")
+                                    .arg(qs(text(a, "self_weight")))
+                                    .toStdString());
                 // Chargement : un cas ou une combinaison, désigné par son nom exact ou son numéro
                 const std::string caseRef = text(a, "case"), comboRef = text(a, "combination");
-                if (!caseRef.empty() && !comboRef.empty()) return fail("Cas de charge ou combinaison : l'un ou l'autre, pas les deux.");
+                if (!caseRef.empty() && !comboRef.empty())
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Cas de charge ou combinaison : l'un ou l'autre, pas les deux.")
+                                    .toStdString());
                 auto isNumber = [](const std::string& t) { return !t.empty() && std::all_of(t.begin(), t.end(), [](unsigned char ch) { return std::isdigit(ch); }); };
                 const auto& lm = s.model().loadManager();
                 if (!caseRef.empty())
@@ -499,7 +619,8 @@ void registerBuiltInCommands(CommandRegistry& reg)
                     int id = 0;
                     for (const auto& [cid, lc] : lm.loadCases())
                         if (lc.name() == caseRef || (isNumber(caseRef) && cid == std::stoi(caseRef))) id = cid;
-                    if (!id) return fail("Cas de charge « " + caseRef + " » introuvable.");
+                    if (!id)
+                        return fail(QCoreApplication::translate("TSA::Automation::Commands", "Cas de charge « %1 » introuvable.").arg(qs(caseRef)).toStdString());
                     ctx.loadCaseIds = { id };
                     ctx.combinationId = 0;
                 }
@@ -508,7 +629,8 @@ void registerBuiltInCommands(CommandRegistry& reg)
                     int id = 0;
                     for (const auto& [cid, cb] : lm.loadCombinations())
                         if (cb.name() == comboRef || (isNumber(comboRef) && cid == std::stoi(comboRef))) id = cid;
-                    if (!id) return fail("Combinaison « " + comboRef + " » introuvable.");
+                    if (!id)
+                        return fail(QCoreApplication::translate("TSA::Automation::Commands", "Combinaison « %1 » introuvable.").arg(qs(comboRef)).toStdString());
                     ctx.combinationId = id;
                     ctx.loadCaseIds.clear();
                 }
@@ -532,20 +654,26 @@ void registerBuiltInCommands(CommandRegistry& reg)
                     {
                         const auto geometry = TSA::Mesh::MeshGeometry::extract(s.model());
                         if (mp.isStale(geometry.hash))
-                            return fail("Maillage obsolète (géométrie modifiée depuis sa génération) : régénérer le maillage, ou désactiver "
-                                        "« utiliser le maillage généré » dans les réglages du calcul.");
+                            return fail(QCoreApplication::translate("TSA::Automation::Commands",
+                                                                    "Maillage obsolète (géométrie modifiée depuis sa génération) : régénérer le maillage, ou "
+                                                                    "désactiver « utiliser le maillage généré » dans les réglages du calcul.")
+                                            .toStdString());
                         const auto compat = TSA::Mesh::OpenSeesMeshAdapter::check(mp.mesh, geometry, engine->info().name, caps, 3000000, &s.model());
                         if (compat.blocking())
                         {
                             std::string why;
                             for (const auto& i : compat.items)
                                 if (i.level == TSA::Mesh::SolverCheckItem::Level::Blocking) why += (why.empty() ? "" : " ; ") + i.message;
-                            return fail("Maillage non transmissible à " + engine->info().name + " : " + why);
+                            return fail(QCoreApplication::translate("TSA::Automation::Commands", "Maillage non transmissible à %1 : %2")
+                                            .arg(qs(engine->info().name), qs(why))
+                                            .toStdString());
                         }
                         ctx.memberSubdivisions = compat.memberSubdivisions;
                         ctx.surfaces = compat.surfaces;
                         ctx.surfaces.meshStamp = mp.record.generated + "|" + mp.record.settingsHash;
-                        ctx.meshLabel = "maillage " + mp.record.mesher + " du " + mp.record.generated;
+                        ctx.meshLabel = QCoreApplication::translate("TSA::Automation::Commands", "maillage %1 du %2")
+                                            .arg(qs(mp.record.mesher), qs(mp.record.generated))
+                                            .toStdString();
                     }
                 }
 
@@ -554,59 +682,81 @@ void registerBuiltInCommands(CommandRegistry& reg)
                 {
                     std::string why;
                     for (const auto& e : prepared.validation.texts(ValidationSeverity::Error)) why += (why.empty() ? "" : " ; ") + e;
-                    return fail("Analyse impossible : " + (why.empty() ? std::string("modèle d'analyse non extrait.") : why));
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Analyse impossible : %1")
+                                    .arg(why.empty() ? QCoreApplication::translate("TSA::Automation::Commands", "modèle d'analyse non extrait.") : qs(why))
+                                    .toStdString());
                 }
                 const AnalysisRunResult run = ac.runBlocking(ctx, prepared);
-                if (!run.success || !ac.results()) return fail("Échec du calcul : " + run.message);
+                if (!run.success || !ac.results())
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Échec du calcul : %1").arg(qs(run.message)).toStdString());
                 const ResultsModel& r = *ac.results();
                 const double toKN = r.units().force == "N" ? 1.0e-3 : 1.0;
                 const ResultsSummary sum = r.summary();
                 const long long equations = r.advanced().available ? r.advanced().dofMap.equationCount() : 0;
-                std::ostringstream o;
-                o << engine->info().name << " : δmax = " << sum.maxDisplacement * 1000.0 << " mm (N" << sum.maxDisplacementNodeId
-                  << "), Mmax = " << sum.maxBendingMoment * toKN << " kN·m";
-                if (equations > 0) o << ", " << equations << " équation(s)";
-                return done(o.str(), { { "max_displacement", sum.maxDisplacement },
+                const QString engineName = qs(engine->info().name), dmax = qn(sum.maxDisplacement * 1000.0),
+                              dnode = QString::number(sum.maxDisplacementNodeId), mmax = qn(sum.maxBendingMoment * toKN);
+                const std::string msg =
+                    equations > 0 ? QCoreApplication::translate("TSA::Automation::Commands", "%1 : δmax = %2 mm (N%3), Mmax = %4 kN·m, %5 équation(s)")
+                                        .arg(engineName, dmax, dnode, mmax, QString::number(equations))
+                                        .toStdString()
+                                  : QCoreApplication::translate("TSA::Automation::Commands", "%1 : δmax = %2 mm (N%3), Mmax = %4 kN·m")
+                                        .arg(engineName, dmax, dnode, mmax)
+                                        .toStdString();
+                return done(msg, { { "max_displacement", sum.maxDisplacement },
                                        { "max_moment", sum.maxBendingMoment * toKN },
                                        { "equations", equations } });
             });
 
-    reg.add({ "results.summary", "Résumé des résultats", "Résultats",
-              "Valeurs extrêmes du dernier calcul (déplacement, moment, réaction verticale totale) et validité.",
+    reg.add({ "results.summary", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Résumé des résultats"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Résultats"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands",
+                                "Valeurs extrêmes du dernier calcul (déplacement, moment, réaction verticale totale) et validité."),
               {},
-              { param("max_displacement", "Déplacement max", VT::Real, Q::Length),
-                param("max_displacement_node", "Nœud du déplacement max", VT::Integer),
-                param("max_moment", "Moment max", VT::Real, Q::Moment),
-                param("reaction_fz", "Réaction verticale totale", VT::Real, Q::Force),
-                param("up_to_date", "À jour", VT::Bool) }, false },
+              { param("max_displacement", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Déplacement max"), VT::Real, Q::Length),
+                param("max_displacement_node", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud du déplacement max"), VT::Integer),
+                param("max_moment", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Moment max"), VT::Real, Q::Moment),
+                param("reaction_fz", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Réaction verticale totale"), VT::Real, Q::Force),
+                param("up_to_date", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "À jour"), VT::Bool) }, false },
             [](auto& s, const Arguments&) {
                 const auto r = s.analysis().results();
-                if (!r) return fail("Aucun résultat : lancez d'abord un calcul (analysis.run).");
+                if (!r)
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Aucun résultat : lancez d'abord un calcul (analysis.run).")
+                                    .toStdString());
                 const double toKN = r->units().force == "N" ? 1.0e-3 : 1.0;
                 const auto sum = r->summary();
                 const bool upToDate = s.analysis().resultsUpToDate();
-                std::ostringstream o;
-                o << "δmax = " << sum.maxDisplacement * 1000.0 << " mm (N" << sum.maxDisplacementNodeId << "), Mmax = "
-                  << sum.maxBendingMoment * toKN << " kN·m, ΣRz = " << r->equilibrium().reactionFz * toKN << " kN"
-                  << (upToDate ? "" : " — RÉSULTATS OBSOLÈTES");
-                return done(o.str(), { { "max_displacement", sum.maxDisplacement },
+                const QString dmax = qn(sum.maxDisplacement * 1000.0), dnode = QString::number(sum.maxDisplacementNodeId),
+                              mmax = qn(sum.maxBendingMoment * toKN), rz = qn(r->equilibrium().reactionFz * toKN);
+                const std::string msg =
+                    upToDate ? QCoreApplication::translate("TSA::Automation::Commands", "δmax = %1 mm (N%2), Mmax = %3 kN·m, ΣRz = %4 kN")
+                                   .arg(dmax, dnode, mmax, rz)
+                                   .toStdString()
+                             : QCoreApplication::translate("TSA::Automation::Commands",
+                                                           "δmax = %1 mm (N%2), Mmax = %3 kN·m, ΣRz = %4 kN — RÉSULTATS OBSOLÈTES")
+                                   .arg(dmax, dnode, mmax, rz)
+                                   .toStdString();
+                return done(msg, { { "max_displacement", sum.maxDisplacement },
                                        { "max_displacement_node", static_cast<long long>(sum.maxDisplacementNodeId) },
                                        { "max_moment", sum.maxBendingMoment * toKN },
                                        { "reaction_fz", r->equilibrium().reactionFz * toKN },
                                        { "up_to_date", upToDate } });
             });
 
-    reg.add({ "results.node_displacement", "Déplacement d'un nœud", "Résultats",
-              "Translation (m) et rotation (rad) calculées d'un nœud, repère global.",
-              { param("id", "Nœud", VT::Integer) },
-              { param("displacement", "Translation", VT::Point3, Q::Length),
-                param("rotation", "Rotation (rad)", VT::Point3),
-                param("magnitude", "Norme", VT::Real, Q::Length) }, false },
+    reg.add({ "results.node_displacement", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Déplacement d'un nœud"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Résultats"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Translation (m) et rotation (rad) calculées d'un nœud, repère global."),
+              { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud"), VT::Integer) },
+              { param("displacement", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Translation"), VT::Point3, Q::Length),
+                param("rotation", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Rotation (rad)"), VT::Point3),
+                param("magnitude", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Norme"), VT::Real, Q::Length) }, false },
             [](auto& s, const Arguments& a) {
                 const auto r = s.analysis().results();
-                if (!r) return fail("Aucun résultat : lancez d'abord un calcul (analysis.run).");
+                if (!r)
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Aucun résultat : lancez d'abord un calcul (analysis.run).")
+                                    .toStdString());
                 const int id = static_cast<int>(integer(a, "id"));
-                if (!r->getNodeDisplacement(id)) return fail("Aucun résultat pour le nœud N" + std::to_string(id) + ".");
+                if (!r->getNodeDisplacement(id))
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Aucun résultat pour le nœud N%1.").arg(id).toStdString());
                 const auto d = r->nodeDisplacement(id);
                 const Point3 u { d.ux, d.uy, d.uz }, rot { d.rx, d.ry, d.rz };
                 const double norm = std::sqrt(d.ux * d.ux + d.uy * d.uy + d.uz * d.uz);
@@ -625,37 +775,50 @@ void registerLabCommands(CommandRegistry& reg)
     using VT = ValueType;
     using Q = Quantity;
 
-    reg.add({ "results.node_reaction", "Réaction d'un appui", "Résultats",
-              "Réaction calculée d'un nœud appuyé (kN, kN·m), repère global.",
-              { param("id", "Nœud", VT::Integer) },
-              { param("force", "Force", VT::Point3, Q::Force), param("moment", "Moment", VT::Point3, Q::Moment) }, false },
+    reg.add({ "results.node_reaction", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Réaction d'un appui"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Résultats"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Réaction calculée d'un nœud appuyé (kN, kN·m), repère global."),
+              { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Nœud"), VT::Integer) },
+              { param("force", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Force"), VT::Point3, Q::Force),
+                param("moment", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Moment"), VT::Point3, Q::Moment) }, false },
             [](auto& s, const Arguments& a) {
                 const auto r = s.analysis().results();
-                if (!r) return fail("Aucun résultat : lancez d'abord un calcul (analysis.run).");
+                if (!r)
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Aucun résultat : lancez d'abord un calcul (analysis.run).")
+                                    .toStdString());
                 const int id = static_cast<int>(integer(a, "id"));
                 const auto* re = r->getNodeReaction(id);
-                if (!re) return fail("Aucune réaction pour le nœud N" + std::to_string(id) + " (nœud non appuyé ou hors du calcul).");
+                if (!re)
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Aucune réaction pour le nœud N%1 (nœud non appuyé ou hors du calcul).")
+                                    .arg(id)
+                                    .toStdString());
                 const double k = r->units().force == "N" ? 1.0e-3 : 1.0;
                 const Point3 f { re->rx * k, re->ry * k, re->rz * k }, m { re->mx * k, re->my * k, re->mz * k };
                 return done("N" + std::to_string(id) + " : R = " + formatValue(f) + " kN, M = " + formatValue(m) + " kN·m", { { "force", f }, { "moment", m } });
             });
 
-    reg.add({ "results.member_forces", "Efforts d'une barre", "Résultats",
-              "Efforts extrêmes calculés le long d'une barre (stations du moteur, repère local) : N, V, M.",
-              { param("id", "Barre", VT::Integer) },
-              { param("n_max", "N max (traction)", VT::Real, Q::Force), param("n_min", "N min (compression)", VT::Real, Q::Force),
+    reg.add({ "results.member_forces", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Efforts d'une barre"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Résultats"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Efforts extrêmes calculés le long d'une barre (stations du moteur, repère local) : N, V, M."),
+              { param("id", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Barre"), VT::Integer) },
+              { param("n_max", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "N max (traction)"), VT::Real, Q::Force),
+                param("n_min", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "N min (compression)"), VT::Real, Q::Force),
                 param("v_max", "|V| max", VT::Real, Q::Force), param("m_max", "|M| max", VT::Real, Q::Moment),
-                param("stations", "Stations", VT::Integer) }, false },
+                param("stations", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Stations"), VT::Integer) }, false },
             [](auto& s, const Arguments& a) {
                 const auto r = s.analysis().results();
-                if (!r) return fail("Aucun résultat : lancez d'abord un calcul (analysis.run).");
+                if (!r)
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Aucun résultat : lancez d'abord un calcul (analysis.run).")
+                                    .toStdString());
                 const int id = static_cast<int>(integer(a, "id"));
                 const TSA::Analysis::ElementResults* er = nullptr;
                 int found = 0;
                 for (const auto& [key, e] : r->allElementResults())
                     if (key.id == id && key.kind != TSA::Analysis::StructuralElementKind::Cable) er = &e, ++found;
-                if (!er) return fail("Aucun effort pour la barre " + std::to_string(id) + " (hors du calcul).");
-                if (found > 1) return fail("Barre " + std::to_string(id) + " ambiguë dans les résultats.");
+                if (!er)
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Aucun effort pour la barre %1 (hors du calcul).").arg(id).toStdString());
+                if (found > 1)
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Barre %1 ambiguë dans les résultats.").arg(id).toStdString());
                 std::vector<TSA::Analysis::StationForces> st { er->startForces };
                 st.insert(st.end(), er->intermediateStations.begin(), er->intermediateStations.end());
                 st.push_back(er->endForces);
@@ -667,35 +830,46 @@ void registerLabCommands(CommandRegistry& reg)
                     vMax = std::max(vMax, std::hypot(f.Vy, f.Vz) * k), mMax = std::max(mMax, std::hypot(f.My, f.Mz) * k);
                 }
                 nMax += 0.0, nMin += 0.0;   // −0 → 0 (affichage)
-                std::ostringstream o;
-                o << "Barre " << id << " : N ∈ [" << nMin << ", " << nMax << "] kN, |V|max = " << vMax << " kN, |M|max = " << mMax << " kN·m (" << st.size() << " stations)";
-                return done(o.str(), { { "n_max", nMax }, { "n_min", nMin }, { "v_max", vMax }, { "m_max", mMax }, { "stations", static_cast<long long>(st.size()) } });
+                const std::string msg = QCoreApplication::translate("TSA::Automation::Commands",
+                                                                    "Barre %1 : N ∈ [%2, %3] kN, |V|max = %4 kN, |M|max = %5 kN·m (%6 stations)")
+                                            .arg(QString::number(id), qn(nMin), qn(nMax), qn(vMax), qn(mMax), QString::number(st.size()))
+                                            .toStdString();
+                return done(msg, { { "n_max", nMax }, { "n_min", nMin }, { "v_max", vMax }, { "m_max", mMax }, { "stations", static_cast<long long>(st.size()) } });
             });
 
-    reg.add({ "compare.values", "Comparer à une référence", "Laboratoire",
-              "Écarts d'une valeur à sa référence et verdict selon la tolérance mixte |x − réf| ≤ ε_abs + ε_rel·|réf|. "
-              "L'écart relatif n'est pas défini si |réf| ≈ 0 (sortie absente).",
-              { param("value", "Valeur", VT::Real), param("reference", "Référence", VT::Real),
-                optional(param("rel_tol", "Tolérance relative", VT::Real), 1.0e-6), optional(param("abs_tol", "Tolérance absolue", VT::Real), 1.0e-9) },
-              { param("abs_error", "Écart absolu", VT::Real), param("rel_error", "Écart relatif", VT::Real), param("passed", "Dans la tolérance", VT::Bool) }, false },
+    reg.add({ "compare.values", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Comparer à une référence"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Laboratoire"),
+              QT_TRANSLATE_NOOP("TSA::Automation::Commands",
+                                "Écarts d'une valeur à sa référence et verdict selon la tolérance mixte |x − réf| ≤ ε_abs + ε_rel·|réf|. "
+                                "L'écart relatif n'est pas défini si |réf| ≈ 0 (sortie absente)."),
+              { param("value", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Valeur"), VT::Real),
+                param("reference", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Référence"), VT::Real),
+                optional(param("rel_tol", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Tolérance relative"), VT::Real), 1.0e-6),
+                optional(param("abs_tol", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Tolérance absolue"), VT::Real), 1.0e-9) },
+              { param("abs_error", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Écart absolu"), VT::Real),
+                param("rel_error", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Écart relatif"), VT::Real),
+                param("passed", QT_TRANSLATE_NOOP("TSA::Automation::Commands", "Dans la tolérance"), VT::Bool) }, false },
             [](auto&, const Arguments& a) {
                 const double x = real(a, "value"), ref = real(a, "reference"), rel = real(a, "rel_tol"), abs = real(a, "abs_tol");
-                if (!std::isfinite(x) || !std::isfinite(ref)) return fail("Valeur ou référence non finie.");
-                if (rel < 0.0 || abs < 0.0) return fail("Tolérances négatives.");
+                if (!std::isfinite(x) || !std::isfinite(ref))
+                    return fail(QCoreApplication::translate("TSA::Automation::Commands", "Valeur ou référence non finie.").toStdString());
+                if (rel < 0.0 || abs < 0.0) return fail(QCoreApplication::translate("TSA::Automation::Commands", "Tolérances négatives.").toStdString());
                 const double e = std::abs(x - ref);
                 const bool ok = e <= abs + rel * std::abs(ref);
                 Arguments out { { "abs_error", e }, { "passed", ok } };
-                std::ostringstream o;
-                o << "|Δ| = " << e;
+                QString msg;
                 if (std::abs(ref) > 1e-12)
                 {
                     out["rel_error"] = e / std::abs(ref);
-                    o << ", écart relatif " << e / std::abs(ref) * 100.0 << " %";
+                    msg = ok ? QCoreApplication::translate("TSA::Automation::Commands", "|Δ| = %1, écart relatif %2 % — dans la tolérance")
+                             : QCoreApplication::translate("TSA::Automation::Commands", "|Δ| = %1, écart relatif %2 % — HORS TOLÉRANCE");
+                    msg = msg.arg(qn(e), qn(e / std::abs(ref) * 100.0));
                 }
                 else
-                    o << ", réf. ≈ 0 : écart relatif non défini";
-                o << (ok ? " — dans la tolérance" : " — HORS TOLÉRANCE");
-                return done(o.str(), out);
+                    msg = (ok ? QCoreApplication::translate("TSA::Automation::Commands", "|Δ| = %1, réf. ≈ 0 : écart relatif non défini — dans la tolérance")
+                              : QCoreApplication::translate("TSA::Automation::Commands", "|Δ| = %1, réf. ≈ 0 : écart relatif non défini — HORS TOLÉRANCE"))
+                              .arg(qn(e));
+                return done(msg.toStdString(), out);
             });
 }
 
@@ -740,7 +914,7 @@ std::vector<std::string> tokenize(const std::string& line, std::string* error)
         cur += c;
         any = true;
     }
-    if (quoted && error) *error = "Guillemet non fermé.";
+    if (quoted && error) *error = QCoreApplication::translate("TSA::Automation::Commands", "Guillemet non fermé.").toStdString();
     if (any) tokens.push_back(cur);
     return tokens;
 }
@@ -804,22 +978,24 @@ bool parseCommandLine(const CommandRegistry& registry, const std::string& line, 
     std::string tokError;
     const auto tokens = tokenize(line, &tokError);
     if (!tokError.empty()) return error(tokError);
-    if (tokens.empty()) return error("Ligne vide.");
+    if (tokens.empty()) return error(QCoreApplication::translate("TSA::Automation::Commands", "Ligne vide.").toStdString());
     const CommandSpec* spec = registry.find(tokens[0]);
-    if (!spec) return error("Commande inconnue : « " + tokens[0] + " ». Tapez « help » pour la liste.");
+    if (!spec) return error(QCoreApplication::translate("TSA::Automation::Commands", "Commande inconnue : « %1 ». Tapez « help » pour la liste.").arg(qs(tokens[0])).toStdString());
 
     args.clear();
     for (std::size_t i = 1; i < tokens.size(); ++i)
     {
         const auto eq = tokens[i].find('=');
-        if (eq == std::string::npos) return error("Argument « " + tokens[i] + " » : syntaxe nom=valeur attendue.");
+        if (eq == std::string::npos) return error(QCoreApplication::translate("TSA::Automation::Commands", "Argument « %1 » : syntaxe nom=valeur attendue.").arg(qs(tokens[i])).toStdString());
         const std::string name = tokens[i].substr(0, eq), raw = tokens[i].substr(eq + 1);
         const auto p = std::find_if(spec->parameters.begin(), spec->parameters.end(),
                                     [&](const ParameterSpec& s) { return s.name == name; });
-        if (p == spec->parameters.end()) return error("Paramètre inconnu « " + name + " » pour " + spec->id + ".");
+        if (p == spec->parameters.end()) return error(QCoreApplication::translate("TSA::Automation::Commands", "Paramètre inconnu « %1 » pour %2.").arg(qs(name), qs(spec->id)).toStdString());
         Value v;
         if (!parseValue(raw, p->type, v))
-            return error("Paramètre « " + name + " » : " + typeName(p->type) + " attendu, reçu « " + raw + " ».");
+            return error(QCoreApplication::translate("TSA::Automation::Commands", "Paramètre « %1 » : %2 attendu, reçu « %3 ».")
+                             .arg(qs(name), shown(typeName(p->type)), qs(raw))
+                             .toStdString());
         args[name] = v;
     }
     commandId = spec->id;
@@ -923,13 +1099,13 @@ const char* typeName(ValueType t)
 {
     switch (t)
     {
-    case ValueType::Bool: return "booléen";
-    case ValueType::Integer: return "entier";
-    case ValueType::Real: return "réel";
-    case ValueType::Text: return "texte";
-    case ValueType::Point3: return "point x,y,z";
-    case ValueType::IdList: return "liste d'identifiants";
-    case ValueType::Object: return "objet";
+    case ValueType::Bool: return QT_TRANSLATE_NOOP("TSA::Automation::Commands", "booléen");
+    case ValueType::Integer: return QT_TRANSLATE_NOOP("TSA::Automation::Commands", "entier");
+    case ValueType::Real: return QT_TRANSLATE_NOOP("TSA::Automation::Commands", "réel");
+    case ValueType::Text: return QT_TRANSLATE_NOOP("TSA::Automation::Commands", "texte");
+    case ValueType::Point3: return QT_TRANSLATE_NOOP("TSA::Automation::Commands", "point x,y,z");
+    case ValueType::IdList: return QT_TRANSLATE_NOOP("TSA::Automation::Commands", "liste d'identifiants");
+    case ValueType::Object: return QT_TRANSLATE_NOOP("TSA::Automation::Commands", "objet");
     }
     return "?";
 }

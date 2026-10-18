@@ -32,7 +32,7 @@ function Report($w, $label, $file) {
     Capture $w "$OutDir\$file" | Out-Null
 }
 
-$p = Start-Process -FilePath $Exe -ArgumentList ('"' + $Project + '"') -PassThru
+$p = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", ('"' + $Project + '"')) -PassThru
 $we = Wait-Window ("TSA*" + [IO.Path]::GetFileName($Project) + "*") 90
 $w = [IntPtr]$we.Current.NativeWindowHandle
 Start-Sleep -Seconds 4

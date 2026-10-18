@@ -113,7 +113,7 @@ void ResultsDockWidget::setupUi()
     rootLayout->setSpacing(8);
 
     // 1. Synthèse & Statut
-    auto* grpStatus = new QGroupBox(tr("Statut & Synthèse"), container);
+    auto* grpStatus = new QGroupBox(tr("Statut et Synthèse"), container);
     auto* vStatus = new QVBoxLayout(grpStatus);
     vStatus->setContentsMargins(8, 8, 8, 8);
     vStatus->setSpacing(4);
@@ -129,7 +129,7 @@ void ResultsDockWidget::setupUi()
     rootLayout->addWidget(grpStatus);
 
     // 2. Famille de Résultats & Diagrammes 3D
-    auto* grpFamily = new QGroupBox(tr("Grandeur & Diagramme 3D"), container);
+    auto* grpFamily = new QGroupBox(tr("Grandeur et Diagramme 3D"), container);
     auto* formFamily = new QFormLayout(grpFamily);
     formFamily->setContentsMargins(8, 8, 8, 8);
     formFamily->setSpacing(6);
@@ -349,7 +349,7 @@ void ResultsDockWidget::setupUi()
     rootLayout->addWidget(m_grpSteps);
 
     // 6. Identification & Filtrage des Nœuds
-    m_grpNodes = new QGroupBox(tr("Identification & Filtre des Nœuds"), container);
+    m_grpNodes = new QGroupBox(tr("Identification et Filtre des Nœuds"), container);
     auto* formNodes = new QFormLayout(m_grpNodes);
     formNodes->setContentsMargins(8, 8, 8, 8);
     formNodes->setSpacing(6);

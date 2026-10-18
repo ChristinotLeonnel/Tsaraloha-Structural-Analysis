@@ -2,6 +2,8 @@
 
 #include "Model.h"
 
+#include <QCoreApplication>
+
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
 
@@ -114,8 +116,9 @@ void removeDuplicateBars(Model& m, CleanupReport& r)
             keeper[key] = b.second;
             auto other = anyFamily.find({ lo, hi });
             if (other != anyFamily.end())
-                r.warnings.push_back(label(b) + " et " + label(other->second) + " relient les mêmes nœuds (" + nodeLabel(lo) + ", "
-                                     + nodeLabel(hi) + ") : familles différentes, à vérifier.");
+                r.warnings.push_back(QCoreApplication::translate("TSA::Model::ModelCleanup", "%1 et %2 relient les mêmes nœuds (%3, %4) : familles différentes, à vérifier.")
+                                         .arg(QString::fromStdString(label(b)), QString::fromStdString(label(other->second)), QString::fromStdString(nodeLabel(lo)), QString::fromStdString(nodeLabel(hi)))
+                                         .toStdString());
             else
                 anyFamily[{ lo, hi }] = b;
         }
@@ -138,8 +141,11 @@ void removeDuplicateBars(Model& m, CleanupReport& r)
         if (removeBar(m, dup))
         {
             ++r.duplicateBarsRemoved;
-            detail(r, "Barre en double supprimée : " + label(dup) + " (doublon de " + prefix(dup.first) + std::to_string(keep) + ")"
-                          + (moved.empty() ? "" : ", " + std::to_string(moved.size()) + " charge(s) reportée(s)"));
+            const QString dupLabel = QString::fromStdString(label(dup)), keepLabel = QString::fromStdString(prefix(dup.first) + std::to_string(keep));
+            detail(r, (moved.empty() ? QCoreApplication::translate("TSA::Model::ModelCleanup", "Barre en double supprimée : %1 (doublon de %2)").arg(dupLabel, keepLabel)
+                                     : QCoreApplication::translate("TSA::Model::ModelCleanup", "Barre en double supprimée : %1 (doublon de %2), %3 charge(s) reportée(s)")
+                                           .arg(dupLabel, keepLabel, QString::number(moved.size())))
+                          .toStdString());
         }
     }
 }
@@ -201,13 +207,17 @@ void connectNodesOnBars(Model& m, double tol, CleanupReport& r)
             if (m.splitBarAt(current.first, current.second, t, nid, &created))
             {
                 ++r.nodesConnectedOnBars;
-                detail(r, label(current) + " divisée sur " + nodeLabel(nid) + " (nœud posé sur la barre sans lui être relié)");
+                detail(r, QCoreApplication::translate("TSA::Model::ModelCleanup", "%1 divisée sur %2 (nœud posé sur la barre sans lui être relié)")
+                               .arg(QString::fromStdString(label(current)), QString::fromStdString(nodeLabel(nid)))
+                               .toStdString());
                 current = { current.first, created };
             }
             else
             {
-                r.refused.push_back(label(current) + " : division sur " + nodeLabel(nid)
-                                    + " refusée (charge ponctuelle ou partielle sur la barre) — à traiter manuellement.");
+                r.refused.push_back(QCoreApplication::translate("TSA::Model::ModelCleanup", "%1 : division sur %2 refusée (charge ponctuelle ou partielle sur la barre) — à traiter "
+                                                                "manuellement.")
+                                        .arg(QString::fromStdString(label(current)), QString::fromStdString(nodeLabel(nid)))
+                                        .toStdString());
             }
         }
     }
@@ -235,7 +245,9 @@ void splitCrossings(Model& m, double tol, CleanupReport& r)
             if (m.nodes().size() > before)
             {
                 ++r.crossingNodesCreated;
-                detail(r, "Nœud " + nodeLabel(node) + " créé au croisement de " + label(bars[i]) + " et " + label(bars[j]));
+                detail(r, QCoreApplication::translate("TSA::Model::ModelCleanup", "Nœud %1 créé au croisement de %2 et %3")
+                               .arg(QString::fromStdString(nodeLabel(node)), QString::fromStdString(label(bars[i])), QString::fromStdString(label(bars[j])))
+                               .toStdString());
             }
             bars.insert(bars.end(), created.begin(), created.end());
         }
@@ -263,8 +275,10 @@ void removeOrphanNodes(Model& m, CleanupReport& r)
         const bool supported = n.support().isSupported();
         if (supported || loaded.count(id))
         {
-            r.warnings.push_back(nodeLabel(id) + " : " + (supported ? "appui" : "charge nodale")
-                                 + " sur un nœud relié à aucun élément — conservé, à vérifier.");
+            r.warnings.push_back((supported ? QCoreApplication::translate("TSA::Model::ModelCleanup", "%1 : appui sur un nœud relié à aucun élément — conservé, à vérifier.")
+                                            : QCoreApplication::translate("TSA::Model::ModelCleanup", "%1 : charge nodale sur un nœud relié à aucun élément — conservé, à vérifier."))
+                                     .arg(QString::fromStdString(nodeLabel(id)))
+                                     .toStdString());
             continue;
         }
         orphans.push_back(id);
@@ -273,21 +287,25 @@ void removeOrphanNodes(Model& m, CleanupReport& r)
         if (m.removeNode(id))
         {
             ++r.orphanNodesRemoved;
-            detail(r, "Nœud parasite supprimé : " + nodeLabel(id));
+            detail(r, QCoreApplication::translate("TSA::Model::ModelCleanup", "Nœud parasite supprimé : %1").arg(QString::fromStdString(nodeLabel(id))).toStdString());
         }
 }
 } // namespace
 
 std::string CleanupReport::summary() const
 {
-    std::ostringstream o;
-    o << mergedNodes << " nœud(s) confondu(s) fusionné(s), " << duplicateBarsRemoved << " barre(s) en double supprimée(s), "
-      << nodesConnectedOnBars << " nœud(s) raccordé(s) sur des barres, " << crossingNodesCreated << " nœud(s) de croisement, "
-      << orphanNodesRemoved << " nœud(s) parasite(s) supprimé(s)";
-    if (!refused.empty()) o << " ; " << refused.size() << " opération(s) refusée(s)";
-    if (!warnings.empty()) o << " ; " << warnings.size() << " point(s) à vérifier";
-    o << ".";
-    return o.str();
+    // Propositions facultatives traduites chacune en entier, mises bout à bout
+    QString o = QCoreApplication::translate("TSA::Model::ModelCleanup", "%1 nœud(s) confondu(s) fusionné(s), %2 barre(s) en double supprimée(s), %3 nœud(s) raccordé(s) sur "
+                                            "des barres, %4 nœud(s) de croisement, %5 nœud(s) parasite(s) supprimé(s)")
+                    .arg(mergedNodes)
+                    .arg(duplicateBarsRemoved)
+                    .arg(nodesConnectedOnBars)
+                    .arg(crossingNodesCreated)
+                    .arg(orphanNodesRemoved);
+    if (!refused.empty()) o += QCoreApplication::translate("TSA::Model::ModelCleanup", " ; %1 opération(s) refusée(s)").arg(QString::number(refused.size()));
+    if (!warnings.empty()) o += QCoreApplication::translate("TSA::Model::ModelCleanup", " ; %1 point(s) à vérifier").arg(QString::number(warnings.size()));
+    o += QStringLiteral(".");
+    return o.toStdString();
 }
 
 namespace ModelCleanup
@@ -333,7 +351,7 @@ CleanupReport clean(Model& m, const CleanupOptions& o)
     if (o.mergeCoincidentNodes)
     {
         const auto dup = m.findCoincidentNodes(tol);
-        for (const auto& [d, k] : dup) detail(r, "Nœuds confondus : " + nodeLabel(d) + " fusionné dans " + nodeLabel(k));
+        for (const auto& [d, k] : dup) detail(r, QCoreApplication::translate("TSA::Model::ModelCleanup", "Nœuds confondus : %1 fusionné dans %2").arg(QString::fromStdString(nodeLabel(d)), QString::fromStdString(nodeLabel(k))).toStdString());
         r.mergedNodes = m.mergeCoincidentNodes(tol);
     }
     if (o.removeDuplicateBars) removeDuplicateBars(m, r);

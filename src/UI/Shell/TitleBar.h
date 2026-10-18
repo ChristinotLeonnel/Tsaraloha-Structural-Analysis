@@ -32,6 +32,8 @@ public:
     void addQuickAccessSeparator();
     /// Commande placée à droite, avant les boutons de fenêtre.
     QToolButton* addTrailing(QAction* action);
+    /// Widget placé à droite, avant les commandes (recherche globale) ; jamais une zone de déplacement.
+    void addTrailingWidget(QWidget* widget);
 
     void setTitle(const QString& title);
 

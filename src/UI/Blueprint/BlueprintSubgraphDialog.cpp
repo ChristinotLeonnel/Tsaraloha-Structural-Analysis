@@ -44,8 +44,15 @@ struct TypeChoice
     const char* id;
     const char* label;
 };
-constexpr TypeChoice kTypes[] = { { "real", "Réel" },   { "integer", "Entier" },         { "bool", "Booléen" },         { "text", "Texte" },
-                                  { "point", "Point (x, y, z)" }, { "ids", "Identifiants" }, { "object", "Objet" }, { "any", "Générique" } };
+// Libellés traduits à l'affichage par tr(t.label)
+constexpr TypeChoice kTypes[] = { { "real", QT_TRANSLATE_NOOP("TSA::UI::BlueprintSubgraphDialog", "Réel") },
+                                  { "integer", QT_TRANSLATE_NOOP("TSA::UI::BlueprintSubgraphDialog", "Entier") },
+                                  { "bool", QT_TRANSLATE_NOOP("TSA::UI::BlueprintSubgraphDialog", "Booléen") },
+                                  { "text", QT_TRANSLATE_NOOP("TSA::UI::BlueprintSubgraphDialog", "Texte") },
+                                  { "point", QT_TRANSLATE_NOOP("TSA::UI::BlueprintSubgraphDialog", "Point (x, y, z)") },
+                                  { "ids", QT_TRANSLATE_NOOP("TSA::UI::BlueprintSubgraphDialog", "Identifiants") },
+                                  { "object", QT_TRANSLATE_NOOP("TSA::UI::BlueprintSubgraphDialog", "Objet") },
+                                  { "any", QT_TRANSLATE_NOOP("TSA::UI::BlueprintSubgraphDialog", "Générique") } };
 
 QString typeIdOf(const PinSpec& p)
 {

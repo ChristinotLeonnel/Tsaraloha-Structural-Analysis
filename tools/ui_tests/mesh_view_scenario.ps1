@@ -68,7 +68,7 @@ function Find-Visible($w, $regex) {
     return $null
 }
 function Analysis-Tab($w) {
-    foreach ($e in (Find-All (Fresh $w) $CT::TabItem)) { if ($e.Current.Name -eq "Analyse") { Click-Mouse $e; return $true } }
+    foreach ($e in (Find-All (Fresh $w) $CT::TabItem)) { if ($e.Current.Name -eq "Maillage") { Click-Mouse $e; return $true } }
     return $false
 }
 function Ribbon-Click($w, $regex) {
@@ -142,7 +142,7 @@ function Run-Analysis($w, $procId) {
 }
 
 # --- 1. Ouverture du projet --------------------------------------------------------------------------
-$p = Start-Process -FilePath $Exe -ArgumentList ('"' + $Project + '"') -PassThru
+$p = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", ('"' + $Project + '"')) -PassThru
 $we = Wait-ProcessWindow $p 90
 Check ($we -ne $null) "1. projet ouvert dans TSA.exe ($($we.Current.Name))"
 $w = [IntPtr]$we.Current.NativeWindowHandle
@@ -248,7 +248,7 @@ if ($solved) {
 # --- 8. Enregistrement, réouverture, cycles -------------------------------------------------------------------
 Check (Close-Or-Kill $p $w 60 $true) "8. fermeture avec enregistrement"
 for ($cycle = 1; $cycle -le 3; $cycle++) {
-    $p = Start-Process -FilePath $Exe -ArgumentList ('"' + $Project + '"') -PassThru
+    $p = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", ('"' + $Project + '"')) -PassThru
     $we = Wait-ProcessWindow $p 90
     $w = [IntPtr]$we.Current.NativeWindowHandle
     Wait-Tree $w | Out-Null

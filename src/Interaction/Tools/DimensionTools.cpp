@@ -6,6 +6,10 @@
 
 #include <gp_Vec.hxx>
 
+#include <QCoreApplication>
+#include <QString>
+#include <QtGlobal>
+
 namespace TSA::Interaction
 {
 
@@ -18,14 +22,21 @@ using TSA::Annotation::MeasureAxis;
 class DimensionTool final : public ModelingTool
 {
 public:
+    /// name et description : textes source français marqués QT_TRANSLATE_NOOP, traduits à l'affichage.
     DimensionTool(std::string id, std::string name, std::string description, DimensionKind kind, MeasureAxis axis, bool autoAxis = false)
         : m_id(std::move(id)), m_name(std::move(name)), m_description(std::move(description)), m_kind(kind), m_axis(axis), m_autoAxis(autoAxis)
     {
     }
 
     std::string id() const override { return m_id; }
-    std::string name() const override { return m_name; }
-    std::string description() const override { return m_description; }
+    std::string name() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DimensionTools", m_name.c_str()).toStdString();
+    }
+    std::string description() const override
+    {
+        return QCoreApplication::translate("TSA::Interaction::DimensionTools", m_description.c_str()).toStdString();
+    }
     ToolCategory category() const override { return ToolCategory::Annotate; }
     bool supportsDialog() const override { return false; }
     bool continuesAfterApply() const override { return true; }
@@ -40,27 +51,43 @@ public:
     std::string prompt() const override
     {
         const size_t n = anchorCount();
+        QString text;
         switch (m_kind)
         {
         case DimensionKind::Angular:
-            if (n == 0) return "Cotation angulaire : cliquez le sommet de l'angle";
-            if (n == 1) return "Cliquez un point du premier bras (nœud, extrémité de barre…)";
-            if (n == 2) return "Cliquez un point du second bras";
-            return "Placez l'arc de cote (clic), ou tapez son rayon + Entrée";
+            if (n == 0) text = QCoreApplication::translate("TSA::Interaction::DimensionTools", "Cotation angulaire : cliquez le sommet de l'angle");
+            else if (n == 1)
+                text = QCoreApplication::translate("TSA::Interaction::DimensionTools", "Cliquez un point du premier bras (nœud, extrémité de barre…)");
+            else if (n == 2) text = QCoreApplication::translate("TSA::Interaction::DimensionTools", "Cliquez un point du second bras");
+            else text = QCoreApplication::translate("TSA::Interaction::DimensionTools", "Placez l'arc de cote (clic), ou tapez son rayon + Entrée");
+            break;
         case DimensionKind::Level:
-            if (n == 0) return "Cotation de niveau : cliquez le point dont la cote est affichée";
-            return "Placez le texte de la cote de niveau (clic)";
+            if (n == 0)
+                text = QCoreApplication::translate("TSA::Interaction::DimensionTools", "Cotation de niveau : cliquez le point dont la cote est affichée");
+            else text = QCoreApplication::translate("TSA::Interaction::DimensionTools", "Placez le texte de la cote de niveau (clic)");
+            break;
         case DimensionKind::Chain:
         case DimensionKind::Cumulative:
             if (m_collecting)
-                return n < 2 ? "Cliquez les points successifs (au moins 2)"
-                             : "Cliquez le point suivant, ou Entrée pour placer la ligne de cote";
-            return "Placez la ligne de cote (clic), ou tapez son décalage + Entrée";
+                text = n < 2 ? QCoreApplication::translate("TSA::Interaction::DimensionTools", "Cliquez les points successifs (au moins 2)")
+                             : QCoreApplication::translate("TSA::Interaction::DimensionTools",
+                                                           "Cliquez le point suivant, ou Entrée pour placer la ligne de cote");
+            else
+                text = QCoreApplication::translate("TSA::Interaction::DimensionTools",
+                                                   "Placez la ligne de cote (clic), ou tapez son décalage + Entrée");
+            break;
         default:
-            if (n == 0) return m_name + " : cliquez le premier point (nœud, extrémité, intersection…)";
-            if (n == 1) return "Cliquez le second point";
-            return "Placez la ligne de cote (clic), ou tapez son décalage + Entrée";
+            if (n == 0)
+                text = QCoreApplication::translate("TSA::Interaction::DimensionTools",
+                                                   "%1 : cliquez le premier point (nœud, extrémité, intersection…)")
+                           .arg(QString::fromStdString(name()));
+            else if (n == 1) text = QCoreApplication::translate("TSA::Interaction::DimensionTools", "Cliquez le second point");
+            else
+                text = QCoreApplication::translate("TSA::Interaction::DimensionTools",
+                                                   "Placez la ligne de cote (clic), ou tapez son décalage + Entrée");
+            break;
         }
+        return text.toStdString();
     }
 
     PickKind nextPick() const override { return ready() ? PickKind::None : PickKind::Point; }
@@ -140,7 +167,7 @@ public:
         ToolResult r;
         if (!ready())
         {
-            r.message = "saisie incomplète";
+            r.message = QCoreApplication::translate("TSA::Interaction::DimensionTools", "saisie incomplète").toStdString();
             return r;
         }
         const Dimension d = makeDimension(m_picks.back().point);
@@ -148,7 +175,8 @@ public:
         const int id = TSA::Annotation::addDimension(model, d, &error);
         if (!id)
         {
-            r.message = "cotation refusée : " + error;
+            r.message = QCoreApplication::translate("TSA::Interaction::DimensionTools", "cotation refusée : %1")
+                            .arg(QString::fromStdString(error)).toStdString();
             reset();
             return r;
         }
@@ -157,7 +185,8 @@ public:
         for (const auto& t : layout.texts)
             if (t.text != "0") text += (text.empty() ? "" : ", ") + t.text;
         r.success = true;
-        r.message = "cotation #" + std::to_string(id) + " créée (" + text + ")";
+        r.message = QCoreApplication::translate("TSA::Interaction::DimensionTools", "cotation #%1 créée (%2)")
+                        .arg(id).arg(QString::fromStdString(text)).toStdString();
         reset(); // prêt pour la cotation suivante
         return r;
     }
@@ -211,36 +240,46 @@ ModelingToolRegistry::Factory factory(Args... args)
 
 void registerDimensionTools(ModelingToolRegistry& registry)
 {
-    registry.registerTool(factory(std::string("dim_aligned"), std::string("Cotation alignée"),
-                                  std::string("Distance réelle entre deux points, même inclinée (vraie grandeur)."),
+    registry.registerTool(factory(std::string("dim_aligned"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation alignée")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools",
+                                                                "Distance réelle entre deux points, même inclinée (vraie grandeur).")),
                                   DimensionKind::Linear, MeasureAxis::Aligned, false));
-    registry.registerTool(factory(std::string("dim_linear"), std::string("Cotation linéaire"),
-                                  std::string("Distance projetée sur l'axe X, Y ou Z choisi selon la position du curseur "
-                                              "(comme une cotation horizontale / verticale)."),
+    registry.registerTool(factory(std::string("dim_linear"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation linéaire")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools",
+                                                                "Distance projetée sur l'axe X, Y ou Z choisi selon la position du curseur "
+                                                                "(comme une cotation horizontale / verticale).")),
                                   DimensionKind::Linear, MeasureAxis::X, true));
-    registry.registerTool(factory(std::string("dim_horizontal"), std::string("Cotation horizontale"),
-                                  std::string("Distance en plan (projection sur le plan horizontal)."),
+    registry.registerTool(factory(std::string("dim_horizontal"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation horizontale")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools",
+                                                                "Distance en plan (projection sur le plan horizontal).")),
                                   DimensionKind::Linear, MeasureAxis::Horizontal, false));
-    registry.registerTool(factory(std::string("dim_x"), std::string("Cotation suivant X"),
-                                  std::string("Écart des coordonnées X entre deux points."), DimensionKind::Linear, MeasureAxis::X, false));
-    registry.registerTool(factory(std::string("dim_y"), std::string("Cotation suivant Y"),
-                                  std::string("Écart des coordonnées Y entre deux points."), DimensionKind::Linear, MeasureAxis::Y, false));
-    registry.registerTool(factory(std::string("dim_z"), std::string("Cotation verticale (Z)"),
-                                  std::string("Différence de niveau (écart des coordonnées Z) entre deux points."),
+    registry.registerTool(factory(std::string("dim_x"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation suivant X")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Écart des coordonnées X entre deux points.")),
+                                  DimensionKind::Linear, MeasureAxis::X, false));
+    registry.registerTool(factory(std::string("dim_y"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation suivant Y")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Écart des coordonnées Y entre deux points.")),
+                                  DimensionKind::Linear, MeasureAxis::Y, false));
+    registry.registerTool(factory(std::string("dim_z"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation verticale (Z)")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools",
+                                                                "Différence de niveau (écart des coordonnées Z) entre deux points.")),
                                   DimensionKind::Linear, MeasureAxis::Z, false));
-    registry.registerTool(factory(std::string("dim_angular"), std::string("Cotation angulaire"),
-                                  std::string("Angle au sommet entre deux directions (barres, lignes) : sommet, puis un point "
-                                              "de chaque bras."),
+    registry.registerTool(factory(std::string("dim_angular"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation angulaire")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools",
+                                                                "Angle au sommet entre deux directions (barres, lignes) : sommet, puis un point "
+                                                                "de chaque bras.")),
                                   DimensionKind::Angular, MeasureAxis::Aligned, false));
-    registry.registerTool(factory(std::string("dim_level"), std::string("Cotation de niveau"),
-                                  std::string("Altitude d'un point par rapport à la référence de niveau du style."),
+    registry.registerTool(factory(std::string("dim_level"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation de niveau")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools",
+                                                                "Altitude d'un point par rapport à la référence de niveau du style.")),
                                   DimensionKind::Level, MeasureAxis::Z, false));
-    registry.registerTool(factory(std::string("dim_chain"), std::string("Cotation en chaîne"),
-                                  std::string("Distances successives entre plusieurs points, sur une même ligne de cote "
-                                              "(direction premier → dernier point)."),
+    registry.registerTool(factory(std::string("dim_chain"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation en chaîne")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools",
+                                                                "Distances successives entre plusieurs points, sur une même ligne de cote "
+                                                                "(direction premier → dernier point).")),
                                   DimensionKind::Chain, MeasureAxis::Aligned, false));
-    registry.registerTool(factory(std::string("dim_cumulative"), std::string("Cotation cumulée"),
-                                  std::string("Distances mesurées depuis le premier point (origine commune)."),
+    registry.registerTool(factory(std::string("dim_cumulative"), std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools", "Cotation cumulée")),
+                                  std::string(QT_TRANSLATE_NOOP("TSA::Interaction::DimensionTools",
+                                                                "Distances mesurées depuis le premier point (origine commune).")),
                                   DimensionKind::Cumulative, MeasureAxis::Aligned, false));
 }
 

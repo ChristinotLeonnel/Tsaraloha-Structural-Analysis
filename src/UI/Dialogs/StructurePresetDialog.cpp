@@ -1,4 +1,5 @@
 #include "StructurePresetDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "../Theme/ThemeManager.h"
 
 #include <QVBoxLayout>
@@ -89,13 +90,13 @@ void StructurePresetDialog::setupUi()
     // Onglets par type d'élément
     m_tabWidget = new QTabWidget(this);
     m_tabWidget->addTab(createWallTab(), tr("Voile / Mur"));
-    m_tabWidget->setTabIcon(0, QIcon(":/icons/struct_wall.svg"));
+    m_tabWidget->setTabIcon(0, TSA::UI::themedIcon(QStringLiteral(":/icons/struct_wall.svg")));
     m_tabWidget->addTab(createSlabTab(), tr("Dalle"));
-    m_tabWidget->setTabIcon(1, QIcon(":/icons/draw_slab.svg"));
+    m_tabWidget->setTabIcon(1, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_slab.svg")));
     m_tabWidget->addTab(createBeamTab(), tr("Poutre"));
-    m_tabWidget->setTabIcon(2, QIcon(":/icons/draw_beam.svg"));
+    m_tabWidget->setTabIcon(2, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_beam.svg")));
     m_tabWidget->addTab(createColumnTab(), tr("Poteau"));
-    m_tabWidget->setTabIcon(3, QIcon(":/icons/draw_column.svg"));
+    m_tabWidget->setTabIcon(3, TSA::UI::themedIcon(QStringLiteral(":/icons/draw_column.svg")));
     m_tabWidget->addTab(createFoundationTab(), tr("Fondation"));
     m_tabWidget->addTab(createTrussTab(), tr("Treillis"));
     m_tabWidget->setIconSize(QSize(18, 18));
@@ -109,9 +110,9 @@ void StructurePresetDialog::setupUi()
     // Boutons de validation
     auto* btnBox = new QDialogButtonBox(this);
     auto* btnOk = btnBox->addButton(tr("Démarrer le Dessin 3D"), QDialogButtonBox::AcceptRole);
-    btnOk->setIcon(QIcon(":/icons/apply.svg"));
+    btnOk->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")));
     auto* btnCancel = btnBox->addButton(tr("Annuler"), QDialogButtonBox::RejectRole);
-    btnCancel->setIcon(QIcon(":/icons/cancel.svg"));
+    btnCancel->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
 
     btnOk->setDefault(true);
     btnOk->setStyleSheet(

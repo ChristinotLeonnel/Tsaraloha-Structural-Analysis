@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <QByteArray>
 #include <QBuffer>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
@@ -482,7 +483,10 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     QSaveFile out(QString::fromStdString(filePath));
     if (!out.open(QIODevice::WriteOnly))
     {
-        if (errorMessage) *errorMessage = "Impossible de créer le fichier .tsa : " + filePath + " (" + out.errorString().toStdString() + ")";
+        if (errorMessage)
+            *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Impossible de créer le fichier .tsa : %1 (%2)")
+                                .arg(QString::fromStdString(filePath), out.errorString())
+                                .toStdString();
         return false;
     }
 
@@ -507,12 +511,18 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     if (!written)
     {
         out.cancelWriting();
-        if (errorMessage) *errorMessage = "Erreur d'écriture du fichier .tsa (" + out.errorString().toStdString() + "). Le fichier existant est conservé.";
+        if (errorMessage)
+            *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Erreur d'écriture du fichier .tsa (%1). Le fichier existant est conservé.")
+                                .arg(out.errorString())
+                                .toStdString();
         return false;
     }
     if (!out.commit())
     {
-        if (errorMessage) *errorMessage = "Erreur lors de la finalisation du fichier .tsa (" + out.errorString().toStdString() + "). Le fichier existant est conservé.";
+        if (errorMessage)
+            *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Erreur lors de la finalisation du fichier .tsa (%1). Le fichier existant est conservé.")
+                                .arg(out.errorString())
+                                .toStdString();
         return false;
     }
 
@@ -536,8 +546,10 @@ std::string openFailureMessage(const std::string& filePath)
 {
     std::error_code ec;
     if (std::filesystem::exists(TSA::Core::utf8Path(filePath), ec))
-        return "Fichier inaccessible (ouvert ou verrouillé par un autre programme, ou droits insuffisants) : " + filePath;
-    return "Fichier introuvable : " + filePath;
+        return QCoreApplication::translate("TSA::IO::TSAFile", "Fichier inaccessible (ouvert ou verrouillé par un autre programme, ou droits insuffisants) : %1")
+            .arg(QString::fromStdString(filePath))
+            .toStdString();
+    return QCoreApplication::translate("TSA::IO::TSAFile", "Fichier introuvable : %1").arg(QString::fromStdString(filePath)).toStdString();
 }
 } // namespace
 
@@ -553,15 +565,16 @@ bool TSAFileReader::readHeader(const std::string& filePath, TSAFileHeader& heade
     in.read(reinterpret_cast<char*>(&header), sizeof(header));
     if (in.gcount() < static_cast<std::streamsize>(sizeof(header)))
     {
-        if (errorMessage) *errorMessage = "Le fichier .tsa est corrompu ou incomplet (en-tête tronqué).";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Le fichier .tsa est corrompu ou incomplet (en-tête tronqué).").toStdString();
         return false;
     }
 
     if (!isReadableFileMagic(header.magic))
     {
         if (errorMessage)
-            *errorMessage = std::string("Ce fichier n'est pas un fichier de projet ") + TSA::Product::kName
-                            + " valide (signature magique invalide).";
+            *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Ce fichier n'est pas un fichier de projet %1 valide (signature magique invalide).")
+                                .arg(QString::fromUtf8(TSA::Product::kName))
+                                .toStdString();
         return false;
     }
 
@@ -569,9 +582,11 @@ bool TSAFileReader::readHeader(const std::string& filePath, TSAFileHeader& heade
     {
         if (errorMessage)
         {
-            *errorMessage = std::string("Ce projet ") + TSA::Product::kName + " a été créé avec une version plus récente du logiciel (v" +
-                            std::to_string(header.versionMajor) + "." + std::to_string(header.versionMinor) +
-                            ") et ne peut pas être ouvert par cette version.";
+            *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Ce projet %1 a été créé avec une version plus récente du logiciel (v%2.%3) et ne peut pas être ouvert par cette version.")
+                                .arg(QString::fromUtf8(TSA::Product::kName))
+                                .arg(int(header.versionMajor))
+                                .arg(int(header.versionMinor))
+                                .toStdString();
         }
         return false;
     }
@@ -601,7 +616,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
 
     if (totalSize < static_cast<std::streamsize>(sizeof(TSAFileHeader)))
     {
-        if (errorMessage) *errorMessage = "Fichier .tsa tronqué ou corrompu (taille inférieure à l'en-tête).";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Fichier .tsa tronqué ou corrompu (taille inférieure à l'en-tête).").toStdString();
         return false;
     }
 
@@ -610,7 +625,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
 
     if (!isReadableFileMagic(header.magic))
     {
-        if (errorMessage) *errorMessage = "Format de fichier invalide (signature non reconnue).";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Format de fichier invalide (signature non reconnue).").toStdString();
         return false;
     }
 
@@ -618,9 +633,11 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     {
         if (errorMessage)
         {
-            *errorMessage = std::string("Ce projet ") + TSA::Product::kName + " a été créé avec une version plus récente (Format v" +
-                            std::to_string(header.versionMajor) + "." + std::to_string(header.versionMinor) +
-                            "). Veuillez mettre à jour " + TSA::Product::kName + ".";
+            *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Ce projet %1 a été créé avec une version plus récente (Format v%2.%3). Veuillez mettre à jour %1.")
+                                .arg(QString::fromUtf8(TSA::Product::kName))
+                                .arg(int(header.versionMajor))
+                                .arg(int(header.versionMinor))
+                                .toStdString();
         }
         return false;
     }
@@ -633,7 +650,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     size_t payloadSize = static_cast<size_t>(payloadEnd - sizeof(TSAFileHeader));
     if (payloadSize > MAX_SAFE_PAYLOAD_SIZE)
     {
-        if (errorMessage) *errorMessage = "Taille du payload excessive (dépassement limite de sécurité de 1 Go).";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Taille du payload excessive (dépassement limite de sécurité de 1 Go).").toStdString();
         return false;
     }
 
@@ -643,7 +660,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
         in.read(reinterpret_cast<char*>(rawPayload.data()), payloadSize);
         if (in.gcount() < static_cast<std::streamsize>(payloadSize))
         {
-            if (errorMessage) *errorMessage = "Erreur de lecture : données du payload incomplètes.";
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Erreur de lecture : données du payload incomplètes.").toStdString();
             return false;
         }
     }
@@ -653,7 +670,7 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     uint32_t expectedCrc = computeCRC32(rawPayload.data(), rawPayload.size());
     if (header.checksumCRC32 != 0 && header.checksumCRC32 != expectedCrc)
     {
-        if (errorMessage) *errorMessage = "Somme de contrôle CRC32 invalide. Le fichier est altéré ou corrompu.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Somme de contrôle CRC32 invalide. Le fichier est altéré ou corrompu.").toStdString();
         return false;
     }
 
@@ -663,12 +680,12 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     {
         if (!m_encryptor)
         {
-            if (errorMessage) *errorMessage = "Ce fichier est protégé par mot de passe mais aucun déchiffreur n'est disponible.";
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Ce fichier est protégé par mot de passe mais aucun déchiffreur n'est disponible.").toStdString();
             return false;
         }
         if (!m_encryptor->decrypt(rawPayload.data(), rawPayload.size(), decryptedData, password))
         {
-            if (errorMessage) *errorMessage = "Échec du déchiffrement (mot de passe incorrect ou corrompu).";
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Échec du déchiffrement (mot de passe incorrect ou corrompu).").toStdString();
             return false;
         }
     }
@@ -683,12 +700,12 @@ bool TSAFileReader::loadFromFile(const std::string& filePath,
     {
         if (!m_compressor)
         {
-            if (errorMessage) *errorMessage = "Ce fichier est compressé mais aucun décompresseur n'est configuré.";
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Ce fichier est compressé mais aucun décompresseur n'est configuré.").toStdString();
             return false;
         }
         if (!m_compressor->decompress(decryptedData.data(), decryptedData.size(), uncompressedData))
         {
-            if (errorMessage) *errorMessage = "Échec de décompression du payload .tsa (flux zlib corrompu).";
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Échec de décompression du payload .tsa (flux zlib corrompu).").toStdString();
             return false;
         }
     }
@@ -745,7 +762,7 @@ bool TSAFileReader::extractThumbnail(const std::string& filePath, QImage& outThu
     size_t payloadDiskSize = static_cast<size_t>(header.fileSize - header.payloadOffset);
     if (payloadDiskSize == 0 || payloadDiskSize > MAX_SAFE_PAYLOAD_SIZE)
     {
-        if (errorMessage) *errorMessage = "Payload invalide dans le fichier .tsa.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Payload invalide dans le fichier .tsa.").toStdString();
         return false;
     }
 
@@ -758,7 +775,7 @@ bool TSAFileReader::extractThumbnail(const std::string& filePath, QImage& outThu
         QtZlibCompressionProvider comp;
         if (!comp.decompress(diskPayload.data(), diskPayload.size(), uncompressed))
         {
-            if (errorMessage) *errorMessage = "Échec de décompression pour miniature.";
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Échec de décompression pour miniature.").toStdString();
             return false;
         }
     }
@@ -783,7 +800,7 @@ bool TSAFileReader::extractThumbnail(const std::string& filePath, QImage& outThu
         offset += ch.chunkSize;
     }
 
-    if (errorMessage) *errorMessage = "Aucune miniature trouvée.";
+    if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Aucune miniature trouvée.").toStdString();
     return false;
 }
 
@@ -831,7 +848,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
 
         if (offset + ch.chunkSize > size)
         {
-            if (errorMessage) *errorMessage = "Chunk tronqué ou corrompu dans le fichier .tsa.";
+            if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Chunk tronqué ou corrompu dans le fichier .tsa.").toStdString();
             return false;
         }
 

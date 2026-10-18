@@ -4,6 +4,7 @@
 #include "../../Model/Slab.h"
 #include "../../Model/MaterialLibrary.h"
 
+#include <QCoreApplication>
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -73,7 +74,7 @@ void SlabPropertiesView::setupUi()
     m_comboFormulation = new QComboBox(grp);
     for (auto f : { TSA::Model::SurfaceFormulation::Shell, TSA::Model::SurfaceFormulation::Plate, TSA::Model::SurfaceFormulation::Membrane,
                     TSA::Model::SurfaceFormulation::NonStructural })
-        m_comboFormulation->addItem(QString::fromUtf8(TSA::Model::surfaceFormulationName(f)), static_cast<int>(f));
+        m_comboFormulation->addItem(QCoreApplication::translate("TSA::Model::SurfaceFormulation", TSA::Model::surfaceFormulationName(f)), static_cast<int>(f));
     m_comboFormulation->setToolTip(tr("Formulation transmise au calcul. OpenSees (TSA) calcule la coque ; plaque et membrane seules sont refusées "
                                       "avant le calcul (aucune substitution). « Non structurale » : géométrie seulement."));
     connect(m_comboFormulation, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SlabPropertiesView::onWidgetChanged);

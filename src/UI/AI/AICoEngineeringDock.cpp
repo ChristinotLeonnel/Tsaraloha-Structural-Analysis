@@ -22,7 +22,8 @@ using TSA::AI::RuntimeState;
 
 namespace
 {
-const char* kDisclaimer = "Les recommandations de l'IA doivent être vérifiées par un ingénieur qualifié avant toute utilisation dans un projet réel.";
+// Traduit au point d'affichage par tr(kDisclaimer)
+const char* kDisclaimer = QT_TRANSLATE_NOOP("TSA::UI::AICoEngineeringDock", "Les recommandations de l'IA doivent être vérifiées par un ingénieur qualifié avant toute utilisation dans un projet réel.");
 }
 
 AICoEngineeringDock::AICoEngineeringDock(TSA::AI::AIOrchestrator* orchestrator, QWidget* parent)
@@ -344,7 +345,7 @@ void AICoEngineeringDock::addProposalCard(const TSA::AI::ActionProposal& p)
     card->setStyleSheet("QFrame { border: 1px solid #388BFD; border-radius: 4px; }");
     auto* l = new QVBoxLayout(card);
     l->setContentsMargins(8, 6, 8, 6);
-    auto* title = new QLabel(QStringLiteral("<b>Proposition de l'IA</b><br>%1").arg(p.title.toHtmlEscaped()), card);
+    auto* title = new QLabel(tr("<b>Proposition de l'IA</b><br>%1").arg(p.title.toHtmlEscaped()), card);
     title->setWordWrap(true);
     title->setStyleSheet("border: none;");
     l->addWidget(title);

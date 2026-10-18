@@ -1,4 +1,5 @@
 #include "SectionCustomizationDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "../Widgets/SectionPreviewWidget.h"
 #include "../../Library/LibraryManager.h"
 #include <QVBoxLayout>
@@ -52,7 +53,7 @@ void SectionCustomizationDialog::setupUi()
     mainLayout->setSpacing(8);
 
     // 1. Groupe Identification & Forme
-    auto* grpType = new QGroupBox(tr("Forme de Section & Bibliothèque"), this);
+    auto* grpType = new QGroupBox(tr("Forme de Section et Bibliothèque"), this);
     auto* formType = new QFormLayout(grpType);
     formType->setContentsMargins(8, 10, 8, 8);
     formType->setSpacing(6);
@@ -78,7 +79,7 @@ void SectionCustomizationDialog::setupUi()
     mainLayout->addWidget(grpType);
 
     // 2. Aperçu Graphique 2D avec Cotes
-    auto* grpPreview = new QGroupBox(tr("Schéma & Dimensions"), this);
+    auto* grpPreview = new QGroupBox(tr("Schéma et Dimensions"), this);
     auto* prevLayout = new QVBoxLayout(grpPreview);
     prevLayout->setContentsMargins(6, 6, 6, 6);
 
@@ -169,11 +170,11 @@ void SectionCustomizationDialog::setupUi()
     btnLayout->setSpacing(8);
 
     m_btnApply = new QPushButton(tr("Appliquer"), this);
-    m_btnApply->setIcon(QIcon(":/icons/apply.svg"));
+    m_btnApply->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")));
     m_btnApply->setStyleSheet("font-weight: bold; background-color: #007ACC; color: white; padding: 6px 16px; border-radius: 4px;");
 
     m_btnCancel = new QPushButton(tr("Annuler"), this);
-    m_btnCancel->setIcon(QIcon(":/icons/cancel.svg"));
+    m_btnCancel->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
 
     btnLayout->addStretch();
     btnLayout->addWidget(m_btnApply);
@@ -409,11 +410,11 @@ void SectionCustomizationDialog::updateCalculatedProperties()
     double wyCm3 = m_section.wy() * 1000000.0;
     double wzCm3 = m_section.wz() * 1000000.0;
 
-    m_lblArea->setText(QString("Aire <b>A</b> = %1 cm² (%2 m²)").arg(aCm2, 0, 'f', 1).arg(m_section.area(), 0, 'f', 4));
-    m_lblIy->setText(QString("Inertie <b>Iy</b> = %1 cm⁴ (axe fort)").arg(iyCm4, 0, 'f', 1));
-    m_lblIz->setText(QString("Inertie <b>Iz</b> = %1 cm⁴ (axe faible)").arg(izCm4, 0, 'f', 1));
-    m_lblIt->setText(QString("Torsion <b>J</b> = %1 cm⁴").arg(itCm4, 0, 'f', 1));
-    m_lblW->setText(QString("Module <b>Wel,y</b> = %1 cm³ | <b>Wel,z</b> = %2 cm³").arg(wyCm3, 0, 'f', 1).arg(wzCm3, 0, 'f', 1));
+    m_lblArea->setText(tr("Aire <b>A</b> = %1 cm² (%2 m²)").arg(aCm2, 0, 'f', 1).arg(m_section.area(), 0, 'f', 4));
+    m_lblIy->setText(tr("Inertie <b>Iy</b> = %1 cm⁴ (axe fort)").arg(iyCm4, 0, 'f', 1));
+    m_lblIz->setText(tr("Inertie <b>Iz</b> = %1 cm⁴ (axe faible)").arg(izCm4, 0, 'f', 1));
+    m_lblIt->setText(tr("Torsion <b>J</b> = %1 cm⁴").arg(itCm4, 0, 'f', 1));
+    m_lblW->setText(tr("Module <b>Wel,y</b> = %1 cm³ | <b>Wel,z</b> = %2 cm³").arg(wyCm3, 0, 'f', 1).arg(wzCm3, 0, 'f', 1));
 }
 
 TSA::Model::Section SectionCustomizationDialog::customizedSection() const

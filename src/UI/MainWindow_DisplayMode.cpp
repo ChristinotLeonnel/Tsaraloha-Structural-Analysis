@@ -3,12 +3,14 @@
 // résultats. Logique de rendu : src/Viewer/OccView_DisplayMode.cpp ; politique : ModelDisplayMode.h.
 
 #include "MainWindow.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include "Dock/LogConsoleDock.h"
 #include "../Viewer/OccView.h"
 
 #include <QAction>
 #include <QActionGroup>
+#include <QCoreApplication>
 #include <QLabel>
 #include <QSettings>
 
@@ -27,7 +29,7 @@ void MainWindow::createDisplayModeActions()
         QString tip;
     };
     const Def defs[] = {
-        { ModelDisplayMode::Physical, ":/icons/view/view_shaded.svg", tr("Modèle\nphysique"),
+        { ModelDisplayMode::Physical, ":/icons/view/display_physical.svg", tr("Modèle\nphysique"),
           tr("Modèle physique : éléments avec leurs sections et leur géométrie habituelles") },
         { ModelDisplayMode::Analytical, ":/icons/view/display_analytical.svg", tr("Filaire\nanalytique"),
           tr("Modèle filaire analytique : sections masquées, axes des barres et nœuds visibles ; supports, charges, "
@@ -40,7 +42,7 @@ void MainWindow::createDisplayModeActions()
     };
     for (const Def& d : defs)
     {
-        auto* a = new QAction(QIcon(d.icon), d.text, this);
+        auto* a = new QAction(TSA::UI::themedIcon(d.icon), d.text, this);
         a->setCheckable(true);
         a->setToolTip(d.tip);
         a->setStatusTip(d.tip);
@@ -63,7 +65,7 @@ void MainWindow::reportModelDisplayMode()
 {
     if (!m_occView) return;
     const ModelDisplayMode mode = m_occView->modelDisplayMode();
-    QString text = tr("Représentation : %1").arg(QString::fromUtf8(TSA::Viewer::modelDisplayModeName(mode)));
+    QString text = tr("Représentation : %1").arg(QCoreApplication::translate("TSA::Viewer::ModelDisplayMode", TSA::Viewer::modelDisplayModeName(mode)));
     if (mode == ModelDisplayMode::FiniteElement)
     {
         const auto status = m_occView->solverMeshStatus();
@@ -95,7 +97,7 @@ void MainWindow::createRenderModeActions()
     };
     for (const Def& d : defs)
     {
-        auto* a = new QAction(QIcon(d.icon), d.text, this);
+        auto* a = new QAction(TSA::UI::themedIcon(d.icon), d.text, this);
         a->setCheckable(true);
         a->setToolTip(d.tip);
         a->setStatusTip(d.tip);

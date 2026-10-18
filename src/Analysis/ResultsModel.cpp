@@ -1,4 +1,5 @@
 #include "ResultsModel.h"
+#include <QCoreApplication>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
@@ -410,8 +411,9 @@ void ResultsModel::mergeSubdivisions(const std::map<ElementKey, std::vector<std:
         for (const auto& [key, x0] : list)
             dropped += m_advanced.elementMatrices.erase(key) + m_advanced.elementForces.erase(key);
     if (dropped)
-        m_advanced.warnings.push_back("barres subdivisées selon le maillage : matrices et efforts bruts des sous-éléments non présentés par barre "
-                                      "(la matrice globale inclut les nœuds intermédiaires)");
+        m_advanced.warnings.push_back(QCoreApplication::translate("TSA::Analysis::ResultsModel",
+            "barres subdivisées selon le maillage : matrices et efforts bruts des sous-éléments non présentés par barre "
+            "(la matrice globale inclut les nœuds intermédiaires)").toStdString());
     // Maillage du solveur : nœuds intermédiaires et sous-éléments rattachés au modèle.
     std::map<ElementKey, ElementKey> parentOf;
     for (const auto& [parent, list] : parts)

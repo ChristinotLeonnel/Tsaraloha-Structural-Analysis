@@ -63,6 +63,10 @@ public:
     // Le menu est créé à la demande, parenté à  parent.
     QMenu* buildOverflowMenu(QWidget* parent) const;
     bool isEmptyPanel() const { return m_entries.empty(); }
+    /// Actions du panneau dans l'ordre d'affichage (grands boutons, colonnes ; sous-menus non compris).
+    std::vector<QAction*> actions() const;
+    /// Actions atteignables dans l'état affiché : boutons visibles, ou menu du bouton replié.
+    std::vector<QAction*> reachableActions() const;
 
 protected:
     void changeEvent(QEvent* event) override;
@@ -74,7 +78,9 @@ private:
     void measureWidths();
 
 private:
-    struct Entry { QAction* action = nullptr; }; // action == nullptr : séparateur de groupe
+    // action : commande ; submenu : sous-menu d'un bouton déroulant (repris tel quel dans les menus repliés) ;
+    // ni l'un ni l'autre : séparateur de groupe
+    struct Entry { QAction* action = nullptr; QMenu* submenu = nullptr; };
 
     QString m_title;
     RibbonPanelMode m_mode = RibbonPanelMode::Full;

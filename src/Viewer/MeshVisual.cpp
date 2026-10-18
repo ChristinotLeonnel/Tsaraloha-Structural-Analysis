@@ -26,6 +26,9 @@
 #include <TCollection_AsciiString.hxx>
 #include <TCollection_ExtendedString.hxx>
 
+#include <QCoreApplication>
+#include <QString>
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -118,6 +121,17 @@ std::string join(const std::vector<std::string>& v)
     std::string out;
     for (const auto& s : v) out += (out.empty() ? "" : ", ") + s;
     return out;
+}
+
+QString qs(const std::string& s)
+{
+    return QString::fromStdString(s);
+}
+
+/// Nom d'un champ de résultats : clé de MeshResultSet (texte source marqué dans MeshResultField), traduit à l'affichage seulement.
+QString fieldName(const std::string& name)
+{
+    return QCoreApplication::translate("TSA::Mesh::MeshResultField", name.c_str());
 }
 } // namespace
 
@@ -473,71 +487,91 @@ std::string MeshVisual::hoverText(const Handle(SelectMgr_EntityOwner)& owner) co
     if (entity->Type() == MeshVS_ET_Node)
     {
         const gp_Pnt p = position(id);
-        return "Maillage : nœud " + std::to_string(id) + " (" + fmt(p.X()) + " ; " + fmt(p.Y()) + " ; " + fmt(p.Z()) + ") m";
+        return QCoreApplication::translate("TSA::Viewer::MeshVisual", "Maillage : nœud %1 (%2 ; %3 ; %4) m")
+            .arg(id)
+            .arg(qs(fmt(p.X())), qs(fmt(p.Y())), qs(fmt(p.Z())))
+            .toStdString();
     }
     const auto* e = m_model.element(id);
-    return e ? "Maillage : élément " + std::to_string(id) + " (" + TSA::Mesh::feTypeLabel(e->type).substr(0, TSA::Mesh::feTypeLabel(e->type).find(' ')) + ", " +
-                   e->source + ")"
+    return e ? QCoreApplication::translate("TSA::Viewer::MeshVisual", "Maillage : élément %1 (%2, %3)")
+                   .arg(id)
+                   .arg(qs(TSA::Mesh::feTypeLabel(e->type).substr(0, TSA::Mesh::feTypeLabel(e->type).find(' '))), qs(e->source))
+                   .toStdString()
              : std::string();
 }
 
 std::string MeshVisual::describeElement(int elementId) const
 {
     const auto* e = m_model.element(elementId);
-    if (!e) return "Élément " + std::to_string(elementId) + " : inexistant";
-    std::string s = "Élément " + std::to_string(e->id) + " — " + TSA::Mesh::feTypeLabel(e->type) + " (" +
-                    std::to_string(TSA::Mesh::feTypeDimension(e->type)) + "D" + (TSA::Mesh::feTypeIsSecondOrder(e->type) ? ", second ordre" : "") + ")";
+    if (!e) return QCoreApplication::translate("TSA::Viewer::MeshVisual", "Élément %1 : inexistant").arg(elementId).toStdString();
+    QString s = (TSA::Mesh::feTypeIsSecondOrder(e->type)
+                     ? QCoreApplication::translate("TSA::Viewer::MeshVisual", "Élément %1 — %2 (%3D, second ordre)")
+                     : QCoreApplication::translate("TSA::Viewer::MeshVisual", "Élément %1 — %2 (%3D)"))
+                    .arg(e->id)
+                    .arg(qs(TSA::Mesh::feTypeLabel(e->type)))
+                    .arg(TSA::Mesh::feTypeDimension(e->type));
     std::vector<std::string> nodes;
     for (int n : e->nodes) nodes.push_back(std::to_string(n));
-    s += "\nNœuds : " + join(nodes);
+    s += "\n" + QCoreApplication::translate("TSA::Viewer::MeshVisual", "Nœuds : %1").arg(qs(join(nodes)));
     if (e->gmshTag)
-        s += "\nGmsh : élément " + std::to_string(e->gmshTag) + ", entité " + std::to_string(e->gmshEntityDim) + ":" + std::to_string(e->gmshEntityTag);
+        s += "\n" + QCoreApplication::translate("TSA::Viewer::MeshVisual", "Gmsh : élément %1, entité %2:%3").arg(qulonglong(e->gmshTag)).arg(e->gmshEntityDim).arg(e->gmshEntityTag);
     else
-        s += "\nGmsh : étiquette inconnue (maillage antérieur à la conservation des étiquettes)";
-    s += "\nSource : " + (e->source.empty() ? std::string("—") : e->source) + (e->boundary ? " (élément de frontière)" : "");
+        s += "\n" + QCoreApplication::translate("TSA::Viewer::MeshVisual", "Gmsh : étiquette inconnue (maillage antérieur à la conservation des étiquettes)");
+    const QString source = e->source.empty() ? QStringLiteral("—") : qs(e->source);
+    s += "\n" + (e->boundary ? QCoreApplication::translate("TSA::Viewer::MeshVisual", "Source : %1 (élément de frontière)").arg(source)
+                             : QCoreApplication::translate("TSA::Viewer::MeshVisual", "Source : %1").arg(source));
     const auto groups = m_model.groupsOfElement(e->id);
-    s += "\nGroupes : " + (groups.empty() ? std::string("aucun") : join(groups));
+    s += "\n" + QCoreApplication::translate("TSA::Viewer::MeshVisual", "Groupes : %1")
+                    .arg(groups.empty() ? QCoreApplication::translate("TSA::Viewer::MeshVisual", "aucun") : qs(join(groups)));
     const int index = m_model.elementIndex(e->id);
     if (index >= 0 && std::size_t(index) < m_quality.size() && m_quality[std::size_t(index)] <= 1.0)
-        s += "\nQualité (minSICN) : " + fmt(m_quality[std::size_t(index)], 3);
+        s += "\n" + QCoreApplication::translate("TSA::Viewer::MeshVisual", "Qualité (minSICN) : %1").arg(qs(fmt(m_quality[std::size_t(index)], 3)));
     else if (e->quality <= 1.0)
-        s += "\nQualité (minSICN) : " + fmt(e->quality, 3);
+        s += "\n" + QCoreApplication::translate("TSA::Viewer::MeshVisual", "Qualité (minSICN) : %1").arg(qs(fmt(e->quality, 3)));
     if (m_colorField && m_colorField->location == TSA::Mesh::FieldLocation::Element)
     {
         double v = 0.0;
-        s += "\n" + m_colorField->name + " : " + (m_colorField->scalar(e->id, &v) ? fmt(v) + " " + m_colorField->unit : std::string("non calculé"));
+        s += "\n" + fieldName(m_colorField->name) + " : " +
+             (m_colorField->scalar(e->id, &v) ? qs(fmt(v) + " " + m_colorField->unit) : QCoreApplication::translate("TSA::Viewer::MeshVisual", "non calculé"));
     }
-    return s;
+    return s.toStdString();
 }
 
 std::string MeshVisual::describeNode(int nodeId) const
 {
     const auto* n = m_model.node(nodeId);
-    if (!n) return "Nœud " + std::to_string(nodeId) + " : inexistant";
-    std::string s = "Nœud " + std::to_string(n->id) + " — (" + fmt(n->x, 6) + " ; " + fmt(n->y, 6) + " ; " + fmt(n->z, 6) + ") m";
-    s += n->tsaNode > 0 ? "\nNœud TSA confondu : " + std::to_string(n->tsaNode) : std::string("\nNœud du maillage (aucun nœud TSA)");
-    s += n->gmshTag ? "\nGmsh : nœud " + std::to_string(n->gmshTag) : std::string("\nGmsh : étiquette inconnue");
-    if (!n->source.empty()) s += "\nSource : " + n->source;
+    if (!n) return QCoreApplication::translate("TSA::Viewer::MeshVisual", "Nœud %1 : inexistant").arg(nodeId).toStdString();
+    QString s = QCoreApplication::translate("TSA::Viewer::MeshVisual", "Nœud %1 — (%2 ; %3 ; %4) m")
+                    .arg(n->id)
+                    .arg(qs(fmt(n->x, 6)), qs(fmt(n->y, 6)), qs(fmt(n->z, 6)));
+    s += "\n" + (n->tsaNode > 0 ? QCoreApplication::translate("TSA::Viewer::MeshVisual", "Nœud TSA confondu : %1").arg(n->tsaNode)
+                                : QCoreApplication::translate("TSA::Viewer::MeshVisual", "Nœud du maillage (aucun nœud TSA)"));
+    s += "\n" + (n->gmshTag ? QCoreApplication::translate("TSA::Viewer::MeshVisual", "Gmsh : nœud %1").arg(qulonglong(n->gmshTag))
+                            : QCoreApplication::translate("TSA::Viewer::MeshVisual", "Gmsh : étiquette inconnue"));
+    if (!n->source.empty()) s += "\n" + QCoreApplication::translate("TSA::Viewer::MeshVisual", "Source : %1").arg(qs(n->source));
     const auto groups = m_model.groupsOfNode(n->id);
-    if (!groups.empty()) s += "\nGroupes : " + join(groups);
+    if (!groups.empty()) s += "\n" + QCoreApplication::translate("TSA::Viewer::MeshVisual", "Groupes : %1").arg(qs(join(groups)));
     if (m_displacement)
     {
         const auto it = m_displacement->values.find(n->id);
         if (it == m_displacement->values.end())
-            s += "\n" + m_displacement->name + " : non calculé";
+            s += "\n" + fieldName(m_displacement->name) + " : " + QCoreApplication::translate("TSA::Viewer::MeshVisual", "non calculé");
         else
         {
             const auto& u = it->second;
-            s += "\n" + m_displacement->name + " : (" + fmt(u[0]) + " ; " + fmt(u[1]) + " ; " + fmt(u[2]) + ") " + m_displacement->unit +
-                 ", norme " + fmt(std::sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2])) + " " + m_displacement->unit;
+            s += "\n" + fieldName(m_displacement->name) + " : " +
+                 QCoreApplication::translate("TSA::Viewer::MeshVisual", "(%1 ; %2 ; %3) %4, norme %5 %4")
+                     .arg(qs(fmt(u[0])), qs(fmt(u[1])), qs(fmt(u[2])), qs(m_displacement->unit),
+                          qs(fmt(std::sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]))));
         }
     }
     if (m_colorField && m_colorField->location == TSA::Mesh::FieldLocation::Node && (!m_displacement || m_colorField->name != m_displacement->name))
     {
         double v = 0.0;
-        s += "\n" + m_colorField->name + " : " + (m_colorField->scalar(n->id, &v) ? fmt(v) + " " + m_colorField->unit : std::string("non calculé"));
+        s += "\n" + fieldName(m_colorField->name) + " : " +
+             (m_colorField->scalar(n->id, &v) ? qs(fmt(v) + " " + m_colorField->unit) : QCoreApplication::translate("TSA::Viewer::MeshVisual", "non calculé"));
     }
-    return s;
+    return s.toStdString();
 }
 
 void MeshVisual::clearHighlight()

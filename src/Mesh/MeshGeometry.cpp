@@ -3,6 +3,7 @@
 #include "../Model/Load/LoadManager.h"
 #include "../Model/Model.h"
 
+#include <QCoreApplication>
 #include <QCryptographicHash>
 
 #include <algorithm>
@@ -121,29 +122,38 @@ std::vector<std::vector<P3>> slabOpenings3D(const TSA::Model::Model& model, cons
 }
 
 static std::string validateOpening(const std::vector<std::pair<double, double>>& outer, const std::vector<TSA::Model::SlabOpening>& existing,
-                            const std::vector<std::pair<double, double>>& polygon, int ignoreIndex, const std::string& what)
+                            const std::vector<std::pair<double, double>>& polygon, int ignoreIndex, bool wall)
 {
-    if (polygon.size() < 3) return "une ouverture a au moins 3 sommets";
-    if (std::abs(polygonArea2D(polygon)) < 1e-8) return "ouverture d'aire nulle";
-    if (outer.size() < 3) return what + " sans contour valide";
+    if (polygon.size() < 3) return QCoreApplication::translate("TSA::Mesh::MeshGeometry", "une ouverture a au moins 3 sommets").toStdString();
+    if (std::abs(polygonArea2D(polygon)) < 1e-8) return QCoreApplication::translate("TSA::Mesh::MeshGeometry", "ouverture d'aire nulle").toStdString();
+    if (outer.size() < 3)
+        return (wall ? QCoreApplication::translate("TSA::Mesh::MeshGeometry", "du voile sans contour valide")
+                     : QCoreApplication::translate("TSA::Mesh::MeshGeometry", "de la dalle sans contour valide"))
+            .toStdString();
     for (const auto& [u, v] : polygon)
-        if (!pointInPolygon(u, v, outer)) return "l'ouverture dépasse le contour " + what;
+        if (!pointInPolygon(u, v, outer))
+            return (wall ? QCoreApplication::translate("TSA::Mesh::MeshGeometry", "l'ouverture dépasse le contour du voile")
+                         : QCoreApplication::translate("TSA::Mesh::MeshGeometry", "l'ouverture dépasse le contour de la dalle"))
+                .toStdString();
     for (std::size_t i = 0; i < polygon.size(); ++i)
         for (std::size_t j = 0; j < outer.size(); ++j)
             if (segmentsCross(polygon[i], polygon[(i + 1) % polygon.size()], outer[j], outer[(j + 1) % outer.size()]))
-                return "l'ouverture recoupe le contour " + what;
+                return (wall ? QCoreApplication::translate("TSA::Mesh::MeshGeometry", "l'ouverture recoupe le contour du voile")
+                             : QCoreApplication::translate("TSA::Mesh::MeshGeometry", "l'ouverture recoupe le contour de la dalle"))
+                    .toStdString();
     for (std::size_t k = 0; k < existing.size(); ++k)
     {
         if (int(k) == ignoreIndex) continue;
         const auto& o = existing[k].polygon;
+        const QString name = QString::fromStdString(existing[k].name);
         for (const auto& [u, v] : polygon)
-            if (pointInPolygon(u, v, o)) return "l'ouverture chevauche l'ouverture « " + existing[k].name + " »";
+            if (pointInPolygon(u, v, o)) return QCoreApplication::translate("TSA::Mesh::MeshGeometry", "l'ouverture chevauche l'ouverture « %1 »").arg(name).toStdString();
         for (const auto& [u, v] : o)
-            if (pointInPolygon(u, v, polygon)) return "l'ouverture contient l'ouverture « " + existing[k].name + " »";
+            if (pointInPolygon(u, v, polygon)) return QCoreApplication::translate("TSA::Mesh::MeshGeometry", "l'ouverture contient l'ouverture « %1 »").arg(name).toStdString();
         for (std::size_t i = 0; i < polygon.size(); ++i)
             for (std::size_t j = 0; j < o.size(); ++j)
                 if (segmentsCross(polygon[i], polygon[(i + 1) % polygon.size()], o[j], o[(j + 1) % o.size()]))
-                    return "l'ouverture recoupe l'ouverture « " + existing[k].name + " »";
+                    return QCoreApplication::translate("TSA::Mesh::MeshGeometry", "l'ouverture recoupe l'ouverture « %1 »").arg(name).toStdString();
     }
     return {};
 }
@@ -162,7 +172,7 @@ std::string validateSlabOpening(const TSA::Model::Model& model, const Slab& slab
             outer.emplace_back(u, v);
         }
     }
-    return validateOpening(outer, slab.openings(), polygon, ignoreIndex, "de la dalle");
+    return validateOpening(outer, slab.openings(), polygon, ignoreIndex, false);
 }
 
 static bool isWallDoor(const std::vector<std::pair<double, double>>& p, double L, double H, double* u1, double* u2, double* top)
@@ -190,7 +200,7 @@ std::string validateWallOpening(const TSA::Model::Model& model, const TSA::Model
     // ni une autre porte. Base inclinée : pas de porte au pied (le pied n'est pas à v = 0), ouvertures intérieures seules.
     double u1 = 0, u2 = 0, top = 0;
     if (sloped && isWallDoor(polygon, L, H, nullptr, nullptr, nullptr))
-        return "porte au pied d'un voile à base inclinée non prise en charge : placez une ouverture intérieure";
+        return QCoreApplication::translate("TSA::Mesh::MeshGeometry", "porte au pied d'un voile à base inclinée non prise en charge : placez une ouverture intérieure").toStdString();
     if (!sloped && isWallDoor(polygon, L, H, &u1, &u2, &top))
     {
         std::vector<std::pair<double, double>> lifted = polygon;
@@ -201,14 +211,14 @@ std::string validateWallOpening(const TSA::Model::Model& model, const TSA::Model
             if (int(k) == ignoreIndex) continue;
             double a = 0, b = 0, t = 0;
             if (isWallDoor(wall.openings()[k].polygon, L, H, &a, &b, &t) && a < u2 + 1e-9 && b > u1 - 1e-9)
-                return "la porte chevauche ou touche la porte « " + wall.openings()[k].name + " »";
+                return QCoreApplication::translate("TSA::Mesh::MeshGeometry", "la porte chevauche ou touche la porte « %1 »").arg(QString::fromStdString(wall.openings()[k].name)).toStdString();
         }
         std::vector<TSA::Model::SlabOpening> others;
         for (std::size_t k = 0; k < wall.openings().size(); ++k)
             if (int(k) != ignoreIndex && !isWallDoor(wall.openings()[k].polygon, L, H, nullptr, nullptr, nullptr)) others.push_back(wall.openings()[k]);
-        return validateOpening(outer, others, lifted, -1, "du voile");
+        return validateOpening(outer, others, lifted, -1, true);
     }
-    return validateOpening(outer, wall.openings(), polygon, ignoreIndex, "du voile");
+    return validateOpening(outer, wall.openings(), polygon, ignoreIndex, true);
 }
 
 bool wallSurface(const TSA::Model::Model& model, const TSA::Model::Wall& w, SurfaceGeom* out)

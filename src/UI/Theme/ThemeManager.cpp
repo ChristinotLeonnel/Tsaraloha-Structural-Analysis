@@ -829,9 +829,11 @@ QString ThemeManager::ribbonButtonLargeStyleSheet() const
             "QToolButton:checked {"
             "   background-color: #1F3A5A;"
             "   border: 1px solid #388BFD;"
+            "   border-bottom: 3px solid #388BFD;"
             "   color: #58A6FF;"
             "   font-weight: 600;"
             "}"
+            "QToolButton:disabled { color: #6E7681; }"
             "QToolButton::menu-indicator {"
             "   subcontrol-origin: padding;"
             "   subcontrol-position: bottom right;"
@@ -864,9 +866,11 @@ QString ThemeManager::ribbonButtonLargeStyleSheet() const
             "QToolButton:checked {"
             "   background-color: #DDF4FF;"
             "   border: 1px solid #0969DA;"
+            "   border-bottom: 3px solid #0969DA;"
             "   color: #0969DA;"
             "   font-weight: 600;"
             "}"
+            "QToolButton:disabled { color: #8C959F; }"
             "QToolButton::menu-indicator {"
             "   subcontrol-origin: padding;"
             "   subcontrol-position: bottom right;"
@@ -903,9 +907,11 @@ QString ThemeManager::ribbonButtonSmallStyleSheet() const
             "QToolButton:checked {"
             "   background-color: #1F3A5A;"
             "   border: 1px solid #388BFD;"
+            "   border-bottom: 3px solid #388BFD;"
             "   color: #58A6FF;"
             "   font-weight: 600;"
-            "}";
+            "}"
+            "QToolButton:disabled { color: #6E7681; }";
     }
     else
     {
@@ -932,9 +938,11 @@ QString ThemeManager::ribbonButtonSmallStyleSheet() const
             "QToolButton:checked {"
             "   background-color: #DDF4FF;"
             "   border: 1px solid #0969DA;"
+            "   border-bottom: 3px solid #0969DA;"
             "   color: #0969DA;"
             "   font-weight: 600;"
-            "}";
+            "}"
+            "QToolButton:disabled { color: #8C959F; }";
     }
 }
 

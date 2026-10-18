@@ -368,59 +368,59 @@ QString ResultsVisualManager::legendSummaryText() const
         const auto& meta = m_results->executionMetadata();
         QString loading = QString::fromStdString(meta.loadCombinationType);
         if (!m_results->caseOrComboName().empty()) loading += QStringLiteral(" « %1 »").arg(QString::fromStdString(m_results->caseOrComboName()));
-        text += QString("CALCUL : %1 — %2 — %3\n").arg(QString::fromStdString(meta.solverEngine), loading, QString::fromStdString(m_results->timestamp()));
+        text += tr("CALCUL : %1 — %2 — %3\n").arg(QString::fromStdString(meta.solverEngine), loading, QString::fromStdString(m_results->timestamp()));
         const int step = m_results->activeStep(), steps = m_results->stepCount();
         if (m_results->analysisType() == TSA::Analysis::AnalysisType::Modal && !m_results->modal().empty())
         {
             const int k = std::clamp(step < 0 ? 0 : step, 0, int(m_results->modal().modes.size()) - 1);
-            text += QString("MODE %1 / %2 : f = %3 Hz (forme propre normalisée)\n").arg(k + 1).arg(m_results->modal().modes.size()).arg(m_results->modal().modes[std::size_t(k)].frequency, 0, 'f', 3);
+            text += tr("MODE %1 / %2 : f = %3 Hz (forme propre normalisée)\n").arg(k + 1).arg(m_results->modal().modes.size()).arg(m_results->modal().modes[std::size_t(k)].frequency, 0, 'f', 3);
         }
         else if (steps > 1)
-            text += QString("PAS %1 / %2\n").arg(step < 0 ? steps : step + 1).arg(steps);
+            text += tr("PAS %1 / %2\n").arg(step < 0 ? steps : step + 1).arg(steps);
     }
     if (m_deformedVisible)
     {
         const auto& sum = m_results->summary();
         const bool trueScale = std::abs(m_deformationScale - 1.0) < 1e-9;
-        text += QString("DÉFORMÉE : δ_max = %1 mm (Nœud #%2) | Échelle ×%3 %4\n")
+        text += tr("DÉFORMÉE : δ_max = %1 mm (Nœud #%2) | Échelle ×%3 %4\n")
             .arg(sum.maxDisplacement * 1000.0, 0, 'f', 2)
             .arg(sum.maxDisplacementNodeId)
             .arg(m_deformationScale, 0, 'g', 4)
-            .arg(trueScale ? QString("(échelle réelle)") : QString("(amplifiée pour l'affichage, résultats inchangés)"));
+            .arg(trueScale ? tr("(échelle réelle)") : tr("(amplifiée pour l'affichage, résultats inchangés)"));
         if (m_animationPhase < 1.0 - 1e-9)
-            text += QString("ANIMATION : %1 % du facteur ×%2 — interpolation visuelle de la déformée statique (pas une analyse dynamique)\n")
+            text += tr("ANIMATION : %1 % du facteur ×%2 — interpolation visuelle de la déformée statique (pas une analyse dynamique)\n")
                         .arg(m_animationPhase * 100.0, 0, 'f', 0)
                         .arg(m_deformationScale, 0, 'g', 4);
         if (m_axesFromStations + m_axesFromHermite > 0)
-            text += QString("Courbe des barres : %1 depuis les stations du solveur, %2 par interpolation cubique nodale\n")
+            text += tr("Courbe des barres : %1 depuis les stations du solveur, %2 par interpolation cubique nodale\n")
                         .arg(m_axesFromStations).arg(m_axesFromHermite);
         if (m_axesInvalid > 0)
-            text += QString("⚠ %1 barre(s) sans déformée (%2)\n")
+            text += tr("⚠ %1 barre(s) sans déformée (%2)\n")
                         .arg(m_axesInvalid).arg(QString::fromStdString(m_firstAxisProblem));
         if (m_maxTwist > 1e-12)
         {
-            text += QString("TORSION : θx max = %1 mrad (%2) | %3\n")
+            text += tr("TORSION : θx max = %1 mrad (%2) | %3\n")
                         .arg(m_maxTwist * 1000.0, 0, 'g', 4)
                         .arg(QString::fromStdString(m_maxTwistElement))
-                        .arg(m_sectionRotationVisible ? QString("sections tournées ×%1").arg(m_deformationScale, 0, 'g', 4)
-                                                      : QString("rotation des sections masquée"));
+                        .arg(m_sectionRotationVisible ? tr("sections tournées ×%1").arg(m_deformationScale, 0, 'g', 4)
+                                                      : tr("rotation des sections masquée"));
         }
     }
     if (m_diagramType != TSA::Geometry::DiagramType::None)
     {
         const QString unit = TSA::Geometry::DiagramGeometry::diagramUnit(m_diagramType);
         if (m_diagramAllZero)
-            text += QString("DIAGRAMME : %1 — grandeur nulle sur toute la structure (aucun diagramme)\n")
+            text += tr("DIAGRAMME : %1 — grandeur nulle sur toute la structure (aucun diagramme)\n")
                         .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType));
         else
-            text += QString("DIAGRAMME : %1 (%2) | max |%3| %2 | 1 m de diagramme = %4 %2%5\n")
+            text += tr("DIAGRAMME : %1 (%2) | max |%3| %2 | 1 m de diagramme = %4 %2%5\n")
                         .arg(TSA::Geometry::DiagramGeometry::diagramTypeName(m_diagramType))
                         .arg(unit)
                         .arg(m_diagramMaxValue, 0, 'g', 4)
                         .arg(m_diagramScale > 0.0 ? 1.0 / m_diagramScale : 0.0, 0, 'g', 4)
-                        .arg(std::abs(m_diagramMultiplier - 1.0) < 1e-12 ? QString(" (échelle automatique)") : QString(" (automatique ×%1)").arg(m_diagramMultiplier, 0, 'g', 3));
+                        .arg(std::abs(m_diagramMultiplier - 1.0) < 1e-12 ? tr(" (échelle automatique)") : tr(" (automatique ×%1)").arg(m_diagramMultiplier, 0, 'g', 3));
         if (!m_diagramAllZero && m_hiddenDiagramLabels > 0)
-            text += QString("%1 étiquette(s) superposée(s) non affichée(s) (valeur égale ou inférieure à une étiquette voisine)\n").arg(m_hiddenDiagramLabels);
+            text += tr("%1 étiquette(s) superposée(s) non affichée(s) (valeur égale ou inférieure à une étiquette voisine)\n").arg(m_hiddenDiagramLabels);
     }
     return text;
 }

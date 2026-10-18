@@ -21,6 +21,8 @@ public:
 
     void appendLog(const QString& message, const QString& type = "INFO", const QString& module = "General");
     void clearLog();
+    /// Ligne de commande pré-remplie (commande choisie dans la recherche globale), focus et curseur en fin de ligne.
+    void prefillCommand(const QString& text);
     void updateTheme(bool isDark);
 
 signals:

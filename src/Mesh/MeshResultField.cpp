@@ -5,6 +5,9 @@
 #include "../Analysis/ResultsModel.h"
 #include "../Model/Model.h"
 
+#include <QCoreApplication>
+#include <QtGlobal>
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -48,18 +51,21 @@ MeshResultSet ResultsModelMeshAdapter::extract(const FeMesh& mesh) const
     MeshResultSet set;
     if (!m_results.isValid())
     {
-        set.notes.push_back("résultats absents ou obsolètes : aucun champ");
+        set.notes.push_back(QCoreApplication::translate("TSA::Mesh::MeshResultField", "résultats absents ou obsolètes : aucun champ").toStdString());
         return set;
     }
     const auto& meta = m_results.executionMetadata();
     MeshResultField u;
-    u.name = "Déplacement";
+    // Nom du champ : clé de recherche (MeshResultSet::find), marqué pour une traduction au point d'affichage
+    u.name = QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Déplacement");
     u.unit = "m";
     if (m_results.analysisType() == TSA::Analysis::AnalysisType::Modal)
     {
         // Forme propre : amplitude arbitraire, normalisée par TSA (translation maximale = 1)
-        u.unit = "forme propre normalisée, sans unité";
-        set.notes.push_back("analyse modale : déplacements = forme propre du mode affiché, normalisée (translation maximale = 1)");
+        u.unit = QCoreApplication::translate("TSA::Mesh::MeshResultField", "forme propre normalisée, sans unité").toStdString();
+        set.notes.push_back(QCoreApplication::translate("TSA::Mesh::MeshResultField",
+                                                        "analyse modale : déplacements = forme propre du mode affiché, normalisée (translation maximale = 1)")
+                                .toStdString());
     }
     u.source = meta.solverEngine + (meta.solverVersion.empty() ? std::string() : " " + meta.solverVersion);
     u.components = 3;
@@ -78,7 +84,9 @@ MeshResultSet ResultsModelMeshAdapter::extract(const FeMesh& mesh) const
     const bool sameMesh = !m_results.surfaceNodeDisplacements().empty() && !m_meshStamp.empty() && m_meshStamp == m_results.surfaceMeshStamp();
     std::size_t surfaceExact = 0;
     if (!m_results.surfaceNodeDisplacements().empty() && !sameMesh)
-        set.notes.push_back("maillage affiché différent de celui du calcul : résultats des surfaces non reportés (relancer le calcul)");
+        set.notes.push_back(QCoreApplication::translate("TSA::Mesh::MeshResultField",
+                                                        "maillage affiché différent de celui du calcul : résultats des surfaces non reportés (relancer le calcul)")
+                                .toStdString());
     if (sameMesh)
         for (const auto& [id, d] : m_results.surfaceNodeDisplacements())
             if (!u.values.count(id) && id >= 1 && id <= int(mesh.nodes.size()) && std::isfinite(d.ux) && std::isfinite(d.uy) && std::isfinite(d.uz))
@@ -142,31 +150,49 @@ MeshResultSet ResultsModelMeshAdapter::extract(const FeMesh& mesh) const
             ++interpolated;
         }
     }
-    u.method = std::to_string(exact) + " nœud(s) aux valeurs exactes du solveur (nœuds TSA), " + std::to_string(surfaceExact) +
-               " nœud(s) de surfaces aux valeurs exactes du solveur (coques), " + std::to_string(interpolated) +
-               " nœud(s) de barres interpolés linéairement entre deux stations du solveur";
+    u.method = QCoreApplication::translate("TSA::Mesh::MeshResultField",
+                                           "%1 nœud(s) aux valeurs exactes du solveur (nœuds TSA), %2 nœud(s) de surfaces aux valeurs exactes du solveur "
+                                           "(coques), %3 nœud(s) de barres interpolés linéairement entre deux stations du solveur")
+                   .arg(QString::number(exact), QString::number(surfaceExact), QString::number(interpolated))
+                   .toStdString();
     const std::size_t missing = mesh.nodes.size() - u.values.size();
     if (missing > 0)
-        set.notes.push_back(std::to_string(missing) + " nœud(s) du maillage sans résultat (surfaces, volumes ou barres non calculés) : "
-                                                      "aucune valeur n'est inventée");
+        set.notes.push_back(QCoreApplication::translate("TSA::Mesh::MeshResultField",
+                                                        "%1 nœud(s) du maillage sans résultat (surfaces, volumes ou barres non calculés) : aucune valeur n'est "
+                                                        "inventée")
+                                .arg(QString::number(missing))
+                                .toStdString());
     if (!u.values.empty()) set.fields.push_back(std::move(u));
 
     // 3. Éléments de coque : résultantes par unité de longueur (moyenne des 4 points d'intégration)
     // Efforts des coques : enregistrés au dernier pas seulement ; pour un pas intermédiaire, aucun champ (pas de valeur d'un autre pas)
     const bool intermediateStep = m_results.activeStep() >= 0 && m_results.activeStep() + 1 < m_results.stepCount();
     if (sameMesh && intermediateStep && !m_results.shellResults().empty())
-        set.notes.push_back("pas intermédiaire : efforts des coques disponibles au dernier pas seulement (déplacements du pas affichés)");
+        set.notes.push_back(QCoreApplication::translate("TSA::Mesh::MeshResultField",
+                                                        "pas intermédiaire : efforts des coques disponibles au dernier pas seulement (déplacements du pas affichés)")
+                                .toStdString());
     if (sameMesh && !intermediateStep && !m_results.shellResults().empty())
     {
         const std::string src = meta.solverEngine + (meta.solverVersion.empty() ? std::string() : " " + meta.solverVersion);
-        const char* method = "moyenne des 4 points d'intégration de l'élément, repère local de l'élément (axe x : nœud 1 → nœud 2)";
+        const std::string method =
+            QCoreApplication::translate("TSA::Mesh::MeshResultField",
+                                        "moyenne des 4 points d'intégration de l'élément, repère local de l'élément (axe x : nœud 1 → nœud 2)")
+                .toStdString();
+        const std::string principalMethod =
+            QCoreApplication::translate("TSA::Mesh::MeshResultField",
+                                        "valeur principale de plus grande valeur absolue, indépendante du repère local ; moyenne des 4 points d'intégration de "
+                                        "l'élément, repère local de l'élément (axe x : nœud 1 → nœud 2)")
+                .toStdString();
         struct Def
         {
             const char* name;
             const char* unit;
             int comp;   ///< composante, ou −1 / −2 : moment / effort principal de plus grande valeur absolue
         };
-        const Def defs[] = { { "Moment principal (coque)", "kN·m/m", -1 }, { "Effort principal dans le plan (coque)", "kN/m", -2 }, { "Mxx (coque)", "kN·m/m", 3 },
+        // Noms des champs : clés de recherche (MeshResultSet::find), marquées pour une traduction au point d'affichage
+        const Def defs[] = { { QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Moment principal (coque)"), "kN·m/m", -1 },
+                             { QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Effort principal dans le plan (coque)"), "kN/m", -2 },
+                             { "Mxx (coque)", "kN·m/m", 3 },
                              { "Myy (coque)", "kN·m/m", 4 },              { "Mxy (coque)", "kN·m/m", 5 },                         { "Nxx (coque)", "kN/m", 0 },
                              { "Nyy (coque)", "kN/m", 1 },                { "Nxy (coque)", "kN/m", 2 },                           { "Vxz (coque)", "kN/m", 6 },
                              { "Vyz (coque)", "kN/m", 7 } };
@@ -181,7 +207,7 @@ MeshResultSet ResultsModelMeshAdapter::extract(const FeMesh& mesh) const
             f.unit = d.unit;
             f.source = src;
             f.location = FieldLocation::Element;
-            f.method = d.comp < 0 ? std::string("valeur principale de plus grande valeur absolue, indépendante du repère local ; ") + method : method;
+            f.method = d.comp < 0 ? principalMethod : method;
             for (const auto& [eid, r] : m_results.shellResults())
             {
                 if (eid < 1 || eid > int(mesh.elements.size())) continue;

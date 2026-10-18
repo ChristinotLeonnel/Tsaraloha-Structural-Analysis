@@ -141,7 +141,7 @@ function Command($text) {
     Press "{ENTER}"; Start-Sleep -Seconds 2
 }
 function Launch($file) {
-    $script:p = Start-Process -FilePath $Exe -ArgumentList "`"$file`"" -PassThru
+    $script:p = Start-Process -FilePath $Exe -ArgumentList @("--lang=fr", "`"$file`"") -PassThru
     $deadline = (Get-Date).AddSeconds(120)
     $expected = "TSA — $(Split-Path $file -Leaf)"
     while ((Get-Date) -lt $deadline) {
@@ -166,9 +166,10 @@ Copy-Item $source $copy -Force
 Say "1. copie du projet de démonstration : $copy"
 if (-not (Launch $copy)) { Say "ARRÊT : la copie d'essai n'est pas la fenêtre active (« $($script:p.MainWindowTitle) »)"; $script:projTitle = $null; Finish 2 }
 $script:projTitle = "TSA — PlanTravail_R+5.tsa"
-RibbonTab "Affichage"
+RibbonTab "Grille et plans"   # accrochage : onglet Grille et plans (ruban réorganisé, docs/UI_RIBBON.md)
 EnsureState "Magnétisme Grille*" "Off"
 EnsureState "Accrochage Objets*" "Off"
+RibbonTab "Affichage"
 EnsureConsole
 PressRibbon "Affichage" "Vue Isométrique*"
 $pl0 = @(Texts "^Plan: ") | Select-Object -First 1

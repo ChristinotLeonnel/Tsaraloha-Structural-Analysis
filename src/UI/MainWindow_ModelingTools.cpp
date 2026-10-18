@@ -2,6 +2,7 @@
 // saisie dans la vue 3D (par défaut) ou par fenêtre, exécution en une transaction.
 
 #include "MainWindow.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include "Dock/LogConsoleDock.h"
 #include "ModelTree/ModelTreeWidget.h"
@@ -70,7 +71,7 @@ void MainWindow::createModelingToolActions()
     TSA::Interaction::registerBuiltInModelingTools(*m_toolRegistry);
 
     m_toolInputInViewport = QSettings().value(kInputModeKey, true).toBool();
-    m_actionToolInputViewport = new QAction(QIcon(":/icons/tools/input_viewport.svg"), tr("Saisie dans la vue 3D"), this);
+    m_actionToolInputViewport = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/tools/input_viewport.svg")), tr("Saisie dans la vue 3D"), this);
     m_actionToolInputViewport->setCheckable(true);
     m_actionToolInputViewport->setChecked(m_toolInputInViewport);
     m_actionToolInputViewport->setToolTip(tr("Coché : les outils de modification et de dessin se pilotent directement dans la vue 3D "

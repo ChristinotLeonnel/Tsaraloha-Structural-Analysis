@@ -1,5 +1,7 @@
 #include "MeshDisplayModel.h"
 
+#include <QCoreApplication>
+
 #include <algorithm>
 
 namespace TSA::Mesh
@@ -86,18 +88,19 @@ std::string feTypeLabel(FeType type)
 {
     switch (type)
     {
-    case FeType::Line2: return "Line2 — segment à 2 nœuds";
-    case FeType::Line3: return "Line3 — segment à 3 nœuds";
-    case FeType::Tri3: return "Tri3 — triangle à 3 nœuds";
-    case FeType::Tri6: return "Tri6 — triangle à 6 nœuds";
-    case FeType::Quad4: return "Quad4 — quadrangle à 4 nœuds";
-    case FeType::Quad8: return "Quad8 — quadrangle à 8 nœuds";
-    case FeType::Hex8: return "Hex8 — hexaèdre à 8 nœuds";
-    case FeType::Hex20: return "Hex20 — hexaèdre à 20 nœuds";
-    case FeType::Tet4: return "Tet4 — tétraèdre à 4 nœuds";
-    case FeType::Tet10: return "Tet10 — tétraèdre à 10 nœuds";
+    // Le nom du type (premier mot, avant l'espace) n'est pas traduit : MeshVisual l'extrait du libellé
+    case FeType::Line2: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Line2 — segment à 2 nœuds").toStdString();
+    case FeType::Line3: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Line3 — segment à 3 nœuds").toStdString();
+    case FeType::Tri3: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Tri3 — triangle à 3 nœuds").toStdString();
+    case FeType::Tri6: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Tri6 — triangle à 6 nœuds").toStdString();
+    case FeType::Quad4: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Quad4 — quadrangle à 4 nœuds").toStdString();
+    case FeType::Quad8: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Quad8 — quadrangle à 8 nœuds").toStdString();
+    case FeType::Hex8: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Hex8 — hexaèdre à 8 nœuds").toStdString();
+    case FeType::Hex20: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Hex20 — hexaèdre à 20 nœuds").toStdString();
+    case FeType::Tet4: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Tet4 — tétraèdre à 4 nœuds").toStdString();
+    case FeType::Tet10: return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "Tet10 — tétraèdre à 10 nœuds").toStdString();
     }
-    return "type inconnu";
+    return QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "type inconnu").toStdString();
 }
 
 std::vector<int> faceOutline(const ElementTopology& topo, const std::vector<int>& face)
@@ -142,11 +145,14 @@ bool MeshDisplayModel::build(const FeMesh& mesh, const MeshDisplayFilter& filter
     m_nodeIndex.reserve(mesh.nodes.size());
     for (std::size_t i = 0; i < mesh.nodes.size(); ++i)
         if (!m_nodeIndex.emplace(mesh.nodes[i].id, int(i)).second)
-            m_issues.push_back({ 0, "nœud " + std::to_string(mesh.nodes[i].id) + " : identifiant dupliqué (seul le premier est utilisé)" });
+            m_issues.push_back({ 0, QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "nœud %1 : identifiant dupliqué (seul le premier est utilisé)")
+                                        .arg(mesh.nodes[i].id)
+                                        .toStdString() });
     m_elementIndex.reserve(mesh.elements.size());
     for (std::size_t i = 0; i < mesh.elements.size(); ++i)
         if (!m_elementIndex.emplace(mesh.elements[i].id, int(i)).second)
-            m_issues.push_back({ mesh.elements[i].id, "identifiant d'élément dupliqué : élément écarté" });
+            m_issues.push_back(
+                { mesh.elements[i].id, QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "identifiant d'élément dupliqué : élément écarté").toStdString() });
     std::set<std::size_t> isolated;
     for (std::size_t g = 0; g < mesh.groups.size(); ++g)
     {
@@ -164,25 +170,28 @@ bool MeshDisplayModel::build(const FeMesh& mesh, const MeshDisplayFilter& filter
         const ElementTopology* topo = elementTopology(e.type);
         if (e.source.rfind(kFeUnknownTypePrefix, 0) == 0)
         {
-            m_issues.push_back({ e.id, "type d'élément inconnu dans le projet (élément écarté) : " + e.source });
+            m_issues.push_back({ e.id, QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "type d'élément inconnu dans le projet (élément écarté) : %1")
+                                           .arg(QString::fromStdString(e.source))
+                                           .toStdString() });
             continue;
         }
         if (!topo)
         {
-            m_issues.push_back({ e.id, "type d'élément non pris en charge par l'affichage" });
+            m_issues.push_back({ e.id, QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "type d'élément non pris en charge par l'affichage").toStdString() });
             continue;
         }
         if (int(e.nodes.size()) != topo->nodeCount)
         {
-            m_issues.push_back({ e.id, std::string(feTypeName(e.type)) + " : " + std::to_string(e.nodes.size()) + " nœuds au lieu de " +
-                                           std::to_string(topo->nodeCount) + " (élément écarté)" });
+            m_issues.push_back({ e.id, QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "%1 : %2 nœuds au lieu de %3 (élément écarté)")
+                                           .arg(QString::fromUtf8(feTypeName(e.type)), QString::number(e.nodes.size()), QString::number(topo->nodeCount))
+                                           .toStdString() });
             continue;
         }
         bool known = true;
         for (int n : e.nodes) known &= m_nodeIndex.count(n) > 0;
         if (!known)
         {
-            m_issues.push_back({ e.id, "nœud inexistant dans la connectivité (élément écarté)" });
+            m_issues.push_back({ e.id, QCoreApplication::translate("TSA::Mesh::MeshDisplayModel", "nœud inexistant dans la connectivité (élément écarté)").toStdString() });
             continue;
         }
         if (e.boundary && !filter.boundaryElements) continue;

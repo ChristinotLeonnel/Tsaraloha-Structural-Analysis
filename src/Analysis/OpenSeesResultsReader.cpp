@@ -4,6 +4,7 @@
 #include "LoadResolver.h"
 #include "OpenSeesAnalysisBuilder.h"
 #include "../Core/Utf8Path.h"
+#include <QCoreApplication>
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
@@ -80,8 +81,8 @@ struct ReadContext
             auto vals = parseDoubles(line, &nonFinite);
             if (vals.size() != expected)
             {
-                layoutErrors.push_back(what + " : " + std::to_string(vals.size()) + " valeurs lues, "
-                                       + std::to_string(expected) + " attendues (mapping TSA/OpenSees incohérent).");
+                layoutErrors.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "%1 : %2 valeurs lues, %3 attendues (mapping TSA/OpenSees incohérent).")
+                                           .arg(QString::fromStdString(what), QString::number(vals.size()), QString::number(expected)).toStdString());
                 return {};
             }
             rows.push_back(std::move(vals));
@@ -460,16 +461,22 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
 
     const std::string dir = workingDirectory + "/";
     ReadContext ctx;
-    const auto dispRows = ctx.table(dir + params.dispOutputFile, map.structuralNodeTags().size() * 6, "Déplacements");
-    const auto reactRows = ctx.table(dir + params.reactOutputFile, map.reactionNodeTags().size() * 6, "Réactions");
-    const auto beamRows = ctx.table(dir + params.forceOutputFile, map.beamColumnTags().size() * 12, "Efforts locaux poutres/poteaux");
-    const auto axialRows = ctx.table(dir + params.axialOutputFile, map.axialTags().size(), "Efforts normaux treillis/câbles");
+    const auto dispRows = ctx.table(dir + params.dispOutputFile, map.structuralNodeTags().size() * 6,
+                                    QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Déplacements").toStdString());
+    const auto reactRows = ctx.table(dir + params.reactOutputFile, map.reactionNodeTags().size() * 6,
+                                     QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Réactions").toStdString());
+    const auto beamRows = ctx.table(dir + params.forceOutputFile, map.beamColumnTags().size() * 12,
+                                    QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Efforts locaux poutres/poteaux").toStdString());
+    const auto axialRows = ctx.table(dir + params.axialOutputFile, map.axialTags().size(),
+                                     QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Efforts normaux treillis/câbles").toStdString());
 
     if (ctx.nonFinite)
     {
         if (errorMessage)
         {
-            *errorMessage = "Instabilité numérique ou matrice de rigidité singulière : des valeurs infinies ou indéterminées (NaN/Inf) ont été détectées dans la réponse structurale OpenSees.";
+            *errorMessage = QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Instabilité numérique ou matrice de rigidité singulière : des valeurs infinies ou "
+                                                             "indéterminées (NaN/Inf) ont été détectées dans la réponse structurale OpenSees.")
+                                .toStdString();
         }
         outResults.appendLog("\n[ERREUR NORMATIVE] Instabilité numérique détectée : les déplacements ou réactions contiennent des valeurs non finies (NaN/Inf).\n");
         outResults.setValid(false);
@@ -496,19 +503,24 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
         }
         if (maxU > 10.0 * span || maxR > 10.0)
         {
-            std::ostringstream msg;
-            msg << std::setprecision(3) << "Résultats non physiques (déplacement max " << maxU << " m, rotation max " << maxR
-                << " rad, pour une structure de " << span << " m) : la matrice de rigidité est quasi singulière, la structure est un "
-                   "mécanisme (appuis insuffisants, rotule ou rotation laissée libre). Vérifier les appuis et les relâchements.";
-            if (errorMessage) *errorMessage = msg.str();
-            outResults.appendLog("\n[ERREUR] " + msg.str() + "\n");
+            auto num = [](double v) {
+                std::ostringstream o;
+                o << std::setprecision(3) << v;
+                return QString::fromStdString(o.str());
+            };
+            const std::string msg = QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader",
+                "Résultats non physiques (déplacement max %1 m, rotation max %2 rad, pour une structure de %3 m) : la matrice "
+                "de rigidité est quasi singulière, la structure est un mécanisme (appuis insuffisants, rotule ou rotation laissée "
+                "libre). Vérifier les appuis et les relâchements.").arg(num(maxU), num(maxR), num(span)).toStdString();
+            if (errorMessage) *errorMessage = msg;
+            outResults.appendLog("\n[ERREUR] " + msg + "\n");
             outResults.setValid(false);
             return false;
         }
     }
     if (!ctx.layoutErrors.empty())
     {
-        std::string msg = "Résultats OpenSees incohérents avec le modèle de calcul :";
+        std::string msg = QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Résultats OpenSees incohérents avec le modèle de calcul :").toStdString();
         for (const auto& e : ctx.layoutErrors) msg += "\n  • " + e;
         if (errorMessage) *errorMessage = msg;
         outResults.appendLog("\n[ERREUR] " + msg + "\n");
@@ -625,7 +637,7 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
         if (ctx.nonFinite || !ctx.layoutErrors.empty())
         {
             adv.elementForces.clear();
-            adv.warnings.push_back("Forces brutes ignorées : valeurs non finies ou disposition incohérente.");
+            adv.warnings.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Forces brutes ignorées : valeurs non finies ou disposition incohérente.").toStdString());
             ctx.layoutErrors.clear();
             ctx.nonFinite = false;
         }
@@ -638,7 +650,7 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
         for (const auto& sh : snapshot.shells()) byTag[sh.tag] = &sh;
         auto readShells = [&](const std::string& file, const std::vector<int>& tags, const char* what) {
             if (tags.empty()) return;
-            const auto rows = ctx.table(dir + file, tags.size() * 32, what);
+            const auto rows = ctx.table(dir + file, tags.size() * 32, QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", what).toStdString());
             if (rows.empty()) return;
             const auto& last = rows.back();
             for (std::size_t i = 0; i < tags.size(); ++i)
@@ -659,8 +671,10 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
                 outResults.setShellResult(r);
             }
         };
-        readShells(params.shellQuadOutputFile, map.shellQuadTags(), "Résultantes des coques (quadrangles)");
-        readShells(params.shellTriOutputFile, map.shellTriTags(), "Résultantes des coques (triangles)");
+        readShells(params.shellQuadOutputFile, map.shellQuadTags(),
+                   QT_TRANSLATE_NOOP("TSA::Analysis::OpenSeesResultsReader", "Résultantes des coques (quadrangles)"));
+        readShells(params.shellTriOutputFile, map.shellTriTags(),
+                   QT_TRANSLATE_NOOP("TSA::Analysis::OpenSeesResultsReader", "Résultantes des coques (triangles)"));
     }
 
     computeGlobalEquilibrium(snapshot, params, outResults);
@@ -671,7 +685,7 @@ bool OpenSeesResultsReader::readResults(const std::string& workingDirectory,
     {
         if (errorMessage)
         {
-            *errorMessage = "Les fichiers de résultats d'OpenSees n'ont pas pu être lus ou sont vides.";
+            *errorMessage = QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Les fichiers de résultats d'OpenSees n'ont pas pu être lus ou sont vides.").toStdString();
         }
         outResults.setValid(false);
         return false;
@@ -729,8 +743,8 @@ bool OpenSeesResultsReader::readMatrixResults(const std::string& workingDirector
     }
     if (bad || dm.nodeEquations.size() != map.structuralNodeTags().size())
     {
-        if (errorMessage) *errorMessage = "Mapping des DDL OpenSees absent ou incohérent (nodeDOFs).";
-        adv.warnings.push_back("Mapping des DDL OpenSees absent ou incohérent : matrices ignorées.");
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Mapping des DDL OpenSees absent ou incohérent (nodeDOFs).").toStdString();
+        adv.warnings.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Mapping des DDL OpenSees absent ou incohérent : matrices ignorées.").toStdString());
         return false;
     }
     adv.dofMap = dm;
@@ -816,7 +830,7 @@ bool OpenSeesResultsReader::readMatrixResults(const std::string& workingDirector
             m.available = false;
             m.unavailableReason = "Rigidités basiques incohérentes ou non finies.";
         }
-        adv.warnings.push_back("Rigidités élémentaires ignorées (fichier incohérent ou valeurs non finies).");
+        adv.warnings.push_back(QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Rigidités élémentaires ignorées (fichier incohérent ou valeurs non finies).").toStdString());
     }
 
     // 3. K_global du système d'équations (printA -ret, system FullGeneral).
@@ -909,11 +923,15 @@ void OpenSeesResultsReader::checkAutomaticRestraints(const CalculationSnapshot& 
         const double v[6] = { r->rx, r->ry, r->rz, r->mx, r->my, r->mz };
         const double value = v[std::clamp(a.dof, 0, 5)];
         if (!std::isfinite(value) || std::abs(value) <= tol) continue;
-        std::ostringstream os;
-        os << std::setprecision(4) << "Blocage automatique " << a.reason << " — il reprend " << value << " "
-           << (a.dof < 3 ? unitF : unitM) << " : cet effort n'est porté par aucun appui défini. Vérifier les appuis.";
-        meta.warnings.push_back(os.str());
-        outResults.appendLog("\n[AVERTISSEMENT] " + os.str() + "\n");
+        std::ostringstream num;
+        num << std::setprecision(4) << value;
+        const std::string text = QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader",
+                                     "Blocage automatique %1 — il reprend %2 %3 : cet effort n'est porté par aucun appui défini. "
+                                     "Vérifier les appuis.")
+                                     .arg(QString::fromStdString(a.reason), QString::fromStdString(num.str()), QString::fromLatin1(a.dof < 3 ? unitF : unitM))
+                                     .toStdString();
+        meta.warnings.push_back(text);
+        outResults.appendLog("\n[AVERTISSEMENT] " + text + "\n");
     }
     outResults.setExecutionMetadata(meta);
 }
@@ -1103,17 +1121,22 @@ bool OpenSeesResultsReader::readModalResults(const std::string& workingDirectory
     for (const auto& l : readAllLines(dir + params.modalEigenOutputFile))
         for (double v : parseDoubles(l, &nonFinite)) lambdas.push_back(v);
     if (lambdas.empty())
-        return fail("Analyse modale : aucune valeur propre calculée par OpenSees (masse nulle sur les DDL libres, mécanisme ou "
-                    "solveur aux valeurs propres en échec ; voir le journal).");
-    if (nonFinite) return fail("Analyse modale : valeurs propres non finies (masse ou rigidité singulière).");
+        return fail(QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Analyse modale : aucune valeur propre calculée par OpenSees (masse nulle sur les DDL libres, "
+                                                                "mécanisme ou solveur aux valeurs propres en échec ; voir le journal).")
+                        .toStdString());
+    if (nonFinite)
+        return fail(QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Analyse modale : valeurs propres non finies (masse ou rigidité singulière).").toStdString());
     for (std::size_t i = 0; i < lambdas.size(); ++i)
         if (lambdas[i] <= 0.0)
-            return fail("Analyse modale : valeur propre λ" + std::to_string(i + 1) + " = " + std::to_string(lambdas[i]) +
-                        " ≤ 0 : la structure est un mécanisme (appuis ou liaisons insuffisants).");
+            return fail(QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Analyse modale : valeur propre λ%1 = %2 ≤ 0 : la structure est un mécanisme "
+                                                                    "(appuis ou liaisons insuffisants).")
+                            .arg(QString::number(i + 1), QString::fromStdString(std::to_string(lambdas[i]))).toStdString());
 
     const auto shapeLines = readAllLines(dir + params.modalShapesOutputFile);
     const std::size_t expected = map.structuralNodeTags().size() * 6;
-    if (shapeLines.size() < lambdas.size()) return fail("Analyse modale : formes propres incomplètes (" + std::to_string(shapeLines.size()) + " lues).");
+    if (shapeLines.size() < lambdas.size())
+        return fail(QCoreApplication::translate("TSA::Analysis::OpenSeesResultsReader", "Analyse modale : formes propres incomplètes (%1 lues).")
+                        .arg(shapeLines.size()).toStdString());
 
     const auto props = readAllLines(dir + params.modalPropertiesOutputFile);
     const auto ratios = modalSection(props, "MODAL PARTICIPATION MASS RATIOS (%)");

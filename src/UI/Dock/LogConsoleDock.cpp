@@ -19,7 +19,7 @@ namespace TSA::UI
 {
 
 LogConsoleDock::LogConsoleDock(QWidget* parent)
-    : QDockWidget(tr("CONSOLE & DIAGNOSTICS"), parent)
+    : QDockWidget(tr("CONSOLE et DIAGNOSTICS"), parent)
 {
     setObjectName("LogConsoleDock");
     setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
@@ -291,6 +291,16 @@ void LogConsoleDock::onFilterChanged()
             .arg(timeColor, item.timestamp, color, item.type, modTag, item.text.toHtmlEscaped()));
     }
     m_output->verticalScrollBar()->setValue(m_output->verticalScrollBar()->maximum());
+}
+
+void LogConsoleDock::prefillCommand(const QString& text)
+{
+    if (!m_input) return;
+    show();
+    raise();
+    m_input->setText(text);
+    m_input->setFocus(Qt::OtherFocusReason);
+    m_input->setCursorPosition(static_cast<int>(text.size()));
 }
 
 void LogConsoleDock::clearLog()

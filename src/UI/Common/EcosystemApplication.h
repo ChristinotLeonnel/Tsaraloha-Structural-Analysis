@@ -35,6 +35,16 @@ public:
     /// Services de l'hôte offerts aux modules (plugins, templates) : activation au démarrage, arrêt à la fermeture,
     /// réactivation après approbation (dialogue Modules).
     static TSA::Modules::ModuleHostServices moduleHostServices();
+
+    /// Redémarrage demandé (langue de l'interface) : main() relance l'exécutable avec ces projets une fois
+    /// l'application entièrement fermée (réglages écrits, documents et ressources libérés).
+    void requestRestart(const QStringList& projectFiles);
+    bool restartRequested() const { return m_restartRequested; }
+    QStringList restartProjectFiles() const { return m_restartFiles; }
+
+private:
+    bool m_restartRequested = false;
+    QStringList m_restartFiles;
 };
 
 } // namespace TSA::UI

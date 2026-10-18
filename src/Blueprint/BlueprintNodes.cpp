@@ -5,7 +5,15 @@
 #include "tsalab/planar/PlanarSolvers.h"
 #include "tsalab/validation/PlanarBenchmarks.h"
 
+#include <QCoreApplication>
+#include <QString>
+#include <QtGlobal>
+
 #include <cmath>
+
+// Traduction : titres, catégories, descriptions et libellés de broches marqués QT_TRANSLATE_NOOP (contexte
+// « TSA::Blueprint::Nodes ») ; les définitions gardent le texte source, traduit à l'affichage (displayText). Les
+// identifiants (types de nœuds, noms de broches) ne sont jamais traduits. Messages d'erreur : même contexte.
 
 namespace TSA::Blueprint
 {
@@ -56,12 +64,12 @@ NodeDefinition ordered(NodeDefinition d)
 
 void binaryMath(NodeLibrary& lib, const char* id, const char* title, const char* desc, double (*op)(double, double, bool&))
 {
-    lib.add(pureFunction(def(id, title, "Math", desc, { data("a", "A", VT::Real, 0.0), data("b", "B", VT::Real, 0.0) },
-                { data("result", "Résultat", VT::Real) }, true)),
+    lib.add(pureFunction(def(id, title, QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Math"), desc, { data("a", "A", VT::Real, 0.0), data("b", "B", VT::Real, 0.0) },
+                { data("result", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Résultat"), VT::Real) }, true)),
             [op](ExecutionContext& c) {
                 bool ok = true;
                 const double r = op(c.real("a"), c.real("b"), ok);
-                if (!ok) return c.fail("division par zéro");
+                if (!ok) return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "division par zéro").toStdString());
                 c.setOutput("result", r);
                 return !c.failed();
             });
@@ -70,10 +78,10 @@ void binaryMath(NodeLibrary& lib, const char* id, const char* title, const char*
 template <typename T>
 void parameterNode(NodeLibrary& lib, const char* id, const char* title, VT type, Value def0, Quantity q = Quantity::None)
 {
-    lib.add(def(id, title, "Paramètres",
-                "Paramètre nommé du Blueprint : sa valeur peut être modifiée sans toucher au graphe (reconstruction paramétrique).",
-                { data("name", "Nom", VT::Text, std::string("p")), data("value", "Valeur", type, def0, q) },
-                { data("value", "Valeur", type, {}, q) }, true),
+    lib.add(def(id, title, QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Paramètres"),
+                QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Paramètre nommé du Blueprint : sa valeur peut être modifiée sans toucher au graphe (reconstruction paramétrique)."),
+                { data("name", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Nom"), VT::Text, std::string("p")), data("value", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Valeur"), type, def0, q) },
+                { data("value", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Valeur"), type, {}, q) }, true),
             [](ExecutionContext& c) {
                 const std::string name = c.text("name");
                 if (const Value* o = c.parameterOverride(name))
@@ -81,7 +89,7 @@ void parameterNode(NodeLibrary& lib, const char* id, const char* title, VT type,
                     Value v = *o;
                     if constexpr (std::is_same_v<T, double>)
                         if (const auto* i = std::get_if<long long>(&v)) v = static_cast<double>(*i);
-                    if (!std::holds_alternative<T>(v)) return c.fail("valeur imposée au paramètre « " + name + " » de type incorrect");
+                    if (!std::holds_alternative<T>(v)) return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "valeur imposée au paramètre « %1 » de type incorrect").arg(QString::fromStdString(name)).toStdString());
                     c.setOutput("value", v);
                     return true;
                 }
@@ -95,58 +103,60 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
 {
     // --- Événements ------------------------------------------------------------------------------
     {
-        NodeDefinition start = def("event.start", "Début", "Événements", "Point de départ de l'exécution.", {}, { execOut() }, false);
+        NodeDefinition start = def("event.start", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Début"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Événements"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Point de départ de l'exécution."), {}, { execOut() }, false);
         start.entry = true;
         lib.add(std::move(start), [](ExecutionContext& c) { return c.fire("then"); });
     }
 
     // --- Paramètres ------------------------------------------------------------------------------
-    parameterNode<double>(lib, "param.real", "Paramètre réel", VT::Real, 0.0);
-    parameterNode<long long>(lib, "param.integer", "Paramètre entier", VT::Integer, 0LL);
-    parameterNode<bool>(lib, "param.bool", "Paramètre booléen", VT::Bool, false);
-    parameterNode<std::string>(lib, "param.text", "Paramètre texte", VT::Text, std::string());
-    parameterNode<Point3>(lib, "param.point", "Paramètre point", VT::Point3, Point3 { 0, 0, 0 }, Quantity::Length);
+    parameterNode<double>(lib, "param.real", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Paramètre réel"), VT::Real, 0.0);
+    parameterNode<long long>(lib, "param.integer", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Paramètre entier"), VT::Integer, 0LL);
+    parameterNode<bool>(lib, "param.bool", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Paramètre booléen"), VT::Bool, false);
+    parameterNode<std::string>(lib, "param.text", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Paramètre texte"), VT::Text, std::string());
+    parameterNode<Point3>(lib, "param.point", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Paramètre point"), VT::Point3, Point3 { 0, 0, 0 }, Quantity::Length);
 
     // --- Variables ---------------------------------------------------------------------------------
     // Valeur nommée partagée par tout le graphe pendant une exécution (accumulateur d'une boucle : K = K + Aᵀ·k·A).
-    lib.add(def("var.set", "Affecter une variable", "Variables",
-                "Mémorise une valeur sous un nom pour la suite de l'exécution (toute valeur, objets compris). "
-                "La variable est relue par « Lire une variable » ; elle disparaît à la fin de l'exécution.",
-                { execIn(), data("name", "Nom", VT::Text, std::string("x")), anyData("value", "Valeur") },
-                { execOut(), anyData("value", "Valeur") }, false),
+    lib.add(def("var.set", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Affecter une variable"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Variables"),
+                QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Mémorise une valeur sous un nom pour la suite de l'exécution (toute valeur, objets compris). "
+                                  "La variable est relue par « Lire une variable » ; elle disparaît à la fin de l'exécution."),
+                { execIn(), data("name", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Nom"), VT::Text, std::string("x")), anyData("value", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Valeur")) },
+                { execOut(), anyData("value", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Valeur")) }, false),
             [](ExecutionContext& c) {
                 const std::string name = c.text("name");
                 const Value v = c.input("value");
                 if (c.failed()) return false;
-                if (name.empty()) return c.fail("nom de variable vide");
-                if (std::holds_alternative<std::monostate>(v)) return c.fail("valeur vide pour la variable « " + name + " »");
+                if (name.empty()) return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "nom de variable vide").toStdString());
+                if (std::holds_alternative<std::monostate>(v)) return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "valeur vide pour la variable « %1 »").arg(QString::fromStdString(name)).toStdString());
                 c.setVariable(name, v);
                 c.setOutput("value", v);
                 return c.fire("then");
             });
-    lib.add(def("var.get", "Lire une variable", "Variables",
-                "Valeur actuelle d'une variable affectée plus tôt dans l'exécution (réévaluée à chaque lecture : dans une boucle, "
-                "elle voit la dernière affectation).",
-                { data("name", "Nom", VT::Text, std::string("x")) }, { anyData("value", "Valeur") }, true),
+    lib.add(def("var.get", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Lire une variable"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Variables"),
+                QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Valeur actuelle d'une variable affectée plus tôt dans l'exécution (réévaluée à chaque lecture : dans une boucle, "
+                                  "elle voit la dernière affectation)."),
+                { data("name", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Nom"), VT::Text, std::string("x")) }, { anyData("value", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Valeur")) }, true),
             [](ExecutionContext& c) {
                 const std::string name = c.text("name");
                 if (c.failed()) return false;
-                if (!c.hasVariable(name)) return c.fail("variable « " + name + " » non affectée (relier « Affecter une variable » avant sa lecture)");
+                if (!c.hasVariable(name)) return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "variable « %1 » non affectée (relier « Affecter une variable » avant sa lecture)")
+                                                         .arg(QString::fromStdString(name))
+                                                         .toStdString());
                 c.setOutput("value", c.variable(name));
                 return true;
             });
 
     // --- Math --------------------------------------------------------------------------------------
-    binaryMath(lib, "math.add", "Addition", "A + B", [](double a, double b, bool&) { return a + b; });
-    binaryMath(lib, "math.subtract", "Soustraction", "A − B", [](double a, double b, bool&) { return a - b; });
-    binaryMath(lib, "math.multiply", "Multiplication", "A × B", [](double a, double b, bool&) { return a * b; });
-    binaryMath(lib, "math.divide", "Division", "A ÷ B (B non nul)", [](double a, double b, bool& ok) {
+    binaryMath(lib, "math.add", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Addition"), "A + B", [](double a, double b, bool&) { return a + b; });
+    binaryMath(lib, "math.subtract", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Soustraction"), "A − B", [](double a, double b, bool&) { return a - b; });
+    binaryMath(lib, "math.multiply", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Multiplication"), "A × B", [](double a, double b, bool&) { return a * b; });
+    binaryMath(lib, "math.divide", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Division"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "A ÷ B (B non nul)"), [](double a, double b, bool& ok) {
         ok = b != 0.0;
         return ok ? a / b : 0.0;
     });
-    lib.add(pureFunction(def("math.compare", "Comparer", "Math", "A op B, op ∈ { <, <=, >, >=, ==, != }.",
-                { data("a", "A", VT::Real, 0.0), data("b", "B", VT::Real, 0.0), data("op", "Opérateur", VT::Text, std::string("<")) },
-                { data("result", "Résultat", VT::Bool) }, true)),
+    lib.add(pureFunction(def("math.compare", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Comparer"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Math"), "A op B, op ∈ { <, <=, >, >=, ==, != }.",
+                { data("a", "A", VT::Real, 0.0), data("b", "B", VT::Real, 0.0), data("op", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Opérateur"), VT::Text, std::string("<")) },
+                { data("result", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Résultat"), VT::Bool) }, true)),
             [](ExecutionContext& c) {
                 const double a = c.real("a"), b = c.real("b");
                 const std::string op = c.text("op");
@@ -157,31 +167,31 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
                 else if (op == ">=") r = a >= b;
                 else if (op == "==") r = a == b;
                 else if (op == "!=") r = a != b;
-                else return c.fail("opérateur inconnu « " + op + " »");
+                else return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "opérateur inconnu « %1 »").arg(QString::fromStdString(op)).toStdString());
                 c.setOutput("result", r);
                 return !c.failed();
             });
-    lib.add(pureFunction(def("math.to_integer", "Arrondir en entier", "Math", "Entier le plus proche.", { data("value", "Valeur", VT::Real, 0.0) },
-                { data("result", "Entier", VT::Integer) }, true)),
+    lib.add(pureFunction(def("math.to_integer", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Arrondir en entier"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Math"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Entier le plus proche."), { data("value", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Valeur"), VT::Real, 0.0) },
+                { data("result", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Entier"), VT::Integer) }, true)),
             [](ExecutionContext& c) {
                 c.setOutput("result", static_cast<long long>(std::llround(c.real("value"))));
                 return !c.failed();
             });
-    lib.add(pureFunction(def("math.make_point", "Construire un point", "Math", "Point (x, y, z) en mètres.",
+    lib.add(pureFunction(def("math.make_point", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Construire un point"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Math"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Point (x, y, z) en mètres."),
                 { data("x", "X", VT::Real, 0.0, Quantity::Length), data("y", "Y", VT::Real, 0.0, Quantity::Length),
                   data("z", "Z", VT::Real, 0.0, Quantity::Length) },
-                { data("point", "Point", VT::Point3, {}, Quantity::Length) }, true)),
+                { data("point", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Point"), VT::Point3, {}, Quantity::Length) }, true)),
             [](ExecutionContext& c) {
                 c.setOutput("point", Point3 { c.real("x"), c.real("y"), c.real("z") });
                 return !c.failed();
             });
-    lib.add(pureFunction(def("math.break_point", "Décomposer un point", "Math", "Coordonnées d'un point.",
-                { data("point", "Point", VT::Point3, Point3 { 0, 0, 0 }, Quantity::Length) },
+    lib.add(pureFunction(def("math.break_point", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Décomposer un point"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Math"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Coordonnées d'un point."),
+                { data("point", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Point"), VT::Point3, Point3 { 0, 0, 0 }, Quantity::Length) },
                 { data("x", "X", VT::Real), data("y", "Y", VT::Real), data("z", "Z", VT::Real) }, true)),
             [](ExecutionContext& c) {
                 const Value v = c.input("point");
                 const auto* p = std::get_if<Point3>(&v);
-                if (!p) return c.fail("point attendu");
+                if (!p) return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "point attendu").toStdString());
                 c.setOutput("x", (*p)[0]);
                 c.setOutput("y", (*p)[1]);
                 c.setOutput("z", (*p)[2]);
@@ -189,33 +199,33 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
             });
 
     // --- Logique -----------------------------------------------------------------------------------
-    lib.add(pureFunction(def("logic.and", "ET", "Logique", "A et B.", { data("a", "A", VT::Bool, false), data("b", "B", VT::Bool, false) },
-                { data("result", "Résultat", VT::Bool) }, true)),
+    lib.add(pureFunction(def("logic.and", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "ET"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Logique"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "A et B."), { data("a", "A", VT::Bool, false), data("b", "B", VT::Bool, false) },
+                { data("result", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Résultat"), VT::Bool) }, true)),
             [](ExecutionContext& c) { c.setOutput("result", c.boolean("a") && c.boolean("b")); return !c.failed(); });
-    lib.add(pureFunction(def("logic.or", "OU", "Logique", "A ou B.", { data("a", "A", VT::Bool, false), data("b", "B", VT::Bool, false) },
-                { data("result", "Résultat", VT::Bool) }, true)),
+    lib.add(pureFunction(def("logic.or", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "OU"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Logique"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "A ou B."), { data("a", "A", VT::Bool, false), data("b", "B", VT::Bool, false) },
+                { data("result", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Résultat"), VT::Bool) }, true)),
             [](ExecutionContext& c) { c.setOutput("result", c.boolean("a") || c.boolean("b")); return !c.failed(); });
-    lib.add(pureFunction(def("logic.not", "NON", "Logique", "Négation.", { data("a", "A", VT::Bool, false) }, { data("result", "Résultat", VT::Bool) }, true)),
+    lib.add(pureFunction(def("logic.not", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "NON"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Logique"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Négation."), { data("a", "A", VT::Bool, false) }, { data("result", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Résultat"), VT::Bool) }, true)),
             [](ExecutionContext& c) { c.setOutput("result", !c.boolean("a")); return !c.failed(); });
 
     // --- Flux d'exécution ----------------------------------------------------------------------------
-    lib.add(def("flow.branch", "Si", "Flux", "Exécute « Vrai » ou « Faux » selon la condition.",
-                { execIn(), data("condition", "Condition", VT::Bool, false) }, { execOut("true", "Vrai"), execOut("false", "Faux") }, false),
+    lib.add(def("flow.branch", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Si"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Flux"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Exécute « Vrai » ou « Faux » selon la condition."),
+                { execIn(), data("condition", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Condition"), VT::Bool, false) }, { execOut("true", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Vrai")), execOut("false", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Faux")) }, false),
             [](ExecutionContext& c) {
                 const bool cond = c.boolean("condition");
                 if (c.failed()) return false;
                 return c.fire(cond ? "true" : "false");
             });
-    lib.add(ordered(def("flow.sequence", "Séquence", "Flux", "Exécute ses sorties dans l'ordre.",
+    lib.add(ordered(def("flow.sequence", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Séquence"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Flux"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Exécute ses sorties dans l'ordre."),
                 { execIn() }, { execOut("then_0", "1"), execOut("then_1", "2"), execOut("then_2", "3") }, false)),
             [](ExecutionContext& c) { return c.fire("then_0") && c.fire("then_1") && c.fire("then_2"); });
-    lib.add(ordered(def("flow.for", "Pour", "Flux", "Exécute « Corps » pour chaque index de Premier à Dernier (inclus), puis « Terminé ».",
-                { execIn(), data("first", "Premier", VT::Integer, 0LL), data("last", "Dernier", VT::Integer, 0LL) },
-                { execOut("body", "Corps"), data("index", "Index", VT::Integer), execOut("completed", "Terminé") }, false)),
+    lib.add(ordered(def("flow.for", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Pour"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Flux"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Exécute « Corps » pour chaque index de Premier à Dernier (inclus), puis « Terminé »."),
+                { execIn(), data("first", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Premier"), VT::Integer, 0LL), data("last", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Dernier"), VT::Integer, 0LL) },
+                { execOut("body", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Corps")), data("index", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Index"), VT::Integer), execOut("completed", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Terminé")) }, false)),
             [](ExecutionContext& c) {
                 const long long first = c.integer("first"), last = c.integer("last");
                 if (c.failed()) return false;
-                if (last - first + 1 > c.maxIterations()) return c.fail("trop d'itérations (" + std::to_string(last - first + 1) + ")");
+                if (last - first + 1 > c.maxIterations()) return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "trop d'itérations (%1)").arg(last - first + 1).toStdString());
                 for (long long i = first; i <= last; ++i)
                 {
                     c.setOutput("index", i);
@@ -223,36 +233,36 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
                 }
                 return c.fire("completed");
             });
-    lib.add(ordered(def("flow.while", "Tant que", "Flux", "Exécute « Corps » tant que la condition (réévaluée) est vraie.",
-                { execIn(), data("condition", "Condition", VT::Bool, false) }, { execOut("body", "Corps"), execOut("completed", "Terminé") }, false)),
+    lib.add(ordered(def("flow.while", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Tant que"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Flux"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Exécute « Corps » tant que la condition (réévaluée) est vraie."),
+                { execIn(), data("condition", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Condition"), VT::Bool, false) }, { execOut("body", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Corps")), execOut("completed", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Terminé")) }, false)),
             [](ExecutionContext& c) {
                 for (int i = 0;; ++i)
                 {
                     const bool cond = c.boolean("condition");
                     if (c.failed()) return false;
                     if (!cond) break;
-                    if (i >= c.maxIterations()) return c.fail("trop d'itérations (boucle infinie ?)");
+                    if (i >= c.maxIterations()) return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "trop d'itérations (boucle infinie ?)").toStdString());
                     if (!c.fire("body")) return false;
                 }
                 return c.fire("completed");
             });
 
     // --- Texte et débogage ---------------------------------------------------------------------------
-    lib.add(pureFunction(def("text.concat", "Concaténer", "Texte", "A suivi de B (toute valeur convertie en texte).",
-                { anyData("a", "A"), anyData("b", "B") }, { data("result", "Texte", VT::Text) }, true)),
+    lib.add(pureFunction(def("text.concat", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Concaténer"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Texte"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "A suivi de B (toute valeur convertie en texte)."),
+                { anyData("a", "A"), anyData("b", "B") }, { data("result", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Texte"), VT::Text) }, true)),
             [](ExecutionContext& c) { c.setOutput("result", c.text("a") + c.text("b")); return !c.failed(); });
-    lib.add(def("debug.print", "Afficher", "Débogage", "Écrit une valeur dans le journal d'exécution.",
-                { execIn(), anyData("value", "Valeur") }, { execOut() }, false),
+    lib.add(def("debug.print", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Afficher"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Débogage"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Écrit une valeur dans le journal d'exécution."),
+                { execIn(), anyData("value", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Valeur")) }, { execOut() }, false),
             [](ExecutionContext& c) {
                 const std::string t = c.text("value");
                 if (c.failed()) return false;
                 c.log(t);
                 return c.fire("then");
             });
-    lib.add(def("debug.print_details", "Afficher le contenu", "Débogage",
-                "Écrit le contenu complet d'une valeur dans le journal : matrice, vecteur, tableau de résultats (un objet est "
-                "écrit en entier, pas seulement son résumé).",
-                { execIn(), data("title", "Titre", VT::Text, std::string()), anyData("value", "Valeur") }, { execOut() }, false),
+    lib.add(def("debug.print_details", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Afficher le contenu"), QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Débogage"),
+                QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Écrit le contenu complet d'une valeur dans le journal : matrice, vecteur, tableau de résultats (un objet est "
+                                  "écrit en entier, pas seulement son résumé)."),
+                { execIn(), data("title", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Titre"), VT::Text, std::string()), anyData("value", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Valeur")) }, { execOut() }, false),
             [](ExecutionContext& c) {
                 const std::string title = c.text("title");
                 const Value v = c.input("value");
@@ -267,11 +277,11 @@ void registerStandardNodes(NodeLibrary& lib, const TSA::Automation::CommandRegis
     for (const auto* spec : commands.commands()) registerCommandNode(lib, commands, spec->id);
 
     // --- TSALab : science (cœur scientifique, sans Qt) -----------------------------------------------
-    lib.add(def("science.validation_bench", "Banc de validation", "TSALab",
-                "Exécute les benchmarks à solution analytique sur tous les solveurs d'ossatures planes "
-                "(résultat, solution analytique, validation croisée K·U = F).",
+    lib.add(def("science.validation_bench", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Banc de validation"), "TSALab",
+                QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Exécute les benchmarks à solution analytique sur tous les solveurs d'ossatures planes "
+                                  "(résultat, solution analytique, validation croisée K·U = F)."),
                 { execIn() },
-                { execOut(), data("passed", "Validés", VT::Integer), data("total", "Total", VT::Integer), data("report", "Rapport", VT::Text) },
+                { execOut(), data("passed", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Validés"), VT::Integer), data("total", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Total"), VT::Integer), data("report", QT_TRANSLATE_NOOP("TSA::Blueprint::Nodes", "Rapport"), VT::Text) },
                 false),
             [](ExecutionContext& c) {
                 std::vector<tsalab::validation::BenchmarkReport> reports;
@@ -314,7 +324,7 @@ bool registerCommandNode(NodeLibrary& lib, const TSA::Automation::CommandRegistr
     for (const auto& o : spec->outputs) d.outputs.push_back(data(o.name, o.label, o.type, {}, o.quantity));
     const std::string commandId = spec->id;
     return lib.add(std::move(d), [&commands, commandId](ExecutionContext& c) {
-        if (!c.session()) return c.fail("aucun projet ouvert");
+        if (!c.session()) return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "aucun projet ouvert").toStdString());
         const auto* spec = commands.find(commandId);
         TSA::Automation::Arguments args;
         for (const auto& p : spec->parameters)
@@ -326,7 +336,7 @@ bool registerCommandNode(NodeLibrary& lib, const TSA::Automation::CommandRegistr
                 args[p.name] = v;
             }
             else if (p.required)
-                return c.fail("paramètre requis « " + p.label + " » non renseigné");
+                return c.fail(QCoreApplication::translate("TSA::Blueprint::Nodes", "paramètre requis « %1 » non renseigné").arg(QString::fromStdString(displayText(p.label))).toStdString());
         }
         const auto r = commands.execute(*c.session(), commandId, args);
         c.log(r.message);

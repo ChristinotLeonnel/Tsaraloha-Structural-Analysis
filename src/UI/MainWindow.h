@@ -168,6 +168,12 @@ public:
     /// Synchronise l'action « Plein écran » avec l'état de la fenêtre hôte.
     void setFullScreenState(bool fullScreen);
 
+    // --- Recherche globale (docs/UI_SEARCH.md) -----------------------------------------------------------------------
+    /// Emplacement des actions du ruban (« Onglet › Groupe »).
+    QHash<const QAction*, QString> ribbonActionLocations() const;
+    /// Console affichée, ligne de commande pré-remplie (commandes du registre d'automatisation).
+    void prefillConsoleCommand(const QString& text);
+
 signals:
     void newProjectRequested();
     void openProjectRequested();
@@ -178,6 +184,9 @@ signals:
                               std::shared_ptr<const TSA::BIM::Ifc::IfcImportReport> report);
     void closeProjectRequested();
     void exitRequested();
+    /// Langue de l'interface : choix délégué au shell (préférence de l'application, redémarrage).
+    void languageDialogRequested();
+
     void fullScreenRequested(bool fullScreen);
     void previewCaptured(const QString& path, const QImage& image);
     /// Nouveaux résultats publiés après un calcul, ou résultats effacés (projet fermé / rechargé).
@@ -545,6 +554,7 @@ private:
 
     // Actions Thème & Aide
     QAction* m_actionToggleTheme = nullptr;
+    QAction* m_actionLanguage = nullptr;
     QAction* m_actionHelp = nullptr;
     QAction* m_actionOnlineDocs = nullptr;    ///< documentation en ligne (TSA Web)
     QAction* m_actionReportProblem = nullptr; ///< procédure de signalement (TSA Web)

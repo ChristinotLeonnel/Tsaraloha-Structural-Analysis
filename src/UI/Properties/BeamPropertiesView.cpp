@@ -85,7 +85,7 @@ void BeamPropertiesView::setupUi()
     mainLayout->addWidget(m_endNodes);
 
     // 1. Général & Rôle
-    auto* grpGen = new QGroupBox(tr("Général & Rôle"), this);
+    auto* grpGen = new QGroupBox(tr("Général et Rôle"), this);
     auto* formGen = new QFormLayout(grpGen);
     formGen->setContentsMargins(8, 8, 8, 8);
     formGen->setSpacing(6);
@@ -328,7 +328,7 @@ void BeamPropertiesView::refreshView()
     }
 
     const auto& sec = beam->section();
-    m_lblCadSection->setText(QString::fromStdString(sec.name.empty() ? "Section personnalisée" : sec.name));
+    m_lblCadSection->setText(sec.name.empty() ? tr("Section personnalisée") : QString::fromStdString(sec.name));
     m_lblCadMaterial->setText(QString::fromStdString(beam->material().name.empty() ? "S355" : beam->material().name));
 
     m_editName->setText(QString::fromStdString(beam->name()));

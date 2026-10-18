@@ -4,6 +4,7 @@
 #include "MeshProject.h"
 #include "MeshSizing.h"
 
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QJsonDocument>
 
@@ -348,7 +349,7 @@ MeshEstimate MeshGenerator::estimate(const MeshGeometry& g, const MeshSettingsSe
             e.nodes += std::size_t(cells);
         }
     e.nodes += g.tsaNodes.size();
-    e.notes.push_back("estimation indicative (longueurs, aires, volumes et tailles demandées) ; le nombre réel est donné par Gmsh à la génération");
+    e.notes.push_back(QCoreApplication::translate("TSA::Mesh::MeshGenerator", "estimation indicative (longueurs, aires, volumes et tailles demandées) ; le nombre réel est donné par Gmsh à la génération").toStdString());
     return e;
 }
 

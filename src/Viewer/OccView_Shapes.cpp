@@ -49,6 +49,7 @@
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <gp_Pnt.hxx>
 #include <QColor>
+#include <QCoreApplication>
 #include <QElapsedTimer>
 #include "../Model/Load/LoadManager.h"
 #include "../Analysis/LoadResolver.h"
@@ -2553,7 +2554,7 @@ void OccView::updateSupportShape(int nodeId, bool redrawImmediately)
 
     // 4. Étiquette d'appui (AIS_TextLabel)
     Handle(AIS_TextLabel) aisLabel = new AIS_TextLabel();
-    QString labelText = QString::fromStdString(node->support().typeName());
+    QString labelText = QCoreApplication::translate("TSA::Model::SupportDefinition", node->support().typeName().c_str());
     aisLabel->SetText(TCollection_ExtendedString(labelText.toUtf8().constData(), true));
     aisLabel->SetPosition(gp_Pnt(node->x(), node->y(), node->z() - 0.45));
     aisLabel->SetColor(Quantity_Color(0.95, 0.65, 0.15, Quantity_TOC_RGB));

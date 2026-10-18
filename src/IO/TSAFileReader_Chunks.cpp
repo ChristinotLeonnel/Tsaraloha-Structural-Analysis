@@ -15,7 +15,9 @@
 
 #include "../Diagnostics/Logger.h"
 
+#include <QCoreApplication>
 #include <QJsonDocument>
+#include <QtGlobal>
 
 #include <vector>
 #include <map>
@@ -66,7 +68,7 @@ bool TSAFileReader::readNodeChunk(const uint8_t* data, size_t size, uint32_t cou
 {
     if (count > MAX_SAFE_NODES)
     {
-        if (errorMessage) *errorMessage = "Nombre de nœuds anormalement élevé dans le fichier.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre de nœuds anormalement élevé dans le fichier.").toStdString();
         return false;
     }
     size_t off = 0;
@@ -98,7 +100,7 @@ bool TSAFileReader::readSupportChunk(const uint8_t* data, size_t size, uint32_t 
 {
     if (count > MAX_SAFE_NODES)
     {
-        if (errorMessage) *errorMessage = "Nombre d'appuis anormalement élevé dans le fichier .tsa.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre d'appuis anormalement élevé dans le fichier .tsa.").toStdString();
         return false;
     }
     size_t off = 0;
@@ -153,7 +155,7 @@ bool TSAFileReader::readBarChunk(const uint8_t* data, size_t size, uint32_t coun
 {
     if (count > MAX_SAFE_ELEMENTS)
     {
-        if (errorMessage) *errorMessage = "Nombre de barres anormalement élevé dans le fichier.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre de barres anormalement élevé dans le fichier.").toStdString();
         return false;
     }
     size_t off = 0;
@@ -217,7 +219,7 @@ bool TSAFileReader::readColumnChunk(const uint8_t* data, size_t size, uint32_t c
 {
     if (count > MAX_SAFE_ELEMENTS)
     {
-        if (errorMessage) *errorMessage = "Nombre de poteaux anormalement élevé dans le fichier.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre de poteaux anormalement élevé dans le fichier.").toStdString();
         return false;
     }
     size_t off = 0;
@@ -249,7 +251,7 @@ bool TSAFileReader::readSlabChunk(const uint8_t* data, size_t size, uint32_t cou
 {
     if (count > MAX_SAFE_ELEMENTS)
     {
-        if (errorMessage) *errorMessage = "Nombre de dalles anormalement élevé dans le fichier.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre de dalles anormalement élevé dans le fichier.").toStdString();
         return false;
     }
     size_t off = 0;
@@ -292,7 +294,7 @@ bool TSAFileReader::readWallChunk(const uint8_t* data, size_t size, uint32_t cou
 {
     if (count > MAX_SAFE_ELEMENTS)
     {
-        if (errorMessage) *errorMessage = "Nombre de voiles anormalement élevé dans le fichier.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre de voiles anormalement élevé dans le fichier.").toStdString();
         return false;
     }
     size_t off = 0;
@@ -326,7 +328,7 @@ bool TSAFileReader::readFoundationChunk(const uint8_t* data, size_t size, uint32
 {
     if (count > MAX_SAFE_ELEMENTS)
     {
-        if (errorMessage) *errorMessage = "Nombre de fondations anormalement élevé dans le fichier.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre de fondations anormalement élevé dans le fichier.").toStdString();
         return false;
     }
     size_t off = 0;
@@ -362,7 +364,7 @@ bool TSAFileReader::readTrussChunk(const uint8_t* data, size_t size, uint32_t co
 {
     if (count > MAX_SAFE_ELEMENTS)
     {
-        if (errorMessage) *errorMessage = "Nombre d'éléments de treillis anormalement élevé dans le fichier.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre d'éléments de treillis anormalement élevé dans le fichier.").toStdString();
         return false;
     }
     size_t off = 0;
@@ -396,7 +398,7 @@ bool TSAFileReader::readCableChunk(const uint8_t* data, size_t size, uint32_t co
 {
     if (count > MAX_SAFE_ELEMENTS)
     {
-        if (errorMessage) *errorMessage = "Nombre excessif de câbles dans le chunk CABL.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre excessif de câbles dans le chunk CABL.").toStdString();
         return false;
     }
 
@@ -535,7 +537,7 @@ bool TSAFileReader::readSnapshotChunk(const uint8_t* data, size_t size, uint32_t
 {
     if (count > MAX_SAFE_MATERIALS * 10)
     {
-        if (errorMessage) *errorMessage = "Nombre excessif de snapshots de calcul dans le fichier.";
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Nombre excessif de snapshots de calcul dans le fichier.").toStdString();
         return false;
     }
 
@@ -594,25 +596,27 @@ bool TSAFileReader::readLoadChunk(const uint8_t* data, size_t size, TSA::Model::
 {
     using namespace TSA::Model;
     auto fail = [&](const char* what) {
-        if (errorMessage) *errorMessage = std::string("Chunk LOAD invalide : ") + what;
+        if (errorMessage) *errorMessage = QCoreApplication::translate("TSA::IO::TSAFile", "Chunk LOAD invalide : %1")
+                                            .arg(QCoreApplication::translate("TSA::IO::TSAFile", what))
+                                            .toStdString();
         return false;
     };
 
     size_t off = 0;
     uint32_t layout = 0;
-    if (!readU32(data, size, off, layout)) return fail("en-tête tronqué");
-    if (layout != LOAD_CHUNK_LAYOUT_VERSION) return fail("version de disposition inconnue");
+    if (!readU32(data, size, off, layout)) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "en-tête tronqué"));
+    if (layout != LOAD_CHUNK_LAYOUT_VERSION) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "version de disposition inconnue"));
 
     LoadManager::LoadSnapshot snap;
     int32_t activeCase = 0, nextNodal = 0, nextMember = 0, nextCase = 0, nextCombo = 0;
     if (!readI32(data, size, off, activeCase) || !readI32(data, size, off, nextNodal) ||
         !readI32(data, size, off, nextMember) || !readI32(data, size, off, nextCase) ||
         !readI32(data, size, off, nextCombo))
-        return fail("compteurs tronqués");
+        return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "compteurs tronqués"));
 
     uint32_t n = 0;
     // --- Cas de charge
-    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail("nombre de cas de charge");
+    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "nombre de cas de charge"));
     for (uint32_t i = 0; i < n; ++i)
     {
         int32_t id = 0;
@@ -622,13 +626,13 @@ bool TSAFileReader::readLoadChunk(const uint8_t* data, size_t size, TSA::Model::
         if (!readI32(data, size, off, id) || !readString(data, size, off, name) ||
             !readU8(data, size, off, cat) || !readU8(data, size, off, sw) ||
             !readDouble(data, size, off, swFactor) || !readString(data, size, off, desc))
-            return fail("cas de charge tronqué");
-        if (cat > static_cast<uint8_t>(LoadCaseCategory::Custom)) return fail("catégorie de cas inconnue");
+            return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "cas de charge tronqué"));
+        if (cat > static_cast<uint8_t>(LoadCaseCategory::Custom)) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "catégorie de cas inconnue"));
         snap.loadCases[id] = LoadCase(id, name, static_cast<LoadCaseCategory>(cat), sw != 0, swFactor, desc);
     }
 
     // --- Combinaisons
-    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail("nombre de combinaisons");
+    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "nombre de combinaisons"));
     for (uint32_t i = 0; i < n; ++i)
     {
         int32_t id = 0;
@@ -637,22 +641,22 @@ bool TSAFileReader::readLoadChunk(const uint8_t* data, size_t size, TSA::Model::
         uint32_t nf = 0;
         if (!readI32(data, size, off, id) || !readString(data, size, off, name) ||
             !readU8(data, size, off, type) || !readU32(data, size, off, nf))
-            return fail("combinaison tronquée");
-        if (type > static_cast<uint8_t>(LoadCombinationType::Custom)) return fail("type de combinaison inconnu");
-        if (nf > MAX_SAFE_ELEMENTS) return fail("nombre de facteurs");
+            return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "combinaison tronquée"));
+        if (type > static_cast<uint8_t>(LoadCombinationType::Custom)) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "type de combinaison inconnu"));
+        if (nf > MAX_SAFE_ELEMENTS) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "nombre de facteurs"));
         std::map<int, double> factors;
         for (uint32_t k = 0; k < nf; ++k)
         {
             int32_t caseId = 0;
             double f = 0.0;
-            if (!readI32(data, size, off, caseId) || !readDouble(data, size, off, f)) return fail("facteur tronqué");
+            if (!readI32(data, size, off, caseId) || !readDouble(data, size, off, f)) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "facteur tronqué"));
             factors[caseId] = f;
         }
         snap.combinations[id] = LoadCombination(id, name, static_cast<LoadCombinationType>(type), factors);
     }
 
     // --- Charges nodales
-    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail("nombre de charges nodales");
+    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "nombre de charges nodales"));
     for (uint32_t i = 0; i < n; ++i)
     {
         int32_t id = 0, nodeId = 0, caseId = 0;
@@ -660,17 +664,17 @@ bool TSAFileReader::readLoadChunk(const uint8_t* data, size_t size, TSA::Model::
         uint8_t cs = 0;
         std::string name;
         if (!readI32(data, size, off, id) || !readI32(data, size, off, nodeId) || !readI32(data, size, off, caseId))
-            return fail("charge nodale tronquée");
+            return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "charge nodale tronquée"));
         for (double& x : v)
-            if (!readDouble(data, size, off, x)) return fail("charge nodale tronquée");
-        if (!readU8(data, size, off, cs) || !readString(data, size, off, name)) return fail("charge nodale tronquée");
-        if (cs > static_cast<uint8_t>(LoadCoordSystem::Local)) return fail("repère de charge inconnu");
+            if (!readDouble(data, size, off, x)) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "charge nodale tronquée"));
+        if (!readU8(data, size, off, cs) || !readString(data, size, off, name)) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "charge nodale tronquée"));
+        if (cs > static_cast<uint8_t>(LoadCoordSystem::Local)) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "repère de charge inconnu"));
         snap.nodalLoads[id] = NodalLoad(id, nodeId, caseId, v[0], v[1], v[2], v[3], v[4], v[5],
                                         static_cast<LoadCoordSystem>(cs), name);
     }
 
     // --- Charges sur barres
-    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail("nombre de charges sur barres");
+    if (!readU32(data, size, off, n) || n > MAX_SAFE_ELEMENTS) return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "nombre de charges sur barres"));
     for (uint32_t i = 0; i < n; ++i)
     {
         int32_t id = 0, elemId = 0, caseId = 0;
@@ -682,10 +686,10 @@ bool TSAFileReader::readLoadChunk(const uint8_t* data, size_t size, TSA::Model::
             !readU8(data, size, off, dir) || !readU8(data, size, off, cs) ||
             !readDouble(data, size, off, x1) || !readDouble(data, size, off, x2) ||
             !readU8(data, size, off, rel) || !readString(data, size, off, name) || !readU8(data, size, off, target))
-            return fail("charge sur barre tronquée");
+            return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "charge sur barre tronquée"));
         if (type > static_cast<uint8_t>(LoadType::SelfWeight) || dir > static_cast<uint8_t>(LoadDirection::LocalZ) ||
             cs > static_cast<uint8_t>(LoadCoordSystem::Local) || target > static_cast<uint8_t>(MemberTargetType::Cable))
-            return fail("énumération de charge sur barre inconnue");
+            return fail(QT_TRANSLATE_NOOP("TSA::IO::TSAFile", "énumération de charge sur barre inconnue"));
         snap.memberLoads[id] = MemberLoad(id, elemId, caseId, static_cast<LoadType>(type), q1, q2,
                                           static_cast<LoadDirection>(dir), static_cast<LoadCoordSystem>(cs),
                                           x1, x2, rel != 0, name, static_cast<MemberTargetType>(target));

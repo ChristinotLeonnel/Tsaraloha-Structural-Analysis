@@ -88,6 +88,23 @@ RibbonButton::RibbonButton(QAction* action, RibbonButtonSize size, QWidget* pare
     setDefaultAction(action);
     initStyle();
     connect(&ThemeManager::instance(), &ThemeManager::themeChanged, this, &RibbonButton::updateTheme);
+    // Nom accessible : libellé de l'action sans « & » ni retour à la ligne (bouton réduit à son icône compris)
+    auto syncAccessibility = [this, action] {
+        if (!action) return;
+        QString name = action->text();
+        name.remove(QLatin1Char('&')).replace(QLatin1Char('\n'), QLatin1Char(' '));
+        setAccessibleName(name.trimmed());
+        setAccessibleDescription(action->toolTip());
+    };
+    syncAccessibility();
+    if (action) connect(action, &QAction::changed, this, syncAccessibility);
+    // Identifiant de la commande (« cmd.display.grid ») : AutomationId stable, indépendant de la langue
+    // (posé après la construction du ruban, à la liaison des raccourcis : suivi par objectNameChanged)
+    if (action)
+    {
+        if (!action->objectName().isEmpty()) setObjectName(action->objectName());
+        connect(action, &QObject::objectNameChanged, this, [this](const QString& name) { setObjectName(name); });
+    }
 }
 
 RibbonButton::RibbonButton(const QString& text, const QIcon& icon, RibbonButtonSize size, QWidget* parent)
@@ -95,6 +112,7 @@ RibbonButton::RibbonButton(const QString& text, const QIcon& icon, RibbonButtonS
     , m_size(size)
 {
     setText(text);
+    setAccessibleName(QString(text).remove(QLatin1Char('&')).replace(QLatin1Char('\n'), QLatin1Char(' ')).trimmed());
     if (icon.isNull())
     {
         setIcon(generateFallbackIcon(text, size == RibbonButtonSize::Large));

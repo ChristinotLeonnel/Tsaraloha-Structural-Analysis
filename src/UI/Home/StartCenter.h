@@ -83,6 +83,7 @@ signals:
     void newProjectRequested();
     void openDialogRequested();
     void openRequested(const QString& path);
+    void languageRequested();
 
 protected:
     void resizeEvent(QResizeEvent* event) override;

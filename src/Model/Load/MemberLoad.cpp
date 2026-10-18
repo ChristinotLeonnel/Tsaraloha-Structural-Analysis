@@ -1,5 +1,7 @@
 #include "MemberLoad.h"
 
+#include <QCoreApplication>
+
 #include <algorithm>
 
 namespace TSA::Model
@@ -100,25 +102,25 @@ double MemberLoad::intensityAt(double s, double length) const
 std::string MemberLoad::validate(double length) const
 {
     if (!std::isfinite(m_q1) || !std::isfinite(m_q2) || !std::isfinite(m_x1) || !std::isfinite(m_x2))
-        return "Valeurs non finies (intensité ou position).";
+        return QCoreApplication::translate("TSA::Model::MemberLoad", "Valeurs non finies (intensité ou position).").toStdString();
     if (!(length > 1e-9))
-        return "La barre chargée est de longueur nulle.";
+        return QCoreApplication::translate("TSA::Model::MemberLoad", "La barre chargée est de longueur nulle.").toStdString();
     const bool linear = m_type == LoadType::MemberLinear || m_type == LoadType::MemberMoment;
     if (std::abs(m_q1) < 1e-12 && (!linear || std::abs(m_q2) < 1e-12))
-        return "L'intensité de la charge est nulle.";
+        return QCoreApplication::translate("TSA::Model::MemberLoad", "L'intensité de la charge est nulle.").toStdString();
 
     const double maxPos = m_isRelative ? 1.0 : length;
     const double tol = 1e-9 * std::max(1.0, maxPos);
     auto inside = [&](double x) { return x >= -tol && x <= maxPos + tol; };
-    if (!inside(m_x1)) return "La position de début est hors de la barre.";
+    if (!inside(m_x1)) return QCoreApplication::translate("TSA::Model::MemberLoad", "La position de début est hors de la barre.").toStdString();
     if (m_type == LoadType::MemberPoint) return {};
-    if (!inside(m_x2)) return "La position de fin est hors de la barre.";
+    if (!inside(m_x2)) return QCoreApplication::translate("TSA::Model::MemberLoad", "La position de fin est hors de la barre.").toStdString();
     // x2 = 0 reste la lecture historique « jusqu'au nœud j » ; une fin explicite doit suivre le début.
     if (m_x2 > tol && m_x2 <= m_x1)
-        return "La position de fin doit être supérieure à la position de début.";
+        return QCoreApplication::translate("TSA::Model::MemberLoad", "La position de fin doit être supérieure à la position de début.").toStdString();
     const auto [a, b] = appliedRange(length);
     if (b - a <= 1e-6)
-        return "L'intervalle chargé est vide.";
+        return QCoreApplication::translate("TSA::Model::MemberLoad", "L'intervalle chargé est vide.").toStdString();
     return {};
 }
 

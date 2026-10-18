@@ -415,10 +415,10 @@ void MainWindow::onActionSecCirc()
 void MainWindow::onActionConcrete()
 {
     QStringList concretes = {
-        "Béton C20/25 (fck = 20 MPa, Ecm = 30 GPa, rho = 25 kN/m³)",
-        "Béton C25/30 (fck = 25 MPa, Ecm = 31 GPa, rho = 25 kN/m³) - Standard EC2",
-        "Béton C30/37 (fck = 30 MPa, Ecm = 33 GPa, rho = 25 kN/m³)",
-        "Béton C35/45 (fck = 35 MPa, Ecm = 34 GPa, rho = 25 kN/m³)"
+        tr("Béton C20/25 (fck = 20 MPa, Ecm = 30 GPa, rho = 25 kN/m³)"),
+        tr("Béton C25/30 (fck = 25 MPa, Ecm = 31 GPa, rho = 25 kN/m³) - Standard EC2"),
+        tr("Béton C30/37 (fck = 30 MPa, Ecm = 33 GPa, rho = 25 kN/m³)"),
+        tr("Béton C35/45 (fck = 35 MPa, Ecm = 34 GPa, rho = 25 kN/m³)")
     };
     bool ok = false;
     QString choice = QInputDialog::getItem(this, tr("Matériaux - Béton Armé"), tr("Nuance de béton Eurocode 2 :"), concretes, 1, false, &ok);
@@ -437,10 +437,10 @@ void MainWindow::onActionConcrete()
 void MainWindow::onActionSteel()
 {
     QStringList steels = {
-        "Acier S235 (fy = 235 MPa, fu = 360 MPa, E = 210 GPa, rho = 78.5 kN/m³)",
-        "Acier S275 (fy = 275 MPa, fu = 430 MPa, E = 210 GPa, rho = 78.5 kN/m³)",
-        "Acier S355 (fy = 355 MPa, fu = 510 MPa, E = 210 GPa, rho = 78.5 kN/m³) - Standard EC3",
-        "Acier S460 (fy = 460 MPa, fu = 540 MPa, E = 210 GPa, rho = 78.5 kN/m³)"
+        tr("Acier S235 (fy = 235 MPa, fu = 360 MPa, E = 210 GPa, rho = 78.5 kN/m³)"),
+        tr("Acier S275 (fy = 275 MPa, fu = 430 MPa, E = 210 GPa, rho = 78.5 kN/m³)"),
+        tr("Acier S355 (fy = 355 MPa, fu = 510 MPa, E = 210 GPa, rho = 78.5 kN/m³) - Standard EC3"),
+        tr("Acier S460 (fy = 460 MPa, fu = 540 MPa, E = 210 GPa, rho = 78.5 kN/m³)")
     };
     bool ok = false;
     QString choice = QInputDialog::getItem(this, tr("Matériaux - Acier Structural"), tr("Nuance d'acier Eurocode 3 :"), steels, 2, false, &ok);

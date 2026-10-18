@@ -159,7 +159,7 @@ void MainWindow::onOriginMoveRequested(const gp_Pnt& newOrigin)
     }
     if (m_statusInfo)
     {
-        m_statusInfo->setText(tr("Repère Global & Grille déplacés en (%1, %2, %3) m")
+        m_statusInfo->setText(tr("Repère Global et Grille déplacés en (%1, %2, %3) m")
             .arg(newOrigin.X(), 0, 'f', 3)
             .arg(newOrigin.Y(), 0, 'f', 3)
             .arg(newOrigin.Z(), 0, 'f', 3));

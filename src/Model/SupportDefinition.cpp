@@ -1,4 +1,5 @@
 #include "SupportDefinition.h"
+#include <QtGlobal>
 #include <cmath>
 #include <sstream>
 
@@ -146,17 +147,17 @@ std::string SupportDefinition::typeName() const
 {
     switch (supportType())
     {
-    case SupportType::Free:    return "Libre";
-    case SupportType::Fixed:   return "Encastrement";
-    case SupportType::Pinned:  return "Articulation";
-    case SupportType::Roller:  return "Appui simple";
-    case SupportType::Sliding: return "Appui glissant";
-    case SupportType::Linear:  return "Appui linéaire";
-    case SupportType::Planar:  return "Appui plan";
-    case SupportType::Elastic: return "Appui élastique";
-    case SupportType::Custom:  return "Personnalisé";
+    case SupportType::Free:    return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Libre");
+    case SupportType::Fixed:   return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Encastrement");
+    case SupportType::Pinned:  return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Articulation");
+    case SupportType::Roller:  return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Appui simple");
+    case SupportType::Sliding: return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Appui glissant");
+    case SupportType::Linear:  return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Appui linéaire");
+    case SupportType::Planar:  return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Appui plan");
+    case SupportType::Elastic: return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Appui élastique");
+    case SupportType::Custom:  return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Personnalisé");
     }
-    return "Appui";
+    return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Appui");
 }
 
 std::string SupportDefinition::dofSummary() const
@@ -184,7 +185,7 @@ std::string SupportDefinition::dofSummary() const
     addDOF("RY", m_ry);
     addDOF("RZ", m_rz);
 
-    if (first) return "Libre";
+    if (first) return QT_TRANSLATE_NOOP("TSA::Model::SupportDefinition", "Libre");
     return ss.str();
 }
 

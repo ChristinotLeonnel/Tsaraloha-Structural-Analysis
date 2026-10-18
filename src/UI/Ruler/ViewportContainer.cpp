@@ -63,9 +63,9 @@ void ViewportContainer::setupUi()
 
     m_axisCombo = new QComboBox(m_topBar);
     m_axisCombo->setToolTip(tr("Choisir l'axe du plan de travail : Z (Horizontal), X (Coupe YZ), Y (Coupe XZ)"));
-    m_axisCombo->addItem("Z (Plancher)", static_cast<int>(TSA::Coordinate::WorkPlaneAxis::Z));
-    m_axisCombo->addItem("X (Coupe YZ)", static_cast<int>(TSA::Coordinate::WorkPlaneAxis::X));
-    m_axisCombo->addItem("Y (Coupe XZ)", static_cast<int>(TSA::Coordinate::WorkPlaneAxis::Y));
+    m_axisCombo->addItem(tr("Z (Plancher)"), static_cast<int>(TSA::Coordinate::WorkPlaneAxis::Z));
+    m_axisCombo->addItem(tr("X (Coupe YZ)"), static_cast<int>(TSA::Coordinate::WorkPlaneAxis::X));
+    m_axisCombo->addItem(tr("Y (Coupe XZ)"), static_cast<int>(TSA::Coordinate::WorkPlaneAxis::Y));
     m_axisCombo->setFixedWidth(115);
     topLayout->addWidget(m_axisCombo);
 

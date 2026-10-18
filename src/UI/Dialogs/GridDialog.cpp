@@ -1,4 +1,5 @@
 #include "GridDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "../HelpLauncher.h"
 #include "App/ProductInfo.h"
 #include "GridAdvancedSettingsDialog.h"
@@ -183,16 +184,16 @@ void GridDialog::setupUi()
     modeLayout->setSpacing(4);
 
     m_btnCartesian = new QPushButton(tr("Cartésien"), this);
-    m_btnCartesian->setIcon(QIcon(":/icons/grid_cartesian.svg"));
+    m_btnCartesian->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/grid_cartesian.svg")));
     m_btnCartesian->setCheckable(true);
     m_btnCartesian->setChecked(true);
 
     m_btnCylindrical = new QPushButton(tr("Cylindrique"), this);
-    m_btnCylindrical->setIcon(QIcon(":/icons/grid_cylindrical.svg"));
+    m_btnCylindrical->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/grid_cylindrical.svg")));
     m_btnCylindrical->setCheckable(true);
 
     m_btnArbitrary = new QPushButton(tr("Lignes arbitraires"), this);
-    m_btnArbitrary->setIcon(QIcon(":/icons/geom_polyline.svg"));
+    m_btnArbitrary->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/geom_polyline.svg")));
     m_btnArbitrary->setCheckable(true);
     m_btnArbitrary->setEnabled(true);
     m_btnArbitrary->setToolTip(tr("Lignes de construction arbitraires"));
@@ -208,7 +209,7 @@ void GridDialog::setupUi()
 
     // 3. Bouton Paramètres avancés / Créer à partir des barres
     m_btnAdvanced = new QPushButton(tr("Paramètres avancés"), this);
-    m_btnAdvanced->setIcon(QIcon(":/icons/settings.svg"));
+    m_btnAdvanced->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/settings.svg")));
     mainLayout->addWidget(m_btnAdvanced);
     connect(m_btnAdvanced, &QPushButton::clicked, this, &GridDialog::onAdvancedButtonClicked);
 
@@ -388,16 +389,16 @@ void GridDialog::setupUi()
     sideBtnLayout->setSpacing(6);
 
     m_btnAdd = new QPushButton(tr("Ajouter"), this);
-    m_btnAdd->setIcon(QIcon(":/icons/node_add.svg"));
+    m_btnAdd->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/node_add.svg")));
     m_btnAdd->setStyleSheet(isDark
         ? "QPushButton { border: 1.5px solid #1F6FEB; background: #1F3A5A; font-weight: bold; color: #58A6FF; } QPushButton:hover { background: #234975; }"
         : "QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; } QPushButton:hover { background: #D9ECFC; }");
     m_btnAdd->setFixedHeight(28);
 
     m_btnDelete = new QPushButton(tr("Supprimer"), this);
-    m_btnDelete->setIcon(QIcon(":/icons/delete.svg"));
+    m_btnDelete->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/delete.svg")));
     m_btnClearAll = new QPushButton(tr("Supprimer tout"), this);
-    m_btnClearAll->setIcon(QIcon(":/icons/delete.svg"));
+    m_btnClearAll->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/delete.svg")));
     m_btnBold = new QPushButton(tr("Gras"), this);
 
     sideBtnLayout->addWidget(m_btnAdd);
@@ -443,21 +444,21 @@ void GridDialog::setupUi()
 
     auto* bottomLayout1 = new QHBoxLayout();
     m_btnNew = new QPushButton(tr("Nouveau"), this);
-    m_btnNew->setIcon(QIcon(":/icons/file_new.svg"));
+    m_btnNew->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")));
     m_btnManage = new QPushButton(tr("Gestionnaire de lignes"), this);
-    m_btnManage->setIcon(QIcon(":/icons/settings.svg"));
+    m_btnManage->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/settings.svg")));
     bottomLayout1->addWidget(m_btnNew);
     bottomLayout1->addWidget(m_btnManage);
     mainLayout->addLayout(bottomLayout1);
 
     auto* bottomLayout2 = new QHBoxLayout();
     m_btnApply = new QPushButton(tr("Appliquer"), this);
-    m_btnApply->setIcon(QIcon(":/icons/apply.svg"));
+    m_btnApply->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")));
     m_btnApply->setStyleSheet("QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; }");
     m_btnApply->setFixedHeight(26);
 
     m_btnClose = new QPushButton(tr("Fermer"), this);
-    m_btnClose->setIcon(QIcon(":/icons/cancel.svg"));
+    m_btnClose->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
     m_btnClose->setFixedHeight(26);
 
     m_btnHelp = new QPushButton(tr("Aide"), this);
@@ -518,7 +519,7 @@ void GridDialog::onModeCartesian()
     m_currentType = TSA::Grid::GridType::Cartesian;
 
     m_btnAdvanced->setText(tr("Paramètres avancés"));
-    m_btnAdvanced->setIcon(QIcon(":/icons/settings.svg"));
+    m_btnAdvanced->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/settings.svg")));
 
     if (m_originTitleLabel) m_originTitleLabel->setText(tr("Origine (m) :"));
     if (m_originWidget) m_originWidget->show();
@@ -565,7 +566,7 @@ void GridDialog::onModeCylindrical()
     m_currentType = TSA::Grid::GridType::Cylindrical;
 
     m_btnAdvanced->setText(tr("Paramètres avancés"));
-    m_btnAdvanced->setIcon(QIcon(":/icons/settings.svg"));
+    m_btnAdvanced->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/settings.svg")));
 
     if (m_originTitleLabel) m_originTitleLabel->setText(tr("Centre (m) :"));
     if (m_originWidget) m_originWidget->show();
@@ -617,7 +618,7 @@ void GridDialog::onModeArbitrary()
     m_currentType = TSA::Grid::GridType::Arbitrary;
 
     m_btnAdvanced->setText(tr("Créer à partir des barres/lignes sélectionnées"));
-    m_btnAdvanced->setIcon(QIcon(":/icons/geom_polyline.svg"));
+    m_btnAdvanced->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/geom_polyline.svg")));
 
     if (m_originWidget) m_originWidget->hide();
 

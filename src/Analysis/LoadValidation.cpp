@@ -2,6 +2,8 @@
 #include "../Model/Model.h"
 #include "../Model/Load/LoadManager.h"
 
+#include <QCoreApplication>
+
 #include <cmath>
 #include <sstream>
 
@@ -42,20 +44,28 @@ std::vector<std::string> ValidationReport::warnings() const
 
 std::string ValidationReport::summary() const
 {
-    std::ostringstream oss;
+    QString text;
     if (isValid())
     {
-        oss << "Validation réussie. Le modèle est prêt pour le calcul OpenSees.";
+        text = QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                                           "Validation réussie. Le modèle est prêt pour le calcul OpenSees.");
         if (hasWarnings())
         {
-            oss << " (" << warnings().size() << " avertissement(s)).";
+            text += QCoreApplication::translate("TSA::Analysis::LoadValidation", " (%1 avertissement(s)).")
+                        .arg(warnings().size());
         }
     }
     else
     {
-        oss << "Échec de validation : " << errors().size() << " erreur(s) détectée(s).";
+        text = QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                                           "Échec de validation : %1 erreur(s) détectée(s).").arg(errors().size());
     }
-    return oss.str();
+    return text.toStdString();
+}
+
+std::string LoadValidation::noSupportCategory()
+{
+    return QCoreApplication::translate("TSA::Analysis::LoadValidation", "Conditions aux Limites").toStdString();
 }
 
 ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
@@ -66,7 +76,9 @@ ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
     // 1. Vérification de la géométrie de base
     if (model.nodes().empty())
     {
-        report.addError("Géométrie", "Le modèle structural ne contient aucun nœud.");
+        report.addError(QCoreApplication::translate("TSA::Analysis::LoadValidation", "Géométrie").toStdString(),
+                        QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                            "Le modèle structural ne contient aucun nœud.").toStdString());
         return report;
     }
 
@@ -74,7 +86,9 @@ ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
     if (model.beams().empty() && model.columns().empty() && model.trussMembers().empty() && model.cables().empty() && model.slabs().empty() &&
         model.walls().empty())
     {
-        report.addWarning("Géométrie", "Le modèle ne comporte aucun élément linéaire filaire.");
+        report.addWarning(QCoreApplication::translate("TSA::Analysis::LoadValidation", "Géométrie").toStdString(),
+                          QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                              "Le modèle ne comporte aucun élément linéaire filaire.").toStdString());
     }
 
     // 2. Vérification des conditions aux limites (appuis)
@@ -94,40 +108,51 @@ ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
         if (!wl.edgeSupports().empty()) hasSupport = true;
     if (!hasSupport)
     {
-        report.addError("Conditions aux Limites",
-                        "Aucun appui (Encastrement, Articulation, Appui simple) n'est défini. La structure est cinématiquement instable.");
+        report.addError(noSupportCategory(),
+                        QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                            "Aucun appui (Encastrement, Articulation, Appui simple) n'est défini. La structure est cinématiquement instable.")
+                            .toStdString());
     }
 
     // 3. Validation des cas de charges
     if (lm.loadCases().empty())
     {
-        report.addError("Charges", "Aucun cas de charge (Load Case) n'est défini dans le modèle.");
+        report.addError(QCoreApplication::translate("TSA::Analysis::LoadValidation", "Charges").toStdString(),
+                        QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                            "Aucun cas de charge (Load Case) n'est défini dans le modèle.").toStdString());
     }
 
     // 4. Validation des charges nodales
+    const std::string nodalCat = QCoreApplication::translate("TSA::Analysis::LoadValidation", "Charge Nodale").toStdString();
     for (const auto& [id, nl] : lm.nodalLoads())
     {
         if (!model.getNode(nl.nodeId()))
         {
-            report.addError("Charge Nodale",
-                            "La charge nodale NL#" + std::to_string(id) + " référence le nœud inexistant N" + std::to_string(nl.nodeId()));
+            report.addError(nodalCat,
+                            QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                                "La charge nodale NL#%1 référence le nœud inexistant N%2")
+                                .arg(id).arg(nl.nodeId()).toStdString());
         }
 
         if (!lm.getLoadCase(nl.loadCaseId()))
         {
-            report.addError("Charge Nodale",
-                            "La charge nodale NL#" + std::to_string(id) + " est assignée à un cas de charge inexistant Cas#" + std::to_string(nl.loadCaseId()));
+            report.addError(nodalCat,
+                            QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                                "La charge nodale NL#%1 est assignée à un cas de charge inexistant Cas#%2")
+                                .arg(id).arg(nl.loadCaseId()).toStdString());
         }
 
         if (std::isnan(nl.fx()) || std::isnan(nl.fy()) || std::isnan(nl.fz()) ||
             std::isnan(nl.mx()) || std::isnan(nl.my()) || std::isnan(nl.mz()))
         {
-            report.addError("Charge Nodale", "La charge nodale NL#" + std::to_string(id) + " contient une valeur non numérique (NaN).");
+            report.addError(nodalCat, QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                "La charge nodale NL#%1 contient une valeur non numérique (NaN).").arg(id).toStdString());
         }
 
         if (!nl.hasForce() && !nl.hasMoment())
         {
-            report.addWarning("Charge Nodale", "La charge nodale NL#" + std::to_string(id) + " a une intensité nulle.");
+            report.addWarning(nodalCat, QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                "La charge nodale NL#%1 a une intensité nulle.").arg(id).toStdString());
         }
     }
 
@@ -140,41 +165,53 @@ ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
                           (model.getTrussMember(elemId) != nullptr) ||
                           (model.getCable(elemId) != nullptr);
 
+        const std::string memberCat =
+            QCoreApplication::translate("TSA::Analysis::LoadValidation", "Charge sur Barre").toStdString();
         if (!elemExists)
         {
-            report.addError("Charge sur Barre",
-                            "La charge ML#" + std::to_string(id) + " référence l'élément inexistant #" + std::to_string(elemId));
+            report.addError(memberCat,
+                            QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                                "La charge ML#%1 référence l'élément inexistant #%2").arg(id).arg(elemId).toStdString());
         }
 
         if (!lm.getLoadCase(ml.loadCaseId()))
         {
-            report.addError("Charge sur Barre",
-                            "La charge ML#" + std::to_string(id) + " est assignée au cas de charge inexistant Cas#" + std::to_string(ml.loadCaseId()));
+            report.addError(memberCat,
+                            QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                                "La charge ML#%1 est assignée au cas de charge inexistant Cas#%2")
+                                .arg(id).arg(ml.loadCaseId()).toStdString());
         }
 
         if (std::isnan(ml.q1()) || std::isnan(ml.q2()))
         {
-            report.addError("Charge sur Barre", "La charge ML#" + std::to_string(id) + " contient une intensité non numérique (NaN).");
+            report.addError(memberCat, QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                "La charge ML#%1 contient une intensité non numérique (NaN).").arg(id).toStdString());
         }
 
         if (std::abs(ml.q1()) < 1e-9 && std::abs(ml.q2()) < 1e-9)
         {
-            report.addWarning("Charge sur Barre", "La charge ML#" + std::to_string(id) + " a une intensité nulle.");
+            report.addWarning(memberCat, QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                "La charge ML#%1 a une intensité nulle.").arg(id).toStdString());
         }
     }
 
     // 6. Validation des combinaisons
+    const std::string comboCat = QCoreApplication::translate("TSA::Analysis::LoadValidation", "Combinaisons").toStdString();
     for (const auto& [id, combo] : lm.combinations())
     {
         if (combo.caseFactors().empty())
         {
-            report.addWarning("Combinaisons", "La combinaison '" + combo.name() + "' est vide (aucun cas de charge pondéré).");
+            report.addWarning(comboCat, QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                "La combinaison '%1' est vide (aucun cas de charge pondéré).")
+                .arg(QString::fromStdString(combo.name())).toStdString());
         }
         for (const auto& [caseId, factor] : combo.caseFactors())
         {
             if (!lm.getLoadCase(caseId))
             {
-                report.addError("Combinaisons", "La combinaison '" + combo.name() + "' référence le cas de charge inexistant Cas#" + std::to_string(caseId));
+                report.addError(comboCat, QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                    "La combinaison '%1' référence le cas de charge inexistant Cas#%2")
+                    .arg(QString::fromStdString(combo.name()), QString::number(caseId)).toStdString());
             }
         }
     }

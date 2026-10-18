@@ -4,6 +4,9 @@
 
 #include <BRepBuilderAPI_MakeEdge.hxx>
 
+#include <QCoreApplication>
+#include <QtGlobal>
+
 #include <set>
 
 namespace TSA::Viewer
@@ -15,10 +18,10 @@ const char* modelDisplayModeName(ModelDisplayMode mode)
 {
     switch (mode)
     {
-    case ModelDisplayMode::Physical: return "Modèle physique";
-    case ModelDisplayMode::Analytical: return "Modèle filaire analytique";
-    case ModelDisplayMode::FiniteElement: return "Modèle éléments finis";
-    case ModelDisplayMode::Overlay: return "Superposition physique / analytique";
+    case ModelDisplayMode::Physical: return QT_TRANSLATE_NOOP("TSA::Viewer::ModelDisplayMode", "Modèle physique");
+    case ModelDisplayMode::Analytical: return QT_TRANSLATE_NOOP("TSA::Viewer::ModelDisplayMode", "Modèle filaire analytique");
+    case ModelDisplayMode::FiniteElement: return QT_TRANSLATE_NOOP("TSA::Viewer::ModelDisplayMode", "Modèle éléments finis");
+    case ModelDisplayMode::Overlay: return QT_TRANSLATE_NOOP("TSA::Viewer::ModelDisplayMode", "Superposition physique / analytique");
     }
     return "?";
 }
@@ -62,28 +65,28 @@ SolverMeshStatus solverMeshStatus(const ResultsModel* results, std::size_t plana
                                       !results->allElementResults().empty());
     if (!computed)
     {
-        st.message = "Maillage du solveur indisponible : aucun calcul. Lancez un calcul : le maillage réellement "
-                     "transmis au moteur sera affiché (axes analytiques affichés en attendant).";
+        st.message = QCoreApplication::translate("TSA::Viewer::ModelDisplayMode", "Maillage du solveur indisponible : aucun calcul. Lancez un calcul : le maillage réellement "
+                     "transmis au moteur sera affiché (axes analytiques affichés en attendant).").toStdString();
         return st;
     }
     if (!results->isValid())
     {
-        st.message = "Maillage du solveur non affiché : le modèle a changé depuis le dernier calcul (résultats "
-                     "obsolètes). Relancez le calcul.";
+        st.message = QCoreApplication::translate("TSA::Viewer::ModelDisplayMode", "Maillage du solveur non affiché : le modèle a changé depuis le dernier calcul (résultats "
+                     "obsolètes). Relancez le calcul.").toStdString();
         return st;
     }
     const SolverMesh& mesh = results->solverMesh();
     if (mesh.empty())
     {
-        st.message = "Le moteur du dernier calcul ne fournit pas son maillage : rien n'est affiché à sa place "
-                     "(axes analytiques seulement).";
+        st.message = QCoreApplication::translate("TSA::Viewer::ModelDisplayMode", "Le moteur du dernier calcul ne fournit pas son maillage : rien n'est affiché à sa place "
+                     "(axes analytiques seulement).").toStdString();
         return st;
     }
     st.available = true;
-    st.message = "Maillage du solveur — " + mesh.summary() + ".";
+    st.message = QCoreApplication::translate("TSA::Viewer::ModelDisplayMode", "Maillage du solveur — %1.").arg(QString::fromStdString(mesh.summary())).toStdString();
     const std::size_t surfaces = mesh.cellCount(SolverCellType::Triangle) + mesh.cellCount(SolverCellType::Quadrilateral);
     if (planarElements > 0 && surfaces == 0)
-        st.message += " Dalles et voiles : non maillés par ce moteur, absents du calcul (affichés en arêtes).";
+        st.message += " " + QCoreApplication::translate("TSA::Viewer::ModelDisplayMode", "Dalles et voiles : non maillés par ce moteur, absents du calcul (affichés en arêtes).").toStdString();
     return st;
 }
 

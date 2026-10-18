@@ -1,4 +1,5 @@
 #include "SurfaceCreationDialog.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "../HelpLauncher.h"
 #include <QEvent>
 #include "App/ProductInfo.h"
@@ -149,7 +150,7 @@ void SurfaceCreationDialog::setupUi()
 
     auto* subContourBtns = new QHBoxLayout();
     m_btnCloseContour = new QPushButton(tr("Fermer le contour"), grpSlabContour);
-    m_btnCloseContour->setIcon(QIcon(":/icons/draw_slab.svg"));
+    m_btnCloseContour->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/draw_slab.svg")));
     m_btnClearContour = new QPushButton(tr("Effacer"), grpSlabContour);
     subContourBtns->addWidget(m_btnCloseContour);
     subContourBtns->addWidget(m_btnClearContour);
@@ -236,11 +237,11 @@ void SurfaceCreationDialog::setupUi()
     btnLayout->setSpacing(8);
 
     m_btnAdd = new QPushButton(tr("Ajouter"), this);
-    m_btnAdd->setIcon(QIcon(":/icons/slab_add.svg"));
+    m_btnAdd->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/slab_add.svg")));
     m_btnAdd->setStyleSheet("font-weight: bold; background-color: #2E7D32; color: white; padding: 6px 14px; border-radius: 4px;");
 
     m_btnClose = new QPushButton(tr("Fermer"), this);
-    m_btnClose->setIcon(QIcon(":/icons/cancel.svg"));
+    m_btnClose->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
 
     m_btnHelp = new QPushButton(tr("Aide"), this);
     m_btnHelp->setObjectName(QStringLiteral("helpButton"));
@@ -623,7 +624,7 @@ void SurfaceCreationDialog::onHelpClicked()
     // Documentation en ligne ; l'aide locale ci-dessous reste le repli d'un produit sans site d'aide.
     if (TSA::UI::openHelpTopic(this, QStringLiteral("model.surfaces")) != TSA::UI::HelpOpenResult::NotConfigured) return;
     QMessageBox::information(this, tr("Aide - Outil Éléments Surfaciques"),
-        tr("<b>Outil de création d'Éléments Surfaciques (Dalles & Voiles) :</b><br><br>"
+        tr("<b>Outil de création d'Éléments Surfaciques (Dalles et Voiles) :</b><br><br>"
            "Cette interface unifiée regroupe l'ensemble des éléments 2D surfaciques.<br><br>"
            "<b>1. Tracé d'une Dalle / Plancher :</b><br>"
            "• Sélectionnez <i>Dalle / Plancher</i> dans la liste supérieure.<br>"

@@ -1,5 +1,6 @@
 #include "Tsa3dInternal.h"
 
+#include <QCoreApplication>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonParseError>
@@ -54,12 +55,12 @@ bool read(const QByteArray& bytes, QJsonObject* document, Report* report)
             else
                 ++col;
         }
-        if (report) report->error({}, QStringLiteral("JSON invalide ligne %1, colonne %2 : %3").arg(line).arg(col).arg(err.errorString()));
+        if (report) report->error({}, QCoreApplication::translate("TSA::IO::Tsa3d", "JSON invalide ligne %1, colonne %2 : %3").arg(line).arg(col).arg(err.errorString()));
         return false;
     }
     if (!doc.isObject())
     {
-        if (report) report->error({}, QStringLiteral("le document doit être un objet JSON"));
+        if (report) report->error({}, QCoreApplication::translate("TSA::IO::Tsa3d", "le document doit être un objet JSON"));
         return false;
     }
     if (document) *document = doc.object();
@@ -71,7 +72,7 @@ bool readFile(const QString& path, QJsonObject* document, Report* report)
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly))
     {
-        if (report) report->error({}, QStringLiteral("lecture impossible de %1 : %2").arg(path, f.errorString()));
+        if (report) report->error({}, QCoreApplication::translate("TSA::IO::Tsa3d", "lecture impossible de %1 : %2").arg(path, f.errorString()));
         return false;
     }
     return read(f.readAll(), document, report);
@@ -82,7 +83,7 @@ bool writeFile(const QString& path, const QJsonObject& document, QString* error)
     QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly) || f.write(QJsonDocument(document).toJson(QJsonDocument::Indented)) < 0 || !f.commit())
     {
-        if (error) *error = QStringLiteral("écriture impossible de %1 : %2").arg(path, f.errorString());
+        if (error) *error = QCoreApplication::translate("TSA::IO::Tsa3d", "écriture impossible de %1 : %2").arg(path, f.errorString());
         return false;
     }
     return true;
@@ -166,7 +167,7 @@ Units readUnits(const QJsonObject& doc, Report* report)
         if (!o.contains(key)) return;
         const QString name = o.value(key).toString();
         if (const auto f = fn(name)) out = *f;
-        else if (report) report->error(QStringLiteral("units.%1").arg(key), QStringLiteral("unité « %1 » non prise en charge").arg(name));
+        else if (report) report->error(QStringLiteral("units.%1").arg(key), QCoreApplication::translate("TSA::IO::Tsa3d", "unité « %1 » non prise en charge").arg(name));
     };
     pick("length", lengthFactor, u.length);
     pick("force", forceFactor, u.force);

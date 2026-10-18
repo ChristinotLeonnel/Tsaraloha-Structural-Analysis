@@ -1,7 +1,9 @@
 #include "StartCenter.h"
+#include "UI/Theme/ThemedIcon.h"
 #include "App/ProductInfo.h"
 
 #include "../Theme/ThemeManager.h"
+#include "../../Core/I18n/LanguageManager.h"
 #include "../../Project/ModelPreviewCache.h"
 #include "../../Project/RecentProjects.h"
 
@@ -259,9 +261,9 @@ StartCenter::StartCenter(QWidget* parent)
     identity->addWidget(subtitle);
     identity->addSpacing(22);
 
-    m_btnNew = new QPushButton(QIcon(":/icons/file_new.svg"), tr("Nouveau projet"), m_identity);
+    m_btnNew = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")), tr("Nouveau projet"), m_identity);
     m_btnNew->setObjectName("StartCenterPrimary");
-    m_btnOpen = new QPushButton(QIcon(":/icons/file_open.svg"), tr("Ouvrir un projet"), m_identity);
+    m_btnOpen = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")), tr("Ouvrir un projet"), m_identity);
     m_btnOpen->setObjectName("StartCenterSecondary");
     m_btnNew->setToolTip(tr("Créer un projet %1 (Ctrl+N)").arg(TSA::Product::name()));
     m_btnOpen->setToolTip(tr("Ouvrir un fichier %1 (Ctrl+O)").arg(TSA::Product::projectExtension()));
@@ -279,6 +281,25 @@ StartCenter::StartCenter(QWidget* parent)
     }
     connect(m_btnNew, &QPushButton::clicked, this, &StartCenter::newProjectRequested);
     connect(m_btnOpen, &QPushButton::clicked, this, &StartCenter::openDialogRequested);
+
+    // Langue de l'interface : nom de la langue actuelle, dans cette langue (docs/I18N.md)
+    auto* language = new QPushButton(TSA::UI::themedIcon(QStringLiteral(":/icons/common/language.svg")),
+                                     TSA::Core::I18n::LanguageManager::nativeName(TSA::Core::I18n::LanguageManager::currentLanguage()),
+                                     m_identity);
+    language->setObjectName("StartCenterLanguage");
+    language->setFlat(true);
+    language->setCursor(Qt::PointingHandCursor);
+    language->setIconSize(QSize(16, 16));
+    language->setToolTip(tr("Langue de l'interface : English, Français, Malagasy"));
+    language->setAccessibleName(tr("Langue de l'interface"));
+    {
+        auto* row = new QHBoxLayout();
+        row->addStretch();
+        row->addWidget(language);
+        row->addStretch();
+        identity->addLayout(row);
+    }
+    connect(language, &QPushButton::clicked, this, &StartCenter::languageRequested);
     identity->addSpacing(22);
 
     // Projets récents : titre, recherche, tri
@@ -494,7 +515,7 @@ void StartCenter::showCardMenu(const QString& path, const QPoint& globalPos)
     TSA::Project::ModelPreviewCache cache;
 
     QMenu menu(this);
-    QAction* actOpen = menu.addAction(QIcon(":/icons/file_open.svg"), tr("Ouvrir"));
+    QAction* actOpen = menu.addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")), tr("Ouvrir"));
     menu.setDefaultAction(actOpen);
     QAction* actFolder = menu.addAction(tr("Afficher dans l'explorateur"));
     QAction* actForget = menu.addAction(tr("Retirer des projets récents"));

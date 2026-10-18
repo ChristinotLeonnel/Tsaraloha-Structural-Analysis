@@ -345,6 +345,7 @@ cmd.ai.explain                      |                       | on   |            
 
 [Paramètres]
 # identifiant                       | raccourci(s)          | état | par défaut            | description
+cmd.settings.language               |                       | on   |                       | Langue de l'interface — Choisir la langue de l'interface : English, Français, Malagasy (appliquée au redémarrage)
 cmd.settings.theme                  | Ctrl+T                | on   | Ctrl+T                | Thème sombre / clair — Basculer entre le thème sombre et le thème clair
 
 [Aide]
@@ -356,3 +357,4 @@ cmd.help.online_docs                |                       | on   |            
 cmd.help.report_problem             |                       | on   |                       | Signaler un problème — Signaler un problème
 cmd.help.shortcut_editor            | Ctrl+F1               | on   | Ctrl+F1               | Personnaliser les raccourcis — Ouvrir l'éditeur des raccourcis clavier
 cmd.help.shortcuts                  | F1                    | on   | F1                    | Liste des raccourcis — Afficher la liste des raccourcis clavier
+cmd.tools.search                    | Ctrl+F                | on   | Ctrl+F                | Rechercher une commande — Retrouver une commande, un panneau ou un paramètre par son nom, en anglais, en français ou en malgache

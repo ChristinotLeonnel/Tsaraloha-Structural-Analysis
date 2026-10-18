@@ -22,6 +22,8 @@ namespace TSA::UI
 /// d'efforts (ResultAvailability) ou si l'élément n'a pas été calculé.
 class ElementResultsPanel : public QGroupBox
 {
+    Q_OBJECT
+
 public:
     explicit ElementResultsPanel(QWidget* parent = nullptr);
 

@@ -44,7 +44,7 @@ void CablePropertiesView::setupUi()
     mainLayout->setSpacing(8);
 
     // 1. Général & Type de Câble
-    auto* grpGen = new QGroupBox(tr("Identification & Type de Câble"), this);
+    auto* grpGen = new QGroupBox(tr("Identification et Type de Câble"), this);
     auto* formGen = new QFormLayout(grpGen);
     formGen->setContentsMargins(8, 8, 8, 8);
     formGen->setSpacing(6);
@@ -65,7 +65,7 @@ void CablePropertiesView::setupUi()
 
     m_comboGeomMode = new QComboBox(grpGen);
     m_comboGeomMode->addItem(tr("Corde Droite (Traction Pure)"), static_cast<int>(TSA::Model::CableGeometryMode::Straight));
-    m_comboGeomMode->addItem(tr("Chaînette Parabole (Poids Propre & Flèche)"), static_cast<int>(TSA::Model::CableGeometryMode::Catenary));
+    m_comboGeomMode->addItem(tr("Chaînette Parabole (Poids Propre et Flèche)"), static_cast<int>(TSA::Model::CableGeometryMode::Catenary));
     connect(m_comboGeomMode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &CablePropertiesView::onWidgetChanged);
     formGen->addRow(tr("Modèle Géométrique :"), m_comboGeomMode);
 
@@ -76,7 +76,7 @@ void CablePropertiesView::setupUi()
     mainLayout->addWidget(grpGen);
 
     // 2. Section & Paramètres Mécaniques
-    auto* grpMech = new QGroupBox(tr("Caractéristiques Mécaniques & Pré-Tension"), this);
+    auto* grpMech = new QGroupBox(tr("Caractéristiques Mécaniques et Pré-Tension"), this);
     auto* formMech = new QFormLayout(grpMech);
     formMech->setContentsMargins(8, 8, 8, 8);
     formMech->setSpacing(6);
@@ -123,7 +123,7 @@ void CablePropertiesView::setupUi()
     mainLayout->addWidget(grpMech);
 
     // 3. Extrémités & Ancrages
-    auto* grpAnchor = new QGroupBox(tr("Ancrages & Rendu Visuel"), this);
+    auto* grpAnchor = new QGroupBox(tr("Ancrages et Rendu Visuel"), this);
     auto* formAnchor = new QFormLayout(grpAnchor);
     formAnchor->setContentsMargins(8, 8, 8, 8);
     formAnchor->setSpacing(6);

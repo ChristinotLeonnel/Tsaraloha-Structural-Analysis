@@ -5,6 +5,7 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
@@ -235,7 +236,7 @@ void MeshQualityPanel::fill()
         const int r = m_table->rowCount();
         if (r >= 5000) break;   // liste interactive bornée ; la synthèse donne les totaux
         m_table->insertRow(r);
-        auto* sev = new QTableWidgetItem(QString::fromUtf8(severityName(i.severity)));
+        auto* sev = new QTableWidgetItem(QCoreApplication::translate("TSA::Mesh::MeshQuality", severityName(i.severity)));
         sev->setData(Qt::UserRole, i.element);
         sev->setData(Qt::UserRole + 1, i.node);
         if (i.severity == QualityIssue::Severity::Error) sev->setForeground(QColor(220, 60, 60));

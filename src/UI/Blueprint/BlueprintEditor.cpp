@@ -1,4 +1,5 @@
 #include "BlueprintEditor.h"
+#include "UI/Theme/ThemedIcon.h"
 
 #include "BlueprintScene.h"
 #include "BlueprintObjectViewer.h"
@@ -191,18 +192,23 @@ std::string suggestSubgraphId(QString name, const std::vector<SubgraphDefinition
 std::vector<std::string> breakingInterfaceChanges(const SubgraphDefinition& before, const SubgraphDefinition& after)
 {
     std::vector<std::string> out;
-    auto check = [&](const std::vector<PinSpec>& oldPins, const std::vector<PinSpec>& newPins, const char* side) {
+    // removed / retyped : phrases entières marquées QT_TRANSLATE_NOOP, traduites ici
+    auto check = [&](const std::vector<PinSpec>& oldPins, const std::vector<PinSpec>& newPins, const char* removed, const char* retyped) {
         for (const auto& o : oldPins)
         {
             const auto it = std::find_if(newPins.begin(), newPins.end(), [&](const PinSpec& p) { return p.name == o.name; });
             if (it == newPins.end())
-                out.push_back(std::string(side) + " « " + o.name + " » supprimée");
+                out.push_back(QCoreApplication::translate("TSA::UI::BlueprintEditor", removed).arg(QString::fromStdString(o.name)).toStdString());
             else if (it->type != o.type || it->any != o.any || it->objectType != o.objectType)
-                out.push_back(std::string(side) + " « " + o.name + " » : " + pinTypeName(o) + " → " + pinTypeName(*it));
+                out.push_back(QCoreApplication::translate("TSA::UI::BlueprintEditor", retyped)
+                                  .arg(QString::fromStdString(o.name), QString::fromStdString(pinTypeName(o)), QString::fromStdString(pinTypeName(*it)))
+                                  .toStdString());
         }
     };
-    check(before.inputs, after.inputs, "entrée");
-    check(before.outputs, after.outputs, "sortie");
+    check(before.inputs, after.inputs, QT_TRANSLATE_NOOP("TSA::UI::BlueprintEditor", "entrée « %1 » supprimée"),
+          QT_TRANSLATE_NOOP("TSA::UI::BlueprintEditor", "entrée « %1 » : %2 → %3"));
+    check(before.outputs, after.outputs, QT_TRANSLATE_NOOP("TSA::UI::BlueprintEditor", "sortie « %1 » supprimée"),
+          QT_TRANSLATE_NOOP("TSA::UI::BlueprintEditor", "sortie « %1 » : %2 → %3"));
     return out;
 }
 
@@ -263,21 +269,21 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     root->setSpacing(0);
 
     auto* bar = new QToolBar(this);
-    bar->addAction(QIcon(":/icons/file_new.svg"), tr("Nouveau Blueprint"), this, &BlueprintEditor::newBlueprint);
-    bar->addAction(QIcon(":/icons/file_open.svg"), tr("Ouvrir un Blueprint…"), this, [this] {
+    bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_new.svg")), tr("Nouveau Blueprint"), this, &BlueprintEditor::newBlueprint);
+    bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")), tr("Ouvrir un Blueprint…"), this, [this] {
         const QString path = QFileDialog::getOpenFileName(this, tr("Ouvrir un Blueprint"), m_file, tr("Blueprint (*.tsbp)"));
         if (!path.isEmpty()) open(path);
     });
-    bar->addAction(QIcon(":/icons/file_save.svg"), tr("Enregistrer le Blueprint"), this, &BlueprintEditor::save);
+    bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_save.svg")), tr("Enregistrer le Blueprint"), this, &BlueprintEditor::save);
     bar->addSeparator();
-    m_actUndo = bar->addAction(QIcon(":/icons/undo.svg"), tr("Annuler (graphe)"), this, &BlueprintEditor::undo);
-    m_actRedo = bar->addAction(QIcon(":/icons/redo.svg"), tr("Rétablir (graphe)"), this, &BlueprintEditor::redo);
+    m_actUndo = bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/undo.svg")), tr("Annuler (graphe)"), this, &BlueprintEditor::undo);
+    m_actRedo = bar->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/redo.svg")), tr("Rétablir (graphe)"), this, &BlueprintEditor::redo);
     m_actUndo->setToolTip(tr("Annuler la dernière modification du Blueprint (l'historique du projet est distinct)"));
     bar->addAction(tr("Supprimer"), this, [this] { m_scene->deleteSelection(); });
     // Touches traitées par la vue du graphe (BlueprintView), pas par des raccourcis : voir la classe
     auto shortcutAction = [&](const QString& text, const QKeySequence& key, auto slot, const QString& tip) {
         QAction* a = bar->addAction(text, this, slot);
-        a->setToolTip(QStringLiteral("%1 (%2, dans le graphe)").arg(tip, key.toString(QKeySequence::NativeText)));
+        a->setToolTip(tr("%1 (%2, dans le graphe)").arg(tip, key.toString(QKeySequence::NativeText)));
         return a;
     };
     shortcutAction(tr("Copier"), QKeySequence::Copy, [this] { copySelection(); }, tr("Copier les nœuds et commentaires sélectionnés"));
@@ -559,17 +565,17 @@ void BlueprintEditor::buildPalette()
         auto& cat = categories[d->category];
         if (!cat)
         {
-            cat = new QTreeWidgetItem(m_palette, { QString::fromStdString(d->category) });
+            cat = new QTreeWidgetItem(m_palette, { QString::fromStdString(displayText(d->category)) });
             cat->setFlags(Qt::ItemIsEnabled);
             cat->setExpanded(true);
         }
-        QString label = QString::fromStdString(d->title);
+        QString label = QString::fromStdString(displayText(d->title));
         if (d->status == NodeStatus::Validated) label += QStringLiteral("  ✓");
         else if (d->status == NodeStatus::Experimental) label += QStringLiteral("  ⚗");
         auto* item = new QTreeWidgetItem(cat, { label });
         item->setData(0, kTypeRole, QString::fromStdString(d->id));
-        item->setToolTip(0, QStringLiteral("%1\n\n%2 — composant %3").arg(QString::fromStdString(d->description), QString::fromStdString(d->id),
-                                                                        QString::fromUtf8(statusName(d->status))));
+        item->setToolTip(0, tr("%1\n\n%2 — composant %3").arg(QString::fromStdString(displayText(d->description)), QString::fromStdString(d->id),
+                                                             QCoreApplication::translate("TSA::Blueprint::Nodes", statusName(d->status))));
     }
 }
 
@@ -736,7 +742,7 @@ void BlueprintEditor::refreshProblems()
     auto add = [this](int node, const QString& kind, const std::string& text) {
         const auto* n = node ? m_graph.node(node) : nullptr;
         const auto* d = n ? m_effective.find(n->type) : nullptr;
-        auto* item = new QTreeWidgetItem(m_problems, { node ? QStringLiteral("#%1 %2").arg(node).arg(d ? QString::fromStdString(d->title) : QString())
+        auto* item = new QTreeWidgetItem(m_problems, { node ? QStringLiteral("#%1 %2").arg(node).arg(d ? QString::fromStdString(displayText(d->title)) : QString())
                                                             : tr("graphe"),
                                                        QStringLiteral("%1 : %2").arg(kind, QString::fromStdString(text)) });
         item->setData(0, kNodeRole, node);
@@ -833,7 +839,7 @@ DebugAction BlueprintEditor::pause(const DebugState& state)
     const NodeInstance* n = m_graph.node(state.node);
     const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
     emit logMessage(tr("Débogueur : pause avant « %1 » (#%2), %3 étape(s) exécutée(s).")
-                        .arg(d ? QString::fromStdString(d->title) : QStringLiteral("?")).arg(state.node).arg(state.step),
+                        .arg(d ? QString::fromStdString(displayText(d->title)) : QStringLiteral("?")).arg(state.node).arg(state.step),
                     "INFO");
     emit projectModified();   // vues à jour pendant la pause (commandes déjà exécutées)
     QEventLoop loop;
@@ -854,7 +860,7 @@ void BlueprintEditor::showWatch(const std::map<int, std::map<std::string, Value>
     {
         const NodeInstance* n = m_graph.node(id);
         const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
-        auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(d->title) : QString()) });
+        auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(displayText(d->title)) : QString()) });
         for (const auto& [pin, v] : pins)
         {
             auto* row = new QTreeWidgetItem(item, { QString::fromStdString(pin) });
@@ -886,7 +892,7 @@ void BlueprintEditor::showValues()
         if (selected && id != selected) continue;
         const NodeInstance* n = m_graph.node(id);
         const NodeDefinition* d = n ? m_effective.find(n->type) : nullptr;
-        auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(d->title) : QString()) });
+        auto* item = new QTreeWidgetItem(m_watch, { QStringLiteral("#%1 %2").arg(id).arg(d ? QString::fromStdString(displayText(d->title)) : QString()) });
         for (const auto& [pin, v] : pins)
         {
             const PinSpec* spec = d ? d->output(pin) : nullptr;
@@ -1184,8 +1190,8 @@ void BlueprintEditor::showNodeProperties()
         m_docButton->setEnabled(false);
         return;
     }
-    m_nodeTitle->setText(QStringLiteral("%1  #%2").arg(QString::fromStdString(d->title)).arg(id));
-    m_nodeDescription->setText(QString::fromStdString(d->description));
+    m_nodeTitle->setText(QStringLiteral("%1  #%2").arg(QString::fromStdString(displayText(d->title))).arg(id));
+    m_nodeDescription->setText(QString::fromStdString(displayText(d->description)));
     m_docButton->setEnabled(true);
     switch (d->status)
     {
@@ -1223,7 +1229,7 @@ void BlueprintEditor::showNodeProperties()
         if (pin.kind != PinKind::Data || pin.any) continue;
         if (m_graph.linkTo(id, pin.name))
         {
-            m_properties->addRow(QString::fromStdString(pin.label), new QLabel(tr("(relié)"), m_propertiesHost));
+            m_properties->addRow(QString::fromStdString(displayText(pin.label)), new QLabel(tr("(relié)"), m_propertiesHost));
             continue;
         }
         const auto it = n->values.find(pin.name);
@@ -1234,7 +1240,7 @@ void BlueprintEditor::showNodeProperties()
             m_scene->refreshNode(id);
             recordChange(QStringLiteral("%1:%2").arg(id).arg(QString::fromStdString(pinName)));
         };
-        QString label = QString::fromStdString(pin.label);
+        QString label = QString::fromStdString(displayText(pin.label));
         if (const char* unit = TSA::Automation::quantityUnit(pin.quantity); unit[0]) label += QStringLiteral(" (%1)").arg(QString::fromUtf8(unit));
 
         QWidget* editor = nullptr;

@@ -14,7 +14,7 @@ public static class Dpi { [DllImport("user32.dll")] public static extern bool Se
 $exe = $Exe
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 $dir = $OutDir
-$p = Start-Process -FilePath $exe -ArgumentList ('"' + $Project + '"') -PassThru
+$p = Start-Process -FilePath $exe -ArgumentList @("--lang=fr", ('"' + $Project + '"')) -PassThru
 $we = Wait-Window "TSA*torsion_ui*" 90
 $w = [IntPtr]$we.Current.NativeWindowHandle
 Start-Sleep -Seconds 4

@@ -168,7 +168,7 @@ AnalysisRunResult AnalysisController::runBlocking(const AnalysisContext& context
     if (m_worker)
     {
         AnalysisRunResult busy;
-        busy.message = "Un calcul est déjà en cours.";
+        busy.message = tr("Un calcul est déjà en cours.").toStdString();
         return busy;
     }
     m_runningEngine = context.engineId;
