@@ -12,6 +12,7 @@
 #include "../Model/Cable/Cable.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridSnapManager.h"
+#include "../Grid/WorkPlaneReferences.h"
 #include "../Coordinate/CoordinateTransformationService.h"
 #include "../Coordinate/AxisColorConfig.h"
 #include "ResultsVisualManager.h"
@@ -834,6 +835,7 @@ void OccView::nextView()
 
 void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
 {
+    rememberWorkPlane(m_workPlane, wp);
     bool needFullRebuild = (m_workPlaneShape.IsNull() ||
                             std::abs(m_workPlane.width() - wp.width()) > 1e-4 ||
                             std::abs(m_workPlane.height() - wp.height()) > 1e-4 ||
@@ -853,6 +855,10 @@ void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
     else if (wp.type() == TSA::Coordinate::WorkPlaneType::GlobalYZ)
     {
         m_lastElevationYZOffset = wp.offset();
+    }
+    else if (std::abs(wp.normal().Z()) > 1.0 - 1e-9)
+    {
+        m_activeLevelZ = wp.origin().Z();   // plan personnalisé horizontal : niveau actif à son altitude
     }
     TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
     const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
@@ -879,6 +885,9 @@ void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
 
 void OccView::setWorkPlaneElevation(double elevation)
 {
+    TSA::Coordinate::WorkPlane next = m_workPlane;
+    next.setOffset(elevation);
+    rememberWorkPlane(m_workPlane, next);
     m_workPlane.setOffset(elevation);
     m_activeLevelZ = elevation;
     TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
@@ -896,6 +905,7 @@ void OccView::setWorkPlaneElevation(double elevation)
 
 void OccView::setWorkPlaneType(TSA::Coordinate::WorkPlaneType type, double offset)
 {
+    rememberWorkPlane(m_workPlane, TSA::Coordinate::WorkPlane(type, "Plan", offset));
     m_workPlane = TSA::Coordinate::WorkPlane(type, "Plan", offset);
     if (type == TSA::Coordinate::WorkPlaneType::GlobalXY ||
         type == TSA::Coordinate::WorkPlaneType::ElevationZ)
@@ -1038,19 +1048,34 @@ void OccView::applyWorkPlaneTransformation()
     gp_Ax3 stdCS(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0));
     trsf.SetDisplacement(stdCS, m_workPlane.coordinateSystem());
     m_workPlaneShape->SetLocalTransformation(trsf);
-    if (!m_workPlaneGrid.IsNull())
-        m_workPlaneGrid->SetLocalTransformation(trsf);
-
-    applyWorkPlaneTrihedronTransform(trsf);
 
     if (!m_manipulator.IsNull() && m_manipulator->IsAttached())
     {
         m_manipulator->SetPosition(m_workPlane.coordinateSystem().Ax2());
     }
 
+    syncWorkPlaneDependents(trsf);
+}
+
+void OccView::syncWorkPlaneDependents(const gp_Trsf& trsf)
+{
+    // Grille du plan : même transformation que le panneau (aucune grille laissée à l'ancienne position)
+    if (!m_workPlaneGrid.IsNull())
+        m_workPlaneGrid->SetLocalTransformation(trsf);
+    applyWorkPlaneTrihedronTransform(trsf);
+
     if (!m_viewer.IsNull())
     {
         m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
+    }
+    TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
+
+    // Plan horizontal : niveau actif = son altitude (surlignage du niveau de la grille structurelle, pointage de repli)
+    if (std::abs(m_workPlane.normal().Z()) > 1.0 - 1e-9 && std::abs(m_workPlane.origin().Z() - m_activeLevelZ) > 1e-12)
+    {
+        m_activeLevelZ = m_workPlane.origin().Z();
+        const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
+        m_gridRenderer.setActiveLevelElevation(m_activeLevelZ, grid, m_context);
     }
 
     updateElementIsolation(); // applique, met à jour ou lève l'isolation (no-op si jamais appliquée)
@@ -1059,6 +1084,121 @@ void OccView::applyWorkPlaneTransformation()
     {
         m_view->Redraw();
     }
+}
+
+void OccView::syncWorkPlaneFromManipulator()
+{
+    if (m_workPlaneShape.IsNull())
+        return;
+    const gp_Trsf trsf = m_workPlaneShape->LocalTransformation();
+    gp_Pnt orig(0, 0, 0);
+    orig.Transform(trsf);
+    gp_Dir dirX(1, 0, 0), dirY(0, 1, 0), dirZ(0, 0, 1);
+    dirX.Transform(trsf);
+    dirY.Transform(trsf);
+    dirZ.Transform(trsf);
+    // Rotation réelle seulement : une translation garde le type du plan (plan d'étage, coupe) et son décalage
+    if (!dirX.IsEqual(m_workPlane.xDirection(), 1e-12) || !dirY.IsEqual(m_workPlane.yDirection(), 1e-12))
+        m_workPlane.setLocalAxes(dirX, dirY, dirZ);
+    m_workPlane.setOrigin(orig);
+    syncWorkPlaneDependents(trsf);
+    emit workPlaneChanged(m_workPlane);
+}
+
+void OccView::rememberWorkPlane(const TSA::Coordinate::WorkPlane& previous, const TSA::Coordinate::WorkPlane& next)
+{
+    if (m_restoringWorkPlane)
+        return;
+    const bool same = previous.origin().Distance(next.origin()) < 1e-9 && previous.normal().IsEqual(next.normal(), 1e-12)
+                      && previous.xDirection().IsEqual(next.xDirection(), 1e-12) && previous.type() == next.type();
+    if (same)
+        return;
+    m_workPlaneHistory.push_back(previous);
+    if (m_workPlaneHistory.size() > 50)
+        m_workPlaneHistory.erase(m_workPlaneHistory.begin());
+}
+
+std::vector<const TSA::Grid::GridSystem*> OccView::structuralGrids() const
+{
+    std::vector<const TSA::Grid::GridSystem*> grids;
+    if (m_gridManager)
+        for (const auto& g : m_gridManager->grids())
+            if (g && g->isVisible())
+                grids.push_back(g.get());
+    return grids;
+}
+
+namespace
+{
+QString originText(const gp_Pnt& p)
+{
+    return QStringLiteral("(%1 ; %2 ; %3) m").arg(p.X(), 0, 'f', 3).arg(p.Y(), 0, 'f', 3).arg(p.Z(), 0, 'f', 3);
+}
+} // namespace
+
+QString OccView::stepWorkPlaneAlongNormal(int direction)
+{
+    const auto ref = TSA::Grid::WorkPlaneReferences::nextPlane(structuralGrids(), m_workPlane, direction);
+    if (!ref)
+        return {};
+    TSA::Coordinate::WorkPlane wp = m_workPlane;
+    wp.setOrigin(m_workPlane.origin().Translated(gp_Vec(m_workPlane.normal()) * ref->offset));
+    setActiveWorkPlane(wp);
+    return tr("Plan de travail %1 : %2, origine %3")
+        .arg(direction > 0 ? tr("suivant") : tr("précédent"),
+             ref->label.empty() ? tr("décalage de %1 m").arg(ref->offset, 0, 'f', 3) : QString::fromStdString(ref->label),
+             originText(m_workPlane.origin()));
+}
+
+QString OccView::stepWorkPlaneIntersection(int direction)
+{
+    const auto inter = TSA::Grid::WorkPlaneReferences::nextIntersection(structuralGrids(), m_workPlane, direction);
+    if (!inter)
+        return {};
+    TSA::Coordinate::WorkPlane wp = m_workPlane;
+    wp.setOrigin(inter->point);
+    setActiveWorkPlane(wp);
+    return tr("Origine du plan sur l'intersection %1 %2").arg(QString::fromStdString(inter->label), originText(inter->point));
+}
+
+QString OccView::alignWorkPlaneOriginToIntersection(const gp_Pnt& target)
+{
+    const auto inter = TSA::Grid::WorkPlaneReferences::nearestIntersection(structuralGrids(), m_workPlane, target);
+    if (!inter)
+        return {};
+    TSA::Coordinate::WorkPlane wp = m_workPlane;
+    wp.setOrigin(inter->point);
+    setActiveWorkPlane(wp);
+    return tr("Origine du plan sur l'intersection la plus proche %1 %2").arg(QString::fromStdString(inter->label), originText(inter->point));
+}
+
+QString OccView::alignWorkPlaneOriginToCursorIntersection()
+{
+    return alignWorkPlaneOriginToIntersection(m_hasCursorPoint ? m_lastCursorPoint : m_workPlane.origin());
+}
+
+bool OccView::previousWorkPlane()
+{
+    if (m_workPlaneHistory.empty())
+        return false;
+    const TSA::Coordinate::WorkPlane previous = m_workPlaneHistory.back();
+    m_workPlaneHistory.pop_back();
+    m_restoringWorkPlane = true;
+    setActiveWorkPlane(previous);
+    m_restoringWorkPlane = false;
+    return true;
+}
+
+void OccView::moveWorkPlaneBy(const gp_Vec& delta)
+{
+    setWorkPlaneOrigin(m_workPlane.origin().Translated(delta));
+}
+
+void OccView::setWorkPlaneOrigin(const gp_Pnt& origin)
+{
+    TSA::Coordinate::WorkPlane wp = m_workPlane;
+    wp.setOrigin(origin);
+    setActiveWorkPlane(wp);
 }
 
 void OccView::pushElementIsolationState()

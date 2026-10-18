@@ -496,6 +496,12 @@ private:
     QAction* m_actionWorkPlaneVisible = nullptr;
     QAction* m_actionViewNormalToPlane = nullptr;
     QAction* m_actionNamedViews = nullptr;
+    QAction* m_actionWorkPlaneNextRef = nullptr;
+    QAction* m_actionWorkPlanePrevRef = nullptr;
+    QAction* m_actionWorkPlaneNextInter = nullptr;
+    QAction* m_actionWorkPlanePrevInter = nullptr;
+    QAction* m_actionWorkPlaneAlignInter = nullptr;
+    QAction* m_actionWorkPlaneBack = nullptr;
     QActionGroup* m_workPlaneGroup = nullptr;
 
     QAction* m_actionCoordSystem = nullptr;
@@ -703,6 +709,8 @@ private slots:
     void onActionToggleWorkPlaneVisible(bool checked);
     void onActionViewNormalToPlane();
     void onActionNamedViews();
+    /// Résultat d'une commande de navigation du plan de travail : console et barre d'état.
+    void reportWorkPlaneNavigation(const QString& message, const QString& unchangedReason = QString());
     void onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp);
     /// Vue réellement affichée (service de navigation de OccView) : barre d'état et console.
     void onNavigationViewChanged();

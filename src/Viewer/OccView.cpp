@@ -481,7 +481,13 @@ void OccView::setInteractionMode(InteractionMode mode)
     if (m_interactionManager)
     {
         if (m_interactionManager->mode() == mode)
+        {
+            // Échap (raccourci « Mode sélection » de la fenêtre, ou touche reçue par la vue) pendant un glisser du
+            // manipulateur : le mode Sélection est déjà actif, mais le glisser doit être annulé
+            if (m_isManipulatingWorkPlane)
+                cancelCurrentDrawing();
             return;
+        }
 
         cancelCurrentDrawing();
         m_interactionManager->setMode(mode);
@@ -648,6 +654,10 @@ void OccView::cancelCurrentDrawing()
         {
             m_manipulator->StopTransform(false);
         }
+        // Le panneau revient à sa position de départ : le plan (et sa grille) aussi
+        m_workPlane = m_manipulatorStartWp;
+        applyWorkPlaneTransformation();
+        emit workPlaneChanged(m_workPlane);
     }
     clearRubberBand();
     m_drawingNodeIds.clear();

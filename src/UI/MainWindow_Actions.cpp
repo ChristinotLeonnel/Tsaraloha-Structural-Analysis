@@ -6,6 +6,7 @@
 #include "../Viewer/DisplayProfile.h"
 #include <QMessageBox>
 #include <QSettings>
+#include <QRegularExpression>
 #include <QInputDialog>
 #include "../Viewer/AnnotationStyle.h"
 #include "Common/SelectionSynchronizer.h"
@@ -315,6 +316,29 @@ void MainWindow::createActions()
     m_actionNamedViews->setIcon(QIcon(":/icons/tools/input_viewport.svg"));
     m_actionNamedViews->setToolTip(tr("Enregistrer, restaurer, renommer ou supprimer les vues nommées du projet (caméra, mode 2D, plan de travail)"));
     connect(m_actionNamedViews, &QAction::triggered, this, &MainWindow::onActionNamedViews);
+
+    // Navigation du plan de travail sur la grille structurelle (menu Affichage › Plans de travail, raccourcis, commandes)
+    m_actionWorkPlaneNextRef = new QAction(tr("Plan de travail suivant"), this);
+    m_actionWorkPlaneNextRef->setToolTip(tr("Plan parallèle suivant passant par des intersections de la grille (niveau, axe)"));
+    connect(m_actionWorkPlaneNextRef, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->stepWorkPlaneAlongNormal(1)); });
+    m_actionWorkPlanePrevRef = new QAction(tr("Plan de travail précédent (grille)"), this);
+    m_actionWorkPlanePrevRef->setToolTip(tr("Plan parallèle précédent passant par des intersections de la grille (niveau, axe)"));
+    connect(m_actionWorkPlanePrevRef, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->stepWorkPlaneAlongNormal(-1)); });
+    m_actionWorkPlaneNextInter = new QAction(tr("Intersection suivante"), this);
+    m_actionWorkPlaneNextInter->setToolTip(tr("Origine du plan de travail sur l'intersection suivante de la grille"));
+    connect(m_actionWorkPlaneNextInter, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->stepWorkPlaneIntersection(1)); });
+    m_actionWorkPlanePrevInter = new QAction(tr("Intersection précédente"), this);
+    m_actionWorkPlanePrevInter->setToolTip(tr("Origine du plan de travail sur l'intersection précédente de la grille"));
+    connect(m_actionWorkPlanePrevInter, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->stepWorkPlaneIntersection(-1)); });
+    m_actionWorkPlaneAlignInter = new QAction(tr("Aligner sur l'intersection"), this);
+    m_actionWorkPlaneAlignInter->setToolTip(tr("Origine du plan de travail sur l'intersection de la grille la plus proche du curseur"));
+    connect(m_actionWorkPlaneAlignInter, &QAction::triggered, this, [this] { if (m_occView) reportWorkPlaneNavigation(m_occView->alignWorkPlaneOriginToCursorIntersection()); });
+    m_actionWorkPlaneBack = new QAction(tr("Revenir au plan de travail précédent"), this);
+    m_actionWorkPlaneBack->setToolTip(tr("Plan de travail précédent (historique)"));
+    connect(m_actionWorkPlaneBack, &QAction::triggered, this, [this] {
+        if (m_occView) reportWorkPlaneNavigation(m_occView->previousWorkPlane() ? tr("Plan de travail précédent rétabli : %1").arg(QString::fromStdString(m_occView->activeWorkPlane().name())) : QString(),
+                                                  tr("aucun plan précédent dans l'historique"));
+    });
 
     // Actions Grilles & Niveaux
     m_actionNewGrid = new QAction(tr("&Nouvelle Grille 3D..."), this);
@@ -1258,6 +1282,13 @@ void MainWindow::createMenus()
     wpSub->addAction(m_actionWorkPlaneVisible);
     wpSub->addSeparator();
     wpSub->addAction(m_actionWorkPlaneCustom);
+    wpSub->addSeparator();
+    wpSub->addAction(m_actionWorkPlaneNextRef);
+    wpSub->addAction(m_actionWorkPlanePrevRef);
+    wpSub->addAction(m_actionWorkPlaneNextInter);
+    wpSub->addAction(m_actionWorkPlanePrevInter);
+    wpSub->addAction(m_actionWorkPlaneAlignInter);
+    wpSub->addAction(m_actionWorkPlaneBack);
 
     // Isolation 3D (cmd.isolate.* du catalogue) : même passe de visibilité que le plan de travail.
     QMenu* isoSub = viewMenu->addMenu(tr("Isolation 3D"));
@@ -1882,6 +1913,27 @@ void MainWindow::createDockWindows()
             return;
         }
         QString c = cmd.toUpper().trimmed();
+        {
+            // Saisie précise du plan de travail : « WPMOVE dx dy dz » (translation, m), « WPORIGIN x y z » (origine, m)
+            const QStringList parts = c.split(QRegularExpression(QStringLiteral("[\\s;]+")), Qt::SkipEmptyParts);
+            if (!parts.isEmpty() && (parts[0] == "WPMOVE" || parts[0] == "WPORIGIN"))
+            {
+                bool ok = parts.size() == 4;
+                double v[3] = { 0.0, 0.0, 0.0 };
+                for (int k = 0; ok && k < 3; ++k)
+                    v[k] = QString(parts[k + 1]).replace(',', '.').toDouble(&ok);
+                if (!ok || !m_occView)
+                {
+                    m_consoleDock->appendLog(tr("Usage : %1 x y z (mètres)").arg(parts[0]), "WARN");
+                    return;
+                }
+                if (parts[0] == "WPMOVE") m_occView->moveWorkPlaneBy(gp_Vec(v[0], v[1], v[2]));
+                else m_occView->setWorkPlaneOrigin(gp_Pnt(v[0], v[1], v[2]));
+                const gp_Pnt o = m_occView->activeWorkPlane().origin();
+                reportWorkPlaneNavigation(tr("Origine du plan de travail : (%1 ; %2 ; %3) m").arg(o.X(), 0, 'f', 3).arg(o.Y(), 0, 'f', 3).arg(o.Z(), 0, 'f', 3));
+                return;
+            }
+        }
         if (c == "FIT") onFitAll();
         else if (c == "FITSEL" || c == "FS") onFitSelection();
         else if (c == "ZOOMIN" || c == "ZI" || c == "+") onZoomIn();
@@ -1904,6 +1956,12 @@ void MainWindow::createDockWindows()
         else if (c == "WPCUSTOM" || c == "WP") onActionWorkPlaneCustom();
         else if (c == "WPNORMAL" || c == "VPN") onActionViewNormalToPlane();
         else if (c == "VIEWS" || c == "VNAMED") onActionNamedViews();
+        else if (c == "WPNEXT") m_actionWorkPlaneNextRef->trigger();
+        else if (c == "WPPREV") m_actionWorkPlanePrevRef->trigger();
+        else if (c == "WPINEXT") m_actionWorkPlaneNextInter->trigger();
+        else if (c == "WPIPREV") m_actionWorkPlanePrevInter->trigger();
+        else if (c == "WPALIGN") m_actionWorkPlaneAlignInter->trigger();
+        else if (c == "WPBACK") m_actionWorkPlaneBack->trigger();
         else if (c == "WPSHOW") onActionToggleWorkPlaneVisible(true);
         else if (c == "WPHIDE") onActionToggleWorkPlaneVisible(false);
         else if (c == "SNAP" || c == "GRIDS") {

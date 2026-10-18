@@ -4,16 +4,22 @@
 // annoncés sautés et jamais comptés réussis (BUG-076). Le test 434 (orientations calculées) tourne partout.
 
 #include "test_common.h"
+#include "Grid/GridManager.h"
+#include "Grid/WorkPlaneReferences.h"
 #include "IO/TSAFile.h"
 #include "UI/Dialogs/NamedViewsDialog.h"
+#include "UI/Ruler/ViewportContainer.h"
+#include "Viewer/SelectionManager.h"
 #include "Viewer/OccView.h"
 
 #include <QApplication>
+#include <QComboBox>
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QThread>
 
+#include <AIS_ListOfInteractive.hxx>
 #include <Graphic3d_Camera.hxx>
 
 #include <filesystem>
@@ -282,9 +288,68 @@ bool runSuite_Views(int& passed)
         ++passed;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 443 : références structurelles du plan de travail (sans vue) — axes irréguliers 0, 2, 3, 5, 6, 8 ; identifiants
+    // d'axes distincts des coordonnées ; niveaux ; intersections du plan ; plan incliné (tests D et E)
+    // -------------------------------------------------------------------------
+    {
+        using TSA::Grid::WorkPlaneReferences;
+        using TSA::Coordinate::WorkPlane;
+        using T = TSA::Coordinate::WorkPlaneType;
+        TSA::Grid::GridDefinition def("Irrégulière", TSA::Grid::GridType::Cartesian);
+        def.setXPositions({ 0.0, 2.0, 3.0, 5.0, 6.0, 8.0 });
+        def.setXLabels({ "1", "2", "3", "4", "5", "6" });   // l'axe « 5 » est à X = 6 m : identifiant ≠ coordonnée
+        def.setYPositions({ 0.0, 4.5, 9.0 });
+        def.setYLabels({ "A", "B", "C" });
+        def.setZLevels({ 0.0, 3.5 });
+        def.setZLabels({ "RDC", "R+1" });
+        TSA::Grid::GridSystem grid(def);
+        const std::vector<const TSA::Grid::GridSystem*> grids { &grid };
+
+        const WorkPlane yz(T::GlobalYZ, "Coupe", 0.0);   // normale +X, origine X = 0
+        std::vector<double> offsets;
+        for (const auto& p : WorkPlaneReferences::parallelPlanes(grids, yz))
+            offsets.push_back(p.offset);
+        TEST_CHECK((offsets == std::vector<double> { 0.0, 2.0, 3.0, 5.0, 6.0, 8.0 }),
+                   "Test 443 (D): plans YZ aux coordonnées réelles 0, 2, 3, 5, 6, 8 (espacement irrégulier, aucun pas supposé)");
+        const WorkPlane at5(T::GlobalYZ, "Coupe", 5.0);
+        const auto next = WorkPlaneReferences::nextPlane(grids, at5, 1);
+        const auto prev = WorkPlaneReferences::nextPlane(grids, at5, -1);
+        TEST_CHECK(next && std::abs(next->offset - 1.0) < 1e-12 && next->label == "axe 5" && prev && std::abs(prev->offset + 2.0) < 1e-12 && prev->label == "axe 3",
+                   "Test 443 (D, E): depuis X = 5 m : suivant = axe « 5 » à X = 6 m (+1 m), précédent = axe « 3 » à X = 3 m (−2 m)");
+        TEST_CHECK(!WorkPlaneReferences::nextPlane(grids, WorkPlane(T::GlobalYZ, "Coupe", 8.0), 1),
+                   "Test 443: au-delà du dernier axe : aucun plan, rien d'inventé");
+
+        const WorkPlane rdc(T::GlobalXY, "RDC", 0.0);
+        const auto up = WorkPlaneReferences::nextPlane(grids, rdc, 1);
+        TEST_CHECK(up && std::abs(up->offset - 3.5) < 1e-12 && up->label == "niveau R+1" && !WorkPlaneReferences::nextPlane(grids, rdc, -1),
+                   "Test 443: plan d'étage : niveau suivant « R+1 » à +3,5 m, aucun en dessous du RDC");
+        const auto inPlane = WorkPlaneReferences::intersectionsInPlane(grids, rdc);
+        const auto first = WorkPlaneReferences::nextIntersection(grids, rdc, 1);
+        TEST_CHECK(inPlane.size() == 18 && first && std::abs(first->u - 2.0) < 1e-12 && std::abs(first->v) < 1e-12 && first->label == "2 / A / RDC",
+                   "Test 443: 18 intersections dans le plan du RDC ; suivante depuis l'origine : 2 / A à X = 2 m");
+        const auto nearest = WorkPlaneReferences::nearestIntersection(grids, rdc, gp_Pnt(5.4, 4.0, 0.7));
+        TEST_CHECK(nearest && nearest->point.Distance(gp_Pnt(5.0, 4.5, 0.0)) < 1e-12 && nearest->label == "4 / B / RDC",
+                   "Test 443: intersection la plus proche du point (5,4 ; 4,0) projeté : 4 / B (X = 5, Y = 4,5)");
+
+        // Plan incliné de 30° autour de X : seules les intersections réellement dans le plan
+        const WorkPlane inclined(gp_Ax3(gp_Pnt(0, 0, 0), gp_Dir(0, -0.5, std::sqrt(3.0) / 2.0), gp_Dir(1, 0, 0)), "Incliné");
+        bool allOnPlane = true;
+        const auto incl = WorkPlaneReferences::intersectionsInPlane(grids, inclined);
+        for (const auto& i : incl)
+            allOnPlane = allOnPlane && std::abs(inclined.distanceTo(i.point)) < 1e-9;
+        const auto planes = WorkPlaneReferences::parallelPlanes(grids, inclined);
+        bool increasing = !planes.empty();
+        for (size_t k = 1; k < planes.size(); ++k)
+            increasing = increasing && planes[k].offset > planes[k - 1].offset;
+        TEST_CHECK(incl.size() == 6 && allOnPlane && increasing, "Test 443 (C): plan incliné : 6 intersections dans le plan (ligne Y = 0, Z = 0), plans parallèles ordonnés");
+        std::cout << "[PASS] Test 443: Références structurelles du plan de travail (axes irréguliers, identifiants ≠ coordonnées)" << std::endl;
+        ++passed;
+    }
+
     if (offscreen)
     {
-        for (int t : { 433, 435, 436, 437, 438, 440, 441, 442 })
+        for (int t : { 433, 435, 436, 437, 438, 440, 441, 442, 444, 445, 446, 447, 448 })
             std::cout << "[SKIP] Test " << t << ": vue 3D indisponible sur la plateforme Qt « offscreen » (lancer avec QT_QPA_PLATFORM=windows)" << std::endl;
         return true;
     }
@@ -821,6 +886,310 @@ bool runSuite_Views(int& passed)
         view.show3DView();
         TEST_CHECK(sameSnapshot(snapshot, nodeSnapshot(m)), "Test 442: après les changements de vue : coordonnées de tous les nœuds inchangées");
         std::cout << "[PASS] Test 442: Dessin vu de dessous, arrière, gauche, sur plusieurs niveaux et sur plan incliné" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 444 : manipulateur 3D du plan (vrais événements souris) — la grille suit exactement le plan pendant et après le
+    // glisser, aucune grille à l'ancienne position, translation sans changer le type du plan, Échap rétablit plan et grille,
+    // « plan précédent » (tests A et F)
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        ViewHarness h(m);
+        OccView& view = h.view;
+        TSA::Grid::GridManager gm;
+        view.setGridManager(&gm, nullptr);
+        view.setActiveWorkPlane(TSA::Coordinate::WorkPlane(TSA::Coordinate::WorkPlaneType::GlobalXY, "Étage", 0.0));
+        view.setWorkPlaneVisible(true);
+        view.updateWorkPlaneVisual();
+        view.setGizmoSize(140.0);
+        view.attachManipulatorToWorkPlane();
+        pump();
+        auto gridOrigin = [&]() { return gp_Pnt(0, 0, 0).Transformed(view.workPlaneGrid()->LocalTransformation()); };
+        auto gridCount = [&]() {
+            AIS_ListOfInteractive list;
+            view.context()->DisplayedObjects(list);
+            int n = 0;
+            for (const auto& o : list) n += Handle(TSA::Viewer::WorkPlaneGrid)::DownCast(o).IsNull() ? 0 : 1;
+            return n;
+        };
+        // Poignée de translation selon Z du gizmo : sur l'axe projeté à l'écran, à mi-longueur
+        int winW = 0, winH = 0;
+        view.view()->Window()->Size(winW, winH);
+        const double k = double(view.width()) / winW;
+        int ox = 0, oy = 0, zx = 0, zy = 0;
+        view.worldToPixel(0, 0, 0, ox, oy);
+        view.worldToPixel(0, 0, 1, zx, zy);
+        const double len = std::hypot(zx - ox, zy - oy);
+        const QPointF handle((ox + (zx - ox) / len * 0.55 * 140.0) * k, (oy + (zy - oy) / len * 0.55 * 140.0) * k);
+        const QPointF dragged(handle.x(), handle.y() - 60.0);
+        auto send = [&](QEvent::Type type, const QPointF& at, Qt::MouseButton b, Qt::MouseButtons bs) {
+            QMouseEvent e(type, at, view.mapToGlobal(at), b, bs, Qt::NoModifier);
+            QApplication::sendEvent(&view, &e);
+            pump(2);
+        };
+        const size_t history = view.workPlaneHistorySize();
+        send(QEvent::MouseMove, handle, Qt::NoButton, Qt::NoButton);   // détection : active la translation Z
+        send(QEvent::MouseButtonPress, handle, Qt::LeftButton, Qt::LeftButton);
+        send(QEvent::MouseMove, QPointF(handle.x(), handle.y() - 30.0), Qt::NoButton, Qt::LeftButton);
+        const double zDuring = view.activeWorkPlane().origin().Z();
+        const bool followsDuring = gridOrigin().Distance(view.activeWorkPlane().origin()) < 1e-9;
+        send(QEvent::MouseMove, dragged, Qt::NoButton, Qt::LeftButton);
+        send(QEvent::MouseButtonRelease, dragged, Qt::LeftButton, Qt::NoButton);
+        const TSA::Coordinate::WorkPlane& wp = view.activeWorkPlane();
+        TEST_CHECK(zDuring > 1e-6 && followsDuring, "Test 444 (A): pendant le glisser : plan monté (Z = " << zDuring << " m), grille au même endroit");
+        TEST_CHECK(wp.origin().Z() > zDuring && gridOrigin().Distance(wp.origin()) < 1e-9 && gridCount() == 1,
+                   "Test 444 (A): après le glisser : grille à la nouvelle altitude (Z = " << wp.origin().Z() << " m), une seule grille affichée");
+        TEST_CHECK(wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXY && std::abs(wp.offset() - wp.origin().Z()) < 1e-12
+                       && std::abs(wp.normal().Z() - 1.0) < 1e-12 && view.workPlaneHistorySize() == static_cast<int>(history) + 1,
+                   "Test 444 (A): translation : plan toujours horizontal de type XY, décalage = altitude, un plan dans l'historique");
+
+        // Échap pendant un glisser : plan et grille revenus à la position de départ, par les deux chemins réels de la
+        // touche — reçue par la vue (keyPressEvent), puis raccourci « Mode sélection » de la fenêtre (setInteractionMode)
+        const gp_Pnt before = wp.origin();
+        const size_t historyBefore = view.workPlaneHistorySize();
+        int hx = 0, hy = 0;
+        view.worldToPixel(before.X(), before.Y(), before.Z(), hx, hy);
+        const QPointF handle2((hx + (zx - ox) / len * 0.55 * 140.0) * k, (hy + (zy - oy) / len * 0.55 * 140.0) * k);
+        for (int path = 0; path < 2; ++path)
+        {
+            send(QEvent::MouseMove, handle2, Qt::NoButton, Qt::NoButton);
+            send(QEvent::MouseButtonPress, handle2, Qt::LeftButton, Qt::LeftButton);
+            send(QEvent::MouseMove, QPointF(handle2.x(), handle2.y() - 40.0), Qt::NoButton, Qt::LeftButton);
+            const bool movedAgain = view.activeWorkPlane().origin().Distance(before) > 1e-6;
+            if (path == 0)
+            {
+                QKeyEvent esc(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+                QApplication::sendEvent(&view, &esc);
+            }
+            else
+                view.setInteractionMode(OccView::InteractionMode::Select);   // déjà actif : MainWindow::onModeSelect
+            pump(2);
+            const bool restored = view.activeWorkPlane().origin().Distance(before) < 1e-9 && gridOrigin().Distance(before) < 1e-9;
+            send(QEvent::MouseButtonRelease, QPointF(handle2.x(), handle2.y() - 40.0), Qt::LeftButton, Qt::NoButton);
+            TEST_CHECK(movedAgain && restored && view.activeWorkPlane().origin().Distance(before) < 1e-9
+                           && view.workPlaneHistorySize() == historyBefore,
+                       "Test 444: Échap pendant le glisser (" << (path == 0 ? "touche reçue par la vue" : "raccourci Mode sélection")
+                           << ") : plan et grille rétablis, rien validé au relâchement");
+        }
+
+        // Plan précédent (F) : origine, orientation et grille d'avant le glisser
+        TEST_CHECK(view.previousWorkPlane() && view.activeWorkPlane().origin().Distance(gp_Pnt(0, 0, 0)) < 1e-9
+                       && gridOrigin().Distance(gp_Pnt(0, 0, 0)) < 1e-9 && std::abs(view.activeWorkPlane().normal().Z() - 1.0) < 1e-12,
+                   "Test 444 (F): plan précédent : origine (0, 0, 0), orientation et grille rétablies");
+        view.detachManipulator();
+        view.setGridManager(nullptr, nullptr);
+        std::cout << "[PASS] Test 444: Manipulateur du plan (glisser réel) : grille synchronisée, Échap, plan précédent" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 445 : déplacements X puis Y (saisie précise), accrochage à la grille du plan déplacé, rotation, caméra et zoom
+    // sans effet sur le plan (tests B, C, G)
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        ViewHarness h(m);
+        OccView& view = h.view;
+        view.setWorkPlaneElevation(2.0);
+        view.showPlanView(StandardCameraView::Top);
+        pump();
+        auto gridOrigin = [&]() { return gp_Pnt(0, 0, 0).Transformed(view.workPlaneGrid()->LocalTransformation()); };
+        view.moveWorkPlaneBy(gp_Vec(0.4, 0.0, 0.0));
+        TEST_CHECK(view.activeWorkPlane().origin().Distance(gp_Pnt(0.4, 0, 2)) < 1e-12 && gridOrigin().Distance(gp_Pnt(0.4, 0, 2)) < 1e-12,
+                   "Test 445 (B): déplacement X : origine et grille en (0,4 ; 0 ; 2)");
+        view.moveWorkPlaneBy(gp_Vec(0.0, 0.3, 0.0));
+        TEST_CHECK(view.activeWorkPlane().origin().Distance(gp_Pnt(0.4, 0.3, 2)) < 1e-12 && gridOrigin().Distance(gp_Pnt(0.4, 0.3, 2)) < 1e-12,
+                   "Test 445 (B): déplacement Y : origine et grille en (0,4 ; 0,3 ; 2)");
+        // Accrochage : nœuds aux multiples du pas depuis la NOUVELLE origine (0,4 ; 0,3)
+        view.setGridSnapEnabled(true);
+        const double step = view.workPlaneGrid()->layout().stepU;
+        view.setInteractionMode(OccView::InteractionMode::DrawBeam);
+        h.click(h.toMouse(gp_Pnt(0.4 + 2.2 * step, 0.3 + 1.1 * step, 2)));
+        h.click(h.toMouse(gp_Pnt(0.4 + 5.1 * step, 0.3 + 1.2 * step, 2)));
+        view.cancelCurrentDrawing();
+        view.setGridSnapEnabled(false);
+        bool onMovedGrid = m.nodes().size() == 2;
+        for (const auto& [id, nd] : m.nodes())
+        {
+            const double ku = (nd.x() - 0.4) / step, kv = (nd.y() - 0.3) / step;
+            onMovedGrid = onMovedGrid && std::abs(ku - std::round(ku)) < 1e-9 && std::abs(kv - std::round(kv)) < 1e-9 && nd.z() == 2.0;
+        }
+        TEST_CHECK(onMovedGrid, "Test 445 (B): accrochage à la grille du plan déplacé : nœuds aux multiples du pas depuis (0,4 ; 0,3), Z = 2 m");
+        view.show3DView();
+
+        // Rotation : grille dans la même orientation que le plan
+        const gp_Ax3 rotated(gp_Pnt(1, 2, 3), gp_Dir(0.3, -0.4, std::sqrt(1.0 - 0.25)), gp_Dir(0.8, 0.6, 0.0));
+        view.setActiveWorkPlane(TSA::Coordinate::WorkPlane(rotated, "Tourné"));
+        const gp_Trsf g = view.workPlaneGrid()->LocalTransformation();
+        const TSA::Coordinate::WorkPlane& wp = view.activeWorkPlane();
+        TEST_CHECK(gp_Pnt(0, 0, 0).Transformed(g).Distance(wp.origin()) < 1e-12
+                       && gp_Vec(gp_Pnt(0, 0, 0).Transformed(g), gp_Pnt(1, 0, 0).Transformed(g)).IsEqual(gp_Vec(wp.xDirection()), 1e-12, 1e-12)
+                       && gp_Vec(gp_Pnt(0, 0, 0).Transformed(g), gp_Pnt(0, 0, 1).Transformed(g)).IsEqual(gp_Vec(wp.normal()), 1e-12, 1e-12),
+                   "Test 445 (C): plan tourné : grille de même origine, même axe U et même normale");
+
+        // Caméra, zoom, orbite : plan et grille inchangés
+        const gp_Pnt o = wp.origin();
+        const gp_Dir n = wp.normal();
+        view.viewIsometric();
+        view.zoomIn(2.0);
+        view.zoomOut(5.0);
+        view.view()->StartRotation(300, 300);
+        view.view()->Rotation(380, 240);
+        view.view()->Pan(40, -25);
+        pump(2);
+        TEST_CHECK(view.activeWorkPlane().origin().Distance(o) < 1e-15 && view.activeWorkPlane().normal().IsEqual(n, 1e-15)
+                       && gp_Pnt(0, 0, 0).Transformed(view.workPlaneGrid()->LocalTransformation()).Distance(o) < 1e-12,
+                   "Test 445 (G): caméra, zoom, orbite, panoramique : plan et grille géométriquement inchangés");
+        std::cout << "[PASS] Test 445: Déplacements X / Y, accrochage, rotation, caméra : grille toujours sur le plan" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 446 : navigation dans la vue sur une grille structurelle irrégulière (axes 0, 2, 3, 5, 6, 8 ; libellés ≠
+    // coordonnées), alignement sur l'intersection la plus proche, plan précédent, documents séparés (tests D, E, F, H)
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        ViewHarness h(m);
+        OccView& view = h.view;
+        TSA::Grid::GridManager gm;
+        TSA::Grid::GridDefinition def("Portiques", TSA::Grid::GridType::Cartesian);
+        def.setXPositions({ 0.0, 2.0, 3.0, 5.0, 6.0, 8.0 });
+        def.setXLabels({ "1", "2", "3", "4", "5", "6" });
+        def.setYPositions({ 0.0, 4.5, 9.0 });
+        def.setYLabels({ "A", "B", "C" });
+        def.setZLevels({ 0.0, 3.5 });
+        def.setZLabels({ "RDC", "R+1" });
+        gm.clearAllGrids();   // le gestionnaire crée une grille principale par défaut : seule la grille irrégulière ici
+        gm.addGrid(def);
+        view.setGridManager(&gm, nullptr);
+        view.setActiveWorkPlane(TSA::Coordinate::WorkPlane(TSA::Coordinate::WorkPlaneType::GlobalYZ, "Coupe", 0.0));
+        std::vector<double> xs;
+        for (int k = 0; k < 6; ++k)
+        {
+            const QString msg = view.stepWorkPlaneAlongNormal(1);
+            if (msg.isEmpty()) break;
+            xs.push_back(view.activeWorkPlane().origin().X());
+        }
+        const std::vector<double> expectedXs { 2.0, 3.0, 5.0, 6.0, 8.0 };
+        bool sameXs = xs.size() == expectedXs.size();
+        for (size_t k = 0; sameXs && k < xs.size(); ++k)
+            sameXs = std::abs(xs[k] - expectedXs[k]) < 1e-12;
+        QStringList got;
+        for (double x : xs) got << QString::number(x, 'g', 17);
+        TEST_CHECK(sameXs && view.stepWorkPlaneAlongNormal(1).isEmpty(),
+                   "Test 446 (D): coupe YZ suivante : X = 2, 3, 5, 6, 8 m (espacement réel), puis plus rien (obtenu : " << got.join(", ").toStdString() << ")");
+        TEST_CHECK(view.stepWorkPlaneAlongNormal(-1).contains("axe 5") && std::abs(view.activeWorkPlane().origin().X() - 6.0) < 1e-12
+                       && view.activeWorkPlane().type() == TSA::Coordinate::WorkPlaneType::GlobalYZ,
+                   "Test 446 (E): coupe précédente = axe « 5 », placée à sa position réelle X = 6 m (et non 5) ; type YZ conservé");
+        view.setActiveWorkPlane(TSA::Coordinate::WorkPlane(TSA::Coordinate::WorkPlaneType::GlobalXY, "RDC", 0.0));
+        TEST_CHECK(view.stepWorkPlaneAlongNormal(1).contains("niveau R+1") && view.activeWorkPlane().origin().Z() == 3.5
+                       && gp_Pnt(0, 0, 0).Transformed(view.workPlaneGrid()->LocalTransformation()).Z() == 3.5,
+                   "Test 446: plan d'étage suivant : niveau R+1 (Z = 3,5 m), grille portée par ce niveau");
+        TEST_CHECK(!view.stepWorkPlaneIntersection(1).isEmpty() && view.activeWorkPlane().origin().Distance(gp_Pnt(2.0, 0.0, 3.5)) < 1e-12
+                       && !view.stepWorkPlaneIntersection(1).isEmpty() && view.activeWorkPlane().origin().Distance(gp_Pnt(3.0, 0.0, 3.5)) < 1e-12,
+                   "Test 446: intersections suivantes du niveau : (2 ; 0) puis (3 ; 0), le plan reste à Z = 3,5 m");
+        TEST_CHECK(view.alignWorkPlaneOriginToIntersection(gp_Pnt(5.3, 4.1, 3.5)).contains("4 / B")
+                       && view.activeWorkPlane().origin().Distance(gp_Pnt(5.0, 4.5, 3.5)) < 1e-12,
+                   "Test 446: alignement sur l'intersection la plus proche : 4 / B (5 ; 4,5 ; 3,5)");
+        TEST_CHECK(view.previousWorkPlane() && view.activeWorkPlane().origin().Distance(gp_Pnt(3.0, 0.0, 3.5)) < 1e-12,
+                   "Test 446 (F): plan précédent : origine sur l'intersection d'avant (3 ; 0 ; 3,5)");
+
+        // Deux documents : changer le plan de l'un ne touche pas l'autre
+        Model other;
+        ViewHarness h2(other);
+        const gp_Pnt otherOrigin = h2.view.activeWorkPlane().origin();
+        view.moveWorkPlaneBy(gp_Vec(0, 0, 1.0));
+        TEST_CHECK(h2.view.activeWorkPlane().origin().Distance(otherOrigin) < 1e-15, "Test 446 (H): autre document : plan de travail inchangé");
+        view.setGridManager(nullptr, nullptr);
+        std::cout << "[PASS] Test 446: Navigation sur grille irrégulière, intersections, plan précédent, documents séparés" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 447 : écho du plan vers le sélecteur de niveau de la fenêtre (câblage de MainWindow::onWorkPlaneChanged) —
+    // un plan d'étage déplacé en X et Y garde son origine ; une seule entrée « Z = … m » quel que soit le nombre d'échos
+    // -------------------------------------------------------------------------
+    {
+        using TSA::Coordinate::WorkPlaneAxis;
+        Model m;
+        auto* view = new OccView;
+        auto* container = new TSA::UI::ViewportContainer(view);   // la vue devient enfant du conteneur
+        container->resize(900, 700);
+        container->show();
+        pump(20);
+        view->setModel(&m);
+        container->setModel(&m);
+        view->setGridSnapEnabled(false);
+        view->setObjectSnapEnabled(false);
+        view->setViewTransitionMs(0);
+        QObject::connect(view, &OccView::workPlaneChanged, container, [container](const TSA::Coordinate::WorkPlane& wp) {
+            if (wp.isHorizontal())
+                container->reflectActivePlane(WorkPlaneAxis::Z, wp.origin().Z());
+        });
+        pump();
+        auto customEntries = [container] {
+            int n = 0;
+            for (QComboBox* c : container->findChildren<QComboBox*>())
+                for (int i = 0; i < c->count(); ++i)
+                    n += c->itemData(i, Qt::UserRole + 1).toBool() ? 1 : 0;
+            return n;
+        };
+        auto shown = [container](const QString& text) {
+            for (QComboBox* c : container->findChildren<QComboBox*>())
+                if (c->currentText() == text)
+                    return true;
+            return false;
+        };
+
+        view->setActiveWorkPlane(TSA::Coordinate::WorkPlane(TSA::Coordinate::WorkPlaneType::GlobalXY, "RDC", 0.0));
+        view->moveWorkPlaneBy(gp_Vec(2.0, 1.0, 3.0));
+        const auto& wp = view->activeWorkPlane();
+        const gp_Pnt gridOrigin = gp_Pnt(0, 0, 0).Transformed(view->workPlaneGrid()->LocalTransformation());
+        TEST_CHECK(wp.origin().Distance(gp_Pnt(2.0, 1.0, 3.0)) < 1e-12 && gridOrigin.Distance(wp.origin()) < 1e-12
+                       && wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXY,
+                   "Test 447 (B): plan d'étage déplacé de (2 ; 1 ; 3) : origine conservée malgré l'écho vers le sélecteur de niveau (obtenu ("
+                       << wp.origin().X() << " ; " << wp.origin().Y() << " ; " << wp.origin().Z() << ")), grille au même endroit");
+        view->moveWorkPlaneBy(gp_Vec(0.0, 0.0, 0.2));
+        view->moveWorkPlaneBy(gp_Vec(0.0, 0.0, 0.2));
+        TEST_CHECK(view->activeWorkPlane().origin().Distance(gp_Pnt(2.0, 1.0, 3.4)) < 1e-12 && customEntries() == 1 && shown("Z = 3.40 m"),
+                   "Test 447: trois altitudes hors niveaux : une seule entrée personnalisée (" << customEntries() << "), sélecteur sur « Z = 3.40 m »");
+        // Choix explicite d'un niveau dans le sélecteur : le plan y est appliqué (comportement du sélecteur, inchangé)
+        container->setActivePlane(WorkPlaneAxis::Z, 1.5);
+        TEST_CHECK(std::abs(view->activeWorkPlane().origin().Z() - 1.5) < 1e-12 && customEntries() == 1,
+                   "Test 447: niveau choisi dans le sélecteur : plan appliqué à Z = 1,5 m, entrée personnalisée réutilisée");
+
+        view->cancelCurrentDrawing();
+        view->setModel(nullptr);
+        pump();
+        delete container;
+        pump();
+        std::cout << "[PASS] Test 447: Écho du plan vers le sélecteur de niveau sans perte de l'origine dans le plan" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 448 : panneau du plan de travail sélectionnable au clic après la reconstruction des formes (ouverture d'un
+    // projet) — accès au manipulateur 3D ; défaut trouvé par l'essai UIA tools/ui_tests/workplane_scenario.ps1
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        ViewHarness h(m);
+        OccView& view = h.view;
+        TSA::Viewer::SelectionManager sm;
+        int selectedPlane = 0;
+        QObject::connect(&sm, &TSA::Viewer::SelectionManager::workPlaneSelected, [&selectedPlane](int id) { selectedPlane = id; });
+        view.setSelectionManager(&sm);
+        view.setActiveWorkPlane(TSA::Coordinate::WorkPlane(TSA::Coordinate::WorkPlaneType::GlobalXY, "RDC", 0.0));
+        view.rebuildAllShapes();   // comme à l'ouverture d'un projet : registre de sélection vidé puis reconstruit
+        pump();
+        h.click(h.toMouse(gp_Pnt(3.0, 2.0, 0.0)));
+        TEST_CHECK(selectedPlane == view.activeWorkPlane().id() && sm.isWorkPlaneSelected(),
+                   "Test 448: clic sur le panneau du plan après reconstruction des formes : plan sélectionné (id " << selectedPlane << ")");
+        view.setSelectionManager(nullptr);
+        std::cout << "[PASS] Test 448: Panneau du plan sélectionnable après reconstruction des formes (manipulateur accessible)" << std::endl;
         ++passed;
     }
     return true;

@@ -41,6 +41,7 @@ namespace TSA::Grid
 {
     class GridManager;
     class GridSnapManager;
+    class GridSystem;
 }
 #include "../Grid/GridRenderer.h"
 #include "../Model/CreationPresets.h"
@@ -249,6 +250,26 @@ public:
     const TSA::Viewer::WorkPlaneGrid* workPlaneGrid() const { return m_workPlaneGrid.get(); }
     /// Pas affiché (et accroché) de la grille selon le zoom courant ; redessine seulement s'il change.
     void refreshWorkPlaneGrid();
+
+    // Plan de travail : navigation sur la grille structurelle du projet (intersections réelles, espacement quelconque,
+    // identifiants d'axes distincts des coordonnées), historique et saisie précise. Chaque commande retourne un message
+    // pour l'utilisateur, vide si rien n'a été fait (aucune référence dans cette direction).
+    /// Grilles structurelles visibles (source des références).
+    std::vector<const TSA::Grid::GridSystem*> structuralGrids() const;
+    /// Plan parallèle suivant / précédent passant par des intersections (niveau, axe…), orientation conservée.
+    QString stepWorkPlaneAlongNormal(int direction);
+    /// Origine du plan sur l'intersection du plan suivante / précédente (ordre V puis U) : le plan ne bouge pas, sa
+    /// grille et son accrochage se calent sur l'intersection.
+    QString stepWorkPlaneIntersection(int direction);
+    /// Origine du plan sur l'intersection du plan la plus proche d'un point (dernier point du curseur par défaut).
+    QString alignWorkPlaneOriginToIntersection(const gp_Pnt& target);
+    QString alignWorkPlaneOriginToCursorIntersection();
+    /// Plan de travail précédent (historique des changements de plan) ; false si l'historique est vide.
+    bool previousWorkPlane();
+    int workPlaneHistorySize() const noexcept { return static_cast<int>(m_workPlaneHistory.size()); }
+    /// Saisie précise : translation du plan (repère global) ou nouvelle origine ; orientation conservée.
+    void moveWorkPlaneBy(const gp_Vec& delta);
+    void setWorkPlaneOrigin(const gp_Pnt& origin);
 
     // Gestionnaires spécialisés Découplés (Section 11)
     TSA::Viewer::ProjectionManager* projectionManager() noexcept { return &m_projectionManager; }
@@ -790,6 +811,17 @@ private:
     /// Axes X/Y/Z du WorkPlane avec lettres : taille FIXE À L'ÉCRAN (persistance de zoom, unités = pixels)
     Handle(AIS_Trihedron) m_workPlaneTrihedron;
     Handle(TSA::Viewer::WorkPlaneGrid) m_workPlaneGrid;
+    std::vector<TSA::Coordinate::WorkPlane> m_workPlaneHistory;   ///< plans précédents (« plan précédent »)
+    bool m_restoringWorkPlane = false;
+    gp_Pnt m_lastCursorPoint;   ///< dernier point du curseur dans la vue (aligner sur l'intersection la plus proche)
+    bool m_hasCursorPoint = false;
+    /// Mémorise le plan avant un changement réel (origine, orientation ou type différents).
+    void rememberWorkPlane(const TSA::Coordinate::WorkPlane& previous, const TSA::Coordinate::WorkPlane& next);
+    /// Tout ce qui dépend de la position du plan : grille, trièdre, plan privilégié, service de coordonnées, niveau
+    /// actif d'un plan horizontal, isolation, rendu. Seul chemin, qu'il s'agisse d'une commande ou du manipulateur.
+    void syncWorkPlaneDependents(const gp_Trsf& trsf);
+    /// Glisser du manipulateur : plan lu sur la transformation du panneau (translation : type et décalage conservés).
+    void syncWorkPlaneFromManipulator();
     double m_workPlanePanelHalfU = 10.0;   ///< demi-dimensions du panneau du plan (grille tracée dessus)
     double m_workPlanePanelHalfV = 10.0;
     double m_workPlanePanelCenterU = 0.0;  ///< centre du panneau dans le repère du plan (emprise du modèle)

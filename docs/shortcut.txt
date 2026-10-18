@@ -140,8 +140,14 @@ cmd.tools.measure                   | D, I                  | on   | D, I       
 cmd.coord.axis_x                    | Alt+X                 | on   | Alt+X                 | Coupe verticale X — Bandeau de la vue : coupes perpendiculaires à X
 cmd.coord.axis_y                    | Alt+Y                 | on   | Alt+Y                 | Coupe verticale Y — Bandeau de la vue : coupes perpendiculaires à Y
 cmd.coord.axis_z                    | Alt+Z                 | on   | Alt+Z                 | Plan horizontal Z — Bandeau de la vue : plans horizontaux (niveaux)
+cmd.coord.workplane_align_intersection| Alt+Home              | on   | Alt+Home              | Aligner sur l'intersection — Origine du plan de travail sur l'intersection de la grille la plus proche du curseur
+cmd.coord.workplane_back            | Alt+Backspace         | on   | Alt+Backspace         | Revenir au plan de travail précédent — Plan de travail précédent (historique)
 cmd.coord.workplane_custom          |                       | on   |                       | Plan de travail personnalisé — Définir un plan de travail personnalisé
 cmd.coord.workplane_level           |                       | on   |                       | Plan de travail sur l'étage — Plan de travail sur l'étage actif
+cmd.coord.workplane_next            | Alt+PgUp              | on   | Alt+PgUp              | Plan de travail suivant — Plan parallèle suivant passant par des intersections de la grille (niveau, axe)
+cmd.coord.workplane_next_intersection| Ctrl+Alt+PgUp         | on   | Ctrl+Alt+PgUp         | Intersection suivante — Origine du plan de travail sur l'intersection suivante de la grille
+cmd.coord.workplane_prev            | Alt+PgDown            | on   | Alt+PgDown            | Plan de travail précédent (grille) — Plan parallèle précédent passant par des intersections de la grille (niveau, axe)
+cmd.coord.workplane_prev_intersection| Ctrl+Alt+PgDown       | on   | Ctrl+Alt+PgDown       | Intersection précédente — Origine du plan de travail sur l'intersection précédente de la grille
 cmd.coord.workplane_visible         |                       | on   |                       | Afficher le plan de travail — Afficher ou masquer le plan de travail 3D
 cmd.coord.workplane_xy              |                       | on   |                       | Plan de travail XY — Plan de travail global horizontal XY
 cmd.coord.workplane_xz              |                       | on   |                       | Plan de travail XZ — Plan de travail global vertical XZ

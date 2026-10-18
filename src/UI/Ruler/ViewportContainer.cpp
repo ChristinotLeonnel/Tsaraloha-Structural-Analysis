@@ -427,16 +427,48 @@ void ViewportContainer::setActivePlane(TSA::Coordinate::WorkPlaneAxis axis, doub
     }
     else
     {
-        // Plan personnalisé à l'offset demandé
+        // Plan personnalisé à l'offset demandé : une seule entrée personnalisée, réutilisée (un glisser
+        // du manipulateur en ajoutait une par mouvement de souris)
+        constexpr int kCustomPlaneRole = Qt::UserRole + 1;
         QString customName = QString("%1 = %2 m")
             .arg(axis == TSA::Coordinate::WorkPlaneAxis::Z ? "Z" : (axis == TSA::Coordinate::WorkPlaneAxis::X ? "X" : "Y"))
             .arg(offset, 0, 'f', 2);
+        int customIdx = -1;
+        for (int i = 0; i < m_planCombo->count() && customIdx < 0; ++i)
+            if (m_planCombo->itemData(i, kCustomPlaneRole).toBool())
+                customIdx = i;
         m_planCombo->blockSignals(true);
-        m_planCombo->addItem(customName, QVariant(offset));
-        m_planCombo->setCurrentIndex(m_planCombo->count() - 1);
+        if (customIdx < 0)
+        {
+            m_planCombo->addItem(customName, QVariant(offset));
+            customIdx = m_planCombo->count() - 1;
+            m_planCombo->setItemData(customIdx, true, kCustomPlaneRole);
+        }
+        else
+        {
+            m_planCombo->setItemText(customIdx, customName);
+            m_planCombo->setItemData(customIdx, QVariant(offset));
+        }
+        m_planCombo->setCurrentIndex(customIdx);
         m_planCombo->blockSignals(false);
-        onPlanComboChanged(m_planCombo->currentIndex());
+        onPlanComboChanged(customIdx);
     }
+}
+
+void ViewportContainer::reflectActivePlane(TSA::Coordinate::WorkPlaneAxis axis, double offset)
+{
+    {
+        // onPlanComboChanged() s'arrête sur cette garde : le plan d'OccView n'est pas reconstruit
+        const QScopedValueRollback<bool> applying(m_isApplyingPlane, true);
+        setActivePlane(axis, offset);
+    }
+    updateRulers();
+    if (!m_planCombo || m_planCombo->currentIndex() < 0)
+        return;
+    const QString text = m_planCombo->currentText();
+    if (axis == TSA::Coordinate::WorkPlaneAxis::Z)
+        emit activeLevelChanged(offset, text);
+    emit activeWorkPlaneChanged(axis, offset, text);
 }
 
 void ViewportContainer::onAxisComboChanged(int index)

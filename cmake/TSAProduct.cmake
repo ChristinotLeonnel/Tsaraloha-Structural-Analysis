@@ -378,6 +378,8 @@ set(GRID_CORE_SOURCES
     ${TSA_ROOT}/src/Grid/SnapManager.h
     ${TSA_ROOT}/src/Grid/SnapManager.cpp
     ${TSA_ROOT}/src/Grid/GridSystem.h
+    ${TSA_ROOT}/src/Grid/WorkPlaneReferences.h
+    ${TSA_ROOT}/src/Grid/WorkPlaneReferences.cpp
     ${TSA_ROOT}/src/Grid/GridSystem.cpp
     ${TSA_ROOT}/src/Grid/GridManager.h
     ${TSA_ROOT}/src/Grid/GridManager.cpp

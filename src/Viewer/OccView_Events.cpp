@@ -443,6 +443,7 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
                     m_model->workPlaneManager()->updateWorkPlane(m_workPlane);
                 }
             }
+            rememberWorkPlane(m_manipulatorStartWp, m_workPlane);
 
             emit workPlaneChanged(m_workPlane);
             if (!m_view.IsNull())
@@ -632,35 +633,8 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
         if (!m_manipulator.IsNull() && m_manipulator->IsAttached() && m_manipulator->HasActiveMode() && !m_workPlaneShape.IsNull() && !m_view.IsNull())
         {
             m_manipulator->Transform(px, py, m_view);
-            gp_Trsf trsf = m_workPlaneShape->LocalTransformation();
-            applyWorkPlaneTrihedronTransform(trsf);
-
-            gp_Pnt orig(0, 0, 0);
-            orig.Transform(trsf);
-            gp_Dir dirX(1, 0, 0);
-            dirX.Transform(trsf);
-            gp_Dir dirY(0, 1, 0);
-            dirY.Transform(trsf);
-            gp_Dir dirZ(0, 0, 1);
-            dirZ.Transform(trsf);
-
-            m_workPlane.setOrigin(orig);
-            m_workPlane.setLocalAxes(dirX, dirY, dirZ);
-
-            TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
-            if (!m_viewer.IsNull())
-            {
-                m_viewer->SetPrivilegedPlane(m_workPlane.coordinateSystem());
-            }
-
-            if (m_workPlane.isIsolated())
-            {
-                updateElementIsolation();
-            }
-
-            emit workPlaneChanged(m_workPlane);
-            if (!m_view.IsNull())
-                m_view->Redraw();
+            // Plan, grille, trièdre, niveau actif, accrochage : synchronisés à chaque mouvement
+            syncWorkPlaneFromManipulator();
             return;
         }
         else
@@ -941,6 +915,8 @@ void OccView::mouseMoveEvent(QMouseEvent* event)
                     emit objectHovered(QString());
                 }
                 emit mouseCoordinatesChanged(wx, wy, wz);
+                m_lastCursorPoint = gp_Pnt(wx, wy, wz);
+                m_hasCursorPoint = true;
                 double uwp = 0.0, vwp = 0.0, wwp = 0.0;
                 m_workPlane.toLocal(gp_Pnt(wx, wy, wz), uwp, vwp, wwp);
                 emit mouseLocalCoordinatesChanged(uwp, vwp);

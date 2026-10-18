@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 437;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 22 tests « drawing » + test 429 (surfaces) + 10 tests « views »
+    int expectedTotal = 443;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 22 tests « drawing » + test 429 (surfaces) + 16 tests « views »
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Drawing(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "views") {
-        std::cout << "\n--- [Suite 25 quater] Vues 2D / 3D, ViewCube, plans de travail, dessin selon la vue (Tests 433-) ---" << std::endl;
+        std::cout << "\n--- [Suite 25 quater] Vues 2D / 3D, ViewCube, plans de travail, dessin selon la vue (Tests 433-448) ---" << std::endl;
         if (!runSuite_Views(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "snap") {

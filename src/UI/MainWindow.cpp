@@ -1219,6 +1219,13 @@ void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
     // 2. Synchronisation de la barre d'état avec affichage précis
     if (m_statusWorkPlane)
     {
+        const gp_Pnt o = wp.origin();
+        const gp_Dir n = wp.normal();
+        m_statusWorkPlane->setToolTip(tr("Plan de travail « %1 »\nOrigine : (%2 ; %3 ; %4) m\nNormale : (%5 ; %6 ; %7)\nGrille de travail : pas %8 m (grille structurelle distincte)")
+                                          .arg(QString::fromStdString(wp.name()))
+                                          .arg(o.X(), 0, 'f', 3).arg(o.Y(), 0, 'f', 3).arg(o.Z(), 0, 'f', 3)
+                                          .arg(n.X(), 0, 'f', 3).arg(n.Y(), 0, 'f', 3).arg(n.Z(), 0, 'f', 3)
+                                          .arg(wp.gridSpacingX(), 0, 'f', 2));
         QString desc;
         switch (wp.type())
         {
@@ -1248,7 +1255,7 @@ void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
     if (m_viewportContainer && m_occView && m_occView->syncWorkPlaneWithLevel() &&
         wp.isHorizontal())
     {
-        m_viewportContainer->setActiveLevelElevation(wp.offset());
+        m_viewportContainer->reflectActivePlane(TSA::Coordinate::WorkPlaneAxis::Z, wp.origin().Z());
     }
 
     // 4. Synchronisation bidirectionnelle immédiate avec le panneau de propriétés et le gestionnaire
@@ -1271,8 +1278,9 @@ void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
         }
     }
 
-    // 6. Log console
-    if (m_consoleDock)
+    // 6. Log console (une ligne par changement : pendant un glisser du manipulateur, seule la position finale,
+    //    émise au relâchement, est écrite — et non une ligne par mouvement de souris)
+    if (m_consoleDock && !(m_occView && m_occView->isManipulatingWorkPlane()))
     {
         m_consoleDock->appendLog(tr("Plan de travail actif : %1 (Origine: %2, %3, %4 m)")
             .arg(QString::fromStdString(wp.name()))
@@ -1280,6 +1288,14 @@ void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
             .arg(wp.origin().Y(), 0, 'f', 2)
             .arg(wp.origin().Z(), 0, 'f', 2), "INFO");
     }
+}
+
+void MainWindow::reportWorkPlaneNavigation(const QString& message, const QString& unchangedReason)
+{
+    const QString reason = unchangedReason.isEmpty() ? tr("aucune référence de la grille structurelle dans cette direction") : unchangedReason;
+    const QString text = message.isEmpty() ? tr("Plan de travail inchangé : %1").arg(reason) : message;
+    if (m_consoleDock) m_consoleDock->appendLog(text, message.isEmpty() ? "WARN" : "INFO");
+    if (m_statusInfo) m_statusInfo->setText(text);
 }
 
 void MainWindow::onActionNamedViews()
