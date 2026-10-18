@@ -161,7 +161,7 @@ inclinée est refusée, avec son motif.
   par la bibliothèque : non commencés, planifiés dans `BIM_DRAWING_ROADMAP.md` (chantiers A à E).
 - CI (BUG-076) : correctif préparé et vérifié en local (voir § 8), pas encore exécuté sur le runner.
 - Indicateur « SNAP: ACTIF » de la barre d'état jamais mis à jour (BUG-078, existant avant ce
-  chantier, vu sur une capture de l'essai d'interface).
+  chantier) : corrigé le 18/10/2026 avec la finalisation des vues (docs/VIEWS_NAVIGATION.md).
 - Messages « No operation defined for IfcVertexPoint » du noyau d'IfcOpenShell à la relecture
   d'un export TSA : points de connexion analytiques sans géométrie physique ; sans effet sur
   l'import.
