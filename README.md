@@ -321,9 +321,10 @@ TSA/
 │   ├── TSALIB_SYSTEM.md        # Spécification complète du système d'extensions TSALib
 │   ├── TSA_FILE_FORMAT.md      # Spécification du format binaire .tsa (chunks)
 │   ├── TSA_DIAGNOSTICS.md      # Journalisation, télémétrie et rapports de crash
-│   ├── ANALYSIS_OPENSEES.md    # Intégration du solveur OpenSees et formulations EF
-│   ├── OPENSEES_RESULTS.md     # Structure des résultats et diagrammes 3D
-│   ├── UI.md                   # Architecture de l'interface graphique Qt 6
+│   ├── ANALYSIS_OPENSEES.md         # Intégration du solveur OpenSees et formulations EF
+│   ├── OPENSEES_CALCULATION_METHODS.md # Méthodes de calcul, algorithmes et types d'analyse (guide utilisateur)
+│   ├── OPENSEES_RESULTS.md         # Structure des résultats et diagrammes 3D
+│   ├── UI.md                       # Architecture de l'interface graphique Qt 6
 │   └── MODEL.md                # Spécification du modèle structural de données
 ├── Extensions/                 # Extensions installées (bibliothèque TSALib standard)
 ├── resources/                  # Ressources graphiques Qt (.qrc), icônes et branding
@@ -351,6 +352,24 @@ TSA/
 ├── CMakePresets.json           # Presets de compilation Ninja et Visual Studio
 └── run.bat                     # Lanceur intelligent tout-en-un
 ```
+
+---
+
+## 📚 Documentation Technique
+
+La suite complète des **guides architecturaux et spécifications techniques** est disponible dans le répertoire `docs/` :
+
+| Document | Contenu & Usage |
+|:---|:---|
+| **[ANALYSIS_OPENSEES.md](docs/ANALYSIS_OPENSEES.md)** | Intégration du solveur OpenSees, pipeline de calcul, composants du module Analysis, validation analytique. |
+| **[OPENSEES_CALCULATION_METHODS.md](docs/OPENSEES_CALCULATION_METHODS.md)** | 🆕 **Guide complet pour les utilisateurs** : types d'analyses (linéaire, non-linéaire, modale), algorithmes (Newton, LoadControl, ArcLength), éléments structuraux, gestion des charges, solveurs et numérotation des DDL. |
+| **[OPENSEES_RESULTS.md](docs/OPENSEES_RESULTS.md)** | Structure et extraction des résultats, diagrammes 3D, déformée amplifiée, réactions d'appuis. |
+| **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Principes architecturaux, flux de données, pattern Observer et Source de Vérité Unique (SSOT). |
+| **[NORMATIVE_SYSTEM.md](docs/NORMATIVE_SYSTEM.md)** | Eurocodes EN 1990–1999, combinaisons ELU/ELS, vérifications de conformité. |
+| **[TSALIB_SYSTEM.md](docs/TSALIB_SYSTEM.md)** | Système d'extensions dynamiques : bibliothèques de matériaux, profilés, rechargement à chaud, packaging `.tsalib`. |
+| **[TSA_FILE_FORMAT.md](docs/TSA_FILE_FORMAT.md)** | Spécification du format binaire `.tsa`, structure des chunks, persistance des snapshots. |
+| **[UI.md](docs/UI.md)** | Architecture de l'interface Qt 6, Ruban 8 onglets, docks ancrables, WindowManager. |
+| **[MODEL.md](docs/MODEL.md)** | Spécification du modèle structural de données, hiérarchie des éléments, immutabilité. |
 
 ---
 
