@@ -156,10 +156,47 @@ inclinée est refusée, avec son motif.
 - Types : pas d'éditeur de type dédié. On modifie une occurrence puis on propage. Les câbles
   n'ont pas de type, et le matériau n'est associé qu'aux occurrences en IFC, pas au type.
 - Porte au pied d'un voile à base inclinée.
-- Grilles dans le `Model` (D12), retrait de `GridSnapManager` (D13), préréglages persistés,
-  libellés de matériaux par la bibliothèque : non commencés.
-- CI : les quatre suites qui créent une vue OCCT échouent sous `offscreen` (BUG-076).
-  Proposition : les lancer en plateforme `windows` sur le runner (à essayer).
+- Grilles dans le `Model` (D12), unification des accrochages (D13, constat corrigé : les réglages
+  de `GridSnapManager` sont encore lus par la vue), préréglages persistés, libellés de matériaux
+  par la bibliothèque : non commencés, planifiés dans `BIM_DRAWING_ROADMAP.md` (chantiers A à E).
+- CI (BUG-076) : correctif préparé et vérifié en local (voir § 8), pas encore exécuté sur le runner.
+- Indicateur « SNAP: ACTIF » de la barre d'état jamais mis à jour (BUG-078, existant avant ce
+  chantier, vu sur une capture de l'essai d'interface).
 - Messages « No operation defined for IfcVertexPoint » du noyau d'IfcOpenShell à la relecture
   d'un export TSA : points de connexion analytiques sans géométrie physique ; sans effet sur
   l'import.
+
+## 8. Vérification avant publication (18/10/2026)
+
+Dépôt : `feature/bim-drawing` = `origin/feature/io-ifc` (94c841e) + 7 commits locaux, sans le
+correctif Eigen `0157c89` (qui ne touche que `scripts/build_ifcopenshell.ps1`, fichier absent des
+48 fichiers de la branche ; fusion d'essai `git merge-tree` sans conflit). Aucune branche distante
+`feature/bim-drawing`.
+
+Exécutions réelles de ce jour, compilation `build-ninja-release` à jour avec `79dfdea` :
+
+| Vérification | Résultat |
+| :--- | :--- |
+| Passe CI `offscreen` (sans les suites à vue 3D) | 25 / 25 suites CTest |
+| Passe CI `windows` + Mesa llvmpipe (AllTests, audit, display, multidoc, drawing, ifc) | 6 / 6, suite complète 427 / 427, aucun test sauté ; rendu « Mesa — llvmpipe, OpenGL 4.6 » |
+| Scénario d'interface `drawing_scenario.ps1` (run26) | 17 / 17, capture finale examinée |
+| Anciens `.tsa` du dépôt (9 exemples du 11-12/10, 2 fichiers d'essai du 07/10) ouverts par `tsa-ifc export` | 11 / 11 ouverts et exportés (contrôle IfcOpenShell), fichiers inchangés |
+
+La suite `demo` reconstruit ses projets avant de les relire : elle ne prouve pas à elle seule la
+lecture des anciens fichiers, d'où l'ouverture des fichiers du dépôt ci-dessus.
+
+Couverture par l'interface réelle et par les seuls tests unitaires :
+
+| Exigence | Interface réelle (17 vérifications) | Tests unitaires seulement |
+| :--- | :--- | :--- |
+| Six outils avancés | portique (créé, puis refusé en double) | chaîne, rectangle, X, arc, grille (425) |
+| Refus des géométries invalides et des doublons | dalle croisée, portique en double | alignés, non plan, confondus, doublons de barre, de dalle, de voile, de fondation (412, 414, 415) |
+| Échap, Annuler, Rétablir | poutre : Échap, Annuler, Rétablir | dalle, outils, types (411, 419, 425, 431) |
+| Arbre Structure BIM | chemin jusqu'au poteau, clic vers les propriétés | classement complet (427) |
+| Panneau d'identité et de quantités | dalle : classe IFC, GlobalId, quantités | modification, type et écart (422, 426, 431) |
+| Types partagés | création par le menu de l'arbre | propagation, réapplication, Annuler, IFC (430-432) |
+| Voiles inclinés | création et avertissement | calcul (429), métré et IFC (428) |
+| Anciens `.tsa` | — | bloc BIM sans types (430) ; fichiers réels ouverts ci-dessus |
+
+Le test 20 reste instable sous charge (BUG-079), seuil inchangé.
+

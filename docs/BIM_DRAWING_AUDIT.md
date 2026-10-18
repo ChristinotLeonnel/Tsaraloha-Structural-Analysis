@@ -44,7 +44,7 @@ tests ; chaque problème cite ses fichiers. Architecture BIM existante : `docs/B
 | D10 | moyenne | Navigateur sans hiérarchie spatiale BIM (projet, bâtiment, étages, produits) | `ModelTreeWidget` | branche BIM (à faire) |
 | D11 | moyenne | Types : sections et matériaux copiés par valeur, pas de type partagé ; une modification de type ne se propage pas | `Beam.h`, `Material.h` | bibliothèque de types (à faire, migration du format) |
 | D12 | basse | Grilles hors du `Model` (repère de grille d'un produit non calculé) | `src/Grid` | à faire |
-| D13 | basse | `GridSnapManager` sans appelant (doublon historique de `SnapEngine`) | `src/Grid` | à retirer après vérification |
+| D13 | basse | `GridSnapManager` : recherche sans appelant (doublon de `SnapEngine`), mais réglages d'accrochage encore lus par la vue (corrigé le 18/10/2026, voir feuille de route, chantier D) | `src/Grid` | migration progressive |
 
 Points déjà conformes (pas de refonte) : accrochage centralisé (`SnapEngine`) ; résultats périmés invalidés
 (`ResultsValidityGuard`) ; ouvertures portées par l'élément ; modèle analytique distinct du modèle BIM avec mapping
