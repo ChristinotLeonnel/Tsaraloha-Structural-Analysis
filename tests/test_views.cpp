@@ -5,10 +5,12 @@
 
 #include "test_common.h"
 #include "IO/TSAFile.h"
+#include "UI/Dialogs/NamedViewsDialog.h"
 #include "Viewer/OccView.h"
 
 #include <QApplication>
 #include <QGuiApplication>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QThread>
 
@@ -200,9 +202,89 @@ bool runSuite_Views(int& passed)
         ++passed;
     }
 
+    // -------------------------------------------------------------------------
+    // TEST 439 : grille (pas affiché) et vues nommées (JSON, .tsa, compatibilité) — calculs, sans vue
+    // -------------------------------------------------------------------------
+    {
+        using G = TSA::Viewer::WorkPlaneGrid;
+        TEST_CHECK(G::displayedStep(1.0, 0.01, 20.0) == 1.0 && G::displayedStep(1.0, 0.2, 20.0) == 5.0 && G::displayedStep(1.0, 1.0, 20.0) == 20.0,
+                   "Test 439: pas affiché = pas du plan × 1, 5, 20 pour 100, 5 et 1 pixel(s) par mètre (au moins 12 pixels entre lignes)");
+        TEST_CHECK(G::displayedStep(0.5, 0.1, 20.0) == 2.5 && G::displayedStep(1.0, 1e-6, 1000.0) == 5.0,
+                   "Test 439: pas de 0,5 m → 2,5 m ; plan de 2 km zoomé : au plus 400 lignes (pas de 5 m)");
+        bool multiples = true;
+        for (double base : { 0.25, 0.5, 1.0, 1.5, 3.0 })
+            for (double wpp : { 1e-4, 0.003, 0.07, 0.9, 12.0 })
+            {
+                const double s = G::displayedStep(base, wpp, 50.0), k = s / base;
+                multiples = multiples && std::abs(k - std::round(k)) < 1e-9 && s >= base && G::lineCount(50.0, s) <= G::kMaxLinesPerDirection + 1;
+            }
+        TEST_CHECK(multiples && G::lineCount(10.0, 1.0) == 21 && G::lineCount(10.0, 3.0) == 7,
+                   "Test 439: chaque pas affiché est un multiple entier du pas d'accrochage ; nombre de lignes borné");
+
+        using TSA::Model::NamedView;
+        using TSA::Model::NamedViewSet;
+        NamedView a;
+        a.name = "Façade A";
+        a.eye = { 10.0, -40.0, 5.0 };
+        a.center = { 10.0, 0.0, 5.0 };
+        a.up = { 0.0, 0.0, 1.0 };
+        a.scale = 22.5;
+        a.mode2D = true;
+        a.planFace = "front";
+        a.workPlaneJson = TSA::Coordinate::WorkPlane(TSA::Coordinate::WorkPlaneType::GlobalXZ, "File A", 0.0).toJson();
+        NamedView b = a;
+        b.name = "Perspective";
+        b.orthographic = false;
+        b.mode2D = false;
+        b.planFace = "custom";
+        b.workPlaneJson.clear();
+        NamedViewSet set;
+        set.upsert(a);
+        set.upsert(b);
+        TEST_CHECK(!set.rename("Façade A", "Perspective") && set.rename("Façade A", "Élévation A") && set.indexOf("Élévation A") == 0,
+                   "Test 439: renommer : nom déjà pris refusé, nouveau nom accepté");
+        const NamedViewSet back = NamedViewSet::fromJson(set.toJson());
+        TEST_CHECK(back == set, "Test 439: vues nommées : aller-retour JSON identique (caméra, projection, mode 2D, face, plan de travail)");
+        std::string warnings;
+        const NamedViewSet tolerant = NamedViewSet::fromJson(
+            R"({"schema":1,"views":[{"name":"ok","eye":[0,0,5],"center":[0,0,0],"up":[0,1,0],"scale":3},)"
+            R"({"name":"court","eye":[0,0],"center":[0,0,0],"up":[0,1,0],"scale":3},)"
+            R"({"name":"ok","eye":[0,0,5],"center":[0,0,0],"up":[0,1,0],"scale":3},)"
+            R"({"name":"nulle","eye":[0,0,5],"center":[0,0,0],"up":[0,1,0],"scale":0}]})", &warnings);
+        TEST_CHECK(tolerant.views.size() == 1 && warnings.find("court") != std::string::npos && warnings.find("nulle") != std::string::npos,
+                   "Test 439: lecture tolérante : vues invalides ou en double ignorées et signalées");
+
+        Model m;
+        m.addNode(0.0, 0.0, 0.0);
+        m.setModified(false);
+        const auto revision = m.revision();
+        m.setNamedViews(set);
+        TEST_CHECK(m.isModified() && m.revision() == revision,
+                   "Test 439: vues enregistrées : projet à enregistrer, révision inchangée (résultats de calcul toujours valides)");
+        const auto path = std::filesystem::temp_directory_path() / "tsa_test439.tsa";
+        const QString file = QString::fromStdWString(path.wstring());
+        std::string err;
+        TEST_CHECK(TSA::IO::TSAProjectIO::saveToFile(file, m, nullptr, &err), "Test 439: enregistrement .tsa (" << err << ")");
+        TSA::IO::TSAFileHeader header;
+        const bool headerOk = TSA::IO::TSAFileReader::readHeader(path.string(), header);
+        Model reread;
+        TEST_CHECK(TSA::IO::TSAProjectIO::loadFromFile(file, reread, nullptr, &err) && headerOk, "Test 439: relecture .tsa (" << err << ")");
+        std::filesystem::remove(path);
+        TEST_CHECK(header.versionMinor == 12, "Test 439: .tsa enregistré au format 1.12 (lu : 1." << header.versionMinor << ")");
+        TEST_CHECK(reread.namedViews() == set, "Test 439: .tsa (chunk VIEW) : vues relues à l'identique (" << reread.namedViews().views.size() << " vue(s) relue(s))");
+        // (l'état « modifié » après ouverture est remis à zéro par ProjectManager, comme pour tout projet)
+        Model old;
+        const auto example = std::filesystem::path(TSA_SOURCE_DIR) / "examples" / "TSA_Demo_Batiment_R+5.tsa";
+        TEST_CHECK(TSA::IO::TSAProjectIO::loadFromFile(QString::fromStdWString(example.wstring()), old, nullptr, &err) && old.namedViews().views.empty()
+                       && !old.nodes().empty(),
+                   "Test 439: projet antérieur au chunk VIEW : ouvert, aucune vue nommée");
+        std::cout << "[PASS] Test 439: Grille (pas affiché) et vues nommées (JSON, .tsa, compatibilité)" << std::endl;
+        ++passed;
+    }
+
     if (offscreen)
     {
-        for (int t : { 433, 435, 436, 437, 438 })
+        for (int t : { 433, 435, 436, 437, 438, 440, 441, 442 })
             std::cout << "[SKIP] Test " << t << ": vue 3D indisponible sur la plateforme Qt « offscreen » (lancer avec QT_QPA_PLATFORM=windows)" << std::endl;
         return true;
     }
@@ -455,6 +537,17 @@ bool runSuite_Views(int& passed)
             pump(2);
             // Conversion écran → plan : un point du plan revient sur lui-même (à un pixel près), exactement dans le plan
             const TSA::Coordinate::WorkPlane& wp = view.activeWorkPlane();
+            // Grille : couvre l'emprise de tous les nœuds projetés dans le plan (modèle loin de l'origine du plan)
+            const TSA::Viewer::WorkPlaneGrid* g = view.workPlaneGrid();
+            bool covered = g != nullptr;
+            for (const auto& [id, nd] : m.nodes())
+            {
+                double u = 0.0, w = 0.0;
+                if (!covered) break;
+                wp.toLocal(gp_Pnt(nd.x(), nd.y(), nd.z()), u, w);
+                covered = std::abs(u - g->layout().centerU) <= g->layout().halfU + 1e-9 && std::abs(w - g->layout().centerV) <= g->layout().halfV + 1e-9;
+            }
+            TEST_CHECK(covered, "Test 437: vue " << faceName(v) << " : grille du plan couvrant tous les nœuds du projet");
             for (const auto& [u, w] : { std::pair{ 0.0, 0.0 }, std::pair{ 7.5, 3.0 }, std::pair{ -4.0, 10.0 } })
             {
                 const gp_Pnt p = wp.origin().Translated(gp_Vec(wp.xDirection()) * u + gp_Vec(wp.yDirection()) * w);
@@ -522,6 +615,212 @@ bool runSuite_Views(int& passed)
         TEST_CHECK(onPlane && m.beams().size() == 1, "Test 438: plan incliné : poutre tracée, nœuds exactement dans le plan (écart < 1e-9 m)");
         view.show3DView();
         std::cout << "[PASS] Test 438: Plans de travail adaptés à la vue, plan incliné" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 440 : grille du plan de travail dans la vue — lignes au pas d'accrochage, densité selon le zoom, grille
+    // portée par le plan (niveau, élévation), masquable ; accrochage au pas affiché, exactement dans le plan
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        ViewHarness h(m);
+        OccView& view = h.view;
+        view.setWorkPlaneElevation(3.0);
+        view.showPlanView(StandardCameraView::Top);
+        pump();
+        const TSA::Viewer::WorkPlaneGrid* grid = view.workPlaneGrid();
+        auto isMultiple = [](double step, double base) { const double k = step / base; return std::abs(k - std::round(k)) < 1e-9 && k >= 1.0 - 1e-12; };
+        TEST_CHECK(grid && isMultiple(grid->layout().stepU, view.activeWorkPlane().gridSpacingX()) && grid->layout().stepU / h.pixelSize() >= 12.0 - 1e-9,
+                   "Test 440: plan d'étage : grille affichée, pas multiple du pas d'accrochage, lignes espacées d'au moins 12 pixels");
+        const double s0 = grid->layout().stepU;
+        for (int k = 0; k < 6; ++k)
+            view.zoomOut(2.0);
+        const double s1 = view.workPlaneGrid()->layout().stepU;
+        TEST_CHECK(s1 > s0 && TSA::Viewer::WorkPlaneGrid::lineCount(view.workPlaneGrid()->layout().halfU, s1, view.workPlaneGrid()->layout().centerU) <= TSA::Viewer::WorkPlaneGrid::kMaxLinesPerDirection + 1
+                       && s1 / h.pixelSize() >= 12.0 - 1e-9,
+                   "Test 440: dézoom : pas affiché agrandi (" << s0 << " → " << s1 << " m), densité lisible");
+        for (int k = 0; k < 12; ++k)
+            view.zoomIn(2.0);
+        const double s2 = view.workPlaneGrid()->layout().stepU;
+        TEST_CHECK(s2 <= s0 && isMultiple(s2, view.activeWorkPlane().gridSpacingX()), "Test 440: zoom avant : pas affiché revenu au pas d'accrochage (" << s2 << " m)");
+
+        auto planePoint = [](const TSA::Viewer::WorkPlaneGrid* g, const gp_Pnt& local) { return local.Transformed(g->LocalTransformation()); };
+        TEST_CHECK(planePoint(view.workPlaneGrid(), gp_Pnt(0, 0, 0)).Distance(gp_Pnt(0, 0, 3)) < 1e-12,
+                   "Test 440: grille portée par le niveau actif (Z = 3 m)");
+        view.showPlanView(StandardCameraView::Front);
+        pump();
+        const gp_Pnt n = planePoint(view.workPlaneGrid(), gp_Pnt(0, 0, 1));
+        const gp_Pnt o = planePoint(view.workPlaneGrid(), gp_Pnt(0, 0, 0));
+        TEST_CHECK(gp_Vec(o, n).IsEqual(gp_Vec(0, -1, 0), 1e-12, 1e-12), "Test 440: élévation avant : grille dans le plan XZ (normale -Y)");
+
+        TSA::Coordinate::WorkPlane hidden = view.activeWorkPlane();
+        hidden.setIsGridVisible(false);
+        view.setActiveWorkPlane(hidden);
+        TEST_CHECK(view.workPlaneGrid() == nullptr, "Test 440: grille du plan masquée : aucune ligne affichée");
+        hidden.setIsGridVisible(true);
+        view.setActiveWorkPlane(hidden);
+        TEST_CHECK(view.workPlaneGrid() != nullptr, "Test 440: grille réaffichée");
+
+        // Accrochage à la grille (objets coupés) : point accroché au pas affiché, exactement dans le plan d'étage
+        view.showPlanView(StandardCameraView::Top);
+        pump();
+        view.setGridSnapEnabled(true);
+        const double step = view.workPlaneGrid()->layout().stepU;
+        const gp_Pnt raw1(2.3 * step, 1.2 * step, 3.0), raw2(5.2 * step, 1.1 * step, 3.0);
+        view.setInteractionMode(OccView::InteractionMode::DrawBeam);
+        h.click(h.toMouse(raw1));
+        h.click(h.toMouse(raw2));
+        view.cancelCurrentDrawing();
+        view.setGridSnapEnabled(false);
+        bool onGrid = m.nodes().size() == 2;
+        for (const auto& [id, nd] : m.nodes())
+            onGrid = onGrid && isMultiple(std::abs(nd.x()) + step, step) && isMultiple(std::abs(nd.y()) + step, step) && nd.z() == 3.0;
+        TEST_CHECK(onGrid && m.beams().size() == 1, "Test 440: accrochage à la grille : nœuds aux multiples du pas affiché (" << step << " m), Z = 3 m exactement");
+        view.show3DView();
+        std::cout << "[PASS] Test 440: Grille du plan de travail (pas, zoom, plan, accrochage)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 441 : vues nommées dans la vue — capture et restauration exactes (mode 2D, face, plan de travail, caméra),
+    // vue 3D libre, vue invalide refusée ; dialogue : enregistrer, renommer, supprimer, restaurer ; projets séparés
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        ViewHarness h(m);
+        OccView& view = h.view;
+        auto sameCamera = [&](const TSA::Model::NamedView& v) {
+            const auto& c = h.cam();
+            const double tol = 1e-9 * std::max(1.0, v.scale);
+            return c->Eye().Distance(gp_Pnt(v.eye[0], v.eye[1], v.eye[2])) < tol && c->Center().Distance(gp_Pnt(v.center[0], v.center[1], v.center[2])) < tol
+                   && c->Up().IsEqual(gp_Dir(v.up[0], v.up[1], v.up[2]), 1e-9) && std::abs(c->Scale() - v.scale) < tol
+                   && c->IsOrthographic() == v.orthographic;
+        };
+        view.setActiveWorkPlane(TSA::Coordinate::WorkPlane(TSA::Coordinate::WorkPlaneType::GlobalXZ, "File B", 6.0));
+        view.showPlanView(StandardCameraView::Front);
+        view.zoomIn(1.7);
+        const TSA::Model::NamedView v2d = view.captureNamedView("Élévation B");
+        view.show3DView();
+        view.showCubeOrientation(V3d_XnegYnegZpos);
+        const TSA::Model::NamedView v3d = view.captureNamedView("Coin");
+        view.showPlanView(StandardCameraView::Top);
+        TEST_CHECK(view.restoreNamedView(v2d) && view.isMode2D() && view.plan2DFace() == StandardCameraView::Front,
+                   "Test 441: vue 2D restaurée depuis un autre plan : mode 2D, élévation avant");
+        TEST_CHECK(view.activeWorkPlane().name() == "File B" && std::abs(view.activeWorkPlane().origin().Y() - 6.0) < 1e-12,
+                   "Test 441: plan de travail de la vue restauré (« " << view.activeWorkPlane().name() << " », Y = " << view.activeWorkPlane().origin().Y() << " m)");
+        TEST_CHECK(sameCamera(v2d), "Test 441: caméra exacte, zoom compris (échelle " << h.cam()->Scale() << " / " << v2d.scale << ")");
+        TEST_CHECK(view.restoreNamedView(v3d) && !view.isMode2D() && sameCamera(v3d), "Test 441: vue 3D libre restaurée depuis le mode 2D : retour en 3D, caméra exacte");
+        TSA::Model::NamedView invalid = v3d;
+        invalid.scale = 0.0;
+        TEST_CHECK(!view.restoreNamedView(invalid) && sameCamera(v3d), "Test 441: vue invalide refusée, caméra inchangée");
+
+        TSA::UI::NamedViewsDialog dialog(&m, &view);
+        int changes = 0;
+        QObject::connect(&dialog, &TSA::UI::NamedViewsDialog::namedViewsChanged, [&changes] { ++changes; });
+        m.setModified(false);
+        const auto revision = m.revision();
+        TEST_CHECK(dialog.saveCurrentView("A") && dialog.saveCurrentView("B") && !dialog.saveCurrentView("  ") && dialog.renameView("A", "Façade")
+                       && !dialog.renameView("Façade", "B") && dialog.deleteView("B") && dialog.viewNames() == QStringList({ "Façade" }) && changes == 4,
+                   "Test 441: dialogue : enregistrer, renommer (nom pris refusé), supprimer ; 4 modifications signalées");
+        TEST_CHECK(m.isModified() && m.revision() == revision && dialog.restoreView("Façade") && !dialog.restoreView("absente"),
+                   "Test 441: projet à enregistrer sans changer la révision ; restauration par le nom, nom absent refusé");
+        Model other;
+        TSA::UI::NamedViewsDialog otherDialog(&other, &view);
+        TEST_CHECK(otherDialog.viewNames().isEmpty() && m.namedViews().views.size() == 1, "Test 441: un autre projet ne voit pas les vues de celui-ci");
+        view.show3DView();
+        std::cout << "[PASS] Test 441: Vues nommées (capture, restauration, dialogue, projets séparés)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 442 : dessin dans les vues arrière, gauche et dessous, sur plusieurs niveaux, et dalle + voile sur un plan
+    // incliné : coordonnées réelles exactement dans le plan actif ; géométrie intacte au retour en 3D
+    // -------------------------------------------------------------------------
+    {
+        Model m;
+        ViewHarness h(m);
+        OccView& view = h.view;
+        auto newNodes = [&](const std::map<int, gp_Pnt>& before) {
+            std::vector<gp_Pnt> pts;
+            for (const auto& [id, nd] : m.nodes())
+                if (!before.count(id)) pts.emplace_back(nd.x(), nd.y(), nd.z());
+            return pts;
+        };
+        auto drawBeam = [&](const gp_Pnt& p1, const gp_Pnt& p2) {
+            const auto before = nodeSnapshot(m);
+            view.setInteractionMode(OccView::InteractionMode::DrawBeam);
+            h.click(h.toMouse(p1));
+            h.click(h.toMouse(p2));
+            view.cancelCurrentDrawing();
+            return newNodes(before);
+        };
+        for (double z : { 4.5, 9.0 })
+        {
+            view.setWorkPlaneElevation(z);
+            view.showPlanView(StandardCameraView::Top);
+            const auto pts = drawBeam(gp_Pnt(1, 1, z), gp_Pnt(5, 1, z));
+            TEST_CHECK(pts.size() == 2 && pts[0].Z() == z && pts[1].Z() == z, "Test 442: plan du niveau Z = " << z << " m : nœuds exactement au niveau");
+        }
+        view.setWorkPlaneElevation(4.5);
+        view.showPlanView(StandardCameraView::Bottom);
+        TEST_CHECK(cameraIs(h.cam(), ViewManager::standardFrame(StandardCameraView::Bottom)), "Test 442: plan vu de dessous : caméra exacte");
+        auto pts = drawBeam(gp_Pnt(2, 6, 4.5), gp_Pnt(6, 6, 4.5));
+        const double tol = 1.5 * h.pixelSize();
+        TEST_CHECK(pts.size() == 2 && pts[0].Z() == 4.5 && pts[1].Z() == 4.5 && std::abs(pts[0].Y() - 6.0) < tol,
+                   "Test 442: vu de dessous : nœuds au niveau (Z = 4,5 m), Y du clic à 1,5 pixel près (X inversé à l'écran compris)");
+        view.showPlanView(StandardCameraView::Back);
+        const double y = view.activeWorkPlane().origin().Y();
+        pts = drawBeam(gp_Pnt(1, y, 1), gp_Pnt(4, y, 1));
+        TEST_CHECK(cameraIs(h.cam(), ViewManager::standardFrame(StandardCameraView::Back)) && pts.size() == 2 && pts[0].Y() == y && pts[1].Y() == y,
+                   "Test 442: élévation arrière : nœuds dans le plan XZ (Y exactement " << y << " m)");
+        view.showPlanView(StandardCameraView::Left);
+        const double x = view.activeWorkPlane().origin().X();
+        pts = drawBeam(gp_Pnt(x, 2, 2), gp_Pnt(x, 6, 2));
+        TEST_CHECK(cameraIs(h.cam(), ViewManager::standardFrame(StandardCameraView::Left)) && pts.size() == 2 && pts[0].X() == x && pts[1].X() == x,
+                   "Test 442: élévation gauche : nœuds dans le plan YZ (X exactement " << x << " m)");
+        view.show3DView();
+
+        // Plan incliné à 30° : dalle (3 clics + Entrée) et voile (2 clics), nœuds exactement dans le plan
+        const gp_Ax3 inclined(gp_Pnt(0, 20, 3), gp_Dir(0, -0.5, std::sqrt(3.0) / 2.0), gp_Dir(1, 0, 0));
+        view.setActiveWorkPlane(TSA::Coordinate::WorkPlane(inclined, "Rampe"));
+        view.setMode2D(true);
+        pump();
+        const TSA::Coordinate::WorkPlane& wp = view.activeWorkPlane();
+        auto onPlane = [&](const std::vector<gp_Pnt>& p) {
+            bool ok = !p.empty();
+            for (const gp_Pnt& q : p) ok = ok && std::abs(wp.distanceTo(q)) < 1e-9;
+            return ok;
+        };
+        auto at = [&](double u, double v) { return wp.origin().Translated(gp_Vec(wp.xDirection()) * u + gp_Vec(wp.yDirection()) * v); };
+        auto before = nodeSnapshot(m);
+        const size_t slabs = m.slabs().size();
+        view.setInteractionMode(OccView::InteractionMode::DrawSlab);
+        h.click(h.toMouse(at(1, 1)));
+        h.click(h.toMouse(at(5, 1)));
+        h.click(h.toMouse(at(5, 4)));
+        QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        QApplication::sendEvent(&view, &enter);
+        pump(3);
+        const auto slabNodes = newNodes(before);
+        TEST_CHECK(m.slabs().size() == slabs + 1 && slabNodes.size() == 3 && onPlane(slabNodes), "Test 442: plan incliné : dalle créée, ses 3 nœuds exactement dans le plan");
+        view.cancelCurrentDrawing();
+        before = nodeSnapshot(m);
+        const size_t walls = m.walls().size();
+        view.setInteractionMode(OccView::InteractionMode::DrawWall);
+        h.click(h.toMouse(at(-4, 1)));
+        h.click(h.toMouse(at(-4, 5)));
+        view.cancelCurrentDrawing();
+        const auto wallNodes = newNodes(before);
+        TEST_CHECK(m.walls().size() == walls + 1 && wallNodes.size() == 2 && onPlane(wallNodes),
+                   "Test 442: plan incliné : voile créé, ses 2 nœuds de base exactement dans le plan (base inclinée acceptée)");
+        const auto snapshot = nodeSnapshot(m);
+        view.show3DView();
+        view.showCubeOrientation(V3d_XposYposZpos);
+        view.showPlanView(StandardCameraView::Right);
+        view.show3DView();
+        TEST_CHECK(sameSnapshot(snapshot, nodeSnapshot(m)), "Test 442: après les changements de vue : coordonnées de tous les nœuds inchangées");
+        std::cout << "[PASS] Test 442: Dessin vu de dessous, arrière, gauche, sur plusieurs niveaux et sur plan incliné" << std::endl;
         ++passed;
     }
     return true;
