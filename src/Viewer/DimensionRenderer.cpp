@@ -15,6 +15,9 @@
 #include <gp_Ax2.hxx>
 #include <gp_Quaternion.hxx>
 
+#include <QCoreApplication>
+#include <QString>
+
 #include <map>
 
 namespace TSA::Viewer
@@ -196,12 +199,12 @@ void DimensionRenderer::build(const TSA::Model::Model& model, int dimensionId, b
     if (layout.valid)
     {
         for (const auto& t : layout.texts)
-            addLabel(t.position, invalid ? t.text + " (réf. supprimée)" : t.text, t.along, t.up);
+            addLabel(t.position, invalid ? QCoreApplication::translate("TSA::Viewer::DimensionRenderer", "%1 (réf. supprimée)").arg(QString::fromStdString(t.text)).toStdString() : t.text, t.along, t.up);
     }
     else
     {
         const auto& p = dim.position;
-        addLabel(gp_Pnt(p[0], p[1], p[2]), "Cotation invalide : " + layout.error, gp_Dir(1, 0, 0), gp_Dir(0, 0, 1));
+        addLabel(gp_Pnt(p[0], p[1], p[2]), QCoreApplication::translate("TSA::Viewer::DimensionRenderer", "Cotation invalide : %1").arg(QString::fromStdString(layout.error)).toStdString(), gp_Dir(1, 0, 0), gp_Dir(0, 0, 1));
     }
     m_visuals[dimensionId] = std::move(v);
 }

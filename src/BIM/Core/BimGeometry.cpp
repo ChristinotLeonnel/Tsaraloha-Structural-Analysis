@@ -1,5 +1,6 @@
 #include "BimGeometry.h"
 
+#include <QCoreApplication>
 #include <QDataStream>
 #include <QIODevice>
 
@@ -71,7 +72,7 @@ QByteArray serializeGeometries(const std::map<int, MeshPtr>& meshes)
 
 bool deserializeGeometries(const QByteArray& data, std::map<int, MeshPtr>& out, std::string* error)
 {
-    auto fail = [error](const char* msg) {
+    auto fail = [error](const std::string& msg) {
         if (error) *error = msg;
         return false;
     };
@@ -81,8 +82,8 @@ bool deserializeGeometries(const QByteArray& data, std::map<int, MeshPtr>& out, 
     quint32 magic = 0, count = 0;
     quint16 version = 0;
     s >> magic >> version >> count;
-    if (magic != kMagic) return fail("géométries : signature BGEO absente");
-    if (version > kVersion) return fail("géométries : version future");
+    if (magic != kMagic) return fail(QCoreApplication::translate("TSA::BIM::BimGeometry", "géométries : signature BGEO absente").toStdString());
+    if (version > kVersion) return fail(QCoreApplication::translate("TSA::BIM::BimGeometry", "géométries : version future").toStdString());
     for (quint32 k = 0; k < count && s.status() == QDataStream::Ok; ++k)
     {
         qint32 id = 0;
@@ -99,7 +100,7 @@ bool deserializeGeometries(const QByteArray& data, std::map<int, MeshPtr>& out, 
         s >> rep >> np >> ni;
         // Garde-fou contre un fichier corrompu : tailles cohérentes avec le reste du flux
         const qint64 need = static_cast<qint64>(np) * sizeof(float) + static_cast<qint64>(ni) * sizeof(std::uint32_t);
-        if (s.status() != QDataStream::Ok || need > s.device()->bytesAvailable()) return fail("géométries : bloc tronqué");
+        if (s.status() != QDataStream::Ok || need > s.device()->bytesAvailable()) return fail(QCoreApplication::translate("TSA::BIM::BimGeometry", "géométries : bloc tronqué").toStdString());
         m->representation = rep.toStdString();
         m->positions.resize(np);
         m->indices.resize(ni);
@@ -107,7 +108,7 @@ bool deserializeGeometries(const QByteArray& data, std::map<int, MeshPtr>& out, 
         s.readRawData(reinterpret_cast<char*>(m->indices.data()), static_cast<int>(ni * sizeof(std::uint32_t)));
         if (m->valid()) out[id] = std::move(m);   // entrée invalide ignorée, pas le reste
     }
-    return s.status() == QDataStream::Ok || fail("géométries : flux illisible");
+    return s.status() == QDataStream::Ok || fail(QCoreApplication::translate("TSA::BIM::BimGeometry", "géométries : flux illisible").toStdString());
 }
 
 } // namespace TSA::BIM

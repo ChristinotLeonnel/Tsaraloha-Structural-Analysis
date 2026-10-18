@@ -285,8 +285,9 @@ CheckReport StructuralChecker::check(const TSA::Model::Model& model, const TSA::
     for (const auto& m : validation.messages())
     {
         if (m.severity == TSA::Analysis::ValidationSeverity::Info) continue;
-        // Même constat déjà formulé par le contrôle de stabilité : pas de doublon.
-        if (noSupportReported && QString::fromStdString(m.message).contains(QStringLiteral("appui"), Qt::CaseInsensitive)) continue;
+        // Même constat déjà formulé par le contrôle de stabilité : pas de doublon (reconnu par sa catégorie, quelle que
+        // soit la langue de l'interface).
+        if (noSupportReported && m.category == TSA::Analysis::LoadValidation::noSupportCategory()) continue;
         add(m.severity == TSA::Analysis::ValidationSeverity::Error ? FindingSeverity::Error : FindingSeverity::Warning,
             "VALIDATION", QString::fromStdString(m.category), QString::fromStdString(m.message));
     }

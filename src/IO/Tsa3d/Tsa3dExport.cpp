@@ -8,6 +8,7 @@
 #include "../../Model/Load/LoadManager.h"
 #include "App/ProductInfo.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -247,7 +248,7 @@ ExportResult exportModel(const TSA::Model::Model& model, const ExportOptions& op
         cableDetailLost = true;
     }
     if (cableDetailLost)
-        c.report.warning("members", QStringLiteral("câbles : définition détaillée (torons, ancrages, points intermédiaires) non "
+        c.report.warning("members", QCoreApplication::translate("TSA::IO::Tsa3d", "câbles : définition détaillée (torons, ancrages, points intermédiaires) non "
                                                    "représentée en TSA3D v1 ; type, géométrie, flèche, tension initiale et section exportés"));
     doc.insert("members", members);
 
@@ -394,7 +395,7 @@ ExportResult exportModel(const TSA::Model::Model& model, const ExportOptions& op
         if (it.key() != "metadata" && it.key() != "loads" && it.key() != "mesh" && !doc.contains(it.key())) doc.insert(it.key(), it.value());
 
     if (!model.dimensions().items.empty())
-        c.report.info("annotations", QStringLiteral("cotations (annotations TSA) non exportées : hors du périmètre du format v1"));
+        c.report.info("annotations", QCoreApplication::translate("TSA::IO::Tsa3d", "cotations (annotations TSA) non exportées : hors du périmètre du format v1"));
     res.document = doc;
     return res;
 }

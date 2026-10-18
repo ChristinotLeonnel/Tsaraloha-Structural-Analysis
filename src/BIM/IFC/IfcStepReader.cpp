@@ -1,5 +1,6 @@
 #include "IfcStepReader.h"
 
+#include <QCoreApplication>
 #include <QFile>
 #include <QString>
 
@@ -257,7 +258,7 @@ bool IfcStepReader::parse(const std::string& s, std::string* error)
         if (error) *error = msg;
         return false;
     };
-    if (s.find("ISO-10303-21") == std::string::npos) return fail("fichier non STEP (en-tête ISO-10303-21 absent)");
+    if (s.find("ISO-10303-21") == std::string::npos) return fail(QCoreApplication::translate("TSA::BIM::Ifc::IfcStepReader", "fichier non STEP (en-tête ISO-10303-21 absent)").toStdString());
 
     if (const auto fs = s.find("FILE_SCHEMA"); fs != std::string::npos)
     {
@@ -266,23 +267,23 @@ bool IfcStepReader::parse(const std::string& s, std::string* error)
         if (q2 != std::string::npos) m_schema = s.substr(q1 + 1, q2 - q1 - 1);
     }
     const auto data = s.find("DATA;");
-    if (data == std::string::npos) return fail("section DATA absente");
+    if (data == std::string::npos) return fail(QCoreApplication::translate("TSA::BIM::Ifc::IfcStepReader", "section DATA absente").toStdString());
 
     Parser p(s, data + 5);
     for (;;)
     {
         p.skipSpace();
         if (p.peek('E')) break;   // ENDSEC
-        if (!p.eat('#')) return fail("entité attendue près de l'octet " + std::to_string(p.pos()));
+        if (!p.eat('#')) return fail(QCoreApplication::translate("TSA::BIM::Ifc::IfcStepReader", "entité attendue près de l'octet %1").arg(QString::number(p.pos())).toStdString());
         const int id = p.integer();
-        if (!p.eat('=')) return fail("« = » attendu après #" + std::to_string(id));
+        if (!p.eat('=')) return fail(QCoreApplication::translate("TSA::BIM::Ifc::IfcStepReader", "« = » attendu après #%1").arg(id).toStdString());
         StepEntity e;
         e.id = id;
         if (p.peek('('))
         {
             // Instance complexe (sous-types multiples) : conservée sous le premier type
             std::vector<StepValue> parts;
-            if (!p.list(parts)) return fail("instance complexe illisible #" + std::to_string(id));
+            if (!p.list(parts)) return fail(QCoreApplication::translate("TSA::BIM::Ifc::IfcStepReader", "instance complexe illisible #%1").arg(id).toStdString());
             if (!parts.empty() && parts.front().kind == StepValue::Kind::Typed)
             {
                 e.type = parts.front().text;
@@ -292,9 +293,9 @@ bool IfcStepReader::parse(const std::string& s, std::string* error)
         else
         {
             e.type = p.keyword();
-            if (e.type.empty() || !p.list(e.args)) return fail("entité #" + std::to_string(id) + " illisible");
+            if (e.type.empty() || !p.list(e.args)) return fail(QCoreApplication::translate("TSA::BIM::Ifc::IfcStepReader", "entité #%1 illisible").arg(id).toStdString());
         }
-        if (!p.eat(';')) return fail("« ; » attendu après #" + std::to_string(id));
+        if (!p.eat(';')) return fail(QCoreApplication::translate("TSA::BIM::Ifc::IfcStepReader", "« ; » attendu après #%1").arg(id).toStdString());
         m_byType[e.type].push_back(id);
         m_entities[id] = std::move(e);
     }
@@ -306,7 +307,7 @@ bool IfcStepReader::parseFile(const std::string& path, std::string* error)
     QFile f(QString::fromStdString(path));
     if (!f.open(QIODevice::ReadOnly))
     {
-        if (error) *error = "impossible d'ouvrir « " + path + " »";
+        if (error) *error = QCoreApplication::translate("TSA::BIM::Ifc::IfcStepReader", "impossible d'ouvrir « %1 »").arg(QString::fromStdString(path)).toStdString();
         return false;
     }
     const QByteArray bytes = f.readAll();

@@ -80,7 +80,7 @@ std::string runInWorker(TSA::UI::IfcProgressDialog& dialog, WorkProgress& progre
         }
         catch (const std::bad_alloc&)
         {
-            failure = "mémoire insuffisante";
+            failure = QCoreApplication::translate("MainWindow", "mémoire insuffisante").toStdString();
         }
         catch (const std::exception& e)
         {
@@ -88,7 +88,7 @@ std::string runInWorker(TSA::UI::IfcProgressDialog& dialog, WorkProgress& progre
         }
         catch (...)
         {
-            failure = "erreur interne inconnue";
+            failure = QCoreApplication::translate("MainWindow", "erreur interne inconnue").toStdString();
         }
     });
     QObject::connect(worker, &QThread::finished, &loop, &QEventLoop::quit);

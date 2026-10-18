@@ -5,6 +5,7 @@
 #include "../../Model/Load/MemberLoad.h"
 #include "../../Model/Load/MemberLoadCommands.h"
 
+#include <QCoreApplication>
 #include <QMessageBox>
 
 #include <QVBoxLayout>
@@ -216,7 +217,7 @@ void LoadPropertiesView::populateLoadCases()
             QString txt = QString("[%1] %2 (%3)")
                 .arg(id)
                 .arg(QString::fromStdString(lc.name()))
-                .arg(QString::fromStdString(TSA::Model::loadCategoryToString(lc.category())));
+                .arg(QCoreApplication::translate("TSA::Model::LoadEnums", TSA::Model::loadCategoryToString(lc.category()).c_str()));
             m_comboLoadCase->addItem(txt, id);
         }
     }
@@ -363,7 +364,7 @@ void LoadPropertiesView::applyChanges()
         edited.setX2(edited.type() == TSA::Model::LoadType::MemberPoint ? m_spinX1->value() : m_spinX2->value());
 
         const double length = TSA::Model::memberLoadTargetLength(*m_model, edited.elementId(), edited.targetType());
-        const std::string why = length < 0.0 ? std::string("La barre chargée n'existe plus.") : edited.validate(length);
+        const std::string why = length < 0.0 ? tr("La barre chargée n'existe plus.").toStdString() : edited.validate(length);
         if (!why.empty())
         {
             QMessageBox::warning(this, tr("Charge sur barre"), QString::fromStdString(why));

@@ -3,6 +3,8 @@
 #include "../../Model/Model.h"
 #include "../../Model/Load/LoadManager.h"
 
+#include <QCoreApplication>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -44,9 +46,12 @@ bool SolverCompatibility::hasWarnings() const
 }
 std::string SolverCompatibility::summary() const
 {
-    std::ostringstream s;
-    s << engine << " : " << transmittedElements << " élément(s) transmis, " << ignoredElements << " non transmis, " << estimatedDofs << " DDL estimés";
-    return s.str();
+    return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "%1 : %2 élément(s) transmis, %3 non transmis, %4 DDL estimés")
+        .arg(QString::fromStdString(engine))
+        .arg(transmittedElements)
+        .arg(ignoredElements)
+        .arg(estimatedDofs)
+        .toStdString();
 }
 
 std::string OpenSeesMeshAdapter::openSeesElementFor(FeType t, int family, bool* convertible)
@@ -58,28 +63,39 @@ std::string OpenSeesMeshAdapter::openSeesElementFor(FeType t, int family, bool* 
         if (family == 0 || family == 1)
         {
             *convertible = true;
-            return "elasticBeamColumn (2 nœuds, geomTransf Linear de la barre, 6 DDL par nœud)";
+            return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "elasticBeamColumn (2 nœuds, geomTransf Linear de la barre, 6 DDL par nœud)")
+                .toStdString();
         }
         if (family == 2 || family == 3)
-            return "truss / corotTruss : un seul élément par barre (une chaîne de barres articulées subdivisée serait un mécanisme)";
-        return "aucun (ligne de contour : élément de frontière, sans rigidité)";
-    case FeType::Line3: return "aucun élément OpenSees de barre à 3 nœuds dans l'adaptateur : régénérer au premier ordre";
+            return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                               "truss / corotTruss : un seul élément par barre (une chaîne de barres articulées subdivisée serait un mécanisme)")
+                .toStdString();
+        return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "aucun (ligne de contour : élément de frontière, sans rigidité)").toStdString();
+    case FeType::Line3:
+        return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "aucun élément OpenSees de barre à 3 nœuds dans l'adaptateur : régénérer au premier ordre")
+            .toStdString();
     case FeType::Tri3:
         *convertible = family == -1;
-        return "ShellDKGT (triangle à 3 nœuds, plaque de Kirchhoff discrète + membrane, 6 DDL par nœud)";
+        return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "ShellDKGT (triangle à 3 nœuds, plaque de Kirchhoff discrète + membrane, 6 DDL par nœud)")
+            .toStdString();
     case FeType::Quad4:
         *convertible = family == -1;
-        return "ShellMITC4 (quadrangle à 4 nœuds, Mindlin-Reissner à cisaillement interpolé + membrane, 6 DDL par nœud)";
-    case FeType::Tri6: return "aucune coque triangulaire à 6 nœuds dans OpenSees";
-    case FeType::Quad8: return "aucune coque à 8 nœuds dans OpenSees (ShellMITC9 exige 9 nœuds)";
+        return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                           "ShellMITC4 (quadrangle à 4 nœuds, Mindlin-Reissner à cisaillement interpolé + membrane, 6 DDL par nœud)")
+            .toStdString();
+    case FeType::Tri6: return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "aucune coque triangulaire à 6 nœuds dans OpenSees").toStdString();
+    case FeType::Quad8:
+        return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "aucune coque à 8 nœuds dans OpenSees (ShellMITC9 exige 9 nœuds)").toStdString();
     case FeType::Tet4:
     case FeType::Tet10:
     case FeType::Hex8:
     case FeType::Hex20:
-        return "éléments de volume OpenSees (FourNodeTetrahedron, stdBrick…) à 3 DDL par nœud : incompatibles avec le modèle à 6 DDL "
-               "(BasicBuilder -ndm 3 -ndf 6) utilisé par TSA";
+        return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                           "éléments de volume OpenSees (FourNodeTetrahedron, stdBrick…) à 3 DDL par nœud : incompatibles avec le modèle à 6 DDL "
+                                           "(BasicBuilder -ndm 3 -ndf 6) utilisé par TSA")
+            .toStdString();
     }
-    return "inconnu";
+    return QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "inconnu").toStdString();
 }
 
 SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeometry& geo, const std::string& engine,
@@ -114,14 +130,21 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
         else
             ++n3, volumes.insert(e.source);
     }
-    if (!unknown.empty()) add(L::Blocking, "Correspondance", "objets maillés absents du modèle : maillage obsolète ou importé, à régénérer", list(unknown));
+    if (!unknown.empty())
+        add(L::Blocking, "Correspondance",
+            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "objets maillés absents du modèle : maillage obsolète ou importé, à régénérer").toStdString(),
+            list(unknown));
 
     // Ordre et types des éléments 1D
     if (n1second)
     {
         bool conv = false;
         add(L::Blocking, "Ordre des éléments",
-            std::to_string(n1second) + " élément(s) 1D du second ordre : " + openSeesElementFor(FeType::Line3, 0, &conv), list(frame2));
+            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "%1 élément(s) 1D du second ordre : %2")
+                .arg(n1second)
+                .arg(QString::fromStdString(openSeesElementFor(FeType::Line3, 0, &conv)))
+                .toStdString(),
+            list(frame2));
     }
     // Connectivité et ordre des nœuds des barres : chaîne d'éléments du nœud TSA de départ au nœud d'arrivée.
     std::set<std::string> badChain;
@@ -144,15 +167,25 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
         if (!endsOk) badChain.insert(ref);
     }
     if (!badChain.empty())
-        add(L::Blocking, "Connectivité", "chaîne d'éléments non continue ou sans les nœuds TSA d'extrémité : maillage à régénérer", list(badChain));
+        add(L::Blocking, "Connectivité",
+            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "chaîne d'éléments non continue ou sans les nœuds TSA d'extrémité : maillage à régénérer")
+                .toStdString(),
+            list(badChain));
     for (const auto& b : badChain) frame1.erase(b);
 
     if (!frame1.empty())
     {
         if (!caps.supportsFrame)
-            add(L::Blocking, "Types d'éléments", engine + " ne calcule pas les barres fléchies", list(frame1));
+            add(L::Blocking, "Types d'éléments",
+                QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "%1 ne calcule pas les barres fléchies").arg(QString::fromStdString(engine)).toStdString(),
+                list(frame1));
         else if (!caps.supportsMesh)
-            add(L::Warning, "Types d'éléments", engine + " ne prend pas en charge les barres subdivisées : un élément fini par barre sera transmis", list(frame1));
+            add(L::Warning, "Types d'éléments",
+                QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                            "%1 ne prend pas en charge les barres subdivisées : un élément fini par barre sera transmis")
+                    .arg(QString::fromStdString(engine))
+                    .toStdString(),
+                list(frame1));
         else
         {
             std::size_t sub = 0;
@@ -178,9 +211,16 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
             r.transmittedElements += sub;
             bool conv = false;
             add(L::Ok, "Types d'éléments",
-                std::to_string(frame1.size()) + " poutre(s) / poteau(x) → " + std::to_string(sub) + " éléments " + openSeesElementFor(FeType::Line2, 0, &conv));
+                QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "%1 poutre(s) / poteau(x) → %2 éléments %3")
+                    .arg(frame1.size())
+                    .arg(sub)
+                    .arg(QString::fromStdString(openSeesElementFor(FeType::Line2, 0, &conv)))
+                    .toStdString());
             add(L::Ok, "Transformations et orientations",
-                "chaque sous-élément reprend l'axe, la rotation de section et le vecteur geomTransf de sa barre (barres rectilignes : axes locaux identiques)");
+                QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                            "chaque sous-élément reprend l'axe, la rotation de section et le vecteur geomTransf de sa barre (barres rectilignes : "
+                                            "axes locaux identiques)")
+                    .toStdString());
         }
     }
     if (!axial.empty())
@@ -198,13 +238,28 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
         if (!caps.supportsShell || !model)
         {
             const bool reject = caps.planarElementPolicy == TSA::Analysis::UnsupportedElementPolicy::Reject;
-            add(reject ? L::Blocking : L::Warning, "Types d'éléments",
-                std::to_string(n2) + " élément(s) de surface non transmis" +
-                    (!caps.supportsShell ? " : " + engine + " ne calcule pas les coques" : " (modèle non fourni à l'adaptateur)") +
-                    (reject ? " (calcul refusé tant qu'ils sont dans la portée)." : " ; les dalles et voiles sont exclus du calcul."),
-                list(surfaces));
+            QString msg;
+            if (!caps.supportsShell)
+                msg = reject ? QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                           "%1 élément(s) de surface non transmis : %2 ne calcule pas les coques (calcul refusé tant qu'ils "
+                                                           "sont dans la portée).")
+                             : QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                           "%1 élément(s) de surface non transmis : %2 ne calcule pas les coques ; les dalles et voiles sont "
+                                                           "exclus du calcul.");
+            else
+                msg = reject ? QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                           "%1 élément(s) de surface non transmis (modèle non fourni à l'adaptateur) (calcul refusé tant "
+                                                           "qu'ils sont dans la portée).")
+                             : QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                           "%1 élément(s) de surface non transmis (modèle non fourni à l'adaptateur) ; les dalles et voiles "
+                                                           "sont exclus du calcul.");
+            msg = msg.arg(n2);
+            if (!caps.supportsShell) msg = msg.arg(QString::fromStdString(engine));
+            add(reject ? L::Blocking : L::Warning, "Types d'éléments", msg.toStdString(), list(surfaces));
             r.ignoredElements += n2;
-            r.strategies.push_back("Calculer les barres seules : dalles et voiles exclus (avertissement au lancement du calcul)");
+            r.strategies.push_back(QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                               "Calculer les barres seules : dalles et voiles exclus (avertissement au lancement du calcul)")
+                                       .toStdString());
         }
         else
         {
@@ -226,26 +281,40 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
             }
             if (!plate.empty())
                 add(L::Blocking, "Formulation des surfaces",
-                    "formulation « plaque seule » non disponible dans OpenSees en 3D (aucun élément de plaque sans membrane) : choisir « coque » "
-                    "(la membrane ajoute la rigidité dans le plan) ou « non structurale »",
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                "formulation « plaque seule » non disponible dans OpenSees en 3D (aucun élément de plaque sans membrane) : "
+                                                "choisir « coque » (la membrane ajoute la rigidité dans le plan) ou « non structurale »")
+                        .toStdString(),
                     list(plate));
             if (!membrane.empty())
                 add(L::Blocking, "Formulation des surfaces",
-                    "formulation « membrane seule » non transmise : les éléments de membrane OpenSees (quad, tri31) sont à 2 DDL par nœud, "
-                    "incompatibles avec le modèle à 6 DDL de TSA ; une coque à faible rigidité de flexion serait une rigidité fictive",
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                "formulation « membrane seule » non transmise : les éléments de membrane OpenSees (quad, tri31) sont à 2 DDL "
+                                                "par nœud, incompatibles avec le modèle à 6 DDL de TSA ; une coque à faible rigidité de flexion serait une "
+                                                "rigidité fictive")
+                        .toStdString(),
                     list(membrane));
             if (!secondOrder.empty())
-                add(L::Blocking, "Ordre des éléments", "éléments de surface du second ordre : " + openSeesElementFor(FeType::Quad8, -1, &conv) + " — régénérer au premier ordre",
+                add(L::Blocking, "Ordre des éléments",
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "éléments de surface du second ordre : %1 — régénérer au premier ordre")
+                        .arg(QString::fromStdString(openSeesElementFor(FeType::Quad8, -1, &conv)))
+                        .toStdString(),
                     list(secondOrder));
             if (!nonStructural.empty())
             {
                 std::size_t n = 0;
                 for (const auto& e : mesh.elements)
                     if (!e.boundary && nonStructural.count(e.source) && feTypeDimension(e.type) == 2) ++n;
-                add(L::Warning, "Types d'éléments", "surface(s) non structurale(s) : non transmises (ni rigidité, ni poids propre, ni charges)", list(nonStructural));
+                add(L::Warning, "Types d'éléments",
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "surface(s) non structurale(s) : non transmises (ni rigidité, ni poids propre, ni charges)")
+                        .toStdString(),
+                    list(nonStructural));
                 r.ignoredElements += n;
             }
-            if (!plate.empty() || !membrane.empty()) r.strategies.push_back("Choisir la formulation « coque » des surfaces concernées (propriétés de la surface)");
+            if (!plate.empty() || !membrane.empty())
+                r.strategies.push_back(
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "Choisir la formulation « coque » des surfaces concernées (propriétés de la surface)")
+                        .toStdString());
 
             // Éléments de coque
             auto& sm = r.surfaces;
@@ -314,8 +383,11 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                 }
                 if (!isolated.empty())
                     add(L::Blocking, "Connexions",
-                        "surface(s) sans aucun nœud commun avec une barre, un appui ou une autre surface (mécanisme) ; aucune liaison rigide "
-                        "n'est créée automatiquement (voile excentré, dalle décalée) : relier la surface par des nœuds communs",
+                        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                    "surface(s) sans aucun nœud commun avec une barre, un appui ou une autre surface (mécanisme) ; aucune "
+                                                    "liaison rigide n'est créée automatiquement (voile excentré, dalle décalée) : relier la surface par des "
+                                                    "nœuds communs")
+                            .toStdString(),
                         list(isolated));
             }
             // Taille, types et qualité des éléments transmis (note de calcul)
@@ -350,23 +422,36 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                 if (q.empty()) q = {};
                 else if (q.minAngle < 15.0 || q.maxAspect > 10.0)
                     add(L::Warning, "Qualité du maillage",
-                        "éléments de coque déformés (angle minimal " + std::to_string(int(q.minAngle)) + "°, rapport d'arêtes " + std::to_string(q.maxAspect).substr(0, 5) +
-                            ") : précision locale réduite, raffiner ou régulariser le maillage");
+                        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                    "éléments de coque déformés (angle minimal %1°, rapport d'arêtes %2) : précision locale réduite, raffiner "
+                                                    "ou régulariser le maillage")
+                            .arg(int(q.minAngle))
+                            .arg(QString::fromStdString(std::to_string(q.maxAspect).substr(0, 5)))
+                            .toStdString());
             }
             std::set<std::string> badMaterial;
             for (const auto& e : sm.elements)
                 if (e.thickness <= 0 || e.material.mechanical.youngModulus <= 0) badMaterial.insert(e.source);
-            if (!badMaterial.empty()) add(L::Blocking, "Sections et matériaux", "surface(s) sans épaisseur ou sans module d'Young", list(badMaterial));
+            if (!badMaterial.empty())
+                add(L::Blocking, "Sections et matériaux",
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "surface(s) sans épaisseur ou sans module d'Young").toStdString(), list(badMaterial));
             if (!sm.elements.empty())
             {
                 r.transmittedElements += sm.elements.size();
                 std::size_t quads = 0, tris = 0;
                 for (const auto& e : sm.elements) (e.meshNodes.size() == 4 ? quads : tris)++;
                 add(L::Ok, "Types d'éléments",
-                    std::to_string(shells.size()) + " surface(s) → " + std::to_string(quads) + " ShellMITC4 et " + std::to_string(tris) + " ShellDKGT");
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "%1 surface(s) → %2 ShellMITC4 et %3 ShellDKGT")
+                        .arg(shells.size())
+                        .arg(quads)
+                        .arg(tris)
+                        .toStdString());
                 add(L::Ok, "Connexions",
-                    "nœuds des coques partagés avec les barres et les nœuds TSA situés sur leurs arêtes (maillage conforme : arête commune = une courbe du "
-                    "mailleur) ; aucune liaison rigide ni excentricité ajoutée (plans moyens confondus avec les axes des barres)");
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                "nœuds des coques partagés avec les barres et les nœuds TSA situés sur leurs arêtes (maillage conforme : arête "
+                                                "commune = une courbe du mailleur) ; aucune liaison rigide ni excentricité ajoutée (plans moyens confondus avec "
+                                                "les axes des barres)")
+                        .toStdString());
             }
 
             // Poids propre des surfaces : ρ · g · e (kN/m²) réparti en charges nodales cohérentes
@@ -390,7 +475,11 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                 const auto res = distributeSurfaceLoad(mesh, geo, p);
                 if (!res.ok)
                 {
-                    add(L::Blocking, "Charges", "poids propre de " + ref + " non converti : " + (res.errors.empty() ? std::string() : res.errors.front()), { ref });
+                    add(L::Blocking, "Charges",
+                        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "poids propre de %1 non converti : %2")
+                            .arg(QString::fromStdString(ref), QString::fromStdString(res.errors.empty() ? std::string() : res.errors.front()))
+                            .toStdString(),
+                        { ref });
                     continue;
                 }
                 for (const auto& f : res.forces) sm.selfWeight.push_back({ f.node, 0, f.fx, f.fy, f.fz, "Poids propre " + ref });
@@ -402,9 +491,12 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                 for (const auto& [ref, w] : sm.selfWeightBySurface) total += w;
                 std::ostringstream os;
                 os.precision(6);
-                os << "poids propre des surfaces : " << total << " kN (ρ·g·e × aire nette), réparti en charges nodales cohérentes, appliqué aux cas qui "
-                   << "incluent le poids propre";
-                sm.notes.push_back(os.str());
+                os << total;
+                sm.notes.push_back(QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                               "poids propre des surfaces : %1 kN (ρ·g·e × aire nette), réparti en charges nodales cohérentes, "
+                                                               "appliqué aux cas qui incluent le poids propre")
+                                       .arg(QString::fromStdString(os.str()))
+                                       .toStdString());
             }
         }
     }
@@ -419,9 +511,16 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
         {
             const std::string ref = l.surfaceRef();
             const std::string who = "charge surfacique " + std::to_string(id) + (l.name.empty() ? std::string() : " « " + l.name + " »") + " (" + ref + ")";
+            // Désignation pour les messages affichés (who reste le libellé écrit dans le script de calcul)
+            const QString loadId = QString::fromStdString(std::to_string(id) + (l.name.empty() ? std::string() : " « " + l.name + " »"));
             if (!transmitted.count(ref))
             {
-                add(L::Blocking, "Charges", who + " : surface non transmise au calcul (non maillée, non structurale, formulation non prise en charge ou moteur sans coques)",
+                add(L::Blocking, "Charges",
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                "charge surfacique %1 (%2) : surface non transmise au calcul (non maillée, non structurale, formulation non "
+                                                "prise en charge ou moteur sans coques)")
+                        .arg(loadId, QString::fromStdString(ref))
+                        .toStdString(),
                     { ref });
                 continue;
             }
@@ -452,14 +551,24 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
             }
             if (!res.ok)
             {
-                add(L::Blocking, "Charges", who + " non convertie : " + (res.errors.empty() ? std::string("erreur inconnue") : res.errors.front()), { ref });
+                add(L::Blocking, "Charges",
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "charge surfacique %1 (%2) non convertie : %3")
+                        .arg(loadId, QString::fromStdString(ref),
+                             res.errors.empty() ? QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "erreur inconnue")
+                                                : QString::fromStdString(res.errors.front()))
+                        .toStdString(),
+                    { ref });
                 continue;
             }
             for (const auto& f : res.forces) r.surfaces.loads.push_back({ f.node, l.loadCaseId, f.fx, f.fy, f.fz, who });
             ++converted;
         }
         if (converted)
-            r.surfaces.notes.push_back(std::to_string(converted) + " charge(s) surfacique(s) converties en charges nodales cohérentes (∫ Nᵢ p dA), résultante et moment contrôlés");
+            r.surfaces.notes.push_back(QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                                   "%1 charge(s) surfacique(s) converties en charges nodales cohérentes (∫ Nᵢ p dA), résultante et "
+                                                                   "moment contrôlés")
+                                           .arg(converted)
+                                           .toStdString());
 
         // Appuis linéiques des bords : chaque nœud du maillage situé sur le bord reçoit les blocages et la raideur linéique
         // multipliée par sa longueur d'influence (demi-distances aux nœuds voisins sur le bord).
@@ -469,7 +578,13 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
             if (list.empty()) return;
             if (!transmitted.count(ref))
             {
-                add(L::Blocking, "Appuis", "appui(s) linéique(s) de " + ref + " : surface non transmise au calcul (non maillée, non structurale ou formulation non prise en charge)", { ref });
+                add(L::Blocking, "Appuis",
+                    QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                "appui(s) linéique(s) de %1 : surface non transmise au calcul (non maillée, non structurale ou formulation "
+                                                "non prise en charge)")
+                        .arg(QString::fromStdString(ref))
+                        .toStdString(),
+                    { ref });
                 return;
             }
             std::set<int> nodes;
@@ -491,26 +606,46 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
             {
                 const auto& sp = list[si];
                 const std::string who = "appui linéique " + std::to_string(si + 1) + (sp.name.empty() ? std::string() : " « " + sp.name + " »") + " de " + ref;
+                // Désignation pour les messages affichés (who reste le libellé de l'appui transmis au calcul)
+                const QString supportId = QString::fromStdString(std::to_string(si + 1) + (sp.name.empty() ? std::string() : " « " + sp.name + " »"));
+                const QString qref = QString::fromStdString(ref);
                 if (!sp.any())
                 {
-                    add(L::Warning, "Appuis", who + " : aucun DDL bloqué ni raideur, sans effet", { ref });
+                    add(L::Warning, "Appuis",
+                        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "appui linéique %1 de %2 : aucun DDL bloqué ni raideur, sans effet")
+                            .arg(supportId, qref)
+                            .toStdString(),
+                        { ref });
                     continue;
                 }
                 if (sp.edge < -1 || sp.edge >= edges)
                 {
-                    add(L::Blocking, "Appuis", who + " : bord " + std::to_string(sp.edge + 1) + " inexistant (" + std::to_string(edges) + " bord(s))", { ref });
+                    add(L::Blocking, "Appuis",
+                        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "appui linéique %1 de %2 : bord %3 inexistant (%4 bord(s))")
+                            .arg(supportId, qref, QString::number(sp.edge + 1), QString::number(edges))
+                            .toStdString(),
+                        { ref });
                     continue;
                 }
                 for (int d = 0; d < 6; ++d)
                     if (sp.fixed[d] && sp.stiffness[d] > 0.0)
-                        add(L::Warning, "Appuis", who + " : DDL " + std::to_string(d + 1) + " à la fois bloqué et élastique, la raideur est sans effet", { ref });
+                        add(L::Warning, "Appuis",
+                            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                        "appui linéique %1 de %2 : DDL %3 à la fois bloqué et élastique, la raideur est sans effet")
+                                .arg(supportId, qref, QString::number(d + 1))
+                                .toStdString(),
+                            { ref });
                 const int e0 = sp.edge < 0 ? 0 : sp.edge, e1 = sp.edge < 0 ? edges - 1 : sp.edge;
                 std::size_t count = 0;
                 for (int ei = e0; ei <= e1; ++ei)
                 {
                     for (int d = 0; d < 6; ++d)
                         if (sp.fixed[d] && ++fixedTwice[{ ei, d }] == 2)
-                            add(L::Warning, "Appuis", ref + " bord " + std::to_string(ei + 1) + " : DDL " + std::to_string(d + 1) + " bloqué par plusieurs appuis (condition redondante)", { ref });
+                            add(L::Warning, "Appuis",
+                                QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "%1 bord %2 : DDL %3 bloqué par plusieurs appuis (condition redondante)")
+                                    .arg(qref, QString::number(ei + 1), QString::number(d + 1))
+                                    .toStdString(),
+                                { ref });
                     const auto& A = corners[std::size_t(ei)];
                     const auto& B = corners[std::size_t(ei + 1) % corners.size()];
                     const double ab[3] = { B[0] - A[0], B[1] - A[1], B[2] - A[2] };
@@ -544,7 +679,11 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
                     }
                 }
                 if (!count)
-                    add(L::Blocking, "Appuis", who + " : aucun nœud du maillage sur le bord visé (régénérer le maillage)", { ref });
+                    add(L::Blocking, "Appuis",
+                        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "appui linéique %1 de %2 : aucun nœud du maillage sur le bord visé (régénérer le maillage)")
+                            .arg(supportId, qref)
+                            .toStdString(),
+                        { ref });
                 supportedNodes += count;
             }
         };
@@ -569,46 +708,75 @@ SolverCompatibility OpenSeesMeshAdapter::check(const FeMesh& mesh, const MeshGeo
             edgeSupports("W" + std::to_string(id), { a, b, { b[0], b[1], b[2] + w.height() }, { a[0], a[1], a[2] + w.height() } }, true, w.edgeSupports());
         }
         if (supportedNodes)
-            r.surfaces.notes.push_back(std::to_string(supportedNodes) + " nœud(s) du maillage portés par des appuis linéiques de bord (raideur linéique × longueur "
-                                       "d'influence de chaque nœud)");
+            r.surfaces.notes.push_back(QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                                   "%1 nœud(s) du maillage portés par des appuis linéiques de bord (raideur linéique × "
+                                                                   "longueur d'influence de chaque nœud)")
+                                           .arg(supportedNodes)
+                                           .toStdString());
     }
 
     if (!volumes.empty())
     {
         bool conv = false;
         add(L::Warning, "Types d'éléments",
-            std::to_string(n3) + " élément(s) de volume non transmis : " + openSeesElementFor(FeType::Hex8, -1, &conv) + " ; les appuis définis aux nœuds restent appliqués",
+            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "%1 élément(s) de volume non transmis : %2 ; les appuis définis aux nœuds restent appliqués")
+                .arg(n3)
+                .arg(QString::fromStdString(openSeesElementFor(FeType::Hex8, -1, &conv)))
+                .toStdString(),
             list(volumes));
         r.ignoredElements += n3;
-        r.strategies.push_back("Conserver les appuis (éventuellement élastiques) des nœuds de semelle à la place du volume maillé");
+        r.strategies.push_back(QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                           "Conserver les appuis (éventuellement élastiques) des nœuds de semelle à la place du volume maillé")
+                                   .toStdString());
     }
 
     // DDL : nœuds TSA + nœuds intermédiaires des barres subdivisées, 6 DDL (BasicBuilder -ndm 3 -ndf 6).
     std::size_t internal = 0;
     for (const auto& [k, pos] : r.memberSubdivisions) internal += pos.size();
     r.estimatedDofs = (geo.tsaNodes.size() + internal + surfaceOnlyNodes) * 6;
-    add(L::Ok, "Degrés de liberté", "6 DDL par nœud (UX UY UZ RX RY RZ), cohérents avec les éléments de barre transmis");
+    add(L::Ok, "Degrés de liberté",
+        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "6 DDL par nœud (UX UY UZ RX RY RZ), cohérents avec les éléments de barre transmis").toStdString());
     if (r.estimatedDofs > dofLimit)
         add(L::Blocking, "Ressources",
-            std::to_string(r.estimatedDofs) + " DDL estimés, au-delà de la limite de " + std::to_string(dofLimit) + " : réduire la finesse ou la portée du calcul");
+            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "%1 DDL estimés, au-delà de la limite de %2 : réduire la finesse ou la portée du calcul")
+                .arg(r.estimatedDofs)
+                .arg(dofLimit)
+                .toStdString());
     else if (r.estimatedDofs > dofLimit / 4)
-        add(L::Warning, "Ressources", std::to_string(r.estimatedDofs) + " DDL estimés : calcul long et mémoire importante");
+        add(L::Warning, "Ressources",
+            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "%1 DDL estimés : calcul long et mémoire importante").arg(r.estimatedDofs).toStdString());
 
     // Sections, matériaux, appuis, charges, groupes
     std::vector<std::string> noSection;
     for (const auto& ref : frame1)
         if (const auto* m = geo.member(ref); m && (m->section.empty() || m->material.empty())) noSection.push_back(ref);
-    if (!noSection.empty()) add(L::Blocking, "Sections et matériaux", "barre(s) sans section ou sans matériau", noSection);
+    if (!noSection.empty())
+        add(L::Blocking, "Sections et matériaux",
+            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "barre(s) sans section ou sans matériau").toStdString(), noSection);
     else if (!frame1.empty() || !axial.empty())
-        add(L::Ok, "Sections et matériaux", "chaque sous-élément reprend la section, le matériau et les relâchements d'extrémité (aux seules extrémités de la barre)");
-    add(L::Ok, "Appuis", "appuis aux nœuds TSA, inchangés ; les nœuds intermédiaires du maillage sont libres");
+        add(L::Ok, "Sections et matériaux",
+            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                        "chaque sous-élément reprend la section, le matériau et les relâchements d'extrémité (aux seules extrémités de la barre)")
+                .toStdString());
+    add(L::Ok, "Appuis",
+        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "appuis aux nœuds TSA, inchangés ; les nœuds intermédiaires du maillage sont libres").toStdString());
     add(L::Ok, "Charges",
-        "charges sur barres réparties exactement sur les sous-éléments (portions, charge ponctuelle sur le sous-élément porteur ou à un nœud du maillage) ; "
-        "charges nodales inchangées ; poids propre calculé par sous-élément ; charges surfaciques et poids propre des coques convertis en charges nodales "
-        "cohérentes");
-    add(L::Ok, "Groupes", "les éléments sont rattachés à leur barre par la référence TSA (groupes physiques Gmsh), jamais par les étiquettes Gmsh");
-    if (r.strategies.empty() && !r.blocking()) r.strategies.push_back("Transmettre le maillage tel quel");
-    if (n1second) r.strategies.insert(r.strategies.begin(), "Régénérer le maillage au premier ordre (même finesse) pour transmettre les barres subdivisées");
+        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                    "charges sur barres réparties exactement sur les sous-éléments (portions, charge ponctuelle sur le sous-élément porteur ou à "
+                                    "un nœud du maillage) ; charges nodales inchangées ; poids propre calculé par sous-élément ; charges surfaciques et poids "
+                                    "propre des coques convertis en charges nodales cohérentes")
+            .toStdString());
+    add(L::Ok, "Groupes",
+        QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                    "les éléments sont rattachés à leur barre par la référence TSA (groupes physiques Gmsh), jamais par les étiquettes Gmsh")
+            .toStdString());
+    if (r.strategies.empty() && !r.blocking())
+        r.strategies.push_back(QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter", "Transmettre le maillage tel quel").toStdString());
+    if (n1second)
+        r.strategies.insert(r.strategies.begin(),
+                            QCoreApplication::translate("TSA::Mesh::OpenSeesMeshAdapter",
+                                                        "Régénérer le maillage au premier ordre (même finesse) pour transmettre les barres subdivisées")
+                                .toStdString());
     return r;
 }
 

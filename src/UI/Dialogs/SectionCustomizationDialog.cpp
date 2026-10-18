@@ -410,11 +410,11 @@ void SectionCustomizationDialog::updateCalculatedProperties()
     double wyCm3 = m_section.wy() * 1000000.0;
     double wzCm3 = m_section.wz() * 1000000.0;
 
-    m_lblArea->setText(QString("Aire <b>A</b> = %1 cm² (%2 m²)").arg(aCm2, 0, 'f', 1).arg(m_section.area(), 0, 'f', 4));
-    m_lblIy->setText(QString("Inertie <b>Iy</b> = %1 cm⁴ (axe fort)").arg(iyCm4, 0, 'f', 1));
-    m_lblIz->setText(QString("Inertie <b>Iz</b> = %1 cm⁴ (axe faible)").arg(izCm4, 0, 'f', 1));
-    m_lblIt->setText(QString("Torsion <b>J</b> = %1 cm⁴").arg(itCm4, 0, 'f', 1));
-    m_lblW->setText(QString("Module <b>Wel,y</b> = %1 cm³ | <b>Wel,z</b> = %2 cm³").arg(wyCm3, 0, 'f', 1).arg(wzCm3, 0, 'f', 1));
+    m_lblArea->setText(tr("Aire <b>A</b> = %1 cm² (%2 m²)").arg(aCm2, 0, 'f', 1).arg(m_section.area(), 0, 'f', 4));
+    m_lblIy->setText(tr("Inertie <b>Iy</b> = %1 cm⁴ (axe fort)").arg(iyCm4, 0, 'f', 1));
+    m_lblIz->setText(tr("Inertie <b>Iz</b> = %1 cm⁴ (axe faible)").arg(izCm4, 0, 'f', 1));
+    m_lblIt->setText(tr("Torsion <b>J</b> = %1 cm⁴").arg(itCm4, 0, 'f', 1));
+    m_lblW->setText(tr("Module <b>Wel,y</b> = %1 cm³ | <b>Wel,z</b> = %2 cm³").arg(wyCm3, 0, 'f', 1).arg(wzCm3, 0, 'f', 1));
 }
 
 TSA::Model::Section SectionCustomizationDialog::customizedSection() const

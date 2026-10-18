@@ -137,7 +137,7 @@ void BarCreationDialog::setupUi()
     propsLayout->addWidget(new QLabel(tr("Matériau par défaut :"), grpProps), 3, 0);
     m_editMaterial = new QLineEdit(grpProps);
     m_editMaterial->setReadOnly(true);
-    m_editMaterial->setText("ACIER S235");
+    m_editMaterial->setText(tr("ACIER S235"));
     m_editMaterial->setStyleSheet("background-color: #F0F0F0; color: #404040;");
     propsLayout->addWidget(m_editMaterial, 3, 1, 1, 2);
 
@@ -455,7 +455,7 @@ void BarCreationDialog::onRoleChanged(int)
     auto role = static_cast<TSA::Model::BarRole>(m_comboRole->currentData().toInt());
     if (role == TSA::Model::BarRole::SteelMember)
     {
-        m_editMaterial->setText("ACIER S235");
+        m_editMaterial->setText(tr("ACIER S235"));
         int idx = m_comboSection->findText("IPE 100");
         if (idx >= 0) m_comboSection->setCurrentIndex(idx);
     }
@@ -466,11 +466,11 @@ void BarCreationDialog::onRoleChanged(int)
             props.section.shape == TSA::Model::SectionShape::UPN ||
             props.section.shape == TSA::Model::SectionShape::Angle)
         {
-            m_editMaterial->setText("ACIER S235");
+            m_editMaterial->setText(tr("ACIER S235"));
         }
         else
         {
-            m_editMaterial->setText("BÉTON C25/30");
+            m_editMaterial->setText(tr("BÉTON C25/30"));
         }
     }
     emitPropertiesChanged();
@@ -485,11 +485,11 @@ void BarCreationDialog::onSectionChanged(int)
         props.section.shape == TSA::Model::SectionShape::BoxHollow ||
         props.section.shape == TSA::Model::SectionShape::Pipe)
     {
-        m_editMaterial->setText("ACIER S235");
+        m_editMaterial->setText(tr("ACIER S235"));
     }
     else
     {
-        m_editMaterial->setText("BÉTON C25/30");
+        m_editMaterial->setText(tr("BÉTON C25/30"));
     }
     emitPropertiesChanged();
 }

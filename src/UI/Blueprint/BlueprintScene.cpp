@@ -693,7 +693,7 @@ void BlueprintScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                 emit graphChanged();
             }
             else
-                emit message(QStringLiteral("Lien refusé : %1").arg(QString::fromStdString(why)));
+                emit message(tr("Lien refusé : %1").arg(QString::fromStdString(why)));
         }
         return;
     }

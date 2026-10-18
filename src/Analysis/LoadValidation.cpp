@@ -63,6 +63,11 @@ std::string ValidationReport::summary() const
     return text.toStdString();
 }
 
+std::string LoadValidation::noSupportCategory()
+{
+    return QCoreApplication::translate("TSA::Analysis::LoadValidation", "Conditions aux Limites").toStdString();
+}
+
 ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
 {
     ValidationReport report;
@@ -103,10 +108,10 @@ ValidationReport LoadValidation::validateModel(const TSA::Model::Model& model)
         if (!wl.edgeSupports().empty()) hasSupport = true;
     if (!hasSupport)
     {
-        report.addError(QCoreApplication::translate("TSA::Analysis::LoadValidation", "Conditions aux Limites").toStdString(),
-                        // Laissé en français : StructuralChecker (src/AI) repère ce message par le mot « appui »
-                        // pour éviter un doublon de STAB_NO_SUPPORT. À traduire quand ce test sera indépendant du texte.
-                        "Aucun appui (Encastrement, Articulation, Appui simple) n'est défini. La structure est cinématiquement instable.");
+        report.addError(noSupportCategory(),
+                        QCoreApplication::translate("TSA::Analysis::LoadValidation",
+                            "Aucun appui (Encastrement, Articulation, Appui simple) n'est défini. La structure est cinématiquement instable.")
+                            .toStdString());
     }
 
     // 3. Validation des cas de charges

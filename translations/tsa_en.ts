@@ -4644,6 +4644,14 @@ Click for the AI settings</translation>
         <translation>Automation server (MCP) unavailable: %1</translation>
     </message>
     <message>
+        <source>mémoire insuffisante</source>
+        <translation>insufficient memory</translation>
+    </message>
+    <message>
+        <source>erreur interne inconnue</source>
+        <translation>unknown internal error</translation>
+    </message>
+    <message>
         <source>Exporter au format IFC</source>
         <translation>Export to IFC format</translation>
     </message>
@@ -5574,6 +5582,22 @@ Shift + click on a tool: use the other mode once.</translation>
         <translation>Circular section %1 (Ø%2 m) set as default section</translation>
     </message>
     <message>
+        <source>Béton C20/25 (fck = 20 MPa, Ecm = 30 GPa, rho = 25 kN/m³)</source>
+        <translation>Concrete C20/25 (fck = 20 MPa, Ecm = 30 GPa, rho = 25 kN/m³)</translation>
+    </message>
+    <message>
+        <source>Béton C25/30 (fck = 25 MPa, Ecm = 31 GPa, rho = 25 kN/m³) - Standard EC2</source>
+        <translation>Concrete C25/30 (fck = 25 MPa, Ecm = 31 GPa, rho = 25 kN/m³) - EC2 standard</translation>
+    </message>
+    <message>
+        <source>Béton C30/37 (fck = 30 MPa, Ecm = 33 GPa, rho = 25 kN/m³)</source>
+        <translation>Concrete C30/37 (fck = 30 MPa, Ecm = 33 GPa, rho = 25 kN/m³)</translation>
+    </message>
+    <message>
+        <source>Béton C35/45 (fck = 35 MPa, Ecm = 34 GPa, rho = 25 kN/m³)</source>
+        <translation>Concrete C35/45 (fck = 35 MPa, Ecm = 34 GPa, rho = 25 kN/m³)</translation>
+    </message>
+    <message>
         <source>Matériaux - Béton Armé</source>
         <translation>Materials - Reinforced concrete</translation>
     </message>
@@ -5588,6 +5612,22 @@ Shift + click on a tool: use the other mode once.</translation>
     <message>
         <source>Matériau : %1</source>
         <translation>Material: %1</translation>
+    </message>
+    <message>
+        <source>Acier S235 (fy = 235 MPa, fu = 360 MPa, E = 210 GPa, rho = 78.5 kN/m³)</source>
+        <translation>Steel S235 (fy = 235 MPa, fu = 360 MPa, E = 210 GPa, rho = 78.5 kN/m³)</translation>
+    </message>
+    <message>
+        <source>Acier S275 (fy = 275 MPa, fu = 430 MPa, E = 210 GPa, rho = 78.5 kN/m³)</source>
+        <translation>Steel S275 (fy = 275 MPa, fu = 430 MPa, E = 210 GPa, rho = 78.5 kN/m³)</translation>
+    </message>
+    <message>
+        <source>Acier S355 (fy = 355 MPa, fu = 510 MPa, E = 210 GPa, rho = 78.5 kN/m³) - Standard EC3</source>
+        <translation>Steel S355 (fy = 355 MPa, fu = 510 MPa, E = 210 GPa, rho = 78.5 kN/m³) - EC3 standard</translation>
+    </message>
+    <message>
+        <source>Acier S460 (fy = 460 MPa, fu = 540 MPa, E = 210 GPa, rho = 78.5 kN/m³)</source>
+        <translation>Steel S460 (fy = 460 MPa, fu = 540 MPa, E = 210 GPa, rho = 78.5 kN/m³)</translation>
     </message>
     <message>
         <source>Matériaux - Acier Structural</source>
@@ -6868,6 +6908,22 @@ Source not present on this computer (distributed package): see the repository.</
         <translation>whole boundary</translation>
     </message>
     <message>
+        <source>pied</source>
+        <translation>base</translation>
+    </message>
+    <message>
+        <source>extrémité de fin</source>
+        <translation>end</translation>
+    </message>
+    <message>
+        <source>tête</source>
+        <translation>top</translation>
+    </message>
+    <message>
+        <source>extrémité de début</source>
+        <translation>start</translation>
+    </message>
+    <message>
         <source>bord %1</source>
         <translation>edge %1</translation>
     </message>
@@ -7576,6 +7632,10 @@ Run the analysis?</translation>
     <message>
         <source>Conditions aux Limites</source>
         <translation>Boundary conditions</translation>
+    </message>
+    <message>
+        <source>Aucun appui (Encastrement, Articulation, Appui simple) n'est défini. La structure est cinématiquement instable.</source>
+        <translation>No support (fixed, pinned, roller) is defined. The structure is kinematically unstable.</translation>
     </message>
     <message>
         <source>Charges</source>
@@ -8751,6 +8811,332 @@ Run the analysis?</translation>
     </message>
 </context>
 <context>
+    <name>TSA::BIM::BimGeometry</name>
+    <message>
+        <source>géométries : signature BGEO absente</source>
+        <translation>geometries: BGEO signature missing</translation>
+    </message>
+    <message>
+        <source>géométries : version future</source>
+        <translation>geometries: future version</translation>
+    </message>
+    <message>
+        <source>géométries : bloc tronqué</source>
+        <translation>geometries: truncated block</translation>
+    </message>
+    <message>
+        <source>géométries : flux illisible</source>
+        <translation>geometries: unreadable stream</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::Ifc::IfcExporter</name>
+    <message>
+        <source>Export IFC échoué : %1</source>
+        <translation>IFC export failed: %1</translation>
+    </message>
+    <message>
+        <source>%1 produit(s), %2 étage(s), %3 élément(s) analytique(s), %4 nœud(s) analytique(s), %5 entités STEP</source>
+        <translation>%1 product(s), %2 storey(s), %3 analytical element(s), %4 analytical node(s), %5 STEP entities</translation>
+    </message>
+    <message>
+        <source>%1 : géométrie non exportée (dimensions nulles ou nœuds manquants).</source>
+        <translation>%1: geometry not exported (zero dimensions or missing nodes).</translation>
+    </message>
+    <message>
+        <source>%1 : exporté en IfcBuildingElementProxy (classe d'origine conservée en propriété TSA_Import).</source>
+        <translation>%1: exported as IfcBuildingElementProxy (original class kept in the TSA_Import property).</translation>
+    </message>
+    <message>
+        <source>impossible d'écrire dans le dossier de « %1 » (%2)</source>
+        <translation>cannot write to the folder of “%1” (%2)</translation>
+    </message>
+    <message>
+        <source>relu par %1 : schéma %2, %3 produit(s)</source>
+        <translation>read back by %1: schema %2, %3 product(s)</translation>
+    </message>
+    <message>
+        <source>Relecture : %1 produit(s) relu(s) pour %2 écrit(s).</source>
+        <translation>Read-back: %1 product(s) read back for %2 written.</translation>
+    </message>
+    <message>
+        <source>Relecture : %1</source>
+        <translation>Read-back: %1</translation>
+    </message>
+    <message>
+        <source>fichier produit illisible par un lecteur IFC indépendant (%1) : « %2 » non écrit</source>
+        <translation>generated file unreadable by an independent IFC reader (%1): “%2” not written</translation>
+    </message>
+    <message>
+        <source>relecture indépendante non faite (%1)</source>
+        <translation>independent read-back not performed (%1)</translation>
+    </message>
+    <message>
+        <source>impossible d'écrire « %1 » (%2)</source>
+        <translation>cannot write “%1” (%2)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::Ifc::IfcImporter</name>
+    <message>
+        <source>Import IFC annulé.</source>
+        <translation>IFC import cancelled.</translation>
+    </message>
+    <message>
+        <source>Import IFC échoué : %1</source>
+        <translation>IFC import failed: %1</translation>
+    </message>
+    <message>
+        <source>%1 produit(s) physique(s)</source>
+        <translation>%1 physical product(s)</translation>
+    </message>
+    <message>
+        <source> (%1 avec géométrie)</source>
+        <translation> (%1 with geometry)</translation>
+    </message>
+    <message>
+        <source>, dont %1 à préparer pour le calcul</source>
+        <translation>, of which %1 to be prepared for analysis</translation>
+    </message>
+    <message>
+        <source>, %1 non porteur(s)</source>
+        <translation>, %1 non-load-bearing</translation>
+    </message>
+    <message>
+        <source> ; modèle de calcul : %1 nœud(s), %2 barre(s), %3 surface(s), %4 fondation(s)</source>
+        <translation> ; analysis model: %1 node(s), %2 member(s), %3 surface(s), %4 foundation(s)</translation>
+    </message>
+    <message>
+        <source> (dont %1 élément(s) déduit(s) de la géométrie, à vérifier)</source>
+        <translation> (including %1 element(s) derived from the geometry, to be checked)</translation>
+    </message>
+    <message>
+        <source> ; %1 étage(s)</source>
+        <translation> ; %1 storey(s)</translation>
+    </message>
+    <message>
+        <source> ; %1 objet(s) non importé(s)</source>
+        <translation> ; %1 object(s) not imported</translation>
+    </message>
+    <message>
+        <source> — schéma %1</source>
+        <translation> — schema %1</translation>
+    </message>
+    <message>
+        <source> — schéma %1, %2</source>
+        <translation> — schema %1, %2</translation>
+    </message>
+    <message>
+        <source>%1 produit(s) porteur(s) dans le fichier, aucun n'a pu être converti</source>
+        <translation>%1 load-bearing product(s) in the file, none could be converted</translation>
+    </message>
+    <message>
+        <source>aucun élément structurel ni modèle analytique dans le fichier</source>
+        <translation>no structural element or analytical model in the file</translation>
+    </message>
+    <message>
+        <source>Unité de longueur du fichier convertie en mètres (facteur %1).</source>
+        <translation>File length unit converted to metres (factor %1).</translation>
+    </message>
+    <message>
+        <source>Matériau « %1 » : catégorie absente, propriétés mécaniques provisoires (%2) à remplacer avant tout calcul.</source>
+        <translation>Material “%1”: category missing, provisional mechanical properties (%2) to be replaced before any analysis.</translation>
+    </message>
+    <message>
+        <source>Matériau « %1 » : catégorie « %2 » inconnue, propriétés mécaniques provisoires (%3) à remplacer avant tout calcul.</source>
+        <translation>Material “%1”: unknown category “%2”, provisional mechanical properties (%3) to be replaced before any analysis.</translation>
+    </message>
+    <message>
+        <source>%1 : profil absent, section rectangulaire 300×500 par défaut.</source>
+        <translation>%1: profile missing, default 300×500 rectangular section.</translation>
+    </message>
+    <message>
+        <source>%1 : représentation %2 non prise en charge.</source>
+        <translation>%1: representation %2 not supported.</translation>
+    </message>
+    <message>
+        <source>%1 : aucun matériau dans le fichier, %2 provisoire pour les éléments de calcul déduits (à remplacer).</source>
+        <translation>%1: no material in the file, provisional %2 for the derived analysis elements (to be replaced).</translation>
+    </message>
+    <message>
+        <source>%1 : profil non reconnu, section 300×500 par défaut.</source>
+        <translation>%1: profile not recognised, default 300×500 section.</translation>
+    </message>
+    <message>
+        <source>éléments de calcul déduits de la géométrie, à vérifier</source>
+        <translation>analysis elements derived from the geometry, to be checked</translation>
+    </message>
+    <message>
+        <source>pas un fichier STEP : en-tête « ISO-10303-21; » absent</source>
+        <translation>not a STEP file: “ISO-10303-21;” header missing</translation>
+    </message>
+    <message>
+        <source>fichier incomplet : fin « END-ISO-10303-21; » absente (fichier tronqué ou transfert interrompu)</source>
+        <translation>incomplete file: “END-ISO-10303-21;” end missing (truncated file or interrupted transfer)</translation>
+    </message>
+    <message>
+        <source>lecteur STEP interne</source>
+        <translation>internal STEP reader</translation>
+    </message>
+    <message>
+        <source>schéma « %1 » non IFC</source>
+        <translation>schema “%1” is not IFC</translation>
+    </message>
+    <message>
+        <source>lecteur STEP interne (capacités réduites)</source>
+        <translation>internal STEP reader (reduced capabilities)</translation>
+    </message>
+    <message>
+        <source>Lecture du fichier</source>
+        <translation>Reading the file</translation>
+    </message>
+    <message>
+        <source>impossible d'ouvrir « %1 »</source>
+        <translation>cannot open “%1”</translation>
+    </message>
+    <message>
+        <source>Lecteur STEP interne : %1 ; modèle analytique du fichier non repris.</source>
+        <translation>Internal STEP reader: %1 ; analytical model of the file not taken over.</translation>
+    </message>
+    <message>
+        <source>schéma non IFC</source>
+        <translation>non-IFC schema</translation>
+    </message>
+    <message>
+        <source>Objets physiques et géométrie</source>
+        <translation>Physical objects and geometry</translation>
+    </message>
+    <message>
+        <source>aucun produit ni modèle analytique dans le fichier</source>
+        <translation>no product or analytical model in the file</translation>
+    </message>
+    <message>
+        <source>Terminé</source>
+        <translation>Done</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::Ifc::IfcOpenShellImport</name>
+    <message>
+        <source>noyau IFC complet (IfcOpenShell) absent de cette version de TSA</source>
+        <translation>full IFC kernel (IfcOpenShell) missing from this version of TSA</translation>
+    </message>
+    <message>
+        <source>relecture indépendante indisponible (IfcOpenShell absent de cette version de TSA)</source>
+        <translation>independent read-back unavailable (IfcOpenShell missing from this version of TSA)</translation>
+    </message>
+    <message>
+        <source>Propriétés et relations</source>
+        <translation>Properties and relationships</translation>
+    </message>
+    <message>
+        <source>Produits sans géométrie</source>
+        <translation>Products without geometry</translation>
+    </message>
+    <message>
+        <source>Étage « %1 » sans cote (Elevation) : placé à 0 m.</source>
+        <translation>Storey “%1” has no elevation (Elevation): placed at 0 m.</translation>
+    </message>
+    <message>
+        <source>Noyau géométrique indisponible : %1. Produits importés sans géométrie.</source>
+        <translation>Geometry kernel unavailable: %1. Products imported without geometry.</translation>
+    </message>
+    <message>
+        <source>Aucune représentation géométrique interprétable dans le fichier.</source>
+        <translation>No interpretable geometric representation in the file.</translation>
+    </message>
+    <message>
+        <source>Unité de longueur du noyau géométrique (%1) différente de celle du projet : géométrie remise à l'échelle du projet (facteur %2).</source>
+        <translation>Length unit of the geometry kernel (%1) differs from the project's: geometry rescaled to the project (factor %2).</translation>
+    </message>
+    <message>
+        <source>Géométrie des produits</source>
+        <translation>Product geometry</translation>
+    </message>
+    <message>
+        <source>aucune représentation géométrique dans le fichier</source>
+        <translation>no geometric representation in the file</translation>
+    </message>
+    <message>
+        <source>représentation « %1 » non convertie par le noyau géométrique</source>
+        <translation>representation “%1” not converted by the geometry kernel</translation>
+    </message>
+    <message>
+        <source>fichier illisible par IfcOpenShell</source>
+        <translation>file unreadable by IfcOpenShell</translation>
+    </message>
+    <message>
+        <source>relu avec remarques : %1</source>
+        <translation>read back with remarks: %1</translation>
+    </message>
+    <message>
+        <source>IfcOpenShell 0.9.0post1 (noyau OpenCASCADE)</source>
+        <translation>IfcOpenShell 0.9.0post1 (OpenCASCADE kernel)</translation>
+    </message>
+    <message>
+        <source>fichier IFC illisible par IfcOpenShell (syntaxe STEP ou schéma non reconnu)</source>
+        <translation>IFC file unreadable by IfcOpenShell (STEP syntax or schema not recognised)</translation>
+    </message>
+    <message>
+        <source>Noyau géométrique : %1</source>
+        <translation>Geometry kernel: %1</translation>
+    </message>
+    <message>
+        <source>Noyau géométrique : %1 autre(s) message(s).</source>
+        <translation>Geometry kernel: %1 other message(s).</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::Ifc::IfcStepReader</name>
+    <message>
+        <source>fichier non STEP (en-tête ISO-10303-21 absent)</source>
+        <translation>not a STEP file (ISO-10303-21 header missing)</translation>
+    </message>
+    <message>
+        <source>section DATA absente</source>
+        <translation>DATA section missing</translation>
+    </message>
+    <message>
+        <source>entité attendue près de l'octet %1</source>
+        <translation>entity expected near byte %1</translation>
+    </message>
+    <message>
+        <source>« = » attendu après #%1</source>
+        <translation>“=” expected after #%1</translation>
+    </message>
+    <message>
+        <source>instance complexe illisible #%1</source>
+        <translation>unreadable complex instance #%1</translation>
+    </message>
+    <message>
+        <source>entité #%1 illisible</source>
+        <translation>entity #%1 unreadable</translation>
+    </message>
+    <message>
+        <source>« ; » attendu après #%1</source>
+        <translation>“;” expected after #%1</translation>
+    </message>
+    <message>
+        <source>impossible d'ouvrir « %1 »</source>
+        <translation>cannot open “%1”</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::ProductTypes</name>
+    <message>
+        <source>section %1 au lieu de %2</source>
+        <translation>section %1 instead of %2</translation>
+    </message>
+    <message>
+        <source>épaisseur %1 m au lieu de %2 m</source>
+        <translation>thickness %1 m instead of %2 m</translation>
+    </message>
+    <message>
+        <source>matériau %1 au lieu de %2</source>
+        <translation>material %1 instead of %2</translation>
+    </message>
+</context>
+<context>
     <name>TSA::Blueprint::File</name>
     <message>
         <source>broche « %1 » : type « %2 » inconnu</source>
@@ -9599,6 +9985,440 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
     <message>
         <source>sous-graphe « %1 » inexistant</source>
         <translation>subgraph “%1” does not exist</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::IO::TSAFile</name>
+    <message>
+        <source>Impossible de créer le fichier .tsa : %1 (%2)</source>
+        <translation>Cannot create the .tsa file: %1 (%2)</translation>
+    </message>
+    <message>
+        <source>Erreur d'écriture du fichier .tsa (%1). Le fichier existant est conservé.</source>
+        <translation>Error writing the .tsa file (%1). The existing file has been kept.</translation>
+    </message>
+    <message>
+        <source>Erreur lors de la finalisation du fichier .tsa (%1). Le fichier existant est conservé.</source>
+        <translation>Error while finalising the .tsa file (%1). The existing file has been kept.</translation>
+    </message>
+    <message>
+        <source>Fichier inaccessible (ouvert ou verrouillé par un autre programme, ou droits insuffisants) : %1</source>
+        <translation>File inaccessible (open or locked by another program, or insufficient permissions): %1</translation>
+    </message>
+    <message>
+        <source>Fichier introuvable : %1</source>
+        <translation>File not found: %1</translation>
+    </message>
+    <message>
+        <source>Le fichier .tsa est corrompu ou incomplet (en-tête tronqué).</source>
+        <translation>The .tsa file is corrupt or incomplete (truncated header).</translation>
+    </message>
+    <message>
+        <source>Ce fichier n'est pas un fichier de projet %1 valide (signature magique invalide).</source>
+        <translation>This file is not a valid %1 project file (invalid magic signature).</translation>
+    </message>
+    <message>
+        <source>Ce projet %1 a été créé avec une version plus récente du logiciel (v%2.%3) et ne peut pas être ouvert par cette version.</source>
+        <translation>This %1 project was created with a newer version of the software (v%2.%3) and cannot be opened by this version.</translation>
+    </message>
+    <message>
+        <source>Fichier .tsa tronqué ou corrompu (taille inférieure à l'en-tête).</source>
+        <translation>Truncated or corrupt .tsa file (size smaller than the header).</translation>
+    </message>
+    <message>
+        <source>Format de fichier invalide (signature non reconnue).</source>
+        <translation>Invalid file format (unrecognised signature).</translation>
+    </message>
+    <message>
+        <source>Ce projet %1 a été créé avec une version plus récente (Format v%2.%3). Veuillez mettre à jour %1.</source>
+        <translation>This %1 project was created with a newer version (format v%2.%3). Please update %1.</translation>
+    </message>
+    <message>
+        <source>Taille du payload excessive (dépassement limite de sécurité de 1 Go).</source>
+        <translation>Payload size too large (exceeds the 1 GB safety limit).</translation>
+    </message>
+    <message>
+        <source>Erreur de lecture : données du payload incomplètes.</source>
+        <translation>Read error: incomplete payload data.</translation>
+    </message>
+    <message>
+        <source>Somme de contrôle CRC32 invalide. Le fichier est altéré ou corrompu.</source>
+        <translation>Invalid CRC32 checksum. The file is altered or corrupt.</translation>
+    </message>
+    <message>
+        <source>Ce fichier est protégé par mot de passe mais aucun déchiffreur n'est disponible.</source>
+        <translation>This file is password-protected but no decryptor is available.</translation>
+    </message>
+    <message>
+        <source>Échec du déchiffrement (mot de passe incorrect ou corrompu).</source>
+        <translation>Decryption failed (incorrect password or corrupt file).</translation>
+    </message>
+    <message>
+        <source>Ce fichier est compressé mais aucun décompresseur n'est configuré.</source>
+        <translation>This file is compressed but no decompressor is configured.</translation>
+    </message>
+    <message>
+        <source>Échec de décompression du payload .tsa (flux zlib corrompu).</source>
+        <translation>Failed to decompress the .tsa payload (corrupt zlib stream).</translation>
+    </message>
+    <message>
+        <source>Payload invalide dans le fichier .tsa.</source>
+        <translation>Invalid payload in the .tsa file.</translation>
+    </message>
+    <message>
+        <source>Échec de décompression pour miniature.</source>
+        <translation>Thumbnail decompression failed.</translation>
+    </message>
+    <message>
+        <source>Aucune miniature trouvée.</source>
+        <translation>No thumbnail found.</translation>
+    </message>
+    <message>
+        <source>Chunk tronqué ou corrompu dans le fichier .tsa.</source>
+        <translation>Truncated or corrupt chunk in the .tsa file.</translation>
+    </message>
+    <message>
+        <source>Nombre de nœuds anormalement élevé dans le fichier.</source>
+        <translation>Abnormally high number of nodes in the file.</translation>
+    </message>
+    <message>
+        <source>Nombre d'appuis anormalement élevé dans le fichier .tsa.</source>
+        <translation>Abnormally high number of supports in the .tsa file.</translation>
+    </message>
+    <message>
+        <source>Nombre de barres anormalement élevé dans le fichier.</source>
+        <translation>Abnormally high number of members in the file.</translation>
+    </message>
+    <message>
+        <source>Nombre de poteaux anormalement élevé dans le fichier.</source>
+        <translation>Abnormally high number of columns in the file.</translation>
+    </message>
+    <message>
+        <source>Nombre de dalles anormalement élevé dans le fichier.</source>
+        <translation>Abnormally high number of slabs in the file.</translation>
+    </message>
+    <message>
+        <source>Nombre de voiles anormalement élevé dans le fichier.</source>
+        <translation>Abnormally high number of walls in the file.</translation>
+    </message>
+    <message>
+        <source>Nombre de fondations anormalement élevé dans le fichier.</source>
+        <translation>Abnormally high number of foundations in the file.</translation>
+    </message>
+    <message>
+        <source>Nombre d'éléments de treillis anormalement élevé dans le fichier.</source>
+        <translation>Abnormally high number of truss elements in the file.</translation>
+    </message>
+    <message>
+        <source>Nombre excessif de câbles dans le chunk CABL.</source>
+        <translation>Excessive number of cables in the CABL chunk.</translation>
+    </message>
+    <message>
+        <source>Nombre excessif de snapshots de calcul dans le fichier.</source>
+        <translation>Excessive number of analysis snapshots in the file.</translation>
+    </message>
+    <message>
+        <source>Chunk LOAD invalide : %1</source>
+        <translation>Invalid LOAD chunk: %1</translation>
+    </message>
+    <message>
+        <source>en-tête tronqué</source>
+        <translation>truncated header</translation>
+    </message>
+    <message>
+        <source>version de disposition inconnue</source>
+        <translation>unknown layout version</translation>
+    </message>
+    <message>
+        <source>compteurs tronqués</source>
+        <translation>truncated counters</translation>
+    </message>
+    <message>
+        <source>nombre de cas de charge</source>
+        <translation>number of load cases</translation>
+    </message>
+    <message>
+        <source>cas de charge tronqué</source>
+        <translation>truncated load case</translation>
+    </message>
+    <message>
+        <source>catégorie de cas inconnue</source>
+        <translation>unknown case category</translation>
+    </message>
+    <message>
+        <source>nombre de combinaisons</source>
+        <translation>number of combinations</translation>
+    </message>
+    <message>
+        <source>combinaison tronquée</source>
+        <translation>truncated combination</translation>
+    </message>
+    <message>
+        <source>type de combinaison inconnu</source>
+        <translation>unknown combination type</translation>
+    </message>
+    <message>
+        <source>nombre de facteurs</source>
+        <translation>number of factors</translation>
+    </message>
+    <message>
+        <source>facteur tronqué</source>
+        <translation>truncated factor</translation>
+    </message>
+    <message>
+        <source>nombre de charges nodales</source>
+        <translation>number of nodal loads</translation>
+    </message>
+    <message>
+        <source>charge nodale tronquée</source>
+        <translation>truncated nodal load</translation>
+    </message>
+    <message>
+        <source>repère de charge inconnu</source>
+        <translation>unknown load axes</translation>
+    </message>
+    <message>
+        <source>nombre de charges sur barres</source>
+        <translation>number of member loads</translation>
+    </message>
+    <message>
+        <source>charge sur barre tronquée</source>
+        <translation>truncated member load</translation>
+    </message>
+    <message>
+        <source>énumération de charge sur barre inconnue</source>
+        <translation>unknown member load enumeration</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::IO::Tsa3d</name>
+    <message>
+        <source>JSON invalide ligne %1, colonne %2 : %3</source>
+        <translation>Invalid JSON at line %1, column %2: %3</translation>
+    </message>
+    <message>
+        <source>le document doit être un objet JSON</source>
+        <translation>the document must be a JSON object</translation>
+    </message>
+    <message>
+        <source>lecture impossible de %1 : %2</source>
+        <translation>cannot read %1: %2</translation>
+    </message>
+    <message>
+        <source>écriture impossible de %1 : %2</source>
+        <translation>cannot write %1: %2</translation>
+    </message>
+    <message>
+        <source>unité « %1 » non prise en charge</source>
+        <translation>unit “%1” not supported</translation>
+    </message>
+    <message>
+        <source>câbles : définition détaillée (torons, ancrages, points intermédiaires) non représentée en TSA3D v1 ; type, géométrie, flèche, tension initiale et section exportés</source>
+        <translation>cables: detailed definition (strands, anchorages, intermediate points) not represented in TSA3D v1; type, geometry, sag, initial tension and section exported</translation>
+    </message>
+    <message>
+        <source>cotations (annotations TSA) non exportées : hors du périmètre du format v1</source>
+        <translation>dimensions (TSA annotations) not exported: outside the scope of format v1</translation>
+    </message>
+    <message>
+        <source>aucun cas de charge : cas par défaut d'un nouveau projet créés</source>
+        <translation>no load case: default cases of a new project created</translation>
+    </message>
+    <message>
+        <source>résultats du fichier conservés à titre d'information, non chargés comme résultats de calcul</source>
+        <translation>results from the file kept for information, not loaded as analysis results</translation>
+    </message>
+    <message>
+        <source>maillage du fichier conservé, non appliqué (TSA recalcule et le moteur maille lui-même)</source>
+        <translation>mesh from the file kept, not applied (TSA recalculates and the engine meshes by itself)</translation>
+    </message>
+    <message>
+        <source>tableau attendu</source>
+        <translation>array expected</translation>
+    </message>
+    <message>
+        <source>identifiant (chaîne non vide) obligatoire</source>
+        <translation>identifier (non-empty string) required</translation>
+    </message>
+    <message>
+        <source>identifiant « %1 » déjà utilisé (%2)</source>
+        <translation>identifier “%1” already used (%2)</translation>
+    </message>
+    <message>
+        <source>référence obligatoire</source>
+        <translation>reference required</translation>
+    </message>
+    <message>
+        <source>référence (identifiant) attendue</source>
+        <translation>reference (identifier) expected</translation>
+    </message>
+    <message>
+        <source>« %1 » ne désigne aucun objet de type %2</source>
+        <translation>“%1” does not refer to any object of type %2</translation>
+    </message>
+    <message>
+        <source>valeur obligatoire</source>
+        <translation>value required</translation>
+    </message>
+    <message>
+        <source>nombre strictement positif attendu</source>
+        <translation>strictly positive number expected</translation>
+    </message>
+    <message>
+        <source>valeur obligatoire (%1)</source>
+        <translation>value required (%1)</translation>
+    </message>
+    <message>
+        <source>« %1 » inconnu (valeurs : %2)</source>
+        <translation>“%1” unknown (values: %2)</translation>
+    </message>
+    <message>
+        <source>[x, y, z] obligatoire</source>
+        <translation>[x, y, z] required</translation>
+    </message>
+    <message>
+        <source>tableau de 3 nombres attendu</source>
+        <translation>array of 3 numbers expected</translation>
+    </message>
+    <message>
+        <source>champ non interprété par TSA : conservé tel quel</source>
+        <translation>field not interpreted by TSA: kept as is</translation>
+    </message>
+    <message>
+        <source>objet attendu</source>
+        <translation>object expected</translation>
+    </message>
+    <message>
+        <source>« %1 » attendu</source>
+        <translation>“%1” expected</translation>
+    </message>
+    <message>
+        <source>version « majeur.mineur » obligatoire (ex. « %1 »)</source>
+        <translation>“major.minor” version required (e.g. “%1”)</translation>
+    </message>
+    <message>
+        <source>version %1 plus récente que celle prise en charge (%2) : import refusé, aucune conversion destructive n'est tentée</source>
+        <translation>version %1 newer than the supported one (%2): import refused, no destructive conversion is attempted</translation>
+    </message>
+    <message>
+        <source>version %1 non prise en charge</source>
+        <translation>version %1 not supported</translation>
+    </message>
+    <message>
+        <source>version mineure %1.%2 plus récente : champs inconnus conservés sans interprétation</source>
+        <translation>newer minor version %1.%2: unknown fields kept without interpretation</translation>
+    </message>
+    <message>
+        <source>bloc non interprété par TSA : conservé tel quel</source>
+        <translation>block not interpreted by TSA: kept as is</translation>
+    </message>
+    <message>
+        <source>coefficient de Poisson dans ]-1 ; 0,5[ attendu</source>
+        <translation>Poisson's ratio within ]-1; 0.5[ expected</translation>
+    </message>
+    <message>
+        <source>masse volumique positive attendue</source>
+        <translation>positive density expected</translation>
+    </message>
+    <message>
+        <source>objet de dimensions obligatoire</source>
+        <translation>dimensions object required</translation>
+    </message>
+    <message>
+        <source>altitude (nombre) obligatoire</source>
+        <translation>elevation (number) required</translation>
+    </message>
+    <message>
+        <source>raideur positive attendue pour un DDL élastique</source>
+        <translation>positive stiffness expected for an elastic DOF</translation>
+    </message>
+    <message>
+        <source>deux nœuds attendus [début, fin]</source>
+        <translation>two nodes expected [start, end]</translation>
+    </message>
+    <message>
+        <source>une barre relie deux nœuds distincts</source>
+        <translation>a member connects two distinct nodes</translation>
+    </message>
+    <message>
+        <source>barre de longueur nulle (nœuds confondus)</source>
+        <translation>zero-length member (coincident nodes)</translation>
+    </message>
+    <message>
+        <source>section absente : section par défaut de TSA</source>
+        <translation>section missing: TSA default section</translation>
+    </message>
+    <message>
+        <source>matériau absent : matériau par défaut de TSA</source>
+        <translation>material missing: TSA default material</translation>
+    </message>
+    <message>
+        <source>nombre attendu</source>
+        <translation>number expected</translation>
+    </message>
+    <message>
+        <source>un voile est défini par deux nœuds (pied gauche, pied droit)</source>
+        <translation>a wall is defined by two nodes (left base, right base)</translation>
+    </message>
+    <message>
+        <source>une dalle a au moins trois nœuds</source>
+        <translation>a slab has at least three nodes</translation>
+    </message>
+    <message>
+        <source>nœud répété</source>
+        <translation>repeated node</translation>
+    </message>
+    <message>
+        <source>force et / ou moment attendus</source>
+        <translation>force and/or moment expected</translation>
+    </message>
+    <message>
+        <source>intensité q1 (nombre) obligatoire</source>
+        <translation>intensity q1 (number) required</translation>
+    </message>
+    <message>
+        <source>intensité q2 obligatoire (trapézoïdale)</source>
+        <translation>intensity q2 required (trapezoidal)</translation>
+    </message>
+    <message>
+        <source>position x1 obligatoire (charge ponctuelle)</source>
+        <translation>position x1 required (point load)</translation>
+    </message>
+    <message>
+        <source>x2 doit être supérieur ou égal à x1</source>
+        <translation>x2 must be greater than or equal to x1</translation>
+    </message>
+    <message>
+        <source>position relative dans [0 ; 1] attendue</source>
+        <translation>relative position within [0; 1] expected</translation>
+    </message>
+    <message>
+        <source>combinaison sans facteur</source>
+        <translation>combination without factors</translation>
+    </message>
+    <message>
+        <source>charges surfaciques : non prises en charge par le modèle TSA actuel, conservées sans être appliquées</source>
+        <translation>surface loads: not supported by the current TSA model, kept without being applied</translation>
+    </message>
+    <message>
+        <source>« %1 » inconnu</source>
+        <translation>“%1” unknown</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) attendu(s) pour « %2 »</source>
+        <translation>%1 node(s) expected for “%2”</translation>
+    </message>
+    <message>
+        <source>nœud de maillage « %1 » inconnu</source>
+        <translation>unknown mesh node “%1”</translation>
+    </message>
+    <message>
+        <source>maillage : informatif, jamais appliqué au modèle (le moteur maille lui-même)</source>
+        <translation>mesh: informative, never applied to the model (the engine meshes by itself)</translation>
+    </message>
+    <message>
+        <source>résultats présents : ils ne seront pas chargés comme résultats de calcul validés</source>
+        <translation>results present: they will not be loaded as validated analysis results</translation>
     </message>
 </context>
 <context>
@@ -10673,6 +11493,1209 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
     </message>
 </context>
 <context>
+    <name>TSA::Mesh::GmshMeshEngine</name>
+    <message>
+        <source>TSA a été compilé sans le SDK Gmsh (option TSA_WITH_GMSH ou SDK absent) : aucun maillage ne peut être généré</source>
+        <translation>TSA was built without the Gmsh SDK (TSA_WITH_GMSH option or SDK missing): no mesh can be generated</translation>
+    </message>
+    <message>
+        <source>bibliothèque Gmsh « %1 » introuvable à côté de l'application : maillage indisponible</source>
+        <translation>Gmsh library “%1” not found next to the application: meshing unavailable</translation>
+    </message>
+    <message>
+        <source>%1 : nœud d'appui hors de la semelle : semelle maillée sans liaison au nœud</source>
+        <translation>%1: support node outside the footing: footing meshed without connection to the node</translation>
+    </message>
+    <message>
+        <source>courbe plongée dans la surface : nœuds partagés</source>
+        <translation>curve embedded in the surface: shared nodes</translation>
+    </message>
+    <message>
+        <source>courbe recoupant le contour de la surface hors d'un sommet : intersection non maillée</source>
+        <translation>curve crossing the surface outline away from a vertex: intersection not meshed</translation>
+    </message>
+    <message>
+        <source>%1 : plongement refusé par Gmsh (%2)</source>
+        <translation>%1: embedding rejected by Gmsh (%2)</translation>
+    </message>
+    <message>
+        <source>courbe commune : nœuds partagés</source>
+        <translation>common curve: shared nodes</translation>
+    </message>
+    <message>
+        <source>barre partiellement confondue avec un bord : nœuds intermédiaires non partagés</source>
+        <translation>member partly coincident with an edge: intermediate nodes not shared</translation>
+    </message>
+    <message>
+        <source>volumes superposés : maillages indépendants</source>
+        <translation>overlapping solids: independent meshes</translation>
+    </message>
+    <message>
+        <source>volumes jointifs : faces non fusionnées</source>
+        <translation>adjoining solids: faces not merged</translation>
+    </message>
+    <message>
+        <source>liaison barre – volume par un seul nœud : rotations de la barre non transmises au volume</source>
+        <translation>member–solid connection through a single node: member rotations not transmitted to the solid</translation>
+    </message>
+    <message>
+        <source>contour à %1 côtés</source>
+        <translation>outline with %1 sides</translation>
+    </message>
+    <message>
+        <source>ouverture(s)</source>
+        <translation>opening(s)</translation>
+    </message>
+    <message>
+        <source>nœuds ou courbes plongés</source>
+        <translation>embedded nodes or curves</translation>
+    </message>
+    <message>
+        <source>zone de raffinement (taille variable)</source>
+        <translation>refinement zone (variable size)</translation>
+    </message>
+    <message>
+        <source>%1 : maillage structuré impossible (%2) : maillage non structuré</source>
+        <translation>%1: structured mesh impossible (%2): unstructured mesh</translation>
+    </message>
+    <message>
+        <source>%1 : divisions imposées par une barre de bord incompatibles avec un maillage structuré : maillage non structuré</source>
+        <translation>%1: divisions imposed by an edge member incompatible with a structured mesh: unstructured mesh</translation>
+    </message>
+    <message>
+        <source>types d'éléments Gmsh non repris dans le maillage TSA :%1</source>
+        <translation>Gmsh element types not taken into the TSA mesh:%1</translation>
+    </message>
+    <message>
+        <source>taille minimale supérieure à la taille maximale</source>
+        <translation>minimum size greater than the maximum size</translation>
+    </message>
+    <message>
+        <source>estimation de %1 éléments, au-delà de la limite de %2 : augmenter la taille des éléments ou la limite</source>
+        <translation>estimate of %1 elements, beyond the limit of %2: increase the element size or the limit</translation>
+    </message>
+    <message>
+        <source>géométrie</source>
+        <translation>geometry</translation>
+    </message>
+    <message>
+        <source>maillage 1D</source>
+        <translation>1D mesh</translation>
+    </message>
+    <message>
+        <source>maillage 2D</source>
+        <translation>2D mesh</translation>
+    </message>
+    <message>
+        <source>maillage 3D</source>
+        <translation>3D mesh</translation>
+    </message>
+    <message>
+        <source>extraction</source>
+        <translation>extraction</translation>
+    </message>
+    <message>
+        <source>génération annulée par l'utilisateur (entre deux étapes de Gmsh)</source>
+        <translation>generation cancelled by the user (between two Gmsh steps)</translation>
+    </message>
+    <message>
+        <source>maillage de %1 éléments, au-delà de la limite de %2</source>
+        <translation>mesh of %1 elements, beyond the limit of %2</translation>
+    </message>
+    <message>
+        <source>aucun objet à mailler pour les dimensions activées</source>
+        <translation>no object to mesh for the enabled dimensions</translation>
+    </message>
+    <message>
+        <source>types d'éléments non pris en charge par TSA, ignorés :%1</source>
+        <translation>element types not supported by TSA, ignored:%1</translation>
+    </message>
+    <message>
+        <source>aucun élément pris en charge dans le fichier</source>
+        <translation>no supported element in the file</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshDisplayModel</name>
+    <message>
+        <source>Line2 — segment à 2 nœuds</source>
+        <translation>Line2 — 2-node segment</translation>
+    </message>
+    <message>
+        <source>Line3 — segment à 3 nœuds</source>
+        <translation>Line3 — 3-node segment</translation>
+    </message>
+    <message>
+        <source>Tri3 — triangle à 3 nœuds</source>
+        <translation>Tri3 — 3-node triangle</translation>
+    </message>
+    <message>
+        <source>Tri6 — triangle à 6 nœuds</source>
+        <translation>Tri6 — 6-node triangle</translation>
+    </message>
+    <message>
+        <source>Quad4 — quadrangle à 4 nœuds</source>
+        <translation>Quad4 — 4-node quadrilateral</translation>
+    </message>
+    <message>
+        <source>Quad8 — quadrangle à 8 nœuds</source>
+        <translation>Quad8 — 8-node quadrilateral</translation>
+    </message>
+    <message>
+        <source>Hex8 — hexaèdre à 8 nœuds</source>
+        <translation>Hex8 — 8-node hexahedron</translation>
+    </message>
+    <message>
+        <source>Hex20 — hexaèdre à 20 nœuds</source>
+        <translation>Hex20 — 20-node hexahedron</translation>
+    </message>
+    <message>
+        <source>Tet4 — tétraèdre à 4 nœuds</source>
+        <translation>Tet4 — 4-node tetrahedron</translation>
+    </message>
+    <message>
+        <source>Tet10 — tétraèdre à 10 nœuds</source>
+        <translation>Tet10 — 10-node tetrahedron</translation>
+    </message>
+    <message>
+        <source>type inconnu</source>
+        <translation>unknown type</translation>
+    </message>
+    <message>
+        <source>nœud %1 : identifiant dupliqué (seul le premier est utilisé)</source>
+        <translation>node %1: duplicate identifier (only the first is used)</translation>
+    </message>
+    <message>
+        <source>identifiant d'élément dupliqué : élément écarté</source>
+        <translation>duplicate element identifier: element discarded</translation>
+    </message>
+    <message>
+        <source>type d'élément inconnu dans le projet (élément écarté) : %1</source>
+        <translation>unknown element type in the project (element discarded): %1</translation>
+    </message>
+    <message>
+        <source>type d'élément non pris en charge par l'affichage</source>
+        <translation>element type not supported by the display</translation>
+    </message>
+    <message>
+        <source>%1 : %2 nœuds au lieu de %3 (élément écarté)</source>
+        <translation>%1: %2 nodes instead of %3 (element discarded)</translation>
+    </message>
+    <message>
+        <source>nœud inexistant dans la connectivité (élément écarté)</source>
+        <translation>non-existent node in the connectivity (element discarded)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshGenerator</name>
+    <message>
+        <source>estimation indicative (longueurs, aires, volumes et tailles demandées) ; le nombre réel est donné par Gmsh à la génération</source>
+        <translation>indicative estimate (lengths, areas, volumes and requested sizes); the actual number is given by Gmsh at generation</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshGeometry</name>
+    <message>
+        <source>une ouverture a au moins 3 sommets</source>
+        <translation>an opening has at least 3 vertices</translation>
+    </message>
+    <message>
+        <source>ouverture d'aire nulle</source>
+        <translation>zero-area opening</translation>
+    </message>
+    <message>
+        <source>du voile sans contour valide</source>
+        <translation>wall without a valid outline</translation>
+    </message>
+    <message>
+        <source>de la dalle sans contour valide</source>
+        <translation>slab without a valid outline</translation>
+    </message>
+    <message>
+        <source>l'ouverture dépasse le contour du voile</source>
+        <translation>the opening extends beyond the wall outline</translation>
+    </message>
+    <message>
+        <source>l'ouverture dépasse le contour de la dalle</source>
+        <translation>the opening extends beyond the slab outline</translation>
+    </message>
+    <message>
+        <source>l'ouverture recoupe le contour du voile</source>
+        <translation>the opening crosses the wall outline</translation>
+    </message>
+    <message>
+        <source>l'ouverture recoupe le contour de la dalle</source>
+        <translation>the opening crosses the slab outline</translation>
+    </message>
+    <message>
+        <source>l'ouverture chevauche l'ouverture « %1 »</source>
+        <translation>the opening overlaps opening “%1”</translation>
+    </message>
+    <message>
+        <source>l'ouverture contient l'ouverture « %1 »</source>
+        <translation>the opening contains opening “%1”</translation>
+    </message>
+    <message>
+        <source>l'ouverture recoupe l'ouverture « %1 »</source>
+        <translation>the opening crosses opening “%1”</translation>
+    </message>
+    <message>
+        <source>porte au pied d'un voile à base inclinée non prise en charge : placez une ouverture intérieure</source>
+        <translation>door at the foot of a wall with a sloping base not supported: place an interior opening</translation>
+    </message>
+    <message>
+        <source>la porte chevauche ou touche la porte « %1 »</source>
+        <translation>the door overlaps or touches door “%1”</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshProject</name>
+    <message>
+        <source>maillage : schéma « %1 » inattendu, lecture tolérante</source>
+        <translation>mesh: unexpected schema “%1”, lenient reading</translation>
+    </message>
+    <message>
+        <source>maillage : rapport présent mais maillage absent du fichier</source>
+        <translation>mesh: report present but mesh missing from the file</translation>
+    </message>
+    <message>
+        <source>écriture impossible de %1</source>
+        <translation>cannot write %1</translation>
+    </message>
+    <message>
+        <source>nom de profil obligatoire</source>
+        <translation>profile name required</translation>
+    </message>
+    <message>
+        <source>profil utilisateur « %1 » introuvable (un profil de départ ne se supprime pas)</source>
+        <translation>user profile “%1” not found (a starter profile cannot be deleted)</translation>
+    </message>
+    <message>
+        <source>profil introuvable</source>
+        <translation>profile not found</translation>
+    </message>
+    <message>
+        <source>lecture impossible de %1</source>
+        <translation>cannot read %1</translation>
+    </message>
+    <message>
+        <source>fichier de profil de maillage invalide (schéma tsa-mesh-profile/1 attendu)</source>
+        <translation>invalid mesh profile file (tsa-mesh-profile/1 schema expected)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshQuality</name>
+    <message>
+        <source>erreur</source>
+        <translation>error</translation>
+    </message>
+    <message>
+        <source>avertissement</source>
+        <translation>warning</translation>
+    </message>
+    <message>
+        <source>information</source>
+        <translation>information</translation>
+    </message>
+    <message>
+        <source>connexion incorrecte</source>
+        <translation>incorrect connection</translation>
+    </message>
+    <message>
+        <source>élément référant un nœud inexistant</source>
+        <translation>element referring to a non-existent node</translation>
+    </message>
+    <message>
+        <source>nœud répété dans l'élément (élément dégénéré)</source>
+        <translation>node repeated in the element (degenerate element)</translation>
+    </message>
+    <message>
+        <source>élément dégénéré</source>
+        <translation>degenerate element</translation>
+    </message>
+    <message>
+        <source>élément 1D de longueur nulle</source>
+        <translation>zero-length 1D element</translation>
+    </message>
+    <message>
+        <source>élément d'aire nulle</source>
+        <translation>zero-area element</translation>
+    </message>
+    <message>
+        <source>élément inversé</source>
+        <translation>inverted element</translation>
+    </message>
+    <message>
+        <source>orientation opposée à celle des éléments voisins de la surface</source>
+        <translation>orientation opposite to that of the neighbouring elements of the surface</translation>
+    </message>
+    <message>
+        <source>jacobien normalisé ≤ 0 (quadrangle non convexe ou retourné)</source>
+        <translation>normalised Jacobian ≤ 0 (non-convex or flipped quadrilateral)</translation>
+    </message>
+    <message>
+        <source>distorsion</source>
+        <translation>distortion</translation>
+    </message>
+    <message>
+        <source>jacobien normalisé %1 &lt; %2</source>
+        <translation>normalised Jacobian %1 &lt; %2</translation>
+    </message>
+    <message>
+        <source>rapport d'aspect</source>
+        <translation>aspect ratio</translation>
+    </message>
+    <message>
+        <source>rapport d'aspect %1 &gt; %2</source>
+        <translation>aspect ratio %1 &gt; %2</translation>
+    </message>
+    <message>
+        <source>angle</source>
+        <translation>angle</translation>
+    </message>
+    <message>
+        <source>angle de %1° : élément quasi dégénéré</source>
+        <translation>angle of %1°: nearly degenerate element</translation>
+    </message>
+    <message>
+        <source>angle minimal %1° &lt; %2°</source>
+        <translation>minimum angle %1° &lt; %2°</translation>
+    </message>
+    <message>
+        <source>angle maximal %1° &gt; %2°</source>
+        <translation>maximum angle %1° &gt; %2°</translation>
+    </message>
+    <message>
+        <source>tétraèdre de volume nul</source>
+        <translation>zero-volume tetrahedron</translation>
+    </message>
+    <message>
+        <source>hexaèdre à arête nulle</source>
+        <translation>hexahedron with a zero-length edge</translation>
+    </message>
+    <message>
+        <source>jacobien normalisé ≤ 0 (hexaèdre retourné)</source>
+        <translation>normalised Jacobian ≤ 0 (flipped hexahedron)</translation>
+    </message>
+    <message>
+        <source>qualité Gmsh minSICN %1 &lt; 0 (jacobien négatif)</source>
+        <translation>Gmsh minSICN quality %1 &lt; 0 (negative Jacobian)</translation>
+    </message>
+    <message>
+        <source>qualité Gmsh</source>
+        <translation>Gmsh quality</translation>
+    </message>
+    <message>
+        <source>minSICN %1 &lt; %2</source>
+        <translation>minSICN %1 &lt; %2</translation>
+    </message>
+    <message>
+        <source>transition de taille</source>
+        <translation>size transition</translation>
+    </message>
+    <message>
+        <source>rapport %1 entre éléments voisins &gt; %2</source>
+        <translation>ratio %1 between neighbouring elements &gt; %2</translation>
+    </message>
+    <message>
+        <source>nœud isolé</source>
+        <translation>isolated node</translation>
+    </message>
+    <message>
+        <source>nœud relié à aucun élément</source>
+        <translation>node connected to no element</translation>
+    </message>
+    <message>
+        <source>nœuds confondus</source>
+        <translation>coincident nodes</translation>
+    </message>
+    <message>
+        <source>nœuds %1 et %2 confondus mais distincts (%3 / %4) : régions non connectées à cet endroit</source>
+        <translation>nodes %1 and %2 coincident but distinct (%3 / %4): regions not connected at this location</translation>
+    </message>
+    <message>
+        <source>arête partagée par %1 éléments de %2</source>
+        <translation>edge shared by %1 elements of %2</translation>
+    </message>
+    <message>
+        <source>incompatibilité entre régions</source>
+        <translation>incompatibility between regions</translation>
+    </message>
+    <message>
+        <source>nœud de %1 au milieu d'une arête de %2 (nœud non partagé)</source>
+        <translation>node of %1 at the middle of an edge of %2 (node not shared)</translation>
+    </message>
+    <message>
+        <source>interface non conforme</source>
+        <translation>non-conforming interface</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshResultField</name>
+    <message>
+        <source>résultats absents ou obsolètes : aucun champ</source>
+        <translation>results missing or outdated: no field</translation>
+    </message>
+    <message>
+        <source>Déplacement</source>
+        <translation>Displacement</translation>
+    </message>
+    <message>
+        <source>forme propre normalisée, sans unité</source>
+        <translation>normalised mode shape, dimensionless</translation>
+    </message>
+    <message>
+        <source>analyse modale : déplacements = forme propre du mode affiché, normalisée (translation maximale = 1)</source>
+        <translation>modal analysis: displacements = mode shape of the displayed mode, normalised (maximum translation = 1)</translation>
+    </message>
+    <message>
+        <source>maillage affiché différent de celui du calcul : résultats des surfaces non reportés (relancer le calcul)</source>
+        <translation>displayed mesh differs from the one used in the analysis: surface results not transferred (rerun the analysis)</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) aux valeurs exactes du solveur (nœuds TSA), %2 nœud(s) de surfaces aux valeurs exactes du solveur (coques), %3 nœud(s) de barres interpolés linéairement entre deux stations du solveur</source>
+        <translation>%1 node(s) at exact solver values (TSA nodes), %2 surface node(s) at exact solver values (shells), %3 member node(s) linearly interpolated between two solver stations</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) du maillage sans résultat (surfaces, volumes ou barres non calculés) : aucune valeur n'est inventée</source>
+        <translation>%1 mesh node(s) without results (surfaces, solids or members not analysed): no value is invented</translation>
+    </message>
+    <message>
+        <source>pas intermédiaire : efforts des coques disponibles au dernier pas seulement (déplacements du pas affichés)</source>
+        <translation>intermediate step: shell forces available at the last step only (displacements of the step shown)</translation>
+    </message>
+    <message>
+        <source>moyenne des 4 points d'intégration de l'élément, repère local de l'élément (axe x : nœud 1 → nœud 2)</source>
+        <translation>average of the element's 4 integration points, element local axes (x axis: node 1 → node 2)</translation>
+    </message>
+    <message>
+        <source>valeur principale de plus grande valeur absolue, indépendante du repère local ; moyenne des 4 points d'intégration de l'élément, repère local de l'élément (axe x : nœud 1 → nœud 2)</source>
+        <translation>principal value with the largest absolute value, independent of the local axes; average of the element's 4 integration points, element local axes (x axis: node 1 → node 2)</translation>
+    </message>
+    <message>
+        <source>Moment principal (coque)</source>
+        <translation>Principal moment (shell)</translation>
+    </message>
+    <message>
+        <source>Effort principal dans le plan (coque)</source>
+        <translation>Principal in-plane force (shell)</translation>
+    </message>
+    <message>
+        <source>Mxx (coque)</source>
+        <translation>Mxx (shell)</translation>
+    </message>
+    <message>
+        <source>Myy (coque)</source>
+        <translation>Myy (shell)</translation>
+    </message>
+    <message>
+        <source>Mxy (coque)</source>
+        <translation>Mxy (shell)</translation>
+    </message>
+    <message>
+        <source>Nxx (coque)</source>
+        <translation>Nxx (shell)</translation>
+    </message>
+    <message>
+        <source>Nyy (coque)</source>
+        <translation>Nyy (shell)</translation>
+    </message>
+    <message>
+        <source>Nxy (coque)</source>
+        <translation>Nxy (shell)</translation>
+    </message>
+    <message>
+        <source>Vxz (coque)</source>
+        <translation>Vxz (shell)</translation>
+    </message>
+    <message>
+        <source>Vyz (coque)</source>
+        <translation>Vyz (shell)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::OpenSeesMeshAdapter</name>
+    <message>
+        <source>%1 : %2 élément(s) transmis, %3 non transmis, %4 DDL estimés</source>
+        <translation>%1: %2 element(s) sent, %3 not sent, %4 estimated DOF</translation>
+    </message>
+    <message>
+        <source>elasticBeamColumn (2 nœuds, geomTransf Linear de la barre, 6 DDL par nœud)</source>
+        <translation>elasticBeamColumn (2 nodes, member's geomTransf Linear, 6 DOF per node)</translation>
+    </message>
+    <message>
+        <source>truss / corotTruss : un seul élément par barre (une chaîne de barres articulées subdivisée serait un mécanisme)</source>
+        <translation>truss / corotTruss: a single element per member (a subdivided chain of pinned members would be a mechanism)</translation>
+    </message>
+    <message>
+        <source>aucun (ligne de contour : élément de frontière, sans rigidité)</source>
+        <translation>none (outline line: boundary element, without stiffness)</translation>
+    </message>
+    <message>
+        <source>aucun élément OpenSees de barre à 3 nœuds dans l'adaptateur : régénérer au premier ordre</source>
+        <translation>no 3-node member element from OpenSees in the adapter: regenerate as first order</translation>
+    </message>
+    <message>
+        <source>ShellDKGT (triangle à 3 nœuds, plaque de Kirchhoff discrète + membrane, 6 DDL par nœud)</source>
+        <translation>ShellDKGT (3-node triangle, discrete Kirchhoff plate + membrane, 6 DOF per node)</translation>
+    </message>
+    <message>
+        <source>ShellMITC4 (quadrangle à 4 nœuds, Mindlin-Reissner à cisaillement interpolé + membrane, 6 DDL par nœud)</source>
+        <translation>ShellMITC4 (4-node quadrilateral, Mindlin-Reissner with interpolated shear + membrane, 6 DOF per node)</translation>
+    </message>
+    <message>
+        <source>aucune coque triangulaire à 6 nœuds dans OpenSees</source>
+        <translation>no 6-node triangular shell in OpenSees</translation>
+    </message>
+    <message>
+        <source>aucune coque à 8 nœuds dans OpenSees (ShellMITC9 exige 9 nœuds)</source>
+        <translation>no 8-node shell in OpenSees (ShellMITC9 requires 9 nodes)</translation>
+    </message>
+    <message>
+        <source>éléments de volume OpenSees (FourNodeTetrahedron, stdBrick…) à 3 DDL par nœud : incompatibles avec le modèle à 6 DDL (BasicBuilder -ndm 3 -ndf 6) utilisé par TSA</source>
+        <translation>OpenSees solid elements (FourNodeTetrahedron, stdBrick…) with 3 DOF per node: incompatible with the 6-DOF model (BasicBuilder -ndm 3 -ndf 6) used by TSA</translation>
+    </message>
+    <message>
+        <source>inconnu</source>
+        <translation>unknown</translation>
+    </message>
+    <message>
+        <source>objets maillés absents du modèle : maillage obsolète ou importé, à régénérer</source>
+        <translation>meshed objects missing from the model: mesh outdated or imported, regenerate it</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) 1D du second ordre : %2</source>
+        <translation>%1 second-order 1D element(s): %2</translation>
+    </message>
+    <message>
+        <source>chaîne d'éléments non continue ou sans les nœuds TSA d'extrémité : maillage à régénérer</source>
+        <translation>element chain not continuous or missing the TSA end nodes: regenerate the mesh</translation>
+    </message>
+    <message>
+        <source>%1 ne calcule pas les barres fléchies</source>
+        <translation>%1 does not analyse members in bending</translation>
+    </message>
+    <message>
+        <source>%1 ne prend pas en charge les barres subdivisées : un élément fini par barre sera transmis</source>
+        <translation>%1 does not support subdivided members: one finite element per member will be sent</translation>
+    </message>
+    <message>
+        <source>%1 poutre(s) / poteau(x) → %2 éléments %3</source>
+        <translation>%1 beam(s) / column(s) → %2 %3 elements</translation>
+    </message>
+    <message>
+        <source>chaque sous-élément reprend l'axe, la rotation de section et le vecteur geomTransf de sa barre (barres rectilignes : axes locaux identiques)</source>
+        <translation>each sub-element takes the axis, section rotation and geomTransf vector of its member (straight members: identical local axes)</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de surface non transmis : %2 ne calcule pas les coques (calcul refusé tant qu'ils sont dans la portée).</source>
+        <translation>%1 surface element(s) not sent: %2 does not analyse shells (analysis refused while they are in the scope).</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de surface non transmis : %2 ne calcule pas les coques ; les dalles et voiles sont exclus du calcul.</source>
+        <translation>%1 surface element(s) not sent: %2 does not analyse shells; slabs and walls are excluded from the analysis.</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de surface non transmis (modèle non fourni à l'adaptateur) (calcul refusé tant qu'ils sont dans la portée).</source>
+        <translation>%1 surface element(s) not sent (model not provided to the adapter) (analysis refused while they are in the scope).</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de surface non transmis (modèle non fourni à l'adaptateur) ; les dalles et voiles sont exclus du calcul.</source>
+        <translation>%1 surface element(s) not sent (model not provided to the adapter); slabs and walls are excluded from the analysis.</translation>
+    </message>
+    <message>
+        <source>Calculer les barres seules : dalles et voiles exclus (avertissement au lancement du calcul)</source>
+        <translation>Analyse the members only: slabs and walls excluded (warning when the analysis is run)</translation>
+    </message>
+    <message>
+        <source>formulation « plaque seule » non disponible dans OpenSees en 3D (aucun élément de plaque sans membrane) : choisir « coque » (la membrane ajoute la rigidité dans le plan) ou « non structurale »</source>
+        <translation>“plate only” formulation not available in OpenSees in 3D (no plate element without membrane): choose “shell” (the membrane adds the in-plane stiffness) or “non-structural”</translation>
+    </message>
+    <message>
+        <source>formulation « membrane seule » non transmise : les éléments de membrane OpenSees (quad, tri31) sont à 2 DDL par nœud, incompatibles avec le modèle à 6 DDL de TSA ; une coque à faible rigidité de flexion serait une rigidité fictive</source>
+        <translation>“membrane only” formulation not sent: OpenSees membrane elements (quad, tri31) have 2 DOF per node, incompatible with the TSA 6-DOF model; a shell with low bending stiffness would be a fictitious stiffness</translation>
+    </message>
+    <message>
+        <source>éléments de surface du second ordre : %1 — régénérer au premier ordre</source>
+        <translation>second-order surface elements: %1 — regenerate at first order</translation>
+    </message>
+    <message>
+        <source>surface(s) non structurale(s) : non transmises (ni rigidité, ni poids propre, ni charges)</source>
+        <translation>non-structural surface(s): not sent (no stiffness, no self-weight, no loads)</translation>
+    </message>
+    <message>
+        <source>Choisir la formulation « coque » des surfaces concernées (propriétés de la surface)</source>
+        <translation>Choose the “shell” formulation for the surfaces concerned (surface properties)</translation>
+    </message>
+    <message>
+        <source>surface(s) sans aucun nœud commun avec une barre, un appui ou une autre surface (mécanisme) ; aucune liaison rigide n'est créée automatiquement (voile excentré, dalle décalée) : relier la surface par des nœuds communs</source>
+        <translation>surface(s) without any node shared with a member, a support or another surface (mechanism); no rigid link is created automatically (offset wall, shifted slab): connect the surface through shared nodes</translation>
+    </message>
+    <message>
+        <source>éléments de coque déformés (angle minimal %1°, rapport d'arêtes %2) : précision locale réduite, raffiner ou régulariser le maillage</source>
+        <translation>distorted shell elements (minimum angle %1°, edge ratio %2): reduced local accuracy, refine or regularise the mesh</translation>
+    </message>
+    <message>
+        <source>surface(s) sans épaisseur ou sans module d'Young</source>
+        <translation>surface(s) without thickness or without Young's modulus</translation>
+    </message>
+    <message>
+        <source>%1 surface(s) → %2 ShellMITC4 et %3 ShellDKGT</source>
+        <translation>%1 surface(s) → %2 ShellMITC4 and %3 ShellDKGT</translation>
+    </message>
+    <message>
+        <source>nœuds des coques partagés avec les barres et les nœuds TSA situés sur leurs arêtes (maillage conforme : arête commune = une courbe du mailleur) ; aucune liaison rigide ni excentricité ajoutée (plans moyens confondus avec les axes des barres)</source>
+        <translation>shell nodes shared with the members and the TSA nodes lying on their edges (conforming mesh: shared edge = one mesher curve); no rigid link or eccentricity added (mid-planes coincide with the member axes)</translation>
+    </message>
+    <message>
+        <source>poids propre de %1 non converti : %2</source>
+        <translation>self-weight of %1 not converted: %2</translation>
+    </message>
+    <message>
+        <source>poids propre des surfaces : %1 kN (ρ·g·e × aire nette), réparti en charges nodales cohérentes, appliqué aux cas qui incluent le poids propre</source>
+        <translation>surface self-weight: %1 kN (ρ·g·e × net area), distributed as consistent nodal loads, applied to the cases that include self-weight</translation>
+    </message>
+    <message>
+        <source>charge surfacique %1 (%2) : surface non transmise au calcul (non maillée, non structurale, formulation non prise en charge ou moteur sans coques)</source>
+        <translation>surface load %1 (%2): surface not sent to the analysis (not meshed, non-structural, unsupported formulation or engine without shells)</translation>
+    </message>
+    <message>
+        <source>charge surfacique %1 (%2) non convertie : %3</source>
+        <translation>surface load %1 (%2) not converted: %3</translation>
+    </message>
+    <message>
+        <source>erreur inconnue</source>
+        <translation>unknown error</translation>
+    </message>
+    <message>
+        <source>%1 charge(s) surfacique(s) converties en charges nodales cohérentes (∫ Nᵢ p dA), résultante et moment contrôlés</source>
+        <translation>%1 surface load(s) converted into consistent nodal loads (∫ Nᵢ p dA), resultant and moment checked</translation>
+    </message>
+    <message>
+        <source>appui(s) linéique(s) de %1 : surface non transmise au calcul (non maillée, non structurale ou formulation non prise en charge)</source>
+        <translation>line support(s) of %1: surface not sent to the analysis (not meshed, non-structural or unsupported formulation)</translation>
+    </message>
+    <message>
+        <source>appui linéique %1 de %2 : aucun DDL bloqué ni raideur, sans effet</source>
+        <translation>line support %1 of %2: no DOF restrained and no stiffness, no effect</translation>
+    </message>
+    <message>
+        <source>appui linéique %1 de %2 : bord %3 inexistant (%4 bord(s))</source>
+        <translation>line support %1 of %2: edge %3 does not exist (%4 edge(s))</translation>
+    </message>
+    <message>
+        <source>appui linéique %1 de %2 : DDL %3 à la fois bloqué et élastique, la raideur est sans effet</source>
+        <translation>line support %1 of %2: DOF %3 both restrained and elastic, the stiffness has no effect</translation>
+    </message>
+    <message>
+        <source>%1 bord %2 : DDL %3 bloqué par plusieurs appuis (condition redondante)</source>
+        <translation>%1 edge %2: DOF %3 restrained by several supports (redundant condition)</translation>
+    </message>
+    <message>
+        <source>appui linéique %1 de %2 : aucun nœud du maillage sur le bord visé (régénérer le maillage)</source>
+        <translation>line support %1 of %2: no mesh node on the target edge (regenerate the mesh)</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) du maillage portés par des appuis linéiques de bord (raideur linéique × longueur d'influence de chaque nœud)</source>
+        <translation>%1 mesh node(s) carried by edge line supports (line stiffness × influence length of each node)</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de volume non transmis : %2 ; les appuis définis aux nœuds restent appliqués</source>
+        <translation>%1 solid element(s) not sent: %2; the supports defined at the nodes remain applied</translation>
+    </message>
+    <message>
+        <source>Conserver les appuis (éventuellement élastiques) des nœuds de semelle à la place du volume maillé</source>
+        <translation>Keep the (possibly elastic) supports of the footing nodes instead of the meshed solid</translation>
+    </message>
+    <message>
+        <source>6 DDL par nœud (UX UY UZ RX RY RZ), cohérents avec les éléments de barre transmis</source>
+        <translation>6 DOF per node (UX UY UZ RX RY RZ), consistent with the member elements sent</translation>
+    </message>
+    <message>
+        <source>%1 DDL estimés, au-delà de la limite de %2 : réduire la finesse ou la portée du calcul</source>
+        <translation>%1 DOF estimated, beyond the limit of %2: reduce the mesh density or the analysis scope</translation>
+    </message>
+    <message>
+        <source>%1 DDL estimés : calcul long et mémoire importante</source>
+        <translation>%1 DOF estimated: long analysis and high memory use</translation>
+    </message>
+    <message>
+        <source>barre(s) sans section ou sans matériau</source>
+        <translation>member(s) without section or without material</translation>
+    </message>
+    <message>
+        <source>chaque sous-élément reprend la section, le matériau et les relâchements d'extrémité (aux seules extrémités de la barre)</source>
+        <translation>each sub-element takes the section, material and end releases (at the member ends only)</translation>
+    </message>
+    <message>
+        <source>appuis aux nœuds TSA, inchangés ; les nœuds intermédiaires du maillage sont libres</source>
+        <translation>supports at the TSA nodes, unchanged; the intermediate mesh nodes are free</translation>
+    </message>
+    <message>
+        <source>charges sur barres réparties exactement sur les sous-éléments (portions, charge ponctuelle sur le sous-élément porteur ou à un nœud du maillage) ; charges nodales inchangées ; poids propre calculé par sous-élément ; charges surfaciques et poids propre des coques convertis en charges nodales cohérentes</source>
+        <translation>member loads distributed exactly over the sub-elements (portions, point load on the carrying sub-element or at a mesh node); nodal loads unchanged; self-weight computed per sub-element; surface loads and shell self-weight converted into consistent nodal loads</translation>
+    </message>
+    <message>
+        <source>les éléments sont rattachés à leur barre par la référence TSA (groupes physiques Gmsh), jamais par les étiquettes Gmsh</source>
+        <translation>elements are linked to their member by the TSA reference (Gmsh physical groups), never by the Gmsh tags</translation>
+    </message>
+    <message>
+        <source>Transmettre le maillage tel quel</source>
+        <translation>Send the mesh as is</translation>
+    </message>
+    <message>
+        <source>Régénérer le maillage au premier ordre (même finesse) pour transmettre les barres subdivisées</source>
+        <translation>Regenerate the mesh at first order (same density) to send the subdivided members</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::SurfaceLoads</name>
+    <message>
+        <source>surface « %1 » inconnue du modèle : charge non convertie</source>
+        <translation>surface “%1” unknown in the model: load not converted</translation>
+    </message>
+    <message>
+        <source>surface projetée sans objet pour une pression normale : surface réelle utilisée</source>
+        <translation>projected surface irrelevant for a normal pressure: actual surface used</translation>
+    </message>
+    <message>
+        <source>zone chargée vide (u₁ ≤ u₀ ou v₁ ≤ v₀) : charge non convertie</source>
+        <translation>empty loaded area (u₁ ≤ u₀ or v₁ ≤ v₀): load not converted</translation>
+    </message>
+    <message>
+        <source>élément %1 non pris en charge pour la répartition : charge non convertie</source>
+        <translation>element %1 not supported for the distribution: load not converted</translation>
+    </message>
+    <message>
+        <source>surface « %1 » non maillée (aucun élément 2D) : charge non convertie</source>
+        <translation>surface “%1” not meshed (no 2D element): load not converted</translation>
+    </message>
+    <message>
+        <source>zone chargée hors de la surface nette : charge non convertie</source>
+        <translation>loaded area outside the net surface: load not converted</translation>
+    </message>
+    <message>
+        <source>aire nette nulle : charge non convertie</source>
+        <translation>zero net area: load not converted</translation>
+    </message>
+    <message>
+        <source>résultante ou moment des charges nodales différents de la valeur analytique (écarts %1 / %2) : maillage ne couvrant pas exactement la surface, charge non convertie</source>
+        <translation>resultant or moment of the nodal loads different from the analytical value (deviations %1 / %2): mesh not exactly covering the surface, load not converted</translation>
+    </message>
+    <message>
+        <source>point (%1 ; %2) hors de la surface %3 : charge non convertie</source>
+        <translation>point (%1 ; %2) outside surface %3: load not converted</translation>
+    </message>
+    <message>
+        <source>point dans une ouverture de %1 : aucune matière porteuse, charge non convertie</source>
+        <translation>point in an opening of %1: no load-bearing material, load not converted</translation>
+    </message>
+    <message>
+        <source>charge ponctuelle : résultante ou moment des forces nodales différents de la valeur exacte, charge non convertie</source>
+        <translation>point load: resultant or moment of the nodal forces different from the exact value, load not converted</translation>
+    </message>
+    <message>
+        <source>aucun élément du premier ordre (tri3, quad4) de %1 ne contient le point : surface non maillée ou maillage du second ordre</source>
+        <translation>no first-order element (tri3, quad4) of %1 contains the point: surface not meshed or second-order mesh</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::LoadEnums</name>
+    <message>
+        <source>G (Permanent)</source>
+        <translation>G (Permanent)</translation>
+    </message>
+    <message>
+        <source>Q (Exploitation)</source>
+        <translation>Q (Imposed)</translation>
+    </message>
+    <message>
+        <source>W (Vent)</source>
+        <translation>W (Wind)</translation>
+    </message>
+    <message>
+        <source>S (Neige)</source>
+        <translation>S (Snow)</translation>
+    </message>
+    <message>
+        <source>E (Séisme)</source>
+        <translation>E (Seismic)</translation>
+    </message>
+    <message>
+        <source>T (Thermique)</source>
+        <translation>T (Thermal)</translation>
+    </message>
+    <message>
+        <source>A (Accidentel)</source>
+        <translation>A (Accidental)</translation>
+    </message>
+    <message>
+        <source>Personnalisé</source>
+        <translation>Custom</translation>
+    </message>
+    <message>
+        <source>Inconnu</source>
+        <translation>Unknown</translation>
+    </message>
+    <message>
+        <source>Global X</source>
+        <translation>Global X</translation>
+    </message>
+    <message>
+        <source>Global Y</source>
+        <translation>Global Y</translation>
+    </message>
+    <message>
+        <source>Global Z</source>
+        <translation>Global Z</translation>
+    </message>
+    <message>
+        <source>Gravité (-Z)</source>
+        <translation>Gravity (-Z)</translation>
+    </message>
+    <message>
+        <source>Local x</source>
+        <translation>Local x</translation>
+    </message>
+    <message>
+        <source>Local y</source>
+        <translation>Local y</translation>
+    </message>
+    <message>
+        <source>Local z</source>
+        <translation>Local z</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::MemberLoad</name>
+    <message>
+        <source>Valeurs non finies (intensité ou position).</source>
+        <translation>Non-finite values (intensity or position).</translation>
+    </message>
+    <message>
+        <source>La barre chargée est de longueur nulle.</source>
+        <translation>The loaded member has zero length.</translation>
+    </message>
+    <message>
+        <source>L'intensité de la charge est nulle.</source>
+        <translation>The load intensity is zero.</translation>
+    </message>
+    <message>
+        <source>La position de début est hors de la barre.</source>
+        <translation>The start position is outside the member.</translation>
+    </message>
+    <message>
+        <source>La position de fin est hors de la barre.</source>
+        <translation>The end position is outside the member.</translation>
+    </message>
+    <message>
+        <source>La position de fin doit être supérieure à la position de début.</source>
+        <translation>The end position must be greater than the start position.</translation>
+    </message>
+    <message>
+        <source>L'intervalle chargé est vide.</source>
+        <translation>The loaded interval is empty.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::MemberLoadCommands</name>
+    <message>
+        <source>Aucune barre à charger.</source>
+        <translation>No member to load.</translation>
+    </message>
+    <message>
+        <source>La barre #%1 n'existe plus.</source>
+        <translation>Member #%1 no longer exists.</translation>
+    </message>
+    <message>
+        <source>Barre #%1 : %2</source>
+        <translation>Member #%1: %2</translation>
+    </message>
+    <message>
+        <source>Le cas de charge choisi n'existe pas.</source>
+        <translation>The chosen load case does not exist.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::ModelCleanup</name>
+    <message>
+        <source>%1 et %2 relient les mêmes nœuds (%3, %4) : familles différentes, à vérifier.</source>
+        <translation>%1 and %2 connect the same nodes (%3, %4): different families, to be checked.</translation>
+    </message>
+    <message>
+        <source>Barre en double supprimée : %1 (doublon de %2)</source>
+        <translation>Duplicate member deleted: %1 (duplicate of %2)</translation>
+    </message>
+    <message>
+        <source>Barre en double supprimée : %1 (doublon de %2), %3 charge(s) reportée(s)</source>
+        <translation>Duplicate member deleted: %1 (duplicate of %2), %3 load(s) transferred</translation>
+    </message>
+    <message>
+        <source>%1 divisée sur %2 (nœud posé sur la barre sans lui être relié)</source>
+        <translation>%1 split at %2 (node lying on the member without being connected to it)</translation>
+    </message>
+    <message>
+        <source>%1 : division sur %2 refusée (charge ponctuelle ou partielle sur la barre) — à traiter manuellement.</source>
+        <translation>%1: split at %2 refused (point or partial load on the member) — to be handled manually.</translation>
+    </message>
+    <message>
+        <source>Nœud %1 créé au croisement de %2 et %3</source>
+        <translation>Node %1 created at the crossing of %2 and %3</translation>
+    </message>
+    <message>
+        <source>%1 : appui sur un nœud relié à aucun élément — conservé, à vérifier.</source>
+        <translation>%1: support on a node connected to no element — kept, to be checked.</translation>
+    </message>
+    <message>
+        <source>%1 : charge nodale sur un nœud relié à aucun élément — conservé, à vérifier.</source>
+        <translation>%1: nodal load on a node connected to no element — kept, to be checked.</translation>
+    </message>
+    <message>
+        <source>Nœud parasite supprimé : %1</source>
+        <translation>Stray node deleted: %1</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) confondu(s) fusionné(s), %2 barre(s) en double supprimée(s), %3 nœud(s) raccordé(s) sur des barres, %4 nœud(s) de croisement, %5 nœud(s) parasite(s) supprimé(s)</source>
+        <translation>%1 coincident node(s) merged, %2 duplicate member(s) deleted, %3 node(s) connected to members, %4 crossing node(s), %5 stray node(s) deleted</translation>
+    </message>
+    <message>
+        <source> ; %1 opération(s) refusée(s)</source>
+        <translation> ; %1 operation(s) refused</translation>
+    </message>
+    <message>
+        <source> ; %1 point(s) à vérifier</source>
+        <translation> ; %1 point(s) to be checked</translation>
+    </message>
+    <message>
+        <source>Nœuds confondus : %1 fusionné dans %2</source>
+        <translation>Coincident nodes: %1 merged into %2</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::NamedViews</name>
+    <message>
+        <source>vues nommées : JSON illisible, ignoré</source>
+        <translation>named views: unreadable JSON, ignored</translation>
+    </message>
+    <message>
+        <source>vue nommée invalide ou en double ignorée : « %1 »</source>
+        <translation>invalid or duplicate named view ignored: “%1”</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::StructuralClipboard</name>
+    <message>
+        <source>Combinaison « %1 » non copiée : cas de charge n° %2 introuvable dans le projet source</source>
+        <translation>Combination “%1” not copied: load case no. %2 not found in the source project</translation>
+    </message>
+    <message>
+        <source>tolérance de fusion invalide (elle doit être &gt; 0 m)</source>
+        <translation>invalid merge tolerance (it must be &gt; 0 m)</translation>
+    </message>
+    <message>
+        <source>nœud %1 : appui existant et appui copié différents (nœud source %2, écart %3 m)</source>
+        <translation>node %1: existing support and copied support differ (source node %2, distance %3 m)</translation>
+    </message>
+    <message>
+        <source>nœud source %1 non fusionné avec le nœud %2 (appuis différents) : nœuds coïncidents séparés</source>
+        <translation>source node %1 not merged with node %2 (different supports): coincident nodes kept separate</translation>
+    </message>
+    <message>
+        <source>nœud %1 : appui existant conservé, appui copié ignoré</source>
+        <translation>node %1: existing support kept, copied support ignored</translation>
+    </message>
+    <message>
+        <source>nœud %1 : appui existant remplacé par l'appui copié</source>
+        <translation>node %1: existing support replaced by the copied support</translation>
+    </message>
+    <message>
+        <source>%1 : ses deux nœuds seraient fusionnés en un seul (longueur nulle)</source>
+        <translation>%1: its two nodes would be merged into one (zero length)</translation>
+    </message>
+    <message>
+        <source>%1 : identique à un élément existant entre les nœuds %2 et %3</source>
+        <translation>%1: identical to an existing element between nodes %2 and %3</translation>
+    </message>
+    <message>
+        <source>poutre</source>
+        <translation>beam</translation>
+    </message>
+    <message>
+        <source>poteau</source>
+        <translation>column</translation>
+    </message>
+    <message>
+        <source>voile</source>
+        <translation>wall</translation>
+    </message>
+    <message>
+        <source>barre de treillis</source>
+        <translation>truss member</translation>
+    </message>
+    <message>
+        <source>câble</source>
+        <translation>cable</translation>
+    </message>
+    <message>
+        <source>%1 : deux de ses sommets seraient fusionnés</source>
+        <translation>%1: two of its vertices would be merged</translation>
+    </message>
+    <message>
+        <source>dalle</source>
+        <translation>slab</translation>
+    </message>
+    <message>
+        <source>%1 : identique à une dalle existante</source>
+        <translation>%1: identical to an existing slab</translation>
+    </message>
+    <message>
+        <source>%1 : le nœud %2 porte déjà une fondation</source>
+        <translation>%1: node %2 already carries a foundation</translation>
+    </message>
+    <message>
+        <source>fondation</source>
+        <translation>foundation</translation>
+    </message>
+    <message>
+        <source>%1 (+ %2 autre(s))</source>
+        <translation>%1 (+ %2 other(s))</translation>
+    </message>
+    <message>
+        <source>%1 — non collé</source>
+        <translation>%1 — not pasted</translation>
+    </message>
+    <message>
+        <source>%1 — collé quand même (rigidité doublée)</source>
+        <translation>%1 — pasted anyway (doubled stiffness)</translation>
+    </message>
+    <message>
+        <source>nœud</source>
+        <translation>node</translation>
+    </message>
+    <message>
+        <source>élément sans ses nœuds</source>
+        <translation>element without its nodes</translation>
+    </message>
+    <message>
+        <source>cas de charge « %1 » : un cas de même nom et d'autre catégorie existe ; créé sous le nom « %2 »</source>
+        <translation>load case “%1”: a case with the same name and another category exists; created under the name “%2”</translation>
+    </message>
+    <message>
+        <source>charge nodale</source>
+        <translation>nodal load</translation>
+    </message>
+    <message>
+        <source>charge sur barre %1 non collée : son élément, en double, n'a pas été collé</source>
+        <translation>member load %1 not pasted: its element, a duplicate, was not pasted</translation>
+    </message>
+    <message>
+        <source>charge sur barre</source>
+        <translation>member load</translation>
+    </message>
+    <message>
+        <source>charge surfacique %1 non collée : sa surface, en double, n'a pas été collée</source>
+        <translation>surface load %1 not pasted: its surface, a duplicate, was not pasted</translation>
+    </message>
+    <message>
+        <source>charge surfacique</source>
+        <translation>surface load</translation>
+    </message>
+    <message>
+        <source>%1 charge(s) nodale(s) ajoutée(s) à des nœuds existants (fusion) : elles s'ajoutent à leurs charges</source>
+        <translation>%1 nodal load(s) added to existing nodes (merge): they add to their loads</translation>
+    </message>
+    <message>
+        <source>combinaison « %1 » non copiée : un de ses cas de charge n'a pas pu être rapproché</source>
+        <translation>combination “%1” not copied: one of its load cases could not be matched</translation>
+    </message>
+    <message>
+        <source>combinaison « %1 » : une combinaison de même nom et de contenu différent existe ; copiée sous le nom « %2 »</source>
+        <translation>combination “%1”: a combination with the same name and different content exists; copied under the name “%2”</translation>
+    </message>
+    <message>
+        <source>combinaison « %1 »</source>
+        <translation>combination “%1”</translation>
+    </message>
+    <message>
+        <source>%1 : nœud absent</source>
+        <translation>%1: missing node</translation>
+    </message>
+    <message>
+        <source>%1 : moins de 3 nœuds</source>
+        <translation>%1: fewer than 3 nodes</translation>
+    </message>
+    <message>
+        <source>%1 : nœud ou cas de charge absent</source>
+        <translation>%1: missing node or load case</translation>
+    </message>
+    <message>
+        <source>%1 : cas de charge absent</source>
+        <translation>%1: missing load case</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::SupportDefinition</name>
+    <message>
+        <source>Libre</source>
+        <translation>Free</translation>
+    </message>
+    <message>
+        <source>Encastrement</source>
+        <translation>Fixed</translation>
+    </message>
+    <message>
+        <source>Articulation</source>
+        <translation>Pinned</translation>
+    </message>
+    <message>
+        <source>Appui simple</source>
+        <translation>Roller</translation>
+    </message>
+    <message>
+        <source>Appui glissant</source>
+        <translation>Sliding support</translation>
+    </message>
+    <message>
+        <source>Appui linéaire</source>
+        <translation>Linear support</translation>
+    </message>
+    <message>
+        <source>Appui plan</source>
+        <translation>Planar support</translation>
+    </message>
+    <message>
+        <source>Appui élastique</source>
+        <translation>Elastic support</translation>
+    </message>
+    <message>
+        <source>Personnalisé</source>
+        <translation>Custom</translation>
+    </message>
+    <message>
+        <source>Appui</source>
+        <translation>Support</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::SurfaceFormulation</name>
+    <message>
+        <source>Plaque (flexion seule)</source>
+        <translation>Plate (bending only)</translation>
+    </message>
+    <message>
+        <source>Membrane (efforts dans le plan)</source>
+        <translation>Membrane (in-plane forces)</translation>
+    </message>
+    <message>
+        <source>Non structurale (géométrie seulement)</source>
+        <translation>Non-structural (geometry only)</translation>
+    </message>
+    <message>
+        <source>Coque (membrane + flexion)</source>
+        <translation>Shell (membrane + bending)</translation>
+    </message>
+</context>
+<context>
     <name>TSA::NDC::NDCViewerWidget</name>
     <message>
         <source>Rechercher dans la note...</source>
@@ -11714,6 +13737,10 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
 <context>
     <name>TSA::UI::AICoEngineeringDock</name>
     <message>
+        <source>Les recommandations de l'IA doivent être vérifiées par un ingénieur qualifié avant toute utilisation dans un projet réel.</source>
+        <translation>AI recommendations must be checked by a qualified engineer before any use in a real project.</translation>
+    </message>
+    <message>
         <source>IA CO-ENGINEERING</source>
         <translation>AI CO-ENGINEERING</translation>
     </message>
@@ -11846,6 +13873,10 @@ e.g. “Why does beam B3 have a high moment?”</translation>
     <message>
         <source>&lt;div style='color:gray'&gt;&lt;h3&gt;Assistant de co-ingénierie TSA&lt;/h3&gt;&lt;p&gt;Il lit le modèle structural réel (géométrie, sections, matériaux, appuis, charges, résultats) et utilise les outils de TSA. Il ne modifie jamais le modèle sans votre accord.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Analyser le modèle&lt;/b&gt; : synthèse et points à vérifier&lt;/li&gt;&lt;li&gt;&lt;b&gt;Vérifier la structure&lt;/b&gt; : contrôles automatiques expliqués&lt;/li&gt;&lt;li&gt;&lt;b&gt;Expliquer la sélection&lt;/b&gt; : pourquoi cet élément se comporte ainsi&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Les contrôles automatiques fonctionnent même sans modèle IA installé.&lt;/p&gt;&lt;/div&gt;</source>
         <translation>&lt;div style='color:gray'&gt;&lt;h3&gt;TSA co-engineering assistant&lt;/h3&gt;&lt;p&gt;It reads the actual structural model (geometry, sections, materials, supports, loads, results) and uses the TSA tools. It never modifies the model without your consent.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Analyse model&lt;/b&gt;: summary and points to check&lt;/li&gt;&lt;li&gt;&lt;b&gt;Check structure&lt;/b&gt;: automatic checks explained&lt;/li&gt;&lt;li&gt;&lt;b&gt;Explain selection&lt;/b&gt;: why this element behaves this way&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;The automatic checks work even without an AI model installed.&lt;/p&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Proposition de l'IA&lt;/b&gt;&lt;br&gt;%1</source>
+        <translation>&lt;b&gt;AI proposal&lt;/b&gt;&lt;br&gt;%1</translation>
     </message>
     <message>
         <source>Justification : %1</source>
@@ -12258,6 +14289,34 @@ The file is verified by SHA-256. Once installed, the AI works offline.</translat
 <context>
     <name>TSA::UI::AnalysisDataDock</name>
     <message>
+        <source>Source : %1
+Type : %2 | Repère : %3 | Exact : %4 | Symétrique : %5
+Ordre des DDL : %6
+Contraintes : %7 | Système : %8 | Stockage : %9
+Unités : %10%11</source>
+        <translation>Source: %1
+Type: %2 | Axes: %3 | Exact: %4 | Symmetric: %5
+DOF order: %6
+Constraints: %7 | System: %8 | Storage: %9
+Units: %10%11</translation>
+    </message>
+    <message>
+        <source>oui</source>
+        <translation>yes</translation>
+    </message>
+    <message>
+        <source>NON</source>
+        <translation>NO</translation>
+    </message>
+    <message>
+        <source>non</source>
+        <translation>no</translation>
+    </message>
+    <message>
+        <source>Notes : %1</source>
+        <translation>Notes: %1</translation>
+    </message>
+    <message>
         <source>Données d'analyse</source>
         <translation>Analysis data</translation>
     </message>
@@ -12419,6 +14478,20 @@ The file is verified by SHA-256. Once installed, the AI works offline.</translat
         <source>Matrices indisponibles : %1
 </source>
         <translation>Matrices unavailable: %1
+</translation>
+    </message>
+    <message>
+        <source>Classe OpenSees : %1 | nœuds N%2 → N%3 | L = %4
+</source>
+        <translation>OpenSees class: %1 | nodes N%2 → N%3 | L = %4
+</translation>
+    </message>
+    <message>
+        <source>Axes locaux (global) : x = (%1, %2, %3)  y = (%4, %5, %6)  z = (%7, %8, %9)
+
+</source>
+        <translation>Local axes (global): x = (%1, %2, %3)  y = (%4, %5, %6)  z = (%7, %8, %9)
+
 </translation>
     </message>
     <message>
@@ -12639,6 +14712,14 @@ Each restraint is listed before the analysis and reported if it carries a force.
     <message>
         <source>Options %1</source>
         <translation>%1 options</translation>
+    </message>
+    <message>
+        <source>Modèle</source>
+        <translation>Model</translation>
+    </message>
+    <message>
+        <source>Aucun modèle.</source>
+        <translation>No model.</translation>
     </message>
     <message>
         <source>Prêt pour le calcul.</source>
@@ -13125,6 +15206,10 @@ Each restraint is listed before the analysis and reported if it carries a force.
         <translation>Default material:</translation>
     </message>
     <message>
+        <source>ACIER S235</source>
+        <translation>STEEL S235</translation>
+    </message>
+    <message>
         <source>Coordonnées des noeuds (m)</source>
         <translation>Node coordinates (m)</translation>
     </message>
@@ -13191,6 +15276,10 @@ Each restraint is listed before the analysis and reported if it carries a force.
     <message>
         <source>%1 créée reliant N%2 à N%3</source>
         <translation>%1 created connecting N%2 to N%3</translation>
+    </message>
+    <message>
+        <source>BÉTON C25/30</source>
+        <translation>CONCRETE C25/30</translation>
     </message>
     <message>
         <source>Format de coordonnées</source>
@@ -13370,6 +15459,10 @@ Example: -10.00; 0.00; 0.00</translation>
         <translation>End:</translation>
     </message>
     <message>
+        <source>Section personnalisée</source>
+        <translation>Custom section</translation>
+    </message>
+    <message>
         <source>Couleur de la Poutre</source>
         <translation>Beam colour</translation>
     </message>
@@ -13456,6 +15549,22 @@ Example: -10.00; 0.00; 0.00</translation>
 <context>
     <name>TSA::UI::BlueprintEditor</name>
     <message>
+        <source>entrée « %1 » supprimée</source>
+        <translation>input “%1” deleted</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » : %2 → %3</source>
+        <translation>input “%1”: %2 → %3</translation>
+    </message>
+    <message>
+        <source>sortie « %1 » supprimée</source>
+        <translation>output “%1” deleted</translation>
+    </message>
+    <message>
+        <source>sortie « %1 » : %2 → %3</source>
+        <translation>output “%1”: %2 → %3</translation>
+    </message>
+    <message>
         <source>Nouveau Blueprint</source>
         <translation>New Blueprint</translation>
     </message>
@@ -13490,6 +15599,10 @@ Example: -10.00; 0.00; 0.00</translation>
     <message>
         <source>Supprimer</source>
         <translation>Delete</translation>
+    </message>
+    <message>
+        <source>%1 (%2, dans le graphe)</source>
+        <translation>%1 (%2, in the graph)</translation>
     </message>
     <message>
         <source>Copier</source>
@@ -14082,6 +16195,10 @@ Fix the subgraph body or discard its changes.</translation>
         <source> (requis)</source>
         <translation> (required)</translation>
     </message>
+    <message>
+        <source>Lien refusé : %1</source>
+        <translation>Link refused: %1</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::BlueprintSubgraphDialog</name>
@@ -14164,6 +16281,34 @@ Fix the subgraph body or discard its changes.</translation>
     <message>
         <source>Objet</source>
         <translation>Object</translation>
+    </message>
+    <message>
+        <source>Réel</source>
+        <translation>Real</translation>
+    </message>
+    <message>
+        <source>Entier</source>
+        <translation>Integer</translation>
+    </message>
+    <message>
+        <source>Booléen</source>
+        <translation>Boolean</translation>
+    </message>
+    <message>
+        <source>Texte</source>
+        <translation>Text</translation>
+    </message>
+    <message>
+        <source>Point (x, y, z)</source>
+        <translation>Point (x, y, z)</translation>
+    </message>
+    <message>
+        <source>Identifiants</source>
+        <translation>Identifiers</translation>
+    </message>
+    <message>
+        <source>Générique</source>
+        <translation>Generic</translation>
     </message>
     <message>
         <source>Valeur par défaut</source>
@@ -14717,6 +16862,18 @@ Fix the subgraph body or discard its changes.</translation>
     <message>
         <source>Tête :</source>
         <translation>Top:</translation>
+    </message>
+    <message>
+        <source>N%1 (Pied) → N%2 (Tête)</source>
+        <translation>N%1 (Base) → N%2 (Top)</translation>
+    </message>
+    <message>
+        <source>Section personnalisée</source>
+        <translation>Custom section</translation>
+    </message>
+    <message>
+        <source>Béton C25/30</source>
+        <translation>Concrete C25/30</translation>
     </message>
     <message>
         <source>Couleur du Poteau</source>
@@ -15505,12 +17662,192 @@ Run the FE analysis (F5) to generate the diagrams.</translation>
         <translation>Eurocode field</translation>
     </message>
     <message>
+        <source>Bases de calcul des structures</source>
+        <translation>Basis of structural design</translation>
+    </message>
+    <message>
+        <source>Actions &amp; Sécurité</source>
+        <translation>Actions &amp; safety</translation>
+    </message>
+    <message>
+        <source>Actions sur les structures (Poids, Neige, Vent)</source>
+        <translation>Actions on structures (weights, snow, wind)</translation>
+    </message>
+    <message>
+        <source>Charges &amp; Actions</source>
+        <translation>Loads &amp; actions</translation>
+    </message>
+    <message>
+        <source>Calcul des structures en béton (EC2)</source>
+        <translation>Design of concrete structures (EC2)</translation>
+    </message>
+    <message>
+        <source>Béton Armé &amp; Précontraint</source>
+        <translation>Reinforced &amp; prestressed concrete</translation>
+    </message>
+    <message>
+        <source>Calcul des structures en acier (EC3)</source>
+        <translation>Design of steel structures (EC3)</translation>
+    </message>
+    <message>
+        <source>Structures Métalliques</source>
+        <translation>Steel structures</translation>
+    </message>
+    <message>
+        <source>Calcul des structures avec éléments tendus</source>
+        <translation>Design of structures with tension components</translation>
+    </message>
+    <message>
+        <source>Câbles, Tirants &amp; Haubans</source>
+        <translation>Cables, ties &amp; stays</translation>
+    </message>
+    <message>
+        <source>Aciers de précontrainte - Torons</source>
+        <translation>Prestressing steels - Strands</translation>
+    </message>
+    <message>
+        <source>Torons Précontrainte</source>
+        <translation>Prestressing strands</translation>
+    </message>
+    <message>
+        <source>Aciers de précontrainte - Barres</source>
+        <translation>Prestressing steels - Bars</translation>
+    </message>
+    <message>
+        <source>Barres de Post-tension</source>
+        <translation>Post-tensioning bars</translation>
+    </message>
+    <message>
+        <source>Torons Internationaux</source>
+        <translation>International strands</translation>
+    </message>
+    <message>
         <source>%1 référence(s) normative(s)</source>
         <translation>%1 normative reference(s)</translation>
     </message>
     <message>
         <source>&lt;p style='color: #4A5568;'&gt;Élément sélectionné : &lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;</source>
         <translation>&lt;p style='color: #4A5568;'&gt;Selected item: &lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Catégorie :&lt;/b&gt; %1 | &lt;b&gt;Norme :&lt;/b&gt; %2 (%3) - %4&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Category:&lt;/b&gt; %1 | &lt;b&gt;Standard:&lt;/b&gt; %2 (%3) - %4&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Propriété Physique&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Valeur&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Unité&lt;/th&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Physical property&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Value&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Unit&lt;/th&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Module d'Young (E)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;GPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Young's modulus (E)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;GPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Coefficient de Poisson (ν)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;-&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Poisson's ratio (ν)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;-&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Masse Volumique (ρ)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kg/m³&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Density (ρ)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kg/m³&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Résistance caractéristique fck&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Characteristic strength fck&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Limite d'élasticité fy&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Yield strength fy&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Dilatation thermique (α)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;1/K&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Thermal expansion (α)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;1/K&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 8px 0 4px 0;'&gt;&lt;b&gt;Aspect Visuel PBR :&lt;/b&gt;&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 8px 0 4px 0;'&gt;&lt;b&gt;PBR visual appearance:&lt;/b&gt;&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;div style='display: flex; align-items: center; gap: 10px;'&gt;Couleur : &lt;span style='display: inline-block; width: 20px; height: 20px; background-color: %1; border: 1px solid #718096; vertical-align: middle;'&gt;&lt;/span&gt; %1 | Rugosité : %2 | Métallique : %3&lt;/div&gt;</source>
+        <translation>&lt;div style='display: flex; align-items: center; gap: 10px;'&gt;Colour: &lt;span style='display: inline-block; width: 20px; height: 20px; background-color: %1; border: 1px solid #718096; vertical-align: middle;'&gt;&lt;/span&gt; %1 | Roughness: %2 | Metallic: %3&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Forme :&lt;/b&gt; %1 | &lt;b&gt;Norme :&lt;/b&gt; %2 (%3) | &lt;b&gt;Matériau par défaut :&lt;/b&gt; %4&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Shape:&lt;/b&gt; %1 | &lt;b&gt;Standard:&lt;/b&gt; %2 (%3) | &lt;b&gt;Default material:&lt;/b&gt; %4&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Caractéristique Géométrique&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Valeur&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Unité&lt;/th&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Geometric property&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Value&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Unit&lt;/th&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Hauteur totale (h)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Total height (h)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Largeur (b)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Width (b)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Épaisseur de l'âme (tw)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Web thickness (tw)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Épaisseur de semelle (tf)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Flange thickness (tf)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Section Transversale (A)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm²&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Cross-sectional area (A)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm²&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Inertie Iy (axe fort)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm⁴&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Second moment Iy (strong axis)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm⁴&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Inertie Iz (axe faible)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm⁴&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Second moment Iz (weak axis)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm⁴&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Nuance :&lt;/b&gt; %1 | &lt;b&gt;Type :&lt;/b&gt; %2 | &lt;b&gt;Norme :&lt;/b&gt; %3 (%4)&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Grade:&lt;/b&gt; %1 | &lt;b&gt;Type:&lt;/b&gt; %2 | &lt;b&gt;Standard:&lt;/b&gt; %3 (%4)&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Caractéristique Câble&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Valeur&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Unité&lt;/th&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Cable property&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Value&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Unit&lt;/th&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Diamètre Nominal (D)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Nominal diameter (D)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Section Acier Réelle (A)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm²&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Actual steel area (A)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm²&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Masse Linéique&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kg/m&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Mass per unit length&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kg/m&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Module d'Élasticité (E)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;GPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Elastic modulus (E)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;GPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Résistance fpk&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Strength fpk&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Force de Rupture (Fm)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kN&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Breaking force (Fm)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kN&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Tension Initiale Prévue (P0)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kN&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Planned initial tension (P0)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kN&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Identifiant :&lt;/b&gt; %1 | &lt;b&gt;Auteur :&lt;/b&gt; %2&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Identifier:&lt;/b&gt; %1 | &lt;b&gt;Author:&lt;/b&gt; %2&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;&lt;b&gt;Catégories Fournies :&lt;/b&gt;&lt;/p&gt;</source>
+        <translation>&lt;p&gt;&lt;b&gt;Provided categories:&lt;/b&gt;&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Définitions Indexées : %1 | Solides 3D en Cache : %2 | Hit Ratio : %3%</source>
@@ -16428,6 +18765,42 @@ Unchecked: waits for a click on 'Apply'.</translation>
         <source>Fermer</source>
         <translation>Close</translation>
     </message>
+    <message>
+        <source>&lt;h2&gt;🚀 Démarrage &amp; Workflow de Modélisation&lt;/h2&gt;&lt;p&gt;Bienvenue dans &lt;b&gt;TSA (Tsaraloha Structural Analysis)&lt;/b&gt;, le logiciel moderne de modélisation 3D et d'analyse structurelle par éléments finis basé sur OpenCASCADE et Qt 6.&lt;/p&gt;&lt;div class='card'&gt;&lt;b&gt;Flux de travail standard pour un projet :&lt;/b&gt;&lt;ol&gt;&lt;li&gt;&lt;b&gt;Grilles &amp; Niveaux d'Étages :&lt;/b&gt; Définissez le repère altimétrique (étages RDC, R+1, etc.) et les axes orthonormés de votre bâtiment.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Modélisation Géométrique :&lt;/b&gt; Créez les nœuds structuraux, puis reliez-les par des poutres, poteaux et dalles. Vous pouvez également utiliser le générateur de &lt;i&gt;Cube Structurel 3D&lt;/i&gt;.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Profilés &amp; Matériaux :&lt;/b&gt; Définissez et assignez des sections transversales (IPE, HEA, béton armé) et les matériaux (Béton C25/30, Acier S355).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Appuis &amp; Liaisons :&lt;/b&gt; Fixez les conditions aux limites (encastrements, articulations, appuis simples).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Cas de Charges :&lt;/b&gt; Appliquez des charges nodales, linéiques réparties, surfaciques ou moments.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Analyse Éléments Finis :&lt;/b&gt; Lancez le solveur statique pour inspecter les déformées, contraintes et diagrammes d'efforts (M, N, V).&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</source>
+        <translation>&lt;h2&gt;🚀 Getting started &amp; modelling workflow&lt;/h2&gt;&lt;p&gt;Welcome to &lt;b&gt;TSA (Tsaraloha Structural Analysis)&lt;/b&gt;, the modern 3D modelling and finite element structural analysis software based on OpenCASCADE and Qt 6.&lt;/p&gt;&lt;div class='card'&gt;&lt;b&gt;Standard workflow for a project:&lt;/b&gt;&lt;ol&gt;&lt;li&gt;&lt;b&gt;Grids &amp; storey levels:&lt;/b&gt; Define the elevation reference (ground floor, first floor, etc.) and the orthogonal axes of your building.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Geometric modelling:&lt;/b&gt; Create the structural nodes, then connect them with beams, columns and slabs. You can also use the &lt;i&gt;3D structural cube&lt;/i&gt; generator.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Sections &amp; materials:&lt;/b&gt; Define and assign cross-sections (IPE, HEA, reinforced concrete) and materials (Concrete C25/30, Steel S355).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Supports &amp; connections:&lt;/b&gt; Set the boundary conditions (fixed supports, pinned supports, roller supports).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Load cases:&lt;/b&gt; Apply nodal loads, distributed line loads, surface loads or moments.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Finite element analysis:&lt;/b&gt; Run the static solver to inspect the deformed shapes, stresses and force diagrams (M, N, V).&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;✏️ Outils de Modélisation 3D&lt;/h2&gt;&lt;p&gt;TSA intègre des outils de dessin interactif 3D accélérés par OpenCASCADE :&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Outil&lt;/th&gt;&lt;th&gt;Raccourci&lt;/th&gt;&lt;th&gt;Description&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Sélection&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Échap&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Permet d'inspecter les entités ou d'effectuer des sélections de zone :&lt;br&gt;• &lt;i&gt;Gauche vers Droite (Bleu)&lt;/i&gt; : Sélection par inclusion totale (fenêtre englobante).&lt;br&gt;• &lt;i&gt;Droite vers Gauche (Vert)&lt;/i&gt; : Sélection par capture/sécante (touché = sélectionné).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Éléments Filaires&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Alt+B&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;b&gt;Interface unifiée&lt;/b&gt; pour toutes les barres 1D (Poutres, Poteaux, Barres de treillis, Tirants). Choix de profilés normalisés (IPE, HEA, etc.) ou paramétriques et tracé solide en direct.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Éléments Surfaciques&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Alt+S&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;b&gt;Interface unifiée&lt;/b&gt; pour toutes les surfaces 2D (Dalles, Planchers, Voiles et Murs porteurs). Réglage d'épaisseur, matériau et tracé polygonal ou à 2 points.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Nœud&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;N&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Place un nœud structurel 3D par clic direct ou magnétisme de grille.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Cube Structurel&lt;/b&gt;&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;Génère automatiquement une travée 3D complète (8 nœuds, 4 poteaux, 8 poutres, 1 dalle).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Déplacer&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;M&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Applique un vecteur de translation (dX, dY, dZ) aux éléments sélectionnés.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Copier / Répéter&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Ctrl+D&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Duplique la sélection avec répétition multiple (ex: colonnes d'un portique).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Supprimer&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Suppr&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Supprime immédiatement les entités sélectionnées du modèle.&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
+        <translation>&lt;h2&gt;✏️ 3D modelling tools&lt;/h2&gt;&lt;p&gt;TSA includes interactive 3D drawing tools accelerated by OpenCASCADE:&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Tool&lt;/th&gt;&lt;th&gt;Shortcut&lt;/th&gt;&lt;th&gt;Description&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Selection&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Esc&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Inspect entities or make area selections:&lt;br&gt;• &lt;i&gt;Left to right (blue)&lt;/i&gt;: window selection, entities fully enclosed (bounding window).&lt;br&gt;• &lt;i&gt;Right to left (green)&lt;/i&gt;: crossing selection (touched = selected).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Line elements&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Alt+B&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;b&gt;Unified interface&lt;/b&gt; for all 1D members (beams, columns, truss members, ties). Choice of standard (IPE, HEA, etc.) or parametric sections, with live solid drawing.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Surface elements&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Alt+S&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;b&gt;Unified interface&lt;/b&gt; for all 2D surfaces (slabs, floors, walls and load-bearing walls). Thickness and material settings, polygonal or 2-point drawing.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Node&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;N&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Places a 3D structural node by direct click or grid snapping.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Structural cube&lt;/b&gt;&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;Automatically generates a complete 3D bay (8 nodes, 4 columns, 8 beams, 1 slab).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Move&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;M&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Applies a translation vector (dX, dY, dZ) to the selected elements.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Copy / Repeat&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Ctrl+D&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Duplicates the selection with multiple repetition (e.g. columns of a frame).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Delete&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Del&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Immediately deletes the selected entities from the model.&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;📐 Système de Grilles 3D &amp; Altimétrie&lt;/h2&gt;&lt;p&gt;Le système de repérage de TSA est unifié pour garantir une cohérence absolue entre vue 2D et espace 3D :&lt;/p&gt;&lt;div class='card'&gt;&lt;h3&gt;Types de Grilles&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Cartésienne :&lt;/b&gt; Définition d'axes X et Y avec espacements personnalisés (ex: 5.0, 6.0, 4.5 m) et bulles d'identification alphabétiques ou numériques.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Cylindrique :&lt;/b&gt; Rayons (R) et divisions angulaires (&amp;theta;) pour les structures circulaires ou réservoirs.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Gestion des Étages &amp; Niveaux&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;Accédez au &lt;b&gt;Gestionnaire d'Étages&lt;/b&gt; via &lt;span class='badge'&gt;Ctrl+L&lt;/span&gt;.&lt;/li&gt;&lt;li&gt;La barre supérieure au-dessus du viewport permet de basculer instantanément le plan de travail actif d'un étage à un autre (ex: Niveau 0 : 0.00m, Étage 1 : +3.20m).&lt;/li&gt;&lt;li&gt;Touche &lt;span class='badge'&gt;G&lt;/span&gt; pour afficher/masquer la grille, et touche &lt;span class='badge'&gt;S&lt;/span&gt; pour activer le magnétisme d'accrochage (Snap).&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</source>
+        <translation>&lt;h2&gt;📐 3D grid system &amp; elevations&lt;/h2&gt;&lt;p&gt;The TSA reference system is unified to guarantee complete consistency between the 2D view and the 3D space:&lt;/p&gt;&lt;div class='card'&gt;&lt;h3&gt;Grid types&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Cartesian:&lt;/b&gt; X and Y axes with custom spacings (e.g. 5.0, 6.0, 4.5 m) and alphabetical or numeric identification bubbles.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Cylindrical:&lt;/b&gt; radii (R) and angular divisions (&amp;theta;) for circular structures or tanks.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Storey &amp; level management&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;Open the &lt;b&gt;storey manager&lt;/b&gt; with &lt;span class='badge'&gt;Ctrl+L&lt;/span&gt;.&lt;/li&gt;&lt;li&gt;The bar above the viewport instantly switches the active work plane from one storey to another (e.g. Level 0: 0.00m, Storey 1: +3.20m).&lt;/li&gt;&lt;li&gt;Key &lt;span class='badge'&gt;G&lt;/span&gt; shows/hides the grid, and key &lt;span class='badge'&gt;S&lt;/span&gt; turns on snapping.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;🎥 Vues, Navigation Caméra &amp; Coupes 3D&lt;/h2&gt;&lt;div class='card'&gt;&lt;h3&gt;Navigation Souris dans le Viewport 3D&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Rotation Orbitale (Orbit 3D) :&lt;/b&gt; Maintenez le &lt;i&gt;Bouton Central (Molette)&lt;/i&gt; ou &lt;i&gt;Bouton Droit&lt;/i&gt; et déplacez la souris.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Déplacement Latéral (Pan) :&lt;/b&gt; Maintenez &lt;span class='badge'&gt;Maj&lt;/span&gt; + &lt;i&gt;Bouton Central&lt;/i&gt; et déplacez la souris.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Zoom Continu :&lt;/b&gt; Faites tourner la &lt;i&gt;Molette&lt;/i&gt; de la souris vers l'avant ou l'arrière.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Zoom Étendu (Fit All) :&lt;/b&gt; Appuyez sur la touche &lt;span class='badge'&gt;F&lt;/span&gt; pour cadrer l'ensemble du modèle.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Réinitialiser la Vue :&lt;/b&gt; Appuyez sur la touche &lt;span class='badge'&gt;R&lt;/span&gt; pour restaurer l'angle isométrique par défaut.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Projections CAO Robot / AutoCAD&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Plan XY :&lt;/b&gt; Vue en plan horizontale à l'altitude du niveau sélectionné.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Plan XZ :&lt;/b&gt; Vue en élévation de face (idéale pour analyser les portiques).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Plan YZ :&lt;/b&gt; Vue en élévation latérale / pignon.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Coupes 3D (Graphic3d_ClipPlane) :&lt;/b&gt; Permet de trancher interactivement le bâtiment selon l'axe X, Y ou Z avec inversion de face.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</source>
+        <translation>&lt;h2&gt;🎥 Views, camera navigation &amp; 3D sections&lt;/h2&gt;&lt;div class='card'&gt;&lt;h3&gt;Mouse navigation in the 3D viewport&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Orbit (3D orbit):&lt;/b&gt; hold the &lt;i&gt;middle button (wheel)&lt;/i&gt; or the &lt;i&gt;right button&lt;/i&gt; and move the mouse.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Pan:&lt;/b&gt; hold &lt;span class='badge'&gt;Shift&lt;/span&gt; + &lt;i&gt;middle button&lt;/i&gt; and move the mouse.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Continuous zoom:&lt;/b&gt; turn the mouse &lt;i&gt;wheel&lt;/i&gt; forwards or backwards.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Zoom extents (Fit all):&lt;/b&gt; press the &lt;span class='badge'&gt;F&lt;/span&gt; key to frame the whole model.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Reset view:&lt;/b&gt; press the &lt;span class='badge'&gt;R&lt;/span&gt; key to restore the default isometric angle.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Robot / AutoCAD CAD projections&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;XY plane:&lt;/b&gt; horizontal plan view at the elevation of the selected level.&lt;/li&gt;&lt;li&gt;&lt;b&gt;XZ plane:&lt;/b&gt; front elevation (ideal for analysing frames).&lt;/li&gt;&lt;li&gt;&lt;b&gt;YZ plane:&lt;/b&gt; side / gable elevation.&lt;/li&gt;&lt;li&gt;&lt;b&gt;3D sections (Graphic3d_ClipPlane):&lt;/b&gt; interactively cut the building along the X, Y or Z axis, with side flipping.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;⌨️ Raccourcis Clavier &amp; Ligne de Commande&lt;/h2&gt;&lt;p&gt;TSA propose deux modes d'action rapide : les raccourcis directs au clavier et la console interactive façon AutoCAD.&lt;/p&gt;&lt;h3&gt;Raccourcis clavier actifs&lt;/h3&gt;&lt;p&gt;Liste générée à partir des raccourcis réellement actifs (catalogue des commandes et fichier &lt;code&gt;shortcut.txt&lt;/code&gt; de l'utilisateur). Personnalisation : &lt;b&gt;Aide &amp;gt; Personnaliser les raccourcis&lt;/b&gt; (Ctrl+F1 par défaut) ou modification directe du fichier, appliquée sans redémarrage. Suites de touches façon AutoCAD : « D, A » = D puis A.&lt;/p&gt;</source>
+        <translation>&lt;h2&gt;⌨️ Keyboard shortcuts &amp; command line&lt;/h2&gt;&lt;p&gt;TSA offers two quick action modes: direct keyboard shortcuts and the AutoCAD-style interactive console.&lt;/p&gt;&lt;h3&gt;Active keyboard shortcuts&lt;/h3&gt;&lt;p&gt;List generated from the shortcuts actually active (command catalogue and the user's &lt;code&gt;shortcut.txt&lt;/code&gt; file). Customisation: &lt;b&gt;Help &amp;gt; Customise shortcuts&lt;/b&gt; (Ctrl+F1 by default) or direct editing of the file, applied without restarting. AutoCAD-style key sequences: “D, A” = D then A.&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h3&gt;Commandes de la Ligne de Commande (Console)&lt;/h3&gt;&lt;p&gt;Tapez ces mots-clés dans la barre inférieure :&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Commande&lt;/th&gt;&lt;th&gt;Effet&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;NODE&lt;/code&gt; ou &lt;code&gt;N&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mode création de nœud&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;BEAM&lt;/code&gt; ou &lt;code&gt;B&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mode création de poutre&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;COLUMN&lt;/code&gt; ou &lt;code&gt;C&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mode création de poteau&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;SLAB&lt;/code&gt; ou &lt;code&gt;L&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mode création de dalle&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;GRID&lt;/code&gt; ou &lt;code&gt;G&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Bascule visibilité de la grille&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;FIT&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Zoom étendu automatique&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;RESET&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Réinitialisation orientation caméra&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;MOVE&lt;/code&gt; ou &lt;code&gt;M&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Ouvre le dialogue de déplacement&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;COPY&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Ouvre le dialogue de copie multiple&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;DEL&lt;/code&gt; ou &lt;code&gt;DELETE&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Supprime la sélection&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;THEME&lt;/code&gt; / &lt;code&gt;DARK&lt;/code&gt; / &lt;code&gt;LIGHT&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Bascule entre le mode sombre et le mode clair&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;HELP&lt;/code&gt; / &lt;code&gt;AIDE&lt;/code&gt; / &lt;code&gt;?&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Ouvre la fenêtre d'aide complète&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
+        <translation>&lt;h3&gt;Command line commands (console)&lt;/h3&gt;&lt;p&gt;Type these keywords in the bottom bar:&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Command&lt;/th&gt;&lt;th&gt;Effect&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;NODE&lt;/code&gt; or &lt;code&gt;N&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Node creation mode&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;BEAM&lt;/code&gt; or &lt;code&gt;B&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Beam creation mode&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;COLUMN&lt;/code&gt; or &lt;code&gt;C&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Column creation mode&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;SLAB&lt;/code&gt; or &lt;code&gt;L&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Slab creation mode&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;GRID&lt;/code&gt; or &lt;code&gt;G&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Toggles grid visibility&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;FIT&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Automatic zoom extents&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;RESET&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Resets the camera orientation&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;MOVE&lt;/code&gt; or &lt;code&gt;M&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Opens the move dialog&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;COPY&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Opens the multiple copy dialog&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;DEL&lt;/code&gt; or &lt;code&gt;DELETE&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Deletes the selection&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;THEME&lt;/code&gt; / &lt;code&gt;DARK&lt;/code&gt; / &lt;code&gt;LIGHT&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Switches between dark mode and light mode&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;HELP&lt;/code&gt; / &lt;code&gt;AIDE&lt;/code&gt; / &lt;code&gt;?&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Opens the full help window&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;⚙️ Analyse &amp; Résultats Éléments Finis&lt;/h2&gt;&lt;div class='card'&gt;&lt;h3&gt;Calcul Statique&lt;/h3&gt;&lt;p&gt;Le solveur matriciel résout le système d'équations globales :&lt;/p&gt;&lt;p align='center'&gt;&lt;code&gt;[K] · {U} = {F}&lt;/code&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;[K] :&lt;/b&gt; Matrice de rigidité globale assemblée à partir des rigidités locales 3D de poutres d'Euler-Bernoulli et Timoshenko (6 DDL par nœud).&lt;/li&gt;&lt;li&gt;&lt;b&gt;{U} :&lt;/b&gt; Vecteur des déplacements et rotations nodales.&lt;/li&gt;&lt;li&gt;&lt;b&gt;{F} :&lt;/b&gt; Vecteur des forces et moments appliqués.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Exploitation des Résultats&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Déplacements :&lt;/b&gt; Visualisation de la déformée élastique avec facteur d'amplification ajustable.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Diagrammes d'efforts internes :&lt;/b&gt; Courbes continues de Moment Fléchissant (M&lt;sub&gt;y&lt;/sub&gt;, M&lt;sub&gt;z&lt;/sub&gt;), Effort Tranchant (V&lt;sub&gt;y&lt;/sub&gt;, V&lt;sub&gt;z&lt;/sub&gt;) et Effort Normal (N).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Cartographie des contraintes :&lt;/b&gt; Calcul des contraintes normales maximales &amp;sigma; et tangentielles &amp;tau;, ainsi que la contrainte équivalente de Von Mises.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</source>
+        <translation>&lt;h2&gt;⚙️ Finite element analysis &amp; results&lt;/h2&gt;&lt;div class='card'&gt;&lt;h3&gt;Static analysis&lt;/h3&gt;&lt;p&gt;The matrix solver solves the global system of equations:&lt;/p&gt;&lt;p align='center'&gt;&lt;code&gt;[K] · {U} = {F}&lt;/code&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;[K]:&lt;/b&gt; global stiffness matrix assembled from the local 3D stiffnesses of Euler-Bernoulli and Timoshenko beams (6 DOF per node).&lt;/li&gt;&lt;li&gt;&lt;b&gt;{U}:&lt;/b&gt; vector of nodal displacements and rotations.&lt;/li&gt;&lt;li&gt;&lt;b&gt;{F}:&lt;/b&gt; vector of applied forces and moments.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Using the results&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Displacements:&lt;/b&gt; display of the elastic deformed shape with an adjustable amplification factor.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Internal force diagrams:&lt;/b&gt; continuous curves of bending moment (M&lt;sub&gt;y&lt;/sub&gt;, M&lt;sub&gt;z&lt;/sub&gt;), shear force (V&lt;sub&gt;y&lt;/sub&gt;, V&lt;sub&gt;z&lt;/sub&gt;) and axial force (N).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Stress maps:&lt;/b&gt; calculation of the maximum normal stresses &amp;sigma; and shear stresses &amp;tau;, as well as the Von Mises equivalent stress.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;ℹ️ À Propos de %1 (%2)&lt;/h2&gt;</source>
+        <translation>&lt;h2&gt;ℹ️ About %1 (%2)&lt;/h2&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;Développé pour les ingénieurs de génie civil, bureaux d'études et architectes recherchant la puissance de calcul allié à l'ergonomie CAO moderne.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Version :&lt;/b&gt; 1.0.0 (Release 2026)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Moteur Géométrique 3D :&lt;/b&gt; OpenCASCADE Technology 8.0.1 (OCCT)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Interface Utilisateur :&lt;/b&gt; Qt 6.11 (Architecture Ribbon AutoCAD, Mode Sombre / Clair dynamique)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Standard C++ :&lt;/b&gt; C++20 (MSVC 64-bit)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Auteur / Concepteur :&lt;/b&gt; Christinot TSARALOHA&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</source>
+        <translation>&lt;p&gt;Developed for civil engineers, design offices and architects seeking computing power combined with modern CAD ergonomics.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Version:&lt;/b&gt; 1.0.0 (Release 2026)&lt;/li&gt;&lt;li&gt;&lt;b&gt;3D geometry engine:&lt;/b&gt; OpenCASCADE Technology 8.0.1 (OCCT)&lt;/li&gt;&lt;li&gt;&lt;b&gt;User interface:&lt;/b&gt; Qt 6.11 (AutoCAD ribbon architecture, dynamic dark / light mode)&lt;/li&gt;&lt;li&gt;&lt;b&gt;C++ standard:&lt;/b&gt; C++20 (MSVC 64-bit)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Author / designer:&lt;/b&gt; Christinot TSARALOHA&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::IfcImportOptionsDialog</name>
@@ -16579,6 +18952,29 @@ Unchecked: waits for a click on 'Apply'.</translation>
     <message>
         <source>Fermer</source>
         <translation>Close</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::UI::LayoutManager</name>
+    <message>
+        <source>Modélisation</source>
+        <translation>Modelling</translation>
+    </message>
+    <message>
+        <source>Analyse</source>
+        <translation>Analysis</translation>
+    </message>
+    <message>
+        <source>Résultats</source>
+        <translation>Results</translation>
+    </message>
+    <message>
+        <source>Détaillage</source>
+        <translation>Detailing</translation>
+    </message>
+    <message>
+        <source>Personnalisée</source>
+        <translation>Custom</translation>
     </message>
 </context>
 <context>
@@ -16889,6 +19285,10 @@ Unchecked: waits for a click on 'Apply'.</translation>
         <translation>Add a colour</translation>
     </message>
     <message>
+        <source>Poutre Principale Bleue</source>
+        <translation>Blue main beam</translation>
+    </message>
+    <message>
         <source>Couleur :</source>
         <translation>Colour:</translation>
     </message>
@@ -16919,6 +19319,10 @@ Unchecked: waits for a click on 'Apply'.</translation>
     <message>
         <source>Importer une Texture</source>
         <translation>Import a texture</translation>
+    </message>
+    <message>
+        <source>Béton Coffrage Bois</source>
+        <translation>Concrete with timber formwork</translation>
     </message>
     <message>
         <source>Image :</source>
@@ -16967,6 +19371,10 @@ Unchecked: waits for a click on 'Apply'.</translation>
     <message>
         <source>Enregistrer la Structure Active</source>
         <translation>Save active structure</translation>
+    </message>
+    <message>
+        <source>Portique 2D 6m x 3m</source>
+        <translation>2D frame 6m x 3m</translation>
     </message>
     <message>
         <source>Description :</source>
@@ -17160,12 +19568,20 @@ Unchecked: waits for a click on 'Apply'.</translation>
         <translation>Eurocode category:</translation>
     </message>
     <message>
+        <source>Créer Cas de Charge</source>
+        <translation>Create load case</translation>
+    </message>
+    <message>
         <source>Confirmation</source>
         <translation>Confirmation</translation>
     </message>
     <message>
         <source>Voulez-vous supprimer le cas de charge #%1 et toutes ses charges associées ?</source>
         <translation>Do you want to delete load case #%1 and all its associated loads?</translation>
+    </message>
+    <message>
+        <source>Supprimer Cas de Charge</source>
+        <translation>Delete load case</translation>
     </message>
     <message>
         <source>Réinitialisation</source>
@@ -17176,12 +19592,24 @@ Unchecked: waits for a click on 'Apply'.</translation>
         <translation>Do you want to reset the load cases and combinations to the default Eurocode values?</translation>
     </message>
     <message>
+        <source>Réinitialiser Cas Eurocodes</source>
+        <translation>Reset Eurocode cases</translation>
+    </message>
+    <message>
         <source>Nouvelle Combinaison</source>
         <translation>New combination</translation>
     </message>
     <message>
         <source>Nom de la combinaison :</source>
         <translation>Combination name:</translation>
+    </message>
+    <message>
+        <source>Créer Combinaison</source>
+        <translation>Create combination</translation>
+    </message>
+    <message>
+        <source>Supprimer Combinaison</source>
+        <translation>Delete combination</translation>
     </message>
     <message>
         <source>⚠️ Modèle Validé avec %1 Avertissement(s)</source>
@@ -17379,6 +19807,10 @@ Unchecked: waits for a click on 'Apply'.</translation>
     <message>
         <source>Modifier Charge Nodale #%1</source>
         <translation>Edit nodal load #%1</translation>
+    </message>
+    <message>
+        <source>La barre chargée n'existe plus.</source>
+        <translation>The loaded member no longer exists.</translation>
     </message>
     <message>
         <source>Charge sur barre</source>
@@ -17844,6 +20276,10 @@ The other objects keep their settings.</translation>
     <message>
         <source>Aucun maillage généré.</source>
         <translation>No mesh generated.</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) rattaché(s) à des objets absents du modèle</source>
+        <translation>%1 element(s) attached to objects missing from the model</translation>
     </message>
     <message>
         <source>%1 nœud(s) rattaché(s) aux nœuds du modèle par leur position</source>
@@ -18398,6 +20834,14 @@ The other objects keep their settings.</translation>
         <translation>&lt;b&gt;Mesh unavailable&lt;/b&gt;: %1</translation>
     </message>
     <message>
+        <source>nœud</source>
+        <translation>node</translation>
+    </message>
+    <message>
+        <source>charges</source>
+        <translation>loads</translation>
+    </message>
+    <message>
         <source>N%1</source>
         <translation>N%1</translation>
     </message>
@@ -18412,6 +20856,18 @@ The other objects keep their settings.</translation>
     <message>
         <source>× %1</source>
         <translation>× %1</translation>
+    </message>
+    <message>
+        <source>uniforme</source>
+        <translation>uniform</translation>
+    </message>
+    <message>
+        <source>progressive</source>
+        <translation>progressive</translation>
+    </message>
+    <message>
+        <source>symétrique</source>
+        <translation>symmetrical</translation>
     </message>
     <message>
         <source>long. max %1 m</source>
@@ -18733,6 +21189,14 @@ Type: %1</translation>
     <message>
         <source>Type « %1 » repris de l'élément et propagé : %2 autre(s) élément(s) modifié(s)</source>
         <translation>Type “%1” taken from the element and propagated: %2 other element(s) modified</translation>
+    </message>
+    <message>
+        <source>Charge Nodale #%1 (Nœud %2)</source>
+        <translation>Nodal load #%1 (node %2)</translation>
+    </message>
+    <message>
+        <source>Charge Barre #%1 (Élém %2)</source>
+        <translation>Member load #%1 (elem. %2)</translation>
     </message>
     <message>
         <source>Appui</source>
@@ -21306,6 +23770,26 @@ Double-click to open</translation>
         <source>Épaisseur t :</source>
         <translation>Thickness t:</translation>
     </message>
+    <message>
+        <source>Aire &lt;b&gt;A&lt;/b&gt; = %1 cm² (%2 m²)</source>
+        <translation>Area &lt;b&gt;A&lt;/b&gt; = %1 cm² (%2 m²)</translation>
+    </message>
+    <message>
+        <source>Inertie &lt;b&gt;Iy&lt;/b&gt; = %1 cm⁴ (axe fort)</source>
+        <translation>Second moment of area &lt;b&gt;Iy&lt;/b&gt; = %1 cm⁴ (strong axis)</translation>
+    </message>
+    <message>
+        <source>Inertie &lt;b&gt;Iz&lt;/b&gt; = %1 cm⁴ (axe faible)</source>
+        <translation>Second moment of area &lt;b&gt;Iz&lt;/b&gt; = %1 cm⁴ (weak axis)</translation>
+    </message>
+    <message>
+        <source>Torsion &lt;b&gt;J&lt;/b&gt; = %1 cm⁴</source>
+        <translation>Torsion &lt;b&gt;J&lt;/b&gt; = %1 cm⁴</translation>
+    </message>
+    <message>
+        <source>Module &lt;b&gt;Wel,y&lt;/b&gt; = %1 cm³ | &lt;b&gt;Wel,z&lt;/b&gt; = %2 cm³</source>
+        <translation>Section modulus &lt;b&gt;Wel,y&lt;/b&gt; = %1 cm³ | &lt;b&gt;Wel,z&lt;/b&gt; = %2 cm³</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::SectionCutDialog</name>
@@ -21590,10 +24074,117 @@ Otherwise, click 'Apply'.</translation>
     </message>
 </context>
 <context>
+    <name>TSA::UI::Shortcuts::ShortcutConfig</name>
+    <message>
+        <source>« %1 » (%2) est le début de « %3 » (%4) : Qt attendrait la touche suivante, « %1 » ne se déclencherait jamais</source>
+        <translation>“%1” (%2) is the start of “%3” (%4): Qt would wait for the next key, so “%1” would never trigger</translation>
+    </message>
+    <message>
+        <source>« %1 » est attribué à %2 et à %3 : aucune des deux commandes ne se déclencherait</source>
+        <translation>“%1” is assigned to %2 and to %3: neither command would trigger</translation>
+    </message>
+    <message>
+        <source>« | » sert de séparateur de colonnes et ne peut pas être un raccourci</source>
+        <translation>“|” is used as the column separator and cannot be a shortcut</translation>
+    </message>
+    <message>
+        <source>combinaison invalide « %1 »</source>
+        <translation>invalid combination “%1”</translation>
+    </message>
+    <message>
+        <source>ligne %1</source>
+        <translation>line %1</translation>
+    </message>
+    <message>
+        <source>%1 : format %2 plus récent que celui de cette version (%3)</source>
+        <translation>%1: format %2 newer than the one of this version (%3)</translation>
+    </message>
+    <message>
+        <source>%1 : titre de section non fermé « %2 »</source>
+        <translation>%1: unclosed section title “%2”</translation>
+    </message>
+    <message>
+        <source>%1 : « identifiant | raccourci » attendu, lu « %2 »</source>
+        <translation>%1: “identifier | shortcut” expected, read “%2”</translation>
+    </message>
+    <message>
+        <source>%1 : identifiant de commande invalide « %2 »</source>
+        <translation>%1: invalid command identifier “%2”</translation>
+    </message>
+    <message>
+        <source>%1 (%2) : état « %3 » invalide (on ou off)</source>
+        <translation>%1 (%2): invalid state “%3” (on or off)</translation>
+    </message>
+    <message>
+        <source>%1 : commande inconnue « %2 » ignorée (renommée, supprimée ou d'une autre version)</source>
+        <translation>%1: unknown command “%2” ignored (renamed, deleted or from another version)</translation>
+    </message>
+    <message>
+        <source>%1 : commande « %2 » déjà définie plus haut</source>
+        <translation>%1: command “%2” already defined above</translation>
+    </message>
+</context>
+<context>
     <name>TSA::UI::Shortcuts::ShortcutManager</name>
     <message>
         <source>Autres</source>
         <translation>Other</translation>
+    </message>
+    <message>
+        <source>Commande « %1 » absente du catalogue : aucun raccourci par défaut</source>
+        <translation>Command “%1” missing from the catalogue: no default shortcut</translation>
+    </message>
+    <message>
+        <source>lecture impossible de %1 : %2</source>
+        <translation>cannot read %1: %2</translation>
+    </message>
+    <message>
+        <source>écriture impossible de %1 : %2</source>
+        <translation>cannot write %1: %2</translation>
+    </message>
+    <message>
+        <source>Raccourcis par défaut utilisés (aucun fichier personnalisable).</source>
+        <translation>Default shortcuts used (no customisable file).</translation>
+    </message>
+    <message>
+        <source>Fichier des raccourcis créé : %1 — %2</source>
+        <translation>Shortcut file created: %1 — %2</translation>
+    </message>
+    <message>
+        <source>Dernière configuration valide conservée.</source>
+        <translation>Last valid configuration kept.</translation>
+    </message>
+    <message>
+        <source>Configuration refusée : la dernière configuration valide reste active.</source>
+        <translation>Configuration rejected: the last valid configuration remains active.</translation>
+    </message>
+    <message>
+        <source>Migration du format reportée : %1</source>
+        <translation>Format migration postponed: %1</translation>
+    </message>
+    <message>
+        <source>Format %1 → %2 : ancienne version sauvegardée dans %3</source>
+        <translation>Format %1 → %2: old version saved in %3</translation>
+    </message>
+    <message>
+        <source>%1 conflit(s) de raccourcis :</source>
+        <translation>%1 shortcut conflict(s):</translation>
+    </message>
+    <message>
+        <source>%1 commande(s) avec raccourci, %2 désactivé(s), %3 personnalisé(s)</source>
+        <translation>%1 command(s) with a shortcut, %2 disabled, %3 customised</translation>
+    </message>
+    <message>
+        <source>Raccourci</source>
+        <translation>Shortcut</translation>
+    </message>
+    <message>
+        <source>Commande</source>
+        <translation>Command</translation>
+    </message>
+    <message>
+        <source>Description</source>
+        <translation>Description</translation>
     </message>
     <message>
         <source>Répéter la dernière commande</source>
@@ -22628,6 +25219,10 @@ Create a new project or open a %1 file: its preview will appear here.</translati
 <context>
     <name>TSA::UI::TopologyDialog</name>
     <message>
+        <source>%1 puis %2 puis %3</source>
+        <translation>%1 then %2 then %3</translation>
+    </message>
+    <message>
         <source>Paramètres du projet — Topologie et numérotation</source>
         <translation>Project settings — Topology and numbering</translation>
     </message>
@@ -22918,6 +25513,18 @@ Create a new project or open a %1 file: its preview will appear here.</translati
     <message>
         <source>Exporter la correspondance (CSV)...</source>
         <translation>Export mapping (CSV)...</translation>
+    </message>
+    <message>
+        <source>vide ou un seul point</source>
+        <translation>empty or a single point</translation>
+    </message>
+    <message>
+        <source>1D (nœuds alignés)</source>
+        <translation>1D (aligned nodes)</translation>
+    </message>
+    <message>
+        <source>2D (nœuds dans un plan)</source>
+        <translation>2D (nodes in a plane)</translation>
     </message>
     <message>
         <source> — %1 nœud(s)</source>
@@ -23573,6 +26180,283 @@ Create a new project or open a %1 file: its preview will appear here.</translati
     <message>
         <source>⟲ Réinitialiser Origine à (0,0,0)</source>
         <translation>⟲ Reset origin to (0,0,0)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::DimensionRenderer</name>
+    <message>
+        <source>%1 (réf. supprimée)</source>
+        <translation>%1 (ref. deleted)</translation>
+    </message>
+    <message>
+        <source>Cotation invalide : %1</source>
+        <translation>Invalid dimension: %1</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::DisplayProfile</name>
+    <message>
+        <source>Modélisation</source>
+        <translation>Modelling</translation>
+    </message>
+    <message>
+        <source>Charges</source>
+        <translation>Loads</translation>
+    </message>
+    <message>
+        <source>Maillage</source>
+        <translation>Mesh</translation>
+    </message>
+    <message>
+        <source>Résultats</source>
+        <translation>Results</translation>
+    </message>
+    <message>
+        <source>Déformées</source>
+        <translation>Deformed shapes</translation>
+    </message>
+    <message>
+        <source>Analyse modale</source>
+        <translation>Modal analysis</translation>
+    </message>
+    <message>
+        <source>Présentation</source>
+        <translation>Presentation</translation>
+    </message>
+    <message>
+        <source>nom de profil vide ou trop long (80 caractères au plus)</source>
+        <translation>profile name empty or too long (80 characters at most)</translation>
+    </message>
+    <message>
+        <source>profil « %1 » introuvable</source>
+        <translation>profile “%1” not found</translation>
+    </message>
+    <message>
+        <source>nom de profil vide ou trop long</source>
+        <translation>profile name empty or too long</translation>
+    </message>
+    <message>
+        <source>un profil « %1 » existe déjà</source>
+        <translation>a profile “%1” already exists</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::MeshVisual</name>
+    <message>
+        <source>Maillage : nœud %1 (%2 ; %3 ; %4) m</source>
+        <translation>Mesh: node %1 (%2; %3; %4) m</translation>
+    </message>
+    <message>
+        <source>Maillage : élément %1 (%2, %3)</source>
+        <translation>Mesh: element %1 (%2, %3)</translation>
+    </message>
+    <message>
+        <source>Élément %1 : inexistant</source>
+        <translation>Element %1: does not exist</translation>
+    </message>
+    <message>
+        <source>Élément %1 — %2 (%3D, second ordre)</source>
+        <translation>Element %1 — %2 (%3D, second order)</translation>
+    </message>
+    <message>
+        <source>Élément %1 — %2 (%3D)</source>
+        <translation>Element %1 — %2 (%3D)</translation>
+    </message>
+    <message>
+        <source>Nœuds : %1</source>
+        <translation>Nodes: %1</translation>
+    </message>
+    <message>
+        <source>Gmsh : élément %1, entité %2:%3</source>
+        <translation>Gmsh: element %1, entity %2:%3</translation>
+    </message>
+    <message>
+        <source>Gmsh : étiquette inconnue (maillage antérieur à la conservation des étiquettes)</source>
+        <translation>Gmsh: unknown tag (mesh predating tag preservation)</translation>
+    </message>
+    <message>
+        <source>Source : %1 (élément de frontière)</source>
+        <translation>Source: %1 (boundary element)</translation>
+    </message>
+    <message>
+        <source>Source : %1</source>
+        <translation>Source: %1</translation>
+    </message>
+    <message>
+        <source>Groupes : %1</source>
+        <translation>Groups: %1</translation>
+    </message>
+    <message>
+        <source>aucun</source>
+        <translation>none</translation>
+    </message>
+    <message>
+        <source>Qualité (minSICN) : %1</source>
+        <translation>Quality (minSICN): %1</translation>
+    </message>
+    <message>
+        <source>non calculé</source>
+        <translation>not calculated</translation>
+    </message>
+    <message>
+        <source>Nœud %1 : inexistant</source>
+        <translation>Node %1: does not exist</translation>
+    </message>
+    <message>
+        <source>Nœud %1 — (%2 ; %3 ; %4) m</source>
+        <translation>Node %1 — (%2; %3; %4) m</translation>
+    </message>
+    <message>
+        <source>Nœud TSA confondu : %1</source>
+        <translation>Coincident TSA node: %1</translation>
+    </message>
+    <message>
+        <source>Nœud du maillage (aucun nœud TSA)</source>
+        <translation>Mesh node (no TSA node)</translation>
+    </message>
+    <message>
+        <source>Gmsh : nœud %1</source>
+        <translation>Gmsh: node %1</translation>
+    </message>
+    <message>
+        <source>Gmsh : étiquette inconnue</source>
+        <translation>Gmsh: unknown tag</translation>
+    </message>
+    <message>
+        <source>(%1 ; %2 ; %3) %4, norme %5 %4</source>
+        <translation>(%1; %2; %3) %4, magnitude %5 %4</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::ModelDisplayMode</name>
+    <message>
+        <source>Modèle physique</source>
+        <translation>Physical model</translation>
+    </message>
+    <message>
+        <source>Modèle filaire analytique</source>
+        <translation>Analytical wireframe model</translation>
+    </message>
+    <message>
+        <source>Modèle éléments finis</source>
+        <translation>Finite element model</translation>
+    </message>
+    <message>
+        <source>Superposition physique / analytique</source>
+        <translation>Physical / analytical overlay</translation>
+    </message>
+    <message>
+        <source>Maillage du solveur indisponible : aucun calcul. Lancez un calcul : le maillage réellement transmis au moteur sera affiché (axes analytiques affichés en attendant).</source>
+        <translation>Solver mesh unavailable: no analysis. Run an analysis: the mesh actually passed to the engine will be shown (analytical axes shown in the meantime).</translation>
+    </message>
+    <message>
+        <source>Maillage du solveur non affiché : le modèle a changé depuis le dernier calcul (résultats obsolètes). Relancez le calcul.</source>
+        <translation>Solver mesh not shown: the model has changed since the last analysis (results out of date). Run the analysis again.</translation>
+    </message>
+    <message>
+        <source>Le moteur du dernier calcul ne fournit pas son maillage : rien n'est affiché à sa place (axes analytiques seulement).</source>
+        <translation>The engine of the last analysis does not provide its mesh: nothing is shown in its place (analytical axes only).</translation>
+    </message>
+    <message>
+        <source>Maillage du solveur — %1.</source>
+        <translation>Solver mesh — %1.</translation>
+    </message>
+    <message>
+        <source>Dalles et voiles : non maillés par ce moteur, absents du calcul (affichés en arêtes).</source>
+        <translation>Slabs and walls: not meshed by this engine, excluded from the analysis (shown as edges).</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::ResultsVisualManager</name>
+    <message>
+        <source>CALCUL : %1 — %2 — %3
+</source>
+        <translation>ANALYSIS: %1 — %2 — %3
+</translation>
+    </message>
+    <message>
+        <source>MODE %1 / %2 : f = %3 Hz (forme propre normalisée)
+</source>
+        <translation>MODE %1 / %2: f = %3 Hz (normalised mode shape)
+</translation>
+    </message>
+    <message>
+        <source>PAS %1 / %2
+</source>
+        <translation>STEP %1 / %2
+</translation>
+    </message>
+    <message>
+        <source>DÉFORMÉE : δ_max = %1 mm (Nœud #%2) | Échelle ×%3 %4
+</source>
+        <translation>DEFORMED SHAPE: δ_max = %1 mm (node #%2) | Scale ×%3 %4
+</translation>
+    </message>
+    <message>
+        <source>(échelle réelle)</source>
+        <translation>(true scale)</translation>
+    </message>
+    <message>
+        <source>(amplifiée pour l'affichage, résultats inchangés)</source>
+        <translation>(amplified for display, results unchanged)</translation>
+    </message>
+    <message>
+        <source>ANIMATION : %1 % du facteur ×%2 — interpolation visuelle de la déformée statique (pas une analyse dynamique)
+</source>
+        <translation>ANIMATION: %1 % of factor ×%2 — visual interpolation of the static deformed shape (not a dynamic analysis)
+</translation>
+    </message>
+    <message>
+        <source>Courbe des barres : %1 depuis les stations du solveur, %2 par interpolation cubique nodale
+</source>
+        <translation>Member curves: %1 from the solver stations, %2 by nodal cubic interpolation
+</translation>
+    </message>
+    <message>
+        <source>⚠ %1 barre(s) sans déformée (%2)
+</source>
+        <translation>⚠ %1 member(s) without deformed shape (%2)
+</translation>
+    </message>
+    <message>
+        <source>TORSION : θx max = %1 mrad (%2) | %3
+</source>
+        <translation>TORSION: θx max = %1 mrad (%2) | %3
+</translation>
+    </message>
+    <message>
+        <source>sections tournées ×%1</source>
+        <translation>sections rotated ×%1</translation>
+    </message>
+    <message>
+        <source>rotation des sections masquée</source>
+        <translation>section rotation hidden</translation>
+    </message>
+    <message>
+        <source>DIAGRAMME : %1 — grandeur nulle sur toute la structure (aucun diagramme)
+</source>
+        <translation>DIAGRAM: %1 — zero over the whole structure (no diagram)
+</translation>
+    </message>
+    <message>
+        <source>DIAGRAMME : %1 (%2) | max |%3| %2 | 1 m de diagramme = %4 %2%5
+</source>
+        <translation>DIAGRAM: %1 (%2) | max |%3| %2 | 1 m of diagram = %4 %2%5
+</translation>
+    </message>
+    <message>
+        <source> (échelle automatique)</source>
+        <translation> (automatic scale)</translation>
+    </message>
+    <message>
+        <source> (automatique ×%1)</source>
+        <translation> (automatic ×%1)</translation>
+    </message>
+    <message>
+        <source>%1 étiquette(s) superposée(s) non affichée(s) (valeur égale ou inférieure à une étiquette voisine)
+</source>
+        <translation>%1 overlapping label(s) not shown (value equal to or lower than a neighbouring label)
+</translation>
     </message>
 </context>
 </TS>

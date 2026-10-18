@@ -203,7 +203,7 @@ void LoadCaseDialog::onAddLoadCase()
     else if (catChoice.contains("Snow")) cat = TSA::Model::LoadCaseCategory::Snow;
     else if (catChoice.contains("Seismic")) cat = TSA::Model::LoadCaseCategory::Seismic;
 
-    m_model->pushUndoState("Créer Cas de Charge");
+    m_model->pushUndoState(tr("Créer Cas de Charge").toStdString());
     TSA::Model::LoadCase lc(0, name.trimmed().toStdString(), cat, false, 1.0, "");
     m_model->loadManager().addLoadCase(lc);
     refreshCasesTable();
@@ -219,7 +219,7 @@ void LoadCaseDialog::onRemoveLoadCase()
                               tr("Voulez-vous supprimer le cas de charge #%1 et toutes ses charges associées ?").arg(caseId))
         == QMessageBox::Yes)
     {
-        m_model->pushUndoState("Supprimer Cas de Charge");
+        m_model->pushUndoState(tr("Supprimer Cas de Charge").toStdString());
         m_model->loadManager().removeLoadCase(caseId);
         m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
         refreshCasesTable();
@@ -235,7 +235,7 @@ void LoadCaseDialog::onResetEurocodes()
                               tr("Voulez-vous réinitialiser les cas de charges et combinaisons selon les valeurs Eurocode par défaut ?"))
         == QMessageBox::Yes)
     {
-        m_model->pushUndoState("Réinitialiser Cas Eurocodes");
+        m_model->pushUndoState(tr("Réinitialiser Cas Eurocodes").toStdString());
         m_model->loadManager().resetToDefaults();
         m_model->notifyLoadCaseChanged(m_model->loadManager().activeLoadCaseId());
         refreshCasesTable();
@@ -251,7 +251,7 @@ void LoadCaseDialog::onAddCombination()
     QString name = QInputDialog::getText(this, tr("Nouvelle Combinaison"), tr("Nom de la combinaison :"), QLineEdit::Normal, "1.35G + 1.5Q", &ok);
     if (!ok || name.trimmed().isEmpty()) return;
 
-    m_model->pushUndoState("Créer Combinaison");
+    m_model->pushUndoState(tr("Créer Combinaison").toStdString());
     TSA::Model::LoadCombination combo(0, name.trimmed().toStdString(), TSA::Model::LoadCombinationType::ULS_Fundamental);
     // Par défaut associer le cas 1 (G) à 1.35 et le cas 2 (Q) à 1.50 s'ils existent
     if (m_model->loadManager().getLoadCase(1)) combo.setFactor(1, 1.35);
@@ -267,7 +267,7 @@ void LoadCaseDialog::onRemoveCombination()
     if (row < 0 || !m_model) return;
 
     int comboId = m_tableCombinations->item(row, 0)->text().toInt();
-    m_model->pushUndoState("Supprimer Combinaison");
+    m_model->pushUndoState(tr("Supprimer Combinaison").toStdString());
     m_model->loadManager().removeCombination(comboId);
     refreshCombinationsTable();
 }

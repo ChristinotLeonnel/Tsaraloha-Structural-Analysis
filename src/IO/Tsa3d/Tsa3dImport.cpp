@@ -6,6 +6,7 @@
 #include "../../Model/Model.h"
 #include "../../Model/Load/LoadManager.h"
 
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QRegularExpression>
@@ -419,7 +420,7 @@ ImportResult importDocument(const QJsonObject& doc, TSA::Model::Model& model, co
     {
         // Aucun cas dans le fichier : cas et combinaisons par défaut, comme un nouveau projet.
         ls = LoadManager().createSnapshot();
-        res.report.info("loads", QStringLiteral("aucun cas de charge : cas par défaut d'un nouveau projet créés"));
+        res.report.info("loads", QCoreApplication::translate("TSA::IO::Tsa3d", "aucun cas de charge : cas par défaut d'un nouveau projet créés"));
     }
 
     snap.nextNodeId = nextOf(snap.nodes);
@@ -464,9 +465,9 @@ ImportResult importDocument(const QJsonObject& doc, TSA::Model::Model& model, co
         model.setExchangeExtensionsJson(QJsonDocument(root).toJson(QJsonDocument::Compact).toStdString());
     }
     if (doc.contains("results"))
-        res.report.warning("results", QStringLiteral("résultats du fichier conservés à titre d'information, non chargés comme résultats de calcul"));
+        res.report.warning("results", QCoreApplication::translate("TSA::IO::Tsa3d", "résultats du fichier conservés à titre d'information, non chargés comme résultats de calcul"));
     if (doc.contains("mesh"))
-        res.report.info("mesh", QStringLiteral("maillage du fichier conservé, non appliqué (TSA recalcule et le moteur maille lui-même)"));
+        res.report.info("mesh", QCoreApplication::translate("TSA::IO::Tsa3d", "maillage du fichier conservé, non appliqué (TSA recalcule et le moteur maille lui-même)"));
     res.ok = true;
     return res;
 }

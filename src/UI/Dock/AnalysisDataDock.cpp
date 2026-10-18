@@ -7,6 +7,7 @@
 
 #include <QAbstractTableModel>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QFileDialog>
 #include <QFontDatabase>
 #include <QHBoxLayout>
@@ -110,14 +111,17 @@ void setNum(QTableWidget* t, int r, int c, double v)
 
 QString metaText(const MatrixMetadata& m)
 {
-    return QString("Source : %1\nType : %2 | Repère : %3 | Exact : %4 | Symétrique : %5\n"
-                   "Ordre des DDL : %6\nContraintes : %7 | Système : %8 | Stockage : %9\nUnités : %10%11")
+    return QCoreApplication::translate("TSA::UI::AnalysisDataDock",
+                                       "Source : %1\nType : %2 | Repère : %3 | Exact : %4 | Symétrique : %5\n"
+                                       "Ordre des DDL : %6\nContraintes : %7 | Système : %8 | Stockage : %9\nUnités : %10%11")
         .arg(QString::fromStdString(m.source), QString::fromStdString(m.matrixType),
-             QString::fromStdString(m.coordinateSystem), m.exact ? "oui" : "NON", m.symmetric ? "oui" : "non",
+             QString::fromStdString(m.coordinateSystem),
+             m.exact ? QCoreApplication::translate("TSA::UI::AnalysisDataDock", "oui") : QCoreApplication::translate("TSA::UI::AnalysisDataDock", "NON"),
+             m.symmetric ? QCoreApplication::translate("TSA::UI::AnalysisDataDock", "oui") : QCoreApplication::translate("TSA::UI::AnalysisDataDock", "non"),
              QString::fromStdString(m.dofOrdering), QString::fromStdString(m.constraints),
              QString::fromStdString(m.solver), QString::fromStdString(m.storage))
         .arg(QString::fromStdString(m.units),
-             m.notes.empty() ? QString() : "\nNotes : " + QString::fromStdString(m.notes));
+             m.notes.empty() ? QString() : "\n" + QCoreApplication::translate("TSA::UI::AnalysisDataDock", "Notes : %1").arg(QString::fromStdString(m.notes)));
 }
 } // namespace
 
@@ -529,9 +533,9 @@ void AnalysisDataDock::showElement(int index)
     else
     {
         const auto& em = mIt->second;
-        out += QString("Classe OpenSees : %1 | nœuds N%2 → N%3 | L = %4\n")
+        out += tr("Classe OpenSees : %1 | nœuds N%2 → N%3 | L = %4\n")
                    .arg(QString::fromStdString(em.opsClass)).arg(em.nodeI).arg(em.nodeJ).arg(em.length, 0, 'g', 10);
-        out += QString("Axes locaux (global) : x = (%1, %2, %3)  y = (%4, %5, %6)  z = (%7, %8, %9)\n\n")
+        out += tr("Axes locaux (global) : x = (%1, %2, %3)  y = (%4, %5, %6)  z = (%7, %8, %9)\n\n")
                    .arg(em.rotation[0], 0, 'f', 6).arg(em.rotation[1], 0, 'f', 6).arg(em.rotation[2], 0, 'f', 6)
                    .arg(em.rotation[3], 0, 'f', 6).arg(em.rotation[4], 0, 'f', 6).arg(em.rotation[5], 0, 'f', 6)
                    .arg(em.rotation[6], 0, 'f', 6).arg(em.rotation[7], 0, 'f', 6).arg(em.rotation[8], 0, 'f', 6);

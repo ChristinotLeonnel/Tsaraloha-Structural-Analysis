@@ -10,6 +10,7 @@
 #include "../../Coordinate/LevelManager.h"
 #include "../../Model/Model.h"
 
+#include <QCoreApplication>
 #include <QFile>
 
 #include <algorithm>
@@ -27,18 +28,24 @@ using Kind = StepValue::Kind;
 
 std::string IfcImportReport::summary() const
 {
-    if (canceled) return "Import IFC annulé.";
-    if (!ok) return "Import IFC échoué : " + error;
-    std::string s = std::to_string(products) + " produit(s) physique(s)";
-    if (productsWithGeometry) s += " (" + std::to_string(productsWithGeometry) + " avec géométrie)";
-    if (toPrepare) s += ", dont " + std::to_string(toPrepare) + " à préparer pour le calcul";
-    if (notStructural) s += ", " + std::to_string(notStructural) + " non porteur(s)";
-    s += " ; modèle de calcul : " + std::to_string(nodes) + " nœud(s), " + std::to_string(members) + " barre(s), "
-        + std::to_string(surfaces) + " surface(s), " + std::to_string(foundations) + " fondation(s)";
-    if (derived) s += " (dont " + std::to_string(derived) + " élément(s) déduit(s) de la géométrie, à vérifier)";
-    s += " ; " + std::to_string(storeys) + " étage(s)";
-    if (ignored) s += " ; " + std::to_string(ignored) + " objet(s) non importé(s)";
-    return s + " — schéma " + schema + (engine.empty() ? "" : ", " + engine);
+    // Chaque proposition du résumé est un texte traduisible complet (propositions facultatives mises bout à bout)
+    if (canceled) return QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "Import IFC annulé.").toStdString();
+    if (!ok) return QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "Import IFC échoué : %1").arg(QString::fromStdString(error)).toStdString();
+    QString s = QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "%1 produit(s) physique(s)").arg(products);
+    if (productsWithGeometry) s += QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", " (%1 avec géométrie)").arg(productsWithGeometry);
+    if (toPrepare) s += QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", ", dont %1 à préparer pour le calcul").arg(toPrepare);
+    if (notStructural) s += QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", ", %1 non porteur(s)").arg(notStructural);
+    s += QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", " ; modèle de calcul : %1 nœud(s), %2 barre(s), %3 surface(s), %4 fondation(s)")
+             .arg(nodes)
+             .arg(members)
+             .arg(surfaces)
+             .arg(foundations);
+    if (derived) s += QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", " (dont %1 élément(s) déduit(s) de la géométrie, à vérifier)").arg(derived);
+    s += QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", " ; %1 étage(s)").arg(storeys);
+    if (ignored) s += QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", " ; %1 objet(s) non importé(s)").arg(ignored);
+    s += engine.empty() ? QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", " — schéma %1").arg(QString::fromStdString(schema))
+                        : QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", " — schéma %1, %2").arg(QString::fromStdString(schema), QString::fromStdString(engine));
+    return s.toStdString();
 }
 
 namespace
@@ -134,8 +141,10 @@ public:
         if (m_report.products == 0 && m_report.nodes == 0 && m_report.members == 0 && m_report.surfaces == 0)
         {
             m_report.error = m_sourceProducts > 0
-                ? std::to_string(m_sourceProducts) + " produit(s) porteur(s) dans le fichier, aucun n'a pu être converti"
-                : "aucun élément structurel ni modèle analytique dans le fichier";
+                ? QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "%1 produit(s) porteur(s) dans le fichier, aucun n'a pu être converti")
+                      .arg(m_sourceProducts)
+                      .toStdString()
+                : QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "aucun élément structurel ni modèle analytique dans le fichier").toStdString();
             return m_report;
         }
         m_report.ok = true;
@@ -176,7 +185,9 @@ private:
             }
         m_report.lengthUnit = m_len;
         if (m_len != 1.0)
-            m_report.warnings.push_back("Unité de longueur du fichier convertie en mètres (facteur " + std::to_string(m_len) + ").");
+            m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "Unité de longueur du fichier convertie en mètres (facteur %1).")
+                                            .arg(QString::fromStdString(std::to_string(m_len)))
+                                            .toStdString());
     }
 
     // ------------------------------------------------------------------ relations inverses
@@ -304,8 +315,15 @@ private:
         else if (cat == "block" || cat == "brick") mat = TSA::Model::Material::masonry();
         else mat = TSA::Model::Material::concreteC25_30();
         if (!known)
-            m_report.warnings.push_back("Matériau « " + e->arg(0).asText() + " » : catégorie " + (cat.empty() ? "absente" : "« " + cat + " » inconnue")
-                                        + ", propriétés mécaniques provisoires (" + mat.name + ") à remplacer avant tout calcul.");
+            m_report.warnings.push_back(
+                (cat.empty() ? QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter",
+                                                           "Matériau « %1 » : catégorie absente, propriétés mécaniques provisoires (%2) à remplacer avant tout calcul.")
+                                   .arg(QString::fromStdString(e->arg(0).asText()), QString::fromStdString(mat.name))
+                             : QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter",
+                                                           "Matériau « %1 » : catégorie « %2 » inconnue, propriétés mécaniques provisoires (%3) à remplacer avant "
+                                                           "tout calcul.")
+                                   .arg(QString::fromStdString(e->arg(0).asText()), QString::fromStdString(cat), QString::fromStdString(mat.name)))
+                    .toStdString());
         if (!e->arg(0).asText().empty()) mat.name = e->arg(0).asText();
         for (int pid : m_materialProps[matId])
         {
@@ -522,7 +540,10 @@ private:
             TSA::Model::Section sec = TSA::Model::Section::rectangular(0.3, 0.5);
             bool hasSection = false;
             if (!materialOf(c->id, mat, &sec, &hasSection) && product) materialOf(product->id, mat, &sec, &hasSection);
-            if (!hasSection) m_report.warnings.push_back(c->arg(2).asText() + " : profil absent, section rectangulaire 300×500 par défaut.");
+            if (!hasSection)
+                m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "%1 : profil absent, section rectangulaire 300×500 par défaut.")
+                                                .arg(QString::fromStdString(c->arg(2).asText()))
+                                                .toStdString());
 
             // Angle de rotation γ : l'axe local z IFC (Axis) correspond à l'axe « hauteur » du profil TSA
             double rot = 0.0;
@@ -622,7 +643,9 @@ private:
                     solids.push_back(s);
                 }
                 else if (id == "Body")
-                    m_report.warnings.push_back(product.arg(2).asText() + " : représentation " + item->type + " non prise en charge.");
+                    m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "%1 : représentation %2 non prise en charge.")
+                                                    .arg(QString::fromStdString(product.arg(2).asText()), QString::fromStdString(item->type))
+                                                    .toStdString());
             }
         }
     }
@@ -705,8 +728,11 @@ private:
         TSA::Model::Section sec = TSA::Model::Section::rectangular(0.3, 0.5);
         bool hasSection = false;
         if (!materialOf(product.id, mat, &sec, &hasSection))
-            m_report.warnings.push_back(product.arg(2).asText() + " : aucun matériau dans le fichier, " + mat.name
-                                        + " provisoire pour les éléments de calcul déduits (à remplacer).");
+            m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter",
+                                                                    "%1 : aucun matériau dans le fichier, %2 provisoire pour les éléments de calcul déduits (à "
+                                                                    "remplacer).")
+                                            .arg(QString::fromStdString(product.arg(2).asText()), QString::fromStdString(mat.name))
+                                            .toStdString());
 
         const bool linear = cat == BimCategory::Beam || cat == BimCategory::Column || cat == BimCategory::Member;
         if (linear)
@@ -741,7 +767,10 @@ private:
                 }
                 ++m_report.members;
             }
-            if (!hasSection && !refs.empty()) m_report.warnings.push_back(product.arg(2).asText() + " : profil non reconnu, section 300×500 par défaut.");
+            if (!hasSection && !refs.empty())
+                m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "%1 : profil non reconnu, section 300×500 par défaut.")
+                                                .arg(QString::fromStdString(product.arg(2).asText()))
+                                                .toStdString());
             return refs;
         }
 
@@ -893,7 +922,9 @@ private:
                 if (m_physicalProducts)
                     m_report.items.push_back({ p->arg(0).asText(), e.ifcClass, p->arg(2).asText(),
                                                refs.empty() ? IfcImportItem::Outcome::ToPrepare : IfcImportItem::Outcome::Analytical,
-                                               derived ? "éléments de calcul déduits de la géométrie, à vérifier" : std::string() });
+                                               derived ? QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "éléments de calcul déduits de la géométrie, à vérifier")
+                                                             .toStdString()
+                                                       : std::string() });
                 e.globalId = p->arg(0).asText();
                 e.category = cat;
                 e.predefinedType = pdt == "NOTDEFINED" ? "" : pdt;
@@ -1058,12 +1089,15 @@ std::string stepEnvelopeError(const std::string& content)
 {
     std::size_t begin = content.rfind("\xEF\xBB\xBF", 0) == 0 ? 3 : 0;   // BOM UTF-8
     while (begin < content.size() && std::isspace(static_cast<unsigned char>(content[begin]))) ++begin;
-    if (content.compare(begin, 13, "ISO-10303-21;") != 0) return "pas un fichier STEP : en-tête « ISO-10303-21; » absent";
+    if (content.compare(begin, 13, "ISO-10303-21;") != 0)
+        return QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "pas un fichier STEP : en-tête « ISO-10303-21; » absent").toStdString();
     std::size_t end = content.size();
     while (end > begin && (std::isspace(static_cast<unsigned char>(content[end - 1])) || content[end - 1] == '\0')) --end;
     static const std::string trailer = "END-ISO-10303-21;";
     if (end < trailer.size() || content.compare(end - trailer.size(), trailer.size(), trailer) != 0)
-        return "fichier incomplet : fin « END-ISO-10303-21; » absente (fichier tronqué ou transfert interrompu)";
+        return QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter",
+                                           "fichier incomplet : fin « END-ISO-10303-21; » absente (fichier tronqué ou transfert interrompu)")
+            .toStdString();
     return {};
 }
 } // namespace
@@ -1072,14 +1106,14 @@ IfcImportReport IfcImporter::importString(const std::string& content, TSA::Model
 {
     IfcStepReader reader;
     IfcImportReport r;
-    r.engine = "lecteur STEP interne";
+    r.engine = QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "lecteur STEP interne").toStdString();
     if (r.error = stepEnvelopeError(content); !r.error.empty()) return r;
     TemplateLevels templateLevels(model);
     if (!reader.parse(content, &r.error)) return r;
     const std::string& schema = reader.schema();
     if (schema.rfind("IFC", 0) != 0)
     {
-        r.error = "schéma « " + schema + " » non IFC";
+        r.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "schéma « %1 » non IFC").arg(QString::fromStdString(schema)).toStdString();
         return r;
     }
     Importer imp(reader, model, options);
@@ -1095,14 +1129,15 @@ bool IfcImporter::fullEngineAvailable()
 
 std::string IfcImporter::engineName()
 {
-    return detail::fullEngineAvailable() ? detail::fullEngineName() : "lecteur STEP interne (capacités réduites)";
+    return detail::fullEngineAvailable() ? detail::fullEngineName()
+                                         : QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "lecteur STEP interne (capacités réduites)").toStdString();
 }
 
 IfcImportReport IfcImporter::importFile(const std::string& path, TSA::Model::Model& model, const IfcImportOptions& options)
 {
     IfcImportReport r;
     r.engine = engineName();
-    if (options.progress && !options.progress(1, "Lecture du fichier"))
+    if (options.progress && !options.progress(1, QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "Lecture du fichier").toStdString()))
     {
         r.canceled = true;
         return r;
@@ -1110,7 +1145,7 @@ IfcImportReport IfcImporter::importFile(const std::string& path, TSA::Model::Mod
     QFile f(QString::fromStdString(path));
     if (!f.open(QIODevice::ReadOnly))
     {
-        r.error = "impossible d'ouvrir « " + path + " »";
+        r.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "impossible d'ouvrir « %1 »").arg(QString::fromStdString(path)).toStdString();
         return r;
     }
     const QByteArray bytes = f.readAll();
@@ -1133,9 +1168,11 @@ IfcImportReport IfcImporter::importFile(const std::string& path, TSA::Model::Mod
         r.engine = engineName();
     }
     else
-        r.warnings.push_back("Lecteur STEP interne : " + (readerError.empty() ? "schéma non IFC" : readerError)
-                             + " ; modèle analytique du fichier non repris.");
-    if (options.progress && !options.progress(10, "Objets physiques et géométrie"))
+        r.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "Lecteur STEP interne : %1 ; modèle analytique du fichier non repris.")
+                                 .arg(readerError.empty() ? QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "schéma non IFC")
+                                                          : QString::fromStdString(readerError))
+                                 .toStdString());
+    if (options.progress && !options.progress(10, QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "Objets physiques et géométrie").toStdString()))
     {
         r.canceled = true;
         return r;
@@ -1144,8 +1181,8 @@ IfcImportReport IfcImporter::importFile(const std::string& path, TSA::Model::Mod
     // 2. Noyau complet : tous les produits physiques, leur géométrie et leurs données.
     if (!detail::importPhysicalProducts(path, model, options, r)) return r;
     r.ok = r.products > 0 || r.nodes > 0 || r.members > 0 || r.surfaces > 0;
-    if (!r.ok) r.error = "aucun produit ni modèle analytique dans le fichier";
-    if (options.progress) options.progress(100, "Terminé");
+    if (!r.ok) r.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "aucun produit ni modèle analytique dans le fichier").toStdString();
+    if (options.progress) options.progress(100, QCoreApplication::translate("TSA::BIM::Ifc::IfcImporter", "Terminé").toStdString());
     return r;
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <QtGlobal>
 
 namespace TSA::Model
 {
@@ -93,31 +94,31 @@ inline std::string loadCategoryToString(LoadCaseCategory cat)
 {
     switch (cat)
     {
-    case LoadCaseCategory::Dead:        return "G (Permanent)";
-    case LoadCaseCategory::Live:        return "Q (Exploitation)";
-    case LoadCaseCategory::Wind:        return "W (Vent)";
-    case LoadCaseCategory::Snow:        return "S (Neige)";
-    case LoadCaseCategory::Seismic:     return "E (Séisme)";
-    case LoadCaseCategory::Temperature: return "T (Thermique)";
-    case LoadCaseCategory::Accidental:  return "A (Accidentel)";
-    case LoadCaseCategory::Custom:      return "Personnalisé";
+    case LoadCaseCategory::Dead:        return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "G (Permanent)");
+    case LoadCaseCategory::Live:        return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Q (Exploitation)");
+    case LoadCaseCategory::Wind:        return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "W (Vent)");
+    case LoadCaseCategory::Snow:        return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "S (Neige)");
+    case LoadCaseCategory::Seismic:     return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "E (Séisme)");
+    case LoadCaseCategory::Temperature: return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "T (Thermique)");
+    case LoadCaseCategory::Accidental:  return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "A (Accidentel)");
+    case LoadCaseCategory::Custom:      return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Personnalisé");
     }
-    return "Inconnu";
+    return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Inconnu");
 }
 
 inline std::string loadDirectionToString(LoadDirection dir)
 {
     switch (dir)
     {
-    case LoadDirection::GlobalX: return "Global X";
-    case LoadDirection::GlobalY: return "Global Y";
-    case LoadDirection::GlobalZ: return "Global Z";
-    case LoadDirection::Gravity: return "Gravité (-Z)";
-    case LoadDirection::LocalX:  return "Local x";
-    case LoadDirection::LocalY:  return "Local y";
-    case LoadDirection::LocalZ:  return "Local z";
+    case LoadDirection::GlobalX: return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Global X");
+    case LoadDirection::GlobalY: return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Global Y");
+    case LoadDirection::GlobalZ: return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Global Z");
+    case LoadDirection::Gravity: return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Gravité (-Z)");
+    case LoadDirection::LocalX:  return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Local x");
+    case LoadDirection::LocalY:  return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Local y");
+    case LoadDirection::LocalZ:  return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Local z");
     }
-    return "Global Z";
+    return QT_TRANSLATE_NOOP("TSA::Model::LoadEnums", "Global Z");
 }
 
 } // namespace TSA::Model

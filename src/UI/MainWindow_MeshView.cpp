@@ -13,6 +13,7 @@
 #include "Mesh/MeshController.h"
 
 #include <QActionGroup>
+#include <QCoreApplication>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDockWidget>
@@ -258,10 +259,20 @@ void MainWindow::populateMeshViewMenu(QMenu* menu)
     // Grandeur colorée : déplacement (nœuds) ou résultantes des coques (éléments) ; la déformée reste celle des déplacements
     QMenu* fieldMenu = menu->addMenu(tr("Grandeur affichée sur le maillage"));
     auto* group = new QActionGroup(fieldMenu);
-    for (const char* name : { "Déplacement", "Moment principal (coque)", "Effort principal dans le plan (coque)", "Mxx (coque)", "Myy (coque)", "Mxy (coque)",
-                              "Nxx (coque)", "Nyy (coque)", "Nxy (coque)", "Vxz (coque)", "Vyz (coque)" })
+    // Noms des champs = clés de MeshResultSet::find (inchangées) ; libellé du menu traduit à l'affichage
+    for (const char* name : { QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Déplacement"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Moment principal (coque)"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Effort principal dans le plan (coque)"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Mxx (coque)"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Myy (coque)"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Mxy (coque)"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Nxx (coque)"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Nyy (coque)"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Nxy (coque)"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Vxz (coque)"),
+                              QT_TRANSLATE_NOOP("TSA::Mesh::MeshResultField", "Vyz (coque)") })
     {
-        QAction* a = fieldMenu->addAction(QString::fromUtf8(name));
+        QAction* a = fieldMenu->addAction(QCoreApplication::translate("TSA::Mesh::MeshResultField", name));
         a->setCheckable(true);
         a->setChecked(m_meshFieldName == QString::fromUtf8(name));
         group->addAction(a);
@@ -388,7 +399,7 @@ void MainWindow::refreshMeshOverlay()
                 if (const auto* f = set.find("Déplacement")) displacement = *f;
                 if (const auto* f = set.find(m_meshFieldName.toStdString()); f && f != set.find("Déplacement")) colorField = *f;
                 else if (m_meshFieldName != QStringLiteral("Déplacement") && m_statusInfo)
-                    m_statusInfo->setText(tr("« %1 » : aucune valeur calculée sur ce maillage (coques non calculées ou maillage différent du calcul)").arg(m_meshFieldName));
+                    m_statusInfo->setText(tr("« %1 » : aucune valeur calculée sur ce maillage (coques non calculées ou maillage différent du calcul)").arg(QCoreApplication::translate("TSA::Mesh::MeshResultField", m_meshFieldName.toUtf8().constData())));
                 if (m_consoleDock)
                 {
                     m_consoleDock->appendLog(tr("Résultats sur le maillage : %1").arg(displacement ? QString::fromStdString(displacement->method) : tr("aucune valeur")), "INFO");

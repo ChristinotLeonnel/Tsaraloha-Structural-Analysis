@@ -192,18 +192,23 @@ std::string suggestSubgraphId(QString name, const std::vector<SubgraphDefinition
 std::vector<std::string> breakingInterfaceChanges(const SubgraphDefinition& before, const SubgraphDefinition& after)
 {
     std::vector<std::string> out;
-    auto check = [&](const std::vector<PinSpec>& oldPins, const std::vector<PinSpec>& newPins, const char* side) {
+    // removed / retyped : phrases entières marquées QT_TRANSLATE_NOOP, traduites ici
+    auto check = [&](const std::vector<PinSpec>& oldPins, const std::vector<PinSpec>& newPins, const char* removed, const char* retyped) {
         for (const auto& o : oldPins)
         {
             const auto it = std::find_if(newPins.begin(), newPins.end(), [&](const PinSpec& p) { return p.name == o.name; });
             if (it == newPins.end())
-                out.push_back(std::string(side) + " « " + o.name + " » supprimée");
+                out.push_back(QCoreApplication::translate("TSA::UI::BlueprintEditor", removed).arg(QString::fromStdString(o.name)).toStdString());
             else if (it->type != o.type || it->any != o.any || it->objectType != o.objectType)
-                out.push_back(std::string(side) + " « " + o.name + " » : " + pinTypeName(o) + " → " + pinTypeName(*it));
+                out.push_back(QCoreApplication::translate("TSA::UI::BlueprintEditor", retyped)
+                                  .arg(QString::fromStdString(o.name), QString::fromStdString(pinTypeName(o)), QString::fromStdString(pinTypeName(*it)))
+                                  .toStdString());
         }
     };
-    check(before.inputs, after.inputs, "entrée");
-    check(before.outputs, after.outputs, "sortie");
+    check(before.inputs, after.inputs, QT_TRANSLATE_NOOP("TSA::UI::BlueprintEditor", "entrée « %1 » supprimée"),
+          QT_TRANSLATE_NOOP("TSA::UI::BlueprintEditor", "entrée « %1 » : %2 → %3"));
+    check(before.outputs, after.outputs, QT_TRANSLATE_NOOP("TSA::UI::BlueprintEditor", "sortie « %1 » supprimée"),
+          QT_TRANSLATE_NOOP("TSA::UI::BlueprintEditor", "sortie « %1 » : %2 → %3"));
     return out;
 }
 
@@ -278,7 +283,7 @@ BlueprintEditor::BlueprintEditor(QWidget* parent)
     // Touches traitées par la vue du graphe (BlueprintView), pas par des raccourcis : voir la classe
     auto shortcutAction = [&](const QString& text, const QKeySequence& key, auto slot, const QString& tip) {
         QAction* a = bar->addAction(text, this, slot);
-        a->setToolTip(QStringLiteral("%1 (%2, dans le graphe)").arg(tip, key.toString(QKeySequence::NativeText)));
+        a->setToolTip(tr("%1 (%2, dans le graphe)").arg(tip, key.toString(QKeySequence::NativeText)));
         return a;
     };
     shortcutAction(tr("Copier"), QKeySequence::Copy, [this] { copySelection(); }, tr("Copier les nœuds et commentaires sélectionnés"));

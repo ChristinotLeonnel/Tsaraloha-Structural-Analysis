@@ -492,7 +492,7 @@ void MeshSettingsPanel::readWidgets()
 void MeshSettingsPanel::refreshTables()
 {
     const auto& s = m_controller->settings();
-    static const char* kinds[] = { "point", "nœud", "appuis", "charges" };
+    static const char* kinds[] = { QT_TRANSLATE_NOOP("TSA::UI::MeshSettingsPanel", "point"), QT_TRANSLATE_NOOP("TSA::UI::MeshSettingsPanel", "nœud"), QT_TRANSLATE_NOOP("TSA::UI::MeshSettingsPanel", "appuis"), QT_TRANSLATE_NOOP("TSA::UI::MeshSettingsPanel", "charges") };
     m_zones->setRowCount(0);
     for (const auto& z : s.zones)
     {
@@ -502,10 +502,10 @@ void MeshSettingsPanel::refreshTables()
                             : z.kind == RefinementZone::Kind::Node  ? tr("N%1").arg(z.nodeId)
                                                                     : (z.nodeId ? tr("N%1").arg(z.nodeId) : tr("tous"));
         const QString val = z.size ? tr("%1 m").arg(num(*z.size)) : tr("× %1").arg(num(z.factor.value_or(1)));
-        const QStringList cells { QString::fromStdString(z.name), QString::fromUtf8(kinds[int(z.kind)]), where, tr("%1 m").arg(num(z.radius)), val };
+        const QStringList cells { QString::fromStdString(z.name), tr(kinds[int(z.kind)]), where, tr("%1 m").arg(num(z.radius)), val };
         for (int c = 0; c < cells.size(); ++c) m_zones->setItem(r, c, new QTableWidgetItem(cells[c]));
     }
-    static const char* dist[] = { "uniforme", "progressive", "symétrique" };
+    static const char* dist[] = { QT_TRANSLATE_NOOP("TSA::UI::MeshSettingsPanel", "uniforme"), QT_TRANSLATE_NOOP("TSA::UI::MeshSettingsPanel", "progressive"), QT_TRANSLATE_NOOP("TSA::UI::MeshSettingsPanel", "symétrique") };
     m_locals->setRowCount(0);
     for (const auto& l : s.locals)
     {
@@ -522,7 +522,7 @@ void MeshSettingsPanel::refreshTables()
         if (l.structured) other << (*l.structured ? tr("structuré imposé") : tr("non structuré"));
         const QStringList cells { QString::fromStdString(l.name), targets.join(QStringLiteral(", ")), l.size ? tr("%1 m").arg(num(*l.size)) : QString(),
                                   l.divisions ? QString::number(*l.divisions) : QString(),
-                                  l.distribution == Distribution::Uniform ? QString::fromUtf8(dist[0]) : QStringLiteral("%1 (%2)").arg(QString::fromUtf8(dist[int(l.distribution)])).arg(num(l.progression)),
+                                  l.distribution == Distribution::Uniform ? tr(dist[0]) : QStringLiteral("%1 (%2)").arg(tr(dist[int(l.distribution)])).arg(num(l.progression)),
                                   other.join(QStringLiteral(" ; ")) };
         for (int c = 0; c < cells.size(); ++c) m_locals->setItem(r, c, new QTableWidgetItem(cells[c]));
     }

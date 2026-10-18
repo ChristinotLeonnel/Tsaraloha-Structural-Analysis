@@ -1,5 +1,7 @@
 #include "SurfaceLoads.h"
 
+#include <QCoreApplication>
+
 #include <array>
 #include <cmath>
 #include <map>
@@ -145,7 +147,7 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
     const SurfaceGeom* s = geo.surface(load.surface);
     if (!s)
     {
-        r.errors.push_back("surface « " + load.surface + " » inconnue du modèle : charge non convertie");
+        r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "surface « %1 » inconnue du modèle : charge non convertie").arg(QString::fromStdString(load.surface)).toStdString());
         return r;
     }
     P3 dir;
@@ -158,12 +160,12 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
     case SurfacePressure::Direction::Gravity: dir = { 0, 0, -1 }; break;
     case SurfacePressure::Direction::LocalNormal: dir = s->frame.N * -1.0, normal = true; break;
     }
-    if (normal && load.projected) r.warnings.push_back("surface projetée sans objet pour une pression normale : surface réelle utilisée");
+    if (normal && load.projected) r.warnings.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "surface projetée sans objet pour une pression normale : surface réelle utilisée").toStdString());
     const double projFactor = (!normal && load.projected) ? std::abs(s->frame.N.dot(dir)) : 1.0;
 
     if (load.zone && (load.zoneU1 <= load.zoneU0 || load.zoneV1 <= load.zoneV0))
     {
-        r.errors.push_back("zone chargée vide (u₁ ≤ u₀ ou v₁ ≤ v₀) : charge non convertie");
+        r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "zone chargée vide (u₁ ≤ u₀ ou v₁ ≤ v₀) : charge non convertie").toStdString());
         return r;
     }
     auto pressure = [&](double u, double v) { return load.value + load.gradU * u + load.gradV * v; };
@@ -203,7 +205,7 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
         shape(e.type, 0, 0, N, dr, ds);
         if (N.empty() || N.size() != e.nodes.size())
         {
-            r.errors.push_back(std::string("élément ") + feTypeName(e.type) + " non pris en charge pour la répartition : charge non convertie");
+            r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "élément %1 non pris en charge pour la répartition : charge non convertie").arg(QString::fromUtf8(feTypeName(e.type))).toStdString());
             return r;
         }
         ++r.elements;
@@ -270,7 +272,7 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
     }
     if (r.elements == 0)
     {
-        r.errors.push_back("surface « " + load.surface + " » non maillée (aucun élément 2D) : charge non convertie");
+        r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "surface « %1 » non maillée (aucun élément 2D) : charge non convertie").arg(QString::fromStdString(load.surface)).toStdString());
         return r;
     }
     for (const auto& [n, f] : forces)
@@ -304,7 +306,7 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
     const double area = I.A;
     if (area <= 1e-12)
     {
-        r.errors.push_back(load.zone ? "zone chargée hors de la surface nette : charge non convertie" : "aire nette nulle : charge non convertie");
+        r.errors.push_back((load.zone ? QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "zone chargée hors de la surface nette : charge non convertie") : QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "aire nette nulle : charge non convertie")).toStdString());
         return r;
     }
     const double P = load.value * I.A + load.gradU * I.Su + load.gradV * I.Sv;   // ∫ p dA
@@ -320,8 +322,10 @@ SurfaceLoadResult distributeSurfaceLoad(const FeMesh& mesh, const MeshGeometry& 
     r.momentError = relErr(r.moment, r.expectedMoment, armScale);
     if (r.resultantError > tol || r.momentError > tol)
     {
-        r.errors.push_back("résultante ou moment des charges nodales différents de la valeur analytique (écarts " + std::to_string(r.resultantError) + " / " +
-                           std::to_string(r.momentError) + ") : maillage ne couvrant pas exactement la surface, charge non convertie");
+        r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "résultante ou moment des charges nodales différents de la valeur analytique (écarts %1 / %2) : maillage ne couvrant "
+                                                       "pas exactement la surface, charge non convertie")
+                               .arg(QString::fromStdString(std::to_string(r.resultantError)), QString::fromStdString(std::to_string(r.momentError)))
+                               .toStdString());
         return r;
     }
     r.ok = true;
@@ -334,7 +338,7 @@ SurfaceLoadResult distributeSurfacePointLoad(const FeMesh& mesh, const MeshGeome
     const SurfaceGeom* s = geo.surface(load.surface);
     if (!s)
     {
-        r.errors.push_back("surface « " + load.surface + " » inconnue du modèle : charge non convertie");
+        r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "surface « %1 » inconnue du modèle : charge non convertie").arg(QString::fromStdString(load.surface)).toStdString());
         return r;
     }
     // Le point doit être dans la surface nette (repère local)
@@ -350,13 +354,15 @@ SurfaceLoadResult distributeSurfacePointLoad(const FeMesh& mesh, const MeshGeome
     };
     if (!pointInPolygon(load.u, load.v, local(s->outer)))
     {
-        r.errors.push_back("point (" + std::to_string(load.u) + " ; " + std::to_string(load.v) + ") hors de la surface " + load.surface + " : charge non convertie");
+        r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "point (%1 ; %2) hors de la surface %3 : charge non convertie")
+                               .arg(QString::fromStdString(std::to_string(load.u)), QString::fromStdString(std::to_string(load.v)), QString::fromStdString(load.surface))
+                               .toStdString());
         return r;
     }
     for (const auto& h : s->holes)
         if (pointInPolygon(load.u, load.v, local(h)))
         {
-            r.errors.push_back("point dans une ouverture de " + load.surface + " : aucune matière porteuse, charge non convertie");
+            r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "point dans une ouverture de %1 : aucune matière porteuse, charge non convertie").arg(QString::fromStdString(load.surface)).toStdString());
             return r;
         }
     P3 dir;
@@ -423,14 +429,17 @@ SurfaceLoadResult distributeSurfacePointLoad(const FeMesh& mesh, const MeshGeome
         r.momentError = relErr(r.moment, r.expectedMoment, scale * std::max(1.0, P.norm()));
         if (r.resultantError > tol || r.momentError > tol)
         {
-            r.errors.push_back("charge ponctuelle : résultante ou moment des forces nodales différents de la valeur exacte, charge non convertie");
+            r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "charge ponctuelle : résultante ou moment des forces nodales différents de la valeur exacte, charge non convertie").toStdString());
             r.forces.clear();
             return r;
         }
         r.ok = true;
         return r;
     }
-    r.errors.push_back("aucun élément du premier ordre (tri3, quad4) de " + load.surface + " ne contient le point : surface non maillée ou maillage du second ordre");
+    r.errors.push_back(QCoreApplication::translate("TSA::Mesh::SurfaceLoads", "aucun élément du premier ordre (tri3, quad4) de %1 ne contient le point : surface non maillée ou maillage du second "
+                                                   "ordre")
+                         .arg(QString::fromStdString(load.surface))
+                         .toStdString());
     return r;
 }
 

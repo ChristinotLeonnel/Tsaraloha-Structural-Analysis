@@ -177,3 +177,8 @@ Mêmes règles : une seule forme par notion. Les touches gardent les noms des cl
 | intersecter, prolonger, ajuster, décaler | intersect, extend, trim, offset | Ampifanapaho, Halavao, Fohezo, Ahemory | proposé |
 | renumérotation, étiquette, préfixe, suffixe | renumbering, label, prefix, suffix | fanomezana laharana indray, marika, tovona, tovana | proposé |
 | plancher, coupe (axe du plan de travail) | floor, section | gorodona, fizarana | courant |
+| appui élastique | elastic support | fanohanana elastika | emprunt |
+| géométrie, quadrangle | geometry, quadrilateral | joometria, efatra lafy | emprunt / courant |
+| axe fort / faible (section) | major / minor axis | famaky matanjaka / malemy | proposé |
+| produit IFC, étage | IFC product, storey | singa IFC, rihana | proposé |
+| qualité du maillage, jacobien | mesh quality, Jacobian | kalitaon'ny harato, jakobiana | emprunt |

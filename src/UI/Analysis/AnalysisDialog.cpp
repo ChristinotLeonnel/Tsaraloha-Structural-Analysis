@@ -511,7 +511,7 @@ ValidationResult AnalysisDialog::validateNow()
 {
     ValidationResult v;
     if (!m_model)
-        v.addError("Modèle", "Aucun modèle.");
+        v.addError(tr("Modèle").toStdString(), tr("Aucun modèle.").toStdString());
     else
         v = m_manager.prepare(*m_model, m_grids, context()).validation;
     showValidation(v);

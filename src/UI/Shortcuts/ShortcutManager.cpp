@@ -117,7 +117,7 @@ bool ShortcutManager::bind(const QString& id, QAction* action)
             def.category = tr("Autres");
             def.categoryRank = 1000;
             registerDefinition(def);
-            m_lastWarnings << QStringLiteral("Commande « %1 » absente du catalogue : aucun raccourci par défaut").arg(id);
+            m_lastWarnings << tr("Commande « %1 » absente du catalogue : aucun raccourci par défaut").arg(id);
         }
     }
     auto& list = m_actions[id];
@@ -237,7 +237,7 @@ bool ShortcutManager::readFile(QString* text, QString* error) const
     QFile f(m_path);
     if (!f.open(QIODevice::ReadOnly))
     {
-        if (error) *error = QStringLiteral("lecture impossible de %1 : %2").arg(QDir::toNativeSeparators(m_path), f.errorString());
+        if (error) *error = tr("lecture impossible de %1 : %2").arg(QDir::toNativeSeparators(m_path), f.errorString());
         return false;
     }
     *text = QString::fromUtf8(f.readAll());
@@ -267,7 +267,7 @@ bool ShortcutManager::writeFile(const QString& text, QString* error)
     }
     if (!lastError.isEmpty())
     {
-        if (error) *error = QStringLiteral("écriture impossible de %1 : %2").arg(QDir::toNativeSeparators(m_path), lastError);
+        if (error) *error = tr("écriture impossible de %1 : %2").arg(QDir::toNativeSeparators(m_path), lastError);
         return false;
     }
     m_lastText = normalizedText(text); // notification de notre propre écriture : ignorée
@@ -291,14 +291,14 @@ bool ShortcutManager::loadConfig()
         QString err;
         if (!writeFile(defaultConfigText(), &err))
         {
-            m_lastErrors << err << QStringLiteral("Raccourcis par défaut utilisés (aucun fichier personnalisable).");
+            m_lastErrors << err << tr("Raccourcis par défaut utilisés (aucun fichier personnalisable).");
             applyToActions();
             emit configRejected(m_lastErrors);
             return false;
         }
         m_settings.clear();
         applyToActions();
-        emit configApplied(QStringLiteral("Fichier des raccourcis créé : %1 — %2").arg(QDir::toNativeSeparators(m_path), summary()), {});
+        emit configApplied(tr("Fichier des raccourcis créé : %1 — %2").arg(QDir::toNativeSeparators(m_path), summary()), {});
         return true;
     }
     return reload();
@@ -311,7 +311,7 @@ bool ShortcutManager::reload()
     m_lastWarnings.clear();
     if (!readFile(&text, &err))
     {
-        m_lastErrors << err << QStringLiteral("Dernière configuration valide conservée.");
+        m_lastErrors << err << tr("Dernière configuration valide conservée.");
         emit configRejected(m_lastErrors);
         return false;
     }
@@ -324,7 +324,7 @@ bool ShortcutManager::reload()
     if (!parsed.ok)
     {
         m_lastErrors = parsed.errors;
-        m_lastErrors << QStringLiteral("Configuration refusée : la dernière configuration valide reste active.");
+        m_lastErrors << tr("Configuration refusée : la dernière configuration valide reste active.");
         emit configRejected(m_lastErrors);
         return false;
     }
@@ -335,13 +335,13 @@ bool ShortcutManager::reload()
         QString berr;
         const QString backup = TSA::Core::AppPaths::backupFile(m_path, QStringLiteral("v%1").arg(parsed.formatVersion), &berr);
         if (backup.isEmpty())
-            m_lastWarnings << QStringLiteral("Migration du format reportée : %1").arg(berr);
+            m_lastWarnings << tr("Migration du format reportée : %1").arg(berr);
         else
         {
             QList<CommandDefinition> defs = catalogDefinitions();
             QString werr;
             if (writeFile(formatConfig(defs, parsed.settings), &werr))
-                m_lastWarnings << QStringLiteral("Format %1 → %2 : ancienne version sauvegardée dans %3")
+                m_lastWarnings << tr("Format %1 → %2 : ancienne version sauvegardée dans %3")
                                       .arg(parsed.formatVersion).arg(shortcutFormatVersion()).arg(QDir::toNativeSeparators(backup));
             else
                 m_lastWarnings << werr;
@@ -351,7 +351,7 @@ bool ShortcutManager::reload()
     if (!applySettings(parsed.settings, &errors))
     {
         m_lastErrors = errors;
-        m_lastErrors << QStringLiteral("Configuration refusée : la dernière configuration valide reste active.");
+        m_lastErrors << tr("Configuration refusée : la dernière configuration valide reste active.");
         emit configRejected(m_lastErrors);
         return false;
     }
@@ -368,7 +368,7 @@ bool ShortcutManager::applySettings(const ShortcutSettings& settings, QStringLis
     {
         if (errors)
         {
-            *errors << QStringLiteral("%1 conflit(s) de raccourcis :").arg(conflicts.size());
+            *errors << tr("%1 conflit(s) de raccourcis :").arg(conflicts.size());
             for (const auto& c : conflicts) *errors << QStringLiteral("  • ") + c.message();
         }
         return false;
@@ -433,7 +433,7 @@ QString ShortcutManager::summary() const
         else if (!effective(d.id).isEmpty()) ++active;
         if (it != m_settings.end() && (it->sequences != d.defaults || !it->enabled)) ++custom;
     }
-    return QStringLiteral("%1 commande(s) avec raccourci, %2 désactivé(s), %3 personnalisé(s)").arg(active).arg(disabled).arg(custom);
+    return tr("%1 commande(s) avec raccourci, %2 désactivé(s), %3 personnalisé(s)").arg(active).arg(disabled).arg(custom);
 }
 
 void ShortcutManager::applyToActions()
@@ -461,7 +461,7 @@ void ShortcutManager::applyToAction(QAction* action, const QList<QKeySequence>& 
 
 QString ShortcutManager::htmlReference() const
 {
-    QString html = QStringLiteral("<table><tr><th>Raccourci</th><th>Commande</th><th>Description</th></tr>");
+    QString html = QStringLiteral("<table><tr><th>%1</th><th>%2</th><th>%3</th></tr>").arg(tr("Raccourci"), tr("Commande"), tr("Description"));
     QString category;
     for (const auto& d : definitions())
     {

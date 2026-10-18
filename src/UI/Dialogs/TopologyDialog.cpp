@@ -6,6 +6,7 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFile>
@@ -46,7 +47,7 @@ QComboBox* axisCombo(QWidget* parent)
     for (const char* code : kAxisCodes)
     {
         const QString s = QString::fromLatin1(code);
-        c->addItem(QStringLiteral("%1 puis %2 puis %3").arg(s[0]).arg(s[1]).arg(s[2]), s);
+        c->addItem(QCoreApplication::translate("TSA::UI::TopologyDialog", "%1 puis %2 puis %3").arg(s[0]).arg(s[1]).arg(s[2]), s);
     }
     c->setToolTip(QObject::tr("Axe le plus significatif en premier : « Z puis Y puis X » numérote couche par couche, "
                               "puis rangée par rangée."));
@@ -398,7 +399,10 @@ QWidget* TopologyDialog::buildMappingTab()
 void TopologyDialog::refreshAvailability()
 {
     const NumberingInput input = m_inputProvider ? m_inputProvider() : NumberingInput{};
-    static const char* dims[] = { "vide ou un seul point", "1D (nœuds alignés)", "2D (nœuds dans un plan)", "3D" };
+    static const char* dims[] = { QT_TRANSLATE_NOOP("TSA::UI::TopologyDialog", "vide ou un seul point"),
+                                  QT_TRANSLATE_NOOP("TSA::UI::TopologyDialog", "1D (nœuds alignés)"),
+                                  QT_TRANSLATE_NOOP("TSA::UI::TopologyDialog", "2D (nœuds dans un plan)"),
+                                  "3D" };
     const int dim = m_model ? detail::modelDimension(*m_model) : 0;
     m_lblDimension->setText(tr(dims[std::clamp(dim, 0, 3)]) +
                             tr(" — %1 nœud(s)").arg(m_model ? static_cast<int>(m_model->nodes().size()) : 0));

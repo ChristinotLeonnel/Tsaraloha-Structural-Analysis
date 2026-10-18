@@ -4,6 +4,8 @@
 #include "../../Coordinate/LevelManager.h"
 #include "../../Model/Model.h"
 
+#include <QCoreApplication>
+
 #ifdef TSA_HAVE_IFCOPENSHELL
 #include <ifcgeom/filter.h>
 #include <ifcgeom/iterator.h>
@@ -30,13 +32,14 @@ bool fullEngineAvailable() { return false; }
 std::string fullEngineName() { return {}; }
 bool importPhysicalProducts(const std::string&, TSA::Model::Model&, const IfcImportOptions&, IfcImportReport& report)
 {
-    report.error = "noyau IFC complet (IfcOpenShell) absent de cette version de TSA";
+    report.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "noyau IFC complet (IfcOpenShell) absent de cette version de TSA").toStdString();
     return false;
 }
 
 bool verifyFile(const std::string&, std::string&, int&, std::string& error)
 {
-    error = "relecture indépendante indisponible (IfcOpenShell absent de cette version de TSA)";
+    error = QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "relecture indépendante indisponible (IfcOpenShell absent de cette version de TSA)")
+                .toStdString();
     return false;
 }
 
@@ -436,9 +439,9 @@ public:
         m_units = projectUnits(m_file);
         m_report.lengthUnit = m_units.length;
         ensureSpatial();
-        if (!progress(15, "Propriétés et relations")) return false;
+        if (!progress(15, QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "Propriétés et relations").toStdString())) return false;
         if (m_opt.importGeometry && !geometry()) return false;
-        if (!progress(92, "Produits sans géométrie")) return false;
+        if (!progress(92, QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "Produits sans géométrie").toStdString())) return false;
         productsWithoutGeometry();
         finalizeReport();
         return true;
@@ -486,7 +489,10 @@ private:
             // pas recalculé ici).
             const auto elevation = number(st, "Elevation");
             const double z = elevation.value_or(0.0) * m_units.length;
-            if (!elevation) m_report.warnings.push_back("Étage « " + text(st, "Name") + " » sans cote (Elevation) : placé à 0 m.");
+            if (!elevation)
+                m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "Étage « %1 » sans cote (Elevation) : placé à 0 m.")
+                                                .arg(QString::fromStdString(text(st, "Name")))
+                                                .toStdString());
             const TSA::Coordinate::Level* lvl = nullptr;
             for (const auto& l : lm->levels())
                 if (std::abs(l.elevation - z) < 1e-6) lvl = &l;
@@ -654,20 +660,26 @@ private:
         }
         catch (const std::exception& ex)
         {
-            m_report.warnings.push_back(std::string("Noyau géométrique indisponible : ") + ex.what() + ". Produits importés sans géométrie.");
+            m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "Noyau géométrique indisponible : %1. Produits importés sans géométrie.")
+                                            .arg(QString::fromStdString(ex.what()))
+                                            .toStdString());
             return true;
         }
         if (!it->initialize())
         {
-            m_report.warnings.push_back("Aucune représentation géométrique interprétable dans le fichier.");
+            m_report.warnings.push_back(
+                QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "Aucune représentation géométrique interprétable dans le fichier.").toStdString());
             return true;
         }
         // Unité retenue par le noyau, contrôlée contre celle du projet : un fichier avec un second contexte
         // (IfcProjectLibrary sans unités) peut l'égarer. La géométrie est alors remise à l'échelle du projet.
         const double scale = it->unit_magnitude() > 0 ? m_units.length / it->unit_magnitude() : 1.0;
         if (std::abs(scale - 1.0) > 1e-9)
-            m_report.warnings.push_back("Unité de longueur du noyau géométrique (" + it->unit_name() + ") différente de celle du projet : "
-                                        "géométrie remise à l'échelle du projet (facteur " + std::to_string(scale) + ").");
+            m_report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport",
+                                                                    "Unité de longueur du noyau géométrique (%1) différente de celle du projet : géométrie remise à "
+                                                                    "l'échelle du projet (facteur %2).")
+                                            .arg(QString::fromStdString(it->unit_name()), QString::fromStdString(std::to_string(scale)))
+                                            .toStdString());
         do
         {
             auto el = it->get();
@@ -680,7 +692,8 @@ private:
             const IfcImportItem::Outcome outcome = e.status == AnalyticalStatus::NotStructural ? IfcImportItem::Outcome::NotStructural
                                                                                                 : IfcImportItem::Outcome::ToPrepare;
             store(std::move(e), outcome, {});
-            if (!progress(15 + it->progress() * 3 / 4, "Géométrie des produits")) return false;
+            if (!progress(15 + it->progress() * 3 / 4, QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "Géométrie des produits").toStdString()))
+                return false;
         } while (it->next());
         return true;
     }
@@ -726,8 +739,14 @@ private:
             const std::string rep = bodyRepresentationType(product);
             const std::string note = rep.empty() ? "aucune représentation géométrique dans le fichier"
                                                  : "représentation « " + rep + " » non convertie par le noyau géométrique";
-            e.importNotes.push_back("Sans géométrie : " + note + ".");
-            store(std::move(e), IfcImportItem::Outcome::Partial, note);
+            e.importNotes.push_back("Sans géométrie : " + note + ".");   // enregistrée dans le projet : texte inchangé
+            // Note du rapport d'import (affichée) : traduite
+            const std::string shownNote =
+                rep.empty() ? QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "aucune représentation géométrique dans le fichier").toStdString()
+                            : QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "représentation « %1 » non convertie par le noyau géométrique")
+                                  .arg(QString::fromStdString(rep))
+                                  .toStdString();
+            store(std::move(e), IfcImportItem::Outcome::Partial, shownNote);
         }
     }
 
@@ -805,7 +824,7 @@ bool verifyFile(const std::string& path, std::string& schema, int& elements, std
     {
         ifcopenshell::file file(path);
         if (!file.good())
-            error = "fichier illisible par IfcOpenShell";
+            error = QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "fichier illisible par IfcOpenShell").toStdString();
         else
         {
             schema = file.schema() ? file.schema()->name() : std::string();
@@ -818,13 +837,13 @@ bool verifyFile(const std::string& path, std::string& schema, int& elements, std
         error = ex.what();
     }
     // Le lecteur signale les écarts au schéma (attributs, types) : premier message rapporté.
-    if (const auto lines = capture.lines(); ok && !lines.empty()) error = "relu avec remarques : " + lines.front();
+    if (const auto lines = capture.lines(); ok && !lines.empty()) error = QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "relu avec remarques : %1").arg(QString::fromStdString(lines.front())).toStdString();
     return ok;
 }
 
 bool fullEngineAvailable() { return true; }
 
-std::string fullEngineName() { return "IfcOpenShell 0.9.0post1 (noyau OpenCASCADE)"; }
+std::string fullEngineName() { return QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "IfcOpenShell 0.9.0post1 (noyau OpenCASCADE)").toStdString(); }
 
 bool importPhysicalProducts(const std::string& path, TSA::Model::Model& model, const IfcImportOptions& options, IfcImportReport& report)
 {
@@ -836,7 +855,8 @@ bool importPhysicalProducts(const std::string& path, TSA::Model::Model& model, c
         ifcopenshell::file file(path);
         if (!file.good())
         {
-            report.error = "fichier IFC illisible par IfcOpenShell (syntaxe STEP ou schéma non reconnu)";
+            report.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "fichier IFC illisible par IfcOpenShell (syntaxe STEP ou schéma non reconnu)")
+                               .toStdString();
         }
         else
         {
@@ -850,8 +870,13 @@ bool importPhysicalProducts(const std::string& path, TSA::Model::Model& model, c
         report.error = std::string("IfcOpenShell : ") + ex.what();
     }
     const auto lines = capture.lines();
-    for (std::size_t i = 0; i < lines.size() && i < 50; ++i) report.warnings.push_back("Noyau géométrique : " + lines[i]);
-    if (lines.size() > 50) report.warnings.push_back("Noyau géométrique : " + std::to_string(lines.size() - 50) + " autre(s) message(s).");
+    for (std::size_t i = 0; i < lines.size() && i < 50; ++i)
+        report.warnings.push_back(
+            QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "Noyau géométrique : %1").arg(QString::fromStdString(lines[i])).toStdString());
+    if (lines.size() > 50)
+        report.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcOpenShellImport", "Noyau géométrique : %1 autre(s) message(s).")
+                                      .arg(QString::number(lines.size() - 50))
+                                      .toStdString());
     return ok;
 }
 

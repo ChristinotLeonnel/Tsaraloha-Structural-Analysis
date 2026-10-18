@@ -205,7 +205,7 @@ bool MeshController::importMesh(const QString& path, QStringList* warnings, QStr
     m_project.record.geometryHash = known == total ? g.hash : std::string("import");
     m_project.record.settingsHash = MeshGenerator::settingsHash(m_project.settings);
     for (const auto& w : warn) m_project.record.warnings.push_back(w);
-    if (known < total) m_project.record.warnings.push_back(std::to_string(total - known) + " élément(s) rattaché(s) à des objets absents du modèle");
+    if (known < total) m_project.record.warnings.push_back(tr("%1 élément(s) rattaché(s) à des objets absents du modèle").arg(qulonglong(total - known)).toStdString());
     if (warnings)
     {
         for (const auto& w : m_project.record.warnings) warnings->append(QString::fromStdString(w));

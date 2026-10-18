@@ -1,5 +1,6 @@
 #include "ShortcutConfig.h"
 
+#include <QCoreApplication>
 #include <QRegularExpression>
 
 #include <algorithm>
@@ -112,10 +113,10 @@ bool scopesOverlap(const QString& a, const QString& b)
 QString Conflict::message() const
 {
     if (prefix)
-        return QStringLiteral("« %1 » (%2) est le début de « %3 » (%4) : Qt attendrait la touche suivante, "
+        return QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "« %1 » (%2) est le début de « %3 » (%4) : Qt attendrait la touche suivante, "
                               "« %1 » ne se déclencherait jamais")
             .arg(sequenceA.toString(QKeySequence::PortableText), idA, sequenceB.toString(QKeySequence::PortableText), idB);
-    return QStringLiteral("« %1 » est attribué à %2 et à %3 : aucune des deux commandes ne se déclencherait")
+    return QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "« %1 » est attribué à %2 et à %3 : aucune des deux commandes ne se déclencherait")
         .arg(sequenceA.toString(QKeySequence::PortableText), idA, idB);
 }
 
@@ -144,14 +145,14 @@ bool parseSequenceList(const QString& text, QList<QKeySequence>* out, QString* e
     {
         if (alias.contains(QLatin1Char('|')))
         {
-            if (error) *error = QStringLiteral("« | » sert de séparateur de colonnes et ne peut pas être un raccourci");
+            if (error) *error = QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "« | » sert de séparateur de colonnes et ne peut pas être un raccourci");
             return false;
         }
         const QString normalized = normalizeSequenceText(alias);
         const QKeySequence seq = QKeySequence::fromString(normalized, QKeySequence::PortableText);
         if (!isValidSequence(seq))
         {
-            if (error) *error = QStringLiteral("combinaison invalide « %1 »").arg(alias);
+            if (error) *error = QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "combinaison invalide « %1 »").arg(alias);
             return false;
         }
         if (!result.contains(seq)) result << seq;
@@ -185,32 +186,32 @@ ParseResult parseConfig(const QString& text, const QSet<QString>& knownIds)
         if (line.endsWith(QLatin1Char('\r'))) line.chop(1);
         if (i == 0 && line.startsWith(QChar(0xFEFF))) line.remove(0, 1);
         const QString trimmed = line.trimmed();
-        const QString where = QStringLiteral("ligne %1").arg(i + 1);
+        const QString where = QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "ligne %1").arg(i + 1);
         if (trimmed.isEmpty()) continue;
         if (trimmed.startsWith(QLatin1Char('#')))
         {
             const auto m = formatRe.match(trimmed);
             if (m.hasMatch() && m.captured(1) == kFormatTag) r.formatVersion = m.captured(2).toInt();
             if (m.hasMatch() && m.captured(1) == kFormatTag && m.captured(2).toInt() > kFormatVersion)
-                r.warnings << QStringLiteral("%1 : format %2 plus récent que celui de cette version (%3)")
+                r.warnings << QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "%1 : format %2 plus récent que celui de cette version (%3)")
                                   .arg(where, m.captured(2)).arg(kFormatVersion);
             continue;
         }
         if (trimmed.startsWith(QLatin1Char('[')))
         {
-            if (!trimmed.endsWith(QLatin1Char(']'))) r.errors << QStringLiteral("%1 : titre de section non fermé « %2 »").arg(where, trimmed);
+            if (!trimmed.endsWith(QLatin1Char(']'))) r.errors << QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "%1 : titre de section non fermé « %2 »").arg(where, trimmed);
             continue;
         }
         const QStringList fields = line.split(QLatin1Char('|'));
         if (fields.size() < 2)
         {
-            r.errors << QStringLiteral("%1 : « identifiant | raccourci » attendu, lu « %2 »").arg(where, trimmed);
+            r.errors << QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "%1 : « identifiant | raccourci » attendu, lu « %2 »").arg(where, trimmed);
             continue;
         }
         const QString id = fields.at(0).trimmed();
         if (id.isEmpty() || id.contains(QLatin1Char(' ')))
         {
-            r.errors << QStringLiteral("%1 : identifiant de commande invalide « %2 »").arg(where, id);
+            r.errors << QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "%1 : identifiant de commande invalide « %2 »").arg(where, id);
             continue;
         }
         ShortcutSetting setting;
@@ -227,18 +228,18 @@ ParseResult parseConfig(const QString& text, const QSet<QString>& knownIds)
             else if (state == "off" || state == "non" || state == "inactif" || state == "0") setting.enabled = false;
             else
             {
-                r.errors << QStringLiteral("%1 (%2) : état « %3 » invalide (on ou off)").arg(where, id, fields.at(2).trimmed());
+                r.errors << QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "%1 (%2) : état « %3 » invalide (on ou off)").arg(where, id, fields.at(2).trimmed());
                 continue;
             }
         }
         if (!knownIds.contains(id))
         {
-            r.warnings << QStringLiteral("%1 : commande inconnue « %2 » ignorée (renommée, supprimée ou d'une autre version)").arg(where, id);
+            r.warnings << QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "%1 : commande inconnue « %2 » ignorée (renommée, supprimée ou d'une autre version)").arg(where, id);
             continue;
         }
         if (r.settings.contains(id))
         {
-            r.errors << QStringLiteral("%1 : commande « %2 » déjà définie plus haut").arg(where, id);
+            r.errors << QCoreApplication::translate("TSA::UI::Shortcuts::ShortcutConfig", "%1 : commande « %2 » déjà définie plus haut").arg(where, id);
             continue;
         }
         r.settings.insert(id, setting);

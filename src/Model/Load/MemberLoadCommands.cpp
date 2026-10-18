@@ -3,6 +3,8 @@
 #include "LoadManager.h"
 #include "../Model.h"
 
+#include <QCoreApplication>
+
 #include <algorithm>
 #include <cmath>
 
@@ -56,21 +58,24 @@ std::vector<int> applyMemberLoad(Model& model, const MemberLoad& prototype,
         if (error) *error = message;
         return std::vector<int>{};
     };
-    if (targets.empty()) return fail("Aucune barre à charger.");
+    if (targets.empty()) return fail(QCoreApplication::translate("TSA::Model::MemberLoadCommands", "Aucune barre à charger.").toStdString());
 
     // Toutes les cibles sont vérifiées avant toute modification (aucune application partielle).
     for (const auto& t : targets)
     {
         const double L = memberLoadTargetLength(model, t.elementId, t.type);
-        if (L < 0.0) return fail("La barre #" + std::to_string(t.elementId) + " n'existe plus.");
+        if (L < 0.0)
+            return fail(QCoreApplication::translate("TSA::Model::MemberLoadCommands", "La barre #%1 n'existe plus.").arg(t.elementId).toStdString());
         MemberLoad probe = prototype;
         probe.setElementId(t.elementId);
         probe.setTargetType(t.type);
         if (const std::string why = probe.validate(L); !why.empty())
-            return fail("Barre #" + std::to_string(t.elementId) + " : " + why);
+            return fail(QCoreApplication::translate("TSA::Model::MemberLoadCommands", "Barre #%1 : %2")
+                            .arg(QString::number(t.elementId), QString::fromStdString(why))
+                            .toStdString());
     }
     if (!model.loadManager().getLoadCase(prototype.loadCaseId()))
-        return fail("Le cas de charge choisi n'existe pas.");
+        return fail(QCoreApplication::translate("TSA::Model::MemberLoadCommands", "Le cas de charge choisi n'existe pas.").toStdString());
 
     model.pushUndoState(undoLabel);
     std::vector<int> ids;

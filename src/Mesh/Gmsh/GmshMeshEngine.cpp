@@ -71,7 +71,9 @@ MesherCapabilities capabilities()
 {
     MesherCapabilities c;
     c.available = false;
-    c.unavailableReason = "TSA a été compilé sans le SDK Gmsh (option TSA_WITH_GMSH ou SDK absent) : aucun maillage ne peut être généré";
+    c.unavailableReason = QCoreApplication::translate("TSA::Mesh::GmshMeshEngine",
+                                                      "TSA a été compilé sans le SDK Gmsh (option TSA_WITH_GMSH ou SDK absent) : aucun maillage ne peut être généré")
+                              .toStdString();
     return c;
 }
 GenerationResult generate(const MeshGeometry&, const MeshSettingsSet&, const GenerationOptions&)
@@ -113,7 +115,10 @@ bool dllLoaded(std::string* why)
         }
         if (!h) h = LoadLibraryW(reinterpret_cast<LPCWSTR>(name.utf16()));
         ok = h != nullptr;
-        if (!ok) reason = "bibliothèque Gmsh « " + name.toStdString() + " » introuvable à côté de l'application : maillage indisponible";
+        if (!ok)
+            reason = QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "bibliothèque Gmsh « %1 » introuvable à côté de l'application : maillage indisponible")
+                         .arg(name)
+                         .toStdString();
 #else
         ok = true;
 #endif
@@ -423,7 +428,10 @@ public:
                 }
             for (const auto& [k, use] : faceUse)
                 if (use.second == 1) volumeFaces[v.ref].push_back(use.first);
-            if (!split) record.warnings.push_back(v.ref + " : nœud d'appui hors de la semelle : semelle maillée sans liaison au nœud");
+            if (!split)
+                record.warnings.push_back(QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "%1 : nœud d'appui hors de la semelle : semelle maillée sans liaison au nœud")
+                                              .arg(QString::fromStdString(v.ref))
+                                              .toStdString());
         }
     }
 
@@ -495,10 +503,15 @@ public:
                 if (inA && inB && (!onA || isVertex(a)) && (!onB || isVertex(b)))
                 {
                     lines.push_back(tag);
-                    record.interfaces.push_back({ user, s.ref, "courbe plongée dans la surface : nœuds partagés", true });
+                    record.interfaces.push_back(
+                        { user, s.ref, QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "courbe plongée dans la surface : nœuds partagés").toStdString(), true });
                 }
                 else
-                    record.interfaces.push_back({ user, s.ref, "courbe recoupant le contour de la surface hors d'un sommet : intersection non maillée", false });
+                    record.interfaces.push_back({ user, s.ref,
+                                                  QCoreApplication::translate("TSA::Mesh::GmshMeshEngine",
+                                                                              "courbe recoupant le contour de la surface hors d'un sommet : intersection non maillée")
+                                                      .toStdString(),
+                                                  false });
             }
             try
             {
@@ -507,14 +520,17 @@ public:
             }
             catch (const std::exception& e)
             {
-                record.warnings.push_back(s.ref + " : plongement refusé par Gmsh (" + e.what() + ")");
+                record.warnings.push_back(QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "%1 : plongement refusé par Gmsh (%2)")
+                                              .arg(QString::fromStdString(s.ref), QString::fromStdString(e.what()))
+                                              .toStdString());
             }
         }
         // Courbes partagées : interfaces conformes
         for (const auto& [tag, users] : curveUsers)
             for (std::size_t i = 0; i < users.size(); ++i)
                 for (std::size_t j = i + 1; j < users.size(); ++j)
-                    record.interfaces.push_back({ users[i], users[j], "courbe commune : nœuds partagés", true });
+                    record.interfaces.push_back(
+                        { users[i], users[j], QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "courbe commune : nœuds partagés").toStdString(), true });
         // Barres partiellement confondues avec un bord de surface (extrémités différentes)
         for (const auto& m : geo.members)
             for (const auto& s : geo.surfaces)
@@ -526,7 +542,11 @@ public:
                     const bool mOnEdge = distanceToSegment(m.a, a, b) < 1e-6 && distanceToSegment(m.b, a, b) < 1e-6;
                     const bool edgeOnM = distanceToSegment(a, m.a, m.b) < 1e-6 && distanceToSegment(b, m.a, m.b) < 1e-6;
                     if (mOnEdge || edgeOnM)
-                        record.interfaces.push_back({ m.ref, s.ref, "barre partiellement confondue avec un bord : nœuds intermédiaires non partagés", false });
+                        record.interfaces.push_back({ m.ref, s.ref,
+                                                      QCoreApplication::translate("TSA::Mesh::GmshMeshEngine",
+                                                                                  "barre partiellement confondue avec un bord : nœuds intermédiaires non partagés")
+                                                          .toStdString(),
+                                                      false });
                 }
         // Volumes jointifs ou superposés : maillés séparément
         for (std::size_t i = 0; i < geo.volumes.size(); ++i)
@@ -537,12 +557,20 @@ public:
                              oz = std::min(a.max.z, b.max.z) - std::max(a.min.z, b.min.z);
                 if (ox < -tol || oy < -tol || oz < -tol) continue;
                 record.interfaces.push_back(
-                    { a.ref, b.ref, ox > tol && oy > tol && oz > tol ? "volumes superposés : maillages indépendants" : "volumes jointifs : faces non fusionnées", false });
+                    { a.ref, b.ref,
+                      (ox > tol && oy > tol && oz > tol ? QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "volumes superposés : maillages indépendants")
+                                                        : QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "volumes jointifs : faces non fusionnées"))
+                          .toStdString(),
+                      false });
             }
         for (const auto& v : geo.volumes)
             for (const auto& m : geo.members)
                 if ((m.nodeI == v.nodeId || m.nodeJ == v.nodeId) && entityVolumes.count(v.ref) && memberSegs.count(m.ref))
-                    record.interfaces.push_back({ m.ref, v.ref, "liaison barre – volume par un seul nœud : rotations de la barre non transmises au volume", false });
+                    record.interfaces.push_back({ m.ref, v.ref,
+                                                  QCoreApplication::translate("TSA::Mesh::GmshMeshEngine",
+                                                                              "liaison barre – volume par un seul nœud : rotations de la barre non transmises au volume")
+                                                      .toStdString(),
+                                                  false });
     }
 
     // --- Contraintes de maillage --------------------------------------------------------------------
@@ -582,14 +610,18 @@ public:
             P3 c;
             for (const auto& p : s.outer) c = c + p;
             samples.push_back(c * (1.0 / double(s.outer.size())));
-            if (s.outer.size() != 4) why = "contour à " + std::to_string(s.outer.size()) + " côtés";
-            else if (!s.holes.empty()) why = "ouverture(s)";
-            else if (embeddedInSurface.count(st->second)) why = "nœuds ou courbes plongés";
-            else if (!(loc && loc->structured && *loc->structured) && ev.refined(s.ref, samples)) why = "zone de raffinement (taille variable)";
+            if (s.outer.size() != 4)
+                why = QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "contour à %1 côtés").arg(QString::number(s.outer.size())).toStdString();
+            else if (!s.holes.empty()) why = QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "ouverture(s)").toStdString();
+            else if (embeddedInSurface.count(st->second)) why = QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "nœuds ou courbes plongés").toStdString();
+            else if (!(loc && loc->structured && *loc->structured) && ev.refined(s.ref, samples))
+                why = QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "zone de raffinement (taille variable)").toStdString();
             if (!why.empty())
             {
                 if (loc && loc->structured && *loc->structured)
-                    record.warnings.push_back(s.ref + " : maillage structuré impossible (" + why + ") : maillage non structuré");
+                    record.warnings.push_back(QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "%1 : maillage structuré impossible (%2) : maillage non structuré")
+                                                  .arg(QString::fromStdString(s.ref), QString::fromStdString(why))
+                                                  .toStdString());
                 continue;
             }
             structured.insert(st->second);
@@ -627,7 +659,11 @@ public:
                 }
                 if (!ok)
                 {
-                    record.warnings.push_back(ref + " : divisions imposées par une barre de bord incompatibles avec un maillage structuré : maillage non structuré");
+                    record.warnings.push_back(QCoreApplication::translate("TSA::Mesh::GmshMeshEngine",
+                                                                          "%1 : divisions imposées par une barre de bord incompatibles avec un maillage structuré : "
+                                                                          "maillage non structuré")
+                                                  .arg(QString::fromStdString(ref))
+                                                  .toStdString());
                     it = structured.erase(it);
                     changed = true;
                 }
@@ -906,7 +942,8 @@ public:
         {
             std::string t;
             for (int u : unknownTypes) t += " " + std::to_string(u);
-            record.warnings.push_back("types d'éléments Gmsh non repris dans le maillage TSA :" + t);
+            record.warnings.push_back(
+                QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "types d'éléments Gmsh non repris dans le maillage TSA :%1").arg(QString::fromStdString(t)).toStdString());
         }
         // Source des nœuds : objet du premier élément qui les utilise
         for (const auto& e : mesh.elements)
@@ -1063,15 +1100,18 @@ GenerationResult generate(const MeshGeometry& geometry, const MeshSettingsSet& s
         rec.errors.push_back(why);
         return r;
     }
-    if (settings.global.minSize > settings.global.maxSize) rec.errors.push_back("taille minimale supérieure à la taille maximale");
+    if (settings.global.minSize > settings.global.maxSize)
+        rec.errors.push_back(QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "taille minimale supérieure à la taille maximale").toStdString());
     const MeshEstimate est = MeshGenerator::estimate(geometry, settings);
     if (est.elements() > std::size_t(settings.global.maxElements))
-        rec.errors.push_back("estimation de " + std::to_string(est.elements()) + " éléments, au-delà de la limite de " + std::to_string(settings.global.maxElements) +
-                             " : augmenter la taille des éléments ou la limite");
+        rec.errors.push_back(QCoreApplication::translate("TSA::Mesh::GmshMeshEngine",
+                                                         "estimation de %1 éléments, au-delà de la limite de %2 : augmenter la taille des éléments ou la limite")
+                                 .arg(QString::number(est.elements()), QString::number(settings.global.maxElements))
+                                 .toStdString());
     if (!rec.errors.empty()) return r;
     auto cancelled = [&] { return options.cancelled && options.cancelled(); };
     auto progress = [&](int p, const char* what) {
-        if (options.progress) options.progress(p, what);
+        if (options.progress) options.progress(p, QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", what).toStdString());   // what : QT_TRANSLATE_NOOP
     };
     try
     {
@@ -1079,7 +1119,7 @@ GenerationResult generate(const MeshGeometry& geometry, const MeshSettingsSet& s
         gmsh::option::getString("General.Version", rec.mesherVersion);
         gmsh::model::add("tsa");
         Builder b(geometry, settings, options, rec);
-        progress(5, "géométrie");
+        progress(5, QT_TRANSLATE_NOOP("TSA::Mesh::GmshMeshEngine", "géométrie"));
         b.buildMembers();
         b.buildSurfaces();
         b.buildVolumes();
@@ -1092,25 +1132,25 @@ GenerationResult generate(const MeshGeometry& geometry, const MeshSettingsSet& s
         bool any2 = !b.surfaceTag.empty() || (settings.global.boundaryElements && !b.volumeTags.empty());
         if (!r.cancelled)
         {
-            progress(15, "maillage 1D");
+            progress(15, QT_TRANSLATE_NOOP("TSA::Mesh::GmshMeshEngine", "maillage 1D"));
             gmsh::model::mesh::generate(1);
         }
         if (!r.cancelled && cancelled()) r.cancelled = true;
         if (!r.cancelled && (any2 || !b.volumeTags.empty()))
         {
-            progress(35, "maillage 2D");
+            progress(35, QT_TRANSLATE_NOOP("TSA::Mesh::GmshMeshEngine", "maillage 2D"));
             gmsh::model::mesh::generate(2);
         }
         if (!r.cancelled && cancelled()) r.cancelled = true;
         if (!r.cancelled && !b.volumeTags.empty())
         {
-            progress(65, "maillage 3D");
+            progress(65, QT_TRANSLATE_NOOP("TSA::Mesh::GmshMeshEngine", "maillage 3D"));
             gmsh::model::mesh::generate(3);
         }
         if (!r.cancelled && cancelled()) r.cancelled = true;
         if (!r.cancelled)
         {
-            progress(85, "extraction");
+            progress(85, QT_TRANSLATE_NOOP("TSA::Mesh::GmshMeshEngine", "extraction"));
             // Groupes physiques (noms = références TSA) créés avant l'extraction : leurs étiquettes Gmsh sont
             // conservées dans FeGroup ; sans effet sur le maillage.
             b.physicalGroups();
@@ -1124,10 +1164,12 @@ GenerationResult generate(const MeshGeometry& geometry, const MeshSettingsSet& s
     {
         rec.errors.push_back(std::string("Gmsh : ") + e.what());
     }
-    if (r.cancelled) rec.errors.push_back("génération annulée par l'utilisateur (entre deux étapes de Gmsh)");
+    if (r.cancelled)
+        rec.errors.push_back(QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "génération annulée par l'utilisateur (entre deux étapes de Gmsh)").toStdString());
     if (r.mesh.elements.size() > std::size_t(settings.global.maxElements))
-        rec.errors.push_back("maillage de " + std::to_string(r.mesh.elements.size()) + " éléments, au-delà de la limite de " +
-                             std::to_string(settings.global.maxElements));
+        rec.errors.push_back(QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "maillage de %1 éléments, au-delà de la limite de %2")
+                                 .arg(QString::number(r.mesh.elements.size()), QString::number(settings.global.maxElements))
+                                 .toStdString());
     const auto& g = settings.global;
     auto num = [](double v) { return QString::number(v, 'g', 6).toStdString(); };
     rec.parameters["taille effective"] = num(g.effectiveSize()) + " m";
@@ -1141,7 +1183,8 @@ GenerationResult generate(const MeshGeometry& geometry, const MeshSettingsSet& s
     rec.generated = QDateTime::currentDateTime().toString(Qt::ISODate).toStdString();
     rec.durationMs = double(timer.elapsed());
     r.ok = !r.cancelled && rec.errors.empty() && !r.mesh.empty();
-    if (!r.cancelled && rec.errors.empty() && r.mesh.empty()) rec.errors.push_back("aucun objet à mailler pour les dimensions activées");
+    if (!r.cancelled && rec.errors.empty() && r.mesh.empty())
+        rec.errors.push_back(QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "aucun objet à mailler pour les dimensions activées").toStdString());
     return r;
 }
 
@@ -1346,11 +1389,12 @@ bool importMesh(const std::string& path, FeMesh* out, std::vector<std::string>* 
         {
             std::string t;
             for (int u : unknown) t += " " + std::to_string(u);
-            warnings->push_back("types d'éléments non pris en charge par TSA, ignorés :" + t);
+            warnings->push_back(
+                QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "types d'éléments non pris en charge par TSA, ignorés :%1").arg(QString::fromStdString(t)).toStdString());
         }
         if (mesh.elements.empty())
         {
-            if (error) *error = "aucun élément pris en charge dans le fichier";
+            if (error) *error = QCoreApplication::translate("TSA::Mesh::GmshMeshEngine", "aucun élément pris en charge dans le fichier").toStdString();
             return false;
         }
         *out = std::move(mesh);

@@ -1,5 +1,6 @@
 #include "NamedViews.h"
 
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -98,7 +99,7 @@ NamedViewSet NamedViewSet::fromJson(const std::string& json, std::string* warnin
     const QJsonDocument doc = QJsonDocument::fromJson(QByteArray::fromStdString(json));
     if (!doc.isObject())
     {
-        if (warnings) *warnings += "vues nommées : JSON illisible, ignoré\n";
+        if (warnings) *warnings += QCoreApplication::translate("TSA::Model::NamedViews", "vues nommées : JSON illisible, ignoré").toStdString() + "\n";
         return set;
     }
     for (const QJsonValue& value : doc.object()["views"].toArray())
@@ -111,7 +112,11 @@ NamedViewSet NamedViewSet::fromJson(const std::string& json, std::string* warnin
                         && readVec(o["up"], v.up) && v.scale > 0.0 && std::isfinite(v.scale);
         if (!ok)
         {
-            if (warnings) *warnings += "vue nommée invalide ou en double ignorée : « " + v.name + " »\n";
+            if (warnings)
+                *warnings += QCoreApplication::translate("TSA::Model::NamedViews", "vue nommée invalide ou en double ignorée : « %1 »")
+                                 .arg(QString::fromStdString(v.name))
+                                 .toStdString()
+                             + "\n";
             continue;
         }
         v.orthographic = o["projection"].toString("orthographic") != "perspective";

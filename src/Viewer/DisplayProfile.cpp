@@ -4,6 +4,7 @@
 #include "OccView.h"
 #include "ResultsVisualManager.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -238,43 +239,43 @@ QList<DisplayProfile> defaultDisplayProfiles()
         QJsonObject s = base("physical", "materials");
         s["nodes"] = true; s["nodeLabels"] = false; s["supports"] = true; s["grid"] = true; s["gridLabels"] = true; s["workPlane"] = true;
         s["loads"] = false; s["deformed"] = false; s["diagram"] = "none"; s["reactions"] = false; s["legend"] = false;
-        out << DisplayProfile { QStringLiteral("Modélisation"), s };
+        out << DisplayProfile { QString::fromUtf8(QT_TRANSLATE_NOOP("TSA::Viewer::DisplayProfile", "Modélisation")), s };
     }
     {
         QJsonObject s = base("analytical", "structure");
         s["nodes"] = true; s["supports"] = true; s["grid"] = true; s["loads"] = true; s["surfaceLoads"] = true; s["forces"] = true; s["moments"] = true;
         s["loadValues"] = true; s["loadScaleMode"] = "automatic"; s["loadLegend"] = true; s["deformed"] = false; s["diagram"] = "none";
-        out << DisplayProfile { QStringLiteral("Charges"), s };
+        out << DisplayProfile { QString::fromUtf8(QT_TRANSLATE_NOOP("TSA::Viewer::DisplayProfile", "Charges")), s };
     }
     {
         QJsonObject s = base("finite_element", "analysis");
         s["nodes"] = false; s["nodeLabels"] = false; s["supports"] = true; s["grid"] = false; s["loads"] = false; s["deformed"] = false; s["diagram"] = "none";
-        out << DisplayProfile { QStringLiteral("Maillage"), s };
+        out << DisplayProfile { QString::fromUtf8(QT_TRANSLATE_NOOP("TSA::Viewer::DisplayProfile", "Maillage")), s };
     }
     {
         QJsonObject s = base("analytical", "results");
         s["nodes"] = false; s["supports"] = true; s["grid"] = false; s["loads"] = false; s["deformed"] = false; s["diagram"] = "My";
         s["diagramMultiplier"] = 1.0; s["diagramLabels"] = true; s["reactions"] = true; s["legend"] = true;
-        out << DisplayProfile { QStringLiteral("Résultats"), s };
+        out << DisplayProfile { QString::fromUtf8(QT_TRANSLATE_NOOP("TSA::Viewer::DisplayProfile", "Résultats")), s };
     }
     {
         QJsonObject s = base("analytical", "results");
         s["nodes"] = false; s["grid"] = false; s["loads"] = false; s["deformed"] = true; s["deformedMode"] = "both"; s["deformationPreset"] = "auto";
         s["diagram"] = "none"; s["reactions"] = false; s["legend"] = true; s["sectionRotation"] = true;
-        out << DisplayProfile { QStringLiteral("Déformées"), s };
+        out << DisplayProfile { QString::fromUtf8(QT_TRANSLATE_NOOP("TSA::Viewer::DisplayProfile", "Déformées")), s };
     }
     {
         QJsonObject s = base("analytical", "results");
         s["nodes"] = false; s["grid"] = false; s["loads"] = false; s["supports"] = true; s["deformed"] = true; s["deformedMode"] = "deformed";
         s["deformationPreset"] = "auto"; s["diagram"] = "none"; s["reactions"] = false; s["legend"] = true;
-        out << DisplayProfile { QStringLiteral("Analyse modale"), s };
+        out << DisplayProfile { QString::fromUtf8(QT_TRANSLATE_NOOP("TSA::Viewer::DisplayProfile", "Analyse modale")), s };
     }
     {
         QJsonObject s = base("physical", "materials");
         s["nodes"] = false; s["nodeLabels"] = false; s["supports"] = false; s["supportLabels"] = false; s["grid"] = false; s["gridLabels"] = false;
         s["gridLevels"] = false; s["workPlane"] = false; s["loads"] = false; s["deformed"] = false; s["diagram"] = "none"; s["reactions"] = false;
         s["legend"] = false;
-        out << DisplayProfile { QStringLiteral("Présentation"), s };
+        out << DisplayProfile { QString::fromUtf8(QT_TRANSLATE_NOOP("TSA::Viewer::DisplayProfile", "Présentation")), s };
     }
     return out;
 }
@@ -347,7 +348,7 @@ bool DisplayProfileStore::save(const DisplayProfile& profile, QString* error)
     const QString name = profile.name.trimmed();
     if (name.isEmpty() || name.size() > 80)
     {
-        if (error) *error = QStringLiteral("nom de profil vide ou trop long (80 caractères au plus)");
+        if (error) *error = QCoreApplication::translate("TSA::Viewer::DisplayProfile", "nom de profil vide ou trop long (80 caractères au plus)");
         return false;
     }
     // Liste blanche : seules les clés graphiques sont enregistrées
@@ -375,12 +376,12 @@ bool DisplayProfileStore::rename(const QString& oldName, const QString& newName,
     auto it = std::find_if(list.begin(), list.end(), [&](const DisplayProfile& p) { return p.name == oldName; });
     if (it == list.end())
     {
-        if (error) *error = QStringLiteral("profil « %1 » introuvable").arg(oldName);
+        if (error) *error = QCoreApplication::translate("TSA::Viewer::DisplayProfile", "profil « %1 » introuvable").arg(oldName);
         return false;
     }
     if (to.isEmpty() || to.size() > 80 || (to != oldName && contains(to)))
     {
-        if (error) *error = to.isEmpty() || to.size() > 80 ? QStringLiteral("nom de profil vide ou trop long") : QStringLiteral("un profil « %1 » existe déjà").arg(to);
+        if (error) *error = to.isEmpty() || to.size() > 80 ? QCoreApplication::translate("TSA::Viewer::DisplayProfile", "nom de profil vide ou trop long") : QCoreApplication::translate("TSA::Viewer::DisplayProfile", "un profil « %1 » existe déjà").arg(to);
         return false;
     }
     it->name = to;

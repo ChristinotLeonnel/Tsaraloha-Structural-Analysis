@@ -273,7 +273,7 @@ QString HelpDialog::getHelpContent(int topicIndex) const
     switch (topicIndex)
     {
     case 0: // Démarrage & Workflow
-        return style +
+        return style + tr(
             "<h2>🚀 Démarrage & Workflow de Modélisation</h2>"
             "<p>Bienvenue dans <b>TSA (Tsaraloha Structural Analysis)</b>, le logiciel moderne de modélisation 3D et d'analyse structurelle par éléments finis basé sur OpenCASCADE et Qt 6.</p>"
             "<div class='card'>"
@@ -286,10 +286,10 @@ QString HelpDialog::getHelpContent(int topicIndex) const
             "<li><b>Cas de Charges :</b> Appliquez des charges nodales, linéiques réparties, surfaciques ou moments.</li>"
             "<li><b>Analyse Éléments Finis :</b> Lancez le solveur statique pour inspecter les déformées, contraintes et diagrammes d'efforts (M, N, V).</li>"
             "</ol>"
-            "</div>";
+            "</div>");
 
     case 1: // Modélisation 3D
-        return style +
+        return style + tr(
             "<h2>✏️ Outils de Modélisation 3D</h2>"
             "<p>TSA intègre des outils de dessin interactif 3D accélérés par OpenCASCADE :</p>"
             "<table>"
@@ -304,10 +304,10 @@ QString HelpDialog::getHelpContent(int topicIndex) const
             "<tr><td><b>Déplacer</b></td><td><span class='badge'>M</span></td><td>Applique un vecteur de translation (dX, dY, dZ) aux éléments sélectionnés.</td></tr>"
             "<tr><td><b>Copier / Répéter</b></td><td><span class='badge'>Ctrl+D</span></td><td>Duplique la sélection avec répétition multiple (ex: colonnes d'un portique).</td></tr>"
             "<tr><td><b>Supprimer</b></td><td><span class='badge'>Suppr</span></td><td>Supprime immédiatement les entités sélectionnées du modèle.</td></tr>"
-            "</table>";
+            "</table>");
 
     case 2: // Grilles 3D & Niveaux
-        return style +
+        return style + tr(
             "<h2>📐 Système de Grilles 3D & Altimétrie</h2>"
             "<p>Le système de repérage de TSA est unifié pour garantir une cohérence absolue entre vue 2D et espace 3D :</p>"
             "<div class='card'>"
@@ -324,10 +324,10 @@ QString HelpDialog::getHelpContent(int topicIndex) const
             "<li>La barre supérieure au-dessus du viewport permet de basculer instantanément le plan de travail actif d'un étage à un autre (ex: Niveau 0 : 0.00m, Étage 1 : +3.20m).</li>"
             "<li>Touche <span class='badge'>G</span> pour afficher/masquer la grille, et touche <span class='badge'>S</span> pour activer le magnétisme d'accrochage (Snap).</li>"
             "</ul>"
-            "</div>";
+            "</div>");
 
     case 3: // Vues, Caméra & Coupes
-        return style +
+        return style + tr(
             "<h2>🎥 Vues, Navigation Caméra & Coupes 3D</h2>"
             "<div class='card'>"
             "<h3>Navigation Souris dans le Viewport 3D</h3>"
@@ -347,18 +347,18 @@ QString HelpDialog::getHelpContent(int topicIndex) const
             "<li><b>Plan YZ :</b> Vue en élévation latérale / pignon.</li>"
             "<li><b>Coupes 3D (Graphic3d_ClipPlane) :</b> Permet de trancher interactivement le bâtiment selon l'axe X, Y ou Z avec inversion de face.</li>"
             "</ul>"
-            "</div>";
+            "</div>");
 
     case 4: // Raccourcis & Console
-        return style +
+        return style + tr(
             "<h2>⌨️ Raccourcis Clavier & Ligne de Commande</h2>"
             "<p>TSA propose deux modes d'action rapide : les raccourcis directs au clavier et la console interactive façon AutoCAD.</p>"
             "<h3>Raccourcis clavier actifs</h3>"
             "<p>Liste générée à partir des raccourcis réellement actifs (catalogue des commandes et fichier "
             "<code>shortcut.txt</code> de l'utilisateur). Personnalisation : <b>Aide &gt; Personnaliser les "
             "raccourcis</b> (Ctrl+F1 par défaut) ou modification directe du fichier, appliquée sans redémarrage. "
-            "Suites de touches façon AutoCAD : « D, A » = D puis A.</p>"
-            + TSA::UI::Shortcuts::ShortcutManager::instance().htmlReference() +
+            "Suites de touches façon AutoCAD : « D, A » = D puis A.</p>")
+            + TSA::UI::Shortcuts::ShortcutManager::instance().htmlReference() + tr(
             "<h3>Commandes de la Ligne de Commande (Console)</h3>"
             "<p>Tapez ces mots-clés dans la barre inférieure :</p>"
             "<table>"
@@ -375,10 +375,10 @@ QString HelpDialog::getHelpContent(int topicIndex) const
             "<tr><td><code>DEL</code> ou <code>DELETE</code></td><td>Supprime la sélection</td></tr>"
             "<tr><td><code>THEME</code> / <code>DARK</code> / <code>LIGHT</code></td><td>Bascule entre le mode sombre et le mode clair</td></tr>"
             "<tr><td><code>HELP</code> / <code>AIDE</code> / <code>?</code></td><td>Ouvre la fenêtre d'aide complète</td></tr>"
-            "</table>";
+            "</table>");
 
     case 5: // Analyse & Résultats EF
-        return style +
+        return style + tr(
             "<h2>⚙️ Analyse & Résultats Éléments Finis</h2>"
             "<div class='card'>"
             "<h3>Calcul Statique</h3>"
@@ -397,16 +397,16 @@ QString HelpDialog::getHelpContent(int topicIndex) const
             "<li><b>Diagrammes d'efforts internes :</b> Courbes continues de Moment Fléchissant (M<sub>y</sub>, M<sub>z</sub>), Effort Tranchant (V<sub>y</sub>, V<sub>z</sub>) et Effort Normal (N).</li>"
             "<li><b>Cartographie des contraintes :</b> Calcul des contraintes normales maximales &sigma; et tangentielles &tau;, ainsi que la contrainte équivalente de Von Mises.</li>"
             "</ul>"
-            "</div>";
+            "</div>");
 
     case 6: // À Propos de TSA
     default:
         return style +
-            QStringLiteral("<h2>ℹ️ À Propos de %1 (%2)</h2>").arg(TSA::Product::longName(), TSA::Product::name())
+            tr("<h2>ℹ️ À Propos de %1 (%2)</h2>").arg(TSA::Product::longName(), TSA::Product::name())
             + QString::fromUtf8(TSA::Product::kAboutIntroHtml) +
             "<div class='card'>"
             "<p><b>" + QString::fromUtf8(TSA::Product::kPlatformLabel) + "</b></p>"
-            "<p>Développé pour les ingénieurs de génie civil, bureaux d'études et architectes recherchant la puissance de calcul allié à l'ergonomie CAO moderne.</p>"
+            + tr("<p>Développé pour les ingénieurs de génie civil, bureaux d'études et architectes recherchant la puissance de calcul allié à l'ergonomie CAO moderne.</p>"
             "<ul>"
             "<li><b>Version :</b> 1.0.0 (Release 2026)</li>"
             "<li><b>Moteur Géométrique 3D :</b> OpenCASCADE Technology 8.0.1 (OCCT)</li>"
@@ -414,7 +414,7 @@ QString HelpDialog::getHelpContent(int topicIndex) const
             "<li><b>Standard C++ :</b> C++20 (MSVC 64-bit)</li>"
             "<li><b>Auteur / Concepteur :</b> Christinot TSARALOHA</li>"
             "</ul>"
-            "</div>";
+            "</div>");
     }
 }
 

@@ -240,7 +240,7 @@ void ColumnPropertiesView::refreshView()
     const auto* endN = m_model->getNode(col->endNodeId());
     if (startN && endN)
     {
-        m_lblCadNodes->setText(QString("N%1 (Pied) → N%2 (Tête)").arg(col->startNodeId()).arg(col->endNodeId()));
+        m_lblCadNodes->setText(tr("N%1 (Pied) → N%2 (Tête)").arg(col->startNodeId()).arg(col->endNodeId()));
         double dx = endN->x() - startN->x();
         double dy = endN->y() - startN->y();
         double dz = endN->z() - startN->z();
@@ -269,8 +269,8 @@ void ColumnPropertiesView::refreshView()
     }
 
     const auto& sec = col->section();
-    m_lblCadSection->setText(QString::fromStdString(sec.name.empty() ? "Section personnalisée" : sec.name));
-    m_lblCadMaterial->setText(QString::fromStdString(col->material().name.empty() ? "Béton C25/30" : col->material().name));
+    m_lblCadSection->setText(sec.name.empty() ? tr("Section personnalisée") : QString::fromStdString(sec.name));
+    m_lblCadMaterial->setText(col->material().name.empty() ? tr("Béton C25/30") : QString::fromStdString(col->material().name));
 
     m_editName->setText(QString::fromStdString(col->name()));
 
@@ -286,7 +286,7 @@ void ColumnPropertiesView::refreshView()
     int mIdx = m_comboMaterial->findData(col->material().id);
     if (mIdx >= 0) m_comboMaterial->setCurrentIndex(mIdx);
 
-    m_lblNodes->setText(QString("N%1 (Pied) → N%2 (Tête)").arg(col->startNodeId()).arg(col->endNodeId()));
+    m_lblNodes->setText(tr("N%1 (Pied) → N%2 (Tête)").arg(col->startNodeId()).arg(col->endNodeId()));
 
     if (m_previewWidget)
     {

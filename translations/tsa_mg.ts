@@ -4644,6 +4644,14 @@ Tsindrio hahitana ny fikirana IA</translation>
         <translation>Tsy azo ampiasaina ny mpizara fanaovana ho azy (MCP): %1</translation>
     </message>
     <message>
+        <source>mémoire insuffisante</source>
+        <translation>tsy ampy ny fitadidiana</translation>
+    </message>
+    <message>
+        <source>erreur interne inconnue</source>
+        <translation>hadisoana anatiny tsy fantatra</translation>
+    </message>
+    <message>
         <source>Exporter au format IFC</source>
         <translation>Avoahy amin'ny endrika IFC</translation>
     </message>
@@ -5149,7 +5157,7 @@ Tsy alefa any amin'ny kajy ny harato nampidirina raha tsy mifanaraka amin'ny zav
     </message>
     <message>
         <source>Dalles et voiles maillés (triangles, quadrangles)</source>
-        <translation>Takelaka sy rindrina voaharato (telozoro, efamira)</translation>
+        <translation>Takelaka sy rindrina voaharato (telozoro, efatra lafy)</translation>
     </message>
     <message>
         <source>Éléments 3D</source>
@@ -5574,6 +5582,22 @@ Maj + tsindry amin'ny fitaovana: ampiasao indray mandeha ny fomba iray hafa.</tr
         <translation>Natao fizarana tsotra ny fizarana boribory %1 (Ø%2 m)</translation>
     </message>
     <message>
+        <source>Béton C20/25 (fck = 20 MPa, Ecm = 30 GPa, rho = 25 kN/m³)</source>
+        <translation>Betôna C20/25 (fck = 20 MPa, Ecm = 30 GPa, rho = 25 kN/m³)</translation>
+    </message>
+    <message>
+        <source>Béton C25/30 (fck = 25 MPa, Ecm = 31 GPa, rho = 25 kN/m³) - Standard EC2</source>
+        <translation>Betôna C25/30 (fck = 25 MPa, Ecm = 31 GPa, rho = 25 kN/m³) - mahazatra EC2</translation>
+    </message>
+    <message>
+        <source>Béton C30/37 (fck = 30 MPa, Ecm = 33 GPa, rho = 25 kN/m³)</source>
+        <translation>Betôna C30/37 (fck = 30 MPa, Ecm = 33 GPa, rho = 25 kN/m³)</translation>
+    </message>
+    <message>
+        <source>Béton C35/45 (fck = 35 MPa, Ecm = 34 GPa, rho = 25 kN/m³)</source>
+        <translation>Betôna C35/45 (fck = 35 MPa, Ecm = 34 GPa, rho = 25 kN/m³)</translation>
+    </message>
+    <message>
         <source>Matériaux - Béton Armé</source>
         <translation>Akora - Betôna misy vy</translation>
     </message>
@@ -5588,6 +5612,22 @@ Maj + tsindry amin'ny fitaovana: ampiasao indray mandeha ny fomba iray hafa.</tr
     <message>
         <source>Matériau : %1</source>
         <translation>Akora: %1</translation>
+    </message>
+    <message>
+        <source>Acier S235 (fy = 235 MPa, fu = 360 MPa, E = 210 GPa, rho = 78.5 kN/m³)</source>
+        <translation>Vy S235 (fy = 235 MPa, fu = 360 MPa, E = 210 GPa, rho = 78.5 kN/m³)</translation>
+    </message>
+    <message>
+        <source>Acier S275 (fy = 275 MPa, fu = 430 MPa, E = 210 GPa, rho = 78.5 kN/m³)</source>
+        <translation>Vy S275 (fy = 275 MPa, fu = 430 MPa, E = 210 GPa, rho = 78.5 kN/m³)</translation>
+    </message>
+    <message>
+        <source>Acier S355 (fy = 355 MPa, fu = 510 MPa, E = 210 GPa, rho = 78.5 kN/m³) - Standard EC3</source>
+        <translation>Vy S355 (fy = 355 MPa, fu = 510 MPa, E = 210 GPa, rho = 78.5 kN/m³) - mahazatra EC3</translation>
+    </message>
+    <message>
+        <source>Acier S460 (fy = 460 MPa, fu = 540 MPa, E = 210 GPa, rho = 78.5 kN/m³)</source>
+        <translation>Vy S460 (fy = 460 MPa, fu = 540 MPa, E = 210 GPa, rho = 78.5 kN/m³)</translation>
     </message>
     <message>
         <source>Matériaux - Acier Structural</source>
@@ -6868,6 +6908,22 @@ Tsy ao amin'ity solosaina ity ny loharano (fonosana nozaraina): jereo ny tahirin
         <translation>ny sisiny manontolo</translation>
     </message>
     <message>
+        <source>pied</source>
+        <translation>fototra</translation>
+    </message>
+    <message>
+        <source>extrémité de fin</source>
+        <translation>fiafarana</translation>
+    </message>
+    <message>
+        <source>tête</source>
+        <translation>tampony</translation>
+    </message>
+    <message>
+        <source>extrémité de début</source>
+        <translation>fiandohana</translation>
+    </message>
+    <message>
         <source>bord %1</source>
         <translation>sisiny %1</translation>
     </message>
@@ -7576,6 +7632,10 @@ Atomboka ve ny kajy?</translation>
     <message>
         <source>Conditions aux Limites</source>
         <translation>Fepetra eo amin'ny sisiny</translation>
+    </message>
+    <message>
+        <source>Aucun appui (Encastrement, Articulation, Appui simple) n'est défini. La structure est cinématiquement instable.</source>
+        <translation>Tsy misy fanohanana (fanohanana raikitra, fanohanana mihodina, fanohanana tsotra) voafaritra. Tsy marin-toerana ara-kinematika ny rafitra.</translation>
     </message>
     <message>
         <source>Charges</source>
@@ -8751,6 +8811,332 @@ Atomboka ve ny kajy?</translation>
     </message>
 </context>
 <context>
+    <name>TSA::BIM::BimGeometry</name>
+    <message>
+        <source>géométries : signature BGEO absente</source>
+        <translation>joometria: tsy misy ny marika famantarana BGEO</translation>
+    </message>
+    <message>
+        <source>géométries : version future</source>
+        <translation>joometria: dikan-teny ho avy</translation>
+    </message>
+    <message>
+        <source>géométries : bloc tronqué</source>
+        <translation>joometria: sombin'angona tapaka</translation>
+    </message>
+    <message>
+        <source>géométries : flux illisible</source>
+        <translation>joometria: fikorianan'angona tsy azo vakiana</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::Ifc::IfcExporter</name>
+    <message>
+        <source>Export IFC échoué : %1</source>
+        <translation>Tsy nety ny famoahana IFC: %1</translation>
+    </message>
+    <message>
+        <source>%1 produit(s), %2 étage(s), %3 élément(s) analytique(s), %4 nœud(s) analytique(s), %5 entités STEP</source>
+        <translation>singa IFC %1, rihana %2, singa ara-kajy %3, fihaonana ara-kajy %4, entite STEP %5</translation>
+    </message>
+    <message>
+        <source>%1 : géométrie non exportée (dimensions nulles ou nœuds manquants).</source>
+        <translation>%1: tsy navoaka ny joometria (refy aotra na fihaonana tsy ampy).</translation>
+    </message>
+    <message>
+        <source>%1 : exporté en IfcBuildingElementProxy (classe d'origine conservée en propriété TSA_Import).</source>
+        <translation>%1: navoaka ho IfcBuildingElementProxy (voatahiry ao amin'ny toetra TSA_Import ny kilasy niaviany).</translation>
+    </message>
+    <message>
+        <source>impossible d'écrire dans le dossier de « %1 » (%2)</source>
+        <translation>tsy afaka manoratra ao amin'ny lahatahirin'ny « %1 » (%2)</translation>
+    </message>
+    <message>
+        <source>relu par %1 : schéma %2, %3 produit(s)</source>
+        <translation>novakian'ny %1 indray: skema %2, singa IFC %3</translation>
+    </message>
+    <message>
+        <source>Relecture : %1 produit(s) relu(s) pour %2 écrit(s).</source>
+        <translation>Famakiana indray: singa IFC %1 novakiana indray ho an'ny %2 nosoratana.</translation>
+    </message>
+    <message>
+        <source>Relecture : %1</source>
+        <translation>Famakiana indray: %1</translation>
+    </message>
+    <message>
+        <source>fichier produit illisible par un lecteur IFC indépendant (%1) : « %2 » non écrit</source>
+        <translation>rakitra novokarina tsy azon'ny mpamaky IFC tsy miankina vakiana (%1): tsy nosoratana ny « %2 »</translation>
+    </message>
+    <message>
+        <source>relecture indépendante non faite (%1)</source>
+        <translation>tsy natao ny famakiana indray tsy miankina (%1)</translation>
+    </message>
+    <message>
+        <source>impossible d'écrire « %1 » (%2)</source>
+        <translation>tsy afaka manoratra ny « %1 » (%2)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::Ifc::IfcImporter</name>
+    <message>
+        <source>Import IFC annulé.</source>
+        <translation>Najanona ny fampidirana IFC.</translation>
+    </message>
+    <message>
+        <source>Import IFC échoué : %1</source>
+        <translation>Tsy nety ny fampidirana IFC: %1</translation>
+    </message>
+    <message>
+        <source>%1 produit(s) physique(s)</source>
+        <translation>singa IFC ara-batana %1</translation>
+    </message>
+    <message>
+        <source> (%1 avec géométrie)</source>
+        <translation> (%1 misy joometria)</translation>
+    </message>
+    <message>
+        <source>, dont %1 à préparer pour le calcul</source>
+        <translation>, ka %1 no mbola hamboarina ho an'ny kajy</translation>
+    </message>
+    <message>
+        <source>, %1 non porteur(s)</source>
+        <translation>, %1 tsy mitondra enta</translation>
+    </message>
+    <message>
+        <source> ; modèle de calcul : %1 nœud(s), %2 barre(s), %3 surface(s), %4 fondation(s)</source>
+        <translation> ; modely ho an'ny kajy: fihaonana %1, tsorakazo %2, velarana %3, fototra %4</translation>
+    </message>
+    <message>
+        <source> (dont %1 élément(s) déduit(s) de la géométrie, à vérifier)</source>
+        <translation> (anisan'izany singa %1 nalaina avy amin'ny joometria, hamarinina)</translation>
+    </message>
+    <message>
+        <source> ; %1 étage(s)</source>
+        <translation> ; rihana %1</translation>
+    </message>
+    <message>
+        <source> ; %1 objet(s) non importé(s)</source>
+        <translation> ; zavatra %1 tsy nampidirina</translation>
+    </message>
+    <message>
+        <source> — schéma %1</source>
+        <translation> — skema %1</translation>
+    </message>
+    <message>
+        <source> — schéma %1, %2</source>
+        <translation> — skema %1, %2</translation>
+    </message>
+    <message>
+        <source>%1 produit(s) porteur(s) dans le fichier, aucun n'a pu être converti</source>
+        <translation>singa IFC mitondra enta %1 ao amin'ny rakitra, tsy nisy azo navadika na dia iray aza</translation>
+    </message>
+    <message>
+        <source>aucun élément structurel ni modèle analytique dans le fichier</source>
+        <translation>tsy misy singa ara-drafitra na modely ara-kajy ao amin'ny rakitra</translation>
+    </message>
+    <message>
+        <source>Unité de longueur du fichier convertie en mètres (facteur %1).</source>
+        <translation>Novaina ho metatra ny ventin'ny halavana ao amin'ny rakitra (koefisienta %1).</translation>
+    </message>
+    <message>
+        <source>Matériau « %1 » : catégorie absente, propriétés mécaniques provisoires (%2) à remplacer avant tout calcul.</source>
+        <translation>Akora « %1 »: tsy misy sokajy, toetra mekanika vonjimaika (%2) tokony hosoloina alohan'ny kajy rehetra.</translation>
+    </message>
+    <message>
+        <source>Matériau « %1 » : catégorie « %2 » inconnue, propriétés mécaniques provisoires (%3) à remplacer avant tout calcul.</source>
+        <translation>Akora « %1 »: sokajy « %2 » tsy fantatra, toetra mekanika vonjimaika (%3) tokony hosoloina alohan'ny kajy rehetra.</translation>
+    </message>
+    <message>
+        <source>%1 : profil absent, section rectangulaire 300×500 par défaut.</source>
+        <translation>%1: tsy misy profily, fizarana mahitsizoro 300×500 raha tsy misy hafa.</translation>
+    </message>
+    <message>
+        <source>%1 : représentation %2 non prise en charge.</source>
+        <translation>%1: tsy raisina an-tanana ny fanehoana %2.</translation>
+    </message>
+    <message>
+        <source>%1 : aucun matériau dans le fichier, %2 provisoire pour les éléments de calcul déduits (à remplacer).</source>
+        <translation>%1: tsy misy akora ao amin'ny rakitra, %2 vonjimaika ho an'ny singa kajy nalaina (hosoloina).</translation>
+    </message>
+    <message>
+        <source>%1 : profil non reconnu, section 300×500 par défaut.</source>
+        <translation>%1: tsy fantatra ny profily, fizarana 300×500 raha tsy misy hafa.</translation>
+    </message>
+    <message>
+        <source>éléments de calcul déduits de la géométrie, à vérifier</source>
+        <translation>singa kajy nalaina avy amin'ny joometria, hamarinina</translation>
+    </message>
+    <message>
+        <source>pas un fichier STEP : en-tête « ISO-10303-21; » absent</source>
+        <translation>tsy rakitra STEP: tsy misy ny loha « ISO-10303-21; »</translation>
+    </message>
+    <message>
+        <source>fichier incomplet : fin « END-ISO-10303-21; » absente (fichier tronqué ou transfert interrompu)</source>
+        <translation>rakitra tsy feno: tsy misy ny fiafarana « END-ISO-10303-21; » (rakitra tapaka na famindrana tapaka)</translation>
+    </message>
+    <message>
+        <source>lecteur STEP interne</source>
+        <translation>mpamaky STEP anatiny</translation>
+    </message>
+    <message>
+        <source>schéma « %1 » non IFC</source>
+        <translation>tsy IFC ny skema « %1 »</translation>
+    </message>
+    <message>
+        <source>lecteur STEP interne (capacités réduites)</source>
+        <translation>mpamaky STEP anatiny (fahaiza-manao voafetra)</translation>
+    </message>
+    <message>
+        <source>Lecture du fichier</source>
+        <translation>Famakiana ny rakitra</translation>
+    </message>
+    <message>
+        <source>impossible d'ouvrir « %1 »</source>
+        <translation>tsy afaka manokatra ny « %1 »</translation>
+    </message>
+    <message>
+        <source>Lecteur STEP interne : %1 ; modèle analytique du fichier non repris.</source>
+        <translation>Mpamaky STEP anatiny: %1 ; tsy noraisina ny modely ara-kajy ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>schéma non IFC</source>
+        <translation>skema tsy IFC</translation>
+    </message>
+    <message>
+        <source>Objets physiques et géométrie</source>
+        <translation>Zavatra ara-batana sy joometria</translation>
+    </message>
+    <message>
+        <source>aucun produit ni modèle analytique dans le fichier</source>
+        <translation>tsy misy singa IFC na modely ara-kajy ao amin'ny rakitra</translation>
+    </message>
+    <message>
+        <source>Terminé</source>
+        <translation>Vita</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::Ifc::IfcOpenShellImport</name>
+    <message>
+        <source>noyau IFC complet (IfcOpenShell) absent de cette version de TSA</source>
+        <translation>tsy ao amin'ity dikan-teny TSA ity ny motera IFC feno (IfcOpenShell)</translation>
+    </message>
+    <message>
+        <source>relecture indépendante indisponible (IfcOpenShell absent de cette version de TSA)</source>
+        <translation>tsy azo atao ny famakiana indray tsy miankina (tsy ao amin'ity dikan-teny TSA ity ny IfcOpenShell)</translation>
+    </message>
+    <message>
+        <source>Propriétés et relations</source>
+        <translation>Toetra sy fifandraisana</translation>
+    </message>
+    <message>
+        <source>Produits sans géométrie</source>
+        <translation>Singa IFC tsy misy joometria</translation>
+    </message>
+    <message>
+        <source>Étage « %1 » sans cote (Elevation) : placé à 0 m.</source>
+        <translation>Rihana « %1 » tsy misy haavo (Elevation): napetraka amin'ny 0 m.</translation>
+    </message>
+    <message>
+        <source>Noyau géométrique indisponible : %1. Produits importés sans géométrie.</source>
+        <translation>Tsy misy ny motera joometrika: %1. Nampidirina tsy misy joometria ny singa IFC.</translation>
+    </message>
+    <message>
+        <source>Aucune représentation géométrique interprétable dans le fichier.</source>
+        <translation>Tsy misy fanehoana ara-joometria azo adika ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Unité de longueur du noyau géométrique (%1) différente de celle du projet : géométrie remise à l'échelle du projet (facteur %2).</source>
+        <translation>Tsy mitovy amin'ny an'ny tetikasa ny ventin'ny halavan'ny motera joometrika (%1): nampifanarahana tamin'ny tetikasa ny haben'ny joometria (koefisienta %2).</translation>
+    </message>
+    <message>
+        <source>Géométrie des produits</source>
+        <translation>Joometrian'ny singa IFC</translation>
+    </message>
+    <message>
+        <source>aucune représentation géométrique dans le fichier</source>
+        <translation>tsy misy fanehoana ara-joometria ao amin'ny rakitra</translation>
+    </message>
+    <message>
+        <source>représentation « %1 » non convertie par le noyau géométrique</source>
+        <translation>tsy navadiky ny motera joometrika ny fanehoana « %1 »</translation>
+    </message>
+    <message>
+        <source>fichier illisible par IfcOpenShell</source>
+        <translation>rakitra tsy azon'ny IfcOpenShell vakiana</translation>
+    </message>
+    <message>
+        <source>relu avec remarques : %1</source>
+        <translation>novakiana indray misy fanamarihana: %1</translation>
+    </message>
+    <message>
+        <source>IfcOpenShell 0.9.0post1 (noyau OpenCASCADE)</source>
+        <translation>IfcOpenShell 0.9.0post1 (motera OpenCASCADE)</translation>
+    </message>
+    <message>
+        <source>fichier IFC illisible par IfcOpenShell (syntaxe STEP ou schéma non reconnu)</source>
+        <translation>rakitra IFC tsy azon'ny IfcOpenShell vakiana (tsy fantatra ny fitsipika STEP na ny skema)</translation>
+    </message>
+    <message>
+        <source>Noyau géométrique : %1</source>
+        <translation>Motera joometrika: %1</translation>
+    </message>
+    <message>
+        <source>Noyau géométrique : %1 autre(s) message(s).</source>
+        <translation>Motera joometrika: hafatra %1 hafa.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::Ifc::IfcStepReader</name>
+    <message>
+        <source>fichier non STEP (en-tête ISO-10303-21 absent)</source>
+        <translation>tsy rakitra STEP (tsy misy ny loha ISO-10303-21)</translation>
+    </message>
+    <message>
+        <source>section DATA absente</source>
+        <translation>tsy misy ny fizarana DATA</translation>
+    </message>
+    <message>
+        <source>entité attendue près de l'octet %1</source>
+        <translation>entite andrasana eo akaikin'ny oktety %1</translation>
+    </message>
+    <message>
+        <source>« = » attendu après #%1</source>
+        <translation>« = » andrasana aorian'ny #%1</translation>
+    </message>
+    <message>
+        <source>instance complexe illisible #%1</source>
+        <translation>zavatra mitambatra tsy azo vakiana #%1</translation>
+    </message>
+    <message>
+        <source>entité #%1 illisible</source>
+        <translation>entite #%1 tsy azo vakiana</translation>
+    </message>
+    <message>
+        <source>« ; » attendu après #%1</source>
+        <translation>« ; » andrasana aorian'ny #%1</translation>
+    </message>
+    <message>
+        <source>impossible d'ouvrir « %1 »</source>
+        <translation>tsy afaka manokatra ny « %1 »</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::BIM::ProductTypes</name>
+    <message>
+        <source>section %1 au lieu de %2</source>
+        <translation>fizarana %1 fa tsy %2</translation>
+    </message>
+    <message>
+        <source>épaisseur %1 m au lieu de %2 m</source>
+        <translation>hateviny %1 m fa tsy %2 m</translation>
+    </message>
+    <message>
+        <source>matériau %1 au lieu de %2</source>
+        <translation>akora %1 fa tsy %2</translation>
+    </message>
+</context>
+<context>
     <name>TSA::Blueprint::File</name>
     <message>
         <source>broche « %1 » : type « %2 » inconnu</source>
@@ -9599,6 +9985,440 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     <message>
         <source>sous-graphe « %1 » inexistant</source>
         <translation>tsy misy ny zana-grafy « %1 »</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::IO::TSAFile</name>
+    <message>
+        <source>Impossible de créer le fichier .tsa : %1 (%2)</source>
+        <translation>Tsy afaka mamorona ny rakitra .tsa: %1 (%2)</translation>
+    </message>
+    <message>
+        <source>Erreur d'écriture du fichier .tsa (%1). Le fichier existant est conservé.</source>
+        <translation>Hadisoana teo am-panoratana ny rakitra .tsa (%1). Voatahiry ny rakitra efa misy.</translation>
+    </message>
+    <message>
+        <source>Erreur lors de la finalisation du fichier .tsa (%1). Le fichier existant est conservé.</source>
+        <translation>Hadisoana teo am-pamaranana ny rakitra .tsa (%1). Voatahiry ny rakitra efa misy.</translation>
+    </message>
+    <message>
+        <source>Fichier inaccessible (ouvert ou verrouillé par un autre programme, ou droits insuffisants) : %1</source>
+        <translation>Tsy azo idirana ny rakitra (misokatra na voahidin'ny rindrambaiko hafa, na tsy ampy ny zo): %1</translation>
+    </message>
+    <message>
+        <source>Fichier introuvable : %1</source>
+        <translation>Tsy hita ny rakitra: %1</translation>
+    </message>
+    <message>
+        <source>Le fichier .tsa est corrompu ou incomplet (en-tête tronqué).</source>
+        <translation>Simba na tsy feno ny rakitra .tsa (tapaka ny lohan'ny rakitra).</translation>
+    </message>
+    <message>
+        <source>Ce fichier n'est pas un fichier de projet %1 valide (signature magique invalide).</source>
+        <translation>Tsy rakitra tetikasa %1 manan-kery ity rakitra ity (tsy mety ny marika famantarana).</translation>
+    </message>
+    <message>
+        <source>Ce projet %1 a été créé avec une version plus récente du logiciel (v%2.%3) et ne peut pas être ouvert par cette version.</source>
+        <translation>Noforonina tamin'ny dikan-drindrambaiko vaovao kokoa (v%2.%3) ity tetikasa %1 ity ka tsy azon'ity dikan-teny ity sokafana.</translation>
+    </message>
+    <message>
+        <source>Fichier .tsa tronqué ou corrompu (taille inférieure à l'en-tête).</source>
+        <translation>Rakitra .tsa tapaka na simba (kely noho ny lohan'ny rakitra ny habeny).</translation>
+    </message>
+    <message>
+        <source>Format de fichier invalide (signature non reconnue).</source>
+        <translation>Endriky ny rakitra tsy manan-kery (tsy fantatra ny marika famantarana).</translation>
+    </message>
+    <message>
+        <source>Ce projet %1 a été créé avec une version plus récente (Format v%2.%3). Veuillez mettre à jour %1.</source>
+        <translation>Noforonina tamin'ny dikan-teny vaovao kokoa (endrika v%2.%3) ity tetikasa %1 ity. Havaozy azafady ny %1.</translation>
+    </message>
+    <message>
+        <source>Taille du payload excessive (dépassement limite de sécurité de 1 Go).</source>
+        <translation>Lehibe loatra ny haben'ny angona (mihoatra ny fetra fiarovana 1 Go).</translation>
+    </message>
+    <message>
+        <source>Erreur de lecture : données du payload incomplètes.</source>
+        <translation>Hadisoana famakiana: tsy feno ny angona.</translation>
+    </message>
+    <message>
+        <source>Somme de contrôle CRC32 invalide. Le fichier est altéré ou corrompu.</source>
+        <translation>Tsy mety ny isa fanamarinana CRC32. Niova na simba ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Ce fichier est protégé par mot de passe mais aucun déchiffreur n'est disponible.</source>
+        <translation>Voaaron'ny tenimiafina ity rakitra ity nefa tsy misy fitaovana famahana kaody.</translation>
+    </message>
+    <message>
+        <source>Échec du déchiffrement (mot de passe incorrect ou corrompu).</source>
+        <translation>Tsy nety ny famahana kaody (diso ny tenimiafina na simba ny rakitra).</translation>
+    </message>
+    <message>
+        <source>Ce fichier est compressé mais aucun décompresseur n'est configuré.</source>
+        <translation>Voafintina ity rakitra ity nefa tsy misy fitaovana famelarana voakirakira.</translation>
+    </message>
+    <message>
+        <source>Échec de décompression du payload .tsa (flux zlib corrompu).</source>
+        <translation>Tsy nety ny famelarana ny angona .tsa (simba ny fikorianan'angona zlib).</translation>
+    </message>
+    <message>
+        <source>Payload invalide dans le fichier .tsa.</source>
+        <translation>Angona tsy mety ao amin'ny rakitra .tsa.</translation>
+    </message>
+    <message>
+        <source>Échec de décompression pour miniature.</source>
+        <translation>Tsy nety ny famelarana ny sary kely.</translation>
+    </message>
+    <message>
+        <source>Aucune miniature trouvée.</source>
+        <translation>Tsy nahitana sary kely.</translation>
+    </message>
+    <message>
+        <source>Chunk tronqué ou corrompu dans le fichier .tsa.</source>
+        <translation>Sombin'angona tapaka na simba ao amin'ny rakitra .tsa.</translation>
+    </message>
+    <message>
+        <source>Nombre de nœuds anormalement élevé dans le fichier.</source>
+        <translation>Be loatra tsy ara-dalàna ny isan'ny fihaonana ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Nombre d'appuis anormalement élevé dans le fichier .tsa.</source>
+        <translation>Be loatra tsy ara-dalàna ny isan'ny fanohanana ao amin'ny rakitra .tsa.</translation>
+    </message>
+    <message>
+        <source>Nombre de barres anormalement élevé dans le fichier.</source>
+        <translation>Be loatra tsy ara-dalàna ny isan'ny tsorakazo ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Nombre de poteaux anormalement élevé dans le fichier.</source>
+        <translation>Be loatra tsy ara-dalàna ny isan'ny andry ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Nombre de dalles anormalement élevé dans le fichier.</source>
+        <translation>Be loatra tsy ara-dalàna ny isan'ny takelaka ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Nombre de voiles anormalement élevé dans le fichier.</source>
+        <translation>Be loatra tsy ara-dalàna ny isan'ny rindrina ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Nombre de fondations anormalement élevé dans le fichier.</source>
+        <translation>Be loatra tsy ara-dalàna ny isan'ny fototra ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Nombre d'éléments de treillis anormalement élevé dans le fichier.</source>
+        <translation>Be loatra tsy ara-dalàna ny isan'ny singa rafitra makarakara ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Nombre excessif de câbles dans le chunk CABL.</source>
+        <translation>Be loatra ny isan'ny tariby ao amin'ny sombin'angona CABL.</translation>
+    </message>
+    <message>
+        <source>Nombre excessif de snapshots de calcul dans le fichier.</source>
+        <translation>Be loatra ny isan'ny dika ho an'ny kajy ao amin'ny rakitra.</translation>
+    </message>
+    <message>
+        <source>Chunk LOAD invalide : %1</source>
+        <translation>Sombin'angona LOAD tsy mety: %1</translation>
+    </message>
+    <message>
+        <source>en-tête tronqué</source>
+        <translation>tapaka ny lohan'ny rakitra</translation>
+    </message>
+    <message>
+        <source>version de disposition inconnue</source>
+        <translation>dikan-teny tsy fantatra ho an'ny fandaminana</translation>
+    </message>
+    <message>
+        <source>compteurs tronqués</source>
+        <translation>tapaka ny mpanisa</translation>
+    </message>
+    <message>
+        <source>nombre de cas de charge</source>
+        <translation>isan'ny tranga enta</translation>
+    </message>
+    <message>
+        <source>cas de charge tronqué</source>
+        <translation>tranga enta tapaka</translation>
+    </message>
+    <message>
+        <source>catégorie de cas inconnue</source>
+        <translation>sokajin-tranga tsy fantatra</translation>
+    </message>
+    <message>
+        <source>nombre de combinaisons</source>
+        <translation>isan'ny fitambaran'enta</translation>
+    </message>
+    <message>
+        <source>combinaison tronquée</source>
+        <translation>fitambaran'enta tapaka</translation>
+    </message>
+    <message>
+        <source>type de combinaison inconnu</source>
+        <translation>karazana fitambaran'enta tsy fantatra</translation>
+    </message>
+    <message>
+        <source>nombre de facteurs</source>
+        <translation>isan'ny koefisianta</translation>
+    </message>
+    <message>
+        <source>facteur tronqué</source>
+        <translation>koefisianta tapaka</translation>
+    </message>
+    <message>
+        <source>nombre de charges nodales</source>
+        <translation>isan'ny enta amin'ny fihaonana</translation>
+    </message>
+    <message>
+        <source>charge nodale tronquée</source>
+        <translation>enta amin'ny fihaonana tapaka</translation>
+    </message>
+    <message>
+        <source>repère de charge inconnu</source>
+        <translation>fanondroana tsy fantatra ho an'ny enta</translation>
+    </message>
+    <message>
+        <source>nombre de charges sur barres</source>
+        <translation>isan'ny enta amin'ny tsorakazo</translation>
+    </message>
+    <message>
+        <source>charge sur barre tronquée</source>
+        <translation>enta amin'ny tsorakazo tapaka</translation>
+    </message>
+    <message>
+        <source>énumération de charge sur barre inconnue</source>
+        <translation>sanda voatanisa tsy fantatra ho an'ny enta amin'ny tsorakazo</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::IO::Tsa3d</name>
+    <message>
+        <source>JSON invalide ligne %1, colonne %2 : %3</source>
+        <translation>JSON tsy mety amin'ny andalana %1, tsanganana %2: %3</translation>
+    </message>
+    <message>
+        <source>le document doit être un objet JSON</source>
+        <translation>tsy maintsy ho zavatra JSON ny antontan-taratasy</translation>
+    </message>
+    <message>
+        <source>lecture impossible de %1 : %2</source>
+        <translation>tsy afaka mamaky ny %1: %2</translation>
+    </message>
+    <message>
+        <source>écriture impossible de %1 : %2</source>
+        <translation>tsy afaka manoratra ny %1: %2</translation>
+    </message>
+    <message>
+        <source>unité « %1 » non prise en charge</source>
+        <translation>tsy tohanana ny venty « %1 »</translation>
+    </message>
+    <message>
+        <source>câbles : définition détaillée (torons, ancrages, points intermédiaires) non représentée en TSA3D v1 ; type, géométrie, flèche, tension initiale et section exportés</source>
+        <translation>tariby: tsy aseho ao amin'ny TSA3D v1 ny famaritana amin'ny antsipiriany (tadim-by, fatorana, teboka eo anelanelany); navoaka ny karazana, ny joometria, ny fiondrika, ny fanenjanana voalohany ary ny fizarana</translation>
+    </message>
+    <message>
+        <source>cotations (annotations TSA) non exportées : hors du périmètre du format v1</source>
+        <translation>tsy navoaka ny refy (fanamarihana TSA): tsy tafiditra ao amin'ny endrika v1</translation>
+    </message>
+    <message>
+        <source>aucun cas de charge : cas par défaut d'un nouveau projet créés</source>
+        <translation>tsy misy tranga enta: noforonina ireo tranga enta ho azy amin'ny tetikasa vaovao</translation>
+    </message>
+    <message>
+        <source>résultats du fichier conservés à titre d'information, non chargés comme résultats de calcul</source>
+        <translation>voatahiry ho fampahalalana ny vokatra ao amin'ny rakitra, tsy nampidirina ho vokatry ny kajy</translation>
+    </message>
+    <message>
+        <source>maillage du fichier conservé, non appliqué (TSA recalcule et le moteur maille lui-même)</source>
+        <translation>voatahiry ny harato ao amin'ny rakitra, tsy nampiharina (manao kajy indray ny TSA ary ny motera kajy no manao ny harato)</translation>
+    </message>
+    <message>
+        <source>tableau attendu</source>
+        <translation>tabilao no andrasana</translation>
+    </message>
+    <message>
+        <source>identifiant (chaîne non vide) obligatoire</source>
+        <translation>ilaina ny famantarana (andian-tsoratra tsy foana)</translation>
+    </message>
+    <message>
+        <source>identifiant « %1 » déjà utilisé (%2)</source>
+        <translation>efa ampiasaina ny famantarana « %1 » (%2)</translation>
+    </message>
+    <message>
+        <source>référence obligatoire</source>
+        <translation>ilaina ny fanondroana</translation>
+    </message>
+    <message>
+        <source>référence (identifiant) attendue</source>
+        <translation>fanondroana (famantarana) no andrasana</translation>
+    </message>
+    <message>
+        <source>« %1 » ne désigne aucun objet de type %2</source>
+        <translation>tsy manondro zavatra karazana %2 ny « %1 »</translation>
+    </message>
+    <message>
+        <source>valeur obligatoire</source>
+        <translation>ilaina ny sanda</translation>
+    </message>
+    <message>
+        <source>nombre strictement positif attendu</source>
+        <translation>isa ambony noho ny aotra hentitra no andrasana</translation>
+    </message>
+    <message>
+        <source>valeur obligatoire (%1)</source>
+        <translation>ilaina ny sanda (%1)</translation>
+    </message>
+    <message>
+        <source>« %1 » inconnu (valeurs : %2)</source>
+        <translation>tsy fantatra ny « %1 » (sanda azo atao: %2)</translation>
+    </message>
+    <message>
+        <source>[x, y, z] obligatoire</source>
+        <translation>ilaina ny [x, y, z]</translation>
+    </message>
+    <message>
+        <source>tableau de 3 nombres attendu</source>
+        <translation>tabilao misy isa 3 no andrasana</translation>
+    </message>
+    <message>
+        <source>champ non interprété par TSA : conservé tel quel</source>
+        <translation>saha tsy adikan'ny TSA: voatahiry tsy niova</translation>
+    </message>
+    <message>
+        <source>objet attendu</source>
+        <translation>zavatra no andrasana</translation>
+    </message>
+    <message>
+        <source>« %1 » attendu</source>
+        <translation>« %1 » no andrasana</translation>
+    </message>
+    <message>
+        <source>version « majeur.mineur » obligatoire (ex. « %1 »)</source>
+        <translation>ilaina ny dikan-teny « lehibe.kely » (ohatra « %1 »)</translation>
+    </message>
+    <message>
+        <source>version %1 plus récente que celle prise en charge (%2) : import refusé, aucune conversion destructive n'est tentée</source>
+        <translation>vaovao kokoa noho ilay tohanana (%2) ny dikan-teny %1: nolavina ny fampidirana, tsy misy fanovana manimba andramana</translation>
+    </message>
+    <message>
+        <source>version %1 non prise en charge</source>
+        <translation>tsy tohanana ny dikan-teny %1</translation>
+    </message>
+    <message>
+        <source>version mineure %1.%2 plus récente : champs inconnus conservés sans interprétation</source>
+        <translation>dikan-teny kely vaovao kokoa %1.%2: voatahiry tsy nadika ireo saha tsy fantatra</translation>
+    </message>
+    <message>
+        <source>bloc non interprété par TSA : conservé tel quel</source>
+        <translation>bloka tsy adikan'ny TSA: voatahiry tsy niova</translation>
+    </message>
+    <message>
+        <source>coefficient de Poisson dans ]-1 ; 0,5[ attendu</source>
+        <translation>tahan'i Poisson ao anatin'ny ]-1 ; 0,5[ no andrasana</translation>
+    </message>
+    <message>
+        <source>masse volumique positive attendue</source>
+        <translation>hakitroka ambony noho ny aotra no andrasana</translation>
+    </message>
+    <message>
+        <source>objet de dimensions obligatoire</source>
+        <translation>ilaina ny zavatra misy ny refy</translation>
+    </message>
+    <message>
+        <source>altitude (nombre) obligatoire</source>
+        <translation>ilaina ny haavo (isa)</translation>
+    </message>
+    <message>
+        <source>raideur positive attendue pour un DDL élastique</source>
+        <translation>hahenjana ambony noho ny aotra no andrasana ho an'ny fahafahana mihetsika elastika</translation>
+    </message>
+    <message>
+        <source>deux nœuds attendus [début, fin]</source>
+        <translation>fihaonana roa no andrasana [fiandohana, fiafarana]</translation>
+    </message>
+    <message>
+        <source>une barre relie deux nœuds distincts</source>
+        <translation>fihaonana roa samy hafa no ampifandraisin'ny tsorakazo</translation>
+    </message>
+    <message>
+        <source>barre de longueur nulle (nœuds confondus)</source>
+        <translation>tsorakazo tsy misy halavany (fihaonana mifanindry)</translation>
+    </message>
+    <message>
+        <source>section absente : section par défaut de TSA</source>
+        <translation>tsy misy fizarana: fizarana ho azy an'ny TSA</translation>
+    </message>
+    <message>
+        <source>matériau absent : matériau par défaut de TSA</source>
+        <translation>tsy misy akora: akora ho azy an'ny TSA</translation>
+    </message>
+    <message>
+        <source>nombre attendu</source>
+        <translation>isa no andrasana</translation>
+    </message>
+    <message>
+        <source>un voile est défini par deux nœuds (pied gauche, pied droit)</source>
+        <translation>fihaonana roa no mamaritra ny rindrina (fototra ankavia, fototra ankavanana)</translation>
+    </message>
+    <message>
+        <source>une dalle a au moins trois nœuds</source>
+        <translation>manana fihaonana telo farafahakeliny ny takelaka</translation>
+    </message>
+    <message>
+        <source>nœud répété</source>
+        <translation>fihaonana miverina</translation>
+    </message>
+    <message>
+        <source>force et / ou moment attendus</source>
+        <translation>hery sy/na momenta no andrasana</translation>
+    </message>
+    <message>
+        <source>intensité q1 (nombre) obligatoire</source>
+        <translation>ilaina ny hamafin'ny q1 (isa)</translation>
+    </message>
+    <message>
+        <source>intensité q2 obligatoire (trapézoïdale)</source>
+        <translation>ilaina ny hamafin'ny q2 (trapezoida)</translation>
+    </message>
+    <message>
+        <source>position x1 obligatoire (charge ponctuelle)</source>
+        <translation>ilaina ny toerana x1 (enta tokana)</translation>
+    </message>
+    <message>
+        <source>x2 doit être supérieur ou égal à x1</source>
+        <translation>tsy maintsy lehibe noho na mitovy amin'ny x1 ny x2</translation>
+    </message>
+    <message>
+        <source>position relative dans [0 ; 1] attendue</source>
+        <translation>toerana ampitahaina ao anatin'ny [0 ; 1] no andrasana</translation>
+    </message>
+    <message>
+        <source>combinaison sans facteur</source>
+        <translation>fitambaran'enta tsy misy koefisianta</translation>
+    </message>
+    <message>
+        <source>charges surfaciques : non prises en charge par le modèle TSA actuel, conservées sans être appliquées</source>
+        <translation>enta mivelatra: tsy tohanan'ny modely TSA ankehitriny, voatahiry nefa tsy ampiharina</translation>
+    </message>
+    <message>
+        <source>« %1 » inconnu</source>
+        <translation>tsy fantatra ny « %1 »</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) attendu(s) pour « %2 »</source>
+        <translation>fihaonana %1 no andrasana ho an'ny « %2 »</translation>
+    </message>
+    <message>
+        <source>nœud de maillage « %1 » inconnu</source>
+        <translation>fihaonan'ny harato tsy fantatra « %1 »</translation>
+    </message>
+    <message>
+        <source>maillage : informatif, jamais appliqué au modèle (le moteur maille lui-même)</source>
+        <translation>harato: fampahalalana fotsiny, tsy ampiharina mihitsy amin'ny modely (ny motera kajy no manao ny harato)</translation>
+    </message>
+    <message>
+        <source>résultats présents : ils ne seront pas chargés comme résultats de calcul validés</source>
+        <translation>misy vokatra: tsy hampidirina ho vokatry ny kajy voamarina izy ireo</translation>
     </message>
 </context>
 <context>
@@ -10673,6 +11493,1209 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     </message>
 </context>
 <context>
+    <name>TSA::Mesh::GmshMeshEngine</name>
+    <message>
+        <source>TSA a été compilé sans le SDK Gmsh (option TSA_WITH_GMSH ou SDK absent) : aucun maillage ne peut être généré</source>
+        <translation>Namboarina tsy misy ny SDK Gmsh ny TSA (safidy TSA_WITH_GMSH na tsy misy SDK): tsy misy harato azo foronina</translation>
+    </message>
+    <message>
+        <source>bibliothèque Gmsh « %1 » introuvable à côté de l'application : maillage indisponible</source>
+        <translation>tsy hita eo akaikin'ny rindrankajy ny tahiry Gmsh « %1 »: tsy azo atao ny harato</translation>
+    </message>
+    <message>
+        <source>%1 : nœud d'appui hors de la semelle : semelle maillée sans liaison au nœud</source>
+        <translation>%1: fihaonana fanohanana ivelan'ny fototra: voaharato tsy mifandray amin'ny fihaonana ny fototra</translation>
+    </message>
+    <message>
+        <source>courbe plongée dans la surface : nœuds partagés</source>
+        <translation>tsipika nampidirina ao anatin'ny velarana: fihaonana iombonana</translation>
+    </message>
+    <message>
+        <source>courbe recoupant le contour de la surface hors d'un sommet : intersection non maillée</source>
+        <translation>tsipika manapaka ny sisin'ny velarana ivelan'ny zoro iray: tsy voaharato ny fifanapahana</translation>
+    </message>
+    <message>
+        <source>%1 : plongement refusé par Gmsh (%2)</source>
+        <translation>%1: nolavin'ny Gmsh ny fampidirana (%2)</translation>
+    </message>
+    <message>
+        <source>courbe commune : nœuds partagés</source>
+        <translation>tsipika iraisana: fihaonana iombonana</translation>
+    </message>
+    <message>
+        <source>barre partiellement confondue avec un bord : nœuds intermédiaires non partagés</source>
+        <translation>tsorakazo mifanindry amin'ny ampahany amin'ny sisiny iray: tsy iombonana ny fihaonana eo anelanelany</translation>
+    </message>
+    <message>
+        <source>volumes superposés : maillages indépendants</source>
+        <translation>habe mifanindry: harato tsy miankina</translation>
+    </message>
+    <message>
+        <source>volumes jointifs : faces non fusionnées</source>
+        <translation>habe mifanila: tarehy tsy natambatra</translation>
+    </message>
+    <message>
+        <source>liaison barre – volume par un seul nœud : rotations de la barre non transmises au volume</source>
+        <translation>fifandraisan'ny tsorakazo sy ny habe amin'ny fihaonana tokana: tsy alefa any amin'ny habe ny fihodinan'ny tsorakazo</translation>
+    </message>
+    <message>
+        <source>contour à %1 côtés</source>
+        <translation>sisiny misy lafiny %1</translation>
+    </message>
+    <message>
+        <source>ouverture(s)</source>
+        <translation>lavaka</translation>
+    </message>
+    <message>
+        <source>nœuds ou courbes plongés</source>
+        <translation>fihaonana na tsipika nampidirina</translation>
+    </message>
+    <message>
+        <source>zone de raffinement (taille variable)</source>
+        <translation>faritra fanamadinihana (habe miovaova)</translation>
+    </message>
+    <message>
+        <source>%1 : maillage structuré impossible (%2) : maillage non structuré</source>
+        <translation>%1: tsy azo atao ny harato voalamina (%2): harato tsy voalamina</translation>
+    </message>
+    <message>
+        <source>%1 : divisions imposées par une barre de bord incompatibles avec un maillage structuré : maillage non structuré</source>
+        <translation>%1: tsy mifanaraka amin'ny harato voalamina ny fizarazarana terena amin'ny tsorakazo eo amin'ny sisiny: harato tsy voalamina</translation>
+    </message>
+    <message>
+        <source>types d'éléments Gmsh non repris dans le maillage TSA :%1</source>
+        <translation>karazana singa Gmsh tsy noraisina tao amin'ny haraton'ny TSA:%1</translation>
+    </message>
+    <message>
+        <source>taille minimale supérieure à la taille maximale</source>
+        <translation>lehibe noho ny habe ambony indrindra ny habe kely indrindra</translation>
+    </message>
+    <message>
+        <source>estimation de %1 éléments, au-delà de la limite de %2 : augmenter la taille des éléments ou la limite</source>
+        <translation>tombana singa %1, mihoatra ny fetra %2: ampitomboy ny haben'ny singa na ny fetra</translation>
+    </message>
+    <message>
+        <source>géométrie</source>
+        <translation>joometria</translation>
+    </message>
+    <message>
+        <source>maillage 1D</source>
+        <translation>harato 1D</translation>
+    </message>
+    <message>
+        <source>maillage 2D</source>
+        <translation>harato 2D</translation>
+    </message>
+    <message>
+        <source>maillage 3D</source>
+        <translation>harato 3D</translation>
+    </message>
+    <message>
+        <source>extraction</source>
+        <translation>fakana angona</translation>
+    </message>
+    <message>
+        <source>génération annulée par l'utilisateur (entre deux étapes de Gmsh)</source>
+        <translation>najanon'ny mpampiasa ny famoronana (teo anelanelan'ny dingana roa an'ny Gmsh)</translation>
+    </message>
+    <message>
+        <source>maillage de %1 éléments, au-delà de la limite de %2</source>
+        <translation>harato misy singa %1, mihoatra ny fetra %2</translation>
+    </message>
+    <message>
+        <source>aucun objet à mailler pour les dimensions activées</source>
+        <translation>tsy misy zavatra horatoina ho an'ny refy navela</translation>
+    </message>
+    <message>
+        <source>types d'éléments non pris en charge par TSA, ignorés :%1</source>
+        <translation>karazana singa tsy raisin'ny TSA an-tanana, tsy noraharahiana:%1</translation>
+    </message>
+    <message>
+        <source>aucun élément pris en charge dans le fichier</source>
+        <translation>tsy misy singa raisina an-tanana ao amin'ny rakitra</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshDisplayModel</name>
+    <message>
+        <source>Line2 — segment à 2 nœuds</source>
+        <translation>Line2 — tapany misy fihaonana 2</translation>
+    </message>
+    <message>
+        <source>Line3 — segment à 3 nœuds</source>
+        <translation>Line3 — tapany misy fihaonana 3</translation>
+    </message>
+    <message>
+        <source>Tri3 — triangle à 3 nœuds</source>
+        <translation>Tri3 — telozoro misy fihaonana 3</translation>
+    </message>
+    <message>
+        <source>Tri6 — triangle à 6 nœuds</source>
+        <translation>Tri6 — telozoro misy fihaonana 6</translation>
+    </message>
+    <message>
+        <source>Quad4 — quadrangle à 4 nœuds</source>
+        <translation>Quad4 — efatra lafy misy fihaonana 4</translation>
+    </message>
+    <message>
+        <source>Quad8 — quadrangle à 8 nœuds</source>
+        <translation>Quad8 — efatra lafy misy fihaonana 8</translation>
+    </message>
+    <message>
+        <source>Hex8 — hexaèdre à 8 nœuds</source>
+        <translation>Hex8 — heksaedra misy fihaonana 8</translation>
+    </message>
+    <message>
+        <source>Hex20 — hexaèdre à 20 nœuds</source>
+        <translation>Hex20 — heksaedra misy fihaonana 20</translation>
+    </message>
+    <message>
+        <source>Tet4 — tétraèdre à 4 nœuds</source>
+        <translation>Tet4 — tetraedra misy fihaonana 4</translation>
+    </message>
+    <message>
+        <source>Tet10 — tétraèdre à 10 nœuds</source>
+        <translation>Tet10 — tetraedra misy fihaonana 10</translation>
+    </message>
+    <message>
+        <source>type inconnu</source>
+        <translation>karazana tsy fantatra</translation>
+    </message>
+    <message>
+        <source>nœud %1 : identifiant dupliqué (seul le premier est utilisé)</source>
+        <translation>fihaonana %1: famantarana miverina indroa (ny voalohany ihany no ampiasaina)</translation>
+    </message>
+    <message>
+        <source>identifiant d'élément dupliqué : élément écarté</source>
+        <translation>famantarana singa miverina indroa: nesorina ny singa</translation>
+    </message>
+    <message>
+        <source>type d'élément inconnu dans le projet (élément écarté) : %1</source>
+        <translation>karazana singa tsy fantatra ao amin'ny tetikasa (nesorina ny singa): %1</translation>
+    </message>
+    <message>
+        <source>type d'élément non pris en charge par l'affichage</source>
+        <translation>karazana singa tsy raisin'ny fampisehoana an-tanana</translation>
+    </message>
+    <message>
+        <source>%1 : %2 nœuds au lieu de %3 (élément écarté)</source>
+        <translation>%1: fihaonana %2 fa tsy %3 (nesorina ny singa)</translation>
+    </message>
+    <message>
+        <source>nœud inexistant dans la connectivité (élément écarté)</source>
+        <translation>fihaonana tsy misy ao amin'ny fifandraisana (nesorina ny singa)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshGenerator</name>
+    <message>
+        <source>estimation indicative (longueurs, aires, volumes et tailles demandées) ; le nombre réel est donné par Gmsh à la génération</source>
+        <translation>tombana fanondroana (halavany, velarany, habe ary habe nangatahina); ny Gmsh no manome ny isa marina rehefa mamorona</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshGeometry</name>
+    <message>
+        <source>une ouverture a au moins 3 sommets</source>
+        <translation>lavaka iray dia manana zoro 3 farafahakeliny</translation>
+    </message>
+    <message>
+        <source>ouverture d'aire nulle</source>
+        <translation>lavaka aotra ny velarany</translation>
+    </message>
+    <message>
+        <source>du voile sans contour valide</source>
+        <translation>rindrina tsy manana sisiny mety</translation>
+    </message>
+    <message>
+        <source>de la dalle sans contour valide</source>
+        <translation>takelaka tsy manana sisiny mety</translation>
+    </message>
+    <message>
+        <source>l'ouverture dépasse le contour du voile</source>
+        <translation>mihoatra ny sisin'ny rindrina ny lavaka</translation>
+    </message>
+    <message>
+        <source>l'ouverture dépasse le contour de la dalle</source>
+        <translation>mihoatra ny sisin'ny takelaka ny lavaka</translation>
+    </message>
+    <message>
+        <source>l'ouverture recoupe le contour du voile</source>
+        <translation>manapaka ny sisin'ny rindrina ny lavaka</translation>
+    </message>
+    <message>
+        <source>l'ouverture recoupe le contour de la dalle</source>
+        <translation>manapaka ny sisin'ny takelaka ny lavaka</translation>
+    </message>
+    <message>
+        <source>l'ouverture chevauche l'ouverture « %1 »</source>
+        <translation>mifanindry amin'ny lavaka « %1 » ny lavaka</translation>
+    </message>
+    <message>
+        <source>l'ouverture contient l'ouverture « %1 »</source>
+        <translation>ao anatin'ny lavaka ny lavaka « %1 »</translation>
+    </message>
+    <message>
+        <source>l'ouverture recoupe l'ouverture « %1 »</source>
+        <translation>manapaka ny lavaka « %1 » ny lavaka</translation>
+    </message>
+    <message>
+        <source>porte au pied d'un voile à base inclinée non prise en charge : placez une ouverture intérieure</source>
+        <translation>tsy raisina an-tanana ny varavarana eo am-pototry ny rindrina misy fototra mitongilana: mametraha lavaka ao anatiny</translation>
+    </message>
+    <message>
+        <source>la porte chevauche ou touche la porte « %1 »</source>
+        <translation>mifanindry na mifanendry amin'ny varavarana « %1 » ny varavarana</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshProject</name>
+    <message>
+        <source>maillage : schéma « %1 » inattendu, lecture tolérante</source>
+        <translation>harato: skema « %1 » tsy nampoizina, famakiana malefaka</translation>
+    </message>
+    <message>
+        <source>maillage : rapport présent mais maillage absent du fichier</source>
+        <translation>harato: misy ny tatitra fa tsy ao amin'ny rakitra ny harato</translation>
+    </message>
+    <message>
+        <source>écriture impossible de %1</source>
+        <translation>tsy afaka manoratra ny %1</translation>
+    </message>
+    <message>
+        <source>nom de profil obligatoire</source>
+        <translation>ilaina ny anaran'ny profily</translation>
+    </message>
+    <message>
+        <source>profil utilisateur « %1 » introuvable (un profil de départ ne se supprime pas)</source>
+        <translation>tsy hita ny profilin'ny mpampiasa « %1 » (tsy azo fafana ny profily fiaingana)</translation>
+    </message>
+    <message>
+        <source>profil introuvable</source>
+        <translation>tsy hita ny profily</translation>
+    </message>
+    <message>
+        <source>lecture impossible de %1</source>
+        <translation>tsy afaka mamaky ny %1</translation>
+    </message>
+    <message>
+        <source>fichier de profil de maillage invalide (schéma tsa-mesh-profile/1 attendu)</source>
+        <translation>rakitra profilin'ny harato tsy mety (skema tsa-mesh-profile/1 no andrasana)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshQuality</name>
+    <message>
+        <source>erreur</source>
+        <translation>hadisoana</translation>
+    </message>
+    <message>
+        <source>avertissement</source>
+        <translation>fampitandremana</translation>
+    </message>
+    <message>
+        <source>information</source>
+        <translation>fampahafantarana</translation>
+    </message>
+    <message>
+        <source>connexion incorrecte</source>
+        <translation>fifandraisana diso</translation>
+    </message>
+    <message>
+        <source>élément référant un nœud inexistant</source>
+        <translation>singa manondro fihaonana tsy misy</translation>
+    </message>
+    <message>
+        <source>nœud répété dans l'élément (élément dégénéré)</source>
+        <translation>fihaonana miverimberina ao amin'ny singa (singa simba endrika)</translation>
+    </message>
+    <message>
+        <source>élément dégénéré</source>
+        <translation>singa simba endrika</translation>
+    </message>
+    <message>
+        <source>élément 1D de longueur nulle</source>
+        <translation>singa 1D aotra ny halavany</translation>
+    </message>
+    <message>
+        <source>élément d'aire nulle</source>
+        <translation>singa aotra ny velarany</translation>
+    </message>
+    <message>
+        <source>élément inversé</source>
+        <translation>singa mivadika</translation>
+    </message>
+    <message>
+        <source>orientation opposée à celle des éléments voisins de la surface</source>
+        <translation>fitodiana mifanohitra amin'ny an'ny singa mifanolo-bodirindrina ao amin'ny velarana</translation>
+    </message>
+    <message>
+        <source>jacobien normalisé ≤ 0 (quadrangle non convexe ou retourné)</source>
+        <translation>jakobiana voafenitra ≤ 0 (efatra lafy tsy mivonto na mivadika)</translation>
+    </message>
+    <message>
+        <source>distorsion</source>
+        <translation>fiolahana</translation>
+    </message>
+    <message>
+        <source>jacobien normalisé %1 &lt; %2</source>
+        <translation>jakobiana voafenitra %1 &lt; %2</translation>
+    </message>
+    <message>
+        <source>rapport d'aspect</source>
+        <translation>tahan'ny endrika</translation>
+    </message>
+    <message>
+        <source>rapport d'aspect %1 &gt; %2</source>
+        <translation>tahan'ny endrika %1 &gt; %2</translation>
+    </message>
+    <message>
+        <source>angle</source>
+        <translation>zoro</translation>
+    </message>
+    <message>
+        <source>angle de %1° : élément quasi dégénéré</source>
+        <translation>zoro %1°: singa saika simba endrika</translation>
+    </message>
+    <message>
+        <source>angle minimal %1° &lt; %2°</source>
+        <translation>zoro kely indrindra %1° &lt; %2°</translation>
+    </message>
+    <message>
+        <source>angle maximal %1° &gt; %2°</source>
+        <translation>zoro lehibe indrindra %1° &gt; %2°</translation>
+    </message>
+    <message>
+        <source>tétraèdre de volume nul</source>
+        <translation>tetraedra aotra ny habeny</translation>
+    </message>
+    <message>
+        <source>hexaèdre à arête nulle</source>
+        <translation>heksaedra misy sisiny aotra ny halavany</translation>
+    </message>
+    <message>
+        <source>jacobien normalisé ≤ 0 (hexaèdre retourné)</source>
+        <translation>jakobiana voafenitra ≤ 0 (heksaedra mivadika)</translation>
+    </message>
+    <message>
+        <source>qualité Gmsh minSICN %1 &lt; 0 (jacobien négatif)</source>
+        <translation>kalitao Gmsh minSICN %1 &lt; 0 (jakobiana ratsy)</translation>
+    </message>
+    <message>
+        <source>qualité Gmsh</source>
+        <translation>kalitao Gmsh</translation>
+    </message>
+    <message>
+        <source>minSICN %1 &lt; %2</source>
+        <translation>minSICN %1 &lt; %2</translation>
+    </message>
+    <message>
+        <source>transition de taille</source>
+        <translation>fiovan'ny habe</translation>
+    </message>
+    <message>
+        <source>rapport %1 entre éléments voisins &gt; %2</source>
+        <translation>tahana %1 eo amin'ny singa mifanolo-bodirindrina &gt; %2</translation>
+    </message>
+    <message>
+        <source>nœud isolé</source>
+        <translation>fihaonana mitokana</translation>
+    </message>
+    <message>
+        <source>nœud relié à aucun élément</source>
+        <translation>fihaonana tsy mifandray amin'ny singa na iray aza</translation>
+    </message>
+    <message>
+        <source>nœuds confondus</source>
+        <translation>fihaonana mifanindry</translation>
+    </message>
+    <message>
+        <source>nœuds %1 et %2 confondus mais distincts (%3 / %4) : régions non connectées à cet endroit</source>
+        <translation>fihaonana %1 sy %2 mifanindry nefa samy hafa (%3 / %4): tsy mifandray eo amin'io toerana io ny faritra</translation>
+    </message>
+    <message>
+        <source>arête partagée par %1 éléments de %2</source>
+        <translation>sisiny iombonan'ny singa %1 an'ny %2</translation>
+    </message>
+    <message>
+        <source>incompatibilité entre régions</source>
+        <translation>tsy fifanarahana eo amin'ny faritra</translation>
+    </message>
+    <message>
+        <source>nœud de %1 au milieu d'une arête de %2 (nœud non partagé)</source>
+        <translation>fihaonan'ny %1 eo afovoan'ny sisin'ny %2 (fihaonana tsy iombonana)</translation>
+    </message>
+    <message>
+        <source>interface non conforme</source>
+        <translation>sisiny iraisana tsy mifanaraka</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::MeshResultField</name>
+    <message>
+        <source>résultats absents ou obsolètes : aucun champ</source>
+        <translation>tsy misy na lany andro ny vokatra: tsy misy saha</translation>
+    </message>
+    <message>
+        <source>Déplacement</source>
+        <translation>Fifindrana</translation>
+    </message>
+    <message>
+        <source>forme propre normalisée, sans unité</source>
+        <translation>endriky ny fihetsika voajanahary voafenitra, tsy misy venty</translation>
+    </message>
+    <message>
+        <source>analyse modale : déplacements = forme propre du mode affiché, normalisée (translation maximale = 1)</source>
+        <translation>kajy fihetsika voajanahary: fifindrana = endriky ny fihetsika voajanahary aseho, voafenitra (fifindrana ambony indrindra = 1)</translation>
+    </message>
+    <message>
+        <source>maillage affiché différent de celui du calcul : résultats des surfaces non reportés (relancer le calcul)</source>
+        <translation>tsy mitovy amin'ny an'ny kajy ny harato aseho: tsy nafindra ny vokatry ny velarana (avereno ny kajy)</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) aux valeurs exactes du solveur (nœuds TSA), %2 nœud(s) de surfaces aux valeurs exactes du solveur (coques), %3 nœud(s) de barres interpolés linéairement entre deux stations du solveur</source>
+        <translation>fihaonana %1 amin'ny sanda marina avy amin'ny motera kajy (fihaonana TSA), fihaonan'ny velarana %2 amin'ny sanda marina avy amin'ny motera kajy (akorandriaka), fihaonan'ny tsorakazo %3 nampifanelanelanina amin'ny fomba tsipika eo anelanelan'ny toerana roa an'ny motera kajy</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) du maillage sans résultat (surfaces, volumes ou barres non calculés) : aucune valeur n'est inventée</source>
+        <translation>fihaonan'ny harato %1 tsy misy vokatra (velarana, habe na tsorakazo tsy nokajina): tsy misy sanda noforonina</translation>
+    </message>
+    <message>
+        <source>pas intermédiaire : efforts des coques disponibles au dernier pas seulement (déplacements du pas affichés)</source>
+        <translation>dingana antonony: ny dingana farany ihany no ahitana ny herin'ny akorandriaka (aseho ny fifindran'ilay dingana)</translation>
+    </message>
+    <message>
+        <source>moyenne des 4 points d'intégration de l'élément, repère local de l'élément (axe x : nœud 1 → nœud 2)</source>
+        <translation>salanisan'ny teboka integrasiona 4 an'ny singa, fanondroana eo an-toerana an'ny singa (tsipika x: fihaonana 1 → fihaonana 2)</translation>
+    </message>
+    <message>
+        <source>valeur principale de plus grande valeur absolue, indépendante du repère local ; moyenne des 4 points d'intégration de l'élément, repère local de l'élément (axe x : nœud 1 → nœud 2)</source>
+        <translation>sanda fototra manana sanda tanteraka lehibe indrindra, tsy miankina amin'ny fanondroana eo an-toerana; salanisan'ny teboka integrasiona 4 an'ny singa, fanondroana eo an-toerana an'ny singa (tsipika x: fihaonana 1 → fihaonana 2)</translation>
+    </message>
+    <message>
+        <source>Moment principal (coque)</source>
+        <translation>Momenta fototra (akorandriaka)</translation>
+    </message>
+    <message>
+        <source>Effort principal dans le plan (coque)</source>
+        <translation>Hery fototra eo amin'ny planina (akorandriaka)</translation>
+    </message>
+    <message>
+        <source>Mxx (coque)</source>
+        <translation>Mxx (akorandriaka)</translation>
+    </message>
+    <message>
+        <source>Myy (coque)</source>
+        <translation>Myy (akorandriaka)</translation>
+    </message>
+    <message>
+        <source>Mxy (coque)</source>
+        <translation>Mxy (akorandriaka)</translation>
+    </message>
+    <message>
+        <source>Nxx (coque)</source>
+        <translation>Nxx (akorandriaka)</translation>
+    </message>
+    <message>
+        <source>Nyy (coque)</source>
+        <translation>Nyy (akorandriaka)</translation>
+    </message>
+    <message>
+        <source>Nxy (coque)</source>
+        <translation>Nxy (akorandriaka)</translation>
+    </message>
+    <message>
+        <source>Vxz (coque)</source>
+        <translation>Vxz (akorandriaka)</translation>
+    </message>
+    <message>
+        <source>Vyz (coque)</source>
+        <translation>Vyz (akorandriaka)</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::OpenSeesMeshAdapter</name>
+    <message>
+        <source>%1 : %2 élément(s) transmis, %3 non transmis, %4 DDL estimés</source>
+        <translation>%1: singa %2 nalefa, %3 tsy nalefa, fahafahana mihetsika %4 tombanana</translation>
+    </message>
+    <message>
+        <source>elasticBeamColumn (2 nœuds, geomTransf Linear de la barre, 6 DDL par nœud)</source>
+        <translation>elasticBeamColumn (fihaonana 2, geomTransf Linear an'ny tsorakazo, fahafahana mihetsika 6 isaky ny fihaonana)</translation>
+    </message>
+    <message>
+        <source>truss / corotTruss : un seul élément par barre (une chaîne de barres articulées subdivisée serait un mécanisme)</source>
+        <translation>truss / corotTruss: singa iray isaky ny tsorakazo (ho mekanisma ny rojon'ny tsorakazo mihodina voazarazara)</translation>
+    </message>
+    <message>
+        <source>aucun (ligne de contour : élément de frontière, sans rigidité)</source>
+        <translation>tsy misy (tsipika amin'ny sisiny: singa amin'ny sisiny, tsy misy hahenjana)</translation>
+    </message>
+    <message>
+        <source>aucun élément OpenSees de barre à 3 nœuds dans l'adaptateur : régénérer au premier ordre</source>
+        <translation>tsy misy singa tsorakazo OpenSees misy fihaonana 3 ao amin'ny mpampifandray: mamorona indray amin'ny ambaratonga voalohany</translation>
+    </message>
+    <message>
+        <source>ShellDKGT (triangle à 3 nœuds, plaque de Kirchhoff discrète + membrane, 6 DDL par nœud)</source>
+        <translation>ShellDKGT (telozoro misy fihaonana 3, plaka Kirchhoff voazarazara + membrana, fahafahana mihetsika 6 isaky ny fihaonana)</translation>
+    </message>
+    <message>
+        <source>ShellMITC4 (quadrangle à 4 nœuds, Mindlin-Reissner à cisaillement interpolé + membrane, 6 DDL par nœud)</source>
+        <translation>ShellMITC4 (efatra lafy misy fihaonana 4, Mindlin-Reissner misy hery manapaka nampifanelanelanina + membrana, fahafahana mihetsika 6 isaky ny fihaonana)</translation>
+    </message>
+    <message>
+        <source>aucune coque triangulaire à 6 nœuds dans OpenSees</source>
+        <translation>tsy misy akorandriaka telozoro misy fihaonana 6 ao amin'ny OpenSees</translation>
+    </message>
+    <message>
+        <source>aucune coque à 8 nœuds dans OpenSees (ShellMITC9 exige 9 nœuds)</source>
+        <translation>tsy misy akorandriaka misy fihaonana 8 ao amin'ny OpenSees (mitaky fihaonana 9 ny ShellMITC9)</translation>
+    </message>
+    <message>
+        <source>éléments de volume OpenSees (FourNodeTetrahedron, stdBrick…) à 3 DDL par nœud : incompatibles avec le modèle à 6 DDL (BasicBuilder -ndm 3 -ndf 6) utilisé par TSA</source>
+        <translation>singa habe OpenSees (FourNodeTetrahedron, stdBrick…) misy DDL 3 isaky ny fihaonana: tsy mifanaraka amin'ny modely misy DDL 6 (BasicBuilder -ndm 3 -ndf 6) ampiasain'ny TSA</translation>
+    </message>
+    <message>
+        <source>inconnu</source>
+        <translation>tsy fantatra</translation>
+    </message>
+    <message>
+        <source>objets maillés absents du modèle : maillage obsolète ou importé, à régénérer</source>
+        <translation>zavatra voaharato tsy hita ao amin'ny modely: harato efa lany andro na nafarana, tokony hamboarina indray</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) 1D du second ordre : %2</source>
+        <translation>singa 1D ambaratonga faharoa %1: %2</translation>
+    </message>
+    <message>
+        <source>chaîne d'éléments non continue ou sans les nœuds TSA d'extrémité : maillage à régénérer</source>
+        <translation>rojon-tsinga tsy mitohy na tsy misy ireo fihaonana TSA eo amin'ny farany: tokony hamboarina indray ny harato</translation>
+    </message>
+    <message>
+        <source>%1 ne calcule pas les barres fléchies</source>
+        <translation>tsy mikajy ny tsorakazo miforitra ny %1</translation>
+    </message>
+    <message>
+        <source>%1 ne prend pas en charge les barres subdivisées : un élément fini par barre sera transmis</source>
+        <translation>tsy mahazaka tsorakazo voazarazara ny %1: singa voafetra iray isaky ny tsorakazo no halefa</translation>
+    </message>
+    <message>
+        <source>%1 poutre(s) / poteau(x) → %2 éléments %3</source>
+        <translation>andry mitsivalana / andry %1 → singa %3 %2</translation>
+    </message>
+    <message>
+        <source>chaque sous-élément reprend l'axe, la rotation de section et le vecteur geomTransf de sa barre (barres rectilignes : axes locaux identiques)</source>
+        <translation>ny zana-tsinga tsirairay dia mandray ny tsipika fototra, ny fihodinan'ny fizarana ary ny vektora geomTransf an'ny tsorakazony (tsorakazo mahitsy: mitovy ny tsipika fototra eo an-toerana)</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de surface non transmis : %2 ne calcule pas les coques (calcul refusé tant qu'ils sont dans la portée).</source>
+        <translation>singa velarana %1 tsy nalefa: tsy mikajy akorandriaka ny %2 (lavina ny kajy raha mbola ao anatin'ny sehatra izy ireo).</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de surface non transmis : %2 ne calcule pas les coques ; les dalles et voiles sont exclus du calcul.</source>
+        <translation>singa velarana %1 tsy nalefa: tsy mikajy akorandriaka ny %2; tsy tafiditra amin'ny kajy ny takelaka sy ny rindrina.</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de surface non transmis (modèle non fourni à l'adaptateur) (calcul refusé tant qu'ils sont dans la portée).</source>
+        <translation>singa velarana %1 tsy nalefa (tsy nomena ny mpampifanaraka ny modely) (lavina ny kajy raha mbola ao anatin'ny sehatra izy ireo).</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de surface non transmis (modèle non fourni à l'adaptateur) ; les dalles et voiles sont exclus du calcul.</source>
+        <translation>singa velarana %1 tsy nalefa (tsy nomena ny mpampifanaraka ny modely); tsy tafiditra amin'ny kajy ny takelaka sy ny rindrina.</translation>
+    </message>
+    <message>
+        <source>Calculer les barres seules : dalles et voiles exclus (avertissement au lancement du calcul)</source>
+        <translation>Kajio ny tsorakazo ihany: tsy tafiditra ny takelaka sy ny rindrina (fampitandremana rehefa atomboka ny kajy)</translation>
+    </message>
+    <message>
+        <source>formulation « plaque seule » non disponible dans OpenSees en 3D (aucun élément de plaque sans membrane) : choisir « coque » (la membrane ajoute la rigidité dans le plan) ou « non structurale »</source>
+        <translation>tsy misy ao amin'ny OpenSees amin'ny 3D ny fandrafetana « plaka ihany » (tsy misy singa plaka tsy misy membrana): fidio ny « akorandriaka » (manampy ny hahenjana ao anatin'ny planina ny membrana) na ny « tsy mitondra enta »</translation>
+    </message>
+    <message>
+        <source>formulation « membrane seule » non transmise : les éléments de membrane OpenSees (quad, tri31) sont à 2 DDL par nœud, incompatibles avec le modèle à 6 DDL de TSA ; une coque à faible rigidité de flexion serait une rigidité fictive</source>
+        <translation>tsy nalefa ny fandrafetana « membrana ihany »: misy DDL 2 isaky ny fihaonana ny singa membrana OpenSees (quad, tri31), tsy mifanaraka amin'ny modely misy DDL 6 an'ny TSA; hahenjana tsy tena izy ny akorandriaka misy hahenjana kely amin'ny fiforetana</translation>
+    </message>
+    <message>
+        <source>éléments de surface du second ordre : %1 — régénérer au premier ordre</source>
+        <translation>singa velarana ambaratonga faharoa: %1 — amboary indray amin'ny ambaratonga voalohany</translation>
+    </message>
+    <message>
+        <source>surface(s) non structurale(s) : non transmises (ni rigidité, ni poids propre, ni charges)</source>
+        <translation>velarana tsy mitondra enta: tsy nalefa (tsy misy hahenjana, na lanja manokana, na enta)</translation>
+    </message>
+    <message>
+        <source>Choisir la formulation « coque » des surfaces concernées (propriétés de la surface)</source>
+        <translation>Fidio ny fandrafetana « akorandriaka » ho an'ny velarana voakasika (toetran'ny velarana)</translation>
+    </message>
+    <message>
+        <source>surface(s) sans aucun nœud commun avec une barre, un appui ou une autre surface (mécanisme) ; aucune liaison rigide n'est créée automatiquement (voile excentré, dalle décalée) : relier la surface par des nœuds communs</source>
+        <translation>velarana tsy manana fihaonana iraisana amin'ny tsorakazo, fanohanana na velarana hafa (mekanisma); tsy misy fifandraisana henjana noforonina ho azy (rindrina misy fialana, takelaka nafindra): ampifandraiso amin'ny alalan'ny fihaonana iraisana ny velarana</translation>
+    </message>
+    <message>
+        <source>éléments de coque déformés (angle minimal %1°, rapport d'arêtes %2) : précision locale réduite, raffiner ou régulariser le maillage</source>
+        <translation>singa akorandriaka simba endrika (zoro kely indrindra %1°, tahan'ny sisiny %2): mihena ny hamarinana eo an-toerana, hamadiniho na ataovy mirindra ny harato</translation>
+    </message>
+    <message>
+        <source>surface(s) sans épaisseur ou sans module d'Young</source>
+        <translation>velarana tsy misy hateviny na tsy misy tahan'i Young</translation>
+    </message>
+    <message>
+        <source>%1 surface(s) → %2 ShellMITC4 et %3 ShellDKGT</source>
+        <translation>velarana %1 → ShellMITC4 %2 sy ShellDKGT %3</translation>
+    </message>
+    <message>
+        <source>nœuds des coques partagés avec les barres et les nœuds TSA situés sur leurs arêtes (maillage conforme : arête commune = une courbe du mailleur) ; aucune liaison rigide ni excentricité ajoutée (plans moyens confondus avec les axes des barres)</source>
+        <translation>ny fihaonan'ny akorandriaka dia iraisana amin'ny tsorakazo sy ireo fihaonana TSA eo amin'ny sisiny (harato mifanaraka: sisiny iraisana = fiolahana iray an'ny mpanao harato); tsy misy fifandraisana henjana na fialana nampiana (mifanindry amin'ny tsipika fototry ny tsorakazo ny planina antenatenany)</translation>
+    </message>
+    <message>
+        <source>poids propre de %1 non converti : %2</source>
+        <translation>tsy niova ny lanja manokan'ny %1: %2</translation>
+    </message>
+    <message>
+        <source>poids propre des surfaces : %1 kN (ρ·g·e × aire nette), réparti en charges nodales cohérentes, appliqué aux cas qui incluent le poids propre</source>
+        <translation>lanja manokan'ny velarana: %1 kN (ρ·g·e × velarana madio), zaraina ho entan'ny fihaonana mifanaraka, ampiharina amin'ny tranga misy lanja manokana</translation>
+    </message>
+    <message>
+        <source>charge surfacique %1 (%2) : surface non transmise au calcul (non maillée, non structurale, formulation non prise en charge ou moteur sans coques)</source>
+        <translation>enta mivelatra %1 (%2): velarana tsy nalefa ho amin'ny kajy (tsy voaharato, tsy mitondra enta, fandrafetana tsy zakaina na motera tsy misy akorandriaka)</translation>
+    </message>
+    <message>
+        <source>charge surfacique %1 (%2) non convertie : %3</source>
+        <translation>enta mivelatra %1 (%2) tsy niova: %3</translation>
+    </message>
+    <message>
+        <source>erreur inconnue</source>
+        <translation>hadisoana tsy fantatra</translation>
+    </message>
+    <message>
+        <source>%1 charge(s) surfacique(s) converties en charges nodales cohérentes (∫ Nᵢ p dA), résultante et moment contrôlés</source>
+        <translation>enta mivelatra %1 navadika ho entan'ny fihaonana mifanaraka (∫ Nᵢ p dA), voamarina ny hery atambatra sy ny momenta</translation>
+    </message>
+    <message>
+        <source>appui(s) linéique(s) de %1 : surface non transmise au calcul (non maillée, non structurale ou formulation non prise en charge)</source>
+        <translation>fanohanana tsipika an'ny %1: velarana tsy nalefa ho amin'ny kajy (tsy voaharato, tsy mitondra enta na fandrafetana tsy zakaina)</translation>
+    </message>
+    <message>
+        <source>appui linéique %1 de %2 : aucun DDL bloqué ni raideur, sans effet</source>
+        <translation>fanohanana tsipika %1 an'ny %2: tsy misy DDL voasakana na hahenjana, tsy misy vokany</translation>
+    </message>
+    <message>
+        <source>appui linéique %1 de %2 : bord %3 inexistant (%4 bord(s))</source>
+        <translation>fanohanana tsipika %1 an'ny %2: tsy misy ny sisiny %3 (sisiny %4)</translation>
+    </message>
+    <message>
+        <source>appui linéique %1 de %2 : DDL %3 à la fois bloqué et élastique, la raideur est sans effet</source>
+        <translation>fanohanana tsipika %1 an'ny %2: DDL %3 voasakana sady elastika, tsy misy vokany ny hahenjana</translation>
+    </message>
+    <message>
+        <source>%1 bord %2 : DDL %3 bloqué par plusieurs appuis (condition redondante)</source>
+        <translation>%1 sisiny %2: DDL %3 voasakan'ny fanohanana maromaro (fepetra miverimberina)</translation>
+    </message>
+    <message>
+        <source>appui linéique %1 de %2 : aucun nœud du maillage sur le bord visé (régénérer le maillage)</source>
+        <translation>fanohanana tsipika %1 an'ny %2: tsy misy fihaonan'ny harato eo amin'ny sisiny kendrena (amboary indray ny harato)</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) du maillage portés par des appuis linéiques de bord (raideur linéique × longueur d'influence de chaque nœud)</source>
+        <translation>fihaonan'ny harato %1 entin'ny fanohanana tsipika eo amin'ny sisiny (hahenjana isaky ny halavana × halavan'ny faritra iasan'ny fihaonana tsirairay)</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) de volume non transmis : %2 ; les appuis définis aux nœuds restent appliqués</source>
+        <translation>singa habe %1 tsy nalefa: %2; mbola ampiharina ny fanohanana voafaritra eo amin'ny fihaonana</translation>
+    </message>
+    <message>
+        <source>Conserver les appuis (éventuellement élastiques) des nœuds de semelle à la place du volume maillé</source>
+        <translation>Tazony ny fanohanana (mety ho elastika) eo amin'ny fihaonan'ny fototra ho solon'ny habe voaharato</translation>
+    </message>
+    <message>
+        <source>6 DDL par nœud (UX UY UZ RX RY RZ), cohérents avec les éléments de barre transmis</source>
+        <translation>DDL 6 isaky ny fihaonana (UX UY UZ RX RY RZ), mifanaraka amin'ny singa tsorakazo nalefa</translation>
+    </message>
+    <message>
+        <source>%1 DDL estimés, au-delà de la limite de %2 : réduire la finesse ou la portée du calcul</source>
+        <translation>DDL %1 tombanana, mihoatra ny fetra %2: ahenao ny hamadinika na ny sehatry ny kajy</translation>
+    </message>
+    <message>
+        <source>%1 DDL estimés : calcul long et mémoire importante</source>
+        <translation>DDL %1 tombanana: kajy maharitra ela ary mila fitadidiana be</translation>
+    </message>
+    <message>
+        <source>barre(s) sans section ou sans matériau</source>
+        <translation>tsorakazo tsy misy fizarana na tsy misy akora</translation>
+    </message>
+    <message>
+        <source>chaque sous-élément reprend la section, le matériau et les relâchements d'extrémité (aux seules extrémités de la barre)</source>
+        <translation>ny zana-tsinga tsirairay dia mandray ny fizarana, ny akora ary ny fanalefahana eo amin'ny farany (eo amin'ny faran'ny tsorakazo ihany)</translation>
+    </message>
+    <message>
+        <source>appuis aux nœuds TSA, inchangés ; les nœuds intermédiaires du maillage sont libres</source>
+        <translation>fanohanana eo amin'ny fihaonana TSA, tsy niova; malalaka ny fihaonan'ny harato eo anelanelany</translation>
+    </message>
+    <message>
+        <source>charges sur barres réparties exactement sur les sous-éléments (portions, charge ponctuelle sur le sous-élément porteur ou à un nœud du maillage) ; charges nodales inchangées ; poids propre calculé par sous-élément ; charges surfaciques et poids propre des coques convertis en charges nodales cohérentes</source>
+        <translation>entan'ny tsorakazo zaraina tsara amin'ny zana-tsinga (ampahany, enta tokana amin'ny zana-tsinga mitondra azy na amin'ny fihaonan'ny harato iray); tsy niova ny entan'ny fihaonana; kajiana isaky ny zana-tsinga ny lanja manokana; navadika ho entan'ny fihaonana mifanaraka ny enta mivelatra sy ny lanja manokan'ny akorandriaka</translation>
+    </message>
+    <message>
+        <source>les éléments sont rattachés à leur barre par la référence TSA (groupes physiques Gmsh), jamais par les étiquettes Gmsh</source>
+        <translation>ampifandraisina amin'ny tsorakazony amin'ny alalan'ny famantarana TSA (vondrona ara-batana Gmsh) ny singa, fa tsy amin'ny marika Gmsh mihitsy</translation>
+    </message>
+    <message>
+        <source>Transmettre le maillage tel quel</source>
+        <translation>Alefaso toy izao ny harato</translation>
+    </message>
+    <message>
+        <source>Régénérer le maillage au premier ordre (même finesse) pour transmettre les barres subdivisées</source>
+        <translation>Amboary indray amin'ny ambaratonga voalohany ny harato (hamadinika mitovy) mba handefasana ny tsorakazo voazarazara</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Mesh::SurfaceLoads</name>
+    <message>
+        <source>surface « %1 » inconnue du modèle : charge non convertie</source>
+        <translation>velarana « %1 » tsy fantatra ao amin'ny modely: tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>surface projetée sans objet pour une pression normale : surface réelle utilisée</source>
+        <translation>tsy misy dikany ho an'ny tsindry mahitsy zoro ny velarana projeksiona: ny velarana tena izy no nampiasaina</translation>
+    </message>
+    <message>
+        <source>zone chargée vide (u₁ ≤ u₀ ou v₁ ≤ v₀) : charge non convertie</source>
+        <translation>faritra misy enta foana (u₁ ≤ u₀ na v₁ ≤ v₀): tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>élément %1 non pris en charge pour la répartition : charge non convertie</source>
+        <translation>tsy zakaina amin'ny fizarana ny singa %1: tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>surface « %1 » non maillée (aucun élément 2D) : charge non convertie</source>
+        <translation>velarana « %1 » tsy voaharato (tsy misy singa 2D): tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>zone chargée hors de la surface nette : charge non convertie</source>
+        <translation>faritra misy enta ivelan'ny velarana madio: tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>aire nette nulle : charge non convertie</source>
+        <translation>aotra ny velarana madio: tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>résultante ou moment des charges nodales différents de la valeur analytique (écarts %1 / %2) : maillage ne couvrant pas exactement la surface, charge non convertie</source>
+        <translation>tsy mitovy amin'ny sanda ara-kajy ny hery atambatra na ny momentan'ny entan'ny fihaonana (fahasamihafana %1 / %2): tsy manarona tanteraka ny velarana ny harato, tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>point (%1 ; %2) hors de la surface %3 : charge non convertie</source>
+        <translation>teboka (%1 ; %2) ivelan'ny velarana %3: tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>point dans une ouverture de %1 : aucune matière porteuse, charge non convertie</source>
+        <translation>teboka ao anaty lavaka an'ny %1: tsy misy akora mitondra enta, tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>charge ponctuelle : résultante ou moment des forces nodales différents de la valeur exacte, charge non convertie</source>
+        <translation>enta tokana: tsy mitovy amin'ny sanda marina ny hery atambatra na ny momentan'ny hery eo amin'ny fihaonana, tsy niova ny enta</translation>
+    </message>
+    <message>
+        <source>aucun élément du premier ordre (tri3, quad4) de %1 ne contient le point : surface non maillée ou maillage du second ordre</source>
+        <translation>tsy misy singa ambaratonga voalohany (tri3, quad4) an'ny %1 misy ilay teboka: velarana tsy voaharato na harato ambaratonga faharoa</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::LoadEnums</name>
+    <message>
+        <source>G (Permanent)</source>
+        <translation>G (Maharitra)</translation>
+    </message>
+    <message>
+        <source>Q (Exploitation)</source>
+        <translation>Q (Fampiasana)</translation>
+    </message>
+    <message>
+        <source>W (Vent)</source>
+        <translation>W (Rivotra)</translation>
+    </message>
+    <message>
+        <source>S (Neige)</source>
+        <translation>S (Oram-panala)</translation>
+    </message>
+    <message>
+        <source>E (Séisme)</source>
+        <translation>E (Horohoron-tany)</translation>
+    </message>
+    <message>
+        <source>T (Thermique)</source>
+        <translation>T (Hafanana)</translation>
+    </message>
+    <message>
+        <source>A (Accidentel)</source>
+        <translation>A (Tsy ampoizina)</translation>
+    </message>
+    <message>
+        <source>Personnalisé</source>
+        <translation>Namboarina</translation>
+    </message>
+    <message>
+        <source>Inconnu</source>
+        <translation>Tsy fantatra</translation>
+    </message>
+    <message>
+        <source>Global X</source>
+        <translation>X ankapobeny</translation>
+    </message>
+    <message>
+        <source>Global Y</source>
+        <translation>Y ankapobeny</translation>
+    </message>
+    <message>
+        <source>Global Z</source>
+        <translation>Z ankapobeny</translation>
+    </message>
+    <message>
+        <source>Gravité (-Z)</source>
+        <translation>Herin'ny tany (-Z)</translation>
+    </message>
+    <message>
+        <source>Local x</source>
+        <translation>x eo an-toerana</translation>
+    </message>
+    <message>
+        <source>Local y</source>
+        <translation>y eo an-toerana</translation>
+    </message>
+    <message>
+        <source>Local z</source>
+        <translation>z eo an-toerana</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::MemberLoad</name>
+    <message>
+        <source>Valeurs non finies (intensité ou position).</source>
+        <translation>Sanda tsy voafetra (hamafiny na toerana).</translation>
+    </message>
+    <message>
+        <source>La barre chargée est de longueur nulle.</source>
+        <translation>Aotra ny halavan'ny tsorakazo misy enta.</translation>
+    </message>
+    <message>
+        <source>L'intensité de la charge est nulle.</source>
+        <translation>Aotra ny hamafin'ny enta.</translation>
+    </message>
+    <message>
+        <source>La position de début est hors de la barre.</source>
+        <translation>Ivelan'ny tsorakazo ny toerana fiandohana.</translation>
+    </message>
+    <message>
+        <source>La position de fin est hors de la barre.</source>
+        <translation>Ivelan'ny tsorakazo ny toerana fiafarana.</translation>
+    </message>
+    <message>
+        <source>La position de fin doit être supérieure à la position de début.</source>
+        <translation>Tsy maintsy lehibe noho ny toerana fiandohana ny toerana fiafarana.</translation>
+    </message>
+    <message>
+        <source>L'intervalle chargé est vide.</source>
+        <translation>Foana ny elanelana misy enta.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::MemberLoadCommands</name>
+    <message>
+        <source>Aucune barre à charger.</source>
+        <translation>Tsy misy tsorakazo hasiana enta.</translation>
+    </message>
+    <message>
+        <source>La barre #%1 n'existe plus.</source>
+        <translation>Tsy misy intsony ny tsorakazo #%1.</translation>
+    </message>
+    <message>
+        <source>Barre #%1 : %2</source>
+        <translation>Tsorakazo #%1: %2</translation>
+    </message>
+    <message>
+        <source>Le cas de charge choisi n'existe pas.</source>
+        <translation>Tsy misy ny tranga enta voafidy.</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::ModelCleanup</name>
+    <message>
+        <source>%1 et %2 relient les mêmes nœuds (%3, %4) : familles différentes, à vérifier.</source>
+        <translation>Mampifandray ireo fihaonana mitovy (%3, %4) ny %1 sy ny %2: fianakaviana samihafa, tokony hohamarinina.</translation>
+    </message>
+    <message>
+        <source>Barre en double supprimée : %1 (doublon de %2)</source>
+        <translation>Tsorakazo miverina indroa voafafa: %1 (dika mitovy amin'ny %2)</translation>
+    </message>
+    <message>
+        <source>Barre en double supprimée : %1 (doublon de %2), %3 charge(s) reportée(s)</source>
+        <translation>Tsorakazo miverina indroa voafafa: %1 (dika mitovy amin'ny %2), enta %3 nafindra</translation>
+    </message>
+    <message>
+        <source>%1 divisée sur %2 (nœud posé sur la barre sans lui être relié)</source>
+        <translation>%1 nozaraina eo amin'ny %2 (fihaonana mipetraka amin'ny tsorakazo nefa tsy mifandray aminy)</translation>
+    </message>
+    <message>
+        <source>%1 : division sur %2 refusée (charge ponctuelle ou partielle sur la barre) — à traiter manuellement.</source>
+        <translation>%1: lavina ny fizarana eo amin'ny %2 (enta tokana na ampahany amin'ny tsorakazo) — tokony hokarakaraina amin'ny tanana.</translation>
+    </message>
+    <message>
+        <source>Nœud %1 créé au croisement de %2 et %3</source>
+        <translation>Fihaonana %1 noforonina teo amin'ny fifanapahan'ny %2 sy ny %3</translation>
+    </message>
+    <message>
+        <source>%1 : appui sur un nœud relié à aucun élément — conservé, à vérifier.</source>
+        <translation>%1: fanohanana eo amin'ny fihaonana tsy mifandray amin'ny singa — notazonina, tokony hohamarinina.</translation>
+    </message>
+    <message>
+        <source>%1 : charge nodale sur un nœud relié à aucun élément — conservé, à vérifier.</source>
+        <translation>%1: entan'ny fihaonana eo amin'ny fihaonana tsy mifandray amin'ny singa — notazonina, tokony hohamarinina.</translation>
+    </message>
+    <message>
+        <source>Nœud parasite supprimé : %1</source>
+        <translation>Fihaonana tsy ilaina voafafa: %1</translation>
+    </message>
+    <message>
+        <source>%1 nœud(s) confondu(s) fusionné(s), %2 barre(s) en double supprimée(s), %3 nœud(s) raccordé(s) sur des barres, %4 nœud(s) de croisement, %5 nœud(s) parasite(s) supprimé(s)</source>
+        <translation>fihaonana mifanindry %1 natambatra, tsorakazo miverina indroa %2 voafafa, fihaonana %3 nampifandraisina tamin'ny tsorakazo, fihaonana eo amin'ny fifanapahana %4, fihaonana tsy ilaina %5 voafafa</translation>
+    </message>
+    <message>
+        <source> ; %1 opération(s) refusée(s)</source>
+        <translation> ; asa %1 nolavina</translation>
+    </message>
+    <message>
+        <source> ; %1 point(s) à vérifier</source>
+        <translation> ; teboka %1 tokony hohamarinina</translation>
+    </message>
+    <message>
+        <source>Nœuds confondus : %1 fusionné dans %2</source>
+        <translation>Fihaonana mifanindry: %1 natambatra tao amin'ny %2</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::NamedViews</name>
+    <message>
+        <source>vues nommées : JSON illisible, ignoré</source>
+        <translation>fijery manana anarana: JSON tsy azo vakiana, tsy noraharahiana</translation>
+    </message>
+    <message>
+        <source>vue nommée invalide ou en double ignorée : « %1 »</source>
+        <translation>fijery manana anarana tsy mety na miverina indroa tsy noraharahiana: « %1 »</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::StructuralClipboard</name>
+    <message>
+        <source>Combinaison « %1 » non copiée : cas de charge n° %2 introuvable dans le projet source</source>
+        <translation>Fitambaran'enta « %1 » tsy nadika: tsy hita ao amin'ny tetikasa loharano ny tranga enta laharana %2</translation>
+    </message>
+    <message>
+        <source>tolérance de fusion invalide (elle doit être &gt; 0 m)</source>
+        <translation>fandeferana amin'ny fanatambarana tsy mety (tsy maintsy &gt; 0 m)</translation>
+    </message>
+    <message>
+        <source>nœud %1 : appui existant et appui copié différents (nœud source %2, écart %3 m)</source>
+        <translation>fihaonana %1: samihafa ny fanohanana efa misy sy ny fanohanana nadika (fihaonana loharano %2, elanelana %3 m)</translation>
+    </message>
+    <message>
+        <source>nœud source %1 non fusionné avec le nœud %2 (appuis différents) : nœuds coïncidents séparés</source>
+        <translation>fihaonana loharano %1 tsy natambatra tamin'ny fihaonana %2 (fanohanana samihafa): fihaonana mifanindry notazonina misaraka</translation>
+    </message>
+    <message>
+        <source>nœud %1 : appui existant conservé, appui copié ignoré</source>
+        <translation>fihaonana %1: notazonina ny fanohanana efa misy, tsy noraharahiana ny fanohanana nadika</translation>
+    </message>
+    <message>
+        <source>nœud %1 : appui existant remplacé par l'appui copié</source>
+        <translation>fihaonana %1: nosoloina ny fanohanana nadika ny fanohanana efa misy</translation>
+    </message>
+    <message>
+        <source>%1 : ses deux nœuds seraient fusionnés en un seul (longueur nulle)</source>
+        <translation>%1: hatambatra ho iray ireo fihaonany roa (halavana aotra)</translation>
+    </message>
+    <message>
+        <source>%1 : identique à un élément existant entre les nœuds %2 et %3</source>
+        <translation>%1: mitovy amin'ny singa efa misy eo anelanelan'ny fihaonana %2 sy %3</translation>
+    </message>
+    <message>
+        <source>poutre</source>
+        <translation>andry mitsivalana</translation>
+    </message>
+    <message>
+        <source>poteau</source>
+        <translation>andry</translation>
+    </message>
+    <message>
+        <source>voile</source>
+        <translation>rindrina</translation>
+    </message>
+    <message>
+        <source>barre de treillis</source>
+        <translation>tsorakazon'ny rafitra makarakara</translation>
+    </message>
+    <message>
+        <source>câble</source>
+        <translation>tariby</translation>
+    </message>
+    <message>
+        <source>%1 : deux de ses sommets seraient fusionnés</source>
+        <translation>%1: hatambatra ny roa amin'ireo zorony</translation>
+    </message>
+    <message>
+        <source>dalle</source>
+        <translation>takelaka</translation>
+    </message>
+    <message>
+        <source>%1 : identique à une dalle existante</source>
+        <translation>%1: mitovy amin'ny takelaka efa misy</translation>
+    </message>
+    <message>
+        <source>%1 : le nœud %2 porte déjà une fondation</source>
+        <translation>%1: efa mitondra fototra ny fihaonana %2</translation>
+    </message>
+    <message>
+        <source>fondation</source>
+        <translation>fototra</translation>
+    </message>
+    <message>
+        <source>%1 (+ %2 autre(s))</source>
+        <translation>%1 (+ %2 hafa)</translation>
+    </message>
+    <message>
+        <source>%1 — non collé</source>
+        <translation>%1 — tsy napetaka</translation>
+    </message>
+    <message>
+        <source>%1 — collé quand même (rigidité doublée)</source>
+        <translation>%1 — napetaka ihany (avo roa heny ny hahenjana)</translation>
+    </message>
+    <message>
+        <source>nœud</source>
+        <translation>fihaonana</translation>
+    </message>
+    <message>
+        <source>élément sans ses nœuds</source>
+        <translation>singa tsy misy ireo fihaonany</translation>
+    </message>
+    <message>
+        <source>cas de charge « %1 » : un cas de même nom et d'autre catégorie existe ; créé sous le nom « %2 »</source>
+        <translation>tranga enta « %1 »: misy tranga mitovy anarana sady hafa sokajy; noforonina amin'ny anarana « %2 »</translation>
+    </message>
+    <message>
+        <source>charge nodale</source>
+        <translation>entan'ny fihaonana</translation>
+    </message>
+    <message>
+        <source>charge sur barre %1 non collée : son élément, en double, n'a pas été collé</source>
+        <translation>entan'ny tsorakazo %1 tsy napetaka: tsy napetaka ny singany, izay miverina indroa</translation>
+    </message>
+    <message>
+        <source>charge sur barre</source>
+        <translation>entan'ny tsorakazo</translation>
+    </message>
+    <message>
+        <source>charge surfacique %1 non collée : sa surface, en double, n'a pas été collée</source>
+        <translation>enta mivelatra %1 tsy napetaka: tsy napetaka ny velarany, izay miverina indroa</translation>
+    </message>
+    <message>
+        <source>charge surfacique</source>
+        <translation>enta mivelatra</translation>
+    </message>
+    <message>
+        <source>%1 charge(s) nodale(s) ajoutée(s) à des nœuds existants (fusion) : elles s'ajoutent à leurs charges</source>
+        <translation>entan'ny fihaonana %1 nampiana tamin'ny fihaonana efa misy (fanatambarana): manampy ny entany izy ireo</translation>
+    </message>
+    <message>
+        <source>combinaison « %1 » non copiée : un de ses cas de charge n'a pas pu être rapproché</source>
+        <translation>fitambaran'enta « %1 » tsy nadika: tsy nahitana mifanandrify ny iray amin'ireo tranga entany</translation>
+    </message>
+    <message>
+        <source>combinaison « %1 » : une combinaison de même nom et de contenu différent existe ; copiée sous le nom « %2 »</source>
+        <translation>fitambaran'enta « %1 »: misy fitambaran'enta mitovy anarana nefa samihafa votoatiny; nadika amin'ny anarana « %2 »</translation>
+    </message>
+    <message>
+        <source>combinaison « %1 »</source>
+        <translation>fitambaran'enta « %1 »</translation>
+    </message>
+    <message>
+        <source>%1 : nœud absent</source>
+        <translation>%1: tsy misy ny fihaonana</translation>
+    </message>
+    <message>
+        <source>%1 : moins de 3 nœuds</source>
+        <translation>%1: latsaky ny 3 ny fihaonana</translation>
+    </message>
+    <message>
+        <source>%1 : nœud ou cas de charge absent</source>
+        <translation>%1: tsy misy ny fihaonana na ny tranga enta</translation>
+    </message>
+    <message>
+        <source>%1 : cas de charge absent</source>
+        <translation>%1: tsy misy ny tranga enta</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::SupportDefinition</name>
+    <message>
+        <source>Libre</source>
+        <translation>Malalaka</translation>
+    </message>
+    <message>
+        <source>Encastrement</source>
+        <translation>Fanohanana raikitra</translation>
+    </message>
+    <message>
+        <source>Articulation</source>
+        <translation>Fanohanana mihodina</translation>
+    </message>
+    <message>
+        <source>Appui simple</source>
+        <translation>Fanohanana tsotra</translation>
+    </message>
+    <message>
+        <source>Appui glissant</source>
+        <translation>Fanohanana mitsoaka</translation>
+    </message>
+    <message>
+        <source>Appui linéaire</source>
+        <translation>Fanohanana araka ny tsipika</translation>
+    </message>
+    <message>
+        <source>Appui plan</source>
+        <translation>Fanohanana planina</translation>
+    </message>
+    <message>
+        <source>Appui élastique</source>
+        <translation>Fanohanana elastika</translation>
+    </message>
+    <message>
+        <source>Personnalisé</source>
+        <translation>Namboarina</translation>
+    </message>
+    <message>
+        <source>Appui</source>
+        <translation>Fanohanana</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Model::SurfaceFormulation</name>
+    <message>
+        <source>Plaque (flexion seule)</source>
+        <translation>Plaka (fiforetana ihany)</translation>
+    </message>
+    <message>
+        <source>Membrane (efforts dans le plan)</source>
+        <translation>Membrana (hery ao anatin'ny planina)</translation>
+    </message>
+    <message>
+        <source>Non structurale (géométrie seulement)</source>
+        <translation>Tsy mitondra enta (jeometria ihany)</translation>
+    </message>
+    <message>
+        <source>Coque (membrane + flexion)</source>
+        <translation>Akorandriaka (membrana + fiforetana)</translation>
+    </message>
+</context>
+<context>
     <name>TSA::NDC::NDCViewerWidget</name>
     <message>
         <source>Rechercher dans la note...</source>
@@ -11714,6 +13737,10 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
 <context>
     <name>TSA::UI::AICoEngineeringDock</name>
     <message>
+        <source>Les recommandations de l'IA doivent être vérifiées par un ingénieur qualifié avant toute utilisation dans un projet réel.</source>
+        <translation>Tsy maintsy hamarinin'ny injeniera manana fahaizana ny tolo-kevitry ny IA alohan'ny hampiasana azy amin'ny tetikasa tena izy.</translation>
+    </message>
+    <message>
         <source>IA CO-ENGINEERING</source>
         <translation>IA MPIARA-MIASA ARA-INJENIERA</translation>
     </message>
@@ -11846,6 +13873,10 @@ ohatra: « Nahoana no avo ny momentan'ny andry mitsivalana B3? »</translation>
     <message>
         <source>&lt;div style='color:gray'&gt;&lt;h3&gt;Assistant de co-ingénierie TSA&lt;/h3&gt;&lt;p&gt;Il lit le modèle structural réel (géométrie, sections, matériaux, appuis, charges, résultats) et utilise les outils de TSA. Il ne modifie jamais le modèle sans votre accord.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Analyser le modèle&lt;/b&gt; : synthèse et points à vérifier&lt;/li&gt;&lt;li&gt;&lt;b&gt;Vérifier la structure&lt;/b&gt; : contrôles automatiques expliqués&lt;/li&gt;&lt;li&gt;&lt;b&gt;Expliquer la sélection&lt;/b&gt; : pourquoi cet élément se comporte ainsi&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Les contrôles automatiques fonctionnent même sans modèle IA installé.&lt;/p&gt;&lt;/div&gt;</source>
         <translation>&lt;div style='color:gray'&gt;&lt;h3&gt;Mpanampy TSA amin'ny asa injeniera&lt;/h3&gt;&lt;p&gt;Mamaky ny tena modely ara-drafitra izy (joometria, fizarana, akora, fanohanana, enta, vokatra) ary mampiasa ny fitaovan'ny TSA. Tsy manova ny modely mihitsy izy raha tsy manaiky ianao.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Diniho ny modely&lt;/b&gt;: famintinana sy teboka hamarinina&lt;/li&gt;&lt;li&gt;&lt;b&gt;Hamarino ny rafitra&lt;/b&gt;: fanamarinana ho azy voazava&lt;/li&gt;&lt;li&gt;&lt;b&gt;Hazavao ny voafidy&lt;/b&gt;: nahoana no mihetsika toy izao ity singa ity&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Mandeha na dia tsy misy modely IA voapetraka aza ny fanamarinana ho azy.&lt;/p&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Proposition de l'IA&lt;/b&gt;&lt;br&gt;%1</source>
+        <translation>&lt;b&gt;Tolo-kevitry ny IA&lt;/b&gt;&lt;br&gt;%1</translation>
     </message>
     <message>
         <source>Justification : %1</source>
@@ -12258,6 +14289,34 @@ Hamarinina amin'ny SHA-256 ny rakitra. Rehefa voapetraka, dia miasa tsy misy Int
 <context>
     <name>TSA::UI::AnalysisDataDock</name>
     <message>
+        <source>Source : %1
+Type : %2 | Repère : %3 | Exact : %4 | Symétrique : %5
+Ordre des DDL : %6
+Contraintes : %7 | Système : %8 | Stockage : %9
+Unités : %10%11</source>
+        <translation>Loharano: %1
+Karazana: %2 | Fanondroana: %3 | Marina tsara: %4 | Mifanandrify: %5
+Filaharan'ny fahafahana mihetsika: %6
+Fameperana: %7 | Rafitra: %8 | Fitehirizana: %9
+Venty: %10%11</translation>
+    </message>
+    <message>
+        <source>oui</source>
+        <translation>eny</translation>
+    </message>
+    <message>
+        <source>NON</source>
+        <translation>TSIA</translation>
+    </message>
+    <message>
+        <source>non</source>
+        <translation>tsia</translation>
+    </message>
+    <message>
+        <source>Notes : %1</source>
+        <translation>Fanamarihana: %1</translation>
+    </message>
+    <message>
         <source>Données d'analyse</source>
         <translation>Angona momba ny kajy</translation>
     </message>
@@ -12419,6 +14478,20 @@ Hamarinina amin'ny SHA-256 ny rakitra. Rehefa voapetraka, dia miasa tsy misy Int
         <source>Matrices indisponibles : %1
 </source>
         <translation>Tsy azo jerena ny matrisy: %1
+</translation>
+    </message>
+    <message>
+        <source>Classe OpenSees : %1 | nœuds N%2 → N%3 | L = %4
+</source>
+        <translation>Kilasy OpenSees: %1 | fihaonana N%2 → N%3 | L = %4
+</translation>
+    </message>
+    <message>
+        <source>Axes locaux (global) : x = (%1, %2, %3)  y = (%4, %5, %6)  z = (%7, %8, %9)
+
+</source>
+        <translation>Fanondroana eo an-toerana (amin'ny fanondroana ankapobeny): x = (%1, %2, %3)  y = (%4, %5, %6)  z = (%7, %8, %9)
+
 </translation>
     </message>
     <message>
@@ -12639,6 +14712,14 @@ Voatanisa alohan'ny kajy ny fanakanana tsirairay ary ambara raha mitondra hery i
     <message>
         <source>Options %1</source>
         <translation>Safidy %1</translation>
+    </message>
+    <message>
+        <source>Modèle</source>
+        <translation>Modely</translation>
+    </message>
+    <message>
+        <source>Aucun modèle.</source>
+        <translation>Tsy misy modely.</translation>
     </message>
     <message>
         <source>Prêt pour le calcul.</source>
@@ -13125,6 +15206,10 @@ Voatanisa alohan'ny kajy ny fanakanana tsirairay ary ambara raha mitondra hery i
         <translation>Akora fototra:</translation>
     </message>
     <message>
+        <source>ACIER S235</source>
+        <translation>VY S235</translation>
+    </message>
+    <message>
         <source>Coordonnées des noeuds (m)</source>
         <translation>Kaordinatan'ny fihaonana (m)</translation>
     </message>
@@ -13191,6 +15276,10 @@ Voatanisa alohan'ny kajy ny fanakanana tsirairay ary ambara raha mitondra hery i
     <message>
         <source>%1 créée reliant N%2 à N%3</source>
         <translation>Voaforona ny %1 mampitohy ny N%2 sy ny N%3</translation>
+    </message>
+    <message>
+        <source>BÉTON C25/30</source>
+        <translation>BETÔNA C25/30</translation>
     </message>
     <message>
         <source>Format de coordonnées</source>
@@ -13370,6 +15459,10 @@ Ohatra: -10.00; 0.00; 0.00</translation>
         <translation>Fiafarana:</translation>
     </message>
     <message>
+        <source>Section personnalisée</source>
+        <translation>Fizarana namboarina</translation>
+    </message>
+    <message>
         <source>Couleur de la Poutre</source>
         <translation>Lokon'ny andry mitsivalana</translation>
     </message>
@@ -13456,6 +15549,22 @@ Ohatra: -10.00; 0.00; 0.00</translation>
 <context>
     <name>TSA::UI::BlueprintEditor</name>
     <message>
+        <source>entrée « %1 » supprimée</source>
+        <translation>voafafa ny fidirana « %1 »</translation>
+    </message>
+    <message>
+        <source>entrée « %1 » : %2 → %3</source>
+        <translation>fidirana « %1 »: %2 → %3</translation>
+    </message>
+    <message>
+        <source>sortie « %1 » supprimée</source>
+        <translation>voafafa ny fivoahana « %1 »</translation>
+    </message>
+    <message>
+        <source>sortie « %1 » : %2 → %3</source>
+        <translation>fivoahana « %1 »: %2 → %3</translation>
+    </message>
+    <message>
         <source>Nouveau Blueprint</source>
         <translation>Blueprint vaovao</translation>
     </message>
@@ -13490,6 +15599,10 @@ Ohatra: -10.00; 0.00; 0.00</translation>
     <message>
         <source>Supprimer</source>
         <translation>Fafao</translation>
+    </message>
+    <message>
+        <source>%1 (%2, dans le graphe)</source>
+        <translation>%1 (%2, ao amin'ny grafy)</translation>
     </message>
     <message>
         <source>Copier</source>
@@ -14082,6 +16195,10 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
         <source> (requis)</source>
         <translation> (ilaina)</translation>
     </message>
+    <message>
+        <source>Lien refusé : %1</source>
+        <translation>Nolavina ny rohy: %1</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::BlueprintSubgraphDialog</name>
@@ -14164,6 +16281,34 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
     <message>
         <source>Objet</source>
         <translation>Zavatra</translation>
+    </message>
+    <message>
+        <source>Réel</source>
+        <translation>Isa reely</translation>
+    </message>
+    <message>
+        <source>Entier</source>
+        <translation>Isa manontolo</translation>
+    </message>
+    <message>
+        <source>Booléen</source>
+        <translation>Boleana</translation>
+    </message>
+    <message>
+        <source>Texte</source>
+        <translation>Lahatsoratra</translation>
+    </message>
+    <message>
+        <source>Point (x, y, z)</source>
+        <translation>Teboka (x, y, z)</translation>
+    </message>
+    <message>
+        <source>Identifiants</source>
+        <translation>Famantarana</translation>
+    </message>
+    <message>
+        <source>Générique</source>
+        <translation>Ankapobeny</translation>
     </message>
     <message>
         <source>Valeur par défaut</source>
@@ -14717,6 +16862,18 @@ Ahitsio ny vatan'ny zana-grafy na ario ny fanovana natao taminy.</translation>
     <message>
         <source>Tête :</source>
         <translation>Tampony:</translation>
+    </message>
+    <message>
+        <source>N%1 (Pied) → N%2 (Tête)</source>
+        <translation>N%1 (Fototra) → N%2 (Tampony)</translation>
+    </message>
+    <message>
+        <source>Section personnalisée</source>
+        <translation>Fizarana namboarina</translation>
+    </message>
+    <message>
+        <source>Béton C25/30</source>
+        <translation>Betôna C25/30</translation>
     </message>
     <message>
         <source>Couleur du Poteau</source>
@@ -15505,12 +17662,192 @@ Atombohy ny kajy EF (F5) mba hamoronana ny kisary.</translation>
         <translation>Sehatra Eurocode</translation>
     </message>
     <message>
+        <source>Bases de calcul des structures</source>
+        <translation>Fototry ny famolavolana rafitra</translation>
+    </message>
+    <message>
+        <source>Actions &amp; Sécurité</source>
+        <translation>Hery miantraika &amp; fiarovana</translation>
+    </message>
+    <message>
+        <source>Actions sur les structures (Poids, Neige, Vent)</source>
+        <translation>Hery miantraika amin'ny rafitra (lanja, oram-panala, rivotra)</translation>
+    </message>
+    <message>
+        <source>Charges &amp; Actions</source>
+        <translation>Enta &amp; hery miantraika</translation>
+    </message>
+    <message>
+        <source>Calcul des structures en béton (EC2)</source>
+        <translation>Famolavolana rafitra betôna (EC2)</translation>
+    </message>
+    <message>
+        <source>Béton Armé &amp; Précontraint</source>
+        <translation>Betôna misy vy &amp; betôna misy fanenjanana mialoha</translation>
+    </message>
+    <message>
+        <source>Calcul des structures en acier (EC3)</source>
+        <translation>Famolavolana rafitra vy (EC3)</translation>
+    </message>
+    <message>
+        <source>Structures Métalliques</source>
+        <translation>Rafitra vy</translation>
+    </message>
+    <message>
+        <source>Calcul des structures avec éléments tendus</source>
+        <translation>Famolavolana rafitra misy singa voasintona</translation>
+    </message>
+    <message>
+        <source>Câbles, Tirants &amp; Haubans</source>
+        <translation>Tariby, tsorakazo misintona &amp; tariby fihazonana</translation>
+    </message>
+    <message>
+        <source>Aciers de précontrainte - Torons</source>
+        <translation>Vy fanenjanana mialoha - Tadim-by</translation>
+    </message>
+    <message>
+        <source>Torons Précontrainte</source>
+        <translation>Tadim-by fanenjanana mialoha</translation>
+    </message>
+    <message>
+        <source>Aciers de précontrainte - Barres</source>
+        <translation>Vy fanenjanana mialoha - Tsorakazo</translation>
+    </message>
+    <message>
+        <source>Barres de Post-tension</source>
+        <translation>Tsorakazo fanenjanana aoriana</translation>
+    </message>
+    <message>
+        <source>Torons Internationaux</source>
+        <translation>Tadim-by iraisam-pirenena</translation>
+    </message>
+    <message>
         <source>%1 référence(s) normative(s)</source>
         <translation>Fanondroana ara-pitsipika %1</translation>
     </message>
     <message>
         <source>&lt;p style='color: #4A5568;'&gt;Élément sélectionné : &lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;</source>
         <translation>&lt;p style='color: #4A5568;'&gt;Singa voafidy: &lt;b&gt;%1&lt;/b&gt;&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Catégorie :&lt;/b&gt; %1 | &lt;b&gt;Norme :&lt;/b&gt; %2 (%3) - %4&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Sokajy:&lt;/b&gt; %1 | &lt;b&gt;Fenitra:&lt;/b&gt; %2 (%3) - %4&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Propriété Physique&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Valeur&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Unité&lt;/th&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Toetra ara-batana&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Sanda&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Venty&lt;/th&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Module d'Young (E)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;GPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Tahan'i Young (E)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;GPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Coefficient de Poisson (ν)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;-&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Tahan'i Poisson (ν)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;-&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Masse Volumique (ρ)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kg/m³&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Hakitroka (ρ)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kg/m³&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Résistance caractéristique fck&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Fanoherana mampiavaka fck&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Limite d'élasticité fy&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Fetran'ny fahaelastika fy&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Dilatation thermique (α)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;1/K&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Fivelarana noho ny hafanana (α)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;1/K&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 8px 0 4px 0;'&gt;&lt;b&gt;Aspect Visuel PBR :&lt;/b&gt;&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 8px 0 4px 0;'&gt;&lt;b&gt;Endrika hita maso PBR:&lt;/b&gt;&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;div style='display: flex; align-items: center; gap: 10px;'&gt;Couleur : &lt;span style='display: inline-block; width: 20px; height: 20px; background-color: %1; border: 1px solid #718096; vertical-align: middle;'&gt;&lt;/span&gt; %1 | Rugosité : %2 | Métallique : %3&lt;/div&gt;</source>
+        <translation>&lt;div style='display: flex; align-items: center; gap: 10px;'&gt;Loko: &lt;span style='display: inline-block; width: 20px; height: 20px; background-color: %1; border: 1px solid #718096; vertical-align: middle;'&gt;&lt;/span&gt; %1 | Hamaratsiana: %2 | Metaly: %3&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Forme :&lt;/b&gt; %1 | &lt;b&gt;Norme :&lt;/b&gt; %2 (%3) | &lt;b&gt;Matériau par défaut :&lt;/b&gt; %4&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Endrika:&lt;/b&gt; %1 | &lt;b&gt;Fenitra:&lt;/b&gt; %2 (%3) | &lt;b&gt;Akora fototra:&lt;/b&gt; %4&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Caractéristique Géométrique&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Valeur&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Unité&lt;/th&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Toetra ara-joometria&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Sanda&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Venty&lt;/th&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Hauteur totale (h)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Haavony manontolo (h)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Largeur (b)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Sakany (b)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Épaisseur de l'âme (tw)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Hatevin'ny vatany (tw)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Épaisseur de semelle (tf)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Hatevin'ny elany (tf)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Section Transversale (A)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm²&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Velaran'ny fizarana (A)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm²&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Inertie Iy (axe fort)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm⁴&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Momenta kadratika Iy (famaky matanjaka)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm⁴&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Inertie Iz (axe faible)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm⁴&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Momenta kadratika Iz (famaky malemy)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;cm⁴&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Nuance :&lt;/b&gt; %1 | &lt;b&gt;Type :&lt;/b&gt; %2 | &lt;b&gt;Norme :&lt;/b&gt; %3 (%4)&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Kilasy:&lt;/b&gt; %1 | &lt;b&gt;Karazana:&lt;/b&gt; %2 | &lt;b&gt;Fenitra:&lt;/b&gt; %3 (%4)&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Caractéristique Câble&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Valeur&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Unité&lt;/th&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #EDF2F7;'&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Toetran'ny tariby&lt;/th&gt;&lt;th style='padding: 6px; text-align: right;'&gt;Sanda&lt;/th&gt;&lt;th style='padding: 6px; text-align: left;'&gt;Venty&lt;/th&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Diamètre Nominal (D)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Savaivony nominaly (D)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Section Acier Réelle (A)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm²&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Velaran'ny vy tena izy (A)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;mm²&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Masse Linéique&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kg/m&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Habetsahana isaky ny metatra&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kg/m&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Module d'Élasticité (E)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;GPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Tahan'ny fahaelastika (E)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;GPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Résistance fpk&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Fanoherana fpk&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;MPa&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Force de Rupture (Fm)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kN&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr style='background: #F7FAFC;'&gt;&lt;td style='padding: 4px 6px;'&gt;Hery mahatapaka (Fm)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kN&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Tension Initiale Prévue (P0)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kN&lt;/td&gt;&lt;/tr&gt;</source>
+        <translation>&lt;tr&gt;&lt;td style='padding: 4px 6px;'&gt;Fanenjanana voalohany kasaina (P0)&lt;/td&gt;&lt;td style='text-align: right;'&gt;%1&lt;/td&gt;&lt;td style='padding: 4px 6px;'&gt;kN&lt;/td&gt;&lt;/tr&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Identifiant :&lt;/b&gt; %1 | &lt;b&gt;Auteur :&lt;/b&gt; %2&lt;/p&gt;</source>
+        <translation>&lt;p style='margin: 4px 0;'&gt;&lt;b&gt;Famantarana:&lt;/b&gt; %1 | &lt;b&gt;Mpanoratra:&lt;/b&gt; %2&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;&lt;b&gt;Catégories Fournies :&lt;/b&gt;&lt;/p&gt;</source>
+        <translation>&lt;p&gt;&lt;b&gt;Sokajy omena:&lt;/b&gt;&lt;/p&gt;</translation>
     </message>
     <message>
         <source>Définitions Indexées : %1 | Solides 3D en Cache : %2 | Hit Ratio : %3%</source>
@@ -16428,6 +18765,42 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
         <source>Fermer</source>
         <translation>Hidio</translation>
     </message>
+    <message>
+        <source>&lt;h2&gt;🚀 Démarrage &amp; Workflow de Modélisation&lt;/h2&gt;&lt;p&gt;Bienvenue dans &lt;b&gt;TSA (Tsaraloha Structural Analysis)&lt;/b&gt;, le logiciel moderne de modélisation 3D et d'analyse structurelle par éléments finis basé sur OpenCASCADE et Qt 6.&lt;/p&gt;&lt;div class='card'&gt;&lt;b&gt;Flux de travail standard pour un projet :&lt;/b&gt;&lt;ol&gt;&lt;li&gt;&lt;b&gt;Grilles &amp; Niveaux d'Étages :&lt;/b&gt; Définissez le repère altimétrique (étages RDC, R+1, etc.) et les axes orthonormés de votre bâtiment.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Modélisation Géométrique :&lt;/b&gt; Créez les nœuds structuraux, puis reliez-les par des poutres, poteaux et dalles. Vous pouvez également utiliser le générateur de &lt;i&gt;Cube Structurel 3D&lt;/i&gt;.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Profilés &amp; Matériaux :&lt;/b&gt; Définissez et assignez des sections transversales (IPE, HEA, béton armé) et les matériaux (Béton C25/30, Acier S355).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Appuis &amp; Liaisons :&lt;/b&gt; Fixez les conditions aux limites (encastrements, articulations, appuis simples).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Cas de Charges :&lt;/b&gt; Appliquez des charges nodales, linéiques réparties, surfaciques ou moments.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Analyse Éléments Finis :&lt;/b&gt; Lancez le solveur statique pour inspecter les déformées, contraintes et diagrammes d'efforts (M, N, V).&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</source>
+        <translation>&lt;h2&gt;🚀 Fanombohana &amp; dingana fiasana amin'ny famolavolana modely&lt;/h2&gt;&lt;p&gt;Tongasoa eto amin'ny &lt;b&gt;TSA (Tsaraloha Structural Analysis)&lt;/b&gt;, rindrambaiko maoderina famolavolana modely 3D sy kajy rafitra amin'ny singa voafetra, miorina amin'ny OpenCASCADE sy Qt 6.&lt;/p&gt;&lt;div class='card'&gt;&lt;b&gt;Dingana fiasana mahazatra ho an'ny tetikasa iray:&lt;/b&gt;&lt;ol&gt;&lt;li&gt;&lt;b&gt;Makarakara &amp; rihana:&lt;/b&gt; Faritano ny fanondroana ny haavo (rihana RDC, R+1, sns.) sy ny tsipika fototra mifanaraka zoro amin'ny tranonao.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Famolavolana ara-joometria:&lt;/b&gt; Mamorona ny fihaonana ara-drafitra, avy eo ampifandraiso amin'ny andry mitsivalana, andry ary takelaka izy ireo. Azonao ampiasaina koa ny mpamorona &lt;i&gt;Kiobina ara-drafitra 3D&lt;/i&gt;.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Profily &amp; akora:&lt;/b&gt; Faritano ary omeo ny fizarana (IPE, HEA, betôna misy vy) sy ny akora (Betôna C25/30, Vy S355).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Fanohanana &amp; fifamatorana:&lt;/b&gt; Faritano ny fepetra amin'ny sisiny (fanohanana raikitra, fanohanana mihodina, fanohanana tsotra).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Tranga enta:&lt;/b&gt; Ampiharo ny enta amin'ny fihaonana, ny enta miparitaka amin'ny tsipika, ny enta mivelatra na ny momenta.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Kajy singa voafetra:&lt;/b&gt; Atombohy ny motera kajy statika hijerena ny endrika miova, ny tsindry anatiny ary ny kisarin'ny hery (M, N, V).&lt;/li&gt;&lt;/ol&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;✏️ Outils de Modélisation 3D&lt;/h2&gt;&lt;p&gt;TSA intègre des outils de dessin interactif 3D accélérés par OpenCASCADE :&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Outil&lt;/th&gt;&lt;th&gt;Raccourci&lt;/th&gt;&lt;th&gt;Description&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Sélection&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Échap&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Permet d'inspecter les entités ou d'effectuer des sélections de zone :&lt;br&gt;• &lt;i&gt;Gauche vers Droite (Bleu)&lt;/i&gt; : Sélection par inclusion totale (fenêtre englobante).&lt;br&gt;• &lt;i&gt;Droite vers Gauche (Vert)&lt;/i&gt; : Sélection par capture/sécante (touché = sélectionné).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Éléments Filaires&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Alt+B&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;b&gt;Interface unifiée&lt;/b&gt; pour toutes les barres 1D (Poutres, Poteaux, Barres de treillis, Tirants). Choix de profilés normalisés (IPE, HEA, etc.) ou paramétriques et tracé solide en direct.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Éléments Surfaciques&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Alt+S&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;b&gt;Interface unifiée&lt;/b&gt; pour toutes les surfaces 2D (Dalles, Planchers, Voiles et Murs porteurs). Réglage d'épaisseur, matériau et tracé polygonal ou à 2 points.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Nœud&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;N&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Place un nœud structurel 3D par clic direct ou magnétisme de grille.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Cube Structurel&lt;/b&gt;&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;Génère automatiquement une travée 3D complète (8 nœuds, 4 poteaux, 8 poutres, 1 dalle).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Déplacer&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;M&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Applique un vecteur de translation (dX, dY, dZ) aux éléments sélectionnés.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Copier / Répéter&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Ctrl+D&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Duplique la sélection avec répétition multiple (ex: colonnes d'un portique).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Supprimer&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Suppr&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Supprime immédiatement les entités sélectionnées du modèle.&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
+        <translation>&lt;h2&gt;✏️ Fitaovana famoronana modely 3D&lt;/h2&gt;&lt;p&gt;Ahitana fitaovana fanaovana sary 3D mifandray mivantana, nohafainganin'ny OpenCASCADE, ny TSA:&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Fitaovana&lt;/th&gt;&lt;th&gt;Lalana fohy&lt;/th&gt;&lt;th&gt;Famaritana&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Fifantenana&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Échap&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Ahafahana mandinika ireo singa na manao fifantenana faritra:&lt;br&gt;• &lt;i&gt;Havia mankany havanana (manga)&lt;/i&gt;: fifantenana ireo singa tafiditra tanteraka (faritra manodidina).&lt;br&gt;• &lt;i&gt;Havanana mankany havia (maitso)&lt;/i&gt;: fifantenana amin'ny fikasihana (voakasika = voafidy).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Singa tsipika&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Alt+B&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;b&gt;Fifandraisana tokana&lt;/b&gt; ho an'ny tsorakazo 1D rehetra (andry mitsivalana, andry, tsorakazon'ny rafitra makarakara, tsorakazo misintona). Safidy fizarana manara-penitra (IPE, HEA, sns.) na voafaritry ny fikirana, ary sary matevina hita mivantana.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Singa velarana&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Alt+S&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;b&gt;Fifandraisana tokana&lt;/b&gt; ho an'ny velarana 2D rehetra (takelaka, gorodona, rindrina ary rindrina mitondra enta). Fikirana ny hateviny sy ny akora, sary maro zoro na amin'ny teboka 2.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Fihaonana&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;N&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Mametraka fihaonana ara-drafitra 3D amin'ny tsindry mivantana na amin'ny fipetahana amin'ny makarakara.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Kiobina ara-drafitra&lt;/b&gt;&lt;/td&gt;&lt;td&gt;-&lt;/td&gt;&lt;td&gt;Mamorona ho azy elanelana 3D feno (fihaonana 8, andry 4, andry mitsivalana 8, takelaka 1).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Afindrao&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;M&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Mampihatra vektoran'ny famindrana (dX, dY, dZ) amin'ireo singa voafidy.&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Adikao / Avereno&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Ctrl+D&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Mandika ny fifantenana in-betsaka (ohatra: andrin'ny rafitra portika).&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Fafao&lt;/b&gt;&lt;/td&gt;&lt;td&gt;&lt;span class='badge'&gt;Suppr&lt;/span&gt;&lt;/td&gt;&lt;td&gt;Mamafa avy hatrany ao amin'ny modely ireo singa voafidy.&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;📐 Système de Grilles 3D &amp; Altimétrie&lt;/h2&gt;&lt;p&gt;Le système de repérage de TSA est unifié pour garantir une cohérence absolue entre vue 2D et espace 3D :&lt;/p&gt;&lt;div class='card'&gt;&lt;h3&gt;Types de Grilles&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Cartésienne :&lt;/b&gt; Définition d'axes X et Y avec espacements personnalisés (ex: 5.0, 6.0, 4.5 m) et bulles d'identification alphabétiques ou numériques.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Cylindrique :&lt;/b&gt; Rayons (R) et divisions angulaires (&amp;theta;) pour les structures circulaires ou réservoirs.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Gestion des Étages &amp; Niveaux&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;Accédez au &lt;b&gt;Gestionnaire d'Étages&lt;/b&gt; via &lt;span class='badge'&gt;Ctrl+L&lt;/span&gt;.&lt;/li&gt;&lt;li&gt;La barre supérieure au-dessus du viewport permet de basculer instantanément le plan de travail actif d'un étage à un autre (ex: Niveau 0 : 0.00m, Étage 1 : +3.20m).&lt;/li&gt;&lt;li&gt;Touche &lt;span class='badge'&gt;G&lt;/span&gt; pour afficher/masquer la grille, et touche &lt;span class='badge'&gt;S&lt;/span&gt; pour activer le magnétisme d'accrochage (Snap).&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</source>
+        <translation>&lt;h2&gt;📐 Rafitra makarakara 3D &amp; haavo&lt;/h2&gt;&lt;p&gt;Natambatra ho iray ny rafitra fanondroana ao amin'ny TSA mba hiantohana fifanarahana tanteraka eo amin'ny fijery 2D sy ny habaka 3D:&lt;/p&gt;&lt;div class='card'&gt;&lt;h3&gt;Karazana makarakara&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Kartezianina:&lt;/b&gt; famaritana tsipika fototra X sy Y misy elanelana namboarina (ohatra: 5.0, 6.0, 4.5 m) sy faribolana famantarana amin'ny litera na isa.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Varingarina:&lt;/b&gt; antsasaky ny savaivony (R) sy fizarana zoro (&amp;theta;) ho an'ny rafitra boribory na fitahirizan-drano.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Fitantanana ny rihana&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;Midira ao amin'ny &lt;b&gt;mpitantana ny rihana&lt;/b&gt; amin'ny alalan'ny &lt;span class='badge'&gt;Ctrl+L&lt;/span&gt;.&lt;/li&gt;&lt;li&gt;Ny bara eo ambonin'ny fijery dia ahafahana mamindra avy hatrany ny planina fiasana miasa avy amin'ny rihana iray mankany amin'ny iray hafa (ohatra: Rihana 0: 0.00m, Rihana 1: +3.20m).&lt;/li&gt;&lt;li&gt;Fanalahidy &lt;span class='badge'&gt;G&lt;/span&gt; hanehoana/hanafenana ny makarakara, ary fanalahidy &lt;span class='badge'&gt;S&lt;/span&gt; hampandehanana ny fipetahana (Snap).&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;🎥 Vues, Navigation Caméra &amp; Coupes 3D&lt;/h2&gt;&lt;div class='card'&gt;&lt;h3&gt;Navigation Souris dans le Viewport 3D&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Rotation Orbitale (Orbit 3D) :&lt;/b&gt; Maintenez le &lt;i&gt;Bouton Central (Molette)&lt;/i&gt; ou &lt;i&gt;Bouton Droit&lt;/i&gt; et déplacez la souris.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Déplacement Latéral (Pan) :&lt;/b&gt; Maintenez &lt;span class='badge'&gt;Maj&lt;/span&gt; + &lt;i&gt;Bouton Central&lt;/i&gt; et déplacez la souris.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Zoom Continu :&lt;/b&gt; Faites tourner la &lt;i&gt;Molette&lt;/i&gt; de la souris vers l'avant ou l'arrière.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Zoom Étendu (Fit All) :&lt;/b&gt; Appuyez sur la touche &lt;span class='badge'&gt;F&lt;/span&gt; pour cadrer l'ensemble du modèle.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Réinitialiser la Vue :&lt;/b&gt; Appuyez sur la touche &lt;span class='badge'&gt;R&lt;/span&gt; pour restaurer l'angle isométrique par défaut.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Projections CAO Robot / AutoCAD&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Plan XY :&lt;/b&gt; Vue en plan horizontale à l'altitude du niveau sélectionné.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Plan XZ :&lt;/b&gt; Vue en élévation de face (idéale pour analyser les portiques).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Plan YZ :&lt;/b&gt; Vue en élévation latérale / pignon.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Coupes 3D (Graphic3d_ClipPlane) :&lt;/b&gt; Permet de trancher interactivement le bâtiment selon l'axe X, Y ou Z avec inversion de face.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</source>
+        <translation>&lt;h2&gt;🎥 Fijery, fivezivezen'ny fakantsary &amp; fizarana 3D&lt;/h2&gt;&lt;div class='card'&gt;&lt;h3&gt;Fivezivezena amin'ny totozy ao amin'ny fijery 3D&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Fihodinana manodidina (Orbit 3D):&lt;/b&gt; tazony ny &lt;i&gt;bokotra afovoany (kodiarana)&lt;/i&gt; na ny &lt;i&gt;bokotra havanana&lt;/i&gt; ary afindrao ny totozy.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Famindrana mitsivalana (Pan):&lt;/b&gt; tazony ny &lt;span class='badge'&gt;Maj&lt;/span&gt; + &lt;i&gt;bokotra afovoany&lt;/i&gt; ary afindrao ny totozy.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Hanakaiky tsy tapaka:&lt;/b&gt; ahodino mankany aloha na aoriana ny &lt;i&gt;kodiaran'ny&lt;/i&gt; totozy.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Fijery feno (Fit All):&lt;/b&gt; tsindrio ny fanalahidy &lt;span class='badge'&gt;F&lt;/span&gt; mba hampidirana ao anatin'ny fijery ny modely manontolo.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Averina ny fijery:&lt;/b&gt; tsindrio ny fanalahidy &lt;span class='badge'&gt;R&lt;/span&gt; mba hamerenana ny zoro isometrika tsotra.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Fanehoana CAO Robot / AutoCAD&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Planina XY:&lt;/b&gt; fijery avy ambony mitsivalana eo amin'ny haavon'ny rihana voafidy.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Planina XZ:&lt;/b&gt; fijery avy eo anoloana (tsara indrindra handinihana ny rafitra portika).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Planina YZ:&lt;/b&gt; fijery avy eo amin'ny sisiny / tandavan-trano.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Fizarana 3D (Graphic3d_ClipPlane):&lt;/b&gt; ahafahana manapaka mifandray mivantana ny trano araka ny tsipika X, Y na Z, miaraka amin'ny famadihana ny lafiny.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;⌨️ Raccourcis Clavier &amp; Ligne de Commande&lt;/h2&gt;&lt;p&gt;TSA propose deux modes d'action rapide : les raccourcis directs au clavier et la console interactive façon AutoCAD.&lt;/p&gt;&lt;h3&gt;Raccourcis clavier actifs&lt;/h3&gt;&lt;p&gt;Liste générée à partir des raccourcis réellement actifs (catalogue des commandes et fichier &lt;code&gt;shortcut.txt&lt;/code&gt; de l'utilisateur). Personnalisation : &lt;b&gt;Aide &amp;gt; Personnaliser les raccourcis&lt;/b&gt; (Ctrl+F1 par défaut) ou modification directe du fichier, appliquée sans redémarrage. Suites de touches façon AutoCAD : « D, A » = D puis A.&lt;/p&gt;</source>
+        <translation>&lt;h2&gt;⌨️ Lalana fohy amin'ny fafana &amp; tsipika baiko&lt;/h2&gt;&lt;p&gt;Manolotra fomba roa hanaovana zavatra haingana ny TSA: ny lalana fohy mivantana amin'ny fafana sy ny console mifandray mivantana toy ny an'ny AutoCAD.&lt;/p&gt;&lt;h3&gt;Lalana fohy amin'ny fafana miasa&lt;/h3&gt;&lt;p&gt;Lisitra novokarina avy amin'ireo lalana fohy tena miasa (katalaogin'ny baiko sy ny rakitra &lt;code&gt;shortcut.txt&lt;/code&gt; an'ny mpampiasa). Fanamboarana: &lt;b&gt;Fanampiana &amp;gt; Amboary ny lalana fohy&lt;/b&gt; (Ctrl+F1 raha tsy ovaina) na fanovana mivantana ny rakitra, ampiharina tsy mila averina alefa. Filaharan'ny fanalahidy toy ny an'ny AutoCAD: « D, A » = D avy eo A.&lt;/p&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h3&gt;Commandes de la Ligne de Commande (Console)&lt;/h3&gt;&lt;p&gt;Tapez ces mots-clés dans la barre inférieure :&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Commande&lt;/th&gt;&lt;th&gt;Effet&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;NODE&lt;/code&gt; ou &lt;code&gt;N&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mode création de nœud&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;BEAM&lt;/code&gt; ou &lt;code&gt;B&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mode création de poutre&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;COLUMN&lt;/code&gt; ou &lt;code&gt;C&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mode création de poteau&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;SLAB&lt;/code&gt; ou &lt;code&gt;L&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mode création de dalle&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;GRID&lt;/code&gt; ou &lt;code&gt;G&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Bascule visibilité de la grille&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;FIT&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Zoom étendu automatique&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;RESET&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Réinitialisation orientation caméra&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;MOVE&lt;/code&gt; ou &lt;code&gt;M&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Ouvre le dialogue de déplacement&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;COPY&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Ouvre le dialogue de copie multiple&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;DEL&lt;/code&gt; ou &lt;code&gt;DELETE&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Supprime la sélection&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;THEME&lt;/code&gt; / &lt;code&gt;DARK&lt;/code&gt; / &lt;code&gt;LIGHT&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Bascule entre le mode sombre et le mode clair&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;HELP&lt;/code&gt; / &lt;code&gt;AIDE&lt;/code&gt; / &lt;code&gt;?&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Ouvre la fenêtre d'aide complète&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</source>
+        <translation>&lt;h3&gt;Baikon'ny tsipika baiko (Console)&lt;/h3&gt;&lt;p&gt;Soraty ao amin'ny bara ambany ireto teny fanalahidy ireto:&lt;/p&gt;&lt;table&gt;&lt;tr&gt;&lt;th&gt;Baiko&lt;/th&gt;&lt;th&gt;Vokany&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;NODE&lt;/code&gt; na &lt;code&gt;N&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Fomba famoronana fihaonana&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;BEAM&lt;/code&gt; na &lt;code&gt;B&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Fomba famoronana andry mitsivalana&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;COLUMN&lt;/code&gt; na &lt;code&gt;C&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Fomba famoronana andry&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;SLAB&lt;/code&gt; na &lt;code&gt;L&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Fomba famoronana takelaka&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;GRID&lt;/code&gt; na &lt;code&gt;G&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mampifamadika ny fahitana ny makarakara&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;FIT&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Fijery feno ho azy&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;RESET&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mamerina ny fitodihan'ny fakantsary&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;MOVE&lt;/code&gt; na &lt;code&gt;M&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Manokatra ny varavarankely famindrana&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;COPY&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Manokatra ny varavarankely fandikana maro&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;DEL&lt;/code&gt; na &lt;code&gt;DELETE&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mamafa ny fifantenana&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;THEME&lt;/code&gt; / &lt;code&gt;DARK&lt;/code&gt; / &lt;code&gt;LIGHT&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Mifamadika eo amin'ny endrika maizina sy mazava&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;code&gt;HELP&lt;/code&gt; / &lt;code&gt;AIDE&lt;/code&gt; / &lt;code&gt;?&lt;/code&gt;&lt;/td&gt;&lt;td&gt;Manokatra ny varavarankely fanampiana feno&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;⚙️ Analyse &amp; Résultats Éléments Finis&lt;/h2&gt;&lt;div class='card'&gt;&lt;h3&gt;Calcul Statique&lt;/h3&gt;&lt;p&gt;Le solveur matriciel résout le système d'équations globales :&lt;/p&gt;&lt;p align='center'&gt;&lt;code&gt;[K] · {U} = {F}&lt;/code&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;[K] :&lt;/b&gt; Matrice de rigidité globale assemblée à partir des rigidités locales 3D de poutres d'Euler-Bernoulli et Timoshenko (6 DDL par nœud).&lt;/li&gt;&lt;li&gt;&lt;b&gt;{U} :&lt;/b&gt; Vecteur des déplacements et rotations nodales.&lt;/li&gt;&lt;li&gt;&lt;b&gt;{F} :&lt;/b&gt; Vecteur des forces et moments appliqués.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Exploitation des Résultats&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Déplacements :&lt;/b&gt; Visualisation de la déformée élastique avec facteur d'amplification ajustable.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Diagrammes d'efforts internes :&lt;/b&gt; Courbes continues de Moment Fléchissant (M&lt;sub&gt;y&lt;/sub&gt;, M&lt;sub&gt;z&lt;/sub&gt;), Effort Tranchant (V&lt;sub&gt;y&lt;/sub&gt;, V&lt;sub&gt;z&lt;/sub&gt;) et Effort Normal (N).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Cartographie des contraintes :&lt;/b&gt; Calcul des contraintes normales maximales &amp;sigma; et tangentielles &amp;tau;, ainsi que la contrainte équivalente de Von Mises.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</source>
+        <translation>&lt;h2&gt;⚙️ Kajy &amp; vokatra amin'ny singa voafetra&lt;/h2&gt;&lt;div class='card'&gt;&lt;h3&gt;Kajy statika&lt;/h3&gt;&lt;p&gt;Mamaha ny rafitry ny fampitoviana ankapobeny ny motera kajy matrisy:&lt;/p&gt;&lt;p align='center'&gt;&lt;code&gt;[K] · {U} = {F}&lt;/code&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;[K]:&lt;/b&gt; matrisin'ny hahenjana ankapobeny natambatra avy amin'ny hahenjana 3D eo an-toerana an'ny andry mitsivalana Euler-Bernoulli sy Timoshenko (fahafahana mihetsika 6 isaky ny fihaonana).&lt;/li&gt;&lt;li&gt;&lt;b&gt;{U}:&lt;/b&gt; vektoran'ny fifindrana sy ny fihodinan'ny fihaonana.&lt;/li&gt;&lt;li&gt;&lt;b&gt;{F}:&lt;/b&gt; vektoran'ny hery sy ny momenta ampiharina.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;div class='card'&gt;&lt;h3&gt;Fampiasana ny vokatra&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Fifindrana:&lt;/b&gt; fanehoana ny endrika miova elastika miaraka amin'ny tahan'ny fanitarana azo ovaina.&lt;/li&gt;&lt;li&gt;&lt;b&gt;Kisarin'ny hery anatiny:&lt;/b&gt; tsipika miolakolaka tsy tapaka an'ny momenta fiforetana (M&lt;sub&gt;y&lt;/sub&gt;, M&lt;sub&gt;z&lt;/sub&gt;), hery manapaka (V&lt;sub&gt;y&lt;/sub&gt;, V&lt;sub&gt;z&lt;/sub&gt;) ary hery mahitsy (N).&lt;/li&gt;&lt;li&gt;&lt;b&gt;Sarintanin'ny tsindry anatiny:&lt;/b&gt; kajy ny tsindry anatiny mahitsy ambony indrindra &amp;sigma; sy manapaka &amp;tau;, ary koa ny tsindry anatiny mitovy lanja Von Mises.&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;h2&gt;ℹ️ À Propos de %1 (%2)&lt;/h2&gt;</source>
+        <translation>&lt;h2&gt;ℹ️ Momba ny %1 (%2)&lt;/h2&gt;</translation>
+    </message>
+    <message>
+        <source>&lt;p&gt;Développé pour les ingénieurs de génie civil, bureaux d'études et architectes recherchant la puissance de calcul allié à l'ergonomie CAO moderne.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Version :&lt;/b&gt; 1.0.0 (Release 2026)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Moteur Géométrique 3D :&lt;/b&gt; OpenCASCADE Technology 8.0.1 (OCCT)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Interface Utilisateur :&lt;/b&gt; Qt 6.11 (Architecture Ribbon AutoCAD, Mode Sombre / Clair dynamique)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Standard C++ :&lt;/b&gt; C++20 (MSVC 64-bit)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Auteur / Concepteur :&lt;/b&gt; Christinot TSARALOHA&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</source>
+        <translation>&lt;p&gt;Novolavolaina ho an'ny injenieran'ny asa vaventy, ny biraon'ny fandalinana ary ny mpanao maritrano mitady hery kajy miaraka amin'ny fanamorana fampiasana CAO maoderina.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;b&gt;Dikan-teny:&lt;/b&gt; 1.0.0 (Release 2026)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Motera joometria 3D:&lt;/b&gt; OpenCASCADE Technology 8.0.1 (OCCT)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Fifandraisana amin'ny mpampiasa:&lt;/b&gt; Qt 6.11 (Rafitra tandavana AutoCAD, endrika maizina / mazava miovaova)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Fenitra C++:&lt;/b&gt; C++20 (MSVC 64-bit)&lt;/li&gt;&lt;li&gt;&lt;b&gt;Mpanoratra / Mpamorona:&lt;/b&gt; Christinot TSARALOHA&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::IfcImportOptionsDialog</name>
@@ -16579,6 +18952,29 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
     <message>
         <source>Fermer</source>
         <translation>Hidio</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::UI::LayoutManager</name>
+    <message>
+        <source>Modélisation</source>
+        <translation>Modely</translation>
+    </message>
+    <message>
+        <source>Analyse</source>
+        <translation>Kajy</translation>
+    </message>
+    <message>
+        <source>Résultats</source>
+        <translation>Vokatra</translation>
+    </message>
+    <message>
+        <source>Détaillage</source>
+        <translation>Antsipiriany</translation>
+    </message>
+    <message>
+        <source>Personnalisée</source>
+        <translation>Namboarina</translation>
     </message>
 </context>
 <context>
@@ -16889,6 +19285,10 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
         <translation>Ampio loko</translation>
     </message>
     <message>
+        <source>Poutre Principale Bleue</source>
+        <translation>Andry mitsivalana lehibe manga</translation>
+    </message>
+    <message>
         <source>Couleur :</source>
         <translation>Loko:</translation>
     </message>
@@ -16919,6 +19319,10 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
     <message>
         <source>Importer une Texture</source>
         <translation>Ampidiro endrika</translation>
+    </message>
+    <message>
+        <source>Béton Coffrage Bois</source>
+        <translation>Betôna amin'ny vatan-kazo</translation>
     </message>
     <message>
         <source>Image :</source>
@@ -16967,6 +19371,10 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
     <message>
         <source>Enregistrer la Structure Active</source>
         <translation>Tehirizo ny rafitra miasa</translation>
+    </message>
+    <message>
+        <source>Portique 2D 6m x 3m</source>
+        <translation>Rafitra portika 2D 6m x 3m</translation>
     </message>
     <message>
         <source>Description :</source>
@@ -17160,12 +19568,20 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
         <translation>Sokajy Eurocode:</translation>
     </message>
     <message>
+        <source>Créer Cas de Charge</source>
+        <translation>Mamorona tranga enta</translation>
+    </message>
+    <message>
         <source>Confirmation</source>
         <translation>Fanamafisana</translation>
     </message>
     <message>
         <source>Voulez-vous supprimer le cas de charge #%1 et toutes ses charges associées ?</source>
         <translation>Hofafanao ve ny tranga enta #%1 sy ny enta rehetra mifandraika aminy?</translation>
+    </message>
+    <message>
+        <source>Supprimer Cas de Charge</source>
+        <translation>Fafao ny tranga enta</translation>
     </message>
     <message>
         <source>Réinitialisation</source>
@@ -17176,12 +19592,24 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
         <translation>Haverinao amin'ny sanda Eurocode voalohany ve ny tranga enta sy ny fitambarana?</translation>
     </message>
     <message>
+        <source>Réinitialiser Cas Eurocodes</source>
+        <translation>Averina ny tranga enta Eurocode</translation>
+    </message>
+    <message>
         <source>Nouvelle Combinaison</source>
         <translation>Fitambarana vaovao</translation>
     </message>
     <message>
         <source>Nom de la combinaison :</source>
         <translation>Anaran'ny fitambarana:</translation>
+    </message>
+    <message>
+        <source>Créer Combinaison</source>
+        <translation>Mamorona fitambaran'enta</translation>
+    </message>
+    <message>
+        <source>Supprimer Combinaison</source>
+        <translation>Fafao ny fitambaran'enta</translation>
     </message>
     <message>
         <source>⚠️ Modèle Validé avec %1 Avertissement(s)</source>
@@ -17379,6 +19807,10 @@ Tsy voamarika: andrasana ny fanindriana ny 'Ampiharo'.</translation>
     <message>
         <source>Modifier Charge Nodale #%1</source>
         <translation>Ovay ny entan'ny fihaonana #%1</translation>
+    </message>
+    <message>
+        <source>La barre chargée n'existe plus.</source>
+        <translation>Tsy misy intsony ny tsorakazo misy enta.</translation>
     </message>
     <message>
         <source>Charge sur barre</source>
@@ -17844,6 +20276,10 @@ Mitazona ny fikirany ireo zavatra hafa.</translation>
     <message>
         <source>Aucun maillage généré.</source>
         <translation>Tsy nisy harato noforonina.</translation>
+    </message>
+    <message>
+        <source>%1 élément(s) rattaché(s) à des objets absents du modèle</source>
+        <translation>singa %1 mifandray amin'ny zavatra tsy ao amin'ny modely</translation>
     </message>
     <message>
         <source>%1 nœud(s) rattaché(s) aux nœuds du modèle par leur position</source>
@@ -18398,6 +20834,14 @@ Mitazona ny fikirany ireo zavatra hafa.</translation>
         <translation>&lt;b&gt;Tsy misy harato azo ampiasaina&lt;/b&gt;: %1</translation>
     </message>
     <message>
+        <source>nœud</source>
+        <translation>fihaonana</translation>
+    </message>
+    <message>
+        <source>charges</source>
+        <translation>enta</translation>
+    </message>
+    <message>
         <source>N%1</source>
         <translation>N%1</translation>
     </message>
@@ -18412,6 +20856,18 @@ Mitazona ny fikirany ireo zavatra hafa.</translation>
     <message>
         <source>× %1</source>
         <translation>× %1</translation>
+    </message>
+    <message>
+        <source>uniforme</source>
+        <translation>mitovy</translation>
+    </message>
+    <message>
+        <source>progressive</source>
+        <translation>miandalana</translation>
+    </message>
+    <message>
+        <source>symétrique</source>
+        <translation>mifanandrify</translation>
     </message>
     <message>
         <source>long. max %1 m</source>
@@ -18733,6 +21189,14 @@ Karazana: %1</translation>
     <message>
         <source>Type « %1 » repris de l'élément et propagé : %2 autre(s) élément(s) modifié(s)</source>
         <translation>Nalaina tamin'ny singa ary nampitaina ny karazana « %1 »: singa hafa %2 novaina</translation>
+    </message>
+    <message>
+        <source>Charge Nodale #%1 (Nœud %2)</source>
+        <translation>Enta amin'ny fihaonana #%1 (fihaonana %2)</translation>
+    </message>
+    <message>
+        <source>Charge Barre #%1 (Élém %2)</source>
+        <translation>Enta amin'ny tsorakazo #%1 (singa %2)</translation>
     </message>
     <message>
         <source>Appui</source>
@@ -19353,7 +21817,7 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
     </message>
     <message>
         <source>Appui élastique (Ressorts)</source>
-        <translation>Fanohanana mitanjaka (resôra)</translation>
+        <translation>Fanohanana elastika (resôra)</translation>
     </message>
     <message>
         <source>Personnalisé...</source>
@@ -19381,7 +21845,7 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
     </message>
     <message>
         <source>Élastique</source>
-        <translation>Mitanjaka</translation>
+        <translation>Elastika</translation>
     </message>
     <message>
         <source>UX (Tx)</source>
@@ -21306,6 +23770,26 @@ Tsindrio indroa raha hanokatra</translation>
         <source>Épaisseur t :</source>
         <translation>Hateviny t:</translation>
     </message>
+    <message>
+        <source>Aire &lt;b&gt;A&lt;/b&gt; = %1 cm² (%2 m²)</source>
+        <translation>Velarana &lt;b&gt;A&lt;/b&gt; = %1 cm² (%2 m²)</translation>
+    </message>
+    <message>
+        <source>Inertie &lt;b&gt;Iy&lt;/b&gt; = %1 cm⁴ (axe fort)</source>
+        <translation>Momenta kadratika &lt;b&gt;Iy&lt;/b&gt; = %1 cm⁴ (famaky matanjaka)</translation>
+    </message>
+    <message>
+        <source>Inertie &lt;b&gt;Iz&lt;/b&gt; = %1 cm⁴ (axe faible)</source>
+        <translation>Momenta kadratika &lt;b&gt;Iz&lt;/b&gt; = %1 cm⁴ (famaky malemy)</translation>
+    </message>
+    <message>
+        <source>Torsion &lt;b&gt;J&lt;/b&gt; = %1 cm⁴</source>
+        <translation>Fiolonana &lt;b&gt;J&lt;/b&gt; = %1 cm⁴</translation>
+    </message>
+    <message>
+        <source>Module &lt;b&gt;Wel,y&lt;/b&gt; = %1 cm³ | &lt;b&gt;Wel,z&lt;/b&gt; = %2 cm³</source>
+        <translation>Tahan'ny fizarana &lt;b&gt;Wel,y&lt;/b&gt; = %1 cm³ | &lt;b&gt;Wel,z&lt;/b&gt; = %2 cm³</translation>
+    </message>
 </context>
 <context>
     <name>TSA::UI::SectionCutDialog</name>
@@ -21590,10 +24074,117 @@ Raha tsy izany, tsindrio ny 'Ampiharo'.</translation>
     </message>
 </context>
 <context>
+    <name>TSA::UI::Shortcuts::ShortcutConfig</name>
+    <message>
+        <source>« %1 » (%2) est le début de « %3 » (%4) : Qt attendrait la touche suivante, « %1 » ne se déclencherait jamais</source>
+        <translation>« %1 » (%2) no fiandohan'ny « %3 » (%4): hiandry ny fanalahidy manaraka ny Qt, ka tsy handeha mihitsy ny « %1 »</translation>
+    </message>
+    <message>
+        <source>« %1 » est attribué à %2 et à %3 : aucune des deux commandes ne se déclencherait</source>
+        <translation>Omena ny %2 sy ny %3 ny « %1 »: tsy hisy handeha ireo baiko roa ireo</translation>
+    </message>
+    <message>
+        <source>« | » sert de séparateur de colonnes et ne peut pas être un raccourci</source>
+        <translation>Fanasarahana tsanganana ny « | » ka tsy azo atao lalana fohy</translation>
+    </message>
+    <message>
+        <source>combinaison invalide « %1 »</source>
+        <translation>fitambarana tsy mety « %1 »</translation>
+    </message>
+    <message>
+        <source>ligne %1</source>
+        <translation>andalana %1</translation>
+    </message>
+    <message>
+        <source>%1 : format %2 plus récent que celui de cette version (%3)</source>
+        <translation>%1: endrika %2 vaovao kokoa noho ny an'ity dikan-teny ity (%3)</translation>
+    </message>
+    <message>
+        <source>%1 : titre de section non fermé « %2 »</source>
+        <translation>%1: lohatenin'ny fizarana tsy voahidy « %2 »</translation>
+    </message>
+    <message>
+        <source>%1 : « identifiant | raccourci » attendu, lu « %2 »</source>
+        <translation>%1: « famantarana | lalana fohy » no andrasana, « %2 » no voavaky</translation>
+    </message>
+    <message>
+        <source>%1 : identifiant de commande invalide « %2 »</source>
+        <translation>%1: famantarana baiko tsy mety « %2 »</translation>
+    </message>
+    <message>
+        <source>%1 (%2) : état « %3 » invalide (on ou off)</source>
+        <translation>%1 (%2): toetra tsy mety « %3 » (on na off)</translation>
+    </message>
+    <message>
+        <source>%1 : commande inconnue « %2 » ignorée (renommée, supprimée ou d'une autre version)</source>
+        <translation>%1: tsy noraharahiana ny baiko tsy fantatra « %2 » (novana anarana, nofafana na avy amin'ny dikan-teny hafa)</translation>
+    </message>
+    <message>
+        <source>%1 : commande « %2 » déjà définie plus haut</source>
+        <translation>%1: efa voafaritra teo aloha ny baiko « %2 »</translation>
+    </message>
+</context>
+<context>
     <name>TSA::UI::Shortcuts::ShortcutManager</name>
     <message>
         <source>Autres</source>
         <translation>Hafa</translation>
+    </message>
+    <message>
+        <source>Commande « %1 » absente du catalogue : aucun raccourci par défaut</source>
+        <translation>Tsy ao amin'ny katalaogy ny baiko « %1 »: tsy misy lalana fohy tsotra</translation>
+    </message>
+    <message>
+        <source>lecture impossible de %1 : %2</source>
+        <translation>tsy azo vakiana ny %1: %2</translation>
+    </message>
+    <message>
+        <source>écriture impossible de %1 : %2</source>
+        <translation>tsy azo soratana ny %1: %2</translation>
+    </message>
+    <message>
+        <source>Raccourcis par défaut utilisés (aucun fichier personnalisable).</source>
+        <translation>Lalana fohy tsotra no ampiasaina (tsy misy rakitra azo amboarina).</translation>
+    </message>
+    <message>
+        <source>Fichier des raccourcis créé : %1 — %2</source>
+        <translation>Voaforona ny rakitry ny lalana fohy: %1 — %2</translation>
+    </message>
+    <message>
+        <source>Dernière configuration valide conservée.</source>
+        <translation>Voatahiry ny fandrindrana mety farany.</translation>
+    </message>
+    <message>
+        <source>Configuration refusée : la dernière configuration valide reste active.</source>
+        <translation>Nolavina ny fandrindrana: mbola miasa ny fandrindrana mety farany.</translation>
+    </message>
+    <message>
+        <source>Migration du format reportée : %1</source>
+        <translation>Nahemotra ny fifindran'ny endrika: %1</translation>
+    </message>
+    <message>
+        <source>Format %1 → %2 : ancienne version sauvegardée dans %3</source>
+        <translation>Endrika %1 → %2: voatahiry ao amin'ny %3 ny dikan-teny taloha</translation>
+    </message>
+    <message>
+        <source>%1 conflit(s) de raccourcis :</source>
+        <translation>Fifanoherana lalana fohy %1:</translation>
+    </message>
+    <message>
+        <source>%1 commande(s) avec raccourci, %2 désactivé(s), %3 personnalisé(s)</source>
+        <translation>baiko %1 misy lalana fohy, %2 tsy miasa, %3 namboarina</translation>
+    </message>
+    <message>
+        <source>Raccourci</source>
+        <translation>Lalana fohy</translation>
+    </message>
+    <message>
+        <source>Commande</source>
+        <translation>Baiko</translation>
+    </message>
+    <message>
+        <source>Description</source>
+        <translation>Famaritana</translation>
     </message>
     <message>
         <source>Répéter la dernière commande</source>
@@ -22628,6 +25219,10 @@ Mamorona tetikasa vaovao na sokafy rakitra %1: eto no hiseho ny topimasony.</tra
 <context>
     <name>TSA::UI::TopologyDialog</name>
     <message>
+        <source>%1 puis %2 puis %3</source>
+        <translation>%1 avy eo %2 avy eo %3</translation>
+    </message>
+    <message>
         <source>Paramètres du projet — Topologie et numérotation</source>
         <translation>Fikirana ny tetikasa — Topolojia sy fanomezana laharana</translation>
     </message>
@@ -22918,6 +25513,18 @@ Mamorona tetikasa vaovao na sokafy rakitra %1: eto no hiseho ny topimasony.</tra
     <message>
         <source>Exporter la correspondance (CSV)...</source>
         <translation>Avoahy ny fifandraisana (CSV)...</translation>
+    </message>
+    <message>
+        <source>vide ou un seul point</source>
+        <translation>foana na teboka tokana</translation>
+    </message>
+    <message>
+        <source>1D (nœuds alignés)</source>
+        <translation>1D (fihaonana mitsipika)</translation>
+    </message>
+    <message>
+        <source>2D (nœuds dans un plan)</source>
+        <translation>2D (fihaonana ao anaty planina iray)</translation>
     </message>
     <message>
         <source> — %1 nœud(s)</source>
@@ -23573,6 +26180,283 @@ Mamorona tetikasa vaovao na sokafy rakitra %1: eto no hiseho ny topimasony.</tra
     <message>
         <source>⟲ Réinitialiser Origine à (0,0,0)</source>
         <translation>⟲ Averina ho (0,0,0) ny fiaviana</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::DimensionRenderer</name>
+    <message>
+        <source>%1 (réf. supprimée)</source>
+        <translation>%1 (voafafa ny fanondroana)</translation>
+    </message>
+    <message>
+        <source>Cotation invalide : %1</source>
+        <translation>Refy tsy mety: %1</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::DisplayProfile</name>
+    <message>
+        <source>Modélisation</source>
+        <translation>Modely</translation>
+    </message>
+    <message>
+        <source>Charges</source>
+        <translation>Enta</translation>
+    </message>
+    <message>
+        <source>Maillage</source>
+        <translation>Harato</translation>
+    </message>
+    <message>
+        <source>Résultats</source>
+        <translation>Vokatra</translation>
+    </message>
+    <message>
+        <source>Déformées</source>
+        <translation>Endrika miova</translation>
+    </message>
+    <message>
+        <source>Analyse modale</source>
+        <translation>Kajy fihetsika voajanahary</translation>
+    </message>
+    <message>
+        <source>Présentation</source>
+        <translation>Fanolorana</translation>
+    </message>
+    <message>
+        <source>nom de profil vide ou trop long (80 caractères au plus)</source>
+        <translation>anaran'ny profily foana na lava loatra (litera 80 farafahabetsany)</translation>
+    </message>
+    <message>
+        <source>profil « %1 » introuvable</source>
+        <translation>tsy hita ny profily « %1 »</translation>
+    </message>
+    <message>
+        <source>nom de profil vide ou trop long</source>
+        <translation>anaran'ny profily foana na lava loatra</translation>
+    </message>
+    <message>
+        <source>un profil « %1 » existe déjà</source>
+        <translation>efa misy profily « %1 »</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::MeshVisual</name>
+    <message>
+        <source>Maillage : nœud %1 (%2 ; %3 ; %4) m</source>
+        <translation>Harato: fihaonana %1 (%2 ; %3 ; %4) m</translation>
+    </message>
+    <message>
+        <source>Maillage : élément %1 (%2, %3)</source>
+        <translation>Harato: singa %1 (%2, %3)</translation>
+    </message>
+    <message>
+        <source>Élément %1 : inexistant</source>
+        <translation>Singa %1: tsy misy</translation>
+    </message>
+    <message>
+        <source>Élément %1 — %2 (%3D, second ordre)</source>
+        <translation>Singa %1 — %2 (%3D, ambaratonga faharoa)</translation>
+    </message>
+    <message>
+        <source>Élément %1 — %2 (%3D)</source>
+        <translation>Singa %1 — %2 (%3D)</translation>
+    </message>
+    <message>
+        <source>Nœuds : %1</source>
+        <translation>Fihaonana: %1</translation>
+    </message>
+    <message>
+        <source>Gmsh : élément %1, entité %2:%3</source>
+        <translation>Gmsh: singa %1, entite %2:%3</translation>
+    </message>
+    <message>
+        <source>Gmsh : étiquette inconnue (maillage antérieur à la conservation des étiquettes)</source>
+        <translation>Gmsh: marika tsy fantatra (harato natao talohan'ny fitehirizana ny marika)</translation>
+    </message>
+    <message>
+        <source>Source : %1 (élément de frontière)</source>
+        <translation>Loharano: %1 (singa amin'ny sisiny)</translation>
+    </message>
+    <message>
+        <source>Source : %1</source>
+        <translation>Loharano: %1</translation>
+    </message>
+    <message>
+        <source>Groupes : %1</source>
+        <translation>Vondrona: %1</translation>
+    </message>
+    <message>
+        <source>aucun</source>
+        <translation>tsy misy</translation>
+    </message>
+    <message>
+        <source>Qualité (minSICN) : %1</source>
+        <translation>Kalitao (minSICN): %1</translation>
+    </message>
+    <message>
+        <source>non calculé</source>
+        <translation>tsy voakajy</translation>
+    </message>
+    <message>
+        <source>Nœud %1 : inexistant</source>
+        <translation>Fihaonana %1: tsy misy</translation>
+    </message>
+    <message>
+        <source>Nœud %1 — (%2 ; %3 ; %4) m</source>
+        <translation>Fihaonana %1 — (%2 ; %3 ; %4) m</translation>
+    </message>
+    <message>
+        <source>Nœud TSA confondu : %1</source>
+        <translation>Fihaonana TSA mifanindry: %1</translation>
+    </message>
+    <message>
+        <source>Nœud du maillage (aucun nœud TSA)</source>
+        <translation>Fihaonan'ny harato (tsy misy fihaonana TSA)</translation>
+    </message>
+    <message>
+        <source>Gmsh : nœud %1</source>
+        <translation>Gmsh: fihaonana %1</translation>
+    </message>
+    <message>
+        <source>Gmsh : étiquette inconnue</source>
+        <translation>Gmsh: marika tsy fantatra</translation>
+    </message>
+    <message>
+        <source>(%1 ; %2 ; %3) %4, norme %5 %4</source>
+        <translation>(%1 ; %2 ; %3) %4, halehibe %5 %4</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::ModelDisplayMode</name>
+    <message>
+        <source>Modèle physique</source>
+        <translation>Modely ara-batana</translation>
+    </message>
+    <message>
+        <source>Modèle filaire analytique</source>
+        <translation>Modely tsipika ara-kajy</translation>
+    </message>
+    <message>
+        <source>Modèle éléments finis</source>
+        <translation>Modely singa voafetra</translation>
+    </message>
+    <message>
+        <source>Superposition physique / analytique</source>
+        <translation>Fifanindrian'ny ara-batana / ara-kajy</translation>
+    </message>
+    <message>
+        <source>Maillage du solveur indisponible : aucun calcul. Lancez un calcul : le maillage réellement transmis au moteur sera affiché (axes analytiques affichés en attendant).</source>
+        <translation>Tsy misy ny haraton'ny motera kajy: tsy mbola nisy kajy. Alefaso ny kajy: haseho ny harato tena nalefa tany amin'ny motera (aseho ny tsipika fototra ara-kajy mandritra izany).</translation>
+    </message>
+    <message>
+        <source>Maillage du solveur non affiché : le modèle a changé depuis le dernier calcul (résultats obsolètes). Relancez le calcul.</source>
+        <translation>Tsy aseho ny haraton'ny motera kajy: niova ny modely hatramin'ny kajy farany (vokatra lany andro). Avereno alefa ny kajy.</translation>
+    </message>
+    <message>
+        <source>Le moteur du dernier calcul ne fournit pas son maillage : rien n'est affiché à sa place (axes analytiques seulement).</source>
+        <translation>Tsy manome ny haratony ny motera nanao ny kajy farany: tsy misy aseho ho solony (tsipika fototra ara-kajy ihany).</translation>
+    </message>
+    <message>
+        <source>Maillage du solveur — %1.</source>
+        <translation>Haraton'ny motera kajy — %1.</translation>
+    </message>
+    <message>
+        <source>Dalles et voiles : non maillés par ce moteur, absents du calcul (affichés en arêtes).</source>
+        <translation>Takelaka sy rindrina: tsy voaharato amin'ity motera ity, tsy tafiditra ao amin'ny kajy (aseho amin'ny sisiny).</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::Viewer::ResultsVisualManager</name>
+    <message>
+        <source>CALCUL : %1 — %2 — %3
+</source>
+        <translation>KAJY: %1 — %2 — %3
+</translation>
+    </message>
+    <message>
+        <source>MODE %1 / %2 : f = %3 Hz (forme propre normalisée)
+</source>
+        <translation>FIHETSIKA %1 / %2: f = %3 Hz (endriky ny fihetsika voajanahary voalamina)
+</translation>
+    </message>
+    <message>
+        <source>PAS %1 / %2
+</source>
+        <translation>DINGANA %1 / %2
+</translation>
+    </message>
+    <message>
+        <source>DÉFORMÉE : δ_max = %1 mm (Nœud #%2) | Échelle ×%3 %4
+</source>
+        <translation>ENDRIKA MIOVA: δ_max = %1 mm (Fihaonana #%2) | Habe ×%3 %4
+</translation>
+    </message>
+    <message>
+        <source>(échelle réelle)</source>
+        <translation>(habe tena izy)</translation>
+    </message>
+    <message>
+        <source>(amplifiée pour l'affichage, résultats inchangés)</source>
+        <translation>(nohalehibeazina ho an'ny fampisehoana, tsy miova ny vokatra)</translation>
+    </message>
+    <message>
+        <source>ANIMATION : %1 % du facteur ×%2 — interpolation visuelle de la déformée statique (pas une analyse dynamique)
+</source>
+        <translation>FAMPIHETSEHANA: %1 % amin'ny taha ×%2 — fanelanelanana hita maso amin'ny endrika miova statika (tsy kajy dinamika)
+</translation>
+    </message>
+    <message>
+        <source>Courbe des barres : %1 depuis les stations du solveur, %2 par interpolation cubique nodale
+</source>
+        <translation>Fiolahan'ny tsorakazo: %1 avy amin'ny toeran-kajin'ny motera kajy, %2 amin'ny fanelanelanana kiobika eo amin'ny fihaonana
+</translation>
+    </message>
+    <message>
+        <source>⚠ %1 barre(s) sans déformée (%2)
+</source>
+        <translation>⚠ tsorakazo %1 tsy misy endrika miova (%2)
+</translation>
+    </message>
+    <message>
+        <source>TORSION : θx max = %1 mrad (%2) | %3
+</source>
+        <translation>FIOLONANA: θx max = %1 mrad (%2) | %3
+</translation>
+    </message>
+    <message>
+        <source>sections tournées ×%1</source>
+        <translation>fizarana nahodina ×%1</translation>
+    </message>
+    <message>
+        <source>rotation des sections masquée</source>
+        <translation>afenina ny fihodinan'ny fizarana</translation>
+    </message>
+    <message>
+        <source>DIAGRAMME : %1 — grandeur nulle sur toute la structure (aucun diagramme)
+</source>
+        <translation>KISARY: %1 — aotra eran'ny rafitra ny sanda (tsy misy kisary)
+</translation>
+    </message>
+    <message>
+        <source>DIAGRAMME : %1 (%2) | max |%3| %2 | 1 m de diagramme = %4 %2%5
+</source>
+        <translation>KISARY: %1 (%2) | max |%3| %2 | 1 m amin'ny kisary = %4 %2%5
+</translation>
+    </message>
+    <message>
+        <source> (échelle automatique)</source>
+        <translation> (habe ho azy)</translation>
+    </message>
+    <message>
+        <source> (automatique ×%1)</source>
+        <translation> (ho azy ×%1)</translation>
+    </message>
+    <message>
+        <source>%1 étiquette(s) superposée(s) non affichée(s) (valeur égale ou inférieure à une étiquette voisine)
+</source>
+        <translation>marika mifanindry %1 tsy naseho (sanda mitovy na ambany noho ny marika mifanakaiky)
+</translation>
     </message>
 </context>
 </TS>

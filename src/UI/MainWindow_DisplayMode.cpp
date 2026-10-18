@@ -10,6 +10,7 @@
 
 #include <QAction>
 #include <QActionGroup>
+#include <QCoreApplication>
 #include <QLabel>
 #include <QSettings>
 
@@ -64,7 +65,7 @@ void MainWindow::reportModelDisplayMode()
 {
     if (!m_occView) return;
     const ModelDisplayMode mode = m_occView->modelDisplayMode();
-    QString text = tr("Représentation : %1").arg(QString::fromUtf8(TSA::Viewer::modelDisplayModeName(mode)));
+    QString text = tr("Représentation : %1").arg(QCoreApplication::translate("TSA::Viewer::ModelDisplayMode", TSA::Viewer::modelDisplayModeName(mode)));
     if (mode == ModelDisplayMode::FiniteElement)
     {
         const auto status = m_occView->solverMeshStatus();

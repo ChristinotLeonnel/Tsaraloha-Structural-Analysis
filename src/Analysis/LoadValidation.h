@@ -70,6 +70,9 @@ class LoadValidation
 public:
     static ValidationReport validateModel(const TSA::Model::Model& model);
     static ValidationReport validate(const TSA::Model::Model& model) { return validateModel(model); }
+    /// Catégorie (dans la langue de l'interface) du seul message « aucun appui » : permet de le reconnaître sans
+    /// dépendre de son texte (StructuralChecker évite ainsi un doublon de son propre constat).
+    static std::string noSupportCategory();
 };
 
 } // namespace TSA::Analysis

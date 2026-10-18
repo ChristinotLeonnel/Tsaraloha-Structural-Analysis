@@ -311,7 +311,10 @@ bool LayoutManager::hasProfile(const QString& name) const
 
 QStringList LayoutManager::availableProfiles() const
 {
-    return {"Modélisation", "Analyse", "Résultats", "Détaillage", "Personnalisée"};
+    // Noms = clés (réglages, comparaisons) : marqués ici, traduits seulement à l'affichage (WindowManager)
+    return { QT_TRANSLATE_NOOP("TSA::UI::LayoutManager", "Modélisation"), QT_TRANSLATE_NOOP("TSA::UI::LayoutManager", "Analyse"),
+             QT_TRANSLATE_NOOP("TSA::UI::LayoutManager", "Résultats"), QT_TRANSLATE_NOOP("TSA::UI::LayoutManager", "Détaillage"),
+             QT_TRANSLATE_NOOP("TSA::UI::LayoutManager", "Personnalisée") };
 }
 
 QString LayoutManager::currentProfile() const

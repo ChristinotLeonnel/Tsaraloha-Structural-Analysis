@@ -13,6 +13,7 @@
 
 #include "IfcOpenShellImport.h"
 
+#include <QCoreApplication>
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QTemporaryFile>
@@ -32,10 +33,15 @@ using TSA::Model::ElementKind;
 
 std::string IfcExportReport::summary() const
 {
-    if (!ok) return "Export IFC échoué : " + error;
-    return std::to_string(products) + " produit(s), " + std::to_string(storeys) + " étage(s), "
-        + std::to_string(analyticalMembers) + " élément(s) analytique(s), " + std::to_string(analyticalNodes)
-        + " nœud(s) analytique(s), " + std::to_string(entities) + " entités STEP" + (verification.empty() ? "" : " ; " + verification);
+    if (!ok) return QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "Export IFC échoué : %1").arg(QString::fromStdString(error)).toStdString();
+    QString s = QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "%1 produit(s), %2 étage(s), %3 élément(s) analytique(s), %4 nœud(s) analytique(s), %5 entités STEP")
+                    .arg(products)
+                    .arg(storeys)
+                    .arg(analyticalMembers)
+                    .arg(analyticalNodes)
+                    .arg(entities);
+    if (!verification.empty()) s += QStringLiteral(" ; ") + QString::fromStdString(verification);
+    return s.toStdString();
 }
 
 namespace
@@ -272,7 +278,7 @@ private:
             // les parties portent la géométrie, objet non représenté dans le fichier) : sans représentation. Jamais omis.
             const int shape = !physicalOnly ? m_geom.productShape(e) : e.geometry ? meshShape(*e.geometry) : 0;
             if (!shape && (!physicalOnly || e.geometry))
-                m_ctx.warnings.push_back(label + " : géométrie non exportée (dimensions nulles ou nœuds manquants).");
+                m_ctx.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "%1 : géométrie non exportée (dimensions nulles ou nœuds manquants).").arg(QString::fromStdString(label)).toStdString());
 
             // Nom : à défaut, nom par défaut des produits créés dans TSA (« Poutre B3 ») ; un produit importé sans nom le reste.
             const std::string name = !e.name.empty() ? W::str(e.name) : e.imported() ? std::string("$") : W::str(defaultProductName(e));
@@ -301,7 +307,9 @@ private:
                 }
                 origin->properties["OriginalIfcClass"] = PropertyValue::ofText(e.ifcClass, PropertyValue::Type::Label);
                 if (ec.substituted)
-                    m_ctx.warnings.push_back(label + " : exporté en IfcBuildingElementProxy (classe d'origine conservée en propriété TSA_Import).");
+                    m_ctx.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "%1 : exporté en IfcBuildingElementProxy (classe d'origine conservée en propriété TSA_Import).")
+                                                 .arg(QString::fromStdString(label))
+                                                 .toStdString());
             }
             if (!physicalOnly)
             {
@@ -651,7 +659,7 @@ IfcExportReport IfcExporter::exportToFile(const TSA::Model::Model& model, const 
         if (!probe.open() || probe.write(doc.data(), size) != size || !probe.flush())
         {
             r.ok = false;
-            r.error = "impossible d'écrire dans le dossier de « " + path + " » (" + probe.errorString().toStdString() + ")";
+            r.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "impossible d'écrire dans le dossier de « %1 » (%2)").arg(QString::fromStdString(path), probe.errorString()).toStdString();
             return r;
         }
         probe.close();
@@ -660,19 +668,26 @@ IfcExportReport IfcExporter::exportToFile(const TSA::Model::Model& model, const 
         if (detail::verifyFile(probe.fileName().toStdString(), schema, elements, error))
         {
             r.verifiedElements = elements;
-            r.verification = "relu par " + detail::fullEngineName() + " : schéma " + schema + ", " + std::to_string(elements) + " produit(s)";
+            r.verification = QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "relu par %1 : schéma %2, %3 produit(s)")
+                                 .arg(QString::fromStdString(detail::fullEngineName()), QString::fromStdString(schema), QString::number(elements))
+                                 .toStdString();
             if (elements != r.products)
-                r.warnings.push_back("Relecture : " + std::to_string(elements) + " produit(s) relu(s) pour " + std::to_string(r.products) + " écrit(s).");
-            if (!error.empty()) r.warnings.push_back("Relecture : " + error);
+                r.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "Relecture : %1 produit(s) relu(s) pour %2 écrit(s).")
+                                         .arg(elements)
+                                         .arg(r.products)
+                                         .toStdString());
+            if (!error.empty()) r.warnings.push_back(QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "Relecture : %1").arg(QString::fromStdString(error)).toStdString());
         }
         else if (detail::fullEngineAvailable())
         {
             r.ok = false;
-            r.error = "fichier produit illisible par un lecteur IFC indépendant (" + error + ") : « " + path + " » non écrit";
+            r.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "fichier produit illisible par un lecteur IFC indépendant (%1) : « %2 » non écrit")
+                          .arg(QString::fromStdString(error), QString::fromStdString(path))
+                          .toStdString();
             return r;
         }
         else
-            r.verification = "relecture indépendante non faite (" + error + ")";
+            r.verification = QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "relecture indépendante non faite (%1)").arg(QString::fromStdString(error)).toStdString();
     }   // copie temporaire supprimée ici
 
     // 2. Écriture atomique du contenu vérifié : un fichier existant n'est remplacé qu'une fois le nouveau entièrement écrit.
@@ -680,7 +695,7 @@ IfcExportReport IfcExporter::exportToFile(const TSA::Model::Model& model, const 
     if (!f.open(QIODevice::WriteOnly) || f.write(doc.data(), size) != size || !f.commit())
     {
         r.ok = false;
-        r.error = "impossible d'écrire « " + path + " » (" + f.errorString().toStdString() + ")";
+        r.error = QCoreApplication::translate("TSA::BIM::Ifc::IfcExporter", "impossible d'écrire « %1 » (%2)").arg(QString::fromStdString(path), f.errorString()).toStdString();
         r.verifiedElements = -1;
         r.verification.clear();
         return r;

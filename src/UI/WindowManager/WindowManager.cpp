@@ -1,6 +1,7 @@
 #include "WindowManager.h"
 #include "UI/Theme/ThemedIcon.h"
 #include <QActionGroup>
+#include <QCoreApplication>
 #include <QInputDialog>
 #include <QMessageBox>
 
@@ -370,7 +371,7 @@ void WindowManager::populateWindowsMenu(QMenu* menu)
 
     for (const auto& profName : profiles)
     {
-        auto* act = layoutSubMenu->addAction(profName);
+        auto* act = layoutSubMenu->addAction(QCoreApplication::translate("TSA::UI::LayoutManager", profName.toUtf8().constData()));
         act->setCheckable(true);
         act->setChecked(profName == activeProfile);
         profileGroup->addAction(act);

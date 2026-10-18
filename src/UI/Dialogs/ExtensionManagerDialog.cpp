@@ -601,14 +601,14 @@ void ExtensionManagerDialog::populateStandardsList(const QString& filter)
 
     struct StandardEntry { QString ref; QString title; QString year; QString domain; };
     std::vector<StandardEntry> stds = {
-        { "EN 1990", "Bases de calcul des structures", "2002", "Actions & Sécurité" },
-        { "EN 1991", "Actions sur les structures (Poids, Neige, Vent)", "2005", "Charges & Actions" },
-        { "EN 1992", "Calcul des structures en béton (EC2)", "2004", "Béton Armé & Précontraint" },
-        { "EN 1993", "Calcul des structures en acier (EC3)", "2005", "Structures Métalliques" },
-        { "EN 1993-1-11", "Calcul des structures avec éléments tendus", "2006", "Câbles, Tirants & Haubans" },
-        { "EN 10138-3", "Aciers de précontrainte - Torons", "2009", "Torons Précontrainte" },
-        { "EN 10138-4", "Aciers de précontrainte - Barres", "2009", "Barres de Post-tension" },
-        { "ASTM A416", "Standard Specification for Steel Strand, Uncoated Seven-Wire", "2018", "Torons Internationaux" }
+        { "EN 1990", tr("Bases de calcul des structures"), "2002", tr("Actions & Sécurité") },
+        { "EN 1991", tr("Actions sur les structures (Poids, Neige, Vent)"), "2005", tr("Charges & Actions") },
+        { "EN 1992", tr("Calcul des structures en béton (EC2)"), "2004", tr("Béton Armé & Précontraint") },
+        { "EN 1993", tr("Calcul des structures en acier (EC3)"), "2005", tr("Structures Métalliques") },
+        { "EN 1993-1-11", tr("Calcul des structures avec éléments tendus"), "2006", tr("Câbles, Tirants & Haubans") },
+        { "EN 10138-3", tr("Aciers de précontrainte - Torons"), "2009", tr("Torons Précontrainte") },
+        { "EN 10138-4", tr("Aciers de précontrainte - Barres"), "2009", tr("Barres de Post-tension") },
+        { "ASTM A416", "Standard Specification for Steel Strand, Uncoated Seven-Wire", "2018", tr("Torons Internationaux") }
     };
 
     int count = 0;
@@ -673,7 +673,7 @@ QString ExtensionManagerDialog::formatMaterialHtml(const TSA::ExtensionSystem::M
         .arg(QString::fromStdString(mat.name))
         .arg(QString::fromStdString(mat.id));
 
-    html += QString("<p style='margin: 4px 0;'><b>Catégorie :</b> %1 | <b>Norme :</b> %2 (%3) - %4</p>")
+    html += tr("<p style='margin: 4px 0;'><b>Catégorie :</b> %1 | <b>Norme :</b> %2 (%3) - %4</p>")
         .arg(QString::fromStdString(mat.category))
         .arg(QString::fromStdString(mat.standard.name))
         .arg(QString::fromStdString(mat.standard.edition))
@@ -682,35 +682,35 @@ QString ExtensionManagerDialog::formatMaterialHtml(const TSA::ExtensionSystem::M
     html += "<hr style='border: none; border-top: 1px solid #E2E8F0; margin: 8px 0;'/>";
 
     html += "<table style='width: 100%; border-collapse: collapse; font-size: 13px;'>";
-    html += "<tr style='background: #EDF2F7;'><th style='padding: 6px; text-align: left;'>Propriété Physique</th><th style='padding: 6px; text-align: right;'>Valeur</th><th style='padding: 6px; text-align: left;'>Unité</th></tr>";
+    html += tr("<tr style='background: #EDF2F7;'><th style='padding: 6px; text-align: left;'>Propriété Physique</th><th style='padding: 6px; text-align: right;'>Valeur</th><th style='padding: 6px; text-align: left;'>Unité</th></tr>");
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Module d'Young (E)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>GPa</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Module d'Young (E)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>GPa</td></tr>")
         .arg(mat.youngModulus.toSI() / 1.0e9, 0, 'f', 1);
 
-    html += QString("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Coefficient de Poisson (ν)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>-</td></tr>")
+    html += tr("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Coefficient de Poisson (ν)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>-</td></tr>")
         .arg(mat.poissonRatio, 0, 'f', 2);
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Masse Volumique (ρ)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>kg/m³</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Masse Volumique (ρ)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>kg/m³</td></tr>")
         .arg(mat.density.toSI(), 0, 'f', 0);
 
     if (mat.fck.value > 0.0)
     {
-        html += QString("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Résistance caractéristique fck</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>MPa</td></tr>")
+        html += tr("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Résistance caractéristique fck</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>MPa</td></tr>")
             .arg(mat.fck.toSI() / 1.0e6, 0, 'f', 1);
     }
     if (mat.fy.value > 0.0)
     {
-        html += QString("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Limite d'élasticité fy</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>MPa</td></tr>")
+        html += tr("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Limite d'élasticité fy</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>MPa</td></tr>")
             .arg(mat.fy.toSI() / 1.0e6, 0, 'f', 1);
     }
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Dilatation thermique (α)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>1/K</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Dilatation thermique (α)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>1/K</td></tr>")
         .arg(QString::number(mat.thermalCoeff.value, 'e', 2));
 
     html += "</table>";
 
-    html += "<p style='margin: 8px 0 4px 0;'><b>Aspect Visuel PBR :</b></p>";
-    html += QString("<div style='display: flex; align-items: center; gap: 10px;'>Couleur : <span style='display: inline-block; width: 20px; height: 20px; background-color: %1; border: 1px solid #718096; vertical-align: middle;'></span> %1 | Rugosité : %2 | Métallique : %3</div>")
+    html += tr("<p style='margin: 8px 0 4px 0;'><b>Aspect Visuel PBR :</b></p>");
+    html += tr("<div style='display: flex; align-items: center; gap: 10px;'>Couleur : <span style='display: inline-block; width: 20px; height: 20px; background-color: %1; border: 1px solid #718096; vertical-align: middle;'></span> %1 | Rugosité : %2 | Métallique : %3</div>")
         .arg(QString::fromStdString(mat.visual.baseColor))
         .arg(mat.visual.roughness, 0, 'f', 2)
         .arg(mat.visual.metallic, 0, 'f', 2);
@@ -727,7 +727,7 @@ QString ExtensionManagerDialog::formatSectionHtml(const TSA::ExtensionSystem::Se
         .arg(QString::fromStdString(sec.name))
         .arg(QString::fromStdString(sec.id));
 
-    html += QString("<p style='margin: 4px 0;'><b>Forme :</b> %1 | <b>Norme :</b> %2 (%3) | <b>Matériau par défaut :</b> %4</p>")
+    html += tr("<p style='margin: 4px 0;'><b>Forme :</b> %1 | <b>Norme :</b> %2 (%3) | <b>Matériau par défaut :</b> %4</p>")
         .arg(QString::fromStdString(sec.shapeType))
         .arg(QString::fromStdString(sec.standard.name))
         .arg(QString::fromStdString(sec.standard.edition))
@@ -736,32 +736,32 @@ QString ExtensionManagerDialog::formatSectionHtml(const TSA::ExtensionSystem::Se
     html += "<hr style='border: none; border-top: 1px solid #E2E8F0; margin: 8px 0;'/>";
 
     html += "<table style='width: 100%; border-collapse: collapse; font-size: 13px;'>";
-    html += "<tr style='background: #EDF2F7;'><th style='padding: 6px; text-align: left;'>Caractéristique Géométrique</th><th style='padding: 6px; text-align: right;'>Valeur</th><th style='padding: 6px; text-align: left;'>Unité</th></tr>";
+    html += tr("<tr style='background: #EDF2F7;'><th style='padding: 6px; text-align: left;'>Caractéristique Géométrique</th><th style='padding: 6px; text-align: right;'>Valeur</th><th style='padding: 6px; text-align: left;'>Unité</th></tr>");
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Hauteur totale (h)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Hauteur totale (h)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
         .arg(sec.height * 1000.0, 0, 'f', 1);
 
-    html += QString("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Largeur (b)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
+    html += tr("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Largeur (b)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
         .arg(sec.width * 1000.0, 0, 'f', 1);
 
     if (sec.webThickness > 0.0)
     {
-        html += QString("<tr><td style='padding: 4px 6px;'>Épaisseur de l'âme (tw)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
+        html += tr("<tr><td style='padding: 4px 6px;'>Épaisseur de l'âme (tw)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
             .arg(sec.webThickness * 1000.0, 0, 'f', 2);
     }
     if (sec.flangeThickness > 0.0)
     {
-        html += QString("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Épaisseur de semelle (tf)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
+        html += tr("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Épaisseur de semelle (tf)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
             .arg(sec.flangeThickness * 1000.0, 0, 'f', 2);
     }
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Section Transversale (A)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>cm²</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Section Transversale (A)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>cm²</td></tr>")
         .arg(sec.area * 10000.0, 0, 'f', 2);
 
-    html += QString("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Inertie Iy (axe fort)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>cm⁴</td></tr>")
+    html += tr("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Inertie Iy (axe fort)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>cm⁴</td></tr>")
         .arg(sec.ix * 1.0e8, 0, 'f', 1);
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Inertie Iz (axe faible)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>cm⁴</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Inertie Iz (axe faible)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>cm⁴</td></tr>")
         .arg(sec.iy * 1.0e8, 0, 'f', 1);
 
     html += "</table>";
@@ -777,7 +777,7 @@ QString ExtensionManagerDialog::formatCableHtml(const TSA::ExtensionSystem::Cabl
         .arg(QString::fromStdString(cab.name))
         .arg(QString::fromStdString(cab.id));
 
-    html += QString("<p style='margin: 4px 0;'><b>Nuance :</b> %1 | <b>Type :</b> %2 | <b>Norme :</b> %3 (%4)</p>")
+    html += tr("<p style='margin: 4px 0;'><b>Nuance :</b> %1 | <b>Type :</b> %2 | <b>Norme :</b> %3 (%4)</p>")
         .arg(QString::fromStdString(cab.grade))
         .arg(QString::fromStdString(cab.category))
         .arg(QString::fromStdString(cab.standard.name))
@@ -786,27 +786,27 @@ QString ExtensionManagerDialog::formatCableHtml(const TSA::ExtensionSystem::Cabl
     html += "<hr style='border: none; border-top: 1px solid #E2E8F0; margin: 8px 0;'/>";
 
     html += "<table style='width: 100%; border-collapse: collapse; font-size: 13px;'>";
-    html += "<tr style='background: #EDF2F7;'><th style='padding: 6px; text-align: left;'>Caractéristique Câble</th><th style='padding: 6px; text-align: right;'>Valeur</th><th style='padding: 6px; text-align: left;'>Unité</th></tr>";
+    html += tr("<tr style='background: #EDF2F7;'><th style='padding: 6px; text-align: left;'>Caractéristique Câble</th><th style='padding: 6px; text-align: right;'>Valeur</th><th style='padding: 6px; text-align: left;'>Unité</th></tr>");
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Diamètre Nominal (D)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Diamètre Nominal (D)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm</td></tr>")
         .arg(cab.nominalDiameter * 1000.0, 0, 'f', 1);
 
-    html += QString("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Section Acier Réelle (A)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm²</td></tr>")
+    html += tr("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Section Acier Réelle (A)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>mm²</td></tr>")
         .arg(cab.metallicArea * 1.0e6, 0, 'f', 1);
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Masse Linéique</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>kg/m</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Masse Linéique</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>kg/m</td></tr>")
         .arg(cab.linearMass, 0, 'f', 3);
 
-    html += QString("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Module d'Élasticité (E)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>GPa</td></tr>")
+    html += tr("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Module d'Élasticité (E)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>GPa</td></tr>")
         .arg(cab.elasticModulus / 1.0e9, 0, 'f', 1);
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Résistance fpk</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>MPa</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Résistance fpk</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>MPa</td></tr>")
         .arg(cab.characteristicStrength / 1.0e6, 0, 'f', 0);
 
-    html += QString("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Force de Rupture (Fm)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>kN</td></tr>")
+    html += tr("<tr style='background: #F7FAFC;'><td style='padding: 4px 6px;'>Force de Rupture (Fm)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>kN</td></tr>")
         .arg(cab.minimumBreakingForce / 1000.0, 0, 'f', 1);
 
-    html += QString("<tr><td style='padding: 4px 6px;'>Tension Initiale Prévue (P0)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>kN</td></tr>")
+    html += tr("<tr><td style='padding: 4px 6px;'>Tension Initiale Prévue (P0)</td><td style='text-align: right;'>%1</td><td style='padding: 4px 6px;'>kN</td></tr>")
         .arg(cab.defaultInitialTension / 1000.0, 0, 'f', 1);
 
     html += "</table>";
@@ -822,7 +822,7 @@ QString ExtensionManagerDialog::formatExtensionHtml(const TSA::ExtensionSystem::
         .arg(QString::fromStdString(man.name))
         .arg(QString::fromStdString(man.version.toString()));
 
-    html += QString("<p style='margin: 4px 0;'><b>Identifiant :</b> %1 | <b>Auteur :</b> %2</p>")
+    html += tr("<p style='margin: 4px 0;'><b>Identifiant :</b> %1 | <b>Auteur :</b> %2</p>")
         .arg(QString::fromStdString(man.id))
         .arg(QString::fromStdString(man.author));
 
@@ -830,7 +830,7 @@ QString ExtensionManagerDialog::formatExtensionHtml(const TSA::ExtensionSystem::
 
     html += "<hr style='border: none; border-top: 1px solid #E2E8F0; margin: 8px 0;'/>";
 
-    html += "<p><b>Catégories Fournies :</b></p><ul>";
+    html += tr("<p><b>Catégories Fournies :</b></p>") + "<ul>";
     for (const auto& cat : man.categories)
     {
         html += QString("<li>%1</li>").arg(QString::fromStdString(cat));

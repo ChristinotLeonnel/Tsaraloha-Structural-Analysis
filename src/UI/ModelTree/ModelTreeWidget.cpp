@@ -652,7 +652,7 @@ void ModelTreeWidget::refreshLoads()
     const auto& lm = m_model->loadManager();
     for (const auto& [id, load] : lm.nodalLoads())
     {
-        QString name = QString("Charge Nodale #%1 (Nœud %2)").arg(id).arg(load.nodeId());
+        QString name = tr("Charge Nodale #%1 (Nœud %2)").arg(id).arg(load.nodeId());
         QString details = QString("F=[%1, %2, %3] kN")
             .arg(load.fx(), 0, 'f', 1)
             .arg(load.fy(), 0, 'f', 1)
@@ -666,7 +666,7 @@ void ModelTreeWidget::refreshLoads()
 
     for (const auto& [id, load] : lm.memberLoads())
     {
-        QString name = QString("Charge Barre #%1 (Élém %2)").arg(id).arg(load.elementId());
+        QString name = tr("Charge Barre #%1 (Élém %2)").arg(id).arg(load.elementId());
         QString details = QString("q=%1 kN/m").arg(load.q1(), 0, 'f', 1);
 
         auto* item = new QTreeWidgetItem(m_loadsCategory, { name, details });

@@ -4,6 +4,7 @@
 #include "../../Model/SupportDefinition.h"
 
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QGridLayout>
 #include <QLabel>
 #include <QToolButton>
@@ -120,7 +121,7 @@ void MemberEndNodesWidget::refreshRow(int end)
     if (index < 0 || !presetFor(current.supportType(), preset) || !(preset == current))
     {
         // Appui réglé dans le nœud (orientation, ressorts, DDL) : montré tel quel, jamais écrasé ici.
-        r.support->addItem(tr("%1 (voir le nœud)").arg(QString::fromStdString(current.typeName())), kOtherSupport);
+        r.support->addItem(tr("%1 (voir le nœud)").arg(QCoreApplication::translate("TSA::Model::SupportDefinition", current.typeName().c_str())), kOtherSupport);
         index = r.support->count() - 1;
     }
     r.support->setCurrentIndex(index);
@@ -138,7 +139,7 @@ void MemberEndNodesWidget::onSupportChosen(int end)
     if (!node || choice == kOtherSupport || !presetFor(static_cast<SupportType>(choice), chosen) || chosen == node->support())
         return;
 
-    const std::string label = tr("Appui : %1 (N%2)").arg(QString::fromStdString(chosen.typeName())).arg(node->id()).toStdString();
+    const std::string label = tr("Appui : %1 (N%2)").arg(QCoreApplication::translate("TSA::Model::SupportDefinition", chosen.typeName().c_str())).arg(node->id()).toStdString();
     m_model->pushUndoState(label, label);
     node->setSupport(chosen);
     // Notification du nœud : vue 3D, arbre, panneau (cette barre comprise) et résultats invalidés.

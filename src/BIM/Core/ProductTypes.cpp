@@ -2,6 +2,8 @@
 
 #include "../../Model/Model.h"
 
+#include <QCoreApplication>
+
 #include <cmath>
 #include <iomanip>
 #include <map>
@@ -250,11 +252,17 @@ std::string typeDeviation(const TSA::Model::Model& model, const PhysicalElement&
     {
         const Definition d = definitionOf(model, r);
         if (d.family == Family::Linear && !sameSection(d.section, t->section))
-            return "section " + d.section.name + " au lieu de " + t->section.name;
+            return QCoreApplication::translate("TSA::BIM::ProductTypes", "section %1 au lieu de %2")
+                .arg(QString::fromStdString(d.section.name), QString::fromStdString(t->section.name))
+                .toStdString();
         if (d.family == Family::Surface && t->thickness > 0.0 && std::abs(d.thickness - t->thickness) > 1e-9)
-            return "épaisseur " + fmt(d.thickness, 3) + " m au lieu de " + fmt(t->thickness, 3) + " m";
+            return QCoreApplication::translate("TSA::BIM::ProductTypes", "épaisseur %1 m au lieu de %2 m")
+                .arg(QString::fromStdString(fmt(d.thickness, 3)), QString::fromStdString(fmt(t->thickness, 3)))
+                .toStdString();
         if (d.family != Family::None && !sameMaterial(d.material, t->material))
-            return "matériau " + d.material.name + " au lieu de " + t->material.name;
+            return QCoreApplication::translate("TSA::BIM::ProductTypes", "matériau %1 au lieu de %2")
+                .arg(QString::fromStdString(d.material.name), QString::fromStdString(t->material.name))
+                .toStdString();
     }
     return {};
 }
