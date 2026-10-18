@@ -8,6 +8,8 @@
 // d'un projet à l'autre). Les commandes de la barre de titre agissent sur le document au premier plan.
 // Cycle de vie : Start Center → Nouveau / Ouvrir → onglet → Fermer (dernier onglet → Start Center).
 
+#include "../../Commands/CommandSearchIndex.h"
+
 #include <QHash>
 #include <QWidget>
 
@@ -33,6 +35,7 @@ class QVBoxLayout;
 namespace TSA::UI
 {
 
+class GlobalSearchWidget;
 class StartCenter;
 class TitleBar;
 
@@ -72,6 +75,20 @@ public:
     /// Document au premier plan (nul si aucun projet n'est ouvert).
     MainWindow* workspace() const { return m_workspace; }
 
+    /// Choix de la langue de l'interface (docs/I18N.md) : enregistrée, appliquée au redémarrage (proposé).
+    void chooseLanguage();
+    /// Ferme TSA (confirmations habituelles) puis le relance en rouvrant les projets enregistrés ; faux si annulé.
+    bool restartApplication();
+
+    // --- Recherche globale (AppShell_Search.cpp, docs/UI_SEARCH.md) --------------------------------------------------
+    GlobalSearchWidget* searchWidget() const { return m_search; }
+    /// Entrées de la recherche dans le contexte actuel (document au premier plan ou Start Center).
+    QList<TSA::Commands::SearchEntry> searchEntries() const;
+    /// Exécute un résultat : vraie commande, panneau, console ; sinon explique pourquoi rien n'est exécuté.
+    void executeSearchResult(const QString& id);
+    /// Action d'une commande du catalogue dans le contexte actuel (document au premier plan, sinon application).
+    QAction* actionForCommand(const QString& id) const;
+
 protected:
     /// Ctrl+Tab / Ctrl+Maj+Tab, Ctrl+Pg.Suiv / Ctrl+Pg.Préc : document suivant / précédent (filtre de l'application :
     /// Ctrl+Maj+Tab arrive en Key_Backtab, qu'un QShortcut ne reconnaît pas de façon fiable)
@@ -99,6 +116,7 @@ private:
     void setMode(ApplicationMode mode);
     void updateTitle();
     void createActions();
+    void setupSearch();
     void bindToWorkspace(QAction* proxy, QAction* target);
     void syncProxyActions();
     void rebuildApplicationMenu();
@@ -130,6 +148,9 @@ private:
     QAction* m_actRedo = nullptr;
     QAction* m_actCloseProject = nullptr;
     QAction* m_actTheme = nullptr;
+    QAction* m_actLanguage = nullptr;
+    QAction* m_actSearch = nullptr;
+    GlobalSearchWidget* m_search = nullptr;
     QAction* m_actExit = nullptr;
     QMenu* m_recentMenu = nullptr;
     QList<QShortcut*> m_startCenterShortcuts;

@@ -702,6 +702,11 @@ void MainWindow::createActions()
     m_actionToggleTheme->setChecked(true);
     connect(m_actionToggleTheme, &QAction::triggered, this, &MainWindow::onToggleTheme);
 
+    m_actionLanguage = new QAction(tr("&Langue de l'interface…"), this);
+    m_actionLanguage->setIcon(QIcon(":/icons/common/language.svg"));
+    m_actionLanguage->setToolTip(tr("Choisir la langue de l'interface : English, Français, Malagasy"));
+    connect(m_actionLanguage, &QAction::triggered, this, &MainWindow::languageDialogRequested);
+
     m_actionHelp = new QAction(tr("&Aide Complète %1...").arg(TSA::Product::name()), this);
     m_actionHelp->setIcon(makeHelpIcon());
     m_actionHelp->setToolTip(tr("Ouvrir le centre d'aide, guide et documentation"));
@@ -1409,6 +1414,7 @@ void MainWindow::createMenus()
     toolsMenu->addAction(m_actionMeasure);
     toolsMenu->addSeparator();
     toolsMenu->addAction(m_actionToggleTheme);
+    toolsMenu->addAction(m_actionLanguage);
 
     // 10. Menu Aide
     QMenu* helpMenu = menuBar()->addMenu(tr("&Aide"));
@@ -1619,6 +1625,7 @@ void MainWindow::createRibbon()
 
     acts.actionMeasure = m_actionMeasure;
     acts.actionToggleTheme = m_actionToggleTheme;
+    acts.actionLanguage = m_actionLanguage;
     acts.actionHelp = m_actionHelp;
     acts.actionTopology = m_actionTopology;
     acts.actionOnlineDocs = m_actionOnlineDocs;

@@ -63,6 +63,8 @@ public:
     // Le menu est créé à la demande, parenté à  parent.
     QMenu* buildOverflowMenu(QWidget* parent) const;
     bool isEmptyPanel() const { return m_entries.empty(); }
+    /// Actions du panneau dans l'ordre d'affichage (grands boutons, colonnes ; sous-menus non compris).
+    std::vector<QAction*> actions() const;
 
 protected:
     void changeEvent(QEvent* event) override;

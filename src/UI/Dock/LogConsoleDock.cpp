@@ -293,6 +293,16 @@ void LogConsoleDock::onFilterChanged()
     m_output->verticalScrollBar()->setValue(m_output->verticalScrollBar()->maximum());
 }
 
+void LogConsoleDock::prefillCommand(const QString& text)
+{
+    if (!m_input) return;
+    show();
+    raise();
+    m_input->setText(text);
+    m_input->setFocus(Qt::OtherFocusReason);
+    m_input->setCursorPosition(static_cast<int>(text.size()));
+}
+
 void LogConsoleDock::clearLog()
 {
     m_history.clear();

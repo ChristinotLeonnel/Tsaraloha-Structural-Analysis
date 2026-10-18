@@ -161,6 +161,8 @@
         <file alias="common/theme_dark.svg">icons/common/theme_dark.svg</file>
         <file alias="common/theme_light.svg">icons/common/theme_light.svg</file>
         <file alias="common/help.svg">icons/common/help.svg</file>
+        <file alias="common/language.svg">icons/common/language.svg</file>
+        <file alias="common/search.svg">icons/common/search.svg</file>
         <file alias="common/shortcuts.svg">icons/common/shortcuts.svg</file>
         <file alias="common/about.svg">icons/common/about.svg</file>
         <file alias="common/model_tree.svg">icons/common/model_tree.svg</file>

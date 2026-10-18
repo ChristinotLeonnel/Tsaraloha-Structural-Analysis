@@ -76,9 +76,10 @@ QList<CommandDefinition> ShortcutManager::catalogDefinitions()
     {
         CommandDefinition def;
         def.id = QString::fromStdString(d.id);
-        def.name = QString::fromStdString(d.name);
-        def.description = QString::fromStdString(d.description);
-        def.category = QString::fromStdString(TSA::Commands::categoryToString(d.category));
+        // Libellés du catalogue en français (QT_TRANSLATE_NOOP), traduits dans la langue installée ; l'identifiant reste la clé
+        def.name = QCoreApplication::translate("CommandCatalog", d.name.c_str());
+        def.description = QCoreApplication::translate("CommandCatalog", d.description.c_str());
+        def.category = QCoreApplication::translate("CommandCategory", TSA::Commands::categoryToString(d.category).c_str());
         def.categoryRank = rank.count(d.category) ? rank[d.category] : static_cast<int>(count);
         QString err;
         parseSequenceList(QString::fromStdString(d.shortcut), &def.defaults, &err); // validé par les tests
@@ -113,7 +114,7 @@ bool ShortcutManager::bind(const QString& id, QAction* action)
             CommandDefinition def;
             def.id = id;
             def.name = action->text().remove(QLatin1Char('&'));
-            def.category = QStringLiteral("Autres");
+            def.category = tr("Autres");
             def.categoryRank = 1000;
             registerDefinition(def);
             m_lastWarnings << QStringLiteral("Commande « %1 » absente du catalogue : aucun raccourci par défaut").arg(id);

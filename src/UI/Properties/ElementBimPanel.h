@@ -21,6 +21,8 @@ namespace TSA::UI
 /// du modèle (QuantityTakeoff), de l'élément et du produit entier. Masqué pour un nœud.
 class ElementBimPanel : public QGroupBox
 {
+    Q_OBJECT
+
 public:
     explicit ElementBimPanel(QWidget* parent = nullptr);
 

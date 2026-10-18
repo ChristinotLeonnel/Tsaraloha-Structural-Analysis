@@ -13,6 +13,8 @@
 
 #include "TitleBar.h"
 #include "../MainWindow.h"
+#include "../Dialogs/LanguageDialog.h"
+#include "../../Core/I18n/LanguageManager.h"
 #include "../Home/NewProjectDialog.h"
 #include "../Home/StartCenter.h"
 #include "../Theme/ThemeManager.h"
@@ -32,6 +34,7 @@
 #include <QMimeData>
 #include <QAbstractNativeEventFilter>
 #include <QPointer>
+#include <QProcess>
 #include <QScreen>
 #include <QSettings>
 #include <QShortcut>
@@ -124,6 +127,7 @@ AppShell::AppShell(QWidget* parent)
     connect(m_startCenter, &StartCenter::newProjectRequested, this, &AppShell::createNewProject);
     connect(m_startCenter, &StartCenter::openDialogRequested, this, &AppShell::openProject);
     connect(m_startCenter, &StartCenter::openRequested, this, &AppShell::openProjectFile);
+    connect(m_startCenter, &StartCenter::languageRequested, this, &AppShell::chooseLanguage);
 
     createActions();
     installResizeBorderFilter();
@@ -151,6 +155,10 @@ void AppShell::createActions()
     connect(m_actSaveAll, &QAction::triggered, this, &AppShell::saveAllProjects);
     m_actTheme = new QAction(themeIcon(ThemeManager::instance().isDarkMode()), tr("Thème clair / sombre"), this);
     m_actExit = new QAction(QIcon(":/icons/file_exit.svg"), tr("Quitter %1").arg(TSA::Product::name()), this);
+    m_actLanguage = new QAction(QIcon(":/icons/common/language.svg"), tr("Langue de l'interface…"), this);
+    m_actLanguage->setToolTip(tr("Choisir la langue de l'interface : English, Français, Malagasy"));
+    connect(m_actLanguage, &QAction::triggered, this, &AppShell::chooseLanguage);
+    TSA::UI::Shortcuts::ShortcutManager::instance().bind(QStringLiteral("cmd.settings.language"), m_actLanguage);
 
     m_actNew->setToolTip(tr("Nouveau projet (Ctrl+N)"));
     m_actOpen->setToolTip(tr("Ouvrir un projet (Ctrl+O)"));
@@ -195,6 +203,8 @@ void AppShell::createActions()
     m_titleBar->addQuickAccess(m_actRedo);
     m_titleBar->addTrailing(m_actCloseProject);
     m_titleBar->addTrailing(m_actTheme);
+    setupSearch();
+    addAction(m_actLanguage);
 
     m_recentMenu = new QMenu(tr("Projets récents"), this);
     m_recentMenu->setIcon(QIcon(":/icons/file_tsa.svg"));
@@ -272,6 +282,7 @@ MainWindow* AppShell::createWorkspace()
     });
     connect(workspace, &MainWindow::closeProjectRequested, this, &AppShell::closeProject);
     connect(workspace, &MainWindow::exitRequested, this, &QWidget::close);
+    connect(workspace, &MainWindow::languageDialogRequested, this, &AppShell::chooseLanguage);
     connect(workspace, &MainWindow::fullScreenRequested, this, [this](bool on) {
         if (on && !isFullScreen())
         {
@@ -607,7 +618,31 @@ void AppShell::rebuildApplicationMenu()
         for (QMenu* sub : m_workspace->applicationMenus()) menu->addMenu(sub);
     }
     menu->addSeparator();
+    menu->addAction(m_actLanguage);
+    menu->addAction(m_actTheme);
+    menu->addSeparator();
     menu->addAction(m_actExit);
+}
+
+void AppShell::chooseLanguage()
+{
+    using TSA::Core::I18n::LanguageManager;
+    LanguageDialog dialog(LanguageManager::currentLanguage(), this);
+    if (dialog.exec() != QDialog::Accepted || dialog.choice() == LanguageDialog::Choice::Cancelled) return;
+    LanguageManager::storeLanguage(dialog.selectedLanguage());
+    if (dialog.choice() == LanguageDialog::Choice::RestartNow) restartApplication();
+}
+
+bool AppShell::restartApplication()
+{
+    // Projets enregistrés rouverts au redémarrage (un projet jamais enregistré fait l'objet de la confirmation
+    // habituelle de fermeture)
+    QStringList files;
+    for (MainWindow* d : m_documents)
+        if (const auto* pm = d->projectManager(); pm && pm->hasFilePath()) files << pm->currentFilePath();
+    if (!close()) return false;   // fermeture refusée (modifications à enregistrer, calcul en cours) : on reste
+    QProcess::startDetached(QCoreApplication::applicationFilePath(), files);
+    return true;
 }
 
 void AppShell::closeEvent(QCloseEvent* event)

@@ -1,0 +1,379 @@
+// Suite « i18n » : langues de l'interface, recherche globale, icônes et ruban (docs/I18N.md, docs/UI_SEARCH.md,
+// docs/ICONS.md).
+//   450  langues : codes, noms affichés dans la langue elle-même, préférence enregistrée et relue (fichier de réglages
+//        isolé, comme après un redémarrage), « --lang= » prioritaire et jamais enregistré, code inconnu → français ;
+//   451  traductions intégrées : :/i18n/tsa_en.qm et tsa_mg.qm chargés ; textes de référence traduits en anglais et en
+//        malgache ; texte absent → texte source (repli documenté) ; traduction absente détectable ;
+//   452  installation : QCoreApplication::translate suit la langue installée (anglais, malgache, retour au français) ;
+//        textes standard de Qt en français pour le malgache (repli), d'origine pour l'anglais ;
+//   453  caractères : accents français et lettres malgaches conservés par les traductions et affichables (police) ;
+//   454  catalogue des commandes : libellés et descriptions présents en anglais et en malgache (aucune lacune) ;
+//        placeholders %1… conservés ;
+//   455  recherche, comparaison : normalisation (casse, accents, ligatures, apostrophes), distance avec transposition ;
+//   456  recherche, pertinence : nom affiché, nom traduit, synonyme, sans accent, partiel, faute de frappe ; libellé exact
+//        avant fragment ; mots courts facultatifs ; aucun doublon ;
+//   457  recherche, rapidité : 6 000 entrées, requêtes sous 50 ms ;
+//   458  champ de recherche : liste, flèches, Entrée (commande émise), Échap (fermer puis effacer), « aucun résultat »
+//        jamais exécutable, touches réservées au champ (ShortcutOverride) ;
+//   459  boîte « Langue » : explications dans la langue sélectionnée, boutons de redémarrage seulement si la langue change.
+
+#include "test_common.h"
+
+#include "Commands/CommandCatalog.h"
+#include "Commands/CommandSearchIndex.h"
+#include "Commands/CommandSynonyms.h"
+#include "Core/I18n/LanguageManager.h"
+#include "UI/Dialogs/LanguageDialog.h"
+#include "UI/Search/GlobalSearchWidget.h"
+
+#include <QElapsedTimer>
+#include <QFontMetrics>
+#include <QKeyEvent>
+#include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QPushButton>
+#include <QRegularExpression>
+#include <QSettings>
+#include <QTemporaryDir>
+#include <QTranslator>
+
+using TSA::Commands::CommandCatalog;
+using TSA::Commands::CommandSearchIndex;
+using TSA::Commands::SearchEntry;
+using TSA::Commands::SearchKind;
+using TSA::Core::I18n::Language;
+using TSA::Core::I18n::LanguageManager;
+
+namespace
+{
+QSet<QString> placeholders(const QString& s)
+{
+    QSet<QString> out;
+    static const QRegularExpression re(QStringLiteral("%L?\\d+|%n"));
+    for (auto it = re.globalMatch(s); it.hasNext();) out.insert(it.next().captured(0));
+    return out;
+}
+
+SearchEntry entry(const QString& id, const QString& title, const QStringList& keywords = {}, const QString& description = {})
+{
+    SearchEntry e;
+    e.id = id;
+    e.title = title;
+    e.keywords = keywords;
+    e.description = description;
+    return e;
+}
+
+QString topId(const CommandSearchIndex& index, const QString& query)
+{
+    const auto hits = index.search(query, 5);
+    return hits.isEmpty() ? QString() : index.entries()[hits.first().entry].id;
+}
+} // namespace
+
+bool runSuite_I18n(int& passed)
+{
+    // -------------------------------------------------------------------------
+    // TEST 450 : langues et préférence
+    // -------------------------------------------------------------------------
+    {
+        TEST_CHECK(LanguageManager::languages().size() == 3, "Test 450: trois langues proposées");
+        TEST_CHECK(LanguageManager::nativeName(Language::English) == "English" && LanguageManager::nativeName(Language::French) == QString::fromUtf8("Français")
+                       && LanguageManager::nativeName(Language::Malagasy) == "Malagasy",
+                   "Test 450: noms des langues dans la langue elle-même");
+        TEST_CHECK(LanguageManager::fromCode("EN") == Language::English && LanguageManager::fromCode("mg-MG") == Language::Malagasy
+                       && LanguageManager::fromCode("fr") == Language::French && !LanguageManager::fromCode("de").has_value(),
+                   "Test 450: codes ISO reconnus, code inconnu refusé");
+        QTemporaryDir dir;
+        const QString ini = dir.filePath("tsa_settings.ini");
+        {
+            QSettings s(ini, QSettings::IniFormat);
+            TEST_CHECK(LanguageManager::storedLanguage(s) == Language::French, "Test 450: sans préférence, français (langue initiale)");
+            LanguageManager::storeLanguage(s, Language::Malagasy);
+        }
+        {
+            QSettings relu(ini, QSettings::IniFormat);   // nouvel objet : comme après un redémarrage
+            TEST_CHECK(LanguageManager::storedLanguage(relu) == Language::Malagasy, "Test 450: préférence relue (malgache)");
+            TEST_CHECK(relu.allKeys() == QStringList{ LanguageManager::settingsKey() } && relu.value(LanguageManager::settingsKey()).toString() == "mg",
+                       "Test 450: une seule clé « ui/language » dans les réglages (rien dans les projets)");
+            relu.setValue(LanguageManager::settingsKey(), "xx");
+            TEST_CHECK(LanguageManager::storedLanguage(relu) == Language::French, "Test 450: valeur invalide → français");
+        }
+        TEST_CHECK(LanguageManager::languageFromArguments({ "TSA.exe", "--lang=en", "projet.tsa" }) == Language::English
+                       && !LanguageManager::languageFromArguments({ "TSA.exe", "projet.tsa" }).has_value(),
+                   "Test 450: « --lang=en » reconnu sur la ligne de commande");
+        std::cout << "[PASS] Test 450: Langues, préférence enregistrée et relue, ligne de commande" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 451 : traductions intégrées et repli
+    // -------------------------------------------------------------------------
+    {
+        TEST_CHECK(LanguageManager::hasTranslation(Language::English) && LanguageManager::hasTranslation(Language::Malagasy),
+                   "Test 451: :/i18n/tsa_en.qm et :/i18n/tsa_mg.qm intégrés (Qt LinguistTools présent à la compilation)");
+        QTranslator en, mg;
+        TEST_CHECK(en.load(LanguageManager::translationResource(Language::English)) && mg.load(LanguageManager::translationResource(Language::Malagasy)),
+                   "Test 451: fichiers .qm lisibles");
+        const struct { const char* ctx; const char* fr; const char* en; const char* mg; } refs[] = {
+            { "CommandCatalog", "Nouveau projet", "New project", "Tetikasa vaovao" },
+            { "CommandCatalog", "Enregistrer", "Save", "Tehirizo" },
+            { "CommandCatalog", "Ouvrir un projet", "Open project", "Sokafy tetikasa" },
+            { "CommandCategory", "Charges", "Loads", "Enta" },
+            { "CommandCatalog", "Langue de l'interface", "Interface language", "Fitenin'ny fifandraisana" },
+        };
+        for (const auto& r : refs)
+        {
+            const QString gotEn = LanguageManager::translate(Language::English, r.ctx, r.fr);
+            const QString gotMg = LanguageManager::translate(Language::Malagasy, r.ctx, r.fr);
+            TEST_CHECK(gotEn == QString::fromUtf8(r.en) && gotMg == QString::fromUtf8(r.mg),
+                       "Test 451: « " << r.fr << " » → « " << gotEn.toStdString() << " » / « " << gotMg.toStdString() << " »");
+        }
+        TEST_CHECK(LanguageManager::translate(Language::French, "CommandCatalog", "Nouveau projet") == "Nouveau projet",
+                   "Test 451: français = texte source");
+        const char* unknown = "Texte absent de toute traduction 451";
+        TEST_CHECK(LanguageManager::translate(Language::Malagasy, "CommandCatalog", unknown) == QString::fromUtf8(unknown)
+                       && !LanguageManager::hasTranslationFor(Language::Malagasy, "CommandCatalog", unknown)
+                       && LanguageManager::hasTranslationFor(Language::Malagasy, "CommandCatalog", "Nouveau projet"),
+                   "Test 451: texte non traduit → texte source (repli), lacune détectable");
+        std::cout << "[PASS] Test 451: Traductions anglaise et malgache intégrées, repli sur le français détectable" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 452 : installation dans l'application
+    // -------------------------------------------------------------------------
+    {
+        auto& app = *QCoreApplication::instance();
+        TEST_CHECK(LanguageManager::install(app, Language::English), "Test 452: anglais installé");
+        const QString en = QCoreApplication::translate("CommandCatalog", "Nouveau projet");
+        const QString qtCancelEn = QCoreApplication::translate("QPlatformTheme", "Cancel");
+        TEST_CHECK(LanguageManager::install(app, Language::Malagasy), "Test 452: malgache installé");
+        const QString mg = QCoreApplication::translate("CommandCatalog", "Nouveau projet");
+        const QString qtCancelMg = QCoreApplication::translate("QPlatformTheme", "Cancel");
+        const Language during = LanguageManager::currentLanguage();
+        TEST_CHECK(LanguageManager::install(app, Language::French), "Test 452: retour au français");
+        const QString fr = QCoreApplication::translate("CommandCatalog", "Nouveau projet");
+        TEST_CHECK(en == "New project" && mg == "Tetikasa vaovao" && fr == "Nouveau projet" && during == Language::Malagasy,
+                   "Test 452: textes de l'application selon la langue installée (« " << en.toStdString() << " », « " << mg.toStdString() << " »)");
+        TEST_CHECK(qtCancelEn == "Cancel" && qtCancelMg == "Annuler",
+                   "Test 452: boutons standard de Qt : « " << qtCancelEn.toStdString() << " » (anglais), « " << qtCancelMg.toStdString() << " » (malgache → français)");
+        std::cout << "[PASS] Test 452: Langue installée appliquée aux textes de l'application et de Qt" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 453 : caractères accentués et malgaches
+    // -------------------------------------------------------------------------
+    {
+        const QString fr = QString::fromUtf8("Éléments filaires, nœuds, flèche, à, ç, ô");
+        const QString mg = LanguageManager::translate(Language::Malagasy, "CommandCatalog", "Fermer le projet");
+        TEST_CHECK(mg != "Fermer le projet" && !mg.contains(QChar::ReplacementCharacter), "Test 453: traduction malgache sans caractère de remplacement");
+        TEST_CHECK(fr.toUtf8() == QByteArray("\xC3\x89l\xC3\xA9ments filaires, n\xC5\x93uds, fl\xC3\xA8" "che, \xC3\xA0, \xC3\xA7, \xC3\xB4"),
+                   "Test 453: source UTF-8 conservée");
+        if (QGuiApplication::platformName() == QLatin1String("offscreen"))
+        {
+            // Plateforme « offscreen » : aucune police réelle (même « É » y est absent) ; le contrôle des glyphes n'a de
+            // sens qu'avec les polices de Windows
+            std::cout << "[SKIP] Test 453: polices indisponibles sur la plateforme Qt « offscreen » (lancer avec QT_QPA_PLATFORM=windows)" << std::endl;
+        }
+        else
+        {
+            QLabel label(fr + QStringLiteral(" — ") + mg + QString::fromUtf8(" — Fanohanana raikitra, Fitaovana, ô ñ"));
+            const QFontMetrics fm(label.font());
+            for (const QChar c : label.text())
+                TEST_CHECK(c.isSpace() || fm.inFontUcs4(c.unicode()), "Test 453: caractère « " << QString(c).toStdString() << " » affichable par la police de l'interface");
+            std::cout << "[PASS] Test 453: Accents français et textes malgaches conservés et affichables" << std::endl;
+            ++passed;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 454 : catalogue des commandes traduit (libellés, descriptions)
+    // -------------------------------------------------------------------------
+    {
+        QStringList missing;
+        int checked = 0;
+        for (const auto& [id, d] : CommandCatalog::instance().allCommands())
+        {
+            for (const std::string* text : { &d.name, &d.description })
+            {
+                if (text->empty()) continue;
+                ++checked;
+                for (Language l : { Language::English, Language::Malagasy })
+                {
+                    if (!LanguageManager::hasTranslationFor(l, "CommandCatalog", text->c_str()))
+                        missing << QStringLiteral("%1 [%2] %3").arg(LanguageManager::code(l), QString::fromStdString(id), QString::fromStdString(*text));
+                    else if (placeholders(LanguageManager::translate(l, "CommandCatalog", text->c_str())) != placeholders(QString::fromStdString(*text)))
+                        missing << QStringLiteral("%1 [%2] paramètres %n/%1 différents").arg(LanguageManager::code(l), QString::fromStdString(id));
+                }
+            }
+        }
+        for (int i = 0; i < std::min<int>(10, missing.size()); ++i) std::cerr << "  manquant : " << missing[i].toStdString() << std::endl;
+        TEST_CHECK(missing.isEmpty() && checked > 500,
+                   "Test 454: " << missing.size() << " lacune(s) sur " << checked << " textes du catalogue × 2 langues");
+        std::cout << "[PASS] Test 454: Catalogue des commandes traduit en anglais et en malgache (" << checked << " textes)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 455 : normalisation et distance
+    // -------------------------------------------------------------------------
+    {
+        TEST_CHECK(CommandSearchIndex::normalize(QString::fromUtf8("  Modèle  ŒUVRE l’été, Valin'ny kajy ")) == "modele oeuvre l ete valin ny kajy",
+                   "Test 455: casse, accents, ligature, apostrophes → « " << CommandSearchIndex::normalize(QString::fromUtf8("  Modèle  ŒUVRE l’été, Valin'ny kajy ")).toStdString() << " »");
+        TEST_CHECK(CommandSearchIndex::boundedDistance("poutre", "poutre", 2) == 0 && CommandSearchIndex::boundedDistance("poutre", "poutte", 2) == 1
+                       && CommandSearchIndex::boundedDistance("beam", "baem", 1) == 1 && CommandSearchIndex::boundedDistance("abc", "xyz", 1) == 2,
+                   "Test 455: distance (substitution, transposition, borne dépassée)");
+        TEST_CHECK(CommandSearchIndex::isStopWord("de") && CommandSearchIndex::isStopWord("the") && CommandSearchIndex::isStopWord("ny")
+                       && !CommandSearchIndex::isStopWord("poutre"),
+                   "Test 455: mots courts facultatifs (fr, en, mg)");
+        std::cout << "[PASS] Test 455: Comparaison sans casse ni accents, distance de frappe" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 456 : pertinence de la recherche
+    // -------------------------------------------------------------------------
+    {
+        CommandSearchIndex index;
+        auto beam = entry("cmd.create.beam", QString::fromUtf8("Poutre"), { "Beam", "Andry mitsivalana" }, QString::fromUtf8("Dessiner une poutre entre deux nœuds"));
+        beam.keywords << TSA::Commands::commandSynonyms("cmd.create.beam");
+        index.add(beam);
+        index.add(entry("cmd.create.column", QString::fromUtf8("Poteau"), { "Column", "Andry" }, QString::fromUtf8("Dessiner un poteau vertical")));
+        index.add(entry("cmd.coord.workplane_xy", QString::fromUtf8("Plan de travail XY"), { "Work plane XY", "Planina fiasana XY" }));
+        index.add(entry("cmd.view.top", QString::fromUtf8("Vue de dessus"), { "Top view", "Fijery avy ambony" }, QString::fromUtf8("Plan XY vu du dessus")));
+        index.add(entry("cmd.results.diagram_mz", QString::fromUtf8("Diagramme Mz"), { "Mz diagram" }, QString::fromUtf8("Moment fléchissant autour de l'axe fort")));
+        index.add(entry("cmd.loads.distributed", QString::fromUtf8("Charge répartie"), { "Distributed load", "Enta miparitaka" }));
+        index.add(entry("cmd.file.save", QString::fromUtf8("Enregistrer"), { "Save", "Tehirizo" }));
+        index.add(entry("cmd.file.save_as", QString::fromUtf8("Enregistrer sous"), { "Save as", "Tehirizo amin'ny anarana hafa" }));
+        index.add(entry("cmd.create.beam", QString::fromUtf8("Poutre"), beam.keywords, beam.description));   // même identifiant : remplacé
+        TEST_CHECK(index.size() == 8, "Test 456: identifiant en double remplacé, jamais ajouté");
+
+        const struct { const char* query; const char* expected; const char* what; } cases[] = {
+            { "Poutre", "cmd.create.beam", "nom affiché exact" },
+            { "beam", "cmd.create.beam", "nom anglais" },
+            { "mitsivalana", "cmd.create.beam", "nom malgache" },
+            { "IPE", "cmd.create.beam", "synonyme (profilé)" },
+            { "POUTRÉ", "cmd.create.beam", "casse et accent ignorés" },
+            { "pout", "cmd.create.beam", "début de mot" },
+            { "poutte", "cmd.create.beam", "faute de frappe" },
+            { "colum", "cmd.create.column", "anglais incomplet" },
+            { "plan de travail", "cmd.coord.workplane_xy", "plusieurs mots, mot court facultatif" },
+            { "planina fiasana", "cmd.coord.workplane_xy", "malgache, plusieurs mots" },
+            { "enregistrer", "cmd.file.save", "libellé exact avant « Enregistrer sous »" },
+            { "save as", "cmd.file.save_as", "anglais, deux mots" },
+            { "repartie", "cmd.loads.distributed", "sans accent" },
+            { "flechissant", "cmd.results.diagram_mz", "mot de la description" },
+        };
+        for (const auto& c : cases)
+        {
+            const QString got = topId(index, QString::fromUtf8(c.query));
+            TEST_CHECK(got == c.expected, "Test 456: « " << c.query << " » (" << c.what << ") → " << got.toStdString() << ", attendu " << c.expected);
+        }
+        TEST_CHECK(index.search("zzzz qqqq").isEmpty() && index.search("").isEmpty(), "Test 456: requête sans rapport ou vide → aucun résultat");
+        const auto hits = index.search("plan", 12);
+        QSet<int> seen;
+        for (const auto& h : hits) seen.insert(h.entry);
+        TEST_CHECK(seen.size() == hits.size() && hits.size() >= 2, "Test 456: résultats sans doublon (« plan » : " << hits.size() << ")");
+        std::cout << "[PASS] Test 456: Recherche par nom, traduction, synonyme, accent, fragment et faute de frappe" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 457 : rapidité sur un grand index
+    // -------------------------------------------------------------------------
+    {
+        CommandSearchIndex index;
+        const QStringList words = { "poutre", "poteau", "charge", "maillage", "résultat", "plan", "grille", "nœud", "dalle", "voile",
+                                    "beam", "column", "load", "mesh", "result", "andry", "enta", "harato", "takelaka", "rindrina" };
+        for (int i = 0; i < 6000; ++i)
+        {
+            const QString a = words[i % words.size()], b = words[(i / 7) % words.size()], c = words[(i / 13) % words.size()];
+            index.add(entry(QStringLiteral("ext.cmd.%1").arg(i), QStringLiteral("%1 %2 %3").arg(a, b).arg(i), { c, b + QStringLiteral(" ") + a },
+                            QStringLiteral("Commande d'extension %1 : %2 et %3").arg(i).arg(a, c)));
+        }
+        QElapsedTimer timer;
+        const QStringList queries = { "pou", "charge mail", "harato", "resultat", "poutte", "beam column", "x", "grille plan noeud" };
+        qint64 worst = 0;
+        for (const QString& q : queries)
+        {
+            timer.start();
+            const auto r = index.search(q, 12);
+            worst = std::max(worst, timer.elapsed());
+            TEST_CHECK(r.size() <= 12, "Test 457: au plus 12 résultats");
+        }
+        TEST_CHECK(worst < 50, "Test 457: requête la plus lente " << worst << " ms sur 6 000 entrées (< 50 ms)");
+        std::cout << "[PASS] Test 457: Recherche rapide sur 6 000 entrées (pire requête " << worst << " ms)" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 458 : champ de recherche au clavier
+    // -------------------------------------------------------------------------
+    {
+        TSA::UI::GlobalSearchWidget w;
+        w.resize(300, 30);
+        w.show();   // liste déroulante affichée sous le champ, comme dans la barre de titre
+        w.setEntriesProvider([] {
+            return QList<SearchEntry>{ entry("cmd.create.beam", "Poutre", { "Beam" }), entry("cmd.create.column", "Poteau", { "Column" }),
+                                       entry("cmd.create.slab", "Dalle", { "Slab" }) };
+        });
+        QStringList emitted;
+        QObject::connect(&w, &TSA::UI::GlobalSearchWidget::activated, [&emitted](const QString& id) { emitted << id; });
+        QLineEdit* edit = w.lineEdit();
+        auto key = [edit](int k) {
+            QKeyEvent override(QEvent::ShortcutOverride, k, Qt::NoModifier);
+            QCoreApplication::sendEvent(edit, &override);
+            const bool reserved = override.isAccepted();
+            QKeyEvent press(QEvent::KeyPress, k, Qt::NoModifier);
+            QCoreApplication::sendEvent(edit, &press);
+            return reserved;
+        };
+        edit->setText("po");
+        w.runSearchNow();
+        TEST_CHECK(w.resultIds() == QStringList({ "cmd.create.beam", "cmd.create.column" }) && w.resultsList()->currentRow() == 0,
+                   "Test 458: « po » → Poutre, Poteau ; premier résultat présélectionné");
+        TEST_CHECK(key(Qt::Key_Down) && w.resultsList()->currentRow() == 1, "Test 458: flèche bas → second résultat (touche réservée au champ)");
+        TEST_CHECK(key(Qt::Key_Return) && emitted == QStringList{ "cmd.create.column" },
+                   "Test 458: Entrée → commande « cmd.create.column » émise");
+        edit->setText("zzzz");
+        w.runSearchNow();
+        TEST_CHECK(w.resultIds().isEmpty() && w.resultsList()->count() == 1, "Test 458: « aucun résultat » affiché");
+        key(Qt::Key_Return);
+        TEST_CHECK(emitted.size() == 1, "Test 458: la ligne « aucun résultat » n'exécute rien");
+        edit->setText("dal");
+        w.runSearchNow();
+        TEST_CHECK(w.isPopupVisible(), "Test 458: liste ouverte");
+        TEST_CHECK(key(Qt::Key_Escape) && !w.isPopupVisible() && edit->text() == "dal", "Test 458: Échap ferme la liste (texte conservé ; « Mode sélection » non déclenché)");
+        key(Qt::Key_Escape);
+        TEST_CHECK(edit->text().isEmpty(), "Test 458: second Échap efface la recherche");
+        TEST_CHECK(!edit->accessibleName().isEmpty() && !w.resultsList()->accessibleName().isEmpty() && !edit->placeholderText().isEmpty(),
+                   "Test 458: noms accessibles et texte indicatif");
+        std::cout << "[PASS] Test 458: Champ de recherche : liste, clavier, exécution émise, fermeture, accessibilité" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 459 : boîte « Langue de l'interface »
+    // -------------------------------------------------------------------------
+    {
+        TSA::UI::LanguageDialog dialog(Language::French);
+        auto* list = dialog.findChild<QListWidget*>("TSALanguageList");
+        auto* restart = dialog.findChild<QPushButton*>("TSALanguageRestart");
+        auto* note = dialog.findChild<QLabel*>("TSALanguageNote");
+        TEST_CHECK(list && restart && note && list->count() == 3, "Test 459: trois langues listées");
+        TEST_CHECK(dialog.selectedLanguage() == Language::French && restart->isHidden(), "Test 459: langue actuelle : pas de redémarrage proposé");
+        for (int i = 0; i < list->count(); ++i)
+            if (static_cast<Language>(list->item(i)->data(Qt::UserRole).toInt()) == Language::Malagasy) list->setCurrentRow(i);
+        TEST_CHECK(dialog.selectedLanguage() == Language::Malagasy && !restart->isHidden(), "Test 459: malgache choisi : redémarrage proposé");
+        const QString expected = LanguageManager::translate(Language::Malagasy, "TSA::UI::LanguageDialog", "Redémarrer maintenant");
+        TEST_CHECK(restart->text() == expected && expected != QString::fromUtf8("Redémarrer maintenant"),
+                   "Test 459: bouton dans la langue choisie (« " << restart->text().toStdString() << " »)");
+        std::cout << "[PASS] Test 459: Choix de la langue expliqué dans la langue sélectionnée" << std::endl;
+        ++passed;
+    }
+
+    return true;
+}

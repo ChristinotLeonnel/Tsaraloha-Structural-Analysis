@@ -15,6 +15,14 @@
 namespace TSA::UI
 {
 
+std::vector<QAction*> RibbonPanel::actions() const
+{
+    std::vector<QAction*> out;
+    for (const Entry& e : m_entries)
+        if (e.action) out.push_back(e.action);
+    return out;
+}
+
 RibbonPanel::RibbonPanel(const QString& title, QWidget* parent)
     : QWidget(parent)
     , m_title(title)

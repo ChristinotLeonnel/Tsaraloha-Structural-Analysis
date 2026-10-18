@@ -10,13 +10,11 @@
 #include "../../Diagnostics/CrashHandler.h"
 #include "../../Diagnostics/Logger.h"
 #include "../../Platform/WindowsAssociation.h"
+#include "../../Core/I18n/LanguageManager.h"
 
 #include <QDir>
 #include <QIcon>
-#include <QLibraryInfo>
-#include <QLocale>
 #include <QStyleFactory>
-#include <QTranslator>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -75,16 +73,13 @@ EcosystemApplication::EcosystemApplication(int& argc, char** argv)
     initWindowsAppUserModelID();
 #endif
 
-    // Textes standard de Qt en français (boutons « Enregistrer », « Annuler », boîtes de fichiers…) :
-    // traduction déployée à côté de l'exécutable, sinon celle de l'installation Qt (BUG-020).
-    auto* qtTranslator = new QTranslator(this);
-    if (qtTranslator->load(QLocale(QLocale::French), QStringLiteral("qtbase"), QStringLiteral("_"),
-                           applicationDirPath() + QStringLiteral("/translations"))
-        || qtTranslator->load(QLocale(QLocale::French), QStringLiteral("qtbase"), QStringLiteral("_"),
-                              QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
-    {
-        installTranslator(qtTranslator);
-    }
+    // Langue de l'interface avant toute fenêtre (docs/I18N.md) : « --lang=xx » (essais, sans enregistrement), sinon
+    // la préférence de l'utilisateur. Textes standard de Qt compris (BUG-020).
+    using TSA::Core::I18n::LanguageManager;
+    const auto language = LanguageManager::languageFromArguments(arguments()).value_or(LanguageManager::storedLanguage());
+    if (!LanguageManager::install(*this, language))
+        TSA_LOG_WARN("App", "TranslationMissing",
+                     ("Traduction introuvable (" + LanguageManager::translationResource(language) + ") : textes en français").toStdString());
 
     QIcon appIcon;
     appIcon.addFile(QString::fromLatin1(TSA::Product::kIconIco));

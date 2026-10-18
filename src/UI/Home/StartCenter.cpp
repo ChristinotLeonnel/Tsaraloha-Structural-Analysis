@@ -2,6 +2,7 @@
 #include "App/ProductInfo.h"
 
 #include "../Theme/ThemeManager.h"
+#include "../../Core/I18n/LanguageManager.h"
 #include "../../Project/ModelPreviewCache.h"
 #include "../../Project/RecentProjects.h"
 
@@ -279,6 +280,25 @@ StartCenter::StartCenter(QWidget* parent)
     }
     connect(m_btnNew, &QPushButton::clicked, this, &StartCenter::newProjectRequested);
     connect(m_btnOpen, &QPushButton::clicked, this, &StartCenter::openDialogRequested);
+
+    // Langue de l'interface : nom de la langue actuelle, dans cette langue (docs/I18N.md)
+    auto* language = new QPushButton(QIcon(":/icons/common/language.svg"),
+                                     TSA::Core::I18n::LanguageManager::nativeName(TSA::Core::I18n::LanguageManager::currentLanguage()),
+                                     m_identity);
+    language->setObjectName("StartCenterLanguage");
+    language->setFlat(true);
+    language->setCursor(Qt::PointingHandCursor);
+    language->setIconSize(QSize(16, 16));
+    language->setToolTip(tr("Langue de l'interface : English, Français, Malagasy"));
+    language->setAccessibleName(tr("Langue de l'interface"));
+    {
+        auto* row = new QHBoxLayout();
+        row->addStretch();
+        row->addWidget(language);
+        row->addStretch();
+        identity->addLayout(row);
+    }
+    connect(language, &QPushButton::clicked, this, &StartCenter::languageRequested);
     identity->addSpacing(22);
 
     // Projets récents : titre, recherche, tri

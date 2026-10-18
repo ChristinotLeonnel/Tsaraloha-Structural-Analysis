@@ -1,4 +1,5 @@
 #include "RibbonBar.h"
+#include "RibbonPanel.h"
 #include "RibbonTab.h"
 #include "../Theme/ThemeManager.h"
 
@@ -8,6 +9,8 @@
 #include <QHBoxLayout>
 #include <QFrame>
 #include "RibbonButton.h"
+
+#include <algorithm>
 
 namespace TSA::UI
 {
@@ -74,6 +77,46 @@ RibbonTab* RibbonBar::addTab(const QString& title)
     m_tabWidget->addTab(tab, title);
     m_tabs.push_back(tab);
     return tab;
+}
+
+int RibbonBar::tabCount() const
+{
+    return static_cast<int>(m_tabs.size());
+}
+
+QString RibbonBar::tabTitle(int index) const
+{
+    return m_tabWidget && index >= 0 && index < m_tabWidget->count() ? m_tabWidget->tabText(index) : QString();
+}
+
+RibbonTab* RibbonBar::tab(int index) const
+{
+    return index >= 0 && index < static_cast<int>(m_tabs.size()) ? m_tabs[index] : nullptr;
+}
+
+QHash<const QAction*, QString> RibbonBar::actionLocations() const
+{
+    QHash<const QAction*, QString> out;
+    for (int i = 0; i < tabCount(); ++i)
+        for (RibbonPanel* panel : m_tabs[i]->panels())
+            for (QAction* a : panel->actions())
+                if (!out.contains(a)) out.insert(a, tabTitle(i).remove(QLatin1Char('&')) + QStringLiteral(" › ") + panel->title());
+    return out;
+}
+
+bool RibbonBar::revealAction(const QAction* action)
+{
+    for (int i = 0; i < tabCount(); ++i)
+        for (RibbonPanel* panel : m_tabs[i]->panels())
+        {
+            const auto acts = panel->actions();
+            if (std::find(acts.begin(), acts.end(), action) != acts.end())
+            {
+                setCurrentTabIndex(i);
+                return true;
+            }
+        }
+    return false;
 }
 
 int RibbonBar::currentTabIndex() const

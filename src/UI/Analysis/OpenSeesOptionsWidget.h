@@ -16,6 +16,8 @@ namespace TSA::UI
 /// poids propre et nombre de modes sont des réglages communs de la fenêtre Analysis.
 class OpenSeesOptionsWidget final : public AnalysisEngineOptionsWidget
 {
+    Q_OBJECT
+
 public:
     explicit OpenSeesOptionsWidget(QWidget* parent = nullptr);
 

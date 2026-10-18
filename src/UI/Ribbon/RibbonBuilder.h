@@ -190,6 +190,7 @@ struct RibbonActions
     QAction* actionMeasure = nullptr;
     QAction* actionTopology = nullptr;
     QAction* actionToggleTheme = nullptr;
+    QAction* actionLanguage = nullptr;
     QAction* actionHelp = nullptr;
     QAction* actionOnlineDocs = nullptr;
     QAction* actionShortcuts = nullptr;

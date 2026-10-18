@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QtGlobal>   // QT_TRANSLATE_NOOP : noms en français, traduits à l'affichage (contexte « CommandCategory »)
 #include <string>
 
 namespace TSA::Commands
@@ -41,33 +42,33 @@ inline std::string categoryToString(CommandCategory cat)
 {
     switch (cat)
     {
-    case CommandCategory::File:          return "Gestion des projets";
-    case CommandCategory::Edit:          return "Édition";
-    case CommandCategory::Create:        return "Modélisation";
-    case CommandCategory::Modify:        return "Modification et transformations";
-    case CommandCategory::Selection:     return "Sélection et isolation";
-    case CommandCategory::Properties:    return "Propriétés";
-    case CommandCategory::Libraries:     return "Matériaux et sections";
-    case CommandCategory::Structure:     return "Grilles et niveaux";
-    case CommandCategory::Loads:         return "Charges";
-    case CommandCategory::LoadCases:     return "Cas de charge et combinaisons";
-    case CommandCategory::Model:         return "Modèle";
-    case CommandCategory::Analysis:      return "Analyse structurelle";
-    case CommandCategory::Results:       return "Résultats";
-    case CommandCategory::Design:        return "Dimensionnement";
-    case CommandCategory::View:          return "Navigation 2D et 3D";
-    case CommandCategory::Display:       return "Affichage";
-    case CommandCategory::Tools:         return "Outils généraux";
-    case CommandCategory::Documentation: return "Rapports";
-    case CommandCategory::Workspace:     return "Fenêtres et panneaux";
-    case CommandCategory::Settings:      return "Paramètres";
-    case CommandCategory::Snap:          return "Grille, accrochage et plans de travail";
-    case CommandCategory::Mesh:          return "Maillage";
-    case CommandCategory::Bim:           return "BIM et échanges de données";
-    case CommandCategory::Annotation:    return "Cotation et mesure";
-    case CommandCategory::Help:          return "Aide";
+    case CommandCategory::File:          return QT_TRANSLATE_NOOP("CommandCategory", "Gestion des projets");
+    case CommandCategory::Edit:          return QT_TRANSLATE_NOOP("CommandCategory", "Édition");
+    case CommandCategory::Create:        return QT_TRANSLATE_NOOP("CommandCategory", "Modélisation");
+    case CommandCategory::Modify:        return QT_TRANSLATE_NOOP("CommandCategory", "Modification et transformations");
+    case CommandCategory::Selection:     return QT_TRANSLATE_NOOP("CommandCategory", "Sélection et isolation");
+    case CommandCategory::Properties:    return QT_TRANSLATE_NOOP("CommandCategory", "Propriétés");
+    case CommandCategory::Libraries:     return QT_TRANSLATE_NOOP("CommandCategory", "Matériaux et sections");
+    case CommandCategory::Structure:     return QT_TRANSLATE_NOOP("CommandCategory", "Grilles et niveaux");
+    case CommandCategory::Loads:         return QT_TRANSLATE_NOOP("CommandCategory", "Charges");
+    case CommandCategory::LoadCases:     return QT_TRANSLATE_NOOP("CommandCategory", "Cas de charge et combinaisons");
+    case CommandCategory::Model:         return QT_TRANSLATE_NOOP("CommandCategory", "Modèle");
+    case CommandCategory::Analysis:      return QT_TRANSLATE_NOOP("CommandCategory", "Analyse structurelle");
+    case CommandCategory::Results:       return QT_TRANSLATE_NOOP("CommandCategory", "Résultats");
+    case CommandCategory::Design:        return QT_TRANSLATE_NOOP("CommandCategory", "Dimensionnement");
+    case CommandCategory::View:          return QT_TRANSLATE_NOOP("CommandCategory", "Navigation 2D et 3D");
+    case CommandCategory::Display:       return QT_TRANSLATE_NOOP("CommandCategory", "Affichage");
+    case CommandCategory::Tools:         return QT_TRANSLATE_NOOP("CommandCategory", "Outils généraux");
+    case CommandCategory::Documentation: return QT_TRANSLATE_NOOP("CommandCategory", "Rapports");
+    case CommandCategory::Workspace:     return QT_TRANSLATE_NOOP("CommandCategory", "Fenêtres et panneaux");
+    case CommandCategory::Settings:      return QT_TRANSLATE_NOOP("CommandCategory", "Paramètres");
+    case CommandCategory::Snap:          return QT_TRANSLATE_NOOP("CommandCategory", "Grille, accrochage et plans de travail");
+    case CommandCategory::Mesh:          return QT_TRANSLATE_NOOP("CommandCategory", "Maillage");
+    case CommandCategory::Bim:           return QT_TRANSLATE_NOOP("CommandCategory", "BIM et échanges de données");
+    case CommandCategory::Annotation:    return QT_TRANSLATE_NOOP("CommandCategory", "Cotation et mesure");
+    case CommandCategory::Help:          return QT_TRANSLATE_NOOP("CommandCategory", "Aide");
     }
-    return "Général";
+    return QT_TRANSLATE_NOOP("CommandCategory", "Général");
 }
 
 /// Ordre des catégories (fichier shortcut.txt, éditeur des raccourcis).
