@@ -266,8 +266,8 @@ void OccView::initOcc()
     );
 
     // Orientation standard génie civil : +Z vers le haut (élévation), projection axonométrique droite Z-up
-    m_view->SetUp(0.0, 0.0, 1.0);
-    m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
+    TSA::Viewer::ViewManager::applyFrame(m_view, TSA::Viewer::ViewManager::standardFrame(TSA::Viewer::StandardCameraView::ThreeD_Axo),
+                                         gp_Pnt(0.0, 0.0, 0.0));
     m_view->MustBeResized();
 
     // 3D ViewCube (Cube de navigation 3D interactif comme Robot Structural Analysis)

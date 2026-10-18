@@ -141,22 +141,22 @@ void MainWindow::createActions()
     // Actions Vues et Projections
     m_actionViewXY = new QAction(tr("Plan &XY (Vue d'étage)"), this);
     m_actionViewXY->setIcon(makePlanIcon(QColor(255, 140, 140), Qt::blue, Qt::darkGreen, "X", "Y"));
-    m_actionViewXY->setToolTip(tr("Vue en Plan XY (Étage actif)"));
+    m_actionViewXY->setToolTip(tr("Plan 2D XY : vue orthographique perpendiculaire au niveau actif, dessin dans ce plan"));
     connect(m_actionViewXY, &QAction::triggered, this, &MainWindow::onActionViewXY);
 
     m_actionViewYZ = new QAction(tr("Plan &YZ (Coupe latérale / Pignon)"), this);
     m_actionViewYZ->setIcon(makePlanIcon(QColor(140, 160, 255), Qt::darkGreen, Qt::red, "Y", "Z"));
-    m_actionViewYZ->setToolTip(tr("Vue en Plan YZ (Coupe latérale / Pignon)"));
+    m_actionViewYZ->setToolTip(tr("Élévation 2D YZ : vue orthographique de côté, dessin dans le plan YZ"));
     connect(m_actionViewYZ, &QAction::triggered, this, &MainWindow::onActionViewYZ);
 
     m_actionViewXZ = new QAction(tr("Plan &XZ (Élévation de face / Portique)"), this);
     m_actionViewXZ->setIcon(makePlanIcon(QColor(140, 230, 160), Qt::blue, Qt::red, "X", "Z"));
-    m_actionViewXZ->setToolTip(tr("Vue en Plan XZ (Élévation de face / Portique)"));
+    m_actionViewXZ->setToolTip(tr("Élévation 2D XZ : vue orthographique de face, dessin dans le plan XZ"));
     connect(m_actionViewXZ, &QAction::triggered, this, &MainWindow::onActionViewXZ);
 
     m_actionView3D = new QAction(tr("Vue &3D (Axonométrique)"), this);
     m_actionView3D->setIcon(make3DIsoIcon());
-    m_actionView3D->setToolTip(tr("Vue 3D Isométrique"));
+    m_actionView3D->setToolTip(tr("Retour à la vue 3D (quitte le mode 2D, caméra 3D d'avant)"));
     connect(m_actionView3D, &QAction::triggered, this, &MainWindow::onActionView3D);
 
     m_actionCoordSystem = new QAction(tr("Repère &Local / Global"), this);
@@ -1215,6 +1215,10 @@ void MainWindow::createMenus()
     projSub->addAction(m_actionViewIsometric);
     projSub->addAction(m_actionViewHome);
     projSub->addSeparator();
+    projSub->addAction(m_actionViewXY);
+    projSub->addAction(m_actionViewXZ);
+    projSub->addAction(m_actionViewYZ);
+    projSub->addSeparator();
     projSub->addAction(m_actionViewTop);
     projSub->addAction(m_actionViewBottom);
     projSub->addAction(m_actionViewFront);
@@ -2175,6 +2179,8 @@ void MainWindow::createStatusBar()
 
     // Synchronisation du plan de travail et de l'historique caméra
     connect(m_occView, &OccView::workPlaneChanged, this, &MainWindow::onWorkPlaneChanged);
+    connect(m_occView, &OccView::standardViewChanged, this, [this](TSA::Viewer::StandardCameraView) { onNavigationViewChanged(); });
+    connect(m_occView, &OccView::mode2DChanged, this, [this](bool) { onNavigationViewChanged(); });
     if (m_occView)
     {
         onWorkPlaneChanged(m_occView->activeWorkPlane());

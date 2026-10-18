@@ -70,10 +70,13 @@ void OccView::mousePressEvent(QMouseEvent* event)
                     Handle(AIS_ViewCubeOwner) cubeOwner = Handle(AIS_ViewCubeOwner)::DownCast(m_context->DetectedOwner());
                     if (!cubeOwner.IsNull())
                     {
-                        pushCameraHistory();
-                        m_viewCube->HandleClick(cubeOwner);
-                        m_view->Redraw();
-                        emit viewCameraChanged();
+                        // Service de navigation : face = vue orthographique exacte (plan 2D suivi en mode 2D),
+                        // arête / coin = orientation 3D déterministe ; caméra finale exacte après la transition.
+                        // Clic entièrement consommé ici : sans cela, le relâchement passait à la sélection, qui
+                        // relançait l'animation interne du cube (HandleMouseClick) sur la partie du cube alors sous le
+                        // curseur — après une arête ou un coin, une face voisine : orientation finale imprévisible.
+                        m_viewCubeClickPending = true;
+                        showCubeOrientation(cubeOwner->MainOrientation());
                         return;
                     }
                 }
@@ -412,6 +415,12 @@ void OccView::mouseReleaseEvent(QMouseEvent* event)
         zoomWindow(m_dragStartPos.x(), m_dragStartPos.y(), px, py);
         m_currentAction = CurrentAction::Nothing;
         setCursor(interactionMode() == InteractionMode::Select ? Qt::ArrowCursor : Qt::CrossCursor);
+        return;
+    }
+
+    if (event->button() == Qt::LeftButton && m_viewCubeClickPending)
+    {
+        m_viewCubeClickPending = false;   // relâchement d'un clic sur le ViewCube : déjà traité à l'appui
         return;
     }
 

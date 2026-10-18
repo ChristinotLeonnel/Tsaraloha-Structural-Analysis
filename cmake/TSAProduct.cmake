@@ -1040,6 +1040,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_bim.cpp
     ${TSA_ROOT}/tests/test_ifc_files.cpp
     ${TSA_ROOT}/tests/test_drawing.cpp
+    ${TSA_ROOT}/tests/test_views.cpp
     ${TSA_ROOT}/tests/test_snap.cpp
     ${TSA_ROOT}/tests/test_automation.cpp
     ${TSA_ROOT}/tests/test_help.cpp
@@ -1530,7 +1531,7 @@ function(tsa_add_product)
         # Tests complets et suites thématiques enregistrés sous CTest
         add_test(NAME ${name}_AllTests COMMAND ${tests})
         foreach(_suite coordinates model io commands grids viewer cables extensions workplane window node
-                       loads opensees supports standards bim ifc drawing tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
+                       loads opensees supports standards bim ifc drawing views tsa3d modules templates deployment mesh surfaces audit benchmarks display multidoc)
             add_test(NAME ${name}_${_suite}Tests COMMAND ${tests} --suite=${_suite})
         endforeach()
         # Couches de la base commune (docs/TSARALOHA_ARCHITECTURE.md)

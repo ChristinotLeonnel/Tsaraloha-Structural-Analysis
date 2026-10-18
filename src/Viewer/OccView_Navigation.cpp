@@ -31,6 +31,7 @@
 #include <Geom_Axis2Placement.hxx>
 #include <Graphic3d_TransformPers.hxx>
 #include <QCursor>
+#include <QThread>
 #include <Prs3d_DatumParts.hxx>
 #include <Prs3d_DatumMode.hxx>
 #include <TCollection_ExtendedString.hxx>
@@ -313,13 +314,7 @@ void OccView::fitResults()
 
 void OccView::resetView()
 {
-    if (!m_view.IsNull())
-    {
-        pushCameraHistory();
-        m_view->SetUp(0.0, 0.0, 1.0);
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
-        fitAll();
-    }
+    showStandardView(TSA::Viewer::StandardCameraView::ThreeD_Axo);
 }
 
 void OccView::viewHome()
@@ -329,79 +324,235 @@ void OccView::viewHome()
 
 void OccView::viewTop()
 {
-    if (!m_view.IsNull())
-    {
-        pushCameraHistory();
-        m_view->SetUp(0.0, 1.0, 0.0);
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_Top, false);
-        fitAll();
-    }
+    showStandardView(TSA::Viewer::StandardCameraView::Top);
 }
 
 void OccView::viewBottom()
 {
-    if (!m_view.IsNull())
-    {
-        pushCameraHistory();
-        m_view->SetUp(0.0, 1.0, 0.0);
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_Bottom, false);
-        fitAll();
-    }
+    showStandardView(TSA::Viewer::StandardCameraView::Bottom);
 }
 
 void OccView::viewFront()
 {
-    if (!m_view.IsNull())
-    {
-        pushCameraHistory();
-        m_view->SetUp(0.0, 0.0, 1.0);
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_Front, false);
-        fitAll();
-    }
+    showStandardView(TSA::Viewer::StandardCameraView::Front);
 }
 
 void OccView::viewBack()
 {
-    if (!m_view.IsNull())
-    {
-        pushCameraHistory();
-        m_view->SetUp(0.0, 0.0, 1.0);
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_Back, false);
-        fitAll();
-    }
+    showStandardView(TSA::Viewer::StandardCameraView::Back);
 }
 
 void OccView::viewLeft()
 {
-    if (!m_view.IsNull())
-    {
-        pushCameraHistory();
-        m_view->SetUp(0.0, 0.0, 1.0);
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_Left, false);
-        fitAll();
-    }
+    showStandardView(TSA::Viewer::StandardCameraView::Left);
 }
 
 void OccView::viewRight()
 {
-    if (!m_view.IsNull())
-    {
-        pushCameraHistory();
-        m_view->SetUp(0.0, 0.0, 1.0);
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_Right, false);
-        fitAll();
-    }
+    showStandardView(TSA::Viewer::StandardCameraView::Right);
 }
 
 void OccView::viewIsometric()
 {
-    if (!m_view.IsNull())
+    showStandardView(TSA::Viewer::StandardCameraView::ThreeD_Axo);
+}
+
+namespace
+{
+bool isFace(TSA::Viewer::StandardCameraView v)
+{
+    using V = TSA::Viewer::StandardCameraView;
+    return v == V::Top || v == V::Bottom || v == V::Front || v == V::Back || v == V::Left || v == V::Right;
+}
+
+/// Face du cube correspondant à une orientation (Custom pour une arête, un coin ou l'axonométrie).
+TSA::Viewer::StandardCameraView faceOf(V3d_TypeOfOrientation o)
+{
+    using V = TSA::Viewer::StandardCameraView;
+    switch (o)
     {
-        pushCameraHistory();
-        m_view->SetUp(0.0, 0.0, 1.0);
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
-        fitAll();
+    case V3d_Zpos: return V::Top;
+    case V3d_Zneg: return V::Bottom;
+    case V3d_Yneg: return V::Front;
+    case V3d_Ypos: return V::Back;
+    case V3d_Xneg: return V::Left;
+    case V3d_Xpos: return V::Right;
+    default: return V::Custom;
     }
+}
+
+/// Plan parallèle à la vue (normale alignée sur la direction de visée, au signe près).
+bool facesView(const gp_Dir& normal, const gp_Dir& direction)
+{
+    return std::abs(std::abs(normal.Dot(direction)) - 1.0) < 1e-9;
+}
+} // namespace
+
+void OccView::applyCameraFrame(const TSA::Viewer::CameraFrame& frame, bool orthographic, bool animate)
+{
+    if (m_view.IsNull() || m_view->Camera().IsNull())
+        return;
+    pushCameraHistory();
+    const Handle(Graphic3d_Camera)& cam = m_view->Camera();
+    Handle(Graphic3d_Camera) start = new Graphic3d_Camera(cam);
+    if (orthographic && !cam->IsOrthographic())
+        m_viewManager.setOrthographic(true, m_view);
+    TSA::Viewer::ViewManager::applyFrame(m_view, frame, cam->Center());
+    m_view->FitAll();
+    m_view->ZFitAll();
+
+    // Transition : interpolation de la caméra de départ vers la caméra finale, puis caméra finale exacte (aucune
+    // orientation intermédiaire ne peut rester).
+    if (animate && m_viewTransitionMs > 0 && isVisible())
+    {
+        Handle(Graphic3d_Camera) end = new Graphic3d_Camera(cam);
+        Handle(Graphic3d_Camera) step = new Graphic3d_Camera(cam);
+        const int frames = std::max(2, m_viewTransitionMs / 20);
+        for (int k = 1; k < frames; ++k)
+        {
+            Graphic3d_Camera::Interpolate(start, end, double(k) / frames, step);
+            cam->Copy(step);
+            m_view->Redraw();
+            QThread::msleep(static_cast<unsigned long>(m_viewTransitionMs / frames));
+        }
+        cam->Copy(end);
+    }
+    m_view->Redraw();
+    emit viewCameraChanged();
+}
+
+void OccView::showStandardView(TSA::Viewer::StandardCameraView view)
+{
+    using V = TSA::Viewer::StandardCameraView;
+    if (m_view.IsNull())
+        return;
+    if (view == V::NormalToPlane || view == V::OppositePlane)
+    {
+        if (m_mode2DActive)
+        {
+            m_plan2DFace = V::Custom;
+            orient2DView();
+            return;
+        }
+        applyCameraFrame(TSA::Viewer::ViewManager::planeFrame(m_workPlane, view == V::OppositePlane), true, false);
+        return;
+    }
+    if (!isFace(view))
+    {
+        // Axonométrie (ou orientation libre) : vue 3D, jamais en mode 2D.
+        if (m_mode2DActive)
+            leaveMode2D(false);
+        applyCameraFrame(TSA::Viewer::ViewManager::standardFrame(V::ThreeD_Axo), false, false);
+        m_viewManager.setCurrentView(V::ThreeD_Axo);
+        emit standardViewChanged(V::ThreeD_Axo);
+        return;
+    }
+    if (m_mode2DActive)
+    {
+        showPlanView(view);
+        return;
+    }
+    const TSA::Viewer::CameraFrame frame = TSA::Viewer::ViewManager::standardFrame(view);
+    // Plan de travail vu par la tranche : tout point cliqué tomberait hors de lui ; plan de la face à la place.
+    if (std::abs(m_workPlane.normal().Dot(frame.direction)) < 1e-6)
+        setActiveWorkPlane(workPlaneForFace(view));
+    applyCameraFrame(frame, true, false);
+    m_viewManager.setCurrentView(view);
+    emit standardViewChanged(view);
+}
+
+TSA::Coordinate::WorkPlane OccView::workPlaneForFace(TSA::Viewer::StandardCameraView face) const
+{
+    using V = TSA::Viewer::StandardCameraView;
+    using T = TSA::Coordinate::WorkPlaneType;
+    const gp_Dir direction = TSA::Viewer::ViewManager::standardFrame(face).direction;
+    if (facesView(m_workPlane.normal(), direction))
+        return m_workPlane;   // plan actif déjà face à la vue (niveau, coupe nommée…) : conservé
+    switch (face)
+    {
+    case V::Front:
+    case V::Back:
+        return TSA::Coordinate::WorkPlane(T::GlobalXZ, "Élévation Y", m_lastElevationXZOffset);
+    case V::Left:
+    case V::Right:
+        return TSA::Coordinate::WorkPlane(T::GlobalYZ, "Élévation X", m_lastElevationYZOffset);
+    default:
+        return TSA::Coordinate::WorkPlane(T::GlobalXY, "Plan Z", m_activeLevelZ);
+    }
+}
+
+TSA::Viewer::CameraFrame OccView::plan2DFrame() const
+{
+    if (isFace(m_plan2DFace))
+    {
+        const TSA::Viewer::CameraFrame face = TSA::Viewer::ViewManager::standardFrame(m_plan2DFace);
+        if (facesView(m_workPlane.normal(), face.direction))
+            return face;
+    }
+    return TSA::Viewer::ViewManager::planeFrame(m_workPlane);
+}
+
+void OccView::orient2DView()
+{
+    if (m_view.IsNull() || m_view->Camera().IsNull())
+        return;
+    if (!m_view->Camera()->IsOrthographic())
+        m_viewManager.setOrthographic(true, m_view);
+    TSA::Viewer::ViewManager::applyFrame(m_view, plan2DFrame(), m_workPlane.origin());
+    syncViewPlaneMode();
+    updateElementIsolation();
+    m_view->FitAll();
+    m_view->ZFitAll();
+    m_view->Redraw();
+    emit viewCameraChanged();
+}
+
+void OccView::showPlanView(TSA::Viewer::StandardCameraView face)
+{
+    if (m_view.IsNull() || !isFace(face))
+        return;
+    pushCameraHistory();
+    m_plan2DFace = face;
+    const TSA::Coordinate::WorkPlane wp = workPlaneForFace(face);
+    if (!m_mode2DActive)
+    {
+        if (!facesView(m_workPlane.normal(), wp.normal()) || !m_workPlane.origin().IsEqual(wp.origin(), 1e-9))
+            setActiveWorkPlane(wp);
+        setMode2D(true);   // orientation de la face (plan2DFrame)
+    }
+    else
+    {
+        setActiveWorkPlane(wp);   // mode 2D : réoriente sur la face
+        orient2DView();
+    }
+    m_viewManager.setCurrentView(face);
+    emit standardViewChanged(face);
+}
+
+void OccView::show3DView()
+{
+    if (m_mode2DActive)
+    {
+        setMode2D(false);
+        return;
+    }
+    showStandardView(TSA::Viewer::StandardCameraView::ThreeD_Axo);
+}
+
+void OccView::showCubeOrientation(V3d_TypeOfOrientation orientation)
+{
+    const TSA::Viewer::StandardCameraView face = faceOf(orientation);
+    if (face != TSA::Viewer::StandardCameraView::Custom)
+    {
+        showStandardView(face);
+        return;
+    }
+    // Arête ou coin : vue 3D déterministe (projection inchangée), transition puis orientation exacte.
+    if (m_mode2DActive)
+        leaveMode2D(false);
+    applyCameraFrame(TSA::Viewer::ViewManager::frameForOrientation(orientation), false, true);
+    m_viewManager.setCurrentView(TSA::Viewer::StandardCameraView::Custom);
+    emit standardViewChanged(TSA::Viewer::StandardCameraView::Custom);
 }
 
 void OccView::zoomIn(double factor)
@@ -529,6 +680,7 @@ void OccView::previousView()
     m_view->Update();
     m_view->Redraw();
     m_isRestoringCamera = false;
+    keep2DConsistent();
 
     emit cameraHistoryChanged(hasPreviousView(), hasNextView());
     emit viewCameraChanged();
@@ -552,6 +704,7 @@ void OccView::nextView()
     m_view->Update();
     m_view->Redraw();
     m_isRestoringCamera = false;
+    keep2DConsistent();
 
     emit cameraHistoryChanged(hasPreviousView(), hasNextView());
     emit viewCameraChanged();
@@ -570,6 +723,14 @@ void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
     {
         m_activeLevelZ = wp.offset();
     }
+    else if (wp.type() == TSA::Coordinate::WorkPlaneType::GlobalXZ)
+    {
+        m_lastElevationXZOffset = wp.offset();
+    }
+    else if (wp.type() == TSA::Coordinate::WorkPlaneType::GlobalYZ)
+    {
+        m_lastElevationYZOffset = wp.offset();
+    }
     TSA::Coordinate::CoordinateTransformationService::instance().setActiveWorkPlane(m_workPlane);
     const TSA::Grid::GridSystem* grid = m_gridManager ? m_gridManager->activeGrid() : nullptr;
     m_gridRenderer.setActiveLevelElevation(m_activeLevelZ, grid, m_context);
@@ -586,12 +747,7 @@ void OccView::setActiveWorkPlane(const TSA::Coordinate::WorkPlane& wp)
     emit workPlaneChanged(m_workPlane);
     if (m_mode2DActive || m_projectionManager.is2D())
     {
-        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
-        updateElementIsolation();
-        if (!m_view.IsNull())
-        {
-            m_view->FitAll();
-        }
+        orient2DView();
     }
     if (!m_view.IsNull())
         m_view->Redraw();
@@ -608,12 +764,7 @@ void OccView::setWorkPlaneElevation(double elevation)
     emit workPlaneChanged(m_workPlane);
     if (m_mode2DActive || m_projectionManager.is2D())
     {
-        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
-        updateElementIsolation();
-        if (!m_view.IsNull())
-        {
-            m_view->FitAll();
-        }
+        orient2DView();
     }
     if (!m_view.IsNull())
         m_view->Redraw();
@@ -634,12 +785,7 @@ void OccView::setWorkPlaneType(TSA::Coordinate::WorkPlaneType type, double offse
     emit workPlaneChanged(m_workPlane);
     if (m_mode2DActive || m_projectionManager.is2D())
     {
-        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
-        updateElementIsolation();
-        if (!m_view.IsNull())
-        {
-            m_view->FitAll();
-        }
+        orient2DView();
     }
     if (!m_view.IsNull())
         m_view->Redraw();
@@ -675,22 +821,7 @@ void OccView::setWorkPlaneVisible(bool visible)
 
 void OccView::viewNormalToWorkPlane()
 {
-    if (m_view.IsNull())
-        return;
-
-    pushCameraHistory();
-
-    gp_Pnt orig = m_workPlane.origin();
-    gp_Dir norm = m_workPlane.normal();
-    gp_Dir up = m_workPlane.yDirection();
-
-    m_view->SetUp(up.X(), up.Y(), up.Z());
-    m_view->SetProj(norm.X(), norm.Y(), norm.Z());
-    m_view->SetAt(orig.X(), orig.Y(), orig.Z());
-    m_view->FitAll();
-    m_view->Redraw();
-
-    emit viewCameraChanged();
+    showStandardView(TSA::Viewer::StandardCameraView::NormalToPlane);
 }
 
 void OccView::applyWorkPlaneTrihedronTransform(const gp_Trsf& workPlaneTrsf)
@@ -1027,75 +1158,75 @@ void OccView::setMode2D(bool enabled)
     if (m_mode2DActive == enabled)
     {
         if (enabled && !m_view.IsNull())
-        {
-            m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
-            updateElementIsolation();
-            m_view->FitAll();
-            m_view->Redraw();
-        }
+            orient2DView();
         return;
     }
 
-    m_mode2DActive = enabled;
-
-    if (m_mode2DActive)
+    if (!enabled)
     {
-        // 1. Sauvegarder la caméra 3D courante et le type de projection
-        if (!m_view.IsNull() && !m_view->Camera().IsNull())
-        {
-            m_savedCamera3D = new Graphic3d_Camera(m_view->Camera());
-        }
-        m_savedWasOrtho = m_viewManager.isOrthographic();
-
-        // 2. Sauvegarder l'état exact de visibilité non-destructif de tous les objets
-        savePre2DVisibility();
-
-        // 3. Basculer en projection orthographique
-        m_viewManager.setOrthographic(true, m_view);
-
-        // 4. Orienter la caméra perpendiculairement au plan de travail actif
-        m_viewManager.viewNormalToWorkPlane(m_view, m_workPlane, false);
-
-        // 5. Afficher le plan de travail clairement
-        m_workPlaneVisible = true;
-        m_workPlane.setIsVisible(true);
-        updateWorkPlaneVisual();
-
-        // 6. Isoler les éléments du plan actif
-        updateElementIsolation();
-
-        // 7. Centrage automatique & Fit All restreint au contenu pertinent du plan
-        if (!m_view.IsNull())
-        {
-            m_view->FitAll();
-            m_view->Redraw();
-        }
-
-        m_projectionManager.setMode(TSA::Viewer::ProjectionMode::TwoD);
-    }
-    else
-    {
-        // 1. Restaurer la caméra 3D précédente
-        if (!m_savedCamera3D.IsNull() && !m_view.IsNull() && !m_view->Camera().IsNull())
-        {
-            m_view->Camera()->Copy(m_savedCamera3D);
-            m_savedCamera3D.Nullify();
-        }
-        m_viewManager.setOrthographic(m_savedWasOrtho, m_view);
-
-        // 2. Restaurer l'état de visibilité non-destructif initial
-        restorePre2DVisibility();
-
-        m_projectionManager.setMode(TSA::Viewer::ProjectionMode::ThreeD);
-
-        if (!m_view.IsNull())
-        {
-            m_view->Redraw();
-        }
+        leaveMode2D(true);
+        return;
     }
 
-    emit mode2DChanged(m_mode2DActive);
-    emit projectionModeChanged(m_mode2DActive ? TSA::Viewer::ProjectionMode::TwoD : TSA::Viewer::ProjectionMode::ThreeD);
+    m_mode2DActive = true;
+
+    // 1. Sauvegarder la caméra 3D courante et sa projection réelle (celle de la caméra, pas un état mémorisé à part)
+    if (!m_view.IsNull() && !m_view->Camera().IsNull())
+    {
+        m_savedCamera3D = new Graphic3d_Camera(m_view->Camera());
+    }
+    m_savedWasOrtho = TSA::Viewer::ViewManager::cameraIsOrthographic(m_view);
+    m_viewBefore2D = m_viewManager.currentView();
+
+    // 2. Sauvegarder l'état exact de visibilité non-destructif de tous les objets
+    savePre2DVisibility();
+
+    // 3. Afficher le plan de travail clairement
+    m_workPlaneVisible = true;
+    m_workPlane.setIsVisible(true);
+    updateWorkPlaneVisual();
+
+    m_projectionManager.setMode(TSA::Viewer::ProjectionMode::TwoD);
+
+    // 4. Projection orthographique, caméra perpendiculaire au plan (face choisie ou normale du plan), isolation
+    //    des éléments du plan actif, cadrage
+    orient2DView();
+
+    emit mode2DChanged(true);
+    emit projectionModeChanged(TSA::Viewer::ProjectionMode::TwoD);
+    emit viewCameraChanged();
+}
+
+void OccView::leaveMode2D(bool restoreCamera)
+{
+    if (!m_mode2DActive)
+        return;
+    m_mode2DActive = false;
+    m_plan2DFace = TSA::Viewer::StandardCameraView::Custom;
+
+    // 1. Restaurer la caméra 3D précédente (sauf orientation 3D demandée à la place : ViewCube, isométrie) et sa
+    //    projection
+    if (restoreCamera && !m_savedCamera3D.IsNull() && !m_view.IsNull() && !m_view->Camera().IsNull())
+    {
+        m_view->Camera()->Copy(m_savedCamera3D);
+    }
+    m_savedCamera3D.Nullify();
+    m_viewManager.setOrthographic(m_savedWasOrtho, m_view);
+    m_viewManager.setCurrentView(restoreCamera ? m_viewBefore2D : TSA::Viewer::StandardCameraView::Custom);
+
+    // 2. Restaurer l'état de visibilité non-destructif initial
+    restorePre2DVisibility();
+
+    m_projectionManager.setMode(TSA::Viewer::ProjectionMode::ThreeD);
+    syncViewPlaneMode();
+
+    if (!m_view.IsNull())
+    {
+        m_view->Redraw();
+    }
+
+    emit mode2DChanged(false);
+    emit projectionModeChanged(TSA::Viewer::ProjectionMode::ThreeD);
     emit viewCameraChanged();
 }
 
@@ -1595,49 +1726,66 @@ void OccView::clearSnapMarker()
 
 void OccView::setViewOrientation(V3d_TypeOfOrientation orientation)
 {
-    if (!m_view.IsNull())
-    {
-        m_view->SetUp(0.0, 0.0, 1.0);
-        m_view->SetProj(orientation, false);
-        m_view->FitAll();
-        m_view->Redraw();
-        emit viewCameraChanged();
-    }
+    showCubeOrientation(orientation);
 }
 
 void OccView::setViewPlaneMode(ViewPlaneMode mode)
 {
-    m_viewPlaneMode = mode;
     if (m_view.IsNull())
+    {
+        m_viewPlaneMode = mode;
         return;
-
-    m_view->SetUp(0.0, 0.0, 1.0);
+    }
 
     switch (mode)
     {
     case ViewPlaneMode::PlanXY:
-        // Vue en plan horizontal d'étage (Zup_Top)
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_Top, false);
+        // Vue en plan d'étage : vrai plan 2D sur le niveau actif
+        showPlanView(TSA::Viewer::StandardCameraView::Top);
         break;
     case ViewPlaneMode::PlanXZ:
-        // Élévation de face / portique (Zup_Front)
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_Front, false);
+        // Élévation de face / portique
+        showPlanView(TSA::Viewer::StandardCameraView::Front);
         break;
     case ViewPlaneMode::PlanYZ:
-        // Élévation latérale / pignon (Zup_Right)
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_Right, false);
+        // Élévation latérale / pignon
+        showPlanView(TSA::Viewer::StandardCameraView::Right);
         break;
     case ViewPlaneMode::Perspective3D:
     default:
-        // Vue 3D axonométrique globale
-        m_view->SetProj(V3d_TypeOfOrientation_Zup_AxoRight, false);
+        // Retour à la vue 3D
+        show3DView();
         break;
     }
+}
 
-    m_view->FitAll();
-    m_view->Redraw();
-    emit viewPlaneModeChanged(mode);
-    emit viewCameraChanged();
+void OccView::keep2DConsistent()
+{
+    // Mode 2D = caméra perpendiculaire au plan actif ; une caméra restaurée (historique, état enregistré) qui ne
+    // l'est plus ramène en 3D sans toucher à cette caméra.
+    if (m_mode2DActive && !m_view.IsNull() && !m_view->Camera().IsNull() && !facesView(m_workPlane.normal(), m_view->Camera()->Direction()))
+        leaveMode2D(false);
+}
+
+void OccView::syncViewPlaneMode()
+{
+    using V = TSA::Viewer::StandardCameraView;
+    ViewPlaneMode mode = ViewPlaneMode::Perspective3D;
+    if (m_mode2DActive)
+    {
+        const gp_Dir n = m_workPlane.normal();
+        if (std::abs(n.Z()) > 1.0 - 1e-9 || m_plan2DFace == V::Top || m_plan2DFace == V::Bottom)
+            mode = ViewPlaneMode::PlanXY;
+        else if (std::abs(n.Y()) > 1.0 - 1e-9)
+            mode = ViewPlaneMode::PlanXZ;
+        else if (std::abs(n.X()) > 1.0 - 1e-9)
+            mode = ViewPlaneMode::PlanYZ;
+    }
+    if (mode != m_viewPlaneMode)
+    {
+        m_viewPlaneMode = mode;
+        emit viewPlaneModeChanged(mode);
+    }
 }
 
 void OccView::setLocalCoordinateSystem(bool local)
@@ -2335,8 +2483,7 @@ void OccView::setProjectionDirection(TSA::Viewer::ProjectionDirection dir)
 
 void OccView::applyStandardView(TSA::Viewer::StandardCameraView view)
 {
-    m_viewManager.applyStandardView(view, m_view, m_workPlane);
-    emit standardViewChanged(view);
+    showStandardView(view);
 }
 
 void OccView::setWorkPlaneAxesVisible(bool visible)
@@ -2396,6 +2543,7 @@ bool OccView::applyCameraState(const QJsonObject& state)
     cam->SetScale(state["scale"].toDouble());
     m_view->ZFitAll();
     m_view->Redraw();
+    keep2DConsistent();
     emit viewCameraChanged();
     return true;
 }

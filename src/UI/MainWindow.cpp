@@ -1103,49 +1103,41 @@ void MainWindow::onNextView()
 void MainWindow::onActionViewHome()
 {
     if (m_occView) m_occView->viewHome();
-    if (m_statusView) m_statusView->setText(tr("Vue ISO"));
 }
 
 void MainWindow::onActionViewTop()
 {
     if (m_occView) m_occView->viewTop();
-    if (m_statusView) m_statusView->setText(tr("Vue Dessus (XY)"));
 }
 
 void MainWindow::onActionViewBottom()
 {
     if (m_occView) m_occView->viewBottom();
-    if (m_statusView) m_statusView->setText(tr("Vue Dessous"));
 }
 
 void MainWindow::onActionViewFront()
 {
     if (m_occView) m_occView->viewFront();
-    if (m_statusView) m_statusView->setText(tr("Vue Face (XZ)"));
 }
 
 void MainWindow::onActionViewBack()
 {
     if (m_occView) m_occView->viewBack();
-    if (m_statusView) m_statusView->setText(tr("Vue Arrière"));
 }
 
 void MainWindow::onActionViewLeft()
 {
     if (m_occView) m_occView->viewLeft();
-    if (m_statusView) m_statusView->setText(tr("Vue Gauche (YZ)"));
 }
 
 void MainWindow::onActionViewRight()
 {
     if (m_occView) m_occView->viewRight();
-    if (m_statusView) m_statusView->setText(tr("Vue Droite"));
 }
 
 void MainWindow::onActionViewIsometric()
 {
     if (m_occView) m_occView->viewIsometric();
-    if (m_statusView) m_statusView->setText(tr("Vue ISO"));
 }
 
 void MainWindow::onRotate2DLeft()
@@ -1289,32 +1281,62 @@ void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
     }
 }
 
+void MainWindow::onNavigationViewChanged()
+{
+    using V = TSA::Viewer::StandardCameraView;
+    if (!m_occView) return;
+    auto faceLabel = [](V v, bool elevation) -> QString {
+        switch (v)
+        {
+        case V::Top: return elevation ? tr("Plan (dessus)") : tr("Vue de dessus");
+        case V::Bottom: return elevation ? tr("Plan (dessous)") : tr("Vue de dessous");
+        case V::Front: return elevation ? tr("Élévation avant (XZ)") : tr("Vue de face");
+        case V::Back: return elevation ? tr("Élévation arrière (XZ)") : tr("Vue arrière");
+        case V::Left: return elevation ? tr("Élévation gauche (YZ)") : tr("Vue gauche");
+        case V::Right: return elevation ? tr("Élévation droite (YZ)") : tr("Vue droite");
+        case V::ThreeD_Axo: return tr("Vue isométrique");
+        default: return QString();
+        }
+    };
+    QString text;
+    if (m_occView->isMode2D())
+    {
+        const QString face = faceLabel(m_occView->plan2DFace(), true);
+        text = tr("2D — %1").arg(face.isEmpty() ? QString::fromStdString(m_occView->activeWorkPlane().name()) : face);
+    }
+    else
+    {
+        const QString face = faceLabel(m_occView->viewManager()->currentView(), false);
+        text = tr("3D — %1").arg(face.isEmpty() ? tr("orientation libre") : face);
+    }
+    if (text == m_lastNavigationView) return;
+    m_lastNavigationView = text;
+    if (m_statusView) m_statusView->setText(text);
+    if (m_consoleDock) m_consoleDock->appendLog(tr("Vue : %1").arg(text), "INFO");
+}
+
 void MainWindow::onActionViewXY()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXY);
-    if (m_statusView) m_statusView->setText(tr("Plan XY"));
 }
 
 void MainWindow::onActionViewYZ()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanYZ);
-    if (m_statusView) m_statusView->setText(tr("Plan YZ"));
 }
 
 void MainWindow::onActionViewXZ()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::PlanXZ);
-    if (m_statusView) m_statusView->setText(tr("Plan XZ"));
 }
 
 void MainWindow::onActionView3D()
 {
     if (m_occView)
         m_occView->setViewPlaneMode(OccView::ViewPlaneMode::Perspective3D);
-    if (m_statusView) m_statusView->setText(tr("Vue 3D"));
 }
 
 void MainWindow::onActionCoordSystem()

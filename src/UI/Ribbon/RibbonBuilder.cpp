@@ -670,13 +670,15 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     // Projections & Orientations
     auto* projPanel = new RibbonPanel(QObject::tr("Projections"), tab);
     if (acts.actionView3D) projPanel->addLargeAction(acts.actionView3D);
+    // Plans 2D (projection orthographique, plan de travail de la vue) ; les vues de face en 3D restent au ViewCube,
+    // au menu Affichage et au pavé numérique
     std::vector<QAction*> colViews1;
-    if (acts.actionViewTop) colViews1.push_back(acts.actionViewTop);
-    else if (acts.actionViewXY) colViews1.push_back(acts.actionViewXY);
-    if (acts.actionViewFront) colViews1.push_back(acts.actionViewFront);
-    else if (acts.actionViewXZ) colViews1.push_back(acts.actionViewXZ);
-    if (acts.actionViewRight) colViews1.push_back(acts.actionViewRight);
-    else if (acts.actionViewYZ) colViews1.push_back(acts.actionViewYZ);
+    if (acts.actionViewXY) colViews1.push_back(acts.actionViewXY);
+    else if (acts.actionViewTop) colViews1.push_back(acts.actionViewTop);
+    if (acts.actionViewXZ) colViews1.push_back(acts.actionViewXZ);
+    else if (acts.actionViewFront) colViews1.push_back(acts.actionViewFront);
+    if (acts.actionViewYZ) colViews1.push_back(acts.actionViewYZ);
+    else if (acts.actionViewRight) colViews1.push_back(acts.actionViewRight);
     if (!colViews1.empty())
     {
         projPanel->addInternalSeparator();
@@ -685,7 +687,6 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     std::vector<QAction*> colViews2;
     if (acts.actionViewIsometric) colViews2.push_back(acts.actionViewIsometric);
     if (acts.actionViewHome) colViews2.push_back(acts.actionViewHome);
-    if (acts.actionViewLeft) colViews2.push_back(acts.actionViewLeft);
     if (!colViews2.empty())
     {
         projPanel->addInternalSeparator();

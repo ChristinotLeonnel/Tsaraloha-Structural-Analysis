@@ -59,3 +59,11 @@ ne rend pas la main pendant la boucle modale de Qt.
    Garde-fous : arrêt sans rien enregistrer si la fenêtre active n'est pas le projet créé par l'essai (aucun clic
    ailleurs : un clic dans le Start Center ouvrirait un projet récent) ; points de la vue relatifs à son centre ;
    accrochages coupés pendant l'essai ; réglages restaurés après la fermeture de TSA.
+11. Vues 2D / 3D, ViewCube et plans de travail : `views_scenario.ps1 -Work <dossier vide> [-Exe <dossier>\TSA.exe]` : copie
+   de `examples/TSA_Demo_Batiment_R+5.tsa` ouverte en argument, coordonnées des 380 nœuds relevées (`tsa_nodes.py`,
+   lecture par `tsa-ifc` à côté de `TSA.exe`), « Plan XY » (mode 2D, bandeau, vue annoncée dans la console), poutre
+   tracée puis Annuler / Rétablir, « Plan XZ » et poutre dans l'élévation, « Vue 3D », face HAUT puis coin du ViewCube
+   (vrais clics), enregistrement : nœuds d'origine identiques au bit près, nœuds tracés exactement dans leurs plans ;
+   réouverture ; 12 vérifications, journal `<dossier>\views_scenario.log`, captures `<dossier>\shots`. Mêmes
+   garde-fous que l'essai 10 ; la fenêtre de l'outil Poutre est refermée avant les clics sur le ViewCube (elle le
+   recouvre).

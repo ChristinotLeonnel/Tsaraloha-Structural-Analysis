@@ -338,6 +338,7 @@ private:
 
     QLabel*  m_statusProject = nullptr;
     QLabel*  m_statusView = nullptr;
+    QString m_lastNavigationView;   ///< dernière vue annoncée (barre d'état, console)
     QLabel*  m_statusUnits = nullptr;
     QLabel*  m_statusLevel = nullptr;
     QLabel*  m_statusCoordinates = nullptr;
@@ -701,6 +702,8 @@ private slots:
     void onActionToggleWorkPlaneVisible(bool checked);
     void onActionViewNormalToPlane();
     void onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp);
+    /// Vue réellement affichée (service de navigation de OccView) : barre d'état et console.
+    void onNavigationViewChanged();
 
     void onActionViewXY();
     void onActionViewYZ();
