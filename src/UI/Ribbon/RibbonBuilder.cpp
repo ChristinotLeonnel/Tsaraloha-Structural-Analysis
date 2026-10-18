@@ -670,27 +670,23 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     // Projections & Orientations
     auto* projPanel = new RibbonPanel(QObject::tr("Projections"), tab);
     if (acts.actionView3D) projPanel->addLargeAction(acts.actionView3D);
-    // Plans 2D (projection orthographique, plan de travail de la vue) ; les vues de face en 3D restent au ViewCube,
-    // au menu Affichage et au pavé numérique
-    std::vector<QAction*> colViews1;
-    if (acts.actionViewXY) colViews1.push_back(acts.actionViewXY);
-    else if (acts.actionViewTop) colViews1.push_back(acts.actionViewTop);
-    if (acts.actionViewXZ) colViews1.push_back(acts.actionViewXZ);
-    else if (acts.actionViewFront) colViews1.push_back(acts.actionViewFront);
-    if (acts.actionViewYZ) colViews1.push_back(acts.actionViewYZ);
-    else if (acts.actionViewRight) colViews1.push_back(acts.actionViewRight);
-    if (!colViews1.empty())
+    // Plans 2D (projection orthographique, plan de travail de la vue), puis vues de face en 3D, isométrie et accueil,
+    // puis vues nommées : toutes les commandes de vue restent dans le ruban
+    auto addColumn = [projPanel](std::initializer_list<QAction*> actions) {
+        std::vector<QAction*> col;
+        for (QAction* a : actions)
+            if (a) col.push_back(a);
+        if (col.empty()) return;
+        projPanel->addInternalSeparator();
+        projPanel->addSmallColumn(col);
+    };
+    addColumn({ acts.actionViewXY, acts.actionViewXZ, acts.actionViewYZ });
+    addColumn({ acts.actionViewTop, acts.actionViewFront, acts.actionViewRight });
+    addColumn({ acts.actionViewLeft, acts.actionViewIsometric, acts.actionViewHome });
+    if (acts.actionNamedViews)
     {
         projPanel->addInternalSeparator();
-        projPanel->addSmallColumn(colViews1);
-    }
-    std::vector<QAction*> colViews2;
-    if (acts.actionViewIsometric) colViews2.push_back(acts.actionViewIsometric);
-    if (acts.actionViewHome) colViews2.push_back(acts.actionViewHome);
-    if (!colViews2.empty())
-    {
-        projPanel->addInternalSeparator();
-        projPanel->addSmallColumn(colViews2);
+        projPanel->addLargeAction(acts.actionNamedViews);
     }
     tab->addPanel(projPanel);
 

@@ -283,10 +283,10 @@ void GridSettingsDialog::onSelectedGridChanged()
     m_visibleCheck->setChecked(grid->isVisible());
     m_visibleCheck->blockSignals(false);
 
-    if (m_snapManager)
+    if (m_snapManager || m_occView)
     {
         m_snapCheck->blockSignals(true);
-        m_snapCheck->setChecked(m_snapManager->isSnapEnabled());
+        m_snapCheck->setChecked(m_occView ? m_occView->isGridSnapEnabled() : m_snapManager->isSnapEnabled());
         m_snapCheck->blockSignals(false);
     }
 
@@ -504,10 +504,12 @@ void GridSettingsDialog::onToggleSnap(bool checked)
 {
     if (m_chkLiveSync && m_chkLiveSync->isChecked())
     {
-        if (m_snapManager)
-        {
+        // État réel de l'accrochage : celui de la vue (calcul d'accrochage, barre d'état, ruban), qui tient aussi le
+        // gestionnaire de grille à jour
+        if (m_occView)
+            m_occView->setGridSnapEnabled(checked);
+        else if (m_snapManager)
             m_snapManager->setSnapEnabled(checked);
-        }
     }
 }
 
@@ -576,9 +578,12 @@ void GridSettingsDialog::onApply()
 
     if (m_snapManager)
     {
-        m_snapManager->setSnapEnabled(m_snapCheck->isChecked());
         m_snapManager->setSnapTolerance(m_snapToleranceSpin->value());
+        if (!m_occView)
+            m_snapManager->setSnapEnabled(m_snapCheck->isChecked());
     }
+    if (m_occView)
+        m_occView->setGridSnapEnabled(m_snapCheck->isChecked());
 
     if (m_occView)
     {

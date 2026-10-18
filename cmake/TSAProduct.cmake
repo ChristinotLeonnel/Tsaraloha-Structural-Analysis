@@ -135,6 +135,8 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/GridDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridSettingsDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/GridSettingsDialog.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/NamedViewsDialog.h
+    ${TSA_ROOT}/src/UI/Dialogs/NamedViewsDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/GridAdvancedSettingsDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/GridAdvancedSettingsDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/LevelDialog.h
@@ -434,6 +436,8 @@ set(VIEWER_CORE_SOURCES
     ${TSA_ROOT}/src/Viewer/ProjectionManager.cpp
     ${TSA_ROOT}/src/Viewer/ViewManager.h
     ${TSA_ROOT}/src/Viewer/ViewManager.cpp
+    ${TSA_ROOT}/src/Viewer/WorkPlaneGrid.h
+    ${TSA_ROOT}/src/Viewer/WorkPlaneGrid.cpp
 )
 
 # --- Géométrie des poutres et résultats (utilisée par les tests) — [CORE] ----
@@ -475,6 +479,8 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Model/SupportDefinition.cpp
     ${TSA_ROOT}/src/Model/Node.h
     ${TSA_ROOT}/src/Model/Node.cpp
+    ${TSA_ROOT}/src/Model/NamedViews.h
+    ${TSA_ROOT}/src/Model/NamedViews.cpp
     ${TSA_ROOT}/src/Model/Beam.h
     ${TSA_ROOT}/src/Model/Beam.cpp
     ${TSA_ROOT}/src/Model/Column.h

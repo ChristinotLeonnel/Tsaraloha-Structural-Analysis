@@ -495,6 +495,7 @@ private:
     QAction* m_actionWorkPlaneCustom = nullptr;
     QAction* m_actionWorkPlaneVisible = nullptr;
     QAction* m_actionViewNormalToPlane = nullptr;
+    QAction* m_actionNamedViews = nullptr;
     QActionGroup* m_workPlaneGroup = nullptr;
 
     QAction* m_actionCoordSystem = nullptr;
@@ -701,9 +702,12 @@ private slots:
     void onActionWorkPlaneCustom();
     void onActionToggleWorkPlaneVisible(bool checked);
     void onActionViewNormalToPlane();
+    void onActionNamedViews();
     void onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp);
     /// Vue réellement affichée (service de navigation de OccView) : barre d'état et console.
     void onNavigationViewChanged();
+    /// Indicateur « SNAP » de la barre d'état : lu sur l'état réel de l'accrochage de la vue (BUG-078).
+    void updateSnapStatus();
 
     void onActionViewXY();
     void onActionViewYZ();

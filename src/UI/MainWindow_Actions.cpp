@@ -311,6 +311,11 @@ void MainWindow::createActions()
     m_actionViewNormalToPlane->setToolTip(tr("Orienter la caméra perpendiculairement au plan de travail actif"));
     connect(m_actionViewNormalToPlane, &QAction::triggered, this, &MainWindow::onActionViewNormalToPlane);
 
+    m_actionNamedViews = new QAction(tr("Vues nommées…"), this);
+    m_actionNamedViews->setIcon(QIcon(":/icons/tools/input_viewport.svg"));
+    m_actionNamedViews->setToolTip(tr("Enregistrer, restaurer, renommer ou supprimer les vues nommées du projet (caméra, mode 2D, plan de travail)"));
+    connect(m_actionNamedViews, &QAction::triggered, this, &MainWindow::onActionNamedViews);
+
     // Actions Grilles & Niveaux
     m_actionNewGrid = new QAction(tr("&Nouvelle Grille 3D..."), this);
     m_actionNewGrid->setIcon(QIcon(":/icons/grid_cartesian.svg"));
@@ -1219,6 +1224,8 @@ void MainWindow::createMenus()
     projSub->addAction(m_actionViewXZ);
     projSub->addAction(m_actionViewYZ);
     projSub->addSeparator();
+    projSub->addAction(m_actionNamedViews);
+    projSub->addSeparator();
     projSub->addAction(m_actionViewTop);
     projSub->addAction(m_actionViewBottom);
     projSub->addAction(m_actionViewFront);
@@ -1543,6 +1550,7 @@ void MainWindow::createRibbon()
     acts.actionViewRight = m_actionViewRight;
     acts.actionViewIsometric = m_actionViewIsometric;
     acts.actionViewHome = m_actionViewHome;
+    acts.actionNamedViews = m_actionNamedViews;
 
     acts.actionFitAll = m_actionFitAll;
     acts.actionFitSelection = m_actionFitSelection;
@@ -1895,6 +1903,7 @@ void MainWindow::createDockWindows()
         else if (c == "WPLEVEL") onWorkPlaneLevel();
         else if (c == "WPCUSTOM" || c == "WP") onActionWorkPlaneCustom();
         else if (c == "WPNORMAL" || c == "VPN") onActionViewNormalToPlane();
+        else if (c == "VIEWS" || c == "VNAMED") onActionNamedViews();
         else if (c == "WPSHOW") onActionToggleWorkPlaneVisible(true);
         else if (c == "WPHIDE") onActionToggleWorkPlaneVisible(false);
         else if (c == "SNAP" || c == "GRIDS") {
@@ -2146,7 +2155,7 @@ void MainWindow::createStatusBar()
 
     m_statusSnap = new QLabel(tr("SNAP: ACTIF"), this);
     m_statusSnap->setStyleSheet("font-family: Consolas, monospace; padding: 2px 8px; color: #4ade80; font-weight: bold;");
-    m_statusSnap->setFixedWidth(110);
+    m_statusSnap->setFixedWidth(130);   // « SNAP: INACTIF »
     bar->addWidget(m_statusSnap);
 
     // 6. Compteurs du modèle et de la sélection : valeurs réelles, relues à intervalle court
@@ -2289,11 +2298,14 @@ void MainWindow::createStatusBar()
 
     connect(m_occView, &OccView::gridSnapChanged, this, [this](bool enabled) {
         if (m_actionGridSnap) m_actionGridSnap->setChecked(enabled);
+        updateSnapStatus();
     });
 
     connect(m_occView, &OccView::objectSnapChanged, this, [this](bool enabled) {
         if (m_actionObjectSnap) m_actionObjectSnap->setChecked(enabled);
+        updateSnapStatus();
     });
+    updateSnapStatus();
 
     // Un seul endroit décide de la couleur des boutons de commande : le mode réel de la vue.
     connect(m_occView, &OccView::interactionModeChanged, this, [this](OccView::InteractionMode) { syncToolActionStates(); });

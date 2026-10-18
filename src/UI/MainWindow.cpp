@@ -34,6 +34,7 @@
 #include "Dock/LogConsoleDock.h"
 #include "Dock/ResultsDockWidget.h"
 #include "Dock/ProjectionViewDock.h"
+#include "Dialogs/NamedViewsDialog.h"
 #include "WindowManager/WindowManager.h"
 #include "../Diagnostics/Logger.h"
 #include "../Analysis/AnalysisController.h"
@@ -1279,6 +1280,35 @@ void MainWindow::onWorkPlaneChanged(const TSA::Coordinate::WorkPlane& wp)
             .arg(wp.origin().Y(), 0, 'f', 2)
             .arg(wp.origin().Z(), 0, 'f', 2), "INFO");
     }
+}
+
+void MainWindow::onActionNamedViews()
+{
+    if (!m_occView || !m_model) return;
+    // Vues du projet actif uniquement (chaque document a son modèle)
+    TSA::UI::NamedViewsDialog dialog(m_model, m_occView, this);
+    connect(&dialog, &TSA::UI::NamedViewsDialog::namedViewsChanged, this, [this] { updateWindowTitle(); });
+    connect(&dialog, &TSA::UI::NamedViewsDialog::viewRestored, this, [this](const QString& name) {
+        if (m_consoleDock) m_consoleDock->appendLog(tr("Vue nommée restaurée : %1").arg(name), "INFO");
+    });
+    dialog.exec();
+}
+
+void MainWindow::updateSnapStatus()
+{
+    if (!m_statusSnap || !m_occView) return;
+    const bool grid = m_occView->isGridSnapEnabled();
+    const bool objects = m_occView->isObjectSnapEnabled();
+    QString text;
+    if (grid && objects) text = tr("SNAP: ACTIF");
+    else if (grid) text = tr("SNAP: GRILLE");
+    else if (objects) text = tr("SNAP: OBJETS");
+    else text = tr("SNAP: INACTIF");
+    m_statusSnap->setText(text);
+    m_statusSnap->setToolTip(tr("Magnétisme de grille : %1\nAccrochage aux objets : %2")
+                                 .arg(grid ? tr("actif") : tr("inactif"), objects ? tr("actif") : tr("inactif")));
+    m_statusSnap->setStyleSheet(QStringLiteral("font-family: Consolas, monospace; padding: 2px 8px; font-weight: bold; color: %1;")
+                                    .arg(grid || objects ? QStringLiteral("#4ade80") : QStringLiteral("#94a3b8")));
 }
 
 void MainWindow::onNavigationViewChanged()

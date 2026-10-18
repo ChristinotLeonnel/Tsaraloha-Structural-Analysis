@@ -63,6 +63,8 @@ namespace TSA::Grid
 #include "MaterialVisual.h"
 #include "ProjectionManager.h"
 #include "ViewManager.h"
+#include "WorkPlaneGrid.h"
+#include "../Model/NamedViews.h"
 #include "../Grid/SnapManager.h"
 
 class QTimer;
@@ -214,6 +216,10 @@ public:
     TSA::Viewer::StandardCameraView plan2DFace() const noexcept { return m_plan2DFace; }
     /// Durée de la transition de caméra du ViewCube (0 : immédiate) ; la caméra finit exactement sur la vue demandée.
     void setViewTransitionMs(int ms) noexcept { m_viewTransitionMs = ms; }
+    /// Vue nommée : état courant (caméra, projection, mode 2D, face du plan 2D, plan de travail).
+    TSA::Model::NamedView captureNamedView(const std::string& name) const;
+    /// Restaure une vue nommée (plan de travail et mode 2D compris), caméra exacte ; false si la vue est invalide.
+    bool restoreNamedView(const TSA::Model::NamedView& view);
 
     void zoomIn(double factor = 1.25);
     void zoomOut(double factor = 1.25);
@@ -239,6 +245,10 @@ public:
     bool isWorkPlaneVisible() const { return m_workPlaneVisible; }
     void viewNormalToWorkPlane();
     void updateWorkPlaneVisual();
+    /// Grille du plan de travail (lignes au pas d'accrochage du plan, éclaircies selon le zoom) ; nulle si masquée.
+    const TSA::Viewer::WorkPlaneGrid* workPlaneGrid() const { return m_workPlaneGrid.get(); }
+    /// Pas affiché (et accroché) de la grille selon le zoom courant ; redessine seulement s'il change.
+    void refreshWorkPlaneGrid();
 
     // Gestionnaires spécialisés Découplés (Section 11)
     TSA::Viewer::ProjectionManager* projectionManager() noexcept { return &m_projectionManager; }
@@ -779,6 +789,11 @@ private:
     Handle(AIS_Shape) m_workPlaneShape;
     /// Axes X/Y/Z du WorkPlane avec lettres : taille FIXE À L'ÉCRAN (persistance de zoom, unités = pixels)
     Handle(AIS_Trihedron) m_workPlaneTrihedron;
+    Handle(TSA::Viewer::WorkPlaneGrid) m_workPlaneGrid;
+    double m_workPlanePanelHalfU = 10.0;   ///< demi-dimensions du panneau du plan (grille tracée dessus)
+    double m_workPlanePanelHalfV = 10.0;
+    double m_workPlanePanelCenterU = 0.0;  ///< centre du panneau dans le repère du plan (emprise du modèle)
+    double m_workPlanePanelCenterV = 0.0;
     Handle(AIS_Shape) m_workPlaneOriginShape;
     bool m_workPlaneAxesVisible = true;
     double m_gizmoSize = 100.0;
@@ -803,7 +818,8 @@ private:
     bool m_viewCubeClickPending = false;   ///< appui sur le ViewCube traité : son relâchement ne sélectionne rien
     /// Orientation du mode 2D : face choisie si le plan lui est parallèle, sinon normale du plan.
     TSA::Viewer::CameraFrame plan2DFrame() const;
-    void orient2DView();
+    void orient2DView(bool animate = false);
+    void animateCameraFrom(const Handle(Graphic3d_Camera)& start);
     /// Plan de travail adapté à une face (le plan actif s'il lui est déjà parallèle).
     TSA::Coordinate::WorkPlane workPlaneForFace(TSA::Viewer::StandardCameraView face) const;
     /// Oriente la caméra (centre conservé), cadre le modèle ; transition éventuelle, fin exacte.

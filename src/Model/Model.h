@@ -26,6 +26,7 @@
 #include "../ExtensionSystem/ExtensionTypes.h"
 #include "../BIM/Core/BimModel.h"
 #include "../Annotation/Dimension.h"
+#include "NamedViews.h"
 
 #include <map>
 #include <vector>
@@ -394,6 +395,18 @@ public:
     const TSA::Annotation::DimensionSet& dimensions() const noexcept { return m_dimensions; }
     TSA::Annotation::DimensionSet& dimensionsForEdit() noexcept { return m_dimensions; }
     void setDimensions(const TSA::Annotation::DimensionSet& set) { m_dimensions = set; }
+
+    /// Vues nommées du projet (caméra, mode 2D, plan de travail) : ni géométrie ni historique d'annulation.
+    const NamedViewSet& namedViews() const noexcept { return m_namedViews; }
+    /// Remplace les vues nommées ; marque le projet modifié (à enregistrer) sans changer sa révision : les
+    /// résultats de calcul restent valides.
+    void setNamedViews(const NamedViewSet& views)
+    {
+        m_namedViews = views;
+        m_isModified = true;
+    }
+    /// Chargement d'un projet : vues lues, projet non modifié.
+    void loadNamedViews(const NamedViewSet& views) { m_namedViews = views; }
     /// Notifie les vues (ids vides = toutes) ; document modifié, révision inchangée (résultats conservés).
     void notifyDimensionsChanged(const std::vector<int>& ids);
 
@@ -478,6 +491,7 @@ private:
     std::unique_ptr<TSA::Coordinate::WorkPlaneManager> m_workPlaneManager;
     TSA::Grid::GridManager* m_gridManager = nullptr; ///< non possédé (voir setGridManager)
     bool m_isModified = false;
+    NamedViewSet m_namedViews;
     std::string m_analysisSettingsJson;
     std::string m_topologySettingsJson;
     std::string m_exchangeExtensionsJson;
