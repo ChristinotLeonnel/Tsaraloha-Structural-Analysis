@@ -1,7 +1,8 @@
 # Vues 2D / 3D, ViewCube, plans de travail et vues nommées
 
 Ce document fixe les conventions de navigation de TSA et décrit le comportement livré. Il consigne aussi
-l'audit et la finalisation du 18/10/2026.
+l'audit et la finalisation du 18/10/2026, puis la correction de la grille du plan de travail et la navigation sur la
+grille structurelle (même jour, § 2 « Synchronisation » et « Navigation »).
 
 ## 1. Conventions
 
@@ -66,6 +67,69 @@ défaut), dans le repère local du plan. Elle est portée par le panneau du plan
 - **Visibilité** : masquable par plan (`WorkPlane::setIsGridVisible`), sinon suit la visibilité du plan. Couleurs selon
   le thème clair ou sombre.
 - **Interactions** : non sélectionnable, sans effet sur la sélection et l'accrochage aux objets.
+
+**Grille de travail et grille structurelle** sont deux choses distinctes :
+
+| | Grille de travail | Grille structurelle |
+| :--- | :--- | :--- |
+| Objet | `WorkPlaneGrid`, portée par le plan de travail | `GridSystem` du `GridManager` (cartésienne, cylindrique, arbitraire) |
+| Pas | libre, réglé par plan (`gridSpacingX/Y`) | positions réelles des axes, quelconques |
+| Rôle | dessin et accrochage au pas | références : niveaux, axes, intersections |
+| Suit | le plan de travail | le modèle |
+
+### Synchronisation du plan de travail
+
+Un seul chemin met à jour tout ce qui dépend du plan : `OccView::syncWorkPlaneDependents(trsf)`. Il est emprunté par
+les commandes (`setActiveWorkPlane` → `applyWorkPlaneTransformation`) et, à chaque mouvement, par le glisser du
+manipulateur 3D (`syncWorkPlaneFromManipulator`). Dans l'ordre :
+
+1. grille de travail (`WorkPlaneGrid::SetLocalTransformation`) ;
+2. trièdre du plan ;
+3. plan privilégié du visualiseur ;
+4. service de coordonnées (`CoordinateTransformationService`), lu par l'accrochage et la saisie ;
+5. niveau actif et surbrillance du niveau (plan horizontal) ;
+6. isolation des éléments du plan ;
+7. redessin immédiat.
+
+Puis `workPlaneChanged` est émis. La fenêtre met à jour la barre d'état, le panneau des propriétés, le volet
+Projection et le sélecteur de niveau, ce dernier **sans réappliquer le plan** (`ViewportContainer::reflectActivePlane`).
+
+- **Translation au manipulateur** : le type du plan est conservé (XY reste XY, décalage = altitude). Les axes ne sont
+  modifiés, et le plan rendu « personnalisé », que si l'orientation change (rotation).
+- **Échap pendant un glisser** : le plan, sa grille et le manipulateur reviennent à leur position de départ, que la
+  touche arrive à la vue ou au raccourci « Mode sélection » de la fenêtre. Rien n'est validé au relâchement.
+- **Caméra** : orbite, panoramique et zoom ne changent ni le plan ni la grille (seule la densité affichée de la grille
+  dépend du zoom).
+- **Console** : une ligne « Plan de travail actif » par changement ; pendant un glisser, seule la position finale.
+
+### Navigation sur la grille structurelle
+
+Les références sont calculées à partir des intersections réelles des grilles structurelles visibles
+(`TSA::Grid::WorkPlaneReferences`, couche modèle, sans dépendance à la vue). Aucun pas régulier n'est supposé et aucune
+coordonnée n'est écrite en dur : des axes à 0, 2, 3, 5, 6 et 8 m donnent exactement ces plans.
+
+- **Plans parallèles** : les intersections sont regroupées selon leur distance au plan actif (le long de sa normale).
+  Chaque groupe est un plan parallèle. Cela vaut pour un plan incliné et une grille non orthogonale.
+- **Identifiant ≠ coordonnée** : un plan est nommé d'après la famille d'axes constante dans son groupe et
+  discriminante dans la grille (« niveau R+1 », « axe 5 »). L'axe « 5 » peut être à X = 6 m.
+- **Intersections du plan** : celles situées dans le plan (à 1e-6 m près), ordonnées par (v, u) dans son repère local.
+- **Plus proche** : intersection du plan la plus proche du dernier point visé par le curseur.
+
+| Commande | Raccourci | Ligne de commande | Menu Affichage › Plans de Travail |
+| :--- | :--- | :--- | :--- |
+| Plan parallèle suivant / précédent | Alt+PgUp / Alt+PgDown | `WPNEXT` / `WPPREV` | oui |
+| Intersection suivante / précédente | Ctrl+Alt+PgUp / Ctrl+Alt+PgDown | `WPINEXT` / `WPIPREV` | oui |
+| Origine sur l'intersection la plus proche du curseur | Alt+Origine | `WPALIGN` | oui |
+| Plan précédent (historique, 50 plans) | Alt+Retour arrière | `WPBACK` | oui |
+| Déplacer le plan de dx dy dz (m) | — | `WPMOVE dx dy dz` | — |
+| Origine du plan en x y z (m) | — | `WPORIGIN x y z` | — |
+| Plans globaux XY, XZ, YZ, étage | — | — | oui (existants) |
+| Plan personnalisé (3 points, face) | — | — | oui (dialogue existant) |
+| Vue normale au plan | Num 0 | `WPNORMAL` | — (existant) |
+
+Les raccourcis sont dans le catalogue (`docs/shortcut.txt`, sans conflit). Chaque commande annonce le résultat dans la
+console et la barre d'état (référence, origine), ou « Plan de travail inchangé » avec la raison. L'infobulle de
+l'indicateur du plan (barre d'état) donne nom, origine, normale et pas de la grille de travail.
 
 ### Accrochage
 
@@ -166,13 +230,20 @@ Le service de navigation et les vues nommées sont prêts à servir plusieurs vu
 | B8 | Case « Magnétisme » du dialogue des grilles sans effet. | Elle modifiait `GridSnapManager`, non lu par l'accrochage. | Pilote l'état de la vue. |
 | B9 | Panneau du plan toujours de 20 m × 20 m autour de l'origine. | Taille par défaut explicite : le calcul « dynamique » n'était jamais exécuté. | Taille = minimum, agrandie et recentrée sur le modèle. |
 | B10 | Caméra capturée avec l'œil sur la cible. | Distance nulle en orthographique. | Œil recalculé depuis la direction. |
+| B11 (BUG-083) | Grille fantôme : plan déplacé au manipulateur, grille restée sur l'ancien plan. | Le glisser ne transformait que le panneau et le trièdre, pas `WorkPlaneGrid` ni le niveau actif. | Chemin unique `syncWorkPlaneDependents`, à chaque mouvement. |
+| B12 (BUG-084) | Translation au manipulateur : plan XY devenu « personnalisé ». | `setLocalAxes` impose le type `Custom`. | Axes changés seulement si l'orientation change. |
+| B13 (BUG-085) | Échap pendant un glisser : plan déplacé conservé ; dans l'application, la touche était sans effet. | L'annulation ne rétablissait que le panneau ; `setInteractionMode(Select)` sortait aussitôt, le mode Sélection étant déjà actif. | Plan et grille rétablis ; annulation aussi par le raccourci « Mode sélection ». |
+| B14 (BUG-086) | Plan d'étage déplacé en X ou Y ramené à l'origine globale ; une entrée « Z = … m » ajoutée au sélecteur à chaque mouvement. | Écho vers le sélecteur de niveau, qui réappliquait `setWorkPlaneAxisAndOffset`. | `reflectActivePlane` (affichage seulement) ; entrée personnalisée réutilisée. |
+| B15 (BUG-087) | Panneau du plan non sélectionnable après l'ouverture d'un projet : manipulateur inaccessible. | `rebuildAllShapes` vidait le registre de sélection, panneau compris. | Panneau réenregistré. |
+| B16 | Plan horizontal personnalisé : niveau actif non mis à jour. | Seuls les types globaux étaient traités. | Niveau actif = altitude du plan. |
+| B17 (BUG-088) | Console : une ligne « Plan de travail actif » par mouvement de souris pendant un glisser. | `workPlaneChanged` émis à chaque mouvement. | Ligne écrite au relâchement seulement. |
 
 Pas de quadrillage : supprimé en septembre (texture défectueuse), il est remplacé par `WorkPlaneGrid`, lignes
 vectorielles avec décalage de profondeur du panneau.
 
 ## 4. Tests
 
-Suite `views`, tests 433 à 442. Résultats du 18/10/2026, en plateforme Qt native :
+Suite `views`, tests 433 à 448. Résultats du 18/10/2026, en plateforme Qt native :
 
 | Test | Contenu | Résultat |
 | :--- | :--- | :--- |
@@ -186,12 +257,24 @@ Suite `views`, tests 433 à 442. Résultats du 18/10/2026, en plateforme Qt nati
 | 440 | Grille dans la vue : pas multiple du pas d'accrochage, 12 pixels minimum, dézoom et zoom, grille portée par le niveau et l'élévation, masquage, accrochage au pas affiché (Z exact). | réussi |
 | 441 | Vues nommées : restauration exacte depuis un autre plan, vue 3D libre, vue invalide refusée ; dialogue (enregistrer, renommer, supprimer, restaurer) ; projets séparés. | réussi |
 | 442 | Dessin vu de dessous, en élévations arrière et gauche, sur deux niveaux ; dalle et voile sur plan incliné à 30° (nœuds dans le plan à 1e-9 m) ; géométrie intacte. | réussi |
+| 443 | Références structurelles sans vue : axes irréguliers 0, 2, 3, 5, 6, 8 (libellés ≠ coordonnées), niveaux, 18 intersections, plus proche, plan incliné. Tourne aussi sous `offscreen`. | réussi |
+| 444 | Manipulateur, vrais événements souris : grille qui suit pendant et après le glisser, une seule grille, type XY conservé ; Échap (touche et raccourci « Mode sélection ») ; plan précédent. | réussi |
+| 445 | Déplacements X puis Y, accrochage au pas depuis la nouvelle origine, plan tourné, caméra (orbite, panoramique, zoom) sans effet sur plan et grille. | réussi |
+| 446 | Navigation dans la vue sur la grille irrégulière : coupes à 2, 3, 5, 6, 8 m, axe « 5 » à X = 6 m, niveau R+1, intersections, alignement, plan précédent, autre document intact. | réussi |
+| 447 | Écho vers le sélecteur de niveau (câblage de la fenêtre) : origine dans le plan conservée, une seule entrée personnalisée. | réussi |
+| 448 | Panneau du plan sélectionnable au clic après reconstruction des formes. | réussi |
 
-Sous `offscreen`, les tests 433, 435 à 438 et 440 à 442 sont annoncés sautés, jamais comptés réussis. Dans la CI de
-Setup-Livrable, la suite passe en plateforme native.
+Les tests 444, 447 et 448 échouent sur le code d'avant leur correction (vérifié en réintroduisant chaque défaut).
 
-Essai de l'interface réelle : `tools/ui_tests/views_scenario.ps1`, **19 vérifications** (voir `tools/ui_tests/README.md`,
-essai 11).
+Sous `offscreen`, les tests 433, 435 à 438, 440 à 442 et 444 à 448 sont annoncés sautés, jamais comptés réussis. Dans
+la CI de Setup-Livrable, la suite passe en plateforme native.
+
+Essais de l'interface réelle (voir `tools/ui_tests/README.md`) :
+
+- `views_scenario.ps1`, **19 vérifications** (essai 11) ;
+- `workplane_scenario.ps1`, **9 vérifications** (essai 12) : `WPMOVE`, `WPBACK`, `WPNEXT` / `WPPREV`, `WPINEXT` sur la
+  grille du projet R+5, puis vrai glisser de la poignée Z du manipulateur (Échap, glisser complet, `WPBACK`). Cet essai
+  a trouvé les défauts B13 (touche Échap), B14, B15 et B17, invisibles aux tests sans fenêtre principale.
 
 ## 5. Limites
 
@@ -200,3 +283,10 @@ essai 11).
 - Les plans de travail inclinés ne se créent pas par l'essai d'interface : le dialogue des plans personnalisés n'est pas
   piloté. Le dessin sur plan incliné est vérifié par les tests 438 et 442.
 - Pas de grille polaire ni de grille personnalisée par plan au-delà du pas en U et en V.
+- Le nom d'un plan déplacé n'est pas mis à jour : un plan nommé « RDC (Z=0.00) » garde ce nom à 15 m. L'origine et le
+  niveau affichés, eux, sont justes.
+- Sous 1 920 px de large, l'indicateur « Plan: … » de la barre d'état est masqué faute de place (`fitStatusBar`,
+  comportement existant). L'origine reste lisible dans la console et le sélecteur de niveau.
+- La navigation par intersections ne pilote pas encore les grilles cylindriques et arbitraires par l'essai d'interface :
+  elle est vérifiée sur grille cartésienne (tests 443, 446 et essai 12) ; les autres types passent par le même calcul
+  (`intersections()` de chaque grille).
