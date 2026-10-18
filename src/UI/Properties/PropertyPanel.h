@@ -22,6 +22,8 @@ class TrussMemberPropertiesView;
 class WorkPlanePropertiesView;
 class LoadPropertiesView;
 class ElementResultsPanel;
+class BimProductPropertiesView;
+class ElementBimPanel;
 }
 namespace TSA::Coordinate { class WorkPlane; }
 namespace TSA::Analysis { class ResultsModel; }
@@ -61,6 +63,14 @@ public slots:
     void showWorkPlaneProperties(int workPlaneId);
     void showNodalLoadProperties(int loadId);
     void showMemberLoadProperties(int loadId);
+    /// Objet physique importé (IFC), en lecture seule : identité, état pour le calcul, Psets.
+    void showBimProductProperties(int productId);
+
+public:
+    /// Un objet IFC est affiché (couche masquée : l'inspecteur est vidé pour ne pas désigner un objet invisible).
+    bool showsBimProduct() const;
+
+public slots:
     void setWorkPlane(const TSA::Coordinate::WorkPlane& wp);
     void clearProperties();
     /// Sélection multiple : la vue affichée (élément principal) édite aussi les autres éléments du
@@ -132,6 +142,8 @@ private:
     TrussMemberPropertiesView* m_trussView = nullptr;
     WorkPlanePropertiesView* m_workPlaneView = nullptr;
     LoadPropertiesView* m_loadView = nullptr;
+    BimProductPropertiesView* m_bimView = nullptr;
+    ElementBimPanel* m_elementBim = nullptr;           ///< identité BIM et quantités de l'élément sélectionné
     ElementResultsPanel* m_elementResults = nullptr;   ///< résultats de la barre sélectionnée (tout moteur)
     std::shared_ptr<TSA::Analysis::ResultsModel> m_resultsModel;
     TSA::Model::MultiEditSession m_multiEdit;

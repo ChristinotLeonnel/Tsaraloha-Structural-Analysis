@@ -23,6 +23,7 @@
 #include "../Analysis/Engine/AnalysisContext.h"
 
 namespace TSA::Model { class Model; class SupportDefinition; enum class LoadType; }
+namespace TSA::BIM::Ifc { struct IfcImportReport; }
 namespace TSA::AI { class AIOrchestrator; }
 namespace TSA::Automation { class AutomationServer; }
 namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct NewProjectSettings; enum class ProjectTemplate; }
@@ -141,6 +142,10 @@ public:
     bool hasUnsavedChanges() const;
     /// Fichier déposé : transmis à l'hôte (onglets) s'il écoute, sinon ouvert à la place du projet courant
     void openDroppedFile(const QString& path);
+    /// Projet issu d'un import IFC réussi, installé dans ce document (onglet neuf créé par l'hôte) : modèle,
+    /// historique vierge, vues, nom du projet (sans fichier : à enregistrer), rapport d'import.
+    void adoptImportedProject(const TSA::Model::Model& imported, const QString& sourcePath,
+                              const TSA::BIM::Ifc::IfcImportReport& report);
     /// Serveur d'automatisation (MCP) : un seul document à la fois l'expose, celui au premier plan (AppShell).
     void setAutomationActive(bool active);
     /// Document au premier plan ou non (onglets) : un document mis en arrière-plan masque ses fenêtres flottantes
@@ -168,6 +173,9 @@ signals:
     void openProjectRequested();
     /// Fichier déposé sur la fenêtre ou la vue : ouvert par l'hôte dans un onglet (ou activé s'il est déjà ouvert)
     void openFileRequested(const QString& path);
+    /// Import IFC réussi : l'hôte ouvre le projet obtenu dans un nouvel onglet (les projets ouverts restent intacts).
+    void importedProjectReady(std::shared_ptr<TSA::Model::Model> model, const QString& sourcePath,
+                              std::shared_ptr<const TSA::BIM::Ifc::IfcImportReport> report);
     void closeProjectRequested();
     void exitRequested();
     void fullScreenRequested(bool fullScreen);
@@ -195,6 +203,7 @@ private slots:
     void onToggleSupportsVisible(bool checked);
     void onToggleSupportLabelsVisible(bool checked);
     void onToggleLoadsVisible(bool checked);
+    void onToggleBimGeometryVisible(bool checked);
     void onToggleForcesVisible(bool checked);
     void onToggleMomentsVisible(bool checked);
     void onToggleLoadValuesVisible(bool checked);
@@ -360,6 +369,7 @@ private:
     QAction* m_actionSupportsVisible = nullptr;
     QAction* m_actionSupportLabelsVisible = nullptr;
     QAction* m_actionLoadsVisible = nullptr;
+    QAction* m_actionBimGeometryVisible = nullptr;   ///< couche des objets IFC importés (vue 3D)
     QAction* m_actionForcesVisible = nullptr;
     QAction* m_actionMomentsVisible = nullptr;
     QAction* m_actionLoadValuesVisible = nullptr;

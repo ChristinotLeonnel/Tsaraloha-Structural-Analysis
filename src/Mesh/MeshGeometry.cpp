@@ -181,13 +181,17 @@ static bool isWallDoor(const std::vector<std::pair<double, double>>& p, double L
 
 std::string validateWallOpening(const TSA::Model::Model& model, const TSA::Model::Wall& wall, const std::vector<std::pair<double, double>>& polygon, int ignoreIndex)
 {
-    const double L = wall.length(model), H = wall.height();
+    // Repère local du voile : u horizontal le long du voile, v vertical ; base inclinée → contour en parallélogramme
+    const double L = wall.length(model), H = wall.height(), dz = wall.baseRise(model);
+    const bool sloped = std::abs(dz) > 1e-6;
     std::vector<std::pair<double, double>> outer;
-    if (L > 1e-9 && H > 1e-9) outer = { { 0.0, 0.0 }, { L, 0.0 }, { L, H }, { 0.0, H } };
+    if (L > 1e-9 && H > 1e-9) outer = { { 0.0, 0.0 }, { L, dz }, { L, dz + H }, { 0.0, H } };
     // Porte : rectangle posé sur le pied du voile (encoche du contour) ; elle ne doit recouper ni les autres ouvertures
-    // ni une autre porte
+    // ni une autre porte. Base inclinée : pas de porte au pied (le pied n'est pas à v = 0), ouvertures intérieures seules.
     double u1 = 0, u2 = 0, top = 0;
-    if (isWallDoor(polygon, L, H, &u1, &u2, &top))
+    if (sloped && isWallDoor(polygon, L, H, nullptr, nullptr, nullptr))
+        return "porte au pied d'un voile à base inclinée non prise en charge : placez une ouverture intérieure";
+    if (!sloped && isWallDoor(polygon, L, H, &u1, &u2, &top))
     {
         std::vector<std::pair<double, double>> lifted = polygon;
         for (auto& [u, v] : lifted)
@@ -214,6 +218,10 @@ bool wallSurface(const TSA::Model::Model& model, const TSA::Model::Wall& w, Surf
     if (!na || !nb) return false;
     const P3 a { na->x(), na->y(), na->z() }, b { nb->x(), nb->y(), nb->z() };
     const P3 dir = P3 { b.x - a.x, b.y - a.y, 0 }.normalized();
+    // Base inclinée (pieds à des cotes différentes) : élévation en parallélogramme, repère orthonormé U horizontal,
+    // V vertical ; aire = longueur en plan × hauteur
+    const double Lh = std::hypot(b.x - a.x, b.y - a.y);
+    const bool sloped = std::abs(b.z - a.z) > 1e-6;
     const P3 nrm { -dir.y, dir.x, 0 };
     const P3 off = nrm * w.offset();
     SurfaceGeom sg;
@@ -223,18 +231,18 @@ bool wallSurface(const TSA::Model::Model& model, const TSA::Model::Wall& w, Surf
     sg.outer = { a + off, b + off, b + off + P3 { 0, 0, w.height() }, a + off + P3 { 0, 0, w.height() } };
     sg.cornerNodes = { std::abs(w.offset()) < 1e-12 ? w.startNodeId() : 0, std::abs(w.offset()) < 1e-12 ? w.endNodeId() : 0, 0, 0 };
     sg.frame.origin = sg.outer[0];
-    sg.frame.U = (sg.outer[1] - sg.outer[0]).normalized();
+    sg.frame.U = dir;
     sg.frame.V = { 0, 0, 1 };
     sg.frame.N = sg.frame.U.cross(sg.frame.V).normalized();
-    sg.area = distance(sg.outer[0], sg.outer[1]) * w.height();
+    sg.area = Lh * w.height();
     // Ouvertures (portes, fenêtres) : repère local du voile (u le long du voile, v vers le haut). Une porte posée au
     // pied devient une encoche du contour (elle ne peut pas être un trou : elle touche le bord).
-    const double Lw = distance(sg.outer[0], sg.outer[1]);
+    const double Lw = Lh;
     std::vector<std::tuple<double, double, double>> doors;
     for (const auto& o : w.openings())
     {
         double u1 = 0, u2 = 0, top = 0;
-        if (isWallDoor(o.polygon, Lw, w.height(), &u1, &u2, &top)) doors.emplace_back(u1, u2, top);
+        if (!sloped && isWallDoor(o.polygon, Lw, w.height(), &u1, &u2, &top)) doors.emplace_back(u1, u2, top);
     }
     if (!doors.empty())
     {
@@ -253,7 +261,7 @@ bool wallSurface(const TSA::Model::Model& model, const TSA::Model::Wall& w, Surf
     }
     for (const auto& o : w.openings())
     {
-        if (isWallDoor(o.polygon, Lw, w.height(), nullptr, nullptr, nullptr)) continue;
+        if (!sloped && isWallDoor(o.polygon, Lw, w.height(), nullptr, nullptr, nullptr)) continue;
         std::vector<P3> hole;
         for (const auto& [u, v] : o.polygon) hole.push_back(sg.frame.toGlobal(u, v));
         if (hole.size() >= 3)

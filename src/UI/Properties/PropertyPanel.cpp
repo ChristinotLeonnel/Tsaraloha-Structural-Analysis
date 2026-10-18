@@ -1,3 +1,4 @@
+#include "ElementBimPanel.h"
 #include "ElementResultsPanel.h"
 #include "PropertyPanel.h"
 #include <QAbstractSpinBox>
@@ -11,6 +12,8 @@
 #include "TrussMemberPropertiesView.h"
 #include "WorkPlanePropertiesView.h"
 #include "LoadPropertiesView.h"
+#include "BimProductPropertiesView.h"
+#include "../../BIM/Core/BimModel.h"
 #include "../../Coordinate/WorkPlane.h"
 
 #include <QVBoxLayout>
@@ -70,6 +73,8 @@ void PropertyPanel::setModel(TSA::Model::Model* model)
     m_wallView->setModel(m_model);
     m_foundationView->setModel(m_model);
     m_trussView->setModel(m_model);
+    m_bimView->setModel(m_model);
+    m_elementBim->setModel(m_model);
     if (m_workPlaneView)
     {
         m_workPlaneView->setModel(m_model);
@@ -175,11 +180,20 @@ void PropertyPanel::setupUi()
     connect(m_loadView, &LoadPropertiesView::loadModified, this, &PropertyPanel::elementModified);
     m_stack->addWidget(m_loadView); // Index 10
 
+    m_bimView = new BimProductPropertiesView(m_model, m_stack);   // lecture seule
+    m_stack->addWidget(m_bimView); // Index 11
+
     containerLayout->addWidget(m_stack);
+    m_elementBim = new ElementBimPanel(scrollContainer);
+    m_elementBim->setModel(m_model);   // le modèle du constructeur : setModel() ignore ensuite le même modèle
+    containerLayout->addWidget(m_elementBim);
     m_elementResults = new ElementResultsPanel(scrollContainer);
     containerLayout->addWidget(m_elementResults);
     connect(m_stack, &QStackedWidget::currentChanged, this, [this]() {
         auto* w = m_stack->currentWidget();
+        if (w != m_beamView && w != m_columnView && w != m_trussView && w != m_cableView && w != m_slabView
+            && w != m_wallView && w != m_foundationView)
+            m_elementBim->showElement(std::nullopt);
         if (w != m_beamView && w != m_columnView && w != m_trussView && w != m_cableView)
             m_elementResults->showElement(std::nullopt);
     });
@@ -249,6 +263,7 @@ void PropertyPanel::showBeamProperties(int beamId)
     m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DE LA POUTRE"), m_model && m_model->getBeam(beamId) ? m_model->getBeam(beamId)->formattedName() : std::string(), beamId));
     m_beamView->setElementId(beamId);
     m_stack->setCurrentWidget(m_beamView);
+    m_elementBim->showElement(TSA::BIM::AnalyticalRef{ TSA::Model::ElementKind::Beam, beamId });
     m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Beam, beamId });
 }
 
@@ -258,6 +273,7 @@ void PropertyPanel::showColumnProperties(int columnId)
     m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU POTEAU"), m_model && m_model->getColumn(columnId) ? m_model->getColumn(columnId)->formattedName() : std::string(), columnId));
     m_columnView->setElementId(columnId);
     m_stack->setCurrentWidget(m_columnView);
+    m_elementBim->showElement(TSA::BIM::AnalyticalRef{ TSA::Model::ElementKind::Column, columnId });
     m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Column, columnId });
 }
 
@@ -267,6 +283,7 @@ void PropertyPanel::showCableProperties(int cableId)
     m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU CÂBLE"), m_model && m_model->getCable(cableId) ? m_model->getCable(cableId)->name() : std::string(), cableId));
     m_cableView->setElementId(cableId);
     m_stack->setCurrentWidget(m_cableView);
+    m_elementBim->showElement(TSA::BIM::AnalyticalRef{ TSA::Model::ElementKind::Cable, cableId });
     m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Cable, cableId });
 }
 
@@ -276,6 +293,7 @@ void PropertyPanel::showSlabProperties(int slabId)
     m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DE LA DALLE"), m_model && m_model->getSlab(slabId) ? m_model->getSlab(slabId)->formattedName() : std::string(), slabId));
     m_slabView->setElementId(slabId);
     m_stack->setCurrentWidget(m_slabView);
+    m_elementBim->showElement(TSA::BIM::AnalyticalRef{ TSA::Model::ElementKind::Slab, slabId });
 }
 
 void PropertyPanel::showWallProperties(int wallId)
@@ -284,6 +302,25 @@ void PropertyPanel::showWallProperties(int wallId)
     m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU VOILE"), m_model && m_model->getWall(wallId) ? m_model->getWall(wallId)->formattedName() : std::string(), wallId));
     m_wallView->setElementId(wallId);
     m_stack->setCurrentWidget(m_wallView);
+    m_elementBim->showElement(TSA::BIM::AnalyticalRef{ TSA::Model::ElementKind::Wall, wallId });
+}
+
+void PropertyPanel::showBimProductProperties(int productId)
+{
+    endMultiEdit();
+    const auto* e = m_model ? m_model->bim().element(productId) : nullptr;
+    if (!e || !m_bimView->setProduct(productId))
+    {
+        clearProperties();
+        return;
+    }
+    m_titleLabel->setText(tr("OBJET IFC : %1").arg(QString::fromStdString(e->name.empty() ? e->ifcClass : e->name)));
+    m_stack->setCurrentWidget(m_bimView);
+}
+
+bool PropertyPanel::showsBimProduct() const
+{
+    return m_stack && m_stack->currentWidget() == m_bimView;
 }
 
 void PropertyPanel::showFoundationProperties(int foundationId)
@@ -292,6 +329,7 @@ void PropertyPanel::showFoundationProperties(int foundationId)
     m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DE LA FONDATION"), m_model && m_model->getFoundation(foundationId) ? m_model->getFoundation(foundationId)->formattedName() : std::string(), foundationId));
     m_foundationView->setElementId(foundationId);
     m_stack->setCurrentWidget(m_foundationView);
+    m_elementBim->showElement(TSA::BIM::AnalyticalRef{ TSA::Model::ElementKind::Foundation, foundationId });
 }
 
 void PropertyPanel::showTrussMemberProperties(int memberId)
@@ -300,6 +338,7 @@ void PropertyPanel::showTrussMemberProperties(int memberId)
     m_titleLabel->setText(entityTitle(tr("PROPRIÉTÉS DU TREILLIS"), m_model && m_model->getTrussMember(memberId) ? m_model->getTrussMember(memberId)->formattedName() : std::string(), memberId));
     m_trussView->setElementId(memberId);
     m_stack->setCurrentWidget(m_trussView);
+    m_elementBim->showElement(TSA::BIM::AnalyticalRef{ TSA::Model::ElementKind::TrussMember, memberId });
     m_elementResults->showElement(TSA::Analysis::ElementKey{ TSA::Analysis::StructuralElementKind::Truss, memberId });
 }
 
@@ -356,6 +395,7 @@ void PropertyPanel::refreshLibraryLists()
 // -----------------------------------------------------------------------------
 void PropertyPanel::onNodeModified(const TSA::Model::Node& node)
 {
+    if (m_elementBim) m_elementBim->refresh();
     if (m_stack->currentWidget() == m_nodeView && m_nodeView->elementId() == node.id())
     {
         m_nodeView->refreshView();
@@ -393,6 +433,7 @@ void PropertyPanel::onNodeRemoved(int nodeId)
 
 void PropertyPanel::onBeamModified(const TSA::Model::Beam& beam)
 {
+    if (m_elementBim) m_elementBim->refresh();
     if (m_stack->currentWidget() == m_beamView && m_beamView->elementId() == beam.id())
     {
         m_beamView->refreshView();
@@ -409,6 +450,7 @@ void PropertyPanel::onBeamRemoved(int beamId)
 
 void PropertyPanel::onColumnModified(const TSA::Model::Column& column)
 {
+    if (m_elementBim) m_elementBim->refresh();
     if (m_stack->currentWidget() == m_columnView && m_columnView->elementId() == column.id())
     {
         m_columnView->refreshView();
@@ -425,6 +467,7 @@ void PropertyPanel::onColumnRemoved(int columnId)
 
 void PropertyPanel::onSlabModified(const TSA::Model::Slab& slab)
 {
+    if (m_elementBim) m_elementBim->refresh();
     if (m_stack->currentWidget() == m_slabView && m_slabView->elementId() == slab.id())
     {
         m_slabView->refreshView();
@@ -441,6 +484,7 @@ void PropertyPanel::onSlabRemoved(int slabId)
 
 void PropertyPanel::onWallModified(const TSA::Model::Wall& wall)
 {
+    if (m_elementBim) m_elementBim->refresh();
     if (m_stack->currentWidget() == m_wallView && m_wallView->elementId() == wall.id())
     {
         m_wallView->refreshView();
@@ -457,6 +501,7 @@ void PropertyPanel::onWallRemoved(int wallId)
 
 void PropertyPanel::onFoundationModified(const TSA::Model::Foundation& foundation)
 {
+    if (m_elementBim) m_elementBim->refresh();
     if (m_stack->currentWidget() == m_foundationView && m_foundationView->elementId() == foundation.id())
     {
         m_foundationView->refreshView();
@@ -473,6 +518,7 @@ void PropertyPanel::onFoundationRemoved(int foundationId)
 
 void PropertyPanel::onTrussMemberModified(const TSA::Model::TrussMember& member)
 {
+    if (m_elementBim) m_elementBim->refresh();
     if (m_stack->currentWidget() == m_trussView && m_trussView->elementId() == member.id())
     {
         m_trussView->refreshView();
@@ -489,6 +535,7 @@ void PropertyPanel::onTrussMemberRemoved(int memberId)
 
 void PropertyPanel::onCableModified(const TSA::Model::Cable& cable)
 {
+    if (m_elementBim) m_elementBim->refresh();
     if (m_stack->currentWidget() == m_cableView && m_cableView->elementId() == cable.id())
     {
         m_cableView->refreshView();
@@ -541,6 +588,7 @@ void PropertyPanel::onMemberLoadRemoved(int loadId)
 
 void PropertyPanel::onModelDiffApplied(const TSA::Model::ModelDiff& /*diff*/)
 {
+    if (m_elementBim) m_elementBim->refresh();
     if (m_model && m_multiEdit.active()) m_multiEdit.resync(*m_model);   // Annuler / Rétablir
     // Rafraîchir la vue active si son élément a été affecté
     if (m_stack->currentWidget() == m_beamView) m_beamView->refreshView();

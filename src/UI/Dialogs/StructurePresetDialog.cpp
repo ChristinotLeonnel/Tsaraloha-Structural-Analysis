@@ -48,6 +48,14 @@ StructurePresetDialog::StructurePresetDialog(
         m_tabWidget->setCurrentIndex(3);
         setWindowTitle(tr("Propriétés du Poteau - Pré-dessin 3D"));
         break;
+    case PresetTarget::Foundation:
+        m_tabWidget->setCurrentIndex(4);
+        setWindowTitle(tr("Propriétés de la Fondation - Pré-dessin 3D"));
+        break;
+    case PresetTarget::Truss:
+        m_tabWidget->setCurrentIndex(5);
+        setWindowTitle(tr("Propriétés du Treillis - Pré-dessin 3D"));
+        break;
     }
 }
 
@@ -88,6 +96,8 @@ void StructurePresetDialog::setupUi()
     m_tabWidget->setTabIcon(2, QIcon(":/icons/draw_beam.svg"));
     m_tabWidget->addTab(createColumnTab(), tr("Poteau"));
     m_tabWidget->setTabIcon(3, QIcon(":/icons/draw_column.svg"));
+    m_tabWidget->addTab(createFoundationTab(), tr("Fondation"));
+    m_tabWidget->addTab(createTrussTab(), tr("Treillis"));
     m_tabWidget->setIconSize(QSize(18, 18));
     mainLayout->addWidget(m_tabWidget, 1);
 
@@ -158,7 +168,7 @@ QWidget* StructurePresetDialog::createWallTab()
     layout->addRow(tr("Décalage d'axe :"), m_wallOffset);
 
     m_wallMaterial = new QComboBox(w);
-    m_wallMaterial->addItems({ "Béton C25/30", "Béton C30/37", "Béton C20/25", "Acier S355", "Acier S235" });
+    m_wallMaterial->addItems({ "Béton C25/30", "Béton C30/37", "Acier S355", "Acier S235" });
     layout->addRow(tr("Matériau :"), m_wallMaterial);
 
     auto* colorLayout = new QHBoxLayout();
@@ -205,7 +215,7 @@ QWidget* StructurePresetDialog::createSlabTab()
     layout->addRow(tr("Épaisseur e :"), m_slabThickness);
 
     m_slabMaterial = new QComboBox(w);
-    m_slabMaterial->addItems({ "Béton C25/30", "Béton C30/37", "Béton C20/25", "Acier S355" });
+    m_slabMaterial->addItems({ "Béton C25/30", "Béton C30/37", "Acier S355" });
     layout->addRow(tr("Matériau :"), m_slabMaterial);
 
     auto* colorLayout = new QHBoxLayout();
@@ -468,6 +478,58 @@ QWidget* StructurePresetDialog::createColumnTab()
     return w;
 }
 
+QWidget* StructurePresetDialog::createFoundationTab()
+{
+    auto* w = new QWidget(this);
+    auto* layout = new QFormLayout(w);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(10);
+
+    auto dimension = [w](double value) {
+        auto* spin = new QDoubleSpinBox(w);
+        spin->setRange(0.10, 20.00);
+        spin->setSingleStep(0.05);
+        spin->setDecimals(2);
+        spin->setSuffix(" m");
+        spin->setValue(value);
+        return spin;
+    };
+    m_footWidthA = dimension(m_presets.foundation.widthA);
+    layout->addRow(tr("Largeur A :"), m_footWidthA);
+    m_footLengthB = dimension(m_presets.foundation.lengthB);
+    layout->addRow(tr("Longueur B :"), m_footLengthB);
+    m_footHeightH = dimension(m_presets.foundation.heightH);
+    layout->addRow(tr("Hauteur H :"), m_footHeightH);
+
+    m_footMaterial = new QComboBox(w);
+    m_footMaterial->addItems({ "Béton C25/30", "Béton C30/37", "Béton armé" });
+    layout->addRow(tr("Matériau :"), m_footMaterial);
+    layout->addRow(new QLabel(tr("<span style='color:#8B949E;'>Semelle isolée sous le nœud cliqué ; "
+                                 "aucune autre dimension n'est supposée.</span>"), w));
+    return w;
+}
+
+QWidget* StructurePresetDialog::createTrussTab()
+{
+    auto* w = new QWidget(this);
+    auto* layout = new QFormLayout(w);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(10);
+
+    m_trussDiameter = new QDoubleSpinBox(w);
+    m_trussDiameter->setRange(0.01, 1.00);
+    m_trussDiameter->setSingleStep(0.01);
+    m_trussDiameter->setDecimals(3);
+    m_trussDiameter->setSuffix(" m");
+    m_trussDiameter->setValue(m_presets.truss.section.diameter);
+    layout->addRow(tr("Diamètre (section pleine) :"), m_trussDiameter);
+
+    m_trussMaterial = new QComboBox(w);
+    m_trussMaterial->addItems({ "Acier S235", "Acier S355" });
+    layout->addRow(tr("Matériau :"), m_trussMaterial);
+    return w;
+}
+
 void StructurePresetDialog::loadFromPresets()
 {
     m_wallColor = m_presets.wall.color.c_str();
@@ -482,6 +544,8 @@ void StructurePresetDialog::loadFromPresets()
 
     if (m_slabThickness) m_slabThickness->setValue(m_presets.slab.thickness);
     if (m_slabMaterial) m_slabMaterial->setCurrentText(QString::fromStdString(m_presets.slab.material.name));
+    if (m_footMaterial) m_footMaterial->setCurrentText(QString::fromStdString(m_presets.foundation.material.name));
+    if (m_trussMaterial) m_trussMaterial->setCurrentText(QString::fromStdString(m_presets.truss.material.name));
 
     if (m_beamRectWidth) m_beamRectWidth->setValue(m_presets.beam.section.width);
     if (m_beamRectHeight) m_beamRectHeight->setValue(m_presets.beam.section.height);
@@ -570,6 +634,17 @@ void StructurePresetDialog::saveToPresets()
     m_presets.slab.thickness = m_slabThickness->value();
     m_presets.slab.material.name = m_slabMaterial->currentText().toStdString();
     m_presets.slab.color = m_slabColor.toStdString();
+
+    // Fondation
+    m_presets.foundation.widthA = m_footWidthA->value();
+    m_presets.foundation.lengthB = m_footLengthB->value();
+    m_presets.foundation.heightH = m_footHeightH->value();
+    m_presets.foundation.material.name = m_footMaterial->currentText().toStdString();
+
+    // Treillis
+    m_presets.truss.section = TSA::Model::Section::circular(
+        m_trussDiameter->value(), QString("C%1").arg(m_trussDiameter->value() * 1000, 0, 'f', 0).toStdString());
+    m_presets.truss.material.name = m_trussMaterial->currentText().toStdString();
 
     // Poutre
     int beamShape = m_beamShapeType->currentIndex();

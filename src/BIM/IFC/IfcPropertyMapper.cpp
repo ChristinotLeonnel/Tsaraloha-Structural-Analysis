@@ -57,6 +57,10 @@ std::string IfcPropertyMapper::stepValue(const PropertyValue& v)
 
 std::vector<PropertySet> IfcPropertyMapper::propertySets(const TSA::Model::Model& m, const PhysicalElement& e)
 {
+    // Produit importé sans élément de calcul (porte, objet « à préparer »…) : ses seules propriétés d'origine ; rien
+    // n'est déduit (ni LoadBearing, ni données de calcul).
+    if (e.analytical.empty()) return e.propertySets;
+
     std::vector<PropertySet> out;
     if (const char* common = commonPset(e.category))
     {

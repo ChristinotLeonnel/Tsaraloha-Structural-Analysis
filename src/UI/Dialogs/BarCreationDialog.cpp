@@ -4,6 +4,7 @@
 #include "App/ProductInfo.h"
 #include "SectionCustomizationDialog.h"
 #include "../../Library/LibraryManager.h"
+#include "../../Interaction/ElementCreation.h"
 #include "../../Model/Model.h"
 #include "../../Viewer/OccView.h"
 #include <QVBoxLayout>
@@ -384,32 +385,26 @@ void BarCreationDialog::onSecondPointPicked(const gp_Pnt& pt, int nodeId)
     m_endNodeId = nodeId;
     m_editEnd->setText(formatPoint(pt));
 
-    if (m_originPt.Distance(m_endPt) < 1e-4)
-    {
-        return; // Éviter barre de longueur nulle
-    }
-
     if (!m_model) return;
 
-    // Créer ou récupérer les nœuds dans le modèle structural
-    int nStartId = m_originNodeId;
-    if (nStartId <= 0)
+    // Nœuds manquants et barre créés ensemble, après validation (une seule entrée Annuler).
+    const auto props = currentProperties();
+    const auto r = TSA::Interaction::ElementCreation(*m_model).createBar(
+        { m_originPt, m_originNodeId }, { m_endPt, m_endNodeId }, props);
+    if (m_occView)
     {
-        nStartId = m_model->addNode(m_originPt.X(), m_originPt.Y(), m_originPt.Z());
+        m_occView->reportCreation(r, tr("%1 créée reliant N%2 à N%3").arg(QString::fromStdString(props.name))
+            .arg(r.nodeIds.empty() ? -1 : r.nodeIds[0]).arg(r.nodeIds.size() < 2 ? -1 : r.nodeIds[1]));
     }
-
-    int nEndId = m_endNodeId;
-    if (nEndId <= 0)
+    if (!r.success)
     {
-        nEndId = m_model->addNode(m_endPt.X(), m_endPt.Y(), m_endPt.Z());
+        // Refus (longueur nulle, doublon, section invalide) : l'origine reste fixée.
+        m_editEnd->clear();
+        if (m_occView) m_occView->startChainedBarDrawing(m_originPt, m_originNodeId);
+        return;
     }
-
-    if (nStartId == nEndId) return;
-
-    auto props = currentProperties();
-    m_model->pushUndoState(tr("Création %1").arg(QString::fromStdString(props.name)).toStdString());
-    int createdId = m_model->addBar(props, nStartId, nEndId);
-    emit barCreated(createdId);
+    const int nEndId = r.nodeIds[1];
+    emit barCreated(r.elementId);
 
     // Incrémenter la numérotation
     int nextId = m_spinBarId->value() + m_spinStep->value();

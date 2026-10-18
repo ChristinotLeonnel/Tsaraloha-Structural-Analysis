@@ -1,8 +1,66 @@
 # Known Issues
 
-Last Updated: 2026-10-09 (audit QA, branche fix/audit-qa-2026-10-09). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-18 (branche feature/bim-drawing : BUG-076 correctif CI préparé, BUG-078, BUG-079). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
+
+## BUG-076
+Area: Tests / intégration continue (vue 3D OCCT)
+Problem: toute suite qui crée une `OccView` s'arrête (code 0xC0000409, `abort()` du CRT, sans message) sous la
+plateforme Qt `offscreen` : la fenêtre n'a pas de vrai HWND, OCCT (`WNT_Window`, contexte WGL) ne peut créer son
+contexte OpenGL. Le workflow de publication (Setup-Livrable, `QT_QPA_PLATFORM: offscreen` à l'étape Tests) fait donc
+échouer `display`, `audit`, `multidoc` et `TSA_AllTests` — ce n'était pas un défaut du code des suites.
+Reproduction: `set QT_QPA_PLATFORM=offscreen` puis `TSA_TestSuite.exe --suite=display` → 0xC0000409 dès la première
+vue ; avec `QT_QPA_PLATFORM=windows` (vraie fenêtre) : display 6/6, audit 4/4, multidoc 10/10 (17/10/2026, build-ci
+propre). Équivalent local de la CI (offscreen) : 26/30 tests CTest réussis, exactement ces quatre en échec. Même résultat avec le binaire
+antérieur aux travaux IFC (TSA_TestSuite du 17/10 13:54) : défaut préexistant, indépendant d'IFC.
+Impact: HIGH pour la publication (étape Tests de la CI en échec), aucun impact pour l'utilisateur.
+Status: OPEN — piste : exécuter ces suites avec la plateforme `windows` sur le runner (session de bureau des runners
+GitHub Windows ; OpenGL logiciel à vérifier : Mesa llvmpipe si le pilote Microsoft ne fournit que GL 1.1), ou les
+annoncer sautées sous `offscreen` comme le test 408 de la suite `ifc`. À valider par une exécution réelle de la CI.
+18/10/2026 — correctif préparé dans Setup-Livrable (branche locale `feature/tests-vue3d`, non publiée) :
+`scripts/run_tests.ps1` en deux passes ; passe `offscreen` sans les suites à vue 3D, passe en plateforme `windows`
+pour AllTests, audit, display, multidoc, drawing et ifc (408 et 419 réellement exécutés), avec le rendu OpenGL
+logiciel de Mesa 26.2.3 (llvmpipe, empreinte figée) posé à côté de l'exécutable des tests puis retiré. Échec explicite
+en session 0, si une suite attendue manque, si un test est sauté ou si le total de la suite complète est incomplet.
+Essai local (build-ninja-release, 79dfdea) : offscreen 25/25 ; windows + Mesa 6/6, suite complète 427/427, rendu
+« Mesa — llvmpipe, OpenGL 4.6 » (test 370), aucun [SKIP]. Garde-fous éprouvés sur de fausses suites CTest (test
+sauté avec CTest « réussi », arrêt 0xC0000409, suite absente : échec dans les trois cas). Reste à vérifier sur le
+runner : session interactive (session ≠ 0) et durée de la passe native.
+Related files: tests/test_display.cpp, tests/test_audit.cpp, tests/test_multidoc*.cpp, Setup-Livrable/.github/workflows/release.yml, Setup-Livrable/scripts/run_tests.ps1
+
+## BUG-078
+Area: Barre d'état / accrochage
+Problem: l'indicateur « SNAP: ACTIF » de la barre d'état est créé une fois (`MainWindow_Actions.cpp`, `m_statusSnap`)
+et jamais mis à jour : il affiche « ACTIF » alors que le magnétisme de grille et l'accrochage objet sont coupés.
+Reproduction: Affichage → couper « Magnétisme Grille (Snap) » et « Accrochage Objets (OSNAP) » → la barre d'état
+affiche toujours « SNAP: ACTIF » (capture `11_types_de_produits.png` de l'essai `drawing_scenario.ps1` du 18/10/2026).
+Impact: LOW (information trompeuse ; l'accrochage lui-même suit bien les commandes)
+Status: OPEN — à traiter avec l'unification des accrochages (docs/BIM_DRAWING_ROADMAP.md, chantier D) : l'indicateur
+doit lire la même source que `SnapEngine`.
+Related files: src/UI/MainWindow_Actions.cpp, src/Grid/GridSnapManager.h
+
+## BUG-079
+Area: Tests / mesure de temps (test 20, suite `commands`)
+Problem: après BUG-035 (meilleur de 3 annulations, seuil de 350 ms inchangé), le test 20 échoue encore de temps en
+temps quand la machine est chargée : deux échecs sur une dizaine d'exécutions complètes le 18/10/2026, chaque fois
+pendant une compilation ou une autre suite en parallèle ; il repasse seul et dans les exécutions suivantes (suite
+complète native 427/427 à 07:49 le 18/10/2026).
+Impact: MEDIUM pour la CI (échec possible sur un runner partagé), aucun pour l'utilisateur.
+Status: OPEN — seuil volontairement non modifié. Pistes à évaluer avant toute décision : mesurer le temps CPU du
+processus plutôt que le temps écoulé, ou isoler les mesures de performance dans une suite à part lancée sans
+parallélisme ; ne pas assouplir le seuil pour faire passer la CI.
+Related files: tests/test_commands.cpp
+
+## BUG-077
+Area: Import IFC / titre de la fenêtre
+Problem: le projet issu d'un import IFC s'ouvre dans un nouvel onglet nommé d'après le fichier, mais la barre de titre
+affiche « TSA — Sans titre * » tant qu'il n'est pas enregistré (`ProjectManager::windowTitle` ne connaît que le nom du
+fichier).
+Reproduction: Importer IFC… → ifc4x3_Building-Structural.ifc → onglet « ifc4x3_Building-Structural ● », titre « Sans titre ».
+Impact: LOW (cosmétique ; l'onglet et l'arbre portent le bon nom)
+Status: OPEN — constaté le 17/10/2026 (essai UI Automation de l'import IFC).
+Related files: src/Project/ProjectManager.cpp, src/UI/MainWindow_Bim.cpp
 
 ## BUG-075
 Area: Sélection 3D / nœuds

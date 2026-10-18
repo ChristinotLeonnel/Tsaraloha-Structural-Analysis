@@ -147,6 +147,19 @@ int IfcGeometryMapper::wallSolid(const Vec3& a, const Vec3& b, double height, do
     const double len = norm(d);
     if (len < 1e-4 || height <= 0.0 || thickness <= 0.0) return 0;
     const Vec3 x = unit(d);
+    const double dz = b[2] - a[2];
+    if (std::abs(dz) > 1e-6)
+    {
+        // Base inclinée : élévation en parallélogramme (0,0) (L,dz) (L,dz+H) (0,H) dans le plan vertical du voile,
+        // extrudée selon l'épaisseur ; repère : X le long du voile, Y vers le haut, Z = -n (n = (-dy, dx), côté du
+        // décalage), profil posé à offset + t/2 et extrudé de t vers -n
+        const Vec3 n { -x[1], x[0], 0.0 };
+        std::vector<int> ids { point2(0.0, 0.0), point2(len, dz), point2(len, dz + height), point2(0.0, height) };
+        ids.push_back(ids.front());
+        const int poly = m_ctx.w.add("IFCPOLYLINE", W::refs(ids));
+        const int prof = m_ctx.w.add("IFCARBITRARYCLOSEDPROFILEDEF", ".AREA.,$," + W::ref(poly));
+        return extrude(prof, placement3(add(a, mul(n, offset + thickness / 2.0)), mul(n, -1.0), x), { 0, 0, 1 }, thickness);
+    }
     // Profil rectangle (longueur × épaisseur) centré à (L/2, offset) ; normale du viewport (-dy, dx)
     const int pos = m_ctx.w.add("IFCAXIS2PLACEMENT2D", W::ref(point2(len / 2.0, offset)) + ",$");
     const int prof = m_ctx.w.add("IFCRECTANGLEPROFILEDEF", ".AREA.,$," + W::ref(pos) + "," + W::real(len) + "," + W::real(thickness));

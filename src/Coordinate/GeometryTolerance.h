@@ -11,6 +11,9 @@ struct GeometryTolerance
     static constexpr double planeMembership = 0.05;
     /// Coïncidence de deux points (nœuds confondus, longueurs nulles).
     static constexpr double pointCoincidence = 1e-6;
+    /// Point tracé confondu avec un nœud existant (réutilisé au lieu d'un doublon). Au-delà : nouveau
+    /// nœud, jamais de fusion par proximité ; l'accrochage (SnapEngine) reste le moyen de viser un nœud.
+    static constexpr double nodeCoincidence = 1e-3;
 };
 
 } // namespace TSA::Coordinate

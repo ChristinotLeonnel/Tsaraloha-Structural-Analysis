@@ -56,6 +56,7 @@ RibbonTab* RibbonBuilder::buildHomeTab(RibbonBar* bar, const RibbonActions& acts
         std::vector<QAction*> ifcSub;
         if (acts.actionImportIfc) ifcSub.push_back(acts.actionImportIfc);
         if (acts.actionExportIfc) ifcSub.push_back(acts.actionExportIfc);
+        if (acts.actionBimGeometryVisible) ifcSub.push_back(acts.actionBimGeometryVisible);
         filePanel->addInternalSeparator();
         filePanel->addSmallColumn(ifcSub);
     }
@@ -793,6 +794,7 @@ RibbonTab* RibbonBuilder::buildViewTab(RibbonBar* bar, const RibbonActions& acts
     std::vector<QAction*> visCol3;
     if (acts.actionNodesVisible) visCol3.push_back(acts.actionNodesVisible);
     if (acts.actionNodeLabelsVisible) visCol3.push_back(acts.actionNodeLabelsVisible);
+    if (acts.actionBimGeometryVisible) visCol3.push_back(acts.actionBimGeometryVisible);
     if (!visCol3.empty())
     {
         visPanel->addInternalSeparator();

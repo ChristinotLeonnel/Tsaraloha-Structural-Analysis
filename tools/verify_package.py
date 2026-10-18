@@ -21,6 +21,14 @@ import sys
 # Bibliothèques redistribuables : jamais acceptées comme « fournies par Windows ».
 REDIST_PREFIXES = ("msvcp140", "vcruntime140", "concrt140", "vccorlib140", "vcomp140", "libiomp5md")
 FORBIDDEN_PREFIXES = ("qt5", "vtk", "tcl86", "tk86", "doxygen")
+# IfcOpenShell : modules chargés à l'exécution (absents des tables d'import, donc vérifiés nommément) et licences.
+IFCOS_MODULES = ("ifcopenshell.parse.dll", "ifcopenshell.geometry.dll", "ifcopenshell.plugin.dll",
+                 "ifcopenshell_geometry_kernel_opencascade.dll",
+                 "ifcopenshell_parse_schema_ifc2x3.dll", "ifcopenshell_parse_schema_ifc4.dll",
+                 "ifcopenshell_parse_schema_ifc4x3_add2.dll", "ifcopenshell_geometry_mapping_ifc2x3.dll",
+                 "ifcopenshell_geometry_mapping_ifc4.dll", "ifcopenshell_geometry_mapping_ifc4x3_add2.dll")
+IFCOS_LICENSES = ("IfcOpenShell/COPYING", "IfcOpenShell/COPYING.LESSER", "IfcOpenShell/SOURCE.txt",
+                  "Boost/LICENSE_1_0.txt", "Eigen/COPYING.MPL2")
 
 
 def pe_imports(path):
@@ -141,6 +149,13 @@ def main():
             errors.append("licence de Gmsh absente : licenses/Gmsh/LICENSE.txt")
         if not os.path.exists(os.path.join(root, "licenses", "Gmsh", "SOURCE.txt")):
             errors.append("Gmsh (GPL) livré sans indication du code source : licenses/Gmsh/SOURCE.txt")
+    if manifest.get("ifcOpenShellIncluded") or os.path.exists(os.path.join(root, "ifcopenshell.parse.dll")):
+        for m in IFCOS_MODULES:
+            if not os.path.exists(os.path.join(root, m)):
+                errors.append(f"import IFC incomplet : module IfcOpenShell absent « {m} »")
+        for lic in IFCOS_LICENSES:
+            if not os.path.exists(os.path.join(root, "licenses", lic)):
+                errors.append(f"IfcOpenShell (LGPL-3.0) livré sans licences/{lic}")
     if manifest.get("openSeesIncluded"):
         for r in ("engines/OpenSees/bin/OpenSees.exe", "engines/OpenSees/lib/tcl8.6/init.tcl"):
             if not os.path.exists(os.path.join(root, r)):

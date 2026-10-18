@@ -256,6 +256,7 @@ MainWindow* AppShell::createWorkspace()
     connect(workspace, &MainWindow::newProjectRequested, this, &AppShell::createNewProject);
     connect(workspace, &MainWindow::openProjectRequested, this, &AppShell::openProject);
     connect(workspace, &MainWindow::openFileRequested, this, &AppShell::openProjectFile);
+    connect(workspace, &MainWindow::importedProjectReady, this, &AppShell::openImportedProject);
     // MCP : documents ouverts (identifiant stable, nom, chemin, actif) pour list_documents
     workspace->setAutomationDocumentsProvider([this] {
         QJsonArray docs;
@@ -554,6 +555,18 @@ bool AppShell::loadIntoWorkspace(const QString& path)
     closeDocument(workspace);
     if (previous && m_documents.contains(previous)) activateDocument(previous);
     return false;
+}
+
+void AppShell::openImportedProject(std::shared_ptr<TSA::Model::Model> model, const QString& sourcePath,
+                                   std::shared_ptr<const TSA::BIM::Ifc::IfcImportReport> report)
+{
+    if (!model || !report) return;
+    // Comme l'ouverture d'un fichier : nouvel onglet ; le document d'où vient la commande garde son projet.
+    MainWindow* workspace = createWorkspace();
+    activateDocument(workspace);
+    showProjectWorkspace();
+    workspace->adoptImportedProject(*model, sourcePath, *report);
+    refreshTabs();
 }
 
 bool AppShell::closeProject()

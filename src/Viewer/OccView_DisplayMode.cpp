@@ -4,8 +4,10 @@
 
 #include "OccView.h"
 
+#include "BimGeometryRenderer.h"
 #include "DisplayModeRenderers.h"
 #include "MaterialVisual.h"
+#include "SelectionManager.h"
 #include "../Analysis/ResultsModel.h"
 #include "../Diagnostics/Logger.h"
 
@@ -149,6 +151,56 @@ void OccView::refreshDisplayModeOverlays()
     }
     else
         m_meshRenderer->clear();
+}
+
+void OccView::setBimGeometryVisible(bool visible)
+{
+    if (!m_bimRenderer || visible == m_bimRenderer->visible()) return;
+    m_bimRenderer->setVisible(visible);
+    if (m_context.IsNull()) return;
+    m_context->UpdateCurrentViewer();
+    if (!m_view.IsNull()) m_view->Redraw();
+}
+
+bool OccView::bimGeometryVisible() const
+{
+    return !m_bimRenderer || m_bimRenderer->visible();
+}
+
+std::size_t OccView::bimGeometryCount() const
+{
+    return m_bimRenderer ? m_bimRenderer->size() : 0;
+}
+
+std::size_t OccView::bimGeometryDisplayedCount() const
+{
+    return m_bimRenderer ? m_bimRenderer->displayedCount() : 0;
+}
+
+void OccView::scheduleBimGeometrySync()
+{
+    // Rien à faire tant qu'aucun produit importé n'est tracé ni présent (cas des projets créés dans TSA)
+    if (m_bimSyncPending || !m_bimRenderer || !m_model || (m_bimRenderer->size() == 0 && m_model->bim().elements().empty())) return;
+    m_bimSyncPending = true;
+    QTimer::singleShot(0, this, [this] {
+        m_bimSyncPending = false;
+        if (m_context.IsNull() || !m_model || !m_bimRenderer || !m_bimRenderer->sync(m_model->bim())) return;
+        m_context->UpdateCurrentViewer();
+        if (!m_view.IsNull()) m_view->Redraw();
+    });
+}
+
+int OccView::detectedBimProduct()
+{
+    if (!m_bimRenderer || m_bimRenderer->size() == 0) return 0;
+    int product = 0;
+    for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
+    {
+        const Handle(AIS_InteractiveObject) object = m_context->DetectedCurrentObject();
+        if (!object.IsNull() && m_selectionManager && m_selectionManager->isModelObject(object)) return 0;
+        if (product == 0) product = m_bimRenderer->productOf(m_context->DetectedCurrentOwner());
+    }
+    return product;
 }
 
 void OccView::styleLinearShape(const Handle(AIS_Shape)& ais, const TSA::Model::Material& material, const std::string& color,

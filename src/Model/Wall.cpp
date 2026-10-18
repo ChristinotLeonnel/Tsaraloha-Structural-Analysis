@@ -40,10 +40,18 @@ double Wall::length(const Model& model) const
     const auto* end   = model.getNode(m_endNodeId);
     if (!start || !end) return 0.0;
 
-    double dx = end->x() - start->x();
-    double dy = end->y() - start->y();
-    double dz = end->z() - start->z();
-    return std::sqrt(dx * dx + dy * dy + dz * dz);
+    // Longueur en plan : le voile est extrudé verticalement depuis sa base ; avec une base inclinée (pieds à des cotes
+    // différentes), son élévation est un parallélogramme d'aire longueur en plan × hauteur.
+    const double dx = end->x() - start->x();
+    const double dy = end->y() - start->y();
+    return std::sqrt(dx * dx + dy * dy);
+}
+
+double Wall::baseRise(const Model& model) const
+{
+    const auto* start = model.getNode(m_startNodeId);
+    const auto* end   = model.getNode(m_endNodeId);
+    return (start && end) ? end->z() - start->z() : 0.0;
 }
 
 double Wall::grossArea(const Model& model) const

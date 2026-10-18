@@ -1054,5 +1054,45 @@ bool runSuite_Surfaces(int& passed)
         std::cout << "[PASS] Test 364: API interne des surfaces et export IFC" << std::endl;
         ++passed;
     }
+    // -------------------------------------------------------------------------
+    // TEST 429 : voile à base inclinée calculé en coques — maillage dans le parallélogramme, poids propre =
+    // ρ·g·t·(longueur en plan × hauteur), Σ réactions à l'équilibre (avant correction : repère non orthogonal, aire 3D)
+    // -------------------------------------------------------------------------
+    {
+        Model v;
+        const double Lh = 4.0, dz = 1.0, H = 3.0, t = 0.2;
+        std::vector<int> base;
+        for (int k = 0; k <= 8; ++k) base.push_back(v.addNode(Lh * k / 8, 0, dz * k / 8));
+        for (int id : base) v.getNode(id)->setSupport(SupportDefinition::fixed());
+        const int wl = v.addWall(base.front(), base.back(), H, t, "Voile incliné");
+        const int lc = v.loadManager().addLoadCase(LoadCase(0, "G", LoadCaseCategory::Dead, true, 1.0));
+        const auto r = runSurfaces(v, settings2D(0.4, true), true, lc);
+        TEST_CHECK(!r.compat.blocking() && r.run.success, "Test 429: voile incliné calculé (" << blockingText(r.compat) << errorsOf(r.prepared) << ")");
+        bool inside = !r.compat.surfaces.elements.empty();
+        for (const auto& e : r.compat.surfaces.elements)
+        {
+            double cx = 0, cy = 0, cz = 0;
+            for (int n : e.meshNodes)
+            {
+                cx += r.mesh.mesh.node(n).x / e.meshNodes.size();
+                cy += r.mesh.mesh.node(n).y / e.meshNodes.size();
+                cz += r.mesh.mesh.node(n).z / e.meshNodes.size();
+            }
+            const double zBase = dz * cx / Lh;
+            inside = inside && cx > -1e-9 && cx < Lh + 1e-9 && std::abs(cy) < 1e-9 && cz > zBase - 1e-9 && cz < zBase + H + 1e-9;
+        }
+        TEST_CHECK(inside, "Test 429: tous les éléments de coque dans le parallélogramme du voile");
+        const double rho = v.getWall(wl)->material().mechanical.density;
+        const double expected = rho * 9.81 * t / 1000.0 * Lh * H;
+        const auto eq = r.run.results.equilibrium();
+        const double sw = r.compat.surfaces.selfWeightBySurface.count("W" + std::to_string(wl)) ? r.compat.surfaces.selfWeightBySurface.at("W" + std::to_string(wl)) : -1.0;
+        std::cout << "  voile incliné : poids propre " << sw << " kN, Σ Rz " << eq.reactionFz << " kN, attendu " << expected
+                  << " kN (aire en plan × hauteur = " << Lh * H << " m², aire 3D " << std::hypot(Lh, dz) * H << " m²)" << std::endl;
+        TEST_CHECK(std::abs(sw - expected) < 1e-6 * expected && std::abs(eq.reactionFz - expected) < 1e-6 * expected && eq.isBalanced(1e-6),
+                   "Test 429: poids propre et Σ réactions = ρ·g·t·(4 × 3 m²)");
+        std::cout << "[PASS] Test 429: Voile à base inclinée calculé (coques)" << std::endl;
+        ++passed;
+    }
+
     return true;
 }

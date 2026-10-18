@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../Interaction/ElementCreation.h"
+
 #include <QDialog>
 #include <gp_Pnt.hxx>
 #include <vector>
@@ -90,7 +92,8 @@ private:
     void updateNextId();
     void syncPresetsToOccView();
     bool parseCoordinates(const QString& text, double& x, double& y, double& z) const;
-    int resolveOrCreateNode(const QString& text);
+    /// Saisie « numéro de nœud » ou « X Y Z » : point de création (aucun nœud créé ici).
+    bool parsePoint(const QString& text, TSA::Interaction::DrawPoint& out) const;
     QString formatPoint(const gp_Pnt& pt) const;
     void updateColorButton(QPushButton* btn, const QColor& col);
 
@@ -115,12 +118,13 @@ private:
     QComboBox* m_comboSlabType = nullptr; // Bidirectionnelle / Unidirectionnelle
     QComboBox* m_comboSlabMaterial = nullptr;
     QPushButton* m_btnSlabColor = nullptr;
-    QLineEdit* m_editSlabNodes = nullptr; // Contour node IDs
+    QLineEdit* m_editSlabNodes = nullptr; // Contour : numéros de nœuds saisis ou points cliqués
     QLabel* m_lblSlabStatus = nullptr;
     QPushButton* m_btnCloseContour = nullptr;
     QPushButton* m_btnClearContour = nullptr;
     QColor m_slabColor;
-    std::vector<int> m_currentSlabNodes;
+    std::vector<TSA::Interaction::DrawPoint> m_currentSlabPicks;   ///< points cliqués dans la vue
+    QString m_slabPicksText;   ///< texte affiché pour ces points (une saisie différente les remplace)
 
     // --- Wall widgets ---
     QWidget* m_wallPage = nullptr;

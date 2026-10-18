@@ -34,6 +34,7 @@ namespace TSA::Viewer
     class DimensionRenderer;
     class AnalyticalModelRenderer;
     class FiniteElementMeshRenderer;
+    class BimGeometryRenderer;
 }
 
 namespace TSA::Grid
@@ -44,6 +45,7 @@ namespace TSA::Grid
 #include "../Grid/GridRenderer.h"
 #include "../Model/CreationPresets.h"
 #include "../Interaction/InteractionManager.h"
+#include "../Interaction/ElementCreation.h"
 #include "../Coordinate/WorkPlane.h"
 #include <AIS_ViewCube.hxx>
 #include <AIS_RubberBand.hxx>
@@ -118,6 +120,16 @@ public:
     TSA::Viewer::SolverMeshStatus solverMeshStatus() const;
     /// Recalcule les axes superposés et le maillage affiché (résultats nouveaux ou obsolètes, isolation…).
     void refreshDisplayModeOverlays();
+
+    // Objets physiques importés (IFC) sans élément de calcul : maillages d'origine (BimGeometryRenderer.h).
+    void setBimGeometryVisible(bool visible);
+    bool bimGeometryVisible() const;
+    /// Nombre de produits tracés par la couche, et nombre effectivement affichés (0 si elle est masquée).
+    std::size_t bimGeometryCount() const;
+    std::size_t bimGeometryDisplayedCount() const;
+    /// Cadrage sur le modèle (fitModel) dès que la vue est prête : tout de suite si elle l'est, sinon à son premier
+    /// affichage, à la place du cadrage général qui englobe la grille (onglet neuf d'un projet importé).
+    void fitModelWhenReady();
 
     // Visualisation des résultats OpenSees (déformée, diagrammes 3D, réactions)
     TSA::Viewer::ResultsVisualManager* resultsVisual() const { return m_resultsVisual.get(); }
@@ -391,6 +403,9 @@ public:
     // Dessin d'éléments surfaciques (Dalles & Voiles)
     void finishCurrentSlab();
     void resetCurrentSlabContour();
+    /// Invite après une création (vue ou dialogue de création) : succès et réserves, ou motif du refus ;
+    /// émet elementCreated() en cas de succès.
+    void reportCreation(const TSA::Interaction::CreationResult& r, const QString& successPrompt);
 
     // Visibilité et étiquetage 3D des nœuds
     enum class NodeDisplayFilter
@@ -471,6 +486,8 @@ signals:
     void mousePixelPositionChanged(int px, int py);
     void viewCameraChanged();
     void objectHovered(const QString& info);
+    /// Clic sur un objet physique importé (couche BIM) : identifiant du produit dans BimModel.
+    void bimProductPicked(int productId);
     void gridVisibilityChanged(bool visible);
     void gridSnapChanged(bool enabled);
     void objectSnapChanged(bool enabled);
@@ -623,7 +640,17 @@ private:
     void clearRubberBand();
     void clearTransformPreview();
     void buildTransformPreviewGhosts();
-    int getOrCreateNode(double x, double y, double z, int existingNodeId);
+    // Tracé des modes Dessin (OccView.cpp) : les clics mémorisent des points, les nœuds ne sont
+    // créés qu'à la validation de l'élément, par ElementCreation (une transaction).
+    /// Point de tracé : nœud existant visé (accroché ou confondu), sinon position libre.
+    TSA::Interaction::DrawPoint drawPointAt(double x, double y, double z, int detectedNodeId) const;
+    void pushDrawPoint(const TSA::Interaction::DrawPoint& p);
+    std::vector<TSA::Interaction::DrawPoint> drawingPicks() const;
+    void clearDrawing();
+    QString pointLabel(const TSA::Interaction::DrawPoint& p) const;
+    /// Préréglages avec matériaux du catalogue (le dialogue des préréglages n'en garde que le nom).
+    TSA::Model::StructurePresets resolvedPresets() const;
+    TSA::Model::BarProperties drawingBarProperties(TSA::Model::BarRole role) const;
     void updateClipPlaneEquation();
     void updateSectionPlaneVisual();
     /// Applique au trièdre du WorkPlane la rotation (sans translation) + l'ancrage au point d'origine
@@ -794,8 +821,8 @@ private:
     void clearSnapMarker();
 
     std::unique_ptr<TSA::Interaction::InteractionManager> m_interactionManager;
-    std::vector<int> m_drawingNodeIds;
-    std::vector<gp_Pnt> m_drawingPoints;
+    std::vector<int> m_drawingNodeIds;     ///< nœud visé par chaque point du tracé (-1 : point libre)
+    std::vector<gp_Pnt> m_drawingPoints;   ///< positions du tracé (même taille que m_drawingNodeIds)
 
     // Outil de modification / dessin actif (OccView_Tools.cpp)
     TSA::Interaction::ModelingTool* m_activeTool = nullptr;
@@ -832,6 +859,14 @@ private:
     std::unique_ptr<TSA::Viewer::AnalyticalModelRenderer> m_analyticalRenderer;
     std::unique_ptr<TSA::Viewer::FiniteElementMeshRenderer> m_meshRenderer;
     bool m_displayOverlaysPending = false;
+    std::unique_ptr<TSA::Viewer::BimGeometryRenderer> m_bimRenderer;
+    bool m_bimSyncPending = false;
+    bool m_fitModelOnInit = false;   ///< fitModelWhenReady() reçu avant l'initialisation d'OCCT
+    /// Accord différé (regroupé) de la couche BIM avec le modèle : un produit relié au calcul quitte la couche.
+    void scheduleBimGeometrySync();
+    /// Produit BIM désigné par l'entité détectée sous le curseur, si aucun élément du modèle n'est détecté (les
+    /// nœuds et barres dans un mur importé restent désignables) ; 0 sinon.
+    int detectedBimProduct();
     /// Barre : apparence selon le mode (axe analytique coloré par famille, ou section et matériau).
     void styleLinearShape(const Handle(AIS_Shape)& ais, const TSA::Model::Material& material, const std::string& color,
                           TSA::Analysis::StructuralElementKind kind);

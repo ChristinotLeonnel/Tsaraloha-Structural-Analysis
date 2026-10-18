@@ -31,6 +31,7 @@ constexpr CategoryInfo kCategories[] = {
     { BimCategory::Footing, "Footing", "IfcFooting" },
     { BimCategory::Pile, "Pile", "IfcPile" },
     { BimCategory::Plate, "Plate", "IfcPlate" },
+    { BimCategory::Proxy, "Proxy", "IfcBuildingElementProxy" },
     { BimCategory::AnalyticalNode, "AnalyticalNode", "IfcStructuralPointConnection" },
     { BimCategory::AnalyticalMember, "AnalyticalMember", "IfcStructuralCurveMember" },
     { BimCategory::AnalyticalSurface, "AnalyticalSurface", "IfcStructuralSurfaceMember" },
@@ -57,6 +58,28 @@ constexpr KindInfo kKinds[] = {
     { ElementKind::Cable, "cable", "K" },
 };
 } // namespace
+
+const char* analyticalStatusKey(AnalyticalStatus s)
+{
+    switch (s)
+    {
+    case AnalyticalStatus::Analytical: return "analytical";
+    case AnalyticalStatus::NeedsPreparation: return "to_prepare";
+    case AnalyticalStatus::NotStructural: return "not_structural";
+    }
+    return "analytical";
+}
+
+bool analyticalStatusFromKey(const std::string& key, AnalyticalStatus& out)
+{
+    for (auto s : { AnalyticalStatus::Analytical, AnalyticalStatus::NeedsPreparation, AnalyticalStatus::NotStructural })
+        if (key == analyticalStatusKey(s))
+        {
+            out = s;
+            return true;
+        }
+    return false;
+}
 
 const char* ifcEntity(BimCategory c)
 {

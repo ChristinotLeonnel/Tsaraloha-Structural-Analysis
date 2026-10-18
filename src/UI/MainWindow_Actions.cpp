@@ -396,6 +396,15 @@ void MainWindow::createActions()
     m_actionLoadsVisible->setChecked(true);
     connect(m_actionLoadsVisible, &QAction::toggled, this, &MainWindow::onToggleLoadsVisible);
 
+    m_actionBimGeometryVisible = new QAction(tr("Objets &IFC importés"), this);
+    m_actionBimGeometryVisible->setObjectName("actionBimGeometryVisible");
+    m_actionBimGeometryVisible->setIcon(QIcon(":/icons/visibility.svg"));
+    m_actionBimGeometryVisible->setToolTip(tr("Afficher ou masquer dans la vue 3D les objets IFC importés sans élément de calcul "
+                                              "(murs, fenêtres, mobilier…) ; masquer ne les retire pas du projet"));
+    m_actionBimGeometryVisible->setCheckable(true);
+    m_actionBimGeometryVisible->setChecked(true);
+    connect(m_actionBimGeometryVisible, &QAction::toggled, this, &MainWindow::onToggleBimGeometryVisible);
+
     m_actionForcesVisible = new QAction(tr("Afficher les &Forces 3D"), this);
     m_actionForcesVisible->setIcon(QIcon(":/icons/load_point.svg"));
     m_actionForcesVisible->setToolTip(tr("Afficher ou masquer les flèches 3D de forces (Fx, Fy, Fz)"));
@@ -628,7 +637,8 @@ void MainWindow::createActions()
     connect(m_actionTopology, &QAction::triggered, this, &MainWindow::onActionTopologySettings);
 
     m_actionImportIfc = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer I&FC..."), this);
-    m_actionImportIfc->setToolTip(tr("Créer un projet depuis un fichier IFC (IFC2X3, IFC4, IFC4X3) : modèle analytique ou déduit de la géométrie"));
+    m_actionImportIfc->setToolTip(tr("Créer un projet depuis un fichier IFC (IFC2X3, IFC4, IFC4X3) : objets physiques et géométrie, "
+                                     "modèle de calcul du fichier ; déduction depuis la géométrie seulement sur demande"));
     connect(m_actionImportIfc, &QAction::triggered, this, &MainWindow::onActionImportIfc);
     m_actionImportTsa3d = new QAction(QIcon(":/icons/file/file_import.svg"), tr("Importer TSA&3D..."), this);
     m_actionImportTsa3d->setToolTip(tr("Créer un projet depuis un fichier TSA3D (format d'échange documenté, validé avant import)"));
@@ -1336,6 +1346,7 @@ void MainWindow::createMenus()
     visSub->addAction(m_actionSupportsVisible);
     visSub->addAction(m_actionSupportLabelsVisible);
     visSub->addAction(m_actionLoadsVisible);
+    visSub->addAction(m_actionBimGeometryVisible);
     visSub->addAction(m_actionForcesVisible);
     visSub->addAction(m_actionMomentsVisible);
     visSub->addAction(m_actionLoadValuesVisible);
@@ -1478,6 +1489,7 @@ void MainWindow::createRibbon()
     acts.actionSelfWeight = m_actionSelfWeight;
     acts.actionLoadCases = m_actionLoadCases;
     acts.actionLoadsVisible = m_actionLoadsVisible;
+    acts.actionBimGeometryVisible = m_actionBimGeometryVisible;
     acts.actionForcesVisible = m_actionForcesVisible;
     acts.actionMomentsVisible = m_actionMomentsVisible;
     acts.actionLoadValuesVisible = m_actionLoadValuesVisible;
@@ -1602,6 +1614,13 @@ void MainWindow::createDockWindows()
 
     m_modelTree = new TSA::UI::ModelTreeWidget(m_model, m_modelTreeDock);
     m_modelTreeDock->setWidget(m_modelTree);
+    // Types de produits créés, réappliqués ou propagés depuis l'arbre : Annuler, titre, message
+    connect(m_modelTree, &TSA::UI::ModelTreeWidget::modelEditedByTree, this, [this](const QString& message) {
+        updateUndoRedoActions();
+        updateWindowTitle();
+        if (m_statusInfo) m_statusInfo->setText(message);
+        if (m_consoleDock) m_consoleDock->appendLog(message, "INFO");
+    });
     m_modelTreeDock->setMinimumWidth(280);
     m_modelTreeDock->toggleViewAction()->setIcon(QIcon(":/icons/model_tree.svg"));
     addDockWidget(Qt::LeftDockWidgetArea, m_modelTreeDock);
@@ -2213,6 +2232,13 @@ void MainWindow::createStatusBar()
         }
     });
 
+    // Objet physique importé (IFC) désigné dans la vue : propriétés en lecture seule dans l'inspecteur
+    connect(m_occView, &OccView::bimProductPicked, this, [this](int productId) {
+        if (!m_propertyPanel) return;
+        m_propertyPanel->showBimProductProperties(productId);
+        if (m_propertiesDock) m_propertiesDock->raise();
+    });
+
     // Détection et repérage au survol des objets
     connect(m_occView, &OccView::objectHovered, this, [this](const QString& info) {
         if (m_statusInfo)
@@ -2269,6 +2295,12 @@ void MainWindow::createStatusBar()
     connect(m_occView, &OccView::modelingToolReady, this, &MainWindow::applyActiveModelingTool);
     connect(m_occView, &OccView::originMoveRequested, this, &MainWindow::onOriginMoveRequested);
     connect(m_occView, &OccView::pasteAtPointRequested, this, &MainWindow::onPasteAtPointRequested);
+    // Élément créé par un mode Dessin ou un dialogue de création : sans ce rafraîchissement, Annuler (bouton et
+    // Ctrl+Z) restait grisé après un tracé dans la vue 3D (constaté par l'essai tools/ui_tests/drawing_scenario.ps1).
+    connect(m_occView, &OccView::elementCreated, this, [this]() {
+        updateUndoRedoActions();
+        updateWindowTitle();
+    });
 
     connect(m_occView, &OccView::drawingPromptChanged, this, [this](const QString& prompt) {
         if (m_statusInfo)
@@ -2298,6 +2330,7 @@ void MainWindow::syncDisplayActionsFromView()
     set(m_actionNodeLabelsVisible, m_occView->areNodeLabelsVisible());
     set(m_actionSupportsVisible, m_occView->areSupportsVisible());
     set(m_actionLoadsVisible, m_occView->areLoadsVisible());
+    set(m_actionBimGeometryVisible, m_occView->bimGeometryVisible());
     set(m_actionLoadValuesVisible, m_occView->areLoadValuesVisible());
     set(m_actionSurfaceLoadsVisible, m_occView->surfaceLoadsVisible());
     for (QAction* a : m_displayModeActions)

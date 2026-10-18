@@ -1,12 +1,15 @@
 // Outils de dessin : chaîne de poutres, rectangle de poutres, portique, contreventement en X,
 // arc de poutres, poteaux aux intersections de grille. Les éléments reprennent les préréglages
-// de création (sections, matériaux, angle β) ; les nœuds existants sont réutilisés (1 mm).
+// de création (sections, matériaux, angle β, treillis) et passent par ElementCreation : nœuds
+// existants réutilisés (1 mm), validations, croisements signalés, outil entier annulé au premier refus.
 
 #include "DimensionTools.h"
 #include "ModifyTools.h"
 
+#include "../ElementCreation.h"
 #include "../../Grid/GridManager.h"
 #include "../../Model/Model.h"
+#include "../../UndoRedo/EditTransaction.h"
 
 #include <ElCLib.hxx>
 #include <gce_MakeCirc.hxx>
@@ -20,7 +23,6 @@
 namespace TSA::Interaction
 {
 
-using TSA::Model::ElementSet;
 using TSA::Model::Model;
 
 namespace
@@ -41,23 +43,85 @@ ToolParameter pointP(const std::string& key, const std::string& label, const gp_
     return { key, label, ParamType::Point, 0.0, p };
 }
 
-int beam(Model& m, const ToolContext& ctx, int a, int b, ElementSet& out)
+/// Éléments d'un outil créés par ElementCreation : mêmes validations, mêmes avertissements et même
+/// réutilisation des nœuds que les modes Dessin. Tout l'outil tient dans une transaction : le premier
+/// refus l'annule entièrement (aucun portique à moitié créé, aucun nœud abandonné).
+class ToolBuilder
 {
-    if (a == b) return 0;
-    const auto& p = ctx.presets.beam;
-    const int id = m.addBar(a, b, p.section, p.material, TSA::Model::BarRole::Beam, p.betaAngle);
-    if (id > 0) out.beams.insert(id);
-    return id;
-}
+public:
+    ToolBuilder(Model& m, const ToolContext& ctx, const std::string& toolName)
+        : m_creation(m), m_ctx(ctx), m_toolName(toolName), m_tx(m, toolName)
+    {
+    }
 
-int column(Model& m, const ToolContext& ctx, int a, int b, ElementSet& out)
-{
-    if (a == b) return 0;
-    const auto& p = ctx.presets.column;
-    const int id = m.addColumn(a, b, p.section, p.material, p.betaAngle);
-    if (id > 0) out.columns.insert(id);
-    return id;
-}
+    bool beam(const DrawPoint& a, const DrawPoint& b)
+    {
+        return bar(a, b, TSA::Model::BarRole::Beam, m_ctx.presets.beam.section, m_ctx.presets.beam.material,
+                   m_ctx.presets.beam.betaAngle, m_ctx.presets.beam.color, m_result.created.beams);
+    }
+    bool column(const DrawPoint& a, const DrawPoint& b)
+    {
+        return bar(a, b, TSA::Model::BarRole::Column, m_ctx.presets.column.section, m_ctx.presets.column.material,
+                   m_ctx.presets.column.betaAngle, m_ctx.presets.column.color, m_result.created.columns);
+    }
+    bool diagonal(const DrawPoint& a, const DrawPoint& b)
+    {
+        auto preset = m_ctx.presets.truss;
+        preset.material = TSA::Model::Material::findByName(preset.material.name);
+        preset.role = TSA::Model::TrussMemberRole::Diagonal;
+        return record(m_creation.createTrussMember(a, b, preset), m_result.created.trussMembers);
+    }
+
+    /// Tout est créé : une entrée Annuler, message de succès suivi des réserves.
+    ToolResult done(const std::string& message)
+    {
+        m_tx.commit();
+        m_result.success = true;
+        m_result.message = message;
+        for (const auto& w : m_warnings) m_result.message += " Attention : " + w;
+        return m_result;
+    }
+    /// Refus : tout ce que l'outil a créé est annulé, motif de l'élément refusé.
+    ToolResult refused()
+    {
+        m_tx.rollback();
+        return { false, m_toolName + " non créé : " + m_refusal, {} };
+    }
+
+private:
+    bool bar(const DrawPoint& a, const DrawPoint& b, TSA::Model::BarRole role, const TSA::Model::Section& section,
+             const TSA::Model::Material& material, double rotation, const std::string& color, std::set<int>& into)
+    {
+        TSA::Model::BarProperties props;
+        props.id = 0;
+        props.name = section.name;
+        props.role = role;
+        props.section = section;
+        props.material = TSA::Model::Material::findByName(material.name);   // le dialogue des préréglages ne garde que le nom
+        props.rotation = rotation;
+        props.color = color;
+        return record(m_creation.createBar(a, b, props), into);
+    }
+    bool record(const CreationResult& c, std::set<int>& into)
+    {
+        if (!c.success)
+        {
+            m_refusal = c.message;
+            return false;
+        }
+        into.insert(c.elementId);
+        m_warnings.insert(m_warnings.end(), c.warnings.begin(), c.warnings.end());
+        return true;
+    }
+
+    ElementCreation m_creation;
+    const ToolContext& m_ctx;
+    std::string m_toolName;
+    TSA::UndoRedo::EditTransaction m_tx;
+    ToolResult m_result;
+    std::vector<std::string> m_warnings;
+    std::string m_refusal;
+};
 
 /// Axes du plan de travail (X, Y = N × X).
 void planeAxes(const ToolContext& ctx, gp_Vec& x, gp_Vec& y)
@@ -121,17 +185,10 @@ public:
     }
     ToolResult apply(Model& m, const ToolContext& ctx) override
     {
-        ToolResult r;
-        int prev = 0;
-        for (const auto& pk : m_picks)
-        {
-            const int n = pk.nodeId > 0 && m.getNode(pk.nodeId) ? pk.nodeId : ToolGeometry::nodeAt(m, pk.point);
-            if (prev) beam(m, ctx, prev, n, r.created);
-            prev = n;
-        }
-        r.success = !r.created.beams.empty();
-        r.message = std::to_string(r.created.beams.size()) + " poutre(s) créée(s).";
-        return r;
+        ToolBuilder b(m, ctx, name());
+        for (std::size_t i = 1; i < m_picks.size(); ++i)
+            if (!b.beam({ m_picks[i - 1].point, m_picks[i - 1].nodeId }, { m_picks[i].point, m_picks[i].nodeId })) return b.refused();
+        return b.done(std::to_string(m_picks.size() - 1) + " poutre(s) créée(s).");
     }
 
 private:
@@ -167,13 +224,10 @@ public:
         const auto c = corners(pointParam("c1"), pointParam("c2"), ctx);
         if (c[0].Distance(c[1]) < 1e-6 || c[1].Distance(c[2]) < 1e-6)
             return { false, "Rectangle : les deux coins doivent différer selon les deux axes du plan de travail." };
-        ToolResult r;
-        int n[4];
-        for (int i = 0; i < 4; ++i) n[i] = ToolGeometry::nodeAt(m, c[i]);
-        for (int i = 0; i < 4; ++i) beam(m, ctx, n[i], n[(i + 1) % 4], r.created);
-        r.success = true;
-        r.message = "Rectangle de 4 poutres créé.";
-        return r;
+        ToolBuilder b(m, ctx, name());
+        for (int i = 0; i < 4; ++i)
+            if (!b.beam(DrawPoint(c[i]), DrawPoint(c[(i + 1) % 4]))) return b.refused();
+        return b.done("Rectangle de 4 poutres créé.");
     }
 
 private:
@@ -226,15 +280,10 @@ public:
         const gp_Pnt a = pointParam("p1"), b = pointParam("p2");
         if (a.Distance(b) < 1e-6) return { false, "Portique : pieds confondus." };
         const gp_Vec up(0, 0, param("height"));
-        ToolResult r;
-        const int na = ToolGeometry::nodeAt(m, a), nb = ToolGeometry::nodeAt(m, b);
-        const int ta = ToolGeometry::nodeAt(m, a.Translated(up)), tb = ToolGeometry::nodeAt(m, b.Translated(up));
-        column(m, ctx, na, ta, r.created);
-        column(m, ctx, nb, tb, r.created);
-        beam(m, ctx, ta, tb, r.created);
-        r.success = true;
-        r.message = "Portique créé (2 poteaux, 1 traverse).";
-        return r;
+        ToolBuilder tb(m, ctx, name());
+        const DrawPoint ta(a.Translated(up)), tt(b.Translated(up));
+        if (!tb.column(DrawPoint(a), ta) || !tb.column(DrawPoint(b), tt) || !tb.beam(ta, tt)) return tb.refused();
+        return tb.done("Portique créé (2 poteaux, 1 traverse).");
     }
 };
 
@@ -267,18 +316,12 @@ public:
         if (pts.size() == 4) p.lines.push_back({ pts[1], pts[3] });
         return p;
     }
-    ToolResult apply(Model& m, const ToolContext&) override
+    ToolResult apply(Model& m, const ToolContext& ctx) override
     {
-        int n[4];
-        const char* keys[] = { "a", "b", "c", "d" };
-        for (int i = 0; i < 4; ++i) n[i] = ToolGeometry::nodeAt(m, pointParam(keys[i]));
-        if (n[0] == n[2] || n[1] == n[3]) return { false, "Contreventement : coins confondus." };
-        ToolResult r;
-        r.created.trussMembers.insert(m.addTrussMember(n[0], n[2], 0.10, "", TSA::Model::TrussMemberRole::Diagonal));
-        r.created.trussMembers.insert(m.addTrussMember(n[1], n[3], 0.10, "", TSA::Model::TrussMemberRole::Diagonal));
-        r.success = true;
-        r.message = "Contreventement en X : 2 diagonales créées (non reliées entre elles).";
-        return r;
+        const DrawPoint a(pointParam("a")), b(pointParam("b")), c(pointParam("c")), d(pointParam("d"));
+        ToolBuilder tb(m, ctx, name());
+        if (!tb.diagonal(a, c) || !tb.diagonal(b, d)) return tb.refused();
+        return tb.done("Contreventement en X : 2 diagonales créées.");
     }
 };
 
@@ -320,17 +363,10 @@ public:
         std::vector<gp_Pnt> pts;
         if (!arcPoints(pointParam("start"), pointParam("mid"), pointParam("end"), static_cast<int>(param("segments")), pts))
             return { false, "Arc : les trois points sont alignés ou confondus." };
-        ToolResult r;
-        int prev = 0;
-        for (const auto& p : pts)
-        {
-            const int n = ToolGeometry::nodeAt(m, p);
-            if (prev) beam(m, ctx, prev, n, r.created);
-            prev = n;
-        }
-        r.success = !r.created.beams.empty();
-        r.message = "Arc de " + std::to_string(r.created.beams.size()) + " poutre(s) créé.";
-        return r;
+        ToolBuilder b(m, ctx, name());
+        for (std::size_t i = 1; i < pts.size(); ++i)
+            if (!b.beam(DrawPoint(pts[i - 1]), DrawPoint(pts[i]))) return b.refused();
+        return b.done("Arc de " + std::to_string(pts.size() - 1) + " poutre(s) créé.");
     }
 
     static bool arcPoints(const gp_Pnt& a, const gp_Pnt& b, const gp_Pnt& c, int n, std::vector<gp_Pnt>& out)
@@ -400,21 +436,20 @@ public:
         const gp_Pnt a = pointParam("c1"), b = pointParam("c2");
         const double x0 = std::min(a.X(), b.X()) - 1e-6, x1 = std::max(a.X(), b.X()) + 1e-6;
         const double y0 = std::min(a.Y(), b.Y()) - 1e-6, y1 = std::max(a.Y(), b.Y()) + 1e-6;
+        std::vector<gp_Pnt> feet;
         std::set<std::pair<long long, long long>> seen;
-        ToolResult r;
         for (const auto& gi : grid->cartesian()->intersections())
         {
             const double x = gi.point.X(), y = gi.point.Y();
             if (x < x0 || x > x1 || y < y0 || y > y1) continue;
-            if (!seen.insert({ std::llround(x * 1e4), std::llround(y * 1e4) }).second) continue;
-            const int base = ToolGeometry::nodeAt(m, gp_Pnt(x, y, a.Z()));
-            const int top = ToolGeometry::nodeAt(m, gp_Pnt(x, y, a.Z() + param("height")));
-            column(m, ctx, base, top, r.created);
+            if (seen.insert({ std::llround(x * 1e4), std::llround(y * 1e4) }).second) feet.emplace_back(x, y, a.Z());
         }
-        r.success = !r.created.columns.empty();
-        r.message = r.success ? std::to_string(r.created.columns.size()) + " poteau(x) créé(s)."
-                              : "Poteaux sur grille : aucune intersection dans la zone.";
-        return r;
+        if (feet.empty()) return { false, "Poteaux sur grille : aucune intersection dans la zone." };
+        ToolBuilder tb(m, ctx, name());
+        const gp_Vec up(0, 0, param("height"));
+        for (const auto& f : feet)
+            if (!tb.column(DrawPoint(f), DrawPoint(f.Translated(up)))) return tb.refused();
+        return tb.done(std::to_string(feet.size()) + " poteau(x) créé(s).");
     }
 };
 

@@ -20,6 +20,9 @@ namespace TSA::BIM::Ifc
 struct IfcExportOptions
 {
     bool includeAnalyticalModel = true;
+    /// Relire le fichier écrit avec un lecteur indépendant de l'écrivain de TSA (IfcOpenShell) : un fichier illisible
+    /// fait échouer l'export.
+    bool verifyAfterWrite = true;
     std::string projectName;      ///< vide = nom du projet BIM
     std::string author;
     std::string organization;
@@ -38,6 +41,9 @@ struct IfcExportReport
     int analyticalMembers = 0;
     int relationships = 0;
     std::vector<std::string> warnings;
+    /// Relecture indépendante : -1 non faite (lecteur absent ou désactivée), sinon nombre de produits physiques relus.
+    int verifiedElements = -1;
+    std::string verification;   ///< compte rendu de la relecture
 
     std::string summary() const;
 };

@@ -23,6 +23,8 @@ int IfcRelationshipMapper::write()
         w.add("IFCRELDEFINESBYPROPERTIES", head() + W::refs({ object }) + "," + W::ref(pset)), ++n;
     for (const auto& [ref, objects] : m_classifications)
         if (!objects.empty()) w.add("IFCRELASSOCIATESCLASSIFICATION", head() + W::refs(objects) + "," + W::ref(ref)), ++n;
+    for (const auto& [type, objects] : m_types)
+        if (!objects.empty()) w.add("IFCRELDEFINESBYTYPE", head() + W::refs(objects) + "," + W::ref(type)), ++n;
     for (const auto& [group, objects] : m_groups)
         if (!objects.empty()) w.add("IFCRELASSIGNSTOGROUP", head() + W::refs(objects) + ",$," + W::ref(group)), ++n;
     for (const auto& [product, analytical] : m_products)

@@ -35,6 +35,12 @@ message(STATUS "OpenCASCADE Include: ${OpenCASCADE_INCLUDE_DIR}")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/TSAProduct.cmake")
 tsa_setup_compiler_launchers()
 
+# Au niveau du répertoire racine : appelé dans une fonction (tsa_add_product), enable_testing() ne vaut que
+# pour la portée de la fonction et ctest ne trouve alors aucun test.
+if(TSA_BUILD_TESTS)
+    enable_testing()
+endif()
+
 tsa_add_product(
     NAME TSA
     PRODUCT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/product"

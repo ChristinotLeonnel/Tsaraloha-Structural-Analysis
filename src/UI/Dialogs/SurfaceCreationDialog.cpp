@@ -124,8 +124,6 @@ void SurfaceCreationDialog::setupUi()
     m_comboSlabMaterial = new QComboBox(grpSlab);
     m_comboSlabMaterial->addItem("Béton C25/30");
     m_comboSlabMaterial->addItem("Béton C30/37");
-    m_comboSlabMaterial->addItem("Béton C20/25");
-    m_comboSlabMaterial->addItem("Béton C35/45");
     m_comboSlabMaterial->addItem("Béton Armé");
     slabForm->addWidget(m_comboSlabMaterial, 2, 1);
 
@@ -199,8 +197,6 @@ void SurfaceCreationDialog::setupUi()
     m_comboWallMaterial = new QComboBox(grpWall);
     m_comboWallMaterial->addItem("Béton C25/30");
     m_comboWallMaterial->addItem("Béton C30/37");
-    m_comboWallMaterial->addItem("Béton C20/25");
-    m_comboWallMaterial->addItem("Béton C35/45");
     m_comboWallMaterial->addItem("Béton Armé");
     wallForm->addWidget(m_comboWallMaterial, 3, 1);
 
@@ -358,22 +354,24 @@ void SurfaceCreationDialog::syncPresetsToOccView()
 
 void SurfaceCreationDialog::onSlabNodePicked(int nodeId, const gp_Pnt& pt, int totalCount)
 {
-    Q_UNUSED(pt);
-    m_currentSlabNodes.push_back(nodeId);
+    // Point libre (nodeId <= 0) : son nœud sera créé avec la dalle.
+    m_currentSlabPicks.emplace_back(pt, nodeId);
 
-    QStringList ids;
-    for (int nid : m_currentSlabNodes)
+    QStringList labels;
+    for (const auto& p : m_currentSlabPicks)
     {
-        ids << QString::number(nid);
+        labels << (p.nodeId > 0 ? QString::number(p.nodeId) : formatPoint(p.point));
     }
-    m_editSlabNodes->setText(ids.join(", "));
-    m_lblSlabStatus->setText(tr("%1 nœud(s) cliqué(s). Fermez sur N%2 ou cliquez 'Fermer le contour'")
-        .arg(totalCount).arg(m_currentSlabNodes.front()));
+    m_slabPicksText = labels.join(", ");
+    m_editSlabNodes->setText(m_slabPicksText);
+    m_lblSlabStatus->setText(tr("%1 point(s) cliqué(s). Fermez sur le 1er point ou cliquez 'Fermer le contour'")
+        .arg(totalCount));
 }
 
 void SurfaceCreationDialog::onSlabCreated(int slabId)
 {
-    m_currentSlabNodes.clear();
+    m_currentSlabPicks.clear();
+    m_slabPicksText.clear();
     m_editSlabNodes->clear();
     m_lblSlabStatus->setText(tr("Dalle S%1 créée avec succès").arg(slabId));
     updateNextId();
@@ -382,7 +380,8 @@ void SurfaceCreationDialog::onSlabCreated(int slabId)
 
 void SurfaceCreationDialog::onSlabDrawingCancelled()
 {
-    m_currentSlabNodes.clear();
+    m_currentSlabPicks.clear();
+    m_slabPicksText.clear();
     m_editSlabNodes->clear();
     m_lblSlabStatus->setText(tr("Tracé polygonal réinitialisé"));
 }
@@ -434,7 +433,8 @@ void SurfaceCreationDialog::onClearContourClicked()
     {
         m_occView->resetCurrentSlabContour();
     }
-    m_currentSlabNodes.clear();
+    m_currentSlabPicks.clear();
+    m_slabPicksText.clear();
     m_editSlabNodes->clear();
     m_lblSlabStatus->setText(tr("Contour effacé"));
 }
@@ -445,12 +445,13 @@ void SurfaceCreationDialog::onAddClicked()
 
     if (currentSurfaceType() == SurfaceType::Slab)
     {
-        std::vector<int> nodeIds;
+        // Contour : points cliqués dans la vue, ou numéros de nœuds saisis.
+        std::vector<TSA::Interaction::DrawPoint> contour;
         QString text = m_editSlabNodes->text().trimmed();
 
-        if (text.isEmpty() && m_currentSlabNodes.size() >= 3)
+        if ((text.isEmpty() || text == m_slabPicksText) && m_currentSlabPicks.size() >= 3)
         {
-            nodeIds = m_currentSlabNodes;
+            contour = m_currentSlabPicks;
         }
         else
         {
@@ -463,33 +464,42 @@ void SurfaceCreationDialog::onAddClicked()
             int nid = 0;
             while (iss >> nid)
             {
-                if (!m_model->getNode(nid))
+                const auto* node = m_model->getNode(nid);
+                if (!node)
                 {
                     QMessageBox::warning(this, tr("Nœud introuvable"), tr("Le nœud N%1 n'existe pas dans le modèle.").arg(nid));
                     return;
                 }
-                nodeIds.push_back(nid);
+                contour.emplace_back(gp_Pnt(node->x(), node->y(), node->z()), nid);
             }
         }
 
-        if (nodeIds.size() < 3)
+        if (contour.size() < 3)
         {
             QMessageBox::warning(this, tr("Contour incomplet"), tr("Une dalle surfacique nécessite au moins 3 nœuds pour former un polygone fermé."));
             return;
         }
 
-        m_model->pushUndoState(tr("Création Dalle").toStdString());
-        TSA::Model::SlabType st = (m_comboSlabType->currentIndex() == 0) ? TSA::Model::SlabType::TwoWay : TSA::Model::SlabType::OneWay;
-        int slabId = m_model->addSlab(nodeIds, m_spinSlabThickness->value(), m_editName->text().toStdString(), st);
+        TSA::Model::SlabPreset preset;
+        preset.thickness = m_spinSlabThickness->value();
+        preset.material = TSA::Model::Material::findByName(m_comboSlabMaterial->currentText().toStdString());
+        if (m_slabColor.isValid()) preset.color = m_slabColor.name().toStdString();
+        const TSA::Model::SlabType st = (m_comboSlabType->currentIndex() == 0) ? TSA::Model::SlabType::TwoWay : TSA::Model::SlabType::OneWay;
 
-        if (auto* s = m_model->getSlab(slabId))
+        const auto r = TSA::Interaction::ElementCreation(*m_model).createSlab(contour, preset, m_editName->text().toStdString(), st);
+        if (!r.success)
         {
-            s->setMaterial(TSA::Model::Material::findByName(m_comboSlabMaterial->currentText().toStdString()));
-            if (m_slabColor.isValid()) s->setColor(m_slabColor.name().toStdString());
-            if (m_occView) m_occView->updateSlabShape(slabId);
+            QMessageBox::warning(this, tr("Dalle non créée"), QString::fromStdString(r.message));
+            return;
+        }
+        if (m_occView)
+        {
+            m_occView->updateSlabShape(r.elementId);
+            m_occView->resetCurrentSlabContour();   // points cliqués consommés
+            m_occView->reportCreation(r, tr("Dalle S%1 créée (%2 nœuds)").arg(r.elementId).arg(r.nodeIds.size()));
         }
 
-        onSlabCreated(slabId);
+        onSlabCreated(r.elementId);
     }
     else // Wall
     {
@@ -502,48 +512,54 @@ void SurfaceCreationDialog::onAddClicked()
             return;
         }
 
-        int startId = resolveOrCreateNode(origText);
-        int endId = resolveOrCreateNode(endText);
-
-        if (startId <= 0 || endId <= 0 || startId == endId)
+        TSA::Interaction::DrawPoint a, b;
+        if (!parsePoint(origText, a) || !parsePoint(endText, b))
         {
-            QMessageBox::warning(this, tr("Nœuds invalides"), tr("L'origine et l'extrémité doivent être deux nœuds distincts valides."));
+            QMessageBox::warning(this, tr("Nœuds invalides"), tr("L'origine et l'extrémité doivent être des numéros de nœuds existants ou des coordonnées X Y Z."));
             return;
         }
 
-        m_model->pushUndoState(tr("Création Voile").toStdString());
-        int wallId = m_model->addWall(startId, endId, m_spinWallHeight->value(), m_spinWallThickness->value(), m_editName->text().toStdString());
+        TSA::Model::WallPreset preset;
+        preset.height = m_spinWallHeight->value();
+        preset.thickness = m_spinWallThickness->value();
+        preset.offset = m_spinWallOffset->value();
+        preset.material = TSA::Model::Material::findByName(m_comboWallMaterial->currentText().toStdString());
+        if (m_wallColor.isValid()) preset.color = m_wallColor.name().toStdString();
 
-        if (auto* w = m_model->getWall(wallId))
+        const auto r = TSA::Interaction::ElementCreation(*m_model).createWall(a, b, preset, m_editName->text().toStdString());
+        if (!r.success)
         {
-            w->setOffset(m_spinWallOffset->value());
-            w->setMaterial(TSA::Model::Material::findByName(m_comboWallMaterial->currentText().toStdString()));
-            if (m_wallColor.isValid()) w->setColor(m_wallColor.name().toStdString());
-            if (m_occView) m_occView->updateWallShape(wallId);
+            QMessageBox::warning(this, tr("Voile non créé"), QString::fromStdString(r.message));
+            return;
+        }
+        if (m_occView)
+        {
+            m_occView->updateWallShape(r.elementId);
+            m_occView->reportCreation(r, tr("Voile W%1 créé reliant N%2 à N%3").arg(r.elementId).arg(r.nodeIds[0]).arg(r.nodeIds[1]));
         }
 
-        onWallCreated(wallId);
+        onWallCreated(r.elementId);
     }
 }
 
-int SurfaceCreationDialog::resolveOrCreateNode(const QString& text)
+bool SurfaceCreationDialog::parsePoint(const QString& text, TSA::Interaction::DrawPoint& out) const
 {
-    if (!m_model) return -1;
+    if (!m_model) return false;
 
     bool isInt = false;
-    int id = text.toInt(&isInt);
+    const int id = text.toInt(&isInt);
     if (isInt)
     {
-        if (m_model->getNode(id)) return id;
+        const auto* node = m_model->getNode(id);
+        if (!node) return false;
+        out = TSA::Interaction::DrawPoint(gp_Pnt(node->x(), node->y(), node->z()), id);
+        return true;
     }
 
     double x = 0.0, y = 0.0, z = 0.0;
-    if (parseCoordinates(text, x, y, z))
-    {
-        return m_model->addNode(x, y, z);
-    }
-
-    return -1;
+    if (!parseCoordinates(text, x, y, z)) return false;
+    out = TSA::Interaction::DrawPoint(gp_Pnt(x, y, z));
+    return true;
 }
 
 bool SurfaceCreationDialog::parseCoordinates(const QString& text, double& x, double& y, double& z) const
@@ -652,7 +668,7 @@ void SurfaceCreationDialog::keyPressEvent(QKeyEvent* event)
     }
     if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
     {
-        if (currentSurfaceType() == SurfaceType::Slab && m_currentSlabNodes.size() >= 3)
+        if (currentSurfaceType() == SurfaceType::Slab && m_currentSlabPicks.size() >= 3)
         {
             onCloseContourClicked();
             event->accept();

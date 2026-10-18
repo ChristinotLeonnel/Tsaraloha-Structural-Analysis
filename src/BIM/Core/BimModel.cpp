@@ -281,6 +281,45 @@ int BimModel::create(const PhysicalElement& templ)
     return m_nextId - 1;
 }
 
+const ProductType* BimModel::type(int id) const
+{
+    const auto it = m_types.find(id);
+    return it == m_types.end() ? nullptr : &it->second;
+}
+
+ProductType* BimModel::type(int id)
+{
+    const auto it = m_types.find(id);
+    return it == m_types.end() ? nullptr : &it->second;
+}
+
+int BimModel::addType(ProductType t)
+{
+    t.id = m_nextTypeId++;
+    bool guidTaken = !IfcGuid::isValid(t.globalId);
+    for (const auto& [id, other] : m_types) guidTaken = guidTaken || other.globalId == t.globalId;
+    if (guidTaken) t.globalId = IfcGuid::create();
+    const int id = t.id;
+    m_types[id] = std::move(t);
+    return id;
+}
+
+bool BimModel::setProductType(int productId, int typeId)
+{
+    auto* e = element(productId);
+    if (!e || (typeId != 0 && !type(typeId))) return false;
+    e->typeId = typeId;
+    return true;
+}
+
+std::vector<int> BimModel::occurrences(int typeId) const
+{
+    std::vector<int> ids;
+    for (const auto& [id, e] : m_elements)
+        if (e.typeId == typeId && typeId != 0) ids.push_back(id);
+    return ids;
+}
+
 void BimModel::rebuildIndex()
 {
     m_index.clear();
@@ -307,13 +346,20 @@ bool BimModel::synchronize(const TSA::Model::Model& model)
                                 }),
                  an.end());
         changed |= an.size() != before;
-        if (an.empty())
+        auto& e = it->second;
+        if (an.empty() && !e.imported())
         {
+            // Produit créé dans TSA, vidé de ses éléments de calcul : il n'a plus d'existence propre.
             it = m_elements.erase(it);
             changed = true;
+            continue;
         }
-        else
-            ++it;
+        // Produit importé : conservé même sans élément de calcul (préparation requise, ou non porteur).
+        const AnalyticalStatus status = !an.empty() ? AnalyticalStatus::Analytical
+            : e.status == AnalyticalStatus::Analytical ? AnalyticalStatus::NeedsPreparation : e.status;
+        changed |= status != e.status;
+        e.status = status;
+        ++it;
     }
     for (auto it = m_analyticalGuids.begin(); it != m_analyticalGuids.end();)
     {
@@ -436,6 +482,7 @@ void BimModel::registerPasted(const std::vector<std::pair<PhysicalElement, std::
         e.name.clear();
         e.tag.clear();
         e.storeyLevelId.clear();
+        if (!type(e.typeId)) e.typeId = 0;   // collage depuis un autre projet : type absent ici
         e.analytical.clear();
         for (const auto& r : refs)
             if (r.kind != ElementKind::Node) e.analytical.push_back(r);
@@ -504,8 +551,9 @@ int BimModel::insert(PhysicalElement e)
         an.erase(std::remove_if(an.begin(), an.end(),
                                 [&](const AnalyticalRef& r) { return std::find(e.analytical.begin(), e.analytical.end(), r) != e.analytical.end(); }),
                  an.end());
-        it = an.empty() ? m_elements.erase(it) : std::next(it);
+        it = an.empty() && !it->second.imported() ? m_elements.erase(it) : std::next(it);
     }
+    if (e.analytical.empty() && e.status == AnalyticalStatus::Analytical) e.status = AnalyticalStatus::NeedsPreparation;
     const bool keepGuid = IfcGuid::isValid(e.globalId) && !elementByGlobalId(e.globalId);
     const std::string guid = e.globalId;
     const int id = create(e);
@@ -517,6 +565,20 @@ int BimModel::insert(PhysicalElement e)
 void BimModel::setAnalyticalGlobalId(const AnalyticalRef& ref, const std::string& globalId)
 {
     if (IfcGuid::isValid(globalId)) m_analyticalGuids[ref] = globalId;
+}
+
+std::map<int, MeshPtr> BimModel::geometries() const
+{
+    std::map<int, MeshPtr> out;
+    for (const auto& [id, e] : m_elements)
+        if (e.geometry) out[id] = e.geometry;
+    return out;
+}
+
+void BimModel::attachGeometries(const std::map<int, MeshPtr>& meshes)
+{
+    for (const auto& [id, mesh] : meshes)
+        if (auto it = m_elements.find(id); it != m_elements.end()) it->second.geometry = mesh;
 }
 
 std::string BimModel::resolvedStorey(const TSA::Model::Model& model, const PhysicalElement& e) const
@@ -541,6 +603,82 @@ std::string BimModel::resolvedStorey(const TSA::Model::Model& model, const Physi
         if (lvl.elevation <= lowest->z() + 1e-6 && (!best || lvl.elevation > best->elevation)) best = &lvl;
     }
     return (best ? best : bottom)->id;
+}
+
+namespace
+{
+QJsonObject sectionToJson(const TSA::Model::Section& sec)
+{
+    return QJsonObject { { "name", qs(sec.name) }, { "shape", static_cast<int>(sec.shape) }, { "b", sec.width }, { "h", sec.height },
+                         { "d", sec.diameter }, { "tw", sec.tw }, { "tf", sec.tf } };
+}
+
+TSA::Model::Section sectionFromJson(const QJsonObject& o)
+{
+    TSA::Model::Section sec;
+    sec.name = ss(o["name"]);
+    sec.shape = static_cast<TSA::Model::SectionShape>(o["shape"].toInt(0));
+    sec.width = o["b"].toDouble(sec.width);
+    sec.height = o["h"].toDouble(sec.height);
+    sec.diameter = o["d"].toDouble(sec.diameter);
+    sec.tw = o["tw"].toDouble(sec.tw);
+    sec.tf = o["tf"].toDouble(sec.tf);
+    return sec;
+}
+
+QJsonObject materialToJson(const TSA::Model::Material& m)
+{
+    const auto& v = m.visual;
+    return QJsonObject { { "id", m.id }, { "name", qs(m.name) }, { "type", static_cast<int>(m.type) }, { "E", m.E }, { "nu", m.nu },
+                         { "density", m.density }, { "fk", m.fk }, { "alpha", m.thermalCoeff },
+                         { "visual", QJsonObject { { "color", qs(v.baseColor) }, { "roughness", v.roughness }, { "metallic", v.metallic },
+                                                   { "transparency", v.transparency }, { "shininess", v.shininess },
+                                                   { "texture", qs(v.textureName) }, { "texturePath", qs(v.texturePath) },
+                                                   { "scaleU", v.textureScaleU }, { "scaleV", v.textureScaleV } } } };
+}
+
+TSA::Model::Material materialFromJson(const QJsonObject& o)
+{
+    TSA::Model::Material m;
+    m.id = o["id"].toInt(0);
+    m.name = ss(o["name"]);
+    m.type = static_cast<TSA::Model::MaterialType>(o["type"].toInt(0));
+    m.E = o["E"].toDouble(m.E);
+    m.nu = o["nu"].toDouble(m.nu);
+    m.density = o["density"].toDouble(m.density);
+    m.fk = o["fk"].toDouble(m.fk);
+    m.thermalCoeff = o["alpha"].toDouble(m.thermalCoeff);
+    m.syncMechanical();
+    const QJsonObject v = o["visual"].toObject();
+    m.visual.baseColor = v.contains("color") ? ss(v["color"]) : m.visual.baseColor;
+    m.visual.roughness = v["roughness"].toDouble(m.visual.roughness);
+    m.visual.metallic = v["metallic"].toDouble(m.visual.metallic);
+    m.visual.transparency = v["transparency"].toDouble(m.visual.transparency);
+    m.visual.shininess = v["shininess"].toDouble(m.visual.shininess);
+    m.visual.textureName = ss(v["texture"]);
+    m.visual.texturePath = ss(v["texturePath"]);
+    m.visual.textureScaleU = v["scaleU"].toDouble(m.visual.textureScaleU);
+    m.visual.textureScaleV = v["scaleV"].toDouble(m.visual.textureScaleV);
+    return m;
+}
+} // namespace
+
+QJsonObject BimModel::typeToJson(const ProductType& t)
+{
+    return QJsonObject { { "id", t.id }, { "guid", qs(t.globalId) }, { "category", categoryName(t.category) }, { "name", qs(t.name) },
+                         { "section", sectionToJson(t.section) }, { "material", materialToJson(t.material) }, { "thickness", t.thickness } };
+}
+
+bool BimModel::typeFromJson(const QJsonObject& o, ProductType& t)
+{
+    t.id = o["id"].toInt(0);
+    t.globalId = ss(o["guid"]);
+    if (!categoryFromName(ss(o["category"]), t.category)) return false;
+    t.name = ss(o["name"]);
+    t.section = sectionFromJson(o["section"].toObject());
+    t.material = materialFromJson(o["material"].toObject());
+    t.thickness = o["thickness"].toDouble(0.0);
+    return t.id > 0;
 }
 
 QJsonObject BimModel::toJson() const
@@ -569,6 +707,7 @@ QJsonObject BimModel::toJson() const
         o["tag"] = qs(e.tag);
         o["description"] = qs(e.description);
         o["storey"] = qs(e.storeyLevelId);
+        if (e.typeId > 0) o["type"] = e.typeId;
         QJsonArray an;
         for (const auto& r : e.analytical) an.append(qs(refKey(r)));
         o["analytical"] = an;
@@ -584,6 +723,15 @@ QJsonObject BimModel::toJson() const
         for (const auto& c : e.classifications)
             cls.append(QJsonObject { { "system", qs(c.system) }, { "id", qs(c.identification) }, { "name", qs(c.name) } });
         o["classifications"] = cls;
+        // Origine IFC (produits importés) ; la géométrie est dans le chunk binaire BGEO, pas dans ce JSON.
+        if (!e.ifcClass.empty()) o["ifcClass"] = qs(e.ifcClass);
+        if (e.status != AnalyticalStatus::Analytical) o["status"] = analyticalStatusKey(e.status);
+        if (!e.importNotes.empty())
+        {
+            QJsonArray notes;
+            for (const auto& n : e.importNotes) notes.append(qs(n));
+            o["importNotes"] = notes;
+        }
         elements.append(o);
     }
     root["elements"] = elements;
@@ -591,6 +739,15 @@ QJsonObject BimModel::toJson() const
     QJsonObject guids;
     for (const auto& [r, g] : m_analyticalGuids) guids[qs(refKey(r))] = qs(g);
     root["analytical"] = guids;
+
+    // Types de produits (champ facultatif, ajouté sans changer le schéma : ignoré par les versions antérieures)
+    if (!m_types.empty())
+    {
+        QJsonArray types;
+        for (const auto& [id, t] : m_types) types.append(typeToJson(t));
+        root["types"] = types;
+        root["nextTypeId"] = m_nextTypeId;
+    }
     return root;
 }
 
@@ -638,6 +795,10 @@ bool BimModel::fromJson(const QJsonObject& root, BimModel& out)
             const QJsonObject co = cv.toObject();
             e.classifications.push_back({ ss(co["system"]), ss(co["id"]), ss(co["name"]) });
         }
+        e.ifcClass = ss(o["ifcClass"]);
+        e.typeId = o["type"].toInt(0);
+        analyticalStatusFromKey(ss(o["status"]), e.status);
+        for (const auto& n : o["importNotes"].toArray()) e.importNotes.push_back(ss(n));
         out.m_elements[e.id] = std::move(e);
     }
     const QJsonObject guids = root["analytical"].toObject();
@@ -647,6 +808,15 @@ bool BimModel::fromJson(const QJsonObject& root, BimModel& out)
         if (refFromKey(it.key().toStdString(), r)) out.m_analyticalGuids[r] = ss(it.value());
     }
     out.m_nextId = std::max(1, root["nextId"].toInt(1));
+    for (const auto& v : root["types"].toArray())
+    {
+        ProductType t;
+        if (typeFromJson(v.toObject(), t) && t.id > 0 && !out.m_types.count(t.id)) out.m_types[t.id] = std::move(t);
+    }
+    out.m_nextTypeId = root["nextTypeId"].toInt(1);
+    for (const auto& [id, t] : out.m_types) out.m_nextTypeId = std::max(out.m_nextTypeId, id + 1);
+    for (auto& [id, e] : out.m_elements)
+        if (!out.m_types.count(e.typeId)) e.typeId = 0;   // type absent : produit détaché
     out.rebuildIndex();
     return true;
 }

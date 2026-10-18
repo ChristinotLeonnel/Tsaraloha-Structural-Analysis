@@ -786,6 +786,17 @@ void MainWindow::onToggleLoadsVisible(bool checked)
     }
 }
 
+void MainWindow::onToggleBimGeometryVisible(bool checked)
+{
+    if (!m_occView) return;
+    // Visuel seulement : les produits importés restent dans le projet (couche BIM, fichier .tsa, export IFC).
+    m_occView->setBimGeometryVisible(checked);
+    if (!checked && m_propertyPanel && m_propertyPanel->showsBimProduct()) m_propertyPanel->clearProperties();
+    if (m_statusInfo)
+        m_statusInfo->setText(checked ? tr("Objets IFC importés affichés (%1)").arg(m_occView->bimGeometryCount())
+                                      : tr("Objets IFC importés masqués (conservés dans le projet)"));
+}
+
 void MainWindow::onToggleForcesVisible(bool checked)
 {
     if (m_occView)

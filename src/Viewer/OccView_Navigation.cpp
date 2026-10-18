@@ -1,5 +1,6 @@
 #include <QJsonArray>
 #include "OccView.h"
+#include "BimGeometryRenderer.h"
 #include "../Coordinate/GeometryTolerance.h"
 #include "SelectionManager.h"
 #include "../Model/Model.h"
@@ -184,9 +185,16 @@ void OccView::fitSelection()
     emit viewCameraChanged();
 }
 
+void OccView::fitModelWhenReady()
+{
+    if (m_view.IsNull()) m_fitModelOnInit = true;
+    else fitModel();
+}
+
 void OccView::fitModel()
 {
-    if (m_view.IsNull() || !m_model || m_model->nodes().empty())
+    const bool imported = m_bimRenderer && m_bimRenderer->visible() && m_bimRenderer->size() > 0;   // couche masquée : hors cadrage
+    if (m_view.IsNull() || !m_model || (m_model->nodes().empty() && !imported))
     {
         fitAll();
         return;
@@ -198,6 +206,7 @@ void OccView::fitModel()
     {
         bndBox.Add(gp_Pnt(node.x(), node.y(), node.z()));
     }
+    if (imported) bndBox.Add(m_bimRenderer->bounds());   // objets physiques importés sans élément de calcul
 
     if (bndBox.IsVoid())
     {

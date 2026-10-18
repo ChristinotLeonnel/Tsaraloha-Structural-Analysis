@@ -73,6 +73,7 @@ struct RibbonActions
     QAction* actionSelfWeight = nullptr;
     QAction* actionLoadCases = nullptr;
     QAction* actionLoadsVisible = nullptr;
+    QAction* actionBimGeometryVisible = nullptr;   ///< couche des objets IFC importés
     QAction* actionForcesVisible = nullptr;
     QAction* actionMomentsVisible = nullptr;
     QAction* actionLoadValuesVisible = nullptr;

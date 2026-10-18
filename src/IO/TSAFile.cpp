@@ -221,6 +221,18 @@ bool TSAFileWriter::saveToFile(const std::string& filePath,
     writeCableChunk(payload, model.cables());
     writeLoadChunk(payload, model.loadManager().createSnapshot());
     writeBimChunk(payload, model.bim());
+    if (const auto meshes = model.bim().geometries(); !meshes.empty())
+    {
+        const QByteArray geo = TSA::BIM::serializeGeometries(meshes);
+        TSAChunkHeader ch;
+        ch.chunkId = CHUNK_BGEO;
+        ch.chunkSize = static_cast<uint32_t>(geo.size());
+        ch.elementCount = static_cast<uint32_t>(meshes.size());
+        const uint8_t* chBytes = reinterpret_cast<const uint8_t*>(&ch);
+        payload.insert(payload.end(), chBytes, chBytes + sizeof(ch));
+        payload.insert(payload.end(), reinterpret_cast<const uint8_t*>(geo.constData()),
+                       reinterpret_cast<const uint8_t*>(geo.constData()) + geo.size());
+    }
     if (!model.analysisSettingsJson().empty())
     {
         writeSettingsChunk(payload, model.analysisSettingsJson());
@@ -793,6 +805,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     TSA::Model::LoadManager::LoadSnapshot loadedLoads;
     bool hasLoadChunk = false;
     TSA::BIM::BimModel loadedBim;
+    std::map<int, TSA::BIM::MeshPtr> loadedGeometries;   // chunk BGEO, rattaché aux produits après la lecture
     std::string loadedSettings;
     std::string loadedTopology;
     std::string loadedExtensions;
@@ -881,6 +894,16 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
             // validé à la relecture par AnalysisContext::fromJson (lecture tolérante).
             loadedSettings.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
             break;
+        case CHUNK_BGEO:
+        {
+            // Facultatif (format ≥ 1.11) : géométries physiques importées ; illisible → produits sans géométrie,
+            // le reste du projet est chargé.
+            std::string geoError;
+            if (!TSA::BIM::deserializeGeometries(QByteArray(reinterpret_cast<const char*>(chunkBytes), static_cast<qsizetype>(chunkLen)),
+                                                 loadedGeometries, &geoError))
+                TSA_LOG_WARN("TSAFileReader", "BimGeometry", "Chunk BGEO ignoré : " + geoError);
+            break;
+        }
         case CHUNK_XTND:
             if (chunkBytes && chunkLen > 0)
                 loadedExtensions.assign(reinterpret_cast<const char*>(chunkBytes), chunkLen);
@@ -1028,6 +1051,7 @@ bool TSAFileReader::parsePayload(const uint8_t* data, size_t size,
     }
     snapshot.calculationSnapshots = std::move(loadedSnapshots);
     snapshot.definitionReferences = std::move(loadedReferences);
+    loadedBim.attachGeometries(loadedGeometries);
     snapshot.bim = std::move(loadedBim);
 
     // Calcul des identifiants suivants

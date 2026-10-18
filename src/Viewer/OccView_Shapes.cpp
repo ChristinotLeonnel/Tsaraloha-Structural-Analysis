@@ -24,8 +24,10 @@
 #include "../Geometry/CableGeometry3D.h"
 #include "../Geometry/SupportGeometry.h"
 #include "../Geometry/MemberLoadGlyph.h"
+#include "BimGeometryRenderer.h"
 #include "DimensionRenderer.h"
 #include "../Annotation/DimensionService.h"
+#include "../BIM/Core/BimModel.h"
 #include "../Diagnostics/Logger.h"
 
 #include <QTimer>
@@ -244,17 +246,30 @@ Handle(AIS_InteractiveObject) OccView::detectedPreferringModel()
 
 bool OccView::overlayConsumesClick()
 {
-    if (!m_overlayClick) return false;
-    for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
-        if (m_overlayClick(m_context->DetectedCurrentOwner())) return true;
+    if (m_overlayClick)
+        for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
+            if (m_overlayClick(m_context->DetectedCurrentOwner())) return true;
+    // Objet physique importé : désigné pour l'inspection (propriétés IFC), hors sélection du modèle.
+    if (const int product = detectedBimProduct(); product > 0)
+    {
+        emit bimProductPicked(product);
+        return true;
+    }
     return false;
 }
 
 QString OccView::overlayHoverText()
 {
-    if (!m_overlayHover) return {};
-    for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
-        if (QString text = m_overlayHover(m_context->DetectedCurrentOwner()); !text.isEmpty()) return text;
+    if (m_overlayHover)
+        for (m_context->InitDetected(); m_context->MoreDetected(); m_context->NextDetected())
+            if (QString text = m_overlayHover(m_context->DetectedCurrentOwner()); !text.isEmpty()) return text;
+    if (const int product = detectedBimProduct(); product > 0 && m_model)
+        if (const auto* e = m_model->bim().element(product))
+        {
+            const QString status = e->status == TSA::BIM::AnalyticalStatus::NeedsPreparation ? tr("à préparer pour le calcul")
+                                                                                            : tr("non porteur");
+            return QStringLiteral("%1 « %2 » — %3").arg(QString::fromStdString(e->ifcClass), QString::fromStdString(e->name), status);
+        }
     return {};
 }
 
@@ -524,6 +539,7 @@ void OccView::onModelEdited()
 {
     if (m_selectionManager && m_model) m_selectionManager->schedulePrune(m_model);
     scheduleDisplayModeOverlays();
+    scheduleBimGeometrySync();
 }
 
 void OccView::onModelCleared()
@@ -813,6 +829,8 @@ void OccView::rebuildAllShapes()
     }
     m_cableShapes.clear();
 
+    if (m_bimRenderer) m_bimRenderer->clear();
+
     if (m_selectionManager)
     {
         m_selectionManager->clearRegistry();
@@ -877,6 +895,9 @@ void OccView::rebuildAllShapes()
         updateCableShape(cableId, false);
     }
 
+    // 8 bis. Objets physiques importés (IFC) sans élément de calcul : maillages d'origine
+    if (m_bimRenderer) m_bimRenderer->sync(m_model->bim());
+
     // 9. Créer les formes des charges
     updateAllLoadShapes();
 
@@ -894,7 +915,8 @@ void OccView::rebuildAllShapes()
                  std::to_string(m_nodeShapes.size()) + " nœuds [" + std::to_string(nodeShapesBuilt) + " après la passe nœuds / " +
                  std::to_string(m_model->nodes().size()) + " dans le modèle], " +
                  std::to_string(m_beamShapes.size() + m_columnShapes.size() + m_trussShapes.size() + m_cableShapes.size()) +
-                 " barres, " + std::to_string(m_slabShapes.size() + m_wallShapes.size()) + " surfaces)");
+                 " barres, " + std::to_string(m_slabShapes.size() + m_wallShapes.size()) + " surfaces, " +
+                 std::to_string(bimGeometryCount()) + " objets importés)");
 }
 
 void OccView::updateNodeShape(int nodeId, bool redrawImmediately)

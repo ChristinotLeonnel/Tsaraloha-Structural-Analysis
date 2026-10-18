@@ -106,3 +106,90 @@ Correspondance avec l'arborescence demandée (le dépôt garde sa structure `src
 
 Détails par sujet : `IFC_MAPPING.md`, `ANALYTICAL_MODEL.md`, `BIM_GUIDELINES.md`, `AI_API.md`,
 `VERSIONING.md`.
+
+---
+
+## 5. CRÉATION DES ÉLÉMENTS DESSINÉS ET QUANTITÉS (2026-10-17)
+
+Audit : `BIM_DRAWING_AUDIT.md` ; feuille de route : `BIM_DRAWING_ROADMAP.md` ; bilan :
+`BIM_DRAWING_IMPLEMENTATION_REPORT.md`.
+
+### 5.1 Séparation des responsabilités
+
+```text
+ Vue 3D (OccView, modes Dessin)      Dialogues Barre / Câble / Surface      Outils ModelingTool
+   clic → SnapEngine → DrawPoint       saisie → DrawPoint                     apply() en transaction
+            │                                   │
+            └──────────────┬────────────────────┘
+                           ▼
+            TSA::Interaction::ElementCreation   (sans vue, testé sans fenêtre)
+              1. validation complète (géométrie, section, matériau, doublon)  → refus motivé, modèle intact
+              2. EditTransaction : nœuds manquants + élément + réglages du dialogue → UNE entrée Annuler
+              3. avertissements : extrémité posée sur une barre sans nœud, croisement sans nœud commun
+                           ▼
+            TSA::Model::Model ── synchronisation ──▶ BimModel (produit physique, GlobalId, classe IFC, étage)
+                           │
+                           ├──▶ ResultsValidityGuard : résultats de calcul marqués périmés
+                           └──▶ QuantityTakeoff (métré dérivé) ──▶ palette « Identité BIM et quantités »
+```
+
+La vue ne contient plus de logique de création : elle mémorise des **points de tracé**
+(`DrawPoint` : position accrochée + nœud visé, −1 pour un point libre), affiche l'aperçu, puis
+appelle le service et publie son compte rendu (`OccView::reportCreation` : succès et réserves,
+ou « Non créé : motif »).
+
+### 5.2 Règles de création
+
+| Règle | Mise en œuvre |
+| :--- | :--- |
+| Aucun objet invalide | validations avant toute modification ; un refus ne touche ni au modèle, ni à l'historique, ni à la révision (résultats toujours valides) |
+| Aucun nœud orphelin | nœuds créés à la validation de l'élément, dans sa transaction ; Échap pendant un tracé ne laisse rien |
+| Annuler complet | une création (nœuds + élément + produit BIM + réglages du dialogue) = une entrée Annuler |
+| Coïncidence ≠ proximité | un point confondu avec un nœud (`GeometryTolerance::nodeCoincidence` = 1 mm) le réutilise ; au-delà, nouveau nœud, jamais de fusion. Viser un nœud : l'accrochage (`SnapEngine`) |
+| Croisement ≠ connexion | une extrémité sur l'intérieur d'une barre, ou un croisement sans nœud commun, est signalé ; aucune division automatique (outils Diviser / Intersecter) |
+| Aucune valeur inventée | dimensions et sections des préréglages explicites (poutre, poteau, dalle, voile, **fondation**, **treillis**), modifiables dans « Préréglages de structure » ; plus de poteau de 3 m créé par un double clic ; matériaux proposés limités à ceux de la bibliothèque |
+| Doublons | même famille sur les mêmes nœuds (dans les deux sens), dalle sur le même contour, deuxième fondation sous un nœud : refusés |
+| Dalle | ≥ 3 points distincts, non alignés, plans (1 mm), contour simple (aucun côté ne recoupe un autre) |
+| Voile | base inclinée (pieds à plus de 1 mm de cote l'un de l'autre) acceptée et signalée : élévation en parallélogramme, longueur en plan × hauteur, même géométrie pour l'affichage, le calcul (`wallSurface` : repère U horizontal, V vertical), le métré et l'export IFC (profil en parallélogramme extrudé dans l'épaisseur, relu par le lecteur interne et par IfcOpenShell). Porte au pied refusée sur une base inclinée (ouvertures intérieures seules) |
+
+### 5.3 Quantités
+
+`TSA::BIM::QuantityTakeoff` (`src/BIM/Core`) calcule à chaque appel, depuis le modèle seul :
+longueur d'axe, surface brute, ouvertures déduites, surface nette, volume, masse (volume × masse
+volumique du matériau), par élément analytique, puis cumulés par produit physique, matériau,
+section ou épaisseur, et famille. Aucune quantité n'est stockée : elles suivent les modifications
+et l'historique. Un produit importé sans élément de calcul n'a pas de métré (sa géométrie IFC n'est
+pas mesurée).
+
+### 5.4 Palette de propriétés
+
+`ElementBimPanel`, sous la vue de l'élément sélectionné (poutre, poteau, câble, treillis, dalle,
+voile, fondation), en lecture seule : nom et numéro du produit, classe IFC et type prédéfini,
+GlobalId (sélectionnable), étage, éléments de calcul regroupés, GlobalId analytique, quantités de
+l'élément et du produit entier, type de produit et écart éventuel. Rafraîchie à chaque modification du modèle et après
+Annuler.
+
+### 5.5 Navigateur BIM
+
+Branche « Structure BIM (IFC) » de l'arbre du modèle : site › bâtiment › un étage par niveau (cote croissante) ›
+produits physiques, classés par `BimModel::resolvedStorey` (« Sans étage » à part), classe IFC en colonne. Branche
+dérivée du modèle, reconstruite une fois par rafale de modifications. Un clic sur un produit sélectionne son premier
+élément de calcul ; un objet IFC importé sans calcul ouvre l'inspecteur IFC.
+
+### 5.6 Types de produits partagés
+
+`ProductType` (dans le `BimModel`) : catégorie, nom, GlobalId, section et matériau (éléments linéaires), épaisseur et
+matériau (dalles, voiles), matériau (fondations). Un produit y est rattaché par `typeId`. Persistance : champs
+facultatifs du bloc BIM (`types`, `type`), schéma 1 inchangé, donc un fichier existant se lit tel quel (produits sans
+type) et une version antérieure de TSA ignore les types sans rejeter le bloc.
+
+| Opération | Effet (une transaction, une entrée Annuler) |
+| :--- | :--- |
+| Créer les types depuis le modèle | un type par définition distincte, produits sans type rattachés (migration d'un projet existant) |
+| Propager la définition d'un élément au type | le type reprend la section, l'épaisseur et le matériau de l'occurrence, puis les applique aux autres |
+| Réappliquer le type | ramène les occurrences modifiées à la définition du type |
+| Écart | occurrence différente de son type (« section R30x60 au lieu de R30x50 »), affiché dans la palette et l'arbre |
+
+IFC : `IfcBeamType`, `IfcColumnType`, `IfcMemberType`, `IfcSlabType`, `IfcWallType`, `IfcFootingType`, `IfcPileType`,
+`IfcPlateType` reliés par `IfcRelDefinesByType` ; à l'import, types recréés avec leur GlobalId et définition reprise
+de la première occurrence.

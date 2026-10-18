@@ -20,7 +20,9 @@ enum class PresetTarget
     Wall,
     Slab,
     Beam,
-    Column
+    Column,
+    Foundation,
+    Truss
 };
 
 class StructurePresetDialog : public QDialog
@@ -41,6 +43,8 @@ private:
     QWidget* createSlabTab();
     QWidget* createBeamTab();
     QWidget* createColumnTab();
+    QWidget* createFoundationTab();
+    QWidget* createTrussTab();
     void loadFromPresets();
     void saveToPresets();
 
@@ -93,6 +97,16 @@ private:
     QComboBox*      m_colMaterial = nullptr;
     QPushButton*    m_colColorBtn = nullptr;
     QString         m_colColor;
+
+    // Fondation (semelle isolée posée par le mode Dessin Fondation)
+    QDoubleSpinBox* m_footWidthA = nullptr;
+    QDoubleSpinBox* m_footLengthB = nullptr;
+    QDoubleSpinBox* m_footHeightH = nullptr;
+    QComboBox*      m_footMaterial = nullptr;
+
+    // Treillis (barre circulaire pleine ou tube, diamètre extérieur)
+    QDoubleSpinBox* m_trussDiameter = nullptr;
+    QComboBox*      m_trussMaterial = nullptr;
 };
 
 } // namespace TSA::UI

@@ -282,8 +282,8 @@ bool runSuite_Bim(int& passed)
                        && count(doc, "IFCCIRCLEHOLLOWPROFILEDEF") == 1 && count(doc, "IFCRECTANGLEHOLLOWPROFILEDEF") == 1,
                    "Test 177: profils paramétrés");
         TEST_CHECK(doc.find("'Pset_TSA_Structural'") != std::string::npos && doc.find("'Pset_BeamCommon'") != std::string::npos
-                       && count(doc, "IFCRELASSIGNSTOPRODUCT") == r.products - 2,
-                   "Test 177: Psets et liens physique → analytique (hors semelle et pieu)");
+                       && count(doc, "IFCRELASSIGNSTOPRODUCT") == r.products,
+                   "Test 177: Psets et liens physique → analytique (semelle et pieu : vers leur appui)");
         bool guids = true;
         for (const auto& [id, e] : m.bim().elements()) guids &= doc.find("'" + e.globalId + "'") != std::string::npos;
         TEST_CHECK(guids && doc.find("'" + m.bim().spatial().project.globalId + "'") != std::string::npos,
@@ -300,6 +300,7 @@ bool runSuite_Bim(int& passed)
     }
 
     // TEST 178 : Test_IFCImport — fichier d'un autre logiciel (physique seul) : analytique déduit de la géométrie
+    // À LA DEMANDE (deriveAnalyticalFromGeometry) ; par défaut, rien n'est inventé (produits « à préparer »)
     {
         // IFC4 minimal : poutre extrudée (profil I, rotation 90°), dalle à contour, semelle ; placement d'étage décalé
         const std::string ifc = R"(ISO-10303-21;
@@ -352,10 +353,19 @@ DATA;
 ENDSEC;
 END-ISO-10303-21;
 )";
+        Model plain;
+        const auto rp = TSA::BIM::Ifc::IfcImporter::importString(ifc, plain);
+        TEST_CHECK(rp.ok && rp.products == 3 && rp.toPrepare == 3 && rp.derived == 0 && plain.beams().empty() && plain.slabs().empty()
+                       && plain.foundations().empty() && plain.nodes().empty() && plain.bim().elementByGlobalId("1Hq$ZWl5D0P9Mf8yPUe0Wz")
+                       && plain.bim().elementByGlobalId("1Hq$ZWl5D0P9Mf8yPUe0Wz")->status == TSA::BIM::AnalyticalStatus::NeedsPreparation,
+                   "Test 178: sans déduction, aucun élément de calcul inventé (3 produits conservés « à préparer »)");
+
         Model m;
-        const auto r = TSA::BIM::Ifc::IfcImporter::importString(ifc, m);
-        TEST_CHECK(r.ok && r.products == 3 && m.beams().size() == 1 && m.slabs().size() == 1 && m.foundations().size() == 1,
-                   "Test 178: 3 produits importés (poutre, dalle, semelle)");
+        TSA::BIM::Ifc::IfcImportOptions derive;
+        derive.deriveAnalyticalFromGeometry = true;
+        const auto r = TSA::BIM::Ifc::IfcImporter::importString(ifc, m, derive);
+        TEST_CHECK(r.ok && r.products == 3 && r.derived == 3 && m.beams().size() == 1 && m.slabs().size() == 1 && m.foundations().size() == 1,
+                   "Test 178: 3 produits importés, éléments de calcul déduits et signalés (poutre, dalle, semelle)");
         const auto& beam = m.beams().begin()->second;
         const auto* s = m.getNode(beam.startNodeId());
         const auto* e = m.getNode(beam.endNodeId());
@@ -420,14 +430,28 @@ END-ISO-10303-21;
         {
             const auto* pb = B.elementByGlobalId(pa.globalId);
             if (!pb) { same = false; std::cout << "  produit manquant " << pa.globalId << std::endl; continue; }
-            same &= pb->category == pa.category && pb->name == pa.name && pb->description == pa.description
-                && pb->analytical.size() == pa.analytical.size() && pb->classifications.size() == pa.classifications.size()
-                && IfcMapperPredef(pa) == IfcMapperPredef(*pb);
+            auto differs = [&](const char* what, bool equal) {
+                if (!equal)
+                {
+                    std::string refs;
+                    for (const auto& r : pa.analytical) refs += r.label() + " ";
+                    std::cout << "  produit " << pa.globalId << " [" << refs << "→ " << pb->analytical.size() << " élément(s) relu(s), nom relu « "
+                              << pb->name << " »] : " << what << " différent" << std::endl;
+                }
+                same &= equal;
+            };
+            differs("catégorie", pb->category == pa.category);
+            differs("nom", pb->name == pa.name);
+            differs("description", pb->description == pa.description);
+            differs("éléments de calcul", pb->analytical.size() == pa.analytical.size());
+            differs("classifications", pb->classifications.size() == pa.classifications.size());
+            differs("type prédéfini", IfcMapperPredef(pa) == IfcMapperPredef(*pb));
             const auto* ua = pa.propertySet("Pset_Projet");
             const auto* ub = pb->propertySet("Pset_Projet");
-            same &= (ua == nullptr) == (ub == nullptr);
+            differs("Pset_Projet (présence)", (ua == nullptr) == (ub == nullptr));
             if (ua && ub)
-                for (const auto& [k, v] : ua->properties) same &= ub->properties.count(k) && ub->properties.at(k) == v;
+                for (const auto& [k, v] : ua->properties)
+                    differs(("Pset_Projet." + k).c_str(), ub->properties.count(k) && ub->properties.at(k) == v);
         }
         TEST_CHECK(same, "Test 179: GlobalId, catégories, noms, mapping 1:N, Psets et classifications identiques");
 
@@ -519,7 +543,9 @@ END-ISO-10303-21;
         std::filesystem::path fixture = std::filesystem::path(__FILE__).parent_path() / "data" / "ifcopenshell_fixture.ifc";
         if (!std::filesystem::exists(fixture)) fixture = "tests/data/ifcopenshell_fixture.ifc";
         Model m;
-        const auto r = TSA::BIM::Ifc::IfcImporter::importFile(fixture.string(), m);
+        TSA::BIM::Ifc::IfcImportOptions derive;
+        derive.deriveAnalyticalFromGeometry = true;   // fichier sans modèle analytique : éléments de calcul déduits
+        const auto r = TSA::BIM::Ifc::IfcImporter::importFile(fixture.string(), m, derive);
         TEST_CHECK(r.ok && r.products == 4 && m.beams().size() == 1 && m.columns().size() == 1 && m.walls().size() == 1 && m.slabs().size() == 1,
                    "Test 180: poutre, poteau, voile, dalle importés");
         const auto& b = m.beams().begin()->second;
@@ -586,6 +612,88 @@ END-ISO-10303-21;
         TEST_CHECK(ordered, "Test 190: éléments collés dans l'ordre de l'axe");
         TEST_CHECK(m.bim().physicalOf(beamRef(beam))->globalId == srcGuid, "Test 190: produit source intact");
         std::cout << "[PASS] Test 190: Coller conserve les métadonnées BIM" << std::endl;
+        ++passed;
+    }
+
+    // TEST 191 : produits importés sans élément de calcul — conservés (géométrie, classe d'origine, état), persistés
+    // (chunk BGEO), partagés entre instantanés ; un produit créé dans TSA vidé de ses éléments reste supprimé.
+    {
+        using TSA::BIM::AnalyticalStatus;
+        auto box = [](double x0, double y0, double z0, double dx, double dy, double dz) {
+            auto mesh = std::make_shared<TSA::BIM::TriangleMesh>();
+            mesh->origin = { x0, y0, z0 };
+            for (int k = 0; k < 8; ++k)
+            {
+                mesh->positions.push_back(static_cast<float>((k & 1) ? dx : 0.0));
+                mesh->positions.push_back(static_cast<float>((k & 2) ? dy : 0.0));
+                mesh->positions.push_back(static_cast<float>((k & 4) ? dz : 0.0));
+            }
+            mesh->indices = { 0, 2, 1, 1, 2, 3, 4, 5, 6, 5, 7, 6, 0, 1, 4, 1, 5, 4, 2, 6, 3, 3, 6, 7, 0, 4, 2, 2, 4, 6, 1, 3, 5, 3, 7, 5 };
+            mesh->color = { 0.6f, 0.4f, 0.2f, 1.0f };
+            mesh->representation = "Tessellation";
+            return std::shared_ptr<const TSA::BIM::TriangleMesh>(mesh);
+        };
+
+        Model m;
+        // Coordonnées géoréférencées : la précision doit rester submillimétrique
+        const auto doorMesh = box(512345.25, 6812345.50, 12.0, 0.9, 0.05, 2.1);
+        TSA::BIM::PhysicalElement door;
+        door.globalId = TSA::BIM::IfcGuid::create();
+        door.category = BimCategory::Proxy;
+        door.ifcClass = "IfcDoor";
+        door.name = "Porte 90×210";
+        door.status = AnalyticalStatus::NotStructural;
+        door.geometry = doorMesh;
+        door.importNotes.push_back("Ouvrant non converti (OperationType)");
+        const int doorId = m.bimForEdit().insert(door);
+
+        TSA::BIM::PhysicalElement girder;   // poutre physique d'un fichier sans modèle analytique
+        girder.globalId = TSA::BIM::IfcGuid::create();
+        girder.category = BimCategory::Beam;
+        girder.ifcClass = "IfcBeam";
+        girder.geometry = box(0, 0, 3.0, 6.0, 0.3, 0.5);
+        const int girderId = m.bimForEdit().insert(girder);
+
+        const int a = m.addNode(0, 0, 0), b = m.addNode(5, 0, 0);
+        const int own = bar(m, a, b);   // produit créé dans TSA (1:1)
+        const int ownProduct = m.bim().physicalOf(beamRef(own))->id;
+
+        const auto* d = m.bim().element(doorId);
+        const auto* g = m.bim().element(girderId);
+        TEST_CHECK(d && g, "Test 191: produits importés sans élément de calcul conservés par la synchronisation");
+        TEST_CHECK(d && d->status == AnalyticalStatus::NotStructural, "Test 191: porte non porteuse (état conservé)");
+        TEST_CHECK(g && g->status == AnalyticalStatus::NeedsPreparation, "Test 191: poutre importée sans calcul → « à préparer »");
+
+        // Le produit importé garde sa géométrie si on supprime ses éléments de calcul ; un produit TSA disparaît.
+        m.removeBeam(own);
+        TEST_CHECK(m.bim().element(ownProduct) == nullptr, "Test 191: produit TSA vidé de ses éléments supprimé");
+
+        // Instantané d'Annuler : la géométrie est partagée, pas copiée
+        const auto snap = m.createSnapshot("test");
+        TEST_CHECK(snap.bim.element(doorId) && snap.bim.element(doorId)->geometry.get() == doorMesh.get(),
+                   "Test 191: instantané sans copie de la géométrie");
+
+        // Persistance .tsa : chunk BGEO
+        const std::string dir = "./build/test_tsa_data/";
+        std::filesystem::create_directories(dir);
+        const QString file = QString::fromStdString(dir + "test_bim_imported.tsa");
+        std::string err;
+        TEST_CHECK(TSA::IO::TSAProjectIO::saveToFile(file, m, nullptr, &err), "Test 191: sauvegarde (" + err + ")");
+        Model r;
+        TEST_CHECK(TSA::IO::TSAProjectIO::loadFromFile(file, r, nullptr, &err), "Test 191: chargement (" + err + ")");
+        const auto* rd = r.bim().element(doorId);
+        TEST_CHECK(rd && rd->globalId == door.globalId && rd->ifcClass == "IfcDoor" && rd->status == AnalyticalStatus::NotStructural
+                       && rd->importNotes.size() == 1 && rd->category == BimCategory::Proxy,
+                   "Test 191: classe IFC, état, notes et GlobalId relus");
+        bool sameGeometry = rd && rd->geometry && rd->geometry->triangleCount() == 12 && rd->geometry->representation == "Tessellation";
+        for (std::size_t i = 0; sameGeometry && i < doorMesh->vertexCount(); ++i)
+            for (int k = 0; k < 3; ++k)
+                sameGeometry = sameGeometry && std::abs(rd->geometry->vertex(i)[k] - doorMesh->vertex(i)[k]) < 1e-4;
+        TEST_CHECK(sameGeometry, "Test 191: géométrie relue à 0,1 mm près en coordonnées géoréférencées");
+        const auto* rg = r.bim().element(girderId);
+        TEST_CHECK(rg && rg->status == AnalyticalStatus::NeedsPreparation && rg->geometry && rg->analytical.empty(),
+                   "Test 191: poutre « à préparer » relue avec sa géométrie, sans élément de calcul inventé");
+        std::cout << "[PASS] Test 191: Produits importés sans élément de calcul (conservation, persistance BGEO)" << std::endl;
         ++passed;
     }
 

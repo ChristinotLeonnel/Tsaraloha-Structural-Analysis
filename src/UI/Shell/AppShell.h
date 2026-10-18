@@ -15,6 +15,14 @@
 
 class MainWindow;
 class QAction;
+namespace TSA::Model
+{
+class Model;
+}
+namespace TSA::BIM::Ifc
+{
+struct IfcImportReport;
+}
 class QAbstractNativeEventFilter;
 class QMenu;
 class QShortcut;
@@ -85,6 +93,9 @@ private:
     QString tabLabel(const MainWindow* document) const;
     void showTabMenu(const QPoint& pos);
     bool loadIntoWorkspace(const QString& path);
+    /// Projet importé (IFC) : nouvel onglet sans fichier, le document d'où vient la commande n'est pas modifié.
+    void openImportedProject(std::shared_ptr<TSA::Model::Model> model, const QString& sourcePath,
+                             std::shared_ptr<const TSA::BIM::Ifc::IfcImportReport> report);
     void setMode(ApplicationMode mode);
     void updateTitle();
     void createActions();

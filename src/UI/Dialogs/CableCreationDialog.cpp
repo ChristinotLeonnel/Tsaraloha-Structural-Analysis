@@ -1,6 +1,7 @@
 #include "CableCreationDialog.h"
 #include "../HelpLauncher.h"
 #include <QEvent>
+#include "../../Interaction/ElementCreation.h"
 #include "../../Model/Model.h"
 #include "../../Model/MaterialLibrary.h"
 #include "../../Viewer/OccView.h"
@@ -512,11 +513,12 @@ void CableCreationDialog::onDrawingCancelled()
 
 void CableCreationDialog::onOriginReturnPressed()
 {
+    // Point mémorisé seulement : le nœud est créé avec le câble (aucun nœud orphelin si l'on abandonne).
     double x = 0, y = 0, z = 0;
     if (parseCoordinates(m_editOrigin->text(), x, y, z))
     {
         m_originPt = gp_Pnt(x, y, z);
-        m_originNodeId = m_model ? m_model->addNode(x, y, z) : -1;
+        m_originNodeId = -1;
         m_hasOrigin = true;
         updateHighlight(true);
         m_editEnd->setFocus();
@@ -529,7 +531,7 @@ void CableCreationDialog::onEndReturnPressed()
     if (parseCoordinates(m_editEnd->text(), x, y, z))
     {
         m_endPt = gp_Pnt(x, y, z);
-        m_endNodeId = m_model ? m_model->addNode(x, y, z) : -1;
+        m_endNodeId = -1;
         m_hasEnd = true;
         onAddClicked();
     }
@@ -539,46 +541,29 @@ void CableCreationDialog::onAddClicked()
 {
     if (!m_model) return;
 
-    // Résolution du nœud d'origine
-    int startId = m_originNodeId;
-    if (startId <= 0)
-    {
-        double x = 0, y = 0, z = 0;
-        if (parseCoordinates(m_editOrigin->text(), x, y, z))
+    // Extrémités : point cliqué (nœud visé ou position libre) ou coordonnées saisies.
+    auto endpoint = [this](bool has, const gp_Pnt& pt, int nodeId, QLineEdit* edit, TSA::Interaction::DrawPoint& out) {
+        if (has)
         {
-            startId = m_model->addNode(x, y, z);
+            out = TSA::Interaction::DrawPoint(pt, nodeId);
+            return true;
         }
-    }
-
-    // Résolution du nœud de fin
-    int endId = m_endNodeId;
-    if (endId <= 0)
-    {
         double x = 0, y = 0, z = 0;
-        if (parseCoordinates(m_editEnd->text(), x, y, z))
-        {
-            endId = m_model->addNode(x, y, z);
-        }
-    }
-
-    if (startId <= 0 || endId <= 0)
+        if (!parseCoordinates(edit->text(), x, y, z)) return false;
+        out = TSA::Interaction::DrawPoint(gp_Pnt(x, y, z));
+        return true;
+    };
+    TSA::Interaction::DrawPoint a, b;
+    if (!endpoint(m_hasOrigin, m_originPt, m_originNodeId, m_editOrigin, a) || !endpoint(m_hasEnd, m_endPt, m_endNodeId, m_editEnd, b))
     {
         QMessageBox::warning(this, tr("Erreur"), tr("Veuillez sélectionner ou saisir les nœuds de départ et de fin du câble."));
         return;
     }
 
-    if (startId == endId)
-    {
-        QMessageBox::warning(this, tr("Erreur"), tr("Le nœud d'origine et le nœud d'extrémité doivent être distincts."));
-        return;
-    }
-
-    m_model->pushUndoState(tr("Création Câble %1").arg(m_spinCableId->value()).toStdString());
-
-    int newId = m_model->addCable(startId, endId, cableType());
-    auto* cable = m_model->getCable(newId);
-    if (cable)
-    {
+    // Câble, nœuds manquants et réglages du dialogue : une seule transaction, après validation.
+    const auto r = TSA::Interaction::ElementCreation(*m_model).createCable(a, b, cableType(), [this](TSA::Model::Model& model, int newId) {
+        auto* cable = model.getCable(newId);
+        if (!cable) return;
         cable->setName(m_editName->text().toStdString());
         cable->setDiameter(diameter());
         cable->definition().setArea(area());
@@ -601,11 +586,27 @@ void CableCreationDialog::onAddClicked()
         const auto* pMat = TSA::Model::MaterialLibrary::instance().findById(matId);
         if (pMat) cable->setMaterial(*pMat);
 
-        m_model->notifyCableModified(newId);
-        if (m_occView) m_occView->updateCableShape(newId);
-    }
+        model.notifyCableModified(newId);
+    });
 
-    emit cableCreated(newId);
+    if (m_occView)
+    {
+        m_occView->reportCreation(r, tr("Câble C%1 créé reliant N%2 à N%3").arg(r.elementId)
+            .arg(r.nodeIds.empty() ? -1 : r.nodeIds[0]).arg(r.nodeIds.size() < 2 ? -1 : r.nodeIds[1]));
+    }
+    if (!r.success)
+    {
+        if (!m_occView) QMessageBox::warning(this, tr("Câble non créé"), QString::fromStdString(r.message));
+        m_hasEnd = false;
+        m_endNodeId = -1;
+        return;
+    }
+    // Les extrémités sont désormais des nœuds (enchaînement depuis le nœud d'arrivée).
+    m_originNodeId = r.nodeIds[0];
+    m_endNodeId = r.nodeIds[1];
+    if (m_occView) m_occView->updateCableShape(r.elementId);
+
+    emit cableCreated(r.elementId);
 
     // Incrémenter pour le prochain câble
     m_spinCableId->setValue(m_spinCableId->value() + m_spinStep->value());

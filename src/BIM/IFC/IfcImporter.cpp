@@ -1,6 +1,8 @@
 #include "IfcImporter.h"
+#include "../Core/ProductTypes.h"
 
 #include "IfcGeometryMapper.h"
+#include "IfcOpenShellImport.h"
 #include "IfcPropertyMapper.h"
 #include "IfcStepReader.h"
 #include "../Core/BimModel.h"
@@ -12,6 +14,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <map>
 #include <set>
@@ -24,10 +27,18 @@ using Kind = StepValue::Kind;
 
 std::string IfcImportReport::summary() const
 {
+    if (canceled) return "Import IFC annulé.";
     if (!ok) return "Import IFC échoué : " + error;
-    return std::to_string(products) + " produit(s), " + std::to_string(nodes) + " nœud(s), " + std::to_string(members)
-        + " barre(s), " + std::to_string(surfaces) + " surface(s), " + std::to_string(foundations) + " fondation(s), "
-        + std::to_string(storeys) + " étage(s) — schéma " + schema;
+    std::string s = std::to_string(products) + " produit(s) physique(s)";
+    if (productsWithGeometry) s += " (" + std::to_string(productsWithGeometry) + " avec géométrie)";
+    if (toPrepare) s += ", dont " + std::to_string(toPrepare) + " à préparer pour le calcul";
+    if (notStructural) s += ", " + std::to_string(notStructural) + " non porteur(s)";
+    s += " ; modèle de calcul : " + std::to_string(nodes) + " nœud(s), " + std::to_string(members) + " barre(s), "
+        + std::to_string(surfaces) + " surface(s), " + std::to_string(foundations) + " fondation(s)";
+    if (derived) s += " (dont " + std::to_string(derived) + " élément(s) déduit(s) de la géométrie, à vérifier)";
+    s += " ; " + std::to_string(storeys) + " étage(s)";
+    if (ignored) s += " ; " + std::to_string(ignored) + " objet(s) non importé(s)";
+    return s + " — schéma " + schema + (engine.empty() ? "" : ", " + engine);
 }
 
 namespace
@@ -71,26 +82,43 @@ PropertyValue propertyValue(const StepValue& v)
     return PropertyValue::ofReal(v.asNumber(), T::Real);
 }
 
+struct ProductClass
+{
+    BimCategory category;
+    const char* name;   ///< graphie IFC (« IfcBeam ») : classe d'origine conservée
+};
+
+const std::map<std::string, ProductClass>& productClasses()
+{
+    static const std::map<std::string, ProductClass> map = {
+        { "IFCBEAM", { BimCategory::Beam, "IfcBeam" } }, { "IFCBEAMSTANDARDCASE", { BimCategory::Beam, "IfcBeamStandardCase" } },
+        { "IFCCOLUMN", { BimCategory::Column, "IfcColumn" } }, { "IFCCOLUMNSTANDARDCASE", { BimCategory::Column, "IfcColumnStandardCase" } },
+        { "IFCMEMBER", { BimCategory::Member, "IfcMember" } }, { "IFCMEMBERSTANDARDCASE", { BimCategory::Member, "IfcMemberStandardCase" } },
+        { "IFCSLAB", { BimCategory::Slab, "IfcSlab" } }, { "IFCSLABSTANDARDCASE", { BimCategory::Slab, "IfcSlabStandardCase" } },
+        { "IFCWALL", { BimCategory::Wall, "IfcWall" } }, { "IFCWALLSTANDARDCASE", { BimCategory::Wall, "IfcWallStandardCase" } },
+        { "IFCFOOTING", { BimCategory::Footing, "IfcFooting" } }, { "IFCPILE", { BimCategory::Pile, "IfcPile" } },
+        { "IFCPLATE", { BimCategory::Plate, "IfcPlate" } },
+    };
+    return map;
+}
+
 bool categoryOf(const std::string& entity, BimCategory& c)
 {
-    static const std::map<std::string, BimCategory> map = {
-        { "IFCBEAM", BimCategory::Beam }, { "IFCBEAMSTANDARDCASE", BimCategory::Beam },
-        { "IFCCOLUMN", BimCategory::Column }, { "IFCCOLUMNSTANDARDCASE", BimCategory::Column },
-        { "IFCMEMBER", BimCategory::Member }, { "IFCMEMBERSTANDARDCASE", BimCategory::Member },
-        { "IFCSLAB", BimCategory::Slab }, { "IFCSLABSTANDARDCASE", BimCategory::Slab },
-        { "IFCWALL", BimCategory::Wall }, { "IFCWALLSTANDARDCASE", BimCategory::Wall },
-        { "IFCFOOTING", BimCategory::Footing }, { "IFCPILE", BimCategory::Pile }, { "IFCPLATE", BimCategory::Plate },
-    };
-    auto it = map.find(entity);
-    if (it == map.end()) return false;
-    c = it->second;
+    auto it = productClasses().find(entity);
+    if (it == productClasses().end()) return false;
+    c = it->second.category;
     return true;
 }
 
 class Importer
 {
 public:
-    Importer(const IfcStepReader& r, TSA::Model::Model& m, const IfcImportOptions& o) : m_r(r), m_m(m), m_opt(o) {}
+    /// @param physicalProducts créer aussi les produits sans élément de calcul (lecteur interne seul) ; faux quand
+    ///        le noyau IFC complet importe ensuite tous les produits physiques avec leur géométrie.
+    Importer(const IfcStepReader& r, TSA::Model::Model& m, const IfcImportOptions& o, bool physicalProducts = true)
+        : m_r(r), m_m(m), m_opt(o), m_physicalProducts(physicalProducts)
+    {
+    }
 
     IfcImportReport run()
     {
@@ -101,6 +129,15 @@ public:
         if (m_opt.useAnalyticalModel) importAnalytical();
         importProducts();
         finalizeBim();
+        // Jamais de succès sans contenu : un fichier qui contient des produits porteurs dont aucun n'a pu être
+        // converti est un échec (motifs dans les avertissements), pas un import « réussi » vide.
+        if (m_report.products == 0 && m_report.nodes == 0 && m_report.members == 0 && m_report.surfaces == 0)
+        {
+            m_report.error = m_sourceProducts > 0
+                ? std::to_string(m_sourceProducts) + " produit(s) porteur(s) dans le fichier, aucun n'a pu être converti"
+                : "aucun élément structurel ni modèle analytique dans le fichier";
+            return m_report;
+        }
         m_report.ok = true;
         return m_report;
     }
@@ -137,6 +174,7 @@ private:
                 if (type == "LENGTHUNIT") m_len = unitFactor(e);
                 else if (type == "PRESSUREUNIT") m_pressure = unitFactor(e);
             }
+        m_report.lengthUnit = m_len;
         if (m_len != 1.0)
             m_report.warnings.push_back("Unité de longueur du fichier convertie en mètres (facteur " + std::to_string(m_len) + ").");
     }
@@ -256,12 +294,18 @@ private:
         const auto* e = m_r.get(matId);
         TSA::Model::Material mat;
         if (!e) return mat;
+        // Catégorie IFC (IFC4 et suivants) : base des propriétés mécaniques par défaut, remplacées ensuite par celles
+        // du fichier. Sans catégorie (IFC2X3, ou absente) ou catégorie inconnue, les valeurs sont provisoires.
         const std::string cat = e->arg(2).asText();
+        const bool known = cat == "steel" || cat == "wood" || cat == "aluminium" || cat == "block" || cat == "brick" || cat == "concrete";
         if (cat == "steel") mat = TSA::Model::Material::steelS235();
         else if (cat == "wood") mat = TSA::Model::Material::timberC24();
         else if (cat == "aluminium") mat = TSA::Model::Material::aluminum();
         else if (cat == "block" || cat == "brick") mat = TSA::Model::Material::masonry();
         else mat = TSA::Model::Material::concreteC25_30();
+        if (!known)
+            m_report.warnings.push_back("Matériau « " + e->arg(0).asText() + " » : catégorie " + (cat.empty() ? "absente" : "« " + cat + " » inconnue")
+                                        + ", propriétés mécaniques provisoires (" + mat.name + ") à remplacer avant tout calcul.");
         if (!e->arg(0).asText().empty()) mat.name = e->arg(0).asText();
         for (int pid : m_materialProps[matId])
         {
@@ -442,6 +486,7 @@ private:
             const auto pts = topologyPoints(*c, "Vertex");
             if (pts.empty()) continue;
             const int n = node(pts.front());
+            m_connectionNode[c->id] = n;
             m_bim.setAnalyticalGlobalId({ ElementKind::Node, n }, c->arg(0).asText());
             const auto* bc = m_r.get(c->arg(7));
             if (!bc || bc->type != "IFCBOUNDARYNODECONDITION") continue;
@@ -619,7 +664,36 @@ private:
         return true;
     }
 
-    std::vector<AnalyticalRef> fromGeometry(const StepEntity& product, BimCategory cat, const std::string& pdt)
+    /// Voile à base inclinée (export TSA, IfcGeometryMapper::wallSolid) : élévation en parallélogramme à deux côtés
+    /// verticaux de même hauteur dans le plan du profil, extrudée horizontalement de l'épaisseur. Pieds a, b sur le plan
+    /// médian (le décalage du voile y est repris), hauteur.
+    bool slopedWall(const Solid& s, Vec3& a, Vec3& b, double& height) const
+    {
+        if (!s.profile || s.profile->type != "IFCARBITRARYCLOSEDPROFILEDEF" || s.depth <= 0 || std::abs(s.dir[2]) > 1e-6) return false;
+        const auto local = curvePoints(m_r.get(s.profile->arg(2)));
+        if (local.size() != 4) return false;
+        std::vector<Vec3> w;
+        for (const auto& p : local) w.push_back(s.frame.point(p));
+        const Vec3 along = unit(cross({ 0, 0, 1 }, s.dir));   // horizontale du voile, du pied d'origine vers l'autre
+        std::vector<int> idx { 0, 1, 2, 3 };
+        std::sort(idx.begin(), idx.end(), [&](int i, int j) { return dot(w[i], along) < dot(w[j], along); });
+        auto vertical = [&](int i, int j) { return std::abs(w[i][0] - w[j][0]) < 1e-6 && std::abs(w[i][1] - w[j][1]) < 1e-6; };
+        if (!vertical(idx[0], idx[1]) || !vertical(idx[2], idx[3])) return false;
+        const Vec3& lowA = w[idx[0]][2] < w[idx[1]][2] ? w[idx[0]] : w[idx[1]];
+        const Vec3& highA = w[idx[0]][2] < w[idx[1]][2] ? w[idx[1]] : w[idx[0]];
+        const Vec3& lowB = w[idx[2]][2] < w[idx[3]][2] ? w[idx[2]] : w[idx[3]];
+        const Vec3& highB = w[idx[2]][2] < w[idx[3]][2] ? w[idx[3]] : w[idx[2]];
+        height = highA[2] - lowA[2];
+        if (height <= 1e-9 || std::abs((highB[2] - lowB[2]) - height) > 1e-6) return false;
+        const Vec3 half = mul(s.dir, s.depth / 2.0);
+        a = add(lowA, half);
+        b = add(lowB, half);
+        return true;
+    }
+
+    /// foundationNode > 0 : semelle ou pieu relié à cet appui du fichier — la fondation y est créée (dimensions lues dans
+    /// la géométrie), au lieu d'un nœud déduit du centre de sa face supérieure.
+    std::vector<AnalyticalRef> fromGeometry(const StepEntity& product, BimCategory cat, const std::string& pdt, int foundationNode = 0)
     {
         std::vector<AnalyticalRef> refs;
         std::vector<Solid> solids;
@@ -630,7 +704,9 @@ private:
             : TSA::Model::Material::steelS235();
         TSA::Model::Section sec = TSA::Model::Section::rectangular(0.3, 0.5);
         bool hasSection = false;
-        materialOf(product.id, mat, &sec, &hasSection);
+        if (!materialOf(product.id, mat, &sec, &hasSection))
+            m_report.warnings.push_back(product.arg(2).asText() + " : aucun matériau dans le fichier, " + mat.name
+                                        + " provisoire pour les éléments de calcul déduits (à remplacer).");
 
         const bool linear = cat == BimCategory::Beam || cat == BimCategory::Column || cat == BimCategory::Member;
         if (linear)
@@ -688,7 +764,7 @@ private:
                 if (a <= 0 || b <= 0) continue;
                 using F = TSA::Model::FoundationType;
                 const F type = cat == BimCategory::Pile ? F::Pile : cat == BimCategory::Slab ? F::Raft : pdt == "STRIP_FOOTING" ? F::StripFooting : F::IsolatedFooting;
-                const int f = m_m.addFoundation(node(top), a, b, s.depth, "", type);
+                const int f = m_m.addFoundation(foundationNode > 0 ? foundationNode : node(top), a, b, s.depth, "", type);
                 if (auto* fd = m_m.getFoundation(f)) fd->setMaterial(mat);
                 refs.push_back({ ElementKind::Foundation, f });
                 ++m_report.foundations;
@@ -719,7 +795,21 @@ private:
             {
                 Frame wf;
                 double dx = 0, dy = 0;
-                if (!rectangle(s, wf, dx, dy)) { m_report.warnings.push_back(product.arg(2).asText() + " : contour de voile non rectangulaire non pris en charge."); continue; }
+                if (!rectangle(s, wf, dx, dy))
+                {
+                    Vec3 pa, pb;
+                    double hh = 0;
+                    if (slopedWall(s, pa, pb, hh))
+                    {
+                        const int w = m_m.addWall(node(pa), node(pb), hh, s.depth);
+                        if (auto* wall = m_m.getWall(w)) wall->setMaterial(mat);
+                        refs.push_back({ ElementKind::Wall, w });
+                        ++m_report.surfaces;
+                        continue;
+                    }
+                    m_report.warnings.push_back(product.arg(2).asText() + " : contour de voile non rectangulaire non pris en charge.");
+                    continue;
+                }
                 // Axe du voile selon la plus grande dimension ; décalage = distance du centre à l'axe du placement
                 const Frame base = s.frame;
                 Vec3 u = dx >= dy ? wf.x : wf.y;
@@ -750,23 +840,60 @@ private:
             {
                 BimCategory cat;
                 if (!categoryOf(p->type, cat)) continue;
+                ++m_sourceProducts;
                 const std::string pdt = p->arg(8).asText();
                 std::vector<AnalyticalRef> refs;
                 for (int a : m_assigned[p->id])
                     if (auto it = m_analyticalRef.find(a); it != m_analyticalRef.end()) refs.push_back(it->second);
-                if (refs.empty()) refs = fromGeometry(*p, cat, pdt);
+                // Liens explicites du fichier (IfcRelAssignsToProduct, comme les écrit TSA), convertis sans déduction :
+                //  - voile relié à sa surface de calcul : voile TSA (deux nœuds, hauteur, épaisseur, décalage) reconstruit
+                //    depuis la géométrie du produit, la surface verticale ne portant ni hauteur ni décalage ;
+                //  - semelle ou pieu relié à un appui : fondation sur le nœud de cet appui, dimensions lues dans sa géométrie.
+                if (refs.empty())
+                    for (int a : m_assigned[p->id])
+                    {
+                        const auto* item = m_r.get(a);
+                        if (!item) continue;
+                        if ((cat == BimCategory::Footing || cat == BimCategory::Pile) && m_connectionNode.count(a))
+                            refs = fromGeometry(*p, cat, pdt, m_connectionNode.at(a));
+                        else if (cat == BimCategory::Wall && item->type == "IFCSTRUCTURALSURFACEMEMBER")
+                            refs = fromGeometry(*p, cat, pdt);
+                        if (!refs.empty()) break;
+                    }
+                // Déduction depuis la géométrie : seulement sur demande explicite, jamais en silence.
+                bool derived = false;
+                if (refs.empty() && m_opt.deriveAnalyticalFromGeometry)
+                {
+                    refs = fromGeometry(*p, cat, pdt);
+                    derived = !refs.empty();
+                }
                 // GlobalId de la surface analytique d'un voile reconstruit depuis sa géométrie
                 if (cat == BimCategory::Wall)
                     for (int a : m_assigned[p->id])
                         if (const auto* sm = m_r.get(a); sm && refs.size() == 1) m_bim.setAnalyticalGlobalId(refs.front(), sm->arg(0).asText());
                 refs.erase(std::remove_if(refs.begin(), refs.end(), [](const AnalyticalRef& r) { return r.id <= 0; }), refs.end());
-                if (refs.empty())
-                {
-                    m_report.warnings.push_back(p->arg(2).asText() + " (" + p->type + ") : aucun élément analytique déduit, produit ignoré.");
-                    continue;
-                }
+                // Produit sans élément de calcul : le noyau IFC complet l'importe ensuite avec sa géométrie ; le lecteur
+                // interne seul le conserve « à préparer » (classe, propriétés, étage), sans géométrie propre.
+                if (refs.empty() && !m_physicalProducts) continue;
 
                 PhysicalElement e;
+                e.ifcClass = productClasses().at(p->type).name;
+                if (refs.empty())
+                {
+                    e.status = AnalyticalStatus::NeedsPreparation;
+                    e.importNotes.push_back("Aucun élément de calcul dans le fichier : préparation du modèle de calcul requise.");
+                    ++m_report.toPrepare;
+                }
+                if (derived)
+                {
+                    m_report.derived += static_cast<int>(refs.size());
+                    e.importNotes.push_back("Éléments de calcul déduits de la géométrie (axe ou extrusion) : connexions, appuis, "
+                                            "excentrements, section et matériau à vérifier.");
+                }
+                if (m_physicalProducts)
+                    m_report.items.push_back({ p->arg(0).asText(), e.ifcClass, p->arg(2).asText(),
+                                               refs.empty() ? IfcImportItem::Outcome::ToPrepare : IfcImportItem::Outcome::Analytical,
+                                               derived ? "éléments de calcul déduits de la géométrie, à vérifier" : std::string() });
                 e.globalId = p->arg(0).asText();
                 e.category = cat;
                 e.predefinedType = pdt == "NOTDEFINED" ? "" : pdt;
@@ -828,8 +955,44 @@ private:
             if (e.predefinedType.empty()) e.predefinedType = "NOTDEFINED";
             m_bim.insert(e);
         }
+        importTypes();
         m_m.setBim(m_bim);
+        completeTypeDefinitions(m_m, m_importedTypes);   // section, matériau, épaisseur repris de la première occurrence
         m_m.setModified(true);
+    }
+
+    /// Types de produits (IfcRelDefinesByType) : un ProductType par type IFC rattaché à des produits importés.
+    void importTypes()
+    {
+        static const std::map<std::string, BimCategory> categories {
+            { "IFCBEAMTYPE", BimCategory::Beam }, { "IFCCOLUMNTYPE", BimCategory::Column }, { "IFCMEMBERTYPE", BimCategory::Member },
+            { "IFCSLABTYPE", BimCategory::Slab }, { "IFCWALLTYPE", BimCategory::Wall }, { "IFCFOOTINGTYPE", BimCategory::Footing },
+            { "IFCPILETYPE", BimCategory::Pile }, { "IFCPLATETYPE", BimCategory::Plate } };
+        std::map<int, int> typeOfEntity;   // #type IFC → id du type TSA
+        for (const auto* rel : m_r.byType("IFCRELDEFINESBYTYPE"))
+        {
+            const auto* te = m_r.get(rel->arg(5));
+            if (!te) continue;
+            const auto cat = categories.find(te->type);
+            if (cat == categories.end()) continue;
+            for (int obj : rel->arg(4).refs())
+            {
+                const auto* product = m_r.get(obj);
+                const auto* p = product ? m_bim.elementByGlobalId(product->arg(0).asText()) : nullptr;
+                if (!p) continue;
+                int& tid = typeOfEntity[te->id];
+                if (!tid)
+                {
+                    ProductType t;
+                    t.globalId = te->arg(0).asText();
+                    t.name = te->arg(2).isNull() ? std::string() : te->arg(2).asText();
+                    t.category = cat->second;
+                    tid = m_bim.addType(t);
+                    m_importedTypes.push_back(tid);
+                }
+                m_bim.setProductType(p->id, tid);
+            }
+        }
     }
 
     const IfcStepReader& m_r;
@@ -838,8 +1001,11 @@ private:
     IfcImportReport m_report;
     double m_len = 1.0;        ///< facteur de longueur du fichier → m
     double m_pressure = 1.0;   ///< facteur de contrainte du fichier → Pa
+    bool m_physicalProducts = true;
     BimModel m_bim;
     std::vector<PhysicalElement> m_products;
+    std::vector<int> m_importedTypes;   ///< types créés par importTypes (définition à compléter)
+    int m_sourceProducts = 0;   ///< produits porteurs présents dans le fichier (convertis ou non)
 
     std::map<int, int> m_material, m_productOf, m_container;
     std::map<int, std::vector<int>> m_psets, m_classes, m_assigned, m_materialProps;
@@ -847,14 +1013,68 @@ private:
     std::map<std::array<long long, 3>, int> m_nodes;
     std::map<int, TSA::Model::Material> m_materials;
     std::map<int, AnalyticalRef> m_analyticalRef;   ///< #objet analytique → élément TSA
+    std::map<int, int> m_connectionNode;            ///< #IfcStructuralPointConnection → nœud TSA
     std::map<int, std::string> m_storeyLevel;       ///< #étage → id de niveau
 };
+
+/// Projet vierge (aucun nœud, élément ni produit) : ses niveaux sont ceux du gabarit par défaut du modèle.
+bool pristine(const TSA::Model::Model& m)
+{
+    return m.nodes().empty() && m.beams().empty() && m.columns().empty() && m.slabs().empty() && m.walls().empty()
+        && m.foundations().empty() && m.bim().elements().empty();
+}
+
+/// Import dans un projet vierge : les niveaux du gabarit par défaut sont mis de côté pendant l'import, pour que le
+/// projet ait exactement les étages du fichier (ni étage inventé, réexporté ensuite en IfcBuildingStorey, ni étage du
+/// fichier fondu dans un niveau du gabarit de même cote, sous le nom de ce niveau). Rétablis si le fichier n'a aucun
+/// étage (repères de travail). Imbrication sans effet : un import dans un import ne trouve plus de niveau à écarter.
+class TemplateLevels
+{
+public:
+    explicit TemplateLevels(TSA::Model::Model& m) : m_model(m)
+    {
+        auto* lm = m.levelManager();
+        if (!lm || !pristine(m)) return;
+        m_saved = lm->levels();
+        for (const auto& l : m_saved) lm->removeLevel(l.id);
+    }
+    ~TemplateLevels()
+    {
+        auto* lm = m_model.levelManager();
+        if (!lm || m_saved.empty() || !lm->levels().empty()) return;
+        for (const auto& l : m_saved) lm->addLevelWithId(l.id, l.name, l.elevation);
+    }
+    TemplateLevels(const TemplateLevels&) = delete;
+    TemplateLevels& operator=(const TemplateLevels&) = delete;
+
+private:
+    TSA::Model::Model& m_model;
+    std::vector<TSA::Coordinate::Level> m_saved;
+};
+
+/// Enveloppe ISO 10303-21 : en-tête « ISO-10303-21; » et fin « END-ISO-10303-21; ». Un fichier tronqué (transfert
+/// interrompu, disque plein) se lit sans erreur jusqu'à sa coupure : il serait importé en partie, en silence.
+std::string stepEnvelopeError(const std::string& content)
+{
+    std::size_t begin = content.rfind("\xEF\xBB\xBF", 0) == 0 ? 3 : 0;   // BOM UTF-8
+    while (begin < content.size() && std::isspace(static_cast<unsigned char>(content[begin]))) ++begin;
+    if (content.compare(begin, 13, "ISO-10303-21;") != 0) return "pas un fichier STEP : en-tête « ISO-10303-21; » absent";
+    std::size_t end = content.size();
+    while (end > begin && (std::isspace(static_cast<unsigned char>(content[end - 1])) || content[end - 1] == '\0')) --end;
+    static const std::string trailer = "END-ISO-10303-21;";
+    if (end < trailer.size() || content.compare(end - trailer.size(), trailer.size(), trailer) != 0)
+        return "fichier incomplet : fin « END-ISO-10303-21; » absente (fichier tronqué ou transfert interrompu)";
+    return {};
+}
 } // namespace
 
 IfcImportReport IfcImporter::importString(const std::string& content, TSA::Model::Model& model, const IfcImportOptions& options)
 {
     IfcStepReader reader;
     IfcImportReport r;
+    r.engine = "lecteur STEP interne";
+    if (r.error = stepEnvelopeError(content); !r.error.empty()) return r;
+    TemplateLevels templateLevels(model);
     if (!reader.parse(content, &r.error)) return r;
     const std::string& schema = reader.schema();
     if (schema.rfind("IFC", 0) != 0)
@@ -863,20 +1083,70 @@ IfcImportReport IfcImporter::importString(const std::string& content, TSA::Model
         return r;
     }
     Importer imp(reader, model, options);
-    return imp.run();
+    IfcImportReport out = imp.run();
+    out.engine = r.engine;
+    return out;
+}
+
+bool IfcImporter::fullEngineAvailable()
+{
+    return detail::fullEngineAvailable();
+}
+
+std::string IfcImporter::engineName()
+{
+    return detail::fullEngineAvailable() ? detail::fullEngineName() : "lecteur STEP interne (capacités réduites)";
 }
 
 IfcImportReport IfcImporter::importFile(const std::string& path, TSA::Model::Model& model, const IfcImportOptions& options)
 {
+    IfcImportReport r;
+    r.engine = engineName();
+    if (options.progress && !options.progress(1, "Lecture du fichier"))
+    {
+        r.canceled = true;
+        return r;
+    }
     QFile f(QString::fromStdString(path));
     if (!f.open(QIODevice::ReadOnly))
     {
-        IfcImportReport r;
         r.error = "impossible d'ouvrir « " + path + " »";
         return r;
     }
     const QByteArray bytes = f.readAll();
-    return importString(std::string(bytes.constData(), static_cast<std::size_t>(bytes.size())), model, options);
+    const std::string content(bytes.constData(), static_cast<std::size_t>(bytes.size()));
+    if (r.error = stepEnvelopeError(content); !r.error.empty()) return r;
+    TemplateLevels templateLevels(model);
+    if (!detail::fullEngineAvailable()) return importString(content, model, options);
+
+    // 1. Lecteur interne : structure spatiale, étages et modèle analytique du fichier (et déduction si demandée).
+    //    Tolérant : un fichier qu'il ne sait pas lire est importé quand même par le noyau complet, sans modèle
+    //    analytique (signalé).
+    IfcStepReader reader;
+    std::string readerError;
+    if (reader.parse(content, &readerError) && reader.schema().rfind("IFC", 0) == 0)
+    {
+        Importer imp(reader, model, options, false);
+        r = imp.run();
+        r.ok = false;
+        r.error.clear();
+        r.engine = engineName();
+    }
+    else
+        r.warnings.push_back("Lecteur STEP interne : " + (readerError.empty() ? "schéma non IFC" : readerError)
+                             + " ; modèle analytique du fichier non repris.");
+    if (options.progress && !options.progress(10, "Objets physiques et géométrie"))
+    {
+        r.canceled = true;
+        return r;
+    }
+
+    // 2. Noyau complet : tous les produits physiques, leur géométrie et leurs données.
+    if (!detail::importPhysicalProducts(path, model, options, r)) return r;
+    r.ok = r.products > 0 || r.nodes > 0 || r.members > 0 || r.surfaces > 0;
+    if (!r.ok) r.error = "aucun produit ni modèle analytique dans le fichier";
+    if (options.progress) options.progress(100, "Terminé");
+    return r;
 }
 
 } // namespace TSA::BIM::Ifc
