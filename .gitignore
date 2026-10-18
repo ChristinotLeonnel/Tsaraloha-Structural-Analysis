@@ -81,3 +81,9 @@ Thumbs.db
 *.zip
 *.7z
 *.tar.gz
+
+# Python (scripts tools/)
+__pycache__/
+
+# Copies de travail temporaires des agents Claude Code
+.claude/worktrees/
