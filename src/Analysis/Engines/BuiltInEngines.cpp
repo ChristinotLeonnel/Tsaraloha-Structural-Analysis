@@ -5,6 +5,9 @@
 #include "Custom2D/Custom2DEngine.h"
 #include "tsalab/planar/PlanarSolvers.h"
 #include "OpenSees/OpenSeesEngine.h"
+#ifdef TSA_HAS_FEM3D
+#include "Fem3D/Fem3DEngine.h"
+#endif
 #include "../OpenSeesManager.h"
 
 #include <QDir>
@@ -25,6 +28,11 @@ void registerBuiltInEngines(AnalysisEngineRegistry& registry)
         registry.registerEngine(std::make_unique<Custom2DEngine>(std::move(solvers.front())));
     else
         registry.registerEngine(std::make_unique<Custom2DEngine>());
+#ifdef TSA_HAS_FEM3D
+    // Moteur EF 3D de TSA (dépôt voisin 3DDesplacement, facultatif) : moteur SECONDAIRE, OpenSees reste le moteur 3D
+    // par défaut (premier enregistré) tant que la qualification de Fem3D dans TSA n'est pas complète.
+    registry.registerEngine(std::make_unique<Fem3DEngine>());
+#endif
 }
 
 } // namespace TSA::Analysis

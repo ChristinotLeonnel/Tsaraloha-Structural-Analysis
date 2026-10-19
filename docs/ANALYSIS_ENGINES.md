@@ -1,6 +1,6 @@
 # Analyse multi-moteurs
 
-TSA calcule par l'intermédiaire de **moteurs interchangeables** (OpenSees, Custom2D, futurs moteurs).
+TSA calcule par l'intermédiaire de **moteurs interchangeables** (OpenSees, Custom2D, Fem3D, futurs moteurs).
 Le modèle TSA, l'UI, les résultats et le format `.tsa` ne dépendent d'aucun moteur : chaque moteur est
 un adaptateur derrière l'interface `TSA::Analysis::AnalysisEngine`.
 
@@ -20,8 +20,8 @@ UI Analysis (AnalysisDialog, AnalysisManagerPanel)   console / Blueprint / IA (a
                          │ AnalysisModel
           ┌──────────────┼──────────────────┐
           ▼              ▼                  ▼
-   OpenSeesEngine   Custom2DEngine     (futur moteur)
-   (OpenSeesSolver) (Custom2D::ISolver)
+   OpenSeesEngine   Custom2DEngine     Fem3DEngine (facultatif)
+   (OpenSeesSolver) (Custom2D::ISolver) (bibliothèque fem3d, ../3DDesplacement)
           └──────────────┴──────────────────┘
                          │ ResultsModel (ids TSA)
                          ▼
@@ -43,10 +43,11 @@ UI Analysis (AnalysisDialog, AnalysisManagerPanel)   console / Blueprint / IA (a
 | Enregistrement des moteurs intégrés | `src/Analysis/Engines/BuiltInEngines.cpp` |
 | Adaptateur OpenSees | `src/Analysis/Engines/OpenSees/OpenSeesEngine.*` |
 | Contrat du solveur 2D, conversion, moteur | `src/Analysis/Engines/Custom2D/*` |
+| Moteur EF 3D Fem3D (dépôt voisin, facultatif) : conversion, moteur, secours et comparaison | `src/Analysis/Engines/Fem3D/*`, `src/UI/Analysis/Fem3DOptionsWidget.*` |
 | Panneaux d'options par moteur (+ registre de fabriques) | `src/UI/Analysis/AnalysisEngineOptions.*`, `OpenSeesOptionsWidget.*` |
 | Fenêtre Analysis commune | `src/UI/Analysis/AnalysisDialog.*` |
 | Résultats de la barre sélectionnée (Propriétés) | `src/UI/Properties/ElementResultsPanel.*` |
-| Tests | `tests/test_analysis_engines.cpp` (suite `engines`, tests 130-138, 196) ; TSALab `lab/Tests` (L7) |
+| Tests | `tests/test_analysis_engines.cpp` (suite `engines`, tests 130-138, 196, 476-480) ; TSALab `lab/Tests` (L7) |
 
 ## Portée (AnalysisScope)
 
@@ -140,6 +141,34 @@ class MySolver final : public tsalab::planar::ISolver { /* name, version, solve,
 
 Puis mettre à jour `Custom2DEngine::capabilities()` selon ce que le solveur fait réellement.
 
+### Fem3D (`fem3d`) — moteur secondaire
+
+Moteur éléments finis 3D de TSA, développé dans le dépôt voisin **3DDesplacement** (TSA-3D-FEM-Engine, bibliothèque
+`fem3d`, C++20 + Eigen, sans Qt). **Facultatif** : CMake le cherche dans `../3DDesplacement` (`TSA_FEM3D_DIR`) ;
+présent, il est compilé (`TSA_HAS_FEM3D`) et enregistré **après** OpenSees, qui reste le moteur 3D par défaut tant que
+la qualification de Fem3D dans TSA n'est pas complète (niveau 5, `3DDesplacement/docs/validation/QUALIFICATION.md`).
+
+- **Périmètre** (capacités) : statique linéaire 3D ; poutres et poteaux d'Euler–Bernoulli (rigidité exacte, comme
+  `elasticBeamColumn`) ; rotules My, Mz ; appuis et ressorts ; charges nodales ; charges réparties uniformes ou
+  linéaires sur toute la longueur ; poids propre. Validé contre OpenSees 3.8.0 dans son dépôt (20 cas × 2
+  formulations, 2 657 valeurs sans écart) et dans TSA (test 477 : portique spatial, stations comprises).
+- **Conversion** (`Fem3DAdapter`) : réutilise `OpenSeesModelMap` (barres, v_xz, ressorts), `loadPatterns` et
+  `beamElementLoads` (cas, combinaison, poids propre, charges locales) ; les axes locaux de Fem3D sont comparés à ceux
+  de TSA (refus s'ils diffèrent). Résultats : efforts d'extrémité Fem3D (convention `localForce`) → stations par
+  `OpenSeesResultsReader::beamResultsFromEndForces`, la même reconstruction que pour OpenSees ; équilibre global et
+  contrôle des blocages automatiques par les fonctions communes.
+- **Hors périmètre** (refus avec la raison) : charges ponctuelles ou partielles sur barre, moments répartis, coques ;
+  relâchements de N, V ou T (erreur). Treillis, câbles, non-linéaire, modal : refusés par la validation générique.
+- **Options** (`mode`, `fallback`) : `fem3d` (défaut) ou `compare` (Fem3D puis OpenSees ; résultats affichés = Fem3D,
+  table « Comparaison Fem3D / OpenSees », avertissement au-delà de max(1e-6·|réf|, 1e-9·échelle), aucune fusion) ;
+  secours `none` (défaut : refus) ou `opensees` (annoncé à la validation, calcul par OpenSees,
+  `AnalysisRunResult::producedBy` → résultats étiquetés OpenSees). Un mécanisme ou une donnée invalide n'est jamais
+  confié à un autre moteur.
+- Pas de maillage du solveur joint (`setSolverMesh`) : un élément fini par barre, sans nœud auxiliaire.
+
+Documentation du moteur : `3DDesplacement/docs/` (théorie, conventions, audit indépendant, plan de validation,
+qualification, bibliographie, limites).
+
 ## Ajouter un moteur
 
 1. Écrire `class XEngine : public AnalysisEngine` (info, capacités, disponibilité, validate, run, cancel) ;
@@ -156,7 +185,8 @@ grilles, des WorkPlanes ni de la sélection.
 
 `ResultsModel` reste le modèle commun. Ajouts : `ResultAvailability` (catégories = capacité déclarée ET
 données présentes, renseignée par `AnalysisManager`), `EngineResultTable` (résultats propres à un
-moteur), `AnalysisExecutionMetadata::engineId / analysisScope / analysisDimension`. Le dock « Données
+moteur), `AnalysisExecutionMetadata::engineId / analysisScope / analysisDimension` (identité du moteur qui a
+réellement produit les résultats : `AnalysisRunResult::producedBy` pour un calcul délégué). Le dock « Données
 d'analyse » masque les onglets non fournis et ajoute les tables propres ; le panneau Propriétés affiche
 les efforts de la barre sélectionnée avec le moteur et la portée.
 
