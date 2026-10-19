@@ -1,21 +1,21 @@
 # État des traductions
 
-Produit par `tools/i18n/check_translations.py --report` le 2026-10-18. Langue source : français ([I18N.md](I18N.md)).
+Produit par `tools/i18n/check_translations.py --report` le 2026-10-19. Langue source : français ([I18N.md](I18N.md)).
 
 
 ## Textes extraits du code (tr, translate, QT_TRANSLATE_NOOP)
 
 | Langue | Traduits | Total | Couverture | Manquants | Erreurs |
 |---|---|---|---|---|---|
-| English | 6393 | 6393 | 100.0 % | 0 | 0 |
-| Malagasy | 6393 | 6393 | 100.0 % | 0 | 0 |
+| English | 6427 | 6427 | 100.0 % | 0 | 0 |
+| Malagasy | 6427 | 6427 | 100.0 % | 0 | 0 |
 
 ## Par contexte (classe ou zone de l'interface)
 
 | Contexte | English | Malagasy |
 |---|---|---|
-| `MainWindow` | 955 / 955 ✓ | 955 / 955 ✓ |
-| `CommandCatalog` | 534 / 534 ✓ | 534 / 534 ✓ |
+| `MainWindow` | 961 / 961 ✓ | 961 / 961 ✓ |
+| `CommandCatalog` | 536 / 536 ✓ | 536 / 536 ✓ |
 | `TSA::Automation::Commands` | 164 / 164 ✓ | 164 / 164 ✓ |
 | `TSA::UI::BlueprintEditor` | 156 / 156 ✓ | 156 / 156 ✓ |
 | `TSA::UI::MeshSettingsPanel` | 138 / 138 ✓ | 138 / 138 ✓ |
@@ -52,9 +52,9 @@ Produit par `tools/i18n/check_translations.py --report` le 2026-10-18. Langue so
 | `TSA::UI::DisplayMenus` | 46 / 46 ✓ | 46 / 46 ✓ |
 | `TSA::UI::GridSettingsDialog` | 46 / 46 ✓ | 46 / 46 ✓ |
 | `TSA::UI::StartCenter` | 46 / 46 ✓ | 46 / 46 ✓ |
+| `TSA::UI::AppShell` | 43 / 43 ✓ | 43 / 43 ✓ |
 | `TSA::UI::BarCreationDialog` | 43 / 43 ✓ | 43 / 43 ✓ |
 | `TSA::UI::AnalysisDialog` | 42 / 42 ✓ | 42 / 42 ✓ |
-| `TSA::UI::AppShell` | 42 / 42 ✓ | 42 / 42 ✓ |
 | `TSA::UI::StructurePresetDialog` | 42 / 42 ✓ | 42 / 42 ✓ |
 | `TSA::Interaction::ElementCreation` | 41 / 41 ✓ | 41 / 41 ✓ |
 | `TSA::UI::LoadPropertiesView` | 41 / 41 ✓ | 41 / 41 ✓ |
@@ -93,6 +93,7 @@ Produit par `tools/i18n/check_translations.py --report` le 2026-10-18. Langue so
 | `TSA::Interaction::InteractionManager` | 22 / 22 ✓ | 22 / 22 ✓ |
 | `TSA::UI::StructuralElementsDock` | 22 / 22 ✓ | 22 / 22 ✓ |
 | `TSA::UI::HelpDialog` | 21 / 21 ✓ | 21 / 21 ✓ |
+| `TSA::UI::NewProjectDialog` | 21 / 21 ✓ | 21 / 21 ✓ |
 | `TSA::Viewer::MeshVisual` | 21 / 21 ✓ | 21 / 21 ✓ |
 | `TSA::Analysis::OpenSeesResultsReader` | 20 / 20 ✓ | 20 / 20 ✓ |
 | `TSA::Mesh::MeshResultField` | 20 / 20 ✓ | 20 / 20 ✓ |
@@ -106,7 +107,6 @@ Produit par `tools/i18n/check_translations.py --report` le 2026-10-18. Langue so
 | `TSA::UI::NodeSelectionDialog` | 19 / 19 ✓ | 19 / 19 ✓ |
 | `TSA::UI::BimProductPropertiesView` | 18 / 18 ✓ | 18 / 18 ✓ |
 | `TSA::UI::DimensionEditDialog` | 18 / 18 ✓ | 18 / 18 ✓ |
-| `TSA::UI::NewProjectDialog` | 18 / 18 ✓ | 18 / 18 ✓ |
 | `TSA::Analysis::CalculationSnapshot` | 17 / 17 ✓ | 17 / 17 ✓ |
 | `TSA::BIM::Ifc::IfcOpenShellImport` | 17 / 17 ✓ | 17 / 17 ✓ |
 | `TSA::Mesh::MeshDisplayModel` | 17 / 17 ✓ | 17 / 17 ✓ |
@@ -129,6 +129,7 @@ Produit par `tools/i18n/check_translations.py --report` le 2026-10-18. Langue so
 | `TSA::UI::WallPropertiesView` | 13 / 13 ✓ | 13 / 13 ✓ |
 | `TSA::Analysis::SolverMesh` | 12 / 12 ✓ | 12 / 12 ✓ |
 | `TSA::Mesh::SurfaceLoads` | 12 / 12 ✓ | 12 / 12 ✓ |
+| `TSA::Project::ProjectTemplateStore` | 12 / 12 ✓ | 12 / 12 ✓ |
 | `TSA::UI::GlobalSearchWidget` | 12 / 12 ✓ | 12 / 12 ✓ |
 | `TSA::UI::LogConsoleDock` | 12 / 12 ✓ | 12 / 12 ✓ |
 | `TSA::UI::MemberEndNodesWidget` | 12 / 12 ✓ | 12 / 12 ✓ |
@@ -139,6 +140,7 @@ Produit par `tools/i18n/check_translations.py --report` le 2026-10-18. Langue so
 | `TSA::Analysis::Custom2DEngine` | 10 / 10 ✓ | 10 / 10 ✓ |
 | `TSA::Model::SupportDefinition` | 10 / 10 ✓ | 10 / 10 ✓ |
 | `TSA::UI::IfcImportOptionsDialog` | 10 / 10 ✓ | 10 / 10 ✓ |
+| `TSA::UI::SaveProjectTemplateDialog` | 10 / 10 ✓ | 10 / 10 ✓ |
 | `TSA::Analysis::ResultsExport` | 9 / 9 ✓ | 9 / 9 ✓ |
 | `TSA::UI::PointSelector` | 9 / 9 ✓ | 9 / 9 ✓ |
 | `TSA::Viewer::ModelDisplayMode` | 9 / 9 ✓ | 9 / 9 ✓ |
@@ -176,12 +178,12 @@ Produit par `tools/i18n/check_translations.py --report` le 2026-10-18. Langue so
 
 ## Textes encore écrits hors `tr()`
 
-Littéraux français du code qui ne passent pas par le système de traduction : ils restent en français quelle que soit la langue choisie. Total : **2289** (heuristique : chaînes contenant des mots ou accents français ; une partie n'est jamais affichée : scripts Tcl, consignes envoyées à l'IA, journaux techniques).
+Littéraux français du code qui ne passent pas par le système de traduction : ils restent en français quelle que soit la langue choisie. Total : **2291** (heuristique : chaînes contenant des mots ou accents français ; une partie n'est jamais affichée : scripts Tcl, consignes envoyées à l'IA, journaux techniques).
 
 | Dossier de `src/` | Littéraux |
 |---|---|
 | `NDC` | 598 |
-| `UI` | 287 |
+| `UI` | 289 |
 | `Standards` | 234 |
 | `AI` | 215 |
 | `Analysis` | 200 |
@@ -199,12 +201,12 @@ Littéraux français du code qui ne passent pas par le système de traduction : 
 | `Blueprint` | 25 |
 | `Templates` | 24 |
 | `Automation` | 22 |
+| `Grid` | 18 |
 | `Geometry` | 17 |
 | `Annotation` | 16 |
-| `Grid` | 16 |
 | `Viewer` | 16 |
-| `Coordinate` | 9 |
 | `Library` | 9 |
+| `Coordinate` | 7 |
 | `IO` | 7 |
 | `Plugins` | 5 |
 | `Api` | 4 |

@@ -6,14 +6,14 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 462;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 22 tests « drawing » + test 429 (surfaces) + 17 tests « views » + 14 tests « i18n » + 4 tests « ribbon »
+    int expectedTotal = 470;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 22 tests « drawing » + test 429 (surfaces) + 17 tests « views » + 14 tests « i18n » + 4 tests « ribbon » + 8 tests « templates_wp »
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|ifc|drawing|views|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display|multidoc|i18n|ribbon]" << std::endl;
+            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|ifc|drawing|views|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display|multidoc|i18n|ribbon|templates_wp]" << std::endl;
             return 0;
         }
     }
@@ -239,6 +239,10 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "ribbon") {
         std::cout << "\n--- [Suite 34/34] Ruban : organisation, commandes atteignables, langues (Tests 464-467) ---" << std::endl;
         if (!runSuite_Ribbon(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "templates_wp") {
+        std::cout << "\n--- [Suite 36/36] Templates de projets, plans de travail et grille réelle (Tests 468-475) ---" << std::endl;
+        if (!runSuite_ProjectTemplates(passed)) allOk = false;
     }
 #endif
 

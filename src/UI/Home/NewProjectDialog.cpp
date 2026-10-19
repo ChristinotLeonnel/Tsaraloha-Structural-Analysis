@@ -1,5 +1,6 @@
 #include "NewProjectDialog.h"
 #include "App/ProductInfo.h"
+#include "Project/ProjectTemplates.h"
 
 #include <QComboBox>
 #include <QDir>
@@ -59,9 +60,23 @@ NewProjectDialog::NewProjectDialog(QWidget* parent)
     form->addRow(tr("Emplacement :"), dirRow);
 
     m_template = new QComboBox(this);
+    m_template->setObjectName(QStringLiteral("TSANewProjectTemplate"));
     m_template->addItem(tr("Structure générale (grille par défaut)"), static_cast<int>(ProjectTemplate::GeneralStructure));
     m_template->addItem(tr("Modèle vide (sans grille)"), static_cast<int>(ProjectTemplate::Empty));
+    // Templates enregistrés par l'utilisateur (« Enregistrer comme template… ») : chemin du .tsa en donnée
+    const auto userTemplates = TSA::Project::ProjectTemplateStore().list();
+    if (!userTemplates.empty()) m_template->insertSeparator(m_template->count());
+    for (const auto& t : userTemplates)
+    {
+        m_template->addItem(t.name, t.path);
+        m_template->setItemData(m_template->count() - 1, t.description, Qt::UserRole + 1);
+        m_template->setItemData(m_template->count() - 1, t.description.isEmpty() ? t.name : t.description, Qt::ToolTipRole);
+    }
     form->addRow(tr("Template :"), m_template);
+    m_templateInfo = new QLabel(this);
+    m_templateInfo->setWordWrap(true);
+    m_templateInfo->setStyleSheet("color: palette(mid); font-size: 11px;");
+    form->addRow(QString(), m_templateInfo);
     root->addLayout(form);
 
     m_target = new QLabel(this);
@@ -84,9 +99,27 @@ NewProjectDialog::NewProjectDialog(QWidget* parent)
     connect(btnBrowse, &QPushButton::clicked, this, &NewProjectDialog::browse);
     connect(m_name, &QLineEdit::textChanged, this, &NewProjectDialog::validate);
     connect(m_directory, &QLineEdit::textChanged, this, &NewProjectDialog::validate);
+    connect(m_template, qOverload<int>(&QComboBox::currentIndexChanged), this, &NewProjectDialog::updateTemplateInfo);
     connect(m_btnCreate, &QPushButton::clicked, this, &NewProjectDialog::accept);
     connect(btnCancel, &QPushButton::clicked, this, &NewProjectDialog::reject);
+    updateTemplateInfo();
     validate();
+}
+
+void NewProjectDialog::updateTemplateInfo()
+{
+    const QVariant data = m_template->currentData();
+    if (data.typeId() == QMetaType::QString)
+    {
+        const QString description = m_template->currentData(Qt::UserRole + 1).toString();
+        m_templateInfo->setText(description.isEmpty() ? tr("Template enregistré (sans description).") : description);
+    }
+    else
+    {
+        m_templateInfo->setText(data.toInt() == static_cast<int>(ProjectTemplate::Empty)
+                                    ? tr("Modèle vide, sans grille ni niveau.")
+                                    : tr("Grille cartésienne par défaut et ses niveaux."));
+    }
 }
 
 NewProjectSettings NewProjectDialog::settings() const
@@ -96,7 +129,16 @@ NewProjectSettings NewProjectDialog::settings() const
     if (s.name.endsWith(TSA::Product::projectExtension(), Qt::CaseInsensitive))
         s.name.chop(TSA::Product::projectExtension().size());
     s.directory = QDir::cleanPath(QDir::fromNativeSeparators(m_directory->text().trimmed()));
-    s.projectTemplate = static_cast<ProjectTemplate>(m_template->currentData().toInt());
+    const QVariant data = m_template->currentData();
+    if (data.typeId() == QMetaType::QString)
+    {
+        s.userTemplatePath = data.toString();
+        s.userTemplateName = m_template->currentText();
+    }
+    else
+    {
+        s.projectTemplate = static_cast<ProjectTemplate>(data.toInt());
+    }
     return s;
 }
 

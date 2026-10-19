@@ -100,6 +100,11 @@ void MainWindow::createActions()
     m_actionSaveAs->setToolTip(tr("Enregistrer le projet sous un nouveau nom (Ctrl+Shift+S)"));
     connect(m_actionSaveAs, &QAction::triggered, this, &MainWindow::onActionSaveAs);
 
+    m_actionSaveAsTemplate = new QAction(tr("Enregistrer comme template…"), this);
+    m_actionSaveAsTemplate->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file/save_as_template.svg")));
+    m_actionSaveAsTemplate->setToolTip(tr("Enregistrer le projet comme modèle réutilisable pour de nouveaux projets"));
+    connect(m_actionSaveAsTemplate, &QAction::triggered, this, &MainWindow::onActionSaveAsTemplate);
+
     m_actionCloseProject = new QAction(tr("&Fermer le projet"), this);
     m_actionCloseProject->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/file/file_close.svg")));
     m_actionCloseProject->setToolTip(tr("Fermer le projet et revenir au Start Center"));

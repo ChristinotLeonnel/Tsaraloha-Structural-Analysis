@@ -36,6 +36,14 @@
         <translation>Save the project under a new name</translation>
     </message>
     <message>
+        <source>Enregistrer comme template</source>
+        <translation>Save as template</translation>
+    </message>
+    <message>
+        <source>Enregistrer le projet comme modèle réutilisable (grille, niveaux, plans de travail, réglages) pour créer de nouveaux projets</source>
+        <translation>Save the project as a reusable template (grid, levels, work planes, settings) for creating new projects</translation>
+    </message>
+    <message>
         <source>Fermer le projet</source>
         <translation>Close project</translation>
     </message>
@@ -2616,6 +2624,10 @@ Do you want to save the changes before continuing?</translation>
         <translation>create a project</translation>
     </message>
     <message>
+        <source>Nouveau projet créé depuis le template « %1 » : %2</source>
+        <translation>New project created from template “%1”: %2</translation>
+    </message>
+    <message>
         <source>Nouveau projet créé : %1</source>
         <translation>New project created: %1</translation>
     </message>
@@ -2650,6 +2662,18 @@ Do you want to save the changes before continuing?</translation>
     <message>
         <source>Nouveau projet initialisé.</source>
         <translation>New project initialised.</translation>
+    </message>
+    <message>
+        <source>Enregistrer comme template</source>
+        <translation>Save as template</translation>
+    </message>
+    <message>
+        <source>Un template « %1 » existe déjà. Le remplacer par le projet actuel ?</source>
+        <translation>A template “%1” already exists. Replace it with the current project?</translation>
+    </message>
+    <message>
+        <source>Template enregistré : %1 (%2)</source>
+        <translation>Template saved: %1 (%2)</translation>
     </message>
     <message>
         <source>Projet</source>
@@ -2838,6 +2862,14 @@ Do you want to save the changes before continuing?</translation>
     <message>
         <source>Enregistrer le projet sous un nouveau nom (Ctrl+Shift+S)</source>
         <translation>Save the project under a new name (Ctrl+Shift+S)</translation>
+    </message>
+    <message>
+        <source>Enregistrer comme template…</source>
+        <translation>Save as template…</translation>
+    </message>
+    <message>
+        <source>Enregistrer le projet comme modèle réutilisable pour de nouveaux projets</source>
+        <translation>Save the project as a reusable template for new projects</translation>
     </message>
     <message>
         <source>&amp;Fermer le projet</source>
@@ -13135,6 +13167,57 @@ Body: %5 node(s), run in a nested execution; its log is carried over, prefixed w
     </message>
 </context>
 <context>
+    <name>TSA::Project::ProjectTemplateStore</name>
+    <message>
+        <source>%1 : fiche du template absente (nom du fichier utilisé)</source>
+        <translation>%1: template information file missing (file name used)</translation>
+    </message>
+    <message>
+        <source>%1 : fiche du template illisible (nom du fichier utilisé)</source>
+        <translation>%1: template information file unreadable (file name used)</translation>
+    </message>
+    <message>
+        <source>Nom de template vide ou composé uniquement de caractères interdits.</source>
+        <translation>Template name empty or made only of forbidden characters.</translation>
+    </message>
+    <message>
+        <source>Impossible de créer le dossier des templates %1</source>
+        <translation>Unable to create the templates folder %1</translation>
+    </message>
+    <message>
+        <source>Un template « %1 » existe déjà.</source>
+        <translation>A template “%1” already exists.</translation>
+    </message>
+    <message>
+        <source>Écriture du template impossible : %1</source>
+        <translation>Unable to write the template: %1</translation>
+    </message>
+    <message>
+        <source>Le template existant %1 ne peut pas être remplacé (fichier ouvert ou protégé).</source>
+        <translation>The existing template %1 cannot be replaced (file open or protected).</translation>
+    </message>
+    <message>
+        <source>Template enregistré, mais sa fiche (nom, description) n'a pas pu être écrite : %1</source>
+        <translation>Template saved, but its information file (name, description) could not be written: %1</translation>
+    </message>
+    <message>
+        <source>Template introuvable : %1</source>
+        <translation>Template not found: %1</translation>
+    </message>
+    <message>
+        <source>Template « %1 » illisible : %2</source>
+        <translation>Template “%1” unreadable: %2</translation>
+    </message>
+    <message>
+        <source>Un fichier existe déjà : %1</source>
+        <translation>A file already exists: %1</translation>
+    </message>
+    <message>
+        <source>Création du projet impossible : %1</source>
+        <translation>Unable to create the project: %1</translation>
+    </message>
+</context>
+<context>
     <name>TSA::Standards::ModelValidator</name>
     <message>
         <source> [Réf: %1]</source>
@@ -14981,6 +15064,10 @@ Each restraint is listed before the analysis and reported if it carries a force.
     <message>
         <source>Enregistrer sous…</source>
         <translation>Save as…</translation>
+    </message>
+    <message>
+        <source>Enregistrer comme template…</source>
+        <translation>Save as template…</translation>
     </message>
     <message>
         <source>Annuler</source>
@@ -21578,6 +21665,18 @@ Do you want to select it rather than create a duplicate?</translation>
         <translation>Create</translation>
     </message>
     <message>
+        <source>Template enregistré (sans description).</source>
+        <translation>Saved template (no description).</translation>
+    </message>
+    <message>
+        <source>Modèle vide, sans grille ni niveau.</source>
+        <translation>Empty model, with no grid or level.</translation>
+    </message>
+    <message>
+        <source>Grille cartésienne par défaut et ses niveaux.</source>
+        <translation>Default Cartesian grid and its levels.</translation>
+    </message>
+    <message>
         <source>Emplacement du projet</source>
         <translation>Project location</translation>
     </message>
@@ -23666,6 +23765,49 @@ Double-click to open</translation>
     <message>
         <source>Aide</source>
         <translation>Help</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::UI::SaveProjectTemplateDialog</name>
+    <message>
+        <source>Enregistrer comme template</source>
+        <translation>Save as template</translation>
+    </message>
+    <message>
+        <source>Le template reprend tout le contenu du projet : grille et axes (coordonnées réelles), niveaux, plans de travail, objets, cas de charge et réglages. Les résultats de calcul ne sont jamais enregistrés. Les projets créés depuis ce template en sont des copies indépendantes.</source>
+        <translation>The template contains the whole project: grid and axes (actual coordinates), levels, work planes, objects, load cases and settings. Analysis results are never saved. Projects created from this template are independent copies of it.</translation>
+    </message>
+    <message>
+        <source>Nom :</source>
+        <translation>Name:</translation>
+    </message>
+    <message>
+        <source>Description facultative (usage, normes, unités…)</source>
+        <translation>Optional description (use, standards, units…)</translation>
+    </message>
+    <message>
+        <source>Description :</source>
+        <translation>Description:</translation>
+    </message>
+    <message>
+        <source>Dossier des templates : %1</source>
+        <translation>Templates folder: %1</translation>
+    </message>
+    <message>
+        <source>Annuler</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>Enregistrer</source>
+        <translation>Save</translation>
+    </message>
+    <message>
+        <source>Saisissez un nom (les caractères &lt; &gt; : " / \ | ? * sont remplacés).</source>
+        <translation>Enter a name (the characters &lt; &gt; : " / \ | ? * are replaced).</translation>
+    </message>
+    <message>
+        <source>Un template « %1 » existe déjà : son remplacement vous sera demandé.</source>
+        <translation>A template “%1” already exists: you will be asked to confirm its replacement.</translation>
     </message>
 </context>
 <context>

@@ -11,6 +11,7 @@
 #include "../Annotation/DimensionService.h"
 #include "../Coordinate/WorkPlane.h"
 #include "../Grid/GridManager.h"
+#include "../Grid/GridCoordinateSync.h"
 #include "../Grid/GridSnapManager.h"
 #include "ModelTree/ModelTreeWidget.h"
 #include "Properties/PropertyPanel.h"
@@ -60,6 +61,8 @@
 #include "../Commands/ModifyCommands.h"
 #include "../Commands/CommandCatalog.h"
 #include "Home/NewProjectDialog.h"
+#include "Home/SaveProjectTemplateDialog.h"
+#include "../Project/ProjectTemplates.h"
 
 #include <QMetaMethod>
 #include <QMenuBar>
@@ -71,6 +74,7 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QFileDialog>
+#include <QDir>
 #include <QFileInfo>
 #include <QElapsedTimer>
 #include <QTimer>
@@ -117,24 +121,21 @@ MainWindow::MainWindow(QWidget* parent)
     // Grilles rattachées au modèle : leurs définitions entrent dans l'historique Annuler (BUG-003).
     m_model->setGridManager(m_gridManager);
 
-    // Grille 3D initiale : synchronisée avec le système de coordonnées et de niveaux unifié
+    // Grille 3D initiale : la grille par défaut d'un nouveau projet (ProjectManager::newProject) ; niveaux et axes du
+    // repère en sont dérivés (auparavant l'inverse : la grille recopiait des valeurs fixes du repère).
     m_gridManager->clearAllGrids();
 
     TSA::Grid::GridDefinition def("Grille Bâtiment", TSA::Grid::GridType::Cartesian);
     def.setOrigin(0.0, 0.0, 0.0);
-    if (m_model && m_model->coordinateSystem())
-    {
-        def.setXPositions(m_model->coordinateSystem()->xPositions());
-        def.setYPositions(m_model->coordinateSystem()->yPositions());
-        if (m_model->levelManager())
-        {
-            def.setZLevels(m_model->levelManager()->elevationList());
-        }
-    }
     auto* defaultGrid = m_gridManager->addGrid(def);
     if (defaultGrid)
     {
         m_gridManager->setActiveGridId(defaultGrid->id());
+    }
+    if (m_model && defaultGrid)
+    {
+        if (m_model->levelManager()) TSA::Grid::applyGridLevels(defaultGrid->definition(), *m_model->levelManager());
+        if (m_model->coordinateSystem()) TSA::Grid::syncCoordinateSystem(&defaultGrid->definition(), *m_model->coordinateSystem());
     }
 
     if (m_model && m_model->levelManager())
@@ -142,9 +143,13 @@ MainWindow::MainWindow(QWidget* parent)
         connect(m_model->levelManager(), &TSA::Coordinate::LevelManager::levelsChanged, this, [this]() {
             if (auto* grid = m_gridManager->activeGrid())
             {
+                // Altitudes de la grille = niveaux du modèle, mesurées depuis l'origine de la grille, noms compris
                 auto gdef = grid->definition();
-                gdef.setZLevels(m_model->levelManager()->elevationList());
+                std::vector<double> relative;
+                for (double z : m_model->levelManager()->elevationList()) relative.push_back(z - gdef.origin().Z());
+                gdef.setZAxes(relative, m_model->levelManager()->levelNames(), gdef.zIsBold());
                 grid->updateDefinition(gdef);
+                if (m_model->coordinateSystem()) TSA::Grid::syncCoordinateSystem(&grid->definition(), *m_model->coordinateSystem());
                 m_occView->rebuildGrid();
             }
             if (m_viewportContainer)
@@ -185,18 +190,21 @@ MainWindow::MainWindow(QWidget* parent)
         m_ndcWidget->setModel(m_model);
     }
 
-    connect(m_gridManager, &TSA::Grid::GridManager::gridAdded, this, [this]() {
+    // Grille modifiée : repère du modèle reconstruit depuis la grille active (axes réels, libellés attachés aux
+    // coordonnées), puis liste des plans de travail actualisée sans déplacer le plan actif.
+    auto onGridChanged = [this]() {
+        if (m_model && m_model->coordinateSystem())
+        {
+            const auto* active = m_gridManager->activeGrid();
+            TSA::Grid::syncCoordinateSystem(active ? &active->definition() : nullptr, *m_model->coordinateSystem());
+        }
+        if (m_viewportContainer) m_viewportContainer->refreshAvailablePlanes();
         m_occView->rebuildGrid();
-    });
-    connect(m_gridManager, &TSA::Grid::GridManager::gridRemoved, this, [this]() {
-        m_occView->rebuildGrid();
-    });
-    connect(m_gridManager, &TSA::Grid::GridManager::gridModified, this, [this]() {
-        m_occView->rebuildGrid();
-    });
-    connect(m_gridManager, &TSA::Grid::GridManager::activeGridChanged, this, [this]() {
-        m_occView->rebuildGrid();
-    });
+    };
+    connect(m_gridManager, &TSA::Grid::GridManager::gridAdded, this, onGridChanged);
+    connect(m_gridManager, &TSA::Grid::GridManager::gridRemoved, this, onGridChanged);
+    connect(m_gridManager, &TSA::Grid::GridManager::gridModified, this, onGridChanged);
+    connect(m_gridManager, &TSA::Grid::GridManager::activeGridChanged, this, onGridChanged);
     connect(m_gridManager, &TSA::Grid::GridManager::gridVisibilityChanged, this, [this]() {
         m_occView->rebuildGrid();
     });
@@ -1475,6 +1483,23 @@ bool MainWindow::createProject(const TSA::UI::NewProjectSettings& settings)
 {
     if (!confirmNoRunningAnalysis(tr("créer un projet")))
         return false;
+    if (!settings.userTemplatePath.isEmpty())
+    {
+        // Template enregistré : copie indépendante écrite dans le nouveau fichier, puis ouverture normale du projet
+        TSA::Project::ProjectTemplateInfo info;
+        info.path = settings.userTemplatePath;
+        info.name = settings.userTemplateName;
+        QString error;
+        if (!TSA::Project::ProjectTemplateStore(QFileInfo(info.path).absolutePath()).createProject(info, settings.filePath(), settings.name, &error))
+        {
+            QMessageBox::warning(this, tr("Nouveau projet"), error);
+            return false;
+        }
+        if (!loadFile(settings.filePath())) return false;
+        if (m_consoleDock)
+            m_consoleDock->appendLog(tr("Nouveau projet créé depuis le template « %1 » : %2").arg(info.name, settings.filePath()), "SYS");
+        return true;
+    }
     resetWorkspace(settings.projectTemplate);
     if (m_projectManager) m_projectManager->setProjectName(settings.name);
     const QString path = settings.filePath();
@@ -1517,7 +1542,10 @@ void MainWindow::resetWorkspace(TSA::UI::ProjectTemplate projectTemplate)
         m_model->clearUndoRedo();
     }
     if (projectTemplate == TSA::UI::ProjectTemplate::Empty && m_gridManager)
+    {
         m_gridManager->clearAllGrids();
+        if (m_model && m_model->levelManager()) m_model->levelManager()->clear();   // modèle vide : ni grille, ni niveaux
+    }
     restoreAnalysisContextFromModel();   // nouveau projet : réglages d'analyse par défaut
 
     // Résultats du projet précédent : jamais affichés sur un autre modèle.
@@ -1606,6 +1634,33 @@ void MainWindow::onActionSave()
 void MainWindow::onActionSaveAs()
 {
     saveFile(QString());
+}
+
+void MainWindow::onActionSaveAsTemplate()
+{
+    // Le projet n'est que lu : chemin, nom et état « modifié » du projet ouvert restent inchangés
+    if (!m_model) return;
+    const TSA::Project::ProjectTemplateStore store;
+    TSA::UI::SaveProjectTemplateDialog dialog(store, m_projectManager ? m_projectManager->projectName() : QString(), this);
+    if (dialog.exec() != QDialog::Accepted) return;
+    auto overwrite = TSA::Project::ProjectTemplateStore::Overwrite::Refuse;
+    if (const auto existing = store.find(dialog.templateName()))
+    {
+        if (QMessageBox::question(this, tr("Enregistrer comme template"),
+                                  tr("Un template « %1 » existe déjà. Le remplacer par le projet actuel ?").arg(existing->name),
+                                  QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+            return;
+        overwrite = TSA::Project::ProjectTemplateStore::Overwrite::Replace;
+    }
+    QString error;
+    TSA::Project::ProjectTemplateInfo saved;
+    if (!store.save(dialog.templateName(), dialog.description(), *m_model, m_gridManager, overwrite, &error, &saved))
+    {
+        QMessageBox::warning(this, tr("Enregistrer comme template"), error);
+        return;
+    }
+    if (m_consoleDock)
+        m_consoleDock->appendLog(tr("Template enregistré : %1 (%2)").arg(saved.name, QDir::toNativeSeparators(saved.path)), "SYS");
 }
 
 bool MainWindow::saveFile(const QString& path)

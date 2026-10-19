@@ -28,6 +28,7 @@ cmd.file.new                        | Ctrl+N                | on   | Ctrl+N     
 cmd.file.open                       | Ctrl+O                | on   | Ctrl+O                | Ouvrir un projet — Ouvrir un projet existant (.tsa)
 cmd.file.save                       | Ctrl+S                | on   | Ctrl+S                | Enregistrer — Enregistrer le projet actuel
 cmd.file.save_as                    | Ctrl+Shift+S          | on   | Ctrl+Shift+S          | Enregistrer sous — Enregistrer le projet sous un nouveau nom
+cmd.file.save_as_template           |                       | on   |                       | Enregistrer comme template — Enregistrer le projet comme modèle réutilisable (grille, niveaux, plans de travail, réglages) pour créer de nouveaux projets
 
 [Édition]
 # identifiant                       | raccourci(s)          | état | par défaut            | description

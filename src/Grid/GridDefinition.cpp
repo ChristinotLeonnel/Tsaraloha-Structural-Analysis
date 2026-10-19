@@ -64,6 +64,46 @@ GridDefinition::GridDefinition(const std::string& name, GridType type)
     ensureLabelsSynchronized();
 }
 
+namespace
+{
+// Tri conjoint coordonnée / libellé / gras ; doublons exacts retirés (premier conservé).
+void sortAxes(const std::vector<double>& positions, const std::vector<std::string>& labels, const std::vector<bool>& bold,
+              std::vector<double>& outPositions, std::vector<std::string>& outLabels, std::vector<bool>& outBold)
+{
+    std::vector<std::size_t> order(positions.size());
+    for (std::size_t i = 0; i < order.size(); ++i) order[i] = i;
+    std::stable_sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return positions[a] < positions[b]; });
+    outPositions.clear();
+    outLabels.clear();
+    outBold.clear();
+    for (std::size_t i : order)
+    {
+        if (!outPositions.empty() && std::abs(positions[i] - outPositions.back()) < 1e-6) continue;
+        outPositions.push_back(positions[i]);
+        outLabels.push_back(i < labels.size() ? labels[i] : std::string());
+        outBold.push_back(i < bold.size() && bold[i]);
+    }
+}
+} // namespace
+
+void GridDefinition::setXAxes(const std::vector<double>& positions, const std::vector<std::string>& labels, const std::vector<bool>& bold)
+{
+    sortAxes(positions, labels, bold, m_xPositions, m_xLabels, m_xIsBold);
+    ensureLabelsSynchronized();
+}
+
+void GridDefinition::setYAxes(const std::vector<double>& positions, const std::vector<std::string>& labels, const std::vector<bool>& bold)
+{
+    sortAxes(positions, labels, bold, m_yPositions, m_yLabels, m_yIsBold);
+    ensureLabelsSynchronized();
+}
+
+void GridDefinition::setZAxes(const std::vector<double>& levels, const std::vector<std::string>& labels, const std::vector<bool>& bold)
+{
+    sortAxes(levels, labels, bold, m_zLevels, m_zLabels, m_zIsBold);
+    ensureLabelsSynchronized();
+}
+
 void GridDefinition::setXPositions(const std::vector<double>& positions)
 {
     m_xPositions = positions;

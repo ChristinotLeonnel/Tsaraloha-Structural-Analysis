@@ -148,6 +148,7 @@ void AppShell::createActions()
     m_actOpen = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_open.svg")), tr("Ouvrir…"), this);
     m_actSave = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file_save.svg")), tr("Enregistrer"), this);
     m_actSaveAs = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/file_save_as.svg")), tr("Enregistrer sous…"), this);
+    m_actSaveAsTemplate = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/save_as_template.svg")), tr("Enregistrer comme template…"), this);
     m_actUndo = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/undo.svg")), tr("Annuler"), this);
     m_actRedo = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/redo.svg")), tr("Rétablir"), this);
     m_actCloseProject = new QAction(TSA::UI::themedIcon(QStringLiteral(":/icons/file/file_close.svg")), tr("Fermer le projet"), this);
@@ -212,7 +213,7 @@ void AppShell::createActions()
     connect(m_titleBar->applicationMenu(), &QMenu::aboutToShow, this, &AppShell::rebuildApplicationMenu);
 
     // Commandes qui n'ont de sens qu'avec un projet ouvert : actives seulement en mode Workspace.
-    for (QAction* proxy : { m_actSave, m_actSaveAs, m_actUndo, m_actRedo })
+    for (QAction* proxy : { m_actSave, m_actSaveAs, m_actSaveAsTemplate, m_actUndo, m_actRedo })
         m_proxyTargets.insert(proxy, nullptr);
     syncProxyActions();
 }
@@ -361,6 +362,7 @@ void AppShell::activateDocument(MainWindow* document)
     m_workspace = document;
     bindToWorkspace(m_actSave, document->actionSave());
     bindToWorkspace(m_actSaveAs, document->actionSaveAs());
+    bindToWorkspace(m_actSaveAsTemplate, document->actionSaveAsTemplate());
     bindToWorkspace(m_actUndo, document->actionUndo());
     bindToWorkspace(m_actRedo, document->actionRedo());
     document->setAutomationActive(true);
@@ -392,6 +394,7 @@ bool AppShell::closeDocument(MainWindow* document)
     {
         bindToWorkspace(m_actSave, nullptr);
         bindToWorkspace(m_actSaveAs, nullptr);
+        bindToWorkspace(m_actSaveAsTemplate, nullptr);
         bindToWorkspace(m_actUndo, nullptr);
         bindToWorkspace(m_actRedo, nullptr);
         showStartCenter();
@@ -609,6 +612,7 @@ void AppShell::rebuildApplicationMenu()
     menu->addSeparator();
     menu->addAction(m_actSave);
     menu->addAction(m_actSaveAs);
+    menu->addAction(m_actSaveAsTemplate);
     menu->addAction(m_actSaveAll);
     menu->addAction(m_actCloseProject);
     menu->addAction(m_actCloseAll);

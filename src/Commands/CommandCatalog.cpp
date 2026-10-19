@@ -73,6 +73,8 @@ void CommandCatalog::initializeStandardCatalog() {
                    ":/icons/common/file_save.svg", CommandCategory::File});
   registerCommand({"cmd.file.save_as", QT_TRANSLATE_NOOP("CommandCatalog", "Enregistrer sous"), QT_TRANSLATE_NOOP("CommandCatalog", "Enregistrer le projet sous un nouveau nom"), "Ctrl+Shift+S",
                    ":/icons/common/file_save_as.svg", CommandCategory::File});
+  registerCommand({"cmd.file.save_as_template", QT_TRANSLATE_NOOP("CommandCatalog", "Enregistrer comme template"), QT_TRANSLATE_NOOP("CommandCatalog", "Enregistrer le projet comme modèle réutilisable (grille, niveaux, plans de travail, réglages) pour créer de nouveaux projets"), "",
+                   ":/icons/common/save_as_template.svg", CommandCategory::File});
   registerCommand({"cmd.file.close", QT_TRANSLATE_NOOP("CommandCatalog", "Fermer le projet"), QT_TRANSLATE_NOOP("CommandCatalog", "Fermer le projet (demande d'enregistrement si modifié) et revenir au Start Center"), "Ctrl+W; Ctrl+F4",
                    "", CommandCategory::File});
   registerCommand({"cmd.file.exit", QT_TRANSLATE_NOOP("CommandCatalog", "Quitter"), QT_TRANSLATE_NOOP("CommandCatalog", "Quitter TSA (Alt+F4 reste géré par Windows)"), "",

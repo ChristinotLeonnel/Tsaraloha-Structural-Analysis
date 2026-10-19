@@ -161,6 +161,7 @@ public:
 
     QAction* actionSave() const { return m_actionSave; }
     QAction* actionSaveAs() const { return m_actionSaveAs; }
+    QAction* actionSaveAsTemplate() const { return m_actionSaveAsTemplate; }
     QAction* actionUndo() const { return m_actionUndo; }
     QAction* actionRedo() const { return m_actionRedo; }
     /// Menus classiques (Fichier, Édition…), présentés dans le menu d'application de la barre de titre.
@@ -265,6 +266,7 @@ private slots:
     void onActionOpen();
     void onActionSave();
     void onActionSaveAs();
+    void onActionSaveAsTemplate();
 
 private:
     void updateUndoRedoActions();
@@ -360,6 +362,7 @@ private:
     QAction* m_actionOpen = nullptr;
     QAction* m_actionSave = nullptr;
     QAction* m_actionSaveAs = nullptr;
+    QAction* m_actionSaveAsTemplate = nullptr;
     QAction* m_actionExit = nullptr;
     TSA::Project::ProjectManager* m_projectManager = nullptr;  ///< = &m_session->project()
 

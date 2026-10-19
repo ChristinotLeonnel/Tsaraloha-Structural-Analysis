@@ -309,6 +309,8 @@ ICONS = {
     "file/ifc_export.svg": svg(g_building(), b_out()),
     "file/tsa3d_import.svg": svg(g_cube(), b_in()),
     "file/tsa3d_export.svg": svg(g_cube(), b_out()),
+    # Template de projet : la grille du projet « enregistrée dans » un modèle réutilisable
+    "file/save_as_template.svg": svg(g_grid(SKY, 0.8), b_in(GREEN)),
     "file/module_import.svg": svg(path("M3 6H6A1.5 1.5 0 1 1 9 6H12V9A1.5 1.5 0 1 1 12 12V15H9A1.5 1.5 0 1 0 6 15H3Z", SKY), b_in()),
 }
 

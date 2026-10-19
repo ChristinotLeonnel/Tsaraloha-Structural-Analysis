@@ -13,8 +13,8 @@ Model::Model()
     , m_undoManager(std::make_unique<TSA::UndoRedo::UndoManager>())
     , m_workPlaneManager(std::make_unique<TSA::Coordinate::WorkPlaneManager>())
 {
-    m_coordinateSystem->setDefaultBuildingCoordinates();
-
+    // Repère vide : axes et niveaux viennent de la grille du projet et des niveaux enregistrés
+    // (Grid/GridCoordinateSync.h), jamais d'une liste de valeurs fixes.
     if (auto* lm = m_coordinateSystem->levelManager())
     {
         QObject::connect(lm, &TSA::Coordinate::LevelManager::levelElevationChanged, [this](const std::string& lvlId, double oldZ, double newZ) {

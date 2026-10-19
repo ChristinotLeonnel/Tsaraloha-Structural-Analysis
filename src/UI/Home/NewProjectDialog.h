@@ -25,6 +25,8 @@ struct NewProjectSettings
     QString name;
     QString directory;
     ProjectTemplate projectTemplate = ProjectTemplate::GeneralStructure;
+    QString userTemplatePath;   ///< template enregistré par l'utilisateur (vide : gabarit intégré)
+    QString userTemplateName;
 
     QString filePath() const;
 };
@@ -43,6 +45,7 @@ public:
 private:
     void browse();
     void validate();
+    void updateTemplateInfo();
     static QString defaultDirectory();
     static QString uniqueName(const QString& directory);
 
@@ -50,6 +53,7 @@ private:
     QLineEdit* m_name = nullptr;
     QLineEdit* m_directory = nullptr;
     QComboBox* m_template = nullptr;
+    QLabel* m_templateInfo = nullptr;
     QLabel* m_target = nullptr;
     QLabel* m_error = nullptr;
     QPushButton* m_btnCreate = nullptr;

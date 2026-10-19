@@ -55,6 +55,12 @@ public:
     const std::vector<double>& zLevels() const { return m_zLevels; }
     void setZLevels(const std::vector<double>& levels);
 
+    // Axes saisis dans un ordre quelconque (A = 0, B = 4, C = 5, D = 3,2…) : tri par coordonnée en gardant chaque
+    // libellé et chaque mise en gras avec sa coordonnée (setXPositions puis setXLabels les désaccorderaient).
+    void setXAxes(const std::vector<double>& positions, const std::vector<std::string>& labels, const std::vector<bool>& bold = {});
+    void setYAxes(const std::vector<double>& positions, const std::vector<std::string>& labels, const std::vector<bool>& bold = {});
+    void setZAxes(const std::vector<double>& levels, const std::vector<std::string>& labels, const std::vector<bool>& bold = {});
+
     // --- Coordonnées Cylindriques (Rayons et Angles) ---
     const std::vector<double>& radii() const { return m_radii; }
     void setRadii(const std::vector<double>& radii);
