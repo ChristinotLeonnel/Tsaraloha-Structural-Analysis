@@ -1,0 +1,151 @@
+{
+  "timestamp": "2026-10-19T10:50:34",
+  "executable": "D:\\Tsaraloha Platforme\\TSA\\build-ninja-release\\TSA.exe",
+  "steps": [
+    {
+      "step": "SC-A.1 Startup",
+      "status": "PASS",
+      "title": "TSA — Start Center"
+    },
+    {
+      "step": "SC-A.2 IPC Handshake",
+      "status": "PASS",
+      "response": {
+        "document": {
+          "id": "7dfe163a-f9db-4c3b-8b7b-5c10a62e9d26",
+          "name": "Projet Vierge Automatise",
+          "path": "D:\\Tsaraloha Platforme\\TSA\\temp_test_session.tsa"
+        },
+        "id": 1792396243317,
+        "result": {
+          "document": {
+            "id": "7dfe163a-f9db-4c3b-8b7b-5c10a62e9d26",
+            "name": "Projet Vierge Automatise",
+            "path": "D:\\Tsaraloha Platforme\\TSA\\temp_test_session.tsa"
+          },
+          "path": "D:\\Tsaraloha Platforme\\TSA\\temp_test_session.tsa",
+          "product": "TSA",
+          "project": "Projet Vierge Automatise",
+          "version": "0.1.0"
+        }
+      }
+    },
+    {
+      "step": "SC-B Modeling",
+      "status": "PASS",
+      "nodes": 4,
+      "members": 3,
+      "q": 15.0
+    },
+    {
+      "step": "SC-C.1 OpenSees Execution",
+      "status": "PASS",
+      "detail": {
+        "document": {
+          "id": "7dfe163a-f9db-4c3b-8b7b-5c10a62e9d26",
+          "name": "Projet Vierge Automatise",
+          "path": "D:\\Tsaraloha Platforme\\TSA\\temp_test_session.tsa"
+        },
+        "id": 1792396244617,
+        "result": {
+          "message": "OpenSees : δmax = 0.103695 mm (N2), Mmax = 48.5289 kN·m",
+          "ok": true,
+          "outputs": {
+            "equations": 0,
+            "max_displacement": 0.00010369527388148366,
+            "max_moment": 48.52889320058008
+          }
+        }
+      }
+    },
+    {
+      "step": "SC-C.2 FEM Benchmark",
+      "status": "PASS",
+      "benchmark": {
+        "span_m": 6.0,
+        "height_m": 3.5,
+        "load_kN_per_m": 15.0,
+        "analytical_total_reaction_kN": 90.0,
+        "analytical_reaction_per_foot_kN": 45.0,
+        "tolerance_percent": 1.0,
+        "reaction_n1": {
+          "message": "N1 : R = 8.9227, 0, 48.3477 kN, M = 0, 10.3935, 0 kN·m",
+          "ok": true,
+          "outputs": {
+            "force": [
+              8.922698056849896,
+              0,
+              48.34771650683408
+            ],
+            "moment": [
+              0,
+              10.39354419584698,
+              0
+            ]
+          }
+        },
+        "reaction_n4": {
+          "message": "N4 : R = -8.9227, 0, 48.3477 kN, M = 0, -10.3935, 0 kN·m",
+          "ok": true,
+          "outputs": {
+            "force": [
+              -8.922698056849894,
+              0,
+              48.34771650683408
+            ],
+            "moment": [
+              0,
+              -10.39354419584697,
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "step": "SC-D Robustness & Undo/Redo",
+      "status": "PASS"
+    }
+  ],
+  "verdict": "PASS",
+  "benchmarks": {
+    "span_m": 6.0,
+    "height_m": 3.5,
+    "load_kN_per_m": 15.0,
+    "analytical_total_reaction_kN": 90.0,
+    "analytical_reaction_per_foot_kN": 45.0,
+    "tolerance_percent": 1.0,
+    "reaction_n1": {
+      "message": "N1 : R = 8.9227, 0, 48.3477 kN, M = 0, 10.3935, 0 kN·m",
+      "ok": true,
+      "outputs": {
+        "force": [
+          8.922698056849896,
+          0,
+          48.34771650683408
+        ],
+        "moment": [
+          0,
+          10.39354419584698,
+          0
+        ]
+      }
+    },
+    "reaction_n4": {
+      "message": "N4 : R = -8.9227, 0, 48.3477 kN, M = 0, -10.3935, 0 kN·m",
+      "ok": true,
+      "outputs": {
+        "force": [
+          -8.922698056849894,
+          0,
+          48.34771650683408
+        ],
+        "moment": [
+          0,
+          -10.39354419584697,
+          0
+        ]
+      }
+    }
+  }
+}

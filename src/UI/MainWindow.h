@@ -24,7 +24,7 @@
 
 namespace TSA::Model { class Model; class SupportDefinition; enum class LoadType; }
 namespace TSA::BIM::Ifc { struct IfcImportReport; }
-namespace TSA::AI { class AIOrchestrator; }
+namespace TSA::AI { class AIOrchestrator; class AIOperator; }
 namespace TSA::Automation { class AutomationServer; }
 namespace TSA::UI { class AICoEngineeringDock; class AIRuntimeDialog; struct NewProjectSettings; enum class ProjectTemplate; }
 namespace TSA::Analysis { class ResultsModel; class ResultsValidityGuard; class OpenSeesSolver; class AnalysisEngineRegistry; class AnalysisManager; class AnalysisController; class AnalysisEngine; }
@@ -547,6 +547,7 @@ private:
     TSA::AI::AIOrchestrator* m_aiOrchestrator = nullptr;
     TSA::Automation::AutomationServer* m_automation = nullptr;   ///< pont MCP (Claude Code), docs/MCP.md
     TSA::UI::AICoEngineeringDock* m_aiDock = nullptr;
+    std::shared_ptr<TSA::AI::AIOperator> m_aiOperator;   ///< opérateur IA : commandes du registre sur ce document
     TSA::UI::AIRuntimeDialog* m_aiDialog = nullptr;
     QToolButton* m_statusAI = nullptr;
     QAction* m_actionAIAssistant = nullptr;

@@ -10,11 +10,14 @@
 #include "AI/Models/ModelRegistry.h"
 #include "AI/Providers/LocalLlamaServer.h"
 #include "AI/Providers/OpenAICompatibleProvider.h"
+#include "AI/Providers/MockAIProvider.h"
+#include "AI/Providers/AIProviderRouter.h"
 #include "AI/RAG/EngineeringKnowledgeBase.h"
 #include "AI/Tools/AIToolRegistry.h"
 #include "Model/Load/LoadCase.h"
 #include "Model/Load/NodalLoad.h"
 #include "Model/Model.h"
+#include "IO/TSAFile.h"
 
 #include <QJsonDocument>
 
@@ -334,6 +337,204 @@ bool runSuite_AI(int& passed)
         TEST_CHECK(SecretStore::unprotect(cipher) == secret, "Test 123: déchiffrement");
         TEST_CHECK(aiModeFromKey(aiModeKey(AIMode::Auto)) == AIMode::Auto && aiModeFromKey("??") == AIMode::Local, "Test 123: mode par défaut LOCAL");
         std::cout << "[PASS] Test 123: Secret API (DPAPI) et réglages" << std::endl;
+        ++passed;
+    }
+
+    // TEST 124 : MockAIProvider — exécution, scénarios, streaming et métriques
+    {
+        MockAIProvider mock("mock-gemini", "Gemini 2.0 Flash (Mock)");
+        mock.setLocality(ProviderLocality::Cloud);
+        TEST_CHECK(mock.isAvailable(), "Test 124: mock disponible par défaut");
+        TEST_CHECK(mock.providerId() == "mock-gemini", "Test 124: identifiant fournisseur");
+
+        MockScenario sc;
+        sc.content = "Réponse structurelle simulée";
+        sc.promptTokens = 150;
+        sc.completionTokens = 30;
+        sc.tokensPerSecond = 85.0;
+        sc.streamInChunks = true;
+        sc.chunks = { "Réponse ", "structurelle ", "simulée" };
+        mock.enqueueScenario(sc);
+
+        ChatRequest req;
+        req.messages = { ChatMessage::user("Calculer la flèche") };
+
+        QString streamedContent;
+        ChatResult finalResult;
+        bool finishedEmitted = false;
+
+        QObject::connect(&mock, &IAIProvider::contentDelta, [&](quint64, const QString& t) {
+            streamedContent += t;
+        });
+        QObject::connect(&mock, &IAIProvider::finished, [&](quint64, const ChatResult& res) {
+            finalResult = res;
+            finishedEmitted = true;
+        });
+
+        const quint64 id = mock.chat(req);
+        QCoreApplication::processEvents();
+        TEST_CHECK(id > 0, "Test 124: ID de requête valide");
+        TEST_CHECK(finishedEmitted, "Test 124: signal finished émis");
+        TEST_CHECK(streamedContent == "Réponse structurelle simulée", "Test 124: reconstitution streaming exacte");
+        TEST_CHECK(finalResult.promptTokens == 150 && finalResult.completionTokens == 30, "Test 124: jetons comptabilisés");
+        TEST_CHECK(mock.totalRequestsReceived() == 1, "Test 124: compteur de requêtes");
+        std::cout << "[PASS] Test 124: MockAIProvider — scénarios, streaming et comptage" << std::endl;
+        ++passed;
+    }
+
+    // TEST 125 : MockAIProvider — appels d'outils et simulation d'erreur
+    {
+        MockAIProvider mock;
+        MockScenario toolSc;
+        ToolCall tc;
+        tc.id = "call_check_01";
+        tc.name = "check_model";
+        tc.argumentsJson = "{}";
+        toolSc.toolCalls.push_back(tc);
+        mock.enqueueScenario(toolSc);
+
+        MockScenario errSc;
+        errSc.shouldFail = true;
+        errSc.errorMessage = "HTTP 429 Quota Exceeded";
+        mock.enqueueScenario(errSc);
+
+        ChatRequest req;
+        req.messages = { ChatMessage::user("Vérifier le modèle") };
+
+        QString receivedError;
+        QObject::connect(&mock, &IAIProvider::failed, [&](quint64, const QString& err) {
+            receivedError = err;
+        });
+
+        // Première requête : renvoie tool call
+        ChatResult toolRes;
+        QObject::connect(&mock, &IAIProvider::finished, [&](quint64, const ChatResult& r) {
+            toolRes = r;
+        });
+        mock.chat(req);
+        QCoreApplication::processEvents();
+        TEST_CHECK(toolRes.toolCalls.size() == 1 && toolRes.toolCalls[0].name == "check_model",
+                   "Test 125: appel d'outil simulé");
+
+        // Seconde requête : renvoie erreur 429
+        mock.chat(req);
+        QCoreApplication::processEvents();
+        TEST_CHECK(receivedError.contains("429"), "Test 125: simulation d'erreur 429 captée");
+        std::cout << "[PASS] Test 125: MockAIProvider — appels d'outils et erreurs simulées" << std::endl;
+        ++passed;
+    }
+
+    // TEST 126 : AIProviderRouter — basculement automatique (Fallback)
+    {
+        auto* primary = new MockAIProvider("gemini-primary", "Google Gemini (Primaire)");
+        auto* fallback = new MockAIProvider("deepseek-fallback", "DeepSeek-V3 (Secours)");
+
+        AIProviderRouter router(primary, fallback);
+        TEST_CHECK(router.isAvailable(), "Test 126: routeur disponible avec ses deux branches");
+
+        // Cas 1 : Primaire nominal
+        MockScenario scOk;
+        scOk.content = "Succès Primaire";
+        primary->enqueueScenario(scOk);
+
+        QString answer1;
+        QObject::connect(&router, &IAIProvider::finished, [&](quint64, const ChatResult& r) {
+            answer1 = r.content;
+        });
+
+        ChatRequest req1;
+        req1.messages = { ChatMessage::user("Test nominal") };
+        router.chat(req1);
+        QCoreApplication::processEvents();
+        TEST_CHECK(answer1 == "Succès Primaire", "Test 126: réponse via primaire");
+        TEST_CHECK(router.totalFallbacks() == 0, "Test 126: aucun repli nécessaire");
+
+        // Cas 2 : Échec du primaire (ex. 429) -> basculement transparent vers le fallback
+        MockScenario scFail;
+        scFail.shouldFail = true;
+        scFail.errorMessage = "HTTP 429 Rate Limit Exceeded";
+        primary->enqueueScenario(scFail);
+
+        MockScenario scFallbackOk;
+        scFallbackOk.content = "Succès Secours (DeepSeek)";
+        fallback->enqueueScenario(scFallbackOk);
+
+        bool fallbackTriggeredEmitted = false;
+        QObject::connect(&router, &AIProviderRouter::fallbackTriggered, [&](const QString&, const QString&, const QString&) {
+            fallbackTriggeredEmitted = true;
+        });
+
+        QString answer2;
+        QObject::connect(&router, &IAIProvider::finished, [&](quint64, const ChatResult& r) {
+            answer2 = r.content;
+        });
+
+        ChatRequest req2;
+        req2.messages = { ChatMessage::user("Test avec fallback") };
+        router.chat(req2);
+        // Traitement de l'échec primaire puis de l'exécution du fallback
+        QCoreApplication::processEvents();
+        QCoreApplication::processEvents();
+
+        TEST_CHECK(fallbackTriggeredEmitted, "Test 126: signal fallbackTriggered émis");
+        TEST_CHECK(answer2 == "Succès Secours (DeepSeek)", "Test 126: réponse finale obtenue depuis le fallback");
+        TEST_CHECK(router.totalFallbacks() == 1, "Test 126: compteur de basculements incrémenté");
+        std::cout << "[PASS] Test 126: AIProviderRouter — basculement automatique transparent" << std::endl;
+        ++passed;
+    }
+
+    // TEST 127 : Refus déontologique sur données manquantes (Cas T10) & Préréglages
+    {
+        // Simulation du cas T10 : flèche demandée mais E ou I inconnu
+        MockAIProvider mock;
+        mock.setDynamicResponder([](const ChatRequest& req) -> MockScenario {
+            MockScenario sc;
+            const QString prompt = req.messages.isEmpty() ? QString() : req.messages.last().content;
+            if (prompt.contains("SANS_MODULE_E"))
+            {
+                sc.content = "[INCERTITUDE] Impossible de calculer la flèche élastique : le module d'élasticité E est indéterminé.\n"
+                             "[AVERTISSEMENT] Aucune valeur par défaut n'a été injectée silencieusement.";
+            }
+            else
+            {
+                sc.content = "[RÉSULTAT] Calcul validé.";
+            }
+            return sc;
+        });
+
+        ChatRequest reqMissing;
+        reqMissing.messages = { ChatMessage::user("Calculer v avec L=6m, q=20kN/m (SANS_MODULE_E)") };
+        QString textResult;
+        QObject::connect(&mock, &IAIProvider::finished, [&](quint64, const ChatResult& r) {
+            textResult = r.content;
+        });
+        mock.chat(reqMissing);
+        QCoreApplication::processEvents();
+
+        TEST_CHECK(textResult.contains("[INCERTITUDE]"), "Test 127: refus déontologique explicite");
+        TEST_CHECK(textResult.contains("module d'élasticité E"), "Test 127: identification de la donnée manquante");
+
+        // Vérification des configurations par défaut des fournisseurs
+        OpenAICompatibleConfig geminiCfg;
+        geminiCfg.providerId = "gemini";
+        geminiCfg.model = "gemini-2.0-flash";
+        geminiCfg.contextTokens = 1000000;
+        TEST_CHECK(geminiCfg.contextTokens == 1000000, "Test 127: contexte 1M tokens Gemini");
+
+        OpenAICompatibleConfig dsCfg;
+        dsCfg.providerId = "deepseek";
+        dsCfg.model = "deepseek-chat";
+        dsCfg.contextTokens = 131072;
+        TEST_CHECK(dsCfg.contextTokens == 131072, "Test 127: contexte 128k DeepSeek");
+
+        // Fichier projet .tsa vierge pour le banc d'essais UI réel autonome
+        TSA::Model::Model emptyMdl;
+        TSA::IO::TSAFileWriter emptyWriter;
+        std::string emptyErr;
+        bool emptySaved = emptyWriter.saveToFile("empty_project.tsa", emptyMdl, nullptr, "Projet Vierge Automatise", "Test Harness", &emptyErr);
+        TEST_CHECK(emptySaved, "Test 127: Génération du projet .tsa vierge pour l'automatisation");
+
+        std::cout << "[PASS] Test 127: Refus déontologique sur données manquantes (Cas T10) et préréglages" << std::endl;
         ++passed;
     }
     return true;

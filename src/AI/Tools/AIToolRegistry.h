@@ -4,6 +4,9 @@
 //  - Outils de LECTURE : exécutés immédiatement, lecture seule du modèle TSA.
 //  - Outils de PROPOSITION : ne modifient RIEN ; ils produisent une ActionProposal que l'ingénieur
 //    accepte ou refuse. Seule l'acceptation déclenche la modification (avec entrée Undo).
+//  - Outil d'ACTION « execute_command » (seulement si un AIOperator est branché) : exécute une commande du registre
+//    central ; lecture toujours permise, modification seulement en mode opérateur (voir Operator/AIOperator.h),
+//    avec vérification de l'état du modèle après chaque commande.
 // Aucun outil n'exécute de commande système, n'accède librement aux fichiers ni ne supprime de projet.
 
 #include "../Context/EngineeringContext.h"
@@ -22,8 +25,9 @@ namespace TSA::AI
 {
 
 class EngineeringKnowledgeBase;
+class AIOperator;
 
-enum class ToolKind { Read, Proposal };
+enum class ToolKind { Read, Proposal, Action };
 
 struct ActionProposal
 {
@@ -51,6 +55,10 @@ public:
 
     AIToolRegistry(SourcesProvider sources, const EngineeringKnowledgeBase* knowledge);
 
+    /// Branche l'opérateur (outil « execute_command ») ; nullptr : aucun outil d'action.
+    void setOperator(AIOperator* op) { m_operator = op; }
+    AIOperator* operatorPtr() const { return m_operator; }
+
     /// Définitions au format « tools » de l'API Chat Completions.
     QJsonArray toolDefinitions() const;
     static QStringList whitelist();
@@ -71,6 +79,7 @@ private:
 
     SourcesProvider m_sources;
     const EngineeringKnowledgeBase* m_knowledge = nullptr;
+    AIOperator* m_operator = nullptr;
 };
 
 } // namespace TSA::AI

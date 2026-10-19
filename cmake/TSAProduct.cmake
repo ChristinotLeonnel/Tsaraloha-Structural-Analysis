@@ -700,6 +700,10 @@ set(AI_CORE_SOURCES
     ${TSA_ROOT}/src/AI/Providers/AIProvider.h
     ${TSA_ROOT}/src/AI/Providers/OpenAICompatibleProvider.h
     ${TSA_ROOT}/src/AI/Providers/OpenAICompatibleProvider.cpp
+    ${TSA_ROOT}/src/AI/Providers/MockAIProvider.h
+    ${TSA_ROOT}/src/AI/Providers/MockAIProvider.cpp
+    ${TSA_ROOT}/src/AI/Providers/AIProviderRouter.h
+    ${TSA_ROOT}/src/AI/Providers/AIProviderRouter.cpp
     ${TSA_ROOT}/src/AI/Providers/LocalLlamaServer.h
     ${TSA_ROOT}/src/AI/Providers/LocalLlamaServer.cpp
     ${TSA_ROOT}/src/AI/Providers/ProcessLifetime.h
@@ -710,6 +714,10 @@ set(AI_CORE_SOURCES
     ${TSA_ROOT}/src/AI/Context/EngineeringContext.cpp
     ${TSA_ROOT}/src/AI/Tools/AIToolRegistry.h
     ${TSA_ROOT}/src/AI/Tools/AIToolRegistry.cpp
+    ${TSA_ROOT}/src/AI/Operator/AIOperator.h
+    ${TSA_ROOT}/src/AI/Operator/AIOperator.cpp
+    ${TSA_ROOT}/src/AI/Python/PythonAIBridge.h
+    ${TSA_ROOT}/src/AI/Python/PythonAIBridge.cpp
     ${TSA_ROOT}/src/AI/RAG/EngineeringKnowledgeBase.h
     ${TSA_ROOT}/src/AI/RAG/EngineeringKnowledgeBase.cpp
     ${TSA_ROOT}/src/AI/Core/AISettings.h
@@ -1079,6 +1087,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_ndc_report.cpp
     ${TSA_ROOT}/tests/test_opensees_extraction.cpp
     ${TSA_ROOT}/tests/test_ai.cpp
+    ${TSA_ROOT}/tests/test_ai_operator.cpp
     ${TSA_ROOT}/tests/test_preview.cpp
     ${TSA_ROOT}/tests/test_thumbnail_provider.cpp
     ${TSA_ROOT}/tests/test_analysis_engines.cpp

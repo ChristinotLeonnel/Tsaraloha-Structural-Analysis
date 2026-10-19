@@ -9,6 +9,13 @@
 #include <QDockWidget>
 #include <QMap>
 
+#include <functional>
+
+namespace TSA::AI
+{
+class PythonAIBridge;
+}
+
 class QLabel;
 class QPlainTextEdit;
 class QPushButton;
@@ -30,6 +37,9 @@ public:
 
     /// Lance une tâche (depuis le ruban, le menu contextuel…) et affiche le panneau.
     void runTask(TSA::AI::AITask task, const QString& text = QString());
+
+    /// Couche IA Python (bascule « Python ») : pont vers le service et fonction qui le démarre (rend faux + motif).
+    void setPythonBridge(TSA::AI::PythonAIBridge* bridge, std::function<bool(QString*)> starter);
 
 signals:
     void configureRequested();
@@ -67,6 +77,11 @@ private:
     QPushButton* m_btnCheck = nullptr;
     QPushButton* m_btnExplain = nullptr;
     QToolButton* m_btnNew = nullptr;
+    QToolButton* m_btnOperator = nullptr;
+    QToolButton* m_btnPython = nullptr;
+    TSA::AI::PythonAIBridge* m_python = nullptr;
+    std::function<bool(QString*)> m_pythonStarter;
+    bool m_pythonBusy = false;
     QTextBrowser* m_view = nullptr;
     QWidget* m_proposalsBox = nullptr;
     QVBoxLayout* m_proposalsLayout = nullptr;

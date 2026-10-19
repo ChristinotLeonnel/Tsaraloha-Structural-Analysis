@@ -1,6 +1,7 @@
 #include "AutomationServer.h"
 
 #include "CommandRegistry.h"
+#include "../AI/Operator/AIOperator.h"
 #include "../AI/Tools/AIToolRegistry.h"
 #include "../Blueprint/BlueprintScript.h"
 #include "../Project/ProjectSession.h"
@@ -367,6 +368,28 @@ QJsonObject AutomationServer::handle(const QJsonObject& request)
         const auto out = tools.execute(name, QString::fromUtf8(QJsonDocument(params.value("arguments").toObject()).toJson(QJsonDocument::Compact)));
         if (!out.ok) return error(out.error);
         return result(out.data);
+    }
+
+    // Opérateur IA du document (couche IA Python, docs/AI_OPERATOR.md) : même politique et même vérification que le
+    // panneau ; le mode opérateur (autorisation de modifier) est commandé par l'utilisateur dans l'application, jamais
+    // par le client.
+    if (method == "operator_status")
+    {
+        if (!m_operator) return error(QStringLiteral("opérateur IA indisponible dans ce document"));
+        return result(QJsonObject { { "act_enabled", m_operator->actEnabled() }, { "max_actions_per_request", m_operator->maxActionsPerRequest() } });
+    }
+    if (method == "operator_begin")
+    {
+        if (!m_operator) return error(QStringLiteral("opérateur IA indisponible dans ce document"));
+        m_operator->beginRequest();
+        return result(QJsonObject { { "ok", true }, { "act_enabled", m_operator->actEnabled() } });
+    }
+    if (method == "operator_execute")
+    {
+        if (!m_operator) return error(QStringLiteral("opérateur IA indisponible dans ce document"));
+        const TSA::AI::OperatorAction a = m_operator->execute(params.value("command").toString(), params.value("arguments").toObject());
+        if (a.executed && a.modifies) emit projectModified();
+        return result(a.toJson());
     }
 
     if (method == "undo" || method == "redo")

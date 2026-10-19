@@ -10,6 +10,8 @@
 #include "ModelTree/ModelTreeWidget.h"
 #include "WindowManager/WindowManager.h"
 #include "../AI/Core/AIOrchestrator.h"
+#include "../AI/Operator/AIOperator.h"
+#include "../AI/Python/PythonAIBridge.h"
 #include "../Analysis/AnalysisController.h"
 #include "../Automation/AutomationServer.h"
 #include "../Automation/CommandRegistry.h"
@@ -64,9 +66,28 @@ void MainWindow::createAIComponents()
     };
     m_aiOrchestrator->setSourcesProvider(sourcesProvider);
 
+    // Opérateur IA : mêmes commandes et même chemin que le serveur MCP (registre central, une entrée Annuler par
+    // commande). Mode opérateur désactivé par défaut : l'utilisateur l'active dans le panneau IA.
+    m_aiOperator = std::make_shared<TSA::AI::AIOperator>([this] { return m_session.get(); });
+    m_aiOperator->setObserver([this](const TSA::AI::OperatorAction& a) {
+        if (m_consoleDock)
+            m_consoleDock->appendLog(QStringLiteral("IA › %1 : %2").arg(a.command, a.message),
+                                     a.refused || !a.executed || !a.verified ? QStringLiteral("WARN") : QStringLiteral("INFO"));
+        if (a.executed && a.modifies)
+        {
+            updateUndoRedoActions();
+            updateWindowTitle();
+            if (m_occView) m_occView->update();
+        }
+    });
+    m_aiOrchestrator->setOperator(m_aiOperator.get());
+    // Essais automatisés : la personne qui LANCE TSA peut activer le mode opérateur dès le démarrage (jamais un client).
+    if (qEnvironmentVariableIntValue("TSA_AI_OPERATOR") == 1) m_aiOperator->setActEnabled(true);
+
     // Serveur d'automatisation (pont MCP : Claude Code co-ingénieur, docs/MCP.md) : projet ouvert, en direct.
     m_automation = new TSA::Automation::AutomationServer(m_session.get(), this);
     m_automation->setSourcesProvider(sourcesProvider);
+    m_automation->setOperator(m_aiOperator.get());   // couche IA Python : même opérateur que le panneau
     m_automation->setProjectInfoProvider([this] {
         QJsonObject o;
         if (m_projectManager)
@@ -90,6 +111,18 @@ void MainWindow::createAIComponents()
     // Démarrage par setAutomationActive : plusieurs documents ouverts, un seul serveur (celui du document actif)
 
     m_aiDock = new TSA::UI::AICoEngineeringDock(m_aiOrchestrator, this);
+
+    // Couche IA Python (python/tsa_ai) : processus séparé, démarré seulement quand l'utilisateur active « Python ».
+    auto* python = new TSA::AI::PythonAIBridge(this);
+    m_aiDock->setPythonBridge(python, [this, python](QString* why) {
+        const QString key = TSA::AI::AISettings::loadApiKey(); // vide : TSA_AI_API_KEY de l'environnement, s'il existe
+        if (!python->start(TSA::Automation::AutomationServer::defaultName(), key, why)) return false;
+        const auto& c = m_aiOrchestrator->settings().cloud;
+        const QString preset = c.preset == QLatin1String("gemini") || c.preset == QLatin1String("openrouter") ? c.preset : QStringLiteral("custom");
+        python->configure(preset, c.model, c.baseUrl);
+        python->requestHardware(QStringLiteral("auto")); // détection seulement : aucun modèle n'est lancé
+        return true;
+    });
     m_aiDock->toggleViewAction()->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/analysis_run.svg")));
     // Zone droite, non tabifié : l'assistant se consulte à côté du viewport, sans masquer
     // l'arbre ni les propriétés.

@@ -1,5 +1,9 @@
 #include "AICoEngineeringDock.h"
 
+#include "../../AI/Python/PythonAIBridge.h"
+
+#include <QJsonObject>
+
 #include <QCheckBox>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -9,6 +13,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScrollBar>
+#include <QSignalBlocker>
 #include <QTextBrowser>
 #include <QTimer>
 #include <QToolButton>
@@ -72,6 +77,15 @@ AICoEngineeringDock::AICoEngineeringDock(TSA::AI::AIOrchestrator* orchestrator, 
     });
     connect(m_ai, &TSA::AI::AIOrchestrator::toolActivity, this, [this](const QString& a) { m_activity->setText("⋯ " + a); });
     connect(m_ai, &TSA::AI::AIOrchestrator::proposalCreated, this, &AICoEngineeringDock::addProposalCard);
+    // Historique des actions de l'opérateur : statut constaté par TSA, jamais celui annoncé par l'IA.
+    connect(m_ai, &TSA::AI::AIOrchestrator::operatorActionPerformed, this, [this](const QJsonObject& a) {
+        const bool refused = a.value("refused").toBool(), executed = a.value("executed").toBool(), verified = a.value("verified").toBool();
+        const QString status = refused ? tr("⛔ refusée") : !executed ? tr("✗ échec") : verified ? tr("✓ exécutée et vérifiée")
+                                                                                      : tr("⚠ exécutée, vérification NON conforme");
+        appendEntry({ refused || !executed || !verified ? "error" : "info",
+                      QStringLiteral("%1 — %2").arg(a.value("command").toString(), status), a.value("message").toString(),
+                      tr("Action de l'opérateur") });
+    });
     connect(m_ai, &TSA::AI::AIOrchestrator::proposalResolved, this, [this](const QString& id, bool applied, const QString& msg) {
         if (QWidget* card = m_proposalCards.take(id)) card->deleteLater();
         m_proposalsBox->setVisible(!m_proposalCards.isEmpty());
@@ -140,11 +154,47 @@ void AICoEngineeringDock::setupUi()
     m_btnNew = new QToolButton(root);
     m_btnNew->setText(tr("Nouvelle"));
     m_btnNew->setToolTip(tr("Nouvelle conversation"));
+    // Mode opérateur : l'IA exécute elle-même les commandes TSA (une entrée Annuler par commande, état vérifié après
+    // chaque action). Désactivé : lecture seule et propositions à valider.
+    m_btnOperator = new QToolButton(root);
+    m_btnOperator->setObjectName(QStringLiteral("aiOperatorToggle"));
+    m_btnOperator->setText(tr("Opérateur"));
+    m_btnOperator->setCheckable(true);
+    m_btnOperator->setToolTip(tr("Mode opérateur : l'IA crée, modifie et calcule elle-même dans le projet ouvert, avec les "
+                                 "commandes de TSA (annulables par Ctrl+Z), et vérifie chaque action dans le modèle. "
+                                 "Désactivé : l'IA lit le modèle et propose, vous validez."));
     actions->addWidget(m_btnAnalyze);
     actions->addWidget(m_btnCheck);
     actions->addWidget(m_btnExplain);
     actions->addStretch();
+    // Couche IA Python (fournisseurs en ligne, modèle local sur GPU dédié ou CPU) : visible si le pont est disponible.
+    m_btnPython = new QToolButton(root);
+    m_btnPython->setObjectName(QStringLiteral("aiPythonToggle"));
+    m_btnPython->setText(QStringLiteral("Python"));
+    m_btnPython->setCheckable(true);
+    m_btnPython->setVisible(false);
+    m_btnPython->setToolTip(tr("Utiliser la couche IA Python (python/tsa_ai) : mêmes commandes TSA, même mode opérateur, "
+                               "mêmes vérifications. Désactivé : assistant intégré."));
+    actions->addWidget(m_btnPython);
+    actions->addWidget(m_btnOperator);
     actions->addWidget(m_btnNew);
+    if (TSA::AI::AIOperator* op = m_ai->operatorPtr()) m_btnOperator->setChecked(op->actEnabled()); // état initial (avant connexion)
+    connect(m_btnOperator, &QToolButton::toggled, this, [this](bool on) {
+        TSA::AI::AIOperator* op = m_ai->operatorPtr();
+        if (!op)
+        {
+            QSignalBlocker block(m_btnOperator);
+            m_btnOperator->setChecked(false);
+            appendEntry({ "error", tr("Mode opérateur indisponible"), tr("Aucun projet n'est relié à l'assistant."), QString() });
+            return;
+        }
+        op->setActEnabled(on);
+        appendEntry({ "info", on ? tr("Mode opérateur activé") : tr("Mode opérateur désactivé"),
+                      on ? tr("L'IA peut créer, modifier et calculer dans ce projet (au plus %1 actions par demande), chaque "
+                              "action est annulable (Ctrl+Z) et vérifiée dans le modèle.").arg(op->maxActionsPerRequest())
+                         : tr("L'IA lit le modèle et propose ; aucune modification sans votre accord."),
+                      QString() });
+    });
     layout->addLayout(actions);
     connect(m_btnAnalyze, &QPushButton::clicked, this, [this] { runTask(AITask::AnalyzeModel); });
     connect(m_btnCheck, &QPushButton::clicked, this, [this] { runTask(AITask::CheckStructure); });
@@ -193,7 +243,12 @@ void AICoEngineeringDock::setupUi()
     sendRow->addWidget(m_btnSend);
     layout->addLayout(sendRow);
     connect(m_btnSend, &QPushButton::clicked, this, &AICoEngineeringDock::send);
-    connect(m_btnStop, &QPushButton::clicked, m_ai, &TSA::AI::AIOrchestrator::cancel);
+    connect(m_btnStop, &QPushButton::clicked, this, [this] {
+        if (m_python && m_pythonBusy)
+            m_python->cancel(); // arrêt avant la prochaine commande ; une commande en cours se termine
+        else
+            m_ai->cancel();
+    });
 
     auto* disclaimer = new QLabel(tr(kDisclaimer), root);
     disclaimer->setWordWrap(true);
@@ -250,9 +305,94 @@ void AICoEngineeringDock::runTask(AITask task, const QString& text)
 void AICoEngineeringDock::send()
 {
     const QString text = m_input->toPlainText().trimmed();
-    if (text.isEmpty() || m_ai->isBusy()) return;
+    if (text.isEmpty() || m_ai->isBusy() || m_pythonBusy) return;
     m_input->clear();
+    if (m_python && m_btnPython->isChecked())
+    {
+        appendEntry({ "user", tr("Vous"), text, QString() });
+        m_pythonBusy = true;
+        setBusyUi(true);
+        m_activity->setText(tr("⋯ Couche IA Python"));
+        m_python->chat(text);
+        return;
+    }
     runTask(AITask::Chat, text);
+}
+
+void AICoEngineeringDock::setPythonBridge(TSA::AI::PythonAIBridge* bridge, std::function<bool(QString*)> starter)
+{
+    m_python = bridge;
+    m_pythonStarter = std::move(starter);
+    m_btnPython->setVisible(bridge != nullptr);
+    if (!bridge) return;
+    connect(m_btnPython, &QToolButton::toggled, this, [this](bool on) {
+        if (!on)
+        {
+            m_python->stop();
+            appendEntry({ "info", tr("Couche IA Python arrêtée"), tr("L'assistant intégré reprend les demandes."), QString() });
+            return;
+        }
+        QString why;
+        if (!m_pythonStarter || !m_pythonStarter(&why))
+        {
+            QSignalBlocker block(m_btnPython);
+            m_btnPython->setChecked(false);
+            appendEntry({ "error", tr("Couche IA Python indisponible"), why, QString() });
+        }
+    });
+    connect(bridge, &TSA::AI::PythonAIBridge::event, this, [this](const QJsonObject& e) {
+        const QString type = e.value("type").toString();
+        auto done = [this] {
+            m_pythonBusy = false;
+            setBusyUi(false);
+            m_activity->clear();
+        };
+        if (type == "configured")
+            appendEntry({ "info", tr("Couche IA Python prête"),
+                          tr("Fournisseur : %1 · modèle : %2 · %3")
+                              .arg(e.value("provider").toString(), e.value("model").toString(),
+                                   e.value("remote").toBool() ? tr("en ligne (données envoyées au fournisseur)") : tr("sur ce poste")),
+                          QStringLiteral("Python") });
+        else if (type == "hardware")
+            appendEntry({ "info", tr("Matériel pour un modèle local"),
+                          e.value("choice").isObject() ? e.value("choice").toObject().value("label").toString() : e.value("error").toString(),
+                          QStringLiteral("Python") });
+        else if (type == "round")
+            m_activity->setText(tr("⋯ Python : tour %1 (%2 ms)").arg(e.value("round").toInt() + 1).arg(e.value("latency_ms").toInt()));
+        else if (type == "action")
+        {
+            const QJsonObject a = e.value("action").toObject();
+            const bool refused = a.value("refused").toBool(), executed = a.value("executed").toBool(), verified = a.value("verified").toBool();
+            const QString status = refused ? tr("⛔ refusée") : !executed ? tr("✗ échec") : verified ? tr("✓ exécutée et vérifiée")
+                                                                                          : tr("⚠ exécutée, vérification NON conforme");
+            appendEntry({ refused || !executed || !verified ? "error" : "info", QStringLiteral("%1 — %2").arg(a.value("command").toString(), status),
+                          a.value("message").toString(), tr("Action de l'opérateur (Python)") });
+        }
+        else if (type == "final")
+        {
+            QString md = e.value("text").toString();
+            md += QStringLiteral("\n\n*%1*").arg(e.value("summary").toString());
+            if (!e.value("stopped").toString().isEmpty()) md += QStringLiteral("\n\n⚠ %1").arg(e.value("stopped").toString());
+            appendEntry({ "assistant", QStringLiteral("%1 · %2").arg(e.value("provider").toString(), e.value("model").toString()), md,
+                          QStringLiteral("Python") });
+            done();
+        }
+        else if (type == "error")
+        {
+            appendEntry({ "error", tr("Couche IA Python"), e.value("message").toString(), e.value("kind").toString() });
+            done();
+        }
+    });
+    connect(bridge, &TSA::AI::PythonAIBridge::stopped, this, [this](const QString& reason) {
+        if (m_btnPython->isChecked())
+        {
+            QSignalBlocker block(m_btnPython);
+            m_btnPython->setChecked(false);
+            appendEntry({ "error", tr("Couche IA Python arrêtée"), reason, QString() });
+        }
+        m_pythonBusy = false;
+        setBusyUi(false);
+    });
 }
 
 void AICoEngineeringDock::setBusyUi(bool busy)

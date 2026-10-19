@@ -21,6 +21,28 @@ namespace TSA::AI
 namespace
 {
 constexpr int kMaxToolRounds = 6;
+// Mode opérateur : un portique simple demande une vingtaine de commandes, souvent une par tour pour un petit modèle.
+constexpr int kMaxOperatorToolRounds = 40;
+
+/// Consigne du cycle d'action de l'opérateur (ajoutée seulement si un opérateur est branché).
+QString operatorInstructions(bool actEnabled)
+{
+    QString s = QStringLiteral(
+        "OPÉRATEUR TSA. Tu peux agir dans le projet ouvert avec l'outil execute_command (commandes du registre TSA).\n"
+        "Cycle obligatoire : 1) lire l'état réel (query.model_summary, outils de lecture) ; 2) planifier ; 3) exécuter UNE "
+        "commande ; 4) lire son résultat (executed, verified, verification, id créés) ; 5) corriger ou signaler l'échec ; "
+        "6) continuer jusqu'à l'objectif ou à un blocage explicite ; 7) conclure par un bilan vérifiable (ce qui a été fait, "
+        "identifiants, contrôles exécutés, limites).\n"
+        "Règles : n'invente aucun identifiant (utilise ceux rendus par les commandes) ; n'annonce jamais un succès si "
+        "« verified » est faux ou si la commande a échoué ; n'annonce un calcul terminé que si analysis.run a réussi et que "
+        "les résultats sont publiés et à jour ; ne change jamais un paramètre d'ingénierie pour faire passer un calcul ; "
+        "distingue les valeurs CALCULÉES par le moteur de tes interprétations ; n'invente ni norme, ni coefficient, ni "
+        "capacité ; si une fonction n'existe pas dans le registre, dis-le.");
+    if (!actEnabled)
+        s += QStringLiteral("\nMODE OPÉRATEUR DÉSACTIVÉ : seules les commandes de lecture sont exécutées ; pour modifier le modèle, "
+                            "propose un Blueprint (propose_blueprint) que l'ingénieur validera.");
+    return s;
+}
 constexpr int kHistoryMessages = 8;
 
 QString jsonCompact(const QJsonObject& o)
@@ -115,6 +137,12 @@ AIOrchestrator::~AIOrchestrator()
 void AIOrchestrator::setSourcesProvider(AIToolRegistry::SourcesProvider provider)
 {
     m_sources = std::move(provider);
+}
+
+void AIOrchestrator::setOperator(AIOperator* op)
+{
+    m_operator = op;
+    m_tools->setOperator(op);
 }
 
 void AIOrchestrator::saveSettings()
@@ -224,23 +252,53 @@ void AIOrchestrator::reloadCloudProvider()
     }
     const auto& c = m_settings.cloud;
     QString base = c.baseUrl;
+    QString model = c.model;
     if (base.isEmpty() && c.preset == "gemini") base = QStringLiteral("https://generativelanguage.googleapis.com/v1beta/openai");
+    if (base.isEmpty() && c.preset == "deepseek") base = QStringLiteral("https://api.deepseek.com/v1");
     if (base.isEmpty() && c.preset == "anthropic") base = QStringLiteral("https://api.anthropic.com/v1");
+    if (base.isEmpty() && c.preset == "qwen-dashscope") base = QStringLiteral("https://dashscope-intl.aliyuncs.com/compatible-mode/v1");
+    if (base.isEmpty() && c.preset == "groq") base = QStringLiteral("https://api.groq.com/openai/v1");
+    if (base.isEmpty() && c.preset == "openrouter") base = QStringLiteral("https://openrouter.ai/api/v1");
     if (base.isEmpty() && c.preset == "ollama") base = QStringLiteral("http://127.0.0.1:11434/v1");
-    if (base.isEmpty() || c.model.isEmpty()) { emit statusChanged(); return; }
+
+    if (model.isEmpty())
+    {
+        if (c.preset == "gemini") model = QStringLiteral("gemini-2.0-flash");
+        else if (c.preset == "deepseek") model = QStringLiteral("deepseek-chat");
+        else if (c.preset == "anthropic") model = QStringLiteral("claude-3-5-sonnet-20241022");
+        else if (c.preset == "qwen-dashscope") model = QStringLiteral("qwen-plus");
+        else if (c.preset == "groq") model = QStringLiteral("llama-3.3-70b-versatile");
+        // Routeur OpenRouter limité aux modèles gratuits (catalogue public : outils pris en charge, vérifié le 2026-10-19).
+        else if (c.preset == "openrouter") model = QStringLiteral("openrouter/free");
+        else if (c.preset == "ollama") model = QStringLiteral("qwen2.5:7b");
+    }
+
+    if (base.isEmpty() || model.isEmpty()) { emit statusChanged(); return; }
 
     OpenAICompatibleConfig cfg;
     cfg.providerId = c.preset;
-    cfg.displayName = c.preset == "ollama" ? QStringLiteral("Ollama (local)") : QStringLiteral("Cloud · %1").arg(c.model);
+    cfg.displayName = c.preset == "ollama" ? QStringLiteral("Ollama (local)") : QStringLiteral("Cloud · %1").arg(model);
     cfg.baseUrl = QUrl(base);
-    cfg.model = c.model;
+    cfg.model = model;
     cfg.apiKey = AISettings::loadApiKey();
+    // Autre poste, intégration continue : clé fournie par l'environnement si aucune n'est enregistrée (jamais journalisée).
+    if (cfg.apiKey.isEmpty()) cfg.apiKey = qEnvironmentVariable("TSA_AI_API_KEY");
     // Ollama tourne sur la machine : traité comme local (aucune donnée ne sort du poste).
     cfg.locality = c.preset == "ollama" ? ProviderLocality::Local : ProviderLocality::Cloud;
-    cfg.backendLabel = c.preset == "ollama" ? QStringLiteral("Ollama") : c.preset == "anthropic" ? QStringLiteral("Anthropic") : c.preset;
-    // Anthropic (Claude) : point d'accès « compatible OpenAI » officiel (bêta), même protocole Chat
-    // Completions que les autres fournisseurs Cloud ; contexte réellement supporté par ces modèles.
-    cfg.contextTokens = c.preset == "anthropic" ? 200000 : 32768;
+    cfg.backendLabel = c.preset == "ollama" ? QStringLiteral("Ollama")
+                     : c.preset == "anthropic" ? QStringLiteral("Anthropic Claude")
+                     : c.preset == "gemini" ? QStringLiteral("Google Gemini")
+                     : c.preset == "deepseek" ? QStringLiteral("DeepSeek")
+                     : c.preset == "qwen-dashscope" ? QStringLiteral("Alibaba Qwen")
+                     : c.preset == "groq" ? QStringLiteral("Groq LPU")
+                     : c.preset == "openrouter" ? QStringLiteral("OpenRouter")
+                     : c.preset;
+    int ctx = 32768;
+    if (c.preset == "openrouter") ctx = 131072;
+    if (c.preset == "gemini") ctx = 1000000;
+    else if (c.preset == "anthropic") ctx = 200000;
+    else if (c.preset == "deepseek" || c.preset == "qwen-dashscope" || c.preset == "groq") ctx = 131072;
+    cfg.contextTokens = ctx;
     m_cloudProvider = new OpenAICompatibleProvider(cfg, this);
     connect(m_cloudProvider, &IAIProvider::contentDelta, this, [this](quint64 id, const QString& t) {
         if (id == m_requestId) emit assistantDelta(t);
@@ -583,6 +641,11 @@ void AIOrchestrator::dispatch(const PendingRequest& request, Route route)
     m_turnStartMs = QDateTime::currentMSecsSinceEpoch();
     m_turn.clear();
     m_turn << ChatMessage::system(systemPrompt());
+    if (m_operator)
+    {
+        m_operator->beginRequest();
+        m_turn << ChatMessage::system(operatorInstructions(m_operator->actEnabled()));
+    }
     m_turn << ChatMessage::system(buildContextBlock(request.task));
     const int from = std::max(0, static_cast<int>(m_history.size()) - kHistoryMessages);
     for (int i = from; i < m_history.size(); ++i) m_turn << m_history[i];
@@ -656,7 +719,16 @@ void AIOrchestrator::onProviderFinished(quint64 id, const ChatResult& result)
     }
     if (id != m_requestId || !m_busy) return;
 
-    if (!result.toolCalls.empty() && m_toolRounds < kMaxToolRounds)
+    const int maxRounds = m_operator ? kMaxOperatorToolRounds : kMaxToolRounds;
+    if (!result.toolCalls.empty() && m_toolRounds >= maxRounds)
+    {
+        // Limite atteinte : arrêt explicite, jamais une fin silencieuse présentée comme un succès.
+        finishTurn(result.content + QStringLiteral("\n\n⚠ Arrêt : limite de %1 tours d'outils atteinte, la tâche n'est pas terminée. "
+                                                   "Vérifier l'état du modèle avant de relancer.").arg(maxRounds),
+                   result);
+        return;
+    }
+    if (!result.toolCalls.empty())
     {
         ++m_toolRounds;
         ChatMessage assistant = ChatMessage::assistant(result.content);
@@ -666,6 +738,7 @@ void AIOrchestrator::onProviderFinished(quint64 id, const ChatResult& result)
         {
             emit toolActivity(QStringLiteral("Outil TSA : %1").arg(call.name));
             ToolOutcome out = m_tools->execute(call.name, call.argumentsJson);
+            if (call.name == QLatin1String("execute_command") && out.ok) emit operatorActionPerformed(out.data);
             if (out.proposal)
             {
                 m_proposals.push_back(*out.proposal);

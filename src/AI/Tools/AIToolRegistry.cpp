@@ -1,5 +1,6 @@
 #include "AIToolRegistry.h"
 
+#include "../Operator/AIOperator.h"
 #include "../RAG/EngineeringKnowledgeBase.h"
 #include "../../Automation/CommandRegistry.h"
 #include "../../Blueprint/BlueprintScript.h"
@@ -73,6 +74,7 @@ QStringList AIToolRegistry::whitelist()
 
 ToolKind AIToolRegistry::kindOf(const QString& tool)
 {
+    if (tool == QLatin1String("execute_command")) return ToolKind::Action;
     return tool.startsWith("propose_") ? ToolKind::Proposal : ToolKind::Read;
 }
 
@@ -115,6 +117,21 @@ QJsonArray AIToolRegistry::toolDefinitions() const
              { "script", prop("string", "Script de commandes, une par ligne") },
              { "rationale", prop("string", "Ce que le Blueprint construit et pourquoi") } }, { "title", "script", "rationale" }),
     };
+    if (m_operator)
+    {
+        // Catalogue compact dans la description : les petits modèles locaux n'appellent pas toujours list_commands.
+        tools.append(fn("execute_command",
+                        QStringLiteral("EXÉCUTE une commande du registre TSA sur le projet ouvert et rend le résultat VÉRIFIÉ dans le modèle "
+                                       "(« executed », « verified », « verification »). Commandes marquées * : modifient le modèle ou "
+                                       "lancent le calcul ; refusées si le mode opérateur est désactivé (proposer alors un Blueprint). "
+                                       "Une commande à la fois ; utiliser les « id » rendus pour la suite. Unités : m, kN, kN/m, degrés. "
+                                       "Point : [x, y, z]. Commandes :\n%1")
+                            .arg(AIOperator::commandCatalog()),
+                        { { "command", QJsonObject { { "type", "string" }, { "enum", QJsonArray::fromStringList(AIOperator::commandIds()) },
+                                                     { "description", "Identifiant de la commande" } } },
+                          { "arguments", QJsonObject { { "type", "object" }, { "description", "Arguments nommés de la commande" } } } },
+                        { "command", "arguments" }));
+    }
     return tools;
 }
 
@@ -205,7 +222,9 @@ ToolOutcome AIToolRegistry::proposeSectionChange(const QJsonObject& args, const 
 ToolOutcome AIToolRegistry::execute(const QString& name, const QString& argumentsJson) const
 {
     ToolOutcome out;
-    if (!whitelist().contains(name))
+    // Outil d'action : autorisé (et déclaré) seulement si un opérateur est branché ; hors liste blanche de base.
+    const bool actionTool = name == QLatin1String("execute_command") && m_operator;
+    if (!whitelist().contains(name) && !actionTool)
     {
         out.error = QStringLiteral("Outil non autorisé : %1").arg(name);
         return out;
@@ -221,6 +240,18 @@ ToolOutcome AIToolRegistry::execute(const QString& name, const QString& argument
         }
         args = doc.object();
     }
+    if (actionTool)
+    {
+        // Certains modèles transmettent les arguments sous forme de texte JSON : accepté s'il décrit un objet.
+        QJsonObject commandArgs = args.value("arguments").toObject();
+        if (args.value("arguments").isString())
+            commandArgs = QJsonDocument::fromJson(args.value("arguments").toString().toUtf8()).object();
+        const OperatorAction action = m_operator->execute(args.value("command").toString(), commandArgs);
+        out.ok = true; // le refus ou l'échec est décrit dans data (executed / refused / verified), jamais masqué
+        out.data = action.toJson();
+        return out;
+    }
+
     const EngineeringSources src = m_sources ? m_sources() : EngineeringSources{};
     if (!src.model && name != "search_knowledge")
     {

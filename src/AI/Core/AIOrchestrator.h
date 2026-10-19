@@ -10,6 +10,7 @@
 #include "../Hardware/HardwareProfiler.h"
 #include "../Models/ModelManager.h"
 #include "../Models/ModelRegistry.h"
+#include "../Operator/AIOperator.h"
 #include "../Providers/LocalLlamaServer.h"
 #include "../Providers/OpenAICompatibleProvider.h"
 #include "../RAG/EngineeringKnowledgeBase.h"
@@ -42,6 +43,10 @@ public:
     ~AIOrchestrator() override;
 
     void setSourcesProvider(AIToolRegistry::SourcesProvider provider);
+
+    /// Opérateur IA (outil « execute_command ») : nullptr = assistant sans action directe (propositions seules).
+    void setOperator(AIOperator* op);
+    AIOperator* operatorPtr() const { return m_operator; }
 
     // --- Matériel & configuration ------------------------------------------------------------
     void probeHardwareAsync();
@@ -99,6 +104,8 @@ signals:
     void assistantFailed(const QString& error);
     void deterministicReport(const QString& title, const QString& markdown);
     void toolActivity(const QString& description);
+    /// Action de l'opérateur (exécutée, refusée ou en échec), au format OperatorAction::toJson().
+    void operatorActionPerformed(const QJsonObject& action);
     void proposalCreated(const TSA::AI::ActionProposal& proposal);
     void proposalResolved(const QString& proposalId, bool applied, const QString& message);
     void cloudConsentRequested(const QString& reason);
@@ -145,6 +152,7 @@ private:
     EngineeringKnowledgeBase m_knowledge;
     std::unique_ptr<AIToolRegistry> m_tools;
     AIToolRegistry::SourcesProvider m_sources;
+    AIOperator* m_operator = nullptr;
     AISettings m_settings;
 
     AIHardwareProfile m_hardware;

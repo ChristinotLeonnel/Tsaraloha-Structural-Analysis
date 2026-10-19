@@ -38,6 +38,11 @@ namespace TSA::Project
 class ProjectSession;
 }
 
+namespace TSA::AI
+{
+class AIOperator;
+}
+
 namespace TSA::Automation
 {
 
@@ -68,6 +73,8 @@ public:
     void setActiveCheck(std::function<bool()> check) { m_activeCheck = std::move(check); }
     /// Documents ouverts [{id, name, path, active}] (méthode list_documents) ; par défaut : ce document seul.
     void setDocumentsProvider(std::function<QJsonArray()> provider) { m_documents = std::move(provider); }
+    /// Opérateur IA du document (méthodes operator_status, operator_begin, operator_execute) ; nullptr : indisponible.
+    void setOperator(TSA::AI::AIOperator* op) { m_operator = op; }
 
     /// Traite une requête (public pour les tests). Méthodes : hello, list_commands, execute, execute_line,
     /// run_script, model_summary, read_tool, undo, redo.
@@ -91,6 +98,7 @@ private:
     QString m_documentId;
     std::function<bool()> m_activeCheck;
     std::function<QJsonArray()> m_documents;
+    TSA::AI::AIOperator* m_operator = nullptr;
     QJsonObject documentJson() const;
 };
 

@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
         if (std::strncmp(argv[i], "--suite=", 8) == 0) {
             suiteFilter = argv[i] + 8;
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
-            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|preview|thumbnail|engines|tools|mdd|cleanup|bim|ifc|drawing|views|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display|multidoc|i18n|ribbon|templates_wp]" << std::endl;
+            std::cout << "Usage: " << TSA::Product::kName << "_TestSuite [--suite=all|coordinates|model|io|commands|grids|viewer|cables|extensions|workplane|window|node|loads|opensees|supports|standards|ndc|extraction|ai|operator|ailive|preview|thumbnail|engines|tools|mdd|cleanup|bim|ifc|drawing|views|snap|automation|blueprint|help|appearance|groupedit|topology|dimensions|displaymodes|shortcuts|tsa3d|modules|templates|deployment|mesh|torsion|meshview|demo|surfaces|audit|benchmarks|display|multidoc|i18n|ribbon|templates_wp]" << std::endl;
             return 0;
         }
     }
@@ -98,6 +98,15 @@ int main(int argc, char* argv[])
     if (suiteFilter == "all" || suiteFilter == "ai") {
         std::cout << "\n--- [Suite 18/18] AI Co-Engineering: matériel, modèles, vérification, contexte, outils (Tests 112-123) ---" << std::endl;
         if (!runSuite_AI(passed)) allOk = false;
+    }
+    if (suiteFilter == "all" || suiteFilter == "ai" || suiteFilter == "operator") {
+        std::cout << "\n--- Opérateur IA : politique, exécution vérifiée, outil, calcul réel, canal Python (Tests 481-486, 488) ---" << std::endl;
+        if (!runSuite_AIOperator(passed)) allOk = false;
+    }
+    // Fournisseur réel (réseau ou serveur local) : jamais dans « all » ; exécuté seulement si TSA_AI_LIVE_URL est défini.
+    if (suiteFilter == "ailive") {
+        std::cout << "\n--- Opérateur IA : scénario réel avec un modèle de langage (Test 487) ---" << std::endl;
+        if (!runSuite_AIOperatorLive(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "preview") {
         std::cout << "\n--- [Suite 19/19] Projets récents et aperçus du dernier état (Tests 124-126) ---" << std::endl;

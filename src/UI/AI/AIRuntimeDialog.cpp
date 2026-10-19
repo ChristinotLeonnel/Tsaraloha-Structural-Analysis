@@ -431,17 +431,47 @@ QWidget* AIRuntimeDialog::buildPrivacyPage()
     auto* cloud = new QGroupBox(tr("Fournisseur Cloud (optionnel)"), page);
     auto* cf = new QFormLayout(cloud);
     m_cloudPreset = new QComboBox(cloud);
-    m_cloudPreset->addItem(tr("Compatible OpenAI (URL personnalisée)"), "openai-compatible");
-    m_cloudPreset->addItem(tr("Google Gemini (point d'accès compatible OpenAI)"), "gemini");
+    // Quotas gratuits non chiffrés ici : ils dépendent du projet et se lisent dans AI Studio (page « rate limit »).
+    m_cloudPreset->addItem(tr("Google Gemini (palier gratuit, quotas par projet — compatible OpenAI)"), "gemini");
+    m_cloudPreset->addItem(tr("OpenRouter (modèles « :free » gratuits — compatible OpenAI)"), "openrouter");
+    m_cloudPreset->addItem(tr("DeepSeek (R1 / V3 — compatible OpenAI)"), "deepseek");
     m_cloudPreset->addItem(tr("Anthropic Claude (point d'accès compatible OpenAI)"), "anthropic");
+    m_cloudPreset->addItem(tr("Alibaba Qwen (DashScope — compatible OpenAI)"), "qwen-dashscope");
+    m_cloudPreset->addItem(tr("Groq (Ultra-rapide — compatible OpenAI)"), "groq");
     m_cloudPreset->addItem(tr("Ollama (local, sur ce poste)"), "ollama");
+    m_cloudPreset->addItem(tr("Compatible OpenAI (URL personnalisée)"), "openai-compatible");
     m_cloudPreset->setCurrentIndex(std::max(0, m_cloudPreset->findData(s.cloud.preset)));
-    m_cloudPreset->setToolTip(tr("Anthropic : point d'accès « compatible OpenAI » officiel (bêta) — même protocole que les "
-                                 "autres fournisseurs Cloud, clé API Anthropic (console.anthropic.com)."));
+    m_cloudPreset->setToolTip(tr("Fournisseurs compatibles avec le protocole standard Chat Completions."));
     m_cloudUrl = new QLineEdit(s.cloud.baseUrl, cloud);
     m_cloudUrl->setPlaceholderText("https://…/v1");
     m_cloudModel = new QLineEdit(s.cloud.model, cloud);
-    m_cloudModel->setPlaceholderText(tr("ex. claude-sonnet-5-5, gpt-..., gemini-..."));
+    m_cloudModel->setPlaceholderText(tr("ex. gemini-2.0-flash, deepseek-chat, claude-3-5-sonnet-20241022"));
+
+    connect(m_cloudPreset, &QComboBox::currentIndexChanged, this, [this](int idx) {
+        const QString p = m_cloudPreset->itemData(idx).toString();
+        if (p == "gemini") {
+            m_cloudUrl->setText(QStringLiteral("https://generativelanguage.googleapis.com/v1beta/openai"));
+            m_cloudModel->setText(QStringLiteral("gemini-2.0-flash"));
+        } else if (p == "deepseek") {
+            m_cloudUrl->setText(QStringLiteral("https://api.deepseek.com/v1"));
+            m_cloudModel->setText(QStringLiteral("deepseek-chat"));
+        } else if (p == "anthropic") {
+            m_cloudUrl->setText(QStringLiteral("https://api.anthropic.com/v1"));
+            m_cloudModel->setText(QStringLiteral("claude-3-5-sonnet-20241022"));
+        } else if (p == "qwen-dashscope") {
+            m_cloudUrl->setText(QStringLiteral("https://dashscope-intl.aliyuncs.com/compatible-mode/v1"));
+            m_cloudModel->setText(QStringLiteral("qwen-plus"));
+        } else if (p == "groq") {
+            m_cloudUrl->setText(QStringLiteral("https://api.groq.com/openai/v1"));
+            m_cloudModel->setText(QStringLiteral("llama-3.3-70b-versatile"));
+        } else if (p == "openrouter") {
+            m_cloudUrl->setText(QStringLiteral("https://openrouter.ai/api/v1"));
+            m_cloudModel->setText(QStringLiteral("openrouter/free"));
+        } else if (p == "ollama") {
+            m_cloudUrl->setText(QStringLiteral("http://127.0.0.1:11434/v1"));
+            m_cloudModel->setText(QStringLiteral("qwen2.5:7b"));
+        }
+    });
     m_cloudKey = new QLineEdit(cloud);
     m_cloudKey->setEchoMode(QLineEdit::Password);
     m_cloudKey->setPlaceholderText(s.cloud.hasApiKey ? tr("•••••• (enregistrée, chiffrée) — laisser vide pour conserver") : tr("clé API"));

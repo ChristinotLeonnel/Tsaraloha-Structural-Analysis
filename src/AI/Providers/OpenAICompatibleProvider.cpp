@@ -217,7 +217,18 @@ void OpenAICompatibleProvider::onFinished(quint64 id)
         const auto doc = QJsonDocument::fromJson(detail.toUtf8());
         if (doc.isObject() && doc.object().value("error").isObject())
             detail = doc.object()["error"].toObject().value("message").toString(detail);
-        fail(id, QStringLiteral("HTTP %1 — %2 %3").arg(http).arg(p->reply->errorString(), detail).trimmed());
+        // Causes fréquentes rendues explicites. Aucune nouvelle tentative automatique : un quota atteint n'est jamais
+        // contourné ; l'utilisateur relance quand il le décide.
+        QString hint;
+        if (http == 429)
+        {
+            const QByteArray retry = p->reply->rawHeader("Retry-After");
+            hint = retry.isEmpty() ? QStringLiteral(" Quota ou limite de débit du fournisseur atteint : réessayer plus tard.")
+                                   : QStringLiteral(" Quota ou limite de débit du fournisseur atteint : réessayer dans %1 s.").arg(QString::fromLatin1(retry));
+        }
+        else if (http == 401 || http == 403)
+            hint = QStringLiteral(" Clé API absente, invalide ou sans droit sur ce modèle (Configuration de l'IA).");
+        fail(id, (QStringLiteral("HTTP %1 — %2 %3").arg(http).arg(p->reply->errorString(), detail) + hint).trimmed());
         return;
     }
 

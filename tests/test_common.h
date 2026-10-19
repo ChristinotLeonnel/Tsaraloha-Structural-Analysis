@@ -174,6 +174,8 @@ bool runSuite_Standards(int& passed);
 bool runSuite_NDCReport(int& passed);
 bool runSuite_Extraction(int& passed);
 bool runSuite_AI(int& passed);
+bool runSuite_AIOperator(int& passed);
+bool runSuite_AIOperatorLive(int& passed);
 bool runSuite_Preview(int& passed);
 bool runSuite_Thumbnail(int& passed);
 bool runSuite_Engines(int& passed);
