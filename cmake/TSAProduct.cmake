@@ -20,6 +20,17 @@ get_filename_component(TSALAB_ROOT_DIR "${TSALAB_ROOT_DIR}" ABSOLUTE)
 if(NOT DEFINED TSALAB_SCIENCE_TOOLS)
     set(TSALAB_SCIENCE_TOOLS OFF CACHE BOOL "Compiler tsalab-bench et les tests du cœur scientifique")
 endif()
+# Moteur EF 3D « fem3d » (dépôt voisin 3DDesplacement, TSA-3D-FEM-Engine) : FACULTATIF. Présent, il est compilé et
+# enregistré comme moteur secondaire (docs/ANALYSIS_ENGINES.md) ; absent, TSA se construit sans lui (OpenSees reste
+# le moteur 3D) et le signale.
+set(TSA_FEM3D_DIR "${TSA_ROOT}/../3DDesplacement" CACHE PATH "Racine du dépôt du moteur EF 3D Fem3D (facultatif)")
+get_filename_component(TSA_FEM3D_DIR "${TSA_FEM3D_DIR}" ABSOLUTE)
+if(EXISTS "${TSA_FEM3D_DIR}/CMakeLists.txt" AND EXISTS "${TSA_FEM3D_DIR}/include/Fem3D/Analysis/LinearStaticAnalysis.h")
+    set(TSA_HAS_FEM3D ON)
+else()
+    set(TSA_HAS_FEM3D OFF)
+    message(STATUS "Moteur Fem3D absent (${TSA_FEM3D_DIR}) : TSA est construit sans le moteur « fem3d ».")
+endif()
 
 # =============================================================================
 # Fichiers sources — regroupés par module
@@ -190,6 +201,8 @@ set(UI_ANALYSIS_SOURCES
     ${TSA_ROOT}/src/UI/Analysis/OpenSeesOptionsWidget.cpp
     ${TSA_ROOT}/src/UI/Analysis/Custom2DOptionsWidget.h
     ${TSA_ROOT}/src/UI/Analysis/Custom2DOptionsWidget.cpp
+    ${TSA_ROOT}/src/UI/Analysis/Fem3DOptionsWidget.h
+    ${TSA_ROOT}/src/UI/Analysis/Fem3DOptionsWidget.cpp
     ${TSA_ROOT}/src/UI/Analysis/AnalysisDialog.h
     ${TSA_ROOT}/src/UI/Analysis/AnalysisDialog.cpp
     ${TSA_ROOT}/src/UI/Analysis/AnalysisManagerPanel.h
@@ -667,6 +680,14 @@ set(ANALYSIS_ENGINE_SOURCES
     ${TSA_ROOT}/src/Analysis/Engines/Custom2D/Custom2DEngine.h
     ${TSA_ROOT}/src/Analysis/Engines/Custom2D/Custom2DEngine.cpp
 )
+if(TSA_HAS_FEM3D)
+    list(APPEND ANALYSIS_ENGINE_SOURCES
+        ${TSA_ROOT}/src/Analysis/Engines/Fem3D/Fem3DAdapter.h
+        ${TSA_ROOT}/src/Analysis/Engines/Fem3D/Fem3DAdapter.cpp
+        ${TSA_ROOT}/src/Analysis/Engines/Fem3D/Fem3DEngine.h
+        ${TSA_ROOT}/src/Analysis/Engines/Fem3D/Fem3DEngine.cpp
+    )
+endif()
 
 # --- IA Co-Engineering (matériel, modèles, fournisseurs, contexte, outils, RAG) — [CORE] ---
 set(AI_CORE_SOURCES
@@ -1203,6 +1224,11 @@ function(tsaraloha_add_shared_libraries)
         endif()
         add_subdirectory(${TSALAB_ROOT_DIR}/science ${CMAKE_BINARY_DIR}/tsalab_science)
     endif()
+    # Moteur EF 3D Fem3D (facultatif, voir TSA_FEM3D_DIR) : bibliothèque seule, sans ses tests.
+    if(TSA_HAS_FEM3D AND NOT TARGET fem3d)
+        set(FEM3D_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        add_subdirectory(${TSA_FEM3D_DIR} ${CMAKE_BINARY_DIR}/fem3d)
+    endif()
 
     # Bibliothèques OBJECT : les .obj sont réutilisés tels quels par les exécutables et les tests
     # (pas de risque de perdre des initialisations statiques comme avec une .lib).
@@ -1218,6 +1244,10 @@ function(tsaraloha_add_shared_libraries)
     )
     if(WIN32)
         target_link_libraries(${model} PUBLIC DbgHelp Crypt32)
+    endif()
+    if(TSA_HAS_FEM3D)
+        target_link_libraries(${model} PUBLIC fem3d)
+        target_compile_definitions(${model} PUBLIC TSA_HAS_FEM3D=1)
     endif()
     if(TARGET TSA::Gmsh)
         target_link_libraries(${model} PUBLIC TSA::Gmsh)

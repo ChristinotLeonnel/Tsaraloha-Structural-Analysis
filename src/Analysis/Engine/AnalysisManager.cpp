@@ -467,8 +467,10 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
         r.results.setSurfaceMeshSummary(context.surfaces.mesh);
     }
 
-    // Traçabilité commune, renseignée ici pour qu'aucun moteur ne puisse l'omettre.
-    const EngineInfo info = engine->info();
+    // Traçabilité commune, renseignée ici pour qu'aucun moteur ne puisse l'omettre. Un calcul délégué à un moteur de
+    // secours porte l'identité de ce moteur (AnalysisRunResult::producedBy), jamais celle du moteur choisi.
+    const AnalysisEngine* producer = r.producedBy ? m_registry.engine(r.producedBy->id) : engine;
+    const EngineInfo info = r.producedBy ? *r.producedBy : engine->info();
     auto& meta = r.results.executionMetadata();
     meta.engineId = info.id;
     meta.solverEngine = info.name;
@@ -476,8 +478,8 @@ AnalysisRunResult AnalysisManager::run(const AnalysisContext& context,
     meta.analysisScope = prepared.model.entireModel ? std::string() : prepared.model.scopeLabel;
     meta.analysisDimension = dimensionKey(context.dimension);
 
-    // Catégories annoncées = capacité déclarée ET données réellement présentes.
-    const AnalysisCapabilities caps = engine->capabilities();
+    // Catégories annoncées = capacité déclarée ET données réellement présentes (capacités du moteur producteur).
+    const AnalysisCapabilities caps = (producer ? producer : engine)->capabilities();
     ResultAvailability a = r.results.availabilityFromData();
     a.displacements &= caps.providesDisplacements;
     a.reactions &= caps.providesReactions;

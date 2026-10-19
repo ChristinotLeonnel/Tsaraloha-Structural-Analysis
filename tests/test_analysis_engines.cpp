@@ -10,6 +10,9 @@
 #include "Analysis/Engines/Custom2D/Custom2DAdapter.h"
 #include "Analysis/Engines/Custom2D/Custom2DEngine.h"
 #include "Analysis/Engines/OpenSees/OpenSeesEngine.h"
+#ifdef TSA_HAS_FEM3D
+#include "Analysis/Engines/Fem3D/Fem3DEngine.h"
+#endif
 #include "Analysis/OpenSeesSolver.h"
 #include "Model/Load/LoadManager.h"
 #include "Project/ProjectSession.h"
@@ -131,7 +134,12 @@ bool runSuite_Engines(int& passed)
         AnalysisEngineRegistry reg;
         registerBuiltInEngines(reg);
         TEST_CHECK(reg.hasEngine("opensees") && reg.hasEngine("custom2d"), "Test 130: OpenSees et Custom2D enregistrés");
-        TEST_CHECK(reg.size() == 2 && reg.ids().front() == "opensees", "Test 130: ordre d'enregistrement conservé");
+#ifdef TSA_HAS_FEM3D
+        constexpr std::size_t builtInEngines = 3;   // + moteur EF 3D Fem3D (dépôt voisin 3DDesplacement)
+#else
+        constexpr std::size_t builtInEngines = 2;
+#endif
+        TEST_CHECK(reg.size() == builtInEngines && reg.ids().front() == "opensees", "Test 130: ordre d'enregistrement conservé (OpenSees par défaut)");
         TEST_CHECK(!reg.registerEngine(std::make_unique<Custom2DEngine>()), "Test 130: identifiant en double refusé");
         TEST_CHECK(reg.engine("inconnu") == nullptr && !reg.hasEngine(""), "Test 130: moteur inconnu");
         const auto infos = reg.engines();
@@ -786,5 +794,181 @@ bool runSuite_Engines(int& passed)
         std::cout << "[PASS] Test 212: Charge uniforme partielle transmise au calcul" << std::endl;
         ++passed;
     }
+#ifdef TSA_HAS_FEM3D
+    // -------------------------------------------------------------------------
+    // TESTS 476-480 : moteur EF 3D Fem3D (moteur secondaire, logique de secours explicite)
+    // -------------------------------------------------------------------------
+    {
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        TEST_CHECK(reg.hasEngine("fem3d") && reg.ids().front() == "opensees" && reg.ids().back() == "fem3d",
+                   "Test 476: Fem3D enregistré après OpenSees, qui reste le moteur par défaut");
+        const AnalysisEngine* fem = reg.engine("fem3d");
+        const AnalysisCapabilities c = fem->capabilities();
+        TEST_CHECK(c.supports3D && !c.supports2D && c.supportsFrame && c.supportsSprings && c.supportsStatic,
+                   "Test 476: périmètre déclaré (3D, poutres, ressorts, statique)");
+        TEST_CHECK(!c.supportsTruss && !c.supportsCable && !c.supportsShell && !c.supportsNonlinear && !c.supportsModal && !c.supportsMesh,
+                   "Test 476: rien de plus que le périmètre qualifié");
+        TEST_CHECK(fem->info().version == "0.2.0" && fem->availability().available, "Test 476: version réelle de la bibliothèque");
+        TEST_CHECK(fem->defaultSettings().value("mode").toString() == "fem3d" && fem->defaultSettings().value("fallback").toString() == "none",
+                   "Test 476: par défaut, Fem3D seul et aucun secours");
+        std::cout << "[PASS] Test 476: Moteur Fem3D enregistré" << std::endl;
+        ++passed;
+    }
+    {
+        // Portiques A, B, C reliés par des poutres transversales : rotules, ressorts, charges nodales, réparties
+        // uniformes et trapézoïdales sur toute la longueur, poids propre. Fem3D comparé à OpenSees (mode « compare »).
+        Model m;
+        GridManager gm;
+        Frames f = buildFrames(m, true);
+        m.getNode(f.nodes['C'][3])->setSupport(SupportDefinition::elastic(5.0e4, 4.0e4, 2.0e5, 3.0e3, 2.5e3, 2.0e3));
+        EndRelease hinge;
+        hinge.my = true;
+        hinge.mz = true;
+        m.getBeam(f.transverse[0])->setEndRelease(hinge);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "G+Q", LoadCaseCategory::Live));
+        m.loadManager().addNodalLoad(NodalLoad(0, f.nodes['A'][1], lc, 12.0, -4.0, -30.0, 1.0, 0.0, 2.0));
+        m.loadManager().addNodalLoad(NodalLoad(0, f.nodes['C'][2], lc, 0.0, 8.0, -20.0));
+        for (char axis : { 'A', 'B', 'C' })
+            m.loadManager().addMemberLoad(MemberLoad::uniform(f.members[axis][1], lc, -6.0, LoadDirection::GlobalZ, "q"));
+        m.loadManager().addMemberLoad(MemberLoad::trapezoidal(f.members['B'][1], lc, -4.0, -14.0, 0.0, 1.0, LoadDirection::GlobalZ,
+                                                              LoadCoordSystem::Global, true, "trapèze"));
+        m.loadManager().addMemberLoad(MemberLoad::uniform(f.members['A'][0], lc, 3.0, LoadDirection::GlobalY, LoadCoordSystem::Global, "vent",
+                                                          MemberTargetType::Column));
+
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext c;
+        c.engineId = "fem3d";
+        c.loadCaseIds = { lc };
+        c.common.includeSelfWeight = true;
+        c.engineSettings["fem3d"] = QJsonObject { { "mode", "compare" }, { "fallback", "none" } };
+        const auto prep = mgr.prepare(m, &gm, c);
+        TEST_CHECK(prep.canRun(), "Test 477: modèle dans le périmètre de Fem3D");
+        const auto run = mgr.run(c, prep);
+        TEST_CHECK(run.success, "Test 477: calcul Fem3D (" << run.message << ")");
+        TEST_CHECK(run.results.executionMetadata().engineId == "fem3d" && run.results.executionMetadata().solverEngine == "Fem3D",
+                   "Test 477: résultats étiquetés Fem3D");
+        TEST_CHECK(run.message.find(" 0 hors tolérance") != std::string::npos, "Test 477: Fem3D = OpenSees (" << run.message << ")");
+        const auto& tables = run.results.engineTables();
+        TEST_CHECK(tables.size() == 1 && tables[0].rows.size() == 4 && tables[0].rows.back()[2] == "0",
+                   "Test 477: table de comparaison (déplacements, réactions, efforts) sans écart");
+        TEST_CHECK(run.results.allReactions().count(f.nodes['C'][3]) == 1, "Test 477: réaction du ressort reportée sur son nœud");
+
+        // Stations : même reconstruction pour les deux moteurs (charge trapézoïdale comprise)
+        AnalysisContext os = c;
+        os.engineId = "opensees";
+        const auto osRun = mgr.run(os, mgr.prepare(m, &gm, os));
+        TEST_CHECK(osRun.success, "Test 477: calcul OpenSees de référence");
+        double worst = 0.0, scale = 0.0;
+        for (const auto& [key, e] : osRun.results.allElementResults())
+        {
+            const ElementResults* a = run.results.getElementResults(key);
+            TEST_CHECK(a && a->intermediateStations.size() == e.intermediateStations.size(), "Test 477: mêmes stations");
+            for (std::size_t i = 0; i < e.intermediateStations.size(); ++i)
+            {
+                const auto& x = a->intermediateStations[i];
+                const auto& y = e.intermediateStations[i];
+                for (const auto& [u, v] : { std::pair{ x.My, y.My }, std::pair{ x.Mz, y.Mz }, std::pair{ x.Vz, y.Vz }, std::pair{ x.N, y.N } })
+                {
+                    worst = std::max(worst, std::abs(u - v));
+                    scale = std::max(scale, std::abs(v));
+                }
+            }
+        }
+        TEST_CHECK(scale > 1.0 && worst <= 1e-6 * scale, "Test 477: efforts aux stations identiques (écart " << worst << " / " << scale << ")");
+        std::cout << "[PASS] Test 477: Fem3D comparé à OpenSees sur un portique spatial TSA" << std::endl;
+        ++passed;
+    }
+    {
+        // Hors périmètre (charge ponctuelle sur barre) : refus explicite, ou secours OpenSees choisi et étiqueté.
+        Model m;
+        GridManager gm;
+        Frames f = buildFrames(m, false);
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "P", LoadCaseCategory::Live));
+        m.loadManager().addMemberLoad(MemberLoad::pointOnMember(f.members['A'][1], lc, -25.0, 2.0, LoadDirection::GlobalZ, "P"));
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext c;
+        c.engineId = "fem3d";
+        c.loadCaseIds = { lc };
+        c.common.includeSelfWeight = false;
+        auto refused = mgr.prepare(m, &gm, c);
+        const auto errors = refused.validation.texts(ValidationSeverity::Error);
+        TEST_CHECK(!refused.canRun() && std::any_of(errors.begin(), errors.end(), [](const std::string& e) {
+                       return e.find("Hors du périmètre de Fem3D") != std::string::npos && e.find("charge ponctuelle") != std::string::npos;
+                   }),
+                   "Test 478: refus explicite, raison donnée");
+        TEST_CHECK(!mgr.run(c, refused).success, "Test 478: aucun calcul sans secours choisi");
+
+        c.engineSettings["fem3d"] = QJsonObject { { "mode", "fem3d" }, { "fallback", "opensees" } };
+        const auto prep = mgr.prepare(m, &gm, c);
+        const auto warnings = prep.validation.texts(ValidationSeverity::Warning);
+        TEST_CHECK(prep.canRun() && std::any_of(warnings.begin(), warnings.end(), [](const std::string& w) {
+                       return w.find("Calcul confié à OpenSees") != std::string::npos;
+                   }),
+                   "Test 478: secours annoncé avant le calcul");
+        const auto run = mgr.run(c, prep);
+        TEST_CHECK(run.success && run.results.executionMetadata().engineId == "opensees" && run.results.executionMetadata().solverEngine == "OpenSees",
+                   "Test 478: résultats étiquetés OpenSees, jamais Fem3D (" << run.results.executionMetadata().engineId << ")");
+        const auto& w = run.results.executionMetadata().warnings;
+        TEST_CHECK(std::any_of(w.begin(), w.end(), [](const std::string& x) { return x.find("secours de Fem3D") != std::string::npos; }),
+                   "Test 478: raison du secours dans la traçabilité");
+        std::cout << "[PASS] Test 478: Hors périmètre : refus ou secours OpenSees explicite" << std::endl;
+        ++passed;
+    }
+    {
+        // Mécanisme (poteau à pied articulé dans toutes les rotations) : refus, et jamais de secours. Le modèle complet
+        // est arrêté plus tôt par le contrôle de stabilité de TSA (ModelValidator) ; une SÉLECTION qui forme un mécanisme
+        // n'y passe pas et arrive au moteur.
+        Model m;
+        GridManager gm;
+        const int a = m.addNode(0, 0, 0), b = m.addNode(0, 0, 3), d = m.addNode(4, 0, 0), e = m.addNode(4, 0, 3);
+        m.getNode(a)->setSupport(SupportDefinition::custom(DOFState::Fixed, DOFState::Fixed, DOFState::Fixed, DOFState::Free, DOFState::Free, DOFState::Free));
+        m.getNode(d)->setSupport(SupportDefinition::fixed());
+        const int column = m.addColumn(a, b, Section::heb(200), Material::steelS235());
+        m.addColumn(d, e, Section::heb(200), Material::steelS235());
+        m.addBar(b, e, Section::ipe(300), Material::steelS235(), BarRole::Beam);   // le modèle complet est stable
+        const int lc = m.loadManager().addLoadCase(LoadCase(0, "H", LoadCaseCategory::Live));
+        m.loadManager().addNodalLoad(NodalLoad(0, b, lc, 5.0, 0.0, 0.0));
+        AnalysisEngineRegistry reg;
+        registerBuiltInEngines(reg);
+        AnalysisManager mgr(reg);
+        AnalysisContext c;
+        c.engineId = "fem3d";
+        c.loadCaseIds = { lc };
+        c.common.includeSelfWeight = false;
+        c.common.supportRestraints = SupportRestraintMode::None;
+        c.scope.type = ScopeType::SelectedElements;
+        c.scope.columns = { column };
+        c.engineSettings["fem3d"] = QJsonObject { { "mode", "fem3d" }, { "fallback", "opensees" } };
+        const auto prep = mgr.prepare(m, &gm, c);
+        const auto run = prep.canRun() ? mgr.run(c, prep) : AnalysisRunResult {};
+        std::string prepErrors;
+        for (const auto& e : prep.validation.texts(ValidationSeverity::Error)) prepErrors += " | " + e;
+        TEST_CHECK(prep.canRun() && !run.success && !run.results.hasResults(),
+                   "Test 479: mécanisme refusé, aucun résultat (préparation" << prepErrors << " ; calcul : " << run.success << " " << run.message << ")");
+        TEST_CHECK(run.message.find("mécanisme") != std::string::npos && run.message.find("Aucun moteur de secours") != std::string::npos,
+                   "Test 479: diagnostic du mécanisme, pas de secours (" << run.message << ")");
+        std::cout << "[PASS] Test 479: Mécanisme : diagnostic, jamais de secours" << std::endl;
+        ++passed;
+    }
+    {
+        TSA::UI::AnalysisEngineOptionsRegistry options;
+        TSA::UI::registerBuiltInEngineOptions(options);
+        TEST_CHECK(options.hasOptions("fem3d"), "Test 480: panneau d'options Fem3D");
+        std::unique_ptr<TSA::UI::AnalysisEngineOptionsWidget> panel(options.create("fem3d", nullptr));
+        panel->loadSettings(QJsonObject { { "mode", "compare" }, { "fallback", "opensees" } });
+        const QJsonObject back = panel->saveSettings();
+        TEST_CHECK(back.value("mode").toString() == "compare" && back.value("fallback").toString() == "opensees", "Test 480: réglages relus");
+        panel->loadSettings({});
+        TEST_CHECK(panel->saveSettings() == Fem3DEngine::settingsToJson({}), "Test 480: valeurs par défaut du moteur");
+        std::cout << "[PASS] Test 480: Options Fem3D" << std::endl;
+        ++passed;
+    }
+#endif
+
     return true;
 }

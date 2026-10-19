@@ -16,6 +16,7 @@
 #include <QJsonObject>
 
 #include <functional>
+#include <optional>
 #include <string>
 
 namespace TSA::Analysis
@@ -112,6 +113,9 @@ struct AnalysisRunResult
     /// Résultats indexés par identifiants TSA (nœud, ElementKey) : le remappage depuis les indices
     /// du moteur est fait par l'adaptateur via AnalysisMapping.
     ResultsModel results;
+    /// Moteur qui a RÉELLEMENT produit les résultats, s'il diffère du moteur choisi (secours explicite, ex. Fem3D →
+    /// OpenSees). AnalysisManager l'inscrit dans la traçabilité au lieu du moteur choisi : jamais d'étiquette fausse.
+    std::optional<EngineInfo> producedBy;
 };
 
 class AnalysisEngine

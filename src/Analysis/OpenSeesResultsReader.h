@@ -52,9 +52,20 @@ public:
                                  ResultsModel& outResults,
                                  std::string* errorMessage = nullptr);
 
-private:
+    /// Résultats des poutres et poteaux (extrémités et stations, convention de ResultsModel) à partir d'efforts
+    /// d'extrémité au format localForce d'OpenSees (12 valeurs par barre, dans l'ordre de map.beamColumnTags(),
+    /// forces exercées SUR l'élément, repère local) qui incluent DÉJÀ toutes les charges de loads. Même
+    /// reconstruction que pour OpenSees : utilisée par les autres moteurs 3D (Fem3D) pour des résultats comparables.
+    static std::map<ElementKey, ElementResults> beamResultsFromEndForces(const CalculationSnapshot& snapshot,
+                                                                         const OpenSeesModelMap& map,
+                                                                         const AnalysisParameters& params,
+                                                                         const std::vector<double>& localForces,
+                                                                         const std::map<int, NodeDisplacement>& displacements,
+                                                                         const std::map<int, std::vector<BeamElementLoad>>& loads);
+
     /// Efforts repris par les blocages automatiques d'appuis (CalculationSnapshot::automaticRestraints) :
-    /// avertissement dans les métadonnées et le journal s'ils ne sont pas négligeables.
+    /// avertissement dans les métadonnées et le journal s'ils ne sont pas négligeables. Public : commun à
+    /// tous les moteurs 3D qui calculent le CalculationSnapshot.
     static void checkAutomaticRestraints(const CalculationSnapshot& snapshot, const AnalysisParameters& params,
                                          ResultsModel& outResults);
     static void computeGlobalEquilibrium(const CalculationSnapshot& snapshot,

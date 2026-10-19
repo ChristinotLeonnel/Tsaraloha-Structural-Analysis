@@ -303,6 +303,9 @@ void fillBeamStations(ElementResults& res, const SnapshotElement& el, const doub
 /// Efforts d'éléments d'un pas : poutres/poteaux depuis localForce (12), treillis/câbles depuis
 /// basicForce (1). loads = charges eleLoad appliquées (nullptr : extrémités seules, aucune station
 /// inventée, ex. pilotage en déplacement dont le facteur de charge n'est pas connu).
+/// addNodalEquivalentFixedEndForces : les charges transmises aux nœuds (BeamElementLoad::nodalEquivalent) ne
+/// figurent pas dans localForce d'OpenSees, d'où l'ajout de leurs forces d'encastrement ; un moteur dont les
+/// efforts d'extrémité incluent déjà toutes les charges (Fem3D) passe false.
 std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapshot& snapshot,
                                                          const OpenSeesModelMap& map,
                                                          const AnalysisParameters& params,
@@ -310,7 +313,8 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
                                                          const std::vector<double>* axialRow,
                                                          const std::map<int, NodeDisplacement>& disps,
                                                          const std::map<int, std::vector<BeamElementLoad>>* loads,
-                                                         double loadFactor)
+                                                         double loadFactor,
+                                                         bool addNodalEquivalentFixedEndForces = true)
 {
     std::map<ElementKey, ElementResults> out;
     std::size_t beamIdx = 0;
@@ -375,7 +379,7 @@ std::map<ElementKey, ElementResults> buildElementResults(const CalculationSnapsh
                 if (auto it = loads->find(e.tag); it != loads->end()) elementLoads = &it->second;
                 for (const auto& l : *elementLoads)
                 {
-                    if (!l.nodalEquivalent()) continue;
+                    if (!addNodalEquivalentFixedEndForces || !l.nodalEquivalent()) continue;
                     double fI[6], fJ[6];
                     l.fixedEndForces(el->length, fI, fJ);
                     for (int k = 0; k < 6; ++k)
@@ -900,6 +904,15 @@ bool OpenSeesResultsReader::readMatrixResults(const std::string& workingDirector
 
     adv.available = true;
     return true;
+}
+
+std::map<ElementKey, ElementResults> OpenSeesResultsReader::beamResultsFromEndForces(
+    const CalculationSnapshot& snapshot, const OpenSeesModelMap& map, const AnalysisParameters& params,
+    const std::vector<double>& localForces, const std::map<int, NodeDisplacement>& displacements,
+    const std::map<int, std::vector<BeamElementLoad>>& loads)
+{
+    return buildElementResults(snapshot, map, params, &localForces, nullptr, displacements, &loads, 1.0,
+                               /*addNodalEquivalentFixedEndForces=*/false);
 }
 
 void OpenSeesResultsReader::checkAutomaticRestraints(const CalculationSnapshot& snapshot, const AnalysisParameters& params,
