@@ -44,7 +44,8 @@ public:
     // --- Données utilisateur ----------------------------------------------------------------------
     static QString userConfigDir();         ///< AppConfigLocation (créé au besoin)
     static QString userDataDir();           ///< AppLocalDataLocation (créé au besoin)
-    static QString userTemplatesDir();      ///< <données>/templates
+    static QString userTemplatesDir();      ///< <données>/templates (templates de documents)
+    static QString userProjectTemplatesDir(); ///< <données>/project-templates (templates de projets .tsa)
     static QString userModulesDir();        ///< <données>/modules
     static QString userExtensionsDir();     ///< <données>/Extensions
     /// Journaux : <app>/../logs ou <app>/logs en développement s'ils sont inscriptibles, sinon <données>/logs.

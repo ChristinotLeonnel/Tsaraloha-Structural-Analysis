@@ -114,6 +114,7 @@ private:
   QLabel *m_lblHint = nullptr;
 
   TSA::Coordinate::WorkPlaneAxis m_currentAxis = TSA::Coordinate::WorkPlaneAxis::Z;
+  int m_populatedAxis = -1;   ///< axe de la dernière liste de plans (actualisation : plan actif conservé)
   /// Garde de réentrance : vrai pendant que onPlanComboChanged() pousse le plan vers OccView.
   /// OccView réémet alors workPlaneChanged -> MainWindow::onWorkPlaneChanged -> setActiveLevelElevation(),
   /// qui rappelait onPlanComboChanged() : boucle infinie et débordement de pile au démarrage.

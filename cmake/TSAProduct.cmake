@@ -369,6 +369,8 @@ set(GRID_CORE_SOURCES
     ${TSA_ROOT}/src/Grid/GridType.h
     ${TSA_ROOT}/src/Grid/GridDefinition.h
     ${TSA_ROOT}/src/Grid/GridDefinition.cpp
+    ${TSA_ROOT}/src/Grid/GridCoordinateSync.h
+    ${TSA_ROOT}/src/Grid/GridCoordinateSync.cpp
     ${TSA_ROOT}/src/Grid/CartesianGrid.h
     ${TSA_ROOT}/src/Grid/CartesianGrid.cpp
     ${TSA_ROOT}/src/Grid/CylindricalGrid.h
@@ -761,6 +763,8 @@ set(PROJECT_SOURCES
     ${TSA_ROOT}/src/Project/ProjectSession.cpp
     ${TSA_ROOT}/src/Project/ProjectManager.h
     ${TSA_ROOT}/src/Project/ProjectManager.cpp
+    ${TSA_ROOT}/src/Project/ProjectTemplates.h
+    ${TSA_ROOT}/src/Project/ProjectTemplates.cpp
     ${TSA_ROOT}/src/Project/RecentProjects.h
     ${TSA_ROOT}/src/Project/RecentProjects.cpp
     ${TSA_ROOT}/src/Project/ModelPreviewCache.h
@@ -958,6 +962,8 @@ set(UI_AI_SOURCES
     ${TSA_ROOT}/src/UI/Home/StartCenter.cpp
     ${TSA_ROOT}/src/UI/Home/NewProjectDialog.h
     ${TSA_ROOT}/src/UI/Home/NewProjectDialog.cpp
+    ${TSA_ROOT}/src/UI/Home/SaveProjectTemplateDialog.h
+    ${TSA_ROOT}/src/UI/Home/SaveProjectTemplateDialog.cpp
     ${TSA_ROOT}/src/UI/Shell/AppShell.h
     ${TSA_ROOT}/src/UI/Shell/AppShell.cpp
     ${TSA_ROOT}/src/UI/Shell/AppShell_Search.cpp
@@ -1086,6 +1092,7 @@ set(TSA_TEST_SOURCES
     ${TSA_ROOT}/tests/test_meshview.cpp
     ${TSA_ROOT}/tests/test_demo_models.cpp
     ${TSA_ROOT}/tests/test_i18n.cpp
+    ${TSA_ROOT}/tests/test_project_templates.cpp
     # Ruban (couche application) : composants autonomes testés par la suite « ribbon »
     ${UI_RIBBON_SOURCES}
     ${TSA_ROOT}/resources/resources.qrc

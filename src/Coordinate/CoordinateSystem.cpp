@@ -3,6 +3,7 @@
 #include "../Model/Model.h"
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 #include <sstream>
 #include <iomanip>
 #include <QJsonDocument>
@@ -11,6 +12,27 @@
 
 namespace TSA::Coordinate
 {
+
+namespace
+{
+// Axes triés par coordonnée, chaque libellé restant attaché à sa coordonnée (l'ordre de saisie A, B, C… peut
+// différer de l'ordre géométrique) ; doublons exacts retirés en gardant le premier libellé.
+void sortAxes(const std::vector<double>& positions, const std::vector<std::string>& labels, std::vector<double>& outPositions,
+              std::vector<std::string>& outLabels)
+{
+    std::vector<std::size_t> order(positions.size());
+    std::iota(order.begin(), order.end(), std::size_t(0));
+    std::stable_sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return positions[a] < positions[b]; });
+    outPositions.clear();
+    outLabels.clear();
+    for (std::size_t i : order)
+    {
+        if (!outPositions.empty() && std::abs(positions[i] - outPositions.back()) < 1e-6) continue;
+        outPositions.push_back(positions[i]);
+        outLabels.push_back(i < labels.size() ? labels[i] : std::string());
+    }
+}
+} // namespace
 
 CoordinateSystem::CoordinateSystem(QObject* parent)
     : QObject(parent)
@@ -62,6 +84,24 @@ void CoordinateSystem::setXPositions(const std::vector<double>& positions)
     }), m_xPositions.end());
 
     synchronizeLabels();
+    emit coordinatesChanged();
+}
+
+void CoordinateSystem::setXAxes(const std::vector<double>& positions, const std::vector<std::string>& labels)
+{
+    sortAxes(positions, labels, m_xPositions, m_xLabels);
+    emit coordinatesChanged();
+}
+
+void CoordinateSystem::setYAxes(const std::vector<double>& positions, const std::vector<std::string>& labels)
+{
+    sortAxes(positions, labels, m_yPositions, m_yLabels);
+    emit coordinatesChanged();
+}
+
+void CoordinateSystem::setGridElevations(const std::vector<double>& elevations, const std::vector<std::string>& labels)
+{
+    sortAxes(elevations, labels, m_gridZ, m_gridZLabels);
     emit coordinatesChanged();
 }
 
@@ -286,16 +326,6 @@ bool CoordinateSystem::findClosestIntersection(const Point3D& rawPnt, double tol
     return false;
 }
 
-void CoordinateSystem::setDefaultBuildingCoordinates()
-{
-    setXPositions({0.0, 6.0, 12.0, 18.0});
-    setYPositions({0.0, 4.0, 8.0, 12.0});
-
-    std::vector<double> zElevations = {0.0, 3.0, 6.5, 10.0};
-    std::vector<std::string> zNames = {"RDC (Z=0.00)", "Étage 1 (Z=3.00)", "Étage 2 (Z=6.50)", "Toiture (Z=10.00)"};
-    m_levelManager->setFromElevations(zElevations, zNames);
-}
-
 std::string CoordinateSystem::serializeToJson() const
 {
     QJsonObject root;
@@ -392,9 +422,24 @@ std::vector<DetectedPlaneInfo> CoordinateSystem::detectStructuralPlanes(WorkPlan
                 result.push_back(info);
             }
         }
+        else if (!m_gridZ.empty())
+        {
+            // 2. Altitudes de la grille active (aucun niveau défini dans le modèle)
+            for (size_t i = 0; i < m_gridZ.size(); ++i)
+            {
+                DetectedPlaneInfo info;
+                info.axis = WorkPlaneAxis::Z;
+                info.offset = m_gridZ[i];
+                info.name = (i < m_gridZLabels.size() && !m_gridZLabels[i].empty())
+                    ? (m_gridZLabels[i] + " (Z = " + formatOffset(m_gridZ[i]) + " m)")
+                    : ("Z = " + formatOffset(m_gridZ[i]) + " m");
+                info.id = "gz_" + std::to_string(i);
+                result.push_back(info);
+            }
+        }
         else
         {
-            // Collecter les Z uniques des nœuds du modèle
+            // 3. Collecter les Z uniques des nœuds du modèle
             std::vector<double> zVals;
             if (model)
             {

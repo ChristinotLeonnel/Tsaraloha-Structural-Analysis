@@ -4,6 +4,8 @@
 #include "App/ProductInfo.h"
 #include "GridAdvancedSettingsDialog.h"
 #include "../../Grid/GridManager.h"
+#include "../../Grid/GridCoordinateSync.h"
+#include "../../Coordinate/CoordinateSystem.h"
 #include "../../Model/Model.h"
 #include "../../Model/Beam.h"
 #include "../../Model/Column.h"
@@ -49,7 +51,24 @@ GridDialog::GridDialog(TSA::Grid::GridManager* gridManager,
 {
     setupUi();
 
-    if (m_model && m_model->coordinateSystem())
+    if (m_gridManager && m_gridManager->activeGrid() && m_gridManager->activeGrid()->definition().type() == TSA::Grid::GridType::Cartesian)
+    {
+        // Grille active (source de vérité) : coordonnées réelles, libellés et gras de chaque axe
+        const auto& def = m_gridManager->activeGrid()->definition();
+        m_axes[0].positions = def.xPositions();
+        m_axes[0].labels = def.xLabels();
+        m_axes[0].isBold = def.xIsBold();
+        m_axes[1].positions = def.yPositions();
+        m_axes[1].labels = def.yLabels();
+        m_axes[1].isBold = def.yIsBold();
+        m_axes[2].positions = def.zLevels();
+        m_axes[2].labels = def.zLabels();
+        m_axes[2].isBold = def.zIsBold();
+        m_axes[0].labelStyle = 0;
+        m_axes[1].labelStyle = 1;
+        m_axes[2].labelStyle = 2;
+    }
+    else if (m_model && m_model->coordinateSystem())
     {
         // Charger les coordonnées actuelles du modèle
         m_axes[0].positions = m_model->coordinateSystem()->xPositions();
@@ -90,7 +109,8 @@ GridDialog::GridDialog(TSA::Grid::GridManager* gridManager,
 
     for (int i = 0; i < 3; ++i)
     {
-        applyLabels(i);
+        // Libellés de la grille conservés (identifiants des axes) ; générés seulement s'ils manquent
+        if (m_axes[i].labels.size() != m_axes[i].positions.size()) applyLabels(i);
         if (!m_axes[i].positions.empty())
         {
             m_axes[i].currentPosition = m_axes[i].positions.back() + 3.0;
@@ -1371,16 +1391,11 @@ void GridDialog::onApply()
 
         if (isActive)
         {
-            if (m_currentType == TSA::Grid::GridType::Cartesian)
-            {
-                m_model->coordinateSystem()->setXPositions(m_axes[0].positions);
-                m_model->coordinateSystem()->setYPositions(m_axes[1].positions);
-            }
-
-            if (m_model->levelManager() && !m_axes[2].positions.empty())
-            {
-                m_model->levelManager()->setFromElevations(m_axes[2].positions, m_axes[2].labels);
-            }
+            // Axes du repère : copie dérivée de la grille (libellés attachés à leurs coordonnées, origine ajoutée).
+            // Niveaux : la validation de la grille est l'action explicite qui les remplace par ses altitudes.
+            TSA::Grid::syncCoordinateSystem(&def, *m_model->coordinateSystem());
+            if (m_model->levelManager() && !def.zLevels().empty())
+                TSA::Grid::applyGridLevels(def, *m_model->levelManager());
         }
     }
 
@@ -1409,17 +1424,12 @@ TSA::Grid::GridDefinition GridDialog::getDefinition() const
 
     if (m_currentType == TSA::Grid::GridType::Cartesian)
     {
-        def.setXPositions(m_axes[0].positions);
-        def.setXLabels(m_axes[0].labels);
-        def.setXIsBold(m_axes[0].isBold);
+        // Axes saisis dans un ordre quelconque : libellés et gras restent attachés à leurs coordonnées
+        def.setXAxes(m_axes[0].positions, m_axes[0].labels, m_axes[0].isBold);
 
-        def.setYPositions(m_axes[1].positions);
-        def.setYLabels(m_axes[1].labels);
-        def.setYIsBold(m_axes[1].isBold);
+        def.setYAxes(m_axes[1].positions, m_axes[1].labels, m_axes[1].isBold);
 
-        def.setZLevels(m_axes[2].positions);
-        def.setZLabels(m_axes[2].labels);
-        def.setZIsBold(m_axes[2].isBold);
+        def.setZAxes(m_axes[2].positions, m_axes[2].labels, m_axes[2].isBold);
     }
     else if (m_currentType == TSA::Grid::GridType::Cylindrical)
     {
@@ -1431,8 +1441,7 @@ TSA::Grid::GridDefinition GridDialog::getDefinition() const
 
         def.setAngularPatterns(m_angularPatterns);
 
-        def.setZLevels(m_axes[2].positions);
-        def.setZLabels(m_axes[2].labels);
+        def.setZAxes(m_axes[2].positions, m_axes[2].labels);
     }
     else if (m_currentType == TSA::Grid::GridType::Arbitrary)
     {

@@ -36,6 +36,14 @@
         <translation>Tehirizo amin'ny anarana vaovao ny tetikasa</translation>
     </message>
     <message>
+        <source>Enregistrer comme template</source>
+        <translation>Tehirizo ho modely fototra</translation>
+    </message>
+    <message>
+        <source>Enregistrer le projet comme modèle réutilisable (grille, niveaux, plans de travail, réglages) pour créer de nouveaux projets</source>
+        <translation>Tehirizo ho modely fototra azo ampiasaina indray ny tetikasa (makarakara, rihana, planina fiasana, fikirana) hamoronana tetikasa vaovao</translation>
+    </message>
+    <message>
         <source>Fermer le projet</source>
         <translation>Hidio ny tetikasa</translation>
     </message>
@@ -2616,6 +2624,10 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
         <translation>hamoronana tetikasa</translation>
     </message>
     <message>
+        <source>Nouveau projet créé depuis le template « %1 » : %2</source>
+        <translation>Tetikasa vaovao noforonina avy amin'ny modely fototra « %1 »: %2</translation>
+    </message>
+    <message>
         <source>Nouveau projet créé : %1</source>
         <translation>Voaforona ny tetikasa vaovao: %1</translation>
     </message>
@@ -2650,6 +2662,18 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
     <message>
         <source>Nouveau projet initialisé.</source>
         <translation>Vonona ny tetikasa vaovao.</translation>
+    </message>
+    <message>
+        <source>Enregistrer comme template</source>
+        <translation>Tehirizo ho modely fototra</translation>
+    </message>
+    <message>
+        <source>Un template « %1 » existe déjà. Le remplacer par le projet actuel ?</source>
+        <translation>Efa misy modely fototra « %1 ». Hosoloina amin'ny tetikasa ankehitriny ve?</translation>
+    </message>
+    <message>
+        <source>Template enregistré : %1 (%2)</source>
+        <translation>Voatahiry ny modely fototra: %1 (%2)</translation>
     </message>
     <message>
         <source>Projet</source>
@@ -2838,6 +2862,14 @@ Tianao hotehirizina ve ny fanovana alohan'ny hanohizana?</translation>
     <message>
         <source>Enregistrer le projet sous un nouveau nom (Ctrl+Shift+S)</source>
         <translation>Tehirizo amin'ny anarana vaovao ny tetikasa (Ctrl+Shift+S)</translation>
+    </message>
+    <message>
+        <source>Enregistrer comme template…</source>
+        <translation>Tehirizo ho modely fototra…</translation>
+    </message>
+    <message>
+        <source>Enregistrer le projet comme modèle réutilisable pour de nouveaux projets</source>
+        <translation>Tehirizo ho modely fototra azo ampiasaina indray ho an'ny tetikasa vaovao ny tetikasa</translation>
     </message>
     <message>
         <source>&amp;Fermer le projet</source>
@@ -13135,6 +13167,57 @@ Vatany: bloka %5, tanterahina ao anaty fanatanterahana voafono; raisina ny tatit
     </message>
 </context>
 <context>
+    <name>TSA::Project::ProjectTemplateStore</name>
+    <message>
+        <source>%1 : fiche du template absente (nom du fichier utilisé)</source>
+        <translation>%1: tsy hita ny takelaka momba ny modely fototra (anaran'ny rakitra no ampiasaina)</translation>
+    </message>
+    <message>
+        <source>%1 : fiche du template illisible (nom du fichier utilisé)</source>
+        <translation>%1: tsy azo vakiana ny takelaka momba ny modely fototra (anaran'ny rakitra no ampiasaina)</translation>
+    </message>
+    <message>
+        <source>Nom de template vide ou composé uniquement de caractères interdits.</source>
+        <translation>Foana na misy litera voarara ihany ny anaran'ny modely fototra.</translation>
+    </message>
+    <message>
+        <source>Impossible de créer le dossier des templates %1</source>
+        <translation>Tsy afaka mamorona ny lahatahirin'ny modely fototra %1</translation>
+    </message>
+    <message>
+        <source>Un template « %1 » existe déjà.</source>
+        <translation>Efa misy modely fototra « %1 ».</translation>
+    </message>
+    <message>
+        <source>Écriture du template impossible : %1</source>
+        <translation>Tsy afaka manoratra ny modely fototra: %1</translation>
+    </message>
+    <message>
+        <source>Le template existant %1 ne peut pas être remplacé (fichier ouvert ou protégé).</source>
+        <translation>Tsy azo soloina ny modely fototra efa misy %1 (rakitra misokatra na voaaro).</translation>
+    </message>
+    <message>
+        <source>Template enregistré, mais sa fiche (nom, description) n'a pas pu être écrite : %1</source>
+        <translation>Voatahiry ny modely fototra, saingy tsy voasoratra ny takelaka momba azy (anarana, famaritana): %1</translation>
+    </message>
+    <message>
+        <source>Template introuvable : %1</source>
+        <translation>Tsy hita ny modely fototra: %1</translation>
+    </message>
+    <message>
+        <source>Template « %1 » illisible : %2</source>
+        <translation>Tsy azo vakiana ny modely fototra « %1 »: %2</translation>
+    </message>
+    <message>
+        <source>Un fichier existe déjà : %1</source>
+        <translation>Efa misy rakitra: %1</translation>
+    </message>
+    <message>
+        <source>Création du projet impossible : %1</source>
+        <translation>Tsy afaka mamorona ny tetikasa: %1</translation>
+    </message>
+</context>
+<context>
     <name>TSA::Standards::ModelValidator</name>
     <message>
         <source> [Réf: %1]</source>
@@ -14981,6 +15064,10 @@ Voatanisa alohan'ny kajy ny fanakanana tsirairay ary ambara raha mitondra hery i
     <message>
         <source>Enregistrer sous…</source>
         <translation>Tehirizo amin'ny anarana hafa…</translation>
+    </message>
+    <message>
+        <source>Enregistrer comme template…</source>
+        <translation>Tehirizo ho modely fototra…</translation>
     </message>
     <message>
         <source>Annuler</source>
@@ -21578,6 +21665,18 @@ Tianao ho fidiana ve izy toy izay hamorona dika mitovy?</translation>
         <translation>Mamorona</translation>
     </message>
     <message>
+        <source>Template enregistré (sans description).</source>
+        <translation>Modely fototra voatahiry (tsy misy famaritana).</translation>
+    </message>
+    <message>
+        <source>Modèle vide, sans grille ni niveau.</source>
+        <translation>Modely foana, tsy misy makarakara na rihana.</translation>
+    </message>
+    <message>
+        <source>Grille cartésienne par défaut et ses niveaux.</source>
+        <translation>Makarakara kartezianina mahazatra sy ny rihany.</translation>
+    </message>
+    <message>
         <source>Emplacement du projet</source>
         <translation>Toeran'ny tetikasa</translation>
     </message>
@@ -23666,6 +23765,49 @@ Tsindrio indroa raha hanokatra</translation>
     <message>
         <source>Aide</source>
         <translation>Fanampiana</translation>
+    </message>
+</context>
+<context>
+    <name>TSA::UI::SaveProjectTemplateDialog</name>
+    <message>
+        <source>Enregistrer comme template</source>
+        <translation>Tehirizo ho modely fototra</translation>
+    </message>
+    <message>
+        <source>Le template reprend tout le contenu du projet : grille et axes (coordonnées réelles), niveaux, plans de travail, objets, cas de charge et réglages. Les résultats de calcul ne sont jamais enregistrés. Les projets créés depuis ce template en sont des copies indépendantes.</source>
+        <translation>Ao amin'ny modely fototra ny votoatin'ny tetikasa rehetra: makarakara sy tsipika fototra (tena toerana), rihana, planina fiasana, zavatra, tranga enta ary fikirana. Tsy voatahiry mihitsy ny vokatry ny kajy. Dika tsy miankina aminy ny tetikasa foronina avy amin'ity modely fototra ity.</translation>
+    </message>
+    <message>
+        <source>Nom :</source>
+        <translation>Anarana:</translation>
+    </message>
+    <message>
+        <source>Description facultative (usage, normes, unités…)</source>
+        <translation>Famaritana tsy voatery (fampiasana, fenitra, venty…)</translation>
+    </message>
+    <message>
+        <source>Description :</source>
+        <translation>Famaritana:</translation>
+    </message>
+    <message>
+        <source>Dossier des templates : %1</source>
+        <translation>Lahatahirin'ny modely fototra: %1</translation>
+    </message>
+    <message>
+        <source>Annuler</source>
+        <translation>Aoka ihany</translation>
+    </message>
+    <message>
+        <source>Enregistrer</source>
+        <translation>Tehirizo</translation>
+    </message>
+    <message>
+        <source>Saisissez un nom (les caractères &lt; &gt; : " / \ | ? * sont remplacés).</source>
+        <translation>Ampidiro anarana (soloina ny litera &lt; &gt; : " / \ | ? *).</translation>
+    </message>
+    <message>
+        <source>Un template « %1 » existe déjà : son remplacement vous sera demandé.</source>
+        <translation>Efa misy modely fototra « %1 »: hanontaniana ianao raha hosoloina izy.</translation>
     </message>
 </context>
 <context>

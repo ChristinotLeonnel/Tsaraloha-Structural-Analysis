@@ -38,8 +38,19 @@ public:
     explicit CoordinateSystem(QObject* parent = nullptr);
     ~CoordinateSystem() override = default;
 
-    // Détection automatique des plans structurels selon l'axe X, Y ou Z
+    // Détection automatique des plans structurels selon l'axe X, Y ou Z. Z : niveaux du LevelManager (objets du
+    // modèle, source de vérité), à défaut altitudes de la grille active, à défaut Z des nœuds. X / Y : axes de la
+    // grille active (copie dérivée, voir Grid/GridCoordinateSync.h) et coordonnées des nœuds. Aucune valeur fixe.
     std::vector<DetectedPlaneInfo> detectStructuralPlanes(WorkPlaneAxis axis, const TSA::Model::Model* model = nullptr) const;
+
+    // Axes de la grille active : chaque libellé reste attaché à sa coordonnée (tri par coordonnée, l'ordre de
+    // saisie pouvant différer de l'ordre géométrique). Positions dans le repère global.
+    void setXAxes(const std::vector<double>& positions, const std::vector<std::string>& labels);
+    void setYAxes(const std::vector<double>& positions, const std::vector<std::string>& labels);
+    // Altitudes de la grille active (plans Z proposés quand le modèle n'a aucun niveau) ; donnée dérivée, non
+    // enregistrée.
+    void setGridElevations(const std::vector<double>& elevations, const std::vector<std::string>& labels);
+    const std::vector<double>& gridElevations() const { return m_gridZ; }
 
     // --- Coordonnées X ---
     const std::vector<double>& xPositions() const { return m_xPositions; }
@@ -84,9 +95,6 @@ public:
     bool findClosestZ(double z, double tol, double& outZ, int& outIdx) const;
     bool findClosestIntersection(const Point3D& rawPnt, double tol, Point3D& outPnt, int& outIx, int& outIy, int& outIz) const;
 
-    // Réinitialisation aux valeurs par défaut
-    void setDefaultBuildingCoordinates();
-
     // Sérialisation
     std::string serializeToJson() const;
     void deserializeFromJson(const std::string& json);
@@ -105,6 +113,9 @@ private:
 
     std::vector<std::string> m_xLabels;
     std::vector<std::string> m_yLabels;
+
+    std::vector<double> m_gridZ;
+    std::vector<std::string> m_gridZLabels;
 };
 
 } // namespace TSA::Coordinate

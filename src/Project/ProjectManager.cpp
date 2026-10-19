@@ -3,6 +3,9 @@
 #include "../Model/Model.h"
 #include "../Grid/GridManager.h"
 #include "../Grid/GridDefinition.h"
+#include "../Grid/GridCoordinateSync.h"
+#include "../Grid/GridSystem.h"
+#include "../Coordinate/CoordinateSystem.h"
 #include "../IO/TSAFile.h"
 #include <QFileInfo>
 
@@ -59,6 +62,16 @@ void ProjectManager::newProject(TSA::Model::Model& model, TSA::Grid::GridManager
             gridManager->setActiveGridId(defaultGrid->id());
         }
     }
+    // Niveaux et repère du nouveau projet : ceux de sa grille (Model::clear ne touche pas au repère, qui gardait les
+    // niveaux du projet précédent).
+    const TSA::Grid::GridSystem* active = gridManager ? gridManager->activeGrid() : nullptr;
+    if (auto* lm = model.levelManager())
+    {
+        if (active) TSA::Grid::applyGridLevels(active->definition(), *lm);
+        else lm->clear();
+    }
+    if (auto* cs = model.coordinateSystem())
+        TSA::Grid::syncCoordinateSystem(active ? &active->definition() : nullptr, *cs);
 
     m_currentFilePath.clear();
     m_projectName.clear();
@@ -88,6 +101,9 @@ bool ProjectManager::openProject(const QString& filePath,
         }
         return false;
     }
+
+    // Repère reconstruit depuis la grille active ; niveaux fixes des anciennes versions remplacés par ceux de la grille
+    TSA::Grid::reconcileProject(model, gridManager);
 
     if (m_projectName.trimmed().isEmpty())
     {

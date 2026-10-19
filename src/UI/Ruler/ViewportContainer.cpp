@@ -293,6 +293,11 @@ void ViewportContainer::populatePlansForCurrentAxis()
     if (!m_planCombo)
         return;
 
+    // Actualisation sur le même axe (grille, niveaux ou nœuds modifiés) : le plan actif est conservé ; s'il a disparu,
+    // le plan le plus proche est retenu (ou une entrée personnalisée à la même position), jamais le premier par défaut.
+    const bool keepPlane = m_planCombo->count() > 0 && m_planCombo->currentIndex() >= 0 && m_populatedAxis == static_cast<int>(m_currentAxis);
+    const double keptOffset = keepPlane ? m_planCombo->currentData().toDouble() : 0.0;
+
     m_planCombo->blockSignals(true);
     m_planCombo->clear();
 
@@ -353,7 +358,13 @@ void ViewportContainer::populatePlansForCurrentAxis()
     updateQuickButtonsState();
 
     m_planCombo->blockSignals(false);
+    m_populatedAxis = static_cast<int>(m_currentAxis);
 
+    if (keepPlane)
+    {
+        setActivePlane(m_currentAxis, keptOffset);
+        return;
+    }
     if (m_planCombo->count() > 0)
     {
         onPlanComboChanged(m_planCombo->currentIndex());

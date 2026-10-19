@@ -39,7 +39,7 @@ void MainWindow::setupShortcuts()
     const std::pair<const char*, QAction*> table[] = {
         // Gestion des projets
         { "cmd.file.new", m_actionNew }, { "cmd.file.open", m_actionOpen }, { "cmd.file.save", m_actionSave },
-        { "cmd.file.save_as", m_actionSaveAs }, { "cmd.file.close", m_actionCloseProject }, { "cmd.file.exit", m_actionExit },
+        { "cmd.file.save_as", m_actionSaveAs }, { "cmd.file.save_as_template", m_actionSaveAsTemplate }, { "cmd.file.close", m_actionCloseProject }, { "cmd.file.exit", m_actionExit },
         { "cmd.file.export_diagnostic", m_actionExportDiagnostic }, { "cmd.model.topology", m_actionTopology },
         { "cmd.model.clean", m_actionCleanModel },
         // Édition

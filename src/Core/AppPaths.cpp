@@ -80,6 +80,7 @@ QString AppPaths::shippedExtensionsDir() { return shippedDir(QStringLiteral("Ext
 QString AppPaths::userConfigDir() { return ensured(writable(QStandardPaths::AppConfigLocation)); }
 QString AppPaths::userDataDir() { return ensured(writable(QStandardPaths::AppLocalDataLocation)); }
 QString AppPaths::userTemplatesDir() { return ensured(userDataDir() + QStringLiteral("/templates")); }
+QString AppPaths::userProjectTemplatesDir() { return ensured(userDataDir() + QStringLiteral("/project-templates")); }
 QString AppPaths::userModulesDir() { return ensured(userDataDir() + QStringLiteral("/modules")); }
 QString AppPaths::userExtensionsDir() { return ensured(userDataDir() + QStringLiteral("/Extensions")); }
 

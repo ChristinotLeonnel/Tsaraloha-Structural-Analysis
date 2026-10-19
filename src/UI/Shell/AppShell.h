@@ -144,6 +144,7 @@ private:
     QAction* m_actOpen = nullptr;
     QAction* m_actSave = nullptr;
     QAction* m_actSaveAs = nullptr;
+    QAction* m_actSaveAsTemplate = nullptr;
     QAction* m_actUndo = nullptr;
     QAction* m_actRedo = nullptr;
     QAction* m_actCloseProject = nullptr;

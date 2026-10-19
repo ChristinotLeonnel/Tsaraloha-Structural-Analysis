@@ -214,6 +214,8 @@
         <file alias="file/tsa3d_import.svg">icons/file/tsa3d_import.svg</file>
         <file alias="file/tsa3d_export.svg">icons/file/tsa3d_export.svg</file>
         <file alias="file/report_templates.svg">icons/file/report_templates.svg</file>
+        <file alias="file/save_as_template.svg">icons/file/save_as_template.svg</file>
+        <file alias="common/save_as_template.svg">icons/file/save_as_template.svg</file>
         <file alias="file/module_import.svg">icons/file/module_import.svg</file>
         <file alias="file/ifc_import.svg">icons/file/ifc_import.svg</file>
         <file alias="file/ifc_export.svg">icons/file/ifc_export.svg</file>
