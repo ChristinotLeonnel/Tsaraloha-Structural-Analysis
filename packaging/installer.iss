@@ -37,6 +37,9 @@ MinVersion=10.0
 SourceDir={#SourceDir}
 OutputDir={#OutputDir}
 OutputBaseFilename={#Product}-{#Version}-windows-x64-setup
+#ifndef SetupIcon
+  #define SetupIcon SourcePath + "\..\resources\icons\TSA.ico"
+#endif
 SetupIconFile={#SetupIcon}
 UninstallDisplayIcon={app}\{#Product}.exe
 LicenseFile={#LicenseFile}

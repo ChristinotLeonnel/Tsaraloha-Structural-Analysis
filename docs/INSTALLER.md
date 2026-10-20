@@ -9,9 +9,9 @@ Ce document détaille la conception technique, les choix technologiques, la stru
 ### Justification
 Pour la distribution de TSA sous Windows 10/11 x64, **Inno Setup 6** (avec extension ISPP - Inno Setup Preprocessor) a été retenu pour les raisons suivantes :
 
-1. **Robustesse et rapidité de compression** : Compression LZMA2/Ultra64 réduisant les 254 Mo de binaires (Qt 6, OpenCASCADE 8.0.1, OpenSees 3.8, Gmsh, IfcOpenShell, plugins) à **~66.5 Mo** (69 716 178 octets).
+1. **Robustesse et rapidité de compression** : Compression LZMA2/Ultra64 réduisant les binaires complets (Qt 6, OpenCASCADE 8.0.1, OpenSees 3.8, Gmsh, IfcOpenShell, plugins) à **~132 Mo** (138 854 695 octets).
 2. **Expérience utilisateur professionnelle inspirée d'Autodesk Access / AutoCAD Installer** :
-   - Interface moderne (`WizardStyle=modern`) avec bannières graphiques personnalisées aux couleurs officielles de Tsaraloha (`#060913` à `#0A172E`, accents cyan `#00F2FE` et bleu `#0072FF`).
+   - Interface moderne (`WizardStyle=modern`) avec bannières graphiques arborant le véritable logo officiel TSA avec son symbole « T » (`packaging/wizard_banner.bmp` et `packaging/wizard_small.bmp`).
    - Sélection du répertoire d'installation avec calcul précis de l'espace disque requis (environ 600 Mo recommandés, 260 Mo stricts).
    - Détection automatique et gestion propre des montées de version (upgrade in-place sans perte de données utilisateur).
 3. **Privilèges adaptables** (`PrivilegesRequired=lowest` avec `PrivilegesRequiredOverridesAllowed=dialog commandline`) :
@@ -63,7 +63,7 @@ DefaultGroupName=Tsaraloha Software\TSA
 WizardStyle=modern
 Compression=lzma2/ultra64
 SolidCompression=yes
-SetupIconFile={#SourcePath}\..\resources\icons\tsa_app.ico
+SetupIconFile={#SourcePath}\..\resources\icons\TSA.ico
 WizardImageFile={#SourcePath}\wizard_banner.bmp
 WizardSmallImageFile={#SourcePath}\wizard_small.bmp
 ```
