@@ -81,40 +81,42 @@ Identifier explicitement :
 - **BRANCHE :** branche actuelle ou nouvelle branche
 - **JUSTIFICATION :** pourquoi cette modification appartient à cette branche.
 
-## Build
+## Build & Environnement
 
-- Cible principale : `${PROJECT_NAME}` (voir `add_executable(${PROJECT_NAME} ${SOURCES})`
-  dans `CMakeLists.txt`).
-- Cible de tests : `TSA_Tests` (nom de sortie `TSA_TestSuite`).
-- Utiliser en priorité les scripts existants (`scripts/setup_build.ps1`,
-  `run.bat`, CMakePresets) plutôt que reconstruire une séquence de configuration manuelle,
-  sauf besoin spécifique de diagnostic.
+- Cible principale : `TSA` (`TSA.exe`).
+- Cible de tests : `TSA_Tests` (exécutable `TSA_TestSuite.exe`).
+- Cible de benchmarks : `TSA_Benchmark` (exécutable `TSA_Benchmark.exe`).
+- Outils de compilation recommandés : CMake avec presets Ninja (`ninja-debug` pour le développement quotidien, `ninja-release` pour la release).
+- Utiliser les scripts existants (`scripts/setup_build.ps1`, `CMakePresets.json`) plutôt que des configurations manuelles ad-hoc.
 
-## Tests
+## Stratégie de Test & Validation Proportionnée
 
-- Suite existante : `tests/test_coordinates.cpp`, exécutée via la cible `TSA_Tests`
-  (`add_test(NAME CoordinatesAndLevelsTest COMMAND TSA_Tests)`), état de référence actuel :
-  **52/52 tests PASS** (exécutable `build/Release/TSA_TestSuite.exe`).
-- Toute modification du modèle, des coordonnées, des grilles, de la persistance ou d'un
-  refactoring doit obligatoirement préserver le passage à 100% de cette suite (52/52 PASS).
-- **Règle absolue sur les tests :** Ne jamais commenter, désactiver ou affaiblir un test
-  existant pour faire passer une modification ou un refactoring. Corriger le code jusqu'à
-  satisfaction complète du banc d'essais.
-- Si une fonctionnalité nouvelle n'a pas de test correspondant, l'ajouter systématiquement
-  dans `tests/`.
+Le dépôt dispose d'une suite complète et modulaire de tests automatisés dans `tests/`, intégrée à CTest et pilotée par `TSA_TestSuite.exe`.
 
-## Régressions
+### 1. Validation Ciblée au Fil de l'Eau (Développement Quotidien)
+Pour éviter de ralentir le développement sur des tâches locales, exécuter uniquement la ou les suites en rapport direct avec la modification :
+```powershell
+.\build-ninja-debug\TSA_TestSuite.exe --suite=model         # Pour une modification du modèle
+.\build-ninja-debug\TSA_TestSuite.exe --suite=coordinates   # Pour une modification des repères/niveaux
+.\build-ninja-debug\TSA_TestSuite.exe --suite=commands      # Pour une modification de commande
+.\build-ninja-debug\TSA_TestSuite.exe --suite=io            # Pour une modification du format .tsa
+.\build-ninja-debug\TSA_TestSuite.exe --suite=opensees      # Pour une modification du calcul FEA
+```
+*Suites disponibles* : `coordinates`, `model`, `io`, `commands`, `grids`, `viewer`, `cables`, `extensions`, `workplane`, `window`, `node`, `loads`, `opensees`, `supports`, `standards`, `bim`, `ifc`, `drawing`, `views`, `tsa3d`, `modules`, `templates`, `deployment`, `mesh`, `surfaces`, `audit`, `benchmarks`, `display`, `multidoc`, `i18n`, `ribbon`.
 
-Après modification :
+### 2. Validation Globale (Avant Push ou Fusion de Branche)
+Avant de considérer une branche prête pour la fusion dans la branche de référence :
+```powershell
+.\build-ninja-debug\TSA_TestSuite.exe                       # Exécution de 100% des suites (100% PASS attendu)
+python tools/check_layers.py src                            # Vérification des couches architecturales
+python tools/check_shortcuts.py --strict                    # Vérification de la cohérence des raccourcis
+```
 
-1. compiler (Debug **et** Release si le changement touche un chemin sensible aux
-   optimisations, sinon Debug suffit pour une itération rapide) ;
-2. exécuter `TSA_Tests` ;
-3. vérifier qu'aucun test précédemment PASS ne devient FAIL ;
-4. vérifier manuellement (ou via test dédié) le comportement UI concerné ;
-5. vérifier la cohérence modèle ↔ géométrie ↔ 3D (voir skill `verify-sync`).
+### 3. Règle d'Intégrité des Tests
+- **Règle absolue** : Ne jamais commenter, désactiver ou affaiblir un test existant pour faire passer une modification. Si un test échoue, corriger l'implémentation jusqu'à satisfaction complète du banc d'essais.
+- Toute nouvelle fonctionnalité ou entité structurale doit être accompagnée de ses tests unitaires dans `tests/`.
 
-## Validation finale
+## Validation Finale
 
-Ne considérer une tâche « terminée » qu'après compilation réussie et tests passants — ne
-jamais annoncer un correctif comme validé sur la seule base d'une relecture de code.
+Ne déclarer une tâche terminée qu'après compilation réussie (0 erreur) et passage des tests applicables au périmètre de la modification.
+

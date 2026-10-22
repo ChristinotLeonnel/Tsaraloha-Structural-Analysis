@@ -1,63 +1,40 @@
-# TSA — Contexte pour Gemini
+# TSA — Contexte & Directives pour Gemini
 
-Ce fichier existe pour que Gemini partage le même contexte que les autres agents IA
-(Claude, etc.) travaillant sur TSA (Tsaraloha Structural Analysis).
+> Ce fichier configure le contexte spécifique de Gemini pour le projet **TSA (Tsaraloha Structural Analysis)**.
+> Le document de référence général est [**`AGENTS.md`**](file:///d:/Tsaraloha%20Platforme/TSA/AGENTS.md).
+> Les règles modulaires par domaine sont dans [**`.agents/rules/`**](file:///d:/Tsaraloha%20Platforme/TSA/.agents/rules).
+> Les procédures opérationnelles sont dans [**`.agents/skills/`**](file:///d:/Tsaraloha%20Platforme/TSA/.agents/skills).
 
-La référence générale des règles est `AGENTS.md` à la racine du dépôt — ne pas la
-dupliquer ici. Les règles thématiques détaillées sont dans `.agents/rules/`, les
-procédures pas-à-pas dans `.agents/skills/`, les rôles spécialisés dans `.agents/agents/`.
+---
 
-## Documents vivants à consulter avant toute tâche
+## 1. Références Techniques Vivantes
+Avant d'intervenir sur un sous-système, consulter directement sa spécification dans [`docs/`](file:///d:/Tsaraloha%20Platforme/TSA/docs) :
+- Architecture globale : [`docs/ARCHITECTURE.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/ARCHITECTURE.md)
+- Modèle de données : [`docs/MODEL.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/MODEL.md)
+- Interface & Ribbon : [`docs/UI.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/UI.md)
+- Noyau géométrique OCCT : [`docs/OCCT.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/OCCT.md)
+- Coordonnées & Niveaux : [`docs/COORDINATES.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/COORDINATES.md)
+- Profilés & Matériaux : [`docs/SECTIONS.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/SECTIONS.md) et [`docs/MATERIALS.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/MATERIALS.md)
+- Moteurs de calcul & FEA : [`docs/ANALYSIS_ENGINES.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/ANALYSIS_ENGINES.md) et [`docs/OPENSEES_CALCULATION_METHODS.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/OPENSEES_CALCULATION_METHODS.md)
+- BIM & IFC : [`docs/BIM_ARCHITECTURE.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/BIM_ARCHITECTURE.md) et [`docs/IFC_MAPPING.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/IFC_MAPPING.md)
 
-@docs/ARCHITECTURE.md
-@docs/MODEL.md
-@docs/UI.md
-@docs/OCCT.md
-@docs/COORDINATES.md
-@docs/SECTIONS.md
-@docs/MATERIALS.md
-@docs/ROADMAP.md
+*En cas de divergence entre la documentation et le code source, **le code réel fait foi** ; la documentation doit être corrigée en conséquence.*
 
-Ces fichiers documentent l'architecture réelle du dépôt telle que constatée dans le code.
-Toute divergence entre ces documents et le code doit être résolue en faveur du code, puis
-corrigée dans le document concerné.
+---
 
-Documentation additionnelle déjà présente dans le dépôt (à ne pas remplacer) :
-`DOCUMENTATION.md`, `README.md`, `docs/TSALIB_SYSTEM.md`, `docs/TSA_DIAGNOSTICS.md`,
-`docs/TSA_FILE_FORMAT.md`, `docs/cable-system/`.
-
-## Méthode obligatoire pour Gemini
+## 2. Démarche Efficace & Proportionnée pour Gemini
 
 ```text
-ANALYZE → IDENTIFY RESPONSIBILITY → CHECK EXISTING ARCHITECTURE → PLAN → IMPLEMENT → BUILD → TEST → VERIFY
+COMPRENDRE LA DEMANDE → INSPECTION CIBLÉE DU SOUS-SYSTÈME → IMPLÉMENTATION → VALIDATION CIBLÉE
 ```
 
-- **Recherche préalable systématique :**
-  - `SEARCH EXISTING CODE` avant d'écrire du code.
-  - `CHECK WHETHER AN EQUIVALENT CLASS ALREADY EXISTS` avant de créer une classe.
-  - `CHECK WHETHER AN EXISTING SYSTEM CAN BE EXTENDED` avant de créer un système.
-- **Hiérarchie absolue des priorités :**
+- **Inspection ciblée** : Ne jamais relire l'intégralité du dépôt pour une tâche locale. Inspecter uniquement les fichiers concernés et leurs dépendances immédiates.
+- **Réutilisation préalable** :
+  - `SEARCH EXISTING CODE` avant de créer une fonction.
+  - `CHECK WHETHER AN EQUIVALENT CLASS ALREADY EXISTS` avant de concevoir une classe.
+  - `CHECK WHETHER AN EXISTING SYSTEM CAN BE EXTENDED` avant d'ajouter une infrastructure.
+- **Hiérarchie absolue des priorités** :
   ```text
-  CORRECTNESS → ARCHITECTURE → MAINTAINABILITY → TESTABILITY → PERFORMANCE → Taille du code
+  CORRECTNESS → ARCHITECTURE → MAINTAINABILITY → TESTABILITY → PERFORMANCE
   ```
-- **Échelle de surveillance :**
-  - `< 300` : confortable | `300-600` : normale | `600-1000` : surveiller | `> 1000` : analyser | `> 2000` : refactoriser | `> 5000` : monolithique.
-
-## Règle Git — Gestion Automatique des Branches
-
-Ne pas effectuer toutes les modifications dans la branche courante. Identifier avant toute modification importante :
-- **TYPE :** `feature` / `fix` / `refactor` / `perf` / `ui` / `docs` / `test`
-- **BRANCHE :** branche actuelle ou nouvelle branche (`feature/<nom>`, `fix/<nom>`, `refactor/<nom>`, `ui/<nom>`, `docs/<nom>`, etc.)
-- **JUSTIFICATION :** pourquoi cette modification appartient à cette branche.
-- **Workflow :**
-  - Modification petite et nécessaire à la tâche en cours → conserver sur la branche courante.
-  - Modification indépendante → créer une branche dédiée issue de la branche de base à jour.
-  - Préservation absolue du travail local (aucun `git reset --hard` ni `git clean -fd` sans accord explicite).
-  - Conventions de commit : `feat:`, `fix:`, `refactor:`, `perf:`, `ui:`, `docs:`, `test:`.
-  - Push de la branche dédiée (`git push -u origin <branche>`), pas d'écrasement ni de push direct sur `main`.
-
-## Normes Internationales & Documentation (IEEE Std 1063)
-
-Toute documentation utilisateur ou technique doit se conformer à la norme **IEEE Std 1063** (structure en 5 sections, exactitude, complétude, traçabilité et cohérence).
-Toute modification logicielle future doit respecter les normes internationales du génie logiciel (**ISO/IEC/IEEE 12207**, **29148**, **29119**, **25010**) et les Eurocodes (**EN 1990 à EN 1999**). Voir la règle complète dans `.agents/rules/08-documentation-and-standards.md`.
-
+- **Préservation absolue** : Ne jamais exécuter d'opération Git destructrice (`reset --hard`, `clean -fd`), ne jamais supprimer de travail local sans demande explicite.

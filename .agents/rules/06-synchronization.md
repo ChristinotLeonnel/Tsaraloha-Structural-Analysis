@@ -23,12 +23,8 @@ Le mécanisme réel qui implémente le sens descendant (Model → 3D/UI) est
 (`onNodeAdded/Modified/Removed`, `onBeamAdded/Modified/Removed`,
 `onColumnAdded/Modified/Removed`, `onSlabAdded/Modified/Removed`,
 `onWallAdded/Modified/Removed`, `onFoundationAdded/Modified/Removed`,
-`onTrussMemberAdded/Modified/Removed`, `onCableAdded/...`, etc.). `OccView` implémente
-cette interface directement.
-
-`TODO: VERIFY IN SOURCE` : confirmer si l'UI (`ModelTreeWidget`, `PropertyPanel`)
-implémente aussi `IModelObserver` directement ou passe par un relais Qt (signal émis par
-un objet qui, lui, implémente `IModelObserver`).
+`OccView`, `ModelTreeWidget` et `PropertyPanel` implémentent tous directement l'interface `TSA::Model::IModelObserver`.
+Ils sont enregistrés auprès de `TSA::Model::Model` (`addObserver`) et réagissent directement aux callbacks sans passer par un proxy intermédiaire.
 
 ## Cas à couvrir pour toute nouvelle fonctionnalité touchant un élément
 
@@ -69,8 +65,7 @@ Le `Model` est la source de vérité unique. Si une divergence apparaît entre U
 - L'annulation/rétablissement (Undo/Redo) d'un déplacement de plan ou d'élément restaure
   l'exact état antérieur sans résidu graphique.
 
-## Vérification
+## Chaîne de propagation UI
 
-`TODO: VERIFY IN SOURCE` pour la chaîne exacte de propagation entre `IModelObserver` et les
-signals Qt de l'UI — lire `src/UI/ModelTree/ModelTreeWidget.cpp` et
-`src/UI/Properties/PropertyPanel.cpp`.
+`ModelTreeWidget` et `PropertyPanel` mettent à jour leurs éléments d'arbre et leurs champs de propriétés directement au sein de leurs implémentations des méthodes `on<Element>Added/Modified/Removed`, garantissant un rafraîchissement immédiat et cohérent avec la scène OCCT.
+

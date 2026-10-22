@@ -26,9 +26,12 @@ Toute évolution, refactorisation, correction ou documentation dans le dépôt T
 
 ---
 
-## 2. Norme IEEE Std 1063 — Application à la Documentation
+## 2. Norme IEEE Std 1063 — Application à la Documentation Utilisateur
 
-Tout document destiné aux utilisateurs (guides, aide en ligne, liste des raccourcis, référence des commandes console) doit obligatoirement intégrer la structure et les exigences de l'**IEEE Std 1063** :
+Tout document formel destiné aux utilisateurs finaux (guides d'utilisation, aide en ligne officielle, liste des raccourcis, référence des commandes console dans `docs/`) doit intégrer la structure et les exigences de l'**IEEE Std 1063** :
+
+> [!NOTE]
+> **Champ d'application** : Cette structure formelle s'applique exclusivement à la documentation utilisateur finale. Elle ne s'applique pas aux notes de travail internes (`SESSION_HANDOFF.md`), aux messages de commit, aux scripts d'outillage ou aux commentaires de code quotidiens.
 
 ### 2.1 Structure Minimale Obligatoire d'un Document Utilisateur
 
