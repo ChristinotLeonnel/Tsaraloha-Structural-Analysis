@@ -106,6 +106,7 @@ void ModelTreeWidget::setupUi()
     m_search = new QLineEdit(this);
     m_search->setPlaceholderText(tr("Rechercher dans le modèle (ex. P12, IPE)…"));
     m_search->setClearButtonEnabled(true);
+    m_search->addAction(TSA::UI::themedIcon(QStringLiteral(":/icons/common/search.svg")), QLineEdit::LeadingPosition);
     bar->addWidget(m_search, 1);
     auto* btnExpand = new QToolButton(this);
     btnExpand->setText(QStringLiteral("＋"));
