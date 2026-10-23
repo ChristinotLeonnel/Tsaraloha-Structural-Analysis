@@ -12,6 +12,9 @@
 #include <QGroupBox>
 #include <QMessageBox>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 namespace TSA::UI
 {
 
@@ -25,7 +28,7 @@ MemberLoadDialog::MemberLoadDialog(TSA::Model::Model* model,
     , m_occView(occView)
 {
     setWindowTitle(tr("Charge sur barre"));
-    resize(480, 520);
+    applyStandardDialogSizing(this, DialogSizeCategory::Standard);
     setupUI();
     populateElements();
     populateLoadCases();
@@ -102,6 +105,13 @@ void MemberLoadDialog::onDirectionChanged(int /*index*/)
 void MemberLoadDialog::setupUI()
 {
     auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(12);
+
+    addStandardDialogHeader(mainLayout,
+                            tr("Charge sur barre"),
+                            tr("Application de charges réparties (uniformes, trapézoïdales, moments) ou ponctuelles sur les barres."),
+                            QStringLiteral(":/icons/load_distributed.svg"));
 
     // 1. Barre cible
     auto* groupElem = new QGroupBox(tr("Barre / Élément structural"), this);
@@ -111,7 +121,7 @@ void MemberLoadDialog::setupUI()
     elemLayout->addWidget(m_comboElement);
 
     m_lblElementInfo = new QLabel(tr("Longueur : 0.00 m | Section : -"), this);
-    m_lblElementInfo->setStyleSheet("color: #00adb5; font-weight: bold; padding: 4px;");
+    m_lblElementInfo->setProperty("status", "info");
     elemLayout->addWidget(m_lblElementInfo);
 
     m_chkAllSelected = new QCheckBox(this);
@@ -210,18 +220,13 @@ void MemberLoadDialog::setupUI()
 
     m_lblStatus = new QLabel(this);
     m_lblStatus->setWordWrap(true);
-    m_lblStatus->setStyleSheet("color: #34d399;");
+    m_lblStatus->setProperty("status", "success");
     mainLayout->addWidget(m_lblStatus);
 
-    // 5. Boutons d'action
-    auto* btnLayout = new QHBoxLayout();
+    // 5. Boutons d'action standardisés
     m_btnApply = new QPushButton(tr("Appliquer la Charge"), this);
-    m_btnApply->setStyleSheet("background-color: #00adb5; color: white; font-weight: bold; padding: 6px;");
     m_btnClose = new QPushButton(tr("Fermer"), this);
-    if (auto* help = TSA::UI::createHelpButton(this, QStringLiteral("loading.distributed"))) btnLayout->addWidget(help);
-    btnLayout->addStretch();
-    btnLayout->addWidget(m_btnApply);
-    btnLayout->addWidget(m_btnClose);
+    auto* btnLayout = createStandardButtonRow(this, m_btnApply, m_btnClose, QStringLiteral("loading.distributed"));
     mainLayout->addLayout(btnLayout);
 
     // Connexions

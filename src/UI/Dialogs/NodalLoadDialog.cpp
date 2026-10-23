@@ -11,6 +11,9 @@
 #include <QGroupBox>
 #include <QMessageBox>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 namespace TSA::UI
 {
 
@@ -24,7 +27,7 @@ NodalLoadDialog::NodalLoadDialog(TSA::Model::Model* model,
     , m_occView(occView)
 {
     setWindowTitle(tr("Charge nodale : force et couple"));
-    resize(460, 480);
+    applyStandardDialogSizing(this, DialogSizeCategory::Standard);
     setupUI();
     populateNodes();
     populateLoadCases();
@@ -40,6 +43,13 @@ NodalLoadDialog::NodalLoadDialog(TSA::Model::Model* model,
 void NodalLoadDialog::setupUI()
 {
     auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(12);
+
+    addStandardDialogHeader(mainLayout,
+                            tr("Charge nodale : force et couple"),
+                            tr("Définition des composantes d'action (Fx, Fy, Fz) et de moment (Mx, My, Mz) sur un nœud."),
+                            QStringLiteral(":/icons/load_nodal.svg"));
 
     // 1. Groupe Cible (Nœud)
     auto* groupNode = new QGroupBox(tr("Nœud cible"), this);
@@ -54,7 +64,7 @@ void NodalLoadDialog::setupUI()
     nodeLayout->addLayout(nodePickLayout);
 
     m_lblNodeCoords = new QLabel(tr("Coordonnées : X=0.00, Y=0.00, Z=0.00 m"), this);
-    m_lblNodeCoords->setStyleSheet("color: #00adb5; font-weight: bold; padding: 4px;");
+    m_lblNodeCoords->setProperty("status", "info");
     nodeLayout->addWidget(m_lblNodeCoords);
 
     mainLayout->addWidget(groupNode);
@@ -139,15 +149,10 @@ void NodalLoadDialog::setupUI()
     nameLayout->addWidget(m_editName);
     mainLayout->addLayout(nameLayout);
 
-    // 6. Boutons d'action
-    auto* btnLayout = new QHBoxLayout();
+    // 6. Boutons d'action standardisés
     m_btnApply = new QPushButton(tr("Appliquer la Charge"), this);
-    m_btnApply->setStyleSheet("background-color: #00adb5; color: white; font-weight: bold; padding: 6px;");
     m_btnClose = new QPushButton(tr("Fermer"), this);
-    if (auto* help = TSA::UI::createHelpButton(this, QStringLiteral("loading.nodal"))) btnLayout->addWidget(help);
-    btnLayout->addStretch();
-    btnLayout->addWidget(m_btnApply);
-    btnLayout->addWidget(m_btnClose);
+    auto* btnLayout = createStandardButtonRow(this, m_btnApply, m_btnClose, QStringLiteral("loading.nodal"));
     mainLayout->addLayout(btnLayout);
 
     // Connexions

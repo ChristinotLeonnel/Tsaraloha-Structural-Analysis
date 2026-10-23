@@ -13,6 +13,9 @@
 #include <QFileDialog>
 #include <QFontDatabase>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 namespace TSA::UI
 {
 
@@ -21,7 +24,7 @@ LoadCaseDialog::LoadCaseDialog(TSA::Model::Model* model, QWidget* parent)
     , m_model(model)
 {
     setWindowTitle(tr("Cas de Charges, Combinaisons et Solveur OpenSees"));
-    resize(780, 560);
+    applyStandardDialogSizing(this, DialogSizeCategory::Large);
     setupUI();
     refreshCasesTable();
     refreshCombinationsTable();
@@ -31,6 +34,14 @@ LoadCaseDialog::LoadCaseDialog(TSA::Model::Model* model, QWidget* parent)
 void LoadCaseDialog::setupUI()
 {
     auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(12);
+
+    addStandardDialogHeader(mainLayout,
+                            tr("Cas de Charges, Combinaisons et Solveur OpenSees"),
+                            tr("Gestion des cas de charge élémentaires, combinaisons d'actions Eurocodes et validation de la structure."),
+                            QStringLiteral(":/icons/load_cases.svg"));
+
     m_tabWidget = new QTabWidget(this);
 
     // =========================================================================
@@ -101,7 +112,7 @@ void LoadCaseDialog::setupUI()
     auto* scriptBtnLayout = new QHBoxLayout();
     m_btnValidate = new QPushButton(tr("🔍 Valider le Modèle"), this);
     m_btnGenerateScript = new QPushButton(tr("⚡ Générer Script OpenSees (Tcl)"), this);
-    m_btnGenerateScript->setStyleSheet("background-color: #00adb5; color: white; font-weight: bold;");
+    m_btnGenerateScript->setProperty("primary", true);
     m_btnExportTcl = new QPushButton(tr("💾 Exporter fichier .tcl..."), this);
     scriptBtnLayout->addWidget(m_btnValidate);
     scriptBtnLayout->addWidget(m_btnGenerateScript);
@@ -118,11 +129,8 @@ void LoadCaseDialog::setupUI()
 
     mainLayout->addWidget(m_tabWidget);
 
-    auto* bottomBtnLayout = new QHBoxLayout();
     auto* btnClose = new QPushButton(tr("Fermer"), this);
-    if (auto* help = TSA::UI::createHelpButton(this, QStringLiteral("loading.cases"))) bottomBtnLayout->addWidget(help);
-    bottomBtnLayout->addStretch();
-    bottomBtnLayout->addWidget(btnClose);
+    auto* bottomBtnLayout = createStandardButtonRow(this, nullptr, btnClose, QStringLiteral("loading.cases"));
     mainLayout->addLayout(bottomBtnLayout);
 
     // Connexions
@@ -282,19 +290,24 @@ void LoadCaseDialog::onValidateModel()
         if (rep.hasWarnings())
         {
             m_lblValidationStatus->setText(tr("⚠️ Modèle Validé avec %1 Avertissement(s)").arg(rep.warnings().size()));
-            m_lblValidationStatus->setStyleSheet("background-color: #ffeaa7; color: #d63031; font-weight: bold; padding: 6px;");
+            m_lblValidationStatus->setStyleSheet(QString());
+            m_lblValidationStatus->setProperty("status", "warning");
         }
         else
         {
             m_lblValidationStatus->setText(tr("✅ Modèle Valide pour OpenSees"));
-            m_lblValidationStatus->setStyleSheet("background-color: #55efc4; color: #00b894; font-weight: bold; padding: 6px;");
+            m_lblValidationStatus->setStyleSheet(QString());
+            m_lblValidationStatus->setProperty("status", "success");
         }
     }
     else
     {
         m_lblValidationStatus->setText(tr("❌ Échec de Validation : %1 Erreur(s)").arg(rep.errors().size()));
-        m_lblValidationStatus->setStyleSheet("background-color: #ff7675; color: white; font-weight: bold; padding: 6px;");
+        m_lblValidationStatus->setStyleSheet(QString());
+        m_lblValidationStatus->setProperty("status", "error");
     }
+    m_lblValidationStatus->style()->unpolish(m_lblValidationStatus);
+    m_lblValidationStatus->style()->polish(m_lblValidationStatus);
 
     QString reportText;
     for (const auto& err : rep.errors())

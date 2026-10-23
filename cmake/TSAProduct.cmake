@@ -182,6 +182,10 @@ set(UI_DIALOGS_SOURCES
     ${TSA_ROOT}/src/UI/Dialogs/MemberLoadDialog.cpp
     ${TSA_ROOT}/src/UI/Dialogs/LoadCaseDialog.h
     ${TSA_ROOT}/src/UI/Dialogs/LoadCaseDialog.cpp
+    ${TSA_ROOT}/src/UI/Widgets/StandardDialogHeader.h
+    ${TSA_ROOT}/src/UI/Widgets/StandardDialogHeader.cpp
+    ${TSA_ROOT}/src/UI/Dialogs/DialogStandardHelper.h
+    ${TSA_ROOT}/src/UI/Dialogs/DialogStandardHelper.cpp
 )
 
 # Cette boîte de dialogue dépend d'ExtensionManager, testé indépendamment de

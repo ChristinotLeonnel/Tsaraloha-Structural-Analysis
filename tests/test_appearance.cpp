@@ -9,11 +9,19 @@
 #include "Viewer/MaterialVisual.h"
 #include "Viewer/TextureManager.h"
 
+#include "UI/Theme/ThemeManager.h"
+#include "UI/Dialogs/DialogStandardHelper.h"
+#include "UI/Widgets/StandardDialogHeader.h"
+#include "UI/Dialogs/NewNodeDialog.h"
+#include "UI/Dialogs/SectionCustomizationDialog.h"
+#include "UI/Dialogs/LoadCaseDialog.h"
+
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
 #include <Prs3d_ShadingAspect.hxx>
 #include <QPushButton>
 #include <QToolButton>
+#include <QVBoxLayout>
 
 namespace
 {
@@ -102,6 +110,67 @@ bool runSuite_Appearance(int& passed)
         useMaterial->click();
         TEST_CHECK(m.getColumn(col)->color().empty(), "Test 221: « Matériau » rend l'apparence du matériau");
         std::cout << "[PASS] Test 221: Panneau Propriétés : couleur du matériau par défaut, « Matériau »" << std::endl;
+        ++passed;
+    }
+
+    // -------------------------------------------------------------------------
+    // TEST 222 : Conformité au Standard UI/UX TSA (TSA_UI_DESIGN_STANDARD)
+    // -------------------------------------------------------------------------
+    {
+        // 1. Couleurs sémantiques ThemeManager
+        auto& tm = TSA::UI::ThemeManager::instance();
+        TEST_CHECK(tm.primaryColor().isValid() && tm.primaryColor().name().startsWith('#'), "Test 222: primaryColor valide");
+        TEST_CHECK(tm.windowColor().isValid() && tm.windowColor().name().startsWith('#'), "Test 222: windowColor valide");
+        TEST_CHECK(tm.surfaceColor().isValid() && tm.surfaceColor().name().startsWith('#'), "Test 222: surfaceColor valide");
+        TEST_CHECK(tm.borderColor().isValid() && tm.borderColor().name().startsWith('#'), "Test 222: borderColor valide");
+        TEST_CHECK(tm.textColor().isValid() && tm.textColor().name().startsWith('#'), "Test 222: textColor valide");
+        TEST_CHECK(tm.textMutedColor().isValid() && tm.textMutedColor().name().startsWith('#'), "Test 222: textMutedColor valide");
+        TEST_CHECK(tm.successColor().isValid() && tm.successColor().name().startsWith('#'), "Test 222: successColor valide");
+        TEST_CHECK(tm.warningColor().isValid() && tm.warningColor().name().startsWith('#'), "Test 222: warningColor valide");
+        TEST_CHECK(tm.destructiveColor().isValid() && tm.destructiveColor().name().startsWith('#'), "Test 222: destructiveColor valide");
+        TEST_CHECK(tm.infoColor().isValid() && tm.infoColor().name().startsWith('#'), "Test 222: infoColor valide");
+
+        // 2. Catégories de tailles standardisées (DialogStandardHelper)
+        using namespace TSA::UI;
+        QDialog testDlg;
+        applyStandardDialogSizing(&testDlg, DialogSizeCategory::Compact);
+        TEST_CHECK(testDlg.minimumWidth() >= 420 && testDlg.minimumHeight() >= 300, "Test 222: Compact min sizing");
+
+        applyStandardDialogSizing(&testDlg, DialogSizeCategory::Standard);
+        TEST_CHECK(testDlg.minimumWidth() >= 520 && testDlg.minimumHeight() >= 480, "Test 222: Standard min sizing");
+
+        applyStandardDialogSizing(&testDlg, DialogSizeCategory::Large);
+        TEST_CHECK(testDlg.minimumWidth() >= 740 && testDlg.minimumHeight() >= 540, "Test 222: Large min sizing");
+
+        applyStandardDialogSizing(&testDlg, DialogSizeCategory::Studio);
+        TEST_CHECK(testDlg.minimumWidth() >= 960 && testDlg.minimumHeight() >= 620, "Test 222: Studio min sizing");
+
+        // 3. En-tête standard (StandardDialogHeader)
+        auto* dummyLayout = new QVBoxLayout(&testDlg);
+        auto* header = addStandardDialogHeader(dummyLayout, QStringLiteral("Titre Test"), QStringLiteral("Sous-titre explicatif"));
+        TEST_CHECK(header != nullptr, "Test 222: header créé");
+        TEST_CHECK(header->title() == QStringLiteral("Titre Test"), "Test 222: titre header correct");
+        TEST_CHECK(header->subtitle() == QStringLiteral("Sous-titre explicatif"), "Test 222: sous-titre header correct");
+
+        // 4. Ligne de boutons standardisée
+        auto* okBtn = new QPushButton(QStringLiteral("Action"), &testDlg);
+        auto* cancelBtn = new QPushButton(QStringLiteral("Annuler"), &testDlg);
+        auto* btnRow = createStandardButtonRow(&testDlg, okBtn, cancelBtn, QStringLiteral("test.help"));
+        TEST_CHECK(btnRow != nullptr, "Test 222: ligne de boutons créée");
+        TEST_CHECK(okBtn->property("primary").toBool() == true, "Test 222: bouton principal marqué [primary=true]");
+
+        // 5. Instanciation des dialogues réels et vérification des dimensions minimales
+        Model m;
+        NewNodeDialog nodeDlg(&m);
+        TEST_CHECK(nodeDlg.minimumWidth() >= 420 && nodeDlg.minimumHeight() >= 300, "Test 222: NewNodeDialog conforme Compact");
+
+        SectionCustomizationDialog secDlg;
+        TEST_CHECK(secDlg.minimumWidth() >= 520 && secDlg.minimumHeight() >= 480, "Test 222: SectionCustomizationDialog conforme Standard");
+
+        LoadCaseDialog lcDlg(&m);
+        TEST_CHECK(lcDlg.minimumWidth() >= 740 && lcDlg.minimumHeight() >= 540, "Test 222: LoadCaseDialog conforme Large");
+
+        std::cout << "[PASS] Test 222: Conformité globale au Standard UI/UX TSA (Tailles, En-têtes, Sémantique)" << std::endl;
         ++passed;
     }
     return true;

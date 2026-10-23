@@ -17,6 +17,9 @@
 #include <QStackedWidget>
 #include <QDialogButtonBox>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 namespace TSA::UI
 {
 
@@ -67,25 +70,17 @@ TSA::Model::StructurePresets StructurePresetDialog::presets() const
 
 void StructurePresetDialog::setupUi()
 {
-    resize(480, 420);
-    setMinimumWidth(440);
+    applyStandardDialogSizing(this, DialogSizeCategory::Large);
 
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(12);
-    mainLayout->setContentsMargins(14, 14, 14, 14);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
 
-    // En-tête informatif
-    auto* headerWidget = new QWidget(this);
-    auto* headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(0, 0, 0, 0);
-
-    auto* lblHeader = new QLabel(
-        tr("<b>Paramètres de modélisation initiale</b><br>"
-           "<span style='color:#8B949E; font-size:11px;'>"
-           "Définissez les propriétés appliquées automatiquement aux structures lors du tracé 3D."
-           "</span>"), headerWidget);
-    headerLayout->addWidget(lblHeader);
-    mainLayout->addWidget(headerWidget);
+    // En-tête standardisé
+    addStandardDialogHeader(mainLayout,
+                            tr("Paramètres de Modélisation Initiale"),
+                            tr("Définissez les propriétés appliquées automatiquement aux structures lors du tracé 3D interactif."),
+                            QStringLiteral(":/icons/edit_properties.svg"));
 
     // Onglets par type d'élément
     m_tabWidget = new QTabWidget(this);
@@ -102,32 +97,26 @@ void StructurePresetDialog::setupUi()
     m_tabWidget->setIconSize(QSize(18, 18));
     mainLayout->addWidget(m_tabWidget, 1);
 
-    // Option : afficher avant chaque dessin
-    m_chkShowEveryTime = new QCheckBox(tr("Afficher cette boîte avant chaque dessin d'élément"), this);
+    // Option : afficher avant chaque dessin (placé en bas à gauche avec le bouton d'aide)
+    m_chkShowEveryTime = new QCheckBox(tr("Afficher cette boîte avant chaque dessin"), this);
     m_chkShowEveryTime->setChecked(m_presets.showDialogBeforeDrawing);
-    mainLayout->addWidget(m_chkShowEveryTime);
 
-    // Boutons de validation
-    auto* btnBox = new QDialogButtonBox(this);
-    auto* btnOk = btnBox->addButton(tr("Démarrer le Dessin 3D"), QDialogButtonBox::AcceptRole);
+    // Boutons de validation standardisés
+    auto* btnOk = new QPushButton(tr("Démarrer le Dessin 3D"), this);
     btnOk->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")));
-    auto* btnCancel = btnBox->addButton(tr("Annuler"), QDialogButtonBox::RejectRole);
+    btnOk->setDefault(true);
+
+    auto* btnCancel = new QPushButton(tr("Annuler"), this);
     btnCancel->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
 
-    btnOk->setDefault(true);
-    btnOk->setStyleSheet(
-        "QPushButton { background-color: #1F6FEB; color: white; font-weight: bold; padding: 6px 16px; border-radius: 4px; }"
-        "QPushButton:hover { background-color: #388BFD; }"
-        "QPushButton:pressed { background-color: #1158C7; }"
-    );
-
-    connect(btnBox, &QDialogButtonBox::accepted, this, [this]() {
+    connect(btnOk, &QPushButton::clicked, this, [this]() {
         saveToPresets();
         accept();
     });
-    connect(btnBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(btnCancel, &QPushButton::clicked, this, &QDialog::reject);
 
-    mainLayout->addWidget(btnBox);
+    auto* btnLayout = createStandardButtonRow(this, btnOk, btnCancel, QStringLiteral("model.presets"), m_chkShowEveryTime);
+    mainLayout->addLayout(btnLayout);
 }
 
 void StructurePresetDialog::updateColorButton(QPushButton* btn, const QString& hexColor, const QString& defaultHex)

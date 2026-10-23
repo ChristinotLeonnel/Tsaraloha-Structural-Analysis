@@ -23,6 +23,9 @@
 #include <QKeyEvent>
 #include <sstream>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 namespace TSA::UI
 {
 
@@ -37,7 +40,7 @@ SurfaceCreationDialog::SurfaceCreationDialog(TSA::Model::Model* model, OccView* 
     setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint | Qt::WindowCloseButtonHint | Qt::WindowMinimizeButtonHint);
     setAttribute(Qt::WA_DeleteOnClose, false);
     setAttribute(Qt::WA_QuitOnClose, false);
-    setFixedWidth(380);
+    applyStandardDialogSizing(this, DialogSizeCategory::Standard);
 
     setupUi();
     updateNextId();
@@ -47,8 +50,13 @@ SurfaceCreationDialog::SurfaceCreationDialog(TSA::Model::Model* model, OccView* 
 void SurfaceCreationDialog::setupUi()
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(8);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(10);
+
+    addStandardDialogHeader(mainLayout,
+                            tr("Éléments Surfaciques"),
+                            tr("Modélisation géométrique et physique des dalles et voiles porteurs"),
+                            QStringLiteral(":/icons/draw_slab.svg"));
 
     // 1. Sélecteur de type d'élément surfacique
     auto* typeLayout = new QHBoxLayout();
@@ -232,25 +240,14 @@ void SurfaceCreationDialog::setupUi()
 
     mainLayout->addWidget(m_paramStack);
 
-    // 4. Boutons inférieurs
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->setSpacing(8);
-
+    // 4. Boutons inférieurs standardisés
     m_btnAdd = new QPushButton(tr("Ajouter"), this);
     m_btnAdd->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/slab_add.svg")));
-    m_btnAdd->setStyleSheet("font-weight: bold; background-color: #2E7D32; color: white; padding: 6px 14px; border-radius: 4px;");
 
     m_btnClose = new QPushButton(tr("Fermer"), this);
     m_btnClose->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
 
-    m_btnHelp = new QPushButton(tr("Aide"), this);
-    m_btnHelp->setObjectName(QStringLiteral("helpButton"));
-    m_btnHelp->setProperty("helpTopic", QStringLiteral("model.surfaces"));
-    m_btnHelp->setIcon(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)));
-
-    btnLayout->addWidget(m_btnAdd);
-    btnLayout->addWidget(m_btnClose);
-    btnLayout->addWidget(m_btnHelp);
+    auto* btnLayout = createStandardButtonRow(this, m_btnAdd, m_btnClose, QStringLiteral("model.surfaces"));
     mainLayout->addLayout(btnLayout);
 
     // Connexions

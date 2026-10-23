@@ -1,4 +1,5 @@
 #include "CableCreationDialog.h"
+#include "../Theme/ThemedIcon.h"
 #include "../HelpLauncher.h"
 #include <QEvent>
 #include "../../Interaction/ElementCreation.h"
@@ -22,6 +23,8 @@
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <cmath>
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
 #include <sstream>
 
 namespace TSA::UI
@@ -36,7 +39,7 @@ CableCreationDialog::CableCreationDialog(TSA::Model::Model* model, OccView* occV
     setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint | Qt::WindowCloseButtonHint | Qt::WindowMinimizeButtonHint);
     setAttribute(Qt::WA_DeleteOnClose, false);
     setAttribute(Qt::WA_QuitOnClose, false);
-    setFixedWidth(380);
+    applyStandardDialogSizing(this, DialogSizeCategory::Standard);
 
     setupUi();
     populatePresets();
@@ -54,8 +57,13 @@ CableCreationDialog::CableCreationDialog(TSA::Model::Model* model, OccView* occV
 void CableCreationDialog::setupUi()
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(8);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(10);
+
+    addStandardDialogHeader(mainLayout,
+                            tr("Éléments Câbles & Tirants"),
+                            tr("Modélisation géométrique et précontrainte initiale des câbles"),
+                            QStringLiteral(":/icons/draw_cable.svg"));
 
     // 1. Numérotation & Identification
     auto* numLayout = new QHBoxLayout();
@@ -243,24 +251,13 @@ void CableCreationDialog::setupUi()
 
     mainLayout->addWidget(grpCoords);
 
-    // 7. Boutons d'Action
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->setSpacing(6);
-
-    m_btnHelp = new QPushButton(tr("Aide"), this);
-    m_btnHelp->setObjectName(QStringLiteral("helpButton"));
-    m_btnHelp->setProperty("helpTopic", QStringLiteral("model.cables"));
-    m_btnHelp->setFixedWidth(60);
-
+    // 7. Boutons d'Action standardisés
     m_btnAdd = new QPushButton(tr("Ajouter"), this);
-    m_btnAdd->setStyleSheet("font-weight: bold; background-color: #2D68C4; color: white;");
-
+    m_btnAdd->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/beam_add.svg")));
     m_btnClose = new QPushButton(tr("Fermer"), this);
+    m_btnClose->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
 
-    btnLayout->addWidget(m_btnHelp);
-    btnLayout->addStretch();
-    btnLayout->addWidget(m_btnAdd);
-    btnLayout->addWidget(m_btnClose);
+    auto* btnLayout = createStandardButtonRow(this, m_btnAdd, m_btnClose, QStringLiteral("model.cables"));
     mainLayout->addLayout(btnLayout);
 
     // Connexions de signaux
