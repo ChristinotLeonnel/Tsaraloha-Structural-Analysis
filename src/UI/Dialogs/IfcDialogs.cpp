@@ -16,6 +16,9 @@
 #include <QTextStream>
 #include <QVBoxLayout>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 #include <algorithm>
 
 namespace TSA::UI
@@ -92,7 +95,17 @@ void IfcProgressDialog::requestCancel()
 IfcImportOptionsDialog::IfcImportOptionsDialog(const QString& path, QWidget* parent) : QDialog(parent)
 {
     setWindowTitle(tr("Importer un fichier IFC"));
+    applyStandardDialogSizing(this, DialogSizeCategory::Standard);
+
     auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(16, 16, 16, 16);
+    layout->setSpacing(12);
+
+    addStandardDialogHeader(layout,
+                            tr("Importer un fichier IFC"),
+                            tr("Options d'importation géométrique et analytique du modèle BIM IFC."),
+                            QStringLiteral(":/icons/bim.svg"));
+
     auto* file = new QLabel(tr("Fichier : %1").arg(QFileInfo(path).fileName()), this);
     file->setWordWrap(true);
     layout->addWidget(file);
@@ -106,6 +119,7 @@ IfcImportOptionsDialog::IfcImportOptionsDialog(const QString& path, QWidget* par
                                    "seront importés sans géométrie."),
                                 this);
         warn->setWordWrap(true);
+        warn->setProperty("status", "warning");
         layout->addWidget(warn);
     }
 
@@ -126,13 +140,16 @@ IfcImportOptionsDialog::IfcImportOptionsDialog(const QString& path, QWidget* par
                                "un nouvel onglet : les projets ouverts ne sont pas modifiés."),
                             this);
     note->setWordWrap(true);
+    note->setProperty("status", "info");
     layout->addWidget(note);
 
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    buttons->button(QDialogButtonBox::Ok)->setText(tr("Importer"));
-    connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    layout->addWidget(buttons);
+    auto* btnImport = new QPushButton(tr("Importer"), this);
+    auto* btnCancel = new QPushButton(tr("Annuler"), this);
+    connect(btnImport, &QPushButton::clicked, this, &QDialog::accept);
+    connect(btnCancel, &QPushButton::clicked, this, &QDialog::reject);
+
+    auto* btnLayout = createStandardButtonRow(this, btnImport, btnCancel, QStringLiteral("bim.ifc"));
+    layout->addLayout(btnLayout);
 }
 
 IfcImportOptions IfcImportOptionsDialog::options() const
@@ -148,8 +165,17 @@ IfcImportReportDialog::IfcImportReportDialog(const QString& path, const IfcImpor
     : QDialog(parent), m_path(path), m_report(report)
 {
     setWindowTitle(tr("Rapport d'import IFC"));
-    resize(900, 560);
+    applyStandardDialogSizing(this, DialogSizeCategory::Studio);
+
     auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(16, 16, 16, 16);
+    layout->setSpacing(12);
+
+    addStandardDialogHeader(layout,
+                            tr("Rapport d'Importation IFC"),
+                            tr("Bilan d'extraction des entités géométriques, éléments analytiques et avertissements."),
+                            QStringLiteral(":/icons/bim.svg"));
+
     auto* summary = new QLabel(QFileInfo(path).fileName() + "\n\n" + QString::fromStdString(report.summary()), this);
     summary->setWordWrap(true);
     summary->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -196,14 +222,17 @@ IfcImportReportDialog::IfcImportReportDialog(const QString& path, const IfcImpor
                                  "Vérifier le modèle de calcul (appuis, relâchements, charges) dans tous les cas."),
                               this);
     advice->setWordWrap(true);
+    advice->setProperty("status", "info");
     layout->addWidget(advice);
 
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
-    auto* save = buttons->addButton(tr("Enregistrer le rapport…"), QDialogButtonBox::ActionRole);
-    connect(save, &QPushButton::clicked, this, &IfcImportReportDialog::saveCsv);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    layout->addWidget(buttons);
+    auto* saveBtn = new QPushButton(tr("Enregistrer le rapport…"), this);
+    connect(saveBtn, &QPushButton::clicked, this, &IfcImportReportDialog::saveCsv);
+
+    auto* closeBtn = new QPushButton(tr("Fermer"), this);
+    connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+
+    auto* btnLayout = createStandardButtonRow(this, nullptr, closeBtn, QStringLiteral("bim.report"), saveBtn);
+    layout->addLayout(btnLayout);
 }
 
 void IfcImportReportDialog::saveCsv()
