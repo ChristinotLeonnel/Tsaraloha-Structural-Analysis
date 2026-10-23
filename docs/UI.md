@@ -1,6 +1,7 @@
 # Interface Utilisateur — TSA
 
-> Document vivant. Voir aussi `.agents/rules/03-qt-ui.md`. La documentation utilisateur
+> Document vivant. Voir aussi `.agents/rules/03-qt-ui.md` et le standard officiel
+> [`docs/UI/TSA_UI_DESIGN_STANDARD.md`](file:///d:/Tsaraloha%20Platforme/TSA/docs/UI/TSA_UI_DESIGN_STANDARD.md). La documentation utilisateur
 > détaillée de l'ergonomie existe déjà dans `DOCUMENTATION.md` (sections 3, 4, 8) — ce
 > document se concentre sur l'architecture technique de l'UI pour les agents/développeurs.
 

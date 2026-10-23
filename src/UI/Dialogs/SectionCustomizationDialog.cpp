@@ -16,6 +16,9 @@
 #include <QIcon>
 #include <cmath>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 namespace TSA::UI
 {
 
@@ -25,7 +28,7 @@ SectionCustomizationDialog::SectionCustomizationDialog(const TSA::Model::Section
 {
     setWindowTitle(tr("Personnalisation de la Section Structurale"));
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint);
-    resize(420, 560);
+    applyStandardDialogSizing(this, DialogSizeCategory::Standard);
 
     setupUi();
 
@@ -49,8 +52,13 @@ SectionCustomizationDialog::SectionCustomizationDialog(const TSA::Model::Section
 void SectionCustomizationDialog::setupUi()
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(8);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(12);
+
+    addStandardDialogHeader(mainLayout,
+                            tr("Personnalisation de la Section"),
+                            tr("Définition paramétrique des profilés et calcul en temps réel des caractéristiques géométriques."),
+                            QStringLiteral(":/icons/section.svg"));
 
     // 1. Groupe Identification & Forme
     auto* grpType = new QGroupBox(tr("Forme de Section et Bibliothèque"), this);
@@ -165,20 +173,14 @@ void SectionCustomizationDialog::setupUi()
 
     mainLayout->addWidget(grpCalc);
 
-    // 4. Boutons Appliquer / Annuler
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->setSpacing(8);
-
+    // 4. Boutons Appliquer / Annuler standardisés
     m_btnApply = new QPushButton(tr("Appliquer"), this);
     m_btnApply->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")));
-    m_btnApply->setStyleSheet("font-weight: bold; background-color: #007ACC; color: white; padding: 6px 16px; border-radius: 4px;");
 
     m_btnCancel = new QPushButton(tr("Annuler"), this);
     m_btnCancel->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
 
-    btnLayout->addStretch();
-    btnLayout->addWidget(m_btnApply);
-    btnLayout->addWidget(m_btnCancel);
+    auto* btnLayout = createStandardButtonRow(this, m_btnApply, m_btnCancel, QStringLiteral("model.sections"));
     mainLayout->addLayout(btnLayout);
 
     // Connexions

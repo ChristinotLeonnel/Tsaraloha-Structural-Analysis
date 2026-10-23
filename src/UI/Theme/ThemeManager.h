@@ -29,6 +29,18 @@ public:
     QColor rulerMinorTick() const;
     QColor rulerText() const;
 
+    // Couleurs sémantiques et de thème
+    QColor primaryColor() const;
+    QColor windowColor() const;
+    QColor surfaceColor() const;
+    QColor borderColor() const;
+    QColor textColor() const;
+    QColor textMutedColor() const;
+    QColor successColor() const;
+    QColor warningColor() const;
+    QColor destructiveColor() const;
+    QColor infoColor() const;
+
     // Stylesheets spécifiques
     QString ribbonTabWidgetStyleSheet() const;
     QString ribbonScrollStyleSheet() const;
@@ -41,6 +53,9 @@ public:
     QString topBarStyleSheet() const;
     QString topBarButtonStyleSheet() const;
     QString topBarComboStyleSheet() const;
+    QString primaryButtonStyleSheet() const;
+    QString destructiveButtonStyleSheet() const;
+    QString successButtonStyleSheet() const;
 
 signals:
     void themeChanged(bool isDark);

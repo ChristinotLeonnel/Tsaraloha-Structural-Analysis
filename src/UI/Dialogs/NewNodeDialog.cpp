@@ -15,6 +15,9 @@
 #include <QLabel>
 #include <QMessageBox>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 namespace TSA::UI
 {
 
@@ -28,7 +31,7 @@ NewNodeDialog::NewNodeDialog(TSA::Model::Model* model,
     , m_selectionManager(selectionManager)
 {
     setWindowTitle(tr("Nouveau Nœud"));
-    setMinimumWidth(440);
+    applyStandardDialogSizing(this, DialogSizeCategory::Compact);
     setupUi();
     populateLevels();
 }
@@ -37,7 +40,12 @@ void NewNodeDialog::setupUi()
 {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(16, 16, 16, 16);
-    mainLayout->setSpacing(14);
+    mainLayout->setSpacing(12);
+
+    addStandardDialogHeader(mainLayout,
+                            tr("Nouveau Nœud"),
+                            tr("Définition des coordonnées 3D, étiquette et conditions aux limites."),
+                            QStringLiteral(":/icons/node.svg"));
 
     auto* formLayout = new QFormLayout();
     formLayout->setSpacing(10);
@@ -70,36 +78,33 @@ void NewNodeDialog::setupUi()
 
     // Statut
     m_statusLabel = new QLabel(this);
-    m_statusLabel->setStyleSheet("color: #888888; font-size: 11px;");
+    m_statusLabel->setProperty("status", "info");
     mainLayout->addWidget(m_statusLabel);
 
-    // Boutons d'action
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->addStretch(1);
-
+    // Boutons d'action standardisés
     m_btnCreate = new QPushButton(tr("Créer le Nœud"), this);
     m_btnCreate->setDefault(true);
-    m_btnCreate->setStyleSheet("font-weight: bold; padding: 6px 16px;");
     connect(m_btnCreate, &QPushButton::clicked, this, &NewNodeDialog::onCreateClicked);
 
     m_btnCancel = new QPushButton(tr("Annuler"), this);
     connect(m_btnCancel, &QPushButton::clicked, this, &QDialog::reject);
 
-    btnLayout->addWidget(m_btnCreate);
-    btnLayout->addWidget(m_btnCancel);
+    auto* btnLayout = createStandardButtonRow(this, m_btnCreate, m_btnCancel, QStringLiteral("model.nodes"));
     mainLayout->addLayout(btnLayout);
 
     connect(m_pointSelector, &PointSelector::pointChanged, this, [this](const gp_Pnt& /*pt*/, int nodeId) {
         if (nodeId > 0)
         {
             m_statusLabel->setText(tr("⚠️ Le nœud N%1 existe déjà à cette position.").arg(nodeId));
-            m_statusLabel->setStyleSheet("color: #d97706; font-size: 11px;");
+            m_statusLabel->setProperty("status", "warning");
         }
         else
         {
             m_statusLabel->setText(tr("Position 3D prête pour la création."));
-            m_statusLabel->setStyleSheet("color: #888888; font-size: 11px;");
+            m_statusLabel->setProperty("status", "info");
         }
+        m_statusLabel->style()->unpolish(m_statusLabel);
+        m_statusLabel->style()->polish(m_statusLabel);
     });
 }
 

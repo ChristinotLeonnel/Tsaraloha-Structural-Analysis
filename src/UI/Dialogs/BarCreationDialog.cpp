@@ -17,6 +17,8 @@
 #include <QSpinBox>
 #include <QDoubleSpinBox>
 #include <QLineEdit>
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
 #include <QComboBox>
 #include <QCheckBox>
 #include <QPushButton>
@@ -40,7 +42,7 @@ BarCreationDialog::BarCreationDialog(TSA::Model::Model* model, OccView* occView,
     setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint | Qt::WindowCloseButtonHint | Qt::WindowMinimizeButtonHint);
     setAttribute(Qt::WA_DeleteOnClose, false);
     setAttribute(Qt::WA_QuitOnClose, false);
-    setFixedWidth(360);
+    applyStandardDialogSizing(this, DialogSizeCategory::Standard);
 
     setupUi();
     populateSections();
@@ -56,8 +58,13 @@ BarCreationDialog::BarCreationDialog(TSA::Model::Model* model, OccView* occView,
 void BarCreationDialog::setupUi()
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(8);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(10);
+
+    addStandardDialogHeader(mainLayout,
+                            tr("Éléments Filaires"),
+                            tr("Création et paramétrage de poutres, poteaux et barres structurales"),
+                            QStringLiteral(":/icons/draw_beam.svg"));
 
     // 1. Barre n° et Pas
     auto* numLayout = new QHBoxLayout();
@@ -130,7 +137,6 @@ void BarCreationDialog::setupUi()
 
     m_btnCustomizeSection = new QPushButton(tr("Modifier / Personnaliser la section..."), grpProps);
     m_btnCustomizeSection->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/sections/section_custom.svg")));
-    m_btnCustomizeSection->setStyleSheet("font-size: 8.5pt; font-weight: bold; background-color: #1E70BF; color: white; padding: 4px 8px; border-radius: 3px;");
     propsLayout->addWidget(m_btnCustomizeSection, 2, 1, 1, 2);
 
     // Matériau par défaut
@@ -138,7 +144,6 @@ void BarCreationDialog::setupUi()
     m_editMaterial = new QLineEdit(grpProps);
     m_editMaterial->setReadOnly(true);
     m_editMaterial->setText(tr("ACIER S235"));
-    m_editMaterial->setStyleSheet("background-color: #F0F0F0; color: #404040;");
     propsLayout->addWidget(m_editMaterial, 3, 1, 1, 2);
 
     mainLayout->addWidget(grpProps);
@@ -195,23 +200,13 @@ void BarCreationDialog::setupUi()
 
     mainLayout->addWidget(grpAxis);
 
-    // 6. Boutons inférieurs
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->setSpacing(8);
-
+    // 6. Boutons inférieurs standardisés
     m_btnAdd = new QPushButton(tr("Ajouter"), this);
     m_btnAdd->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/beam_add.svg")));
-    m_btnAdd->setStyleSheet("font-weight: bold; background-color: #2E7D32; color: white; padding: 5px 12px; border-radius: 3px;");
     m_btnClose = new QPushButton(tr("Fermer"), this);
     m_btnClose->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
-    m_btnHelp = new QPushButton(tr("Aide"), this);
-    m_btnHelp->setObjectName(QStringLiteral("helpButton"));
-    m_btnHelp->setProperty("helpTopic", QStringLiteral("model.members"));
-    m_btnHelp->setIcon(QIcon(QString::fromLatin1(TSA::Product::kIconSvg)));
 
-    btnLayout->addWidget(m_btnAdd);
-    btnLayout->addWidget(m_btnClose);
-    btnLayout->addWidget(m_btnHelp);
+    auto* btnLayout = createStandardButtonRow(this, m_btnAdd, m_btnClose, QStringLiteral("model.members"));
     mainLayout->addLayout(btnLayout);
 
     // Connexions

@@ -22,6 +22,9 @@ src/UI/
 
 `TODO: VERIFY IN SOURCE` si de nouveaux sous-dossiers apparaissent.
 
+## Référence Officielle UI/UX
+- Voir [TSA UI Design Standard](file:///d:/Tsaraloha%20Platforme/TSA/docs/UI/TSA_UI_DESIGN_STANDARD.md) pour les règles de style, dimensions des dialogues, propriétés sémantiques et hiérarchie visuelle inspirée de logiciels BIM professionnels (Autodesk Revit / Robot).
+
 ## Règle centrale
 
 ```text
