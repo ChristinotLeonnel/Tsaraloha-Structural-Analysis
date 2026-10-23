@@ -178,8 +178,11 @@ AnalysisRunResult AnalysisController::runBlocking(const AnalysisContext& context
     AnalysisRunResult summary;
     summary.success = m_lastRun->success;
     summary.message = m_lastRun->message;
-    if (m_lastRun->success) publishResults(std::make_shared<ResultsModel>(std::move(m_lastRun->results)));
-    else summary.results = m_lastRun->results;   // journal du moteur en cas d'échec
+    if (m_lastRun->success) {
+        publishResults(std::make_shared<ResultsModel>(std::move(m_lastRun->results)));
+    } else {
+        summary.results = m_lastRun->results;   // journal du moteur en cas d'échec
+    }
     emit runCompleted(m_runContext, summary.success, QString::fromStdString(summary.message));
     return summary;
 }
@@ -197,8 +200,11 @@ void AnalysisController::publishResults(const std::shared_ptr<ResultsModel>& res
 void AnalysisController::publishResults(const std::shared_ptr<ResultsModel>& results, std::uint64_t analyzedRevision)
 {
     m_results = results;
-    if (m_results) m_guard->trackResults(m_results, analyzedRevision);
-    else m_guard->clearResults();
+    if (m_results) {
+        m_guard->trackResults(m_results, analyzedRevision);
+    } else {
+        m_guard->clearResults();
+    }
     emit resultsChanged();
 }
 
