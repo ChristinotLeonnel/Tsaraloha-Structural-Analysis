@@ -16,6 +16,9 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 #include <set>
 
 namespace TSA::UI
@@ -69,13 +72,23 @@ SurfaceLoadsDialog::SurfaceLoadsDialog(const TSA::Model::Model& model, const std
     for (const auto& [id, l] : model.loadManager().surfaceLoads())
         if (targets.count({ l.targetKind, l.surfaceId })) m_loads.push_back(l);
     setWindowTitle(tr("Charges surfaciques (%1 surface(s))").arg(surfaces.size()));
-    resize(760, 520);
+    applyStandardDialogSizing(this, DialogSizeCategory::Large);
+
     auto* v = new QVBoxLayout(this);
+    v->setContentsMargins(16, 16, 16, 16);
+    v->setSpacing(12);
+
+    addStandardDialogHeader(v,
+                            tr("Charges Surfaciques"),
+                            tr("Application et gestion des charges réparties (kN/m²) ou ponctuelles (kN) sur dalles et voiles."),
+                            QStringLiteral(":/icons/load_distributed.svg"));
+
     auto* info = new QLabel(tr("Charges appliquées aux dalles et voiles sélectionnés. Au calcul, elles sont converties en charges nodales cohérentes "
                                "sur le maillage (∫ Nᵢ p dA), résultante et moment contrôlés ; les ouvertures sont déduites. Le poids propre des "
                                "surfaces est calculé automatiquement (ρ·g·e) pour les cas qui l'incluent : ne pas le saisir ici en plus."),
                             this);
     info->setWordWrap(true);
+    info->setProperty("status", "info");
     v->addWidget(info);
     m_table = new QTableWidget(0, 3, this);
     m_table->setHorizontalHeaderLabels({ tr("Surface"), tr("Nom"), tr("Charge") });
@@ -162,10 +175,13 @@ SurfaceLoadsDialog::SurfaceLoadsDialog(const TSA::Model::Model& model, const std
         m_loads.erase(m_loads.begin() + r);
         fill();
     });
-    auto* bb = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    connect(bb, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(bb, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    v->addWidget(bb);
+    auto* okBtn = new QPushButton(tr("Appliquer"), this);
+    auto* cancelBtn = new QPushButton(tr("Fermer"), this);
+    connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
+    connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+
+    auto* btnLayout = createStandardButtonRow(this, okBtn, cancelBtn, QStringLiteral("loading.surfaces"));
+    v->addLayout(btnLayout);
     fill();
 }
 

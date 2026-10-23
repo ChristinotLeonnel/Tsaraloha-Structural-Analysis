@@ -15,6 +15,7 @@
 #include "UI/Dialogs/NewNodeDialog.h"
 #include "UI/Dialogs/SectionCustomizationDialog.h"
 #include "UI/Dialogs/LoadCaseDialog.h"
+#include "UI/Dialogs/LevelDialog.h"
 
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
@@ -169,6 +170,9 @@ bool runSuite_Appearance(int& passed)
 
         LoadCaseDialog lcDlg(&m);
         TEST_CHECK(lcDlg.minimumWidth() >= 740 && lcDlg.minimumHeight() >= 540, "Test 222: LoadCaseDialog conforme Large");
+
+        LevelDialog lvlDlg(m.levelManager());
+        TEST_CHECK(lvlDlg.minimumWidth() >= 740 && lvlDlg.minimumHeight() >= 540, "Test 222: LevelDialog conforme Large");
 
         std::cout << "[PASS] Test 222: Conformité globale au Standard UI/UX TSA (Tailles, En-têtes, Sémantique)" << std::endl;
         ++passed;

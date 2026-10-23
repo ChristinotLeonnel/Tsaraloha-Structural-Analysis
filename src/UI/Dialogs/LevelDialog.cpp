@@ -11,6 +11,9 @@
 #include <QLabel>
 #include <QCheckBox>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 namespace TSA::UI
 {
 
@@ -18,8 +21,8 @@ LevelDialog::LevelDialog(TSA::Coordinate::LevelManager* levelManager, QWidget* p
     : QDialog(parent)
     , m_levelManager(levelManager)
 {
-    setWindowTitle(tr("Level et Story Manager"));
-    resize(640, 420);
+    setWindowTitle(tr("Gestionnaire des Niveaux et Étages"));
+    applyStandardDialogSizing(this, DialogSizeCategory::Large);
 
     setupUi();
     refreshTable();
@@ -33,14 +36,17 @@ LevelDialog::LevelDialog(TSA::Coordinate::LevelManager* levelManager, QWidget* p
 void LevelDialog::setupUi()
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+    mainLayout->setSpacing(12);
 
-    auto* headerLabel = new QLabel(tr("Manage project stories, elevations and vertical levels:"), this);
-    mainLayout->addWidget(headerLabel);
+    addStandardDialogHeader(mainLayout,
+                            tr("Gestionnaire des Niveaux et Étages"),
+                            tr("Définition des altimétries Z, espacements entre planchers et plans de travail verticaux."),
+                            QStringLiteral(":/icons/modeling/levels.svg"));
 
     m_table = new QTableWidget(this);
     m_table->setColumnCount(5);
-    m_table->setHorizontalHeaderLabels({ tr("ID"), tr("Name"), tr("Elevation Z (m)"), tr("Spacing \xCE\x94Z (m)"), tr("Visible") });
+    m_table->setHorizontalHeaderLabels({ tr("ID"), tr("Nom"), tr("Altimétrie Z (m)"), tr("Espacement ΔZ (m)"), tr("Visible") });
     m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     m_table->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     m_table->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
@@ -52,7 +58,7 @@ void LevelDialog::setupUi()
 
     mainLayout->addWidget(m_table);
 
-    // Boutons d'action
+    // Boutons d'action du tableau
     auto* btnLayout = new QHBoxLayout();
 
     m_btnAdd = new QPushButton(tr("Ajouter un niveau"), this);
@@ -69,27 +75,19 @@ void LevelDialog::setupUi()
 
     mainLayout->addLayout(btnLayout);
 
-    m_chkLiveSync = new QCheckBox(tr("Synchronisation en direct (temps réel)"), this);
+    m_chkLiveSync = new QCheckBox(tr("Synchronisation 3D en direct"), this);
     m_chkLiveSync->setChecked(true);
-    m_chkLiveSync->setToolTip(tr("Coché : applique immédiatement les modifications de niveaux dans la vue 3D.\nDécoché : attend un clic sur 'Appliquer'."));
-    m_chkLiveSync->setStyleSheet("font-weight: bold; color: #58A6FF; margin-top: 4px;");
-    mainLayout->addWidget(m_chkLiveSync);
+    m_chkLiveSync->setToolTip(tr("Applique immédiatement les modifications de niveaux dans la vue 3D."));
 
-    auto* bottomLayout = new QHBoxLayout();
     m_btnApply = new QPushButton(tr("Appliquer"), this);
     m_btnApply->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/apply.svg")));
-    m_btnApply->setStyleSheet("QPushButton { border: 1.5px solid #1E70BF; background: #EDF5FC; font-weight: bold; color: #104C90; }");
-    m_btnApply->setFixedHeight(26);
 
     auto* closeBtn = new QPushButton(tr("Fermer"), this);
     closeBtn->setIcon(TSA::UI::themedIcon(QStringLiteral(":/icons/cancel.svg")));
-    closeBtn->setFixedHeight(26);
     closeBtn->setDefault(true);
     connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
 
-    bottomLayout->addStretch();
-    bottomLayout->addWidget(m_btnApply);
-    bottomLayout->addWidget(closeBtn);
+    auto* bottomLayout = createStandardButtonRow(this, m_btnApply, closeBtn, QStringLiteral("coordinate.levels"), m_chkLiveSync);
     mainLayout->addLayout(bottomLayout);
 
     connect(m_chkLiveSync, &QCheckBox::toggled, this, [this](bool checked) {

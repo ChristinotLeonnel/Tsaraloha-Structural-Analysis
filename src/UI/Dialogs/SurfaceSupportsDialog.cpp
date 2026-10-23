@@ -16,6 +16,9 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 
+#include "DialogStandardHelper.h"
+#include "../Widgets/StandardDialogHeader.h"
+
 namespace TSA::UI
 {
 
@@ -81,14 +84,24 @@ SurfaceSupportsDialog::SurfaceSupportsDialog(const TSA::Model::Model& model, con
     const bool walls = !surfaces.empty() && std::all_of(surfaces.begin(), surfaces.end(), [](const auto& s) { return s.first == SurfaceTargetKind::Wall; });
 
     setWindowTitle(tr("Appuis linéiques des surfaces (%1 surface(s))").arg(surfaces.size()));
-    resize(780, 560);
+    applyStandardDialogSizing(this, DialogSizeCategory::Large);
+
     auto* v = new QVBoxLayout(this);
+    v->setContentsMargins(16, 16, 16, 16);
+    v->setSpacing(12);
+
+    addStandardDialogHeader(v,
+                            tr("Appuis Linéiques des Surfaces"),
+                            tr("Conditions aux limites réparties (encastrements, appuis simples, ressorts) sur les bords de dalles et voiles."),
+                            QStringLiteral(":/icons/modeling/support_fixed.svg"));
+
     auto* info = new QLabel(tr("Appuis répartis le long d'un bord (ou de tout le contour) : au calcul, chaque nœud du maillage situé sur le bord reçoit les "
                                "blocages choisis et la raideur linéique multipliée par sa longueur d'influence. Axes globaux. Bords d'une dalle : côté "
                                "allant du sommet i au sommet i+1 du contour ; bords d'un voile : pied, extrémité de fin, tête, extrémité de début "
                                "(une porte au pied interrompt l'appui)."),
                             this);
     info->setWordWrap(true);
+    info->setProperty("status", "info");
     v->addWidget(info);
     m_table = new QTableWidget(0, 3, this);
     m_table->setHorizontalHeaderLabels({ tr("Surface"), tr("Nom"), tr("Appui") });
@@ -143,10 +156,14 @@ SurfaceSupportsDialog::SurfaceSupportsDialog(const TSA::Model::Model& model, con
         m_entries.erase(m_entries.begin() + r);
         fill();
     });
-    auto* bb = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    connect(bb, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(bb, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    v->addWidget(bb);
+
+    auto* okBtn = new QPushButton(tr("Appliquer"), this);
+    auto* cancelBtn = new QPushButton(tr("Fermer"), this);
+    connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
+    connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+
+    auto* btnLayout = createStandardButtonRow(this, okBtn, cancelBtn, QStringLiteral("supports.surfaces"));
+    v->addLayout(btnLayout);
     fill();
 }
 
