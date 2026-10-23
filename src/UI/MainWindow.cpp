@@ -1027,6 +1027,8 @@ void MainWindow::onActionAddCube()
         }
     }
 
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Structure Cube 3D").toStdString());
+
     // 1. Création des 8 nœuds géométriques du cube
     // Nœuds de base au niveau z0
     int n1 = m_model->addNode(x0, y0, z0);
@@ -1060,6 +1062,8 @@ void MainWindow::onActionAddCube()
 
     // 5. Création de la dalle supérieure
     m_model->addSlab({n5, n6, n7, n8}, 0.20);
+
+    tx.commit();
 
     if (m_modelTree)
     {

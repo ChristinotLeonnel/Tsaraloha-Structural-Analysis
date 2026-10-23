@@ -128,6 +128,7 @@ std::string OpenSeesAnalysisBuilder::buildMatrixScript(const CalculationSnapshot
     }
     tcl << "puts \"TSA_OPS_MATRICES_DONE\"\n";
     tcl << "wipe\n";
+    tcl << "exit\n";
     return tcl.str();
 }
 
@@ -925,6 +926,7 @@ std::string OpenSeesAnalysisBuilder::buildAnalysisCommands(const CalculationSnap
     }
 
     tcl << "wipe\n";
+    tcl << "exit\n";
 
     return tcl.str();
 }
@@ -1007,6 +1009,7 @@ std::string OpenSeesAnalysisBuilder::buildModalScript(const CalculationSnapshot&
     tcl << "if {[catch {modalProperties -file \"" << params.modalPropertiesOutputFile << "\"} tsaErr]} { puts \"TSA_OPS_MODAL_PROPERTIES_FAIL $tsaErr\" }\n";
     tcl << "puts \"TSA_OPS_SUCCESS Modal [llength $tsaLambda] modes\"\n";
     tcl << "wipe\n";
+    tcl << "exit\n";
     return tcl.str();
 }
 

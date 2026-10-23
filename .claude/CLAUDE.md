@@ -56,8 +56,10 @@ PropertyPanel, ProjectStatusOverlay, ResultsValidityGuard). Détails : `architec
 - Raccourcis : enregistrer dans `src/Commands/CommandCatalog.cpp`, mettre à jour
   `docs/shortcuts.txt`, vérifier `python tools/check_shortcuts.py --strict` ET l'absence de
   conflit dans `src/UI/*.cpp` (le script ne lit que le catalogue).
-- Git : branche dédiée (`feature/`, `fix/`, `perf/`, `docs/`…), commits `type: message`,
-  ne jamais pousser sur `main` sans demande explicite.
+- Git : Règle obligatoire (AGENTS.md §6, Règles A à G). Création systématique d'une branche dédiée
+  avant toute modification (`git switch -c <type>/<nom>`), conventions de nommage strictes (`feature/`,
+  `fix/`, `hotfix/`, `refactor/`, `perf/`, `test/`, `docs/`, `build/`, `ci/`, `research/`), interdiction
+  absolue des opérations destructrices (`reset --hard`, `clean -fd`), aucun commit, merge ou push sans accord explicite.
 
 ## Build & test (référence)
 

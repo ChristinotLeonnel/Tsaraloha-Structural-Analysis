@@ -18,7 +18,8 @@ CATALOG = ROOT / "src" / "Commands" / "CommandCatalog.cpp"
 REFERENCE = ROOT / "docs" / "shortcut.txt"
 NON_PORTABLE = {"suppr", "echap", "échap", "maj"}
 
-CALL = re.compile(r'registerCommand\(\{"(cmd[^"]+)",\s*"(?:[^"\\]|\\.)*",\s*"(?:[^"\\]|\\.)*",\s*"([^"]*)"', re.S)
+_ARG = r'(?:QT_TRANSLATE_NOOP\s*\([^,]+,\s*"(?:[^"\\]|\\.)*"\)|"(?:[^"\\]|\\.)*")'
+CALL = re.compile(r'registerCommand\s*\(\s*\{\s*"(cmd[^"]+)"\s*,\s*' + _ARG + r'\s*,\s*' + _ARG + r'\s*,\s*"([^"]*)"', re.S)
 
 
 def split_aliases(text):

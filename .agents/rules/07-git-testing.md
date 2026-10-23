@@ -6,80 +6,86 @@ applies_to: ["**"]
 
 # 07 — Git & Testing
 
-## Git — Gestion Automatique des Branches et Workflow
+## Git — Règle Obligatoire : Une Branche Git pour Chaque Intervention
 
-Pour toute modification du projet TSA, déterminer d'abord la nature du travail avant de modifier le code.
-**Principe : NE PAS effectuer automatiquement toutes les modifications dans la branche courante.**
+Cette règle est **obligatoire pour toute intervention sur le projet TSA**, qu'elle soit réalisée par un développeur ou un agent IA (**Gemini**, **Antigravity**, **Claude Code** ou tout autre agent).
 
-### 1. Conventions de Branches
+### 10.1. Créer une branche avant toute modification (Règle B — Vérification préalable)
+Avant de modifier, créer ou supprimer un fichier du projet, y compris le code source, les tests, la documentation, les configurations ou les règles :
+1. Examiner l'état Git avec `git status`.
+2. Identifier la branche courante et les modifications locales non validées.
+3. Préserver intégralement les modifications préexistantes, y compris les fichiers non suivis.
+4. Créer une nouvelle branche dédiée à l'intervention avant toute modification (`git switch -c <type>/<nom>`).
+5. Vérifier que la nouvelle branche est active avant de commencer le travail.
+
+> [!CAUTION]
+> **Ne jamais commencer une modification sur `main`, `master` ou une autre branche de travail existante**, sauf autorisation explicite de l'utilisateur.
+
+### 10.2. Convention obligatoire de nommage (Règle A — Une branche dédiée)
+Format recommandé : `<type>/<identifiant-court-du-travail>`
 
 | Préfixe | Usage | Exemples |
 | :--- | :--- | :--- |
-| `feature/<nom-court>` | Nouvelle fonctionnalité | `feature/workplane-3d`, `feature/cable-element`, `feature/result-diagrams` |
-| `fix/<nom-court>` | Correction de bug existant | `fix/workplane-selection`, `fix/circular-column-display`, `fix/grid-crash` |
-| `refactor/<nom-court>` | Refactorisation sans ajout fonctionnel direct | `refactor/coordinate-system`, `refactor/occview-split` |
-| `perf/<nom-court>` | Amélioration de performance | `perf/occt-scene-update`, `perf/spatial-indexing` |
-| `ui/<nom-court>` | Modification visuelle ou ergonomique | `ui/workplane-marker`, `ui/toolbar-elements` |
-| `docs/<nom-court>` | Modification uniquement documentaire / règles | `docs/git-branching-rules`, `docs/workplane-system` |
-| `test/<nom-court>` | Ajout ou refonte dédiée aux tests | `test/modular-test-suites` |
+| `feature/` | Nouvelle fonctionnalité | `feature/three-moment-engine`, `feature/ifc-import`, `feature/cable-element` |
+| `fix/` | Correction de bug | `fix/beam-torsion`, `fix/circular-column-display`, `fix/grid-crash` |
+| `hotfix/` | Correction urgente d'un problème critique | `hotfix/crash-on-open`, `hotfix/license-parser` |
+| `refactor/` | Restructuration du code sans changement fonctionnel | `refactor/fem-assembly`, `refactor/coordinate-system`, `refactor/occview-split` |
+| `perf/` | Amélioration des performances | `perf/mesh-generation`, `perf/occt-scene-update`, `perf/spatial-indexing` |
+| `test/` | Ajout ou modification des tests | `test/opensees-validation`, `test/modular-test-suites` |
+| `docs/` | Documentation et références techniques | `docs/git-workflow-rules`, `docs/bim-references` |
+| `build/` | Système de compilation et outillage de construction | `build/ninja-msvc-preset`, `build/vcpkg-manifest` |
+| `ci/` | Intégration continue et automatisation CI/CD | `ci/ctest-action`, `ci/benchmark-matrix` |
+| `research/` | Expérimentation technique isolée sans intégration auto | `research/direct-stiffness-matrix`, `research/non-linear-cables` |
 
-### 2. Modifications Communes / Transversales vs Indépendantes
+*Choisir un nom court, précis et compréhensible. Ne jamais créer plusieurs branches portant le même nom.*
 
-- **Modification commune / transversale liée :**
-  Si la modification est très petite, transversale, nécessaire à la tâche actuelle, directement liée à la branche courante, ou constitue une correction mineure indispensable à la fonctionnalité en cours → **rester dans la branche actuelle**.
-  *Exemple :* Sur `feature/workplane-3d`, corriger une petite synchronisation du WorkPlane reste sur `feature/workplane-3d`.
-- **Modification indépendante :**
-  Si une modification n'est pas nécessaire à la tâche actuelle, concerne une autre fonctionnalité ou amélioration indépendante, ou risque de mélanger les livraisons → **NE PAS** l'implémenter dans la branche courante. Créer une branche dédiée (ex. `fix/cable-section-display`).
+### 10.3. Une branche par tâche cohérente (Règle F — Travail simultané des agents)
+Chaque intervention indépendante doit disposer de sa propre branche :
+- Ne pas mélanger une nouvelle fonctionnalité avec des corrections sans rapport.
+- Ne pas regrouper plusieurs modifications indépendantes dans une seule branche.
+- Pour une tâche complexe, créer une branche principale de travail et, si nécessaire, des branches secondaires clairement reliées.
+- Si plusieurs agents travaillent simultanément, attribuer une branche distincte à chaque tâche ou agent.
+- Ne jamais laisser plusieurs agents modifier simultanément les mêmes fichiers sans coordination explicite.
+- *Une seule branche peut contenir plusieurs modifications si elles sont indispensables à une même tâche cohérente.*
 
-### 3. Protocole Avant Création d'une Branche
+### 10.4. Protection des travaux existants (Règle C — Opérations destructrices interdites)
+Avant de créer la branche et à tout moment de l'intervention :
+- Ne jamais supprimer les modifications locales de l'utilisateur.
+- Ne jamais lancer `git reset --hard`, `git clean -fd`, `git checkout -- .` ou une commande risquant de détruire du travail.
+- Ne pas forcer le changement de branche si des modifications locales risquent d'être écrasées.
+- Ne pas stash automatiquement les changements sans vérifier leur origine et sans autorisation lorsque cela risque de perturber d'autres agents.
+- Ne jamais réécrire l'historique partagé ni forcer (`push --force`).
+- *Si l'état du dépôt est ambigu ou si des modifications locales ne peuvent être isolées sans risque, s'arrêter et demander des instructions à l'utilisateur.*
 
-1. Toujours vérifier :
-   ```bash
-   git status
-   git branch --show-current
-   ```
-2. Identifier la branche actuelle et déterminer si la modification appartient réellement à la tâche courante.
-3. Ne jamais créer de branches inutilement.
-4. **Branche de base :** Partir de la branche appropriée et à jour (ex. `main`).
-   ```bash
-   git switch main
-   git pull
-   git switch -c feature/<nom>
-   ```
+### 10.5. Vérifications après modification (Règle D — Tests et validation)
+Sur la branche dédiée :
+1. Effectuer uniquement les modifications prévues.
+2. Contrôler `git diff` et vérifier qu'aucun fichier étranger n'a été touché.
+3. Exécuter les tests pertinents (`TSA_TestSuite`).
+4. Vérifier la compilation et les contrôles applicables.
+5. Pour les moteurs de calcul de TSA, préserver les validations numériques existantes et effectuer les comparaisons de référence pertinentes (OpenSees, RDM, NAFEMS).
+6. Documenter fidèlement les résultats, les échecs et les limitations (ne jamais prétendre un test réussi sans exécution réelle).
 
-### 4. Préservation du Travail Existant (Règles Absolues)
+### 10.6. Commit, fusion et publication (Règle E — Commit, merge et push)
+- **Aucun commit sans autorisation explicite de l'utilisateur** ou règle de projet qui l'autorise clairement.
+- **Ne jamais fusionner automatiquement** la branche dans `main` ou dans une autre branche.
+- **Ne jamais pousser vers GitHub sans autorisation explicite**.
+- Ne jamais supprimer une branche sans vérifier qu'elle ne contient aucun travail utile.
+- Fournir un rapport final indiquant : la branche utilisée, les modifications réalisées, les fichiers concernés, les tests exécutés, les résultats, les problèmes restants et les étapes d'intégration.
 
-- Ne **jamais** supprimer les modifications locales de l'utilisateur.
-- Ne **jamais** faire de reset destructif (`git reset --hard` sans demande explicite).
-- Ne **jamais** utiliser `git clean -fd` sans autorisation explicite.
-- Ne **jamais** écraser des commits existants ou forcer avec `git push --force`.
-- Ne **jamais** changer de branche avec des modifications non sauvegardées sans vérifier les conséquences.
+### 10.7. Cas des tâches de recherche et de lecture seule (Règle B & A)
+- Une analyse strictement en lecture seule ne nécessite pas de nouvelle branche tant qu'aucun fichier du projet n'est modifié.
+- **Si la recherche implique la création ou le téléchargement de documents destinés au dépôt, créer d'abord une branche `docs/` ou `research/` appropriée.**
+- Les téléchargements et résultats temporaires doivent rester hors du dépôt lorsqu'ils ne sont pas destinés à être conservés dans le projet.
 
-### 5. Conventions de Commit
+### 10.8. Priorité de cette règle & Compatibilité technique (Règle G)
+Cette règle complète les règles existantes de TSA. En cas de conflit, privilégier la préservation des travaux existants et l'absence de perte de données. Ne pas supprimer les autres règles et ne pas les remplacer globalement : identifier les éventuelles contradictions et les signaler avant de modifier la politique Git.
 
-Format des messages de commit :
-```text
-feat: ...
-fix: ...
-refactor: ...
-perf: ...
-ui: ...
-docs: ...
-test: ...
-```
+> [!IMPORTANT]
+> **Compatibilité avec l'évolution de TSA (Règle G)** : Ces règles Git ne doivent pas empêcher l'évolution technique du logiciel (nouveaux moteurs de calcul, correction de bugs, refactorisation, BIM, bibliothèques, optimisation). Elles protègent le travail sans affaiblir les exigences scientifiques, de précision numérique et de sécurité existantes.
+> **Principe fondamental : aucune modification non autorisée, aucune perte de travail, aucune intervention non isolée sur une branche existante et aucune fusion ou publication automatique.**
 
-### 6. Push et Fusion
 
-- Pousser la branche de travail correspondante vers le remote après validation (`git push -u origin feature/<nom>`).
-- Ne pas pousser automatiquement vers `main`.
-- Ne fusionner dans `main` qu'après validation complète (compilation 0 erreur et suite de tests 100% PASS).
-
-### 7. Checklist Obligatoire Avant Toute Modification Importante
-
-Identifier explicitement :
-- **TYPE :** `feature` / `fix` / `refactor` / `perf` / `ui` / `docs` / `test`
-- **BRANCHE :** branche actuelle ou nouvelle branche
-- **JUSTIFICATION :** pourquoi cette modification appartient à cette branche.
 
 ## Build & Environnement
 

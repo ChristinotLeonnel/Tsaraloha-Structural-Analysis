@@ -38,3 +38,14 @@ COMPRENDRE LA DEMANDE → INSPECTION CIBLÉE DU SOUS-SYSTÈME → IMPLÉMENTATIO
   CORRECTNESS → ARCHITECTURE → MAINTAINABILITY → TESTABILITY → PERFORMANCE
   ```
 - **Préservation absolue** : Ne jamais exécuter d'opération Git destructrice (`reset --hard`, `clean -fd`), ne jamais supprimer de travail local sans demande explicite.
+
+---
+
+## 3. Workflow Git Obligatoire (Règles A à G)
+Toute intervention de Gemini ou Antigravity modifiant des fichiers du projet est soumise aux règles de référence définies dans [`AGENTS.md` (Section 6)](file:///d:/Tsaraloha%20Platforme/TSA/AGENTS.md) et [`.agents/rules/07-git-testing.md`](file:///d:/Tsaraloha%20Platforme/TSA/.agents/rules/07-git-testing.md) :
+1. **Branche dédiée obligatoire** : Avant toute modification, examiner `git status` et créer une branche dédiée (`git switch -c <type>/<nom>`). Ne jamais travailler directement sur `main`, `master` ou une branche de travail préexistante.
+2. **Conventions de nommage** : `<type>/<identifiant-court>` (`feature/`, `fix/`, `hotfix/`, `refactor/`, `perf/`, `test/`, `docs/`, `build/`, `ci/`, `research/`).
+3. **Protection des travaux** : Aucune commande destructive (`reset --hard`, `clean -fd`, `checkout -- .`).
+4. **Validation proportionnée** : Vérification de `git diff`, compilation et tests ciblés (`TSA_TestSuite.exe --suite=<nom>`).
+5. **Aucun commit, merge ou push sans accord explicite** de l'utilisateur.
+

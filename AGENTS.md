@@ -140,10 +140,55 @@ Avant d'introduire une nouvelle bibliothèque tierce dans le projet :
 
 ## 6. Git, Build & Validation
 
-### Protection du Travail Local & Règles Git
-- **Préservation absolue** : Ne jamais exécuter de `git reset --hard` ni de `git clean -fd` sans accord explicite. Ne jamais écraser de travail local.
-- **Branches dédiées** : Travailler sur des branches thématiques (`feature/<nom>`, `fix/<nom>`, `refactor/<nom>`, `ui/<nom>`, `docs/<nom>`). Ne pas pousser directement sur `main`.
-- **Format des commits** : Format conventionnel `type: message clair et concis` (`feat:`, `fix:`, `refactor:`, `perf:`, `ui:`, `docs:`, `test:`).
+### Règles Obligatoires de Gestion Git & Workflow (Règles A à G)
+Toute intervention sur le projet TSA (qu'elle soit réalisée par un développeur ou un agent IA : **Gemini**, **Antigravity**, **Claude Code** ou tout autre agent) doit obligatoirement respecter les sept règles fondamentales suivantes :
+
+#### Règle A — Une branche dédiée pour chaque intervention
+Toute tâche modifiant le projet doit débuter par la création d'une branche Git dédiée (`git switch -c <type>/<identifiant-court>`).
+- **Conventions de nommage** : `feature/` (nouvelle fonctionnalité), `fix/` (correction de bug), `hotfix/` (urgence critique), `refactor/` (refactorisation), `perf/` (performances), `test/` (tests), `docs/` (documentation et références), `build/` (compilation/presets), `ci/` (intégration continue), `research/` (expérimentation isolée).
+- *Exemples* : `feature/three-moment-engine`, `fix/beam-torsion`, `feature/ifc-import`, `test/opensees-validation`, `docs/git-workflow-rules`.
+- **Une branche par tâche cohérente** : Ne jamais mélanger des travaux indépendants sur la même branche.
+
+#### Règle B — Vérification préalable obligatoire
+Avant de modifier, créer ou supprimer le moindre fichier :
+1. Examiner `git status` et identifier la branche courante.
+2. Examiner les changements existants et préserver intégralement les modifications locales et les fichiers non suivis.
+3. Déterminer si un autre agent travaille sur les mêmes fichiers.
+4. Créer et vérifier la branche dédiée avant toute modification.
+*Une analyse en lecture seule ne nécessite pas de branche ; dès qu'un document ou livrable est créé ou téléchargé dans le dépôt, créer immédiatement la branche `docs/` ou `research/` appropriée.*
+
+#### Règle C — Interdiction absolue des opérations destructrices non autorisées
+Interdiction formelle d'exécuter sans autorisation explicite :
+- `git reset --hard` ou `git clean -fd` ;
+- la suppression ou l'écrasement de modifications locales ;
+- la réécriture de l'historique partagé (`push --force`) ;
+- une fusion ou publication automatique ;
+- l'utilisation automatique de `git stash` risquant de perturber les travaux d'un autre agent.
+*En cas d'état ambigu ou de conflit potentiel, s'arrêter immédiatement et demander des instructions.*
+
+#### Règle D — Tests et validation après modification
+Après chaque modification :
+- Contrôler `git diff` et vérifier la liste exacte des fichiers modifiés (aucun fichier étranger).
+- Exécuter la suite de tests ciblée (`TSA_TestSuite.exe --suite=<nom>`).
+- Vérifier la compilation et contrôler les régressions potentielles.
+- Pour les moteurs de calcul, préserver les validations numériques existantes et comparer aux solutions de référence (OpenSees, RDM, NAFEMS).
+- Documenter fidèlement les échecs et tests non exécutés (ne jamais prétendre un test réussi sans exécution réelle).
+
+#### Règle E — Contrôle strict des commits, fusions et publications
+- **Aucun commit, merge ou push automatique sans autorisation explicite de l'utilisateur.**
+- À la fin de chaque tâche, fournir un rapport final indiquant : la branche utilisée, les modifications réalisées, les fichiers concernés, les tests exécutés et leurs résultats, les problèmes éventuels et les étapes d'intégration.
+
+#### Règle F — Coordination du travail simultané des agents
+Lorsque Gemini, Claude Code, Antigravity ou d'autres agents interviennent simultanément :
+- Attribuer une branche distincte à chaque tâche ou agent.
+- Éviter rigoureusement les modifications concurrentes des mêmes fichiers sans coordination.
+- Examiner les changements avant toute intégration et ne jamais remplacer le travail d'un autre agent.
+- Coordonner les dépendances entre branches.
+
+#### Règle G — Compatibilité avec les règles scientifiques et l'évolution de TSA
+Ces règles Git protègent l'intégrité du code sans bloquer le développement actif :
+- Elles n'interdisent pas l'ajout de nouveaux moteurs de calcul, la correction de bugs, la refactorisation, l'interopérabilité BIM, l'intégration de bibliothèques ou l'optimisation.
+- Les exigences de rigueur scientifique (SI, Eurocodes, B-Rep exact, modèle source unique de vérité) restent souveraines.
 
 ### Compilation Rapide avec Ninja (MSVC)
 ```powershell

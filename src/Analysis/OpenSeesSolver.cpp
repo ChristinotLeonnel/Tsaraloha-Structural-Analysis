@@ -275,6 +275,7 @@ bool OpenSeesSolver::executeWorkflow(const CalculationSnapshot& snapshot,
         if (errorMessage) *errorMessage = tr("Échec du démarrage d'OpenSees : %1").arg(process.errorString());
         return false;
     }
+    process.closeWriteChannel();
 
     emit progressChanged(60, tr("Résolution en cours par OpenSees..."));
 

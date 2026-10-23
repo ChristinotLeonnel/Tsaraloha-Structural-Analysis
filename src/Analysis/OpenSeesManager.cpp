@@ -80,7 +80,9 @@ QString OpenSeesManager::findExecutableInternal() const
     QString defaultDir = defaultSearchDirectory();
     QStringList candidateFiles = {
         defaultDir + "/bin/OpenSees.exe",
+        defaultDir + "/bin/gOpenSees.exe",
         defaultDir + "/OpenSees.exe",
+        defaultDir + "/gOpenSees.exe",
         defaultDir + "/bin/OpenSees",
         defaultDir + "/OpenSees"
     };
@@ -95,6 +97,10 @@ QString OpenSeesManager::findExecutableInternal() const
 
     // Recherche dans le PATH système
     QString sysPath = QStandardPaths::findExecutable("OpenSees");
+    if (sysPath.isEmpty())
+    {
+        sysPath = QStandardPaths::findExecutable("gOpenSees");
+    }
     if (!sysPath.isEmpty())
     {
         return QDir::toNativeSeparators(sysPath);

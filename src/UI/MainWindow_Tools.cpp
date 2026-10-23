@@ -22,6 +22,7 @@
 #include "../Analysis/Engine/AnalysisManager.h"
 #include "Dock/ResultsDockWidget.h"
 #include "Properties/PropertyPanel.h"
+#include "../UndoRedo/EditTransaction.h"
 
 #include <QInputDialog>
 #include <QMessageBox>
@@ -104,6 +105,8 @@ void MainWindow::onActionTruss()
     std::vector<int> botNodes(panels + 1);
     std::vector<int> topNodes(panels + 1);
 
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Génération Treillis %1").arg(chosenType).toStdString());
+
     for (int i = 0; i <= panels; ++i)
     {
         botNodes[i] = m_model->addNode(x0 + i * dx, y0, z0);
@@ -149,6 +152,8 @@ void MainWindow::onActionTruss()
             beamCount++;
         }
     }
+
+    tx.commit();
 
     if (m_consoleDock)
     {
@@ -209,6 +214,7 @@ void MainWindow::onActionFooting()
     if (!ok) return;
 
     int footingCount = 0;
+    TSA::UndoRedo::EditTransaction tx(*m_model, tr("Génération Semelles Isolées").toStdString());
     for (int nid : baseNodes)
     {
         const auto* n = m_model->getNode(nid);
@@ -221,6 +227,7 @@ void MainWindow::onActionFooting()
         m_model->addSlab({ fn1, fn2, fn3, fn4 }, h);
         footingCount++;
     }
+    tx.commit();
 
     if (m_consoleDock)
     {
