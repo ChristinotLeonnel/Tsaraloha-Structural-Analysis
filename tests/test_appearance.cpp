@@ -16,6 +16,7 @@
 #include "UI/Dialogs/SectionCustomizationDialog.h"
 #include "UI/Dialogs/LoadCaseDialog.h"
 #include "UI/Dialogs/LevelDialog.h"
+#include "UI/Properties/PropertyPanel.h"
 
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
@@ -173,6 +174,10 @@ bool runSuite_Appearance(int& passed)
 
         LevelDialog lvlDlg(m.levelManager());
         TEST_CHECK(lvlDlg.minimumWidth() >= 740 && lvlDlg.minimumHeight() >= 540, "Test 222: LevelDialog conforme Large");
+
+        PropertyPanel propPanel(&m);
+        auto* headerLabel = propPanel.findChild<QLabel*>();
+        TEST_CHECK(headerLabel != nullptr && headerLabel->property("panelHeader").toBool() == true, "Test 222: PropertyPanel stylise avec panelHeader");
 
         std::cout << "[PASS] Test 222: Conformité globale au Standard UI/UX TSA (Tailles, En-têtes, Sémantique)" << std::endl;
         ++passed;

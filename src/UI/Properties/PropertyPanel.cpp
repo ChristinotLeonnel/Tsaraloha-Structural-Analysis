@@ -106,10 +106,10 @@ void PropertyPanel::setupUi()
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    // En-tête titre du panneau
+    // En-tête titre du panneau standardisé
     m_titleLabel = new QLabel(tr("PROPRIÉTÉS STRUCTURALES"), this);
     m_titleLabel->setAlignment(Qt::AlignCenter);
-    m_titleLabel->setStyleSheet("background-color: #1E293B; color: #F8FAFC; font-weight: bold; padding: 8px; border-bottom: 2px solid #3B82F6;");
+    m_titleLabel->setProperty("panelHeader", true);
     mainLayout->addWidget(m_titleLabel);
 
     // Zone avec défilement pour les vues de propriétés
@@ -131,7 +131,7 @@ void PropertyPanel::setupUi()
     auto* lblEmpty = new QLabel(tr("Sélectionnez un élément dans le Viewport 3D ou l'arborescence pour inspecter ses propriétés métier."), m_emptyView);
     lblEmpty->setWordWrap(true);
     lblEmpty->setAlignment(Qt::AlignCenter);
-    lblEmpty->setStyleSheet("color: #94A3B8; font-style: italic; font-size: 13px;");
+    lblEmpty->setProperty("panelEmptyState", true);
     emptyLayout->addWidget(lblEmpty);
     emptyLayout->addStretch();
     m_stack->addWidget(m_emptyView); // Index 0
