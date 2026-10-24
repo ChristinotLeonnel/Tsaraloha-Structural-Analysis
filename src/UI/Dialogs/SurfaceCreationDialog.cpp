@@ -2,7 +2,6 @@
 #include "UI/Theme/ThemedIcon.h"
 #include "../HelpLauncher.h"
 #include <QEvent>
-#include "App/ProductInfo.h"
 #include "../../Model/Model.h"
 #include "../../Viewer/OccView.h"
 #include <QVBoxLayout>

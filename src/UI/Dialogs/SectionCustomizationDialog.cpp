@@ -1,7 +1,6 @@
 #include "SectionCustomizationDialog.h"
 #include "UI/Theme/ThemedIcon.h"
 #include "../Widgets/SectionPreviewWidget.h"
-#include "../../Library/LibraryManager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -14,7 +13,6 @@
 #include <QPushButton>
 #include <QFrame>
 #include <QIcon>
-#include <cmath>
 
 #include "DialogStandardHelper.h"
 #include "../Widgets/StandardDialogHeader.h"

@@ -1,7 +1,6 @@
 #include "ExtensionManagerDialog.h"
 #include "UI/Theme/ThemedIcon.h"
 #include "../../Core/AppPaths.h"
-#include "App/ProductInfo.h"
 #include "../../ExtensionSystem/LibraryManager.h"
 #include "../../ExtensionSystem/LibraryRegistry.h"
 #include "../../ExtensionSystem/LibraryCache.h"
