@@ -103,6 +103,22 @@ bool runSuite_Modules(int& passed)
         TEST_CHECK(manifestErrors(bad, dir, "refusé"), "Test 274: chemin absolu refusé");
         bad["entryPoints"] = conv("acme.tool.csv", "bin/absent.exe").value("entryPoints");
         TEST_CHECK(manifestErrors(bad, dir, "absent"), "Test 274: exécutable absent signalé");
+        // Un même manifeste pour Windows et Linux (BUG-094) : l'exécutable de la plateforme suffit ; le chemin
+        // déclaré, s'il existe, reste prioritaire.
+#ifdef Q_OS_WIN
+        const QString declared = "bin/tool", present = "bin/tool.exe";
+#else
+        const QString declared = "bin/tool.exe", present = "bin/tool";
+#endif
+        { QFile f(dir + "/" + present); TEST_CHECK(f.open(QIODevice::WriteOnly), "Test 274: fichier " << present.toStdString()); }
+        ModuleManifest parsed;
+        auto variant = okConv;
+        variant["entryPoints"] = conv("acme.tool.csv", declared).value("entryPoints");
+        TEST_CHECK(ModuleManifest::fromJson(variant, dir, &parsed, &errors) && parsed.importers.size() == 1
+                       && parsed.importers.front().executable() == QDir(dir).filePath(present),
+                   "Test 274: « " << declared.toStdString() << " » résolu en « " << present.toStdString() << " » (" << errors.join(" | ").toStdString() << ")");
+        TEST_CHECK(ModuleManifest::fromJson(okConv, dir, &parsed, &errors) && parsed.importers.front().executable() == QDir(dir).filePath("bin/conv.exe"),
+                   "Test 274: chemin déclaré présent prioritaire");
         bad["entryPoints"] = conv("other.csv", "bin/conv.exe").value("entryPoints");
         TEST_CHECK(manifestErrors(bad, dir, "préfixé"), "Test 274: identifiant de convertisseur non préfixé refusé");
         TEST_CHECK(manifestErrors(with(conv("acme.tool.csv", "bin/conv.exe")), dir, "process"), "Test 274: capacité « process » non déclarée refusée");
@@ -301,7 +317,12 @@ bool runSuite_Modules(int& passed)
     // -------------------------------------------------------------------------
     {
         const QString sample = QStringLiteral(TSA_SAMPLE_MODULE_DIR);
-        TEST_CHECK(QFileInfo::exists(sample + "/module.json") && QFileInfo::exists(sample + "/bin/sample_csv2tsa3d.exe"),
+#ifdef Q_OS_WIN
+        const QString sampleExe = sample + "/bin/sample_csv2tsa3d.exe";
+#else
+        const QString sampleExe = sample + "/bin/sample_csv2tsa3d";   // manifeste : « bin/sample_csv2tsa3d.exe » (BUG-094)
+#endif
+        TEST_CHECK(QFileInfo::exists(sample + "/module.json") && QFileInfo::exists(sampleExe),
                    "Test 279: module d'exemple assemblé dans le dossier de compilation (" << sample.toStdString() << ")");
         TEST_CHECK(QFileInfo(TSA::Core::AppPaths::shippedModulesDir() + "/sample.csvimport/module.json").exists(),
                    "Test 279: AppPaths::shippedModulesDir trouve les modules livrés (" << TSA::Core::AppPaths::shippedModulesDir().toStdString() << ")");

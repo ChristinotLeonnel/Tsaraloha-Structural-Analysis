@@ -530,6 +530,7 @@ set(MODEL_CORE_SOURCES
     ${TSA_ROOT}/src/Core/Units.h
     ${TSA_ROOT}/src/Core/AppPaths.h
     ${TSA_ROOT}/src/Core/AppPaths.cpp
+    ${TSA_ROOT}/src/Core/NumericLocale.cpp
     ${TSA_ROOT}/src/Core/I18n/LanguageManager.h
     ${TSA_ROOT}/src/Core/I18n/LanguageManager.cpp
     ${TSA_ROOT}/src/Modules/ModuleRegistry.h

@@ -1,8 +1,21 @@
 # Known Issues
 
-Last Updated: 2026-10-18 (finalisation des vues : BUG-078 corrigé, BUG-080 à BUG-082 trouvés et corrigés ; BUG-079 ouvert). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-24 (portage Linux : BUG-091 à BUG-094, BUG-096, BUG-097 corrigés ; BUG-095 ouvert ; BUG-098 corrigé ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
+
+## BUG-095
+Area: Dépendances Linux (OpenSees, Gmsh, IfcOpenShell)
+Problem: seules des versions Windows sont présentes dans thirdparty/ : OpenSees 3.8.0 (.exe, aucun binaire Linux
+publié), SDK Gmsh Windows64 (intégration cmake/Gmsh.cmake réservée à MSVC), IfcOpenShell construit avec MSVC.
+Sous Linux : moteur OpenSees indisponible, pas de maillage Gmsh, import IFC par le lecteur STEP interne.
+Reproduction: build-linux-debug, 2026-10-24 : suites opensees, ndc, extraction, engines (136), mdd (158), displaymodes
+(252), tsa3d (271), templates (284), torsion (321), demo (347), audit (369), benchmarks (367) → OpenSees ; mesh,
+surfaces (354) → Gmsh ; ifc (400) → IfcOpenShell.
+Impact: HIGH sous Linux (calcul impossible sans OpenSees), aucun sous Windows.
+Status: OPEN — compiler OpenSees 3.8.0 pour Linux (`OpenSees` dans le PATH, trouvé par OpenSeesManager) ; Gmsh :
+prise en charge d'une bibliothèque Linux (libgmsh) dans cmake/Gmsh.cmake ; IfcOpenShell : `-DTSA_IFCOPENSHELL_ROOT`.
+Related files: cmake/Gmsh.cmake, cmake/IfcOpenShell.cmake, src/Analysis/OpenSeesManager.cpp, docs/LINUX_BUILD.md
 
 ## BUG-076
 Area: Tests / intégration continue (vue 3D OCCT)
@@ -27,6 +40,9 @@ Essai local (build-ninja-release, 79dfdea) : offscreen 25/25 ; windows + Mesa 6/
 « Mesa — llvmpipe, OpenGL 4.6 » (test 370), aucun [SKIP]. Garde-fous éprouvés sur de fausses suites CTest (test
 sauté avec CTest « réussi », arrêt 0xC0000409, suite absente : échec dans les trois cas). Reste à vérifier sur le
 runner : session interactive (session ≠ 0) et durée de la passe native.
+24/10/2026 — même défaut sous Linux : `QT_QPA_PLATFORM=offscreen` → « X Error … BadWindow » et arrêt (suites
+display, multidoc, meshview après le test 343, désormais [SKIP] comme 408). scripts/linux/test.sh choisit « xcb » quand
+un affichage X11 et le plugin xcb de Qt (libxcb-cursor0) sont disponibles.
 Related files: tests/test_display.cpp, tests/test_audit.cpp, tests/test_multidoc*.cpp, Setup-Livrable/.github/workflows/release.yml, Setup-Livrable/scripts/run_tests.ps1
 
 ## BUG-079
@@ -174,6 +190,74 @@ Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapea
 `Select-String build-ninja-debug\CMakeCache.txt -Pattern "^CMAKE_CXX_FLAGS:"` doit contenir /EHsc.
 
 ## Corrigés (historique)
+
+## BUG-098
+Area: Traductions (translations/*.ts, tools/i18n)
+Problem: les .ts n'étaient plus à jour avant le 24/10/2026 : 127 textes du code absents (standardisation des dialogues,
+Fem3D, opérateur IA…), alors que `check_translations.py` annonçait 100 % (il ne mesure que le contenu des .ts).
+`update_translations.py` (-no-obsolete) aurait retiré 15 textes traduits dont la source a été reformulée.
+Status: FIXED (2026-10-24) — lupdate sans -no-obsolete (128 ajoutés, 15 « vanished » gardés), puis 128 textes traduits
+(en, mg ; glossaire docs/I18N_GLOSSARY.md, traductions des 15 anciens textes reprises pour leurs reformulations),
+puis update_translations.py (-no-obsolete) retire les 15 et apply_translations.py écrit les traductions (0 refus).
+Vérifié : check_translations --strict 6540/6540 (100 %) en et mg, 0 erreur ; i18n 15/15, ribbon 4/4 (Release).
+Termes malgaches nouveaux non relus par un locuteur (comme le reste du glossaire) : solony (secours), sosona IA
+(couche IA), mpandidy (opérateur, déjà en usage). Limite de l'outil : check_translations ne détecte pas des .ts en
+retard sur le code ; lancer update_translations.py avant de s'y fier.
+Related files: translations/tsa_en.ts, translations/tsa_mg.ts, tools/i18n/update_translations.py
+
+## BUG-094
+Area: Modules (sdk/modules, src/Modules/ModuleRegistry) — Linux
+Problem: le manifeste `module.json` désigne un exécutable propre à Windows (`"command": "bin/sample_csv2tsa3d.exe"`) ;
+sous Linux le convertisseur est construit sans extension, le module d'exemple est invalide.
+Reproduction: `bash scripts/linux/test.sh debug --suite=modules` → Test 279 en échec (2026-10-24).
+Impact: MEDIUM sous Linux (modules à convertisseur inutilisables), aucun sous Windows.
+Status: FIXED (2026-10-24) — résolution du suffixe plutôt qu'une commande par plateforme (schéma tsa-module/1 et
+manifestes inchangés) : `ConverterSpec::executable()` rend le chemin déclaré s'il existe, sinon « bin/x.exe » → « bin/x »
+hors Windows, « bin/x » → « bin/x.exe » sous Windows ; utilisée pour la validation et le lancement. Vérifié Linux :
+modules 6/6 (test 274 : variante de plateforme acceptée, chemin déclaré prioritaire ; test 279 : conversion CSV → TSA3D
+réelle). Windows : NON TESTÉ. docs/SDK.md mis à jour.
+Related files: sdk/modules/sample.csvimport/module.json, src/Modules/ModuleRegistry.cpp, tests/test_modules.cpp
+
+## BUG-096
+Area: Vue 3D — textures des matériaux (src/Viewer/MaterialVisual.cpp) — Linux
+Problem: sans couleur choisie, la texture était chargée par OCCT depuis le fichier (WIC sous Windows, FreeImage
+ailleurs) ; OCCT compilé sans FreeImage : « no image library available », texture absente.
+Status: FIXED (2026-10-24) — hors Windows, décodage par Qt (RGBA, même convention de lignes que la texture neutre),
+repli sur OCCT si Qt échoue ; Windows inchangé. Vérifié : message disparu de la suite complète (xcb).
+
+## BUG-097
+Area: Tests — hypothèses propres à Windows
+Problem: Test 124 (une seule processEvents() pour une réponse différée par QTimer 0 ms : insuffisant avec le
+répartiteur glib de X11), Test 387 (casse des chemins et lecture du registre par reg.exe).
+Status: FIXED (2026-10-24) — attente bornée (2 s) ; 387 : chemin exact hors Windows, fichier INI de QSettings relu.
+Vérifié Linux xcb : ai 24/24, multidoc 10/10. Windows : NON TESTÉ (branches #ifdef Q_OS_WIN inchangées).
+
+## BUG-091
+Area: Conversions numériques (toutes plateformes Unix)
+Problem: sous Unix, le constructeur de QCoreApplication applique la locale du système (setlocale(LC_ALL, ""));
+avec fr_FR, std::stod / strtod lisaient « 3.5 » → 3 et std::to_string écrivait « 0,500000 » (lecteur STEP/IFC,
+résultats OpenSees, scripts de commandes, Blueprint, CommandRegistry, GridDefinition…). Valeurs silencieusement fausses.
+Reproduction: Ubuntu 24.04, LANG=fr_FR.UTF-8 : Test 178 (axe de poutre IFC z=3 au lieu de 3.5), 198, 389 en échec ;
+tous réussis avec LC_NUMERIC=C.
+Status: FIXED (2026-10-24) — src/Core/NumericLocale.cpp : Q_COREAPP_STARTUP_FUNCTION rétablit LC_NUMERIC="C" (même
+état que le CRT Windows). Vérifié sous fr_FR : blueprint 9/9, bim 13/13, Test 490 (nouveau, suite i18n).
+Related files: src/Core/NumericLocale.cpp, tests/test_i18n.cpp
+
+## BUG-092
+Area: Tests (tests/test_main.cpp)
+Problem: un `#ifdef _WIN32` posé pour la suite « thumbnail » (commit f79aef1) englobait toutes les suites ajoutées
+ensuite (thumbnail → templates_wp, 25 suites) : hors Windows elles n'étaient ni compilées ni exécutées, en silence.
+Status: FIXED (2026-10-24) — garde retirée ; seul le test 128 (DLL COM de l'Explorateur) est réservé à Windows, dans
+tests/test_thumbnail_provider.cpp ([SKIP] ailleurs). Vérifié : les 25 suites s'exécutent sous Linux.
+
+## BUG-093
+Area: OpenSees (src/Analysis/OpenSeesManager.cpp, OpenSeesEngine.cpp) — Linux
+Problem: hors Windows, OpenSeesManager retenait thirdparty/OpenSees/bin/gOpenSees.exe (execve : « Erreur de format »)
+puis tentait le téléchargement automatique Windows (curl.exe, powershell.exe : « Impossible de lancer curl »).
+Status: FIXED (2026-10-24) — candidats .exe et provisionnement réservés à Windows ; ailleurs, recherche de `OpenSees`
+dans thirdparty/OpenSees/bin puis le PATH et message « installer OpenSees et le placer dans le PATH ». Vérifié :
+suites opensees et torsion (message affiché, plus d'exécution du binaire Windows). Chaîne traduite à ajouter (lupdate).
+
 
 | ID | Problème | Correction | Preuve |
 | :--- | :--- | :--- | :--- |

@@ -1,6 +1,16 @@
 # Tasks
 
-Last Updated: 2026-10-07. Uniquement des tâches réellement identifiées (voir known-issues.md).
+Last Updated: 2026-10-24. Uniquement des tâches réellement identifiées (voir known-issues.md).
+
+## Portage Linux (docs/LINUX_BUILD.md)
+
+- [x] OCCT 8.0.1 Linux, presets linux-debug/linux-release, scripts/linux/, build Debug + Release (2026-10-24).
+- [x] BUG-091 (locale numérique), BUG-092 (suites masquées), BUG-093 (OpenSees .exe sous Linux).
+- [x] libxcb-cursor0, lancement de TSA et suite complète en xcb (2026-10-24).
+- [ ] BUG-095 : OpenSees 3.8.0 Linux (plan : docs/LINUX_BUILD.md §7, paquets sudo à installer), Gmsh, IfcOpenShell.
+- [x] BUG-094 : résolution du suffixe .exe (ConverterSpec::executable), BUG-096 textures, BUG-097 tests.
+- [x] BUG-098 : .ts à jour, 128 textes traduits (en, mg), 15 « vanished » retirés après reprise (6540/6540).
+- [ ] Vérifier la compilation Windows (MSVC) des modifications du 2026-10-24.
 
 ## BIM (ADR-020, docs/BIM_ARCHITECTURE.md)
 

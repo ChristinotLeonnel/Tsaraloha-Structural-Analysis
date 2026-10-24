@@ -100,12 +100,26 @@ std::vector<ConverterSpec> converters(const QJsonArray& arr, const QString& fiel
         if (c.extensions.isEmpty()) errors->append(path + QStringLiteral(".extensions : au moins une extension attendue"));
         if (!c.arguments.join(' ').contains(QStringLiteral("{input}")) || !c.arguments.join(' ').contains(QStringLiteral("{output}")))
             errors->append(path + QStringLiteral(".arguments : {input} et {output} obligatoires"));
-        confinedFile(dir, c.command, path + QStringLiteral(".command"), errors);
+        if (confinedFile(dir, c.command, path + QStringLiteral(".command"), errors, false) && c.executable().isEmpty())
+            errors->append(QStringLiteral("%1.command : fichier « %2 » absent du module").arg(path, c.command));
         out.push_back(c);
     }
     return out;
 }
 } // namespace
+
+QString ConverterSpec::executable() const
+{
+    const QDir dir(moduleDir);
+    if (QFileInfo::exists(dir.filePath(command))) return dir.filePath(command);
+#ifdef Q_OS_WIN
+    const QString variant = command + QStringLiteral(".exe");
+#else
+    const QString variant = command.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive) ? command.chopped(4) : QString();
+#endif
+    if (!variant.isEmpty() && QFileInfo::exists(dir.filePath(variant))) return dir.filePath(variant);
+    return {};
+}
 
 bool ModuleManifest::fromJson(const QJsonObject& j, const QString& dir, ModuleManifest* out, QStringList* errors)
 {
@@ -491,7 +505,7 @@ bool ModuleRegistry::runConverter(const ConverterSpec& c, const QString& input, 
     QProcess p;
     p.setWorkingDirectory(c.moduleDir);
     p.setProcessChannelMode(QProcess::MergedChannels);
-    p.start(QDir(c.moduleDir).filePath(c.command), args);
+    p.start(c.executable(), args);
     const bool started = p.waitForStarted(10000);
     const bool finished = started && p.waitForFinished(timeoutMs);
     if (!finished) p.kill();

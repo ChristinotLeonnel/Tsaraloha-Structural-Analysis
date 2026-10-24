@@ -224,7 +224,7 @@ void OccView::initOcc()
 #elif defined(__APPLE__)
     Handle(Aspect_Window) wind = new Cocoa_Window(reinterpret_cast<NSView*>(winId()));
 #else
-    Handle(Aspect_Window) wind = new Xw_Window(m_displayConnection, static_cast<Window>(winId()));
+    Handle(Aspect_Window) wind = new Xw_Window(m_displayConnection, static_cast<Aspect_Drawable>(winId()));
 #endif
     m_view->SetWindow(wind);
     if (!wind->IsMapped())

@@ -3,6 +3,8 @@
 // DllGetClassObject), exactement comme le fait le Shell, sans dépendre de l'enregistrement.
 // Fichier exclu du PCH (CMakeLists) : inclut <windows.h> avec ses propres réglages.
 
+// Test 128 (extension Explorateur, COM) : Windows uniquement ; les tests 127 et 129 (format .tsa) sont portables.
+#ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -12,13 +14,14 @@
 #include <windows.h>
 #include <shlwapi.h>
 #include <thumbcache.h>
+#include <ProductShellIds.h>
+#endif
 
 #include "test_common.h"
 
 #include "IO/TSAFile.h"
 #include "IO/TSAPreviewBlock.h"
 #include <ProductIdentity.h>
-#include <ProductShellIds.h>
 #include "Model/Model.h"
 
 #include <QCoreApplication>
@@ -71,6 +74,7 @@ bool downgradeToV11(const QString& path)
     return QFile::resize(path, static_cast<qint64>(h.fileSize));
 }
 
+#ifdef _WIN32
 // --- Appel direct de l'extension, comme le Shell -------------------------------------------
 struct ThumbResult
 {
@@ -121,6 +125,7 @@ ThumbResult thumbnailFromDll(HMODULE dll, const QString& file, UINT cx)
     init->Release();
     return r;
 }
+#endif // _WIN32
 
 } // namespace
 
@@ -183,6 +188,7 @@ bool runSuite_Thumbnail(int& passed)
     }
 
     // TEST 128 : extension Explorateur chargée comme par le Shell (tailles, robustesse, vitesse)
+#ifdef _WIN32
     {
         const QString dllPath = QCoreApplication::applicationDirPath() + "/" + TSA::Product::kThumbnailProviderDll;
         HMODULE dll = LoadLibraryExW(reinterpret_cast<LPCWSTR>(QDir::toNativeSeparators(dllPath).utf16()), nullptr,
@@ -234,6 +240,9 @@ bool runSuite_Thumbnail(int& passed)
         std::cout << "[PASS] Test 128: Extension Explorateur (tailles, robustesse, performance)" << std::endl;
         ++passed;
     }
+#else
+    std::cout << "[SKIP] Test 128: extension Explorateur Windows (non applicable sur cette plateforme)" << std::endl;
+#endif
 
     // TEST 129 : la miniature suit la dernière vue enregistrée (vue A puis vue B)
     {

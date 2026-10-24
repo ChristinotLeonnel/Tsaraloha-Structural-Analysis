@@ -79,10 +79,13 @@ QString OpenSeesManager::findExecutableInternal() const
 
     QString defaultDir = defaultSearchDirectory();
     QStringList candidateFiles = {
+#ifdef Q_OS_WIN
+        // Ailleurs, un .exe (exécutable Windows de thirdparty/OpenSees) n'est pas lançable.
         defaultDir + "/bin/OpenSees.exe",
         defaultDir + "/bin/gOpenSees.exe",
         defaultDir + "/OpenSees.exe",
         defaultDir + "/gOpenSees.exe",
+#endif
         defaultDir + "/bin/OpenSees",
         defaultDir + "/OpenSees"
     };
@@ -257,6 +260,13 @@ OpenSeesVersionInfo OpenSeesManager::versionInfo() const
 bool OpenSeesManager::downloadAndInstall(std::function<void(int, const QString&)> progressCallback,
                                         QString* errorMessage)
 {
+#ifndef Q_OS_WIN
+    // L'archive officielle (officialDownloadUrl) ne contient que l'exécutable Windows, installé par curl.exe et PowerShell.
+    Q_UNUSED(progressCallback);
+    if (errorMessage) *errorMessage = tr("Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH.");
+    emit downloadCompleted(false, "", tr("Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH."));
+    return false;
+#endif
     QString targetDir = defaultSearchDirectory();
     QDir dir(targetDir);
     if (!dir.exists())

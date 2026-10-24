@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 470;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 22 tests « drawing » + test 429 (surfaces) + 17 tests « views » + 14 tests « i18n » + 4 tests « ribbon » + 8 tests « templates_wp »
+    int expectedTotal = 471;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 22 tests « drawing » + test 429 (surfaces) + 17 tests « views » + 14 tests « i18n » + 4 tests « ribbon » + 8 tests « templates_wp » + test 490 (locale numérique)
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -184,7 +184,6 @@ int main(int argc, char* argv[])
         std::cout << "\n--- [Suite 35/35] Raccourcis clavier : catalogue, shortcut.txt, rechargement, éditeur (Tests 257-266) ---" << std::endl;
         if (!runSuite_Shortcuts(passed)) allOk = false;
     }
-#ifdef _WIN32
     if (suiteFilter == "all" || suiteFilter == "thumbnail") {
         std::cout << "\n--- [Suite 20/20] Miniatures Explorateur : format 1.2 et " << TSA::Product::kThumbnailProviderDll << " (Tests 127-129) ---" << std::endl;
         if (!runSuite_Thumbnail(passed)) allOk = false;
@@ -253,7 +252,6 @@ int main(int argc, char* argv[])
         std::cout << "\n--- [Suite 36/36] Templates de projets, plans de travail et grille réelle (Tests 468-475) ---" << std::endl;
         if (!runSuite_ProjectTemplates(passed)) allOk = false;
     }
-#endif
 
     std::cout << "\n=================================================" << std::endl;
     if (suiteFilter == "all") {

@@ -56,6 +56,8 @@
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QTranslator>
+#include <clocale>
+#include <cstdlib>
 
 using TSA::Commands::CommandCatalog;
 using TSA::Commands::CommandSearchIndex;
@@ -99,6 +101,20 @@ QString topId(const CommandSearchIndex& index, const QString& query)
 
 bool runSuite_I18n(int& passed)
 {
+    // -------------------------------------------------------------------------
+    // TEST 490 : locale numérique « C » malgré la locale du système (src/Core/NumericLocale.cpp)
+    // Sous Unix, QCoreApplication applique la locale du système : avec fr_FR, strtod lisait « 3.5 » → 3.
+    // -------------------------------------------------------------------------
+    {
+        TEST_CHECK(std::localeconv()->decimal_point[0] == '.', "Test 490: séparateur décimal « . » pour la bibliothèque C (LC_NUMERIC="
+                                                                    << std::setlocale(LC_NUMERIC, nullptr) << ")");
+        TEST_CHECK(std::strtod("3.5", nullptr) == 3.5 && std::stod("-0.01282209874953716") == -0.01282209874953716,
+                   "Test 490: strtod / std::stod lisent le point décimal");
+        TEST_CHECK(std::to_string(0.5) == "0.500000", "Test 490: std::to_string écrit le point décimal");
+        std::cout << "[PASS] Test 490: Locale numérique C (LANG=" << (std::getenv("LANG") ? std::getenv("LANG") : "") << ")" << std::endl;
+        ++passed;
+    }
+
     // -------------------------------------------------------------------------
     // TEST 450 : langues et préférence
     // -------------------------------------------------------------------------

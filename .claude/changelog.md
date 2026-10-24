@@ -2,6 +2,29 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-24 (portage Linux Ubuntu 24.04 — branche fix/debug-build-errors)
+
+### Added
+- Presets `linux-debug` / `linux-release` (Ninja, condition hôte Linux, Qt et OCCT par CMAKE_PREFIX_PATH).
+- `scripts/linux/` : common.sh, check-dependencies.sh, configure.sh, build.sh, test.sh ; `docs/LINUX_BUILD.md`.
+- `src/Core/NumericLocale.cpp` (LC_NUMERIC="C" à la création de toute QCoreApplication) ; Test 490 (suite i18n).
+- `.gitattributes` : `*.sh text eol=lf`.
+
+### Fixed (soir)
+- BUG-094 : `ConverterSpec::executable()` (commande de module résolue selon la plateforme) ; tests 274 et 279.
+- BUG-096 : textures des matériaux décodées par Qt hors Windows (MaterialVisual).
+- BUG-097 : tests 124 (attente bornée) et 387 (casse des chemins, INI de QSettings hors Windows).
+- BUG-098 : traductions à jour (128 textes traduits en anglais et en malgache, 15 textes disparus retirés) ; docs/SDK.md, docs/LINUX_BUILD.md
+  (§7 OpenSees, §8 validation Windows, §9 commit depuis Linux).
+
+### Fixed
+- BUG-091 locale numérique sous Unix ; BUG-092 suites masquées par `#ifdef _WIN32` dans test_main ; BUG-093 OpenSees
+  .exe et téléchargement Windows sous Linux ; OccView : `Xw_Window` reçoit un `Aspect_Drawable` ;
+  test_thumbnail_provider : test 128 réservé à Windows ; test 343 [SKIP] sous offscreen (comme 408).
+- `cmake/SetupDependencies.cmake` (SDK OCCT Windows téléchargé seulement sous Windows), `cmake/IfcOpenShell.cmake`
+  (pas de construction MSVC par défaut hors Windows), `cmake/Gmsh.cmake` (message exact hors MSVC).
+- `.gitattributes` : 147 octets NUL parasites en fin de fichier retirés (Git le traitait comme binaire).
+
 ## 2026-10-17 (Blueprint : sous-graphes réutilisables, fichier v3 — branche feature/blueprint-structurel)
 
 ### Added

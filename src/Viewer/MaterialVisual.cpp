@@ -2,6 +2,7 @@
 #include "TextureManager.h"
 #include <QColor>
 #include <algorithm>
+#include <cstring>
 #include <QString>
 #include <TCollection_AsciiString.hxx>
 #include <AIS_DisplayMode.hxx>
@@ -79,6 +80,24 @@ occ::handle<Image_PixMap> neutralPixmap(const QString& filePath)
     }
     return pm;
 }
+
+#ifndef Q_OS_WIN
+/// Couleurs de la texture, décodées par Qt. OCCT décode les fichiers image avec WIC sous Windows, mais avec FreeImage
+/// ailleurs (absent d'une compilation d'OCCT sans USE_FREEIMAGE : « no image library available », texture absente).
+/// Même convention de lignes que neutralPixmap.
+occ::handle<Image_PixMap> colorPixmap(const QString& filePath)
+{
+    QImage img(filePath);
+    if (img.isNull()) return {};
+    img = img.convertToFormat(QImage::Format_RGBA8888);
+    const int w = img.width(), h = img.height();
+    occ::handle<Image_PixMap> pm = new Image_PixMap();
+    if (!pm->InitTrash(Image_Format_RGBA, w, h)) return {};
+    for (int y = 0; y < h; ++y)
+        std::memcpy(pm->ChangeRow(y), img.constScanLine(h - 1 - y), static_cast<size_t>(w) * 4);
+    return pm;
+}
+#endif
 } // namespace
 
 MaterialVisual& MaterialVisual::instance()
@@ -370,6 +389,10 @@ occ::handle<Graphic3d_Texture2D> MaterialVisual::sharedTexture(const QString& fi
         if (occ::handle<Image_PixMap> pm = neutralPixmap(filePath); !pm.IsNull())
             texture = new SharedTexture2D(pm, TCollection_AsciiString("TSA_TextureNeutral_") + path);
     }
+#ifndef Q_OS_WIN
+    else if (occ::handle<Image_PixMap> pm = colorPixmap(filePath); !pm.IsNull())
+        texture = new SharedTexture2D(pm, TCollection_AsciiString("TSA_Texture_") + path);
+#endif
     if (texture.IsNull()) texture = new SharedTexture2D(path);
     m_textureCache.emplace(key, texture);
     return texture;
