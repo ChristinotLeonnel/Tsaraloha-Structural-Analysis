@@ -9,7 +9,9 @@
 # tsa_copy_ifcopenshell_runtime().
 
 # thirdparty/ifcopenshell-0.9.0post1 contient la construction MSVC : hors Windows, indiquer une construction
-# native par -DTSA_IFCOPENSHELL_ROOT=<chemin> (sinon import IFC par le lecteur STEP interne).
+# native par -DTSA_IFCOPENSHELL_ROOT=<chemin> (sinon import IFC par le lecteur STEP interne) : celle de
+# scripts/linux/build-ifcopenshell.sh installe Boost et Eigen dans ce même préfixe, et les modules restent dans
+# <préfixe>/lib, à côté de libifcparse qui les cherche dans son propre dossier (RUNPATH, aucune copie).
 if(WIN32)
     set(_tsa_ifcopenshell_default "${TSA_ROOT}/thirdparty/ifcopenshell-0.9.0post1")
 else()
@@ -23,7 +25,10 @@ option(TSA_REQUIRE_IFCOPENSHELL "Échec de la configuration si IfcOpenShell est 
 set(TSA_HAVE_IFCOPENSHELL OFF)
 set(TSA_IFCOPENSHELL_DLLS "")
 if(TSA_WITH_IFCOPENSHELL AND EXISTS "${TSA_IFCOPENSHELL_ROOT}/lib/cmake/IfcOpenShell/IfcOpenShellConfig.cmake")
-    list(APPEND CMAKE_PREFIX_PATH "${TSA_IFCOPENSHELL_ROOT}" "${TSA_ROOT}/thirdparty/boost-1.92.0" "${TSA_ROOT}/thirdparty/eigen-3.4.1")
+    list(APPEND CMAKE_PREFIX_PATH "${TSA_IFCOPENSHELL_ROOT}")
+    if(WIN32)   # ailleurs, thirdparty/boost-1.92.0 (bibliothèques MSVC) ne doit pas être trouvé
+        list(APPEND CMAKE_PREFIX_PATH "${TSA_ROOT}/thirdparty/boost-1.92.0" "${TSA_ROOT}/thirdparty/eigen-3.4.1")
+    endif()
     set(Boost_USE_STATIC_LIBS ON)
     find_package(IfcOpenShell CONFIG QUIET)
     if(TARGET IfcOpenShell::IfcGeom AND TARGET IfcOpenShell::IfcParse)
@@ -31,7 +36,12 @@ if(TSA_WITH_IFCOPENSHELL AND EXISTS "${TSA_IFCOPENSHELL_ROOT}/lib/cmake/IfcOpenS
         # Toutes les DLL : bibliothèques liées et modules chargés à l'exécution (schémas, noyau OpenCASCADE,
         # correspondances de géométrie), cherchés dans le dossier de la bibliothèque qui les charge.
         file(GLOB TSA_IFCOPENSHELL_DLLS "${TSA_IFCOPENSHELL_ROOT}/bin/*.dll")
-        list(LENGTH TSA_IFCOPENSHELL_DLLS _n)
+        if(WIN32)
+            list(LENGTH TSA_IFCOPENSHELL_DLLS _n)
+        else()
+            file(GLOB _so "${TSA_IFCOPENSHELL_ROOT}/lib/*ifcopenshell*.so")
+            list(LENGTH _so _n)
+        endif()
         message(STATUS "IfcOpenShell : ${TSA_IFCOPENSHELL_ROOT} (${_n} bibliothèques et modules)")
     else()
         message(WARNING "IfcOpenShell présent mais inutilisable (Boost ou Eigen absents de thirdparty/ ?) — "

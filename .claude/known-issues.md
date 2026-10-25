@@ -1,8 +1,29 @@
 # Known Issues
 
-Last Updated: 2026-10-24 (portage Linux : BUG-091 à BUG-094, BUG-096, BUG-097 corrigés ; BUG-095 ouvert ; BUG-098 corrigé ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
+Last Updated: 2026-10-24 (portage Linux : BUG-091 à BUG-094, BUG-096 à BUG-098 corrigés ; BUG-095, BUG-099 à 101, BUG-103 corrigés le 2026-10-25 ; BUG-102, BUG-104 ouverts ; BUG-076 complété). Ne pas supprimer un bug corrigé : passer son statut à FIXED (avec preuve).
 
 ## Ouverts
+
+## BUG-104
+Area: Tests — i18n, test 457 (recherche, seuil 50 ms)
+Problem: en Debug, la requête la plus lente dépasse le seuil (60 ms sur 6 000 entrées ; ~11 ms en Release) ; l'échec
+arrête la suite, et les tests 458–463 ne s'exécutent pas (décompte Debug 482/490 au lieu de 489).
+Reproduction: build-linux-debug, 2026-10-25, suite complète xcb.
+Impact: LOW (performance réelle conforme en Release) ; masque toutefois 6 tests en Debug.
+Status: OPEN — pistes : seuil selon NDEBUG, ou poursuivre la suite après cet échec.
+Related files: tests/test_i18n.cpp, tests/test_main.cpp
+
+## BUG-102
+Area: OpenSees — chemin explicite de l'exécutable (src/Analysis/OpenSeesManager.cpp)
+Problem: aucune option de l'interface n'écrit le chemin d'OpenSees : `setCustomExecutablePath` n'a aucun appelant ;
+seule la clé QSettings `OpenSees/ExecutablePath` (organisation « TSA », application « TSA_StructuralAnalysis » ;
+~/.config/TSA/TSA_StructuralAnalysis.conf sous Linux, registre sous Windows) permet de l'imposer, à la main.
+Reproduction: Grep `setCustomExecutablePath` dans src/ (2026-10-25) : seule la définition.
+Impact: LOW sous Windows (exécutable livré dans thirdparty/OpenSees), MEDIUM sous Linux (application lancée depuis le
+bureau : OpenSees introuvable si ~/.profile n'ajoute pas son dossier au PATH).
+Status: OPEN — comportement vérifié le 2026-10-25 (suite opensees) : chemin enregistré prioritaire, PATH, environnement
+minimal (introuvable, message explicite). Ne pas proposer de lien symbolique (Tcl ne trouve plus lib/tcl8.6).
+Related files: src/Analysis/OpenSeesManager.cpp, docs/LINUX_BUILD.md §7
 
 ## BUG-095
 Area: Dépendances Linux (OpenSees, Gmsh, IfcOpenShell)
@@ -13,8 +34,9 @@ Reproduction: build-linux-debug, 2026-10-24 : suites opensees, ndc, extraction, 
 (252), tsa3d (271), templates (284), torsion (321), demo (347), audit (369), benchmarks (367) → OpenSees ; mesh,
 surfaces (354) → Gmsh ; ifc (400) → IfcOpenShell.
 Impact: HIGH sous Linux (calcul impossible sans OpenSees), aucun sous Windows.
-Status: OPEN — compiler OpenSees 3.8.0 pour Linux (`OpenSees` dans le PATH, trouvé par OpenSeesManager) ; Gmsh :
-prise en charge d'une bibliothèque Linux (libgmsh) dans cmake/Gmsh.cmake ; IfcOpenShell : `-DTSA_IFCOPENSHELL_ROOT`.
+Status: FIXED (2026-10-25) — OpenSees 3.8.0 compilé (Conan 2, docs/LINUX_BUILD.md §7, ~/opt/opensees-3.8.0, PATH) ;
+Gmsh : SDK Linux64 par cmake/Gmsh.cmake (§10, BUG-100, BUG-101) ; IfcOpenShell : scripts/linux/build-ifcopenshell.sh
+(§11, BUG-103). Vérifié : suite complète Release (xcb) 489/490, 0 échec, test 128 ignoré (Windows seulement).
 Related files: cmake/Gmsh.cmake, cmake/IfcOpenShell.cmake, src/Analysis/OpenSeesManager.cpp, docs/LINUX_BUILD.md
 
 ## BUG-076
@@ -190,6 +212,63 @@ Status: WORKAROUND — `cmake --preset ninja-debug --fresh` rétablit les drapea
 `Select-String build-ninja-debug\CMakeCache.txt -Pattern "^CMAKE_CXX_FLAGS:"` doit contenir /EHsc.
 
 ## Corrigés (historique)
+
+## BUG-103
+Area: Import IFC sous Linux — IfcOpenShell et libgmsh (scripts/linux/build-ifcopenshell.sh)
+Problem: libgmsh.so (SDK Gmsh, GCC 6) exporte ~879 instanciations std (et Boost) ; chargée avant les modules
+IfcOpenShell (dlopen), elle leur fournissait ses copies : 32 symboles d'IfcOpenShell (GCC 13) liés à libgmsh, dont
+std::_Rb_tree<pair<int,int>,…> → erreur de segmentation dans open_cascade_kernel::faceset_helper (thread de
+process_concurrently) dès le premier fichier IFC (suite ifc, test 400).
+Reproduction: 2026-10-25, gdb (pile dans std::_Rb_tree_insert_and_rebalance) puis LD_DEBUG=bindings.
+Status: FIXED (2026-10-25) — IfcOpenShell lié avec -Wl,-Bsymbolic (CMAKE_SHARED_LINKER_FLAGS et
+CMAKE_MODULE_LINKER_FLAGS du script) : 0 liaison ifcopenshell → libgmsh ; suite ifc 10/10 (Release, xcb). Les 3 liaisons
+libstdc++ → libgmsh restantes (basic_stringbuf, ctype::do_narrow) relèvent de l'ABI stable de libstdc++.
+Windows non concerné (pas d'interposition entre DLL).
+Related files: scripts/linux/build-ifcopenshell.sh, cmake/IfcOpenShell.cmake, docs/LINUX_BUILD.md §11
+
+## BUG-101
+Area: Maillage Gmsh sous Linux — interposition des instanciations std (cmake/Gmsh.cmake, cmake/gmsh-hide-std.map)
+Problem: le SDK Linux de Gmsh 4.15.2 est compilé avec GCC 6.5 ; les exécutables de TSA (GCC 13) exportaient ~185
+instanciations std (std::regex _Executor/_Compiler/_Scanner, std::function, _Rb_tree…) que libgmsh référence, et le
+chargeur ELF les substituait à celles de Gmsh (disposition mémoire différente : violation de l'ODR). Effet constaté :
+corruption non déterministe, nom du groupe physique (2,2) « SL1 » effacé par l'ajout du groupe 3D (tests 293 : aller-retour
+export/import 0/288 éléments ; 340 : 2 groupes physiques au lieu de 3) ; un simple gmsh::write en plus le masquait.
+Reproduction: 2026-10-25, LD_DEBUG=bindings : 101 symboles de libgmsh liés à ./TSA_TestSuite ; programme autonome lié au
+SDK avec les mêmes appels : pas de défaut.
+Status: FIXED (2026-10-25) — script de version ld (motifs décorés _ZNSt*, _ZNKSt*, _ZSt*, typeinfo, vtable, VTT,
+gardes) appliqué par INTERFACE_LINK_OPTIONS de TSA::Gmsh aux seuls exécutables, hors Windows : 0 fonction std exportée
+(TSA, TSA_TestSuite, tsa-mesh, TSA_Benchmark). Vérifié Release : mesh 12/12, meshview 12/12 (340, 341 exécutés),
+surfaces 12/12, benchmarks 2/2. Restent liés à l'exécutable : données copiées par relocation (vtables libstdc++,
+typeinfo), sans risque. Note : dans un script de version, un motif extern "C++" entre guillemets est littéral (aucun joker).
+Related files: cmake/Gmsh.cmake, cmake/gmsh-hide-std.map, docs/LINUX_BUILD.md §10
+
+## BUG-100
+Area: Maillage Gmsh sous Linux — gmsh.h_cwrap (src/Mesh/Gmsh/GmshMeshEngine.cpp)
+Problem: gmsh.h_cwrap définit dans TSA des fonctions en ligne gmsh::… qui appellent l'API C ; libgmsh.so exporte son API
+C++ native sous les mêmes noms décorés : l'API C de Gmsh appelait la copie de TSA (interposition ELF), qui rappelait
+l'API C → récursion infinie (gmshModelMeshFieldSetNumbers ↔ gmsh::model::mesh::field::setNumbers), 13 Go de RAM et
+TSA_TestSuite tué par le noyau (OOM) dès le test 289 (maillage 1D).
+Reproduction: 2026-10-25, gdb sous ulimit -v : pile d'appels alternant les deux fonctions.
+Status: FIXED (2026-10-25) — API C++ native (gmsh.h) hors Windows ; Windows (DLL MinGW + MSVC) garde gmsh.h_cwrap.
+Vérifié : suite mesh 12/12. Windows : NON TESTÉ (inchangé par #ifdef _WIN32).
+Related files: src/Mesh/Gmsh/GmshMeshEngine.cpp, cmake/Gmsh.cmake
+
+## BUG-099
+Area: OpenSees — vérification de l'exécutable (src/Analysis/OpenSeesManager.cpp)
+Problem: l'exécutable était accepté si sa sortie contenait « OPENSEES_CHECK_OK » OU « OpenSees » ; la bannière contient
+toujours « OpenSees ». Un binaire dont l'interpréteur Tcl ne démarre pas (init.tcl introuvable, « invalid command name
+"wipe" », code de retour 0) était déclaré disponible ; detectVersion rendait « 3.8.0 » inventé si rien n'était lu.
+Reproduction: 2026-10-24, OpenSees Linux sans lib/tcl8.6 à côté (aussi : lancé par un lien symbolique).
+Status: FIXED (2026-10-25) — `OpenSeesManager::checkExecutable` / `interpretCheckOutput` : seul le marqueur
+OPENSEES_CHECK_OK_<chiffres> prouve le fonctionnement (une recopie de l'entrée « …_%s » échoue), version ≥ 3.4.0
+(plage d'OpenSeesAdapter) ; statuts NotFound, LaunchFailed (non démarré ou arrêt anormal), Timeout, TclInitFailed,
+IncompatibleVersion, UnexpectedOutput, Operational, message traduit (en, mg) repris par OpenSeesEngine::availability et
+ensureAvailable (hors Windows) ; detectVersion n'invente plus de version. OpenSees 3.8.0 n'a pas d'option de version
+(sources : -noHeader, -suppressOutput seulement). Test 491 (sans installation : sorties réelles + faux exécutables
+scriptés sous Unix). Vérifié Linux avec le vrai binaire : opérationnel, sans lib/tcl8.6 → TclInitFailed, chemin
+enregistré (QSettings) et PATH. Windows : NON TESTÉ — gOpenSees.exe de thirdparty/ est un exécutable console qui contient
+le même tclMain (même lecture de l'entrée standard), mais n'a pas pu être lancé ici.
+Related files: src/Analysis/OpenSeesManager.cpp, src/Analysis/OpenSeesManager.h, src/Analysis/Engines/OpenSees/OpenSeesEngine.cpp, tests/test_opensees.cpp
 
 ## BUG-098
 Area: Traductions (translations/*.ts, tools/i18n)

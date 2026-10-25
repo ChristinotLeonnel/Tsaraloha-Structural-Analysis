@@ -7,9 +7,19 @@
 #
 # Licence : Gmsh est distribué sous GNU GPL v2 ou ultérieure (avec exceptions). Voir docs/THIRD_PARTY_LICENSES.md.
 #
+# Hors Windows : SDK Linux officiel (gmsh-<version>-Linux64-sdk, libgmsh.so compilée avec GCC 6) par son API
+# C++ native « gmsh.h » (gmsh.h_cwrap y provoquerait une récursion infinie par interposition ELF) ; liaison
+# directe (chemin du SDK dans le RUNPATH de l'arborescence de compilation), aucune copie de la bibliothèque ;
+# script de version gmsh-hide-std.map sur les exécutables. Voir docs/LINUX_BUILD.md.
+#
 # Résultat : cible importée TSA::Gmsh (si disponible), variables TSA_GMSH_DLL, TSA_GMSH_LICENSE_DIR.
 
-set(TSA_GMSH_SDK "${TSA_ROOT}/thirdparty/gmsh-4.15.2-Windows64-sdk" CACHE PATH "SDK Gmsh (gmsh.info, Windows64-sdk)")
+if(WIN32)
+    set(_gmsh_default_sdk "${TSA_ROOT}/thirdparty/gmsh-4.15.2-Windows64-sdk")
+else()
+    set(_gmsh_default_sdk "")   # thirdparty/ ne contient que le SDK Windows ; scripts/linux/configure.sh le renseigne
+endif()
+set(TSA_GMSH_SDK "${_gmsh_default_sdk}" CACHE PATH "SDK Gmsh (gmsh.info, Windows64-sdk ou Linux64-sdk)")
 option(TSA_WITH_GMSH "Maillage par Gmsh (SDK)" ON)
 option(TSA_PACKAGE_GMSH "Inclure la DLL Gmsh dans le paquet distribuable — licence GPL : voir docs/THIRD_PARTY_LICENSES.md" ON)
 
@@ -50,6 +60,24 @@ if(TSA_WITH_GMSH AND NOT TARGET TSA::Gmsh)
             set(TSA_GMSH_DLL "")
             message(WARNING "Gmsh : bibliothèque d'importation MSVC non générée (Python 3 et lib.exe requis) — maillage indisponible")
         endif()
+    elseif(NOT WIN32 AND TSA_GMSH_SDK AND EXISTS "${TSA_GMSH_SDK}/include/gmsh.h_cwrap")
+        find_library(TSA_GMSH_LIBRARY NAMES gmsh PATHS "${TSA_GMSH_SDK}/lib" NO_DEFAULT_PATH)
+        if(TSA_GMSH_LIBRARY)
+            add_library(TSA::Gmsh SHARED IMPORTED GLOBAL)
+            set_target_properties(TSA::Gmsh PROPERTIES
+                IMPORTED_LOCATION "${TSA_GMSH_LIBRARY}"
+                INTERFACE_INCLUDE_DIRECTORIES "${TSA_GMSH_SDK}/include"
+                INTERFACE_COMPILE_DEFINITIONS "TSA_HAVE_GMSH=1"
+                # Exécutables : instanciations std non exportées vers libgmsh (GCC 6), voir gmsh-hide-std.map.
+                INTERFACE_LINK_OPTIONS "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:LINKER:--version-script=${CMAKE_CURRENT_LIST_DIR}/gmsh-hide-std.map>"
+                INTERFACE_LINK_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/gmsh-hide-std.map")
+            set(TSA_GMSH_LICENSE_DIR "${TSA_GMSH_SDK}/share/doc/gmsh")
+            message(STATUS "Gmsh : ${TSA_GMSH_LIBRARY}")
+        else()
+            message(STATUS "Gmsh : libgmsh absente de ${TSA_GMSH_SDK}/lib — maillage indisponible")
+        endif()
+    elseif(NOT WIN32)
+        message(STATUS "Gmsh : SDK Linux introuvable (TSA_GMSH_SDK=\"${TSA_GMSH_SDK}\", include/gmsh.h_cwrap attendu) — maillage indisponible")
     elseif(NOT MSVC)
         message(STATUS "Gmsh : intégration prévue pour le SDK Windows avec MSVC uniquement — maillage indisponible")
     else()

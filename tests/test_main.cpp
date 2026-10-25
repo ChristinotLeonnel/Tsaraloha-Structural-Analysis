@@ -6,7 +6,7 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     int passed = 0;
-    int expectedTotal = 471;   // 404 mesurés le 17/10/2026 (plateforme Qt native) + 22 tests « drawing » + test 429 (surfaces) + 17 tests « views » + 14 tests « i18n » + 4 tests « ribbon » + 8 tests « templates_wp » + test 490 (locale numérique)
+    int expectedTotal = 490;   // 489 comptés sous Linux le 25/10/2026 (Release, OpenSees, Gmsh et IfcOpenShell présents, 0 échec) + test 128 (Explorateur Windows, ignoré ailleurs) ; décompte Windows à confirmer
 
     std::string suiteFilter = "all";
     for (int i = 1; i < argc; ++i) {
@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
         if (!runSuite_Loads(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "opensees" || suiteFilter == "solver") {
-        std::cout << "\n--- [Suite 13/14] OpenSees Solver, Immutability & Analytical Validation (Tests 65-69) ---" << std::endl;
+        std::cout << "\n--- [Suite 13/14] OpenSees Solver, Immutability & Analytical Validation (Tests 491, 65-69) ---" << std::endl;
         if (!runSuite_OpenSees(passed)) allOk = false;
     }
     if (suiteFilter == "all" || suiteFilter == "supports" || suiteFilter == "support") {

@@ -7965,16 +7965,40 @@ Atomboka ve ny kajy?</translation>
 <context>
     <name>TSA::Analysis::OpenSeesManager</name>
     <message>
-        <source>Fichier OpenSees.exe introuvable.</source>
-        <translation>Tsy hita ny rakitra OpenSees.exe.</translation>
+        <source>Exécutable OpenSees introuvable (ni dans %1, ni dans le PATH, ni au chemin enregistré « OpenSees/ExecutablePath »).</source>
+        <translation>Tsy hita ny programa OpenSees (tsy ao amin'ny %1, tsy ao amin'ny PATH, tsy ao amin'ny lalana voatahiry « OpenSees/ExecutablePath »).</translation>
     </message>
     <message>
-        <source>Impossible de démarrer le processus OpenSees : %1</source>
-        <translation>Tsy azo alefa ny fizotran'ny OpenSees: %1</translation>
+        <source>Exécutable OpenSees introuvable : %1</source>
+        <translation>Tsy hita ny programa OpenSees: %1</translation>
+    </message>
+    <message>
+        <source>Impossible de démarrer OpenSees (%1) : %2</source>
+        <translation>Tsy azo alefa ny OpenSees (%1): %2</translation>
     </message>
     <message>
         <source>Délai d'attente dépassé lors de la vérification d'OpenSees.</source>
         <translation>Lany ny fotoana niandrasana nandritra ny fanamarinana ny OpenSees.</translation>
+    </message>
+    <message>
+        <source>OpenSees %1 non pris en charge : version %2 ou ultérieure requise.</source>
+        <translation>Tsy raisina ny OpenSees %1: ilaina ny dikan-teny %2 na ny manaraka azy.</translation>
+    </message>
+    <message>
+        <source>OpenSees %1 opérationnel.</source>
+        <translation>Mandeha tsara ny OpenSees %1.</translation>
+    </message>
+    <message>
+        <source>OpenSees démarre mais son interpréteur Tcl ne s'initialise pas (init.tcl introuvable) : la bibliothèque Tcl doit se trouver dans &lt;dossier de l'exécutable&gt;/../lib/tcl8.6.</source>
+        <translation>Manomboka ny OpenSees saingy tsy voaomana ny mpandika Tcl azy (tsy hita ny init.tcl): tsy maintsy ao amin'ny &lt;lahatahirin'ny programa&gt;/../lib/tcl8.6 ny tahiry Tcl.</translation>
+    </message>
+    <message>
+        <source>OpenSees s'est arrêté anormalement (code %1) : bibliothèque manquante ou exécutable incompatible avec ce système.</source>
+        <translation>Nijanona tsy ara-dalàna ny OpenSees (kaody %1): tsy ampy tahiry na tsy mifanaraka amin'ity rafitra ity ny programa.</translation>
+    </message>
+    <message>
+        <source>Le programme ne répond pas comme OpenSees à la commande de contrôle.</source>
+        <translation>Tsy mamaly toy ny OpenSees ny programa amin'ny baiko fanamarinana.</translation>
     </message>
     <message>
         <source>Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH.</source>

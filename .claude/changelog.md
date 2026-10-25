@@ -2,6 +2,23 @@
 
 Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord).
 
+## 2026-10-25 (portage Linux : OpenSees, Gmsh, IfcOpenShell — branche fix/debug-build-errors)
+
+### Added
+- Gmsh 4.15.2 (SDK Linux64) : `cmake/Gmsh.cmake` hors Windows, `cmake/gmsh-hide-std.map` ; docs/LINUX_BUILD.md §10.
+- IfcOpenShell 0.9.0post1 : `scripts/linux/build-ifcopenshell.sh`, `cmake/IfcOpenShell.cmake` hors Windows ; §11.
+- scripts/linux : détection de TSA_GMSH_SDK / TSA_IFCOPENSHELL_ROOT (common.sh, check-dependencies.sh, configure.sh).
+- Test 491 (vérification de l'exécutable OpenSees) ; total attendu 490 (tests/test_main.cpp).
+
+### Fixed
+- BUG-099 (vérification OpenSees : `OpenSeesManager::checkExecutable`), BUG-100 (gmsh.h_cwrap → récursion infinie),
+  BUG-101 (instanciations std interposées vers libgmsh), BUG-103 (IfcOpenShell lié avec -Bsymbolic). BUG-095 FIXED.
+
+### Verified
+- Release (xcb, OpenSees dans le PATH) : 489/490, 0 échec, 1 SKIP (test 128, Windows seulement).
+- Debug : 482/490 — test 457 (seuil de performance, BUG-104) arrête sa suite (458–463 non exécutés).
+- Windows (MSVC) : NON VÉRIFIÉ.
+
 ## 2026-10-24 (portage Linux Ubuntu 24.04 — branche fix/debug-build-errors)
 
 ### Added
@@ -9,6 +26,10 @@ Les sessions futures ajoutent une entrée datée en tête (plus récent d'abord)
 - `scripts/linux/` : common.sh, check-dependencies.sh, configure.sh, build.sh, test.sh ; `docs/LINUX_BUILD.md`.
 - `src/Core/NumericLocale.cpp` (LC_NUMERIC="C" à la création de toute QCoreApplication) ; Test 490 (suite i18n).
 - `.gitattributes` : `*.sh text eol=lf`.
+
+### Added (nuit)
+- OpenSees 3.8.0 compilé pour Linux (Conan 2) et validé : cas analytiques exacts, TSA_TestSuite 450/471 ; procédure
+  dans docs/LINUX_BUILD.md §7. BUG-099 consigné (vérification de l'exécutable OpenSees).
 
 ### Fixed (soir)
 - BUG-094 : `ConverterSpec::executable()` (commande de module résolue selon la plateforme) ; tests 274 et 279.

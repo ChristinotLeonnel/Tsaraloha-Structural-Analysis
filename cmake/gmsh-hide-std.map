@@ -1,0 +1,19 @@
+/* Script de version (ld) des exécutables liés à libgmsh.so hors Windows : voir cmake/Gmsh.cmake.
+   Le SDK Linux de Gmsh est compilé avec GCC 6 ; il référence des instanciations de modèles std (std::regex,
+   std::function…) qu'un exécutable compilé avec un GCC récent exporterait, et le chargeur ELF les substituerait
+   à celles de Gmsh (disposition mémoire différente : corruption, p. ex. noms de groupes physiques perdus).
+   Motifs sur les noms décorés (Itanium) : fonctions et données de std (_ZNSt, _ZNKSt, _ZSt), typeinfo, nom de
+   typeinfo, table virtuelle, VTT, variables de garde. Les données copiées par relocation (tables virtuelles de
+   libstdc++…) restent exportées par l'éditeur de liens. */
+{
+  local:
+    _ZNSt*;
+    _ZNKSt*;
+    _ZSt*;
+    _ZTISt*;
+    _ZTSSt*;
+    _ZTVSt*;
+    _ZTTSt*;
+    _ZGVZNSt*;
+    _ZGVZNKSt*;
+};

@@ -54,6 +54,22 @@ root="$(dirname "$TSA_SOURCE_DIR")"
 [[ -f "$root/3DDesplacement/CMakeLists.txt" ]] && ok "3DDesplacement (moteur fem3d)" || warn "../3DDesplacement (moteur fem3d facultatif)"
 [[ -f "$TSA_SOURCE_DIR/thirdparty/eigen-3.4.1/include/eigen3/Eigen/Core" ]] && ok "Eigen (thirdparty)" || warn "Eigen thirdparty/eigen-3.4.1 (requis par fem3d)"
 
+tsa_info "Maillage"
+gmsh="$(tsa_find_gmsh)"
+if [[ -n "$gmsh" && -f "$gmsh/include/gmsh.h_cwrap" ]] && ls "$gmsh"/lib/libgmsh.so* >/dev/null 2>&1; then
+    ok "SDK Gmsh : $gmsh"
+else
+    warn "SDK Gmsh absent (TSA_GMSH_SDK ou ~/opt/gmsh-*-Linux64-sdk) : maillage et suites mesh/surfaces indisponibles"
+fi
+
+tsa_info "Import IFC"
+ifc="$(tsa_find_ifcopenshell)"
+if [[ -n "$ifc" && -f "$ifc/lib/cmake/IfcOpenShell/IfcOpenShellConfig.cmake" ]]; then
+    ok "IfcOpenShell : $ifc"
+else
+    warn "IfcOpenShell absent (scripts/linux/build-ifcopenshell.sh) : import IFC par le lecteur STEP interne, test 400 en échec"
+fi
+
 tsa_info "Exécution"
 command -v OpenSees >/dev/null && ok "OpenSees : $(command -v OpenSees)" || warn "OpenSees absent du PATH (moteur OpenSees et suites opensees/extraction)"
 

@@ -7965,16 +7965,40 @@ Run the analysis?</translation>
 <context>
     <name>TSA::Analysis::OpenSeesManager</name>
     <message>
-        <source>Fichier OpenSees.exe introuvable.</source>
-        <translation>OpenSees.exe file not found.</translation>
+        <source>Exécutable OpenSees introuvable (ni dans %1, ni dans le PATH, ni au chemin enregistré « OpenSees/ExecutablePath »).</source>
+        <translation>OpenSees executable not found (not in %1, nor in the PATH, nor at the saved path “OpenSees/ExecutablePath”).</translation>
     </message>
     <message>
-        <source>Impossible de démarrer le processus OpenSees : %1</source>
-        <translation>Cannot start the OpenSees process: %1</translation>
+        <source>Exécutable OpenSees introuvable : %1</source>
+        <translation>OpenSees executable not found: %1</translation>
+    </message>
+    <message>
+        <source>Impossible de démarrer OpenSees (%1) : %2</source>
+        <translation>Cannot start OpenSees (%1): %2</translation>
     </message>
     <message>
         <source>Délai d'attente dépassé lors de la vérification d'OpenSees.</source>
         <translation>Timeout while checking OpenSees.</translation>
+    </message>
+    <message>
+        <source>OpenSees %1 non pris en charge : version %2 ou ultérieure requise.</source>
+        <translation>OpenSees %1 is not supported: version %2 or later is required.</translation>
+    </message>
+    <message>
+        <source>OpenSees %1 opérationnel.</source>
+        <translation>OpenSees %1 is operational.</translation>
+    </message>
+    <message>
+        <source>OpenSees démarre mais son interpréteur Tcl ne s'initialise pas (init.tcl introuvable) : la bibliothèque Tcl doit se trouver dans &lt;dossier de l'exécutable&gt;/../lib/tcl8.6.</source>
+        <translation>OpenSees starts but its Tcl interpreter fails to initialize (init.tcl not found): the Tcl library must be in &lt;executable folder&gt;/../lib/tcl8.6.</translation>
+    </message>
+    <message>
+        <source>OpenSees s'est arrêté anormalement (code %1) : bibliothèque manquante ou exécutable incompatible avec ce système.</source>
+        <translation>OpenSees stopped abnormally (code %1): missing library or executable incompatible with this system.</translation>
+    </message>
+    <message>
+        <source>Le programme ne répond pas comme OpenSees à la commande de contrôle.</source>
+        <translation>The program does not respond like OpenSees to the check command.</translation>
     </message>
     <message>
         <source>Téléchargement automatique d'OpenSees disponible sous Windows uniquement : installer OpenSees et le placer dans le PATH.</source>

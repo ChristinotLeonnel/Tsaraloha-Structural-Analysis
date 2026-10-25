@@ -63,7 +63,12 @@ EngineAvailability OpenSeesEngine::availability() const
 #else
     a.canProvision = false;
 #endif
-    if (!a.available) a.message = QCoreApplication::translate("TSA::Analysis::OpenSeesEngine", "OpenSees.exe introuvable ou non vérifié.").toStdString();
+    if (!a.available)
+    {
+        const QString cause = OpenSeesManager::instance().lastCheck().message;   // cause précise (BUG-099)
+        a.message = cause.isEmpty() ? QCoreApplication::translate("TSA::Analysis::OpenSeesEngine", "OpenSees.exe introuvable ou non vérifié.").toStdString()
+                                    : cause.toStdString();
+    }
     return a;
 }
 
